@@ -417,18 +417,27 @@ its direct XML dependency on Darwin. Cross Ninja executes native build tools.
  _TOOLS_USE_PKGSRC.msgfmt?=	no
 --- a/mk/tools/replace.mk
 +++ b/mk/tools/replace.mk
-@@ -140,7 +140,12 @@
+@@ -140,7 +140,21 @@
  _TOOLS_DEPMETHOD.${_t_:C/:.*//}=	TOOL_DEPENDS
  .endfor
  .for _t_ in ${USE_TOOLS:M*\:run}
 -.  if ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} != ${NATIVE_OPSYS}
 +# install-info is never executed during the build: its wrapper is a no-op.
-+# Permit the verified NetBSD base path in target package scripts only.
-+.  if ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} != ${NATIVE_OPSYS} && \
-+      !(${_t_} == "install-info:run" && ${OPSYS} == "NetBSD" && \
-+        exists(${CROSS_DESTDIR}/usr/bin/install-info) && \
-+        ${TOOLS_PLATFORM.install-info:U} == "/usr/bin/install-info")
++# Standard NetBSD base utilities get the same treatment for packages whose
++# target scripts use them (for example mozilla-rootcerts' extraction);
++# permit the verified NetBSD base paths in target package scripts only.
++.  if ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} != ${NATIVE_OPSYS}
++EMBER_CROSS_RUN_OK=	no
++.    for _b_ in install-info awk echo expr ln ls openssl rm mkdir
++.      if ${_t_} == "${_b_}:run" && ${OPSYS} == "NetBSD" && \
++          (exists(${CROSS_DESTDIR}/usr/bin/${_b_}) || \
++           exists(${CROSS_DESTDIR}/bin/${_b_}))
++EMBER_CROSS_RUN_OK=	yes
++.      endif
++.    endfor
++.    if ${EMBER_CROSS_RUN_OK:tl} != "yes"
  PKG_FAIL_REASON+=	"USE_TOOLS+=${_t_} not supported in cross-compilation"
++.    endif
  .  endif
  _TOOLS_DEPMETHOD.${_t_:C/:.*//}=	DEPENDS
 --- a/mk/pkgformat/pkg/package.mk

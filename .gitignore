@@ -9,3 +9,4 @@ work.*/
 !/probes/plasma-mobile/toolkit/recipes/**/Makefile
 !/profiles/common-graphics/recipes/**/Makefile
 !/profiles/common-media/recipes/**/Makefile
+!/profiles/network-diagnostics/recipes/**/Makefile

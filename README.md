@@ -198,6 +198,19 @@ runtime behavior are validated.
   AArch64 VM cases pass MQTT 3.1.1/5 QoS 0/1/2, authentication/ACL, verified
   TLS and retained-state recovery. Packaging, boot service and other
   smart-home ports remain pending.
+- [Network diagnostics kit](profiles/network-diagnostics/README.md):
+  cross-built CLI capture, analysis and load tools for boards. libpcap
+  1.10.7, tcpdump 4.99.6 and iperf3 3.21 install from binary packages on
+  Raspberry Pi 5; tcpdump captured live Wi-Fi traffic through BPF without
+  kernel drops, and iperf3 measured TCP, reverse TCP and zero-loss UDP
+  jitter against a LAN peer. The Wireshark 4.6.8 CLI kit (dumpcap, tshark,
+  capinfos, editcap, mergecap) cross-builds with Qt, Lua, HTTP/3 and docs
+  disabled; on the board dumpcap passed a three-file ring-buffer capture
+  under load and tshark read pcap, pcapng and BTSnoop traces. The native
+  `hcisnoop` recorder writes BTSnoop traces from the netbt HCI socket tap
+  that Wireshark reads as "Bluetooth HCI H4"; it captured a real controller
+  inquiry with correct directions. Wi-Fi monitor mode, Lua dissectors and
+  the GUI remain separate queue items.
 - [Local AI CPU packages](profiles/ai-cpu/README.md): pkgsrc recipes for
   llama.cpp 0.6.0 and whisper.cpp 1.9.4; native ARM64 package installation,
   text generation, WAV transcription, and loopback HTTP inference verified.
