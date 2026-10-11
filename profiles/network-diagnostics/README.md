@@ -55,7 +55,9 @@ uses, and the perl helper scripts stay out of the cross-built board kit.
 
 - tcpreplay | 4.4.4 | pcap replay with rate control and loops
 - libserialport | 0.1.2 | serial port access library with a new NetBSD backend
-
+- libsigrok (demo driver) | 0.5.2 | signal acquisition library for instruments
+- sigrok-cli | 0.7.2 | command-line acquisition client
+- libzip | 1.11.4nb3 | zip library (kit delta: library-only, no python test machinery)
 `recipes/comms/libserialport` is the first pkgsrc recipe for the
 sigrok library, plus a NetBSD backend: the FreeBSD termios enumeration
 lists dial-out (dty) devices, falls back to stat for DT_UNKNOWN dirents,
@@ -63,6 +65,14 @@ initializes the scan return code, and the FreeBSD libusb20 metadata path
 compiles only where port metadata exists (on NetBSD NO_PORT_METADATA is
 set, so `sp_list_ports` works without libusb). The `sp-list` helper in
 `src/` enumerates ports through the public API.
+
+`recipes/devel/libsigrok` and `recipes/misc/sigrok-cli` are the first
+pkgsrc recipes for the sigrok acquisition stack; the board kit builds
+only the demo driver (no instrument hardware attached yet), with glib2
+and the library-only libzip delta above. `recipes/archivers/libzip`
+carries the kit delta over the stock recipe: regression tests, examples
+and the nihtest/python machinery are off, so targets get no python
+dependency.
 
 The tcpreplay recipe overlay carries three portability patches: the
 bundled libopts headers must not redefine the false/true keywords
