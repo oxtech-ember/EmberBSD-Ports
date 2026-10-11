@@ -1,0 +1,37 @@
+$NetBSD$
+
+NetBSD support by EmberBSD: build the FreeBSD termios backend on
+NetBSD too, without FreeBSD libusb20 (no port metadata there).
+
+--- configure.orig	2020-01-26 13:24:07.000000000 +0000
++++ configure
+@@ -13279,7 +13279,7 @@
+   MACOSX_FALSE=
+ fi
+ 
+- if test -z "${host_os##freebsd*}"; then
++ if test -z "${host_os##freebsd*}" || test -z "${host_os##netbsd*}"; then
+   FREEBSD_TRUE=
+   FREEBSD_FALSE='#'
+ else
+@@ -13295,7 +13295,7 @@
+ fi
+ 
+ 
+-if test -z "$FREEBSD_TRUE"; then :
++if test -z "$FREEBSD_TRUE" && test -n "${host_os##netbsd*}"; then :
+   SP_PKGLIBS='libusb-2.0'
+ else
+   SP_PKGLIBS=
+@@ -13314,6 +13314,11 @@
+ fi
+ 
+ case $host_os in #(
++  netbsd*) :
++
++$as_echo "#define NO_PORT_METADATA 1" >>confdefs.h
++
++ ;; #(
+   linux*|darwin*|mingw*|freebsd*) :
+      ;; #(
+   *) :

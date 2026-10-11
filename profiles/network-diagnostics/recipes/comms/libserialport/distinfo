@@ -1,0 +1,5 @@
+$NetBSD$
+SHA512 (libserialport-0.1.2.tar.gz) = 960823ddb30711c39a4f001b6dd2d592a072e8d4256d3ba0a2fdb6c28172c3b6b1504b33cca80765ded5d5add34a73621b5e500ebaa6bb0520faf98b46b903aa
+Size (libserialport-0.1.2.tar.gz) = 470818 bytes
+SHA1 (patch-configure) = 08f8526b0eb30681f05e2c7055939d81921b9e73
+SHA1 (patch-freebsd.c) = 24a3e53cb040fa803f9a89a498530078b119d7f4

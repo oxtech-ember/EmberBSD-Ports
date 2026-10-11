@@ -54,6 +54,15 @@ header, `getopt_long_only` (a glibc extension) is replaced with
 uses, and the perl helper scripts stay out of the cross-built board kit.
 
 - tcpreplay | 4.4.4 | pcap replay with rate control and loops
+- libserialport | 0.1.2 | serial port access library with a new NetBSD backend
+
+`recipes/comms/libserialport` is the first pkgsrc recipe for the
+sigrok library, plus a NetBSD backend: the FreeBSD termios enumeration
+lists dial-out (dty) devices, falls back to stat for DT_UNKNOWN dirents,
+initializes the scan return code, and the FreeBSD libusb20 metadata path
+compiles only where port metadata exists (on NetBSD NO_PORT_METADATA is
+set, so `sp_list_ports` works without libusb). The `sp-list` helper in
+`src/` enumerates ports through the public API.
 
 The tcpreplay recipe overlay carries three portability patches: the
 bundled libopts headers must not redefine the false/true keywords
