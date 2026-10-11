@@ -2,7 +2,8 @@
 
 Cross-compilation is the preferred build path: build GCC 16.2.0 on the
 development host and execute the resulting programs on EmberBSD. The tested
-host is Apple Silicon macOS. There is no NetBSD-host
+hosts are Apple Silicon macOS (application mode) and Debian x86_64 Linux
+(kernel mode). There is no NetBSD-host
 check in the compiler build or compile-only acceptance scripts. The separate
 target runner requires AArch64 NetBSD because it executes target ELF files.
 
@@ -124,8 +125,15 @@ build isolated prerequisites, or set `EMBER_HOST_MATH_PREFIX`. Kernel mode uses
 target binutils copies, native-only RPATH patch exclusion and the installed
 split-DWARF contract. Select its `NEW_WORK/toolchain` through the fork's
 `EMBER_EXTERNAL_TOOLCHAIN`; inspect the owning OS wrapper for host-tool selection
-and kernel inputs. Compiler preparation does not establish kernel build or boot
-acceptance. Linux full-kernel acceptance remains unverified.
+and kernel inputs. Compiler preparation alone does not establish kernel build
+or boot acceptance.
+
+On 2026-10-11, the public recipe built GCC16.2 with host GCC16.2 on Debian
+x86_64 Linux, passed its installed split-DWARF contract, and cross-built the
+OS revision `d472eb8fecc3ff70b6aa231888b301414985845c`: EMBER64 kernel and image,
+four modules and three board DTBs. The OS wrapper's portable contracts passed
+with GCC16. Boot, the four native contracts and Linux-hosted application-mode
+runtime acceptance remain unverified.
 
 Run the argument/prerequisite and real export regressions with:
 
