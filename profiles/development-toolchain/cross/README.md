@@ -2,17 +2,19 @@
 
 Cross-compilation is the preferred build path: build GCC 16.2.0 on the
 development host and execute the resulting programs on EmberBSD. The tested
-host is Apple Silicon macOS. There is no NetBSD-host
+hosts are Apple Silicon macOS (application mode) and Debian x86_64 Linux
+(kernel mode). There is no NetBSD-host
 check in the compiler build or compile-only acceptance scripts. The separate
 target runner requires AArch64 NetBSD because it executes target ELF files.
 
 The compiler uses the same verified original GCC archive and frontend
 portability patches as the Ports native package, including the nb1 C++
-modules repair. This is a compiler build, not a cross-built pkgsrc package
-or a complete distribution image. The target GCC16 runtime is taken from
-an accepted sysroot; it is not rebuilt or installed by this recipe.
+modules repair. The default application mode uses an accepted sysroot's GCC16
+headers/runtime. `--kernel` builds C/C++ frontends without a userland sysroot,
+shared libraries or target threads. Both modes install only the compiler;
+neither rebuilds the target runtime or creates a distribution image.
 
-## Inputs
+## Application inputs
 
 Prepare the development-toolchain or common-tools pkgsrc export using
 [the parent profile](../README.md). Record the Ports commit and the sysroot's
@@ -62,6 +64,10 @@ and runs their upstream test suites. It also checks long GMP loops with and
 without signal delivery. Nothing is installed into a shared prefix. The GCC
 recipe verifies the selected library versions and reruns this host contract before
 compiler configuration. It records hashes of the three static libraries.
+The helper selects `-O2 -std=gnu17` for the host C libraries explicitly:
+GMP 6.3.0's configure probes require pre-C23 empty-parameter-list semantics.
+This keeps the selected host compiler and all upstream tests. The input record
+includes compiler versions/triplet, C/C++ flags and source/library hashes.
 
 GMP 6.2.1 uses the reserved Darwin `x18` register in ARM64 assembly. During a
 LiteRT build this caused intermittent compiler crashes in GMP/MPFR constant
@@ -100,6 +106,46 @@ directory. This is required for the driver's `-gsplit-dwarf` invocation of
 must both be readable and retain the named type. This contract passed on
 2026-10-08 with the current GMP-backed GCC16 prefix.
 
+## Kernel frontends without a sysroot
+
+Use the same prepared pkgsrc export, pinned GCC archive, fork-built host
+TOOLDIR and current host math libraries. Omit the application sysroot:
+
+```sh
+HOST_CC=gcc HOST_CXX=g++ CROSS_JOBS=4 \
+    sh profiles/development-toolchain/cross/build.sh --kernel \
+    /absolute/pkgsrc /absolute/gcc-16.2.0.tar.xz \
+    /absolute/os-build/tools /absolute/host-math/prefix /absolute/new-gcc-kernel
+```
+
+The optional host math prefix works as in application mode: leave it out to
+build isolated prerequisites, or set `EMBER_HOST_MATH_PREFIX`. Kernel mode uses
+`--without-headers --disable-shared --disable-threads` and builds/installs
+`all-gcc`/`install-gcc`. It retains patch verification, the modules repair,
+target binutils copies, native-only RPATH patch exclusion and the installed
+split-DWARF contract. Select its `NEW_WORK/toolchain` through the fork's
+`EMBER_EXTERNAL_TOOLCHAIN`; inspect the owning OS wrapper for host-tool selection
+and kernel inputs. Compiler preparation alone does not establish kernel build
+or boot acceptance.
+
+On 2026-10-11, the public recipe built GCC16.2 with host GCC16.2 on Debian
+x86_64 Linux, passed its installed split-DWARF contract, and cross-built the
+OS revision `d472eb8fecc3ff70b6aa231888b301414985845c`: EMBER64 kernel and image,
+four modules and three board DTBs. The OS wrapper's portable contracts passed
+with GCC16. Boot, the four native contracts and Linux-hosted application-mode
+runtime acceptance remain unverified.
+
+Run the argument/prerequisite and real export regressions with:
+
+```sh
+sh profiles/development-toolchain/cross/tests/build-modes.sh /absolute/os-build/tools
+sh profiles/development-toolchain/tests/prepare.sh /absolute/new-pkgsrc-test
+```
+
+The second command retains a complete development-toolchain export. It exercises
+`prepare-pkgsrc.sh` against the pinned submodule with GNU patch's zero-fuzz
+application and verifies the package revisions and source patch hashes.
+
 ## Compile here, execute on EmberBSD
 
 ```sh
@@ -128,6 +174,13 @@ against the already installed `/usr/pkg/gcc16` compiler. Loader overrides
 are rejected. It does not install packages or change login defaults.
 
 ## Validation boundary
+
+On 2026-10-11, the revised host-math recipe completed with GCC/G++ 16.2.0 on
+Debian 13/x86_64 using four workers and explicit GNU C17 flags. GMP passed
+177 tests with one upstream skip (`t-addaddmul`, whose native primitive is
+absent on this host); MPFR passed all 198 and MPC all 75. The GMP long-loop
+and periodic-signal contracts also passed. This validates host prerequisites;
+it does not establish target application runtime or Linux kernel acceptance.
 
 On 2026-10-07, the rebuilt GCC 16.2.0 passed host compilation and target
 acceptance with GMP 6.3.0, MPFR 4.2.2 and MPC 1.4.1. That build explicitly used
