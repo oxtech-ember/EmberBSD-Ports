@@ -320,7 +320,9 @@ runtime behavior are validated.
   [Mac cross packaging and sysroot installation](probes/plasma-mobile/toolkit/cross/qt-packages.md).
   [Installed CM5 Core/Gui/SVG checks](probes/plasma-mobile/toolkit/tests/qt-consumer/README.md)
   pass thread signals, resources, image pixels, plugin errors and SVG replacement.
-  Quick, accelerated Qt and the complete Plasma migration remain pending. Native
+  [Qt Wayland/EGL on CM5](probes/plasma-mobile/toolkit/tests/qt-wayland-gl/README.md)
+  passes V3D shader pixels, repeated processes and rejection checks with labwc.
+  Qt Quick and the complete Plasma migration remain pending. Native
   audio API/registration and host metadata extraction checks pass.
 
 - [Openbox](probes/openbox/README.md) and

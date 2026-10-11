@@ -72,7 +72,8 @@ upstream NetBSD base files or a mixed sysroot for EmberBSD.
 Qtbase, SVG, ShaderTools, ImageFormats and LanguageServer pass cross-package and build-sysroot checks;
 [the package receipt](cross/qt-packages.md) records the boundary.
 The [CM5 Core/Gui/SVG consumer](tests/qt-consumer/README.md) also passes runtime
-and package lifecycle checks. Accelerated Qt and the remaining module runtimes
+and package lifecycle checks. The [Qt Wayland/EGL V3D consumer](tests/qt-wayland-gl/README.md) also passes on
+CM5 with an isolated labwc output. Qt Quick and the remaining module runtimes
 remain unaccepted. The [common FFmpeg 9 profile](../../../profiles/common-media/README.md)
 owns Qt Multimedia/KFileMetadata dependencies; source and earlier host
 extractor checks do not accept complete multimedia playback. KWin, Plasma,

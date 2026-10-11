@@ -8,8 +8,9 @@ ordinary package replacement after its CMake metadata correction.
 
 The installed [Core/Gui/SVG consumer](../tests/qt-consumer/README.md) also passes
 on CM5, including real image pixels, plugin rejection, restart and SVG package
-removal/reinstallation. qmake version lookup passes. Quick, accelerated Qt
-rendering, other module runtimes and Plasma remain unaccepted.
+removal/reinstallation. qmake version lookup passes. The [Wayland/EGL consumer](../tests/qt-wayland-gl/README.md) also passes V3D
+shader pixels and repeated processes on CM5. Quick, other module runtimes
+and Plasma remain unaccepted.
 
 ## Inputs and packages
 
@@ -76,7 +77,8 @@ manifest; no codec entries or package checks were removed.
 
 Prepare the [common cross configuration](README.md#target-package-build),
 then use ordinary bmake package/install in `x11/qt6-qtbase`,
-`graphics/qt6-qtsvg`, `graphics/qt6-qtshadertools`, `graphics/qt6-qtimageformats`\nand `lang/qt6-qtlanguageserver`. Keep host and target
+`graphics/qt6-qtsvg`, `graphics/qt6-qtshadertools`, `graphics/qt6-qtimageformats`
+and `lang/qt6-qtlanguageserver`. Keep host and target
 package databases and output directories separate. For a packaging-only repair,
 `install-clean plist-clean` regenerates staging and manifests while retaining
 compiled objects. Use the normal `replace` target when updating an installed

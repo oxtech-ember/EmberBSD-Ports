@@ -122,8 +122,8 @@ sh probes/plasma-mobile/toolkit/cross/check-target-configure.sh \
 This check examines the real CMake cache and executes the selected host tools.
 [Qtbase, SVG, ShaderTools, ImageFormats and LanguageServer packaging](qt-packages.md) now passes, including
 ordinary sysroot installation. The [CM5 Core/Gui/SVG consumer](../tests/qt-consumer/README.md)
-also passes installed runtime and plugin checks. Quick and accelerated Qt remain
-gates. CM5 desktop acceptance starts with HDMI, then a remote KWin/Plasma session.
+also passes installed runtime and plugin checks. The [Wayland/EGL V3D check](../tests/qt-wayland-gl/README.md) passes on CM5;
+Qt Quick remains a gate. CM5 desktop acceptance starts with HDMI, then a remote KWin/Plasma session.
 
 ## Path-only file transfer descriptors
 
