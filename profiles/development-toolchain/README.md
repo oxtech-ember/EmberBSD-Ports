@@ -24,6 +24,9 @@ A [host cross-compiler recipe](cross/README.md) also builds GCC 16.2 on
 Apple Silicon macOS. Cross-built C11/C++20 programs pass on Zero 3W with
 its installed GCC16 runtime. This separates compilation from target
 execution; it does not yet cross-build installable pkgsrc packages.
+Its `--kernel` mode prepares the same patched compiler frontends without a
+userland sysroot. Application mode retains the target GCC16 headers/runtime
+requirement; kernel compilation and boot need their own OS acceptance.
 
 The [GDB 18.1nb1 native debugger](gdb/README.md) also cross-builds on macOS.
 It reads split and standard supplementary DWARF in the AArch64 VM and

@@ -35,6 +35,9 @@ runtime behavior are validated.
   builds GCC16 on Apple Silicon macOS; cross-built C/C++20 consumers run on
   Zero 3W with its installed GCC16 runtime. Its installed tool-search layout
   also passes split-DWARF generation without an `objcopy` path override.
+  The recipe's `--kernel` mode prepares frontends without a userland sysroot;
+  application mode retains target headers/runtime. Linux kernel build and boot
+  acceptance remain separate from recipe preparation.
   Common Qt/LLVM rebuilding and full-image integration
   remain pending.
   [GDB 18.1nb1](profiles/development-toolchain/gdb/README.md) is cross-built and
