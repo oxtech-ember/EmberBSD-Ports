@@ -9,11 +9,11 @@ catalog, to choose versions. KDE 4/Qt 4 have been removed from the test VM
 and their old installation example has been retired. Existing Qt 6.11.1
 and KF6 6.26.0 meet the Plasma 6.7 minimums. They describe the initial
 portability probe, not the final system baseline. The coordinated rebuild
-targets GCC 16.2, Qt 6.12.0 LTS and KDE Frameworks 6.30.0 with one C++ runtime.
+targets GCC 16.2, Qt 6.12.0 LTS and KDE Frameworks 6.31.0 with one C++ runtime.
 Qt 6.12 was [released on September 30, 2026](https://www.qt.io/blog/qt-6.12-released).
 
 The [common toolkit source candidate](toolkit/README.md) now exports Qt 6.12
-and Frameworks 6.30 over the existing common build-tools profile. Its source,
+and Frameworks 6.31 over the existing common build-tools profile. Its source,
 patch and selection checks are separate from native packages and PLIST
 acceptance. The [migration sequence](toolkit/MIGRATION.md) preserves one
 runtime closure; current Mesa and FFmpeg package integration is still required.
@@ -129,7 +129,7 @@ establish a usable Mobile session.
 KGlobalAccelD 6.7.5 builds with `WITH_X11=OFF`; both installed ELF files pass
 the loader gate. KWin's shortcut-enabled configuration succeeds but schedules
 611 C++ compilations. That rebuild is reserved for the coordinated GCC 16 /
-Qt 6.12 / KF6 6.30 migration. The currently installed diagnostic KWin still
+Qt 6.12 / KF6 6.31 migration. The currently installed diagnostic KWin still
 has shortcuts disabled. No shortcut or task-switcher runtime is claimed.
 
 ## Required runtime result

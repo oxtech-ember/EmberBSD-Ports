@@ -3,7 +3,7 @@
 This diagnostic probe builds ModemManagerQt, NetworkManagerQt, and
 BluezQt 6.26.0, QtKeychain 0.17.0, and plasma-nm 6.7.5 against Qt 6.11.1.
 The shared Plasma 6.7.5 installation is a separate prerequisite. The planned
-final baseline is GCC 16.2, Qt 6.12.0 LTS, and KF6 6.30; this probe does not
+final baseline is GCC 16.2, Qt 6.12.0 LTS, and KF6 6.31; this probe does not
 validate that future baseline or establish a permanent older dependency.
 These are real Qt D-Bus client libraries. No Linux daemon is implemented or
 installed. A successful build does not provide modem, Wi-Fi, mobile-data,

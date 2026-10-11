@@ -5,7 +5,7 @@ selected runtime modules for a private nested Plasma Mobile session. It is not a
 complete Plasma desktop, login session, or hardware support claim.
 
 The next consolidated validation baseline is GCC 16.2, Qt 6.12.0 LTS and
-KDE Frameworks 6.30. These have not been validated by this recipe yet. The
+KDE Frameworks 6.31. These have not been validated by this recipe yet. The
 GCC 12.5 / Qt 6.11.1 / KF 6.26 base results below are diagnostic evidence from the
 existing VM, not acceptance of that older stack as the final system baseline.
 

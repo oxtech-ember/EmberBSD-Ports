@@ -7,7 +7,7 @@ Plasma Mobile installer. Read the component results and limitations in
 Use an ordinary user on EmberBSD/NetBSD 11/aarch64. The initial probe used
 base GCC 12.5, Qt 6.11.1 and KF6 6.26, with current ECM/Kirigami 6.30 in the
 common prefix. It must be superseded by the coordinated GCC 16.2,
-Qt 6.12/KF6 6.30 rebuild. Do not point `CC` at a different compiler while
+Qt 6.12/KF6 6.31 rebuild. Do not point `CC` at a different compiler while
 retaining incompatible Qt/KF shared libraries.
 
 Prerequisites include CMake, Ninja, pkg-config, D-Bus tools, curl, patch,
@@ -61,7 +61,7 @@ need the standalone daemon's X11 plugin.
 
 Both daemons compiled and installed in the native diagnostic prefix. KWin's
 shortcut-enabled configuration was checked, but its 611-object rebuild is
-reserved for the common GCC 16 / Qt 6.12 / KF6 6.30 migration. The installed
+reserved for the common GCC 16 / Qt 6.12 / KF6 6.31 migration. The installed
 diagnostic KWin still uses the earlier profile with shortcuts disabled.
 
 Build the matching Plasma Wayland Protocols, KDecoration, KNightTime
