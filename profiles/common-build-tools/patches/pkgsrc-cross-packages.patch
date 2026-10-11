@@ -686,3 +686,19 @@ its direct XML dependency on Darwin. Cross Ninja executes native build tools.
  .It Fl F
  Any
  .Ar pkg-name
+--- a/net/mDNSResponder/builtin.mk
++++ b/net/mDNSResponder/builtin.mk
+@@ -26,7 +26,12 @@
+ .if !defined(BUILTIN_PKG.mDNSResponder) && \
+     !empty(IS_BUILTIN.mDNSResponder:M[yY][eE][sS]) && \
+     empty(H_DNSSD:M__nonexistent__)
+-_DNSSD_VERSION!=${SED} -En 's,\#define[[:blank:]]+_DNS_SD_H[[:blank:]]+([0-9]+),\1,p' ${H_DNSSD}
++# Origin: EmberBSD (AI-assisted), inspect the target header during cross builds.
++_DNSSD_VERSION_FILE=${H_DNSSD}
++.  if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++_DNSSD_VERSION_FILE=${CROSS_DESTDIR}${H_DNSSD}
++.  endif
++_DNSSD_VERSION!=${SED} -En 's,\#define[[:blank:]]+_DNS_SD_H[[:blank:]]+([0-9]+),\1,p' ${_DNSSD_VERSION_FILE:Q}
+ .  if ${_DNSSD_VERSION} == "2120100"
+ BUILTIN_VERSION.mDNSResponder=	212.1
+ .  elif ${_DNSSD_VERSION} == "2140302"

@@ -82,6 +82,11 @@ Build-time C/C++ generators use `/usr/bin/cc` and `/usr/bin/c++` on macOS.
 Override `EMBERBSD_CROSS_BUILD_CC` and `EMBERBSD_CROSS_BUILD_CXX` with absolute
 host compiler paths when necessary. They reach upstream configure as
 `CC_FOR_BUILD` and `CXX_FOR_BUILD`; target wrappers still compile the package.
+The profile also sets pkgsrc's `NATIVE_CC` and `NATIVE_CXX`, because recipes
+such as Bash append their generator compiler settings later. Conflicting
+command-line overrides fail rather than silently selecting the target compiler.
+The mDNSResponder version probe reads the target sysroot header during cross
+builds and the host header during native dependency recursion.
 Host tool dependencies read the host bootstrap MAKECONF, so interpreter and
 tool choices needed by those dependencies belong there as well.
 `EMBERBSD_BUILD_MSGFMT` accepts an existing absolute GNU gettext-tools 1.0+
