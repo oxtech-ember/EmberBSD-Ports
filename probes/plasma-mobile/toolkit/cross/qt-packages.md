@@ -1,7 +1,7 @@
 # Qt 6.12 target package acceptance
 
-On 2026-10-11, Qtbase, SVG, ShaderTools and ImageFormats 6.12.0 cross-built on macOS/arm64
-for EmberBSD/AArch64. All four passed normal pkgsrc staging, manifests,
+On 2026-10-11, Qtbase, SVG, ShaderTools, ImageFormats and LanguageServer 6.12.0 cross-built on macOS/arm64
+for EmberBSD/AArch64. All five passed normal pkgsrc staging, manifests,
 interpreter/permission, PIE, RELRO, RPATH and work-directory checks. They
 installed in the fork's build sysroot through pkg_add; Qtbase also passed
 ordinary package replacement after its CMake metadata correction.
@@ -26,6 +26,10 @@ libdrm 2.4.134nb2 and the common LLVM23 stack. Final prefixes remain
 
 ImageFormats SHA256: `e305054f67451b546e08577dfcfe97ecf2416c4fabf643d585b169582909fdb3`
 for `qt6-qtimageformats-6.12.0.tgz`. All seven image plugins are packaged.
+
+LanguageServer SHA256: `7588f28ef7a9c3882df644d973e28014b342ad5f0e322502356d0a8a5b4c8ee0`
+for `qt6-qtlanguageserver-6.12.0.tgz`. It built and installed through ordinary
+dependency recursion before Declarative configuration.
 
 Qtbase retains one upstream permission warning: `qt_cyclonedx_generator.py`
 has an executable bit without a shebang. No package check was disabled to
@@ -70,7 +74,7 @@ manifest; no codec entries or package checks were removed.
 
 Prepare the [common cross configuration](README.md#target-package-build),
 then use ordinary bmake package/install in `x11/qt6-qtbase`,
-`graphics/qt6-qtsvg`, `graphics/qt6-qtshadertools` and `graphics/qt6-qtimageformats`. Keep host and target
+`graphics/qt6-qtsvg`, `graphics/qt6-qtshadertools`, `graphics/qt6-qtimageformats`\nand `lang/qt6-qtlanguageserver`. Keep host and target
 package databases and output directories separate. For a packaging-only repair,
 `install-clean plist-clean` regenerates staging and manifests while retaining
 compiled objects. Use the normal `replace` target when updating an installed

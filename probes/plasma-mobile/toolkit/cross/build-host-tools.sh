@@ -33,7 +33,7 @@ else
     [ "$RESUME" = 0 ] || { echo 'Cannot resume missing work' >&2; exit 2; }
 fi
 toolkit=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-modules='qtbase qtshadertools qtdeclarative qttools'
+modules='qtbase qtsvg qtshadertools qtdeclarative qttools'
 for module in $modules; do
     archive=$module-everywhere-src-6.12.0.tar.xz
     expected=$(awk -F '\t' -v a="$archive" '$2 == a { print $3 }' "$toolkit/sources.tsv")
@@ -78,13 +78,17 @@ for module in $modules; do
         # Other modules' host generators link these libraries. Their metadata
         # alone is insufficient when the modules are built independently.
         "$CMAKE" --build "$work/$module" --parallel "$JOBS" \
-            --target host_tools Gui Network Widgets OpenGL Sql Concurrent Test \
+            --target host_tools Gui Network Widgets OpenGL Sql Concurrent Test QMinimalIntegrationPlugin \
             > "$work/$module/build.log" 2>&1
     else
+        set --
+        [ "$module" != qtdeclarative ] || set -- -DFEATURE_quick_vectorimage=ON
         (cd "$work/$module" && "$work/qtbase/bin/qt-configure-module" \
             "$work/source/$module-everywhere-src-6.12.0" \
-            -- -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF) > "$work/$module/configure.log" 2>&1
-        "$CMAKE" --build "$work/$module" --parallel "$JOBS" --target host_tools \
+            -- -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF "$@") > "$work/$module/configure.log" 2>&1
+        target=host_tools
+        [ "$module" != qtsvg ] || target=Svg
+        "$CMAKE" --build "$work/$module" --parallel "$JOBS" --target "$target" \
             > "$work/$module/build.log" 2>&1
     fi
 done
@@ -92,7 +96,7 @@ done
 for tool in moc rcc uic qtwaylandscanner qmlcachegen qmltyperegistrar; do
     [ -x "$work/qtbase/libexec/$tool" ] || { echo "Missing host tool: $tool" >&2; exit 1; }
 done
-for tool in qsb lrelease; do
+for tool in qsb lrelease svgtoqml; do
     [ -x "$work/qtbase/bin/$tool" ] || { echo "Missing host tool: $tool" >&2; exit 1; }
 done
 (cd "$work/qtbase" && find bin libexec -type f -exec shasum -a 256 {} \;) > "$work/tools.sha256"

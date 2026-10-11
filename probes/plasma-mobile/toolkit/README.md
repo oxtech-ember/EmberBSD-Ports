@@ -6,7 +6,7 @@ common GCC 16 / LLVM 23 userspace migration. It extends the existing
 It does not install another Qt prefix for Plasma. Final package paths remain
 `/usr/pkg` and `/usr/pkg/qt6` inside the common staging environment.
 
-**Qtbase, SVG, ShaderTools and ImageFormats 6.12.0 cross packages pass normal package
+**Qtbase, SVG, ShaderTools, ImageFormats and LanguageServer 6.12.0 cross packages pass normal package
 checks and installation into the build sysroot.** Their [package receipt](cross/qt-packages.md)
 separates this result from target runtime. The remaining modules and Plasma
 session are not accepted; their manifests still require actual target staging.

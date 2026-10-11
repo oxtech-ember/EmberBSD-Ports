@@ -101,6 +101,20 @@ SRC
 "$qt/libexec/qtwaylandscanner" server-header protocol.xml > server.h
 grep -Eq 'class[[:space:]]+ember_probe' protocol.h
 grep -Eq 'class[[:space:]]+ember_probe' server.h
+cat > vector.svg <<'SRC'
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+<path d="M 1 1 L 15 1 L 8 15 Z" fill="#e03020"/>
+</svg>
+SRC
+QT_QPA_PLATFORM=minimal "$qt/bin/svgtoqml" --no-assume-trusted-source \
+    vector.svg vector.qml > svgtoqml.log 2>&1
+grep -q 'ShapePath' vector.qml
+"$qt/libexec/qmlcachegen" --only-bytecode --resource-path /vector.qml \
+    -o vector-cache.cpp vector.qml > vector-cache.log 2>&1
+[ -s vector-cache.cpp ]
+if QT_QPA_PLATFORM=minimal "$qt/bin/svgtoqml" missing.svg missing.qml > missing-svg.log 2>&1; then
+    echo 'Missing SVG was accepted' >&2; exit 1
+fi
 file probe > architecture.txt
-shasum -a 256 probe shader.qsb qmlcache.cpp translation.qm > outputs.sha256
-printf '%s\n' 'PASS: Qt 6.12 moc/uic/rcc/lrelease/QML registration, shader/QML rejection and Wayland generation'
+shasum -a 256 probe shader.qsb qmlcache.cpp translation.qm vector.qml vector-cache.cpp > outputs.sha256
+printf '%s\n' 'PASS: Qt 6.12 moc/uic/rcc/lrelease/QML registration, SVG conversion/rejection, shader/QML rejection and Wayland generation'

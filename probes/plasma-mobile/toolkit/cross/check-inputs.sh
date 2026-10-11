@@ -28,7 +28,7 @@ grep -q 'Output already exists' "$work/symlink.log"
 reject changed env RESUME=1 sh "$recipe" "$distfiles" "$work/existing"
 grep -q 'Host input changed' "$work/changed.log"
 mkdir "$work/archives"
-for module in qtbase qtshadertools qtdeclarative; do
+for module in qtbase qtsvg qtshadertools qtdeclarative; do
     ln -s "$distfiles/$module-everywhere-src-6.12.0.tar.xz" "$work/archives/"
 done
 printf 'corrupt archive\n' > "$work/archives/qttools-everywhere-src-6.12.0.tar.xz"

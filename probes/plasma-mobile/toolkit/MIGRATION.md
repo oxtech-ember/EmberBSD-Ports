@@ -69,7 +69,7 @@ upstream NetBSD base files or a mixed sysroot for EmberBSD.
 
 ## Remaining acceptance boundaries
 
-Qtbase, SVG and ShaderTools pass cross-package and build-sysroot checks;
+Qtbase, SVG, ShaderTools, ImageFormats and LanguageServer pass cross-package and build-sysroot checks;
 [the package receipt](cross/qt-packages.md) records the boundary. Target runtime
 and the rest of the toolkit remain unaccepted. The [common FFmpeg 9 profile](../../../profiles/common-media/README.md)
 owns Qt Multimedia/KFileMetadata dependencies; source and earlier host

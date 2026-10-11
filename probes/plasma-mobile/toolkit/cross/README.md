@@ -7,8 +7,8 @@ The final target prefix remains `/usr/pkg/qt6`.
 
 ## Native generators
 
-Use the four original Qt archives in [sources.tsv](../sources.tsv): qtbase,
-qtshadertools, qtdeclarative and qttools. The host recipe verifies their
+Use the five original Qt archives in [sources.tsv](../sources.tsv): qtbase,
+qtsvg, qtshadertools, qtdeclarative and qttools. The host recipe verifies their
 SHA256 before extracting anything. It builds unmodified upstream sources;
 EmberBSD target portability patches are applied separately by pkgsrc.
 
@@ -30,7 +30,7 @@ A failed command stops the build. It neither installs target packages nor
 reports an accelerated session.
 
 Use `RESUME=1` with the same arguments after correcting a build failure.
-The recipe checks the selected tool hashes and all four archives again,
+The recipe checks the selected tool hashes and all five archives again,
 preserves earlier logs and reuses existing sources and objects. Do not edit
 those extracted sources; choose a new work directory to change inputs.
 
@@ -45,6 +45,12 @@ their generators. Configured CMake package metadata alone is insufficient.
 These host libraries stay in the private build tree. They are never copied
 to the EmberBSD sysroot.
 
+Target Quick VectorImage also requires the native `svgtoqml` generator and
+its Qt6QuickTools CMake export. Build host SVG before Declarative and explicitly
+enable Quick VectorImage; otherwise cross configuration fails even though
+the earlier host_tools build succeeded. The minimal host QPA plugin lets the
+generator check run without a window server. The target feature stays enabled.
+
 ## Generator acceptance
 
 On macOS, run the native generator check after building:
@@ -57,7 +63,8 @@ HOST_CXX=/absolute/native/c++ sh \
 
 It compiles and runs a real QObject/resource/translation consumer, compiles
 UI and QML registration output, generates a shader bundle, QML bytecode
-and Wayland headers, and rejects invalid shader/QML inputs. It does not
+and Wayland headers. It converts an SVG path to QML, compiles that QML to
+bytecode, and rejects missing SVG and invalid shader/QML inputs. It does not
 run a GUI or establish target Qt compatibility. `check-inputs.sh` takes
 `DISTFILES NEW_WORK` with the builder's tool environment and verifies
 rejection of invalid paths, resume inputs and archive checksums.
@@ -65,8 +72,8 @@ rejection of invalid paths, resume inputs and archive checksums.
 ## Recorded host result
 
 On 2026-10-11, the recipe completed on macOS/arm64 with Apple Clang 21,
-CMake 4.4.4, Ninja 1.13.2 and Wayland scanner 1.26.0. Qtbase, ShaderTools,
-Declarative and Tools host targets built from the four pinned Qt 6.12.0
+CMake 4.4.4, Ninja 1.13.2 and Wayland scanner 1.26.0. Qtbase, SVG, ShaderTools,
+Declarative and Tools host targets built from the five pinned Qt 6.12.0
 archives. The generator and input-rejection checks above passed. The compiled
 consumer was Mach-O/arm64; no target executable was run on the host.
 
@@ -113,7 +120,7 @@ sh probes/plasma-mobile/toolkit/cross/check-target-configure.sh \
 ```
 
 This check examines the real CMake cache and executes the selected host tools.
-[Qtbase, SVG, ShaderTools and ImageFormats packaging](qt-packages.md) now passes, including
+[Qtbase, SVG, ShaderTools, ImageFormats and LanguageServer packaging](qt-packages.md) now passes, including
 ordinary sysroot installation. Installed target consumers and plugin discovery
 remain gates. CM5 acceptance starts with HDMI, then a remote KWin/Plasma session.
 
