@@ -252,7 +252,7 @@ PLIST.egl=	yes
 .    if defined(EMBERBSD_COMMON_GRAPHICS)
 # The selected Mesa 26 header supplies EGL_DRM_MASTER_FD_EXT; require its
 # canonical installed header. Native configure/plugin/check-files still gate this.
-EGL_EXT_HEADER= ${BUILDLINK_PREFIX.MesaLib}/include/EGL/eglext.h
+EGL_EXT_HEADER= ${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.MesaLib}/include/EGL/eglext.h
 .    else
 EGL_EXT_HEADER= ${X11BASE}/include/EGL/eglext.h
 .    endif

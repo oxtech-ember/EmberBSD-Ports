@@ -43,6 +43,27 @@ USE_LANGUAGES=		c c++
 USE_TOOLS+=		cmake gmake perl:build pkg-config
 #TOOL_DEPENDS+=		ninja-build-[0-9]*:../../devel/ninja-build
 
+.include "../../devel/wayland/platform.mk"
+# Origin: EmberBSD (AI-assisted). Generators run on the development host.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.if empty(EMBERBSD_QT_HOST_PATH:M/*) || !exists(${EMBERBSD_QT_HOST_PATH}/libexec/moc)
+PKG_FAIL_REASON+= "EMBERBSD_QT_HOST_PATH must select the matching native Qt generator build"
+.endif
+CMAKE_CONFIGURE_ARGS+= -DQT_HOST_PATH:PATH=${EMBERBSD_QT_HOST_PATH}
+CMAKE_CONFIGURE_ARGS+= -DQT_FORCE_BUILD_TOOLS:BOOL=ON
+.if !empty(PLATFORM_SUPPORTS_WAYLAND:Myes)
+.if empty(EMBERBSD_WAYLAND_SCANNER:M/*) || !exists(${EMBERBSD_WAYLAND_SCANNER})
+PKG_FAIL_REASON+= "EMBERBSD_WAYLAND_SCANNER must select the native Wayland scanner"
+.endif
+CMAKE_CONFIGURE_ARGS+= -DWaylandScanner_EXECUTABLE:FILEPATH=${EMBERBSD_WAYLAND_SCANNER}
+CMAKE_CONFIGURE_ARGS+= -DFEATURE_wayland_client:BOOL=ON -DFEATURE_wayland_egl:BOOL=ON
+.endif
+# CMake validates imported include directories before compiler wrappers run.
+# Give native pkg-config the target root during configure and regeneration.
+CONFIGURE_ENV+= PKG_CONFIG_SYSROOT_DIR=${CROSS_DESTDIR:Q}
+MAKE_ENV+= PKG_CONFIG_SYSROOT_DIR=${CROSS_DESTDIR:Q}
+.endif
+
 # https://doc.qt.io/qt-6/supported-platforms.html
 GCC_REQD+=	16.2
 

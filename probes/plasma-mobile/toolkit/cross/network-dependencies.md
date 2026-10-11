@@ -72,7 +72,8 @@ Source-delta reproduction, archive and patch hashes, zero-fuzz application,
 exact prepared-file comparisons and repeated-patch rejection passed.
 The curl metadata regression also passed, including an idempotent second run.
 
-On CM5 Rev 1.0 (BCM2712D0, Waveshare CM5-NANO-B), the network consumer passed,\nincluding a repeat against the final curl nb1 payload. All three upstream libproxy API tests
+On CM5 Rev 1.0 (BCM2712D0, Waveshare CM5-NANO-B), the network consumer passed,
+including a repeat against the final curl nb1 payload. All three upstream libproxy API tests
 passed: proxy lookup, boxed-object copy and freeing a null proxy list.
 The real libproxy GType query completed and generated GIR/typelib data.
 These runs used isolated copies of the selected sysroot libraries; they do

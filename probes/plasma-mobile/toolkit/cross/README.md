@@ -90,6 +90,28 @@ must retain the host compiler and prefix. Qt's target Bash dependency is
 separate from the executable host Bash tool. Cross job limits come from the
 caller's MAKECONF; the toolkit's conservative native default stays unchanged.
 
-The initial qtbase configure uses `QT_HOST_PATH` pointing to the matching
-host `qtbase` build directory. Complete target packaging, installed Qt
-consumers, plugin discovery and a remote KWin/Plasma session remain gates.
+Set `EMBERBSD_QT_HOST_PATH` to the matching host `qtbase` build directory and
+`EMBERBSD_WAYLAND_SCANNER` to the native scanner. The shared Qt recipe passes
+these paths to CMake, retains the target tools required by the package and
+requires the Wayland client/EGL features on supported targets. A missing
+scanner must not silently produce a desktop package without Wayland.
+
+The recipe also roots pkg-config output in the target sysroot during configure
+and build regeneration. Compiler wrappers alone cannot repair imported CMake
+include paths: CMake validates those paths before it invokes the compiler.
+The EGLDevice package manifest checks the selected Mesa header inside the
+sysroot when cross-compiling.
+
+On 2026-10-11, actual Qtbase configuration on macOS/GCC16 passed with EGL,
+GBM, EGLDevice and Wayland client/EGL enabled. Native generators executed on
+the host. Reproduce the configuration check after running pkgsrc configure:
+
+```sh
+sh probes/plasma-mobile/toolkit/cross/check-target-configure.sh \
+    /absolute/target-qt-build /absolute/host-qt/qtbase \
+    /absolute/sysroot /absolute/native/wayland-scanner
+```
+
+This check examines the real CMake cache and executes the selected host tools.
+Complete target packaging, installed Qt consumers, plugin discovery and a
+remote KWin/Plasma session remain gates.
