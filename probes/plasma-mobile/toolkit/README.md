@@ -6,11 +6,12 @@ common GCC 16 / LLVM 23 userspace migration. It extends the existing
 It does not install another Qt prefix for Plasma. Final package paths remain
 `/usr/pkg` and `/usr/pkg/qt6` inside the common staging environment.
 
-**Qtbase, SVG, ShaderTools, ImageFormats and LanguageServer 6.12.0 cross packages pass normal package
+**Qtbase, SVG, ShaderTools, ImageFormats, LanguageServer and Declarative 6.12.0 cross packages pass normal package
 checks and installation into the build sysroot.** Their [package receipt](cross/qt-packages.md)
 also links the accepted CM5 Core/Gui/SVG runtime consumer.
 The [Wayland/EGL consumer](tests/qt-wayland-gl/README.md) also passes on V3D
-with an isolated labwc output. The remaining modules and Plasma
+with an isolated labwc output. The [Qt Quick consumer](tests/qt-quick-gpu/README.md)
+also passes compiled QML scene/layer pixels on V3D. The remaining modules and Plasma
 session are not accepted; their manifests still require actual target staging.
 See the [migration sequence](MIGRATION.md) and the
 [actual Mobile graphics contract](../kwin/MOBILE-GRAPHICS-CONTRACT.md).

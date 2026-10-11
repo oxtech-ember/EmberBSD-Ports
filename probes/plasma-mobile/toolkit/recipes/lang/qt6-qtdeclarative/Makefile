@@ -32,7 +32,14 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6QuickTemplates2.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6QuickTest.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6QuickWidgets.pc
 
-PLIST_VARS+=	jit
+PLIST_VARS+=	jit crosstools nativetools
+
+# Cross-built target tools use upstream's _native metadata suffix.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+PLIST.crosstools= yes
+.else
+PLIST.nativetools= yes
+.endif
 
 # jit-enabled platforms per src/qml/configure.cmake.
 # NetBSD-*-aarch64 could be added, but I/D cache flushing in ARM64Assembler.h is missing.

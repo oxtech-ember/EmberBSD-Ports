@@ -1,7 +1,7 @@
 # Qt 6.12 target package acceptance
 
-On 2026-10-11, Qtbase, SVG, ShaderTools, ImageFormats and LanguageServer 6.12.0 cross-built on macOS/arm64
-for EmberBSD/AArch64. All five passed normal pkgsrc staging, manifests,
+On 2026-10-11–12, Qtbase, SVG, ShaderTools, ImageFormats, LanguageServer and Declarative 6.12.0 cross-built on macOS/arm64
+for EmberBSD/AArch64. All six passed normal pkgsrc staging, manifests,
 interpreter/permission, PIE, RELRO, RPATH and work-directory checks. They
 installed in the fork's build sysroot through pkg_add; Qtbase also passed
 ordinary package replacement after its CMake metadata correction.
@@ -9,7 +9,8 @@ ordinary package replacement after its CMake metadata correction.
 The installed [Core/Gui/SVG consumer](../tests/qt-consumer/README.md) also passes
 on CM5, including real image pixels, plugin rejection, restart and SVG package
 removal/reinstallation. qmake version lookup passes. The [Wayland/EGL consumer](../tests/qt-wayland-gl/README.md) also passes V3D
-shader pixels and repeated processes on CM5. Quick, other module runtimes
+shader pixels and repeated processes on CM5. The [Qt Quick consumer](../tests/qt-quick-gpu/README.md)
+also passes compiled QML scene/layer pixels through V3D. Other module runtimes
 and Plasma remain unaccepted.
 
 ## Inputs and packages
@@ -33,6 +34,10 @@ for `qt6-qtimageformats-6.12.0.tgz`. All seven image plugins are packaged.
 LanguageServer SHA256: `7588f28ef7a9c3882df644d973e28014b342ad5f0e322502356d0a8a5b4c8ee0`
 for `qt6-qtlanguageserver-6.12.0.tgz`. It built and installed through ordinary
 dependency recursion before Declarative configuration.
+
+Declarative SHA256: `741d97e690647a91b36c5ca08f91d036914340a9db766add278c5c4ba9206911`
+for `qt6-qtdeclarative-6.12.0.tgz`. Both sysroot installation and ordinary
+installation on CM5 pass; the linked consumer uses only the common stack.
 
 Qtbase retains one upstream permission warning: `qt_cyclonedx_generator.py`
 has an executable bit without a shebang. No package check was disabled to
@@ -73,12 +78,19 @@ and left both features off. The recipe now explicitly requires both features.
 The real rebuild includes QJp2Plugin/QMngPlugin and passes the full package
 manifest; no codec entries or package checks were removed.
 
+Qt 6.12 moves QmlLint headers out of QmlCompiler, adds QmlDesignSupport,
+Native/FluentWinUI3 controls and other development files. Declarative's manifest
+now follows actual staging; no component was dropped to pass packaging.
+Cross target QmlTime metadata uses the upstream `_native.qmltypes` name,
+while the native-build branch retains its unsuffixed name. Native packaging
+remains untested. The inherited AArch64 JIT policy remains disabled.
+
 ## Reproduction and remaining runtime checks
 
 Prepare the [common cross configuration](README.md#target-package-build),
 then use ordinary bmake package/install in `x11/qt6-qtbase`,
 `graphics/qt6-qtsvg`, `graphics/qt6-qtshadertools`, `graphics/qt6-qtimageformats`
-and `lang/qt6-qtlanguageserver`. Keep host and target
+`lang/qt6-qtlanguageserver` and `lang/qt6-qtdeclarative`. Keep host and target
 package databases and output directories separate. For a packaging-only repair,
 `install-clean plist-clean` regenerates staging and manifests while retaining
 compiled objects. Use the normal `replace` target when updating an installed
