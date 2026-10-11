@@ -79,19 +79,6 @@ write_record(FILE *out, const uint8_t *data, size_t len, int received,
 	return 0;
 }
 
-static const char *
-packet_type_name(uint8_t type)
-{
-
-	switch (type) {
-	case HCI_CMD_PKT:		return "command";
-	case HCI_ACL_DATA_PKT:		return "acl-data";
-	case HCI_SCO_DATA_PKT:		return "sco-data";
-	case HCI_EVENT_PKT:		return "event";
-	default:			return "unknown";
-	}
-}
-
 static void
 usage(void)
 {
@@ -134,9 +121,7 @@ main(int argc, char *argv[])
 			return 2;
 		}
 	}
-	argc -= optind;
-	argv += optind;
-	if (argc > 0) {
+	if (optind < argc) {
 		usage();
 		return 2;
 	}
@@ -158,6 +143,7 @@ main(int argc, char *argv[])
 	if (sigaction(SIGINT, &sigact, NULL) != 0 ||
 	    sigaction(SIGTERM, &sigact, NULL) != 0) {
 		fprintf(stderr, "hcisnoop: sigaction: %s\n", strerror(errno));
+		fclose(out);
 		return 1;
 	}
 
@@ -170,6 +156,7 @@ main(int argc, char *argv[])
 	s = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (s < 0) {
 		fprintf(stderr, "hcisnoop: socket: %s\n", strerror(errno));
+		fclose(out);
 		return 1;
 	}
 	memset(&bind_addr, 0, sizeof(bind_addr));
@@ -178,6 +165,7 @@ main(int argc, char *argv[])
 	bdaddr_copy(&bind_addr.bt_bdaddr, BDADDR_ANY);
 	if (bind(s, (struct sockaddr *)&bind_addr, sizeof(bind_addr)) < 0) {
 		fprintf(stderr, "hcisnoop: bind: %s\n", strerror(errno));
+		fclose(out);
 		return 1;
 	}
 	memset(&all_packets, 0xff, sizeof(all_packets));
@@ -187,17 +175,20 @@ main(int argc, char *argv[])
 	    sizeof(all_packets)) < 0) {
 		fprintf(stderr, "hcisnoop: setsockopt filter: %s\n",
 		    strerror(errno));
+		fclose(out);
 		return 1;
 	}
 	ch = 1;
 	if (setsockopt(s, BTPROTO_HCI, SO_HCI_DIRECTION, &ch, sizeof(ch)) < 0) {
 		fprintf(stderr, "hcisnoop: setsockopt direction: %s\n",
 		    strerror(errno));
+		fclose(out);
 		return 1;
 	}
 	if (setsockopt(s, SOL_SOCKET, SO_TIMESTAMP, &ch, sizeof(ch)) < 0) {
 		fprintf(stderr, "hcisnoop: setsockopt timestamp: %s\n",
 		    strerror(errno));
+		fclose(out);
 		return 1;
 	}
 
@@ -207,6 +198,7 @@ main(int argc, char *argv[])
 	if (fwrite(file_header, sizeof(file_header), 1, out) != 1) {
 		fprintf(stderr, "hcisnoop: write header: %s\n",
 		    strerror(errno));
+		fclose(out);
 		return 1;
 	}
 
@@ -228,6 +220,7 @@ main(int argc, char *argv[])
 			}
 			fprintf(stderr, "hcisnoop: recvmsg: %s\n",
 			    strerror(errno));
+			fclose(out);
 			return 1;
 		}
 		if (len == 0)
@@ -262,6 +255,7 @@ main(int argc, char *argv[])
 		    &stamp) != 0) {
 			fprintf(stderr, "hcisnoop: write record: %s\n",
 			    strerror(errno));
+			fclose(out);
 			return 1;
 		}
 		if (packet[0] < sizeof(counts) / sizeof(counts[0]))
@@ -271,10 +265,18 @@ main(int argc, char *argv[])
 			fflush(out);
 	}
 
-	if (fflush(out) != 0 || (stdout_output == 0 && fsync(fileno(out)) != 0
-	    && errno != EINVAL)) {
+	if (fflush(out) != 0) {
 		fprintf(stderr, "hcisnoop: flush: %s\n", strerror(errno));
+		fclose(out);
 		return 1;
+	}
+	if (stdout_output == 0 && fileno(out) >= 0) {
+		if (fsync(fileno(out)) != 0 && errno != EINVAL) {
+			fprintf(stderr, "hcisnoop: fsync: %s\n",
+			    strerror(errno));
+			fclose(out);
+			return 1;
+		}
 	}
 	fclose(out);
 	if (!quiet)
