@@ -181,6 +181,10 @@ Debian 13/x86_64 using four workers and explicit GNU C17 flags. GMP passed
 absent on this host); MPFR passed all 198 and MPC all 75. The GMP long-loop
 and periodic-signal contracts also passed. This validates host prerequisites;
 it does not establish target application runtime or Linux kernel acceptance.
+Separately, this compiler's `--kernel` mode built the full EmberBSD kernel,
+four matched modules, and three DTBs on that Linux host. Portable contracts
+and all nine artifact hashes passed; see the [OS-owned evidence](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/cross-build.md#linux-gcc16).
+Native contracts, boot, and hardware acceptance remain separate.
 
 On 2026-10-07, the rebuilt GCC 16.2.0 passed host compilation and target
 acceptance with GMP 6.3.0, MPFR 4.2.2 and MPC 1.4.1. That build explicitly used

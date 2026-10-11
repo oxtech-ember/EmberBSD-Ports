@@ -36,8 +36,10 @@ runtime behavior are validated.
   Zero 3W with its installed GCC16 runtime. Its installed tool-search layout
   also passes split-DWARF generation without an `objcopy` path override.
   The recipe's `--kernel` mode prepares frontends without a userland sysroot;
-  application mode retains target headers/runtime. Linux kernel build and boot
-  acceptance remain separate from recipe preparation.
+  application mode retains target headers/runtime. The Linux GCC16 path also
+  builds the full kernel, four modules, and three DTBs; all portable contracts
+  and artifact checksums pass. See the [OS build evidence](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/cross-build.md#linux-gcc16).
+  Boot acceptance remains separate.
   Common Qt/LLVM rebuilding and full-image integration
   remain pending.
   [GDB 18.1nb1](profiles/development-toolchain/gdb/README.md) is cross-built and
