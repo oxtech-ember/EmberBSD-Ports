@@ -82,6 +82,11 @@ On 2026-10-11, the GCC16 macOS-to-AArch64 libcups package build, staging checks
 and `tests/cups-cross-settings.sh` passed. The test checks the actual configure
 outputs and linked target ELF; printing and target runtime are not yet accepted.
 
+The [network prerequisites](cross/network-dependencies.md) now include current
+libidn2/GSettings releases and native cross-build generators for libproxy.
+Their focused source checks, curl metadata regression and CM5 API tests pass;
+complete installed desktop acceptance remains pending.
+
 The remaining pkgsrc patches apply to the verified sources with zero fuzz.
 Frameworks 6.31.0 was released on 9 October 2026. Its 69 Frameworks/ECM
 archives replace the unbuilt 6.30 candidate; they do not add a parallel provider.
