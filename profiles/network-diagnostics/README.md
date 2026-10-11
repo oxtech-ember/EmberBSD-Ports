@@ -42,6 +42,24 @@ Built from the prepared pkgsrc export through the common cross profile:
 | tcpdump | 4.99.6 | capture and offline analysis |
 | iperf3 | 3.21 | TCP/UDP load, throughput, loss and jitter |
 | wireshark (CLI: dumpcap, tshark, capinfos, editcap, mergecap) | 4.6.8nb1 | PCAPNG recording, dissection and trace processing |
+| lldpd | 1.0.21nb1 | LLDP chassis advertisement and neighbor discovery (no SNMP subagent) |
+| arp-scan | 1.9nb7 | ARP host discovery on the local network |
+| mtr | 0.96nb1 | combined traceroute/latency reports |
+| fping | 5.5 | parallel availability probing |
+
+`recipes/net/arp-scan` additionally carries portability patches: the
+bundled gnulib getopt header is dropped in favor of the NetBSD system
+header, `getopt_long_only` (a glibc extension) is replaced with
+`getopt_long`, the configure probe checks the function the tool now
+uses, and the perl helper scripts stay out of the cross-built board kit.
+
+Not yet ported from the stage-two quick list: tcpreplay with libnet.
+Its bundled libopts needs two C23 keyword fixes (enum false/true) and
+its libpcap detection does not honor the buildlink search path; the
+workaround of pointing `--with-libpcap` at the sysroot compiles but
+bakes build-host paths into the binaries, which the cross checks
+correctly reject. Revisit with a newer upstream release or a libopts
+sync instead of carrying the bypass.
 
 Private build products (packages, work directories, logs) stay outside
 Git, in the private build directory of the development host.
