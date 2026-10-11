@@ -1,0 +1,179 @@
+Origin: EmberBSD; AI-assisted platform DRM discovery through read-only kernel metadata.
+
+--- xf86drm.c.orig
++++ xf86drm.c
+@@ -1074,6 +1074,60 @@
+     return -ENODEV;
+ }
+ 
++/* Platform leaves do not require a primary open or a DRM master. */
++static int
++drmNativePlatformIdentity(int maj, int min, struct drm_native_platform_record *r)
++{
++    char name[64];
++    size_t len = sizeof(*r);
++
++    if (maj < 0 || min < 0)
++        return -ENODEV;
++    snprintf(name, sizeof(name), "hw.drm2.platform%d", min);
++    if (sysctlbyname(name, r, &len, NULL, 0))
++        return -errno;
++    if (len != sizeof(*r) || r->length != sizeof(*r) ||
++        r->version != DRM_NATIVE_PLATFORM_VERSION ||
++        r->bus_type != DRM_NATIVE_BUS_PLATFORM ||
++        (r->flags & ~(DRM_NATIVE_PRIMARY | DRM_NATIVE_RENDER)) ||
++        !(r->flags & DRM_NATIVE_PRIMARY) || r->primary_minor >= 64 ||
++        ((r->flags & DRM_NATIVE_RENDER) &&
++         (r->render_minor < 128 || r->render_minor >= 192)) ||
++        !r->fullname[0] || !r->compatible[0] ||
++        !memchr(r->fullname, 0, sizeof(r->fullname)) ||
++        !memchr(r->compatible, 0, sizeof(r->compatible)))
++        return -EPROTO;
++    if (r->primary_major == (uint32_t)maj && r->primary_minor == (uint32_t)min)
++        return DRM_NODE_PRIMARY;
++    if ((r->flags & DRM_NATIVE_RENDER) &&
++        r->render_major == (uint32_t)maj && r->render_minor == (uint32_t)min)
++        return DRM_NODE_RENDER;
++    return -ENODEV;
++}
++
++/* Reuse the internal node-path carrier; PCI fields are never exposed for a
++ * platform device. The two public sysctl schemas remain distinct. */
++static int
++drmNativeNodeIdentity(int maj, int min, struct drm_native_pci_record *r)
++{
++    struct drm_native_platform_record platform;
++    int ret = drmNativeIdentity(maj, min, r);
++
++    if (ret != -ENOENT)
++        return ret;
++    ret = drmNativePlatformIdentity(maj, min, &platform);
++    if (ret < 0)
++        return ret;
++    memset(r, 0, sizeof(*r));
++    r->bus_type = DRM_NATIVE_BUS_PLATFORM;
++    r->flags = platform.flags;
++    r->primary_major = platform.primary_major;
++    r->primary_minor = platform.primary_minor;
++    r->render_major = platform.render_major;
++    r->render_minor = platform.render_minor;
++    return ret;
++}
++
+ static char *
+ drmNativeNodeName(const struct drm_native_pci_record *r, int type)
+ {
+@@ -1111,7 +1165,7 @@
+     int i;
+ #ifdef __NetBSD__
+     struct drm_native_pci_record record;
+-    int native_type = drmNativeIdentity(major, minor, &record);
++    int native_type = drmNativeNodeIdentity(major, minor, &record);
+ 
+     if (native_type != -ENOENT)
+         return native_type >= 0 ? native_type : -1;
+@@ -3410,7 +3464,7 @@
+ {
+ #ifdef __NetBSD__
+     struct drm_native_pci_record record;
+-    int ret = drmNativeIdentity(maj, min, &record);
++    int ret = drmNativeNodeIdentity(maj, min, &record);
+ 
+     if (ret != -ENOENT)
+         return ret >= 0;
+@@ -3606,7 +3660,7 @@
+         errno = EINVAL;
+         return NULL;
+     }
+-    ret = drmNativeIdentity(major(native_stat.st_rdev),
++    ret = drmNativeNodeIdentity(major(native_stat.st_rdev),
+                             minor(native_stat.st_rdev), &record);
+     if (ret >= 0)
+         return drmNativeNodeName(&record, type);
+@@ -3754,7 +3808,7 @@
+     return subsystem_type;
+ #elif defined(__NetBSD__)
+     struct drm_native_pci_record record;
+-    int native_ret = drmNativeIdentity(maj, min, &record);
++    int native_ret = drmNativeNodeIdentity(maj, min, &record);
+ 
+     int type, fd;
+     drmSetVersion sv;
+@@ -3762,7 +3816,8 @@
+     int ret;
+ 
+     if (native_ret != -ENOENT)
+-        return native_ret >= 0 ? DRM_BUS_PCI : native_ret;
++        return native_ret < 0 ? native_ret :
++            record.bus_type == DRM_NATIVE_BUS_PLATFORM ? DRM_BUS_PLATFORM : DRM_BUS_PCI;
+ 
+     /* Get the type of device we're looking for to pick the right pathname.  */
+     type = drmGetMinorType(maj, min);
+@@ -4645,6 +4700,14 @@
+     free(name);
+ 
+     return 0;
++#elif defined(__NetBSD__)
++    struct drm_native_platform_record record;
++    int ret = drmNativePlatformIdentity(maj, min, &record);
++
++    if (ret < 0)
++        return ret;
++    snprintf(fullname, DRM_PLATFORM_DEVICE_NAME_LEN, "%s", record.fullname);
++    return 0;
+ #else
+ #warning "Missing implementation of drmParseOFBusInfo"
+     return -EINVAL;
+@@ -4705,6 +4768,23 @@
+ 
+     free(*compatible);
+     return err;
++#elif defined(__NetBSD__)
++    struct drm_native_platform_record record;
++    char **result;
++    int ret = drmNativePlatformIdentity(maj, min, &record);
++
++    if (ret < 0)
++        return ret;
++    result = calloc(2, sizeof(*result));
++    if (!result)
++        return -ENOMEM;
++    result[0] = strdup(record.compatible);
++    if (!result[0]) {
++        free(result);
++        return -ENOMEM;
++    }
++    *compatible = result;
++    return 0;
+ #else
+ #warning "Missing implementation of drmParseOFDeviceInfo"
+     return -EINVAL;
+@@ -4720,6 +4800,9 @@
+     char *ptr;
+     int ret;
+ 
++    if (flags & ~DRM_DEVICE_GET_PCI_REVISION)
++        return -EINVAL;
++
+     dev = drmDeviceAlloc(node_type, node, sizeof(drmPlatformBusInfo),
+                          sizeof(drmPlatformDeviceInfo), &ptr);
+     if (!dev)
+--- drm_native_identity.h.orig
++++ drm_native_identity.h
+@@ -17,4 +17,16 @@
+ 	uint32_t primary_major, primary_minor, render_major, render_minor;
+ };
+ 
++/* Separate leaf/schema: the PCI version-1 ABI remains unchanged. */
++#define DRM_NATIVE_PLATFORM_VERSION 1
++#define DRM_NATIVE_BUS_PLATFORM 2
++#define DRM_NATIVE_PLATFORM_NAME_LEN 64
++struct drm_native_platform_record {
++	uint32_t version, length, flags, bus_type;
++	uint32_t primary_major, primary_minor, render_major, render_minor;
++	char fullname[DRM_NATIVE_PLATFORM_NAME_LEN];
++	char compatible[DRM_NATIVE_PLATFORM_NAME_LEN];
++};
++
+ #endif
++

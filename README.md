@@ -40,7 +40,7 @@ runtime behavior are validated.
   builds the full kernel, four modules, and three DTBs; all portable contracts
   and artifact checksums pass. See the [OS build evidence](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/cross-build.md#linux-gcc16).
   Boot acceptance remains separate.
-  Common Qt/LLVM rebuilding and full-image integration
+  Common Qt rebuilding and full-image integration
   remain pending.
   [GDB 18.1nb1](profiles/development-toolchain/gdb/README.md) is cross-built and
   installed in the AArch64 VM, with split/supplementary DWARF, Unicode and
@@ -80,11 +80,11 @@ runtime behavior are validated.
   in AArch64 UTM. Mesa26 passes installed llvmpipe/ORC acceptance below;
   Clang/LLD packaging and the TinyGo consumer remain pending.
 - [Common graphics source packages](profiles/common-graphics/README.md):
-  canonical MesaLib 26.2.4nb2, adapted libdrm 2.4.134nb1,
+  canonical MesaLib 26.2.4nb3, adapted libdrm 2.4.134nb2,
   Wayland 1.26.0nb1 and wayland-protocols 1.49 compose the common
   GCC16/Python314/Meson112/shared LLVM23 profile for NetBSD 11/AArch64.
   Source, export and dependency-selection checks cover X11/Wayland,
-  EGL/GBM and classic VirGL/softpipe/llvmpipe. The complete core-only libdrm
+  EGL/GBM and V3D/VirGL/softpipe/llvmpipe. The complete core-only libdrm
   payload cross-builds on macOS/GCC16, matches all 26 PLIST entries and passes
   upstream hash, skip-list and exported-symbol checks in AArch64 UTM.
   A [temporary Mesa26 cross diagnostic](profiles/common-graphics/cross/README.md#temporary-headless-mesa-diagnostic)
@@ -95,7 +95,11 @@ runtime behavior are validated.
   The full [Mesa package](profiles/common-graphics/cross/mesa-package.md) now
   installs normally and passes four llvmpipe/LLVM23 EGL pixel lifecycles and
   all 37 upstream invocations on Zero 3W; one internal case skips and nine
-  NIR cases remain disabled. The nb2 XCB pkg-config correction preserves
+  NIR cases remain disabled. The current [CM5 V3D package](profiles/common-graphics/cross/mesa-cm5.md)
+  passes hardware GLES 3.0 shader/pixel lifecycles at 16x16 and 1280x800,
+  automatic platform discovery and all 38 selected upstream invocations.
+  Remote Plasma and shared-buffer integration remain separate gates.
+  The nb2 XCB pkg-config correction preserves
   byte-identical Mesa libraries. Installed [libepoxy](profiles/common-graphics/cross/epoxy.md)
   passes real dispatch through those providers and four pure upstream tests.
   After the common [LLVM23.1.2nb1 revision update](profiles/common-graphics/cross/mesa-runtime-rebind.md),

@@ -33,7 +33,7 @@ verify_manifest(mesa, "#{mesa}/artifacts.sha256")
 verify_manifest(consumer, "#{consumer}/inputs.sha256")
 abort 'Mesa metadata verification failed' unless system('sh', "#{mesa}/run-mesa-package-tests.sh", '--verify-sysroot', mesa, sysroot)
 mesa_contents = ["#{mesa}/source/MesaLib.CONTENTS", "#{mesa}/MesaLib.CONTENTS"].find { |p| File.file?(p) }
-abort 'require the metadata-corrected Mesa package' unless mesa_contents && File.read(mesa_contents).include?("@name MesaLib-26.2.4nb2\n")
+abort 'require the metadata-corrected Mesa package' unless mesa_contents && File.read(mesa_contents).include?("@name MesaLib-26.2.4nb3\n")
 project = JSON.parse(File.read("#{build}/meson-info/intro-projectinfo.json"))
 abort 'require actual libepoxy 1.5.10 build' unless project['version'] == '1.5.10'
 consumer_binary = "#{consumer}/epoxy-pkgconfig-render"
@@ -82,8 +82,14 @@ rows = tests.map do |t|
   cmd = t.fetch('cmd')
   # Meson adds the build libepoxy directory. This installed-library acceptance
   # deliberately removes that one exact override; other test inputs must match.
-  abort 'unexpected pure test prerequisites' unless cmd.length == 1 && cmd[0].start_with?(build + '/') &&
-    t['env'] == {'LD_LIBRARY_PATH' => "#{build}/src"} && t['workdir'].nil? && t['protocol'] == 'exitcode'
+  # A relocated build can retain a still-valid symlink spelling in Meson JSON.
+  # Resolve both paths; do not allow another directory or extra environment.
+  executable = File.realpath(cmd[0]) if cmd.length == 1 && cmd[0].start_with?('/')
+  library_path = t.fetch('env').fetch('LD_LIBRARY_PATH', '')
+  library_path = File.realpath(library_path) if library_path.start_with?('/') && File.directory?(library_path)
+  abort 'unexpected pure test prerequisites' unless executable&.start_with?(build + '/') &&
+    t['env'].keys == ['LD_LIBRARY_PATH'] && library_path == "#{build}/src" &&
+    t['workdir'].nil? && t['protocol'] == 'exitcode'
   limit = t.fetch('timeout')
   abort 'unbounded upstream test' unless limit.is_a?(Integer) && limit.between?(1, 120)
   inputs[cmd[0]] = hash_file(cmd[0])

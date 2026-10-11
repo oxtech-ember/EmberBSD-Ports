@@ -15,6 +15,7 @@
 #endif
 #include <gbm.h>
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -91,7 +92,7 @@ expect_pixel(GLint x, GLint y, int red, int green)
 }
 
 static void
-draw(void)
+draw(GLsizei width, GLsizei height)
 {
 	static const GLfloat vertices[] = { -1, -1, 1, -1, 0, 1 };
 	GLuint texture, framebuffer, vertex, fragment, invalid, program, buffer;
@@ -116,7 +117,7 @@ draw(void)
 	glUseProgram(program);
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, GL_RGBA,
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
 	    GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -126,10 +127,10 @@ draw(void)
 	    GL_TEXTURE_2D, texture, 0);
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		fail("framebuffer completeness");
-	glViewport(0, 0, 16, 16);
+	glViewport(0, 0, width, height);
 	glClearColor(1, 0, 0, 1);
 	glClear(GL_COLOR_BUFFER_BIT);
-	expect_pixel(8, 8, 255, 0);
+	expect_pixel(width / 2, height / 2, 255, 0);
 	glGenBuffers(1, &buffer);
 	glBindBuffer(GL_ARRAY_BUFFER, buffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
@@ -139,8 +140,8 @@ draw(void)
 	glFinish();
 	if (glGetError() != GL_NO_ERROR)
 		fail("draw and finish");
-	expect_pixel(8, 8, 0, 255);
-	expect_pixel(0, 15, 255, 0);
+	expect_pixel(width / 2, height / 2, 0, 255);
+	expect_pixel(0, height - 1, 255, 0);
 	glDeleteBuffers(1, &buffer);
 	glDeleteFramebuffers(1, &framebuffer);
 	glDeleteTextures(1, &texture);
@@ -169,14 +170,30 @@ main(int argc, char **argv)
 	EGLint major, minor, count;
 	const char *renderer;
 	int fd = -1;
+	GLsizei width = 16, height = 16;
 	unsigned cycle;
 #ifdef EMBER_EPOXY_DISPATCH
 	int loader_status = 0;
 #endif
 
-	if (argc != 3) {
-		fprintf(stderr, "Usage: mesa-render surfaceless|RENDER_NODE EXPECTED_RENDERER\n");
+	if (argc != 3 && argc != 5) {
+		fprintf(stderr, "Usage: mesa-render surfaceless|RENDER_NODE EXPECTED_RENDERER [WIDTH HEIGHT]\n");
 		return 2;
+	}
+	if (argc == 5) {
+		long dimensions[2];
+		for (unsigned i = 0; i < 2; i++) {
+			char *end;
+			errno = 0;
+			dimensions[i] = strtol(argv[3 + i], &end, 10);
+			if (errno != 0 || *end != '\0' || end == argv[3 + i] ||
+			    dimensions[i] < 16 || dimensions[i] > 4096) {
+				fprintf(stderr, "Dimensions must be integers from 16 to 4096\n");
+				return 2;
+			}
+		}
+		width = (GLsizei)dimensions[0];
+		height = (GLsizei)dimensions[1];
 	}
 	get_display = (PFNEGLGETPLATFORMDISPLAYEXTPROC)
 	    eglGetProcAddress("eglGetPlatformDisplayEXT");
@@ -215,7 +232,8 @@ main(int argc, char **argv)
 		}
 		printf("Cycle %u: EGL %d.%d; GL %s; renderer %s\n", cycle + 1,
 		    major, minor, glGetString(GL_VERSION), renderer);
-		draw();
+		printf("Render target: %dx%d\n", width, height);
+		draw(width, height);
 #ifdef EMBER_EPOXY_DISPATCH
 		if (cycle == 0)
 			loader_status = dl_iterate_phdr(loaded_library, argv[0]);

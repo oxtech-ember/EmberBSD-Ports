@@ -1,5 +1,9 @@
 # Accept the installed common Mesa package
 
+Current nb3 also passes [physical CM5 V3D acceptance](mesa-cm5.md),
+including 1280x800 render targets. The earlier CPU receipts below remain
+scoped to their original versions and hardware.
+
 Build `graphics/MesaLib` with the [complete cross composition](profile.md),
 the accepted GCC16 toolchain and installed shared LLVM23. Use normal pkgsrc
 `package` and `install` targets. Keep the source, recipes, MAKECONF and tools
@@ -70,12 +74,12 @@ After installing the real package into the matching sysroot, run:
 ```sh
 ruby prepare-mesa-package-tests.rb /absolute/cross-tools /absolute/sysroot \
     /absolute/prepared-mesa-26.2.4 /absolute/mesa-build \
-    /absolute/MesaLib-26.2.4nb2.tgz /absolute/new-acceptance-work
+    /absolute/MesaLib-26.2.4nb3.tgz /absolute/new-acceptance-work
 ```
 
 The helper compiles the existing EGL/GLES pixel consumer against installed
-headers and libraries. It copies the 37 target ELF invocations declared by
-the actual Meson build, including seven llvmpipe JIT tests. It preserves
+headers and libraries. It copies the 38 target ELF invocations declared by
+the actual Meson build, including seven llvmpipe JIT tests and the V3D QPU disassembler test. It preserves
 upstream's test timeouts and XML configuration fixtures, including `.drirc`.
 It records tool, build-metadata, test-binary, package and library hashes.
 Every installed Mesa file/symlink is compared with the original package.

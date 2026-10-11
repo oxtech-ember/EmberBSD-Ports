@@ -1,7 +1,7 @@
 # Common graphics source packages
 
-This opt-in source profile prepares canonical MesaLib 26.2.4nb2, adapted
-libdrm 2.4.134nb1, Wayland 1.26.0nb1 and wayland-protocols 1.49 for
+This opt-in source profile prepares canonical MesaLib 26.2.4nb3, adapted
+libdrm 2.4.134nb2, Wayland 1.26.0nb1 and wayland-protocols 1.49 for
 EmberBSD/AArch64, retaining the NetBSD 11 ABI. Native builds and the explicit
 [macOS cross composition](cross/profile.md) consume the existing
 [common build tools](../common-build-tools/README.md): GCC16, Python3.14.8,
@@ -10,6 +10,15 @@ Meson1.12.1 and shared LLVM23.1.2 remain one dependency graph with final
 The default, development-toolchain and common-build-tools exports keep their
 original graphics recipes. The whole installed graphics stack and a Mobile
 demonstration still require acceptance; individual package results follow.
+
+The same package now enables V3D alongside VirGL and both CPU renderers.
+On CM5, [installed hardware OpenGL acceptance](cross/mesa-cm5.md) passes
+four EGL 1.5/GLES 3.0 shader/pixel lifecycles at 16x16 and 1280x800, with
+renderer `V3D 7.1.10.2`. All 38 upstream invocations pass, subject to the
+recorded internal skips. Matching libdrm nb2 discovers native platform GPUs
+without a DRM master. Mesa nb3 also repairs an upstream V3D import-allocation
+failure. Remote KWin/Plasma, shared-buffer exchange and sustained desktop use
+remain separate acceptance stages.
 
 The [graphics cross-build](cross/README.md) now builds the complete selected
 libdrm payload on macOS with GCC16. All 26 staged entries match PLIST, and
@@ -78,8 +87,8 @@ The separate [VirGL session check](cross/labwc-session.md) passes two EGL/screen
 and USB-input sessions on Apple M4/ANGLE Metal, including 60 additional paced
 frames per session across keyboard-driven window/maximize/restore/fullscreen
 transitions, plus two whole-window captures verifying USB mouse dragging.
-Sustained desktop use and
-physical-board GPU acceleration remain unaccepted.
+Sustained desktop use remains unaccepted. Physical CM5 offscreen OpenGL
+has its own receipt linked above.
 
 
 The [Wayland 1.26.0nb1 package](cross/wayland.md) passes all 26 enabled
@@ -94,7 +103,7 @@ EGL lifecycles and 30 selected upstream test runs on Orange Pi Zero 3W (A733).
 That result excludes LLVM/llvmpipe, X11/Wayland and installed packages.
 
 The selected APIs are X11/Wayland, EGL, GBM, OpenGL and GLES; renderers are
-classic VirGL, softpipe and llvmpipe with ORC JIT. The recipe requires shared
+V3D, classic VirGL, softpipe and llvmpipe with ORC JIT. The recipe requires shared
 LLVM23, upstream tests and portable TLS. It never substitutes Mesa21,
 libLLVM13, another Python or native X11 GL/EGL/DRM/GLU providers. Native X11
 protocol libraries can still satisfy pkgsrc's actual version checks.
@@ -156,7 +165,7 @@ complete the current graphics dependency recipes.
 ## Bounded package contents
 
 Mesa enables zlib/zstd and the NetBSD libudev-bsd provider. Display-info,
-libunwind, valgrind, Vulkan, video frontends, Rusticl/OpenCL, physical drivers,
+libunwind, valgrind, Vulkan, video frontends, Rusticl/OpenCL, other physical GPU drivers,
 OSMesa, XA and GLVND are outside this candidate. Requests for unsupported
 Mesa options fail; they do not install older providers. Unselected optional
 libelf/Lua/XCB-keysyms are absent from the buildlink sandbox.
@@ -166,7 +175,8 @@ physical ARM client modules, man pages and test-program installation are
 disabled; upstream tests remain enabled. Unconditional kernel UAPI headers
 remain installed. A consumer requiring `libdrm_amdgpu`, `libdrm_intel` or
 another disabled client module is a migration blocker. Adapted revision
-`nb1` prevents an unpatched libdrm2.4.134 package satisfying the native
+`nb2` includes PCI and platform metadata discovery and prevents an
+unpatched libdrm2.4.134 package satisfying the native
 identity requirement. The canonical recipe omits pkgsrc's native-X11
 avoid-duplicate skip, so actual dependency selection still builds libdrm.
 

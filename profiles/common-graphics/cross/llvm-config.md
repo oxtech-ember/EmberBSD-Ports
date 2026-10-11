@@ -153,3 +153,25 @@ complete LLVM23.1.2 package stage and installed cross sysroot. All 16 query
 groups then agreed with the installed executable on Zero 3W (A733). The
 same target passed [shared C API and ORC execution](../../common-build-tools/cross/llvm-api-tests.md).
 Mesa configuration and rendering remain separate consumer gates.
+
+## Accepted DWP package revision
+
+The accepted `llvm-23.1.2nb1` DWP repair changes the shared library while
+preserving LLVM's configuration, component graph and ABI. The old sealed
+helper correctly rejects the changed library. For this one recorded update,
+`rebind-llvm-config-dwp.rb` checks the externally supplied original manifest
+anchor, every unchanged input, and the exact package/library hashes published
+in [the DWP acceptance](../../common-build-tools/cross/llvm-dwp-tests.md).
+It retains the original evidence and writes a separate migration receipt.
+The upstream metadata executable and query behavior remain unchanged.
+Other library revisions require a new build or their own validated migration.
+
+```sh
+ruby rebind-llvm-config-dwp.rb /absolute/sealed-helper ORIGINAL_MANIFEST_SHA256 \
+    /absolute/llvm-23.1.2nb1.tgz /absolute/new-helper
+ruby ../tests/llvm-config-dwp.rb /absolute/sealed-helper \
+    /absolute/llvm-23.1.2nb1.tgz /absolute/new-test-work
+```
+
+The regression queries real target metadata and rejects altered anchors,
+packages, missing metadata, changed metadata/executable and runtime drift.

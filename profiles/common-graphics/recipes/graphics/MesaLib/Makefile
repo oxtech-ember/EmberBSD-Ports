@@ -2,13 +2,13 @@
 # Origin: EmberBSD; AI-assisted bounded NetBSD 11/AArch64 source candidate.
 DISTNAME=	mesa-26.2.4
 PKGNAME=	${DISTNAME:S/mesa/MesaLib/}
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	graphics
 MASTER_SITES=	https://archive.mesa3d.org/
 EXTRACT_SUFX=	.tar.xz
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://www.mesa3d.org/
-COMMENT=	Open source OpenGL implementation with VirGL and software rendering
+COMMENT=	Open source OpenGL implementation with V3D, VirGL and software rendering
 LICENSE=	mit
 CONFLICTS+=	libglapi-[0-9]* libglvnd-[0-9]*
 ONLY_FOR_PLATFORM=	NetBSD-11.*-aarch64
@@ -27,8 +27,8 @@ PYTHON_VERSION_REQD=	314
 .if !defined(EMBERBSD_COMMON_GRAPHICS)
 PKG_FAIL_REASON+= "Mesa requires the prepared common graphics profile"
 .endif
-.if ${DISTNAME} != "mesa-26.2.4" || ${PKGREVISION} != "2"
-PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.4nb2"
+.if ${DISTNAME} != "mesa-26.2.4" || ${PKGREVISION} != "3"
+PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.4nb3"
 .endif
 TOOL_DEPENDS+=	${PYPKGPREFIX}-mako>=1.4.3:../../devel/py-mako
 TOOL_DEPENDS+=	${PYPKGPREFIX}-packaging-[0-9]*:../../devel/py-packaging
@@ -37,7 +37,7 @@ SUBST_CLASSES+=	python
 SUBST_STAGE.python=	pre-configure
 SUBST_FILES.python=	meson.build
 SUBST_SED.python=	-e 's|@PYTHONBIN@|${TOOL_PYTHONBIN}|g'
-MESON_ARGS+=	-Dgallium-drivers=virgl,softpipe,llvmpipe
+MESON_ARGS+=	-Dgallium-drivers=v3d,virgl,softpipe,llvmpipe
 MESON_ARGS+=	-Dplatforms=x11,wayland -Dglx=dri
 MESON_ARGS+=	-Degl=enabled -Dgbm=enabled -Dglvnd=disabled
 MESON_ARGS+=	-Dgles1=enabled -Dgles2=enabled -Dopengl=true

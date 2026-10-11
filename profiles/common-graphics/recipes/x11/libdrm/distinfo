@@ -13,3 +13,4 @@ SHA1 (patch-xf86drm.c) = f5bb9a1c468470bd5101ff7481f1d67bc0d5aac1
 SHA1 (patch-xf86drmMode.c) = 0ff766ae071391c57b08c45ff769ca6f8e2134b0
 SHA1 (patch-zz-native-identity) = 14d0e1b4a7fdba6594e3722825a2c145007f2dcc
 SHA1 (patch-zzz-native-warnings) = 54140f629686c2cf013388af48362e2f64eb776a
+SHA1 (patch-zzzz-native-platform) = fa195644e2f2d6d710c858f880a42cc55ccc2fd1

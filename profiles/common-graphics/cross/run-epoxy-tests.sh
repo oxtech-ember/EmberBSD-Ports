@@ -3,11 +3,12 @@
 # Origin: EmberBSD (AI-assisted), installed libepoxy/Mesa consumer checks.
 set -eu
 verify=no
+renderer=${3:-llvmpipe}
 if [ "$#" = 3 ] && [ "$1" = --verify-sysroot ]; then
     verify=yes
     shift
-elif [ "$#" != 2 ]; then
-    echo 'Usage: run-epoxy-tests.sh BUNDLE NEW_LOG_DIRECTORY' >&2
+elif [ "$#" != 2 ] && [ "$#" != 3 ]; then
+    echo 'Usage: run-epoxy-tests.sh BUNDLE NEW_LOG_DIRECTORY [EXPECTED_RENDERER]' >&2
     echo '       run-epoxy-tests.sh --verify-sysroot BUNDLE SYSROOT' >&2
     exit 2
 fi
@@ -74,7 +75,7 @@ $(awk '$2 == "=>" {print $3}' "$logs/$executable.ldd.log")
 EOF
 done
 env -i PATH=/bin:/usr/bin:/sbin:/usr/sbin:/usr/pkg/bin MESA_SHADER_CACHE_DISABLE=true "$timeout" -k 5 60 \
-    "$bundle/bin/epoxy-render" surfaceless llvmpipe > "$logs/epoxy-render.log" 2>&1
+    "$bundle/bin/epoxy-render" surfaceless "$renderer" > "$logs/epoxy-render.log" 2>&1
 while read -r dependency; do recorded_library "$dependency"; done <<EOF
 $(sed -n 's/^LOADED: //p' "$logs/epoxy-render.log")
 EOF
@@ -83,11 +84,11 @@ for provider in libepoxy libEGL libGLESv2 libgallium libLLVM; do
         echo "Missing live provider: $provider" >&2; exit 1;
     }
 done
-echo 'PASS: real libepoxy dispatch, canonical live providers and four llvmpipe EGL/GLES lifecycles'
+echo "PASS: real libepoxy dispatch, canonical live providers and four $renderer EGL/GLES lifecycles"
 while IFS="$(printf '\t')" read -r executable limit; do
     case "$executable" in header_guards|misc_defines|khronos_typedefs|gl_version) ;; *) exit 1;; esac
     env -i PATH=/bin:/usr/bin:/sbin:/usr/sbin:/usr/pkg/bin "$timeout" -k 5 "$limit" \
         "$bundle/bin/$executable" > "$logs/$executable.log" 2>&1
     echo "PASS: upstream $executable"
 done < "$bundle/tests.tsv"
-echo 'PASS: installed libepoxy CPU-rendering consumer and four pure upstream tests; no display-session claim'
+echo 'PASS: installed libepoxy rendering consumer and four pure upstream tests; no display-session claim'

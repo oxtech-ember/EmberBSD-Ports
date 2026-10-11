@@ -10,3 +10,4 @@ SHA1 (patch-src_util_half__float.c) = b36aaefa87ccefe069c63f14a6ba6ccdbc14506f
 SHA1 (patch-include_c99__alloca.h) = a98743f28b91057b07681cfc3693e45bd88b69d5
 SHA1 (patch-src_gallium_auxiliary_vl_vl__csc.c) = 8e90db120005fb45644593e7d8b5df8d4bce48ee
 SHA1 (patch-meson-xcb-pkgconfig) = 478bd363de00d84ce0f9182fd62b3c59505034e9
+SHA1 (patch-src_gallium_drivers_v3d_v3d__bufmgr.c) = b07b34f61d593e272638336f77f68e7306f57357
