@@ -1,0 +1,18 @@
+$NetBSD$
+
+Respect a preset POSIX_SHELL instead of always taking the first bash
+on the build PATH; cross builds embed that host path into the tools.
+EmberBSD passes POSIX_SHELL=/bin/sh, which exists on the target and
+on the host.
+
+--- configure.orig	2023-09-02 16:07:44.000000000 +0000
++++ configure
+@@ -24562,7 +24562,7 @@
+ 
+   while :
+   do
+-      POSIX_SHELL=`which bash`
++      POSIX_SHELL=${POSIX_SHELL:-`which bash`}
+       test -x "$POSIX_SHELL" && break
+       POSIX_SHELL=`which dash`
+       test -x "$POSIX_SHELL" && break

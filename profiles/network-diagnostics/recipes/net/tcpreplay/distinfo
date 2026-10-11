@@ -1,0 +1,7 @@
+$NetBSD: distinfo,v 1.20 2024/04/29 01:18:08 gutteridge Exp $
+BLAKE2s (tcpreplay-4.4.4.tar.xz) = 4ecc0beb42343fec2a9ebc4112c5a7f782555ff7615a9ab3c9ff3c22ca235658
+SHA512 (tcpreplay-4.4.4.tar.xz) = a6907c98779c96b2acf53e2f13e832f2c9a7ee840acc40d23c7290c2ceefb5885d314453dec9463069218011bee86bb7df057966120aacd6cddda942821aea9b
+Size (tcpreplay-4.4.4.tar.xz) = 748344 bytes
+SHA1 (patch-libopts_compat_compat.h) = 5d612f0d22f2f5053663da79857a27fe20032aa7
+SHA1 (patch-libopts_autoopts_options.h) = 6fe7f03a701c81ebc12ddd692033edd69f013fbd
+SHA1 (patch-configure-posix_shell) = 027b3636fd7e8c539636b8cc5b51f7a1b7e1b59d

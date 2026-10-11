@@ -53,13 +53,16 @@ header, `getopt_long_only` (a glibc extension) is replaced with
 `getopt_long`, the configure probe checks the function the tool now
 uses, and the perl helper scripts stay out of the cross-built board kit.
 
-Not yet ported from the stage-two quick list: tcpreplay with libnet.
-Its bundled libopts needs two C23 keyword fixes (enum false/true) and
-its libpcap detection does not honor the buildlink search path; the
-workaround of pointing `--with-libpcap` at the sysroot compiles but
-bakes build-host paths into the binaries, which the cross checks
-correctly reject. Revisit with a newer upstream release or a libopts
-sync instead of carrying the bypass.
+- tcpreplay | 4.4.4 | pcap replay with rate control and loops
+
+The tcpreplay recipe overlay carries three portability patches: the
+bundled libopts headers must not redefine the false/true keywords
+(present since C23), and configure must respect a preset POSIX_SHELL so
+cross builds stop embedding the build-host bash into every binary.
+libpcap is supplied through a private staging directory with the target
+layout (EMBERBSD_NETDIAG_STAGELIBPCAP in the private MAKECONF); the
+recipe's own --with-libpcap probes build-host paths and is filtered out
+in cross builds. libnet is not needed by this release.
 
 Private build products (packages, work directories, logs) stay outside
 Git, in the private build directory of the development host.
