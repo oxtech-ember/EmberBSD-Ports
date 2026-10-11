@@ -125,6 +125,28 @@ ordinary sysroot installation. The [CM5 Core/Gui/SVG consumer](../tests/qt-consu
 also passes installed runtime and plugin checks. The [Wayland/EGL V3D check](../tests/qt-wayland-gl/README.md) passes on CM5;
 Qt Quick remains a gate. CM5 desktop acceptance starts with HDMI, then a remote KWin/Plasma session.
 
+## Native tools in consumers
+
+The toolkit profile also passes the selected native `QT_HOST_PATH` to target
+CMake consumers. Setting it only in Qt's own recipes leaves KDE packages
+unable to use the cross-built Qt. The path expands after profile inclusion,
+so existing caller configurations retain their assignment order. Native tool
+recursion receives no target Qt host setting.
+
+```sh
+BMAKE=/absolute/native/bmake sh \
+    probes/plasma-mobile/toolkit/tests/consumer-host-tools.sh \
+    /absolute/toolkit/mk.conf /absolute/new-consumer-host-test
+```
+
+The regression covers assignments before/after inclusion, spaces in paths,
+a missing setting and native recursion. It rejects the former profile.
+Actual ECM cross configuration exposed the missing host setting. With this
+correction and its two new module files retained in PLIST, ECM 6.31.0 passes
+ordinary package checks and installation into the common cross sysroot.
+Package SHA256: `000fdda5d2329d972852cbcfe51e6eef188a762b93d99d38f469df4af9395441`.
+This establishes the build prerequisite, not Frameworks or KWin runtime acceptance.
+
 ## Path-only file transfer descriptors
 
 Qt 6.12 initially enabled the desktop portal file-transfer format on EmberBSD,
