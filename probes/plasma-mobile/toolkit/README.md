@@ -28,7 +28,8 @@ development-toolchain recipe deltas, followed by this toolkit layer. The
 default, `development-toolchain` and `common-build-tools` modes retain their
 previous selection. No existing pkgsrc directory is overwritten.
 
-The toolkit also carries iso-codes 4.20.1 and the libinotify cross adaptation.
+The toolkit also carries iso-codes 4.20.1, the libinotify cross adaptation,
+and [tested litehtml 0.10nb1 / gumbo 0.14.1 packages](cross/html.md) for QtTools.
 
 The toolkit includes 22 Qt modules and all 68 Frameworks recipes present
 in the pinned pkgsrc, plus Extra CMake Modules. Their original recipes come
@@ -116,7 +117,7 @@ sh probes/plasma-mobile/toolkit/tests/source-profile.sh \
     /absolute/verified-distfiles /absolute/new-source-check
 ```
 
-The check covers all 94 archives, recorded patch hashes and forward applications,
+The check covers all 96 archives, recorded patch hashes and forward applications,
 corrupted archive rejection, repeated/missing patch rejection, incorrect
 unfiltered RCS hashes, recipe/version selection and exact toolkit export.
 It compares the exported common recipes and configuration with their existing

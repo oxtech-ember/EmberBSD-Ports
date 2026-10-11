@@ -93,3 +93,5 @@ x11/kf6-qqc2-desktop-style	qqc2-desktop-style-6.31.0.tar.xz	e01350ca31cf1250b9de
 x11/qt6-qtbase	qtbase-everywhere-src-6.12.0.tar.xz	a951bd163c7b80fc6b8c88d7668fb56abf91c152373e13c10666763238131307	https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtbase-everywhere-src-6.12.0.tar.xz
 x11/qt6-qtserialport	qtserialport-everywhere-src-6.12.0.tar.xz	ba8886a54eee466e57c9fa1341255cc09c462c84baab3ee7b19d67cdbcbd71c3	https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtserialport-everywhere-src-6.12.0.tar.xz
 x11/qt6-qttranslations	qttranslations-everywhere-src-6.12.0.tar.xz	85929c0c30d6f273f23bd879bb69803ea17b010ab73cab2f8abf95357f6f6bbb	https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qttranslations-everywhere-src-6.12.0.tar.xz
+www/litehtml	litehtml-0.10.tar.gz	7700eced92847d34ad9846b138cf195a9c974b519be70de58797880ae9da649e	https://github.com/litehtml/litehtml/archive/refs/tags/v0.10.tar.gz
+www/gumbo-parser	gumbo-parser-0.14.1.tar.gz	ba5d13b9b508ec693613b3b61518163aced38f8e885f7e28dc047348a4e61365	https://codeberg.org/grisha/gumbo-parser/archive/0.14.1.tar.gz

@@ -23,7 +23,7 @@ all:
 	@test '${GCC_REQD}' = 16.2
 MAKE
 while IFS="$(printf '\t')" read -r recipe archive sha url; do
-    case "$recipe" in ''|'#'*|devel/extra-cmake-modules|devel/libinotify|devel/plasma-wayland-protocols|textproc/iso-codes) continue ;; esac
+    case "$recipe" in ''|'#'*|devel/extra-cmake-modules|devel/libinotify|devel/plasma-wayland-protocols|textproc/iso-codes|www/litehtml|www/gumbo-parser) continue ;; esac
     case "$recipe" in */qt6-*) family=qt ;; *) family=kf ;; esac
     (cd "$work" && "$make" -r -m / FAMILY="$family" PKGPATH="$recipe")
 done < "$toolkit/sources.tsv"
