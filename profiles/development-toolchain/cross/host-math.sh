@@ -50,7 +50,11 @@ prefix=$work/prefix
 mkdir "$prefix"
 {
     uname -srm
+    printf 'host_cc=%s\nhost_cxx=%s\ncflags=%s\ncxxflags=%s\n' \
+        "${HOST_CC:-cc}" "${HOST_CXX:-c++}" '-O2 -std=gnu17' '-O2'
     "${HOST_CC:-cc}" --version
+    "${HOST_CC:-cc}" -dumpmachine
+    "${HOST_CXX:-c++}" --version
     printf 'jobs=%s\n' "$jobs"
 } > "$work/inputs.txt"
 unset CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH LIBRARY_PATH
@@ -67,7 +71,9 @@ for item in gmp:6.3.0:tar.xz mpfr:4.2.2:tar.bz2 mpc:1.4.1:tar.xz; do
             mpfr) set -- "$@" --with-gmp="$prefix";;
             mpc) set -- "$@" --with-gmp="$prefix" --with-mpfr="$prefix";;
         esac
-        CC=${HOST_CC:-cc} CXX=${HOST_CXX:-c++} CFLAGS=-O2 CXXFLAGS=-O2 \
+        # GMP 6.3's configure probes use pre-C23 empty parameter lists.
+        # Select their supported C dialect without changing the compiler.
+        CC=${HOST_CC:-cc} CXX=${HOST_CXX:-c++} CFLAGS='-O2 -std=gnu17' CXXFLAGS=-O2 \
             "$work/$name-src/configure" "$@" > "$work/$name-configure.log" 2>&1
         "$tools/bin/nbgmake" -j"$jobs" > "$work/$name-build.log" 2>&1
         "$tools/bin/nbgmake" -j"$jobs" check > "$work/$name-check.log" 2>&1

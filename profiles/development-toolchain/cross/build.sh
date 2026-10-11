@@ -2,19 +2,39 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD; AI-assisted host cross-compiler recipe using Ports sources.
 set -eu
-[ "$#" -eq 5 ] || [ "$#" -eq 6 ] || {
+usage() {
     echo 'Usage: build.sh EXPORTED_PKGSRC GCC_ARCHIVE SYSROOT NETBSD_TOOLDIR [HOST_MATH_PREFIX] NEW_WORK' >&2
+    echo '       build.sh --kernel EXPORTED_PKGSRC GCC_ARCHIVE NETBSD_TOOLDIR [HOST_MATH_PREFIX] NEW_WORK' >&2
     exit 2
 }
+mode=applications
+case "${1:-}" in
+    --kernel) mode=kernel; shift;;
+    --*) echo 'Unknown build mode.' >&2; usage;;
+esac
+if [ "$mode" = kernel ]; then
+    [ "$#" -eq 4 ] || [ "$#" -eq 5 ] || usage
+else
+    [ "$#" -eq 5 ] || [ "$#" -eq 6 ] || usage
+fi
 profile=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
 recipe=$1/lang/gcc16
 archive=$2
-sysroot=$3
-tools=$4
-if [ "$#" -eq 6 ]; then
-    math=$5 work=$6
+if [ "$mode" = kernel ]; then
+    sysroot=
+    tools=$3
+    if [ "$#" -eq 5 ]; then
+        math=$4 work=$5
+    else
+        math=${EMBER_HOST_MATH_PREFIX:-} work=$4
+    fi
 else
-    math=${EMBER_HOST_MATH_PREFIX:-} work=$5
+    sysroot=$3 tools=$4
+    if [ "$#" -eq 6 ]; then
+        math=$5 work=$6
+    else
+        math=${EMBER_HOST_MATH_PREFIX:-} work=$5
+    fi
 fi
 for path in "$@"; do
     case "$path" in /*) ;; *) echo 'Absolute paths required.' >&2; exit 2;; esac
@@ -30,12 +50,19 @@ fi
 case "$jobs" in ''|*[!0-9]*) jobs=0;; esac
 [ "$jobs" -gt 0 ] 2>/dev/null || { echo 'CROSS_JOBS must be positive.' >&2; exit 2; }
 [ ! -e "$work" ] && [ ! -L "$work" ] || { echo 'NEW_WORK already exists.' >&2; exit 2; }
-[ -f "$sysroot/usr/include/stddef.h" ] || { echo 'Target headers missing.' >&2; exit 2; }
-[ -f "$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0/crtbegin.o" ] || {
-    echo 'The sysroot must contain the selected target GCC16 package.' >&2; exit 2;
-}
-[ -d "$sysroot/usr/pkg/gcc16/include/c++" ] || exit 2
+if [ "$mode" = applications ]; then
+    [ -f "$sysroot/usr/include/stddef.h" ] || { echo 'Target headers missing.' >&2; exit 2; }
+    [ -f "$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0/crtbegin.o" ] || {
+        echo 'The sysroot must contain the selected target GCC16 package.' >&2; exit 2;
+    }
+    [ -d "$sysroot/usr/pkg/gcc16/include/c++" ] || exit 2
+fi
 [ -x "$tools/bin/nbgmake" ] || { echo 'Bootstrap GNU make missing.' >&2; exit 2; }
+for tool in ar as elfedit ld nm objcopy objdump ranlib readelf size strings strip; do
+    [ -x "$tools/bin/aarch64--netbsd-$tool" ] || {
+        echo "Bootstrap target tool missing: $tool" >&2; exit 2;
+    }
+done
 check_math() {
     case "$math" in /*) ;; *) echo 'Absolute host math prefix required.' >&2; exit 2;; esac
     case "$math" in *[!A-Za-z0-9_./-]*) echo 'Use a simple host math prefix.' >&2; exit 2;; esac
@@ -89,6 +116,10 @@ prefix=$work/toolchain
 mkdir "$work/src" "$work/build" "$prefix" "$prefix/bin"
 {
     uname -srm
+    printf 'mode=%s\nhost_cc=%s\nhost_cxx=%s\n' "$mode" "${HOST_CC:-cc}" "${HOST_CXX:-c++}"
+    "${HOST_CC:-cc}" --version
+    "${HOST_CC:-cc}" -dumpmachine
+    "${HOST_CXX:-c++}" --version
     shasum -a 256 "$archive" "$recipe/distinfo" "$recipe"/patches/patch-*
     "$tools/bin/nbgmake" --version
     "$tools/bin/aarch64--netbsd-ld" --version
@@ -102,7 +133,7 @@ ${HOST_CC:-cc} -O2 -I"$math/include" "$profile/cross/tests/host-gmp.c" \
 tar -xf "$archive" --strip-components=1 -C "$work/src"
 for name in $patches; do
     # pkgsrc's native driver embeds its own install prefix as the target RPATH.
-    # A cross compiler's Mac prefix must never enter target link inputs/RPATHs.
+    # A cross compiler's host prefix must never enter target link inputs/RPATHs.
     [ "$name" != patch-gcc_Makefile.in ] || continue
     patch -f -N -F 0 -p0 -d "$work/src" < "$recipe/patches/$name"
 done > "$work/patch.log" 2>&1
@@ -114,9 +145,14 @@ for tool in ar as elfedit ld nm objcopy objdump ranlib readelf size strings stri
 done
 cd "$work/build"
 unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH
+if [ "$mode" = kernel ]; then
+    set -- --without-headers --disable-shared --disable-threads
+else
+    set -- --with-sysroot="$sysroot" --with-gxx-include-dir="$sysroot/usr/pkg/gcc16/include/c++"
+fi
 CC=${HOST_CC:-cc} CXX=${HOST_CXX:-c++} CFLAGS=-O2 CXXFLAGS=-O2 \
     ../src/configure --target=aarch64--netbsd --prefix="$prefix" \
-    --with-sysroot="$sysroot" --with-gxx-include-dir="$sysroot/usr/pkg/gcc16/include/c++" \
+    "$@" \
     --with-gmp="$math" --with-mpfr="$math" --with-mpc="$math" \
     --with-as="$prefix/bin/aarch64--netbsd-as" --with-ld="$prefix/bin/aarch64--netbsd-ld" \
     --enable-languages=c,c++ --disable-bootstrap --disable-multilib \
@@ -127,4 +163,8 @@ CC=${HOST_CC:-cc} CXX=${HOST_CXX:-c++} CFLAGS=-O2 CXXFLAGS=-O2 \
 [ "$("$prefix/bin/aarch64--netbsd-g++" -dumpmachine)" = aarch64--netbsd ]
 sh "$profile/cross/tests/split-dwarf.sh" "$prefix" "$work/split-dwarf"
 echo "GCC16 cross compiler built: $prefix"
-echo 'Compile the acceptance programs, then run them on EmberBSD before accepting the toolchain.'
+if [ "$mode" = kernel ]; then
+    echo 'Kernel frontends only; validate the selected fork kernel build and boot separately.'
+else
+    echo 'Compile the acceptance programs, then run them on EmberBSD before accepting the toolchain.'
+fi
