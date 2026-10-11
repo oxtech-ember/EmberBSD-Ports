@@ -103,6 +103,21 @@ too. Clean a package's work directory after changing cached tool choices.
 The [Python recipe](../python.md) validates the matching host interpreter and
 keeps installed extension metadata on the target side. SQLite and zstd
 receive explicit target platform settings during cross compilation.
+ICU uses native generators from the same upstream release. Its installed
+`icu-config`, Makefile and pkgdata settings refer to the target shell, GCC16
+and base tools; build-host paths must not enter those development interfaces.
+Set the package revision before building: pkgsrc cleans its work directory
+when the extraction cookie names a different complete package version.
+The ICU metadata regression is `tests/icu-cross-metadata.sh` (relative to
+common-build-tools). `tests/icu-cross-consumer.sh` builds its executable on
+the development host; copy the result to the target and run `sh run.sh .`.
+The board runs Unicode conversion, collation, resource generation and the
+prebuilt consumer without invoking a compiler. On CM5, ICU 78.3nb1 passed
+these checks before and after package removal/reinstallation on 2026-10-11.
+Package SHA256: `328a62398f4c1231bd2511d0f2b3a2d9780b1f68323f314cdd978b8946737fed`.
+Cppcheck and GCC16 `-fanalyzer` reported no diagnostics for the consumer.
+This verifies ICU; target Qt and the remote desktop remain separate gates.
+
 Cross Ninja uses the matching native Ninja and Python to generate and build
 for the target platform. Its normal native bootstrap is retained; the cross
 build does not execute the newly linked target binary. The target package

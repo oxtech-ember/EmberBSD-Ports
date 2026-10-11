@@ -722,3 +722,91 @@ its direct XML dependency on Darwin. Cross Ninja executes native build tools.
 +USE_TOOLS+=	cmake
 +.  endif
 +.endif
+--- a/textproc/icu/Makefile
++++ b/textproc/icu/Makefile
+@@ -2,6 +2,7 @@
+ 
+ DISTNAME=	icu4c-78.3-sources
+ PKGNAME=	${DISTNAME:S/4c//:S/-sources//}
++PKGREVISION=	1
+ CATEGORIES=	textproc
+ MASTER_SITES=	${MASTER_SITE_GITHUB:=unicode-org/}
+ GITHUB_PROJECT=	icu
+@@ -33,7 +34,10 @@
+ 
+ .if ${USE_CROSS_COMPILE:tl} == "yes"
+ 
+-TOOL_DEPENDS+=		${PKGNAME}:../../${PKGPATH}
++# Host tools must match the ICU release; target-only metadata revisions
++# do not change its data format or require rebuilding identical host tools.
++_ICU_HOST_PATTERN=	icu-${PKGVERSION_NOREV}{,nb[0-9]*}
++TOOL_DEPENDS+=		${_ICU_HOST_PATTERN}:../../${PKGPATH}
+ 
+ ICU_CROSS_DIR=		${WRKDIR}/.icu_cross
+ ICU_CROSS_COOKIE=	${ICU_CROSS_DIR}/.cookie
+@@ -42,7 +46,7 @@
+ pre-configure: ${ICU_CROSS_COOKIE}
+ 
+ ICU_CROSS_TOOLS=	\
+-	${HOST_PKG_INFO} -qL ${PKGNAME} \
++	${HOST_PKG_INFO} -qL ${_ICU_HOST_PATTERN:Q} \
+ 	| ${GREP} -e '^'${TOOLBASE}/bin -e '^'${TOOLBASE}/sbin
+ 
+ show-icu-cross-tools: .PHONY
+@@ -178,5 +182,28 @@
+ SUBST_SED.icu-config+=	-e '/l$${ICUPREFIX}/ s/$${ICULIBSUFFIX_VERSION}//g'
+ .endif
+ 
++# Keep build-host commands out of the installed development interface.
++# The common cross profile supplies the matching GCC16 target package.
++.if ${USE_CROSS_COMPILE:tl} == "yes" && ${EMBERBSD_COMMON_TOOLS:Uno} == "yes"
++post-install: ember-icu-cross-metadata
++.PHONY: ember-icu-cross-metadata
++ember-icu-cross-metadata:
++	${RUN} set -e; for file in \
++	    ${DESTDIR}${PREFIX}/bin/icu-config \
++	    ${DESTDIR}${PREFIX}/lib/icu/${PKGVERSION_NOREV}/Makefile.inc \
++	    ${DESTDIR}${PREFIX}/lib/icu/${PKGVERSION_NOREV}/pkgdata.inc; do \
++		${CP} -p "$$file" "$$file.ember"; \
++		${SETENV} ICU_BUILD_SHELL=${CONFIG_SHELL:Q} \
++		    ICU_BUILD_INSTALL_DATA=${INSTALL_DATA:Q} \
++		    ICU_BUILD_INSTALL_PROGRAM=${INSTALL_PROGRAM:Q} \
++		    ICU_BUILD_INSTALL_SCRIPT=${INSTALL_SCRIPT:Q} \
++		    ICU_CROSS_TRIPLET=${MACHINE_GNU_PLATFORM:Q} \
++		    ICU_CROSS_SYSROOT=${CROSS_DESTDIR:Q} \
++		    ICU_TARGET_GCC=${PREFIX:Q}/gcc16 \
++		    ${AWK} -f ${FILESDIR}/cross-metadata.awk "$$file" > "$$file.ember"; \
++		${MV} -f "$$file.ember" "$$file"; \
++	done
++.endif
++
+ .include "../../mk/atomic64.mk"
+ .include "../../mk/bsd.pkg.mk"
+--- a/textproc/icu/files/cross-metadata.awk
++++ b/textproc/icu/files/cross-metadata.awk
+@@ -0,0 +1,25 @@
++# SPDX-License-Identifier: BSD-2-Clause
++# Origin: EmberBSD (AI-assisted). Rewrite installed ICU metadata only.
++# Match literal strings: host paths are not regular expressions.
++function replace(text, old, new, pos, out) {
++    if (old == "") return text;
++    out = "";
++    while ((pos = index(text, old)) != 0) {
++        out = out substr(text, 1, pos - 1) new;
++        text = substr(text, pos + length(old));
++    }
++    return out text;
++}
++{
++    line = $0;
++    line = replace(line, ENVIRON["ICU_BUILD_SHELL"], "/bin/sh");
++    line = replace(line, ENVIRON["ICU_BUILD_INSTALL_DATA"], "/usr/bin/install -c -m 644");
++    line = replace(line, ENVIRON["ICU_BUILD_INSTALL_PROGRAM"], "/usr/bin/install -c -s -m 755");
++    line = replace(line, ENVIRON["ICU_BUILD_INSTALL_SCRIPT"], "/usr/bin/install -c -m 755");
++    line = replace(line, ENVIRON["ICU_CROSS_TRIPLET"] "-g++", ENVIRON["ICU_TARGET_GCC"] "/bin/g++");
++    line = replace(line, ENVIRON["ICU_CROSS_TRIPLET"] "-gcc", ENVIRON["ICU_TARGET_GCC"] "/bin/gcc");
++    line = replace(line, ENVIRON["ICU_CROSS_TRIPLET"] "-ar", "/usr/bin/ar");
++    line = replace(line, ENVIRON["ICU_CROSS_TRIPLET"] "-ranlib", "/usr/bin/ranlib");
++    line = replace(line, ENVIRON["ICU_CROSS_SYSROOT"], "");
++    print line;
++}
