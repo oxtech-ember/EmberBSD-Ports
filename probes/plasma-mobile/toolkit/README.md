@@ -8,7 +8,7 @@ It does not install another Qt prefix for Plasma. Final package paths remain
 
 **Qtbase, SVG, ShaderTools, ImageFormats and LanguageServer 6.12.0 cross packages pass normal package
 checks and installation into the build sysroot.** Their [package receipt](cross/qt-packages.md)
-separates this result from target runtime. The remaining modules and Plasma
+also links the accepted CM5 Core/Gui/SVG runtime consumer. The remaining modules and Plasma
 session are not accepted; their manifests still require actual target staging.
 See the [migration sequence](MIGRATION.md) and the
 [actual Mobile graphics contract](../kwin/MOBILE-GRAPHICS-CONTRACT.md).

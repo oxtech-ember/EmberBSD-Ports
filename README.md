@@ -318,7 +318,9 @@ runtime behavior are validated.
   and the [shared FFmpeg9 recipe](profiles/common-media/README.md) pass
   source/export checks. Qtbase, SVG, ShaderTools, ImageFormats and LanguageServer 6.12.0 now pass
   [Mac cross packaging and sysroot installation](probes/plasma-mobile/toolkit/cross/qt-packages.md).
-  Target Qt runtime and the complete Plasma migration remain pending. Native
+  [Installed CM5 Core/Gui/SVG checks](probes/plasma-mobile/toolkit/tests/qt-consumer/README.md)
+  pass thread signals, resources, image pixels, plugin errors and SVG replacement.
+  Quick, accelerated Qt and the complete Plasma migration remain pending. Native
   audio API/registration and host metadata extraction checks pass.
 
 - [Openbox](probes/openbox/README.md) and

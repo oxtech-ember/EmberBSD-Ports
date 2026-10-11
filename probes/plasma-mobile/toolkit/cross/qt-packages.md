@@ -6,8 +6,10 @@ interpreter/permission, PIE, RELRO, RPATH and work-directory checks. They
 installed in the fork's build sysroot through pkg_add; Qtbase also passed
 ordinary package replacement after its CMake metadata correction.
 
-This is package and build-consumer evidence. Qt applications, native qmake,
-plugins and Plasma have not yet passed runtime acceptance on CM5.
+The installed [Core/Gui/SVG consumer](../tests/qt-consumer/README.md) also passes
+on CM5, including real image pixels, plugin rejection, restart and SVG package
+removal/reinstallation. qmake version lookup passes. Quick, accelerated Qt
+rendering, other module runtimes and Plasma remain unaccepted.
 
 ## Inputs and packages
 
@@ -93,8 +95,8 @@ executable permissions, repeat installation, module-only staging and rejection
 of an unhandled build path. Actual module compilation supplies the CMake
 consumer check; fixture success alone would not prove it.
 
-Next follow the [migration sequence](../MIGRATION.md): target Core/resource,
-SVG/plugin and EGL/OpenGL consumers, Quick/Wayland, then HDMI Plasma and remote
-acceptance. Memory analysis of target Qt execution remains pending; Valgrind
+Next follow the [migration sequence](../MIGRATION.md): target EGL/OpenGL
+consumers, Quick/Wayland, then HDMI Plasma and remote acceptance. The completed
+Core/resource and SVG/plugin checks are scoped in their receipt. Memory analysis of target Qt execution remains pending; Valgrind
 has no validated EmberBSD/AArch64 path. These package checks are not a Valgrind,
 upstream Qt test-suite or accelerated-desktop pass.
