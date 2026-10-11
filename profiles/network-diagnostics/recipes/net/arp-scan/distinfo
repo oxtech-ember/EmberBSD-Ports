@@ -1,0 +1,11 @@
+$NetBSD: distinfo,v 1.7 2021/10/26 11:05:23 nia Exp $
+
+BLAKE2s (arp-scan-1.9.tar.gz) = 8c3d029811a93231d026a1ffe667168eff23f3cd5db5895f7b78c527d0fac806
+SHA512 (arp-scan-1.9.tar.gz) = 5061ac82d1acad3dd5dab998e4e2d2d9d2dbf436a2839ee1f68dd2997278df7e77f5dda7e54bdb13c9200d7a714b8d82737c041cec8438571d1d14c9d7f936ac
+Size (arp-scan-1.9.tar.gz) = 488442 bytes
+
+
+SHA1 (patch-arp-scan.c) = f98891607563f140e1f31a20725d2eb6987b5642
+SHA1 (patch-configure) = fb274b5716a234164700b6e7ba1d663b48fbbec3
+SHA1 (patch-configure-getopt) = 23ea6b68e97fe6fb1399444ffb9b474ba39253e8
+SHA1 (patch-link-bpf.c) = 4dd7d4bddb96d58be645d9538892082023956e22

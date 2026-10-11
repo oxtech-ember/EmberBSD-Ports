@@ -1,0 +1,17 @@
+$NetBSD$
+
+Check for getopt_long, not the glibc-only getopt_long_only: the tool is
+patched to use getopt_long and NetBSD libc provides it, so the bundled
+getopt/getopt1 objects must not be built.
+
+--- configure.orig	2013-07-24 09:05:11.000000000 +0000
++++ configure
+@@ -5287,7 +5287,7 @@
+       ;;
+ esac
+ 
+-ac_fn_c_check_func "$LINENO" "getopt_long_only" "ac_cv_func_getopt_long_only"
++ac_fn_c_check_func "$LINENO" "getopt_long" "ac_cv_func_getopt_long_only"
+ if test "x$ac_cv_func_getopt_long_only" = xyes; then :
+ 
+ else

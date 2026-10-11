@@ -212,8 +212,12 @@ runtime behavior are validated.
   under load and tshark read pcap, pcapng and BTSnoop traces. The native
   `hcisnoop` recorder writes BTSnoop traces from the netbt HCI socket tap
   that Wireshark reads as "Bluetooth HCI H4"; it captured a real controller
-  inquiry with correct directions. Wi-Fi monitor mode, Lua dissectors and
-  the GUI remain separate queue items.
+  inquiry with correct directions. Stage two's quick discovery batch
+  follows on the same board: lldpd advertises the chassis and its LLDP
+  frames verify on the wire, arp-scan enumerated the local /24 without
+  kernel drops, and mtr/fping produce latency and loss reports. Wi-Fi
+  monitor mode, Lua dissectors, tcpreplay and the GUI remain separate
+  queue items.
 - [Local AI CPU packages](profiles/ai-cpu/README.md): pkgsrc recipes for
   llama.cpp 0.6.0 and whisper.cpp 1.9.4; native ARM64 package installation,
   text generation, WAV transcription, and loopback HTTP inference verified.
