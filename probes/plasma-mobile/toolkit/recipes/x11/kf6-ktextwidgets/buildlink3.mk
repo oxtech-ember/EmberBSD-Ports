@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-ktextwidgets
 .if !defined(KF6_KTEXTWIDGETS_BUILDLINK3_MK)
 KF6_KTEXTWIDGETS_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-ktextwidgets+=	kf6-ktextwidgets>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-ktextwidgets+=	kf6-ktextwidgets>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-ktextwidgets+=	kf6-ktextwidgets>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-ktextwidgets+=	kf6-ktextwidgets>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-ktextwidgets?=		../../x11/kf6-ktextwidgets
 
 .include "../../audio/qt6-qtspeech/buildlink3.mk"

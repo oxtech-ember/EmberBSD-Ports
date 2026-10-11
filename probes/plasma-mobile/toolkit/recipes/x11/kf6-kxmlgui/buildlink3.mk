@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-kxmlgui
 .if !defined(KF6_KXMLGUI_BUILDLINK3_MK)
 KF6_KXMLGUI_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-kxmlgui+=	kf6-kxmlgui>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-kxmlgui+=	kf6-kxmlgui>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-kxmlgui+=	kf6-kxmlgui>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-kxmlgui+=	kf6-kxmlgui>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-kxmlgui?=	../../x11/kf6-kxmlgui
 
 .include "../../devel/kf6-kcoreaddons/buildlink3.mk"

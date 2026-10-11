@@ -19,7 +19,7 @@ cat > "$work/Makefile" <<'MAKE'
 all:
 	@if test -n '${PKG_FAIL_REASON:U}'; then printf '%s\n' '${PKG_FAIL_REASON}'; exit 1; fi
 	@test '${QTVERSION:U6.12.0}' = 6.12.0
-	@test '${KF6VER:U6.30.0}' = 6.30.0
+	@test '${KF6VER:U6.31.0}' = 6.31.0
 	@test '${GCC_REQD}' = 16.2
 MAKE
 while IFS="$(printf '\t')" read -r recipe archive sha url; do
@@ -37,6 +37,6 @@ if (cd "$work" && "$make" -r -m / FAMILY=kf PKGPATH=devel/kf6-unprepared) > "$wo
 grep -q 'is not prepared in the Plasma toolkit' "$work/unprepared-kf.log"
 if (cd "$work" && "$make" -r -m / FAMILY=qt PKGPATH=x11/qt6-qtbase QTVERSION=6.11.2) > "$work/old-qt.log" 2>&1; then exit 1; fi
 grep -q 'requires QTVERSION=6.12.0' "$work/old-qt.log"
-if (cd "$work" && "$make" -r -m / FAMILY=kf PKGPATH=devel/kf6-kconfig KF6VER=6.29.0) > "$work/old-kf.log" 2>&1; then exit 1; fi
-grep -q 'requires KF6VER=6.30.0' "$work/old-kf.log"
+if (cd "$work" && "$make" -r -m / FAMILY=kf PKGPATH=devel/kf6-kconfig KF6VER=6.30.0) > "$work/old-kf.log" 2>&1; then exit 1; fi
+grep -q 'requires KF6VER=6.31.0' "$work/old-kf.log"
 echo 'PASS: toolkit recipe/version selection; full native pkgsrc parsing remains required'

@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-kdeclarative
 .if !defined(KF6_KDECLARATIVE_BUILDLINK3_MK)
 KF6_KDECLARATIVE_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-kdeclarative+=	kf6-kdeclarative>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-kdeclarative+=	kf6-kdeclarative>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-kdeclarative+=	kf6-kdeclarative>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-kdeclarative+=	kf6-kdeclarative>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-kdeclarative?=		../../devel/kf6-kdeclarative
 
 .include "../../devel/kf6-kconfig/buildlink3.mk"

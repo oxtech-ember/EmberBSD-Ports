@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-ktexttemplate
 .if !defined(KF6_KTEXTTEMPLATE_BUILDLINK3_MK)
 KF6_KTEXTTEMPLATE_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-ktexttemplate+=	kf6-ktexttemplate>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-ktexttemplate+=	kf6-ktexttemplate>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-ktexttemplate+=	kf6-ktexttemplate>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-ktexttemplate+=	kf6-ktexttemplate>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-ktexttemplate?=		../../textproc/kf6-ktexttemplate
 
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"

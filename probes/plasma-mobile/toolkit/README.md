@@ -1,12 +1,12 @@
 # Common Qt and Frameworks source candidate
 
-This layer prepares **Qt 6.12.0 LTS** and **KDE Frameworks 6.30.0** for the
+This layer prepares **Qt 6.12.0 LTS** and **KDE Frameworks 6.31.0** for the
 common GCC 16 / LLVM 23 userspace migration. It extends the existing
 [common build-tools profile](../../../profiles/common-build-tools/README.md).
 It does not install another Qt prefix for Plasma. Final package paths remain
 `/usr/pkg` and `/usr/pkg/qt6` inside the common staging environment.
 
-**Source checks pass; native packages and the Plasma Mobile session are not
+**Source checks pass; target packages and the Plasma session are not
 accepted.** In particular, the inherited PLISTs still require native staging
 and `check-files`. This export is not a command to upgrade an active desktop.
 See the [migration sequence](MIGRATION.md) and the
@@ -31,7 +31,7 @@ reject older command-line versions and unprepared Qt/Frameworks recipe paths.
 Buildlink requirements select the new versions, including transitive consumers.
 Qt's common build and consumer files require GCC 16.2.
 
-For a later native build, a private MAKECONF includes the exported
+For a native build, a private MAKECONF includes the exported
 `EMBERBSD-COMMON-TOOLS-MK.CONF`, then
 `EMBERBSD-COMMON-GRAPHICS-MK.CONF`,
 `EMBERBSD-COMMON-MEDIA-MK.CONF` and finally
@@ -40,10 +40,12 @@ release compiler flags without changing `/etc/mk.conf`. The migrated
 Qt Multimedia/KFileMetadata recipes use the
 [common FFmpeg9 profile](../../../profiles/common-media/README.md).
 The toolkit requires the [common graphics source profile](../../../profiles/common-graphics/README.md)
-with Mesa26.2.4/libdrm2.4.134nb1 and disables native GL/GLU/DRM providers.
+with Mesa26.2.4nb3/libdrm2.4.134nb2 and disables native GL/GLU/DRM providers.
 Qtbase selects its EGL-device PLIST from the canonical package header;
 configuration, installed plugin contents and native check-files remain gates.
-The native dependency closure must be prepared first as described in MIGRATION.md.
+Cross builds use the [cross workflow](cross/README.md). Native tools retain
+their host compiler; the cross caller selects parallelism. Package and consumer
+acceptance remains separate from source checks.
 
 ## Provenance and patch decisions
 
@@ -51,8 +53,8 @@ Original pkgsrc RCS identifiers, recipe ownership, upstream licences and
 patch explanations are retained. The manifest and adaptations are
 AI-assisted EmberBSD work; these changes have not been submitted or accepted
 upstream. [sources.tsv](sources.tsv) records original archive URLs and SHA256.
-Qt hashes were compared with the official `.sha256` responses. KDE archive
-hashes were recorded from the upstream HTTPS downloads; this is not a claim
+Qt hashes were compared with the official `.sha256` responses. Frameworks 6.31 archive
+hashes are checked against the release server's `.sha256` files; this is not a claim
 of release-signature verification. The recipes also record BLAKE2s, SHA512,
 size and pkgsrc's RCS-filtered patch SHA1.
 
@@ -70,6 +72,8 @@ size and pkgsrc's RCS-filtered patch SHA1.
 | Qt FFmpeg VAAPI linkage | Link VAAPI directly on platforms where the Linux/Android stub helpers are unavailable, even when FFmpeg metadata lists `va`. Preserve Linux/Android stub selection. |
 
 The remaining pkgsrc patches apply to the verified sources with zero fuzz.
+Frameworks 6.31.0 was released on 9 October 2026. Its 69 Frameworks/ECM
+archives replace the unbuilt 6.30 candidate; they do not add a parallel provider.
 Retaining a portability patch does not establish runtime support for every
 platform mentioned by it. No upstream source archive or binary is stored here.
 

@@ -5,7 +5,7 @@ BUILDLINK_TREE+=	kf6-kmime
 .if !defined(KF6_KMIME_BUILDLINK3_MK)
 KF6_KMIME_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-kmime+=	kf6-kmime>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-kmime+=	kf6-kmime>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-kmime?=		../../mail/kf6-kmime
 
 .include "../../devel/kf6-ki18n/buildlink3.mk"

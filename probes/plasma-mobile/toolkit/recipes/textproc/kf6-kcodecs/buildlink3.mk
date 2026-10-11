@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-kcodecs
 .if !defined(KF6_KCODECS_BUILDLINK3_MK)
 KF6_KCODECS_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-kcodecs+=	kf6-kcodecs>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-kcodecs+=	kf6-kcodecs>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-kcodecs+=	kf6-kcodecs>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-kcodecs+=	kf6-kcodecs>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-kcodecs?=	../../textproc/kf6-kcodecs
 
 .include "../../x11/qt6-qtbase/buildlink3.mk"

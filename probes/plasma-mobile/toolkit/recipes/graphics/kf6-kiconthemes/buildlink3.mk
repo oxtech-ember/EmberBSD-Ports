@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-kiconthemes
 .if !defined(KF6_KICONTHEMES_BUILDLINK3_MK)
 KF6_KICONTHEMES_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-kiconthemes+=	kf6-kiconthemes>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-kiconthemes+=	kf6-kiconthemes>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-kiconthemes+=	kf6-kiconthemes>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-kiconthemes+=	kf6-kiconthemes>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-kiconthemes?=	../../graphics/kf6-kiconthemes
 
 .include "../../archivers/kf6-karchive/buildlink3.mk"

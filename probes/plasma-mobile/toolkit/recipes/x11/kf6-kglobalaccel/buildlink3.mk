@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-kglobalaccel
 .if !defined(KF6_KGLOBALACCEL_BUILDLINK3_MK)
 KF6_KGLOBALACCEL_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-kglobalaccel+=	kf6-kglobalaccel>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-kglobalaccel+=	kf6-kglobalaccel>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-kglobalaccel+=	kf6-kglobalaccel>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-kglobalaccel+=	kf6-kglobalaccel>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-kglobalaccel?=		../../x11/kf6-kglobalaccel
 
 BUILDLINK_FILES.kf6-kglobalaccel+=	share/dbus-1/interfaces/*.xml

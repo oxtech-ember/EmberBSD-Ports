@@ -68,7 +68,7 @@
 # used by x11/kf6-kxmlgui/Makefile
 # used by x11/kf6-qqc2-desktop-style/Makefile
 
-KF6VER=		6.30.0
+KF6VER=		6.31.0
 
 .include "../../mk/bsd.prefs.mk"
 
@@ -145,8 +145,8 @@ _EMBERBSD_KF6VER_RECIPES= \
 .if empty(_EMBERBSD_KF6VER_RECIPES:M${PKGPATH})
 PKG_FAIL_REASON+= "Frameworks 6 recipe ${PKGPATH} is not prepared in the Plasma toolkit"
 .endif
-.if ${KF6VER} != "6.30.0"
-PKG_FAIL_REASON+= "The common toolkit requires KF6VER=6.30.0"
+.if ${KF6VER} != "6.31.0"
+PKG_FAIL_REASON+= "The common toolkit requires KF6VER=6.31.0"
 .endif
 GCC_REQD+= 16.2
 

@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-syntax-highlighting
 .if !defined(KF6_SYNTAX_HIGHLIGHTING_BUILDLINK3_MK)
 KF6_SYNTAX_HIGHLIGHTING_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-syntax-highlighting+=	kf6-syntax-highlighting>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-syntax-highlighting+=	kf6-syntax-highlighting>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-syntax-highlighting+=	kf6-syntax-highlighting>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-syntax-highlighting+=	kf6-syntax-highlighting>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-syntax-highlighting?=	../../textproc/kf6-syntax-highlighting
 
 .include "../../x11/qt6-qtbase/buildlink3.mk"

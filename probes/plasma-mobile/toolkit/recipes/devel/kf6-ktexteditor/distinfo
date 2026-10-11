@@ -1,5 +1,5 @@
 $NetBSD: distinfo,v 1.6 2026/09/06 10:05:14 markd Exp $
 
-BLAKE2s (ktexteditor-6.30.0.tar.xz) = d686e7893115eec8264d128c0c47df3dca9f12d3f0b1cb8a4db210ca49effc6e
-SHA512 (ktexteditor-6.30.0.tar.xz) = e61ac2d44c83958454b1bfa608e0e20eb2791d9bcd739d125cbe382cc815383c1a1b9dcb1bc2f734cc20a4b31b3d0f1e4de636e4d8096ca9870eeaa687748cf9
-Size (ktexteditor-6.30.0.tar.xz) = 2982660 bytes
+BLAKE2s (ktexteditor-6.31.0.tar.xz) = 32d59e8c3968b5f72578fbe9593cdc260e1b0f2df88e5c152282010f9baeac02
+SHA512 (ktexteditor-6.31.0.tar.xz) = a521b49a7a9fb698c952e6549b0d302bd5851ef3de196d4a18468b0d7dd0ce475a7c9dbddb589ba9d3a04b769e0467c1fa839ea25d29115127f72998c4430d18
+Size (ktexteditor-6.31.0.tar.xz) = 2990460 bytes

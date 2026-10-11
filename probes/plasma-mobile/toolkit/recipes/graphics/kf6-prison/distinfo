@@ -1,5 +1,5 @@
 $NetBSD: distinfo,v 1.6 2026/09/06 10:05:15 markd Exp $
 
-BLAKE2s (prison-6.30.0.tar.xz) = 6aaff70bce9d1ec500595344b98f494e819f9a5aa2a2e92daf5d6a6b09e9ddc8
-SHA512 (prison-6.30.0.tar.xz) = 45c7e95f8f0c6a73175d6a59b51a27c18034db1eee17d65445d7b8e69aede6ed2fecc5e3cc41f13c826d5d19889761cc26cb1e9954191e0c4542e57e5f345828
-Size (prison-6.30.0.tar.xz) = 58020 bytes
+BLAKE2s (prison-6.31.0.tar.xz) = 91ee574c4390434b8551fac1ce8c2ee1995a9913b19f8610700c6431b4ae83fa
+SHA512 (prison-6.31.0.tar.xz) = e2f2b7541338c5d08f2f2fbdab9f29161c84f6f684c286c13948d342bf7d68d41d73ef38e9027e9b0642af9bf6aa62a4987b6323453ae2ce2ee365169caf86d1
+Size (prison-6.31.0.tar.xz) = 58656 bytes

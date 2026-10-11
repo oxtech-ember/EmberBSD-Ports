@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-kpeople
 .if !defined(KF6_KPEOPLE_BUILDLINK3_MK)
 KF6_KPEOPLE_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-kpeople+=	kf6-kpeople>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-kpeople+=	kf6-kpeople>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-kpeople+=	kf6-kpeople>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-kpeople+=	kf6-kpeople>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-kpeople?=	../../devel/kf6-kpeople
 
 .include "../../devel/kf6-kcoreaddons/buildlink3.mk"

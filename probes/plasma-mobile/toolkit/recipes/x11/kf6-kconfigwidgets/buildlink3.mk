@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-kconfigwidgets
 .if !defined(KF6_KCONFIGWIDGETS_BUILDLINK3_MK)
 KF6_KCONFIGWIDGETS_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-kconfigwidgets+=	kf6-kconfigwidgets>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-kconfigwidgets+=	kf6-kconfigwidgets>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-kconfigwidgets+=	kf6-kconfigwidgets>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-kconfigwidgets+=	kf6-kconfigwidgets>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-kconfigwidgets?=	../../x11/kf6-kconfigwidgets
 
 .include "../../devel/kf6-kcolorscheme/buildlink3.mk"

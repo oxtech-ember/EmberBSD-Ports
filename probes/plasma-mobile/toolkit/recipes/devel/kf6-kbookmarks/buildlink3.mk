@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-kbookmarks
 .if !defined(KF6_KBOOKMARKS_BUILDLINK3_MK)
 KF6_KBOOKMARKS_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-kbookmarks+=	kf6-kbookmarks>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-kbookmarks+=	kf6-kbookmarks>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-kbookmarks+=	kf6-kbookmarks>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-kbookmarks+=	kf6-kbookmarks>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-kbookmarks?=	../../devel/kf6-kbookmarks
 
 .include "../../devel/kf6-kconfig/buildlink3.mk"

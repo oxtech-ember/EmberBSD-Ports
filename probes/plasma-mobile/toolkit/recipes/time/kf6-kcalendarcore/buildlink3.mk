@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-kcalendarcore
 .if !defined(KF6_KCALENDARCORE_BUILDLINK3_MK)
 KF6_KCALENDARCORE_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-kcalendarcore+=	kf6-kcalendarcore>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-kcalendarcore+=	kf6-kcalendarcore>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-kcalendarcore+=	kf6-kcalendarcore>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-kcalendarcore+=	kf6-kcalendarcore>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-kcalendarcore?=		../../time/kf6-kcalendarcore
 
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"

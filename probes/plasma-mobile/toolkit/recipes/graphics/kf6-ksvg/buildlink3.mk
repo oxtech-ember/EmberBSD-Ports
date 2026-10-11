@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-ksvg
 .if !defined(KF6_KSVG_BUILDLINK3_MK)
 KF6_KSVG_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-ksvg+=	kf6-ksvg>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-ksvg+=	kf6-ksvg>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-ksvg+=	kf6-ksvg>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-ksvg+=	kf6-ksvg>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-ksvg?=		../../graphics/kf6-ksvg
 
 .include "../../archivers/kf6-karchive/buildlink3.mk"

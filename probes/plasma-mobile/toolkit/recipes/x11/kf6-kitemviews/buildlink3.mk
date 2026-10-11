@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-kitemviews
 .if !defined(KF6_KITEMVIEWS_BUILDLINK3_MK)
 KF6_KITEMVIEWS_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-kitemviews+=	kf6-kitemviews>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-kitemviews+=	kf6-kitemviews>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-kitemviews+=	kf6-kitemviews>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-kitemviews+=	kf6-kitemviews>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-kitemviews?=	../../x11/kf6-kitemviews
 
 .include "../../x11/qt6-qtbase/buildlink3.mk"

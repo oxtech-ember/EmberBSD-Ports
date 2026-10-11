@@ -5,7 +5,7 @@ BUILDLINK_TREE+=	kf6-kfilemetadata
 .if !defined(KF6_KFILEMETADATA_BUILDLINK3_MK)
 KF6_KFILEMETADATA_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-kfilemetadata+=	kf6-kfilemetadata>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-kfilemetadata+=	kf6-kfilemetadata>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-kfilemetadata?=		../../sysutils/kf6-kfilemetadata
 
 .endif	# KF6_KFILEMETADATA_BUILDLINK3_MK

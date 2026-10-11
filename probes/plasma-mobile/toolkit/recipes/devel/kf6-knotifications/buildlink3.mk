@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-knotifications
 .if !defined(KF6_KNOTIFICATIONS_BUILDLINK3_MK)
 KF6_KNOTIFICATIONS_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-knotifications+=	kf6-knotifications>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-knotifications+=	kf6-knotifications>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-knotifications+=	kf6-knotifications>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-knotifications+=	kf6-knotifications>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-knotifications?=	../../devel/kf6-knotifications
 
 .include "../../audio/libcanberra/buildlink3.mk"

@@ -5,7 +5,7 @@ BUILDLINK_TREE+=	breeze-icons
 .if !defined(BREEZE_ICONS_BUILDLINK3_MK)
 BREEZE_ICONS_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.breeze-icons+=	breeze-icons>=6.30.0
+BUILDLINK_API_DEPENDS.breeze-icons+=	breeze-icons>=6.31.0
 BUILDLINK_PKGSRCDIR.breeze-icons?=	../../graphics/breeze-icons
 
 #.include "../../x11/qt6-qtbase/buildlink3.mk"

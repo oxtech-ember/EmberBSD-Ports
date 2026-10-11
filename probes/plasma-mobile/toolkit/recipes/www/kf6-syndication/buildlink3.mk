@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-syndication
 .if !defined(KF6_SYNDICATION_BUILDLINK3_MK)
 KF6_SYNDICATION_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-syndication+=	kf6-syndication>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-syndication+=	kf6-syndication>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-syndication+=	kf6-syndication>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-syndication+=	kf6-syndication>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-syndication?=	../../www/kf6-syndication
 
 .include "../../textproc/kf6-kcodecs/buildlink3.mk"

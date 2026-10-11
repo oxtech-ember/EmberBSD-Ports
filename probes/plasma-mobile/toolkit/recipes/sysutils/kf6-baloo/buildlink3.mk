@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-baloo
 .if !defined(KF6_BALOO_BUILDLINK3_MK)
 KF6_BALOO_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-baloo+=	kf6-baloo>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-baloo+=	kf6-baloo>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-baloo+=	kf6-baloo>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-baloo+=	kf6-baloo>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-baloo?=		../../sysutils/kf6-baloo
 
 #.include "../../devel/libinotify/buildlink3.mk"

@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-knewstuff
 .if !defined(KF6_KNEWSTUFF_BUILDLINK3_MK)
 KF6_KNEWSTUFF_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-knewstuff+=	kf6-knewstuff>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-knewstuff+=	kf6-knewstuff>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-knewstuff+=	kf6-knewstuff>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-knewstuff+=	kf6-knewstuff>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-knewstuff?=	../../net/kf6-knewstuff
 
 .include "../../archivers/kf6-karchive/buildlink3.mk"

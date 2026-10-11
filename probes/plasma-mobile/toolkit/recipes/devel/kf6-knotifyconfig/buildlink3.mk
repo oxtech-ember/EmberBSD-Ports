@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-knotifyconfig
 .if !defined(KF6_KNOTIFYCONFIG_BUILDLINK3_MK)
 KF6_KNOTIFYCONFIG_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-knotifyconfig+=	kf6-knotifyconfig>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-knotifyconfig+=	kf6-knotifyconfig>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-knotifyconfig+=	kf6-knotifyconfig>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-knotifyconfig+=	kf6-knotifyconfig>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-knotifyconfig?=		../../devel/kf6-knotifyconfig
 
 .include "../../devel/kf6-kconfig/buildlink3.mk"

@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	kf6-kpty
 .if !defined(KF6_KPTY_BUILDLINK3_MK)
 KF6_KPTY_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kf6-kpty+=	kf6-kpty>=6.30.0
-BUILDLINK_ABI_DEPENDS.kf6-kpty+=	kf6-kpty>=6.30.0
+BUILDLINK_API_DEPENDS.kf6-kpty+=	kf6-kpty>=6.31.0
+BUILDLINK_ABI_DEPENDS.kf6-kpty+=	kf6-kpty>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-kpty?=		../../devel/kf6-kpty
 
 .include "../../devel/kf6-kcoreaddons/buildlink3.mk"

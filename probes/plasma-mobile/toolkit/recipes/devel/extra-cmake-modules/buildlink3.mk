@@ -5,7 +5,7 @@ BUILDLINK_TREE+=	extra-cmake-modules
 .if !defined(EXTRA_CMAKE_MODULES_BUILDLINK3_MK)
 EXTRA_CMAKE_MODULES_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.extra-cmake-modules+=	extra-cmake-modules>=6.30.0
+BUILDLINK_API_DEPENDS.extra-cmake-modules+=	extra-cmake-modules>=6.31.0
 BUILDLINK_PKGSRCDIR.extra-cmake-modules=	../../devel/extra-cmake-modules
 BUILDLINK_DEPMETHOD.extra-cmake-modules?=	build
 BUILDLINK_FILES.extra-cmake-modules+=		share/ECM/*/*
