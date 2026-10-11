@@ -6,8 +6,9 @@ require 'fileutils'
 require 'open3'
 require 'shellwords'
 
-abort 'usage: mesa-pkgconfig.rb CROSS_TOOLS SYSROOT HOST_PKG_CONFIG NEW_WORK [epoxy]' unless ARGV.length == 4 || (ARGV.length == 5 && ARGV[4] == 'epoxy')
-epoxy = ARGV[4] == 'epoxy'
+abort 'usage: mesa-pkgconfig.rb CROSS_TOOLS SYSROOT HOST_PKG_CONFIG NEW_WORK [epoxy|desktop-gl]' unless ARGV.length == 4 || (ARGV.length == 5 && %w[epoxy desktop-gl].include?(ARGV[4]))
+desktop = ARGV[4] == 'desktop-gl'
+epoxy = desktop || ARGV[4] == 'epoxy'
 tools, sysroot, pkgconfig = ARGV.first(3).map { |p| File.realpath(p) }
 work = File.expand_path(ARGV[3])
 abort 'NEW_WORK must not exist' if File.exist?(work)
@@ -38,6 +39,7 @@ end
 link_modules = epoxy ? %w[epoxy gbm] : %w[egl glesv2 gbm]
 flags = Shellwords.split(run(environment, "#{work}/consumer-flags.log", pkgconfig, '--cflags', '--libs', *link_modules))
 flags << '-DEMBER_EPOXY_DISPATCH' if epoxy
+flags << '-DEMBER_DESKTOP_GL' if desktop
 executable = "#{work}/#{epoxy ? 'epoxy' : 'mesa'}-pkgconfig-render"
 # PIC keeps libepoxy's dispatch-pointer imports as undefined GOT entries;
 # non-PIC executables legitimately use COPY relocations instead.

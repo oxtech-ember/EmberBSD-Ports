@@ -1,8 +1,12 @@
 /* SPDX-License-Identifier: BSD-2-Clause
- * Origin: EmberBSD; AI-assisted EGL/GLES render and lifecycle diagnostic.
+ * Origin: EmberBSD; AI-assisted EGL/GL render and lifecycle diagnostic.
  * This tests pixels from the selected renderer, not package integration.
  */
 #include <sys/types.h>
+
+#if defined(EMBER_DESKTOP_GL) && !defined(EMBER_EPOXY_DISPATCH)
+#error "Desktop OpenGL acceptance requires libepoxy dispatch"
+#endif
 
 #ifdef EMBER_EPOXY_DISPATCH
 #include <epoxy/egl.h>
@@ -97,15 +101,27 @@ draw(GLsizei width, GLsizei height)
 	static const GLfloat vertices[] = { -1, -1, 1, -1, 0, 1 };
 	GLuint texture, framebuffer, vertex, fragment, invalid, program, buffer;
 	GLint linked;
+#ifdef EMBER_DESKTOP_GL
+	GLuint vertex_array;
+#endif
 
 	invalid = shader(GL_FRAGMENT_SHADER, "this is not valid GLSL", 0);
 	glDeleteShader(invalid);
+#ifdef EMBER_DESKTOP_GL
+	vertex = shader(GL_VERTEX_SHADER,
+	    "#version 140\nin vec2 position; void main() {"
+	    "gl_Position = vec4(position, 0.0, 1.0); }", 1);
+	fragment = shader(GL_FRAGMENT_SHADER,
+	    "#version 140\nout vec4 color; void main() {"
+	    "color = vec4(0.0, 1.0, 0.0, 1.0); }", 1);
+#else
 	vertex = shader(GL_VERTEX_SHADER,
 	    "attribute vec2 position; void main() {"
 	    "gl_Position = vec4(position, 0.0, 1.0); }", 1);
 	fragment = shader(GL_FRAGMENT_SHADER,
 	    "precision mediump float; void main() {"
 	    "gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0); }", 1);
+#endif
 	program = glCreateProgram();
 	glAttachShader(program, vertex);
 	glAttachShader(program, fragment);
@@ -131,6 +147,10 @@ draw(GLsizei width, GLsizei height)
 	glClearColor(1, 0, 0, 1);
 	glClear(GL_COLOR_BUFFER_BIT);
 	expect_pixel(width / 2, height / 2, 255, 0);
+#ifdef EMBER_DESKTOP_GL
+	glGenVertexArrays(1, &vertex_array);
+	glBindVertexArray(vertex_array);
+#endif
 	glGenBuffers(1, &buffer);
 	glBindBuffer(GL_ARRAY_BUFFER, buffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
@@ -142,6 +162,9 @@ draw(GLsizei width, GLsizei height)
 		fail("draw and finish");
 	expect_pixel(width / 2, height / 2, 0, 255);
 	expect_pixel(0, height - 1, 255, 0);
+#ifdef EMBER_DESKTOP_GL
+	glDeleteVertexArrays(1, &vertex_array);
+#endif
 	glDeleteBuffers(1, &buffer);
 	glDeleteFramebuffers(1, &framebuffer);
 	glDeleteTextures(1, &texture);
@@ -155,12 +178,23 @@ draw(GLsizei width, GLsizei height)
 int
 main(int argc, char **argv)
 {
-	const EGLint config_attributes[] = {
-		EGL_SURFACE_TYPE, 0, EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-		EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_NONE
+#ifdef EMBER_DESKTOP_GL
+	const EGLenum api = EGL_OPENGL_API;
+	const EGLint renderable = EGL_OPENGL_BIT;
+	const EGLint context_attributes[] = {
+		EGL_CONTEXT_MAJOR_VERSION, 3, EGL_CONTEXT_MINOR_VERSION, 1,
+		EGL_NONE
 	};
+#else
+	const EGLenum api = EGL_OPENGL_ES_API;
+	const EGLint renderable = EGL_OPENGL_ES2_BIT;
 	const EGLint context_attributes[] = {
 		EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE
+	};
+#endif
+	const EGLint config_attributes[] = {
+		EGL_SURFACE_TYPE, 0, EGL_RENDERABLE_TYPE, renderable,
+		EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_NONE
 	};
 	PFNEGLGETPLATFORMDISPLAYEXTPROC get_display;
 	struct gbm_device *gbm = NULL;
@@ -215,7 +249,7 @@ main(int argc, char **argv)
 		if (display == EGL_NO_DISPLAY ||
 		    !eglInitialize(display, &major, &minor))
 			fail("eglInitialize");
-		if (!eglBindAPI(EGL_OPENGL_ES_API) ||
+		if (!eglBindAPI(api) ||
 		    !eglChooseConfig(display, config_attributes, &config, 1, &count) ||
 		    count != 1)
 			fail("EGL config");
@@ -224,6 +258,10 @@ main(int argc, char **argv)
 		if (context == EGL_NO_CONTEXT ||
 		    !eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, context))
 			fail("EGL context");
+#ifdef EMBER_DESKTOP_GL
+		if (!epoxy_is_desktop_gl() || epoxy_gl_version() < 31)
+			fail("desktop OpenGL 3.1 required");
+#endif
 		renderer = (const char *)glGetString(GL_RENDERER);
 		if (renderer == NULL || strstr(renderer, argv[2]) == NULL) {
 			fprintf(stderr, "Renderer: %s; required substring: %s\n",

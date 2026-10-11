@@ -96,10 +96,10 @@ runtime behavior are validated.
   installs normally and passes four llvmpipe/LLVM23 EGL pixel lifecycles and
   all 37 upstream invocations on Zero 3W; one internal case skips and nine
   NIR cases remain disabled. The current [CM5 V3D package](profiles/common-graphics/cross/mesa-cm5.md)
-  passes hardware GLES 3.0 shader/pixel lifecycles at 16x16 and 1280x800,
+  passes hardware GLES 3.0 and desktop OpenGL 3.1 shader/pixel lifecycles,
   automatic platform discovery and all 38 selected upstream invocations.
   Same-device PRIME and EGLImage also pass on CM5 after OS lifetime repairs.
-  Remote Plasma remains a separate gate.
+  HDMI presentation and Plasma remain separate gates.
   The nb2 XCB pkg-config correction preserves
   byte-identical Mesa libraries. Installed [libepoxy](profiles/common-graphics/cross/epoxy.md)
   passes real dispatch through those providers and four pure upstream tests.

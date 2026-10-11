@@ -130,3 +130,50 @@ Physical Mesa PRIME/1280x800 log SHA256: `f147b8050b4ad7743ea2d945056ae49855bbf9
 The unchanged default helper policy still selects explicit llvmpipe for the
 older VM comparison. V3D mode rejects software overrides and checks the
 actual renderer. Three callback and five provider-refusal controls pass.
+
+## Desktop OpenGL, 2026-10-11
+
+The same installed kernel and package closure also pass desktop OpenGL **3.1**
+through EGL 1.5 and `V3D 7.1.10.2`. This covers the desktop-GL API selected by
+Qtbase 6.12; it does not establish Qt or KWin integration.
+The cross-built consumer requests GL 3.1, verifies libepoxy's actual API/version,
+uses GLSL 1.40 vertex/fragment shaders and a vertex array, rejects invalid GLSL,
+and checks clear, triangle and outside pixels before destroying each context.
+Four 1280x800 cycles pass with the explicit render node and four with automatic
+surfaceless discovery. Four GLES cycles still pass after reboot. A deliberate
+renderer mismatch and overflowing dimensions are rejected. Explicit llvmpipe
+comparison passes four cycles and reports desktop GL 4.6 with LLVM 23.1.2.
+
+Cross-build the consumer on the development host:
+
+```sh
+ruby ../tests/mesa-pkgconfig.rb /absolute/cross-tools /absolute/emberbsd-sysroot \
+    /absolute/host/bin/pkg-config /absolute/new-desktop-gl-work desktop-gl
+```
+
+Transfer the resulting `epoxy-pkgconfig-render`, verify its checksum, then run
+on CM5 with no library/driver overrides and a bounded execution time:
+
+```sh
+/usr/bin/timeout -k 5 30 /absolute/epoxy-pkgconfig-render /dev/dri/renderD128 V3D 1280 800
+/usr/bin/timeout -k 5 30 /absolute/epoxy-pkgconfig-render surfaceless V3D 1280 800
+```
+
+Both uploaded consumers and all 30 live package libraries matched the recorded
+cross sysroot. The test executable SHA256 is
+`3ab2c48783ef7e90e503f245c51646f338e32c1659e9272d6d3e269961e791b4`.
+The render-node log SHA256 is
+`74b62f9c1766132c4b93a890d3e313b28c26117a57e118ec4bd7e2740281b3eb`.
+GCC16 Analyzer emits no findings; Cppcheck 2.22 with target-preprocessed source
+retains the same six inherited diagnostics: three scope suggestions, two loader
+callback const suggestions, and an incorrect assumption that `strtol` cannot
+change `errno`. Runtime overflow rejection passed. No new diagnostic appeared.
+The existing loader-callback contracts pass. Valgrind is unavailable on this
+AArch64 setup; no Valgrind pass is claimed.
+
+The first presentation target is now **HDMI**, followed by remote Plasma.
+On the same CM5, a reboot with the monitor connected still produced no firmware
+image or signal according to the operator. The live FDT has no framebuffer,
+there is no attached wsdisplay, and `/dev/ttyE0` reports `Device not configured`.
+The accepted kernel and boot configuration hashes stayed unchanged. HDMI/GOP,
+KMS and Plasma session acceptance remain separate from the working render node.
