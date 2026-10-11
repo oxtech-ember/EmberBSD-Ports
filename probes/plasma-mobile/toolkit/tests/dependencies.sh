@@ -34,7 +34,7 @@ grep -q 'requires the common build-tools profile' "$work/missing-common.log"
 (cd "$work" && "$make" -r -m / OPSYS=NetBSD OS_VERSION=11.0 MACHINE_ARCH=aarch64 PREFIX=/usr/pkg LOCALBASE=/usr/pkg EMBERBSD_COMMON_TOOLS=yes PKGPATH=x11/qt6-qtbase)
 for variable in BUILDLINK_API_DEPENDS.MesaLib BUILDLINK_ABI_DEPENDS.MesaLib; do
     value=$(cd "$work" && "$make" -r -m / OPSYS=NetBSD OS_VERSION=11.0 MACHINE_ARCH=aarch64 PREFIX=/usr/pkg LOCALBASE=/usr/pkg EMBERBSD_COMMON_TOOLS=yes PKGPATH=x11/qt6-qtbase -V "$variable")
-    [ "$(printf '%s\n' "$value" | tr ' ' '\n' | sort -u)" = 'MesaLib>=26.2.4' ]
+    [ "$(printf '%s\n' "$value" | tr ' ' '\n' | sort -u)" = "$(printf '%s\n' 'MesaLib>=26.2.4' 'MesaLib>=26.2.4nb3')" ]
 done
 for variable in USE_BUILTIN.MesaLib USE_BUILTIN.glu USE_BUILTIN.libdrm; do
     value=$(cd "$work" && "$make" -r -m / OPSYS=NetBSD OS_VERSION=11.0 MACHINE_ARCH=aarch64 PREFIX=/usr/pkg LOCALBASE=/usr/pkg EMBERBSD_COMMON_TOOLS=yes PKGPATH=x11/qt6-qtbase -V "$variable")
@@ -46,3 +46,17 @@ done
 if (cd "$work" && "$make" -r -m / OPSYS=NetBSD OS_VERSION=11.0 MACHINE_ARCH=aarch64 PREFIX=/usr/pkg LOCALBASE=/usr/pkg EMBERBSD_COMMON_TOOLS=yes EMBERBSD_COMMON_MEDIA=no PKGPATH=multimedia/qt6-qtmultimedia) > "$work/missing-media.log" 2>&1; then exit 1; fi
 grep -q 'requires the common FFmpeg 9 media profile' "$work/missing-media.log"
 echo 'PASS: common media required, old FFmpeg rejected, migrated consumers accepted and Mesa/libdrm selection retained'
+# Native tool recursion must preserve the host compiler and job count. The
+# old target-only profiles rejected this before xmlstarlet could build.
+"$make" -C "$work" -r -m / OPSYS=Darwin OS_VERSION=27.0 MACHINE_ARCH=arm64 \
+    PREFIX=/host LOCALBASE=/host EMBERBSD_COMMON_GRAPHICS_CROSS=yes \
+    USE_CROSS_COMPILE=no PKGPATH=textproc/xmlstarlet \
+    PKGSRC_COMPILER=clang MAKE_JOBS=4 > "$work/host-recursion.log" 2>&1
+for pair in PKGSRC_COMPILER:clang MAKE_JOBS:4; do
+    value=$("$make" -C "$work" -r -m / OPSYS=Darwin OS_VERSION=27.0 MACHINE_ARCH=arm64 \
+        PREFIX=/host LOCALBASE=/host EMBERBSD_COMMON_GRAPHICS_CROSS=yes \
+        USE_CROSS_COMPILE=no PKGPATH=textproc/xmlstarlet \
+        PKGSRC_COMPILER=clang MAKE_JOBS=4 -V "${pair%:*}")
+    [ "$value" = "${pair#*:}" ]
+done
+echo 'PASS: native tool recursion preserves host settings without target dependency policy'

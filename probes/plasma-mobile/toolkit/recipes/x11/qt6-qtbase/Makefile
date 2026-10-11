@@ -49,7 +49,10 @@ CONFIGURE_ARGS+=	-system-zlib
 CONFIGURE_ARGS+=	-avoid_cmake_archiving_api
 CONFIGURE_ARGS+=	-no-bundled-xcb-xinput
 
-USE_TOOLS+=		bash:run
+# Keep target script dependencies separate from executable build-host tools.
+# pkgsrc rejects :run tools in a Darwin-to-NetBSD cross build.
+USE_TOOLS+=		bash:build
+DEPENDS+=		bash-[0-9]*:../../shells/bash
 
 .include "../../mk/bsd.prefs.mk"
 
