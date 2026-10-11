@@ -194,6 +194,10 @@ loader paths without global PaX changes or a private LLVM runtime. This is
 focused AArch64 execution evidence, not the full LLVM upstream suite or
 acceptance of other backends, concurrent JIT or arbitrary external relocations.
 
+The [Clang cross workflow](cross/clang.md) provides matching host generators,
+target-only installed paths and checked GCC16 metadata. Its preparation checks
+pass; full target Clang packaging and execution remain pending.
+
 ## Remaining native gates
 
 Use normal package/check-files, WRKREF, RPATH, dependency and upstream checks.

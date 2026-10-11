@@ -14,12 +14,31 @@ USE_CXX_FEATURES=	c++17
 USE_LANGUAGES=		c c++
 GCC_REQD+=		16.2
 
-CMAKE_CONFIGURE_ARGS+=	-DLLVM_DIR=${BUILDLINK_PREFIX.llvm:Q}/lib/cmake/llvm
+CMAKE_CONFIGURE_ARGS+=	-DLLVM_DIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.llvm}/lib/cmake/llvm
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_BUILD_TYPE=Release
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_C_COMPILER=${CC:Q}
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_CXX_COMPILER=${CXX:Q}
-CMAKE_CONFIGURE_ARGS+=	-DLLVM_CMAKE_DIR=${BUILDLINK_PREFIX.llvm:Q}/lib/cmake/llvm
-CMAKE_CONFIGURE_ARGS+=	-DPython3_EXECUTABLE=${PYTHONBIN:Q}
+CMAKE_CONFIGURE_ARGS+=	-DLLVM_CMAKE_DIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.llvm}/lib/cmake/llvm
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.for _clang_host_input in EMBERBSD_CROSS_BUILD_PYTHON EMBERBSD_LLVM_NATIVE_TOOLS EMBERBSD_CLANG_TABLEGEN EMBERBSD_CROSS_LLVM_CONFIG
+.if empty(${_clang_host_input}:M/*) || !exists(${${_clang_host_input}})
+PKG_FAIL_REASON+= "${_clang_host_input} must select the matching build-host tool"
+.endif
+.endfor
+.include "../../lang/llvm/cross.mk"
+_EMBERBSD_CLANG_TABLEGEN_VERSION!= if test -x ${EMBERBSD_CLANG_TABLEGEN:Q} && \
+    ember_clang_banner=$$(${EMBERBSD_CLANG_TABLEGEN:Q} --version); then \
+    printf '%s\n' "$$ember_clang_banner" | ${AWK} '/LLVM version/ { print $$NF; exit }'; fi
+.if ${_EMBERBSD_CLANG_TABLEGEN_VERSION:U} != ${LLVM_VERSION}
+PKG_FAIL_REASON+= "clang-tblgen must execute on the build host and report LLVM ${LLVM_VERSION}"
+.endif
+LLVM_CONFIG_PATH= ${EMBERBSD_CROSS_LLVM_CONFIG}
+CMAKE_CONFIGURE_ARGS+= -DPython3_EXECUTABLE=${EMBERBSD_CROSS_BUILD_PYTHON:Q}
+CMAKE_CONFIGURE_ARGS+= -DLLVM_TABLEGEN_EXE=${EMBERBSD_LLVM_NATIVE_TOOLS:Q}/llvm-tblgen
+CMAKE_CONFIGURE_ARGS+= -DCLANG_TABLEGEN=${EMBERBSD_CLANG_TABLEGEN:Q}
+.else
+CMAKE_CONFIGURE_ARGS+= -DPython3_EXECUTABLE=${PYTHONBIN:Q}
+.endif
 CMAKE_CONFIGURE_ARGS+=	-DLIBCLANG_BUILD_STATIC=ON
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_INSTALL_TOOLCHAIN_ONLY=OFF
 
@@ -165,8 +184,13 @@ PLIST_SRC= ${PKGDIR}/PLIST ${WRKDIR}/native-config/PLIST
 INSTALLATION_DIRS+= etc/clang
 
 post-build:
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+	${SH} ${FILESDIR}/cross-gcc-config.sh ${CC:Q} ${LLVM_CONFIG_PATH:Q} \
+	    ${CROSS_DESTDIR:Q} ${LOCALBASE}/gcc16 ${WRKDIR}/native-config
+.else
 	${SH} ${FILESDIR}/native-gcc-config.sh ${LOCALBASE}/gcc16/bin/gcc \
 	    ${CMAKE_BUILD_DIR}/bin/clang ${LOCALBASE}/gcc16 ${WRKDIR}/native-config
+.endif
 
 post-install:
 	${INSTALL_DATA} ${WRKDIR}/native-config/*.cfg ${DESTDIR}${PREFIX}/etc/clang/
