@@ -11,6 +11,8 @@ for mode in native cross; do
     cat > "$work/$mode.mk.conf" <<EOF
 .include "$conf"
 .undef EMBERBSD_BUILD_CMAKE
+.undef TOOLS_PLATFORM.cmake
+.undef TOOLS_PLATFORM.cpack
 EOF
     "$bmake" -C "$pkgsrc/devel/re2c" MAKECONF="$work/$mode.mk.conf" \
         -v TOOL_DEPENDS > "$work/$mode-default.txt"
@@ -22,6 +24,14 @@ EOF
     if grep -E ':../../devel/cmake|EMBERBSD_BUILD_CMAKE must' "$work/$mode-selected.txt"; then
         echo 'Host CMake was not selected without a redundant package dependency' >&2; exit 1
     fi
+# Qt uses USE_TOOLS directly, without including devel/cmake/build.mk.
+"$bmake" -C "$pkgsrc/x11/qt6-qtbase" MAKECONF="$work/$mode.mk.conf" \
+    EMBERBSD_BUILD_CMAKE="$cmake" -v TOOLS_PATH.cmake -v TOOL_DEPENDS \
+    > "$work/$mode-qt-tools.txt"
+grep -Fxq "$cmake" "$work/$mode-qt-tools.txt"
+if grep -q ':../../devel/cmake' "$work/$mode-qt-tools.txt"; then
+    echo 'Qt selected a redundant native CMake package' >&2; exit 1
+fi
 done
 cat > "$work/old-cmake" <<'SH'
 #!/bin/sh
