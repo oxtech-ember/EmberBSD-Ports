@@ -7,7 +7,7 @@ It does not install another Qt prefix for Plasma. Final package paths remain
 `/usr/pkg` and `/usr/pkg/qt6` inside the common staging environment.
 
 **Source checks pass; target packages and the Plasma session are not
-accepted.** In particular, the inherited PLISTs still require native staging
+accepted.** In particular, the inherited PLISTs still require target staging
 and `check-files`. This export is not a command to upgrade an active desktop.
 See the [migration sequence](MIGRATION.md) and the
 [actual Mobile graphics contract](../kwin/MOBILE-GRAPHICS-CONTRACT.md).
@@ -31,7 +31,9 @@ reject older command-line versions and unprepared Qt/Frameworks recipe paths.
 Buildlink requirements select the new versions, including transitive consumers.
 Qt's common build and consumer files require GCC 16.2.
 
-For a native build, a private MAKECONF includes the exported
+Cross-build on the development host using the [cross workflow](cross/README.md).
+The board installs the resulting packages and runs acceptance tests.
+For an alternative native build, a private MAKECONF includes the exported
 `EMBERBSD-COMMON-TOOLS-MK.CONF`, then
 `EMBERBSD-COMMON-GRAPHICS-MK.CONF`,
 `EMBERBSD-COMMON-MEDIA-MK.CONF` and finally
@@ -42,7 +44,7 @@ Qt Multimedia/KFileMetadata recipes use the
 The toolkit requires the [common graphics source profile](../../../profiles/common-graphics/README.md)
 with Mesa26.2.4nb3/libdrm2.4.134nb2 and disables native GL/GLU/DRM providers.
 Qtbase selects its EGL-device PLIST from the canonical package header;
-configuration, installed plugin contents and native check-files remain gates.
+configuration, installed plugin contents and target check-files remain gates.
 Cross builds use the [cross workflow](cross/README.md). Native tools retain
 their host compiler; the cross caller selects parallelism. Package and consumer
 acceptance remains separate from source checks.
@@ -70,6 +72,15 @@ size and pkgsrc's RCS-filtered patch SHA1.
 | Qt Quick Test Solaris linker option | Refresh context around the Android target block. |
 | Qt audio temporary buffer | Refresh context around the upstream nonblocking annotation; retain the NetBSD alloca branch. |
 | Qt FFmpeg VAAPI linkage | Link VAAPI directly on platforms where the Linux/Android stub helpers are unavailable, even when FFmpeg metadata lists `va`. Preserve Linux/Android stub selection. |
+
+The [CUPS dependency delta](current-cups.patch) selects OpenPrinting CUPS 2.4.20
+(2026-10-05) for Qt printing. It records the original release archive and SHA256,
+updates pkgsrc checksums and retains the existing portability patches. It also
+selects GSS headers by target OS and uses pkgsrc's selected Kerberos configuration
+script, preventing Darwin framework flags from entering an EmberBSD build.
+On 2026-10-11, the GCC16 macOS-to-AArch64 libcups package build, staging checks
+and `tests/cups-cross-settings.sh` passed. The test checks the actual configure
+outputs and linked target ELF; printing and target runtime are not yet accepted.
 
 The remaining pkgsrc patches apply to the verified sources with zero fuzz.
 Frameworks 6.31.0 was released on 9 October 2026. Its 69 Frameworks/ECM
@@ -111,4 +122,4 @@ exports, checking temporary-archive cleanup and preservation of a caller-owned
 archive with the same name as a toolkit distfile. It needs space for two exports.
 
 Package manifests, installed tools, QDoc with real LLVM 23, Qt plugins,
-Wayland/OpenGL, codecs, and the complete Mobile workflow remain native gates.
+Wayland/OpenGL, codecs, and the complete Mobile workflow require target acceptance.

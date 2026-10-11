@@ -332,6 +332,7 @@ if [ "$profile" = plasma-mobile ]; then
         rm -rf "$destination/$recipe"
         cp -R "$toolkit/recipes/$recipe" "$destination/$recipe"
     done < "$toolkit/sources.tsv"
+    patch -f -N -d "$destination" -p1 -F 0 < "$toolkit/current-cups.patch"
     cp -R "$toolkit/shared/." "$destination/"
     cp "$toolkit/mk.conf" "$destination/EMBERBSD-PLASMA-TOOLKIT-MK.CONF"
 fi

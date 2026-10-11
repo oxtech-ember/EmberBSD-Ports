@@ -1,0 +1,108 @@
+From: EmberBSD (AI-assisted)
+Subject: Select CUPS 2.4.20 for the common Qt printing provider
+
+Upstream: https://github.com/OpenPrinting/cups/releases/tag/v2.4.20
+Released: 2026-10-05
+Archive: https://github.com/OpenPrinting/cups/releases/download/v2.4.20/cups-2.4.20-source.tar.gz
+SHA256: ab4d9cd7f3e58060091d2b24972223d6401675f11c49b65abf4f6ef31dea22ff
+
+Preserve the pinned pkgsrc recipes and portability patches.
+
+--- a/print/cups/Makefile.common
++++ b/print/cups/Makefile.common
+@@ -4,7 +4,7 @@
+ # used by print/cups-base/Makefile
+ # used by print/libcups/Makefile
+ 
+-CUPS_VERS=	2.4.19
++CUPS_VERS=	2.4.20
+ DISTNAME=	cups-${CUPS_VERS}-source
+ CATEGORIES=	print
+ 
+--- a/print/cups/Makefile
++++ b/print/cups/Makefile
+@@ -1,6 +1,5 @@
+ # $NetBSD: Makefile,v 1.304 2026/09/02 19:04:07 wiz Exp $
+ 
+-PKGREVISION= 2
+ .include "../../print/cups/Makefile.common"
+ 
+ PKGNAME=	cups-${CUPS_VERS}
+--- a/print/cups-base/Makefile
++++ b/print/cups-base/Makefile
+@@ -1,6 +1,5 @@
+ # $NetBSD: Makefile,v 1.86 2026/09/02 19:04:07 wiz Exp $
+ 
+-PKGREVISION= 2
+ .include "../../print/cups/Makefile.common"
+ 
+ PKGNAME=	cups-base-${CUPS_VERS}
+--- a/print/libcups/Makefile
++++ b/print/libcups/Makefile
+@@ -1,6 +1,5 @@
+ # $NetBSD: Makefile,v 1.51 2026/09/02 19:04:09 wiz Exp $
+ 
+-PKGREVISION= 2
+ .include "../../print/cups/Makefile.common"
+ 
+ PKGNAME=	libcups-${CUPS_VERS}
+--- a/print/cups-base/distinfo
++++ b/print/cups-base/distinfo
+@@ -1,8 +1,8 @@
+ $NetBSD: distinfo,v 1.50 2026/05/03 14:29:18 wiz Exp $
+ 
+-BLAKE2s (cups-2.4.19-source.tar.gz) = 4e7e7745a71c8b2d5554e2177ca698a34fff2ecfcdd219bc364afcc4fea85368
+-SHA512 (cups-2.4.19-source.tar.gz) = 3d7f7bd448afc54011e98cc3f6a6cfe704bdae58a1e0cdde19f95ed0b4956b518c6e0a64277c99daa38b26d3ddf23033a4135cc21c3e5d7602731789024fa287
+-Size (cups-2.4.19-source.tar.gz) = 7950335 bytes
++BLAKE2s (cups-2.4.20-source.tar.gz) = 806705e9e81cd6aa3ac028d87e609b67131f1caf31c13fb31d1413e1b3e93079
++SHA512 (cups-2.4.20-source.tar.gz) = 50be40e33662b32514ef7026a86c80970b2122fd187f32f4b704293468e615c1fcd6eb6575992f84856012a01b0e599a524ac6dd8630d073144b50cc5d6bd683
++Size (cups-2.4.20-source.tar.gz) = 8164882 bytes
+ SHA1 (patch-ae) = 7f12aa886208f9e634d5c3fd3bc1fd4a385f22a6
+ SHA1 (patch-ai) = d4aa1b59c77fa2cbf614eb661d9a791311b399c2
+ SHA1 (patch-at) = 9517bff0bf2c892f0723a25f243ba188f7781393
+@@ -22,3 +22,4 @@
+ SHA1 (patch-scheduler_auth.c) = 5d6505917dd11e6fe71a3fa9217075d7248cfe23
+ SHA1 (patch-scheduler_dirsvc.c) = 1dba98dc171df733acb99e5f31ad838845a917bc
+ SHA1 (patch-tools_ippfind.c) = f0774fcf5ece380fd6fa09adb3c068910ddfa367
++SHA1 (patch-config-scripts_cups-gssapi-target) = 60e36385b5a3e9ea3153011c943a63a6a406e420
+--- a/print/libcups/options.mk
++++ b/print/libcups/options.mk
+@@ -44,6 +44,8 @@
+ .if !empty(PKG_OPTIONS:Mkerberos)
+ .include "../../mk/krb5.buildlink3.mk"
+ CONFIGURE_ARGS+=	--enable-gssapi
++# CUPS uses a different variable name from pkgsrc's selected Kerberos provider.
++CONFIGURE_ENV+=	KRB5CONFIG=${KRB5_CONFIG:Q}
+ .else
+ CONFIGURE_ARGS+=	--disable-gssapi
+ .endif
+--- a/print/cups-base/options.mk
++++ b/print/cups-base/options.mk
+@@ -70,6 +70,8 @@
+ .if !empty(PKG_OPTIONS:Mkerberos)
+ .include "../../mk/krb5.buildlink3.mk"
+ CONFIGURE_ARGS+=	--enable-gssapi
++# CUPS uses a different variable name from pkgsrc's selected Kerberos provider.
++CONFIGURE_ENV+=	KRB5CONFIG=${KRB5_CONFIG:Q}
+ .else
+ CONFIGURE_ARGS+=	--disable-gssapi
+ .endif
+--- a/print/cups-base/patches/patch-config-scripts_cups-gssapi-target
++++ b/print/cups-base/patches/patch-config-scripts_cups-gssapi-target
+@@ -0,0 +1,16 @@
++$NetBSD$
++
++Origin: EmberBSD (AI-assisted). Select GSS headers for the target OS.
++A Darwin build host may have GSS.framework while the target uses Heimdal.
++
++--- config-scripts/cups-gssapi.m4.orig
+++++ config-scripts/cups-gssapi.m4
++@@ -50,7 +50,7 @@
++     ])
++ 
++     AC_CHECK_HEADER([krb5.h], [AC_DEFINE([HAVE_KRB5_H], [1], [Have <krb5.h> header?])])
++-    AS_IF([test -d /System/Library/Frameworks/GSS.framework], [
+++    AS_CASE(["$host_os_name"], [darwin*], [
++ 	AC_CHECK_HEADER([GSS/gssapi.h], [AC_DEFINE([HAVE_GSS_GSSAPI_H], [1], [Have <GSS/gssapi.h> header?])])
++ 	AC_CHECK_HEADER([GSS/gssapi_generic.h], [AC_DEFINE([HAVE_GSS_GSSAPI_GENERIC_H], [1], [Have <GSS/gssapi_generic.h> header?])])
++ 	AC_CHECK_HEADER([GSS/gssapi_spi.h], [AC_DEFINE([HAVE_GSS_GSSAPI_SPI_H], [1], [Have <GSS/gssapi_spi.h> header?])])

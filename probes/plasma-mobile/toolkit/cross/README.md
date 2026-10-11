@@ -77,8 +77,6 @@ actual QtTest library even when tests are disabled. Both are in the recipe.
 
 ## Target package build
 
-
-
 Prepare a new `plasma-mobile` pkgsrc export. Use the existing
 [common cross configuration](../../../../profiles/common-build-tools/cross/README.md)
 and the fork's verified sysroot. Include the exported common graphics,
