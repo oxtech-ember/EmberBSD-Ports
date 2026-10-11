@@ -1,0 +1,84 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Keep native runtime tests; cross builds require
+explicit target measurements for kqueue and path-descriptor behavior. Unknown
+or missing results fail instead of guessing from the host OS.
+
+--- configure.ac.orig
++++ configure.ac
+@@ -1,4 +1,10 @@
+ AC_INIT([libinotify],[20240724],[https://github.com/libinotify-kqueue/libinotify-kqueue/],[libinotify])
++AC_ARG_VAR([ember_cv_note_extend_to], [Measured target note_extend_to behavior: yes or no; required for cross builds])
++AC_ARG_VAR([ember_cv_note_extend_from], [Measured target note_extend_from behavior: yes or no; required for cross builds])
++AC_ARG_VAR([ember_cv_o_path], [Measured target o_path behavior: yes or no; required for cross builds])
++AC_ARG_VAR([ember_cv_o_empty_path], [Measured target o_empty_path behavior: yes or no; required for cross builds])
++AC_ARG_VAR([ember_cv_at_empty_path], [Measured target at_empty_path behavior: yes or no; required for cross builds])
++
+ AM_INIT_AUTOMAKE([foreign subdir-objects])
+ AC_CONFIG_SRCDIR([configure.ac])
+ AC_CONFIG_HEADERS([config.h])
+@@ -290,7 +296,11 @@
+     AC_DEFINE([HAVE_NOTE_EXTEND_ON_MOVE_TO],[1],[Define to 1 if move_to sets NODE_EXTEND flag])
+     AC_MSG_RESULT(yes)
+ ],
+-    AC_MSG_RESULT(no)
++    AC_MSG_RESULT(no),
++    [AS_CASE([$ember_cv_note_extend_to],
++        [yes], [AC_DEFINE([HAVE_NOTE_EXTEND_ON_MOVE_TO],[1],[Define to 1 if move_to sets NODE_EXTEND flag]) AC_MSG_RESULT(yes)],
++        [no], [AC_MSG_RESULT(no)],
++        [AC_MSG_FAILURE([Set ember_cv_note_extend_to to a measured target result (yes or no)])])]
+ )
+ 
+ AC_MSG_CHECKING(for NOTE_EXTEND on moving of a file from the watched subdirectory)
+@@ -323,7 +333,11 @@
+     AC_DEFINE([HAVE_NOTE_EXTEND_ON_MOVE_FROM],[1],[Define to 1 if move_from sets NODE_EXTEND flag])
+     AC_MSG_RESULT(yes)
+ ],
+-    AC_MSG_RESULT(no)
++    AC_MSG_RESULT(no),
++    [AS_CASE([$ember_cv_note_extend_from],
++        [yes], [AC_DEFINE([HAVE_NOTE_EXTEND_ON_MOVE_FROM],[1],[Define to 1 if move_from sets NODE_EXTEND flag]) AC_MSG_RESULT(yes)],
++        [no], [AC_MSG_RESULT(no)],
++        [AC_MSG_FAILURE([Set ember_cv_note_extend_from to a measured target result (yes or no)])])]
+ )
+ 
+ 
+@@ -346,7 +360,11 @@
+     AC_DEFINE([HAVE_O_PATH],[1],[Define to 1 if open supports O_PATH flag])
+     have_o_path=yes
+ ],
+-    have_o_path=no
++    have_o_path=no,
++    [AS_CASE([$ember_cv_o_path],
++        [yes], [AC_DEFINE([HAVE_O_PATH],[1],[Define to 1 if open supports O_PATH flag]) have_o_path=yes],
++        [no], [have_o_path=no],
++        [AC_MSG_FAILURE([Set ember_cv_o_path to a measured target result (yes or no)])])]
+ )
+ AC_MSG_RESULT($have_o_path)
+ 
+@@ -362,7 +380,11 @@
+         AC_DEFINE([HAVE_O_EMPTY_PATH],[1],[Define to 1 if openat supports O_EMPTY_PATH flag])
+         AC_MSG_RESULT(yes)
+     ],
+-        AC_MSG_RESULT(no)
++        AC_MSG_RESULT(no),
++    [AS_CASE([$ember_cv_o_empty_path],
++        [yes], [AC_DEFINE([HAVE_O_EMPTY_PATH],[1],[Define to 1 if openat supports O_EMPTY_PATH flag]) AC_MSG_RESULT(yes)],
++        [no], [AC_MSG_RESULT(no)],
++        [AC_MSG_FAILURE([Set ember_cv_o_empty_path to a measured target result (yes or no)])])]
+     )
+ fi
+ 
+@@ -385,7 +407,11 @@
+         AC_DEFINE([HAVE_AT_EMPTY_PATH],[1],[Define to 1 if faccessat supports AT_EMPTY_PATH flag])
+         AC_MSG_RESULT(yes)
+     ],
+-        AC_MSG_RESULT(no)
++        AC_MSG_RESULT(no),
++    [AS_CASE([$ember_cv_at_empty_path],
++        [yes], [AC_DEFINE([HAVE_AT_EMPTY_PATH],[1],[Define to 1 if faccessat supports AT_EMPTY_PATH flag]) AC_MSG_RESULT(yes)],
++        [no], [AC_MSG_RESULT(no)],
++        [AC_MSG_FAILURE([Set ember_cv_at_empty_path to a measured target result (yes or no)])])]
+     )
+ fi
+ rm -rf iktestdir

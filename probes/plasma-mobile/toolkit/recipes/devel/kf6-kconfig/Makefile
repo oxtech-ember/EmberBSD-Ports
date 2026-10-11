@@ -12,5 +12,6 @@ LICENSE=	gnu-lgpl-v2.1
 CMAKE_CONFIGURE_ARGS+=	-DBUILD_TESTING=OFF
 
 .include "../../x11/qt6-qtbase/buildlink3.mk"
-.include "../../devel/qt6-qttools/buildlink3.mk"
+.include "../../devel/qt6-qttools/linguist.mk"
+.include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

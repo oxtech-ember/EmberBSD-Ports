@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: BSD-2-Clause
+File=settings.kcfg
+ClassName=Settings
+Inherits=KCoreConfigSkeleton
+Mutators=true

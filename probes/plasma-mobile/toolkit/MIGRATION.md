@@ -74,7 +74,8 @@ Qtbase, SVG, ShaderTools, ImageFormats, LanguageServer and Declarative pass cros
 The [CM5 Core/Gui/SVG consumer](tests/qt-consumer/README.md) also passes runtime
 and package lifecycle checks. The [Qt Wayland/EGL V3D consumer](tests/qt-wayland-gl/README.md) also passes on
 CM5 with an isolated labwc output. The [Qt Quick V3D consumer](tests/qt-quick-gpu/README.md)
-also passes compiled QML scene/layer pixels. The remaining module runtimes
+also passes compiled QML scene/layer pixels. The [Frameworks package receipt](cross/frameworks.md) records KI18n, KCoreAddons
+and KConfig cross builds. Their runtime and the remaining module runtimes
 remain unaccepted. The [common FFmpeg 9 profile](../../../profiles/common-media/README.md)
 owns Qt Multimedia/KFileMetadata dependencies; source and earlier host
 extractor checks do not accept complete multimedia playback. KWin, Plasma,

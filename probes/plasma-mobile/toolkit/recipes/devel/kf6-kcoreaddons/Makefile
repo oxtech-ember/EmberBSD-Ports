@@ -20,7 +20,8 @@ CMAKE_CONFIGURE_ARGS+=	-DENABLE_INOTIFY=OFF
 .endif
 
 .include "../../databases/shared-mime-info/buildlink3.mk"
-.include "../../devel/qt6-qttools/buildlink3.mk"
+.include "../../devel/qt6-qttools/linguist.mk"
+.include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../mk/fam.buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

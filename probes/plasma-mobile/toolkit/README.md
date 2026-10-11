@@ -28,6 +28,8 @@ development-toolchain recipe deltas, followed by this toolkit layer. The
 default, `development-toolchain` and `common-build-tools` modes retain their
 previous selection. No existing pkgsrc directory is overwritten.
 
+The toolkit also carries iso-codes 4.20.1 and the libinotify cross adaptation.
+
 The toolkit includes 22 Qt modules and all 68 Frameworks recipes present
 in the pinned pkgsrc, plus Extra CMake Modules. Their original recipes come
 from pkgsrc `fff4deb639a1a640476203c80f752fb77b6cb14b`. The shared version files
@@ -92,6 +94,10 @@ libidn2/GSettings releases and native cross-build generators for libproxy.
 Their focused source checks, curl metadata regression and CM5 API tests pass;
 complete installed desktop acceptance remains pending.
 
+The [Frameworks cross workflow](cross/frameworks.md) records accepted KI18n,
+KCoreAddons and KConfig package builds, native generators and measured
+libinotify configure behavior. Installed Frameworks runtime remains pending.
+
 The remaining pkgsrc patches apply to the verified sources with zero fuzz.
 Frameworks 6.31.0 was released on 9 October 2026. Its 69 Frameworks/ECM
 archives replace the unbuilt 6.30 candidate; they do not add a parallel provider.
@@ -109,7 +115,7 @@ sh probes/plasma-mobile/toolkit/tests/source-profile.sh \
     /absolute/verified-distfiles /absolute/new-source-check
 ```
 
-The check covers all 91 archives, recorded patch hashes and forward applications,
+The check covers all 93 archives, recorded patch hashes and forward applications,
 corrupted archive rejection, repeated/missing patch rejection, incorrect
 unfiltered RCS hashes, recipe/version selection and exact toolkit export.
 It compares the exported common recipes and configuration with their existing

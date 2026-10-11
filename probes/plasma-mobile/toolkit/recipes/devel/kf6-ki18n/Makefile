@@ -7,7 +7,7 @@ HOMEPAGE=	https://community.kde.org/Frameworks
 COMMENT=	Advanced internationalization framework
 LICENSE=	modified-bsd AND gnu-lgpl-v2.1
 
-USE_TOOLS+=	msgfmt
+USE_TOOLS+=	msgfmt pkg-config
 
 CMAKE_CONFIGURE_ARGS+=	-DLibIntl_INCLUDE_DIRS=${BUILDLINK_PREFIX.gettext}/include
 

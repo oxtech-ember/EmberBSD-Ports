@@ -9,10 +9,8 @@ LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2.1
 
 .include "../../meta-pkgs/kde/kf6.mk"
 
-#USE_CXX_FEATURES+=	c++23    # <format> c++20 feature but not in gcc12
-
 TOOL_DEPENDS+=	gperf-[0-9]*:../../devel/gperf
 
-.include "../../devel/qt6-qttools/buildlink3.mk"
+.include "../../devel/qt6-qttools/linguist.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

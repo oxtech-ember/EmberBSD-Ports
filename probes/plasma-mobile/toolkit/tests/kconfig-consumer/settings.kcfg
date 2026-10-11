@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: BSD-2-Clause -->
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0">
+  <kcfgfile name="ember-kconfig-test"/>
+  <group name="Test">
+    <entry name="Value" type="Int"><default>42</default></entry>
+  </group>
+</kcfg>
