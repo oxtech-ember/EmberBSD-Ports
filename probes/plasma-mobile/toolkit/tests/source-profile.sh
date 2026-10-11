@@ -67,6 +67,8 @@ if awk -f "$verifier" -- -p "$pkg/distinfo" "$work/$name" > "$work/missing.log" 
 raw=$(shasum -a 1 "$pkg/patches/$name" | awk '{ print $1 }')
 sed "s/^SHA1 ($name) = .*/SHA1 ($name) = $raw/" "$pkg/distinfo" > "$work/raw-distinfo"
 if awk -f "$verifier" -- -p "$work/raw-distinfo" "$pkg/patches/$name" > "$work/raw.log" 2>&1; then exit 1; fi
+sh "$toolkit/tests/mkspecs-preservation.sh" "$toolkit/recipes/x11/qt6-qtbase" "$work/mkspecs-preservation"
+sh "$toolkit/tests/target-metadata.sh" "$toolkit/recipes/x11/qt6-qtbase" "$work/target-metadata"
 sh "$toolkit/tests/selection.sh" "$toolkit" "$work/selection"
 sh "$toolkit/tests/dependencies.sh" "$work/dependencies"
 sh "$toolkit/tests/ffmpeg-vaapi.sh" "$work/source/qtmultimedia-everywhere-src-6.12.0" "$work/ffmpeg"

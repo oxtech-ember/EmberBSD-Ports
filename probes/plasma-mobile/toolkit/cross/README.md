@@ -113,8 +113,9 @@ sh probes/plasma-mobile/toolkit/cross/check-target-configure.sh \
 ```
 
 This check examines the real CMake cache and executes the selected host tools.
-Complete target packaging, installed Qt consumers, plugin discovery and a
-remote KWin/Plasma session remain gates.
+[Qtbase, SVG, ShaderTools and ImageFormats packaging](qt-packages.md) now passes, including
+ordinary sysroot installation. Installed target consumers and plugin discovery
+remain gates. CM5 acceptance starts with HDMI, then a remote KWin/Plasma session.
 
 ## Path-only file transfer descriptors
 
@@ -134,5 +135,5 @@ The real GCC16 cross configuration has the portal format off and the existing
 Wayland/EGL/GBM features on; `check-target-configure.sh` verifies these together.
 When continuing an old build, remove only that feature's stale CMake cache entry
 with CMake's `-U` option before reconfiguration; do not delete the object tree.
-Target compilation has passed the original failing unit's stage. Packaging and
-an installed Qt application remain separate acceptance gates.
+Qtbase compilation and packaging pass with this correction. An installed
+Qt application on the target remains a separate acceptance gate.

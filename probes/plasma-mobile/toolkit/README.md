@@ -6,9 +6,10 @@ common GCC 16 / LLVM 23 userspace migration. It extends the existing
 It does not install another Qt prefix for Plasma. Final package paths remain
 `/usr/pkg` and `/usr/pkg/qt6` inside the common staging environment.
 
-**Source checks pass; target packages and the Plasma session are not
-accepted.** In particular, the inherited PLISTs still require target staging
-and `check-files`. This export is not a command to upgrade an active desktop.
+**Qtbase, SVG, ShaderTools and ImageFormats 6.12.0 cross packages pass normal package
+checks and installation into the build sysroot.** Their [package receipt](cross/qt-packages.md)
+separates this result from target runtime. The remaining modules and Plasma
+session are not accepted; their manifests still require actual target staging.
 See the [migration sequence](MIGRATION.md) and the
 [actual Mobile graphics contract](../kwin/MOBILE-GRAPHICS-CONTRACT.md).
 
@@ -44,7 +45,7 @@ Qt Multimedia/KFileMetadata recipes use the
 The toolkit requires the [common graphics source profile](../../../profiles/common-graphics/README.md)
 with Mesa26.2.4nb3/libdrm2.4.134nb2 and disables native GL/GLU/DRM providers.
 Qtbase selects its EGL-device PLIST from the canonical package header;
-configuration, installed plugin contents and target check-files remain gates.
+Qtbase configuration and target check-files pass. Runtime plugin discovery remains a gate.
 Cross builds use the [cross workflow](cross/README.md). Native tools retain
 their host compiler; the cross caller selects parallelism. Package and consumer
 acceptance remains separate from source checks.

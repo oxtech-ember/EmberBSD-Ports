@@ -316,8 +316,10 @@ runtime behavior are validated.
   the common OpenGL stack and an enabled KWin shortcut backend.
   [Qt 6.12/KF6.31 source recipes](probes/plasma-mobile/toolkit/README.md)
   and the [shared FFmpeg9 recipe](profiles/common-media/README.md) pass
-  source/export checks. Native audio API/registration and host metadata
-  extraction checks pass; the native package migration remains pending.
+  source/export checks. Qtbase, SVG, ShaderTools and ImageFormats 6.12.0 now pass
+  [Mac cross packaging and sysroot installation](probes/plasma-mobile/toolkit/cross/qt-packages.md).
+  Target Qt runtime and the complete Plasma migration remain pending. Native
+  audio API/registration and host metadata extraction checks pass.
 
 - [Openbox](probes/openbox/README.md) and
   [Enlightenment](probes/enlightenment/README.md): Openbox 3.6.1 and

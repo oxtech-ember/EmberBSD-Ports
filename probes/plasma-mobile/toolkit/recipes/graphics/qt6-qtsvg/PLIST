@@ -21,7 +21,7 @@ qt6/include/QtSvg/${PKGVERSION}/QtSvg/private/qsvgnode_p.h
 qt6/include/QtSvg/${PKGVERSION}/QtSvg/private/qsvgstructure_p.h
 qt6/include/QtSvg/${PKGVERSION}/QtSvg/private/qsvgstyle_p.h
 qt6/include/QtSvg/${PKGVERSION}/QtSvg/private/qsvgstyleselector_p.h
-qt6/include/QtSvg/${PKGVERSION}/QtSvg/private/qsvgutils_p.h
+qt6/include/QtSvg/${PKGVERSION}/QtSvg/private/qsvgpaintserver_p.h
 qt6/include/QtSvg/${PKGVERSION}/QtSvg/private/qsvgvisitor_p.h
 qt6/include/QtSvg/${PKGVERSION}/QtSvg/private/qtsvgglobal_p.h
 qt6/include/QtSvg/QSvgGenerator

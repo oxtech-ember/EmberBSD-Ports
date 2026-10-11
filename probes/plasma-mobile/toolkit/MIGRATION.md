@@ -36,17 +36,20 @@ Qt host generators; an older host Qt is not an interchangeable dependency.
 5. Rebuild KWin 6.7.5, Workspace and the selected Plasma shell against this same
    package set. Resolve consumer incompatibilities in Ports. Preserve global
    shortcuts and the platform adaptations from the existing KWin probe.
-6. Accept the selected complete session. For CM5 without HDMI, use KWin's
-   virtual output with its render-node EGL backend and remote capture/input.
+6. Accept the first CM5 session through HDMI: confirm firmware/framebuffer
+   handoff, a usable display backend, KWin presentation and physical input.
+   Offscreen V3D rendering does not establish a display output.
+7. Then accept the remote session using KWin's virtual output with its
+   render-node EGL backend and remote capture/input.
    The current KRDP source path requires KPipeWire, FreeRDP/WinPR, QtKeychain
    and PAM; systemd integration is optional. Port those dependencies instead
    of treating Linux service management as a platform requirement.
-7. Verify remote authentication, repainting, keyboard/mouse input, application
+8. Verify remote authentication, repainting, keyboard/mouse input, application
    launch, a saved text edit, disconnect/reconnect and a second clean session.
    Record resolution, renderer, loaded libraries, duration and resource use.
    Retain the separate [Mobile acceptance](../kwin/MOBILE-GRAPHICS-CONTRACT.md)
    when validating a physical Mobile display and on-screen keyboard.
-8. Check affected shared consumers and ordinary package replacement/removal/
+9. Check affected shared consumers and ordinary package replacement/removal/
    reinstall. Update the implementation receipts and central EmberBSD README
    only to the level actually measured. Remove obsolete comparison builds
    after preserving their logs and required recovery artifacts.
@@ -66,8 +69,9 @@ upstream NetBSD base files or a mixed sysroot for EmberBSD.
 
 ## Remaining acceptance boundaries
 
-The toolkit is a source candidate until target package and consumer checks
-pass. The [common FFmpeg 9 profile](../../../profiles/common-media/README.md)
+Qtbase, SVG and ShaderTools pass cross-package and build-sysroot checks;
+[the package receipt](cross/qt-packages.md) records the boundary. Target runtime
+and the rest of the toolkit remain unaccepted. The [common FFmpeg 9 profile](../../../profiles/common-media/README.md)
 owns Qt Multimedia/KFileMetadata dependencies; source and earlier host
 extractor checks do not accept complete multimedia playback. KWin, Plasma,
 remote streaming/input and the Mobile workflow each need their actual runtime

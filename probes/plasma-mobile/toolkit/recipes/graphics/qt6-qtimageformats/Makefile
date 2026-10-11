@@ -8,6 +8,9 @@ LICENSE=	gnu-lgpl-v2.1 OR gnu-lgpl-v3 OR gnu-gpl-v2 OR gnu-gpl-v3
 
 .include "../../x11/qt6-qtbase/Makefile.common"
 
+# Qt 6.12 no longer autodetects these codecs. Both belong to this package.
+CMAKE_CONFIGURE_ARGS+=	-DFEATURE_jasper:BOOL=ON -DFEATURE_mng:BOOL=ON
+
 .include "../../graphics/jasper/buildlink3.mk"
 .include "../../graphics/mng/buildlink3.mk"
 .include "../../graphics/tiff/buildlink3.mk"

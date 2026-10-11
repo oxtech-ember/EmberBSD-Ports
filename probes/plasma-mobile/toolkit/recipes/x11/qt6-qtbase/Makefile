@@ -69,7 +69,11 @@ CONFIGURE_ARGS+=	-no-rpath	# avoid @rpath in dylibs
 QMAKE_CONF=		qmake.conf.mac
 .endif
 
-PLIST_VARS+=	egl egldevice wayland x11
+# Qt's deployment helpers are host tools and are disabled in cross builds.
+PLIST_VARS+=	androidtools targetmetadata egl egldevice wayland x11
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+PLIST.androidtools=	yes
+.endif
 
 .include "../../mk/compiler.mk"
 
@@ -185,11 +189,21 @@ pre-configure:
 		-e 's:@QMAKE_EXTRA@:${QMAKE_EXTRA:Q}:g' \
 		${FILESDIR}/${QMAKE_CONF} > ${WRKSRC}/qmake.conf
 	for dir in ${WRKSRC}/mkspecs/*; do \
+		${TEST} -f $${dir}/qmake.conf || continue; \
 		${CP} ${WRKSRC}/qmake.conf $${dir}; \
 		${RM} -f $${dir}/*.orig; \
 	done
 	${RM} -f ${WRKSRC}/mkspecs/features/mac/default_pre.prf
 	${RM} -f ${WRKSRC}/mkspecs/features/mac/default_post.prf
+
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
+PLIST.targetmetadata=	yes
+post-install: qt-target-metadata
+.PHONY: qt-target-metadata
+qt-target-metadata:
+	${PERL5} ${FILESDIR}/target-metadata.pl ${DESTDIR:Q}${QTPREFIX:Q} \
+	    ${CROSS_DESTDIR:Q} ${WRKDIR:Q} ${PREFIX:Q}
+.endif
 
 .include "options.mk"
 

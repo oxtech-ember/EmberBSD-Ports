@@ -13,9 +13,9 @@ lib/pkgconfig/Qt6Test.pc
 ${PLIST.wayland}${PLIST.x11}lib/pkgconfig/Qt6WaylandClient.pc
 lib/pkgconfig/Qt6Widgets.pc
 lib/pkgconfig/Qt6Xml.pc
-qt6/bin/androiddeployqt
-qt6/bin/androiddeployqt6
-qt6/bin/androidtestrunner
+${PLIST.androidtools}qt6/bin/androiddeployqt
+${PLIST.androidtools}qt6/bin/androiddeployqt6
+${PLIST.androidtools}qt6/bin/androidtestrunner
 ${PLIST.dbus}qt6/bin/qdbuscpp2xml
 ${PLIST.dbus}qt6/bin/qdbusxml2cpp
 qt6/bin/qmake
@@ -23,6 +23,7 @@ qt6/bin/qmake6
 qt6/bin/qt-cmake
 qt6/bin/qt-cmake-create
 qt6/bin/qt-configure-module
+${PLIST.targetmetadata}qt6/bin/qt.conf
 qt6/bin/qtpaths
 qt6/bin/qtpaths6
 qt6/bin/wasmdeployqt
@@ -345,9 +346,14 @@ ${PLIST.x11}qt6/include/QtCore/${PKGVERSION}/QtCore/private/qtimezonelocale_p.h
 qt6/include/QtCore/${PKGVERSION}/QtCore/private/qtimezoneprivate_p.h
 qt6/include/QtCore/${PKGVERSION}/QtCore/private/qtipccommon_p.h
 qt6/include/QtCore/${PKGVERSION}/QtCore/private/qtools_p.h
+qt6/include/QtCore/${PKGVERSION}/QtCore/private/qtparsecommon_p.h
+qt6/include/QtCore/${PKGVERSION}/QtCore/private/qtparseqttemporalformat_p.h
+qt6/include/QtCore/${PKGVERSION}/QtCore/private/qtparsetemporal_p.h
+qt6/include/QtCore/${PKGVERSION}/QtCore/private/qtparsetimezone_p.h
 qt6/include/QtCore/${PKGVERSION}/QtCore/private/qtrace_p.h
 qt6/include/QtCore/${PKGVERSION}/QtCore/private/qtranslator_p.h
 qt6/include/QtCore/${PKGVERSION}/QtCore/private/qtransposeproxymodel_p.h
+qt6/include/QtCore/${PKGVERSION}/QtCore/private/qttemporalpattern_p.h
 qt6/include/QtCore/${PKGVERSION}/QtCore/private/qunicodetables_p.h
 qt6/include/QtCore/${PKGVERSION}/QtCore/private/qunicodetools_p.h
 qt6/include/QtCore/${PKGVERSION}/QtCore/private/quniquehandle_p.h
@@ -786,6 +792,7 @@ qt6/include/QtCore/QtVersion
 qt6/include/QtCore/QtVersionChecks
 qt6/include/QtCore/q17memory.h
 qt6/include/QtCore/q20algorithm.h
+qt6/include/QtCore/q20atomic.h
 qt6/include/QtCore/q20bit.h
 qt6/include/QtCore/q20chrono.h
 qt6/include/QtCore/q20functional.h
@@ -1268,6 +1275,7 @@ ${PLIST.x11}qt6/include/QtGui/${PKGVERSION}/QtGui/private/qgnometheme_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qgrayraster_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qgridlayoutengine_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qguiapplication_p.h
+qt6/include/QtGui/${PKGVERSION}/QtGui/private/qguisvg_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qharfbuzzng_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qhexstring_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qhighdpiscaling_p.h
@@ -1453,6 +1461,7 @@ qt6/include/QtGui/QAccessibleTextSelectionEvent
 qt6/include/QtGui/QAccessibleTextUpdateEvent
 qt6/include/QtGui/QAccessibleValueChangeEvent
 qt6/include/QtGui/QAccessibleValueInterface
+qt6/include/QtGui/QAccessibleViewportInterface
 qt6/include/QtGui/QAction
 qt6/include/QtGui/QActionEvent
 qt6/include/QtGui/QActionGroup
@@ -1801,6 +1810,7 @@ qt6/include/QtNetwork/${PKGVERSION}/QtNetwork/private/qhostaddress_p.h
 qt6/include/QtNetwork/${PKGVERSION}/QtNetwork/private/qhostinfo_p.h
 qt6/include/QtNetwork/${PKGVERSION}/QtNetwork/private/qhsts_p.h
 qt6/include/QtNetwork/${PKGVERSION}/QtNetwork/private/qhstsstore_p.h
+qt6/include/QtNetwork/${PKGVERSION}/QtNetwork/private/qhttp2configuration_p.h
 qt6/include/QtNetwork/${PKGVERSION}/QtNetwork/private/qhttp2connection_p.h
 qt6/include/QtNetwork/${PKGVERSION}/QtNetwork/private/qhttp2protocolhandler_p.h
 qt6/include/QtNetwork/${PKGVERSION}/QtNetwork/private/qhttpheaderparser_p.h
@@ -1864,7 +1874,6 @@ qt6/include/QtNetwork/${PKGVERSION}/QtNetwork/private/qtldurl_p.h
 qt6/include/QtNetwork/${PKGVERSION}/QtNetwork/private/qtlsbackend_p.h
 qt6/include/QtNetwork/${PKGVERSION}/QtNetwork/private/qtnetwork-config_p.h
 qt6/include/QtNetwork/${PKGVERSION}/QtNetwork/private/qtnetworkglobal_p.h
-qt6/include/QtNetwork/${PKGVERSION}/QtNetwork/private/qhttp2configuration_p.h
 qt6/include/QtNetwork/QAbstractNetworkCache
 qt6/include/QtNetwork/QAbstractSocket
 qt6/include/QtNetwork/QAuthenticator
@@ -1884,6 +1893,8 @@ qt6/include/QtNetwork/QHostInfo
 qt6/include/QtNetwork/QHstsPolicy
 qt6/include/QtNetwork/QHttp1Configuration
 qt6/include/QtNetwork/QHttp2Configuration
+qt6/include/QtNetwork/QHttpHeaderRangeSet
+qt6/include/QtNetwork/QHttpHeaderRangeSpec
 qt6/include/QtNetwork/QHttpHeaders
 qt6/include/QtNetwork/QHttpMultiPart
 qt6/include/QtNetwork/QHttpPart
@@ -1918,6 +1929,7 @@ qt6/include/QtNetwork/QSslDiffieHellmanParameters
 qt6/include/QtNetwork/QSslEllipticCurve
 qt6/include/QtNetwork/QSslError
 qt6/include/QtNetwork/QSslKey
+qt6/include/QtNetwork/QSslKeyingMaterial
 qt6/include/QtNetwork/QSslPreSharedKeyAuthenticator
 qt6/include/QtNetwork/QSslServer
 qt6/include/QtNetwork/QSslSocket
@@ -1967,6 +1979,7 @@ qt6/include/QtNetwork/qssldiffiehellmanparameters.h
 qt6/include/QtNetwork/qsslellipticcurve.h
 qt6/include/QtNetwork/qsslerror.h
 qt6/include/QtNetwork/qsslkey.h
+qt6/include/QtNetwork/qsslkeyingmaterial.h
 qt6/include/QtNetwork/qsslpresharedkeyauthenticator.h
 qt6/include/QtNetwork/qsslserver.h
 qt6/include/QtNetwork/qsslsocket.h
@@ -2195,6 +2208,7 @@ qt6/include/QtTest/${PKGVERSION}/QtTest/private/qcomparisontesthelper_p.h
 qt6/include/QtTest/${PKGVERSION}/QtTest/private/qcsvbenchmarklogger_p.h
 qt6/include/QtTest/${PKGVERSION}/QtTest/private/qemulationdetector_p.h
 qt6/include/QtTest/${PKGVERSION}/QtTest/private/qjunittestlogger_p.h
+qt6/include/QtTest/${PKGVERSION}/QtTest/private/qmeanvarianceaccumulator_p.h
 qt6/include/QtTest/${PKGVERSION}/QtTest/private/qplaintestlogger_p.h
 qt6/include/QtTest/${PKGVERSION}/QtTest/private/qpropertytesthelper_p.h
 qt6/include/QtTest/${PKGVERSION}/QtTest/private/qsignaldumper_p.h
@@ -2279,10 +2293,10 @@ ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandC
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/qwayland-wlr-data-control-unstable-v1.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/qwayland-wp-primary-selection-unstable-v1.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/qwayland-xdg-output-unstable-v1.h
+${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/qwayland-xdg-session-management-v1.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/qwayland-xdg-shell.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/qwayland-xdg-system-bell-v1.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/qwayland-xdg-toplevel-drag-v1.h
-${PLIST.wayland}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/qwayland-xx-session-management-v1.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/qwaylandabstractdecoration_p.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/qwaylandappmenu_p.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/qwaylandbuffer_p.h
@@ -2315,6 +2329,7 @@ ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandC
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/qwaylandintegration_p.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/qwaylandmimehelper_p.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/qwaylandnativeinterface_p.h
+${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/qwaylandpipewritehelper_p.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/qwaylandplatformservices_p.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/qwaylandpointergestures_p.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/qwaylandprimaryselectionv1_p.h
@@ -2362,10 +2377,10 @@ ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandC
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/wayland-wlr-data-control-unstable-v1-client-protocol.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/wayland-wp-primary-selection-unstable-v1-client-protocol.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/wayland-xdg-output-unstable-v1-client-protocol.h
+${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/wayland-xdg-session-management-v1-client-protocol.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/wayland-xdg-shell-client-protocol.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/wayland-xdg-system-bell-v1-client-protocol.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/wayland-xdg-toplevel-drag-v1-client-protocol.h
-${PLIST.wayland}qt6/include/QtWaylandClient/${PKGVERSION}/QtWaylandClient/private/wayland-xx-session-management-v1-client-protocol.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/QWaylandClientExtension
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/QWaylandClientExtensionTemplate
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWaylandClient/QtWaylandClient
@@ -2828,10 +2843,8 @@ qt6/include/QtWidgets/qwhatsthis.h
 qt6/include/QtWidgets/qwidget.h
 qt6/include/QtWidgets/qwidgetaction.h
 qt6/include/QtWidgets/qwizard.h
-${PLIST.wayland}${PLIST.x11}qt6/include/QtWlShellIntegration/${PKGVERSION}/QtWlShellIntegration/private/qwayland-wayland.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWlShellIntegration/${PKGVERSION}/QtWlShellIntegration/private/qwaylandwlshellintegration_p.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWlShellIntegration/${PKGVERSION}/QtWlShellIntegration/private/qwaylandwlshellsurface_p.h
-${PLIST.wayland}${PLIST.x11}qt6/include/QtWlShellIntegration/${PKGVERSION}/QtWlShellIntegration/private/wayland-wayland-client-protocol.h
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWlShellIntegration/QtWlShellIntegration
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWlShellIntegration/QtWlShellIntegrationDepends
 ${PLIST.wayland}${PLIST.x11}qt6/include/QtWlShellIntegration/QtWlShellIntegrationVersion
@@ -2890,7 +2903,9 @@ qt6/lib/cmake/Qt6/FindATSPI2.cmake
 qt6/lib/cmake/Qt6/FindBundletool.cmake
 qt6/lib/cmake/Qt6/FindDB2.cmake
 qt6/lib/cmake/Qt6/FindDirectFB.cmake
+qt6/lib/cmake/Qt6/FindEventfd.cmake
 qt6/lib/cmake/Qt6/FindGLESv2.cmake
+qt6/lib/cmake/Qt6/FindGLESv3.cmake
 qt6/lib/cmake/Qt6/FindGSSAPI.cmake
 qt6/lib/cmake/Qt6/FindGTK3.cmake
 qt6/lib/cmake/Qt6/FindInterbase.cmake
@@ -2903,6 +2918,7 @@ qt6/lib/cmake/Qt6/FindLiburing.cmake
 qt6/lib/cmake/Qt6/FindMimer.cmake
 qt6/lib/cmake/Qt6/FindMtdev.cmake
 qt6/lib/cmake/Qt6/FindMySQL.cmake
+qt6/lib/cmake/Qt6/FindNodeAddonApi.cmake
 qt6/lib/cmake/Qt6/FindOracle.cmake
 qt6/lib/cmake/Qt6/FindPPS.cmake
 qt6/lib/cmake/Qt6/FindPostgreSQL.cmake
@@ -2919,6 +2935,7 @@ qt6/lib/cmake/Qt6/FindWrapBundledLibpngConfigExtra.cmake
 qt6/lib/cmake/Qt6/FindWrapBundledPcre2ConfigExtra.cmake
 qt6/lib/cmake/Qt6/FindWrapBundledZLIBConfigExtra.cmake
 qt6/lib/cmake/Qt6/FindWrapDBus1.cmake
+qt6/lib/cmake/Qt6/FindWrapFontconfig.cmake
 qt6/lib/cmake/Qt6/FindWrapFreetype.cmake
 qt6/lib/cmake/Qt6/FindWrapHarfbuzz.cmake
 qt6/lib/cmake/Qt6/FindWrapJpeg.cmake
@@ -2964,6 +2981,7 @@ qt6/lib/cmake/Qt6/QtAutoDetectHelpers.cmake
 qt6/lib/cmake/Qt6/QtAutogenHelpers.cmake
 qt6/lib/cmake/Qt6/QtBaseTopLevelHelpers.cmake
 qt6/lib/cmake/Qt6/QtBuild.cmake
+qt6/lib/cmake/Qt6/QtBuildCMakeFromSourcesScript.cmake
 qt6/lib/cmake/Qt6/QtBuildHelpers.cmake
 qt6/lib/cmake/Qt6/QtBuildInformation.cmake
 qt6/lib/cmake/Qt6/QtBuildOptionsHelpers.cmake
@@ -2973,6 +2991,7 @@ qt6/lib/cmake/Qt6/QtBuildRepoHelpers.cmake
 qt6/lib/cmake/Qt6/QtBuildStaticDocToolsScript.cmake
 qt6/lib/cmake/Qt6/QtCMakeHelpers.cmake
 qt6/lib/cmake/Qt6/QtCMakePackageVersionFile.cmake.in
+qt6/lib/cmake/Qt6/QtCMakePackageVersionFileOverride.cmake.in
 qt6/lib/cmake/Qt6/QtCMakeVersionHelpers.cmake
 qt6/lib/cmake/Qt6/QtCompilerFlags.cmake
 qt6/lib/cmake/Qt6/QtCompilerOptimization.cmake
@@ -2998,6 +3017,7 @@ qt6/lib/cmake/Qt6/QtGenerateLibHelpers.cmake
 qt6/lib/cmake/Qt6/QtGenerateLibPri.cmake
 qt6/lib/cmake/Qt6/QtGenerateVersionScript.cmake
 qt6/lib/cmake/Qt6/QtGlobalStateHelpers.cmake
+qt6/lib/cmake/Qt6/QtHarmonyOSHelpers.cmake
 qt6/lib/cmake/Qt6/QtHeadersClean.cmake
 qt6/lib/cmake/Qt6/QtInitProject.cmake
 qt6/lib/cmake/Qt6/QtInstallHelpers.cmake
@@ -3010,6 +3030,7 @@ qt6/lib/cmake/Qt6/QtModuleConfigPrivate.cmake.in
 qt6/lib/cmake/Qt6/QtModuleDependencies.cmake.in
 qt6/lib/cmake/Qt6/QtModuleHeadersCheck.cmake
 qt6/lib/cmake/Qt6/QtModuleHelpers.cmake
+qt6/lib/cmake/Qt6/QtModuleMapHelpers.cmake
 qt6/lib/cmake/Qt6/QtModuleToolsConfig.cmake.in
 qt6/lib/cmake/Qt6/QtModuleToolsDependencies.cmake.in
 qt6/lib/cmake/Qt6/QtModuleToolsVersionlessTargets.cmake.in
@@ -3040,6 +3061,7 @@ qt6/lib/cmake/Qt6/QtPublicExternalProjectHelpers.cmake
 qt6/lib/cmake/Qt6/QtPublicFinalizerHelpers.cmake
 qt6/lib/cmake/Qt6/QtPublicFindPackageHelpers.cmake
 qt6/lib/cmake/Qt6/QtPublicGitHelpers.cmake
+qt6/lib/cmake/Qt6/QtPublicHarmonyOSToolchainHelpers.cmake
 qt6/lib/cmake/Qt6/QtPublicJsonHelpers.cmake
 qt6/lib/cmake/Qt6/QtPublicPluginHelpers.cmake
 qt6/lib/cmake/Qt6/QtPublicPluginHelpers_v2.cmake
@@ -3077,6 +3099,7 @@ qt6/lib/cmake/Qt6/QtScopeFinalizerHelpers.cmake
 qt6/lib/cmake/Qt6/QtSeparateDebugInfo.Info.plist.in
 qt6/lib/cmake/Qt6/QtSeparateDebugInfo.cmake
 qt6/lib/cmake/Qt6/QtSetup.cmake
+qt6/lib/cmake/Qt6/QtSetupAndroid.cmake
 qt6/lib/cmake/Qt6/QtSimdHelpers.cmake
 qt6/lib/cmake/Qt6/QtSingleRepoTargetSetBuildHelpers.cmake
 qt6/lib/cmake/Qt6/QtStandaloneTestsConfig.cmake.in
@@ -3862,7 +3885,7 @@ qt6/lib/pkgconfig/Qt6Xml.pc
 qt6/libexec/cmake_automoc_parser
 qt6/libexec/moc
 qt6/libexec/qlalr
-qt6/libexec/qt-android-runner.py
+${PLIST.androidtools}qt6/libexec/qt-android-runner.py
 qt6/libexec/qt-cmake-private
 qt6/libexec/qt-cmake-private-install.cmake
 qt6/libexec/qt-cmake-standalone-test
@@ -3942,7 +3965,6 @@ qt6/mkspecs/common/qcc-base-qnx-x86-64.conf
 qt6/mkspecs/common/qcc-base-qnx-x86.conf
 qt6/mkspecs/common/qcc-base-qnx.conf
 qt6/mkspecs/common/qcc-base.conf
-qt6/mkspecs/common/qmake.conf
 qt6/mkspecs/common/qnx/qplatformdefs.h
 qt6/mkspecs/common/rtems-base.conf
 qt6/mkspecs/common/rtems/qplatformdefs.h
@@ -4113,12 +4135,13 @@ qt6/mkspecs/features/mac/toolchain.prf
 qt6/mkspecs/features/metatypes.prf
 qt6/mkspecs/features/moc.prf
 qt6/mkspecs/features/no_debug_info.prf
+qt6/mkspecs/features/ohos/ohos.prf
+qt6/mkspecs/features/ohos/resolve_target.prf
 qt6/mkspecs/features/permissions.prf
 qt6/mkspecs/features/plugin_bundle.prf
 qt6/mkspecs/features/precompile_header.prf
 qt6/mkspecs/features/qgltf.prf
 qt6/mkspecs/features/qlalr.prf
-qt6/mkspecs/features/qmake.conf
 qt6/mkspecs/features/qmake_use.prf
 qt6/mkspecs/features/qml_debug.prf
 qt6/mkspecs/features/qml_module.prf
@@ -4152,6 +4175,7 @@ qt6/mkspecs/features/uikit/device_destinations.sh
 qt6/mkspecs/features/uikit/devices.py
 qt6/mkspecs/features/uikit/exclusive_builds_post.prf
 qt6/mkspecs/features/uikit/gc_binaries.prf
+qt6/mkspecs/features/uikit/qt.prf
 qt6/mkspecs/features/uikit/resolve_config.prf
 qt6/mkspecs/features/uikit/sdk.prf
 qt6/mkspecs/features/uikit/testcase.prf
@@ -4172,7 +4196,6 @@ qt6/mkspecs/features/unix/x11lib.prf
 qt6/mkspecs/features/unix/x11sm.prf
 qt6/mkspecs/features/unsupported/testserver.prf
 qt6/mkspecs/features/use_c_linker.prf
-qt6/mkspecs/features/vxworks.prf
 qt6/mkspecs/features/warn_off.prf
 qt6/mkspecs/features/warn_on.prf
 qt6/mkspecs/features/wasm/default_pre.prf
@@ -4276,7 +4299,6 @@ qt6/mkspecs/macx-xcode/default.xcscheme
 qt6/mkspecs/macx-xcode/qmake.conf
 qt6/mkspecs/macx-xcode/qplatformdefs.h
 qt6/mkspecs/modules/README
-qt6/mkspecs/modules/qmake.conf
 qt6/mkspecs/modules/qt_lib_concurrent.pri
 qt6/mkspecs/modules/qt_lib_core.pri
 qt6/mkspecs/modules/qt_lib_core_private.pri
@@ -4313,9 +4335,12 @@ qt6/mkspecs/modules/qt_lib_xml.pri
 qt6/mkspecs/modules/qt_lib_xml_private.pri
 qt6/mkspecs/netbsd-g++/qmake.conf
 qt6/mkspecs/netbsd-g++/qplatformdefs.h
+qt6/mkspecs/ohos-clang/qmake.conf
+qt6/mkspecs/ohos-clang/qplatformdefs.h
 qt6/mkspecs/openbsd-g++/qmake.conf
 qt6/mkspecs/openbsd-g++/qplatformdefs.h
 qt6/mkspecs/qconfig.pri
+${PLIST.targetmetadata}qt6/mkspecs/qdevice.pri
 qt6/mkspecs/qmodule.pri
 qt6/mkspecs/qnx-aarch64le-qcc/qmake.conf
 qt6/mkspecs/qnx-aarch64le-qcc/qplatformdefs.h
@@ -4349,7 +4374,6 @@ qt6/mkspecs/unsupported/macx-watchos-clang/Info.plist.app
 qt6/mkspecs/unsupported/macx-watchos-clang/Info.plist.lib
 qt6/mkspecs/unsupported/macx-watchos-clang/qmake.conf
 qt6/mkspecs/unsupported/macx-watchos-clang/qplatformdefs.h
-qt6/mkspecs/unsupported/qmake.conf
 qt6/mkspecs/unsupported/qnx-X11-g++/qmake.conf
 qt6/mkspecs/unsupported/qnx-X11-g++/qplatformdefs.h
 qt6/mkspecs/unsupported/vxworks-ppc-dcc/qmake.conf
@@ -4368,6 +4392,8 @@ qt6/mkspecs/wasm-emscripten/qmake.conf
 qt6/mkspecs/wasm-emscripten/qplatformdefs.h
 qt6/mkspecs/win32-arm64-msvc/qmake.conf
 qt6/mkspecs/win32-arm64-msvc/qplatformdefs.h
+qt6/mkspecs/win32-arm64ec-msvc/qmake.conf
+qt6/mkspecs/win32-arm64ec-msvc/qplatformdefs.h
 qt6/mkspecs/win32-clang-g++/qmake.conf
 qt6/mkspecs/win32-clang-g++/qplatformdefs.h
 qt6/mkspecs/win32-clang-msvc/qmake.conf
@@ -4474,6 +4500,7 @@ qt6/share/qt6/wayland/protocols/idle-inhibit/REUSE.toml
 qt6/share/qt6/wayland/protocols/idle-inhibit/idle-inhibit-unstable-v1.xml
 qt6/share/qt6/wayland/protocols/linux-dmabuf/REUSE.toml
 qt6/share/qt6/wayland/protocols/linux-dmabuf/linux-dmabuf-unstable-v1.xml
+${PLIST.wayland}${PLIST.x11}qt6/share/qt6/wayland/protocols/linux-dmabuf/linux-dmabuf-v1.xml
 qt6/share/qt6/wayland/protocols/linux-dmabuf/qt_attribution.json
 qt6/share/qt6/wayland/protocols/pointer-gestures/REUSE.toml
 qt6/share/qt6/wayland/protocols/pointer-gestures/pointer-gestures-unstable-v1.xml
@@ -4489,7 +4516,7 @@ qt6/share/qt6/wayland/protocols/scaler/qt_attribution.json
 qt6/share/qt6/wayland/protocols/scaler/scaler.xml
 qt6/share/qt6/wayland/protocols/session-management/REUSE.toml
 qt6/share/qt6/wayland/protocols/session-management/qt_attribution.json
-qt6/share/qt6/wayland/protocols/session-management/xx-session-management-v1.xml
+${PLIST.wayland}${PLIST.x11}qt6/share/qt6/wayland/protocols/session-management/xdg-session-management-v1.xml
 qt6/share/qt6/wayland/protocols/tablet/REUSE.toml
 qt6/share/qt6/wayland/protocols/tablet/qt_attribution.json
 qt6/share/qt6/wayland/protocols/tablet/tablet-unstable-v2.xml

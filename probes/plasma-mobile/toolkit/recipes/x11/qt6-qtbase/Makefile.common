@@ -109,8 +109,13 @@ CMAKE_INSTALL_PREFIX=	${QTPREFIX}
 .include "../../devel/cmake/configure-settings.mk"
 CONFIGURE_ARGS+=	-- ${CMAKE_CONFIGURE_ARGS}
 QTCONFDIR?=		.
+QT_CONFIGURE_MODULE=	${QTPREFIX}/bin/qt-configure-module
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# This is a shell script; its CMake and code generators still run on the host.
+QT_CONFIGURE_MODULE=	${CROSS_DESTDIR}${QTPREFIX}/bin/qt-configure-module
+.endif
 do-configure:
-	cd ${WRKSRC} && ${SETENV} ${CONFIGURE_ENV} ${QTPREFIX}/bin/qt-configure-module ${QTCONFDIR} ${CONFIGURE_ARGS}
+	cd ${WRKSRC} && ${SETENV} ${CONFIGURE_ENV} ${QT_CONFIGURE_MODULE:Q} ${QTCONFDIR} ${CONFIGURE_ARGS}
 .endif
 
 #do-build:
@@ -133,3 +138,11 @@ pkgconfig-link:
 			${LN} -f -s ${QTPREFIX}/lib/pkgconfig/$${pcfile} $${pcfile};	\
 		done									\
 		fi
+
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${PKGPATH} != "x11/qt6-qtbase"
+post-install: qt-module-target-metadata
+.PHONY: qt-module-target-metadata
+qt-module-target-metadata:
+	${PERL5} ${.CURDIR}/../../x11/qt6-qtbase/files/target-metadata.pl \
+	    ${DESTDIR:Q}${QTPREFIX:Q} ${CROSS_DESTDIR:Q} ${WRKDIR:Q} ${PREFIX:Q} --module
+.endif
