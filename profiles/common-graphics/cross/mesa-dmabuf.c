@@ -89,7 +89,7 @@ compile_shader(GLenum type, const char *text)
 }
 
 static bool
-cycle(const char *node, unsigned number, const char *executable)
+cycle(const char *node, unsigned number, const char *executable, const char *expected)
 {
 	static const GLfloat vertices[] = { -1, -1, 1, -1, 0, 1 };
 	const EGLint context_attrs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
@@ -142,7 +142,7 @@ cycle(const char *node, unsigned number, const char *executable)
 	    EGL_NO_SURFACE, context), "make GLES context current");
 	current = true;
 	renderer = (const char *)glGetString(GL_RENDERER);
-	REQUIRE(renderer != NULL && strstr(renderer, "llvmpipe") != NULL, "expected explicit llvmpipe CPU renderer");
+	REQUIRE(renderer != NULL && strstr(renderer, expected) != NULL, "unexpected renderer");
 	printf("Renderer: %s; GBM backend: %s\n", renderer, gbm_device_get_backend_name(gbm));
 	REQUIRE(has_extension((const char *)glGetString(GL_EXTENSIONS), "GL_OES_EGL_image"), "GL_OES_EGL_image missing");
 	bo = gbm_bo_create(gbm, SIDE, SIDE, GBM_FORMAT_ARGB8888,
@@ -271,18 +271,24 @@ int
 main(int argc, char **argv)
 {
 	const char *software = getenv("LIBGL_ALWAYS_SOFTWARE");
+	const char *expected = argc == 3 ? argv[2] : "llvmpipe";
 	unsigned i;
 
 	setvbuf(stdout, NULL, _IOLBF, 0);
-	if (argc != 2 || strncmp(argv[1], "/dev/dri/", 9) != 0 ||
-	    strstr(argv[1], "..") != NULL || software == NULL || strcmp(software, "1") != 0) {
-		fprintf(stderr, "Usage: LIBGL_ALWAYS_SOFTWARE=1 mesa-dmabuf /dev/dri/DEVICE\n");
+	if ((argc != 2 && argc != 3) || strncmp(argv[1], "/dev/dri/", 9) != 0 ||
+	    strstr(argv[1], "..") != NULL ||
+	    (strcmp(expected, "llvmpipe") != 0 && strcmp(expected, "V3D") != 0) ||
+	    (strcmp(expected, "llvmpipe") == 0 &&
+	    (software == NULL || strcmp(software, "1") != 0)) ||
+	    (strcmp(expected, "V3D") == 0 && software != NULL && software[0] != '\0')) {
+		fprintf(stderr, "Usage: mesa-dmabuf /dev/dri/DEVICE [V3D|llvmpipe]\n"
+		    "llvmpipe requires LIBGL_ALWAYS_SOFTWARE=1; V3D forbids that override.\n");
 		return 2;
 	}
-	puts("Explicit CPU renderer policy: LIBGL_ALWAYS_SOFTWARE=1; a real DRM/PRIME device is required.");
+	printf("Expected renderer: %s; a real DRM/PRIME device is required.\n", expected);
 	for (i = 1; i <= 4; i++)
-		if (!cycle(argv[1], i, argv[0]))
+		if (!cycle(argv[1], i, argv[0], expected))
 			return 1;
-	puts("PASS: four GBM/PRIME/EGLImage/GLES/CPU-readback lifecycles; no hardware acceleration claim");
+	puts("PASS: four GBM/PRIME/EGLImage/GLES/CPU-readback lifecycles; renderer verified above");
 	return 0;
 }

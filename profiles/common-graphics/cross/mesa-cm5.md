@@ -38,8 +38,9 @@ Meson input paths may use a valid build symlink, but are checked by realpath;
 other library directories or environment keys remain rejected.
 
 The experimental kernel limits BOs to 16 MiB individually and 64 MiB total.
-PRIME buffer sharing, a virtual Wayland output, remote capture/input, current
-Qt/KWin/Plasma consumer migration and sustained desktop use remain unaccepted.
+Same-device linear PRIME sharing is accepted below. Foreign-device sharing,
+a virtual Wayland output, remote capture/input, current Qt/KWin/Plasma consumer
+migration and sustained desktop use remain unaccepted.
 This receipt establishes offscreen hardware GL, not a ready remote desktop.
 Vulkan, video encoding and Mesa compute capabilities are not claimed.
 
@@ -107,3 +108,25 @@ The bundle above contains the original fixed-size consumer; the subsequent
 1280x800 run uses the current optional-size consumer. Logs and binaries stay
 outside Git. Original Mesa/libdrm source hashes remain in `sources.tsv` and
 the recipes' distinfo; all upstream licenses and attribution are preserved.
+
+## Physical shared-buffer acceptance
+
+With native kernel commit `78c6715a949`, the same installed packages pass four
+GBM/PRIME/EGLImage/GLES cycles on V3D 7.1.10.2. Each creates a linear ARGB8888
+BO, exports/imports its fd, closes the export fd, draws a real GLES triangle,
+finishes, compares every one of 256 CPU-mapped pixels with GPU readback, and
+cleans up. The live-provider inventory and package manifests pass. Four
+subsequent 1280x800 ordinary render lifecycles pass too. Run the
+[explicit V3D mode](gbm.md#native-v3d-mode) to reproduce it.
+
+The kernel's separate checker passes 80 SCM_RIGHTS/duplicate-import/mmap
+lifecycles in 0.07 seconds. It first exposed native DMA-BUF reference leaks;
+those repairs and actual-source regressions belong to the
+[OS receipt](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/bcm2712-v3d-gl.md#physical-prime-acceptance-2026-10-11).
+This does not establish foreign-device DMA, arbitrary modifiers or remote UI.
+
+DMA-BUF bundle SHA256: `d00a2880ad5dd397eebd4e521ecafb608750b954d81dd4f6bb06c318dace2800`.
+Physical Mesa PRIME/1280x800 log SHA256: `f147b8050b4ad7743ea2d945056ae49855bbf9c4c987913e2194f17851df945e`.
+The unchanged default helper policy still selects explicit llvmpipe for the
+older VM comparison. V3D mode rejects software overrides and checks the
+actual renderer. Three callback and five provider-refusal controls pass.

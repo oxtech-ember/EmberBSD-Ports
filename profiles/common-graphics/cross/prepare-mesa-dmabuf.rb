@@ -61,9 +61,9 @@ paths = elf.scan(/\((?:RPATH|RUNPATH)\).*\[([^\]]+)\]/).flatten.flat_map { |p| p
 abort 'noncanonical runtime paths' unless paths.sort == %w[/usr/pkg/gcc16/lib /usr/pkg/lib]
 File.write("#{bundle}/source/inputs.sha256", hashes.map { |p,h| "#{h}  #{p}\n" }.join)
 File.write("#{bundle}/source/policy.json", JSON.pretty_generate({
-  renderer: 'llvmpipe', environment: {'LIBGL_ALWAYS_SOFTWARE'=>'1'}, cycles: 4,
-  required: 'Real NetBSD DRM device with linear ARGB8888 GEM/PRIME buffers and EGL DMA-BUF import',
-  scope: 'CPU GLES rendering into shared real device buffers; no hardware acceleration or compositor claim'
+  renderers: {'llvmpipe'=>{'LIBGL_ALWAYS_SOFTWARE'=>'1'}, 'V3D'=>{}}, cycles: 4,
+  required: 'Real EmberBSD DRM device with linear ARGB8888 GEM/PRIME buffers and EGL DMA-BUF import',
+  scope: 'GLES rendering into shared real device buffers, with explicit renderer acceptance; no compositor claim'
 })+"\n")
 hashes.each { |p,h| abort "input changed: #{p}" unless Digest::SHA256.file(p).hexdigest == h }
 files = Dir.glob("#{bundle}/**/*").select { |p| File.file?(p) }.sort

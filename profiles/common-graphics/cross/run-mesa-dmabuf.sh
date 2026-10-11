@@ -34,9 +34,10 @@ EOF
     echo 'PASS: all live package providers are in the verified runtime manifest'
 }
 # End of provider checks; functions are exercised by dmabuf-providers.rb.
-[ "$#" = 3 ] || { echo 'Usage: run-mesa-dmabuf.sh BUNDLE /dev/dri/DEVICE NEW_LOGS' >&2; exit 2; }
+[ "$#" = 3 ] || [ "$#" = 4 ] || { echo 'Usage: run-mesa-dmabuf.sh BUNDLE /dev/dri/DEVICE NEW_LOGS [V3D|llvmpipe]' >&2; exit 2; }
 bundle=$(CDPATH= cd -- "$1" && pwd -P)
 device=$2
+renderer=${4:-llvmpipe}
 case "$device" in /dev/dri/*) ;; *) exit 2;; esac
 # Reuse the accepted complete file/link/runtime verifier, not its render policy.
 sh "$bundle/run-mesa-package-tests.sh" --verify-sysroot "$bundle" /
@@ -61,8 +62,9 @@ done <<EOF
 $(awk '$2 == "=>" {print $3}' "$logs/ldd.log")
 EOF
 result=0
+case "$renderer" in llvmpipe) set -- LIBGL_ALWAYS_SOFTWARE=1;; V3D) set --;; *) exit 2;; esac
 env -i PATH=/bin:/usr/bin:/sbin:/usr/sbin:/usr/pkg/bin MESA_SHADER_CACHE_DISABLE=true \
-    LIBGL_ALWAYS_SOFTWARE=1 "$timeout" -k 5 60 "$bundle/bin/mesa-dmabuf" "$device" \
+    "$@" "$timeout" -k 5 60 "$bundle/bin/mesa-dmabuf" "$device" "$renderer" \
     > "$logs/dmabuf.log" 2>&1 || result=$?
 cat "$logs/dmabuf.log"
 if [ "$result" = 0 ]; then

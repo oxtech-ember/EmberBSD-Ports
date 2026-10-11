@@ -81,3 +81,20 @@ denotes an excluded console handoff, not successful visible output.
 Package identities are retained in [Mesa acceptance](mesa-package.md) and
 [libepoxy acceptance](epoxy.md). Logs, binaries and the synthetic root remain
 outside Git. NetBSD, Mesa, LLVM and QEMU retain their authorship and licenses.
+
+## Native V3D mode
+
+The current preparer consumes MesaLib 26.2.4nb3. The optional final renderer
+argument accepts `V3D` for a native CM5 device, while the default remains
+explicit llvmpipe for the earlier VirtGPU comparison. V3D mode forbids the
+software override and checks the actual GL renderer before drawing:
+
+```sh
+sh /absolute/bundle/run-mesa-dmabuf.sh /absolute/bundle \
+    /dev/dri/renderD128 /absolute/new-v3d-logs V3D
+```
+
+This requires native PRIME sharing in the matched kernel. The initial CM5
+kernel without PRIME rejects the scenario because EGL dma-buf import is
+unavailable; a compiled consumer alone does not establish sharing support.
+See [current CM5 acceptance](mesa-cm5.md) for the physical result and limits.
