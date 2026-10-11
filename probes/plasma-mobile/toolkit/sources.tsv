@@ -27,6 +27,7 @@ devel/kf6-ktexteditor	ktexteditor-6.31.0.tar.xz	02e2d9dbe40b517861af7ad8dd7151d0
 devel/kf6-purpose	purpose-6.31.0.tar.xz	665b579a6b4c4d6f9f19a83fe802da70a65d38d9b23193471b5b64e65b7a55c3	https://download.kde.org/stable/frameworks/6.31/purpose-6.31.0.tar.xz
 devel/kf6-threadweaver	threadweaver-6.31.0.tar.xz	4a65944dcca12672ace6d54a48b3a993d4b46b6095106316c3a95ecae6af9906	https://download.kde.org/stable/frameworks/6.31/threadweaver-6.31.0.tar.xz
 devel/libinotify	libinotify-20240724.tar.gz	120398ff95336d04f3ce7ac820e0490059625976264100dcc9af9d11e992b0ca	https://github.com/libinotify-kqueue/libinotify-kqueue/archive/20240724.tar.gz
+devel/plasma-wayland-protocols	plasma-wayland-protocols-1.23.0.tar.xz	16c5ad917bde2ed795942dacba76654819ddc6a1566842325ef34e0b553ef138	https://download.kde.org/stable/plasma-wayland-protocols/plasma-wayland-protocols-1.23.0.tar.xz
 devel/qt6-qt5compat	qt5compat-everywhere-src-6.12.0.tar.xz	78cf1c283795312a7fa31c73eb7f7f556b48374adc484f10ad5a3c0bcb59264e	https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qt5compat-everywhere-src-6.12.0.tar.xz
 devel/qt6-qttools	qttools-everywhere-src-6.12.0.tar.xz	8dab8f3611496486a470ad5f115ceea584f36bc22a2b8b6f6ebdbafbb8160693	https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qttools-everywhere-src-6.12.0.tar.xz
 devel/qt6-qtwayland	qtwayland-everywhere-src-6.12.0.tar.xz	ae14d9bcf1bb3c300a3ab2e6a53f50284e5c6c966a4ac4cc5aedcb1bc74e4d02	https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtwayland-everywhere-src-6.12.0.tar.xz

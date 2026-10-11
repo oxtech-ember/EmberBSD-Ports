@@ -4,5 +4,6 @@ BLAKE2s (extra-cmake-modules-6.31.0.tar.xz) = bae3538b80d82693093944df9d48ff5496
 SHA512 (extra-cmake-modules-6.31.0.tar.xz) = 312f8cc67dce2730e7751d80861c3fa1f220efa3230dc63d79641a9e8b1d95d0888ad8de9f7ee059e634a897a0d2a2d7ec80685fea96e1fd93f90c093a0817c0
 Size (extra-cmake-modules-6.31.0.tar.xz) = 346864 bytes
 SHA1 (patch-find-modules_FindFFmpeg.cmake) = 9ba72e92cbc850592aa1cda03bc8f9a093e215dd
+SHA1 (patch-find-modules_FindWaylandProtocols.cmake) = 5c45bcaa4f1ea37aac380783668a767c1bddbf80
 SHA1 (patch-kde-modules_KDECompilerSettings.cmake) = 0d0c33df8d3207841d48ad2dc51ebe1533866ca1
 SHA1 (patch-kde-modules_KDEMetaInfoPlatformCheck.cmake) = 74a714c25f7c73c2e2d38ae22144cf52574009ae

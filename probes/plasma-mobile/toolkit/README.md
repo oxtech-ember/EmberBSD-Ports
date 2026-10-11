@@ -95,8 +95,9 @@ Their focused source checks, curl metadata regression and CM5 API tests pass;
 complete installed desktop acceptance remains pending.
 
 The [Frameworks cross workflow](cross/frameworks.md) records accepted KI18n,
-KCoreAddons and KConfig package builds, native generators and measured
-libinotify configure behavior. Installed Frameworks runtime remains pending.
+KCoreAddons, KConfig, KCodecs, KGuiAddons and KWindowSystem package builds.
+CM5 checks cover configuration persistence, native file events and locale lookup.
+Shared-cache operation, remaining Frameworks runtimes and Plasma remain pending.
 
 The remaining pkgsrc patches apply to the verified sources with zero fuzz.
 Frameworks 6.31.0 was released on 9 October 2026. Its 69 Frameworks/ECM
@@ -115,7 +116,7 @@ sh probes/plasma-mobile/toolkit/tests/source-profile.sh \
     /absolute/verified-distfiles /absolute/new-source-check
 ```
 
-The check covers all 93 archives, recorded patch hashes and forward applications,
+The check covers all 94 archives, recorded patch hashes and forward applications,
 corrupted archive rejection, repeated/missing patch rejection, incorrect
 unfiltered RCS hashes, recipe/version selection and exact toolkit export.
 It compares the exported common recipes and configuration with their existing

@@ -1,0 +1,16 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Run the existing file-event regressions for the default
+backend as well as explicit backend choices.
+
+--- autotests/CMakeLists.txt.orig
++++ autotests/CMakeLists.txt
+@@ -119,7 +119,7 @@
+     target_link_libraries(kprocesstest_helper KF6::CoreAddons)
+ endif()
+ 
+-set(KDIRWATCH_BACKENDS_TO_TEST Stat) #Stat is always compiled
++set(KDIRWATCH_BACKENDS_TO_TEST default Stat) #Stat is always compiled
+ 
+ if (HAVE_SYS_INOTIFY_H)
+     list(APPEND KDIRWATCH_BACKENDS_TO_TEST INotify)

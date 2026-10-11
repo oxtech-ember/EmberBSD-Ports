@@ -22,7 +22,7 @@ PKGCONFIG_OVERRIDE_STAGE=	post-build
 .if ${PLATFORM_SUPPORTS_WAYLAND} == "yes"
 .  include "../../devel/plasma-wayland-protocols/buildlink3.mk"
 .  include "../../devel/wayland-protocols/buildlink3.mk"
-.  include "../../devel/qt6-qtwayland/buildlink3.mk"
+.  include "../../devel/wayland/buildlink3.mk"
 .else
 CMAKE_CONFIGURE_ARGS+=	-DWITH_WAYLAND=OFF
 .endif

@@ -23,6 +23,9 @@ must exit 3. Installed `kwriteconfig6` and `kreadconfig6` then share the same fi
 with the generated consumer. The runner does not modify desktop settings.
 
 On 2026-10-12 the macOS/arm64 native generator and GCC16 AArch64 consumer built.
-CMake rejects a nonmatching native generator before building and accepts\nrepeated imports through independent Frameworks dependencies. GCC `-fanalyzer`
+CMake rejects a nonmatching native generator before building and accepts
+repeated imports through independent Frameworks dependencies. GCC `-fanalyzer`
 object compilation and Cppcheck 2.22 using the real compile database pass.
-CM5 runtime execution remains pending; no persistence or desktop pass is claimed.
+The installed consumer passes on physical CM5, including fresh-process
+persistence and interoperability with the packaged command-line utilities.
+This is a configuration API check, not a desktop session.

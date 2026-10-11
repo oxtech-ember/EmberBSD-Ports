@@ -11,20 +11,28 @@ LICENSE=	gnu-lgpl-v2.1
 
 USE_TOOLS+=	pkg-config
 
+# CMake validates pkg-config IMPORTED_TARGET paths before compiler wrappers run.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+CONFIGURE_ENV+= PKG_CONFIG_SYSROOT_DIR=${CROSS_DESTDIR:Q}
+.endif
+
 PKGCONFIG_OVERRIDE+=		_KDE_build/KF6WindowSystem.pc
 PKGCONFIG_OVERRIDE_STAGE=	post-build
 
 SUBST_CLASSES+=		path
 SUBST_SED.path+=	-e "s,${BUILDLINK_DIR}/include,${BUILDLINK_PREFIX.libX11}/include,"
-SUBST_SED.path+=	-e "s,-I${BUILDLINK_DIR}/include,-I${BUILDLINK_PREFIX.libX11}/include,"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+SUBST_SED.path+=	-e "s,${CROSS_DESTDIR}${BUILDLINK_PREFIX.libX11}/include,${BUILDLINK_PREFIX.libX11}/include,"
+.endif
 SUBST_FILES.path+=	_KDE_build/CMakeFiles/Export/*/KF6WindowSystemTargets.cmake
-SUBST_FILES.path+=	_KDE_build/KF6WindowSystem.pc
 SUBST_MESSAGE.path=	Fixing path to libX11 in installed file.
 SUBST_STAGE.path=	post-build
 
 .include "../../devel/plasma-wayland-protocols/buildlink3.mk"
-.include "../../devel/qt6-qttools/buildlink3.mk"
-.include "../../devel/qt6-qtwayland/buildlink3.mk"
+.include "../../devel/qt6-qttools/linguist.mk"
+.include "../../devel/wayland/buildlink3.mk"
 .include "../../devel/wayland-protocols/buildlink3.mk"
+.include "../../lang/qt6-qtdeclarative/buildlink3.mk"
+.include "../../x11/libxkbcommon/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

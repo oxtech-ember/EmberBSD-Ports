@@ -4,6 +4,7 @@
 # https://kde.org/announcements/frameworks/6/6.nn.0/
 
 DISTNAME=	extra-cmake-modules-6.31.0
+PKGREVISION=	1
 CATEGORIES=	devel kde
 MASTER_SITES=	${MASTER_SITE_KDE:=frameworks/${PKGVERSION_NOREV:R}/}
 EXTRACT_SUFX=	.tar.xz

@@ -325,8 +325,9 @@ runtime behavior are validated.
   [Qt Quick on V3D](probes/plasma-mobile/toolkit/tests/qt-quick-gpu/README.md) also
   passes compiled QML scene/layer pixels and process restart. The complete
   Plasma migration remains pending. [Frameworks cross packages](probes/plasma-mobile/toolkit/cross/frameworks.md)
-  now include KI18n, KCoreAddons and KConfig 6.31 with a native configuration
-  generator; their installed runtime checks remain pending. Native
+  now include six current Frameworks libraries. CM5 checks cover generated
+  configuration persistence, native file events and locale lookup; shared-cache
+  operation and the complete Plasma session remain pending. Native
   audio API/registration and host metadata extraction checks pass.
 
 - [Openbox](probes/openbox/README.md) and

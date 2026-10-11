@@ -11,6 +11,8 @@ LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2.1
 
 CMAKE_CONFIGURE_ARGS+=	-DBUILD_PYTHON_BINDINGS=OFF
 
+# The Designer plugin also requires the complete target QtTools package.
+.include "../../devel/qt6-qttools/buildlink3.mk"
 .include "../../devel/qt6-qttools/linguist.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
