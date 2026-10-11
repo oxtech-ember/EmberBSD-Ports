@@ -12,6 +12,13 @@ done
 for feature in wayland_client wayland_egl egl gbm eglfs_egldevice eglfs_gbm; do
     grep -Fx "QT_FEATURE_$feature:INTERNAL=ON" "$cache"
 done
+# The path-only descriptor API is absent on EmberBSD. Do not advertise a
+# portal transfer MIME type that the compiled platform cannot implement.
+grep -Ex 'TEST_o_path:INTERNAL=(0|FALSE|OFF)?' "$cache"
+grep -Fx 'QT_FEATURE_xdg_desktop_portal_file_transfer:INTERNAL=OFF' "$cache"
+for feature in clipboard draganddrop dbus; do
+    grep -Fx "QT_FEATURE_$feature:INTERNAL=ON" "$cache"
+done
 # Before the cross fix these imported targets referenced nonexistent /usr/pkg.
 for var in PC_HARFBUZZ_INCLUDE_DIRS XKB_COMMON_X11_INCLUDE_DIRS; do
     dirs=$(awk -F= -v key="$var:INTERNAL" '$1==key { print $2 }' "$cache")

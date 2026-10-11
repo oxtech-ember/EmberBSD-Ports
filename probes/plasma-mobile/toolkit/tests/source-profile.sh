@@ -55,6 +55,7 @@ while IFS="$(printf '\t')" read -r recipe archive sha url; do
     fi
     printf '%s\t%s\n' "$recipe" "$sha" >> "$work/verified.tsv"
 done < "$toolkit/sources.tsv"
+sh "$toolkit/tests/portal-feature.sh" "$work/source/qtbase-everywhere-src-6.12.0" "$work/portal-feature"
 archive=qtspeech-everywhere-src-6.12.0.tar.xz
 cp "$distfiles/$archive" "$work/$archive"
 printf x >> "$work/$archive"

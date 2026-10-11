@@ -1,0 +1,38 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), for Qt 6.12.0.
+Only advertise the file-transfer portal when path-only descriptors exist.
+O_RDONLY is not an equivalent fallback: it can block on FIFOs and cannot
+preserve the portal's writable-file and directory semantics. Ordinary
+Wayland MIME/URI clipboard and drag-and-drop support remains enabled.
+
+--- src/gui/configure.cmake.orig
++++ src/gui/configure.cmake
+@@ -249,6 +249,18 @@ qt_find_package(RenderDoc MODULE PROVIDED
+ 
+ #### Tests
+ 
++qt_config_compile_test(o_path
++    LABEL "Path-only file descriptors"
++    CODE
++"#include <fcntl.h>
++int main(void)
++{
++    int flags = O_PATH;
++    (void) flags;
++    return 0;
++}"
++)
++
+ if(TARGET PlatformGraphics::PlatformGraphics)
+     set(plaform_graphics_libs PlatformGraphics::PlatformGraphics)
+ else()
+@@ -1557,7 +1569,7 @@ qt_feature("waylandscanner" PUBLIC
+ )
+ qt_feature("xdg-desktop-portal-file-transfer" PRIVATE
+     LABEL "portal file transfer for clipboard and drag and drop"
+-    CONDITION QT_FEATURE_wayland AND QT_FEATURE_dbus AND (QT_FEATURE_clipboard OR QT_FEATURE_draganddrop)
++    CONDITION TEST_o_path AND QT_FEATURE_wayland AND QT_FEATURE_dbus AND (QT_FEATURE_clipboard OR QT_FEATURE_draganddrop)
+ )
+ 
+ # qt wayland client

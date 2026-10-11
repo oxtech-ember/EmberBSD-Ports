@@ -115,3 +115,24 @@ sh probes/plasma-mobile/toolkit/cross/check-target-configure.sh \
 This check examines the real CMake cache and executes the selected host tools.
 Complete target packaging, installed Qt consumers, plugin discovery and a
 remote KWin/Plasma session remain gates.
+
+## Path-only file transfer descriptors
+
+Qt 6.12 initially enabled the desktop portal file-transfer format on EmberBSD,
+then failed to compile because `O_PATH` is unavailable. The recipe now tests
+this API with the target compiler before enabling that feature. Substituting
+`O_RDONLY` would change file permissions and directory semantics and could
+block on a FIFO. See the upstream [FileTransfer contract](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.FileTransfer.html).
+Normal Wayland MIME/URI transfer, clipboard, drag-and-drop and D-Bus remain enabled.
+This does not implement Flatpak document sharing on EmberBSD.
+
+`tests/portal-feature.sh QT_SOURCE NEW_WORK` evaluates the patched Qt feature
+condition for all 32 prerequisite combinations. On 2026-10-11 it rejected the
+original condition and passed the port. The pinned archive hash, both configure
+patch hashes, zero-fuzz application and exact live build source comparison passed.
+The real GCC16 cross configuration has the portal format off and the existing
+Wayland/EGL/GBM features on; `check-target-configure.sh` verifies these together.
+When continuing an old build, remove only that feature's stale CMake cache entry
+with CMake's `-U` option before reconfiguration; do not delete the object tree.
+Target compilation has passed the original failing unit's stage. Packaging and
+an installed Qt application remain separate acceptance gates.

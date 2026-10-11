@@ -29,3 +29,4 @@ SHA1 (patch-src_plugins_platforms_xcb_qxcbatom.cpp) = abbd0b04b881666e82f45adc18
 SHA1 (patch-src_plugins_platforms_xcb_qxcbconnection__basic.h) = e369001cba31e865adf010ab714ad132b96c1bef
 SHA1 (patch-src_tools_moc_main.cpp) = ebdddd657ba1c24657a9ca5624907e31a5d0c8bb
 SHA1 (patch-src_widgets_graphicsview_qgraphicsitem__p.h) = fd55d5ef6fde506849aab07f7ba23e856373b3a1
+SHA1 (patch-src_gui_configure.cmake-portal) = cea757f6f5c5c65043f53920d519470ec3fd0f13

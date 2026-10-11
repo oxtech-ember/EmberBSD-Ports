@@ -66,6 +66,7 @@ size and pkgsrc's RCS-filtered patch SHA1.
 | QDoc QualTypeNames include workaround | Drop: Qt's vendored implementation now contains the LLVM 22+ API adaptation and its QDoc-specific behavior. |
 | Qt icon theme fallback | Drop: upstream change 763319 is present in the archive. |
 | Eight KCodecs `std::format` replacements | Drop: these only compensated for GCC 12. The current profile requires GCC 16 and retains upstream C++20. Native KCodecs checks are still required. |
+| Qt file-transfer portal | Require a successful target `O_PATH` compile check. Plain Wayland URI transfer remains available when path-only descriptors are absent; read-only opens are not an equivalent substitute for the portal descriptor contract. |
 | Qt syncqt build ordering | Refresh context around the additional generated documentation headers; preserve the pkgsrc dependency. |
 | Qt archive-API configure switch | Refresh context; preserve the pkgsrc libarchive workaround. |
 | Qt NetBSD thread naming | Refresh context around the VxWorks addition; preserve the NetBSD signature. |
@@ -104,7 +105,7 @@ sh probes/plasma-mobile/toolkit/tests/source-profile.sh \
     /absolute/verified-distfiles /absolute/new-source-check
 ```
 
-The check covers all 91 archives, 77 patch hashes and forward applications,
+The check covers all 91 archives, recorded patch hashes and forward applications,
 corrupted archive rejection, repeated/missing patch rejection, incorrect
 unfiltered RCS hashes, recipe/version selection and exact toolkit export.
 It compares the exported common recipes and configuration with their existing
