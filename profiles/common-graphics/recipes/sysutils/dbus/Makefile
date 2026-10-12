@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.146 2026/09/02 19:04:25 wiz Exp $
 
 DISTNAME=	dbus-1.16.2
-PKGREVISION=	4
+PKGREVISION=	5
 CATEGORIES=	sysutils
 MASTER_SITES=	https://dbus.freedesktop.org/releases/dbus/
 EXTRACT_SUFX=	.tar.xz
@@ -41,6 +41,16 @@ CHECK_PORTABILITY_SKIP+=	tools/cmake-format
 MESON_BINARIES+=		xsltproc
 MESON_BINARY.xsltproc=	${TOOLBASE}/bin/xsltproc
 MESON_ARGS+=		-Dxml_docs=enabled
+# Runtime sockets belong to the target, never the build host's TMPDIR.
+MESON_ARGS+=		-Dsession_socket_dir=/tmp -Dtest_socket_dir=/tmp
+
+post-configure: emberbsd-dbus-runtime-paths
+.PHONY: emberbsd-dbus-runtime-paths
+emberbsd-dbus-runtime-paths:
+	${RUN} ${GREP} -Fxq '#define DBUS_SESSION_SOCKET_DIR "/tmp"' ${WRKSRC}/output/config.h
+	${RUN} ${GREP} -Fxq '#define DBUS_TEST_SOCKET_DIR "/tmp"' ${WRKSRC}/output/config.h
+	${RUN} ${GREP} -Fxq '#define TEST_LISTEN "unix:tmpdir=/tmp"' ${WRKSRC}/output/config.h
+	${RUN} ${GREP} -Fq '<listen>unix:tmpdir=/tmp</listen>' ${WRKSRC}/output/bus/session.conf
 .endif
 
 

@@ -1,4 +1,4 @@
-# Frameworks models, worker queues and crash handling
+# Frameworks models, jobs, colors and session services
 
 KItemModels, ThreadWeaver and KCrash 6.31.0 cross-build with the common
 Qt 6.12/GCC16 stack. Their complete packages pass the ordinary manifest,
@@ -51,10 +51,10 @@ CM5 Rev 1.0, BCM2712 D0, 4 GiB, Waveshare CM5-NANO-B, with kernel SHA256
 
 - KItemModels: all 13 original test processes exit successfully. QtTest totals
   are **500 passed, zero failed and six upstream skips**; BiHash also exits zero.
-- ThreadWeaver: all seven original test processes pass, **77 assertions**,
+- ThreadWeaver: all seven original test processes pass, **77 QtTest cases**,
   covering queues, sequences, lifecycle, abort, shutdown and object deletion.
   Both header directory spellings compile on the case-sensitive target.
-- KCrash: **16 assertions** pass for intentional crash/restart, emergency save,
+- KCrash: **16 QtTest cases** pass for intentional crash/restart, emergency save,
   metadata and core configuration. The board boot identity is unchanged.
   DrKonqi and desktop integration remain untested.
 
@@ -68,5 +68,42 @@ CM5 Rev 1.0, BCM2712 D0, 4 GiB, Waveshare CM5-NANO-B, with kernel SHA256
 | KCrash target journal | `daf8ddc195f186bfbf457a3d60cbccb24e6a86155566c5d29caa94b6e2b9df47` |
 
 These short runs establish model APIs and worker-queue behavior. They do not
-measure compositor latency or long-duration stability. Full QtTools, KWin,
+measure compositor latency or long-duration stability. QtTools runtime, KWin,
 Plasma, HDMI output and a remote accelerated desktop remain separate gates.
+
+## Color schemes and D-Bus on the same CM5
+
+KColorScheme 6.31.0 and KDBusAddons 6.31.0nb1 pass ordinary full package
+checks and install in the shared sysroot and on the board above.
+KColorScheme's 12 original QtTest cases pass with zero failures or skips.
+Copy its original `kcolorschemetest.colors` beside the binary; omitting
+upstream data is a failed test setup, not a library failure.
+
+KDBusAddons passes its original `deadservicetest` (three QtTest cases) and
+`kdbusservicetest`. The latter runs with `QT_FORCE_ASSERTS` and checks three
+activations, propagated failure status 4 and successful child termination.
+The dead-service test intentionally stops and terminates only its own helper;
+upstream emits two QProcess destructor warnings after asynchronous kills.
+Each executable gets a fresh private D-Bus session and isolated settings.
+Boot identity stays unchanged. These are short API tests, not desktop acceptance.
+
+```sh
+sh tests/colorscheme-runtime.sh /absolute/colors-binary-and-data /absolute/new-colors-results
+sh tests/kdbusaddons-runtime.sh /absolute/dbus-test-binaries /absolute/new-dbus-results
+```
+
+Copy `deadservicetest`, `kdbusservicetest` and `kdbussimpleservice` from the
+upstream build. The installed D-Bus default policy must work: these runners
+do not substitute a private configuration. [D-Bus nb5](../../../../profiles/common-graphics/cross/desktop-support.md)
+fixes the cross-host socket-directory leak that the original CM5 run exposed.
+KDBusAddons only needs native Linguist tools during the cross build; its
+recipe retains target QtCore/DBus/Gui and does not require target QtTools.
+The real dependency and native-tool version guard passes for both KCoreAddons
+and KDBusAddons, including missing and outdated tools.
+
+| Artifact | SHA256 |
+| --- | --- |
+| KColorScheme package | `beebca0f7013cc5aeaf3287c595567e3c4457e27ae3dd0586ca15bc975cf7c8e` |
+| KColorScheme journal | `f2e98cfe055c34cbfffdbab79efdaff8ab09a2f99fd10be21577b70143870728` |
+| KDBusAddons package | `8fdbc8d62604c9f9a75d972850c71b9ba98f0c125969f061b28eedd2d2d43c1f` |
+| D-Bus/KDBusAddons target journal | `3d8a43c7171ddaf97caf8138908e941f245406a0f05bbac6e13c5753dfb06f96` |

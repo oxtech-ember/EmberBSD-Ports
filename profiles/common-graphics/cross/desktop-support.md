@@ -1,6 +1,6 @@
 # Current desktop support libraries and session bus
 
-The common graphics profile builds libsfdo 0.1.4nb1 and D-Bus 1.16.2nb4 for
+The common graphics profile builds libsfdo 0.1.4nb1 and D-Bus 1.16.2nb5 for
 AArch64 using the existing GCC16 cross toolchain on macOS. Ordinary pkgsrc
 package/install checks remain enabled. hicolor-icon-theme 0.18 and
 nerd-fonts-Hack 3.5.1 also package and install without recipe changes.
@@ -25,6 +25,15 @@ full PLIST, X11 and kqueue options. The real upstream `--nonet` probes fail
 with the original tool and pass with the common host tool; a real D-Bus XML
 page transforms successfully. Missing host tools fail instead of dropping docs.
 Native D-Bus behavior is unchanged.
+
+The CM5 KDE tests exposed a second issue: Meson copied the host `TMPDIR`
+into the installed session policy and compiled socket defaults. A normal
+`dbus-run-session` then failed before KDE could connect. Cross builds now
+set both upstream socket-directory options to the target `/tmp`. A required
+post-configure check validates the actual header and installed-policy input.
+[`dbus-runtime-paths.rb`](../tests/dbus-runtime-paths.rb) rejects the original
+generated files and four individual host-path mutations; the corrected
+configuration passes. No target directory resembling a build-host path is created.
 
 The normal host prerequisites xmlto 0.0.29nb3, libpaper 2.2.8 and getopt
 1.1.6nb1 use the shared host prefix. Existing libxml2, libxslt, DocBook,
@@ -70,7 +79,7 @@ private writable copy of the original fixtures because it updates cache mtimes.
 Target library providers and package payloads are checked before and after use.
 Each real upstream test has a 15-second deadline, plus a five-second kill grace.
 
-D-Bus runs a private authenticated EXTERNAL session under `dbus-run-session`,
+The earlier VM test runs D-Bus with a custom private policy and authenticated EXTERNAL session under `dbus-run-session`,
 with no system-bus connection, network listener, activation services or permanent
 configuration. The test checks the bus ID and names, acquires a well-known name,
 verifies eight replies from its actual unique owner, checks exact unknown-method
@@ -85,6 +94,19 @@ EmberBSD/NetBSD 11 AArch64 VM. The runner and QEMU exited with status zero,
 and the input FFS remained unchanged. The initial image lacked its passwd
 database; that failed attempt is not runtime acceptance. No package changed
 between that image correction and the successful run.
+
+On 2026-10-12, the corrected `dbus-1.16.2nb5` package also passed CM5
+acceptance using its **installed default session policy**, without a custom
+`--config-file`. The unchanged KDBusAddons 6.31 upstream tests pass unique
+application activation, exit-status propagation and dead-service name recovery.
+The custom unique-instance test has `QT_FORCE_ASSERTS` enabled. The QtTest
+recovery suite reports three passed cases, zero failures and no skips.
+See the [Frameworks receipt](../../../probes/plasma-mobile/toolkit/cross/models-and-jobs.md).
+
+Package SHA256: `a19ed59b68a34a30299fd24fba1c0866958c7c5baf5dcc31b697754df3c89f63`.
+Path-regression journal: `4e311b005d74ab7eeb07af4490763b37fc48390beed63f825ef40435650ffcc2`.
+The earlier VM test alone did not cover default-policy paths; the CM5 test
+closes that specific gap.
 
 This proves the installed freedesktop lookup libraries and a local session bus.
 It does not test system-bus policy, X11 autolaunch, desktop service activation,
