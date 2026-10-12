@@ -39,6 +39,8 @@ CMAKE_CONFIGURE_ARGS+= -DCLANG_TABLEGEN=${EMBERBSD_CLANG_TABLEGEN:Q}
 .else
 CMAKE_CONFIGURE_ARGS+= -DPython3_EXECUTABLE=${PYTHONBIN:Q}
 .endif
+# Install the HLSL resource headers and clang-dxc entry point.
+CMAKE_CONFIGURE_ARGS+=	-DCLANG_ENABLE_HLSL=ON
 CMAKE_CONFIGURE_ARGS+=	-DLIBCLANG_BUILD_STATIC=ON
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_INSTALL_TOOLCHAIN_ONLY=OFF
 
@@ -185,7 +187,7 @@ INSTALLATION_DIRS+= etc/clang
 
 post-build:
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-	${SH} ${FILESDIR}/cross-gcc-config.sh ${CC:Q} ${LLVM_CONFIG_PATH:Q} \
+	${SH} ${FILESDIR}/cross-gcc-config.sh ${CCPATH:Q} ${LLVM_CONFIG_PATH:Q} \
 	    ${CROSS_DESTDIR:Q} ${LOCALBASE}/gcc16 ${WRKDIR}/native-config
 .else
 	${SH} ${FILESDIR}/native-gcc-config.sh ${LOCALBASE}/gcc16/bin/gcc \

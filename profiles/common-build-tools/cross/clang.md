@@ -72,9 +72,13 @@ The metadata helper passed with real GCC16 and target LLVM metadata. Fixture
 checks reject wrong versions, ABI, missing files, escaped paths and duplicate
 headers. Real pkgsrc evaluation passes valid inputs, rejects missing/wrong host
 tools, and preserves target Perl, installed shebangs, static libclang and tests.
-Target CMake configuration also succeeds with the selected generators.
+The complete target package also builds and passes ordinary dependency,
+manifest, interpreter, permissions, PIE, RELRO, RPATH and work-reference checks.
+It includes static libclang, the new scalable-analysis tools and libraries,
+and explicitly enabled HLSL headers with the clang-dxc entry point.
+The obsolete offload-packager alias is owned by LLVM, matching upstream.
+Options.inc now belongs to clang/Options; generated Sema headers are preserved.
+The source contract covers 119 Clang and 11 LLVM generated declarations.
 
-The full target build, normal dependency resolution, package-file checks and
-installed Clang execution are still pending. Perl's target cross-package path
-and the complete QtTools consumer require separate acceptance. Preparation
-checks do not establish an accelerated Plasma session.
+Installed Clang execution and complete QtTools acceptance remain pending.
+Cross-package success does not establish an accelerated Plasma session.

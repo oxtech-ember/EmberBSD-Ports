@@ -12,6 +12,11 @@ mkdir "$work"
 query() { "$BMAKE" -C "$pkgsrc/lang/clang" MAKECONF="$makeconf" "$@"; }
 query -V '${PKG_FAIL_REASON}' > "$work/valid.log"
 [ -z "$(cat "$work/valid.log")" ]
+query -V '${CCPATH}' > "$work/ccpath.log"
+ccpath=$(cat "$work/ccpath.log")
+case "$ccpath" in /*) ;; *) echo 'Compiler metadata needs an absolute executable' >&2; exit 1 ;; esac
+[ -x "$ccpath" ]
+[ "$("$ccpath" -dumpfullversion)" = 16.2.0 ]
 query -V '${DEPENDS}' > "$work/depends.log"
 grep -q 'perl>=5.44.0:../../lang/perl5' "$work/depends.log"
 query -V '${REPLACE.target-perl.new}' > "$work/shebang.log"
@@ -21,6 +26,7 @@ query -V '${TOOLS_PATH.perl}' > "$work/host-perl.log"
 query -V '${CMAKE_CONFIGURE_ARGS}' > "$work/cmake.log"
 grep -q -- '-DLLVM_INCLUDE_TESTS=ON' "$work/cmake.log"
 grep -q -- '-DCLANG_INCLUDE_TESTS=ON' "$work/cmake.log"
+grep -q -- '-DCLANG_ENABLE_HLSL=ON' "$work/cmake.log"
 grep -q -- '-DLIBCLANG_BUILD_STATIC=ON' "$work/cmake.log"
 for item in EMBERBSD_CLANG_TABLEGEN EMBERBSD_CROSS_BUILD_PERL; do
     query "$item=/nonexistent-ember-tool" -V '${PKG_FAIL_REASON}' > "$work/$item-missing.log" 2>&1

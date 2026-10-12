@@ -66,6 +66,26 @@ awk '
     END { if (!tables || !diagnostics || !templates) exit 1 }
 ' "$basic" > "$work/clang-expected"
 
+# LLVM 23 moved driver options and added Sema-generated attribute metadata.
+for directory in Options Sema; do
+    awk -v directory="$directory" '
+        /clang_tablegen\(/ || /^tablegen\(LLVM / {
+            path=$1; sub(/^clang_tablegen\(/, "", path);
+            if ($1 == "tablegen(LLVM") path=$2;
+            if (path ~ /\.inc$/ && path !~ /\$/) {
+                print "include/clang/" directory "/" path; n++
+            }
+        }
+        END { if (!n) exit 1 }
+    ' "$source/clang/include/clang/$directory/CMakeLists.txt" >> "$work/clang-expected"
+done
+! grep -Fxq 'include/clang/Driver/Options.inc' "$recipes/lang/clang/PLIST"
+# The upstream offload alias belongs to LLVM, not to a second Clang package.
+grep -Fq 'add_llvm_tool_symlink(clang-offload-packager' \
+    "$source/llvm/tools/llvm-offload-binary/CMakeLists.txt"
+grep -Fxq 'bin/clang-offload-packager' "$recipes/lang/llvm/PLIST"
+! grep -Fxq 'bin/clang-offload-packager' "$recipes/lang/clang/PLIST"
+
 failed=0
 for project in llvm clang; do
     LC_ALL=C sort -u "$work/$project-expected" > "$work/$project-outputs"
