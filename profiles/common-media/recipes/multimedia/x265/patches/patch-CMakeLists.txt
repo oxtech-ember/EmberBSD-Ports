@@ -1,0 +1,55 @@
+$NetBSD: patch-CMakeLists.txt,v 1.8 2026/04/20 18:05:26 adam Exp $
+
+Get X265_VERSION and X265_LATEST_TAG from outside.
+
+Solaris ld: Provided assembler is not PIC, so we pass "-mimpure-text"
+            to the compiler so it doesn't send "-ztext" to ld.
+
+Solaris ld: Passing "-Wa,--noexecstack" to gcc will generate an ELF section
+            requesting a non executable stack. I don't know if Solaris ld
+            is complying or just ignoring it.
+
+--- CMakeLists.txt.orig	2026-04-19 06:29:17.000000000 +0000
++++ CMakeLists.txt
+@@ -241,6 +241,11 @@ if(HAVE_INT_TYPES_H)
+     add_definitions(-DHAVE_INT_TYPES_H=1)
+ endif()
+ 
++check_include_files(alloca.h HAVE_ALLOCA_H)
++if(HAVE_ALLOCA_H)
++    add_definitions(-DHAVE_ALLOCA_H=1)
++endif()
++
+ if(INTEL_CXX AND UNIX)
+     set(GCC 1) # treat icpc roughly like gcc
+ elseif(CLANG)
+@@ -754,7 +759,7 @@ endif(ARM64 OR RISCV64)
+ 
+ option(WARNINGS_AS_ERRORS "Stop compiles on first warning" OFF)
+ if(WARNINGS_AS_ERRORS)
+-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
++    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
+         add_definitions(-Werror)
+     elseif(MSVC)
+         add_definitions(/WX)
+@@ -797,7 +802,6 @@ if(POWER)
+     endif()
+ endif()
+ 
+-include(Version) # determine X265_VERSION and X265_LATEST_TAG
+ include_directories(. common encoder "${PROJECT_BINARY_DIR}")
+ 
+ option(ENABLE_PPA "Enable PPA profiling instrumentation" OFF)
+@@ -1084,7 +1088,11 @@ if(ENABLE_SHARED)
+         elseif(CYGWIN)
+             # Cygwin is not officially supported or tested. MinGW with msys is recommended.
+         else()
+-            list(APPEND LINKER_OPTIONS "-Wl,-Bsymbolic,-znoexecstack")
++            if(${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
++                list(APPEND LINKER_OPTIONS "-mimpure-text -Wa,--noexecstack")
++            else()
++                list(APPEND LINKER_OPTIONS "-Wl,-Bsymbolic,-znoexecstack")
++            endif()
+         endif()
+     endif()
+     set_target_properties(x265-shared PROPERTIES SOVERSION ${X265_BUILD})

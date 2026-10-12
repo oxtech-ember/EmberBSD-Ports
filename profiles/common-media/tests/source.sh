@@ -28,6 +28,7 @@ while IFS="$(printf '\t')" read -r recipe archive sha url; do
     tree=$work/${archive%.tar.*}
     mkdir "$tree"
     tar -xf "$distfiles/$archive" --strip-components=1 -C "$tree"
+    case "$recipe" in multimedia/x265) tree=$tree/source ;; esac
     for name in $(awk '/^SHA1 \(patch-/ {gsub(/[()]/,"",$2); print $2}' "$pkg/distinfo" | LC_ALL=C sort); do
         actual=$(sed '/[$]NetBSD.*/d' "$pkg/patches/$name" | shasum -a 1 | awk '{print $1}')
         expected=$(awk -v n="($name)" '$1=="SHA1" && $2==n {print $4}' "$pkg/distinfo")

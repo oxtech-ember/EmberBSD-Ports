@@ -48,6 +48,13 @@ cp "$work/lame-distinfo" "$pkg/distinfo"
 sed 's/3df5124d/00000000/' "$work/saved-manifest" > "$profile/sources.tsv"
 negative altered-lame-source
 cp "$work/saved-manifest" "$profile/sources.tsv"
+pkg=$profile/recipes/multimedia/x265
+mv "$pkg/Makefile" "$work/x265-Makefile"
+negative missing-x265-recipe
+mv "$work/x265-Makefile" "$pkg/Makefile"
+sed 's/40b1ea04/00000000/' "$work/saved-manifest" > "$profile/sources.tsv"
+negative altered-x265-source
+cp "$work/saved-manifest" "$profile/sources.tsv"
 sh "$profile/validate.sh"
 
 echo 'PASS: both media exports reject missing recipes, altered/omitted patches and incorrect source pins before creating a destination'

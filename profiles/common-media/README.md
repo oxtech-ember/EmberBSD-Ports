@@ -5,6 +5,8 @@ for common-media and plasma-mobile exports. Its core cross-build corrections pre
 Plugin-family package/runtime acceptance remains separate.
 The complete [LAME 4.0 MP3 dependency](lame.md) cross-builds with GCC 16;
 encoding, Unicode tags and decoding passed a bounded installed check on CM5.
+The [x265 4.2 cross recipe](x265.md) also preserves its full package; CM5 NEON
+and scalar streams decode independently to the exact source pixels.
 
 This profile moves Plasma's media consumers to one **FFmpeg 9.0.2** package.
 Qt Multimedia 6.12 and KFileMetadata both select `multimedia/ffmpeg9`.

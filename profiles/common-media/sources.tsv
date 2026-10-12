@@ -10,3 +10,4 @@ multimedia/gst-plugins1-editing-services	gst-editing-services-1.28.8.tar.xz	4d93
 multimedia/py-gstreamer1	gst-python-1.28.8.tar.xz	6e0d8dd920234b9feeb86003d8f43c1996491f9d8190882329bf56f60a70206e	https://gstreamer.freedesktop.org/src/gst-python/gst-python-1.28.8.tar.xz
 net/gst-rtsp-server	gst-rtsp-server-1.28.8.tar.xz	59181ed21a5bc0533fb4f77cb7bc6005d89365e834b0c1294afb9ab5f7d96fe0	https://gstreamer.freedesktop.org/src/gst-rtsp-server/gst-rtsp-server-1.28.8.tar.xz
 audio/lame	lame-4.0.tar.gz	3df5124d5ad3a98312ffd7ba6a9b36230e4f8a3e66d3ce0f425e336c32d216eb	https://downloads.sourceforge.net/project/lame/lame/4.0/lame-4.0.tar.gz
+multimedia/x265	x265_4.2.tar.gz	40b1ea0453e0309f0eba934e0ddf533f8f6295966679e8894e8f1c1c8d5e1210	https://bitbucket.org/multicoreware/x265_git/downloads/x265_4.2.tar.gz

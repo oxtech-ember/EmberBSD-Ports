@@ -38,13 +38,27 @@ done
     echo 'LAME patch inventory differs.' >&2; exit 2;
 }
 
+expected='multimedia/x265 x265_4.2.tar.gz 40b1ea0453e0309f0eba934e0ddf533f8f6295966679e8894e8f1c1c8d5e1210 https://bitbucket.org/multicoreware/x265_git/downloads/x265_4.2.tar.gz'
+actual=$(awk '$1=="multimedia/x265" { if (NF != 4) exit 1; print $1, $2, $3, $4 }' "$profile/sources.tsv")
+[ "$actual" = "$expected" ] || { echo 'Incorrect x265 source pin.' >&2; exit 2; }
+pkg=$profile/recipes/multimedia/x265
+for file in Makefile DESCR PLIST distinfo options.mk buildlink3.mk; do
+    [ -f "$pkg/$file" ] || { echo "Incomplete x265 recipe: $file" >&2; exit 2; }
+done
+[ "$(awk '/^SHA1 \(patch-/ {n++} END {print n}' "$pkg/distinfo")" = 9 ] || {
+    echo 'Incomplete x265 patch manifest.' >&2; exit 2;
+}
+[ "$(find "$pkg/patches" -type f -name 'patch-*' | wc -l | tr -d ' ')" = 9 ] || {
+    echo 'x265 patch inventory differs.' >&2; exit 2;
+}
+
 # All source entries own complete recipes and every source patch is checksummed.
-awk -F '\t' '!/^#/ && NF { if (NF != 4 || $1 !~ /^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9+-]*$/ || $2 !~ /^[a-zA-Z0-9][a-zA-Z0-9._+-]*\.tar\.(xz|gz)$/ || $4 !~ /^https:\/\// || seen[$1]++ || length($3) != 64 || $3 !~ /^[0-9a-f]+$/) exit 1; count++ } END { if (count != 11) exit 1 }' "$profile/sources.tsv"
+awk -F '\t' '!/^#/ && NF { if (NF != 4 || $1 !~ /^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9+-]*$/ || $2 !~ /^[a-zA-Z0-9][a-zA-Z0-9._+-]*\.tar\.(xz|gz)$/ || $4 !~ /^https:\/\// || seen[$1]++ || length($3) != 64 || $3 !~ /^[0-9a-f]+$/) exit 1; count++ } END { if (count != 12) exit 1 }' "$profile/sources.tsv"
 while IFS="$(printf '\t')" read -r recipe archive sha url; do
     case "$recipe" in ''|'#'*) continue ;; esac
     pkg=$profile/recipes/$recipe
     case "$recipe" in
-        multimedia/ffmpeg9|audio/lame) ;;
+        multimedia/ffmpeg9|audio/lame|multimedia/x265) ;;
         *)
             case "$archive" in *-1.28.8.tar.xz) ;; *) echo "Wrong GStreamer family version: $recipe" >&2; exit 2 ;; esac
             [ "$(awk '$1 == "GST_VERSION=" {print $2}' "$profile/recipes/multimedia/gstreamer1/version.mk")" = 1.28.8 ] || exit 2
