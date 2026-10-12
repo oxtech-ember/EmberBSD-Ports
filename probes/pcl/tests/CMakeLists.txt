@@ -19,6 +19,12 @@ set(Boost_DIR /usr/pkg/lib/cmake/Boost-1.91.0)
 find_package(Boost 1.91.0 EXACT CONFIG REQUIRED COMPONENTS iostreams)
 set(flann_DIR "${PROBE_PREFIX}/lib/cmake/flann")
 find_package(flann 1.9.2 EXACT CONFIG REQUIRED NO_DEFAULT_PATH PATHS "${flann_DIR}")
+# flann 1.9.2's config does not propagate its include directory to the
+# imported target; PCL headers include flann/util/params.h directly.
+if(NOT TARGET flann_cpp OR NOT DEFINED flann_INCLUDE_DIRS AND NOT DEFINED FLANN_INCLUDE_DIRS)
+  # fallthrough handled below
+endif()
+include_directories("${PROBE_PREFIX}/include")
 set(PCL_SHARED_LIBS ON)
 set(PCL_FLANN_REQUIRED_TYPE SHARED)
 find_package(PCL 1.15.1 EXACT CONFIG REQUIRED COMPONENTS common filters registration io surface segmentation
