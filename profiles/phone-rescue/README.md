@@ -16,14 +16,16 @@ Device storage stays untouched during exploitation.
 
 ## Status (2026-10-11)
 
-- The gaster recipe inside a pkgsrc cross export is pending: the macOS
-  host bootstrap lacks a libtool/libtoolize host package, and recipes
-  that run `autoreconf` (such as `devel/libusb1`) require libtoolize on
-  the wrapped tool PATH. The gap is tracked in the knowledge base.
-- The same gaster source cross-compiled directly with the GCC16 cross
-  toolchain (libusb 1.0.30 netbsd backend, libusb linked statically,
-  base libcrypto, `-pthread`) and the aarch64 binary runs in the
-  EmberBSD Tools VM: usage output confirmed on 2026-10-11.
-- Next steps: add the host libtool package, finish pkgsrc packaging for
-  both recipes, then validate PwnedDFU against iPhone 5S hardware
+- Host Libtool gap closed on 2026-10-12: the macOS bootstrap owns native
+  `libtool-base-2.6.2` and `m4-1.4.21` built from the same pinned export.
+  `devel/libusb1` builds and packages through its standard recipe with
+  `autoreconf -fi`; `pkgsrc/local-phone/gaster` builds and packages the
+  same way against the sysroot-installed libusb1. `tests/host-libtool.sh`
+  in common-build-tools gates the host side. GCC16 `-fanalyzer` and
+  cppcheck report no findings for gaster sources.
+- The packaged `gaster-20230202` and `libusb1-1.0.30nb1` install with the
+  stock `pkg_add` in the EmberBSD Tools VM; `gaster` prints its usage from
+  `/usr/pkg/bin`. This closes packaging acceptance; it does not verify a
+  device.
+- Next step: validate PwnedDFU against iPhone 5S hardware
   (iPhone6,2, CPID 0x8960) with the device passed through to the VM.

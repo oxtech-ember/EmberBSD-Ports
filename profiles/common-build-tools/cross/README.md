@@ -26,6 +26,16 @@ Prepare these separate directories, outside Git:
   mksh and digest. Use the exported `pkg_install-20260227nb1` recipe: it fixes
   alternate-root replacement and suppresses target deinstall scripts during
   cross updates. Its package database describes host executables only.
+  The bootstrap must also own native `libtool-base-2.6.2` and `m4-1.4.21`
+  built from the same export (`bmake -C export/devel/libtool-base MAKECONF=`
+  *host*`/etc/mk.conf package`, then `pkg_add` both). Recipes that run
+  `autoreconf` — `devel/libusb1`, `pkgsrc/local-phone/gaster` — resolve
+  `libtoolize` through the bootstrap prefix: invoke cross builds with the
+  bootstrap `bin` on `PATH` and point `TOOLS_PLATFORM.gm4` at its own
+  `bin/gm4` instead of an external package manager. `tests/host-libtool.sh`
+  (in the parent profile) gates this: registered packages, real files rather
+  than symlinks outside the prefix, a shared-library consumer built through
+  `autoreconf -fi`, and a stripped `PATH` that still fails at `libtoolize`.
 - A target sysroot with headers, complete base libraries and development
   files (including `libintl`), the complete accepted
   `gcc16-16.2.0nb1` package, its dependency files and target package database.
