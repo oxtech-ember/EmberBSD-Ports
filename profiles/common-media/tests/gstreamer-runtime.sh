@@ -12,7 +12,7 @@ work=$(CDPATH= cd -- "$2" && pwd)
 PATH=/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin; export PATH
 while read expected name; do [ "$(sha256 -q "$bundle/$name")" = "$expected" ]; done < "$bundle/files.sha256"
 while read expected name; do [ "$(sha256 -q "$name")" = "$expected" ]; done < "$bundle/runtime.sha256"
-pkg_info -e 'gstreamer1-1.28.8' > "$work/package.txt"
+pkg_info -e 'gstreamer1>=1.28.8' > "$work/package.txt"
 sysctl kern.boottime > "$work/boot.before"
 mkdir "$work/home"
 for test_name in gstbuffer gstcaps gstevent gstquery gstsegment gststructure; do

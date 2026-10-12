@@ -6,3 +6,4 @@ Size (gst-plugins-bad-1.28.8.tar.xz) = 8355328 bytes
 SHA1 (patch-ext_gtk_meson.build) = 0a7cff2380015a46b66fa0a9797cb5a5fb6730e4
 SHA1 (patch-ext_wayland_meson.build) = 5cb65148ba22af5ce206cb66a7a7430822ceb494
 SHA1 (patch-ext_webrtc_meson.build) = dc0179ebea4b8f1f990951a8a860dac3c3ac5385
+SHA1 (patch-zz-cross-introspection) = 64af18615ac3424fe02c0c15338c4c1c294e735a

@@ -1,0 +1,12 @@
+$NetBSD: distinfo,v 1.32 2026/08/30 15:37:38 ryoon Exp $
+
+BLAKE2s (libaom-3.15.0.tar.gz) = d308ca3edfd43b9b2e2f6b3ad79aa8737cbe26770f1b1328af5cd5d672e07e4b
+SHA512 (libaom-3.15.0.tar.gz) = 68712a22e6912cdc16a208a62b4bd3a21fd4840924ed09191a4b85717bb6412b306ef302037e2ec4b524cdfb3c63ea2743671b989d84e45eca9c962eaa4d466b
+Size (libaom-3.15.0.tar.gz) = 6622801 bytes
+SHA1 (patch-aom__ports_ppc__cpudetect.c) = 22a8ea3feadc097447e9d0a070af93a46ac20028
+SHA1 (patch-build_cmake_aom__configure.cmake) = 55d47dd936749fe992c1cde3d52ed2b8cdd2a1c1
+SHA1 (patch-build_cmake_aom__optimization.cmake) = 17192b99930b6aa5948c4bea22d4fec6e5ce062d
+SHA1 (patch-build_cmake_exports.cmake) = 8784647bbcc4e502cf4c71b5553eac02000ddc7f
+SHA1 (patch-build_cmake_version.cmake) = 4ebdb611a7d66b22ce67e9abc9c65fe73f54b685
+SHA1 (patch-examples_svc__encoder__rtc.cc) = c4339baaf1acd0ea0470d3954877d94409ae17a3
+SHA1 (patch-zz-aarch64-cpudetect) = ed351482e7fb81eb8a79a2b3032a7ae511a9f47f

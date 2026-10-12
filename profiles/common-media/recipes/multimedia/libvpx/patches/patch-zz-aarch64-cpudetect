@@ -1,0 +1,68 @@
+$NetBSD$
+
+Enable runtime AArch64 dispatch on EmberBSD/NetBSD. Intersect attached CPU
+features and fail safely on unavailable data. Hardware SVE bits alone do
+not prove OS vector-state preservation.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- vpx_ports/aarch64_cpudetect.c.orig
++++ vpx_ports/aarch64_cpudetect.c
+@@ -60,7 +60,57 @@
+   return flags;
+ }
+ 
+-#elif defined(_WIN32)  // end __APPLE__
++#elif defined(__NetBSD__)  // end __APPLE__
++
++#include <sys/types.h>
++#include <sys/sysctl.h>
++#include <aarch64/armreg.h>
++#include <stddef.h>
++#include <stdio.h>
++
++static int arm_get_cpu_caps(void) {
++  int baseline = 0;
++#if HAVE_NEON
++  baseline = HAS_NEON;  // Mandatory for the AArch64 userspace ABI.
++#endif
++  int ncpu = 0;
++  size_t size = sizeof(ncpu);
++  if (sysctlbyname("hw.ncpu", &ncpu, &size, NULL, 0) != 0 ||
++      size != sizeof(ncpu) || ncpu < 1) {
++    return baseline;
++  }
++
++  // A thread can migrate between heterogeneous CPUs. Only use extensions
++  // reported by every attached CPU, including CPUs currently offline.
++  int common = HAS_NEON_DOTPROD | HAS_NEON_I8MM;
++  for (int cpu = 0; cpu < ncpu; ++cpu) {
++    struct aarch64_sysctl_cpu_id id;
++    char name[64];
++    snprintf(name, sizeof(name), "machdep.cpu%d.cpu_id", cpu);
++    memset(&id, 0, sizeof(id));
++    size = sizeof(id);
++    if (sysctlbyname(name, &id, &size, NULL, 0) != 0 ||
++        size < offsetof(struct aarch64_sysctl_cpu_id, ac_aa64isar1) +
++                   sizeof(id.ac_aa64isar1)) {
++      return baseline;
++    }
++    int flags = 0;
++#if HAVE_NEON_DOTPROD
++    if (__SHIFTOUT(id.ac_aa64isar0, ID_AA64ISAR0_EL1_DP) ==
++        ID_AA64ISAR0_EL1_DP_UDOT) flags |= HAS_NEON_DOTPROD;
++#endif
++#if HAVE_NEON_I8MM
++    if (__SHIFTOUT(id.ac_aa64isar1, ID_AA64ISAR1_EL1_I8MM) ==
++        ID_AA64ISAR1_EL1_I8MM_SUPPORTED) flags |= HAS_NEON_I8MM;
++#endif
++    common &= flags;
++  }
++  // Hardware SVE bits do not establish kernel vector-state preservation.
++  // Do not enable SVE/SVE2 until the OS exposes that userspace contract.
++  return baseline | common;
++}
++
++#elif defined(_WIN32)  // end __NetBSD__
+ 
+ static int arm_get_cpu_caps(void) {
+   int flags = 0;

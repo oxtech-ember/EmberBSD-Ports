@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.29 2026/09/02 19:03:41 wiz Exp $
 
 PKGNAME=	${DISTNAME:S/plugins/plugins1/}
+PKGREVISION=	1
 CATEGORIES=	multimedia gnome
 
 COMMENT=	Open source multimedia framework - bad plugins
@@ -80,6 +81,23 @@ GST_PLUGINS+=	introspection
 GST_PLUGINS+=	nls
 
 LDFLAGS.SunOS+=	-lsocket -lnsl
+
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# Host generators, target GType queries; preserve all GIR and typelib outputs.
+TOOL_DEPENDS+= glib2-tools>=2.90.1:../../devel/glib2-tools
+EMBERBSD_GI_MESON_OPTIONS= no
+.include "../../devel/gobject-introspection/cross.mk"
+MESON_ARGS+= -Dintrospection=enabled
+MESON_BINARIES+= glib-mkenums glib-genmarshal g-ir-scanner g-ir-compiler
+MESON_BINARY.glib-mkenums= ${TOOLBASE}/bin/glib-mkenums
+MESON_BINARY.glib-genmarshal= ${TOOLBASE}/bin/glib-genmarshal
+MESON_BINARY.g-ir-scanner= ${TOOLBASE}/bin/g-ir-scanner
+MESON_BINARY.g-ir-compiler= ${TOOLBASE}/bin/g-ir-compiler
+MESON_CROSS_VARS+= emberbsd_gi_cross emberbsd_gi_ldd_wrapper
+MESON_CROSS.emberbsd_gi_cross= true
+MESON_CROSS.emberbsd_gi_ldd_wrapper= '${EMBERBSD_GI_FILESDIR}/elf-needed.sh'
+.endif
 
 .include "Makefile.common"
 BUILDLINK_DEPMETHOD.gobject-introspection=	build

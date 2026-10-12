@@ -52,13 +52,21 @@ done
     echo 'x265 patch inventory differs.' >&2; exit 2;
 }
 
+expected="multimedia/libaom libaom-3.15.0.tar.gz ea08c38ecc078bc85bb1b691020e52b06250f1a81fe7ca5b624629225081af96 https://storage.googleapis.com/aom-releases/libaom-3.15.0.tar.gz"
+actual=$(awk '$1=="multimedia/libaom" { if (NF != 4) exit 1; print $1, $2, $3, $4 }' "$profile/sources.tsv")
+[ "$actual" = "$expected" ] || { echo "Incorrect libaom source pin." >&2; exit 2; }
+
+expected='multimedia/libvpx libvpx-1.16.0.tar.gz 7a479a3c66b9f5d5542a4c6a1b7d3768a983b1e5c14c60a9396edc9b649e015c https://github.com/webmproject/libvpx/archive/v1.16.0.tar.gz'
+actual=$(awk '$1=="multimedia/libvpx" { if (NF != 4) exit 1; print $1, $2, $3, $4 }' "$profile/sources.tsv")
+[ "$actual" = "$expected" ] || { echo 'Incorrect libvpx source pin.' >&2; exit 2; }
+
 # All source entries own complete recipes and every source patch is checksummed.
-awk -F '\t' '!/^#/ && NF { if (NF != 4 || $1 !~ /^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9+-]*$/ || $2 !~ /^[a-zA-Z0-9][a-zA-Z0-9._+-]*\.tar\.(xz|gz)$/ || $4 !~ /^https:\/\// || seen[$1]++ || length($3) != 64 || $3 !~ /^[0-9a-f]+$/) exit 1; count++ } END { if (count != 12) exit 1 }' "$profile/sources.tsv"
+awk -F '\t' '!/^#/ && NF { if (NF != 4 || $1 !~ /^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9+-]*$/ || $2 !~ /^[a-zA-Z0-9][a-zA-Z0-9._+-]*\.tar\.(xz|gz)$/ || $4 !~ /^https:\/\// || seen[$1]++ || length($3) != 64 || $3 !~ /^[0-9a-f]+$/) exit 1; count++ } END { if (count != 14) exit 1 }' "$profile/sources.tsv"
 while IFS="$(printf '\t')" read -r recipe archive sha url; do
     case "$recipe" in ''|'#'*) continue ;; esac
     pkg=$profile/recipes/$recipe
     case "$recipe" in
-        multimedia/ffmpeg9|audio/lame|multimedia/x265) ;;
+        multimedia/ffmpeg9|audio/lame|multimedia/x265|multimedia/libaom|multimedia/libvpx) ;;
         *)
             case "$archive" in *-1.28.8.tar.xz) ;; *) echo "Wrong GStreamer family version: $recipe" >&2; exit 2 ;; esac
             [ "$(awk '$1 == "GST_VERSION=" {print $2}' "$profile/recipes/multimedia/gstreamer1/version.mk")" = 1.28.8 ] || exit 2

@@ -2,7 +2,8 @@
 
 The profile pins the complete [GStreamer 1.28.8 source family](gstreamer.md)
 for common-media and plasma-mobile exports. Its core cross-build corrections preserve introspection.
-Plugin-family package/runtime acceptance remains separate.
+Complete [base/bad plugin packages](gstreamer-plugins.md) now pass bounded
+CM5 introspection, conversion and parser checks; other plugin packages remain separate.
 The complete [LAME 4.0 MP3 dependency](lame.md) cross-builds with GCC 16;
 encoding, Unicode tags and decoding passed a bounded installed check on CM5.
 The [x265 4.2 cross recipe](x265.md) also preserves its full package; CM5 NEON
@@ -11,7 +12,8 @@ and scalar streams decode independently to the exact source pixels.
 This profile moves Plasma's media consumers to one **FFmpeg 9.0.2** package.
 Qt Multimedia 6.12 and KFileMetadata both select `multimedia/ffmpeg9`.
 The profile composes common tools and graphics with the final `/usr/pkg`
-prefix. It prepares sources; native packages and the complete Plasma Mobile
+prefix. The [full FFmpeg package](ffmpeg-runtime.md) now passes bounded CM5
+file-codec scenarios. Qt Multimedia playback and the complete Plasma Mobile
 session remain unaccepted.
 
 The recipe updates pkgsrc's existing FFmpeg 9.0.1 package. It retains normal
@@ -128,7 +130,8 @@ rejection. KFileMetadata6.30 requires Qt>=6.9; this test does not alter its
 source requirements. Qt Multimedia's complete plugin was not built or played.
 This is a host API check, not evidence of an installed Qt6.12/FFmpeg9 native stack.
 
-Native package/check-files, full codec builds, FATE, ELF/RPATH/runtime closure,
-Qt Multimedia playback and installed KFileMetadata extraction remain mandatory
+Full package/check-files and selected installed codecs are now covered by the
+[CM5 receipt](ffmpeg-runtime.md). Complete FATE, Qt Multimedia playback and
+installed KFileMetadata extraction remain mandatory
 before the [common userspace transition](../../probes/plasma-mobile/toolkit/MIGRATION.md).
 The PLIST is source-derived; no file is exempted from native checking.

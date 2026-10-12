@@ -11,3 +11,5 @@ multimedia/py-gstreamer1	gst-python-1.28.8.tar.xz	6e0d8dd920234b9feeb86003d8f43c
 net/gst-rtsp-server	gst-rtsp-server-1.28.8.tar.xz	59181ed21a5bc0533fb4f77cb7bc6005d89365e834b0c1294afb9ab5f7d96fe0	https://gstreamer.freedesktop.org/src/gst-rtsp-server/gst-rtsp-server-1.28.8.tar.xz
 audio/lame	lame-4.0.tar.gz	3df5124d5ad3a98312ffd7ba6a9b36230e4f8a3e66d3ce0f425e336c32d216eb	https://downloads.sourceforge.net/project/lame/lame/4.0/lame-4.0.tar.gz
 multimedia/x265	x265_4.2.tar.gz	40b1ea0453e0309f0eba934e0ddf533f8f6295966679e8894e8f1c1c8d5e1210	https://bitbucket.org/multicoreware/x265_git/downloads/x265_4.2.tar.gz
+multimedia/libaom	libaom-3.15.0.tar.gz	ea08c38ecc078bc85bb1b691020e52b06250f1a81fe7ca5b624629225081af96	https://storage.googleapis.com/aom-releases/libaom-3.15.0.tar.gz
+multimedia/libvpx	libvpx-1.16.0.tar.gz	7a479a3c66b9f5d5542a4c6a1b7d3768a983b1e5c14c60a9396edc9b649e015c	https://github.com/webmproject/libvpx/archive/v1.16.0.tar.gz

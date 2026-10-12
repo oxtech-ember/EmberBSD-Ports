@@ -9,7 +9,7 @@ mkdir "$2"
 work=$(CDPATH= cd -- "$2" && pwd)
 recipe=$tree/multimedia/gstreamer1
 get() { "$BMAKE" -C "$recipe" -V "\${$1}"; }
-[ "$(get PKGNAME)" = gstreamer1-1.28.8 ]
+[ "$(get PKGNAME)" = gstreamer1-1.28.8nb1 ]
 source=$(get WRKSRC)
 host=$(get TOOLBASE)
 stage=$(get DESTDIR)

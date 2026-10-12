@@ -1,0 +1,158 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Preserve base-library GIR during cross builds.
+Use native scanners and execute only the temporary query against target ELF
+libraries via the shared GI launcher. Keep native Meson behavior unchanged.
+
+--- meson.build.orig
++++ meson.build
+@@ -515,6 +515,17 @@
+     'g_setenv("GST_TRACERS", "", TRUE);' + \
+     'gst_init(NULL,NULL);', '--quiet']
+ 
++# Native GI tools query these newly built libraries on the target.
++emberbsd_gir_env = environment()
++if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++  gir_init_section += ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++  emberbsd_gir_libs = []
++  foreach library : ['allocators', 'app', 'audio', 'fft', 'gl', 'pbutils', 'riff', 'rtp', 'rtsp', 'sdp', 'tag', 'video']
++    emberbsd_gir_libs += [meson.project_build_root() / 'gst-libs/gst' / library]
++  endforeach
++  emberbsd_gir_env.set('LD_LIBRARY_PATH', ':'.join(emberbsd_gir_libs))
++endif
++
+ pkgconfig = import('pkgconfig')
+ plugins_pkgconfig_install_dir = join_paths(plugins_install_dir, 'pkgconfig')
+ if get_option('default_library') == 'shared'
+--- gst-libs/gst/allocators/meson.build.orig
++++ gst-libs/gst/allocators/meson.build
+@@ -85,6 +85,7 @@
+     'includes' : ['Gst-1.0'],
+     'install' : true,
+     'extra_args' : gst_gir_extra_args,
++    'env' : emberbsd_gir_env,
+     'dependencies' : [gst_dep]
+   }
+   library_def += {'gir': [gir]}
+--- gst-libs/gst/app/meson.build.orig
++++ gst-libs/gst/app/meson.build
+@@ -61,6 +61,7 @@
+     'includes' : ['Gst-1.0', 'GstBase-1.0'],
+     'install' : true,
+     'extra_args' : gst_gir_extra_args,
++    'env' : emberbsd_gir_env,
+     'dependencies' : [gst_dep, gst_base_dep]
+   }
+   library_def += {'gir': [gir]}
+--- gst-libs/gst/audio/meson.build.orig
++++ gst-libs/gst/audio/meson.build
+@@ -185,6 +185,7 @@
+     'includes' : ['Gst-1.0', 'GstBase-1.0', 'GLib-2.0', 'GObject-2.0', 'GModule-2.0' ],
+     'install' : true,
+     'extra_args' : gst_gir_extra_args,
++    'env' : emberbsd_gir_env,
+     'dependencies' : gstaudio_deps
+   }
+   library_def = {'lib': library_def['lib'], 'gir': [gir]}
+--- gst-libs/gst/gl/meson.build.orig
++++ gst-libs/gst/gl/meson.build
+@@ -1168,6 +1168,7 @@
+         'includes' : ['Gst-1.0', 'GstBase-1.0', 'GstVideo-1.0'],
+         'install' : true,
+         'extra_args' : gir_init_section + ['--c-include=gst/gl/gl.h'],
++        'env' : emberbsd_gir_env,
+         'dependencies' : [video_dep, gst_dep, gst_base_dep],
+     }
+     library_def += {'gir': [gir]}
+@@ -1224,6 +1225,7 @@
+         'includes' : ['Gst-1.0', 'GstBase-1.0', 'GstVideo-1.0', gl_gir[0]],
+         'install' : true,
+         'extra_args' : gir_init_section + ['--c-include=gst/gl/x11/x11.h'],
++        'env' : emberbsd_gir_env,
+         'dependencies' : [video_dep, gst_dep, gst_base_dep]
+       }
+       library_def += {'gir': [gir]}
+@@ -1270,6 +1272,7 @@
+         'includes' : ['Gst-1.0', 'GstBase-1.0', 'GstVideo-1.0', gl_gir[0]],
+         'install' : true,
+         'extra_args' : gir_init_section + ['--c-include=gst/gl/wayland/wayland.h'],
++        'env' : emberbsd_gir_env,
+         'dependencies' : [video_dep, gst_dep, gst_base_dep]
+       }
+       library_def += {'gir': [gir]}
+@@ -1306,6 +1309,7 @@
+         'includes' : ['Gst-1.0', 'GstBase-1.0', 'GstVideo-1.0', gl_gir[0]],
+         'install' : true,
+         'extra_args' : gir_init_section + ['--c-include=gst/gl/egl/egl.h'],
++        'env' : emberbsd_gir_env,
+         'dependencies' : [video_dep, gst_dep, gst_base_dep]
+       }
+       library_def += {'gir': [gir]}
+@@ -1342,6 +1346,7 @@
+         'includes' : ['Gst-1.0', 'GstBase-1.0', 'GstVideo-1.0', gl_gir[0]],
+         'install' : true,
+         'extra_args' : gir_init_section + ['--c-include=gst/gl/viv-fb/gstglviv-fb.h'],
++        'env' : emberbsd_gir_env,
+         'dependencies' : [video_dep, gst_dep, gst_base_dep]
+       }
+       library_def += {'gir': [gir]}
+--- gst-libs/gst/pbutils/meson.build.orig
++++ gst-libs/gst/pbutils/meson.build
+@@ -92,6 +92,7 @@
+     'includes' : ['Gst-1.0', 'GstBase-1.0', 'GstAudio-1.0', 'GstVideo-1.0'],
+     'install' : true,
+     'extra_args' : gst_gir_extra_args,
++    'env' : emberbsd_gir_env,
+     'dependencies' : gstpbutils_deps
+   }
+   library_def = {'lib': library_def['lib'], 'gir': [gir]}
+--- gst-libs/gst/rtp/meson.build.orig
++++ gst-libs/gst/rtp/meson.build
+@@ -78,6 +78,7 @@
+     'includes' : ['Gst-1.0', 'GstBase-1.0'],
+     'install' : true,
+     'extra_args' : gst_gir_extra_args,
++    'env' : emberbsd_gir_env,
+     'dependencies' : gstrtp_deps
+   }
+   library_def = {'lib': library_def['lib'], 'gir': [gir]}
+--- gst-libs/gst/rtsp/meson.build.orig
++++ gst-libs/gst/rtsp/meson.build
+@@ -83,6 +83,7 @@
+     'includes' : ['Gst-1.0', 'GstBase-1.0', 'GstSdp-1.0', 'Gio-2.0'],
+     'install' : true,
+     'extra_args' : gst_gir_extra_args,
++    'env' : emberbsd_gir_env,
+     'dependencies' : gstrtsp_deps + [sdp_dep]
+   }
+   library_def = {'lib': library_def['lib'], 'gir': [gir]}
+--- gst-libs/gst/sdp/meson.build.orig
++++ gst-libs/gst/sdp/meson.build
+@@ -53,6 +53,7 @@
+     'includes' : ['Gst-1.0'],
+     'install' : true,
+     'extra_args' : gst_gir_extra_args,
++    'env' : emberbsd_gir_env,
+     'dependencies' : sdp_deps
+   }
+ 
+--- gst-libs/gst/tag/meson.build.orig
++++ gst-libs/gst/tag/meson.build
+@@ -116,6 +116,7 @@
+     'includes' : ['Gst-1.0', 'GstBase-1.0'],
+     'install' : true,
+     'extra_args' : gst_gir_extra_args,
++    'env' : emberbsd_gir_env,
+     'dependencies' : tag_deps,
+   }
+   library_def = {'lib': library_def['lib'], 'gir': [gir]}
+--- gst-libs/gst/video/meson.build.orig
++++ gst-libs/gst/video/meson.build
+@@ -179,6 +179,7 @@
+     'includes' : ['Gst-1.0','GstBase-1.0'],
+     'install' : true,
+     'extra_args' : gst_gir_extra_args,
++    'env' : emberbsd_gir_env,
+     'dependencies' : gstvideo_deps
+   }
+   library_def += {'gir': [gir]}

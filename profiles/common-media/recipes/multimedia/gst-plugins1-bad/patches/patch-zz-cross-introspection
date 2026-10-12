@@ -1,0 +1,239 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Preserve plugin-library GIR during cross builds.
+Use native generators and the shared target GType query launcher.
+
+--- meson.build.orig
++++ meson.build
+@@ -544,6 +544,17 @@
+ 
+ presetdir = join_paths(get_option('datadir'), 'gstreamer-' + api_version, 'presets')
+ 
++# Native GI tools query these newly built libraries on the target.
++emberbsd_gir_env = environment()
++if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++  gir_init_section += ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++  emberbsd_gir_libs = []
++  foreach library : ['adaptivedemux', 'analytics', 'audio', 'basecamerabinsrc', 'codecparsers', 'codecs', 'cuda', 'd3d11', 'd3d12', 'dxva', 'hip', 'insertbin', 'mpegts', 'mse', 'photography', 'play', 'player', 'transcoder', 'uridownloader', 'va', 'vulkan', 'wayland', 'webrtc']
++    emberbsd_gir_libs += [meson.project_build_root() / 'gst-libs/gst' / library]
++  endforeach
++  emberbsd_gir_env.set('LD_LIBRARY_PATH', ':'.join(emberbsd_gir_libs))
++endif
++
+ pkgconfig = import('pkgconfig')
+ plugins_pkgconfig_install_dir = join_paths(plugins_install_dir, 'pkgconfig')
+ if get_option('default_library') == 'shared'
+--- gst-libs/gst/analytics/meson.build.orig
++++ gst-libs/gst/analytics/meson.build
+@@ -66,6 +66,7 @@
+     'export_packages' : pkg_name,
+     'includes' : ['Gst-1.0', 'GstBase-1.0', 'GstVideo-1.0'],
+     'install' : true,
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section + ['-DGST_USE_UNSTABLE_API'],
+     'dependencies' : [gstbase_dep, gstvideo_dep]
+   }
+--- gst-libs/gst/audio/meson.build.orig
++++ gst-libs/gst/audio/meson.build
+@@ -43,6 +43,7 @@
+     'export_packages' : pkg_name,
+     'includes' : ['Gst-1.0', 'GstAudio-1.0', 'GstBase-1.0'],
+     'install' : true,
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section + ['-DGST_USE_UNSTABLE_API'],
+     'dependencies' : [gstbase_dep, gstaudio_dep]
+   }
+--- gst-libs/gst/basecamerabinsrc/meson.build.orig
++++ gst-libs/gst/basecamerabinsrc/meson.build
+@@ -44,6 +44,7 @@
+     'export_packages' : pkg_name,
+     'includes' : ['Gst-1.0', 'GstApp-1.0'],
+     'install' : false, # Only for the documentation
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section + ['-DGST_USE_UNSTABLE_API'],
+     'dependencies' : [gstapp_dep],
+     'build_by_default' : true,
+--- gst-libs/gst/codecparsers/meson.build.orig
++++ gst-libs/gst/codecparsers/meson.build
+@@ -95,6 +95,7 @@
+     'export_packages' : pkg_name,
+     'includes' : ['Gst-1.0', 'GstBase-1.0'],
+     'install' : true,
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section + cp_args +
+       ['--c-include=gst/codecs/gstav1decoder.h',
+        '--c-include=gst/codecparsers/gstav1bitwriter.h',
+--- gst-libs/gst/codecs/meson.build.orig
++++ gst-libs/gst/codecs/meson.build
+@@ -75,6 +75,7 @@
+     'export_packages' : pkg_name,
+     'includes' : ['Gst-1.0', 'GstVideo-1.0', 'GstCodecParsers-1.0'],
+     'install' : true,
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section + ['-DGST_USE_UNSTABLE_API'] +
+       ['--c-include=gst/codecs/gstav1decoder.h',
+        '--c-include=gst/codecs/gsth264decoder.h',
+--- gst-libs/gst/cuda/meson.build.orig
++++ gst-libs/gst/cuda/meson.build
+@@ -182,6 +182,7 @@
+     'export_packages' : pkg_name,
+     'includes' : gir_includes,
+     'install' : true,
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section + ['-DGST_USE_UNSTABLE_API', '-I' + meson.current_source_dir() / 'stub'],
+     'dependencies' : [gstbase_dep, gstvideo_dep, gstglproto_dep],
+   }
+--- gst-libs/gst/d3d11/meson.build.orig
++++ gst-libs/gst/d3d11/meson.build
+@@ -289,6 +289,7 @@
+     'export_packages' : pkg_name,
+     'includes' : gir_includes,
+     'install' : true,
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section + ['-DGST_USE_UNSTABLE_API'],
+     'dependencies' : [gstbase_dep, gstvideo_dep, d3d11_lib, dxgi_lib],
+   }
+--- gst-libs/gst/d3d12/meson.build.orig
++++ gst-libs/gst/d3d12/meson.build
+@@ -194,6 +194,7 @@
+     'export_packages' : pkg_name,
+     'includes' : ['Gst-1.0', 'GstBase-1.0', 'GstVideo-1.0'],
+     'install' : true,
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section + ['-DGST_USE_UNSTABLE_API'],
+     'dependencies' : [gst_dep, gstbase_dep, gstvideo_dep, d3d12_lib, dxgi_lib]
+   }
+--- gst-libs/gst/dxva/meson.build.orig
++++ gst-libs/gst/dxva/meson.build
+@@ -63,6 +63,7 @@
+     'export_packages' : pkg_name,
+     'includes' : ['Gst-1.0', 'GstVideo-1.0', 'GstCodecs-1.0'],
+     'install' : true,
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section + ['-DGST_USE_UNSTABLE_API'],
+     'dependencies' : [gstvideo_dep, gstcodecs_dep]
+   }
+--- gst-libs/gst/hip/meson.build.orig
++++ gst-libs/gst/hip/meson.build
+@@ -103,6 +103,7 @@
+     'export_packages' : pkg_name,
+     'includes' : gir_includes,
+     'install' : true,
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section + ['-DGST_USE_UNSTABLE_API', '-I' + stub_path],
+     'dependencies' : [gst_dep, gstbase_dep, gstvideo_dep],
+   }
+@@ -149,6 +150,7 @@
+       'export_packages' : pkg_name,
+       'includes' : gir_includes,
+       'install' : true,
++      'env' : emberbsd_gir_env,
+       'extra_args' : gir_init_section + ['-DGST_USE_UNSTABLE_API', '-I' + stub_path],
+       'dependencies' : [gst_dep, gstbase_dep, gstvideo_dep, gstgl_dep],
+     }
+--- gst-libs/gst/insertbin/meson.build.orig
++++ gst-libs/gst/insertbin/meson.build
+@@ -43,6 +43,7 @@
+     'export_packages' : pkg_name,
+     'includes' : ['Gst-1.0'],
+     'install' : true,
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section + ['-DGST_USE_UNSTABLE_API'] + ['--c-include=gst/insertbin/gstinsertbin.h'],
+     'dependencies' : [gst_dep]
+   }
+--- gst-libs/gst/mpegts/meson.build.orig
++++ gst-libs/gst/mpegts/meson.build
+@@ -75,6 +75,7 @@
+     'export_packages' : pkg_name,
+     'includes' : ['Gst-1.0'],
+     'install' : true,
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section + ['-DGST_USE_UNSTABLE_API'] + ['--c-include=gst/mpegts/mpegts.h'],
+     'dependencies' : [gst_dep]
+   }
+--- gst-libs/gst/mse/meson.build.orig
++++ gst-libs/gst/mse/meson.build
+@@ -141,6 +141,7 @@
+     'export_packages' : pkg_name,
+     'includes' : ['Gst-1.0'],
+     'install' : true,
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section + ['-DGST_USE_UNSTABLE_API'] + ['--c-include=gst/mse/mse.h'],
+     'dependencies' : gstmse_deps,
+   }
+--- gst-libs/gst/play/meson.build.orig
++++ gst-libs/gst/play/meson.build
+@@ -64,6 +64,7 @@
+     'includes' : ['Gst-1.0', 'GstPbutils-1.0', 'GstBase-1.0', 'GstVideo-1.0',
+       'GstAudio-1.0', 'GstTag-1.0'],
+     'install' : true,
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section + ['-DGST_USE_UNSTABLE_API'] + ['--c-include=gst/play/play.h'],
+     'dependencies' : [gstbase_dep, gstvideo_dep, gstaudio_dep,
+                     gsttag_dep, gstpbutils_dep]
+--- gst-libs/gst/player/meson.build.orig
++++ gst-libs/gst/player/meson.build
+@@ -67,6 +67,7 @@
+     'includes' : ['Gst-1.0', 'GstPbutils-1.0', 'GstBase-1.0', 'GstVideo-1.0',
+       'GstAudio-1.0', 'GstTag-1.0'],
+     'install' : true,
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section + ['-DGST_USE_UNSTABLE_API'] + ['--c-include=gst/player/player.h'],
+     'dependencies' : [gstbase_dep, gstvideo_dep, gstaudio_dep, gstplay_dep,
+                       gsttag_dep, gstpbutils_dep]
+--- gst-libs/gst/transcoder/meson.build.orig
++++ gst-libs/gst/transcoder/meson.build
+@@ -57,6 +57,7 @@
+     'dependencies' : [gst_dep, gstpbutils_dep],
+     'export_packages' : pkg_name,
+     'install' : true,
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section
+   }
+   library_def += { 'gir': [gir]}
+--- gst-libs/gst/va/meson.build.orig
++++ gst-libs/gst/va/meson.build
+@@ -157,6 +157,7 @@
+     'export_packages' : pkg_name,
+     'includes' : ['Gst-1.0', 'GstBase-1.0', 'GstVideo-1.0'],
+     'install' : true,
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section + ['-DGST_USE_UNSTABLE_API'],
+     'dependencies' : [gst_dep, gstbase_dep, gstvideo_dep, gstallocators_dep, libva_dep] + platform_deps
+   }
+--- gst-libs/gst/vulkan/meson.build.orig
++++ gst-libs/gst/vulkan/meson.build
+@@ -420,6 +420,7 @@
+     'export_packages' : pkg_name,
+     'includes' : ['Gst-1.0', 'GstBase-1.0', 'GstVideo-1.0'] + extra_gir_includes,
+     'install' : true,
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section + ['--c-include=gst/vulkan/vulkan.h'],
+     'dependencies' : [gstvideo_dep, gst_dep, gstbase_dep] + optional_deps
+   }
+@@ -468,6 +469,7 @@
+       'symbol_prefix' : 'gst',
+       'export_packages' : 'gstreamer-vulkan-xcb-1.0',
+       'install' : true,
++      'env' : emberbsd_gir_env,
+       'extra_args' : gir_init_section + ['--c-include=gst/vulkan/xcb/xcb.h'],
+       'dependencies' : [gstvideo_dep, gst_dep, gstbase_dep] + optional_deps
+     }
+@@ -514,6 +516,7 @@
+       'symbol_prefix' : 'gst',
+       'export_packages' : 'gstreamer-vulkan-wayland-1.0',
+       'install' : true,
++      'env' : emberbsd_gir_env,
+       'extra_args' : gir_init_section + ['--c-include=gst/vulkan/wayland/wayland.h'],
+       'dependencies' : [gstvideo_dep, gst_dep, gstbase_dep] + optional_deps
+     }
+--- gst-libs/gst/webrtc/meson.build.orig
++++ gst-libs/gst/webrtc/meson.build
+@@ -91,6 +91,7 @@
+     'export_packages' : pkg_name,
+     'includes' : ['Gst-1.0', 'GstSdp-1.0'],
+     'install' : true,
++    'env' : emberbsd_gir_env,
+     'extra_args' : gir_init_section + ['-DGST_USE_UNSTABLE_API'] + ['--c-include=gst/webrtc/webrtc.h'],
+     'dependencies' : gstwebrtc_dependencies,
+   }

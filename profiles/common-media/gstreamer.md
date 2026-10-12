@@ -40,7 +40,7 @@ BMAKE=/absolute/bmake MAKECONF=/absolute/cross.mk \
     /absolute/prepared-pkgsrc /absolute/new-package-check
 ```
 
-The source check verifies all ten media archives, their patch hashes and
+The source check verifies every archive in sources.tsv, its patch hashes and
 zero-fuzz application. The package check executes the original flex-version
 script with its real native interpreter and checks actual generated grammar,
 enums, all GIR/typelib outputs, utilities, plugins, scanner and translation.
@@ -100,3 +100,6 @@ sh /absolute/bundle/gstreamer-runtime.sh /absolute/bundle /absolute/new-results
 This accepts 106 selected core checks and a finite non-media pipeline.
 It does not accept all upstream tests, media decoding, audio/video output,
 all plugin packages, long-running playback, or an accelerated Plasma session.
+
+The [base/bad plugin receipt](gstreamer-plugins.md) adds installed media parser
+and introspection checks, including the corrected core runtime dependency.

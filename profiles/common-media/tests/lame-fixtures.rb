@@ -59,32 +59,34 @@ def tags(path)
   result
 end
 
-mode, directory, fixture = ARGV
-case mode
-when 'prepare'
-  check(ARGV.size == 2 && !File.exist?(directory), 'Usage: lame-fixtures.rb prepare NEW_FIXTURES')
-  Dir.mkdir(directory)
-  samples = Array.new(44100) { |i| (10000 * Math.sin(2 * Math::PI * 440 * i / 44100)).round }
-  pcm = samples.pack('s<*')
-  wave = 'RIFF'.b + [36 + pcm.bytesize].pack('V') + 'WAVEfmt '.b + [16, 1, 1, 44100, 88200, 2, 16].pack('VvvVVvv') + 'data'.b + [pcm.bytesize].pack('V') + pcm
-  File.binwrite(File.join(directory, 'tone.wav'), wave)
-  puts 'PASS: generated one second of deterministic mono PCM'
-when 'verify'
-  check(ARGV.size == 3, 'Usage: lame-fixtures.rb verify TARGET_RESULTS FIXTURES')
-  original = wav(File.join(fixture, 'tone.wav'))
-  %w[utf8 utf16].each do |encoding|
-    actual = tags(File.join(directory, "#{encoding}.mp3"))
-    expected = {'TIT2'=>'Title café 東京', 'TPE1'=>'Artist café 東京', 'TALB'=>'Album café 東京',
-                'COMM'=>'Comment café 東京', 'TIT3'=>'Subtitle café 東京', 'TRCK'=>'7', 'TYER'=>'2026', 'TCON'=>'Speech'}
-    expected.each { |key, text| check(actual[key] == text, "#{encoding}/#{key}: #{actual[key].inspect} != #{text.inspect}") }
-    decoded = wav(File.join(directory, "#{encoding}.wav"))
-    check(decoded.size == original.size, 'Decoded sample count differs')
-    signal = original.sum { |n| n * n }.to_f
-    noise = original.zip(decoded).sum { |a, b| (a - b)**2 }.to_f
-    snr = 10 * Math.log10(signal / [noise, 1].max)
-    check(snr >= 20, "Decoded signal mismatch: #{snr} dB")
-    puts "PASS: #{encoding}, all eight metadata fields, #{decoded.size} samples, #{format('%.2f', snr)} dB SNR"
+if $PROGRAM_NAME == __FILE__
+  mode, directory, fixture = ARGV
+  case mode
+  when 'prepare'
+    check(ARGV.size == 2 && !File.exist?(directory), 'Usage: lame-fixtures.rb prepare NEW_FIXTURES')
+    Dir.mkdir(directory)
+    samples = Array.new(44100) { |i| (10000 * Math.sin(2 * Math::PI * 440 * i / 44100)).round }
+    pcm = samples.pack('s<*')
+    wave = 'RIFF'.b + [36 + pcm.bytesize].pack('V') + 'WAVEfmt '.b + [16, 1, 1, 44100, 88200, 2, 16].pack('VvvVVvv') + 'data'.b + [pcm.bytesize].pack('V') + pcm
+    File.binwrite(File.join(directory, 'tone.wav'), wave)
+    puts 'PASS: generated one second of deterministic mono PCM'
+  when 'verify'
+    check(ARGV.size == 3, 'Usage: lame-fixtures.rb verify TARGET_RESULTS FIXTURES')
+    original = wav(File.join(fixture, 'tone.wav'))
+    %w[utf8 utf16].each do |encoding|
+      actual = tags(File.join(directory, "#{encoding}.mp3"))
+      expected = {'TIT2'=>'Title café 東京', 'TPE1'=>'Artist café 東京', 'TALB'=>'Album café 東京',
+                  'COMM'=>'Comment café 東京', 'TIT3'=>'Subtitle café 東京', 'TRCK'=>'7', 'TYER'=>'2026', 'TCON'=>'Speech'}
+      expected.each { |key, text| check(actual[key] == text, "#{encoding}/#{key}: #{actual[key].inspect} != #{text.inspect}") }
+      decoded = wav(File.join(directory, "#{encoding}.wav"))
+      check(decoded.size == original.size, 'Decoded sample count differs')
+      signal = original.sum { |n| n * n }.to_f
+      noise = original.zip(decoded).sum { |a, b| (a - b)**2 }.to_f
+      snr = 10 * Math.log10(signal / [noise, 1].max)
+      check(snr >= 20, "Decoded signal mismatch: #{snr} dB")
+      puts "PASS: #{encoding}, all eight metadata fields, #{decoded.size} samples, #{format('%.2f', snr)} dB SNR"
+    end
+  else
+    abort 'Expected prepare or verify'
   end
-else
-  abort 'Expected prepare or verify'
 end
