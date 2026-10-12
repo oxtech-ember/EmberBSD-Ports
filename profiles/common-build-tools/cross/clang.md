@@ -60,8 +60,11 @@ selection, dynamic loading and the existing SDK opt-out behavior.
 
 ## Checks and current boundary
 
-The 23.1.3 source and input contracts pass; its full target package is being
-rebuilt with matching LLVM. The following 23.1.2 receipt remains historical.
+The complete Clang 23.1.3 package passes cross-build and ordinary package
+checks with matching LLVM 23.1.3 and was replaced normally in the build sysroot
+on 2026-10-12. SHA256:
+`e8f81bef5038ace7ca7c4dda5fe5cbb87c8a45e7e88a21f47a605c5c58ad22ce`.
+The following 23.1.2 input-test receipt remains historical.
 
 
 ```sh

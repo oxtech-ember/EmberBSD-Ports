@@ -212,7 +212,7 @@ acceptance of other backends, concurrent JIT or arbitrary external relocations.
 
 The [Clang cross workflow](cross/clang.md) provides matching host generators,
 target-only installed paths and checked GCC16 metadata. Its preparation checks
-pass; full target Clang packaging and execution remain pending.
+pass. Full LLVM and Clang 23.1.3 packages now pass ordinary cross-package\nchecks and installation into the build sysroot. Installed 23.1.3 execution,\nLLD and downstream consumer acceptance remain separate gates.
 
 ## Remaining native gates
 
