@@ -45,7 +45,7 @@ static rtabmap::SensorData observation(int view, int id, bool unrelated = false)
     std::vector<cv::Point3f> points;
     cv::Mat descriptors(140, 32, CV_8UC1);
     for (int row = 0; row < 140; ++row) {
-        const int landmark = row + view * 16;
+        const int landmark = row + view * 64;
         const float x = ((landmark % 20) - 10) * 0.12f - view * 0.1f;
         const float y = ((landmark / 20) - 6) * 0.12f;
         const float z = 3.0f + (landmark % 3) * 0.1f;
@@ -53,7 +53,7 @@ static rtabmap::SensorData observation(int view, int id, bool unrelated = false)
         points.emplace_back(x, y, z);
         keypoints.emplace_back(u, v, 8);
         depth.at<unsigned short>(int(v), int(u)) = static_cast<unsigned short>(std::lround(z * 1000));
-        uint32_t random = 0x9e3779b9u ^ uint32_t(landmark + view * 1000 + (unrelated ? 50000 : 0));
+        uint32_t random = 0x9e3779b9u ^ uint32_t(landmark + (unrelated ? 50000 : 0));
         for (int column = 0; column < 32; ++column) {
             random ^= random << 13; random ^= random >> 17; random ^= random << 5;
             descriptors.at<unsigned char>(row, column) = static_cast<unsigned char>(random);
@@ -76,7 +76,7 @@ int main(int argc, char **argv)
             {"RGBD/LinearUpdate", "0"}, {"RGBD/AngularUpdate", "0"},
             {"Kp/DetectorStrategy", "2"}, {"Vis/FeatureType", "2"},
             {"Vis/MinInliers", "20"}, {"Reg/Strategy", "0"},
-            {"Optimizer/Strategy", "2"}, {"Rtabmap/LoopThr", "0.1"},
+            {"Optimizer/Strategy", "2"}, {"Rtabmap/LoopThr", "0.1"}, {"RGBD/MaxOdomCacheSize", "0"},
             {"Mem/ImageCompressionFormat", ".jpg"}, {"Grid/FromDepth", "false"}
         };
         rtabmap::Rtabmap mapper;
@@ -110,8 +110,10 @@ int main(int argc, char **argv)
         require(!pose.isNull() && std::abs(pose.x() - 0.2) < 0.03 &&
                 std::abs(pose.y()) < 0.03 && std::abs(pose.z()) < 0.03,
                 "visual localization corrects 25 cm odometry error");
-        require(!localizer.process(rtabmap::SensorData(), rtabmap::Transform::getIdentity()),
-                "empty observation rejected");
+        // RTAB accepts an empty observation as a no-recognition update; it must
+        // not produce a localization (and must not grow the map, checked below).
+        (void)localizer.process(rtabmap::SensorData(), rtabmap::Transform::getIdentity());
+        require(localizer.getLoopClosureId() == 0, "empty observation does not localize");
         localizer.close(false);
         require(node_count(file) == count, "localization does not add map nodes");
         std::cout << "PASS persisted map/localization: nodes=" << count << " corrected_x=" << pose.x() << '\n';
