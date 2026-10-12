@@ -81,4 +81,25 @@ The full `breeze-icons-6.31.0nb1` target package also passes normal package chec
 and installation into the build sysroot. Its manifest includes all 70 new icons
 from the release. SHA256:
 `bb41f6915d0e0e4c97699df67052730e42a723ee535d4d84ef686caa31189307`.
-Installed target resource/GUI acceptance remains a separate gate.
+On 2026-10-12 the installed package also passed the original KDE resource
+test on CM5 running EmberBSD: 3 passed, no failures or skips. The test checks
+the embedded theme index and selected icon bytes against the installed theme.
+A second run without reference files exited 1 at `fsFile.open`, confirming
+that missing data cannot produce a false pass. Boot time stayed unchanged.
+This does not establish GUI rendering or an accelerated Plasma session.
+
+Reproduce with the verified, patched Breeze source and the completed sysroot:
+
+```sh
+CMAKE=/absolute/cmake CXX=/absolute/aarch64--netbsd-g++ \
+QT_HOST_PATH=/absolute/native-qt \
+    ruby ../tests/build-breeze-resource.rb /absolute/breeze-source \
+    /absolute/target-sysroot /absolute/new-test-build
+# Install the normal Breeze package and its dependencies on the target.
+sh breeze-resource-runtime.sh /absolute/resource /absolute/new-results
+```
+
+The builder copies `resourcetest.cpp` and `testhelpers.h` unchanged, records
+source/output SHA256 and only redirects generated test-data paths to a runtime
+reference directory. The runner uses the installed library and icons, checks
+linkage, applies a timeout and runs the missing-reference negative case.
