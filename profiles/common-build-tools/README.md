@@ -5,9 +5,7 @@ LLVM/Clang/LLD 23.1.3 with upstream lit and [Perl 5.44](cross/perl.md) for the
 GCC 16 / LLVM 23 / Mesa 26 dependency closure. The [Python package](python.md)
 cross-builds on macOS and passes installed AArch64 VM consumers and 21 selected
 upstream suites. Meson/Ninja also pass installed C/C++ consumers and focused
-upstream tests in that VM. The installed LLVM core and
-[Mesa consumers](../common-graphics/cross/mesa-package.md) also pass runtime
-acceptance for the previous 23.1.2 package. The 23.1.3 source, export, native-generator and host-metadata checks pass; its full target migration is in progress. Installed Clang/LLD remain separate gates. The export itself installs no packages.
+upstream tests in that VM. The installed [LLVM 23.1.3 core](cross/llvm-api-tests.md) passes C API, bitcode and four ORC JITLink lifecycles on CM5. Its rebuilt [Mesa consumer](../common-graphics/cross/mesa-llvm2313.md) also passes V3D/llvmpipe rendering and all 38 upstream invocations there. Full Clang/LLD cross packages pass ordinary staging checks; their target execution remains separate. The export itself installs no packages.
 
 The shared [Rust 1.99 host package](rust.md) preserves upstream macOS binaries
 and repairs Mach-O dependency resolution for cargo-c/librsvg builds. Its

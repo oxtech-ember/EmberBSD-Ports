@@ -1,15 +1,17 @@
 # Common graphics source packages
 
-This opt-in source profile prepares canonical MesaLib 26.2.4nb3, adapted
+This opt-in source profile prepares canonical MesaLib 26.2.4nb4, adapted
 libdrm 2.4.134nb2, Wayland 1.26.0nb1 and wayland-protocols 1.49 for
 EmberBSD/AArch64, retaining the NetBSD 11 ABI. Native builds and the explicit
 [macOS cross composition](cross/profile.md) consume the existing
 [common build tools](../common-build-tools/README.md): GCC16, Python3.14.8,
-Meson1.12.1 and shared LLVM23.1.2 remain one dependency graph with final
+Meson1.12.1 and shared LLVM23.1.3 remain one dependency graph with final
 `LOCALBASE=PREFIX=/usr/pkg`. Plasma Mobile uses this exact graphics layer.
 The default, development-toolchain and common-build-tools exports keep their
 original graphics recipes. The whole installed graphics stack and a Mobile
 demonstration still require acceptance; individual package results follow.
+
+The [LLVM 23.1.3 migration](cross/mesa-llvm2313.md) passes installed V3D and llvmpipe rendering and all 38 upstream invocations on CM5. A transient large-BO allocation failure remains under investigation.
 
 The same package now enables V3D alongside VirGL and both CPU renderers.
 On CM5, [installed hardware OpenGL acceptance](cross/mesa-cm5.md) passes

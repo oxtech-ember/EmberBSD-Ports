@@ -2,7 +2,7 @@
 # Origin: EmberBSD; AI-assisted bounded NetBSD 11/AArch64 source candidate.
 DISTNAME=	mesa-26.2.4
 PKGNAME=	${DISTNAME:S/mesa/MesaLib/}
-PKGREVISION=	3
+PKGREVISION=	4
 CATEGORIES=	graphics
 MASTER_SITES=	https://archive.mesa3d.org/
 EXTRACT_SUFX=	.tar.xz
@@ -27,8 +27,8 @@ PYTHON_VERSION_REQD=	314
 .if !defined(EMBERBSD_COMMON_GRAPHICS)
 PKG_FAIL_REASON+= "Mesa requires the prepared common graphics profile"
 .endif
-.if ${DISTNAME} != "mesa-26.2.4" || ${PKGREVISION} != "3"
-PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.4nb3"
+.if ${DISTNAME} != "mesa-26.2.4" || ${PKGREVISION} != "4"
+PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.4nb4"
 .endif
 TOOL_DEPENDS+=	${PYPKGPREFIX}-mako>=1.4.3:../../devel/py-mako
 TOOL_DEPENDS+=	${PYPKGPREFIX}-packaging-[0-9]*:../../devel/py-packaging
@@ -57,6 +57,9 @@ PKGCONFIG_OVERRIDE+=	output/meson-private/${pc}.pc
 .include "../../lang/llvm/buildlink3.mk"
 .if ${USE_CROSS_COMPILE:tl} == "yes"
 USE_TOOLS+=	digest
+# The accepted metadata tool records the real installed sysroot path.
+_EMBERBSD_LLVM_SYSROOT!= cd ${CROSS_DESTDIR:Q} && pwd -P
+BUILDLINK_TRANSFORM+= I:${_EMBERBSD_LLVM_SYSROOT}${PREFIX}:${BUILDLINK_DIR}
 # This host executable must understand the target ELF format for ABI checks.
 MESON_BINARIES+=	nm
 MESON_BINARY.nm=	${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-nm
@@ -81,9 +84,9 @@ pre-configure:
 		}; \
 	done < inputs.sha256
 	${TEST} "$$(${LLVM_CONFIG_PATH} --host-target)" = aarch64-unknown-netbsd
-	${TEST} "$$(${LLVM_CONFIG_PATH} --prefix)" = ${CROSS_DESTDIR:Q}/usr/pkg
-	${TEST} "$$(${LLVM_CONFIG_PATH} --includedir)" = ${CROSS_DESTDIR:Q}/usr/pkg/include
-	${TEST} "$$(${LLVM_CONFIG_PATH} --libdir)" = ${CROSS_DESTDIR:Q}/usr/pkg/lib
+	${TEST} "$$(${LLVM_CONFIG_PATH} --prefix)" = ${_EMBERBSD_LLVM_SYSROOT:Q}/usr/pkg
+	${TEST} "$$(${LLVM_CONFIG_PATH} --includedir)" = ${_EMBERBSD_LLVM_SYSROOT:Q}/usr/pkg/include
+	${TEST} "$$(${LLVM_CONFIG_PATH} --libdir)" = ${_EMBERBSD_LLVM_SYSROOT:Q}/usr/pkg/lib
 .endif
 	${TEST} -x ${LLVM_CONFIG_PATH:Q}
 	${TEST} "$$(${LLVM_CONFIG_PATH} --version)" = 23.1.3

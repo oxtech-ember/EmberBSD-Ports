@@ -89,7 +89,7 @@ Zlib::GzipReader.open(package) do |gzip|
   end
 end
 contents = File.read("#{bundle}/source/MesaLib.CONTENTS")
-abort 'unexpected package identity/prefix' unless contents.include?("@name MesaLib-26.2.4nb3\n") && contents.include?("@cwd /usr/pkg\n")
+abort 'unexpected package identity/prefix' unless contents.include?("@name MesaLib-26.2.4nb4\n") && contents.include?("@cwd /usr/pkg\n")
 abort 'package has no Mesa shared libraries' if mesa_elfs.empty?
 File.write("#{bundle}/mesa-package-files.sha256", payload.sort.map { |path, sha| "#{sha}  #{path}\n" }.join)
 File.write("#{bundle}/mesa-package-links.tsv", links.sort.map { |path, target| "#{path}\t#{target}\n" }.join)

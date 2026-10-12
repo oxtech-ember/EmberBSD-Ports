@@ -74,7 +74,7 @@ After installing the real package into the matching sysroot, run:
 ```sh
 ruby prepare-mesa-package-tests.rb /absolute/cross-tools /absolute/sysroot \
     /absolute/prepared-mesa-26.2.4 /absolute/mesa-build \
-    /absolute/MesaLib-26.2.4nb3.tgz /absolute/new-acceptance-work
+    /absolute/MesaLib-26.2.4nb4.tgz /absolute/new-acceptance-work
 ```
 
 The helper compiles the existing EGL/GLES pixel consumer against installed

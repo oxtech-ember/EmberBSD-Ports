@@ -70,7 +70,7 @@ runtime behavior are validated.
   on the AArch64 VM. Meson 1.12.1 and Ninja 1.13.2 cross packages pass
   installed C/C++ builds, Python embedding, incremental/error handling and
   install-RPATH checks with explicit current GNU as/ld. The profile provides
-  matching LLVM/Clang/LLD 23.1.2 source
+  matching LLVM/Clang/LLD 23.1.3 source
   recipes with upstream lit, scoped native Clang/GCC16 defaults, strict
   common selection and host source contracts. Focused native macro/selection
   checks cover Python, LLVM family selection and real GCC16 config metadata.
@@ -78,9 +78,9 @@ runtime behavior are validated.
   [C API/bitcode and four ORC JITLink lifecycles](profiles/common-build-tools/cross/llvm-api-tests.md)
   on Zero 3W. Packaged upstream lit passes launcher and PASS/XFAIL/FAIL checks
   in AArch64 UTM. Mesa26 passes installed llvmpipe/ORC acceptance below;
-  Clang/LLD packaging and the TinyGo consumer remain pending.
+  Full LLVM/Clang/LLD 23.1.3 cross packages pass normal staging checks; LLVM core API/JIT and renewed Mesa acceptance pass on CM5. Installed Clang/LLD execution and the TinyGo consumer remain pending.
 - [Common graphics source packages](profiles/common-graphics/README.md):
-  canonical MesaLib 26.2.4nb3, adapted libdrm 2.4.134nb2,
+  canonical MesaLib 26.2.4nb4, adapted libdrm 2.4.134nb2,
   Wayland 1.26.0nb1 and wayland-protocols 1.49 compose the common
   GCC16/Python314/Meson112/shared LLVM23 profile for NetBSD 11/AArch64.
   Source, export and dependency-selection checks cover X11/Wayland,
@@ -98,6 +98,7 @@ runtime behavior are validated.
   NIR cases remain disabled. The current [CM5 V3D package](profiles/common-graphics/cross/mesa-cm5.md)
   passes hardware GLES 3.0 and desktop OpenGL 3.1 shader/pixel lifecycles,
   automatic platform discovery and all 38 selected upstream invocations.
+  The [LLVM23.1.3 migration](profiles/common-graphics/cross/mesa-llvm2313.md) passes renewed V3D/llvmpipe rendering and all 38 upstream invocations. One transient large-buffer allocation failure remains unresolved.
   Same-device PRIME and EGLImage also pass on CM5 after OS lifetime repairs.
   HDMI presentation and Plasma remain separate gates.
   The nb2 XCB pkg-config correction preserves
