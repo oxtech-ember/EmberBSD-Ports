@@ -40,6 +40,11 @@ Qt's common build and consumer files require GCC 16.2.
 
 [Qt TextToSpeech](tests/qt-speech/README.md) and [KCMUtils](cross/kcmutils.md)
 now have complete cross packages and bounded CM5 acceptance.
+[libplasma and PlasmaActivities](cross/libplasma.md) also have complete packages;
+native KPackage tooling and the non-GLVND EGL provider are checked separately.
+[Current Noto fonts](cross/fonts.md) pass installed-data and indexing checks.
+[The full KWin dependency migration](cross/desktop-session.md) retains the screen
+locker and KCMs; complete desktop and session-service acceptance remain pending.
 
 Cross-build on the development host using the [cross workflow](cross/README.md).
 The board installs the resulting packages and runs acceptance tests.
@@ -150,7 +155,7 @@ sh probes/plasma-mobile/toolkit/tests/source-profile.sh \
     /absolute/verified-distfiles /absolute/new-source-check
 ```
 
-The check covers all 106 archives, recorded patch hashes and forward applications,
+The check covers all 114 archives, recorded patch hashes and forward applications,
 corrupted archive rejection, repeated/missing patch rejection, incorrect
 unfiltered RCS hashes, recipe/version selection and exact toolkit export.
 It compares the exported common recipes and configuration with their existing

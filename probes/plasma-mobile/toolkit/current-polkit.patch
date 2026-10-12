@@ -4,6 +4,9 @@ Subject: Cross-build polkit using native generators and real target introspectio
 Upstream: https://download.kde.org/stable/polkit-qt-1/polkit-qt-1-0.201.1.tar.xz
 SHA256: 95d8e2cae530c546d9437459deb8a1bea38d572f0f9772cc2860dc143637f256
 
+ConsoleKit 2.0 IDs: adapted from Gleb Popov's FreeBSD Ports change
+12b84b980b45573c93be5382a274dbe872a1eb73, with ownership declarations corrected.
+
 --- a/security/polkit/Makefile
 +++ b/security/polkit/Makefile
 @@ -1,7 +1,7 @@
@@ -11,7 +14,7 @@ SHA256: 95d8e2cae530c546d9437459deb8a1bea38d572f0f9772cc2860dc143637f256
  
  DISTNAME=	polkit-127
 -PKGREVISION=	2
-+PKGREVISION=	3
++PKGREVISION=	4
  CATEGORIES=	security
  MASTER_SITES=	${MASTER_SITE_GITHUB:=polkit-org/}
  
@@ -39,7 +42,7 @@ SHA256: 95d8e2cae530c546d9437459deb8a1bea38d572f0f9772cc2860dc143637f256
  PKG_GROUPS+=			${POLKITD_GROUP}
 --- a/security/polkit/distinfo
 +++ b/security/polkit/distinfo
-@@ -3,6 +3,7 @@
+@@ -3,8 +3,11 @@
  BLAKE2s (polkit-127.tar.gz) = 42e8bb751fc99d41b4ab296e7eeed826d14be0b13709399f2821aa12302f279f
  SHA512 (polkit-127.tar.gz) = 54b315f2ca05e957e7b9aafda16c1cddcc2266d6018c77dbf4cfe73b7d5b1569e6e07570884b9c5ecc4bdb3a29966169006aa727b089019d959208f2b53067e6
  Size (polkit-127.tar.gz) = 472872 bytes
@@ -47,6 +50,10 @@ SHA256: 95d8e2cae530c546d9437459deb8a1bea38d572f0f9772cc2860dc143637f256
  SHA1 (patch-src_polkit_polkitunixprocess.c) = b95f8e5d7c1dd0ab9b084e3bd5b1fc6d05744b57
  SHA1 (patch-src_polkitagent_polkitagenthelper-pam.c) = 74e3a9d1b3f4c4e28a2353f4f824c83c0032b97d
  SHA1 (patch-src_polkitbackend_polkitbackendduktapeauthority.c) = 5e48729c3414ccd41faa2e60bf3c915207e21cd1
+ SHA1 (patch-src_polkitbackend_polkitd.c) = e587e99017128477522050391c5410024a1e25c7
+ SHA1 (patch-src_programs_pkttyagent.c) = d9044bcc2ebd79a885c7bbc8327bdebab5680748
++SHA1 (patch-src_polkit_polkitunixsession.c) = 989627306feb8d462787ca7b5fa2c4d94bff3959
++SHA1 (patch-src_polkitbackend_polkitbackendsessionmonitor.c) = 511392fd7321748574331793f2c7fd6ff20d5ebb
 --- a/security/polkit/patches/patch-meson-cross.build
 +++ b/security/polkit/patches/patch-meson-cross.build
 @@ -0,0 +1,48 @@
@@ -98,6 +105,119 @@ SHA256: 95d8e2cae530c546d9437459deb8a1bea38d572f0f9772cc2860dc143637f256
 +     nsversion: pk_gir_version,
 +     namespace: 'PolkitAgent',
 +     export_packages: name,
+--- a/security/polkit/patches/patch-src_polkit_polkitunixsession.c
++++ b/security/polkit/patches/patch-src_polkit_polkitunixsession.c
+@@ -0,0 +1,56 @@
++Origin: Gleb Popov / FreeBSD Ports commit 12b84b980b45573c93be5382a274dbe872a1eb73.
++https://github.com/freebsd/freebsd-ports/commit/12b84b980b45573c93be5382a274dbe872a1eb73
++Adapted for EmberBSD (AI-assisted): use mutable pointers for allocated strings.
++ConsoleKit 2.0 database/session IDs differ from D-Bus object paths.
++Not submitted upstream.
++
++--- src/polkit/polkitunixsession.c.orig	2023-07-28 12:34:38 UTC
+++++ src/polkit/polkitunixsession.c
++@@ -364,6 +364,7 @@ polkit_unix_session_exists_sync (PolkitSubject   *subj
++   PolkitUnixSession *session = POLKIT_UNIX_SESSION (subject);
++   GDBusConnection *connection;
++   GVariant *result;
+++  gchar *session_path = NULL;
++   gboolean ret;
++ 
++   ret = FALSE;
++@@ -372,9 +373,12 @@ polkit_unix_session_exists_sync (PolkitSubject   *subj
++   if (connection == NULL)
++     goto out;
++ 
+++  if (strncmp (session->session_id, "/org/freedesktop/ConsoleKit", strlen ("/org/freedesktop/ConsoleKit") ))
+++    session_path = g_build_path("/", "/org/freedesktop/ConsoleKit", session->session_id, NULL);
+++
++   result = g_dbus_connection_call_sync (connection,
++                                         "org.freedesktop.ConsoleKit",           /* name */
++-                                        session->session_id,                    /* object path */
+++                                        session_path ? session_path : session->session_id,                    /* object path */
++                                         "org.freedesktop.ConsoleKit.Session",   /* interface name */
++                                         "GetUser",                              /* method */
++                                         NULL, /* parameters */
++@@ -383,6 +387,7 @@ polkit_unix_session_exists_sync (PolkitSubject   *subj
++                                         -1,
++                                         cancellable,
++                                         error);
+++  g_free (session_path);
++   if (result == NULL)
++     goto out;
++ 
++@@ -472,6 +477,7 @@ polkit_unix_session_initable_init (GInitable     *init
++   PolkitUnixSession *session = POLKIT_UNIX_SESSION (initable);
++   GDBusConnection *connection;
++   GVariant *result;
+++  const gchar* session_path;
++   gboolean ret;
++ 
++   connection = NULL;
++@@ -502,7 +508,8 @@ polkit_unix_session_initable_init (GInitable     *init
++   if (result == NULL)
++     goto out;
++ 
++-  g_variant_get (result, "(o)", &session->session_id);
+++  g_variant_get (result, "(&o)", &session_path);
+++  session->session_id = g_path_get_basename (session_path);
++   g_variant_unref (result);
++ 
++   ret = TRUE;
+\ No newline at end of file
+--- a/security/polkit/patches/patch-src_polkitbackend_polkitbackendsessionmonitor.c
++++ b/security/polkit/patches/patch-src_polkitbackend_polkitbackendsessionmonitor.c
+@@ -0,0 +1,50 @@
++Origin: Gleb Popov / FreeBSD Ports commit 12b84b980b45573c93be5382a274dbe872a1eb73.
++https://github.com/freebsd/freebsd-ports/commit/12b84b980b45573c93be5382a274dbe872a1eb73
++Adapted for EmberBSD (AI-assisted): use mutable pointers for allocated strings.
++ConsoleKit 2.0 database/session IDs differ from D-Bus object paths.
++Not submitted upstream.
++
++--- src/polkitbackend/polkitbackendsessionmonitor.c.orig	2023-07-28 12:34:38 UTC
+++++ src/polkitbackend/polkitbackendsessionmonitor.c
++@@ -385,7 +385,8 @@ polkit_backend_session_monitor_get_session_for_subject
++ 
++   if (POLKIT_IS_UNIX_PROCESS (subject))
++     {
++-      const gchar *session_id;
+++      const gchar *session_path;
+++      gchar *session_id;
++       GVariant *result;
++       result = g_dbus_connection_call_sync (monitor->system_bus,
++                                             "org.freedesktop.ConsoleKit",
++@@ -400,14 +401,17 @@ polkit_backend_session_monitor_get_session_for_subject
++                                             error);
++       if (result == NULL)
++         goto out;
++-      g_variant_get (result, "(&o)", &session_id);
+++      g_variant_get (result, "(&o)", &session_path);
+++      session_id = g_path_get_basename (session_path);
++       session = polkit_unix_session_new (session_id);
+++      g_free (session_id);
++       g_variant_unref (result);
++     }
++   else if (POLKIT_IS_SYSTEM_BUS_NAME (subject))
++     {
++       guint32 pid;
++-      const gchar *session_id;
+++      const gchar *session_path;
+++      gchar *session_id;
++       GVariant *result;
++ 
++       result = g_dbus_connection_call_sync (monitor->system_bus,
++@@ -439,8 +443,10 @@ polkit_backend_session_monitor_get_session_for_subject
++                                             error);
++       if (result == NULL)
++         goto out;
++-      g_variant_get (result, "(&o)", &session_id);
+++      g_variant_get (result, "(&o)", &session_path);
+++      session_id = g_path_get_basename (session_path);
++       session = polkit_unix_session_new (session_id);
+++      g_free (session_id);
++       g_variant_unref (result);
++     }
++   else
 --- a/security/polkit-qt6/Makefile
 +++ b/security/polkit-qt6/Makefile
 @@ -1,23 +1,28 @@

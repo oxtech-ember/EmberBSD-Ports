@@ -1,0 +1,3 @@
+KWin is the Wayland compositor of the KDE Plasma desktop. It provides
+window management, effects, configuration modules and screen-lock integration.
+This recipe targets the common EmberBSD Qt, Frameworks and Mesa stack.

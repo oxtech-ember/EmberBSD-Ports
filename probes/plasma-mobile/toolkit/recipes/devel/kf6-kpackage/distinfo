@@ -3,3 +3,4 @@ $NetBSD: distinfo,v 1.5 2026/09/06 10:05:13 markd Exp $
 BLAKE2s (kpackage-6.31.0.tar.xz) = ce0942a41bef6fdf1168719f73760fbeadbf4675b999c77d5f21d9118ccf6f94
 SHA512 (kpackage-6.31.0.tar.xz) = decc80d9b5e2097a444c697710a7e5075c03526cd9488f4390c23c370ed8cd6252a282aeab79ad6fbfb67bba337027d1626ef302df37b03e75ef4ce864ad9491
 Size (kpackage-6.31.0.tar.xz) = 183752 bytes
+SHA1 (patch-autotests_appstream-fixtures) = b9e276da496ab70b55087417dc6f160cdf51c2ee

@@ -6,7 +6,13 @@ PLASMAVER?= 6.7.5
 PKG_FAIL_REASON+= "The common toolkit requires PLASMAVER=6.7.5"
 .endif
 _EMBERBSD_PLASMA6_RECIPES= devel/plasma6-kwayland time/plasma6-knighttime \
-    x11/plasma6-kdecoration x11/plasma6-kglobalacceld x11/plasma6-layer-shell-qt
+    x11/plasma6-kdecoration x11/plasma6-kglobalacceld x11/plasma6-layer-shell-qt \
+    graphics/plasma6-aurorae \
+    graphics/plasma6-breeze \
+    x11/plasma6-kscreenlocker \
+    x11/plasma6-libkscreen \
+    x11/plasma6-libplasma \
+    x11/plasma6-plasma-activities x11/plasma6-kwin
 .if empty(_EMBERBSD_PLASMA6_RECIPES:M${PKGPATH})
 PKG_FAIL_REASON+= "Plasma 6 recipe ${PKGPATH} is not prepared in the common toolkit"
 .endif
@@ -22,6 +28,7 @@ USE_CXX_FEATURES+= c++20
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # Imported pkg-config targets require real target include/library directories.
 CONFIGURE_ENV+= PKG_CONFIG_SYSROOT_DIR=${CROSS_DESTDIR:Q}
+CMAKE_CONFIGURE_ARGS+= -DKDE_INSTALL_APP_TEMPLATES=ON
 CMAKE_CONFIGURE_ARGS+= -DKDE_INSTALL_QTPLUGINDIR=qt6/plugins
 CMAKE_CONFIGURE_ARGS+= -DKDE_INSTALL_QMLDIR=qt6/qml
 CMAKE_CONFIGURE_ARGS+= -DKDE_INSTALL_QTMETATYPESDIR=qt6/metatypes

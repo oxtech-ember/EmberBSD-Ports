@@ -105,3 +105,11 @@ security/libsecret	libsecret-0.21.8.2.tar.xz	142948339c5b971d8f6a8c7099521f6fd31
 security/qca2-qt6	qca-2.3.12.tar.xz	d4a2b3aa0272d73ea0c4cd2140960177fa34ddc2030e59a48ecfb80c757572c3	https://download.kde.org/stable/qca/2.3.12/qca-2.3.12.tar.xz
 textproc/aspell	aspell-0.60.8.2.tar.gz	57fe4863eae6048f72245a8575b44b718fb85ca14b9f8c0afc41b254dfd76919	https://ftp.gnu.org/gnu/aspell/aspell-0.60.8.2.tar.gz
 textproc/hunspell	hunspell-1.7.5.tar.gz	833ee0cb129f7b933def265ea907f9ba4d0cfc5b52d838678eafceeec1adaa53	https://github.com/hunspell/hunspell/archive/refs/tags/v1.7.5.tar.gz
+graphics/plasma6-aurorae	aurorae-6.7.5.tar.xz	7e4305d4e28698024fcd797554ccad84bfd4ed4e5bdcb0f42b5da77fab244416	https://download.kde.org/stable/plasma/6.7.5/aurorae-6.7.5.tar.xz
+graphics/plasma6-breeze	breeze-6.7.5.tar.xz	aa05c0c31c852ed5b137327e7798fd763a54c643875d5d8070625475e0af6976	https://download.kde.org/stable/plasma/6.7.5/breeze-6.7.5.tar.xz
+x11/plasma6-kscreenlocker	kscreenlocker-6.7.5.tar.xz	6c41ce2cb79d2b85d4fbe5a3a61c09e40c70e5a869ae6f0352c7e1cb3b44606b	https://download.kde.org/stable/plasma/6.7.5/kscreenlocker-6.7.5.tar.xz
+x11/plasma6-kwin	kwin-6.7.5.tar.xz	6baa910b732d93c48c90f9c1cc685cc93d0b8de0cdf138c24192c045bc3a48e2	https://download.kde.org/stable/plasma/6.7.5/kwin-6.7.5.tar.xz
+x11/plasma6-libkscreen	libkscreen-6.7.5.tar.xz	df317e03acfadfcbc68981b78131750103fadf4d5c5df6368c9e91e698677219	https://download.kde.org/stable/plasma/6.7.5/libkscreen-6.7.5.tar.xz
+x11/plasma6-libplasma	libplasma-6.7.5.tar.xz	27b28823254aa489c094c40a314ce1575fd7906eeb521e636bb8fd2dc2981f2f	https://download.kde.org/stable/plasma/6.7.5/libplasma-6.7.5.tar.xz
+x11/plasma6-plasma-activities	plasma-activities-6.7.5.tar.xz	d93f31b6f33733ad3803098f4f622e55e3ef52cb5cd97e621a7b803e6f0e3f7c	https://download.kde.org/stable/plasma/6.7.5/plasma-activities-6.7.5.tar.xz
+sysutils/consolekit	ConsoleKit2-2.0.0.tar.gz	f3f4a424f2a4fbb67696b4011caf2fd4c02e5e67c24ef1c86cecb2301bccdba4	https://github.com/ConsoleKit2/ConsoleKit2/archive/refs/tags/2.0.0.tar.gz

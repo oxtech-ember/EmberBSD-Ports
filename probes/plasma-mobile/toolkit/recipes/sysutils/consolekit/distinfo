@@ -1,0 +1,8 @@
+$NetBSD: distinfo,v 1.23 2025/07/08 13:01:37 jperkin Exp $
+
+BLAKE2s (ConsoleKit2-2.0.0.tar.gz) = 8e30205b1ad749cf72846ca1de38416d11ae6c10391ee3018411fb84158eb470
+SHA512 (ConsoleKit2-2.0.0.tar.gz) = 8b814971e9461c5a807f00e6ef337589a8173c858d33f5a047bfef6dadaa45c8196a1d34f297273d58254cbb7862a25d65d923896a30b4dba1ab6955d16dfc2b
+Size (ConsoleKit2-2.0.0.tar.gz) = 261921 bytes
+SHA1 (patch-src_ck-manager.c) = ed04c9b3dae1325a3207e766bf4363e06d5e67c1
+SHA1 (patch-src_ck-sysdeps-solaris.c) = 43efc3ba1521477437d766da16c609a04892588c
+SHA1 (patch-src_ck-vt-monitor.c) = 15e81b4e5f2f03d3740d7933401461e2e3d12cf4

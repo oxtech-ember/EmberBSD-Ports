@@ -1,0 +1,36 @@
+Keep modular X font indexers as target runtime dependencies during cross builds.
+Only target package install hooks invoke them; never embed native tool paths.
+Native dependency selection and non-modular X font handling stay unchanged.
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+--- a/mk/pkginstall/bsd.pkginstall.mk
++++ b/mk/pkginstall/bsd.pkginstall.mk
+@@ -866,8 +866,14 @@
+ #
+ .if !empty(FONTS_DIRS.ttf:M*)
+ .if ${X11_TYPE} == "modular"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# Font databases are generated when installing on the target, not on the host.
++DEPENDS+=	mkfontscale>=1.2:../../fonts/mkfontscale
++FILES_SUBST+=	TTF_INDEX_CMD=${PREFIX}/bin/mkfontscale
++.else
+ USE_TOOLS+=		mkfontscale:run
+ FILES_SUBST+=		TTF_INDEX_CMD=${TOOLS_PATH.mkfontscale:Q}
++.endif
+ .else
+ USE_TOOLS+=		ttmkfdir:run
+ FILES_SUBST+=		TTF_INDEX_CMD=${TOOLS_PATH.ttmkfdir:Q}
+@@ -887,8 +893,13 @@
+ FONTS_DIRS.x11+=	${FONTS_DIRS.type1}
+ .endif
+ .if !empty(FONTS_DIRS.x11:M*)
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${X11_TYPE} == "modular"
++DEPENDS+=	mkfontscale>=1.2:../../fonts/mkfontscale
++FILES_SUBST+=	MKFONTDIR=${PREFIX}/bin/mkfontdir
++.else
+ USE_TOOLS+=		mkfontdir:run
+ FILES_SUBST+=		MKFONTDIR=${TOOLS_PATH.mkfontdir:Q}
++.endif
+ 
+ .if ${X11_TYPE} == "modular"
+ DEPENDS+=		encodings-[0-9]*:../../fonts/encodings

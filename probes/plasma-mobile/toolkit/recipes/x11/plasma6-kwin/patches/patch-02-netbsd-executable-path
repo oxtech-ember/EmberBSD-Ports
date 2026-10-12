@@ -1,0 +1,27 @@
+Use NetBSD executable pathname sysctl and validate its result.
+Local EmberBSD patch, AI-assisted; not submitted upstream.
+
+--- src/utils/executable_path_sysctl.cpp.orig
++++ src/utils/executable_path_sysctl.cpp
+@@ -12,11 +12,19 @@
+ 
+ QString executablePathFromPid(pid_t pid)
+ {
++#if defined(Q_OS_NETBSD)
++    const int mib[4] = {CTL_KERN, KERN_PROC_ARGS, static_cast<int>(pid), KERN_PROC_PATHNAME};
++#else
+     const int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, static_cast<int>(pid)};
++#endif
+     char buf[MAXPATHLEN];
+     size_t cb = sizeof(buf);
+-    if (sysctl(mib, 4, buf, &cb, nullptr, 0) == 0) {
+-        return QString::fromLocal8Bit(realpath(buf, nullptr));
++    if (sysctl(mib, 4, buf, &cb, nullptr, 0) == 0 && cb > 0 && cb <= sizeof(buf)) {
++        buf[cb - 1] = '\0';
++        char resolved[MAXPATHLEN];
++        if (realpath(buf, resolved)) {
++            return QString::fromLocal8Bit(resolved);
++        }
+     }
+     return QString();
+ }

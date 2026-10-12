@@ -349,6 +349,8 @@ if [ "$profile" = plasma-mobile ]; then
     patch -f -N -d "$destination" -p1 -F 0 < "$toolkit/current-crypto-deps.patch"
     patch -f -N -d "$destination" -p1 -F 0 < "$toolkit/current-polkit.patch"
     patch -f -N -d "$destination" -p1 -F 0 < "$toolkit/docbook-cross.patch"
+    patch -f -N -d "$destination" -p1 -F 0 < "$toolkit/font-cross.patch"
+    patch -f -N -d "$destination" -p1 -F 0 < "$toolkit/current-fonts.patch"
     cp -R "$toolkit/shared/." "$destination/"
     cp "$toolkit/mk.conf" "$destination/EMBERBSD-PLASMA-TOOLKIT-MK.CONF"
 fi

@@ -25,7 +25,7 @@ all:
 	@test '${GCC_REQD}' = 16.2
 MAKE
 while IFS="$(printf '\t')" read -r recipe archive sha url; do
-    case "$recipe" in ''|'#'*|security/qca2-qt6|security/libsecret|audio/libcanberra|devel/extra-cmake-modules|devel/libinotify|devel/plasma-wayland-protocols|textproc/aspell|textproc/hunspell|textproc/iso-codes|www/litehtml|www/gumbo-parser) continue ;; esac
+    case "$recipe" in ''|'#'*|security/qca2-qt6|security/libsecret|audio/libcanberra|devel/extra-cmake-modules|devel/libinotify|devel/plasma-wayland-protocols|textproc/aspell|textproc/hunspell|textproc/iso-codes|www/litehtml|www/gumbo-parser|sysutils/consolekit) continue ;; esac
     case "$recipe" in */qt6-*) family=qt ;; */plasma6-*) family=plasma ;; *) family=kf ;; esac
     (cd "$work" && "$make" -r -m / FAMILY="$family" PKGPATH="$recipe")
 done < "$toolkit/sources.tsv"
@@ -49,7 +49,7 @@ for family in kf plasma; do
 for cross in yes no; do
     "$make" -C "$work" -r -m / FAMILY="$family" PKGPATH=devel/kf6-ki18n \
         USE_CROSS_COMPILE="$cross" -V '${CMAKE_CONFIGURE_ARGS}' > "$work/dirs-$cross.log"
-    if [ "$family:$cross" = kf:yes ]; then
+    if [ "$cross" = yes ]; then
         grep -q -- '-DKDE_INSTALL_APP_TEMPLATES=ON' "$work/dirs-$cross.log"
     fi
     for item in QTPLUGINDIR:plugins QMLDIR:qml QTMETATYPESDIR:metatypes QTQCHDIR:doc; do

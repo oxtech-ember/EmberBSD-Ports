@@ -1,0 +1,257 @@
+From: EmberBSD (AI-assisted)
+Subject: Current Noto fonts and CJK coverage for the common desktop
+
+https://github.com/notofonts/notofonts.github.io/archive/refs/tags/noto-monthly-release-2026.10.01.tar.gz
+SHA256: 65493b5967fd11372c1566e87f38a05c8c80a0e7f1fee4644fcaad23731a7b8e
+
+https://raw.githubusercontent.com/notofonts/noto-cjk/9b0f1436e455d902de067a2501422e5dc71ad16b/Sans/Variable/OTC/NotoSansCJK-VF.otf.ttc
+SHA256: d3d8256cdec8dbcb3552284bc6b20c734dd60c2ee9df83b5758e34807c4bac32
+
+https://raw.githubusercontent.com/notofonts/noto-cjk/9b0f1436e455d902de067a2501422e5dc71ad16b/Sans/Variable/OTC/NotoSansMonoCJK-VF.otf.ttc
+SHA256: 3a73c225abcfd5742ab84e613b427fb5b40c9e59b70fe3d1683f9b1da96568a0
+
+https://raw.githubusercontent.com/notofonts/noto-cjk/9b0f1436e455d902de067a2501422e5dc71ad16b/Serif/Variable/OTC/NotoSerifCJK-VF.otf.ttc
+SHA256: 24720ea76c8b13e822059d155cefb0f9f6be1cfdee1e2bb67b61c96067de42c9
+
+--- a/fonts/noto-fonts/Makefile
++++ b/fonts/noto-fonts/Makefile
+@@ -1,11 +1,11 @@
+ # $NetBSD: Makefile,v 1.3 2024/06/07 19:57:36 ryoon Exp $
+ 
+-DISTNAME=	notofonts.github.io-noto-monthly-release-24.6.1
+-PKGNAME=	noto-fonts-20240601
++DISTNAME=	notofonts.github.io-noto-monthly-release-2026.10.01
++PKGNAME=	noto-fonts-20261001
+ CATEGORIES=	fonts
+ MASTER_SITES=	${MASTER_SITE_GITHUB:=notofonts/}
+ GITHUB_PROJECT=	notofonts.github.io
+-GITHUB_TAG=	noto-monthly-release-24.6.1
++GITHUB_TAG=	noto-monthly-release-2026.10.01
+ 
+ MAINTAINER=	ryoon@NetBSD.org
+ HOMEPAGE=	https://notofonts.github.io/
+@@ -21,18 +21,13 @@
+ FONTDIR=	${PREFIX}/share/fonts/X11/TTF
+ FONTS_DIRS.ttf=	${FONTDIR}
+ 
+-INSTALLATION_DIRS=	share/fonts/X11/TTF
++INSTALLATION_DIRS=	share/fonts/X11/TTF share/licenses/noto-fonts
+ 
+ do-install:
+-	# `${WRKSRC}/hinted/ttf/Noto*/*.ttf` causes too long argument error.
+-	${INSTALL_DATA} ${WRKSRC}/fonts/NotoF*/hinted/ttf/*.ttf ${DESTDIR}${FONTDIR}
+-	${INSTALL_DATA} ${WRKSRC}/fonts/NotoK*/hinted/ttf/*.ttf ${DESTDIR}${FONTDIR}
+-	${INSTALL_DATA} ${WRKSRC}/fonts/NotoN*/hinted/ttf/*.ttf ${DESTDIR}${FONTDIR}
+-	${INSTALL_DATA} ${WRKSRC}/fonts/NotoR*/hinted/ttf/*.ttf ${DESTDIR}${FONTDIR}
+-	${INSTALL_DATA} ${WRKSRC}/fonts/NotoSans*/hinted/ttf/*.ttf ${DESTDIR}${FONTDIR}
+-	${INSTALL_DATA} ${WRKSRC}/fonts/NotoSerif*/hinted/ttf/*.ttf ${DESTDIR}${FONTDIR}
+-	${INSTALL_DATA} ${WRKSRC}/fonts/NotoT*/hinted/ttf/*.ttf ${DESTDIR}${FONTDIR}
+-	${INSTALL_DATA} ${WRKSRC}/fonts/NotoZ*/hinted/ttf/*.ttf ${DESTDIR}${FONTDIR}
++	set -e; for fontdir in ${WRKSRC}/fonts/*/hinted/ttf; do \
++		[ ! -d "$$fontdir" ] || ${INSTALL_DATA} "$$fontdir"/*.ttf ${DESTDIR}${FONTDIR}; \
++	done
++	${INSTALL_DATA} ${WRKSRC}/fonts/LICENSE ${DESTDIR}${PREFIX}/share/licenses/noto-fonts/OFL.txt
+ 
+ # Do not install all ttf/otf font files.
+ #.include "../../mk/fonts.mk"
+--- a/fonts/noto-fonts/PLIST
++++ b/fonts/noto-fonts/PLIST
+@@ -10,6 +10,7 @@
+ share/fonts/X11/TTF/NotoKufiArabic-Regular.ttf
+ share/fonts/X11/TTF/NotoKufiArabic-SemiBold.ttf
+ share/fonts/X11/TTF/NotoKufiArabic-Thin.ttf
++share/fonts/X11/TTF/NotoMusic-Regular.ttf
+ share/fonts/X11/TTF/NotoNaskhArabic-Bold.ttf
+ share/fonts/X11/TTF/NotoNaskhArabic-Medium.ttf
+ share/fonts/X11/TTF/NotoNaskhArabic-Regular.ttf
+@@ -142,6 +143,42 @@
+ share/fonts/X11/TTF/NotoSansArabic-SemiCondensedSemiBold.ttf
+ share/fonts/X11/TTF/NotoSansArabic-SemiCondensedThin.ttf
+ share/fonts/X11/TTF/NotoSansArabic-Thin.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-Black.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-Bold.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-Condensed.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-CondensedBlack.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-CondensedBold.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-CondensedExtraBold.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-CondensedExtraLight.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-CondensedLight.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-CondensedMedium.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-CondensedSemiBold.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-CondensedThin.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-ExtraBold.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-ExtraCondensed.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-ExtraCondensedBlack.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-ExtraCondensedBold.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-ExtraCondensedExtraBold.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-ExtraCondensedExtraLight.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-ExtraCondensedLight.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-ExtraCondensedMedium.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-ExtraCondensedSemiBold.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-ExtraCondensedThin.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-ExtraLight.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-Light.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-Medium.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-Regular.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-SemiBold.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-SemiCondensed.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-SemiCondensedBlack.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-SemiCondensedBold.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-SemiCondensedExtraBold.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-SemiCondensedExtraLight.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-SemiCondensedLight.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-SemiCondensedMedium.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-SemiCondensedSemiBold.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-SemiCondensedThin.ttf
++share/fonts/X11/TTF/NotoSansArabicUI-Thin.ttf
+ share/fonts/X11/TTF/NotoSansArmenian-Black.ttf
+ share/fonts/X11/TTF/NotoSansArmenian-Bold.ttf
+ share/fonts/X11/TTF/NotoSansArmenian-Condensed.ttf
+@@ -195,14 +232,38 @@
+ share/fonts/X11/TTF/NotoSansBengali-Black.ttf
+ share/fonts/X11/TTF/NotoSansBengali-Bold.ttf
+ share/fonts/X11/TTF/NotoSansBengali-Condensed.ttf
++share/fonts/X11/TTF/NotoSansBengali-CondensedBlack.ttf
++share/fonts/X11/TTF/NotoSansBengali-CondensedBold.ttf
++share/fonts/X11/TTF/NotoSansBengali-CondensedExtraBold.ttf
++share/fonts/X11/TTF/NotoSansBengali-CondensedExtraLight.ttf
++share/fonts/X11/TTF/NotoSansBengali-CondensedLight.ttf
++share/fonts/X11/TTF/NotoSansBengali-CondensedMedium.ttf
++share/fonts/X11/TTF/NotoSansBengali-CondensedSemiBold.ttf
++share/fonts/X11/TTF/NotoSansBengali-CondensedThin.ttf
+ share/fonts/X11/TTF/NotoSansBengali-ExtraBold.ttf
+ share/fonts/X11/TTF/NotoSansBengali-ExtraCondensed.ttf
++share/fonts/X11/TTF/NotoSansBengali-ExtraCondensedBlack.ttf
++share/fonts/X11/TTF/NotoSansBengali-ExtraCondensedBold.ttf
++share/fonts/X11/TTF/NotoSansBengali-ExtraCondensedExtraBold.ttf
++share/fonts/X11/TTF/NotoSansBengali-ExtraCondensedExtraLight.ttf
++share/fonts/X11/TTF/NotoSansBengali-ExtraCondensedLight.ttf
++share/fonts/X11/TTF/NotoSansBengali-ExtraCondensedMedium.ttf
++share/fonts/X11/TTF/NotoSansBengali-ExtraCondensedSemiBold.ttf
++share/fonts/X11/TTF/NotoSansBengali-ExtraCondensedThin.ttf
+ share/fonts/X11/TTF/NotoSansBengali-ExtraLight.ttf
+ share/fonts/X11/TTF/NotoSansBengali-Light.ttf
+ share/fonts/X11/TTF/NotoSansBengali-Medium.ttf
+ share/fonts/X11/TTF/NotoSansBengali-Regular.ttf
+ share/fonts/X11/TTF/NotoSansBengali-SemiBold.ttf
+ share/fonts/X11/TTF/NotoSansBengali-SemiCondensed.ttf
++share/fonts/X11/TTF/NotoSansBengali-SemiCondensedBlack.ttf
++share/fonts/X11/TTF/NotoSansBengali-SemiCondensedBold.ttf
++share/fonts/X11/TTF/NotoSansBengali-SemiCondensedExtraBold.ttf
++share/fonts/X11/TTF/NotoSansBengali-SemiCondensedExtraLight.ttf
++share/fonts/X11/TTF/NotoSansBengali-SemiCondensedLight.ttf
++share/fonts/X11/TTF/NotoSansBengali-SemiCondensedMedium.ttf
++share/fonts/X11/TTF/NotoSansBengali-SemiCondensedSemiBold.ttf
++share/fonts/X11/TTF/NotoSansBengali-SemiCondensedThin.ttf
+ share/fonts/X11/TTF/NotoSansBengali-Thin.ttf
+ share/fonts/X11/TTF/NotoSansBengaliUI-Black.ttf
+ share/fonts/X11/TTF/NotoSansBengaliUI-Bold.ttf
+@@ -1030,6 +1091,7 @@
+ share/fonts/X11/TTF/NotoSansSiddham-Regular.ttf
+ share/fonts/X11/TTF/NotoSansSignWriting-Regular.ttf
+ share/fonts/X11/TTF/NotoSansSinhala-Black.ttf
++share/fonts/X11/TTF/NotoSansSinhala-BlackCondensed.ttf
+ share/fonts/X11/TTF/NotoSansSinhala-Bold.ttf
+ share/fonts/X11/TTF/NotoSansSinhala-Condensed.ttf
+ share/fonts/X11/TTF/NotoSansSinhala-CondensedBlack.ttf
+@@ -1065,6 +1127,7 @@
+ share/fonts/X11/TTF/NotoSansSinhala-SemiCondensedSemiBold.ttf
+ share/fonts/X11/TTF/NotoSansSinhala-SemiCondensedThin.ttf
+ share/fonts/X11/TTF/NotoSansSinhala-Thin.ttf
++share/fonts/X11/TTF/NotoSansSinhala-ThinCondensed.ttf
+ share/fonts/X11/TTF/NotoSansSinhalaUI-Black.ttf
+ share/fonts/X11/TTF/NotoSansSinhalaUI-Bold.ttf
+ share/fonts/X11/TTF/NotoSansSinhalaUI-Condensed.ttf
+@@ -1111,6 +1174,7 @@
+ share/fonts/X11/TTF/NotoSansSundanese-Medium.ttf
+ share/fonts/X11/TTF/NotoSansSundanese-Regular.ttf
+ share/fonts/X11/TTF/NotoSansSundanese-SemiBold.ttf
++share/fonts/X11/TTF/NotoSansSunuwar-Regular.ttf
+ share/fonts/X11/TTF/NotoSansSylotiNagri-Regular.ttf
+ share/fonts/X11/TTF/NotoSansSymbols-Black.ttf
+ share/fonts/X11/TTF/NotoSansSymbols-Bold.ttf
+@@ -1777,6 +1841,13 @@
+ share/fonts/X11/TTF/NotoSerifHebrew-SemiCondensedSemiBold.ttf
+ share/fonts/X11/TTF/NotoSerifHebrew-SemiCondensedThin.ttf
+ share/fonts/X11/TTF/NotoSerifHebrew-Thin.ttf
++share/fonts/X11/TTF/NotoSerifHentaigana-Black.ttf
++share/fonts/X11/TTF/NotoSerifHentaigana-Bold.ttf
++share/fonts/X11/TTF/NotoSerifHentaigana-ExtraLight.ttf
++share/fonts/X11/TTF/NotoSerifHentaigana-Light.ttf
++share/fonts/X11/TTF/NotoSerifHentaigana-Medium.ttf
++share/fonts/X11/TTF/NotoSerifHentaigana-Regular.ttf
++share/fonts/X11/TTF/NotoSerifHentaigana-SemiBold.ttf
+ share/fonts/X11/TTF/NotoSerifKannada-Black.ttf
+ share/fonts/X11/TTF/NotoSerifKannada-Bold.ttf
+ share/fonts/X11/TTF/NotoSerifKannada-ExtraBold.ttf
+@@ -2082,6 +2153,7 @@
+ share/fonts/X11/TTF/NotoSerifTibetan-Regular.ttf
+ share/fonts/X11/TTF/NotoSerifTibetan-SemiBold.ttf
+ share/fonts/X11/TTF/NotoSerifTibetan-Thin.ttf
++share/fonts/X11/TTF/NotoSerifTodhri-Regular.ttf
+ share/fonts/X11/TTF/NotoSerifToto-Bold.ttf
+ share/fonts/X11/TTF/NotoSerifToto-Medium.ttf
+ share/fonts/X11/TTF/NotoSerifToto-Regular.ttf
+@@ -2098,3 +2170,4 @@
+ share/fonts/X11/TTF/NotoTraditionalNushu-Light.ttf
+ share/fonts/X11/TTF/NotoTraditionalNushu-Regular.ttf
+ share/fonts/X11/TTF/NotoZnamennyMusicalNotation-Regular.ttf
++share/licenses/noto-fonts/OFL.txt
+--- a/fonts/noto-fonts/distinfo
++++ b/fonts/noto-fonts/distinfo
+@@ -1,5 +1,5 @@
+ $NetBSD: distinfo,v 1.3 2024/06/07 19:57:36 ryoon Exp $
+ 
+-BLAKE2s (notofonts.github.io-noto-monthly-release-24.6.1.tar.gz) = 9ca8432dbb568e4e2b8a788056bdd7f784b696365f87299b950b09fd3dc60caf
+-SHA512 (notofonts.github.io-noto-monthly-release-24.6.1.tar.gz) = 0017569bbe71f981d44a12ebb570491cda81606751f7224c77c657c0e436814af804a0694fb17f70c039fc355d1c39b3560393bec9197ff84937d8909ba23e13
+-Size (notofonts.github.io-noto-monthly-release-24.6.1.tar.gz) = 1067823129 bytes
++BLAKE2s (notofonts.github.io-noto-monthly-release-2026.10.01.tar.gz) = 6aa45e1e5bc999fe1374ef3d03381695a489d841a4fb102d5b1eb2dce3efc194
++SHA512 (notofonts.github.io-noto-monthly-release-2026.10.01.tar.gz) = 15cd0e825744315f86c25f5ceb0b280bec8524ba5384f483be5c664df6fb595df9c3cac6d9fdd52f9a018196ca7269b1bf705ce933a0c64f38d13c5ac4e9d54c
++Size (notofonts.github.io-noto-monthly-release-2026.10.01.tar.gz) = 1098876847 bytes
+--- a/fonts/noto-cjk-fonts/Makefile
++++ b/fonts/noto-cjk-fonts/Makefile
+@@ -1,16 +1,16 @@
+ # $NetBSD: Makefile,v 1.2 2024/06/07 20:00:15 ryoon Exp $
+ 
+-PKGNAME=	noto-cjk-fonts-20240508
++PKGNAME=	noto-cjk-fonts-20240730
+ CATEGORIES=	fonts
+-TAG=		07fb9c9a48ec63ba92f7bfd2608ca6fbb01940f1
+-MASTER_SITES=	${MASTER_SITE_GITHUB:=googlefonts/noto-cjk/raw/${TAG}/Sans/Variable/OTC/}
++TAG=		9b0f1436e455d902de067a2501422e5dc71ad16b
++MASTER_SITES=	${MASTER_SITE_GITHUB:=notofonts/noto-cjk/raw/${TAG}/Sans/Variable/OTC/}
+ 
+ MAINTAINER=	ryoon@NetBSD.org
+-HOMEPAGE=	https://github.com/googlefonts/noto-cjk/
++HOMEPAGE=	https://github.com/notofonts/noto-cjk/
+ COMMENT=	Google Noto CJK fonts
+ LICENSE=	ofl-v1.1
+ 
+-SITES.NotoSerifCJK-VF.otf.ttc=	${MASTER_SITE_GITHUB:=googlefonts/noto-cjk/raw/${TAG}/Serif/Variable/OTC/}
++SITES.NotoSerifCJK-VF.otf.ttc=	${MASTER_SITE_GITHUB:=notofonts/noto-cjk/raw/${TAG}/Serif/Variable/OTC/}
+ DIST_SUBDIR=	${PKGNAME_NOREV}
+ DISTFILES=	NotoSansCJK-VF.otf.ttc \
+ 		NotoSansMonoCJK-VF.otf.ttc \
+--- a/fonts/noto-cjk-fonts/distinfo
++++ b/fonts/noto-cjk-fonts/distinfo
+@@ -1,11 +1,11 @@
+ $NetBSD: distinfo,v 1.2 2024/06/07 20:00:15 ryoon Exp $
+ 
+-BLAKE2s (noto-cjk-fonts-20240508/NotoSansCJK-VF.otf.ttc) = 9979cc93537c61d76fc2894d42df1707138e4f74b0b6af651cbcc4715ad99089
+-SHA512 (noto-cjk-fonts-20240508/NotoSansCJK-VF.otf.ttc) = b44200c0b8149004150cba40204af489b1275310f9b574727bebf13e4c3036a99447636a158af1b660a49049325cc1c803ea02b110fa1f58b666808b08dbfd52
+-Size (noto-cjk-fonts-20240508/NotoSansCJK-VF.otf.ttc) = 32682580 bytes
+-BLAKE2s (noto-cjk-fonts-20240508/NotoSansMonoCJK-VF.otf.ttc) = 5230a06a525a01000378375f3f54c5f43462348409f38143171bbd5f92707617
+-SHA512 (noto-cjk-fonts-20240508/NotoSansMonoCJK-VF.otf.ttc) = 840c83fd069c83f7475a12448dfb0bfc6689d5227a7e390e9b7de52b427632f5b1c85f53084d4bd2d53ec3e38d5629e0455242d89ac98fbaf3d0c24fe8ba723b
+-Size (noto-cjk-fonts-20240508/NotoSansMonoCJK-VF.otf.ttc) = 31908332 bytes
+-BLAKE2s (noto-cjk-fonts-20240508/NotoSerifCJK-VF.otf.ttc) = f483bdc9d9e2559acacca55faa6f7b7d23693ac0ffd0a14e1bac52bffc0796a6
+-SHA512 (noto-cjk-fonts-20240508/NotoSerifCJK-VF.otf.ttc) = 87533362980d2447ca798d453999f0e919833e09fe5090bf7915471c40fa82dd653eac6162657240e3c542a6d69be04747966a96c05c59b4ebebfa54cd9769a6
+-Size (noto-cjk-fonts-20240508/NotoSerifCJK-VF.otf.ttc) = 56820256 bytes
++BLAKE2s (noto-cjk-fonts-20240730/NotoSansCJK-VF.otf.ttc) = 9979cc93537c61d76fc2894d42df1707138e4f74b0b6af651cbcc4715ad99089
++SHA512 (noto-cjk-fonts-20240730/NotoSansCJK-VF.otf.ttc) = b44200c0b8149004150cba40204af489b1275310f9b574727bebf13e4c3036a99447636a158af1b660a49049325cc1c803ea02b110fa1f58b666808b08dbfd52
++Size (noto-cjk-fonts-20240730/NotoSansCJK-VF.otf.ttc) = 32682580 bytes
++BLAKE2s (noto-cjk-fonts-20240730/NotoSansMonoCJK-VF.otf.ttc) = 5230a06a525a01000378375f3f54c5f43462348409f38143171bbd5f92707617
++SHA512 (noto-cjk-fonts-20240730/NotoSansMonoCJK-VF.otf.ttc) = 840c83fd069c83f7475a12448dfb0bfc6689d5227a7e390e9b7de52b427632f5b1c85f53084d4bd2d53ec3e38d5629e0455242d89ac98fbaf3d0c24fe8ba723b
++Size (noto-cjk-fonts-20240730/NotoSansMonoCJK-VF.otf.ttc) = 31908332 bytes
++BLAKE2s (noto-cjk-fonts-20240730/NotoSerifCJK-VF.otf.ttc) = cf3371f5bb6380c92311a9688402a9019405de3b58a0cdf4e09973d62a4f46e5
++SHA512 (noto-cjk-fonts-20240730/NotoSerifCJK-VF.otf.ttc) = aa2c2b3d790aeb22e40da8ca74799c5043b3d8c048f5b4f8973fbc695283319d91c50c3c2cd1837bb2155556ae2ea173d71a3af04c997ae18c05cfd920db886a
++Size (noto-cjk-fonts-20240730/NotoSerifCJK-VF.otf.ttc) = 57488648 bytes

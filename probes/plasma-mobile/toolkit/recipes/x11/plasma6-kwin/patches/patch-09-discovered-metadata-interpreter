@@ -1,0 +1,24 @@
+Run the unchanged upstream metadata generator with CMake's discovered Python
+interpreter. pkgsrc installs a versioned executable without a python3 alias.
+Python is a real required upstream build dependency, not a new local helper.
+Origin: AI-assisted EmberBSD portability work; not submitted upstream.
+
+--- src/plugins/CMakeLists.txt.orig
++++ src/plugins/CMakeLists.txt
+@@ -5,14 +5,14 @@
+ endfunction()
+ 
+ # Add a CMake-time check for python3 to avoid failures during build.
+-find_package (Python3 COMPONENTS Interpreter)
++find_package (Python3 REQUIRED COMPONENTS Interpreter)
+ add_feature_info("Python3" Python3_Interpreter_FOUND "Required to strip effects metadata")
+ set(KSEM_EXE "${CMAKE_CURRENT_SOURCE_DIR}/strip-effect-metadata.py")
+ 
+ function (kwin_strip_builtin_effect_metadata target metadata)
+     set(stripped_metadata "${CMAKE_CURRENT_BINARY_DIR}/${metadata}.stripped")
+ 
+-    set(command ${KSEM_EXE} --source=${metadata} --output=${stripped_metadata})
++    set(command $<TARGET_FILE:Python3::Interpreter> ${KSEM_EXE} --source=${metadata} --output=${stripped_metadata})
+     add_custom_command(
+         OUTPUT ${stripped_metadata}
+         COMMAND ${command}

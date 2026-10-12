@@ -205,6 +205,11 @@ runtime behavior are validated.
   regressions. [Qt TextToSpeech](probes/plasma-mobile/toolkit/tests/qt-speech/README.md)
   passes both installed engines; [KCMUtils](probes/plasma-mobile/toolkit/cross/kcmutils.md)
   passes its generated-settings test. Physical sound and full Plasma remain separate.
+- [Plasma shell libraries](probes/plasma-mobile/toolkit/cross/libplasma.md):
+  complete libplasma/PlasmaActivities 6.7.5 cross packages pass 13 CM5 tests.
+  Native KPackage metadata and Mesa EGL selection are repaired; the complete
+  accelerated desktop remains unaccepted. [Current Noto fonts](probes/plasma-mobile/toolkit/cross/fonts.md)
+  also pass payload, target indexing and Cyrillic/CJK selection checks.
 - [Media and OpenCV videoio](probes/media/README.md): FFmpeg 9.0.2,
   GStreamer 1.28.7 and OpenCV 5.0.0 pass installed file/video pipeline checks
   on AArch64, including both videoio backends, timestamps, seeking, lossless

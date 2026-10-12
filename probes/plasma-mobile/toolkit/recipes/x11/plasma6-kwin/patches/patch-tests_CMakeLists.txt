@@ -1,0 +1,39 @@
+Propagate the cross platform and native generators to both external test clients.
+Keep the upstream demos enabled; leave native builds unchanged.
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+--- tests/CMakeLists.txt.orig
++++ tests/CMakeLists.txt
+@@ -1,9 +1,32 @@
+ include(ExternalProject)
+ 
++# External target demos need the same platform and native generators as KWin.
++set(kwin_demo_cmake_args)
++if(CMAKE_CROSSCOMPILING)
++    set(kwin_demo_cache "${CMAKE_CURRENT_BINARY_DIR}/cross-demo-cache.cmake")
++    file(WRITE "${kwin_demo_cache}" "# Generated from the parent cross configuration.\n")
++    foreach(variable IN ITEMS
++            CMAKE_TOOLCHAIN_FILE CMAKE_SYSTEM_NAME CMAKE_SYSTEM_PROCESSOR
++            CMAKE_C_COMPILER CMAKE_CXX_COMPILER CMAKE_SYSROOT
++            CMAKE_FIND_ROOT_PATH CMAKE_FIND_ROOT_PATH_MODE_PROGRAM
++            CMAKE_FIND_ROOT_PATH_MODE_LIBRARY CMAKE_FIND_ROOT_PATH_MODE_INCLUDE
++            CMAKE_FIND_ROOT_PATH_MODE_PACKAGE CMAKE_PREFIX_PATH
++            CMAKE_C_FLAGS CMAKE_CXX_FLAGS CMAKE_EXE_LINKER_FLAGS
++            ECM_DIR Qt6_DIR QT_HOST_PATH QT_HOST_PATH_CMAKE_DIR
++            PKG_CONFIG_EXECUTABLE WaylandScanner_EXECUTABLE WaylandProtocols_DATADIR)
++        if(DEFINED ${variable})
++            file(APPEND "${kwin_demo_cache}"
++                "set(${variable} [==[${${variable}}]==] CACHE STRING \"Parent cross configuration\")\n")
++        endif()
++    endforeach()
++    list(APPEND kwin_demo_cmake_args "-C${kwin_demo_cache}")
++endif()
++
+ function (kwin_add_demo name)
+     ExternalProject_Add(
+         ${name}
+         BUILD_ALWAYS TRUE
++        CMAKE_ARGS ${kwin_demo_cmake_args}
+         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/${name}
+         PREFIX ${CMAKE_CURRENT_BINARY_DIR}/${name}
+         INSTALL_COMMAND ""

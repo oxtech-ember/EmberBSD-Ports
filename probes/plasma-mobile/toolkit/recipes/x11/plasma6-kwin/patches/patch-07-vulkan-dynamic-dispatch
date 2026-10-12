@@ -1,0 +1,69 @@
+Use the existing Vulkan-Hpp RAII instance dispatcher for every physical-device
+query. This removes two accidental direct loader references and lets CMake use
+the header-only Vulkan target for its existing dynamic-loader implementation.
+Require the Vulkan-Headers config package for this dynamic implementation.
+This does not repair an installed Vulkan loader or claim Vulkan runtime support.
+Origin: AI-assisted EmberBSD portability work; not submitted upstream.
+
+--- src/CMakeLists.txt.orig
++++ src/CMakeLists.txt
+@@ -258,7 +258,6 @@
+         KF6::WindowSystem
+         epoxy::epoxy
+         Libdrm::Libdrm
+-        Vulkan::Vulkan
+ 
+     PRIVATE
+         Qt::Concurrent
+@@ -288,6 +287,13 @@
+         PkgConfig::libdisplayinfo
+ )
+ 
++if (TARGET Vulkan::Headers)
++    target_link_libraries(kwin PUBLIC Vulkan::Headers)
++    target_link_libraries(kwin PRIVATE ${CMAKE_DL_LIBS})
++else()
++    target_link_libraries(kwin PUBLIC Vulkan::Vulkan)
++endif()
++
+ if (TARGET K::KGlobalAccelD)
+     target_link_libraries(kwin PRIVATE K::KGlobalAccelD)
+ endif()
+--- src/vulkan/vulkan_device.cpp.orig
++++ src/vulkan/vulkan_device.cpp
+@@ -259,13 +259,13 @@
+             &modifierInfos,
+         };
+         vk::PhysicalDevice physical{m_physical};
+-        physical.getFormatProperties2(vk::Format(info.vulkanFormat), &formatProps);
++        physical.getFormatProperties2(vk::Format(info.vulkanFormat), &formatProps, *m_physical.getDispatcher());
+         if (modifierInfos.drmFormatModifierCount == 0) {
+             continue;
+         }
+         std::vector<vk::DrmFormatModifierPropertiesEXT> formatModifierProps(modifierInfos.drmFormatModifierCount);
+         modifierInfos.pDrmFormatModifierProperties = formatModifierProps.data();
+-        physical.getFormatProperties2(vk::Format(info.vulkanFormat), &formatProps);
++        physical.getFormatProperties2(vk::Format(info.vulkanFormat), &formatProps, *m_physical.getDispatcher());
+ 
+         for (const auto &props : formatModifierProps) {
+             vk::PhysicalDeviceImageDrmFormatModifierInfoEXT modifierInfo{
+@@ -290,7 +290,7 @@
+                 &externalProps,
+             };
+ 
+-            const vk::Result result = physical.getImageFormatProperties2(&imageInfo, &imageProps);
++            const vk::Result result = physical.getImageFormatProperties2(&imageInfo, &imageProps, *m_physical.getDispatcher());
+             if (result == vk::Result::eErrorFormatNotSupported) {
+                 qCDebug(KWIN_VULKAN) << "unsupported format:" << vk::to_string(vk::Format(info.vulkanFormat));
+                 continue;
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -202,7 +202,7 @@
+     PURPOSE "OpenGL dispatch library"
+ )
+ 
+-find_package(Vulkan REQUIRED)
++find_package(VulkanHeaders CONFIG REQUIRED)
+ 
+ find_package(Wayland 1.24)
+ set_package_properties(Wayland PROPERTIES

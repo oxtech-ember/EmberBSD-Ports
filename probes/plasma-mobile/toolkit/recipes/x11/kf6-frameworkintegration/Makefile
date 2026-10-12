@@ -9,7 +9,8 @@ LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2.1
 
 .include "../../meta-pkgs/kde/kf6.mk"
 
-DEPENDS+=	noto-ttf-[0-9]*:../../fonts/noto-ttf
+DEPENDS+=	noto-fonts>=20261001:../../fonts/noto-fonts
+DEPENDS+=	noto-cjk-fonts>=20240730:../../fonts/noto-cjk-fonts
 
 USE_TOOLS+=	msgmerge pkg-config
 
