@@ -15,6 +15,14 @@ upstream once it builds.
 | gnome-desktop (the `gnome-desktop-4` library) | 51.0 | download.gnome.org, SHA512 pinned |
 | gala | 8.6.2 | later probe |
 
+Freshness audit of the native build chain (2026-10-12): gtk 3.24.52 and
+4.22.4, pango 1.58.2, cairo 1.18.6, gdk-pixbuf 2.44.8,
+gobject-introspection 1.86.0, glib2 2.90.1, cmake 4.4.3 — current lines of
+the pinned quarterly; the graphics profile pins Mesa 26.2.4,
+libdrm 2.4.134, wayland 1.26.0 and wayland-protocols 1.49. No component of
+the chain requires a version bump; fixes are patches only, per project
+policy.
+
 ## Validation record (2026-10-12)
 
 - Distfiles fetched from the original GNOME server; SHA512 recorded in
