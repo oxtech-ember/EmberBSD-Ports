@@ -115,3 +115,5 @@ x11/plasma6-plasma-activities	plasma-activities-6.7.5.tar.xz	d93f31b6f33733ad380
 sysutils/consolekit	ConsoleKit2-2.0.0.tar.gz	f3f4a424f2a4fbb67696b4011caf2fd4c02e5e67c24ef1c86cecb2301bccdba4	https://github.com/ConsoleKit2/ConsoleKit2/archive/refs/tags/2.0.0.tar.gz
 sysutils/plasma6-milou	milou-6.7.5.tar.xz	b43c7cb765109a91ad9ef7d5856c4584b380349837baf63ccca4b45a67925ab5	https://download.kde.org/stable/plasma/6.7.5/milou-6.7.5.tar.xz
 sysutils/plasma6-libksysguard	libksysguard-6.7.5.tar.xz	9069bcf3fe4e491ea774d0d70eb17f99b567299871045a38543fcabcdb56dfc4	https://download.kde.org/stable/plasma/6.7.5/libksysguard-6.7.5.tar.xz
+devel/plasma6-plasma5support	plasma5support-6.7.5.tar.xz	dcd58d280b9c3f9570b1790134f692374ecae633cd15c60b1ee76947d5543e80	https://download.kde.org/stable/plasma/6.7.5/plasma5support-6.7.5.tar.xz
+x11/plasma6-plasma-activities-stats	plasma-activities-stats-6.7.5.tar.xz	9896396e29d5841c7a0f42814ced01ab58fcad406a552ddee2c950f205549acf	https://download.kde.org/stable/plasma/6.7.5/plasma-activities-stats-6.7.5.tar.xz
