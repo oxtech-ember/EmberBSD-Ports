@@ -1,0 +1,106 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Keep full cross-build introspection.
+Native scanners query real target libraries through the shared GI launcher.
+
+--- meson.build.orig
++++ meson.build
+@@ -620,6 +620,17 @@
+     'g_setenv("GST_TRACERS", "", TRUE);' + \
+     'gst_init(NULL,NULL);', '--quiet']
+ 
++# Only the temporary GType query executes on the EmberBSD target.
++emberbsd_gir_env = environment()
++if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++  gir_init_section += ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++  emberbsd_gir_libs = []
++  foreach directory : ['gst', 'libs/gst/base', 'libs/gst/check', 'libs/gst/controller', 'libs/gst/net']
++    emberbsd_gir_libs += [meson.project_build_root() / directory]
++  endforeach
++  emberbsd_gir_env.set('LD_LIBRARY_PATH', ':'.join(emberbsd_gir_libs))
++endif
++
+ gst_c_args = ['-DHAVE_CONFIG_H']
+ 
+ # FIXME: This is only needed on windows and probably breaks when
+--- gst/meson.build.orig
++++ gst/meson.build
+@@ -336,6 +336,7 @@
+     'includes' : ['GLib-2.0', 'GObject-2.0', 'GModule-2.0' ],
+     'install' : true,
+     'extra_args' : gst_gir_extra_args,
++    'env' : emberbsd_gir_env,
+   }
+   library_def += {'gir': [gir]}
+   # When building statically the information about the gir is going to be
+--- libs/gst/base/meson.build.orig
++++ libs/gst/base/meson.build
+@@ -90,6 +90,7 @@
+     'includes' : ['GLib-2.0', 'GObject-2.0', 'GModule-2.0', 'Gst-1.0'],
+     'install' : true,
+     'extra_args' : gst_gir_extra_args,
++    'env' : emberbsd_gir_env,
+   }
+ 
+   library_def += {'gir': [gir]}
+--- libs/gst/check/meson.build.orig
++++ libs/gst/check/meson.build
+@@ -87,6 +87,7 @@
+     'includes' : ['GLib-2.0', 'GObject-2.0', 'GModule-2.0', 'Gst-1.0'],
+     'install' : true,
+     'extra_args' : gst_gir_extra_args,
++    'env' : emberbsd_gir_env,
+   }
+   library_def += {'gir': [gir]}
+   if not static_build
+--- libs/gst/controller/meson.build.orig
++++ libs/gst/controller/meson.build
+@@ -82,6 +82,7 @@
+     'includes' : ['GLib-2.0', 'GObject-2.0', 'GModule-2.0', 'Gst-1.0'],
+     'install' : true,
+     'extra_args' : gst_gir_extra_args,
++    'env' : emberbsd_gir_env,
+   }
+   library_def += {'gir': [gir]}
+   if not static_build
+--- libs/gst/net/meson.build.orig
++++ libs/gst/net/meson.build
+@@ -68,6 +68,7 @@
+     'includes' : ['GLib-2.0', 'GObject-2.0', 'GModule-2.0', 'Gio-2.0', 'Gst-1.0'],
+     'install' : true,
+     'extra_args' : gst_gir_extra_args,
++    'env' : emberbsd_gir_env,
+   }
+   library_def += {'gir': [gir]}
+   if not static_build
+--- docs/meson.build.orig
++++ docs/meson.build
+@@ -1,12 +1,4 @@
+ build_hotdoc = false
+-if meson.is_cross_build()
+-    if get_option('doc').enabled()
+-        error('Documentation enabled but building the doc while cross building is not supported yet.')
+-    endif
+-
+-    message('Documentation not built as building it while cross building is not supported yet.')
+-    subdir_done()
+-endif
+ 
+ if static_build
+     if get_option('doc').enabled()
+@@ -43,6 +35,15 @@
+     copy: true
+ )
+ 
++if meson.is_cross_build()
++    if get_option('doc').enabled()
++        error('Documentation enabled but building the doc while cross building is not supported yet.')
++    endif
++
++    message('Documentation not built as building it while cross building is not supported yet.')
++    subdir_done()
++endif
++
+ plugins_cache_generator = find_program(join_paths(meson.current_build_dir(), 'gst-plugins-doc-cache-generator'))
+ plugins_cache = join_paths(meson.current_source_dir(), 'plugins', 'gst_plugins_cache.json')
+ gst_plugins_doc_dep = custom_target('build-doc-cache',
