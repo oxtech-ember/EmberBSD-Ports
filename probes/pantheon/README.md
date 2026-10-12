@@ -43,6 +43,29 @@ upstream once it builds.
 - gala, wingpanel, plank, granite and the session components.
 - Headless mutter smoke test in the AArch64 VM and hardware acceptance.
 
+## Dependency fixes
+
+### gtexinfo 7.3 under GCC 16
+
+The gtk3 dependency chain builds `devel/gtexinfo` (texinfo 7.3). Its two
+bundled gnulib `gettext.h` copies collide with an earlier-included
+`gettext.h`: that header defines the `pgettext*_expr` shortener macros, and
+the bundled copy then defines same-named functions, which the preprocessor
+expands into a syntax error (`expected declaration specifiers before '('`,
+first hit `tta/gnulib/lib/gettext.h:283`). The toolchain is not rolled
+back; the port carries a patch.
+
+[`patches/gtexinfo-7.3-gettext-h-collision.patch`](patches/gtexinfo-7.3-gettext-h-collision.patch)
+(SHA1 `a82d6b5e1427a9052dfeb20ae4ac140b766e4963`) adds `#undef` for the
+twelve `pgettext*` family macros after the include guard of both bundled
+copies. Apply by copying it into `devel/gtexinfo/patches/` and recording
+its SHA1 in that recipe's `distinfo`, or directly into an extracted tree.
+
+Static analysis (Cppcheck 2.22.0, per-file delta on the patched files,
+`--enable=warning,portability`): upstream 0 findings, patched 0 findings
+on both headers and on all five patched mutter sources. A full corpus run
+per the project recipe happens with profile promotion, not at probe stage.
+
 ## Next steps
 
 1. Build `gsettings-desktop-schemas` and `gnome-desktop4` natively in the

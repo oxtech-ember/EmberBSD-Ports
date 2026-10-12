@@ -1,0 +1,52 @@
+--- gnulib/lib/gettext.h.orig	2026-03-01 20:03:26.000000000 +0300
++++ gnulib/lib/gettext.h	2026-10-12 22:46:40.761296055 +0300
+@@ -17,6 +17,23 @@
+ #ifndef _LIBGETTEXT_H
+ #define _LIBGETTEXT_H 1
+ 
++/* EmberBSD portability: an earlier gettext.h may have defined the
++ * pgettext shortener macros; undefine them so the function definitions
++ * below are not macro-expanded (GCC 16, texinfo 7.3). */
++#undef pgettext
++#undef dpgettext
++#undef dcpgettext
++#undef npgettext
++#undef dnpgettext
++#undef dcnpgettext
++#undef pgettext_expr
++#undef dpgettext_expr
++#undef dcpgettext_expr
++#undef npgettext_expr
++#undef dnpgettext_expr
++#undef dcnpgettext_expr
++
++
+ 
+ /* NLS can be disabled through the configure --disable-nls option
+    or through "#define ENABLE NLS 0" before including this file.  */
+--- tta/gnulib/lib/gettext.h.orig	2026-03-01 20:03:26.000000000 +0300
++++ tta/gnulib/lib/gettext.h	2026-10-12 22:46:40.761588098 +0300
+@@ -17,6 +17,23 @@
+ #ifndef _LIBGETTEXT_H
+ #define _LIBGETTEXT_H 1
+ 
++/* EmberBSD portability: an earlier gettext.h may have defined the
++ * pgettext shortener macros; undefine them so the function definitions
++ * below are not macro-expanded (GCC 16, texinfo 7.3). */
++#undef pgettext
++#undef dpgettext
++#undef dcpgettext
++#undef npgettext
++#undef dnpgettext
++#undef dcnpgettext
++#undef pgettext_expr
++#undef dpgettext_expr
++#undef dcpgettext_expr
++#undef npgettext_expr
++#undef dnpgettext_expr
++#undef dcnpgettext_expr
++
++
+ 
+ /* NLS can be disabled through the configure --disable-nls option
+    or through "#define ENABLE NLS 0" before including this file.  */
