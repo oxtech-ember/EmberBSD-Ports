@@ -1,0 +1,10 @@
+$NetBSD$
+
+SHA512 (mutter-46.9.tar.xz) = 709935ffa2788e81c153c250867662aac1bb45a7661a1717d2adc312d90889a99130acb653d94686a752aca5ce4bf6e639552ccb646fe5982b08c9b121507687
+Size (mutter-46.9.tar.xz) = 6756472 bytes
+SHA1 (patch-cogl_cogl_cogl-dma-buf-handle.c) = 84d60ecc53e853819ab0c8c71fa1ab48346d3010
+SHA1 (patch-meson.build) = d6288f2f2511ba142ee0e3772c93a4c4e70ce9b6
+SHA1 (patch-src_backends_native_meta-kms-impl-device.c) = d7b521772c8e667ad691af3d849374078c35b7da
+SHA1 (patch-src_core_meta-context-main.c) = 5a05740df9f86c3003417bffeef173d860766553
+SHA1 (patch-src_wayland_meta-wayland-dma-buf.c) = 2fc6c70c20124e8cd762e0d0ea986ea5908cca9d
+SHA1 (patch-src_wayland_meta-xwayland.c) = c0fbdeb7d2a7d11d283413144c4fd011e100e35e

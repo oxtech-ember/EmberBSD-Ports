@@ -1,0 +1,5 @@
+Mutter is the GNOME window and compositing manager. This recipe packages
+the libmutter-14 library release 46.9 that the current Pantheon gala
+release builds against. It is part of the EmberBSD Pantheon port: only
+current upstream releases are used, and NetBSD adaptations live in the
+patch set of this recipe.

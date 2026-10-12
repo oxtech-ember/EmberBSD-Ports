@@ -1,0 +1,3 @@
+The gnome-desktop library, GTK4 variant (pkg-config module
+gnome-desktop-4), current upstream release. Required by the mutter
+compositor and part of the EmberBSD Pantheon port.
