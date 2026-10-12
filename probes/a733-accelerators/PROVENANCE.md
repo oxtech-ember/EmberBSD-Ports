@@ -8,7 +8,7 @@ firmware is copied into this probe. Local C/shell helpers are MIT licensed.
 | [Mesa archive](https://archive.mesa3d.org/mesa-26.2.4.tar.xz) | 26.2.4 | The project's common graphics release; original etnaviv feature databases and TP implementation |
 | [Orange Pi BSP](https://github.com/orangepi-xunlong/linux-orangepi/tree/2ac08e8c7cdc28abbdc5c9a9dd812f887ae9c79f) | `2ac08e8c7cdc28abbdc5c9a9dd812f887ae9c79f` | A733 hardware and platform reference |
 | [Linux PowerVR](https://github.com/torvalds/linux/blob/7b63ef2d55f24519e7e9e5f4d15dbea03f126e40/drivers/gpu/drm/imagination/pvr_device.c) | `7b63ef2d55f24519e7e9e5f4d15dbea03f126e40` | Current upstream support classification; research snapshot, not a selected target kernel |
-| [Imagination firmware](https://gitlab.freedesktop.org/imagination/linux-firmware/-/blob/8a58f81883f7be458daa34e418cc4079f995b279/powervr/rogue_36.56.104.183_v1.fw) | `8a58f81883f7be458daa34e418cc4079f995b279` | Exact BXM firmware; installed with its license on Zero 3W and validated by native firmload; execution remains unverified |
+| [Imagination firmware](https://gitlab.freedesktop.org/imagination/linux-firmware/-/blob/8a58f81883f7be458daa34e418cc4079f995b279/powervr/rogue_36.56.104.183_v1.fw) | `8a58f81883f7be458daa34e418cc4079f995b279` | Exact BXM firmware; installed with its license, validated by native firmload, and booted on Zero 3W; command and graphics execution remain unverified |
 
 `sources.tsv` gives the SHA256 of every header compiled by the probe and
 the Mesa build file that defines its hardware database inputs. The
