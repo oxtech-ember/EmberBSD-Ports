@@ -1,0 +1,53 @@
+From: EmberBSD (AI-assisted)
+Subject: Select target GPG runtime metadata and the current GnuPG release
+
+https://gnupg.org/ftp/gcrypt/gnupg/gnupg-2.5.24.tar.bz2
+SHA256: bf149d01a2b9fcc0e4589b8ae8697d3d5c557ea48ed95a3fa55dd3b1187e6039
+
+--- a/security/gnupg2/Makefile
++++ b/security/gnupg2/Makefile
+@@ -1,6 +1,6 @@
+ # $NetBSD: Makefile,v 1.180 2026/09/07 05:19:50 adam Exp $
+ 
+-DISTNAME=	gnupg-2.5.22
++DISTNAME=	gnupg-2.5.24
+ PKGNAME=	${DISTNAME:S/gnupg-/gnupg2-/}
+ CATEGORIES=	security
+ MASTER_SITES=	${MASTER_SITE_GNUPG:=gnupg/}
+--- a/security/gnupg2/distinfo
++++ b/security/gnupg2/distinfo
+@@ -1,6 +1,6 @@
+ $NetBSD: distinfo,v 1.100 2026/09/07 05:19:50 adam Exp $
+ 
+-BLAKE2s (gnupg-2.5.22.tar.bz2) = c642f2c49daecf09a6acb4a3faaceca65427f68f7a741a5d558bf369f796ba5a
+-SHA512 (gnupg-2.5.22.tar.bz2) = 5ff5834e42009f5741d84dcf25473adb5704ca796e1bd8d1a8ea3216b854864f08504f5ff5279026bab24b5baa255e9bd18e70bc1d4fc8fe293351760ab71231
+-Size (gnupg-2.5.22.tar.bz2) = 8363854 bytes
++BLAKE2s (gnupg-2.5.24.tar.bz2) = d1a1c34665c3c4891e12119405a08468c6e51f6087816cdf85535afec22d3804
++SHA512 (gnupg-2.5.24.tar.bz2) = c60b0c105ef710defec5b23d6c1382ae8adabc3207917fb484960b1c37ae7b542da2ece5eafaa5d53fa13485647b52c2d371fe099e5600aba4c84e7d83ceb1df
++Size (gnupg-2.5.24.tar.bz2) = 8431157 bytes
+ SHA1 (patch-common_sysutils.c) = 569c12e21172c1521284922244b2f4f361c945d6
+--- a/security/libassuan2/Makefile
++++ b/security/libassuan2/Makefile
+@@ -1,6 +1,7 @@
+ # $NetBSD: Makefile,v 1.28 2025/03/03 21:32:27 nia Exp $
+ 
+ DISTNAME=	libassuan-3.0.2
++PKGREVISION=	1
+ CATEGORIES=	security
+ MASTER_SITES=	${MASTER_SITE_GNUPG:=libassuan/}
+ EXTRACT_SUFX=	.tar.bz2
+--- a/security/libgpg-error/buildlink3.mk
++++ b/security/libgpg-error/buildlink3.mk
+@@ -9,6 +9,12 @@
+ BUILDLINK_ABI_DEPENDS.libgpg-error+=	libgpg-error>=1.10nb1
+ BUILDLINK_PKGSRCDIR.libgpg-error?=	../../security/libgpg-error
+ 
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# This POSIX shell tool must read target metadata, not the native host prefix.
++CONFIGURE_ENV+= GPGRT_CONFIG=${CROSS_DESTDIR}${PREFIX}/bin/gpgrt-config
++.endif
++
+ .include "../../devel/gettext-lib/buildlink3.mk"
+ .endif # LIBGPG_ERROR_BUILDLINK3_MK
+ 

@@ -1,0 +1,178 @@
+From: EmberBSD (AI-assisted)
+Subject: Cross-build polkit using native generators and real target introspection
+
+Upstream: https://download.kde.org/stable/polkit-qt-1/polkit-qt-1-0.201.1.tar.xz
+SHA256: 95d8e2cae530c546d9437459deb8a1bea38d572f0f9772cc2860dc143637f256
+
+--- a/security/polkit/Makefile
++++ b/security/polkit/Makefile
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.62 2026/09/02 19:04:19 wiz Exp $
+ 
+ DISTNAME=	polkit-127
+-PKGREVISION=	2
++PKGREVISION=	3
+ CATEGORIES=	security
+ MASTER_SITES=	${MASTER_SITE_GITHUB:=polkit-org/}
+ 
+@@ -35,6 +35,21 @@
+ 
+ .include "../../mk/bsd.prefs.mk"
+ 
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# Native generators use host metadata; introspection queries execute on the target.
++EMBERBSD_GI_MESON_OPTIONS= no
++.include "../../devel/gobject-introspection/cross.mk"
++MESON_BINARIES+= glib-mkenums glib-genmarshal gdbus-codegen g-ir-scanner g-ir-compiler
++MESON_BINARY.glib-mkenums= ${TOOLBASE}/bin/glib-mkenums
++MESON_BINARY.glib-genmarshal= ${TOOLBASE}/bin/glib-genmarshal
++MESON_BINARY.gdbus-codegen= ${TOOLBASE}/bin/gdbus-codegen
++MESON_BINARY.g-ir-scanner= ${TOOLBASE}/bin/g-ir-scanner
++MESON_BINARY.g-ir-compiler= ${TOOLBASE}/bin/g-ir-compiler
++MESON_CROSS_VARS+= emberbsd_gi_cross emberbsd_gi_ldd_wrapper
++MESON_CROSS.emberbsd_gi_cross= true
++MESON_CROSS.emberbsd_gi_ldd_wrapper= '${EMBERBSD_GI_FILESDIR}/elf-needed.sh'
++.endif
++
+ POLKITD_USER?=			polkitd
+ POLKITD_GROUP?=			polkitd
+ PKG_GROUPS+=			${POLKITD_GROUP}
+--- a/security/polkit/distinfo
++++ b/security/polkit/distinfo
+@@ -3,6 +3,7 @@
+ BLAKE2s (polkit-127.tar.gz) = 42e8bb751fc99d41b4ab296e7eeed826d14be0b13709399f2821aa12302f279f
+ SHA512 (polkit-127.tar.gz) = 54b315f2ca05e957e7b9aafda16c1cddcc2266d6018c77dbf4cfe73b7d5b1569e6e07570884b9c5ecc4bdb3a29966169006aa727b089019d959208f2b53067e6
+ Size (polkit-127.tar.gz) = 472872 bytes
++SHA1 (patch-meson-cross.build) = c9b051c869631812e36f5d0e46faf597302e6647
+ SHA1 (patch-src_polkit_polkitunixprocess.c) = b95f8e5d7c1dd0ab9b084e3bd5b1fc6d05744b57
+ SHA1 (patch-src_polkitagent_polkitagenthelper-pam.c) = 74e3a9d1b3f4c4e28a2353f4f824c83c0032b97d
+ SHA1 (patch-src_polkitbackend_polkitbackendduktapeauthority.c) = 5e48729c3414ccd41faa2e60bf3c915207e21cd1
+--- a/security/polkit/patches/patch-meson-cross.build
++++ b/security/polkit/patches/patch-meson-cross.build
+@@ -0,0 +1,48 @@
++$NetBSD$
++
++Origin: EmberBSD (AI-assisted). Preserve full GIR/typelib cross builds.
++Use the shared target-query launcher and inspect target ELF dependencies.
++Link the agent query to both in-tree libraries.
++
++--- meson.build.orig
+++++ meson.build
++@@ -41,6 +41,14 @@
++ libversion = '@0@.@1@.@2@'.format(soversion, current, revision)
++ 
++ gnome = import('gnome')
+++
+++# Native GI tools execute only the temporary GType query on the target.
+++emberbsd_gir_args = []
+++emberbsd_gir_env = environment()
+++if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
+++  emberbsd_gir_args += ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
+++  emberbsd_gir_env.set('LD_LIBRARY_PATH', meson.project_build_root() / 'src/polkit' + ':' + meson.project_build_root() / 'src/polkitagent')
+++endif
++ i18n = import('i18n')
++ pkg = import('pkgconfig')
++ 
++--- src/polkit/meson.build.orig
+++++ src/polkit/meson.build
++@@ -124,7 +124,8 @@
++   libpolkit_gobject_gir = gnome.generate_gir(
++     libpolkit_gobject,
++     sources: sources + headers,
++-    extra_args: c_flags,
+++    extra_args: [c_flags] + emberbsd_gir_args,
+++    env: emberbsd_gir_env,
++     nsversion: pk_gir_version,
++     namespace: pk_gir_ns,
++     export_packages: name,
++--- src/polkitagent/meson.build.orig
+++++ src/polkitagent/meson.build
++@@ -91,7 +91,9 @@
++     libpolkit_agent,
++     sources: sources + headers,
++     includes: incs,
++-    extra_args: c_flags,
+++    link_with: [libpolkit_agent, libpolkit_gobject],
+++    extra_args: c_flags + emberbsd_gir_args,
+++    env: emberbsd_gir_env,
++     nsversion: pk_gir_version,
++     namespace: 'PolkitAgent',
++     export_packages: name,
+--- a/security/polkit-qt6/Makefile
++++ b/security/polkit-qt6/Makefile
+@@ -1,23 +1,28 @@
+ # $NetBSD: Makefile,v 1.13 2026/09/02 19:04:20 wiz Exp $
+ 
+-DISTNAME=	polkit-qt-1-0.200.0
++DISTNAME=	polkit-qt-1-0.201.1
+ PKGNAME=	${DISTNAME:S/-qt-1-/-qt6-/}
+-PKGREVISION=	11
+ CATEGORIES=	security
+-MASTER_SITES=	https://invent.kde.org/libraries/polkit-qt-1/-/archive/v${PKGVERSION_NOREV}/
++MASTER_SITES=	https://download.kde.org/stable/polkit-qt-1/
++EXTRACT_SUFX=	.tar.xz
+ 
+ MAINTAINER=	pkgsrc-users@NetBSD.org
+ HOMEPAGE=	https://invent.kde.org/libraries/polkit-qt-1
+ COMMENT=	Qt6 Wrapper around PolicyKit
+ LICENSE=	gnu-lgpl-v2.1
+ 
+-WRKSRC=		${WRKDIR}/polkit-qt-1-v0.200.0-aa1c6c414ec021fd32e30492c00bb13347e228db
+ 
+ USE_LANGUAGES=	c c++
+ USE_TOOLS+=	pkg-config
+ 
+ CMAKE_CONFIGURE_ARGS+=	-DQT_MAJOR_VERSION=6
+ 
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# CMake validates imported pkg-config paths on the build host.
++CONFIGURE_ENV+= PKG_CONFIG_SYSROOT_DIR=${CROSS_DESTDIR}
++.endif
++
+ PKGCONFIG_OVERRIDE+=	polkit-qt6-1.pc.cmake polkit-qt6-agent-1.pc.cmake
+ PKGCONFIG_OVERRIDE+=	polkit-qt6-core-1.pc.cmake polkit-qt6-gui-1.pc.cmake
+ 
+--- a/security/polkit-qt6/distinfo
++++ b/security/polkit-qt6/distinfo
+@@ -1,5 +1,5 @@
+ $NetBSD: distinfo,v 1.1 2024/05/26 10:52:37 markd Exp $
+ 
+-BLAKE2s (polkit-qt-1-0.200.0.tar.gz) = 6557fa627782aa2c74970c17ba3aabc1e73ece3d1963315b789906bead61582d
+-SHA512 (polkit-qt-1-0.200.0.tar.gz) = 79ca2a70993d3bb5e767c4dc921c104ed846b10150c3ac967de35bd873990b9d3b511607f0a0eb277be829ace549c20649e664dd093479f2788e1db33d8636c1
+-Size (polkit-qt-1-0.200.0.tar.gz) = 70931 bytes
++BLAKE2s (polkit-qt-1-0.201.1.tar.xz) = 1ce294f1a5c78f0f16ce44dff4aa9d5cb27f5f59f2580d81264db5dbeaa5bb4e
++SHA512 (polkit-qt-1-0.201.1.tar.xz) = 04e94b1e92a0a2ecf731d0768e94ebad1bb39c933063c2059ffb1c2e11000ea616c359ed097416c92ef84b071d1cc0ebb942513a5264d33322384b41245c737d
++Size (polkit-qt-1-0.201.1.tar.xz) = 58492 bytes
+--- a/security/polkit-qt6/buildlink3.mk
++++ b/security/polkit-qt6/buildlink3.mk
+@@ -5,8 +5,8 @@
+ .if !defined(POLKIT_QT6_BUILDLINK3_MK)
+ POLKIT_QT6_BUILDLINK3_MK:=
+ 
+-BUILDLINK_API_DEPENDS.polkit-qt6+=	polkit-qt6>=0.200.0
+-BUILDLINK_ABI_DEPENDS.polkit-qt6?=	polkit-qt6>=0.200.0nb11
++BUILDLINK_API_DEPENDS.polkit-qt6+=	polkit-qt6>=0.201.1
++BUILDLINK_ABI_DEPENDS.polkit-qt6?=	polkit-qt6>=0.201.1
+ BUILDLINK_PKGSRCDIR.polkit-qt6?=	../../security/polkit-qt6
+ 
+ .include "../../security/polkit/buildlink3.mk"
+--- a/security/polkit-qt6/PLIST
++++ b/security/polkit-qt6/PLIST
+@@ -31,13 +31,13 @@
+ lib/cmake/PolkitQt6-1/PolkitQt6-1Targets.cmake
+ lib/libpolkit-qt6-agent-1.so
+ lib/libpolkit-qt6-agent-1.so.1
+-lib/libpolkit-qt6-agent-1.so.1.200.0
++lib/libpolkit-qt6-agent-1.so.1.201.1
+ lib/libpolkit-qt6-core-1.so
+ lib/libpolkit-qt6-core-1.so.1
+-lib/libpolkit-qt6-core-1.so.1.200.0
++lib/libpolkit-qt6-core-1.so.1.201.1
+ lib/libpolkit-qt6-gui-1.so
+ lib/libpolkit-qt6-gui-1.so.1
+-lib/libpolkit-qt6-gui-1.so.1.200.0
++lib/libpolkit-qt6-gui-1.so.1.201.1
+ lib/pkgconfig/polkit-qt6-1.pc
+ lib/pkgconfig/polkit-qt6-agent-1.pc
+ lib/pkgconfig/polkit-qt6-core-1.pc
