@@ -1,0 +1,15 @@
+Origin: EmberBSD (AI-assisted), build the packaged target Designer plugin.
+The plugin links target Qt libraries and does not execute target code during
+cross compilation. Matching native Qt generators are supplied separately.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -54,7 +54,7 @@
+ 
+ set(EXCLUDE_DEPRECATED_BEFORE_AND_AT 0 CACHE STRING "Control the range of deprecated API excluded from the build [default=0].")
+ 
+-cmake_dependent_option(BUILD_DESIGNERPLUGIN "Build plugin for Qt Designer" ON "NOT CMAKE_CROSSCOMPILING" OFF)
++option(BUILD_DESIGNERPLUGIN "Build plugin for Qt Designer" ON)
+ add_feature_info(DESIGNERPLUGIN ${BUILD_DESIGNERPLUGIN} "Build plugin for Qt Designer")
+ 
+ ecm_install_po_files_as_qm(poqm)

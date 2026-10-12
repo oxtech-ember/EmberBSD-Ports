@@ -107,3 +107,30 @@ and KDBusAddons, including missing and outdated tools.
 | KColorScheme journal | `f2e98cfe055c34cbfffdbab79efdaff8ab09a2f99fd10be21577b70143870728` |
 | KDBusAddons package | `8fdbc8d62604c9f9a75d972850c71b9ba98f0c125969f061b28eedd2d2d43c1f` |
 | D-Bus/KDBusAddons target journal | `3d8a43c7171ddaf97caf8138908e941f245406a0f05bbac6e13c5753dfb06f96` |
+
+## Widget APIs and the Designer plugin
+
+KWidgetsAddons 6.31.0nb1 cross-packages with the complete target Designer
+plugin. Upstream's cross-build conditional disabled it despite the package
+manifest requiring it. The patch uses the normal user-selectable option;
+native defaults stay unchanged. `tests/widgets-plugin.rb` reproduces the
+original exclusion, checks both defaults and inspects the installed AArch64
+plugin. QtTools supplies build-time interfaces; the actual plugin links
+KWidgetsAddons and Qtbase, so it does not impose a runtime QtTools dependency.
+The final package manifest was checked after rebuilding the dependency cache.
+
+On the same CM5, four original upstream executables pass **54 QtTest cases**,
+zero failures and no skips: date combo (11), time combo (19), dual action (6)
+and select action (18). They use the installed shared library with the minimal
+QPA plugin, isolated settings and no loader override. Copy those four binaries
+from `_KDE_build/bin` and run:
+
+```sh
+sh tests/widgets-runtime.sh /absolute/widget-test-binaries /absolute/new-widget-results
+```
+
+Package SHA256: `6003f318ac633add438cb93a30c70ac16cbc8104ac864bc41276e2455d9d45b8`.
+CM5 journal: `c47b7a20c6a49efb9c9fc9879b4e66cae9812793f5231b5425247bcf6fc63461`.
+Cross-plugin regression: `f7825f76328576f0bb72f10bb6b9569ead115adc475fb8be4103ca264507f7dd`.
+These tests establish widget APIs. Designer loading, physical input, GPU
+presentation and the other widget tests remain unaccepted.
