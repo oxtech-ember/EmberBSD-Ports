@@ -46,12 +46,13 @@ if [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ 
             }
         done
     done
-    for delta in current-libtool.patch pkgsrc-cross-packages.patch pkgsrc-macho-load-commands.patch; do
+    for delta in current-libtool.patch pkgsrc-cross-packages.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch; do
         [ -s "$root/profiles/common-build-tools/patches/$delta" ] || {
             echo "Missing common-tools infrastructure patch: $delta" >&2; exit 2;
         }
     done
     [ -s "$root/profiles/common-build-tools/cross/mk.conf" ] || exit 2
+    [ -s "$root/profiles/common-build-tools/cross/check-files-case.sh" ] || exit 2
 fi
 if [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
     media=$root/profiles/common-media
@@ -302,10 +303,12 @@ if [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ 
     done
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$root/profiles/common-build-tools/patches/current-python-selection.patch"
-    for delta in current-libtool.patch pkgsrc-cross-packages.patch pkgsrc-macho-load-commands.patch; do
+    for delta in current-libtool.patch pkgsrc-cross-packages.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch; do
         patch -f -N -d "$destination" -p1 -F 0 < \
             "$root/profiles/common-build-tools/patches/$delta"
     done
+    cp "$root/profiles/common-build-tools/cross/check-files-case.sh" \
+        "$destination/mk/check/ember-case-files.sh"
     cp "$root/profiles/common-build-tools/mk.conf" \
         "$destination/EMBERBSD-COMMON-TOOLS-MK.CONF"
     cp "$root/profiles/common-build-tools/cross/mk.conf" \

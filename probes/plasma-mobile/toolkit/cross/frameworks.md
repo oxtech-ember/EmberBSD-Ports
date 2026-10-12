@@ -5,7 +5,7 @@ KConfig 6.31.0**, plus KCodecs, KGuiAddons and KWindowSystem, through ordinary
 pkgsrc package checks. The complete target
 packages retain translations, headers, QML plugins and development metadata.
 CM5 runtime checks now cover generated configuration persistence, file events
-and locale lookup. The Plasma session remains unaccepted. See the [migration sequence](../MIGRATION.md).
+and locale lookup. The [model and worker-queue suites](models-and-jobs.md) also pass on CM5. The Plasma session remains unaccepted. See the [migration sequence](../MIGRATION.md).
 
 ## Native generators and target paths
 

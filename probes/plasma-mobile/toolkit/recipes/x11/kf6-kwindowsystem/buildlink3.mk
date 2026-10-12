@@ -11,7 +11,7 @@ BUILDLINK_PKGSRCDIR.kf6-kwindowsystem?=		../../x11/kf6-kwindowsystem
 
 USE_CXX_FEATURES+=	c++20
 
-.include "../../devel/qt6-qtwayland/buildlink3.mk"
+# Qt 6.12 exports WaylandClient from Qtbase.
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .endif	# KF6_KWINDOWSYSTEM_BUILDLINK3_MK
 
