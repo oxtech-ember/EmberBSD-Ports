@@ -8,11 +8,13 @@ RESUME=${RESUME:-0}
 : "${CMAKE:?Set an absolute native CMake executable}"
 : "${NINJA:?Set an absolute native Ninja executable}"
 : "${WAYLAND_SCANNER:?Set the matching native Wayland scanner}"
+: "${HOST_LLVM_BUILD:?Set the completed native LLVM 23.1.3 build}"
+: "${HOST_CLANG_BUILD:?Set the completed native Clang 23.1.3 build}"
 HOST_CC=${HOST_CC:-/usr/bin/cc}
 HOST_CXX=${HOST_CXX:-/usr/bin/c++}
 JOBS=${JOBS:-2}
 case "$JOBS" in ''|*[!0-9]*|0) echo 'JOBS must be positive' >&2; exit 2;; esac
-for path in "$distfiles" "$work" "$CMAKE" "$NINJA" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX"; do
+for path in "$distfiles" "$work" "$CMAKE" "$NINJA" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_LLVM_BUILD" "$HOST_CLANG_BUILD"; do
     case "$path" in /*) ;; *) echo 'Absolute paths required' >&2; exit 2;; esac
     case "$path" in *[!a-zA-Z0-9_./+-]*) echo 'Use paths without shell metacharacters' >&2; exit 2;; esac
 done
@@ -20,6 +22,10 @@ for tool in "$CMAKE" "$NINJA" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX"; do
     [ -x "$tool" ] || { echo "Missing executable: $tool" >&2; exit 2; }
 done
 [ "$("$WAYLAND_SCANNER" --version 2>&1)" = 'wayland-scanner 1.26.0' ]
+[ "$("$HOST_LLVM_BUILD/bin/llvm-config" --version)" = 23.1.3 ]
+[ -s "$HOST_CLANG_BUILD/lib/libclang.dylib" ]
+[ -s "$HOST_CLANG_BUILD/lib/libclangHandleCXX.a" ]
+[ -f "$HOST_CLANG_BUILD/lib/cmake/clang/ClangConfig.cmake" ]
 if [ -e "$work" ] || [ -L "$work" ]; then
     [ "$RESUME" = 1 ] && [ ! -L "$work" ] && [ -f "$work/inputs.txt" ] || {
         echo 'Output already exists; resume only a build created by this recipe' >&2; exit 2;
@@ -51,6 +57,9 @@ export PATH
     shasum -a 256 "$0" "$toolkit/sources.tsv" "$CMAKE" "$NINJA" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX"
     "$CMAKE" --version
     "$NINJA" --version
+    shasum -a 256 "$HOST_LLVM_BUILD/lib/cmake/llvm/LLVMConfig.cmake" \
+        "$HOST_CLANG_BUILD/lib/cmake/clang/ClangConfig.cmake" \
+        "$HOST_CLANG_BUILD/lib/libclang.dylib"
     "$HOST_CC" --version
 } >> "$work/inputs.txt"
 for module in $modules; do
@@ -83,6 +92,17 @@ for module in $modules; do
     else
         set --
         [ "$module" != qtdeclarative ] || set -- -DFEATURE_quick_vectorimage=ON
+        if [ "$module" = qttools ]; then
+            set -- -DLLVM_DIR="$HOST_LLVM_BUILD/lib/cmake/llvm" \
+                -DClang_DIR="$HOST_CLANG_BUILD/lib/cmake/clang" \
+                -DFEATURE_clang=ON -DFEATURE_qdoc=ON
+            # Upstream macOS archives contain LLVM 23 LTO bitcode. Apple ld's
+            # bundled older reader cannot decode it; select the matching plugin.
+            if [ "$(uname -s)" = Darwin ] && [ -s "$HOST_LLVM_BUILD/lib/libLTO.dylib" ]; then
+                set -- "$@" "-DCMAKE_EXE_LINKER_FLAGS=-Wl,-lto_library,$HOST_LLVM_BUILD/lib/libLTO.dylib"
+                shasum -a 256 "$HOST_LLVM_BUILD/lib/libLTO.dylib" >> "$work/inputs.txt"
+            fi
+        fi
         (cd "$work/$module" && "$work/qtbase/bin/qt-configure-module" \
             "$work/source/$module-everywhere-src-6.12.0" \
             -- -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF "$@") > "$work/$module/configure.log" 2>&1
@@ -96,7 +116,7 @@ done
 for tool in moc rcc uic qtwaylandscanner qmlcachegen qmltyperegistrar; do
     [ -x "$work/qtbase/libexec/$tool" ] || { echo "Missing host tool: $tool" >&2; exit 1; }
 done
-for tool in qsb lrelease svgtoqml; do
+for tool in qsb lrelease svgtoqml qdoc; do
     [ -x "$work/qtbase/bin/$tool" ] || { echo "Missing host tool: $tool" >&2; exit 1; }
 done
 (cd "$work/qtbase" && find bin libexec -type f -exec shasum -a 256 {} \;) > "$work/tools.sha256"

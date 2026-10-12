@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: BSD-2-Clause
+project = EmberQDocProbe
+version = 1.0
+headers = probe.h
+sources = probe.cpp
+includepaths = .
+outputformats = HTML

@@ -19,10 +19,19 @@ cannot generate a Qt 6.12 build. See the
 ```sh
 CMAKE=/absolute/native/cmake NINJA=/absolute/native/ninja \
 WAYLAND_SCANNER=/absolute/wayland-1.26/bin/wayland-scanner \
+HOST_LLVM_BUILD=/absolute/native-llvm23 HOST_CLANG_BUILD=/absolute/native-clang23 \
 HOST_CC=/absolute/native/cc HOST_CXX=/absolute/native/c++ JOBS=4 \
 sh probes/plasma-mobile/toolkit/cross/build-host-tools.sh \
     /absolute/verified-distfiles /absolute/new-host-qt
 ```
+
+QDoc additionally needs matching LLVM/Clang **23.1.3** libraries and CMake exports
+on the host. On macOS/arm64 the verified official SDK can supply both paths;
+use [the preparation recipe](../../../../profiles/common-build-tools/cross/prepare-llvm-macos.sh)
+with the archive named in the common-tools manifest. This native SDK is never
+installed in the target sysroot. Its static archives contain LLVM23 LTO bitcode;
+the builder selects the matching `libLTO.dylib` for Apple's linker. The older
+Apple LLVM21 reader cannot decode those objects.
 
 Set `TMPDIR` and choose `JOBS` from the available host memory and storage.
 The recipe keeps per-module configure/build logs, input hashes and tool hashes.
@@ -82,6 +91,11 @@ The build exposed two reproducibility requirements: separate modules accept
 `-nomake` configure arguments, and Declarative's host targets require the
 actual QtTest library even when tests are disabled. Both are in the recipe.
 
+QDoc was subsequently enabled with the official LLVM/Clang 23.1.3 SDK on
+macOS/arm64. `tests/qdoc/run.sh QDOC NEW_OUTPUT` generates class/member HTML
+using the actual Clang parser and rejects a missing configuration file.
+This host test passes; target QDoc and Qt Assistant remain separate gates.
+
 ## Target package build
 
 Prepare a new `plasma-mobile` pkgsrc export. Use the existing
@@ -123,7 +137,7 @@ This check examines the real CMake cache and executes the selected host tools.
 [Qtbase, SVG, ShaderTools, ImageFormats and LanguageServer packaging](qt-packages.md) now passes, including
 ordinary sysroot installation. The [CM5 Core/Gui/SVG consumer](../tests/qt-consumer/README.md)
 also passes installed runtime and plugin checks. The [Wayland/EGL V3D check](../tests/qt-wayland-gl/README.md) passes on CM5;
-Qt Quick remains a gate. CM5 desktop acceptance starts with HDMI, then a remote KWin/Plasma session.
+the separate Qt Quick V3D consumer also passes; the complete desktop remains a gate. CM5 desktop acceptance starts with HDMI, then a remote KWin/Plasma session.
 
 ## Native tools in consumers
 

@@ -65,7 +65,6 @@ CM5 Rev 1.0, BCM2712 D0, 4 GiB, Waveshare CM5-NANO-B, with kernel SHA256
 | KCrash package | `0bc16cf5a205a04dba2f1d22de097d1aa281630efa615c3955c7fb59eca5258c` |
 | KItemModels target journal | `0579a8b3fbdd57e0b20ce351f0f6a3986f8eab02c26ff261bb8cd85f936bcc35` |
 | ThreadWeaver target journal | `38ef21a9ac147618f38fb67b261dc28c69ff1787bd90672463f1706d04f95d3e` |
-
 | KCrash target journal | `daf8ddc195f186bfbf457a3d60cbccb24e6a86155566c5d29caa94b6e2b9df47` |
 
 These short runs establish model APIs and worker-queue behavior. They do not
