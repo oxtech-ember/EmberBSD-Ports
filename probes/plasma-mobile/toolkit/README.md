@@ -44,7 +44,8 @@ now have complete cross packages and bounded CM5 acceptance.
 native KPackage tooling and the non-GLVND EGL provider are checked separately.
 [Current Noto fonts](cross/fonts.md) pass installed-data and indexing checks.
 [The full KWin dependency migration](cross/desktop-session.md) retains the screen
-locker and KCMs; complete desktop and session-service acceptance remain pending.
+locker and KCMs. ConsoleKit's real session launcher passes CM5 regressions;
+complete desktop, ordinary-user login and device ownership remain pending.
 
 Cross-build on the development host using the [cross workflow](cross/README.md).
 The board installs the resulting packages and runs acceptance tests.

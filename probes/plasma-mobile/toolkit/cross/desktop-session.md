@@ -56,7 +56,7 @@ The generated script no longer depends on a macOS executable.
 
 ## ConsoleKit 2.0 and Polkit
 
-ConsoleKit 2.0 builds as a complete cross package with its X11 helpers, shipped
+ConsoleKit 2.0.0nb1 builds as a complete cross package with its X11 helpers, shipped
 manual pages and upstream tests. It uses GLib/GDBus directly; the inherited
 unused dbus-glib dependency is removed. Upstream's autogen supports absent
 gtk-doc, and API HTML is disabled by default in both the original recipe and
@@ -80,6 +80,35 @@ It does not modify or grant privileges through the system D-Bus service.
 This bounded result does not prove live seat ownership, user authentication,
 lock/unlock or suspend integration. ConsoleKit and the changed Polkit daemon
 have not yet received full service acceptance on CM5.
+
+The installed `ck-launch-session` also passes a real-daemon regression on CM5.
+The old launcher converted a child's exit code 42 into success, crashed when
+no command was provided, and omitted the terminator of the `--service`
+parameter list. The Ports patch decodes `waitpid`, retries interrupted waits,
+handles fork/wait failure and safely selects the default shell. With the same
+real private-bus daemon, the regression fails before and passes after the fix.
+
+Run `sh tests/consolekit/launch-runtime.sh NEW_OUTPUT` on an idle EmberBSD
+acceptance board. It requires root and refuses an existing ConsoleKit daemon
+or PID file: ConsoleKit's runtime database is global even on a private bus.
+The seven checks cover success, exit 42, signal status 143, the default shell,
+an explicit service, a missing executable and an unknown option. Child checks
+require a real session cookie and resolve it through the daemon, so silently
+running outside a session cannot pass. All sessions close afterwards; only the
+test daemon's own stale PID file is removed after confirmed process exit.
+The test never calls suspend, shutdown or reboot. Root session creation does
+not establish ordinary-user login, device ownership, lock/unlock or suspend.
+The matching Polkit 127nb4 and KAuth 6.31.0nb1 packages are installed; their full
+system-service integration remains unaccepted. All 257 regular payload hashes
+match the common sysroot and CM5; package tools check 267 payload files.
+
+ConsoleKit package SHA256:
+`5a71430187181ac00bffaad621f866a1af268118c74150f52525a0ea5b3a0f61`.
+Launcher results SHA256:
+`62e6c4a7b684f1c29b2f52f096e2ee871d33c32e1f641dfd0802b116233b79ab`.
+The changed launcher passes GCC 16's analyzer. Cppcheck with the actual target
+flags reports the same inherited GLib header warning as the Polkit analysis;
+this is not a clean audit of the dependency headers. Valgrind is unavailable.
 
 Cppcheck 2.22 reports no warning/performance/portability findings for this C
 fixture with system includes omitted. This is not a clean audit of all GLib,

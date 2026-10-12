@@ -6,3 +6,4 @@ Size (ConsoleKit2-2.0.0.tar.gz) = 261921 bytes
 SHA1 (patch-src_ck-manager.c) = ed04c9b3dae1325a3207e766bf4363e06d5e67c1
 SHA1 (patch-src_ck-sysdeps-solaris.c) = 43efc3ba1521477437d766da16c609a04892588c
 SHA1 (patch-src_ck-vt-monitor.c) = 15e81b4e5f2f03d3740d7933401461e2e3d12cf4
+SHA1 (patch-tools_ck-launch-session.c) = c2b1becf952cbf3e9b418c54108868ba5e19c01a

@@ -210,6 +210,9 @@ runtime behavior are validated.
   Native KPackage metadata and Mesa EGL selection are repaired; the complete
   accelerated desktop remains unaccepted. [Current Noto fonts](probes/plasma-mobile/toolkit/cross/fonts.md)
   also pass payload, target indexing and Cyrillic/CJK selection checks.
+  [ConsoleKit session launching](probes/plasma-mobile/toolkit/cross/desktop-session.md)
+  now preserves child failures and passes seven real-daemon cases on CM5.
+  Ordinary-user login, device ownership and the complete desktop remain unaccepted.
 - [Media and OpenCV videoio](probes/media/README.md): FFmpeg 9.0.2,
   GStreamer 1.28.7 and OpenCV 5.0.0 pass installed file/video pipeline checks
   on AArch64, including both videoio backends, timestamps, seeking, lossless
