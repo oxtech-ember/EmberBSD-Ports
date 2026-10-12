@@ -44,11 +44,16 @@ reject = lambda do |name, pattern, *args|
   abort "#{name} did not fail at expected boundary: #{output}" if status.success? || !output.match?(pattern) || File.exist?(marker)
 end
 run.call('check', env, RbConfig.ruby, helper, '--check', work + '/build', work + '/sysroot', readelf)
+File.write(config_path, JSON.pretty_generate(config.merge('host_key_alias' => 'unsafe alias')))
+reject.call('invalid-host-alias', /invalid host key alias/, '--check', work + '/build', work + '/sysroot', readelf)
+config['host_key_alias'] = 'target.example'
+File.write(config_path, JSON.pretty_generate(config))
 reject.call('different-sysroot', /configuration differs/, '--check', work + '/build', work + '/outside', readelf)
 reject.call('outside-binary', /outside build root/, '/usr/bin/true')
 FileUtils.cp('/usr/bin/true', work + '/build/native')
 reject.call('native-binary', /not little-endian AArch64 ELF64/, work + '/build/native')
 reject.call('unsupported-args', /only an optional/, work + '/build/query', '--delete')
+reject.call('execute-args', /only an optional/, '--execute', work + '/build/query', '--delete')
 File.write(work + '/build/types', 'get-type:gi_probe_answer' + "\n")
 File.write(work + '/outside/untouched', 'unchanged')
 File.symlink(work + '/outside/untouched', work + '/build/output')
@@ -78,6 +83,7 @@ File.write(work + '/bin/ssh', "#!#{RbConfig.ruby}\n" + <<~'RUBY')
           when /\Atar / then 'transfer'
           when 'sh -s -- ember-gir-reuse' then 'reuse'
           when 'sh -s' then 'query'
+          when /\Acat .*execution.status/ then 'status'
           when /\Atest -s / then 'readback'
           when /\Arm -rf / then 'cleanup'
           else abort 'unexpected test transport command'
@@ -92,7 +98,14 @@ File.write(work + '/bin/ssh', "#!#{RbConfig.ruby}\n" + <<~'RUBY')
     puts ['libgi-probe.so.1', 'libgi-probe.so.1'] if mode == 'reuse-duplicate'
     puts 'libgi-probe.so.1' if mode == 'reused'
   when 'query'
+    if mode.start_with?('execute-')
+      STDOUT.write("probe stdout\n")
+      STDERR.write("probe stderr\n")
+      exit(mode == 'execute-fail' ? 7 : 0)
+    end
     File.write(ENV.fetch('GI_TEST_INPUT'), 'modified') if mode == 'input-change'
+  when 'status'
+    puts(mode == 'execute-fail' ? '7' : '0')
   when 'readback'
     puts(mode == 'bad-xml' ? 'not XML' : '<dump></dump>')
   end
@@ -163,3 +176,24 @@ sha_glue = "sha256() { test \"$1\" = -q || return 2; shift; /usr/bin/shasum -a 2
 end
 puts 'PASS: production reuse shell copies identical bytes, falls back for missing/changed files and rejects copy corruption'
 puts 'PASS: real ELF and alias resolution; seven refusals before SSH; SONAME checks; nine transport failures, installed-provider reuse and successful publication'
+# General configure probes preserve stdout, stderr and a legitimate failure code.
+%w[execute-pass execute-fail].each do |mode|
+  phase_file = work + '/' + mode + '-phases'
+  stdout, stderr, status = Open3.capture3(env.merge('GI_TEST_MODE' => mode,
+    'GI_TEST_PHASES' => phase_file), RbConfig.ruby, helper, '--execute', work + '/build/query')
+  expected_status = mode == 'execute-fail' ? 7 : 0
+  abort "#{mode}: lost probe streams/status" unless stdout == "probe stdout\n" &&
+    stderr == "probe stderr\n" && status.exitstatus == expected_status
+  abort "#{mode}: missing cleanup" unless File.readlines(phase_file, chomp: true) ==
+    %w[allocate reuse transfer query status cleanup]
+end
+puts 'PASS: execute mode preserves separate streams and negative exit status, cleans both outcomes and rejects arguments'
+%w[query status cleanup].each do |mode|
+  failure_marker = work + '/build/' + mode + '-failure'
+  output, status = Open3.capture2e(env.merge('GI_TEST_MODE' => mode,
+    'GI_TEST_PHASES' => work + '/execute-' + mode + '-phases',
+    'EMBERBSD_GI_FAILURE_MARKER' => failure_marker), RbConfig.ruby, helper,
+    '--execute', work + '/build/query')
+  abort "Unrecorded execute infrastructure failure: #{mode}: #{output}" if status.success? || !File.file?(failure_marker)
+end
+puts 'PASS: query/status/cleanup failures cannot become silent negative configure results'

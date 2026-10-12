@@ -27,7 +27,13 @@ host = config.fetch('ssh')
 abort 'invalid SSH destination' unless host.is_a?(String) && host.match?(/\A(?:[A-Za-z0-9_][A-Za-z0-9_.-]*@)?[A-Za-z0-9][A-Za-z0-9_.-]*\z/)
 ssh = ['ssh', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes',
        '-o', 'ConnectTimeout=5', '-o', 'ServerAliveInterval=10',
-       '-o', 'ServerAliveCountMax=3', host]
+       '-o', 'ServerAliveCountMax=3']
+if config.key?('host_key_alias')
+  key_alias = config.fetch('host_key_alias')
+  abort 'invalid host key alias' unless key_alias.is_a?(String) && key_alias.match?(/\A[A-Za-z0-9][A-Za-z0-9_.-]*\z/)
+  ssh += ['-o', "HostKeyAlias=#{key_alias}"]
+end
+ssh << host
 if ARGV.first == '--check'
   abort 'usage: --check WORKDIR SYSROOT READELF' unless ARGV.size == 4
   workdir, target, tool = ARGV.drop(1).map { |p| File.realpath(p) }
@@ -36,10 +42,29 @@ if ARGV.first == '--check'
   exit
 end
 
+execute = ARGV.first == '--execute'
+ARGV.shift if execute
+query_complete = false
+if execute && ENV.key?('EMBERBSD_GI_FAILURE_MARKER')
+  failure_marker = ENV.fetch('EMBERBSD_GI_FAILURE_MARKER')
+  abort 'failure marker outside build root' unless failure_marker.start_with?('/') &&
+    inside.call(File.realpath(File.dirname(failure_marker)), base) && !File.symlink?(failure_marker)
+  at_exit do
+    unless query_complete
+      begin
+        File.open(failure_marker, File::WRONLY | File::CREAT | File::EXCL, 0600) do |f|
+          f.puts 'Target query did not complete with verified execution and cleanup.'
+        end
+      rescue Errno::EEXIST
+        # Keep the first failed query visible to the enclosing configure step.
+      end
+    end
+  end
+end
 exe = File.realpath(ARGV.shift || abort('binary required'))
 abort 'binary outside build root' unless inside.call(exe, base)
 args = ARGV.dup
-abort 'only an optional introspect-dump argument is supported' unless args.empty? || (args.size == 1 && args.first.start_with?('--introspect-dump='))
+abort 'only an optional introspect-dump argument is supported' unless args.empty? || (!execute && args.size == 1 && args.first.start_with?('--introspect-dump='))
 in_path = out_path = nil
 if args.any?
   in_path, out_path = args.first.delete_prefix('--introspect-dump=').split(',', 2)
@@ -163,13 +188,29 @@ File.write(work + '/transfer-size.txt', "#{File.size(work + '/input.tar.gz')}\n"
     done < files.sha256
     cat stdout.log
     cat stderr.log >&2
+    printf '%s\n' "$result" > execution.status
     exit "$result"
   SH
-  output, status = Open3.capture2e(*ssh, 'sh -s', stdin_data: script)
-  File.write(work + '/target.log', output)
-  File.write(work + '/exit.txt', "#{status.exitstatus}\n")
-  $stderr.write(output)
-  abort "target query failed (#{status.exitstatus}), #{work}" unless status.success?
+  if execute
+    output, diagnostics, status = Open3.capture3(*ssh, 'sh -s', stdin_data: script)
+    File.write(work + '/target.log', output)
+    File.write(work + '/target-stderr.log', diagnostics)
+    # Configure probes need their actual stdout and exit status, including a
+    # legitimate negative result. Do not merge diagnostics into feature data.
+    $stdout.write(output)
+    $stderr.write(diagnostics)
+  else
+    output, status = Open3.capture2e(*ssh, 'sh -s', stdin_data: script)
+    File.write(work + '/target.log', output)
+    $stderr.write(output)
+  end
+  target_status = status.exitstatus || 1
+  File.write(work + '/exit.txt', "#{target_status}\n")
+  if execute
+    receipt = run.call('execution-status', *ssh, "cat #{remote}/execution.status").strip
+    abort 'target execution receipt differs from transport status' unless receipt == target_status.to_s
+  end
+  abort "target query failed (#{target_status}), #{work}" unless execute || status.success?
   if out_path
     xml, diagnostics, status = Open3.capture3(*ssh, "test -s #{remote}/dump.xml && cat #{remote}/dump.xml")
     File.write(work + '/xml-transfer.log', "exit=#{status.exitstatus} bytes=#{xml.bytesize}\n" + diagnostics)
@@ -187,3 +228,5 @@ abort 'source providers changed during query' unless sources.all? { |p, h| Diges
 File.open(out_path, File::WRONLY | File::CREAT | File::EXCL, 0600) { |out| out.write(xml) } if out_path
 FileUtils.rm_rf(stage)
 File.unlink(work + '/input.tar.gz')
+query_complete = true
+exit target_status if execute

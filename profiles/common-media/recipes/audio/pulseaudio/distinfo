@@ -1,0 +1,22 @@
+$NetBSD: distinfo,v 1.90 2026/09/06 14:11:05 tsutsui Exp $
+
+BLAKE2s (pulseaudio-17.0.tar.xz) = c024be2b80dac3f720d4245255578bc354096a94e47304a83efd31a7283e841d
+SHA512 (pulseaudio-17.0.tar.xz) = be0aec46204d9c9188a796fbe41b4cf6f0f5e6b16fa08ce359b8f0f51253f0ade364b89448bbf5faa2af7e59deb6c72194734c3233944250dcfd4f31968a5e97
+Size (pulseaudio-17.0.tar.xz) = 1566556 bytes
+SHA1 (patch-meson.build) = de85c2fd487dbc2cb2d401583b405112e662287e
+SHA1 (patch-src_daemon_meson.build) = 1747435b458d575abce44e21e39b4edeca2d4729
+SHA1 (patch-src_modules_gsettings_module-gsettings.c) = efd79599d8c165737fdb2caac5d38a13192ce553
+SHA1 (patch-src_modules_module-detect.c) = 72605c7d9392be7217dab2fbd9ecc85ed02021aa
+SHA1 (patch-src_modules_oss_module-oss.c) = 5ab641baed21150a6f51c2487747bd20532de758
+SHA1 (patch-src_modules_raop_raop-client.h) = 9fb7ae86a6852022f53aee3765777bd136250ffb
+SHA1 (patch-src_pulse_meson.build) = 24e2ab191d2dd1ada879aa23caef8988ce654559
+SHA1 (patch-src_pulsecore_core-rtclock.c) = fddb3e56d3cce8e5f0220312fe15f67cd8897135
+SHA1 (patch-src_pulsecore_creds.h) = fdf46840d9cb5a47145d218a13815650581afbfe
+SHA1 (patch-src_pulsecore_iochannel.c) = 7f67854d8a834c2a99e19a46c9013e84bd45bf68
+SHA1 (patch-src_pulsecore_meson.build) = 991ec4babd8504c4c71d5f400814d7d2b5c6350b
+SHA1 (patch-src_pulsecore_mix__neon.c) = 6f6d33d38024d65045d637d48276e1ba92b81342
+SHA1 (patch-src_pulsecore_shm.c) = c7079e8ac3461f5069e1415a2816784781aaa59c
+SHA1 (patch-src_tests_rtpoll-test.c) = 3584aeda2b6f7eb14af9cb5c665a31d972a306ae
+SHA1 (patch-src_utils_padsp.c) = 42be17be4dc94e8b96652a9f32a52902af261497
+SHA1 (patch-src_pulse_utf8.c) = 04ed860658f27a1fb7bbef274754c294db767c87
+SHA1 (patch-src_pulse_util.c) = 08e8e32635bfc386dc61a0e680d90c1870f5fde3

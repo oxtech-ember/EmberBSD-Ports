@@ -64,6 +64,34 @@ copies and archives. Failed cleanup is an error and reports the exact directory.
 XML is published to the scanner only after successful cleanup and unchanged
 local source hashes. The scanner still performs its ordinary XML parsing.
 
+## Compiled configure probes
+
+The same runner accepts `--execute BINARY` for no-argument configure probes.
+It preserves target stdout, stderr and exit status independently, including
+negative feature results. The same ELF-provider checks, 60-second limit,
+hash receipts and cleanup apply. This mode does not accept arbitrary target
+commands or additional arguments. TDB's Waf cross executor uses it while all
+compilation stays on the development host. The target writes an execution
+receipt only after its post-run manifest check. The runner verifies that receipt
+against the SSH status before accepting a negative feature result.
+
+An enclosing configure step can set `EMBERBSD_GI_FAILURE_MARKER` to an absolute
+file inside the configured build root. Infrastructure or cleanup failures leave
+that marker; verified target exits, including nonzero feature results, do not.
+TDB clears it before configure and rejects configuration if it appears, so a
+lost connection cannot silently disable a required feature. Keep this hook
+when integrating the executor into another build system.
+
+An optional `host_key_alias` JSON field selects an already verified SSH host
+key when the destination uses a numeric address. Strict key checking remains
+mandatory. Keep addresses and this machine-specific configuration private.
+
+`tests/target-execute.rb CC SYSROOT QUERY_CONFIG NEW_WORK` compiles two target
+probes and verifies their real stdout/stderr, exit codes 0 and 7, receipts and
+cleanup. `NEW_WORK` must be inside the configured build root. The existing
+`gi-query-contract.rb` also tests this mode with controlled transport failures
+and rejects invalid host-key aliases and unsupported probe arguments.
+
 ## Acceptance and limits
 
 The normal package passes PLIST, interpreter, RPATH, PIE/RELRO, shared-library
