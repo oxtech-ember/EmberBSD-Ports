@@ -26,7 +26,9 @@ native LLVM/Clang SDK. The full LLVM 23.1.3 core now passes cross-package checks
 and installation into the common build sysroot. Its staged metadata helper
 passes 15 query/refusal checks. The package SHA256 is
 `052b4a4e7afd291c21ee78f9c2cbd5e9c125164ff1faad44bbfb27d922793cfe`.
-Installed 23.1.3 target execution, Clang/LLD packages and renewed Mesa/Qt runtime
+The complete Clang and [LLD](cross/lld.md) 23.1.3 packages also pass normal
+cross-package checks and sysroot installation. Installed 23.1.3 target
+execution and renewed Mesa/Qt runtime
 acceptance are still in progress. The dated 23.1.2 receipts below are historical
 evidence and must not be relabeled as 23.1.3 results.
 
@@ -54,7 +56,7 @@ clangAnalysisLifetimeSafety and LLVMDTLTO are declared. Other generated/tool/arc
 payloads were subsequently checked against the complete LLVM core stage:
 2,789 installed entries, with conditional backend/gtest components preserved.
 Removed bugpoint and DirectXPointerTypeAnalysis entries were replaced by the
-actual LLVM23 tool/header/archive payload. Clang/LLD staging remains pending.
+actual LLVM23 tool/header/archive payload. Clang and LLD now pass complete package staging; installed execution remains pending.
 Missing or unexpected files remain failures; package checks are not weakened.
 
 Standalone Clang/LLD use matching installed LLVM CMake exports and check

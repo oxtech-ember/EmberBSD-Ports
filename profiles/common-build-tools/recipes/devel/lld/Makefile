@@ -2,6 +2,9 @@
 
 .include "../../lang/llvm/version.mk"
 
+# Mach-O consumes the matching source header; no libunwind runtime is installed.
+EXTRACT_ELEMENTS+= ${DISTNAME}/libunwind/include
+
 PKGNAME=	lld-${LLVM_VERSION}
 CATEGORIES=	devel
 
@@ -18,7 +21,7 @@ CMAKE_CONFIGURE_ARGS+=	-DCMAKE_BUILD_TYPE=Release
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_C_COMPILER=${CC:Q}
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_CXX_COMPILER=${CXX:Q}
 
-PYTHON_FOR_BUILD_ONLY=	yes
+PYTHON_FOR_BUILD_ONLY=	tool
 
 INSTALLATION_DIRS+=	libexec/lld
 
@@ -29,10 +32,29 @@ post-install:
 .include "../../devel/cmake/build.mk"
 .include "../../lang/llvm/buildlink3.mk"
 .include "../../devel/py-llvm-lit/buildlink3.mk"
-CMAKE_CONFIGURE_ARGS+=	-DLLVM_DIR=${BUILDLINK_PREFIX.llvm:Q}/lib/cmake/llvm
-CMAKE_CONFIGURE_ARGS+=	-DLLVM_CMAKE_DIR=${BUILDLINK_PREFIX.llvm:Q}/lib/cmake/llvm
-CMAKE_CONFIGURE_ARGS+=	-DPython3_EXECUTABLE=${PYTHONBIN:Q}
-CMAKE_CONFIGURE_ARGS+=	-DLLVM_EXTERNAL_LIT=${BUILDLINK_PREFIX.py-llvm-lit:Q}/bin/llvm-lit
+CMAKE_CONFIGURE_ARGS+=	-DLLVM_DIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.llvm}/lib/cmake/llvm
+CMAKE_CONFIGURE_ARGS+=	-DLLVM_CMAKE_DIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.llvm}/lib/cmake/llvm
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.for _lld_host_input in EMBERBSD_CROSS_BUILD_PYTHON EMBERBSD_CROSS_LLVM_CONFIG EMBERBSD_LLVM_NATIVE_TOOLS
+.if empty(${_lld_host_input}:M/*) || !exists(${${_lld_host_input}})
+PKG_FAIL_REASON+= "${_lld_host_input} must select the matching build-host tool"
+.endif
+.endfor
+# CMake resolves symlinked sysroots. Map that spelling into the declared
+# buildlink headers, as for the shared graphics introspection consumers.
+_EMBERBSD_LLD_REAL_SYSROOT!= cd ${CROSS_DESTDIR:Q} && pwd -P
+BUILDLINK_TRANSFORM+= I:${_EMBERBSD_LLD_REAL_SYSROOT}${PREFIX}:${BUILDLINK_DIR}
+LLVM_CONFIG_PATH= ${EMBERBSD_CROSS_LLVM_CONFIG}
+CMAKE_CONFIGURE_ARGS+= -DLLVM_TABLEGEN_EXE=${EMBERBSD_LLVM_NATIVE_TOOLS:Q}/llvm-tblgen
+TOOL_DEPENDS+= ${PYPKGPREFIX}-llvm-lit>=${LLVM_VERSION}:../../devel/py-llvm-lit
+CMAKE_CONFIGURE_ARGS+= -DLLVM_EXTERNAL_LIT=${TOOLBASE:Q}/bin/llvm-lit
+CMAKE_CONFIGURE_ARGS+= -DPython3_EXECUTABLE=${EMBERBSD_CROSS_BUILD_PYTHON:Q}
+.else
+CMAKE_CONFIGURE_ARGS+= -DPython3_EXECUTABLE=${TOOL_PYTHONBIN:Q}
+.endif
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+CMAKE_CONFIGURE_ARGS+= -DLLVM_EXTERNAL_LIT=${BUILDLINK_PREFIX.py-llvm-lit:Q}/bin/llvm-lit
+.endif
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_INSTALL_TOOLCHAIN_ONLY=OFF
 .if !empty(PKG_OPTIONS:Mtests) && empty(PKG_BUILD_OPTIONS.llvm:Mtests)
 PKG_FAIL_REASON+= "LLD tests require matching LLVM llvm_gtest exports (tests option)"
@@ -42,6 +64,10 @@ PKG_FAIL_REASON+= "LLD tests require matching LLVM llvm_gtest exports (tests opt
 DEPENDS+= llvm-${LLVM_VERSION}{,nb*}:../../lang/llvm
 
 pre-configure:
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+	${TEST} "$$(${EMBERBSD_LLVM_NATIVE_TOOLS}/llvm-tblgen --version | ${AWK} '/LLVM version/ {print $$3; exit}')" = "${LLVM_VERSION}"
+	${TEST} "$$(${TOOLBASE}/bin/llvm-lit --version | ${AWK} '{sub(/dev$$/, "", $$2); print $$2}')" = "${LLVM_VERSION}"
+.endif
 	${TEST} "`${LLVM_CONFIG_PATH} --version`" = "${LLVM_VERSION}"
 
 .include "../../mk/bsd.pkg.mk"

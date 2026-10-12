@@ -87,5 +87,6 @@ The obsolete offload-packager alias is owned by LLVM, matching upstream.
 Options.inc now belongs to clang/Options; generated Sema headers are preserved.
 The source contract covers 119 Clang and 11 LLVM generated declarations.
 
-Installed Clang execution and complete QtTools acceptance remain pending.
+Installed Clang execution remains pending. Full QtTools cross-packaging against
+LLVM/Clang 23.1.3 passes; its installed GUI/runtime acceptance remains pending.
 Cross-package success does not establish an accelerated Plasma session.
