@@ -1,8 +1,8 @@
 $NetBSD$
 
---- src/wayland/meta-xwayland.c.orig	2025-03-04 22:59:55.000000000 +0300
-+++ src/wayland/meta-xwayland.c	2026-10-12 21:37:30.573266197 +0300
-@@ -598,17 +598,27 @@
+--- src/wayland/meta-xwayland.c.orig	2026-09-15 17:26:39.000000000 +0300
++++ src/wayland/meta-xwayland.c	2026-10-12 23:45:15.285191351 +0300
+@@ -599,17 +599,27 @@
  {
    int abstract_fd, unix_fd;
  

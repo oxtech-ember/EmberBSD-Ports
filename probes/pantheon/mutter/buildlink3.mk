@@ -1,0 +1,13 @@
+# $NetBSD$
+
+BUILDLINK_TREE+=	mutter
+
+.if !defined(MUTTER_BUILDLINK3_MK)
+MUTTER_BUILDLINK3_MK:=
+
+BUILDLINK_API_DEPENDS.mutter+=	mutter>=49.8
+BUILDLINK_PKGSRCDIR.mutter?=	../../x11/mutter
+
+.endif	# MUTTER_BUILDLINK3_MK
+
+BUILDLINK_TREE+=	-mutter

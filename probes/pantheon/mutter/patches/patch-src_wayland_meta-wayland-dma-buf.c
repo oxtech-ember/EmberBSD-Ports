@@ -1,7 +1,7 @@
 $NetBSD$
 
---- src/wayland/meta-wayland-dma-buf.c.orig	2025-03-04 22:59:55.000000000 +0300
-+++ src/wayland/meta-wayland-dma-buf.c	2026-10-12 21:37:30.573074780 +0300
+--- src/wayland/meta-wayland-dma-buf.c.orig	2026-09-15 17:26:39.000000000 +0300
++++ src/wayland/meta-wayland-dma-buf.c	2026-10-12 23:45:15.283845679 +0300
 @@ -39,7 +39,30 @@
  
  #include <drm_fourcc.h>

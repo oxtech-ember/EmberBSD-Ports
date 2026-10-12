@@ -1,0 +1,13 @@
+# $NetBSD$
+
+BUILDLINK_TREE+=	granite
+
+.if !defined(GRANITE_BUILDLINK3_MK)
+GRANITE_BUILDLINK3_MK:=
+
+BUILDLINK_API_DEPENDS.granite+=	granite>=7.8.1
+BUILDLINK_PKGSRCDIR.granite?=	../../x11/granite
+
+.endif	# GRANITE_BUILDLINK3_MK
+
+BUILDLINK_TREE+=	-granite

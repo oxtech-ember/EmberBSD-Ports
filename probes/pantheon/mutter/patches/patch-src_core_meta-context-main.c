@@ -1,7 +1,7 @@
 $NetBSD$
 
---- src/core/meta-context-main.c.orig	2025-03-04 22:59:55.000000000 +0300
-+++ src/core/meta-context-main.c	2026-10-12 21:37:30.573556364 +0300
+--- src/core/meta-context-main.c.orig	2026-09-15 17:26:39.000000000 +0300
++++ src/core/meta-context-main.c	2026-10-12 23:45:15.285604644 +0300
 @@ -25,7 +25,7 @@
  #include <glib.h>
  #include <gio/gio.h>
@@ -11,7 +11,7 @@ $NetBSD$
  #include <systemd/sd-login.h>
  #endif
  
-@@ -170,6 +170,7 @@
+@@ -173,6 +173,7 @@
    gboolean is_tty = FALSE;
    int ret, i;
  
@@ -19,7 +19,7 @@ $NetBSD$
    ret = sd_pid_get_session (0, &session_id);
    if (ret == 0 && session_id != NULL)
      {
-@@ -204,6 +205,7 @@
+@@ -207,6 +208,7 @@
          }
      }
    g_strfreev (sessions);

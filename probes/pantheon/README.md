@@ -10,10 +10,21 @@ upstream once it builds.
 
 | Component | Version | Source |
 | --- | --- | --- |
-| mutter | 46.9 (last micro of the line gala declares: `libmutter-14`) | download.gnome.org, SHA512 pinned |
+| mutter | 49.8 (`libmutter-17`; current gala declares support for lines 46–50, so the newest stable line is used) | download.gnome.org, SHA512 pinned |
+| gala | 8.6.2 | GitHub tag archive, SHA512 pinned |
+| granite | 7.8.1 | GitHub tag archive, SHA512 pinned |
 | gsettings-desktop-schemas | 51.0 | download.gnome.org, SHA512 pinned |
 | gnome-desktop (the `gnome-desktop-4` library) | 51.0 | download.gnome.org, SHA512 pinned |
-| gala | 8.6.2 | later probe |
+
+The initial probe targeted mutter 46.9; it moved to 49.8 once gala's meson
+was checked and found to accept libmutter-17, keeping only current
+versions per project policy. The mutter portability patch set was
+re-derived for 49.8: four dma-buf UAPI guards (cogl, kms-impl-device,
+wayland dma-buf and the new mdk-stream), the xwayland abstract-socket
+fallback and the HAVE_LIBSYSTEMD guard with the XDG_SESSION_TYPE
+fallback. With `-Dudev=false` (udev is tied to logind upstream) the
+meson udev patch is no longer needed. Cppcheck 2.22.0 per-file delta:
+0 findings upstream, 0 after the patch set.
 
 Freshness audit of the native build chain (2026-10-12): gtk 3.24.52 and
 4.22.4, pango 1.58.2, cairo 1.18.6, gdk-pixbuf 2.44.8,

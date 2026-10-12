@@ -1,7 +1,7 @@
 $NetBSD$
 
---- cogl/cogl/cogl-dma-buf-handle.c.orig	2025-03-04 22:59:55.000000000 +0300
-+++ cogl/cogl/cogl-dma-buf-handle.c	2026-10-12 21:37:30.572865154 +0300
+--- cogl/cogl/cogl-dma-buf-handle.c.orig	2026-09-15 17:26:39.000000000 +0300
++++ cogl/cogl/cogl-dma-buf-handle.c	2026-10-12 23:45:15.283296718 +0300
 @@ -36,7 +36,30 @@
  #include <errno.h>
  #include <gio/gio.h>
