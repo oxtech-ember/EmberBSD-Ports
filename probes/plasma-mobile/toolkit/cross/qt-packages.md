@@ -15,7 +15,7 @@ and Plasma remain unaccepted.
 
 ## Full QtTools package
 
-QtTools 6.12.0nb1 also passes the ordinary complete package checks and installs
+QtTools 6.12.0nb2 also passes the ordinary complete package checks and installs
 in the same build sysroot. Designer, Assistant, Help, UiTools, Linguist and
 Clang-backed QDoc remain present; no component or package check is disabled.
 The manifest includes the new Designer private headers and QDoc conversion
@@ -35,10 +35,11 @@ BMAKE=/absolute/native/bmake CMAKE=/absolute/native/cmake ruby \
 ```
 
 The test path above is relative to this toolkit. Package SHA256:
-`feb714ad86e75f7733a5687498c9982d227c6965bc1fb6864b2609564a4e0396`.
-This bootstrap package still links target Clang/LLVM 23.1.2 while the common
-23.1.3 replacement builds. Target runtime and coherent 23.1.3 consumer
-revalidation remain pending. [Native QDoc](README.md) already uses 23.1.3
+`07846c3c84fae12bdff27046fe8fc60c4d7148b51f9f7b8f4e2a92cb2fe0a21b`.
+The full package was rebuilt against LLVM/Clang 23.1.3 and replaced in the
+common sysroot on 2026-10-12. The shared-provider regression passes again;
+package metadata requires Clang >=23.1.3. Target runtime remains pending.
+[Native QDoc](README.md) also uses 23.1.3
 and passes real C++ documentation generation; that does not prove target QDoc.
 
 ## Inputs and packages
