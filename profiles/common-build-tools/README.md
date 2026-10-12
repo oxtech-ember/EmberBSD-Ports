@@ -1,7 +1,7 @@
 # Current common build tools
 
 This profile prepares one common Python 3.14.8, Meson 1.12.1 and matching
-LLVM/Clang/LLD 23.1.2 with upstream lit for the
+LLVM/Clang/LLD 23.1.2 with upstream lit and [Perl 5.44](cross/perl.md) for the
 GCC 16 / LLVM 23 / Mesa 26 dependency closure. The [Python package](python.md)
 cross-builds on macOS and passes installed AArch64 VM consumers and 21 selected
 upstream suites. Meson/Ninja also pass installed C/C++ consumers and focused
