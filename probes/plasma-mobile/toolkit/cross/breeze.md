@@ -40,7 +40,7 @@ fixes two independently reproduced errors:
   the computed output stayed absolute and could overwrite the input SVG.
   The output now uses the path relative to the selected input root.
 - XML conversion errors only produced warnings. A partial write still returned
-  success. Read, write and XML errors now make the command fail.
+  success. Recorded file-open and XML errors now make the command fail.
 
 Original KDE authorship and LGPL licensing remain in the source. This
 AI-assisted EmberBSD patch has not been submitted to or accepted by upstream.
@@ -77,4 +77,8 @@ Static Analyzer replayed those compiler commands with compile/output arguments
 removed and `--analyze -Xanalyzer -analyzer-output=text` added.
 These two native units are the analysis boundary, not the whole desktop.
 
-Full target package and installed resource/GUI acceptance remain separate gates.
+The full `breeze-icons-6.31.0nb1` target package also passes normal package checks
+and installation into the build sysroot. Its manifest includes all 70 new icons
+from the release. SHA256:
+`bb41f6915d0e0e4c97699df67052730e42a723ee535d4d84ef686caa31189307`.
+Installed target resource/GUI acceptance remains a separate gate.
