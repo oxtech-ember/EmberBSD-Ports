@@ -1,0 +1,22 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Use native tooling in cross builds and
+consumers, while still building and installing the full target generator.
+
+--- KF6KCMUtilsConfig.cmake.in.orig
++++ KF6KCMUtilsConfig.cmake.in
+@@ -24,11 +24,11 @@
+ 
+ include("${CMAKE_CURRENT_LIST_DIR}/KF6KCMUtilsMacros.cmake")
+ 
+-if(CMAKE_CROSSCOMPILING AND KF6_HOST_TOOLING)
++if(CMAKE_CROSSCOMPILING)
+     find_file(KCMUTILS_TARGETSFILE KF6KCMUtils/KF6KCMUtilsToolingTargets.cmake
+-        PATHS ${KF6_HOST_TOOLING} ${CMAKE_CURRENT_LIST_DIR}
++        PATHS ${KF6_HOST_TOOLING}
+         NO_DEFAULT_PATH
+-        NO_CMAKE_FIND_ROOT_PATH)
++        NO_CMAKE_FIND_ROOT_PATH REQUIRED)
+     include("${KCMUTILS_TARGETSFILE}")
+ else()
+     include("${CMAKE_CURRENT_LIST_DIR}/KF6KCMUtilsToolingTargets.cmake")

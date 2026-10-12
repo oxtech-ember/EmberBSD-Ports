@@ -2,11 +2,17 @@
 
 DISTNAME=	qtspeech-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qtspeech-${QTVERSION}
+PKGREVISION=	1
 COMMENT=	Qt6 module for text to speech
 CATEGORIES=	audio
 LICENSE=	gnu-gpl-v3
 
 .include "../../mk/bsd.prefs.mk"
+
+SUBST_CLASSES+= flitepaths
+SUBST_STAGE.flitepaths= pre-configure
+SUBST_FILES.flitepaths= src/plugins/tts/flite/qtexttospeech_flite_processor.cpp
+SUBST_VARS.flitepaths= PREFIX
 
 PLIST_VARS+=	flite
 

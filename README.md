@@ -200,6 +200,11 @@ runtime behavior are validated.
   nonlinear fitting, asynchronous behavior trees and Modbus TCP/RTU.
   All seven pass 19 installed application cases in an AArch64 VM, including
   error paths. Physical camera, CAN/RS-485, ECU and PLC workflows are unverified.
+- [Speech providers](profiles/common-media/speech.md): full Sonic, eSpeak NG,
+  Flite and speech-dispatcher cross packages pass CM5 language, PCM and shutdown
+  regressions. [Qt TextToSpeech](probes/plasma-mobile/toolkit/tests/qt-speech/README.md)
+  passes both installed engines; [KCMUtils](probes/plasma-mobile/toolkit/cross/kcmutils.md)
+  passes its generated-settings test. Physical sound and full Plasma remain separate.
 - [Media and OpenCV videoio](probes/media/README.md): FFmpeg 9.0.2,
   GStreamer 1.28.7 and OpenCV 5.0.0 pass installed file/video pipeline checks
   on AArch64, including both videoio backends, timestamps, seeking, lossless

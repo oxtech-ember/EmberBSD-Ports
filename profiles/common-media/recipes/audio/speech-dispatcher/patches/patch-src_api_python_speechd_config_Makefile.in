@@ -1,0 +1,20 @@
+$NetBSD$
+
+Keep release manpages when cross-compiling; native help2man stays enabled.
+Origin: EmberBSD (AI-assisted).
+
+--- src/api/python/speechd_config/Makefile.in.orig
++++ src/api/python/speechd_config/Makefile.in
+@@ -856,8 +856,10 @@
+ 
+ buildconfig.py: $(srcdir)/buildconfig.py.in
+ 
+-@HAVE_HELP2MAN_TRUE@@HAVE_PYTHON_TRUE@spd-conf.1: buildconfig.py $(abs_builddir)/__init__.py $(abs_builddir)/config.py
+-@HAVE_HELP2MAN_TRUE@@HAVE_PYTHON_TRUE@	LC_ALL=C PYTHONPATH=$(builddir)/.. PYTHONDONTWRITEBYTECODE=1 help2man -N -n "configure Speech Dispatcher and diagnose problems" --output=$@ $(srcdir)/spd-conf
++# Use the shipped, version-checked manual when cross-compiling.
++# Native builds retain upstream's help2man regeneration.
++@HAVE_HELP2MAN_TRUE@@HAVE_PYTHON_TRUE@spd-conf.1: $(if $(filter yes,$(EMBERBSD_DIST_MANPAGES)),,buildconfig.py $(abs_builddir)/__init__.py $(abs_builddir)/config.py)
++@HAVE_HELP2MAN_TRUE@@HAVE_PYTHON_TRUE@	if test "$(EMBERBSD_DIST_MANPAGES)" = yes; then test -s "$@"; else LC_ALL=C PYTHONPATH=$(builddir)/.. PYTHONDONTWRITEBYTECODE=1 help2man -N -n "configure Speech Dispatcher and diagnose problems" --output=$@ $(srcdir)/spd-conf; fi
+ 
+ -include $(top_srcdir)/git.mk
+ 

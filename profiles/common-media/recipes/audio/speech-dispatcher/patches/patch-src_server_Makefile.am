@@ -1,0 +1,20 @@
+$NetBSD$
+
+Keep release manpages when cross-compiling; native help2man stays enabled.
+Origin: EmberBSD (AI-assisted).
+
+--- src/server/Makefile.am.orig
++++ src/server/Makefile.am
+@@ -43,8 +43,10 @@
+ 	$(LIBSYSTEMD_LIBS)
+ 
+ if HAVE_HELP2MAN
+-speech-dispatcher.1: speech-dispatcher$(EXEEXT)
+-	LC_ALL=C help2man -n "speech synthesis daemon" --output=$@ ./$<
++# Use the shipped, version-checked manual when cross-compiling.
++# Native builds retain upstream's help2man regeneration.
++speech-dispatcher.1: $(if $(filter yes,$(EMBERBSD_DIST_MANPAGES)),,speech-dispatcher$(EXEEXT))
++	if test "$(EMBERBSD_DIST_MANPAGES)" = yes; then test -s "$@"; else LC_ALL=C help2man -n "speech synthesis daemon" --output=$@ ./$<; fi
+ 
+ dist_man1_MANS = \
+ 	speech-dispatcher.1

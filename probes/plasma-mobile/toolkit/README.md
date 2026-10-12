@@ -38,6 +38,9 @@ reject older command-line versions and unprepared Qt/Frameworks recipe paths.
 Buildlink requirements select the new versions, including transitive consumers.
 Qt's common build and consumer files require GCC 16.2.
 
+[Qt TextToSpeech](tests/qt-speech/README.md) and [KCMUtils](cross/kcmutils.md)
+now have complete cross packages and bounded CM5 acceptance.
+
 Cross-build on the development host using the [cross workflow](cross/README.md).
 The board installs the resulting packages and runs acceptance tests.
 For an alternative native build, a private MAKECONF includes the exported

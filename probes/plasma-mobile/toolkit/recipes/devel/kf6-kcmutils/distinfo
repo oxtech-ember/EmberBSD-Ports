@@ -3,3 +3,5 @@ $NetBSD: distinfo,v 1.5 2026/09/06 10:05:11 markd Exp $
 BLAKE2s (kcmutils-6.31.0.tar.xz) = 4c19e6b4c08b18748e77a073f4d2d854def52473124f770a41f74891b6b49246
 SHA512 (kcmutils-6.31.0.tar.xz) = 4f1a7038f975433300a37ef7e11b3a3ad1e334e287f410b5113200aee9a2340eada59e4088889036573f98eb985a0e756977b5c027947cc38584a8719591330d
 Size (kcmutils-6.31.0.tar.xz) = 2403328 bytes
+SHA1 (patch-tools_CMakeLists.txt) = b11982838b7901877514b1085dec70bd110364ff
+SHA1 (patch-KF6KCMUtilsConfig.cmake.in) = 44b2356ffa5ec2a4f2a091b27f6b347784b35e3e

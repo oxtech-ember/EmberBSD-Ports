@@ -1,5 +1,8 @@
 # Common multimedia source packages
 
+The [complete speech packages](speech.md) also provide tested Sonic, eSpeak NG,
+Flite and speech-dispatcher for Qt/KDE on CM5.
+
 The profile pins the complete [GStreamer 1.28.8 source family](gstreamer.md)
 for common-media and plasma-mobile exports. Its core cross-build corrections preserve introspection.
 Complete [base/bad plugin packages](gstreamer-plugins.md) now pass bounded

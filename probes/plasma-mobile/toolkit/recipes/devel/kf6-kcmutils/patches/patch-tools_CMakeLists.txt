@@ -1,0 +1,22 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Use native tooling in cross builds and
+consumers, while still building and installing the full target generator.
+
+--- tools/CMakeLists.txt.orig
++++ tools/CMakeLists.txt
+@@ -2,7 +2,13 @@
+ # SPDX-License-Identifier: BSD-3-Clause
+ 
+ add_executable(kcmdesktopfilegenerator kcmmetadatagenerator.cpp)
+-add_executable(KF6::kcmdesktopfilegenerator ALIAS kcmdesktopfilegenerator )
++if(CMAKE_CROSSCOMPILING)
++    find_file(KCMUTILS_HOST_TARGETS KF6KCMUtils/KF6KCMUtilsToolingTargets.cmake
++        PATHS ${KF6_HOST_TOOLING} NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH REQUIRED)
++    include("${KCMUTILS_HOST_TARGETS}")
++else()
++    add_executable(KF6::kcmdesktopfilegenerator ALIAS kcmdesktopfilegenerator)
++endif()
+ target_link_libraries(kcmdesktopfilegenerator Qt::Core)
+ 
+ set(CMAKECONFIG_INSTALL_DIR "${KDE_INSTALL_CMAKEPACKAGEDIR}/KF6KCMUtils")

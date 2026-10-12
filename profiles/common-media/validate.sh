@@ -73,12 +73,12 @@ actual=$(awk '$1=="databases/tdb" { if (NF != 4) exit 1; print $1, $2, $3, $4 }'
 [ "$actual" = "$expected" ] || { echo 'Incorrect TDB source pin.' >&2; exit 2; }
 
 # All source entries own complete recipes and every source patch is checksummed.
-awk -F '\t' '!/^#/ && NF { if (NF != 4 || $1 !~ /^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9+-]*$/ || $2 !~ /^[a-zA-Z0-9][a-zA-Z0-9._+-]*\.tar\.(xz|gz)$/ || $4 !~ /^https:\/\// || seen[$1]++ || length($3) != 64 || $3 !~ /^[0-9a-f]+$/) exit 1; count++ } END { if (count != 17) exit 1 }' "$profile/sources.tsv"
+awk -F '\t' '!/^#/ && NF { if (NF != 4 || $1 !~ /^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9+-]*$/ || $2 !~ /^[a-zA-Z0-9][a-zA-Z0-9._+-]*\.tar\.(xz|gz)$/ || $4 !~ /^https:\/\// || seen[$1]++ || length($3) != 64 || $3 !~ /^[0-9a-f]+$/) exit 1; count++ } END { if (count != 21) exit 1 }' "$profile/sources.tsv"
 while IFS="$(printf '\t')" read -r recipe archive sha url; do
     case "$recipe" in ''|'#'*) continue ;; esac
     pkg=$profile/recipes/$recipe
     case "$recipe" in
-        multimedia/ffmpeg9|audio/lame|multimedia/x265|multimedia/libaom|audio/pulseaudio|multimedia/libvpx|devel/libdaemon|databases/tdb) ;;
+        multimedia/ffmpeg9|audio/lame|multimedia/x265|multimedia/libaom|audio/pulseaudio|multimedia/libvpx|devel/libdaemon|databases/tdb|audio/sonic|audio/espeak-ng|audio/speech-dispatcher|audio/flite) ;;
         *)
             case "$archive" in *-1.28.8.tar.xz) ;; *) echo "Wrong GStreamer family version: $recipe" >&2; exit 2 ;; esac
             [ "$(awk '$1 == "GST_VERSION=" {print $2}' "$profile/recipes/multimedia/gstreamer1/version.mk")" = 1.28.8 ] || exit 2

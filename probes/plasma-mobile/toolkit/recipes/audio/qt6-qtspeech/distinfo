@@ -4,3 +4,4 @@ BLAKE2s (qtspeech-everywhere-src-6.12.0.tar.xz) = f172d5fdc2f07c53324cc87a2a0f76
 SHA512 (qtspeech-everywhere-src-6.12.0.tar.xz) = 339d5379a3bfcc9bbe4c5521e63b45e459137e779eb256f0719c13440911604cfc4fbbc4bc5be03adda93ec3fa4732ed8bfad82089c95472b158ceae462bf9b3
 Size (qtspeech-everywhere-src-6.12.0.tar.xz) = 254884 bytes
 SHA1 (patch-cmake_FindFlite.cmake) = 871495c2082dcbd020a80bc30ebe12a41afd6350
+SHA1 (patch-src_plugins_tts_flite_qtexttospeech__flite__processor.cpp) = 7e57adf4ff9c00f09da8c26eb89b97748935ed75

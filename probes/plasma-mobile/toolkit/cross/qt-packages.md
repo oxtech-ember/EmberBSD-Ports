@@ -13,6 +13,13 @@ shader pixels and repeated processes on CM5. The [Qt Quick consumer](../tests/qt
 also passes compiled QML scene/layer pixels through V3D. Other module runtimes
 and Plasma remain unaccepted.
 
+## TextToSpeech and KDE settings
+
+The [installed TextToSpeech consumer](../tests/qt-speech/README.md) passes both
+Flite PCM synthesis and speech-dispatcher/eSpeak service lifecycles on CM5.
+[KCMUtils](kcmutils.md) now cross-packages with explicit native metadata tooling;
+its generated-settings test passes on the board. Full Plasma remains unaccepted.
+
 ## Quick3D and Multimedia packages
 
 Quick3D and Multimedia 6.12.0nb1 now cross-package and install with their full
