@@ -1,0 +1,5 @@
+MirBSD Korn Shell, current upstream release R59c.
+A small, fast, broadly POSIX-compatible shell for interactive use and
+scripting; the reference shell of this class on embedded devices.
+This EmberBSD-Ports recipe tracks the upstream release tarball while the
+pinned quarterly pkgsrc still carries R59b.

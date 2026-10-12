@@ -222,6 +222,11 @@ runtime behavior are validated.
   AArch64 VM cases pass MQTT 3.1.1/5 QoS 0/1/2, authentication/ACL, verified
   TLS and retained-state recovery. Packaging, boot service and other
   smart-home ports remain pending.
+- [Interactive shells](profiles/shells/README.md): dash 0.5.13.5, zsh 5.9.2
+  from the pinned pkgsrc plus mksh 59c through a local recipe that tracks
+  upstream while the quarterly tree carries R59b. R59c built natively on the
+  AArch64 VM from the upstream tarball with a smoke check; pkgsrc packaging
+  build and the Perl-based regression suite remain open.
 - [Network diagnostics kit](profiles/network-diagnostics/README.md):
   cross-built CLI capture, analysis and load tools for boards. libpcap
   1.10.7, tcpdump 4.99.6 and iperf3 3.21 install from binary packages on

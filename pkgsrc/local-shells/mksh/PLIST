@@ -1,0 +1,4 @@
+@comment $NetBSD$
+bin/mksh
+man/man1/mksh.1
+share/examples/mksh/dot.mkshrc
