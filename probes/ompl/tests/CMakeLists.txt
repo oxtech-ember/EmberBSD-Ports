@@ -23,5 +23,8 @@ target_compile_options(geometry-contract PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME ompl-geometry COMMAND geometry-contract)
 foreach(mode path invalid-goal blocked)
     add_test(NAME ompl-${mode} COMMAND ompl-contract ${mode})
-    set_tests_properties(ompl-${mode} PROPERTIES TIMEOUT 30)
+    # RRTConnect exhausts its full invalid-goal sampling budget before
+    # reporting INVALID_GOAL; emulated ARM64 VMs need several minutes
+    # for the 20000-iteration termination condition.
+    set_tests_properties(ompl-${mode} PROPERTIES TIMEOUT 420)
 endforeach()
