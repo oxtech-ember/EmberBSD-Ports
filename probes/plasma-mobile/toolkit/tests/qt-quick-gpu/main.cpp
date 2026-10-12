@@ -13,6 +13,7 @@
 #include <array>
 #include <atomic>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <link_elf.h>
 
@@ -52,10 +53,13 @@ int main(int argc, char **argv)
             auto *egl = context ? context->nativeInterface<QNativeInterface::QEGLContext>() : nullptr;
             const char *name = context ? reinterpret_cast<const char *>(
                 context->functions()->glGetString(GL_RENDERER)) : nullptr;
+            const char *expected = std::getenv("EMBER_QTQUICK_EXPECTED_RENDERER");
+            if (expected == nullptr || *expected == '\0')
+                expected = "V3D ";
             const bool valid = view.rendererInterface()->graphicsApi() == QSGRendererInterface::OpenGL
                 && egl && egl->display() && egl->nativeContext() && name
-                && std::strncmp(name, "V3D ", 4) == 0;
-            if (valid)
+                && std::strncmp(name, expected, std::strlen(expected)) == 0;
+            if (name)
                 std::printf("renderer=%s\nQt=%s\n", name, qVersion());
             renderer.store(valid ? 1 : -1);
         }, Qt::DirectConnection);

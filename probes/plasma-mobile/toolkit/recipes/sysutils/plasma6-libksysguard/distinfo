@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (libksysguard-6.7.5.tar.xz) = 10a8a8a2ddeba13ac396b52a31cc1e43be7ff1da474a017630ef00229946caf6
+SHA512 (libksysguard-6.7.5.tar.xz) = 75f4bc8f84ad81d3157c4515f317cfef994bf8aa594e761dbb58bf613e38aa163952a88bc557ee91943f0ca3159aebabd8d597a44b2fd879e6da4b51d13e1bed
+Size (libksysguard-6.7.5.tar.xz) = 344312 bytes
+SHA1 (patch-processcore_CMakeLists.txt) = 03997b796bb97636febfcbaeb83db4e664fe6ee3
+SHA1 (patch-processcore_processes.cpp) = 8ad5ffdf53421a4f5fbe396eab93df3c91c5ccb4
+SHA1 (patch-processcore_processes__netbsd__p.cpp) = 6a2c0547dc035a59fb3989b4ae12e315f98461a5

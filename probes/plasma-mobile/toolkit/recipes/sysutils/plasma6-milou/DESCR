@@ -1,0 +1,2 @@
+Milou provides QML search components and a Plasma search applet using KRunner.
+The package retains the QML plugin, applet and translated messages.
