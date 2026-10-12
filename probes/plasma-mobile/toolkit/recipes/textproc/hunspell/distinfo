@@ -1,0 +1,11 @@
+$NetBSD: distinfo,v 1.19 2026/05/07 16:34:35 adam Exp $
+
+BLAKE2s (hunspell-1.7.5.tar.gz) = 10cc339199e8fad460d958bd4f974bd7397093a129be54ba6bb6d4355f94fb2c
+SHA512 (hunspell-1.7.5.tar.gz) = 0d9e81e432bd41ca7c751a2d2fa5d285816f3ffd128196fd53e4e72a4777720fe6e4b092483e39fe9a44a66b0afabbefa49446b2d38bf2e154421a64b8f363e4
+Size (hunspell-1.7.5.tar.gz) = 585328 bytes
+SHA1 (patch-aa) = 75bc2e099acf2bf3b1caba75b616ef38ee851b70
+SHA1 (patch-ab) = 489e8e4f978ff531322a445612f836c2d90e4e64
+SHA1 (patch-ac) = 05bb2c387d01ed515847c1a277d3b468202a3760
+SHA1 (patch-configure.ac) = 9916f560fe6b3be4b999c9ba0a7639c84d3b6fcb
+SHA1 (patch-src_parsers_latexparser.cxx) = 0107d2b015cb85de3d535524be4429f68692dc20
+SHA1 (patch-src_tools_Makefile.am) = 4781ab63ffdd92236145918bb8800711a12b6dd0

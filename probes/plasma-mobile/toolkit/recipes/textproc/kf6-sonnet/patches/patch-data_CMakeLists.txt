@@ -1,0 +1,43 @@
+Origin: EmberBSD (AI-assisted), retain target tools and language models in cross packages.
+Build the target executables, but run only the explicitly imported native generator.
+Missing native tooling must not silently omit the language-detection resources.
+
+--- data/CMakeLists.txt.orig
++++ data/CMakeLists.txt
+@@ -1,23 +1,26 @@
+ include(ECMMarkNonGuiExecutable)
+ 
+-if(NOT CMAKE_CROSSCOMPILING)
+-    add_executable(parsetrigrams parsetrigrams.cpp)
+-    set_target_properties(parsetrigrams PROPERTIES OUTPUT_NAME parsetrigrams6)
+-    add_executable(gentrigrams gentrigrams.cpp)
++add_executable(parsetrigrams parsetrigrams.cpp)
++set_target_properties(parsetrigrams PROPERTIES OUTPUT_NAME parsetrigrams6)
++add_executable(gentrigrams gentrigrams.cpp)
+ 
+-    # Mark it as non-gui so we won't create an app bundle on Mac OS X
+-    ecm_mark_nongui_executable(parsetrigrams)
+-    ecm_mark_nongui_executable(gentrigrams)
++# Mark it as non-gui so we won't create an app bundle on Mac OS X
++ecm_mark_nongui_executable(parsetrigrams)
++ecm_mark_nongui_executable(gentrigrams)
+ 
+-    TARGET_LINK_LIBRARIES(parsetrigrams PUBLIC Qt6::Core)
+-    TARGET_LINK_LIBRARIES(gentrigrams PUBLIC Qt6::Core KF6::SonnetCore)
+-    INSTALL(TARGETS parsetrigrams ${KF_INSTALL_TARGETS_DEFAULT_ARGS})
++TARGET_LINK_LIBRARIES(parsetrigrams PUBLIC Qt6::Core)
++TARGET_LINK_LIBRARIES(gentrigrams PUBLIC Qt6::Core KF6::SonnetCore)
++INSTALL(TARGETS parsetrigrams ${KF_INSTALL_TARGETS_DEFAULT_ARGS})
+ 
++if(NOT CMAKE_CROSSCOMPILING)
+     add_executable(KF6::parsetrigrams ALIAS parsetrigrams)
+ else()
+     if (NOT PARSETRIGRAMS_EXECUTABLE AND KF6_HOST_TOOLING)
+         find_program(PARSETRIGRAMS_EXECUTABLE parsetrigrams6 PATHS ${KF6_HOST_TOOLING}/${KDE_INSTALL_BINDIR} NO_DEFAULT_PATH)
+     endif()
++    if (NOT PARSETRIGRAMS_EXECUTABLE)
++        message(FATAL_ERROR "Cross builds require a native PARSETRIGRAMS_EXECUTABLE")
++    endif()
+     if (PARSETRIGRAMS_EXECUTABLE)
+         add_executable(KF6::parsetrigrams IMPORTED GLOBAL)
+         set_target_properties(KF6::parsetrigrams PROPERTIES IMPORTED_LOCATION ${PARSETRIGRAMS_EXECUTABLE})

@@ -131,6 +131,11 @@ archives replace the unbuilt 6.30 candidate; they do not add a parallel provider
 Retaining a portability patch does not establish runtime support for every
 platform mentioned by it. No upstream source archive or binary is stored here.
 
+[Current spelling dependencies](cross/spelling.md) now cross-package Aspell,
+Hunspell and full Sonnet. CM5 checks cover the Aspell suffix regression, upstream
+text/Unicode cases, 172 Hunspell cases and matching native/target language models.
+KWin and a complete accelerated Plasma session remain unfinished.
+
 ## Reproduce the source checks
 
 Download the original archives listed in sources.tsv to a private directory.
@@ -142,7 +147,7 @@ sh probes/plasma-mobile/toolkit/tests/source-profile.sh \
     /absolute/verified-distfiles /absolute/new-source-check
 ```
 
-The check covers all 104 archives, recorded patch hashes and forward applications,
+The check covers all 106 archives, recorded patch hashes and forward applications,
 corrupted archive rejection, repeated/missing patch rejection, incorrect
 unfiltered RCS hashes, recipe/version selection and exact toolkit export.
 It compares the exported common recipes and configuration with their existing

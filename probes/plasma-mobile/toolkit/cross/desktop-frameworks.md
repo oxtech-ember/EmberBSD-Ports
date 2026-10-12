@@ -86,7 +86,8 @@ certification is claimed.
 | plasma6-kglobalacceld-6.7.5 | `b6db4080f99fd60cb89f72d98b87715adaa654fcf940d5f373a5de1ec99ab3bd` |
 | kf6-kdeclarative-6.31.0 | `0d755865b97feab3ffa57014af44a077cfd875ce20832b31b2a72c99981fcc40` |
 
-KCMUtils still needs the Sonnet/Aspell/Hunspell dependency chain adapted to
-cross compilation. The full KWin package, Plasma login, accelerated desktop,
+The [Sonnet/Aspell/Hunspell chain](spelling.md) now cross-packages and has
+limited installed CM5 acceptance. KCMUtils next needs the remaining QtMultimedia
+and common FFmpeg dependencies; LAME 4.0 currently fails GCC16 type checks. The full KWin package, Plasma login, accelerated desktop,
 HDMI and remote-session acceptance remain unfinished. These library checks
 must not be presented as a working Plasma session.

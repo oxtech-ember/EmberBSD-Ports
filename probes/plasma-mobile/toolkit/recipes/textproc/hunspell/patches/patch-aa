@@ -1,0 +1,15 @@
+$NetBSD: patch-aa,v 1.4 2023/01/19 00:53:42 wiz Exp $
+
+--- src/hunspell/hunzip.hxx.orig	2022-12-29 20:10:49.000000000 +0000
++++ src/hunspell/hunzip.hxx
+@@ -41,6 +41,10 @@
+ #ifndef HUNZIP_HXX_
+ #define HUNZIP_HXX_
+ 
++#ifdef __SUNPRO_CC
++#include <iostream>
++#endif
++
+ #include "hunvisapi.h"
+ 
+ #include <cstdio>

@@ -4,3 +4,4 @@ BLAKE2s (sonnet-6.31.0.tar.xz) = b6cec4f54a9e2aa9968dd863d664ab4b4be1aad139d85da
 SHA512 (sonnet-6.31.0.tar.xz) = 7e7183f7a2ec88395681c6b29dbb74beedeebc70426ace3c1dc464d9be74e23b4455f31d09a9fdc2fc4730275b23b9e5f59f650d6cb28cfd9420a7d99ea96b48
 Size (sonnet-6.31.0.tar.xz) = 2414080 bytes
 SHA1 (patch-CMakeLists.txt) = 037a4f67658140378e698acbb2bee916bd98fff2
+SHA1 (patch-data_CMakeLists.txt) = 94f93cbc0dda86eaa781dbabe4e03436da4d5c44
