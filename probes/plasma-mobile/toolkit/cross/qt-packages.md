@@ -38,9 +38,15 @@ The test path above is relative to this toolkit. Package SHA256:
 `07846c3c84fae12bdff27046fe8fc60c4d7148b51f9f7b8f4e2a92cb2fe0a21b`.
 The full package was rebuilt against LLVM/Clang 23.1.3 and replaced in the
 common sysroot on 2026-10-12. The shared-provider regression passes again;
-package metadata requires Clang >=23.1.3. Target runtime remains pending.
+package metadata requires Clang >=23.1.3. Normal CM5 installation and package-file
+checks also pass. The unchanged `tests/qdoc/run.sh` consumer creates C++ class
+and member HTML through the installed Clang-backed QDoc, checks index content,
+and rejects missing configuration. CM5 result archive SHA256:
+`3ba618ab65c42f065d12549e75a84f358ca932f9f0be9de6eaceee396e78daa1`.
+This validates target documentation generation, not Assistant/Designer windows
+or the complete QtTools runtime.
 [Native QDoc](README.md) also uses 23.1.3
-and passes real C++ documentation generation; that does not prove target QDoc.
+and independently passes real C++ documentation generation on the build host.
 
 ## Inputs and packages
 

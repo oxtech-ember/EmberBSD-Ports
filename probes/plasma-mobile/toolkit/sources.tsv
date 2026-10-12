@@ -102,3 +102,4 @@ x11/plasma6-layer-shell-qt	layer-shell-qt-6.7.5.tar.xz	ccdcfec7081ca956f7a52c911
 x11/plasma6-kglobalacceld	kglobalacceld-6.7.5.tar.xz	83e9a4e226e695fe1544cfa19a9659c5f1000be46c669fe3a9e299029c6c2abf	https://download.kde.org/stable/plasma/6.7.5/kglobalacceld-6.7.5.tar.xz
 audio/libcanberra	libcanberra-0.30.tar.xz	c2b671e67e0c288a69fc33dc1b6f1b534d07882c2aceed37004bf48c601afa72	https://0pointer.de/lennart/projects/libcanberra/libcanberra-0.30.tar.xz
 security/libsecret	libsecret-0.21.8.2.tar.xz	142948339c5b971d8f6a8c7099521f6fd319b6fe73d2694b4e6d3310ed28b6e6	https://download.gnome.org/sources/libsecret/0.21/libsecret-0.21.8.2.tar.xz
+security/qca2-qt6	qca-2.3.12.tar.xz	d4a2b3aa0272d73ea0c4cd2140960177fa34ddc2030e59a48ecfb80c757572c3	https://download.kde.org/stable/qca/2.3.12/qca-2.3.12.tar.xz

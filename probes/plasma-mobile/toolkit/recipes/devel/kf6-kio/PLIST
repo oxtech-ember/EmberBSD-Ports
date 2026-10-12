@@ -193,9 +193,11 @@ include/KF6/KIOWidgets/KIO/Paste
 include/KF6/KIOWidgets/KIO/PasteJob
 include/KF6/KIOWidgets/KIO/RenameDialog
 include/KF6/KIOWidgets/KIO/RenameFileDialog
+include/KF6/KIOWidgets/KIO/RenameFileWarningDialog
 include/KF6/KIOWidgets/KIO/SkipDialog
 include/KF6/KIOWidgets/KIO/SslUi
 include/KF6/KIOWidgets/KIO/WidgetsAskUserActionHandler
+include/KF6/KIOWidgets/KIO/renamefilewarningdialog.h
 include/KF6/KIOWidgets/KOpenWithDialog
 include/KF6/KIOWidgets/KPropertiesDialog
 include/KF6/KIOWidgets/KPropertiesDialogPlugin
@@ -258,6 +260,7 @@ libexec/kf6/kioexec
 libexec/kf6/kioworker
 qt6/plugins/designer/kio6widgets.so
 qt6/plugins/kf6/kded/remotenotifier.so
+qt6/plugins/kf6/kded/trashdirnotify.so
 qt6/plugins/kf6/kio/kio_file.so
 qt6/plugins/kf6/kio/kio_ftp.so
 qt6/plugins/kf6/kio/kio_ghelp.so

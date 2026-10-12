@@ -97,6 +97,13 @@ The [security prerequisites](cross/security-dependencies.md) and
 bounded CM5 consumer checks.
 [Current libsecret 0.21.8.2](cross/libsecret.md) retains introspection, Vala and
 reference documentation. Its native peer-credential regression passes on CM5.
+[QCA 2.3.12](cross/qca.md) now includes its OpenSSL provider, target trust store
+and relocatable CMake exports. All 25 selected upstream invocations complete
+on CM5 after relocating one test-data directory; optional unsupported algorithms
+remain untested. Installed KWallet passes 19 upstream rows and independent
+D-Bus activation for both compatibility names on CM5.
+[KIO and the shortcut service](cross/desktop-frameworks.md) also have full
+cross packages and focused installed CM5 tests; the complete desktop is pending.
 Their focused source checks, curl metadata regression and CM5 API tests pass;
 complete installed desktop acceptance remains pending.
 
@@ -135,7 +142,7 @@ sh probes/plasma-mobile/toolkit/tests/source-profile.sh \
     /absolute/verified-distfiles /absolute/new-source-check
 ```
 
-The check covers all 103 archives, recorded patch hashes and forward applications,
+The check covers all 104 archives, recorded patch hashes and forward applications,
 corrupted archive rejection, repeated/missing patch rejection, incorrect
 unfiltered RCS hashes, recipe/version selection and exact toolkit export.
 It compares the exported common recipes and configuration with their existing

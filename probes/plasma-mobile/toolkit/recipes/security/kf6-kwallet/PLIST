@@ -1,5 +1,6 @@
 @comment $NetBSD: PLIST,v 1.4 2026/09/06 10:05:17 markd Exp $
 bin/ksecretd
+bin/kwallet-query
 bin/kwalletd6
 include/KF6/KWallet/KWallet
 include/KF6/KWallet/kwallet.h
@@ -14,10 +15,13 @@ lib/libKF6Wallet.so.6
 lib/libKF6Wallet.so.${PKGVERSION}
 lib/libKF6WalletBackend.so.6
 lib/libKF6WalletBackend.so.${PKGVERSION}
+man/man1/kwallet-query.1
 share/applications/org.kde.ksecretd.desktop
+share/applications/org.kde.kwalletd.desktop
 share/config.kcfg/kwalletsettings.kcfg
 share/dbus-1/interfaces/kf6_org.kde.KWallet.xml
 share/dbus-1/services/org.freedesktop.impl.portal.desktop.kwallet.service
+share/dbus-1/services/org.kde.kwalletd5.service
 share/dbus-1/services/org.kde.kwalletd6.service
 share/dbus-1/services/org.kde.secretservicecompat.service
 share/knotifications6/ksecretd.notifyrc

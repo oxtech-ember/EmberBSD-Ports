@@ -1,0 +1,28 @@
+# $NetBSD: Makefile.common,v 1.7 2026/09/12 21:04:21 wiz Exp $
+#
+# used by security/qca2-qt6/Makefile
+
+DISTNAME=	qca-2.3.12
+CATEGORIES=	security
+MASTER_SITES=	${MASTER_SITE_KDE:=qca/${PKGVERSION_NOREV}/}
+EXTRACT_SUFX=	.tar.xz
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://userbase.kde.org/QCA
+LICENSE=	gnu-lgpl-v2.1
+
+PATCHDIR=	${.CURDIR}/patches
+DISTINFO_FILE=	${.CURDIR}/distinfo
+
+.include "../../devel/cmake/build.mk"
+USE_LANGUAGES=	c c++
+
+# Install into the selected Qt prefix; cross builds set target paths explicitly.
+CMAKE_CONFIGURE_ARGS+=	-DQCA_INSTALL_IN_QT_PREFIX=ON
+CMAKE_CONFIGURE_ARGS+=	-DOSX_FRAMEWORK=OFF
+CMAKE_CONFIGURE_ARGS+=	-DBUILD_TESTS=ON
+
+SUBST_CLASSES+=		certs
+SUBST_STAGE.certs=	pre-configure
+SUBST_FILES.certs=	CMakeLists.txt
+SUBST_VARS.certs=	PREFIX

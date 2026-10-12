@@ -1,0 +1,19 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), preserve upstream test bodies while allowing
+cross-built tests to find data in their target-side CTest working directory.
+Native builds retain the original absolute default.
+
+--- unittest/hashunittest/CMakeLists.txt.orig
++++ unittest/hashunittest/CMakeLists.txt
+@@ -4,7 +4,9 @@ set(hashunittest_bin_SRCS hashunittest.cpp)
+ 
+ add_executable( hashunittest ${hashunittest_bin_SRCS} )
+ 
+-target_compile_definitions(hashunittest PRIVATE TEST_DATA_DIR="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
++set(QCA_TEST_DATA_DIR "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}" CACHE STRING
++    "Directory containing the hash test data subdirectory")
++target_compile_definitions(hashunittest PRIVATE TEST_DATA_DIR="${QCA_TEST_DATA_DIR}")
+ target_link_qca_test_libraries(hashunittest)
+ 
+ 

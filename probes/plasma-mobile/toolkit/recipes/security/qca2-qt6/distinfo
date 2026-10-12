@@ -1,0 +1,7 @@
+$NetBSD: distinfo,v 1.4 2026/09/12 21:04:21 wiz Exp $
+
+BLAKE2s (qca-2.3.12.tar.xz) = c2d31113c53477174182146fd00562106d6304781168dcaf5bf532373e9aa6c7
+SHA512 (qca-2.3.12.tar.xz) = 75bfc4f20f845e95e353c6c3e9d0c30b8e3e83c32897c649ec9b79607c02778ba990cbb4253461c01aeb54a4277b66f892a138285efff05ab10202e34fc19cc6
+Size (qca-2.3.12.tar.xz) = 767372 bytes
+SHA1 (patch-CMakeLists.txt) = 4867c54f8bff523233a11201bdb021e6e81a10ed
+SHA1 (patch-unittest_hashunittest_CMakeLists.txt) = 0b5c6511105dda086c724e540daae6bb80f99ba6

@@ -6,8 +6,9 @@ They install into the common EmberBSD sysroot. Native generators execute on
 the build host; these packages do not require board compilation. Source URLs
 and SHA256 are recorded in [sources.tsv](../sources.tsv).
 
-KGlobalAccelD has a prepared source recipe but has not completed packaging.
-KIO/KWallet and the full KWin/Plasma session remain separate acceptance gates.
+[KGlobalAccelD and additional Frameworks](desktop-frameworks.md) now also
+cross-package and have focused CM5 checks. [KWallet](qca.md) passes crypto
+and private-bus activation checks. The full KWin/Plasma session remains unaccepted.
 These library packages alone do not establish a working accelerated desktop.
 
 ## KWayland mouse-button fix

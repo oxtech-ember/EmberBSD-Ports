@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.25 2026/09/06 10:05:17 markd Exp $
 
 DISTNAME=	kwallet-${KF6VER}
+PKGREVISION=	1
 CATEGORIES=	security
 
 HOMEPAGE=	https://community.kde.org/Frameworks
@@ -15,11 +16,8 @@ USE_TOOLS+=	msgmerge pkg-config
 
 LDFLAGS.SunOS+=	-lsocket
 
-CMAKE_CONFIGURE_ARGS+=	-DBUILD_KWALLET_QUERY=OFF
-
-# remove conflict with kwallet
-post-install:
-	rm ${DESTDIR}${PREFIX}/share/dbus-1/services/org.kde.kwalletd5.service
+# Keep upstream's query tool and legacy D-Bus activation name. EmberBSD uses
+# one current KWallet provider; compatibility names do not require Qt5.
 
 .include "../../lang/python/tool.mk"
 .include "../../devel/kf6-kcolorscheme/buildlink3.mk"

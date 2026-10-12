@@ -62,6 +62,22 @@ EmberBSD/AArch64 path. No memory-analysis or upstream Qt-suite pass is claimed.
 Compositor output capture, HDMI, physical input, the complete Controls module,
 KWin, Plasma and a long run remain separate acceptance gates.
 
+## Regression after the fan kernel update, 2026-10-12
+
+The same consumer and runners pass again on the same CM5 after the operator's
+completed cooling update. The `EMBERV3DRENDER #0` kernel comes from EmberBSD
+`ab6f88f04ca73c6958adb39d0e1c717f629e7901`; its installed SHA256 is
+`c8600af1c6a31404fe6b3a3995196a910efda594c708194369925adb54ff1886`.
+MesaLib 26.2.4nb4 and LLVM 23.1.3 are the current common providers.
+
+Both sixteen-phase processes again verify 65,536 scene/layer pixels on V3D.
+Wrong-pixel, non-Wayland and missing-module checks reject their inputs.
+All 75 loaded package files match the current sysroot by SHA256. The private
+compositor exits and removes its socket; the boot identity is unchanged
+throughout this run. The result archive SHA256 is
+`0d21b5b9451dce6c80ce39b737cf17b6bdd785aacc3b396b488682a33b763a8d`.
+This is a short graphics regression, not a cooling, HDMI or Plasma acceptance.
+
 Sources: [QQuickView](https://doc.qt.io/qt-6/qquickview.html),
 [QQuickWindow](https://doc.qt.io/qt-6/qquickwindow.html), and
 [the migration sequence](../../MIGRATION.md).
