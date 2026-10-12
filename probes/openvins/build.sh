@@ -101,6 +101,15 @@ tar -xzf "$work/archives/openvins-2.7.tar.gz" -C "$work/src" \
 source_tree=$work/src/$source_name
 run patch-ceres patch -d "$source_tree" -p1 -i "$recipe/patches/ceres-manifold-upstream.patch"
 run patch-dependencies patch -d "$source_tree" -p1 -i "$recipe/patches/shared-dependencies.patch"
+# Insert <cassert> where sources use assert() without it (32 files).
+run patch-assert sh -c "cd '$source_tree' && grep -rl 'assert(' ov_core/src ov_msckf/src |
+    while read fname; do
+        grep -q cassert \"\$fname\" ||
+            sed -i '1,/^#include/s/^#include/#include <cassert>\\n#include/' \"\$fname\"
+    done"
+# OpenCV 5.0 moved findFundamentalMat/FM_RANSAC from calib3d to the
+# geometry module; the track sources only include features.hpp.
+run patch-opencv5 sh "$recipe/patches/opencv5-geometry.sh" "$source_tree"
 run openvins-configure cmake -S "$source_tree/ov_msckf" -B "$work/openvins-build" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_C_COMPILER="$CC" -DCMAKE_CXX_COMPILER="$CXX" \

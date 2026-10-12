@@ -1,0 +1,228 @@
+$NetBSD$
+
+Several OpenVINS sources use assert() without including <cassert>;
+newer toolchains no longer pull it transitively.
+
+--- a/ov_core/src/cam/CamBase.h
++++ b/ov_core/src/cam/CamBase.h
+@@ -24,2 +24,3 @@
+ 
+++#include <cassert>
+ #include <Eigen/Eigen>
+
+--- a/ov_core/src/feat/Feature.cpp
++++ b/ov_core/src/feat/Feature.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "Feature.h"
+
+--- a/ov_core/src/plot/matplotlibcpp.h
++++ b/ov_core/src/plot/matplotlibcpp.h
+@@ -2,2 +2,3 @@
+ 
+++#include <cassert>
+ #include <algorithm>
+
+--- a/ov_core/src/sim/BsplineSE3.cpp
++++ b/ov_core/src/sim/BsplineSE3.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "BsplineSE3.h"
+
+--- a/ov_core/src/test_profile.cpp
++++ b/ov_core/src/test_profile.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include <cmath>
+
+--- a/ov_core/src/track/Grider_FAST.h
++++ b/ov_core/src/track/Grider_FAST.h
+@@ -24,2 +24,3 @@
+ 
+++#include <cassert>
+ #include <Eigen/Eigen>
+
+--- a/ov_core/src/track/Grider_GRID.h
++++ b/ov_core/src/track/Grider_GRID.h
+@@ -24,2 +24,3 @@
+ 
+++#include <cassert>
+ #include <Eigen/Eigen>
+
+--- a/ov_core/src/track/TrackAruco.cpp
++++ b/ov_core/src/track/TrackAruco.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "TrackAruco.h"
+
+--- a/ov_core/src/track/TrackDescriptor.cpp
++++ b/ov_core/src/track/TrackDescriptor.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "TrackDescriptor.h"
+
+--- a/ov_core/src/track/TrackKLT.cpp
++++ b/ov_core/src/track/TrackKLT.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "TrackKLT.h"
+
+--- a/ov_core/src/track/TrackSIM.cpp
++++ b/ov_core/src/track/TrackSIM.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "TrackSIM.h"
+
+--- a/ov_core/src/types/IMU.h
++++ b/ov_core/src/types/IMU.h
+@@ -24,2 +24,3 @@
+ 
+++#include <cassert>
+ #include "PoseJPL.h"
+
+--- a/ov_core/src/types/JPLQuat.h
++++ b/ov_core/src/types/JPLQuat.h
+@@ -24,2 +24,3 @@
+ 
+++#include <cassert>
+ #include "Type.h"
+
+--- a/ov_core/src/types/Landmark.cpp
++++ b/ov_core/src/types/Landmark.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "Landmark.h"
+
+--- a/ov_core/src/types/Landmark.h
++++ b/ov_core/src/types/Landmark.h
+@@ -24,2 +24,3 @@
+ 
+++#include <cassert>
+ #include "LandmarkRepresentation.h"
+
+--- a/ov_core/src/types/PoseJPL.h
++++ b/ov_core/src/types/PoseJPL.h
+@@ -24,2 +24,3 @@
+ 
+++#include <cassert>
+ #include "JPLQuat.h"
+
+--- a/ov_core/src/types/Type.h
++++ b/ov_core/src/types/Type.h
+@@ -24,2 +24,3 @@
+ 
+++#include <cassert>
+ #include <Eigen/Eigen>
+
+--- a/ov_core/src/types/Vec.h
++++ b/ov_core/src/types/Vec.h
+@@ -24,2 +24,3 @@
+ 
+++#include <cassert>
+ #include "Type.h"
+
+--- a/ov_msckf/src/core/VioManager.cpp
++++ b/ov_msckf/src/core/VioManager.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "VioManager.h"
+
+--- a/ov_msckf/src/core/VioManagerHelper.cpp
++++ b/ov_msckf/src/core/VioManagerHelper.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "VioManager.h"
+
+--- a/ov_msckf/src/ros/ROS1Visualizer.cpp
++++ b/ov_msckf/src/ros/ROS1Visualizer.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "ROS1Visualizer.h"
+
+--- a/ov_msckf/src/ros/ROS2Visualizer.cpp
++++ b/ov_msckf/src/ros/ROS2Visualizer.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "ROS2Visualizer.h"
+
+--- a/ov_msckf/src/ros/ROSVisualizerHelper.cpp
++++ b/ov_msckf/src/ros/ROSVisualizerHelper.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "ROSVisualizerHelper.h"
+
+--- a/ov_msckf/src/sim/Simulator.cpp
++++ b/ov_msckf/src/sim/Simulator.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "Simulator.h"
+
+--- a/ov_msckf/src/state/Propagator.cpp
++++ b/ov_msckf/src/state/Propagator.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "Propagator.h"
+
+--- a/ov_msckf/src/state/State.h
++++ b/ov_msckf/src/state/State.h
+@@ -24,2 +24,3 @@
+ 
+++#include <cassert>
+ #include <map>
+
+--- a/ov_msckf/src/state/StateHelper.cpp
++++ b/ov_msckf/src/state/StateHelper.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "StateHelper.h"
+
+--- a/ov_msckf/src/test_sim_repeat.cpp
++++ b/ov_msckf/src/test_sim_repeat.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include <cmath>
+
+--- a/ov_msckf/src/update/UpdaterHelper.cpp
++++ b/ov_msckf/src/update/UpdaterHelper.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "UpdaterHelper.h"
+
+--- a/ov_msckf/src/update/UpdaterMSCKF.cpp
++++ b/ov_msckf/src/update/UpdaterMSCKF.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "UpdaterMSCKF.h"
+
+--- a/ov_msckf/src/update/UpdaterSLAM.cpp
++++ b/ov_msckf/src/update/UpdaterSLAM.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "UpdaterSLAM.h"
+
+--- a/ov_msckf/src/update/UpdaterZeroVelocity.cpp
++++ b/ov_msckf/src/update/UpdaterZeroVelocity.cpp
+@@ -21,2 +21,3 @@
+ 
+++#include <cassert>
+ #include "UpdaterZeroVelocity.h"
