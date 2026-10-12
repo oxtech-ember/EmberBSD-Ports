@@ -1,0 +1,45 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Preserve cross-built ATK and AT-SPI GIR outputs.
+Only temporary GType queries execute through the shared target launcher.
+
+--- meson.build.orig
++++ meson.build
+@@ -191,6 +191,13 @@
+ at_spi_conf.set('ALIGNOF_DBIND_POINTER', cc.alignment('dbind_pointer', prefix: 'typedef void *dbind_pointer;'))
+ at_spi_conf.set('ALIGNOF_DBIND_STRUCT', cc.alignment('dbind_struct', prefix: 'typedef struct { char s1; } dbind_struct;'))
+ 
++emberbsd_gir_args = []
++emberbsd_gir_env = environment()
++if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++  emberbsd_gir_args = ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++  emberbsd_gir_env.set('LD_LIBRARY_PATH', ':'.join([meson.project_build_root() / 'atk', meson.project_build_root() / 'atspi']))
++endif
++
+ # introspection support
+ gir = find_program('g-ir-scanner', required : get_option('introspection'))
+ have_gir = gir.found() and (not meson.is_cross_build() or get_option('introspection').enabled())
+--- atk/meson.build.orig
++++ atk/meson.build
+@@ -146,7 +146,8 @@
+     export_packages: 'atk',
+     includes: [ 'GObject-2.0' ],
+     install: true,
+-    extra_args: [
++    env: emberbsd_gir_env,
++    extra_args: emberbsd_gir_args + [
+       '--quiet',
+       '--c-include=atk/atk.h',
+       '-DATK_COMPILATION',
+--- atspi/meson.build.orig
++++ atspi/meson.build
+@@ -144,7 +144,8 @@
+     install: true,
+     install_dir_gir: gir_dir,
+     install_dir_typelib: typelib_dir,
+-    extra_args: gir_extra_args
++    env: emberbsd_gir_env,
++    extra_args: gir_extra_args + emberbsd_gir_args
+   )
+ endif
+ 

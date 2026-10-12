@@ -3,6 +3,7 @@ $NetBSD: distinfo,v 1.154 2026/08/12 03:28:23 ryoon Exp $
 BLAKE2s (pango-1.58.2.tar.xz) = 4eaa33e0fb9f8a7883686b8de83edc6585493e7e0caec2692e0e40a0fa10bf7b
 SHA512 (pango-1.58.2.tar.xz) = 19c88d07c547312bde647cb5d43c300d1750c5b21904c4c066c0ddba30fcfddc9cad463c40bddbe1df228eb33475ff5396ce9921df5347e8187fe3ede8d075a8
 Size (pango-1.58.2.tar.xz) = 1918112 bytes
+SHA1 (patch-emberbsd-gir-cross.build) = c66c31d9cebe4e5e2cf140f84a4f2de4751aa853
 SHA1 (patch-pango_pangocairo-coretextfont.c) = 32fddb025bf2896d23d22814b6edd91042fd58b5
 SHA1 (patch-pango_pangocairo-coretextfontmap.c) = 395cb1f8472a319c4b1c58ea137e36452bc44cc6
 SHA1 (patch-pango_pangocoretext-private.h) = 0d7d61cd7e7b9da34bf8a0d5d1c6e7734341cadf

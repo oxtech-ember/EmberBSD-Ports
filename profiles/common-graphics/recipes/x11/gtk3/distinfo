@@ -1,0 +1,16 @@
+$NetBSD: distinfo,v 1.108 2026/05/14 17:42:34 ryoon Exp $
+
+BLAKE2s (gtk-3.24.52.tar.xz) = a1142cab695901a907d8ce3f6de5ae0a3a8e4de8812960d211a990cb96775954
+SHA512 (gtk-3.24.52.tar.xz) = 20c119cf1a8c390c9d572729f36215fe034731d9e741a0a30c96671f4606ef8b7cdbe5d5ebe986f6f6c9ac03b3ba5cddd8d63da0ebfc5341d179ec9dea5e82eb
+Size (gtk-3.24.52.tar.xz) = 13578032 bytes
+SHA1 (patch-gdk_wayland_gdkdevice-wayland.c) = 2d150f5e29a4d3573dbcbc88021882a0b24d1ae4
+SHA1 (patch-gdk_x11_gdkscreen-x11.h) = 455d6c3de8421984ba3c99baf51cd31982a3df78
+SHA1 (patch-gdk_x11_gdkwindow-x11.h) = c80f7c9d5a570817e54fd74fa903a53400dc6f64
+SHA1 (patch-gtk_a11y_gtkaccessibility.c) = af162274f43dda765ec0fe801c3e5c18f7cf29d3
+SHA1 (patch-gtk_fallback-c89.c) = eaf5ac8aace9eab673eed0e265d4cb2617bf1fcd
+SHA1 (patch-gtk_gtkfontchooserwidget.c) = 0f4a47b7260e9227ed7e20613bbe435163afd149
+SHA1 (patch-gtk_gtklabel.c) = 0fa9fe13415c6d4721cf2f8e1dd131cd05c0568b
+SHA1 (patch-meson-gir-cross.build) = d60716234d3a7c8f5726ede986c0ccce3a3e1a4a
+SHA1 (patch-meson.build) = a65d3192495eba49135fa5d2624da65a1a55decb
+SHA1 (patch-meson_options.txt) = 8477c12e5a5116ca2eef7be0c272e86451d8d94f
+SHA1 (patch-tests_gtkgears.c) = f335cbb84d6e254b4feba3b1fe619a41229037e0

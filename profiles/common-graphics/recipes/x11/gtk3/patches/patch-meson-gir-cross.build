@@ -1,0 +1,81 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Retain introspection during cross builds.
+Use native generators and the existing real target GType query launcher.
+Native builds retain their normal query execution.
+
+--- meson.build.orig
++++ meson.build
+@@ -848,6 +848,14 @@
+   module_suffix = 'so'
+ endif
+ 
++# Only temporary GType queries execute on the EmberBSD target.
++emberbsd_gir_args = []
++emberbsd_gir_env = environment()
++if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++  emberbsd_gir_args = ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++  emberbsd_gir_env.set('LD_LIBRARY_PATH', ':'.join([meson.project_build_root() / 'gdk', meson.project_build_root() / 'gtk']))
++endif
++
+ # Introspection
+ gir = find_program('g-ir-scanner', required : get_option('introspection'))
+ build_gir = gir.found() and get_option('introspection')
+--- gdk/meson.build.orig
++++ gdk/meson.build
+@@ -305,7 +305,7 @@
+ gdk_dep_sources = [gdkconfig, gdkenum_h]
+ # Introspection
+ if build_gir
+-  gir_args = ['--quiet']
++  gir_args = ['--quiet'] + emberbsd_gir_args
+ 
+   # We may build some of the dependencies as sub-projects; this means
+   # that we need to depend on the built introspection data, instead of
+@@ -328,6 +328,7 @@
+   gdk_gir_sources += gdk_sources + gdk_enums + [gdkconfig]
+   gdk_gir = gnome.generate_gir(libgdk,
+                                sources: gdk_gir_sources,
++                               env: emberbsd_gir_env,
+                                namespace: 'Gdk',
+                                nsversion: gtk_api_version,
+                                identifier_prefix: 'Gdk',
+@@ -345,6 +346,7 @@
+   if x11_enabled
+     gdk_x11_gir = gnome.generate_gir(libgdk,
+                                      sources: gdk_x11_public_headers + gdk_x11_sources,
++                                     env: emberbsd_gir_env,
+                                      namespace: 'GdkX11',
+                                      nsversion: gtk_api_version,
+                                      identifier_prefix: 'Gdk',
+@@ -363,6 +365,7 @@
+   if win32_enabled
+     gdk_win32_gir = gnome.generate_gir(libgdk,
+                                      sources: gdk_win32_public_headers + gdk_win32_sources,
++                                     env: emberbsd_gir_env,
+                                      namespace: 'GdkWin32',
+                                      nsversion: gtk_api_version,
+                                      identifier_prefix: 'Gdk',
+--- gtk/meson.build.orig
++++ gtk/meson.build
+@@ -990,7 +990,11 @@
+ 
+ # Introspection
+ if build_gir
+-  gir_args = ['--quiet']
++  gir_args = ['--quiet'] + emberbsd_gir_args
++  if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++    # The cross linker does not search LD_LIBRARY_PATH for libgtk's GDK dependency.
++    gir_args += ['--extra-library=gdk-3']
++  endif
+ 
+   gtk_introspection_sources = [
+     gtk_gir_public_headers,
+@@ -1012,6 +1016,7 @@
+ 
+   gtk_gir = gnome.generate_gir(libgtk,
+                                sources: gtk_introspection_sources,
++                               env: emberbsd_gir_env,
+                                namespace: 'Gtk',
+                                nsversion: gtk_api_version,
+                                identifier_prefix: 'Gtk',

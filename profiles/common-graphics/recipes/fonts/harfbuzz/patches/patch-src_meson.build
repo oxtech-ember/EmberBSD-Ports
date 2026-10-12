@@ -4,15 +4,32 @@ Generate .gir using the built libraries, even if an earlier version is
 already installed. Fixes update builds on macOS when e.g. new symbols
 are introduced.
 
+Origin of the cross extension: EmberBSD (AI-assisted). Preserve the native
+macOS library lookup while using real target GType queries in cross builds.
+
 --- src/meson.build.orig
 +++ src/meson.build
-@@ -1280,6 +1280,9 @@
+@@ -1266,6 +1266,13 @@
+   if not build_gir and get_option('introspection').enabled()
+     error('Introspection support is requested but the default library option should be shared or both')
+   endif
++
++emberbsd_gir_args = []
++emberbsd_gir_env = environment({'DYLD_LIBRARY_PATH': meson.project_build_root() / 'src'})
++if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++  emberbsd_gir_args = ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++  emberbsd_gir_env.set('LD_LIBRARY_PATH', meson.current_build_dir())
++endif
+ 
+   if build_gir
+     conf.set('HAVE_INTROSPECTION', 1)
+@@ -1280,7 +1287,8 @@
        export_packages: ['harfbuzz-gobject', 'harfbuzz'],
        header: 'hb-gobject.h',
        install: true,
-+      env: {
-+        'DYLD_LIBRARY_PATH': meson.project_build_root() + '/src'
-+      },
-       extra_args:  ['--cflags-begin',
+-      extra_args:  ['--cflags-begin',
++      env: emberbsd_gir_env,
++      extra_args: emberbsd_gir_args + ['--cflags-begin',
                      '-DHB_NO_SINGLE_HEADER_ERROR',
                      '-DHAVE_GOBJECT',
+                     '-DHB_EXTERN=',

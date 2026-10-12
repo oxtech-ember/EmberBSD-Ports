@@ -4,7 +4,7 @@ PKG_OPTIONS_VAR=	PKG_OPTIONS.pango
 PKG_SUPPORTED_OPTIONS=	introspection libthai x11
 PKG_SUGGESTED_OPTIONS=	x11
 
-PKG_SUGGESTED_OPTIONS+=	${${USE_CROSS_COMPILE:tl} == "yes":?:introspection}
+PKG_SUGGESTED_OPTIONS+=	introspection
 
 .include "../../mk/bsd.options.mk"
 
@@ -34,7 +34,23 @@ MESON_ARGS+=	-Dxft=disabled
 .if !empty(PKG_OPTIONS:Mintrospection)
 PLIST.introspection=	yes
 MESON_ARGS+=	-Dintrospection=enabled
-TOOL_DEPENDS+=	glib2-introspection-[0-9]*:../../devel/glib2-introspection
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+BUILD_DEPENDS+= glib2-introspection>=2.90.1nb1:../../devel/glib2-introspection
+EMBERBSD_GI_MESON_OPTIONS= no
+.include "../../devel/gobject-introspection/cross.mk"
+# The native scanner reads metadata for the target ABI.
+MAKE_ENV+= XDG_DATA_DIRS=${CROSS_DESTDIR:Q}${PREFIX:Q}/share
+_EMBERBSD_GI_REAL_SYSROOT!= cd ${CROSS_DESTDIR:Q} && pwd -P
+BUILDLINK_TRANSFORM+= I:${_EMBERBSD_GI_REAL_SYSROOT}${PREFIX}:${BUILDLINK_DIR}
+MESON_BINARIES+= g-ir-scanner g-ir-compiler
+MESON_BINARY.g-ir-scanner= ${TOOLBASE}/bin/g-ir-scanner
+MESON_BINARY.g-ir-compiler= ${TOOLBASE}/bin/g-ir-compiler
+MESON_CROSS_VARS+= emberbsd_gi_cross emberbsd_gi_ldd_wrapper
+MESON_CROSS.emberbsd_gi_cross= true
+MESON_CROSS.emberbsd_gi_ldd_wrapper= '${EMBERBSD_GI_FILESDIR}/elf-needed.sh'
+.else
+TOOL_DEPENDS+= glib2-introspection-[0-9]*:../../devel/glib2-introspection
+.endif
 BUILDLINK_DEPMETHOD.gobject-introspection=	build
 BUILDLINK_API_DEPENDS.gobject-introspection+=	gobject-introspection>=1.84.0
 .include "../../devel/gobject-introspection/buildlink3.mk"

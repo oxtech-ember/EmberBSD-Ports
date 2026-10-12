@@ -2,6 +2,8 @@
 
 .include "Makefile.common"
 
+PKGREVISION=	1
+
 COMMENT=	OpenType text shaping engine
 
 MESON_ARGS+=	-Ddocs=disabled

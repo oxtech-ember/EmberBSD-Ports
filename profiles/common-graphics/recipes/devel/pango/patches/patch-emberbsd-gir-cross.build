@@ -1,0 +1,75 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Preserve cross-build introspection with native
+generators and real target GType queries. Native builds remain unchanged.
+
+--- pango/meson.build.orig
++++ pango/meson.build
+@@ -1,3 +1,10 @@
++emberbsd_gir_args = []
++emberbsd_gir_env = environment()
++if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++  emberbsd_gir_args = ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++  emberbsd_gir_env.set('LD_LIBRARY_PATH', meson.current_build_dir())
++endif
++
+ pango_sources = [
+   'break.c',
+   'ellipsize.c',
+@@ -133,7 +140,7 @@
+   gir_args = [
+     '--quiet',
+     '--doc-format=gi-docgen',
+-  ]
++  ] + emberbsd_gir_args
+   harfbuzz_gobject_dep = dependency('harfbuzz-gobject',
+                                     version: harfbuzz_req,
+                                     required: false,
+@@ -154,6 +161,7 @@
+     includes: [ 'HarfBuzz-0.0', 'GObject-2.0', 'Gio-2.0', 'cairo-1.0' ],
+     header: 'pango/pango.h',
+     install: true,
++    env: emberbsd_gir_env,
+     extra_args: gir_args,
+   )
+   pango_gir_dep = declare_dependency(sources: pango_gir)
+@@ -258,6 +266,7 @@
+       includes: [ pango_gir[0], 'fontconfig-2.0', ],
+       header: 'pango/pangofc-fontmap.h',
+       install: true,
++      env: emberbsd_gir_env,
+       extra_args: gir_args,
+     )
+     pangofc_gir_dep = declare_dependency(sources: pangofc_gir)
+@@ -276,6 +285,7 @@
+       includes: [ pangofc_gir[0], 'freetype2-2.0', ],
+       header: 'pango/pango-ot.h',
+       install: true,
++      env: emberbsd_gir_env,
+       extra_args: gir_args,
+     )
+     pangoot_gir_dep = declare_dependency(sources: pangoot_gir)
+@@ -293,6 +303,7 @@
+       includes: [ pangofc_gir[0], 'freetype2-2.0', ],
+       header: 'pango/pangoft2.h',
+       install: true,
++      env: emberbsd_gir_env,
+       extra_args: gir_args,
+     )
+     pangoft2_gir_dep = declare_dependency(sources: pangoft2_gir)
+@@ -385,6 +396,7 @@
+       includes: [ pango_gir[0], pangoot_gir[0], pangoft2_gir[0], 'GObject-2.0', 'xft-2.0', 'xlib-2.0' ],
+       header: 'pango/pangoxft.h',
+       install: true,
++      env: emberbsd_gir_env,
+       extra_args: gir_args,
+     )
+     pangoxft_dep_sources += pangoxft_gir
+@@ -554,6 +566,7 @@
+       includes: [ pango_gir[0], 'GObject-2.0', 'cairo-1.0' ],
+       header: 'pango/pangocairo.h',
+       install: true,
++      env: emberbsd_gir_env,
+       extra_args: gir_args,
+     )
+     pangocairo_dep_sources += pangocairo_gir

@@ -159,3 +159,5 @@ On CM5 on 2026-10-12, actual Pango GType queries reused 34 byte-identical
 libraries and transferred approximately 0.9 MiB per query. Complete manifest
 checks, target execution and temporary-directory cleanup passed. This is a
 build-time GType result, not acceptance of an installed Pango application.
+
+The [text and GTK consumer receipt](desktop-introspection.md) records full HarfBuzz, Pango, AT-SPI and GTK packages with real CM5 queries. Their graphical sessions and full upstream suites remain separate.

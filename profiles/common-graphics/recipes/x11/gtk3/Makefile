@@ -1,0 +1,132 @@
+# $NetBSD: Makefile,v 1.232 2026/09/02 19:05:09 wiz Exp $
+
+DISTNAME=	gtk-3.24.52
+PKGNAME=	${DISTNAME:S/gtk/gtk3+/}
+PKGREVISION=	4
+CATEGORIES=	x11 gnome
+MASTER_SITES=	${MASTER_SITE_GNOME:=sources/gtk/${PKGVERSION_NOREV:R}/}
+EXTRACT_SUFX=	.tar.xz
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://www.gtk.org/
+COMMENT=	GIMP Toolkit v3 - libraries for building graphical user interfaces
+LICENSE=	gnu-lgpl-v2.1
+
+TOOL_DEPENDS+=	gettext-tools>=0.19.4nb1:../../devel/gettext-tools
+# needs xsltproc
+TOOL_DEPENDS+=	libxslt-[0-9]*:../../textproc/libxslt
+TOOL_DEPENDS+=	docbook-xsl-[0-9]*:../../textproc/docbook-xsl
+
+USE_LANGUAGES=		c c++
+USE_PKGLOCALEDIR=	yes
+USE_TOOLS+=		bash gdbus-codegen ggrep msgmerge perl pkg-config xgettext
+PTHREAD_AUTO_VARS=	yes
+
+# "error: 'for' loop initial declarations are only allowed in C99 mode"
+# tests need M_PI, ISO C unacceptable on illumos
+FORCE_C_STD=	gnu99
+
+MESON_ARGS+=	-Dman=true
+MESON_ARGS+=	--localedir=${PREFIX}/${PKGLOCALEDIR}/locale
+MESON_ARGS+=	--sysconfdir=${PREFIX}/libdata
+
+BUILDLINK_TRANSFORM.SunOS+=	rm:-Wl,--export-dynamic
+
+MAKE_ENV.Darwin+=	DYLD_LIBRARY_PATH=${WRKSRC}/output/gdk:${WRKSRC}/output/gtk
+
+# There is no logic in gettext.mk to detect the native version of xgettext,
+# and we do need it to be compiled with Glade support.
+_TOOLS_USE_PKGSRC.xgettext=	yes
+
+TEST_TARGET=		check
+
+PKGCONFIG_OVERRIDE+=	gdk-3.0.pc.in
+PKGCONFIG_OVERRIDE+=	gtk+-3.0.pc.in
+PKGCONFIG_OVERRIDE+=	gtk+-unix-print-3.0.pc.in
+PKGCONFIG_OVERRIDE+=	gail-3.0.pc.in
+
+INSTALLATION_DIRS+=	lib/gtk-3.0/immodules
+INSTALLATION_DIRS+=	lib/gtk-3.0/modules
+INSTALLATION_DIRS+=	lib/gtk-3.0/3.0.0/filesystems
+
+.include "../../mk/bsd.prefs.mk"
+
+.if ${USE_CROSS_COMPILE:tl} == "yes"
+
+TOOL_DEPENDS+=		glib2>=0:../../devel/glib2
+MESON_BINARIES+=	glib-compile-resources glib-compile-schemas
+MESON_BINARY.glib-compile-resources=	\
+			${TOOLBASE}/bin/glib-compile-resources
+MESON_BINARY.glib-compile-schemas=	\
+			${TOOLBASE}/bin/glib-compile-schemas
+
+TOOL_DEPENDS+=			glib2-tools>=0:../../devel/glib2-tools
+MESON_BINARIES+=		glib-genmarshal glib-mkenums
+MESON_BINARY.glib-genmarshal=	${TOOLBASE}/bin/glib-genmarshal
+MESON_BINARY.glib-mkenums=	${TOOLBASE}/bin/glib-mkenums
+
+MESON_BINARIES+=		gdbus-codegen
+MESON_BINARY.gdbus-codegen=	${TOOLS_CMD.gdbus-codegen}
+
+# wayland-protocols abuses pc_sysrootdir in its .pc files, causing the
+# cross-destdir to be prefixed twice to paths.
+ALL_ENV+=		PKG_CONFIG_FDO_SYSROOT_RULES=1
+
+.endif
+
+# We remove the module databases during post-install since we create them
+# anew in the +INSTALL script as part of the POST-INSTALL action.
+#
+post-install:
+	${RM} -f ${DESTDIR}${GTK3_IMMODULES_DB}
+
+FILES_SUBST+=		GTK_UPDATE_ICON_CACHE="${PREFIX}/bin/gtk-update-icon-cache"
+FILES_SUBST+=		ICON_THEME_DIR="${PREFIX}/share/icons"
+INSTALL_TEMPLATES+=	../../x11/gtk2/files/icon-cache.tmpl
+
+PRINT_PLIST_AWK+=	/quartz/ || /themes\/Mac\// \
+					{ $$0 = "$${PLIST.quartz}"$$0 }
+PRINT_PLIST_AWK+=	/wayland/	{ $$0 = "$${PLIST.wayland}"$$0 }
+PRINT_PLIST_AWK+=	/gdkx/ || /x11/ || /GdkX/ || /im-xim/ \
+					{ $$0 = "$${PLIST.x11}"$$0 }
+
+PRINT_PLIST_AWK+=	/cups/		{ $$0 = "$${PLIST.cups}"$$0 }
+
+PRINT_PLIST_AWK+=	/girepository/ || /\.gir$$/ \
+					{ $$0 = "$${PLIST.introspection}"$$0 }
+PRINT_PLIST_AWK+=	/gtk-doc/	{ $$0 = "$${PLIST.doc}"$$0 }
+
+_BUILDING_GTK3=	yes
+.include "modules.mk"
+
+.include "options.mk"
+
+.include "../../converters/fribidi/buildlink3.mk"
+.include "../../databases/shared-mime-info/buildlink3.mk"
+BUILDLINK_API_DEPENDS.at-spi2-core+=	at-spi2-core>=2.54
+.include "../../devel/at-spi2-core/buildlink3.mk"
+
+.if !empty(PKG_OPTIONS:Mgtk3-atk-bridge) && empty(PKG_BUILD_OPTIONS.at-spi2-core:Mdbus)
+PKG_FAIL_REASON=	"gtk3 with the gtk3-atk-bridge enabled needs at-spi2-core built with the dbus option."
+.endif
+
+.include "../../devel/gettext-lib/buildlink3.mk"
+BUILDLINK_API_DEPENDS.glib2+=	glib2>=2.57.2
+.include "../../devel/glib2/buildlink3.mk"
+BUILDLINK_API_DEPENDS.gdk-pixbuf2+=	gdk-pixbuf2>=2.30.0
+.include "../../graphics/gdk-pixbuf2/buildlink3.mk"
+.include "../../devel/glib2/schemas.mk"
+.include "../../devel/meson/build.mk"
+BUILDLINK_API_DEPENDS.pango+=	pango>=1.41
+.include "../../devel/pango/buildlink3.mk"
+BUILDLINK_API_DEPENDS.fontconfig+=	fontconfig>=2.11.91
+.include "../../fonts/fontconfig/buildlink3.mk"
+BUILDLINK_API_DEPENDS.cairo+=	cairo>=1.18
+.include "../../graphics/cairo/buildlink3.mk"
+.include "../../graphics/freetype2/buildlink3.mk"
+BUILDLINK_API_DEPENDS.libepoxy+=	libepoxy>=1.4
+.include "../../graphics/libepoxy/buildlink3.mk"
+.include "../../graphics/hicolor-icon-theme/buildlink3.mk"
+.include "../../lang/python/tool.mk"
+.include "../../sysutils/desktop-file-utils/desktopdb.mk"
+.include "../../mk/bsd.pkg.mk"

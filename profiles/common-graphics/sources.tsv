@@ -33,3 +33,5 @@ devel/xxhash	xxhash-0.8.4.tar.gz	5738270935e7c3d38a79b3adf7c9692566ce7895a25f67d
 graphics/gdk-pixbuf2	gdk-pixbuf-2.44.8.tar.xz	919f529512961a12e81cd4b4b466a48c3933469e7f9a310c6513cd4fb252ba3c	https://download.gnome.org/sources/gdk-pixbuf/2.44/gdk-pixbuf-2.44.8.tar.xz
 databases/shared-mime-info	shared-mime-info-2.5.1.tar.bz2	b75b420da9b0be9a3d99b1bee6ed87957b56ab54583ac1a97fbd0dc98ddddb25	https://gitlab.freedesktop.org/xdg/shared-mime-info/-/archive/2.5.1/shared-mime-info-2.5.1.tar.bz2
 wayland/labwc	labwc-0.20.2.tar.gz	fae023b6fe022f7057556707a17cdb2d98e0138c5dffaedaa1dade975699f9e8	https://github.com/labwc/labwc/archive/0.20.2.tar.gz
+x11/gtk3	gtk-3.24.52.tar.xz	80931fa472a77b9a164f6740e3c0b444fac6770054632d35a7ff9d679e5e7b9f	https://download.gnome.org/sources/gtk/3.24/gtk-3.24.52.tar.xz
+devel/at-spi2-core	at-spi2-core-2.62.1.tar.xz	cca6b6a86e4389d89b370288761ce2385ddeceb10c4412da78689bc30c88af2d	https://download.gnome.org/sources/at-spi2-core/2.62/at-spi2-core-2.62.1.tar.xz

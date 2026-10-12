@@ -3,5 +3,5 @@ $NetBSD: distinfo,v 1.176 2026/08/27 05:00:48 adam Exp $
 BLAKE2s (harfbuzz-14.6.0.tar.xz) = fc15425c96a972d9f1eb9e68107b036c289054eab8ed7f0ba95dc22c4826928e
 SHA512 (harfbuzz-14.6.0.tar.xz) = 085c7248a0b3eed4adb5259d7cd27a3a99c51cebf20fde0e0389bb7f517797562c2460430dc78758ce62264e008625893745618615bb124efad69bd8625100eb
 Size (harfbuzz-14.6.0.tar.xz) = 20295260 bytes
-SHA1 (patch-src_meson.build) = bde4210a40c953574b710a3acd01cca419fd5d8e
+SHA1 (patch-src_meson.build) = 5eae5c27b601ab9a711545a0bdbfde661b798e89
 SHA1 (patch-util_meson.build) = 525d74e443d79249e785a3a9dac85d42c369f57c
