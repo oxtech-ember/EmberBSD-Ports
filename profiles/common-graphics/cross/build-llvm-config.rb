@@ -9,7 +9,7 @@ require 'open3'
 require 'shellwords'
 
 UPSTREAM_SHA256 = '7c54727d9deda1689a7e6c9096f6627d73659da04a6ac88c3e0a0595f26e74bb'
-VERSION = '23.1.2'
+VERSION = '23.1.3'
 
 def fail!(message)
   abort "build-llvm-config: #{message}"
@@ -61,7 +61,7 @@ fail!('NEW_WORK may not be inside an input tree') if [source, target, native, sy
 fail!('NEW_WORK may not contain whitespace/control characters') if work.match?(/[\s\x00-\x1f]/)
 
 cpp = "#{source}/tools/llvm-config/llvm-config.cpp"
-fail!('upstream llvm-config.cpp differs from LLVM 23.1.2') unless File.file?(cpp) && Digest::SHA256.file(cpp).hexdigest == UPSTREAM_SHA256
+fail!('upstream llvm-config.cpp differs from LLVM 23.1.3') unless File.file?(cpp) && Digest::SHA256.file(cpp).hexdigest == UPSTREAM_SHA256
 required = [cpp]
 [target, native].each do |build|
   required.concat(%w[CMakeCache.txt include/llvm/Config/llvm-config.h include/llvm/Config/config.h include/llvm/Config/abi-breaking.h].map { |p| "#{build}/#{p}" })
@@ -74,8 +74,8 @@ td, nd = [target, native].map { |p| definitions("#{p}/include/llvm/Config/llvm-c
 target_config = definitions("#{target}/include/llvm/Config/config.h")
 vars = definitions("#{target}/tools/llvm-config/BuildVariables.inc")
 fail!('target must be configured for NetBSD/aarch64') unless tc['CMAKE_SYSTEM_NAME'] == 'NetBSD' && tc['CMAKE_SYSTEM_PROCESSOR'] == 'aarch64'
-fail!('supplied sysroot differs from the target configuration') unless tc['CMAKE_SYSROOT'] == sysroot
-fail!('target and native LLVM versions must both be 23.1.2') unless [td, nd].all? { |d| string(d, 'LLVM_VERSION_STRING') == VERSION }
+fail!('supplied sysroot differs from the target configuration') unless tc['CMAKE_SYSROOT'] && File.directory?(tc['CMAKE_SYSROOT']) && File.realpath(tc['CMAKE_SYSROOT']) == sysroot
+fail!('target and native LLVM versions must both be 23.1.3') unless [td, nd].all? { |d| string(d, 'LLVM_VERSION_STRING') == VERSION }
 fail!('target PACKAGE_VERSION disagrees with LLVM_VERSION_STRING') unless string(target_config, 'PACKAGE_VERSION') == string(td, 'LLVM_VERSION_STRING')
 fail!('native source does not match the supplied source tree') unless File.realpath(nc.fetch('CMAKE_HOME_DIRECTORY')) == source
 fail!('target object root does not match TARGET_BUILD') unless string(vars, 'LLVM_OBJ_ROOT') == target

@@ -1,11 +1,11 @@
 # Run target LLVM metadata queries on the build host
 
 Mesa's cross configuration needs an executable on macOS that describes the
-NetBSD LLVM package. The existing native generator build's `llvm-config`
+EmberBSD LLVM package. The existing native generator build's `llvm-config`
 describes Darwin and must not be used as target metadata. The target executable
 cannot run directly on macOS.
 
-`build-llvm-config.rb` compiles the pinned upstream LLVM 23.1.2
+`build-llvm-config.rb` compiles the pinned upstream LLVM 23.1.3
 `tools/llvm-config/llvm-config.cpp`. It reuses the existing native Support,
 TargetParser and Demangle archives; it does not build LLVM libraries. Ruby,
 the original native C++ compiler and shasum are host dependencies. This is a
@@ -21,7 +21,7 @@ ruby test-llvm-config.rb /absolute/new-work
 ```
 
 The source is the `llvm` subdirectory, not the llvm-project root. The two build
-directories must have matching LLVM 23.1.2 sources and completed generated
+directories must have matching LLVM 23.1.3 sources and completed generated
 metadata. Keep the input trees unchanged through building, acceptance and
 sealing. The sealed tool then permits build-tree cleanup while checking the
 installed package on every query. Use a fresh output directory.

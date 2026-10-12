@@ -13,7 +13,7 @@ LLVM_BUILDLINK3_MK:=
 GCC_REQD+=		14
 .endif
 
-BUILDLINK_API_DEPENDS.llvm+=	llvm>=23.1.2
+BUILDLINK_API_DEPENDS.llvm+=	llvm>=23.1.3
 BUILDLINK_PKGSRCDIR.llvm?=	../../lang/llvm
 
 LLVM_CONFIG_PATH?=		${BUILDLINK_PREFIX.llvm}/bin/llvm-config

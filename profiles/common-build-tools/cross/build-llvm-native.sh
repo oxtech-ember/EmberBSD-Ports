@@ -15,10 +15,10 @@ case "$jobs" in ''|*[!0-9]*|0) echo 'JOBS must be positive.' >&2; exit 2 ;; esac
 case "$HOST_PYTHON" in /*) ;; *) exit 2;; esac
 [ -x "$HOST_PYTHON" ]
 [ "$(shasum -a 256 "$archive" | awk '{print $1}')" = \
-    c98bbef08a2b4c2613cd50e9aa9ae7b69b1fe6c16b2c40373bc0ab6116fdf78a ]
+    c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34 ]
 mkdir "$work"
 mkdir "$work/source"
-source=llvm-project-23.1.2.src
+source=llvm-project-23.1.3.src
 tar -xf "$archive" -C "$work/source" "$source/llvm" "$source/cmake" \
     "$source/third-party" "$source/libc"
 {

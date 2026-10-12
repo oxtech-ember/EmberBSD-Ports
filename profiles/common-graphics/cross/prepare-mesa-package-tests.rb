@@ -45,7 +45,7 @@ options = JSON.parse(File.read("#{info}/intro-buildoptions.json")).to_h { |o| [o
 end
 abort 'require complete common drivers/platforms' unless options.fetch('gallium-drivers').sort == %w[llvmpipe softpipe v3d virgl] && options.fetch('platforms').sort == %w[wayland x11]
 ninja = File.read("#{build}/build.ninja")
-abort 'require the actual shared LLVM23 ORC build' unless ninja.include?('-DGALLIVM_USE_ORCJIT=1') && ninja.include?('-DLLVM_IS_SHARED=1') && ninja.include?('23.1.2')
+abort 'require the actual shared LLVM23 ORC build' unless ninja.include?('-DGALLIVM_USE_ORCJIT=1') && ninja.include?('-DLLVM_IS_SHARED=1') && ninja.include?('23.1.3')
 inputs = [__FILE__, "#{owner}/mesa-render.c", "#{owner}/run-mesa-package-tests.sh", cc, readelf, package,
           "#{source}/VERSION", "#{build}/build.ninja", "#{build}/compile_commands.json"] +
          %w[intro-projectinfo.json intro-buildoptions.json intro-tests.json].map { |name| "#{info}/#{name}" }

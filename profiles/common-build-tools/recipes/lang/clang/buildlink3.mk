@@ -5,7 +5,7 @@ BUILDLINK_TREE+=	clang
 .if !defined(CLANG_BUILDLINK3_MK)
 CLANG_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.clang+=	clang>=23.1.2
+BUILDLINK_API_DEPENDS.clang+=	clang>=23.1.3
 BUILDLINK_PKGSRCDIR.clang?=	../../lang/clang
 
 BUILDLINK_FILES.clang+=		bin/amdgpu-arch

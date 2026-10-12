@@ -7,10 +7,11 @@ The former VM-only resource plan does not constrain the cross build.
 
 ## One dependency stack
 
-Use GCC 16.2, Python 3.14.8, Meson 1.12.1, shared LLVM 23.1.2,
+Use GCC 16.2, Python 3.14.8, Meson 1.12.1, shared LLVM 23.1.3,
 Mesa 26.2.4, Qt 6.12.0 LTS and Frameworks 6.31.0. Keep their common recipes,
 ABI and final `/usr/pkg` prefix. Do not add older providers for one consumer.
-The toolkit's final Qt prefix is `/usr/pkg/qt6`.
+The toolkit's final Qt prefix is `/usr/pkg/qt6`. The 23.1.3 target update is
+in progress; the existing 23.1.2 runtime receipt is not evidence for it.
 
 The [common graphics acceptance](../../../profiles/common-graphics/cross/mesa-cm5.md)
 records hardware OpenGL and same-device PRIME/EGLImage on CM5. It does not

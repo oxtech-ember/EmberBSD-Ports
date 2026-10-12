@@ -12,20 +12,20 @@ cat > "$work/default.mk.conf" <<EOF
 EOF
 "$bmake" -C "$pkgsrc/lang/llvm" MAKECONF="$work/default.mk.conf" \
     -v TOOL_DEPENDS > "$work/default.txt"
-grep -q 'llvm-23.1.2:../../lang/llvm' "$work/default.txt"
+grep -q 'llvm-23.1.3:../../lang/llvm' "$work/default.txt"
 "$bmake" -C "$pkgsrc/lang/llvm" MAKECONF="$conf" \
     EMBERBSD_LLVM_NATIVE_TOOLS="$native" -v PKG_FAIL_REASON > "$work/failure.txt"
 [ ! -s "$work/failure.txt" ] || [ -z "$(cat "$work/failure.txt")" ]
 "$bmake" -C "$pkgsrc/lang/llvm" MAKECONF="$conf" \
     EMBERBSD_LLVM_NATIVE_TOOLS="$native" -v TOOL_DEPENDS \
     -v CMAKE_CONFIGURE_ARGS -v EXTRACT_ELEMENTS > "$work/selected.txt"
-if grep -q 'llvm-23.1.2:../../lang/llvm' "$work/selected.txt"; then
+if grep -q 'llvm-23.1.3:../../lang/llvm' "$work/selected.txt"; then
     echo 'Redundant whole-host LLVM dependency retained.' >&2; exit 1
 fi
 for expected in 'CMAKE_SYSTEM_NAME:STRING=NetBSD' 'LLVM_HOST_TRIPLE:STRING=aarch64--netbsd' \
     'LLVM_ENABLE_RTTI=ON' 'LLVM_BUILD_LLVM_DYLIB=ON' 'LLVM_LINK_LLVM_DYLIB=ON' \
     'LLVM_INSTALL_TOOLCHAIN_ONLY=OFF' 'LLVM_INCLUDE_TESTS=ON' 'LLVM_INSTALL_GTEST=ON' \
-    'llvm-project-23.1.2.src/libc' 'AArch64;AMDGPU;ARM' 'ARC;CSKY;DirectX;M68k;Xtensa'; do
+    'llvm-project-23.1.3.src/libc' 'AArch64;AMDGPU;ARM' 'ARC;CSKY;DirectX;M68k;Xtensa'; do
     grep -Fq "$expected" "$work/selected.txt"
 done
 mkdir "$work/invalid"
@@ -38,7 +38,7 @@ for tool in llvm-tblgen llvm-min-tblgen llvm-config; do
         case "$invalid" in
         missing) ;;
         old) printf '#!/bin/sh\necho "LLVM version 21.1.8"\n' > "$work/invalid/$tool"; chmod +x "$work/invalid/$tool" ;;
-        failed) printf '#!/bin/sh\necho "LLVM version 23.1.2"\nexit 1\n' > "$work/invalid/$tool" ;;
+        failed) printf '#!/bin/sh\necho "LLVM version 23.1.3"\nexit 1\n' > "$work/invalid/$tool" ;;
         esac
         "$bmake" -C "$pkgsrc/lang/llvm" MAKECONF="$conf" \
             EMBERBSD_LLVM_NATIVE_TOOLS="$work/invalid" \

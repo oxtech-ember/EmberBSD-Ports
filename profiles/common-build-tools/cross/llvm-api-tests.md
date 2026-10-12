@@ -1,6 +1,7 @@
 # Shared LLVM C API and ORC acceptance
 
-These consumers test the installed LLVM 23.1.2 package on NetBSD/AArch64.
+These consumers test the installed common LLVM package on EmberBSD/AArch64.
+Current probes select 23.1.3; the earlier 23.1.2 runtime receipt remains historical.
 They do not install another runtime or build LLVM. Cross compilation requires
 the accepted GCC16 cross tools, the target sysroot with LLVM's dependencies,
 and the [host metadata tool](../../common-graphics/cross/llvm-config.md)

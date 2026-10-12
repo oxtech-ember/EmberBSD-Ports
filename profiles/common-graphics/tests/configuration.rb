@@ -56,7 +56,7 @@ config="#{work}/llvm-config"
 File.write(config, <<'SH')
 #!/bin/sh
 case "$*" in
-  --version) echo "${TEST_LLVM_VERSION:-23.1.2}" ;;
+  --version) echo "${TEST_LLVM_VERSION:-23.1.3}" ;;
   '--shared-mode --link-shared') echo "${TEST_LLVM_SHARED:-shared}" ;;
   --has-rtti) echo YES ;;
   '--link-shared --libs core executionengine orcjit native') echo '-lLLVM-23' ;;

@@ -38,7 +38,7 @@ GCC
 cat > "$work/llvm-config" <<'LLVM'
 #!/bin/sh
 case "$1" in
-    --version) echo "${FIXTURE_LLVM_VERSION:-23.1.2}" ;;
+    --version) echo "${FIXTURE_LLVM_VERSION:-23.1.3}" ;;
     --host-target) echo "${FIXTURE_LLVM_TARGET:-aarch64-unknown-netbsd}" ;;
     *) exit 1 ;;
 esac
@@ -66,7 +66,7 @@ for name in old-gcc old-llvm linux abi duplicate escape missing; do
     grep -q '^Invalid cross GCC metadata:' "$work/$name.log"
 done
 grep -q 'expected GCC 16.2.0' "$work/old-gcc.log"
-grep -q 'expected LLVM 23.1.2' "$work/old-llvm.log"
+grep -q 'expected LLVM 23.1.3' "$work/old-llvm.log"
 grep -q 'unsupported LLVM target' "$work/linux.log"
 grep -q 'target ABI mismatch' "$work/abi.log"
 grep -q 'duplicate C++ include directory' "$work/duplicate.log"

@@ -11,8 +11,8 @@ cat > "$work/project/meson.build" <<'EOF'
 project('llvm-selection-fixture', 'c', 'cpp', meson_version: '>=1.12.1', default_options: ['cpp_std=c++20'])
 cpp = meson.get_compiler('cpp')
 assert(cpp.compiles('static_assert(__cplusplus >= 202002L); int main() { return 0; }'))
-llvm = dependency('llvm', method: get_option('lookup'), native: get_option('build_dep'), version: '>=23.1.2')
-assert(llvm.version() == '23.1.2')
+llvm = dependency('llvm', method: get_option('lookup'), native: get_option('build_dep'), version: '>=23.1.3')
+assert(llvm.version() == '23.1.3')
 EOF
 cat > "$work/project/meson.options" <<'EOF'
 option('lookup', type: 'combo', choices: ['config-tool', 'auto'], value: 'config-tool')
@@ -22,7 +22,7 @@ cat > "$work/bin/good" <<'EOF'
 #!/bin/sh
 printf '%s %s\n' "${0##*/}" "$*" >> "$LLVM_TRACE"
 case "$1" in
-    --version) if [ "${0##*/}" = wrong ]; then echo 21.1.8; else echo 23.1.2; fi ;;
+    --version) if [ "${0##*/}" = wrong ]; then echo 21.1.8; else echo 23.1.3; fi ;;
     --components) echo core ;;
     --shared-mode) echo shared ;;
     --cppflags|--libs|--libfiles|--libdir) ;;

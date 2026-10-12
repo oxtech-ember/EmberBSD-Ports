@@ -86,7 +86,7 @@ pre-configure:
 	${TEST} "$$(${LLVM_CONFIG_PATH} --libdir)" = ${CROSS_DESTDIR:Q}/usr/pkg/lib
 .endif
 	${TEST} -x ${LLVM_CONFIG_PATH:Q}
-	${TEST} "$$(${LLVM_CONFIG_PATH} --version)" = 23.1.2
+	${TEST} "$$(${LLVM_CONFIG_PATH} --version)" = 23.1.3
 	${TEST} "$$(${LLVM_CONFIG_PATH} --shared-mode --link-shared)" = shared
 	${TEST} "$$(${LLVM_CONFIG_PATH} --has-rtti)" = YES
 	${LLVM_CONFIG_PATH} --link-shared --libs core executionengine orcjit native > /dev/null

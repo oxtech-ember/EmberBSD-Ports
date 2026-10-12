@@ -1,18 +1,30 @@
 # LLVM 23 common family
 
-This profile supplies matching LLVM 23.1.2, Clang, LLD and upstream
+This profile prepares matching LLVM 23.1.3, Clang, LLD and upstream
 Python314 lit for the common Mesa26/TinyGo dependency closure. It extends
 [the common profile](README.md), based on pkgsrc
-`fff4deb639a1a640476203c80f752fb77b6cb14b`. The complete LLVM core package
+`fff4deb639a1a640476203c80f752fb77b6cb14b`. The previously accepted LLVM 23.1.2 core package
 cross-builds on macOS and passes installed C API and ORC JITLink acceptance
 on Zero 3W. [Mesa consumers](../common-graphics/cross/mesa-package.md) also pass
-installed runtime checks. Clang/LLD packages and TinyGo remain separate gates;
+installed runtime checks. Clang 23.1.2 cross-packaging also passes; installed Clang/LLD and TinyGo remain separate gates;
 core acceptance does not establish an installed compiler family.
 The `llvm-23.1.2nb1` revision also carries the shared
 [DWARF32/64 DWP package-index repair](cross/llvm-dwp-tests.md), with mixed-width,
 type-unit, live-debugger and malformed-input checks in the AArch64 VM.
 Its installed 104-case matrix and the existing C API/ORC consumers pass
 without loader overrides; package integrity covers all 2,789 payload entries.
+
+## Current 23.1.3 migration
+
+The [official stable 23.1.3 archive](https://github.com/llvm/llvm-project/releases/tag/llvmorg-23.1.3) was published on 2026-10-06. All four
+recipes now share its version and digests. Zero-fuzz patches, generated-header
+contracts, negative-input checks and the exported version selection pass.
+The DWP repair remains applied once. Matching native generators execute on
+macOS; the actual host metadata helper reports target AArch64, shared LLVM
+and RTTI. QDoc also passes a C++ documentation consumer with the official
+native LLVM/Clang SDK. Full 23.1.3 target packages and renewed Mesa/Qt runtime
+acceptance are still in progress. The dated 23.1.2 receipts below are historical
+evidence and must not be relabeled as 23.1.3 results.
 
 ## One family and development payload
 
@@ -32,7 +44,7 @@ by default. SPIRV is now normal. The stack is not restricted to AArch64.
 
 PLIST candidates refresh source/resource headers and restore the Config/Extension
 definitions and replacement Analysis/Clang Basic generated includes. A source-derived
-contract checks all 124 outputs in these directly related generation/install rules;
+contract checks 119 Clang and 11 LLVM outputs in these directly related generation/install rules;
 the preceding PLIST fails on 17 missing entries. llvm_gtest support, libclang.a,
 clangAnalysisLifetimeSafety and LLVMDTLTO are declared. Other generated/tool/archive
 payloads were subsequently checked against the complete LLVM core stage:
@@ -115,7 +127,7 @@ disable native defaults. Projects retain -nostdinc++, -nostdlib, -nodefaultlibs,
 The new py-llvm-lit recipe uses upstream lit's module/setup.py and lit.py launcher,
 common Python314 and ordinary wheel machinery. LLVM no longer installs a
 source/build-tree-dependent stub. Build-tree lit remains for upstream tests.
-Upstream reports 23.1.2dev; expected wheel metadata is 23.1.2.dev0, not silently
+Upstream reports 23.1.3dev; expected wheel metadata is 23.1.3.dev0, not silently
 relabeled. No project Python helper is added. Wheel payload/shebang/PLIST checks
 await native staging.
 
@@ -135,7 +147,7 @@ The generated-header gate is independently usable with the verified pristine tre
 
 ```sh
 sh profiles/common-build-tools/tests/llvm-generated-headers.sh \
-    /absolute/llvm-project-23.1.2.src \
+    /absolute/llvm-project-23.1.3.src \
     profiles/common-build-tools/recipes /absolute/new-header-check
 ```
 

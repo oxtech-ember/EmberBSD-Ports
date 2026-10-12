@@ -12,7 +12,7 @@ abort 'reference capture is incomplete' unless File.read("#{reference}/status").
 abort 'comparison requires an installed/staged prefix, not a development tree' if r.fetch('target_prefix') == r.fetch('target_build')
 target_prefix = File.read("#{reference}/prefix").strip
 abort 'invalid reference prefix' unless target_prefix.start_with?('/') && !target_prefix.match?(/\s/)
-abort 'reference must be LLVM 23.1.2 for AArch64 NetBSD' unless File.read("#{reference}/version").strip == '23.1.2' && File.read("#{reference}/host-target").strip == 'aarch64-unknown-netbsd'
+abort 'reference must be LLVM 23.1.3 for AArch64 NetBSD' unless File.read("#{reference}/version").strip == '23.1.3' && File.read("#{reference}/host-target").strip == 'aarch64-unknown-netbsd'
 components = %w[bitwriter engine mcdisassembler mcjit core executionengine scalaropts transformutils instcombine native orcjit]
 options = %w[version host-target has-rtti assertion-mode targets-built components prefix cppflags cflags cxxflags ldflags shared-mode libs libnames libfiles system-libs]
 failed = []

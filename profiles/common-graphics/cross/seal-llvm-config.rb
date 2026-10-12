@@ -42,7 +42,7 @@ r = JSON.parse(File.read("#{old}/receipt.json"))
   fail!("unsupported receipt path #{key}") unless p.start_with?('/') && safe_path?(p)
 end
 source, target, native, prefix = r.values_at('source', 'target_build', 'native_build', 'target_prefix')
-fail!('requires an accepted installed LLVM 23.1.2 helper') unless r['version'] == '23.1.2' && r['target_triple'] == 'aarch64--netbsd' && prefix == r['sysroot'] + '/usr/pkg'
+fail!('requires an accepted installed LLVM 23.1.3 helper') unless r['version'] == '23.1.3' && r['target_triple'] == 'aarch64--netbsd' && prefix == r['sysroot'] + '/usr/pkg'
 proof = r.fetch('library_proof')
 fail!('unsupported historical library proof') unless %w[identical cmake-install-strip].include?(proof['method']) &&
   proof['built_library'] == "#{target}/lib/libLLVM.so" && proof['staged_library'] == "#{prefix}/lib/libLLVM-23.so" &&

@@ -1,6 +1,6 @@
 # Cross-building the current Clang package
 
-The Clang 23.1.2 recipe uses target LLVM headers, libraries and CMake exports
+The Clang 23.1.3 recipe uses target LLVM headers, libraries and CMake exports
 from the common EmberBSD sysroot. Only generators and build interpreters run
 on the development host. This path supports the complete QtTools dependency;
 it does not replace QDoc or remove Qt Designer from the package.
@@ -14,7 +14,7 @@ only the matching native Clang generator from the same verified archive:
 ```sh
 HOST_PYTHON=/absolute/host-python3.14 JOBS=3 \
     sh profiles/common-build-tools/cross/build-clang-native.sh \
-    /absolute/llvm-project-23.1.2.src.tar.xz /absolute/native-llvm \
+    /absolute/llvm-project-23.1.3.src.tar.xz /absolute/native-llvm \
     /absolute/new-clang-host-work /absolute/cmake /absolute/ninja
 ```
 
@@ -59,6 +59,10 @@ running Clang on the target and checking actual C/C++ compilation, CRT/link
 selection, dynamic loading and the existing SDK opt-out behavior.
 
 ## Checks and current boundary
+
+The 23.1.3 source and input contracts pass; its full target package is being
+rebuilt with matching LLVM. The following 23.1.2 receipt remains historical.
+
 
 ```sh
 sh profiles/common-build-tools/tests/clang-cross-config.sh /absolute/new-check

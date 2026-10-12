@@ -24,7 +24,7 @@ end
 
 check('actual upstream tool reports target version/triple/RTTI/assertions') do
   out, _, status = query(tool, '--version', '--host-target', '--has-rtti', '--assertion-mode')
-  status.success? && out == "23.1.2\naarch64-unknown-netbsd\nYES\nOFF\n"
+  status.success? && out == "23.1.3\naarch64-unknown-netbsd\nYES\nOFF\n"
 end
 check('target component graph includes non-native backends and ORC') do
   out, _, status = query(tool, '--components')
@@ -87,7 +87,7 @@ Dir.mktmpdir('ember-llvm-config-tests-') do |tmp|
   File.write("#{changed_source}/tools/llvm-config/llvm-config.cpp", File.read("#{receipt.fetch('source')}/tools/llvm-config/llvm-config.cpp") + "\n// changed upstream input\n")
   check('rejects changed upstream llvm-config source') do
     _, err, status = Open3.capture3('ruby', builder, changed_source, receipt.fetch('target_build'), receipt.fetch('native_build'), receipt.fetch('sysroot'), receipt.fetch('target_prefix'), "#{tmp}/wrong-source")
-    !status.success? && err.include?('differs from LLVM 23.1.2')
+    !status.success? && err.include?('differs from LLVM 23.1.3')
   end
   wrong_metadata = "#{tmp}/leaked-target"
   %w[CMakeCache.txt include/llvm/Config/llvm-config.h include/llvm/Config/config.h include/llvm/Config/abi-breaking.h tools/llvm-config/BuildVariables.inc tools/llvm-config/LibraryDependencies.inc tools/llvm-config/ExtensionDependencies.inc].each do |name|

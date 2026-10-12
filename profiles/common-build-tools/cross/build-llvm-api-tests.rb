@@ -30,7 +30,7 @@ prefix = query(config, '--prefix')
 metadata_receipt = "#{File.dirname(File.dirname(config))}/receipt.json"
 metadata = JSON.parse(File.read(metadata_receipt))
 abort 'require a validated staged target prefix and matching sysroot' unless prefix.start_with?('/') && File.directory?(prefix) && metadata.fetch('target_prefix') == prefix && metadata.fetch('sysroot') == sysroot && metadata.fetch('staged_library_sha256', nil)
-abort 'require staged LLVM 23.1.2 for AArch64 NetBSD' unless query(config, '--version') == '23.1.2' && query(config, '--host-target') == 'aarch64-unknown-netbsd'
+abort 'require staged LLVM 23.1.3 for AArch64 NetBSD' unless query(config, '--version') == '23.1.3' && query(config, '--host-target') == 'aarch64-unknown-netbsd'
 abort 'LLVM must have shared linkage and RTTI' unless query(config, '--has-rtti') == 'YES' && query(config, '--link-shared', '--shared-mode', 'core', 'bitreader', 'bitwriter', 'orcjit', 'native') == 'shared'
 cc, cxx, readelf = %w[gcc g++ readelf].map { |name| "#{tools}/bin/aarch64--netbsd-#{name}" }
 abort 'missing cross compiler or ELF inspector' unless [cc, cxx, readelf].all? { |p| File.executable?(p) }

@@ -9,11 +9,11 @@ mkdir "$2"
 work=$(CDPATH= cd -- "$2" && pwd)
 case "$work:$distfiles" in *[!a-zA-Z0-9_./:-]*) echo 'Use safe absolute paths.' >&2; exit 2 ;; esac
 profile=$root/profiles/common-build-tools
-archive=llvm-project-23.1.2.src.tar.xz
-source=llvm-project-23.1.2.src
+archive=llvm-project-23.1.3.src.tar.xz
+source=llvm-project-23.1.3.src
 verifier=$root/upstream/pkgsrc/mk/checksum/checksum.awk
 [ "$(shasum -a 256 "$distfiles/$archive" | awk '{print $1}')" = \
-    c98bbef08a2b4c2613cd50e9aa9ae7b69b1fe6c16b2c40373bc0ab6116fdf78a ]
+    c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34 ]
 cat > "$work/digest" <<'DIGEST'
 #!/bin/sh
 algorithm=$1; shift
@@ -64,7 +64,9 @@ for project in llvm clang; do
 done
 # Include the directly related generation/install declarations for the PLIST gate.
 for input in llvm/include/llvm/Analysis/CMakeLists.txt clang/CMakeLists.txt \
-    clang/include/clang/Basic/CMakeLists.txt; do
+    clang/include/clang/Basic/CMakeLists.txt \
+    clang/include/clang/Options/CMakeLists.txt clang/include/clang/Sema/CMakeLists.txt \
+    llvm/tools/llvm-offload-binary/CMakeLists.txt; do
     printf '%s\n' "$source/$input" >> "$work/extract-list"
 done
 # All payloads have safe pkgsrc patch paths; decompress the archive once.
@@ -94,15 +96,15 @@ done
 # Accepted Python/Meson recipe bytes and established GCC recipe composition
 # are compared without rerunning their native or consumer suites.
 mkdir "$work/reference"
-git -C "$root" archive 7bc4faa162bb5a4b3a1de0bfd06f5eeb8036b009 \
+git -C "$root" archive HEAD \
     profiles/common-build-tools/recipes/lang/python314 profiles/common-build-tools/recipes/devel/meson \
     scripts/prepare-pkgsrc.sh | tar -xf - -C "$work/reference"
 for recipe in lang/python314 devel/meson; do
     diff -r "$work/reference/profiles/common-build-tools/recipes/$recipe" "$work/pkgsrc/$recipe"
 done
 git -C "$root/upstream/pkgsrc" archive HEAD lang/gcc16 lang/gcc16-libs lang/gcc16-libjit \
-    math/mpfr math/mpcomplex devel/gtexinfo lang/tcl-expect | tar -xf - -C "$work/reference"
-for patch in pkgsrc-gcc16.2.patch strict-tests.patch current-prerequisites.patch stable-expect.patch gcc-tsvc-netbsd.patch; do
+    math/mpfr math/mpcomplex devel/gtexinfo lang/tcl-expect mk/pkgformat/pkg/metadata.mk | tar -xf - -C "$work/reference"
+for patch in pkgsrc-gcc16.2.patch strict-tests.patch current-prerequisites.patch stable-expect.patch gcc-tsvc-netbsd.patch gcc-modules-fallocate.patch gcc-package-requires.patch; do
     patch -f -N -E -F 0 -p1 -d "$work/reference" < \
         "$root/profiles/development-toolchain/patches/$patch" >> "$work/gcc-reference.log"
 done
