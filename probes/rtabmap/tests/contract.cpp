@@ -53,7 +53,7 @@ static rtabmap::SensorData observation(int view, int id, bool unrelated = false)
         points.emplace_back(x, y, z);
         keypoints.emplace_back(u, v, 8);
         depth.at<unsigned short>(int(v), int(u)) = static_cast<unsigned short>(std::lround(z * 1000));
-        uint32_t random = 0x9e3779b9u ^ uint32_t(landmark + (unrelated ? 50000 : 0));
+        uint32_t random = 0x9e3779b9u ^ uint32_t(landmark + view * 1000 + (unrelated ? 50000 : 0));
         for (int column = 0; column < 32; ++column) {
             random ^= random << 13; random ^= random >> 17; random ^= random << 5;
             descriptors.at<unsigned char>(row, column) = static_cast<unsigned char>(random);

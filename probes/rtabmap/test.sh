@@ -29,7 +29,7 @@ OPENCV_PREFIX=$(cat "$work/logs/opencv-prefix.txt")
 PCL_PREFIX=$(cat "$work/logs/pcl-prefix.txt")
 GTSAM_PREFIX=$(cat "$work/logs/gtsam-prefix.txt")
 SQLITE_PREFIX=$(cat "$work/logs/sqlite-prefix.txt")
-LD_LIBRARY_PATH=$prefix/lib:$OPENCV_PREFIX/lib:$PCL_PREFIX/lib:$GTSAM_PREFIX/lib:$SQLITE_PREFIX/lib:/usr/pkg/lib
+LD_LIBRARY_PATH=/usr/pkg/gcc16/lib:$prefix/lib:$OPENCV_PREFIX/lib:$PCL_PREFIX/lib:$GTSAM_PREFIX/lib:$SQLITE_PREFIX/lib:/usr/pkg/lib
 export LD_LIBRARY_PATH
 cmake -S "$recipe/tests" -B "$work/test-build" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DPROBE_PREFIX="$prefix" -DEIGEN_PREFIX="$EIGEN_PREFIX" \
@@ -40,6 +40,8 @@ cmake -S "$recipe/tests" -B "$work/test-build" -G Ninja \
 cmake --build "$work/test-build" --parallel 1 > "$work/logs/consumer-build.log" 2>&1 || {
     cat "$work/logs/consumer-build.log" >&2; exit 1;
 }
+# The contract requires a new database path; remove any stale one.
+rm -f "$work/test-build/map.db"
 ctest --test-dir "$work/test-build" --output-on-failure --verbose > "$work/logs/consumer-test.log" 2>&1 || {
     cat "$work/logs/consumer-test.log" >&2; exit 1;
 }

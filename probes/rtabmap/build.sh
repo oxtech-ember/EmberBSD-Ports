@@ -101,6 +101,7 @@ tar -xzf "$work/archives/rtabmap-0.23.8.tar.gz" -C "$work/src"
 source_tree=$work/src/rtabmap-d069becc724905d6465a8758c40dae88e13bb9e8
 run patch-opencv5 patch -d "$source_tree" -p1 -i "$recipe/patches/opencv5-upstream.patch"
 run patch-dependencies patch -d "$source_tree" -p1 -i "$recipe/patches/shared-headless-dependencies.patch"
+run patch-gtsam4 sh "$recipe/patches/gtsam4-optional.sh" "$source_tree"
 # Disable every optional backend in the pinned source; enable GTSAM explicitly.
 # This avoids opportunistic linkage to packages installed by another probe.
 set --

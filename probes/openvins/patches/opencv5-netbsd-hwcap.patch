@@ -1,0 +1,49 @@
+--- a/modules/core/src/system.cpp
++++ b/modules/core/src/system.cpp
+@@ -632,10 +632,37 @@
+         }
+     #endif // CV_CPUID_X86
+ 
+-    #if defined __ANDROID__ || defined __linux__ || defined __QNX__
++    #if defined __ANDROID__ || defined __linux__ || defined __QNX__ || defined(__NetBSD__)
+     #ifdef __aarch64__
+         have[CV_CPU_NEON] = true;
+         have[CV_CPU_FP16] = true;
++#ifdef __NetBSD__
++        // NetBSD procfs publishes plain (type, value) pairs; AT_HWCAP is the
++        // SysV ABI slot 16 carrying Linux-compatible feature bits on EmberBSD.
++        struct netbsd_auxv64 { uint64_t a_type; uint64_t a_val; };
++        enum { NETBSD_AT_HWCAP = 16 };
++        // cv::read overloads hide the POSIX prototypes inside namespace cv,
++        // so the syscalls are called with explicit global qualification.
++        int cpufile = ::open("/proc/self/auxv", O_RDONLY);
++
++        if (cpufile >= 0)
++        {
++            netbsd_auxv64 auxv;
++            const size_t size_auxv_t = sizeof(auxv);
++
++            while (::read(cpufile, &auxv, size_auxv_t) == (ssize_t)size_auxv_t)
++            {
++                if (auxv.a_type == NETBSD_AT_HWCAP)
++                {
++                    have[CV_CPU_NEON_DOTPROD] = (auxv.a_val & (1u << 20)) != 0; // HWCAP_ASIMDDP
++                    have[CV_CPU_NEON_FP16] = (auxv.a_val & (1u << 10)) != 0;    // HWCAP_ASIMDHP
++                    have[CV_CPU_SVE] = (auxv.a_val & (1u << 22)) != 0;          // HWCAP_SVE
++                }
++            }
++
++            ::close(cpufile);
++        }
++#else
+         int cpufile = open("/proc/self/auxv", O_RDONLY);
+ 
+         if (cpufile >= 0)
+@@ -662,6 +689,7 @@
+ 
+             close(cpufile);
+         }
++#endif // __NetBSD__
+     #elif defined __arm__ && defined __ANDROID__
+       #if defined HAVE_CPUFEATURES
+         CV_LOG_INFO(NULL, "calling android_getCpuFeatures() ...");
