@@ -3,9 +3,11 @@
 The profile pins the complete [GStreamer 1.28.8 source family](gstreamer.md)
 for common-media and plasma-mobile exports. Its core cross-build corrections preserve introspection.
 Plugin-family package/runtime acceptance remains separate.
+The complete [LAME 4.0 MP3 dependency](lame.md) cross-builds with GCC 16;
+encoding, Unicode tags and decoding passed a bounded installed check on CM5.
 
 This profile moves Plasma's media consumers to one **FFmpeg 9.0.2** package.
-Qt Multimedia 6.12 and KFileMetadata 6.30 both select `multimedia/ffmpeg9`.
+Qt Multimedia 6.12 and KFileMetadata both select `multimedia/ffmpeg9`.
 The profile composes common tools and graphics with the final `/usr/pkg`
 prefix. It prepares sources; native packages and the complete Plasma Mobile
 session remain unaccepted.

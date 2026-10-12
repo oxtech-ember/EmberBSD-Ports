@@ -23,13 +23,28 @@ for name in $required; do
     [ "$actual" = "$expected" ] || { echo "FFmpeg patch checksum differs: $name" >&2; exit 2; }
 done
 
+# LAME is an MP3 dependency of the same FFmpeg provider, not a reduced probe.
+expected='audio/lame lame-4.0.tar.gz 3df5124d5ad3a98312ffd7ba6a9b36230e4f8a3e66d3ce0f425e336c32d216eb https://downloads.sourceforge.net/project/lame/lame/4.0/lame-4.0.tar.gz'
+actual=$(awk '$1=="audio/lame" { if (NF != 4) exit 1; print $1, $2, $3, $4 }' "$profile/sources.tsv")
+[ "$actual" = "$expected" ] || { echo 'Incorrect LAME source pin.' >&2; exit 2; }
+pkg=$profile/recipes/audio/lame
+for file in Makefile DESCR PLIST distinfo options.mk buildlink3.mk patches/patch-zz-frontend-encoding; do
+    [ -f "$pkg/$file" ] || { echo "Incomplete LAME recipe: $file" >&2; exit 2; }
+done
+[ "$(awk '/^SHA1 \(patch-/ {n++} END {print n}' "$pkg/distinfo")" = 4 ] || {
+    echo 'Incomplete LAME patch manifest.' >&2; exit 2;
+}
+[ "$(find "$pkg/patches" -type f -name 'patch-*' | wc -l | tr -d ' ')" = 4 ] || {
+    echo 'LAME patch inventory differs.' >&2; exit 2;
+}
+
 # All source entries own complete recipes and every source patch is checksummed.
-awk -F '\t' '!/^#/ && NF { if (NF != 4 || $1 !~ /^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9+-]*$/ || $2 !~ /^[a-zA-Z0-9][a-zA-Z0-9._+-]*\.tar\.xz$/ || $4 !~ /^https:\/\// || seen[$1]++ || length($3) != 64 || $3 !~ /^[0-9a-f]+$/) exit 1; count++ } END { if (count != 10) exit 1 }' "$profile/sources.tsv"
+awk -F '\t' '!/^#/ && NF { if (NF != 4 || $1 !~ /^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9+-]*$/ || $2 !~ /^[a-zA-Z0-9][a-zA-Z0-9._+-]*\.tar\.(xz|gz)$/ || $4 !~ /^https:\/\// || seen[$1]++ || length($3) != 64 || $3 !~ /^[0-9a-f]+$/) exit 1; count++ } END { if (count != 11) exit 1 }' "$profile/sources.tsv"
 while IFS="$(printf '\t')" read -r recipe archive sha url; do
     case "$recipe" in ''|'#'*) continue ;; esac
     pkg=$profile/recipes/$recipe
     case "$recipe" in
-        multimedia/ffmpeg9) ;;
+        multimedia/ffmpeg9|audio/lame) ;;
         *)
             case "$archive" in *-1.28.8.tar.xz) ;; *) echo "Wrong GStreamer family version: $recipe" >&2; exit 2 ;; esac
             [ "$(awk '$1 == "GST_VERSION=" {print $2}' "$profile/recipes/multimedia/gstreamer1/version.mk")" = 1.28.8 ] || exit 2

@@ -9,3 +9,4 @@ multimedia/gst-plugins1-libav	gst-libav-1.28.8.tar.xz	98ad3d7f8932c495e268708903
 multimedia/gst-plugins1-editing-services	gst-editing-services-1.28.8.tar.xz	4d93d2309b7d01529cd5e3375f99bf7e69c2e32cf59ce4533b31a5c7119b9b58	https://gstreamer.freedesktop.org/src/gst-editing-services/gst-editing-services-1.28.8.tar.xz
 multimedia/py-gstreamer1	gst-python-1.28.8.tar.xz	6e0d8dd920234b9feeb86003d8f43c1996491f9d8190882329bf56f60a70206e	https://gstreamer.freedesktop.org/src/gst-python/gst-python-1.28.8.tar.xz
 net/gst-rtsp-server	gst-rtsp-server-1.28.8.tar.xz	59181ed21a5bc0533fb4f77cb7bc6005d89365e834b0c1294afb9ab5f7d96fe0	https://gstreamer.freedesktop.org/src/gst-rtsp-server/gst-rtsp-server-1.28.8.tar.xz
+audio/lame	lame-4.0.tar.gz	3df5124d5ad3a98312ffd7ba6a9b36230e4f8a3e66d3ce0f425e336c32d216eb	https://downloads.sourceforge.net/project/lame/lame/4.0/lame-4.0.tar.gz

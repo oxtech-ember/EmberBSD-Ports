@@ -1,0 +1,15 @@
+$NetBSD: patch-doc_html_Makefile.in,v 1.1 2026/07/15 07:09:51 adam Exp $
+
+Change where html doc files are installed.
+
+--- doc/html/Makefile.in.orig	2026-07-10 18:25:39.000000000 +0000
++++ doc/html/Makefile.in
+@@ -315,7 +315,7 @@ top_builddir = @top_builddir@
+ top_srcdir = @top_srcdir@
+ AUTOMAKE_OPTIONS = foreign
+ pkgdocdir = $(docdir)/$(PACKAGE)
+-pkghtmldir = $(pkgdocdir)/html
++pkghtmldir = $(pkgdocdir)
+ pkghtml_DATA = \
+     about.html \
+ 	abr.html \

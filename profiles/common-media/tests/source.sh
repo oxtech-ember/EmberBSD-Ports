@@ -25,10 +25,10 @@ while IFS="$(printf '\t')" read -r recipe archive sha url; do
     case "$recipe" in ''|'#'*) continue ;; esac
     pkg=$profile/recipes/$recipe
     verify_archive "$distfiles/$archive"
-    tree=$work/${archive%.tar.xz}
+    tree=$work/${archive%.tar.*}
     mkdir "$tree"
     tar -xf "$distfiles/$archive" --strip-components=1 -C "$tree"
-    for name in $(awk '/^SHA1 \(patch-/ {gsub(/[()]/,"",$2); print $2}' "$pkg/distinfo"); do
+    for name in $(awk '/^SHA1 \(patch-/ {gsub(/[()]/,"",$2); print $2}' "$pkg/distinfo" | LC_ALL=C sort); do
         actual=$(sed '/[$]NetBSD.*/d' "$pkg/patches/$name" | shasum -a 1 | awk '{print $1}')
         expected=$(awk -v n="($name)" '$1=="SHA1" && $2==n {print $4}' "$pkg/distinfo")
         [ "$actual" = "$expected" ]
@@ -39,7 +39,7 @@ done < "$profile/sources.tsv"
 awk '!/^#/ && NF' "$profile/sources.tsv" > "$work/source.tsv"
 IFS="$(printf '\t')" read -r recipe archive sha url < "$work/source.tsv"
 pkg=$profile/recipes/$recipe
-tree=$work/${archive%.tar.xz}
+tree=$work/${archive%.tar.*}
 # Exercise the same verifier with altered source data.
 cp "$distfiles/$archive" "$work/altered-$archive"
 printf x >> "$work/altered-$archive"

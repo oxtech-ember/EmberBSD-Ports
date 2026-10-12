@@ -38,5 +38,16 @@ cp "$profile/sources.tsv" "$work/saved-manifest"
 sed 's/8c385028/00000000/' "$work/saved-manifest" > "$profile/sources.tsv"
 negative altered-source
 cp "$work/saved-manifest" "$profile/sources.tsv"
+pkg=$profile/recipes/audio/lame
+cp "$pkg/distinfo" "$work/lame-distinfo"
+mv "$pkg/patches/patch-zz-frontend-encoding" "$work/lame-patch"
+sed '/SHA1 (patch-zz-frontend-encoding)/d' "$work/lame-distinfo" > "$pkg/distinfo"
+negative omitted-lame-adaptation
+mv "$work/lame-patch" "$pkg/patches/patch-zz-frontend-encoding"
+cp "$work/lame-distinfo" "$pkg/distinfo"
+sed 's/3df5124d/00000000/' "$work/saved-manifest" > "$profile/sources.tsv"
+negative altered-lame-source
+cp "$work/saved-manifest" "$profile/sources.tsv"
 sh "$profile/validate.sh"
+
 echo 'PASS: both media exports reject missing recipes, altered/omitted patches and incorrect source pins before creating a destination'
