@@ -251,7 +251,8 @@ runtime behavior are validated.
   and Mesa feature tables identify the VIP9000 NPU's missing TP path and MMU
   differences. Exact PowerVR firmware is pinned. Native power, clocks and
   firmware bootstrap now pass on Zero 3W. Firmware reports startup and the
-  expected BVNC through coherent memory. GPU command completion, rendering
+  expected BVNC through coherent memory. One native KCCB command also completes
+  with a verified return word and queue progress. GPU rendering
   and accelerated Plasma remain unverified.
 - [Compass NPU UMD source contracts](probes/compass-umd/README.md): pinned
   upstream descriptor-zero and failure-cleanup fixes pass host/native software
