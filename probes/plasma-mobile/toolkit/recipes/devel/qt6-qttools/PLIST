@@ -44,10 +44,12 @@ qt6/include/QtDesigner/${PKGVERSION}/QtDesigner/private/iconselector_p.h
 qt6/include/QtDesigner/${PKGVERSION}/QtDesigner/private/invisible_widget_p.h
 qt6/include/QtDesigner/${PKGVERSION}/QtDesigner/private/layout_p.h
 qt6/include/QtDesigner/${PKGVERSION}/QtDesigner/private/layoutinfo_p.h
+qt6/include/QtDesigner/${PKGVERSION}/QtDesigner/private/menuactionlineedit_p.h
 qt6/include/QtDesigner/${PKGVERSION}/QtDesigner/private/metadatabase_p.h
 qt6/include/QtDesigner/${PKGVERSION}/QtDesigner/private/morphmenu_p.h
 qt6/include/QtDesigner/${PKGVERSION}/QtDesigner/private/newactiondialog_p.h
 qt6/include/QtDesigner/${PKGVERSION}/QtDesigner/private/newformwidget_p.h
+qt6/include/QtDesigner/${PKGVERSION}/QtDesigner/private/objectutils_p.h
 qt6/include/QtDesigner/${PKGVERSION}/QtDesigner/private/orderdialog_p.h
 qt6/include/QtDesigner/${PKGVERSION}/QtDesigner/private/plaintexteditor_p.h
 qt6/include/QtDesigner/${PKGVERSION}/QtDesigner/private/plugindialog_p.h
@@ -246,11 +248,16 @@ qt6/include/QtHelp/ui_qfilternamedialog.h
 qt6/include/QtHelp/ui_qhelpfiltersettingswidget.h
 qt6/include/QtQDocCatch/QtQDocCatchDepends
 qt6/include/QtQDocCatch/catch/catch.hpp
+qt6/include/QtQDocCatchConversions/QtQDocCatchConversions
 qt6/include/QtQDocCatchConversions/QtQDocCatchConversionsDepends
+qt6/include/QtQDocCatchConversions/QtQDocCatchConversionsVersion
 qt6/include/QtQDocCatchConversions/catch_conversions/qdoc_catch_conversions.h
 qt6/include/QtQDocCatchConversions/catch_conversions/qt_catch_conversions.h
 qt6/include/QtQDocCatchConversions/catch_conversions/std_catch_conversions.h
+qt6/include/QtQDocCatchConversions/qtqdoccatchconversionsversion.h
+qt6/include/QtQDocCatchGenerators/QtQDocCatchGenerators
 qt6/include/QtQDocCatchGenerators/QtQDocCatchGeneratorsDepends
+qt6/include/QtQDocCatchGenerators/QtQDocCatchGeneratorsVersion
 qt6/include/QtQDocCatchGenerators/catch_generators/generators/combinators/cycle_generator.h
 qt6/include/QtQDocCatchGenerators/catch_generators/generators/combinators/oneof_generator.h
 qt6/include/QtQDocCatchGenerators/catch_generators/generators/k_partition_of_r_generator.h
@@ -263,6 +270,7 @@ qt6/include/QtQDocCatchGenerators/catch_generators/utilities/semantics/generator
 qt6/include/QtQDocCatchGenerators/catch_generators/utilities/semantics/move_into_vector.h
 qt6/include/QtQDocCatchGenerators/catch_generators/utilities/statistics/distribution.h
 qt6/include/QtQDocCatchGenerators/catch_generators/utilities/statistics/percentages.h
+qt6/include/QtQDocCatchGenerators/qtqdoccatchgeneratorsversion.h
 qt6/include/QtTools/${PKGVERSION}/QtTools/private/qttools-config_p.h
 qt6/include/QtTools/QtTools
 qt6/include/QtTools/QtToolsDepends

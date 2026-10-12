@@ -2,6 +2,7 @@
 
 DISTNAME=	qttools-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qttools-${QTVERSION}
+PKGREVISION=	1
 COMMENT=	Qt6 development tools
 CATEGORIES=	devel
 LICENSE=	gnu-lgpl-v3 OR gnu-gpl-v2 OR gnu-gpl-v3
@@ -11,6 +12,9 @@ LICENSE=	gnu-lgpl-v3 OR gnu-gpl-v2 OR gnu-gpl-v3
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Designer.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Help.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6UiTools.pc
+
+# Use the repaired common HTML provider; never embed another litehtml copy.
+CMAKE_CONFIGURE_ARGS+= -DQLITEHTML_USE_SYSTEM_LITEHTML=ON
 
 .include "../../lang/clang/buildlink3.mk"
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"

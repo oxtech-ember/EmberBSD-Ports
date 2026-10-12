@@ -1,0 +1,13 @@
+Origin: EmberBSD (AI-assisted), require the selected shared HTML provider.
+
+--- src/assistant/qlitehtml/src/CMakeLists.txt.orig
++++ src/assistant/qlitehtml/src/CMakeLists.txt
+@@ -17,7 +17,7 @@
+ 
+ option(QLITEHTML_USE_SYSTEM_LITEHTML "Uses litehtml from the system if available" OFF)
+ if(QLITEHTML_USE_SYSTEM_LITEHTML)
+-  find_package(litehtml QUIET)
++  find_package(litehtml REQUIRED CONFIG)
+ endif()
+ if(NOT TARGET litehtml AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/litehtml/CMakeLists.txt)
+     set(CMAKE_POLICY_DEFAULT_CMP0077 NEW) # make it possible to override LITEHTML_BUILD_TESTING

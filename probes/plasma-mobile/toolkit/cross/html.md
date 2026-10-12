@@ -61,4 +61,7 @@ was rewritten to silence these reports.
 
 Full image-comparison tests, Valgrind on the target, the installed Qt Assistant
 consumer and the complete QtTools package remain separate acceptance steps.
-These parser tests do not establish HDMI output, KWin or accelerated Plasma.
+[Full QtTools](qt-packages.md#full-qttools-package) now cross-packages against
+this shared HTML provider, including Assistant and QDoc. Its target runtime
+remains unaccepted. These parser tests do not establish HDMI output, KWin or
+accelerated Plasma.

@@ -13,6 +13,34 @@ shader pixels and repeated processes on CM5. The [Qt Quick consumer](../tests/qt
 also passes compiled QML scene/layer pixels through V3D. Other module runtimes
 and Plasma remain unaccepted.
 
+## Full QtTools package
+
+QtTools 6.12.0nb1 also passes the ordinary complete package checks and installs
+in the same build sysroot. Designer, Assistant, Help, UiTools, Linguist and
+Clang-backed QDoc remain present; no component or package check is disabled.
+The manifest includes the new Designer private headers and QDoc conversion
+and generator headers declared by upstream Qt 6.12.
+
+Assistant links the common shared `liblitehtml.so.0`. The recipe enables the
+upstream system-provider option and makes its `find_package` required, so a
+missing dependency cannot silently select the bundled copy. The real selection
+regression reproduces the old silent behavior, rejects a disabled required
+provider and checks installed Assistant/QDoc ELF dependencies.
+
+```sh
+BMAKE=/absolute/native/bmake CMAKE=/absolute/native/cmake ruby \
+    tests/qttools-provider.rb /absolute/pkgsrc /absolute/cross.mk.conf \
+    /absolute/configured-qttools /absolute/sysroot \
+    /absolute/cross-readelf /absolute/new-results
+```
+
+The test path above is relative to this toolkit. Package SHA256:
+`feb714ad86e75f7733a5687498c9982d227c6965bc1fb6864b2609564a4e0396`.
+This bootstrap package still links target Clang/LLVM 23.1.2 while the common
+23.1.3 replacement builds. Target runtime and coherent 23.1.3 consumer
+revalidation remain pending. [Native QDoc](README.md) already uses 23.1.3
+and passes real C++ documentation generation; that does not prove target QDoc.
+
 ## Inputs and packages
 
 The [toolkit manifest](../sources.tsv) pins original Qt 6.12 archives and
