@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.2 2026/09/06 10:23:31 markd Exp $
+
+BLAKE2s (kdecoration-6.7.5.tar.xz) = 42ac8757df03dcba9ffd6f893fcfd7de5d9702ac993bb8ba46fd861c587fcf20
+SHA512 (kdecoration-6.7.5.tar.xz) = 1ee35e5e572ffca2feb04ba8180708e5d648323f6b073f7a74418096a3894c6d02296aefa23522ce176b96686e23c9bdd99e4fd7874ab9974fb85ab964674a4b
+Size (kdecoration-6.7.5.tar.xz) = 61884 bytes

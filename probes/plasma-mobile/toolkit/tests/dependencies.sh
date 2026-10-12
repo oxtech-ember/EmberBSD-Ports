@@ -34,7 +34,7 @@ grep -q 'requires the common build-tools profile' "$work/missing-common.log"
 (cd "$work" && "$make" -r -m / OPSYS=NetBSD OS_VERSION=11.0 MACHINE_ARCH=aarch64 PREFIX=/usr/pkg LOCALBASE=/usr/pkg EMBERBSD_COMMON_TOOLS=yes PKGPATH=x11/qt6-qtbase)
 for variable in BUILDLINK_API_DEPENDS.MesaLib BUILDLINK_ABI_DEPENDS.MesaLib; do
     value=$(cd "$work" && "$make" -r -m / OPSYS=NetBSD OS_VERSION=11.0 MACHINE_ARCH=aarch64 PREFIX=/usr/pkg LOCALBASE=/usr/pkg EMBERBSD_COMMON_TOOLS=yes PKGPATH=x11/qt6-qtbase -V "$variable")
-    [ "$(printf '%s\n' "$value" | tr ' ' '\n' | sort -u)" = "$(printf '%s\n' 'MesaLib>=26.2.4' 'MesaLib>=26.2.4nb3')" ]
+    [ "$(printf '%s\n' "$value" | tr ' ' '\n' | sort -u)" = "$(printf '%s\n' 'MesaLib>=26.2.4' 'MesaLib>=26.2.4nb4')" ]
 done
 for variable in USE_BUILTIN.MesaLib USE_BUILTIN.glu USE_BUILTIN.libdrm; do
     value=$(cd "$work" && "$make" -r -m / OPSYS=NetBSD OS_VERSION=11.0 MACHINE_ARCH=aarch64 PREFIX=/usr/pkg LOCALBASE=/usr/pkg EMBERBSD_COMMON_TOOLS=yes PKGPATH=x11/qt6-qtbase -V "$variable")

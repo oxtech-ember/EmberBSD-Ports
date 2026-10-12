@@ -54,7 +54,16 @@ DocBook XSL 1.79.2 remains the latest stable release in the
 [upstream project](https://github.com/docbook/xslt10-stylesheets#docbook-xslt-10-stylesheets).
 Its age does not justify silently selecting a snapshot.
 
+The installed `KF6DocToolsConfig.cmake` searches explicitly selected native
+imports with `NO_CMAKE_FIND_ROOT_PATH`. Without it, target-only CMake root
+searches re-root the host path, so KService fails to find `meinproc6`.
+`tests/doctools-host-import.rb INSTALLED_CONFIG NEW_WORK` executes the installed
+lookup with a real CMake target-only root. The corrected lookup passes; the
+original lookup and missing-import controls fail. The complete KService 6.31
+package now builds its translated manuals through the selected native tooling.
+
 ## Reproduce the checks
+
 
 ```sh
 BMAKE=/absolute/bmake MAKECONF=/absolute/cross.mk \
@@ -84,5 +93,5 @@ in these recipes; these checks do not claim whole-source static analysis.
 
 | Package | SHA256 |
 | --- | --- |
-| kf6-kdoctools-6.31.0nb1.tgz | `4e4120b4a4a87d09d5d56fb751277c859d5c93b7e0d7c6b5f531d31690731c65` |
+| kf6-kdoctools-6.31.0nb2.tgz | `9245467ec344cfea1abc15bf8486fbd020f2518af1e25e022961e0353d102073` |
 | docbook-xsl-1.79.2nb8.tgz | `eee9eb377b1fa2b2a8d2202de67a19bdd5732fd0a7d5bb020244d6867f546c2c` |

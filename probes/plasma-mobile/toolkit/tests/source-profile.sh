@@ -83,7 +83,7 @@ done
 cmp "$root/profiles/common-build-tools/mk.conf" "$work/pkgsrc/EMBERBSD-COMMON-TOOLS-MK.CONF"
 cmp "$root/profiles/development-toolchain/mk.conf" "$work/pkgsrc/EMBERBSD-DEVELOPMENT-MK.CONF"
 cmp "$toolkit/mk.conf" "$work/pkgsrc/EMBERBSD-PLASMA-TOOLKIT-MK.CONF"
-for file in meta-pkgs/qt6/Makefile.common meta-pkgs/kde/kf6.mk; do
+for file in meta-pkgs/qt6/Makefile.common meta-pkgs/kde/kf6.mk meta-pkgs/kde/plasma6.mk; do
     cmp "$toolkit/shared/$file" "$work/pkgsrc/$file"
 done
 if sh "$root/scripts/prepare-pkgsrc.sh" "$work/pkgsrc" plasma-mobile > "$work/existing.log" 2>&1; then exit 1; fi

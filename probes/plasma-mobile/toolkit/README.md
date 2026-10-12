@@ -49,7 +49,7 @@ release compiler flags without changing `/etc/mk.conf`. The migrated
 Qt Multimedia/KFileMetadata recipes use the
 [common FFmpeg9 profile](../../../profiles/common-media/README.md).
 The toolkit requires the [common graphics source profile](../../../profiles/common-graphics/README.md)
-with Mesa26.2.4nb3/libdrm2.4.134nb2 and disables native GL/GLU/DRM providers.
+with Mesa26.2.4nb4/libdrm2.4.134nb2 and disables native GL/GLU/DRM providers.
 Qtbase selects its EGL-device PLIST from the canonical package header;
 Qtbase configuration and target check-files pass. Runtime plugin discovery remains a gate.
 Cross builds use the [cross workflow](cross/README.md). Native tools retain
@@ -95,12 +95,19 @@ libidn2/GSettings releases and native cross-build generators for libproxy.
 The [security prerequisites](cross/security-dependencies.md) and
 [KArchive package](cross/archive.md) also have cross-build corrections and
 bounded CM5 consumer checks.
+[Current libsecret 0.21.8.2](cross/libsecret.md) retains introspection, Vala and
+reference documentation. Its native peer-credential regression passes on CM5.
 Their focused source checks, curl metadata regression and CM5 API tests pass;
 complete installed desktop acceptance remains pending.
 
 [Native KDocTools](cross/doctools.md) generates documentation without a second
 host QtTools/LLVM dependency tree. Its full target package and DocBook recipe
 checks pass; target execution remains pending.
+
+[Plasma 6.7.5 prerequisites](cross/plasma-prerequisites.md) now include complete
+KWayland, KDecoration, layer-shell-qt and KNightTime cross packages. The installed
+KWayland mouse-button wire regression passes on CM5; KWin and the full Plasma
+session are not yet accepted.
 
 [Designer plugin recipes](cross/designer-plugins.md) retain the full target payload.
 [Breeze generator repairs](cross/breeze.md) preserve input SVG files and reject
@@ -128,7 +135,7 @@ sh probes/plasma-mobile/toolkit/tests/source-profile.sh \
     /absolute/verified-distfiles /absolute/new-source-check
 ```
 
-The check covers all 96 archives, recorded patch hashes and forward applications,
+The check covers all 103 archives, recorded patch hashes and forward applications,
 corrupted archive rejection, repeated/missing patch rejection, incorrect
 unfiltered RCS hashes, recipe/version selection and exact toolkit export.
 It compares the exported common recipes and configuration with their existing

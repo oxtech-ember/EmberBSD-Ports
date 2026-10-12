@@ -48,6 +48,7 @@ qt6/include/QtCore5Compat/qlinkedlist.h
 qt6/include/QtCore5Compat/qregexp.h
 qt6/include/QtCore5Compat/qstringref.h
 qt6/include/QtCore5Compat/qtcore5compat-config.h
+qt6/include/QtCore5Compat/qtcore5compatexports.h
 qt6/include/QtCore5Compat/qtcore5compatversion.h
 qt6/include/QtCore5Compat/qtextcodec.h
 qt6/include/QtCore5Compat/qxml.h

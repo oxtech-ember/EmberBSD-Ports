@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.4 2026/09/06 10:23:32 markd Exp $
+
+BLAKE2s (layer-shell-qt-6.7.5.tar.xz) = c6a0f2e91a3715c09fc3eb814718a42e24a469362ecae5fb2a64bb4e89facaf1
+SHA512 (layer-shell-qt-6.7.5.tar.xz) = 6e968ceb11d405b39740c18841a7ec1f7798e2662a9343629e0e2a959d23609eae51425fea9d503d2d48722c0e65239cc6f7f44301935c31fcc1083ea0007918
+Size (layer-shell-qt-6.7.5.tar.xz) = 36528 bytes

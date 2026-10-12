@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.2 2026/09/06 10:23:31 markd Exp $
+
+BLAKE2s (knighttime-6.7.5.tar.xz) = b442edd4ccf9e4fa44a9d2ce35bdc44657ae52b46c56f541efe77b106511a2f8
+SHA512 (knighttime-6.7.5.tar.xz) = 1d3e922fbd59434f9367a9a2437f0d57d1e3680f9fceb7ba0552865549bf817b8026ceb4bc1a63a34e21c428216507920c76d687eb881b01223054a265734455
+Size (knighttime-6.7.5.tar.xz) = 40320 bytes

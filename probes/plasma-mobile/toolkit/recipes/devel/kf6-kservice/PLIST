@@ -26,6 +26,7 @@ lib/libKF6Service.so.6
 lib/libKF6Service.so.${PKGVERSION}
 man/ca/man8/kbuildsycoca6.8
 man/ca@valencia/man8/kbuildsycoca6.8
+man/de/man8/kbuildsycoca6.8
 man/es/man8/kbuildsycoca6.8
 man/fr/man8/kbuildsycoca6.8
 man/it/man8/kbuildsycoca6.8
@@ -139,3 +140,4 @@ share/locale/zh_HK/LC_MESSAGES/kservice6.mo
 share/locale/zh_TW/LC_MESSAGES/kservice6.mo
 share/qlogging-categories6/kservice.categories
 share/qlogging-categories6/kservice.renamecategories
+man/ru/man8/kbuildsycoca6.8

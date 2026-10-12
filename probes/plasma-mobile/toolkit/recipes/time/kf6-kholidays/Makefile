@@ -9,7 +9,11 @@ LICENSE=	gnu-lgpl-v2
 
 .include "../../meta-pkgs/kde/kf6.mk"
 
-USE_TOOLS+=	bison msgmerge
+USE_TOOLS+=	bison gm4 msgmerge
+# Apple flex 2.6.4 has a different C++ scanner ABI from the upstream header.
+# Only the generator is needed; KHolidays supplies its scanner header and yywrap.
+TOOL_DEPENDS+= flex>=2.6.4:../../devel/flex
+CMAKE_CONFIGURE_ARGS+= -DFLEX_EXECUTABLE=${TOOLBASE:Q}/bin/flex
 
 .include "../../devel/qt6-qttools/buildlink3.mk"
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"

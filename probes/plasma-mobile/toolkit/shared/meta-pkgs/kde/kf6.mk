@@ -164,6 +164,8 @@ CMAKE_CONFIGURE_ARGS+=	-DKF_IGNORE_PLATFORM_CHECK=true
 # ECM queries native qtpaths during a cross build. Those host installation
 # directories are not destinations in the target package.
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# Imported pkg-config targets require real target include/library directories.
+CONFIGURE_ENV+= PKG_CONFIG_SYSROOT_DIR=${CROSS_DESTDIR:Q}
 CMAKE_CONFIGURE_ARGS+= -DKDE_INSTALL_QTPLUGINDIR=qt6/plugins
 CMAKE_CONFIGURE_ARGS+= -DKDE_INSTALL_QMLDIR=qt6/qml
 CMAKE_CONFIGURE_ARGS+= -DKDE_INSTALL_QTMETATYPESDIR=qt6/metatypes
