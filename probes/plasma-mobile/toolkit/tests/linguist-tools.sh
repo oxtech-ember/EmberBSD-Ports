@@ -14,7 +14,7 @@ echo 'lrelease version 6.11.2'
 TOOL
 cp "$work/old/bin/lrelease" "$work/old/bin/lconvert"
 chmod +x "$work/old/bin/lrelease" "$work/old/bin/lconvert"
-for consumer in devel/kf6-kcoreaddons sysutils/kf6-kdbusaddons; do
+for consumer in devel/kf6-kcoreaddons sysutils/kf6-kdbusaddons archivers/kf6-karchive; do
     recipe=$pkgsrc/$consumer
     mkdir "$work/${consumer##*/}"
     logs=$work/${consumer##*/}

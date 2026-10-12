@@ -92,6 +92,9 @@ outputs and linked target ELF; printing and target runtime are not yet accepted.
 
 The [network prerequisites](cross/network-dependencies.md) now include current
 libidn2/GSettings releases and native cross-build generators for libproxy.
+The [security prerequisites](cross/security-dependencies.md) and
+[KArchive package](cross/archive.md) also have cross-build corrections and
+bounded CM5 consumer checks.
 Their focused source checks, curl metadata regression and CM5 API tests pass;
 complete installed desktop acceptance remains pending.
 

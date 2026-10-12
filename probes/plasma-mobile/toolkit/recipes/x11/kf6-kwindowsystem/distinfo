@@ -3,3 +3,4 @@ $NetBSD: distinfo,v 1.5 2026/09/06 10:05:21 markd Exp $
 BLAKE2s (kwindowsystem-6.31.0.tar.xz) = ed8af93491892a092011d2cfa23c276bed70e6f2126d3d966b9db89ed1fb5da1
 SHA512 (kwindowsystem-6.31.0.tar.xz) = f8b823cc9d9b81f1973d0fec0a183a8b7dc3920ca936dd8fe75494feea9a09a4dcb9f724370adfc1d352aa862a9bad2f6ecbfe85c17d105eedc9853773db955e
 Size (kwindowsystem-6.31.0.tar.xz) = 2321640 bytes
+SHA1 (patch-relocatable-xcb) = 3ed720174cf7aa3de80add55a3b3183f916fd276

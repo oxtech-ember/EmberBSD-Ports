@@ -1,0 +1,52 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Export public XCB requirements as imported targets.
+Absolute producer include paths break relocation into a cross sysroot.
+Find the same public dependency in installed consumers.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -60,7 +60,7 @@
+ endif()
+ 
+ if (KWINDOWSYSTEM_X11)
+-    find_package(X11 REQUIRED)
++    find_package(X11 REQUIRED COMPONENTS xcb)
+     find_package(XCB COMPONENTS REQUIRED XCB KEYSYMS RES ICCCM)
+ endif()
+ 
+--- KF6WindowSystemConfig.cmake.in.orig
++++ KF6WindowSystemConfig.cmake.in
+@@ -4,7 +4,7 @@
+ find_dependency(Qt6Gui @REQUIRED_QT_VERSION@)
+ 
+ if(@X11_FOUND@)
+-    find_dependency(X11)
++    find_dependency(X11 COMPONENTS xcb)
+ endif()
+ 
+ if(NOT @BUILD_SHARED_LIBS@)
+--- src/CMakeLists.txt.orig
++++ src/CMakeLists.txt
+@@ -42,8 +42,8 @@
+         PUBLIC
+             # public because they are used in kkeyserver_x11.h
+             X11::X11
++            X11::xcb
+         PRIVATE
+-            XCB::XCB
+             XCB::RES
+             X11::Xfixes
+             XCB::KEYSYMS
+@@ -70,10 +70,7 @@
+         kwindowinfo.cpp
+    )
+ 
+-   # we install kkeyserver_x11.h which needs the X11 headers available
+-   # if we don't add the include path here code that includes kkeyserver.h will fail
+-   # to compile unless X11 is installed in /usr/include
+-   target_include_directories(KF6WindowSystem PUBLIC ${XCB_XCB_INCLUDE_DIR})
++   # Public X11/XCB imported targets provide relocatable include directories.
+ endif ()
+ 
+ if (KWINDOWSYSTEM_WAYLAND)

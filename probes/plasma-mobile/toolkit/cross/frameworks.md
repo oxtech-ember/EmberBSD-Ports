@@ -15,14 +15,14 @@ relative `qt6/plugins`, `qt6/qml`, `qt6/metatypes` and `qt6/doc` destinations.
 `tests/selection.sh` exercises the production cross/native selection; normal
 package checks verify actual staged files.
 
-KCoreAddons, KConfig and KCodecs use QtTools only for translation
+KCoreAddons, KConfig, KCodecs, KDBusAddons and KArchive use QtTools only for translation
 generators. Their [Linguist helper](../recipes/devel/qt6-qttools/linguist.mk)
 imports the matching native component without adding host library search
 prefixes. KCoreAddons and KConfig explicitly depend on target Declarative.
 KWidgetsAddons additionally needs the complete target QtTools package for its
-Designer plugin; Linguist alone is insufficient. Its package remains blocked
-until that dependency is built. Native builds use their normal QtTools
-build dependency. This does
+Designer plugin; Linguist alone is insufficient. Its full package and
+[54 installed widget API cases](models-and-jobs.md#widget-apis-and-the-designer-plugin)
+now pass. Native builds use their normal QtTools build dependency. This does
 not replace the full QtTools target package or its QDoc/Clang acceptance.
 
 ```sh
@@ -56,6 +56,23 @@ including the profile. `tests/consumer-host-tools.sh` checks both include
 orders, paths containing spaces, unset variables and native-tool sub-builds.
 The [KConfig consumer](../tests/kconfig-consumer/README.md) exercises actual
 CMake generation and compiles generated code against the target package.
+
+## Relocatable KWindowSystem exports
+
+KWindowSystem 6.31.0nb1 fixes a failure in the installed KAuth consumer.
+Its exported XCB include path was an absolute producer prefix. Replacing a
+build path with `/usr/pkg/include` made the package clean but unusable when
+imported from a cross sysroot. The port now exports `X11::xcb` as a public
+requirement and asks each consumer to discover that dependency with FindX11.
+It removes the previous path substitution and preserves X11 and Wayland.
+
+`tests/windowsystem-import.rb INSTALLED_CMAKE_DIRECTORY SYSROOT NEW_WORK`
+configures and cross-links a consumer including KKeyServer and XCB headers.
+Set `CMAKE`, `CXX` and `QT_HOST_PATH` to the selected native CMake, cross
+compiler and native Qt. The regression then restores a producer path in a
+private export copy and requires CMake to reject it. Both paths pass on
+2026-10-12. KAuth 6.31 also passes full packaging against the repaired export
+and polkit-qt 0.201.1. This is consumer-build evidence, not a display test.
 
 ## Wayland protocol data and consumers
 
