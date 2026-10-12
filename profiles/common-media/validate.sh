@@ -5,7 +5,7 @@ set -eu
 profile=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 pkg=$profile/recipes/multimedia/ffmpeg9
 expected='multimedia/ffmpeg9 ffmpeg-9.0.2.tar.xz 8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz'
-actual=$(awk '!/^#/ && NF { if (NF != 4) exit 1; print $1, $2, $3, $4 }' "$profile/sources.tsv")
+actual=$(awk '$1=="multimedia/ffmpeg9" { if (NF != 4) exit 1; print $1, $2, $3, $4 }' "$profile/sources.tsv")
 [ "$actual" = "$expected" ] || { echo 'Incorrect common media source pin.' >&2; exit 2; }
 for file in Makefile Makefile.common DESCR ALTERNATIVES PLIST distinfo options.mk buildlink3.mk; do
     [ -f "$pkg/$file" ] || { echo "Incomplete FFmpeg recipe: $file" >&2; exit 2; }
@@ -22,3 +22,30 @@ for name in $required; do
     actual=$(sed '/[$]NetBSD.*/d' "$pkg/patches/$name" | shasum -a 1 | awk '{print $1}')
     [ "$actual" = "$expected" ] || { echo "FFmpeg patch checksum differs: $name" >&2; exit 2; }
 done
+
+# All source entries own complete recipes and every source patch is checksummed.
+awk -F '\t' '!/^#/ && NF { if (NF != 4 || $1 !~ /^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9+-]*$/ || $2 !~ /^[a-zA-Z0-9][a-zA-Z0-9._+-]*\.tar\.xz$/ || $4 !~ /^https:\/\// || seen[$1]++ || length($3) != 64 || $3 !~ /^[0-9a-f]+$/) exit 1; count++ } END { if (count != 10) exit 1 }' "$profile/sources.tsv"
+while IFS="$(printf '\t')" read -r recipe archive sha url; do
+    case "$recipe" in ''|'#'*) continue ;; esac
+    pkg=$profile/recipes/$recipe
+    case "$recipe" in
+        multimedia/ffmpeg9) ;;
+        *)
+            case "$archive" in *-1.28.8.tar.xz) ;; *) echo "Wrong GStreamer family version: $recipe" >&2; exit 2 ;; esac
+            [ "$(awk '$1 == "GST_VERSION=" {print $2}' "$profile/recipes/multimedia/gstreamer1/version.mk")" = 1.28.8 ] || exit 2
+            ;;
+    esac
+    for algorithm in BLAKE2s SHA512 Size; do
+        awk -v a="$algorithm" -v n="($archive)" '$1==a && $2==n {found=1} END {exit !found}' "$pkg/distinfo" || {
+            echo "Missing source digest: $recipe/$archive/$algorithm" >&2; exit 2;
+        }
+    done
+    for file in Makefile PLIST distinfo; do
+        [ -f "$pkg/$file" ] || { echo "Incomplete media recipe: $recipe/$file" >&2; exit 2; }
+    done
+    for name in $(awk '/^SHA1 \(patch-/ {gsub(/[()]/,"",$2); print $2}' "$pkg/distinfo"); do
+        expected=$(awk -v n="($name)" '$1=="SHA1" && $2==n {print $4}' "$pkg/distinfo")
+        actual=$(sed '/[$]NetBSD.*/d' "$pkg/patches/$name" | shasum -a 1 | awk '{print $1}')
+        [ "$actual" = "$expected" ] || { echo "Media patch checksum differs: $recipe/$name" >&2; exit 2; }
+    done
+done < "$profile/sources.tsv"

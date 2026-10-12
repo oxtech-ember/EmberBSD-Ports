@@ -46,4 +46,4 @@ printf x >> "$work/altered-$archive"
 if verify_archive "$work/altered-$archive" > "$work/altered.log" 2>&1; then exit 1; fi
 if patch -f -N -F 0 -p0 -d "$tree" < "$pkg/patches/patch-zz-sunau-current-api" > "$work/repeated.log" 2>&1; then exit 1; fi
 ruby "$profile/tests/plist.rb" "$tree" "$pkg/PLIST" "$pkg/ALTERNATIVES"
-echo 'PASS: original archive, 17 filtered patch hashes, zero-fuzz application and source-derived PLIST'
+echo 'PASS: all original media archives and patch hashes, zero-fuzz application; FFmpeg source-derived PLIST'

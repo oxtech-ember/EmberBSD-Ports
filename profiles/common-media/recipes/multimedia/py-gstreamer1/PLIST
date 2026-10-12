@@ -1,0 +1,17 @@
+@comment $NetBSD: PLIST,v 1.9 2026/02/14 07:50:57 wiz Exp $
+lib/gstreamer-1.0/libgstpython.so
+lib/gstreamer-1.0/python/gesotioformatter.py
+${PYSITELIB}/gi/overrides/Gst.py
+${PYSITELIB}/gi/overrides/Gst.pyc
+${PYSITELIB}/gi/overrides/GstAnalytics.py
+${PYSITELIB}/gi/overrides/GstAnalytics.pyc
+${PYSITELIB}/gi/overrides/GstApp.py
+${PYSITELIB}/gi/overrides/GstApp.pyc
+${PYSITELIB}/gi/overrides/GstAudio.py
+${PYSITELIB}/gi/overrides/GstAudio.pyc
+${PYSITELIB}/gi/overrides/GstPbutils.py
+${PYSITELIB}/gi/overrides/GstPbutils.pyc
+${PYSITELIB}/gi/overrides/GstVideo.py
+${PYSITELIB}/gi/overrides/GstVideo.pyc
+${PYSITELIB}/gi/overrides/_gi_gst.so
+${PYSITELIB}/gi/overrides/_gi_gst_analytics.so

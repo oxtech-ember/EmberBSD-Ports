@@ -1,0 +1,24 @@
+# $NetBSD: Makefile,v 1.81 2026/09/02 19:03:42 wiz Exp $
+
+.include "../../multimedia/gstreamer1/version.mk"
+
+DISTNAME=	gst-libav-${GST_VERSION}
+PKGNAME=	${DISTNAME:S/gst/gst-plugins1/}
+CATEGORIES=	multimedia
+MASTER_SITES=	https://gstreamer.freedesktop.org/src/gst-libav/
+EXTRACT_SUFX=	.tar.xz
+
+HOMEPAGE=	https://gstreamer.freedesktop.org/src/gst-libav/
+COMMENT=	GStreamer libav/ffmpeg plugin
+
+USE_LANGUAGES=	c c++
+USE_TOOLS+=	pkg-config perl
+
+.include "../../devel/meson/build.mk"
+.include "../../lang/python/tool.mk"
+.include "../../multimedia/gstreamer1/buildlink3.mk"
+.include "../../multimedia/gst-plugins1-base/buildlink3.mk"
+.include "../../multimedia/ffmpeg9/buildlink3.mk"
+BUILDLINK_API_DEPENDS.orc+=	orc>=0.4.42
+.include "../../devel/orc/buildlink3.mk"
+.include "../../mk/bsd.pkg.mk"

@@ -1,0 +1,31 @@
+# $NetBSD: Makefile,v 1.34 2026/09/02 19:03:48 wiz Exp $
+
+.include "../../multimedia/gstreamer1/version.mk"
+
+DISTNAME=	gst-python-${GST_VERSION}
+PKGNAME=	${PYPKGPREFIX}-${DISTNAME:S/gst-python/gstreamer1/}
+CATEGORIES=	multimedia
+MASTER_SITES=	https://gstreamer.freedesktop.org/src/gst-python/
+EXTRACT_SUFX=	.tar.xz
+
+COMMENT=	Python bindings for gstreamer1
+LICENSE=	gnu-lgpl-v2.1
+
+DEPENDS+=	${PYPKGPREFIX}-gobject3-[0-9]*:../../devel/py-gobject3
+
+USE_TOOLS+=		pkg-config
+USE_LANGUAGES=		c c++
+PY_PATCHPLIST=		yes
+PYTHON_SELF_CONFLICT=	yes
+TEST_TARGET=		check
+
+.include "../../devel/py-gobject3-common/buildlink3.mk"
+BUILDLINK_API_DEPENDS.gstreamer1+=	gstreamer1>=${GST_VERSION}
+.include "../../multimedia/gstreamer1/buildlink3.mk"
+.include "../../multimedia/gst-plugins1-bad/buildlink3.mk"
+.include "../../multimedia/gst-plugins1-base/buildlink3.mk"
+MESON_REQD+=	1.2.0
+.include "../../devel/meson/build.mk"
+.include "../../lang/python/extension.mk"
+.include "../../lang/python/tool.mk"
+.include "../../mk/bsd.pkg.mk"

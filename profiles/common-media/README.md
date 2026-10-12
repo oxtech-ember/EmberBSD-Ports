@@ -1,4 +1,8 @@
-# Common FFmpeg source package
+# Common multimedia source packages
+
+The profile pins the complete [GStreamer 1.28.8 source family](gstreamer.md)
+for common-media and plasma-mobile exports. Its core cross-build corrections preserve introspection.
+Plugin-family package/runtime acceptance remains separate.
 
 This profile moves Plasma's media consumers to one **FFmpeg 9.0.2** package.
 Qt Multimedia 6.12 and KFileMetadata 6.30 both select `multimedia/ffmpeg9`.

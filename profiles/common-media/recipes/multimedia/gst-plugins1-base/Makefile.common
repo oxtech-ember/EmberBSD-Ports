@@ -1,0 +1,136 @@
+# $NetBSD: Makefile.common,v 1.51 2025/08/23 12:45:41 adam Exp $
+# used by audio/gst-plugins1-alsa/Makefile
+# used by audio/gst-plugins1-cdparanoia/Makefile
+# used by audio/gst-plugins1-libvisual/Makefile
+# used by audio/gst-plugins1-opus/Makefile
+# used by audio/gst-plugins1-vorbis/Makefile
+# used by devel/gst-plugins1-pango/Makefile
+# used by graphics/gst-plugins1-gl/Makefile
+# used by multimedia/gst-plugins1-ogg/Makefile
+# used by multimedia/gst-plugins1-theora/Makefile
+# used by x11/gst-plugins1-x11/Makefile
+
+.include "../../multimedia/gstreamer1/version.mk"
+
+DISTNAME=	gst-plugins-base-${GST_VERSION}
+MASTER_SITES=	https://gstreamer.freedesktop.org/src/gst-plugins-base/
+EXTRACT_SUFX=	.tar.xz
+
+USE_LANGUAGES=	c c++
+USE_TOOLS+=	pkg-config
+
+# "error: 'for' loop initial declarations are only allowed in C99 mode"
+# various problems when compiling in strict ISO C mode, including
+# S_ISSOCK undefined
+FORCE_C_STD=	gnu99
+
+DISTINFO_FILE=	${.CURDIR}/../../multimedia/gst-plugins1-base/distinfo
+PATCHDIR=	${.CURDIR}/../../multimedia/gst-plugins1-base/patches
+
+PKGCONFIG_OVERRIDE=		output/pkgconfig/*.pc
+PKGCONFIG_OVERRIDE_STAGE=	pre-install
+
+PYTHON_FOR_BUILD_ONLY=		tool
+
+# grep '^option' meson_options.txt | grep feature | sed -e "s/',.*//g" -e "s/option('//g" | sort | xargs printf 'GST_PLUGINS_SET+=\t%s\n'
+GST_PLUGINS_SET+=	adder
+GST_PLUGINS_SET+=	alsa
+GST_PLUGINS_SET+=	app
+GST_PLUGINS_SET+=	audioconvert
+GST_PLUGINS_SET+=	audiomixer
+GST_PLUGINS_SET+=	audiorate
+GST_PLUGINS_SET+=	audioresample
+GST_PLUGINS_SET+=	audiotestsrc
+GST_PLUGINS_SET+=	cdparanoia
+GST_PLUGINS_SET+=	compositor
+GST_PLUGINS_SET+=	debugutils
+GST_PLUGINS_SET+=	doc
+GST_PLUGINS_SET+=	drm
+GST_PLUGINS_SET+=	dsd
+GST_PLUGINS_SET+=	encoding
+GST_PLUGINS_SET+=	examples
+GST_PLUGINS_SET+=	gio
+GST_PLUGINS_SET+=	gio-typefinder
+GST_PLUGINS_SET+=	gl
+GST_PLUGINS_SET+=	gl-graphene
+GST_PLUGINS_SET+=	gl-jpeg
+GST_PLUGINS_SET+=	gl-png
+GST_PLUGINS_SET+=	glib-asserts
+GST_PLUGINS_SET+=	glib-checks
+GST_PLUGINS_SET+=	gobject-cast-checks
+GST_PLUGINS_SET+=	introspection
+GST_PLUGINS_SET+=	iso-codes
+GST_PLUGINS_SET+=	libvisual
+GST_PLUGINS_SET+=	nls
+GST_PLUGINS_SET+=	ogg
+GST_PLUGINS_SET+=	opus
+GST_PLUGINS_SET+=	orc
+GST_PLUGINS_SET+=	overlaycomposition
+GST_PLUGINS_SET+=	pango
+GST_PLUGINS_SET+=	pbtypes
+GST_PLUGINS_SET+=	playback
+GST_PLUGINS_SET+=	qt5
+GST_PLUGINS_SET+=	rawparse
+GST_PLUGINS_SET+=	subparse
+GST_PLUGINS_SET+=	tcp
+GST_PLUGINS_SET+=	tests
+GST_PLUGINS_SET+=	theora
+GST_PLUGINS_SET+=	tools
+GST_PLUGINS_SET+=	tremor
+GST_PLUGINS_SET+=	typefind
+GST_PLUGINS_SET+=	videoconvertscale
+GST_PLUGINS_SET+=	videorate
+GST_PLUGINS_SET+=	videotestsrc
+GST_PLUGINS_SET+=	volume
+GST_PLUGINS_SET+=	vorbis
+GST_PLUGINS_SET+=	x11
+GST_PLUGINS_SET+=	xi
+GST_PLUGINS_SET+=	xshm
+GST_PLUGINS_SET+=	xvideo
+
+.for i in ${GST_PLUGINS_SET}
+.  if !empty(GST_PLUGINS:M${i})
+MESON_ARGS+=	-D${i}=enabled
+.  else
+MESON_ARGS+=	-D${i}=disabled
+.  endif
+.endfor
+
+#
+# We need to force meson to only build from the "ext" directory
+# when building plugins.
+#
+.if defined(GST_EXT_BUILD)
+GST_EXT_BASEDIR?=	ext
+GST_PLUGIN_DIRS?=	${GST_PLUGINS}
+
+.PHONY: fix-subdirs
+fix-subdirs:
+	${AWK} -f ${.CURDIR}/../../multimedia/gst-plugins1-base/files/only-build-extensions.awk \
+	    -v basedir=${GST_EXT_BASEDIR} ${WRKSRC}/meson.build > ${WRKSRC}/meson.build.new
+	${MV} ${WRKSRC}/meson.build.new ${WRKSRC}/meson.build
+	# Then, we need to append the dependency handling code for the
+	# libraries which -base itself builds...
+.  for ext in ${GST_PLUGIN_DIRS}
+	${CAT} ${.CURDIR}/../../multimedia/gst-plugins1-base/files/base-deps.meson \
+		${WRKSRC}/${GST_EXT_BASEDIR}/${ext}/meson.build > \
+		${WRKSRC}/${GST_EXT_BASEDIR}/${ext}/meson.build.new
+	${MV} ${WRKSRC}/${GST_EXT_BASEDIR}/${ext}/meson.build.new \
+		${WRKSRC}/${GST_EXT_BASEDIR}/${ext}/meson.build
+.  endfor
+	# ... this is a bit nasty compared to BUILD_DIRS...
+	# This is a hack to correctly build 'gl' extension.
+	${ECHO} "subdir('gl')" > ${WRKSRC}/gst-libs/gst/meson.build
+
+pre-configure: fix-subdirs
+
+post-install:
+	${RM} -f ${DESTDIR}${PREFIX}/lib/pkgconfig/gstreamer-plugins-base-1.0.pc
+.endif
+
+.include "../../devel/meson/build.mk"
+.include "../../devel/zlib/buildlink3.mk"
+.include "../../lang/python/tool.mk"
+BUILDLINK_API_DEPENDS.gstreamer1+=	gstreamer1>=1.20.0
+.include "../../multimedia/gstreamer1/buildlink3.mk"
+.include "../../textproc/iso-codes/buildlink3.mk"

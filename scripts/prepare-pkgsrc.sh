@@ -323,9 +323,12 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
     cp "$graphics/sources.tsv" "$destination/EMBERBSD-COMMON-GRAPHICS-SOURCES"
 fi
 if [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
-    # Replace the existing 9.0.1 recipe in this newly created export.
-    rm -rf "$destination/multimedia/ffmpeg9"
-    cp -R "$media/recipes/multimedia/ffmpeg9" "$destination/multimedia/ffmpeg9"
+    # Install each complete media recipe from the verified manifest.
+    while IFS="$(printf '\t')" read -r recipe archive sha url; do
+        case "$recipe" in ''|'#'*) continue ;; esac
+        rm -rf "$destination/$recipe"
+        cp -R "$media/recipes/$recipe" "$destination/$recipe"
+    done < "$media/sources.tsv"
     cp "$media/mk.conf" "$destination/EMBERBSD-COMMON-MEDIA-MK.CONF"
     cp "$media/sources.tsv" "$destination/EMBERBSD-COMMON-MEDIA-SOURCES"
 fi
