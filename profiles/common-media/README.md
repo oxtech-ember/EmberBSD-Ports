@@ -15,6 +15,8 @@ playback/capture; this does not validate physical audio output.
 
 This profile moves Plasma's media consumers to one **FFmpeg 9.0.2** package.
 Qt Multimedia 6.12 and KFileMetadata both select `multimedia/ffmpeg9`.
+The complete Qt Multimedia package now passes an [installed CM5 player check](../../probes/plasma-mobile/toolkit/tests/qt-multimedia/README.md)
+with exact software-decoded pixels and failure controls.
 The profile composes common tools and graphics with the final `/usr/pkg`
 prefix. The [full FFmpeg package](ffmpeg-runtime.md) now passes bounded CM5
 file-codec scenarios. Qt Multimedia playback and the complete Plasma Mobile

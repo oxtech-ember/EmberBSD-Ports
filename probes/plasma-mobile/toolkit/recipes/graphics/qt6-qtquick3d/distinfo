@@ -5,3 +5,4 @@ SHA512 (qtquick3d-everywhere-src-6.12.0.tar.xz) = 4b81fb3a6bb5c78e01f3900533deb8
 Size (qtquick3d-everywhere-src-6.12.0.tar.xz) = 70489844 bytes
 SHA1 (patch-src_3rdparty_xatlas_xatlas.cpp) = 1f6741c74d1b88dc454f188e4756673d4ae80fa2
 SHA1 (patch-src_helpers_proceduralskytexturedata.cpp) = 82b23567218170b016385135d0854bd6c6a544c8
+SHA1 (patch-tools_lightmapviewer_CMakeLists.txt) = 050b689ab096a0c24c820656f0d07a62a6744173

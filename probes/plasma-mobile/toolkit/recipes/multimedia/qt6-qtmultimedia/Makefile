@@ -2,6 +2,7 @@
 
 DISTNAME=	qtmultimedia-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qtmultimedia-${QTVERSION}
+PKGREVISION=	1
 COMMENT=	Qt6 module with multimedia
 CATEGORIES=	multimedia
 LICENSE=	gnu-lgpl-v3 OR gnu-gpl-v2 OR gnu-gpl-v3

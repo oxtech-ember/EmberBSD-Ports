@@ -7,8 +7,8 @@ The final target prefix remains `/usr/pkg/qt6`.
 
 ## Native generators
 
-Use the five original Qt archives in [sources.tsv](../sources.tsv): qtbase,
-qtsvg, qtshadertools, qtdeclarative and qttools. The host recipe verifies their
+Use the seven original Qt archives in [sources.tsv](../sources.tsv): qtbase,
+qtsvg, qtshadertools, qtdeclarative, qttools, qtquicktimeline and qtquick3d. The host recipe verifies their
 SHA256 before extracting anything. It builds unmodified upstream sources;
 EmberBSD target portability patches are applied separately by pkgsrc.
 
@@ -39,7 +39,7 @@ A failed command stops the build. It neither installs target packages nor
 reports an accelerated session.
 
 Use `RESUME=1` with the same arguments after correcting a build failure.
-The recipe checks the selected tool hashes and all five archives again,
+The recipe checks the selected tool hashes and all seven archives again,
 preserves earlier logs and reuses existing sources and objects. Do not edit
 those extracted sources; choose a new work directory to change inputs.
 
@@ -59,6 +59,18 @@ its Qt6QuickTools CMake export. Build host SVG before Declarative and explicitly
 enable Quick VectorImage; otherwise cross configuration fails even though
 the earlier host_tools build succeeded. The minimal host QPA plugin lets the
 generator check run without a window server. The target feature stays enabled.
+
+Quick 3D additionally needs native `balsam`, the other Quick3D tools and the
+Assimp importer plugin. `host_tools` alone produces a `balsam` executable
+that rejects real OBJ files. The builder explicitly adds `AssimpImporterPlugin`
+and builds the optional Timeline dependency before Quick3D. These private
+native libraries do not add another target dependency provider.
+
+Run `cross/check-quick3d-host.sh HOST_QT NEW_WORK` for an actual triangle OBJ
+import, nonempty mesh, generated QML bytecode and missing-input check.
+The check inspects output files because upstream `balsam` can return exit
+status zero even when import fails. This is generator acceptance, not a GPU
+rendering result or a working Plasma session.
 
 ## Generator acceptance
 
@@ -95,6 +107,13 @@ QDoc was subsequently enabled with the official LLVM/Clang 23.1.3 SDK on
 macOS/arm64. `tests/qdoc/run.sh QDOC NEW_OUTPUT` generates class/member HTML
 using the actual Clang parser and rejects a missing configuration file.
 This host test passes; target QDoc and Qt Assistant remain separate gates.
+
+On 2026-10-12, native Timeline and Quick3D were added from the same pinned
+6.12.0 archives. The Assimp importer produces a nonempty triangle mesh and QML;
+`qmlcachegen` compiles it, and the missing-input control leaves no output.
+The tool hash inventory includes `plugins/assetimporters` as well as executables.
+The complete target Quick3D package passes ordinary package checks and CM5
+installation; a target Quick3D rendering result is still separate.
 
 ## Target package build
 

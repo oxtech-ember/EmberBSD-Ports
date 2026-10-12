@@ -39,7 +39,7 @@ else
     [ "$RESUME" = 0 ] || { echo 'Cannot resume missing work' >&2; exit 2; }
 fi
 toolkit=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-modules='qtbase qtsvg qtshadertools qtdeclarative qttools'
+modules='qtbase qtsvg qtshadertools qtdeclarative qttools qtquicktimeline qtquick3d'
 for module in $modules; do
     archive=$module-everywhere-src-6.12.0.tar.xz
     expected=$(awk -F '\t' -v a="$archive" '$2 == a { print $3 }' "$toolkit/sources.tsv")
@@ -108,7 +108,11 @@ for module in $modules; do
             -- -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF "$@") > "$work/$module/configure.log" 2>&1
         target=host_tools
         [ "$module" != qtsvg ] || target=Svg
-        "$CMAKE" --build "$work/$module" --parallel "$JOBS" --target "$target" \
+        [ "$module" != qtquicktimeline ] || target=QuickTimeline
+        set -- "$target"
+        # balsam's executable alone cannot import assets without this plugin.
+        [ "$module" != qtquick3d ] || set -- host_tools AssimpImporterPlugin
+        "$CMAKE" --build "$work/$module" --parallel "$JOBS" --target "$@" \
             > "$work/$module/build.log" 2>&1
     fi
 done
@@ -119,5 +123,5 @@ done
 for tool in qsb lrelease svgtoqml qdoc; do
     [ -x "$work/qtbase/bin/$tool" ] || { echo "Missing host tool: $tool" >&2; exit 1; }
 done
-(cd "$work/qtbase" && find bin libexec -type f -exec shasum -a 256 {} \;) > "$work/tools.sha256"
+(cd "$work/qtbase" && find bin libexec plugins/assetimporters -type f -exec shasum -a 256 {} \;) > "$work/tools.sha256"
 printf 'Built Qt 6.12 host tools: %s\n' "$work/qtbase"

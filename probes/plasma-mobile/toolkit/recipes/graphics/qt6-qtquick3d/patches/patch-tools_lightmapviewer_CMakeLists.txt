@@ -1,0 +1,15 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+Keep installed QML type metadata stable when Qt suffixes a cross tool target.
+
+--- tools/lightmapviewer/CMakeLists.txt.orig
++++ tools/lightmapviewer/CMakeLists.txt
+@@ -43,6 +43,7 @@
+ qt_internal_add_qml_module(${target_name}
+     VERSION 1.0
+     URI ${lightmapviewer_uri}
++    TYPEINFO lightmapviewer.qmltypes
+     QML_FILES
+         LightmapViewer.qml
+         SceneMetadataView.qml

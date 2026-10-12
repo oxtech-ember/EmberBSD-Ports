@@ -5,9 +5,11 @@ PKG_SUPPORTED_OPTIONS=	gstreamer pulseaudio
 
 .include "../../mk/bsd.fast.prefs.mk"
 
-PLIST_VARS+=		ffmpeg gstreamer pulseaudio vaapi x11
+PLIST_VARS+=		dmabuf ffmpeg gstreamer pulseaudio vaapi x11
 
 .if ${OPSYS} != "Darwin"
+# The common EGL provider exposes the DMA-BUF import declarations.
+PLIST.dmabuf=		yes
 PKG_SUGGESTED_OPTIONS+=	gstreamer pulseaudio
 .endif
 

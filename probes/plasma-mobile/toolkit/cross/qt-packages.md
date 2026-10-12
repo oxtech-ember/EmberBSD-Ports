@@ -13,6 +13,14 @@ shader pixels and repeated processes on CM5. The [Qt Quick consumer](../tests/qt
 also passes compiled QML scene/layer pixels through V3D. Other module runtimes
 and Plasma remain unaccepted.
 
+## Quick3D and Multimedia packages
+
+Quick3D and Multimedia 6.12.0nb1 now cross-package and install with their full
+selected payloads. The [installed player check](../tests/qt-multimedia/README.md)
+passes exact video frames, end of media, process restart and failure controls
+on CM5 with FFmpeg 9.0.2. Quick3D host OBJ import and generated QML bytecode
+also pass. Target Quick3D scenes, spatial audio and full Plasma remain unaccepted.
+
 ## Full QtTools package
 
 QtTools 6.12.0nb2 also passes the ordinary complete package checks and installs
