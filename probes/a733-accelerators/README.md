@@ -4,12 +4,15 @@ This probe identifies the concrete gaps between the Allwinner A733 BSP and
 Mesa's open NPU stack. It does not enable GPU/NPU hardware. It helps avoid
 selecting an incompatible userspace or treating a device node as acceleration.
 
-The physical target is Orange Pi Zero 3W with A733. The BSP data below has
-not been read from that board's accelerator identity registers. The
-read-only board check on 2026-10-08 found no GPU, NPU or PCK600 power-controller
-node in the running EmberBSD FDT. Opening `card0` and `renderD128` failed with
-`Operation not supported by device`; precreated `/dev/dri` nodes do not show
-an attached driver.
+The physical target is Orange Pi Zero 3W with A733. EmberBSD now supplies
+native power and clock providers. The [GPU PLL and identity check](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-gpu-identification.md#physical-pll-result)
+reads BVNC `36.56.104.183` after strict CORE ON/Q readiness.
+The [native firmware preflight](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-gpu-fwinfo.md#physical-preflight-result)
+reads the matching firmware and validates its metadata on the board.
+These results do not establish firmware execution, DMA, a PowerVR DRM
+interface, or accelerated Plasma. Precreated `/dev/dri` nodes do not show
+an attached driver. The source audit below remains separate from hardware
+acceptance of the full accelerator stack.
 
 ## Reproduce the source check
 
@@ -76,8 +79,9 @@ hardware review; the ordinary etnaviv UAPI is not the vendor VIPLite ABI.
 
 A complete native path therefore needs:
 
-1. An EmberBSD A733 PCK600 power-domain driver, NPU clocks/resets and FDT
-   attachment; power-aware register identification is the first board test.
+1. Power-aware register identification through the native EmberBSD A733
+   PCK600, clock/reset and FDT providers. Record the exact accepted NPU
+   fields before selecting the complete hardware description.
 2. Buffer ownership, DMA/cache synchronization, NPU MMU, IRQ completion,
    bounded waits, reset, and cleanup after process death in the OS repository.
 3. A licensed Mesa feature description and A733-compatible command lowering,
