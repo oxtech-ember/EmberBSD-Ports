@@ -111,11 +111,36 @@ manifest = entries.map { |p| "#{Digest::SHA256.file(p).hexdigest}  #{p.delete_pr
 File.write(stage + '/files.sha256', manifest)
 File.write(work + '/files.sha256', manifest)
 File.write(work + '/sources.sha256', sources.map { |p, h| "#{h}  #{p}\n" }.join)
-run.call('tar', '/usr/bin/env', 'COPYFILE_DISABLE=1', 'tar', '--format=ustar', '--no-xattrs', '-czf', work + '/input.tar.gz', '-C', stage, '.')
 remote = nil
 begin
   remote = run.call('allocate', *ssh, 'test "$(uname -s)" = NetBSD && test "$(uname -p)" = aarch64 && umask 077 && mktemp -d /tmp/ember-gir.XXXXXXXX').strip
   abort 'invalid temporary directory' unless remote.match?(/\A\/tmp\/ember-gir\.[A-Za-z0-9]{8}\z/)
+# Reuse only byte-identical installed sysroot providers, copied into this
+# query's private directory. In-tree libraries always travel with the query.
+# Both normal manifest checks below still cover every reused byte.
+reusable = files.select { |_name, path| inside.call(path, sysroot) }
+unless reusable.empty?
+  reuse_script = "set -eu\ncd #{remote.shellescape}\nmkdir -p lib\n"
+  reusable.each do |name, path|
+    installed = path.delete_prefix(sysroot)
+    expected = sources.fetch(path)
+    copy = 'lib/' + name
+    reuse_script += <<~SH
+      if test -f #{installed.shellescape} && test "$(sha256 -q #{installed.shellescape})" = #{expected}; then
+        cp #{installed.shellescape} #{copy.shellescape}
+        test "$(sha256 -q #{copy.shellescape})" = #{expected} || exit 92
+        printf '%s\n' #{name.shellescape}
+      fi
+    SH
+  end
+  File.write(work + '/reuse.sh', reuse_script)
+  reused = run.call('reuse', *ssh, 'sh -s -- ember-gir-reuse', stdin_data: reuse_script).lines.map(&:chomp)
+  abort 'invalid reused library response' unless reused.uniq == reused && reused.all? { |name| reusable.key?(name) }
+  reused.each { |name| File.unlink(stage + '/lib/' + name) }
+end
+run.call('tar', '/usr/bin/env', 'COPYFILE_DISABLE=1', 'tar', '--format=ustar', '--no-xattrs', '-czf', work + '/input.tar.gz', '-C', stage, '.')
+File.write(work + '/transfer-size.txt', "#{File.size(work + '/input.tar.gz')}\n")
+
   run.call('transfer', *ssh, "tar -xzf - -C #{remote.shellescape}", stdin_data: File.binread(work + '/input.tar.gz'))
   invocation = [remote + '/query']
   invocation << "--introspect-dump=#{remote}/types.txt,#{remote}/dump.xml" if out_path
@@ -146,9 +171,10 @@ begin
   $stderr.write(output)
   abort "target query failed (#{status.exitstatus}), #{work}" unless status.success?
   if out_path
-    xml, status = Open3.capture2(*ssh, "test -s #{remote}/dump.xml && cat #{remote}/dump.xml")
+    xml, diagnostics, status = Open3.capture3(*ssh, "test -s #{remote}/dump.xml && cat #{remote}/dump.xml")
+    File.write(work + '/xml-transfer.log', "exit=#{status.exitstatus} bytes=#{xml.bytesize}\n" + diagnostics)
+    File.binwrite(work + '/dump.xml', xml) if xml.bytesize <= 16 * 1024 * 1024
     abort 'invalid introspection XML' unless status.success? && xml.bytesize <= 16 * 1024 * 1024 && xml.include?('<dump')
-    File.binwrite(work + '/dump.xml', xml)
   end
 ensure
   if remote && remote.match?(/\A\/tmp\/ember-gir\.[A-Za-z0-9]{8}\z/)

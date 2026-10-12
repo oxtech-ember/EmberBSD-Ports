@@ -137,3 +137,25 @@ The installed target Python scanner and its complete upstream suite have not
 yet been accepted on a board. Full current librsvg, its CLI/pixbuf integration,
 and a complete Wayland compositor session remain separate work. This package
 does not establish hardware GPU or NPU execution.
+
+## Verified local provider reuse
+
+The query launcher now compares installed sysroot providers with their exact
+source SHA256 on the target. Matching files are copied into the private query
+directory and checked again after copying. Different or missing installed files
+are uploaded normally; in-tree libraries always travel with the query. The
+complete manifest is still verified before and after execution. No installed
+library is modified and no persistent target cache is introduced.
+
+The launcher rejects unknown or duplicate reuse responses. Copy corruption,
+query failure, invalid XML, cleanup failure and changed host inputs all prevent
+publication. Readback now retains its exit status, size and diagnostic stream;
+a bounded rejected XML payload stays in the local diagnostic directory.
+
+The real-ELF contract adds three reuse transport failures and executes the
+production shell body for matching, changed, missing and copy-corrupted files.
+The existing pre-SSH, alias, SONAME, transport and publication checks still pass.
+On CM5 on 2026-10-12, actual Pango GType queries reused 34 byte-identical
+libraries and transferred approximately 0.9 MiB per query. Complete manifest
+checks, target execution and temporary-directory cleanup passed. This is a
+build-time GType result, not acceptance of an installed Pango application.

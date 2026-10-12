@@ -76,16 +76,21 @@ File.write(work + '/bin/ssh', "#!#{RbConfig.ruby}\n" + <<~'RUBY')
   phase = case command
           when /mktemp/ then 'allocate'
           when /\Atar / then 'transfer'
+          when 'sh -s -- ember-gir-reuse' then 'reuse'
           when 'sh -s' then 'query'
           when /\Atest -s / then 'readback'
           when /\Arm -rf / then 'cleanup'
           else abort 'unexpected test transport command'
           end
   File.open(ENV.fetch('GI_TEST_PHASES'), 'a') { |f| f.puts(phase) }
-  STDIN.read if %w[transfer query].include?(phase)
+  STDIN.read if %w[transfer query reuse].include?(phase)
   exit 74 if mode == phase
   case phase
   when 'allocate' then puts '/tmp/ember-gir.AbCd1234'
+  when 'reuse'
+    puts 'unexpected.so' if mode == 'reuse-unknown'
+    puts ['libgi-probe.so.1', 'libgi-probe.so.1'] if mode == 'reuse-duplicate'
+    puts 'libgi-probe.so.1' if mode == 'reused'
   when 'query'
     File.write(ENV.fetch('GI_TEST_INPUT'), 'modified') if mode == 'input-change'
   when 'readback'
@@ -93,14 +98,23 @@ File.write(work + '/bin/ssh', "#!#{RbConfig.ruby}\n" + <<~'RUBY')
   end
 RUBY
 File.unlink(work + '/build/output')
+# Subsequent transport fixtures select a real sysroot ELF provider. The earlier
+# alias test keeps exercising an in-tree provider that must always be uploaded.
+FileUtils.mkdir_p(work + '/sysroot/usr/pkg/lib')
+FileUtils.cp(work + '/build/provider/libgi-probe.so.1', work + '/sysroot/usr/pkg/lib')
+File.write(config_path, JSON.pretty_generate(config.merge('library_dirs' => [work + '/sysroot/usr/pkg/lib'])))
 expected = {
-  'transfer' => ['allocate transfer cleanup', /transfer failed/],
-  'query' => ['allocate transfer query cleanup', /target query failed/],
-  'readback' => ['allocate transfer query readback cleanup', /invalid introspection XML/],
-  'bad-xml' => ['allocate transfer query readback cleanup', /invalid introspection XML/],
-  'cleanup' => ['allocate transfer query readback cleanup', /remote cleanup failed/],
-  'input-change' => ['allocate transfer query readback cleanup', /source providers changed/],
-  'success' => ['allocate transfer query readback cleanup', nil]
+  'reuse' => ['allocate reuse cleanup', /reuse failed/],
+  'reuse-unknown' => ['allocate reuse cleanup', /invalid reused library response/],
+  'reuse-duplicate' => ['allocate reuse cleanup', /invalid reused library response/],
+  'reused' => ['allocate reuse transfer query readback cleanup', nil],
+  'transfer' => ['allocate reuse transfer cleanup', /transfer failed/],
+  'query' => ['allocate reuse transfer query cleanup', /target query failed/],
+  'readback' => ['allocate reuse transfer query readback cleanup', /invalid introspection XML/],
+  'bad-xml' => ['allocate reuse transfer query readback cleanup', /invalid introspection XML/],
+  'cleanup' => ['allocate reuse transfer query readback cleanup', /remote cleanup failed/],
+  'input-change' => ['allocate reuse transfer query readback cleanup', /source providers changed/],
+  'success' => ['allocate reuse transfer query readback cleanup', nil]
 }
 expected.each do |mode, (phases, error)|
   File.write(work + '/build/types', "original type query\n")
@@ -120,4 +134,32 @@ expected.each do |mode, (phases, error)|
     abort "#{mode}: valid output missing: #{output}" unless status.success? && File.read(outcome) == "<dump></dump>\n"
   end
 end
-puts 'PASS: real ELF and alias resolution; seven refusals before SSH; SONAME checks; six transport failures and successful publication'
+# Execute the production reuse shell body, not a rewritten copy algorithm.
+# Only the fixture's target paths and sha256 command are mapped to this host.
+reuse_body = File.read(Dir.glob(work + '/cache/*/reuse.sh').first)
+reuse_root = work + '/reuse-shell'
+installed = work + '/sysroot/usr/pkg/lib/libgi-probe.so.1'
+body = reuse_body.gsub('/tmp/ember-gir.AbCd1234', reuse_root).gsub('/usr/pkg/lib/libgi-probe.so.1', installed)
+sha_glue = "sha256() { test \"$1\" = -q || return 2; shift; /usr/bin/shasum -a 256 \"$1\" | cut -d ' ' -f 1; }\n"
+%w[matched changed missing corrupted-copy].each do |mode|
+  FileUtils.rm_rf(reuse_root)
+  FileUtils.mkdir_p(reuse_root)
+  FileUtils.cp(work + '/build/provider/libgi-probe.so.1', installed)
+  File.write(installed, 'different installed file') if mode == 'changed'
+  File.unlink(installed) if mode == 'missing'
+  corruption = mode == 'corrupted-copy' ? "cp() { /bin/cp \"$1\" \"$2\" && printf corrupted >> \"$2\"; }\n" : ''
+  output, status = Open3.capture2e('sh', '-s', stdin_data: sha_glue + corruption + body)
+  File.write(work + '/reuse-shell-' + mode + '.log', output)
+  copied = reuse_root + '/lib/libgi-probe.so.1'
+  case mode
+  when 'matched'
+    abort 'reuse did not copy matching provider' unless status.success? && output == "libgi-probe.so.1\n" &&
+      Digest::SHA256.file(copied) == Digest::SHA256.file(installed)
+  when 'changed', 'missing'
+    abort 'reuse did not fall back to transfer' unless status.success? && output.empty? && !File.exist?(copied)
+  else
+    abort 'reuse accepted corrupt copied bytes' unless status.exitstatus == 92 && output.empty?
+  end
+end
+puts 'PASS: production reuse shell copies identical bytes, falls back for missing/changed files and rejects copy corruption'
+puts 'PASS: real ELF and alias resolution; seven refusals before SSH; SONAME checks; nine transport failures, installed-provider reuse and successful publication'
