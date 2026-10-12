@@ -15,6 +15,7 @@ _EMBERBSD_QTVERSION_RECIPES= \
     devel/qt6-qttools \
     devel/qt6-qtwayland \
     geography/qt6-qtpositioning \
+    geography/qt6-qtlocation \
     graphics/qt6-qtcharts \
     graphics/qt6-qtimageformats \
     graphics/qt6-qtquick3d \
