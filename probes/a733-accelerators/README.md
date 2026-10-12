@@ -12,8 +12,8 @@ reads the matching firmware and validates its metadata on the board.
 The [native memory preparer](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-gpu-fwmem.md#physical-preparation-result)
 also passes on the board. The [native firmware bootstrap](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-gpu-fwboot.md#physical-bootstrap-result)
 now executes firmware on Zero 3W. It reports startup and matching hardware/firmware
-BVNC through direct coherent memory. The [first KCCB command](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-gpu-fwprobe.md#physical-command-result)
-also completes with a verified return word, queue progress and executed-command counter.
+BVNC through direct coherent memory. The [LOGTYPE and MMUCACHE commands](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-gpu-fwprobe.md#physical-command-result)
+also complete with verified return words, queue progress and executed-command counters.
 All firmware allocations remain device-owned.
 GPU MMU translation, a PowerVR DRM interface, rendering, and accelerated Plasma
 remain unverified. Precreated `/dev/dri` nodes do not show
