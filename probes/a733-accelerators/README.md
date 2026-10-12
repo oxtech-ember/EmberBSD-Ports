@@ -9,7 +9,9 @@ native power and clock providers. The [GPU PLL and identity check](https://githu
 reads BVNC `36.56.104.183` after strict CORE ON/Q readiness.
 The [native firmware preflight](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-gpu-fwinfo.md#physical-preflight-result)
 reads the matching firmware and validates its metadata on the board.
-These results do not establish firmware execution, DMA, a PowerVR DRM
+The [native memory preparer](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-gpu-fwmem.md#physical-preparation-result)
+also passes on the board. Its code, data and MIPS page-table allocations
+remain CPU-owned. These results do not establish firmware execution, device DMA, a PowerVR DRM
 interface, or accelerated Plasma. Precreated `/dev/dri` nodes do not show
 an attached driver. The source audit below remains separate from hardware
 acceptance of the full accelerator stack.
