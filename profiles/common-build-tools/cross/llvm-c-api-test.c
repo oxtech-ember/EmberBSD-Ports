@@ -8,6 +8,7 @@
 #include <llvm-c/BitReader.h>
 #include <llvm-c/BitWriter.h>
 #include <llvm-c/Core.h>
+#include <llvm/Config/llvm-config.h>
 
 static int
 verify(LLVMModuleRef module)
@@ -37,7 +38,8 @@ main(void)
 	char *original_ir, *decoded_ir;
 
 	LLVMGetVersion(&major, &minor, &patch);
-	if (major != 23 || minor != 1 || patch != 2) {
+	if (major != LLVM_VERSION_MAJOR || minor != LLVM_VERSION_MINOR ||
+	    patch != LLVM_VERSION_PATCH) {
 		fprintf(stderr, "wrong runtime LLVM: %u.%u.%u\n", major,
 		    minor, patch);
 		return EXIT_FAILURE;

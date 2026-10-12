@@ -175,3 +175,8 @@ ruby ../tests/llvm-config-dwp.rb /absolute/sealed-helper \
 
 The regression queries real target metadata and rejects altered anchors,
 packages, missing metadata, changed metadata/executable and runtime drift.
+
+On 2026-10-12 the complete LLVM 23.1.3 package repeats all 16 query groups
+on CM5 and passes 21 seal/query integrity checks. The original manifest anchor
+and installed-library identity are recorded with the
+[actual C API/ORC receipt](../../common-build-tools/cross/llvm-api-tests.md#cm5-llvm-2313-2026-10-12).

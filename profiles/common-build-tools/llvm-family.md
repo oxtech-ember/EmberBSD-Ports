@@ -214,7 +214,11 @@ acceptance of other backends, concurrent JIT or arbitrary external relocations.
 
 The [Clang cross workflow](cross/clang.md) provides matching host generators,
 target-only installed paths and checked GCC16 metadata. Its preparation checks
-pass. Full LLVM and Clang 23.1.3 packages now pass ordinary cross-package\nchecks and installation into the build sysroot. Installed 23.1.3 execution,\nLLD and downstream consumer acceptance remain separate gates.
+pass. Full LLVM, Clang and LLD 23.1.3 packages now pass ordinary cross-package
+checks and installation into the build sysroot. On 2026-10-12, installed
+LLVM 23.1.3 also passes the same C API/bitcode and four ORC lifecycles on CM5,
+16 actual target metadata queries and 21 sealed-tool integrity checks.
+Installed Clang/LLD and renewed downstream consumer acceptance remain separate.
 
 ## Remaining native gates
 

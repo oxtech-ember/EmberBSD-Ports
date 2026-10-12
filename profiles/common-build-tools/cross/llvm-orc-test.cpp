@@ -6,6 +6,7 @@
 #include <string>
 
 #include "llvm-c/Core.h"
+#include <llvm/Config/llvm-config.h>
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/ExecutionEngine/Orc/ObjectLinkingLayer.h"
 #include "llvm/IR/IRBuilder.h"
@@ -64,7 +65,8 @@ int main(int argc, char **argv) {
   }
   unsigned major, minor, patch;
   LLVMGetVersion(&major, &minor, &patch);
-  if (major != 23 || minor != 1 || patch != 2) {
+  if (major != LLVM_VERSION_MAJOR || minor != LLVM_VERSION_MINOR ||
+      patch != LLVM_VERSION_PATCH) {
     errs() << "FAIL: runtime LLVM version is " << major << '.' << minor << '.'
            << patch << '\n';
     return 2;
