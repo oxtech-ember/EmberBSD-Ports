@@ -66,6 +66,16 @@ Static analysis (Cppcheck 2.22.0, per-file delta on the patched files,
 on both headers and on all five patched mutter sources. A full corpus run
 per the project recipe happens with profile promotion, not at probe stage.
 
+Second finding in the same native VM build (shared `/usr/pkg` prefix,
+aarch64): linking the `ctexi2any` program with `-pie` against the shared
+`libtexinfo*` fails with `R_AARCH64_ADR_PREL_PG_HI21 ... recompile with
+-fPIC` on `digit_chars`. Handled as build-profile policy, not a recipe
+fork: a per-package `CFLAGS+= -fPIC` for `devel/gtexinfo` in the native
+mk.conf. The development-toolchain Texinfo 7.3 recipe update
+(`current-prerequisites.patch`) is already present in this tree and kept
+as the base; neither pkgsrc HEAD nor the profile carried a PIC fix, and
+their staging environment did not hit the shared-prefix case.
+
 ## Next steps
 
 1. Build `gsettings-desktop-schemas` and `gnome-desktop4` natively in the
