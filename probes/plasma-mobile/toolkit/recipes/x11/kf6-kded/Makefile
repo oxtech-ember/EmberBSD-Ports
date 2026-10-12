@@ -9,7 +9,7 @@ LICENSE=	gnu-lgpl-v2.1
 
 .include "../../meta-pkgs/kde/kf6.mk"
 
-TOOL_DEPENDS+=	kf6-kdoctools>=${KF6VER}:../../devel/kf6-kdoctools
+.include "../../devel/kf6-kdoctools/tools.mk"
 
 .include "../../devel/kf6-kconfig/buildlink3.mk"
 .include "../../devel/kf6-kcoreaddons/buildlink3.mk"

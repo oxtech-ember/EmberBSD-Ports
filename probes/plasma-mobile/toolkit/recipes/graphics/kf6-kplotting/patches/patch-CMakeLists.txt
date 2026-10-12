@@ -1,0 +1,14 @@
+Origin: EmberBSD (AI-assisted), retain the packaged Designer plugin during cross builds.
+Target libraries and native generators remain separate, as in KIO 6.31.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -28,7 +28,7 @@
+ set(REQUIRED_QT_VERSION 6.10.0)
+ find_package(Qt6Widgets ${REQUIRED_QT_VERSION} REQUIRED NO_MODULE)
+ 
+-cmake_dependent_option(BUILD_DESIGNERPLUGIN "Build plugin for Qt Designer" ON "NOT CMAKE_CROSSCOMPILING" OFF)
++option(BUILD_DESIGNERPLUGIN "Build plugin for Qt Designer" ON)
+ add_feature_info(DESIGNERPLUGIN ${BUILD_DESIGNERPLUGIN} "Build plugin for Qt Designer")
+ 
+ set(kplotting_version_header "${CMAKE_CURRENT_BINARY_DIR}/src/kplotting_version.h")

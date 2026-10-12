@@ -3,3 +3,4 @@ $NetBSD: distinfo,v 1.5 2026/09/06 10:05:18 markd Exp $
 BLAKE2s (kcompletion-6.31.0.tar.xz) = 681dc67e8aaf466e3d5abe741ee28774cd3920502349ea2ba3b4ccaa0f6f0643
 SHA512 (kcompletion-6.31.0.tar.xz) = a9cc4299b79b0c19243354a500658e8f1eb48a80bc9b38430e1f619c050ea680662bc909b2bebbda22fee5e39a2e36091322eb12704d87a3829622e4c38fe064
 Size (kcompletion-6.31.0.tar.xz) = 2256628 bytes
+SHA1 (patch-CMakeLists.txt) = 0dcb10ad6fd8afb23c3149521534b976e353c50d

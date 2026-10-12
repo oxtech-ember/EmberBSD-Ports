@@ -98,6 +98,14 @@ bounded CM5 consumer checks.
 Their focused source checks, curl metadata regression and CM5 API tests pass;
 complete installed desktop acceptance remains pending.
 
+[Native KDocTools](cross/doctools.md) generates documentation without a second
+host QtTools/LLVM dependency tree. Its full target package and DocBook recipe
+checks pass; target execution remains pending.
+
+[Designer plugin recipes](cross/designer-plugins.md) retain the full target payload.
+[Breeze generator repairs](cross/breeze.md) preserve input SVG files and reject
+XML conversion failures, with native regression and sanitizer checks.
+
 The [Frameworks cross workflow](cross/frameworks.md) records accepted KI18n,
 KCoreAddons, KConfig, KCodecs, KGuiAddons and KWindowSystem package builds.
 CM5 checks cover configuration persistence, native file events and locale lookup.

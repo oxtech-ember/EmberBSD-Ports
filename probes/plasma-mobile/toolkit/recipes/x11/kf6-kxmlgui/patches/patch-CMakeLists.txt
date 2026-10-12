@@ -1,0 +1,14 @@
+Origin: EmberBSD (AI-assisted), retain the packaged Designer plugin during cross builds.
+Target libraries and native generators remain separate, as in KIO 6.31.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -39,7 +39,7 @@
+ 
+ option(FORCE_DISABLE_KGLOBALACCEL "Force building KXmlGui without KGlobalAccel. Doing this will break global shortcut support. [default=OFF]" OFF)
+ 
+-cmake_dependent_option(BUILD_DESIGNERPLUGIN "Build plugin for Qt Designer" ON "NOT CMAKE_CROSSCOMPILING" OFF)
++option(BUILD_DESIGNERPLUGIN "Build plugin for Qt Designer" ON)
+ add_feature_info(DESIGNERPLUGIN ${BUILD_DESIGNERPLUGIN} "Build plugin for Qt Designer")
+ 
+ # Dependencies

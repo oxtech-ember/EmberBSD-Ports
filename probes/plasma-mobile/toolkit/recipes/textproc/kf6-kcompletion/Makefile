@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.17 2026/09/06 10:05:18 markd Exp $
 
 DISTNAME=	kcompletion-${KF6VER}
+PKGREVISION=	1
 CATEGORIES=	textproc
 
 HOMEPAGE=	https://community.kde.org/Frameworks
@@ -10,7 +11,9 @@ LICENSE=	gnu-lgpl-v2.1
 .include "../../meta-pkgs/kde/kf6.mk"
 
 .include "../../devel/kf6-kconfig/buildlink3.mk"
+BUILDLINK_DEPMETHOD.qt6-qttools= build
 .include "../../devel/qt6-qttools/buildlink3.mk"
+.include "../../devel/qt6-qttools/linguist.mk"
 .include "../../textproc/kf6-kcodecs/buildlink3.mk"
 .include "../../x11/kf6-kwidgetsaddons/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"

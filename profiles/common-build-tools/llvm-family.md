@@ -22,7 +22,11 @@ contracts, negative-input checks and the exported version selection pass.
 The DWP repair remains applied once. Matching native generators execute on
 macOS; the actual host metadata helper reports target AArch64, shared LLVM
 and RTTI. QDoc also passes a C++ documentation consumer with the official
-native LLVM/Clang SDK. Full 23.1.3 target packages and renewed Mesa/Qt runtime
+native LLVM/Clang SDK. The full LLVM 23.1.3 core now passes cross-package checks
+and installation into the common build sysroot. Its staged metadata helper
+passes 15 query/refusal checks. The package SHA256 is
+`052b4a4e7afd291c21ee78f9c2cbd5e9c125164ff1faad44bbfb27d922793cfe`.
+Installed 23.1.3 target execution, Clang/LLD packages and renewed Mesa/Qt runtime
 acceptance are still in progress. The dated 23.1.2 receipts below are historical
 evidence and must not be relabeled as 23.1.3 results.
 

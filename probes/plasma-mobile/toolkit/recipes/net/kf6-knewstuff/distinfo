@@ -3,5 +3,6 @@ $NetBSD: distinfo,v 1.5 2026/09/06 10:05:17 markd Exp $
 BLAKE2s (knewstuff-6.31.0.tar.xz) = ebff36ae696e382b886b796adaec7bb69dbfa369e4ab33b17d840980d3eaf019
 SHA512 (knewstuff-6.31.0.tar.xz) = 06011a61b32864ef169915160ed69a55b1cca1950100e24152b6597282c8d246dc43745313f16f2a1eab9e51de4adaef1ac3d4394b185cf2169416c9a1790f92
 Size (knewstuff-6.31.0.tar.xz) = 3048836 bytes
+SHA1 (patch-CMakeLists.txt) = f6b1bf64ea876cb4dc9012ad9027d0d52541d870
 SHA1 (patch-src_core_CMakeLists.txt) = 120f4726b967023c5ecfca5e253d7c6bf936513b
 SHA1 (patch-src_widgets_CMakeLists.txt) = 806df75d1c48badb0c1168fb1582ed4134f0e251

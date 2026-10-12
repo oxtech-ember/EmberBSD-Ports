@@ -9,6 +9,9 @@ tree, conf, source, sysroot, readelf = ARGV.first(5).map { |p| File.realpath(p) 
 work = File.expand_path(ARGV.last)
 abort 'NEW_WORK must be new and absolute' unless ARGV.last.start_with?('/') && !File.exist?(work)
 FileUtils.mkdir_p(work)
+component = ENV.fetch('KF6_WIDGET_COMPONENT', 'kwidgetsaddons')
+providers = {'kwidgetsaddons' => ['x11', 'KF6WidgetsAddons'], 'kconfigwidgets' => ['x11', 'KF6ConfigWidgets'], 'kcompletion' => ['textproc', 'KF6Completion']}
+category, provider = providers.fetch(component) { abort 'unsupported widget component' }
 make = ENV.fetch('BMAKE', 'bmake')
 cmake = ENV.fetch('CMAKE', 'cmake')
 input = "#{source}/CMakeLists.txt"
@@ -22,17 +25,17 @@ original = fixed.sub('option(', 'cmake_dependent_option(').sub(' ON)', ' ON "NOT
   File.write("#{work}/option-#{i}.log", output)
   abort 'unexpected option behavior' unless status.success? && File.read("#{work}/result-#{i}") == expected
 end
-out, status = Open3.capture2e(make, '-C', "#{tree}/x11/kf6-kwidgetsaddons", "MAKECONF=#{conf}", '-V', '${DEPENDS}', '-V', '${BUILD_DEPENDS}')
+out, status = Open3.capture2e(make, '-C', "#{tree}/#{category}/kf6-#{component}", "MAKECONF=#{conf}", '-V', '${DEPENDS}', '-V', '${BUILD_DEPENDS}')
 File.write("#{work}/dependencies.txt", out)
 abort 'dependency query failed' unless status.success? && out.lines.length == 2
 runtime, build = out.lines
 abort 'QtTools should be a build dependency only' unless build.include?('qt6-qttools>=6.12.0') && !runtime.include?('qt6-qttools')
 abort 'Qtbase runtime dependency missing' unless runtime.include?('qt6-qtbase>=6.12.0')
-plugin = "#{sysroot}/usr/pkg/qt6/plugins/designer/kwidgetsaddons6widgets.so"
+plugin = "#{sysroot}/usr/pkg/qt6/plugins/designer/#{component}6widgets.so"
 out, status = Open3.capture2e(readelf, '-h', '-d', plugin)
 File.write("#{work}/plugin.elf", out)
-abort 'installed target plugin missing' unless status.success? && out.include?('AArch64') && out.include?('[libKF6WidgetsAddons.so.6]')
+abort 'installed target plugin missing' unless status.success? && out.include?('AArch64') && out.include?("[lib#{provider}.so.6]")
 abort 'unexpected QtTools DSO' if out.match?(/NEEDED.*libQt6(?:Designer|Help|UiTools)/)
-inputs = [__FILE__, input, plugin, "#{tree}/x11/kf6-kwidgetsaddons/Makefile"]
+inputs = [__FILE__, input, plugin, "#{tree}/#{category}/kf6-#{component}/Makefile"]
 File.write("#{work}/inputs.sha256", inputs.map { |f| "#{Digest::SHA256.file(f).hexdigest}  #{f}\n" }.join)
 puts 'PASS: old cross exclusion reproduced; native default preserved; installed AArch64 plugin and build-only QtTools verified'

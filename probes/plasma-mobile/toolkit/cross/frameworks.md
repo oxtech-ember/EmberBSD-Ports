@@ -31,6 +31,9 @@ sh probes/plasma-mobile/toolkit/tests/linguist-tools.sh \
     /absolute/prepared-pkgsrc /absolute/host-qt/qtbase /absolute/new-check
 ```
 
+[KDocTools](doctools.md) and [Breeze](breeze.md) also use matching native generators.
+[Designer plugins](designer-plugins.md) remain enabled in complete cross packages.
+
 KConfig consumers also execute `kconfig_compiler` while building. Build that
 native generator from the manifest's original KConfig archive:
 

@@ -3,3 +3,4 @@ $NetBSD: distinfo,v 1.5 2026/09/06 10:05:15 markd Exp $
 BLAKE2s (kplotting-6.31.0.tar.xz) = d094c69062422df1447780dcc74c3683e7a12504a6bfbe3bd7c44e990acfbac7
 SHA512 (kplotting-6.31.0.tar.xz) = ce7ee4508066e779f1356377c8a370bb033efe8676657e8283bdb6578b6b9f58a960f64e2b97a14418d727d64dcea71c4a9bfdcd76e6f04d4a959657fb903519
 Size (kplotting-6.31.0.tar.xz) = 34128 bytes
+SHA1 (patch-CMakeLists.txt) = 74e495d9eb4233f16a84bd903ca25df622301f36

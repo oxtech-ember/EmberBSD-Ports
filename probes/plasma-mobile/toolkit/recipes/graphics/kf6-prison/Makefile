@@ -9,7 +9,7 @@ LICENSE=	mit
 
 .include "../../meta-pkgs/kde/kf6.mk"
 
-TOOL_DEPENDS+=	kf6-kdoctools>=${KF6VER}:../../devel/kf6-kdoctools
+.include "../../devel/kf6-kdoctools/tools.mk"
 
 USE_TOOLS+=	pkg-config
 

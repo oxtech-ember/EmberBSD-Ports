@@ -7,6 +7,8 @@ KF6_KDOCTOOLS_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.kf6-kdoctools+=	kf6-kdoctools>=6.31.0
 BUILDLINK_ABI_DEPENDS.kf6-kdoctools+=	kf6-kdoctools>=6.31.0
+.include "../../devel/kf6-kdoctools/cross-tools.mk"
+
 BUILDLINK_PKGSRCDIR.kf6-kdoctools?=	../../devel/kf6-kdoctools
 
 BUILDLINK_FILES.kf6-kdoctools+=		share/kf6/kdoctools/customization/*.xsl

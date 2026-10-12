@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.16 2026/09/06 10:05:12 markd Exp $
 
 DISTNAME=	kdoctools-${KF6VER}
+PKGREVISION=	1
 CATEGORIES=	devel
 
 HOMEPAGE=	https://community.kde.org/Frameworks
@@ -8,6 +9,13 @@ COMMENT=	Documentation generation from docbook
 LICENSE=	gnu-lgpl-v2.1
 
 .include "../../meta-pkgs/kde/kf6.mk"
+.include "cross-tools.mk"
+
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+CMAKE_CONFIGURE_ARGS+= -DRELOCATABLE_DOCBOOK_FILES=ON
+CMAKE_CONFIGURE_ARGS+= -DLIBXML2_XMLLINT_EXECUTABLE=${TOOLBASE:Q}/bin/xmllint
+.endif
+
 
 USE_TOOLS+=	msgmerge perl
 

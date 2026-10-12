@@ -3,4 +3,5 @@ $NetBSD: distinfo,v 1.5 2026/09/06 10:05:21 markd Exp $
 BLAKE2s (ktextwidgets-6.31.0.tar.xz) = d481d692e02d5920c0646316cfe676f6cd13f1bdb4eab71f012e8a12a01a9ac0
 SHA512 (ktextwidgets-6.31.0.tar.xz) = 00a49adcb0a125c4cfacefa82fefb9f6fe647227ef478ff58b5b1532d509582e2b95283089053149292f868dfe9a131b2118a8bcd78f0a2df51968c160229387
 Size (ktextwidgets-6.31.0.tar.xz) = 2444560 bytes
+SHA1 (patch-CMakeLists.txt) = 98c44680558ee4815d5ad79942ab894ba4514332
 SHA1 (patch-src_CMakeLists.txt) = 95b5a2ebbb97f439278aaa3889abca21ee79de6e

@@ -2,16 +2,34 @@
 
 DISTNAME=	breeze-icons-${KF6VER}
 PKGNAME=	${DISTNAME}
+PKGREVISION=	1
 CATEGORIES=	graphics
 
 HOMEPAGE=	https://community.kde.org/Frameworks
 COMMENT=	Breeze icon themes
 LICENSE=	gnu-lgpl-v2.1 AND gnu-lgpl-v3
 
-# causes core dumps as of 6.18 on NetBSD 11.99.3/gcc 14
-BUILDLINK_TRANSFORM.NetBSD+=	rm:-fno-lto
-
 .include "../../meta-pkgs/kde/kf6.mk"
+
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.if !defined(EMBERBSD_KF6_BREEZE_HOST) || !defined(EMBERBSD_KF6_HOST_TOOLING)
+PKG_FAIL_REASON+= "Set EMBERBSD_KF6_BREEZE_HOST and EMBERBSD_KF6_HOST_TOOLING for cross builds"
+.else
+CMAKE_CONFIGURE_ARGS+= -DGENERATE_SYMBOLIC_DARK=${EMBERBSD_KF6_BREEZE_HOST:Q}/bin/generate-symbolic-dark
+CMAKE_CONFIGURE_ARGS+= -DQRC_ALIAS=${EMBERBSD_KF6_BREEZE_HOST:Q}/bin/qrcAlias
+pre-configure: emberbsd-native-breeze-check
+.PHONY: emberbsd-native-breeze-check
+emberbsd-native-breeze-check:
+	${RUN}${TEST} -f ${EMBERBSD_KF6_BREEZE_HOST:Q}/share/ember-breeze-version && \
+	    ${TEST} "`${CAT} ${EMBERBSD_KF6_BREEZE_HOST:Q}/share/ember-breeze-version`" = 6.31.0 && \
+	    ${TEST} -x ${EMBERBSD_KF6_BREEZE_HOST:Q}/bin/generate-symbolic-dark && \
+	    ${TEST} -x ${EMBERBSD_KF6_BREEZE_HOST:Q}/bin/qrcAlias || { \
+	        echo 'Matching native Breeze 6.31 generators are required' >&2; exit 1; \
+	    }
+.endif
+.endif
+
 
 PYTHON_FOR_BUILD_ONLY=	tool
 

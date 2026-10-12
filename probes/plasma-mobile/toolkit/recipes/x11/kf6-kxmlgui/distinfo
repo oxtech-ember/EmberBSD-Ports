@@ -3,3 +3,4 @@ $NetBSD: distinfo,v 1.5 2026/09/06 10:05:21 markd Exp $
 BLAKE2s (kxmlgui-6.31.0.tar.xz) = 7208375e95ef31d1ac63932f94f15d33c150d7a9a6dc74768093b51b2d8cfefa
 SHA512 (kxmlgui-6.31.0.tar.xz) = 30277f8844360d5f4444c9619440bea1513402c10a3db3ca7f52b49cd179f64124019c4db4d117d8aea5a17eb23f5ce268a83cc294526549636780a505cd5ded
 Size (kxmlgui-6.31.0.tar.xz) = 2874628 bytes
+SHA1 (patch-CMakeLists.txt) = faf94fe61a0a955309fa7a758a01e49fe272534b
