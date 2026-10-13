@@ -215,3 +215,21 @@ On macOS, create transfer archives with
 otherwise become unintended test inputs on NetBSD. Do not count a host
 execution or version string as target acceptance. The [Libtool record](../libtool.md)
 explains source regeneration and target script conversion.
+
+## Cached file-check recovery
+
+The common export makes each file-check result depend on its output directory.
+`error-clean` can remove `.error` while the before/after file lists remain cached.
+The check then recreates that directory through the existing pkgsrc target.
+File, prefix, configuration-directory and variable-data checks remain enabled.
+
+Run this check from the repository root:
+
+```sh
+BMAKE=/absolute/bmake sh profiles/common-build-tools/tests/check-error-dir.sh \
+    /absolute/unpatched-pkgsrc /absolute/new-results
+```
+
+The regression uses real pkgsrc make fragments. It reproduces the original
+failure, accepts a valid payload and rejects five invalid payloads.
+It also checks all four direct writer targets and preserves the build cookie.

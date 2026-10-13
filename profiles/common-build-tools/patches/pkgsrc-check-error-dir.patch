@@ -1,0 +1,19 @@
+# Origin: EmberBSD (AI-assisted), restore file-check output prerequisites.
+# error-clean removes ERROR_DIR. Cached file lists do not depend on makedirs.
+# Use the existing directory target before any check-files output is written.
+
+--- a/mk/check/check-files.mk
++++ b/mk/check/check-files.mk
+@@ -153,6 +153,12 @@
+ 
+ _CHECK_FILES_ERRMSG.only-prefix=	${ERROR_DIR}/check-files-only-prefix
+ 
++# error-clean can remove this directory while the file lists remain cached.
++# Each writer needs the directory, including directly invoked checks.
++.for _check_files_scope in prefix sysconfdir varbase only-prefix
++${_CHECK_FILES_ERRMSG.${_check_files_scope}}: ${ERROR_DIR}
++.endfor
++
+ _CHECK_FILES_ERRMSGS=		# empty
+ _CHECK_FILES_ERRMSGS+=		${_CHECK_FILES_ERRMSG.prefix}
+ .if ${CHECK_FILES_STRICT:tl} != no
