@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.37 2026/09/07 05:01:10 adam Exp $
+
+BLAKE2s (taglib-2.3.2.tar.gz) = acb48fb1203b2e99073791a35743ef1e42f0cb181e02cfed478dd060874a5ef0
+SHA512 (taglib-2.3.2.tar.gz) = d9f68d075c24cb3535e4ae5e5b062c05d732cbcd7c8a8c0fe4935da27dc7a01e897fd3158f2059e11e46a31b18c3a9caffc66510b7459e1e8c48f29d1ae84c82
+Size (taglib-2.3.2.tar.gz) = 1799985 bytes

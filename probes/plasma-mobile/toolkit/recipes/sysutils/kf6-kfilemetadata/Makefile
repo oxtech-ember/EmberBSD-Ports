@@ -11,6 +11,7 @@ USE_CXX_FEATURES+=	filesystem
 
 .include "../../meta-pkgs/kde/kf6.mk"
 
+
 USE_TOOLS+=	msgmerge pkg-config
 
 DEPENDS+=	catdoc-[0-9]*:../../textproc/catdoc
@@ -29,8 +30,9 @@ DEPENDS+=	catdoc-[0-9]*:../../textproc/catdoc
 .include "../../graphics/exiv2/buildlink3.mk"
 .include "../../graphics/kdegraphics-mobipocket/buildlink3.mk"
 .include "../../multimedia/ffmpeg9/buildlink3.mk"
-.include "../../print/poppler-qt6/buildlink3.mk"
 .include "../../textproc/ebook-tools/buildlink3.mk"
 .include "../../textproc/kf6-kcodecs/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../print/poppler-qt6/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
+

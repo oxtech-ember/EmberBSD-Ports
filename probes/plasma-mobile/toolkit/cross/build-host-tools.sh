@@ -87,7 +87,7 @@ for module in $modules; do
         # Other modules' host generators link these libraries. Their metadata
         # alone is insufficient when the modules are built independently.
         "$CMAKE" --build "$work/$module" --parallel "$JOBS" \
-            --target host_tools Gui Network Widgets OpenGL Sql Concurrent Test QMinimalIntegrationPlugin \
+            --target host_tools Gui Network Widgets OpenGL Sql Concurrent Test PrintSupport QSQLiteDriverPlugin QMinimalIntegrationPlugin \
             > "$work/$module/build.log" 2>&1
     else
         set --

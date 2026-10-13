@@ -9,6 +9,9 @@ LICENSE=	gnu-lgpl-v2.1
 
 .include "../../meta-pkgs/kde/kf6.mk"
 
+# libutempter is not ported; KPty sessions build without utmp records.
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_DISABLE_FIND_PACKAGE_UTEMPTER:BOOL=TRUE
+
 USE_TOOLS+=	msgmerge
 
 CFLAGS.SunOS+=	-D__EXTENSIONS__

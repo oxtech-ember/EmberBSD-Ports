@@ -9,6 +9,10 @@ LICENSE=	mit
 
 .include "../../meta-pkgs/kde/kf6.mk"
 
+# Cross builds generate Qt help files with the native KDocTools flow that
+# is not wired for this recipe yet; keep the compiled HTML documentation.
+CMAKE_CONFIGURE_ARGS+=	-DBUILD_QCH=OFF
+
 .include "../../devel/qt6-qttools/buildlink3.mk"
 .include "../../graphics/qt6-qtcharts/buildlink3.mk"
 .include "../../graphics/qt6-qtsvg/buildlink3.mk"

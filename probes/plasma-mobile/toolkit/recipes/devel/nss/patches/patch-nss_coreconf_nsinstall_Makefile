@@ -1,0 +1,19 @@
+$NetBSD$
+
+nsinstall is a host build tool. Keep the target OS_LIBS out and, when a
+native compiler is provided, link it directly instead of the shared
+program rule that mixes the target LDFLAGS into the host link.
+
+--- nss/coreconf/nsinstall/Makefile.orig	2026-10-13
++++ nss/coreconf/nsinstall/Makefile
+@@ -48,3 +48,10 @@
+ if test ! -d $(@D); then mkdir -p $(@D); fi
+ endef
+ 
++
++# Cross builds link the host tool directly; the shared program rule mixes
++# target LDFLAGS into the host link.
++ifdef NATIVE_CC
++$(PROGRAM): $(OBJS)
++	$(NATIVE_CC) -o $@ $(OBJS)
++endif

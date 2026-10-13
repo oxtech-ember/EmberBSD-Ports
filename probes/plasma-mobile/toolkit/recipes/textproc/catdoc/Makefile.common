@@ -1,0 +1,24 @@
+# $NetBSD: Makefile.common,v 1.23 2023/03/13 10:18:47 wiz Exp $
+#
+# used by textproc/catdoc-tk/Makefile
+
+DISTNAME=	catdoc-0.95
+CATEGORIES=	textproc
+MASTER_SITES=	http://ftp.wagner.pp.ru/pub/catdoc/
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://www.wagner.pp.ru/~vitus/software/catdoc/
+COMMENT=	Converts MS Word, Excel, and Powerpoint files to plain text
+LICENSE=	gnu-gpl-v2
+
+DISTINFO_FILE=		${.CURDIR}/../../textproc/catdoc/distinfo
+PATCHDIR=		${.CURDIR}/../../textproc/catdoc/patches
+
+USE_FEATURES=		glob
+
+GNU_CONFIGURE=		yes
+GNU_CONFIGURE_LIBDIR=	${PREFIX}/share
+CONFIGURE_ARGS+=	--with-install-root=${DESTDIR}
+CONFIGURE_ARGS+=	--sysconfdir=${PKG_SYSCONFDIR}
+
+CPPFLAGS+=		-Dunix -D__unix

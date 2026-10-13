@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (plasma-workspace-6.7.5.tar.xz) = dd06cd28d37bbe640a2c571593ed1987215041d0206ee929fe668fc564f5c83f
+SHA512 (plasma-workspace-6.7.5.tar.xz) = e4a93906ae96f5d64dfa9dfff8742426d44fd7b1a2e4d9ee6cc71baaaf563a725806c088c9d5b352fc8aad55a8002ceb09429b6d262c77b5b0f23e36b6a9679d
+Size (plasma-workspace-6.7.5.tar.xz) = 19319796 bytes
+SHA1 (patch-startkde_config-startplasma.h.cmake) = 79ab1bd7c11a92881e05337f143a6330ec2af47d

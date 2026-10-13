@@ -1,0 +1,54 @@
+# $NetBSD: Makefile,v 1.60 2026/09/07 05:01:10 adam Exp $
+
+DISTNAME=	taglib-2.3.2
+CATEGORIES=	audio
+MASTER_SITES=	https://taglib.github.io/releases/
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://taglib.github.io/
+COMMENT=	Library for accessing id tags in various media files
+LICENSE=	gnu-lgpl-v2.1 OR mpl-1.1
+
+USE_CXX_FEATURES=	c++17
+USE_LANGUAGES=		c c++
+
+CMAKE_CONFIGURE_ARGS+=	-DBUILD_SHARED_LIBS=ON
+CMAKE_CONFIGURE_ARGS+=	-DWITH_ASF=ON
+CMAKE_CONFIGURE_ARGS+=	-DWITH_MP4=ON
+
+PKGCONFIG_OVERRIDE=	bindings/c/taglib_c.pc.cmake taglib.pc.cmake
+REPLACE_SH=		taglib-config.cmake
+
+SUBST_CLASSES+=		pc
+SUBST_FILES.pc=		taglib-config.cmake
+SUBST_STAGE.pc=		pre-configure
+SUBST_SED.pc=		-e 's|-L\([ 	]*[^ 	]*\)|${COMPILER_RPATH_FLAG}\1 -L\1|g'
+SUBST_MESSAGE.pc=	Fixing rpath in taglib-config.
+
+.include "../../mk/bsd.prefs.mk"
+
+.if ${PKGSRC_RUN_TEST:U:tl} == yes
+TEST_TARGET=	test
+CMAKE_CONFIGURE_ARGS+=	-DBUILD_TESTING=ON
+.include "../../devel/cppunit/buildlink3.mk"
+.else
+CMAKE_CONFIGURE_ARGS+=	-DBUILD_TESTING=OFF
+.endif
+
+.include "../../mk/compiler.mk"
+# depends on builtin functions which enabled with i486 and later with GCC.
+.if ${OPSYS} == "NetBSD" && ${CC_VERSION:Mgcc-[4-9]*} && ${MACHINE_ARCH} == i386
+GNU_ARCH.i386=	i486
+CFLAGS+=	-march=i486
+.endif
+
+.include "../../devel/cmake/build.mk"
+.include "../../devel/zlib/buildlink3.mk"
+.include "../../textproc/utf8-cpp/buildlink3.mk"
+# The cross build rewrites the taglib-config interpreter to a host shell.
+# Restore the portable target interpreter after installation.
+post-install:
+	${SED} -e '1s|^#!.*|#!/bin/sh|' ${DESTDIR}${PREFIX}/bin/taglib-config > ${DESTDIR}${PREFIX}/bin/taglib-config.tmp && ${MV} ${DESTDIR}${PREFIX}/bin/taglib-config.tmp ${DESTDIR}${PREFIX}/bin/taglib-config
+
+.include "../../mk/bsd.pkg.mk"
+

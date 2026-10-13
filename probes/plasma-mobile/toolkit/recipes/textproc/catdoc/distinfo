@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.16 2023/03/13 10:18:47 wiz Exp $
+
+BLAKE2s (catdoc-0.95.tar.gz) = 9cd7de410d2e9efa70208a086d678e9a7bcad4dcec835409b8ea48d1925d3fa8
+SHA512 (catdoc-0.95.tar.gz) = dd6bded4b6b70749c007256b182b063ff266f86d53024d8582001678821e8096c5b980bc8f43015d9c82bbe022d71d4ba5fe68aff31b2ff6db3688595e651b2c
+Size (catdoc-0.95.tar.gz) = 217779 bytes

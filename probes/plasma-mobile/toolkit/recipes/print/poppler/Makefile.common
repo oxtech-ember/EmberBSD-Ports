@@ -1,0 +1,48 @@
+# $NetBSD: Makefile.common,v 1.167 2026/06/24 21:55:29 wiz Exp $
+#
+# used by print/poppler/Makefile
+# used by print/poppler-cpp/Makefile
+# used by print/poppler-includes/Makefile
+# used by print/poppler-qt5/Makefile
+# used by print/poppler-qt6/Makefile
+# used by print/poppler-utils/Makefile
+
+POPPLER_VERS=	26.06.0
+DISTNAME=	poppler-${POPPLER_VERS}
+CATEGORIES=	print
+MASTER_SITES=	https://poppler.freedesktop.org/
+EXTRACT_SUFX=	.tar.xz
+
+MAINTAINER=	reed@reedmedia.net
+HOMEPAGE=	https://poppler.freedesktop.org/
+LICENSE=	gnu-gpl-v2
+
+POLICY_UPDATE_LIMITED=	abi
+
+DISTINFO_FILE=	${.CURDIR}/../../print/poppler/distinfo
+PATCHDIR=	${.CURDIR}/../../print/poppler/patches
+
+USE_CXX_FEATURES=	c++20
+USE_LANGUAGES=		c c++
+USE_TOOLS+=		pkg-config gsed
+
+TEST_ENV+=	LD_LIBRARY_PATH=${WRKSRC}/${CMAKE_BUILD_DIR}
+# For Darwin
+TEST_ENV+=	DYLD_LIBRARY_PATH=${WRKSRC}/${CMAKE_BUILD_DIR}
+TEST_TARGET=	test
+
+.include "../../mk/compiler.mk"
+.if !empty(PKGSRC_COMPILER:Mclang)
+BUILDLINK_TRANSFORM+=   rm:-fno-check-new
+.endif
+
+# poppler's build infrastructure and our split packages
+# do not work with ninja
+CMAKE_GENERATORS_INCOMPATIBLE=	ninja
+
+.include "../../devel/boost-headers/buildlink3.mk"
+.include "../../devel/cmake/build.mk"
+.include "../../devel/nss/buildlink3.mk"
+.include "../../security/gpgmepp/buildlink3.mk"
+.include "../../devel/zlib/buildlink3.mk"
+.include "../../graphics/openjpeg/buildlink3.mk"

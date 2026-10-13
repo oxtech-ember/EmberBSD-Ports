@@ -52,8 +52,6 @@ lib/libKF6UserFeedbackCore.so.${PKGVERSION}
 lib/libKF6UserFeedbackWidgets.so
 lib/libKF6UserFeedbackWidgets.so.6
 lib/libKF6UserFeedbackWidgets.so.${PKGVERSION}
-qt6/mkspecs/modules/qt_KF6UserFeedbackCore.pri
-qt6/mkspecs/modules/qt_KF6UserFeedbackWidgets.pri
 qt6/qml/org/kde/userfeedback/KF6UserFeedbackQml.qmltypes
 qt6/qml/org/kde/userfeedback/kde-qmlmodule.version
 qt6/qml/org/kde/userfeedback/libKF6UserFeedbackQml.so
@@ -153,3 +151,4 @@ share/locale/zh_CN/LC_MESSAGES/userfeedbackprovider6_qt.qm
 share/locale/zh_TW/LC_MESSAGES/userfeedbackconsole6_qt.qm
 share/locale/zh_TW/LC_MESSAGES/userfeedbackprovider6_qt.qm
 share/qlogging-categories6/org_kde_UserFeedback.categories
+share/KDE/UserFeedbackConsole/user-feedback-manual.qch

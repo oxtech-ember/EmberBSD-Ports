@@ -9,6 +9,15 @@ LICENSE=	gnu-lgpl-v2.1
 
 .include "../../meta-pkgs/kde/kf6.mk"
 
+# Cross builds use the native katehighlightingindexer built by
+# cross/build-syntax-indexer-host.sh; upstream accepts the executable
+# through KATEHIGHLIGHTINGINDEXER_EXECUTABLE.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+CMAKE_CONFIGURE_ARGS+= -DKATEHIGHLIGHTINGINDEXER_EXECUTABLE=${EMBERBSD_KF6_HOST_TOOLING}/bin/katehighlightingindexer
+pre-configure:
+	${TEST} -x ${EMBERBSD_KF6_HOST_TOOLING}/bin/katehighlightingindexer
+.endif
+
 USE_TOOLS+=	perl pkg-config
 
 CHECK_PORTABILITY_SKIP+=	autotests/input/highlight.sh
