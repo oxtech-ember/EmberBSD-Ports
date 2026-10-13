@@ -10,6 +10,35 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 install_archive() {
     (umask 022; "$add" -U "$@")
 }
+# Preserve the target's choices. Only new dependencies default to automatic.
+install_package() (
+    package=$1
+    shift
+    automatic=no
+    if ! grep -Fx "$package" "$work/roots.txt" >/dev/null; then
+        automatic=yes
+        # pkg_add replaces the exact installed version first, then the best
+        # installed version of the same base name.
+        if installed=$("$info" -E "$package" || "$info" -E "${package%-*}"); then
+            automatic=$("$info" -q -Q automatic "$installed") || return
+            case $automatic in
+                [Yy][Ee][Ss]) automatic=yes ;;
+                ''|[Nn][Oo]) automatic=no ;;
+                *) echo "Invalid automatic mark: $installed" >&2; return 1 ;;
+            esac
+        else
+            status=$?
+            [ "$status" = 1 ] || return "$status"
+        fi
+    fi
+    if [ "$automatic" = yes ]; then
+        install_archive -A "$@" || return
+    else
+        install_archive "$@" || return
+        # -U preserves the previous mark, including automatic roots.
+        "$admin" unset automatic "$package" || return
+    fi
+)
 usage() {
     echo "Usage: $0 [--verify-only] PACKAGE_SET" >&2
     echo "       $0 --install PACKAGE_SET NEW_LOG" >&2
@@ -152,7 +181,7 @@ while IFS= read -r archive; do
     expected=$(awk -v name="packages/$archive" '$2 == name {print $1}' "$work/packages.sha256")
     [ "$(hash_file "$bundle/packages/$archive")" = "$expected" ] || fail "Archive changed after verification: $archive"
     echo "Installing $archive"
-    install_archive "$bundle/packages/$archive" || fail "Package installation failed: $archive"
+    install_package "${archive%.tgz}" "$bundle/packages/$archive" || fail "Package installation failed: $archive"
 done < "$work/install-order.txt"
 set --
 while IFS= read -r archive; do

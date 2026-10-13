@@ -32,6 +32,10 @@ sh install-package-set.sh --install /absolute/package-set /absolute/new-install.
 Installation requires an explicit mode and a new log path.
 The script rejects other operating systems, other architectures and an active `plasmashell`.
 It uses `pkg_add -U` in the verified dependency order.
+New dependencies use `-A` and are marked automatic.
+Existing dependencies keep their manual or automatic status, including version upgrades.
+Selected roots are marked manual after their successful installation.
+This also promotes a root that was previously installed as a dependency.
 Verification files and the log use a private `077` umask.
 Each `pkg_add` invocation uses `022`, so ordinary users can traverse package directories.
 Package installation scripts stay enabled, including Workspace configuration-file installation.
@@ -62,5 +66,10 @@ The macOS run also checks that the explicit install mode rejects the host.
 Two native data-only fixtures also exercise the exact installation helper in private prefixes and package databases.
 The original `077` control creates a `0700` payload directory; the fixed helper creates `0755`.
 Both real package installations retain install scripts and pass `pkg_admin check`.
+Three more native fixtures check first installation, version upgrades and same-version reinstalls.
+They check new automatic dependencies, preserved manual/automatic dependencies and previously automatic roots.
+These fixtures use the production installation helpers and pass installed-payload checks.
+The helpers use `pkg_info -E` and `pkg_info -q -Q automatic` to read existing state.
+They use `pkg_admin unset automatic` to mark successfully installed roots manual.
 The regression does not install target packages or alter the host package prefix/database.
 It does not claim target installation or desktop acceptance.

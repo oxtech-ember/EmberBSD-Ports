@@ -102,7 +102,9 @@ end
 # private prefixes. The control proves that the parent's 077 mask is harmful.
 helper = File.read(installer)[/^install_archive\(\) \{\n.*?^\}/m]
 raise 'Missing production install helper' unless helper
-raise 'Install loop does not call the umask helper' unless File.read(installer).include?('install_archive "$bundle/packages/$archive"')
+policy = File.read(installer)[/^install_package\(\) \(\n.*?^\)/m]
+raise 'Missing production package-mark helper' unless policy
+raise 'Install loop does not call the package-mark helper' unless File.read(installer).include?('install_package "${archive%.tgz}" "$bundle/packages/$archive"')
 host_metadata = run!(info, '-q', '-B', ENV.fetch('PKG_HOST_SAMPLE', 'digest')).lines.grep(/^(OPSYS|OS_VERSION|MACHINE_ARCH|OBJECT_FMT)=/).join
 raise 'Incomplete native package metadata' unless host_metadata.lines.length == 4
 native_info = File.join(work, 'native-build-info')
@@ -143,4 +145,88 @@ run!(create, '-p', payload, '-I', '/usr/pkg', '-f', native_plist,
   count += 1
   puts "PASS: native-umask-#{label} (#{mode.to_s(8)})"
 end
-puts "PASS: #{count} installer checks with native pkg_create/pkg_info/pkg_admin and real package archives; no target installation (native umask fixtures use private prefixes)"
+# Use unchanged production helpers with real pkgtools. The wrapper functions
+# only select private databases, prefixes and configuration files.
+bases = %w[installer-policy-manual installer-policy-auto installer-policy-root]
+policy_archives = {}
+%w[1.0 2.0].each do |version|
+  bases.each do |base|
+    name = "#{base}-#{version}"
+    file = "share/installer-policy/#{base}"
+    FileUtils.mkdir_p(File.dirname(File.join(payload, file)))
+    File.write(File.join(payload, file), "#{name}\n")
+    plist = File.join(work, "#{name}.plist")
+    File.write(plist, "#{file}\n")
+    archive = File.join(work, "#{name}.tgz")
+    command = [create, '-p', payload, '-I', '/usr/pkg', '-f', plist,
+               '-c', File.join(work, 'comment'), '-d', File.join(work, 'description'), '-B', native_info]
+    command += ['-P', bases.first(2).map { |dependency| "#{dependency}>=1.0" }.join(' ')] if base == bases.last
+    run!(*command, archive)
+    policy_archives[name] = archive
+  end
+end
+prepare_policy_area = lambda do |label|
+  area = File.join(work, "marks-#{label}")
+  prefix = File.join(area, 'prefix')
+  database = File.join(area, 'pkgdb')
+  FileUtils.mkdir_p([prefix, database])
+  config = File.join(area, 'pkg_install.conf')
+  File.write(config, "PKG_DBDIR=#{database}\nPKG_REFCOUNT_DBDIR=#{area}/refcount\n")
+  script = File.join(area, 'run.sh')
+  File.write(script, <<~SH)
+    #!/bin/sh
+    set -eu
+    umask 077
+    add_tool=$1; info_tool=$2; admin_tool=$3; work=$4; shift 4
+    fixture_add() { "$add_tool" -C "$work/pkg_install.conf" -K "$work/pkgdb" -p "$work/prefix" "$@"; }
+    fixture_info() { "$info_tool" -K "$work/pkgdb" "$@"; }
+    fixture_admin() { "$admin_tool" -C "$work/pkg_install.conf" -K "$work/pkgdb" "$@"; }
+    add=fixture_add; info=fixture_info; admin=fixture_admin
+    #{helper}
+    #{policy}
+    for archive do
+        name=${archive##*/}
+        install_package "${name%.tgz}" "$archive" || exit
+    done
+  SH
+  [area, prefix, database, config, script]
+end
+verify_policy = lambda do |area, prefix, database, config, version, expected|
+  bases.zip(expected).each do |base, automatic|
+    name = "#{base}-#{version}"
+    actual = run!(info, '-K', database, '-q', '-Q', 'automatic', name).strip.downcase
+    raise "#{name}: expected automatic=#{automatic}, got #{actual.inspect}" unless (actual == 'yes') == automatic
+    raise "#{name}: payload differs" unless File.read(File.join(prefix, 'share', 'installer-policy', base)) == "#{name}\n"
+    File.write(File.join(area, "#{name}-mark.txt"), "automatic=#{actual}\n")
+  end
+  run!(admin, '-C', config, '-K', database, 'check', *bases.map { |base| "#{base}-#{version}" })
+end
+install_policy = lambda do |area, script, version, label|
+  File.write(File.join(area, 'roots.txt'), "#{bases.last}-#{version}\n")
+  out, err, status = Open3.capture3('sh', script, add, info, admin, area,
+                                  *bases.map { |base| policy_archives.fetch("#{base}-#{version}") })
+  File.write(File.join(area, "#{label}.log"), out + err)
+  raise "Package-mark installation failed: #{out}#{err}" unless status.success?
+end
+area, prefix, database, config, script = prepare_policy_area.call('fresh')
+install_policy.call(area, script, '1.0', 'install')
+verify_policy.call(area, prefix, database, config, '1.0', [true, true, false])
+count += 1
+puts 'PASS: native-marks-first-install (new dependencies automatic, root manual)'
+area, prefix, database, config, script = prepare_policy_area.call('existing')
+bases.each_with_index do |base, index|
+  command = [add, '-C', config, '-K', database, '-p', prefix]
+  command << '-A' unless index.zero?
+  run!(*command, policy_archives.fetch("#{base}-1.0"))
+end
+verify_policy.call(area, prefix, database, config, '1.0', [false, true, true])
+install_policy.call(area, script, '2.0', 'upgrade')
+verify_policy.call(area, prefix, database, config, '2.0', [false, true, false])
+count += 1
+puts 'PASS: native-marks-upgrade (existing manual/automatic preserved, automatic root promoted)'
+run!(admin, '-C', config, '-K', database, 'set', 'automatic=yes', "#{bases.last}-2.0")
+install_policy.call(area, script, '2.0', 'reinstall')
+verify_policy.call(area, prefix, database, config, '2.0', [false, true, false])
+count += 1
+puts 'PASS: native-marks-reinstall (existing manual/automatic preserved, automatic root promoted)'
+puts "PASS: #{count} installer checks with native pkgtools and real package archives; no target installation (native fixtures use private prefixes)"
