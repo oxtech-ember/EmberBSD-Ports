@@ -78,6 +78,33 @@ BMAKE=/absolute/native/bmake CMAKE=/absolute/native/cmake \
     /absolute/fcitx5-5.1.23 /absolute/new-results
 ```
 
+The LibIntl include path follows the selected gettext provider. Built-in
+headers use the provider prefix, with the cross sysroot where applicable.
+Package headers use buildlink's `include/gettext` to `include` mapping.
+The selection runs after `gettext-lib/buildlink3.mk` reads `builtin.mk`.
+The UUID include path is unchanged.
+
+The header regression evaluates actual metadata after `_PKGSRC_BARRIER`.
+Earlier metadata queries can show prefixes that are not initialized yet.
+It runs the real `buildlink-gettext` target in private work directories.
+It then configures the upstream `FindLibIntl.cmake` and compiles an object
+through its imported target. It requires installed native and target gettext
+packages and target base headers. It never installs dependencies.
+
+```sh
+BMAKE=/absolute/native/bmake CMAKE=/absolute/native/cmake \
+    NINJA=/absolute/native/ninja NATIVE_CC=/absolute/native/clang \
+    NATIVE_AR=/absolute/native/llvm-ar CROSS_CC=/absolute/cross/gcc \
+    sh tests/libintl-headers.sh /absolute/exported-pkgsrc \
+    /absolute/cross-mk.conf /absolute/fcitx5-recipe \
+    /absolute/fcitx5-5.1.23 /absolute/new-results
+```
+
+Cross/base, cross/package and native/package cases pass on Mac with GCC16
+and Clang23. The previous recipe fails the cross/package imported-header
+check. These checks do not build Fcitx5, link a complete consumer, execute
+target code, or establish input-session acceptance.
+
 Enchant and XCB IMdkit must be available in the current sysroot before the full
 build. Fcitx5 itself does not require GTK. Configtool's Frameworks chain must
 use the core libcanberra provider without its optional GTK adapters.

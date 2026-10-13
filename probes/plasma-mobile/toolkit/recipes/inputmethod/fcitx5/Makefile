@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.32 2026/09/02 19:03:02 wiz Exp $
 
 DISTNAME=	fcitx5-5.1.23
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	inputmethod
 MASTER_SITES=	https://download.fcitx-im.org/fcitx5/fcitx5/
 EXTRACT_SUFX=	.tar.zst
@@ -54,7 +54,6 @@ CMAKE_CONFIGURE_ARGS+=	-DENABLE_TESTING_ADDONS=ON
 CMAKE_CONFIGURE_ARGS+=	-DEVENT_LOOP_BACKEND=libuv
 CMAKE_CONFIGURE_ARGS+=	-DENABLE_ENCHANT=ON
 CMAKE_CONFIGURE_ARGS+=	-DUSE_SYSTEM_PLASMA_WAYLAND_PROTOCOLS=ON
-CMAKE_CONFIGURE_ARGS+=	-DLibIntl_INCLUDE_DIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.gettext}/include
 CMAKE_CONFIGURE_ARGS+=	-DLIBUUID_INCLUDE_DIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.libuuid}/include
 
 BUILDLINK_TRANSFORM.SunOS+=	rm:-Wl,--as-needed
@@ -98,6 +97,13 @@ pre-configure:
 
 .include "../../devel/extra-cmake-modules/buildlink3.mk"
 .include "../../devel/gettext-lib/buildlink3.mk"
+# builtin.mk has selected the provider. Package headers need buildlink's
+# include/gettext -> include mapping; built-in headers are not linked there.
+.if ${USE_BUILTIN.gettext:tl} == "yes"
+CMAKE_CONFIGURE_ARGS+=	-DLibIntl_INCLUDE_DIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.gettext}/include
+.else
+CMAKE_CONFIGURE_ARGS+=	-DLibIntl_INCLUDE_DIR=${BUILDLINK_DIR}/include
+.endif
 .include "../../devel/gettext-tools/buildlink3.mk"
 .include "../../devel/glib2/buildlink3.mk"
 .include "../../devel/libexecinfo/buildlink3.mk"
