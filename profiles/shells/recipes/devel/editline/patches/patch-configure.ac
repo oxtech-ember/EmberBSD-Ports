@@ -1,0 +1,23 @@
+$NetBSD$
+
+Prefer the wide ncurses library when it uses its upstream library name.
+Keep the existing narrow ncurses and platform termcap fallbacks.
+Local EmberBSD Ports change, prepared with AI assistance. Not submitted upstream.
+
+--- configure.ac.orig
++++ configure.ac
+@@ -53,6 +53,7 @@ AC_PROG_LN_S
+ AC_PROG_AWK
+ EL_MANTYPE
+ 
++AC_CHECK_LIB(ncursesw, tgetent,, [
+ AC_CHECK_LIB(ncurses, tgetent,,
+   [AC_CHECK_LIB(curses, tgetent,,
+     [AC_CHECK_LIB(termcap, tgetent,,
+@@ -64,6 +65,7 @@ AC_CHECK_LIB(ncurses, tgetent,,
+   )]
+ )
++])
+ 
+ ### deprecate option --enable-widec to turn on use of wide-character support
+ EL_DEPRECATE_WIDEC
