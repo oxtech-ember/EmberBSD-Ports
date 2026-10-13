@@ -55,6 +55,9 @@ Name: XKeyboardConfig
 Description: Plasma configure regression fixture
 Version: 2.48
 EOF
+    if [ "$#" -ge 10 ]; then
+        printf 'xkb_root=%s\n' "${10}" >> "$work/pc/xkeyboard-config.pc"
+    fi
     export PKG_CONFIG_SYSROOT_DIR="$pkgroot"
     "$PKG_CONFIG" --variable=xkb_base xkeyboard-config > "$work/$name-variable.txt"
     set -- -S "$work/project" -B "$work/$name" \
@@ -105,4 +108,24 @@ run_case native-missing patched native "$work/missing" '' '' "$work/missing" fai
 printf 'not a directory\n' > "$work/not-a-directory"
 run_case native-file patched native "$work/not-a-directory" '' '' "$work/not-a-directory" fail \
     "Couldn't find XKB location:"
+# Current xkeyboard-config installs a target-absolute compatibility alias.
+canonical=/usr/pkg/share/xkeyboard-config-2
+mkdir -p "$work/modern-root$canonical" "$work/modern-root/usr/pkg/share/X11" \
+    "$work/native/share/xkeyboard-config-2"
+ln -s "$canonical" "$work/modern-root$target"
+[ -L "$work/modern-root$target" ] && [ ! -d "$work/modern-root$target" ] || {
+    echo 'The absolute target alias unexpectedly resolves on this host' >&2; exit 1;
+}
+run_case original-absolute-alias original cross "$target" "$work/modern-root" '' "$target" fail \
+    "Couldn't find XKB location in CMAKE_SYSROOT" "$canonical"
+run_case modern-plain patched cross "$target" "$work/modern-root" '' "$canonical" pass '' "$canonical"
+run_case modern-prefixed patched cross "$target" "$work/modern-root" "$work/modern-root" "$canonical" pass '' "$canonical"
+run_case modern-root-only patched cross '' "$work/modern-root" "$work/modern-root" "$canonical" pass '' "$canonical"
+run_case modern-native patched native "$native" '' '' "$work/native/share/xkeyboard-config-2" pass '' \
+    "$work/native/share/xkeyboard-config-2"
+# A declared but invalid canonical root must not be hidden by the legacy data.
+run_case modern-missing patched cross "$target" "$work/root" '' /usr/pkg/share/missing-xkb fail \
+    "Couldn't find XKB location in CMAKE_SYSROOT" /usr/pkg/share/missing-xkb
+run_case modern-relative patched cross "$target" "$work/root" '' share/xkb fail \
+    'XKB location must be absolute' share/xkb
 printf 'PASS: %s real Plasma/pkgconf lookup cases\n' "$count"
