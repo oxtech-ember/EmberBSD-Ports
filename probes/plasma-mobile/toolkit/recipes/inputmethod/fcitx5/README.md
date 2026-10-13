@@ -1,4 +1,4 @@
-# Fcitx5 source candidate
+# Fcitx5 input framework
 
 These recipes select the official September 23, 2026 releases:
 Fcitx5 5.1.23, Fcitx5 Qt 5.1.16 and Configtool 5.1.16.
@@ -7,9 +7,11 @@ Configtool retains its KDE control module and standalone configuration UI.
 The core retains Wayland, X11, Enchant, keyboard, emoji, spell and tests.
 The Qt adapter retains its Wayland integration.
 
-This is a source candidate. No complete package or target input session has
-been accepted. The PLIST files need comparison with real staged payloads.
-Cppcheck, path analysis and target memory checks remain unperformed.
+Core 5.1.23nb4 has a complete cross package and 445 checked files on CM5.
+The corrected core PLIST matches its staged payload. Qt and Configtool still
+require complete package acceptance. The full Plasma input session remains
+unaccepted. Scoped source analysis and native memory checks are described below;
+no target memory-analysis pass is claimed.
 This Configtool release contains no test targets. Its input and UI integration
 requires separate acceptance; no unused test-enable option is passed.
 
@@ -155,7 +157,10 @@ It does not compile or execute Fcitx tests.
 The [runtime test payload](tests/runtime/README.md) retains all 51 registered upstream cases.
 It uses these fixture roots and installed production libraries.
 Its source, inventory and rejection checks pass on the build host.
-A complete target run remains a separate acceptance step.
+The nb4 CM5 run passes 50 cases and fails the stronger XKB content check.
+The nb5 patch retains parsed keyboard models and option groups.
+The [real-source regression](tests/xkbrules.md) passes natively and with ASan/UBSan.
+The original source fails both runs. The complete nb5 target suite remains pending.
 
 ## Library file-data regression
 
@@ -178,7 +183,9 @@ Do not mix an instrumented library with a different compiler's sanitizer runtime
 
 Native and ASan/UBSan runs pass on macOS. The original source fails both runs.
 The cases cover a file signature, a loaded symbol, and two missing signatures:
-a short file and a file longer than the signature. No target run is claimed.
+a short file and a file longer than the signature. The separate GCC16 regression
+also passes against installed nb4 libraries on CM5 under an ordinary user.
+That target run is not an ASan, UBSan, Valgrind or leak-checking result.
 
 Scoped Clang 23 analysis covers `library.cpp`, `isocodes.cpp` and `xkbrules.cpp`
 with the actual GCC16/AArch64 build configuration and target headers.
@@ -186,3 +193,19 @@ It reports no diagnostics before or after this fix; runtime regression remains
 necessary. Cppcheck 2.22 cannot evaluate `__has_cpp_attribute` with the captured
 GCC built-ins, so its analysis remains incomplete. No diagnostic suppression
 was added. Valgrind and leak checking were not performed.
+
+## Relocatable CMake exports
+
+Utils, Config, and Core export relative install-interface header directories.
+Module configurations use `configure_package_config_file` and `PATH_VARS`.
+Installed consumers can resolve headers through a staging sysroot or moved prefix.
+Build-interface paths stay unchanged. The patches do not change C++ code or ABI.
+
+Run `tests/cmake-exports.sh` with native CMAKE, the source archive, an unfixed
+installed Fcitx prefix, and a new output directory. It first reproduces the
+installed export failure. A `LANGUAGES NONE` fixture then uses the exact source
+install-interface expressions, real Config templates, and upstream module macro.
+It checks Utils, Config, Core, and Emoji after `DESTDIR` installation and a move.
+Separate negative controls cover the original library and module exports.
+These are metadata and header-location checks. They do not compile or run C++.
+The complete rebuilt package and Qt consumer remain separate acceptance gates.

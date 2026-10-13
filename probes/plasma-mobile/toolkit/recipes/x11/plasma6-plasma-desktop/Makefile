@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.6 2026/09/06 10:23:33 markd Exp $
 
 DISTNAME=	plasma-desktop-${PLASMAVER}
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	x11
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -18,7 +18,7 @@ DEPENDS+=	xdg-user-dirs>=0.20:../../x11/xdg-user-dirs
 DEPENDS+=	kf6-kded>=6.31.0:../../x11/kf6-kded
 
 # Fcitx supplies the input-method service, Qt6 client and KF6 settings module.
-DEPENDS+= fcitx5>=5.1.23nb4:../../inputmethod/fcitx5
+DEPENDS+= fcitx5>=5.1.23nb5:../../inputmethod/fcitx5
 DEPENDS+= fcitx5-qt>=5.1.16nb1:../../inputmethod/fcitx5-qt
 DEPENDS+= fcitx5-configtool>=5.1.16nb1:../../inputmethod/fcitx5-configtool
 
