@@ -1,0 +1,35 @@
+; SPDX-License-Identifier: BSD-2-Clause
+; Origin: EmberBSD contributors (AI-assisted).
+; Dispatch exactly 16 workgroups. Binding 0 contains 16 uint32_t values.
+OpCapability Shader
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %main "main" %gid %output
+OpExecutionMode %main LocalSize 1 1 1
+OpDecorate %gid BuiltIn GlobalInvocationId
+OpDecorate %values ArrayStride 4
+OpMemberDecorate %block 0 Offset 0
+OpDecorate %block Block
+OpDecorate %output DescriptorSet 0
+OpDecorate %output Binding 0
+%void = OpTypeVoid
+%function = OpTypeFunction %void
+%uint = OpTypeInt 32 0
+%uint3 = OpTypeVector %uint 3
+%input = OpTypePointer Input %uint3
+%values = OpTypeRuntimeArray %uint
+%block = OpTypeStruct %values
+%storage = OpTypePointer StorageBuffer %block
+%element = OpTypePointer StorageBuffer %uint
+%zero = OpConstant %uint 0
+%value = OpConstant %uint 324508639
+%gid = OpVariable %input Input
+%output = OpVariable %storage StorageBuffer
+%main = OpFunction %void None %function
+%entry = OpLabel
+%position = OpLoad %uint3 %gid
+%index = OpCompositeExtract %uint %position 0
+%result = OpBitwiseXor %uint %value %index
+%pointer = OpAccessChain %element %output %zero %index
+OpStore %pointer %result
+OpReturn
+OpFunctionEnd
