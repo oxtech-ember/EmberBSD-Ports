@@ -1,6 +1,6 @@
 # Common graphics source packages
 
-This opt-in source profile prepares canonical MesaLib 26.2.4nb4, adapted
+This opt-in source profile prepares canonical MesaLib 26.2.4nb5, adapted
 libdrm 2.4.134nb2, Wayland 1.26.0nb1 and wayland-protocols 1.49 for
 EmberBSD/AArch64, retaining the NetBSD 11 ABI. Native builds and the explicit
 [macOS cross composition](cross/profile.md) consume the existing
@@ -10,6 +10,13 @@ Meson1.12.1 and shared LLVM23.1.3 remain one dependency graph with final
 The default, development-toolchain and common-build-tools exports keep their
 original graphics recipes. The whole installed graphics stack and a Mobile
 demonstration still require acceptance; individual package results follow.
+
+The optional [PowerVR ICD](cross/powervr.md) uses the same Mesa recipe.
+Its native generators run the full upstream common-shader pipeline. The nb5
+package passes four native Vulkan enumeration lifecycles on Zero 3W, plus
+four llvmpipe EGL/pixel cycles and all 38 target invocations. One internal
+utility skip and nine disabled NIR cases remain. GPU submission and Plasma
+are unaccepted. Earlier GL results retain their recorded package scope.
 
 The [LLVM 23.1.3 migration](cross/mesa-llvm2313.md) passes installed V3D and llvmpipe rendering and all 38 upstream invocations on CM5. A transient large-BO allocation failure remains under investigation.
 
@@ -168,7 +175,7 @@ complete the current graphics dependency recipes.
 ## Bounded package contents
 
 Mesa enables zlib/zstd and the NetBSD libudev-bsd provider. Display-info,
-libunwind, valgrind, Vulkan, video frontends, Rusticl/OpenCL, other physical GPU drivers,
+libunwind, valgrind, unselected Vulkan drivers, video frontends, Rusticl/OpenCL, other physical GPU drivers,
 OSMesa, XA and GLVND are outside this candidate. Requests for unsupported
 Mesa options fail; they do not install older providers. Unselected optional
 libelf/Lua/XCB-keysyms are absent from the buildlink sandbox.
