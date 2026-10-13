@@ -122,3 +122,19 @@ The check verifies source and patch hashes, then evaluates real native and cross
 in the selected dependency tree. It also checks retained Wayland/KCM/test
 settings, shared Qt/KF6 requirements and the missing native-generator guard.
 This check does not compile or execute Fcitx5.
+
+## Installed keyboard data paths
+
+The recipe separates configure-time discovery paths from installed data paths.
+IsoCodes and XKeyboardConfig discovery retains host sysroot paths and its checks.
+Three `*_RUNTIME` CMake variables populate `config.h` with installed provider paths.
+The original discovered values remain unchanged. Native defaults remain available.
+The Xwayland session script is installed as an example and registered with `CONF_FILES`.
+Package updates preserve a locally edited session script.
+
+Run `tests/runtime-data-paths.sh` with native BMAKE and CMAKE, the prepared pkgsrc,
+its MAKECONF, the verified Fcitx archive, and a new result directory.
+The check reproduces the original sysroot leak and validates the patched header.
+It checks native and cross recipe metadata and unchanged host discovery values.
+Its missing-file case checks the host-path contract, not the complete upstream
+Find-package sequence. No C/C++ analysis or target execution is claimed by this check.

@@ -1,0 +1,16 @@
+$NetBSD$
+
+Keep installed keyboard data paths independent of the build sysroot.
+
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -250,6 +250,7 @@
+ check_include_file(sys/mman.h HAVE_SYS_MMAN_H)
+ check_include_file(sys/uio.h HAVE_SYS_UIO_H)
+ 
++include(Fcitx5RuntimeDataPaths)
+ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
+ include_directories(${CMAKE_CURRENT_BINARY_DIR})
+ 

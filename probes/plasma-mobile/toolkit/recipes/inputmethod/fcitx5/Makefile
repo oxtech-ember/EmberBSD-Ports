@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.32 2026/09/02 19:03:02 wiz Exp $
 
 DISTNAME=	fcitx5-5.1.23
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	inputmethod
 MASTER_SITES=	https://download.fcitx-im.org/fcitx5/fcitx5/
 EXTRACT_SUFX=	.tar.zst
@@ -35,6 +35,10 @@ USE_LANGUAGES=		c c++
 
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_BUILD_TYPE=Release
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+# Runtime data paths must not contain the cross sysroot. Discovery keeps it.
+CMAKE_CONFIGURE_ARGS+= -DISOCODES_ISO639_JSON_RUNTIME:FILEPATH=${BUILDLINK_PREFIX.iso-codes:U${PREFIX}}/share/iso-codes/json/iso_639-3.json
+CMAKE_CONFIGURE_ARGS+= -DXKEYBOARDCONFIG_XKBBASE_RUNTIME:PATH=${BUILDLINK_PREFIX.xkeyboard-config:U${PREFIX}}/share/X11/xkb
+CMAKE_CONFIGURE_ARGS+= -DXKEYBOARDCONFIG_DATADIR_RUNTIME:PATH=${BUILDLINK_PREFIX.xkeyboard-config:U${PREFIX}}/share
 # FindGettext requires both host tools. Keep target LibIntl and shell gettext.
 CMAKE_CONFIGURE_ARGS+= -DGETTEXT_MSGFMT_EXECUTABLE:FILEPATH=${TOOLS_PATH.msgfmt:Q}
 CMAKE_CONFIGURE_ARGS+= -DGETTEXT_MSGMERGE_EXECUTABLE:FILEPATH=${TOOLS_PATH.msgmerge:Q}
@@ -68,10 +72,14 @@ SUBST_STAGE.xdg=	pre-configure
 SUBST_MESSAGE.xdg=	Fix desktop autostart file installation
 SUBST_FILES.xdg=	data/CMakeLists.txt
 SUBST_SED.xdg=		-e 's,{CMAKE_INSTALL_FULL_SYSCONFDIR}/xdg/autostart,{CMAKE_INSTALL_PREFIX}/share/examples/fcitx5,'
+SUBST_SED.xdg+=		-e 's,{CMAKE_INSTALL_FULL_SYSCONFDIR}/xdg/Xwayland-session.d,{CMAKE_INSTALL_PREFIX}/share/examples/fcitx5,'
 
 MAKE_DIRS+=	${PKG_SYSCONFDIR}/xdg/autostart
+MAKE_DIRS+=	${PKG_SYSCONFDIR}/xdg/Xwayland-session.d
 CONF_FILES+=	${PREFIX}/share/examples/fcitx5/org.fcitx.Fcitx5.desktop \
 		${PKG_SYSCONFDIR}/xdg/autostart/org.fcitx.Fcitx5.desktop
+CONF_FILES+=	${PREFIX}/share/examples/fcitx5/20-fcitx-x11 \
+		${PKG_SYSCONFDIR}/xdg/Xwayland-session.d/20-fcitx-x11
 
 # The target spell compiler remains installed. A matching native compiler
 # generates build data during cross compilation.
