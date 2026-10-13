@@ -15,6 +15,11 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 mkdir "$out"
 mkdir -p "$out/patched/test" "$out/fixture"
 for name in CMakeLists.txt testdir.h.in; do
+    patch_name=patch-test_$name
+    expected=$(awk -v name="($patch_name)" '$1 == "SHA1" && $2 == name {print $4}' "$recipe/distinfo")
+    actual=$(sed '/[$]NetBSD.*/d' "$recipe/patches/$patch_name" | shasum -a 1 | awk '{print $1}')
+    [ -n "$expected" ] && [ "$actual" = "$expected" ] || fail "pkgsrc checksum $patch_name"
+
     cp "$source/test/$name" "$out/patched/test/$name"
     patch -d "$out/patched" -p0 -F0 < "$recipe/patches/patch-test_$name" \
         > "$out/patch-$name.log" 2>&1 || fail "patch $name"
