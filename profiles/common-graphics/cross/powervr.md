@@ -126,6 +126,39 @@ The consumer never creates a Vulkan device or submits a queue.
 The runner records the kernel, installed packages, ICD and loader closure.
 It selects only the installed PowerVR manifest and uses normal library lookup.
 
+## Compute consumer and Zink build
+
+MesaLib 26.2.4nb6 adds Zink to the common GL driver selection.
+The AArch64 cross package builds with the same common GCC16 and LLVM toolchain.
+This package build does not establish Zink execution on PowerVR.
+The physical results below apply to the earlier nb5 package.
+
+The compute consumer requires the OS [native execution path](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-pvr-execution.md).
+Complete its explicit firmware preparation and execution activation first.
+Build the consumer and validate its SPIR-V with the recorded host tools:
+
+```sh
+ruby build-powervr-compute.rb /absolute/common-cross-tools \
+    /absolute/ember-sysroot /absolute/spirv-tools-prefix /absolute/new-compute-check
+```
+
+Transfer the built consumer and runner from that output directory.
+After installing the reviewed Mesa package, run:
+
+```sh
+PVR_I_WANT_A_BROKEN_VULKAN_DRIVER=1 sh run-powervr-compute.sh \
+    /dev/dri/renderD128 /absolute/new-compute-result
+```
+
+The consumer requires the actual PowerVR render node and Mesa driver identity.
+It creates a Vulkan device, submits one compute shader, and waits for its fence.
+It checks sixteen output words against `0x13579bdf XOR index`.
+It applies the required buffer barriers and host flush/invalidate operations.
+The fence wait is bounded. Failed submitted work does not trigger unsafe user cleanup.
+The runner records package identities and the normal loader closure.
+Physical execution of this consumer remains pending.
+Its ASan/UBSan boundary fixture does not replace that board check.
+
 ## Physical acceptance
 
 On 2026-10-13, the 4 GiB Orange Pi Zero 3W passed with kernel
