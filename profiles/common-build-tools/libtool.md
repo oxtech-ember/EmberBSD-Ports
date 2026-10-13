@@ -57,6 +57,24 @@ original wrong-prefix dispatcher. It also checks the shared-only tag.
 It compiles no source and does not update any package database. The host cross
 package must still pass ordinary package checks before installation.
 
+A native cross-tool package retains the host object format even when its
+Libtool configuration describes ELF target libraries. The RELRO gate selects
+its ELF backend only for ELF packages. It does not change `CHECK_RELRO` or
+suppress target library checks. Test the gate with actual ELF shared objects:
+
+```sh
+BMAKE=/absolute/host/bin/bmake CHECK_AWK=/absolute/host/bin/nawk \
+CROSS_AS=/absolute/cross/bin/aarch64--netbsd-as \
+CROSS_LD=/absolute/cross/bin/aarch64--netbsd-ld \
+READELF=/absolute/cross/bin/aarch64--netbsd-readelf \
+sh profiles/common-build-tools/tests/relro-format.sh /absolute/export \
+    /absolute/export/mk/check/check-relro.mk /absolute/new-relro-check
+```
+
+The native-script case keeps the RELRO policy enabled without invoking an
+unavailable backend. The ELF cases accept RELRO and reject missing RELRO
+through the ordinary pkgsrc error gate. The test runs no target program.
+
 Cross configure must execute on the Mac, but installed `libtool`,
 `libtoolize` and `shlibtool` must run on NetBSD. The scoped recipe converts
 configured host shell, sed, linker and compiler paths to target paths. It

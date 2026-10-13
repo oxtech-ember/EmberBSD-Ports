@@ -244,6 +244,19 @@ Installed XZ scripts use the target shell while configure retains the host shell
  	fi
  
  ######################################################################
+--- a/mk/check/check-relro.mk
++++ b/mk/check/check-relro.mk
+@@ -47,7 +47,9 @@
+ 		${TEST} -h "$$file" || ${ECHO} "$$file";		\
+ 	done)
+ 
+-.if !empty(CHECK_RELRO:M[Yy][Ee][Ss]) && \
++# RELRO has an ELF backend. Native cross-tool packages can use Mach-O.
++.if ${OBJECT_FMT} == "ELF" && \
++    !empty(CHECK_RELRO:M[Yy][Ee][Ss]) && \
+     !empty(CHECK_RELRO_SUPPORTED:M[Yy][Ee][Ss]) && \
+     ${_USE_CHECK_RELRO_NATIVE} == "yes"
+ CHECK_RELRO_NATIVE_ENV=
 --- a/mk/check/check-shlibs-elf.awk
 +++ b/mk/check/check-shlibs-elf.awk
 @@ -104,9 +104,84 @@
