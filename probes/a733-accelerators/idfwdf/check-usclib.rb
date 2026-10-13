@@ -83,6 +83,35 @@ checks += 1
   'instruction after return' => probe.sub("%reject = OpLabel\nOpReturn", "%reject = OpLabel\nOpReturn\n%unused = OpLoad %uint %pointer"),
   'two stores' => probe.sub('%write = OpFunctionCall %void %dma %data %zero', "%write = OpFunctionCall %void %dma %data %zero\n%write = OpFunctionCall %void %dma %data %zero")
 }.each { |label, text| reject.call(label) { Idfwdf.check_probe(text) } }
+# Clang represents a local OpenCL uint3 through a padded uint4 pointer.
+# Undefined padding is permitted only when no DMA argument uses it.
+padded = probe.sub('%v3uint = OpTypeVector %uint 3', <<~T.strip)
+  %v3uint = OpTypeVector %uint 3
+  %v4uint = OpTypeVector %uint 4
+  %ptr3 = OpTypePointer Function %v3uint
+  %ptr4 = OpTypePointer Function %v4uint
+  %undef4 = OpUndef %v4uint
+T
+padded = padded.sub('%entry = OpLabel', "%entry = OpLabel\n%local = OpVariable %ptr3 Function")
+padded = padded.sub('%write = OpFunctionCall %void %dma %data %zero', <<~T.strip)
+  %padded = OpVectorShuffle %v4uint %data %undef4 0 1 2 4294967295
+  %storeptr = OpBitcast %ptr4 %local
+  OpStore %storeptr %padded Aligned 16
+  %loadptr = OpBitcast %ptr4 %local
+  %loaded = OpLoad %v4uint %loadptr Aligned 16
+  %selected = OpVectorShuffle %v3uint %loaded %undef4 0 1 2
+  %write = OpFunctionCall %void %dma %selected %zero
+T
+raise 'padded local vector rejected' unless Idfwdf.check_probe(padded) == expected
+checks += 1
+{
+  'load result width hides undefined input' => padded.sub('%data %undef4 0 1 2 4294967295', '%data %undef4 0 1 2 2').sub('%loaded = OpLoad %v4uint %loadptr', '%loaded = OpLoad %v3uint %local').sub('%loaded %undef4 0 1 2', '%loaded %undef4 0 1 3'),
+  'undefined DMA value' => padded.sub('%loaded %undef4 0 1 2', '%loaded %undef4 0 1 3'),
+  'wrong pointer storage' => padded.sub('OpTypePointer Function %v4uint', 'OpTypePointer CrossWorkgroup %v4uint'),
+  'wrong pointer component width' => padded.sub('OpTypeVector %uint 4', 'OpTypeVector %ulong 4'),
+  'missing local initialization' => padded.sub('OpStore %storeptr %padded Aligned 16', ''),
+  'ambiguous local initialization' => padded.sub('OpStore %storeptr %padded Aligned 16', "OpStore %storeptr %padded Aligned 16\nOpStore %local %data Aligned 16")
+}.each { |label, text| reject.call(label) { Idfwdf.check_probe(text) } }
 File.write(work + '/wrong-receipt.json', JSON.generate({ 'idfwdf_layout_dwords' => 10 }))
 reject.call('unsubstantiated layout flag') { Idfwdf.verify_receipt(work + '/wrong-receipt.json') }
 entry = Idfwdf.file_record(work + '/pvr_iface.h')

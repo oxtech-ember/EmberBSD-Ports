@@ -75,7 +75,7 @@ module Idfwdf
     raise 'bounded store body missing' unless body
     defs = {}; writes = {}; edges = {}; stores = []; dma = []; terminals = {}; locations = {}; branches = []
     block = nil; entry = nil
-    pure = %w[OpFunction OpLabel OpVariable OpLoad OpINotEqual OpFunctionCall OpCompositeConstruct OpCompositeInsert OpVectorShuffle]
+    pure = %w[OpFunction OpLabel OpVariable OpLoad OpINotEqual OpFunctionCall OpCompositeConstruct OpCompositeInsert OpVectorShuffle OpBitcast]
     body.each_line.with_index do |line, position|
       line = line.strip
       if (match = line.match(/^(%\S+) = (Op\w+)(.*)$/))
@@ -133,6 +133,35 @@ module Idfwdf
     undef_types = text.scan(/(%\S+)\s+=\s+OpUndef\s+(%\S+)/).to_h
     vector_types = text.scan(/(%\S+)\s+=\s+OpTypeVector\s+(%\S+)\s+(\d+)/).to_h { |id, component, count| [id, [component, count.to_i]] }
     integer_widths = text.scan(/(%\S+)\s+=\s+OpTypeInt\s+(\d+)\s+[01]/).to_h
+    pointer_types = text.scan(/(%\S+)\s+=\s+OpTypePointer\s+(\w+)\s+(%\S+)/).to_h { |id, storage, type| [id, [storage, type]] }
+    local_pointer = lambda do |id, seen = []|
+      raise 'cyclic local pointer' if seen.include?(id)
+      op, args = defs[id]
+      raise 'unsupported local pointer' unless args
+      storage, type = pointer_types[args[0]]
+      raise 'nonlocal pointer type' unless storage == 'Function'
+      if op == 'OpVariable'
+        raise 'nonlocal variable' unless args[1] == 'Function'
+        id
+      elsif op == 'OpBitcast'
+        source_type = pointer_types.fetch(defs.fetch(args[1])[1][0])
+        src_component, src_count = vector_types[source_type[1]]
+        dst_component, dst_count = vector_types[type]
+        unless source_type[0] == 'Function' && src_component == dst_component &&
+            integer_widths[src_component] == '32' && [3, 4].include?(src_count) && [3, 4].include?(dst_count)
+          raise 'unsupported local vector pointer cast'
+        end
+        local_pointer.call(args[1], seen + [id])
+      else
+        raise 'unsupported local pointer expression'
+      end
+    end
+    local_writes = {}
+    stores.each do |stored_block, dst, value|
+      variable = local_pointer.call(dst)
+      local_writes[variable] ||= []
+      writes.fetch(dst).each { |entry| local_writes[variable] << entry unless local_writes[variable].include?(entry) }
+    end
     evaluate = lambda do |id, seen = []|
       raise 'cyclic constant expression' if seen.include?(id)
       return constants[id] if constants.key?(id)
@@ -144,12 +173,17 @@ module Idfwdf
       op, args = defs[id]
       case op
       when 'OpLoad'
-        values = writes[args[1]]
+        values = local_writes[local_pointer.call(args[1])]
         raise 'nonconstant probe local' unless values&.size == 1
         value, written_block, written_at = values.first
         loaded_block, loaded_at = locations.fetch(id)
         raise 'probe local write does not precede its load' unless written_block == loaded_block && written_at < loaded_at
-        recurse.call(value)
+        vector = recurse.call(value)
+        component, width = vector_types[args[0]]
+        unless vector.is_a?(Array) && integer_widths[component] == '32' && [2, 3, 4].include?(width)
+          raise 'unsupported local load type'
+        end
+        Array.new(width) { |index| vector[index] }
       when 'OpCompositeConstruct'
         args[1..].flat_map { |child| recurse.call(child) }
       when 'OpCompositeInsert'
@@ -162,6 +196,7 @@ module Idfwdf
         vector = recurse.call(args[1]) + recurse.call(args[2])
         args[3..].map do |index|
           index = Integer(index, 10)
+          next nil if index == 0xffffffff # SPIR-V undefined component; never a proven DMA argument.
           raise 'unsupported shuffle index' unless index >= 0 && index < vector.size
           vector[index]
         end
@@ -169,8 +204,6 @@ module Idfwdf
         raise 'nonconstant DMA store argument'
       end
     end
-    global = stores.reject { |_, dst, _| defs[dst]&.first == 'OpVariable' && defs[dst][1][1] == 'Function' }
-    raise 'generic probe stores are not supported by PCO' unless global.empty?
     raise 'probe must have one DMA dword store' unless dma.size == 1
     target_block, data, flags = dma.first
     data_type = composites[data]&.first || defs[data]&.last&.first
