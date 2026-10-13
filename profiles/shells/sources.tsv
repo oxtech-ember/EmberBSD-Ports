@@ -1,0 +1,8 @@
+# component	archive	sha256	url
+dash	dash-0.5.13.5.tar.gz	40090101a2a491f13e901d3d48e90414f26634628b9bfff35ff540363c227a7d	https://cdn.NetBSD.org/pub/pkgsrc/distfiles/dash-0.5.13.5.tar.gz
+zsh	zsh-5.9.2.tar.xz	36fa734374b44783582cec09bcd67822e2f992c779ec1624ab5596df078d2f81	https://www.zsh.org/pub/zsh-5.9.2.tar.xz
+mksh	mksh-R59c.tgz	77ae1665a337f1c48c61d6b961db3e52119b38e58884d1c89684af31f87bc506	https://mbsd.evolvis.org/MirOS/dist/mir/mksh/mksh-R59c.tgz
+ncurses	ncurses-6.6.tar.gz	355b4cbbed880b0381a04c46617b7656e362585d52e9cf84a67e2009b749ff11	https://invisible-island.net/archives/ncurses/ncurses-6.6.tar.gz
+zsh-completions	zsh-completions-0.36.0.tar.gz	5aa68be2999a7be2eb56de8e4acff8f3bba4a66b9acbb233752536857408fb2e	https://codeload.github.com/zsh-users/zsh-completions/tar.gz/refs/tags/0.36.0
+zsh-autosuggestions	zsh-autosuggestions-0.7.1.tar.gz	0df7affff21cd87ed298e6a3970ed08a1dd66a6efa676454ee5b091ad503badf	https://codeload.github.com/zsh-users/zsh-autosuggestions/tar.gz/refs/tags/v0.7.1
+editline	libedit-20260512-3.1.tar.gz	432d5e7ea8b0116dd39f2eca7bc11d0eed77faa6b77ea526ace89907c23ea4a0	https://thrysoee.dk/editline/libedit-20260512-3.1.tar.gz

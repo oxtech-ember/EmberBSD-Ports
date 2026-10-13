@@ -1,60 +1,56 @@
-# Interactive shells profile
+# Shell profiles
 
-Selected by the project owner on 2026-10-10: **dash, zsh, mksh** (bash
-deliberately excluded). Roles: mksh is the interactive shell on devices,
-dash is the lightweight scripting shell, zsh is the desktop interactive
-shell with its completion plugins. The system `/bin/sh`, rc scripts and
-agent scenarios stay strictly POSIX and are not part of this profile.
+The selected optional shells are **dash**, **mksh** and **zsh**. dash serves
+lightweight POSIX scripts, mksh serves interactive device profiles, and zsh
+serves desktop interactive profiles. The base `/bin/sh`, root login shell
+and boot scripts keep their existing roles.
 
-## Versions
+Ports are checked one shell at a time, with the common GCC16 compiler and
+current shared dependencies. Host controls and EmberBSD acceptance have
+separate evidence.
 
-| Package | Version | Recipe |
+| Shell | Selected release | Current evidence |
 | --- | --- | --- |
-| `dash` | 0.5.13.5 | pinned quarterly pkgsrc `shells/dash` — already current upstream |
-| `zsh` | 5.9.2 | pinned quarterly pkgsrc `shells/zsh` — already current upstream (`zsh.org/pub` ships 5.9.2) |
-| `mksh` | 59c | local recipe `pkgsrc/local-shells/mksh` — upstream R59c while the pinned pkgsrc carries R59b |
+| dash | 0.5.13.5 | [GCC16 control, libedit and source repairs](dash.md) |
+| mksh | R59c | Local recipe; its earlier target smoke used the base compiler and does not establish GCC16 package acceptance |
+| zsh | 5.9.2 | Pinned pkgsrc recipe; separate current-dependency control pending |
 
-Version comparison made on 2026-10-12 against the pinned submodule
-(pkgsrc-2026Q3 `fff4deb63`), pkgsrc HEAD and the upstream distribution
-sites. No patches to upstream sources are required.
+The release manifests contain original URLs and SHA256 values. dash's
+release archive from the pkgsrc distfile mirror also matches the original
+SHA512 in pinned pkgsrc. A Git snapshot of the same tag has different archive
+bytes and is not substituted for the release distfile.
 
-For the desktop profile, `zsh-completions` and `zsh-autosuggestions` are
-taken from the pinned pkgsrc as optional additions.
+## Prepare packages
 
-## Build
-
-Prepare a tree with the overlay and build natively on the target:
+Initialize the pinned pkgsrc submodule, then export the reviewed overlays:
 
 ```sh
-git clone --recurse-submodules --shallow-submodules \
-  https://github.com/oxtech-ember/EmberBSD-Ports.git
-cd EmberBSD-Ports
-sh scripts/prepare-pkgsrc.sh "$PWD/../pkgsrc-shells"
-cd ../pkgsrc-shells/local-shells/mksh && bmake install
-cd ../../shells/dash && bmake install
-cd ../zsh && bmake install
+git submodule update --init upstream/pkgsrc
+sh profiles/shells/prepare-pkgsrc.sh /absolute/new-pkgsrc
 ```
 
-`mksh` needs only a C compiler; `dash` needs the usual autotools flow that
-pkgsrc drives; `zsh` needs curses/terminfo from the base system.
+The export includes the shared GCC 16.2 selection, current Libtool 2.6.2 and
+Automake 1.19, dash patches, and libedit 20260512-3.1 with ncurses 6.6.
+It replaces the existing dependency recipe instead of adding an older
+parallel provider. The other host tools remain current in the pinned tree:
+Autoconf 2.73, M4 1.4.21 and Perl 5.44.0.
 
-## Validation record
+On an appropriately prepared EmberBSD package build host:
 
-- 2026-10-12, upstream source: `mksh-R59c.tgz` fetched from
-  `https://www.mirbsd.org/MirOS/dist/mir/mksh/`, SHA512 recorded in
-  `distinfo`. The manual page carries the R59c marker; the runtime banner
-  keeps the base `R59 2020/10/31` string, which is how mksh point releases
-  identify themselves.
-- 2026-10-12, target build probe: R59c built natively on
-  `ember-vm-01` (EmberBSD/NetBSD 11.0 EMBER64 kernel, aarch64, base cc)
-  via `sh Build.sh -r`; `./mksh -c 'echo $KSH_VERSION'` printed the
-  expected banner. This validates upstream code on the target OS, not the
-  pkgsrc packaging itself.
-- Not yet done: pkgsrc packaging build of all three recipes on the target,
-  `pkg_admin` verification, joint install, `chsh` switch and the upstream
-  `check.t` regression suite. The suite needs Perl, which the minimal
-  build VM and this profile do not carry yet; upstream pkgsrc keeps
-  mksh's `do-test` disabled for the same reason.
+```sh
+cd /absolute/new-pkgsrc/shells/dash
+bmake MAKECONF=/absolute/new-pkgsrc/EMBERBSD-SHELLS-MK.CONF package
+```
 
-Packaging acceptance and the signed pkgin channel belong to the project's
-binary-distribution milestone.
+This command describes the target package path. The Linux control builds
+recorded here do not establish that package creation, installation or
+removal has completed on EmberBSD. Do not replace a system or root shell
+as part of a control build.
+
+## Licenses
+
+Preserve upstream licenses and attribution. The pinned dash recipe declares
+`modified-bsd AND gnu-gpl-v2`; the profile is not uniformly permissive.
+Optional zsh-completions and zsh-autosuggestions retain their own licenses.
+The source patch headers identify local AI-assisted adaptations and their
+upstream submission status.

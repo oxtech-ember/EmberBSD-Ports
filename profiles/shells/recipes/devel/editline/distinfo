@@ -1,0 +1,12 @@
+$NetBSD: distinfo,v 1.22 2025/06/01 14:14:35 vins Exp $
+
+BLAKE2s (libedit-20260512-3.1.tar.gz) = fd86e6b819610ce80d6676dfd46eafe10a3dda2e6ce3aca71d18fd4bdc3aafaf
+SHA512 (libedit-20260512-3.1.tar.gz) = 8d6d04f4d50e7f30bf426b009454400d3ad9a840ddf075cc5eabd9a551f325f923c02d56d7b4535820a613ff01c5f77074b6df9e8e83a1f6bb4124dd87133623
+Size (libedit-20260512-3.1.tar.gz) = 550471 bytes
+SHA1 (patch-configure.ac) = 97fe13cf7c0f3d157bddc0fa7dd577e376431c55
+SHA1 (patch-libedit.pc.in) = c2c810ab2c9c7b9d1862abc7bdca53fda5732119
+SHA1 (patch-src_sys.h) = dacabbcf6347dfae5f9deabe9c7288e4aeb620b5
+SHA1 (patch-src_terminal.c) = 6e572ea7aa291e29c3546b542f592aa7adc07c4a
+SHA1 (patch-src_terminal.h) = 5d658f7b7c3b88c0c3122a1be740f3a72d7d2370
+SHA1 (patch-src_filecomplete.c) = 6c82173022705145dffeff160324238e3d7e430a
+SHA1 (patch-src_readline.c) = 815a9bfce66990c4b187289fa76cc91e7090418d
