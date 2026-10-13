@@ -53,12 +53,13 @@ BSDTAR=/absolute/native/bsdtar \
     ruby probes/plasma-mobile/toolkit/tests/package-set.rb /absolute/new-tests
 ```
 
-The 13 cases include PAX paths and link targets longer than the ustar limits,
+The 14 cases include PAX paths and link targets longer than the ustar limits,
 hard links, dependency order and copied SHA256. Negative cases cover a stale
 manifest, wrong archive architecture or OS version, modified payload bytes,
 changed symbolic links, missing or unlisted payload, changed metadata, missing
 dependencies and truncated archives. A valid later cache candidate is accepted.
-An existing completed output is not replaced. Failed audits leave no final set.
+Duplicate roots are rejected. An existing completed output is not replaced.
+Failed audits leave no final set.
 
 The implementation reads PAX records by their byte lengths. Libarchive converts
 supported input compression to a stream; no package payload is extracted.
