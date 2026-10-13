@@ -30,7 +30,8 @@ begin
   %w[bin lib fixtures metadata].each { |dir| Dir.mkdir(File.join(staging, dir)) }
   commands = JSON.parse(File.read(File.join(build, 'compile_commands.json')))
   %w[LIBEI LIBEIS].each do |name|
-    matches = commands.select { |entry| entry.fetch('output', '').include?("test-build-cxx-#{name.downcase}") }
+    target_directory = "test-build-cxx-#{name.downcase}.p"
+    matches = commands.select { |entry| entry.fetch('output', '').split('/').include?(target_directory) }
     raise "Missing target C++ configuration for #{name}" unless matches.size == 1
     command = matches.first['command'] || matches.first.fetch('arguments').join(' ')
     raise "C++ header check is disabled for #{name}" unless command.include?("-DINCLUDE_#{name}=1")

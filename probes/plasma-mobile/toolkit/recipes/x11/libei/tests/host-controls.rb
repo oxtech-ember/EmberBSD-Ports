@@ -53,6 +53,21 @@ output = invoke.call('incomplete-source', 'No such file or directory')
   raise "Failed preparation left #{suffix}" if File.exist?(output + suffix) || File.symlink?(output + suffix)
 end
 
+# These two output components are distinct. A prefix match confuses libei with libeis.
+# The fixture stops at the real readelf call; it contains no synthetic ELF payload.
+fixture = File.join(work, 'cxx-fixture')
+FileUtils.mkdir_p(File.join(fixture, 'output'))
+commands = %w[LIBEI LIBEIS].map do |name|
+  {output: "test/test-build-cxx-#{name.downcase}.p/buildtest.cc.o",
+   command: "aarch64--netbsd-g++ -DINCLUDE_#{name}=1 -c ../test/buildtest.cc"}
+end
+File.write(File.join(fixture, 'output/compile_commands.json'), JSON.generate(commands))
+fixture_output = File.join(work, 'distinct-cxx-targets')
+rejected(results, work, 'distinct-cxx-targets',
+         [{'READELF' => '/usr/bin/false'}, RbConfig.ruby, prepare, fixture,
+          File.join(work, 'missing-sysroot'), fixture_output], 'readelf failed:')
+raise 'C++ fixture left staging' if File.exist?(fixture_output + '.preparing')
+
 # The real runner executes its guard. Only the external UID response is a fixture.
 # This does not claim an actual privileged execution or execute any target binary.
 root_results = File.join(work, 'root-results')
