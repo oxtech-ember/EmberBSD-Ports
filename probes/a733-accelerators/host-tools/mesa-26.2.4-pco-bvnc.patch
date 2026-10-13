@@ -1,0 +1,151 @@
+From: EmberBSD contributors
+Subject: [PATCH] imagination: select explicit BVNC profiles in pco_clc
+
+Accept bvnc=B.V.N.C with four decimal uint16 fields. Validate the actual
+supported-device table before the checked initializer. Preserve public
+names and the common default. Reject unknown names and duplicate BVNCs
+before opening output files.
+
+This exposes an experimental compiler profile. It does not establish GPU
+execution support. No feature checks or assertions are disabled.
+MIT; original Imagination Technologies attribution remains in the files.
+AI-assisted downstream fix. Not submitted to or accepted by upstream.
+
+--- a/src/imagination/common/pvr_device_info.c
++++ b/src/imagination/common/pvr_device_info.c
+@@ -63,6 +63,17 @@
+    /* clang-format on */
+ };
+ 
++/** Check a BVNC before calling the checked initializer with user input. */
++bool pvr_device_info_is_supported(uint64_t bvnc)
++{
++   for (unsigned d = 0; d < ARRAY_SIZE(device_infos); ++d) {
++      if (pvr_get_packed_bvnc(device_infos[d]) == bvnc)
++         return true;
++   }
++
++   return false;
++}
++
+ /**
+  * Initialize PowerVR device information.
+  *
+--- a/src/imagination/common/pvr_device_info.h
++++ b/src/imagination/common/pvr_device_info.h
+@@ -423,6 +423,8 @@
+                         dev_info->ident.c);
+ }
+ 
++bool pvr_device_info_is_supported(uint64_t bvnc);
++
+ int pvr_device_info_init(struct pvr_device_info *info, uint64_t bvnc);
+ 
+ bool pvr_device_info_init_public_name(struct pvr_device_info *info,
+--- a/src/imagination/pco/uscgen/pco_clc.c
++++ b/src/imagination/pco/uscgen/pco_clc.c
+@@ -326,6 +326,34 @@
+    return is_shader_common(func->name) ? COMMON_DEVICE : target;
+ }
+ 
++/* Parse four decimal uint16_t fields without truncation or trailing text. */
++static bool parse_bvnc(const char *text, uint64_t *bvnc)
++{
++   uint32_t fields[4];
++
++   for (unsigned f = 0; f < ARRAY_SIZE(fields); ++f) {
++      uint32_t value = 0;
++
++      if (*text < '0' || *text > '9')
++         return false;
++
++      do {
++         unsigned digit = *text++ - '0';
++         if (value > (UINT16_MAX - digit) / 10)
++            return false;
++         value = value * 10 + digit;
++      } while (*text >= '0' && *text <= '9');
++
++      if (*text++ != (f == ARRAY_SIZE(fields) - 1 ? '\0' : '.'))
++         return false;
++
++      fields[f] = value;
++   }
++
++   *bvnc = PVR_BVNC_PACK(fields[0], fields[1], fields[2], fields[3]);
++   return true;
++}
++
+ int main(int argc, char *argv[argc])
+ {
+    if (argc < 4) {
+@@ -333,6 +361,7 @@
+          stderr,
+          "Usage: %s <input SPIR-V> <output header> <output source> [device(s...)]\n",
+          argv[0]);
++      fprintf(stderr, "Devices: a public name or bvnc=B.V.N.C (decimal).\n");
+ 
+       return 1;
+    }
+@@ -354,14 +383,55 @@
+       ralloc_array_size(mem_ctx, sizeof(*device_infos), num_devices + 1);
+ 
+    for (unsigned d = 0; d < num_devices; ++d) {
+-      devices[d] = ralloc_strdup(devices, argv[4 + d]);
+-      device_names[d] = ralloc_strdup(device_names, devices[d]);
+-      for (unsigned u = 0; u < strlen(device_names[d]); ++u)
+-         if (device_names[d][u] == '-')
+-            device_names[d][u] = '_';
++      const char *device = argv[4 + d];
++      uint64_t bvnc;
++
++      devices[d] = ralloc_strdup(devices, device);
++      if (!strncmp(device, "bvnc=", 5)) {
++         if (!parse_bvnc(device + 5, &bvnc) ||
++             !pvr_device_info_is_supported(bvnc)) {
++            fprintf(stderr, "Invalid or unsupported BVNC: %s\n", device);
++            goto err_free_mem_ctx;
++         }
++
++         if (pvr_device_info_init(&device_infos[d], bvnc)) {
++            fprintf(stderr, "Failed to initialize BVNC: %s\n", device);
++            goto err_free_mem_ctx;
++         }
++
++         device_names[d] = ralloc_asprintf(device_names,
++                                          "bvnc_%u_%u_%u_%u",
++                                          (unsigned)PVR_BVNC_UNPACK_B(bvnc),
++                                          (unsigned)PVR_BVNC_UNPACK_V(bvnc),
++                                          (unsigned)PVR_BVNC_UNPACK_N(bvnc),
++                                          (unsigned)PVR_BVNC_UNPACK_C(bvnc));
++      } else {
++         if (!pvr_device_info_init_public_name(&device_infos[d], device)) {
++            fprintf(stderr, "Unknown device name: %s\n", device);
++            goto err_free_mem_ctx;
++         }
++
++         device_names[d] = ralloc_strdup(device_names, device);
++         if (device_names[d]) {
++            for (char *name = device_names[d]; *name; ++name) {
++               if (*name == '-')
++                  *name = '_';
++            }
++         }
++      }
++
++      if (!devices[d] || !device_names[d]) {
++         fprintf(stderr, "Failed to allocate device name.\n");
++         goto err_free_mem_ctx;
++      }
+ 
+-      pvr_device_info_init_public_name(&device_infos[d], devices[d]);
+       device_ids[d] = pvr_get_packed_bvnc(&device_infos[d]);
++      for (unsigned previous = 0; previous < d; ++previous) {
++         if (device_ids[d] == device_ids[previous]) {
++            fprintf(stderr, "Repeated device BVNC: %s\n", device);
++            goto err_free_mem_ctx;
++         }
++      }
+    }
+ 
+    /* Common device. */

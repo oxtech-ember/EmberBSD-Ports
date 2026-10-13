@@ -1,0 +1,24 @@
+From: EmberBSD contributors
+Subject: [PATCH] imagination: reserve all sampler words in the IDFWDF ABI
+
+Mesa 26.2.4 copies four sampler dwords at offset 4. Reserve these words
+before the two address dwords. The old seven-dword allocation overflowed
+by one dword and the address overwrote two sampler words.
+
+The common header is shared with common.cl. Regenerate the USC library
+with this header; do not combine old shaders with the new host layout.
+MIT; original Imagination Technologies attribution remains in the files.
+AI-assisted downstream fix. Not submitted to or accepted by upstream.
+
+--- a/src/imagination/common/pvr_iface.h
++++ b/src/imagination/common/pvr_iface.h
+@@ -117,7 +117,8 @@ enum pvr_idfwdf_sr_data {
+    PVR_IDFWDF_DATA_TEX = 0,
+    PVR_IDFWDF_DATA_SMP = 4,
+ 
+-   PVR_IDFWDF_DATA_ADDR_LO,
++   /* The sampler occupies four shared-register dwords. */
++   PVR_IDFWDF_DATA_ADDR_LO = 8,
+    PVR_IDFWDF_DATA_ADDR_HI,
+ 
+    _PVR_IDFWDF_DATA_COUNT,
