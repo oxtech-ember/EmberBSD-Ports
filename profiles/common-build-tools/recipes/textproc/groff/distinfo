@@ -1,0 +1,11 @@
+$NetBSD: distinfo,v 1.36 2026/07/19 08:05:45 adam Exp $
+
+BLAKE2s (groff-1.24.2.tar.gz) = 67a22186caf2dfc344c93e6e0051e8f978a2e5131c8bb970996b30081df2d019
+SHA512 (groff-1.24.2.tar.gz) = 4fff1e98ba350b1ea57ae208aa2ed9360aec01d10c42dcc0fa4159d922ce5e707b33ce9fa787134e8e4fa61ca995150663767e17e8e8fd78865a1b335a33b244
+Size (groff-1.24.2.tar.gz) = 9016185 bytes
+SHA1 (patch-Makefile.in) = d725e7c8c698492e1bb9414186538a7e495b12d7
+SHA1 (patch-configure) = 82848f84926521ae2cabadf75fd1e8aa5b914968
+SHA1 (patch-lib_math.in.h) = 8e2953d9f41fc5948dee9ff888df5eeb825ed085
+SHA1 (patch-src_include_lib.h) = 7db4da95c48ca7161d70670fda3669dc9e9359b5
+SHA1 (patch-src_libs_libgroff_matherr.c) = bbf73fd8bf51b5a99dda0eefae917ec3c5db5a67
+SHA1 (patch-src_libs_libgroff_tmpfile.cpp) = 3794a028dc7c569e5adea6b7b876c3ac085376ba

@@ -1,0 +1,16 @@
+$NetBSD: patch-configure,v 1.7 2026/07/19 08:05:45 adam Exp $
+
+Add g prefix to some commands.
+
+--- configure.orig	2026-03-14 07:53:44.000000000 +0000
++++ configure
+@@ -46988,8 +46988,7 @@
+   g=
+   { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for existing troff installation" >&5
+ printf %s "checking for existing troff installation... " >&6; }
+-  if test "`(echo .tm '|n(.g' | tr '|' '\\\\' | troff -z -i 2>&1) \
+-    2>/dev/null`" = 0
++  if test true
+   then
+     { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+ printf '%s\n' "yes" >&6; }

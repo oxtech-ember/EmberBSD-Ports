@@ -7,6 +7,11 @@ cross-builds on macOS and passes installed AArch64 VM consumers and 21 selected
 upstream suites. Meson/Ninja also pass installed C/C++ consumers and focused
 upstream tests in that VM. The installed [LLVM 23.1.3 core](cross/llvm-api-tests.md) passes C API, bitcode and four ORC JITLink lifecycles on CM5. Its rebuilt [Mesa consumer](../common-graphics/cross/mesa-llvm2313.md) also passes V3D/llvmpipe rendering and all 38 upstream invocations there. Full Clang/LLD cross packages pass ordinary staging checks; their target execution remains separate. The export itself installs no packages.
 
+[Groff 1.24.2](recipes/textproc/groff/README.md) includes a C23 function-prototype repair.
+Its native macOS build renders the three Enchant manual pages as HTML.
+The focused source check passes ASan/UBSan and preserves all errno cases.
+The complete target package and graphical HTML pipeline remain unaccepted.
+
 The shared [Rust 1.99 host package](rust.md) preserves upstream macOS binaries
 and repairs Mach-O dependency resolution for cargo-c/librsvg builds. Its
 [target std package](rust-target-std.md) installs into the same host sysroot and passes AArch64 VM consumers.
