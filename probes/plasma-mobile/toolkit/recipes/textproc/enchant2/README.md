@@ -40,3 +40,21 @@ propagation. The original source selects zero providers and fails the test.
 The patched source passes with ASan and UBSan. This isolated test does not
 exercise GLib directory I/O, dynamic loading, or an actual Hunspell provider.
 The target `providers.test` must also run against the real installed module.
+
+For transferred target tests, use `files/run-target-tests.sh PAYLOAD NEW_WORK`
+on EmberBSD as an ordinary user. Prepare `PAYLOAD` from one tested build:
+include the two real ELF test executables, the five mock module `.so` files,
+`enchant_hunspell.so` from the staged package, and `test.pwl.orig` renamed
+to `test.pwl`.
+Also copy `libenchant-2.so.2` to `PAYLOAD/lib/.libs/` and record its SHA256.
+Its bytes must match the tested production library.
+
+The runner preserves the upstream `libenchant-copy` layout and library path.
+On the first call, gnulib relocation can override the requested test prefix
+with the loaded library's installation prefix. Using only the installed
+`/usr/pkg/lib` copy makes the mock dictionary unavailable to `main.test`.
+The local copy changes its location, not its code or ABI. The runner keeps
+fatal diagnostics and requires a positive test count and a real Hunspell run.
+Use `COPYFILE_DISABLE=1 tar --no-xattrs` to transfer fixtures from macOS.
+The host-side `files/check-target-runner.sh NEW_WORK` checks the runner's
+layout and error propagation with shell stubs. It does not test Enchant.
