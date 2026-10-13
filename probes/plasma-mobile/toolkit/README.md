@@ -11,8 +11,8 @@ checks and installation into the build sysroot.** Their [package receipt](cross/
 also links the accepted CM5 Core/Gui/SVG runtime consumer.
 The [Wayland/EGL consumer](tests/qt-wayland-gl/README.md) also passes on V3D
 with an isolated labwc output. The [Qt Quick consumer](tests/qt-quick-gpu/README.md)
-also passes compiled QML scene/layer pixels on V3D. The remaining modules and Plasma
-session are not accepted; their manifests still require actual target staging.
+also passes compiled QML scene/layer pixels on V3D. Each linked receipt defines its package and runtime
+scope. Complete Plasma Desktop and HDMI acceptance remain pending.
 See the [migration sequence](MIGRATION.md) and the
 [actual Mobile graphics contract](../kwin/MOBILE-GRAPHICS-CONTRACT.md).
 
@@ -48,7 +48,8 @@ locker and KCMs. ConsoleKit's real session launcher passes CM5 regressions;
 complete desktop, ordinary-user login and device ownership remain pending.
 [Full KWin on CM5](cross/cm5-kwin.md) now passes OpenGL/V3D selection and
 two Qt Quick pixel lifecycles on a virtual output. HDMI and the separate
-Plasma Desktop shell remain outside that acceptance.
+Plasma Desktop shell remain outside that acceptance. The separate Desktop 6.7.5
+recipe is a source candidate; its complete cross package is not yet accepted.
 
 Cross-build on the development host using the [cross workflow](cross/README.md).
 The board installs the resulting packages and runs acceptance tests.

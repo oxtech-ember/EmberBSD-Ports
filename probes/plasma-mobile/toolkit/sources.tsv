@@ -119,3 +119,4 @@ devel/plasma6-plasma5support	plasma5support-6.7.5.tar.xz	dcd58d280b9c3f9570b1790
 x11/plasma6-plasma-activities-stats	plasma-activities-stats-6.7.5.tar.xz	9896396e29d5841c7a0f42814ced01ab58fcad406a552ddee2c950f205549acf	https://download.kde.org/stable/plasma/6.7.5/plasma-activities-stats-6.7.5.tar.xz
 geography/qt6-qtlocation	qtlocation-everywhere-src-6.12.0.tar.xz	218696d57c9eb95e8756e9fda62a8eabf94badc507db5f6e8ab9a640c4b0f50d	https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtlocation-everywhere-src-6.12.0.tar.xz
 x11/plasma6-plasma-workspace	plasma-workspace-6.7.5.tar.xz	94ab21e2243b7876f65c315f1e545081c6437f5bd0a041ca4fb6c25c3ae874c9	https://download.kde.org/stable/plasma/6.7.5/plasma-workspace-6.7.5.tar.xz
+x11/plasma6-plasma-desktop	plasma-desktop-6.7.5.tar.xz	079fcf6b87d7bf65e3f2a4670d605fac9469344c279a285a98ad549332d7b53e	https://download.kde.org/stable/plasma/6.7.5/plasma-desktop-6.7.5.tar.xz

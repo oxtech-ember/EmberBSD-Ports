@@ -88,13 +88,22 @@ inaccessible intermediate directories.
 
 ## Remaining desktop boundary
 
-
 Plasma Workspace 6.7.5 installs on CM5, with all 7856 KWin/Workspace payload
 files accepted by `pkg_admin check`. Under the working Wayland compositor,
 `plasmashell --help` succeeds. A normal launch exits with
 `starting invalid corona "org.kde.plasma.desktop"`.
 The separate Plasma Desktop shell package is absent from this target closure.
 Workspace executables alone do not provide a complete desktop session.
+
+The toolkit now prepares the separate Plasma Desktop 6.7.5 recipe.
+Its official archive SHA256 is
+`079fcf6b87d7bf65e3f2a4670d605fac9469344c279a285a98ad549332d7b53e`.
+Native and cross metadata select the common Frameworks and KDocTools providers.
+The source candidate retains the inherited tablet and X11 input KCM limits;
+Wayland mouse and touchpad backends keep their upstream defaults.
+The full package, staged PLIST, source analysis and desktop runtime remain unaccepted.
+The build closure still needs QQC2 Desktop Style, current xdg-user-dirs, SDL2
+and IBus. Copying the shell QML alone cannot supply its compiled plugins.
 
 The monitor path has a separate limitation. An HP L1950 connected through an
 HDMI-to-VGA adapter supplies an EDID extension with 1080p. The installed
