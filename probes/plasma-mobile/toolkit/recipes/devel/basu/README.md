@@ -36,3 +36,31 @@ The inherited libcap/audit platform settings and BSD source patches remain.
 This fix changes no C sources. Complete cross compilation, upstream target
 tests, source analysis, installed liboeffis use, and memory checks remain
 separate acceptance gates.
+
+## Error-map section retention
+
+The real upstream `test-bus-marshal` fails to link with GCC16/LLD23.
+Its `__start_BUS_ERROR_MAP` and `__stop_BUS_ERROR_MAP` references become undefined.
+The upstream header already uses `retain`, but the NetBSD-target object lacks
+`SHF_GNU_RETAIN`. The compiler's `used` attribute alone cannot retain a section
+against linker garbage collection. The inherited header suppresses attribute warnings.
+
+The Meson patch selects the supported `-z nostart-stop-gc` behavior on NetBSD.
+It retains registered error maps when their boundary symbols are referenced.
+`--gc-sections` stays enabled for unrelated code and data.
+This follows the [LLD section-registration contract](https://lld.llvm.org/ELF/start-stop-gc.html).
+No C source or test is removed. No undefined-symbol diagnostic is disabled.
+
+Run the causal check against a configured production build with compiled tests:
+
+```sh
+NINJA=/absolute/native/ninja CC=/absolute/pkgsrc-wrapper/aarch64--netbsd-gcc \
+CWRAPPERS_CONFIG_DIR=/absolute/work/.cwrapper/config \
+READELF=/absolute/cross/aarch64--netbsd-readelf \
+    ruby tests/error-map-link.rb /absolute/basu/output /absolute/new-results
+```
+
+The check reads the actual upstream link command from Ninja.
+The original command must fail on the missing map boundary.
+The corrected command must link and define both boundaries and the map table.
+This is target-ELF link evidence, not execution of the marshal test.
