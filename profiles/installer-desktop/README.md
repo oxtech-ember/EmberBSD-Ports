@@ -10,7 +10,7 @@ The OS repository owns sysinst, the verified bundle preflight and installed
 `ember-desktop-install` / `ember-desktop` helpers.
 
 `packages.json` freezes 142 official pkgsrc packages from the NetBSD 11.0 amd64
-repository and one locally cross-built leaf, `dhcpcd-gtk3-0.8.0nb1`. Each archive has
+repository and one locally cross-built leaf, `dhcpcd-gtk3-0.8.0nb2`. Each archive has
 an exact byte size and SHA512 digest. This is a compatible **NetBSD 11 ABI**
 package profile for EmberBSD 1.0; the upstream metadata remains unchanged.
 The XFCE components are 4.20, GTK3 is 3.24.52nb3 and GLib is 2.88.3nb1.
@@ -44,10 +44,13 @@ Transfer the build output to an isolated EmberBSD amd64 environment, then use
 its normal pkgsrc packager, without altering package compatibility checks:
 
 ```sh
-sh package-wifi.sh /absolute/build /absolute/new-dhcpcd-gtk3-0.8.0nb1.tgz
+sh package-wifi.sh /absolute/build /absolute/new-dhcpcd-gtk3-0.8.0nb2.tgz
 ```
 
 The recipe preserves original source license headers in the installed package.
+It declares gettext-lib directly because the GTK3 executable needs libintl.so.8,
+which is distinct from the base libintl ABI. Check the frozen leaf's actual ELF
+dependencies with `ruby tests/wifi-dependencies.rb package-directory target-readelf`.
 The frozen lock records the exact acceptance candidate created with native
 `pkg_create`. Recompilation or packaging can produce different archive bytes;
 a new candidate needs a new reviewed lock and runtime acceptance. A locally

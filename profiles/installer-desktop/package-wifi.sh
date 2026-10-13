@@ -18,10 +18,11 @@ find "$build/dhcpcd-ui-0.8.0" -type f \( -name '*.c' -o -name '*.h' \) | sort | 
 	sed -n '1,/^ \*\//p' "$file"
 done > "$work/usr/pkg/share/licenses/dhcpcd-gtk3/COPYRIGHT"
 cat > "$work/PLIST" <<'PLIST'
-@name dhcpcd-gtk3-0.8.0nb1
+@name dhcpcd-gtk3-0.8.0nb2
 @pkgdep gtk3+>=3.24.52nb3
 @pkgdep libnotify>=0.8.4nb7
 @pkgdep dhcpcd-icons>=0.8.0
+@pkgdep gettext-lib>=1.0
 bin/dhcpcd-gtk
 etc/xdg/autostart/dhcpcd-gtk.desktop
 share/licenses/dhcpcd-gtk3/COPYRIGHT

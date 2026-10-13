@@ -14,7 +14,7 @@
     "elementary-xfce-icon-theme-0.21",
     "dbus-1.16.2nb3",
     "dhcpcd-icons-0.8.0",
-    "dhcpcd-gtk3-0.8.0nb1"
+    "dhcpcd-gtk3-0.8.0nb2"
   ],
   "packages": [
     {
@@ -1313,14 +1313,15 @@
       ]
     },
     {
-      "file": "dhcpcd-gtk3-0.8.0nb1.tgz",
-      "size": 40930,
-      "sha512": "e10b613cb58b727a37bc8e1dd865bd5b473bd378248e04235bd5bcc0eec64bfc53b20bf29ee1593d2e351de8729359ec44d10186a4f7129bbb81620da0031efe",
+      "file": "dhcpcd-gtk3-0.8.0nb2.tgz",
+      "size": 40945,
+      "sha512": "050dc47ef1adb3d22f8052cce405cf577d3d85e82a8c63fed1b55cc5a4066f6cd734201b6412ca6499c146dfbea779e4e4da22890f3723e56be649dabbbbb8ca",
       "local": true,
       "depends": [
         "gtk3+>=3.24.52nb3",
         "libnotify>=0.8.4nb7",
-        "dhcpcd-icons>=0.8.0"
+        "dhcpcd-icons>=0.8.0",
+        "gettext-lib>=1.0"
       ]
     }
   ]
