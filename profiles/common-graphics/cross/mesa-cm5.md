@@ -65,6 +65,10 @@ No private runtime library is bundled. `libdrm-platform-check.c` additionally
 checks driver name, platform compatibility, enumeration folding, node type
 and the exact render pathname. Compile it against installed libdrm via the
 same cross compiler/sysroot, then run it with the render node argument.
+The default profile expects `acpi:BCM2850` and driver `v3d`.
+An optional second argument selects `allwinner,sun60i-a733-gpu` and `powervr`.
+Unknown profiles fail before the device opens. All identity checks remain active.
+This tests libdrm discovery. It does not prove rendering or job submission.
 
 ## Port repairs and validation
 
