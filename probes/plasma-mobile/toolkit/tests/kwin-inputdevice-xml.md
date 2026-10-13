@@ -86,6 +86,33 @@ The same C++ consumer can be cross-built and run on EmberBSD separately.
 No target input device, D-Bus property exchange or complete desktop is accepted
 by this host regression. It is not a Valgrind run.
 
+## Prepare the target consumer
+
+The same published C++ fixture cross-links with GCC 16.2, common Qt 6.12
+and the scoped LLD23 specs. It retains strict compiler and linker diagnostics.
+Set `CXX`, `SYSROOT`, `SPECS` and native `PKG_CONFIG` to the audited cross tools.
+Set `OUTPUT` to a new file on the development host:
+
+```sh
+export PKG_CONFIG_SYSROOT_DIR="$SYSROOT"
+export PKG_CONFIG_LIBDIR="$SYSROOT/usr/pkg/qt6/lib/pkgconfig:$SYSROOT/usr/pkg/lib/pkgconfig"
+export PKG_CONFIG_PATH=
+"$CXX" --sysroot="$SYSROOT" -std=c++20 -O2 -fPIC -Wall -Wextra -Werror \
+    -specs="$SPECS" -fno-use-linker-plugin -Wl,-m,aarch64elf \
+    -Wl,--no-undefined,--fatal-warnings,-z,relro,-z,now \
+    -L"$SYSROOT/usr/pkg/gcc16/lib" -Wl,-rpath,/usr/pkg/gcc16/lib \
+    -Wl,-rpath,/usr/pkg/qt6/lib -Wl,-rpath,/usr/pkg/lib \
+    probes/plasma-mobile/toolkit/tests/kwin-inputdevice-xml.cpp \
+    $("$PKG_CONFIG" --cflags --libs Qt6DBus Qt6Core) -o "$OUTPUT"
+```
+
+The prepared file is ELF64/AArch64 and uses `/libexec/ld.elf_so`.
+Keep its SHA256, real compile command and input hashes with the package set.
+Run that file as the ordinary target user with `timeout 30` and a clean
+library environment. Expect three PASS lines and status zero.
+This local marshalling check does not require a session bus or input device.
+Its target execution remains pending. It does not replace the full-session test.
+
 ## Native source and memory checks
 
 Use the generated compilation database for Cppcheck. Use the same native
