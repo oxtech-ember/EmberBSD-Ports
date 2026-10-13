@@ -37,11 +37,14 @@ reject.call('unrecognized shared header') { Idfwdf.patched_header(work + '/unkno
 probe = <<~SPV
   OpName %impl "__clang_ocl_kern_imp_cs_probe_store"
   OpName %instance "nir_load_instance_num_pco"
+  OpName %dma "nir_dma_st_pco__1"
   %uint = OpTypeInt 32 0
   %ulong = OpTypeInt 64 0
+  %v3uint = OpTypeVector %uint 3
   %zero = OpConstant %uint 0
   %value = OpConstant %uint 324508639
-  %address = OpConstant %ulong 549755813888
+  %hi = OpConstant %uint 128
+  %data = OpConstantComposite %v3uint %zero %hi %value
   %impl = OpFunction %void DontInline %signature
   %entry = OpLabel
   %lane = OpFunctionCall %uint %instance
@@ -50,8 +53,7 @@ probe = <<~SPV
   %reject = OpLabel
   OpReturn
   %accept = OpLabel
-  %pointer = OpConvertUToPtr %global_uint_ptr %address
-  OpStore %pointer %value Aligned 4
+  %write = OpFunctionCall %void %dma %data %zero
   OpReturn
   OpFunctionEnd
 SPV
@@ -59,9 +61,16 @@ expected = { 'instance' => 0, 'address' => '0x8000000000', 'value' => '0x13579bd
 raise 'valid lane guard rejected' unless Idfwdf.check_probe(probe) == expected
 checks += 1
 {
-  'wrong address' => probe.sub('549755813888', '549755813892'),
+  'unreachable guard with matching edges' => probe.sub(
+    "OpBranchConditional %other %reject %accept",
+    "%always = OpINotEqual %bool %zero %zero\nOpBranchConditional %always %reject %accept\n%dead = OpLabel\nOpBranchConditional %other %reject %accept"),
+  'store loop' => probe.sub("%write = OpFunctionCall %void %dma %data %zero\nOpReturn", "%write = OpFunctionCall %void %dma %data %zero\nOpBranch %accept"),
+  'wrong address' => probe.sub('OpConstant %uint 128', 'OpConstant %uint 129'),
   'wrong value' => probe.sub('324508639', '1'),
-  'wrong width' => probe.sub('%value = OpConstant %uint', '%value = OpConstant %ulong'),
+  'wrong width' => probe.sub('OpTypeVector %uint 3', 'OpTypeVector %ulong 3'),
+  'wrong DMA width' => probe.sub('nir_dma_st_pco__1', 'nir_dma_st_pco__2'),
+  'generic store' => probe.sub('%write = OpFunctionCall %void %dma %data %zero', 'OpStore %pointer %value Aligned 4'),
+  'wrong DMA flags' => probe.sub('%dma %data %zero', '%dma %data %value'),
   'wrong condition' => probe.sub('OpINotEqual', 'OpIEqual'),
   'nonzero comparison' => probe.sub('OpConstant %uint 0', 'OpConstant %uint 1'),
   'missing instance' => probe.sub('nir_load_instance_num_pco', 'some_other_call'),
@@ -69,10 +78,10 @@ checks += 1
   'reversed condition' => probe.sub('%other %reject %accept', '%other %accept %reject'),
   'both lanes write' => probe.sub("%reject = OpLabel\nOpReturn", "%reject = OpLabel\nOpBranch %accept"),
   'switch bypass' => probe.sub("%reject = OpLabel\nOpReturn", "%reject = OpLabel\nOpSwitch %lane %accept 0 %accept"),
-  'unbounded call' => probe.sub('OpStore %pointer %value Aligned 4', "%side = OpFunctionCall %void %unknown\nOpStore %pointer %value Aligned 4"),
-  'atomic side effect' => probe.sub('OpStore %pointer %value Aligned 4', "%side = OpAtomicIAdd %uint %pointer %zero %zero %value\nOpStore %pointer %value Aligned 4"),
+  'unbounded call' => probe.sub('%write = OpFunctionCall %void %dma %data %zero', "%side = OpFunctionCall %void %unknown\n%write = OpFunctionCall %void %dma %data %zero"),
+  'atomic side effect' => probe.sub('%write = OpFunctionCall %void %dma %data %zero', "%side = OpAtomicIAdd %uint %pointer %zero %zero %value\n%write = OpFunctionCall %void %dma %data %zero"),
   'instruction after return' => probe.sub("%reject = OpLabel\nOpReturn", "%reject = OpLabel\nOpReturn\n%unused = OpLoad %uint %pointer"),
-  'two stores' => probe.sub('OpStore %pointer %value Aligned 4', "OpStore %pointer %value Aligned 4\nOpStore %pointer %value Aligned 4")
+  'two stores' => probe.sub('%write = OpFunctionCall %void %dma %data %zero', "%write = OpFunctionCall %void %dma %data %zero\n%write = OpFunctionCall %void %dma %data %zero")
 }.each { |label, text| reject.call(label) { Idfwdf.check_probe(text) } }
 File.write(work + '/wrong-receipt.json', JSON.generate({ 'idfwdf_layout_dwords' => 10 }))
 reject.call('unsubstantiated layout flag') { Idfwdf.verify_receipt(work + '/wrong-receipt.json') }

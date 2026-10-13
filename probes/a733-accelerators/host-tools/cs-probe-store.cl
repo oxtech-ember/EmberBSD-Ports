@@ -9,6 +9,6 @@ cs_probe_store(void)
    if (nir_load_instance_num_pco() != 0U)
       return;
 
-   global uint *output = (global uint *)0x8000000000UL;
-   *output = 0x13579bdfU;
+   /* Internal PCO stores use two address dwords, as Mesa common.cl does. */
+   nir_dma_st_pco(false, ((uint2)(0U, 0x80U)), 0x13579bdfU);
 }

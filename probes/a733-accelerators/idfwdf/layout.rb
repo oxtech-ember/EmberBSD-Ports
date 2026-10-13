@@ -73,10 +73,10 @@ module Idfwdf
     raise 'bounded store implementation missing' unless impl
     body = text[/^#{Regexp.escape(impl)}\s+=\s+OpFunction\b.*?OpFunctionEnd/m]
     raise 'bounded store body missing' unless body
-    defs = {}; writes = {}; edges = {}; stores = []; terminals = {}
+    defs = {}; writes = {}; edges = {}; stores = []; dma = []; terminals = {}; locations = {}; branches = []
     block = nil; entry = nil
-    pure = %w[OpFunction OpLabel OpVariable OpConvertUToPtr OpLoad OpINotEqual OpFunctionCall]
-    body.each_line do |line|
+    pure = %w[OpFunction OpLabel OpVariable OpLoad OpINotEqual OpFunctionCall OpCompositeConstruct OpCompositeInsert OpVectorShuffle]
+    body.each_line.with_index do |line, position|
       line = line.strip
       if (match = line.match(/^(%\S+) = (Op\w+)(.*)$/))
         id, op, rest = match.captures
@@ -89,20 +89,23 @@ module Idfwdf
         end
         args = rest.split
         if op == 'OpFunctionCall'
-          raise 'unbounded probe function call' unless names[args[1]] == 'nir_load_instance_num_pco'
+          callee = names[args[1]]
+          raise 'unbounded probe function call' unless %w[nir_load_instance_num_pco nir_dma_st_pco__1].include?(callee)
+          dma << [block, args[2], args[3]] if callee == 'nir_dma_st_pco__1'
         end
         raise 'nonlocal probe variable' if op == 'OpVariable' && args[1] != 'Function'
-        defs[id] = [op, args]
+        defs[id] = [op, args]; locations[id] = [block, position]
       elsif line.start_with?('OpStore ')
         raise 'store outside a live block' unless block && !terminals[block]
         args = line.split
         writes[args[1]] ||= []
-        writes[args[1]] << args[2]
+        writes[args[1]] << [args[2], block, position]
         stores << [block, args[1], args[2]]
       elsif line.start_with?('OpBranchConditional ', 'OpBranch ') || line == 'OpReturn'
         raise 'terminator outside a live block' unless block && !terminals[block]
         args = line.split
         edges[block] = args[0] == 'OpBranchConditional' ? args[2, 2] : args[0] == 'OpBranch' ? [args[1]] : []
+        branches << [block, args[1], args[2], args[3]] if args[0] == 'OpBranchConditional'
         terminals[block] = true
       elsif line.start_with?('OpSelectionMerge ')
         raise 'merge outside a live block' unless block && !terminals[block]
@@ -112,30 +115,68 @@ module Idfwdf
     end
     raise 'unterminated final block' unless block && terminals[block]
     raise 'branch target missing' unless edges.values.flatten.all? { |target| edges.key?(target) }
+    visited = []
+    acyclic = lambda do |current, path|
+      raise 'probe contains a loop' if path.include?(current)
+      return if visited.include?(current)
+      edges.fetch(current).each { |target| acyclic.call(target, path + [current]) }
+      visited << current
+    end
+    acyclic.call(entry, [])
     instance = defs.find { |_, (op, a)| op == 'OpFunctionCall' && names[a[1]] == 'nir_load_instance_num_pco' }&.first
     compare = defs.find { |_, (op, a)| op == 'OpINotEqual' && a[1] == instance && constants[a[2]] == 0 }&.first
     raise 'explicit nonzero-instance guard missing' unless instance && compare
-    branch = body.lines.find { |line| line.strip.start_with?("OpBranchConditional #{compare} ") }
+    branch = branches.find { |_, condition, _, _| condition == compare }
     raise 'instance guard does not control a branch' unless branch
-    reject_edge, accept_edge = branch.split[2, 2]
-    guard_block = edges.find { |_, targets| targets == [reject_edge, accept_edge] }&.first
-    pointer = lambda do |id, seen = []|
-      raise 'cyclic pointer expression' if seen.include?(id)
+    guard_block, _, reject_edge, accept_edge = branch
+    composites = text.scan(/(%\S+)\s+=\s+OpConstantComposite\s+(%\S+)\s+([^\n]+)/).to_h { |id, type, values| [id, [type, values.split]] }
+    undef_types = text.scan(/(%\S+)\s+=\s+OpUndef\s+(%\S+)/).to_h
+    vector_types = text.scan(/(%\S+)\s+=\s+OpTypeVector\s+(%\S+)\s+(\d+)/).to_h { |id, component, count| [id, [component, count.to_i]] }
+    integer_widths = text.scan(/(%\S+)\s+=\s+OpTypeInt\s+(\d+)\s+[01]/).to_h
+    evaluate = lambda do |id, seen = []|
+      raise 'cyclic constant expression' if seen.include?(id)
+      return constants[id] if constants.key?(id)
+      recurse = ->(child) { evaluate.call(child, seen + [id]) }
+      if composites.key?(id)
+        return composites[id][1].map { |child| recurse.call(child) }
+      end
+      return Array.new(vector_types.fetch(undef_types[id])[1]) if undef_types.key?(id)
       op, args = defs[id]
       case op
-      when 'OpConvertUToPtr' then constants[args[1]]
       when 'OpLoad'
         values = writes[args[1]]
-        values&.size == 1 ? pointer.call(values.first, seen + [id]) : nil
+        raise 'nonconstant probe local' unless values&.size == 1
+        value, written_block, written_at = values.first
+        loaded_block, loaded_at = locations.fetch(id)
+        raise 'probe local write does not precede its load' unless written_block == loaded_block && written_at < loaded_at
+        recurse.call(value)
+      when 'OpCompositeConstruct'
+        args[1..].flat_map { |child| recurse.call(child) }
+      when 'OpCompositeInsert'
+        vector = recurse.call(args[2]).dup
+        index = Integer(args[3], 10)
+        raise 'unsupported composite insertion' unless args.size == 4 && vector.is_a?(Array) && index >= 0 && index < vector.size
+        vector[index] = recurse.call(args[1])
+        vector
+      when 'OpVectorShuffle'
+        vector = recurse.call(args[1]) + recurse.call(args[2])
+        args[3..].map do |index|
+          index = Integer(index, 10)
+          raise 'unsupported shuffle index' unless index >= 0 && index < vector.size
+          vector[index]
+        end
+      else
+        raise 'nonconstant DMA store argument'
       end
     end
     global = stores.reject { |_, dst, _| defs[dst]&.first == 'OpVariable' && defs[dst][1][1] == 'Function' }
-    raise 'probe must have one global store' unless global.size == 1
-    target_block, destination, value = global.first
-    constant_types = text.scan(/(%\S+)\s+=\s+OpConstant\s+(%\S+)\s+\d+/).to_h
-    integer_widths = text.scan(/(%\S+)\s+=\s+OpTypeInt\s+(\d+)\s+[01]/).to_h
-    raise 'probe store is not 32 bits' unless integer_widths[constant_types[value]] == '32'
-    raise 'wrong probe output' unless pointer.call(destination) == 0x8000000000 && constants[value] == 0x13579bdf
+    raise 'generic probe stores are not supported by PCO' unless global.empty?
+    raise 'probe must have one DMA dword store' unless dma.size == 1
+    target_block, data, flags = dma.first
+    data_type = composites[data]&.first || defs[data]&.last&.first
+    component, width = vector_types[data_type]
+    raise 'DMA store is not three 32-bit dwords' unless width == 3 && integer_widths[component] == '32'
+    raise 'wrong DMA output or flags' unless evaluate.call(data) == [0, 0x80, 0x13579bdf] && constants[flags] == 0
     reachable = lambda do |from, removed = nil|
       pending = [from]; seen = []
       until pending.empty?

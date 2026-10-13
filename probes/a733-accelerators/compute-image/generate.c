@@ -55,7 +55,6 @@
         *dst = csb_alloc((csb), pvr_cmd_length(cmd)); dst != NULL; \
         pvr_cmd_pack(cmd)(dst, &name), dst = NULL)
 
-#define PVR_DW_TO_BYTES(n) ((n) * 4U)
 #define _BITULL(n) (UINT64_C(1) << (n))
 #define PVR_BO_ALLOC_FLAG_CPU_MAPPED 1U
 #define BORDER_VA UINT64_C(0x8000010000)

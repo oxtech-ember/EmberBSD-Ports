@@ -125,6 +125,9 @@ It is not a device physical address. The input has no kernel arguments.
 The script records NIR, PCO, and binary dumps.
 `KERNEL(1)` does not restrict a padded hardware dispatch by itself.
 The store source explicitly returns when `nir_load_instance_num_pco()` is nonzero.
+It uses the upstream internal `nir_dma_st_pco` intrinsic with two address dwords.
+PCO does not yet lower a generic OpenCL store through a 64-bit constant pointer.
+The proof rejects generic writes, unknown calls, store loops, and nonconstant DMA arguments.
 The checked common compiler closure verifies that branch in the actual SPIR-V.
 Only the zero-instance path can reach one 32-bit store of `0x13579bdf` to `0x8000000000`.
 Unknown compiler control-flow shapes fail the check.
