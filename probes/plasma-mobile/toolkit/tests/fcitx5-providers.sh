@@ -92,6 +92,7 @@ for mode in no yes; do
             ;;
         fcitx5-configtool)
             require "$log" name=fcitx5-configtool-5.1.16
+            require "$log" -DKDE_INSTALL_QTPLUGINDIR=qt6/plugins
             require "$log" -DENABLE_KCM=ON
             require "$log" -DENABLE_CONFIG_QT=ON
             require "$log" qt6-qtbase\>=6.12.0

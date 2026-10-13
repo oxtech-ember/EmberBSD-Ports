@@ -26,6 +26,8 @@ USE_TOOLS+=		msgfmt msgmerge pkg-config
 CMAKE_CONFIGURE_ARGS+= -DGETTEXT_MSGFMT_EXECUTABLE:FILEPATH=${TOOLS_PATH.msgfmt:Q}
 CMAKE_CONFIGURE_ARGS+= -DGETTEXT_MSGMERGE_EXECUTABLE:FILEPATH=${TOOLS_PATH.msgmerge:Q}
 
+# Match the common KF6/Plasma plugin root for the System Settings KCM.
+CMAKE_CONFIGURE_ARGS+= -DKDE_INSTALL_QTPLUGINDIR=qt6/plugins
 CMAKE_CONFIGURE_ARGS+= -DENABLE_KCM=ON
 CMAKE_CONFIGURE_ARGS+= -DENABLE_CONFIG_QT=ON
 # Upstream Configtool defines no test target; input/UI acceptance is separate.
