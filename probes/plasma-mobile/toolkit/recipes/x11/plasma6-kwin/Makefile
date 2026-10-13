@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.25 2016/01/10 20:01:05 markd Exp $
 
 DISTNAME=	kwin-${PLASMAVER}
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	x11
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -9,6 +9,9 @@ COMMENT=	Wayland compositor for KDE Plasma Desktops
 LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2
 
 .include "../../meta-pkgs/kde/plasma6.mk"
+
+# Vulkan-Hpp loads libvulkan.so at runtime; headers do not supply the loader.
+DEPENDS+=	vulkan-loader>=1.4.357.0:../../graphics/vulkan-loader
 
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
