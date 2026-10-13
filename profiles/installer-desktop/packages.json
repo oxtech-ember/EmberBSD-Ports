@@ -1,0 +1,1327 @@
+{
+  "format": 1,
+  "abi": "NetBSD-11.0-amd64",
+  "repository": "https://cdn.netbsd.org/pub/pkgsrc/packages/NetBSD/amd64/11.0/All/",
+  "roots": [
+    "xfce4-session-4.20.4nb1",
+    "xfce4-panel-4.20.7nb2",
+    "xfce4-wm-4.20.0nb8",
+    "xfce4-desktop-4.20.2nb2",
+    "xfce4-thunar-4.20.9nb1",
+    "xfce4-settings-4.20.4nb1",
+    "xfce4-appfinder-4.20.0nb7",
+    "xfce4-terminal-1.2.0nb2",
+    "elementary-xfce-icon-theme-0.21",
+    "dbus-1.16.2nb3",
+    "dhcpcd-icons-0.8.0",
+    "dhcpcd-gtk3-0.8.0"
+  ],
+  "packages": [
+    {
+      "file": "xfce4-session-4.20.4nb1.tgz",
+      "size": 351504,
+      "sha512": "7bf9d54b24ab51556cf61d325056dd29a5862685060a032f9f8413725b799ff97db8b9d608d559911b08475701abecff91d37ccde64a25087768a2bd655f339f",
+      "depends": [
+        "glib2>=2.88.3nb1",
+        "gtk3+>=3.24.52nb3",
+        "hicolor-icon-theme>=0.9nb1",
+        "libwnck3>=3.36.0nb20",
+        "libxfce4ui>=4.20.2nb3",
+        "libxfce4windowing>=4.20.6nb2",
+        "mate-polkit>=1.26.1nb17",
+        "xscreensaver>=6.13nb1"
+      ]
+    },
+    {
+      "file": "xfce4-panel-4.20.7nb2.tgz",
+      "size": 1000596,
+      "sha512": "e3b51d2d4e4fad4ca8e7d1f218d9acc9b0b6c26fa9359908a9ef403ee719e3b9f906ea5b8686255f071a63858cc51d4599df72abe2f1c60d9a7b9e8887964655",
+      "depends": [
+        "glib2>=2.88.3nb1",
+        "gtk3+>=3.24.52nb3",
+        "hicolor-icon-theme>=0.9nb1",
+        "libdbusmenu-gtk3>=16.04.0nb14",
+        "libwnck3>=3.36.0nb20",
+        "libxfce4ui>=4.20.2nb3",
+        "libxfce4util>=4.20.0",
+        "libxfce4windowing>=4.20.6nb2",
+        "python313>=3.13",
+        "xfce4-exo>=4.20.0nb7",
+        "xfce4-garcon>=4.20.0nb7"
+      ]
+    },
+    {
+      "file": "xfce4-wm-4.20.0nb8.tgz",
+      "size": 448288,
+      "sha512": "0603eaf98e7970ec71969b639a17883c1dd5c5d97198e1dbb35e897b6e656ad9fd2f07026581d16d812bd2ba8cb5b06d2e6ab8cfee3493d2ec34f2d5f307809a",
+      "depends": [
+        "glib2>=2.88.3nb1",
+        "gtk3+>=3.24.52nb3",
+        "hicolor-icon-theme>=0.9nb1",
+        "libwnck3>=3.36.0nb20",
+        "libxfce4ui>=4.20.2nb3",
+        "libxfce4windowing>=4.20.6nb2"
+      ]
+    },
+    {
+      "file": "xfce4-desktop-4.20.2nb2.tgz",
+      "size": 1321208,
+      "sha512": "d43b34ce50034320b75fe7406ffb96ad7c4a034ad3739a3e02ff5cb799bc63dd7aba939ee0874d43458589578d3765719c6c81407cb0c9781858c430ff8a9c6d",
+      "depends": [
+        "glib2>=2.88.3nb1",
+        "gtk3+>=3.24.52nb3",
+        "hicolor-icon-theme>=0.9nb1",
+        "libnotify>=0.8.4nb7",
+        "libwnck3>=3.36.0nb20",
+        "libxfce4windowing>=4.20.6nb2",
+        "libyaml>=0.2.5",
+        "xfce4-garcon>=4.20.0nb7",
+        "xfce4-thunar>=4.20.9nb1"
+      ]
+    },
+    {
+      "file": "xfce4-thunar-4.20.9nb1.tgz",
+      "size": 1566384,
+      "sha512": "e85dce2828c106b3d86234719e19afd6bf586627c18672c87837a7454307f0f62b562049ff9574849392abe10fac88adfce7f78dd2a74b86e4aa07ac6ce6c1d3",
+      "depends": [
+        "gvfs-[0-9]*",
+        "desktop-file-utils>=0.26nb3",
+        "glib2>=2.88.3nb1",
+        "gobject-introspection>=1.86.0nb4",
+        "gtk3+>=3.24.52nb3",
+        "hicolor-icon-theme>=0.9nb1",
+        "libexif>=0.6.20nb1",
+        "libnotify>=0.8.4nb7",
+        "libxfce4ui>=4.20.2nb3",
+        "png>=1.6.0nb1",
+        "xfce4-exo>=4.20.0nb7",
+        "xfce4-panel>=4.20.7nb2"
+      ]
+    },
+    {
+      "file": "xfce4-settings-4.20.4nb1.tgz",
+      "size": 908036,
+      "sha512": "6ece52ce709c249041a6e0225dbd0f92ef46b2bf7daa35df5f226df94069fee3520927816d5cdab74f9f95272423636cd0146b82df0c8aa5f98b8e7652ae6d57",
+      "depends": [
+        "adwaita-icon-theme>=3.14.1",
+        "dbus-glib>=0.114nb2",
+        "glib2>=2.88.3nb1",
+        "gtk3+>=3.24.52nb3",
+        "hicolor-icon-theme>=0.9nb1",
+        "libcanberra>=0.30nb24",
+        "libnotify>=0.8.4nb7",
+        "libwnck3>=3.36.0nb20",
+        "libxfce4ui>=4.20.2nb3",
+        "libxklavier>=5.4nb19",
+        "python313>=3.13",
+        "xfce4-conf>=4.20.0nb7",
+        "xfce4-exo>=4.20.0nb7",
+        "xfce4-garcon>=4.20.0nb7"
+      ]
+    },
+    {
+      "file": "xfce4-appfinder-4.20.0nb7.tgz",
+      "size": 158936,
+      "sha512": "5df82adf6c404ddb59570b42718946aa1a363ed13862787803dcdb4204faab4475fde18b3417cefeabc5db30a2d449fe5dc2d037cd99864d64429b82d248961f",
+      "depends": [
+        "glib2>=2.88.3nb1",
+        "gtk3+>=3.24.52nb3",
+        "libxfce4ui>=4.20.2nb3",
+        "xfce4-garcon>=4.20.0nb7"
+      ]
+    },
+    {
+      "file": "xfce4-terminal-1.2.0nb2.tgz",
+      "size": 410640,
+      "sha512": "dac1f5d6674970c734b2e7e7627dfb0862de2b3bb397ad72f9a178ebc0d3bd1991b3c80114f47c311fad563db5bfaad53dc05f63a327198a9b3499058eee57bb",
+      "depends": [
+        "dbus-glib>=0.114nb2",
+        "glib2>=2.88.3nb1",
+        "gtk3+>=3.24.52nb3",
+        "hicolor-icon-theme>=0.9nb1",
+        "libxfce4ui>=4.20.2nb3",
+        "pcre2>=10.48nb1",
+        "startup-notification>=0.12nb2",
+        "vte3>=0.80.5nb6"
+      ]
+    },
+    {
+      "file": "elementary-xfce-icon-theme-0.21.tgz",
+      "size": 3922816,
+      "sha512": "b83964c7857ec7bdc838f2a16b166f1b5f0214d3d52bb04b0a57fb5a9ae0b4bc2aa599aa5329a390f39587ce5f376c7a3c1e7e4c138e1c8b70a1eb6a5065c601",
+      "depends": [
+        "gnome-icon-theme>=3.12.0nb8"
+      ]
+    },
+    {
+      "file": "dbus-1.16.2nb3.tgz",
+      "size": 483588,
+      "sha512": "9a8c7a2d89efb0138377f5aaa5b5ccfffe4dd9a8f91f5e1099dee7d544d4f9f92fb4b63704eebf746c2987ea6fb9c88ffa459cc73c39ce7b3f2fb2821afe0230",
+      "depends": [
+        "glib2>=2.88.3nb1"
+      ]
+    },
+    {
+      "file": "dhcpcd-icons-0.8.0.tgz",
+      "size": 139864,
+      "sha512": "a7dccad1fffe9f85bd6bf2169bbebdf89c83831b7a4671a5f7951198bc1733166f1cf8c6d9ef49858b045ff84b1c04cd73caf2e8ec4c741be1fc540f73a94c56",
+      "depends": [
+        "hicolor-icon-theme>=0.9nb1"
+      ]
+    },
+    {
+      "file": "glib2-2.88.3nb1.tgz",
+      "size": 2990760,
+      "sha512": "833b6c8d3d23f345c8aa5ba1e221ec28795cdcddf724c91ff731cb806bf1d2dc9cf5e08b4a377422ecd81dec2d20f6f5cc14582c465b7a6855ac320edec62211",
+      "depends": [
+        "libffi>=3.4.2nb3",
+        "pcre2>=10.48nb1"
+      ]
+    },
+    {
+      "file": "gtk3+-3.24.52nb3.tgz",
+      "size": 9624176,
+      "sha512": "f7d33bb86cd513eb54778aedae1f3940515387bd7afca48ed99722394c6d2e966a5a1d004bb4f7fba152de52fae5a4464b2f94937e5fc8255cf389455e85ce0e",
+      "depends": [
+        "at-spi2-core>=2.60.6nb1",
+        "cairo>=1.18.4nb4",
+        "fontconfig>=2.17.0",
+        "freetype2>=2.13.2nb1",
+        "fribidi>=0.19.1",
+        "gdk-pixbuf2>=2.44.8nb1",
+        "glib2>=2.88.3nb1",
+        "gobject-introspection>=1.86.0nb4",
+        "hicolor-icon-theme>=0.9nb1",
+        "libXft>=2.3.8nb1",
+        "libcups>=2.4.19nb2",
+        "libxkbcommon>=1.7.0",
+        "pango>=1.58.2nb1",
+        "shared-mime-info>=2.2nb3",
+        "wayland>=1.21.0",
+        "wayland-protocols>=1.26nb1"
+      ]
+    },
+    {
+      "file": "hicolor-icon-theme-0.18.tgz",
+      "size": 11428,
+      "sha512": "9ded0d53beaa6892629b7da8418d16d8f3e74d020a60004d0638645e34bf34f0b89a4b4bddc2d25c6f3784c61536572414b9fde741641eee47784b74602a24f1",
+      "depends": []
+    },
+    {
+      "file": "libwnck3-3.36.0nb20.tgz",
+      "size": 336328,
+      "sha512": "b17894400d63073a425f0d4cc1d1951e3c7be75cc6797e3dfa9748ecdf7b9e3532873c323838f2c3f05ce0c0b27ab22c9dd1f990cac176637f559ef43916a453",
+      "depends": [
+        "glib2>=2.88.3nb1",
+        "gobject-introspection>=1.86.0nb4",
+        "gtk3+>=3.24.52nb3",
+        "startup-notification>=0.12nb2"
+      ]
+    },
+    {
+      "file": "libxfce4ui-4.20.2nb3.tgz",
+      "size": 378476,
+      "sha512": "4f9f06842f0654df52ad4cc1d74c9016cc6dcc894f07ae8e61b756dbaebaff124cd8e33bad8baa93b41874397646e579aaf018e918625ed5795af715e60e3061",
+      "depends": [
+        "glib2>=2.88.3nb1",
+        "gtk3+>=3.24.52nb3",
+        "hicolor-icon-theme>=0.9nb1",
+        "libxfce4util>=4.20.0",
+        "startup-notification>=0.12nb2",
+        "xfce4-conf>=4.20.0nb7"
+      ]
+    },
+    {
+      "file": "libxfce4windowing-4.20.6nb2.tgz",
+      "size": 127920,
+      "sha512": "8fa689f67b20a93fed2cc03e25a65791ec90bd77a8601497b6321b19d7cdfd75f0c2c57153f76a3bce397692aafd12dfd6605bd009536f97bb4133e56c7f7662",
+      "depends": [
+        "glib2>=2.88.3nb1",
+        "gobject-introspection>=1.86.0nb4",
+        "gtk3+>=3.24.52nb3",
+        "libdisplay-info>=0.3.0",
+        "libwnck3>=3.36.0nb20",
+        "python313>=3.13"
+      ]
+    },
+    {
+      "file": "mate-polkit-1.26.1nb17.tgz",
+      "size": 57092,
+      "sha512": "796c80d4c8d6cfece95c29fb95bfdec2468d1d8fd0197eec035ab1defdf192b5bf6cb185047fdec4aebd7e1eabc540db92140ef02e034de7906a60b1a5e6a5ef",
+      "depends": [
+        "gtk3+>=3.24.52nb3",
+        "polkit>=127nb2",
+        "python313>=3.13"
+      ]
+    },
+    {
+      "file": "xscreensaver-6.15nb2.tgz",
+      "size": 73258668,
+      "sha512": "35b72bc67c9dcc0369af8c91b62e496dd079c4986303cdaa7c213e2003f9a4ba6e99853f949d540af972bda30474520c76d7b1adee926e724ea30a6ab806ea17",
+      "depends": [
+        "bash-[0-9]*",
+        "perl>=5.0",
+        "gdk-pixbuf2>=2.44.8nb1",
+        "gle>=3.1.0nb4",
+        "glib2>=2.88.3nb1",
+        "gtk3+>=3.24.52nb3",
+        "libXft>=2.3.8nb1",
+        "libjpeg-turbo>=1.1.0",
+        "libxml2>=2.14.6nb2",
+        "png>=1.6.0nb1"
+      ]
+    },
+    {
+      "file": "libdbusmenu-gtk3-16.04.0nb14.tgz",
+      "size": 47304,
+      "sha512": "74aa8dd48af46f8417cb9d5a7a2e0c856d8d71e1afac4e27a7aec389abeb6891f87c120cb534f61bfa88fce8e54c84e13f18a219eb59a10534d89e8ce4db397d",
+      "depends": [
+        "gtk3+>=3.24.52nb3",
+        "libdbusmenu-glib>=16.04.0nb4"
+      ]
+    },
+    {
+      "file": "libxfce4util-4.20.1nb7.tgz",
+      "size": 153804,
+      "sha512": "574bedb06b7caf2ead05f3c117a7f237f2a88f9973b5db0c58a1d68873185777d6b10e7d0854afc035e3430e327e15f8f86ab0572fd81f952b7bebb9cec7a7a6",
+      "depends": [
+        "glib2>=2.88.3nb1",
+        "gobject-introspection>=1.86.0nb4",
+        "gtk3+>=3.24.52nb3"
+      ]
+    },
+    {
+      "file": "python313-3.13.15.tgz",
+      "size": 24760748,
+      "sha512": "bd54bb590d02bef7dc2d2d1d8e453bf839ee0996a724c8330d7b2ac5c50b015920adb90f416ff3f96f812aec4f421d3a2b385b4821ede87476d04aedf949f2c7",
+      "depends": [
+        "expat>=2.0.0nb1",
+        "libffi>=3.4.2nb3",
+        "libuuid>=2.18",
+        "mpdecimal>=4.0.0",
+        "readline>=6.0",
+        "sqlite3>=3.51.1nb1"
+      ]
+    },
+    {
+      "file": "xfce4-exo-4.20.0nb7.tgz",
+      "size": 335512,
+      "sha512": "e408b32e2e686e4f61767ebf270b2898209af0d73fe33ed3cafa1d1cdfb2fa6721151ac013df06c9aceaa9af1b6535a188d754bed82062a6c61d4c3226f4a54e",
+      "depends": [
+        "p5-URI>=0",
+        "perl>=5.0",
+        "glib2>=2.88.3nb1",
+        "gtk3+>=3.24.52nb3",
+        "hicolor-icon-theme>=0.9nb1",
+        "libxfce4ui>=4.20.2nb3"
+      ]
+    },
+    {
+      "file": "xfce4-garcon-4.20.0nb7.tgz",
+      "size": 170456,
+      "sha512": "c8a1a4cae7d102a53cb57ae1c29fc02ea373c976bbe36c902e7b4376d592dbda1c9d08f5dbdda7df8c1409447936abc82e0684b8047e44f7067cafa41a02f63d",
+      "depends": [
+        "glib2>=2.88.3nb1",
+        "gtk3+>=3.24.52nb3",
+        "hicolor-icon-theme>=0.9nb1",
+        "libxfce4ui>=4.20.2nb3"
+      ]
+    },
+    {
+      "file": "libnotify-0.8.4nb7.tgz",
+      "size": 39392,
+      "sha512": "013f115747294f0def3404a0e670dc65cae056d4a2cbb2ca7787524e160f49c0c5a79127c1396bd5aa2e614a94cc4ee6a3cc953b618d164b9176229a9e634ac7",
+      "depends": [
+        "gdk-pixbuf2>=2.44.8nb1",
+        "glib2>=2.88.3nb1"
+      ]
+    },
+    {
+      "file": "libyaml-0.2.5.tgz",
+      "size": 66784,
+      "sha512": "d7ff1da9f77c30c324ea9a23a9ffee304d55dd269ecf5c1c8fde7f044632cc7b672b7654c6374e780a4050d04382da21e39dedc5d4a9a0e7583d3f43d9274421",
+      "depends": []
+    },
+    {
+      "file": "gvfs-1.60.0nb5.tgz",
+      "size": 1033128,
+      "sha512": "e68991761d7041ea91c36694f5faab9e630fe1c5bba16fae5790ba13f64faeb8c140a6ca5ba33670336979dffccf5b50666e46978b7e3171a0feceeaf70ecc79",
+      "depends": [
+        "avahi>=0.8nb9",
+        "dbus>=0.91",
+        "gcr4>=4.4.0.1nb2",
+        "glib2>=2.88.3nb1",
+        "gsettings-desktop-schemas>=40.0nb2",
+        "libcdio-paranoia>=2.0.1nb4",
+        "libgcrypt>=1.6.0",
+        "libgudev>=238nb5",
+        "libmtp>=0.3.0",
+        "libnfs>=6.0.2",
+        "libsecret>=0.20.5nb4",
+        "libsoup3>=3.6.6nb2",
+        "libudev-bsd>=0.6.0.4",
+        "libusb1>=1.0.9",
+        "libxml2>=2.14.6nb2",
+        "samba>=4.24.3nb1"
+      ]
+    },
+    {
+      "file": "desktop-file-utils-0.28nb1.tgz",
+      "size": 51708,
+      "sha512": "57c6be844bd14a5ac8be6cc9ff6d1102969c73916a0db66f8471be9f9d269d82f737939994b35e3e61323f34ab78488ef29669cc3504d071806ff7246051b3b7",
+      "depends": [
+        "glib2>=2.88.3nb1"
+      ]
+    },
+    {
+      "file": "gobject-introspection-1.86.0nb4.tgz",
+      "size": 440716,
+      "sha512": "1cf289497db35bca8f27b63daa14687ef352a79a1ed997a9cfbe3c2611fddc57b3e6185ff6266e155a5397fc3103758c09dee3083fd7fa8f77ba4e186658ab26",
+      "depends": [
+        "py313-setuptools>=78",
+        "glib2>=2.88.3nb1",
+        "libffi>=3.4.2nb3",
+        "python313>=3.13"
+      ]
+    },
+    {
+      "file": "libexif-0.6.26.tgz",
+      "size": 682752,
+      "sha512": "59dee17f4961d9d576f94a73909573b69209c96e5f10389b6922f4da1caa1fc618cc48b4d1498220f40269dcc37cf16dcd144f43272317844091863e1935a77a",
+      "depends": []
+    },
+    {
+      "file": "png-1.6.59.tgz",
+      "size": 236244,
+      "sha512": "a375f9fb280042886c56d2f71fa943b7daff7d4582508704da74a39fd37edeb60b0f9b1f389caa204414c7cecbf10f3beb9d332dda7c9d2deece713eba90a096",
+      "depends": []
+    },
+    {
+      "file": "adwaita-icon-theme-50.0.tgz",
+      "size": 490676,
+      "sha512": "6d7f2dae653ff5eb545215cd47a3edd620a1d70439889be1cf281e4ed1ccf19e6a40ccd5d63d4e5334f813a6fc6ee38c64ae7391bc6b1e6605ea2e119cfe8edf",
+      "depends": []
+    },
+    {
+      "file": "dbus-glib-0.114nb2.tgz",
+      "size": 156456,
+      "sha512": "10b291c1508faea5a1347ec8da7d3407f0bf5ef6fd63c752b98d543bda9a7f2b4900999334f495656a499d46f8b684821e8a67052674591c0022f6e7c5be1af4",
+      "depends": [
+        "dbus>=1.8",
+        "glib2>=2.88.3nb1"
+      ]
+    },
+    {
+      "file": "libcanberra-0.30nb24.tgz",
+      "size": 101236,
+      "sha512": "694055e932df6508986c6f0400a4c5614d16a0aba1c36ab458d95bc5f171b14c74daed0bb8edc23d6df2eb3bd969a73dbed92e02347adcbfef5c6e976044ed68",
+      "depends": [
+        "gstreamer1>=1.28.6nb1",
+        "gtk3+>=3.24.52nb3",
+        "libltdl>=2.4.2",
+        "libvorbis>=1.1.0nb1"
+      ]
+    },
+    {
+      "file": "libxklavier-5.4nb20.tgz",
+      "size": 77324,
+      "sha512": "7a2d717180dbcd860534e0d9799ca24fe6aa882e0f5855b341905899a1aaeeb4f537c1fadccb7c632a63afdee433552a4fdc42edb448ef9bdd37fbdac0e24de9",
+      "depends": [
+        "glib2>=2.88.3nb1",
+        "iso-codes>=4.11.0nb1",
+        "libxml2>=2.14.6nb2"
+      ]
+    },
+    {
+      "file": "xfce4-conf-4.20.0nb7.tgz",
+      "size": 196244,
+      "sha512": "3a388899a1165580598a3e2597c24428516124614764e6c7a13ac1d77e43eec75a1988d489061f622241ca145e7b7a51a1eec5262e068db41364980ca44842b0",
+      "depends": [
+        "dbus>=1.0.0",
+        "dbus-glib>=0.114nb2",
+        "glib2>=2.88.3nb1",
+        "gtk3+>=3.24.52nb3",
+        "libxfce4util>=4.20.0"
+      ]
+    },
+    {
+      "file": "pcre2-10.49.tgz",
+      "size": 883184,
+      "sha512": "3d7ae9d6879b15d6a20716940af181a1fe3cfd153c6f52f02060fd01e035968592498c6e7f27f39aa30d6f43ad853b6d0548a517a668e9bd3b3606cc48326858",
+      "depends": []
+    },
+    {
+      "file": "startup-notification-0.12nb3.tgz",
+      "size": 41152,
+      "sha512": "f7ee802e9d4bebf40a595f0c67bc83734d99ba0dc31f4c05e0e81ee5a9ec09b3fa94154ebaa17499346781503f039ff8d9caf0ee531c52e623b434d0e6c6950e",
+      "depends": [
+        "xcb-util>=0.3.9"
+      ]
+    },
+    {
+      "file": "vte3-0.80.5nb6.tgz",
+      "size": 464036,
+      "sha512": "8f7e62f56772408179a044b6a6d36b07ad559eefaed17601f909e61b0afbf03da0ac933a4d654d7a528fac1364fafd5ba51c77c17d8e188166590c6fa671feff",
+      "depends": [
+        "fribidi>=0.19.1",
+        "glib2>=2.88.3nb1",
+        "gnutls>=3.8.13nb1",
+        "gobject-introspection>=1.86.0nb4",
+        "gtk3+>=3.24.52nb3",
+        "icu>=78.1",
+        "lz4>=1.7.3<100",
+        "pango>=1.58.2nb1",
+        "pcre2>=10.48nb1"
+      ]
+    },
+    {
+      "file": "gnome-icon-theme-3.12.0nb8.tgz",
+      "size": 9932308,
+      "sha512": "bfb5498991a11ded1d55589b4e3f608fb6bdd53c12464936c8ee2418bff9fa1ba5ce3d97824092be99a944c429faa5db8062486d59ee40aa2780b767886a4bae",
+      "depends": []
+    },
+    {
+      "file": "libffi-3.8.0.tgz",
+      "size": 40892,
+      "sha512": "e6fdb69aae7612efbf31accd354bab3e545ab9498abd4126d6804612b35622cccb7df81a3853adc3dbfc6cae56a83e790ff2599d330673b8a33aa44fefc59e4b",
+      "depends": []
+    },
+    {
+      "file": "at-spi2-core-2.60.6nb1.tgz",
+      "size": 558244,
+      "sha512": "bd3d644b57f28752209be2143e0d19a0c82bee8686ab28e32c8b8f338f3294fa58d08fd250ec0b4932711c963de61bcc6e8c9de722649039825d42b5bbb31f10",
+      "depends": [
+        "dbus>=0.91",
+        "glib2>=2.88.3nb1",
+        "libxml2>=2.14.6nb2"
+      ]
+    },
+    {
+      "file": "cairo-1.18.4nb4.tgz",
+      "size": 607048,
+      "sha512": "b0ec108096d57d6c8ed25b898d58d704516351223e1215ba91f1ca29c962171eff8a8b2ef404192fe81b432ecf9f61cfc7c9f1854475bde70bfc496bd59537c3",
+      "depends": [
+        "fontconfig>=2.14.2nb3",
+        "freetype2>=2.13.2nb1",
+        "glib2>=2.88.3nb1",
+        "lzo>=2.01",
+        "png>=1.6.0nb1"
+      ]
+    },
+    {
+      "file": "fontconfig-2.18.3.tgz",
+      "size": 210156,
+      "sha512": "85c43e212b236a8a5fc0811ccf21cb035a73a5d23d1e81693c40c40bbabb296ff64584a1f15a72706bf7f2fd2b2bb36a00fac5865f36b6ab3246de6116a587ca",
+      "depends": [
+        "freetype2>=2.13.2nb1"
+      ]
+    },
+    {
+      "file": "freetype2-2.14.3.tgz",
+      "size": 544696,
+      "sha512": "25994cfc7c985c4f0fecf046335d205cc2d6645adcac3e0c28005734fa8b4f32382e43af9d40e3a500e0235581f1c4bf325dbdbcd38470eb93239ecf60c2bb37",
+      "depends": [
+        "brotli>=1.0.1",
+        "png>=1.6.0nb1"
+      ]
+    },
+    {
+      "file": "fribidi-1.0.16.tgz",
+      "size": 54772,
+      "sha512": "ed0350b9ac5572287a12d4da3df3cd4255a4f62fe15e519533a7542f3429f5d6cbbf9f72bc4fa2032f7a97a0dcc662da59213f7d31fa3edcf1657618f0d28cde",
+      "depends": []
+    },
+    {
+      "file": "gdk-pixbuf2-2.44.8nb1.tgz",
+      "size": 499596,
+      "sha512": "fbd4b62586c2ccf024fb39fe9ac104c08ec5257fd8e39ce9c1f0ee580887b67bbd791dd7e1e2c0b53cf94b361f9e0e75e80bfa3b7ef282c41ab010ac1c955cf4",
+      "depends": [
+        "glib2>=2.88.3nb1",
+        "libjpeg-turbo>=1.1.0",
+        "png>=1.6.0nb1",
+        "shared-mime-info>=2.2nb3",
+        "tiff>=4.7.0nb3"
+      ]
+    },
+    {
+      "file": "libXft-2.3.9.tgz",
+      "size": 70680,
+      "sha512": "4b0ff821ce3422cc065e335c31b2e4b846d117eeb5829ad754015ec41528f86a1e8f3a2d7f8b57017ad832a3c3715ef331198ca4636e40401a5af7de5c392068",
+      "depends": [
+        "fontconfig>=2.14.2nb3",
+        "freetype2>=2.13.2nb1"
+      ]
+    },
+    {
+      "file": "libcups-2.4.19nb2.tgz",
+      "size": 504056,
+      "sha512": "093c77bb670434a51b240e56b5105dfe85c40af95fdac2258c91cd59597ada1cdad74327444f78e1f52f42a15375e68309cd8f67fab92845a50a13c4fe7eab5d",
+      "depends": [
+        "dbus>=0.91",
+        "gnutls>=3.8.13nb1",
+        "libjpeg-turbo>=1.1.0",
+        "libpaper>=2.1.0",
+        "libunistring>=1.1",
+        "png>=1.6.0nb1",
+        "tiff>=4.7.0nb3"
+      ]
+    },
+    {
+      "file": "libxkbcommon-1.13.2.tgz",
+      "size": 275184,
+      "sha512": "eda5a3d3b4c240bfbad5e28e733718e973412ac6581539c8267ec6eb20964e2456ab3b0fa73e6457258e57a49c7b60d6b2080bbf54a0bb7d3ecc753f9f73e0e3",
+      "depends": [
+        "libxml2>=2.14.6nb2"
+      ]
+    },
+    {
+      "file": "pango-1.58.2nb1.tgz",
+      "size": 429408,
+      "sha512": "053f05a796d33a0c10c16229017b4156587fba1d554b889e7749ccf11b2d420802c79686b298ca7de124daba9a1f304512946d389cbf9eb68f0cf5f7e0dacbaa",
+      "depends": [
+        "cairo>=1.18.4nb4",
+        "fontconfig>=2.17.0",
+        "freetype2>=2.13.2nb1",
+        "fribidi>=1.0.6",
+        "glib2>=2.88.3nb1",
+        "graphite2>=1.3.14nb2",
+        "harfbuzz>=14.4.0nb1",
+        "libXft>=2.3.8nb1"
+      ]
+    },
+    {
+      "file": "shared-mime-info-2.4nb8.tgz",
+      "size": 573940,
+      "sha512": "6c9024c42df3cf6d8319004a736a2d01602c7ab22a20b8ce102999e4afb35c76f6827a21a397fd2f4f6e8c1e79748c82f60c7416f762b62379d6e691008aef78",
+      "depends": [
+        "glib2>=2.88.3nb1",
+        "libxml2>=2.14.6nb2"
+      ]
+    },
+    {
+      "file": "wayland-1.25.0.tgz",
+      "size": 148696,
+      "sha512": "5fbf98d7346f465bd79a4cfd0728fc0b23f16135dc35c1c731697b5e63ffd04e528582086081cf118750adea804c4a6bb73cf6ffb2e5f2a7c1d12ab9f31fa177",
+      "depends": [
+        "libepoll-shim>=0.0.20210418",
+        "libffi>=3.4.2nb3",
+        "libxml2>=2.14.6nb2"
+      ]
+    },
+    {
+      "file": "wayland-protocols-1.49.tgz",
+      "size": 135888,
+      "sha512": "9788c8d03199b0b547314be3b7fe428a2331bd91531cbc69d9e2f9219476a65c53eabe8ab0d67444059871014b1cb5ca918f19acd87a68e0eab86eb9f402657f",
+      "depends": [
+        "wayland>=1.21.0"
+      ]
+    },
+    {
+      "file": "libdisplay-info-0.3.0.tgz",
+      "size": 118776,
+      "sha512": "127a213dc90d60d123f12d229b5df392dc78766e1fe2b60bd63c38bf53502989eaa4a248d5dc15e789bc638c1572369a68cfa55970d4b5df4e4bbfb0c7ac1705",
+      "depends": []
+    },
+    {
+      "file": "polkit-127nb2.tgz",
+      "size": 192800,
+      "sha512": "5b2802ec0966567c1c0f6a0b3532fa7c2138deb85b7152bba1c2da19acb06b2a1e7da5644d2995eae9d63df233a706e12999e0a9a91247dbbaefc65e4f46255e",
+      "depends": [
+        "glib2>=2.88.3nb1",
+        "libduktape>=1.5.0"
+      ]
+    },
+    {
+      "file": "bash-5.3.20.tgz",
+      "size": 1789860,
+      "sha512": "737e79a42c9c738b7e8eb95fa55a4d9b160381691c716b8b37c1c1a1a394e8337ccbf7cb1b234b5b91d10861d9699ce18c69fcf1a618608f3ab80f8958cc6e85",
+      "depends": []
+    },
+    {
+      "file": "perl-5.44.0nb2.tgz",
+      "size": 13350496,
+      "sha512": "9147ef6dca525a19ebaf0cd5ba9a0d9ef3e7e70f1293156a942e25f481f2bad4b684d02fea96daf229e4b6a465b6773a37295345ef33a4b1d697f4d7a7276305",
+      "depends": []
+    },
+    {
+      "file": "gle-3.1.0nb4.tgz",
+      "size": 409244,
+      "sha512": "4d7e713dd650ac12072469245ef20c1280e9f4abb99a17c85110c8623c771e1f138a1420c670e02a76ce149c6c92bc2abc6bd2a9c949e21ba0504d17d7b8d527",
+      "depends": []
+    },
+    {
+      "file": "libjpeg-turbo-3.2.0nb2.tgz",
+      "size": 523716,
+      "sha512": "0703ead96577de48bb29fec05be8173de6f5f65260e602e141e483428f725c0ce22ea32cd57542a4b143a01e5acd63b3e815d8b206c12b1ed0bacf1aff6d684d",
+      "depends": []
+    },
+    {
+      "file": "libxml2-2.15.4.tgz",
+      "size": 709376,
+      "sha512": "397bdedc5d195a736909bb09a7a68b692d8d911a2a597670e1c8e70e5b38eaa2c0ee0981a2ff4a944617d056356e9ca9aad65d8c10def4a101194efbd598443d",
+      "depends": [
+        "xmlcatmgr>=2.0beta1"
+      ]
+    },
+    {
+      "file": "libdbusmenu-glib-16.04.0nb4.tgz",
+      "size": 106260,
+      "sha512": "9db88b14502c74e90b4aed9fc50185352362ee3cb5f9b93a8ec125e4a1e148bc556fc1fa81d07ddfea51fd7bf524b8ba88a1156c317ebd1fcd06972e2648f168",
+      "depends": [
+        "glib2>=2.88.3nb1"
+      ]
+    },
+    {
+      "file": "expat-2.8.5.tgz",
+      "size": 166992,
+      "sha512": "b7651910e0c5ce63d14285aab0346572c42c100452ddee356a635619889592bbdd0f08ce10bddda04ae3f3b4d54d6ab8ce622c3cc22025e44ca067fc6a956417",
+      "depends": []
+    },
+    {
+      "file": "libuuid-2.42.3.tgz",
+      "size": 38420,
+      "sha512": "2fca4fdd07b8f63c9690f93fbc0d074626a9012c1731cc2e3323b2eb27ccf74db3bc27b991fc8185adcd7b7e0e0e9c0eaf5c1e9d33f06d635ec4a27baef8a976",
+      "depends": []
+    },
+    {
+      "file": "mpdecimal-4.0.1.tgz",
+      "size": 117652,
+      "sha512": "f736e4858b9904d0c85a14a73b53adfeec0d74f02c35475f6eed733713db58b23a267d7fe1de1b14be0aed32ae16302046442e1bb4c1f6dc24e1e8b5a7644415",
+      "depends": []
+    },
+    {
+      "file": "readline-8.3nb1.tgz",
+      "size": 360656,
+      "sha512": "85024a11e3fcfdf257ea213b5d7f15a2f04a5d59aa0feea3d0c7d4bf486f80640df832e1f49dd39da683ed7423a4cf38c7155d3e8a355c3f9b24e843fa6142a2",
+      "depends": []
+    },
+    {
+      "file": "sqlite3-3.53.4.tgz",
+      "size": 1309800,
+      "sha512": "7f7c58668fb93f366539637bb72d8cb75a63884fe6645730df1fb62cd09828aba15a4e76f73945fcde7cc0da5ca22939cbe01c4098c42bc021e0b05ded8b274f",
+      "depends": []
+    },
+    {
+      "file": "p5-URI-5.37.tgz",
+      "size": 63524,
+      "sha512": "5cd98bab519ee41b7d1415ad9681fd8e1e7e438802cbadf6951ad1a35019474376c9cb6f708c081b8996668ce6b1e70bf016dcb744d49aec1925cc64532da067",
+      "depends": [
+        "p5-MIME-Base32-[0-9]*",
+        "perl>=5.44.0<5.45.0"
+      ]
+    },
+    {
+      "file": "avahi-0.8nb9.tgz",
+      "size": 404132,
+      "sha512": "5819b99076bbde40997505cb1e3fa4c2d873a6eb808726f7eba5203b90a321d9d4ebf8629535c4ef24145613ed2c6e13e1cfeea35857f8619714feff6a19e4d6",
+      "depends": [
+        "dbus>=0.91",
+        "gdbm>=1.18.1",
+        "glib2>=2.88.3nb1",
+        "libdaemon>=0.14"
+      ]
+    },
+    {
+      "file": "gcr4-4.4.0.1nb2.tgz",
+      "size": 553284,
+      "sha512": "2a65e2e4abce7c4e5bec7cd526ac2af7ad01e30abbc2ea64f5aa893bc39695fd17e3c8b0a471b4e5884fd8a5fa5604a9e9d3bd8f708b427d6ec01be557000695",
+      "depends": [
+        "gnupg2-[0-9]*",
+        "glib2>=2.88.3nb1",
+        "libgcrypt>=1.6.0",
+        "libsecret>=0.20.5nb4",
+        "p11-kit>=0.24.0nb3"
+      ]
+    },
+    {
+      "file": "gsettings-desktop-schemas-50.1nb1.tgz",
+      "size": 776048,
+      "sha512": "0d08711b877cfa52f22f68de8448896e8546832979508a612d4e632698e0e5e58980f7a5d681825e3837f1a0b26502c374a362cc363c66cbe06690cc6007dbdf",
+      "depends": [
+        "glib2>=2.88.3nb1"
+      ]
+    },
+    {
+      "file": "libcdio-paranoia-2.0.2.tgz",
+      "size": 77316,
+      "sha512": "60d6d6f35d5b18907567f8a34e8af535b14fb44046000e2f20fa2cf2f8c6e220dfd4620025dc6f4549cf90cc20e7769661def9314f45a4c08881613cbaa10681",
+      "depends": [
+        "perl>=5.0",
+        "libcdio>=2.3.0"
+      ]
+    },
+    {
+      "file": "libgcrypt-1.12.4.tgz",
+      "size": 798992,
+      "sha512": "554d4bfe176bd6c41526094a9e67e566d339079e7c741f5706cbdae9934a7a18bc808c9c896d17637b48dcbe078addd8ab6e9e0d8124e05c429618103d593104",
+      "depends": [
+        "libgpg-error>=1.13"
+      ]
+    },
+    {
+      "file": "libgudev-238nb5.tgz",
+      "size": 26200,
+      "sha512": "a38a7ead9e7c6526d51be6f77cb87b2e30e90775f2dec776723c10071f92a8f665dbb1652318080edcdc77b0b3e57fb0de02156e45e62e3d0ea03e1b955aa30b",
+      "depends": [
+        "glib2>=2.88.3nb1",
+        "libudev-bsd>=0.6.0.4"
+      ]
+    },
+    {
+      "file": "libmtp-1.1.23.tgz",
+      "size": 219456,
+      "sha512": "cc46c1a59bafeb0cc99a27957edda8e70b04839b1177a47505bfd12c12a7c3502ea1a4f907acc6be51d9ce0f2b0cef9328c8280e5aba121945d06c4be13ddf3f",
+      "depends": [
+        "libusb1>=1.0.9"
+      ]
+    },
+    {
+      "file": "libnfs-6.0.2nb2.tgz",
+      "size": 156060,
+      "sha512": "6e18f932ca414ed127b975d97035423b666a9ee76a4c7d0d1a8bf6353126de73d9f50bf904c254e67be80d67231db29cf39d6a75212d517124d3706414a7a66e",
+      "depends": []
+    },
+    {
+      "file": "libsecret-0.20.5nb4.tgz",
+      "size": 1320316,
+      "sha512": "67a77d5d4b392a1ca41a78f2118e8fe43e1b6f427152d939021ff8b452a8378208c8226c37eb30510d74bdef08e2aca05df0c4be36a5811044aba5cedd4e4011",
+      "depends": [
+        "glib2>=2.88.3nb1",
+        "libgcrypt>=1.6.0"
+      ]
+    },
+    {
+      "file": "libsoup3-3.6.6nb2.tgz",
+      "size": 375716,
+      "sha512": "dbb769a11e9483b7c8396fff67487d6ccb6c7884f3eef2f2f682909ef5af875f16086f3307b4f9c09329d094bd0ad7488182fd4626186ab3f4caea2045f1c623",
+      "depends": [
+        "glib-networking-[0-9]*",
+        "brotli>=1.0.1",
+        "glib2>=2.88.3nb1",
+        "gnutls>=3.8.13nb1",
+        "libpsl>=0.21.2nb1",
+        "nghttp2>=1.68.0nb1",
+        "sqlite3>=3.51.1nb1"
+      ]
+    },
+    {
+      "file": "libudev-bsd-0.6.0.5.tgz",
+      "size": 20348,
+      "sha512": "4aa20476ece9c855582ec4ad1e41bb00e3593ba496cd4a805b69afc1558d5c51669f8930a91a16ac8ec1eaf9f45203b0605bcbc6fac7f089b736a91f60e97e29",
+      "depends": [
+        "ndevd>=25.12.09"
+      ]
+    },
+    {
+      "file": "libusb1-1.0.30nb1.tgz",
+      "size": 72352,
+      "sha512": "a1510466108503f08b163275ff08402be0c05a0a305b9f930e420b5bd452b7195af7a5d507ea05f158b5b9e2a67785c375bf076050a488d9662fb7e0d622d10a",
+      "depends": []
+    },
+    {
+      "file": "samba-4.24.7.tgz",
+      "size": 16214244,
+      "sha512": "93825567c2129c3da2acd0659222c13f858e596d9311ae7f09605ea4ae03b4a9426ed8b42440bd710c529fbf21e4481eed25e63f6ff304da811c90f9b7273e64",
+      "depends": [
+        "p5-JSON>=4.05",
+        "p5-Parse-Yapp>=1.05",
+        "py313-dns>=0",
+        "py313-iso8601>=0",
+        "py313-markdown>=0",
+        "perl>=5.0",
+        "avahi>=0.8nb9",
+        "cmocka>=2.0.2",
+        "gettext-lib>=0.22",
+        "gnutls>=3.8.13nb1",
+        "libiconv>=1.9.1nb4",
+        "jansson>=2.4nb1",
+        "libgcrypt>=1.6.0",
+        "lmdb>=0.9.14",
+        "popt>=1.16nb1",
+        "python313>=3.13",
+        "readline>=6.0",
+        "talloc>=2.4.2nb1",
+        "tdb>=1.4.12nb1",
+        "tevent>=0.17.1nb1"
+      ]
+    },
+    {
+      "file": "py313-setuptools-84.0.0.tgz",
+      "size": 1220568,
+      "sha512": "710b424ddc6de1374de0b9d19204699c2468b0ccbd482f77cd5e7180d87db6eadf5279f9cc6acf9c4c6ecff2a9a5c3d4f26996567147cbb52d46638b6a57c42e",
+      "depends": [
+        "python313>=3.13"
+      ]
+    },
+    {
+      "file": "gstreamer1-1.28.6nb1.tgz",
+      "size": 1876948,
+      "sha512": "cde4fc159a0b5d3bc6b3c09e7b99bc5908a1de70043c36ed9848777462cd475f6d31f5de69ecc1e83da10f07e858b9895e3ddb6f336ae1af1ba7593df630dd07",
+      "depends": [
+        "glib2>=2.88.3nb1",
+        "gmp>=5.0.1",
+        "gsl>=2.6",
+        "python313>=3.13"
+      ]
+    },
+    {
+      "file": "libltdl-2.4.7.tgz",
+      "size": 29444,
+      "sha512": "3524143618001652c4a36282c6d00ce49eba34b9e8e22df25a57af54b910e8105e938e3be0ba9977fde12c42ce291e3be7cb86337867415fcbf74ec549ba374d",
+      "depends": []
+    },
+    {
+      "file": "libvorbis-1.3.7.tgz",
+      "size": 337156,
+      "sha512": "1e25c4254744cca64e68ddda2fd34206ddfa4a6903c649cec4c2bfb27f02f220fdc313b720b8b5a12ac714c7fcd4120d089a83457494bbe4e2cb2ff51818447d",
+      "depends": [
+        "libogg>=1.1.2nb1"
+      ]
+    },
+    {
+      "file": "iso-codes-4.16.0.tgz",
+      "size": 2916048,
+      "sha512": "8c3f5e343150881383361e0f1dbdee237dc9550736a58ec829db9e61c6f96a1910e7a271219cfa0f936a99a12825340e3e0efd929ee17dd83c348d6b2906c771",
+      "depends": []
+    },
+    {
+      "file": "xcb-util-0.4.1.tgz",
+      "size": 14704,
+      "sha512": "78aa86ae0ba9964740092c181e4b07988beeae8cb94df05c62ebb19082e6a5f6040e90163e445d8f96cc8bcc09359704c5930316a57f66cf3ec7605107c2bdc1",
+      "depends": []
+    },
+    {
+      "file": "gnutls-3.8.13nb1.tgz",
+      "size": 2352008,
+      "sha512": "c9774647c685476af4bea52b3233b70c1d0c0eb53afb5bc9fa81d89eb64925524428927fb6cb8300e23d397a5072d9bff85e5e9f9a60518bb5aef6bc8e65acd5",
+      "depends": [
+        "mozilla-rootcerts-[0-9]*",
+        "gmp>=6.0",
+        "libtasn1>=4.9",
+        "libunistring>=1.1",
+        "nettle>=4.0",
+        "p11-kit>=0.24.0nb3"
+      ]
+    },
+    {
+      "file": "icu-78.3.tgz",
+      "size": 20108612,
+      "sha512": "613845ff0b5c6015680ba87eb4b4920118a7a783ac0aff38a221aa38044e4fd0fc1ab8485a12c81d15881292bfe18480017a38ddb255b1ea43bedcb88f12768f",
+      "depends": []
+    },
+    {
+      "file": "lz4-1.10.0.tgz",
+      "size": 138672,
+      "sha512": "b52c3f71068c54754acba185aee0485f74bee11d00e7fb2c54e1784b8f89c44a5df6e8d730441541e14ac1256b905339e4a6b5ccdd991fd3b25009279d73871e",
+      "depends": []
+    },
+    {
+      "file": "lzo-2.10.tgz",
+      "size": 89304,
+      "sha512": "dcc93d8eaded685ac4e4c1dac1c52a7d33b6acdfe893c0c920707860d873522e9e57ca5f62c211bce64b76bca9c08d7fc9315fc7b727290e0b6efe824a24377a",
+      "depends": []
+    },
+    {
+      "file": "brotli-1.2.0.tgz",
+      "size": 322492,
+      "sha512": "da0d4eb3983cc15ee9818a583786fb7b15263548f87807a38f898f605a4a91fb36b94696e4cf131f7acf00bb1c621e1740d661d2f3764e7d843cde346cab9a48",
+      "depends": []
+    },
+    {
+      "file": "tiff-4.7.2.tgz",
+      "size": 1174992,
+      "sha512": "b45ce575be45fcd53bdd03e151646cc4bb9b8833da324ff910042aa0c694aa6cc992f838aaeebaf7c4fb5a2758d7c5c20b323fab3745e486042385e39b914ef5",
+      "depends": [
+        "jbigkit>=2.0",
+        "lerc>=4.0.0",
+        "libjpeg-turbo>=1.1.0"
+      ]
+    },
+    {
+      "file": "libpaper-2.2.8.tgz",
+      "size": 42580,
+      "sha512": "b4fff02b901575024c27b00ac0a93f5931cf8fe160e19e14255b8bdd8017e96dfaddb358dcfcbc0e265c13801dd9c1b3755936fc29ab9dce42103ac4bdea5752",
+      "depends": []
+    },
+    {
+      "file": "libunistring-1.4.2.tgz",
+      "size": 681348,
+      "sha512": "953ef47b3ae2a34db90c074913c479ef36c205873347d3e8e719510a659bd8b4da146708691c3e1cb3c19f354246cc3794465b61484aa16da8b979d4421fb989",
+      "depends": []
+    },
+    {
+      "file": "graphite2-1.3.15.tgz",
+      "size": 84428,
+      "sha512": "1a0e9bbb3fa91a8a182f07bc7492025d0b6323c10f030c8b86689bf610e3b42fdcfd9323c62c1eb8d144b4ec01b1ffce5d01d1d57079f112c042932d1c592b86",
+      "depends": []
+    },
+    {
+      "file": "harfbuzz-14.4.0nb1.tgz",
+      "size": 1427100,
+      "sha512": "bed3cd8bb1d1559320fbc9ccc21de2d942242a6fc4ff22e9d3cd13d11bf6ccf56d922f94b650426c319ccd207926e3d933324a25899b47b68b0061f7761c464c",
+      "depends": [
+        "freetype2>=2.13.2nb1",
+        "glib2>=2.88.3nb1",
+        "graphite2>=1.3.14nb2"
+      ]
+    },
+    {
+      "file": "libepoll-shim-0.0.20240608.tgz",
+      "size": 22896,
+      "sha512": "0b25f78a29b538e00c8cf89a4cc9b8a7b7de1b3ce9cb9c3d049d5bf00260fd53f90e30834280d7e1277cfd6765f411c3e82af4ad234450975c644788575b3500",
+      "depends": []
+    },
+    {
+      "file": "libduktape-2.7.0.tgz",
+      "size": 244760,
+      "sha512": "62128808c1842bc78a065eda439ae1cb72ac7609557b05de0b1b5aaf0c84698438f8ec17f27ef65a89d994f556f4851bd5a261155e3c22d59c48cc6c34efb0a6",
+      "depends": []
+    },
+    {
+      "file": "xmlcatmgr-2.2nb1.tgz",
+      "size": 26084,
+      "sha512": "c395d6a974a27802c529e02cc03bddb74f1d9e742c74940e81715f75690d3bde2ba71ec49c26a7aafe4fe5d7a15cbf9e238fb205de0e8b80f15707bf0dc7e479",
+      "depends": []
+    },
+    {
+      "file": "p5-MIME-Base32-1.303nb10.tgz",
+      "size": 7116,
+      "sha512": "aea94cb1a028f1151eaacda0d738087b6627fe715dd108a1a9d640219af070e689054d88a86d1f8d44f778de015e1c7e205eed4d69be215612d3e273e9faa218",
+      "depends": [
+        "perl>=5.44.0<5.45.0"
+      ]
+    },
+    {
+      "file": "gdbm-1.26.tgz",
+      "size": 223512,
+      "sha512": "235d6ab336496c31bc7e6501b81cc5f98662dc75f8caf991c834cfe9d1ad358e43ac84c3829a78d609250cf20b288b32b20e22a15d6a4ed125c9b5587c8a4f27",
+      "depends": [
+        "readline>=6.0"
+      ]
+    },
+    {
+      "file": "libdaemon-0.14nb2.tgz",
+      "size": 24588,
+      "sha512": "ff811d7acd2a9a7f6a775ad296c36c84a362ca6abd86eb4e0201747e3c85fcfb2971dd5be36994059998620fb8b6647b088c6ef41aa247918237cbc726b83ab6",
+      "depends": []
+    },
+    {
+      "file": "gnupg2-2.5.22.tgz",
+      "size": 2634568,
+      "sha512": "6791f9b7a0056de166c54fb98d660fead40444d166b225884f3f297257ec6c441b8f89889b27c49a066950eda8e185a852490f6202897bec9936663b3d974492",
+      "depends": [
+        "pinentry>=0",
+        "gnutls>=3.8.13nb1",
+        "libassuan>=3.0.1",
+        "libgcrypt>=1.11.0",
+        "libgpg-error>=1.58nb2",
+        "libksba>=1.6.3",
+        "libusb1>=1.0.9",
+        "npth>=1.2",
+        "readline>=6.0",
+        "sqlite3>=3.51.1nb1"
+      ]
+    },
+    {
+      "file": "p11-kit-0.26.5.tgz",
+      "size": 834072,
+      "sha512": "0e2abbb34535b80a759d4627999c0a2b3b3d5bc8fc4bc1cf507959fa7ccc96ebad958740b3c9b4ff189d76f8b7012b2a2687982eb5369c2a945e04b172e0093f",
+      "depends": [
+        "mozilla-rootcerts>=1.0.20150804nb1",
+        "libffi>=3.4.2nb3",
+        "libtasn1>=0.3.0"
+      ]
+    },
+    {
+      "file": "libcdio-2.4.0.tgz",
+      "size": 290848,
+      "sha512": "ca3de13ab91cad0a705742e5d6c380a682825a200475e3d37882cc25c193fdd6c3540bd2afd59fe97de2d9e06317202998e65e41dc0187399d31ade3d2268a31",
+      "depends": [
+        "perl>=5.0",
+        "libcddb>=0.9.5nb1",
+        "popt>=1.16nb1"
+      ]
+    },
+    {
+      "file": "libgpg-error-1.61.tgz",
+      "size": 268436,
+      "sha512": "2b42a0264f1fa3865a5eb0797fb737b1a2f4f3e9fc53274b7154e51b13b23beb92c978b4d5802fe4fc12f709d7b1ecafd84e64c27fd394f187fe205a11f823ab",
+      "depends": []
+    },
+    {
+      "file": "glib-networking-2.80.1nb4.tgz",
+      "size": 142736,
+      "sha512": "9594deab4bce686022e62673cd8fbe64f25872759936ddd47fa326665e4f27e3780b253322b963e179733f5bc77005e901117cc0c4c5ecd3f8a4161ac1e9a6e9",
+      "depends": [
+        "glib2>=2.88.3nb1",
+        "gnutls>=3.8.13nb1",
+        "gsettings-desktop-schemas>=40.0nb2",
+        "libproxy>=0.5.12nb4",
+        "p11-kit>=0.24.0nb3"
+      ]
+    },
+    {
+      "file": "libpsl-0.23.3.tgz",
+      "size": 72812,
+      "sha512": "fbe07b98a235a02f84c2bd197f94391b2775a65a1d3f5d1c29b4022168e622e110bd84d06cf20e4dd66c10faa3e969ab15b7ede8639a8e274a350d96d9ae1b9e",
+      "depends": [
+        "libidn2>=2.3.3nb1",
+        "libunistring>=1.1"
+      ]
+    },
+    {
+      "file": "nghttp2-1.70.0.tgz",
+      "size": 159588,
+      "sha512": "cba649491781e70ada4a4114cf4613bb62a37a0a8b58be90046f1ad37940b49fe4a4f5c6e93fca4792383466feebe70e656b5aa736e5f03c28aa23def6100565",
+      "depends": [
+        "libxml2>=2.14.6nb2"
+      ]
+    },
+    {
+      "file": "ndevd-25.12.09.tgz",
+      "size": 13408,
+      "sha512": "be9cb10ee3a4d2add6423095dc2e04b863e846baedfe3cc412a6b011825fe5237373dc8f901869765a28afb799b578e2278ec0c24ebe3c047921bc900d5699d7",
+      "depends": []
+    },
+    {
+      "file": "p5-JSON-4.11nb1.tgz",
+      "size": 44620,
+      "sha512": "925fa51f51ae25d4ceae175ad70454728d1eeb824d3d23f6a7998508cb18b065534a0433351d705eedee7fc1a7842b5486f9088cf05d25b05323c26fa0d19500",
+      "depends": [
+        "perl>=5.44.0<5.45.0"
+      ]
+    },
+    {
+      "file": "p5-Parse-Yapp-1.21nb9.tgz",
+      "size": 30280,
+      "sha512": "1a5df9e39e9896518d340a38b1d0c80a795b0b6c4a2d275a0583e66312983fbb997457d88eedfe828e7380e369187d9059c99448e164a9b8d77dea9c8b70cda5",
+      "depends": [
+        "perl>=5.44.0<5.45.0"
+      ]
+    },
+    {
+      "file": "py313-dns-2.8.0.tgz",
+      "size": 521212,
+      "sha512": "8b429db9af72f7a964d3b1de5696062520c919951b1a6bd5341b98ca096aef07ec633833b5e5a2432c74e3687b3b25c19c1d1c12f5ac04e86d39dd1732311d23",
+      "depends": [
+        "py313-idna>=2.1",
+        "python313>=3.13"
+      ]
+    },
+    {
+      "file": "py313-iso8601-2.1.0nb2.tgz",
+      "size": 14208,
+      "sha512": "833753e57217d36312e22e9eda96e9a444cc52e1899569a7b72af9c63a91edafaf6619bfeea3a6b7bcb755a6c2f39bf22226fc07d615a21f73ff08a27dd92f85",
+      "depends": [
+        "python313>=3.13"
+      ]
+    },
+    {
+      "file": "py313-markdown-3.10.3.tgz",
+      "size": 180064,
+      "sha512": "a3a894d7c42e358d3c5983f9308da28301b47addf85477950989512be0f31cee7c3583259f13f504b75e481011395929ff8baf6e5c51ed972317099e7884e3f2",
+      "depends": [
+        "python313>=3.13"
+      ]
+    },
+    {
+      "file": "cmocka-2.0.2.tgz",
+      "size": 49592,
+      "sha512": "edae1e0b05909a57ba18259451767e2fc6f580d3b0edf3791a1c10c4d7ef416ce459ca5e8d6c819fd75731fe8bd4bc1f10fa3573caabb5e3573ebad0a0a722c5",
+      "depends": []
+    },
+    {
+      "file": "gettext-lib-1.0.tgz",
+      "size": 75472,
+      "sha512": "bf9705ad349da20ffc3d8f3ebb3b381429d080028f55ca9a0237317e597e065974758c88871c0af0fe0020c56ce1bb0ff8e5c1c8c17f203492a8ec61d2e7e1de",
+      "depends": []
+    },
+    {
+      "file": "libiconv-1.19.tgz",
+      "size": 551544,
+      "sha512": "18166b5b103a6291e09ae37d65281c59c68d5ac5c06bd0c04763ef116962d99468ed02e81fdb0dfca84199b7052b2afb90baac2ebdff9a7bc804351e9a12893b",
+      "depends": []
+    },
+    {
+      "file": "jansson-2.15.1.tgz",
+      "size": 55460,
+      "sha512": "b496fe2337468317e8dc1b757f013642d498b5b1a1bc1ffecca39ed18e94d3a01df01e9e6b94480dcb714e3890f64c29cef34a0c109aac17a11f90df846379fb",
+      "depends": []
+    },
+    {
+      "file": "lmdb-1.0.2.tgz",
+      "size": 96184,
+      "sha512": "b50a89f139d9c125ee22b88bb4b7ae2390986a1808690d12fef53af27d6ebbb02042912be71b81002b4ded1fc011466c75a3c8f062e7d81c2031211dd58ecf28",
+      "depends": []
+    },
+    {
+      "file": "popt-1.19.tgz",
+      "size": 61776,
+      "sha512": "b6dd6586411d3101d88600a89a3c426803df824971884b23b7e026c645937a5d042272faa908ccbc1657dd71691e618329c50d1064aa811aea3f6828ac3bf645",
+      "depends": []
+    },
+    {
+      "file": "talloc-2.5.0.tgz",
+      "size": 42212,
+      "sha512": "f3b121c1159bff44d446f409833b699617602777843d56784d419bb5e259c13349cf3b2977774c3dae87f3aea2d1589a2dd0cab2efdd8be1552aa8226fd456ed",
+      "depends": [
+        "python313>=3.13"
+      ]
+    },
+    {
+      "file": "tdb-1.4.15.tgz",
+      "size": 74252,
+      "sha512": "86f47a2745c823541874e63287371751b541a0c7dfdcd45978cbc521ada33b8c1bc60896decaf51ad0f63c9147845317f50a30c13189ee132410161630c91ad6",
+      "depends": [
+        "python313>=3.13"
+      ]
+    },
+    {
+      "file": "tevent-0.17.2.tgz",
+      "size": 52428,
+      "sha512": "d629f89b78062d93a40d769219a7dbf067ebc9ecb21d61056cf59c5d9cc16ad11053f04e8b0c87585040349790e37f6795406255a87dc66ebcac3e726a4c1420",
+      "depends": [
+        "cmocka>=2.0.2",
+        "python313>=3.13",
+        "talloc>=2.5.0"
+      ]
+    },
+    {
+      "file": "gmp-6.3.0.tgz",
+      "size": 486892,
+      "sha512": "db683c684ec02679b1e8f36b9e8efd5cd05f3938293ced94a7cd637b03c8b2aa755d71fa24c2a5445764736c22b236730417a472a8c1754de161ac4ffdbfed85",
+      "depends": []
+    },
+    {
+      "file": "gsl-2.8.tgz",
+      "size": 1885228,
+      "sha512": "b603c3b43a97251cfa92fb97d4d62cdb6662222d62dbf4198b9e7a2218e3dc5ea66e0ec6b60e9b55b97fe8e64ee0fac78df0b5cf60b85e82ebae0b0587728acd",
+      "depends": []
+    },
+    {
+      "file": "libogg-1.3.6.tgz",
+      "size": 197188,
+      "sha512": "9dedeb780aa382ae2029b07bd069630764f3a6e36d14640fa87c8c983890f3bc2ed4ec0318f5da9173dbcbaef99877f4d0b6f1227c35acabd714abf436ece43e",
+      "depends": []
+    },
+    {
+      "file": "mozilla-rootcerts-1.1.20260715.tgz",
+      "size": 460684,
+      "sha512": "f65c5d61ad356b1371daaf30015a14ffdb1ca0ead8473448f29efd61596ab214d509672b30cec015868063ff9cbc61e5d5dab1add6d974c8bf869cd95e1bbb52",
+      "depends": []
+    },
+    {
+      "file": "libtasn1-4.21.0.tgz",
+      "size": 95756,
+      "sha512": "6491ceb1ef2f580ad9decd0e354dc7eaf809a8bf0153fead9f98dd69450faf1995220f63efec55e8af2fa7d0257269c0a16f8c043f760eaa3d112475500b5646",
+      "depends": []
+    },
+    {
+      "file": "nettle-4.0.tgz",
+      "size": 2492084,
+      "sha512": "0e38cec2486304d318ad6a3f59fb2adcacbcd7a62ecd10f856463bd726de20fa264eeea03f893cbea6b64b3d9031179de98158d935f1e33836b79b8b4962b2ab",
+      "depends": [
+        "gmp>=6.0"
+      ]
+    },
+    {
+      "file": "jbigkit-2.1nb1.tgz",
+      "size": 68088,
+      "sha512": "6fa49cb7427f1640907006716ffeca874c46ab45ec3ae8d14b35414c83f37d50cb7be6e1f6cc8ad9d282c568ec4b66b4832fcd82f697ded754fab25b2394769a",
+      "depends": []
+    },
+    {
+      "file": "lerc-4.2.0.tgz",
+      "size": 158296,
+      "sha512": "8de4de5261c215ae2ffbc918c32a567206e9ba281293515e8e7182d5da0e500fd4391057b89f3fc47781e630ba16d52a9e27c732a741cef91aa8aa733a15f6df",
+      "depends": []
+    },
+    {
+      "file": "pinentry-1.3.3.tgz",
+      "size": 61640,
+      "sha512": "121c717c0e2545437fe60db9ebb8dbb3c8adb03ce34a47d2fa7f587a33e12818b9e4999c40a99cde52e9623e00c237c85bf126597b4ed64e3c73c5c9924015df",
+      "depends": [
+        "libassuan>=3.0.1",
+        "libgpg-error>=1.16",
+        "libksba>=1.3.0nb1"
+      ]
+    },
+    {
+      "file": "libassuan-3.0.2.tgz",
+      "size": 97808,
+      "sha512": "bc7dafc4c5f82916a6cabc2450a055cedd109dff83a8b3ac2aa597e7577093e21b8cb4f0c7e256c366074925606076ed62089da728d8c0b35c3fdfe2b0f2c80d",
+      "depends": [
+        "libgpg-error>=1.17"
+      ]
+    },
+    {
+      "file": "libksba-1.8.1.tgz",
+      "size": 170756,
+      "sha512": "d4e97acc60dc590e6bd4b181f4481f7727b80c60d5050338ef7280587f1d8a3bc2b82b4d82d8cdbdd0da7b14d82e5b443784c9b70fa4c9bc1ccec146d67c30ea",
+      "depends": [
+        "libgcrypt>=1.6.0",
+        "libgpg-error>=1.28"
+      ]
+    },
+    {
+      "file": "npth-1.8.tgz",
+      "size": 16804,
+      "sha512": "39ff68d892047f235e5009ba532a098780bea8bb07ced0bc49396b3cd2ced394abbb03bc763a7ec2b2ee3066523be32c11db76ac7a8302e9acf484f52b5a66d2",
+      "depends": []
+    },
+    {
+      "file": "libcddb-1.3.2nb1.tgz",
+      "size": 56904,
+      "sha512": "b47014b355177879ce93bb7662e2a14977be86c64a90f8fd16c258fb3ed9e6b0cf8337bede597c55d5bfd17abf3101a3261f34dc884e4a74003ace259c041e75",
+      "depends": []
+    },
+    {
+      "file": "libproxy-0.5.12nb4.tgz",
+      "size": 1093880,
+      "sha512": "d548c71a631cef1aad2ee800bf3f8ba61f725f5c7b428800367223a4e0311f6823bb4d729c7ad7f46594d41cf064b7986506eb9d00d2e1b0dad5c483d64b9b3b",
+      "depends": [
+        "curl>=8.20.0nb1",
+        "glib2>=2.88.3nb1",
+        "gobject-introspection>=1.86.0nb4",
+        "gsettings-desktop-schemas>=40.0nb2",
+        "libduktape>=1.5.0"
+      ]
+    },
+    {
+      "file": "libidn2-2.3.7.tgz",
+      "size": 148596,
+      "sha512": "a3c6a4e09549d3375aaaf5e447e8b175db4a534cce38d5ba9d92b9c48b81f250546d4f8cd6d0c6d34e966b100d72a95e661bc552ec73ae36f8eccfbb2e510f4d",
+      "depends": [
+        "libunistring>=1.1"
+      ]
+    },
+    {
+      "file": "py313-idna-3.19.tgz",
+      "size": 76832,
+      "sha512": "b36f1178de032698590b2ee56c02810a48eb81f9acb1764d32cfc2fc512448ce75206acace131b18791e22b04149fdb06b96a2ce40c5f124b6f2222f868d0c68",
+      "depends": [
+        "python313>=3.13"
+      ]
+    },
+    {
+      "file": "curl-8.22.0.tgz",
+      "size": 1029992,
+      "sha512": "54a5e8b0e852a7c05dc7f68296983cce9d4081f7a01abe1ad1edcbdb3d6183eadd4a85d400eb3d346fbbc024daab90d35d6508b4b262c02c999548320d15d737",
+      "depends": [
+        "libidn2>=2.3.3nb1",
+        "nghttp2>=1.68.0nb1"
+      ]
+    },
+    {
+      "file": "dhcpcd-gtk3-0.8.0.tgz",
+      "size": 40498,
+      "sha512": "3d6339710fc7a46e64c5a21a4a2721ddb949ce2f53c78a811b369cdd65ded280743c32e51b930680f0789b764cedf810bf3ec8b4754029a599f5b02a5f33e9f8",
+      "local": true,
+      "depends": [
+        "gtk3+>=3.24.52nb3",
+        "libnotify>=0.8.4nb7",
+        "dhcpcd-icons>=0.8.0"
+      ]
+    }
+  ]
+}
