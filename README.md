@@ -62,7 +62,11 @@ runtime behavior are validated.
   pkgconf 3.0.7, GNU M4 1.4.21, Libtool 2.6.2 and
   [Binutils 2.47nb1](profiles/common-build-tools/binutils.md) pass ordinary package checks
   and installed AArch64 VM consumers with GCC16. Cross metadata, package
-  replacement and rollback have regression checks. Binutils has a verified
+  replacement and rollback have regression checks. The
+  [host cross-Libtool dispatcher](profiles/common-build-tools/libtool.md)
+  now selects its target configuration; its nb1 package and installed checks pass.
+  The RELRO regression still rejects unprotected target ELF libraries.
+  Binutils has a verified
   DWARF32/64 line-table repair; GNU tools are selected explicitly during
   acceptance, with GCC bootstrap-tool default migration still pending.
   [Python 3.14.8](profiles/common-build-tools/python.md) also cross-builds and

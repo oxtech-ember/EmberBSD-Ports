@@ -57,6 +57,15 @@ original wrong-prefix dispatcher. It also checks the shared-only tag.
 It compiles no source and does not update any package database. The host cross
 package must still pass ordinary package checks before installation.
 
+The complete `cross-libtool-base` 2.6.2nb1 package passes ordinary checks
+on macOS arm64. Its source recipe is from `c26300d`; the ELF checker guard
+is from `4394b7e`. Normal package replacement and all 56 installed entries
+pass. The installed dispatcher selects `aarch64--netbsd`, enables shared
+libraries and disables static libraries. Native Libtool remains unchanged.
+The package SHA256 is
+`42458882623701b7d84cdba7d691961622119b08c1ba79a70e9644b330498823`.
+This host-tool check does not establish a complete gettext or Fcitx package.
+
 A native cross-tool package retains the host object format even when its
 Libtool configuration describes ELF target libraries. The RELRO gate selects
 its ELF backend only for ELF packages. It does not change `CHECK_RELRO` or
