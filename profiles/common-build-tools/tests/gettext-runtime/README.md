@@ -68,3 +68,18 @@ cases and `msgfmt-1` require the noninstalled `tstgettext --env` helper. `lang-s
 require a compiled `testlocale` helper. They are not silently rewritten to
 use the installed CLI. No target fixture compilation is required here.
 This runtime check does not replace C/C++ source analysis or Memcheck.
+
+## CM5 acceptance
+
+On 2026-10-13, the committed `0104de2` payload ran as an ordinary user on
+physical EmberBSD/AArch64 CM5. Gettext-tools 1.0nb2 and gettext-lib 1.0 passed
+all 24 selected original tests, both autopoint CLI checks and the Fcitx
+source-consumer translation check. The result was 27 PASS, one SKIP and zero
+failures. `autopoint-2` reported missing Autoconf; its archive path was not
+accepted on this target. The complete run took approximately three seconds.
+All 282 installed package entries passed the package integrity check.
+Gettext-tools package SHA256:
+`0cc5f96cb417e4dcf61f758aa4e1427d7c63d206c4a1d1b4e196635520d597f3`.
+Gettext-lib package SHA256:
+`5fc38f8e68c207e2e725fec4622be7910de83e368f3c9bf2ddcc13238afe7e93`.
+No Valgrind, ASan or UBSan result is claimed for this target run.

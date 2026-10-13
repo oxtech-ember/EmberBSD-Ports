@@ -66,6 +66,9 @@ runtime behavior are validated.
   [host cross-Libtool dispatcher](profiles/common-build-tools/libtool.md)
   now selects its target configuration; its nb1 package and installed checks pass.
   The RELRO regression still rejects unprotected target ELF libraries.
+  [Gettext 1.0 localization checks](profiles/common-build-tools/tests/gettext-runtime/README.md)
+  pass 27 installed CM5 cases, including the Fcitx translation function.
+  The autopoint archive test explicitly skips without target Autoconf.
   Binutils has a verified
   DWARF32/64 line-table repair; GNU tools are selected explicitly during
   acceptance, with GCC bootstrap-tool default migration still pending.

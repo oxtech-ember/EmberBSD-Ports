@@ -124,7 +124,16 @@ Fatal GLib diagnostics remain enabled. These target runs are not memory-analysis
 The shared gettext-tools recipe keeps target localization and `autopoint`'s
 XZ runtime dependency. Native `msgfmt`, `msgmerge` and XZ remain build tools.
 The focused checks pass all 14 Fcitx release catalogs and translated metadata.
-A complete Fcitx package and its Qt6 input session still require acceptance.
+Gettext-tools 1.0nb2 and gettext-lib 1.0 cross-build with the repaired common
+Libtool dispatcher. Normal package checks, including ELF PIE and RELRO, pass.
+On CM5, all 282 package entries check. The
+[installed runtime gate](../../../../profiles/common-build-tools/tests/gettext-runtime/README.md)
+passes 24 unchanged gettext tests, two autopoint CLI checks and the original
+Fcitx translation function with its Russian catalog. The original autopoint
+archive test skips explicitly because Autoconf is not installed.
+This is 27 PASS, one SKIP and zero failures under an ordinary user.
+These short runs do not establish a full Fcitx package, graphical input session
+or a memory-analysis pass.
 
 XZ 5.8.4nb1 keeps the native configure shell separate from installed scripts.
 The [cross regression](../../../../profiles/common-build-tools/tests/xz-target-shell.sh)
