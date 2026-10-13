@@ -70,7 +70,8 @@ grep -q 'GNU ld' default-linker.version
 cksum "$CC" "${CXX:-$CC}" "$assembler" "$default_linker" > original-tools.cksum
 # An absolute configured --with-ld can override -B and -fuse-ld selection.
 # This changes only this invocation. Direct ELF linking does not test LTO.
-# Preserve the full dump. Change only the linker and four GNU common aliases.
+# Preserve a control with the original loader and the selected LLD/common aliases.
+# Then repair only the three known loader rules in invocation-local specs.
 # LLD accepts -d for compatibility; final links allocate COMMON without it.
 # Relocatable (-r) equivalence is deliberately outside this test.
 awk -v linker="$LLD" '
@@ -85,7 +86,24 @@ awk -v linker="$LLD" '
     }
     { print }
     END { if (dc != 2 || dp != 2 || selected != 1) exit 1 }
-' original.specs > selected-linker.specs
+' original.specs > original-loader.specs
+awk '
+    /^\*/ { block=$0 }
+    block == "*link:" || block == "*netbsd_link_spec:" ||
+        block == "*netbsd_link_ld_elf_so:" {
+        replaced[block] += gsub(/-dynamic-linker \/usr\/libexec\/ld[.]elf_so}/,
+            "-dynamic-linker /libexec/ld.elf_so}")
+    }
+    /\/usr\/libexec\/ld[.]elf_so/ { unexpected++ }
+    { print }
+    END {
+        if (replaced["*link:"] != 1 || replaced["*netbsd_link_spec:"] != 1 ||
+            replaced["*netbsd_link_ld_elf_so:"] != 1 || unexpected) {
+            print "Unsupported GCC loader specs: require one rule in each known block" > "/dev/stderr"
+            exit 1
+        }
+    }
+' original-loader.specs > selected-linker.specs
 run_cc()
 {
     "$CC" --sysroot="$sysroot" -B"$crt/" -B"$sysroot/usr/lib/" \
@@ -153,10 +171,28 @@ grep -F "$LLD " shared-link.log > linker-invocation.txt
 grep -F "$(cat lld.version)" shared-link.log > linker-banner.txt
 ln -s libember-gcc16-lld.so.1 libember-gcc16-lld.so
 run_link -v -Wl,-v -pie -Wl,--no-undefined,--fatal-warnings \
-    main.o -L"$work" -lember-gcc16-lld -Wl,--dynamic-linker,/libexec/ld.elf_so \
+    main.o -L"$work" -lember-gcc16-lld \
     '-Wl,-rpath,$ORIGIN:/usr/pkg/gcc16/lib' -o consumer > executable-link.log 2>&1
 grep -F "$LLD " executable-link.log > executable-linker-invocation.txt
 grep -F "$(cat lld.version)" executable-link.log > executable-linker-banner.txt
+# The control uses the same objects, linker and strict flags. Only its specs
+# retain the original loader. A successful link alone must not accept that ELF.
+"$CC" --sysroot="$sysroot" -B"$crt/" -B"$sysroot/usr/lib/" -L"$runtime" \
+    -specs="$work/original-loader.specs" -fno-use-linker-plugin -v -Wl,-v \
+    -Wl,-m,aarch64elf -Wl,-rpath-link,"$sysroot/lib" \
+    -Wl,-rpath-link,"$sysroot/usr/lib" -Wl,-z,relro -Wl,-z,now \
+    -pie -Wl,--no-undefined,--fatal-warnings main.o -L"$work" -lember-gcc16-lld \
+    '-Wl,-rpath,$ORIGIN:/usr/pkg/gcc16/lib' -o consumer-original-loader \
+    > original-loader-link.log 2>&1
+"$READELF" -lW consumer-original-loader > consumer-original-loader.segments
+grep -F '[Requesting program interpreter: /usr/libexec/ld.elf_so]' \
+    consumer-original-loader.segments
+if grep -F '[Requesting program interpreter: /libexec/ld.elf_so]' \
+    consumer-original-loader.segments; then
+    echo 'Original loader control unexpectedly met the target interpreter contract' >&2
+    exit 1
+fi
+printf '%s\n' 'PASS: original loader specs still link but fail the target interpreter contract'
 for artifact in libember-gcc16-lld.so.1 consumer; do
     "$READELF" -h "$artifact" > "$artifact.header"
     "$READELF" -lW "$artifact" > "$artifact.segments"
@@ -262,7 +298,6 @@ CXX
         -o libember-gcc16-lld-cxx.so.1 > exception-link.log 2>&1
     ln -s libember-gcc16-lld-cxx.so.1 libember-gcc16-lld-cxx.so
     run_cxx -fno-use-linker-plugin -v -Wl,-v -Wl,-m,aarch64elf -pie \
-        -Wl,--dynamic-linker,/libexec/ld.elf_so \
         -Wl,--no-undefined,--fatal-warnings -Wl,-z,relro,-z,now \
         catch.o -L"$work" -lember-gcc16-lld-cxx \
         '-Wl,-rpath,$ORIGIN:/usr/pkg/gcc16/lib' -o consumer-cxx > catch-link.log 2>&1

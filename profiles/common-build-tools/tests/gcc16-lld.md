@@ -28,9 +28,9 @@ assembler remains selected and is checked independently. The test selects
 startup files, C++ headers and `libgcc` from the installed GCC16 package.
 It does not fall back to the compiler's bootstrap runtime.
 
-The selected specs change `*linker` and four common-allocation aliases only.
+The selected specs change `*linker`, four common-allocation aliases and three loader rules.
 Both `*link` and `*netbsd_link_spec` must contain exactly one `-dc` and one `-dp`.
-The test replaces each with `-d` and retains every other rule. GNU ld defines
+The test replaces each with `-d`. GNU ld defines
 these three options as aliases. LLD23 accepts `-d` but ignores it. This is
 sufficient for the final links tested here, which allocate COMMON by default.
 The output symbol check proves allocation. It does not prove equivalent
@@ -38,9 +38,19 @@ relocatable `-r` behavior. See the [GNU ld options](https://sourceware.org/binut
 and [LLD23 option definitions](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.3/lld/ELF/Options.td#L753-L754).
 
 LLD23 does not recognize GCC's `aarch64nbsd` emulation name. The test selects
-`aarch64elf` at link time. Executables explicitly select `/libexec/ld.elf_so`,
-which must exist in the sysroot. The bootstrap's `/usr/libexec/ld.elf_so` can
-be absent. The test retains all other target specs and startup files.
+`aarch64elf` at link time. Invocation-local specs select `/libexec/ld.elf_so`,
+which must exist in the sysroot. Exactly one original `/usr/libexec/ld.elf_so`
+rule must occur in each of `*link`, `*netbsd_link_spec` and
+`*netbsd_link_ld_elf_so`. Unknown layouts or extra old loader paths fail.
+Both C and C++ executables use this default without `--dynamic-linker` overrides.
+The test retains all other target specs and startup files.
+
+The `original-loader.specs` control has the same LLD and common-allocation
+repairs but retains the original interpreter rules. It links the same real
+C inputs with the same strict flags. Its ELF interpreter must remain
+`/usr/libexec/ld.elf_so` and fail the target interpreter contract. This proves
+why a successful link alone is insufficient. The original compiler specs
+and the common sysroot remain unchanged.
 It verifies AArch64 ELF64 DSO/PIE outputs, interpreter, NetBSD11 and PaX notes,
 RELRO, immediate binding, DSO dependencies and absence of sysroot RPATH leaks.
 
