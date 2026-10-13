@@ -1,9 +1,11 @@
 # $NetBSD: Makefile,v 1.132 2026/09/02 19:04:11 wiz Exp $
 
 COMMENT=	PDF rendering library
-PKGREVISION=	3
+PKGREVISION=	4
 
 SUPERSEDES+=	poppler-glib-[0-9]*
+
+.include "../../mk/bsd.prefs.mk"
 
 TOOL_DEPENDS+=	glib2-introspection-[0-9]*:../../devel/glib2-introspection
 
@@ -14,35 +16,40 @@ INSTALLATION_DIRS+=	include/poppler share/doc/poppler
 
 # Don't compile GTK+ test program.
 CMAKE_CONFIGURE_ARGS+=	-DBUILD_GTK_TESTS=OFF
-# Compile GLib wrapper which also needs gtk2
+# Build the GLib wrapper and its introspection metadata without GTK.
 CMAKE_CONFIGURE_ARGS+=	-DENABLE_GLIB=ON
-# Cross builds select the native introspection generators and resolve
-# GType queries on the real target through the shared GI executor
-# (devel/gobject-introspection/cross.mk), like the GStreamer packages.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# Native scanners use the shared executor for real target GType queries.
 EMBERBSD_GI_MESON_OPTIONS= no
 .include "../../devel/gobject-introspection/cross.mk"
-# The scanner shim injects the cross ldd wrapper; without it the scanner
-# resolves target SONAMEs with the host ldd.
-# The cross cwrapper strips -I flags with the absolute sysroot prefix, so
-# the generated introspection rule must use bare target paths; the wrapper
-# maps them into the sysroot itself.
+# cwrappers map bare target includes into the sysroot. CMake can resolve
+# symlinks, so remove both spellings from the generated scanner rule.
+# Escape literal paths before using them as sed regular expressions.
+_POPPLER_GI_ROOT_RE= ${CROSS_DESTDIR:C|[.[\\*^]|\\\\&|gW:S|,|\\,|gW}
+_POPPLER_GI_REAL_ROOT_RE= ${CROSS_DESTDIR:tA:C|[.[\\*^]|\\\\&|gW:S|,|\\,|gW}
+_POPPLER_GI_UNROOT= s,-I${_POPPLER_GI_ROOT_RE}/,-I/,g
+_POPPLER_GI_UNROOT_REAL= s,-I${_POPPLER_GI_REAL_ROOT_RE}/,-I/,g
 SUBST_CLASSES+=			girpaths
 SUBST_STAGE.girpaths=		post-configure
 SUBST_MESSAGE.girpaths=		Bare include paths for the introspection rule
-SUBST_FILES.girpaths=		cmake-pkgsrc-build/glib/CMakeFiles/gir-typelibs.dir/build.make
-SUBST_SED.girpaths=		-e 's|-I/private/tmp/ember-common-stack/sysroot|-I|g'
-SUBST_SED.girpaths+=		-e 's|-I/Volumes/BigData/EmberBSD/work/ember-common-stack/sysroot|-I|g'
+SUBST_FILES.girpaths=		${CMAKE_BUILD_DIR}/glib/CMakeFiles/gir-typelibs.dir/build.make
+SUBST_SED.girpaths=		-e ${_POPPLER_GI_UNROOT:Q} -e ${_POPPLER_GI_UNROOT_REAL:Q}
 
+# Preserve pkgsrc's selected compiler wrappers and inspect ELF SONAMEs
+# with the shared readelf wrapper, not the host dynamic loader.
+_POPPLER_GI_CC= ${WRAPPER_BINDIR}/${CC:T}
+_POPPLER_GI_CXX= ${WRAPPER_BINDIR}/${CXX:T}
 post-patch: poppler-gi-shim
 .PHONY: poppler-gi-shim
 poppler-gi-shim:
-	${MKDIR} ${WRKDIR}/bin
-	${PRINTF} '#!/bin/sh\nCC=${WRKDIR}/.cwrapper/bin/aarch64--netbsd-gcc\nCXX=${WRKDIR}/.cwrapper/bin/aarch64--netbsd-g++\nexport CC CXX CWRAPPERS_CONFIG_DIR=${WRKDIR}/.cwrapper/config\nexec ${TOOLBASE}/bin/g-ir-scanner --use-ldd-wrapper ${EMBERBSD_GI_FILESDIR}/elf-needed.sh "$$@"\n' > ${WRKDIR}/bin/g-ir-scanner
-	${CHMOD} +x ${WRKDIR}/bin/g-ir-scanner
+	${MKDIR} ${WRKDIR:Q}/bin
+	${PRINTF} '#!/bin/sh\nCC=%s\nCXX=%s\nexport CC CXX\nexport CWRAPPERS_CONFIG_DIR=%s\nexec %s --use-ldd-wrapper %s "$$@"\n' \
+	    ${_POPPLER_GI_CC:Q:Q} ${_POPPLER_GI_CXX:Q:Q} ${CWRAPPERS_CONFIG_DIR:Q:Q} \
+	    ${TOOLBASE:Q:Q}/bin/g-ir-scanner ${EMBERBSD_GI_FILESDIR:Q:Q}/elf-needed.sh > ${WRKDIR:Q}/bin/g-ir-scanner
+	${CHMOD} +x ${WRKDIR:Q}/bin/g-ir-scanner
 CMAKE_CONFIGURE_ARGS+=	-DINTROSPECTION_SCANNER=${WRKDIR}/bin/g-ir-scanner
 CMAKE_CONFIGURE_ARGS+=	-DINTROSPECTION_COMPILER=${TOOLBASE}/bin/g-ir-compiler
-BUILDLINK_DEPMETHOD.gobject-introspection=	build
-.include "../../devel/gobject-introspection/buildlink3.mk"
+.endif
 # Don't build and install the tools
 CMAKE_CONFIGURE_ARGS+=	-DENABLE_UTILS=OFF
 # Don't compile poppler cpp wrapper.
@@ -52,8 +59,6 @@ CMAKE_CONFIGURE_ARGS+=	-DENABLE_QT5=OFF
 CMAKE_CONFIGURE_ARGS+=	-DENABLE_QT6=OFF
 # Don't run gperf if it's present
 CMAKE_CONFIGURE_ARGS+=	-DRUN_GPERF_IF_PRESENT=OFF
-
-.include "../../mk/bsd.prefs.mk"
 
 .if ${OPSYS} == "Darwin"
 # MacOS Xcode does not provide /usr/include, so be explicit
