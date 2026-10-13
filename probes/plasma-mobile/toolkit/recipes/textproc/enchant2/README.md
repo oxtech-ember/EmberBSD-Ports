@@ -22,3 +22,21 @@ The cross build sets `GROFF_BIN_PATH` to the native tool directory.
 pkgsrc executes groff through a symlink in `.tools/bin`; its subprocesses
 must still resolve to the same native `pre-grohtml`, `post-grohtml`, and
 `gsoelim` provider. A direct invocation alone does not test that wrapper path.
+
+## Provider test discovery
+
+The upstream provider test compares `sizeof("enchant_")` bytes. This includes
+NUL and skips provider filenames such as `enchant_hunspell.so`. The test-only
+patch excludes the NUL byte. It does not change the installed library.
+This is AI-assisted EmberBSD work and has not been submitted upstream.
+
+```sh
+CXX=/absolute/clang++ sh files/check-provider-discovery.sh SOURCE NEW_WORK
+```
+
+The regression extracts the complete real discovery function. It supplies a
+controlled GLib directory API and checks selected filenames and failure
+propagation. The original source selects zero providers and fails the test.
+The patched source passes with ASan and UBSan. This isolated test does not
+exercise GLib directory I/O, dynamic loading, or an actual Hunspell provider.
+The target `providers.test` must also run against the real installed module.
