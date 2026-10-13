@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.33 2026/09/02 19:03:02 wiz Exp $
 
 DISTNAME=	fcitx5-configtool-5.1.16
+PKGREVISION=	1
 CATEGORIES=	inputmethod
 MASTER_SITES=	https://download.fcitx-im.org/fcitx5/fcitx5-configtool/
 EXTRACT_SUFX=	.tar.zst
@@ -15,7 +16,15 @@ USE_LANGUAGES=		c c++
 
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_BUILD_TYPE=Release
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-USE_TOOLS+=		pkg-config
+# Keep target data locations separate from configure-time sysroot paths.
+.for code in 2 3 5
+CMAKE_CONFIGURE_ARGS+= -DISOCODES_ISO639_${code}_JSON_RUNTIME:FILEPATH=${BUILDLINK_PREFIX.iso-codes:U${PREFIX}}/share/iso-codes/json/iso_639-${code}.json
+.endfor
+CMAKE_CONFIGURE_ARGS+= -DXKEYBOARDCONFIG_XKBBASE_RUNTIME:PATH=${BUILDLINK_PREFIX.xkeyboard-config:U${PREFIX}}/share/X11/xkb
+USE_TOOLS+=		msgfmt msgmerge pkg-config
+# FindGettext runs these host tools during configuration and the build.
+CMAKE_CONFIGURE_ARGS+= -DGETTEXT_MSGFMT_EXECUTABLE:FILEPATH=${TOOLS_PATH.msgfmt:Q}
+CMAKE_CONFIGURE_ARGS+= -DGETTEXT_MSGMERGE_EXECUTABLE:FILEPATH=${TOOLS_PATH.msgmerge:Q}
 
 CMAKE_CONFIGURE_ARGS+= -DENABLE_KCM=ON
 CMAKE_CONFIGURE_ARGS+= -DENABLE_CONFIG_QT=ON

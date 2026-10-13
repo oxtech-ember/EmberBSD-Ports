@@ -1,0 +1,18 @@
+$NetBSD$
+
+Load compiler settings from the Fcitx package found by CMake.
+The installation prefix describes the target, not the host sysroot.
+
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -65,7 +65,7 @@
+ # Dup a little bit option here.
+ include(CompilerSettings)
+ else()
+-include("${FCITX_INSTALL_CMAKECONFIG_DIR}/Fcitx5Utils/Fcitx5CompilerSettings.cmake")
++include("${Fcitx5Utils_DIR}/Fcitx5CompilerSettings.cmake")
+ find_package(Gettext REQUIRED)
+ endif()
+ 

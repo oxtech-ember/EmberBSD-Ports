@@ -1,0 +1,23 @@
+$NetBSD$
+
+Keep installed data paths independent of the build sysroot.
+
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+
+--- config.h.in.orig
++++ config.h.in
+@@ -7,10 +7,10 @@
+ #define _KCM_FCITX5_CONFIG_H_
+ 
+ #cmakedefine PROJECT_VERSION "@PROJECT_VERSION@"
+-#cmakedefine XKEYBOARDCONFIG_XKBBASE "@XKEYBOARDCONFIG_XKBBASE@"
+-#cmakedefine ISOCODES_ISO639_2_JSON "@ISOCODES_ISO639_2_JSON@"
+-#cmakedefine ISOCODES_ISO639_3_JSON "@ISOCODES_ISO639_3_JSON@"
+-#cmakedefine ISOCODES_ISO639_5_JSON "@ISOCODES_ISO639_5_JSON@"
++#cmakedefine XKEYBOARDCONFIG_XKBBASE "@XKEYBOARDCONFIG_XKBBASE_RUNTIME@"
++#cmakedefine ISOCODES_ISO639_2_JSON "@ISOCODES_ISO639_2_JSON_RUNTIME@"
++#cmakedefine ISOCODES_ISO639_3_JSON "@ISOCODES_ISO639_3_JSON_RUNTIME@"
++#cmakedefine ISOCODES_ISO639_5_JSON "@ISOCODES_ISO639_5_JSON_RUNTIME@"
+ #cmakedefine CONFIG_QT_UNIQUE_APP_SUPPORT
+ 
+ #define FCITX5_QT_GUI_WRAPPER "@FCITX5_QT_GUI_WRAPPER@"

@@ -1,0 +1,26 @@
+$NetBSD$
+
+Use the discovered host configuration directory for CMake includes.
+Keep installed data paths independent of the build sysroot.
+
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -75,7 +75,7 @@ find_package(KF${QT_MAJOR_VERSION}WidgetsAddons REQUIRED)
+ find_package(IsoCodes REQUIRED)
+ kde_enable_exceptions()
+ 
+-include("${FCITX_INSTALL_CMAKECONFIG_DIR}/Fcitx5Utils/Fcitx5CompilerSettings.cmake")
++include("${Fcitx5Utils_DIR}/Fcitx5CompilerSettings.cmake")
+ 
+ find_package(PkgConfig REQUIRED)
+ find_package(Gettext REQUIRED)
+@@ -86,6 +86,7 @@ find_package(X11 REQUIRED)
+ find_package(XKeyboardConfig REQUIRED)
+ pkg_check_modules(XkbFile "xkbfile" REQUIRED IMPORTED_TARGET)
+ 
++include(Fcitx5RuntimeDataPaths)
+ configure_file(config.h.in config.h)
+ include_directories(${CMAKE_CURRENT_BINARY_DIR})
+ 

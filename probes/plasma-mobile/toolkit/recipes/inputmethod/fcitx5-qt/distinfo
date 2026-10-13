@@ -4,3 +4,4 @@ BLAKE2s (fcitx5-qt-5.1.16.tar.zst) = 242c8d616612773663c103faf97d2820ad649db5f04
 SHA512 (fcitx5-qt-5.1.16.tar.zst) = 9ff7a72fbf36bad0f3044191df5f24b789d25d1713748d1e725279884c38fd4eae4e7fc069e46386c82239f5ecb2381b29c654fa94bca9eadec35aff7a549406
 Size (fcitx5-qt-5.1.16.tar.zst) = 133957 bytes
 SHA1 (patch-qt6_platforminputcontext_CMakeLists.txt) = 98e0d2f1b7d1ea92d8f62d2d738ec33a4fdac048
+SHA1 (patch-CMakeLists.txt) = 2e6424554307b357d5acb94ce442c0c11c7f5359
