@@ -2,7 +2,7 @@
 # Origin: EmberBSD; AI-assisted bounded NetBSD 11/AArch64 source candidate.
 DISTNAME=	mesa-26.2.4
 PKGNAME=	${DISTNAME:S/mesa/MesaLib/}
-PKGREVISION=	4
+PKGREVISION=	5
 CATEGORIES=	graphics
 MASTER_SITES=	https://archive.mesa3d.org/
 EXTRACT_SUFX=	.tar.xz
@@ -27,8 +27,8 @@ PYTHON_VERSION_REQD=	314
 .if !defined(EMBERBSD_COMMON_GRAPHICS)
 PKG_FAIL_REASON+= "Mesa requires the prepared common graphics profile"
 .endif
-.if ${DISTNAME} != "mesa-26.2.4" || ${PKGREVISION} != "4"
-PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.4nb4"
+.if ${DISTNAME} != "mesa-26.2.4" || ${PKGREVISION} != "5"
+PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.4nb5"
 .endif
 TOOL_DEPENDS+=	${PYPKGPREFIX}-mako>=1.4.3:../../devel/py-mako
 TOOL_DEPENDS+=	${PYPKGPREFIX}-packaging-[0-9]*:../../devel/py-packaging
@@ -42,7 +42,15 @@ MESON_ARGS+=	-Dplatforms=x11,wayland -Dglx=dri
 MESON_ARGS+=	-Degl=enabled -Dgbm=enabled -Dglvnd=disabled
 MESON_ARGS+=	-Dgles1=enabled -Dgles2=enabled -Dopengl=true
 MESON_ARGS+=	-Dllvm=enabled -Dshared-llvm=enabled -Dllvm-orcjit=true
-MESON_ARGS+=	-Dvulkan-drivers= -Dvulkan-layers= -Dtools=
+MESON_ARGS+=	-Dvulkan-layers= -Dtools=
+.if !empty(PKG_OPTIONS:Mpowervr)
+MESON_ARGS+=	-Dvulkan-drivers=imagination -Dimagination-srv=false
+MESON_ARGS+=	-Dmesa-clc=system -Dprecomp-compiler=system
+MESON_ARGS+=	-Dimagination-uscgen-devices= -Dvulkan-manifest-per-architecture=false
+.include "mesa-generators.mk"
+.else
+MESON_ARGS+=	-Dvulkan-drivers=
+.endif
 MESON_ARGS+=	-Dgallium-va=disabled -Dgallium-mediafoundation=disabled
 MESON_ARGS+=	-Dgallium-rusticl=false -Dteflon=false -Dperfetto=false
 MESON_ARGS+=	-Dspirv-tools=disabled -Dmicrosoft-clc=disabled -Dallow-fallback-for=

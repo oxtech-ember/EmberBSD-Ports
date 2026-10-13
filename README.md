@@ -87,9 +87,13 @@ runtime behavior are validated.
   in AArch64 UTM. Mesa26 passes installed llvmpipe/ORC acceptance below;
   Full LLVM/Clang/LLD 23.1.3 cross packages pass normal staging checks; LLVM core API/JIT and renewed Mesa acceptance pass on CM5. Installed Clang/LLD execution and the TinyGo consumer remain pending.
 - [Common graphics source packages](profiles/common-graphics/README.md):
-  canonical MesaLib 26.2.4nb4, adapted libdrm 2.4.134nb2,
+  canonical MesaLib 26.2.4nb5, adapted libdrm 2.4.134nb2,
   Wayland 1.26.0nb1 and wayland-protocols 1.49 compose the common
   GCC16/Python314/Meson112/shared LLVM23 profile for NetBSD 11/AArch64.
+  An optional [PowerVR ICD](profiles/common-graphics/cross/powervr.md) retains
+  these providers and adds receipt-checked native Mesa generators. Package
+  and installed Vulkan enumeration acceptance remain pending. The established
+  GL runtime results below refer to nb4.
   Source, export and dependency-selection checks cover X11/Wayland,
   EGL/GBM and V3D/VirGL/softpipe/llvmpipe. The complete core-only libdrm
   payload cross-builds on macOS/GCC16, matches all 26 PLIST entries and passes
