@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.73 2026/09/06 11:02:44 markd Exp $
 
 DISTNAME=	kio-extras-${KAPPSVER}
+PKGREVISION=	2
 CATEGORIES=	misc
 
 HOMEPAGE=	https://kde.org/applications/internet/
@@ -10,10 +11,12 @@ LICENSE=	gnu-gpl-v2
 .include "../../meta-pkgs/kde/applications.mk"
 
 # Cross builds use the shared native KDocTools host tooling
-# (toolkit/cross/doctools.md). The SMB, MTP, NFS, AFC workers and the
-# EXR/audio/appimage thumbnail creators are not built: samba4, libmtp,
-# tirpc, libimobiledevice, openexr, taglib and libappimage are not ported
-# to the common stack. Upstream CMake skips these workers gracefully.
+# (toolkit/cross/doctools.md). The SMB worker and the EXR/appimage
+# thumbnail creators stay unported: samba4 (talloc 2.5 waf cross-execute
+# leaves the shared query failure marker), openexr and libappimage are
+# not ported yet. MTP and the audio thumbnail creator are built.
+.include "../../audio/taglib/buildlink3.mk"
+.include "../../devel/libmtp/buildlink3.mk"
 
 
 # kde-info2html runs on the target with the NetBSD base perl; the pkgsrc

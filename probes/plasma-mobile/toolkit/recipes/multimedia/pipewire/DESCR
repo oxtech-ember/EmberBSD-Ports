@@ -1,0 +1,8 @@
+PipeWire is a server and user-space API to handle multimedia pipelines.
+This port provides the client library and daemon that the KWin
+Wayland screencast plugin links against.
+
+BOUNDARY: the SPA support core (spa/plugins/support/system.c) still
+uses Linux epoll/timerfd/eventfd. NetBSD 11 provides none of them, so
+this recipe does not complete yet; a kqueue/poll system backend is the
+recorded next step. All NetBSD header patches are in place.

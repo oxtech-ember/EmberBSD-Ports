@@ -15,10 +15,34 @@ INSTALLATION_DIRS+=	include/poppler share/doc/poppler
 # Don't compile GTK+ test program.
 CMAKE_CONFIGURE_ARGS+=	-DBUILD_GTK_TESTS=OFF
 # Compile GLib wrapper which also needs gtk2
-CMAKE_CONFIGURE_ARGS+=	-DENABLE_GLIB=OFF
-# The poppler-glib binding and its introspection data stay unported: the
-# cross host still lacks the wired native g-ir-scanner flow (see the
-# GStreamer receipt). No consumer in the Plasma workspace chain needs it.
+CMAKE_CONFIGURE_ARGS+=	-DENABLE_GLIB=ON
+# Cross builds select the native introspection generators and resolve
+# GType queries on the real target through the shared GI executor
+# (devel/gobject-introspection/cross.mk), like the GStreamer packages.
+EMBERBSD_GI_MESON_OPTIONS= no
+.include "../../devel/gobject-introspection/cross.mk"
+# The scanner shim injects the cross ldd wrapper; without it the scanner
+# resolves target SONAMEs with the host ldd.
+# The cross cwrapper strips -I flags with the absolute sysroot prefix, so
+# the generated introspection rule must use bare target paths; the wrapper
+# maps them into the sysroot itself.
+SUBST_CLASSES+=			girpaths
+SUBST_STAGE.girpaths=		post-configure
+SUBST_MESSAGE.girpaths=		Bare include paths for the introspection rule
+SUBST_FILES.girpaths=		cmake-pkgsrc-build/glib/CMakeFiles/gir-typelibs.dir/build.make
+SUBST_SED.girpaths=		-e 's|-I/private/tmp/ember-common-stack/sysroot|-I|g'
+SUBST_SED.girpaths+=		-e 's|-I/Volumes/BigData/EmberBSD/work/ember-common-stack/sysroot|-I|g'
+
+post-patch: poppler-gi-shim
+.PHONY: poppler-gi-shim
+poppler-gi-shim:
+	${MKDIR} ${WRKDIR}/bin
+	${PRINTF} '#!/bin/sh\nCC=${WRKDIR}/.cwrapper/bin/aarch64--netbsd-gcc\nCXX=${WRKDIR}/.cwrapper/bin/aarch64--netbsd-g++\nexport CC CXX CWRAPPERS_CONFIG_DIR=${WRKDIR}/.cwrapper/config\nexec ${TOOLBASE}/bin/g-ir-scanner --use-ldd-wrapper ${EMBERBSD_GI_FILESDIR}/elf-needed.sh "$$@"\n' > ${WRKDIR}/bin/g-ir-scanner
+	${CHMOD} +x ${WRKDIR}/bin/g-ir-scanner
+CMAKE_CONFIGURE_ARGS+=	-DINTROSPECTION_SCANNER=${WRKDIR}/bin/g-ir-scanner
+CMAKE_CONFIGURE_ARGS+=	-DINTROSPECTION_COMPILER=${TOOLBASE}/bin/g-ir-compiler
+BUILDLINK_DEPMETHOD.gobject-introspection=	build
+.include "../../devel/gobject-introspection/buildlink3.mk"
 # Don't build and install the tools
 CMAKE_CONFIGURE_ARGS+=	-DENABLE_UTILS=OFF
 # Don't compile poppler cpp wrapper.

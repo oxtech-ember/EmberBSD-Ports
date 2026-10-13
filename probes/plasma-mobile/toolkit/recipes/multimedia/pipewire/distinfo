@@ -1,0 +1,14 @@
+$NetBSD$
+
+BLAKE2s (pipewire-1.6.9.tar.gz) = 66f59c5c321df5787426868335ae623033ffb73bb2806bae8febebd410ea25c6
+SHA512 (pipewire-1.6.9.tar.gz) = 91a4790123f95c2a52592e4dcd7de90add681883710d3baa068f973c1477c4a9b7696df6afedbcb6c9f42abfdfa10dc01c383aa5d7ced33d781287a07bb18fd3
+Size (pipewire-1.6.9.tar.gz) = 2748824 bytes
+SHA1 (patch-spa_include_spa_utils_endian.h) = f4d034bf22fc81eaba3170e87f3f8fe6aec6318f
+SHA1 (patch-spa_include_spa_support_log.h) = 82b2a9215d1730dbb1aae5770686852d6124e663
+SHA1 (patch-spa_include_spa_utils_string.h) = b6554bffd9854574a2dfb56b2a9b367814077b2d
+SHA1 (patch-spa_include_spa_param_audio_layout-types.h) = 4faf83cc611f304e61ed8d6cd569369677989cf7
+SHA1 (patch-src_pipewire_private.h) = 621d5a8c27ea7a1d486b4394ea3b581b21e4a47e
+SHA1 (patch-src_pipewire_context.c) = 3b6624211ff2a4b6c4cf3fb07da80f7c5ee11ab2
+SHA1 (patch-src_pipewire_conf.c) = 168b4a085647c009622e458d1083504e6f06cba9
+SHA1 (patch-src_pipewire_mem.c) = a5e2a8b2049d4e2d6d1f888ab20994293542b159
+SHA1 (patch-src_pipewire_pipewire.c) = 9c6d02818cf6c2a0f19660b228c3ebb14893d390

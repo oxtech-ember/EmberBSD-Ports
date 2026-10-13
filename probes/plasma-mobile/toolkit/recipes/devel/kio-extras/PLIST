@@ -1676,3 +1676,10 @@ share/locale/zh_TW/LC_MESSAGES/kio6_smb.mo
 share/locale/zh_TW/LC_MESSAGES/kio6_thumbnail.mo
 share/qlogging-categories6/kio-extras.categories
 share/qlogging-categories6/kio-extras.renamecategories
+qt6/plugins/kf6/kio/mtp.so
+qt6/plugins/kf6/kiod/kmtpd.so
+qt6/plugins/kf6/thumbcreator/audiothumbnail.so
+share/dbus-1/services/org.kde.kmtpd5.service
+share/konqueror/dirtree/remote/mtp-network.desktop
+share/remoteview/mtp-network.desktop
+share/solid/actions/solid_mtp.desktop
