@@ -7,9 +7,10 @@ Configtool retains its KDE control module and standalone configuration UI.
 The core retains Wayland, X11, Enchant, keyboard, emoji, spell and tests.
 The Qt adapter retains its Wayland integration.
 
-Core 5.1.23nb4 has a complete cross package and 445 checked files on CM5.
-The corrected core PLIST matches its staged payload. Qt and Configtool still
-require complete package acceptance. The full Plasma input session remains
+Core 5.1.23nb5 has a complete cross package and 445 checked files on CM5.
+The corrected core PLIST matches its staged payload. The Qt6 adapter also has
+a complete cross package and 48 checked files on CM5. Configtool still requires
+complete package acceptance. The full Plasma input session remains
 unaccepted. Scoped source analysis and native memory checks are described below;
 no target memory-analysis pass is claimed.
 This Configtool release contains no test targets. Its input and UI integration
@@ -157,10 +158,11 @@ It does not compile or execute Fcitx tests.
 The [runtime test payload](tests/runtime/README.md) retains all 51 registered upstream cases.
 It uses these fixture roots and installed production libraries.
 Its source, inventory and rejection checks pass on the build host.
-The nb4 CM5 run passes 50 cases and fails the stronger XKB content check.
+On CM5, all 51 cases pass against installed nb5 libraries under an ordinary user.
+There are no skips or failures. The stronger XKB check also passes.
 The nb5 patch retains parsed keyboard models and option groups.
 The [real-source regression](tests/xkbrules.md) passes natively and with ASan/UBSan.
-The original source fails both runs. The complete nb5 target suite remains pending.
+The original source fails both runs. No original test assertion was disabled.
 
 ## Library file-data regression
 
@@ -208,4 +210,13 @@ install-interface expressions, real Config templates, and upstream module macro.
 It checks Utils, Config, Core, and Emoji after `DESTDIR` installation and a move.
 Separate negative controls cover the original library and module exports.
 These are metadata and header-location checks. They do not compile or run C++.
-The complete rebuilt package and Qt consumer remain separate acceptance gates.
+The rebuilt nb5 package passes normal pkgsrc checks and installed CM5 core tests.
+The actual Qt6 consumer now configures and cross-packages successfully.
+
+## Qt6 acceptance boundary
+
+Qt upstream registers `testkeytrans` only for its Qt5 WidgetsAddons API.
+That API and `QTextCodec` implementation do not exist in Qt6 WidgetsAddons.
+The Qt6 recipe does not add Qt5Compat or substitute an unrelated test.
+Its installed plugin passes [five scoped CM5 checks](../fcitx5-qt/tests/runtime.md).
+The native key-event path and full Wayland input session remain separate gates.

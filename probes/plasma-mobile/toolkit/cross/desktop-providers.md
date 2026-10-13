@@ -62,7 +62,7 @@ was unavailable in the isolated candidate build.
 
 ## Qt6 input framework
 
-The source candidates select Fcitx5 5.1.23, Fcitx5 Qt 5.1.16 and Configtool 5.1.16.
+The recipes select Fcitx5 5.1.23, Fcitx5 Qt 5.1.16 and Configtool 5.1.16.
 They retain Wayland, the Qt6 input module and the Frameworks 6 settings module.
 See [sources, retained features and checks](../recipes/inputmethod/fcitx5/README.md).
 Native/cross metadata and archive/patch checks pass. The transitive Frameworks
@@ -74,9 +74,13 @@ IBus results. The common input panel remains. Its former two IBus helper
 executables are not part of the Fcitx-selected package payload.
 The added CMake option retains the alternative IBus backend for other profiles.
 
-Source selection and a working native dictionary generator do not establish
-complete target packages, input-method activation or typed input in Plasma.
-Those checks remain part of the [CM5 desktop acceptance](cm5-kwin.md).
+The core nb5 package cross-builds with all normal checks and passes all 51
+[installed core tests on CM5](../recipes/inputmethod/fcitx5/tests/runtime/README.md).
+Source regressions repair missing-signature parsing and dropped XKB models/options.
+Relocatable CMake exports also restore actual Qt6 consumer configuration.
+The Qt6 adapter also cross-packages; 48 files and
+[five installed plugin/metadata checks](../recipes/inputmethod/fcitx5-qt/tests/runtime.md) pass on CM5.
+Configtool package acceptance, input-method activation and typed input remain part of the [CM5 desktop acceptance](cm5-kwin.md).
 
 The X11 input adapter uses xcb-imdkit 1.0.9 and the common uthash 2.4.0.
 The recipe rejects fallback to its bundled uthash 1.8.

@@ -61,3 +61,23 @@ A failed test makes the runner fail. Missing D-Bus is an explicit SKIP.
 
 This is a unit-test check. It does not establish GTK-free Plasma integration,
 Wayland text-input behavior, long-run stability, source analysis, or memory-safety acceptance.
+
+## CM5 result
+
+Ports `bacc130` builds Fcitx5 5.1.23nb5 from a clean export with GCC 16.2.
+All normal pkgsrc package checks pass; 445 installed files check on CM5.
+On October 13, 2026, all 51 cases pass under an ordinary user without skips.
+The 36-second interval includes package installation and payload preparation.
+The board is CM5 Rev 1.0, BCM2712 D0, 4 GiB, with a Waveshare CM5-NANO-B carrier.
+The kernel revision is `ab6f88f04ca73c6958adb39d0e1c717f629e7901`.
+Firmware revision was not recorded; firmware and kernel were unchanged.
+
+The previous nb4 package fails the stronger XKB model/option-group check.
+The nb5 parser repair passes it without weakening the test.
+Two existing public iso-codes data directories had mode 0700 on the target.
+Their modes were corrected to 0755 before the accepted run.
+The valid installed XKB alias and runtime data paths were retained.
+This result remains a unit-test acceptance, not a graphical input session.
+
+Package SHA256: `3811d01020dfe76eb9a09cdec03561fd5a0d8a4a08cb3bd1d50aad3b7fd48074`.
+Runtime payload SHA256: `753613078a90ef1634b0e884bbc5180eb5c304fba76f41eb3fa088857a9272f6`.
