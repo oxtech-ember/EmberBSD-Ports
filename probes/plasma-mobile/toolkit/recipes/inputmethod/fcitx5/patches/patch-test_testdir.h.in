@@ -1,0 +1,18 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+Allow cross-built tests to use target fixture roots.
+Keep native defaults and all build-time directories unchanged.
+
+--- test/testdir.h.in.orig
++++ test/testdir.h.in
+@@ -6,7 +6,7 @@
+ #ifndef _TEST_TESTDIR_H_
+ #define _TEST_TESTDIR_H_
+ 
+-#define FCITX5_SOURCE_DIR "@PROJECT_SOURCE_DIR@"
+-#define FCITX5_BINARY_DIR "@CMAKE_BINARY_DIR@"
++#define FCITX5_SOURCE_DIR "@FCITX5_TEST_SOURCE_DIR@"
++#define FCITX5_BINARY_DIR "@FCITX5_TEST_BINARY_DIR@"
+ 
+ #endif // _TEST_TESTDIR_H_

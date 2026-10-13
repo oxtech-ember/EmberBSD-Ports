@@ -1,0 +1,23 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+Allow cross-built tests to use target fixture roots.
+Keep native defaults and all build-time directories unchanged.
+
+--- test/CMakeLists.txt.orig
++++ test/CMakeLists.txt
+@@ -1,3 +1,14 @@
++# Keep build-time paths separate from test fixture paths on the target.
++foreach(test_dir FCITX5_TEST_SOURCE_DIR FCITX5_TEST_BINARY_DIR)
++    if(DEFINED ${test_dir} AND NOT IS_ABSOLUTE "${${test_dir}}")
++        message(FATAL_ERROR "${test_dir} must be an absolute path")
++    endif()
++endforeach()
++set(FCITX5_TEST_SOURCE_DIR "${PROJECT_SOURCE_DIR}" CACHE PATH
++    "Source fixture root used by tests at runtime")
++set(FCITX5_TEST_BINARY_DIR "${CMAKE_BINARY_DIR}" CACHE PATH
++    "Build fixture root used by tests at runtime")
++
+ configure_file(testdir.h.in ${CMAKE_CURRENT_BINARY_DIR}/testdir.h @ONLY)
+ include_directories(${CMAKE_CURRENT_BINARY_DIR})
+ 

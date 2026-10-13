@@ -13,3 +13,5 @@ SHA1 (patch-src_modules_spell_CMakeLists.txt) = 847415cb9c7af6daba83e4720a268653
 SHA1 (patch-CMakeLists.txt) = 09e5f0a65356541796bbcda56929e117641ac4c5
 SHA1 (patch-config.h.in) = 37c05b457ba490791679e1d77136c5db68d834c7
 SHA1 (patch-cmake_Fcitx5RuntimeDataPaths.cmake) = 775b1cfa8b512716f4f9cf272815665a68624a67
+SHA1 (patch-test_CMakeLists.txt) = 66fcd531a5a8fbaf5ebab85ea3a8262efa736ca1
+SHA1 (patch-test_testdir.h.in) = ce607ef043a1055db5b8c35fc93c5d04816402dc

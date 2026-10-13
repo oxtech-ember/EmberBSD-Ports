@@ -138,3 +138,16 @@ The check reproduces the original sysroot leak and validates the patched header.
 It checks native and cross recipe metadata and unchanged host discovery values.
 Its missing-file case checks the host-path contract, not the complete upstream
 Find-package sequence. No C/C++ analysis or target execution is claimed by this check.
+
+## Cross-built test fixtures
+
+`FCITX5_TEST_SOURCE_DIR` and `FCITX5_TEST_BINARY_DIR` are optional CMake cache paths.
+They select the source and generated-data roots used by test executables at runtime.
+Set both to absolute target paths when preparing a transferred test payload.
+Native defaults remain the actual source and build directories.
+These options change only `testdir.h`; build rules, assertions and installed programs stay unchanged.
+
+`tests/test-fixture-paths.sh SOURCE RECIPE NEW_OUTPUT` uses the actual header configuration block.
+Set CMAKE to the native CMake executable.
+The check preserves the native header bytes and tests cross overrides, cache persistence and six invalid paths.
+It does not compile or execute Fcitx tests.
