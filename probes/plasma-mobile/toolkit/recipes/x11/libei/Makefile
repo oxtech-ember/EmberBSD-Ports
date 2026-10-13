@@ -32,7 +32,7 @@ LDFLAGS.SunOS+=		-lsocket
 # Build all libraries and compiled tests. The auto setting only makes the
 # upstream Python test modules optional; it does not disable the C tests.
 MESON_ARGS+=		-Dlibei=enabled -Dlibeis=enabled -Dliboeffis=enabled
-MESON_ARGS+=		-Dsd-bus-provider=basu -Dtests=auto -Dwrap_mode=nodownload
+MESON_ARGS+=		-Dsd-bus-provider=basu -Dtests=auto
 
 post-extract:
 	${MV} ${WRKDIR}/munit-${MUNIT_REVISION} ${WRKSRC}/subprojects/munit
