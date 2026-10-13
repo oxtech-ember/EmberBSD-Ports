@@ -43,7 +43,11 @@ options = JSON.parse(File.read("#{info}/intro-buildoptions.json")).to_h { |o| [o
  'egl' => 'enabled', 'gles2' => 'enabled', 'glx' => 'dri'}.each do |name, value|
   abort "unexpected Mesa option #{name}" unless options.fetch(name) == value
 end
-abort 'require complete common drivers/platforms' unless options.fetch('gallium-drivers').sort == %w[llvmpipe softpipe v3d virgl] && options.fetch('platforms').sort == %w[wayland x11]
+drivers = options.fetch('gallium-drivers').sort
+with_zink = drivers.include?('zink')
+expected_drivers = %w[llvmpipe softpipe v3d virgl]
+expected_drivers << 'zink' if with_zink
+abort 'require complete common drivers/platforms' unless drivers == expected_drivers && options.fetch('platforms').sort == %w[wayland x11]
 ninja = File.read("#{build}/build.ninja")
 abort 'require the actual shared LLVM23 ORC build' unless ninja.include?('-DGALLIVM_USE_ORCJIT=1') && ninja.include?('-DLLVM_IS_SHARED=1') && ninja.include?('23.1.3')
 inputs = [__FILE__, "#{owner}/mesa-render.c", "#{owner}/run-mesa-package-tests.sh", cc, readelf, package,
@@ -89,7 +93,12 @@ Zlib::GzipReader.open(package) do |gzip|
   end
 end
 contents = File.read("#{bundle}/source/MesaLib.CONTENTS")
-abort 'unexpected package identity/prefix' unless contents.match?(/^@name MesaLib-26\.2\.4nb[45]$/) && contents.include?("@cwd /usr/pkg\n")
+abort 'unexpected package identity/prefix' unless contents.match?(/^@name MesaLib-26\.2\.4nb[456]$/) && contents.include?("@cwd /usr/pkg\n")
+abort 'nb6 requires Zink; earlier packages retain their original driver set' unless contents.include?("@name MesaLib-26.2.4nb6\n") == with_zink
+if with_zink
+  abort 'missing Zink package payload' unless %w[/usr/pkg/lib/dri/zink_dri.so /usr/pkg/share/drirc.d/00-zink-defaults.conf].all? { |path| payload.key?(path) }
+  abort 'missing Zink loader runtime dependency' unless contents.match?(/^@pkgdep vulkan-loader>=1\.4\.357\.0$/)
+end
 abort 'package has no Mesa shared libraries' if mesa_elfs.empty?
 File.write("#{bundle}/mesa-package-files.sha256", payload.sort.map { |path, sha| "#{sha}  #{path}\n" }.join)
 File.write("#{bundle}/mesa-package-links.tsv", links.sort.map { |path, target| "#{path}\t#{target}\n" }.join)
@@ -126,7 +135,7 @@ JSON.parse(File.read("#{info}/intro-tests.json")).each do |test|
   FileUtils.cp(cmd[0], destination)
   tests << [name, executable, limit]
 end
-abort 'missing expected full-Mesa upstream tests' unless tests.length == 38 && tests.any? { |t| t[0] == 'qpu_disasm' } && tests.count { |t| t[0].start_with?('lp_test_') } == 7 && tests.any? { |t| t[0] == 'xmlconfig' }
+abort 'missing expected full-Mesa upstream tests' unless tests.length == (with_zink ? 39 : 38) && tests.any? { |t| t[0] == 'zink_format_test' } == with_zink && tests.any? { |t| t[0] == 'qpu_disasm' } && tests.count { |t| t[0].start_with?('lp_test_') } == 7 && tests.any? { |t| t[0] == 'xmlconfig' }
 File.write("#{bundle}/upstream-tests.tsv", tests.map { |row| row.join("\t") + "\n" }.join)
 %w[drirc_home drirc_configdir].each { |name| FileUtils.cp_r("#{source}/src/util/tests/#{name}", "#{bundle}/fixtures") }
 

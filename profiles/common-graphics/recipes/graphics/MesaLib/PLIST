@@ -67,6 +67,7 @@ lib/dri/udl_dri.so
 lib/dri/v3d_dri.so
 lib/dri/virtio_gpu_dri.so
 lib/dri/vkms_dri.so
+lib/dri/zink_dri.so
 lib/dri/zynqmp-dpsub_dri.so
 lib/gbm/dri_gbm.so
 lib/libEGL.so
@@ -95,6 +96,7 @@ lib/pkgconfig/glx.pc
 share/drirc.d/00-mesa-defaults.conf
 share/drirc.d/00-v3d-defaults.conf
 share/drirc.d/00-virtio_gpu-defaults.conf
+share/drirc.d/00-zink-defaults.conf
 ${PLIST.powervr}lib/libvulkan_powervr_mesa.so
 ${PLIST.powervr}share/drirc.d/00-pvr-defaults.conf
 ${PLIST.powervr}share/vulkan/icd.d/powervr_mesa_icd.json

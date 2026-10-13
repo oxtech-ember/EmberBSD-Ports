@@ -1,6 +1,6 @@
 # Common graphics source packages
 
-This opt-in source profile prepares canonical MesaLib 26.2.4nb5, adapted
+This opt-in source profile prepares canonical MesaLib 26.2.4nb6, adapted
 libdrm 2.4.134nb2, Wayland 1.26.0nb1 and wayland-protocols 1.49 for
 EmberBSD/AArch64, retaining the NetBSD 11 ABI. Native builds and the explicit
 [macOS cross composition](cross/profile.md) consume the existing
@@ -10,6 +10,9 @@ Meson1.12.1 and shared LLVM23.1.3 remain one dependency graph with final
 The default, development-toolchain and common-build-tools exports keep their
 original graphics recipes. The whole installed graphics stack and a Mobile
 demonstration still require acceptance; individual package results follow.
+
+The nb6 recipe also includes Zink and its Vulkan loader dependency.
+Hardware Zink execution remains unaccepted; see [the package boundary](cross/zink.md).
 
 The optional [PowerVR ICD](cross/powervr.md) uses the same Mesa recipe.
 Its native generators run the full upstream common-shader pipeline. The nb5
@@ -113,7 +116,7 @@ EGL lifecycles and 30 selected upstream test runs on Orange Pi Zero 3W (A733).
 That result excludes LLVM/llvmpipe, X11/Wayland and installed packages.
 
 The selected APIs are X11/Wayland, EGL, GBM, OpenGL and GLES; renderers are
-V3D, classic VirGL, softpipe and llvmpipe with ORC JIT. The recipe requires shared
+V3D, classic VirGL, Zink, softpipe and llvmpipe with ORC JIT. The recipe requires shared
 LLVM23, upstream tests and portable TLS. It never substitutes Mesa21,
 libLLVM13, another Python or native X11 GL/EGL/DRM/GLU providers. Native X11
 protocol libraries can still satisfy pkgsrc's actual version checks.

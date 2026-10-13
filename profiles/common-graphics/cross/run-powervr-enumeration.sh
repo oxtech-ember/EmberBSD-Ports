@@ -16,7 +16,7 @@ manifest=/usr/pkg/share/vulkan/icd.d/powervr_mesa_icd.json
 [ -f "$manifest" ] && [ -x "$runner/powervr-enumerate" ]
 mkdir "$2"
 logs=$(CDPATH= cd -- "$2" && pwd)
-"$pkg_info" -e 'MesaLib-26.2.4nb5' > "$logs/mesa-package.txt"
+"$pkg_info" -e 'MesaLib-26.2.4nb[56]' > "$logs/mesa-package.txt"
 "$pkg_info" -e 'libdrm-2.4.134nb2' > "$logs/libdrm-package.txt"
 uname -a > "$logs/kernel.txt"
 cp "$manifest" "$logs/icd.json"
