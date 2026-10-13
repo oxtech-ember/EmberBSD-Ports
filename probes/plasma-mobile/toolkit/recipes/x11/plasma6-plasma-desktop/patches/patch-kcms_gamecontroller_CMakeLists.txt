@@ -1,0 +1,15 @@
+$NetBSD$
+
+Build the game controller KCM with the shared SDL3 dependency.
+
+--- kcms/gamecontroller/CMakeLists.txt.orig
++++ kcms/gamecontroller/CMakeLists.txt
+@@ -48,7 +48,7 @@
+     KF6::I18n
+     Qt6::Quick
+     Qt6::QuickWidgets
+-    SDL2::SDL2
++    SDL3::SDL3
+     Qt::DBus
+     UDev::UDev
+ )

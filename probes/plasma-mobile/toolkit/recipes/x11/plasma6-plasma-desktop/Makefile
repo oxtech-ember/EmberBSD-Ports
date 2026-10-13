@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.6 2026/09/06 10:23:33 markd Exp $
 
 DISTNAME=	plasma-desktop-${PLASMAVER}
+PKGREVISION=	1
 CATEGORIES=	x11
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -66,7 +67,7 @@ pre-configure:
 .include "../../devel/libudev-bsd/buildlink3.mk"
 .include "../../devel/plasma6-plasma5support/buildlink3.mk"
 .include "../../devel/qt6-qt5compat/buildlink3.mk"
-.include "../../devel/SDL2/buildlink3.mk"
+.include "../../devel/SDL3/buildlink3.mk"
 .include "../../fonts/fontconfig/buildlink3.mk"
 .include "../../graphics/hicolor-icon-theme/buildlink3.mk"
 .include "../../graphics/kf6-kiconthemes/buildlink3.mk"

@@ -3,3 +3,11 @@ $NetBSD: distinfo,v 1.2 2026/09/06 10:23:33 markd Exp $
 BLAKE2s (plasma-desktop-6.7.5.tar.xz) = 3795958780b208b5699d031143970e17cd2d1427e6161c4fefef8217668d53b5
 SHA512 (plasma-desktop-6.7.5.tar.xz) = 8a6066ada7b4133a02d3c33913ff9e379a85f7c06b458422d718be0fa0a9283930b3457e1ab2a367664d56e6f9f260e51021197b647ade065f34017dd7bc4b55
 Size (plasma-desktop-6.7.5.tar.xz) = 17011960 bytes
+SHA1 (patch-CMakeLists.txt) = adee2be8924df42e5cfbad65a9ce4abbe373807f
+SHA1 (patch-kcms_CMakeLists.txt) = 5688180cd478aa5061480a8fc3812eceaaaa858e
+SHA1 (patch-kcms_gamecontroller_CMakeLists.txt) = 2d3554b474b236925d55ead9b2b07710fa3129e0
+SHA1 (patch-kcms_gamecontroller_device.cpp) = 07dd30640bdd71f5418c90ce668dc43449e77243
+SHA1 (patch-kcms_gamecontroller_device.h) = 82cbdb4dfdb15d65843a9d78999ac1316f6e4234
+SHA1 (patch-kcms_gamecontroller_devicemodel.cpp) = 509eb342a9c5fd5b996b3adfde0bbfb446e9d663
+SHA1 (patch-kcms_gamecontroller_devicemodel.h) = ff925297bc80f7e2af66ef3207ba1abc2dd59657
+SHA1 (patch-kcms_gamecontroller_udevmatcher.cpp) = 968b1f6a05b5adfde32c89a009163ade17758372

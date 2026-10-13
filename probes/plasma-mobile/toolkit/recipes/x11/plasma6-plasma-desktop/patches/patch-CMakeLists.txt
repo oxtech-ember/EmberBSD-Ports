@@ -1,0 +1,19 @@
+$NetBSD$
+
+Build the game controller KCM with the shared SDL3 dependency.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -175,9 +175,9 @@
+     pkg_check_modules(LIBWACOM libwacom REQUIRED IMPORTED_TARGET)
+ endif()
+ 
+-find_package(SDL2 2.0.16)
+-set_package_properties(SDL2 PROPERTIES
+-        TYPE OPTIONAL
++find_package(SDL3 3.4.18 CONFIG REQUIRED)
++set_package_properties(SDL3 PROPERTIES
++        TYPE REQUIRED
+         PURPOSE "Required for building Game Controller KCM"
+ )
+ 

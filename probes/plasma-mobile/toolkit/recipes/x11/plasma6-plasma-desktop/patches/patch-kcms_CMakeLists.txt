@@ -1,0 +1,15 @@
+$NetBSD$
+
+Build the game controller KCM with the shared SDL3 dependency.
+
+--- kcms/CMakeLists.txt.orig
++++ kcms/CMakeLists.txt
+@@ -15,7 +15,7 @@
+ add_subdirectory( ksmserver )
+ add_subdirectory( desktoppaths )
+ 
+-if (TARGET SDL2::SDL2)
++if (TARGET SDL3::SDL3)
+     add_subdirectory( gamecontroller )
+ endif()
+ 
