@@ -1,0 +1,18 @@
+$NetBSD$
+
+Keep the exported include path relative to the installation prefix.
+An absolute path prevents consumers from using a relocated package or sysroot.
+
+Origin: EmberBSD (AI-assisted)
+
+--- src/CMakeLists.txt.orig
++++ src/CMakeLists.txt
+@@ -32,7 +32,7 @@ add_library(XCBImdkit::XCBImdkit ALIAS xcb-imdkit)
+ target_include_directories(xcb-imdkit
+                            PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+                                   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+-                           INTERFACE $<INSTALL_INTERFACE:${CMAKE_INSTALL_FULL_INCLUDEDIR}>)
++                           INTERFACE $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+ 
+ set_target_properties(xcb-imdkit PROPERTIES
+                       VERSION ${XCB_IMDKIT_VERSION}

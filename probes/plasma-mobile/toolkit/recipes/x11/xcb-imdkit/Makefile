@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.5 2025/01/23 23:27:30 riastradh Exp $
 
 DISTNAME=	xcb-imdkit-1.0.9
+PKGREVISION=	1
 CATEGORIES=	x11
 MASTER_SITES=	https://download.fcitx-im.org/fcitx5/xcb-imdkit/
 EXTRACT_SUFX=	.tar.zst

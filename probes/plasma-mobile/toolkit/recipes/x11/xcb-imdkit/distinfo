@@ -6,3 +6,4 @@ Size (xcb-imdkit-1.0.9.tar.zst) = 580633 bytes
 
 SHA1 (patch-CMakeLists.txt) = 959f76f617775dc2f803db64ac75c2c12faef936
 SHA1 (patch-cmake_FindUTHash.cmake) = d800a7173f786aab14e603a882dcf15432b28ad7
+SHA1 (patch-src_CMakeLists.txt) = 606cda17315f19415e0eb8e38853b407e08d7e6c
