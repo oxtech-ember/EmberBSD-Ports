@@ -96,4 +96,5 @@ share/drirc.d/00-mesa-defaults.conf
 share/drirc.d/00-v3d-defaults.conf
 share/drirc.d/00-virtio_gpu-defaults.conf
 ${PLIST.powervr}lib/libvulkan_powervr_mesa.so
+${PLIST.powervr}share/drirc.d/00-pvr-defaults.conf
 ${PLIST.powervr}share/vulkan/icd.d/powervr_mesa_icd.json

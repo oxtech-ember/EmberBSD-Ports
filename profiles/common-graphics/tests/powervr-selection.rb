@@ -44,6 +44,13 @@ check.call(pvr.fetch('PKG_FAIL_REASON').empty? && pvr.fetch('PKGNAME') == 'MesaL
     check.call(pvr.fetch('MESON_ARGS').split.include?(option), "keeps #{option}")
 end
 check.call(pvr.fetch('PLIST.powervr') == 'yes', 'PowerVR adds its normal PLIST payload')
+# Upstream installs driver defaults as well as the ICD and its manifest.
+payload = %w[lib/libvulkan_powervr_mesa.so share/drirc.d/00-pvr-defaults.conf share/vulkan/icd.d/powervr_mesa_icd.json]
+plist = File.readlines(tree + '/graphics/MesaLib/PLIST', chomp: true)
+complete = lambda { |lines| payload.all? { |path| lines.include?('${PLIST.powervr}' + path) && !lines.include?(path) } }
+check.call(complete.call(plist), 'all three PowerVR files have conditional package ownership')
+missing_defaults = plist.reject { |line| line == '${PLIST.powervr}share/drirc.d/00-pvr-defaults.conf' }
+check.call(!complete.call(missing_defaults), 'causal missing driver defaults fails the payload oracle')
 native = pvr.fetch('_EMBERBSD_MESA_NATIVE')
 FileUtils.mkdir_p(File.dirname(native))
 run.call('native-file', native, 'PKG_OPTIONS.MesaLib=llvm x11 wayland powervr')

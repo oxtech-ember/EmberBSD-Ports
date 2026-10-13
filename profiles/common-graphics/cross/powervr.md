@@ -67,6 +67,7 @@ The package must pass normal staging, PLIST, ELF ABI and work-reference checks.
 The option adds these installed files:
 
 - `/usr/pkg/lib/libvulkan_powervr_mesa.so`
+- `/usr/pkg/share/drirc.d/00-pvr-defaults.conf`
 - `/usr/pkg/share/vulkan/icd.d/powervr_mesa_icd.json`
 
 The recipe supplies the host tools through a native Meson file.
@@ -77,12 +78,23 @@ runtime is required for this path. Upstream Python generators still run with
 the common build-host Python 3.14.
 
 The source patches use Mesa's existing device-number header checks on BSD.
+PowerVR UAPI types come from Mesa's platform-aware DRM header. Portable
+64-bit flag constants preserve the ioctl ABI. Wayland presentation uses
+RAW clocks only when the target defines them; monotonic timing is retained.
 The IDFWDF shared header reserves all four sampler words before its address.
 The runtime and generated common shader consume this identical header.
 The source-causal ABI proof remains in the
 [IDFWDF owner](../../../probes/a733-accelerators/host-tools/README.md).
 
 ## Installed enumeration
+
+First prepare the native OS driver. The current board kernel acceptance uses
+EmberBSD `0e89a6ff`. Its ordinary DTB starts in observe-only mode.
+Follow the OS [render-node procedure](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-pvr-render.md),
+including firmware stage 13 before registration. The
+[query contract](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-pvr-queries.md)
+and [syncobj contract](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/drm-syncobj.md)
+are required dependencies. Package installation alone does not activate them.
 
 Use the canonical `vulkan-loader` and `vulkan-headers` packages.
 The current shared target sysroot supplies 1.4.357.0, with loader revision nb2.
@@ -142,9 +154,22 @@ BMAKE=/absolute/bmake DIGEST=/absolute/digest \
 
 This parses the real recipe, writes its native Meson file and runs its
 production receipt check. It verifies that the default GL option is unchanged.
+The WSI regression extracts both clock conversions and the presentation
+admission expression. It runs with and without the RAW clock feature.
+The UAPI check compares target structure layouts, flags and ioctl encodings
+against an explicit constant-expression model. It also requires the original
+BSD header to fail on its Linux-only include. The model is not a Linux build.
+
+```sh
+SANITIZERS=yes ruby ../tests/wayland-clock.rb \
+    /absolute/patched-mesa-source /absolute/new-clock-tests
+ruby ../tests/powervr-uapi.rb /absolute/upstream-mesa-source \
+    /absolute/patched-mesa-source /absolute/cross-gcc /absolute/ember-sysroot \
+    /absolute/new-uapi-tests
+```
+
 Host models do not replace installed loader/ICD acceptance.
- Valgrind is not
-supported on the macOS ARM64 build host; ASan/UBSan is a separate memory check.
+Valgrind is not supported on the macOS ARM64 build host; ASan/UBSan is a separate memory check.
 Analyze the actual target PowerVR translation units after clean configuration
 creates their generated headers. Compare the pinned and patched source with
 the same target compilation arguments and record analyzer limitations.

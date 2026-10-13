@@ -13,3 +13,5 @@ SHA1 (patch-meson-xcb-pkgconfig) = 478bd363de00d84ce0f9182fd62b3c59505034e9
 SHA1 (patch-src_gallium_drivers_v3d_v3d__bufmgr.c) = b07b34f61d593e272638336f77f68e7306f57357
 SHA1 (patch-src_imagination_vulkan_pvr__physical__device.c) = 65a95e0957e6b018abfcfb36091c1d4818364151
 SHA1 (patch-src_imagination_common_pvr__iface.h) = 07135c0f7c146a9a6224723110695621f00fd270
+SHA1 (patch-src_vulkan_wsi_wsi__common__wayland.c) = cd18ee367f9fbaaf7ba8e5ca8557d066a435f831
+SHA1 (patch-include_drm-uapi_pvr__drm.h) = 40e3a8b6ef7f6b75307f7432ad3db869da82d2aa

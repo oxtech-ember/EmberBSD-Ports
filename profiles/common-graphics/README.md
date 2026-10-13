@@ -173,7 +173,7 @@ complete the current graphics dependency recipes.
 ## Bounded package contents
 
 Mesa enables zlib/zstd and the NetBSD libudev-bsd provider. Display-info,
-libunwind, valgrind, Vulkan, video frontends, Rusticl/OpenCL, other physical GPU drivers,
+libunwind, valgrind, unselected Vulkan drivers, video frontends, Rusticl/OpenCL, other physical GPU drivers,
 OSMesa, XA and GLVND are outside this candidate. Requests for unsupported
 Mesa options fail; they do not install older providers. Unselected optional
 libelf/Lua/XCB-keysyms are absent from the buildlink sandbox.
