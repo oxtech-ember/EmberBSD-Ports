@@ -91,9 +91,11 @@ runtime behavior are validated.
   Wayland 1.26.0nb1 and wayland-protocols 1.49 compose the common
   GCC16/Python314/Meson112/shared LLVM23 profile for NetBSD 11/AArch64.
   An optional [PowerVR ICD](profiles/common-graphics/cross/powervr.md) retains
-  these providers and adds receipt-checked native Mesa generators. Package
-  and installed Vulkan enumeration acceptance remain pending. The established
-  GL runtime results below refer to nb4.
+  these providers and adds receipt-checked native Mesa generators. On Zero 3W,
+  the installed nb5 package passes four native Vulkan enumeration lifecycles,
+  four llvmpipe EGL/pixel cycles and 38 upstream invocations. GPU submission
+  and accelerated Plasma remain separate steps. Earlier GL results below
+  retain their recorded package and hardware scope.
   Source, export and dependency-selection checks cover X11/Wayland,
   EGL/GBM and V3D/VirGL/softpipe/llvmpipe. The complete core-only libdrm
   payload cross-builds on macOS/GCC16, matches all 26 PLIST entries and passes

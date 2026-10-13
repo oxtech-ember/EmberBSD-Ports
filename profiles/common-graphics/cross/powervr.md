@@ -3,8 +3,9 @@
 The optional `powervr` pkgsrc option adds the upstream Imagination Vulkan
 ICD to MesaLib 26.2.4nb5. It retains V3D, VirGL, softpipe, llvmpipe,
 X11, Wayland, EGL, GBM and the shared LLVM 23.1.3 provider.
-The initial acceptance target is physical-device enumeration through the
-installed Vulkan loader. Package and board acceptance are still pending.
+The installed Vulkan loader now enumerates the physical GPU on Zero 3W.
+The normal package and bounded enumeration checks pass. GPU submission
+and accelerated Plasma remain unaccepted.
 
 This is a native PowerVR DRM consumer. It has no diagnostic-packet backend.
 The OS owns render-node identity, GEM buffers, GPU page tables and syncobj.
@@ -89,7 +90,7 @@ The source-causal ABI proof remains in the
 ## Installed enumeration
 
 First prepare the native OS driver. The current board kernel acceptance uses
-EmberBSD `0e89a6ff`. Its ordinary DTB starts in observe-only mode.
+EmberBSD `f46cd40a5f28`. Its ordinary DTB starts in observe-only mode.
 Follow the OS [render-node procedure](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-pvr-render.md),
 including firmware stage 13 before registration. The
 [query contract](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-pvr-queries.md)
@@ -124,6 +125,29 @@ Mesa also creates a VM and three static BO mappings during enumeration.
 The consumer never creates a Vulkan device or submits a queue.
 The runner records the kernel, installed packages, ICD and loader closure.
 It selects only the installed PowerVR manifest and uses normal library lookup.
+
+## Physical acceptance
+
+On 2026-10-13, the 4 GiB Orange Pi Zero 3W passed with kernel
+`f46cd40a5f28` (`EMBER64 #13`, GCC 16.2), including the current USB series.
+The PCB revision was not recorded. Firmware remained `1.1.6976702` for
+BVNC `36.56.104.183`. The package source was Ports `95ea6b4`.
+MesaLib 26.2.4nb5, libdrm 2.4.134nb2 and vulkan-loader 1.4.357.0nb2
+used their installed canonical libraries. Normal package upgrade and all
+98 Mesa payload-file checks passed.
+
+Four instances reported `PowerVR B-Series BXM-4-64 MC1`, Vulkan `1.2.354`,
+and the actual render node `180:128`. The loop completed in about one second.
+Upstream still warns that core-count fetching is unimplemented and uses one.
+The `MC1` label therefore does not measure the physical core count.
+The experimental conformance warning remains visible.
+
+The same package passed four 16x16 shader/pixel/EGL cycles with llvmpipe,
+LLVM 23.1.3, EGL 1.5 and GLES 3.2. All 38 target invocations exited zero
+in 65 seconds. `Cache.List` remained skipped; nine NIR cases remained disabled.
+All nine host tests passed, including the new PowerVR symbol check.
+The GL check reports the missing Zink driver before selecting llvmpipe.
+It establishes CPU-rendering regression coverage, not PowerVR rendering.
 
 ## Checks and limits
 
@@ -173,3 +197,11 @@ Valgrind is not supported on the macOS ARM64 build host; ASan/UBSan is a separat
 Analyze the actual target PowerVR translation units after clean configuration
 creates their generated headers. Compare the pinned and patched source with
 the same target compilation arguments and record analyzer limitations.
+
+Cppcheck 2.22 covered 59 target translation units; 52 upstream baselines
+preprocessed successfully. Comparable error/warning signatures did not change.
+GCC 16.2 and Clang 22.1.8 covered seven selected units. Original portability
+failures and analyzer path limits remain explicit. This is not a clean audit
+of the entire driver. Ports and Mesa upstream own the retained debug-disassembler
+OOM findings and unclosed graphics/transfer diagnostics. Those paths need
+regressions before their later execution acceptance.

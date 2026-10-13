@@ -12,9 +12,11 @@ original graphics recipes. The whole installed graphics stack and a Mobile
 demonstration still require acceptance; individual package results follow.
 
 The optional [PowerVR ICD](cross/powervr.md) uses the same Mesa recipe.
-Its native generators run the full upstream common-shader pipeline. Package
-and installed enumeration acceptance remain required. The existing GL results
-below describe the accepted nb4 package.
+Its native generators run the full upstream common-shader pipeline. The nb5
+package passes four native Vulkan enumeration lifecycles on Zero 3W, plus
+four llvmpipe EGL/pixel cycles and all 38 target invocations. One internal
+utility skip and nine disabled NIR cases remain. GPU submission and Plasma
+are unaccepted. Earlier GL results retain their recorded package scope.
 
 The [LLVM 23.1.3 migration](cross/mesa-llvm2313.md) passes installed V3D and llvmpipe rendering and all 38 upstream invocations on CM5. A transient large-BO allocation failure remains under investigation.
 
