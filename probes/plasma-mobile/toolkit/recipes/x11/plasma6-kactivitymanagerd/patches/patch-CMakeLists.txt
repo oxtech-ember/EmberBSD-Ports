@@ -1,0 +1,18 @@
+$NetBSD$
+
+Use a distinct generated version header on case-insensitive hosts.
+The local service/Version.h defines the D-Bus protocol version.
+It must not shadow the package version header during a cross build.
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+
+--- CMakeLists.txt.orig	2026-09-08 10:51:00.000000000 +0000
++++ CMakeLists.txt
+@@ -85,7 +85,7 @@ ecm_set_disabled_deprecation_versions(QT
+ )
+ 
+ ecm_setup_version(PROJECT VARIABLE_PREFIX KACTIVITYMANAGERD
+-                  VERSION_HEADER ${CMAKE_BINARY_DIR}/version.h
++                  VERSION_HEADER ${CMAKE_BINARY_DIR}/kactivitymanagerd_version.h
+                   )
+ 
+ add_subdirectory (src)

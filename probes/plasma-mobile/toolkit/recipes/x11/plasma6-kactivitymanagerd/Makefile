@@ -2,6 +2,7 @@
 # Origin: pkgsrc, adapted by EmberBSD (AI-assisted).
 
 DISTNAME=	kactivitymanagerd-${PLASMAVER}
+PKGREVISION=	1
 CATEGORIES=	x11
 
 HOMEPAGE=	https://www.kde.org/workspaces/plasmadesktop/
