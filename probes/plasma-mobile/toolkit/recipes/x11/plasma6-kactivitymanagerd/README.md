@@ -23,7 +23,7 @@ It preserves all upstream daemon plugins and the inherited MOC include fix.
 The generated package version header uses a unique name.
 This prevents a collision with the protocol header `Version.h` on case-insensitive hosts.
 The D-Bus protocol version and behavior stay unchanged.
-See `tests/activitymanager-version.rb` in the toolkit for the compile regression.
+See the [compile regression](../../../tests/activitymanager-version.md) for the check and analysis limits.
 
 Source and recipe checks do not establish package or runtime acceptance.
 Build with the normal package checks before installation.
