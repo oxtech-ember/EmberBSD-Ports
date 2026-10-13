@@ -6,14 +6,14 @@ BUILDLINK_TREE+=	libcanberra
 LIBCANBERRA_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.libcanberra+=	libcanberra>=0.10
-BUILDLINK_ABI_DEPENDS.libcanberra+=	libcanberra>=0.30nb24
+BUILDLINK_ABI_DEPENDS.libcanberra+=	libcanberra>=0.30nb26
 BUILDLINK_PKGSRCDIR.libcanberra?=	../../audio/libcanberra
 
 pkgbase := libcanberra
 .include "../../mk/pkg-build-options.mk"
 
 .if ${PKG_BUILD_OPTIONS.libcanberra:Mgtk}
-.include "../../x11/gtk2/buildlink3.mk"
+PKG_FAIL_REASON+= "Rebuild libcanberra without its unsupported GTK2 adapter"
 .endif
 .if ${PKG_BUILD_OPTIONS.libcanberra:Mgtk3}
 .include "../../x11/gtk3/buildlink3.mk"
