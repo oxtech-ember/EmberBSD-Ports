@@ -16,6 +16,7 @@ mkdir -p "$out"
 for name in nop store; do
     "$clc" -o "$out/$name.spv" "$here/cs-probe-$name.cl" -- \
         -I"$mesa/src" -I"$mesa/include" -I"$mesa/src/compiler/libcl" \
+        -I"$mesa/src/imagination" -I"$build/src/imagination" \
         -cl-std=cl2.0 -D__OPENCL_VERSION__=200 \
         -DHAVE___BUILTIN_FFS -DHAVE___BUILTIN_CLZ
     "$validator" "$out/$name.spv"

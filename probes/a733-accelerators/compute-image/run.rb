@@ -5,6 +5,7 @@ require 'digest'
 require 'fileutils'
 require 'json'
 require 'open3'
+require_relative '../idfwdf/layout'
 abort 'usage: run.rb BUILD INPUTS_JSON NEW_OUTPUT' unless ARGV.size == 3
 build = File.realpath(ARGV[0])
 input_path = File.realpath(ARGV[1])
@@ -22,7 +23,15 @@ def verified_input(entry, base)
 end
 base = File.dirname(input_path)
 compiler = verified_input(input.fetch('compiler_manifest'), base)
+proof_path = verified_input(input.fetch('compiler_receipt'), base)
+proof = Idfwdf.verify_receipt(proof_path, compiler)
+generator = JSON.parse(File.read(File.join(build, 'build-manifest.json')))
+abort 'shader and host shared headers differ' unless proof.fetch('files').fetch('shared_header').fetch('sha256') == generator.fetch('patched_iface_sha256')
 shaders = %w[probe store load idfwdf].map { |name| verified_input(input.fetch('shaders').fetch(name), base) }
+expected_shaders = Idfwdf.shaders(File.read(compiler))
+%w[probe store load idfwdf].zip(shaders).each do |name, path|
+  abort "shader does not match verified compiler output: #{name}" unless File.binread(path) == expected_shaders.fetch(name)
+end
 FileUtils.mkdir_p(out)
 command = [File.join(build, 'generate'), *shaders]
 output, status = Open3.capture2e(*command, chdir: out)
@@ -36,6 +45,7 @@ manifest = {
   producer: producer,
   inputs_sha256: Digest::SHA256.file(input_path).hexdigest,
   compiler_manifest_sha256: Digest::SHA256.file(compiler).hexdigest,
+  compiler_receipt_sha256: Digest::SHA256.file(proof_path).hexdigest,
   shader_inputs: input.fetch('shaders').transform_values { |e| e.reject { |k,_| k == 'path' } },
   source_hashes: JSON.parse(File.read(File.join(build, 'source-hashes.json'))),
   build: JSON.parse(File.read(File.join(build, 'build-manifest.json'))),
@@ -51,9 +61,10 @@ manifest = {
     {name:'pds-programs', image:'pds.bin', offset:40960, size:File.size(File.join(out,'pds.bin'))-40960, gpu_va:'0xda0000a000', alignment:64, access:'read-only', slc_bypass:false},
     {name:'usc-programs', image:'usc.bin', offset:0, size:File.size(File.join(out,'usc.bin')), gpu_va:'0xe000000000', alignment:64, access:'read-only', slc_bypass:false}
   ],
+  probe: proof.fetch('probe'),
   lifetime: 'Retain all resources until the GPU owner permits release. Coherent CPU memory does not imply GPU SLC bypass.',
   limitations: ['No DMA, MMU, firmware queue, DRM, or hardware execution.',
-                'Private Mesa dispatch pads the probe to 32 lanes. A matching compiler guard must be established before hardware use.',
+                'The dispatch pads to 32 lanes. The compiler SPIR-V proves only instance zero reaches one four-byte store. GPU execution remains unverified.',
                 'The firmware command and border-color table are not emitted by this bounded generator.']
 }
 manifest[:resources].each do |r|

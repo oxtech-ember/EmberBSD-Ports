@@ -52,9 +52,28 @@ The local virtual environment, if needed, belongs at `WORK/venv`.
 `JOBS` controls build concurrency and defaults to four.
 
 The build contains `src/compiler/clc/mesa_clc` and
-`src/imagination/pco/uscgen/pco_clc`. The common SPIR-V input is
-`src/imagination/pco/usclib/pco_usclib.spv`. The generated common source is
-`src/imagination/pco/uscgen/pco_uscgen_programs.c`.
+`src/imagination/pco/uscgen/pco_clc`.
+Generate the acceptance shaders through the checked compiler closure:
+
+```sh
+ruby generate-usclib.rb "$MESA_SOURCE" "$MESA_BUILD" \
+    "$SPIRV_DIS" "$SPIRV_VAL" "$NEW_PROGRAM_OUTPUT"
+```
+
+The command copies the pinned shared header into an isolated include overlay.
+It applies the same IDFWDF change as the CPU image generator.
+It does not modify the Mesa source or its generated cache.
+It uses the real build's compiler arguments and records every executed command.
+SPIR-V validation remains enabled.
+The PCO step uses `PCO_DEBUG=no_pred_cf`, as specified by upstream
+`src/imagination/pco/uscgen/meson.build` for its common shader table.
+This disables predicated control flow; it does not set `val_skip`.
+The receipt records this environment and the source of that build option.
+The PCO step also records NIR and binary diagnostic output.
+The checked IDFWDF input reads descriptor slots 0 and 4, then address slots 8 and 9.
+The receipt binds the header, compiler tools, shader input, and generated table by SHA256.
+A matching host header is required when the image generator consumes these shaders.
+An old generated table cannot prove its ABI with a manually assigned dword count.
 
 Use the real CLI contract:
 
@@ -79,13 +98,28 @@ The future native GPU context must map that VA before execution.
 It is not a device physical address. The input has no kernel arguments.
 `cs-probe-nop.cl` provides a separate compiler baseline.
 
-The script records NIR, PCO, and binary dumps. `KERNEL(1)` alone does not prove
-that a padded hardware dispatch executes one lane. The precompiled shader
-path marks shaders internal. The automatic compute instance check skips
-internal shaders. A later packet producer must resolve this execution
-condition before the store program can run on hardware.
+The script records NIR, PCO, and binary dumps.
+`KERNEL(1)` does not restrict a padded hardware dispatch by itself.
+The store source explicitly returns when `nir_load_instance_num_pco()` is nonzero.
+The checked common compiler closure verifies that branch in the actual SPIR-V.
+Only the zero-instance path can reach one 32-bit store of `0x13579bdf` to `0x8000000000`.
+Unknown compiler control-flow shapes fail the check.
+This compiler check does not prove GPU execution or cache visibility.
+
+## Shader ABI regression
+
+Run the regression with a saved disassembly of the original common SPIR-V:
+
+```sh
+ruby ../idfwdf/check-usclib.rb "$MESA_SOURCE" "$OLD_SPIRV_TEXT" "$NEW_TEST_OUTPUT"
+```
+
+The contract rejects the original 5/6 address slots and an unsubstantiated layout flag.
+It also rejects stale hashes, a wrong store address or width, missing guards, and extra stores.
+Compiler execution and physical acceptance are separate from these parser contracts.
 
 ## Verification boundary
+
 
 Source review and host code generation do not prove GPU execution. Keep
 compiler commands, source pins, patch hashes, program hashes, and actual

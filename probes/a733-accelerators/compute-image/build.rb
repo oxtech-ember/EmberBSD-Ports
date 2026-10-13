@@ -5,6 +5,7 @@ require 'json'
 require 'shellwords'
 require 'fileutils'
 require 'digest'
+require_relative '../idfwdf/layout'
 abort 'usage: build.rb MESA MESA_BUILD OUTPUT' unless ARGV.size == 3
 src, build, out = ARGV.map { |s| File.realpath(s) rescue File.expand_path(s) }
 abort 'output already exists' if File.exist?(out)
@@ -37,11 +38,7 @@ args += ['-fsanitize=address,undefined', '-fno-omit-frame-pointer', '-DPVR_BUILD
          '-I'+File.join(src, 'src/imagination/vulkan/pds'),
          '-I'+File.join(src, 'src/imagination/vulkan/pds/pvr_pds_programs')]
 # Isolated patched host-header copy; shared Mesa source is never modified here.
-iface = File.read(File.join(src, 'src/imagination/common/pvr_iface.h'))
-if iface.include?("   PVR_IDFWDF_DATA_ADDR_LO,\n")
-  iface = iface.sub("   PVR_IDFWDF_DATA_ADDR_LO,\n", "   /* The sampler occupies four shared-register dwords. */\n   PVR_IDFWDF_DATA_ADDR_LO = 8,\n")
-end
-abort 'IDFWDF layout not recognized' unless iface.include?('PVR_IDFWDF_DATA_ADDR_LO = 8,')
+iface = Idfwdf.patched_header(File.join(src, 'src/imagination/common/pvr_iface.h'))
 File.write(File.join(out, 'patched-pvr_iface.h'), iface)
 files = [File.join(script, 'generate.c'), File.join(src, 'src/imagination/vulkan/pds/pvr_pds.c'),
          File.join(src, 'src/imagination/common/pvr_device_info.c')]

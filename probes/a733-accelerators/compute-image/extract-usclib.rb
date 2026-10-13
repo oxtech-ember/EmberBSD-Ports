@@ -7,35 +7,29 @@
 # PowerVR compiler closure; this step only repackages its words.
 require 'json'
 require 'digest'
+require_relative '../idfwdf/layout'
 
-abort 'usage: extract-usclib.rb USCGEN_PROGRAMS_C NEW_DIR INPUTS_JSON' unless ARGV.size == 3
-src, out, inputs_path = ARGV
+abort 'usage: extract-usclib.rb USCGEN_PROGRAMS_C RECEIPT_JSON NEW_DIR INPUTS_JSON' unless ARGV.size == 4
+src, receipt_path, out, inputs_path = ARGV
 src = File.realpath(src)
 out = File.expand_path(out)
 abort 'output already exists' if File.exist?(out)
+receipt = Idfwdf.verify_receipt(receipt_path, src)
 table = File.read(src)
 
-names = {
-  'probe' => 'cs_query_availability_common_0_common',
-  'store' => 'cs_store_sr_1024_common_0_common',
-  'load' => 'cs_load_sr_256_common_0_common',
-  'idfwdf' => 'cs_idfwdf_common_0_common'
-}
 shaders = {}
+programs = Idfwdf.shaders(table)
 Dir.mkdir(out)
-names.each do |key, sym|
-  m = table.match(/static const uint32_t #{sym}\[(\d+)\] = \{(.*?)\};/m)
-  abort "missing #{sym}" if m.nil?
-  words = m[2].scan(/0x[0-9a-fA-F]+/)
-  abort "word count mismatch in #{sym}" if words.size != m[1].to_i
+programs.each do |key, bytes|
   path = File.join(out, "#{key}.precomp")
-  File.binwrite(path, words.map { |w| [w.to_i(16)].pack('V') }.join)
-  shaders[key] = { 'path' => path, 'sha256' => Digest::SHA256.file(path).hexdigest }
+  File.binwrite(path, bytes)
+  shaders[key] = Idfwdf.file_record(path)
 end
 
 inputs = {
   'bvnc' => '36.56.104.183',
-  'idfwdf_layout_dwords' => 10,
+  'idfwdf_layout_dwords' => receipt.fetch('idfwdf').fetch('layout_dwords'),
+  'compiler_receipt' => Idfwdf.file_record(receipt_path),
   'compiler_manifest' => {
     'path' => src,
     'sha256' => Digest::SHA256.file(src).hexdigest
