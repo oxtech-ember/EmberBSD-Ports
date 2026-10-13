@@ -85,6 +85,8 @@ checks stdin, file, multiple-file, zero-line and missing-file behavior with
 the original and patched current release. Earlier fatal exits and follow
 mode are outside this repair. This is a test-host provider, not acceptance
 of a coreutils package on EmberBSD. Original diagnostics remain available.
+The final clean-commit mksh run uses this repaired provider. Every traced
+process passes Memcheck, including both new source regressions.
 
 ## Analysis boundary
 
@@ -114,6 +116,21 @@ initialized global scope; the history queue keeps its saved non-null pointer;
 status-name report misses the explicitly sized allocation for a trailing
 array. No warning category is suppressed. Other reports in evaluation,
 editing and variable handling require individual disposition.
+
+The host-provider comparison covers `tail.c` with its actual GCC16 configuration.
+Cppcheck 2.22 rejects two attributed gnulib function declarations. Its input
+adapter preprocesses with the recorded GCC arguments, then removes redundant
+parentheses around those two function names. Attributes and line markers remain.
+The adapter prevents Cppcheck from expanding five floating-point enum names
+a second time. GCC16 produces byte-identical assembly before and after this
+normalization on both variants. Production sources remain unchanged.
+
+After adaptation, Cppcheck reports no errors, two warnings, 269 style messages
+and two information messages on each variant. The warnings concern the
+single-stdin array model and an unchecked inherited `atexit` return value.
+GCC reports no warning; Clang retains three null-pointer warnings on each
+variant. The original parser failure and subsequent complete run are retained.
+These results cover the host-provider translation unit, not all of coreutils.
 
 ## EmberBSD boundary
 

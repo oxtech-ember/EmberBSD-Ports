@@ -14,6 +14,52 @@ my @includes = <$includes>;
 chomp @includes;
 my $number = 0;
 for my $entry (@$entries) {
+    if ($component eq 'tail') {
+        # Cppcheck 2.22 rejects attributed char *(name)(...) declarations.
+        # Preprocess with the recorded GCC configuration before removing the
+        # redundant name parentheses in exactly two gnulib declarations.
+        # Macro expansion is already complete, so qualifier-generic macros
+        # cannot change the meaning. Keep every attribute and line marker.
+        die "Unexpected tail source\n" unless $entry->{file} =~ m{/src/tail\.c$};
+        my @original = @{$entry->{arguments}};
+        my $compiler = $original[0];
+        my ($standard) = grep { /^-std=/ } @original;
+        $standard //= '-std=gnu23'; # GCC16's production default.
+        my @preprocess;
+        while (@original) {
+            my $arg = shift @original;
+            if ($arg =~ /\A(?:-o|-MT|-MQ|-MF)\z/) { shift @original; next; }
+            next if $arg =~ /\A(?:-c|-MD|-MMD|-MP|-MT.+|-MQ.+|-MF.+|-o.+)\z/;
+            push @preprocess, $arg;
+        }
+        my $raw = "$work/analysis/tail/tail-gcc.i";
+        my $normalized = "$work/analysis/tail/tail-cppcheck.c";
+        push @preprocess, '-E', '-o', $raw;
+        open my $ledger, '>', "$work/analysis/tail/preprocess.command.json" or die $!;
+        print {$ledger} JSON::PP->new->canonical->pretty->encode({
+            directory => $entry->{directory}, arguments => \@preprocess,
+            file => $entry->{file}
+        });
+        close $ledger or die $!;
+        chdir $entry->{directory} or die $!;
+        system(@preprocess) == 0 or die "GCC preprocessing failed: $?\n";
+        open my $input, '<', $raw or die $!;
+        my $text = do { local $/; <$input> };
+        for my $name (qw(mbschr getprogname)) {
+            my $changed = ($text =~ s/char \* \(\Q$name\E\)(?= \()/char * $name/g);
+            die "Unexpected $name declaration\n" unless $changed == 1;
+        }
+        open my $copy, '>', $normalized or die $!;
+        print {$copy} $text;
+        close $copy or die $!;
+        # These identifiers are now enum members with GCC-expanded values.
+        # Prevent Cppcheck's builtins from expanding them a second time.
+        my @undef = map { '-UFP_' . $_ } qw(NAN INFINITE ZERO SUBNORMAL NORMAL);
+        $entry->{arguments} = [$compiler, '-x', 'c', $standard, @undef,
+            '-D__signed__=signed', '-c', $normalized];
+        $entry->{file} = $normalized;
+        next;
+    }
     # Cppcheck's project importer retains only one forced include. Preserve
     # the compiler configuration as well as implicit builtin definitions.
     my (@args, @forced);
