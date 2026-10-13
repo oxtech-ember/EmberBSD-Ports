@@ -1,0 +1,24 @@
+msgfmt-3	Empty-header PO/MO validity
+msgfmt-4	C format validation
+msgfmt-6	Plural expression division by zero
+msgfmt-8	Conflicting duplicate translations
+msgfmt-10	Plural format validation
+msgfmt-11	Invalid multibyte input
+msgfmt-13	Out-of-range Unicode input
+msgfmt-14	PO/MO context round trip
+msgfmt-17	Range-dependent plural validation
+msgfmt-19	MO reproducibility across timestamp changes
+msgfmt-21	MO binary format reproducibility
+msgcat-2	Mixed input encodings
+msgcat-7	Sorted output
+msgcat-12	Conflicting message identifiers
+msgcat-13	Message contexts
+msgcat-21	Conflicting plural identifiers
+msgcat-23	CRLF input
+msgmerge-1	General merge and line wrapping
+msgmerge-2	Duplicate recognition
+msgmerge-3	Obsolete and untranslated messages
+msgmerge-8	Plural translation counts
+msgmerge-9	Merge and comparison with contexts
+msgmerge-13	Merge for msgfmt
+msgmerge-14	Stable merge and wrapping
