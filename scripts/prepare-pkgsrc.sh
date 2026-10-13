@@ -60,32 +60,7 @@ if [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
 fi
 if [ "$profile" = plasma-mobile ]; then
     toolkit=$root/probes/plasma-mobile/toolkit
-    awk -F '\t' '
-        /^#/ || /^$/ { next }
-        NF != 4 || $1 !~ /^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9+-]*$/ ||
-            $2 !~ /^[a-zA-Z0-9][a-zA-Z0-9._+-]*\.tar\.(xz|gz|bz2)$/ ||
-            length($3) != 64 || $3 !~ /^[0-9a-f]+$/ || seen[$1]++ { exit 1 }
-        END { if (NR == 0) exit 1 }
-    ' "$toolkit/sources.tsv" || { echo 'Invalid toolkit source manifest.' >&2; exit 2; }
-    recipes=$(find "$toolkit/recipes" -name Makefile -type f | wc -l | tr -d ' ')
-    entries=$(awk '!/^#/ && NF { n++ } END { print n+0 }' "$toolkit/sources.tsv")
-    [ "$entries" -gt 0 ] && [ "$recipes" = "$entries" ] || {
-        echo 'Incomplete toolkit source manifest.' >&2; exit 2;
-    }
-    while IFS="$(printf '\t')" read -r recipe dist_archive sha url; do
-        case "$recipe" in ''|'#'*) continue ;; esac
-        source=$toolkit/recipes/$recipe
-        for name in Makefile PLIST distinfo; do
-            [ -f "$source/$name" ] || {
-                echo "Incomplete toolkit recipe: $recipe/$name" >&2; exit 2;
-            }
-        done
-        for name in $(awk '/^SHA1 \(patch-/ { gsub(/[()]/, "", $2); print $2 }' "$source/distinfo"); do
-            [ -f "$source/patches/$name" ] || {
-                echo "Missing required patch: $recipe/$name" >&2; exit 2;
-            }
-        done
-    done < "$toolkit/sources.tsv"
+    toolkit_inventory=$(sh "$toolkit/validate.sh" --inventory "$toolkit")
 fi
 if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
     graphics=$root/profiles/common-graphics
@@ -338,11 +313,17 @@ if [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
     cp "$media/sources.tsv" "$destination/EMBERBSD-COMMON-MEDIA-SOURCES"
 fi
 if [ "$profile" = plasma-mobile ]; then
-    while IFS="$(printf '\t')" read -r recipe dist_archive sha url; do
-        case "$recipe" in ''|'#'*) continue ;; esac
-        rm -rf "$destination/$recipe"
-        cp -R "$toolkit/recipes/$recipe" "$destination/$recipe"
-    done < "$toolkit/sources.tsv"
+    printf '%s\n' "$toolkit_inventory" | while IFS="$(printf '\t')" read -r recipe owner kind; do
+        if [ "$kind" = overlay ]; then
+            [ -f "$destination/$recipe/Makefile" ] || { echo "Missing exported overlay base: $recipe" >&2; exit 2; }
+            cp -R "$toolkit/recipes/$recipe/." "$destination/$recipe/"
+        else
+            rm -rf "$destination/$recipe"
+            cp -R "$toolkit/recipes/$recipe" "$destination/$recipe"
+        fi
+    done
+    cp "$toolkit/sources.tsv" "$destination/EMBERBSD-PLASMA-TOOLKIT-SOURCES"
+    cp "$toolkit/source-owners.tsv" "$destination/EMBERBSD-PLASMA-TOOLKIT-SOURCE-OWNERS"
     patch -f -N -d "$destination" -p1 -F 0 < "$toolkit/current-cups.patch"
     patch -f -N -d "$destination" -p1 -F 0 < "$toolkit/libproxy-cross.patch"
     patch -f -N -d "$destination" -p1 -F 0 < "$toolkit/current-network-deps.patch"
