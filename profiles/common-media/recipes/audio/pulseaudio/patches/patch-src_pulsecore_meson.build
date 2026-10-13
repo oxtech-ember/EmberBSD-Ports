@@ -1,0 +1,18 @@
+$NetBSD: patch-src_pulsecore_meson.build,v 1.3 2022/11/24 12:56:03 adam Exp $
+
+Use Neon only on ARM; fixes build.
+
+--- src/pulsecore/meson.build.orig	2022-06-21 10:54:48.000000000 +0000
++++ src/pulsecore/meson.build
+@@ -177,8 +177,10 @@ simd = import('unstable-simd')
+ simd_variants = [
+   { 'mmx' : ['remap_mmx.c', 'svolume_mmx.c'] },
+   { 'sse' : ['remap_sse.c', 'sconv_sse.c', 'svolume_sse.c'] },
+-  { 'neon' : ['remap_neon.c', 'sconv_neon.c', 'mix_neon.c'] },
+ ]
++if host_machine.cpu_family() == 'arm'
++  simd_variants += { 'neon' : ['remap_neon.c', 'sconv_neon.c', 'mix_neon.c'] }
++endif
+ 
+ libpulsecore_simd_lib = []
+ 

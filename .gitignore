@@ -10,3 +10,5 @@ work.*/
 !/profiles/common-graphics/recipes/**/Makefile
 !/profiles/common-media/recipes/**/Makefile
 !/profiles/network-diagnostics/recipes/**/Makefile
+# Source patches must remain visible when user ignores match upstream filenames.
+!**/patches/patch-*

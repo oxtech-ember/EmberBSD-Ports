@@ -40,3 +40,24 @@ The full source profile also checks every exported recipe, shared version file a
 An overlay check compares its changed files and the unchanged pinned Makefile.
 These checks do not establish package builds, target execution or desktop acceptance.
 They preserve the recorded recipe versions and do not claim that every provider is the newest release.
+
+## Publication inputs
+
+Before publication, stage the complete recipe changes and run these checks from the repository root:
+
+```sh
+sh scripts/check-published-patches.sh
+sh scripts/tests/published-patches.sh /absolute/new-publication-results
+```
+
+The publication check reads tracked `distinfo` files from the working tree.
+Every declared patch must exist and appear in the Git index.
+It covers the complete recipe layers in the standard exporter: development-toolchain,
+common-build-tools, common-graphics, common-media and this toolkit.
+Sparse profiles outside that exporter have a separate ownership contract.
+This check does not replace archive hashes, patch digests, zero-fuzz application or clean-commit export checks.
+
+The regression creates a private Git fixture with a global `*.build` ignore pattern.
+It verifies that an untracked source patch fails the publication check.
+The repository's narrow patch exception permits normal `git add` and preserves the patch in a Git archive.
+Ordinary build outputs remain ignored. The test does not change the user's Git configuration.
