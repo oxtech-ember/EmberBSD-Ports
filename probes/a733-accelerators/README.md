@@ -15,9 +15,11 @@ now executes firmware on Zero 3W. It reports startup and matching hardware/firmw
 BVNC through direct coherent memory. The [LOGTYPE and MMUCACHE commands](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-gpu-fwprobe.md#physical-command-result)
 also complete with verified return words, queue progress and executed-command counters.
 All firmware allocations remain device-owned.
-GPU MMU translation, a PowerVR DRM interface, rendering, and accelerated Plasma
-remain unverified. Precreated `/dev/dri` nodes do not show
-an attached driver. The source audit below remains separate from hardware
+The [native compute check](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-gpu-fwcompute.md#physical-stages-19-21-result)
+now passes stages 1–21 with this Mesa producer. The GPU writes `0x13579bdf`;
+client queue, timeline, and fresh fault checks agree. This is one bounded
+dispatch after a fresh boot. PowerVR DRM, rendering, and accelerated Plasma
+remain unverified. Precreated `/dev/dri` nodes do not show an attached driver. The source audit below remains separate from hardware
 acceptance of the full accelerator stack.
 
 ## Reproduce the source check

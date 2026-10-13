@@ -3,16 +3,19 @@
 Builds a CPU-generated compute submission for the PowerVR BXM GPU
 (BVNC `36.56.104.183`) from Mesa 26.2.4 producer functions. The image is
 intended for the EmberBSD diagnostic ladder (stages 18–21) on Orange Pi Zero 3W.
-The current version-3 output requires physical acceptance.
+The version-3 packet from Ports `5134eae` passed all 21 stages on 2026-10-13
+with OS `7cde8f93b68`. The guarded shader wrote `0x13579bdf`, and the
+client queue, timeline, and fresh firmware checks agreed. This acceptance
+covers one native diagnostic dispatch, not Vulkan or rendering.
 See the [OS compute check](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-gpu-fwcompute.md).
 
 ## Layout
 
 - `generate.c` — bounded generator: packs the four USC precompiled
   shaders, PDS programs, context-switch state, and the CDM-2 stream.
-  `USC_BASE` is `0x2000`: DOUTU execution offsets are 30-bit fields, so
-  the USC code heap must live below 4 GiB. Keep the kernel-side mapping
-  (`sun60i_a733_gpu_fwheap.c`) in sync with this base.
+  This bounded diagnostic uses a low USC execution alias at `0x2000`.
+  Keep the kernel aliases in `sun60i_a733_gpu_fwheap.c` consistent.
+  These aliases are not the general userspace heap layout.
 - `extract-usclib.rb` — extracts the precompiled shaders
   (`probe/store/load/idfwdf.precomp`) from the Mesa `pco_uscgen_programs`
   table after checked shader generation. It requires the compiler receipt.
