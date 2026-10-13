@@ -1,0 +1,13 @@
+$NetBSD$
+
+Honor the selected input-method backend even with a cached IBus discovery.
+Origin: EmberBSD (AI-assisted).
+
+--- applets/kimpanel/backend/ibus/CMakeLists.txt.orig
++++ applets/kimpanel/backend/ibus/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-if(IBUS_FOUND AND GLIB2_FOUND AND GOBJECT_FOUND)
++if(BUILD_KIMPANEL_IBUS AND IBUS_FOUND AND GLIB2_FOUND AND GOBJECT_FOUND)
+     configure_file(config-kimpanel.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config-kimpanel.h)
+     find_package(XCB COMPONENTS XCB KEYSYMS)
+ 

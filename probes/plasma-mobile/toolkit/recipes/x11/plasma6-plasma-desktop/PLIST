@@ -9,8 +9,6 @@ lib/libkglobalaccelmodel.so.6
 lib/libkglobalaccelmodel.so.${PKGVERSION}
 lib/systemd/user/plasma-kaccess.service
 libexec/kf6/kauth/kcmdatetimehelper
-libexec/kimpanel-ibus-panel
-libexec/kimpanel-ibus-panel-launcher
 qt6/plugins/kf6/kded/device_automounter.so
 qt6/plugins/kf6/kded/kded_touchpad.so
 qt6/plugins/kf6/kded/keyboard.so

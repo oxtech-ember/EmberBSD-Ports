@@ -1,6 +1,8 @@
 $NetBSD$
 
 Build the game controller KCM with the shared SDL3 dependency.
+Make the optional IBus backend selectable for Fcitx-based desktops.
+Origin: EmberBSD (AI-assisted).
 
 --- CMakeLists.txt.orig
 +++ CMakeLists.txt
@@ -16,4 +18,16 @@ Build the game controller KCM with the shared SDL3 dependency.
 +        TYPE REQUIRED
          PURPOSE "Required for building Game Controller KCM"
  )
+ 
+@@ -269,7 +269,10 @@
+ )
+ 
+ # For kimpanel
+-pkg_check_modules(IBUS "ibus-1.0>=1.5.0" IMPORTED_TARGET)
++option(BUILD_KIMPANEL_IBUS "Build the IBus Kimpanel backend" ON)
++if(BUILD_KIMPANEL_IBUS)
++    pkg_check_modules(IBUS "ibus-1.0>=1.5.0" IMPORTED_TARGET)
++endif()
+ pkg_check_modules(GOBJECT gobject-2.0 IMPORTED_TARGET)
+ pkg_check_modules(SCIM scim IMPORTED_TARGET)
  

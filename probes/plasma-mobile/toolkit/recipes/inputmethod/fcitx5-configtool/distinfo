@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.5 2024/02/10 10:08:25 ryoon Exp $
+
+BLAKE2s (fcitx5-configtool-5.1.16.tar.zst) = 3a9290b724d4f291c9643b0515ff8637bc80839b6acba05294e6b3feaed08278
+SHA512 (fcitx5-configtool-5.1.16.tar.zst) = f0437a78a16d0c2e7a48ed67602efbc885fd35278ef46e3ea0ba9330e07d3e2b2d648dbbcbfc18926c5fd016c61404d74f8d39055c2b83600b5388c5c30faeec
+Size (fcitx5-configtool-5.1.16.tar.zst) = 157863 bytes

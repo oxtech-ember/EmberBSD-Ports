@@ -1,0 +1,39 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Select a matching native dictionary compiler.
+
+Retain the target compiler and spell data in native and cross packages.
+
+--- src/modules/spell/CMakeLists.txt.orig
++++ src/modules/spell/CMakeLists.txt
+@@ -40,11 +40,27 @@
+ fcitx5_extract(spell-en-extract "${SPELL_EN_DICT_TAR}" DEPENDS spell-en-download
+   OUTPUT ${SPELL_EN_DICT_SRC})
+ 
++# Use a native tool for build data. Keep the target tool in the package.
++set(FCITX5_HOST_COMP_SPELL_DICT "" CACHE FILEPATH "Native comp-spell-dict")
++if(CMAKE_CROSSCOMPILING)
++  if(NOT IS_ABSOLUTE "${FCITX5_HOST_COMP_SPELL_DICT}" OR
++     NOT EXISTS "${FCITX5_HOST_COMP_SPELL_DICT}")
++    message(FATAL_ERROR "Set FCITX5_HOST_COMP_SPELL_DICT to a matching native tool")
++  endif()
++  set(SPELL_DICT_COMMAND "${FCITX5_HOST_COMP_SPELL_DICT}")
++  set(SPELL_DICT_TOOL_DEPENDENCY "${FCITX5_HOST_COMP_SPELL_DICT}")
++else()
++  set(SPELL_DICT_COMMAND "${CMAKE_COMMAND}" -E env
++      "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:Fcitx5::Utils>"
++      "$<TARGET_FILE:Fcitx5::comp-spell-dict>")
++  set(SPELL_DICT_TOOL_DEPENDENCY Fcitx5::comp-spell-dict)
++endif()
++
+ add_custom_command(
+   OUTPUT "${SPELL_EN_DICT}"
+-  DEPENDS "${SPELL_EN_DICT_SRC}" Fcitx5::comp-spell-dict spell-en-extract
+-  COMMAND Fcitx5::comp-spell-dict --comp-dict
+-  "${SPELL_EN_DICT_SRC}" "${SPELL_EN_DICT}")
++  DEPENDS "${SPELL_EN_DICT_SRC}" ${SPELL_DICT_TOOL_DEPENDENCY} spell-en-extract
++  COMMAND ${SPELL_DICT_COMMAND} --comp-dict
++  "${SPELL_EN_DICT_SRC}" "${SPELL_EN_DICT}" VERBATIM)
+ add_custom_target(spell_en_dict ALL DEPENDS "${SPELL_EN_DICT}")
+ install(FILES "${SPELL_EN_DICT}" DESTINATION "${FCITX_INSTALL_PKGDATADIR}/spell")
+ endif()

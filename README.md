@@ -219,6 +219,10 @@ runtime behavior are validated.
   installation directory are repaired. HDMI mode setting and the separate
   Plasma Desktop shell remain unaccepted. The current xdg-user-dirs 0.20
   cross package passes private-profile checks on CM5.
+  [Current desktop providers](probes/plasma-mobile/toolkit/cross/desktop-providers.md)
+  add an SDL3 controller adaptation with eight CM5 cases and a UBSan repeat.
+  Core event sounds retain their backends without mandatory GTK. Fcitx5/Qt6
+  source candidates replace the compulsory IBus dependency; target input remains unaccepted.
 - [Media and OpenCV videoio](probes/media/README.md): FFmpeg 9.0.2,
   GStreamer 1.28.7 and OpenCV 5.0.0 pass installed file/video pipeline checks
   on AArch64, including both videoio backends, timestamps, seeking, lossless

@@ -78,15 +78,18 @@ adding it to this profile. The policy regression uses the production file:
 BMAKE=/absolute/bmake sh tests/modern-providers.sh mk.conf /absolute/new-results
 ```
 
-SDL3 3.4.18 is the current source candidate for the Plasma gamecontroller KCM.
-The original archive hash matches the official release. Native/cross metadata
-and patch application pass. A completed package and migrated KCM runtime must
-be accepted separately. Cross builds use the matching native Wayland scanner.
+SDL3 3.4.18 now passes full cross packaging and installed CM5 checks.
+The migrated Plasma game-controller source passes eight CM5 cases, also with UBSan.
+[Provider acceptance and limits](cross/desktop-providers.md) distinguish this
+component result from the complete Desktop. Cross builds use the native Wayland scanner.
 D-Bus, common Mesa OpenGL, DRM, Wayland and X11 are selected by default.
-IBus is an explicit optional backend. PipeWire, sndio, libudev and io_uring retain
-the inherited recipe limits; this candidate does not claim those backends.
-The complete desktop closure is still being migrated. A policy check alone
-does not establish that every transitive provider is current.
+SDL's IBus backend remains an explicit option. PipeWire, sndio, libudev and
+io_uring retain the inherited recipe limits; those backends are not accepted here.
+
+Plasma selects Fcitx5/Qt6 and core libcanberra without mandatory GTK.
+The current Fcitx source candidates retain Wayland and the KF6 configuration UI.
+Their target packages and the complete desktop closure still require acceptance.
+A policy check alone does not establish that every transitive provider is current.
 
 ## Provenance and patch decisions
 

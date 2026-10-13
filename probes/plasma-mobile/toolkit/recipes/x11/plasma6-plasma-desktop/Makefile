@@ -17,7 +17,15 @@ DEPENDS+=	noto-cjk-fonts>=20240730:../../fonts/noto-cjk-fonts
 DEPENDS+=	xdg-user-dirs>=0.20:../../x11/xdg-user-dirs
 DEPENDS+=	kf6-kded>=6.31.0:../../x11/kf6-kded
 
-USE_TOOLS+=	msgmerge pkg-config
+# Fcitx supplies the input-method service, Qt6 client and KF6 settings module.
+DEPENDS+= fcitx5>=5.1.23:../../inputmethod/fcitx5
+DEPENDS+= fcitx5-qt>=5.1.16:../../inputmethod/fcitx5-qt
+DEPENDS+= fcitx5-configtool>=5.1.16:../../inputmethod/fcitx5-configtool
+
+USE_TOOLS+= msgmerge pkg-config
+
+# Select the Fcitx Kimpanel D-Bus backend. Its implementation is in Fcitx.
+CMAKE_CONFIGURE_ARGS+= -DBUILD_KIMPANEL_IBUS=OFF
 
 CMAKE_CONFIGURE_ARGS+=	-DKAUTH_DBUS_DIR=${PREFIX}/share/examples/plasma-desktop
 # Keep the inherited pkgsrc limits for unported tablet and X11 input backends.
@@ -72,7 +80,6 @@ pre-configure:
 .include "../../graphics/hicolor-icon-theme/buildlink3.mk"
 .include "../../graphics/kf6-kiconthemes/buildlink3.mk"
 .include "../../graphics/kf6-ksvg/buildlink3.mk"
-.include "../../inputmethod/ibus/buildlink3.mk"
 .include "../../lang/python/application.mk"
 .include "../../misc/kf6-attica/buildlink3.mk"
 .include "../../net/kf6-knewstuff/buildlink3.mk"
