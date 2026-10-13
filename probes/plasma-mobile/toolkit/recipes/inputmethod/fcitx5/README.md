@@ -151,3 +151,8 @@ These options change only `testdir.h`; build rules, assertions and installed pro
 Set CMAKE to the native CMake executable.
 The check preserves the native header bytes and tests cross overrides, cache persistence and six invalid paths.
 It does not compile or execute Fcitx tests.
+
+The [runtime test payload](tests/runtime/README.md) retains all 51 registered upstream cases.
+It uses these fixture roots and installed production libraries.
+Its source, inventory and rejection checks pass on the build host.
+A complete target run remains a separate acceptance step.
