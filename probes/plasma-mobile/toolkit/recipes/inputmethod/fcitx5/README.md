@@ -9,8 +9,9 @@ The Qt adapter retains its Wayland integration.
 
 Core 5.1.23nb5 has a complete cross package and 445 checked files on CM5.
 The corrected core PLIST matches its staged payload. The Qt6 adapter also has
-a complete cross package and 48 checked files on CM5. Configtool still requires
-complete package acceptance. The full Plasma input session remains
+a complete cross package and 48 checked files on CM5. Configtool also has a
+[complete cross package](../fcitx5-configtool/tests/runtime.md); target execution is pending.
+The full Plasma input session remains
 unaccepted. Scoped source analysis and native memory checks are described below;
 no target memory-analysis pass is claimed.
 This Configtool release contains no test targets. Its input and UI integration

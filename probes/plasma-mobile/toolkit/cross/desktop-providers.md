@@ -80,7 +80,9 @@ Source regressions repair missing-signature parsing and dropped XKB models/optio
 Relocatable CMake exports also restore actual Qt6 consumer configuration.
 The Qt6 adapter also cross-packages; 48 files and
 [five installed plugin/metadata checks](../recipes/inputmethod/fcitx5-qt/tests/runtime.md) pass on CM5.
-Configtool package acceptance, input-method activation and typed input remain part of the [CM5 desktop acceptance](cm5-kwin.md).
+Configtool also passes normal cross-package checks with common GCC16 and LLD23.
+Its [installed-program checks](../recipes/inputmethod/fcitx5-configtool/tests/runtime.md), input-method activation
+and typed input remain part of the [CM5 desktop acceptance](cm5-kwin.md).
 
 The X11 input adapter uses xcb-imdkit 1.0.9 and the common uthash 2.4.0.
 The recipe rejects fallback to its bundled uthash 1.8.
