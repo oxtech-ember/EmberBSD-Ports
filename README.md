@@ -401,6 +401,11 @@ to an independent working tree. Experimental probes remain under `probes/`
 until their package integration and runtime are validated. No signed binary
 package repository is provided yet.
 
+The [toolkit export checks](probes/plasma-mobile/toolkit/tests/manifest.md) cover
+all recipe directories, shared source owners, supplemental archives and patch publication.
+A clean export preserves 150 complete toolkit recipes and the Boost toolset overlay.
+This verifies reproducible source inputs, not a complete desktop session.
+
 ## Contributions and provenance
 
 All repository material is written in English. Record the upstream

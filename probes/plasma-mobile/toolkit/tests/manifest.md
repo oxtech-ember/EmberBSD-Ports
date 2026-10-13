@@ -61,3 +61,11 @@ The regression creates a private Git fixture with a global `*.build` ignore patt
 It verifies that an untracked source patch fails the publication check.
 The repository's narrow patch exception permits normal `git add` and preserves the patch in a Git archive.
 Ordinary build outputs remain ignored. The test does not change the user's Git configuration.
+
+A clean checkout of `c26300d` passes the complete export comparison:
+150 full toolkit recipes, one Boost overlay with its pinned Makefile,
+shared Qt/KF/Plasma selectors and both source manifests match.
+The publication check covers 221 complete recipe `distinfo` files.
+The manifest regression includes 38 rejected variants, including conditional
+shared-owner references and local metadata overrides. These are source/export
+checks; they do not rebuild every package or establish a working desktop.
