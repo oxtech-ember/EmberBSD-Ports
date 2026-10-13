@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.3 2026/04/13 16:52:39 tnn Exp $
 
 DISTNAME=		libei-1.6.0
+PKGREVISION=		1
 CATEGORIES=		x11 devel
 MASTER_SITES=		https://gitlab.freedesktop.org/libinput/libei/-/archive/${PKGVERSION_NOREV}/
 EXTRACT_SUFX=		.tar.bz2

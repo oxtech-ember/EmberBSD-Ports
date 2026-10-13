@@ -14,7 +14,7 @@ LICENSE=	mit AND modified-bsd AND x11 # with no-advertising clause
 USE_TOOLS+=	pkg-config
 DEPENDS+=	xkeyboard-config>=2.48:../../x11/xkeyboard-config
 BUILDLINK_API_DEPENDS.xkbcomp+=	xkbcomp>=1.5.0
-BUILDLINK_API_DEPENDS.libei+=	libei>=1.6.0
+BUILDLINK_API_DEPENDS.libei+=	libei>=1.6.0nb1
 
 # Require the accelerated paths instead of accepting an auto-disabled DRI3.
 MESON_ARGS+=	-Dglamor=true -Dglx=true -Ddri3=true -Dxvfb=true

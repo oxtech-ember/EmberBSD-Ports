@@ -1,6 +1,6 @@
 # Complete libei provider
 
-This recipe updates pkgsrc `x11/libei` to stable libei 1.6.0.
+This recipe updates pkgsrc `x11/libei` to stable libei 1.6.0nb1.
 The [upstream release record](https://gitlab.freedesktop.org/libinput/libei/-/releases/1.6.0)
 is dated 2026-05-15. Archive hashes are recorded in `sources.tsv` and `distinfo`.
 They are measured from the upstream archives, not a signed release manifest.
@@ -29,6 +29,12 @@ The munit patch builds a private static test library. It preserves all test
 sources and prevents an unrelated `libmunit.so` from entering the package.
 Meson downloads are disabled because all source archives are already pinned.
 
-Recipe and archive checks do not establish target execution. Cross build,
-Cppcheck/path analysis, upstream runtime tests, installed Xwayland input,
-and memory checks remain acceptance gates. No board result is claimed here.
+The `nb1` patch checks protocol string lengths before arithmetic and allocation.
+It preserves the wire format and returns the existing protocol error.
+Safe arithmetic boundary checks pass on the actual helper with ASan/UBSan.
+The cross test patch also requires target C++ tests with the correct header flags.
+
+[Source analysis and compiled target checks](tests/README.md) document the scope,
+inherited analyzer findings, test preparation and remaining runtime gates.
+Target execution, Python portal tests and installed Xwayland input remain
+separate acceptance steps. No board result is claimed here.

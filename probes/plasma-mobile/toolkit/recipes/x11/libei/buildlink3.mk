@@ -7,7 +7,7 @@ LIBEI_BUILDLINK3_MK:=
 
 .include "../../mk/bsd.fast.prefs.mk"
 
-BUILDLINK_API_DEPENDS.libei+=	libei>=1.6.0
+BUILDLINK_API_DEPENDS.libei+=	libei>=1.6.0nb1
 BUILDLINK_PKGSRCDIR.libei?=	../../x11/libei
 
 .include "../../devel/basu/buildlink3.mk"

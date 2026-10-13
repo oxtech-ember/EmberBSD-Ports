@@ -1,0 +1,35 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Require the target C++ build tests during cross compilation.
+Do not test a host compiler for executables that only run on the target.
+Pass the header-selection macros as C++ flags so both public headers are checked.
+
+--- test/meson.build.orig
++++ test/meson.build
+@@ -135,13 +135,14 @@
+     )
+ endif
+ 
+-if add_languages('cpp', required: false)
++# These consumers run on the target. Do not probe a native C++ compiler.
++if add_languages('cpp', native: false, required: true)
+     if build_libei
+         executable('test-build-cxx-libei',
+                    'buildtest.cc',
+                    dependencies: [dep_libei],
+                    include_directories: [inc_src],
+-                   c_args: ['-Werror', '-DINCLUDE_LIBEI=1'],
++                   cpp_args: ['-Werror', '-DINCLUDE_LIBEI=1'],
+                    install: false,
+         )
+     endif
+@@ -151,7 +152,7 @@
+                    'buildtest.cc',
+                    dependencies: [dep_libeis],
+                    include_directories: [inc_src],
+-                   c_args: ['-Werror', '-DINCLUDE_LIBEIS=1'],
++                   cpp_args: ['-Werror', '-DINCLUDE_LIBEIS=1'],
+                    install: false,
+         )
+     endif
