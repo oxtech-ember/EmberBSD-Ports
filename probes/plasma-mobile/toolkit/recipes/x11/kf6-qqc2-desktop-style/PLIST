@@ -13,6 +13,7 @@ qt6/qml/org/kde/desktop/DelayButton.qml
 qt6/qml/org/kde/desktop/Dial.qml
 qt6/qml/org/kde/desktop/Dialog.qml
 qt6/qml/org/kde/desktop/DialogButtonBox.qml
+qt6/qml/org/kde/desktop/DoubleSpinBox.qml
 qt6/qml/org/kde/desktop/Drawer.qml
 qt6/qml/org/kde/desktop/Frame.qml
 qt6/qml/org/kde/desktop/GroupBox.qml
