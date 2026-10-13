@@ -40,7 +40,14 @@ work-directory references. All 1711 payload files match the installed
 common sysroot byte for byte (SHA-256 manifest kept in
 `kwin-package-audit-r1/package.sha256`).
 
-## Board session
+## CM5 V3D session
+
+The [CM5 hardware receipt](cm5-kwin.md) records active OpenGL/V3D compositing
+and Qt Quick pixel checks under a non-root user on a virtual output.
+KWin nb2 repairs the missing Vulkan loader runtime dependency.
+HDMI and the complete Plasma Desktop remain unaccepted.
+
+## Software board session
 
 `tests/kwin-session/run-zero3w-headless.sh` runs a bounded private
 session on a board without an accepted KMS driver: `kwin_wayland
