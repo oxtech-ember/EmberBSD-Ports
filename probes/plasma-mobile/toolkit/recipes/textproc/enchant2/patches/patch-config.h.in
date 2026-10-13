@@ -1,0 +1,15 @@
+$NetBSD: patch-config.h.in,v 1.2 2023/10/19 14:54:32 wiz Exp $
+
+GCC 12 on SunOS doesn't like the __malloc__ attribute.
+
+--- config.h.in.orig	2023-09-24 21:16:03.000000000 +0000
++++ config.h.in
+@@ -661,7 +661,7 @@
+    can be freed via 'free'; it can be used only after declaring 'free'.  */
+ /* Applies to: functions.  Cannot be used on inline functions.  */
+ #ifndef _GL_ATTRIBUTE_DEALLOC
+-# if _GL_GNUC_PREREQ (11, 0)
++#if _GL_GNUC_PREREQ (11, 0) && !defined(__sun)
+ #  define _GL_ATTRIBUTE_DEALLOC(f, i) __attribute__ ((__malloc__ (f, i)))
+ # else
+ #  define _GL_ATTRIBUTE_DEALLOC(f, i)

@@ -126,3 +126,8 @@ inputmethod/fcitx5	fcitx5-5.1.23.tar.zst	d287119db9dc3113bb3a2b0e78ce8670e064b74
 inputmethod/fcitx5	en_dict-20121020.tar.gz	c44a5d7847925eea9e4d2d04748d442cd28dd9299a0b572ef7d91eac4f5a6ceb	https://download.fcitx-im.org/data/en_dict-20121020.tar.gz
 inputmethod/fcitx5-qt	fcitx5-qt-5.1.16.tar.zst	2d49cb4dfade430e822377beabae5f23da5caf2b2ff49e1eb54213b64dd0840e	https://download.fcitx-im.org/fcitx5/fcitx5-qt/fcitx5-qt-5.1.16.tar.zst
 inputmethod/fcitx5-configtool	fcitx5-configtool-5.1.16.tar.zst	0d9b9e023d3aa7056ec185ed9e6ccfb94e5a5b930d3dd742dba7f37a49abd61e	https://download.fcitx-im.org/fcitx5/fcitx5-configtool/fcitx5-configtool-5.1.16.tar.zst
+textproc/enchant2	enchant-2.8.21.tar.gz	dd2a762697c463148a8f59867089a5ebf2dd1449d869f93764b76c12bcf8acc0	https://github.com/rrthomas/enchant/releases/download/v2.8.21/enchant-2.8.21.tar.gz
+textproc/nlohmann-json	nlohmann-json-3.12.0.tar.gz	4b92eb0c06d10683f7447ce9406cb97cd4b453be18d7279320f7b2f025c10187	https://github.com/nlohmann/json/archive/v3.12.0.tar.gz
+textproc/nlohmann-json	json_test_data-3.1.0.tar.gz	884b1e21f38cfd6a62c159f1b7e0a8f5168ae5daaa384ed4dc0c0fa6660f21bd	https://github.com/nlohmann/json_test_data/archive/refs/tags/v3.1.0.tar.gz
+devel/unittest-cpp	unittest-cpp-2.0.0.tar.gz	1d1b118518dc200e6b87bbf3ae7bfd00a0cfc6be708255f98e5e3d627a7c9f98	https://github.com/unittest-cpp/unittest-cpp/releases/download/v2.0.0/unittest-cpp-2.0.0.tar.gz
+textproc/hunspell-en_US	hunspell-en_US-2026.02.25.zip	ac8e73310e951d88c52c2cf2ba54ceaca34f8486a81630ac8a75dc5f931179f9	https://github.com/en-wl/wordlist/releases/download/rel-2026.02.25/hunspell-en_US-2026.02.25.zip

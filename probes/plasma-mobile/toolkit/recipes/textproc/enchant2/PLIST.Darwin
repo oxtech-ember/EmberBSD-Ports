@@ -1,0 +1,2 @@
+@comment $NetBSD: PLIST.Darwin,v 1.6 2026/07/06 05:26:34 wiz Exp $
+lib/enchant-2/enchant_applespell.so

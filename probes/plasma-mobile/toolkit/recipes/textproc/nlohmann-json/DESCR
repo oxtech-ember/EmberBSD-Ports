@@ -1,0 +1,11 @@
+JSON for Modern C++ is an open-source library consisting of a
+C++11-style header-only JSON class.
+
+Its stated goals are:
+* Intuitive syntax
+* Trivial integration
+* Serious testing
+
+Other aspects were not so important to us:
+* Memory efficiency
+* Speed
