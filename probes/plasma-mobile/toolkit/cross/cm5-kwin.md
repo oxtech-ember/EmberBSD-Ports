@@ -126,3 +126,21 @@ These unchanged findings belong to upstream loader code; no clean full-loader
 source audit is claimed. The KWin and PAM repairs change package metadata only.
 Valgrind has no validated EmberBSD/AArch64 path in this setup.
 No Valgrind or sanitizer runtime pass is claimed.
+
+## Current desktop directory helper
+
+The Desktop closure selects xdg-user-dirs 0.20 from the official release archive.
+Its Meson adaptation links the selected iconv provider, uses an absolute locale
+path, and stages configuration examples through pkgsrc `CONF_FILES`.
+All three patches apply with zero fuzz. A standalone GCC 16.2 cross build
+installs 91 files, including both AArch64 programs, manuals and translations.
+This build uses the common libiconv/gettext packages. Native and cross recipe
+metadata pass; integrated pkgsrc packaging and target runtime remain pending.
+
+The five upstream C/header files remain unchanged. With the actual AArch64
+compile database, Cppcheck 2.22 reports 67 unchanged diagnostics and GCC 16.2
+`-fanalyzer` reports 14. Clang 21 reports one unchanged potential leak.
+The leak trace requires an inconsistent `stat(NULL)` success path; it is not
+confirmed. Allocation-failure paths need repair and fault-injection tests.
+Ports owns these inherited findings. No category is suppressed and no clean
+source audit, Valgrind or sanitizer runtime result is claimed.
