@@ -24,6 +24,13 @@ AArch64 test executables on the build host. Preserve the build directory
 for target unit tests and Xwayland/Xvfb integration tests. Piglit and
 rendercheck are optional upstream integration harnesses.
 
+The `nb1` patches correct signedness in seat and tablet identifiers and the
+shared source-line diagnostic. They preserve message text and protocol behavior.
+[Actual-source formatting checks](tests/README.md) cover integer boundaries,
+strict target compiler diagnostics and native ASan/UBSan execution.
+The [source-analysis scope](tests/source-analysis.md) records the remaining
+analyzer limitations separately from the corrected errors.
+
 Archive hashes and Meson option names are verified against this release.
 Package compilation, source analysis, target tests, and an installed Plasma
 login remain separate gates. No board runtime result is claimed here.

@@ -11,7 +11,7 @@ Use the [cross workflow](README.md) and normal pkgsrc package checks.
 Prepare these complete roots in the same audited sysroot:
 
 - Plasma Desktop 6.7.5nb4, including its compiled plugins and desktop resources.
-- Plasma Workspace 6.7.5nb1, with KWin 6.7.5nb3 and Xwayland 24.1.14.
+- Plasma Workspace 6.7.5nb1, with KWin 6.7.5nb3 and Xwayland 24.1.14nb1.
 - Fcitx Configtool 5.1.16nb1, with the common Fcitx5/Qt6 providers.
 - Common Perl 5.44 for the full-session process supervisor.
 
