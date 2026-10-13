@@ -35,11 +35,6 @@ set(host "$ENV{CHECK_ROOT}/sysroot/usr/pkg/share")
 set(ISOCODES_ISO639_JSON "${host}/iso-codes/json/iso_639-3.json")
 set(XKEYBOARDCONFIG_XKBBASE "${host}/X11/xkb")
 set(XKEYBOARDCONFIG_DATADIR "${host}")
-if(NOT "$ENV{CHECK_MODE}" STREQUAL "native")
-    set(ISOCODES_ISO639_JSON_RUNTIME "/usr/pkg/share/iso-codes/json/iso_639-3.json")
-    set(XKEYBOARDCONFIG_XKBBASE_RUNTIME "/usr/pkg/share/X11/xkb")
-    set(XKEYBOARDCONFIG_DATADIR_RUNTIME "/usr/pkg/share")
-endif()
 if(NOT "$ENV{CHECK_MODE}" STREQUAL "original")
     include("$ENV{CHECK_ROOT}/patched/cmake/Fcitx5RuntimeDataPaths.cmake")
 endif()
@@ -59,8 +54,11 @@ else()
 endif()
 configure_file("${template}" "$ENV{CHECK_ROOT}/$ENV{CHECK_MODE}.h")
 file(READ "$ENV{CHECK_ROOT}/$ENV{CHECK_MODE}.h" config)
+set(expected_ISOCODES_ISO639_JSON "$ENV{CHECK_EXPECTED}/share/iso-codes/json/iso_639-3.json")
+set(expected_XKEYBOARDCONFIG_XKBBASE "$ENV{CHECK_EXPECTED}/share/X11/xkb")
+set(expected_XKEYBOARDCONFIG_DATADIR "$ENV{CHECK_EXPECTED}/share")
 foreach(variable ISOCODES_ISO639_JSON XKEYBOARDCONFIG_XKBBASE XKEYBOARDCONFIG_DATADIR)
-    string(FIND "${config}" "#define ${variable} \"${${variable}_RUNTIME}\"" index)
+    string(FIND "${config}" "#define ${variable} \"${expected_${variable}}\"" index)
     if(index EQUAL -1)
         message(FATAL_ERROR "Runtime path mismatch: ${variable}")
     endif()
@@ -69,15 +67,25 @@ CMAKE
 mkdir -p "$out/sysroot/usr/pkg/share/iso-codes/json" "$out/sysroot/usr/pkg/share/X11/xkb/rules"
 printf '{}\n' > "$out/sysroot/usr/pkg/share/iso-codes/json/iso_639-3.json"
 printf '<xkbConfigRegistry/>\n' > "$out/sysroot/usr/pkg/share/X11/xkb/rules/evdev.xml"
-if env CHECK_ROOT="$out" CHECK_MODE=original "$CMAKE" -P "$out/check.cmake" > "$out/original.log" 2>&1; then
+if env CHECK_ROOT="$out" CHECK_MODE=original CHECK_EXPECTED=/usr/pkg "$CMAKE" -P "$out/check.cmake" > "$out/original.log" 2>&1; then
     echo 'Original source did not reproduce the runtime path leak' >&2; exit 1
 fi
 grep -q 'Runtime path mismatch' "$out/original.log"
-for mode in native cross; do
-    env CHECK_ROOT="$out" CHECK_MODE="$mode" "$CMAKE" -P "$out/check.cmake" > "$out/$mode.log" 2>&1
+env CHECK_ROOT="$out" CHECK_MODE=native CHECK_EXPECTED="$out/sysroot/usr/pkg" \
+    "$CMAKE" -P "$out/check.cmake" > "$out/native.log" 2>&1
+for mode in cross custom; do
+    case "$mode" in cross) expected_prefix=/usr/pkg ;; custom) expected_prefix=/opt/fcitx-check ;; esac
+    env CHECK_ROOT="$out" CHECK_MODE="$mode" CHECK_EXPECTED="$expected_prefix" "$CMAKE" \
+        "-DISOCODES_ISO639_JSON_RUNTIME:FILEPATH=$expected_prefix/share/iso-codes/json/iso_639-3.json" \
+        "-DXKEYBOARDCONFIG_XKBBASE_RUNTIME:PATH=$expected_prefix/share/X11/xkb" \
+        "-DXKEYBOARDCONFIG_DATADIR_RUNTIME:PATH=$expected_prefix/share" \
+        -P "$out/check.cmake" > "$out/$mode.log" 2>&1
+    if grep -F "$out/sysroot" "$out/$mode.h" >/dev/null; then
+        echo 'Sysroot leaked into runtime header' >&2; exit 1
+    fi
 done
 mv "$out/sysroot/usr/pkg/share/iso-codes/json/iso_639-3.json" "$out/iso_639-3.json"
-if env CHECK_ROOT="$out" CHECK_MODE=cross "$CMAKE" -P "$out/check.cmake" > "$out/missing.log" 2>&1; then
+if env CHECK_ROOT="$out" CHECK_MODE=cross CHECK_EXPECTED=/usr/pkg "$CMAKE" -P "$out/check.cmake" > "$out/missing.log" 2>&1; then
     echo 'Missing host data incorrectly accepted' >&2; exit 1
 fi
 grep -q 'Host discovery file missing' "$out/missing.log"
@@ -98,5 +106,5 @@ for mode in no yes; do
     grep '^DIRS=' "$out/$mode.metadata" | grep -F "$prefix/etc/xdg/Xwayland-session.d" >/dev/null
     grep '^SUBST=' "$out/$mode.metadata" | grep -F '{CMAKE_INSTALL_FULL_SYSCONFDIR}/xdg/Xwayland-session.d,{CMAKE_INSTALL_PREFIX}/share/examples/fcitx5' >/dev/null
 done
-printf 'PASS: original leak reproduced; fixed native/cross paths; host discovery values preserved; missing host fixture detected (contract check); native/cross recipe metadata.\n'
+printf 'PASS: original leak reproduced; fixed native/cross/custom-prefix literal paths; host discovery values preserved; missing host fixture detected (contract check); native/cross recipe metadata.\n'
 printf 'No C/C++ compilation, source analysis, or target execution is claimed.\n'
