@@ -10,7 +10,7 @@ The OS repository owns sysinst, the verified bundle preflight and installed
 `ember-desktop-install` / `ember-desktop` helpers.
 
 `packages.json` freezes 142 official pkgsrc packages from the NetBSD 11.0 amd64
-repository and one locally cross-built leaf, `dhcpcd-gtk3-0.8.0`. Each archive has
+repository and one locally cross-built leaf, `dhcpcd-gtk3-0.8.0nb1`. Each archive has
 an exact byte size and SHA512 digest. This is a compatible **NetBSD 11 ABI**
 package profile for EmberBSD 1.0; the upstream metadata remains unchanged.
 The XFCE components are 4.20, GTK3 is 3.24.52nb3 and GLib is 2.88.3nb1.
@@ -30,6 +30,11 @@ sh build-wifi.sh /absolute/dhcpcd-ui-0.8.0.tar.xz /absolute/sysroot \
   /absolute/tools/bin/x86_64--netbsd-gcc /absolute/new-build
 ```
 
+The local patch checks allocation failure and rejects incomplete or invalid
+configuration blocks. These changes are not submitted upstream.
+Run `ruby tests/wifi-library.rb extracted-source` for the actual-library
+ASan/UBSan regressions before packaging.
+
 The recipe selects GTK3, notifications and base dhcpcd/wpa_supplicant sockets.
 It disables the upstream Qt, curses, duplicate icon and online utilities.
 The current release bootstrap uses GCC 12.5.0; this does not qualify the
@@ -39,7 +44,7 @@ Transfer the build output to an isolated EmberBSD amd64 environment, then use
 its normal pkgsrc packager, without altering package compatibility checks:
 
 ```sh
-sh package-wifi.sh /absolute/build /absolute/new-dhcpcd-gtk3-0.8.0.tgz
+sh package-wifi.sh /absolute/build /absolute/new-dhcpcd-gtk3-0.8.0nb1.tgz
 ```
 
 The recipe preserves original source license headers in the installed package.

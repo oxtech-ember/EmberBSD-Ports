@@ -4,6 +4,7 @@
 set -eu
 [ "$#" = 4 ] || { echo 'Usage: build-wifi.sh archive sysroot cross-gcc new-output' >&2; exit 2; }
 archive=$1; sysroot=$2; compiler=$3; output=$4
+recipe=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 for path in "$sysroot" "$compiler" "$output"; do
 	case $path in /*) ;; *) exit 2;; esac
 	case $path in *[!A-Za-z0-9_./-]*) exit 2;; esac
@@ -15,6 +16,7 @@ actual=$(shasum -a 512 "$archive"); actual=${actual%% *}
 [ "$actual" = "$expected" ] || { echo 'Upstream archive checksum mismatch' >&2; exit 1; }
 mkdir "$output"
 tar -xf "$archive" -C "$output"
+patch -d "$output/dhcpcd-ui-0.8.0" -p1 < "$recipe/patches/wifi-library-errors.patch"
 printf '#!/bin/sh\nexec "%s" --sysroot="%s" -B"%s/usr/lib/" -isystem "%s/usr/include" "$@"\n' \
     "$compiler" "$sysroot" "$sysroot" "$sysroot" > "$output/cc"
 chmod 755 "$output/cc"
