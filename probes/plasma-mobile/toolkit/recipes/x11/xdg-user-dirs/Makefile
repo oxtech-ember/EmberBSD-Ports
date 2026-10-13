@@ -19,6 +19,12 @@ MESON_REQD+=		1.0
 USE_PKGLOCALEDIR=	yes
 USE_TOOLS+=		msgfmt pkg-config
 
+# Resolve DocBook with the native tools and their registered local catalog.
+# The cross host's platform xsltproc can use an unrelated system catalog.
+MESON_BINARIES+=		xsltproc
+MESON_BINARY.xsltproc=	${TOOLBASE}/bin/xsltproc
+MAKE_ENV+=		XML_CATALOG_FILES=${TOOLBASE}/share/xml/catalog
+
 EGDIR=		${PREFIX}/share/examples/xdg
 MAKE_DIRS+=	${PKG_SYSCONFDIR}/xdg/autostart
 
