@@ -1,0 +1,17 @@
+$NetBSD$
+
+Link the updater with iconv when it is a separate library.
+Adapted from pkgsrc patch-ac,v 1.3 2017/09/02 22:45:04 leot Exp.
+Prepared with AI assistance for EmberBSD.
+
+--- src/meson.build.orig
++++ src/meson.build
+@@ -2,7 +2,7 @@
+ xdg_user_dirs_update = executable('xdg-user-dirs-update',
+   'xdg-user-dirs-update.c',
+   include_directories: config_inc,
+-  dependencies: [libintl_dep],
++  dependencies: [libintl_dep, iconv_dep],
+   install: true
+ )
+ 
