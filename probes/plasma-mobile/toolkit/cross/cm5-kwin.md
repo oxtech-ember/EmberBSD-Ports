@@ -46,7 +46,7 @@ Wrong pixels, an absent QML module and a non-Wayland platform must fail.
 
 The 2026-10-13 CM5 Rev 1.0 / BCM2712 D0 / 4 GiB check reports:
 
-- KWin 6.7.5, active OpenGL compositing, renderer `V3D 7.1.10.2`.
+- KWin 6.7.5nb2, active OpenGL compositing, renderer `V3D 7.1.10.2`.
 - Qt 6.12.0, Mesa 26.2.4nb4, LLVM 23.1.3 and the common GCC 16 runtime.
 - Both client pixel sequences and all three negative controls pass.
 - KWin exits with its client wrapper and removes its Wayland socket.
@@ -58,6 +58,12 @@ Kernel source: `ab6f88f04ca73c6958adb39d0e1c717f629e7901`.
 Kernel SHA256: `c8600af1c6a31404fe6b3a3995196a910efda594c708194369925adb54ff1886`.
 Vulkan loader package SHA256:
 `4ad2fa887dbd99730f0b21bd747b57da0a364b21b667945c29bc9283426083f2`.
+
+The rebuilt nb2 package passes all normal pkgsrc packaging checks.
+Its archive declares `vulkan-loader>=1.4.357.0` as a runtime dependency.
+CM5 checks all 1756 installed entries. The repeated non-root session passes.
+KWin package SHA256:
+`566bf8b5768324390ad001da23c254e89af22c1e8830dacf6c096229fb50e6fd`.
 
 The test checks client pixels and compositor backend selection.
 It does not capture the final composed output or establish physical input,
@@ -102,8 +108,11 @@ Native and cross metadata select the common Frameworks and KDocTools providers.
 The source candidate retains the inherited tablet and X11 input KCM limits;
 Wayland mouse and touchpad backends keep their upstream defaults.
 The full package, staged PLIST, source analysis and desktop runtime remain unaccepted.
-The build closure still needs QQC2 Desktop Style, current xdg-user-dirs, SDL2
-and IBus. Copying the shell QML alone cannot supply its compiled plugins.
+The QQC2 Desktop Style 6.31 package now builds and checks all 119 files on CM5.
+Its PLIST includes the new DoubleSpinBox QML component. GUI behavior remains
+a separate test. The remaining closure is moving to SDL3 and Fcitx5/Qt6;
+GTK is not a requirement of Plasma itself. Copying shell QML alone cannot
+supply its compiled plugins.
 
 The monitor path has a separate limitation. An HP L1950 connected through an
 HDMI-to-VGA adapter supplies an EDID extension with 1080p. The installed
@@ -134,12 +143,21 @@ Its Meson adaptation links the selected iconv provider, uses an absolute locale
 path, and stages configuration examples through pkgsrc `CONF_FILES`.
 All three patches apply with zero fuzz. A standalone GCC 16.2 cross build
 installs 91 files, including both AArch64 programs, manuals and translations.
-This build uses the common libiconv/gettext packages. Native and cross recipe
-metadata pass; integrated pkgsrc packaging and target runtime remain pending.
+The standalone build uses the common libiconv/gettext packages. The complete
+pkgsrc cross package also passes, with its selected base providers and native
+DocBook tools. All 91 installed payload files check on CM5.
+Run `sh tests/xdg-user-dirs.sh /absolute/new-results` on the installed target.
+This check passes under a non-root user with a private HOME. It verifies the
+Projects/Downloads defaults, paths with spaces, repeated updates and rejection
+of invalid inputs without changing the configuration. Allocation-failure
+handling and complete desktop integration remain outside this result.
 
 The five upstream C/header files remain unchanged. With the actual AArch64
-compile database, Cppcheck 2.22 reports 67 unchanged diagnostics and GCC 16.2
-`-fanalyzer` reports 14. Clang 21 reports one unchanged potential leak.
+post-wrapper compile commands, Cppcheck 2.22 reports 64 unchanged diagnostics and GCC 16.2
+`-fanalyzer` reports 13. Clang 23.1.3 reports one unchanged potential leak.
+The comparison covers all three compiled C units and their unchanged headers.
+Both variants use the final config header, base iconv/gettext headers, actual
+GCC include-fixed paths and measured AArch64 LP64 macros. No new finding appears.
 The leak trace requires an inconsistent `stat(NULL)` success path; it is not
 confirmed. Allocation-failure paths need repair and fault-injection tests.
 Ports owns these inherited findings. No category is suppressed and no clean

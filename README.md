@@ -214,10 +214,11 @@ runtime behavior are validated.
   now preserves child failures and passes seven real-daemon cases on CM5.
   Ordinary-user login, device ownership and the complete desktop remain unaccepted.
 - [KWin on physical CM5](probes/plasma-mobile/toolkit/cross/cm5-kwin.md):
-  the full Wayland compositor passes OpenGL/V3D selection and Qt Quick pixel
-  checks on a virtual output. The missing Vulkan loader dependency and PAM
+  KWin 6.7.5nb2 passes OpenGL/V3D selection and Qt Quick pixel checks
+  on a virtual output under a non-root user. The missing Vulkan loader dependency and PAM
   installation directory are repaired. HDMI mode setting and the separate
-  Plasma Desktop shell remain unaccepted.
+  Plasma Desktop shell remain unaccepted. The current xdg-user-dirs 0.20
+  cross package passes private-profile checks on CM5.
 - [Media and OpenCV videoio](probes/media/README.md): FFmpeg 9.0.2,
   GStreamer 1.28.7 and OpenCV 5.0.0 pass installed file/video pipeline checks
   on AArch64, including both videoio backends, timestamps, seeking, lossless
