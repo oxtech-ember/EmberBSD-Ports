@@ -2,7 +2,7 @@
 # Analyze the compiled Linux control configuration without hiding findings.
 set -eu
 [ "$#" -ge 1 ] && [ "$#" -le 2 ] || {
-    echo 'Usage: analyze.sh BUILD_DIRECTORY [dash|zsh|mksh|ncurses|editline]' >&2; exit 2;
+    echo 'Usage: analyze.sh BUILD_DIRECTORY [dash|zsh|mksh|ncurses|editline|tail]' >&2; exit 2;
 }
 work=$1
 components=${2:-'dash zsh mksh ncurses'}
@@ -21,7 +21,7 @@ sed -n '/^#include <\.\.\.> search starts here:/,/^End of search list\./{ /^ /s/
 perl "$profile/compilation-database.pl" "$work"
 failed=0
 for component in $components; do
-    case "$component" in dash|zsh|mksh|ncurses|editline) ;; *) exit 2 ;; esac
+    case "$component" in dash|zsh|mksh|ncurses|editline|tail) ;; *) exit 2 ;; esac
     mkdir -p "$work/analysis/$component"
     perl "$profile/analysis-config.pl" "$work" "$component"
     if cppcheck --project="$work/analysis/$component/cppcheck_commands.json" \

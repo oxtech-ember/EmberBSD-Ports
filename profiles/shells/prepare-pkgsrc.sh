@@ -6,8 +6,12 @@ set -eu
 destination=$1
 profile=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 root=$(CDPATH= cd -- "$profile/../.." && pwd)
-for recipe in devel/editline devel/automake shells/dash; do
+for recipe in devel/editline devel/automake lang/perl5 shells/dash shells/mksh; do
     source=$profile/recipes/$recipe
+    case "$recipe" in
+        shells/mksh) source=$root/pkgsrc/local-shells/mksh ;;
+        lang/perl5) source=$root/profiles/common-build-tools/recipes/lang/perl5 ;;
+    esac
     for name in Makefile distinfo; do
         [ -s "$source/$name" ] || { echo "Missing $recipe/$name" >&2; exit 2; }
     done
@@ -34,11 +38,16 @@ for recipe in devel/editline devel/automake; do
     rm -rf "$destination/$recipe"
     cp -R "$profile/recipes/$recipe" "$destination/$recipe"
 done
+rm -rf "$destination/lang/perl5"
+cp -R "$root/profiles/common-build-tools/recipes/lang/perl5" "$destination/lang/perl5"
 cp -R "$profile/recipes/shells/dash/." "$destination/shells/dash/"
+rm -rf "$destination/shells/mksh"
+cp -R "$root/pkgsrc/local-shells/mksh" "$destination/shells/mksh"
 cat > "$destination/EMBERBSD-SHELLS-MK.CONF" <<'EOF'
 .include "${.PARSEDIR}/EMBERBSD-DEVELOPMENT-MK.CONF"
 .if defined(BSD_PKG_MK)
 GCC_REQD+= 16.2
+PERL5_REQD+= 5.44.0
 PREFER.editline= pkgsrc
 PREFER.ncurses= pkgsrc
 BUILDLINK_API_DEPENDS.editline+= editline>=3.1.20260512

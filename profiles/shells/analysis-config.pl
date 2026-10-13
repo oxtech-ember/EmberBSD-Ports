@@ -6,7 +6,7 @@ use JSON::PP;
 use File::Spec;
 my ($work, $component) = @ARGV;
 die "Usage: analysis-config.pl WORK COMPONENT\n" unless defined $component;
-die "Invalid component\n" unless $component =~ /\A(?:dash|zsh|mksh|ncurses|editline)\z/;
+die "Invalid component\n" unless $component =~ /\A(?:dash|zsh|mksh|ncurses|editline|tail)\z/;
 open my $fh, '<', "$work/records/$component/compile_commands.json" or die $!;
 my $entries = do { local $/; decode_json(<$fh>) };
 open my $includes, '<', "$work/analysis/config/includes.txt" or die $!;

@@ -55,6 +55,7 @@ Provide the tool versions above, Cppcheck 2.22.0, Clang 23.1.3, Valgrind
 contain a GCC16-built ncurses 6.6 with wide-character support.
 
 ```sh
+export CC=/absolute/gcc16/bin/gcc
 sh profiles/shells/editline-control.sh /absolute/new-editline /absolute/ncurses
 NCURSES_PREFIX=/absolute/ncurses \
   sh profiles/shells/dash-control.sh /absolute/new-dash /absolute/new-editline/prefix

@@ -6,3 +6,5 @@ ncurses	ncurses-6.6.tar.gz	355b4cbbed880b0381a04c46617b7656e362585d52e9cf84a67e2
 zsh-completions	zsh-completions-0.36.0.tar.gz	5aa68be2999a7be2eb56de8e4acff8f3bba4a66b9acbb233752536857408fb2e	https://codeload.github.com/zsh-users/zsh-completions/tar.gz/refs/tags/0.36.0
 zsh-autosuggestions	zsh-autosuggestions-0.7.1.tar.gz	0df7affff21cd87ed298e6a3970ed08a1dd66a6efa676454ee5b091ad503badf	https://codeload.github.com/zsh-users/zsh-autosuggestions/tar.gz/refs/tags/v0.7.1
 editline	libedit-20260512-3.1.tar.gz	432d5e7ea8b0116dd39f2eca7bc11d0eed77faa6b77ea526ace89907c23ea4a0	https://thrysoee.dk/editline/libedit-20260512-3.1.tar.gz
+ed	ed-1.22.6.tar.lz	3f33b22135219c39c3c695f7b7171c2567d3e2a17c798c0a90607320cbb268f2	https://ftp.gnu.org/gnu/ed/ed-1.22.6.tar.lz
+coreutils	coreutils-9.12.tar.xz	a480198559733e9b3da999e90543ac6f888a2caa544d8d664c5a1f17e528e210	https://ftp.gnu.org/gnu/coreutils/coreutils-9.12.tar.xz

@@ -12,7 +12,7 @@ separate evidence.
 | Shell | Selected release | Current evidence |
 | --- | --- | --- |
 | dash | 0.5.13.5 | [GCC16 control, libedit and source repairs](dash.md) |
-| mksh | R59c | Local recipe; its earlier target smoke used the base compiler and does not establish GCC16 package acceptance |
+| mksh | R59c | [GCC16 control, upstream suite and allocation/arithmetic repairs](mksh.md) |
 | zsh | 5.9.2 | Pinned pkgsrc recipe; separate current-dependency control pending |
 
 The release manifests contain original URLs and SHA256 values. dash's
@@ -31,6 +31,9 @@ sh profiles/shells/prepare-pkgsrc.sh /absolute/new-pkgsrc
 
 The export includes the shared GCC 16.2 selection, current Libtool 2.6.2 and
 Automake 1.19, dash patches, and libedit 20260512-3.1 with ncurses 6.6.
+It replaces the pinned mksh R59b recipe with the current R59c recipe and
+source repairs. mksh tests use current Perl 5.44.0 and GNU ed 1.22.6.
+Perl uses the shared common-build-tools recipe and its target portability repairs.
 It replaces the existing dependency recipe instead of adding an older
 parallel provider. The other host tools remain current in the pinned tree:
 Autoconf 2.73, M4 1.4.21 and Perl 5.44.0.

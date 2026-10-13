@@ -8,7 +8,7 @@ use File::Path qw(make_path);
 my ($work, $component, $mode) = @ARGV;
 $mode //= 'gcc';
 die "Usage: analyze.pl WORK COMPONENT [gcc|clang]\n" unless defined $component;
-die "Invalid component\n" unless $component =~ /\A(?:dash|zsh|mksh|ncurses|editline)\z/;
+die "Invalid component\n" unless $component =~ /\A(?:dash|zsh|mksh|ncurses|editline|tail)\z/;
 die "Invalid analyzer\n" unless $mode =~ /\A(?:gcc|clang)\z/;
 my $database = "$work/records/$component/compile_commands.json";
 open my $fh, '<', $database or die "$database: $!";
@@ -24,7 +24,9 @@ for my $entry (@$entries) {
     my @command;
     while (@args) {
         my $arg = shift @args;
-        if ($arg eq '-o') { shift @args; next; }
+        # Analysis must not overwrite production objects or dependency files.
+        if ($arg =~ /\A(?:-o|-MT|-MQ|-MF)\z/) { shift @args; next; }
+        next if $arg =~ /\A(?:-MD|-MMD|-MP|-MT.+|-MQ.+|-MF.+)\z/;
         next if $mode eq 'clang' && $arg eq '-c';
         # Clang has no GCC x86 data-alignment or inliner tuning switch.
         next if $mode eq 'clang' && $arg eq '-malign-data=abi';
@@ -39,6 +41,12 @@ for my $entry (@$entries) {
     } else {
         push @command, '-O0', '-fanalyzer', '-o', "$output/$number.o";
     }
+    open my $ledger, '>', "$output/$number.command.json" or die $!;
+    print {$ledger} JSON::PP->new->canonical->pretty->encode({
+        directory => $entry->{directory}, arguments => ['timeout', '120', @command],
+        file => $entry->{file}
+    });
+    close $ledger or die $!;
     chdir $entry->{directory} or die $!;
     my $pid = fork();
     die "fork: $!" unless defined $pid;

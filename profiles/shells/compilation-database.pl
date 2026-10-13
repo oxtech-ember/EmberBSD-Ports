@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use JSON::PP;
 my $work = shift @ARGV or die "Usage: compilation-database.pl WORK\n";
-for my $component (qw(ncurses dash zsh mksh editline)) {
+for my $component (qw(ncurses dash zsh mksh editline tail)) {
     my @entries;
     my %seen;
     for my $name (sort glob "$work/records/$component/*.json") {

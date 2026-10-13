@@ -256,8 +256,9 @@ runtime behavior are validated.
 - [Command shells](profiles/shells/README.md): dash 0.5.13.5 has a GCC16
   control with current libedit 20260512-3.1 and ncurses 6.6, source repairs,
   terminal tests and memory checks. Static analysis retains inherited
-  findings for review. mksh R59c and zsh 5.9.2 are separate follow-up
-  controls; target package and ARM64 acceptance remain open.
+  findings for review. mksh R59c adds allocation and arithmetic repairs,
+  a GCC16 control and the upstream regression suite. zsh 5.9.2 is the next
+  separate control; target package and ARM64 acceptance remain open.
 - [Network diagnostics kit](profiles/network-diagnostics/README.md):
   cross-built CLI capture, analysis and load tools for boards. libpcap
   1.10.7, tcpdump 4.99.6 and iperf3 3.21 install from binary packages on
