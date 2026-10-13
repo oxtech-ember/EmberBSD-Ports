@@ -156,4 +156,15 @@ raise 'Existing output was not rejected' if status.success? || !(output + error)
 raise 'Existing output changed' unless before == File.read(File.join(accepted, 'packages.sha256'))
 count += 1
 puts 'PASS: preserve-existing-output'
+# Repeating a root must not produce a set that the installer refuses.
+destination = File.join(work, 'set-duplicate-roots')
+output, error, status = Open3.capture3({ 'PKG_INFO' => info, 'BSDTAR' => tar }, RbConfig.ruby,
+                                    auditor, pkgdb, index, destination,
+                                    'pkgset-root-1.0', 'pkgset-root-1.0')
+File.write(File.join(work, 'duplicate-roots.log'), output + error)
+raise 'Duplicate roots were not rejected' if status.success? || !(output + error).include?('Duplicate root package')
+raise 'Duplicate roots left an accepted output' if File.exist?(destination)
+raise 'Duplicate roots left staging files' unless Dir[File.join(work, '.set-duplicate-roots-*')].empty?
+count += 1
+puts 'PASS: reject-duplicate-roots'
 puts "PASS: #{count} package-set cases with actual pkg_create/pkg_info and archive payloads"

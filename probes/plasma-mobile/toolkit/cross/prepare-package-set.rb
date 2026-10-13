@@ -179,6 +179,7 @@ Signal.trap('TERM') { raise Interrupt, 'Package audit interrupted' }
 begin
   check(ARGV.length >= 4, 'Usage: prepare-package-set.rb PKGDB ARCHIVE_PATHS NEW_OUTPUT ROOT_PACKAGE...')
   pkgdb, index, output, *roots = ARGV
+  check(roots.uniq.length == roots.length, 'Duplicate root package')
   pkgdb = File.realpath(pkgdb)
   output = File.expand_path(output)
   check(!File.exist?(output) && !File.symlink?(output), 'Output already exists')

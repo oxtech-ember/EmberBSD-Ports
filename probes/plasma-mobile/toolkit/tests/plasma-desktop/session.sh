@@ -74,11 +74,49 @@ if query org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.grabContainmentIma
 fi
 grep -q 'Unknown screen name' missing-output.log
 [ ! -e missing.png ]
-/usr/bin/timeout -k 2 15 /usr/pkg/qt6/bin/qdbus \
-    org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.grabContainmentImage \
-    Virtual-0 320 256 "$PWD/desktop.png" > capture.txt 2> capture-error.log
-grep -qx true capture.txt
-/bin/sh ./check-results.sh png desktop.png
+# Layout models can precede a visible Quick item. Keep capture retries inside
+# the original startup deadline. Separate paths also isolate late D-Bus replies.
+capture_attempt=0
+capture_status=not-started
+capture_check_status=not-started
+while :; do
+    remaining=$((deadline - $(date +%s)))
+    [ "$remaining" -gt 0 ] || {
+        echo "FAIL: capture did not become ready before the startup deadline; attempts=$capture_attempt, request=$capture_status, check=$capture_check_status" >&2
+        exit 1
+    }
+    kill -0 "$plasma_pid" 2>/dev/null || {
+        echo 'FAIL: plasmashell exited before capture' >&2
+        exit 1
+    }
+    capture_timeout=$remaining
+    [ "$capture_timeout" -le 15 ] || capture_timeout=15
+    capture_attempt=$((capture_attempt + 1))
+    capture_prefix="capture-$capture_attempt"
+    printf '%s\n' "$capture_timeout" > "$capture_prefix.timeout"
+    capture_status=0
+    /usr/bin/timeout -k 2 "$capture_timeout" /usr/pkg/qt6/bin/qdbus \
+        org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.grabContainmentImage \
+        Virtual-0 320 256 "$PWD/$capture_prefix.png" \
+        > "$capture_prefix.txt" 2> "$capture_prefix-error.log" || capture_status=$?
+    printf '%s\n' "$capture_status" > "$capture_prefix.status"
+    capture_check_status=1
+    if [ "$capture_status" -eq 0 ] && grep -qx true "$capture_prefix.txt"; then
+        capture_check_status=0
+        /bin/sh ./check-results.sh png "$capture_prefix.png" \
+            > "$capture_prefix-check.log" 2>&1 || capture_check_status=$?
+    else
+        echo 'FAIL: capture request did not return true successfully' > "$capture_prefix-check.log"
+    fi
+    printf '%s\n' "$capture_check_status" > "$capture_prefix-check.status"
+    if [ "$capture_status" -eq 0 ] && [ "$capture_check_status" -eq 0 ]; then
+        cp "$capture_prefix.png" desktop.png
+        cp "$capture_prefix.txt" capture.txt
+        cp "$capture_prefix-error.log" capture-error.log
+        break
+    fi
+    sleep 1
+done
 # Reject a software fallback in the shell itself, not only in the compositor.
 /bin/sh ./check-results.sh renderer plasmashell.log
 count=0

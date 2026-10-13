@@ -145,5 +145,111 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
       end
     end
   end
+# Layout models can exist before their Quick items render. Exercise the real
+# capture loop with a failed first request and a shared startup deadline.
+%w[ready deadline].each do |mode|
+  work = "#{temp}/capture-#{mode}"
+  FileUtils.mkdir_p("#{work}/runtime")
+  socket = UNIXServer.new("#{work}/runtime/wayland-0")
+  begin
+    FileUtils.cp(["#{source}/check-results.sh", "#{source}/layout.js"], work)
+    File.write("#{work}/timeout", <<~'SH')
+      #!/bin/sh
+      duration=$3
+      shift 3
+      case "$*" in
+      *grabContainmentImage*Virtual-0*) printf '%s\n' "$duration" >> capture-timeouts ;;
+      esac
+      exec "$@"
+    SH
+    File.write("#{work}/date", <<~RUBY)
+      #!#{RbConfig.ruby}
+      count = File.file?('clock-count') ? File.read('clock-count').to_i : 0
+      File.write('clock-count', (count + 1).to_s)
+      puts [0, 80, 86, 90][[count, 3].min]
+    RUBY
+    # Keep the six liveness checks fast. Give the child time to handle TERM.
+    File.write("#{work}/sleep", "#!/bin/sh\n[ \"$1\" = 5 ] || exec /bin/sleep 0.1\n")
+    File.write("#{work}/plasmashell", <<~RUBY)
+      #!#{RbConfig.ruby}
+      trap('TERM') { exit 0 }
+      STDOUT.sync = true
+      puts #{renderer.inspect}
+      File.write('child-ready', Process.pid.to_s)
+      loop { sleep 0.1 }
+    RUBY
+    File.write("#{work}/qdbus", <<~RUBY)
+      #!#{RbConfig.ruby}
+      if ARGV[0] == 'org.kde.KWin'
+        puts #{support.inspect}
+        exit 0
+      end
+      20.times do
+        break if File.file?('child-ready')
+        sleep 0.1
+      end
+      abort 'Fixture child did not become ready' unless File.file?('child-ready')
+      case ARGV[2]
+      when 'org.kde.PlasmaShell.shell'
+        puts 'org.kde.plasma.desktop'
+      when 'org.kde.PlasmaShell.evaluateScript'
+        puts 'PASS: default desktop, panel and six applet models on 1280x1024'
+      when 'org.kde.PlasmaShell.grabContainmentImage'
+        abort 'Unknown screen name' if ARGV[3] == 'Ember-Missing-Output'
+        count = File.file?('capture-count') ? File.read('capture-count').to_i + 1 : 1
+        File.write('capture-count', count.to_s)
+        File.open('capture-paths', 'a') { |file| file.puts(ARGV.fetch(6)) }
+        if count == 1 || #{mode.inspect} == 'deadline'
+          warn 'Quick item is not ready; no delayed reply arrived'
+          exit 124
+        end
+        File.binwrite(ARGV.fetch(6), #{png_header.inspect})
+        puts 'true'
+      else
+        abort 'Unexpected D-Bus fixture call'
+      end
+    RUBY
+    %w[timeout qdbus date sleep plasmashell].each { |name| File.chmod(0o700, "#{work}/#{name}") }
+    session = File.read("#{source}/session.sh")
+                  .gsub('/usr/bin/timeout', "#{work}/timeout")
+                  .gsub('/usr/pkg/qt6/bin/qdbus', "#{work}/qdbus")
+                  .gsub('/usr/pkg/bin/plasmashell', "#{work}/plasmashell")
+    File.write("#{work}/session.sh", session)
+    output = run.call(mode == 'ready' ? :ok : :fail,
+                      {'EMBER_PLASMA_OUTPUT' => work, 'XDG_RUNTIME_DIR' => "#{work}/runtime",
+                       'PATH' => "#{work}:#{ENV.fetch('PATH')}"}, '/bin/sh', "#{work}/session.sh")
+    abort 'Capture retries extended the startup deadline' unless
+      File.read("#{work}/capture-timeouts").lines.map(&:to_i) == [10, 4]
+    abort 'Capture attempts reused an image path' unless
+      File.read("#{work}/capture-paths").lines.map(&:strip) == ["#{work}/capture-1.png", "#{work}/capture-2.png"]
+    statuses = [1, 2].map { |attempt| File.read("#{work}/capture-#{attempt}.status").to_i }
+    abort 'Capture attempt statuses were lost' unless statuses == [124, mode == 'ready' ? 0 : 124]
+    abort 'Failed attempt diagnostic was lost' unless
+      File.read("#{work}/capture-1-error.log").include?('Quick item is not ready')
+    if mode == 'ready'
+      abort 'Accepted capture was not saved' unless File.binread("#{work}/desktop.png") == png_header
+    else
+      abort 'Final capture failure was hidden' unless output.include?('capture did not become ready before the startup deadline')
+      abort 'Failed capture left an accepted image' if File.exist?("#{work}/desktop.png")
+    end
+    abort 'Capture cleanup did not exit successfully' unless File.read("#{work}/plasmashell.status").to_i == 0
+    pid = File.read("#{work}/plasmashell.pid").to_i
+    begin
+      Process.kill(0, pid)
+      abort "Capture test leaked child #{pid}"
+    rescue Errno::ESRCH
+      checks += 1
+    end
+  ensure
+    socket.close
+    if File.file?("#{work}/plasmashell.pid")
+      begin
+        Process.kill('KILL', File.read("#{work}/plasmashell.pid").to_i)
+      rescue Errno::ESRCH
+        nil
+      end
+    end
+  end
+end
 end
 puts "PASS: #{checks} host checks; no target Plasma or GPU execution"

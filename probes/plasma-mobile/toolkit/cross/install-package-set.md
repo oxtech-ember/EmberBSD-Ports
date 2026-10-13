@@ -1,6 +1,7 @@
 # Install a prepared Plasma package set
 
 Prepare the runtime closure with `prepare-package-set.rb` first.
+Pass each exact root package name once. Duplicate roots are rejected before output is created.
 Copy its complete output directory to the target.
 Keep `packages/`, `packages.sha256`, `install-order.txt` and `roots.txt` together.
 The current set uses the EmberBSD AArch64 ELF ABI with upstream `NetBSD 11.0` package identifiers.

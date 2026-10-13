@@ -26,9 +26,11 @@ It sets the Qt Wayland QPA and OpenGL RHI backend for this test only.
 The virtual output is 1280×1024. It does not set a physical monitor mode.
 Screen locking is disabled only in the private compositor session.
 The whole session has a 240-second timeout and a five-second kill grace period.
-D-Bus calls have five-second timeouts. Image capture has a 15-second timeout.
-The shell gets up to 90 seconds to create its default layout.
-Each D-Bus timeout adds at most seven seconds to that startup limit.
+D-Bus layout queries have five-second timeouts and two-second kill grace periods.
+The shell shares a 90-second startup deadline between layout creation and capture.
+A layout query can finish after this deadline; capture does not get a new deadline.
+Image capture retries while startup time remains because Quick items can become ready after their models.
+Each attempt uses at most 15 seconds, capped by the remaining startup time, plus a two-second kill grace period.
 
 ## Checks and saved evidence
 
@@ -48,6 +50,8 @@ The runner requires all these observations:
 
 The output saves compositor and shell logs, query results, exit statuses,
 executable hashes, the desktop capture and its hash.
+Each capture attempt keeps separate request output, errors, exit status, timeout and PNG-check logs.
+Only a successful request with a valid PNG header becomes `desktop.png`.
 The shell cleanup escalates to SIGKILL after five seconds if needed.
 That escalation fails the test. It does not count as a clean shutdown.
 Keep the output with the tested kernel, firmware and package-set identities.
@@ -104,6 +108,8 @@ The checks reject invalid output arguments, missing V3D evidence, QML errors,
 invalid PNG headers and incomplete layout models.
 They execute the real session cleanup after a forced startup failure.
 Separate fixtures exercise SIGTERM success and forced SIGKILL failure.
-The temporary copy replaces only external graphics commands and the clock.
+Capture fixtures require recovery after a cold request failure and rejection when the shared deadline expires.
+They check shrinking timeouts, separate image paths, retained errors and child cleanup.
+The temporary copy replaces external graphics commands, the clock and liveness sleeps.
 No target binaries run. These fixtures do not emulate a GPU or Plasma.
 All added scripts are EmberBSD code with AI assistance.
