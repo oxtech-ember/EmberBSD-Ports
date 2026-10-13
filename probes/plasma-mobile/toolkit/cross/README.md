@@ -20,10 +20,16 @@ cannot generate a Qt 6.12 build. See the
 CMAKE=/absolute/native/cmake NINJA=/absolute/native/ninja \
 WAYLAND_SCANNER=/absolute/wayland-1.26/bin/wayland-scanner \
 HOST_LLVM_BUILD=/absolute/native-llvm23 HOST_CLANG_BUILD=/absolute/native-clang23 \
+HOST_DBUS_PREFIX=/absolute/native-dbus \
 HOST_CC=/absolute/native/cc HOST_CXX=/absolute/native/c++ JOBS=4 \
 sh probes/plasma-mobile/toolkit/cross/build-host-tools.sh \
     /absolute/verified-distfiles /absolute/new-host-qt
 ```
+
+Native QtDBus needs a current D-Bus development prefix at `HOST_DBUS_PREFIX`.
+The builder records its headers, library and CMake metadata, then links directly.
+This prevents empty complex signatures in KWin's generated D-Bus XML.
+See [the generator regression and bounded repair](../tests/kwin-inputdevice-xml.md).
 
 QDoc additionally needs matching LLVM/Clang **23.1.3** libraries and CMake exports
 on the host. On macOS/arm64 the verified official SDK can supply both paths;

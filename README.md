@@ -232,6 +232,11 @@ runtime behavior are validated.
   installation directory are repaired. HDMI mode setting and the separate
   Plasma Desktop shell remain unaccepted. The current xdg-user-dirs 0.20
   cross package passes private-profile checks on CM5.
+  [Desktop package preparation](probes/plasma-mobile/toolkit/cross/desktop-package-set.md)
+  now includes the Activities service, current Xwayland/libei/basu providers,
+  cross XKB paths and repaired native QtDBus generators for KWin's property XML.
+  Package-set and session-runner host checks pass. Full-session execution on
+  CM5 remains a separate gate, including normal startup and logout.
   [Current desktop providers](probes/plasma-mobile/toolkit/cross/desktop-providers.md)
   add an SDL3 controller adaptation with eight CM5 cases and a UBSan repeat.
   Core event sounds retain their backends without mandatory GTK. Fcitx5/Qt6

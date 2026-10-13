@@ -1,0 +1,21 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Keep the munit subproject private to the compiled test executables.
+Upstream marks its subproject library for installation. Use a static test
+library and do not add an unrelated runtime library to the libei package.
+
+--- subprojects/munit/meson.build.orig	2020-05-12 03:14:50.000000000 +0000
++++ subprojects/munit/meson.build
+@@ -9,9 +9,9 @@ cc  = meson.get_compiler('c')
+ 
+ root_include = include_directories('.')
+ 
+-munit = library('munit',
++munit = static_library('munit',
+     ['munit.c'],
+-    install: meson.is_subproject())
++    install: false)
+ 
+ if meson.is_subproject()
+   munit_dep = declare_dependency(

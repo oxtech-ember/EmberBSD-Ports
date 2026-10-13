@@ -10,11 +10,12 @@ RESUME=${RESUME:-0}
 : "${WAYLAND_SCANNER:?Set the matching native Wayland scanner}"
 : "${HOST_LLVM_BUILD:?Set the completed native LLVM 23.1.3 build}"
 : "${HOST_CLANG_BUILD:?Set the completed native Clang 23.1.3 build}"
+: "${HOST_DBUS_PREFIX:?Set the native D-Bus prefix with headers, library and DBus1 CMake exports}"
 HOST_CC=${HOST_CC:-/usr/bin/cc}
 HOST_CXX=${HOST_CXX:-/usr/bin/c++}
 JOBS=${JOBS:-2}
 case "$JOBS" in ''|*[!0-9]*|0) echo 'JOBS must be positive' >&2; exit 2;; esac
-for path in "$distfiles" "$work" "$CMAKE" "$NINJA" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_LLVM_BUILD" "$HOST_CLANG_BUILD"; do
+for path in "$distfiles" "$work" "$CMAKE" "$NINJA" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_LLVM_BUILD" "$HOST_CLANG_BUILD" "$HOST_DBUS_PREFIX"; do
     case "$path" in /*) ;; *) echo 'Absolute paths required' >&2; exit 2;; esac
     case "$path" in *[!a-zA-Z0-9_./+-]*) echo 'Use paths without shell metacharacters' >&2; exit 2;; esac
 done
@@ -26,11 +27,21 @@ done
 [ -s "$HOST_CLANG_BUILD/lib/libclang.dylib" ]
 [ -s "$HOST_CLANG_BUILD/lib/libclangHandleCXX.a" ]
 [ -f "$HOST_CLANG_BUILD/lib/cmake/clang/ClangConfig.cmake" ]
+# Complex D-Bus type signatures require the real native libdbus marshaller.
+# Lazy loading can silently emit empty XML types on hosts without a default path.
+case "$(uname -s)" in
+Darwin) host_dbus_library=$HOST_DBUS_PREFIX/lib/libdbus-1.dylib ;;
+*) host_dbus_library=$HOST_DBUS_PREFIX/lib/libdbus-1.so ;;
+esac
+host_dbus_inputs="$HOST_DBUS_PREFIX/lib/cmake/DBus1/DBus1Config.cmake $HOST_DBUS_PREFIX/lib/cmake/DBus1/DBus1ConfigVersion.cmake $HOST_DBUS_PREFIX/lib/pkgconfig/dbus-1.pc $host_dbus_library $HOST_DBUS_PREFIX/include/dbus-1.0/dbus/dbus.h $HOST_DBUS_PREFIX/lib/dbus-1.0/include/dbus/dbus-arch-deps.h"
+for input in $host_dbus_inputs; do
+    [ -s "$input" ] || { echo "Missing native D-Bus input: $input" >&2; exit 2; }
+done
 if [ -e "$work" ] || [ -L "$work" ]; then
     [ "$RESUME" = 1 ] && [ ! -L "$work" ] && [ -f "$work/inputs.txt" ] || {
         echo 'Output already exists; resume only a build created by this recipe' >&2; exit 2;
     }
-    for tool in "$CMAKE" "$NINJA" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX"; do
+    for tool in "$CMAKE" "$NINJA" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" $host_dbus_inputs; do
         shasum -a 256 "$tool" | grep -F -x -f - "$work/inputs.txt" >/dev/null || {
             echo "Host input changed; use a new work directory: $tool" >&2; exit 2;
         }
@@ -54,7 +65,7 @@ ln -sf "$NINJA" "$work/bin/ninja"
 PATH="$work/bin:$PATH"
 export PATH
 {
-    shasum -a 256 "$0" "$toolkit/sources.tsv" "$CMAKE" "$NINJA" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX"
+    shasum -a 256 "$0" "$toolkit/sources.tsv" "$CMAKE" "$NINJA" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" $host_dbus_inputs
     "$CMAKE" --version
     "$NINJA" --version
     shasum -a 256 "$HOST_LLVM_BUILD/lib/cmake/llvm/LLVMConfig.cmake" \
@@ -82,8 +93,19 @@ for module in $modules; do
             -developer-build -opensource -confirm-license -release \
             -nomake tests -nomake examples -- \
             -DCMAKE_MAKE_PROGRAM="$NINJA" -DQT_FIND_ALL_PACKAGES_ALWAYS=ON \
+            -UQT_INTERNAL_PREVIOUSLY_FOUND_PACKAGES \
+            -UQT_INTERNAL_PREVIOUSLY_SEARCHED_PACKAGES \
+            -DDBus1_DIR="$HOST_DBUS_PREFIX/lib/cmake/DBus1" \
+            -DDBus1_LIBRARY:FILEPATH="$host_dbus_library" \
+            -DDBus1_INCLUDE_DIR:PATH="$HOST_DBUS_PREFIX/include/dbus-1.0" \
+            -DDBus1_ARCH_INCLUDE_DIR:PATH="$HOST_DBUS_PREFIX/lib/dbus-1.0/include" \
+            -DFEATURE_dbus=ON -DFEATURE_dbus_linked=ON \
             -DWaylandScanner_EXECUTABLE="$WAYLAND_SCANNER" \
             -DFEATURE_qtwaylandscanner=ON) > "$work/$module/configure.log" 2>&1
+        # Qt can reset a requested feature when a dependency search was cached.
+        # Reject that result before an XML generator can emit empty signatures.
+        grep -q -x 'FEATURE_dbus_linked:BOOL=ON' "$work/$module/CMakeCache.txt"
+        grep -q -x 'QT_FEATURE_dbus_linked:INTERNAL=ON' "$work/$module/CMakeCache.txt"
         # Other modules' host generators link these libraries. Their metadata
         # alone is insufficient when the modules are built independently.
         "$CMAKE" --build "$work/$module" --parallel "$JOBS" \
@@ -120,7 +142,7 @@ done
 for tool in moc rcc uic qtwaylandscanner qmlcachegen qmltyperegistrar; do
     [ -x "$work/qtbase/libexec/$tool" ] || { echo "Missing host tool: $tool" >&2; exit 1; }
 done
-for tool in qsb lrelease svgtoqml qdoc; do
+for tool in qsb lrelease svgtoqml qdoc qdbuscpp2xml qdbusxml2cpp; do
     [ -x "$work/qtbase/bin/$tool" ] || { echo "Missing host tool: $tool" >&2; exit 1; }
 done
 (cd "$work/qtbase" && find bin libexec plugins/assetimporters -type f -exec shasum -a 256 {} \;) > "$work/tools.sha256"

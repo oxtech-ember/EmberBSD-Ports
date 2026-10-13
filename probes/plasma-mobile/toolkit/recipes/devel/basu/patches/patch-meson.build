@@ -1,0 +1,22 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Preserve ELF error-map registration with the NetBSD GCC and LLD toolchain.
+This target does not emit SHF_GNU_RETAIN for the upstream retain attribute.
+A live __start_BUS_ERROR_MAP reference must retain the registered tables.
+Keep section garbage collection for unrelated code and data.
+
+--- meson.build.orig	2026-10-13 00:00:00.000000000 +0000
++++ meson.build
+@@ -104,6 +104,11 @@ if get_option('buildtype') != 'debug'
+         ]
+ 
+         possible_link_flags += '-Wl,--gc-sections'
++        if host_machine.system() == 'netbsd'
++                # GCC's NetBSD target does not mark BUS_ERROR_MAP with
++                # SHF_GNU_RETAIN. Preserve its start/stop registration.
++                possible_link_flags += '-Wl,-z,nostart-stop-gc'
++        endif
+ endif
+ 
+ add_project_arguments(cc.get_supported_arguments(possible_cc_flags), language : 'c')

@@ -149,3 +149,8 @@ print/poppler	poppler-26.06.0.tar.xz	4cb4e5a3dc8cb5eec751c8a23c8ba19f61f96dedc0c
 textproc/catdoc	catdoc-0.95.tar.gz	514a84180352b6bf367c1d2499819dfa82b60d8c45777432fa643a5ed7d80796	http://ftp.wagner.pp.ru/pub/catdoc/catdoc-0.95.tar.gz
 textproc/ebook-tools	ebook-tools-0.2.2.tar.gz	cbc35996e911144fa62925366ad6a6212d6af2588f1e39075954973bbee627ae	https://downloads.sourceforge.net/project/ebook-tools/ebook-tools/0.2.2/ebook-tools-0.2.2.tar.gz
 x11/kirigami-addons	kirigami-addons-1.10.0.tar.xz	c98f92bf7c452e12f6dc403404215413db3959fe904ad830ead0db6bb09b3d11	https://download.kde.org/stable/kirigami-addons/kirigami-addons-1.10.0.tar.xz
+x11/plasma6-kactivitymanagerd	kactivitymanagerd-6.7.5.tar.xz	6e549b0dacd28797153696e4ee27f8e19aee6f3711f94ee379b8fae8ecfd937a	https://download.kde.org/stable/plasma/6.7.5/kactivitymanagerd-6.7.5.tar.xz
+wayland/xwayland	xwayland-24.1.14.tar.xz	4eb6b98d678299a4b96138d886345b294130695760345ef84596225a8224078a	https://xorg.freedesktop.org/archive/individual/xserver/xwayland-24.1.14.tar.xz
+x11/libei	libei-1.6.0.tar.bz2	5ed6078fa63afd554cc04b1001675615da0ed8fe23b80492ab63403140b5a830	https://gitlab.freedesktop.org/libinput/libei/-/archive/1.6.0/libei-1.6.0.tar.bz2
+x11/libei	munit-fbbdf1467eb0d04a6ee465def2e529e4c87f2118.tar.gz	d0c8bf80b9804d4df5301bd428702352fe7e14f84f22027c3a2c084a0d9f69a7	https://github.com/nemequ/munit/archive/fbbdf1467eb0d04a6ee465def2e529e4c87f2118.tar.gz
+devel/basu	basu-0.2.1.tar.gz	43b327073d1ac7bc6cbc0d3dfff729348fc970dfff0551ad40e366332e990204	https://git.sr.ht/~emersion/basu/archive/v0.2.1.tar.gz

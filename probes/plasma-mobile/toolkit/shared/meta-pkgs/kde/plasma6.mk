@@ -15,7 +15,7 @@ _EMBERBSD_PLASMA6_RECIPES= devel/plasma6-kwayland time/plasma6-knighttime \
     x11/plasma6-plasma-activities x11/plasma6-kwin sysutils/plasma6-milou \
     sysutils/plasma6-libksysguard devel/plasma6-plasma5support \
     x11/plasma6-plasma-activities-stats x11/plasma6-plasma-workspace \
-    x11/plasma6-plasma-desktop
+    x11/plasma6-plasma-desktop x11/plasma6-kactivitymanagerd
 .if empty(_EMBERBSD_PLASMA6_RECIPES:M${PKGPATH})
 PKG_FAIL_REASON+= "Plasma 6 recipe ${PKGPATH} is not prepared in the common toolkit"
 .endif

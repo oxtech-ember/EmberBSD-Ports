@@ -1,0 +1,11 @@
+$NetBSD: distinfo,v 1.2 2025/05/05 09:28:04 tnn Exp $
+
+BLAKE2s (libei-1.6.0.tar.bz2) = 1dd0816544b6110117a7b4d1aacc6139757560cf24a416a0df9c128936fb5597
+SHA512 (libei-1.6.0.tar.bz2) = 9d7c1eb74438ac6fe031d329af922ca019406a14a0a5ef4a0ec6d743617cc9b91aeb5306be04e1afe6daf88e731ed8a38c808aa0280d683cb596a2644aec29d0
+Size (libei-1.6.0.tar.bz2) = 194749 bytes
+BLAKE2s (munit-fbbdf1467eb0d04a6ee465def2e529e4c87f2118.tar.gz) = f7c682b6bebf5aed60d01d63aa78514ac03be03b4af57526506cbc0dd1ee2fd7
+SHA512 (munit-fbbdf1467eb0d04a6ee465def2e529e4c87f2118.tar.gz) = 26b5599fd12be627a692823ebf496fa446be7ed04a1233fb42e0667c05109b0f804f76646e289ac660fc815baf45f77ec8caf0ff2ea7fb0b4f87f0038a2b971c
+Size (munit-fbbdf1467eb0d04a6ee465def2e529e4c87f2118.tar.gz) = 27724 bytes
+SHA1 (patch-subprojects_munit_meson.build) = 26e8c4c080976b9a69e4472868adc6608f76624c
+SHA1 (patch-test_meson.build) = f39d75bd2ffa0d94e9afbcbf16a0036897b8f508
+SHA1 (patch-src_brei-shared.c) = e5d65b7c6ef4f53083e76f4b15fa26e9148d27ad

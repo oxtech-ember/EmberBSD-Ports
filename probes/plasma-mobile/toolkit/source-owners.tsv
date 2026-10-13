@@ -6,3 +6,4 @@ devel/boost-libs	meta-pkgs/boost	package	-
 meta-pkgs/boost	meta-pkgs/boost	meta	-
 inputmethod/fcitx5	inputmethod/fcitx5	package	fcitx5-5.1.23.tar.zst
 textproc/nlohmann-json	textproc/nlohmann-json	package	nlohmann-json-3.12.0.tar.gz
+x11/libei	x11/libei	package	libei-1.6.0.tar.bz2
