@@ -2,8 +2,9 @@
 
 Builds a CPU-generated compute submission for the PowerVR BXM GPU
 (BVNC `36.56.104.183`) from Mesa 26.2.4 producer functions. The image is
-accepted by the EmberBSD diagnostic ladder (stages 18-21) on Orange Pi
-Zero 3W; see `ember/boot/a733-gpu-fwcompute.md` in the EmberBSD tree.
+intended for the EmberBSD diagnostic ladder (stages 18–21) on Orange Pi Zero 3W.
+The current version-3 output requires physical acceptance.
+See the [OS compute check](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/a733-gpu-fwcompute.md).
 
 ## Layout
 
@@ -40,12 +41,23 @@ Its binaries cannot be combined with the fixed host layout.
 
 ## Outputs
 
-`general.bin`, `pds.bin`, `usc.bin`, `static-state.bin` plus
+`general.bin`, `pds.bin`, `usc.bin`, `static-state.bin`, `border.bin`, and `command.bin` plus
 `manifest.json` with hashes, resource VAs, and sizes. The EmberBSD-side
 packer (`ember/tools/a733-gpu-compute-firmware.c`) wraps them into the
-version-2 firmware file `a733-compute.bin` with the nine-resource table
+version-3 firmware file `a733-compute.bin` with the ten-resource table
 and the payload digest; install it under `/libdata/firmware/powervr/`
 on the board.
+
+The command uses unchanged `pvr_submit_info_stream_init` and flag producers.
+It contains a 44-byte KMD stream and four bytes of DRM compute flags.
+Resume PDS allocation fields come from the generated load program and context.
+The context-state address binds to the writable resume resource.
+The full border table has 64 entries. Mesa fills the six builtin colors.
+The CPU adapter keeps unallocated custom entries zeroed.
+Its read-only GPU address is `0x8000010000`.
+The adapter has no DRM allocation, mapping, or submission path.
+Each output records its actual size. Shader sizes must not be inherited from an older build.
+This format requires the OS version-3 packer and parser.
 
 ## Validation scope
 

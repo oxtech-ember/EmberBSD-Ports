@@ -38,7 +38,7 @@ output, status = Open3.capture2e(*command, chdir: out)
 File.write(File.join(out, 'run.log'), output)
 abort "producer failed (#{status})" unless status.success?
 producer = JSON.parse(File.read(File.join(out, 'producer.json')))
-files = %w[general.bin pds.bin usc.bin static-state.bin]
+files = %w[general.bin pds.bin usc.bin static-state.bin border.bin command.bin]
 manifest = {
   schema: 'ember-a733-compute-image-v1',
   status: 'cpu-generated-not-hardware-validated',
@@ -50,6 +50,7 @@ manifest = {
   source_hashes: JSON.parse(File.read(File.join(build, 'source-hashes.json'))),
   build: JSON.parse(File.read(File.join(build, 'build-manifest.json'))),
   outputs: files.to_h { |name| [name, {size: File.size(File.join(out, name)), sha256: Digest::SHA256.file(File.join(out, name)).hexdigest}] },
+  command: {image: 'command.bin', stream_bytes: producer.fetch('command_stream_bytes'), drm_flags: producer.fetch('command_drm_flags')},
   resources: [
     {name:'scratch', image:'general.bin', offset:0, size:4, gpu_va:'0x8000000000', alignment:4096, access:'read-write', slc_bypass:true},
     {name:'resume', image:'general.bin', offset:4096, size:512, gpu_va:'0x8000001000', alignment:64, access:'read-write', slc_bypass:true},
@@ -59,13 +60,14 @@ manifest = {
     {name:'context-state-a', image:'pds.bin', offset:0, size:16432, gpu_va:'0xda00000000', alignment:64, access:'read-write', slc_bypass:false},
     {name:'context-state-b', image:'pds.bin', offset:20480, size:16432, gpu_va:'0xda00005000', alignment:64, access:'read-write', slc_bypass:false},
     {name:'pds-programs', image:'pds.bin', offset:40960, size:File.size(File.join(out,'pds.bin'))-40960, gpu_va:'0xda0000a000', alignment:64, access:'read-only', slc_bypass:false},
+    {name:'border-colors', image:'border.bin', offset:0, size:producer.fetch('border_bytes'), gpu_va:producer.fetch('border_va'), alignment:64, access:'read-only', slc_bypass:false},
     {name:'usc-programs', image:'usc.bin', offset:0, size:File.size(File.join(out,'usc.bin')), gpu_va:'0xe000000000', alignment:64, access:'read-only', slc_bypass:false}
   ],
   probe: proof.fetch('probe'),
   lifetime: 'Retain all resources until the GPU owner permits release. Coherent CPU memory does not imply GPU SLC bypass.',
   limitations: ['No DMA, MMU, firmware queue, DRM, or hardware execution.',
                 'The dispatch pads to 32 lanes. The compiler SPIR-V proves only instance zero reaches one four-byte store. GPU execution remains unverified.',
-                'The firmware command and border-color table are not emitted by this bounded generator.']
+                'The emitted command stream uses the exact pinned Mesa profile. Other feature sets and command extensions are rejected.']
 }
 manifest[:resources].each do |r|
   image_size = manifest[:outputs].fetch(r[:image])[:size]

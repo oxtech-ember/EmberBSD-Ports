@@ -17,6 +17,11 @@
 
 #include "pvr_device_info.h"
 #include "pvr_types.h"
+#include "pvr_limits.h"
+#include "util/bitset.h"
+#include "util/format/u_format.h"
+#include "util/log.h"
+#include "vk_format.h"
 #include "pvr_pds.h"
 #include "hwdef/rogue_hw_utils.h"
 #include "patched-pvr_iface.h"
@@ -24,6 +29,7 @@
 #define __pvr_address_type pvr_dev_addr_t
 #define __pvr_get_address(a) ((a).addr)
 #define __pvr_make_address(a) PVR_DEV_ADDR(a)
+#include "csbgen/rogue/kmd_stream.h"
 #include "csbgen/rogue/cr.h"
 #include "csbgen/rogue/pds.h"
 #include "csbgen/rogue/vdm.h"
@@ -49,6 +55,10 @@
         *dst = csb_alloc((csb), pvr_cmd_length(cmd)); dst != NULL; \
         pvr_cmd_pack(cmd)(dst, &name), dst = NULL)
 
+#define PVR_DW_TO_BYTES(n) ((n) * 4U)
+#define _BITULL(n) (UINT64_C(1) << (n))
+#define PVR_BO_ALLOC_FLAG_CPU_MAPPED 1U
+#define BORDER_VA UINT64_C(0x8000010000)
 #define GENERAL_BASE UINT64_C(0x8000000000)
 #define PDS_BASE UINT64_C(0xda00000000)
 /* DOUTU execution offsets are 30-bit fields: the USC code heap must
@@ -68,6 +78,14 @@ struct region {
 	uint64_t base;
 };
 struct pvr_reset_cmd { unsigned unused; };
+/* CPU-only BO adapter for the unchanged border and command producers. */
+struct pvr_winsys_bo { void *map; };
+struct pvr_winsys_vma { pvr_dev_addr_t dev_addr; };
+struct pvr_bo {
+	struct pvr_winsys_bo *bo;
+	struct pvr_winsys_vma *vma;
+};
+
 #include "mesa-types.h"
 #include "mesa-precomp.h"
 
@@ -85,12 +103,17 @@ struct pvr_device {
 		struct pvr_pds_upload pds, sw_compute_barrier_pds;
 	} idfwdf_state;
 	struct region pds;
+	struct { void *general_heap; } heaps;
+	struct pvr_border_color_table *border_color_table;
+	void *border_bytes;
+	size_t border_size;
 };
-struct pvr_csb { uint32_t *words; size_t count, capacity; };
+struct pvr_csb { uint32_t *words; size_t count, capacity; pvr_dev_addr_t start; };
 struct pvr_sub_cmd_compute {
 	struct pvr_csb control_stream;
 	uint32_t num_shared_regs;
 	bool pds_sw_barrier_requires_clearing;
+	bool uses_atomic_ops, uses_barrier;
 };
 struct pvr_cmd_buffer_state {
 	struct { struct pvr_sub_cmd_compute compute; } *current_sub_cmd;
@@ -140,6 +163,55 @@ static void *vk_realloc(void *alloc, void *ptr, size_t size,
 static void vk_free(void *alloc, void *ptr) { (void)alloc; free(ptr); }
 static void pvr_bo_suballoc_free(struct pvr_suballoc_bo *bo)
 { if (bo != NULL) fail("unexpected GPU allocation in CPU adapter"); }
+
+static void *
+vk_zalloc(void *alloc, size_t size, size_t alignment, int scope)
+{
+	return vk_alloc(alloc, size, alignment, scope);
+}
+
+static VkResult
+pvr_bo_alloc(struct pvr_device *device, void *heap, uint64_t size,
+    uint64_t alignment, uint32_t flags, struct pvr_bo **out)
+{
+	struct pvr_bo *bo;
+
+	if (heap != device->heaps.general_heap || device->border_bytes != NULL ||
+	    size == 0 || size > 512 * 1024 || alignment != 64 ||
+	    flags != PVR_BO_ALLOC_FLAG_CPU_MAPPED)
+		fail("unsupported border allocation");
+	bo = calloc(1, sizeof(*bo));
+	if (bo == NULL)
+		return VK_ERROR_OUT_OF_HOST_MEMORY;
+	bo->bo = calloc(1, sizeof(*bo->bo));
+	bo->vma = calloc(1, sizeof(*bo->vma));
+	device->border_bytes = calloc(1, (size_t)size);
+	if (bo->bo == NULL || bo->vma == NULL || device->border_bytes == NULL)
+		fail("cannot allocate CPU border table");
+	bo->bo->map = device->border_bytes;
+	bo->vma->dev_addr = PVR_DEV_ADDR(BORDER_VA);
+	device->border_size = (size_t)size;
+	*out = bo;
+	return VK_SUCCESS;
+}
+
+static void
+pvr_bo_cpu_unmap(struct pvr_device *device, struct pvr_bo *bo)
+{
+	if (bo->bo->map != device->border_bytes)
+		fail("unexpected border mapping");
+	/* The CPU image owner retains the allocation after the producer unmaps it. */
+	bo->bo->map = NULL;
+}
+
+static pvr_dev_addr_t
+pvr_csb_get_start_address(const struct pvr_csb *csb)
+{
+	return csb->start;
+}
+
+const uint8_t *pvr_get_format_swizzle_for_tpu(const struct util_format_description *);
+#include "mesa-border.h"
 
 /* pvr_device.c:pvr_gpu_upload_pds layout, with a bounded CPU arena. */
 static VkResult
@@ -288,7 +360,11 @@ main(int argc, char **argv)
 	struct region general = { .base = GENERAL_BASE };
 	struct region usc = { .base = USC_BASE };
 	struct shader shaders[4] = { 0 };
+	struct pvr_winsys_compute_submit_info submit = { 0 };
+	struct pvr_winsys_vma resume_vma = { .dev_addr = PVR_DEV_ADDR(GENERAL_BASE + RESUME_OFFSET) };
+	struct pvr_bo resume = { .vma = &resume_vma };
 	uint64_t static_words[7];
+	uint32_t command[12], command_flags;
 	uint32_t groups[3] = { 1, 1, 1 };
 	FILE *manifest;
 
@@ -300,6 +376,8 @@ main(int argc, char **argv)
 	    PVR_BVNC_PACK(36, 56, 104, 183)) != 0)
 		fail("exact BVNC is absent from Mesa");
 	device_info = physical.dev_info;
+	context.device = &device;
+	context.ctx_switch.compute_state_bo = &resume;
 	physical.dev_runtime_info.core_count = 1;
 	physical.dev_runtime_info.num_phantoms = 1;
 	physical.dev_runtime_info.cdm_max_local_mem_size_regs =
@@ -320,6 +398,7 @@ main(int argc, char **argv)
 	if (shaders[0].vtxins != 0 || shaders[0].coeffs != 0 ||
 	    shaders[0].shareds != 0)
 		fail("probe inputs require an explicit supported metadata mapping");
+	require_success(pvr_arch_border_color_table_init(&device));
 	pack_idfwdf(&device, (uint32_t *)(general.bytes + SHARED_OFFSET));
 	device.idfwdf_state.usc_shareds = _PVR_IDFWDF_DATA_COUNT;
 	require_success(pvr_pds_idfwdf_programs_create_and_upload(&device,
@@ -367,7 +446,8 @@ main(int argc, char **argv)
 	pipeline.unified_store_regs_count = shaders[0].vtxins;
 	pipeline.workgroup_size = (VkExtent3D){ 1, 1, 1 };
 	compute.control_stream = (struct pvr_csb){
-	    .words = (uint32_t *)(general.bytes + STREAM_OFFSET), .capacity = 1024 };
+	    .words = (uint32_t *)(general.bytes + STREAM_OFFSET), .capacity = 1024,
+	    .start = PVR_DEV_ADDR(GENERAL_BASE + STREAM_OFFSET) };
 	cmd.state.current_sub_cmd = calloc(1, sizeof(*cmd.state.current_sub_cmd));
 	if (cmd.state.current_sub_cmd == NULL)
 		fail("cannot allocate command state");
@@ -376,6 +456,17 @@ main(int argc, char **argv)
 	pvr_arch_compute_generate_fence(&cmd, &compute, false);
 	pvr_arch_compute_generate_fence(&cmd, &compute, true);
 	pvr_csb_emit(&compute.control_stream, CDMCTRL_STREAM_TERMINATE, terminate) {}
+	/* Export unchanged Mesa command fields after the CDM producer sets shareds. */
+	pvr_submit_info_stream_init(&context, &compute, &submit);
+	pvr_submit_info_flags_init(&physical.dev_info, &compute, &submit.flags);
+	command_flags = pvr_winsys_compute_flags_to_drm(&submit.flags);
+	if (submit.fw_stream_len != sizeof(command) - sizeof(command_flags) ||
+	    PVR_HAS_QUIRK(&physical.dev_info, 49927))
+		fail("unsupported firmware command extension");
+	memcpy(command, submit.fw_stream, submit.fw_stream_len);
+	command[11] = command_flags;
+	write_file("command.bin", command, sizeof(command));
+	write_file("border.bin", device.border_bytes, device.border_size);
 	general.used = STREAM_OFFSET + compute.control_stream.count * 4;
 	write_file("general.bin", general.bytes, general.used);
 	write_file("pds.bin", device.pds.bytes, device.pds.used);
@@ -403,8 +494,21 @@ main(int argc, char **argv)
 		    shaders[i].dwords, i == 3 ? "" : ",");
 		free(shaders[i].raw);
 	}
-	if (fprintf(manifest, "  ]\n}\n") < 0 || fclose(manifest) != 0)
+	if (fprintf(manifest, "  ],\n  \"border_va\": \"0x%" PRIx64 "\",\n"
+	    "  \"border_bytes\": %zu,\n  \"command_bytes\": %zu,\n"
+	    "  \"command_stream_bytes\": %u,\n  \"command_drm_flags\": %u,\n"
+	    "  \"resume_load_data_dwords\": %u,\n  \"resume_unified_size\": %u,\n"
+	    "  \"command_shared_registers\": %u\n}\n",
+	    BORDER_VA, device.border_size, sizeof(command), submit.fw_stream_len,
+	    command_flags, context.ctx_switch.sr[0].pds.load_program.data_size,
+	    context.ctx_switch.sr[0].usc.unified_size, compute.num_shared_regs) < 0 ||
+	    fclose(manifest) != 0)
 		fail("cannot complete producer manifest");
+	free(device.border_color_table->table->bo);
+	free(device.border_color_table->table->vma);
+	free(device.border_color_table->table);
+	free(device.border_color_table);
+	free(device.border_bytes);
 	free(cmd.state.current_sub_cmd);
 	free(general.bytes);
 	free(device.pds.bytes);

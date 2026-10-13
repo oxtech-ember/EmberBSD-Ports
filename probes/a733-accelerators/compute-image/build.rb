@@ -34,7 +34,7 @@ args = args.each_with_object([]) do |arg, a|
 end
 # All assertions stay enabled. Upstream warning options are unchanged.
 args += ['-fsanitize=address,undefined', '-fno-omit-frame-pointer', '-DPVR_BUILD_ARCH_ROGUE',
-         '-I'+out, '-I'+script, '-I'+File.join(src, 'src/imagination/vulkan'),
+         '-I'+out, '-I'+script, '-I'+File.join(src, 'src/vulkan/util'), '-I'+File.join(src, 'src/imagination/vulkan'),
          '-I'+File.join(src, 'src/imagination/vulkan/pds'),
          '-I'+File.join(src, 'src/imagination/vulkan/pds/pvr_pds_programs')]
 # Isolated patched host-header copy; shared Mesa source is never modified here.
@@ -64,7 +64,7 @@ manifest = {
   adapter_sha256: Digest::SHA256.file(File.join(script, 'generate.c')).hexdigest,
   extractor_sha256: Digest::SHA256.file(File.join(script, 'extract.rb')).hexdigest,
   generator_sha256: Digest::SHA256.file(File.join(out, 'generate')).hexdigest,
-  generated_headers: %w[cdm cr pds vdm lls texstate].to_h { |name| [name, Digest::SHA256.file(File.join(build,"src/imagination/csbgen/rogue/#{name}.h")).hexdigest] },
+  generated_headers: %w[cdm cr pds vdm lls texstate kmd_stream].to_h { |name| [name, Digest::SHA256.file(File.join(build,"src/imagination/csbgen/rogue/#{name}.h")).hexdigest] },
   patched_iface_sha256: Digest::SHA256.file(File.join(out, 'patched-pvr_iface.h')).hexdigest,
   libraries: libs.to_h { |name| [name, Digest::SHA256.file(File.join(build,name)).hexdigest] },
   host_compiler: cc,
