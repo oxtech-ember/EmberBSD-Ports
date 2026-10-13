@@ -28,6 +28,30 @@ Use the same Headers checkout for Tools and Translator. Build their static
 libraries and command-line tools into one isolated dependency prefix.
 Keep Translator assertions and SPIRV-Tools warnings enabled.
 
+The dependency builder applies [the linker fix](spirv-tools-2026.4-function-order.patch)
+to this exact SPIRV-Tools revision. It verifies the source hash and rejects
+unrelated source changes. The original linker puts declarations from later
+modules after earlier definitions. Such partial libraries fail `spirv-val`.
+The fix preserves declaration and definition order within their groups.
+It does not change function names, call targets, or linkage resolution.
+This AI-assisted downstream patch retains the upstream Apache-2.0 license.
+It has not been submitted to or accepted by SPIRV-Tools upstream.
+
+The builder runs the [real-tool regression](check-spirv-link-order.rb) before
+installing SPIRV-Tools. Run it separately with:
+
+```sh
+ruby check-spirv-link-order.rb "$TOOLS_BIN" "$NEW_TEST_OUTPUT"
+```
+
+The five cases cover both module orders, an import-only module, resolved
+imports, and definitions without imports. Every input and linked result
+passes `spirv-val`. The checks preserve function order and imported call
+targets. Use `--expect-invalid` only with the pinned unpatched tools to
+record the three causal validator failures. Rebuild Mesa's `mesa_clc`
+after replacing its static SPIRV-Tools libraries. Previously generated
+SPIR-V and compiler binaries do not acquire this fix automatically.
+
 Mesa uses upstream Python generators. The checked host uses Python 3.14.8,
 Meson 1.12.1, Ninja 1.13.2, CMake 4.4.4, lxml 6.1.3, and rnc2rng 2.7.0.
 Install missing generator modules in a local virtual environment. Do not omit

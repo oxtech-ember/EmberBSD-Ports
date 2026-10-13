@@ -5,6 +5,7 @@ if [ "$#" -ne 3 ]; then
     echo "usage: $0 WORK LLVM_SDK HOST_PREFIX" >&2
     exit 2
 fi
+here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 root=$1
 sdk=$2
 host=$3
@@ -20,7 +21,7 @@ check_source()
     [ -z "$(git -C "$root/src/$name" status --porcelain)" ]
 }
 check_source SPIRV-Headers 496543121ce6419f23d6fa5d7194ba66c36212d2
-check_source SPIRV-Tools ef96ed763b43b59b33b31b362f09a02b729fa1c9
+ruby "$here/apply-spirv-tools-patches.rb" "$root/src/SPIRV-Tools"
 check_source SPIRV-LLVM-Translator e65dde28ce8f12ef7245914fa2850260328669e4
 mkdir -p "$root/tmp" "$root/cache/lto"
 export TMPDIR="$root/tmp"
@@ -44,6 +45,9 @@ cmake -S "$root/src/SPIRV-Tools" -B "$root/build/spirv-tools" -G Ninja \
     -DSPIRV_SKIP_TESTS=ON -DSPIRV_SKIP_EXECUTABLES=OFF \
     -DBUILD_SHARED_LIBS=OFF -DSPIRV_WERROR=ON
 cmake --build "$root/build/spirv-tools" --parallel "${JOBS:-4}"
+# A new directory preserves earlier causal and acceptance receipts.
+order_test=$(mktemp -d "$root/build/link-order.XXXXXXXX")
+ruby "$here/check-spirv-link-order.rb" "$root/build/spirv-tools/tools" "$order_test/result"
 cmake --install "$root/build/spirv-tools"
 cmake -S "$root/src/SPIRV-LLVM-Translator" -B "$root/build/translator" -G Ninja \
     -DCMAKE_INSTALL_PREFIX="$root/prefix" \
