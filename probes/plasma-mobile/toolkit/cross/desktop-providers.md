@@ -84,4 +84,53 @@ A [real-source regression](../recipes/devel/uthash/tests/README.md) reproduces
 a null-member access in `HASH_SELECT`; the repaired header passes all 101
 upstream tests with ASan/UBSan on macOS arm64. Cppcheck reports 39 findings
 before and after, with no new finding. GCC and Clang path analysis retain
-the documented test-harness warnings. Target package and input acceptance remain separate.
+the documented test-harness warnings. Both target packages pass normal package checks.
+The XCB encoding test exits successfully on CM5; a complete XIM input session remains unaccepted.
+
+## KIO workers and input prerequisites
+
+The KIO Extras 26.08.0nb2 package includes MTP workers and audio thumbnails.
+On CM5, package tools check 1684 KIO entries and 28 libmtp entries.
+The three new plugins resolve their dynamic dependencies.
+This does not test a physical MTP device or generated thumbnails.
+Poppler keeps its GLib binding and introspection data; GLib does not require GTK.
+KDSoap and its discovery client have cross packages, but the SMB worker still
+needs a working Samba/talloc cross build. The first PipeWire recipe lacks
+an EmberBSD SPA event backend. Screencasting remains unavailable.
+
+The input dependency packages use UnitTest++ 2.0.0, nlohmann-json 3.12.0nb2
+and the current 2026.02.25 English Hunspell dictionary data.
+UnitTest++ passes all 264 upstream cases on CM5 under an ordinary user.
+Two unchanged upstream JSON iterator/access cases pass 295 assertions there.
+The JSON binary uses the installed common header package and GCC16 runtime.
+These runs are not the full JSON corpus or a memory-analysis result.
+
+[Groff 1.24.2](../../../../profiles/common-build-tools/recipes/textproc/groff/README.md)
+provides native HTML manual generation for Enchant cross builds.
+Its C23 prototype repair preserves the System V math-error contract.
+The recipe keeps manual pages and selects the native helper directory through
+pkgsrc's tool symlink. No obsolete Groff compiler mode is selected.
+
+Enchant 2.8.21nb1 preserves its Hunspell provider and generated HTML manuals.
+The [target test runner](../recipes/textproc/enchant2/README.md) reproduces the
+upstream test-library layout. It uses byte-identical production libraries.
+On CM5, the clean `7b73f5a` source and `06ec401` runner pass all 434 main tests
+in 52.10 seconds and all 25 Hunspell tests in 0.37 seconds.
+The provider test discovers the real module automatically; an empty run fails.
+The unchanged main executable first failed with an incomplete transferred
+fixture. Restoring the upstream library location fixed that harness error.
+Fatal GLib diagnostics remain enabled. These target runs are not memory-analysis passes.
+
+The shared gettext-tools recipe keeps target localization and `autopoint`'s
+XZ runtime dependency. Native `msgfmt`, `msgmerge` and XZ remain build tools.
+The focused checks pass all 14 Fcitx release catalogs and translated metadata.
+A complete Fcitx package and its Qt6 input session still require acceptance.
+
+XZ 5.8.4nb1 keeps the native configure shell separate from installed scripts.
+The [cross regression](../../../../profiles/common-build-tools/tests/xz-target-shell.sh)
+checks the real upstream macro, four templates and pkgsrc's interpreter check.
+All 14 target script names use `/bin/sh`; native discovery remains unchanged.
+A clean cross package from `ef30b38` passes every normal package check.
+On CM5, all 316 files check; compression, decoding, comparison and compressed
+text search pass under an ordinary user. Package SHA256:
+`3d9425d47be93018158ea6b7817f2118ac2186fd7552f33f64c8fc9cebf2beb4`.

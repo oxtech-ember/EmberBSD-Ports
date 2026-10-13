@@ -223,6 +223,9 @@ runtime behavior are validated.
   add an SDL3 controller adaptation with eight CM5 cases and a UBSan repeat.
   Core event sounds retain their backends without mandatory GTK. Fcitx5/Qt6
   source candidates replace the compulsory IBus dependency; target input remains unaccepted.
+  KIO MTP/audio plugins are installed and linked on CM5. Input prerequisites
+  pass 264 UnitTest++ cases and 295 JSON assertions. Enchant passes 434 main
+  and 25 Hunspell tests on CM5; full input acceptance remains pending.
 - [Media and OpenCV videoio](probes/media/README.md): FFmpeg 9.0.2,
   GStreamer 1.28.7 and OpenCV 5.0.0 pass installed file/video pipeline checks
   on AArch64, including both videoio backends, timestamps, seeking, lossless

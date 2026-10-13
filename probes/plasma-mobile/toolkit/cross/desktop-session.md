@@ -4,8 +4,8 @@ The full Wayland KWin 6.7.5 recipe uses the common Qt 6.12, Frameworks 6.31,
 GCC 16.2 and Mesa 26 / LLVM 23 stack. KWin's recipe and PLIST originate from
 pkgsrc-wip commit `60460008d0c770590e46fc229035b8e454472a80`; copyright and
 inherited patch authorship remain intact. Source URLs and SHA256 are recorded
-in [sources.tsv](../sources.tsv). This is still an integration candidate:
-a full accelerated KWin/Plasma session has not been accepted.
+in [sources.tsv](../sources.tsv). [KWin now passes OpenGL/V3D virtual-output acceptance on CM5](cm5-kwin.md).
+The full Plasma Desktop and physical HDMI session remain unaccepted.
 
 The full Aurorae, Breeze, libkscreen and kscreenlocker 6.7.5 packages pass
 normal package checks. KWin's KCMs, screen locker, decorations, global shortcuts
