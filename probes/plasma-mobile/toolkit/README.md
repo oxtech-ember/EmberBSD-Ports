@@ -69,6 +69,25 @@ Cross builds use the [cross workflow](cross/README.md). Native tools retain
 their host compiler; the cross caller selects parallelism. Package and consumer
 acceptance remains separate from source checks.
 
+## Current desktop providers
+
+The toolkit rejects GTK2, SDL 1 and SDL2 recipes. Port each consumer before
+adding it to this profile. The policy regression uses the production file:
+
+```sh
+BMAKE=/absolute/bmake sh tests/modern-providers.sh mk.conf /absolute/new-results
+```
+
+SDL3 3.4.18 is the current source candidate for the Plasma gamecontroller KCM.
+The original archive hash matches the official release. Native/cross metadata
+and patch application pass. A completed package and migrated KCM runtime must
+be accepted separately. Cross builds use the matching native Wayland scanner.
+D-Bus, common Mesa OpenGL, DRM, Wayland and X11 are selected by default.
+IBus is an explicit optional backend. PipeWire, sndio, libudev and io_uring retain
+the inherited recipe limits; this candidate does not claim those backends.
+The complete desktop closure is still being migrated. A policy check alone
+does not establish that every transitive provider is current.
+
 ## Provenance and patch decisions
 
 Original pkgsrc RCS identifiers, recipe ownership, upstream licences and
