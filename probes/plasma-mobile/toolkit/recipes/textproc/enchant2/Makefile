@@ -44,6 +44,8 @@ TEST_TARGET=		check
 PKG_FAIL_REASON+= "Set EMBERBSD_BUILD_GROFF to an absolute native groff executable"
 .endif
 TOOLS_PLATFORM.groff= ${EMBERBSD_BUILD_GROFF}
+# pkgsrc runs a symlink in .tools/bin. Preserve groff's sibling tools.
+MAKE_ENV+= GROFF_BIN_PATH=${EMBERBSD_BUILD_GROFF:H}
 .endif
 
 .include "options.mk"

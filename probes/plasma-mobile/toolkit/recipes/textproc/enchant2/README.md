@@ -17,3 +17,8 @@ For a Mac cross build, set `EMBERBSD_BUILD_GROFF` to a current native
 is the current GNU release as checked on 2026-10-13 at
 <https://ftp.gnu.org/gnu/groff/>. The native tool selection is AI-assisted
 EmberBSD work. It does not replace the target runtime libraries.
+
+The cross build sets `GROFF_BIN_PATH` to the native tool directory.
+pkgsrc executes groff through a symlink in `.tools/bin`; its subprocesses
+must still resolve to the same native `pre-grohtml`, `post-grohtml`, and
+`gsoelim` provider. A direct invocation alone does not test that wrapper path.
