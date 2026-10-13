@@ -25,3 +25,4 @@ SHA1 (patch-src_libsystemd_sd-bus_test-bus-objects.c) = ef83e5763f7b950ded429278
 SHA1 (patch-src_libsystemd_sd-bus_test-bus-server.c) = 515cb87965d54c35ec97fb125aed9ef056af711b
 SHA1 (patch-src_test_tests.c) = 6f29b5eea228b3ee6106135e8153e31cdbd21a40
 SHA1 (patch-meson.build) = c413d9514ea8feed2a6a8ea2e9e396e65e930f55
+SHA1 (patch-src_libsystemd_sd-bus_bus-error.c) = 3e247008fc5ab802403df19bc2a6da7a9774d0a9

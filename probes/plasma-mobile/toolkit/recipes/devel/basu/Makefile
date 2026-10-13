@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.1 2026/04/14 10:58:09 kikadf Exp $
 
 DISTNAME=	basu-0.2.1
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	devel
 MASTER_SITES=	https://git.sr.ht/~emersion/basu/archive/
 EXTRACT_SUFX=	.tar.gz

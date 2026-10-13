@@ -5,7 +5,7 @@ BUILDLINK_TREE+=	basu
 .if !defined(BASU_BUILDLINK3_MK)
 BASU_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.basu+=	basu>=0.2.1
+BUILDLINK_API_DEPENDS.basu+=	basu>=0.2.1nb2
 BUILDLINK_ABI_DEPENDS.basu+=	basu>=0.2.1
 BUILDLINK_PKGSRCDIR.basu?=	../../devel/basu
 

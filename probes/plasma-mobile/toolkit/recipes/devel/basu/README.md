@@ -64,3 +64,34 @@ The check reads the actual upstream link command from Ninja.
 The original command must fail on the missing map boundary.
 The corrected command must link and define both boundaries and the map table.
 This is target-ELF link evidence, not execution of the marshal test.
+
+## POSIX error-string handling
+
+The nb2 patch checks the POSIX `strerror_r` result before reading its string.
+A failed conversion leaves the existing error message and ownership unchanged.
+The existing ERANGE retry remains intact. The shared buildlink requires nb2.
+
+The regression extracts the two actual functions from the selected source tree.
+It uses the real allocation helpers and controls only the external libc result.
+Ten repaired cases cover constant and owned messages, conversion failure,
+ERANGE retry, a full buffer, success, and the native libc conversion.
+The macOS Clang 23.1.3 run passes ASan, UBSan, and enabled leak checks.
+This bounded native result does not establish target daemon or full-library behavior.
+
+```sh
+CC=/absolute/clang ruby tests/strerror.rb \
+    /absolute/upstream-basu /absolute/patched-basu /absolute/new-results
+```
+
+Source analysis used actual AArch64 compile arguments and target headers for
+`bus-error.c`, `bus-socket.c`, and `socket-util.c`.
+GCC 16.2 reports the NULL argument before the fix and no longer reports it after.
+Its inherited allocation-attribute warning and complex-path limits remain.
+Clang 23.1.3 accepts the repaired error unit without a finding.
+The adapted socket helper has one inherited dead-store finding at its descriptor reset.
+The unadapted Linux socket units cannot compile with the BSD target headers;
+that portion does not have a comparable successful baseline.
+Cppcheck 2.22 cannot parse the full ELF-map/GNU declarations in this configuration.
+These are explicit coverage limits, not a clean full-library audit.
+Ports owns the remaining analysis gaps and inherited diagnostics.
+Valgrind Memcheck was not run on macOS/AArch64 or EmberBSD/AArch64.
