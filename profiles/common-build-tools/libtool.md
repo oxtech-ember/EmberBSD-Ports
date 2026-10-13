@@ -37,6 +37,26 @@ it does not substitute for installed target execution.
 
 ## Host and target scripts
 
+The host `cross-libtool-base` dispatcher uses its configured cross prefix.
+Its `shlibtool` must call the adjacent target-configured `libtool`, not the
+native host `libtool`. The native `libtool-base` recipe retains its own prefix.
+
+Check both recipes with existing native and cross Libtool installations:
+
+```sh
+BMAKE=/absolute/host/bin/bmake \
+sh profiles/common-build-tools/tests/cross-shlibtool.sh \
+    /absolute/export /absolute/cross-mk.conf \
+    /absolute/export/cross/cross-libtool-base/Makefile \
+    /absolute/host /absolute/new-dispatch-check
+```
+
+This AArch64/NetBSD check runs the actual generation and installation targets
+in a private prefix. It compares executed `--config` results and rejects the
+original wrong-prefix dispatcher. It also checks the shared-only tag.
+It compiles no source and does not update any package database. The host cross
+package must still pass ordinary package checks before installation.
+
 Cross configure must execute on the Mac, but installed `libtool`,
 `libtoolize` and `shlibtool` must run on NetBSD. The scoped recipe converts
 configured host shell, sed, linker and compiler paths to target paths. It
