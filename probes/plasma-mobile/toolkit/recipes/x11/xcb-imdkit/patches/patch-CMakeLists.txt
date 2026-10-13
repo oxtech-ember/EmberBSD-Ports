@@ -1,0 +1,16 @@
+$NetBSD$
+
+Require the selected system uthash and use its discovered include directory.
+Do not silently fall back to the bundled uthash 1.8.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -13,7 +13,7 @@
+ include(uninstall)
+ 
+ if (USE_SYSTEM_UTHASH)
+-find_package(UTHash)
++find_package(UTHash REQUIRED)
+ endif()
+ 
+ if (NOT TARGET UTHash::UTHash)

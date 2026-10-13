@@ -77,3 +77,11 @@ The added CMake option retains the alternative IBus backend for other profiles.
 Source selection and a working native dictionary generator do not establish
 complete target packages, input-method activation or typed input in Plasma.
 Those checks remain part of the [CM5 desktop acceptance](cm5-kwin.md).
+
+The X11 input adapter uses xcb-imdkit 1.0.9 and the common uthash 2.4.0.
+The recipe rejects fallback to its bundled uthash 1.8.
+A [real-source regression](../recipes/devel/uthash/tests/README.md) reproduces
+a null-member access in `HASH_SELECT`; the repaired header passes all 101
+upstream tests with ASan/UBSan on macOS arm64. Cppcheck reports 39 findings
+before and after, with no new finding. GCC and Clang path analysis retain
+the documented test-harness warnings. Target package and input acceptance remain separate.

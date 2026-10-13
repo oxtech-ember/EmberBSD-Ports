@@ -1,0 +1,8 @@
+$NetBSD: distinfo,v 1.4 2024/02/10 08:55:26 ryoon Exp $
+
+BLAKE2s (xcb-imdkit-1.0.9.tar.zst) = 8c44ea1c3763fab66f2acd4218b3306153fc9cdbffd598e66985aa2a332b95bb
+SHA512 (xcb-imdkit-1.0.9.tar.zst) = b63e4698e4c6c918923e58f38aa096366025d960f362ef9c84d47cb3f4fc1e01f231342839552019ccf256b1de1e108bb395057ea2beb2d009c245954296b321
+Size (xcb-imdkit-1.0.9.tar.zst) = 580633 bytes
+
+SHA1 (patch-CMakeLists.txt) = 959f76f617775dc2f803db64ac75c2c12faef936
+SHA1 (patch-cmake_FindUTHash.cmake) = d800a7173f786aab14e603a882dcf15432b28ad7

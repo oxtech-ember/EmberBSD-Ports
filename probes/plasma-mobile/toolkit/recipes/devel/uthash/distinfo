@@ -1,0 +1,7 @@
+$NetBSD: distinfo,v 1.7 2021/10/26 10:20:07 nia Exp $
+
+BLAKE2s (uthash-2.4.0.tar.gz) = 8775b9a9134f2c8a5d26656b0449e651e4f0ed9b52b8cad681e8a57a7bbf0800
+SHA512 (uthash-2.4.0.tar.gz) = 57785095720b25a2146e80de7295f7828755030b0c8f4610607717235b79c5dc427a173b183186bf1226bfaf4ab9ceb9d05f48df3745119fb0c1731c45c595b7
+Size (uthash-2.4.0.tar.gz) = 195954 bytes
+
+SHA1 (patch-src_uthash.h) = 881e11f601feaed7a241cc2f691ecbdc51d4083c
