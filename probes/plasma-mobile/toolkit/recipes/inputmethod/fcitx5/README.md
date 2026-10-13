@@ -59,6 +59,25 @@ Use the existing Qt and KF6 host-tool paths from the toolkit workflow.
 The Qt plugin receives the target `/usr/pkg/qt6/plugins` installation path;
 a host qmake must not select the target installation directory.
 
+`msgfmt` and `msgmerge` are declared as build tools. CMake receives their
+pkgsrc-selected host paths. The target `gettext-lib` and `gettext-tools`
+dependencies remain: the core uses LibIntl, while the diagnostic and
+configuration shell scripts use the `gettext` command. The common
+gettext-tools cross recipe retains target `xz` for `autopoint`; a separate
+host `xz` compresses its infrastructure archive during the build.
+
+The focused check evaluates native and cross metadata. It then runs the
+upstream translation macros with the selected host tools. All 14 release
+catalogs, desktop translations and AppStream XML translations pass on Mac.
+This check builds no Fcitx C/C++ code and executes no target programs.
+
+```sh
+BMAKE=/absolute/native/bmake CMAKE=/absolute/native/cmake \
+    sh tests/gettext-tools.sh /absolute/exported-pkgsrc \
+    /absolute/cross-mk.conf /absolute/fcitx5-recipe \
+    /absolute/fcitx5-5.1.23 /absolute/new-results
+```
+
 Enchant and XCB IMdkit must be available in the current sysroot before the full
 build. Fcitx5 itself does not require GTK. Configtool's Frameworks chain must
 use the core libcanberra provider without its optional GTK adapters.

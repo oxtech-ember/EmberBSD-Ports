@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.32 2026/09/02 19:03:02 wiz Exp $
 
 DISTNAME=	fcitx5-5.1.23
+PKGREVISION=	1
 CATEGORIES=	inputmethod
 MASTER_SITES=	https://download.fcitx-im.org/fcitx5/fcitx5/
 EXTRACT_SUFX=	.tar.zst
@@ -27,13 +28,16 @@ SUBST_SED.fix-machine-id+=	-e 's,/var/lib/dbus/machine-id,${VARBASE}/lib/dbus/ma
 
 CONFLICTS+=	fcitx-[0-9]*
 
-USE_TOOLS+=		pkg-config
+USE_TOOLS+=		msgfmt msgmerge pkg-config
 DEPENDS+=		bash>=5.3:../../shells/bash
 USE_PKGLOCALEDIR=	yes
 USE_LANGUAGES=		c c++
 
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_BUILD_TYPE=Release
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+# FindGettext requires both host tools. Keep target LibIntl and shell gettext.
+CMAKE_CONFIGURE_ARGS+= -DGETTEXT_MSGFMT_EXECUTABLE:FILEPATH=${TOOLS_PATH.msgfmt:Q}
+CMAKE_CONFIGURE_ARGS+= -DGETTEXT_MSGMERGE_EXECUTABLE:FILEPATH=${TOOLS_PATH.msgmerge:Q}
 BUILD_DEFS+=		VARBASE
 
 USE_CXX_FEATURES+=	c++20

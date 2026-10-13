@@ -4,6 +4,7 @@ from the target sysroot instead of invoking the build host loader.
 Native ldd metadata and default host-tool selection remain unchanged.
 Explicit host CMake/msgfmt selection breaks bootstrap cycles; gettext links
 its direct XML dependency on Darwin. Cross Ninja executes native build tools.
+Cross gettext uses host xz during the build and retains target xz for autopoint.
 
 --- a/archivers/zstd/Makefile
 +++ b/archivers/zstd/Makefile
@@ -80,10 +81,24 @@ its direct XML dependency on Darwin. Cross Ninja executes native build tools.
  .include "../../devel/gettext/Makefile.common"
  
  PKGNAME=	${DISTNAME:S/-/-tools-/}
-+PKGREVISION=	1
++PKGREVISION=	2
  COMMENT=	Tools for providing messages in different languages
  
  DISTINFO_FILE=	${.CURDIR}/../../devel/gettext/distinfo
+@@ -10,7 +11,13 @@
+ PATCHDIR=	${.CURDIR}/../../devel/gettext/patches
+ 
+ USE_LANGUAGES=		c c++
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# Compress the archive on the host. Installed autopoint needs target xz.
++USE_TOOLS+=		xz
++DEPENDS+=		xz>=5.8.4:../../archivers/xz
++.else
+ USE_TOOLS+=		xz:run
++.endif
+ USE_PKGLOCALEDIR=	yes
+ CONFIGURE_ARGS+=	--disable-csharp
+ CONFIGURE_ARGS+=	--disable-java
 --- a/devel/gettext/distinfo
 +++ b/devel/gettext/distinfo
 @@ -12,4 +12,6 @@
