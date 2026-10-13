@@ -69,6 +69,15 @@ GMP 6.3.0's configure probes require pre-C23 empty-parameter-list semantics.
 This keeps the selected host compiler and all upstream tests. The input record
 includes compiler versions/triplet, C/C++ flags and source/library hashes.
 
+On macOS, set `SDKROOT=$(xcrun --show-sdk-path)` when the selected host GCC
+cannot locate the system library. The host GMP suite uses a
+[type-correct variadic test adaptation](patches/README.md): `t-rand` must pass
+`unsigned long` to `gmp_randinit`, as required by the upstream API. The original
+GCC16.2/Darwin run fails; the same test with correct argument types passes
+against the unchanged library. The helper pins the patch and keeps the full
+upstream suites mandatory. This repair does not establish a compiler or
+target build result by itself.
+
 GMP 6.2.1 uses the reserved Darwin `x18` register in ARM64 assembly. During a
 LiteRT build this caused intermittent compiler crashes in GMP/MPFR constant
 evaluation. The compiler's attempt to print a backtrace then failed in Apple
