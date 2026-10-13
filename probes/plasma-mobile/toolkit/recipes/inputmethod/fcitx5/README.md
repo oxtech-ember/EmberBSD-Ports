@@ -156,3 +156,33 @@ The [runtime test payload](tests/runtime/README.md) retains all 51 registered up
 It uses these fixture roots and installed production libraries.
 Its source, inventory and rejection checks pass on the build host.
 A complete target run remains a separate acceptance step.
+
+## Library file-data regression
+
+The inherited `Library::findData()` file path advanced a null search result.
+It then called the parser and reported success when the signature was absent.
+The patch returns false without calling the parser and retains the common
+`munmap` path. The existing SunOS namespace guards remain.
+
+Run the separate regression against a prepared native Utils build:
+
+```sh
+sh tests/library-find-data.sh /absolute/fcitx5-5.1.23 \
+    /absolute/native-build /absolute/fcitx5-recipe /absolute/new-results
+```
+
+The script uses the build's compilation database, compiler and static library.
+It rebuilds only the original and patched Library translation units and the
+regression. Use the matching native build again for an ASan/UBSan run.
+Do not mix an instrumented library with a different compiler's sanitizer runtime.
+
+Native and ASan/UBSan runs pass on macOS. The original source fails both runs.
+The cases cover a file signature, a loaded symbol, and two missing signatures:
+a short file and a file longer than the signature. No target run is claimed.
+
+Scoped Clang 23 analysis covers `library.cpp`, `isocodes.cpp` and `xkbrules.cpp`
+with the actual GCC16/AArch64 build configuration and target headers.
+It reports no diagnostics before or after this fix; runtime regression remains
+necessary. Cppcheck 2.22 cannot evaluate `__has_cpp_attribute` with the captured
+GCC built-ins, so its analysis remains incomplete. No diagnostic suppression
+was added. Valgrind and leak checking were not performed.

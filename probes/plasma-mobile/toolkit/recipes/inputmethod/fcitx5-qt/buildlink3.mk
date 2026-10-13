@@ -5,7 +5,7 @@ BUILDLINK_TREE+=	fcitx5-qt
 .if !defined(FCITX5_QT_BUILDLINK3_MK)
 FCITX5_QT_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.fcitx5-qt+=	fcitx5-qt>=5.1.16
+BUILDLINK_API_DEPENDS.fcitx5-qt+=	fcitx5-qt>=5.1.16nb1
 BUILDLINK_PKGSRCDIR.fcitx5-qt?=	../../inputmethod/fcitx5-qt
 
 .include "../../inputmethod/fcitx5/buildlink3.mk"

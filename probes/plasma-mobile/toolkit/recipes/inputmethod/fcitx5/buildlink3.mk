@@ -7,7 +7,7 @@ FCITX5_BUILDLINK3_MK:=
 
 USE_CXX_FEATURES+=	c++20
 
-BUILDLINK_API_DEPENDS.fcitx5+=	fcitx5>=5.1.23
+BUILDLINK_API_DEPENDS.fcitx5+=	fcitx5>=5.1.23nb4
 BUILDLINK_PKGSRCDIR.fcitx5?=	../../inputmethod/fcitx5
 
 BUILDLINK_TRANSFORM.SunOS+=	rm:-Wl,--as-needed
