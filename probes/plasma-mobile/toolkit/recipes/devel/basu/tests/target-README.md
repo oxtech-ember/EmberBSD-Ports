@@ -2,7 +2,7 @@
 
 Origin: EmberBSD, AI-assisted packaging. The test binaries and their test cases
 come from basu 0.2.1. The prepared build uses the EmberBSD Ports nb2 patches.
-This bundle does not modify tests or add messages, crash cases or test inputs.
+The archive copies three unchanged upstream unit tests.
 
 ## Selected upstream tests
 

@@ -51,6 +51,11 @@ two Qt Quick pixel lifecycles on a virtual output. HDMI and the separate
 Plasma Desktop shell remain outside that acceptance. The separate Desktop 6.7.5
 recipe is a source candidate; its complete cross package is not yet accepted.
 
+The [prepared-package workflow](cross/desktop-package-set.md) collects the complete
+runtime closure and compiled checks. It includes checksum verification before
+installation and isolated Desktop/full-session acceptance runners. Their host
+controls pass; a new CM5 session has not yet been executed.
+
 Cross-build on the development host using the [cross workflow](cross/README.md).
 The board installs the resulting packages and runs acceptance tests.
 For an alternative native build, a private MAKECONF includes the exported
