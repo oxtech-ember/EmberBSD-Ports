@@ -22,10 +22,25 @@ loader must fail the dependency oracle. The native recipe check is
 
 The [installed-package preparation helper](prepare-mesa-package-tests.rb)
 includes the upstream `zink_format_test` from the selected build. It checks
-the installed Zink files and recorded loader dependency. This format test
+the installed Zink files and recorded loader dependency. The ELF closure
+includes the dynamically loaded Vulkan loader. This format test
 checks conversions without a Vulkan device. It does not prove GPU rendering.
 The helper still accepts the earlier nb4 and nb5 receipts with their original
 four-driver configuration and 38 target invocations.
+
+## Source checks
+
+The recipe fixes two upstream lifetime errors. Keep the scanout handle alive
+through resource import. Free a query when its type has no Vulkan mapping.
+The [causal source check](../tests/zink-regressions.rb) copies the actual code
+blocks into small API harnesses. The original scanout block must fail ASan
+with `stack-use-after-scope`. The original query branch must leave one
+allocation. Both patched cases must pass. Normal query ownership is checked.
+
+Run `ruby tests/zink-regressions.rb UPSTREAM_MESA_SOURCE HOST_CLANG NEW_WORK`
+from this profile. Use an unpatched Mesa 26.2.4 source directory. Set `CFLAGS`
+when the host compiler needs an explicit SDK. The test uses ASan and UBSan.
+It is not a Valgrind result or a device test.
 
 ## Hardware boundary
 

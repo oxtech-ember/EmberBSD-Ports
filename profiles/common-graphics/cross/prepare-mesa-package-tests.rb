@@ -144,6 +144,11 @@ File.write("#{bundle}/upstream-tests.tsv", tests.map { |row| row.join("\t") + "\
 runtime = {}
 seen = {}
 queue = mesa_elfs + Dir.glob("#{bundle}/bin/*")
+if with_zink
+  loader = "#{prefix}/lib/libvulkan.so.1"
+  abort 'missing installed Zink runtime loader' unless File.file?(loader)
+  queue << loader
+end
 until queue.empty?
   path = queue.shift
   real = File.realpath(path)
