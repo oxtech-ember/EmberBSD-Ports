@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (dock-8.3.3.tar.gz) = 9ec4d60d1cbc0b576579cc10296586ecee282735fa1b4503276cec0fdc9c0c0e
+SHA512 (dock-8.3.3.tar.gz) = 5c7cd4efc6ccdec0920af3550c0115c822832a141e3797566a445a94af82e8e0fb4ac6cbbdddc0801a02e9f7300816ab30326382b4710f3993c75aaa0d1c96da
+Size (dock-8.3.3.tar.gz) = 110016 bytes

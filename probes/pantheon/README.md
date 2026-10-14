@@ -152,9 +152,41 @@ packages only. Chain state after this pass:
 
 **The full Pantheon chain is now cross-built:** mutter 49.8 (libmutter-17)
 + granite 7.8.1 + gala 8.6.2, all installed in the private sysroot with
-`gala` as a target ELF. Remaining for E25: a session recipe (gala session
-files, wingpanel, plank), startup-notification and the colord daemon
-profiles, and the VM/board acceptance run.
+`gala` as a target ELF.
+
+## Dock chain (2026-10-14, evening)
+
+elementary replaced plank with **dock 8.3.3** (GTK4 + granite-7 +
+libadwaita). New recipes: **libxmlb 0.3.29nb1** (introspection off - the
+shared GI cross machinery is recorded as a promotion-time follow-up for
+this leaf), **appstream 1.1.6nb1** (stemming/libstemmer and man off; itstool
+comes as a host tool through a cross branch in `mk/tools/itstool.mk`;
+host appstreamcli brew binary serves the native release-metadata lookups),
+**libadwaita 1.9.4** (library only for now: introspection and vapi are
+prepared for the GI cross machinery but blocked on a live query target).
+The gtk4 recipe gains the GI cross block and a meson patch (host
+generators with `--use-ldd-wrapper`); its GIR build got as far as the Gdk
+GType query, which needs the query target back on the network
+(ember-rpi5-01.local dropped off mDNS mid-build; ember-vm-01 is not
+resolvable from SSH either). Dock itself stops at `--pkg libadwaita-1`:
+the vapi is generated from the libadwaita GIR. Nothing here is committed
+as done until dock links.
+
+## wingpanel GTK4 port (in progress, not committed)
+
+wingpanel 8.0.4 upstream is still GTK3. Per the project direction the
+panel is being ported to GTK4 + granite-7 in `pkgsrc/x11/wingpanel`
+(cross tree, WIP): the meson deps move to gtk4/gtk4-wayland/gtk4-x11 +
+granite-7; mutter-49 (libmutter-17) support is declared in
+wingpanel-interface; the mutter-17 vapi set is taken from the gala
+tarball at post-extract; Switch/Container/OverlayIcon/Separator take the
+upstream gtk4-branch rewrites (Gtk.Bin removal, style classes, no
+GtkSeparator subclassing); FocusManager gains a HAS_MUTTER49
+begin_grab_op branch. Eight vala errors remain, and the principal one is
+structural: GTK4 no longer exports the wl_surface of a Gdk.Window, which
+8.0.4 uses to hand the panel to gala through pantheon-desktop-shell. The
+upstream gtk4 branch solves this with gtk4-layer-shell - that small
+library is the next port, or the migration waits for upstream.
 
 ## Not yet done
 
