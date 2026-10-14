@@ -1,0 +1,104 @@
+$NetBSD$
+
+NetBSD has no glibc CPU_SETSIZE and the local process backend
+stubbed the affinity calls out. Bound the controller mask by the
+configured processor count. Implement setAffinity and getAffinity
+through the native cpuset and _sched_setaffinity interfaces.
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+--- processcore/processes_netbsd_p.cpp.orig
++++ processcore/processes_netbsd_p.cpp
+@@ -13,6 +13,7 @@
+ #include <QBitArray>
+ #include <QSet>
+ 
++#include <errno.h>
+ #include <kvm.h>
+ #include <sched.h>
+ #include <signal.h>
+@@ -326,15 +327,55 @@
+ 
+ Processes::Error ProcessesLocal::setAffinity(long pid, const QBitArray &affinityMask)
+ {
+-    Q_UNUSED(pid);
+-    Q_UNUSED(affinityMask);
+-    return Processes::NotSupported;
++    cpuset_t *mask = cpuset_create();
++    if (mask == nullptr) {
++        return Processes::Unknown;
++    }
++    cpuset_zero(mask);
++    for (int cpu = 0; cpu < affinityMask.size(); ++cpu) {
++        if (affinityMask.testBit(cpu) && cpuset_set(cpu, mask) != 0) {
++            cpuset_destroy(mask);
++            return Processes::InvalidParameter;
++        }
++    }
++    const int result = _sched_setaffinity(pid, 0, cpuset_size(mask), mask);
++    const int error = errno;
++    cpuset_destroy(mask);
++    if (result == 0) {
++        return Processes::NoError;
++    }
++    switch (error) {
++    case EPERM:
++    case EACCES:
++        return Processes::InsufficientPermissions;
++    case ESRCH:
++        return Processes::ProcessDoesNotExistOrZombie;
++    case EINVAL:
++        return Processes::InvalidParameter;
++    default:
++        return Processes::Unknown;
++    }
+ }
+ 
+ QBitArray ProcessesLocal::getAffinity(long pid)
+ {
+-    Q_UNUSED(pid);
+-    return {};
++    cpuset_t *mask = cpuset_create();
++    if (mask == nullptr) {
++        return {};
++    }
++    const size_t bytes = cpuset_size(mask);
++    if (_sched_getaffinity(pid, 0, bytes, mask) != 0) {
++        cpuset_destroy(mask);
++        return {};
++    }
++    QBitArray bits(bytes * 8);
++    for (int cpu = 0; cpu < bits.size(); ++cpu) {
++        if (cpuset_isset(cpu, mask) > 0) {
++            bits.setBit(cpu);
++        }
++    }
++    cpuset_destroy(mask);
++    return bits;
+ }
+ 
+ long long ProcessesLocal::totalPhysicalMemory()
+--- processcore/process_controller.cpp.orig
++++ processcore/process_controller.cpp
+@@ -8,6 +8,10 @@
+ 
+ #include <functional>
+ #include <sched.h>
++#if defined(__NetBSD__)
++// NetBSD has no glibc CPU_SETSIZE; bound the mask by the configured processors.
++#include <unistd.h>
++#endif
+ 
+ #include <QWindow>
+ 
+@@ -150,7 +154,11 @@
+ 
+ ProcessController::Result ProcessController::setAffinity(const QList<int> &pids, const QVariantList &cpuIndices)
+ {
++#if defined(__NetBSD__)
++    QBitArray bits(qMax(1, sysconf(_SC_NPROCESSORS_CONF)));
++#else
+     QBitArray bits(CPU_SETSIZE);
++#endif
+     for (const QVariant &cpu : cpuIndices) {
+         int cpuIndex = cpu.toInt();
+         if (cpuIndex >= 0 && cpuIndex < bits.size()) {

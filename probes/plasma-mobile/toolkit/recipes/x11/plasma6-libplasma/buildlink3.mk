@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	plasma6-libplasma
 .if !defined(PLASMA6_LIBPLASMA_BUILDLINK3_MK)
 PLASMA6_LIBPLASMA_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.plasma6-libplasma+=	plasma6-libplasma>=6.7.5
-BUILDLINK_ABI_DEPENDS.plasma6-libplasma?=		plasma6-libplasma>=6.7.5
+BUILDLINK_API_DEPENDS.plasma6-libplasma+=	plasma6-libplasma>=6.8.0
+BUILDLINK_ABI_DEPENDS.plasma6-libplasma?=		plasma6-libplasma>=6.8.0
 BUILDLINK_PKGSRCDIR.plasma6-libplasma?=		../../x11/plasma6-libplasma
 
 .include "../../devel/kf6-kconfig/buildlink3.mk"

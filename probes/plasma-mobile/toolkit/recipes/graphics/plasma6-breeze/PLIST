@@ -782,3 +782,7 @@ share/wallpapers/Next/contents/images_dark/1440x2960.png
 share/wallpapers/Next/contents/images_dark/5120x2880.png
 share/wallpapers/Next/contents/images_dark/7680x2160.png
 share/wallpapers/Next/metadata.json
+share/config.kcfg/breeze-decoration.kcfg
+share/config.kcfg/breeze.kcfg
+share/locale/ug/LC_MESSAGES/breeze_kwin_deco.mo
+share/locale/ug/LC_MESSAGES/breeze_style_config.mo

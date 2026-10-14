@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	plasma6-kscreenlocker
 .if !defined(PLASMA6_KSCREENLOCKER_BUILDLINK3_MK)
 PLASMA6_KSCREENLOCKER_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.plasma6-kscreenlocker+=	plasma6-kscreenlocker>=6.7.5
-BUILDLINK_ABI_DEPENDS.plasma6-kscreenlocker?=	plasma6-kscreenlocker>=6.7.5
+BUILDLINK_API_DEPENDS.plasma6-kscreenlocker+=	plasma6-kscreenlocker>=6.8.0
+BUILDLINK_ABI_DEPENDS.plasma6-kscreenlocker?=	plasma6-kscreenlocker>=6.8.0
 BUILDLINK_PKGSRCDIR.plasma6-kscreenlocker?=	../../x11/plasma6-kscreenlocker
 
 BUILDLINK_FILES.plasma6-kscreenlocker+=	share/dbus-1/interfaces/*.xml

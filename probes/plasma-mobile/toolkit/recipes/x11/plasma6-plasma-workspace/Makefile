@@ -13,7 +13,7 @@ LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2.1 AND gnu-fdl-v1.2
 # Cross builds use the shared native KDocTools host tooling
 # (toolkit/cross/doctools.md); the pkgsrc host TOOL_DEPENDS is not used.
 
-DEPENDS+=	plasma6-kwin>=${PLASMAVER}nb3:../../x11/plasma6-kwin
+DEPENDS+=	plasma6-kwin>=${PLASMAVER}:../../x11/plasma6-kwin
 # The classic Wayland session starts Xwayland for ksmserver's xcb platform.
 DEPENDS+=	xwayland>=24.1.14nb1:../../wayland/xwayland
 DEPENDS+=	kf6-kded>=6.18.0:../../x11/kf6-kded

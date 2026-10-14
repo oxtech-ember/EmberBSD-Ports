@@ -31,6 +31,18 @@ USE_CXX_FEATURES+= c++20
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # Imported pkg-config targets require real target include/library directories.
 CONFIGURE_ENV+= PKG_CONFIG_SYSROOT_DIR=${CROSS_DESTDIR:Q}
+# Plasma 6.8 resolves Qt6WaylandClient's third-party Wayland dependency with
+# ECM's FindWayland inside the Qt package context, where the pkg-config hints
+# do not reach the fallback find_library/find_path calls. Seed the ECM cache
+# variables from the cross sysroot so the Qt-internal lookups cannot fail.
+CMAKE_CONFIGURE_ARGS+= -DWayland_Client_LIBRARY=${CROSS_DESTDIR}/usr/pkg/lib/libwayland-client.so
+CMAKE_CONFIGURE_ARGS+= -DWayland_Client_INCLUDE_DIR=${CROSS_DESTDIR}/usr/pkg/include
+CMAKE_CONFIGURE_ARGS+= -DWayland_Server_LIBRARY=${CROSS_DESTDIR}/usr/pkg/lib/libwayland-server.so
+CMAKE_CONFIGURE_ARGS+= -DWayland_Server_INCLUDE_DIR=${CROSS_DESTDIR}/usr/pkg/include
+CMAKE_CONFIGURE_ARGS+= -DWayland_Cursor_LIBRARY=${CROSS_DESTDIR}/usr/pkg/lib/libwayland-cursor.so
+CMAKE_CONFIGURE_ARGS+= -DWayland_Cursor_INCLUDE_DIR=${CROSS_DESTDIR}/usr/pkg/include
+CMAKE_CONFIGURE_ARGS+= -DWayland_Egl_LIBRARY=${CROSS_DESTDIR}/usr/pkg/lib/libwayland-egl.so
+CMAKE_CONFIGURE_ARGS+= -DWayland_Egl_INCLUDE_DIR=${CROSS_DESTDIR}/usr/pkg/include
 CMAKE_CONFIGURE_ARGS+= -DKDE_INSTALL_APP_TEMPLATES=ON
 CMAKE_CONFIGURE_ARGS+= -DKDE_INSTALL_QTPLUGINDIR=qt6/plugins
 CMAKE_CONFIGURE_ARGS+= -DKDE_INSTALL_QMLDIR=qt6/qml
