@@ -69,7 +69,7 @@ mkdir "$work/pkgdb"
 for name in packages.sha256 install-order.txt roots.txt; do
     cp "$bundle/$name" "$work/$name"
     [ -s "$work/$name" ] || fail "Empty manifest: $name"
-    [ "$(tail -c 1 "$work/$name" | od -An -tu1 | tr -d ' ')" = 10 ] || fail "Manifest needs a final newline: $name"
+    [ "$(tail -c 1 "$work/$name" | od -An -tu1 | tr -d ' ' | sed 's/^0*//')" = 10 ] || fail "Manifest needs a final newline: $name"
 done
 # A strict name grammar makes manifests unambiguous on both BSD and macOS.
 awk '
