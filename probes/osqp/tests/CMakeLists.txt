@@ -17,6 +17,12 @@ foreach(mode qp infeasible)
     add_test(NAME osqp-${mode} COMMAND osqp-contract ${mode})
     set_tests_properties(osqp-${mode} PROPERTIES TIMEOUT 15)
 endforeach()
+add_executable(osqp-derivative derivative.c)
+target_compile_features(osqp-derivative PRIVATE c_std_11)
+target_compile_options(osqp-derivative PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(osqp-derivative PRIVATE osqp::osqp m)
+add_test(NAME osqp-derivative COMMAND osqp-derivative)
+set_tests_properties(osqp-derivative PROPERTIES TIMEOUT 15)
 # This implementation regression deliberately uses OSQP's private listener
 # declarations, separately from the installed public-API numerical contract.
 add_executable(osqp-interrupt interrupt.c)

@@ -73,8 +73,9 @@ cmake -S "$ports/probes/osqp/tests" -B "$out/consumer" -G Ninja \
     > "$out/logs/consumer-configure.log" 2>&1
 cmake --build "$out/consumer" --parallel 2 > "$out/logs/consumer-build.log" 2>&1
 "$prefix/bin/aarch64--netbsd-readelf" -h -d "$out/stage/usr/pkg/lib/libosqp.so" \
-    "$out/consumer/osqp-contract" "$out/consumer/osqp-interrupt" > "$out/elf.txt"
-[ "$(grep -c 'Machine:.*AArch64' "$out/elf.txt")" = 3 ]
+    "$out/consumer/osqp-contract" "$out/consumer/osqp-interrupt" \
+    "$out/consumer/osqp-derivative" > "$out/elf.txt"
+[ "$(grep -c 'Machine:.*AArch64' "$out/elf.txt")" = 4 ]
 for path in "$prefix" "$sysroot" "$out"; do
     if grep -E 'RPATH|RUNPATH|NEEDED' "$out/elf.txt" | grep -F "$path"; then
         echo 'Build-host path leaked into target linkage.' >&2; exit 1
