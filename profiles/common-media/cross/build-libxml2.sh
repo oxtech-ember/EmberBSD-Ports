@@ -9,7 +9,7 @@ for path do
     case "$path" in /*) ;; *) echo 'Absolute paths required.' >&2; exit 2;; esac
     case "$path" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2;; esac
 done
-[ ! -e "$out" ] && [ ! -L "$out" ]
+[ ! -e "$out" ] && [ ! -L "$out" ] || { echo 'Output path already exists.' >&2; exit 2; }
 cross=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 for compiler in gcc g++; do
     [ "$("$prefix/bin/aarch64--netbsd-$compiler" -dumpfullversion)" = 16.2.0 ]
@@ -19,7 +19,7 @@ expected=$(awk '$1 == "libxml2-2.15.4" {print $3}' "$cross/dependencies.tsv")
 printf '%s  %s\n' "$expected" "$archive" | sha256sum -c -
 crt=$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0
 runtime=$sysroot/usr/pkg/gcc16/lib
-[ -f "$crt/crtbeginS.o" ] && [ -f "$runtime/libgcc_s.so.1" ]
+[ -f "$crt/crtbeginS.o" ] && [ -f "$runtime/libgcc_s.so.1" ] || exit 1
 [ -f "$sysroot/usr/include/stdio.h" ]
 unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH
 mkdir -p "$out/source" "$out/logs" "$out/recipe"

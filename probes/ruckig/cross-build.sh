@@ -9,7 +9,7 @@ for path do
     case "$path" in /*) ;; *) echo 'Absolute paths required.' >&2; exit 2;; esac
     case "$path" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2;; esac
 done
-[ ! -e "$out" ] && [ ! -L "$out" ]
+[ ! -e "$out" ] && [ ! -L "$out" ] || { echo 'Output path already exists.' >&2; exit 2; }
 ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
 recipe=$ports/pkgsrc/local-robotics/ruckig
 for compiler in gcc g++; do

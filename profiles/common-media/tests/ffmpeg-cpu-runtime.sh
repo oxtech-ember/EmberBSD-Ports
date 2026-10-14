@@ -5,8 +5,8 @@ set -eu
 [ "$#" = 3 ] || { echo 'Usage: ffmpeg-cpu-runtime.sh AUDIO_FIXTURES VIDEO_FIXTURES NEW_OUTPUT' >&2; exit 2; }
 audio=$1 video=$2 out=$3
 for path do case "$path" in /*) ;; *) echo 'Absolute paths required.' >&2; exit 2;; esac; done
-[ ! -e "$out" ] && [ ! -L "$out" ]
-[ -f "$audio/tone.wav" ] && [ -f "$audio/tone.pcm" ] && [ -f "$video/frames.yuv" ]
+[ ! -e "$out" ] && [ ! -L "$out" ] || { echo 'Output path already exists.' >&2; exit 2; }
+[ -f "$audio/tone.wav" ] && [ -f "$audio/tone.pcm" ] && [ -f "$video/frames.yuv" ] || exit 1
 umask 022
 mkdir "$out"
 ffmpeg=${FFMPEG:-ffmpeg9}

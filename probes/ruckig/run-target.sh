@@ -4,9 +4,9 @@
 set -eu
 [ "$#" = 4 ] || { echo 'Usage: run-target.sh PACKAGE CONTRACT UPSTREAM_TEST NEW_OUTPUT' >&2; exit 2; }
 package=$1 contract=$2 upstream=$3 out=$4
-[ "$(uname -s)" = NetBSD ] && [ "$(uname -p)" = aarch64 ]
+[ "$(uname -s)" = NetBSD ] && [ "$(uname -p)" = aarch64 ] || exit 1
 for path do case "$path" in /*) ;; *) echo 'Absolute paths required.' >&2; exit 2;; esac; done
-[ ! -e "$out" ] && [ ! -L "$out" ]
+[ ! -e "$out" ] && [ ! -L "$out" ] || { echo 'Output path already exists.' >&2; exit 2; }
 [ -z "${LD_LIBRARY_PATH:-}${LD_PRELOAD:-}" ]
 PATH=/usr/pkg/bin:/bin:/usr/bin:/sbin:/usr/sbin; export PATH
 LC_ALL=C; export LC_ALL

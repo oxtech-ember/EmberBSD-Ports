@@ -5,10 +5,10 @@ set -eu
 umask 022
 [ "$#" = 4 ] || { echo 'Usage: package-cross-stage.sh STAGED_PREFIX RECIPE OUTPUT BUILD_INFO' >&2; exit 2; }
 stage=$1 recipe=$2 package=$3 info=$4
-[ "$(uname -s)" = NetBSD ] && [ "$(uname -p)" = aarch64 ]
+[ "$(uname -s)" = NetBSD ] && [ "$(uname -p)" = aarch64 ] || exit 1
 for path do case "$path" in /*) ;; *) echo 'Absolute paths required.' >&2; exit 2;; esac; done
-[ -d "$stage" ] && [ -f "$recipe/PLIST" ] && [ -f "$recipe/DESCR" ] && [ -f "$info" ]
-[ ! -e "$package" ] && [ ! -L "$package" ]
+[ -d "$stage" ] && [ -f "$recipe/PLIST" ] && [ -f "$recipe/DESCR" ] && [ -f "$info" ] || exit 1
+[ ! -e "$package" ] && [ ! -L "$package" ] || { echo 'Output path already exists.' >&2; exit 2; }
 work=$(mktemp -d /tmp/cross-package.XXXXXXXX)
 trap 'rm -rf "$work"' EXIT
 trap 'exit 130' INT

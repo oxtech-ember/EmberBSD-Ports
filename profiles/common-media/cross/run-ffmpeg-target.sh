@@ -4,9 +4,9 @@
 set -eu
 [ "$#" = 5 ] || { echo 'Usage: run-ffmpeg-target.sh FFMPEG_PACKAGE XML_PACKAGE AUDIO VIDEO NEW_OUTPUT' >&2; exit 2; }
 package=$1 xml=$2 audio=$3 video=$4 out=$5
-[ "$(uname -s)" = NetBSD ] && [ "$(uname -p)" = aarch64 ]
+[ "$(uname -s)" = NetBSD ] && [ "$(uname -p)" = aarch64 ] || exit 1
 for path do case "$path" in /*) ;; *) echo 'Absolute paths required.' >&2; exit 2;; esac; done
-[ ! -e "$out" ] && [ ! -L "$out" ]
+[ ! -e "$out" ] && [ ! -L "$out" ] || { echo 'Output path already exists.' >&2; exit 2; }
 [ -z "${LD_LIBRARY_PATH:-}${LD_PRELOAD:-}" ]
 PATH=/usr/pkg/bin:/bin:/usr/bin:/sbin:/usr/sbin; export PATH
 LC_ALL=C; export LC_ALL
@@ -41,7 +41,7 @@ if pkg_delete libxml2-2.15.4 > "$out/dependency-removal.log" 2>&1; then
 fi
 pkg_info -e libxml2-2.15.4
 pkg_delete ffmpeg9-9.0.2
-[ ! -e /usr/pkg/bin/ffmpeg9 ] && [ ! -e /usr/pkg/lib/ffmpeg9/libavcodec.so.63 ]
+[ ! -e /usr/pkg/bin/ffmpeg9 ] && [ ! -e /usr/pkg/lib/ffmpeg9/libavcodec.so.63 ] || { echo 'Output path already exists.' >&2; exit 2; }
 if pkg_info -e ffmpeg9-9.0.2; then exit 1; fi
 pkg_delete libxml2-2.15.4
 [ ! -e /usr/pkg/lib/libxml2.so.16 ]

@@ -9,7 +9,7 @@ for path do
     case "$path" in /*) ;; *) echo 'Absolute paths required.' >&2; exit 2;; esac
     case "$path" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2;; esac
 done
-[ ! -e "$out" ] && [ ! -L "$out" ]
+[ ! -e "$out" ] && [ ! -L "$out" ] || { echo 'Output path already exists.' >&2; exit 2; }
 ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
 recipe=$ports/pkgsrc/local-robotics/osqp
 for compiler in gcc g++; do
@@ -26,12 +26,12 @@ for patch_file do
     name=$(basename "$patch_file")
     expected=$(awk -v name="($name)" '$1 == "SHA1" && $2 == name {print $4}' "$recipe/distinfo")
     actual=$(sed '/[$]NetBSD.*/d' "$patch_file" | sha1sum | awk '{print $1}')
-    [ -n "$expected" ] && [ "$expected" = "$actual" ]
+    [ -n "$expected" ] && [ "$expected" = "$actual" ] || exit 1
 done
 crt=$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0
 runtime=$sysroot/usr/pkg/gcc16/lib
 headers=$sysroot/usr/pkg/gcc16/include/c++
-[ -f "$crt/crtbeginS.o" ] && [ -f "$runtime/libgcc_s.so.1" ]
+[ -f "$crt/crtbeginS.o" ] && [ -f "$runtime/libgcc_s.so.1" ] || exit 1
 [ -f "$sysroot/usr/include/stdio.h" ]
 unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH
 mkdir -p "$out/source" "$out/qdldl" "$out/logs"
