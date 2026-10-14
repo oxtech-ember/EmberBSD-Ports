@@ -8,8 +8,10 @@ case "$work" in *[!a-zA-Z0-9_./-]*) exit 2 ;; esac
 recipe=$(CDPATH= cd "$(dirname "$0")" && pwd)
 prefix=$work/install
 cmp "$recipe/sources.tsv" "$prefix/share/ember-libxml2/sources.tsv" >/dev/null
+cmp "$recipe/patches.tsv" "$prefix/share/ember-libxml2/patches.tsv" >/dev/null
 cmake=${CMAKE:-cmake}
 export LD_LIBRARY_PATH="$prefix/lib" DYLD_LIBRARY_PATH="$prefix/lib"
+ctest --test-dir "$work/build" --output-on-failure > "$work/logs/upstream-tests.log" 2>&1
 "$cmake" -S "$recipe/tests" -B "$work/test-build" -G Ninja -DCMAKE_BUILD_TYPE=Release \
     -DXML_PREFIX="$prefix" -DCMAKE_BUILD_RPATH="$prefix/lib" > "$work/logs/test-configure.log" 2>&1
 "$cmake" --build "$work/test-build" --parallel 1 > "$work/logs/test-build.log" 2>&1

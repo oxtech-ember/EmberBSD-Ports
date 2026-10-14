@@ -24,7 +24,7 @@ positive JOBS "$jobs"
 if [ "${BUILD_AS_KIB+x}" = x ]; then positive BUILD_AS_KIB "$BUILD_AS_KIB"; ulimit -S -v "$BUILD_AS_KIB"; fi
 recipe=$(CDPATH= cd "$(dirname "$0")" && pwd)
 cmake=${CMAKE:-cmake}
-for tool in "$cmake" ninja tar; do command -v "$tool" >/dev/null; done
+for tool in "$cmake" ninja tar patch; do command -v "$tool" >/dev/null; done
 sha() {
     if command -v sha256 >/dev/null; then sha256 -q "$1";
     else shasum -a 256 "$1" | awk '{print $1}'; fi
@@ -38,6 +38,15 @@ while read -r name expected url; do
     printf '%s %s %s\n' "$name" "$expected" "$url" >> "$work/logs/sources.txt"
     tar -mxf "$work/archives/$name" -C "$work/src"
 done < "$recipe/sources.tsv"
+while read -r name expected; do
+    [ "$(sha "$recipe/$name")" = "$expected" ] || fail "Patch checksum mismatch: $name"
+    patch -f -F0 -p0 -d "$work/src/libxml2-2.15.4" < "$recipe/$name" > "$work/logs/schema-patch.log" 2>&1
+done < "$recipe/patches.tsv"
+support=$recipe/../../profiles/common-media/recipes/textproc/libxml2/files
+while read -r expected name; do
+    [ "$(sha "$support/$name")" = "$expected" ] || fail "Test driver checksum mismatch: $name"
+    cp "$support/$name" "$work/src/libxml2-2.15.4/$name"
+done < "$support/test-support.sha256"
 export CC=${CC:-/usr/bin/cc}
 { uname -a; "$CC" --version; "$cmake" --version; ninja --version;
   printf 'JOBS=%s\nBUILD_AS_KIB=%s\n' "$jobs" "${BUILD_AS_KIB:-inherited}";
@@ -53,7 +62,7 @@ run configure "$cmake" -S "$work/src/libxml2-2.15.4" -B "$work/build" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
     -DCMAKE_INSTALL_RPATH="$prefix/lib" -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF \
     -DBUILD_SHARED_LIBS=ON -DLIBXML2_WITH_PYTHON=OFF -DLIBXML2_WITH_DOCS=OFF \
-    -DLIBXML2_WITH_TESTS=OFF -DLIBXML2_WITH_PROGRAMS=ON -DLIBXML2_WITH_ICONV=ON \
+    -DLIBXML2_WITH_TESTS=ON -DLIBXML2_WITH_PROGRAMS=ON -DLIBXML2_WITH_ICONV=ON \
     -DLIBXML2_WITH_ICU=OFF -DLIBXML2_WITH_HTTP=OFF -DLIBXML2_WITH_LEGACY=OFF \
     -DLIBXML2_WITH_ZLIB=OFF -DLIBXML2_WITH_THREADS=ON -DLIBXML2_WITH_VALID=ON \
     -DLIBXML2_WITH_XPATH=ON -DLIBXML2_WITH_READER=ON -DLIBXML2_WITH_WRITER=ON \
@@ -62,7 +71,7 @@ run configure "$cmake" -S "$work/src/libxml2-2.15.4" -B "$work/build" -G Ninja \
 run build "$cmake" --build "$work/build" --parallel "$jobs"
 run install "$cmake" --install "$work/build"
 mkdir -p "$prefix/share/ember-libxml2/licenses"
-cp "$recipe/sources.tsv" "$recipe/PROVENANCE.md" "$prefix/share/ember-libxml2/"
+cp "$recipe/sources.tsv" "$recipe/patches.tsv" "$recipe/PROVENANCE.md" "$prefix/share/ember-libxml2/"
 cp "$work/src/libxml2-2.15.4/Copyright" "$prefix/share/ember-libxml2/licenses/Copyright"
 for source in dict.c list.c; do
     sed -n '1,/^ \*\//p' "$work/src/libxml2-2.15.4/$source" > "$prefix/share/ember-libxml2/licenses/$source-notice.txt"
