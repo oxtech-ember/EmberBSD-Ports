@@ -1,0 +1,1070 @@
+EmberBSD local, AI-assisted; not submitted upstream.
+Cross-build support for the GCC test-suite harness on macOS targeting
+EmberBSD/AArch64. Applies on top of the development-toolchain export
+(pkgsrc fff4deb639a1a640476203c80f752fb77b6cb14b plus stable-expect).
+
+- lang/tcl: neutralize the raw build-host uname gates (Darwin APIs,
+  -dynamiclib, wide clicks) and override the uname-derived system
+  version with EMBER_CROSS_TARGET_SYS for the bundled package
+  configures; tclConfig.sh keeps target-only paths.
+- lang/tcl-expect: nine runtime probes refuse cross builds; each
+  decision now reads a NetBSD/11 aarch64 answer taken from native
+  probes in the reference VM on 2026-10-14 (WNOHANG present,
+  sgttyb/termios structs, TIOCGWINSZ, timezone variable; no termio,
+  no Cray ptys, no TCGETS/TCGETA). NetBSD setpgrp(pid, pgid) takes two
+  arguments. K&R prototypes need -std=gnu89 with GCC16. The install
+  step regenerates wrapper scripts with the host tclsh. Darwin linker
+  flags and tcl private headers resolve like lang/tcl.
+- devel/dejagnu: the cross build cannot run the target install-info;
+  the info index is registered on the target after installation.
+
+The packages were accepted in the AArch64 VM: tcl-8.6.18,
+tcl-expect-5.45.4nb1, dejagnu-1.6.3 (see the E8 receipt in the wiki).
+
+diff -ruN a/devel/dejagnu/Makefile b/devel/dejagnu/Makefile
+--- a/devel/dejagnu/Makefile	2026-10-02 21:24:59.000000000 +0300
++++ b/devel/dejagnu/Makefile	2026-10-14 10:25:21.403425902 +0300
+@@ -1,5 +1,6 @@
+ # $NetBSD: Makefile,v 1.24 2022/10/24 09:46:05 adam Exp $
+ 
++.include "../../mk/bsd.prefs.mk"
+ DISTNAME=	dejagnu-1.6.3
+ CATEGORIES=	devel
+ MASTER_SITES=	${MASTER_SITE_GNU:=dejagnu/}
+@@ -12,12 +13,19 @@
+ DEPENDS+=	tcl-expect>=5.32.1:../../lang/tcl-expect
+ 
+ GNU_CONFIGURE=	yes
++# EmberBSD: cross builds cannot run the target install-info; the info
++# index is registered on the target after installation there.
++.if !defined(USE_CROSS_COMPILE) || ${USE_CROSS_COMPILE:tl} != "yes"
+ INFO_FILES=	yes
++.endif
+ USE_TOOLS=	gmake
+ 
+ CONFIGURE_ARGS+=	--infodir=${PREFIX}/info
+ 
+ INSTALL_TARGET=	install install-info
++.if defined(USE_CROSS_COMPILE) && ${USE_CROSS_COMPILE:tl} == "yes"
++INSTALL_TARGET=	install
++.endif
+ 
+ # c++ is necessary for make test
+ USE_LANGUAGES+=	c c++
+@@ -25,3 +33,9 @@
+ TEST_ENV=	PATH=/usr/bin:/bin:${PREFIX}/bin
+ 
+ .include "../../mk/bsd.pkg.mk"
++
++# EmberBSD: the plain cross install leaves an unstaged info index.
++.if defined(USE_CROSS_COMPILE) && ${USE_CROSS_COMPILE:tl} == "yes"
++post-install:
++	${RM} -f ${DESTDIR}${PREFIX}/info/dir
++.endif
+diff -ruN a/lang/tcl/Makefile b/lang/tcl/Makefile
+--- a/lang/tcl/Makefile	2026-10-02 21:24:59.000000000 +0300
++++ b/lang/tcl/Makefile	2026-10-14 10:25:21.364095612 +0300
+@@ -94,3 +94,11 @@
+ .include "../../databases/sqlite3/buildlink3.mk"
+ .include "../../devel/zlib/buildlink3.mk"
+ .include "../../mk/bsd.pkg.mk"
++
++# EmberBSD: cross builds must not derive the platform from the macOS
++# build host; see patches/patch-e8-cross-darwin.
++.if ${USE_CROSS_COMPILE:tl} == "yes"
++CONFIGURE_ENV+=	EMBER_CROSS_TARGET_SYS=NetBSD-11.0
++MAKE_ENV+=	EMBER_CROSS_TARGET_SYS=NetBSD-11.0
++.endif
++
+diff -ruN a/lang/tcl/distinfo b/lang/tcl/distinfo
+--- a/lang/tcl/distinfo	2026-10-02 21:24:59.000000000 +0300
++++ b/lang/tcl/distinfo	2026-10-14 10:25:41.901497290 +0300
+@@ -22,3 +22,4 @@
+ SHA1 (patch-unix_tclUnixFCmd.c) = e715d9419a36a8414355252bb3da0ef48b07fe4f
+ SHA1 (patch-unix_tclUnixInit.c) = 1ab04ae006bb300e1d0fba4d1c799b50147f733c
+ SHA1 (patch-unix_tclUnixPort.h) = 9eff7a5d5842fe208b467fd2ad844192e2e6aec7
++SHA1 (patch-e8-cross-darwin) = c556de0575b6a8ef037755917a1cee5669507116
+diff -ruN a/lang/tcl/patches/patch-e8-cross-darwin b/lang/tcl/patches/patch-e8-cross-darwin
+--- a/lang/tcl/patches/patch-e8-cross-darwin	1970-01-01 03:00:00.000000000 +0300
++++ b/lang/tcl/patches/patch-e8-cross-darwin	2026-10-14 10:25:21.379743603 +0300
+@@ -0,0 +1,452 @@
++$NetBSD$
++
++EmberBSD local; not submitted upstream.
++Cross builds: the raw build-host uname gate must not select Darwin
++APIs (mach_time, wide clicks, -dynamiclib) for an aarch64--netbsd target.
++Set EMBER_CROSS_TARGET_SYS to override the uname-derived system version
++for bundled package configures.
++
++--- unix/configure.orig
+++++ unix/configure
++@@ -6367,7 +6367,7 @@
++ 	if test -f /usr/lib/NextStep/software_version; then
++ 	    tcl_cv_sys_version=NEXTSTEP-`awk '/3/,/3/' /usr/lib/NextStep/software_version`
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ echo "$as_me:$LINENO: WARNING: can't find uname command" >&5
++ echo "$as_me: WARNING: can't find uname command" >&2;}
++@@ -11087,7 +11087,7 @@
++ fi
++ 
++ 
++-if test "`uname -s`" = "Darwin" && test "${TCL_THREADS}" = 1 && \
+++if test "${ac_cv_darwin_host:-no}" = "yes" && test "${TCL_THREADS}" = 1 && \
++ 	test "`uname -r | awk -F. '{print $1}'`" -lt 7; then
++     # prior to Darwin 7, realpath is not threadsafe, so don't
++     # use it when threads are enabled, c.f. bug # 711232
++@@ -12693,7 +12693,7 @@
++ 
++ fi
++ 
++-    if test "`uname -s`" = "Darwin" && \
+++    if test "${ac_cv_darwin_host:-no}" = "yes" && \
++ 	    test "`uname -r | awk -F. '{print $1}'`" -gt 5; then
++ 	# Starting with Darwin 6 (Mac OSX 10.2), gethostbyX
++ 	# are actually MT-safe as they always return pointers
++@@ -17335,7 +17335,7 @@
++ # Darwin specific API checks and defines
++ #--------------------------------------------------------------------
++ 
++-if test "`uname -s`" = "Darwin" ; then
+++if test "${ac_cv_darwin_host:-no}" = "yes" ; then
++ 
++ for ac_func in getattrlist
++ do
++@@ -18657,7 +18657,7 @@
++ 	if test -f /usr/lib/NextStep/software_version; then
++ 	    tcl_cv_sys_version=NEXTSTEP-`awk '/3/,/3/' /usr/lib/NextStep/software_version`
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ echo "$as_me:$LINENO: WARNING: can't find uname command" >&5
++ echo "$as_me: WARNING: can't find uname command" >&2;}
++@@ -19125,9 +19125,9 @@
++ # AIX remembers this path and will attempt to use it at run-time to look
++ # up the Tcl library.
++ 
++-if test "`uname -s`" = "Darwin" ; then
+++if test "${ac_cv_darwin_host:-no}" = "yes" ; then
++ 
++-    if test "`uname -s`" = "Darwin" ; then
+++    if test "${ac_cv_darwin_host:-no}" = "yes" ; then
++ 	echo "$as_me:$LINENO: checking how to package libraries" >&5
++ echo $ECHO_N "checking how to package libraries... $ECHO_C" >&6
++ 	# Check whether --enable-framework or --disable-framework was given.
++
++--- pkgs/itcl4.3.7/configure.orig
+++++ pkgs/itcl4.3.7/configure
++@@ -2684,7 +2684,7 @@
++ 	if test "${TEA_PLATFORM}" = "windows" ; then
++ 	    tcl_cv_sys_version=windows
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
++ printf "%s\n" "$as_me: WARNING: can't find uname command" >&2;}
++@@ -2834,7 +2834,7 @@
++ 	    fi
++ 
++ 	    # on Darwin, check in Framework installation locations
++-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+++	    if test "${ac_cv_darwin_host:-no}" = "yes" -a x"${ac_cv_c_tclconfig}" = x ; then
++ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
++ 			`ls -d /Library/Frameworks 2>/dev/null` \
++ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
++@@ -3975,7 +3975,7 @@
++ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
++ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
++ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
++-    elif test "`uname -s`" = "Darwin"; then
+++    elif test "${ac_cv_darwin_host:-no}" = "yes"; then
++ 	# If Tcl was built as a framework, attempt to use the libraries
++ 	# from the framework at the given location so that linking works
++ 	# against Tcl.framework installed in an arbitrary location.
++@@ -5790,7 +5790,7 @@
++ 	    fi
++ 	else
++ 	    list=""
++-	    if test "`uname -s`" = "Darwin"; then
+++	    if test "${ac_cv_darwin_host:-no}" = "yes"; then
++ 		# If Tcl was built as a framework, attempt to use
++ 		# the framework's Headers directory
++ 		case ${TCL_DEFS} in
++@@ -5880,7 +5880,7 @@
++ 	# We want to ensure these are substituted so as not to require
++ 	# any *_NATIVE vars be defined in the Makefile
++ 	TCL_INCLUDES="-I${TCL_GENERIC_DIR_NATIVE} -I${TCL_PLATFORM_DIR_NATIVE}"
++-	if test "`uname -s`" = "Darwin"; then
+++	if test "${ac_cv_darwin_host:-no}" = "yes"; then
++ 	    # If Tcl was built as a framework, attempt to use
++ 	    # the framework's Headers and PrivateHeaders directories
++ 	    case ${TCL_DEFS} in
++@@ -6585,7 +6585,7 @@
++ 	if test "${TEA_PLATFORM}" = "windows" ; then
++ 	    tcl_cv_sys_version=windows
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
++ printf "%s\n" "$as_me: WARNING: can't find uname command" >&2;}
++
++--- pkgs/sqlite3.53.0/configure.orig
+++++ pkgs/sqlite3.53.0/configure
++@@ -2787,7 +2787,7 @@
++ 	if test "${TEA_PLATFORM}" = "windows" ; then
++ 	    tcl_cv_sys_version=windows
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
++ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
++@@ -2906,7 +2906,7 @@
++ 	    fi
++ 
++ 	    # on Darwin, check in Framework installation locations
++-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+++	    if test "${ac_cv_darwin_host:-no}" = "yes" -a x"${ac_cv_c_tclconfig}" = x ; then
++ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
++ 			`ls -d /Library/Frameworks 2>/dev/null` \
++ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
++@@ -4099,7 +4099,7 @@
++ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
++ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
++ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
++-    elif test "`uname -s`" = "Darwin"; then
+++    elif test "${ac_cv_darwin_host:-no}" = "yes"; then
++ 	# If Tcl was built as a framework, attempt to use the libraries
++ 	# from the framework at the given location so that linking works
++ 	# against Tcl.framework installed in an arbitrary location.
++@@ -6078,7 +6078,7 @@
++ 	    fi
++ 	else
++ 	    list=""
++-	    if test "`uname -s`" = "Darwin"; then
+++	    if test "${ac_cv_darwin_host:-no}" = "yes"; then
++ 		# If Tcl was built as a framework, attempt to use
++ 		# the framework's Headers directory
++ 		case ${TCL_DEFS} in
++@@ -6838,7 +6838,7 @@
++ 	if test "${TEA_PLATFORM}" = "windows" ; then
++ 	    tcl_cv_sys_version=windows
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
++ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
++
++--- pkgs/tdbc1.1.13/configure.orig
+++++ pkgs/tdbc1.1.13/configure
++@@ -2637,7 +2637,7 @@
++ 	if test "${TEA_PLATFORM}" = "windows" ; then
++ 	    tcl_cv_sys_version=windows
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
++ printf "%s\n" "$as_me: WARNING: can't find uname command" >&2;}
++@@ -2756,7 +2756,7 @@
++ 	    fi
++ 
++ 	    # on Darwin, check in Framework installation locations
++-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+++	    if test "${ac_cv_darwin_host:-no}" = "yes" -a x"${ac_cv_c_tclconfig}" = x ; then
++ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
++ 			`ls -d /Library/Frameworks 2>/dev/null` \
++ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
++@@ -3897,7 +3897,7 @@
++ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
++ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
++ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
++-    elif test "`uname -s`" = "Darwin"; then
+++    elif test "${ac_cv_darwin_host:-no}" = "yes"; then
++ 	# If Tcl was built as a framework, attempt to use the libraries
++ 	# from the framework at the given location so that linking works
++ 	# against Tcl.framework installed in an arbitrary location.
++@@ -5965,7 +5965,7 @@
++ 	    fi
++ 	else
++ 	    list=""
++-	    if test "`uname -s`" = "Darwin"; then
+++	    if test "${ac_cv_darwin_host:-no}" = "yes"; then
++ 		# If Tcl was built as a framework, attempt to use
++ 		# the framework's Headers directory
++ 		case ${TCL_DEFS} in
++@@ -6703,7 +6703,7 @@
++ 	if test "${TEA_PLATFORM}" = "windows" ; then
++ 	    tcl_cv_sys_version=windows
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
++ printf "%s\n" "$as_me: WARNING: can't find uname command" >&2;}
++
++--- pkgs/tdbcmysql1.1.13/configure.orig
+++++ pkgs/tdbcmysql1.1.13/configure
++@@ -2879,7 +2879,7 @@
++ 	if test "${TEA_PLATFORM}" = "windows" ; then
++ 	    tcl_cv_sys_version=windows
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
++ printf "%s\n" "$as_me: WARNING: can't find uname command" >&2;}
++@@ -2998,7 +2998,7 @@
++ 	    fi
++ 
++ 	    # on Darwin, check in Framework installation locations
++-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+++	    if test "${ac_cv_darwin_host:-no}" = "yes" -a x"${ac_cv_c_tclconfig}" = x ; then
++ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
++ 			`ls -d /Library/Frameworks 2>/dev/null` \
++ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
++@@ -4139,7 +4139,7 @@
++ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
++ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
++ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
++-    elif test "`uname -s`" = "Darwin"; then
+++    elif test "${ac_cv_darwin_host:-no}" = "yes"; then
++ 	# If Tcl was built as a framework, attempt to use the libraries
++ 	# from the framework at the given location so that linking works
++ 	# against Tcl.framework installed in an arbitrary location.
++@@ -6331,7 +6331,7 @@
++ 	    fi
++ 	else
++ 	    list=""
++-	    if test "`uname -s`" = "Darwin"; then
+++	    if test "${ac_cv_darwin_host:-no}" = "yes"; then
++ 		# If Tcl was built as a framework, attempt to use
++ 		# the framework's Headers directory
++ 		case ${TCL_DEFS} in
++@@ -7069,7 +7069,7 @@
++ 	if test "${TEA_PLATFORM}" = "windows" ; then
++ 	    tcl_cv_sys_version=windows
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
++ printf "%s\n" "$as_me: WARNING: can't find uname command" >&2;}
++
++--- pkgs/tdbcodbc1.1.13/configure.orig
+++++ pkgs/tdbcodbc1.1.13/configure
++@@ -2879,7 +2879,7 @@
++ 	if test "${TEA_PLATFORM}" = "windows" ; then
++ 	    tcl_cv_sys_version=windows
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
++ printf "%s\n" "$as_me: WARNING: can't find uname command" >&2;}
++@@ -2998,7 +2998,7 @@
++ 	    fi
++ 
++ 	    # on Darwin, check in Framework installation locations
++-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+++	    if test "${ac_cv_darwin_host:-no}" = "yes" -a x"${ac_cv_c_tclconfig}" = x ; then
++ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
++ 			`ls -d /Library/Frameworks 2>/dev/null` \
++ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
++@@ -4139,7 +4139,7 @@
++ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
++ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
++ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
++-    elif test "`uname -s`" = "Darwin"; then
+++    elif test "${ac_cv_darwin_host:-no}" = "yes"; then
++ 	# If Tcl was built as a framework, attempt to use the libraries
++ 	# from the framework at the given location so that linking works
++ 	# against Tcl.framework installed in an arbitrary location.
++@@ -6331,7 +6331,7 @@
++ 	    fi
++ 	else
++ 	    list=""
++-	    if test "`uname -s`" = "Darwin"; then
+++	    if test "${ac_cv_darwin_host:-no}" = "yes"; then
++ 		# If Tcl was built as a framework, attempt to use
++ 		# the framework's Headers directory
++ 		case ${TCL_DEFS} in
++@@ -7069,7 +7069,7 @@
++ 	if test "${TEA_PLATFORM}" = "windows" ; then
++ 	    tcl_cv_sys_version=windows
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
++ printf "%s\n" "$as_me: WARNING: can't find uname command" >&2;}
++
++--- pkgs/tdbcpostgres1.1.13/configure.orig
+++++ pkgs/tdbcpostgres1.1.13/configure
++@@ -2879,7 +2879,7 @@
++ 	if test "${TEA_PLATFORM}" = "windows" ; then
++ 	    tcl_cv_sys_version=windows
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
++ printf "%s\n" "$as_me: WARNING: can't find uname command" >&2;}
++@@ -2998,7 +2998,7 @@
++ 	    fi
++ 
++ 	    # on Darwin, check in Framework installation locations
++-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+++	    if test "${ac_cv_darwin_host:-no}" = "yes" -a x"${ac_cv_c_tclconfig}" = x ; then
++ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
++ 			`ls -d /Library/Frameworks 2>/dev/null` \
++ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
++@@ -4139,7 +4139,7 @@
++ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
++ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
++ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
++-    elif test "`uname -s`" = "Darwin"; then
+++    elif test "${ac_cv_darwin_host:-no}" = "yes"; then
++ 	# If Tcl was built as a framework, attempt to use the libraries
++ 	# from the framework at the given location so that linking works
++ 	# against Tcl.framework installed in an arbitrary location.
++@@ -6331,7 +6331,7 @@
++ 	    fi
++ 	else
++ 	    list=""
++-	    if test "`uname -s`" = "Darwin"; then
+++	    if test "${ac_cv_darwin_host:-no}" = "yes"; then
++ 		# If Tcl was built as a framework, attempt to use
++ 		# the framework's Headers directory
++ 		case ${TCL_DEFS} in
++@@ -7069,7 +7069,7 @@
++ 	if test "${TEA_PLATFORM}" = "windows" ; then
++ 	    tcl_cv_sys_version=windows
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
++ printf "%s\n" "$as_me: WARNING: can't find uname command" >&2;}
++
++--- pkgs/tdbcsqlite3-1.1.13/configure.orig
+++++ pkgs/tdbcsqlite3-1.1.13/configure
++@@ -2518,7 +2518,7 @@
++ 	if test "${TEA_PLATFORM}" = "windows" ; then
++ 	    tcl_cv_sys_version=windows
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
++ printf "%s\n" "$as_me: WARNING: can't find uname command" >&2;}
++@@ -2637,7 +2637,7 @@
++ 	    fi
++ 
++ 	    # on Darwin, check in Framework installation locations
++-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+++	    if test "${ac_cv_darwin_host:-no}" = "yes" -a x"${ac_cv_c_tclconfig}" = x ; then
++ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
++ 			`ls -d /Library/Frameworks 2>/dev/null` \
++ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
++@@ -3778,7 +3778,7 @@
++ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
++ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
++ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
++-    elif test "`uname -s`" = "Darwin"; then
+++    elif test "${ac_cv_darwin_host:-no}" = "yes"; then
++ 	# If Tcl was built as a framework, attempt to use the libraries
++ 	# from the framework at the given location so that linking works
++ 	# against Tcl.framework installed in an arbitrary location.
++@@ -4941,7 +4941,7 @@
++ 	if test "${TEA_PLATFORM}" = "windows" ; then
++ 	    tcl_cv_sys_version=windows
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
++ printf "%s\n" "$as_me: WARNING: can't find uname command" >&2;}
++
++--- pkgs/thread2.8.13/configure.orig
+++++ pkgs/thread2.8.13/configure
++@@ -2736,7 +2736,7 @@
++ 	if test "${TEA_PLATFORM}" = "windows" ; then
++ 	    tcl_cv_sys_version=windows
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
++ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
++@@ -2855,7 +2855,7 @@
++ 	    fi
++ 
++ 	    # on Darwin, check in Framework installation locations
++-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+++	    if test "${ac_cv_darwin_host:-no}" = "yes" -a x"${ac_cv_c_tclconfig}" = x ; then
++ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
++ 			`ls -d /Library/Frameworks 2>/dev/null` \
++ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
++@@ -4048,7 +4048,7 @@
++ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
++ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
++ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
++-    elif test "`uname -s`" = "Darwin"; then
+++    elif test "${ac_cv_darwin_host:-no}" = "yes"; then
++ 	# If Tcl was built as a framework, attempt to use the libraries
++ 	# from the framework at the given location so that linking works
++ 	# against Tcl.framework installed in an arbitrary location.
++@@ -6089,7 +6089,7 @@
++ 	    fi
++ 	else
++ 	    list=""
++-	    if test "`uname -s`" = "Darwin"; then
+++	    if test "${ac_cv_darwin_host:-no}" = "yes"; then
++ 		# If Tcl was built as a framework, attempt to use
++ 		# the framework's Headers directory
++ 		case ${TCL_DEFS} in
++@@ -6827,7 +6827,7 @@
++ 	if test "${TEA_PLATFORM}" = "windows" ; then
++ 	    tcl_cv_sys_version=windows
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
++ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
++
+diff -ruN a/lang/tcl-expect/Makefile b/lang/tcl-expect/Makefile
+--- a/lang/tcl-expect/Makefile	2026-10-14 10:25:21.302798859 +0300
++++ b/lang/tcl-expect/Makefile	2026-10-14 10:25:21.386508117 +0300
+@@ -13,7 +13,23 @@
+ USE_GCC_RUNTIME=	yes
+ 
+ CONFIGURE_ARGS+=	--enable-shared
+-CONFIGURE_ARGS+=	--with-tclconfig=${BUILDLINK_PREFIX.tcl}/lib
++# EmberBSD: cross answers for autoconf probes that cannot run on the host.
++.if ${USE_CROSS_COMPILE:tl} == "yes"
++# NetBSD setpgrp(pid, pgid) takes two arguments.
++CONFIGURE_ENV+=	ac_cv_func_setpgrp_void=no
++# EmberBSD: expect 5.45.4 uses K&R prototypes; GCC16 C23 rejects them.
++CFLAGS+=	-std=gnu89
++# The install step regenerates wrapper scripts with a Tcl interpreter;
++# use the host tclsh so target binaries are not executed on the Mac.
++MAKE_FLAGS+=	TCLSH=/usr/bin/tclsh
++CONFIGURE_ENV+=	EMBER_CROSS_TARGET_SYS=NetBSD-11.0
++CONFIGURE_ENV+=	EMBER_CROSS_TCL_HDRDIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.tcl}/include
++.endif
++
++# EmberBSD: expect's TEA configure only accepts --with-tcl; the pkgsrc
++# --with-tclconfig spelling is ignored and the search falls back to the
++# literal /usr/pkg/lib on the build host.
++CONFIGURE_ARGS+=	--with-tcl=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.tcl}/lib
+ CONFIGURE_ARGS+=	--without-x
+ 
+ INSTALL_MAKE_FLAGS+=	INSTALL_ROOT=${DESTDIR:Q}
+diff -ruN a/lang/tcl-expect/distinfo b/lang/tcl-expect/distinfo
+--- a/lang/tcl-expect/distinfo	2026-10-14 10:25:21.305567781 +0300
++++ b/lang/tcl-expect/distinfo	2026-10-14 10:25:41.908927763 +0300
+@@ -8,3 +8,4 @@
+ SHA1 (patch-configure.in) = 422ebdf5704e3bd1b5b8c8af59de875b8236af45
+ SHA1 (patch-exp__chan.c) = 79ef66d2d3e012572207af37b329b3be52c1c8f0
+ SHA1 (patch-tests_all.tcl) = e8441f05a66cba78dcfe01afa57687b0fb587945
++SHA1 (patch-e8-cross-probes) = b2d9761e7226788546872109a05a6be3c03175f1
+diff -ruN a/lang/tcl-expect/patches/patch-e8-cross-probes b/lang/tcl-expect/patches/patch-e8-cross-probes
+--- a/lang/tcl-expect/patches/patch-e8-cross-probes	1970-01-01 03:00:00.000000000 +0300
++++ b/lang/tcl-expect/patches/patch-e8-cross-probes	2026-10-14 10:25:21.397235098 +0300
+@@ -0,0 +1,488 @@
++$NetBSD$
++
++EmberBSD local; not submitted upstream.
++Cross builds on a non-NetBSD host: expect configure refuses nine
++runtime probes; each decision now reads a NetBSD/11 aarch64 answer
++taken from native probes in the reference VM on 2026-10-14 (WNOHANG
++present, sgttyb/termios structs, TIOCGWINSZ, timezone variable; no
++termio, no Cray ptys, no TCGETS/TCGETA, WNOHANG needs no
++_POSIX_SOURCE). Native builds still compile and run their conftests.
++The raw build-host uname gates must not select Darwin linker flags,
++EMBER_CROSS_TARGET_SYS overrides the uname-derived system version, and
++the tcl private-header check plus include paths resolve against
++EMBER_CROSS_TCL_HDRDIR because tclConfig.sh records target-only paths.
++
++--- configure.orig
+++++ configure
++@@ -2577,7 +2577,7 @@
++ 	    fi
++ 
++ 	    # on Darwin, check in Framework installation locations
++-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+++	    if test "${ac_cv_darwin_host:-no}" = "yes" -a x"${ac_cv_c_tclconfig}" = x ; then
++ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
++ 			`ls -d /Library/Frameworks 2>/dev/null` \
++ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
++@@ -2680,7 +2680,7 @@
++         TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
++         TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
++         TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
++-    elif test "`uname -s`" = "Darwin"; then
+++    elif test "${ac_cv_darwin_host:-no}" = "yes"; then
++ 	# If Tcl was built as a framework, attempt to use the libraries
++ 	# from the framework at the given location so that linking works
++ 	# against Tcl.framework installed in an arbitrary location.
++@@ -5029,7 +5029,7 @@
++ 	    fi
++ 	else
++ 	    list=""
++-	    if test "`uname -s`" = "Darwin"; then
+++	    if test "${ac_cv_darwin_host:-no}" = "yes"; then
++ 		# If Tcl was built as a framework, attempt to use
++ 		# the framework's Headers directory
++ 		case ${TCL_DEFS} in
++@@ -5118,7 +5118,11 @@
++ 	# We want to ensure these are substituted so as not to require
++ 	# any *_NATIVE vars be defined in the Makefile
++ 	TCL_INCLUDES="-I${TCL_GENERIC_DIR_NATIVE} -I${TCL_PLATFORM_DIR_NATIVE}"
++-	if test "`uname -s`" = "Darwin"; then
+++	    if test ! -f "${TCL_GENERIC_DIR_NATIVE}/tclInt.h" -a \
+++		-f "${EMBER_CROSS_TCL_HDRDIR}/tcl/generic/tclInt.h" ; then :
+++		TCL_INCLUDES="-I${EMBER_CROSS_TCL_HDRDIR}/tcl/generic -I${EMBER_CROSS_TCL_HDRDIR}/tcl/unix"
+++	    fi
+++	if test "${ac_cv_darwin_host:-no}" = "yes"; then
++             # If Tcl was built as a framework, attempt to use
++             # the framework's Headers and PrivateHeaders directories
++             case ${TCL_DEFS} in
++@@ -5136,7 +5140,8 @@
++ 	    esac
++ 	    result="Using ${TCL_INCLUDES}"
++ 	else
++-	    if test ! -f "${TCL_SRC_DIR}/generic/tclInt.h" ; then
+++	    if test ! -f "${TCL_SRC_DIR}/generic/tclInt.h" -a \
+++	    ! -f "${EMBER_CROSS_TCL_HDRDIR}/tcl/generic/tclInt.h" ; then
++ 		as_fn_error $? "Cannot find private header tclInt.h in ${TCL_SRC_DIR}" "$LINENO" 5
++ 	    fi
++ 	    result="Using srcdir found in tclConfig.sh: ${TCL_SRC_DIR}"
++@@ -5661,7 +5666,7 @@
++ 	if test "${TEA_PLATFORM}" = "windows" ; then
++ 	    tcl_cv_sys_version=windows
++ 	else
++-	    tcl_cv_sys_version=`uname -s`-`uname -r`
+++	    tcl_cv_sys_version=${EMBER_CROSS_TARGET_SYS:-`uname -s`-`uname -r`}
++ 	    if test "$?" -ne 0 ; then
++ 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
++ $as_echo "$as_me: WARNING: can't find uname command" >&2;}
++@@ -8824,10 +8829,15 @@
++ # seen this is ISC.
++ { $as_echo "$as_me:${as_lineno-$LINENO}: checking if WNOHANG requires _POSIX_SOURCE" >&5
++ $as_echo_n "checking if WNOHANG requires _POSIX_SOURCE... " >&6; }
++-if test "$cross_compiling" = yes; then :
++-  as_fn_error $? "Expect can't be cross compiled" "$LINENO" 5
++-
+++if test "$cross_compiling" = "yes"; then :
+++  ember_probe_00=no  # EmberBSD: NetBSD/aarch64 VM probe 2026-10-14
++ else
+++  ember_probe_00=
+++fi
+++ember_result=no
+++if test "$ember_probe_00" = "yes"; then :
+++  ember_result=yes
+++elif test "$ember_probe_00" = ""; then :
++   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++ /* end confdefs.h.  */
++ 
++@@ -8841,6 +8851,14 @@
++ }
++ _ACEOF
++ if ac_fn_c_try_run "$LINENO"; then :
+++  ember_result=yes
+++else
+++  ember_result=no
+++fi
+++rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+++  conftest.$ac_objext conftest.beam conftest.$ac_ext
+++fi
+++if test "$ember_result" = "yes"; then :
++   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++ $as_echo "yes" >&6; }
++ 	$as_echo "#define WNOHANG_REQUIRES_POSIX_SOURCE 1" >>confdefs.h
++@@ -8851,18 +8869,20 @@
++ $as_echo "no" >&6; }
++ 
++ fi
++-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
++-  conftest.$ac_objext conftest.beam conftest.$ac_ext
++-fi
++ 
++ 
++ { $as_echo "$as_me:${as_lineno-$LINENO}: checking if any value exists for WNOHANG" >&5
++ $as_echo_n "checking if any value exists for WNOHANG... " >&6; }
++ rm -rf wnohang
++-if test "$cross_compiling" = yes; then :
++-  as_fn_error $? "Expect can't be cross compiled" "$LINENO" 5
++-
+++if test "$cross_compiling" = "yes"; then :
+++  ember_probe_01=yes  # EmberBSD: NetBSD/aarch64 VM probe 2026-10-14
++ else
+++  ember_probe_01=
+++fi
+++ember_result=no
+++if test "$ember_probe_01" = "yes"; then :
+++  ember_result=yes
+++elif test "$ember_probe_01" = ""; then :
++   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++ /* end confdefs.h.  */
++ 
++@@ -8880,6 +8900,14 @@
++ }
++ _ACEOF
++ if ac_fn_c_try_run "$LINENO"; then :
+++  ember_result=yes
+++else
+++  ember_result=no
+++fi
+++rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+++  conftest.$ac_objext conftest.beam conftest.$ac_ext
+++fi
+++if test "$ember_result" = "yes"; then :
++   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++ $as_echo "yes" >&6; }
++ 	cat >>confdefs.h <<_ACEOF
++@@ -8895,9 +8923,6 @@
++ 
++ 
++ fi
++-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
++-  conftest.$ac_objext conftest.beam conftest.$ac_ext
++-fi
++ 
++ 
++ #
++@@ -9227,10 +9252,15 @@
++ # first check for the pure bsd
++ { $as_echo "$as_me:${as_lineno-$LINENO}: checking for struct sgttyb" >&5
++ $as_echo_n "checking for struct sgttyb... " >&6; }
++-if test "$cross_compiling" = yes; then :
++-  as_fn_error $? "Expect can't be cross compiled" "$LINENO" 5
++-
+++if test "$cross_compiling" = "yes"; then :
+++  ember_probe_02=yes  # EmberBSD: NetBSD/aarch64 VM probe 2026-10-14
++ else
+++  ember_probe_02=
+++fi
+++ember_result=no
+++if test "$ember_probe_02" = "yes"; then :
+++  ember_result=yes
+++elif test "$ember_probe_02" = ""; then :
++   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++ /* end confdefs.h.  */
++ 
++@@ -9242,6 +9272,14 @@
++ }
++ _ACEOF
++ if ac_fn_c_try_run "$LINENO"; then :
+++  ember_result=yes
+++else
+++  ember_result=no
+++fi
+++rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+++  conftest.$ac_objext conftest.beam conftest.$ac_ext
+++fi
+++if test "$ember_result" = "yes"; then :
++   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++ $as_echo "yes" >&6; }
++         $as_echo "#define HAVE_SGTTYB 1" >>confdefs.h
++@@ -9253,9 +9291,6 @@
++ $as_echo "no" >&6; }
++ 
++ fi
++-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
++-  conftest.$ac_objext conftest.beam conftest.$ac_ext
++-fi
++ 
++ 
++ # mach systems have include files for unimplemented features
++@@ -9268,10 +9303,15 @@
++   # pty_termios.c is set up to handle pty_termio.
++   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for struct termio" >&5
++ $as_echo_n "checking for struct termio... " >&6; }
++-  if test "$cross_compiling" = yes; then :
++-  as_fn_error $? "Expect can't be cross compiled" "$LINENO" 5
++-
+++  if test "$cross_compiling" = "yes"; then :
+++  ember_probe_03=no  # EmberBSD: NetBSD/aarch64 VM probe 2026-10-14
++ else
+++  ember_probe_03=
+++fi
+++ember_result=no
+++if test "$ember_probe_03" = "yes"; then :
+++  ember_result=yes
+++elif test "$ember_probe_03" = ""; then :
++   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++ /* end confdefs.h.  */
++ #include <termio.h>
++@@ -9282,6 +9322,14 @@
++   }
++ _ACEOF
++ if ac_fn_c_try_run "$LINENO"; then :
+++  ember_result=yes
+++else
+++  ember_result=no
+++fi
+++rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+++  conftest.$ac_objext conftest.beam conftest.$ac_ext
+++fi
+++if test "$ember_result" = "yes"; then :
++   $as_echo "#define HAVE_TERMIO 1" >>confdefs.h
++ 
++         PTY_TYPE=termios
++@@ -9293,18 +9341,20 @@
++ $as_echo "no" >&6; }
++ 
++ fi
++-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
++-  conftest.$ac_objext conftest.beam conftest.$ac_ext
++-fi
++ 
++ 
++   # now check for the new style ttys (not yet posix)
++   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for struct termios" >&5
++ $as_echo_n "checking for struct termios... " >&6; }
++-  if test "$cross_compiling" = yes; then :
++-  as_fn_error $? "Expect can't be cross compiled" "$LINENO" 5
++-
+++  if test "$cross_compiling" = "yes"; then :
+++  ember_probe_04=yes  # EmberBSD: NetBSD/aarch64 VM probe 2026-10-14
++ else
+++  ember_probe_04=
+++fi
+++ember_result=no
+++if test "$ember_probe_04" = "yes"; then :
+++  ember_result=yes
+++elif test "$ember_probe_04" = ""; then :
++   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++ /* end confdefs.h.  */
++ 
++@@ -9320,6 +9370,14 @@
++   }
++ _ACEOF
++ if ac_fn_c_try_run "$LINENO"; then :
+++  ember_result=yes
+++else
+++  ember_result=no
+++fi
+++rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+++  conftest.$ac_objext conftest.beam conftest.$ac_ext
+++fi
+++if test "$ember_result" = "yes"; then :
++   $as_echo "#define HAVE_TERMIOS 1" >>confdefs.h
++ 
++         PTY_TYPE=termios
++@@ -9331,18 +9389,20 @@
++ $as_echo "no" >&6; }
++ 
++ fi
++-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
++-  conftest.$ac_objext conftest.beam conftest.$ac_ext
++-fi
++ 
++ fi
++ 
++ { $as_echo "$as_me:${as_lineno-$LINENO}: checking if TCGETS or TCGETA in termios.h" >&5
++ $as_echo_n "checking if TCGETS or TCGETA in termios.h... " >&6; }
++-if test "$cross_compiling" = yes; then :
++-  as_fn_error $? "Expect can't be cross compiled" "$LINENO" 5
++-
+++if test "$cross_compiling" = "yes"; then :
+++  ember_probe_05=no  # EmberBSD: NetBSD/aarch64 VM probe 2026-10-14
++ else
+++  ember_probe_05=
+++fi
+++ember_result=no
+++if test "$ember_probe_05" = "yes"; then :
+++  ember_result=yes
+++elif test "$ember_probe_05" = ""; then :
++   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++ /* end confdefs.h.  */
++ 
++@@ -9360,6 +9420,14 @@
++ }
++ _ACEOF
++ if ac_fn_c_try_run "$LINENO"; then :
+++  ember_result=yes
+++else
+++  ember_result=no
+++fi
+++rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+++  conftest.$ac_objext conftest.beam conftest.$ac_ext
+++fi
+++if test "$ember_result" = "yes"; then :
++   $as_echo "#define HAVE_TCGETS_OR_TCGETA_IN_TERMIOS_H 1" >>confdefs.h
++ 
++ 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++@@ -9370,17 +9438,19 @@
++ $as_echo "no" >&6; }
++ 
++ fi
++-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
++-  conftest.$ac_objext conftest.beam conftest.$ac_ext
++-fi
++ 
++ 
++ { $as_echo "$as_me:${as_lineno-$LINENO}: checking if TIOCGWINSZ in termios.h" >&5
++ $as_echo_n "checking if TIOCGWINSZ in termios.h... " >&6; }
++-if test "$cross_compiling" = yes; then :
++-  as_fn_error $? "Expect can't be cross compiled" "$LINENO" 5
++-
+++if test "$cross_compiling" = "yes"; then :
+++  ember_probe_06=yes  # EmberBSD: NetBSD/aarch64 VM probe 2026-10-14
++ else
+++  ember_probe_06=
+++fi
+++ember_result=no
+++if test "$ember_probe_06" = "yes"; then :
+++  ember_result=yes
+++elif test "$ember_probe_06" = ""; then :
++   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++ /* end confdefs.h.  */
++ 
++@@ -9398,6 +9468,14 @@
++ }
++ _ACEOF
++ if ac_fn_c_try_run "$LINENO"; then :
+++  ember_result=yes
+++else
+++  ember_result=no
+++fi
+++rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+++  conftest.$ac_objext conftest.beam conftest.$ac_ext
+++fi
+++if test "$ember_result" = "yes"; then :
++   $as_echo "#define HAVE_TIOCGWINSZ_IN_TERMIOS_H 1" >>confdefs.h
++ 
++ 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++@@ -9408,19 +9486,21 @@
++ $as_echo "no" >&6; }
++ 
++ fi
++-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
++-  conftest.$ac_objext conftest.beam conftest.$ac_ext
++-fi
++ 
++ 
++ # finally check for Cray style ttys
++ { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Cray-style ptys" >&5
++ $as_echo_n "checking for Cray-style ptys... " >&6; }
++ SETUID=":"
++-if test "$cross_compiling" = yes; then :
++-  as_fn_error $? "Expect can't be cross compiled" "$LINENO" 5
++-
+++if test "$cross_compiling" = "yes"; then :
+++  ember_probe_07=no  # EmberBSD: NetBSD/aarch64 VM probe 2026-10-14
++ else
+++  ember_probe_07=
+++fi
+++ember_result=no
+++if test "$ember_probe_07" = "yes"; then :
+++  ember_result=yes
+++elif test "$ember_probe_07" = ""; then :
++   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++ /* end confdefs.h.  */
++ 
++@@ -9434,6 +9514,14 @@
++ 
++ _ACEOF
++ if ac_fn_c_try_run "$LINENO"; then :
+++  ember_result=yes
+++else
+++  ember_result=no
+++fi
+++rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+++  conftest.$ac_objext conftest.beam conftest.$ac_ext
+++fi
+++if test "$ember_result" = "yes"; then :
++   PTY_TYPE=unicos
++ 	SETUID="chmod u+s"
++ 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++@@ -9444,9 +9532,6 @@
++ $as_echo "no" >&6; }
++ 
++ fi
++-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
++-  conftest.$ac_objext conftest.beam conftest.$ac_ext
++-fi
++ 
++ 
++ #
++@@ -9557,10 +9642,15 @@
++ #
++ { $as_echo "$as_me:${as_lineno-$LINENO}: checking for SV-style timezone" >&5
++ $as_echo_n "checking for SV-style timezone... " >&6; }
++-if test "$cross_compiling" = yes; then :
++-  as_fn_error $? "Expect can't be cross compiled" "$LINENO" 5
++-
+++if test "$cross_compiling" = "yes"; then :
+++  ember_probe_08=yes  # EmberBSD: NetBSD/aarch64 VM probe 2026-10-14
++ else
+++  ember_probe_08=
+++fi
+++ember_result=no
+++if test "$ember_probe_08" = "yes"; then :
+++  ember_result=yes
+++elif test "$ember_probe_08" = ""; then :
++   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++ /* end confdefs.h.  */
++ 
++@@ -9575,6 +9665,14 @@
++ }
++ _ACEOF
++ if ac_fn_c_try_run "$LINENO"; then :
+++  ember_result=yes
+++else
+++  ember_result=no
+++fi
+++rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+++  conftest.$ac_objext conftest.beam conftest.$ac_ext
+++fi
+++if test "$ember_result" = "yes"; then :
++   $as_echo "#define HAVE_SV_TIMEZONE 1" >>confdefs.h
++ 
++ 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++@@ -9584,9 +9682,6 @@
++ $as_echo "no" >&6; }
++ 
++ fi
++-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
++-  conftest.$ac_objext conftest.beam conftest.$ac_ext
++-fi
++ 
++ 
++ 
++
++--- exp_command.h.orig
+++++ exp_command.h
++@@ -222,8 +222,8 @@
++ 
++ EXTERN void		exp_strftime(char *format, const struct tm *timeptr,Tcl_DString *dstring);
++ 
++-#define exp_deleteProc (void (*)())0
++-#define exp_deleteObjProc (void (*)())0
+++#define exp_deleteProc ((Tcl_CmdDeleteProc *)0)
+++#define exp_deleteObjProc ((Tcl_CmdDeleteProc *)0)
++ 
++ EXTERN int expect_key;
++ EXTERN int exp_configure_count;	/* # of times descriptors have been closed */
++
++--- exp_tty.c.orig
+++++ exp_tty.c
++@@ -572,7 +572,7 @@
++     char **argv)
++ {
++ 	int result = TCL_OK;
++-	RETSIGTYPE (*old)();	/* save old sigalarm handler */
+++	void (*old)(int);	/* save old sigchld handler */
++ #define MAX_ARGLIST 10240
++ 	int i;
++ 
++
