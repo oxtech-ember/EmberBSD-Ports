@@ -1,0 +1,82 @@
+$NetBSD$
+
+--- meson_options.txt	2026-02-11 01:41:39.000000000 +0300
++++ meson_options.txt	2026-10-14 07:39:55.599846968 +0300
+@@ -123,3 +123,10 @@
+   type: 'boolean',
+   description: 'Build thumbnailer',
+ )
++
++option(
++    'triplet',
++    type: 'string',
++    value: '',
++    description: 'Rust target triplet to build for (cross builds)',
++)
+--- meson.build	2026-02-11 01:41:39.000000000 +0300
++++ meson.build	2026-10-14 08:25:37.340078418 +0300
+@@ -1,6 +1,7 @@
+ project(
+   'glycin',
+-  'rust',
++  # Rust is built by cargo custom targets, not by the meson rust language;
++  # the language sanity check cannot run in cross builds.
+   'c',
+   # This is a global version that's neither related to the glycin-loaders version
+   # nor the libglycin version
+@@ -61,6 +62,12 @@
+   cargo_profile = 'dev'
+ endif
+ 
++cargo_target_args = []
++if get_option('triplet') != ''
++  cargo_target_args += ['--target', get_option('triplet')]
++  rust_target = get_option('triplet') / rust_target
++endif
++
+ introspection = (get_option('introspection') or get_option('vapi') or get_option('capi_docs'))
+ 
+ if get_option('introspection') != introspection
+--- libglycin/meson.build	2026-02-11 01:41:39.000000000 +0300
++++ libglycin/meson.build	2026-10-14 07:39:55.601293890 +0300
+@@ -5,9 +5,11 @@
+ libglycin_deps = [
+     dependency('fontconfig', version: fontconfig_req),
+     dependency('gio-2.0', version: gio_req),
+-    dependency('libseccomp', version: seccomp_req),
+     dependency('lcms2', version: lcms2_req),
+ ]
++if host_machine.system() == 'linux'
++    libglycin_deps += dependency('libseccomp', version: seccomp_req)
++endif
+ 
+ pkg = import('pkgconfig')
+ gnome = import('gnome')
+@@ -17,6 +19,7 @@
+     '--target-dir', cargo_target_dir,
+     '--profile', cargo_profile,
+     '--manifest-path', manifest,
++    cargo_target_args,
+ ]
+ 
+ cargo_env_module = cargo_env
+--- glycin-loaders/meson.build	2026-02-11 01:41:39.000000000 +0300
++++ glycin-loaders/meson.build	2026-10-14 07:40:09.192457607 +0300
+@@ -49,6 +49,7 @@
+ cargo_options = [
+   '--profile', cargo_profile,
+   '--manifest-path', manifest,
++  cargo_target_args,
+ ]
+ 
+ git_version = ''
+--- glycin-thumbnailer/meson.build	2026-02-11 01:41:39.000000000 +0300
++++ glycin-thumbnailer/meson.build	2026-10-14 07:40:09.192696483 +0300
+@@ -15,6 +15,7 @@
+         '--target-dir', cargo_target_dir,
+         '--profile', cargo_profile,
+         '--manifest-path', cargo_manifest,
++        cargo_target_args,
+         '--package=glycin-thumbnailer',
+     ],
+ )

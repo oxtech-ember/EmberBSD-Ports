@@ -91,16 +91,39 @@ packages only. Chain state after this pass:
   hashes did not match the patch files) and `patch-mdk_mdk-stream.c`
   joined the set.
 
-Remaining mutter configure gaps, recorded as debts:
+**mutter 49.8 cross-built and installed (2026-10-14, second pass).**
+`gvdb` turned out to ship in the mutter tarball (no wrap download);
+`glycin-2` is now fully ported:
 
-- `glycin-2` (Rust) is an unconditional mutter 49 dependency; no pkgsrc
-  recipe exists. Foundation: the packaged `rust-cross-std` NetBSD target.
-- `gvdb` comes as a meson subproject wrap; `wrap_mode=nodownload` needs it
-  in the sysroot first.
-- With logind and udev off, `native_backend=false` is forced: this chain
-  yields a Wayland-only (nested) libmutter. A standalone DRM/KMS compositor
-  needs a logind-free launcher port (ConsoleKit seat path or a NetBSD
-  session helper) - a base OS task, not a Ports patch.
+- **glycin 2.0.8** (new recipe, `probes/pantheon/glycin/`): libglycin only
+  (`-Dglycin-loaders=false -Dglycin-thumbnailer=false -Dlibglycin-gtk4=false
+  -Dintrospection=false`), cross cargo via the packaged rust-bin 1.99 +
+  rust-std-aarch64-netbsd (`RUST_TYPE=native`, target linker = wrapper cc).
+  A `triplet` meson option patches `--target aarch64-unknown-netbsd` into
+  every cargo call (upstream builds for the host only); the meson `rust`
+  language is dropped from project() because its cross sanity check cannot
+  run; a host-python rst2man-style fix covers `crates-version.py` (tomllib).
+  Crate patch: NetBSD has no memfd_create(2), no file seals, no seccomp and
+  no bwrap — shared memory falls back to POSIX shm (unlinked object,
+  descriptor lifetime), `seal_fd` becomes a no-op and the Linux sandbox
+  machinery is cfg-gated; the loader runs unsandboxed until a pledge(2)
+  sandbox lands (debt).
+- **mutter 49.8** now builds with twelve additional patches beyond the
+  original six: pango autoptr redefinition, glibc-only `uint`, vendored
+  RenderDoc header platform list, the dma-buf `export_sync_file` UAPI,
+  linux-only gating of the `linux-drm-syncobj` staging protocol (sources,
+  protocol list and six integration sites), a Linux-only backlight helper,
+  a cross `-initfd` detection guard and a direct `meta-backend.h` include.
+  Recipe flags: `-Dlogind=false -Dnative_backend=false -Dudev=false
+  -Dtests=disabled -Dstartup_notification=false -Dprofiler=false
+  -Dxwayland_path=/usr/X11R7/bin/Xwayland` plus the x11-client buildlinks
+  (gtk4, the X libraries, atk, lcms2, libei, libdrm, pixman, pango,
+  harfbuzz, gsettings-desktop-schemas, gnome-desktop4, glycin,
+  libdisplay-info). An install-time rpath fix pre-extends LDFLAGS with
+  `/usr/pkg/lib/mutter-17`; meson-generated python tools get the target
+  python shebang.
+- Remaining for E25: granite 7.8.1, gala 8.6.2, X11 startup-notification
+  (currently off), the colord daemon, and the VM/board acceptance run.
 
 ## Not yet done
 

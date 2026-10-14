@@ -1,0 +1,5 @@
+@comment $NetBSD$
+include/glycin-2/glycin.h
+lib/libglycin-2.so
+lib/libglycin-2.so.0
+lib/pkgconfig/glycin-2.pc
