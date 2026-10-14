@@ -55,11 +55,58 @@ policy.
   on the project storage volume; probe recipes live here and graduate to
   a profile after the first successful build.
 
+## Cross-build record (2026-10-14, macOS host, GCC16 + sysroot)
+
+All cross builds run on the development host; boards and VMs receive binary
+packages only. Chain state after this pass:
+
+- **ibus 1.5.34nb3** cross-installed in a GTK4 profile: `--disable-gtk3
+  --disable-gtk2 --enable-gtk4 --disable-ui --disable-xim --disable-tests`
+  (XIM requires gtk2 when gtk3 is off; the GTK3/Vala panel is not built).
+  The `im-ibus.so` GTK4 immodule builds. `patch-cross-generators` builds the
+  three noinst generators (`gen-internal-compose-table`, `emoji-parser`,
+  `unicode-parser`) with `CC_FOR_BUILD` against the host glib, bypasses
+  libtool for their links, keeps the dist-shipped compose sequences behind a
+  guard, and replaces `G_FILE_TEST_EXISTS` with `G_FILE_TEST_IS_REGULAR`
+  (case-insensitive host filesystems match the `compose/` directory).
+  Host-run tools (`glib-compile-resources`, `gdbus-codegen`,
+  `glib-compile-schemas`, `wayland-scanner`, wayland-protocols datadir) are
+  forced through `MAKE_FLAGS` so the install phase sees them too.
+- **colord 1.4.8nb2** cross-installed as a library-only profile:
+  `-Ddaemon=false -Dgenerated_data=false -Dman=false` plus the new
+  `generated_data` meson option (patch guards the `cd-it8` /
+  `cd-create_profile` data subdirs). The daemon needs logind-class sessions
+  and runs its data generators at build time; both are impossible in cross
+  today. Mutter links `libcolord`; the daemon stays a separate follow-up.
+- **dbus-glib 0.114nb2** cross-built with the host-built
+  `dbus-binding-tool` (homebrew dbus + host glib; scratch prefix) and a
+  patch skipping the unguarded `dbus/examples` subdirectory.
+- **libgudev 238, libgusb 0.4.9nb1** cross-built with introspection and
+  vapi options off (`PKG_OPTIONS.libgudev= -introspection -vapi`).
+- **mutter 49.8** recipe corrections: `-Dsystemd=false` is gone in 49.8
+  (now `-Dlogind=false`); `-Dtests=disabled` (feature type); gtk3,
+  gnome-settings-daemon and startup-notification buildlinks dropped
+  (tests-only or optional deps); colord buildlink added (unconditional
+  upstream). The six patch SHA1s in `distinfo` were recomputed (the staged
+  hashes did not match the patch files) and `patch-mdk_mdk-stream.c`
+  joined the set.
+
+Remaining mutter configure gaps, recorded as debts:
+
+- `glycin-2` (Rust) is an unconditional mutter 49 dependency; no pkgsrc
+  recipe exists. Foundation: the packaged `rust-cross-std` NetBSD target.
+- `gvdb` comes as a meson subproject wrap; `wrap_mode=nodownload` needs it
+  in the sysroot first.
+- With logind and udev off, `native_backend=false` is forced: this chain
+  yields a Wayland-only (nested) libmutter. A standalone DRM/KMS compositor
+  needs a logind-free launcher port (ConsoleKit seat path or a NetBSD
+  session helper) - a base OS task, not a Ports patch.
+
 ## Not yet done
 
-- Native build of any of the three recipes (meson configure will finalize
-  the dependency link set; PLIST files are placeholders until then).
-- gala, wingpanel, plank, granite and the session components.
+- mutter configure completion (glycin, gvdb), granite 7.8.1 and gala 8.6.2
+  builds, PLIST generation from destdirs.
+- colord daemon profile (data generation, sensor plugins, session glue).
 - Headless mutter smoke test in the AArch64 VM and hardware acceptance.
 
 ## Dependency fixes

@@ -1,0 +1,25 @@
+$NetBSD$
+
+--- meson_options.txt.orig	2026-10-14 05:26:04.394689835 +0300
++++ meson_options.txt	2026-10-14 05:26:04.397880181 +0300
+@@ -16,3 +16,5 @@
+ option('pnp_ids', type : 'string', value : '', description : 'Location of pnp.ids if hwdb is not available')
+ option('man', type : 'boolean', value : true, description : 'Generate man pages')
+ option('docs', type : 'boolean', value : true, description : 'Generate documentation')
++
++option('generated_data', type : 'boolean', value : true, description : 'Generate CMF, illuminant and profile data with cd-it8 and cd-create-profile (requires running build tools)')
+--- data/meson.build.orig	2026-10-14 05:26:04.397435637 +0300
++++ data/meson.build	2026-10-14 05:26:04.500454068 +0300
+@@ -1,7 +1,9 @@
+-subdir('cmf')
++if get_option('generated_data')
++  subdir('cmf')
++  subdir('illuminant')
++  subdir('profiles')
++endif
+ subdir('figures')
+-subdir('illuminant')
+-subdir('profiles')
+ subdir('ref')
+ subdir('tests')
+ subdir('ti1')

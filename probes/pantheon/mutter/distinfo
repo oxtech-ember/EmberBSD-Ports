@@ -2,9 +2,9 @@ $NetBSD$
 
 SHA512 (mutter-49.8.tar.xz) = 8d0a9dfb01a46fb90c536e3184d79e42fc4280390c9451d4d0a1cb884a0c92ae42150970addd6d612247726541058e60eb1318714bf264426c3a663f3aed6e10
 Size (mutter-49.8.tar.xz) = 8529752 bytes
-SHA1 (patch-cogl_cogl_cogl-dma-buf-handle.c) = ed34f426b9a1c2ed4255fd710ee7c2bc074d3553
-SHA1 (patch-mdk_mdk-stream.c) = bf597a0c60a62360c1c824593839120f226572f5
-SHA1 (patch-src_backends_native_meta-kms-impl-device.c) = abacc2a07e14f5d9c6d6e9fe8f82f5e34c11996e
-SHA1 (patch-src_core_meta-context-main.c) = 7e57c105f44b9c66f9376ef9e787d9ce27e68a25
-SHA1 (patch-src_wayland_meta-wayland-dma-buf.c) = 19c13de2fc8fc3f86e0dbfee6dc6996d3917a8fd
-SHA1 (patch-src_wayland_meta-xwayland.c) = e580bc30fa96b8b8d0f46f971304b927a896c743
+SHA1 (patch-cogl_cogl_cogl-dma-buf-handle.c) = aaaa3637979a38083060ddc11422403a207d6758
+SHA1 (patch-mdk_mdk-stream.c) = ac3af5e0865a93d68389984fb38cd4adb8326e90
+SHA1 (patch-src_backends_native_meta-kms-impl-device.c) = dd9e55b84a0222cbd63727da3fe263b971c0f368
+SHA1 (patch-src_core_meta-context-main.c) = 6bc712e771c8dab769695287e054327272352431
+SHA1 (patch-src_wayland_meta-wayland-dma-buf.c) = 533e3ddbd3b1e9c1edc5553ec9d7ee1e6a961b41
+SHA1 (patch-src_wayland_meta-xwayland.c) = b2d6e1368d8444683538ce445cbd474853883cb2

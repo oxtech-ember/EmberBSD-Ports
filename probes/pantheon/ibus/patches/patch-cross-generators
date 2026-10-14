@@ -1,0 +1,47 @@
+$NetBSD$
+
+--- src/Makefile.in.orig	2026-10-14 02:45:47.738251600 +0300
++++ src/Makefile.in	2026-10-14 04:29:56.783992050 +0300
+@@ -1262,15 +1262,15 @@
+ 
+ emoji-parser$(EXEEXT): $(emoji_parser_OBJECTS) $(emoji_parser_DEPENDENCIES) $(EXTRA_emoji_parser_DEPENDENCIES) 
+ 	@rm -f emoji-parser$(EXEEXT)
+-	$(AM_V_CCLD)$(emoji_parser_LINK) $(emoji_parser_OBJECTS) $(emoji_parser_LDADD) $(LIBS)
++	$(AM_V_CCLD)$(CC_FOR_BUILD) $(CFLAGS_FOR_BUILD) -L/private/tmp/ember-common-stack/host/lib -L/opt/homebrew/opt/gettext/lib -o $@ $(emoji_parser_OBJECTS) -lglib-2.0 -lgobject-2.0 -lgio-2.0 -lintl
+ 
+ gen-internal-compose-table$(EXEEXT): $(gen_internal_compose_table_OBJECTS) $(gen_internal_compose_table_DEPENDENCIES) $(EXTRA_gen_internal_compose_table_DEPENDENCIES) 
+ 	@rm -f gen-internal-compose-table$(EXEEXT)
+-	$(AM_V_CCLD)$(gen_internal_compose_table_LINK) $(gen_internal_compose_table_OBJECTS) $(gen_internal_compose_table_LDADD) $(LIBS)
++	$(AM_V_CCLD)$(CC_FOR_BUILD) $(CFLAGS_FOR_BUILD) -L/private/tmp/ember-common-stack/host/lib -L/opt/homebrew/opt/gettext/lib -o $@ $(gen_internal_compose_table_OBJECTS) -lglib-2.0 -lgobject-2.0 -lgio-2.0 -lintl
+ 
+ unicode-parser$(EXEEXT): $(unicode_parser_OBJECTS) $(unicode_parser_DEPENDENCIES) $(EXTRA_unicode_parser_DEPENDENCIES) 
+ 	@rm -f unicode-parser$(EXEEXT)
+-	$(AM_V_CCLD)$(unicode_parser_LINK) $(unicode_parser_OBJECTS) $(unicode_parser_LDADD) $(LIBS)
++	$(AM_V_CCLD)$(CC_FOR_BUILD) $(CFLAGS_FOR_BUILD) -L/private/tmp/ember-common-stack/host/lib -L/opt/homebrew/opt/gettext/lib -o $@ $(unicode_parser_OBJECTS) -lglib-2.0 -lgobject-2.0 -lgio-2.0 -lintl
+ 
+ mostlyclean-compile:
+ 	-rm -f *.$(OBJEXT)
+@@ -3599,9 +3599,11 @@
+ 
+ compose/sequences-$(ENDIAN)-endian: gen-internal-compose-table
+ 	$(AM_V_GEN) $(MKDIR_P) $(builddir)/compose && \
++	if [ ! -f $(builddir)/compose/sequences-little-endian ]; then \
+ 	$(builddir)/gen-internal-compose-table && \
+ 	mv $(builddir)/sequences-big-endian $(builddir)/compose && \
+-	mv $(builddir)/sequences-little-endian $(builddir)/compose
++	mv $(builddir)/sequences-little-endian $(builddir)/compose; \
++	fi; touch $(builddir)/compose/sequences-little-endian
+ 
+ ibusresources.h: ibus.gresources.xml compose/sequences-$(ENDIAN)-endian
+ 	$(AM_V_GEN) $(GLIB_COMPILE_RESOURCES) --generate-header --internal \
+--- src/gencomposetable.c.orig	2026-10-14 04:20:03.883512235 +0300
++++ src/gencomposetable.c	2026-10-14 04:20:03.975414257 +0300
+@@ -80,7 +80,7 @@
+     char *basename = NULL;
+ 
+     path = g_strdup ("./Compose");
+-    if (!path || !g_file_test (path, G_FILE_TEST_EXISTS)) {
++    if (!path || !g_file_test (path, G_FILE_TEST_IS_REGULAR)) {
+         g_clear_pointer (&path, g_free);
+         for (sys_lang = sys_langs; *sys_lang; sys_lang++) {
+             path = g_build_filename (X11_LOCALEDATADIR, *sys_lang,
