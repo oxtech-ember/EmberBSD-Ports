@@ -69,6 +69,7 @@ if $PROGRAM_NAME == __FILE__
     pcm = samples.pack('s<*')
     wave = 'RIFF'.b + [36 + pcm.bytesize].pack('V') + 'WAVEfmt '.b + [16, 1, 1, 44100, 88200, 2, 16].pack('VvvVVvv') + 'data'.b + [pcm.bytesize].pack('V') + pcm
     File.binwrite(File.join(directory, 'tone.wav'), wave)
+    File.binwrite(File.join(directory, 'tone.pcm'), pcm)
     puts 'PASS: generated one second of deterministic mono PCM'
   when 'verify'
     check(ARGV.size == 3, 'Usage: lame-fixtures.rb verify TARGET_RESULTS FIXTURES')
