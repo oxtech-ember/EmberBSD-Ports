@@ -1,0 +1,9 @@
+OSQP solves convex quadratic programs with an operator splitting method.
+It supports sparse problems, warm starts, matrix updates and infeasibility
+certificates. The bundled QDLDL direct solver supplies the factorization.
+
+This package installs the shared C library, public headers and CMake export.
+It uses double precision, 64-bit indices and QDLDL 0.1.9. Adjoint derivatives,
+profiling, printing and interrupt handling are enabled. Code generation is
+disabled. Catch2 and the static upstream test library are not installed.
+The upstream library is unversioned; no cross-release ABI is promised.

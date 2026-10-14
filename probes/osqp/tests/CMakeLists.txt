@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.22)
 project(ember_osqp_contract LANGUAGES C)
 enable_testing()
 find_package(osqp 1.0.0 EXACT CONFIG REQUIRED
-    PATHS "${PROBE_PREFIX}/lib/cmake/osqp" NO_DEFAULT_PATH)
+    PATHS "${PROBE_PREFIX}/lib/cmake/osqp" NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
 get_target_property(location osqp::osqp IMPORTED_LOCATION_RELEASE)
 string(FIND "${location}" "${PROBE_PREFIX}/" position)
 if(NOT position EQUAL 0)

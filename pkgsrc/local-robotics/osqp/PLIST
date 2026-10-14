@@ -1,0 +1,17 @@
+@comment EmberBSD OSQP shared library and development interfaces
+include/osqp/osqp.h
+include/osqp/osqp_api_constants.h
+include/osqp/osqp_api_functions.h
+include/osqp/osqp_api_types.h
+include/osqp/osqp_configure.h
+include/osqp/osqp_export_define.h
+lib/cmake/osqp/osqp-config-version.cmake
+lib/cmake/osqp/osqp-config.cmake
+lib/cmake/osqp/osqp-targets-release.cmake
+lib/cmake/osqp/osqp-targets.cmake
+lib/libosqp.so
+share/licenses/osqp/AMD-BSD-3-Clause
+share/licenses/osqp/OSQP-Apache-2.0
+share/licenses/osqp/OSQP-NOTICE
+share/licenses/osqp/QDLDL-Apache-2.0
+share/licenses/osqp/SOURCE

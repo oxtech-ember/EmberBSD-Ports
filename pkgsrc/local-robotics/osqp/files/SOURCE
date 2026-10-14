@@ -1,0 +1,20 @@
+Project: OSQP
+Release: v1.0.0
+Revision: 236713ce9a56c182ac3230d52108f952afce1523
+Repository: https://github.com/osqp/osqp
+Archive: https://codeload.github.com/osqp/osqp/tar.gz/refs/tags/v1.0.0
+Archive SHA256: dd6a1c2e7e921485697d5e7cdeeb043c712526c395b3700601f51d472a7d8e48
+Dependency: QDLDL v0.1.9, revision af62a6f2c62725b9bc09811177006de037a1e800
+Dependency archive: https://codeload.github.com/osqp/qdldl/tar.gz/refs/tags/v0.1.9
+Dependency SHA256: 7d1285b2db15cf2730dc83b3d16ed28412f558591108cca4f28d4438bf72ceed
+Licenses: OSQP and QDLDL Apache-2.0; bundled AMD BSD-3-Clause.
+Attribution: upstream licenses and OSQP NOTICE are installed unchanged.
+Profile: shared C library, double precision, 64-bit indices, builtin QDLDL.
+Features: adjoint derivatives, profiling, printing and interrupts enabled.
+Compiler baseline: GCC 16.2; native and cross builds use features.cmake.
+Packaging: no static archive, codegen files, Catch2 or upstream test binaries.
+Tests: upstream tests use a separate static build; no test result is implied here.
+ABI: upstream unversioned libosqp.so; no cross-release ABI is promised.
+Patch: select the existing POSIX interrupt listener on NetBSD.
+Patch provenance: original AI-assisted EmberBSD change; not submitted upstream.
+Packaging provenance: EmberBSD Ports, AI-assisted.

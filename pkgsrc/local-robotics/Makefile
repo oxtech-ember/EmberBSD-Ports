@@ -1,5 +1,6 @@
 COMMENT=	Local EmberBSD robotics packages
 
+SUBDIR+=	osqp
 SUBDIR+=	ruckig
 SUBDIR+=	zenoh-pico
 

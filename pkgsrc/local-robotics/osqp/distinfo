@@ -1,0 +1,9 @@
+# EmberBSD pinned upstream archives and portability patch
+
+BLAKE2s (osqp-1.0.0.tar.gz) = 26822fcfe28f3f0bad2e5ecf8ca5be0a25144e791b48e6737dd2fb6cd4af1621
+SHA512 (osqp-1.0.0.tar.gz) = 00ead2c476aca935202c2a02e5a0309efee6db65ec4e7c56f3597324a2f224a16502a34e7552cd5600c085d327c308317894718f9ac825ec669895ac19a45c41
+Size (osqp-1.0.0.tar.gz) = 3265246 bytes
+BLAKE2s (qdldl-0.1.9.tar.gz) = a66d4e2b4138ba3dc2524616079da77c2a78f69e369e9ccb9e61922571fdcdac
+SHA512 (qdldl-0.1.9.tar.gz) = 67722bb872cbafe61bdbe4a582cc7e4ebc729a1eca933cc8b758e9a9a5648903ee6ac147c14b33a136c11a647f39ea42cfe3c71147366ed294258b5b66d7d1da
+Size (qdldl-0.1.9.tar.gz) = 21160 bytes
+SHA1 (patch-src_CMakeLists.txt) = 448fdcf8db3e58da6d0ca9c92af4c4bf2364a367
