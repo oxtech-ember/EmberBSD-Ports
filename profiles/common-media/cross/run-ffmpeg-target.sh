@@ -41,7 +41,7 @@ if pkg_delete libxml2-2.15.4 > "$out/dependency-removal.log" 2>&1; then
 fi
 pkg_info -e libxml2-2.15.4
 pkg_delete ffmpeg9-9.0.2
-[ ! -e /usr/pkg/bin/ffmpeg9 ] && [ ! -e /usr/pkg/lib/ffmpeg9/libavcodec.so.63 ] || { echo 'Output path already exists.' >&2; exit 2; }
+[ ! -e /usr/pkg/bin/ffmpeg9 ] && [ ! -e /usr/pkg/lib/ffmpeg9/libavcodec.so.63 ] || exit 1
 if pkg_info -e ffmpeg9-9.0.2; then exit 1; fi
 pkg_delete libxml2-2.15.4
 [ ! -e /usr/pkg/lib/libxml2.so.16 ]
