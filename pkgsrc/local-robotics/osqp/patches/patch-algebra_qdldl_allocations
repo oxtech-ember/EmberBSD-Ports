@@ -1,0 +1,29 @@
+$NetBSD$
+
+Reject failed QDLDL object allocations before dereferencing them.
+Use the existing constructor cleanup and clear its output after failure.
+Original AI-assisted EmberBSD change; not submitted upstream.
+The affected OSQP source retains its Apache-2.0 license.
+
+--- algebra/_common/lin_sys/qdldl/qdldl_interface.c.orig
++++ algebra/_common/lin_sys/qdldl/qdldl_interface.c
+@@ -231,6 +231,7 @@
+     // Allocate private structure to store KKT factorization
+     qdldl_solver* s = c_calloc(1, sizeof(qdldl_solver));
+     *sp = s;
++    if (!s) return OSQP_MEM_ALLOC_ERROR;
+ 
+     // Size of KKT
+     n = P->csc->n;
+@@ -274,6 +275,11 @@
+     //      L will be allocated during the factorization depending on the
+     //      resulting number of elements.
+     s->L = c_calloc(1, sizeof(OSQPCscMatrix));
++    if (!s->L) {
++        free_linsys_solver_qdldl(s);
++        *sp = OSQP_NULL;
++        return OSQP_MEM_ALLOC_ERROR;
++    }
+     s->L->m  = n_plus_m;
+     s->L->n  = n_plus_m;
+     s->L->nz = -1;

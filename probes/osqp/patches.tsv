@@ -1,2 +1,3 @@
 patches/netbsd-interrupt.patch 9a00b57df9efaac05076ade3307e72f877e61eb6434933c66e1dfc0fec0205e8
 patches/current-test-framework.patch 04457fa4a67db1c548f679b6661ff6c09574497d2a6623046f2978bb50e550dc
+../../pkgsrc/local-robotics/osqp/patches/patch-algebra_qdldl_allocations baafd805209c8362101abd1a4c1d4da0e3f33fb99eeb3f094e6f562835b354d0

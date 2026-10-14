@@ -7,3 +7,4 @@ BLAKE2s (qdldl-0.1.9.tar.gz) = a66d4e2b4138ba3dc2524616079da77c2a78f69e369e9ccb9
 SHA512 (qdldl-0.1.9.tar.gz) = 67722bb872cbafe61bdbe4a582cc7e4ebc729a1eca933cc8b758e9a9a5648903ee6ac147c14b33a136c11a647f39ea42cfe3c71147366ed294258b5b66d7d1da
 Size (qdldl-0.1.9.tar.gz) = 21160 bytes
 SHA1 (patch-src_CMakeLists.txt) = 6abd46c08e30bc2573642d4962a5eb7984986198
+SHA1 (patch-algebra_qdldl_allocations) = 6a4ac868419c569e078f7fbd304fd96bbb5ca0ae
