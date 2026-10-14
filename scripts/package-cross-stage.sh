@@ -16,8 +16,11 @@ trap 'exit 143' HUP TERM
 sed '/^@comment/d' "$recipe/PLIST" | LC_ALL=C sort > "$work/expected"
 (cd "$stage" && find . \( -type f -o -type l \) -print | sed 's|^\./||' | LC_ALL=C sort) > "$work/actual"
 cmp "$work/expected" "$work/actual"
+# Store real package dependencies in +CONTENTS as well as build metadata.
+depends=$(sed -n 's/^DEPENDS=//p' "$info")
+case "$depends" in *[!A-Za-z0-9_.+\ -]*) echo 'Invalid exact package dependency list.' >&2; exit 2;; esac
 pkg_create -u root -g wheel -p "$stage" -I /usr/pkg \
     -c '-EmberBSD cross-built package' -d "$recipe/DESCR" \
-    -f "$recipe/PLIST" -B "$info" "$package"
+    -f "$recipe/PLIST" -B "$info" -P "$depends" "$package"
 [ -s "$package" ]
 pkg_info -B "$package"
