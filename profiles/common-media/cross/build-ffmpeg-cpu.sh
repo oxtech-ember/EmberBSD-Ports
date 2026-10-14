@@ -34,7 +34,7 @@ patch_tool=$(command -v "${PATCH:-patch}")
 pkgconf=$(command -v "${PKG_CONFIG:-pkg-config}")
 for tool in "$host_cc" "$host_cxx" "$make_tool" "$patch_tool" "$pkgconf"; do
     case "$tool" in /*) ;; *) echo 'Select an executable tool path.' >&2; exit 2;; esac
-    case "$tool" in *[!A-Za-z0-9_./-]*) echo 'Use simple tool paths.' >&2; exit 2;; esac
+    case "$tool" in *[!A-Za-z0-9_./+-]*) echo 'Use simple tool paths.' >&2; exit 2;; esac
     [ -x "$tool" ]
 done
 for compiler in "$host_cc" "$host_cxx"; do
