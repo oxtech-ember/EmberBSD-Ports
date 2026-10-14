@@ -64,11 +64,14 @@ tests='test-sampling test-grammar-parser test-grammar-integration test-json-sche
 "$cmake" --build "$out/build" -j "${CROSS_JOBS:-4}" --target $programs $tests > "$out/logs/build.log" 2>&1
 for program in $programs; do
     cp "$out/build/bin/$program" "$out/stage/usr/pkg/bin/"
+    chmod 755 "$out/stage/usr/pkg/bin/$program"
 done
 cp "$out/source/LICENSE" "$recipe/files/THIRD-PARTY-NOTICES" \
     "$out/stage/usr/pkg/share/licenses/llama-cpp/"
 cp "$out/source/vendor/cpp-httplib/LICENSE" "$out/stage/usr/pkg/share/licenses/llama-cpp/vendor_cpp-httplib_LICENSE"
 cp "$recipe/files/SOURCE" "$out/stage/usr/pkg/share/doc/llama-cpp/"
+chmod 644 "$out/stage/usr/pkg/share/licenses/llama-cpp/"* \
+    "$out/stage/usr/pkg/share/doc/llama-cpp/"*
 "$prefix/bin/aarch64--netbsd-readelf" -h -l -d "$out/stage/usr/pkg/bin/"* > "$out/elf.txt"
 test "$(grep -c 'Machine:.*AArch64' "$out/elf.txt")" = 5
 for path in "$prefix" "$sysroot" "$out"; do
