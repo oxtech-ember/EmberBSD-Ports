@@ -1,0 +1,3 @@
+Cryptographic and hash functions for Python, Cryptodome flavour.
+Same sources as pycryptodome under the Cryptodome module name.
+Runtime dependency of mtkclient.

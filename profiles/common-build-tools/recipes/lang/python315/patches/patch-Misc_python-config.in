@@ -1,0 +1,20 @@
+$NetBSD$
+
+Include the shared-library search directory in --ldflags, matching the
+shipped shell configuration script. Embedding otherwise fails outside
+system library directories.
+
+Origin: EmberBSD (AI-assisted), installed embedding consumer failure.
+Not submitted or accepted upstream.
+
+--- Misc/python-config.in.orig
++++ Misc/python-config.in
+@@ -62,6 +62,8 @@
+         if opt == '--ldflags':
+             if not getvar('Py_ENABLE_SHARED'):
+                 libs.insert(0, '-L' + getvar('LIBPL'))
++            else:
++                libs.insert(0, '-L' + getvar('LIBDIR'))
+         print(' '.join(libs))
+ 
+     elif opt == '--extension-suffix':
