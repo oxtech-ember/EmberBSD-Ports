@@ -26,14 +26,17 @@ for patch_file do
     actual=$(sed '/[$]NetBSD.*/d' "$patch_file" | sha1sum | awk '{print $1}')
     [ -n "$expected" ] && [ "$expected" = "$actual" ] || exit 1
 done
+(cd "$recipe/files" && sha256sum -c test-support.sha256)
 crt=$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0
 runtime=$sysroot/usr/pkg/gcc16/lib
 [ -f "$crt/crtbeginS.o" ] && [ -f "$runtime/libgcc_s.so.1" ] || exit 1
 [ -f "$sysroot/usr/include/stdio.h" ]
 unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH
 mkdir -p "$out/source" "$out/logs" "$out/recipe"
-sha256sum "$archive" "$cross/dependencies.tsv" "$recipe/distinfo" "$recipe/patches/"patch-* "$0" > "$out/inputs.sha256"
+sha256sum "$archive" "$cross/dependencies.tsv" "$recipe/distinfo" "$recipe/patches/"patch-* \
+    "$recipe/files/"* "$0" > "$out/inputs.sha256"
 tar -xf "$archive" --strip-components=1 -C "$out/source"
+cp "$recipe/files/"*.cmake "$out/source/"
 for patch_file in "$recipe/patches/"patch-*; do
     patch -f -F0 -p0 -d "$out/source" < "$patch_file" > "$out/logs/$(basename "$patch_file").log" 2>&1
 done

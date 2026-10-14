@@ -5,6 +5,11 @@
 PKGREVISION=	1
 GCC_REQD+=	16.2
 
+# The release tarball omits two CMake test drivers from the same upstream tag.
+post-extract:
+	${CP} ${FILESDIR}/run_and_diff.cmake ${WRKSRC}/
+	${CP} ${FILESDIR}/test_xmlcatalog_add_del.cmake ${WRKSRC}/
+
 COMMENT=	XML parser library from the GNOME project
 LICENSE=	modified-bsd
 

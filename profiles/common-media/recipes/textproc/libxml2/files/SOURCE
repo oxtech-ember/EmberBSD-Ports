@@ -1,0 +1,9 @@
+Project: GNOME libxml2 v2.15.4
+Repository: https://github.com/GNOME/libxml2
+Tag object: 9fac185ccc0b719eb647db902d5c13c3aaa96263
+run_and_diff.cmake Git blob: 81a113efd42e1ec821577826d50ab5f6fdc9b1b1
+test_xmlcatalog_add_del.cmake Git blob: c124e5970e4cb78a82710fe52f03064b9adedfc2
+Content hashes: test-support.sha256
+Origin: unchanged upstream CMake test drivers omitted from the release archive.
+License: upstream Copyright applies; preserve the current release's notices.
+Purpose: run all upstream CMake tests without replacing their checks.
