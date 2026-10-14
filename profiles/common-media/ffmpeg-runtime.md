@@ -6,6 +6,10 @@ libraries remain enabled. CM5 acceptance covers short file-based software
 encoding and decoding; it does not establish hardware video codecs, sound
 output, Qt Multimedia playback or an accelerated Plasma session.
 
+The separate [cloud CPU cross selection](cross/README.md) now passes installation,
+exact FFV1 pixels, timestamps, inverse filters, PCM samples and package cycles
+in AArch64 QEMU. That record does not extend the CM5 external-codec scope.
+
 ## AArch64 dispatch repairs
 
 The inherited libaom 3.15.0 and libvpx 1.16.0 recipes disabled runtime CPU

@@ -200,8 +200,10 @@ runtime behavior are validated.
   [motion planning](probes/ompl/README.md): Ruckig 0.19.4 and OSQP 1.0.0 pass
   installed macOS software contracts. Ruckig also has a GCC16 cross package
   with installed numerical contracts, all 15 bounded upstream groups and
-  removal/reinstallation verified in EmberBSD AArch64 QEMU. OSQP target
-  acceptance remains pending. OMPL 2.0.2 has a prepared source profile
+  removal/reinstallation verified in EmberBSD AArch64 QEMU. OSQP now has an
+  installed GCC16 package with QP/KKT, infeasibility, derivative and real SIGINT
+  checks. All three upstream programs and two injected allocation-failure
+  regressions pass on AArch64. OMPL 2.0.2 has a prepared source profile
   and checked geometry oracle.
 - [Ethernet SDR source profile](probes/sdr/README.md): SoapySDR 0.8.1,
   libiio 1.0.0, libad9361-iio and SoapyPlutoSDR use a common
@@ -251,6 +253,10 @@ runtime behavior are validated.
   GStreamer 1.28.7 and OpenCV 5.0.0 pass installed file/video pipeline checks
   on AArch64, including both videoio backends, timestamps, seeking, lossless
   output and malformed input. Camera capture and acceleration are unverified.
+  The [FFmpeg GCC16 CPU package](profiles/common-media/cross/README.md) also
+  passes real package/dependency cycles, exact FFV1 pixels, timestamps, filters
+  and PCM samples in AArch64 QEMU. The current XML provider retains its ABI,
+  repairs a schema shift and passes target contracts plus native UBSan tests.
 - [MQTT smart-home foundation](probes/mosquitto/README.md): Mosquitto 2.1.2
   builds with common GCC 16.2, cJSON 1.7.19 and SQLite 3.53.4. Twelve installed
   AArch64 VM cases pass MQTT 3.1.1/5 QoS 0/1/2, authentication/ACL, verified

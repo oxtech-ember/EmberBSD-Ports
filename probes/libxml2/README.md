@@ -5,15 +5,18 @@ and verifies an installed C consumer. It provides one explicit XML dependency
 for the [SDR profile](../sdr/README.md), without replacing `/usr/pkg` or relying
 on the host SDK's older XML implementation.
 
-The current result is a **macOS arm64 host build and installed software
-contract**. Native EmberBSD/NetBSD execution and migration of other consumers
-remain pending. EmberBSD-Ports owns this recipe and its integration checks.
+The original macOS arm64 contract remains a host record. The current
+[GCC16 cross package](../../profiles/common-media/cross/README.md) passes
+installation and the same C contract in EmberBSD AArch64 QEMU. FFmpeg consumes
+that actual package. Other consumer migrations remain separate work.
+EmberBSD-Ports owns this recipe and its integration checks.
 
 ## Source, API and ABI
 
 The official 2.15.4 archive and SHA256 are pinned in [sources.tsv](sources.tsv).
 GNOME published it on 2026-09-04; its release notes are dated 2026-09-01.
-No source patch is applied. [PROVENANCE.md](PROVENANCE.md) preserves authorship,
+The shared schema-option repair is pinned in [patches.tsv](patches.tsv).
+[PROVENANCE.md](PROVENANCE.md) preserves authorship,
 MIT and distinct per-file notices, and the selected build features.
 
 Upstream changed the ELF SONAME to `libxml2.so.16` in 2.14 and restricts binary
@@ -26,7 +29,7 @@ The shared build keeps DTD validation, HTML, XPath, XML Schemas, Relax NG,
 reader/writer, serialization, XInclude, canonicalization, threads and iconv.
 `xmllint` and `xmlcatalog` are installed. Python, documentation, ICU, legacy
 APIs, HTTP compatibility and zlib support are disabled. Consequently compressed
-XML is outside this profile. No new Python utility is used and upstream's
+XML is outside this profile. Upstream C tests are enabled. No new Python utility is used and upstream's
 optional Python binding build remains disabled. Platform iconv/threads are the
 only external library facilities selected here.
 
@@ -73,11 +76,14 @@ and treats nonzero status as failure.
 
 The SDR dependency migration is checked by rebuilding its stack against this
 prefix and repeating the installed synthetic IQ and loopback contracts.
-Other consumers and native base-compiler/ELF validation are not yet checked.
+The current cross record covers GCC16 ELF linkage, all three selected upstream
+target programs, provider identity, malformed input and the 10 MiB text limit.
+All 22 upstream tests also pass under GCC16 UBSan on Linux. Other consumers
+remain separate acceptance work.
 No global package, physical device or RF scenario is changed by this probe.
 
 Build/test logs, linked-library identity and installed SHA256 inventories are
 kept under the private work directory. `tests/build-guards.sh ABS_NEW_WORK`
 checks invalid inputs, corrupt sources and missing installations separately.
-Public overviews must retain the host-validation qualifier until native and
-other affected-consumer results are available.
+The cross record preserves its QEMU qualifier; it does not establish physical
+device support or acceptance of every dependent application.

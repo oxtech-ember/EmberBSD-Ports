@@ -1,5 +1,10 @@
 # Common multimedia source packages
 
+The [GCC16 CPU cross package](cross/README.md) passes real installation,
+dependency protection, exact FFV1/PCM checks and removal/reinstallation in
+EmberBSD AArch64 QEMU. It retains built-in codecs and uses current OpenSSL/XML;
+normal external-codec and CM5 results keep their separate selection and scope.
+
 The [complete speech packages](speech.md) also provide tested Sonic, eSpeak NG,
 Flite and speech-dispatcher for Qt/KDE on CM5.
 

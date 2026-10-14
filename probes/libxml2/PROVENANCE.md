@@ -8,7 +8,11 @@ The original release archive is from
 https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.4.tar.xz.
 Its SHA256 is pinned in `sources.tsv` and matches the upstream `.sha256sum`.
 The official directory published it on 2026-09-04; the included NEWS dates
-the release 2026-09-01. No source patch is applied and no nested download occurs.
+the release 2026-09-01. The canonical schema-option patch uses an unsigned mask
+for the sign-bit check. GCC16 UBSan proves the original failure and patched
+success. No nested download occurs. Two unchanged CMake test drivers omitted
+from the archive are supplied from the verified v2.15.4 tag; their provenance
+and hashes live in the common media recipe.
 The corresponding source repository is https://gitlab.gnome.org/GNOME/libxml2.
 
 The archive's `Copyright` contains the MIT permission notice; `dict.c` and
@@ -33,5 +37,8 @@ and the runtime version to detect accidental linkage to another libxml2.
 The oversized-input test checks libxml2's normal text-node limit without
 `XML_PARSE_HUGE`; it is not a general application input-size policy. The test
 uses no external document, DTD, network endpoint or physical device.
-Native build, installed ELF/NetBSD validation and other affected consumers
-remain pending. This is a project provider, not an in-place `/usr/pkg` upgrade.
+GCC16 cross compilation, real package installation and this provider contract
+now pass in EmberBSD AArch64 QEMU. The current FFmpeg CPU package uses the
+same library. Other consumers and physical platforms remain separate work.
+The original project-prefix helper and the cross package retain their distinct
+installation scopes.
