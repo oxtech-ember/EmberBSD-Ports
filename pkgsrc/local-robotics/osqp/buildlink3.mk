@@ -6,6 +6,7 @@ BUILDLINK_TREE+=	osqp
 OSQP_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.osqp+=	osqp>=1.0.0
+BUILDLINK_ABI_DEPENDS.osqp+=	osqp-1.0.0{,nb*}
 BUILDLINK_PKGSRCDIR.osqp?=	../../local-robotics/osqp
 BUILDLINK_INCDIRS.osqp+=		include/osqp
 .endif
