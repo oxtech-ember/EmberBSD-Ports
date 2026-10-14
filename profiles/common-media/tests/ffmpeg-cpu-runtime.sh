@@ -50,7 +50,9 @@ head -c 64 "$out/video.mkv" > "$out/truncated.mkv"
 for file in invalid.input truncated.mkv; do
     status=0
     run -xerror -err_detect explode -i "$out/$file" -f null - > "$out/$file.log" 2>&1 || status=$?
-    [ "$status" != 0 ] && [ "$status" != 125 ] && [ "$status" != 124 ] && [ "$status" != 137 ]
+    # FFmpeg 9 returns the low byte of AVERROR_INVALIDDATA or AVERROR(EIO).
+    # Require these codec errors; a signal or instrumentation error must fail.
+    case "$file:$status" in invalid.input:183|truncated.mkv:251) ;; *) exit 1;; esac
     printf '%s\n' "$status" > "$out/$file.status"
 done
 echo 'PASS: exact FFV1 pixels, four frame timestamps, inverse filters, PCM samples and two damaged-input failures'

@@ -19,7 +19,10 @@ pkg_admin check libxml2 > "$out/xml-integrity.txt"
 printf '<root><value>42</value></root>\n' > "$out/valid.xml"
 xmllint --noout "$out/valid.xml" > "$out/xml-valid.log" 2>&1
 printf '<root><value></root>\n' > "$out/invalid.xml"
-if xmllint --noout "$out/invalid.xml" > "$out/xml-invalid.log" 2>&1; then exit 1; fi
+status=0
+xmllint --noout "$out/invalid.xml" > "$out/xml-invalid.log" 2>&1 || status=$?
+[ "$status" = 4 ]
+grep -q 'Opening and ending tag mismatch' "$out/xml-invalid.log"
 pkg_add "$package"
 pkg_info -e ffmpeg9-9.0.2
 pkg_info -f ffmpeg9 > "$out/contents.txt"
