@@ -78,13 +78,20 @@ mkdir "$out/consumer"
     -Wl,-rpath,/usr/pkg/lib -Wl,-rpath,/usr/pkg/gcc16/lib \
     "$cross/../tests/libxml2-options.c" -lxml2 -o "$out/consumer/libxml2-options" \
     > "$out/logs/consumer-build.log" 2>&1
+"$prefix/bin/aarch64--netbsd-gcc" --sysroot="$sysroot" -B"$crt/" -L"$runtime" \
+    -std=c11 -O2 -Wall -Wextra -Wpedantic \
+    -I"$out/stage/usr/pkg/include/libxml2" -L"$out/stage/usr/pkg/lib" \
+    -Wl,-rpath,/usr/pkg/lib -Wl,-rpath,/usr/pkg/gcc16/lib \
+    "$cross/../../../probes/libxml2/tests/contract.c" -lxml2 -o "$out/consumer/xml-contract" \
+    > "$out/logs/xml-contract-build.log" 2>&1
 (cd "$out/stage/usr/pkg" && find . \( -type f -o -type l \) -print | sed 's|^\./||' | LC_ALL=C sort) > "$out/recipe/PLIST"
 printf '%s\n' 'Current libxml2 C interface, shared library, development exports and XML programs.' \
     'This cross payload uses upstream CMake defaults. The native pkgsrc payload uses Autotools.' \
     > "$out/recipe/DESCR"
 "$prefix/bin/aarch64--netbsd-readelf" -h -d "$out/stage/usr/pkg/lib/libxml2.so.16.1.4" \
-    "$out/stage/usr/pkg/bin/xmllint" "$out/stage/usr/pkg/bin/xmlcatalog" > "$out/elf.txt"
-[ "$(grep -c 'Machine:.*AArch64' "$out/elf.txt")" = 3 ]
+    "$out/stage/usr/pkg/bin/xmllint" "$out/stage/usr/pkg/bin/xmlcatalog" \
+    "$out/consumer/libxml2-options" "$out/consumer/xml-contract" > "$out/elf.txt"
+[ "$(grep -c 'Machine:.*AArch64' "$out/elf.txt")" = 5 ]
 for path in "$prefix" "$sysroot" "$out"; do
     if grep -E 'RPATH|RUNPATH|NEEDED' "$out/elf.txt" | grep -F "$path"; then
         echo 'Build-host path leaked into target linkage.' >&2; exit 1
