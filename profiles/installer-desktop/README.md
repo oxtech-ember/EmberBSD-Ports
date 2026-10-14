@@ -85,8 +85,16 @@ are applied; explicit static interfaces retain their ifconfig configuration.
 Without graphics, base `wpa_cli`, `wpa_supplicant` and dhcpcd remain available.
 The OS enables sshd by default and preserves its existing authentication policy.
 
-Verified so far: original source checksum, amd64 GTK3 cross build, native
+Verified: original source checksum, amd64 GTK3 cross build, native
 `pkg_create`, package metadata and archive hashes, and installer contracts.
-Full installation and graphical runtime acceptance are pending. A QEMU test
+The paired OS candidate `56046a492ea498bfe2a38ae635a60bba7551c574` passes complete
+amd64 UEFI Standard/XFCE installation from USB and a cold boot without that medium.
+The installed XFCE session opens Thunar, its terminal and dhcpcd-gtk preferences.
+Actual X, xfce4-session, xfce4-panel, thunar and dhcpcd-gtk processes are checked.
+SSH handshake, dbus, base DHCP/WPA services and wheel control sockets also pass.
+The package installer reports missing pkg_install version metadata for the locally
+created leaf; package installation and runtime succeed without bypassing checks.
+A separate network Minimal/None installation verifies console Wi-Fi and enabled SSH,
+with no graphical executables installed. A QEMU test
 without a supported Wi-Fi radio cannot establish real wireless association.
 Plasma and physical desktop acceptance are separate work.

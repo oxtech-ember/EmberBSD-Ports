@@ -404,7 +404,8 @@ runtime behavior are validated.
 - [Installer XFCE profile](profiles/installer-desktop/README.md): pinned
   pkgsrc amd64 binaries and an original dhcpcd-ui 0.8.0 leaf adapted to GTK3.
   Source hashes, cross build, native package creation and installer contracts
-  are checked; complete installation and graphical runtime are pending.
+  are checked. Complete amd64 UEFI USB installation, cold boot, XFCE/Thunar and
+  visible network preferences pass in the paired OS candidate. Physical radios remain unverified.
 
 The graphical entries remain experimental probes,
 not installable packages or phone images. Each recipe records its tested
