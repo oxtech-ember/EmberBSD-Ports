@@ -50,7 +50,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 EOF
 cmake -S "$out/source" -B "$out/build" -G Ninja -C "$recipe/features.cmake" \
-    -DCMAKE_TOOLCHAIN_FILE="$out/toolchain.cmake" -DCMAKE_INSTALL_PREFIX=/usr/pkg \
+    -DCMAKE_TOOLCHAIN_FILE="$out/toolchain.cmake" -DCMAKE_INSTALL_PREFIX=/usr/pkg -DOSQP_VERSION=1.0.0 \
     -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON '-DCMAKE_INSTALL_RPATH=/usr/pkg/lib;/usr/pkg/gcc16/lib' \
     -DFETCHCONTENT_SOURCE_DIR_QDLDL="$out/qdldl" \
@@ -63,7 +63,7 @@ mkdir -p "$licenses"
 cp "$out/source/LICENSE" "$licenses/OSQP-Apache-2.0"
 cp "$out/source/NOTICE" "$licenses/OSQP-NOTICE"
 cp "$out/qdldl/LICENSE" "$licenses/QDLDL-Apache-2.0"
-cp "$out/source/algebra/_common/lin_sys/qdldl/amd/LICENSE" "$licenses/AMD"
+cp "$out/source/algebra/_common/lin_sys/qdldl/amd/LICENSE" "$licenses/AMD-BSD-3-Clause"
 cp "$recipe/files/SOURCE" "$licenses/SOURCE"
 chmod 644 "$licenses/"*
 cmake -S "$ports/probes/osqp/tests" -B "$out/consumer" -G Ninja \

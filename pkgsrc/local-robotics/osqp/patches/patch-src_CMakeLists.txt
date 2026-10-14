@@ -7,7 +7,7 @@ The affected source retains its Apache-2.0 license.
 
 --- src/CMakeLists.txt.orig
 +++ src/CMakeLists.txt
-@@ -66,7 +66,7 @@
+@@ -61,7 +61,7 @@
  if(OSQP_ENABLE_INTERRUPT AND NOT OSQP_CUSTOM_INTERRUPT)
    if(IS_WINDOWS)
      target_sources(OSQPLIB PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/interrupt_windows.c")
