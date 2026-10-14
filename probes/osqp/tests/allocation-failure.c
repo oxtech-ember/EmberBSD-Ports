@@ -4,6 +4,7 @@
 #include <sys/wait.h>
 #include <osqp.h>
 #include "qdldl_interface.h"
+#include <errno.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -128,8 +129,14 @@ main(void)
 			return 1;
 		if (child == 0)
 			_exit(run_case(kind));
-		waited = waitpid(child, &status, 0);
-		if (waited != child || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+		do {
+			waited = waitpid(child, &status, 0);
+		} while (waited == -1 && errno == EINTR);
+		if (waited != child) {
+			perror("waitpid");
+			return 1;
+		}
+		if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
 			fprintf(stderr, "scenario=%d child failed, wait status=%d\n", kind, status);
 			failed = 1;
 		}
