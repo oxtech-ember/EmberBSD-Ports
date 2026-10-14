@@ -20,10 +20,14 @@ expected=$(awk '$1 == "osqp-1.0.0.tar.gz" {print $2}' "$ports/probes/osqp/source
 printf '%s  %s\n' "$expected" "$osqp" | sha256sum -c -
 expected=$(awk '$1 == "qdldl-0.1.9.tar.gz" {print $2}' "$ports/probes/osqp/sources.tsv")
 printf '%s  %s\n' "$expected" "$qdldl" | sha256sum -c -
-patch_file=$recipe/patches/patch-src_CMakeLists.txt
-expected=$(awk '$1 == "SHA1" && $2 == "(patch-src_CMakeLists.txt)" {print $4}' "$recipe/distinfo")
-actual=$(sed '/[$]NetBSD.*/d' "$patch_file" | sha1sum | awk '{print $1}')
-[ -n "$expected" ] && [ "$expected" = "$actual" ]
+set -- "$recipe/patches/"patch-*
+[ "$#" = "$(grep -c '^SHA1 (patch-' "$recipe/distinfo")" ]
+for patch_file do
+    name=$(basename "$patch_file")
+    expected=$(awk -v name="($name)" '$1 == "SHA1" && $2 == name {print $4}' "$recipe/distinfo")
+    actual=$(sed '/[$]NetBSD.*/d' "$patch_file" | sha1sum | awk '{print $1}')
+    [ -n "$expected" ] && [ "$expected" = "$actual" ]
+done
 crt=$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0
 runtime=$sysroot/usr/pkg/gcc16/lib
 headers=$sysroot/usr/pkg/gcc16/include/c++
@@ -31,10 +35,12 @@ headers=$sysroot/usr/pkg/gcc16/include/c++
 [ -f "$sysroot/usr/include/stdio.h" ]
 unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH
 mkdir -p "$out/source" "$out/qdldl" "$out/logs"
-sha256sum "$osqp" "$qdldl" "$patch_file" "$recipe/features.cmake" "$0" > "$out/inputs.sha256"
+sha256sum "$osqp" "$qdldl" "$recipe/patches/"patch-* "$recipe/features.cmake" "$0" > "$out/inputs.sha256"
 tar -xf "$osqp" --strip-components=1 -C "$out/source"
 tar -xf "$qdldl" --strip-components=1 -C "$out/qdldl"
-patch -f -F0 -p0 -d "$out/source" < "$patch_file" > "$out/logs/patch.log" 2>&1
+for patch_file in "$recipe/patches/"patch-*; do
+    patch -f -F0 -p0 -d "$out/source" < "$patch_file" > "$out/logs/$(basename "$patch_file").log" 2>&1
+done
 cat > "$out/toolchain.cmake" <<EOF
 set(CMAKE_SYSTEM_NAME NetBSD)
 set(CMAKE_SYSTEM_PROCESSOR aarch64)
