@@ -16,5 +16,7 @@ Packaging: no static archive, codegen files, Catch2 or upstream test binaries.
 Tests: upstream tests use a separate static build; no test result is implied here.
 ABI: upstream unversioned libosqp.so; no cross-release ABI is promised.
 Patch: select the existing POSIX interrupt listener on NetBSD.
+Patch: report two QDLDL constructor allocation failures before dereferencing NULL.
+Allocation scope: only the private solver object and its CSC object are covered.
 Patch provenance: original AI-assisted EmberBSD change; not submitted upstream.
 Packaging provenance: EmberBSD Ports, AI-assisted.
