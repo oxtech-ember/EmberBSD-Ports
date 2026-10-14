@@ -1,0 +1,4 @@
+Mediatek BROM and Download-Agent client for legal flashing of
+the owner's own devices. CLI tools mtk, stage2, da_parser and
+brom_to_offs; the GUI entry point is shipped but Qt dependencies
+are not part of this kit.

@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (mtkclient-2.1.4.1.tar.gz) = 3b55418ba5dcb06b1f1d1cec7f1fe94fa28bc14bbb46384156af1e0a2ba11584
+SHA512 (mtkclient-2.1.4.1.tar.gz) = 59967a2c243c5eeda55abe99e4f13a920c3b9189ca97ba09d55d72bfcbb4bb4f86256d0cb24d4a69961b4500c13f3dc7f64e927f1d924b29956ff53b59050dbe
+Size (mtkclient-2.1.4.1.tar.gz) = 31728663 bytes
