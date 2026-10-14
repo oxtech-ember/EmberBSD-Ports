@@ -14,11 +14,13 @@ board performance, GPU/NPU support or long-duration service reliability.
 | EmberBSD kernel and sysroot source | `267ee85eee1027198175809a8b7b0572df36ad1e` |
 | Ports pkgsrc pin | `fff4deb639a1a640476203c80f752fb77b6cb14b` |
 | Compiler | GCC/G++ 16.2.0, `aarch64--netbsd` |
+| Ports recipe and delivery scripts | `2c2fecdeddd7a79692894ae40d34fde3ead9447f` |
 | Build tools | CMake 3.31.6, Ninja 1.12.1, Linux x86_64 container |
 | Guest | EmberBSD/NetBSD 11.0, AArch64, QEMU 10.0.13 TCG, Cortex-A72, two CPUs, 2 GiB RAM |
 | Model | SmolLM2-135M-Instruct Q4_K_M, 105,454,432 bytes, Apache-2.0 |
 | Model revision | bartowski/SmolLM2-135M-Instruct-GGUF, `09816acd5d99df7be770d85ea30822623dab342c` |
 | Model SHA256 | `2e8040ceae7815abe0dcb3540b9995eaa1fa0d2ca9e797d0a635ae4433c68c2d` |
+| Accepted package SHA256 | `93f8825b2251eb700fad7f41fed8bf4ce62c3b79d6a74066cc265dc66ebfd0d0` |
 
 The kernel, libc, headers and additional pkgtools libraries come from that
 fork revision. Base pkgtools version is 20260227. OpenSSL is the fork's 3.5.7
@@ -40,6 +42,10 @@ For the prompt `The capital of France is`, 24 generated tokens include:
 
 > Paris. Paris is a city known for its historical landmarks, art museums,
 > fashion, gastronomy, and culture. It is
+
+That invocation takes 15.46 seconds wall time, including model loading, and
+reaches 145,740 KiB maximum resident memory. Decode reports 3.59 tokens/second.
+These are TCG measurements, not physical-board estimates.
 
 The loopback HTTP completion returns 16 tokens and the expected unique model
 alias. The check follows its own server PID and requires successful shutdown.
