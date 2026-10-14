@@ -1,0 +1,15 @@
+$NetBSD: patch-configure,v 1.9 2025/04/17 21:37:53 wiz Exp $
+
+Add run-path to XML_LIBDIR.
+
+--- configure.orig	2025-04-17 11:32:34.000000000 +0000
++++ configure
+@@ -13729,7 +13729,7 @@ else
+     fi
+ fi
+ 
+-XML_LIBDIR='-L${libdir}'
++XML_LIBDIR='@COMPILER_RPATH_FLAG@${libdir} -L${libdir}'
+ XML_INCLUDEDIR='-I${includedir}/libxml2'
+ XML_CFLAGS=""
+ XML_STATIC_CFLAGS=""

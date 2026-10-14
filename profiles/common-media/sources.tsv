@@ -20,3 +20,5 @@ audio/sonic	sonic-0.3.0.20260314-b93885dcb70aae50c6f76b0fe4e0868f029a077e.tar.gz
 audio/espeak-ng	espeak-ng-1.52.0.tar.gz	bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23	https://github.com/espeak-ng/espeak-ng/archive/1.52.0.tar.gz
 audio/speech-dispatcher	speech-dispatcher-0.12.1.tar.gz	b14a5238d287d2dcce4dd42bbd66ca65fa228e7e683708267f7b34036f7ba4b4	https://github.com/brailcom/speechd/releases/download/0.12.1/speech-dispatcher-0.12.1.tar.gz
 audio/flite	flite-2.2.tar.gz	ab1555fe5adc3f99f1d4a1a0eb1596d329fd6d74f1464a0097c81f53c0cf9e5c	https://github.com/festvox/flite/archive/v2.2.tar.gz
+
+textproc/libxml2	libxml2-2.15.4.tar.xz	98087fd181d9070724f3fbc65c7377db03038eb92bd882374daff44940138821	https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.4.tar.xz

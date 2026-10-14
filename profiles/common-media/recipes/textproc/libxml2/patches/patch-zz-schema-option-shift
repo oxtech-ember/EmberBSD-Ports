@@ -1,0 +1,18 @@
+$NetBSD$
+
+Use an unsigned mask when checking the sign bit of schema options.
+The original loop reaches this shift even for valid options value zero.
+Preserve acceptance of the supported flag and rejection of other bits.
+Original AI-assisted EmberBSD change; not submitted upstream.
+
+--- xmlschemas.c.orig
++++ xmlschemas.c
+@@ -27402,7 +27402,7 @@
+     * way?
+     */
+     for (i = 1; i < (int) sizeof(int) * 8; i++) {
+-        if (options & 1<<i)
++        if ((unsigned int) options & (1U << i))
+ 	    return (-1);
+     }
+     ctxt->options = options;

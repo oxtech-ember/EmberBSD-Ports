@@ -11,20 +11,32 @@ for path do
 done
 [ ! -e "$out" ] && [ ! -L "$out" ] || { echo 'Output path already exists.' >&2; exit 2; }
 cross=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+recipe=$cross/../recipes/textproc/libxml2
 for compiler in gcc g++; do
     [ "$("$prefix/bin/aarch64--netbsd-$compiler" -dumpfullversion)" = 16.2.0 ]
     [ "$("$prefix/bin/aarch64--netbsd-$compiler" -dumpmachine)" = aarch64--netbsd ]
 done
 expected=$(awk '$1 == "libxml2-2.15.4" {print $3}' "$cross/dependencies.tsv")
 printf '%s  %s\n' "$expected" "$archive" | sha256sum -c -
+set -- "$recipe/patches/"patch-*
+[ "$#" = "$(grep -c '^SHA1 (patch-' "$recipe/distinfo")" ]
+for patch_file do
+    name=$(basename "$patch_file")
+    expected=$(awk -v name="($name)" '$1 == "SHA1" && $2 == name {print $4}' "$recipe/distinfo")
+    actual=$(sed '/[$]NetBSD.*/d' "$patch_file" | sha1sum | awk '{print $1}')
+    [ -n "$expected" ] && [ "$expected" = "$actual" ] || exit 1
+done
 crt=$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0
 runtime=$sysroot/usr/pkg/gcc16/lib
 [ -f "$crt/crtbeginS.o" ] && [ -f "$runtime/libgcc_s.so.1" ] || exit 1
 [ -f "$sysroot/usr/include/stdio.h" ]
 unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH
 mkdir -p "$out/source" "$out/logs" "$out/recipe"
-sha256sum "$archive" "$cross/dependencies.tsv" "$0" > "$out/inputs.sha256"
+sha256sum "$archive" "$cross/dependencies.tsv" "$recipe/distinfo" "$recipe/patches/"patch-* "$0" > "$out/inputs.sha256"
 tar -xf "$archive" --strip-components=1 -C "$out/source"
+for patch_file in "$recipe/patches/"patch-*; do
+    patch -f -F0 -p0 -d "$out/source" < "$patch_file" > "$out/logs/$(basename "$patch_file").log" 2>&1
+done
 cat > "$out/toolchain.cmake" <<EOF
 set(CMAKE_SYSTEM_NAME NetBSD)
 set(CMAKE_SYSTEM_PROCESSOR aarch64)
@@ -52,7 +64,17 @@ licenses=$out/stage/usr/pkg/share/licenses/libxml2
 mkdir -p "$licenses"
 cp "$out/source/Copyright" "$licenses/Copyright"
 cp "$cross/dependencies.tsv" "$licenses/SOURCE"
+for source in dict.c list.c; do
+    sed -n '1,/^ \*\//p' "$out/source/$source" > "$licenses/$source-notice.txt"
+done
 chmod 644 "$licenses/"*
+mkdir "$out/consumer"
+"$prefix/bin/aarch64--netbsd-gcc" --sysroot="$sysroot" -B"$crt/" -L"$runtime" \
+    -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror \
+    -I"$out/stage/usr/pkg/include/libxml2" -L"$out/stage/usr/pkg/lib" \
+    -Wl,-rpath,/usr/pkg/lib -Wl,-rpath,/usr/pkg/gcc16/lib \
+    "$cross/../tests/libxml2-options.c" -lxml2 -o "$out/consumer/libxml2-options" \
+    > "$out/logs/consumer-build.log" 2>&1
 (cd "$out/stage/usr/pkg" && find . \( -type f -o -type l \) -print | sed 's|^\./||' | LC_ALL=C sort) > "$out/recipe/PLIST"
 printf '%s\n' 'Current libxml2 C interface, shared library, development exports and XML programs.' \
     'This cross payload uses upstream CMake defaults. The native pkgsrc payload uses Autotools.' \
