@@ -1,0 +1,27 @@
+$NetBSD$
+
+The GTK3 fallback dialog daemon depends on the legacy GTK3 granite and
+libhandy; keep it behind an option, off in the GTK4 profile.
+Origin: EmberBSD (AI-assisted).
+
+--- meson.build	2026-10-10 13:06:16.000000000 +0300
++++ meson.build	2026-10-14 14:54:42.204038461 +0300
+@@ -172,7 +172,10 @@
+ subdir('lib')
+ subdir('src')
+ subdir('daemon')
++# GTK3 dialog daemon skipped: this profile is GTK4/Wayland only.
++if get_option('gtk3-daemon')
+ subdir('daemon-gtk3')
++endif
+ subdir('plugins/pip')
+ subdir('plugins/template')
+ if get_option('documentation')
+--- meson_options.txt	2026-10-10 13:06:16.000000000 +0300
++++ meson_options.txt	2026-10-14 14:54:42.205537715 +0300
+@@ -2,3 +2,5 @@
+ option ('tests', type : 'boolean', value : false)
+ option ('systemd', type : 'boolean', value : true)
+ option ('systemduserunitdir', type : 'string', value : '')
++
++option('gtk3-daemon', type: 'boolean', value: false, description: 'Build the GTK3 fallback dialog daemon')

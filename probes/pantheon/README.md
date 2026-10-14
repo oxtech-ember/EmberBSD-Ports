@@ -122,8 +122,39 @@ packages only. Chain state after this pass:
   libdisplay-info). An install-time rpath fix pre-extends LDFLAGS with
   `/usr/pkg/lib/mutter-17`; meson-generated python tools get the target
   python shebang.
-- Remaining for E25: granite 7.8.1, gala 8.6.2, X11 startup-notification
-  (currently off), the colord daemon, and the VM/board acceptance run.
+- **granite 7.8.1 cross-built and installed.** The vala language needs a
+  host valac: homebrew vala 0.56.19 (the same line as the sysroot) through
+  wrappers that add both sysroot vapi directories; meson ignores the
+  native-file valac entry, so the tools take PATH precedence
+  (`TOOLS_CREATE`). sassc (host brew install) compiles the stylesheets.
+  libgee ships no installed vapi in this profile - `gee-0.8.vapi` was
+  installed from the dist tarball into the sysroot vapi dir. PLIST
+  generated from the destdir.
+- **gala 8.6.2 cross-built and installed** (the chain head: `bin/gala`,
+  `bin/gala-daemon`, `lib/libgala.so`, plugins). valac via the same
+  wrappers with the second vapi dir (granite-7 installs to
+  `share/vala/vapi`, not `share/vala-0.56/`); `vapigen` stays unfound so
+  gala uses its bundled libmutter-17 vapi files (no GIR needed). ibus-1.0
+  vapi was installed from the ibus dist tarball. Recipe work: the GTK3
+  fallback dialog daemon is behind a new `gtk3-daemon` option (off); the
+  full libmutter-17 pc closure is declared (lcms2, libdisplay-info, the X
+  set, colord, glycin, cairo/graphene/gdk-pixbuf/json-glib/schemas/
+  libopeninput/libxcb/xkeyboard-config); GCC16 needs
+  `-Wno-int-conversion` plus `-Dsighandler_t=sig_t` (the posix vapi types
+  SIG_IGN with the glibc-only sighandler_t); and the meson install rpath
+  rewrite gets a pass-through slot for the sysroot libmutter-17 path
+  (`BUILDLINK_PASSTHRU_RPATHDIRS`), since the pc files are correct and the
+  entry only leaks through meson's dependency rpath logic. The
+  `gnome-bg-4.vapi` installed by gnome-desktop4 points at
+  `libgnome-desktop/gnome-bg*.h`; the headers live under `gnome-bg/` - the
+  sysroot copy was corrected in place (gnome-desktop4 recipe needs the
+  same fix at promotion time).
+
+**The full Pantheon chain is now cross-built:** mutter 49.8 (libmutter-17)
++ granite 7.8.1 + gala 8.6.2, all installed in the private sysroot with
+`gala` as a target ELF. Remaining for E25: a session recipe (gala session
+files, wingpanel, plank), startup-notification and the colord daemon
+profiles, and the VM/board acceptance run.
 
 ## Not yet done
 
