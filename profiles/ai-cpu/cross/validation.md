@@ -53,7 +53,7 @@ These checks are a selected suite, not all upstream tests.
 
 ## Memory and source checks
 
-Cppcheck 2.17.1 initially analyzed eight translation units from the actual
+Cppcheck 2.17.1 initially analyzed six translation units from the actual
 target compilation database. It found two confirmed unchecked GGML metadata
 allocations. The package patch adds unconditional `GGML_ASSERT` checks after
 `calloc` in `new_chunk` and `malloc` in `dyn_tallocr_new`. It preserves the
