@@ -78,7 +78,7 @@ while IFS="$(printf '\t')" read -r recipe archive sha url; do
     case "$recipe" in ''|'#'*) continue ;; esac
     pkg=$profile/recipes/$recipe
     case "$recipe" in
-        multimedia/ffmpeg9|audio/lame|multimedia/x265|multimedia/libaom|audio/pulseaudio|multimedia/libvpx|devel/libdaemon|databases/tdb|audio/sonic|audio/espeak-ng|audio/speech-dispatcher|audio/flite) ;;
+        multimedia/ffmpeg9|audio/lame|multimedia/x265|multimedia/libaom|audio/pulseaudio|multimedia/libvpx|devel/libdaemon|databases/tdb|audio/sonic|audio/espeak-ng|audio/speech-dispatcher|audio/flite|textproc/libxml2) ;;
         *)
             case "$archive" in *-1.28.8.tar.xz) ;; *) echo "Wrong GStreamer family version: $recipe" >&2; exit 2 ;; esac
             [ "$(awk '$1 == "GST_VERSION=" {print $2}' "$profile/recipes/multimedia/gstreamer1/version.mk")" = 1.28.8 ] || exit 2
