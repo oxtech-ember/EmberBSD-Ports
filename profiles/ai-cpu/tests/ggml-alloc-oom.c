@@ -82,7 +82,6 @@ observe_abort(const char *message)
 static int
 check_failure(enum failure_kind kind, const char *assertion)
 {
-	struct ggml_dyn_tallocr *alloc;
 	pid_t child, waited;
 	int pipes[2], status;
 	char mark = 0;
@@ -92,6 +91,8 @@ check_failure(enum failure_kind kind, const char *assertion)
 	child = fork();
 	require(child >= 0, "fork failed");
 	if (child == 0) {
+		struct ggml_dyn_tallocr *alloc;
+
 		(void)close(pipes[0]);
 		abort_pipe = pipes[1];
 		expected_assert = assertion;

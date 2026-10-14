@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted), GCC16 cross-build and staged CPU installation.
 set -eu
+umask 022
 test "$#" = 4 || { echo 'Usage: build-llama.sh CROSS_PREFIX SYSROOT ARCHIVE NEW_OUTPUT' >&2; exit 2; }
 prefix=$1 sysroot=$2 archive=$3 out=$4
 for path do
@@ -14,6 +15,8 @@ recipe=$root/pkgsrc/local-ai/llama-cpp
 cc=$prefix/bin/aarch64--netbsd-gcc
 cxx=$prefix/bin/aarch64--netbsd-g++
 test "$("$cc" -dumpfullversion)" = 16.2.0
+test "$("$cxx" -dumpfullversion)" = 16.2.0
+test "$("$cc" -dumpmachine)" = aarch64--netbsd
 test "$("$cxx" -dumpmachine)" = aarch64--netbsd
 test -f "$sysroot/usr/include/stdio.h"
 test -f "$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0/crtbeginS.o"
