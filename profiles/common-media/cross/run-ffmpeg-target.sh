@@ -25,7 +25,7 @@ xmllint --noout "$out/invalid.xml" > "$out/xml-invalid.log" 2>&1 || status=$?
 grep -q 'Opening and ending tag mismatch' "$out/xml-invalid.log"
 pkg_add "$package"
 pkg_info -e ffmpeg9-9.0.2
-pkg_info -f ffmpeg9 > "$out/contents.txt"
+pkg_info -q -f ffmpeg9 > "$out/contents.txt"
 grep -qx '@pkgdep libxml2-2.15.4nb1' "$out/contents.txt"
 pkg_admin check ffmpeg9 > "$out/integrity.txt"
 ldd /usr/pkg/bin/ffmpeg9 /usr/pkg/bin/ffprobe9 > "$out/linkage.txt"
