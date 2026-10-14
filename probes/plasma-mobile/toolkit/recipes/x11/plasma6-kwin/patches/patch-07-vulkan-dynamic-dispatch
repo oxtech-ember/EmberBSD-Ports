@@ -65,5 +65,5 @@ Origin: AI-assisted EmberBSD portability work; not submitted upstream.
 -find_package(Vulkan REQUIRED)
 +find_package(VulkanHeaders CONFIG REQUIRED)
  
- find_package(Wayland 1.24)
+ find_package(Wayland 1.26.0)
  set_package_properties(Wayland PROPERTIES

@@ -1,7 +1,7 @@
 # Activities version-header regression
 
 The daemon has two independent version values.
-ECM generates the package version `KACTIVITYMANAGERD_VERSION_STRING` as `6.7.5`.
+ECM generates the package version `KACTIVITYMANAGERD_VERSION_STRING` as `6.8.0`.
 `src/service/Version.h` defines the D-Bus protocol version as `7.0.0`.
 The local protocol header can shadow the generated `version.h` on a case-insensitive host.
 The first affected translation unit is the real `src/service/Application.cpp`.
@@ -15,7 +15,7 @@ Use an extracted, verified upstream archive and a configured target build:
 
 ```sh
 ruby tests/activitymanager-version.rb \
-    /absolute/kactivitymanagerd-6.7.5 \
+    /absolute/kactivitymanagerd-6.8.0 \
     /absolute/configured-build \
     /absolute/new-results
 ```

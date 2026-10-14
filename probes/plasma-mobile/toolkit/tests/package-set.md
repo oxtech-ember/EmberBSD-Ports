@@ -13,7 +13,7 @@ not exist. Use native Ruby and bsdtar with libarchive support.
 PKG_INFO=/absolute/native/pkg_info BSDTAR=/absolute/native/bsdtar \
     ruby probes/plasma-mobile/toolkit/cross/prepare-package-set.rb \
     /absolute/sysroot/usr/pkg/pkgdb /absolute/archive-paths.txt \
-    /absolute/new-package-set plasma6-plasma-desktop-6.7.5nb4
+    /absolute/new-package-set plasma6-plasma-desktop-6.8.0nb4
 ```
 
 Select the root name from the actual installed database. The example version

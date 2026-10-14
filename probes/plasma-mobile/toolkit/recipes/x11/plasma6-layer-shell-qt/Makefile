@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.14 2026/09/06 10:23:32 markd Exp $
 
-PLASMAVER=	6.7.5
+PLASMAVER=	6.8.0
 
 DISTNAME=	layer-shell-qt-${PLASMAVER}
 CATEGORIES=	x11

@@ -1,6 +1,6 @@
 # Plasma Desktop XKB path regression
 
-This test runs the XKB lookup from Plasma Desktop 6.7.5's
+This test runs the XKB lookup from Plasma Desktop 6.8.0's
 `ConfigureChecks.cmake`. It applies the shipped Ports patch to a fresh copy.
 It uses real CMake `FindPkgConfig` and pkgconf. It also generates the actual
 `config-workspace.h` template and checks its runtime `XKBDIR` value.
@@ -25,7 +25,7 @@ Use pkgconf with `PKG_CONFIG_SYSROOT_DIR` variable prefixing enabled.
 ```sh
 CMAKE=/absolute/native/cmake PKG_CONFIG=/absolute/native/pkgconf \
     sh probes/plasma-mobile/toolkit/tests/plasma-xkb-paths.sh \
-    /absolute/plasma-desktop-6.7.5 /absolute/new-results
+    /absolute/plasma-desktop-6.8.0 /absolute/new-results
 ```
 
 The 21 cases reproduce the original failure and verify native, plain cross,
