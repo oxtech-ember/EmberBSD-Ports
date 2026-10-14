@@ -33,12 +33,15 @@ main(int argc, char **argv)
 	xmlChar *label, *serialized;
 	char *large;
 	Dl_info loaded;
+	void *resolved;
 	int error = 0, length = 0;
 
 	CHECK(argc == 2);
 	CHECK(LIBXML_VERSION == 21504);
 	CHECK(strcmp(xmlParserVersion, "21504") == 0);
-	CHECK(dladdr((void *)xmlReadMemory, &loaded) != 0 && loaded.dli_fname != NULL);
+	/* Resolve the definition. ELF function pointers can name the executable's PLT. */
+	resolved = dlsym(RTLD_DEFAULT, "xmlReadMemory");
+	CHECK(resolved != NULL && dladdr(resolved, &loaded) != 0 && loaded.dli_fname != NULL);
 	CHECK(strncmp(loaded.dli_fname, argv[1], strlen(argv[1])) == 0);
 	CHECK(loaded.dli_fname[strlen(argv[1])] == '/');
 	printf("runtime=%s loaded=%s\n", xmlParserVersion, loaded.dli_fname);
