@@ -198,8 +198,11 @@ runtime behavior are validated.
 - [Local trajectory generation](probes/ruckig/README.md),
   [quadratic optimization](probes/osqp/README.md) and
   [motion planning](probes/ompl/README.md): Ruckig 0.19.4 and OSQP 1.0.0 pass
-  installed macOS software contracts; OMPL 2.0.2 has a prepared source profile
-  and checked geometry oracle. Native EmberBSD validation remains pending.
+  installed macOS software contracts. Ruckig also has a GCC16 cross package
+  with installed numerical contracts, all 15 bounded upstream groups and
+  removal/reinstallation verified in EmberBSD AArch64 QEMU. OSQP target
+  acceptance remains pending. OMPL 2.0.2 has a prepared source profile
+  and checked geometry oracle.
 - [Ethernet SDR source profile](probes/sdr/README.md): SoapySDR 0.8.1,
   libiio 1.0.0, libad9361-iio and SoapyPlutoSDR use a common
   [libxml2 2.15.4 provider](probes/libxml2/README.md). Installed macOS contracts
