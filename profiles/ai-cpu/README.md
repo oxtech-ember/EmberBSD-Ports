@@ -1,22 +1,30 @@
 # Local AI CPU packages
 
-This profile provides native **llama.cpp 0.6.0** and **whisper.cpp 1.9.4**
+This profile provides **llama.cpp 0.6.0nb1** and **whisper.cpp 1.9.4**
 execution tools through ordinary pkgsrc recipes. Models are separate assets.
 
-Validated on 2026-10-06: EmberBSD/NetBSD 11.0, AArch64, UTM VM, 4 virtual CPUs,
+The [GCC16 cross profile](cross/README.md) builds llama.cpp on Linux for an
+EmberBSD AArch64 sysroot. Target installation, removal, reinstallation, text
+generation and loopback HTTP completion passed on 2026-10-14 in QEMU TCG.
+The package checks two GGML metadata allocations before dereference.
+See the [validation record](cross/validation.md) for source hashes, tests,
+memory checks and the exact VM boundary.
+
+Historical native validation on 2026-10-06: EmberBSD/NetBSD 11.0, AArch64, UTM VM, 4 virtual CPUs,
 4 GiB guest RAM, GCC 12.5.0, CMake 4.3.3, Ninja 1.13.2. Both packages were
 built, installed together, exercised with real models, removed, reinstalled,
 and checked with `pkg_admin`. No upstream source patches were required.
 
 | Package | Executables |
 | --- | --- |
-| `llama-cpp-0.6.0` | `llama-cli`, `llama-completion`, `llama-server`, `llama-bench`, `llama-quantize` |
+| `llama-cpp-0.6.0nb1` | `llama-cli`, `llama-completion`, `llama-server`, `llama-bench`, `llama-quantize` |
 | `whisper-cpp-1.9.4` | `whisper-cli`, `whisper-bench`, `whisper-quantize` |
 
 The initial recipes intentionally install execution tools, not a public C/C++
 development ABI. Each executable contains its engine's bundled GGML. They do
 not install competing `libggml` files. On the tested system, runtime linkage
-requires only base NetBSD libc, libm, libpthread, libstdc++, and libgcc_s.
+requires libc, libm, libpthread, libstdc++, and libgcc_s. The GCC16 build uses
+`/usr/pkg/gcc16/lib/libstdc++.so.7` and `libgcc_s.so.1` from the matching toolchain.
 
 Bundled-dependency exception: these current engine releases embed GGML 0.26.0
 and 0.23.0 respectively, whose normal installs claim the same `libggml` paths.
@@ -29,7 +37,9 @@ engines build and pass model tests against one supported GGML version.
 
 Build natively on the target OS/architecture. Install the C/C++ toolchain,
 Git, CMake, Ninja, and pkg_tools first. Git is needed to prepare the source
-tree; curl is needed for the separate model example. pkgsrc resolves other
+tree; curl is needed for the separate model example. llama.cpp requires GCC 16.2.
+Use the [development toolchain profile](../development-toolchain/README.md)
+to prepare that compiler. pkgsrc resolves other
 build dependencies normally and may request administrator access to install
 them. Keep enough disk space for the full pkgsrc checkout and working copy.
 
@@ -39,7 +49,7 @@ git clone --recurse-submodules --shallow-submodules \
 cd EmberBSD-Ports
 work=/var/tmp/emberbsd-ai-build
 mkdir "$work"
-sh scripts/prepare-pkgsrc.sh "$work/pkgsrc"
+sh scripts/prepare-pkgsrc.sh "$work/pkgsrc" development-toolchain
 mkdir "$work/work" "$work/distfiles" "$work/packages"
 cat > "$work/mk.conf" <<EOF
 .if defined(BSD_PKG_MK)
@@ -72,7 +82,7 @@ For an isolated test installation, use a separate prefix and package database:
 ```sh
 mkdir "$work/runtime" "$work/pkgdb"
 pkg_add -K "$work/pkgdb" -p "$work/runtime" \
-  "$work/packages/All/llama-cpp-0.6.0.tgz" \
+  "$work/packages/All/llama-cpp-0.6.0nb1.tgz" \
   "$work/packages/All/whisper-cpp-1.9.4.tgz"
 pkg_admin -K "$work/pkgdb" check llama-cpp whisper-cpp
 ```
@@ -82,7 +92,7 @@ Use `$work/runtime/bin` as `AI_BIN` in the
 Remove this installation with:
 
 ```sh
-pkg_delete -K "$work/pkgdb" llama-cpp-0.6.0 whisper-cpp-1.9.4
+pkg_delete -K "$work/pkgdb" llama-cpp-0.6.0nb1 whisper-cpp-1.9.4
 ```
 
 For a normal system installation, an administrator uses `pkg_add` without

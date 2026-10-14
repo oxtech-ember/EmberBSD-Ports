@@ -278,8 +278,10 @@ runtime behavior are validated.
   POSIX_SHELL fixes). Wi-Fi monitor mode, Lua dissectors and the GUI
   remain separate queue items.
 - [Local AI CPU packages](profiles/ai-cpu/README.md): pkgsrc recipes for
-  llama.cpp 0.6.0 and whisper.cpp 1.9.4; native ARM64 package installation,
-  text generation, WAV transcription, and loopback HTTP inference verified.
+  llama.cpp 0.6.0nb1 and whisper.cpp 1.9.4. Linux GCC16 cross compilation,
+  target package installation and real llama.cpp text/HTTP generation pass in
+  an EmberBSD AArch64 QEMU VM. Native ARM64 text generation and Whisper WAV
+  transcription have separate validation records.
 - [CPU inference and audio](probes/ai-engines/README.md): ONNX Runtime 1.30.0,
   ncnn 20260526, RNNoise 0.2 and Silero VAD 6.2.3 pass seven native installed
   consumer checks on AArch64. They cover numerical inference, stream state,
