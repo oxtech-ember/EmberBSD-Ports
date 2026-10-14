@@ -1,0 +1,8 @@
+Ruckig generates trajectories from a current position, velocity and acceleration
+to a target state. It applies velocity, acceleration and jerk limits to each
+degree of freedom and synchronizes the result across multiple axes.
+
+This package installs the C++20 shared library, headers and CMake package export.
+The cloud client, Python bindings, examples and benchmark are disabled. The
+library preserves upstream's unversioned ABI. Tests use simulated trajectories;
+they do not establish physical actuator safety or control-loop deadlines.

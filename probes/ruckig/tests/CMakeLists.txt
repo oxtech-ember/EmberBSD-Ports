@@ -5,7 +5,7 @@ if(NOT IS_ABSOLUTE "${PROBE_PREFIX}")
   message(FATAL_ERROR "PROBE_PREFIX must be an absolute installed prefix")
 endif()
 find_package(ruckig 0.19.4 EXACT CONFIG REQUIRED
-  PATHS "${PROBE_PREFIX}/lib/cmake/ruckig" NO_DEFAULT_PATH)
+  PATHS "${PROBE_PREFIX}/lib/cmake/ruckig" NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
 add_executable(ruckig-contract contract.cpp)
 target_compile_features(ruckig-contract PRIVATE cxx_std_20)
 target_compile_options(ruckig-contract PRIVATE -Wall -Wextra -Wpedantic)

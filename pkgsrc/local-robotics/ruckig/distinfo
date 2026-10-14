@@ -1,0 +1,5 @@
+# EmberBSD pinned upstream archive
+
+BLAKE2s (ruckig-0.19.4.tar.gz) = fb04f9b3cd5ab26c7fbbf934378a174e4030671cd2a734c77a14fd3274678abb
+SHA512 (ruckig-0.19.4.tar.gz) = f6008fa5d883d25841fd0264c58100775804388cecb4cf7706277c99d00e95b189c62e45c538595f525981ec95c99ccdf33d5a0bda2722a85832875e19b52952
+Size (ruckig-0.19.4.tar.gz) = 882534 bytes

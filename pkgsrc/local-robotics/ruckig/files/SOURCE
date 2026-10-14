@@ -1,0 +1,13 @@
+Project: Ruckig
+Release: v0.19.4
+Revision: a8db97a4e9c55e5160a3855f739fa3b270df8e4c
+Repository: https://github.com/pantor/ruckig
+Archive: https://codeload.github.com/pantor/ruckig/tar.gz/refs/tags/v0.19.4
+Archive SHA256: 4f57caa350770ce162aed92285fc07ac23e83b89bf802f5f500fb4bc8b2a1905
+License: MIT; the complete upstream copyright and notice are installed.
+Profile: C++20 shared library; cloud client, Python, examples and benchmark off.
+Compiler baseline: GCC 16.2; native and cross builds use features.cmake.
+Tests: test-target 1000 42; all upstream test groups, with simulated trajectories.
+ABI: upstream unversioned libruckig.so; no cross-release ABI is promised.
+Source patches: none.
+Packaging: EmberBSD Ports, AI-assisted; no upstream acceptance is claimed.
