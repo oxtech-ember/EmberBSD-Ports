@@ -1,0 +1,8 @@
+@comment $NetBSD$
+include/gtk4-layer-shell/gtk4-layer-shell.h
+include/gtk4-layer-shell/gtk4-session-lock.h
+lib/libgtk4-layer-shell.so
+lib/libgtk4-layer-shell.so.0
+lib/libgtk4-layer-shell.so.1.3.0
+lib/liblayer-shell-preload.so
+lib/pkgconfig/gtk4-layer-shell-0.pc

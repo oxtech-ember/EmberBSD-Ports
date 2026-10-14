@@ -1,0 +1,14 @@
+$NetBSD$
+
+BLAKE2s (wingpanel-8.0.4.tar.gz) = c9b6b0df97e1121c74a9822142a4025cf6c07cc945282010358a70848c6a04e1
+SHA512 (wingpanel-8.0.4.tar.gz) = c8220c8b438bc8cb50cac2bec93ca6e2b553932f52e19e654e11f3626353b796d72b4b1aac52cc425c928b849ee777c3d9caaa9c8b20d4d77d743f771f0e322d
+Size (wingpanel-8.0.4.tar.gz) = 181860 bytes
+SHA1 (patch-meson.build) = 8cdac74332d8c4a7fdab0d30a358817b1c412d15
+SHA1 (patch-src_meson.build) = 4dc08427136ffe0bb496022f8771f086267d4001
+SHA1 (patch-wingpanel-interface_meson.build) = 49c98d9e1016f369569cb410af73856bd0de3bec
+SHA1 (patch-lib_Widgets_Switch.vala) = cb3243c2ef280174ab8f22c33be8f7f4b58b2597
+SHA1 (patch-lib_Widgets_Container.vala) = d10cde3ac951bcc31a5cf88d8131d90c773fdeec
+SHA1 (patch-lib_Widgets_OverlayIcon.vala) = eb4f5459728f8f6dafac72a580e9c620f0cf6a19
+SHA1 (patch-wingpanel-interface_FocusManager.vala) = ddc4ff299c1f3b0cd07a81bdcb574cbbdb4f81f0
+SHA1 (patch-lib_Widgets_Separator.vala) = 74d73cd3d7ec1222d09dced3577cb6795ba401e7
+SHA1 (patch-src_panel-gtk4.vala) = 81f5c0f0cb17bde0f64bf418c16f5e5bc06ae2d9
