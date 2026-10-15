@@ -88,3 +88,17 @@ The cross-built upstream KDirWatch default and Stat suites each pass all 19 case
 The default suite uses the native Qt/kqueue backend. The Stat suite checks the existing fallback.
 These are component checks. A later desktop launch still reports descriptor exhaustion in child services.
 The current tests do not establish full-session resource stability.
+
+## Installed KDED helper check
+
+```sh
+timeout 30 sh kded-runtime-path.sh /absolute/new-output
+```
+
+Run as the desktop user with installed KDED and KConfig. The optional second argument is the package prefix.
+The check uses the offscreen Qt platform and new HOME/XDG directories.
+It invokes `kded6 --check` with a private version-6 update script.
+The script writes a marker through the actual target `kconf_update` process.
+The runner checks that marker because upstream KDED returns zero even when helper execution fails.
+It does not contact the desktop bus or use the user's configuration.
+Keep the output directory as evidence until the result is reviewed.
