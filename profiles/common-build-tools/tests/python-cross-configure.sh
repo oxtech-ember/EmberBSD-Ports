@@ -28,7 +28,7 @@ for variant in pristine patched; do
     extract_cases "$source/configure" "$work/$variant.cases"
     {
         printf '%s\n' '#!/bin/sh' 'set -eu' 'as_fn_error() { exit 42; }'
-        printf '%s\n' 'host=$1 host_cpu=aarch64' 'MACHDEP=netbsd11'
+        printf '%s\n' 'host=$1 host_cpu=${host%%-*}' 'MACHDEP=netbsd11'
         cat "$work/$variant.cases"
         printf '%s\n' 'printf "%s/%s\n" "$ac_sys_system" "$_host_ident"'
     } > "$work/$variant.sh"
@@ -36,18 +36,21 @@ done
 if sh "$work/pristine.sh" aarch64--netbsd > "$work/before.txt" 2>&1; then
     echo 'Pristine cross barrier unexpectedly accepted NetBSD' >&2; exit 1
 fi
-for target in aarch64--netbsd aarch64-unknown-netbsd11.0; do
-    [ "$(sh "$work/patched.sh" "$target")" = NetBSD/aarch64 ]
+for target in ${PYTHON_CROSS_TARGETS:-aarch64--netbsd aarch64-unknown-netbsd11.0}; do
+    [ "$(sh "$work/patched.sh" "$target")" = "NetBSD/${target%%-*}" ]
 done
 for variant in pristine patched; do
     [ "$(sh "$work/$variant.sh" aarch64-unknown-linux-gnu)" = Linux/aarch64 ]
     if sh "$work/$variant.sh" aarch64-unknown-unlisted > "$work/$variant-unknown.txt" 2>&1; then
         echo 'Unknown target unexpectedly accepted' >&2; exit 1
     fi
+    if sh "$work/$variant.sh" riscv64-unknown-netbsd > "$work/$variant-foreign-netbsd.txt" 2>&1; then
+        echo 'Unsupported NetBSD architecture unexpectedly accepted' >&2; exit 1
+    fi
 done
 # The maintained input carries the same two added cases as configure.
 for file in configure configure.ac; do
-    awk '/aarch64-\*-netbsd\*\)/ { active = 1; count++ }
+    awk '/^[ \t]*aarch64-\*-netbsd\*.*\)/ { active = 1; count++ }
         active { print }
         active && /;;/ { active = 0 }
         END { if (count != 2 || active) exit 1 }' \

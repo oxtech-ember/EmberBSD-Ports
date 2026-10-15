@@ -2,7 +2,7 @@ $NetBSD$
 
 Chunks 1, 5, 6: Changes for consistency across pkgsrc platforms.
 Chunk 1: Simplify _sysconfigdata to include only platform name.
-Add the known NetBSD/AArch64 cross target; unknown hosts remain rejected.
+Add NetBSD/AArch64 and amd64 cross targets; unknown hosts remain rejected.
 Origin: EmberBSD (AI-assisted), synchronize the added cross cases with configure.ac.
 Chunk 3: should probably be handled in the Makefile instead
 Chunk 4: Do not set duplicated HAVE_UUID_H. This is a hack only for pkgsrc.
@@ -24,7 +24,7 @@ Chunk 4: Do not set duplicated HAVE_UUID_H. This is a hack only for pkgsrc.
         # a lot of different things including 'define_xopen_source'
         # in the case statement below.
  	case "$host" in
-+	aarch64-*-netbsd*)
++	aarch64-*-netbsd* | x86_64-*-netbsd*)
 +		ac_sys_system=NetBSD
 +		;;
  	*-*-linux-android*)
@@ -34,7 +34,7 @@ Chunk 4: Do not set duplicated HAVE_UUID_H. This is a hack only for pkgsrc.
  
  if test "$cross_compiling" = yes; then
  	case "$host" in
-+	aarch64-*-netbsd*)
++	aarch64-*-netbsd* | x86_64-*-netbsd*)
 +		_host_ident=$host_cpu
 +		;;
  	*-*-linux*)
