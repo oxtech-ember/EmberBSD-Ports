@@ -21,7 +21,7 @@ four llvmpipe EGL/pixel cycles and all 38 target invocations. One internal
 utility skip and nine disabled NIR cases remain. GPU submission and Plasma
 are unaccepted. Earlier GL results retain their recorded package scope.
 
-The [LLVM 23.1.3 migration](cross/mesa-llvm2313.md) passes installed V3D and llvmpipe rendering and all 38 upstream invocations on CM5. A transient large-BO allocation failure remains under investigation.
+The [LLVM 23.1.3 migration](cross/mesa-llvm2313.md) passes installed V3D and llvmpipe rendering and all 38 upstream invocations on CM5. A transient large-BO allocation failure remains under investigation. The [process-local V3D trace](cross/v3d-bo-trace.md) records allocation requests without changing the driver contract.
 
 The same package now enables V3D alongside VirGL and both CPU renderers.
 On CM5, [installed hardware OpenGL acceptance](cross/mesa-cm5.md) passes
