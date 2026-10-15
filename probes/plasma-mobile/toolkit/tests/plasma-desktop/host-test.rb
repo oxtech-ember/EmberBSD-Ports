@@ -227,7 +227,8 @@ run.call(:ok, 'node', "#{temp}/capture-layout-test.js", "#{source}/capture-layou
       end
       abort 'Fixture child did not become ready' unless File.file?('child-ready')
       case ARGV[2]
-      when 'org.kde.PlasmaShell.shell'
+      when 'org.freedesktop.DBus.Properties.Get'
+        abort 'Wrong shell property request' unless ARGV[3..] == ['org.kde.PlasmaShell', 'shell']
         puts 'org.kde.plasma.desktop'
       when 'org.kde.PlasmaShell.evaluateScript'
         if ARGV.fetch(3).include?('capture widget created')

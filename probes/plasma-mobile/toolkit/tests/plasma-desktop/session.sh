@@ -52,7 +52,8 @@ while :; do
         echo 'FAIL: plasmashell exited during startup' >&2
         exit 1
     }
-    if query org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.shell \
+    if query org.kde.plasmashell /PlasmaShell org.freedesktop.DBus.Properties.Get \
+            org.kde.PlasmaShell shell \
             > shell.txt 2> query-error.log &&
         grep -qx 'org.kde.plasma.desktop' shell.txt &&
         query org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
