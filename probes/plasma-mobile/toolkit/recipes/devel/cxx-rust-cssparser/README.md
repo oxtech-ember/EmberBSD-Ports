@@ -77,6 +77,7 @@ It receives neither this host Rust provider nor development tools.
 ```sh
 BMAKE=/absolute/host/bin/bmake ruby tests/cross-targets.rb
 sh tests/inputs.sh
+ruby tests/vendor.rb
 ```
 
 The make fixture evaluates the production cross settings for both targets,
@@ -85,3 +86,49 @@ compiler-response boundaries to check ordering, std refusal and dynamic host
 identification. These checks do not build the parser or prove real std, Cargo,
 Qt/Union, package lifecycle or target runtime acceptance. Those remain required
 with the normally installed providers and the actual source archives.
+
+## Reproduce the missing vendor source
+
+The old `cxx-rust-cssparser-vendor-1.1.0.tar.gz` source entry points to a
+GitHub Cargo.lock HTML page, which is not a vendor archive. No published
+upstream release asset has been established for that entry. Do not manufacture
+bytes to match its old digest or disable source verification.
+
+`files/vendor.rb` prepares the replacement on the build host using Ruby 3.1
+or newer, RubyGems and the shared official native Rust/Cargo 1.99.0 provider.
+It does not compile Rust or require target std. Its original upstream archive
+and Cargo.lock hashes are pinned; `files/vendor-crates.tsv` records the exact
+61 registry crate identities and checksums from that lock. It rejects any
+other dependency source. A fresh work directory gives Cargo a fresh private
+cache; no existing vendor tree or Cargo configuration is imported.
+
+```sh
+ruby files/vendor.rb \
+    /absolute/distfiles/cxx-rust-cssparser-1.1.0.tar.gz \
+    /absolute/host /absolute/vendor-r1-first
+ruby files/vendor.rb \
+    /absolute/distfiles/cxx-rust-cssparser-1.1.0.tar.gz \
+    /absolute/host /absolute/vendor-r1-second
+cmp /absolute/vendor-r1-first/cxx-rust-cssparser-vendor-1.1.0-r1.tar \
+    /absolute/vendor-r1-second/cxx-rust-cssparser-vendor-1.1.0-r1.tar
+```
+
+Cargo runs `vendor --locked --versioned-dirs` against the checked original
+manifest. The helper checks every cached `.crate` against Cargo.lock and
+requires the vendor file set and bytes to match both that original archive
+and Cargo's `.cargo-checksum.json`. Original license/notice files are retained
+and counted in the receipt. Symlinks, special files and extra crates fail.
+
+The result is plain USTAR, using the standard RubyGems writer with
+`SOURCE_DATE_EPOCH=0`, sorted names, uid/gid zero, `wheel` owner/group and
+0755 directory modes. Regular files use 0644 or 0755 according to their
+executable bit. The helper checks the writer's metadata contract; the archive
+has no compression-version dependency. `receipt.json` records input, helper,
+closure and output hashes plus actual provider and Ruby identities.
+
+The helper and its synthetic host fixture alone do not establish the derived
+artifact hash. Until two real native Cargo runs produce identical bytes,
+the replacement filename is intentionally not wired into DISTFILES, distinfo
+or the toolkit source manifest. The follow-up must record the actual SHA256,
+normal pkgsrc BLAKE2s/SHA512/size, and the narrowly scoped derived-source
+provenance rule before exporting or building this recipe on a fresh host.
