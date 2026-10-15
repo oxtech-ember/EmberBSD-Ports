@@ -66,7 +66,17 @@ Link `KF6CoreAddons`, `Qt6Core`, and pthread with the current LLD23 selection.
 Use the normal `/usr/pkg/lib`, `/usr/pkg/qt6/lib`, and GCC16 runtime search paths.
 The consumer uses public APIs. Keep the same binary for the nb2 and nb3 comparison.
 
+Build from the development host with the selected GCC16-to-LLD23 specs file:
+
+```sh
+ruby build-runtime.rb /absolute/cross-tools /absolute/emberbsd-sysroot \
+  /absolute/selected-linker.specs /absolute/new-consumer
+```
+
+The builder checks the compiler target, compiler/linker versions, AArch64 ELF,
+interpreter, actual linker marker, and unchanged input hashes.
 On the target, run the retained binary with a new output path:
+
 
 ```sh
 timeout 90 sh runtime.sh /absolute/kdirwatch-budget /absolute/new-result
