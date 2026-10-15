@@ -1,6 +1,8 @@
-# GCC16 cross build of llama.cpp
+# GCC16 cross builds of local AI tools
 
-Build the CPU executables on Linux. Install and run the package on EmberBSD
+Build the CPU executables on Linux. The llama.cpp path is documented below.
+See the [Whisper instructions](whisper.md) for WAV speech recognition and its
+[validation record](whisper-validation.md). Install and run the package on EmberBSD
 AArch64. The native recipe and cross build share the feature caches in
 `pkgsrc/local-ai/cpu.cmake` and `pkgsrc/local-ai/llama-cpp/package.cmake`.
 The cross build adds upstream test executables. It retains the target ABI

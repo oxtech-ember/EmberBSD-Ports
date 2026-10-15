@@ -1,6 +1,6 @@
 # Local AI CPU packages
 
-This profile provides **llama.cpp 0.6.0nb1** and **whisper.cpp 1.9.4**
+This profile provides **llama.cpp 0.6.0nb1** and **whisper.cpp 1.9.5**
 execution tools through ordinary pkgsrc recipes. Models are separate assets.
 
 The [GCC16 cross profile](cross/README.md) builds llama.cpp on Linux for an
@@ -10,15 +10,21 @@ The package checks two GGML metadata allocations before dereference.
 See the [validation record](cross/validation.md) for source hashes, tests,
 memory checks and the exact VM boundary.
 
-Historical native validation on 2026-10-06: EmberBSD/NetBSD 11.0, AArch64, UTM VM, 4 virtual CPUs,
+The [Whisper cross path](cross/whisper.md) uses GCC16 and whisper.cpp 1.9.5.
+Its [2026-10-15 validation](cross/whisper-validation.md) covers an installed
+tiny-model transcription, parsed JSON timestamps, output failures and the
+package removal/reinstallation cycle in EmberBSD AArch64 QEMU. It includes
+fixed-header, allocator and CLI memory regressions.
+
+Historical native validation of llama.cpp 0.6.0 and whisper.cpp 1.9.4 on 2026-10-06: EmberBSD/NetBSD 11.0, AArch64, UTM VM, 4 virtual CPUs,
 4 GiB guest RAM, GCC 12.5.0, CMake 4.3.3, Ninja 1.13.2. Both packages were
 built, installed together, exercised with real models, removed, reinstalled,
-and checked with `pkg_admin`. No upstream source patches were required.
+and checked with `pkg_admin`. Those historical releases required no upstream source patches.
 
 | Package | Executables |
 | --- | --- |
 | `llama-cpp-0.6.0nb1` | `llama-cli`, `llama-completion`, `llama-server`, `llama-bench`, `llama-quantize` |
-| `whisper-cpp-1.9.4` | `whisper-cli`, `whisper-bench`, `whisper-quantize` |
+| `whisper-cpp-1.9.5` | `whisper-cli`, `whisper-bench`, `whisper-quantize` |
 
 The initial recipes intentionally install execution tools, not a public C/C++
 development ABI. Each executable contains its engine's bundled GGML. They do
@@ -26,18 +32,16 @@ not install competing `libggml` files. On the tested system, runtime linkage
 requires libc, libm, libpthread, libstdc++, and libgcc_s. The GCC16 build uses
 `/usr/pkg/gcc16/lib/libstdc++.so.7` and `libgcc_s.so.1` from the matching toolchain.
 
-Bundled-dependency exception: these current engine releases embed GGML 0.26.0
-and 0.23.0 respectively, whose normal installs claim the same `libggml` paths.
-Cross-version substitution has not been validated. The executable-only profile
-keeps each upstream implementation private, without installing parallel shared
-libraries. Revisit this exception on engine updates; remove it when both current
-engines build and pass model tests against one supported GGML version.
+Both current engines report bundled GGML 0.26.0, with identical public GGML
+headers. The executable-only recipes retain their private static engine
+archives. A shared development ABI and common shared GGML provider have not
+been validated. No parallel shared GGML libraries enter the installation.
 
 ## Build with pkgsrc
 
 Build natively on the target OS/architecture. Install the C/C++ toolchain,
 Git, CMake, Ninja, and pkg_tools first. Git is needed to prepare the source
-tree; curl is needed for the separate model example. llama.cpp requires GCC 16.2.
+tree; curl is needed for the separate model example. Both recipes require GCC 16.2.
 Use the [development toolchain profile](../development-toolchain/README.md)
 to prepare that compiler. pkgsrc resolves other
 build dependencies normally and may request administrator access to install
@@ -83,7 +87,7 @@ For an isolated test installation, use a separate prefix and package database:
 mkdir "$work/runtime" "$work/pkgdb"
 pkg_add -K "$work/pkgdb" -p "$work/runtime" \
   "$work/packages/All/llama-cpp-0.6.0nb1.tgz" \
-  "$work/packages/All/whisper-cpp-1.9.4.tgz"
+  "$work/packages/All/whisper-cpp-1.9.5.tgz"
 pkg_admin -K "$work/pkgdb" check llama-cpp whisper-cpp
 ```
 
@@ -92,7 +96,7 @@ Use `$work/runtime/bin` as `AI_BIN` in the
 Remove this installation with:
 
 ```sh
-pkg_delete -K "$work/pkgdb" llama-cpp-0.6.0nb1 whisper-cpp-1.9.4
+pkg_delete -K "$work/pkgdb" llama-cpp-0.6.0nb1 whisper-cpp-1.9.5
 ```
 
 For a normal system installation, an administrator uses `pkg_add` without
@@ -107,7 +111,7 @@ establish a signed binary release channel.
 - This retained 0.6.0 snapshot is one commit after the stable `v0.6.0` tag
   (`d81235049384534c167caea52b85a694f6103d14`). The additional commit changes
   the disabled Hexagon backend; this CPU profile keeps its existing installation.
-- whisper.cpp revision: `927cfce34f31707e17f2bff35c349632fb9e2c3a`.
+- whisper.cpp revision: `d1be6fde11ac6e0407606b4e42fe72d34add8037`.
 - Upstream GitHub archives are checked by pkgsrc `distinfo`; SHA256 and source
   identity are also recorded in each package's installed `SOURCE` file.
 - `GGML_NATIVE=OFF`; AArch64 targets `armv8-a`. OpenMP, GPU backends, external
