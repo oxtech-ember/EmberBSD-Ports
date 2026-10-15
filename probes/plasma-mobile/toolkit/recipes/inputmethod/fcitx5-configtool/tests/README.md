@@ -1,6 +1,6 @@
 # Configtool cross-build paths
 
-Fcitx Configtool 5.1.16nb1 separates configure-time discovery from target data paths.
+Fcitx Configtool 5.1.16nb2 separates configure-time discovery from target data paths.
 The original `FindIsoCodes.cmake` finds host-readable files in the target sysroot.
 The original `FindXKeyboardConfig.cmake` obtains paths from pkg-config.
 Both modules remain unchanged.
@@ -17,6 +17,11 @@ The compiler-settings include uses `Fcitx5Utils_DIR`, which `find_package` resol
 `FCITX_INSTALL_CMAKECONFIG_DIR` retains its target installation meaning.
 The recipe selects native `msgfmt` and `msgmerge` through pkgsrc's tool paths.
 It retains Qt6, the KDE configuration module, X11 dependencies and both configuration interfaces.
+
+The nb2 package rebuilds the consumer for Plasma 6.8 and `libPlasma.so.8`.
+Do not reuse objects or package metadata from the `libPlasma.so.7` build.
+Inspect the theme generator's ELF dependencies and the package `REQUIRES` list.
+Both must select the current library. Installed interface acceptance remains separate.
 
 ## Regression
 
