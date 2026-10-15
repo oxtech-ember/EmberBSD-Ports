@@ -1,0 +1,16 @@
+$NetBSD$
+
+Guard the recording quick setting by the optional KPipeWire find.
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+--- quicksettings/CMakeLists.txt.orig
++++ quicksettings/CMakeLists.txt
+@@ -22,6 +22,8 @@
+ add_subdirectory(nightcolor)
+ add_subdirectory(powermenu)
+ # TODO: Disable screen recording quick setting, as it does not work properly
++if (KPipeWire_FOUND)
+ add_subdirectory(record)
++endif()
+ add_subdirectory(screenshot)
+ add_subdirectory(screenrotation)

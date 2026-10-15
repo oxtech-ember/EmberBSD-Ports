@@ -1,0 +1,2 @@
+Qt bindings for the NetworkManager DBus interface. A DBus
+client library; builds without the NetworkManager daemon.
