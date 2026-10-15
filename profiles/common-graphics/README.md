@@ -1,15 +1,19 @@
 # Common graphics source packages
 
-This opt-in source profile prepares canonical MesaLib 26.2.4nb6, adapted
+This opt-in source profile prepares canonical MesaLib 26.2.4nb8, adapted
 libdrm 2.4.134nb2, Wayland 1.26.0nb1 and wayland-protocols 1.49 for
 EmberBSD/AArch64, retaining the NetBSD 11 ABI. Native builds and the explicit
 [macOS cross composition](cross/profile.md) consume the existing
-[common build tools](../common-build-tools/README.md): GCC16, Python3.14.8,
+[common build tools](../common-build-tools/README.md): GCC16, Python3.15,
 Meson1.12.1 and shared LLVM23.1.3 remain one dependency graph with final
 `LOCALBASE=PREFIX=/usr/pkg`. Plasma Mobile uses this exact graphics layer.
 The default, development-toolchain and common-build-tools exports keep their
 original graphics recipes. The whole installed graphics stack and a Mobile
 demonstration still require acceptance; individual package results follow.
+
+The [V3D BO cache mutex repair](tests/mesa-v3d-cache-mutex/README.md) in nb8
+passes actual-source lifecycle, allocation-error, sanitizer, and target analysis
+checks. Full package and physical desktop acceptance remain separate.
 
 The nb6 recipe also includes Zink and its Vulkan loader dependency.
 Hardware Zink execution remains unaccepted; see [the package boundary](cross/zink.md).
