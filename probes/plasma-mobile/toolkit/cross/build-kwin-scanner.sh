@@ -10,9 +10,21 @@ for path in "$dist" "$qt" "$ecm" "$work" "$CMAKE" "$NINJA" "$HOST_CXX"; do
     case "$path" in *[!a-zA-Z0-9_./+-]*) exit 2;; esac
 done
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-archive=kwin-6.7.5.tar.xz
-expected=$(awk -F '\t' -v name="$archive" '$2 == name {print $3}' "$root/sources.tsv")
-[ -n "$expected" ] && [ "$(shasum -a 256 "$dist/$archive" | awk '{print $1}')" = "$expected" ]
+version=$(awk '$1 == "PLASMAVER?=" { if (NF != 2) exit 2; value=$2; count++ }
+    END { if (count != 1) exit 2; print value }' "$root/shared/meta-pkgs/kde/plasma6.mk")
+printf '%s\n' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'
+selection=$(awk -F '\t' '$1 == "x11/plasma6-kwin" { archive=$2; hash=$3; count++ }
+    END { if (count != 1) exit 2; print archive " " hash }' "$root/sources.tsv") || {
+    echo 'Exactly one canonical KWin source is required' >&2; exit 2;
+}
+archive=${selection%% *} expected=${selection#* }
+[ "$archive" = "kwin-$version.tar.xz" ] || {
+    echo 'KWin manifest differs from the shared Plasma version' >&2; exit 2;
+}
+printf '%s\n' "$expected" | grep -Eq '^[0-9a-f]{64}$'
+[ "$(shasum -a 256 "$dist/$archive" | awk '{print $1}')" = "$expected" ] || {
+    echo 'KWin source archive checksum mismatch' >&2; exit 2;
+}
 [ "$("$qt/bin/qmake" -query QT_VERSION)" = 6.12.0 ]
 mkdir "$work"
 mkdir "$work/source" "$work/bin"
