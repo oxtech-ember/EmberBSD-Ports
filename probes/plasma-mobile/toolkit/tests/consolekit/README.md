@@ -1,7 +1,8 @@
 # ConsoleKit session foundation
 
-The local `consolekit-2.0.0nb2` recipe carries two focused source patches.
+The local `consolekit-2.0.0` recipe carries focused source patches.
 They do not enable server-managed devices or install a display manager.
+The separate [NetBSD VT monitor](vt-monitor.md) observes actual kernel console state.
 
 `TakeControl` now checks the caller UID after both credential lookups succeed.
 Only the session owner or root can acquire or reuse control.
@@ -79,6 +80,7 @@ These are host function fixtures, not complete NetBSD translation units.
 Their headers, macros and ABI are those of the native host fixture.
 Full target compilation needs the cross-built D-Bus and GLib development inputs.
 Actual system-bus credentials and ordinary-user session registration remain untested.
-NetBSD VT watching, wscons revocation and input close/reopen remain separate work.
+NetBSD VT watching has host contracts in the separate monitor test.
+Actual VT switching, wscons revocation and input close/reopen remain separate work.
 The device backend remains `none`; native DRM `TakeControl` remains unsupported.
 No SDDM, password-login, logout, GPU or physical-device acceptance is claimed.

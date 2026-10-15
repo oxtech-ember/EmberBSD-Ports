@@ -1,6 +1,7 @@
 Origin: EmberBSD (AI-assisted), local port; not submitted upstream.
 
 Use absolute NetBSD TTY paths and parse canonical console numbers without overflow.
+Reject unknown active consoles and preserve caller output on failed kernel queries.
 
 --- src/ck-sysdeps-netbsd.c.orig
 +++ src/ck-sysdeps-netbsd.c
@@ -32,7 +33,18 @@ Use absolute NetBSD TTY paths and parse canonical console numbers without overfl
  }
  
  static gboolean
-@@ -383,27 +402,36 @@
+@@ -371,6 +390,10 @@
+ {
+         char *device;
+ 
++        if (num == 0) {
++                return NULL;
++        }
++
+         /* The device number is always one less than the VT number. */
+         num--;
+ 
+@@ -383,57 +406,59 @@
  ck_get_console_num_from_device (const char *device,
                                  guint      *num)
  {
@@ -75,6 +87,44 @@ Use absolute NetBSD TTY paths and parse canonical console numbers without overfl
 +                *num = n + 1;
          }
  
+-        return ret;
++        return TRUE;
+ }
+ 
+ gboolean
+ ck_get_active_console_num (int    console_fd,
+                            guint *num)
+ {
+-        gboolean ret;
+-        int      res;
+-        int      active;
++        int active;
+ 
+         g_assert (console_fd != -1);
+ 
+-        active = 0;
+-        ret = FALSE;
+-
+-        res = ioctl (console_fd, VT_GETACTIVE, &active);
+-        if (res == ERROR) {
+-                perror ("ioctl VT_GETACTIVE");
+-                goto out;
++        if (ioctl (console_fd, VT_GETACTIVE, &active) == -1) {
++                return FALSE;
++        }
++        if (active <= 0) {
++                errno = ENXIO;
++                return FALSE;
+         }
+ 
+         g_debug ("Active VT is: %d (ttyE%d)", active, active - 1);
+-        ret = TRUE;
+-
+- out:
+         if (num != NULL) {
+                 *num = active;
+         }
+-
 -        return ret;
 +        return TRUE;
  }
