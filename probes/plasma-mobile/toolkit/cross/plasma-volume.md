@@ -36,7 +36,11 @@ Then build Plasma PA with normal pkgsrc staging and package checks.
 The complete package retains translations, the KCM, applet and documentation.
 Upstream tests are built as separate execution artifacts.
 
-The package and source checks do not establish a working audio device.
-Installed QML import, notifications and the intended Plasma session require
-separate target acceptance. Volume feedback also needs the optional Canberra
-Pulse backend and sound theme.
+On 2026-10-15, the installed packages passed on physical BCM2712 CM5.
+An ordinary user ran all four MapsTest and three PercentValidatorTest cases.
+The installed QML plugin loaded and returned the expected PulseAudioQt constants.
+That import used Qt's offscreen platform and a private D-Bus session.
+
+These checks do not establish a working audio device or server. Notifications
+and the intended Plasma session require separate acceptance. Volume feedback
+also needs the optional Canberra Pulse backend and sound theme.

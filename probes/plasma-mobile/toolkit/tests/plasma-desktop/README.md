@@ -69,7 +69,8 @@ Target execution is pending; host checks do not establish Plasma acceptance.
 
 ## Verified source interfaces
 
-The commands were checked against the unpacked upstream 6.7.5 sources.
+The shell API, default layout and output name were rechecked against the
+unpacked upstream Workspace, Desktop and KWin 6.8.0 sources.
 The common recipe fixes the source archive and checksum:
 [Desktop](../../recipes/x11/plasma6-plasma-desktop/Makefile),
 [Workspace](../../recipes/x11/plasma6-plasma-workspace/Makefile), and
