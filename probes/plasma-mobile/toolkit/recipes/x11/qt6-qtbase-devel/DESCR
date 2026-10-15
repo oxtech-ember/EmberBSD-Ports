@@ -1,0 +1,4 @@
+Qtbase headers, CMake and pkg-config metadata, and target tools for the
+EmberBSD build-host sysroot. The exact matching Qtbase runtime package
+owns shared libraries, plugins, runtime path queries, and license notices.
+This SDK package is not part of an execution-only target image.
