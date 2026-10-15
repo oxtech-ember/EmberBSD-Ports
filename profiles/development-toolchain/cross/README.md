@@ -21,6 +21,21 @@ and [GNU platform definitions](https://github.com/oxtech-ember/EmberBSD/blob/mai
 The same selected triplet controls binutils, compiler configuration, startup
 objects and target C++ headers. It is recorded in `inputs.txt`.
 
+The bootstrap copy also preserves the linker's adjacent `lib/ldscripts` tree.
+Copying the linker executable alone breaks default secondary emulations.
+The source script hashes are recorded in `linker-scripts.sha256`.
+The real amd64 bootstrap passes 67 unchanged scripts and an `elf_i386`
+standalone link through the relocated prefix. No target program is executed.
+The same test rejects the previous executable-only copy at script selection:
+
+```sh
+ruby profiles/development-toolchain/cross/tests/linker-relocation.rb \
+    /absolute/os-tools amd64 /absolute/new-relocation-receipt
+```
+
+This qualifies relocation of the supplied binutils. It does not qualify a
+new binutils version, a complete OS build or booting a BIOS loader.
+
 The compiler uses the same verified original GCC archive and frontend
 portability patches as the Ports native package, including the nb1 C++
 modules repair. The default application mode uses an accepted sysroot's GCC16

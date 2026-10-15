@@ -136,12 +136,18 @@ for name in $patches; do
     [ "$name" != patch-gcc_Makefile.in ] || continue
     patch -f -N -F 0 -p0 -d "$work/src" < "$recipe/patches/$name"
 done > "$work/patch.log" 2>&1
-mkdir -p "$prefix/$triplet/bin"
+# A relocated linker also needs its adjacent default linker scripts.
+[ -d "$tools/$triplet/lib/ldscripts" ] || {
+    echo 'Bootstrap target linker scripts missing.' >&2; exit 1;
+}
+mkdir -p "$prefix/$triplet/bin" "$prefix/$triplet/lib"
 for tool in ar as elfedit ld nm objcopy objdump ranlib readelf size strings strip; do
     cp "$tools/bin/$triplet-$tool" "$prefix/bin/"
     # GCC invokes objcopy for -gsplit-dwarf through its target-tool search path.
     ln -s "../../bin/$triplet-$tool" "$prefix/$triplet/bin/$tool"
 done
+cp -R "$tools/$triplet/lib/ldscripts" "$prefix/$triplet/lib/"
+shasum -a 256 "$tools/$triplet/lib/ldscripts/"* > "$work/linker-scripts.sha256"
 cd "$work/build"
 unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH
 if [ "$mode" = kernel ]; then

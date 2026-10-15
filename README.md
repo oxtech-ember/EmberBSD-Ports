@@ -35,6 +35,8 @@ runtime behavior are validated.
   builds GCC16 on Apple Silicon macOS; cross-built C/C++20 consumers run on
   Zero 3W with its installed GCC16 runtime. Its installed tool-search layout
   also passes split-DWARF generation without an `objcopy` path override.
+  Relocated amd64 binutils also retain 67 default linker scripts and pass
+  a real secondary-emulation standalone link; OS boot remains separate.
   The recipe's `--kernel` mode prepares frontends without a userland sysroot;
   application mode retains target headers/runtime. The Linux GCC16 path also
   builds the full kernel, four modules, and three DTBs; all portable contracts
