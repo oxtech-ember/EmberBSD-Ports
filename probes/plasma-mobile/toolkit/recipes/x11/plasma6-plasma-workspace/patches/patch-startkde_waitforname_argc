@@ -1,0 +1,28 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Keep the argc reference owned by main alive.
+Qt 6.12 QCoreApplication retains int& argc for its entire lifetime. Passing a
+constructor-local copy makes later arguments() calls read expired storage.
+
+--- startkde/waitforname/waiter.h.orig
++++ startkde/waitforname/waiter.h
+@@ -20,7 +20,7 @@
+     Q_OBJECT
+ 
+ public:
+-    Waiter(int argc, char **argv);
++    Waiter(int &argc, char **argv);
+     bool waitForService();
+ 
+ private Q_SLOTS:
+--- startkde/waitforname/waiter.cpp.orig
++++ startkde/waitforname/waiter.cpp
+@@ -19,7 +19,7 @@
+ 
+ using namespace Qt::StringLiterals;
+ 
+-Waiter::Waiter(int argc, char **argv)
++Waiter::Waiter(int &argc, char **argv)
+     : QCoreApplication(argc, argv)
+     , mService(u"org.freedesktop.Notifications"_s)
+ {
