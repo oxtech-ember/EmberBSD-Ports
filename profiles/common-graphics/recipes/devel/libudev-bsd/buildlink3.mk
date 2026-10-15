@@ -5,7 +5,7 @@ BUILDLINK_TREE+=	libudev-bsd
 .if !defined(LIBUDEV_BSD_BUILDLINK3_MK)
 LIBUDEV_BSD_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.libudev-bsd+=	libudev-bsd>=0.7.0.1nb1
+BUILDLINK_API_DEPENDS.libudev-bsd+=	libudev-bsd>=0.7.0.1nb2
 BUILDLINK_ABI_DEPENDS.libudev-bsd+=	libudev-bsd>=0.6.0.4
 BUILDLINK_PKGSRCDIR.libudev-bsd?=	../../devel/libudev-bsd
 

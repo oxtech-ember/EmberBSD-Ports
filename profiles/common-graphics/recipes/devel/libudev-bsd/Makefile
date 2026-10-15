@@ -2,7 +2,7 @@
 # Origin: EmberBSD (AI-assisted), current upstream graphics dependency.
 
 DISTNAME=	libudev-bsd-0.7.0.1
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=kikadf/}
 GITHUB_TAG=	v${PKGVERSION_NOREV}

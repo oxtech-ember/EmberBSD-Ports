@@ -1,8 +1,11 @@
 # DRM render-node discovery
 
-The libudev-bsd 0.7.0.1nb1 recipe classifies decimal `/dev/dri/renderD*`
+The libudev-bsd 0.7.0.1nb2 recipe classifies decimal `/dev/dri/renderD*`
 paths as DRM devices. It selects the existing DRM metadata handler.
-Primary `card*` classification is unchanged. The public ABI is unchanged.
+Primary `card*` classification is unchanged. The public ABI is unchanged. The same package also repairs the existing
+evdev feature query. It initializes the sysctl buffer length and caches
+only a complete successful integer result. Errors and incorrect result
+lengths remain retryable. Partial output cannot enable evdev filtering.
 
 KWin 6.8 enumerates subsystem `drm` with sysname
 `renderD[1-2][0-9][0-9]`. Upstream libudev-bsd 0.7.0.1 has no render-node
@@ -38,6 +41,12 @@ The pinned source must reject `renderD128` after a successful compilation.
 The patched source must pass 30 path cases and four filter lifecycles.
 Cases include primary nodes, consumer range boundaries, long decimal units,
 malformed names, wrong paths and negative subsystem filters.
+The sysctl checks cover enabled, nonzero, disabled, failed, short and oversized
+results. Separate negative controls detect the original uninitialized length
+and a length-only repair that still caches partial output.
+`-ftrivial-auto-var-init=pattern` makes the original length error deterministic.
+The sysctl declaration and controlled response form the test boundary;
+the production classifier and cache are compiled without replacement.
 ASan/UBSan covers this host contract. It does not exercise the BSD device
 scanner or kernel. A sanitizer run is not a Valgrind Memcheck result.
 
@@ -46,7 +55,7 @@ scanner or kernel. A sanitizer run is not a Valgrind Memcheck result.
 Cross-build `tests/libudev-render-enumerate.c` against the EmberBSD sysroot
 and its packaged libudev. Use the [common cross configuration](profile.md).
 Link with `-ludev` and the normal `/usr/pkg/lib` runtime search path.
-Install the complete nb1 package through pkgsrc tools before acceptance.
+Install the complete nb2 package through pkgsrc tools before acceptance.
 Run the probe as the intended compositor user without loader overrides:
 
 ```sh
@@ -60,3 +69,9 @@ Static device nodes can exist without a live driver. Each cycle requires
 at least one classified node and one successful open. No GPU ioctl or
 rendering command is issued. The probe does not prove KMS support, hardware
 rendering, compositor startup or a usable Plasma session.
+
+The render-node change in nb1 passes this probe on EmberBSD/AArch64 CM5.
+All four cycles classify four static render nodes and open one live device.
+The other three report `ENODEV`. The original package reports no nodes.
+This comparison used the same probe, kernel and device permissions.
+The nb2 sysctl correction has separate source regression coverage.

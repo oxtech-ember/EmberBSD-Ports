@@ -4,3 +4,4 @@ BLAKE2s (libudev-bsd-0.7.0.1.tar.gz) = c041e75af7f12d96af2d50d537deb8a42a4874fa0
 SHA512 (libudev-bsd-0.7.0.1.tar.gz) = 71b657583e2176f5559d2df83a39484250fdff0757ae5a2b8113fcb8d179526cf37c79c2676bbe6d8b3010a5aad64c0aec60affd71ac6ddfc2145e5664c462e6
 Size (libudev-bsd-0.7.0.1.tar.gz) = 42596 bytes
 SHA1 (patch-render-nodes) = 90c480c0c46dc01da0dca5fbdddf0e1730db0b36
+SHA1 (patch-evdev-sysctl) = ccab3c05b7d8fed670e3b7534f6b8a7d3ba4ecf4
