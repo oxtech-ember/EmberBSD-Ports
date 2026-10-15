@@ -32,15 +32,22 @@ end
 end
 FileUtils.mkdir_p(work+'/baseline/startkde/waitforname')
 FileUtils.mkdir_p(work+'/baseline/src/lib/io')
-%w[waiter.cpp waiter.h].each do |name|
+%w[waiter.cpp waiter.h main.cpp].each do |name|
   File.write(work+'/baseline/startkde/waitforname/'+name,
     extract(archives,'plasma-workspace-6.8.0.tar.xz','plasma-workspace-6.8.0/startkde/waitforname/'+name))
 end
 File.write(work+'/baseline/src/lib/io/kdirwatch.cpp',extract(archives,'kcoreaddons-6.31.0.tar.xz','kcoreaddons-6.31.0/src/lib/io/kdirwatch.cpp'))
 FileUtils.cp_r(work+'/baseline',work+'/patched')
 patches = ['devel/kf6-kcoreaddons/patches/patch-src_lib_io_kdirwatch.cpp',
-           'x11/plasma6-plasma-workspace/patches/patch-startkde_waitforname_argc']
+           'x11/plasma6-plasma-workspace/patches/patch-startkde_waitforname_argc',
+           'x11/plasma6-plasma-workspace/patches/patch-startkde_waitforname_bus']
 patches.each_with_index do |patch, index|
+  path = File.join(recipes, patch)
+  distinfo = File.read(File.expand_path('../distinfo', File.dirname(path)))
+  name = File.basename(path)
+  expected = distinfo[/^SHA1 \(#{Regexp.escape(name)}\) = (\h+)$/, 1]
+  canonical = File.readlines(path).reject { |line| line.match?(/\$NetBSD.*/) }.join
+  abort "Patch hash mismatch: #{name}" unless expected && Digest::SHA1.hexdigest(canonical) == expected
   run(['patch','-p0','-i',File.join(recipes,patch)],work+"/patch-#{index}.log",chdir:work+'/patched')
 end
 %w[baseline patched].each do |variant|
