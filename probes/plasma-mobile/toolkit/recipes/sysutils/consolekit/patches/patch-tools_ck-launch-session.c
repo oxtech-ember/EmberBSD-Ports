@@ -1,6 +1,6 @@
-Preserve child exit status, handle interrupted waits and use the default shell safely.
-Terminate the optional session-service parameter list.
-Origin: EmberBSD (AI-assisted), not submitted upstream.
+Origin: EmberBSD (AI-assisted), local port; not submitted upstream.
+
+Preserve child status and reject execution when session registration fails.
 
 --- tools/ck-launch-session.c.orig
 +++ tools/ck-launch-session.c
@@ -30,7 +30,7 @@ Origin: EmberBSD (AI-assisted), not submitted upstream.
                          case 0:
                                  setenv ("XDG_SESSION_COOKIE",
                                         ck_connector_get_cookie (ckc), 1);
-@@ -133,8 +134,19 @@
+@@ -133,18 +134,38 @@
                                  }
                                  break;
                          default:
@@ -52,8 +52,19 @@ Origin: EmberBSD (AI-assisted), not submitted upstream.
                                  break;
                          }
                  } else {
-@@ -144,7 +156,7 @@
+                         syslog (LOG_ERR, "error connecting to ConsoleKit");
++                        g_printerr ("Unable to register ConsoleKit session: %s\n",
++                                    dbus_error_is_set (&error) ? error.message : "no error returned");
++                        if (dbus_error_is_set (&error)) {
++                                dbus_error_free (&error);
++                        }
++                        ck_connector_unref (ckc);
++                        exit (EXIT_FAILURE);
+                 }
+         } else {
                  syslog (LOG_ERR, "error setting up to connection to ConsoleKit");
++                g_printerr ("Unable to allocate ConsoleKit connector\n");
++                exit (EXIT_FAILURE);
          }
  
 -        if (command[0] != NULL) {

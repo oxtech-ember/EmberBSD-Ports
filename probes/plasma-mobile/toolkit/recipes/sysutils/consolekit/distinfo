@@ -3,9 +3,10 @@ $NetBSD: distinfo,v 1.23 2025/07/08 13:01:37 jperkin Exp $
 BLAKE2s (ConsoleKit2-2.0.0.tar.gz) = 8e30205b1ad749cf72846ca1de38416d11ae6c10391ee3018411fb84158eb470
 SHA512 (ConsoleKit2-2.0.0.tar.gz) = 8b814971e9461c5a807f00e6ef337589a8173c858d33f5a047bfef6dadaa45c8196a1d34f297273d58254cbb7862a25d65d923896a30b4dba1ab6955d16dfc2b
 Size (ConsoleKit2-2.0.0.tar.gz) = 261921 bytes
-SHA1 (patch-src_ck-manager.c) = ed04c9b3dae1325a3207e766bf4363e06d5e67c1
+SHA1 (patch-src_ck-manager.c) = 33d530aba59e0ffefe6e90c71f47341e93631f15
 SHA1 (patch-src_ck-sysdeps-solaris.c) = 43efc3ba1521477437d766da16c609a04892588c
 SHA1 (patch-src_ck-vt-monitor.c) = 6e4031c1dcce68ae85fcca5e2143e61b3e2d3272
-SHA1 (patch-tools_ck-launch-session.c) = c2b1becf952cbf3e9b418c54108868ba5e19c01a
+SHA1 (patch-tools_ck-launch-session.c) = 0677fa27acfdceb975310ce189a2fc2d985762d2
 SHA1 (patch-src_ck-session.c) = b7fd1e9dcacae3a29725cc03ef8fd584fb697510
 SHA1 (patch-src_ck-sysdeps-netbsd.c) = 2b34b0f2d02b5310df010420af080825169fe9ec
+SHA1 (patch-data_ConsoleKit.conf) = 6c921eb4644565c17af051e45a844cde38cd6ebf

@@ -255,6 +255,8 @@ runtime behavior are validated.
   also pass payload, target indexing and Cyrillic/CJK selection checks.
   [ConsoleKit session launching](probes/plasma-mobile/toolkit/cross/desktop-session.md)
   now preserves child failures and passes seven real-daemon cases on CM5.
+  [Registration privilege host contracts](probes/plasma-mobile/toolkit/tests/consolekit/privilege.md)
+  check root-only parameter overrides and reject child execution after failed registration.
   Ordinary-user login, device ownership and the complete desktop remain unaccepted.
 - [KWin on physical CM5](probes/plasma-mobile/toolkit/cross/cm5-kwin.md):
   KWin 6.7.5nb2 passes OpenGL/V3D selection and Qt Quick pixel checks
