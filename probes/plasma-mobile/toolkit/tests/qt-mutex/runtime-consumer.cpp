@@ -14,7 +14,8 @@
 
 #define CHECK(x) do { if (!(x)) { \
     std::fprintf(stderr, "FAIL %s:%d: %s (errno=%d)\n", __FILE__, __LINE__, #x, errno); \
-    std::exit(1); \
+    std::fflush(stderr); \
+    std::_Exit(1); \
 } } while (false)
 
 static int descriptors(rlim_t limit)
@@ -62,6 +63,8 @@ int main()
     // Allow each worker to enter the held mutex's timed wait path.
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     const int peak = descriptors(limit.rlim_cur);
+    std::printf("Qt public mutex descriptors: before=%d peak=%d\n", before, peak);
+    std::fflush(stdout);
     for (int i = 0; i < count; ++i)
         locks[i].unlock();
     for (auto &thread : threads)
