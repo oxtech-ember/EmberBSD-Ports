@@ -31,6 +31,10 @@ previous selection. No existing pkgsrc directory is overwritten.
 The toolkit also carries iso-codes 4.20.1, the libinotify cross adaptation,
 and [tested litehtml 0.10nb1 / gumbo 0.14.1 packages](cross/html.md) for QtTools.
 
+[attr 2.6.0](tests/attr/README.md) also passes normal cross packaging, ELF ABI,
+public-header and manual-alias checks. Its private CLI backend uses native
+EmberBSD xattrs; filesystem and installed-consumer acceptance remain separate.
+
 The toolkit includes 22 Qt modules and all 68 Frameworks recipes present
 in the pinned pkgsrc, plus Extra CMake Modules. Their original recipes come
 from pkgsrc `fff4deb639a1a640476203c80f752fb77b6cb14b`. The shared version files
