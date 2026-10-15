@@ -89,7 +89,7 @@ struct __DRIimageList { struct dri_image *back, *front; unsigned image_mask; };
 static struct { unsigned pipe_format, alt_pipe_format; } dri2_wl_visuals[] = {{1, 1}};
 static struct dri_image image_storage, partial_storage;
 static struct wl_buffer buffer_storage;
-static int allocation_calls, invalid_images, creates, attaches, commits, error_code;
+static int allocation_calls, linear_allocations, destroys, invalid_images, creates, attaches, commits, error_code;
 static bool allocation_fails, linear_fails;
 static int throttle_listener, wl_buffer_listener;
 static struct dri2_egl_display *dri2_egl_display(_EGLDisplay *d) { return d->driver; }
@@ -109,12 +109,12 @@ static void create_dri_image_from_dmabuf_feedback(struct dri2_egl_surface *s, un
 }
 static struct dri_image *dri_create_image_with_modifiers(struct dri_screen *s, int width, int height, unsigned format, unsigned flags, const uint64_t *modifiers, unsigned count, void *data) {
     (void)s; (void)width; (void)height; (void)format; (void)flags; (void)modifiers; (void)count; (void)data;
-    allocation_calls++; return linear_fails ? NULL : &partial_storage;
+    allocation_calls++; linear_allocations++; return linear_fails ? NULL : &partial_storage;
 }
 static bool dri2_query_image(struct dri_image *image, int attr, int *value) { (void)attr; if (!image) {invalid_images++; return false;} *value=1; return true; }
 static struct dri_image *dri2_from_planar(struct dri_image *image, int plane, void *data) { (void)plane; (void)data; return image; }
 static struct dri_image *dri2_from_dma_bufs(struct dri_screen *s, ...) { (void)s; return &partial_storage; }
-static void dri2_destroy_image(struct dri_image *image) { assert(image); }
+static void dri2_destroy_image(struct dri_image *image) { assert(image); destroys++; }
 static void loader_wayland_buffer_set_flow(struct loader_wayland_buffer *b, struct mesa_trace_flow *f) { b->flow=*f; }
 static void loader_wayland_buffer_destroy(struct loader_wayland_buffer *b) { b->buffer=NULL; }
 static void dri2_wl_release_buffers(struct dri2_egl_surface *s) { for (unsigned i=0;i<4;i++) {s->color_buffers[i].dri_image=NULL;s->color_buffers[i].linear_copy=NULL;} }
@@ -136,7 +136,10 @@ static bool try_damage_buffer(struct dri2_egl_surface *s, const EGLint *r, EGLin
 static void wl_surface_damage(void *s, int x, int y, int w, int h) { (void)s; (void)x; (void)y; (void)w; (void)h; }
 static _EGLContext *_eglGetCurrentContext(void) { static _EGLContext c; return &c; }
 static struct dri2_egl_context *dri2_egl_context(_EGLContext *c) { (void)c; static struct dri2_egl_context d; return &d; }
-static void dri2_blit_image(void *ctx, ...) { (void)ctx; }
+static void dri2_blit_image(void *ctx, struct dri_image *dst, struct dri_image *src, int dx, int dy, int dw, int dh, int sx, int sy, int sw, int sh, unsigned flags) {
+    (void)ctx; (void)dx; (void)dy; (void)dw; (void)dh; (void)sx; (void)sy; (void)sw; (void)sh; (void)flags;
+    if (!dst || !src) invalid_images++;
+}
 static void dri_flush_drawable(struct dri_drawable *d) { (void)d; }
 static void loader_wayland_presentation_feedback(int *p, struct loader_wayland_buffer *b, void *x) { (void)p; (void)b; (void)x; }
 static void wl_surface_commit(void *s) { (void)s; commits++; }
@@ -146,7 +149,7 @@ static void wl_display_flush(void *d) { (void)d; }
 #include "wayland-methods.inc"
 
 static struct dri_drawable *get_drawable(_EGLSurface *s) { return dri2_egl_surface(s)->dri_drawable; }
-static int check_case(bool different_gpu)
+static int check_case(bool different_gpu, bool partial)
 {
     struct pipe_screen pipe={0};
     struct dri_screen screen={{&pipe}};
@@ -156,18 +159,25 @@ static int check_case(bool different_gpu)
     struct wl_window window={.width=1280,.height=1024};
     struct dri2_egl_surface s={.base={.Resource={&display},.Width=1280,.Height=1024},.wl_win=&window};
     struct __DRIimageList images={0};
-    allocation_calls=invalid_images=creates=attaches=commits=error_code=0;
-    allocation_fails=true; linear_fails=different_gpu;
+    allocation_calls=linear_allocations=destroys=invalid_images=creates=attaches=commits=error_code=0;
+    allocation_fails=true; linear_fails=different_gpu && !partial;
     // A partial slot remains owned by the surface even after its alias is reset.
     if (!different_gpu) s.color_buffers[3].linear_copy=&partial_storage;
     int result=image_get_buffers(NULL,0,NULL,&s,__DRI_IMAGE_BUFFER_BACK,&images);
     assert(result==0);
     assert(error_code==EGL_BAD_ALLOC);
+    struct dri2_egl_buffer *active_partial=NULL;
+    if (partial) {
+        for (unsigned i=0;i<4;i++)
+            if (s.color_buffers[i].linear_copy) active_partial=&s.color_buffers[i];
+        assert(active_partial && active_partial->linear_copy==&partial_storage);
+        assert(!active_partial->dri_image && !active_partial->locked && linear_allocations==1);
+    }
     error_code=0;
     result=dri2_wl_swap_buffers_with_damage(&display,&s.base,NULL,0);
-    assert(result==EGL_FALSE);
-    if (invalid_images || creates || attaches || commits || allocation_calls!=2 || s.back || s.current || error_code!=EGL_BAD_ALLOC) {
-        fprintf(stderr,"FAIL: allocation failure leaves a usable back alias (different_gpu=%d, allocations=%d, invalid_images=%d)\n",different_gpu,allocation_calls,invalid_images);
+    if (result!=EGL_FALSE || invalid_images || creates || attaches || commits || destroys ||
+        allocation_calls!=(partial?3:2) || s.back || s.current || error_code!=EGL_BAD_ALLOC) {
+        fprintf(stderr,"FAIL: allocation failure leaves a usable back alias (different_gpu=%d, partial=%d, allocations=%d, invalid_images=%d)\n",different_gpu,partial,allocation_calls,invalid_images);
         return 1;
     }
     if (!different_gpu) assert(s.color_buffers[3].linear_copy==&partial_storage);
@@ -175,24 +185,27 @@ static int check_case(bool different_gpu)
     // Repeated OOM must keep failing. Recovery must retry and publish only a complete image.
     result=image_get_buffers(NULL,0,NULL,&s,__DRI_IMAGE_BUFFER_BACK,&images);
     assert(result==0);
-    assert(!s.back && allocation_calls==3);
+    assert(!s.back && allocation_calls==(partial?4:3) && destroys==0);
+    if (partial) assert(active_partial->linear_copy==&partial_storage && linear_allocations==1);
     allocation_fails=linear_fails=false; error_code=0;
     result=image_get_buffers(NULL,0,NULL,&s,__DRI_IMAGE_BUFFER_BACK,&images);
     assert(result==1);
     assert(s.back && s.back->dri_image && s.back->locked && images.back==s.back->dri_image);
     if (different_gpu) assert(s.back->linear_copy);
+    if (partial) assert(s.back==active_partial && s.back->linear_copy==&partial_storage && linear_allocations==1);
     int successful_allocations=allocation_calls;
     result=dri2_wl_swap_buffers_with_damage(&display,&s.base,NULL,0);
     assert(result==EGL_TRUE);
     assert(!s.back && s.current && s.current->dri_image && allocation_calls==successful_allocations);
-    assert(invalid_images==0 && creates==1 && attaches==1 && commits==1 && error_code==0);
+    assert(invalid_images==0 && destroys==0 && creates==1 && attaches==1 && commits==1 && error_code==0);
     return 0;
 }
 int main(void)
 {
-    int single=check_case(false);
-    int multi=check_case(true);
-    if (single || multi) return 1;
+    int single=check_case(false,false);
+    int multi=check_case(true,false);
+    int partial=check_case(true,true);
+    if (single || multi || partial) return 1;
     puts("PASS: actual Wayland buffer OOM/retry/recovery and swap; no invalid image reaches export");
     return 0;
 }

@@ -22,6 +22,8 @@ This makes the baseline failure deterministic without a deliberate host crash.
 The baseline accepts a selected slot after its allocation failed.
 The patched source retries, reports repeated allocation failure, and recovers when allocation succeeds.
 Single-GPU and separate render/display-GPU paths run independently.
+A third case allocates the active linear copy before render-image allocation fails.
+It verifies the same slot and linear image survive retry, with no extra linear allocation or destruction.
 The test checks that no failed image reaches export, attach, or commit.
 It also checks that partial resources remain owned and successful swaps still work.
 
