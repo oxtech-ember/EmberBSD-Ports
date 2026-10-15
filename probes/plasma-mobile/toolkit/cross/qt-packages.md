@@ -13,6 +13,32 @@ shader pixels and repeated processes on CM5. The [Qt Quick consumer](../tests/qt
 also passes compiled QML scene/layer pixels through V3D. Other module runtimes
 and Plasma remain unaccepted.
 
+## QtBase private mutex package
+
+QtBase 6.12.0nb1 was rebuilt completely from the pinned Qt 6.12 archive.
+It uses GCC 16.2, Mesa 26.2.4nb7 and LLVM 23.1.3 from the EmberBSD sysroot.
+The [private mutex event](../tests/qt-mutex/README.md) avoids descriptor allocation
+by the NetBSD mutex pool. The full build preserves all 460 configured Qt features.
+QtCore retains its SONAME and all 7,588 dynamic exports. The public mutex header
+is unchanged. The matching private header is installed with the full package.
+
+Normal package checks pass. The archive audit verifies all 4,564 payload entries,
+71 AArch64 ELF files, three static archives and target install helpers.
+It also checks payload-to-library-metadata correlation. This is not a complete
+ELF dependency-closure check or physical runtime acceptance.
+Normal replacement also passes in the common cross sysroot and on CM5.
+The target checks all 4,564 package files and retains package consumers and flags.
+The same retained public consumer reports three descriptors before and during
+contention by 145 workers. The previous library reached 1024 and reported `EMFILE`.
+This physical result validates the mutex fix; it does not accept a full desktop
+session or resolve the separate Mesa failure.
+
+The compilation source is Ports `672ea3e`. Packaging corrections are in `8674ded`.
+The packaging-only repair preserves 39,105 original source and build files.
+Dependency snapshots match before and after compilation. The only concurrent
+sysroot update changed Python install helpers, not payload or compiler inputs.
+No payload from the previous QtBase package is reused.
+
 ## TextToSpeech and KDE settings
 
 The [installed TextToSpeech consumer](../tests/qt-speech/README.md) passes both
@@ -74,7 +100,7 @@ libdrm 2.4.134nb2 and the common LLVM23 stack. Final prefixes remain
 
 | Package | SHA256 |
 | --- | --- |
-| qt6-qtbase-6.12.0.tgz | `909725fe2cdbf3159ca368c9b6e39747b27e16a69a580286a00d661c675d5151` |
+| qt6-qtbase-6.12.0nb1.tgz | `1890cb73a6811e46390965d2b1f570c6ea54446124795e7db59f2740eb9019f5` |
 | qt6-qtsvg-6.12.0.tgz | `7a4e524ed141f77b1977b1c6079e9e4c007577f21c365d0d81939c9305a8e903` |
 | qt6-qtshadertools-6.12.0.tgz | `44c8f7a86d8649b0d28b2a310e9f876e426e6ef8f7fa163dbebfe017d6c2f0f5` |
 
@@ -103,6 +129,10 @@ runs the actual recipe loop twice, preserving metadata and licensing each time;
 it fails with the original recipe. Existing damaged work trees need restoration
 of the license file from the verified archive and regeneration of qmodule.pri.
 Do not discard compiled objects merely to repair these files.
+The loop removes patch backups from feature directories too. The manifest does
+not require a fabricated `mkspecs/devices/qmake.conf`. Both cases have regression
+checks. A fresh Qtbase build exposed these two packaging defects.
+The repair changes no compiled source or Qt feature configuration.
 
 Cross Qt installs target development tools and libraries, but upstream omits
 Android deployment host tools. The manifest reflects that distinction and the

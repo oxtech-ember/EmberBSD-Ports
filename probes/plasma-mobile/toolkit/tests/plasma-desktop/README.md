@@ -14,7 +14,7 @@ The runner does not change users, device permissions, services or installed sett
 Keep all files in this directory together. Run this command on the target:
 
 ```sh
-sh run.sh /absolute/new-results
+sh run.sh /absolute/new-results /absolute/capture-pixels
 ```
 
 Use a short absolute output path. The output directory must not exist.
@@ -42,7 +42,7 @@ The runner requires all these observations:
 - The panel models contain Kickoff, Pager, Icons-Only Task Manager,
   System Tray, Digital Clock and Show Desktop.
 - An unknown connector is rejected without creating an image.
-- A desktop containment capture completes and produces a 320×256 PNG header.
+- A desktop containment capture contains visible, nonuniform pixels in a decoded 320×256 PNG.
 - The shell's own Qt RHI log reports V3D OpenGL and no detected QML load error.
 - Six layout queries succeed over a further 30 seconds with the same shell process.
 - SIGTERM closes the shell successfully. KWin exits with the session wrapper.
@@ -51,7 +51,7 @@ The runner requires all these observations:
 The output saves compositor and shell logs, query results, exit statuses,
 executable hashes, the desktop capture and its hash.
 Each capture attempt keeps separate request output, errors, exit status, timeout and PNG-check logs.
-Only a successful request with a valid PNG header becomes `desktop.png`.
+Only a successful request with a fully decoded, nonuniform image becomes `desktop.png`.
 The shell cleanup escalates to SIGKILL after five seconds if needed.
 That escalation fails the test. It does not count as a clean shutdown.
 Keep the output with the tested kernel, firmware and package-set identities.
@@ -69,7 +69,8 @@ Target execution is pending; host checks do not establish Plasma acceptance.
 
 ## Verified source interfaces
 
-The commands were checked against the unpacked upstream 6.7.5 sources.
+The shell API, default layout and output name were rechecked against the
+unpacked upstream Workspace, Desktop and KWin 6.8.0 sources.
 The common recipe fixes the source archive and checksum:
 [Desktop](../../recipes/x11/plasma6-plasma-desktop/Makefile),
 [Workspace](../../recipes/x11/plasma6-plasma-workspace/Makefile), and
@@ -113,3 +114,21 @@ They check shrinking timeouts, separate image paths, retained errors and child c
 The temporary copy replaces external graphics commands, the clock and liveness sleeps.
 No target binaries run. These fixtures do not emulate a GPU or Plasma.
 All added scripts are EmberBSD code with AI assistance.
+
+## Decode the capture
+
+Build `capture-pixels.c` with the common cross compiler and target libpng.
+Link `-lpng16` and use the target `/usr/pkg/lib` runtime search path.
+Pass this binary as the second argument to `run.sh`.
+The host contract is `capture-pixels-test.rb NEW_OUTPUT`; use `CPPFLAGS`, `CFLAGS`,
+and `LDFLAGS` for the host libpng and optional ASan/UBSan.
+The contract accepts opaque color variation and monochrome content with alpha.
+It rejects full transparency, uniform black and white images, wrong dimensions,
+a truncated header-only file, and corrupted compressed data.
+
+The test creates a digital clock in its private desktop containment.
+An empty Folder View can produce a valid fully transparent image.
+The decoder requires at least 256 nearly opaque pixels and visible color or alpha contrast.
+It checks composition on black and white backgrounds to accept monochrome glyphs.
+This proves visible containment content, not a composited panel or HDMI output.
+It does not replace manual image inspection or input acceptance.

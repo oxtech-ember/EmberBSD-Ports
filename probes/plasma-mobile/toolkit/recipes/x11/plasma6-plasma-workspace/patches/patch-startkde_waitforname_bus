@@ -1,0 +1,83 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Report session-bus failures as errors.
+An invalid isServiceRegistered reply must not mean that a service is absent.
+Keep this error distinct from an already satisfied wait condition.
+
+--- startkde/waitforname/waiter.h.orig
++++ startkde/waitforname/waiter.h
+@@ -16,7 +16,8 @@
+ 
+ public:
+     Waiter(int &argc, char **argv);
+-    bool waitForService();
++    enum class WaitResult { Complete, Pending, Error };
++    WaitResult waitForService();
+ 
+ private Q_SLOTS:
+     void registered();
+--- startkde/waitforname/waiter.cpp.orig
++++ startkde/waitforname/waiter.cpp
+@@ -72,31 +72,41 @@
+     }
+ }
+ 
+-bool Waiter::waitForService()
++Waiter::WaitResult Waiter::waitForService()
+ {
+     QDBusConnection sessionBus = QDBusConnection::sessionBus();
++    auto *busInterface = sessionBus.interface();
++    if (!sessionBus.isConnected() || !busInterface) {
++        qCWarning(LOG_PLASMA) << "WaitForName: Cannot connect to the session bus:" << sessionBus.lastError().message();
++        return WaitResult::Error;
++    }
+     auto *watcher = new QDBusServiceWatcher(this);
+     watcher->setConnection(sessionBus);
+     watcher->addWatchedService(mService);
+ 
++    const auto registeredReply = busInterface->isServiceRegistered(mService);
++    if (!registeredReply.isValid()) {
++        qCWarning(LOG_PLASMA) << "WaitForName: Cannot query service registration:" << registeredReply.error().message();
++        return WaitResult::Error;
++    }
+     if (mMode == Waiter::WaitForRegistration) {
+-        if (sessionBus.interface()->isServiceRegistered(mService)) {
++        if (registeredReply.value()) {
+             qCDebug(LOG_PLASMA) << "WaitForName: Service" << mService << "is already registered";
+-            return false;
++            return WaitResult::Complete;
+         }
+ 
+         qCDebug(LOG_PLASMA) << "WaitForName: Waiting for appearance of service" << mService << "for" << dbusTimeoutSec << "seconds";
+         watcher->setWatchMode(QDBusServiceWatcher::WatchForRegistration);
+         connect(watcher, &QDBusServiceWatcher::serviceRegistered, this, &Waiter::registered);
+     } else {
+-        if (!sessionBus.interface()->isServiceRegistered(mService)) {
++        if (!registeredReply.value()) {
+             qCDebug(LOG_PLASMA) << "WaitForName: Service" << mService << "is not yet registered";
+-            return false;
++            return WaitResult::Complete;
+         }
+         watcher->setWatchMode(QDBusServiceWatcher::WatchForUnregistration);
+         connect(watcher, &QDBusServiceWatcher::serviceUnregistered, this, &Waiter::unregistered);
+     }
+-    return true;
++    return WaitResult::Pending;
+ }
+ 
+ void Waiter::registered()
+--- startkde/waitforname/main.cpp.orig
++++ startkde/waitforname/main.cpp
+@@ -19,7 +19,11 @@
+     Waiter app(argc, argv);
+     signal(SIGTERM, sigtermHandler);
+ 
+-    if (!app.waitForService()) {
++    const auto result = app.waitForService();
++    if (result == Waiter::WaitResult::Error) {
++        return 1;
++    }
++    if (result == Waiter::WaitResult::Complete) {
+         return 0;
+     }
+ 

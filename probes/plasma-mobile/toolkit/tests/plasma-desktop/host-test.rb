@@ -19,17 +19,29 @@ end
 Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
   # The runner must reject invalid paths before it creates output or runs tools.
   run.call(:fail, '/bin/sh', "#{source}/run.sh")
-  run.call(:fail, '/bin/sh', "#{source}/run.sh", 'relative-output')
-  run.call(:fail, '/bin/sh', "#{source}/run.sh", temp)
+  run.call(:fail, '/bin/sh', "#{source}/run.sh", 'relative-output', '/bin/true')
+  run.call(:fail, '/bin/sh', "#{source}/run.sh", temp, '/bin/true')
   File.symlink("#{temp}/absent", "#{temp}/dangling")
-  run.call(:fail, '/bin/sh', "#{source}/run.sh", "#{temp}/dangling")
+  run.call(:fail, '/bin/sh', "#{source}/run.sh", "#{temp}/dangling", '/bin/true')
   checker = "#{source}/check-results.sh"
-  support = "Compositing is active\nCompositing Type: OpenGL\nOpenGL renderer string: V3D 7.1.10.2\n"
-  File.write("#{temp}/support", support)
-  run.call(:ok, '/bin/sh', checker, 'support', "#{temp}/support")
-  ['Compositing is active', 'Compositing Type: OpenGL', 'V3D '].each do |required|
-    File.write("#{temp}/support", support.sub(required, 'invalid'))
-    run.call(:fail, '/bin/sh', checker, 'support', "#{temp}/support")
+  # The GLES variant matches KWin 6.8 Workspace::supportInformation(), as
+  # recorded on hardware. The GL spelling remains valid for earlier packages.
+  support = "Compositing is active\nCompositing Type: OpenGL ES\nOpenGL renderer string: V3D 7.1.10.2\n"
+  ['OpenGL', 'OpenGL ES'].each do |api|
+    fixture = support.sub('OpenGL ES', api)
+    File.write("#{temp}/support", fixture)
+    run.call(:ok, '/bin/sh', checker, 'support', "#{temp}/support")
+    invalid = [
+      fixture.sub('Compositing is active', 'Compositing is inactive'),
+      fixture.sub("Compositing Type: #{api}", 'Compositing Type: QPainter'),
+      fixture.sub("Compositing Type: #{api}", 'Compositing Type: OpenGL ES invalid'),
+      fixture.sub('V3D 7.1.10.2', 'llvmpipe (LLVM 23.1.3, 128 bits)'),
+      fixture.sub('V3D 7.1.10.2', 'softpipe')
+    ]
+    invalid.each do |bad_support|
+      File.write("#{temp}/support", bad_support)
+      run.call(:fail, '/bin/sh', checker, 'support', "#{temp}/support")
+    end
   end
   renderer = 'qt.rhi.general: OpenGL VENDOR: Broadcom RENDERER: V3D 7.1.10.2 VERSION: 3.1'
   File.write("#{temp}/renderer", renderer)
@@ -83,6 +95,29 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
   JS
   File.write("#{temp}/layout-test.js", node_test)
   run.call(:ok, 'node', "#{temp}/layout-test.js", "#{source}/layout.js")
+File.write("#{temp}/capture-layout-test.js", <<~'JS')
+  const fs = require('fs'), vm = require('vm');
+  const script = fs.readFileSync(process.argv[2], 'utf8');
+  let clocks = [], ready = false, calls = 0;
+  const ctx = {desktops: () => [{screen: 0, widgets: () => clocks,
+    addWidget: (type, x, y, w, h) => {
+      calls++;
+      if (!ready) return undefined;
+      if ([x,y,w,h].join(',') !== '128,128,384,256') throw Error('geometry');
+      const widget = {type}; clocks.push(widget); return widget;
+    }}], print: text => {if (text !== 'PASS: capture widget created') throw Error('evidence');}};
+  function rejected() {
+    try {vm.runInNewContext(script,ctx); return false;} catch (_) {return true;}
+  }
+  if (!rejected() || clocks.length) throw Error('Accepted unready item');
+  ready = true; vm.runInNewContext(script,ctx); vm.runInNewContext(script,ctx);
+  if (calls !== 2 || clocks.length !== 1) throw Error('Retry duplicated widget');
+  clocks.push(clocks[0]); if (!rejected()) throw Error('Accepted duplicates');
+  clocks = [{type:'wrong'}]; if (!rejected()) throw Error('Accepted wrong widget');
+  ctx.desktops = () => []; if (!rejected()) throw Error('Accepted missing desktop');
+  console.log('PASS: capture widget readiness, idempotence and invalid models');
+JS
+run.call(:ok, 'node', "#{temp}/capture-layout-test.js", "#{source}/capture-layout.js")
   # Run the real shell cleanup path after a forced startup failure. Only the
   # external graphics programs and clock are replaced in this temporary copy.
   %w[term kill].each do |mode|
@@ -90,8 +125,8 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
     FileUtils.mkdir_p("#{work}/runtime")
     socket = UNIXServer.new("#{work}/runtime/wayland-0")
     begin
-      FileUtils.cp(["#{source}/check-results.sh", "#{source}/layout.js"], work)
-      File.write("#{work}/timeout", "#!/bin/sh\nshift 3\nexec \"$@\"\n")
+      FileUtils.cp(["#{source}/check-results.sh", "#{source}/layout.js", "#{source}/capture-layout.js"], work)
+    File.write("#{work}/timeout", "#!/bin/sh\nshift 3\nexec \"$@\"\n")
       File.write("#{work}/date", "#!/bin/sh\nif [ -e date-used ]; then echo 100; else touch date-used; echo 0; fi\n")
       child = <<~RUBY
         #!#{RbConfig.ruby}
@@ -147,12 +182,14 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
   end
 # Layout models can exist before their Quick items render. Exercise the real
 # capture loop with a failed first request and a shared startup deadline.
-%w[ready deadline].each do |mode|
+%w[ready deadline pixels].each do |mode|
   work = "#{temp}/capture-#{mode}"
   FileUtils.mkdir_p("#{work}/runtime")
   socket = UNIXServer.new("#{work}/runtime/wayland-0")
   begin
-    FileUtils.cp(["#{source}/check-results.sh", "#{source}/layout.js"], work)
+    FileUtils.cp(["#{source}/check-results.sh", "#{source}/layout.js", "#{source}/capture-layout.js"], work)
+    File.write("#{work}/capture-pixels", "#!/bin/sh\ntouch pixel-check-called\nexit #{mode == 'pixels' ? 1 : 0}\n")
+    File.chmod(0o700, "#{work}/capture-pixels")
     File.write("#{work}/timeout", <<~'SH')
       #!/bin/sh
       duration=$3
@@ -166,7 +203,7 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
       #!#{RbConfig.ruby}
       count = File.file?('clock-count') ? File.read('clock-count').to_i : 0
       File.write('clock-count', (count + 1).to_s)
-      puts [0, 80, 86, 90][[count, 3].min]
+      puts [0, 78, 79, 80, 86, 90][[count, 5].min]
     RUBY
     # Keep the six liveness checks fast. Give the child time to handle TERM.
     File.write("#{work}/sleep", "#!/bin/sh\n[ \"$1\" = 5 ] || exec /bin/sleep 0.1\n")
@@ -193,7 +230,14 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
       when 'org.kde.PlasmaShell.shell'
         puts 'org.kde.plasma.desktop'
       when 'org.kde.PlasmaShell.evaluateScript'
-        puts 'PASS: default desktop, panel and six applet models on 1280x1024'
+        if ARGV.fetch(3).include?('capture widget created')
+          count = File.file?('widget-count') ? File.read('widget-count').to_i + 1 : 1
+          File.write('widget-count', count.to_s)
+          abort 'Desktop quick item not ready' if count == 1
+          puts 'PASS: capture widget created'
+        else
+          puts 'PASS: default desktop, panel and six applet models on 1280x1024'
+        end
       when 'org.kde.PlasmaShell.grabContainmentImage'
         abort 'Unknown screen name' if ARGV[3] == 'Ember-Missing-Output'
         count = File.file?('capture-count') ? File.read('capture-count').to_i + 1 : 1
@@ -218,14 +262,16 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
     output = run.call(mode == 'ready' ? :ok : :fail,
                       {'EMBER_PLASMA_OUTPUT' => work, 'XDG_RUNTIME_DIR' => "#{work}/runtime",
                        'PATH' => "#{work}:#{ENV.fetch('PATH')}"}, '/bin/sh', "#{work}/session.sh")
+    abort 'Widget creation was not retried' unless File.read("#{work}/widget-count").to_i == 2
     abort 'Capture retries extended the startup deadline' unless
       File.read("#{work}/capture-timeouts").lines.map(&:to_i) == [10, 4]
     abort 'Capture attempts reused an image path' unless
       File.read("#{work}/capture-paths").lines.map(&:strip) == ["#{work}/capture-1.png", "#{work}/capture-2.png"]
     statuses = [1, 2].map { |attempt| File.read("#{work}/capture-#{attempt}.status").to_i }
-    abort 'Capture attempt statuses were lost' unless statuses == [124, mode == 'ready' ? 0 : 124]
+    abort 'Capture attempt statuses were lost' unless statuses == [124, mode == 'deadline' ? 124 : 0]
     abort 'Failed attempt diagnostic was lost' unless
       File.read("#{work}/capture-1-error.log").include?('Quick item is not ready')
+    abort 'Pixel decoder was not called' if mode != 'deadline' && !File.exist?("#{work}/pixel-check-called")
     if mode == 'ready'
       abort 'Accepted capture was not saved' unless File.binread("#{work}/desktop.png") == png_header
     else

@@ -502,7 +502,7 @@ Installed XZ scripts use the target shell while configure retains the host shell
 -FILES_SUBST_SED=	${FILES_SUBST:S/=/@!/:S/$/!g/:S/^/ -e s!@/}
 +# Package and rc.d scripts execute on the target, not under host bootstrap tools.
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
-+_CROSS_FILES_SUBST= AWK=/usr/bin/awk SH=/bin/sh SED=/usr/bin/sed \
++_CROSS_FILES_SUBST= AWK=/usr/bin/awk SH=/bin/sh SED=/usr/bin/sed SORT=/usr/bin/sort \
 +	CHOWN=/usr/sbin/chown CHGRP=/usr/bin/chgrp \
 +	PKG_ADMIN=/usr/sbin/pkg_admin PKG_INFO=/usr/sbin/pkg_info \
 +	LINKFARM=/usr/sbin/linkfarm PERL5=${PREFIX}/bin/perl \

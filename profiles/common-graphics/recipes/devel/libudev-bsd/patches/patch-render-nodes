@@ -1,0 +1,49 @@
+Origin: EmberBSD, AI-assisted. Local patch; not submitted upstream.
+
+Classify DRM render nodes for libudev consumers such as KWin 6.8.
+Require a decimal node suffix without limiting the kernel's minor range.
+
+--- udev-utils.c.orig
++++ udev-utils.c
+@@ -52,6 +52,7 @@
+ 	char *devtype;
+ 	char *syspath;
+ 	char *symlink; /* If syspath is symlink, path it refers to */
++	size_t unit_offset; /* Nonzero: require a decimal unit after this offset. */
+ 	int flags; /* See SCFLAG_* below. */
+ 	create_node_handler_t *create_handler;
+ };
+@@ -123,6 +124,11 @@
+ 		.symlink = DEV_PATH_ROOT "/drm/[0-9]*",
+ 		.create_handler = create_drm_handler,
+ 	}, {
++		.subsystem = "drm",
++		.syspath = DEV_PATH_ROOT "/dri/renderD[0-9]*",
++		.unit_offset = sizeof(DEV_PATH_ROOT "/dri/renderD") - 1,
++		.create_handler = create_drm_handler,
++	}, {
+ 		.subsystem = "net",
+ 		.syspath = "/net/wlan[0-9]*",
+ 		.devtype = "wlan",
+@@ -178,9 +184,18 @@
+ {
+ 	size_t i;
+ 
+-	for (i = 0; i < nitems(subsystems); i++)
+-		if (fnmatch(subsystems[i].syspath, path, 0) == 0)
+-			return (&subsystems[i]);
++	for (i = 0; i < nitems(subsystems); i++) {
++		const char *unit;
++
++		if (fnmatch(subsystems[i].syspath, path, 0) != 0)
++			continue;
++		if (subsystems[i].unit_offset != 0) {
++			unit = path + subsystems[i].unit_offset;
++			if (*unit == '\0' || unit[strspn(unit, "0123456789")] != '\0')
++				continue;
++		}
++		return (&subsystems[i]);
++	}
+ 
+ 	return (NULL);
+ }

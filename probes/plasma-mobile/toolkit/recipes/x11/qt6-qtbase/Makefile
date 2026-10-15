@@ -2,6 +2,7 @@
 
 DISTNAME=	qtbase-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qtbase-${QTVERSION}
+PKGREVISION=	1
 COMMENT=	C++ X GUI toolkit
 CATEGORIES=	x11
 
@@ -189,9 +190,10 @@ pre-configure:
 		-e 's:@QMAKE_EXTRA@:${QMAKE_EXTRA:Q}:g' \
 		${FILESDIR}/${QMAKE_CONF} > ${WRKSRC}/qmake.conf
 	for dir in ${WRKSRC}/mkspecs/*; do \
+		${TEST} -d $${dir} || continue; \
+		${RM} -f $${dir}/*.orig; \
 		${TEST} -f $${dir}/qmake.conf || continue; \
 		${CP} ${WRKSRC}/qmake.conf $${dir}; \
-		${RM} -f $${dir}/*.orig; \
 	done
 	${RM} -f ${WRKSRC}/mkspecs/features/mac/default_pre.prf
 	${RM} -f ${WRKSRC}/mkspecs/features/mac/default_post.prf

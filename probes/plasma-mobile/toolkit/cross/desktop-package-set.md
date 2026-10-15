@@ -10,17 +10,17 @@ They do not establish the origin of the installed base system.
 Use the [cross workflow](README.md) and normal pkgsrc package checks.
 Prepare these complete roots in the same audited sysroot:
 
-- Plasma Desktop 6.7.5nb4, including its compiled plugins and desktop resources.
-- Plasma Workspace 6.7.5nb1, with KWin 6.7.5nb3 and Xwayland 24.1.14nb1.
-- Fcitx Configtool 5.1.16nb1, with the common Fcitx5/Qt6 providers.
+- Plasma Desktop 6.8.0, including its compiled plugins and desktop resources.
+- Plasma Workspace 6.8.0nb3, with KWin 6.8.0nb1, KCoreAddons 6.31.0nb2 and Xwayland 24.1.14nb1.
+- Fcitx Configtool 5.1.16nb2, with the common Fcitx5/Qt6 providers.
 - Common Perl 5.44 for the full-session process supervisor.
 
 Desktop requires the Activities service, not only its client library.
-KActivityManagerD 6.7.5nb1 separates its generated package-version header from
+The KActivityManagerD 6.8.0 recipe separates its generated package-version header from
 upstream's protocol-version header. This fixes an APFS filename collision.
 It preserves both the package version and the protocol version.
 
-KWin nb3 exports complete D-Bus property signatures. The native QtDBus
+The KWin recipe exports complete D-Bus property signatures. The native QtDBus
 code generators must link the native D-Bus library, as described in
 [the actual-generator regression](../tests/kwin-inputdevice-xml.md).
 Do not edit the installed XML to repair an incomplete host generator.

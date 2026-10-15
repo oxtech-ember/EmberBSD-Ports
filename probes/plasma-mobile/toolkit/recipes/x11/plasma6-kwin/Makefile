@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.25 2016/01/10 20:01:05 markd Exp $
 
 DISTNAME=	kwin-${PLASMAVER}
+PKGREVISION=	1
 CATEGORIES=	x11
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -11,6 +12,8 @@ LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2
 
 # Vulkan-Hpp loads libvulkan.so at runtime; headers do not supply the loader.
 DEPENDS+=	vulkan-loader>=1.4.357.0:../../graphics/vulkan-loader
+# KWin 6.8 requires DRM render-node enumeration from the common provider.
+DEPENDS+=	libudev-bsd>=0.7.0.1nb2:../../devel/libudev-bsd
 
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"

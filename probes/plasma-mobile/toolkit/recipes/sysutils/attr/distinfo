@@ -1,0 +1,15 @@
+$NetBSD$
+
+BLAKE2s (attr-2.6.0.tar.xz) = b2581b098f340a2f064a186e0b594fb3b8702ccde5158024ddef5001601c9b31
+SHA512 (attr-2.6.0.tar.xz) = 870d0c34fbaa7520aad058ecd6509fe8eddd17430781a16d1e80484d4947307a7c641f0449183cbac1da611a85f82c9bee2d2d7bff76170fc2195b123100d22e
+Size (attr-2.6.0.tar.xz) = 343608 bytes
+SHA1 (patch-Makefile.in) = 82881b7573ea092b4e7f4d95af1c9941d26ed04c
+SHA1 (patch-include_Makemodule.am) = 5b291651aacfb0c0e55b6f0bbf204ccc72c8c0c0
+SHA1 (patch-include_xattrat_compat.h) = e277c91155e5cabe06f8a27e04e39f8a8a805ee1
+SHA1 (patch-libmisc_getxattrat_compat.c) = 792fc8099299b0e3b704cdaed3b578e820a36103
+SHA1 (patch-libmisc_listxattrat_compat.c) = 8509469a26696dfd84fdd012af79a34d1f289fb2
+SHA1 (patch-libmisc_proc-self-fd.c) = 2711a36a0b950584642848b9cc26257b70cc4350
+SHA1 (patch-libmisc_removexattrat_compat.c) = 68dae4b90ecbfd60ab7e52eecf139d9315a6697e
+SHA1 (patch-libmisc_setxattrat_compat.c) = c7e944812950c9bd24cb167138ac756aed82b6ea
+SHA1 (patch-libmisc_xattrat-netbsd.h) = 9c87392d703ad596b518a8cd8e5d1882d7847ec7
+SHA1 (patch-libmisc_xattrat.c) = 0ed23e810f8bb23765bb92d1379bd33e3787b133
