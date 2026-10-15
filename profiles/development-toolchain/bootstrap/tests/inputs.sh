@@ -55,6 +55,7 @@ case "$1" in
     -dumpmachine) echo "${FIXTURE_TRIPLET:-x86_64--netbsd}";;
     -dumpfullversion) echo "${FIXTURE_VERSION:-16.2.0}";;
     --version) echo 'gcc (GCC) 16.2.0';;
+    -v) echo "Thread model: ${FIXTURE_THREADS:-posix}" >&2;;
     -dM)
         echo '#define __GNUC__ 16'
         echo '#define __NetBSD__ 1'
@@ -68,6 +69,7 @@ esac
 EOF
 cat > "$work/readelf" <<'EOF'
 #!/bin/sh
+if [ "$1" = --version ]; then echo 'GNU readelf (NetBSD Binutils nb1) 2.42'; exit; fi
 echo '  Class: ELF64'
 echo '  OS/ABI: UNIX - NetBSD'
 echo "  Machine:                           ${FIXTURE_MACHINE:-Advanced Micro Devices X86-64}"
@@ -76,12 +78,22 @@ cat > "$work/gmake" <<'EOF'
 #!/bin/sh
 case "$1" in --version) echo 'GNU Make 4.4.1';; *) exit 99;; esac
 EOF
+cat > "$work/binutil" <<'EOF'
+#!/bin/sh
+name=${0##*-}; [ "$name" != as ] || name=assembler
+echo "GNU $name (NetBSD Binutils nb1) 2.42"
+if [ "$name" = assembler ]; then
+    triplet=${0##*/}; triplet=${triplet%-as}
+    echo "This assembler was configured for a target of $triplet"
+fi
+EOF
 chmod +x "$work/compiler" "$work/readelf" "$work/gmake"
+chmod +x "$work/binutil"
 for triplet in x86_64--netbsd aarch64--netbsd; do
     for tool in gcc g++; do cp "$work/compiler" "$work/kernel/toolchain/bin/$triplet-$tool"; done
     cp "$work/readelf" "$work/kernel/toolchain/bin/$triplet-readelf"
     for tool in ar as ld nm objcopy objdump ranlib strip; do
-        cp "$work/gmake" "$work/kernel/toolchain/bin/$triplet-$tool"
+        cp "$work/binutil" "$work/kernel/toolchain/bin/$triplet-$tool"
     done
 done
 export GNU_MAKE=$work/gmake
@@ -105,6 +117,58 @@ grep -qx 'target_flags=-O2 -march=nocona -mtune=nocona -mfpmath=sse' "$work/amd6
 (target=aarch64 FIXTURE_TRIPLET=aarch64--netbsd FIXTURE_MACHINE=AArch64 run) > "$work/aarch64.plan"
 grep -qx 'triplet=aarch64--netbsd' "$work/aarch64.plan"
 grep -qx 'target_flags=-O2' "$work/aarch64.plan"
+# A resume preflight must validate the old input receipt and keep objects.
+mkdir -p "$work/output/src" "$work/output/build/gcc" "$work/output/stage"
+cp "$work/compiler" "$work/output/build/gcc/xgcc"
+printf 'preserved frontend object\n' > "$work/output/build/gcc/frontend.o"
+printf 'receipt-only input\n' > "$work/resume-input"
+{
+    printf 'scope=runtime-only-bootstrap\ntarget=amd64\ntriplet=x86_64--netbsd\nseed_source=%s\n' "$EMBERBSD_SYSROOT_SOURCE"
+    printf 'kernel=%s\nsysroot=%s\nmath=%s\nhost_cc=cc\nhost_cxx=c++\nhost_cflags=-O2\nhost_cxxflags=-O2\n' \
+        "$work/kernel/toolchain" "$(realpath "$work/seed")" "$work/math"
+    shasum -a 256 "$work/gcc.tar.xz" "$recipe/distinfo" "$work/resume-input"
+} > "$work/output/inputs.txt"
+resume_check() {
+    sh "$builder" --check --resume --target amd64 "$work/pkgsrc" "$work/gcc.tar.xz" \
+        "$work/kernel/toolchain" "$work/seed" "$work/math" "$work/output"
+}
+resume_check > "$work/resume.plan"
+grep -qx 'preserved frontend object' "$work/output/build/gcc/frontend.o"
+mkdir -p "$work/output/build/x86_64--netbsd/libgcc"
+printf 'stale configure\n' > "$work/output/build/gcc/Makefile"
+printf 'empty nm selection\n' > "$work/output/build/gcc/config.cache"
+printf 'broken generated nm\n' > "$work/output/build/gcc/nm"
+printf 'preserved target object\n' > "$work/output/build/x86_64--netbsd/libgcc/div.o"
+: > "$work/output/build/x86_64--netbsd/libgcc/libgcc.map"
+: > "$work/output/build/x86_64--netbsd/libgcc/tmp-libgcc.map"
+: > "$work/output/build/x86_64--netbsd/libgcc/libgcc.a"
+(
+    work=$work/output triplet=x86_64--netbsd
+    fail() { echo "$*" >&2; exit 2; }
+    . "$here/resume-state.sh"
+    backup_resume
+    [ ! -e "$work/build/gcc/nm" ] && [ ! -e "$work/build/gcc/config.cache" ]
+    [ ! -e "$work/build/gcc/Makefile" ]
+    [ ! -e "$work/build/$triplet/libgcc/libgcc.map" ]
+    [ ! -e "$work/build/$triplet/libgcc/tmp-libgcc.map" ]
+    [ ! -e "$work/build/$triplet/libgcc/libgcc.a" ]
+    [ -f "$resume_backup/build/gcc/nm" ]
+    [ -f "$resume_backup/build/$triplet/libgcc/tmp-libgcc.map" ]
+    grep -qx 'preserved target object' "$work/build/$triplet/libgcc/div.o"
+    grep -qx 'preserved frontend object' "$work/build/gcc/frontend.o"
+    grep -q '^resume_prior_inputs_sha256=' "$work/inputs.txt"
+)
+printf 'changed receipt input\n' >> "$work/resume-input"
+if resume_check > "$work/resume-reject.log" 2>&1; then echo 'FAIL: changed resume inputs accepted' >&2; exit 1; fi
+printf 'receipt-only input\n' > "$work/resume-input"
+if (HOST_CFLAGS=-O3 resume_check) > "$work/resume-reject.log" 2>&1; then echo 'FAIL: changed host flags accepted' >&2; exit 1; fi
+if (FIXTURE_THREADS=single resume_check) > "$work/resume-reject.log" 2>&1; then echo 'FAIL: single-thread frontend accepted' >&2; exit 1; fi
+printf 'partial installation\n' > "$work/output/stage/untracked"
+if resume_check > "$work/resume-reject.log" 2>&1; then echo 'FAIL: partial stage accepted' >&2; exit 1; fi
+rm "$work/output/stage/untracked"
+printf 'completed stage\n' > "$work/output/build-success"
+if resume_check > "$work/resume-reject.log" 2>&1; then echo 'FAIL: completed stage accepted for resume' >&2; exit 1; fi
+rm -rf "$work/output"
 (target=riscv64 reject 'unsupported architecture')
 (FIXTURE_TRIPLET=aarch64--netbsd reject 'wrong compiler triplet')
 (FIXTURE_VERSION=12.5.0 reject 'old compiler')

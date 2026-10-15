@@ -3,12 +3,19 @@
 # Origin: EmberBSD; AI-assisted staged GCC16 runtime bootstrap.
 set -eu
 usage() {
-    echo 'Usage: build.sh [--check] --target amd64|aarch64 EXPORTED_PKGSRC GCC_ARCHIVE KERNEL_PREFIX SYSROOT HOST_MATH_PREFIX NEW_WORK' >&2
+    echo 'Usage: build.sh [--check] [--resume] --target amd64|aarch64 EXPORTED_PKGSRC GCC_ARCHIVE KERNEL_PREFIX SYSROOT HOST_MATH_PREFIX WORK' >&2
     exit 2
 }
 fail() { echo "$*" >&2; exit 2; }
 check=no
-if [ "${1:-}" = --check ]; then check=yes; shift; fi
+resume=no
+while :; do
+    case ${1:-} in
+        --check) check=yes; shift;;
+        --resume) resume=yes; shift;;
+        *) break;;
+    esac
+done
 [ "$#" -ge 2 ] && [ "$1" = --target ] || usage
 target=$2
 shift 2
@@ -28,7 +35,12 @@ for path in "$@"; do
     case "$path" in /*) ;; *) fail 'Absolute paths required.';; esac
     case "$path" in *[!A-Za-z0-9_./-]*) fail 'Use paths without whitespace or shell metacharacters.';; esac
 done
-[ ! -e "$work" ] && [ ! -L "$work" ] || fail 'NEW_WORK already exists.'
+if [ "$resume" = no ]; then
+    [ ! -e "$work" ] && [ ! -L "$work" ] || fail 'NEW_WORK already exists.'
+else
+    [ -d "$work" ] && [ ! -L "$work" ] || fail 'Resume requires an existing work directory.'
+    work=$(CDPATH= cd -- "$work" && pwd -P)
+fi
 sysroot=$(CDPATH= cd -- "$sysroot" && pwd -P) || fail 'Missing target sysroot.'
 jobs=${CROSS_JOBS-4}
 case "$jobs" in ''|*[!0-9]*|0) fail 'CROSS_JOBS must be positive.';; esac
@@ -93,10 +105,15 @@ make=${GNU_MAKE:-}
 if [ -z "$make" ]; then make=$(command -v gmake || command -v make) || fail 'GNU make is required.'; fi
 case "$make" in /*) ;; *) fail 'GNU_MAKE must be an absolute executable path.';; esac
 [ -x "$make" ] && "$make" --version | grep -q '^GNU Make ' || fail 'GNU make is required.'
+. "$here/target-tools.sh"
+. "$here/resume-state.sh"
+[ "$resume" = no ] || check_resume
 printf 'target=%s\ntriplet=%s\nabi=libstdc++.so.7\ntarget_flags=%s\n' "$target" "$triplet" "$target_flags"
 printf 'seed_source=%s\nruntime_prefix=/usr/pkg/gcc16\nstage=%s/stage\n' "$origin" "$work"
+printf 'ar_for_target=%s\nnm_for_target=%s\n' "$AR_FOR_TARGET" "$NM_FOR_TARGET"
 [ "$check" = no ] || exit 0
 
+if [ "$resume" = no ]; then
 mkdir "$work"
 work=$(CDPATH= cd -- "$work" && pwd -P)
 mkdir "$work/build" "$work/stage"
@@ -122,6 +139,21 @@ ${HOST_CC:-cc} ${HOST_CFLAGS:--O2} -I"$math/include" "$profile/cross/tests/host-
 "$work/host-gmp" > "$work/host-gmp.log"
 "$work/host-gmp" timer >> "$work/host-gmp.log"
 sh "$here/prepare-source.sh" "$pkgsrc" "$archive" "$work/src" > "$work/patch.log" 2>&1
+else
+    backup_resume
+fi
+# Pin the helper revision and all target tools, including when an older
+# receipt predates explicit binutils selection. Keep the original receipt.
+{
+    printf 'target_binutils=audited-kernel-prefix\n'
+    for bootstrap_tool in ar as ld nm objcopy objdump ranlib readelf strip; do
+        shasum -a 256 "$kernel/bin/$triplet-$bootstrap_tool"
+        "$kernel/bin/$triplet-$bootstrap_tool" --version | sed -n '1p'
+    done
+    shasum -a 256 "$here/build.sh" "$here/target-tools.sh" "$here/resume-state.sh" \
+        "$here/audit-source.sh" "$here/prepare-source.sh" "$make" \
+        "$work/src/configure" "$work/src/gcc/configure" "$work/src/libstdc++-v3/configure"
+} >> "$work/inputs.txt"
 cd "$work/build"
 unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH CONFIG_SITE
 set -- --target="$triplet" --prefix=/usr/pkg/gcc16 --libdir=/usr/pkg/gcc16/lib \

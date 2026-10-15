@@ -83,6 +83,16 @@ support, disabled libstdc++ PCH, disabled libssp (SSP is in target libc),
 and no zstd/Graphite provider. It retains the NetBSD API cache choices from
 `Makefile.common`.
 
+The bootstrap selects GNU target binutils from the audited kernel compiler
+prefix. It exports absolute `AR_FOR_TARGET`, `AS_FOR_TARGET`, `LD_FOR_TARGET`,
+`NM_FOR_TARGET`, `RANLIB_FOR_TARGET`, `OBJCOPY_FOR_TARGET`, `OBJDUMP_FOR_TARGET`,
+`READELF_FOR_TARGET` and `STRIP_FOR_TARGET` paths. That prefix also leads
+`PATH` during configure and make. A development-host `nm` is not a substitute.
+Each tool must report its GNU tool identity. The assembler must also report
+the selected target triplet. The hashes and audited prefix identify tools such
+as `ar` and `nm`, which do not report a target triplet. The compiler and target
+ELF preflight checks establish the selected target.
+
 For amd64, configure and target compilation retain `nocona` architecture and
 tuning with SSE floating point. This bootstrap is 64-bit only, following the
 existing cross workflow's `--disable-multilib`. It does not qualify pkgsrc's
@@ -137,14 +147,40 @@ This bootstrap does not implement or claim that later compiler stage.
 ```sh
 sh profiles/development-toolchain/bootstrap/tests/inputs.sh
 sh profiles/development-toolchain/bootstrap/tests/source.sh
+sh profiles/development-toolchain/bootstrap/tests/binutils.sh
 ```
 
 The first fixture exercises argument, architecture, compiler, seed, source
 receipt and ABI guards. The second uses real tar/patch operations and verifies
 the modules repair, native-driver exclusion, ABI substitution, corrupt archive
 rejection and refusal to overwrite sources. Neither compiles GCC or proves
-runtime packaging. No real target runtime build is recorded for this helper.
+runtime packaging. These host checks do not establish a successful runtime build.
+The binutils fixture checks exported absolute tools, command-name lookup and
+rejection of a non-GNU `nm`. The input fixture also checks resume provenance,
+preserved objects and invalidation of failed configure/map/archive outputs.
 The fixtures remove only their own temporary directories.
+
+## Resume an incomplete runtime build
+
+Use the same inputs and host compiler settings as the original invocation.
+Add `--check --resume` before `--target` for a read-only preflight. It verifies
+all previously recorded input hashes, seed identity, target, host settings and
+the completed POSIX-thread frontend. It rejects a successful or installed stage.
+
+After that check, replace `--check --resume` with `--resume` in the same command.
+Use an immutable export of the chosen Ports commit for the helper. Keep that
+export while its hashes are referenced by the runtime receipt.
+The helper preserves the original receipt and logs in `WORK/resume.XXXXXX`.
+It records the current helper, prepared configure files and GNU tool hashes in
+`inputs.txt`. It repeats configure and the upstream make targets in the existing
+build directory. It does not extract sources or clean compiler/object files.
+
+The generated GCC `nm`, configure caches and generated sub-Makefiles must be
+recreated. GCC otherwise reuses an executable `./nm` and an empty cached tool
+selection. The helper moves that state into the resume backup. It also moves
+libgcc map files, their temporary output and incomplete archives/shared libraries.
+These outputs must be regenerated with the corrected tools. Frontend and target
+object files remain available for the normal incremental make rules.
 
 On a failed real build, preserve the work directory and its logs. The helper
 does not delete caller inputs, install into `/usr/pkg`, modify the seed,
