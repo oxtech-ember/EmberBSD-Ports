@@ -13,7 +13,7 @@ and its matching `libstdc++.so.7`. Do not substitute upstream NetBSD sets.
 The compiler must report `16.2.0` and `aarch64--netbsd`. Linux CMake, Ninja,
 patch, pkg-config and SHA256 tools are required. Python is not required.
 
-Download [OMPL](sources.tsv) and the [dependency archives](cross/sources.tsv).
+Download [OMPL](sources.tsv) and the [dependency archives](cross/dependency-sources.tsv).
 Both helpers verify SHA256 before extraction and require new output paths.
 Run these commands from this profile directory:
 

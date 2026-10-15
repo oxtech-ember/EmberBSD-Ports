@@ -8,7 +8,7 @@ SHA256: `b9155e243e555b04b01f8e4ff7e21a48582edbab9c300a611289655778bcd29d`.
 OMPL retains Rice University/contributor authorship and BSD-3-Clause terms.
 VAMP and nanobind sources remain intact but are excluded from this profile.
 
-[Common dependencies](cross/sources.tsv) are Eigen 5.0.1 and Boost 1.92.0.
+[Common dependencies](cross/dependency-sources.tsv) are Eigen 5.0.1 and Boost 1.92.0.
 Eigen preserves MPL-2.0 and its other shipped license notices. Boost preserves
 the Boost Software License 1.0. Package source receipts and licenses install
 under `share/licenses/{eigen3,boost-headers,boost-libs}`.
