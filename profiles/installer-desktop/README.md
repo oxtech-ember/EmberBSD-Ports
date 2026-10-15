@@ -158,3 +158,91 @@ A separate network Minimal/None installation verifies console Wi-Fi and enabled 
 with no graphical executables installed. A QEMU test
 without a supported Wi-Fi radio cannot establish real wireless association.
 Plasma and physical desktop acceptance are separate work.
+
+## Required GCC16 base runtime bundle
+
+A base built with GCC16 and `MKCXX=yes` needs its matching runtime before
+post-install C++ utilities run. This requirement is independent of the desktop
+selection, including **None**. Prepare its separate bundle on the build host:
+
+```sh
+BSDTAR=/absolute/bsdtar ruby bundle-gcc16.rb \
+  /absolute/runtime-create-output /absolute/new-runtime-bundle
+```
+
+The input must be the complete, unchanged output of
+[`runtime.rb create`](../development-toolchain/runtime/README.md):
+`gcc16-runtime-16.2.0nb1.tgz`, `package.sha256` and `provenance.json`.
+The helper snapshots those inputs. It checks the receipt schema, fixed amd64
+metadata, source pin, package bytes, payload digests, licenses, runtime conflicts
+and packing-list directives. It uses `GCC16Runtime.audit_package` and its ELF
+parser again. Only the selected `libgcc_s.so.1`, `libstdc++.so.7` and versioned
+aliases are accepted. Headers, CRT objects, static archives, compiler programs
+and installation commands are rejected. It does not execute target programs.
+The source receipts record local provenance; they are not a source attestation
+or a signature. The recipe's earlier source and stage checks remain required.
+
+The output contains `runtime-gcc16.tar.xz`, outer `SHA512` and
+`PROVENANCE.json`. The inner archive has exactly `All/`, `ROOTS`, `SHA512` and
+`PROFILE=gcc16`. `All/` holds the single, unchanged runtime package. The inner
+manifest uses its SHA512 digest. Provenance records source hashes, tool-source
+hashes, package hashes and the measured bundle size. The outer archive must
+fit the OS installer's **64 MiB** limit. An oversized archive fails before
+publication. Tar ownership is `root:wheel` (numeric zero). macOS attributes,
+ACLs and file flags are excluded. A private staging directory is removed on
+success or failure. Publication uses an atomic no-replace rename. Existing
+outputs and symlinks are preserved.
+
+The Plasma closure must contain the identical runtime package, including when
+its set is assembled later. Compare the actual artifacts before media assembly:
+
+```sh
+cmp /absolute/runtime-create-output/gcc16-runtime-16.2.0nb1.tgz \
+  /absolute/audited-amd64-set/packages/gcc16-runtime-16.2.0nb1.tgz
+```
+
+A matching package name or version is insufficient. Include both bundle hashes
+in the installation-set manifest. The OS owns required preflight, extraction,
+target-copy rehash and normal `pkg_add` through the shared target package DB.
+
+## Audit the installer bootstrap ELF closure
+
+Run the following on the completed base DESTDIR before image assembly:
+
+```sh
+ruby audit-bootstrap.rb /absolute/amd64-destdir \
+  /absolute/tools/bin/x86_64--netbsd-readelf > /absolute/bootstrap-closure.json
+```
+
+This read-only gate requires actual executable ELF files at `/bin/sh`,
+`/bin/tar`, `/usr/bin/tar`, `/usr/bin/sha512`, `/usr/bin/cmp`, `/usr/bin/id`,
+`/usr/sbin/pkg_add` and `/usr/sbin/pkg_info`. Both tar aliases are checked.
+It follows target symlinks inside DESTDIR, inspects `PT_INTERP` and recursively
+resolves `DT_NEEDED`. Every visited file must be ELF64 little-endian x86_64.
+It rejects missing libraries, escaping links, non-base paths, foreign ELF and
+shared `libstdc++`, including a renamed file with that SONAME.
+`/usr/pkg/gcc16` cannot supply any bootstrap dependency.
+
+Library lookup follows the selected OS rtld order: optional `/etc/ld.so.conf`
+paths, each referring ELF's RPATH/RUNPATH, then `/lib` and `/usr/lib`.
+Only base directories are allowed. The optional configuration must be a regular
+file; library mappings and multiple RPATH/RUNPATH tags are rejected.
+The installer must use a clean `LD_*`
+environment. The JSON report records actual file hashes, dependency edges,
+symlink targets, the configuration hash and the selected readelf hash.
+Changes during inspection fail. Source C files do not satisfy this gate.
+This checks the bootstrap closure; it does not qualify all base executables.
+
+Run the native package and cross-linked ELF fixtures with explicit host tools:
+
+```sh
+PKG_CREATE=/absolute/native/pkg_create \
+CROSS_BIN=/absolute/tools/bin/x86_64--netbsd- BSDTAR=/absolute/bsdtar \
+  ruby tests/runtime-installer.rb
+```
+
+The fixtures use native `pkg_create`, cross `as`/`ld`, host readelf and tar.
+They include an incompressible runtime payload above 64 MiB to exercise the
+capacity gate. They never execute target code. Actual runtime packaging,
+DESTDIR bootstrap acceptance, installation and image boot remain separate
+checks until their real artifacts are available.
