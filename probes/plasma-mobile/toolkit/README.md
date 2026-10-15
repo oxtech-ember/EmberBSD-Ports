@@ -36,6 +36,10 @@ previous selection. No existing pkgsrc directory is overwritten.
 The toolkit also carries iso-codes 4.20.1, the libinotify cross adaptation,
 and [tested litehtml 0.10nb1 / gumbo 0.14.1 packages](cross/html.md) for QtTools.
 
+[attr 2.6.0](tests/attr/README.md) also passes normal cross packaging, ELF ABI,
+public-header and manual-alias checks. Its private CLI backend uses native
+EmberBSD xattrs; filesystem and installed-consumer acceptance remain separate.
+
 The toolkit includes 22 Qt modules and all 68 Frameworks recipes present
 in the pinned pkgsrc, plus Extra CMake Modules. Their original recipes come
 from pkgsrc `fff4deb639a1a640476203c80f752fb77b6cb14b`. The shared version files
@@ -164,6 +168,8 @@ session are not yet accepted.
 [Plasma volume controls](cross/plasma-volume.md) add Plasma PA 6.8.0 and
 PulseAudioQt 1.9.0. The Workspace recipe declares its notifications QML provider.
 The provider checks distinguish package metadata, import and actual sound output.
+[Workspace configuration checks](tests/workspace-config.md) verify menu installation
+and preserve local edits during removal and reinstallation.
 
 [Designer plugin recipes](cross/designer-plugins.md) retain the full target payload.
 [Breeze generator repairs](cross/breeze.md) preserve input SVG files and reject

@@ -43,7 +43,7 @@ export WAYLAND_DISPLAY=wayland-0
     org.kde.KWin /KWin org.kde.KWin.supportInformation \
     > "$EMBER_KWIN_OUTPUT/supportinformation.txt" 2>&1
 grep -q '^Compositing is active$' "$EMBER_KWIN_OUTPUT/supportinformation.txt"
-grep -q '^Compositing Type: OpenGL$' "$EMBER_KWIN_OUTPUT/supportinformation.txt"
+grep -Eq '^Compositing Type: OpenGL( ES)?$' "$EMBER_KWIN_OUTPUT/supportinformation.txt"
 grep -q '^OpenGL renderer string:.*V3D ' "$EMBER_KWIN_OUTPUT/supportinformation.txt"
 /bin/sh "$EMBER_QUICK_RUNNER" "$EMBER_QUICK_BINARY" "$EMBER_KWIN_OUTPUT/client" \
     > "$EMBER_KWIN_OUTPUT/client.log" 2>&1
@@ -74,7 +74,7 @@ cat compositor.log
     exit 1
 }
 grep -q '^Compositing is active$' supportinformation.txt
-grep -q '^Compositing Type: OpenGL$' supportinformation.txt
+grep -Eq '^Compositing Type: OpenGL( ES)?$' supportinformation.txt
 grep -q '^OpenGL renderer string:.*V3D ' supportinformation.txt
 grep -q '^PASS: two Qt Quick GPU processes' client.log
 [ ! -S runtime/wayland-0 ] || {

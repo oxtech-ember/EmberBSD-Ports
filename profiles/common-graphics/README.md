@@ -21,7 +21,7 @@ four llvmpipe EGL/pixel cycles and all 38 target invocations. One internal
 utility skip and nine disabled NIR cases remain. GPU submission and Plasma
 are unaccepted. Earlier GL results retain their recorded package scope.
 
-The [LLVM 23.1.3 migration](cross/mesa-llvm2313.md) passes installed V3D and llvmpipe rendering and all 38 upstream invocations on CM5. A transient large-BO allocation failure remains under investigation.
+The [LLVM 23.1.3 migration](cross/mesa-llvm2313.md) passes installed V3D and llvmpipe rendering and all 38 upstream invocations on CM5. A transient large-BO allocation failure remains under investigation. The [process-local V3D trace](cross/v3d-bo-trace.md) records allocation requests without changing the driver contract.
 
 The same package now enables V3D alongside VirGL and both CPU renderers.
 On CM5, [installed hardware OpenGL acceptance](cross/mesa-cm5.md) passes
@@ -172,8 +172,10 @@ its receipt and target sysroot paths before configuration.
 The build-tool layer supplies Mako 1.4.3, MarkupSafe 3.0.4 and PyYAML
 6.0.3nb1. Native generator checks use the installed packages. PyYAML requires
 Cython 3.3 and libyaml; its real extension is packaged and the upstream suite
-passes with its documented skips. Xorgproto 2026.1 and libudev-bsd 0.7.0.1
-complete the current graphics dependency recipes.
+passes with its documented skips. Xorgproto 2026.1 and libudev-bsd 0.7.0.1nb2
+complete the current graphics dependency recipes. The
+[libudev adaptation](cross/libudev-render-nodes.md) adds DRM render-node
+classification for KWin 6.8 and includes source and target enumeration probes.
 
 ## Bounded package contents
 

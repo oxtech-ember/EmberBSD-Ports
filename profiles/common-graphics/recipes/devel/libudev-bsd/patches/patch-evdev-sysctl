@@ -1,0 +1,28 @@
+Origin: EmberBSD, AI-assisted. Local patch; not submitted upstream.
+
+Initialize the evdev sysctl buffer length and cache only complete reads.
+Keep failed or short reads retryable without caching partial output.
+
+--- udev-utils.c.orig
++++ udev-utils.c
+@@ -190,15 +190,18 @@
+ {
+ 	static int enabled = -1;
+ #ifdef HAVE_SYSCTLBYNAME
+-	size_t len;
++	int supported = 0;
++	size_t len = sizeof(supported);
+ #endif
+ 
+ 	if (enabled != -1)
+ 		return (enabled);
+ 
+ #ifdef HAVE_SYSCTLBYNAME
+-	if (sysctlbyname("kern.features.evdev_support", &enabled, &len, NULL, 0) < 0)
++	if (sysctlbyname("kern.features.evdev_support", &supported, &len,
++	    NULL, 0) < 0 || len != sizeof(supported))
+ 		return (0);
++	enabled = supported != 0;
+ #else
+ 	enabled = 1;
+ #endif

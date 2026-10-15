@@ -6,7 +6,8 @@ set -eu
 case "$1" in
 support)
     grep -qx 'Compositing is active' "$2"
-    grep -qx 'Compositing Type: OpenGL' "$2"
+    # KWin 6.8 names its OpenGL compositing backend OpenGL ES.
+    grep -Eq '^Compositing Type: OpenGL( ES)?$' "$2"
     grep -q '^OpenGL renderer string:.*V3D ' "$2"
     ;;
 renderer)

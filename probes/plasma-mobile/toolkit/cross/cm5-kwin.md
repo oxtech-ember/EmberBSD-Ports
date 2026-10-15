@@ -12,7 +12,7 @@ On CM5, `kwin_wayland --virtual` then called a null `vkGetInstanceProcAddr`
 address in `KWin::RenderDevice::RenderDevice` and exited with SIGSEGV.
 An ordinary `ldd` check cannot detect this missing `dlopen` dependency.
 
-KWin nb2 declares the common `vulkan-loader>=1.4.357.0` runtime dependency.
+The common KWin recipe declares the `vulkan-loader>=1.4.357.0` runtime dependency.
 The existing pkgsrc loader builds on macOS with GCC 16.2 for EmberBSD/AArch64.
 It installs both `libvulkan.so` and `libvulkan.so.1` at the common prefix.
 The loader recipe comes from pkgsrc `fff4deb639a1a640476203c80f752fb77b6cb14b`.
@@ -35,6 +35,24 @@ BMAKE=/absolute/bmake PKG_ADMIN=/absolute/pkg_admin \
 It queries the real native and cross recipes. It requires a runtime dependency,
 checks its origin and matches the selected common loader through `pkg_admin`.
 The old recipe fails; the corrected recipe passes both modes.
+
+## KWin 6.8 render-node dependency
+
+KWin 6.8.0nb1 requires `libudev-bsd>=0.7.0.1nb2` at runtime.
+The common provider must enumerate DRM render nodes before KWin can open them.
+The older package constraint permitted a provider that returned no render devices.
+This revision changes package metadata only. It does not change KWin's compiled code.
+Use the [metadata refresh procedure](metadata-refresh.md) only with verified retained staging.
+Resolve the new dependencies again; do not reuse an old resolved dependency cache.
+
+```sh
+ruby tests/kwin-package.rb /absolute/plasma6-kwin-6.8.0nb1.tgz /absolute/pkg_admin
+```
+
+The regression reads the real package metadata and uses native `pkg_admin pmatch`.
+It rejects libudev revisions before nb2 and accepts nb2 and newer compatible versions.
+It also rejects host paths in generated install scripts, including `SORT`.
+The prior archive fails this dependency check. Package checks do not establish a new hardware session.
 
 ## Hardware check
 
@@ -92,36 +110,37 @@ Use an installation umask of 022 for shared packages. Keep private test HOME
 and runtime directories at 0700. A payload hash check alone does not detect
 inaccessible intermediate directories.
 
-## Remaining desktop boundary
+## Current Desktop and display boundary
 
-Plasma Workspace 6.7.5 installs on CM5, with all 7856 KWin/Workspace payload
-files accepted by `pkg_admin check`. Under the working Wayland compositor,
-`plasmashell --help` succeeds. A normal launch exits with
-`starting invalid corona "org.kde.plasma.desktop"`.
-The separate Plasma Desktop shell package is absent from this target closure.
-Workspace executables alone do not provide a complete desktop session.
+The complete Plasma Desktop 6.8.0 and Workspace 6.8.0 packages are installed
+on the CM5 acceptance target. The separate Desktop shell is present.
+The [package-set workflow](desktop-package-set.md) checks actual archive
+payloads, dependencies and shared-library providers before installation.
+The Configtool 5.1.16nb2 consumer uses the current `libPlasma.so.8` ABI.
+Its eight installed startup and metadata checks pass under an ordinary user.
+The [volume module](plasma-volume.md) passes its two unit tests and installed
+QML import check. These component checks do not establish a full session.
 
-The toolkit now prepares the separate Plasma Desktop 6.7.5 recipe.
-Its official archive SHA256 is
-`079fcf6b87d7bf65e3f2a4670d605fac9469344c279a285a98ad549332d7b53e`.
-Native and cross metadata select the common Frameworks and KDocTools providers.
-The source candidate retains the inherited tablet and X11 input KCM limits;
-Wayland mouse and touchpad backends keep their upstream defaults.
-The full package, staged PLIST, source analysis and desktop runtime remain unaccepted.
-The QQC2 Desktop Style 6.31 package now builds and checks all 119 files on CM5.
-Its PLIST includes the new DoubleSpinBox QML component. GUI behavior remains
-a separate test. The remaining closure is moving to SDL3 and Fcitx5/Qt6;
-GTK is not a requirement of Plasma itself. Copying shell QML alone cannot
-supply its compiled plugins.
+KWin 6.8 requires DRM render-node enumeration through libudev. The original
+libudev-bsd 0.7.0.1 returns no render nodes on CM5 despite an accessible
+`/dev/dri/renderD128`. The [common provider adaptation](../../../../profiles/common-graphics/cross/libudev-render-nodes.md)
+repairs this classification. With libudev nb2, KWin 6.8 reports active
+OpenGL ES 3 compositing on V3D. Plasma Desktop 6.8 reports V3D OpenGL 3.1.
+The default desktop and six panel applet models remain available for 30 seconds.
+An initial empty containment capture was fully transparent. Model readiness
+alone does not establish visible desktop content or a complete login session.
+The [capture test](../tests/plasma-desktop/README.md) now decodes PNG pixels
+and adds a visible test widget in its private desktop configuration.
+A single earlier buffer-allocation failure did not recur in the traced run.
+Its cause remains open; a successful later allocation is not a driver fix.
 
-The monitor path has a separate limitation. An HP L1950 connected through an
-HDMI-to-VGA adapter supplies an EDID extension with 1080p. The installed
-2025-06-13 boot firmware selects 1920x1080; the monitor reports an unsupported
-mode. Its native panel size is 1280x1024. A bounded `hdmi_max_pixel_freq` test
-did not change the selected mode; the original configuration was restored.
-The current kernel retains the firmware framebuffer. Native BCM2712 HDMI KMS
-mode setting is not provided by the render-only V3D driver.
-The virtual output size does not change this physical signal.
+The current HDMI path displays the firmware console at 1920x1080.
+The kernel exports that framebuffer through genfb/wsdisplay. A read-only
+`DRM_IOCTL_MODE_GETRESOURCES` on the active V3D primary node returns
+`EOPNOTSUPP`. The V3D driver advertises GEM, render nodes and sync objects,
+without `DRIVER_MODESET`. Unattached static primary nodes return `ENODEV`.
+Native display KMS and accelerated HDMI presentation remain unaccepted.
+The virtual output size does not change the physical display signal.
 
 ## Analysis scope
 

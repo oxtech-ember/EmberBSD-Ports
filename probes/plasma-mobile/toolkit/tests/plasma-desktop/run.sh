@@ -2,13 +2,16 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Plasma Desktop virtual-output acceptance.
 set -eu
-[ "$#" -eq 1 ] || { echo "Usage: $0 ABSOLUTE_NEW_OUTPUT" >&2; exit 2; }
+[ "$#" -eq 2 ] || { echo "Usage: $0 ABSOLUTE_NEW_OUTPUT ABSOLUTE_PIXEL_CHECKER" >&2; exit 2; }
 work=$1
+pixel_checker=$2
+case "$pixel_checker" in /*) ;; *) echo 'Absolute pixel checker required.' >&2; exit 2 ;; esac
+[ -x "$pixel_checker" ] || { echo 'Missing pixel checker.' >&2; exit 2; }
 case "$work" in /*) ;; *) echo 'Absolute output path required.' >&2; exit 2 ;; esac
 [ ! -e "$work" ] && [ ! -L "$work" ] || { echo 'Output already exists.' >&2; exit 2; }
 [ "$(id -u)" -ne 0 ] || { echo 'Run this test as a non-root desktop user.' >&2; exit 2; }
 source_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-for file in session.sh layout.js check-results.sh; do
+for file in session.sh layout.js capture-layout.js check-results.sh; do
     [ -f "$source_dir/$file" ] || { echo "Missing test input: $file" >&2; exit 2; }
 done
 for program in /usr/bin/timeout /usr/pkg/bin/dbus-run-session /usr/pkg/bin/kwin_wayland \
@@ -19,13 +22,14 @@ umask 077
 mkdir "$work"
 work=$(CDPATH= cd -- "$work" && pwd)
 for directory in home runtime config cache data state; do mkdir "$work/$directory"; done
-for file in session.sh layout.js check-results.sh; do cp "$source_dir/$file" "$work/$file"; done
+for file in session.sh layout.js capture-layout.js check-results.sh; do cp "$source_dir/$file" "$work/$file"; done
+cp "$pixel_checker" "$work/capture-pixels"
 cd "$work"
 uname -a > system.txt
 id > user.txt
 /sbin/sysctl kern.boottime > boot.before
 /usr/bin/cksum -a SHA256 /usr/pkg/bin/kwin_wayland /usr/pkg/bin/plasmashell \
-    /usr/pkg/qt6/bin/qdbus session.sh layout.js check-results.sh > inputs.sha256
+    /usr/pkg/qt6/bin/qdbus session.sh layout.js capture-layout.js check-results.sh capture-pixels > inputs.sha256
 status=0
 /usr/bin/timeout -k 5 240 /usr/bin/env -i \
     PATH=/usr/pkg/qt6/bin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin \
@@ -50,5 +54,6 @@ cat compositor.log
 /bin/sh ./check-results.sh support supportinformation-after.txt
 /bin/sh ./check-results.sh renderer plasmashell.log
 /bin/sh ./check-results.sh png desktop.png
+./capture-pixels desktop.png
 /usr/bin/cksum -a SHA256 desktop.png > desktop.sha256
 echo 'PASS: Plasma Desktop on KWin OpenGL/V3D; virtual output only'

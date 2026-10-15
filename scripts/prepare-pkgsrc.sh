@@ -193,7 +193,8 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             sysutils/seatd) approved='patch-common_drm.c patch-common_terminal.c patch-wscons-keyboard-restore' ;;
             x11/libdisplay-info) approved='patch-meson.build' ;;
             devel/libopeninput) approved='patch-src_wscons.c patch-src_wscons.h patch-wscons-absolute-pointer' ;;
-            x11/xorgproto|devel/libudev-bsd|devel/input-headers|graphics/libliftoff) approved='' ;;
+            devel/libudev-bsd) approved='patch-evdev-sysctl patch-render-nodes' ;;
+            x11/xorgproto|devel/input-headers|graphics/libliftoff) approved='' ;;
         esac
         case "$recipe" in
             graphics/MesaLib|x11/libdrm|x11/xkeyboard-config)

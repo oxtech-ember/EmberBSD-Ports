@@ -1,0 +1,17 @@
+$NetBSD$
+
+Use a POSIX sed expression when installing public declarations.
+BSD sed does not recognize GNU word-boundary escapes.
+Origin: EmberBSD (AI-assisted).
+
+--- Makefile.in.orig
++++ Makefile.in
+@@ -726,7 +726,7 @@
+ SUBST_INSTALL_HEADER = \
+ 	subst_install_header() { \
+ 	  file=`echo "$$1" | sed -e 's,^.*/,,'`; \
+-	  $(SED) -e "s/\<EXPORT\>/extern/" < "$$1" > "include/$$file.t" || exit 1; \
++	  $(SED) -e "s/^EXPORT /extern /" < "$$1" > "include/$$file.t" || exit 1; \
+ 	  $(MKDIR_P) "$$2" || exit 1; \
+ 	  $(INSTALL_HEADER) "include/$$file.t" "$$2/$$file" || exit 1; \
+ 	  $(RM) "include/$$file.t"; \
