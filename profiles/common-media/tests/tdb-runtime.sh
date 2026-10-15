@@ -27,5 +27,5 @@ for test in "$bundle"/bin/tdb1-*; do
 done
 [ "$count" = 37 ]
 timeout -k 5 180 "$bundle/bin/tdbtorture" -s 1 > "$result/torture.log" 2>&1
-timeout -k 5 120 /usr/pkg/bin/python3.14 "$bundle/python/tests/simple.py" > "$result/python.log" 2>&1
+timeout -k 5 120 /usr/pkg/bin/python3.15 "$bundle/python/tests/simple.py" > "$result/python.log" 2>&1
 printf 'PASS: two upstream CLI suites, %s C test programs, deterministic torture and installed Python binding\n' "$count"

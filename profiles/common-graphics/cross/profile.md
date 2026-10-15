@@ -172,7 +172,7 @@ BMAKE=/absolute/host/bin/bmake ruby ../tests/x11-autoreconf.rb \
 For scanner consumers, supply the verified patched upstream source trees:
 
 ```sh
-BMAKE=/absolute/host/bin/bmake TEST_PYTHON=/absolute/host/bin/python3.14 \
+BMAKE=/absolute/host/bin/bmake TEST_PYTHON=/absolute/host/bin/python3.15 \
 TEST_MESON=/absolute/meson.py NINJA=/absolute/host/bin/ninja \
 ruby ../tests/scanner-consumers.rb /absolute/prepared-pkgsrc \
     /absolute/common-cross.mk.conf /absolute/llvm-metadata-tool/bin/llvm-config \

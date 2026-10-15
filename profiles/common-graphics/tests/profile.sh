@@ -23,7 +23,7 @@ run MACHINE_ARCH=x86_64 | grep 'NetBSD 11/AArch64 only'
 run OS_VERSION=10.1 | grep 'NetBSD 11/AArch64 only'
 run EMBERBSD_COMMON_TOOLS=no | grep 'requires common build-tools'
 # Presence alone does not prove native tool acceptance; absent owner marker fails.
-run PYTHONBIN=/opt/python3.15 | grep 'canonical Python 3.14'
+run PYTHONBIN=/usr/pkg/bin/python3.14 | grep 'canonical Python 3.15'
 run LLVM_CONFIG_PATH=/opt/llvm13/bin/llvm-config | grep 'canonical LLVM metadata'
 run BUILDLINK_API_DEPENDS.MesaLib='MesaLib>=21.3.9' | grep 'overridden MesaLib dependency'
 run BUILDLINK_ABI_DEPENDS.libdrm='libdrm>=2.4.134' | grep 'overridden libdrm dependency'

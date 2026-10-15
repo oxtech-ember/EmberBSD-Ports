@@ -20,7 +20,7 @@ Use the [common graphics cross profile](profile.md) with an
 [EmberBSD sysroot](../../common-build-tools/cross/sysroot.md). A matching native
 GI 1.86.0 is a declared tool dependency. Meson runs native Python and native
 `g-ir-scanner`/`g-ir-compiler`; pkgsrc's target sysconfig remains responsible
-for Python headers, extension ABI and installed `/usr/pkg/bin/python3.14`
+for Python headers, extension ABI and installed `/usr/pkg/bin/python3.15`
 shebangs. A Meson native machine file keeps its C compiler on macOS.
 Cross `readelf` obtains ELF SONAMEs instead of invoking a host loader.
 

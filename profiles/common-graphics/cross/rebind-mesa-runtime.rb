@@ -18,10 +18,10 @@ class MesaRuntimeRebind
     package: 'e677db8bb4a579fc697651025ad3cbdcb27345f56a062f64cac88ac3d259397c',
     new_dso: '59486085a768044e0f1940a067f24be4149c420078ae496972bbea303b7b2eb7',
     needed: %w[libedit.so.3 librt.so.1 libexecinfo.so.0 libpthread.so.1 libz.so.1 libzstd.so.1 libxml2.so.16 libstdc++.so.7 libm.so.0 libgcc_s.so.1 libc.so.12],
-    rpath: %w[/usr/pkg/gcc16/lib /usr/pkg/lib /usr/pkg/lib/python3.14/config-3.14]
+    rpath: %w[/usr/pkg/gcc16/lib /usr/pkg/lib /usr/pkg/lib/python3.15/config-3.15]
   }.freeze
   SEARCH = %w[/usr/pkg/gcc16/lib /usr/pkg/lib /usr/lib /lib].freeze
-  ALLOWED = (SEARCH + %w[/usr/pkg/gcc16/aarch64--netbsd/lib /usr/pkg/lib/python3.14/config-3.14]).freeze
+  ALLOWED = (SEARCH + %w[/usr/pkg/gcc16/aarch64--netbsd/lib /usr/pkg/lib/python3.15/config-3.15]).freeze
 
   def fail!(message)
     raise ArgumentError, message

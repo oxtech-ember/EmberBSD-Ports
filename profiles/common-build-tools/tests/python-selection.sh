@@ -23,13 +23,13 @@ probe()
     shift 3
     "${BMAKE:-bmake}" -f "$work/Makefile" "$@" > "$work/$name.log" 2>&1
     [ "$(sed -n '1p' "$work/$name.log")" = "$selected" ]
-    if [ "$refusal" = yes ]; then grep -q 'EmberBSD common tools require Python 3.14' "$work/$name.log"; else
+    if [ "$refusal" = yes ]; then grep -q 'EmberBSD common tools require Python 3.15' "$work/$name.log"; else
         ! grep -q 'EmberBSD common tools require' "$work/$name.log"
     fi
     echo "PASS: actual pkgsrc selection $name ($selected, refusal=$refusal)"
 }
-probe default 314 no
+probe default 315 no
 probe old-cli 313 yes PYTHON_VERSION_REQD=313
 probe unsupported none yes PYTHON_VERSIONS_ACCEPTED=313
-probe incompatible none yes PYTHON_VERSIONS_INCOMPATIBLE=314
+probe incompatible none yes PYTHON_VERSIONS_INCOMPATIBLE=315
 probe consumer-old none yes PYTHON_VERSIONS_ACCEPTED=313 PYTHON_VERSION_REQD=314

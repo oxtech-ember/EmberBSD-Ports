@@ -39,7 +39,7 @@ abort 'unexpected diagnostic lines in real pkgsrc parse; inspect mesa.log' unles
 v = vars.zip(values).to_h
 check('cross Mesa full recipe parses without package failure') { v['PKG_FAIL_REASON'].empty? }
 check('target prefix remains /usr/pkg and Python runs from host TOOLBASE') do
-  v['PREFIX'] == '/usr/pkg' && v['LOCALBASE'] == '/usr/pkg' && v['PYTHONBIN'] == '/usr/pkg/bin/python3.14' && v['TOOL_PYTHONBIN'] == "#{v['TOOLBASE']}/bin/python3.14" && v['SUBST_SED.python'].include?(v['TOOL_PYTHONBIN'])
+  v['PREFIX'] == '/usr/pkg' && v['LOCALBASE'] == '/usr/pkg' && v['PYTHONBIN'] == '/usr/pkg/bin/python3.15' && v['TOOL_PYTHONBIN'] == "#{v['TOOLBASE']}/bin/python3.15" && v['SUBST_SED.python'].include?(v['TOOL_PYTHONBIN'])
 end
 check('Mesa uses the explicit real LLVM metadata helper') { v['LLVM_CONFIG_PATH'] == helper && v['MESON_BINARY.llvm-config'] == helper }
 # pkgsrc reuses MAKECONF with USE_CROSS_COMPILE=no for tool dependencies,

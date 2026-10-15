@@ -248,7 +248,7 @@ BMAKE=/absolute/bmake sh profiles/common-graphics/tests/profile.sh EXPORTED_PKGS
 BMAKE=/absolute/bmake sh profiles/common-graphics/tests/qtbase-egl.sh QTBASE_MAKEFILE NEW_WORK
 BMAKE=/absolute/bmake sh profiles/common-graphics/tests/selection.sh \
     EXPORTED_PLASMA_PKGSRC NEW_WORK
-TEST_PYTHON=/absolute/host-python3.14 TEST_MESON=/absolute/meson-1.12.1/meson.py \
+TEST_PYTHON=/absolute/host-python3.15 TEST_MESON=/absolute/meson-1.12.1/meson.py \
 BMAKE=/absolute/bmake ruby profiles/common-graphics/tests/configuration.rb \
     PATCHED_MESA NEW_WORK
 ```

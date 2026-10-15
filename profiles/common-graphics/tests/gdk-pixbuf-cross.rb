@@ -33,7 +33,7 @@ File.write(work + '/source/meson.build', "project('pixbuf-tool-selection', 'c')\
 MESON
 helper = File.expand_path('../recipes/graphics/gdk-pixbuf2/files/target-tools.rb', __dir__)
 needed = File.expand_path('../recipes/devel/gobject-introspection/files/elf-needed.sh', __dir__)
-properties = "emberbsd_gi_cross = true\nemberbsd_pixbuf_python = '#{host}/bin/python3.14'\nemberbsd_gi_ldd_wrapper = '#{needed}'\nemberbsd_pixbuf_runner = ['#{RbConfig.ruby}', '#{helper}']\n"
+properties = "emberbsd_gi_cross = true\nemberbsd_pixbuf_python = '#{host}/bin/python3.15'\nemberbsd_gi_ldd_wrapper = '#{needed}'\nemberbsd_pixbuf_runner = ['#{RbConfig.ruby}', '#{helper}']\n"
 binaries = "[binaries]\nc = '#{cc}'\ng-ir-scanner = '/usr/bin/false'\n"
 machine = "[host_machine]\nsystem = 'netbsd'\ncpu_family = 'aarch64'\ncpu = 'aarch64'\nendian = 'little'\n"
 File.write(work + '/cross.ini', binaries + machine)
@@ -47,7 +47,7 @@ File.write(work + '/native.ini', "[binaries]\nc = '/usr/bin/cc'\ng-ir-scanner = 
   abort "#{mode} failed: #{out}" unless status.success?
   if mode == 'enabled-cross'
     %w[scanner compiler].each { |tool| abort "wrong native #{tool}" unless out.include?("native #{tool}: #{host}/bin/g-ir-#{tool}") }
-    abort 'wrong native Python' unless out.include?('native python: ' + host + '/bin/python3.14')
+    abort 'wrong native Python' unless out.include?('native python: ' + host + '/bin/python3.15')
     abort 'ELF inspection missing' unless out.include?('--use-ldd-wrapper=')
   else
     abort 'ordinary generator changed' unless out.include?('ordinary generator: ' + work + '/source/build-aux/gen-thumbnailer.py')
@@ -55,7 +55,7 @@ File.write(work + '/native.ini', "[binaries]\nc = '/usr/bin/cc'\ng-ir-scanner = 
   end
 end
 # Fail closed when explicitly selected native Python is absent.
-bad = File.read(work + '/enabled.ini').sub(host + '/bin/python3.14', work + '/missing-python')
+bad = File.read(work + '/enabled.ini').sub(host + '/bin/python3.15', work + '/missing-python')
 File.write(work + '/missing.ini', bad)
 out, status = Open3.capture2e(host + '/bin/meson', 'setup', work + '/missing', work + '/source', '--native-file', work + '/native.ini', '--cross-file', work + '/missing.ini')
 File.write(work + '/missing.log', out)

@@ -14,7 +14,7 @@ done
 [ ! -e "$work" ] && [ ! -L "$work" ] || { echo 'Work already exists' >&2; exit 2; }
 profile=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
 recipe=$profile/recipes/graphics/MesaLib
-python=$(command -v "${PYTHON:-python3.14}")
+python=$(command -v "${PYTHON:-python3.15}")
 pkg_config=$(command -v "${PKG_CONFIG:-pkg-config}")
 ninja=$(command -v "${NINJA:-ninja}")
 case "$ninja" in /*) ;; *) echo 'NINJA must resolve to an absolute path' >&2; exit 2;; esac

@@ -12,7 +12,7 @@ LICENSE=	mit
 
 USE_TOOLS+=	pkg-config
 PYTHON_FOR_BUILD_ONLY=	tool
-PYTHON_VERSION_REQD=	314
+PYTHON_VERSION_REQD=	315
 MESON_ARGS+=	--wrap-mode=nofallback
 TOOL_DEPENDS+=	hwdata>=0.412:../../sysutils/hwdata
 EMBERBSD_NATIVE_GRAPHICS_PC= hwdata:0.412

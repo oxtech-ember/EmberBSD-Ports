@@ -6,7 +6,7 @@ set -eu
 pkgsrc=$1 crossconf=$2 nativeconf=$3 source=$4 work=$5
 bmake=${BMAKE:-bmake}
 mkdir "$work"
-for interpreter in python3.14 /nonexistent/ember-python; do
+for interpreter in python3.15 /nonexistent/ember-python; do
     "$bmake" -C "$pkgsrc/lang/python314" MAKECONF="$crossconf" \
         EMBERBSD_CROSS_BUILD_PYTHON="$interpreter" -v PKG_FAIL_REASON > "$work/invalid.txt"
     grep -q 'EMBERBSD_CROSS_BUILD_PYTHON must name an existing absolute host interpreter' "$work/invalid.txt"

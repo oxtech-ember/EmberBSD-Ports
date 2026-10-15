@@ -31,7 +31,7 @@ substitute host libraries. The original libdrm URL and SHA256 are recorded
 in [sources.tsv](../sources.tsv).
 
 ```sh
-PYTHON=/absolute/python3.14 JOBS=4 sh build-libdrm.sh \
+PYTHON=/absolute/python3.15 JOBS=4 sh build-libdrm.sh \
     /absolute/libdrm-2.4.134.tar.xz /absolute/cross-prefix \
     /absolute/target-sysroot /absolute/prepared-meson /absolute/new-work
 ```
@@ -117,7 +117,7 @@ for program in hash drmsl drmdevice; do
 done
 timeout 30 ./hash
 timeout 30 ./drmsl
-timeout 30 /usr/pkg/bin/python3.14 ./symbols-check.py \
+timeout 30 /usr/pkg/bin/python3.15 ./symbols-check.py \
     --lib /usr/pkg/lib/libdrm.so.2.134.0 \
     --symbols-file ./core-symbols.txt --nm /usr/bin/nm
 # Preserve drmdevice's result: 77 means no device, not rendering success.
@@ -142,7 +142,7 @@ Keep the whole profile snapshot unchanged while the build runs and use a
 fresh output directory. A running shell can reread edited script text.
 
 ```sh
-PYTHON=/absolute/python3.14 JOBS=3 sh build-mesa-diagnostic.sh \
+PYTHON=/absolute/python3.15 JOBS=3 sh build-mesa-diagnostic.sh \
     /absolute/mesa-26.2.4.tar.xz /absolute/cross-prefix \
     /absolute/target-sysroot /absolute/libdrm-stage/usr/pkg \
     /absolute/target-zstd-prefix /absolute/prepared-meson \
