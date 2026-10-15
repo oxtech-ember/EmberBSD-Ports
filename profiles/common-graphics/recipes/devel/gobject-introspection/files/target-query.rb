@@ -9,6 +9,11 @@ require 'shellwords'
 require 'tmpdir'
 
 config = JSON.parse(File.read(ENV.fetch('EMBERBSD_GI_QUERY_CONFIG')))
+target = config.fetch('target', 'aarch64')
+targets = {'aarch64' => ['aarch64', 'AArch64'], 'amd64' => ['x86_64', 'Advanced Micro Devices X86-64']}
+abort 'unsupported GI target' unless targets.key?(target)
+processor, machine = targets.fetch(target)
+abort 'configuration differs from recipe target' if ENV.key?('EMBERBSD_GI_TARGET') && ENV.fetch('EMBERBSD_GI_TARGET') != target
 absolute = lambda do |key|
   value = config.fetch(key)
   abort "#{key} must be absolute" unless value.is_a?(String) && value.start_with?('/')
@@ -35,9 +40,10 @@ if config.key?('host_key_alias')
 end
 ssh << host
 if ARGV.first == '--check'
-  abort 'usage: --check WORKDIR SYSROOT READELF' unless ARGV.size == 4
-  workdir, target, tool = ARGV.drop(1).map { |p| File.realpath(p) }
-  abort 'configuration differs from recipe' unless inside.call(workdir, base) && target == sysroot && tool == readelf
+  abort 'usage: --check WORKDIR SYSROOT READELF [aarch64|amd64]' unless [4, 5].include?(ARGV.size)
+  expected_target = ARGV[4] || 'aarch64'
+  workdir, target_root, tool = ARGV[1, 3].map { |p| File.realpath(p) }
+  abort 'configuration differs from recipe' unless inside.call(workdir, base) && target_root == sysroot && tool == readelf && expected_target == target
   puts 'PASS: GI query configuration matches the selected work, sysroot and readelf'
   exit
 end
@@ -106,7 +112,8 @@ pending = [exe]
 until pending.empty?
   file = pending.shift
   header, status = Open3.capture2e(readelf, '-h', file)
-  abort "not little-endian AArch64 ELF64: #{file}" unless status.success? && header.match?(/Machine:.*AArch64/) && header.match?(/Class:.*ELF64/) && header.match?(/Data:.*little endian/)
+  actual_machine = header[/^\s*Machine:\s*(.*?)\s*$/, 1]
+  abort "not little-endian #{processor} ELF64: #{file}" unless status.success? && actual_machine == machine && header.match?(/Class:.*ELF64/) && header.match?(/Data:.*little endian/)
   dyn, status = Open3.capture2e(readelf, '-d', file)
   abort 'readelf failed' unless status.success?
   localdirs = dyn.scan(/\((?:RPATH|RUNPATH)\).*\[(.*?)\]/).flatten.flat_map { |s| s.split(':') }.map do |p|
@@ -138,7 +145,7 @@ File.write(work + '/files.sha256', manifest)
 File.write(work + '/sources.sha256', sources.map { |p, h| "#{h}  #{p}\n" }.join)
 remote = nil
 begin
-  remote = run.call('allocate', *ssh, 'test "$(uname -s)" = NetBSD && test "$(uname -p)" = aarch64 && umask 077 && mktemp -d /tmp/ember-gir.XXXXXXXX').strip
+  remote = run.call('allocate', *ssh, 'test "$(uname -s)" = NetBSD && test "$(uname -p)" = ' + processor + ' && umask 077 && mktemp -d /tmp/ember-gir.XXXXXXXX').strip
   abort 'invalid temporary directory' unless remote.match?(/\A\/tmp\/ember-gir\.[A-Za-z0-9]{8}\z/)
 # Reuse only byte-identical installed sysroot providers, copied into this
 # query's private directory. In-tree libraries always travel with the query.

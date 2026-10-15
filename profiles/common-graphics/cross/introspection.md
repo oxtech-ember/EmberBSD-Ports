@@ -1,7 +1,7 @@
 # GObject Introspection for EmberBSD cross builds
 
-The graphics profile supplies `gobject-introspection-1.86.0nb5`, built on
-macOS for EmberBSD/AArch64 with GCC16, Python 3.14.8 and GLib 2.90.1.
+The recorded AArch64 cross build of `gobject-introspection-1.86.0nb5` used
+macOS, GCC16, Python 3.14.8 and GLib 2.90.1.
 Its complete selected pkgsrc payload is preserved: library, tools, Python
 scanner extension, GIRepository GIR/typelib, headers and test sources.
 The GLib-family GIR files belong to the separate `glib2-introspection` package.
@@ -20,12 +20,14 @@ Use the [common graphics cross profile](profile.md) with an
 [EmberBSD sysroot](../../common-build-tools/cross/sysroot.md). A matching native
 GI 1.86.0 is a declared tool dependency. Meson runs native Python and native
 `g-ir-scanner`/`g-ir-compiler`; pkgsrc's target sysconfig remains responsible
-for Python headers, extension ABI and installed `/usr/pkg/bin/python3.14`
-shebangs. A Meson native machine file keeps its C compiler on macOS.
+for Python headers, extension ABI and matching installed target shebangs.
+The recorded AArch64 package uses Python 3.14; the current common interpreter
+selection is Python 3.15. Its target package acceptance remains separate.
+A Meson native machine file keeps its C compiler on macOS.
 Cross `readelf` obtains ELF SONAMEs instead of invoking a host loader.
 
 GType discovery executes small cross-built queries on an authorized EmberBSD
-AArch64 VM or board over SSH. The supplied runner resolves target ELF libraries
+VM or board of the selected architecture over SSH. The runner resolves ELF libraries
 from the build tree and sysroot, rejects incompatible/conflicting providers,
 and transfers copies into a newly allocated private temporary directory.
 It checks hashes before and after execution, limits each query to 60 seconds,
@@ -37,6 +39,7 @@ Create an existing private cache outside the sysroot and a private JSON file:
 
 ```json
 {
+  "target": "aarch64",
   "build_root": "/absolute/work",
   "sysroot": "/absolute/target-sysroot",
   "cache": "/absolute/query-cache",
@@ -48,7 +51,15 @@ Create an existing private cache outside the sysroot and a private JSON file:
 The target must already be accessible with noninteractive SSH and a verified
 host key. It needs `tar`, `sha256`, `timeout` and its compatible base loader.
 The JSON must agree with the recipe's work directory, sysroot and inspection
-tool. Add these private MAKECONF settings:
+tool. `target` accepts only `aarch64` and `amd64`. An omitted field retains
+the original AArch64 contract. It never selects the build-host architecture.
+For amd64, set `target` to `amd64` and select the matching
+`x86_64--netbsd-readelf`. The common cross profile maps that target to pkgsrc
+`MACHINE_ARCH=x86_64` and GNU `x86_64--netbsd` metadata. Unknown or mixed
+target metadata fails. The same configuration serves `glib2-introspection`
+and the other consumers of GI's shared cross fragment.
+
+Add these private MAKECONF settings:
 
 ```make
 EMBERBSD_GI_RUBY=/absolute/native/ruby
@@ -107,8 +118,22 @@ Accepted package SHA256:
 The installed regular-file manifest has SHA256
 `e7dedd45cc6eb3d6cc76cc42b6b0a5d33b55b231cf18c54194e6930c83f074c1`.
 
-`tests/gi-query-contract.rb CROSS_TOOLS NEW_WORK` builds real AArch64 ELF
-fixtures and checks provider aliases, SONAME inspection and seven refusals
+`tests/gi-query-contract.rb [--target aarch64|amd64] CROSS_TOOLS NEW_WORK` builds
+real ELF fixtures with the selected GCC cross compiler. AArch64 is the default.
+The amd64 host contract uses real cross-linked x86_64 ELF and native `bmake`
+evaluation of both target metadata sets. It rejects a foreign query or provider,
+ELF32, big-endian data, a mismatched JSON target and mixed GNU metadata before
+SSH. The production remote identity shell is also checked with explicit host
+fixtures. No transport fixture counts as VM execution or target GI acceptance.
+
+Both target paths require ELF64 little-endian files of the selected machine
+for every query and recursive provider. Before temporary-directory allocation,
+the actual SSH command requires `uname -s=NetBSD` and `uname -p=aarch64` or
+`uname -p=x86_64`, as selected. Target query execution, manifests, time limits,
+status receipts and cleanup remain mandatory. The amd64 GI/GLib target query
+and package acceptance remain pending; the AArch64 receipts above are unchanged.
+
+The contract also checks provider aliases, SONAME inspection and input refusals
 before SSH. Injected transfer, query, readback, invalid-output, cleanup and
 input-change failures prove that failed runs publish no XML. A successful
 transport fixture publishes it only at the end. These transport fixtures are
