@@ -3,7 +3,7 @@
 # Origin: EmberBSD; AI-assisted staged GCC16 runtime bootstrap.
 set -eu
 usage() {
-    echo 'Usage: build.sh [--check] [--resume] --target amd64|aarch64 EXPORTED_PKGSRC GCC_ARCHIVE KERNEL_PREFIX SYSROOT HOST_MATH_PREFIX WORK' >&2
+    echo 'Usage: build.sh [--check] [--resume|--resume-runtime] --target amd64|aarch64 EXPORTED_PKGSRC GCC_ARCHIVE KERNEL_PREFIX SYSROOT HOST_MATH_PREFIX WORK' >&2
     exit 2
 }
 fail() { echo "$*" >&2; exit 2; }
@@ -12,7 +12,8 @@ resume=no
 while :; do
     case ${1:-} in
         --check) check=yes; shift;;
-        --resume) resume=yes; shift;;
+        --resume) [ "$resume" = no ] || usage; resume=yes; shift;;
+        --resume-runtime) [ "$resume" = no ] || usage; resume=runtime; shift;;
         *) break;;
     esac
 done
@@ -110,6 +111,7 @@ case "$make" in /*) ;; *) fail 'GNU_MAKE must be an absolute executable path.';;
 [ "$resume" = no ] || check_resume
 printf 'target=%s\ntriplet=%s\nabi=libstdc++.so.7\ntarget_flags=%s\n' "$target" "$triplet" "$target_flags"
 printf 'seed_source=%s\nruntime_prefix=/usr/pkg/gcc16\nstage=%s/stage\n' "$origin" "$work"
+printf 'resume=%s\ntoolexeclibdir=/usr/pkg/gcc16/lib\n' "$resume"
 printf 'ar_for_target=%s\nnm_for_target=%s\n' "$AR_FOR_TARGET" "$NM_FOR_TARGET"
 [ "$check" = no ] || exit 0
 
@@ -140,7 +142,7 @@ ${HOST_CC:-cc} ${HOST_CFLAGS:--O2} -I"$math/include" "$profile/cross/tests/host-
 "$work/host-gmp" timer >> "$work/host-gmp.log"
 sh "$here/prepare-source.sh" "$pkgsrc" "$archive" "$work/src" > "$work/patch.log" 2>&1
 else
-    backup_resume
+    if [ "$resume" = runtime ]; then backup_runtime_resume; else backup_resume; fi
 fi
 # Pin the helper revision and all target tools, including when an older
 # receipt predates explicit binutils selection. Keep the original receipt.
@@ -157,6 +159,7 @@ fi
 cd "$work/build"
 unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH CONFIG_SITE
 set -- --target="$triplet" --prefix=/usr/pkg/gcc16 --libdir=/usr/pkg/gcc16/lib \
+    --with-toolexeclibdir=/usr/pkg/gcc16/lib \
     --with-local-prefix=/usr/pkg/gcc16 --with-gxx-include-dir=/usr/pkg/gcc16/include/c++ \
     --with-sysroot="$sysroot" --with-native-system-header-dir=/usr/include \
     --with-gmp="$math" --with-mpfr="$math" --with-mpc="$math" \
@@ -176,11 +179,17 @@ CC=${HOST_CC:-cc} CXX=${HOST_CXX:-c++} CFLAGS=${HOST_CFLAGS:--O2} CXXFLAGS=${HOS
     "$work/src/configure" "$@" > "$work/configure.log" 2>&1
 # The kernel-only compiler has single-thread gthr headers. Rebuild host
 # frontends with POSIX threads; install only target libraries below.
-"$make" -j"$jobs" all-gcc > "$work/frontends.log" 2>&1
+if [ "$resume" = runtime ]; then
+    verify_frontend_state
+else
+    "$make" -j"$jobs" all-gcc > "$work/frontends.log" 2>&1
+fi
 "$work/build/gcc/xgcc" -v 2> "$work/frontend-version.txt"
 grep -qx 'Thread model: posix' "$work/frontend-version.txt" || fail 'Runtime compiler does not select POSIX threads.'
 "$make" -j"$jobs" all-target-libgcc all-target-libstdc++-v3 > "$work/runtime-build.log" 2>&1
+[ "$resume" != runtime ] || verify_frontend_state
 "$make" "DESTDIR=$work/stage" install-target-libgcc install-target-libstdc++-v3 > "$work/runtime-install.log" 2>&1
+[ "$resume" != runtime ] || verify_frontend_state
 runtime=$work/stage/usr/pkg/gcc16
 for crt in crtbegin.o crtbeginS.o crtend.o crtendS.o; do
     check_elf "$runtime/lib/gcc/$triplet/16.2.0/$crt" "$work/stage"

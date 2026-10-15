@@ -113,6 +113,12 @@ The target prefix is `/usr/pkg/gcc16`, not the host work directory:
 - Libraries: `stage/usr/pkg/gcc16/lib/libgcc_s.so.1` and `libstdc++.so.7`.
 - Headers: `stage/usr/pkg/gcc16/include/c++`, including the target directory.
 
+Configure explicitly sets `--with-toolexeclibdir=/usr/pkg/gcc16/lib` for
+the target libraries. `--libdir` alone does not override upstream cross-host
+defaults: libgcc and libstdc++ otherwise install under `PREFIX/TRIPLET/lib`.
+The configured directory also owns libtool install metadata. The builder
+does not flatten or copy files from an incorrect installation afterwards.
+
 The builder inspects all four shared/static CRT variants and both runtime
 DSOs, checks SONAMEs and rejects build-host paths in dynamic tags.
 It saves source/tool/seed hashes, configure/build/install logs, regular-file
@@ -148,6 +154,9 @@ This bootstrap does not implement or claim that later compiler stage.
 sh profiles/development-toolchain/bootstrap/tests/inputs.sh
 sh profiles/development-toolchain/bootstrap/tests/source.sh
 sh profiles/development-toolchain/bootstrap/tests/binutils.sh
+sh profiles/development-toolchain/bootstrap/tests/runtime-resume.sh
+ruby profiles/development-toolchain/bootstrap/tests/runtime-layout.rb \
+    /absolute/prepared-gcc-source
 ```
 
 The first fixture exercises argument, architecture, compiler, seed, source
@@ -158,6 +167,12 @@ runtime packaging. These host checks do not establish a successful runtime build
 The binutils fixture checks exported absolute tools, command-name lookup and
 rejection of a non-GNU `nm`. The input fixture also checks resume provenance,
 preserved objects and invalidation of failed configure/map/archive outputs.
+The runtime recovery fixture checks full partial-stage preservation, target
+metadata invalidation, object reuse and rejection of changed frontend state.
+The layout fixture executes the install-directory shell sections from the
+actual prepared upstream configure scripts. It checks both target identities,
+the incorrect default and the explicit directory. It does not configure or
+build GCC, run a linker or establish installed runtime acceptance.
 The fixtures remove only their own temporary directories.
 
 ## Resume an incomplete runtime build
@@ -181,6 +196,34 @@ selection. The helper moves that state into the resume backup. It also moves
 libgcc map files, their temporary output and incomplete archives/shared libraries.
 These outputs must be regenerated with the corrected tools. Frontend and target
 object files remain available for the normal incremental make rules.
+
+## Recover only the target-library installation layout
+
+For completed POSIX frontends followed by an incorrect target-library install,
+use `--check --resume-runtime` with the original inputs and host settings.
+This mode requires the explicit GNU target-binutils receipt and all completed
+frontend configure files and language executables. A completed accepted stage
+is still refused. The read-only check does not move or configure anything.
+
+After review, replace `--check --resume-runtime` with `--resume-runtime`.
+The helper preserves the old receipt, logs and top configure files in
+`WORK/resume-runtime.XXXXXX`. It inventories and checksums the entire partial
+stage, moves that stage into the backup, verifies it and creates an empty stage.
+The old installation cannot become the accepted runtime provider.
+
+Only target-library Makefiles, configure caches/status/logs, libtool scripts
+and `.la`/`.lai` metadata are moved out of the build tree. Target objects,
+archives, shared libraries and libgcc symbol maps stay available. Top configure
+then passes the canonical `--with-toolexeclibdir` option to those libraries.
+No post-install rename or flattening substitutes for upstream installation.
+
+The GCC subdirectory retains its Makefile, cache, auto-host header and configure
+arguments. This mode skips the direct `all-gcc` step. Upstream target-library
+dependencies may enter the normal incremental `all-gcc` rule; its configure
+rule reuses the existing GCC Makefile. Hashes of frontend configuration and
+`xgcc`, `cc1` and `cc1plus` must stay unchanged after top configure, library make
+and installation. A change fails recovery. Normal ELF, SONAME, dynamic-path,
+header and stage-receipt checks remain mandatory after the clean installation.
 
 On a failed real build, preserve the work directory and its logs. The helper
 does not delete caller inputs, install into `/usr/pkg`, modify the seed,

@@ -5,7 +5,9 @@ check_resume() {
     [ -f "$work/inputs.txt" ] && [ -d "$work/src" ] && [ -d "$work/build/gcc" ] && \
         [ -d "$work/stage" ] || fail 'Incomplete runtime work directory.'
     [ ! -e "$work/build-success" ] || fail 'Refusing to resume a completed runtime stage.'
-    [ -z "$(find "$work/stage" -type f -o -type l)" ] || fail 'Resume requires an uninstalled runtime stage.'
+    if [ "$resume" != runtime ]; then
+        [ -z "$(find "$work/stage" -type f -o -type l)" ] || fail 'Resume requires an uninstalled runtime stage.'
+    fi
     for resume_input in 'scope=runtime-only-bootstrap' "target=$target" "triplet=$triplet" \
         "seed_source=$origin" "kernel=$kernel" "sysroot=$sysroot" "math=$math" \
         "host_cc=${HOST_CC:-cc}" "host_cxx=${HOST_CXX:-c++}" \
@@ -19,6 +21,57 @@ check_resume() {
     [ "$("$work/build/gcc/xgcc" -dumpmachine)" = "$triplet" ] && \
         [ "$("$work/build/gcc/xgcc" -dumpfullversion)" = 16.2.0 ] || fail 'Runtime frontend target/version changed.'
     "$work/build/gcc/xgcc" -v 2>&1 | grep -qx 'Thread model: posix' || fail 'Resume requires the POSIX-thread frontend.'
+    if [ "$resume" = runtime ]; then
+        grep -qx 'target_binutils=audited-kernel-prefix' "$work/inputs.txt" || fail 'Runtime-only resume requires the explicit target-binutils receipt.'
+        for resume_frontend in $frontend_files; do
+            [ -s "$work/build/gcc/$resume_frontend" ] || fail "Missing frontend state: $resume_frontend"
+        done
+        for resume_driver in cc1 cc1plus; do
+            [ -x "$work/build/gcc/$resume_driver" ] || fail 'Missing completed language frontend.'
+        done
+    fi
+}
+
+frontend_files='Makefile config.cache config.status config.log auto-host.h configargs.h xgcc cc1 cc1plus'
+
+verify_frontend_state() {
+    shasum -a 256 -c --status "$resume_backup/frontend.sha256" || fail 'Completed frontend state changed during runtime-only recovery.'
+}
+
+backup_runtime_resume() {
+    resume_backup=$(mktemp -d "$work/resume-runtime.XXXXXX") || fail 'Cannot preserve runtime installation.'
+    cp "$work/inputs.txt" "$resume_backup/inputs.txt"
+    for resume_log in configure.log frontends.log frontend-version.txt runtime-build.log runtime-install.log; do
+        [ ! -f "$work/$resume_log" ] || cp "$work/$resume_log" "$resume_backup/"
+    done
+    for resume_top in Makefile config.status config.log config.cache; do
+        [ ! -f "$work/build/$resume_top" ] || cp "$work/build/$resume_top" "$resume_backup/top-$resume_top"
+    done
+    for resume_frontend in $frontend_files; do
+        shasum -a 256 "$work/build/gcc/$resume_frontend"
+    done > "$resume_backup/frontend.sha256"
+    (cd "$work/stage" && find . -type f -exec shasum -a 256 {} + | LC_ALL=C sort) > "$resume_backup/stage.sha256"
+    (cd "$work/stage" && find . -type l -exec sh -c 'for path do printf "%s\t%s\n" "$path" "$(readlink "$path")"; done' sh {} + | LC_ALL=C sort) > "$resume_backup/stage.symlinks"
+    (cd "$work/stage" && find . -print | LC_ALL=C sort) > "$resume_backup/stage.inventory"
+    resume_file_count=$(find "$work/stage" -type f | wc -l | tr -d ' ')
+    [ "$resume_file_count" = "$(wc -l < "$resume_backup/stage.sha256" | tr -d ' ')" ] || fail 'Incomplete partial-stage checksums.'
+    mv "$work/stage" "$resume_backup/stage"
+    (cd "$resume_backup/stage" && shasum -a 256 -c --status ../stage.sha256) || fail 'Partial-stage preservation failed.'
+    mkdir "$work/stage"
+    # Configure every existing target-library prerequisite again, not GCC.
+    # libtool .la/.lai files embed the old installation directory. Keep target
+    # objects, archives and DSOs; upstream make rebuilds their metadata/links.
+    find "$work/build/$triplet" \( -type f -o -type l \) \
+        \( -name Makefile -o -name config.cache -o -name config.status -o -name config.log \
+        -o -name libtool -o -name '*.la' -o -name '*.lai' \) -print > "$resume_backup/target-metadata.paths"
+    while IFS= read -r resume_metadata; do
+        backup_generated "${resume_metadata#"$work/build/"}"
+    done < "$resume_backup/target-metadata.paths"
+    printf 'resume_runtime_prior_inputs_sha256=%s\nresume_runtime_backup=%s\nruntime_toolexeclibdir=/usr/pkg/gcc16/lib\n' \
+        "$(shasum -a 256 "$resume_backup/inputs.txt" | awk '{print $1}')" "$resume_backup" >> "$work/inputs.txt"
+    shasum -a 256 "$resume_backup/frontend.sha256" "$resume_backup/stage.sha256" \
+        "$resume_backup/stage.symlinks" "$resume_backup/stage.inventory" \
+        "$resume_backup/target-metadata.paths" >> "$work/inputs.txt"
 }
 
 backup_resume() {

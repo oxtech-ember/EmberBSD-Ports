@@ -165,9 +165,26 @@ if (HOST_CFLAGS=-O3 resume_check) > "$work/resume-reject.log" 2>&1; then echo 'F
 if (FIXTURE_THREADS=single resume_check) > "$work/resume-reject.log" 2>&1; then echo 'FAIL: single-thread frontend accepted' >&2; exit 1; fi
 printf 'partial installation\n' > "$work/output/stage/untracked"
 if resume_check > "$work/resume-reject.log" 2>&1; then echo 'FAIL: partial stage accepted' >&2; exit 1; fi
+# Target-only recovery accepts that partial stage only with a complete frontend
+# and the preceding explicit GNU target-binutils provenance.
+runtime_check() {
+    sh "$builder" --check --resume-runtime --target amd64 "$work/pkgsrc" "$work/gcc.tar.xz" \
+        "$work/kernel/toolchain" "$work/seed" "$work/math" "$work/output"
+}
+if runtime_check > "$work/resume-reject.log" 2>&1; then echo 'FAIL: missing binutils receipt accepted' >&2; exit 1; fi
+printf 'target_binutils=audited-kernel-prefix\n' >> "$work/output/inputs.txt"
+for state in Makefile config.cache config.status config.log auto-host.h configargs.h; do
+    printf 'completed frontend state\n' > "$work/output/build/gcc/$state"
+done
+for driver in cc1 cc1plus; do cp "$work/compiler" "$work/output/build/gcc/$driver"; done
+runtime_check > "$work/runtime-resume.plan"
+grep -qx 'partial installation' "$work/output/stage/untracked"
+if (FIXTURE_THREADS=single runtime_check) > "$work/resume-reject.log" 2>&1; then echo 'FAIL: runtime recovery accepted single-thread frontend' >&2; exit 1; fi
+if (HOST_CFLAGS=-O3 runtime_check) > "$work/resume-reject.log" 2>&1; then echo 'FAIL: runtime recovery accepted changed host flags' >&2; exit 1; fi
 rm "$work/output/stage/untracked"
 printf 'completed stage\n' > "$work/output/build-success"
 if resume_check > "$work/resume-reject.log" 2>&1; then echo 'FAIL: completed stage accepted for resume' >&2; exit 1; fi
+if runtime_check > "$work/resume-reject.log" 2>&1; then echo 'FAIL: completed stage accepted for runtime recovery' >&2; exit 1; fi
 rm -rf "$work/output"
 (target=riscv64 reject 'unsupported architecture')
 (FIXTURE_TRIPLET=aarch64--netbsd reject 'wrong compiler triplet')
