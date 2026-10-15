@@ -103,8 +103,6 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
     socket = UNIXServer.new("#{work}/runtime/wayland-0")
     begin
       FileUtils.cp(["#{source}/check-results.sh", "#{source}/layout.js", "#{source}/capture-layout.js"], work)
-      File.write("#{work}/capture-pixels", "#!/bin/sh\ntouch pixel-check-called\nexit #{mode == 'pixels' ? 1 : 0}\n")
-    File.chmod(0o700, "#{work}/capture-pixels")
     File.write("#{work}/timeout", "#!/bin/sh\nshift 3\nexec \"$@\"\n")
       File.write("#{work}/date", "#!/bin/sh\nif [ -e date-used ]; then echo 100; else touch date-used; echo 0; fi\n")
       child = <<~RUBY
@@ -167,6 +165,8 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
   socket = UNIXServer.new("#{work}/runtime/wayland-0")
   begin
     FileUtils.cp(["#{source}/check-results.sh", "#{source}/layout.js", "#{source}/capture-layout.js"], work)
+    File.write("#{work}/capture-pixels", "#!/bin/sh\ntouch pixel-check-called\nexit #{mode == 'pixels' ? 1 : 0}\n")
+    File.chmod(0o700, "#{work}/capture-pixels")
     File.write("#{work}/timeout", <<~'SH')
       #!/bin/sh
       duration=$3
