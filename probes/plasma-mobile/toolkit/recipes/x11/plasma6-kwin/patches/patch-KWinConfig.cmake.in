@@ -1,0 +1,18 @@
+$NetBSD$
+
+The KWin build uses the header-only Vulkan target (see the
+dynamic-dispatch patch), so the installed package config must
+request VulkanHeaders instead of the loader module.
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+--- KWinConfig.cmake.in.orig	2026-10-15 17:52:26.931335790 +0300
++++ KWinConfig.cmake.in	2026-10-15 17:52:26.936637435 +0300
+@@ -15,7 +15,7 @@
+ find_dependency(Wayland REQUIRED Server)
+ find_dependency(epoxy)
+ find_dependency(Libdrm)
+-find_dependency(Vulkan)
++find_dependency(VulkanHeaders CONFIG)
+ 
+ @PACKAGE_SETUP_KWIN_AUTOMOC_VARIABLES@
+ include("${CMAKE_CURRENT_LIST_DIR}/KWinTargets.cmake")

@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (networkmanager-qt-6.31.0.tar.xz) = b43d9ccc66eac5180e9f1d45da429a120b5d0cd4373714ec23003d078102b8c4
+SHA512 (networkmanager-qt-6.31.0.tar.xz) = cbf47fe2b3e3452d7a8dcfaac9671d51ead487fd6d08ae320334b8d1fe7b6adf01817a5b9e6e001244c39b93337c222ddae2f0bd7120653ea61c39e432ec48fc
+Size (networkmanager-qt-6.31.0.tar.xz) = 187744 bytes
+SHA1 (patch-src_utils.cpp) = 31d9115d61b3392a5343d843aa52979c739e9cec

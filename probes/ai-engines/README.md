@@ -6,7 +6,10 @@ It supplies installed C/C++ consumer checks, without Python application code,
 external inference services or an accelerator dependency.
 
 The current build uses the [canonical ONNX Runtime port](../onnxruntime/README.md)
-and its shared feature profile and patches. Historical native builds with
+and [canonical ncnn port](../ncnn/README.md), including their feature profiles
+and patches. Their separate GCC16 cross packages pass installed CPU acceptance
+in AArch64 QEMU. The combined native script has not been rerun after this update.
+Historical native builds with
 ONNX Runtime 1.30.0 passed all seven installed consumer contracts and the
 optional two-CPU affinity checks. [NATIVE.md](NATIVE.md) retains that run's
 exact versions, configuration, measurements and output hashes.
@@ -40,8 +43,10 @@ are preserved alongside the installation.
 The RNNoise release needs an unchanged upstream ARM build fix; its author,
 commit and patch hash are retained in the provenance record.
 
-ncnn builds its installed C/C++ API with CPU operators and threading, without
-Vulkan, OpenMP, converters, Python bindings or examples. RNNoise uses its
+ncnn builds its installed C/C++ API with baseline CPU operators and POSIX
+synchronization. Its operator loops are serial with OpenMP disabled.
+Vulkan, runtime ISA dispatch, converters, Python bindings and examples are off.
+RNNoise uses its
 release's embedded weights, mono 48 kHz audio and 480-sample frames. Silero
 uses the pinned standard ONNX model with 16 kHz PCM, 512-sample frames,
 64 samples of preceding context and explicit recurrent state. Its inference

@@ -1,0 +1,19 @@
+$NetBSD$
+
+Make KPipeWire optional and drop the recording quick setting.
+NetBSD has no PipeWire port; every other component builds unchanged.
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -82,7 +82,9 @@
+ find_package(PlasmaActivities CONFIG REQUIRED)
+ find_package(KF6Screen CONFIG REQUIRED)
+ find_package(KWayland CONFIG REQUIRED)
+-find_package(KPipeWire ${PROJECT_DEP_VERSION} REQUIRED)
++# EmberBSD: PipeWire has no NetBSD port yet; the recording quick setting
++# is dropped, everything else builds unchanged.
++find_package(KPipeWire ${PROJECT_DEP_VERSION})
+ 
+ find_package(PkgConfig REQUIRED)
+ 

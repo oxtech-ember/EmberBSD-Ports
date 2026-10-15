@@ -1,0 +1,5 @@
+ncnn is Tencent's compact neural network inference library.
+This shared CPU profile installs the C and C++ APIs and CMake/pkg-config
+metadata. AArch64 uses baseline NEON. Vulkan, runtime ISA dispatch and
+OpenMP are disabled. POSIX synchronization remains enabled.
+The profile does not establish accelerator or physical-board support.

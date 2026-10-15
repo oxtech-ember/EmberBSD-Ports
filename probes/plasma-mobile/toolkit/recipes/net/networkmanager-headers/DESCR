@@ -1,0 +1,3 @@
+NetworkManager public libnm headers with the generated version
+and enum-types headers, plus small linux/ constant shims. Header-
+only support for NetworkManagerQt; the daemon is Linux-only.

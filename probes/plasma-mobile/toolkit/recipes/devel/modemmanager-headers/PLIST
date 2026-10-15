@@ -1,0 +1,9 @@
+@comment $NetBSD$
+include/ModemManager/ModemManager-compat.h
+include/ModemManager/ModemManager-enums.h
+include/ModemManager/ModemManager-errors.h
+include/ModemManager/ModemManager-names.h
+include/ModemManager/ModemManager-tags.h
+include/ModemManager/ModemManager-version.h
+include/ModemManager/ModemManager.h
+lib/pkgconfig/ModemManager.pc

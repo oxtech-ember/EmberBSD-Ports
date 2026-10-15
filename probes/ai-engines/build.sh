@@ -12,6 +12,7 @@ case "$jobs" in ''|0|*[!0-9]*) echo 'JOBS must be positive.' >&2; exit 2 ;; esac
 [ "$jobs" -gt 0 ] 2>/dev/null || { echo 'JOBS must be positive.' >&2; exit 2; }
 recipe=$(CDPATH= cd "$(dirname "$0")" && pwd)
 onnx_recipe=$recipe/../../pkgsrc/local-ai/onnxruntime
+ncnn_recipe=$recipe/../../pkgsrc/local-ai/ncnn
 patch_tool=${PATCH:-gpatch}
 python=${PYTHON:-python3}
 CC=${CC:-gcc}
@@ -63,11 +64,11 @@ run rnnoise-configure ./configure --prefix="$prefix" --enable-shared --disable-s
 run rnnoise-build gmake -j "$jobs"
 run rnnoise-check gmake check
 run rnnoise-install gmake install
+for patch in "$ncnn_recipe"/patches/patch-*; do
+    run "ncnn-$(basename "$patch")" "$patch_tool" -f -N -F 0 -d "$work/src/ncnn-20260526" -p1 < "$patch"
+done
 run ncnn-configure cmake -S "$work/src/ncnn-20260526" -B "$work/ncnn-build" -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" -DNCNN_VERSION=20260526 \
-    -DNCNN_SHARED_LIB=ON -DNCNN_VULKAN=OFF -DNCNN_OPENMP=OFF \
-    -DNCNN_BUILD_TOOLS=OFF -DNCNN_BUILD_EXAMPLES=OFF -DNCNN_BUILD_BENCHMARK=OFF \
-    -DNCNN_BUILD_TESTS=OFF -DNCNN_PYTHON=OFF
+    -C "$ncnn_recipe/features.cmake" -DCMAKE_INSTALL_PREFIX="$prefix"
 run ncnn-build cmake --build "$work/ncnn-build" --parallel "$jobs"
 run ncnn-install cmake --install "$work/ncnn-build"
 run eigen-configure cmake -S "$work/src/eigen-5.0.1" -B "$work/eigen-build" -G Ninja \
@@ -96,9 +97,10 @@ cp "$work/src/silero-vad-6.2.3/src/silero_vad/data/silero_vad.onnx" "$share/mode
 cp "$work/src/silero-vad-6.2.3/tests/data/test.wav" "$share/fixtures/silero-test.wav"
 cp "$recipe/sources.tsv" "$recipe/dependencies.tsv" "$recipe/models.tsv" "$recipe/PROVENANCE.md" "$share/"
 cp "$recipe/LICENSE" "$share/licenses/EmberBSD-probe-LICENSE"
-mkdir -p "$share/patches/onnxruntime"
+mkdir -p "$share/patches/onnxruntime" "$share/patches/ncnn"
 cp "$recipe/patches/rnnoise-upstream-arm-build.patch" "$share/patches/"
 cp "$onnx_recipe"/patches/patch-* "$share/patches/onnxruntime/"
+cp "$ncnn_recipe"/patches/patch-* "$share/patches/ncnn/"
 cp "$work/src/ncnn-20260526/LICENSE.txt" "$share/licenses/ncnn-LICENSE.txt"
 cp "$work/src/rnnoise-0.2/COPYING" "$share/licenses/RNNoise-COPYING"
 cp "$work/src/silero-vad-6.2.3/LICENSE" "$share/licenses/Silero-LICENSE"

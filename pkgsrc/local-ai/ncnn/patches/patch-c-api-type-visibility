@@ -1,0 +1,50 @@
+--- a/src/c_api.h
++++ b/src/c_api.h
+@@ -20,7 +20,11 @@
+ 
+ /* allocator api */
+ typedef struct __ncnn_allocator_t* ncnn_allocator_t;
++#ifdef __cplusplus
+ struct NCNN_EXPORT __ncnn_allocator_t
++#else
++struct __ncnn_allocator_t
++#endif
+ {
+     void* pthis;
+ 
+@@ -194,7 +198,11 @@
+ 
+ /* datareader api */
+ typedef struct __ncnn_datareader_t* ncnn_datareader_t;
++#ifdef __cplusplus
+ struct NCNN_EXPORT __ncnn_datareader_t
++#else
++struct __ncnn_datareader_t
++#endif
+ {
+     void* pthis;
+ 
+@@ -213,7 +221,11 @@
+ 
+ /* modelbin api */
+ typedef struct __ncnn_modelbin_t* ncnn_modelbin_t;
++#ifdef __cplusplus
+ struct NCNN_EXPORT __ncnn_modelbin_t
++#else
++struct __ncnn_modelbin_t
++#endif
+ {
+     void* pthis;
+ 
+@@ -228,7 +240,11 @@
+ 
+ /* layer api */
+ typedef struct __ncnn_layer_t* ncnn_layer_t;
++#ifdef __cplusplus
+ struct NCNN_EXPORT __ncnn_layer_t
++#else
++struct __ncnn_layer_t
++#endif
+ {
+     void* pthis;
+ 
