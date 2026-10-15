@@ -1,5 +1,13 @@
 # AI engine source and patch provenance
 
+The current source profile uses **ONNX Runtime 1.31.0** and the
+[canonical package patches and feature file](../onnxruntime/PROVENANCE.md).
+Its updated runtime archive is pinned in [sources.tsv](sources.tsv).
+The table and local adaptation descriptions below preserve the historical
+**1.30.0** run in [NATIVE.md](NATIVE.md). The old ONNX patch copies are not
+applied by the current builder. The historical 1.30.0 runtime archive SHA256
+is `f6681ecbddf53898adf0cc9e8e9e84657485b84d2eca3c8aa353de6d7dd417ef`.
+
 Checked against official upstream release metadata on **2026-10-07**.
 The immutable archives and SHA256 values are in [sources.tsv](sources.tsv).
 Original licenses, author names and source identifiers are unchanged.
@@ -56,7 +64,7 @@ records the missing header; the patched ARM64 library and 144,000-sample
 installed consumer passed in the EMBER64 VM.
 This is an accepted upstream fix backported unchanged, not a new local fix.
 
-## Local adaptation
+## Historical 1.30.0 local adaptation
 
 [onnxruntime-netbsd-affinity.patch](patches/onnxruntime-netbsd-affinity.patch)
 uses NetBSD's dynamically allocated `cpuset_t` and `pthread_setaffinity_np`

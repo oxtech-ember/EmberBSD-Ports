@@ -1,5 +1,9 @@
 # Native AArch64 acceptance
 
+This is the historical ONNX Runtime **1.30.0** source-probe record.
+The current build uses the [canonical 1.31.0 provider](../onnxruntime/README.md).
+The original measurements and output hashes below remain unchanged.
+
 Validated on **2026-10-07 (UTC+03:00)** in a disposable VM. This is an
 installed C/C++ source-probe result, not a binary distribution or board claim.
 Source versions, licenses, immutable archives and adaptation provenance are

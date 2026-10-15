@@ -14,7 +14,7 @@ static void require(bool ok, const char *what) {
     if (!ok) throw std::runtime_error(what);
 }
 int main() try {
-    require(std::string(OrtGetApiBase()->GetVersionString()) == "1.30.0", "unexpected ONNX Runtime version");
+    require(std::string(OrtGetApiBase()->GetVersionString()) == "1.31.0", "unexpected ONNX Runtime version");
     const auto providers = Ort::GetAvailableProviders();
     require(providers.size() == 1 && providers[0] == "CPUExecutionProvider", "expected only CPU provider");
     Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "ember-onnx");
@@ -56,6 +56,6 @@ int main() try {
         session.Run(Ort::RunOptions{nullptr}, bad_names, &tensor, 1, outputs, 1);
     } catch (const Ort::Exception &) { rejected = true; }
     require(rejected, "unknown input name accepted");
-    std::cout << "PASS ONNX Runtime 1.30.0 CPU: Add/Relu, 100 runs, malformed model, shape and name rejection\n";
+    std::cout << "PASS ONNX Runtime 1.31.0 CPU: Add/Relu, 100 runs, malformed model, shape and name rejection\n";
     return 0;
 } catch (const std::exception &error) { std::cerr << error.what() << '\n'; return 1; }

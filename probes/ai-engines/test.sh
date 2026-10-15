@@ -5,6 +5,14 @@ set -eu
 work=$1
 case "$work" in /*) ;; *) echo 'Use an absolute work path.' >&2; exit 2 ;; esac
 recipe=$(CDPATH= cd "$(dirname "$0")" && pwd)
+CC=${CC:-gcc}
+CXX=${CXX:-g++}
+export CC CXX
+for compiler in "$CC" "$CXX"; do
+    [ "$("$compiler" -dumpfullversion)" = 16.2.0 ] || {
+        echo 'The current profile requires GCC 16.2.0.' >&2; exit 2;
+    }
+done
 prefix=$work/install
 export PKG_CONFIG_PATH="$prefix/lib/pkgconfig:$prefix/share/pkgconfig"
 export LD_LIBRARY_PATH="$prefix/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
