@@ -29,7 +29,7 @@ uname -a > system.txt
 id > user.txt
 /sbin/sysctl kern.boottime > boot.before
 /usr/bin/cksum -a SHA256 /usr/pkg/bin/kwin_wayland /usr/pkg/bin/plasmashell \
-    /usr/pkg/qt6/bin/qdbus session.sh layout.js capture-layout.js check-results.sh > inputs.sha256
+    /usr/pkg/qt6/bin/qdbus session.sh layout.js capture-layout.js check-results.sh capture-pixels > inputs.sha256
 status=0
 /usr/bin/timeout -k 5 240 /usr/bin/env -i \
     PATH=/usr/pkg/qt6/bin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin \

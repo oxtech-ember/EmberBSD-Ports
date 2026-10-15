@@ -44,8 +44,10 @@ main(int argc, char **argv)
 			continue;
 		visible++;
 		for (unsigned int c = 0; c < 3; c++) {
-			if (pixel[c] < low[c]) low[c] = pixel[c];
-			if (pixel[c] > high[c]) high[c] = pixel[c];
+			if (pixel[c] < low[c])
+				low[c] = pixel[c];
+			if (pixel[c] > high[c])
+				high[c] = pixel[c];
 		}
 	}
 	if (visible < 256 ||

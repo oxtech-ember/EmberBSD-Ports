@@ -102,8 +102,10 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
     FileUtils.mkdir_p("#{work}/runtime")
     socket = UNIXServer.new("#{work}/runtime/wayland-0")
     begin
-      FileUtils.cp(["#{source}/check-results.sh", "#{source}/layout.js"], work)
-      File.write("#{work}/timeout", "#!/bin/sh\nshift 3\nexec \"$@\"\n")
+      FileUtils.cp(["#{source}/check-results.sh", "#{source}/layout.js", "#{source}/capture-layout.js"], work)
+      File.write("#{work}/capture-pixels", "#!/bin/sh\ntouch pixel-check-called\nexit #{mode == 'pixels' ? 1 : 0}\n")
+    File.chmod(0o700, "#{work}/capture-pixels")
+    File.write("#{work}/timeout", "#!/bin/sh\nshift 3\nexec \"$@\"\n")
       File.write("#{work}/date", "#!/bin/sh\nif [ -e date-used ]; then echo 100; else touch date-used; echo 0; fi\n")
       child = <<~RUBY
         #!#{RbConfig.ruby}
@@ -159,12 +161,12 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
   end
 # Layout models can exist before their Quick items render. Exercise the real
 # capture loop with a failed first request and a shared startup deadline.
-%w[ready deadline].each do |mode|
+%w[ready deadline pixels].each do |mode|
   work = "#{temp}/capture-#{mode}"
   FileUtils.mkdir_p("#{work}/runtime")
   socket = UNIXServer.new("#{work}/runtime/wayland-0")
   begin
-    FileUtils.cp(["#{source}/check-results.sh", "#{source}/layout.js"], work)
+    FileUtils.cp(["#{source}/check-results.sh", "#{source}/layout.js", "#{source}/capture-layout.js"], work)
     File.write("#{work}/timeout", <<~'SH')
       #!/bin/sh
       duration=$3
@@ -205,7 +207,7 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
       when 'org.kde.PlasmaShell.shell'
         puts 'org.kde.plasma.desktop'
       when 'org.kde.PlasmaShell.evaluateScript'
-        puts 'PASS: default desktop, panel and six applet models on 1280x1024'
+        puts ARGV.fetch(3).include?('capture widget created') ? 'PASS: capture widget created' : 'PASS: default desktop, panel and six applet models on 1280x1024'
       when 'org.kde.PlasmaShell.grabContainmentImage'
         abort 'Unknown screen name' if ARGV[3] == 'Ember-Missing-Output'
         count = File.file?('capture-count') ? File.read('capture-count').to_i + 1 : 1
@@ -235,9 +237,10 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
     abort 'Capture attempts reused an image path' unless
       File.read("#{work}/capture-paths").lines.map(&:strip) == ["#{work}/capture-1.png", "#{work}/capture-2.png"]
     statuses = [1, 2].map { |attempt| File.read("#{work}/capture-#{attempt}.status").to_i }
-    abort 'Capture attempt statuses were lost' unless statuses == [124, mode == 'ready' ? 0 : 124]
+    abort 'Capture attempt statuses were lost' unless statuses == [124, mode == 'deadline' ? 124 : 0]
     abort 'Failed attempt diagnostic was lost' unless
       File.read("#{work}/capture-1-error.log").include?('Quick item is not ready')
+    abort 'Pixel decoder was not called' if mode != 'deadline' && !File.exist?("#{work}/pixel-check-called")
     if mode == 'ready'
       abort 'Accepted capture was not saved' unless File.binread("#{work}/desktop.png") == png_header
     else

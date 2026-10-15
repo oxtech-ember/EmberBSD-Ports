@@ -117,7 +117,7 @@ All added scripts are EmberBSD code with AI assistance.
 ## Decode the capture
 
 Build `capture-pixels.c` with the common cross compiler and target libpng.
-Link `-lpng` and use the target `/usr/pkg/lib` runtime search path.
+Link `-lpng16` and use the target `/usr/pkg/lib` runtime search path.
 Pass this binary as the second argument to `run.sh`.
 The host contract is `capture-pixels-test.rb NEW_OUTPUT`; use `CPPFLAGS`, `CFLAGS`,
 and `LDFLAGS` for the host libpng and optional ASan/UBSan.
