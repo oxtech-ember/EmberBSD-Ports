@@ -92,6 +92,49 @@ module CssVendor
     raise Error, error.message
   end
 
+  # Cargo omits VCS metadata. Restore only these missing files from locked
+  # original crates, then require the unchanged complete source/license audit.
+  def complete_registry_metadata(vendor, cache, packages)
+    restored = []
+    packages.each do |package|
+      name = package.fetch('name') + '-' + package.fetch('version')
+      root = vendor + '/' + name
+      need(File.directory?(root) && !File.symlink?(root), 'Invalid vendor crate directory')
+      actual = paths(root).select { |path| File.file?(path) && path != root + '/.cargo-checksum.json' }.to_h { |path| [path.delete_prefix(root + '/'), Digest::SHA256.file(path).hexdigest] }
+      metadata = JSON.parse(File.read(root + '/.cargo-checksum.json'))
+      need(metadata['package'] == package.fetch('checksum') && metadata['files'] == actual, 'Changed Cargo checksum metadata before restoration')
+      archives = Dir.glob(cache + '/*/' + name + '.crate')
+      need(archives.length == 1 && !File.symlink?(archives.first) && Digest::SHA256.file(archives.first).hexdigest == package.fetch('checksum'), 'Registry archive does not match Cargo.lock')
+      changed = false
+      Zlib::GzipReader.open(archives.first) do |gzip|
+        Gem::Package::TarReader.new(gzip) do |tar|
+          tar.each do |entry|
+            relative = safe_name(entry.full_name.sub(%r{/\z}, ''))
+            need(relative == name || relative.start_with?(name + '/'), 'Registry crate has a foreign root')
+            need(entry.file? || entry.directory?, 'Registry crate contains a special file')
+            next unless entry.file? && %w[.gitignore .gitattributes].include?(File.basename(relative))
+            content = entry.read
+            target = vendor + '/' + relative
+            if File.exist?(target) || File.symlink?(target)
+              need(File.file?(target) && !File.symlink?(target) && File.binread(target) == content, 'Existing registry VCS metadata changed')
+              next
+            end
+            FileUtils.mkdir_p(File.dirname(target))
+            File.open(target, File::WRONLY | File::CREAT | File::EXCL, entry.header.mode & 0111 == 0 ? 0644 : 0755) { |io| io.binmode; io.write(content) }
+            digest = Digest::SHA256.hexdigest(content)
+            metadata['files'][relative.delete_prefix(name + '/')] = digest
+            restored << {'path' => relative, 'sha256' => digest, 'archive_sha256' => package.fetch('checksum')}
+            changed = true
+          end
+        end
+      end
+      File.write(root + '/.cargo-checksum.json', JSON.generate({'files' => metadata.fetch('files').sort.to_h, 'package' => metadata.fetch('package')})) if changed
+    end
+    audit(vendor, cache, packages).merge('restored_registry_metadata' => restored)
+  rescue JSON::ParserError, Errno::ENOENT => error
+    raise Error, error.message
+  end
+
   def pack(vendor, output)
     old_epoch = ENV['SOURCE_DATE_EPOCH']
     need(File.directory?(vendor) && !File.symlink?(vendor), 'Invalid vendor root')
@@ -178,7 +221,7 @@ module CssVendor
       end
     end
     need(File.read(source_root + '/rust/Cargo.lock') == lock, 'Cargo changed the upstream lock')
-    result = audit(vendor, cargo_home + '/registry/cache', packages)
+    result = complete_registry_metadata(vendor, cargo_home + '/registry/cache', packages)
     archive = work + '/' + ARCHIVE
     pack(vendor, archive)
     receipt = result.merge('scope' => 'host-derived-cssparser-vendor-r1', 'source_sha256' => SOURCE_SHA, 'source_metadata' => source_metadata, 'lock_sha256' => LOCK_SHA, 'closure_sha256' => Digest::SHA256.hexdigest(manifest), 'helper_sha256' => Digest::SHA256.file(__FILE__).hexdigest, 'rustc' => rust, 'cargo' => cargo_version.strip, 'ruby' => RUBY_DESCRIPTION, 'rubygems' => Gem::VERSION, 'archive' => ARCHIVE, 'archive_sha256' => Digest::SHA256.file(archive).hexdigest, 'archive_size' => File.size(archive))

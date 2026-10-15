@@ -40,7 +40,7 @@ Dir.mktmpdir('ember-css-vendor-', '/tmp') do |work|
   crate = vendor + '/fixture-1.0.0'
   cache = work + '/cache/index'
   FileUtils.mkdir_p([crate + '/src', cache])
-  files = {'LICENSE-MIT' => "MIT license fixture\n", 'src/lib.rs' => "pub fn fixture() {}\n"}
+  files = {'LICENSE-MIT' => "MIT license fixture\n", 'src/lib.rs' => "pub fn fixture() {}\n", '.gitignore' => "/target\n", 'src/.gitattributes' => "*.rs text\n"}
   files.each { |name, data| File.write(crate + '/' + name, data) }
   archive = cache + '/fixture-1.0.0.crate'
   Zlib::GzipWriter.open(archive) do |gzip|
@@ -58,6 +58,35 @@ Dir.mktmpdir('ember-css-vendor-', '/tmp') do |work|
   File.write(crate + '/.cargo-checksum.json', JSON.generate(metadata))
   result = CssVendor.audit(vendor, work + '/cache', packages)
   abort 'FAIL: original crate license not retained' unless result.fetch('license_files') == 1
+  vcs_paths = %w[.gitignore src/.gitattributes]
+  vcs_paths.each { |name| File.unlink(crate + '/' + name); metadata['files'].delete(name) }
+  File.write(crate + '/.cargo-checksum.json', JSON.generate(metadata))
+  expect_failure('Cargo VCS omissions in final full archive audit') { CssVendor.audit(vendor, work + '/cache', packages) }
+  result = CssVendor.complete_registry_metadata(vendor, work + '/cache', packages)
+  restored = result.fetch('restored_registry_metadata')
+  abort 'FAIL: missing original VCS metadata not restored' unless restored.map { |item| item.fetch('path') }.sort == vcs_paths.map { |name| 'fixture-1.0.0/' + name }.sort && vcs_paths.all? { |name| File.binread(crate + '/' + name) == files.fetch(name) }
+  abort 'FAIL: restoration provenance changed' unless restored.all? { |item| item.fetch('archive_sha256') == checksum && item.fetch('sha256') == sums.fetch(item.fetch('path').delete_prefix('fixture-1.0.0/')) }
+  before = File.binread(crate + '/.cargo-checksum.json')
+  abort 'FAIL: restoration not idempotent' unless CssVendor.complete_registry_metadata(vendor, work + '/cache', packages).fetch('restored_registry_metadata').empty? && File.binread(crate + '/.cargo-checksum.json') == before
+  metadata = JSON.parse(before)
+  File.unlink(crate + '/src/lib.rs')
+  metadata['files'].delete('src/lib.rs')
+  File.write(crate + '/.cargo-checksum.json', JSON.generate(metadata))
+  expect_failure('non-VCS missing original source') { CssVendor.complete_registry_metadata(vendor, work + '/cache', packages) }
+  File.write(crate + '/src/lib.rs', files.fetch('src/lib.rs'))
+  metadata['files']['src/lib.rs'] = sums.fetch('src/lib.rs')
+  File.write(crate + '/.gitignore', 'changed')
+  metadata['files']['.gitignore'] = Digest::SHA256.file(crate + '/.gitignore').hexdigest
+  File.write(crate + '/.cargo-checksum.json', JSON.generate(metadata))
+  expect_failure('changed existing VCS metadata') { CssVendor.complete_registry_metadata(vendor, work + '/cache', packages) }
+  abort 'FAIL: changed existing file was overwritten' unless File.binread(crate + '/.gitignore') == 'changed'
+  File.write(crate + '/.gitignore', files.fetch('.gitignore'))
+  metadata['files']['.gitignore'] = sums.fetch('.gitignore')
+  metadata['files']['src/lib.rs'] = '0' * 64
+  File.write(crate + '/.cargo-checksum.json', JSON.generate(metadata))
+  expect_failure('changed Cargo checksum metadata') { CssVendor.complete_registry_metadata(vendor, work + '/cache', packages) }
+  metadata['files']['src/lib.rs'] = sums.fetch('src/lib.rs')
+  File.write(crate + '/.cargo-checksum.json', JSON.generate(metadata))
   ENV['SOURCE_DATE_EPOCH'] = '1234'
   CssVendor.pack(vendor, work + '/first.tar')
   abort 'FAIL: caller epoch changed' unless ENV['SOURCE_DATE_EPOCH'] == '1234'
@@ -100,11 +129,22 @@ Dir.mktmpdir('ember-css-vendor-', '/tmp') do |work|
   metadata['files']['LICENSE-MIT'] = Digest::SHA256.file(crate + '/LICENSE-MIT').hexdigest
   File.write(crate + '/.cargo-checksum.json', JSON.generate(metadata))
   expect_failure('license changed together with its local checksum') { CssVendor.audit(vendor, work + '/cache', packages) }
+  expect_failure('changed source/license during metadata completion') { CssVendor.complete_registry_metadata(vendor, work + '/cache', packages) }
   File.write(crate + '/LICENSE-MIT', files.fetch('LICENSE-MIT'))
   metadata['files']['LICENSE-MIT'] = sums.fetch('LICENSE-MIT')
   File.write(crate + '/.cargo-checksum.json', JSON.generate(metadata))
   File.open(archive, 'ab') { |io| io.write('corrupt') }
   expect_failure('crate archive differs from lock checksum') { CssVendor.audit(vendor, work + '/cache', packages) }
+  expect_failure('unchecked archive during metadata restoration') { CssVendor.complete_registry_metadata(vendor, work + '/cache', packages) }
+  Zlib::GzipWriter.open(archive) do |gzip|
+    Gem::Package::TarWriter.new(gzip) do |tar|
+      tar.add_file_simple('fixture-1.0.0/../.gitignore', 0644, 6) { |io| io.write('unsafe') }
+    end
+  end
+  evil_sha = Digest::SHA256.file(archive).hexdigest
+  metadata['package'] = evil_sha
+  File.write(crate + '/.cargo-checksum.json', JSON.generate(metadata))
+  expect_failure('malicious locked archive path') { CssVendor.complete_registry_metadata(vendor, work + '/cache', packages.map { |p| p.merge('checksum' => evil_sha) }) }
   lock = "version = 4\n[[package]]\nname = \"fixture\"\nversion = \"1.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"#{checksum}\"\n"
   abort 'FAIL: original lock closure not parsed' unless CssVendor.lock_packages(lock) == packages
   expect_failure('unchecksummed registry crate') { CssVendor.lock_packages(lock.sub(/^checksum.*\n/, '')) }
@@ -163,4 +203,5 @@ if (archive = ENV['CSSPARSER_UPSTREAM_ARCHIVE'])
   puts 'PASS: actual source CLI extraction reaches controlled Cargo boundary (fixture only; no native Cargo acceptance)'
 end
 puts 'PASS: exact pinned global PAX comment retained; other PAX types, names and directives rejected'
+puts 'PASS: only missing original VCS metadata restored with exact provenance; unsafe, changed or unchecked inputs fail'
 puts 'PASS: locked crate checksums, complete vendor files/licenses and deterministic readable USTAR'

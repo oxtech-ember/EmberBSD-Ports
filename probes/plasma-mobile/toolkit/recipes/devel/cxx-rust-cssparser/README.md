@@ -126,6 +126,12 @@ manifest. The helper checks every cached `.crate` against Cargo.lock and
 requires the vendor file set and bytes to match both that original archive
 and Cargo's `.cargo-checksum.json`. Original license/notice files are retained
 and counted in the receipt. Symlinks, special files and extra crates fail.
+Cargo omits `.gitignore` and `.gitattributes`, including nested copies.
+The helper restores only missing files with those exact basenames from each
+already checksum-verified original `.crate`. It records each restored path,
+file hash and archive hash, and updates the local Cargo checksum map.
+Existing changed files are rejected, not replaced. The final complete archive,
+file-byte, license and checksum audit remains mandatory without omissions.
 
 The result is plain USTAR, using the standard RubyGems writer with
 `SOURCE_DATE_EPOCH=0`, sorted names, uid/gid zero, `wheel` owner/group and
