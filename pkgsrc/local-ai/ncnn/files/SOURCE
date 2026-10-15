@@ -1,0 +1,13 @@
+ncnn 20260526, published 2026-05-26.
+Upstream: https://github.com/Tencent/ncnn
+Tag: https://github.com/Tencent/ncnn/releases/tag/20260526
+Commit: e54f7b1f88434e1d844ea0551b880a1cfb079ce1
+Archive: https://codeload.github.com/Tencent/ncnn/tar.gz/refs/tags/20260526
+SHA256: da1ade826bc22858a9fb87ae052789bbd614d042b3ec2c22e6544ca83db6bc04
+Copyright: Tencent and the contributors named in LICENSE.txt and the source.
+License: BSD-3-Clause and the original third-party notices in LICENSE.txt.
+EmberBSD recipe and adaptations are AI-assisted. Upstream acceptance is not claimed.
+Profile: shared CPU C/C++ API, baseline NEON on AArch64, POSIX synchronization.
+OpenMP, Vulkan, runtime ISA dispatch, tools, benchmarks and Python are disabled.
+Inference uses one thread; synchronization is not a parallel inference claim.
+The upstream Release optimization flags remain enabled.

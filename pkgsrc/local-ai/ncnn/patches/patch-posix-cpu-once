@@ -1,0 +1,25 @@
+--- a/src/cpu.cpp
++++ b/src/cpu.cpp
+@@ -2259,6 +2259,14 @@
+ #endif // defined __ANDROID__ || defined __linux__
+ }
+ 
++#if NCNN_THREADS && !defined(_WIN32)
++static pthread_once_t g_cpu_info_once = PTHREAD_ONCE_INIT;
++
++static inline void try_initialize_global_cpu_info()
++{
++    pthread_once(&g_cpu_info_once, initialize_global_cpu_info);
++}
++#else
+ static int g_cpu_info_initialized = 0;
+ 
+ static inline void try_initialize_global_cpu_info()
+@@ -2269,6 +2277,7 @@
+         g_cpu_info_initialized = 1;
+     }
+ }
++#endif
+ 
+ namespace ncnn {
+ 

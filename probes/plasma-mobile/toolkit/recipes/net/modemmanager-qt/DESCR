@@ -1,0 +1,3 @@
+Qt bindings for the ModemManager DBus interface. A DBus
+client library; builds against the interface headers without
+the Linux-only daemon.

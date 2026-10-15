@@ -26,6 +26,8 @@ is illustrative. The command performs these checks before publishing output:
 - Require each `PROVIDES` path to exist in the package manifest.
 - Reject `REQUIRES` paths supplied by the same package. `pkg_add` checks
   requirements before extraction, also when replacing an installed version.
+- Require each `/usr/pkg/` requirement to name payload in the selected set.
+  A packaged SONAME alias is accepted. A different major version is not inferred.
 - Stream every regular file through MD5 and compare it with the pkgtools
   manifest. Match symbolic link targets. Resolve hard links to verified data.
 - Reject missing, duplicate and unlisted payload members or invalid paths.
@@ -56,7 +58,7 @@ BSDTAR=/absolute/native/bsdtar \
     ruby probes/plasma-mobile/toolkit/tests/package-set.rb /absolute/new-tests
 ```
 
-The 17 cases include PAX paths and link targets longer than the ustar limits,
+The 18 cases include PAX paths and link targets longer than the ustar limits,
 hard links, dependency order and copied SHA256. Negative cases cover a stale
 manifest, wrong archive architecture or OS version, modified payload bytes,
 changed symbolic links, missing or unlisted payload, changed metadata, missing
@@ -65,11 +67,20 @@ Duplicate roots are rejected. An existing completed output is not replaced.
 Matching database and archive metadata must still reject a missing provider
 or a self-required regular file or symbolic link. Valid provider paths and
 external requirements remain accepted. Failed audits leave no final set.
+The valid fixture includes an explicit `.so.8` alias and a base `/usr/lib/`
+requirement. A consumer that requires `.so.7` fails when its declared provider
+packages only `.so.8`, even if both archive and database metadata agree.
 
 The implementation reads PAX records by their byte lengths. Libarchive converts
 supported input compression to a stream; no package payload is extracted.
 Sparse members, non-file special devices, metadata above 16 MiB and PAX size
 overrides not represented by the tar header are explicitly rejected.
+
+The package-managed requirement gate correlates metadata with exact manifest
+paths in the selected closure. It does not inspect ELF `DT_NEEDED`, infer ABI
+compatibility, resolve arbitrary filesystem aliases, or validate base-system
+requirements outside `/usr/pkg/`. Those base paths require a separately verified
+matching EmberBSD sysroot and target loader checks.
 
 This is a package integrity and closure check. It does not prove that target
 ELF objects load, that ABI metadata is truthful, or that Plasma renders.

@@ -258,9 +258,10 @@ runtime behavior are validated.
   Plasma Desktop shell remain unaccepted. The current xdg-user-dirs 0.20
   cross package passes private-profile checks on CM5.
   [Desktop package preparation](probes/plasma-mobile/toolkit/cross/desktop-package-set.md)
-  Its auditor rejects missing library providers and package self-dependencies before transfer.
   now includes the Activities service, current Xwayland/libei/basu providers,
   cross XKB paths and repaired native QtDBus generators for KWin's property XML.
+  Its auditor rejects stale library providers, self-dependencies and package-managed
+  ABI requirements missing from the selected payload before transfer.
   Package-set and session-runner host checks pass. Full-session execution on
   CM5 remains a separate gate, including normal startup and logout.
   [Current desktop providers](probes/plasma-mobile/toolkit/cross/desktop-providers.md)
@@ -318,11 +319,27 @@ runtime behavior are validated.
   [Whisper record](profiles/ai-cpu/cross/whisper-validation.md) for exact words,
   JSON timestamps, error contracts and memory checks. Historical native ARM64
   tests have separate validation records.
-- [CPU inference and audio](probes/ai-engines/README.md): ONNX Runtime 1.30.0,
-  ncnn 20260526, RNNoise 0.2 and Silero VAD 6.2.3 pass seven native installed
-  consumer checks on AArch64. They cover numerical inference, stream state,
-  speech/silence and invalid inputs; explicit ORT worker affinity is checked
-  separately. These are source probes, without microphone or accelerator validation.
+- [ONNX Runtime CPU API](probes/onnxruntime/README.md): the canonical 1.31.0
+  recipe provides a shared C/C++ CPU interface, GCC16 cross-build helpers and
+  the common Eigen 5.0.1 provider. Internal build dependencies remain private.
+  Installed C/C++ inference, Silero compatibility, 76 selected upstream tests
+  and package removal/reinstallation pass in EmberBSD AArch64 QEMU.
+  [Validation](probes/onnxruntime/VALIDATION.md) separates installed API checks,
+  native memory analysis and EmberBSD AArch64 target execution.
+- [ncnn CPU inference](probes/ncnn/README.md): the canonical 20260526 shared
+  C/C++ SDK cross-builds with GCC16. Installed CNN inference has independent
+  scalar answers, eight unchanged upstream programs, source regressions and
+  package removal/reinstallation in EmberBSD AArch64 QEMU. The
+  [validation record](probes/ncnn/VALIDATION.md) distinguishes target execution,
+  native memory checks, ABI controls and source-analysis limits.
+- [CPU inference and audio](probes/ai-engines/README.md): ncnn 20260526,
+  RNNoise 0.2 and Silero VAD 6.2.3 use installed C/C++ consumers. The current
+  source profile shares the canonical ONNX Runtime 1.31.0 and ncnn profiles
+  and patches. The combined native build has not been rerun after this update.
+  Historical ONNX Runtime 1.30.0 measurements cover seven native AArch64
+  contracts for inference, stream state, speech/silence and invalid inputs.
+  Worker affinity has a separate historical check. Microphones and accelerators
+  remain unverified.
 - [LiteRT and LiteRT-LM](probes/litert/README.md): LiteRT 2.2.0 provides a
   shared C/C++ CPU runtime for `.tflite` models; LiteRT-LM 0.18.0 adds a
   SentencePiece language-model engine. The macOS-to-AArch64 source profile

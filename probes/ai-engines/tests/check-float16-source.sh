@@ -3,7 +3,7 @@
 set -eu
 [ "$#" = 1 ] || { echo 'Usage: check-float16-source.sh WORK' >&2; exit 2; }
 work=$1
-source=$work/src/onnxruntime-1.30.0
+source=$work/src/onnxruntime-1.31.0
 deps=$work/onnx-build/_deps
 tests=$(CDPATH= cd "$(dirname "$0")" && pwd)
 "${CXX:-c++}" -std=c++20 -Wall -Wextra -Werror \

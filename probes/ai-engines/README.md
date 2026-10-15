@@ -1,19 +1,25 @@
 # Native CPU inference and audio probes
 
-This source probe prepares **ONNX Runtime 1.30.0**, **ncnn 20260526**,
+This source probe prepares **ONNX Runtime 1.31.0**, **ncnn 20260526**,
 **RNNoise 0.2** and **Silero VAD 6.2.3** for EmberBSD/NetBSD AArch64.
 It supplies installed C/C++ consumer checks, without Python application code,
 external inference services or an accelerator dependency.
 
-Native builds and all seven installed consumer contracts passed in an
-AArch64 EMBER64 VM. The optional two-CPU affinity checks also passed.
-See [NATIVE.md](NATIVE.md) for configuration, measurements and output hashes.
+The current build uses the [canonical ONNX Runtime port](../onnxruntime/README.md)
+and [canonical ncnn port](../ncnn/README.md), including their feature profiles
+and patches. Their separate GCC16 cross packages pass installed CPU acceptance
+in AArch64 QEMU. The combined native script has not been rerun after this update.
+Historical native builds with
+ONNX Runtime 1.30.0 passed all seven installed consumer contracts and the
+optional two-CPU affinity checks. [NATIVE.md](NATIVE.md) retains that run's
+exact versions, configuration, measurements and output hashes.
 This remains an experimental source profile, not a binary package or a board
 support claim.
 
 ## Sources and profile
 
-Official upstream release metadata was checked on 2026-10-07. The release
+The ONNX Runtime source pin was updated to 1.31.0 on 2026-10-15. The other
+components retain the release metadata checked on 2026-10-07. The release
 URLs, immutable revisions, licenses and local patches are described in
 [PROVENANCE.md](PROVENANCE.md). [sources.tsv](sources.tsv) pins source archives;
 [dependencies.tsv](dependencies.tsv) pins ONNX Runtime's internal build inputs.
@@ -37,8 +43,10 @@ are preserved alongside the installation.
 The RNNoise release needs an unchanged upstream ARM build fix; its author,
 commit and patch hash are retained in the provenance record.
 
-ncnn builds its installed C/C++ API with CPU operators and threading, without
-Vulkan, OpenMP, converters, Python bindings or examples. RNNoise uses its
+ncnn builds its installed C/C++ API with baseline CPU operators and POSIX
+synchronization. Its operator loops are serial with OpenMP disabled.
+Vulkan, runtime ISA dispatch, converters, Python bindings and examples are off.
+RNNoise uses its
 release's embedded weights, mono 48 kHz audio and 480-sample frames. Silero
 uses the pinned standard ONNX model with 16 kHz PCM, 512-sample frames,
 64 samples of preceding context and explicit recurrent state. Its inference
@@ -46,7 +54,7 @@ runs through the same ONNX Runtime library.
 
 ## Build and run
 
-Requirements: native C/C++ compiler supporting C++20, CMake, Ninja, GNU make,
+Requirements: native GCC 16.2.0 C/C++ compilers, CMake, Ninja, GNU make,
 GNU patch, curl, pkg-config, and Python 3.10 or newer. ONNX Runtime's upstream
 build generators require Python even though Python bindings are disabled.
 No project-owned helper uses Python. Model training is not part of this build.
@@ -59,13 +67,14 @@ compiler reached about 2.6 GiB RSS. The measured work tree used 1.73 GiB,
 including source archives; allow at least 4 GiB of free disk space for headroom.
 
 ```sh
-export PATH=/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=/usr/pkg/gcc16/bin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
+export CC=/usr/pkg/gcc16/bin/gcc CXX=/usr/pkg/gcc16/bin/g++
 work=/var/tmp/ember-ai-engines
 sh probes/ai-engines/build.sh "$work"
 sh probes/ai-engines/test.sh "$work"
 ```
 
-`PYTHON=python3.13` and `PATCH=gpatch` are the defaults. Override these for the
+`PYTHON=python3` and `PATCH=gpatch` are the defaults. Override these for the
 installed tool names. An optional second build argument names a source cache
 containing every archive in both manifests. Prepare it on another host with:
 

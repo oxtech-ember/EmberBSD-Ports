@@ -1,0 +1,3 @@
+ModemManager DBus interface constants as C headers, installed with
+the upstream generated names header. Header-only consumer support
+for ModemManagerQt; the ModemManager daemon itself is Linux-only.

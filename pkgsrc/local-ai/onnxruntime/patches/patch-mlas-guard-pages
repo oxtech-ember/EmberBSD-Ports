@@ -1,0 +1,26 @@
+--- a/onnxruntime/test/mlas/unittest/test_util.h
++++ b/onnxruntime/test/mlas/unittest/test_util.h
+@@ -73,13 +73,20 @@
+ 
+ #if defined(_WIN32)
+       _BaseBuffer = VirtualAlloc(NULL, _BaseBufferSize, MEM_RESERVE, PAGE_NOACCESS);
++      if (_BaseBuffer == nullptr) {
++        abort();
++      }
+ #else
+-      _BaseBuffer = mmap(0, _BaseBufferSize, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
++      int AllocationProtection = PROT_NONE;
++#if defined(__NetBSD__)
++      // Keep pages inaccessible, but permit the later writable commit under PaX.
++      AllocationProtection |= PROT_MPROTECT(PROT_READ | PROT_WRITE);
+ #endif
+-
+-      if (_BaseBuffer == nullptr) {
++      _BaseBuffer = mmap(0, _BaseBufferSize, AllocationProtection, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
++      if (_BaseBuffer == MAP_FAILED) {
+         abort();
+       }
++#endif
+ 
+       //
+       // Commit the number of bytes for the allocation leaving the upper

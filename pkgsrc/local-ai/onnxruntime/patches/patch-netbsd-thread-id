@@ -1,0 +1,22 @@
+--- a/onnxruntime/core/common/logging/logging.cc
++++ b/onnxruntime/core/common/logging/logging.cc
+@@ -23,6 +23,10 @@
+ #endif
+ #endif
+ 
++#if defined(__NetBSD__)
++#include <lwp.h>
++#endif
++
+ #if __FreeBSD__
+ #include <sys/thr.h>  // Use thr_self() syscall under FreeBSD to get thread id
+ #include "logging.h"
+@@ -275,6 +279,8 @@
+   long tid;
+   thr_self(&tid);
+   return static_cast<unsigned int>(tid);
++#elif defined(__NetBSD__)
++  return static_cast<unsigned int>(_lwp_self());
+ #elif defined(__wasm__) || defined(_AIX)
+   return static_cast<unsigned int>(pthread_self());
+ #else
