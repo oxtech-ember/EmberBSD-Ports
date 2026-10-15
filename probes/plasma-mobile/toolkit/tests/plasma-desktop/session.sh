@@ -66,6 +66,25 @@ while :; do
     }
     sleep 1
 done
+# A bare Folder View can produce a valid fully transparent PNG. Add visible
+# content to this private test containment before checking decoded pixels.
+while :; do
+    remaining=$((deadline - $(date +%s)))
+    [ "$remaining" -gt 0 ] || {
+        echo 'FAIL: capture widget did not become ready before the startup deadline' >&2
+        exit 1
+    }
+    kill -0 "$plasma_pid" 2>/dev/null || exit 1
+    widget_timeout=$remaining
+    [ "$widget_timeout" -le 5 ] || widget_timeout=5
+    if /usr/bin/timeout -k 2 "$widget_timeout" /usr/pkg/qt6/bin/qdbus \
+        org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
+        "$(cat capture-layout.js)" > capture-layout.txt 2> capture-layout-error.log &&
+        grep -qx 'PASS: capture widget created' capture-layout.txt; then
+        break
+    fi
+    sleep 1
+done
 # This internal API must reject an unknown connector; it must not save a file.
 if query org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.grabContainmentImage \
         Ember-Missing-Output 320 256 "$PWD/missing.png" > missing-output.log 2>&1; then
@@ -105,6 +124,9 @@ while :; do
         capture_check_status=0
         /bin/sh ./check-results.sh png "$capture_prefix.png" \
             > "$capture_prefix-check.log" 2>&1 || capture_check_status=$?
+        if [ "$capture_check_status" -eq 0 ]; then
+            ./capture-pixels "$capture_prefix.png" >> "$capture_prefix-check.log" 2>&1 || capture_check_status=$?
+        fi
     else
         echo 'FAIL: capture request did not return true successfully' > "$capture_prefix-check.log"
     fi
