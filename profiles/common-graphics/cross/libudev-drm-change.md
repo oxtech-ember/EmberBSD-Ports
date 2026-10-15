@@ -22,7 +22,7 @@ The OS DRM producer publishes these three strings through `devmon_insert_vec`:
 | `parent` | The real autoconfiguration device name |
 
 The producer must retain a live registered device with a primary minor.
-It runs in process context after detection, without mode-setting locks.
+It runs in process context after detection and makes no mode-setting callbacks.
 The event requests a fresh KMS state query. It does not remove the GPU.
 Do not substitute a render minor or manufacture an attach/remove pair.
 
