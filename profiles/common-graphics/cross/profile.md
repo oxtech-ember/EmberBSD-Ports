@@ -106,6 +106,22 @@ acceptance does not establish Vulkan or hardware acceleration.
 
 ## Source-causal checks
 
+The profile validates the final pkgsrc target when `PKG_FAIL_REASON` expands.
+`MAKECONF` runs before `bsd.prefs.mk` replaces the host `MACHINE_ARCH`.
+An early comparison can reject amd64 on an AArch64 build host.
+The deferred checks still reject unsupported platforms and mismatched targets.
+
+On an AArch64 Darwin host, test this phase with a prepared amd64 MAKECONF:
+
+```sh
+BMAKE=/absolute/host/bin/bmake ruby ../tests/cross-makeconf-phase.rb \
+    /absolute/prepared-pkgsrc /absolute/amd64-cross.mk.conf /absolute/new-phase-work
+```
+
+This reads a real pkgconf recipe and exercises pkgsrc's normal failure gate.
+It does not build or execute target packages.
+The AArch64 case checks target metadata; it does not supply missing ARM inputs.
+
 Use real prepared recipes and existing cross tools; these checks build no
 package or dependency:
 
