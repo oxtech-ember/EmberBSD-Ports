@@ -41,6 +41,12 @@ FileUtils.cp_r(work+'/baseline',work+'/patched')
 patches = ['devel/kf6-kcoreaddons/patches/patch-src_lib_io_kdirwatch.cpp',
            'x11/plasma6-plasma-workspace/patches/patch-startkde_waitforname_argc']
 patches.each_with_index do |patch, index|
+  path = File.join(recipes, patch)
+  distinfo = File.read(File.expand_path('../distinfo', File.dirname(path)))
+  name = File.basename(path)
+  expected = distinfo[/^SHA1 \(#{Regexp.escape(name)}\) = (\h+)$/, 1]
+  canonical = File.readlines(path).reject { |line| line.match?(/\$NetBSD.*/) }.join
+  abort "Patch hash mismatch: #{name}" unless expected && Digest::SHA1.hexdigest(canonical) == expected
   run(['patch','-p0','-i',File.join(recipes,patch)],work+"/patch-#{index}.log",chdir:work+'/patched')
 end
 %w[baseline patched].each do |variant|
