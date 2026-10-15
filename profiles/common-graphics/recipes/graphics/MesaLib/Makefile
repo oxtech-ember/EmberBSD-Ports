@@ -43,6 +43,7 @@ PLIST_VARS+= intel v3d
 .if ${MACHINE_ARCH} == "x86_64"
 MESON_ARGS+=	-Dgallium-drivers=iris,virgl,softpipe,llvmpipe,zink
 PLIST.intel=	yes
+_EMBERBSD_MESA_GENERATOR_PROFILES+= intel
 _EMBERBSD_MESA_LLVM_TRIPLE=	x86_64-unknown-netbsd
 BUILDLINK_API_DEPENDS.libdrm+=	libdrm>=2.4.134nb3
 .else
@@ -57,11 +58,19 @@ MESON_ARGS+=	-Dllvm=enabled -Dshared-llvm=enabled -Dllvm-orcjit=true
 MESON_ARGS+=	-Dvulkan-layers= -Dtools=
 .if !empty(PKG_OPTIONS:Mpowervr)
 MESON_ARGS+=	-Dvulkan-drivers=imagination -Dimagination-srv=false
-MESON_ARGS+=	-Dmesa-clc=system -Dprecomp-compiler=system
+_EMBERBSD_MESA_GENERATOR_PROFILES+= powervr
 MESON_ARGS+=	-Dimagination-uscgen-devices= -Dvulkan-manifest-per-architecture=false
-.include "mesa-generators.mk"
 .else
 MESON_ARGS+=	-Dvulkan-drivers=
+.endif
+.if !empty(_EMBERBSD_MESA_GENERATOR_PROFILES)
+# Iris and PowerVR compile shaders on the build host with the same sealed tools.
+MESON_ARGS+= -Dmesa-clc=system -Dprecomp-compiler=system
+_EMBERBSD_MESA_GENERATOR_NAMES= mesa_clc vtn_bindgen2
+.if !empty(_EMBERBSD_MESA_GENERATOR_PROFILES:Mpowervr)
+_EMBERBSD_MESA_GENERATOR_NAMES+= pco_clc
+.endif
+.include "mesa-generators.mk"
 .endif
 MESON_ARGS+=	-Dgallium-va=disabled -Dgallium-mediafoundation=disabled
 MESON_ARGS+=	-Dgallium-rusticl=false -Dteflon=false -Dperfetto=false

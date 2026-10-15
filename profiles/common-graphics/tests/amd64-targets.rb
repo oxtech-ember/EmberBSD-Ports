@@ -66,7 +66,7 @@ Dir.mktmpdir('ember-graphics-amd64-') do |work|
   arm = query.call
   check('AArch64 default retains V3D and no Intel module') { arm['PKG_FAIL_REASON'].empty? && arm['MESON_ARGS'].include?('-Dgallium-drivers=v3d,virgl,softpipe,llvmpipe,zink') && !arm['MESON_ARGS'].include?('iris') }
   amd = query.call('MACHINE_ARCH=x86_64')
-  check('amd64 Mesa parses with Iris, VirGL and llvmpipe') { amd['PKG_FAIL_REASON'].empty? && amd['MESON_ARGS'].include?('-Dgallium-drivers=iris,virgl,softpipe,llvmpipe,zink') && amd['_EMBERBSD_MESA_LLVM_TRIPLE'] == 'x86_64-unknown-netbsd' }
+  check('amd64 Mesa parses with Iris, VirGL and llvmpipe') { amd['PKG_FAIL_REASON'].empty? && amd['MESON_ARGS'].include?('-Dgallium-drivers=iris,virgl,softpipe,llvmpipe,zink') && amd['_EMBERBSD_MESA_LLVM_TRIPLE'] == 'x86_64-unknown-netbsd' && amd['MESON_ARGS'].include?('-Dmesa-clc=system') && amd['MESON_ARGS'].include?('-Dprecomp-compiler=system') }
   check('Mesa platform selection is exactly the two NetBSD11 targets') { amd['ONLY_FOR_PLATFORM'].split.sort == %w[NetBSD-11.*-aarch64 NetBSD-11.*-x86_64] }
   mixed = query.call('MACHINE_ARCH=x86_64', 'CROSS_MACHINE_ARCH=aarch64')
   check('mixed profile target is rejected') { !mixed['PKG_FAIL_REASON'].empty? }
