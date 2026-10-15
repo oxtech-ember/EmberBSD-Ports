@@ -37,7 +37,8 @@ for patch_file in "$recipe/patches/"patch-*; do
     name=$(basename "$patch_file")
     expected=$(awk -v name="($name)" '$1 == "SHA1" && $2 == name { print $4 }' "$recipe/distinfo")
     actual=$(sed '/[$]NetBSD.*/d' "$patch_file" | sha1sum | awk '{ print $1 }')
-    test -n "$expected" && test "$expected" = "$actual"
+    test -n "$expected" || { echo "Missing patch checksum: $name" >&2; exit 1; }
+    test "$expected" = "$actual" || { echo "Patch checksum mismatch: $name" >&2; exit 1; }
     patch_count=$((patch_count + 1))
 done
 test "$patch_count" = "$(awk '$1 == "SHA1" && $2 ~ /^\(patch-/ { count++ } END { print count + 0 }' "$recipe/distinfo")"

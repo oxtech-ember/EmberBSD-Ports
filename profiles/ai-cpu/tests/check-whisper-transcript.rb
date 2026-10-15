@@ -2,8 +2,9 @@
 # Origin: EmberBSD (AI-assisted). Host validation of exported Whisper JSON.
 require 'json'
 
-abort 'Usage: check-whisper-transcript.rb PREFIX MODEL_PATH JFK_WAV' unless ARGV.length == 3
-prefix, model, wav = ARGV
+abort 'Usage: check-whisper-transcript.rb PREFIX MODEL_PATH JFK_WAV [TXT_REFERENCE]' unless (3..4).cover?(ARGV.length)
+prefix, model, wav, reference = ARGV
+reference ||= "#{prefix}.txt"
 expected = 'and so my fellow americans ask not what your country can do for you ask what you can do for your country'
 normalize = ->(text) { text.downcase.gsub(/[^a-z]+/, ' ').strip }
 wave = File.binread(wav)
@@ -29,7 +30,7 @@ segments = document.fetch('transcription')
 abort 'Empty transcription' unless segments.is_a?(Array) && !segments.empty?
 text = segments.map { |segment| segment.fetch('text') }.join(' ')
 abort 'JSON words differ from independent reference' unless normalize.call(text) == expected
-abort 'TXT words differ from reference' unless normalize.call(File.read("#{prefix}.txt")) == expected
+abort 'TXT words differ from reference' unless normalize.call(File.read(reference)) == expected
 previous = 0
 segments.each do |segment|
   from, to = segment.fetch('offsets').values_at('from', 'to')
