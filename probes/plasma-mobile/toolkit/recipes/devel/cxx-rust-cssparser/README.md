@@ -167,7 +167,57 @@ with an empty private Cargo home. Its selected graph contains 52 registry
 packages plus the local root. The full source vendor closure remains 61.
 This does not compile the parser or accept a target package/runtime. The
 application cross build, target dependency closure and binary-package notice
-installation still require their own checks.
+acceptance still require their own checks.
+
+## Installed notices and license metadata
+
+The recipe's normal `post-install` target installs all 103 original registry
+license and notice files under `share/licenses/cxx-rust-cssparser/vendor`.
+This covers all 61 source crates, including crates outside the filtered
+amd64 graph. It is a source notice superset, not a list of linked objects.
+The package also retains all five original project license texts,
+`REUSE.toml`, `Cargo.lock`, the derivation receipt and the notice hash manifest.
+Normal PLIST entries own every installed file.
+
+`files/notices.sha256` pins every original notice path and SHA256.
+`files/install-notices.sh` uses the supplied native pkgsrc digest tool.
+It verifies the complete manifest before creating the destination.
+Missing or changed files, symlinks, unsafe paths and duplicate entries fail.
+The recipe supplies its normal `INSTALL_DATA`, `DESTDIR` and `PREFIX`.
+No target executable or additional language interpreter runs for installation.
+
+`files/licenses.json` records the original SPDX expressions and manifest
+hashes for the 52 registry packages in the actual amd64 Cargo metadata graph.
+It preserves upstream project attribution and explains the pkgsrc mappings.
+The recipe combines component requirements with `AND`; each component's
+alternative licenses keep `OR`. The library's original headers permit
+`LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL`.
+The package selects the permitted LGPL 2.1 branch and retains all original
+alternative license texts. `BSD-2-Clause` maps to `2-clause-bsd`.
+`Unicode-3.0` maps to the existing pkgsrc `unicode-v3` identifier.
+The legacy `MIT/Apache-2.0` declaration in siphasher is an alternative;
+its original `COPYING` explicitly permits either license.
+
+The amd64 Rust std provider retains its own original licenses and
+`COPYRIGHT`. A host data provider is not automatically a runtime package.
+The Rust `staticlib` can embed std objects. The real compiler and link outputs
+must establish linked std and third-party scope before binary acceptance.
+The filtered source graph and notice installation check do not prove that scope.
+
+Run the notice regression with the original extracted project source,
+the fully audited vendor directory, the native pkgsrc digest executable,
+and the pinned pkgsrc license directory:
+
+```sh
+ruby tests/notices.rb /absolute/original-source /absolute/verified-vendor \
+    /absolute/host/bin/digest /absolute/pkgsrc/licenses
+```
+
+It compares actual source notices and SPDX declarations, installs into a
+private fixture, and rejects missing, changed or unsafe inputs.
+The separate native pkgsrc `post-install` check uses the exported recipe
+and a private package destination. These are host installation contracts;
+target compilation, binary package and VM acceptance remain pending.
 
 To include the actual pinned source extraction in the host regression, run:
 

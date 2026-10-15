@@ -16,7 +16,12 @@ SITES.${_EMBER_CSS_VENDOR_DISTFILE}=
 
 HOMEPAGE=	https://invent.kde.org/libraries/cxx-rust-cssparser
 COMMENT=	C++ CSS parsing API implemented through the Rust cssparser crate
-LICENSE=	modified-bsd AND gnu-lgpl-v2.1 AND cc0-1.0-universal
+# Components use AND; alternatives stay within each component's expression.
+# files/licenses.json records the original SPDX expressions and mappings.
+LICENSE=	2-clause-bsd AND cc0-1.0-universal AND gnu-lgpl-v2.1 AND \
+		apache-2.0 AND mit AND mpl-2.0 AND zlib AND \
+		(mit OR apache-2.0) AND (unlicense OR mit) AND \
+		((mit OR apache-2.0) AND unicode-v3)
 
 .include "../../mk/bsd.prefs.mk"
 
@@ -36,6 +41,15 @@ pre-fetch:
 
 post-extract:
 	${MV} ${WRKDIR}/vendor ${WRKSRC}/rust/vendor
+
+post-install:
+	${SH} ${FILESDIR:Q}/install-notices.sh ${WRKSRC:Q} \
+	    ${DESTDIR:Q}${PREFIX:Q}/share/licenses/cxx-rust-cssparser \
+	    ${FILESDIR:Q}/notices.sha256 ${DIGEST:Q} ${INSTALL_DATA}
+	${INSTALL_DATA} ${FILESDIR:Q}/notices.sha256 \
+	    ${DESTDIR:Q}${PREFIX:Q}/share/licenses/cxx-rust-cssparser/NOTICES.sha256
+	${INSTALL_DATA} ${FILESDIR:Q}/licenses.json ${FILESDIR:Q}/vendor-r1.json \
+	    ${DESTDIR:Q}${PREFIX:Q}/share/licenses/cxx-rust-cssparser
 
 .include "cross.mk"
 
