@@ -23,7 +23,7 @@ def target_script!(path)
   source.scan(/^[A-Z_]+="([^"\n]*)"$/).flatten.each do |value|
     executable = Shellwords.split(value).first
     next unless executable&.start_with?('/')
-    unless executable.match?(%r{\A/(?:bin|sbin|usr/bin|usr/sbin|usr/pkg)/})
+    unless executable.match?(%r{\A/(?:bin|sbin|usr/bin|usr/sbin|usr/pkg)(?:/|$)})
       raise "Non-target absolute value in #{path}: #{value}"
     end
   end
