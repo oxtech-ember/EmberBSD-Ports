@@ -3,3 +3,4 @@ $NetBSD: distinfo,v 1.2 2026/02/01 10:55:34 kikadf Exp $
 BLAKE2s (libudev-bsd-0.7.0.1.tar.gz) = c041e75af7f12d96af2d50d537deb8a42a4874fa072b3a31a673013a9e903f61
 SHA512 (libudev-bsd-0.7.0.1.tar.gz) = 71b657583e2176f5559d2df83a39484250fdff0757ae5a2b8113fcb8d179526cf37c79c2676bbe6d8b3010a5aad64c0aec60affd71ac6ddfc2145e5664c462e6
 Size (libudev-bsd-0.7.0.1.tar.gz) = 42596 bytes
+SHA1 (patch-render-nodes) = 90c480c0c46dc01da0dca5fbdddf0e1730db0b36
