@@ -5,6 +5,6 @@ set -eu
 work=$1
 tests=$(CDPATH= cd "$(dirname "$0")" && pwd)
 "${CXX:-c++}" -std=c++20 -Wall -Wextra -Werror -pthread \
-    -I "$work/src/onnxruntime-1.30.0/onnxruntime" \
+    -I "$work/src/onnxruntime-1.31.0/onnxruntime" \
     "$tests/netbsd-cpu-source.cpp" -o "$work/netbsd-cpu-source-contract"
 "$work/netbsd-cpu-source-contract"

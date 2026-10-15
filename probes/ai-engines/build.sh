@@ -11,10 +11,19 @@ jobs=${JOBS:-1}
 case "$jobs" in ''|0|*[!0-9]*) echo 'JOBS must be positive.' >&2; exit 2 ;; esac
 [ "$jobs" -gt 0 ] 2>/dev/null || { echo 'JOBS must be positive.' >&2; exit 2; }
 recipe=$(CDPATH= cd "$(dirname "$0")" && pwd)
+onnx_recipe=$recipe/../../pkgsrc/local-ai/onnxruntime
 patch_tool=${PATCH:-gpatch}
-python=${PYTHON:-python3.13}
-for tool in cc c++ cmake ninja gmake "$patch_tool" "$python" sha256 curl tar pkg-config; do
+python=${PYTHON:-python3}
+CC=${CC:-gcc}
+CXX=${CXX:-g++}
+export CC CXX
+for tool in "$CC" "$CXX" cmake ninja gmake "$patch_tool" "$python" sha256 curl tar pkg-config; do
     command -v "$tool" >/dev/null || { echo "Missing tool: $tool" >&2; exit 2; }
+done
+for compiler in "$CC" "$CXX"; do
+    [ "$("$compiler" -dumpfullversion)" = 16.2.0 ] || {
+        echo 'The current profile requires GCC 16.2.0.' >&2; exit 2;
+    }
 done
 mkdir "$work"
 mkdir "$work/src" "$work/archives" "$work/logs" "$work/dependencies"
@@ -47,7 +56,7 @@ run()
         exit "$status"
     fi
 }
-{ uname -a; cc --version; c++ --version; cmake --version; ninja --version; "$python" --version; } > "$work/logs/tools.txt"
+{ uname -a; "$CC" --version; "$CXX" --version; cmake --version; ninja --version; "$python" --version; } > "$work/logs/tools.txt"
 run rnnoise-upstream-arm-build "$patch_tool" -d "$work/src/rnnoise-0.2" -p1 < "$recipe/patches/rnnoise-upstream-arm-build.patch"
 cd "$work/src/rnnoise-0.2"
 run rnnoise-configure ./configure --prefix="$prefix" --enable-shared --disable-static --disable-examples
@@ -65,44 +74,31 @@ run eigen-configure cmake -S "$work/src/eigen-5.0.1" -B "$work/eigen-build" -G N
     -DCMAKE_INSTALL_PREFIX="$prefix" -DEIGEN_BUILD_TESTING=OFF -DEIGEN_BUILD_DOC=OFF \
     -DEIGEN_BUILD_BLAS=OFF -DEIGEN_BUILD_LAPACK=OFF -DEIGEN_BUILD_DEMOS=OFF
 run eigen-install cmake --install "$work/eigen-build"
-for patch in "$recipe"/patches/onnxruntime-*.patch; do
-    run "$(basename "$patch" .patch)" "$patch_tool" -d "$work/src/onnxruntime-1.30.0" -p1 < "$patch"
+for patch in "$onnx_recipe"/patches/patch-*; do
+    run "onnx-$(basename "$patch")" "$patch_tool" -f -N -F 0 -d "$work/src/onnxruntime-1.31.0" -p1 < "$patch"
 done
-run onnx-configure cmake -S "$work/src/onnxruntime-1.30.0/cmake" -B "$work/onnx-build" -G Ninja \
+run onnx-configure cmake -S "$work/src/onnxruntime-1.31.0/cmake" -B "$work/onnx-build" -G Ninja \
+    -C "$onnx_recipe/features.cmake" \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_PREFIX_PATH="$prefix" \
     -DCMAKE_CXX_STANDARD=20 \
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DFETCHCONTENT_TRY_FIND_PACKAGE_MODE=NEVER \
     -Donnxruntime_CMAKE_DEPS_MIRROR_DIR="$work/dependencies" \
     -DPatch_EXECUTABLE="$(command -v "$patch_tool")" -DPython_EXECUTABLE="$(command -v "$python")" \
-    -Donnxruntime_BUILD_SHARED_LIB=ON -Donnxruntime_BUILD_UNIT_TESTS=OFF -Donnxruntime_BUILD_BENCHMARKS=OFF \
-    -Donnxruntime_ENABLE_PYTHON=OFF -Donnxruntime_ENABLE_TRAINING=OFF \
-    -Donnxruntime_USE_TELEMETRY=OFF -Donnxruntime_ENABLE_CPUINFO=OFF -Donnxruntime_USE_MIMALLOC=OFF \
-    -Donnxruntime_USE_PREINSTALLED_EIGEN=ON -Donnxruntime_USE_KLEIDIAI=OFF \
-    -Donnxruntime_USE_SVE=OFF -Donnxruntime_USE_XNNPACK=OFF \
-    -Donnxruntime_DISABLE_CONTRIB_OPS=ON -Donnxruntime_DISABLE_ML_OPS=ON \
-    -Donnxruntime_USE_CUDA=OFF -Donnxruntime_USE_DNNL=OFF -Donnxruntime_USE_OPENVINO=OFF
+    -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
 run onnx-float16-contract sh "$recipe/tests/check-float16-source.sh" "$work"
 run onnx-cpu-id-contract sh "$recipe/tests/check-netbsd-cpu-source.sh" "$work"
-run onnx-build cmake --build "$work/onnx-build" --parallel "$jobs"
-run onnx-install cmake --install "$work/onnx-build"
+run onnx-build cmake --build "$work/onnx-build" --target onnxruntime onnxruntime_providers_shared --parallel "$jobs"
+run onnx-install cmake -DCMAKE_INSTALL_LOCAL_ONLY=ON -P "$work/onnx-build/cmake_install.cmake"
+run onnx-licenses sh "$onnx_recipe/files/install-licenses.sh" "$work/src/onnxruntime-1.31.0" "$work/onnx-build" "$prefix" "$onnx_recipe"
 share=$prefix/share/ai-engines
 mkdir -p "$share/models" "$share/fixtures" "$share/licenses"
 cp "$work/src/silero-vad-6.2.3/src/silero_vad/data/silero_vad.onnx" "$share/models/"
 cp "$work/src/silero-vad-6.2.3/tests/data/test.wav" "$share/fixtures/silero-test.wav"
 cp "$recipe/sources.tsv" "$recipe/dependencies.tsv" "$recipe/models.tsv" "$recipe/PROVENANCE.md" "$share/"
 cp "$recipe/LICENSE" "$share/licenses/EmberBSD-probe-LICENSE"
-cp -R "$recipe/patches" "$share/"
-cp "$work/src/onnxruntime-1.30.0/LICENSE" "$share/licenses/ONNX-Runtime-LICENSE"
-cp "$work/src/onnxruntime-1.30.0/ThirdPartyNotices.txt" "$share/licenses/ONNX-Runtime-ThirdPartyNotices.txt"
-for dependency in "$work"/onnx-build/_deps/*-src; do
-    [ -d "$dependency" ] || continue
-    destination=$share/licenses/$(basename "$dependency")
-    mkdir -p "$destination"
-    for notice in "$dependency"/LICENSE* "$dependency"/COPYING* "$dependency"/NOTICE*; do
-        [ -f "$notice" ] || continue
-        cp "$notice" "$destination/"
-    done
-done
+mkdir -p "$share/patches/onnxruntime"
+cp "$recipe/patches/rnnoise-upstream-arm-build.patch" "$share/patches/"
+cp "$onnx_recipe"/patches/patch-* "$share/patches/onnxruntime/"
 cp "$work/src/ncnn-20260526/LICENSE.txt" "$share/licenses/ncnn-LICENSE.txt"
 cp "$work/src/rnnoise-0.2/COPYING" "$share/licenses/RNNoise-COPYING"
 cp "$work/src/silero-vad-6.2.3/LICENSE" "$share/licenses/Silero-LICENSE"

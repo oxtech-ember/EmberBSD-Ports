@@ -1,0 +1,11 @@
+--- a/include/onnxruntime/core/session/onnxruntime_c_api.h
++++ b/include/onnxruntime/core/session/onnxruntime_c_api.h
+@@ -547,7 +547,7 @@
+   OrtDeviceEpIncompatibility_DRIVER_INCOMPATIBLE = 1 << 0,
+   OrtDeviceEpIncompatibility_DEVICE_INCOMPATIBLE = 1 << 1,
+   OrtDeviceEpIncompatibility_MISSING_DEPENDENCY = 1 << 2,
+-  OrtDeviceEpIncompatibility_UNKNOWN = 1 << 31
++  OrtDeviceEpIncompatibility_UNKNOWN = (-2147483647 - 1)
+ } OrtDeviceEpIncompatibilityReason;
+ 
+ /** \brief Delegate to allow providing custom OrtEpDevice selection logic

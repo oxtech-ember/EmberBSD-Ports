@@ -319,11 +319,20 @@ runtime behavior are validated.
   [Whisper record](profiles/ai-cpu/cross/whisper-validation.md) for exact words,
   JSON timestamps, error contracts and memory checks. Historical native ARM64
   tests have separate validation records.
-- [CPU inference and audio](probes/ai-engines/README.md): ONNX Runtime 1.30.0,
-  ncnn 20260526, RNNoise 0.2 and Silero VAD 6.2.3 pass seven native installed
-  consumer checks on AArch64. They cover numerical inference, stream state,
-  speech/silence and invalid inputs; explicit ORT worker affinity is checked
-  separately. These are source probes, without microphone or accelerator validation.
+- [ONNX Runtime CPU API](probes/onnxruntime/README.md): the canonical 1.31.0
+  recipe provides a shared C/C++ CPU interface, GCC16 cross-build helpers and
+  the common Eigen 5.0.1 provider. Internal build dependencies remain private.
+  Installed C/C++ inference, Silero compatibility, 76 selected upstream tests
+  and package removal/reinstallation pass in EmberBSD AArch64 QEMU.
+  [Validation](probes/onnxruntime/VALIDATION.md) separates installed API checks,
+  native memory analysis and EmberBSD AArch64 target execution.
+- [CPU inference and audio](probes/ai-engines/README.md): ncnn 20260526,
+  RNNoise 0.2 and Silero VAD 6.2.3 use installed C/C++ consumers. The current
+  source profile shares the canonical ONNX Runtime 1.31.0 version and patches.
+  Historical ONNX Runtime 1.30.0 measurements cover seven native AArch64
+  contracts for inference, stream state, speech/silence and invalid inputs.
+  Worker affinity has a separate historical check. Microphones and accelerators
+  remain unverified.
 - [LiteRT and LiteRT-LM](probes/litert/README.md): LiteRT 2.2.0 provides a
   shared C/C++ CPU runtime for `.tflite` models; LiteRT-LM 0.18.0 adds a
   SentencePiece language-model engine. The macOS-to-AArch64 source profile
