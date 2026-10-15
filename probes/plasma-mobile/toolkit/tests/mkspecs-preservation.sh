@@ -20,7 +20,11 @@ cp "$work/source/mkspecs/REUSE.toml" "$work/reuse.expected"
     awk '/^\tfor dir in .*mkspecs/ { copying=1 } copying { print } copying && /^\tdone$/ { exit }' "$recipe/Makefile"
 } > "$work/Makefile"
 for run in 1 2; do
-    "${BMAKE:-bmake}" -r -m / -f "$work/Makefile"
+    "${BMAKE:-bmake}" -r -m / -f "$work/Makefile" 2> "$work/stderr.log"
+    if [ -s "$work/stderr.log" ]; then
+        cat "$work/stderr.log" >&2
+        exit 1
+    fi
     cmp "$work/source/qmake.conf" "$work/source/mkspecs/netbsd-g++/qmake.conf"
     cmp "$work/qmodule.expected" "$work/source/mkspecs/qmodule.pri"
     cmp "$work/reuse.expected" "$work/source/mkspecs/REUSE.toml"

@@ -190,6 +190,7 @@ pre-configure:
 		-e 's:@QMAKE_EXTRA@:${QMAKE_EXTRA:Q}:g' \
 		${FILESDIR}/${QMAKE_CONF} > ${WRKSRC}/qmake.conf
 	for dir in ${WRKSRC}/mkspecs/*; do \
+		${TEST} -d $${dir} || continue; \
 		${RM} -f $${dir}/*.orig; \
 		${TEST} -f $${dir}/qmake.conf || continue; \
 		${CP} ${WRKSRC}/qmake.conf $${dir}; \
