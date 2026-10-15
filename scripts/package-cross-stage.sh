@@ -24,8 +24,44 @@ cmp "$work/expected" "$work/actual"
 # Store real package dependencies in +CONTENTS as well as build metadata.
 depends=$(sed -n 's/^DEPENDS=//p' "$info")
 case "$depends" in *[!A-Za-z0-9_.+\ -]*) echo 'Invalid exact package dependency list.' >&2; exit 2;; esac
-pkg_create -u root -g wheel -p "$stage" -I /usr/pkg \
+conflicts=$(sed -n 's/^CONFLICTS=//p' "$info")
+if [ "$(sed -n '/^CONFLICTS=/p' "$info" | wc -l)" -gt 1 ]; then
+    echo 'Invalid package conflict pattern list.' >&2; exit 2
+fi
+if [ -n "$conflicts" ]; then
+    # Validate package patterns as data. Never expand globs or evaluate metadata.
+    # This bounded syntax permits names, globs and version comparisons.
+    printf '%s\n' "$conflicts" | LC_ALL=C awk '
+    function valid(pattern, i, ch, bracket, count) {
+        if (pattern !~ /^[A-Za-z0-9]/) return 0
+        bracket = 0
+        for (i = 1; i <= length(pattern); ++i) {
+            ch = substr(pattern, i, 1)
+            if (ch == "[") {
+                if (bracket) return 0
+                bracket = 1; count = 0
+            } else if (ch == "]") {
+                if (!bracket || !count) return 0
+                bracket = 0
+            } else if (bracket) {
+                if (!index("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!-", ch)) return 0
+                ++count
+            } else if (!index("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.+*?<>!=-", ch)) return 0
+        }
+        return !bracket
+    }
+    {
+        if (NR != 1 || NF == 0) bad = 1
+        for (field = 1; field <= NF; ++field)
+            if (!valid($field)) bad = 1
+    }
+    END { exit (bad || NR != 1) }
+    ' || { echo 'Invalid package conflict pattern list.' >&2; exit 2; }
+fi
+set -- pkg_create -u root -g wheel -p "$stage" -I /usr/pkg \
     -c '-EmberBSD cross-built package' -d "$recipe/DESCR" \
-    -f "$recipe/PLIST" -B "$info" -P "$depends" "$package"
+    -f "$recipe/PLIST" -B "$info" -P "$depends"
+if [ -n "$conflicts" ]; then set -- "$@" -C "$conflicts"; fi
+"$@" "$package"
 [ -s "$package" ]
 pkg_info -B "$package"

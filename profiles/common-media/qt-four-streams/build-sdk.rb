@@ -144,6 +144,16 @@ selected.each do |component|
     args = ['cmake', '-S', src, '-B', build, '-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release', '-DBUILD_SHARED_LIBS=ON', '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON', '-DCMAKE_INSTALL_PREFIX=' + (component.start_with?('qt') ? qt_prefix : install_prefix), '-DCMAKE_INSTALL_RPATH=' + (native ? [prefix + '/qt6/lib', prefix + '/lib', ENV.fetch('NATIVE_MEDIA_PREFIX', prefix) + '/lib', ENV.fetch('NATIVE_MEDIA_PREFIX', prefix) + '/lib/ffmpeg9'].join(';') : '/usr/pkg/qt6/lib;/usr/pkg/lib;/usr/pkg/lib/ffmpeg9;/usr/pkg/gcc16/lib'), '-DCMAKE_PREFIX_PATH=' + (native ? prefix + '/qt6;' + prefix : sysroot + '/usr/pkg/qt6;' + sysroot + '/usr/pkg')]
     args << '-DCMAKE_TOOLCHAIN_FILE=' + toolchain unless native
     args += ['-DCMAKE_C_COMPILER=/usr/local/bin/gcc', '-DCMAKE_CXX_COMPILER=/usr/local/bin/g++'] if native
+    if native && ENV['NATIVE_EXTRA_PREFIX']
+      extra = ENV.fetch('NATIVE_EXTRA_PREFIX')
+      abort 'Invalid native prerequisite prefix' unless extra.start_with?('/') && !extra.match?(/[;\r\n]/)
+      include_dir = extra + '/usr/include'
+      library_dir = extra + '/usr/lib/x86_64-linux-gnu'
+      abort 'Missing native prerequisite files' unless File.directory?(include_dir) && File.directory?(library_dir)
+      args += ['-DCMAKE_C_FLAGS=-I' + include_dir, '-DCMAKE_CXX_FLAGS=-I' + include_dir]
+      %w[EXE SHARED MODULE].each { |kind| args << '-DCMAKE_' + kind + '_LINKER_FLAGS=-L' + library_dir }
+      args << '-DCMAKE_INSTALL_RPATH=' + [prefix + '/qt6/lib', prefix + '/lib', ENV.fetch('NATIVE_MEDIA_PREFIX', prefix) + '/lib', ENV.fetch('NATIVE_MEDIA_PREFIX', prefix) + '/lib/ffmpeg9', library_dir].join(';')
+    end
     case component
     when 'png' then args += %w[-DPNG_TESTS=ON -DPNG_TOOLS=ON -DPNG_BUILD_ZLIB=OFF -DCMAKE_C_FLAGS=-DPNG_USER_CHUNK_CACHE_MAX=128\ -DPNG_USER_CHUNK_MALLOC_MAX=8000000]
     when 'freetype' then args += %w[-DFT_DISABLE_HARFBUZZ=ON -DFT_DISABLE_BROTLI=ON]
