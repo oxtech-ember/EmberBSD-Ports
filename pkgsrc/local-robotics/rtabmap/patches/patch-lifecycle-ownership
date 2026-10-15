@@ -1,0 +1,30 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Release the owned marker detector and strategies during final destruction.
+close() remains reusable: it still restores default strategies. The destructor
+frees those replacements after close(), including repeated init/close cycles.
+
+--- a/corelib/src/Memory.cpp
++++ b/corelib/src/Memory.cpp
+@@ -701,6 +701,7 @@
+ 	delete _registrationIcpMulti;
+ 	delete _registrationVis;
+ 	delete _localMapMaker;
++	delete _markerDetector;
+ }
+ 
+ void Memory::parseParameters(const ParametersMap & parameters)
+--- a/corelib/src/Rtabmap.cpp
++++ b/corelib/src/Rtabmap.cpp
+@@ -190,6 +190,10 @@
+ Rtabmap::~Rtabmap() {
+ 	UDEBUG("");
+ 	this->close();
++	// close() restores the reusable default strategies. Release them here.
++	delete _graphOptimizer;
++	delete _epipolarGeometry;
++	delete _bayesFilter;
+ }
+ 
+ void Rtabmap::setupLogFiles(bool overwrite)

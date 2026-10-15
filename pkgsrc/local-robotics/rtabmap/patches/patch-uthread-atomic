@@ -1,0 +1,48 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Publish UThread lifecycle state through a lock-free atomic. Polling getters,
+kill() and the worker use different locks; isRunning() needs one snapshot.
+The private copy operations already prohibit public copying. Size/alignment
+assertions retain the selected GCC16 native/AArch64 layout contract.
+
+--- a/utilite/include/rtabmap/utilite/UThread.h
++++ b/utilite/include/rtabmap/utilite/UThread.h
+@@ -22,6 +22,8 @@
+ 
+ #include "rtabmap/utilite/utilite_export.h" // DLL export/import defines
+ 
++#include <atomic>
++
+ #include "rtabmap/utilite/UThreadC.h"
+ 
+ /**
+@@ -258,7 +260,15 @@
+ 
+ private:
+     enum State{kSIdle, kSCreating, kSRunning, kSKilled}; /* Enum of states. */
+-    State state_; 			/* The thread state. */
++    static_assert(sizeof(std::atomic<State>) == sizeof(State),
++            "Atomic thread state must preserve its ABI size");
++    static_assert(alignof(std::atomic<State>) == alignof(State),
++            "Atomic thread state must preserve its ABI alignment");
++#if __cplusplus >= 201703L
++    static_assert(std::atomic<State>::is_always_lock_free,
++            "Thread state must be lock-free on the selected target");
++#endif
++    std::atomic<State> state_; 			/* The thread state. */
+     Priority priority_; 	/* The thread priority. */
+     Handle handle_; 	/* The thread handle. */
+     unsigned long threadId_; /* The thread id. */
+--- a/utilite/src/UThread.cpp
++++ b/utilite/src/UThread.cpp
+@@ -244,7 +244,8 @@
+ 
+ bool UThread::isRunning() const
+ {
+-    return state_ == kSRunning || state_ == kSCreating;
++    const State state = state_.load();
++    return state == kSRunning || state == kSCreating;
+ }
+ 
+ bool UThread::isIdle() const

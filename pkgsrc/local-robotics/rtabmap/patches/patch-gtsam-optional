@@ -1,0 +1,27 @@
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+GTSAM 4.3.0 returns std::optional instead of boost::optional.
+
+--- a/corelib/src/optimizer/OptimizerGTSAM.cpp
++++ b/corelib/src/optimizer/OptimizerGTSAM.cpp
+@@ -874,8 +874,8 @@
+ 					UASSERT(result.errorBefore.has_value());
+ 					UASSERT(result.errorAfter.has_value());
+ #else
+-					UASSERT(result.errorBefore.is_initialized());
+-					UASSERT(result.errorAfter.is_initialized());
++					UASSERT(result.errorBefore.has_value());
++					UASSERT(result.errorAfter.has_value());
+ #endif
+ 					UDEBUG("error before = %f after=%f", result.errorBefore.value(), result.errorAfter.value());
+ 					initialError = lastError = result.errorBefore.value();
+@@ -904,8 +904,8 @@
+ 					UASSERT(result.errorBefore.has_value());
+ 					UASSERT(result.errorAfter.has_value());
+ #else
+-					UASSERT(result.errorBefore.is_initialized());
+-					UASSERT(result.errorAfter.is_initialized());
++					UASSERT(result.errorBefore.has_value());
++					UASSERT(result.errorAfter.has_value());
+ #endif
+ 					UDEBUG("error before = %f after=%f", result.errorBefore.value(), result.errorAfter.value());
+ 

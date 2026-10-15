@@ -1,0 +1,60 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Identify self-join through thread-local object identity. Reading the OS handle
+before taking runningMutex races its reset during natural completion. This
+keeps the public signatures and object layout. Raw handle/ID getters still
+require external lifecycle synchronization.
+
+--- a/utilite/src/UThread.cpp
++++ b/utilite/src/UThread.cpp
+@@ -26,6 +26,10 @@
+ 
+ #define PRINT_DEBUG 0
+ 
++namespace {
++thread_local const UThread *currentThread = 0;
++}
++
+ ////////////////////////////
+ // public:
+ ////////////////////////////
+@@ -90,17 +94,10 @@
+ 		uSleep(1);
+ 	}
+ 
+-#ifdef _WIN32
+-#if PRINT_DEBUG
+-	UDEBUG("Thread %d joining %d", UThreadC<void>::Self(), threadId_);
+-#endif
+-	if(UThreadC<void>::Self() == threadId_)
+-#else
+ #if PRINT_DEBUG
+-	UDEBUG("Thread %d joining %d", UThreadC<void>::Self(), handle_);
+-#endif
+-	if(UThreadC<void>::Self() == handle_)
++	UDEBUG("Joining thread");
+ #endif
++	if(currentThread == this)
+ 	{
+ 		UERROR("Thread cannot join itself");
+ 		return;
+@@ -264,6 +261,7 @@
+ 
+ void UThread::ThreadMain()
+ {
++	currentThread = this;
+ 	runningMutex_.lock();
+ 	applyPriority();
+ 	applyAffinity();
+@@ -293,8 +291,9 @@
+     handle_ = 0;
+     threadId_ = 0;
+     state_ = kSIdle;
++    currentThread = 0;
+ 
+-    runningMutex_.unlock();
++	runningMutex_.unlock();
+ #if PRINT_DEBUG
+ 	ULOGGER_DEBUG("Exiting thread loop");
+ #endif

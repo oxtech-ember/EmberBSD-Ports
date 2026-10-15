@@ -6,7 +6,7 @@ The target is EmberBSD AArch64, fork revision
 QEMU 10.0.13 uses TCG, two Cortex-A72 CPUs and 2 GiB RAM.
 These results do not establish physical-board, sensor or real-time behavior.
 
-## Installed target results
+## Initial ten-library target profile
 
 All eight actual packages pass creation or reuse, installation, integrity
 checks, dependency-protected deletion, ordered removal and reinstallation.
@@ -40,7 +40,7 @@ atomics also pass. Two atomic threads complete 2,000 checked updates.
 Twenty-six ELF checks cover ten PCL DSOs, four installed consumers and the
 twelve upstream programs. Their runtime paths use target installation paths.
 
-## Native memory and source analysis
+## Initial native memory and source analysis
 
 Linux GCC16 controls pass seven installed-consumer CTests, the same twelve
 upstream programs and the Examples CLI CTest. Thirty final Memcheck runs
@@ -76,3 +76,45 @@ The patch changes the test fixture, not the installed library API or algorithms.
 
 The source recipes retain licenses and AI-assisted patch provenance.
 Source pins and adaptation details are in [PROVENANCE.md](PROVENANCE.md).
+
+## Expanded `pcl-1.15.1nb1` profile
+
+The package now selects thirteen shared libraries. Surface, Segmentation and
+ML extend the initial profile. Geometry and 2d are header-only. Both the
+AArch64 stage and native install match all 758 canonical package paths.
+Thirty-two ELF checks cover thirteen target DSOs, five independent consumers
+and fourteen upstream programs. All use AArch64 and retain target runtime
+paths.
+
+Linux GCC16 controls pass all ten installed-consumer CTests and fourteen
+upstream programs, totaling 175 GoogleTests. Five additional strict Memcheck
+runs cover MLS, plane segmentation, empty input, concave-prism extraction
+and ear clipping. All five report zero errors, zero suppressions and no
+remaining allocated blocks. The two added upstream programs retain all
+three test cases.
+
+The expanded package also passes EmberBSD AArch64 QEMU acceptance with the
+RTAB-Map recorded-data profile. All fourteen upstream programs execute 175
+passing tests. MLS plane normals/color, RANSAC plane segmentation/outliers and
+empty inputs pass the three installed expanded modes; the four earlier filter
+and registration modes still pass. All fourteen packages are removed and
+reinstalled, and package integrity checks cover the new PCL payload. This
+acceptance is separate from the retained initial eight-package image.
+
+Final native Memcheck additionally covers all twelve earlier upstream programs
+(172 tests) and all four original contract modes against the current thirteen
+DSOs. Together with the two new programs/three tests and three expanded modes
+above, every selected current PCL program reports zero errors/losses/suppressions
+and frees every allocated block.
+
+Paired source analysis for the expanded profile covers upstream `mls.cpp` and
+`sac_segmentation.cpp`. Their source hashes match the pinned archive. Clang
+Static Analyzer 19.1.7 reports no diagnostics before or after the canonical
+patches with actual GCC16 AArch64 options and recorded target header hashes.
+Cppcheck 2.17.1 cannot parse their Boost.PP expansion. Complete GCC-preprocessed
+translation-unit attempts also stop in the parser. This remains a coverage gap.
+
+The new installed `pcl-expanded-contract` source passes Cppcheck 2.17.1
+and Clang Static Analyzer 19.1.7 with no warnings or errors. Its actual
+AArch64 consumer compilation database, target macros and header hashes
+define the analysis context.

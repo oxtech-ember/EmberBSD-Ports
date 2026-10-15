@@ -1,89 +1,93 @@
-# SQLite installed C consumer
+# Shared SQLite and installed consumers
 
-Validate SQLite as a native dependency for local device data and document
-retrieval. The current upstream target is **3.53.4**, already present in the
-pinned pkgsrc `databases/sqlite3` recipe. This probe adds a C consumer and
-repeatable checks; it does not introduce another permanent SQLite version.
-See [source provenance](PROVENANCE.md) for the archive, hashes and license.
+The common SQLite target is **3.54.0**, released on 2026-10-09. The
+[package recipe](../../pkgsrc/local-robotics/sqlite3) replaces the older pkgsrc
+SQLite provider at the same prefix. It introduces no parallel SQLite ABI.
+[Provenance](PROVENANCE.md) records the original archive and official checksum.
+The [validation boundary](VALIDATION.md) separates completed controls from limits.
 
-## Existing installation
+The profile retains serialized thread safety, FTS3/4/5, built-in JSON,
+RTree, Geopoly, column metadata, DBSTAT and math functions. It installs shared
+and static libraries, headers, pkg-config metadata and the CLI. The CLI links
+to the selected shared library. Interactive readline support is excluded.
 
-With the intended SQLite's `sqlite3.pc` visible to `pkg-config`:
+## Cross-build with GCC16
 
-```sh
-PATH=/usr/pkg/bin:$PATH sh probes/sqlite/check.sh /var/tmp/sqlite-check
-```
-
-The output directory must be new. `check.sh` requires 3.53.4 by default;
-an explicit `SQLITE_EXPECT_VERSION=3.53.2` permits the documented older
-comparison. The C consumer requires matching compile-time and runtime source
-IDs, records native library linkage, and never overwrites an existing database.
-Its database and logs remain in the private result directory.
-
-## Disposable current-source comparison
-
-Use the ordinary pkgsrc recipe for the system package. When that would replace
-a library used by a running desktop or other work, a disposable native source
-prefix can establish the current library's consumer behavior:
+Provide a complete EmberBSD AArch64 sysroot from the selected fork and the
+common GCC 16.2.0 compiler. Use new output directories:
 
 ```sh
-PATH=/usr/pkg/bin:$PATH sh probes/sqlite/build.sh /var/tmp/sqlite-current
-prefix=/var/tmp/sqlite-current/install
-PKG_CONFIG_LIBDIR="$prefix/lib/pkgconfig" LDFLAGS="-Wl,-R,$prefix/lib" \
-    PATH=/usr/pkg/bin:$PATH sh probes/sqlite/check.sh /var/tmp/sqlite-current-check
+sh probes/sqlite/build.sh --cross /absolute/gcc16-prefix /absolute/sysroot \
+    /absolute/sqlite-autoconf-3540000.tar.gz /absolute/new-sqlite-build
+sh probes/sqlite/check.sh --cross /absolute/gcc16-prefix /absolute/sysroot \
+    /absolute/new-sqlite-build/stage/usr/pkg /absolute/new-sqlite-consumer
 ```
 
-`build.sh` requires native NetBSD/EmberBSD, C, GNU make, curl, tar and sha256.
-An optional second argument supplies an existing archive directory. Every
-archive must match the pinned SHA256 before extraction. The helper configures
-thread safety and FTS5, leaves built-in JSON enabled, and compiles with one
-low-priority job. Upstream autosetup builds its bundled C Tcl helper if needed;
-this configuration has no Python dependency. No system files are replaced.
+The builder verifies the original archive before extraction. It uses the
+canonical recipe features, one job by default, and Autosetup's native C Tcl
+bootstrap helper. This configuration has no Python dependency. The generated
+AArch64 library and CLI are staged under `NEW_OUTPUT/stage/usr/pkg`.
+The consumer helper compiles target code; execute it on EmberBSD separately.
 
-The prefix exists only for comparison. After recording linkage and checks,
-remove that run's disposable build directory; do not keep it as an application
-dependency. Updating a shared system SQLite requires checking its actual
-consumers; these probes do not replace that coordinated upgrade.
+Autosetup requires the canonical configure spelling `aarch64-unknown-netbsd`.
+The compiler remains `aarch64--netbsd`; the fork's headers and libraries remain
+unchanged. The shared-library SONAME remains `libsqlite3.so.0`.
 
-## Checked behavior
+The dynamic CLI requires make's `LDFLAGS` explicitly. Configure-time LDFLAGS
+alone apply to the library and leave the dynamic CLI without its selected
+runtime path. The recipe and helper pass both interfaces and check both ELF
+runtime paths. No loader environment override is used for acceptance.
 
-The C executable tests prepared parameter binding with SQL-looking text,
-FTS5 lookup and absence, JSON extraction, malformed FTS/JSON rejection, explicit
-transaction rollback, and WAL snapshot isolation across two connections.
-It then forks with all database connections closed. A child begins an
-uncommitted write and spills pages; a separate parent connection can still
-read the last committed data. The parent kills only that child with `SIGKILL`,
-reopens the database and checks that committed data survived, uncommitted data
-did not, and `integrity_check` is `ok`. A 20-second alarm bounds the executable.
+## Native controls
 
-This establishes **process crash and reopen**, not physical power-loss
-durability, flash behavior or storage-controller correctness. WAL does not
-establish every journal mode or filesystem. No claim of the upstream full
-SQLite test suite is made.
+For a normal native installation, use the canonical pkgsrc recipe. The helper
+can also stage the same source with a native GCC16 compiler for memory checks:
 
-## Results
+```sh
+sh probes/sqlite/build.sh --native /absolute/private-prefix \
+    /absolute/sqlite-autoconf-3540000.tar.gz /absolute/new-native-build
+mkdir -p /absolute/private-prefix
+ruby probes/pcl/cross/import-stage.rb \
+    /absolute/new-native-build/stage/absolute/private-prefix /absolute/private-prefix
+sh probes/sqlite/check.sh --native /absolute/private-prefix /absolute/new-native-check
+```
 
-On 2026-10-07, the installed pkgsrc SQLite **3.53.2** passed the complete
-consumer on EmberBSD/NetBSD 11.0 AArch64 (UTM, GCC 12.5.0). Headers and runtime
-reported the same exact source ID. `ldd` resolved SQLite to the selected
-`/usr/pkg/lib/libsqlite3.so`; no bundled SQLite implementation was used.
+The stage path appends the selected absolute prefix after `stage`. The shared
+[stage importer](../pcl/cross/import-stage.rb) checks all collisions before it
+adds files. Existing packages must remain unchanged. This private native
+control does not replace installation through pkg_tools on EmberBSD.
 
-The [local-document example](https://github.com/oxtech-ember/EmberBSD-Examples/tree/main/ai/local-knowledge)
-also used this installed library for FTS5 retrieval, response JSON validation
-and an actual single-threaded llama.cpp answer. That is a separate application
-consumer, not merely a library configuration result.
+The native checker requires GCC 16.2.0, CMake, Ninja and Valgrind. It verifies
+actual library resolution for both consumers. Set `RUN_MEMCHECK=0` only when
+memory checking is intentionally outside the run; the result records that skip.
+The compiler uses GNU C17 for the upstream POSIX shell and library. The local
+C consumer uses ISO C99 with explicit POSIX declarations and warnings as errors.
 
-The current **3.53.4** archive was then built with GCC 12.5.0 and installed
-in a disposable EmberBSD/NetBSD 11.0 AArch64 QEMU guest (one vCPU, 3 GiB RAM).
-The complete C consumer and independent local-knowledge contract tests passed.
-`ldd` resolved both consumers to that temporary 3.53.4 prefix, and headers and
-runtime matched source ID `bf7c7f30031888f4e796e429ab3978879485813aaca6f641c7b33e4e09459bcc`.
-The real model answered the retrieved pump question using this current SQLite
-in 3.78 seconds, with 219,272 KiB maximum RSS for the wrapper and its children.
-The final parser/contracts and model run also passed during concurrent build
-load: 15.11 seconds and 217,116 KiB. Neither run is a performance benchmark.
-The VM's existing EMBER64 kernel was built from OS revision
-`b4f718d`; neither library test changed the kernel or a physical device.
+## Contracts and limits
 
-Physical boards, power loss and production database load remain outside this
-VM probe. Project-owned code and tests are [MIT licensed](LICENSE).
+Five installed-consumer CTests cover the complete C database contract, exact
+usage failure, existing-database preservation, missing-parent failure, and CLI
+behavior. The CLI checks FTS3/4/5, JSON, RTree, math, rollback, integrity, runtime
+version and invalid SQL. A native checked run also executes three Memcheck
+cases: the C consumer, valid CLI operations and invalid SQL.
+
+The C contract checks prepared parameters, SQL-looking bound text, FTS5 lookup
+and absence, malformed FTS/JSON rejection, rollback and WAL snapshot isolation.
+It forks with all connections closed, kills only its own uncommitted writer,
+and checks the committed data and database integrity after reopen. This proves
+process-crash recovery for that scenario. Physical power loss and storage
+hardware durability require separate tests.
+
+The GCC16 Linux controls passed all five CTests and all three Memcheck cases
+with zero reported errors and no remaining heap allocations. Cross-built
+AArch64 library, CLI and installed consumer pass ELF and prefix checks.
+Target execution, package lifecycle and RTAB-Map integration are recorded by
+the owning RTAB-Map acceptance. No complete upstream SQLite test-suite pass
+or physical-board acceptance is claimed.
+
+Run the portable helper guards without compiling another library:
+
+```sh
+sh probes/sqlite/tests/input-guards.sh /absolute/gcc16-prefix /absolute/sysroot \
+    /absolute/sqlite-autoconf-3540000.tar.gz /absolute/new-guard-results
+```

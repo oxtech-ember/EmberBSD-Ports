@@ -1,66 +1,66 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
+# Origin: EmberBSD (AI-assisted). Installed common-prefix mapping contracts.
 set -eu
-[ "$#" = 1 ] || { echo 'Usage: test.sh ABS_WORK' >&2; exit 2; }
-work=$1
-case "$work" in /*) ;; *) echo 'Use an absolute work path.' >&2; exit 2 ;; esac
-[ "$(uname -s)" = NetBSD ] || { echo 'Native EmberBSD/NetBSD required.' >&2; exit 2; }
+[ "$#" = 2 ] || { echo 'Usage: test.sh ABS_WORK PATCHED_OPENCV_SOURCE' >&2; exit 2; }
+work=$1 opencv_source=$2
+for path do
+    case "$path" in /*) ;; *) echo 'Use absolute paths.' >&2; exit 2;; esac
+    case "$path" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2;; esac
+done
+[ "$(uname -s):$(uname -p)" = NetBSD:aarch64 ] || { echo 'Native AArch64 EmberBSD required.' >&2; exit 2; }
+[ -z "${LD_LIBRARY_PATH:-}" ] && [ -z "${LD_PRELOAD:-}" ] || {
+    echo 'Use an ordinary loader environment.' >&2; exit 2;
+}
+[ -f "$opencv_source/modules/core/include/opencv2/core/utils/plugin_loader.private.hpp" ] || {
+    echo 'The exact patched OpenCV source is required.' >&2; exit 2;
+}
 build_as=${BUILD_AS_KIB:-}
 if [ "${BUILD_AS_KIB+x}" = x ]; then
-    case "$build_as" in ''|0|*[!0-9]*) echo 'BUILD_AS_KIB must be positive.' >&2; exit 2 ;; esac
+    case "$build_as" in ''|*[!0-9]*) build_as=0;; esac
     [ "$build_as" -gt 0 ] 2>/dev/null || { echo 'BUILD_AS_KIB must be positive.' >&2; exit 2; }
+    ulimit -S -v "$build_as"
+    [ "$(ulimit -S -v)" = "$build_as" ] || exit 2
 fi
-# Optional user-selected soft limit; preserve the inherited hard limit.
-if [ -n "$build_as" ]; then
-    ulimit -S -v "$build_as" || { echo 'Could not set the requested address-space limit.' >&2; exit 2; }
-    [ "$(ulimit -S -v)" = "$build_as" ] || {
-        echo 'Requested address-space limit verification failed.' >&2; exit 2;
-    }
-fi
-recipe=$(CDPATH= cd "$(dirname "$0")" && pwd)
+probe=$(CDPATH= cd "$(dirname "$0")" && pwd -P)
 prefix=$work/install
-[ -d "$prefix" ] && [ -d "$work/logs" ] || { echo 'The installed probe is missing.' >&2; exit 2; }
-# Refuse a reused consumer build: cached package/compiler selections are evidence too.
-[ ! -e "$work/test-build" ] || { echo 'Consumer build already exists; preserve it and use a new path.' >&2; exit 2; }
+[ -d "$prefix" ] && [ -d "$work/logs" ] || exit 2
+[ ! -e "$work/test-build" ] && [ ! -L "$work/test-build" ] || {
+    echo 'Consumer build already exists; preserve it and use a new path.' >&2; exit 2;
+}
+CC=$(cat "$work/logs/cc.txt")
 CXX=$(cat "$work/logs/cxx.txt")
-[ -x "$CXX" ] || { echo 'The recorded C++ compiler is missing.' >&2; exit 2; }
-EIGEN_PREFIX=$(cat "$work/logs/eigen-prefix.txt")
-OPENCV_PREFIX=$(cat "$work/logs/opencv-prefix.txt")
-PCL_PREFIX=$(cat "$work/logs/pcl-prefix.txt")
-GTSAM_PREFIX=$(cat "$work/logs/gtsam-prefix.txt")
-SQLITE_PREFIX=$(cat "$work/logs/sqlite-prefix.txt")
-LD_LIBRARY_PATH=/usr/pkg/gcc16/lib:$prefix/lib:$OPENCV_PREFIX/lib:$PCL_PREFIX/lib:$GTSAM_PREFIX/lib:$SQLITE_PREFIX/lib:/usr/pkg/lib
-export LD_LIBRARY_PATH
-cmake -S "$recipe/tests" -B "$work/test-build" -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release -DPROBE_PREFIX="$prefix" -DEIGEN_PREFIX="$EIGEN_PREFIX" \
-    -DCMAKE_CXX_COMPILER="$CXX" -DOPENCV_PREFIX="$OPENCV_PREFIX" -DPCL_PREFIX="$PCL_PREFIX" \
-    -DGTSAM_PREFIX="$GTSAM_PREFIX" -DSQLITE_PREFIX="$SQLITE_PREFIX" \
-    -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF \
-    > "$work/logs/consumer-configure.log" 2>&1 || { cat "$work/logs/consumer-configure.log" >&2; exit 1; }
-cmake --build "$work/test-build" --parallel 1 > "$work/logs/consumer-build.log" 2>&1 || {
-    cat "$work/logs/consumer-build.log" >&2; exit 1;
+common=$(cat "$work/logs/common-prefix.txt")
+[ -d "$common" ] || exit 2
+for compiler in "$CC" "$CXX"; do
+    [ -x "$compiler" ] && [ "$("$compiler" -dumpfullversion)" = 16.2.0 ] || exit 2
+done
+printf '%s\n' "$opencv_source" > "$work/logs/opencv-source.txt"
+run() {
+    stage=$1; shift
+    status=0
+    "$@" > "$work/logs/$stage.log" 2>&1 || status=$?
+    printf '%s\n' "$status" > "$work/logs/$stage.status"
+    [ "$status" = 0 ] || { cat "$work/logs/$stage.log" >&2; exit "$status"; }
 }
-# The contract requires a new database path; remove any stale one.
-rm -f "$work/test-build/map.db"
-ctest --test-dir "$work/test-build" --output-on-failure --verbose > "$work/logs/consumer-test.log" 2>&1 || {
-    cat "$work/logs/consumer-test.log" >&2; exit 1;
-}
+run consumer-configure cmake -S "$probe/tests" -B "$work/test-build" -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DPROBE_PREFIX="$prefix" -DCMAKE_PREFIX_PATH="$prefix;$common" \
+    -DCMAKE_C_COMPILER="$CC" -DCMAKE_CXX_COMPILER="$CXX" \
+    -DEIGEN_PREFIX="$common" -DOPENCV_PREFIX="$common" -DPCL_PREFIX="$common" \
+    -DGTSAM_PREFIX="$common" -DSQLITE_PREFIX="$common" -DLZ4_PREFIX="$common" \
+    -Dlz4_DIR="$common/lib/cmake/lz4" -DOPENCV_SOURCE="$opencv_source" \
+    -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
+    -DCMAKE_INSTALL_RPATH="$prefix/lib;$common/lib;$common/gcc16/lib" \
+    -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF
+run consumer-build cmake --build "$work/test-build" --parallel 1
+run consumer-test ctest --test-dir "$work/test-build" --no-tests=error --output-on-failure --verbose
 cat "$work/logs/consumer-test.log"
 ldd "$work/test-build/rtabmap-contract" > "$work/logs/installed-linkage.txt"
-grep -F "$prefix/lib/librtabmap_core.so" "$work/logs/installed-linkage.txt" >/dev/null || {
-    echo 'The consumer did not load the installed rtabmap library.' >&2; exit 1;
-}
-if grep -E 'not found|libc[+][+]' "$work/logs/installed-linkage.txt" >/dev/null; then
-    echo 'Missing dependency or mixed C++ runtime.' >&2; exit 1;
-fi
-expected_runtime=$("$CXX" -print-file-name=libstdc++.so)
-[ -f "$expected_runtime" ] || { echo 'Compiler did not identify its C++ runtime.' >&2; exit 1; }
-expected_runtime=$(realpath "$expected_runtime")
-loaded_runtime=$(awk '/libstdc[+][+]/ {print $3}' "$work/logs/installed-linkage.txt")
-[ -n "$loaded_runtime" ] && [ "$(printf '%s\n' "$loaded_runtime" | wc -l | tr -d ' ')" = 1 ] || {
-    echo 'Expected exactly one loaded C++ runtime.' >&2; exit 1;
-}
-[ "$(realpath "$loaded_runtime")" = "$expected_runtime" ] || {
-    echo 'Loaded C++ runtime differs from the recorded compiler runtime.' >&2; exit 1;
-}
-echo 'PASS installed library and coherent C++ runtime linkage'
+grep -F "$prefix/lib/librtabmap_core.so" "$work/logs/installed-linkage.txt" >/dev/null
+if grep -E 'not found|libc[+][+]' "$work/logs/installed-linkage.txt" >/dev/null; then exit 1; fi
+expected=$("$CXX" -print-file-name=libstdc++.so)
+[ -f "$expected" ] || exit 1
+loaded=$(awk '/libstdc[+][+]/ {print $3}' "$work/logs/installed-linkage.txt")
+[ -n "$loaded" ] && [ "$(printf '%s\n' "$loaded" | wc -l | tr -d ' ')" = 1 ] || exit 1
+[ "$(realpath "$loaded")" = "$(realpath "$expected")" ] || exit 1
+echo 'PASS installed mapping/dependency contracts and coherent GCC16 runtime'

@@ -1,0 +1,106 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Wait for POSIX thread termination, including thread-local destructors. Keep
+joinable handles owned by the creator and serialize reaping with runningMutex.
+Publish creation under that mutex; the worker no longer resets these handles.
+Preserve the Windows lifecycle. Raw getters require external synchronization.
+
+--- a/utilite/src/UThread.cpp
++++ b/utilite/src/UThread.cpp
+@@ -109,6 +109,29 @@
+ 	}
+ 
+ 	runningMutex_.lock();
++#ifndef _WIN32
++	// A concurrent start may publish a new worker before we acquire the lock.
++	// Let that worker enter ThreadMain before waiting for its OS termination.
++	while(state_ == kSCreating)
++	{
++		runningMutex_.unlock();
++		uSleep(1);
++		runningMutex_.lock();
++	}
++	if(handle_ != 0)
++	{
++		const int result = Join(handle_);
++		if(result == 0)
++		{
++			handle_ = 0;
++			threadId_ = 0;
++		}
++		else
++		{
++			UERROR("Cannot join thread: error=%d", result);
++		}
++	}
++#endif
+ 	runningMutex_.unlock();
+ 
+ #if PRINT_DEBUG
+@@ -124,15 +147,40 @@
+ 
+     if(state_ == kSIdle || state_ == kSKilled)
+     {
++#ifdef _WIN32
+     	if(state_ == kSKilled)
+     	{
+ 			// make sure it is finished
+ 			runningMutex_.lock();
+ 			runningMutex_.unlock();
+     	}
++#else
++		if(currentThread == this)
++		{
++			UERROR("Thread cannot restart itself");
++			return;
++		}
++		runningMutex_.lock();
++		if(handle_ != 0)
++		{
++			const int result = Join(handle_);
++			if(result != 0)
++			{
++				UERROR("Cannot reap previous thread: error=%d", result);
++				runningMutex_.unlock();
++				return;
++			}
++			handle_ = 0;
++			threadId_ = 0;
++		}
++#endif
+ 
+         state_ = kSCreating;
++#ifdef _WIN32
+         int r = UThreadC<void>::Create(threadId_, &handle_, true); // Create detached
++#else
++        int r = UThreadC<void>::Create(threadId_, &handle_, false);
++#endif
+         if(r)
+         {
+         	UERROR("Failed to create a thread! errno=%d", r);
+@@ -146,6 +194,9 @@
+         ULOGGER_DEBUG("StateThread::startThread() thread id=%d _handle=%d", threadId_, handle_);
+ #endif
+         }
++#ifndef _WIN32
++        runningMutex_.unlock();
++#endif
+     }
+ }
+ 
+@@ -288,10 +339,14 @@
+ 
+ 	mainLoopEnd();
+ 
++#ifdef _WIN32
+     handle_ = 0;
+     threadId_ = 0;
++#endif
+     state_ = kSIdle;
++#ifdef _WIN32
+     currentThread = 0;
++#endif
+ 
+ 	runningMutex_.unlock();
+ #if PRINT_DEBUG

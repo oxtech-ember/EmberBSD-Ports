@@ -1,0 +1,29 @@
+Upstream: RTAB-Map 0.23.8, https://github.com/introlab/rtabmap/releases/tag/0.23.8
+Generic stable release: 2026-07-05; verified 2026-10-15.
+Commit: d069becc724905d6465a8758c40dae88e13bb9e8
+Archive: https://codeload.github.com/introlab/rtabmap/tar.gz/d069becc724905d6465a8758c40dae88e13bb9e8
+SHA256: 587d8936b8d8669b196d500df80e373417e0c4c033309a2e4a0b84a627117284
+Copyright: Mathieu Labbe, IntRoLab/Universite de Sherbrooke and contributors.
+Main license: BSD-3-Clause. Bundled utilite: LGPL-3.0-or-later.
+Private rtflann: BSD FLANN/LZ4-derived code; no second public provider.
+OpenCV 5 patch: selected from accepted upstream PR1732 by Mathieu Labbe,
+merge d9f3337f978fffd9cf4b04bee15636bf00a2b870; selection is local.
+Other adaptations: EmberBSD, AI-assisted; not submitted or accepted upstream.
+Dependency pins and headless includes preserve actual shared current APIs.
+Stable GTSAM 4.3.0 uses AttitudeFactor<Pose3> and std::optional::has_value().
+RVL codec: Andrew D. Wilson, Fast Lossless Depth Image Compression, SIGCHI'17,
+MIT; its representative source notice and MIT license are installed.
+Local corrections preserve aligned metadata access, defined RVL arithmetic,
+bounded depth-image decoding, and private bundled LZ4 symbol visibility.
+Utilite corrections cover atomic worker state, natural-completion/self-join,
+and destruction of an unlocked mutex; they do not establish every API race-free.
+Installed CMake exports resolve the common providers without build-host paths.
+The resource generator is built for the host; BUILD_TOOLS=OFF omits its install.
+Final destruction releases the owned marker detector and default strategies
+recreated by close(); reusable close/init behavior remains covered separately.
+Private KD-tree leaf nodes initialize the split value before serialization;
+the saved-index format and common public FLANN provider remain unchanged.
+POSIX workers are joinable: join waits for OS termination including TLS cleanup,
+and start reaps an earlier completed worker before reuse. Windows is unchanged.
+Raw thread handles/IDs remain creator-owned until successful join; synchronize
+their getters externally. No UThread fields, size, alignment or signatures change.

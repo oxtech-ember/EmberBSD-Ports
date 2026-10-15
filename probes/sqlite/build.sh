@@ -1,53 +1,111 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Disposable source-validation prefix; use pkgsrc for the system installation.
+# Origin: EmberBSD (AI-assisted). Build the common SQLite recipe in a fresh output.
 set -eu
 umask 022
-[ "$(uname -s)" = NetBSD ] || { echo 'Native EmberBSD/NetBSD required.' >&2; exit 2; }
-[ "$#" -ge 1 ] && [ "$#" -le 2 ] || { echo 'Usage: sh build.sh NEW_WORK [ARCHIVE_DIRECTORY]' >&2; exit 2; }
-work=$1
-case "$work" in /*) ;; *) echo 'Use an absolute work directory.' >&2; exit 2 ;; esac
-case "$work" in *[!a-zA-Z0-9_./-]*) echo 'Use a path without whitespace or shell metacharacters.' >&2; exit 2 ;; esac
-here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-for tool in cc gmake sha256 tar curl; do
-    command -v "$tool" >/dev/null || { echo "Missing tool: $tool" >&2; exit 2; }
+usage() {
+    echo 'Usage: build.sh --cross GCC_PREFIX SYSROOT ARCHIVE NEW_OUTPUT' >&2
+    echo '       build.sh --native PREFIX ARCHIVE NEW_OUTPUT' >&2
+    exit 2
+}
+mode=${1:-}
+[ "$#" -gt 0 ] || usage
+shift
+case "$mode" in
+    --cross) [ "$#" = 4 ] || usage; compiler=$1 sysroot=$2 archive=$3 out=$4; prefix=/usr/pkg ;;
+    --native) [ "$#" = 3 ] || usage; prefix=$1 archive=$2 out=$3; compiler= sysroot= ;;
+    *) usage ;;
+esac
+for path do
+    case "$path" in /*) ;; *) echo 'Absolute paths required.' >&2; exit 2;; esac
+    case "$path" in *[!A-Za-z0-9_./-]*) echo 'Use simple absolute paths.' >&2; exit 2;; esac
 done
-mkdir "$work"
-mkdir "$work/archives" "$work/src" "$work/logs"
-archive=sqlite-autoconf-3530400.tar.gz
-if [ "$#" -eq 2 ]; then
-    cp "$2/$archive" "$work/archives/$archive"
+[ ! -e "$out" ] && [ ! -L "$out" ] || { echo 'Output path already exists.' >&2; exit 2; }
+jobs=${JOBS:-1}
+case "$jobs" in ''|*[!0-9]*) jobs=0;; esac
+[ "$jobs" -gt 0 ] 2>/dev/null || { echo 'JOBS must be positive.' >&2; exit 2; }
+probe=$(CDPATH= cd "$(dirname "$0")" && pwd -P)
+recipe=$probe/../../pkgsrc/local-robotics/sqlite3
+expected=$(awk '$1=="sqlite-autoconf-3540000.tar.gz" {print $2}' "$probe/sources.tsv")
+[ "${#expected}" = 64 ]
+printf '%s  %s\n' "$expected" "$archive" | sha256sum -c -
+build_cc=$(command -v "${BUILD_CC:-gcc}")
+[ "$("$build_cc" -dumpfullversion)" = 16.2.0 ] || { echo 'Native GCC 16.2.0 required for build tools.' >&2; exit 2; }
+if [ "$mode" = --cross ]; then
+    cc=$compiler/bin/aarch64--netbsd-gcc
+    ar=$compiler/bin/aarch64--netbsd-ar
+    ranlib=$compiler/bin/aarch64--netbsd-ranlib
+    readelf=$compiler/bin/aarch64--netbsd-readelf
+    [ "$("$cc" -dumpmachine)" = aarch64--netbsd ]
+    # Autosetup requires an explicit canonical vendor field. This configure
+    # spelling does not change the compiler triplet or the EmberBSD sysroot.
+    host=aarch64-unknown-netbsd
+    crt=$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0
+    [ -f "$crt/crtbeginS.o" ] && [ -f "$sysroot/usr/include/pthread.h" ]
+    target_flags="--sysroot=$sysroot -B$crt/ -L$sysroot/usr/pkg/gcc16/lib -march=armv8-a"
 else
-    curl -fsSL --connect-timeout 10 --max-time 120 \
-        "https://www.sqlite.org/2026/$archive" -o "$work/archives/$archive"
+    cc=$(command -v "${CC:-gcc}")
+    ar=$(command -v ar)
+    ranlib=$(command -v ranlib)
+    readelf=$(command -v readelf)
+    host=$("$cc" -dumpmachine)
+    target_flags=
 fi
-expected=0e9483900e92cd5de8fd48d16bf9200145a61f7fd5be542a5ac81d8a9516eb9c
-[ "$(sha256 -q "$work/archives/$archive")" = "$expected" ] || {
-    echo 'Source checksum mismatch; nothing extracted.' >&2; exit 1;
-}
-tar -xzf "$work/archives/$archive" -C "$work/src"
-cd "$work/src/sqlite-autoconf-3530400"
+[ "$("$cc" -dumpfullversion)" = 16.2.0 ] || { echo 'GCC 16.2.0 required.' >&2; exit 2; }
+for tool in make tar cmake ninja; do command -v "$tool" >/dev/null; done
+unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH
+mkdir -p "$out/source" "$out/build" "$out/logs"
+tar -xf "$archive" --strip-components=1 -C "$out/source"
+feature_flags=$(awk '/^SQLITE_CONFIGURE_ARGS=/ {sub(/^[^=]*=[ \t]*/, ""); print}' "$recipe/features.mk")
+feature_defines=$(awk '/^SQLITE_CPPFLAGS=/ {sub(/^[^=]*=[ \t]*/, ""); print}' "$recipe/features.mk")
+[ -n "$feature_flags" ] && [ -n "$feature_defines" ]
 {
-    uname -a
-    cc --version
-    sha256 "$work/archives/$archive"
-} > "$work/logs/environment.txt"
-# The autoconf archive contains the amalgamation and autosetup's C Tcl helper.
-# No project-owned or upstream Python step is used by this configuration.
-run()
-{
-    stage=$1
-    shift
-    if "$@" > "$work/logs/$stage.txt" 2>&1; then return; fi
-    tail -40 "$work/logs/$stage.txt" >&2
-    echo "Failed: $stage" >&2
-    exit 1
+    uname -srm
+    "$cc" --version
+    "$cc" -dumpmachine
+    "$build_cc" --version
+    make --version
+    cmake --version
+    printf 'mode=%s\nprefix=%s\nsysroot=%s\njobs=%s\nfeatures=%s\ndefines=%s\n' "$mode" "$prefix" "$sysroot" "$jobs" "$feature_flags" "$feature_defines"
+    sha256sum "$archive" "$0" "$recipe/features.mk" "$recipe/files/SOURCE"
+} > "$out/inputs.txt"
+run() {
+    name=$1; shift
+    status=0
+    "$@" > "$out/logs/$name.log" 2>&1 || status=$?
+    printf '%s\n' "$status" > "$out/logs/$name.status"
+    if [ "$status" -ne 0 ]; then tail -60 "$out/logs/$name.log" >&2; exit "$status"; fi
 }
-run configure ./configure --prefix="$work/install" --enable-threadsafe --fts5 --disable-readline
-run build nice -n 10 gmake -j1
-run install gmake install
-mkdir -p "$work/install/share/sqlite-probe"
-cp "$here/sources.tsv" "$here/PROVENANCE.md" "$work/install/share/sqlite-probe/"
-cp autosetup/LICENSE "$work/install/share/sqlite-probe/autosetup-LICENSE"
-echo "Installed current SQLite into disposable prefix: $work/install"
-echo 'Run check.sh and the local-knowledge consumer with its pkg-config metadata.'
+cd "$out/build"
+# Autosetup's bootstrap Tcl implementation is built with the native compiler.
+# The generated SQLite objects, shared library and CLI use the selected target.
+run configure env CC="$cc" CC_FOR_BUILD="$build_cc" AR="$ar" RANLIB="$ranlib" \
+    CCACHE=none CFLAGS="-O2 -g -std=gnu17 $target_flags" CPPFLAGS="$feature_defines" \
+    LDFLAGS="-Wl,-rpath,$prefix/lib" \
+    "$out/source/configure" --build="$("$build_cc" -dumpmachine)" --host="$host" \
+    --prefix="$prefix" --mandir="$prefix/man" $feature_flags
+# The dynamically linked CLI uses make's LDFLAGS directly. Autosetup records
+# configure-time LDFLAGS separately for the library, so pass both interfaces.
+run build make -j"$jobs" V=1 LDFLAGS="-Wl,-rpath,$prefix/lib"
+run install make DESTDIR="$out/stage" install
+run licenses sh "$recipe/files/install-licenses.sh" "$out/source" "$out/stage$prefix" "$recipe"
+printf '%s\n' "$prefix" > "$out/prefix.txt"
+(cd "$out/stage$prefix" && find . \( -type f -o -type l \) | sed 's|^./||' | LC_ALL=C sort) > "$out/PLIST"
+if [ -f "$recipe/PLIST" ]; then
+    sed '/^@comment/d;/^$/d' "$recipe/PLIST" | LC_ALL=C sort > "$out/expected-PLIST"
+    cmp "$out/PLIST" "$out/expected-PLIST"
+fi
+"$readelf" -h -d "$out/stage$prefix/lib/libsqlite3.so.3.54.0" "$out/stage$prefix/bin/sqlite3" > "$out/elf.txt"
+grep 'NEEDED.*\[libsqlite3.so.0\]' "$out/elf.txt" >/dev/null
+[ "$(grep -E '(RPATH|RUNPATH)' "$out/elf.txt" | grep -F -c "$prefix/lib")" = 2 ] || {
+    echo 'The shared library and CLI must retain the selected runtime prefix.' >&2; exit 1;
+}
+if [ "$mode" = --cross ]; then
+    [ "$(grep -c 'Machine:.*AArch64' "$out/elf.txt")" = 2 ]
+    for path in "$compiler" "$sysroot" "$out"; do
+        if grep -E 'RPATH|RUNPATH|NEEDED' "$out/elf.txt" | grep -F "$path"; then
+            echo 'Build-host runtime path leaked.' >&2; exit 1
+        fi
+    done
+fi
+echo "Staged SQLite 3.54.0: $out/stage$prefix"

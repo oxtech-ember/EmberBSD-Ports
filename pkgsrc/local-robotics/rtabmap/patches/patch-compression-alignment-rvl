@@ -1,0 +1,333 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), local, not submitted upstream.
+Use aligned metadata access and defined RVL arithmetic; bound the recorded
+depth-image decoder by the actual byte buffer. Preserve the legacy API.
+
+--- a/corelib/include/rtabmap/core/rvl_codec.h
++++ b/corelib/include/rtabmap/core/rvl_codec.h
+@@ -6,6 +6,7 @@
+ #define RVL_CODEC_H_
+ 
+ #include <cstdint>
++#include <cstddef>
+ #include "rtabmap/core/rtabmap_core_export.h"
+ 
+ namespace rtabmap
+@@ -18,6 +19,9 @@
+     int CompressRVL(const uint16_t * input, unsigned char * output, int numPixels);
+     // Decompress input data into output. The size of output must be equal to numPixels.
+     void DecompressRVL(const unsigned char * input, uint16_t * output, int numPixels);
++    // Decode a complete byte buffer. Reject truncated or invalid runs.
++    bool DecompressRVL(const unsigned char * input, std::size_t inputSize,
++                       uint16_t * output, int numPixels);
+ 
+ private:
+     RvlCodec(const RvlCodec &);
+@@ -26,9 +30,9 @@
+     void EncodeVLE(int value);
+     int DecodeVLE();
+ 
+-    int *buffer_;
+-    int *pBuffer_;
+-    int word_;
++    unsigned char *buffer_;
++    unsigned char *pBuffer_;
++    uint32_t word_;
+     int nibblesWritten_;
+ };
+ 
+--- a/corelib/src/rvl_codec.cpp
++++ b/corelib/src/rvl_codec.cpp
+@@ -3,24 +3,28 @@
+ // The original code is licensed under the MIT License.
+ 
+ #include <rtabmap/core/rvl_codec.h>
++#include <algorithm>
++#include <cstring>
++#include <limits>
+ 
+ namespace rtabmap
+ {
+ 
+-RvlCodec::RvlCodec() {}
++RvlCodec::RvlCodec() : buffer_(0), pBuffer_(0), word_(0), nibblesWritten_(0) {}
+ 
+ void RvlCodec::EncodeVLE(int value)
+ {
+     do
+     {
+-        int nibble = value & 0x7;  // lower 3 bits
++        uint32_t nibble = static_cast<uint32_t>(value) & 0x7u;  // lower 3 bits
+         if (value >>= 3)
+             nibble |= 0x8;  // more to come
+         word_ <<= 4;
+         word_ |= nibble;
+         if (++nibblesWritten_ == 8)  // output word
+         {
+-            *pBuffer_++ = word_;
++            std::memcpy(pBuffer_, &word_, sizeof(word_));
++            pBuffer_ += sizeof(word_);
+             nibblesWritten_ = 0;
+             word_ = 0;
+         }
+@@ -29,28 +33,34 @@
+ 
+ int RvlCodec::DecodeVLE()
+ {
+-    unsigned int nibble;
+-    int value = 0, bits = 29;
++    uint32_t nibble, value = 0;
++    unsigned int shift = 0;
+     do
+     {
+         if (!nibblesWritten_)
+         {
+-            word_ = *pBuffer_++;  // load word
++            std::memcpy(&word_, pBuffer_, sizeof(word_));
++            pBuffer_ += sizeof(word_);
+             nibblesWritten_ = 8;
+         }
+-        nibble = word_ & 0xf0000000;
+-        value |= (nibble << 1) >> bits;
++        nibble = word_ >> 28;
++        const uint32_t payload = nibble & 7u;
++        if (shift > 30 || payload > (uint32_t(std::numeric_limits<int>::max()) >> shift))
++            return 0;
++        value |= payload << shift;
+         word_ <<= 4;
+         nibblesWritten_--;
+-        bits -= 3;
+-    } while (nibble & 0x80000000);
+-    return value;
++        shift += 3;
++    } while (nibble & 8u);
++    return static_cast<int>(value);
+ }
+ 
+ int RvlCodec::CompressRVL(const uint16_t * input, unsigned char * output, int numPixels)
+ {
+-    buffer_ = pBuffer_ = reinterpret_cast<int *>(output);
++    if (numPixels <= 0) return 0;
++    buffer_ = pBuffer_ = output;
+     nibblesWritten_ = 0;
++    word_ = 0;
+     const uint16_t * end = input + numPixels;
+     uint16_t previous = 0;
+     while (input != end)
+@@ -64,20 +74,25 @@
+         {
+             uint16_t current = *input++;
+             int delta = current - previous;
+-            int positive = (delta << 1) ^ (delta >> 31);
++            const int positive = delta >= 0 ? delta * 2 : -delta * 2 - 1;
+             EncodeVLE(positive);  // nonzero value
+             previous = current;
+         }
+     }
+     if (nibblesWritten_)  // last few values
+-        *pBuffer_++ = word_ << 4 * (8 - nibblesWritten_);
+-    return static_cast<int>((unsigned char *)pBuffer_ - (unsigned char *)buffer_);  // num bytes
++    {
++        const uint32_t word = word_ << (4 * (8 - nibblesWritten_));
++        std::memcpy(pBuffer_, &word, sizeof(word));
++        pBuffer_ += sizeof(word);
++    }
++    return static_cast<int>(pBuffer_ - buffer_);  // num bytes
+ }
+ 
+ void RvlCodec::DecompressRVL(const unsigned char * input, uint16_t * output, int numPixels)
+ {
+-    buffer_ = pBuffer_ = const_cast<int *>(reinterpret_cast<const int *>(input));
++    buffer_ = pBuffer_ = const_cast<unsigned char *>(input);
+     nibblesWritten_ = 0;
++    word_ = 0;
+     uint16_t current, previous = 0;
+     int numPixelsToDecode = numPixels;
+     while (numPixelsToDecode)
+@@ -91,7 +106,7 @@
+         for (; nonzeros; nonzeros--)
+         {
+             int positive = DecodeVLE();  // nonzero value
+-            int delta = (positive >> 1) ^ -(positive & 1);
++            int delta = positive & 1 ? -(positive / 2) - 1 : positive / 2;
+             current = previous + delta;
+             *output++ = current;
+             previous = current;
+@@ -99,4 +114,73 @@
+     }
+ }
+ 
++namespace {
++class RvlInput
++{
++public:
++    RvlInput(const unsigned char *input, std::size_t size) :
++        input_(input), remaining_(size), word_(0), nibbles_(0) {}
++
++    bool read(uint32_t &value)
++    {
++        value = 0;
++        for (unsigned int shift = 0; shift <= 30; shift += 3)
++        {
++            if (!nibbles_)
++            {
++                if (remaining_ < sizeof(word_)) return false;
++                std::memcpy(&word_, input_, sizeof(word_));
++                input_ += sizeof(word_);
++                remaining_ -= sizeof(word_);
++                nibbles_ = 8;
++            }
++            const uint32_t nibble = word_ >> 28;
++            const uint32_t payload = nibble & 7u;
++            if (payload > (std::numeric_limits<uint32_t>::max() >> shift)) return false;
++            value |= payload << shift;
++            word_ <<= 4;
++            --nibbles_;
++            if (!(nibble & 8u)) return true;
++        }
++        return false;
++    }
++
++private:
++    const unsigned char *input_;
++    std::size_t remaining_;
++    uint32_t word_;
++    int nibbles_;
++};
++}
++
++bool RvlCodec::DecompressRVL(const unsigned char *input, std::size_t inputSize,
++                            uint16_t *output, int numPixels)
++{
++    if (!input || !output || numPixels <= 0 || inputSize % sizeof(uint32_t)) return false;
++    RvlInput reader(input, inputSize);
++    uint32_t remaining = static_cast<uint32_t>(numPixels);
++    int previous = 0;
++    while (remaining)
++    {
++        uint32_t zeros, nonzeros;
++        if (!reader.read(zeros) || zeros > remaining) return false;
++        std::fill_n(output, zeros, uint16_t(0));
++        output += zeros;
++        remaining -= zeros;
++        if (!reader.read(nonzeros) || nonzeros > remaining || (!zeros && !nonzeros)) return false;
++        remaining -= nonzeros;
++        for (uint32_t i = 0; i < nonzeros; ++i)
++        {
++            uint32_t positive;
++            if (!reader.read(positive) || positive > 131070u) return false;
++            const int delta = positive & 1u ? -int(positive / 2) - 1 : int(positive / 2);
++            const int current = previous + delta;
++            if (current <= 0 || current > std::numeric_limits<uint16_t>::max()) return false;
++            *output++ = static_cast<uint16_t>(current);
++            previous = current;
++        }
++    }
++    return true;
++}
++
+ }  // namespace rtabmap
+--- a/corelib/src/Compression.cpp
++++ b/corelib/src/Compression.cpp
+@@ -31,6 +31,8 @@
+ #include <opencv2/opencv.hpp>
+ 
+ #include <zlib.h>
++#include <cstring>
++#include <limits>
+ 
+ namespace rtabmap {
+ 
+@@ -141,6 +143,23 @@
+ 	return cv::Mat();
+ }
+ 
++namespace {
++cv::Mat uncompressRvl(const unsigned char *bytes, size_t size)
++{
++	if(size < 20 || (size - 16) % sizeof(uint32_t)) return cv::Mat();
++	uint32_t cols, rows;
++	std::memcpy(&cols, bytes + 8, sizeof(cols));
++	std::memcpy(&rows, bytes + 12, sizeof(rows));
++	const uint32_t maxPixels = static_cast<uint32_t>(std::numeric_limits<int>::max());
++	if(!cols || !rows || cols > maxPixels || rows > maxPixels / cols) return cv::Mat();
++	cv::Mat image(static_cast<int>(rows), static_cast<int>(cols), CV_16UC1);
++	RvlCodec rvl;
++	if(!rvl.DecompressRVL(bytes + 16, size - 16, image.ptr<uint16_t>(),
++			static_cast<int>(cols * rows))) return cv::Mat();
++	return image;
++}
++}
++
+ cv::Mat uncompressImage(const cv::Mat & bytes)
+ {
+ 	cv::Mat image;
+@@ -148,12 +167,8 @@
+ 	{
+ 		if (compressedDepthFormat(bytes) == ".rvl")
+ 		{
+-			uint32_t cols, rows;
+-        	memcpy(&cols, &bytes.data[8], 4);
+-        	memcpy(&rows, &bytes.data[12], 4);
+-			image = cv::Mat(rows, cols, CV_16UC1);
+-			RvlCodec rvl;
+-        	rvl.DecompressRVL(&bytes.data[16], image.ptr<uint16_t>(), cols * rows);
++			const cv::Mat packed = bytes.isContinuous() ? bytes : bytes.clone();
++			image = uncompressRvl(packed.data, packed.total() * packed.elemSize());
+ 		}
+ 		else
+ 		{
+@@ -182,12 +197,7 @@
+ 	{
+ 		if (compressedDepthFormat(bytes) == ".rvl")
+ 		{
+-			uint32_t cols, rows;
+-        	memcpy(&cols, &bytes[8], 4);
+-        	memcpy(&rows, &bytes[12], 4);
+-			image = cv::Mat(rows, cols, CV_16UC1);
+-			RvlCodec rvl;
+-        	rvl.DecompressRVL(&bytes[16], image.ptr<uint16_t>(), cols * rows);
++			image = uncompressRvl(bytes.data(), bytes.size());
+ 		}
+ 		else
+ 		{
+@@ -220,9 +230,8 @@
+ 						sourceLen);
+ 
+ 		bytes.resize(destLen+3*sizeof(int));
+-		*((int*)&bytes[destLen]) = data.rows;
+-		*((int*)&bytes[destLen+sizeof(int)]) = data.cols;
+-		*((int*)&bytes[destLen+2*sizeof(int)]) = data.type();
++		const int metadata[3] = {data.rows, data.cols, data.type()};
++		std::memcpy(bytes.data() + destLen, metadata, sizeof(metadata));
+ 
+ 		if(errCode == Z_MEM_ERROR)
+ 		{
+@@ -250,9 +259,8 @@
+ 						(const Bytef *)data.data,
+ 						sourceLen);
+ 		bytes = cv::Mat(bytes, cv::Rect(0,0, destLen+3*sizeof(int), 1));
+-		*((int*)&bytes.data[destLen]) = data.rows;
+-		*((int*)&bytes.data[destLen+sizeof(int)]) = data.cols;
+-		*((int*)&bytes.data[destLen+2*sizeof(int)]) = data.type();
++		const int metadata[3] = {data.rows, data.cols, data.type()};
++		std::memcpy(bytes.data + destLen, metadata, sizeof(metadata));
+ 
+ 		if(errCode == Z_MEM_ERROR)
+ 		{
+@@ -283,9 +291,11 @@
+ 	if(bytes && size>=3*sizeof(int))
+ 	{
+ 		//last 3 int elements are matrix size and type
+-		int height = *((int*)&bytes[size-3*sizeof(int)]);
+-		int width = *((int*)&bytes[size-2*sizeof(int)]);
+-		int type = *((int*)&bytes[size-1*sizeof(int)]);
++		int metadata[3];
++		std::memcpy(metadata, bytes + size - sizeof(metadata), sizeof(metadata));
++		int height = metadata[0];
++		int width = metadata[1];
++		int type = metadata[2];
+ 
+ 		data = cv::Mat(height, width, type);
+ 		uLongf totalUncompressed = uLongf(data.total())*uLongf(data.elemSize());

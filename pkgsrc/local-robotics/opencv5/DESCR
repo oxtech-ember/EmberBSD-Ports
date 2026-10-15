@@ -1,0 +1,6 @@
+OpenCV 5.0.0 provides one shared headless image-processing provider.
+This profile includes image codecs, feature extraction, geometry, stereo,
+calibration, video algorithms, stitching and photo processing.
+External shared PNG and JPEG providers preserve recorded RGB-D images.
+GUI, live capture, FFmpeg/GStreamer backends and accelerators are optional
+upstream features and are outside this recorded-image package profile.

@@ -72,9 +72,9 @@ find_package(flann 1.9.2 EXACT CONFIG REQUIRED NO_DEFAULT_PATH
 require_library(flann::flann_cpp "${FLANN_PREFIX}")
 set(PCL_SHARED_LIBS ON)
 set(PCL_FLANN_REQUIRED_TYPE SHARED)
-find_package(PCL 1.15.1 EXACT CONFIG REQUIRED COMPONENTS common filters registration
+find_package(PCL 1.15.1 EXACT CONFIG REQUIRED COMPONENTS common io filters registration surface segmentation
   NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH PATHS "${PROBE_PREFIX}/share/pcl-1.15")
-foreach(component common kdtree octree search sample_consensus filters features registration)
+foreach(component common kdtree octree search sample_consensus filters features registration io io_ply surface segmentation ml)
   require_library(pcl_${component} "${PROBE_PREFIX}")
 endforeach()
 add_executable(pcl-contract contract.cpp)
@@ -82,4 +82,12 @@ target_link_libraries(pcl-contract PRIVATE pcl_common pcl_filters pcl_registrati
 foreach(case filter empty-filter registration no-correspondence)
   add_test(NAME pcl-${case} COMMAND pcl-contract ${case})
   set_tests_properties(pcl-${case} PROPERTIES TIMEOUT 30)
+endforeach()
+
+# Match the RGB/normal MLS types used by the shared RTAB-Map consumer.
+add_executable(pcl-expanded-contract expanded-contract.cpp)
+target_link_libraries(pcl-expanded-contract PRIVATE pcl_surface pcl_segmentation)
+foreach(case surface segmentation empty)
+  add_test(NAME pcl-expanded-${case} COMMAND pcl-expanded-contract ${case})
+  set_tests_properties(pcl-expanded-${case} PROPERTIES TIMEOUT 30)
 endforeach()

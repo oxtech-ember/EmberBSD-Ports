@@ -1,0 +1,15 @@
+set(sql "CREATE TABLE values_table(v INTEGER); INSERT INTO values_table VALUES(42); BEGIN; INSERT INTO values_table VALUES(99); ROLLBACK; SELECT sum(v) FROM values_table; CREATE VIRTUAL TABLE docs USING fts5(body); INSERT INTO docs VALUES('robot cloud loop closure'); SELECT count(*) FROM docs WHERE docs MATCH 'closure'; SELECT json_extract('{\"answer\":42}', '$.answer'); CREATE VIRTUAL TABLE docs3 USING fts3(body); CREATE VIRTUAL TABLE docs4 USING fts4(body); CREATE VIRTUAL TABLE boxes USING rtree(id,minx,maxx,miny,maxy); INSERT INTO boxes VALUES(1,0,2,0,2); SELECT count(*) FROM boxes WHERE minx<=1 AND maxx>=1; SELECT printf('%.0f',sqrt(81)); PRAGMA integrity_check;")
+execute_process(COMMAND "${CLI}" :memory: "${sql}" RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error)
+if(NOT result STREQUAL "0" OR NOT output STREQUAL "42\n1\n42\n1\n9\nok\n")
+  message(FATAL_ERROR "SQLite CLI contract failed: ${result}: ${output}: ${error}")
+endif()
+execute_process(COMMAND "${CLI}" :memory: "SELECT * FROM missing_table;"
+  RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error)
+if(NOT result STREQUAL "1" OR NOT error MATCHES "no such table")
+  message(FATAL_ERROR "Expected exact invalid-SQL failure: ${result}: ${error}")
+endif()
+execute_process(COMMAND "${CLI}" :memory: "SELECT sqlite_version();"
+  RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error)
+if(NOT result STREQUAL "0" OR NOT output STREQUAL "3.54.0\n")
+  message(FATAL_ERROR "Unexpected runtime SQLite version: ${result}: ${output}")
+endif()

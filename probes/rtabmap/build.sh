@@ -1,75 +1,82 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# A disposable native source probe, not a package or system installer.
+# Origin: EmberBSD (AI-assisted). Native consumer of the common package set.
 set -eu
 umask 022
-[ "$#" -ge 1 ] && [ "$#" -le 2 ] || { echo 'Usage: build.sh ABS_NEW_WORK [ABS_ARCHIVE_CACHE]' >&2; exit 2; }
-work=$1
-case "$work" in /*) ;; *) echo 'Use an absolute work path.' >&2; exit 2 ;; esac
-case "$work" in *[!a-zA-Z0-9_./-]*) echo 'Use a simple work path.' >&2; exit 2 ;; esac
+[ "$#" -ge 2 ] && [ "$#" -le 3 ] || {
+    echo 'Usage: build.sh COMMON_PREFIX ABS_NEW_WORK [ABS_ARCHIVE_CACHE]' >&2; exit 2;
+}
+common=$1 work=$2 cache=${3:-}
+for path in "$@"; do
+    case "$path" in /*) ;; *) echo 'Use absolute paths.' >&2; exit 2;; esac
+    case "$path" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2;; esac
+done
 [ ! -e "$work" ] && [ ! -L "$work" ] || { echo 'Work path already exists.' >&2; exit 2; }
-if [ "$#" = 2 ]; then
-    case "$2" in /*) ;; *) echo 'Use an absolute archive cache.' >&2; exit 2 ;; esac
-    [ -d "$2" ] || { echo 'Archive cache is not a directory.' >&2; exit 2; }
-fi
+[ -z "$cache" ] || [ -d "$cache" ] || { echo 'Archive cache is not a directory.' >&2; exit 2; }
 jobs=${JOBS:-1}
-case "$jobs" in ''|0|*[!0-9]*) echo 'JOBS must be positive.' >&2; exit 2 ;; esac
+case "$jobs" in ''|*[!0-9]*) jobs=0;; esac
 [ "$jobs" -gt 0 ] 2>/dev/null || { echo 'JOBS must be positive.' >&2; exit 2; }
 build_as=${BUILD_AS_KIB:-}
 if [ "${BUILD_AS_KIB+x}" = x ]; then
-    case "$build_as" in ''|0|*[!0-9]*) echo 'BUILD_AS_KIB must be positive.' >&2; exit 2 ;; esac
+    case "$build_as" in ''|*[!0-9]*) build_as=0;; esac
     [ "$build_as" -gt 0 ] 2>/dev/null || { echo 'BUILD_AS_KIB must be positive.' >&2; exit 2; }
 fi
-recipe=$(CDPATH= cd "$(dirname "$0")" && pwd)
+probe=$(CDPATH= cd "$(dirname "$0")" && pwd -P)
+ports=$(CDPATH= cd "$probe/../.." && pwd -P)
+recipe=$ports/pkgsrc/local-robotics/rtabmap
 mkdir "$work"
-mkdir "$work/src" "$work/archives" "$work/logs"
+mkdir "$work/source" "$work/archives" "$work/logs"
 prefix=$work/install
-hash()
-{
+hash() {
     if command -v sha256 >/dev/null 2>&1; then sha256 -q "$1";
     else shasum -a 256 "$1" | awk '{print $1}'; fi
 }
-# Check all archives before extracting any, including cached archives.
 while read -r name expected url; do
-    if [ "$#" = 2 ]; then
-        cp "$2/$name" "$work/archives/$name"
+    [ -n "$name" ] || continue
+    if [ -n "$cache" ]; then
+        cp "$cache/$name" "$work/archives/$name"
     else
         curl -fLsS --connect-timeout 20 --max-time 900 "$url" -o "$work/archives/$name"
     fi
-    actual=$(hash "$work/archives/$name")
-    [ "$actual" = "$expected" ] || { echo "Checksum mismatch: $name; nothing extracted." >&2; exit 2; }
-    printf '%s %s %s\n' "$name" "$actual" "$url" >> "$work/logs/sources.txt"
-done < "$recipe/sources.tsv"
-[ "$(uname -s)" = NetBSD ] || { echo 'Native EmberBSD/NetBSD required.' >&2; exit 2; }
-# Optional user-selected soft limit; preserve the inherited hard limit.
-if [ -n "$build_as" ]; then
-    ulimit -S -v "$build_as" || { echo 'Could not set the requested address-space limit.' >&2; exit 2; }
-    [ "$(ulimit -S -v)" = "$build_as" ] || {
-        echo 'Requested address-space limit verification failed.' >&2; exit 2;
+    [ "$(hash "$work/archives/$name")" = "$expected" ] || {
+        echo "Checksum mismatch: $name; nothing extracted." >&2; exit 2;
     }
-fi
-CC=${CC:-/usr/bin/cc}
-CXX=${CXX:-/usr/bin/c++}
-for tool in "$CC" "$CXX" cmake ninja tar patch; do
-    command -v "$tool" >/dev/null || { echo "Missing tool: $tool" >&2; exit 2; }
+    printf '%s %s %s\n' "$name" "$expected" "$url" >> "$work/logs/sources.txt"
+done < "$probe/sources.tsv"
+[ "$(uname -s):$(uname -p)" = NetBSD:aarch64 ] || { echo 'Native AArch64 EmberBSD required.' >&2; exit 2; }
+[ -d "$common" ] || { echo 'Common dependency prefix is missing.' >&2; exit 2; }
+common=$(CDPATH= cd "$common" && pwd -P)
+CC=${CC:-$common/gcc16/bin/gcc}
+CXX=${CXX:-$common/gcc16/bin/g++}
+for compiler in "$CC" "$CXX"; do
+    case "$compiler" in /*) ;; *) echo 'Use absolute compiler paths.' >&2; exit 2;; esac
+    [ -x "$compiler" ] && [ "$("$compiler" -dumpfullversion)" = 16.2.0 ] || {
+        echo 'The common GCC 16.2.0 compiler is required.' >&2; exit 2;
+    }
+    case "$("$compiler" -dumpmachine)" in aarch64*netbsd*) ;;
+        *) echo 'Native AArch64 EmberBSD compiler required.' >&2; exit 2;; esac
 done
-export CC CXX
-printf '%s\n' "$(command -v "$CXX")" > "$work/logs/cxx.txt"
-require_prefix()
-{
-    label=$1
-    value=$2
-    case "$value" in /*) ;; *) echo "Use an absolute $label prefix." >&2; exit 2 ;; esac
-    case "$value" in *[!a-zA-Z0-9_./-]*) echo "Use a simple $label prefix." >&2; exit 2 ;; esac
-    [ -d "$value" ] || { echo "Missing $label prefix: $value" >&2; exit 2; }
-    printf '%s\n' "$value" > "$work/logs/$label-prefix.txt"
-}
-: "${EIGEN_PREFIX:?Set the common Eigen 5.0.1 prefix}"
-: "${OPENCV_PREFIX:?Set the common headless OpenCV 5.0.0 prefix}"
-require_prefix eigen "$EIGEN_PREFIX"
-require_prefix opencv "$OPENCV_PREFIX"
-PKG_CONFIG_PATH=/usr/pkg/lib/pkgconfig:/usr/pkg/share/pkgconfig
-export PKG_CONFIG_PATH
+for tool in cmake ninja tar patch; do command -v "$tool" >/dev/null || exit 2; done
+for config in share/eigen3/cmake/Eigen3Config.cmake lib/cmake/opencv5/OpenCVConfig.cmake \
+    share/pcl-1.15/PCLConfig.cmake lib/cmake/GTSAM/GTSAMConfig.cmake \
+    lib/cmake/lz4/lz4Config.cmake; do
+    [ -f "$common/$config" ] || { echo "Missing common dependency: $config" >&2; exit 2; }
+done
+for library in libpcl_surface.so libpcl_segmentation.so libpcl_ml.so libflann_cpp.so libsqlite3.so; do
+    [ -f "$common/lib/$library" ] || { echo "Missing common library: $library" >&2; exit 2; }
+done
+if [ -n "$build_as" ]; then
+    ulimit -S -v "$build_as"
+    [ "$(ulimit -S -v)" = "$build_as" ] || exit 2
+fi
+unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH
+unset PKG_CONFIG_SYSROOT_DIR
+PKG_CONFIG_PATH=
+PKG_CONFIG_LIBDIR=$common/lib/pkgconfig:$common/share/pkgconfig
+export CC CXX PKG_CONFIG_PATH PKG_CONFIG_LIBDIR
+printf '%s\n' "$CC" > "$work/logs/cc.txt"
+printf '%s\n' "$CXX" > "$work/logs/cxx.txt"
+printf '%s\n' "$common" > "$work/logs/common-prefix.txt"
 {
     uname -a
     printf 'BUILD_AS_KIB=%s\nJOBS=%s\n' "$(ulimit -v)" "$jobs"
@@ -77,58 +84,37 @@ export PKG_CONFIG_PATH
     "$CXX" --version
     cmake --version
     ninja --version
+    printf 'features.cmake %s\n' "$(hash "$recipe/features.cmake")"
 } > "$work/logs/tools.txt"
-run()
-{
-    stage=$1
-    shift
-    printf '%s\n' "$stage"
+run() {
+    stage=$1; shift
     status=0
     "$@" > "$work/logs/$stage.log" 2>&1 || status=$?
-    if [ "$status" -ne 0 ]; then
-        tail -60 "$work/logs/$stage.log" >&2
-        echo "Failed: $stage ($status)" >&2
-        exit "$status"
-    fi
+    printf '%s\n' "$status" > "$work/logs/$stage.status"
+    [ "$status" = 0 ] || { tail -60 "$work/logs/$stage.log" >&2; exit "$status"; }
 }
-: "${PCL_PREFIX:?Set the common PCL 1.15.1 prefix, including io/surface/segmentation}"
-: "${GTSAM_PREFIX:?Set the common GTSAM 4.3.0 prefix}"
-: "${SQLITE_PREFIX:?Set the common SQLite 3.53.4 prefix}"
-require_prefix pcl "$PCL_PREFIX"
-require_prefix gtsam "$GTSAM_PREFIX"
-require_prefix sqlite "$SQLITE_PREFIX"
-tar -xzf "$work/archives/rtabmap-0.23.8.tar.gz" -C "$work/src"
-source_tree=$work/src/rtabmap-d069becc724905d6465a8758c40dae88e13bb9e8
-run patch-opencv5 patch -d "$source_tree" -p1 -i "$recipe/patches/opencv5-upstream.patch"
-run patch-dependencies patch -d "$source_tree" -p1 -i "$recipe/patches/shared-headless-dependencies.patch"
-run patch-gtsam4 sh "$recipe/patches/gtsam4-optional.sh" "$source_tree"
-# Disable every optional backend in the pinned source; enable GTSAM explicitly.
-# This avoids opportunistic linkage to packages installed by another probe.
-set --
-for option in $(sed -n 's/^[Oo][Pp][Tt][Ii][Oo][Nn](\(WITH_[A-Z0-9_]*\)[ 	].*/\1/p' "$source_tree/CMakeLists.txt" | sort -u); do
-    [ "$option" = WITH_GTSAM ] || set -- "$@" "-D$option=OFF"
+run extract tar -xf "$work/archives/rtabmap-0.23.8.tar.gz" --strip-components=1 -C "$work/source"
+for delta in "$recipe/patches/"patch-*; do
+    [ -f "$delta" ] || continue
+    printf '%s %s\n' "$(basename "$delta")" "$(hash "$delta")" >> "$work/logs/patch-inputs.txt"
+    run "$(basename "$delta")" patch -f -N -F 0 -d "$work/source" -p1 < "$delta"
 done
-run rtabmap-configure cmake -S "$source_tree" -B "$work/rtabmap-build" -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 \
+# The genuine native resource generator must load the new build-tree utilite.
+# Installation replaces this build RPATH with the final installed paths.
+run rtabmap-configure cmake -S "$work/source" -B "$work/rtabmap-build" -G Ninja \
+    -C "$recipe/features.cmake" -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_C_COMPILER="$CC" -DCMAKE_CXX_COMPILER="$CXX" \
     -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
-    -DCMAKE_PREFIX_PATH="$EIGEN_PREFIX;$OPENCV_PREFIX;$PCL_PREFIX;$GTSAM_PREFIX;$SQLITE_PREFIX;/usr/pkg" \
-    -DEigen3_DIR="$EIGEN_PREFIX/share/eigen3/cmake" \
-    -DOpenCV_DIR="$OPENCV_PREFIX/lib/cmake/opencv5" -DPCL_DIR="$PCL_PREFIX/share/pcl-1.15" \
-    -DGTSAM_DIR="$GTSAM_PREFIX/lib/cmake/GTSAM" \
-    -DSQLite3_INCLUDE_DIR="$SQLITE_PREFIX/include" -DSQLite3_LIBRARY="$SQLITE_PREFIX/lib/libsqlite3.so" \
-    -DCMAKE_INSTALL_RPATH="$prefix/lib;$OPENCV_PREFIX/lib;$PCL_PREFIX/lib;$GTSAM_PREFIX/lib;$SQLITE_PREFIX/lib;/usr/pkg/lib" \
-    -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF \
-    -DBUILD_SHARED_LIBS=ON -DBUILD_APP=OFF -DBUILD_TOOLS=OFF -DBUILD_EXAMPLES=OFF \
-    -DWITH_GTSAM=ON -DPCL_OMP=OFF -DBUILD_OPENGV=OFF "$@"
+    -DCMAKE_PREFIX_PATH="$common" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    -DEigen3_DIR="$common/share/eigen3/cmake" \
+    -DOpenCV_DIR="$common/lib/cmake/opencv5" -DPCL_DIR="$common/share/pcl-1.15" \
+    -DGTSAM_DIR="$common/lib/cmake/GTSAM" \
+    -DSQLite3_INCLUDE_DIR="$common/include" -DSQLite3_LIBRARY="$common/lib/libsqlite3.so" \
+    -DCMAKE_BUILD_WITH_INSTALL_RPATH=OFF \
+    -DCMAKE_BUILD_RPATH="$common/lib;$common/gcc16/lib" \
+    -DCMAKE_INSTALL_RPATH="$prefix/lib;$common/lib;$common/gcc16/lib" \
+    -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF
 run rtabmap-build cmake --build "$work/rtabmap-build" --parallel "$jobs"
 run rtabmap-install cmake --install "$work/rtabmap-build"
-licenses=$prefix/share/rtabmap-probe/licenses
-mkdir -p "$licenses"
-cp "$recipe/licenses/"*.txt "$licenses/"
-cp "$recipe/sources.tsv" "$recipe/PROVENANCE.md" "$prefix/share/rtabmap-probe/"
-cp "$source_tree/LICENSE" "$licenses/RTAB-Map-BSD.txt"
-cp "$source_tree/utilite/include/rtabmap/utilite/UThread.h" "$licenses/utilite-LGPL-notice.h"
-cp "$source_tree/corelib/src/rtflann/general.h" "$licenses/rtflann-BSD-notice.h"
-cp "$source_tree/corelib/src/rtflann/ext/lz4.c" "$licenses/rtflann-lz4-BSD-notice.c"
-echo "Installed in $prefix; run test.sh to verify the installed consumer."
+run rtabmap-licenses sh "$recipe/files/install-licenses.sh" "$work/source" "$prefix" "$recipe"
+echo "Installed RTAB-Map in $prefix; run test.sh $work PATCHED_OPENCV_SOURCE."

@@ -1,0 +1,165 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -244,7 +244,10 @@
+ # OpenCV components. calib3d was split into "calib" + "geometry" in OpenCV 5.
+ # These lists are reused below to generate RTABMapConfig.cmake so downstream
+ # find_package(RTABMap) requests the same components this build used.
+-SET(RTABMAP_OpenCV_COMPONENTS_5 core imgproc highgui stitching photo video videoio calib geometry)
++SET(RTABMAP_OpenCV_COMPONENTS_5 core imgproc imgcodecs features stitching photo video videoio calib geometry)
++IF(WITH_QT)
++  LIST(APPEND RTABMAP_OpenCV_COMPONENTS_5 highgui)
++ENDIF()
+ SET(RTABMAP_OpenCV_COMPONENTS_4 core imgproc highgui stitching photo video videoio calib3d)
+ SET(RTABMAP_OpenCV_OPTIONAL_COMPONENTS_5 objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
+ SET(RTABMAP_OpenCV_OPTIONAL_COMPONENTS_4 aruco objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
+@@ -254,7 +257,7 @@
+ # match (e.g. asking for 5 when only 4 is present) resets OpenCV_DIR to NOTFOUND,
+ # which breaks toolchain builds that rely on a -DOpenCV_DIR hint (e.g. Android,
+ # where CMAKE_FIND_ROOT_PATH restricts the search).
+-FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS core)
++FIND_PACKAGE(OpenCV 5.0.0 EXACT REQUIRED QUIET COMPONENTS core)
+ IF(OpenCV_VERSION_MAJOR GREATER 4)
+   FIND_PACKAGE(OpenCV REQUIRED QUIET COMPONENTS ${RTABMAP_OpenCV_COMPONENTS_5} OPTIONAL_COMPONENTS ${RTABMAP_OpenCV_OPTIONAL_COMPONENTS_5})
+ ELSE()
+@@ -262,9 +265,9 @@
+ ENDIF()
+ 
+ IF(WITH_QT)
+-FIND_PACKAGE(PCL 1.7 REQUIRED QUIET COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation visualization)
++FIND_PACKAGE(PCL 1.15.1 EXACT REQUIRED QUIET COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation visualization)
+ ELSE()
+-FIND_PACKAGE(PCL 1.7 REQUIRED QUIET COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation )
++FIND_PACKAGE(PCL 1.15.1 EXACT REQUIRED QUIET COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation )
+ ENDIF()
+ if(PCL_COMPILE_OPTIONS)
+   if("${PCL_COMPILE_OPTIONS}" MATCHES "-march=native")
+@@ -282,7 +285,7 @@
+ 
+ FIND_PACKAGE(ZLIB REQUIRED QUIET)
+ 
+-FIND_PACKAGE(SQLite3 QUIET)
++FIND_PACKAGE(SQLite3 3.54.0 EXACT REQUIRED)
+ IF(SQLite3_FOUND)
+    MESSAGE(STATUS "Found SQLite3: ${SQLite3_INCLUDE_DIRS} ${SQLite3_LIBRARIES}")
+ ENDIF(SQLite3_FOUND)
+@@ -555,7 +558,7 @@
+ 
+ IF(WITH_GTSAM)
+     # Force config mode to ignore PCL's findGTSAM.cmake file
+-    FIND_PACKAGE(GTSAM CONFIG QUIET)
++    FIND_PACKAGE(GTSAM 4.3.0 EXACT CONFIG REQUIRED)
+     IF(GTSAM_FOUND)
+       # For issue https://github.com/introlab/rtabmap/pull/1626
+       FIND_FILE(GTSAM_NOISE_MODEL_FACTOR_N_FILE gtsam/nonlinear/NoiseModelFactorN.h
+--- a/corelib/include/rtabmap/core/camera/CameraVideo.h
++++ b/corelib/include/rtabmap/core/camera/CameraVideo.h
+@@ -27,7 +27,7 @@
+ 
+ #pragma once
+ 
+-#include <opencv2/highgui/highgui.hpp>
++#include <opencv2/videoio.hpp>
+ #include "rtabmap/core/Camera.h"
+ 
+ namespace rtabmap
+--- a/corelib/include/rtabmap/core/VWDictionary.h
++++ b/corelib/include/rtabmap/core/VWDictionary.h
+@@ -29,7 +29,7 @@
+ 
+ #include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
+ 
+-#include <opencv2/highgui/highgui.hpp>
++#include <opencv2/imgcodecs.hpp>
+ #include <opencv2/core/core.hpp>
+ #if CV_MAJOR_VERSION < 5
+ #include <opencv2/features2d/features2d.hpp>
+--- a/corelib/include/rtabmap/core/Features2d.h
++++ b/corelib/include/rtabmap/core/Features2d.h
+@@ -30,7 +30,7 @@
+ 
+ #include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
+ 
+-#include <opencv2/highgui/highgui.hpp>
++#include <opencv2/imgcodecs.hpp>
+ #include <opencv2/core/core.hpp>
+ #if CV_MAJOR_VERSION < 5
+ #include <opencv2/features2d/features2d.hpp>
+--- a/corelib/include/rtabmap/core/SensorCapture.h
++++ b/corelib/include/rtabmap/core/SensorCapture.h
+@@ -28,7 +28,7 @@
+ 
+ #include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
+ 
+-#include <opencv2/highgui/highgui.hpp>
++#include <opencv2/imgcodecs.hpp>
+ #include <rtabmap/core/SensorCaptureInfo.h>
+ #include "rtabmap/core/SensorData.h"
+ #include <set>
+--- a/corelib/src/clams/frame_projector.cpp
++++ b/corelib/src/clams/frame_projector.cpp
+@@ -31,7 +31,7 @@
+ #include <rtabmap/utilite/ULogger.h>
+ #include <rtabmap/core/util3d_transforms.h>
+ #include <rtabmap/core/util3d.h>
+-#include <opencv2/highgui/highgui.hpp>
++#include <opencv2/imgcodecs.hpp>
+ #include <opencv2/imgproc/imgproc.hpp>
+ #include <pcl/common/point_tests.h>
+ 
+--- a/corelib/src/clams/discrete_depth_distortion_model_helpers.cpp
++++ b/corelib/src/clams/discrete_depth_distortion_model_helpers.cpp
+@@ -29,7 +29,7 @@
+ 
+ #include <rtabmap/core/clams/discrete_depth_distortion_model.h>
+ #include <opencv2/imgproc/imgproc.hpp>
+-#include <opencv2/highgui/highgui.hpp>
++#include <opencv2/imgcodecs.hpp>
+ #include <rtabmap/utilite/ULogger.h>
+ #include <rtabmap/utilite/UDirectory.h>
+ 
+--- a/corelib/src/util2d.cpp
++++ b/corelib/src/util2d.cpp
+@@ -36,7 +36,7 @@
+ #include <rtabmap/core/StereoDense.h>
+ #include <opencv2/imgproc/imgproc.hpp>
+ #include <opencv2/video/tracking.hpp>
+-#include <opencv2/highgui/highgui.hpp>
++#include <opencv2/imgcodecs.hpp>
+ #include <map>
+ #include <Eigen/Core>
+ 
+--- a/corelib/src/optimizer/OptimizerGTSAM.cpp
++++ b/corelib/src/optimizer/OptimizerGTSAM.cpp
+@@ -482,9 +482,7 @@
+ 					gtsam::Unit3 nZ(0,0,1);
+ 					gtsam::Unit3 bGMeas = nRbMeas.unrotate(nZ);
+ 					gtsam::SharedNoiseModel model = gtsam::noiseModel::Isotropic::Sigma(2, gravitySigma());
+-#if GTSAM_VERSION_NUMERIC <= 40300
+-					// Note: till 40301 is officially released, version 40300 with "4.3a1" would fail here.
+-					//       Just replace "<=" above by "<" to use AttitudeFactor<Pose3> below.
++#if GTSAM_VERSION_NUMERIC < 40300
+ 					graph.add(gtsam::Pose3AttitudeFactor(iter->first, nZ, model, bGMeas));
+ #else
+ 					graph.add(gtsam::AttitudeFactor<gtsam::Pose3>(iter->first, nZ, model, bGMeas));
+--- a/corelib/src/Signature.cpp
++++ b/corelib/src/Signature.cpp
+@@ -29,7 +29,7 @@
+ #include "rtabmap/core/EpipolarGeometry.h"
+ #include "rtabmap/core/Memory.h"
+ #include "rtabmap/core/Compression.h"
+-#include <opencv2/highgui/highgui.hpp>
++#include <opencv2/imgcodecs.hpp>
+ 
+ #include <rtabmap/utilite/UtiLite.h>
+ 
+--- a/corelib/src/opencv/ORBextractor.cc
++++ b/corelib/src/opencv/ORBextractor.cc
+@@ -63,7 +63,7 @@
+ 
+ 
+ #include <opencv2/core/core.hpp>
+-#include <opencv2/highgui/highgui.hpp>
++#include <opencv2/imgcodecs.hpp>
+ #if CV_MAJOR_VERSION < 5
+ #include <opencv2/features2d/features2d.hpp>
+ #else

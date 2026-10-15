@@ -1,0 +1,15 @@
+--- a/modules/core/src/system.cpp
++++ b/modules/core/src/system.cpp
+@@ -705,6 +705,12 @@
+             close(cpufile);
+         }
+     #endif
++    #elif defined(__NetBSD__) && defined(__aarch64__)
++        // The AArch64 ABI provides Advanced SIMD and half/single conversion.
++        // Optional FP16 arithmetic, dot product, BF16 and SVE stay disabled
++        // until they can be queried through a supported NetBSD interface.
++        have[CV_CPU_NEON] = true;
++        have[CV_CPU_FP16] = true;
+     #elif (defined __APPLE__)
+     #if defined __ARM_NEON
+         have[CV_CPU_NEON] = true;

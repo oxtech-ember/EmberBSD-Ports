@@ -35,8 +35,11 @@ with those providers.
 PCL retains its embedded KissFFT, LZF and PLY implementations. Package license
 files preserve Mark Borgerding's KissFFT notices, Marc Alexander Lehmann's LZF
 notices, Willow Garage notices and representative PLY source attribution.
-Installed upstream headers retain their own notices. The LZ4 package preserves
-both the BSD library license and the GPL CLI license. These licenses do not
+The expanded profile also retains Poisson4 geometry attribution to Michael
+Kazhdan and Matthew Bolitho, SVM attribution to Chih-Chung Chang and Chih-Jen
+Lin, and the PCL ML source notices. Representative source files accompany
+the package. Installed upstream headers retain their own notices.
+The LZ4 package preserves both the BSD library license and the GPL CLI license. These licenses do not
 change the ownership or licensing of the EmberBSD checks.
 
 ## Canonical source adaptations
@@ -91,3 +94,23 @@ package recipes and helpers carry their own SPDX identifiers. They do not
 relicense upstream source. Source lists are [PCL](sources.tsv),
 [common dependency additions](cross/dependency-sources.tsv) and
 [test-only GoogleTest](test-sources.tsv).
+
+## Expanded shared profile
+
+Package revision `pcl-1.15.1nb1` retains the same pinned upstream source and
+canonical patches. It adds Surface, Segmentation and compiled ML, plus the
+header-only Geometry subsystem. The existing `2d` subsystem remains header-only.
+The shared-library count grows from ten to thirteen. External providers,
+core point types and the disabled GUI/sensor/Qhull/OpenMP features stay fixed.
+
+The expanded installed contract uses the RGB-to-RGB-normal MLS combination
+required by RTAB-Map. Its plane and normal oracle is independent of the PCL
+output. The segmentation oracle checks a known plane and three outliers.
+Upstream `test_concave_prism` and `test_ear_clipping` extend the bounded
+selection to fourteen programs. The latter uses the pinned `bun0.pcd` fixture.
+Expanded runtime results belong in [validation](VALIDATION.md).
+
+The expanded Linux control reuses the accepted same-version native dependency
+builds. CMake relocates their ELF runtime paths to the current prefix without
+changing code or SONAMEs. PCL itself is rebuilt from the pinned source for
+all thirteen libraries. Target DSOs do not enter the native control prefix.

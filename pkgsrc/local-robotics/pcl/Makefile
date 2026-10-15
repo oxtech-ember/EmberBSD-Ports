@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Origin: EmberBSD (AI-assisted), based on the official PCL release.
 DISTNAME=	pcl-1.15.1
+PKGREVISION=	1
 CATEGORIES=	graphics
 MASTER_SITES=	${MASTER_SITE_GITHUB:=PointCloudLibrary/}
 GITHUB_PROJECT=	pcl
@@ -8,7 +9,7 @@ GITHUB_TAG=	3346843ea6b97697a1577293aa9cdf236b5c7ffb
 WRKSRC=		${WRKDIR}/pcl-${GITHUB_TAG}
 
 HOMEPAGE=	https://pointclouds.org/
-COMMENT=	Shared point-cloud filtering and rigid registration
+COMMENT=	Shared point-cloud geometry for filtering, registration and mapping
 LICENSE=	modified-bsd AND 2-clause-bsd
 PATCH_STRIP=	-p1
 
@@ -22,6 +23,7 @@ CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_RPATH=${PREFIX}/lib\;${PREFIX}/gcc16/lib
 BUILD_TARGET=		pcl_common pcl_kdtree pcl_octree pcl_search
 BUILD_TARGET+=		pcl_sample_consensus pcl_filters pcl_features
 BUILD_TARGET+=		pcl_registration pcl_io pcl_io_ply
+BUILD_TARGET+=		pcl_surface pcl_segmentation pcl_ml
 
 post-install:
 	${SH} ${FILESDIR}/install-licenses.sh ${WRKSRC} ${DESTDIR}${PREFIX} ${.CURDIR}
