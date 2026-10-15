@@ -62,6 +62,11 @@ macOS or accept the native generator build's Darwin metadata.
 
 Both graphics recipes use pkgsrc's `TOOL_PYTHONBIN`, including libdrm's
 build-script shebangs. `PYTHONBIN` continues to describe the target interpreter.
+Their pre-configure guards require the selected Python 3.15 host interpreter.
+Mesa also requires its real Mako, packaging and YAML imports.
+`tests/python-host-guards.rb HOST_PYTHON315 OLDER_HOST_PYTHON NEW_WORK` runs
+both production guards. Its older-interpreter controls test the exact version
+predicates without requiring obsolete module installations.
 Mesa substitutes that exact host executable into its existing interpreter
 list; its real version/import checks remain active. Libdrm's Python entry and
 Mesa's LLVM entry are emitted by pkgsrc into the actual Meson cross file.

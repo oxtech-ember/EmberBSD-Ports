@@ -64,6 +64,6 @@ REPLACE_TOOL_PYTHON+= symbols-check.py gen_table_fourcc.py
 .include "../../lang/python/application.mk"
 pre-configure:
 	${TEST} -x ${TOOL_PYTHONBIN:Q}
-	${TOOL_PYTHONBIN} -c 'import sys; assert sys.version_info[:2] == (3, 14)'
+	${TOOL_PYTHONBIN} -c 'import sys; assert sys.version_info[:2] == (3, 15)'
 .include "../../devel/meson/build.mk"
 .include "../../mk/bsd.pkg.mk"
