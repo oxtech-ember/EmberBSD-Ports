@@ -16,19 +16,30 @@ command -v "$info" >/dev/null
 command -v "$admin" >/dev/null
 mkdir "$output"
 cd "$output"
-"$info" -e attr-2.6.0 > package.log
-"$admin" check attr-2.6.0 > package-check.log 2>&1
+"$info" -e attr-2.6.0nb1 > package.log
+"$admin" check attr-2.6.0nb1 > package-check.log 2>&1
 for op in get set; do
     [ "$(readlink "$prefix/man/man3/attr_${op}f.3")" = "attr_attr_${op}.3" ]
     [ -f "$prefix/man/man3/attr_attr_${op}.3" ]
 done
-for tool in attr getfattr setfattr; do
+for tool in getfattr setfattr; do
     "$prefix/bin/$tool" --version >> versions.log
 done
 # Exit 77 means this filesystem cannot support the requested acceptance.
 "$consumer" "$output/api-source" "$output/api-destination" > consumer.log 2>&1
 mkdir tree
 : > tree/file
+# The legacy attr CLI has no --version option. Exercise its real interface.
+"$prefix/bin/attr" -q -s ember-legacy -V legacy-value tree/file
+"$prefix/bin/attr" -q -g ember-legacy tree/file > legacy.value
+[ "$(cat legacy.value)" = legacy-value ]
+"$prefix/bin/attr" -q -l tree/file > legacy-list.log
+grep -qx ember-legacy legacy-list.log
+"$prefix/bin/attr" -q -r ember-legacy tree/file
+legacy_status=0
+"$prefix/bin/attr" -q -g ember-legacy tree/file > legacy-removed.value 2> legacy-removed.log || legacy_status=$?
+[ "$legacy_status" -eq 1 ] || { echo 'Legacy removed-attribute read returned an unexpected status' >&2; exit 1; }
+grep -Eq 'No such attribute|Attribute not found|No data available' legacy-removed.log
 ln -s file tree/link
 "$prefix/bin/setfattr" -n user.ember-cli -v target-value tree/file
 "$prefix/bin/getfattr" --only-values -n user.ember-cli tree/file > ordinary.value

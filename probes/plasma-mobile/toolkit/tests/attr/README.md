@@ -1,4 +1,4 @@
-# attr 2.6.0 checks
+# attr 2.6.0nb1 checks
 
 The toolkit carries the current attr 2.6.0 source archive and its pinned SHA256.
 The recipe derives from pkgsrc `fff4deb639a1a640476203c80f752fb77b6cb14b`.
@@ -18,7 +18,7 @@ Filesystem extended-attribute support is a separate runtime requirement.
 Run the archive check on the final normal package:
 
 ```sh
-ruby ../attr-package.rb /absolute/attr-2.6.0.tgz
+ruby ../attr-package.rb /absolute/attr-2.6.0nb1.tgz
 ```
 
 It checks both renamed regular pages, both symlinks, and their package metadata.
@@ -40,12 +40,15 @@ It also checks attribute names, buffers, sizes, CREATE and REPLACE flags.
 ASan and UBSan check this execution on macOS. Valgrind and LeakSanitizer do not
 support this host configuration. This contract does not test kernel xattrs.
 
-The normal macOS/GCC16 cross package passes file, interpreter, permission,
-PIE, RELRO, RPATH and build-path checks. `libattr.so.1` retains all 14
-exported functions from the previous package. The final archive SHA256 is
+The macOS/GCC16 cross package passes ordinary pkgsrc staging checks.
+`libattr.so.1` retains all 14 exported functions from the previous package.
+The first 2.6.0 archive passed those checks but was rejected on installation:
+its helpers retained the host sort wrapper path. Its SHA256 was
 `c7a0eabf8ba2bd7ff37555297cebe83a4661d4cd91b90fd5a06f462b9a760e80`.
-Its upstream archive SHA256 is pinned in the toolkit source manifest.
-No package metadata or payload was edited after packaging.
+Revision nb1 selects target sort through the shared cross-pkginstall patch.
+The [actual install-script check](../../../../../profiles/common-build-tools/tests/cross-install-scripts.rb)
+rejects that control archive and checks directory/configuration lifecycle.
+No package metadata or payload is edited after packaging.
 
 The public-header installation uses POSIX sed syntax. The old BSD-sed
 cross package retained `EXPORT` tokens and fails the consumer's header check.

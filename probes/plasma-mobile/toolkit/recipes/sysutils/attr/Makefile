@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.13 2024/01/24 20:25:45 wiz Exp $
 
 DISTNAME=	attr-2.6.0
+PKGREVISION=	1
 CATEGORIES=	sysutils
 MASTER_SITES=	https://download.savannah.gnu.org/releases/attr/
 EXTRACT_SUFX=	.tar.xz
