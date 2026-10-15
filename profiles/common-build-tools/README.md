@@ -24,6 +24,8 @@ metadata, alternate-root updates and target script paths have regressions.
 Binutils includes a tested DWARF32/64 line-table repair. Its acceptance
 explicitly selects GNU as/ld; migration of the bootstrap GCC16 package's
 hardcoded base-tool paths remains pending.
+OpenSSL cross builds select complete upstream BSD targets instead of the
+build host's uname; the [cross checks](cross/README.md) keep package and runtime acceptance separate.
 
 The profile owns full Python, Meson and
 [LLVM family recipes](llvm-family.md), based on

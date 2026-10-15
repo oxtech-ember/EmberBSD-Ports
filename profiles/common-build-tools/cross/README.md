@@ -69,6 +69,27 @@ Also set `EMBERBSD_CROSS_TARGET=amd64` in the cross MAKECONF. This selects
 Unknown targets and conflicting compiler or machine overrides fail.
 The selector does not prove an amd64 package build or desktop session.
 
+OpenSSL uses explicit upstream `BSD-x86_64` and `BSD-aarch64` Configure targets
+for NetBSD cross builds. OpenSSL 3.6's automatic `config` path reads host
+`POSIX::uname` and ignores the older target environment variables. Native
+selection stays unchanged. Unsupported NetBSD cross architectures fail before
+the build. Assembly, shared libraries and package checks remain enabled.
+The [focused regression](../tests/openssl-target.rb) uses real pkgsrc metadata
+and the verified upstream archive:
+
+```sh
+BMAKE=/absolute/host/bin/bmake GMAKE=/absolute/host/bin/gmake \
+    ruby profiles/common-build-tools/tests/openssl-target.rb \
+    /absolute/export /absolute/cross.mk.conf \
+    /absolute/distfiles/openssl-3.6.4.tar.gz /absolute/new-check
+```
+
+Run this check on macOS with a genuine amd64 GCC16 compiler and sysroot.
+It compares host detection with explicit targets, checks ARM and native
+metadata, rejects unknown targets, and compiles one unchanged upstream C file
+through its generated Makefile. ARM has configuration coverage only. These
+checks do not establish a complete package, target execution or TLS acceptance.
+
 A private MAKECONF includes the host bootstrap configuration first:
 
 ```make
