@@ -34,6 +34,16 @@
 # used by x11/qt6-qtserialport/Makefile
 # used by x11/qt6-qttranslations/Makefile
 
+.if !defined(EMBERBSD_QT_MAKEFILE_COMMON)
+EMBERBSD_QT_MAKEFILE_COMMON= yes
+EMBERBSD_QTBASE_PKGDIR:= ${.PARSEDIR:tA}
+# The SDK recipe shares this exact source owner, including every patch.
+.if defined(EMBERBSD_QTBASE_DEVEL)
+DISTINFO_FILE= ${EMBERBSD_QTBASE_PKGDIR}/distinfo
+PATCHDIR= ${EMBERBSD_QTBASE_PKGDIR}/patches
+FILESDIR= ${EMBERBSD_QTBASE_PKGDIR}/files
+.endif
+
 .include "../../meta-pkgs/qt6/Makefile.common"
 
 .include "../../mk/dlopen.buildlink3.mk"
@@ -104,7 +114,7 @@ MAKE_ENV+=		LD_LIBRARY_PATH=${WRKSRC}/lib
 # avoid creating a .qt directory in the users home directory
 SCRIPTS_ENV+=		HOME=${WRKDIR}
 
-.if "${PKGPATH}" != "x11/qt6-qtbase"
+.if "${PKGPATH}" != "x11/qt6-qtbase" && !defined(EMBERBSD_QTBASE_DEVEL)
 CMAKE_INSTALL_PREFIX=	${QTPREFIX}
 .include "../../devel/cmake/configure-settings.mk"
 CONFIGURE_ARGS+=	-- ${CMAKE_CONFIGURE_ARGS}
@@ -139,10 +149,11 @@ pkgconfig-link:
 		done									\
 		fi
 
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${PKGPATH} != "x11/qt6-qtbase"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && ${PKGPATH} != "x11/qt6-qtbase" && !defined(EMBERBSD_QTBASE_DEVEL)
 post-install: qt-module-target-metadata
 .PHONY: qt-module-target-metadata
 qt-module-target-metadata:
 	${PERL5} ${.CURDIR}/../../x11/qt6-qtbase/files/target-metadata.pl \
 	    ${DESTDIR:Q}${QTPREFIX:Q} ${CROSS_DESTDIR:Q} ${WRKDIR:Q} ${PREFIX:Q} --module
 .endif
+.endif # EMBERBSD_QT_MAKEFILE_COMMON

@@ -1,5 +1,8 @@
 # Qt 6.12 target package acceptance
 
+The new [Qtbase runtime/SDK split](qtbase-runtime.md) has separate source packaging
+checks. The historical full-package results below do not accept that split.
+
 On 2026-10-11–12, Qtbase, SVG, ShaderTools, ImageFormats, LanguageServer and Declarative 6.12.0 cross-built on macOS/arm64
 for EmberBSD/AArch64. All six passed normal pkgsrc staging, manifests,
 interpreter/permission, PIE, RELRO, RPATH and work-directory checks. They
