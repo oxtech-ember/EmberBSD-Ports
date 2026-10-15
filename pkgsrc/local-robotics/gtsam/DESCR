@@ -1,0 +1,6 @@
+GTSAM optimizes factor graphs for sensor fusion and state estimation.
+This shared C++17 CPU profile uses common Eigen with GCC16. It preserves
+upstream matrix rotations and tangent IMU preintegration. Boost extensions,
+serialization, TBB, GPU acceleration, unstable modules and language wrappers
+are outside this profile. Synthetic graph contracts validate bounded behavior;
+they do not establish real sensor or physical-robot navigation performance.

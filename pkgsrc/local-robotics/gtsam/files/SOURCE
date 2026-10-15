@@ -1,0 +1,10 @@
+GTSAM 4.3.0, released 2026-09-18
+Upstream: https://github.com/borglab/gtsam
+Commit: 71a25ca36c084cbad1f872e812d6d97fbadfdb05
+Archive: https://codeload.github.com/borglab/gtsam/tar.gz/71a25ca36c084cbad1f872e812d6d97fbadfdb05
+SHA256: fa79b78a2cdd2561d4f93b75a61294a39c4d3a2d2e6e70dc51f91e6253966f96
+GTSAM: BSD-3-Clause, Georgia Tech Research Corporation and contributors.
+Common external Eigen 5.0.1 is used; bundled Eigen is neither built nor installed.
+Upstream private CCOLAMD, SuiteSparse_config, Spectra and Cephes are retained.
+Their original licenses and attribution accompany this package.
+Origin: EmberBSD recipes and validation are AI-assisted.

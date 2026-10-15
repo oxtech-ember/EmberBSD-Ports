@@ -31,7 +31,7 @@ static void linear_fusion(bool underconstrained)
     if (underconstrained) {
         bool caught = false;
         try { (void)graph.optimize(); }
-        catch (const IndeterminantLinearSystemException&) { caught = true; }
+        catch (const IndeterminateSystemException&) { caught = true; }
         require(caught, "unanchored state did not report indeterminacy");
         return;
     }

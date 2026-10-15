@@ -25,7 +25,7 @@ prefix=$work/install
 CXX=$(cat "$work/logs/cxx.txt")
 [ -x "$CXX" ] || { echo 'The recorded C++ compiler is missing.' >&2; exit 2; }
 EIGEN_PREFIX=$(cat "$work/logs/eigen-prefix.txt")
-LD_LIBRARY_PATH=$prefix/lib:/usr/pkg/lib
+LD_LIBRARY_PATH=$prefix/lib:/usr/pkg/lib:/usr/pkg/gcc16/lib
 export LD_LIBRARY_PATH
 cmake -S "$recipe/tests" -B "$work/test-build" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DPROBE_PREFIX="$prefix" -DEIGEN_PREFIX="$EIGEN_PREFIX" \

@@ -190,11 +190,15 @@ runtime behavior are validated.
   cases pass. The [RGB-D example](https://github.com/oxtech-ember/EmberBSD-Examples/tree/main/robotics/orb-slam3-rgbd)
   tracks 573 TUM fr1/desk pairs with 1.71–1.76 cm translation ATE RMSE in two
   controlled runs. Cameras, IMU fusion, boards and sustained operation are unverified.
-- [Navigation source profiles](probes/gtsam/README.md): GTSAM 4.3.0,
-  [PCL 1.15.1](probes/pcl/README.md), [OpenVINS 2.7](probes/openvins/README.md)
-  and [RTAB-Map 0.23.8](probes/rtabmap/README.md) have pinned recipes and numerical
-  consumer checks. They share current Eigen/OpenCV dependencies; native
-  installation and these navigation scenarios remain unverified.
+- [Factor-graph optimization](probes/gtsam/README.md): GTSAM 4.3.0 now has a
+  GCC16 cross package using common Eigen 5.0.1. Installed AArch64 QEMU checks
+  pass independently known linear/Pose2 solutions, covariance, errors, eleven
+  upstream programs and package removal/reinstallation. The
+  [CSV graph example](https://github.com/oxtech-ember/EmberBSD-Examples/tree/main/robotics/gtsam-graph)
+  uses the shared library. [PCL 1.15.1](probes/pcl/README.md),
+  [OpenVINS 2.7](probes/openvins/README.md) and
+  [RTAB-Map 0.23.8](probes/rtabmap/README.md) retain prepared source profiles;
+  their navigation scenarios still need target acceptance.
 - [Local trajectory generation](probes/ruckig/README.md),
   [quadratic optimization](probes/osqp/README.md) and
   [motion planning](probes/ompl/README.md): Ruckig 0.19.4 and OSQP 1.0.0 pass

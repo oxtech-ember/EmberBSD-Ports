@@ -48,12 +48,15 @@ if [ -n "$build_as" ]; then
         echo 'Requested address-space limit verification failed.' >&2; exit 2;
     }
 fi
-CC=${CC:-/usr/bin/cc}
-CXX=${CXX:-/usr/bin/c++}
+CC=${CC:-/usr/pkg/gcc16/bin/gcc}
+CXX=${CXX:-/usr/pkg/gcc16/bin/g++}
 for tool in "$CC" "$CXX" cmake ninja tar patch; do
     command -v "$tool" >/dev/null || { echo "Missing tool: $tool" >&2; exit 2; }
 done
 export CC CXX
+[ "$("$CC" -dumpfullversion)" = 16.2.0 ] && [ "$("$CXX" -dumpfullversion)" = 16.2.0 ] || {
+    echo 'GCC/G++ 16.2.0 required.' >&2; exit 2;
+}
 printf '%s\n' "$(command -v "$CXX")" > "$work/logs/cxx.txt"
 : "${EIGEN_PREFIX:?Set EIGEN_PREFIX to the common Eigen 5.0.1 installation}"
 case "$EIGEN_PREFIX" in /*) ;; *) echo 'Use an absolute Eigen prefix.' >&2; exit 2 ;; esac
@@ -91,11 +94,12 @@ run()
 }
 gtsam=$work/src/gtsam-71a25ca36c084cbad1f872e812d6d97fbadfdb05
 run gtsam-configure cmake -S "$gtsam" -B "$work/gtsam-build" -G Ninja \
+    -C "$recipe/../../pkgsrc/local-robotics/gtsam/features.cmake" \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 \
     -DCMAKE_C_COMPILER="$CC" -DCMAKE_CXX_COMPILER="$CXX" \
     -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
     -DCMAKE_PREFIX_PATH="$EIGEN_PREFIX;/usr/pkg" \
-    -DCMAKE_INSTALL_RPATH="$prefix/lib;/usr/pkg/lib" \
+    -DCMAKE_INSTALL_RPATH="$prefix/lib;/usr/pkg/lib;/usr/pkg/gcc16/lib" \
     -DEigen3_DIR="$EIGEN_PREFIX/share/eigen3/cmake" \
     -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF \
     -DCMAKE_EXPORT_NO_PACKAGE_REGISTRY=ON -DBUILD_SHARED_LIBS=ON \
@@ -104,11 +108,11 @@ run gtsam-configure cmake -S "$gtsam" -B "$work/gtsam-build" -G Ninja \
     -DGTSAM_USE_BOOST_FEATURES=OFF -DGTSAM_ENABLE_BOOST_SERIALIZATION=OFF \
     -DGTSAM_WITH_TBB=OFF -DGTSAM_WITH_EIGEN_MKL=OFF -DGTSAM_ENABLE_CUDA=OFF \
     -DCMAKE_DISABLE_FIND_PACKAGE_CHOLMOD=ON -DGTSAM_ENABLE_GEOGRAPHICLIB=OFF \
-    -DGTSAM_BUILD_TESTS=OFF -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
+    -DGTSAM_BUILD_TESTS=ON -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF \
     -DGTSAM_BUILD_TIMING_ALWAYS=OFF -DGTSAM_BUILD_UNSTABLE=OFF \
     -DGTSAM_BUILD_PYTHON=OFF -DGTSAM_INSTALL_MATLAB_TOOLBOX=OFF \
     -DGTSAM_BUILD_WITH_MARCH_NATIVE=OFF -DGTSAM_BUILD_WITH_PRECOMPILED_HEADERS=OFF
-run gtsam-build cmake --build "$work/gtsam-build" --parallel "$jobs"
+run gtsam-build cmake --build "$work/gtsam-build" --target gtsam CppUnitLite --parallel "$jobs"
 run gtsam-install cmake --install "$work/gtsam-build"
 licenses=$prefix/share/gtsam-probe/licenses
 mkdir -p "$licenses/ccolamd" "$licenses/cephes"
