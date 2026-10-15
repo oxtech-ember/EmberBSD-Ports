@@ -3,3 +3,11 @@ $NetBSD$
 BLAKE2s (attr-2.6.0.tar.xz) = b2581b098f340a2f064a186e0b594fb3b8702ccde5158024ddef5001601c9b31
 SHA512 (attr-2.6.0.tar.xz) = 870d0c34fbaa7520aad058ecd6509fe8eddd17430781a16d1e80484d4947307a7c641f0449183cbac1da611a85f82c9bee2d2d7bff76170fc2195b123100d22e
 Size (attr-2.6.0.tar.xz) = 343608 bytes
+SHA1 (patch-include_xattrat_compat.h) = 15290fd7345efd4c1af5eb63e46d40c3ccf1b4a7
+SHA1 (patch-libmisc_getxattrat_compat.c) = cc9ec776c2ca811519d3c8ca984dc73826dc9bc5
+SHA1 (patch-libmisc_listxattrat_compat.c) = 62bfda3c466c9707bf24a6071c8aaaa422799a59
+SHA1 (patch-libmisc_proc-self-fd.c) = 472bd579a44eb0b6bcdd2e251108e93a8c450dc0
+SHA1 (patch-libmisc_removexattrat_compat.c) = 8f05ce577134af7b3f452d7f5a4a1135b9c6fbc1
+SHA1 (patch-libmisc_setxattrat_compat.c) = 6018bc0fcb3e37bd59f6220d22675b2f75aa7cf7
+SHA1 (patch-libmisc_xattrat-netbsd.h) = 59aceb517194939198d33f167c672bcf3d959050
+SHA1 (patch-libmisc_xattrat.c) = d9b9f21d163907bb0fd94421e508fde9b9aabf18
