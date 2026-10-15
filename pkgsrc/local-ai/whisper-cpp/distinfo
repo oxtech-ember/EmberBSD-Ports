@@ -5,6 +5,7 @@ SHA512 (whisper.cpp-1.9.5-d1be6fde11ac6e0407606b4e42fe72d34add8037.tar.gz) = 46c
 Size (whisper.cpp-1.9.5-d1be6fde11ac6e0407606b4e42fe72d34add8037.tar.gz) = 9631456 bytes
 
 SHA1 (patch-examples_cli_cli.cpp) = 8b62dfdcebd1e952ae3fe55488e811b4f8d0e5ba
+SHA1 (patch-examples_cli_cli.cpp-csv-free) = 916a26dc4875e341d1f780a55f2402e0770e69d3
 SHA1 (patch-examples_cli_cli.cpp-input-indices) = 221ac389e536398ffd033f861ceccff1980911c0
 SHA1 (patch-examples_cli_cli.cpp-json-controls) = 4a11ba37dc999e00c8035e2ac2cd30985f23f1a9
 SHA1 (patch-examples_cli_cli.cpp-wts-failure) = 970396c82e344e66e6af3db53870ad02388c9343

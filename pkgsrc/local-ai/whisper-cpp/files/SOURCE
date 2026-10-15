@@ -9,3 +9,5 @@ Packaging: EmberBSD, AI-assisted. No upstream acceptance is claimed.
 Compiler: GCC 16.2.0; native and cross builds share the CPU feature caches.
 Patch: check two GGML allocator metadata allocations before dereference.
 Patch: preserve CLI output failures, input/output identities and valid JSON.
+Patch: reject incomplete fixed ASR headers through file, buffer and callback loaders.
+Patch: release escaped CSV segment text after output.
