@@ -102,6 +102,14 @@ and Cargo.lock hashes are pinned; `files/vendor-crates.tsv` records the exact
 other dependency source. A fresh work directory gives Cargo a fresh private
 cache; no existing vendor tree or Cargo configuration is imported.
 
+The hash-pinned GitHub source archive contains one global PAX header named
+`pax_global_header`, with exactly the commit comment for
+`d7bd0b6a6ca1db88a8189aee81498f194f1e45a5`. The helper accepts only that exact
+header type, name and payload after verifying the original archive hash.
+It preserves those bytes in `source-metadata.json` and the final receipt.
+Other PAX metadata, including path/link directives, fails; no PAX directives
+are interpreted during extraction.
+
 ```sh
 ruby files/vendor.rb \
     /absolute/distfiles/cxx-rust-cssparser-1.1.0.tar.gz \
@@ -132,3 +140,16 @@ the replacement filename is intentionally not wired into DISTFILES, distinfo
 or the toolkit source manifest. The follow-up must record the actual SHA256,
 normal pkgsrc BLAKE2s/SHA512/size, and the narrowly scoped derived-source
 provenance rule before exporting or building this recipe on a fresh host.
+
+To include the actual pinned source extraction in the host regression, run:
+
+```sh
+CSSPARSER_UPSTREAM_ARCHIVE=/absolute/distfiles/cxx-rust-cssparser-1.1.0.tar.gz \
+    ruby tests/vendor.rb
+```
+
+This invokes the production CLI with controlled provider-response fixtures,
+checks the extracted original lock and preserved PAX comment, then requires
+the controlled Cargo boundary to fail before any vendor artifact is published.
+It proves source extraction and rejection behavior only; it does not run or
+accept native Cargo, registry downloads, or a complete derived vendor archive.

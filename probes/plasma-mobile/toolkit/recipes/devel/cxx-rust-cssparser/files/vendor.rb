@@ -11,6 +11,7 @@ require 'zlib'
 module CssVendor
   class Error < StandardError; end
   SOURCE_SHA = '97bf4670e565bf43ae77348af74a38c1b432fc5dfa47ab15c375e04331fdb8e1'.freeze
+  SOURCE_PAX_COMMENT = "52 comment=d7bd0b6a6ca1db88a8189aee81498f194f1e45a5\n".freeze
   LOCK_SHA = 'd2fa05be2697e96e1c2f11dfa361266938ea75c6eb6977d8d292f288ed79d031'.freeze
   RUST_COMMIT = 'b940084d7eb6a299eb4bfeb8e34901bc051e7ac4'.freeze
   ARCHIVE = 'cxx-rust-cssparser-vendor-1.1.0-r1.tar'.freeze
@@ -23,6 +24,13 @@ module CssVendor
   def safe_name(name)
     need(!name.start_with?('/') && name.split('/').none? { |p| p == '..' || p.empty? } && !name.include?("\0"), 'Unsafe archive path')
     name
+  end
+
+  # The hash-pinned GitHub archive has this one global commit comment.
+  # Accept its exact bytes, without interpreting any PAX path/link directives.
+  def pinned_source_metadata(type, name, payload)
+    need(type == 'g' && name == 'pax_global_header' && payload == SOURCE_PAX_COMMENT, 'Unsupported source PAX metadata')
+    {'type' => type, 'name' => name, 'payload' => payload}
   end
 
   # This parser deliberately accepts only the pinned registry closure. The CLI
@@ -129,9 +137,15 @@ module CssVendor
     need(!File.exist?(work) && !File.symlink?(work), 'Work directory must be new')
     Dir.mkdir(work, 0700)
     source_root = work + '/cxx-rust-cssparser-1.1.0'
+    source_metadata = []
     Zlib::GzipReader.open(source_archive) do |gzip|
       Gem::Package::TarReader.new(gzip) do |tar|
         tar.each do |entry|
+          if ['g', 'x'].include?(entry.header.typeflag)
+            need(source_metadata.empty?, 'Duplicate source PAX metadata')
+            source_metadata << pinned_source_metadata(entry.header.typeflag, entry.full_name, entry.read)
+            next
+          end
           relative = safe_name(entry.full_name.sub(%r{/\z}, ''))
           need(relative == 'cxx-rust-cssparser-1.1.0' || relative.start_with?('cxx-rust-cssparser-1.1.0/'), 'Unexpected source root')
           destination = work + '/' + relative
@@ -146,6 +160,8 @@ module CssVendor
         end
       end
     end
+    need(source_metadata.length == 1, 'Pinned source PAX metadata missing')
+    File.write(work + '/source-metadata.json', JSON.pretty_generate(source_metadata) + "\n")
     lock = File.read(source_root + '/rust/Cargo.lock')
     need(Digest::SHA256.hexdigest(lock) == LOCK_SHA, 'Upstream Cargo.lock checksum mismatch')
     packages = lock_packages(lock)
@@ -165,7 +181,7 @@ module CssVendor
     result = audit(vendor, cargo_home + '/registry/cache', packages)
     archive = work + '/' + ARCHIVE
     pack(vendor, archive)
-    receipt = result.merge('scope' => 'host-derived-cssparser-vendor-r1', 'source_sha256' => SOURCE_SHA, 'lock_sha256' => LOCK_SHA, 'closure_sha256' => Digest::SHA256.hexdigest(manifest), 'helper_sha256' => Digest::SHA256.file(__FILE__).hexdigest, 'rustc' => rust, 'cargo' => cargo_version.strip, 'ruby' => RUBY_DESCRIPTION, 'rubygems' => Gem::VERSION, 'archive' => ARCHIVE, 'archive_sha256' => Digest::SHA256.file(archive).hexdigest, 'archive_size' => File.size(archive))
+    receipt = result.merge('scope' => 'host-derived-cssparser-vendor-r1', 'source_sha256' => SOURCE_SHA, 'source_metadata' => source_metadata, 'lock_sha256' => LOCK_SHA, 'closure_sha256' => Digest::SHA256.hexdigest(manifest), 'helper_sha256' => Digest::SHA256.file(__FILE__).hexdigest, 'rustc' => rust, 'cargo' => cargo_version.strip, 'ruby' => RUBY_DESCRIPTION, 'rubygems' => Gem::VERSION, 'archive' => ARCHIVE, 'archive_sha256' => Digest::SHA256.file(archive).hexdigest, 'archive_size' => File.size(archive))
     File.write(work + '/receipt.json', JSON.pretty_generate(receipt) + "\n")
     puts archive
   end

@@ -7,6 +7,8 @@ require 'digest'
 require 'json'
 require 'zlib'
 require 'rubygems/package'
+require 'open3'
+require 'rbconfig'
 helper = File.expand_path('../files/vendor.rb', __dir__)
 abort 'FAIL: reproducible vendor helper is missing' unless File.file?(helper)
 require helper
@@ -17,6 +19,21 @@ def expect_failure(reason)
     return
   end
   abort 'FAIL: accepted ' + reason
+end
+pax_comment = "52 comment=d7bd0b6a6ca1db88a8189aee81498f194f1e45a5\n"
+pax_metadata = {'type' => 'g', 'name' => 'pax_global_header', 'payload' => pax_comment}
+abort 'FAIL: pinned commit comment provenance changed' unless CssVendor.pinned_source_metadata('g', 'pax_global_header', pax_comment) == pax_metadata
+[
+  ['x', 'pax_global_header', pax_comment],
+  ['g', 'foreign_header', pax_comment],
+  ['g', '../pax_global_header', pax_comment],
+  ['g', 'pax_global_header', pax_comment.sub('d7bd', '0000')],
+  ['g', 'pax_global_header', pax_comment.chomp],
+  ['g', 'pax_global_header', pax_comment + "20 path=../escape\n"],
+  ['g', 'pax_global_header', "20 linkpath=/escape\n"],
+  ['g', 'pax_global_header', "20 path=/escape\n"]
+].each do |type, name, payload|
+  expect_failure('unreviewed PAX type, name or payload') { CssVendor.pinned_source_metadata(type, name, payload) }
 end
 Dir.mktmpdir('ember-css-vendor-', '/tmp') do |work|
   vendor = work + '/vendor'
@@ -111,6 +128,39 @@ if (archive = ENV['CSSPARSER_UPSTREAM_ARCHIVE'])
       abort 'FAIL: original lock missing' unless found
     end
   end
+  Dir.mktmpdir('ember-css-source-cli-', '/tmp') do |work|
+    host = work + '/host'
+    FileUtils.mkdir_p(host + '/bin')
+    File.write(host + '/bin/rustc', <<~SH)
+      #!/bin/sh
+      [ "$1" = -vV ] || exit 96
+      printf '%s\\n' 'rustc 1.99.0 (controlled provider-response fixture)' 'commit-hash: #{CssVendor::RUST_COMMIT}' 'release: 1.99.0' 'host: aarch64-apple-darwin'
+    SH
+    File.write(host + '/bin/cargo', <<~SH)
+      #!/bin/sh
+      if [ "$1" = -V ]; then
+        printf '%s\\n' 'cargo 1.99.0 (controlled provider-response fixture)'
+        exit 0
+      fi
+      [ "$1" = vendor ] || exit 96
+      printf '%s\\n' 'CONTROLLED CARGO BOUNDARY; no native Cargo acceptance' > "$(dirname "$0")/vendor-reached"
+      exit 97
+    SH
+    File.chmod(0755, host + '/bin/rustc', host + '/bin/cargo')
+    extraction = work + '/extraction'
+    stdout, stderr, status = Open3.capture3(RbConfig.ruby, helper, archive, host, extraction)
+    abort "FAIL: actual source CLI did not reach controlled Cargo boundary: #{stderr}" unless status.exitstatus == 1 && stderr.include?('Cargo vendor failed') && File.file?(host + '/bin/vendor-reached')
+    abort 'FAIL: extracted original lock changed' unless Digest::SHA256.file(extraction + '/cxx-rust-cssparser-1.1.0/rust/Cargo.lock').hexdigest == CssVendor::LOCK_SHA
+    abort 'FAIL: exact source PAX comment was not preserved' unless JSON.parse(File.read(extraction + '/source-metadata.json')) == [pax_metadata]
+    abort 'FAIL: controlled Cargo fixture published an artifact' unless stdout.empty? && !File.exist?(extraction + '/receipt.json') && !File.exist?(extraction + '/' + CssVendor::ARCHIVE)
+    abort 'FAIL: source archive changed during extraction' unless Digest::SHA256.file(archive).hexdigest == CssVendor::SOURCE_SHA
+    changed_archive = work + '/changed-source.tar.gz'
+    File.binwrite(changed_archive, File.binread(archive) + 'changed')
+    _, stderr, status = Open3.capture3(RbConfig.ruby, helper, changed_archive, host, work + '/untrusted')
+    abort 'FAIL: source pin was bypassed before metadata extraction' unless status.exitstatus == 1 && stderr.include?('Upstream archive checksum mismatch') && !File.exist?(work + '/untrusted')
+  end
   puts 'PASS: actual pinned upstream archive, Cargo.lock and reviewed 61-crate closure'
+  puts 'PASS: actual source CLI extraction reaches controlled Cargo boundary (fixture only; no native Cargo acceptance)'
 end
+puts 'PASS: exact pinned global PAX comment retained; other PAX types, names and directives rejected'
 puts 'PASS: locked crate checksums, complete vendor files/licenses and deterministic readable USTAR'
