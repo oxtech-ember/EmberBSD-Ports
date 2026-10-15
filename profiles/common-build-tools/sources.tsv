@@ -1,6 +1,6 @@
 # archive\tSHA256\tupstream URL
 rust-bin-1.99.0/rust-1.99.0-aarch64-apple-darwin.tar.gz	f35e7c5b2cf63e67c075d323e4d6b87501219311f09744ab24caecb761c96643	https://static.rust-lang.org/dist/2026-10-01/rust-1.99.0-aarch64-apple-darwin.tar.gz
-Python-3.14.8.tar.xz	c2215904f02b175596dc49351585104f4bc20341e1c47378b26a2c274360ce73	https://www.python.org/ftp/python/3.14.8/Python-3.14.8.tar.xz
+Python-3.15.0.tar.xz	ba4bed1ba346b916890b76d9e320451420aa69f6408997d33c66482eeae3d575	https://www.python.org/ftp/python/3.15.0/Python-3.15.0.tar.xz
 meson-1.12.1.tar.gz	ab0a6ca09f8ef70c564c8241fb5a23957886a0b53fb58412b5e07eaf07dba743	https://github.com/mesonbuild/meson/releases/download/1.12.1/meson-1.12.1.tar.gz
 ninja-build/ninja-1.13.2.tar.gz	974d6b2f4eeefa25625d34da3cb36bdcebe7fbce40f4c16ac0835fd1c0cbae17	https://github.com/ninja-build/ninja/archive/v1.13.2.tar.gz
 llvm-project-23.1.2.src.tar.xz	c98bbef08a2b4c2613cd50e9aa9ae7b69b1fe6c16b2c40373bc0ab6116fdf78a	https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.2/llvm-project-23.1.2.src.tar.xz
