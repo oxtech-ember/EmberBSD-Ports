@@ -150,7 +150,8 @@ selected.each do |component|
       include_dir = extra + '/usr/include'
       library_dir = extra + '/usr/lib/x86_64-linux-gnu'
       abort 'Missing native prerequisite files' unless File.directory?(include_dir) && File.directory?(library_dir)
-      args += ['-DCMAKE_C_FLAGS=-I' + include_dir, '-DCMAKE_CXX_FLAGS=-I' + include_dir]
+      env['CPATH'] = include_dir
+      env['LIBRARY_PATH'] = library_dir
       %w[EXE SHARED MODULE].each { |kind| args << '-DCMAKE_' + kind + '_LINKER_FLAGS=-L' + library_dir }
       args << '-DCMAKE_INSTALL_RPATH=' + [prefix + '/qt6/lib', prefix + '/lib', ENV.fetch('NATIVE_MEDIA_PREFIX', prefix) + '/lib', ENV.fetch('NATIVE_MEDIA_PREFIX', prefix) + '/lib/ffmpeg9', library_dir].join(';')
     end
