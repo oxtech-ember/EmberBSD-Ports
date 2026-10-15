@@ -63,9 +63,11 @@ Copy the new package, compiled consumer and runner to the target.
 Install the package normally, then run:
 
 ```sh
-sh runtime.sh /usr/pkg /absolute/new-runtime-output /absolute/attr-abi-consumer
+PKG_INFO=/usr/sbin/pkg_info PKG_ADMIN=/usr/sbin/pkg_admin \
+    sh runtime.sh /usr/pkg /absolute/new-runtime-output /absolute/attr-abi-consumer
 ```
 
+The runner resolves pkgtools through PATH or explicit PKG_INFO/PKG_ADMIN paths.
 The runner checks installed files, package metadata, ordinary and recursive
 CLI operations, and nofollow get/list/set/remove behavior on a real symlink.
 The linked consumer checks file/fd attribute copying and CREATE/REPLACE flags.

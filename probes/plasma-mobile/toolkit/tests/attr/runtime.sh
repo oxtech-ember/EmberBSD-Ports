@@ -4,15 +4,20 @@
 set -eu
 LC_ALL=C
 export LC_ALL
+umask 077
 [ "$#" -eq 3 ] || { echo "Usage: $0 PREFIX NEW_OUTPUT CROSS_BUILT_CONSUMER" >&2; exit 2; }
 prefix=$1
 output=$2
 consumer=$3
 case "$prefix:$output:$consumer" in /*:/*:/*) ;; *) echo 'Use absolute paths' >&2; exit 2 ;; esac
+info=${PKG_INFO:-pkg_info}
+admin=${PKG_ADMIN:-pkg_admin}
+command -v "$info" >/dev/null
+command -v "$admin" >/dev/null
 mkdir "$output"
 cd "$output"
-"$prefix/sbin/pkg_info" -e attr-2.6.0 > package.log
-"$prefix/sbin/pkg_admin" check attr-2.6.0 > package-check.log 2>&1
+"$info" -e attr-2.6.0 > package.log
+"$admin" check attr-2.6.0 > package-check.log 2>&1
 for op in get set; do
     [ "$(readlink "$prefix/man/man3/attr_${op}f.3")" = "attr_attr_${op}.3" ]
     [ -f "$prefix/man/man3/attr_attr_${op}.3" ]
@@ -61,15 +66,15 @@ cmp ordinary.value after-remove.value
 [ "$(grep -c 'user.ember-cli="target-value"' recursive.log)" -eq 1 ]
 # A physical restore cannot silently degrade when openat2 is absent.
 printf '# file: tree/file\nuser.ember-cli="changed"\n\n' > physical-restore.dump
-if "$prefix/bin/setfattr" --restore=physical-restore.dump -P > physical-restore.log 2>&1; then
-    echo 'Unsupported physical restore unexpectedly succeeded' >&2
-    exit 1
-fi
+restore_status=0
+"$prefix/bin/setfattr" --restore=physical-restore.dump -P > physical-restore.log 2>&1 || restore_status=$?
+[ "$restore_status" -eq 1 ] || { echo 'Physical restore returned an unexpected status' >&2; exit 1; }
+grep -q 'Function not implemented' physical-restore.log
 "$prefix/bin/getfattr" --only-values -n user.ember-cli tree/file > after-restore.value
 cmp ordinary.value after-restore.value
 "$prefix/bin/setfattr" -x user.ember-cli tree/file
-if "$prefix/bin/getfattr" --only-values -n user.ember-cli tree/file > removed.value 2> removed.log; then
-    echo 'Removed attribute is still readable' >&2
-    exit 1
-fi
+removed_status=0
+"$prefix/bin/getfattr" --only-values -n user.ember-cli tree/file > removed.value 2> removed.log || removed_status=$?
+[ "$removed_status" -eq 1 ] || { echo 'Removed-attribute read returned an unexpected status' >&2; exit 1; }
+grep -Eq 'No such attribute|Attribute not found|No data available' removed.log
 echo 'PASS: installed attr package, libattr consumer, recursive CLI and nofollow target preservation'
