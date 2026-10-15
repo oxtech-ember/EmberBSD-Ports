@@ -103,11 +103,26 @@ On physical CM5 with the previous QtCore, the retained public consumer reproduce
 It reports three descriptors before contention and 1024 at the sampled peak.
 The old library reports `sem_init` failures with `EMFILE`; the consumer returns 1.
 The failure path uses `_Exit` so teardown of the failed old pool cannot mask this result.
-The same consumer binary must pass after the updated package is installed.
+After normal replacement with the complete QtBase 6.12.0nb1 package, that exact
+consumer passes on CM5. It reports three descriptors before contention and at
+the peak with 145 workers. All 4,564 package files pass `pkg_admin check`.
+The package retains its consumers and automatic-install flag. The board runs
+EmberBSD kernel `93dc0e3167a2e1381c9c4971cf8e4ee00f282685`; it was not rebooted
+between package replacement and the consumer check.
 
-Full QtCore packaging, target condition-clock execution, the retained public
-consumer, and the desktop session remain pending. These checks do not claim a
-working accelerated Plasma session or a fix for a separate Mesa crash.
+Consumer SHA256: `edea2ca41b8f7c468e27938975ad1d056bf2d0588c49eb08728d2e61a9920d8a`.
+Installed QtCore SHA256: `887c816b1c99c2b540dc6065a57d30f497dd8285e17831ac472a50d906bbb78a`.
+Installation and consumer log SHA256: `f855a000091ab4dc7d6d5cc2952fb55e795bb1ba7dee8db5839dd2b8377a895a`.
+
+A fresh complete QtBase cross-build passes normal packaging and archive checks.
+All 7,588 QtCore dynamic exports match the previous accepted library. The public
+`qmutex.h` is unchanged, and the package includes the matching private header.
+All 460 configured Qt feature macros match the previous package.
+See the [package receipt](../../cross/qt-packages.md).
+
+The retained public consumer validates contended locks and timed waits on CM5.
+Clock-adjustment tests and the full desktop session remain pending. These checks
+do not claim a working accelerated Plasma session or a fix for a separate Mesa crash.
 
 Sources: the pinned Qt archive in the recipe's `distinfo`,
 [EmberBSD kernel semaphore implementation](https://github.com/oxtech-ember/EmberBSD/blob/main/sys/kern/uipc_sem.c),

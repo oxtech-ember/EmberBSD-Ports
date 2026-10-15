@@ -18,8 +18,11 @@ See the [migration sequence](MIGRATION.md) and the
 
 The Qtbase 6.12.0nb1 [private mutex event](tests/qt-mutex/README.md) avoids
 file-descriptor allocation by its NetBSD mutex pool. Actual-source sanitizer,
-target compilation and public ABI checks pass. Updated packaging and target
-runtime acceptance remain pending.
+target compilation and public ABI checks pass. A fresh complete QtBase package
+also passes normal package checks and the archive audit. The same retained
+public consumer passes on CM5: 145 contended mutexes keep the descriptor count
+at three, instead of exhausting the old library's 1024-descriptor limit.
+The complete desktop session remains outside this acceptance.
 
 ## Prepare the source tree
 
