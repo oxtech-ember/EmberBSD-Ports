@@ -1,0 +1,64 @@
+$NetBSD$
+
+Use valid pkg-config dependencies and final versioned headers for the selected
+shared headless profile. Preserve upstream optional/static metadata behavior.
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -108,11 +108,35 @@
+ ## Packaging and Installation. Does not apply to python wheel builds with scikit-build
+ if(NOT SKBUILD)
+     if(NOT MSVC)
+-        target_link_flags(ompl)
+         set(PKG_NAME "ompl")
+         set(PKG_DESC "The Open Motion Planning Library")
+-        set(PKG_EXTERNAL_DEPS "Eigen3::Eigen ${ompl_PKG_DEPS}")
+-        set(PKG_OMPL_LIBS "-lompl ${ompl_LINK_FLAGS}")
++        if(OMPL_BUILD_SHARED AND NOT OMPL_HAVE_FLANN AND
++           NOT OMPL_HAVE_SPOT AND NOT OMPL_EXTENSION_TRIANGLE)
++            # CMake target names and generator expressions are not pkg-config
++            # package names. This shared headless profile uses the common
++            # prefix for Boost headers and Eigen's public pkg-config contract.
++            set(PKG_EXTERNAL_DEPS "eigen3")
++            # Public headers instantiate Boost archive templates in callers.
++            set(PKG_OMPL_LIBS "-lompl -lboost_serialization ${CMAKE_THREAD_LIBS_INIT}")
++            set(PKG_INCLUDE_FLAGS "-I\${prefix}/include ${CMAKE_THREAD_LIBS_INIT}")
++        else()
++            # Preserve upstream's behavior for optional/static configurations.
++            # The EmberBSD headless profile does not accept these variants.
++            target_link_flags(ompl)
++            set(PKG_EXTERNAL_DEPS "Eigen3::Eigen ${ompl_PKG_DEPS}")
++            set(PKG_OMPL_LIBS "-lompl ${ompl_LINK_FLAGS}")
++            set(PKG_INCLUDE_FLAGS "")
++            if(Boost_INCLUDE_DIR)
++                set(PKG_INCLUDE_FLAGS "-I${Boost_INCLUDE_DIR}")
++            endif()
++        endif()
++        # GNUInstallDirs computed FULL_INCLUDEDIR before OMPLUtils selected
++        # the versioned include directory. Use the final directory here.
++        if(IS_ABSOLUTE "${CMAKE_INSTALL_INCLUDEDIR}")
++            set(PKG_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}")
++        else()
++            set(PKG_INCLUDEDIR "\${prefix}/${CMAKE_INSTALL_INCLUDEDIR}")
++        endif()
+         configure_file("${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules/ompl.pc.in"
+                        "${CMAKE_CURRENT_BINARY_DIR}/ompl.pc" @ONLY)
+         install(FILES "${CMAKE_CURRENT_BINARY_DIR}/ompl.pc"
+--- CMakeModules/ompl.pc.in.orig
++++ CMakeModules/ompl.pc.in
+@@ -2,11 +2,12 @@
+ prefix=@CMAKE_INSTALL_PREFIX@
+ exec_prefix=${prefix}
+ libdir=@CMAKE_INSTALL_FULL_LIBDIR@
+-includedir=@CMAKE_INSTALL_FULL_INCLUDEDIR@
++includedir=@PKG_INCLUDEDIR@
+ 
+ Name: @PKG_NAME@
+ Description: @PKG_DESC@
+ Version: @PROJECT_VERSION@
+ Requires: @PKG_EXTERNAL_DEPS@
+ Libs: -L${libdir} @PKG_OMPL_LIBS@
+-Cflags: -std=c++17 -I${includedir} -I@Boost_INCLUDE_DIR@
++Libs.private: @PKG_PRIVATE_LIBS@
++Cflags: -std=c++17 -I${includedir} @PKG_INCLUDE_FLAGS@

@@ -1,14 +1,20 @@
 # SPDX-License-Identifier: MIT
 cmake_minimum_required(VERSION 3.22)
 project(ember_ompl_contract LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 enable_testing()
 find_package(Eigen3 5.0.1 EXACT CONFIG REQUIRED
     PATHS "${EIGEN_PREFIX}/share/eigen3/cmake" NO_DEFAULT_PATH)
-set(Boost_DIR "${BOOST_PREFIX}/lib/cmake/Boost-1.91.0")
-find_package(Boost 1.91.0 EXACT CONFIG REQUIRED COMPONENTS serialization program_options)
+set(Boost_DIR "${BOOST_PREFIX}/lib/cmake/Boost-1.92.0")
+find_package(Boost 1.92.0 EXACT CONFIG REQUIRED COMPONENTS serialization program_options)
 find_package(ompl 2.0.2 EXACT CONFIG REQUIRED
-    PATHS "${PROBE_PREFIX}/share/ompl/cmake" NO_DEFAULT_PATH)
+    PATHS "${PROBE_PREFIX}/share/ompl/cmake" NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
 get_target_property(location ompl::ompl IMPORTED_LOCATION_RELEASE)
+if(NOT location)
+    get_target_property(location ompl::ompl IMPORTED_LOCATION_RELWITHDEBINFO)
+endif()
 string(FIND "${location}" "${PROBE_PREFIX}/" position)
 if(NOT position EQUAL 0)
     message(FATAL_ERROR "OMPL escaped the selected installation")

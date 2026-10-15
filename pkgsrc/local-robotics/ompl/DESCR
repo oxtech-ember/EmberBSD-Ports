@@ -1,0 +1,5 @@
+The Open Motion Planning Library provides sampling-based motion planners.
+This headless profile supplies the shared C++ library, headers and CMake
+metadata. It uses common Eigen and Boost with GCC16. Python bindings, VAMP
+and optional collision libraries are outside this profile. Applications
+must supply their own state and collision validity checks.

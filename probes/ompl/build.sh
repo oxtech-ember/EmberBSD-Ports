@@ -12,6 +12,11 @@ for directory in "$@" "$EIGEN_PREFIX" "$BOOST_PREFIX"; do
 done
 [ ! -e "$work" ] && [ ! -L "$work" ] || { echo 'Work path already exists.' >&2; exit 2; }
 case "$(uname -s):$(uname -p)" in NetBSD:aarch64) ;; *) echo 'Native NetBSD/aarch64 required.' >&2; exit 2 ;; esac
+CC=${CC:-/usr/pkg/gcc16/bin/gcc}
+CXX=${CXX:-/usr/pkg/gcc16/bin/g++}
+export CC CXX
+[ "$("$CC" -dumpfullversion)" = 16.2.0 ]
+[ "$("$CXX" -dumpfullversion)" = 16.2.0 ]
 jobs=${JOBS:-1}
 for value in "$jobs"; do
     case "$value" in ''|*[!0-9]*) echo 'Limits must be positive integers.' >&2; exit 2 ;; esac
@@ -24,7 +29,7 @@ if [ "${BUILD_AS_KIB+x}" = x ]; then
 fi
 recipe=$(CDPATH= cd "$(dirname "$0")" && pwd)
 cmake=${CMAKE:-cmake}
-for tool in "$cmake" ninja tar sha256; do command -v "$tool" >/dev/null; done
+for tool in "$cmake" ninja tar sha256 sha1 patch; do command -v "$tool" >/dev/null; done
 mkdir "$work"
 mkdir "$work/src" "$work/archives" "$work/logs"
 while read -r name expected url; do
@@ -35,6 +40,12 @@ while read -r name expected url; do
     printf '%s %s %s\n' "$name" "$actual" "$url" >> "$work/logs/sources.txt"
 done < "$recipe/sources.tsv"
 while read -r name expected url; do tar -mxf "$work/archives/$name" -C "$work/src"; done < "$recipe/sources.tsv"
+package_recipe=$recipe/../../pkgsrc/local-robotics/ompl
+patch_file=$package_recipe/patches/patch-pkgconfig
+expected=$(awk '$1 == "SHA1" && $2 == "(patch-pkgconfig)" {print $4}' "$package_recipe/distinfo")
+actual=$(sed '/[$]NetBSD.*/d' "$patch_file" | sha1 -q)
+[ -n "$expected" ] && [ "$actual" = "$expected" ] || { echo 'Patch checksum mismatch.' >&2; exit 2; }
+patch -f -F0 -p0 -d "$work/src/ompl-2.0.2" < "$patch_file" > "$work/logs/patch.log" 2>&1
 printf '%s\n' "$EIGEN_PREFIX" > "$work/eigen-prefix.txt"
 printf '%s\n' "$BOOST_PREFIX" > "$work/boost-prefix.txt"
 { uname -a; "${CXX:-c++}" --version; "$cmake" --version; ninja --version;

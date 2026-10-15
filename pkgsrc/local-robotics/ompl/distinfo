@@ -1,0 +1,6 @@
+# EmberBSD: official OMPL source archive
+
+BLAKE2s (ompl-2.0.2.tar.gz) = e1126add37a4f1308e2aaca22e08ccfb5d8b4d76d7321adc7fb666712c76e8d7
+SHA512 (ompl-2.0.2.tar.gz) = f7591438adafe4e5082130fab3709aac468b46942dd62b8c9ba1394837ef8d2811ad6e900cf5ef2848b9fb001984e995998ce7fcd5b3fb3848112c315453733d
+Size (ompl-2.0.2.tar.gz) = 149922968 bytes
+SHA1 (patch-pkgconfig) = d53e766cce7c8519f258644fabc72c164822d14e

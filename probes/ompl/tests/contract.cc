@@ -76,7 +76,8 @@ int main(int argc, char **argv) {
         auto planner = std::make_shared<og::RRTConnect>(setup.getSpaceInformation());
         planner->setRange(.07);
         setup.setPlanner(planner);
-        ob::IterationTerminationCondition iterations(blocked ? 4000 : 20000);
+        ob::IterationTerminationCondition iterations(mode == "invalid-goal" ? 256 :
+                                                      blocked ? 4000 : 20000);
         const auto result = setup.solve(iterations);
         if (mode == "path") {
             require(result == ob::PlannerStatus::EXACT_SOLUTION &&

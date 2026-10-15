@@ -11,6 +11,11 @@ eigen=$(cat "$work/eigen-prefix.txt")
 boost=$(cat "$work/boost-prefix.txt")
 case "$(uname -s)" in
     NetBSD)
+        CC=${CC:-/usr/pkg/gcc16/bin/gcc}
+        CXX=${CXX:-/usr/pkg/gcc16/bin/g++}
+        export CC CXX
+        [ "$("$CC" -dumpfullversion)" = 16.2.0 ]
+        [ "$("$CXX" -dumpfullversion)" = 16.2.0 ]
         if [ "${BUILD_AS_KIB+x}" = x ]; then
             case "$BUILD_AS_KIB" in ''|*[!0-9]*) exit 2 ;; esac
             [ "$BUILD_AS_KIB" -gt 0 ] 2>/dev/null || exit 2
@@ -31,8 +36,8 @@ cat "$work/logs/contracts.txt"
 [ "$status" = 0 ] || exit "$status"
 if [ "$(uname -s)" = NetBSD ]; then
     ldd "$work/test-build/ompl-contract" > "$work/logs/installed-linkage.txt"
-    for library in "$prefix/lib/libompl.so" "$boost/lib/libboost_serialization.so.1.91.0" \
-        /usr/lib/libstdc++.so.9 /usr/lib/libgcc_s.so.1; do
+    for library in "$prefix/lib/libompl.so" "$boost/lib/libboost_serialization.so.1.92.0" \
+        /usr/pkg/gcc16/lib/libstdc++.so.7 /usr/pkg/gcc16/lib/libgcc_s.so.1; do
         grep -F "$library" "$work/logs/installed-linkage.txt" >/dev/null
     done
     if grep -E 'not found|libpython|libflann|libspot|libyaml|libvamp' "$work/logs/installed-linkage.txt"; then exit 1; fi

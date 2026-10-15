@@ -1,0 +1,4 @@
+Eigen provides C++ template libraries for linear algebra, matrices, vectors,
+numerical solvers and related algorithms. This GCC16 cross package installs
+Eigen 5.0.1 headers and CMake/pkg-config metadata in the common /usr/pkg prefix.
+It does not install a separately compiled BLAS or LAPACK implementation.

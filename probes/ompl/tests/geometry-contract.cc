@@ -12,7 +12,9 @@ int main() {
         {{.4, 0}, {.4, 1}, true}, {{.5, .5}, {.5, .5}, true},
         {{.4, .2}, {.4, .2}, true}, {{0, 0}, {0, 0}, false},
         {{0, .8001}, {1, .8001}, false}, {{.1, 0}, {.1, 1}, false},
-        {{0, 0}, {.3, .3}, false}, {{0, 1}, {.4, .8}, true}
+        {{0, 0}, {.3, .3}, false}, {{0, 1}, {.4, .8}, true},
+        // Decimal corner tangency must survive opposite division rounding.
+        {{.399, .204}, {.401, .196}, true}
     };
     for (const auto &test : cases) {
         if (segment_hits_rectangle(test.a, test.b, rectangle) != test.collision ||
@@ -20,6 +22,7 @@ int main() {
             return 1;
     }
     if (bounded({std::numeric_limits<double>::quiet_NaN(), .5}) ||
+        bounded({.5, std::numeric_limits<double>::infinity()}) ||
         bounded({.5, 1.001}) || !bounded({0, 1})) return 1;
     std::puts("Continuous rectangle checker: crossing, tangent, reverse and degenerate cases PASS");
 }

@@ -1,67 +1,109 @@
-# OMPL 2.0.2 headless source profile
+# OMPL 2.0.2 path planning
 
-This prepared profile supplies a shared C++ motion-planning library and a
-bounded two-dimensional planning contract. EmberBSD Ports owns the recipe
-and checks. It does not establish robot collision safety, path optimality,
-hardware acceleration or a validated NetBSD package.
+This profile supplies a shared C++ motion-planning library for EmberBSD.
+It uses GCC 16.2.0, Eigen 5.0.1 and Boost 1.92.0. RRTConnect routes a point
+around a closed rectangle. An independent checker validates complete edges.
+Ports owns the library and packages. The [CSV application](https://github.com/oxtech-ember/EmberBSD-Examples/tree/main/robotics/ompl-path)
+belongs to Examples. See [validation](VALIDATION.md) and [provenance](PROVENANCE.md).
 
-The build requires the common Eigen 5.0.1 installation and Boost 1.91.0
-serialization/program_options libraries. Both versions are checked exactly.
-VAMP, Python bindings, demos, upstream tests and optional Triangle, FLANN,
-Spot and yaml-cpp dependencies are disabled. The library and tests need no
-Python. Upstream's installed benchmark-statistics script is retained but unused;
-running that optional script would require Python separately.
+## GCC16 cross build
 
-## Build and test on NetBSD
+Use a coherent EmberBSD AArch64 sysroot with GCC16 headers, startup objects
+and its matching `libstdc++.so.7`. Do not substitute upstream NetBSD sets.
+The compiler must report `16.2.0` and `aarch64--netbsd`. Linux CMake, Ninja,
+patch, pkg-config and SHA256 tools are required. Python is not required.
+
+Download [OMPL](sources.tsv) and the [dependency archives](cross/sources.tsv).
+Both helpers verify SHA256 before extraction and require new output paths.
+Run these commands from this profile directory:
 
 ```sh
-export PATH=/usr/pkg/bin:/usr/bin:/bin:/usr/sbin:/sbin
-export CC=/usr/bin/cc CXX=/usr/bin/c++
-export EIGEN_PREFIX=/absolute/common-eigen-prefix
-export BOOST_PREFIX=/usr/pkg
-JOBS=1 ./build.sh /absolute/new/ompl-work /absolute/cache
-./test.sh /absolute/new/ompl-work
+compiler=/absolute/gcc16-prefix
+sysroot=/absolute/isolated-emberbsd-sysroot
+cache=/absolute/source-cache
+deps=/absolute/new/ompl-dependencies
+output=/absolute/new/ompl-cross
+CROSS_JOBS=4 sh cross/build-dependencies.sh "$compiler" "$sysroot" \
+  "$cache/eigen-5.0.1.tar.gz" "$cache/boost-1.92.0-cmake.tar.xz" "$deps"
 ```
 
-The optional cache contains the official 2.0.2 release archive pinned in
-[sources.tsv](sources.tsv). It includes upstream submodules and is about
-142 MiB compressed. CMake, Ninja, tar, SHA256 and C++17 are required.
-The helper verifies the archive before extraction and requires a new work
-directory. CMake dependency fetching is disconnected; the shared dependencies
-must already be installed. No package or toolchain is changed globally.
+Import the verified stages into the isolated sysroot. Keep one common
+provider and preserve its file/source receipts. Do not overwrite a different
+installed provider without rebuilding its consumers.
 
-`JOBS` controls build concurrency; select it for the available builder. The
-helpers impose no additional memory ceiling by default. Set `BUILD_AS_KIB`
-explicitly only when a soft per-process limit is wanted; the hard limit is
-preserved. Logs and installation
-remain below work.
+```sh
+cp -Rp "$deps/eigen-stage/usr/pkg/." "$sysroot/usr/pkg/"
+cp -Rp "$deps/boost-headers-stage/usr/pkg/." "$sysroot/usr/pkg/"
+cp -Rp "$deps/boost-libs-stage/usr/pkg/." "$sysroot/usr/pkg/"
+CROSS_JOBS=4 sh cross-build.sh "$compiler" "$sysroot" \
+  "$cache/ompl-2.0.2.tar.gz" "$output"
+sh tests/pkgconfig-build.sh "$compiler" "$sysroot" \
+  "$output/stage/usr/pkg" /absolute/new/ompl-pkgconfig-consumer
+```
 
-An installed C++ consumer uses
-`find_package(ompl 2.0.2 EXACT CONFIG REQUIRED)` and links `ompl::ompl`.
-The prepared contracts use a fixed seed and bounded iteration count:
+Outputs contain the staging tree, toolchain, compile database, upstream tests
+and installed consumers. Staged files must match each package PLIST.
+ELF checks reject host runtime paths. Target RPATH uses `/usr/pkg/lib` and
+`/usr/pkg/gcc16/lib`. Linux never executes a target configure probe.
 
-- RRTConnect routes from (0.1, 0.5) to (0.9, 0.5) around a closed rectangular
-  obstacle in the unit square.
-- A separate analytic segment/rectangle validator checks every complete path
-  edge, finite bounds, endpoints and length. It does not reuse OMPL's sampled
-  motion checker. Tangency counts as collision.
-- A goal inside the obstacle must be rejected. A wall joining opposite domain
-  boundaries must never produce an exact path. An approximate result remains
-  explicitly approximate and is checked for collision as well.
-- The geometry checker has direct crossing, tangent, reverse and degenerate
-  cases. ELF checks require the selected prefix and base C++ ABI.
+Boost supplies complete common headers and the selected compiled closure
+for serialization, program_options and unit tests. This does not deliver
+every Boost compiled library. Other prepared profiles that pin Boost 1.91
+need coordinated migration before using this provider.
 
-CTest enforces exit status and per-case timeouts. A fixed seed makes the chosen
-random sequence reproducible; it is not a guarantee of identical paths across
-compiler/library versions. Failure within a budget does not prove general
-planning infeasibility. The closed wall case is infeasible by its geometry.
-`tests/source-guards.sh /absolute/new/guard-work` checks archive rejection and
-work preservation on the target, with `EIGEN_PREFIX` set as for the build.
+## Packages and acceptance
 
-## Current validation
+The recipes under `pkgsrc/local-robotics` are `eigen3`, `boost-headers`,
+`boost-libs` and `ompl`. Cross staging is the accepted build route. Native
+pkgsrc source recipes/buildlinks are provided; native pkgsrc compilation
+has not been accepted by this task.
 
-On 2026-10-07, the standalone continuous geometry checker compiled and passed
-on macOS ARM64. Shell syntax and source hashes were checked. The full consumer
-syntax check stops at missing host Boost headers; no older Boost was used.
-**OMPL build, installed contracts and native NetBSD validation are pending.**
-The VM was not changed during this preparation. See [provenance](PROVENANCE.md).
+Create actual packages on the target with `scripts/package-cross-stage.sh`.
+Build-info must record exact dependencies. Boost libraries depend on
+`boost-headers-1.92.0`. OMPL depends on `eigen3-5.0.1`,
+`boost-headers-1.92.0` and `boost-libs-1.92.0`.
+Licenses and source receipts remain inside each package.
+
+`run-target.sh PACKAGES TESTS NEW_RESULTS` checks installation, registered
+contents, loaded runtimes, planning, errors, dependency deletion rejection,
+removal and reinstallation. TESTS contains the planner/geometry contracts,
+Examples executable and geometry test, dependency/pkg-config consumers,
+and the thirteen upstream executables named by the runner. Upstream tests
+also need their compiled-in resource paths.
+
+The minimal target needs pkg_tools, tar/gzip, ldd, shell utilities and
+`/dev/full`. Reserve enough inodes for staged and installed headers.
+The accepted FFS image reserves 32,768 free inodes. No target compiler
+or Python runtime is needed for this acceptance.
+
+## Planning and limits
+
+The world is `[0,1] × [0,1]`. Start and goal are `(0.1,0.5)` and `(0.9,0.5)`.
+The closed obstacle is `[0.4,0.6] × [0.15,0.85]`; seed is `104729`.
+Every coordinate must be finite and bounded. The independent slab checker
+checks complete segments and treats tangency as collision. It expands faces
+by `32 × double epsilon` to handle floating-point roundoff conservatively.
+A decimal corner fixture detects the original missed tangency.
+`tests/check-path.rb` independently validates CSV using edge orientations.
+Ruby is a host validation tool, not an application runtime dependency.
+
+An invalid goal lies inside the obstacle. A closed wall joins opposite world
+boundaries in the blocked case. Neither may produce an exact solution.
+Approximate results remain approximate and are never exported as successful
+routes. The Ports contract also checks any approximate polyline for collision.
+
+`tests/cross-guards.sh` and `tests/dependency-guards.sh` check rejection and
+work preservation. `tests/pkgconfig-contract.sh` checks metadata; its archive
+consumer exposes public Boost symbols through OMPL templates.
+
+A seed does not promise identical paths across versions or architectures.
+This model is a zero-radius point with static obstacles. It does not establish
+path optimality, body clearance, sensing accuracy, physical actuation,
+dynamic collision safety or real-time deadlines.
+
+VAMP, Python bindings, compiled demos, Triangle, FLANN, Spot and yaml-cpp
+are excluded. Upstream still installs demo sources and benchmark-statistics
+scripts. Running those Python scripts requires Python separately.
+The selected shared metadata fix does not validate other configurations.
+The older native `build.sh`/`test.sh` remains available with explicit common
+prefixes; the cross route above owns current AArch64 acceptance.

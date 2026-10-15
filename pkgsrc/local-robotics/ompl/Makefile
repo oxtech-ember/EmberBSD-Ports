@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: BSD-2-Clause
+# Origin: EmberBSD (AI-assisted), based on the upstream OMPL release.
+DISTNAME=	ompl-2.0.2
+CATEGORIES=	math
+MASTER_SITES=	${MASTER_SITE_GITHUB:=ompl/}
+GITHUB_PROJECT=	ompl
+GITHUB_RELEASE=	${PKGVERSION_NOREV}
+
+HOMEPAGE=	https://ompl.kavrakilab.org/
+COMMENT=	Sampling-based motion planning library
+LICENSE=	modified-bsd
+
+USE_LANGUAGES=		c++
+USE_CXX_FEATURES=	c++17
+GCC_REQD+=		16.2
+CMAKE_REQD+=		3.22
+CMAKE_CONFIGURE_ARGS+=	-C ${.CURDIR}/features.cmake
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_LIBDIR=lib
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_RPATH=${PREFIX}/lib:${PREFIX}/gcc16/lib
+
+INSTALLATION_DIRS+=	share/licenses/ompl
+
+post-install:
+	${INSTALL_DATA} ${WRKSRC}/LICENSE ${DESTDIR}${PREFIX}/share/licenses/ompl/LICENSE
+	${INSTALL_DATA} ${FILESDIR}/SOURCE ${DESTDIR}${PREFIX}/share/licenses/ompl/SOURCE
+
+.include "../../devel/cmake/build.mk"
+.include "../../local-robotics/eigen3/buildlink3.mk"
+.include "../../local-robotics/boost-libs/buildlink3.mk"
+.include "../../mk/bsd.pkg.mk"

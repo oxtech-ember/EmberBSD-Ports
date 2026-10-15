@@ -3,6 +3,7 @@
 #define EMBER_OMPL_GEOMETRY_H
 #include <algorithm>
 #include <cmath>
+#include <limits>
 namespace geometry {
 struct Point { double x, y; };
 struct Rectangle { double left, right, bottom, top; };
@@ -15,10 +16,14 @@ inline bool bounded(Point p) {
 }
 // Clip the whole closed segment against both rectangle slabs. Touching counts
 // as collision; no sampling resolution or OMPL motion checker is consulted.
+// Expand the rectangle by a roundoff guard in the unit square so decimal
+// corner tangency cannot become a false clearance after division rounding.
 inline bool segment_hits_rectangle(Point a, Point b, Rectangle r) {
     double enter = 0, leave = 1;
+    constexpr double guard = 32 * std::numeric_limits<double>::epsilon();
     const double origin[] = {a.x, a.y}, end[] = {b.x, b.y};
-    const double low[] = {r.left, r.bottom}, high[] = {r.right, r.top};
+    const double low[] = {r.left - guard, r.bottom - guard};
+    const double high[] = {r.right + guard, r.top + guard};
     for (int dimension = 0; dimension < 2; ++dimension) {
         const double direction = end[dimension] - origin[dimension];
         if (direction == 0) {

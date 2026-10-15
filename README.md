@@ -203,8 +203,12 @@ runtime behavior are validated.
   removal/reinstallation verified in EmberBSD AArch64 QEMU. OSQP now has an
   installed GCC16 package with QP/KKT, infeasibility, derivative and real SIGINT
   checks. All three upstream programs and two injected allocation-failure
-  regressions pass on AArch64. OMPL 2.0.2 has a prepared source profile
-  and checked geometry oracle.
+  regressions pass on AArch64. OMPL 2.0.2 now has a GCC16 cross package with
+  common Eigen 5.0.1 and Boost 1.92.0. Installed AArch64 QEMU checks cover an
+  independently validated obstacle detour, thirteen upstream programs,
+  archive metadata, errors and all four package lifecycles. The
+  [CSV path example](https://github.com/oxtech-ember/EmberBSD-Examples/tree/main/robotics/ompl-path)
+  uses the shared library. Physical collision safety remains unverified.
 - [Ethernet SDR source profile](probes/sdr/README.md): SoapySDR 0.8.1,
   libiio 1.0.0, libad9361-iio and SoapyPlutoSDR use a common
   [libxml2 2.15.4 provider](probes/libxml2/README.md). Installed macOS contracts
