@@ -27,12 +27,15 @@ set -eu
 work=$1 depcomp=$2
 : "${CC_FOR_BUILD:?Missing CC_FOR_BUILD in configure environment}"
 : "${CXX_FOR_BUILD:?Missing CXX_FOR_BUILD in configure environment}"
+# Standard pkgsrc compiler commands contain a path and optional arguments.
+# Split words as upstream configure does; do not evaluate shell syntax.
+set -f
 case "$CC_FOR_BUILD:$CXX_FOR_BUILD" in /*:/*) ;; *) exit 1;; esac
 depmode=none source="$work/generator.c" object="$work/generator.o" \
-    "$depcomp" "$CC_FOR_BUILD" -c "$work/generator.c" -o "$work/generator.o"
-"$CC_FOR_BUILD" "$work/generator.o" -o "$work/generator"
+    "$depcomp" $CC_FOR_BUILD -c "$work/generator.c" -o "$work/generator.o"
+$CC_FOR_BUILD "$work/generator.o" -o "$work/generator"
 [ "$("$work/generator")" = 'generated on build host' ]
-"$CXX_FOR_BUILD" "$work/generator.cc" -o "$work/generator-cxx"
+$CXX_FOR_BUILD "$work/generator.cc" -o "$work/generator-cxx"
 [ "$("$work/generator-cxx")" = 'C++ generated on build host' ]
 SH
 cat > "$work/generator.mk" <<'MAKE'

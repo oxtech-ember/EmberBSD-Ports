@@ -24,11 +24,11 @@ CONFIGURE_ARGS.NetBSD+=	--disable-malloc0returnsnull
 .include "../../mk/bsd.prefs.mk"
 
 .if ${USE_CROSS_COMPILE:U:tl} == yes
-# The common cross profile validates an absolute host compiler.  makestrs
+# The common cross profile supplies the native compiler command. makestrs
 # only uses libc headers; target PREFIX headers do not belong in this build.
 # Origin: EmberBSD (AI-assisted); preserve other pkgsrc cross configurations.
 .  if defined(EMBERBSD_CROSS_BUILD_CC)
-CONFIGURE_ENV+=	CC_FOR_BUILD=${EMBERBSD_CROSS_BUILD_CC:Q} CPPFLAGS_FOR_BUILD=
+CONFIGURE_ENV+=	CC_FOR_BUILD=${NATIVE_CC:Q} CPPFLAGS_FOR_BUILD=
 .  else
 CONFIGURE_ENV+=	CC_FOR_BUILD=${NATIVE_CC:Q} CPPFLAGS_FOR_BUILD=-I${PREFIX}/include
 .  endif

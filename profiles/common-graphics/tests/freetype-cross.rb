@@ -4,6 +4,7 @@
 require 'digest'
 require 'fileutils'
 require 'open3'
+require 'shellwords'
 
 abort 'usage: freetype-cross.rb PREPARED_PKGSRC CROSS_MAKECONF NEW_WORK' unless ARGV.length == 3
 tree, conf = ARGV.first(2).map { |path| File.realpath(path) }
@@ -31,8 +32,7 @@ make = ENV.fetch('BMAKE', 'bmake')
   FileUtils.cp_r(source, "#{root}/graphics/freetype2")
   if variant == 'original'
     File.write("#{root}/graphics/freetype2/Makefile", options.sub(condition,
-      '.if exists(/System/Library/Frameworks/Carbon.framework)').sub(
-      '${EMBERBSD_CROSS_BUILD_CC:U${NATIVE_CC}:Q}', '${NATIVE_CC:Q}'))
+      '.if exists(/System/Library/Frameworks/Carbon.framework)'))
   end
 end
 
@@ -56,10 +56,9 @@ patched = run.call('patched', [])
 abort 'cross recipe still selects Carbon' unless patched[0] == 'NetBSD' &&
   !patched[1].include?('-framework Carbon')
 puts 'GREEN: target NetBSD omits the Darwin framework'
-abort 'original empty host compiler selection did not reproduce' unless original[2] == 'CC_BUILD='
-abort 'explicit host compiler was not selected' unless patched[2].match?(%r{\ACC_BUILD=/\S+\z}) &&
-  File.executable?(patched[2].delete_prefix('CC_BUILD='))
-puts 'RED/GREEN: the common cross host compiler reaches the actual FreeType CC_BUILD input'
+abort 'explicit host compiler was not selected' unless patched[2].start_with?('CC_BUILD=/') &&
+  File.executable?(Shellwords.split(Shellwords.split(patched[2]).last.delete_prefix('CC_BUILD=')).first)
+puts 'GREEN: the common cross native compiler command reaches the actual FreeType CC_BUILD input'
 original_native = run.call('original', ['USE_CROSS_COMPILE=no'])
 patched_native = run.call('patched', ['USE_CROSS_COMPILE=no'])
 abort 'native Darwin behavior changed' unless original_native == patched_native &&

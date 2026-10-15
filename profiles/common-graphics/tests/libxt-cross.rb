@@ -52,7 +52,7 @@ original_cc = Shellwords.split(original[1]).last
 patched_cc = Shellwords.split(patched[1]).last
 abort 'original empty override did not reproduce' unless original[0] == 'NetBSD' && original_cc == 'CC_FOR_BUILD='
 abort 'host compiler selection failed' unless patched[0] == 'NetBSD' && patched_cc&.start_with?('CC_FOR_BUILD=/') &&
-  File.executable?(patched_cc.delete_prefix('CC_FOR_BUILD='))
+  File.executable?(Shellwords.split(patched_cc.delete_prefix('CC_FOR_BUILD=')).first)
 abort 'target includes still reach the host tool' unless Shellwords.split(patched[2]).last == 'CPPFLAGS_FOR_BUILD='
 puts 'RED/GREEN: real cross recipe replaces the empty overriding compiler and excludes target includes'
 old_native = query.call('original', true)

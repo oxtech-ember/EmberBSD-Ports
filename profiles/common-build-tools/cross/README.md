@@ -110,9 +110,22 @@ Build-time C/C++ generators use `/usr/bin/cc` and `/usr/bin/c++` on macOS.
 Override `EMBERBSD_CROSS_BUILD_CC` and `EMBERBSD_CROSS_BUILD_CXX` with absolute
 host compiler paths when necessary. They reach upstream configure as
 `CC_FOR_BUILD` and `CXX_FOR_BUILD`; target wrappers still compile the package.
-The profile also sets pkgsrc's `NATIVE_CC` and `NATIVE_CXX`, because recipes
-such as Bash append their generator compiler settings later. Conflicting
-command-line overrides fail rather than silently selecting the target compiler.
+The raw provider inputs remain absolute executable paths. Pkgsrc's `NATIVE_CC`
+and `NATIVE_CXX` are compiler commands. On Darwin, they append `-B/usr/bin/`
+so compiler subprocesses select the native assembler and linker despite the
+cross wrapper PATH. Recipes must preserve the complete command, including its
+arguments. Bash, libX11, libXt and FreeType receive this same native command.
+Conflicting command-line overrides fail. Target compiler flags, wrappers and
+sysroot selection remain unchanged. Native dependency recursion does not acquire
+these cross-only command settings.
+
+`tests/cross-native-routing.rb` takes a prepared pkgsrc tree, cross MAKECONF,
+failed libX11 work directory, FreeType source directory and a new work path.
+This Darwin/amd64 regression copies the actual cwrapper configuration into its private fixture and records
+commands and results. It links and runs native C/C++, the upstream makekeys
+source, and FreeType's unchanged native suffix probe under the polluted PATH.
+It also checks libXt's final configure command and a target ELF link.
+These checks do not establish full package or target runtime acceptance.
 The mDNSResponder version probe reads the target sysroot header during cross
 builds and the host header during native dependency recursion.
 Host tool dependencies read the host bootstrap MAKECONF, so interpreter and
