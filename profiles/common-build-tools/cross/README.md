@@ -75,6 +75,30 @@ EMBERBSD_CROSS_BUILD_PYTHON=/absolute/python3.14
 .endif
 ```
 
+Keep `mk.conf` and its executable `sort-c.sh` together. The profile uses
+one executable path to preserve C collation in pkgsrc's `TOOLS_SORT`.
+An `env LC_ALL=C sort` command loses its arguments in libtool PLIST expansion.
+Package scripts substitute target `/usr/bin/sort` through `_CROSS_FILES_SUBST`.
+The host wrapper path must never enter the installed scripts.
+The regression runs the real helper and checks every library entry:
+
+```sh
+BMAKE=/absolute/host/bin/bmake ruby profiles/common-build-tools/tests/cross-sort.rb \
+    /absolute/export/sysutils/attr /absolute/cross.mk.conf /absolute/new-results
+```
+
+After packaging attr, exercise its actual serialized installation helpers:
+
+```sh
+ruby profiles/common-build-tools/tests/cross-install-scripts.rb \
+    /absolute/attr-2.6.0nb1.tgz /absolute/new-install-results
+```
+
+This check rejects host tool paths before execution. It unpacks the actual
+`+INSTALL` script and runs directory/configuration helpers in a private prefix.
+It checks creation, permissions, removal, and preservation of modified config.
+It does not replace installation on the target system.
+
 Use the host BSD make to build a target package, for example:
 
 ```sh
