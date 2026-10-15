@@ -4,6 +4,7 @@ The local `consolekit-2.0.0` recipe carries focused source patches.
 They do not enable server-managed devices or install a display manager.
 The separate [NetBSD VT monitor](vt-monitor.md) observes actual kernel console state.
 The [device reply regression](device-fd.md) checks canonical FD ownership with actual host GDBus replies.
+The [process snapshot regression](process-query.md) checks complete live kernel records before metadata consumers.
 
 `TakeControl` now checks the caller UID after both credential lookups succeed.
 Only the session owner or root can acquire or reuse control.

@@ -257,6 +257,8 @@ runtime behavior are validated.
   now preserves child failures and passes seven real-daemon cases on CM5.
   [Registration privilege host contracts](probes/plasma-mobile/toolkit/tests/consolekit/privilege.md)
   check root-only parameter overrides and reject child execution after failed registration.
+  [NetBSD process snapshot host contracts](probes/plasma-mobile/toolkit/tests/consolekit/process-query.md)
+  check complete live records before metadata use; full target compilation awaits cross-built GLib.
   Ordinary-user login, device ownership and the complete desktop remain unaccepted.
 - [KWin on physical CM5](probes/plasma-mobile/toolkit/cross/cm5-kwin.md):
   KWin 6.7.5nb2 passes OpenGL/V3D selection and Qt Quick pixel checks
