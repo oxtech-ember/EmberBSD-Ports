@@ -75,7 +75,21 @@ The runner checks installed files, package metadata, ordinary and recursive
 CLI operations, and nofollow get/list/set/remove behavior on a real symlink.
 The linked consumer checks file/fd attribute copying and CREATE/REPLACE flags.
 Exit 77 means the selected filesystem does not support extended attributes.
-It is not an acceptance result. Physical board execution remains pending.
+It is not an acceptance result. The initial probe distinguishes ENOTSUP,
+EOPNOTSUPP and ENOSYS from real access errors. EmberBSD's `vfs_xattr.c`
+converts EOPNOTSUPP to the distinct ENOTSUP value for its xattr syscalls.
+The root-filesystem run on CM5 reported this unsupported operation.
+Installed package files and helpers pass there; filesystem API acceptance
+requires a separate filesystem with extended attributes enabled.
+
+Run the errno regression against the actual consumer source:
+
+```sh
+ruby runtime-errors.rb runtime-consumer.c /absolute/staged/usr/pkg /absolute/new-error-check
+```
+
+It runs ASan/UBSan with distinct target errno values. Unsupported first calls
+return 77. A permission error remains exit 1. No unsupported result is PASS.
 
 GCC16 `-fanalyzer` processes all 19 selected upstream translation units.
 Six fail to compile before the backend adaptation; all 19 compile afterwards.

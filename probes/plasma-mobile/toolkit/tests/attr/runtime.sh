@@ -48,9 +48,9 @@ ln -s file tree/link
 get_status=0
 "$prefix/bin/getfattr" -h --only-values -n user.ember-cli tree/link > nofollow-get.value 2> nofollow-get.log || get_status=$?
 [ "$get_status" -eq 1 ] || { echo 'nofollow get returned an unexpected status' >&2; exit 1; }
-grep -Eq 'Operation not supported|Function not implemented|Operation not permitted|No such attribute|Attribute not found|No data available' nofollow-get.log
+grep -Eq 'Operation not supported|Not supported|Function not implemented|Operation not permitted|No such attribute|Attribute not found|No data available' nofollow-get.log
 list_status=0; "$prefix/bin/getfattr" -h -d -m user.ember-cli tree/link > nofollow-list.log 2>&1 || list_status=$?
-[ "$list_status" -eq 0 ] || { [ "$list_status" -eq 1 ] && grep -Eq "Operation not supported|Function not implemented|Operation not permitted" nofollow-list.log; }
+[ "$list_status" -eq 0 ] || { [ "$list_status" -eq 1 ] && grep -Eq "Operation not supported|Not supported|Function not implemented|Operation not permitted" nofollow-list.log; }
 if grep 'user.ember-cli=' nofollow-list.log; then
     echo 'nofollow list reached the target attribute' >&2
     exit 1
@@ -63,7 +63,7 @@ symlink_operation() {
     "$@" > "$log" 2>&1 || status=$?
     if [ "$status" -ne 0 ]; then
         [ "$status" -eq 1 ] || return "$status"
-        grep -Eq 'Operation not supported|Function not implemented|Operation not permitted|No such attribute|Attribute not found|No data available' "$log"
+        grep -Eq 'Operation not supported|Not supported|Function not implemented|Operation not permitted|No such attribute|Attribute not found|No data available' "$log"
     fi
 }
 # Symlink xattrs can be unsupported. Either result must preserve the target.

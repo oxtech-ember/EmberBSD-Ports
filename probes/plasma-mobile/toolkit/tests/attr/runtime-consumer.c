@@ -36,7 +36,7 @@ main(int argc, char **argv)
 	if (destination == -1)
 		fail("create destination");
 	if (fsetxattr(source, "user.ember-abi", "first", 5, XATTR_CREATE) == -1) {
-		if (errno == EOPNOTSUPP || errno == ENOSYS) {
+		if (errno == ENOTSUP || errno == EOPNOTSUPP || errno == ENOSYS) {
 			fprintf(stderr, "UNSUPPORTED: filesystem xattrs: %s\n", strerror(errno));
 			close(source);
 			close(destination);
