@@ -36,6 +36,24 @@ It queries the real native and cross recipes. It requires a runtime dependency,
 checks its origin and matches the selected common loader through `pkg_admin`.
 The old recipe fails; the corrected recipe passes both modes.
 
+## KWin 6.8 render-node dependency
+
+KWin 6.8.0nb1 requires `libudev-bsd>=0.7.0.1nb2` at runtime.
+The common provider must enumerate DRM render nodes before KWin can open them.
+The older package constraint permitted a provider that returned no render devices.
+This revision changes package metadata only. It does not change KWin's compiled code.
+Use the [metadata refresh procedure](metadata-refresh.md) only with verified retained staging.
+Resolve the new dependencies again; do not reuse an old resolved dependency cache.
+
+```sh
+ruby tests/kwin-package.rb /absolute/plasma6-kwin-6.8.0nb1.tgz /absolute/pkg_admin
+```
+
+The regression reads the real package metadata and uses native `pkg_admin pmatch`.
+It rejects libudev revisions before nb2 and accepts nb2 and newer compatible versions.
+It also rejects host paths in generated install scripts, including `SORT`.
+The prior archive fails this dependency check. Package checks do not establish a new hardware session.
+
 ## Hardware check
 
 Run [the KWin/V3D check](../tests/kwin-v3d/README.md) on the installed board.
