@@ -125,6 +125,9 @@ GST_REGISTRY_1_0=/absolute/new-jitter.registry \
 )
 ```
 
+The cross helper installs the unchanged upstream `h265.rtp` fixture under
+`/usr/pkg/share/emberbsd-rtp-tests` and compiles that installed test-data path.
+
 The whitelist preserves upstream's provider selection while using installed
 plugins. An absent whitelist fails the upstream environment beacon before
 the test begins. Leave `CK_FORK` unset for default fork isolation; record any

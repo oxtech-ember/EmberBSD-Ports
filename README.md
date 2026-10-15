@@ -303,6 +303,13 @@ runtime behavior are validated.
   passes real package/dependency cycles, exact FFV1 pixels, timestamps, filters
   and PCM samples in AArch64 QEMU. The current XML provider retains its ABI,
   repairs a schema shift and passes target contracts plus native UBSan tests.
+- [H.265 over RTP with FFmpeg and GStreamer](profiles/common-media/rtp/README.md):
+  GCC16.2 cross builds pass installed C API checks in AArch64 and AMD64 QEMU.
+  Both directions recover from packet loss, duplication, reordering and a blackout.
+  A fresh receiver also resumes after closing and rebinding its UDP socket.
+  Thirteen real packages pass dependency protection and removal/reinstallation;
+  independent captures and pixel checks verify recovery. See the
+  [results and limits](profiles/common-media/rtp/results.md).
 - [MQTT smart-home foundation](probes/mosquitto/README.md): Mosquitto 2.1.2
   builds with common GCC 16.2, cJSON 1.7.19 and SQLite 3.53.4. Twelve installed
   AArch64 VM cases pass MQTT 3.1.1/5 QoS 0/1/2, authentication/ACL, verified

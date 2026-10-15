@@ -67,7 +67,7 @@ a target VM with matching runtime packages, then run under a bounded runner:
 ./parser-position ./observed-nals.bin 0
 ```
 
-The clock emits JSON lines ending with `{"checks":44,"failures":0}`.
+The clock emits JSON lines ending with `{"checks":52,"failures":0}`.
 Both parser invocations emit `ok:true`, 40 frames, actual PTS and packet positions.
 Cross-build success alone is not target execution acceptance.
 

@@ -1,5 +1,10 @@
 # Common multimedia source packages
 
+The [H.265 RTP CPU SDK](rtp/README.md) adds GCC16.2 cross builds for AArch64
+and AMD64. Installed FFmpeg/GStreamer C APIs pass bidirectional transport,
+packet faults and receiver restart checks in full-system QEMU. All 13 packages
+pass real installation and removal/reinstallation; see [results and limits](rtp/results.md).
+
 The [GCC16 CPU cross package](cross/README.md) passes real installation,
 dependency protection, exact FFV1/PCM checks and removal/reinstallation in
 EmberBSD AArch64 QEMU. It retains built-in codecs and uses current OpenSSL/XML;
