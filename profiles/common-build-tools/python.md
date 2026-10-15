@@ -20,6 +20,13 @@ No new configure cache answers are added; the test uses the recipe's existing an
 This checks configuration and LP64 metadata, not a target Python package or execution.
 The upstream unsupported-platform warning remains visible.
 
+The recipe declares the runtime platform for build-details generation.
+NetBSD `MACHINE_ARCH=x86_64` maps to its kernel machine name `amd64`;
+AArch64 retains `evbarm`. Both use the selected target `OS_VERSION`.
+`tests/python-build-platform.rb` checks real pkgsrc `MAKE_ENV` and the host
+generator against existing target sysconfig inputs. It writes only new outputs
+and disables bytecode writes to those inputs. No host platform fallback is used.
+
 The Python 3.14.8 package acceptance recorded below is historical.
 Build it with the [macOS cross-package configuration](cross/README.md), using
 the shared GCC16 compiler and a complete target sysroot. The source archive
