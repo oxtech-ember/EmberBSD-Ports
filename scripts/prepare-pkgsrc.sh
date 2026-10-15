@@ -46,7 +46,7 @@ if [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ 
             }
         done
     done
-    for delta in current-python-selection.patch python315-current-selection.patch current-libtool.patch pkgsrc-cross-packages.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch; do
+    for delta in python315-current-selection.patch current-libtool.patch pkgsrc-cross-packages.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch; do
         [ -s "$root/profiles/common-build-tools/patches/$delta" ] || {
             echo "Missing common-tools infrastructure patch: $delta" >&2; exit 2;
         }
@@ -283,7 +283,7 @@ if [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ 
     done
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$root/profiles/common-build-tools/patches/current-python-selection.patch"
-    for delta in current-python-selection.patch python315-current-selection.patch current-libtool.patch pkgsrc-cross-packages.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch; do
+    for delta in python315-current-selection.patch current-libtool.patch pkgsrc-cross-packages.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch; do
         patch -f -N -d "$destination" -p1 -F 0 < \
             "$root/profiles/common-build-tools/patches/$delta"
     done
