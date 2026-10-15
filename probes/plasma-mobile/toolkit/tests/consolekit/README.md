@@ -3,6 +3,7 @@
 The local `consolekit-2.0.0` recipe carries focused source patches.
 They do not enable server-managed devices or install a display manager.
 The separate [NetBSD VT monitor](vt-monitor.md) observes actual kernel console state.
+The [device reply regression](device-fd.md) checks canonical FD ownership with actual host GDBus replies.
 
 `TakeControl` now checks the caller UID after both credential lookups succeed.
 Only the session owner or root can acquire or reuse control.
@@ -83,4 +84,13 @@ Actual system-bus credentials and ordinary-user session registration remain unte
 NetBSD VT watching has host contracts in the separate monitor test.
 Actual VT switching, wscons revocation and input close/reopen remain separate work.
 The device backend remains `none`; native DRM `TakeControl` remains unsupported.
+Backend activation also requires a trusted session-registration contract.
+Upstream `OpenSessionWithParameters` is documented as privileged, but the shipped default D-Bus policy allows it.
+Its parameter parser permits overrides of `unix-user`, `is-local`, VT and display-device properties.
+Those properties alone do not prove entitlement to a native console or its devices.
+Trace the real `ck-launch-session` and PAM callers before restricting the privileged method.
+Keep ordinary nonroot `OpenSession` working. Verify kernel PID, TTY and session ancestry separately.
+Native device work also requires checked DRM DROP/SET_MASTER and wscons revoke/reopen results.
+KWin must release devices even when revoked FDs fail `fstat()` and must preserve failed resume state.
+These are pending changes, not capabilities of the FD ownership patch.
 No SDDM, password-login, logout, GPU or physical-device acceptance is claimed.

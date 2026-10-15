@@ -7,5 +7,5 @@ SHA1 (patch-src_ck-manager.c) = ed04c9b3dae1325a3207e766bf4363e06d5e67c1
 SHA1 (patch-src_ck-sysdeps-solaris.c) = 43efc3ba1521477437d766da16c609a04892588c
 SHA1 (patch-src_ck-vt-monitor.c) = 6e4031c1dcce68ae85fcca5e2143e61b3e2d3272
 SHA1 (patch-tools_ck-launch-session.c) = c2b1becf952cbf3e9b418c54108868ba5e19c01a
-SHA1 (patch-src_ck-session.c) = acb3df248f75fe76df3078fc5567471e073cbbd1
+SHA1 (patch-src_ck-session.c) = b7fd1e9dcacae3a29725cc03ef8fd584fb697510
 SHA1 (patch-src_ck-sysdeps-netbsd.c) = 2b34b0f2d02b5310df010420af080825169fe9ec
