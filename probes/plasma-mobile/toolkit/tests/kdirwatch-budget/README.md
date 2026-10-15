@@ -57,3 +57,34 @@ match QFileSystemWatcher's API. They retain two Cppcheck performance suggestions
 Other retained style reports concern inherited methods and explicit test doubles.
 Full target translation-unit analysis belongs to the target package build.
 Valgrind does not support this Darwin AArch64 test host; ASan/UBSan are substitutes.
+
+## Native public consumer
+
+Cross-build `runtime.cpp` with the selected GCC16 compiler and the common
+EmberBSD sysroot. Include the installed `KF6/KCoreAddons`, `QtCore`, and Qt headers.
+Link `KF6CoreAddons`, `Qt6Core`, and pthread with the current LLD23 selection.
+Use the normal `/usr/pkg/lib`, `/usr/pkg/qt6/lib`, and GCC16 runtime search paths.
+The consumer uses public APIs. Keep the same binary for the nb2 and nb3 comparison.
+
+On the target, run the retained binary with a new output path:
+
+```sh
+timeout 90 sh runtime.sh /absolute/kdirwatch-budget /absolute/new-result
+```
+
+The runner clears inherited library and Qt overrides. It records package identity,
+loaded dependencies, input hashes, the runtime log, and the actual exit status.
+The consumer sets and verifies soft `RLIMIT_NOFILE=1024` in its own process.
+An insufficient or unbounded enumeration limit returns 77 with a stated reason.
+The fixture requires a finite hard limit between 1024 and 65536.
+It never changes the caller's limits or global kernel limits.
+
+The consumer creates 600 directories and 600 files before it registers any watch.
+It records the descriptor count before it attempts a further recursive tree.
+Only `FAIL: native watch FD budget exceeded` with exit 1 is the expected nb2 cause.
+An unrelated setup error, signal, or timeout is a failed test, not that baseline.
+The candidate must retain capacity to open an ordinary file.
+A nested file in the later recursive branch must report content changes,
+rename, deletion, and recreation. Repeated events must not grow native descriptors.
+Watcher destruction must release path descriptors. The fixture then removes its own tree.
+The native result remains pending until this consumer runs against the installed package.
