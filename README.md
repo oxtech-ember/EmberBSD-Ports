@@ -94,6 +94,7 @@ runtime behavior are validated.
   repairs DRM classification for KWin 6.8 with a real-source regression.
   Target enumeration and the compositor remain separate checks.
   A [bounded V3D allocation trace](profiles/common-graphics/cross/v3d-bo-trace.md) supports KWin diagnostics.
+  A [fixed-size BO probe](profiles/common-graphics/cross/v3d-bo-alloc.md) checks allocation and release without GPU submission.
   The current MesaLib 26.2.4nb7 recipe adds a Wayland allocation-failure repair
   to the common V3D/VirGL/softpipe/llvmpipe/Zink package. Its source contracts pass;
   package and target acceptance remain separate. The installed CM5 package is still nb5.
