@@ -174,7 +174,8 @@ PulseAudioQt 1.9.0. The Workspace recipe declares its notifications QML provider
 Seven installed component tests and a real QML import pass on CM5.
 Actual sound output and full-session integration remain separate requirements.
 [KDE runtime source contracts](tests/runtime-source-contracts/README.md) cover
-helper argument lifetime, D-Bus errors and failed file-watcher registration.
+helper argument lifetime, D-Bus errors, failed file-watcher registration, and
+KDED target helper paths in cross builds.
 Workspace nb3 and KCoreAddons nb2 pass four helper and 38 filesystem-event cases on CM5.
 [Workspace configuration checks](tests/workspace-config.md) verify menu installation
 and preserve local edits during removal and reinstallation.
