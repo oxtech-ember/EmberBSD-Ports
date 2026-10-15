@@ -273,6 +273,15 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     cp -RL "$root/profiles/development-toolchain/recipes/devel/gdb" "$destination/devel/gdb"
     cp "$root/profiles/development-toolchain/mk.conf" \
         "$destination/EMBERBSD-DEVELOPMENT-MK.CONF"
+    # Package audited external target runtimes without installing a compiler.
+    runtime_recipe=$root/profiles/development-toolchain/runtime/recipe
+    [ -f "$runtime_recipe/files/runtime.rb" ] || {
+        echo 'The GCC16 runtime recipe is incomplete.' >&2; exit 2;
+    }
+    [ ! -e "$destination/lang/gcc16-runtime" ] || {
+        echo 'Upstream now owns lang/gcc16-runtime; review the overlay.' >&2; exit 2;
+    }
+    cp -R "$runtime_recipe" "$destination/lang/gcc16-runtime"
 fi
 if [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
     for recipe in lang/python314 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako textproc/py-markupsafe textproc/py-yaml textproc/groff; do

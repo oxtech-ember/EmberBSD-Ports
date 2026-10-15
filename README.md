@@ -40,6 +40,11 @@ runtime behavior are validated.
   builds the full kernel, four modules, and three DTBs; all portable contracts
   and artifact checksums pass. See the [OS build evidence](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/cross-build.md#linux-gcc16).
   Boot acceptance remains separate.
+  The explicit amd64 target selects x86_64 tools and runtime paths; host
+  target-selection regressions pass. The runtime bootstrap and
+  [runtime-only package](profiles/development-toolchain/runtime/README.md)
+  keep compilers out of application images. Their host packaging fixtures
+  pass with native pkgtools; real amd64 runtime and desktop acceptance remain pending.
   Common Qt rebuilding and full-image integration
   remain pending.
   [GDB 18.1nb1](profiles/development-toolchain/gdb/README.md) is cross-built and

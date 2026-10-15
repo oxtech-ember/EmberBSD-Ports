@@ -1,8 +1,8 @@
 # Cross-building common packages on macOS
 
-This opt-in path builds EmberBSD/AArch64 pkgsrc packages with the
+This opt-in path builds EmberBSD/AArch64 or amd64 pkgsrc packages with the
 [GCC 16.2 cross compiler](../../development-toolchain/cross/README.md).
-The retained NetBSD 11 ABI and `aarch64--netbsd` triplet identify compatibility,
+The retained NetBSD 11 ABI and target triplet identify compatibility,
 not an upstream OS build. Follow the [sysroot provenance rules](sysroot.md).
 The compiler and build tools execute on macOS; installed packages are tested
 on EmberBSD. Python, Meson and Ninja are among the
@@ -19,9 +19,9 @@ checksums. The cross fixes also compose into profiles based on common tools.
 
 Prepare these separate directories, outside Git:
 
-- A working GCC16 cross prefix targeting `aarch64--netbsd`.
+- A working GCC16 cross prefix targeting `aarch64--netbsd` or `x86_64--netbsd`.
 - Host tools from the EmberBSD source tree, built on the Mac, including
-  `aarch64--netbsd-install`.
+  the corresponding target `install` utility.
 - A pkgsrc unprivileged macOS bootstrap with BSD make, the patched package tools,
   mksh and digest. Use the exported `pkg_install-20260227nb1` recipe: it fixes
   alternate-root replacement and suppresses target deinstall scripts during
@@ -38,8 +38,17 @@ Prepare these separate directories, outside Git:
   `autoreconf -fi`, and a stripped `PATH` that still fails at `libtoolize`.
 - A target sysroot with headers, complete base libraries and development
   files (including `libintl`), the complete accepted
-  `gcc16-16.2.0nb1` package, its dependency files and target package database.
+  GCC16 development files, a coherent runtime provider and target package database.
   Include base `/usr/bin/install-info` for packages shipping Info manuals.
+
+For amd64 application images, select `EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime`.
+The [runtime-only provider](../../development-toolchain/runtime/README.md)
+ships only target shared libraries and licenses. Keep headers and CRT objects
+in the build-host sysroot. This choice does not install a compiler in the VM.
+The runtime-only recipe currently supports amd64. AArch64 remains on the
+existing compiler provider until its runtime-only package is ported and tested.
+The default `compiler` provider preserves existing full-package workflows.
+The providers conflict; do not register both or fabricate full-package metadata.
 
 Do not substitute a host package database for the target database. The
 selected target GCC runtime needs its CRT files and `libstdc++.so.7`; a
@@ -54,6 +63,12 @@ sh profiles/common-build-tools/cross/prepare-tools.sh \
     /absolute/gcc16-prefix /absolute/netbsd-tools /absolute/new-cross-tools
 ```
 
+The default remains AArch64. For amd64, pass `--target amd64` before paths.
+Also set `EMBERBSD_CROSS_TARGET=amd64` in the cross MAKECONF. This selects
+`MACHINE_ARCH=x86_64` and the `x86_64--netbsd` compiler and CRT paths.
+Unknown targets and conflicting compiler or machine overrides fail.
+The selector does not prove an amd64 package build or desktop session.
+
 A private MAKECONF includes the host bootstrap configuration first:
 
 ```make
@@ -62,6 +77,9 @@ A private MAKECONF includes the host bootstrap configuration first:
 EMBERBSD_CROSS_TOOLS=/absolute/new-cross-tools
 EMBERBSD_CROSS_SYSROOT=/absolute/target-sysroot
 EMBERBSD_CROSS_HOST_PREFIX=/absolute/host
+# Optional: amd64 rather than the AArch64 default.
+EMBERBSD_CROSS_TARGET=amd64
+EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime
 WRKOBJDIR=/absolute/work
 DISTDIR=/absolute/distfiles
 MAKE_JOBS=4
@@ -158,6 +176,8 @@ Run `tests/cross-pkgsrc.sh` against a staged pkgconf package. It exercises real
 pkgsrc parsing, native dependency recursion, ELF metadata and failure cases.
 `tests/cross-tools.sh` checks tool composition, refusal of existing output,
 missing host tools and the constrained target Info utility selection.
+`ruby tests/cross-targets.rb BMAKE` checks both target tool compositions,
+real make variable expansion, runtime-provider selection and mixed-target rejection.
 `tests/cross-libc.rb BMAKE NEW_WORK` exercises the actual pre-extract guard:
 canonical aliases pass; four missing and four divergent libc paths fail.
 That guard detects inconsistent copies, not the origin of an otherwise
