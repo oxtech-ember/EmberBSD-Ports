@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.19 2026/09/06 10:05:11 markd Exp $
 
 DISTNAME=	kcoreaddons-${KF6VER}
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	devel
 
 HOMEPAGE=	https://community.kde.org/Frameworks
