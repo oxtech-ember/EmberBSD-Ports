@@ -1,0 +1,5 @@
+GCC 16.2.0 target shared libraries for EmberBSD amd64.
+The package retains the GCC Runtime Library Exception.
+It installs libgcc_s.so.1 and libstdc++.so.7 under /usr/pkg/gcc16.
+It does not install a compiler, headers, CRT objects or static libraries.
+It conflicts with the full gcc16 and gcc16-libs providers.
