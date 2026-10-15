@@ -12,6 +12,20 @@ the build host using the target build's actual metadata. The separate
 [complete cross composition](profile.md) selects host tools and target
 dependencies without changing the native profile.
 
+The package path accepts EmberBSD 11/AArch64 and amd64. The amd64 selection
+keeps Iris, VirGL, softpipe, llvmpipe and Zink, with the Intel libdrm module.
+Its LLVM metadata must bind `x86_64-unknown-netbsd`, native component `x86`
+and ELF machine 62 together. AArch64 keeps its V3D selection and native
+`aarch64` component. Both reject foreign or mixed target metadata.
+The host tests `tests/amd64-targets.rb` and `tests/llvm-targets.rb` cover these
+selection guards. They do not establish an amd64 package build or GPU support.
+The older diagnostic and device-specific runners below retain their recorded
+AArch64 scope; this recipe extension does not qualify those runners on amd64.
+The [upstream Iris source](https://gitlab.freedesktop.org/mesa/mesa/-/blob/mesa-26.2.4/src/gallium/drivers/iris/meson.build)
+builds the Gen11 path, and [Intel device metadata](https://gitlab.freedesktop.org/mesa/mesa/-/blob/mesa-26.2.4/src/intel/dev/intel_device_info.c)
+identifies `jsl` (Jasper Lake). This supports the userspace source selection;
+it does not establish an installed driver, kernel compatibility or GPU execution.
+
 The full Mesa package now passes normal cross packaging and sysroot installation.
 [Installed package acceptance](mesa-package.md) prepares the EGL/GLES consumer
 and 37 upstream target invocations against its canonical runtime libraries.

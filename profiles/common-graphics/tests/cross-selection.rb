@@ -33,7 +33,7 @@ def check(name)
 end
 
 base = [make, '-C', "#{tree}/graphics/MesaLib", "MAKECONF=#{work}/mk.conf"]
-vars = %w[PKG_FAIL_REASON PREFIX LOCALBASE TOOLBASE TOOL_PYTHONBIN PYTHONBIN LLVM_CONFIG_PATH MESON_BINARY.llvm-config SUBST_SED.python MESON_CROSS_FILE MESON_BINARY.c MESON_BINARY.cpp TOOLS_DIGEST]
+vars = %w[PKG_FAIL_REASON PREFIX LOCALBASE TOOLBASE TOOL_PYTHONBIN PYTHONBIN LLVM_CONFIG_PATH MESON_BINARY.llvm-config SUBST_SED.python MESON_CROSS_FILE MESON_BINARY.c MESON_BINARY.cpp TOOLS_DIGEST CROSS_MACHINE_ARCH]
 values = run("#{work}/mesa.log", *base, 'show-vars', "VARNAMES=#{vars.join(' ')}").lines.map(&:chomp)
 abort 'unexpected diagnostic lines in real pkgsrc parse; inspect mesa.log' unless values.length == vars.length
 v = vars.zip(values).to_h
@@ -57,8 +57,8 @@ end
 FileUtils.mkdir_p(File.dirname(v.fetch('MESON_CROSS_FILE')))
 run("#{work}/cross-file.log", *base, v.fetch('MESON_CROSS_FILE'))
 cross_file = File.read(v.fetch('MESON_CROSS_FILE'))
-check('actual Meson cross file binds LLVM metadata to NetBSD/AArch64') do
-  cross_file.include?("system = 'netbsd'") && cross_file.include?("cpu_family = 'aarch64'") && cross_file.include?("llvm-config = '#{helper}'")
+check('actual Meson cross file binds LLVM metadata to the selected NetBSD target') do
+  %w[aarch64 x86_64].include?(v['CROSS_MACHINE_ARCH']) && cross_file.include?("system = 'netbsd'") && cross_file.include?("cpu_family = '#{v.fetch('CROSS_MACHINE_ARCH')}'") && cross_file.include?("llvm-config = '#{helper}'")
 end
 # These are real recipe/profile refusals; no llvm-config responses are invented.
 {

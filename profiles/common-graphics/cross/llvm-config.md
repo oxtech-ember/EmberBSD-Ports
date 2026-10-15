@@ -26,7 +26,7 @@ metadata. Keep the input trees unchanged through building, acceptance and
 sealing. The sealed tool then permits build-tree cleanup while checking the
 installed package on every query. Use a fresh output directory.
 The helper currently accepts the canonical
-NetBSD/AArch64, shared LLVM, RTTI and `/usr/pkg` layout with a macOS native
+NetBSD/AArch64 or NetBSD/amd64, shared LLVM, RTTI and `/usr/pkg` layout with a macOS native
 compiler. Whitespace in paths and different native system-library closures
 are rejected rather than guessed.
 
@@ -46,7 +46,7 @@ prefix: this LLVM build creates the `libLLVM-23.so` alias during installation.
 Missing shared libraries therefore produce a real failure until staging is
 complete. No placeholder library or fake success response is created.
 For staged mode the helper also checks matching generated public configuration
-headers, the AArch64 ELF header and shared-library identity against this target
+headers, the selected ELF64 machine and shared-library identity against this target
 build. An unchanged library must match byte for byte. For an `install-strip`
 payload, the generated shared-library install script must contain the exact
 no-argument `CMAKE_STRIP` operation and no RPATH transformation. The helper

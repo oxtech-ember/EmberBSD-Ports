@@ -1,8 +1,8 @@
 # $NetBSD: Makefile,v 1.220 2026/04/06 10:47:10 wiz Exp $
-# Origin: EmberBSD; AI-assisted bounded NetBSD 11/AArch64 source candidate.
+# Origin: EmberBSD; AI-assisted bounded NetBSD 11/AArch64 and amd64 candidate.
 DISTNAME=	mesa-26.2.4
 PKGNAME=	${DISTNAME:S/mesa/MesaLib/}
-PKGREVISION=	6
+PKGREVISION=	7
 CATEGORIES=	graphics
 MASTER_SITES=	https://archive.mesa3d.org/
 EXTRACT_SUFX=	.tar.xz
@@ -11,7 +11,7 @@ HOMEPAGE=	https://www.mesa3d.org/
 COMMENT=	Open source OpenGL with V3D, VirGL, Zink and software rendering
 LICENSE=	mit
 CONFLICTS+=	libglapi-[0-9]* libglvnd-[0-9]*
-ONLY_FOR_PLATFORM=	NetBSD-11.*-aarch64
+ONLY_FOR_PLATFORM=	NetBSD-11.*-aarch64 NetBSD-11.*-x86_64
 USE_TOOLS+=	bison flex pkg-config xgettext
 USE_LANGUAGES=	c c++
 USE_CC_FEATURES+=	c11
@@ -27,8 +27,8 @@ PYTHON_VERSION_REQD=	314
 .if !defined(EMBERBSD_COMMON_GRAPHICS)
 PKG_FAIL_REASON+= "Mesa requires the prepared common graphics profile"
 .endif
-.if ${DISTNAME} != "mesa-26.2.4" || ${PKGREVISION} != "6"
-PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.4nb6"
+.if ${DISTNAME} != "mesa-26.2.4" || ${PKGREVISION} != "7"
+PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.4nb7"
 .endif
 TOOL_DEPENDS+=	${PYPKGPREFIX}-mako>=1.4.3:../../devel/py-mako
 TOOL_DEPENDS+=	${PYPKGPREFIX}-packaging-[0-9]*:../../devel/py-packaging
@@ -39,7 +39,17 @@ SUBST_FILES.python=	meson.build
 SUBST_SED.python=	-e 's|@PYTHONBIN@|${TOOL_PYTHONBIN}|g'
 # Zink loads the common Vulkan loader at runtime. An ICD stays optional.
 DEPENDS+=	vulkan-loader>=1.4.357.0:../../graphics/vulkan-loader
+PLIST_VARS+= intel v3d
+.if ${MACHINE_ARCH} == "x86_64"
+MESON_ARGS+=	-Dgallium-drivers=iris,virgl,softpipe,llvmpipe,zink
+PLIST.intel=	yes
+_EMBERBSD_MESA_LLVM_TRIPLE=	x86_64-unknown-netbsd
+BUILDLINK_API_DEPENDS.libdrm+=	libdrm>=2.4.134nb3
+.else
 MESON_ARGS+=	-Dgallium-drivers=v3d,virgl,softpipe,llvmpipe,zink
+PLIST.v3d=	yes
+_EMBERBSD_MESA_LLVM_TRIPLE=	aarch64-unknown-netbsd
+.endif
 MESON_ARGS+=	-Dplatforms=x11,wayland -Dglx=dri
 MESON_ARGS+=	-Degl=enabled -Dgbm=enabled -Dglvnd=disabled
 MESON_ARGS+=	-Dgles1=enabled -Dgles2=enabled -Dopengl=true
@@ -93,7 +103,7 @@ pre-configure:
 			echo "LLVM helper receipt mismatch: $$file" >&2; exit 1; \
 		}; \
 	done < inputs.sha256
-	${TEST} "$$(${LLVM_CONFIG_PATH} --host-target)" = aarch64-unknown-netbsd
+	${TEST} "$$(${LLVM_CONFIG_PATH} --host-target)" = ${_EMBERBSD_MESA_LLVM_TRIPLE:Q}
 	${TEST} "$$(${LLVM_CONFIG_PATH} --prefix)" = ${_EMBERBSD_LLVM_SYSROOT:Q}/usr/pkg
 	${TEST} "$$(${LLVM_CONFIG_PATH} --includedir)" = ${_EMBERBSD_LLVM_SYSROOT:Q}/usr/pkg/include
 	${TEST} "$$(${LLVM_CONFIG_PATH} --libdir)" = ${_EMBERBSD_LLVM_SYSROOT:Q}/usr/pkg/lib

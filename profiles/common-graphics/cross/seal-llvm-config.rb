@@ -6,6 +6,7 @@ require 'fileutils'
 require 'json'
 require 'open3'
 require 'shellwords'
+require_relative 'llvm-target'
 
 def fail!(message)
   abort "seal-llvm-config: #{message}"
@@ -42,7 +43,12 @@ r = JSON.parse(File.read("#{old}/receipt.json"))
   fail!("unsupported receipt path #{key}") unless p.start_with?('/') && safe_path?(p)
 end
 source, target, native, prefix = r.values_at('source', 'target_build', 'native_build', 'target_prefix')
-fail!('requires an accepted installed LLVM 23.1.3 helper') unless r['version'] == '23.1.3' && r['target_triple'] == 'aarch64--netbsd' && prefix == r['sysroot'] + '/usr/pkg'
+fail!('requires an accepted installed LLVM 23.1.3 helper') unless r['version'] == '23.1.3' && prefix == r['sysroot'] + '/usr/pkg'
+begin
+  target_spec = EmberGraphicsLLVM.for_triple(r['target_triple'])
+rescue ArgumentError => error
+  fail!(error.message)
+end
 proof = r.fetch('library_proof')
 fail!('unsupported historical library proof') unless %w[identical cmake-install-strip].include?(proof['method']) &&
   proof['built_library'] == "#{target}/lib/libLLVM.so" && proof['staged_library'] == "#{prefix}/lib/libLLVM-23.so" &&
@@ -50,6 +56,7 @@ fail!('unsupported historical library proof') unless %w[identical cmake-install-
   proof[proof['method'] == 'identical' ? 'built_sha256' : 'reproduced_sha256'] == proof['staged_sha256']
 
 local = %w[metadata/BuildVariables.inc metadata/LibraryDependencies.inc metadata/ExtensionDependencies.inc llvm-config.cpp build-llvm-config.rb llvm-config.d dependencies.command compile.command receipt.json bin/llvm-config.real bin/llvm-config]
+local << 'llvm-target.rb' if manifest.key?('llvm-target.rb')
 local += %w[strip.command strip.log] if proof['method'] == 'cmake-install-strip'
 local.each do |p|
   fail!("accepted local artifact mismatch: #{p}") unless manifest[p] && digest("#{old}/#{p}") == manifest[p]
@@ -110,7 +117,11 @@ end
 library = proof.fetch('staged_library')
 fail!('installed shared LLVM resolves outside the target prefix') unless File.realpath(library).start_with?(prefix + '/lib/')
 header = File.binread(library, 20)
-fail!('installed LLVM is not AArch64 ELF shared code') unless header.byteslice(0, 6) == "\x7fELF\x02\x01" && header.byteslice(16, 4).unpack('v2') == [3, 183]
+begin
+  EmberGraphicsLLVM.validate_elf(header, target_spec)
+rescue ArgumentError => error
+  fail!(error.message)
+end
 # A newly generated guard must not accidentally hide a dynamic native LLVM
 # dependency. The accepted helper links its LLVM support archives statically.
 linked, error, status = Open3.capture3('/usr/bin/otool', '-L', "#{old}/bin/llvm-config.real")
