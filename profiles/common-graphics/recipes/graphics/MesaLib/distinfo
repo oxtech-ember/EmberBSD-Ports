@@ -17,3 +17,4 @@ SHA1 (patch-src_vulkan_wsi_wsi__common__wayland.c) = cd18ee367f9fbaaf7ba8e5ca855
 SHA1 (patch-include_drm-uapi_pvr__drm.h) = 40e3a8b6ef7f6b75307f7432ad3db869da82d2aa
 SHA1 (patch-src_gallium_drivers_zink_zink__resource.c) = c701f424ca3fd35d8a1d5477cc57ef4094a578c3
 SHA1 (patch-src_gallium_drivers_zink_zink__query.c) = e4a02352f9ebbc6e5d10dd62525586ff73a78053
+SHA1 (patch-src_gallium_frontends_dri_dri2.c) = 10d657042cf352edc37b703953e4626db66f7b01

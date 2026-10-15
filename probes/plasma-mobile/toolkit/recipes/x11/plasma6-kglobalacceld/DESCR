@@ -1,1 +1,3 @@
-Daemon providing Global Keyboard Shortcut (Accelerator) functionality.
+Global keyboard shortcut daemon library. Plasma 6.8 hosts the daemon
+logic inside KWin; this package provides the KGlobalAccelD library,
+its headers and the CMake export for KWin.

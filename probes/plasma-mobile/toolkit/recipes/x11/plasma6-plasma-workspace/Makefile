@@ -1,7 +1,6 @@
 # $NetBSD: Makefile,v 1.7 2026/09/06 10:23:33 markd Exp $
 
 DISTNAME=	plasma-workspace-${PLASMAVER}
-PKGREVISION=	1
 CATEGORIES=	x11
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -14,7 +13,7 @@ LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2.1 AND gnu-fdl-v1.2
 # Cross builds use the shared native KDocTools host tooling
 # (toolkit/cross/doctools.md); the pkgsrc host TOOL_DEPENDS is not used.
 
-DEPENDS+=	plasma6-kwin>=${PLASMAVER}nb3:../../x11/plasma6-kwin
+DEPENDS+=	plasma6-kwin>=${PLASMAVER}:../../x11/plasma6-kwin
 # The classic Wayland session starts Xwayland for ksmserver's xcb platform.
 DEPENDS+=	xwayland>=24.1.14nb1:../../wayland/xwayland
 DEPENDS+=	kf6-kded>=6.18.0:../../x11/kf6-kded
@@ -122,7 +121,8 @@ CONF_FILES+=	${PREFIX}/share/examples/kde-xdg/plasmanotifyrc \
 .include "../../x11/plasma6-kscreenlocker/buildlink3.mk"
 .include "../../x11/plasma6-layer-shell-qt/buildlink3.mk"
 .include "../../x11/plasma6-libkscreen/buildlink3.mk"
-.include "../../x11/plasma6-libplasma/buildlink3.mk"
+
+.include "../../x11/plasma6-union/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../x11/xcb-util-cursor/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

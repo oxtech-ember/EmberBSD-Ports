@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	plasma6-knighttime
 .if !defined(PLASMA6_KNIGHTTIME_BUILDLINK3_MK)
 PLASMA6_KNIGHTTIME_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.plasma6-knighttime+=	plasma6-knighttime>=6.7.5
-BUILDLINK_ABI_DEPENDS.plasma6-knighttime?=	plasma6-knighttime>=6.7.5
+BUILDLINK_API_DEPENDS.plasma6-knighttime+=	plasma6-knighttime>=6.8.0
+BUILDLINK_ABI_DEPENDS.plasma6-knighttime?=	plasma6-knighttime>=6.8.0
 BUILDLINK_PKGSRCDIR.plasma6-knighttime?=	../../time/plasma6-knighttime
 
 .include "../../devel/kf6-kconfig/buildlink3.mk"

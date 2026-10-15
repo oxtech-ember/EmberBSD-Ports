@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.7 2026/09/06 10:23:31 markd Exp $
 
-PLASMAVER=	6.7.5
+PLASMAVER=	6.8.0
 
 DISTNAME=	knighttime-${PLASMAVER}
 CATEGORIES=	time

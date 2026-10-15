@@ -1,8 +1,9 @@
 $NetBSD$
 
-BLAKE2s (libksysguard-6.7.5.tar.xz) = 10a8a8a2ddeba13ac396b52a31cc1e43be7ff1da474a017630ef00229946caf6
-SHA512 (libksysguard-6.7.5.tar.xz) = 75f4bc8f84ad81d3157c4515f317cfef994bf8aa594e761dbb58bf613e38aa163952a88bc557ee91943f0ca3159aebabd8d597a44b2fd879e6da4b51d13e1bed
-Size (libksysguard-6.7.5.tar.xz) = 344312 bytes
+BLAKE2s (libksysguard-6.8.0.tar.xz) = 6ab5b93078308c34196c1441ce3b9032f346f5cdb6c61332397f9f950c3acfb1
+SHA512 (libksysguard-6.8.0.tar.xz) = 77b164496ab4af712f7944576635d33b328f9ed63714ece99652fcf8addeea71c4c8cb6bb7b21ee88f43aa60a8bfea8d6c6d39e107a43603819970fd3ebbd563
+Size (libksysguard-6.8.0.tar.xz) = 355816 bytes
 SHA1 (patch-processcore_CMakeLists.txt) = 03997b796bb97636febfcbaeb83db4e664fe6ee3
 SHA1 (patch-processcore_processes.cpp) = 8ad5ffdf53421a4f5fbe396eab93df3c91c5ccb4
 SHA1 (patch-processcore_processes__netbsd__p.cpp) = 6a2c0547dc035a59fb3989b4ae12e315f98461a5
+SHA1 (patch-processcore_affinity) = 6caaa1e88cca180e5ddf1c1f0fb8b23d873507ad

@@ -1,0 +1,2 @@
+C++ CSS parsing API implemented through the Rust cssparser crate
+from Servo, bridged with cxx. Plasma 6.8 Union uses this library.

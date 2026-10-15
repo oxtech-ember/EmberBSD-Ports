@@ -111,13 +111,18 @@ Keep compact button rows, safe device lifetime, and current enum names.
      , m_connectionType(UnknownType)
  {
  }
-@@ -152,13 +161,16 @@
+@@ -151,17 +160,17 @@
          return true;
      }
  
 -    m_joystick = SDL_JoystickOpen(m_deviceIndex);
+-    if (!m_joystick) {
+-        qCWarning(KCM_GAMECONTROLLER) << "Failed to load joystick at: " << m_deviceIndex;
+-        return false;
+-    }
 +    m_joystick = SDL_OpenJoystick(m_deviceId);
 +    if (!m_joystick) {
++        qCWarning(KCM_GAMECONTROLLER) << "Failed to load joystick at: " << m_deviceId;
 +        return false;
 +    }
  

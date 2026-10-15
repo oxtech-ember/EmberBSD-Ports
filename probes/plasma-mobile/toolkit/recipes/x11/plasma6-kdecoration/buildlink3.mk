@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	plasma6-kdecoration
 .if !defined(PLASMA6_KDECORATION_BUILDLINK3_MK)
 PLASMA6_KDECORATION_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.plasma6-kdecoration+=	plasma6-kdecoration>=6.7.5
-BUILDLINK_ABI_DEPENDS.plasma6-kdecoration?=	plasma6-kdecoration>=6.7.5
+BUILDLINK_API_DEPENDS.plasma6-kdecoration+=	plasma6-kdecoration>=6.8.0
+BUILDLINK_ABI_DEPENDS.plasma6-kdecoration?=	plasma6-kdecoration>=6.8.0
 BUILDLINK_PKGSRCDIR.plasma6-kdecoration?=	../../x11/plasma6-kdecoration
 
 .include "../../devel/kf6-ki18n/buildlink3.mk"

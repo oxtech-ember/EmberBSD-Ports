@@ -17,7 +17,7 @@ Both targets require 64-bit little-endian ELF headers.
 PKG_INFO=/absolute/native/pkg_info BSDTAR=/absolute/native/bsdtar \
     ruby probes/plasma-mobile/toolkit/cross/prepare-package-set.rb \
     /absolute/sysroot/usr/pkg/pkgdb /absolute/archive-paths.txt \
-    /absolute/new-package-set plasma6-plasma-desktop-6.7.5nb4
+    /absolute/new-package-set plasma6-plasma-desktop-6.8.0nb4
 ```
 
 For amd64, add `--target amd64` after the script name. Unknown, empty and

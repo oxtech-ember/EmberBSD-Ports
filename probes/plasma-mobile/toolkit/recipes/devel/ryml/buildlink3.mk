@@ -1,0 +1,13 @@
+# $NetBSD$
+
+BUILDLINK_TREE+=	ryml
+
+.if !defined(RYML_BUILDLINK3_MK)
+RYML_BUILDLINK3_MK:=
+
+BUILDLINK_API_DEPENDS.ryml+=	ryml>=0.16.0
+BUILDLINK_PKGSRCDIR.ryml?=	../../devel/ryml
+
+.endif # RYML_BUILDLINK3_MK
+
+BUILDLINK_TREE+=	-ryml

@@ -42,7 +42,7 @@ Logs remain in the output directory on failure.
 
 ## Startup and logout contract
 
-The route follows the unpacked KWin and Plasma Workspace 6.7.5 sources:
+The route follows the unpacked KWin and Plasma Workspace 6.8.0 sources:
 
 1. `kwin_wayland_wrapper --virtual --width 1280 --height 1024 --xwayland
    --no-lockscreen` receives one positional application: `/bin/sh ./environment.sh`.
@@ -59,19 +59,19 @@ The route follows the unpacked KWin and Plasma Workspace 6.7.5 sources:
 
 The source contracts are:
 
-- [KWin main_wayland.cpp](https://invent.kde.org/plasma/kwin/-/blob/v6.7.5/src/main_wayland.cpp):
+- [KWin main_wayland.cpp](https://invent.kde.org/plasma/kwin/-/blob/v6.8.0/src/main_wayland.cpp):
   the parser accepts positional applications. `startSession()` launches them
   with `processStartupEnvironment()` after Xwayland initialization.
-- [KWin wrapper](https://invent.kde.org/plasma/kwin/-/blob/v6.7.5/src/helpers/wayland_wrapper/kwin_wrapper.cpp):
+- [KWin wrapper](https://invent.kde.org/plasma/kwin/-/blob/v6.8.0/src/helpers/wayland_wrapper/kwin_wrapper.cpp):
   it forwards KWin arguments and registers `org.kde.KWinWrapper` after its
   D-Bus launch-environment update. It owns the Xauthority file and display sockets.
-- [startplasma-wayland.cpp](https://invent.kde.org/plasma/plasma-workspace/-/blob/v6.7.5/startkde/startplasma-wayland.cpp)
-  and [startplasma.cpp](https://invent.kde.org/plasma/plasma-workspace/-/blob/v6.7.5/startkde/startplasma.cpp):
+- [startplasma-wayland.cpp](https://invent.kde.org/plasma/plasma-workspace/-/blob/v6.8.0/startkde/startplasma-wayland.cpp)
+  and [startplasma.cpp](https://invent.kde.org/plasma/plasma-workspace/-/blob/v6.8.0/startkde/startplasma.cpp):
   the entry point calls `startPlasmaSession(true)`. Classic startup launches
   `plasma_session` and waits for KWinWrapper and Shutdown service removal.
-- [Classic startup](https://invent.kde.org/plasma/plasma-workspace/-/blob/v6.7.5/plasma-session/startup.cpp):
+- [Classic startup](https://invent.kde.org/plasma/plasma-workspace/-/blob/v6.8.0/plasma-session/startup.cpp):
   `StartServiceJob::start()` accepts an already registered wrapper service.
-- [Shutdown implementation](https://invent.kde.org/plasma/plasma-workspace/-/blob/v6.7.5/startkde/plasma-shutdown/shutdown.cpp):
+- [Shutdown implementation](https://invent.kde.org/plasma/plasma-workspace/-/blob/v6.8.0/startkde/plasma-shutdown/shutdown.cpp):
   `logout()` selects logout without poweroff. Classic completion quits KSMServer
   and KWin, then removes the Shutdown service.
 

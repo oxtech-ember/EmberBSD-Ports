@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	plasma6-libkscreen
 .if !defined(PLASMA6_LIBKSCREEN_BUILDLINK3_MK)
 PLASMA6_LIBKSCREEN_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.plasma6-libkscreen+=	plasma6-libkscreen>=6.7.5
-BUILDLINK_ABI_DEPENDS.plasma6-libkscreen?=	plasma6-libkscreen>=6.7.5
+BUILDLINK_API_DEPENDS.plasma6-libkscreen+=	plasma6-libkscreen>=6.8.0
+BUILDLINK_ABI_DEPENDS.plasma6-libkscreen?=	plasma6-libkscreen>=6.8.0
 BUILDLINK_PKGSRCDIR.plasma6-libkscreen?=	../../x11/plasma6-libkscreen
 
 .include "../../devel/kf6-kconfig/buildlink3.mk"

@@ -48,7 +48,7 @@ locker and KCMs. ConsoleKit's real session launcher passes CM5 regressions;
 complete desktop, ordinary-user login and device ownership remain pending.
 [Full KWin on CM5](cross/cm5-kwin.md) now passes OpenGL/V3D selection and
 two Qt Quick pixel lifecycles on a virtual output. HDMI and the separate
-Plasma Desktop shell remain outside that acceptance. The separate Desktop 6.7.5
+Plasma Desktop shell remain outside that acceptance. The separate Desktop 6.8.0
 recipe is a source candidate; its complete cross package is not yet accepted.
 
 The [prepared-package workflow](cross/desktop-package-set.md) collects the complete
@@ -151,7 +151,7 @@ complete installed desktop acceptance remains pending.
 host QtTools/LLVM dependency tree. Its full target package and DocBook recipe
 checks pass; target execution remains pending.
 
-[Plasma 6.7.5 prerequisites](cross/plasma-prerequisites.md) now include complete
+[Plasma 6.8.0 prerequisites](cross/plasma-prerequisites.md) now include complete
 KWayland, KDecoration, layer-shell-qt and KNightTime cross packages. The installed
 KWayland mouse-button wire regression passes on CM5; KWin and the full Plasma
 session are not yet accepted.

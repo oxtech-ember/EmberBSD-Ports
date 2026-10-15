@@ -1,5 +1,7 @@
 $NetBSD: distinfo,v 1.2 2026/09/06 10:23:32 markd Exp $
 
-BLAKE2s (kscreenlocker-6.7.5.tar.xz) = 42aa0519b4925ac9b11ea98e91aa3ac33c67e37516c604933f081abf3a8dd492
-SHA512 (kscreenlocker-6.7.5.tar.xz) = 222533e592653ea66da34d42527ba5544f586f665191384828ae0b263f24d6b8c67fc7011fc5bcf3583c3dc287830084f195fc0ee34456375b4da572a0c8720d
-Size (kscreenlocker-6.7.5.tar.xz) = 186588 bytes
+BLAKE2s (kscreenlocker-6.8.0.tar.xz) = d530e01f181c761ffec636b7dc96f6efb8f0b95ca27bc3092c2c8443d320139a
+SHA512 (kscreenlocker-6.8.0.tar.xz) = 221464fc7cb451232a6332d446ebc1c580b7e44fcf2c67fba6cb2269c1167846e136c4188e2f9f758d7196e7f0848b309b954658506be228366553ebcb75de0a
+Size (kscreenlocker-6.8.0.tar.xz) = 181736 bytes
+SHA1 (patch-autotests_CMakeLists.txt) = cc3dc9d5a5c030ca45855c4658451de6200e4908
+SHA1 (patch-greeter_worker_prctls.h) = 0c58d3a446045b3d84bb0c761709e0251d9fc495

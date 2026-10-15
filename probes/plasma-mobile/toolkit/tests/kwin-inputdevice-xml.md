@@ -5,7 +5,7 @@ signatures for complex Qt types. Qt's `QDBusArgumentPrivate::createSignature`
 returns an empty signature when its dynamic loader cannot open libdbus.
 The tool can then emit `type=""` while returning success.
 
-This affected seven properties in KWin 6.7.5's installed input-device XML.
+This affected seven properties in KWin 6.8.0's installed input-device XML.
 It prevented Plasma Desktop's real `qdbusxml2cpp` consumer from building.
 The native generator dependency belongs to `cross/build-host-tools.sh`.
 No KWin property, target Qt marshaller or D-Bus wire type is changed.
@@ -66,7 +66,7 @@ It currently tests a macOS native Qt framework build.
 BASELINE_XML=/absolute/before-fix/org.kde.kwin.InputDevice.xml \
 HOST_CXX=/absolute/native/c++ \
     ruby probes/plasma-mobile/toolkit/tests/kwin-inputdevice-xml.rb \
-    /absolute/host-qt/qtbase /absolute/kwin-6.7.5 \
+    /absolute/host-qt/qtbase /absolute/kwin-6.8.0 \
     /absolute/target-qtbase-everywhere-src-6.12.0 /absolute/new-results
 ```
 

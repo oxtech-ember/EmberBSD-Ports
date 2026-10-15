@@ -5,7 +5,7 @@ BUILDLINK_TREE+=	plasma6-aurorae
 .if !defined(PLASMA6_AURORAE_BUILDLINK3_MK)
 PLASMA6_AURORAE_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.plasma6-aurorae+=	plasma6-aurorae>=6.7.5
+BUILDLINK_API_DEPENDS.plasma6-aurorae+=	plasma6-aurorae>=6.8.0
 BUILDLINK_PKGSRCDIR.plasma6-aurorae?=	../../graphics/plasma6-aurorae
 
 .endif	# PLASMA6_AURORAE_BUILDLINK3_MK

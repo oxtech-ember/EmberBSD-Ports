@@ -34,7 +34,7 @@ Qt host generators; an older host Qt is not an interchangeable dependency.
    plugin loading, real EGL/OpenGL pixels, Quick shaders and Wayland surfaces.
    Test errors, exit/restart and release of GPU resources. Confirm the actual
    V3D renderer and current Mesa/LLVM libraries in the live process.
-5. Rebuild KWin 6.7.5, Workspace and the selected Plasma shell against this same
+5. Rebuild KWin 6.8.0, Workspace and the selected Plasma shell against this same
    package set. Resolve consumer incompatibilities in Ports. Preserve global
    shortcuts and the platform adaptations from the existing KWin probe.
 6. Accept the first CM5 session through HDMI: confirm firmware/framebuffer
@@ -85,4 +85,4 @@ checks. Build-only results must remain labelled as such.
 
 Sources: [Qt cross compilation](https://doc.qt.io/qt-6/cross-compiling-qt.html),
 [Frameworks 6.31 release](https://kde.org/announcements/frameworks/6/6.31.0/),
-[KRDP 6.7.5 dependencies](https://invent.kde.org/plasma/krdp/-/blob/v6.7.5/CMakeLists.txt).
+[KRDP 6.8.0 dependencies](https://invent.kde.org/plasma/krdp/-/blob/v6.8.0/CMakeLists.txt).

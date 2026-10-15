@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (rapidyaml-0.16.0.tar.gz) = 945e731477e07a455d85b75f53d6c85d0785ec4d86c4b98f68810af69ea30daa
+SHA512 (rapidyaml-0.16.0.tar.gz) = 03c8639c07a2c540567ea3fc3429aba2ae52a0ae9687838821995d90d3b1a0e5f33e132b53f1f8a36163fc1a8e68e4beb999d13226ecdc1b5f2e90d75c40bb36
+Size (rapidyaml-0.16.0.tar.gz) = 1251647 bytes
