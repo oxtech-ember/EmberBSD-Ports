@@ -50,15 +50,16 @@ native KPackage tooling and the non-GLVND EGL provider are checked separately.
 [The full KWin dependency migration](cross/desktop-session.md) retains the screen
 locker and KCMs. ConsoleKit's real session launcher passes CM5 regressions;
 complete desktop, ordinary-user login and device ownership remain pending.
-[Full KWin on CM5](cross/cm5-kwin.md) now passes OpenGL/V3D selection and
-two Qt Quick pixel lifecycles on a virtual output. HDMI and the separate
-Plasma Desktop shell remain outside that acceptance. The separate Desktop 6.8.0
-recipe is a source candidate; its complete cross package is not yet accepted.
+[KWin 6.8 on CM5](cross/cm5-kwin.md) selects OpenGL ES/V3D on a virtual output.
+Desktop 6.8.0 and Workspace 6.8.0nb3 are cross-packaged and installed.
+The shell selects desktop OpenGL/V3D. Its current pixel test fails after GPU buffer allocation errors.
+The earlier KWin 6.7.5 acceptance covered two Qt Quick client pixel lifecycles.
+HDMI presentation and the complete Plasma session remain unaccepted.
 
-The [prepared-package workflow](cross/desktop-package-set.md) collects the complete
-runtime closure and compiled checks. It includes checksum verification before
-installation and isolated Desktop/full-session acceptance runners. Their host
-controls pass; a new CM5 session has not yet been executed.
+The [prepared-package workflow](cross/desktop-package-set.md) audits the actual
+archive checksums, runtime closure and compiled checks. The current 333-package set passes those gates.
+The isolated Desktop test rejects an empty or transparent capture.
+The complete classic-session runner still requires target execution.
 
 Cross-build on the development host using the [cross workflow](cross/README.md).
 The board installs the resulting packages and runs acceptance tests.
@@ -157,12 +158,16 @@ checks pass; target execution remains pending.
 
 [Plasma 6.8.0 prerequisites](cross/plasma-prerequisites.md) now include complete
 KWayland, KDecoration, layer-shell-qt and KNightTime cross packages. The installed
-KWayland mouse-button wire regression passes on CM5; KWin and the full Plasma
-session are not yet accepted.
+KWayland mouse-button wire regression passes on CM5. KWin selects V3D;
+the complete Plasma session is not yet accepted.
 
 [Plasma volume controls](cross/plasma-volume.md) add Plasma PA 6.8.0 and
 PulseAudioQt 1.9.0. The Workspace recipe declares its notifications QML provider.
-The provider checks distinguish package metadata, import and actual sound output.
+Seven installed component tests and a real QML import pass on CM5.
+Actual sound output and full-session integration remain separate requirements.
+[KDE runtime source contracts](tests/runtime-source-contracts/README.md) cover
+helper argument lifetime, D-Bus errors and failed file-watcher registration.
+Workspace nb3 and KCoreAddons nb2 pass four helper and 38 filesystem-event cases on CM5.
 [Workspace configuration checks](tests/workspace-config.md) verify menu installation
 and preserve local edits during removal and reinstallation.
 

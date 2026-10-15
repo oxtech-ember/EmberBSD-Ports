@@ -112,7 +112,7 @@ inaccessible intermediate directories.
 
 ## Current Desktop and display boundary
 
-The complete Plasma Desktop 6.8.0 and Workspace 6.8.0 packages are installed
+The complete Plasma Desktop 6.8.0 and Workspace 6.8.0nb3 packages are installed
 on the CM5 acceptance target. The separate Desktop shell is present.
 The [package-set workflow](desktop-package-set.md) checks actual archive
 payloads, dependencies and shared-library providers before installation.
@@ -131,8 +131,15 @@ An initial empty containment capture was fully transparent. Model readiness
 alone does not establish visible desktop content or a complete login session.
 The [capture test](../tests/plasma-desktop/README.md) now decodes PNG pixels
 and adds a visible test widget in its private desktop configuration.
-A single earlier buffer-allocation failure did not recur in the traced run.
-Its cause remains open; a successful later allocation is not a driver fix.
+Two later launches fail after large buffer allocation returns ENOMEM.
+Both cores show a null image in Mesa's Wayland swap path.
+The [Wayland OOM repair](../../../../profiles/common-graphics/tests/mesa-wayland-oom/README.md)
+clears a prematurely cached back-buffer alias. Actual-source OOM, retry and recovery tests pass.
+This repair does not establish why the kernel rejected the allocation.
+The process-local trace excludes older retained BOs, imported handles and kernel storage.
+It cannot establish the driver's complete allocation budget.
+Native KDirWatch fallback and the D-Bus helper now pass their installed component checks.
+Descriptor exhaustion in session child services remains a separate unresolved observation.
 
 The current HDMI path displays the firmware console at 1920x1080.
 The kernel exports that framebuffer through genfb/wsdisplay. A read-only

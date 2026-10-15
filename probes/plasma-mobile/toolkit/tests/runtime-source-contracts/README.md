@@ -23,7 +23,7 @@ The baseline falsely reports success. The patched source selects the existing St
 The test also checks successful registration, existing file/directory watches, and missing-path parent watches.
 Only the external watcher, filesystem classification, and timer boundaries are doubled.
 This verifies fallback selection, not real filesystem notifications.
-The complete KDirWatch suite and target resource-pressure checks remain separate requirements.
+The complete KDirWatch suite and target resource-pressure checks are separate from this host contract.
 
 Both tests run normally and with ASan/UBSan. Sanitizer errors stop the run.
 On hosts without Valgrind, record that limitation; these results are not Memcheck.
@@ -58,3 +58,13 @@ This defect is separate from the constructor-local argc lifetime defect.
 An absent socket did not reproduce a null-pointer crash with native Qt 6.12.
 The connection guard also checks the nullable interface before use.
 The test does not claim to exercise every transport-disconnection timing window.
+
+## Installed CM5 checks
+
+Workspace 6.8.0nb3 and KCoreAddons 6.31.0nb2 pass installed package checks for 6308 files.
+The actual wait helper passes four cases under an existing non-root user.
+Missing-bus registration and unregistration return 1; satisfied conditions on a private live bus return 0.
+The cross-built upstream KDirWatch default and Stat suites each pass all 19 cases, without skips.
+The default suite uses the native Qt/kqueue backend. The Stat suite checks the existing fallback.
+These are component checks. A later desktop launch still reports descriptor exhaustion in child services.
+The current tests do not establish full-session resource stability.

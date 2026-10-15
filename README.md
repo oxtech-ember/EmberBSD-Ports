@@ -94,9 +94,11 @@ runtime behavior are validated.
   repairs DRM classification for KWin 6.8 with a real-source regression.
   Target enumeration and the compositor remain separate checks.
   A [bounded V3D allocation trace](profiles/common-graphics/cross/v3d-bo-trace.md) supports KWin diagnostics.
-  canonical MesaLib 26.2.4nb5, adapted libdrm 2.4.134nb2,
-  Wayland 1.26.0nb1 and wayland-protocols 1.49 compose the common
-  GCC16/Python314/Meson112/shared LLVM23 profile for NetBSD 11/AArch64.
+  The current MesaLib 26.2.4nb7 recipe adds a Wayland allocation-failure repair
+  to the common V3D/VirGL/softpipe/llvmpipe/Zink package. Its source contracts pass;
+  package and target acceptance remain separate. The installed CM5 package is still nb5.
+  Adapted libdrm 2.4.134nb2, Wayland 1.26.0nb1 and wayland-protocols 1.49
+  compose the common GCC16/Python315/Meson112/shared LLVM23 profile for EmberBSD/AArch64.
   An optional [PowerVR ICD](profiles/common-graphics/cross/powervr.md) retains
   these providers and adds receipt-checked native Mesa generators. On Zero 3W,
   the installed nb5 package passes four native Vulkan enumeration lifecycles,
@@ -259,10 +261,15 @@ runtime behavior are validated.
   now preserves child failures and passes seven real-daemon cases on CM5.
   Ordinary-user login, device ownership and the complete desktop remain unaccepted.
 - [KWin on physical CM5](probes/plasma-mobile/toolkit/cross/cm5-kwin.md):
-  KWin 6.7.5nb2 passes OpenGL/V3D selection and Qt Quick pixel checks
-  on a virtual output under a non-root user. The missing Vulkan loader dependency and PAM
-  installation directory are repaired. HDMI mode setting and the separate
-  Plasma Desktop shell remain unaccepted. The current xdg-user-dirs 0.20
+  KWin 6.8.0nb1 selects OpenGL ES/V3D under a non-root user.
+  Desktop 6.8.0 and Workspace 6.8.0nb3 are cross-packaged and installed.
+  A 333-package set passes archive, dependency and ELF-provider checks.
+  The shell uses desktop OpenGL/V3D, but its pixel acceptance fails after GPU allocation errors.
+  The [Mesa Wayland allocation repair](profiles/common-graphics/tests/mesa-wayland-oom/README.md)
+  passes actual-source failure/retry tests; hardware acceptance remains pending.
+  HDMI mode setting and the complete desktop session remain unaccepted.
+  The earlier KWin 6.7.5 check also passed Qt Quick client pixels.
+  The current xdg-user-dirs 0.20
   cross package passes private-profile checks on CM5.
   [Desktop package preparation](probes/plasma-mobile/toolkit/cross/desktop-package-set.md)
   now includes the Activities service, current Xwayland/libei/basu providers,
@@ -279,9 +286,11 @@ runtime behavior are validated.
   pass 264 UnitTest++ cases and 295 JSON assertions. Enchant passes 434 main
   and 25 Hunspell tests on CM5; full input acceptance remains pending.
 - [Plasma volume controls](probes/plasma-mobile/toolkit/cross/plasma-volume.md):
-  Plasma PA 6.8.0 and PulseAudioQt 1.9.0 source recipes supply the notifications
-  QML dependency with the common Qt/KF6/PulseAudio stack. Cross-package and
-  installed session acceptance remain separate checks.
+  Plasma PA 6.8.0 and PulseAudioQt 1.9.0 pass seven installed component tests
+  and a real QML import on CM5. Physical sound and full-session integration remain unaccepted.
+  [KDE runtime repairs](probes/plasma-mobile/toolkit/tests/runtime-source-contracts/README.md)
+  fix the D-Bus wait helper's argc lifetime and error result, and restore KDirWatch's fallback.
+  The updated target packages pass four helper cases and 38 KDirWatch cases.
 - [Media and OpenCV videoio](probes/media/README.md): FFmpeg 9.0.2,
   GStreamer 1.28.7 and OpenCV 5.0.0 pass installed file/video pipeline checks
   on AArch64, including both videoio backends, timestamps, seeking, lossless
