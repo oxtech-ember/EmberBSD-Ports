@@ -53,3 +53,6 @@ The physical package uses `USE_V3D_SIMULATOR=0`.
 
 Full package checks, installed ABI checks, repeated native rendering, and the
 complete Plasma session remain separate acceptance steps.
+
+The LLD package also retains the installed libgallium symbol-version ABI.
+See the [linker regression](../mesa-symbol-version/README.md).

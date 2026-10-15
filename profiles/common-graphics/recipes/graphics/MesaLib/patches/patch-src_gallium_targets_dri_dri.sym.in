@@ -1,0 +1,14 @@
+Origin: EmberBSD; AI-assisted linker ABI repair, not submitted upstream.
+
+Name the existing libgallium version node on NetBSD. LLD does not support
+GNU --default-symver. Keep the same SONAME version for old consumers.
+The exported symbol patterns stay unchanged.
+
+--- src/gallium/targets/dri/dri.sym.in.orig
++++ src/gallium/targets/dri/dri.sym.in
+@@ -1,4 +1,4 @@
+-{
++@gallium_symbol_version@{
+ 	global:
+                 # shared-glapi exported from libgallium:
+                 _mesa_glapi_get_dispatch_table_size;
