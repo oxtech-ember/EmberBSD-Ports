@@ -1,0 +1,27 @@
+--- a/lang/python/pyversion.mk
++++ b/lang/python/pyversion.mk
+@@ -162,8 +162,8 @@
+ BUILD_DEFS+=		PYTHON_VERSION_DEFAULT
+ BUILD_DEFS_EFFECTS+=	PYPACKAGE
+ 
+-PYTHON_VERSION_DEFAULT?=		313
+-PYTHON_VERSIONS_ACCEPTED?=		314 313 312 311
++PYTHON_VERSION_DEFAULT?=		315
++PYTHON_VERSIONS_ACCEPTED?=		315 314 313 312 311
+ .if defined(PYTHON_27_ACCEPTED)
+ PYTHON_VERSIONS_ACCEPTED+=		27
+ .endif
+@@ -205,9 +205,10 @@
+ .endif
+ 
+ # The opt-in current common profile must fail instead of selecting an older
+-# interpreter when a consumer or command-line override excludes Python 3.14.
+-.if ${EMBERBSD_COMMON_TOOLS:Uno} == "yes" && ${_PYTHON_VERSION:Unone} != "314"
+-PKG_FAIL_REASON+= "EmberBSD common tools require Python 3.14"
++# interpreter when a consumer or command-line override excludes Python 3.15.
++# The common interpreter moved to 3.15 with the python315 recipe (R16).
++.if ${EMBERBSD_COMMON_TOOLS:Uno} == "yes" && ${_PYTHON_VERSION:Unone} != "315"
++PKG_FAIL_REASON+= "EmberBSD common tools require Python 3.15"
+ .endif
+ 
+ #
