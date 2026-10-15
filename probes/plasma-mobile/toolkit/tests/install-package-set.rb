@@ -39,6 +39,7 @@ names.each do |name|
 end
 File.write(File.join(valid, 'install-order.txt'), names.map { |name| "#{name}.tgz\n" }.join)
 File.write(File.join(valid, 'roots.txt'), "#{names.last}\n")
+File.write(File.join(valid, 'target.txt'), "OPSYS=NetBSD\nOS_VERSION=11.0\nMACHINE_ARCH=aarch64\nOBJECT_FMT=ELF\n")
 File.write(File.join(valid, 'packages.sha256'), names.map do |name|
   "#{Digest::SHA256.file(File.join(valid, 'packages', "#{name}.tgz")).hexdigest}  packages/#{name}.tgz\n"
 end.join)
@@ -70,6 +71,13 @@ mutate = lambda do |name, error, &block|
 end
 mutate.call('corrupt-hash', 'SHA256 mismatch') do |directory|
   File.open(File.join(directory, 'packages', "#{names.first}.tgz"), 'ab') { |file| file.write('changed') }
+end
+mutate.call('missing-target-receipt', 'Missing regular target.txt') do |directory|
+  File.unlink(File.join(directory, 'target.txt'))
+end
+mutate.call('wrong-target-receipt', 'Target receipt mismatch') do |directory|
+  path = File.join(directory, 'target.txt')
+  File.write(path, File.read(path).sub('MACHINE_ARCH=aarch64', 'MACHINE_ARCH=x86_64'))
 end
 mutate.call('missing-archive', 'Package directory and installation manifest differ') do |directory|
   File.unlink(File.join(directory, 'packages', "#{names.first}.tgz"))

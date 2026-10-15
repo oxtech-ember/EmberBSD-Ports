@@ -4,6 +4,9 @@ Build on the development host. The board installs packages and runs tests.
 The target is EmberBSD AArch64 with the common GCC16, Qt6, Mesa and LLVM stack.
 The upstream `NetBSD 11.0` package identifiers describe the compatible ABI.
 They do not establish the origin of the installed base system.
+The package auditor and installer also accept `--target amd64`, with
+`MACHINE_ARCH=x86_64` and ELF machine 62. This requires a separate, coherent
+amd64 package closure. Host fixtures do not qualify an amd64 desktop session.
 
 ## Complete the package roots
 

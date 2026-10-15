@@ -1,13 +1,17 @@
 # Runtime package-set audit
 
 `cross/prepare-package-set.rb` prepares an offline EmberBSD package set for
-the current AArch64 sysroot. Its target metadata uses the retained NetBSD
+the selected sysroot. Its target metadata uses the retained NetBSD
 11.0 ABI identifiers. The caller supplies exact installed root package names.
 Native `pkg_info -K ... -e ...` resolves their actual `@pkgdep` constraints.
 The output order places each dependency before its consumer.
 
 The archive index contains one absolute `.tgz` path per line. The output must
 not exist. Use native Ruby and bsdtar with libarchive support.
+Use `--target aarch64|amd64` before the input paths. The default is `aarch64`.
+The amd64 target requires `MACHINE_ARCH=x86_64` and ELF machine 62.
+The AArch64 target requires `MACHINE_ARCH=aarch64` and ELF machine 183.
+Both targets require 64-bit little-endian ELF headers.
 
 ```sh
 PKG_INFO=/absolute/native/pkg_info BSDTAR=/absolute/native/bsdtar \
@@ -16,15 +20,21 @@ PKG_INFO=/absolute/native/pkg_info BSDTAR=/absolute/native/bsdtar \
     /absolute/new-package-set plasma6-plasma-desktop-6.7.5nb4
 ```
 
+For amd64, add `--target amd64` after the script name. Unknown, empty and
+repeated target options fail. Keep separate sysroots and outputs per target.
+
 Select the root name from the actual installed database. The example version
 is illustrative. The command performs these checks before publishing output:
 
 - Resolve every dependency to exactly one installed package. Reject cycles.
 - Match each archive's `+CONTENTS` with the installed manifest.
-- Check the archive's `OPSYS`, `OS_VERSION`, `MACHINE_ARCH` and `OBJECT_FMT`.
+- Check every installed dependency's and archive's `OPSYS`, `OS_VERSION`,
+  `MACHINE_ARCH` and `OBJECT_FMT` against the selected target.
 - Match every declared metadata file with the installed copy.
 - Stream every regular file through MD5 and compare it with the pkgtools
   manifest. Match symbolic link targets. Resolve hard links to verified data.
+- Check each regular payload with ELF magic for the selected class, byte
+  order and machine. Reject truncated headers and foreign target objects.
 - Reject missing, duplicate and unlisted payload members or invalid paths.
 - Copy the selected archive and verify its SHA256 against the source digest.
 - Confirm that installed metadata did not change during the audit.
@@ -40,6 +50,8 @@ The result contains `packages/`, `packages.sha256`, `install-order.txt`,
 `roots.txt` and `target.txt`. MD5 verifies the existing pkgtools payload
 contract. SHA256 identifies the copied archives. Neither is an upstream
 signature verification. The audit does not install or run package scripts.
+The four-line AArch64 `target.txt` format remains unchanged. The amd64 receipt
+uses `MACHINE_ARCH=x86_64`. Pass the same target to the installer.
 
 ## Regression
 
@@ -51,6 +63,10 @@ It does not modify the build sysroot or inspect the complete desktop closure.
 PKG_CREATE=/absolute/native/pkg_create PKG_INFO=/absolute/native/pkg_info \
 BSDTAR=/absolute/native/bsdtar \
     ruby probes/plasma-mobile/toolkit/tests/package-set.rb /absolute/new-tests
+
+PKG_CREATE=/absolute/native/pkg_create PKG_INFO=/absolute/native/pkg_info \
+PKG_ADMIN=/absolute/native/pkg_admin BSDTAR=/absolute/native/bsdtar \
+    ruby probes/plasma-mobile/toolkit/tests/package-set-targets.rb /absolute/new-target-tests
 ```
 
 The 14 cases include PAX paths and link targets longer than the ustar limits,
@@ -61,13 +77,19 @@ dependencies and truncated archives. A valid later cache candidate is accepted.
 Duplicate roots are rejected. An existing completed output is not replaced.
 Failed audits leave no final set.
 
+The target regression adds 28 checks with real pkgtools archives. It covers
+both architectures, root and dependency metadata, and mismatched ELF headers
+whose pkgtools digests are correct. Header-only fixtures are not executable.
+Host-only installer checks reject mismatched receipts and simulated target
+architectures before installation. They do not qualify a real amd64 bundle.
+
 The implementation reads PAX records by their byte lengths. Libarchive converts
 supported input compression to a stream; no package payload is extracted.
 Sparse members, non-file special devices, metadata above 16 MiB and PAX size
 overrides not represented by the tar header are explicitly rejected.
 
 This is a package integrity and closure check. It does not prove that target
-ELF objects load, that ABI metadata is truthful, or that Plasma renders.
+ELF objects load, that target libraries are ABI-compatible, or that Plasma renders.
 Those checks require the separate target acceptance scenario. No C/C++ source
 is changed. Cppcheck and compiler path analyzers do not analyze this Ruby code;
 the regression is not a Valgrind run.
