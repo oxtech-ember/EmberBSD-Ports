@@ -1,0 +1,104 @@
+$NetBSD$
+
+Handle parameter-set memory mapping and parsing failures without reading
+unavailable cached data. Initialize bit readers after checking NAL bounds.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+Regression: profiles/common-media/rtp/tests/gst-h265-memory.c links the real
+owning upstream source and checks normal and unavailable GstMemory mappings.
+
+--- gst/rtp/gstrtph265depay.c.orig
++++ gst/rtp/gstrtph265depay.c
+@@ -428,14 +428,15 @@
+ static gboolean
+ parse_sps (GstMapInfo * map, guint32 * sps_id)
+ {                               /* To parse seq_parameter_set_id */
+-  GstBitReader br = GST_BIT_READER_INIT (map->data + 15,
+-      map->size - 15);
++  GstBitReader br;
+ 
+   GST_MEMDUMP ("SPS", map->data, map->size);
+ 
+   if (map->size < 16)
+     return FALSE;
+ 
++  gst_bit_reader_init (&br, map->data + 15, map->size - 15);
++
+   if (!gst_rtp_read_golomb (&br, sps_id))
+     return FALSE;
+ 
+@@ -445,14 +446,15 @@
+ static gboolean
+ parse_pps (GstMapInfo * map, guint32 * sps_id, guint32 * pps_id)
+ {                               /* To parse picture_parameter_set_id */
+-  GstBitReader br = GST_BIT_READER_INIT (map->data + 2,
+-      map->size - 2);
++  GstBitReader br;
+ 
+   GST_MEMDUMP ("PPS", map->data, map->size);
+ 
+   if (map->size < 3)
+     return FALSE;
+ 
++  gst_bit_reader_init (&br, map->data + 2, map->size - 2);
++
+   if (!gst_rtp_read_golomb (&br, pps_id))
+     return FALSE;
+   if (!gst_rtp_read_golomb (&br, sps_id))
+@@ -822,7 +824,11 @@
+   guchar type;
+   guint i;
+ 
+-  gst_buffer_map (nal, &map, GST_MAP_READ);
++  if (!gst_buffer_map (nal, &map, GST_MAP_READ)) {
++    GST_WARNING_OBJECT (rtph265, "Cannot map parameter set");
++    gst_buffer_unref (nal);
++    return FALSE;
++  }
+ 
+   if (map.size == 0)
+     goto drop;
+@@ -843,7 +849,12 @@
+       GstMapInfo vpsmap;
+       guint32 tmp_vps_id;
+ 
+-      gst_buffer_map (vps, &vpsmap, GST_MAP_READ);
++      if (!gst_buffer_map (vps, &vpsmap, GST_MAP_READ))
++        goto drop;
++      if (vpsmap.size < 3) {
++        gst_buffer_unmap (vps, &vpsmap);
++        goto drop;
++      }
+       tmp_vps_id = (vpsmap.data[2] >> 4) & 0x0f;
+ 
+       if (vps_id == tmp_vps_id) {
+@@ -878,8 +889,12 @@
+       GstMapInfo spsmap;
+       guint32 tmp_sps_id;
+ 
+-      gst_buffer_map (sps, &spsmap, GST_MAP_READ);
+-      parse_sps (&spsmap, &tmp_sps_id);
++      if (!gst_buffer_map (sps, &spsmap, GST_MAP_READ))
++        goto drop;
++      if (!parse_sps (&spsmap, &tmp_sps_id)) {
++        gst_buffer_unmap (sps, &spsmap);
++        goto drop;
++      }
+ 
+       if (sps_id == tmp_sps_id) {
+         if (map.size == spsmap.size &&
+@@ -916,8 +931,12 @@
+       guint32 tmp_pps_id;
+ 
+ 
+-      gst_buffer_map (pps, &ppsmap, GST_MAP_READ);
+-      parse_pps (&ppsmap, &tmp_sps_id, &tmp_pps_id);
++      if (!gst_buffer_map (pps, &ppsmap, GST_MAP_READ))
++        goto drop;
++      if (!parse_pps (&ppsmap, &tmp_sps_id, &tmp_pps_id)) {
++        gst_buffer_unmap (pps, &ppsmap);
++        goto drop;
++      }
+ 
+       if (pps_id == tmp_pps_id) {
+         if (map.size == ppsmap.size &&

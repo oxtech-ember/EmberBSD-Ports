@@ -57,7 +57,7 @@ run() {
         PKG_BUILD_OPTIONS.MesaLib='llvm x11 wayland' \
         USE_BUILTIN.pthread=yes H_PTHREAD=/usr/include/pthread.h "$@"
 }
-for recipe in graphics/MesaLib x11/libdrm graphics/glu graphics/libepoxy x11/qt6-qtbase devel/qt6-qtwayland; do
+for recipe in graphics/MesaLib x11/libdrm devel/libffi graphics/glu graphics/libepoxy x11/qt6-qtbase devel/qt6-qtwayland; do
     [ -f "$tree/$recipe/Makefile" ] || exit 1
     for var in PKGNAME PKGPATH DEPENDS TOOL_DEPENDS USE_BUILTIN.MesaLib USE_BUILTIN.libdrm USE_BUILTIN.glu MESALIB_SUPPORTS_EGL MESALIB_SUPPORTS_GLESv2 MESALIB_SUPPORTS_DRI MESALIB_SUPPORTS_OSMESA MESALIB_SUPPORTS_XA MESON_ARGS LLVM_CONFIG_PATH PKG_SKIP_REASON PKG_FAIL_REASON PLIST.egldevice; do
         printf '%s\n' "$var" >> "$work/${recipe##*/}.txt"
@@ -69,6 +69,11 @@ done
 run graphics/MesaLib show-var VARNAME=PKGNAME | grep -x 'MesaLib-26.2.4nb6'
 run graphics/MesaLib show-var VARNAME=DEPENDS | grep 'vulkan-loader>=1.4.357.0:../../graphics/vulkan-loader' > /dev/null
 run x11/libdrm show-var VARNAME=PKGNAME | grep -x 'libdrm-2.4.134nb2'
+run devel/libffi show-var VARNAME=PKGNAME | grep -x 'libffi-3.8.0nb1'
+run devel/libffi show-var VARNAME=PKG_FAIL_REASON PKGREVISION=0 | grep 'requires rebased libffi 3.8.0nb1'
+run devel/libffi show-var VARNAME=PKG_FAIL_REASON DISTNAME=libffi-3.7.0 | grep 'requires rebased libffi 3.8.0nb1'
+run devel/libffi show-var VARNAME=PKG_FAIL_REASON BUILDLINK_PKGSRCDIR.libffi=../../devel/old-libffi | grep 'rejects unprepared libffi'
+run devel/libffi show-var VARNAME=PKG_FAIL_REASON 'BUILDLINK_API_DEPENDS.libffi=libffi>=1.20' | grep 'overridden libffi dependency requirements'
 run x11/libdrm show-var VARNAME=PKG_SKIP_REASON > "$work/drm-skip.txt"
 [ ! -s "$work/drm-skip.txt" ] || [ -z "$(cat "$work/drm-skip.txt")" ]
 for recipe in graphics/glu graphics/libepoxy; do

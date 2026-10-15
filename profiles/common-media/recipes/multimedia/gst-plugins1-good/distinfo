@@ -4,3 +4,4 @@ BLAKE2s (gst-plugins-good-1.28.8.tar.xz) = 9dfa07ec8e6ec2bd2d39213af1791968f40ac
 SHA512 (gst-plugins-good-1.28.8.tar.xz) = e80eb13f221c82e501b92572bbb88b283dfe9876436e940ebf8ddf889088397bfed0e422f3cf951a6a8e23aa4cd1e02ac4a373fd6e94de63252ba1f29eaef8f2
 Size (gst-plugins-good-1.28.8.tar.xz) = 6014472 bytes
 SHA1 (patch-sys_v4l2_gstv4l2object.c) = 466b677f8f3f881a17de8106b7541eba591d3c0f
+SHA1 (patch-zz-h265-parameter-memory) = fcd86c015edc41cf1277b0b4b92ff1f1eb171df5

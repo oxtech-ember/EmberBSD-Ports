@@ -441,7 +441,7 @@ Installed XZ scripts use the target shell while configure retains the host shell
  _TOOLS_USE_PKGSRC.msgfmt?=	no
 --- a/mk/tools/replace.mk
 +++ b/mk/tools/replace.mk
-@@ -140,7 +140,21 @@
+@@ -140,8 +140,22 @@
  _TOOLS_DEPMETHOD.${_t_:C/:.*//}=	TOOL_DEPENDS
  .endfor
  .for _t_ in ${USE_TOOLS:M*\:run}
@@ -464,6 +464,7 @@ Installed XZ scripts use the target shell while configure retains the host shell
 +.    endif
  .  endif
  _TOOLS_DEPMETHOD.${_t_:C/:.*//}=	DEPENDS
+ .endfor
 --- a/mk/pkgformat/pkg/package.mk
 +++ b/mk/pkgformat/pkg/package.mk
 @@ -148,10 +148,7 @@

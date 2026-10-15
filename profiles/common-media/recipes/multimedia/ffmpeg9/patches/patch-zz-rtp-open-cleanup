@@ -1,0 +1,44 @@
+$NetBSD$
+
+Close the RTP UDP context before retrying a failed RTCP pair allocation.
+Also close an unusable port65535 context and fail after bounded retry exhaustion
+instead of reaching setup with no complete pair. Preserve ordinary retry behavior.
+AI-assisted EmberBSD adaptation of FFmpeg9.0.2; not submitted or accepted
+upstream. Original FFmpeg authorship and LGPL remain.
+
+--- libavformat/rtpproto.c.orig
++++ libavformat/rtpproto.c
+@@ -304,7 +304,9 @@
+             goto fail;
+         s->local_rtpport = ff_udp_get_local_port(s->rtp_hd);
+         if(s->local_rtpport == 65535) {
++            ffurl_closep(&s->rtp_hd);
+             s->local_rtpport = -1;
++            ret = AVERROR(EADDRINUSE);
+             continue;
+         }
+         rtcpflags = flags | AVIO_FLAG_WRITE;
+@@ -313,9 +315,11 @@
+             build_udp_url(s, buf, sizeof(buf),
+                           hostname, s->localaddr, s->rtcp_port, s->local_rtcpport,
+                           sources, block);
+-            if (ffurl_open_whitelist(&s->rtcp_hd, buf, rtcpflags,
+-                                     &h->interrupt_callback, NULL,
+-                                     h->protocol_whitelist, h->protocol_blacklist, h) < 0) {
++            ret = ffurl_open_whitelist(&s->rtcp_hd, buf, rtcpflags,
++                                       &h->interrupt_callback, NULL,
++                                       h->protocol_whitelist, h->protocol_blacklist, h);
++            if (ret < 0) {
++                ffurl_closep(&s->rtp_hd);
+                 s->local_rtpport = s->local_rtcpport = -1;
+                 continue;
+             }
+@@ -330,6 +334,8 @@
+             goto fail;
+         break;
+     }
++    if (i == max_retry_count)
++        goto fail;
+ 
+     s->fec_hd = NULL;
+     if (fec_protocol) {

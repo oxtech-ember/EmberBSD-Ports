@@ -1,0 +1,6 @@
+Source: https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz
+SHA256: 7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4
+Recipe origin: pinned NetBSD pkgsrc devel/libffi, commit fff4deb639a1a640476203c80f752fb77b6cb14b
+Retain pkgsrc patch ownership and libffi license notices.
+The PowerPC header patch is rebased for 3.8.0; its two ILP32 guards are unchanged.
+The rebase has source-application coverage. PowerPC runtime is not tested.

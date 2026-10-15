@@ -70,7 +70,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             $1 != "devel/wayland" && $1 != "devel/wayland-protocols" &&
             $1 != "x11/xorgproto" && $1 != "devel/libudev-bsd" &&
             $1 != "wayland/wlroots" && $1 != "wayland/labwc" && $1 != "x11/xkeyboard-config" && $1 != "devel/input-headers" && $1 != "x11/libxkbcommon" && $1 != "sysutils/hwdata" && $1 != "sysutils/seatd" && $1 != "x11/libdisplay-info" && $1 != "graphics/libliftoff" && $1 != "devel/libopeninput" &&
-            $1 != "devel/glib2" &&
+            $1 != "devel/glib2" && $1 != "devel/libffi" &&
             $1 != "devel/pcre2" &&
             $1 != "graphics/cairo" &&
             $1 != "fonts/harfbuzz" &&
@@ -85,7 +85,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             !seen["devel/wayland"] || !seen["devel/wayland-protocols"] ||
             !seen["x11/xorgproto"] || !seen["devel/libudev-bsd"] ||
             !seen["wayland/wlroots"] || !seen["wayland/labwc"] || !seen["x11/xkeyboard-config"] || !seen["devel/input-headers"] || !seen["x11/libxkbcommon"] || !seen["sysutils/hwdata"] || !seen["sysutils/seatd"] || !seen["x11/libdisplay-info"] || !seen["graphics/libliftoff"] || !seen["devel/libopeninput"] ||
-            !seen["devel/glib2"] ||
+            !seen["devel/glib2"] || !seen["devel/libffi"] ||
             !seen["devel/pcre2"] ||
             !seen["graphics/cairo"] ||
             !seen["fonts/harfbuzz"] ||
@@ -116,6 +116,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             devel/libopeninput) pin='libopeninput-1.31.3-10995219206280da0f1a3ba124abe4c8ef89e021.tar.gz:fbba09ed60a9a411b9ae7ee5c92daf069a3b4926ad052ac8cbcfb7c3ff82abbf:https://github.com/sizeofvoid/libopeninput/archive/10995219206280da0f1a3ba124abe4c8ef89e021.tar.gz' ;;
             x11/libxkbcommon) pin='xkbcommon-1.13.2.tar.gz:acc4d5f7c3cbba5f9f8d08d8bdbeede84ecede46792f47929aa9321873385528:https://github.com/xkbcommon/libxkbcommon/archive/xkbcommon-1.13.2.tar.gz' ;;
             devel/glib2) pin='glib-2.90.1.tar.xz:93c941aa17d5eb1d53fe838365f29a8b4e539c222a256d974ec8f30fc413e396:https://download.gnome.org/sources/glib/2.90/glib-2.90.1.tar.xz' ;;
+            devel/libffi) pin='libffi-3.8.0.tar.gz:7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4:https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz' ;;
             devel/pcre2) pin='pcre2-10.49.tar.gz:929f0b20e62879252a15886b06c89f1edef61a363cbd5826fb041080a5e557ae:https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.49/pcre2-10.49.tar.gz' ;;
             graphics/cairo) pin='cairo-1.18.6.tar.xz:1c767308174337a74694da0f3ec069c271452163a1ef4540964c50c301f157d4:https://cairographics.org/releases/cairo-1.18.6.tar.xz' ;;
             fonts/harfbuzz) pin='harfbuzz-14.6.0.tar.xz:d07a007327277708a2a73ae437887cdbaf282937f6d03ca5467723e9099af586:https://github.com/harfbuzz/harfbuzz/releases/download/14.6.0/harfbuzz-14.6.0.tar.xz' ;;
@@ -136,7 +137,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
         esac
         [ "$archive:$sha:$url" = "$pin" ] || { echo "Incorrect common graphics source pin: $recipe" >&2; exit 2; }
     done < "$graphics/sources.tsv"
-    for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info x11/gtk3 devel/at-spi2-core; do
+    for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info x11/gtk3 devel/at-spi2-core; do
         source=$graphics/recipes/$recipe
         recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk'
         case "$recipe" in
@@ -155,6 +156,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             [ -f "$source/$name" ] || { echo "Incomplete graphics recipe: $recipe/$name" >&2; exit 2; }
         done
         case "$recipe" in
+            devel/libffi) approved='patch-configure patch-configure_host patch-src_aarch64_ffi.c patch-src_arm_sysv.S patch-src_closures.c patch-src_m68k_ffi.c patch-src_m88k_elfbsd.S patch-src_mips_ffi.c patch-src_mips_ffitarget.h patch-src_powerpc_ffi.c patch-src_powerpc_ffi__powerpc.h patch-testsuite_lib_libffi.exp patch-testsuite_libffi.call_float2.c' ;;
             devel/at-spi2-core) approved='patch-meson-gir-cross.build patch-meson.build patch-registryd_registry.c' ;;
             x11/gtk3) approved='patch-gdk_wayland_gdkdevice-wayland.c patch-gdk_x11_gdkscreen-x11.h patch-gdk_x11_gdkwindow-x11.h patch-gtk_a11y_gtkaccessibility.c patch-gtk_fallback-c89.c patch-gtk_gtkfontchooserwidget.c patch-gtk_gtklabel.c patch-meson-gir-cross.build patch-meson.build patch-meson_options.txt patch-tests_gtkgears.c' ;;
             devel/glib2) approved='patch-girepository_compiler_meson.build patch-meson_gir-cross.build patch-gio_gcredentialsprivate.h patch-gio_gdbus-2.0_codegen_meson.build patch-gio_glib-compile-schemas.c patch-gio_gresource-tool.c patch-gio_gunixcredentialsmessage.c patch-gio_gunixmounts.c patch-gio_inotify_inotify-kernel.c patch-gio_meson.build patch-gio_tests_iptosmessage.c patch-gio_tests_meson.build patch-girepository_gitypelib.c patch-glib_gatomic.c patch-glib_gatomic.h patch-glib_genviron.c patch-glib_glib-unix.c patch-glib_gspawn-posix.c patch-glib_gthread.c patch-glib_tests_hash.c patch-glib_tests_include.c patch-glib_tests_meson.build patch-glib_tests_testing.c patch-glib_tests_thread.c patch-gmodule_gmodule-dl.c patch-gmodule_gmodule.c patch-gobject_glib-mkenums.in patch-gobject_meson.build patch-meson.build patch-meson.options' ;;
@@ -295,7 +297,7 @@ if [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ 
         "$destination/EMBERBSD-CROSS-MK.CONF"
 fi
 if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
-    for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info x11/gtk3 devel/at-spi2-core; do
+    for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info x11/gtk3 devel/at-spi2-core; do
         rm -rf "$destination/$recipe"
         cp -R "$graphics/recipes/$recipe" "$destination/$recipe"
     done

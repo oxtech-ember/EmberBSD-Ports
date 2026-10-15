@@ -5,6 +5,12 @@ set -eu
 umask 022
 [ "$#" = 4 ] || { echo 'Usage: build-libxml2.sh GCC_PREFIX SYSROOT ARCHIVE NEW_OUTPUT' >&2; exit 2; }
 prefix=$1 sysroot=$2 archive=$3 out=$4
+target=${TARGET:-aarch64--netbsd}
+case "$target" in
+    aarch64--netbsd) arch=aarch64; elf_machine=AArch64;;
+    x86_64--netbsd) arch=x86_64; elf_machine='Advanced Micro Devices X86-64';;
+    *) echo 'Unsupported target.' >&2; exit 2;;
+esac
 for path do
     case "$path" in /*) ;; *) echo 'Absolute paths required.' >&2; exit 2;; esac
     case "$path" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2;; esac
@@ -13,8 +19,8 @@ done
 cross=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 recipe=$cross/../recipes/textproc/libxml2
 for compiler in gcc g++; do
-    [ "$("$prefix/bin/aarch64--netbsd-$compiler" -dumpfullversion)" = 16.2.0 ]
-    [ "$("$prefix/bin/aarch64--netbsd-$compiler" -dumpmachine)" = aarch64--netbsd ]
+    [ "$("$prefix/bin/$target-$compiler" -dumpfullversion)" = 16.2.0 ]
+    [ "$("$prefix/bin/$target-$compiler" -dumpmachine)" = "$target" ]
 done
 expected=$(awk '$1 == "libxml2-2.15.4" {print $3}' "$cross/dependencies.tsv")
 printf '%s  %s\n' "$expected" "$archive" | sha256sum -c -
@@ -27,7 +33,7 @@ for patch_file do
     [ -n "$expected" ] && [ "$expected" = "$actual" ] || exit 1
 done
 (cd "$recipe/files" && sha256sum -c test-support.sha256)
-crt=$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0
+crt=$sysroot/usr/pkg/gcc16/lib/gcc/$target/16.2.0
 runtime=$sysroot/usr/pkg/gcc16/lib
 [ -f "$crt/crtbeginS.o" ] && [ -f "$runtime/libgcc_s.so.1" ] || exit 1
 [ -f "$sysroot/usr/include/stdio.h" ]
@@ -42,9 +48,9 @@ for patch_file in "$recipe/patches/"patch-*; do
 done
 cat > "$out/toolchain.cmake" <<EOF
 set(CMAKE_SYSTEM_NAME NetBSD)
-set(CMAKE_SYSTEM_PROCESSOR aarch64)
+set(CMAKE_SYSTEM_PROCESSOR $arch)
 set(CMAKE_SYSROOT $sysroot)
-set(CMAKE_C_COMPILER $prefix/bin/aarch64--netbsd-gcc)
+set(CMAKE_C_COMPILER $prefix/bin/$target-gcc)
 set(CMAKE_C_FLAGS_INIT "-B$crt/ -L$runtime -Wl,-rpath,/usr/pkg/gcc16/lib")
 set(CMAKE_FIND_ROOT_PATH $sysroot)
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
@@ -72,13 +78,13 @@ for source in dict.c list.c; do
 done
 chmod 644 "$licenses/"*
 mkdir "$out/consumer"
-"$prefix/bin/aarch64--netbsd-gcc" --sysroot="$sysroot" -B"$crt/" -L"$runtime" \
+"$prefix/bin/$target-gcc" --sysroot="$sysroot" -B"$crt/" -L"$runtime" \
     -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror \
     -I"$out/stage/usr/pkg/include/libxml2" -L"$out/stage/usr/pkg/lib" \
     -Wl,-rpath,/usr/pkg/lib -Wl,-rpath,/usr/pkg/gcc16/lib \
     "$cross/../tests/libxml2-options.c" -lxml2 -o "$out/consumer/libxml2-options" \
     > "$out/logs/consumer-build.log" 2>&1
-"$prefix/bin/aarch64--netbsd-gcc" --sysroot="$sysroot" -B"$crt/" -L"$runtime" \
+"$prefix/bin/$target-gcc" --sysroot="$sysroot" -B"$crt/" -L"$runtime" \
     -std=c11 -O2 -Wall -Wextra -Wpedantic \
     -I"$out/stage/usr/pkg/include/libxml2" -L"$out/stage/usr/pkg/lib" \
     -Wl,-rpath,/usr/pkg/lib -Wl,-rpath,/usr/pkg/gcc16/lib \
@@ -88,10 +94,10 @@ mkdir "$out/consumer"
 printf '%s\n' 'Current libxml2 C interface, shared library, development exports and XML programs.' \
     'This cross payload uses upstream CMake defaults. The native pkgsrc payload uses Autotools.' \
     > "$out/recipe/DESCR"
-"$prefix/bin/aarch64--netbsd-readelf" -h -d "$out/stage/usr/pkg/lib/libxml2.so.16.1.4" \
+"$prefix/bin/$target-readelf" -h -d "$out/stage/usr/pkg/lib/libxml2.so.16.1.4" \
     "$out/stage/usr/pkg/bin/xmllint" "$out/stage/usr/pkg/bin/xmlcatalog" \
     "$out/consumer/libxml2-options" "$out/consumer/xml-contract" > "$out/elf.txt"
-[ "$(grep -c 'Machine:.*AArch64' "$out/elf.txt")" = 5 ]
+[ "$(grep -c "Machine:.*$elf_machine" "$out/elf.txt")" = 5 ]
 for path in "$prefix" "$sysroot" "$out"; do
     if grep -E 'RPATH|RUNPATH|NEEDED' "$out/elf.txt" | grep -F "$path"; then
         echo 'Build-host path leaked into target linkage.' >&2; exit 1

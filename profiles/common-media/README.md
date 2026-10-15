@@ -67,12 +67,12 @@ provider overrides and command-line replacement of configure arguments.
 ## Features and provenance
 
 The source pin comes from [the original stable release](https://ffmpeg.org/download.html)
-and [sources.tsv](sources.tsv). SHA256, BLAKE2s, SHA512, size and the 17
+and [sources.tsv](sources.tsv). SHA256, BLAKE2s, SHA512, size and the 20
 RCS-filtered patch SHA1 hashes are recorded. This is HTTPS/hash verification,
 not a claim of release-signature verification. The recipe base is pkgsrc
 `fff4deb639a1a640476203c80f752fb77b6cb14b`, `multimedia/ffmpeg9`.
 All 16 imported patches, RCS identifiers, ownership and licences are retained.
-The additional adaptation and tests are AI-assisted EmberBSD work; none has
+The additional adaptations and tests are AI-assisted EmberBSD work; none has
 been submitted or accepted upstream.
 
 The inherited Sun/NetBSD audio port used removed `AVCodecParameters.channels`
@@ -81,6 +81,11 @@ OSS implementation: channel layout, `FFInputFormat`/`FFOutputFormat`, public
 fields under `.p`, and explicit device registration in `alldevices.c`.
 It preserves the original audio implementation and authorship. Compiling the
 objects alone missed the absent registration; the regression checks both.
+
+The RTP clock adaptation tracks initialization independently of timestamp
+values, including zero and wraparound, and retains the first parser PTS when
+network input has no byte position. Its regressions use the real RTP clock
+and parser implementations; see the [CPU RTP profile](rtp/README.md).
 
 External dependencies are selected explicitly with `PKG_OPTIONS.ffmpeg9`;
 opportunistic host autodetection is disabled. Default AV1, H.264/H.265,

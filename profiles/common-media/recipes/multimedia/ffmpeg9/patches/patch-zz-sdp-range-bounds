@@ -1,0 +1,26 @@
+$NetBSD$
+
+Initialize both NPT output bounds before checking the range syntax.
+SDP range attributes with another syntax must not leave caller values undefined.
+AI-assisted EmberBSD adaptation of FFmpeg9.0.2; not submitted upstream.
+Original FFmpeg authorship and LGPL remain.
+
+--- libavformat/rtsp.c.orig
++++ libavformat/rtsp.c
+@@ -207,13 +207,13 @@ static void rtsp_parse_range_npt(const char *p, int64_t *start, int64_t *end)
+ {
+     char buf[256];
+ 
++    *start = AV_NOPTS_VALUE;
++    *end = AV_NOPTS_VALUE;
++
+     p += strspn(p, SPACE_CHARS);
+     if (!av_stristart(p, "npt=", &p))
+         return;
+ 
+-    *start = AV_NOPTS_VALUE;
+-    *end = AV_NOPTS_VALUE;
+-
+     get_word_sep(buf, sizeof(buf), "-", &p);
+     if (av_parse_time(start, buf, 1) < 0)
+         return;
