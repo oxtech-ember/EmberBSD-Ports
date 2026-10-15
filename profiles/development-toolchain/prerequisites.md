@@ -79,8 +79,8 @@ The inherited top-level configure and gnulib patches apply unchanged.
 The default Info path patch is refreshed around the new DJGPP conditional.
 Three obsolete patches are removed with these concrete reasons:
 
-- `tp/Texinfo/XS/configure` no longer exists; its iconv checks are in the
-  top-level configure, where the existing pkgsrc patch still applies.
+- `tp/Texinfo/XS/configure` no longer exists. Its replacement is
+  `tta/configure`. Keep that replacement's working-iconv check enabled.
 - The C parser moved to `tta/C/parsetexi`; the prior patch merely moved a
   C99 loop-variable declaration. Our NetBSD 11 bootstrap compiler supports C99.
 - Upstream removed texi2dvi's historical ksh re-exec branch, so the patch
@@ -95,6 +95,24 @@ and Texinfo conversion modules, `libtexinfo-main`, and `load_txi_modules`.
 Native staging also verified the split `share/texinfo/htmlxref.d` data and
 the Unix `info-hooks` script/data replacing the former `htmlxref.cnf` entry.
 Native staging and pkgsrc `check-files` must confirm the complete payload.
+On native Darwin, `INCOMPAT_ICONV+=Darwin-*-*` selects pkgsrc's GNU libiconv
+provider. The pinned recipe is 1.19, also the current release listed by
+[GNU](https://www.gnu.org/software/libiconv/). Darwin's built-in implementation
+fails the upstream working-iconv test. That failure disables
+`USE_SHARED_TXI_LIBRARIES` even with `--enable-perl-xs`, omitting the C
+libraries and most XS modules required by the package list. Do not suppress
+the test or remove those package entries. NetBSD target provider selection
+is unchanged.
+
+The source regression uses real bmake and the pinned iconv builtin policy
+for Darwin and NetBSD architectures. Set `TEXINFO_PREPARED_SOURCE` to an
+actual unpacked Texinfo 7.3 source tree to execute its shared-library configure
+decision with both failed and successful working-iconv results. These fixtures
+do not establish a real GNU-provider build. After installing native GNU
+libiconv, rerun the actual iconv conftest, then configure and stage Texinfo
+anew. Require `am_cv_func_iconv_works=yes`, `USE_SHARED_TXI_LIBRARIES_TRUE=''`,
+actual XS loading, Info/HTML conversion and ordinary package file checks.
+Preserve the previous failed build and its logs until that acceptance passes.
 Patch checksums use pkgsrc's RCS-ID filtering; the source regression invokes
 pkgsrc's own checksum verifier and rejects a deliberately unfiltered digest.
 Do not weaken pkgsrc's Perl ABI constraints or vendor another Perl runtime

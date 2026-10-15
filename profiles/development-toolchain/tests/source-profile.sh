@@ -67,6 +67,9 @@ else
 fi
 grep -q 'mpc-1.4.1' "$work/math/mpcomplex/Makefile"
 grep -q 'texinfo-7.3' "$work/devel/gtexinfo/Makefile"
+if command -v "${BMAKE:-bmake}" >/dev/null 2>&1; then
+    ruby "$root/profiles/development-toolchain/tests/texinfo-iconv.rb" "$work/devel/gtexinfo" ${TEXINFO_PREPARED_SOURCE:+"$TEXINFO_PREPARED_SOURCE"}
+fi
 # Use pkgsrc's own verifier, not a second implementation of its RCS filtering.
 # shasum/OpenSSL provide a portable adapter for pkgsrc's checksum verifier.
 cat > "$work/digest" <<'EOF'
