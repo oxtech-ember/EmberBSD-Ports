@@ -44,8 +44,9 @@ module InstallerRuntimeBundle
     required = { 'OPSYS' => 'NetBSD', 'OS_VERSION' => '11.0', 'MACHINE_ARCH' => 'x86_64', 'PKGPATH' => 'lang/gcc16-runtime',
       'PKGNAME' => NAME, 'LICENSE' => 'gnu-gpl-v3', 'GCC_VERSION' => GCC16Runtime::VERSION,
       'GCC_RUNTIME_SONAME' => 'libstdc++.so.7', 'GCC_SOURCE_SHA256' => GCC16Runtime::SOURCE_SHA256 }
-    hashes = %w[GCC_RECIPE_SHA256 GCC_RECIPE_DISTINFO_SHA256 GCC_RUNTIME_INPUTS_SHA256 GCC_RUNTIME_STAGE_SHA256 GCC_RUNTIME_LINKS_SHA256]
-    check(metadata.is_a?(Hash) && metadata.keys.sort == (required.keys + hashes + ['EMBERBSD_SEED_SOURCE']).sort, 'Invalid runtime metadata fields')
+    hashes = %w[GCC_RECIPE_SHA256 GCC_RECIPE_DISTINFO_SHA256 GCC_RUNTIME_INPUTS_SHA256 GCC_RUNTIME_STAGE_SHA256 GCC_RUNTIME_LINKS_SHA256 EMBERBSD_PKG_CREATE_SHA256]
+    check(metadata.is_a?(Hash) && metadata.keys.sort == (required.keys + hashes + %w[EMBERBSD_SEED_SOURCE PKGTOOLS_VERSION]).sort, 'Invalid runtime metadata fields')
+    GCC16Runtime.validate_pkgtools_version(metadata['PKGTOOLS_VERSION'])
     check(required.all? { |k, v| metadata[k] == v }, 'Wrong runtime target, source or provider')
     check(hashes.all? { |k| metadata[k].is_a?(String) && metadata[k].match?(/\A[0-9a-f]{64}\z/) } && metadata['EMBERBSD_SEED_SOURCE'].match?(/\A[0-9a-f]{40}\z/), 'Invalid runtime source receipts')
     check(result['elf'].is_a?(Hash) && result['elf'].keys.sort == files.sort, 'Invalid runtime ELF receipts')

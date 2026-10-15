@@ -175,7 +175,10 @@ The input must be the complete, unchanged output of
 `gcc16-runtime-16.2.0nb1.tgz`, `package.sha256` and `provenance.json`.
 The helper snapshots those inputs. It checks the receipt schema, fixed amd64
 metadata, source pin, package bytes, payload digests, licenses, runtime conflicts
-and packing-list directives. It uses `GCC16Runtime.audit_package` and its ELF
+and packing-list directives. Package metadata must include the queried native
+`PKGTOOLS_VERSION` and `EMBERBSD_PKG_CREATE_SHA256` with exact, unique values.
+Missing or malformed pkgtools provenance fails the strict receipt schema.
+It uses `GCC16Runtime.audit_package` and its ELF
 parser again. Only the selected `libgcc_s.so.1`, `libstdc++.so.7` and versioned
 aliases are accepted. Headers, CRT objects, static archives, compiler programs
 and installation commands are rejected. It does not execute target programs.

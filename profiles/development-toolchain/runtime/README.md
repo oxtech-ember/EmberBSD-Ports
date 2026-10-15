@@ -67,10 +67,18 @@ original archive. It preserves their original text.
 It calls native host `pkg_create` with the installation prefix `/usr/pkg`,
 owner `root` and group `wheel`. `+BUILD_INFO` explicitly records
 `OPSYS=NetBSD`, `OS_VERSION=11.0` and `MACHINE_ARCH=x86_64`.
+Before creating the output, the packager queries the supplied native
+`pkg_create -V`. It requires one eight-digit version line and a valid
+calendar date. The package records this queried `PKGTOOLS_VERSION` and
+the executable hash in `EMBERBSD_PKG_CREATE_SHA256`. The pkgsrc package
+revision, such as `nb1`, is not part of the pkgtools version.
+The executable hash must remain unchanged through package creation.
 It also records source, recipe and stage SHA256 values, the seed commit,
 the GCC version and the selected SONAME.
 The resulting archive is inspected again for payload, unchanged bytes,
-links, conflicts, prefix and target metadata. Stage verification runs again.
+links, conflicts, prefix and unique target/package-tool metadata.
+Stage verification runs again against the original stage-only result.
+Package-tool provenance does not replace or modify the stage receipts.
 
 Successful output contains the package, `package.sha256` and
 `provenance.json`. A failed attempt removes only its new output directory.
@@ -99,15 +107,28 @@ The direct packager above also works on macOS without running target pkgtools.
 ## Checks and acceptance boundary
 
 ```sh
-PKG_CREATE=/absolute/native/pkg_create ruby tests/package-test.rb
+PKG_CREATE=/absolute/native/pkg_create PKG_ADD=/absolute/native/pkg_add \
+    ruby tests/package-test.rb
 ```
 
 The fixtures test architecture, SONAME, old C++ dependencies, source/recipe
 mutations, incomplete inventory, link escapes, omitted intermediate aliases,
 conflicting target claims and output reuse. With `PKG_CREATE`, they create
 and inspect a real package using synthetic target ELF files and license data.
+With `PKG_ADD`, they install it into a private destination using normal
+`-I -K /usr/pkg/pkgdb -P DEST -m 'NetBSD/x86_64 11.0'` options.
+They also recreate the previous missing-version warning and require the
+corrected package to install without that warning. Invalid version queries,
+calendar dates and changes to the queried executable fail before stage access.
 They do not compile GCC and are not target runtime acceptance.
 Without that variable, the native-package fixture is explicitly skipped.
+
+The actual completed amd64 runtime stage has also been repackaged and
+installed with native pkgtools 20260227 into an isolated host destination.
+The old package reproduced `lacks pkg_install version data`.
+The new package installed without warnings; its DSO bytes, aliases and target
+metadata matched the original stage. This is host packaging evidence.
+The accepted target runtime artifact and shared package databases were unchanged.
 
 No real amd64 runtime package or installed consumer is qualified by these
 fixtures. Before release, build the actual stage and package from a clean

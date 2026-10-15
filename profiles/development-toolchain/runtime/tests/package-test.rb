@@ -122,9 +122,54 @@ class RuntimePackageTest < Minitest::Test
       metadata, status = Open3.capture2('tar', '-xOf', package, '+BUILD_INFO')
       assert status.success?
       %w[OPSYS=NetBSD OS_VERSION=11.0 MACHINE_ARCH=x86_64].each { |line| assert_includes metadata, line }
+      version, err, status = Open3.capture3(pkg_create, '-V')
+      assert status.success?, err
+      assert_equal ["PKGTOOLS_VERSION=#{version.chomp}"], metadata.lines.map(&:chomp).grep(/^PKGTOOLS_VERSION=/)
+      assert_equal ["EMBERBSD_PKG_CREATE_SHA256=#{Digest::SHA256.file(pkg_create).hexdigest}"], metadata.lines.map(&:chomp).grep(/^EMBERBSD_PKG_CREATE_SHA256=/)
+      if ENV['PKG_ADD']
+        dest = d + '/installed'
+        log, status = Open3.capture2e(ENV.fetch('PKG_ADD'), '-I', '-K', '/usr/pkg/pkgdb', '-P', dest, '-m', 'NetBSD/x86_64 11.0', package)
+        assert status.success?, log
+        refute_match(/warning|invalid pkg_install version|lacks pkg_install version data/, log)
+        assert File.file?(dest + '/usr/pkg/pkgdb/' + GCC16Runtime::NAME + '/+BUILD_INFO')
+        assert_equal File.binread(@stage + '/usr/pkg/gcc16/lib/libgcc_s.so.1'), File.binread(dest + '/usr/pkg/gcc16/lib/libgcc_s.so.1')
+        # Reproduce the pre-fix package with the real creator and installer.
+        legacy = d + '/legacy'; FileUtils.mkdir(legacy)
+        _, err, status = Open3.capture3('tar', '-xf', package, '-C', legacy)
+        assert status.success?, err
+        File.write(legacy + '/BUILD_INFO', metadata.lines.reject { |l| l.start_with?('PKGTOOLS_VERSION=', 'EMBERBSD_PKG_CREATE_SHA256=') }.join)
+        File.write(legacy + '/PLIST', GCC16Runtime.plist(stage.verify))
+        old_package = d + '/old.tgz'
+        _, err, status = Open3.capture3(pkg_create, '-u', 'root', '-g', 'wheel', '-p', legacy, '-I', '/usr/pkg', '-B', legacy + '/BUILD_INFO', '-c', legacy + '/+COMMENT', '-d', legacy + '/+DESC', '-f', legacy + '/PLIST', old_package)
+        assert status.success?, err
+        log, status = Open3.capture2e(ENV.fetch('PKG_ADD'), '-I', '-K', '/usr/pkg/pkgdb', '-P', d + '/legacy-installed', '-m', 'NetBSD/x86_64 11.0', old_package)
+        assert status.success?, log
+        assert_match(/warning: lacks pkg_install version data/, log)
+      end
       assert File.file?(output + '/package.sha256')
       assert File.file?(output + '/provenance.json')
       assert_raises(GCC16Runtime::Invalid) { GCC16Runtime.create(stage, pkg_create, output) }
+    end
+  end
+
+  def test_native_pkgtools_version_rejects_invalid_queries_before_stage_or_output
+    Dir.mktmpdir('gcc-runtime-pkgtools-') do |d|
+      tool = d + '/pkg_create'
+      untouched_stage = Object.new
+      def untouched_stage.install(*) = raise('stage unexpectedly accessed')
+      ["", "20260227nb1\n", "20260227\n20260227\n", " 20260227\n", "20260227 \n", "20260230\n", "00000000\n", "garbage\n"].each_with_index do |version, i|
+        File.write(tool, "#!/bin/sh\nprintf '%s' '#{version}'\n")
+        File.chmod(0755, tool)
+        output = d + '/rejected-' + i.to_s
+        assert_raises(GCC16Runtime::Invalid) { GCC16Runtime.create(untouched_stage, tool, output) }
+        refute File.exist?(output)
+      end
+      File.write(tool, "#!/bin/sh\nprintf '20260227\\n'\nexit 1\n")
+      assert_raises(GCC16Runtime::Invalid) { GCC16Runtime.create(untouched_stage, tool, d + '/failed-query') }
+      refute File.exist?(d + '/failed-query')
+      File.write(tool, "#!/bin/sh\nprintf '20260227\\n'\nprintf 'changed\\n' >> \"$0\"\n")
+      assert_raises(GCC16Runtime::Invalid) { GCC16Runtime.create(untouched_stage, tool, d + '/changed-query') }
+      refute File.exist?(d + '/changed-query')
     end
   end
 

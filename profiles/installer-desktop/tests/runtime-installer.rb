@@ -121,6 +121,42 @@ class RuntimeInstallerTest < Minitest::Test
     refute File.exist?(@output)
   end
 
+  def test_bundle_rejects_missing_invalid_or_unrecognized_pkgtools_receipts
+    package
+    receipt = @source + '/provenance.json'
+    original = File.read(receipt)
+    changes = [
+      ->(m) { m.delete('PKGTOOLS_VERSION') },
+      ->(m) { m['PKGTOOLS_VERSION'] = '20260230' },
+      ->(m) { m['PKGTOOLS_VERSION'] = '20260227nb1' },
+      ->(m) { m['EMBERBSD_PKG_CREATE_SHA256'] = 'invalid' },
+      ->(m) { m['UNREVIEWED_METADATA'] = 'extra' }
+    ]
+    changes.each do |change|
+      value = JSON.parse(original); change.call(value.fetch('metadata'))
+      File.write(receipt, JSON.generate(value))
+      _out, _err, status = bundle
+      refute status.success?
+      refute File.exist?(@output)
+    end
+  end
+
+  def test_bundle_rejects_duplicate_pkgtools_version_in_package
+    package
+    change_package { |d| File.open(d + '/+BUILD_INFO', 'a') { |io| io.puts 'PKGTOOLS_VERSION=20260227' } }
+    _out, _err, status = bundle
+    refute status.success?
+    refute File.exist?(@output)
+  end
+
+  def test_bundle_rejects_changed_pkg_create_hash_in_package
+    package
+    change_package { |d| p = d + '/+BUILD_INFO'; File.write(p, File.read(p).sub(/^EMBERBSD_PKG_CREATE_SHA256=.*$/, 'EMBERBSD_PKG_CREATE_SHA256=' + 'a' * 64)) }
+    _out, _err, status = bundle
+    refute status.success?
+    refute File.exist?(@output)
+  end
+
   def test_bundle_reaudits_architecture_even_with_updated_digest
     package
     change_package { |d| p = d + '/gcc16/lib/libgcc_s.so.1'; bytes = File.binread(p); bytes[18, 2] = [183].pack('v'); File.binwrite(p, bytes) }

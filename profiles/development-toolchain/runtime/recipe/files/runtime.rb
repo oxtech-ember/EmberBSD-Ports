@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD; AI-assisted host packaging of audited target GCC16 libraries.
 require 'digest'
+require 'date'
 require 'fileutils'
 require 'find'
 require 'json'
@@ -200,7 +201,29 @@ module GCC16Runtime
       *LICENSES.map { |f| "share/licenses/gcc16-runtime/#{f}" }].join("\n") + "\n")
   end
 
+  # pkg_create -V reports the pkgtools date, not the pkgsrc package revision.
+  def self.validate_pkgtools_version(version)
+    valid = version.is_a?(String) && version.match?(/\A[1-9][0-9]{7}\z/) &&
+      Date.valid_date?(version[0, 4].to_i, version[4, 2].to_i, version[6, 2].to_i)
+    raise Invalid, 'Invalid native pkgtools version' unless valid
+    version
+  end
+
+  def self.native_pkgtools(pkg_create)
+    digest = Digest::SHA256.file(pkg_create).hexdigest
+    out, err, status = Open3.capture3(pkg_create, '-V')
+    raise Invalid, "Cannot query native pkg_create version: #{err}" unless status.success? && err.empty? && out.match?(/\A[0-9]{8}\n\z/)
+    version = validate_pkgtools_version(out.chomp)
+    raise Invalid, 'Native pkg_create changed during version query' unless Digest::SHA256.file(pkg_create).hexdigest == digest
+    { 'PKGTOOLS_VERSION' => version, 'EMBERBSD_PKG_CREATE_SHA256' => digest }
+  rescue SystemCallError => error
+    raise Invalid, error.message
+  end
+
 def self.audit_package(package, payload, result)
+  expected_metadata = result.fetch(:metadata)
+  validate_pkgtools_version(expected_metadata['PKGTOOLS_VERSION'])
+  raise Invalid, 'Missing native pkg_create digest' unless expected_metadata['EMBERBSD_PKG_CREATE_SHA256'].is_a?(String) && expected_metadata['EMBERBSD_PKG_CREATE_SHA256'].match?(/\A[0-9a-f]{64}\z/)
   listing, error, status = Open3.capture3('tar', '-tf', package)
   raise Invalid, "Cannot list runtime package: #{error}" unless status.success?
   names = listing.lines.map(&:chomp)
@@ -220,7 +243,7 @@ def self.audit_package(package, payload, result)
       end
     end
     metadata = File.read(d + '/+BUILD_INFO').lines.map(&:chomp)
-    raise Invalid, 'Target package metadata changed' unless result.fetch(:metadata).all? { |k, v| metadata.include?("#{k}=#{v}") }
+    raise Invalid, 'Target package metadata changed or duplicated' unless expected_metadata.all? { |k, v| metadata.grep(/^#{Regexp.escape(k)}=/) == ["#{k}=#{v}"] }
     contents = File.read(d + '/+CONTENTS').lines.map(&:chomp)
     raise Invalid, 'Missing runtime conflicts' unless CONFLICTS.all? { |p| contents.include?("@pkgcfl #{p}") }
     raise Invalid, 'Wrong installed prefix' unless contents.include?('@cwd /usr/pkg')
@@ -230,10 +253,12 @@ end
   def self.create(stage, pkg_create, output)
     raise Invalid, 'Use an absolute native pkg_create path' unless pkg_create.start_with?('/') && File.executable?(pkg_create)
     raise Invalid, 'Output must be a new absolute directory' unless output.start_with?('/') && !File.exist?(output) && !File.symlink?(output)
+    packaging = native_pkgtools(pkg_create)
     FileUtils.mkdir(output)
     begin
       Dir.mktmpdir('gcc16-runtime-package-') do |tmp|
-        result = stage.install(tmp + '/payload')
+        stage_result = stage.install(tmp + '/payload')
+        result = stage_result.merge(metadata: stage_result.fetch(:metadata).merge(packaging))
         File.write(tmp + '/PLIST', plist(result))
         File.write(tmp + '/BUILD_INFO', result.fetch(:metadata).map { |k, v| "#{k}=#{v}" }.join("\n") + "\n")
         File.write(tmp + '/COMMENT', "GCC16 target runtime libraries for EmberBSD\n")
@@ -243,7 +268,8 @@ end
           '-B', tmp + '/BUILD_INFO', '-c', tmp + '/COMMENT', '-d', tmp + '/DESCR', '-f', tmp + '/PLIST', package)
         raise Invalid, "pkg_create failed: #{out}#{err}" unless status.success? && File.file?(package)
         audit_package(package, tmp + '/payload/usr/pkg', result)
-        raise Invalid, 'Stage changed while creating package' unless stage.verify == result
+        raise Invalid, 'Native pkg_create changed while creating package' unless Digest::SHA256.file(pkg_create).hexdigest == packaging.fetch('EMBERBSD_PKG_CREATE_SHA256')
+        raise Invalid, 'Stage changed while creating package' unless stage.verify == stage_result
         File.write(output + '/package.sha256', "#{Digest::SHA256.file(package).hexdigest}  #{NAME}.tgz\n")
         File.write(output + '/provenance.json', JSON.pretty_generate(result) + "\n")
       end
