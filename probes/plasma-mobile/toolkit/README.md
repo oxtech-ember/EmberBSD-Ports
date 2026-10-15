@@ -16,6 +16,11 @@ scope. Complete Plasma Desktop and HDMI acceptance remain pending.
 See the [migration sequence](MIGRATION.md) and the
 [actual Mobile graphics contract](../kwin/MOBILE-GRAPHICS-CONTRACT.md).
 
+The Qtbase 6.12.0nb1 [private mutex event](tests/qt-mutex/README.md) avoids
+file-descriptor allocation by its NetBSD mutex pool. Actual-source sanitizer,
+target compilation and public ABI checks pass. Updated packaging and target
+runtime acceptance remain pending.
+
 ## Prepare the source tree
 
 ```sh
