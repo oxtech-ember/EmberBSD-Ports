@@ -5,6 +5,7 @@ require 'digest'
 require 'fileutils'
 require 'open3'
 require 'rubygems/package'
+require 'shellwords'
 require 'tmpdir'
 
 # TarReader needs a position even when libarchive writes to a non-seekable pipe.
@@ -87,6 +88,58 @@ def library_metadata(build, paths, context)
       check(!paths.key?(path), "REQUIRES names the package's own payload: #{path}: #{context}")
     end
   end
+end
+
+# These are executable substitutions in pkgsrc's mk/pkginstall templates.
+# Inspect serialized values, including helper scripts stored in here-documents.
+# This is a portability check, not a shell parser or an execution sandbox.
+SCRIPT_HELPERS = %w[
+  AWK BASENAME CAT CHGRP CHMOD CHOWN CMP CP DIRNAME ECHO ECHO_N EGREP EXPR
+  FALSE FIND GREP GROUPADD GTAR HEAD ID INSTALL_INFO LINKFARM LN LS MKDIR MV
+  PERL5 PKG_ADMIN PKG_INFO PW PWD_CMD RM RMDIR SED SETENV SH SORT SU TEST
+  TOUCH TR TRUE USERADD XARGS RCD_SCRIPTS_SHELL PKG_USER_SHELL
+  LDCONFIG_ADD_CMD LDCONFIG_REMOVE_CMD TTF_INDEX_CMD TYPE1_INDEX_CMD
+  TYPE1_POSTINDEX_CMD MKFONTDIR GTK2_UPDATE_ICON_CACHE GTK3_UPDATE_ICON_CACHE
+].freeze
+
+def install_script_paths(metadata, context)
+  # The package's declared prefix can be outside the default pkgsrc locations.
+  # Do not infer target prefixes from executable assignments in the script.
+  prefixes = metadata.fetch('+CONTENTS').lines.grep(/^@cwd /).map { |line| line.delete_prefix('@cwd ').strip }
+  prefixes += %w[/bin /sbin /usr/bin /usr/sbin /usr/libexec /usr/pkg /usr/local /usr/X11R7]
+  host_root = %r{\A/(?:Volumes|Users|Applications|private/(?:tmp|var/folders)|var/folders|opt/homebrew|tmp)(?:/|\z)}
+  prefixes.reject! { |prefix| prefix == '/' || prefix.match?(host_root) }
+  %w[+INSTALL +DEINSTALL +REQUIRE].each do |name|
+    next unless metadata.key?(name)
+    metadata.fetch(name).each_line.with_index(1) do |line, number|
+      value = nil
+      helper = false
+      if (match = /^\s*#!\s*(.*)/.match(line))
+        value = match[1]
+        helper = true
+      elsif (match = /^\s*(?:export\s+)?([A-Z][A-Z0-9_]*)=(.*)/.match(line))
+        # Shellwords removes quoting but never performs shell expansion.
+        helper = SCRIPT_HELPERS.include?(match[1])
+        next unless helper || match[2].match?(%r{\A\s*["']?/})
+        value = Shellwords.split(match[2]).first
+      end
+      next unless value
+      words = Shellwords.split(value)
+      location = "#{context}/#{name}:#{number}"
+      words.grep(%r{\A/}).each do |word|
+        check(!File.expand_path(word).match?(host_root), "Host path in package script #{location}: #{word}")
+      end
+      executable = words.first
+      next unless executable&.start_with?('/')
+      # Normalize dot components before matching paths, without touching the host.
+      executable = File.expand_path(executable)
+      next unless helper
+      check(prefixes.any? { |prefix| executable.start_with?(prefix.delete_suffix('/') + '/') },
+            "Non-target executable in package script #{location}: #{executable}")
+    end
+  end
+rescue ArgumentError => error
+  raise "Invalid serialized package script in #{context}: #{error.message}"
 end
 
 # Match exact package-managed paths. A SONAME alias must be explicit payload;
@@ -243,6 +296,7 @@ begin
     check(snapshots[name].fetch('+CONTENTS') == contents, "Installed manifest changed during read: #{name}")
     target_metadata(snapshots[name].fetch('+BUILD_INFO'), "installed #{name}")
     library_metadata(snapshots[name].fetch('+BUILD_INFO'), paths, "installed #{name}")
+    install_script_paths(snapshots[name], "installed #{name}")
     contents.lines.grep(/^@pkgdep /).each do |line|
       pattern = line.delete_prefix('@pkgdep ').strip
       selected = cache[pattern] ||= begin
@@ -273,14 +327,14 @@ begin
       next unless result.success? && data == expected
       destination = File.join(staging, 'packages', "#{name}.tgz")
       digest = Digest::SHA256.file(original).hexdigest
-      FileUtils.cp(original, destination)
-      check(Digest::SHA256.file(destination).hexdigest == digest, "Archive changed during copy: #{name}")
       begin
-        audit_archive(tar, destination, snapshots.fetch(name), manifests.fetch(name))
+        audit_archive(tar, original, snapshots.fetch(name), manifests.fetch(name))
       rescue StandardError => error
         failures << "#{original}: #{error.message}"
         next
       end
+      FileUtils.cp(original, destination)
+      check(Digest::SHA256.file(destination).hexdigest == digest, "Archive changed during copy: #{name}")
       hashes << "#{digest}  packages/#{name}.tgz\n"
       accepted = true
       break

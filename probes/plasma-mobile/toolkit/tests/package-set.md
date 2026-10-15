@@ -23,6 +23,8 @@ is illustrative. The command performs these checks before publishing output:
 - Match each archive's `+CONTENTS` with the installed manifest.
 - Check the archive's `OPSYS`, `OS_VERSION`, `MACHINE_ARCH` and `OBJECT_FMT`.
 - Match every declared metadata file with the installed copy.
+- Reject host paths in serialized `+INSTALL`, `+DEINSTALL` and `+REQUIRE`
+  interpreters and helpers. Check the original archive before copying it.
 - Require each `PROVIDES` path to exist in the package manifest.
 - Reject `REQUIRES` paths supplied by the same package. `pkg_add` checks
   requirements before extraction, also when replacing an installed version.
@@ -70,6 +72,29 @@ external requirements remain accepted. Failed audits leave no final set.
 The valid fixture includes an explicit `.so.8` alias and a base `/usr/lib/`
 requirement. A consumer that requires `.so.7` fails when its declared provider
 packages only `.so.8`, even if both archive and database metadata agree.
+
+The separate script regression uses the same real archive auditor:
+
+```sh
+PKG_CREATE=/absolute/native/pkg_create PKG_INFO=/absolute/native/pkg_info \
+BSDTAR=/absolute/native/bsdtar \
+    ruby probes/plasma-mobile/toolkit/tests/package-install-scripts.rb /absolute/new-script-tests
+```
+
+Its 20 cases cover all three script names, embedded helper scripts, quoted and
+unquoted assignments, dot components, host roots, executable prefix boundaries,
+archive/database disagreement and the absence of copying before rejection.
+System paths, `/usr/pkg`, `/usr/local`, `/usr/X11R7` and the package's declared
+prefix remain valid. Host paths in historical `+BUILD_INFO` remain valid too.
+`PYTHON_PACKAGE_SCRIPT` can name an existing broken serialized script for an
+additional negative case. `TARGET_PACKAGE_SCRIPT` adds a repaired positive case.
+Both files are read as data. No package script is executed.
+
+The gate checks literal shebang paths and pkgsrc's serialized helper assignments.
+It also rejects known host roots in literal absolute assignments. It does not
+resolve shell variables, command substitutions, `PATH` commands or symlinks.
+This is a cross-package portability check, not a shell security audit.
+Custom runtime logic still needs its own target lifecycle tests.
 
 The implementation reads PAX records by their byte lengths. Libarchive converts
 supported input compression to a stream; no package payload is extracted.
