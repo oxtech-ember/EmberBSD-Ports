@@ -66,6 +66,7 @@ security/kf6-kauth	kauth-6.31.0.tar.xz	6fb4e3d1de3364bab82453bd635387e845f227764
 security/kf6-kdesu	kdesu-6.31.0.tar.xz	4e3ed141d538f6d3ee02d5ebad6dd08c260fa38fd0005317d0cd15c23ee7c676	https://download.kde.org/stable/frameworks/6.31/kdesu-6.31.0.tar.xz
 security/kf6-kwallet	kwallet-6.31.0.tar.xz	ce8915f33c1d3a57d738d83c8082c3a76dcc29a1ddd989bee4ea3961e55166e6	https://download.kde.org/stable/frameworks/6.31/kwallet-6.31.0.tar.xz
 security/qt6-qtnetworkauth	qtnetworkauth-everywhere-src-6.12.0.tar.xz	17d47be1a724d21775daa873ac7a52c30fd5c4935ba377af48d9b37b39765ed8	https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtnetworkauth-everywhere-src-6.12.0.tar.xz
+sysutils/attr	attr-2.6.0.tar.xz	6c8a2148a7b85043b68492bce43316b0e2e214fc4e628c7ede078e76e216330b	https://download.savannah.nongnu.org/releases/attr/attr-2.6.0.tar.xz
 sysutils/kf6-baloo	baloo-6.31.0.tar.xz	178d6550a7c55a820322182814a96a7564343a506772971e4aac8b1e7e4d1829	https://download.kde.org/stable/frameworks/6.31/baloo-6.31.0.tar.xz
 sysutils/kf6-kdbusaddons	kdbusaddons-6.31.0.tar.xz	7110f9f07b6cef50a238b01b23f2adcb23552ea1e91e2a9c84f96c5d94a69036	https://download.kde.org/stable/frameworks/6.31/kdbusaddons-6.31.0.tar.xz
 sysutils/kf6-kfilemetadata	kfilemetadata-6.31.0.tar.xz	9c9dd8d4a3d0dfc97c8177a391b8276638402fe0f55e5ff8b4332e1ab214da58	https://download.kde.org/stable/frameworks/6.31/kfilemetadata-6.31.0.tar.xz
