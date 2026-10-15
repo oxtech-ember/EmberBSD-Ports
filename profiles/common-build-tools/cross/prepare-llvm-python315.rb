@@ -29,6 +29,13 @@ def digest(path)
   Digest::SHA256.file(path).hexdigest
 end
 
+# pkg_create writes these control entries itself. Preserve ignored payload
+# entries, but do not submit a second copy of generated package metadata.
+def prepare_packlist(contents)
+  contents.lines.reject { |line| line.start_with?('@comment MD5:', '@comment Symlink:') }.join
+    .gsub(/^@ignore\n[+](?:COMMENT|DESC|BUILD_VERSION|BUILD_INFO|SIZE_PKG|SIZE_ALL|INSTALL|DEINSTALL|DISPLAY)\n/, '')
+end
+
 scripts = {
   'bin/analyze-build' => 'tools/scan-build-py/bin/analyze-build',
   'bin/git-clang-format' => 'tools/clang-format/git-clang-format',
@@ -171,7 +178,7 @@ new_rpath = '/usr/pkg/gcc16/lib:/usr/pkg/lib'
   # package operation; they do not claim a new compiler build.
   build += "EMBERBSD_REPACKAGE_KIND=python315-runtime-metadata\nEMBERBSD_REPACKAGE_INPUT_SHA256=#{digest(archive)}\nEMBERBSD_REPACKAGE_SOURCE=#{source_commit}\n"
   File.write(File.join(stage, '+BUILD_INFO'), build)
-  plist = contents.lines.reject { |line| line.start_with?('@comment MD5:', '@comment Symlink:') }.join
+  plist = prepare_packlist(contents)
   plist = plist.sub("@name #{name}\n", "@name #{name}nb1\n")
   plist = plist.gsub(/^@pkgdep py314-llvm-lit[^\n]*$/, '@pkgdep py315-llvm-lit>=23.1.3nb1')
   plist = plist.sub("@name #{name}nb1\n", "@name #{name}nb1\n@pkgdep python315>=3.15.0\n") if kind == 'clang'
@@ -189,7 +196,10 @@ new_rpath = '/usr/pkg/gcc16/lib:/usr/pkg/lib'
   end
   abort 'Unexpected +REQUIRE script' if File.exist?(File.join(stage, '+REQUIRE'))
   File.write(File.join(out, "#{kind}-pkg-create.log"), run!(*command, result))
-  File.write(File.join(stage, '+CONTENTS'), run!('/usr/bin/tar', '-xOf', result, '+CONTENTS'))
+  final_contents = run!('/usr/bin/tar', '-xOf', result, '+CONTENTS')
+  control_names = final_contents.scan(/^@ignore\n([+][^\n]+)\n/).flatten
+  abort 'Duplicate generated package metadata' unless control_names.uniq == control_names
+  File.write(File.join(stage, '+CONTENTS'), final_contents)
   receipt.fetch('packages')[name] = { 'input_sha256' => digest(archive), 'output' => result,
     'output_sha256' => digest(result), 'payload_before' => before, 'payload_after' => expected, 'changes' => changes }
 end

@@ -31,6 +31,8 @@ The output is not a claim of a fresh compiler build or target execution.
 The [metadata check](../tests/llvm-python315-metadata.rb) parses actual pkgsrc
 recipes and rejects the old ABI override. The [ownership fixture](../tests/llvm-lit-ownership.rb)
 checks co-install rejection, provider replacement and rollback with real pkgtools.
+The [packlist regression](../tests/llvm-python315-packlist.rb) verifies that
+`pkg_create` emits each generated metadata entry once.
 
 Run [the payload check](../tests/llvm-python315-payload.rb) on extracted output
 packages with host Python 3.15. The original Clang package must fail the same
