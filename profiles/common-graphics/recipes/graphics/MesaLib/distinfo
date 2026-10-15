@@ -18,3 +18,4 @@ SHA1 (patch-include_drm-uapi_pvr__drm.h) = 40e3a8b6ef7f6b75307f7432ad3db869da82d
 SHA1 (patch-src_gallium_drivers_zink_zink__resource.c) = c701f424ca3fd35d8a1d5477cc57ef4094a578c3
 SHA1 (patch-src_gallium_drivers_zink_zink__query.c) = e4a02352f9ebbc6e5d10dd62525586ff73a78053
 SHA1 (patch-src_gallium_frontends_dri_dri2.c) = 10d657042cf352edc37b703953e4626db66f7b01
+SHA1 (patch-src_egl_drivers_dri2_platform__wayland.c) = cf5fb241e32e2d9d407d93ba87b674e3ad8fb6a5

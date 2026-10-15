@@ -93,8 +93,8 @@ Zlib::GzipReader.open(package) do |gzip|
   end
 end
 contents = File.read("#{bundle}/source/MesaLib.CONTENTS")
-abort 'unexpected package identity/prefix' unless contents.match?(/^@name MesaLib-26\.2\.4nb[456]$/) && contents.include?("@cwd /usr/pkg\n")
-abort 'nb6 requires Zink; earlier packages retain their original driver set' unless contents.include?("@name MesaLib-26.2.4nb6\n") == with_zink
+abort 'unexpected package identity/prefix' unless contents.match?(/^@name MesaLib-26\.2\.4nb[4567]$/) && contents.include?("@cwd /usr/pkg\n")
+abort 'nb6/nb7 require Zink; earlier packages retain their original driver set' unless contents.match?(/^@name MesaLib-26\.2\.4nb[67]$/) == with_zink
 if with_zink
   abort 'missing Zink package payload' unless %w[/usr/pkg/lib/dri/zink_dri.so /usr/pkg/share/drirc.d/00-zink-defaults.conf].all? { |path| payload.key?(path) }
   abort 'missing Zink loader runtime dependency' unless contents.match?(/^@pkgdep vulkan-loader>=1\.4\.357\.0$/)
