@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: BSD-2-Clause
+# Origin: EmberBSD (AI-assisted). Extend the common Boost 1.92.0 provider.
+set(BUILD_SHARED_LIBS ON CACHE BOOL "")
+set(BUILD_TESTING OFF CACHE BOOL "")
+set(BOOST_INCLUDE_LIBRARIES iostreams CACHE STRING "")
+set(BOOST_INSTALL_LAYOUT system CACHE STRING "")
+set(BOOST_IOSTREAMS_ENABLE_ZLIB ON CACHE BOOL "")
+set(BOOST_IOSTREAMS_ENABLE_BZIP2 ON CACHE BOOL "")
+set(BOOST_IOSTREAMS_ENABLE_LZMA ON CACHE BOOL "")
+set(BOOST_IOSTREAMS_ENABLE_ZSTD OFF CACHE BOOL "")
+# Iostreams requires the current Random component and its random-device API.
+set(BOOST_RANDOM_ENABLE_RANDOM_DEVICE ON CACHE BOOL "")

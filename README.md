@@ -195,9 +195,12 @@ runtime behavior are validated.
   pass independently known linear/Pose2 solutions, covariance, errors, eleven
   upstream programs and package removal/reinstallation. The
   [CSV graph example](https://github.com/oxtech-ember/EmberBSD-Examples/tree/main/robotics/gtsam-graph)
-  uses the shared library. [PCL 1.15.1](probes/pcl/README.md),
-  [OpenVINS 2.7](probes/openvins/README.md) and
-  [RTAB-Map 0.23.8](probes/rtabmap/README.md) retain prepared source profiles;
+  uses the shared library. [PCL 1.15.1](probes/pcl/README.md) has GCC16 cross
+  packaging with common Eigen/Boost. Installed AArch64 QEMU checks pass known
+  voxel centroids, ICP motion, independent CSV, twelve upstream programs and
+  all eight package lifecycles. The [point-cloud example](https://github.com/oxtech-ember/EmberBSD-Examples/tree/main/robotics/pcl-cloud)
+  uses the shared libraries. [OpenVINS 2.7](probes/openvins/README.md)
+  and [RTAB-Map 0.23.8](probes/rtabmap/README.md) retain prepared source profiles;
   their navigation scenarios still need target acceptance.
 - [Local trajectory generation](probes/ruckig/README.md),
   [quadratic optimization](probes/osqp/README.md) and

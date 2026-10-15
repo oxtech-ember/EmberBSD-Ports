@@ -1,0 +1,20 @@
+$NetBSD$
+
+Honor an explicit build-with-install-RPATH setting from the caller.
+Target test programs need the installed prefix after a cross build.
+Keep the upstream FALSE default when the caller provides no setting.
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -295,7 +295,9 @@
+ # in order to always make a full statement RPATH
+ ###
+ set(CMAKE_SKIP_BUILD_RPATH  FALSE)
+-set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
++if(NOT DEFINED CMAKE_BUILD_WITH_INSTALL_RPATH)
++  set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
++endif()
+ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
+ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+ LIST(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}" is_system_dir)

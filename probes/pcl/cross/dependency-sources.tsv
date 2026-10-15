@@ -1,0 +1,4 @@
+# archive	sha256	upstream source URL
+lz4-1.10.0.tar.gz	537512904744b35e232912055ccf8ec66d768639ff3abe5788d90d792ec5f48b	https://codeload.github.com/lz4/lz4/tar.gz/ebb370ca83af193212df4dcbadcc5d87bc0de2f0
+flann-1.9.2.tar.gz	f8d004c21d3a565154dc742ede0e31d50cecc06e49f60b5431ca947fbf5de037	https://codeload.github.com/flann-lib/flann/tar.gz/c50f296b0b27e14667d272b37acc63f949b305c4
+boost-1.92.0-cmake.tar.xz	9bed76128d4e46755dbe818487788c6fceb6f72b378f4daa49b7e1e600d9088d	https://github.com/boostorg/boost/releases/download/boost-1.92.0/boost-1.92.0-cmake.tar.xz

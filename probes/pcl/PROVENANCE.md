@@ -1,44 +1,93 @@
-# PCL source profile provenance
+# PCL package provenance
 
-Official releases, tags and source contents were checked on 2026-10-07.
+Official releases, tags and source archives were checked on 2026-10-15.
+Hashes remain in the canonical recipe `distinfo` files and the source lists.
+Archives are downloaded from their original upstream providers.
 
-| Source | Exact commit | License |
+| Source | Revision or release | License and owner |
 |---|---|---|
-| [PCL 1.15.1](https://github.com/PointCloudLibrary/pcl/releases/tag/pcl-1.15.1) | `3346843ea6b97697a1577293aa9cdf236b5c7ffb` | BSD-3-Clause, upstream `LICENSE.txt` and individual notices; Willow Garage, Open Perception and contributors |
-| [FLANN 1.9.2](https://github.com/flann-lib/flann/tree/1.9.2) | `c50f296b0b27e14667d272b37acc63f949b305c4` | BSD-3-Clause, upstream `COPYING`; Marius Muja and David G. Lowe |
+| [PCL 1.15.1](https://github.com/PointCloudLibrary/pcl/releases/tag/pcl-1.15.1) | `3346843ea6b97697a1577293aa9cdf236b5c7ffb` | BSD-3-Clause; Willow Garage, Open Perception and contributors |
+| [FLANN 1.9.2](https://github.com/flann-lib/flann/tree/1.9.2) | `c50f296b0b27e14667d272b37acc63f949b305c4` | BSD-3-Clause; Marius Muja, David G. Lowe and contributors |
+| [LZ4 1.10.0](https://github.com/lz4/lz4/releases/tag/v1.10.0) | `ebb370ca83af193212df4dcbadcc5d87bc0de2f0` | BSD-2-Clause library; GPL-2.0-or-later CLI; Yann Collet and contributors |
+| [Boost 1.92.0](https://github.com/boostorg/boost/releases/tag/boost-1.92.0) | Official `boost-1.92.0-cmake.tar.xz` release archive | Boost Software License 1.0; individual library authors |
+| [Eigen 5.0.1](../../pkgsrc/local-robotics/eigen3/files/SOURCE) | `bc3b39870ecb690a623a3f49149a358b95c5781d` | MPL-2.0 with upstream per-file notices |
+| [GCC 16.2.0](../../pkgsrc/local-robotics/gcc16-libatomic/files/SOURCE) | Official `gcc-16.2.0.tar.xz`; atomic runtime component | GPL-3.0-or-later with GCC Runtime Library Exception 3.1 |
+| [GoogleTest 1.18.0](https://github.com/google/googletest/releases/tag/v1.18.0) | `063de7e9578f82b369302001269680b4b1553359` | BSD-3-Clause; Google and contributors; test-only source |
 
-These were the current stable tagged releases when checked. The age of FLANN's
-release does not select an older version: 1.9.2 is the latest upstream tag.
-[sources.tsv](sources.tsv) fixes commit-addressed archive URLs and SHA256 hashes.
-The downloaded archives are 68,706,780 bytes (PCL) and 34,642,850 bytes (FLANN).
-Their original trees occupy approximately 139 MiB and 80 MiB respectively on
-the source preparation host. Build space has not been measured.
+PCL, LZ4 and Boost use the current stable releases checked for this task.
+FLANN 1.9.2 is its latest upstream release tag; the upstream project has no
+newer stable tag. Its age does not select another compiler or a parallel
+older dependency set.
 
-The profile consumes the common Eigen 5.0.1 (MPL-2.0 with upstream per-file
-exceptions), pkgsrc Boost 1.91.0 (BSL-1.0), and LZ4 1.10.0 (upstream BSD/GPL
-license split). It links LZ4's library; it does not incorporate the LZ4 CLI.
-Their original sources and license inventories belong to those providers.
-The builder copies PCL and FLANN's top-level license files into the disposable
-installation and retains the original source notices.
+The common Eigen and Boost providers retain their existing versions and
+header namespaces. `boost-libs` supplies the already established Serialization
+closure. The new `boost-iostreams` package adds Iostreams and its required
+compiled Random component. It also owns the new header-only Dynamic Bitset
+CMake exports. Existing common header exports are not replaced. Random-device
+support remains enabled. Base OS zlib, bzip2 and lzma support remains enabled;
+Zstd is outside the selected profile.
 
-## Local adaptation
+The atomic component supplies files missing from the partial GCC16 cross SDK.
+It uses the same current GCC source and runtime version. Complete GCC16
+packages retain ownership of their runtime; the standalone component conflicts
+with those providers.
 
-The common headless profile also enables `io`, `surface`, `segmentation` and
-their `geometry`/`ml` dependencies for RTAB-Map core. These are modules of the
-same PCL installation. Qhull, VTK, device backends and visualization stay off;
-RTAB-Map's selected surface code does not require convex/concave hull APIs.
-The expanded profile has not yet been compiled natively.
+PCL retains its embedded KissFFT, LZF and PLY implementations. Package license
+files preserve Mark Borgerding's KissFFT notices, Marc Alexander Lehmann's LZF
+notices, Willow Garage notices and representative PLY source attribution.
+Installed upstream headers retain their own notices. The LZ4 package preserves
+both the BSD library license and the GPL CLI license. These licenses do not
+change the ownership or licensing of the EmberBSD checks.
 
-`patches/pcl-eigen5.patch` changes PCL's top-level `find_package(Eigen3 3.3)`
-and the same request in `PCLConfig.cmake.in` to exact Eigen 5.0.1. Eigen 5's
-CMake version file rejects the 3.3 request. Updating the export is necessary
-for independent installed consumers too. No Eigen algorithm or package-version
-metadata is changed. This local EmberBSD profile patch was written with AI
-assistance; it has not been submitted or accepted upstream.
+## Canonical source adaptations
 
-FLANN is unchanged. The builder passes `CMAKE_POLICY_VERSION_MINIMUM=3.5`
-because its original CMake minimum is 2.6 and current CMake no longer accepts
-compatibility below 3.5. Native configuration remains to be verified.
+- [PCL Eigen dependency](../../pkgsrc/local-robotics/pcl/patches/patch-eigen5)
+  updates both build-time and exported `find_package` requests to exact Eigen
+  5.0.1. Eigen's own version policy remains intact. Eigen does not masquerade
+  as version 3.x.
+- [PCL FLANN relocation](../../pkgsrc/local-robotics/pcl/patches/patch-relocatable-flann)
+  replaces the configured cross-sysroot fallback with the installed PCL
+  prefix. Explicit caller roots and the all-in-one installer layout remain
+  supported. An isolated installed-config probe catches the original
+  build-host fallback assignment and accepts the relocated form.
+- [PCL caller RPATH](../../pkgsrc/local-robotics/pcl/patches/patch-cmake-rpath)
+  honors an explicit `CMAKE_BUILD_WITH_INSTALL_RPATH` setting. The upstream
+  unconditional `FALSE` discarded the caller setting, so cross-built test
+  programs could not load installed PCL libraries in the guest. The default
+  remains `FALSE` when the caller provides no value. The patch changes build
+  configuration behavior; it does not change PCL algorithms.
+- [FLANN dependency metadata](../../pkgsrc/local-robotics/flann/patches/patch-lz4-target)
+  uses the common imported `LZ4::lz4` target and exports `find_dependency(lz4)`.
+  Its pkg-config file requests `liblz4` and only the selected FLANN libraries.
+  The original install retained absolute cross-sysroot links and an absent C
+  binding. FLANN's C++ algorithms are unchanged.
+- [LZ4 zero-length buffers](../../pkgsrc/local-robotics/lz4/patches/patch-zero-buffers)
+  fixes confirmed null-pointer arithmetic in the frame decoder. Repeated
+  frame-info queries call this path internally. The change preserves null
+  output-buffer semantics and dictionary ownership. The regression checks
+  empty operations, repeated queries, pending output and four complete frame
+  round trips. Fatal UBSan confirms the original failure and the corrected
+  behavior on the native control platform.
+- [FLANN test ownership](../../pkgsrc/local-robotics/pcl/patches/patch-flann-test-ownership)
+  passes an owning index-creator pointer in the correct constructor argument.
+  The original raw pointer converted to the leading boolean and leaked.
+  This fixes seven upstream test calls without changing the library API or
+  algorithms. Full native Memcheck reproduces five leaked allocations in
+  the original program; the corrected program retains all five test cases.
 
-The recipe and consumer checks are MIT licensed under [LICENSE](LICENSE),
-with AI assistance disclosed. They do not relicense upstream source.
+These local adaptations were written with AI assistance for EmberBSD Ports.
+They have not been submitted or accepted upstream. Boost and libatomic have
+no source patches in this profile. FLANN's CMake compatibility floor is set
+to 3.5 for current tools; upstream diagnostics remain enabled.
+
+The canonical
+[PCL features](../../pkgsrc/local-robotics/pcl/features.cmake) build ten shared
+libraries plus the `2d` header component. Expanded RTAB-Map surface and
+segmentation modules are outside this package profile. Build and runtime
+results must name their actual profile, compiler, platform and test scope.
+
+The probes and consumer checks use the MIT [license](LICENSE). Individual
+package recipes and helpers carry their own SPDX identifiers. They do not
+relicense upstream source. Source lists are [PCL](sources.tsv),
+[common dependency additions](cross/dependency-sources.tsv) and
+[test-only GoogleTest](test-sources.tsv).

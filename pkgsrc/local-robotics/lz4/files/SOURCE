@@ -1,0 +1,11 @@
+LZ4 1.10.0
+Upstream: https://github.com/lz4/lz4
+Commit: ebb370ca83af193212df4dcbadcc5d87bc0de2f0
+Archive: https://codeload.github.com/lz4/lz4/tar.gz/ebb370ca83af193212df4dcbadcc5d87bc0de2f0
+SHA256: 537512904744b35e232912055ccf8ec66d768639ff3abe5788d90d792ec5f48b
+Licenses: BSD-2-Clause library; GPL-2.0-or-later command line programs.
+Adaptation: EmberBSD Ports, AI-assisted GCC16 CMake cross packaging.
+Profile: shared/static libraries, full current CLI, headers and CMake exports.
+Patch: avoid NULL input/output pointer arithmetic for valid zero-length frame operations.
+Patch origin: EmberBSD (AI-assisted); not submitted upstream.
+Regression: files/zero-buffers.c covers repeated queries and four full frame round trips.

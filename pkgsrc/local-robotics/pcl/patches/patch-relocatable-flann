@@ -1,0 +1,18 @@
+$NetBSD$
+
+Use the installed PCL prefix as the default FLANN search root.
+The configured build root retained an absolute cross-sysroot path after install.
+Keep an explicit caller FLANN_ROOT and the all-in-one installer layout intact.
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+
+--- a/PCLConfig.cmake.in
++++ b/PCLConfig.cmake.in
+@@ -231,7 +231,7 @@
+   if(PCL_ALL_IN_ONE_INSTALLER)
+     set(FLANN_ROOT "${PCL_ROOT}/3rdParty/Flann")
+   elseif(NOT FLANN_ROOT)
+-    set(FLANN_ROOT "@FLANN_ROOT@")
++    set(FLANN_ROOT "${PCL_ROOT}")
+   endif()
+ 
+   set(PCL_FLANN_REQUIRED_TYPE @PCL_FLANN_REQUIRED_TYPE@)

@@ -1,7 +1,9 @@
+Origin: EmberBSD (AI-assisted). Require the common Eigen 5.0.1 provider.
+
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -346,7 +346,7 @@
- endif()
+ find_package(Threads REQUIRED)
  
  # Eigen3 (required)
 -find_package(Eigen3 3.3 REQUIRED NO_MODULE)
@@ -11,7 +13,8 @@
  endif()
 --- a/PCLConfig.cmake.in
 +++ b/PCLConfig.cmake.in
-@@ -118,6 +118,6 @@
+@@ -118,7 +118,7 @@
+   if(PCL_ALL_IN_ONE_INSTALLER)
      set(Eigen3_DIR "${PCL_ROOT}/3rdParty/Eigen3/share/eigen3/cmake/")
    endif()
 -  find_package(Eigen3 3.3 REQUIRED NO_MODULE)

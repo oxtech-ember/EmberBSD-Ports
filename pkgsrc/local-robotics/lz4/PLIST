@@ -1,0 +1,23 @@
+@comment EmberBSD GCC16 common dependency package
+bin/lz4
+bin/lz4cat
+bin/unlz4
+include/lz4.h
+include/lz4file.h
+include/lz4frame.h
+include/lz4hc.h
+lib/cmake/lz4/lz4Config.cmake
+lib/cmake/lz4/lz4ConfigVersion.cmake
+lib/cmake/lz4/lz4Targets-release.cmake
+lib/cmake/lz4/lz4Targets.cmake
+lib/liblz4.a
+lib/liblz4.so
+lib/liblz4.so.1
+lib/liblz4.so.1.10.0
+lib/pkgconfig/liblz4.pc
+man/man1/lz4.1
+man/man1/lz4cat.1
+man/man1/unlz4.1
+share/licenses/lz4/COPYING.GPL2
+share/licenses/lz4/LICENSE.BSD
+share/licenses/lz4/SOURCE

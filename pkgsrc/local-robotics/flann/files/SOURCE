@@ -1,0 +1,11 @@
+FLANN 1.9.2
+Upstream: https://github.com/flann-lib/flann
+Commit: c50f296b0b27e14667d272b37acc63f949b305c4
+Archive: https://codeload.github.com/flann-lib/flann/tar.gz/c50f296b0b27e14667d272b37acc63f949b305c4
+SHA256: f8d004c21d3a565154dc742ede0e31d50cecc06e49f60b5431ca947fbf5de037
+License: BSD-3-Clause (COPYING retains all upstream authors).
+Adaptation: EmberBSD Ports, AI-assisted GCC16 CMake cross packaging.
+Profile: CPU C++ shared/static libraries; LZ4 is a common shared dependency.
+C/Python/MATLAB bindings, CUDA, HDF5, MPI, OpenMP, examples and upstream tests are excluded.
+Patch: use LZ4::lz4 and exported find_dependency; publish valid pkg-config libraries/dependencies.
+Patch origin: EmberBSD (AI-assisted); not submitted upstream.
