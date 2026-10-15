@@ -41,7 +41,7 @@ existing-work preservation and corrupt-archive rejection for all four helpers.
 [sources.tsv](../sources.tsv) and [dependencies.tsv](dependencies.tsv) pin
 the official archives. FFmpeg's SHA256 is
 `8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e`.
-The helper applies all 17 native recipe patches with zero fuzz. It records
+The helper applies all 19 native recipe patches with zero fuzz. It records
 configuration, build/install logs, tool versions, ELF linkage and stage hashes.
 Installed pkg-config metadata uses target paths rather than build-host paths.
 

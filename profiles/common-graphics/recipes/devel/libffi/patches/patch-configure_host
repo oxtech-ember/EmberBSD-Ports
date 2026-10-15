@@ -1,0 +1,33 @@
+$NetBSD: patch-configure_host,v 1.3 2021/12/08 08:20:17 adam Exp $
+
+Readd support for NetBSD/mips, sh3el, and hppa.
+
+--- configure.host.orig	2021-06-27 15:17:08.000000000 +0000
++++ configure.host
+@@ -67,7 +67,7 @@ case "${host}" in
+ 	SOURCES="ffi.c eabi.S"
+ 	;;
+ 
+-  hppa*-*-linux* | parisc*-*-linux* | hppa*-*-openbsd*)
++  hppa*-*-linux* | hppa*-*-netbsd* | parisc*-*-linux* | hppa*-*-openbsd*)
+ 	TARGET=PA_LINUX; TARGETDIR=pa
+ 	SOURCES="ffi.c linux.S"
+ 	;;
+@@ -173,7 +173,7 @@ case "${host}" in
+   mips-sgi-irix5.* | mips-sgi-irix6.* | mips*-*-rtems*)
+ 	TARGET=MIPS; TARGETDIR=mips
+ 	;;
+-  mips*-*linux* | mips*-*-openbsd* | mips*-*-freebsd*)
++  mips*-*linux* | mips*-*-openbsd* | mips*-*-freebsd* | mips*-*-netbsd*)
+ 	# Support 128-bit long double for NewABI.
+ 	HAVE_LONG_DOUBLE='defined(__mips64)'
+ 	TARGET=MIPS; TARGETDIR=mips
+@@ -233,7 +233,7 @@ case "${host}" in
+ 	SOURCES="ffi.c sysv.S"
+ 	;;
+ 
+-  sh-*-* | sh[34]*-*-*)
++  sh-*-* | shle-*-* | sh[34]*-*-*)
+ 	TARGET=SH; TARGETDIR=sh
+ 	SOURCES="ffi.c sysv.S"
+ 	;;

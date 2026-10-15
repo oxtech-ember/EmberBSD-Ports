@@ -226,6 +226,10 @@ compositor and all installed/dynamically loaded graphics consumers.
 ## Provenance and verification
 
 The recipe base is pkgsrc `fff4deb639a1a640476203c80f752fb77b6cb14b`.
+The shared libffi 3.8.0nb1 recipe rebases its inherited PowerPC header patch.
+It preserves both original ILP32 guards. The [source regression](tests/libffi-rebase.rb)
+reproduces the stale hunk failure and applies all thirteen canonical patches.
+This source check does not test PowerPC execution.
 [sources.tsv](sources.tsv) records original URLs and SHA256; distinfo also
 records BLAKE2s, SHA512, size and filtered patch SHA1. Original RCS identifiers,
 ownership and licences are retained. Local work is AI-assisted and has not

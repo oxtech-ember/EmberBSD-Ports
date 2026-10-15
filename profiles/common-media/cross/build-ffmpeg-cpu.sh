@@ -11,6 +11,13 @@ export LC_ALL
     exit 2
 }
 prefix=$1 sysroot=$2 archive=$3 out=$4
+target=${TARGET:-aarch64--netbsd}
+case "$target" in
+    aarch64--netbsd) arch=aarch64; elf_machine=AArch64;;
+    x86_64--netbsd) arch=x86_64; elf_machine="Advanced Micro Devices X86-64";;
+    *) echo "Unsupported target." >&2; exit 2;;
+esac
+case ${FFMPEG_X265:-no} in yes|no) ;; *) exit 2;; esac
 for path do
     case "$path" in /*) ;; *) echo 'Absolute paths required.' >&2; exit 2;; esac
     case "$path" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2;; esac
@@ -24,8 +31,8 @@ case "$jobs" in ''|0|*[!0-9]*) echo 'CROSS_JOBS must be positive.' >&2; exit 2;;
 profile=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
 recipe=$profile/recipes/multimedia/ffmpeg9
 for compiler in gcc g++; do
-    [ "$("$prefix/bin/aarch64--netbsd-$compiler" -dumpfullversion)" = 16.2.0 ]
-    [ "$("$prefix/bin/aarch64--netbsd-$compiler" -dumpmachine)" = aarch64--netbsd ]
+    [ "$("$prefix/bin/$target-$compiler" -dumpfullversion)" = 16.2.0 ]
+    [ "$("$prefix/bin/$target-$compiler" -dumpmachine)" = $target ]
 done
 host_cc=$(command -v "${HOST_CC:-gcc}")
 host_cxx=$(command -v "${HOST_CXX:-g++}")
@@ -39,20 +46,20 @@ for tool in "$host_cc" "$host_cxx" "$make_tool" "$patch_tool" "$pkgconf"; do
 done
 for compiler in "$host_cc" "$host_cxx"; do
     [ "$("$compiler" -dumpfullversion)" = 16.2.0 ]
-    [ "$("$compiler" -dumpmachine)" != aarch64--netbsd ]
+    [ "$("$compiler" -dumpmachine)" != $target ]
 done
 [ "$("$host_cc" -dumpmachine)" = "$("$host_cxx" -dumpmachine)" ]
 for tool in sha256sum sha1sum tar awk sed grep find sort cmp install perl pod2man makeinfo; do
     command -v "$tool" >/dev/null
 done
 for tool in ar nm ranlib strip readelf; do
-    [ -x "$prefix/bin/aarch64--netbsd-$tool" ]
+    [ -x "$prefix/bin/$target-$tool" ]
 done
-crt=$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0
+crt=$sysroot/usr/pkg/gcc16/lib/gcc/$target/16.2.0
 runtime=$sysroot/usr/pkg/gcc16/lib
 headers=$sysroot/usr/pkg/gcc16/include/c++
 [ -f "$crt/crtbeginS.o" ] && [ -f "$runtime/libgcc_s.so.1" ] || exit 1
-[ -f "$runtime/libstdc++.so.7" ] && [ -d "$headers/aarch64--netbsd" ] || exit 1
+[ -f "$runtime/libstdc++.so.7" ] && [ -d "$headers/$target" ] || exit 1
 [ -f "$sysroot/usr/include/stdio.h" ]
 [ -f "$sysroot/usr/pkg/lib/pkgconfig/libxml-2.0.pc" ]
 expected=$(awk '$1 == "multimedia/ffmpeg9" { print $3 }' "$profile/sources.tsv")
@@ -61,7 +68,7 @@ case "$expected" in *[!0-9a-f]*) echo 'Invalid archive hash.' >&2; exit 2;; esac
 printf '%s  %s\n' "$expected" "$archive" | sha256sum -c -
 # Verify the complete native patch inventory before source preparation.
 set -- "$recipe/patches/"patch-*
-[ "$#" = 17 ]
+[ "$#" = 20 ]
 for patch_file do
     name=$(basename "$patch_file")
     expected=$(awk -v name="($name)" '$1 == "SHA1" && $2 == name { print $4 }' "$recipe/distinfo")
@@ -75,8 +82,8 @@ sha256sum "$archive" "$profile/sources.tsv" "$recipe/distinfo" "$recipe/PLIST" \
     "$recipe/Makefile" "$recipe/Makefile.common" "$recipe/options.mk" "$0" \
     "$recipe/patches/"patch-* > "$out/inputs.sha256"
 {
-    "$prefix/bin/aarch64--netbsd-gcc" --version
-    "$prefix/bin/aarch64--netbsd-g++" --version
+    "$prefix/bin/$target-gcc" --version
+    "$prefix/bin/$target-g++" --version
     "$host_cc" --version
     "$host_cxx" --version
     "$make_tool" --version
@@ -92,15 +99,15 @@ done
 cat > "$out/toolchain/cc" <<EOF
 #!/bin/sh
 set -eu
-exec "$prefix/bin/aarch64--netbsd-gcc" --sysroot="$sysroot" \
+exec "$prefix/bin/$target-gcc" --sysroot="$sysroot" \
     -B"$crt/" -L"$runtime" -Wl,-rpath,/usr/pkg/gcc16/lib "\$@"
 EOF
 cat > "$out/toolchain/cxx" <<EOF
 #!/bin/sh
 set -eu
-exec "$prefix/bin/aarch64--netbsd-g++" --sysroot="$sysroot" \
+exec "$prefix/bin/$target-g++" --sysroot="$sysroot" \
     -B"$crt/" -L"$runtime" -Wl,-rpath,/usr/pkg/gcc16/lib \
-    -isystem "$headers" -isystem "$headers/aarch64--netbsd" \
+    -isystem "$headers" -isystem "$headers/$target" \
     -isystem "$headers/backward" "\$@"
 EOF
 cat > "$out/toolchain/pkg-config" <<EOF
@@ -114,12 +121,18 @@ exec "$pkgconf" "\$@"
 EOF
 chmod 755 "$out/toolchain/cc" "$out/toolchain/cxx" "$out/toolchain/pkg-config"
 export TMPDIR="$out/tmp"
+if [ "${FFMPEG_X265:-no}" = yes ]; then
+    [ -f "$sysroot/usr/pkg/lib/pkgconfig/x265.pc" ]
+    set -- --enable-libx265
+else
+    set --
+fi
 (
     cd "$out/build"
-    "$out/source/configure" --prefix=/usr/pkg --arch=aarch64 --target-os=netbsd \
+    "$out/source/configure" --prefix=/usr/pkg --arch="$arch" --target-os=netbsd \
         --enable-cross-compile --cc="$out/toolchain/cc" --cxx="$out/toolchain/cxx" \
-        --ar="$prefix/bin/aarch64--netbsd-ar" --nm="$prefix/bin/aarch64--netbsd-nm" \
-        --ranlib="$prefix/bin/aarch64--netbsd-ranlib" --strip="$prefix/bin/aarch64--netbsd-strip" \
+        --ar="$prefix/bin/$target-ar" --nm="$prefix/bin/$target-nm" \
+        --ranlib="$prefix/bin/$target-ranlib" --strip="$prefix/bin/$target-strip" \
         --host-cc="$host_cc" --host-ld="$host_cc" --pkg-config="$out/toolchain/pkg-config" \
         --enable-shared --enable-static --enable-pic --enable-gpl --enable-version3 \
         --enable-avfilter --enable-pthreads --enable-runtime-cpudetect \
@@ -130,7 +143,7 @@ export TMPDIR="$out/tmp"
         --shlibdir=/usr/pkg/lib/ffmpeg9 --datadir=/usr/pkg/share/ffmpeg9 \
         --docdir=/usr/pkg/share/doc/ffmpeg9 --mandir=/usr/pkg/man \
         --extra-cflags="--sysroot=$sysroot -I$sysroot/usr/pkg/include" \
-        --extra-ldflags="--sysroot=$sysroot -L$sysroot/usr/pkg/lib -Wl,-rpath,/usr/pkg/lib -Wl,-rpath,/usr/pkg/lib/ffmpeg9 -Wl,-rpath,/usr/pkg/gcc16/lib"
+        --extra-ldflags="--sysroot=$sysroot -L$sysroot/usr/pkg/lib -Wl,-rpath,/usr/pkg/lib -Wl,-rpath,/usr/pkg/lib/ffmpeg9 -Wl,-rpath,/usr/pkg/gcc16/lib" "$@"
 ) > "$out/logs/configure.log" 2>&1
 "$make_tool" -C "$out/build" -j "$jobs" V=1 > "$out/logs/build.log" 2>&1
 "$make_tool" -C "$out/build" "DESTDIR=$out/stage" install > "$out/logs/install.log" 2>&1
@@ -179,8 +192,8 @@ for library in "$stage/lib/ffmpeg9/"lib*.so.*; do
     set -- "$@" "$library"
 done
 [ "$#" = 9 ]
-"$prefix/bin/aarch64--netbsd-readelf" -h -l -d "$@" > "$out/elf.txt"
-[ "$(grep -c 'Machine:.*AArch64' "$out/elf.txt")" = 9 ]
+"$prefix/bin/$target-readelf" -h -l -d "$@" > "$out/elf.txt"
+[ "$(grep -c "Machine:.*$elf_machine" "$out/elf.txt")" = 9 ]
 awk '
     /\(RPATH\)|\(RUNPATH\)|\(NEEDED\)/ {
         value = $0

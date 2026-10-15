@@ -19,4 +19,7 @@ SHA1 (patch-libavformat_mux__utils.c) = a46cdcc8e32251773362406adad06efb367349ca
 SHA1 (patch-libavutil_macros.h) = 7d9770f018a2207d2dcb1fe057564e30be51fd42
 SHA1 (patch-libavutil_x86_asm.h) = 8f48f9e8ec08b5176bb40fc0021f3bb913dbef22
 SHA1 (patch-libavutil_x86_cpu.c) = 9c97e68fde0fcb19741e034a803d509040ea4487
+SHA1 (patch-zz-rtp-clock-state) = 827a635c3a59c51815a7fe7dca5eb0ab7b3d06ef
+SHA1 (patch-zz-rtp-open-cleanup) = 94787fcbde3089829e0811e6a9392068d7a2ec76
 SHA1 (patch-zz-sunau-current-api) = f725b4ff94b9b55ed44718c9f3b1585de0ffcca6
+SHA1 (patch-zz-sdp-range-bounds) = 4d217db7e755c7cf8476fd63b39fbfdae2109470

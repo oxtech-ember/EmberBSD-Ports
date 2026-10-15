@@ -19,6 +19,9 @@ negative() {
     for mode in common-media plasma-mobile; do
         if sh "$work/source/scripts/prepare-pkgsrc.sh" "$work/rejected" "$mode" > "$work/$1-$mode.log" 2>&1; then exit 1; fi
         [ ! -e "$work/rejected" ]
+        if [ "$#" -eq 2 ]; then
+            grep -F "$2" "$work/$1-$mode.log" > /dev/null
+        fi
     done
 }
 mv "$pkg/Makefile" "$pkg/Makefile.saved"
@@ -33,6 +36,33 @@ rm "$pkg/patches/patch-zz-sunau-current-api"
 sed '/SHA1 (patch-zz-sunau-current-api)/d' "$work/saved-distinfo" > "$pkg/distinfo"
 negative omitted-adaptation
 cp "$work/saved-patch" "$pkg/patches/patch-zz-sunau-current-api"
+cp "$work/saved-distinfo" "$pkg/distinfo"
+cp "$pkg/patches/patch-zz-rtp-clock-state" "$work/saved-rtp-patch"
+printf '\nchanged\n' >> "$pkg/patches/patch-zz-rtp-clock-state"
+negative altered-rtp-adaptation 'FFmpeg patch checksum differs: patch-zz-rtp-clock-state'
+cp "$work/saved-rtp-patch" "$pkg/patches/patch-zz-rtp-clock-state"
+rm "$pkg/patches/patch-zz-rtp-clock-state"
+sed '/SHA1 (patch-zz-rtp-clock-state)/d' "$work/saved-distinfo" > "$pkg/distinfo"
+negative omitted-rtp-adaptation 'Incomplete FFmpeg recipe: patches/patch-zz-rtp-clock-state'
+cp "$work/saved-rtp-patch" "$pkg/patches/patch-zz-rtp-clock-state"
+cp "$work/saved-distinfo" "$pkg/distinfo"
+cp "$pkg/patches/patch-zz-rtp-open-cleanup" "$work/saved-rtp-open-patch"
+printf '\nchanged\n' >> "$pkg/patches/patch-zz-rtp-open-cleanup"
+negative altered-rtp-open-adaptation 'FFmpeg patch checksum differs: patch-zz-rtp-open-cleanup'
+cp "$work/saved-rtp-open-patch" "$pkg/patches/patch-zz-rtp-open-cleanup"
+rm "$pkg/patches/patch-zz-rtp-open-cleanup"
+sed '/SHA1 (patch-zz-rtp-open-cleanup)/d' "$work/saved-distinfo" > "$pkg/distinfo"
+negative omitted-rtp-open-adaptation 'Incomplete FFmpeg recipe: patches/patch-zz-rtp-open-cleanup'
+cp "$work/saved-rtp-open-patch" "$pkg/patches/patch-zz-rtp-open-cleanup"
+cp "$work/saved-distinfo" "$pkg/distinfo"
+cp "$pkg/patches/patch-zz-sdp-range-bounds" "$work/saved-range-patch"
+printf '\nchanged\n' >> "$pkg/patches/patch-zz-sdp-range-bounds"
+negative altered-range-adaptation 'FFmpeg patch checksum differs: patch-zz-sdp-range-bounds'
+cp "$work/saved-range-patch" "$pkg/patches/patch-zz-sdp-range-bounds"
+rm "$pkg/patches/patch-zz-sdp-range-bounds"
+sed '/SHA1 (patch-zz-sdp-range-bounds)/d' "$work/saved-distinfo" > "$pkg/distinfo"
+negative omitted-range-adaptation 'Incomplete FFmpeg recipe: patches/patch-zz-sdp-range-bounds'
+cp "$work/saved-range-patch" "$pkg/patches/patch-zz-sdp-range-bounds"
 cp "$work/saved-distinfo" "$pkg/distinfo"
 cp "$profile/sources.tsv" "$work/saved-manifest"
 sed 's/8c385028/00000000/' "$work/saved-manifest" > "$profile/sources.tsv"

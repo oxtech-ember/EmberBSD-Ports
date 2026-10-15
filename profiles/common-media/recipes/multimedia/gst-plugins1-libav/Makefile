@@ -4,12 +4,18 @@
 
 DISTNAME=	gst-libav-${GST_VERSION}
 PKGNAME=	${DISTNAME:S/gst/gst-plugins1/}
+PKGREVISION=	1
 CATEGORIES=	multimedia
 MASTER_SITES=	https://gstreamer.freedesktop.org/src/gst-libav/
 EXTRACT_SUFX=	.tar.xz
 
 HOMEPAGE=	https://gstreamer.freedesktop.org/src/gst-libav/
 COMMENT=	GStreamer libav/ffmpeg plugin
+LICENSE=	gnu-lgpl-v2.1 AND gnu-gpl-v2
+
+# The selected FFmpeg 9 recipe always enables GPL components. Report the
+# resulting plugin license through upstream's own metadata switch.
+CPPFLAGS+=	-DGST_LIBAV_ENABLE_GPL=1
 
 USE_LANGUAGES=	c c++
 USE_TOOLS+=	pkg-config perl

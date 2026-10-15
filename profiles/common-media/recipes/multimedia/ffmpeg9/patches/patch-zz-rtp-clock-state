@@ -1,0 +1,188 @@
+$NetBSD$
+
+Preserve valid zero RTP clock origins and modular first-packet offsets.
+Track RTP/RTCP/RTSP initialization explicitly, reset it on RTSP play/seek,
+and retain rtptime=0 while rejecting absent or invalid RTP-Info clocks.
+Initialize unknown parser byte positions at zero while preserving packet
+position metadata and actual timestamps. This lets the first RTP AU retain PTS.
+AI-assisted EmberBSD adaptation of FFmpeg 9.0.2; not submitted or accepted
+upstream. Original FFmpeg authorship and LGPL remain.
+
+--- libavcodec/parser.c.orig
++++ libavcodec/parser.c
+@@ -140,8 +140,9 @@
+     desc = avcodec_descriptor_get(avctx->codec_id);
+ 
+     if (!(s->flags & PARSER_FLAG_FETCHED_OFFSET)) {
++        /* Unknown packet positions must not make the first byte offset negative. */
+         s->next_frame_offset =
+-        s->cur_offset        = pos;
++        s->cur_offset        = pos < 0 ? 0 : pos;
+         s->flags            |= PARSER_FLAG_FETCHED_OFFSET;
+     }
+ 
+--- libavformat/rtpdec.h.orig
++++ libavformat/rtpdec.h
+@@ -52,6 +52,7 @@
+ void ff_rtp_parse_close(RTPDemuxContext *s);
+ int64_t ff_rtp_queued_packet_time(RTPDemuxContext *s);
+ void ff_rtp_reset_packet_queue(RTPDemuxContext *s);
++void ff_rtp_reset_timestamps(RTPDemuxContext *s);
+ 
+ /**
+  * Send a dummy packet on both port pairs to set up the connection
+@@ -153,6 +154,8 @@
+     uint16_t seq;
+     uint32_t timestamp;
+     uint32_t base_timestamp;
++    int timestamp_initialized;
++    int base_timestamp_initialized;
+     int64_t  unwrapped_timestamp;
+     int64_t  range_start_offset;
+     int max_payload_size;
+--- libavformat/rtpdec.c.orig
++++ libavformat/rtpdec.c
+@@ -203,8 +203,10 @@
+ 
+             if (s->first_rtcp_ntp_time == AV_NOPTS_VALUE) {
+                 s->first_rtcp_ntp_time = s->last_sr.ntp_timestamp;
+-                if (!s->base_timestamp)
++                if (!s->base_timestamp_initialized) {
+                     s->base_timestamp = s->last_sr.rtp_timestamp;
++                    s->base_timestamp_initialized = 1;
++                }
+                 s->rtcp_ts_offset = (int32_t)(s->last_sr.rtp_timestamp - s->base_timestamp);
+             }
+ 
+@@ -662,13 +664,17 @@
+         return;
+     }
+ 
+-    if (!s->base_timestamp)
++    if (!s->base_timestamp_initialized) {
+         s->base_timestamp = timestamp;
++        s->base_timestamp_initialized = 1;
++    }
+     /* assume that the difference is INT32_MIN < x < INT32_MAX,
+-     * but allow the first timestamp to exceed INT32_MAX */
+-    if (!s->timestamp)
+-        s->unwrapped_timestamp += timestamp;
+-    else
++     * including the first packet's offset from an RTCP or RTP-Info origin */
++    if (!s->timestamp_initialized) {
++        s->unwrapped_timestamp = (int64_t)s->base_timestamp +
++                                (int32_t)(timestamp - s->base_timestamp);
++        s->timestamp_initialized = 1;
++    } else
+         s->unwrapped_timestamp += (int32_t)(timestamp - s->timestamp);
+     s->timestamp = timestamp;
+     pkt->pts     = s->unwrapped_timestamp + s->range_start_offset -
+@@ -758,6 +764,18 @@
+     return rv;
+ }
+ 
++void ff_rtp_reset_timestamps(RTPDemuxContext *s)
++{
++    s->last_sr.ntp_timestamp       = AV_NOPTS_VALUE;
++    s->first_rtcp_ntp_time         = AV_NOPTS_VALUE;
++    s->base_timestamp              = 0;
++    s->timestamp                   = 0;
++    s->base_timestamp_initialized  = 0;
++    s->timestamp_initialized       = 0;
++    s->unwrapped_timestamp         = 0;
++    s->rtcp_ts_offset              = 0;
++}
++
+ void ff_rtp_reset_packet_queue(RTPDemuxContext *s)
+ {
+     while (s->queue) {
+--- libavformat/rtsp.c.orig
++++ libavformat/rtsp.c
+@@ -21,6 +21,8 @@
+ 
+ #include "config_components.h"
+ 
++#include <errno.h>
++
+ #include "libavutil/avassert.h"
+ #include "libavutil/base64.h"
+ #include "libavutil/bprint.h"
+@@ -1076,10 +1078,10 @@
+ }
+ 
+ static void handle_rtp_info(RTSPState *rt, const char *url,
+-                            uint32_t seq, uint32_t rtptime)
++                            uint32_t seq, uint32_t rtptime, int rtptime_present)
+ {
+     int i;
+-    if (!rtptime || !url[0])
++    if (!rtptime_present || !url[0])
+         return;
+     if (rt->transport != RTSP_TRANSPORT_RTP)
+         return;
+@@ -1090,6 +1092,7 @@
+             continue;
+         if (!strcmp(rtsp_st->control_url, url)) {
+             rtpctx->base_timestamp = rtptime;
++            rtpctx->base_timestamp_initialized = 1;
+             break;
+         }
+     }
+@@ -1097,7 +1100,7 @@
+ 
+ static void rtsp_parse_rtp_info(RTSPState *rt, const char *p)
+ {
+-    int read = 0;
++    int read = 0, rtptime_present = 0;
+     char key[20], value[MAX_URL_SIZE], url[MAX_URL_SIZE] = "";
+     uint32_t seq = 0, rtptime = 0;
+ 
+@@ -1115,19 +1118,28 @@
+             av_strlcpy(url, value, sizeof(url));
+         else if (!strcmp(key, "seq"))
+             seq = strtoul(value, NULL, 10);
+-        else if (!strcmp(key, "rtptime"))
+-            rtptime = strtoul(value, NULL, 10);
++        else if (!strcmp(key, "rtptime")) {
++            char *end;
++            unsigned long parsed;
++
++            errno = 0;
++            parsed = strtoul(value, &end, 10);
++            rtptime_present = value[0] >= '0' && value[0] <= '9' &&
++                              !*end && !errno && parsed <= UINT32_MAX;
++            rtptime = rtptime_present ? (uint32_t)parsed : 0;
++        }
+         if (*p == ',') {
+-            handle_rtp_info(rt, url, seq, rtptime);
++            handle_rtp_info(rt, url, seq, rtptime, rtptime_present);
+             url[0] = '\0';
+             seq = rtptime = 0;
++            rtptime_present = 0;
+             read = 0;
+         }
+         if (*p)
+             p++;
+     }
+     if (read > 0)
+-        handle_rtp_info(rt, url, seq, rtptime);
++        handle_rtp_info(rt, url, seq, rtptime, rtptime_present);
+ }
+ 
+ void ff_rtsp_parse_line(AVFormatContext *s,
+--- libavformat/rtspdec.c.orig
++++ libavformat/rtspdec.c
+@@ -554,12 +554,7 @@
+                 if (!rtpctx)
+                     continue;
+                 ff_rtp_reset_packet_queue(rtpctx);
+-                rtpctx->last_sr.ntp_timestamp = AV_NOPTS_VALUE;
+-                rtpctx->first_rtcp_ntp_time = AV_NOPTS_VALUE;
+-                rtpctx->base_timestamp      = 0;
+-                rtpctx->timestamp           = 0;
+-                rtpctx->unwrapped_timestamp = 0;
+-                rtpctx->rtcp_ts_offset      = 0;
++                ff_rtp_reset_timestamps(rtpctx);
+             }
+         }
+         if (rt->state == RTSP_STATE_PAUSED) {
