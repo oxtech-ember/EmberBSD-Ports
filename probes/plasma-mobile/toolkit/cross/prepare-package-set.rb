@@ -89,6 +89,19 @@ def library_metadata(build, paths, context)
   end
 end
 
+# Match exact package-managed paths. A SONAME alias must be explicit payload;
+# a different major version or an unrelated installed sysroot file is not enough.
+def package_library_closure(snapshots, payloads)
+  providers = payloads.values.flat_map(&:keys).to_h { |path| [path, true] }
+  snapshots.each do |name, metadata|
+    metadata.fetch('+BUILD_INFO').each_line do |line|
+      next unless line.start_with?('REQUIRES=/usr/pkg/')
+      path = line.delete_prefix('REQUIRES=').chomp
+      check(providers.key?(path), "Package-managed requirement is absent from the set: #{name}: #{path}")
+    end
+  end
+end
+
 # PAX records use byte counts, not newline splitting. Paths and links can be long.
 def pax_records(data)
   values = {}
@@ -214,6 +227,7 @@ begin
   packages = {}
   snapshots = {}
   manifests = {}
+  payloads = {}
   order = []
   visit = lambda do |name|
     check(/\A[a-zA-Z0-9][a-zA-Z0-9_.+\-]*-[0-9][a-zA-Z0-9_.+\-]*\z/.match?(name), "Invalid package name: #{name}")
@@ -224,6 +238,7 @@ begin
     check(contents.lines.grep(/^@name /) == ["@name #{name}\n"], "Package identity mismatch: #{name}")
     files, metadata, paths = package_manifest(contents)
     manifests[name] = files
+    payloads[name] = paths
     snapshots[name] = metadata.to_h { |entry| [entry, File.binread(File.join(pkgdb, name, entry))] }
     check(snapshots[name].fetch('+CONTENTS') == contents, "Installed manifest changed during read: #{name}")
     target_metadata(snapshots[name].fetch('+BUILD_INFO'), "installed #{name}")
@@ -242,6 +257,7 @@ begin
     order << name
   end
   roots.each { |name| visit.call(name) }
+  package_library_closure(snapshots, payloads)
   # Only a complete, verified directory is renamed to the advertised output.
   staging = Dir.mktmpdir(".#{File.basename(output)}-", File.dirname(output))
   FileUtils.mkdir(File.join(staging, 'packages'))
