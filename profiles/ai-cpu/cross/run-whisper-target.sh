@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Actual target package and speech acceptance.
 set -eu
-[ "$#" = 4 ] || { echo 'Usage: run-whisper-target.sh PACKAGE MODEL JFK_WAV NEW_OUTPUT' >&2; exit 2; }
-package=$1 model=$2 wav=$3 out=$4
+[ "$#" = 5 ] || { echo 'Usage: run-whisper-target.sh PACKAGE MODEL JFK_WAV MONOSPACE_FONT NEW_OUTPUT' >&2; exit 2; }
+package=$1 model=$2 wav=$3 font=$4 out=$5
 [ "$(uname -s)" = NetBSD ] && [ "$(uname -p)" = aarch64 ] || exit 1
 for path do case "$path" in /*) ;; *) exit 2;; esac; done
 [ ! -e "$out" ] && [ ! -L "$out" ] || exit 2
@@ -23,7 +23,7 @@ done > "$out/linkage.txt"
 grep -q '/usr/pkg/gcc16/lib/libstdc++.so.7' "$out/linkage.txt"
 grep -q '/usr/pkg/gcc16/lib/libgcc_s.so.1' "$out/linkage.txt"
 if grep -E 'not found|/workspace/' "$out/linkage.txt"; then exit 1; fi
-sh "$recipe/../tests/whisper-runtime.sh" /usr/pkg/bin/whisper-cli "$model" "$wav" "$out/runtime" > "$out/runtime.log" 2>&1
+sh "$recipe/../tests/whisper-runtime.sh" /usr/pkg/bin/whisper-cli "$model" "$wav" "$font" "$out/runtime" > "$out/runtime.log" 2>&1
 pkg_delete whisper-cpp-1.9.5
 for name in whisper-cli whisper-bench whisper-quantize; do [ ! -e "/usr/pkg/bin/$name" ] || exit 1; done
 if pkg_info -e whisper-cpp-1.9.5; then exit 1; fi

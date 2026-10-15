@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Real tiny-model file transcription contracts.
 set -eu
-[ "$#" = 4 ] || { echo 'Usage: whisper-runtime.sh CLI MODEL JFK_WAV NEW_OUTPUT' >&2; exit 2; }
-cli=$1 model=$2 wav=$3 out=$4
+[ "$#" = 5 ] || { echo 'Usage: whisper-runtime.sh CLI MODEL JFK_WAV MONOSPACE_FONT NEW_OUTPUT' >&2; exit 2; }
+cli=$1 model=$2 wav=$3 font=$4 out=$5
 for path do case "$path" in /*) ;; *) exit 2;; esac; done
 [ ! -e "$out" ] && [ ! -L "$out" ] || exit 2
-[ -x "$cli" ] && [ -f "$model" ] && [ -f "$wav" ] || exit 2
+[ -x "$cli" ] && [ -f "$model" ] && [ -f "$wav" ] && [ -f "$font" ] || exit 2
 export LC_ALL=C
 hash() {
     if command -v sha256 >/dev/null 2>&1; then sha256 -q "$1";
@@ -55,8 +55,19 @@ grep -q 'failed to write' "$out/output-write.log"
 [ -s "$out/full.json" ] || exit 1
 expect 11 wts-font transcribe -owts -fp "$out/missing-font.ttf" -of "$out/font"
 grep -q 'font not found' "$out/wts-font.log"
+# Generate the script with an actual font. Rendering it is a separate test.
+transcribe -owts -fp "$font" -of "$out/font-positive" > "$out/font-positive.stdout" 2> "$out/font-positive.log"
+[ -s "$out/font-positive.wts" ] || exit 1
+grep -q '^ffmpeg ' "$out/font-positive.wts"
 expect 11 input-indices "$cli" -m "$model" -f "$out/missing.wav" -f "$wav" \
     -of "$out/missing-output" -of "$out/valid-output" -l en -t 2 -p 1 -bo 1 -bs 1 -nf -ng -otxt
 [ ! -e "$out/missing-output.txt" ] && [ -s "$out/valid-output.txt" ] || exit 1
 cmp "$out/transcript.txt" "$out/valid-output.txt"
+name=$(printf 'model\n\t\001"\\control.bin')
+escaped_model=$out/$name
+ln -s "$model" "$escaped_model"
+printf '%s' "$escaped_model" > "$out/escaped-model-path.txt"
+"$cli" -m "$escaped_model" -f "$wav" -l en -t 2 -p 1 -bo 1 -bs 1 -nf -ng \
+    -otxt -ojf -of "$out/escaped" > "$out/escaped.stdout" 2> "$out/escaped.log"
+cmp "$out/transcript.txt" "$out/escaped.txt"
 echo 'PASS: exact JFK words, malformed inputs, output failures and batch output identity'

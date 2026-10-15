@@ -117,7 +117,7 @@ for target in $tests; do
 done > "$out/tests-elf.txt"
 test "$(grep -c 'Machine:.*AArch64' "$out/tests-elf.txt")" = 4
 for path in "$prefix" "$sysroot" "$out"; do
-    if grep -E 'RPATH|RUNPATH|NEEDED' "$out/elf.txt" "$out/tests-elf.txt" | grep -F "$path"; then
+    if grep -h -E 'RPATH|RUNPATH|NEEDED' "$out/elf.txt" "$out/tests-elf.txt" | grep -F "$path"; then
         echo 'Build-host path leaked into ELF dependencies.' >&2; exit 1
     fi
 done
