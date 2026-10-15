@@ -6,10 +6,11 @@ set -eu
 recipe=$(CDPATH= cd -- "$1" && pwd)
 mkdir "$2"
 work=$(CDPATH= cd -- "$2" && pwd)
-mkdir -p "$work/source/mkspecs/netbsd-g++" "$work/source/mkspecs/features"
+mkdir -p "$work/source/mkspecs/netbsd-g++" "$work/source/mkspecs/features" "$work/source/mkspecs/devices"
 printf 'pkgsrc configuration\n' > "$work/source/qmake.conf"
 printf 'old platform configuration\n' > "$work/source/mkspecs/netbsd-g++/qmake.conf"
 printf 'old patch backup\n' > "$work/source/mkspecs/netbsd-g++/qmake.conf.orig"
+printf 'old feature patch backup\n' > "$work/source/mkspecs/features/toolchain.prf.orig"
 printf 'PKG_CONFIG_EXECUTABLE = /build/tool\n' > "$work/source/mkspecs/qmodule.pri"
 printf 'version = 1\n' > "$work/source/mkspecs/REUSE.toml"
 cp "$work/source/mkspecs/qmodule.pri" "$work/qmodule.expected"
@@ -24,6 +25,12 @@ for run in 1 2; do
     cmp "$work/qmodule.expected" "$work/source/mkspecs/qmodule.pri"
     cmp "$work/reuse.expected" "$work/source/mkspecs/REUSE.toml"
     [ ! -f "$work/source/mkspecs/netbsd-g++/qmake.conf.orig" ]
+    [ ! -f "$work/source/mkspecs/features/toolchain.prf.orig" ]
     [ ! -e "$work/source/mkspecs/features/qmake.conf" ]
+    [ ! -e "$work/source/mkspecs/devices/qmake.conf" ]
+    if grep -qx 'qt6/mkspecs/devices/qmake.conf' "$recipe/PLIST"; then
+        echo 'PLIST requires a fabricated device configuration' >&2
+        exit 1
+    fi
 done
 echo 'PASS: Qt recipe preserves generated metadata and licenses across reconfiguration'

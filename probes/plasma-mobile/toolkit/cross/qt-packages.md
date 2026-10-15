@@ -103,6 +103,10 @@ runs the actual recipe loop twice, preserving metadata and licensing each time;
 it fails with the original recipe. Existing damaged work trees need restoration
 of the license file from the verified archive and regeneration of qmodule.pri.
 Do not discard compiled objects merely to repair these files.
+The loop removes patch backups from feature directories too. The manifest does
+not require a fabricated `mkspecs/devices/qmake.conf`. Both cases have regression
+checks. A fresh Qtbase build exposed these two packaging defects.
+The repair changes no compiled source or Qt feature configuration.
 
 Cross Qt installs target development tools and libraries, but upstream omits
 Android deployment host tools. The manifest reflects that distinction and the
