@@ -82,8 +82,11 @@ It is not an acceptance result. The initial probe distinguishes ENOTSUP,
 EOPNOTSUPP and ENOSYS from real access errors. EmberBSD's `vfs_xattr.c`
 converts EOPNOTSUPP to the distinct ENOTSUP value for its xattr syscalls.
 The root-filesystem run on CM5 reported this unsupported operation.
-Installed package files and helpers pass there; filesystem API acceptance
-requires a separate filesystem with extended attributes enabled.
+Installed package files and helpers pass there. On a separate FFS2ea image,
+CREATE, duplicate rejection, REPLACE and direct reads pass. Library copying
+fails because FFS returns length-prefixed names through `llistxattr`, which
+requires NUL-terminated names. The kernel owns that correction.
+The libattr runtime and complete CLI acceptance remain pending.
 
 Run the errno regression against the actual consumer source:
 
@@ -106,7 +109,7 @@ checks `vnconfig -l -m 1` before attachment and creates only a new image.
 Its format follows the OS tests `tests/fs/ffs/t_extattr.c` and
 `tests/sbin/fsck_ffs/t_extattr.sh`. It copies results out, unmounts and detaches
 its device before deleting its image. A failed runtime or cleanup preserves the image.
-It does not change the root filesystem. Execution still needs board acceptance.
+It does not change the root filesystem. The board run exposed the FFS list-format defect above.
 Tmpfs has no xattr vnode operations in the inspected OS source and is not a substitute.
 
 GCC16 `-fanalyzer` processes all 19 selected upstream translation units.
