@@ -1,0 +1,16 @@
+# Origin: EmberBSD (AI-assisted).
+# Use the same Qt 6 include directory in pkg-config and the installed headers.
+# KDE_INSTALL_INCLUDEDIR_KF5 is not defined in this Qt 6-only project.
+# Upstream: not submitted.
+
+--- src/CMakeLists.txt.orig
++++ src/CMakeLists.txt
+@@ -111,7 +111,7 @@ ecm_generate_export_header(KF6PulseAudioQt
+ )
+ 
+ ecm_generate_pkgconfig_file(BASE_NAME KF6PulseAudioQt
+-      INCLUDE_INSTALL_DIR ${KDE_INSTALL_INCLUDEDIR_KF5}/KF6PulseAudioQt/
++      INCLUDE_INSTALL_DIR ${KDE_INSTALL_INCLUDEDIR_KF}/KF6PulseAudioQt/
+       DEPS "Qt6Core"
+     INSTALL)
+ 

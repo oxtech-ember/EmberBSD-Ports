@@ -98,6 +98,48 @@ mutate.call('unfinished-manifest', 'Manifest needs a final newline') do |directo
   path = File.join(directory, 'packages.sha256')
   File.write(path, File.read(path).chomp)
 end
+# NetBSD od prints the decimal byte 10 as 010. macOS prints 10.
+# Keep the real byte reader. Change only its output formatting in the mock.
+mock_bin = File.join(work, 'bsd-od-bin')
+Dir.mkdir(mock_bin)
+real_od = run!('sh', '-c', 'command -v od').strip
+mock_od = File.join(mock_bin, 'od')
+File.write(mock_od, <<~SH)
+  #!/bin/sh
+  set -eu
+  case "$*" in
+    '-An -tu1') #{real_od} "$@" | awk '{ for (i=1; i<=NF; i++) printf " %03d", $i; print "" }' ;;
+    *) exec #{real_od} "$@" ;;
+  esac
+SH
+File.chmod(0755, mock_od)
+env['PATH'] = "#{mock_bin}:#{ENV.fetch('PATH')}"
+check.call('bsd-od-final-lf', valid)
+# The original decimal string comparison must reject the same valid bundle.
+legacy = File.join(work, 'installer-decimal-control.sh')
+control = File.read(installer).sub(" | sed 's/^0*//'", '')
+raise 'Missing production decimal normalization' if control == File.read(installer)
+File.write(legacy, control)
+out, err, status = Open3.capture3(env, 'sh', legacy, valid)
+File.write(File.join(work, 'bsd-od-decimal-control.log'), out + err)
+raise 'Decimal control did not reject 010' if status.success? || !(out + err).include?('Manifest needs a final newline')
+count += 1
+puts 'PASS: bsd-od-decimal-control rejects the valid LF bundle'
+{
+  'packages.sha256' => 'Invalid or duplicate checksum entry',
+  'install-order.txt' => 'Invalid or duplicate install-order entry',
+  'roots.txt' => 'Invalid, missing or duplicate root package'
+}.each do |manifest, crlf_error|
+  mutate.call("bsd-od-no-lf-#{manifest}", 'Manifest needs a final newline') do |directory|
+    file = File.join(directory, manifest)
+    File.binwrite(file, File.binread(file).delete_suffix("\n"))
+  end
+  mutate.call("bsd-od-crlf-#{manifest}", crlf_error) do |directory|
+    file = File.join(directory, manifest)
+    File.binwrite(file, File.binread(file).gsub("\n", "\r\n"))
+  end
+end
+env.delete('PATH')
 mutate.call('archive-symlink', 'Not a regular package archive') do |directory|
   path = File.join(directory, 'packages', "#{names.first}.tgz")
   File.unlink(path)

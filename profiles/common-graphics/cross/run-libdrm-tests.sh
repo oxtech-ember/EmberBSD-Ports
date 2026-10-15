@@ -31,7 +31,7 @@ echo 'PASS: hash'
 echo 'PASS: drmsl'
 # This upstream inspection script can use an existing target interpreter.
 # It is a test tool, not a libdrm runtime dependency.
-"${PYTHON:-python3.14}" ./symbols-check.py --lib ./libdrm.so.2.134.0 \
+"${PYTHON:-python3.15}" ./symbols-check.py --lib ./libdrm.so.2.134.0 \
     --symbols-file ./core-symbols.txt --nm "${NM:-nm}"
 echo 'PASS: core-symbols-check'
 if ./drmdevice > drmdevice.log 2>&1; then

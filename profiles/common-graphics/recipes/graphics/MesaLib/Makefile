@@ -19,7 +19,7 @@ USE_CXX_FEATURES+=	c++17
 GCC_REQD+=	16.2
 MESON_REQD+=	1.12.1
 PYTHON_FOR_BUILD_ONLY=	tool
-PYTHON_VERSION_REQD=	314
+PYTHON_VERSION_REQD=	315
 .include "../../mk/bsd.prefs.mk"
 .include "../../lang/python/pyversion.mk"
 .include "features.mk"

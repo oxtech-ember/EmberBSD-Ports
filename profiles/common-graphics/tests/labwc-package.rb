@@ -12,7 +12,7 @@ def accepted_rpath?(path, sysroot, directory)
   # Match the accepted Mesa/LLVM package closure's retained Python libdir.
   inherited = %w[/usr/pkg/lib/libgallium-26.2.4.so /usr/pkg/lib/libLLVM.so.23.1]
   return true if inherited.include?(path.delete_prefix(sysroot)) &&
-    directory == '/usr/pkg/lib/python3.14/config-3.14'
+    directory == '/usr/pkg/lib/python3.15/config-3.15'
 
   # The accepted GCC16 package retains these compiler runtime search paths.
   # They are not permission for consumers to embed arbitrary build paths.
@@ -27,9 +27,9 @@ if ARGV == ['--rpath-regression']
   [[compiler, '/usr/pkg/gcc16/aarch64--netbsd/lib/.', true],
    [compiler, '/usr/pkg/gcc16/lib/.', true],
    [consumer, '/usr/pkg/lib', true],
-   [root + '/usr/pkg/lib/libgallium-26.2.4.so', '/usr/pkg/lib/python3.14/config-3.14', true],
-   [root + '/usr/pkg/lib/libLLVM.so.23.1', '/usr/pkg/lib/python3.14/config-3.14', true],
-   [consumer, '/usr/pkg/lib/python3.14/config-3.14', false],
+   [root + '/usr/pkg/lib/libgallium-26.2.4.so', '/usr/pkg/lib/python3.15/config-3.15', true],
+   [root + '/usr/pkg/lib/libLLVM.so.23.1', '/usr/pkg/lib/python3.15/config-3.15', true],
+   [consumer, '/usr/pkg/lib/python3.15/config-3.15', false],
    [consumer, '/usr/pkg/gcc16/aarch64--netbsd/lib/.', false],
    [compiler, '/tmp/build/lib', false],
    [consumer, '/test/sysroot/usr/pkg/lib', false],

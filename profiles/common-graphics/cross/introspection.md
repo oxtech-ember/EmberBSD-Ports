@@ -21,8 +21,8 @@ Use the [common graphics cross profile](profile.md) with an
 GI 1.86.0 is a declared tool dependency. Meson runs native Python and native
 `g-ir-scanner`/`g-ir-compiler`; pkgsrc's target sysconfig remains responsible
 for Python headers, extension ABI and matching installed target shebangs.
-The recorded AArch64 package uses Python 3.14; the current common interpreter
-selection is Python 3.15. Its target package acceptance remains separate.
+The current common interpreter installs `/usr/pkg/bin/python3.15` shebangs.
+The recorded AArch64 package used Python 3.14; new target acceptance remains separate.
 A Meson native machine file keeps its C compiler on macOS.
 Cross `readelf` obtains ELF SONAMEs instead of invoking a host loader.
 

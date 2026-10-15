@@ -22,7 +22,7 @@ awk '/"micro":/ { if ($2 != "199,") exit 1; count++ }
     END { if (count != 2) exit 1 }' "$work/details.json"
 grep -q '"platform": "netbsd-11.0-evbarm"' "$work/details.json"
 grep -q '".cpython-314.so"' "$work/details.json"
-grep -q '/config-3.14/libpython3.14.a' "$work/details.json"
+grep -q '/config-3.15/libpython3.15.a' "$work/details.json"
 if grep -q darwin "$work/details.json"; then
     echo 'Host platform leaked into build details' >&2; exit 1
 fi

@@ -165,7 +165,7 @@ until queue.empty?
   rpaths = dynamic.scan(/\((?:RUNPATH|RPATH)\).*\[([^\]]+)\]/).flatten.flat_map { |p| p.split(':') }
   abort "relative ELF runtime path: #{real}" unless rpaths.all? { |p| p.start_with?('/') }
   rpaths.map! { |p| File.expand_path(p) }
-  allowed = %w[/usr/pkg/lib /usr/pkg/gcc16/lib /usr/pkg/gcc16/aarch64--netbsd/lib /usr/pkg/lib/python3.14/config-3.14 /usr/lib /lib]
+  allowed = %w[/usr/pkg/lib /usr/pkg/gcc16/lib /usr/pkg/gcc16/aarch64--netbsd/lib /usr/pkg/lib/python3.15/config-3.15 /usr/lib /lib]
   abort "foreign ELF runtime path: #{real}" unless rpaths.all? { |p| allowed.include?(p) }
   dynamic.scan(/\(NEEDED\).*\[([^\]]+)\]/).flatten.each do |name|
     abort "absolute/non-library NEEDED: #{name}" unless name.match?(/\Alib[A-Za-z0-9_.+-]+\z/)

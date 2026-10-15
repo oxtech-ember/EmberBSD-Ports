@@ -9,7 +9,7 @@ work = File.expand_path(ARGV[1])
 abort 'NEW_WORK must be new and absolute' unless ARGV[1].start_with?('/') && !File.exist?(work)
 Dir.mkdir(work)
 render = "#{prefix}/bin/mako-render-3.14"
-abort 'Mako CLI does not select the shared Python 3.14 interpreter' unless File.readlines(render).first.strip == "#!#{prefix}/bin/python3.14"
+abort 'Mako CLI does not select the shared Python 3.15 interpreter' unless File.readlines(render).first.strip == "#!#{prefix}/bin/python3.15"
 %w[py314-mako-1.4.3 py314-markupsafe-3.0.4].each do |package|
   out, err, status = Open3.capture3("#{prefix}/sbin/pkg_info", '-K', "#{prefix}/pkgdb", '-e', package)
   abort "missing selected package #{package}: #{err}" unless status.success? && out.strip == package

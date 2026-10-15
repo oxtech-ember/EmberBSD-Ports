@@ -12,7 +12,7 @@ do not install another LLVM, Python or Wayland runtime on the build host.
 Build the same scanner version as the target libraries:
 
 ```sh
-HOST_PYTHON=/absolute/python3.14 \
+HOST_PYTHON=/absolute/python3.15 \
 MESON=/absolute/meson-1.12.1/meson.py \
 NINJA=/absolute/ninja PKG_CONFIG=/absolute/host/pkg-config \
 sh build-wayland-scanner.sh /absolute/wayland-1.26.0.tar.xz /absolute/new-work
