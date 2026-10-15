@@ -90,9 +90,11 @@ include/libadwaita-1/adw-window.h
 include/libadwaita-1/adw-wrap-box.h
 include/libadwaita-1/adw-wrap-layout.h
 include/libadwaita-1/adwaita.h
+lib/girepository-1.0/Adw-1.typelib
 lib/libadwaita-1.so
 lib/libadwaita-1.so.0
 lib/pkgconfig/libadwaita-1.pc
+share/gir-1.0/Adw-1.gir
 share/locale/ab/LC_MESSAGES/libadwaita.mo
 share/locale/be/LC_MESSAGES/libadwaita.mo
 share/locale/bg/LC_MESSAGES/libadwaita.mo
@@ -149,3 +151,5 @@ share/locale/uz/LC_MESSAGES/libadwaita.mo
 share/locale/vi/LC_MESSAGES/libadwaita.mo
 share/locale/zh_CN/LC_MESSAGES/libadwaita.mo
 share/locale/zh_TW/LC_MESSAGES/libadwaita.mo
+share/vala/vapi/libadwaita-1.deps
+share/vala/vapi/libadwaita-1.vapi

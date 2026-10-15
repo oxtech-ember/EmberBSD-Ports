@@ -34,6 +34,8 @@ MESON_BINARY.g-ir-compiler= ${TOOLBASE}/bin/g-ir-compiler
 MESON_CROSS_VARS+= emberbsd_gi_cross emberbsd_gi_ldd_wrapper
 MESON_CROSS.emberbsd_gi_cross= true
 MESON_CROSS.emberbsd_gi_ldd_wrapper= '${EMBERBSD_GI_FILESDIR}/elf-needed.sh'
+# Cross: the GIR introspect binary links with the target sysroot paths.
+LDFLAGS+=	-L/private/tmp/ember-common-stack/sysroot/usr/pkg/lib
 BUILDLINK_DEPMETHOD.gobject-introspection=	build
 BUILDLINK_API_DEPENDS.gobject-introspection+=	gobject-introspection>=1.86.0nb5
 # Cross: the pkgsrc buildlink scan does not lift the GI pkg-config file;
@@ -43,6 +45,11 @@ pre-configure: emberbsd-adw-gi-pc
 emberbsd-adw-gi-pc:
 	${RUN}${CP} ${CROSS_DESTDIR}${PREFIX}/lib/pkgconfig/gobject-introspection-1.0.pc \
 		${BUILDLINK_DIR}/lib/pkgconfig/
+	${RUN}for l in libgirepository-1.0.so libgirepository-1.0.so.1 \
+		libgirepository-1.0.so.1.0.0; do \
+		${LN} -sf ${CROSS_DESTDIR}${PREFIX}/lib/$$l ${BUILDLINK_DIR}/lib/$$l; \
+	done
+MESON_ARGS+=	-Dintrospection=enabled -Dvapi=true
 .else
 MESON_ARGS+=	-Dintrospection=disabled -Dvapi=false
 .endif
