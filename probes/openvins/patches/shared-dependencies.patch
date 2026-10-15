@@ -79,7 +79,7 @@
 +# Shared EmberBSD dependency versions; no older parallel dependency stack.
 +find_package(Eigen3 5.0.1 EXACT REQUIRED CONFIG)
 +find_package(OpenCV 5.0.0 EXACT REQUIRED COMPONENTS core imgproc imgcodecs features calib geometry video)
-+find_package(Boost 1.91.0 EXACT REQUIRED COMPONENTS filesystem thread date_time)
++find_package(Boost 1.92.0 EXACT REQUIRED COMPONENTS filesystem thread date_time)
 +find_package(Ceres 2.2.0 EXACT REQUIRED CONFIG)
  message(STATUS "OPENCV: " ${OpenCV_VERSION} " | BOOST: " ${Boost_VERSION} " | CERES: " ${Ceres_VERSION})
  

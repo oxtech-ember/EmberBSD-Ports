@@ -23,7 +23,7 @@ ROS and ArUco are disabled here. Our original shell/C++ checks are MIT licensed;
 patches to upstream files retain their upstream license and attribution.
 
 Dependencies are the existing common Eigen 5.0.1 (MPL-2.0 and file exceptions),
-OpenCV 5.0.0 (Apache-2.0), Boost 1.91.0 (BSL-1.0) and Ceres 2.2.0 (BSD-3-Clause).
+OpenCV 5.0.0 (Apache-2.0), Boost 1.92.0 (BSL-1.0) and Ceres 2.2.0 (BSD-3-Clause).
 [Official Ceres tags](https://github.com/ceres-solver/ceres-solver/tags) identify
 2.2.0, commit `85331393dc0dff09f6fb9903ab0c4bfa3e134b01`, as current stable in the
 checked source; reuse [the existing recipe](../ceres/PROVENANCE.md). Do not create
