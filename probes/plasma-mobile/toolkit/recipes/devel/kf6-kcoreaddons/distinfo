@@ -8,6 +8,6 @@ SHA1 (patch-autotests_kdirwatch_unittest.cpp) = a8f69f7eb62091af584f1f94566736cf
 SHA1 (patch-src_lib_caching_ksdclock.cpp) = 1d52b3881e415b2ad8a165ac21e9f295e353e69c
 SHA1 (patch-src_lib_caching_ksdcmapping__p.h) = 657e45acf9201f4b2611e9f0eadf925577b27855
 SHA1 (patch-src_lib_io_kautosavefile.cpp) = b50bd37139febd7e82f3087241107171161dec2a
-SHA1 (patch-src_lib_io_kdirwatch.cpp) = 335adc9ba8920374bfb3c1692c8bc3c5934a1691
+SHA1 (patch-src_lib_io_kdirwatch.cpp) = 197ad598bb1c6ceb70e229dc64f7b6a1b22df261
 SHA1 (patch-src_lib_io_kfilesystemtype.cpp) = 1d95424e51f22c4c41ef30571e35bce47041afe6
 SHA1 (patch-src_lib_util_kmemoryinfo.cpp) = c0af6b7fd3f08b9c5bb07426b0f1999cd49f456f
