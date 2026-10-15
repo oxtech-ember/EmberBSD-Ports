@@ -5,5 +5,6 @@ SHA512 (qtmultimedia-everywhere-src-6.12.0.tar.xz) = cf60ea63de80ae4483e00c5c5f3
 Size (qtmultimedia-everywhere-src-6.12.0.tar.xz) = 10544184 bytes
 SHA1 (patch-cmake_FindFFmpeg.cmake) = ed6a161c91977df3c86c981f4fe98268d07b820e
 SHA1 (patch-src_multimedia_audio_qaudiosystem__p.h) = f4603fd93db64278613f857fe1b48f75f99864a3
+SHA1 (patch-src_multimedia_configure.cmake) = 5d7ff65ef4a16334b26b5dd771d86227d24cf19a
 SHA1 (patch-src_plugins_multimedia_ffmpeg_CMakeLists.txt) = 38f53656f162c3aef54d377336e98bb37471d108
 SHA1 (patch-src_resonance-audio_CMakeLists.txt) = 5b683654d0144b7444d86731acd9125b50b3b4f6

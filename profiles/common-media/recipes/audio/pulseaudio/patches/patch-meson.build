@@ -1,16 +1,24 @@
 $NetBSD: patch-meson.build,v 1.4 2024/01/30 13:54:32 ryoon Exp $
 
-* Non-MS Windows case uses libintl for dgettext.
-  Fix build under NetBSD.
+Origin: pkgsrc; AI-assisted EmberBSD refresh, not submitted upstream.
+
+Check dgettext through the selected libintl.h before requiring libintl.
+The header may redirect the public name to a library-specific symbol.
+Keep external libintl when the selected declaration does not link in libc.
 
 --- meson.build.orig	2022-05-28 15:18:37.000000000 +0000
 +++ meson.build
-@@ -368,7 +368,7 @@ if cc.has_header_symbol('sys/syscall.h',
+@@ -375,12 +375,8 @@ if cc.has_header_symbol('sys/syscall.h',
  endif
  
- if cc.has_function('dgettext')
+-if cc.has_function('dgettext')
 -  if host_machine.system() != 'windows'
-+  if host_machine.system() == 'windows'
-     libintl_dep = []
-   else
-     libintl_dep = cc.find_library('intl')
+-    libintl_dep = []
+-  else
+-    libintl_dep = cc.find_library('intl')
+-  endif
++if cc.has_function('dgettext', prefix : '#include <libintl.h>')
++  libintl_dep = []
+ else
+   libintl_dep = cc.find_library('intl')
+ endif

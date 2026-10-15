@@ -33,9 +33,10 @@ PLIST.pulseaudio=	yes
 CONFIGURE_ARGS+=	-no-pulseaudio
 .endif
 
-# For some reason ffmpeg support is conditional on pulseaudio OR apple
-# in src/multimedia/configure.cmake
-.if !empty(PKG_OPTIONS:Mpulseaudio) || ${OPSYS} == "Darwin"
+# NetBSD supports FFmpeg video without a low-level audio backend.
+# Keep the normal PulseAudio and Darwin selection on other platforms.
+.if !empty(PKG_OPTIONS:Mpulseaudio) || ${OPSYS} == "Darwin" || ${OPSYS} == "NetBSD"
+CONFIGURE_ARGS+=	-ffmpeg
 .include "../../multimedia/ffmpeg9/buildlink3.mk"
 PLIST.ffmpeg=		yes
 .  if ${PKG_BUILD_OPTIONS.ffmpeg9:Mvaapi}
