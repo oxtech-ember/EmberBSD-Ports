@@ -28,3 +28,6 @@ Pass its generated `.pkgdb/+INSTALL` and matching package examples to the same t
 This host check does not run target ELF programs, desktop cache hooks or `pkg_add`.
 The complete target installation and Plasma session require separate acceptance.
 No C/C++ source changes in this repair. Compiler analyzers and Valgrind are not claimed.
+
+For unchanged accepted payloads, use the [metadata refresh workflow](../cross/metadata-refresh.md)
+to regenerate package scripts without another C++ compilation.
