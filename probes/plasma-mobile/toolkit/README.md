@@ -103,7 +103,8 @@ A policy check alone does not establish that every transitive provider is curren
 Original pkgsrc RCS identifiers, recipe ownership, upstream licences and
 patch explanations are retained. The manifest and adaptations are
 AI-assisted EmberBSD work; these changes have not been submitted or accepted
-upstream. [sources.tsv](sources.tsv) records original archive URLs and SHA256.
+upstream. [sources.tsv](sources.tsv) records original archive URLs and SHA256,
+plus the fixed [derived CSS vendor source](recipes/devel/cxx-rust-cssparser/README.md#reproduce-the-derived-vendor-source).
 Qt hashes were compared with the official `.sha256` responses. Frameworks 6.31 archive
 hashes are checked against the release server's `.sha256` files; this is not a claim
 of release-signature verification. The recipes also record BLAKE2s, SHA512,

@@ -23,7 +23,11 @@ LC_ALL=C sort "$work/recipes" -o "$work/recipes"
 awk -F '\t' -v inventory="$work/inventory" -v plan="$work/sources" '
     function fail(message) { print message > "/dev/stderr"; bad=1; exit 2 }
     function recipe(name) { return name ~ /^[a-z0-9][a-z0-9-]*\/[a-zA-Z0-9][a-zA-Z0-9_+.-]*$/ }
-    function archive(name) { return name ~ /^[a-zA-Z0-9][a-zA-Z0-9._+-]*\.(tar\.(xz|gz|bz2|zst)|zip)$/ }
+    function archive(name) { return name ~ /^[a-zA-Z0-9][a-zA-Z0-9._+-]*\.(tar\.(xz|gz|bz2|zst)|zip)$/ || name == "cxx-rust-cssparser-vendor-1.1.0-r1.tar" }
+    function css_vendor(owner, name, hash, origin) {
+        return owner == "devel/cxx-rust-cssparser" && name == "cxx-rust-cssparser-vendor-1.1.0-r1.tar" &&
+            hash == "d2e42517a49923fcd79fb7f05b650a4821c218c4d04d9c9691c7fdef55e74a2a" && origin == "derived:cssparser-vendor-r1"
+    }
     /^#/ || /^$/ { next }
     FILENAME == ARGV[1] {
         if (NF != 4 || !recipe($1) || !recipe($2) || ($3 != "package" && $3 != "meta" && $3 != "overlay") ||
@@ -36,8 +40,13 @@ awk -F '\t' -v inventory="$work/inventory" -v plan="$work/sources" '
         next
     }
     FILENAME == ARGV[2] {
+        derived=css_vendor($1, $2, $3, $4)
         if (NF != 4 || !recipe($1) || !archive($2) || length($3) != 64 || $3 !~ /^[0-9a-f]+$/ ||
-            $4 !~ /^https?:\/\/[^[:space:]]+$/ || seen[$1 SUBSEP $2]++) fail("Invalid toolkit source entry: " $0)
+            ($4 !~ /^https?:\/\/[^[:space:]]+$/ && !derived) ||
+            (($2 == "cxx-rust-cssparser-vendor-1.1.0-r1.tar" || $4 ~ /^derived:/) && !derived) ||
+            seen[$1 SUBSEP $2]++) fail("Invalid toolkit source entry: " $0)
+        if (derived) css_derived=1
+        source_hash[$1 SUBSEP $2]=$3; source_origin[$1 SUBSEP $2]=$4
         if (blob_owner[$2] && blob_owner[$2] != $1) fail("Archive must have one canonical owner: " $2)
         blob_owner[$2]=$1
         count[$1]++; first[$1]=$2
@@ -51,6 +60,11 @@ awk -F '\t' -v inventory="$work/inventory" -v plan="$work/sources" '
     END {
         if (bad) exit 2
         if (!recipes || !rows) fail("Empty toolkit recipe or source manifest")
+        if (css_derived && (owner["devel/cxx-rust-cssparser"] != "devel/cxx-rust-cssparser" ||
+            kind["devel/cxx-rust-cssparser"] != "package" || primary["devel/cxx-rust-cssparser"] != "cxx-rust-cssparser-1.1.0.tar.gz" ||
+            source_hash["devel/cxx-rust-cssparser" SUBSEP "cxx-rust-cssparser-1.1.0.tar.gz"] != "97bf4670e565bf43ae77348af74a38c1b432fc5dfa47ab15c375e04331fdb8e1" ||
+            source_origin["devel/cxx-rust-cssparser" SUBSEP "cxx-rust-cssparser-1.1.0.tar.gz"] != "https://github.com/KDE/cxx-rust-cssparser/archive/refs/tags/v1.1.0.tar.gz"))
+            fail("Derived CSS parser source binding mismatch")
         for (name in mapped) {
             if (!exported[name] || !exported[owner[name]]) fail("Unknown source-owner recipe: " name)
             if (owner[owner[name]] && owner[owner[name]] != owner[name]) fail("Source-owner chains are not supported: " name)

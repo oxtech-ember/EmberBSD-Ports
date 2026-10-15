@@ -87,12 +87,12 @@ identification. These checks do not build the parser or prove real std, Cargo,
 Qt/Union, package lifecycle or target runtime acceptance. Those remain required
 with the normally installed providers and the actual source archives.
 
-## Reproduce the missing vendor source
+## Reproduce the derived vendor source
 
-The old `cxx-rust-cssparser-vendor-1.1.0.tar.gz` source entry points to a
-GitHub Cargo.lock HTML page, which is not a vendor archive. No published
-upstream release asset has been established for that entry. Do not manufacture
-bytes to match its old digest or disable source verification.
+The previous `cxx-rust-cssparser-vendor-1.1.0.tar.gz` source entry pointed to a
+GitHub Cargo.lock HTML page. It was not a vendor archive. The recipe now uses
+the locally derived plain USTAR `cxx-rust-cssparser-vendor-1.1.0-r1.tar`.
+It does not advertise a replacement upstream HTTP asset.
 
 `files/vendor.rb` prepares the replacement on the build host using Ruby 3.1
 or newer, RubyGems and the shared official native Rust/Cargo 1.99.0 provider.
@@ -140,12 +140,34 @@ executable bit. The helper checks the writer's metadata contract; the archive
 has no compression-version dependency. `receipt.json` records input, helper,
 closure and output hashes plus actual provider and Ruby identities.
 
-The helper and its synthetic host fixture alone do not establish the derived
-artifact hash. Until two real native Cargo runs produce identical bytes,
-the replacement filename is intentionally not wired into DISTFILES, distinfo
-or the toolkit source manifest. The follow-up must record the actual SHA256,
-normal pkgsrc BLAKE2s/SHA512/size, and the narrowly scoped derived-source
-provenance rule before exporting or building this recipe on a fresh host.
+Two fresh native Rust/Cargo 1.99.0 generations produced byte-identical archives
+and receipts. The original lock supplies 61 crates. Complete original file
+audits retained 103 license/notice files and restored 36 VCS metadata files.
+[vendor-r1.json](files/vendor-r1.json) records the actual derivation inputs,
+provider identities and hashes. It is a host derivation receipt, not an
+upstream release signature.
+
+The resulting archive is 40,816,640 bytes. Its SHA256 is
+`d2e42517a49923fcd79fb7f05b650a4821c218c4d04d9c9691c7fdef55e74a2a`.
+The recipe and toolkit manifest now select that exact file and keep normal
+BLAKE2s, SHA512 and size checks. The validator permits
+`derived:cssparser-vendor-r1` only for this owner, filename and hash, bound to
+the unchanged original source archive and declared primary. Other derived
+markers and plain TAR filenames fail.
+
+After reproducing and comparing both generations, copy the verified archive
+into `DISTDIR` and verify the copied bytes. `pre-fetch` refuses a missing or
+changed derived archive with generation instructions. The original GitHub
+source still uses normal framework fetch and checksum handling. No checksum,
+patch, ownership or payload verification is skipped.
+
+Real native `cargo metadata --offline --locked --filter-platform
+x86_64-unknown-netbsd` also resolves from the archive-extracted vendor tree
+with an empty private Cargo home. Its selected graph contains 52 registry
+packages plus the local root. The full source vendor closure remains 61.
+This does not compile the parser or accept a target package/runtime. The
+application cross build, target dependency closure and binary-package notice
+installation still require their own checks.
 
 To include the actual pinned source extraction in the host regression, run:
 
