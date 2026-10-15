@@ -27,6 +27,8 @@ execution; it does not yet cross-build installable pkgsrc packages.
 Its `--kernel` mode prepares the same patched compiler frontends without a
 userland sysroot. Application mode retains the target GCC16 headers/runtime
 requirement; kernel compilation and boot need their own OS acceptance.
+The cross entry points also accept `--target amd64` (`x86_64--netbsd`).
+Host orchestration fixtures pass; real amd64 compiler and runtime checks remain pending.
 
 The [GDB 18.1nb1 native debugger](gdb/README.md) also cross-builds on macOS.
 It reads split and standard supplementary DWARF in the AArch64 VM and

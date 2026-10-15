@@ -3,21 +3,18 @@
 # Origin: EmberBSD; AI-assisted host cross-compiler recipe using Ports sources.
 set -eu
 usage() {
-    echo 'Usage: build.sh EXPORTED_PKGSRC GCC_ARCHIVE SYSROOT NETBSD_TOOLDIR [HOST_MATH_PREFIX] NEW_WORK' >&2
-    echo '       build.sh --kernel EXPORTED_PKGSRC GCC_ARCHIVE NETBSD_TOOLDIR [HOST_MATH_PREFIX] NEW_WORK' >&2
+    echo 'Usage: build.sh [--target aarch64|amd64] EXPORTED_PKGSRC GCC_ARCHIVE SYSROOT NETBSD_TOOLDIR [HOST_MATH_PREFIX] NEW_WORK' >&2
+    echo '       build.sh [--target aarch64|amd64] --kernel EXPORTED_PKGSRC GCC_ARCHIVE NETBSD_TOOLDIR [HOST_MATH_PREFIX] NEW_WORK' >&2
     exit 2
 }
-mode=applications
-case "${1:-}" in
-    --kernel) mode=kernel; shift;;
-    --*) echo 'Unknown build mode.' >&2; usage;;
-esac
+profile=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
+kernel_allowed=yes
+. "$profile/cross/target-options.sh"
 if [ "$mode" = kernel ]; then
     [ "$#" -eq 4 ] || [ "$#" -eq 5 ] || usage
 else
     [ "$#" -eq 5 ] || [ "$#" -eq 6 ] || usage
 fi
-profile=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
 recipe=$1/lang/gcc16
 archive=$2
 if [ "$mode" = kernel ]; then
@@ -52,14 +49,16 @@ case "$jobs" in ''|*[!0-9]*) jobs=0;; esac
 [ ! -e "$work" ] && [ ! -L "$work" ] || { echo 'NEW_WORK already exists.' >&2; exit 2; }
 if [ "$mode" = applications ]; then
     [ -f "$sysroot/usr/include/stddef.h" ] || { echo 'Target headers missing.' >&2; exit 2; }
-    [ -f "$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0/crtbegin.o" ] || {
+    [ -f "$sysroot/usr/pkg/gcc16/lib/gcc/$triplet/16.2.0/crtbegin.o" ] || {
         echo 'The sysroot must contain the selected target GCC16 package.' >&2; exit 2;
     }
-    [ -d "$sysroot/usr/pkg/gcc16/include/c++" ] || exit 2
+    [ -d "$sysroot/usr/pkg/gcc16/include/c++/$triplet" ] || {
+        echo 'Selected target GCC16 C++ headers missing.' >&2; exit 2;
+    }
 fi
 [ -x "$tools/bin/nbgmake" ] || { echo 'Bootstrap GNU make missing.' >&2; exit 2; }
 for tool in ar as elfedit ld nm objcopy objdump ranlib readelf size strings strip; do
-    [ -x "$tools/bin/aarch64--netbsd-$tool" ] || {
+    [ -x "$tools/bin/$triplet-$tool" ] || {
         echo "Bootstrap target tool missing: $tool" >&2; exit 2;
     }
 done
@@ -116,13 +115,13 @@ prefix=$work/toolchain
 mkdir "$work/src" "$work/build" "$prefix" "$prefix/bin"
 {
     uname -srm
-    printf 'mode=%s\nhost_cc=%s\nhost_cxx=%s\n' "$mode" "${HOST_CC:-cc}" "${HOST_CXX:-c++}"
+    printf 'mode=%s\ntarget=%s\ntriplet=%s\nhost_cc=%s\nhost_cxx=%s\n' "$mode" "$target" "$triplet" "${HOST_CC:-cc}" "${HOST_CXX:-c++}"
     "${HOST_CC:-cc}" --version
     "${HOST_CC:-cc}" -dumpmachine
     "${HOST_CXX:-c++}" --version
     shasum -a 256 "$archive" "$recipe/distinfo" "$recipe"/patches/patch-*
     "$tools/bin/nbgmake" --version
-    "$tools/bin/aarch64--netbsd-ld" --version
+    "$tools/bin/$triplet-ld" --version
     printf 'sysroot=%s\nbootstrap=%s\nhost_math=%s\njobs=%s\n' "$sysroot" "$tools" "$math" "$jobs"
     shasum -a 256 "$math/lib/libgmp.a" "$math/lib/libmpfr.a" "$math/lib/libmpc.a"
 } > "$work/inputs.txt"
@@ -137,11 +136,11 @@ for name in $patches; do
     [ "$name" != patch-gcc_Makefile.in ] || continue
     patch -f -N -F 0 -p0 -d "$work/src" < "$recipe/patches/$name"
 done > "$work/patch.log" 2>&1
-mkdir -p "$prefix/aarch64--netbsd/bin"
+mkdir -p "$prefix/$triplet/bin"
 for tool in ar as elfedit ld nm objcopy objdump ranlib readelf size strings strip; do
-    cp "$tools/bin/aarch64--netbsd-$tool" "$prefix/bin/"
+    cp "$tools/bin/$triplet-$tool" "$prefix/bin/"
     # GCC invokes objcopy for -gsplit-dwarf through its target-tool search path.
-    ln -s "../../bin/aarch64--netbsd-$tool" "$prefix/aarch64--netbsd/bin/$tool"
+    ln -s "../../bin/$triplet-$tool" "$prefix/$triplet/bin/$tool"
 done
 cd "$work/build"
 unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH
@@ -151,17 +150,19 @@ else
     set -- --with-sysroot="$sysroot" --with-gxx-include-dir="$sysroot/usr/pkg/gcc16/include/c++"
 fi
 CC=${HOST_CC:-cc} CXX=${HOST_CXX:-c++} CFLAGS=-O2 CXXFLAGS=-O2 \
-    ../src/configure --target=aarch64--netbsd --prefix="$prefix" \
+    ../src/configure --target="$triplet" --prefix="$prefix" \
     "$@" \
     --with-gmp="$math" --with-mpfr="$math" --with-mpc="$math" \
-    --with-as="$prefix/bin/aarch64--netbsd-as" --with-ld="$prefix/bin/aarch64--netbsd-ld" \
+    --with-as="$prefix/bin/$triplet-as" --with-ld="$prefix/bin/$triplet-ld" \
     --enable-languages=c,c++ --disable-bootstrap --disable-multilib \
     --disable-nls --without-isl > "$work/configure.log" 2>&1
 "$tools/bin/nbgmake" -j"$jobs" all-gcc > "$work/build.log" 2>&1
 "$tools/bin/nbgmake" install-gcc > "$work/install.log" 2>&1
-[ "$("$prefix/bin/aarch64--netbsd-gcc" -dumpfullversion)" = 16.2.0 ]
-[ "$("$prefix/bin/aarch64--netbsd-g++" -dumpmachine)" = aarch64--netbsd ]
-sh "$profile/cross/tests/split-dwarf.sh" "$prefix" "$work/split-dwarf"
+for compiler in gcc g++; do
+    [ "$("$prefix/bin/$triplet-$compiler" -dumpfullversion)" = 16.2.0 ]
+    [ "$("$prefix/bin/$triplet-$compiler" -dumpmachine)" = "$triplet" ]
+done
+sh "$profile/cross/tests/split-dwarf.sh" --target "$target" "$prefix" "$work/split-dwarf"
 echo "GCC16 cross compiler built: $prefix"
 if [ "$mode" = kernel ]; then
     echo 'Kernel frontends only; validate the selected fork kernel build and boot separately.'
