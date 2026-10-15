@@ -269,6 +269,8 @@ runtime behavior are validated.
   [Desktop package preparation](probes/plasma-mobile/toolkit/cross/desktop-package-set.md)
   now includes the Activities service, current Xwayland/libei/basu providers,
   cross XKB paths and repaired native QtDBus generators for KWin's property XML.
+  Its auditor rejects stale library providers, self-dependencies and package-managed
+  ABI requirements missing from the selected payload before transfer.
   Package-set and session-runner host checks pass. Full-session execution on
   CM5 remains a separate gate, including normal startup and logout.
   [Current desktop providers](probes/plasma-mobile/toolkit/cross/desktop-providers.md)

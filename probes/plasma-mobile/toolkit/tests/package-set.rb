@@ -25,7 +25,7 @@ def pack(tar, tree, destination)
     Dir.glob('**/*', File::FNM_DOTMATCH).reject { |name| File.directory?(name) }.sort
   end
   names.delete('+CONTENTS')
-  run!(tar, '-czf', destination, '--format=pax', '-C', tree, '+CONTENTS', *names)
+  run!({ 'COPYFILE_DISABLE' => '1' }, tar, '-czf', destination, '--format=pax', '-C', tree, '+CONTENTS', *names)
 end
 
 payload = File.join(work, 'payload')
@@ -36,18 +36,31 @@ File.write(File.join(payload, long_name), "Pkgtools payload fixture\n")
 File.link(File.join(payload, long_name), File.join(payload, 'share/pkgset/hardlink'))
 File.symlink(long_link, File.join(payload, 'share/pkgset/symlink'))
 File.write(File.join(payload, 'share/pkgset/root'), "Package root fixture\n")
+FileUtils.mkdir_p(File.join(payload, 'lib'))
+File.write(File.join(payload, 'lib/libfixture.so.8.0'), "Package library fixture\n")
+File.symlink('libfixture.so.8.0', File.join(payload, 'lib/libfixture.so.8'))
 File.write(File.join(work, 'comment'), "Package-set regression\n")
 File.write(File.join(work, 'description'), "Package-set regression fixture. It is not a runtime acceptance package.\n")
 File.write(File.join(work, 'build-info'), "OPSYS=NetBSD\nOS_VERSION=11.0\nMACHINE_ARCH=aarch64\nOBJECT_FMT=ELF\n")
 cache = File.join(work, 'cache')
 Dir.mkdir(cache)
-{ 'pkgset-leaf-1.0' => [long_name, 'share/pkgset/hardlink', 'share/pkgset/symlink'],
+{ 'pkgset-leaf-1.0' => [long_name, 'share/pkgset/hardlink', 'share/pkgset/symlink',
+                            'lib/libfixture.so.8.0', 'lib/libfixture.so.8'],
   'pkgset-root-1.0' => ['share/pkgset/root'] }.each do |name, files|
+  build_info = File.join(work, "#{name}.build-info")
+  info_bytes = File.read(File.join(work, 'build-info'))
+  info_bytes += "PROVIDES=/usr/pkg/#{files.first}\nREQUIRES=/usr/lib/libc.so.12\n"
+  if name == 'pkgset-root-1.0'
+    info_bytes += "REQUIRES=/usr/pkg/lib/libfixture.so.8\n"
+  else
+    info_bytes += "PROVIDES=/usr/pkg/lib/libfixture.so.8.0\nPROVIDES=/usr/pkg/lib/libfixture.so.8\n"
+  end
+  File.write(build_info, info_bytes)
   plist = File.join(work, "#{name}.plist")
   File.write(plist, files.join("\n") + "\n")
   command = [create, '-p', payload, '-I', '/usr/pkg', '-f', plist,
              '-c', File.join(work, 'comment'), '-d', File.join(work, 'description'),
-             '-B', File.join(work, 'build-info')]
+             '-B', build_info]
   command += ['-P', 'pkgset-leaf>=1.0'] if name == 'pkgset-root-1.0'
   run!(*command, File.join(cache, "#{name}.tgz"))
 end
@@ -68,8 +81,8 @@ leaf = File.join(cache, 'pkgset-leaf-1.0.tgz')
 root = File.join(cache, 'pkgset-root-1.0.tgz')
 index = File.join(work, 'archives.txt')
 count = 0
-check_case = lambda do |name, database, leaf_archive, expected|
-  File.write(index, (Array(leaf_archive) + [root]).join("\n") + "\n")
+check_case = lambda do |name, database, leaf_archive, expected, root_archive = root|
+  File.write(index, (Array(leaf_archive) + [root_archive]).join("\n") + "\n")
   destination = File.join(work, "set-#{name}")
   output, error, status = Open3.capture3({ 'PKG_INFO' => info, 'BSDTAR' => tar },
                                       RbConfig.ruby, auditor, database, index, destination, 'pkgset-root-1.0')
@@ -134,6 +147,46 @@ mutate.call('changed-metadata', 'Archive metadata mismatch +DESC') do |tree|
   File.chmod(0644, File.join(tree, '+DESC'))
   File.write(File.join(tree, '+DESC'), "Different description\n")
 end
+# Stale metadata can match both the installed database and the archive.
+# Payload hashes alone must not accept an old provider or a self-dependency.
+{
+  'stale-provider' => ["PROVIDES=/usr/pkg/lib/libfixture.so.7\n", 'PROVIDES is absent from the manifest'],
+  'self-required-file' => ["REQUIRES=/usr/pkg/share/pkgset/hardlink\n", "REQUIRES names the package's own payload"],
+  'self-required-symlink' => ["REQUIRES=/usr/pkg/share/pkgset/symlink\n", "REQUIRES names the package's own payload"]
+}.each do |name, (extra, expected)|
+  directory = File.join(work, name)
+  tree = File.join(directory, 'tree')
+  database = File.join(directory, 'pkgdb')
+  FileUtils.mkdir_p(tree)
+  FileUtils.cp_r(pkgdb, database)
+  run!(tar, '-xf', leaf, '-C', tree)
+  bytes = File.read(File.join(tree, '+BUILD_INFO')) + extra
+  [File.join(tree, '+BUILD_INFO'), File.join(database, 'pkgset-leaf-1.0/+BUILD_INFO')].each do |path|
+    File.chmod(0644, path)
+    File.write(path, bytes)
+  end
+  archive = File.join(directory, 'pkgset-leaf-1.0.tgz')
+  pack(tar, tree, archive)
+  check_case.call(name, database, archive, expected)
+end
+# A valid package dependency does not satisfy an obsolete shared-library ABI.
+# The provider packages .so.8 and its explicit alias, while this consumer needs .so.7.
+directory = File.join(work, 'obsolete-library-consumer')
+tree = File.join(directory, 'tree')
+database = File.join(directory, 'pkgdb')
+FileUtils.mkdir_p(tree)
+FileUtils.cp_r(pkgdb, database)
+run!(tar, '-xf', root, '-C', tree)
+bytes = File.read(File.join(tree, '+BUILD_INFO')).sub('REQUIRES=/usr/pkg/lib/libfixture.so.8',
+                                                       'REQUIRES=/usr/pkg/lib/libfixture.so.7')
+[File.join(tree, '+BUILD_INFO'), File.join(database, 'pkgset-root-1.0/+BUILD_INFO')].each do |path|
+  File.chmod(0644, path)
+  File.write(path, bytes)
+end
+archive = File.join(directory, 'pkgset-root-1.0.tgz')
+pack(tar, tree, archive)
+check_case.call('obsolete-library-consumer', database, leaf,
+                'Package-managed requirement is absent from the set: pkgset-root-1.0: /usr/pkg/lib/libfixture.so.7', archive)
 # A stale copy must not hide a later cache archive that passes the full audit.
 check_case.call('valid-after-stale-cache-copy', pkgdb,
                 [File.join(work, 'wrong-architecture/pkgset-leaf-1.0.tgz'), leaf], nil)

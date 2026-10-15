@@ -50,12 +50,17 @@ end
 
 def package_manifest(contents)
   files = {}
+  paths = {}
+  prefix = nil
   metadata = ['+CONTENTS']
   lines = contents.lines.map(&:chomp)
   i = 0
   while i < lines.length
     line = lines[i]
-    if line == '@ignore'
+    if line.start_with?('@cwd ')
+      prefix = line.delete_prefix('@cwd ')
+      check(prefix.start_with?('/'), "Relative package prefix: #{prefix}")
+    elsif line == '@ignore'
       i += 1
       ignored = lines.fetch(i)
       metadata << relative_name(ignored) if ignored.start_with?('+')
@@ -66,12 +71,41 @@ def package_manifest(contents)
       match = /\A@comment (MD5:([0-9a-f]{32})|Symlink:(.*))\z/.match(comment.to_s)
       check(match, "Missing file digest or symlink target: #{name}")
       files[name] = match[2] ? [:file, match[2]] : [:symlink, match[3]]
+      check(prefix, "Missing package prefix: #{name}")
+      paths[File.join(prefix, name)] = true
       i += 1
     end
     i += 1
   end
   check(metadata.uniq.length == metadata.length, 'Duplicate metadata entry in manifest')
-  [files, metadata]
+  [files, metadata, paths]
+end
+
+# pkg_add checks REQUIRES before extracting this package, including replacements.
+# Metadata must exclude the package's own payload and name real providers.
+def library_metadata(build, paths, context)
+  build.each_line do |line|
+    if line.start_with?('PROVIDES=')
+      path = line.delete_prefix('PROVIDES=').chomp
+      check(paths.key?(path), "PROVIDES is absent from the manifest: #{path}: #{context}")
+    elsif line.start_with?('REQUIRES=')
+      path = line.delete_prefix('REQUIRES=').chomp
+      check(!paths.key?(path), "REQUIRES names the package's own payload: #{path}: #{context}")
+    end
+  end
+end
+
+# Match exact package-managed paths. A SONAME alias must be explicit payload;
+# a different major version or an unrelated installed sysroot file is not enough.
+def package_library_closure(snapshots, payloads)
+  providers = payloads.values.flat_map(&:keys).to_h { |path| [path, true] }
+  snapshots.each do |name, metadata|
+    metadata.fetch('+BUILD_INFO').each_line do |line|
+      next unless line.start_with?('REQUIRES=/usr/pkg/')
+      path = line.delete_prefix('REQUIRES=').chomp
+      check(providers.key?(path), "Package-managed requirement is absent from the set: #{name}: #{path}")
+    end
+  end
 end
 
 # PAX records use byte counts, not newline splitting. Paths and links can be long.
@@ -221,6 +255,7 @@ begin
   packages = {}
   snapshots = {}
   manifests = {}
+  payloads = {}
   order = []
   visit = lambda do |name|
     check(/\A[a-zA-Z0-9][a-zA-Z0-9_.+\-]*-[0-9][a-zA-Z0-9_.+\-]*\z/.match?(name), "Invalid package name: #{name}")
@@ -229,11 +264,13 @@ begin
     packages[name] = :active
     contents = File.binread(File.join(pkgdb, name, '+CONTENTS'))
     check(contents.lines.grep(/^@name /) == ["@name #{name}\n"], "Package identity mismatch: #{name}")
-    files, metadata = package_manifest(contents)
+    files, metadata, paths = package_manifest(contents)
     manifests[name] = files
+    payloads[name] = paths
     snapshots[name] = metadata.to_h { |entry| [entry, File.binread(File.join(pkgdb, name, entry))] }
     check(snapshots[name].fetch('+CONTENTS') == contents, "Installed manifest changed during read: #{name}")
-    target_metadata(snapshots[name].fetch('+BUILD_INFO'), "installed #{name}", target)
+    target_metadata(snapshots[name].fetch("+BUILD_INFO"), "installed #{name}", target)
+    library_metadata(snapshots[name].fetch("+BUILD_INFO"), paths, "installed #{name}")
     contents.lines.grep(/^@pkgdep /).each do |line|
       pattern = line.delete_prefix('@pkgdep ').strip
       selected = cache[pattern] ||= begin
@@ -248,6 +285,7 @@ begin
     order << name
   end
   roots.each { |name| visit.call(name) }
+  package_library_closure(snapshots, payloads)
   # Only a complete, verified directory is renamed to the advertised output.
   staging = Dir.mktmpdir(".#{File.basename(output)}-", File.dirname(output))
   FileUtils.mkdir(File.join(staging, 'packages'))

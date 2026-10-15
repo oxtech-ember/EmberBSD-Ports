@@ -31,6 +31,11 @@ is illustrative. The command performs these checks before publishing output:
 - Check every installed dependency's and archive's `OPSYS`, `OS_VERSION`,
   `MACHINE_ARCH` and `OBJECT_FMT` against the selected target.
 - Match every declared metadata file with the installed copy.
+- Require each `PROVIDES` path to exist in the package manifest.
+- Reject `REQUIRES` paths supplied by the same package. `pkg_add` checks
+  requirements before extraction, also when replacing an installed version.
+- Require each `/usr/pkg/` requirement to name payload in the selected set.
+  A packaged SONAME alias is accepted. A different major version is not inferred.
 - Stream every regular file through MD5 and compare it with the pkgtools
   manifest. Match symbolic link targets. Resolve hard links to verified data.
 - Check each regular payload with ELF magic for the selected class, byte
@@ -69,13 +74,18 @@ PKG_ADMIN=/absolute/native/pkg_admin BSDTAR=/absolute/native/bsdtar \
     ruby probes/plasma-mobile/toolkit/tests/package-set-targets.rb /absolute/new-target-tests
 ```
 
-The 14 cases include PAX paths and link targets longer than the ustar limits,
+The 18 cases include PAX paths and link targets longer than the ustar limits,
 hard links, dependency order and copied SHA256. Negative cases cover a stale
 manifest, wrong archive architecture or OS version, modified payload bytes,
 changed symbolic links, missing or unlisted payload, changed metadata, missing
 dependencies and truncated archives. A valid later cache candidate is accepted.
 Duplicate roots are rejected. An existing completed output is not replaced.
-Failed audits leave no final set.
+Matching database and archive metadata must still reject a missing provider
+or a self-required regular file or symbolic link. Valid provider paths and
+external requirements remain accepted. Failed audits leave no final set.
+The valid fixture includes an explicit `.so.8` alias and a base `/usr/lib/`
+requirement. A consumer that requires `.so.7` fails when its declared provider
+packages only `.so.8`, even if both archive and database metadata agree.
 
 The target regression adds 28 checks with real pkgtools archives. It covers
 both architectures, root and dependency metadata, and mismatched ELF headers
@@ -87,6 +97,12 @@ The implementation reads PAX records by their byte lengths. Libarchive converts
 supported input compression to a stream; no package payload is extracted.
 Sparse members, non-file special devices, metadata above 16 MiB and PAX size
 overrides not represented by the tar header are explicitly rejected.
+
+The package-managed requirement gate correlates metadata with exact manifest
+paths in the selected closure. It does not inspect ELF `DT_NEEDED`, infer ABI
+compatibility, resolve arbitrary filesystem aliases, or validate base-system
+requirements outside `/usr/pkg/`. Those base paths require a separately verified
+matching EmberBSD sysroot and target loader checks.
 
 This is a package integrity and closure check. It does not prove that target
 ELF objects load, that target libraries are ABI-compatible, or that Plasma renders.
