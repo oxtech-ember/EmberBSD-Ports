@@ -46,6 +46,8 @@ native KPackage tooling and the non-GLVND EGL provider are checked separately.
 [The full KWin dependency migration](cross/desktop-session.md) retains the screen
 locker and KCMs. ConsoleKit's real session launcher passes CM5 regressions;
 complete desktop, ordinary-user login and device ownership remain pending.
+Its [session foundation patches](tests/consolekit/README.md) add checked control
+ownership and NetBSD TTY paths. Host function fixtures do not establish DRM access.
 [Full KWin on CM5](cross/cm5-kwin.md) now passes OpenGL/V3D selection and
 two Qt Quick pixel lifecycles on a virtual output. HDMI and the separate
 Plasma Desktop shell remain outside that acceptance. The separate Desktop 6.8.0
