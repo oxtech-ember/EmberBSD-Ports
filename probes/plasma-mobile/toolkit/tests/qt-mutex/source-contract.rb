@@ -9,7 +9,14 @@ require 'shellwords'
 abort 'Usage: source-contract.rb QTBASE_ARCHIVE NEW_OUTPUT' unless ARGV.length == 2
 archive, output = ARGV.map { |path| File.expand_path(path) }
 recipe = File.expand_path('../../recipes/x11/qt6-qtbase', __dir__)
-expected = File.read(File.join(recipe, 'distinfo'))[/^SHA512 \(qtbase-everywhere-src-6\.12\.0\.tar\.xz\) = (\h+)$/, 1]
+distinfo = File.read(File.join(recipe, 'distinfo'))
+patches = %w[patch-src_corelib_thread_qmutex__p.h patch-src_corelib_thread_qmutex__unix.cpp]
+patches.each do |name|
+  expected = distinfo[/^SHA1 \(#{Regexp.escape(name)}\) = (\h+)$/, 1]
+  canonical = File.readlines(File.join(recipe, 'patches', name)).reject { |line| line.match?(/\$NetBSD.*/) }.join
+  abort "Patch hash mismatch: #{name}" unless expected && Digest::SHA1.hexdigest(canonical) == expected
+end
+expected = distinfo[/^SHA512 \(qtbase-everywhere-src-6\.12\.0\.tar\.xz\) = (\h+)$/, 1]
 abort 'Wrong Qt 6.12.0 archive' unless expected && Digest::SHA512.file(archive).hexdigest == expected
 Dir.mkdir(output)
 def run(command)
@@ -60,7 +67,7 @@ commands = []
     File.write(File.join(source, file), content)
   end
   if variant != 'baseline'
-    %w[patch-src_corelib_thread_qmutex__p.h patch-src_corelib_thread_qmutex__unix.cpp].each do |patch|
+    patches.each do |patch|
       run(['patch', '--batch', '-p0', '-d', root, '-i', File.join(recipe, 'patches', patch)])
     end
   end

@@ -30,5 +30,5 @@ SHA1 (patch-src_plugins_platforms_xcb_qxcbconnection__basic.h) = e369001cba31e86
 SHA1 (patch-src_tools_moc_main.cpp) = ebdddd657ba1c24657a9ca5624907e31a5d0c8bb
 SHA1 (patch-src_widgets_graphicsview_qgraphicsitem__p.h) = fd55d5ef6fde506849aab07f7ba23e856373b3a1
 SHA1 (patch-src_gui_configure.cmake-portal) = cea757f6f5c5c65043f53920d519470ec3fd0f13
-SHA1 (patch-src_corelib_thread_qmutex__p.h) = 4e58365ece743c1534140f02dbb7f1df98aaf2f9
-SHA1 (patch-src_corelib_thread_qmutex__unix.cpp) = 8109177f38f4674fe6b1e4e5476288ecc24e85fc
+SHA1 (patch-src_corelib_thread_qmutex__p.h) = 118eda8444d1d0d7be32e2350d9b75c3e44e7dc7
+SHA1 (patch-src_corelib_thread_qmutex__unix.cpp) = bd010b997cbaae80611463b6053161ed0071f809
