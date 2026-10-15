@@ -57,6 +57,9 @@ runtime behavior are validated.
   creates and repacks mixed DWARF32/64 DWP files, including type units and
   shared indexed tables. Its installed tool passes 104 cases with live GDB
   values; existing C API, bitcode and ORC JIT consumers still pass.
+- [attr 2.6.0](probes/plasma-mobile/toolkit/tests/attr/README.md): complete cross
+  package, retained libattr ABI and corrected public headers/manual aliases.
+  Installed filesystem and CLI acceptance remain separate.
 - [Current common build tools](profiles/common-build-tools/README.md):
   [Mac cross packages](profiles/common-build-tools/cross/README.md) for
   pkgconf 3.0.7, GNU M4 1.4.21, Libtool 2.6.2 and
