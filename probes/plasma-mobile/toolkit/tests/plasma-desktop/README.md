@@ -42,7 +42,7 @@ The runner requires all these observations:
 - The panel models contain Kickoff, Pager, Icons-Only Task Manager,
   System Tray, Digital Clock and Show Desktop.
 - An unknown connector is rejected without creating an image.
-- A desktop containment capture completes and produces a 320×256 PNG header.
+- A desktop containment capture contains visible, nonuniform pixels in a decoded 320×256 PNG.
 - The shell's own Qt RHI log reports V3D OpenGL and no detected QML load error.
 - Six layout queries succeed over a further 30 seconds with the same shell process.
 - SIGTERM closes the shell successfully. KWin exits with the session wrapper.
@@ -113,3 +113,19 @@ They check shrinking timeouts, separate image paths, retained errors and child c
 The temporary copy replaces external graphics commands, the clock and liveness sleeps.
 No target binaries run. These fixtures do not emulate a GPU or Plasma.
 All added scripts are EmberBSD code with AI assistance.
+
+## Decode the capture
+
+Build `capture-pixels.c` with the common cross compiler and target libpng.
+Link `-lpng` and use the target `/usr/pkg/lib` runtime search path.
+Pass this binary as the second argument to `run.sh`.
+The host contract is `capture-pixels-test.rb NEW_OUTPUT`; use `CPPFLAGS`, `CFLAGS`,
+and `LDFLAGS` for the host libpng and optional ASan/UBSan.
+The contract rejects transparency, a uniform black image, wrong dimensions,
+a truncated header-only file, and corrupted compressed data.
+
+The test creates a digital clock in its private desktop containment.
+An empty Folder View can produce a valid fully transparent image.
+The decoder requires at least 256 nearly opaque pixels and visible color variation.
+This proves visible containment content, not a composited panel or HDMI output.
+It does not replace manual image inspection or input acceptance.

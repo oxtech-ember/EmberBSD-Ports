@@ -66,6 +66,11 @@ while :; do
     }
     sleep 1
 done
+# A bare Folder View can produce a valid fully transparent PNG. Add visible
+# content to this private test containment before checking decoded pixels.
+query org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
+    "$(cat capture-layout.js)" > capture-layout.txt
+grep -qx 'PASS: capture widget created' capture-layout.txt
 # This internal API must reject an unknown connector; it must not save a file.
 if query org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.grabContainmentImage \
         Ember-Missing-Output 320 256 "$PWD/missing.png" > missing-output.log 2>&1; then
@@ -105,6 +110,9 @@ while :; do
         capture_check_status=0
         /bin/sh ./check-results.sh png "$capture_prefix.png" \
             > "$capture_prefix-check.log" 2>&1 || capture_check_status=$?
+        if [ "$capture_check_status" -eq 0 ]; then
+            ./capture-pixels "$capture_prefix.png" >> "$capture_prefix-check.log" 2>&1 || capture_check_status=$?
+        fi
     else
         echo 'FAIL: capture request did not return true successfully' > "$capture_prefix-check.log"
     fi

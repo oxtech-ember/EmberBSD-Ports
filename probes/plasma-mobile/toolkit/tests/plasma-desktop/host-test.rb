@@ -19,10 +19,10 @@ end
 Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
   # The runner must reject invalid paths before it creates output or runs tools.
   run.call(:fail, '/bin/sh', "#{source}/run.sh")
-  run.call(:fail, '/bin/sh', "#{source}/run.sh", 'relative-output')
-  run.call(:fail, '/bin/sh', "#{source}/run.sh", temp)
+  run.call(:fail, '/bin/sh', "#{source}/run.sh", 'relative-output', '/bin/true')
+  run.call(:fail, '/bin/sh', "#{source}/run.sh", temp, '/bin/true')
   File.symlink("#{temp}/absent", "#{temp}/dangling")
-  run.call(:fail, '/bin/sh', "#{source}/run.sh", "#{temp}/dangling")
+  run.call(:fail, '/bin/sh', "#{source}/run.sh", "#{temp}/dangling", '/bin/true')
   checker = "#{source}/check-results.sh"
   # The GLES variant matches KWin 6.8 Workspace::supportInformation(), as
   # recorded on hardware. The GL spelling remains valid for earlier packages.
