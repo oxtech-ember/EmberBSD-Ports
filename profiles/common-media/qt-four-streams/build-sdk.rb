@@ -86,8 +86,43 @@ selected.each do |component|
   patches = recipe ? Dir.glob(recipe + '/patches/*').sort : []
   fingerprint = { archive_sha256: row[2], patches: patches.to_h { |p| [File.basename(p), Digest::SHA256.file(p).hexdigest] } }
   source_receipt = work + '/source/' + component + '.json'
+  source_refresh = nil
   File.open(work + '/source/.prepare.lock', 'w') do |lock|
   lock.flock(File::LOCK_EX)
+  if File.exist?(source_receipt) && JSON.parse(File.read(source_receipt)) != JSON.parse(JSON.generate(fingerprint))
+    backup = ENV['SOURCE_REFRESH_DIR']
+    abort 'Changed source inputs; use new WORK or an explicit SOURCE_REFRESH_DIR' unless backup
+    abort 'Refresh must select one component and a new directory under WORK/source-history-' unless
+      selected.length == 1 && backup.match?(%r{\A#{Regexp.escape(work)}/source-history-[A-Za-z0-9._-]+\z}) &&
+      !File.exist?(backup) && !File.symlink?(backup)
+    previous = JSON.parse(File.read(source_receipt))
+    abort 'Source refresh requires the same upstream archive' unless previous.fetch('archive_sha256') == row[2]
+    roots = [src, work + '/build-' + mode + '/' + component]
+    active = []
+    Dir.glob('/proc/[0-9]*').each do |procdir|
+      begin
+        paths = [File.readlink(procdir + '/cwd')]
+        Dir.children(procdir + '/fd').each do |fd|
+          begin
+            paths << File.readlink(procdir + '/fd/' + fd)
+          rescue Errno::ENOENT, Errno::EACCES
+          end
+        end
+        active << procdir if paths.any? { |p| roots.any? { |root| p == root || p.start_with?(root + '/') } }
+        active << procdir if File.readlines(procdir + '/maps').any? { |line| roots.any? { |root| line.include?(root + '/') } }
+      rescue Errno::ENOENT, Errno::EACCES
+      end
+    end
+    abort 'Stop users of the source and component build before refresh: ' + active.uniq.join(', ') unless active.empty?
+    FileUtils.mkdir_p(backup)
+    File.rename(src, backup + '/source')
+    File.rename(source_receipt, backup + '/source.json')
+    old_pass = work + '/build-' + mode + '/' + component + '/PASS.json'
+    FileUtils.cp(old_pass, backup + '/previous-PASS.json') if File.file?(old_pass)
+    source_refresh = { backup: backup, previous: previous, next: fingerprint,
+                       note: 'Fresh canonical source preparation. Preserve prior objects only through normal CMake/Ninja dependency checks.' }
+    File.write(backup + '/refresh.json', JSON.pretty_generate(source_refresh))
+  end
   unless File.exist?(source_receipt)
     abort 'Unowned source directory' if File.exist?(src)
     run({}, ['tar', '-xf', archive, '-C', work + '/source'], work + '/source/' + component + '.log')
@@ -103,10 +138,29 @@ selected.each do |component|
     end
     File.write(source_receipt, JSON.pretty_generate(fingerprint))
   end
+  if source_refresh
+    changed = []
+    Find.find(src) do |path|
+      next unless File.file?(path) && !File.symlink?(path)
+      relative = path.delete_prefix(src + '/')
+      before = source_refresh[:backup] + '/source/' + relative
+      if File.file?(before) && Digest::SHA256.file(before).hexdigest == Digest::SHA256.file(path).hexdigest
+        stat = File.stat(before)
+        File.utime(stat.atime, stat.mtime, path)
+        next
+      end
+      # New or changed inputs must be newer than prior outputs, even when an
+      # upstream archive carries old timestamps. Ninja sees the actual change.
+      File.utime(Time.now, Time.now, path)
+      changed << relative
+    end
+    source_refresh[:changed_regular_files] = changed
+  end
   abort 'Changed source inputs; use new WORK' unless JSON.parse(File.read(source_receipt)) == JSON.parse(JSON.generate(fingerprint))
   end
   build = work + '/build-' + mode + '/' + component
   FileUtils.mkdir_p(build)
+  File.write(build + '/source-refresh.json', JSON.pretty_generate(source_refresh)) if source_refresh
   log = build + '/commands.log'
   puts 'Building ' + mode + '/' + component; $stdout.flush
   if %w[harfbuzz pulse].include?(component)

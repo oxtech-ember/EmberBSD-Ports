@@ -54,10 +54,22 @@ media, FFmpeg 9, and required host system pkg-config directories.
 `glib-genmarshal`. `GCC_PREFIX` contains `bin/x86_64--netbsd-gcc` and G++.
 `COMPONENTS` selects an ordered subset for a resumed build. The default
 contains the six target components. The `pulse` component is native only.
+The native control also needs the host Xrandr development package when its
+QtBase enables Xlib. `NATIVE_EXTRA_PREFIX` can name an extracted current
+Debian amd64 prerequisite root. Its actual headers and libraries are recorded
+in the command environment. This option does not affect target builds.
 
 The builder checks archive SHA256 and canonical recipe patch SHA1 values.
 It applies patches with zero fuzz. A source fingerprint prevents reuse
 after an input patch changes. Use a new work directory for changed inputs.
+For a patch-only refresh of the same upstream archive, stop all users of
+the component source and build directories. Select exactly one component
+and set `SOURCE_REFRESH_DIR` to a new `WORK/source-history-NAME` directory.
+The builder preserves the entire prior source and receipt there. It extracts
+fresh pinned source and applies the full current canonical patch set.
+It touches each changed input before normal CMake and Ninja dependency
+checks. This is an incremental rebuild, with an explicit refresh receipt.
+It is not a claim that every object was compiled from scratch again.
 Each component retains the complete command log, source fingerprint, and
 installation receipt. The target stage is also copied to the caller's
 development sysroot. Use a private snapshot until target acceptance passes.

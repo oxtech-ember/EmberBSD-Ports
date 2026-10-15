@@ -24,7 +24,7 @@ config = {
   'png' => ['png-cpu-runtime-1.6.59', 'libpng-1.6.59', graphics + 'graphics/png', 'png-[0-9]*'],
   'freetype' => ['freetype2-cpu-runtime-2.14.3nb1', 'freetype-2.14.3', graphics + 'graphics/freetype2', 'freetype2-[0-9]*'],
   'harfbuzz' => ['harfbuzz-cpu-runtime-14.6.0nb1', 'harfbuzz-14.6.0', graphics + 'fonts/harfbuzz', 'harfbuzz-[0-9]*'],
-  'qtbase' => ['qt6-qtbase-cpu-runtime-6.12.0nb2', 'qtbase-everywhere-src-6.12.0', toolkit + 'x11/qt6-qtbase', 'qt6-qtbase-[0-9]*'],
+  'qtbase' => ['qt6-qtbase-cpu-runtime-6.12.0nb3', 'qtbase-everywhere-src-6.12.0', toolkit + 'x11/qt6-qtbase', 'qt6-qtbase-[0-9]*'],
   'qtshadertools' => ['qt6-qtshadertools-cpu-runtime-6.12.0', 'qtshadertools-everywhere-src-6.12.0', toolkit + 'graphics/qt6-qtshadertools', 'qt6-qtshadertools-[0-9]*'],
   'qtmultimedia' => ['qt6-qtmultimedia-cpu-runtime-6.12.0nb2', 'qtmultimedia-everywhere-src-6.12.0', toolkit + 'multimedia/qt6-qtmultimedia', 'qt6-qtmultimedia-[0-9]*']
 }

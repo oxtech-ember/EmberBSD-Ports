@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.19)
+project(QtBacktraceProbe LANGUAGES CXX)
+find_package(Qt6 6.12 REQUIRED COMPONENTS Core)
+add_executable(qt-backtrace-probe runtime.cpp)
+target_compile_features(qt-backtrace-probe PRIVATE cxx_std_17)
+target_compile_options(qt-backtrace-probe PRIVATE -Wall -Wextra -Werror)
+target_link_options(qt-backtrace-probe PRIVATE -Wl,--export-dynamic)
+target_link_libraries(qt-backtrace-probe PRIVATE Qt6::Core)
+set_target_properties(qt-backtrace-probe PROPERTIES
+    INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/qt6/lib;${CMAKE_INSTALL_PREFIX}/gcc16/lib")
+install(TARGETS qt-backtrace-probe RUNTIME DESTINATION libexec/emberbsd-qt-tests)
