@@ -1,7 +1,7 @@
 # LLVM 23 common family
 
 This profile prepares matching LLVM 23.1.3, Clang, LLD and upstream
-Python314 lit for the common Mesa26/TinyGo dependency closure. It extends
+Python315 lit for the common Mesa26/TinyGo dependency closure. It extends
 [the common profile](README.md), based on pkgsrc
 `fff4deb639a1a640476203c80f752fb77b6cb14b`. The previously accepted LLVM 23.1.2 core package
 cross-builds on macOS and passes installed C API and ORC JITLink acceptance
@@ -13,6 +13,9 @@ The `llvm-23.1.2nb1` revision also carries the shared
 type-unit, live-debugger and malformed-input checks in the AArch64 VM.
 Its installed 104-case matrix and the existing C API/ORC consumers pass
 without loader overrides; package integrity covers all 2,789 payload entries.
+
+The [Python 3.15 package migration](cross/llvm-python315.md) preserves the
+compiler payload and distinguishes metadata repair from a new compiler build.
 
 ## Current 23.1.3 migration
 

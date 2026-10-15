@@ -6,8 +6,9 @@ set -eu
 archive=$1
 mkdir "$2"
 work=$(CDPATH= cd -- "$2" && pwd)
-python=${PYTHON:-python3.14}
-command -v "$python" >/dev/null 2>&1 || { echo 'SKIP: Python314 unavailable; installed lit gate required'; exit 0; }
+python=${PYTHON:-python3.15}
+command -v "$python" >/dev/null 2>&1 || { echo 'Python 3.15 is required.' >&2; exit 2; }
+"$python" --version | grep -q '^Python 3\.15\.'
 "$python" --version
 mkdir "$work/source"
 tar -xf "$archive" -C "$work/source" llvm-project-23.1.3.src/llvm/utils/lit
