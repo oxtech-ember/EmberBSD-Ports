@@ -40,8 +40,9 @@ cleanup() {
     if [ "$fixture_result" -ne 0 ]; then keep_image=yes; fi
     trap - 0 HUP INT TERM
     if [ "$mounted" = yes ]; then
+        # Export data and logs without requiring xattrs on the parent filesystem.
         if [ -d "$point/run" ]; then
-            cp -Rp "$point/run" "$output/runtime" || { keep_image=yes; fixture_result=1; }
+            cp -R -P "$point/run" "$output/runtime" || { keep_image=yes; fixture_result=1; }
         fi
         if umount "$point" >> "$output/cleanup.log" 2>&1; then
             mounted=no
