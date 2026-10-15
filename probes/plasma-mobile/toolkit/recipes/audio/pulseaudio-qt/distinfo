@@ -1,0 +1,6 @@
+# Origin: EmberBSD (AI-assisted).
+
+BLAKE2s (pulseaudio-qt-1.9.0.tar.xz) = 92141f8b18d6c72a6d102780159415640791c77dc49eacd8923cce2c5cf58e74
+SHA512 (pulseaudio-qt-1.9.0.tar.xz) = d65e367bf692dbfcf502dbd50ae498af496dd28af81ff5ab2e2f99b9e314838c499bfea2cb84ab4a35721fd9795a46cbfe46e78e210a1d2076d14d0722f07496
+Size (pulseaudio-qt-1.9.0.tar.xz) = 41360 bytes
+SHA1 (patch-src_CMakeLists.txt) = 8ca9e0e1cec1b851de8a55cd1362321e28607cd4

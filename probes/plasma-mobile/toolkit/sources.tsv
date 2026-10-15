@@ -1,5 +1,7 @@
 # recipe	archive	sha256	upstream_url
 archivers/kf6-karchive	karchive-6.31.0.tar.xz	95acaf5a459593184104e1c157cef415ec59a33e71674186169e0df33cdacaac	https://download.kde.org/stable/frameworks/6.31/karchive-6.31.0.tar.xz
+audio/plasma6-plasma-pa	plasma-pa-6.8.0.tar.xz	ef15a6d0b2ff97b13bd82f36965e8d265a4438e9b685547674ffa72e2160cca4	https://download.kde.org/stable/plasma/6.8.0/plasma-pa-6.8.0.tar.xz
+audio/pulseaudio-qt	pulseaudio-qt-1.9.0.tar.xz	c2aace3ac1a9c8c9b9c57ba0ffc99a3d310737cc004db0491802e03536e27c69	https://download.kde.org/stable/pulseaudio-qt/pulseaudio-qt-1.9.0.tar.xz
 audio/qt6-qtspeech	qtspeech-everywhere-src-6.12.0.tar.xz	9a60ce5bee54a9343740feab2582bffb996812f43d6c5585aade26dbd04933db	https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtspeech-everywhere-src-6.12.0.tar.xz
 comms/qt6-qtconnectivity	qtconnectivity-everywhere-src-6.12.0.tar.xz	ed51f7f02c1f437fcf8a42940c7a84f6c0908c0ec7a4f5a5304fe68f47521954	https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtconnectivity-everywhere-src-6.12.0.tar.xz
 devel/extra-cmake-modules	extra-cmake-modules-6.31.0.tar.xz	8f74af329e4c918358bfe54316f8cf4d530c28444595a3e2fb15075f72877f17	https://download.kde.org/stable/frameworks/6.31/extra-cmake-modules-6.31.0.tar.xz

@@ -5,7 +5,7 @@ PLASMAVER?= 6.8.0
 .if ${PLASMAVER} != "6.8.0"
 PKG_FAIL_REASON+= "The common toolkit requires PLASMAVER=6.8.0"
 .endif
-_EMBERBSD_PLASMA6_RECIPES= devel/plasma6-kwayland time/plasma6-knighttime \
+_EMBERBSD_PLASMA6_RECIPES= audio/plasma6-plasma-pa devel/plasma6-kwayland time/plasma6-knighttime \
     x11/plasma6-kdecoration x11/plasma6-kglobalacceld x11/plasma6-layer-shell-qt \
     graphics/plasma6-aurorae \
     graphics/plasma6-breeze \
