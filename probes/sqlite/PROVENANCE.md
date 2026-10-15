@@ -1,28 +1,35 @@
 # SQLite source provenance
 
 - Upstream: [SQLite](https://www.sqlite.org/).
-- Selected release: **3.53.4**, the current release advertised by the official
-  [download page](https://www.sqlite.org/download.html), checked 2026-10-07.
-- Source ID: `2026-07-24 19:02:57 bf7c7f30031888f4e796e429ab3978879485813aaca6f641c7b33e4e09459bcc`.
-- Archive: `https://www.sqlite.org/2026/sqlite-autoconf-3530400.tar.gz`.
-- Size: 3,283,177 bytes.
-- SHA256: `0e9483900e92cd5de8fd48d16bf9200145a61f7fd5be542a5ac81d8a9516eb9c`.
+- Selected release: **3.54.0**, released **2026-10-09**.
+- Official [download metadata](https://www.sqlite.org/download.html) and
+  [change log](https://www.sqlite.org/changes.html) were checked on 2026-10-15.
+- Source ID: `2026-10-09 15:46:58 be8d059e9a49089ab2dce5ed26dd87aaf598fdc5fbe0b107c0dd758464bcd5e3`.
+- Archive: `https://www.sqlite.org/2026/sqlite-autoconf-3540000.tar.gz`.
+- Size: **3,332,512 bytes**.
+- SHA256: `134ec0802dda5795816e25d25872d20b312cb3973438c49b30bc40b7705ea9ed`.
 - Official archive SHA3-256:
-  `454e45f61c6bd75b7420e7190732dea03ce6639c63ada47bbc592f67fc340338`.
-- SQLite deliverables: [public domain](https://www.sqlite.org/copyright.html).
-  Upstream's source header retains its public-domain dedication. The archive's
-  autosetup helper has a BSD-style license, preserved by the build helper.
-- No SQLite source patches. This directory's C/shell checks are MIT licensed,
-  written for EmberBSD with AI assistance. No upstream acceptance is claimed.
+  `f5e3e724e9c9b3b5d512c76b02082091a59eeea9becd169a9fbf4d376403acce`.
+- SQLite deliverables are [public domain](https://www.sqlite.org/copyright.html).
+  Original dedications remain in the sources and installed headers. The package
+  preserves a dedication excerpt and the build-only Autosetup BSD-style license.
+- No SQLite source patch. The selected shared-library ABI remains
+  `libsqlite3.so.0`, with the upstream versioned installation name.
+- Packaging, builders and C/CMake contracts are EmberBSD contributions,
+  AI-assisted and MIT licensed. No upstream acceptance is claimed.
 
-The pinned pkgsrc-2026Q3 tree already supplies SQLite 3.53.4 in
-`databases/sqlite3`; do not add another permanent SQLite version. `build.sh`
-provides a disposable native source probe when replacing an active shared
-system dependency would interfere with other work. Its prefix is removed
-after retaining evidence. It is not a second system installation or a package.
+The [common package recipe](../../pkgsrc/local-robotics/sqlite3) owns the current
+library. It retains the useful common pkgsrc feature policy and replaces the
+older provider at the same prefix. The standalone helper reads its features
+from the canonical recipe. The native private prefix exists for checks with
+the same source, GCC16 and features; it is not an older application runtime.
 
-The existing validation VM has pkgsrc SQLite 3.53.2, source ID
-`2026-06-03 19:12:13 d6e03d8c777cfa2d35e3b60d8ec3e0187f3e9f99d8e2ee9cac695fd6fcdf1a24`.
-That installed consumer is separately identified in the result. An older
-cached search result described 3.53.2 as latest; the direct upstream download
-metadata and the pinned pkgsrc recipe establish the newer target.
+Native and target builds use GNU C17. The cross compiler and sysroot retain
+AArch64 EmberBSD provenance. Autosetup's accepted canonical host spelling adds
+an explicit vendor field; it does not replace any target OS component.
+
+The installed dynamic CLI exposed a missing runtime path when only
+configure-time LDFLAGS were supplied. Its exact source-ID check rejected a
+system SQLite implementation. Passing LDFLAGS to make, as required by the
+upstream dynamic-shell rule, fixes the selected-prefix linkage. This changes
+packaging flags and leaves SQLite source unchanged.

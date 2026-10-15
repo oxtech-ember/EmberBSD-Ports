@@ -1,0 +1,19 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Initialize the split value that the private KD-tree archives for every node.
+Leaf construction does not assign divval, but fieldwise serialization reads
+it before compression. Keep the archive layout and the allocator unchanged.
+
+--- a/corelib/src/rtflann/algorithms/kdtree_index.h
++++ b/corelib/src/rtflann/algorithms/kdtree_index.h
+@@ -100,7 +100,8 @@
+ 		* The child nodes.
+ 		*/
+ 		Node* child1, *child2;
+-		Node(){
++		// Leaves have no split value, but serialize() still archives it.
++		Node() : divval(DistanceType()) {
+ 			child1 = NULL;
+ 			child2 = NULL;
+ 		}

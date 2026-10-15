@@ -1,0 +1,18 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Destroy an already unlocked POSIX mutex without first unlocking it again.
+Calling unlock on an unowned recursive mutex returns EPERM and is reported by
+Helgrind. Callers must release their locks before destroying the mutex.
+
+--- a/utilite/include/rtabmap/utilite/UMutex.h
++++ b/utilite/include/rtabmap/utilite/UMutex.h
+@@ -77,7 +77,7 @@
+ #ifdef _WIN32
+ 		DeleteCriticalSection(&C);
+ #else
+-		pthread_mutex_unlock(&M); pthread_mutex_destroy(&M);
++		pthread_mutex_destroy(&M);
+ #endif
+ 	}
+ 

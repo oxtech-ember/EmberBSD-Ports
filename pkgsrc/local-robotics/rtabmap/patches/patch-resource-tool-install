@@ -1,0 +1,21 @@
+Keep the resource generator outside the selected library package.
+
+Native builds still build and run the genuine generator. Cross builds import
+that host tool and do not install it. Honor BUILD_TOOLS for the native install
+so both library packages have the same payload when tools are disabled.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+--- a/utilite/resource_generator/CMakeLists.txt
++++ b/utilite/resource_generator/CMakeLists.txt
+@@ -55,8 +55,10 @@
+     OUTPUT_NAME ${PROJECT_PREFIX}-res_tool
+     )
+ 
++    IF(BUILD_TOOLS)
+     INSTALL(TARGETS res_tool
+             RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT runtime
+             BUNDLE DESTINATION "${CMAKE_BUNDLE_LOCATION}" COMPONENT runtime)
++    ENDIF()
+ 
+ endif()

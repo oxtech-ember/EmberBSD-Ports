@@ -53,7 +53,7 @@ run consumer-configure cmake -S "$probe/tests" -B "$work/test-build" -G Ninja \
 run consumer-build cmake --build "$work/test-build" --parallel 1
 run consumer-test ctest --test-dir "$work/test-build" --no-tests=error --output-on-failure --verbose
 cat "$work/logs/consumer-test.log"
-for binary in pcl-contract lz4-zero-buffers boost-iostreams-contract; do
+for binary in pcl-contract pcl-expanded-contract lz4-zero-buffers boost-iostreams-contract; do
     ldd "$work/test-build/$binary" > "$work/logs/$binary-linkage.txt"
     if grep -E 'not found|libc[+][+]' "$work/logs/$binary-linkage.txt" >/dev/null; then
         echo "Missing dependency or mixed C++ runtime in $binary." >&2; exit 1;
@@ -65,13 +65,18 @@ for library in libpcl_common.so libpcl_filters.so libpcl_registration.so; do
         echo "The consumer did not load the installed $library." >&2; exit 1;
     }
 done
+for library in libpcl_surface.so libpcl_segmentation.so; do
+    grep -F "$prefix/lib/$library" "$work/logs/pcl-expanded-contract-linkage.txt" >/dev/null || {
+        echo "The consumer did not load the installed $library." >&2; exit 1;
+    }
+done
 # FLANN's C++ API uses templates. Its installed CMake target is checked by the
 # consumer configuration; the empty wrapper DSO need not become DT_NEEDED.
 grep -F "$common/lib/liblz4.so" "$work/logs/lz4-zero-buffers-linkage.txt" >/dev/null
 for library in libboost_iostreams.so.1.92.0 libboost_random.so.1.92.0; do
     grep -F "$common/lib/$library" "$work/logs/boost-iostreams-contract-linkage.txt" >/dev/null
 done
-for binary in pcl-contract boost-iostreams-contract; do
+for binary in pcl-contract pcl-expanded-contract boost-iostreams-contract; do
     for library in libstdc++.so libgcc_s.so.1; do
         expected=$("$CXX" -print-file-name="$library")
         [ -f "$expected" ] || { echo "Compiler runtime missing: $library" >&2; exit 1; }

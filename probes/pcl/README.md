@@ -1,4 +1,4 @@
-# PCL filtering and registration
+# PCL filtering, registration and mapping geometry
 
 Point Cloud Library (PCL) 1.15.1 filters point clouds and recovers rigid motion
 with iterative closest point registration. PCL owns the algorithms. EmberBSD
@@ -6,10 +6,10 @@ Ports owns the GCC16 package recipes, dependency adaptations and acceptance
 checks. The [point-cloud example](https://github.com/oxtech-ember/EmberBSD-Examples/tree/main/robotics/pcl-cloud)
 uses the common shared libraries.
 
-GCC16 cross packaging passes installed acceptance in EmberBSD AArch64 QEMU.
-Filtering, known ICP motion, twelve upstream programs and all eight package
-lifecycles pass. Linux native controls and memory checks provide separate
-evidence. See [validation](VALIDATION.md) for the measured scope and limitations.
+The initial ten-library package passes installed acceptance in EmberBSD AArch64
+QEMU. The current `pcl-1.15.1nb1` profile adds shared Surface, Segmentation and
+ML for offline mapping. Its expanded target acceptance is pending. See
+[validation](VALIDATION.md) for the measured scope and limitations.
 
 ## Common package set
 
@@ -25,7 +25,7 @@ headers, libc and compiler runtime together. The acceptance package set is:
 | [gcc16-libatomic 16.2.0](../../pkgsrc/local-robotics/gcc16-libatomic) | Missing atomic component in a partial cross SDK |
 | [lz4 1.10.0](../../pkgsrc/local-robotics/lz4) | Shared/static compression library and current CLI |
 | [flann 1.9.2](../../pkgsrc/local-robotics/flann) | Shared/static CPU C++ nearest-neighbor search |
-| [pcl 1.15.1](../../pkgsrc/local-robotics/pcl) | Ten selected shared libraries and installed headers |
+| [pcl 1.15.1nb1](../../pkgsrc/local-robotics/pcl) | Thirteen selected shared libraries and installed headers |
 
 The standalone atomic package extends an incomplete GCC16 runtime. It conflicts
 with complete `gcc16` and `gcc16-libs` providers. A complete runtime keeps
@@ -65,22 +65,21 @@ CROSS_JOBS=3 sh probes/pcl/cross-build.sh \
 The dependency helper stages three packages and adds them to the task sysroot
 only after collision checks. It does not replace different existing files.
 The PCL helper applies canonical recipe patches, builds the selected libraries
-and twelve upstream test programs, stages the install and builds independent
+and fourteen upstream test programs, stages the install and builds independent
 consumers. Both helpers verify source archives before extraction and reject
 existing output paths. Logs, compilation databases, ELF records and input
 hashes remain under each output directory.
 
 The canonical [feature file](../../pkgsrc/local-robotics/pcl/features.cmake)
 selects `common`, `kdtree`, `octree`, `search`, `sample_consensus`, `filters`,
-`features`, `registration` and `io`. PCL also builds `io_ply`; `2d` is
-header-only. This produces ten shared libraries. The profile uses C++17,
-portable Armv8-A code and the upstream core point-type instantiations.
+`features`, `registration`, `io`, `surface`, `segmentation` and compiled `ml`.
+PCL also builds `io_ply`; `2d` and `geometry` are header-only. This produces
+thirteen shared libraries. The profile uses C++17, portable Armv8-A code and the upstream core point-type instantiations.
 Other point types may need client-side instantiation.
 
 GUI/VTK/Qt, sensor backends, OpenNI, CUDA, OpenMP, PNG, Qhull, applications
-and tools are disabled. Surface, segmentation and additional RTAB-Map modules
-are outside this accepted package profile. Optional nanoflann does not remove
-PCL 1.15.1's FLANN requirement for the selected components.
+and tools are disabled. Optional surface NURBS support remains disabled.
+Optional nanoflann does not remove PCL 1.15.1's FLANN requirement for the selected components.
 
 ## Native source helper
 
@@ -110,13 +109,21 @@ imported library locations and the selected GCC16 runtime.
 | `empty-filter` | Empty input produces empty range and voxel outputs |
 | `registration` | ICP recovers a `0.012` radian Z rotation and translation `(0.04,-0.03,0.02)` within `1e-4` |
 | `no-correspondence` | Distant clouds with a bounded correspondence radius do not report convergence |
+| `surface` | MLS preserves an 81-point analytic plane, RGB values and its known unit normals |
+| `segmentation` | RANSAC recovers all 49 analytic plane points, excludes three outliers and matches the plane equation |
+| `empty` | Surface and segmentation return empty output for empty input |
 | `matrix-check` | The comparison predicate rejects NaN and both infinities in every matrix coefficient |
 | `lz4-zero-buffers` | Repeated frame queries and zero-length operations preserve four full frame round trips |
 | `boost-iostreams-contract` | zlib, gzip, bzip2 and lzma round trips match every byte; the Random device API works |
 
+The new `pcl-expanded-contract` executable runs `surface`, `segmentation` and
+`empty`. MLS uses `PointXYZRGB` input and `PointXYZRGBNormal` output, matching
+the shared RTAB-Map consumer. The core point-type library instantiates this
+combination. This check is separate from a complete RTAB-Map build.
+
 Registration checks all sixteen transform coefficients, the final fitness and
 every transformed point. The target runner also checks the Examples CLI and
-its independent CSV checker, invalid inputs, output errors, twelve upstream
+its independent CSV checker, invalid inputs, output errors, fourteen upstream
 programs and real package removal/reinstallation. GoogleTest is a source-based
 test dependency; it is not part of the runtime package set.
 

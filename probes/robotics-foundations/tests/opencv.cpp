@@ -18,6 +18,11 @@ static void require(bool ok, const char *what)
 
 int main()
 {
+    // Exercise two workers below, then join the pool before process teardown.
+    // This also releases the workers' TLS when any check throws.
+    struct ThreadCleanup {
+        ~ThreadCleanup() { cv::setNumThreads(1); }
+    } thread_cleanup;
     try {
         require(cv::getVersionString() == "5.0.0", "runtime version");
         std::cout << cv::getBuildInformation() << '\n';

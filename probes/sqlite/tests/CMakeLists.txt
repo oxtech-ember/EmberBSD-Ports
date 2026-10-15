@@ -1,0 +1,42 @@
+cmake_minimum_required(VERSION 3.22)
+project(sqlite_installed_contract LANGUAGES C)
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
+enable_testing()
+if(NOT IS_ABSOLUTE "${SQLITE_PREFIX}" OR NOT IS_DIRECTORY "${SQLITE_PREFIX}")
+  message(FATAL_ERROR "An absolute installed SQLITE_PREFIX is required")
+endif()
+get_filename_component(SQLITE_PREFIX "${SQLITE_PREFIX}" REALPATH)
+find_path(SQLITE_INCLUDE sqlite3.h PATHS "${SQLITE_PREFIX}/include"
+  NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH REQUIRED)
+find_library(SQLITE_LIBRARY sqlite3 PATHS "${SQLITE_PREFIX}/lib"
+  NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH REQUIRED)
+get_filename_component(actual_library "${SQLITE_LIBRARY}" REALPATH)
+string(FIND "${actual_library}" "${SQLITE_PREFIX}/lib/" in_prefix)
+if(NOT in_prefix EQUAL 0)
+  message(FATAL_ERROR "SQLite library resolves outside the selected prefix")
+endif()
+file(STRINGS "${SQLITE_INCLUDE}/sqlite3.h" version_line REGEX "^#define SQLITE_VERSION +\"3\\.54\\.0\"")
+if(NOT version_line)
+  message(FATAL_ERROR "The selected headers must be SQLite 3.54.0")
+endif()
+add_library(selected_sqlite SHARED IMPORTED)
+set_target_properties(selected_sqlite PROPERTIES IMPORTED_LOCATION "${actual_library}"
+  INTERFACE_INCLUDE_DIRECTORIES "${SQLITE_INCLUDE}")
+add_executable(sqlite-contract ../consumer.c)
+target_compile_definitions(sqlite-contract PRIVATE _POSIX_C_SOURCE=200809L)
+target_compile_options(sqlite-contract PRIVATE -Wall -Wextra -Werror)
+target_link_libraries(sqlite-contract PRIVATE selected_sqlite)
+add_test(NAME sqlite-contract COMMAND sqlite-contract "${CMAKE_CURRENT_BINARY_DIR}/contract.db")
+set_tests_properties(sqlite-contract PROPERTIES TIMEOUT 45)
+foreach(case usage existing missing-parent)
+  add_test(NAME sqlite-${case} COMMAND "${CMAKE_COMMAND}"
+    "-DCONSUMER=$<TARGET_FILE:sqlite-contract>" "-DCASE=${case}"
+    "-DWORK=${CMAKE_CURRENT_BINARY_DIR}" -P "${CMAKE_CURRENT_SOURCE_DIR}/invalid.cmake")
+  set_tests_properties(sqlite-${case} PROPERTIES TIMEOUT 10)
+endforeach()
+add_test(NAME sqlite-cli COMMAND "${CMAKE_COMMAND}"
+  "-DCLI=${SQLITE_PREFIX}/bin/sqlite3" "-DWORK=${CMAKE_CURRENT_BINARY_DIR}"
+  -P "${CMAKE_CURRENT_SOURCE_DIR}/cli.cmake")
+set_tests_properties(sqlite-cli PROPERTIES TIMEOUT 15)

@@ -1,0 +1,4 @@
+SQLite is an in-process SQL database engine. This common package includes the
+shared and static C libraries, headers, pkg-config metadata and CLI. It retains
+thread safety, FTS3/4/5, JSON, RTree, Geopoly, column metadata and DBSTAT.
+The CLI uses the same shared library as installed C consumers.

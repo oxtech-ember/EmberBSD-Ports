@@ -1,0 +1,26 @@
+Keep rtflann's private LZ4 symbols out of the shared RTAB-Map API.
+
+The bundled LZ4 1.7.1 has private stream state layouts. Its global C symbols
+must not interpose the supported shared LZ4 1.10.0 used by public FLANN/PCL.
+Limit visibility to the two C implementation files. Keep the private backend,
+its license notices, and the exported C++ RTAB-Map API.
+
+AI-assisted local portability patch. Upstream submission is pending.
+
+--- a/corelib/src/CMakeLists.txt
++++ b/corelib/src/CMakeLists.txt
+@@ -143,6 +143,14 @@
+     opencv/five-point.cpp
+ )
+ 
++# rtflann keeps a private LZ4 ABI. Do not interpose the shared LZ4 provider.
++IF(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
++    SET_SOURCE_FILES_PROPERTIES(
++        rtflann/ext/lz4.c rtflann/ext/lz4hc.c
++        PROPERTIES COMPILE_OPTIONS "-fvisibility=hidden"
++    )
++ENDIF()
++
+ IF(PCL_VERSION VERSION_GREATER_EQUAL "1.8")
+ SET(SRC_FILES
+     ${SRC_FILES}

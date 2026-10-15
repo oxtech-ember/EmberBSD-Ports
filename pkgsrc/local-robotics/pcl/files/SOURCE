@@ -7,8 +7,15 @@ PCL: BSD-3-Clause, Willow Garage, Open Perception and contributors.
 Embedded KissFFT: Mark Borgerding, BSD-3-Clause.
 Embedded LZF: Marc Alexander Lehmann and Willow Garage, BSD-2-Clause.
 PLY implementation: Maik Mescheder and PCL contributors, BSD notices in installed headers.
+Poisson4 geometry: Michael Kazhdan and Matthew Bolitho, BSD-3-Clause.
+ML SVM: Willow Garage, Chih-Chung Chang and Chih-Jen Lin, BSD-3-Clause.
+ML dense CRF: Christian Potthast and PCL contributors, BSD-3-Clause.
+ML permutohedral lattice: PCL and Open Perception contributors, BSD-3-Clause.
 Common dependencies: Eigen 5.0.1, Boost 1.92.0, FLANN 1.9.2, LZ4 1.10.0, GCC16 runtime.
 Local patches require the common Eigen provider, relocate the FLANN fallback,
 and preserve an explicit CMake build-with-install-RPATH setting.
 Patches and packaging: EmberBSD, AI-assisted. Not submitted upstream.
 Original notices and representative source attributions accompany this package.
+Package revision nb1 expands the same shared PCL provider for offline mapping.
+The profile adds Surface, Segmentation and compiled ML; Geometry and 2d are header-only.
+The thirteen shared libraries use the same current Eigen/Boost/FLANN dependencies.

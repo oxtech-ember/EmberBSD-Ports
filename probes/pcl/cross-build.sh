@@ -71,9 +71,9 @@ cmake -S "$out/source" -B "$out/build" -G Ninja -C "$recipe/features.cmake" \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
     '-DCMAKE_INSTALL_RPATH=/usr/pkg/lib;/usr/pkg/gcc16/lib' > "$out/logs/configure.log" 2>&1
 cmake --build "$out/build" --parallel "$jobs" --target \
-    pcl_common pcl_kdtree pcl_octree pcl_search pcl_sample_consensus pcl_filters pcl_features pcl_registration pcl_io pcl_io_ply \
+    pcl_common pcl_kdtree pcl_octree pcl_search pcl_sample_consensus pcl_filters pcl_features pcl_registration pcl_io pcl_io_ply pcl_surface pcl_segmentation pcl_ml \
     test_common test_pointcloud test_transforms test_filters_grid_minimum test_morphological test_filters_functor test_uniform_sampling \
-    test_warps test_correspondence_estimation test_registration test_kdtree_search test_flann_search > "$out/logs/build.log" 2>&1
+    test_warps test_correspondence_estimation test_registration test_kdtree_search test_flann_search test_concave_prism test_ear_clipping > "$out/logs/build.log" 2>&1
 DESTDIR="$out/stage" cmake --install "$out/build" > "$out/logs/install.log" 2>&1
 sh "$recipe/files/install-licenses.sh" "$out/source" "$out/stage/usr/pkg" "$recipe"
 cmake -S "$ports/probes/pcl/tests" -B "$out/consumer" -G Ninja \
@@ -84,15 +84,15 @@ cmake -S "$ports/probes/pcl/tests" -B "$out/consumer" -G Ninja \
     -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON '-DCMAKE_INSTALL_RPATH=/usr/pkg/lib;/usr/pkg/gcc16/lib' > "$out/logs/consumer-configure.log" 2>&1
 cmake --build "$out/consumer" --parallel 2 > "$out/logs/consumer-build.log" 2>&1
 find "$out/stage/usr/pkg/lib" -type f -name '*.so*' -exec "$compiler/bin/aarch64--netbsd-readelf" -h -d {} + > "$out/elf.txt"
-[ "$(grep -c 'Machine:.*AArch64' "$out/elf.txt")" = 10 ]
-"$compiler/bin/aarch64--netbsd-readelf" -h -d "$out/consumer/pcl-contract" "$out/consumer/pcl-matrix-check" "$out/consumer/lz4-zero-buffers" "$out/consumer/boost-iostreams-contract" >> "$out/elf.txt"
-[ "$(grep -c 'Machine:.*AArch64' "$out/elf.txt")" = 14 ]
-for name in test_common test_pointcloud test_transforms test_filters_grid_minimum test_morphological test_filters_functor test_uniform_sampling test_warps test_correspondence_estimation test_registration test_kdtree_search test_flann_search; do
+[ "$(grep -c 'Machine:.*AArch64' "$out/elf.txt")" = 13 ]
+"$compiler/bin/aarch64--netbsd-readelf" -h -d "$out/consumer/pcl-contract" "$out/consumer/pcl-matrix-check" "$out/consumer/lz4-zero-buffers" "$out/consumer/boost-iostreams-contract" "$out/consumer/pcl-expanded-contract" >> "$out/elf.txt"
+[ "$(grep -c 'Machine:.*AArch64' "$out/elf.txt")" = 18 ]
+for name in test_common test_pointcloud test_transforms test_filters_grid_minimum test_morphological test_filters_functor test_uniform_sampling test_warps test_correspondence_estimation test_registration test_kdtree_search test_flann_search test_concave_prism test_ear_clipping; do
     binary=$(find "$out/build/test" -type f -name "$name")
     [ -n "$binary" ] && [ -f "$binary" ]
     "$compiler/bin/aarch64--netbsd-readelf" -h -d "$binary" >> "$out/elf.txt"
 done
-[ "$(grep -c 'Machine:.*AArch64' "$out/elf.txt")" = 26 ]
+[ "$(grep -c 'Machine:.*AArch64' "$out/elf.txt")" = 32 ]
 for path in "$compiler" "$sysroot" "$out"; do
     if grep -E 'RPATH|RUNPATH|NEEDED' "$out/elf.txt" | grep -F "$path"; then echo 'Build-host runtime path leaked.' >&2; exit 1; fi
 done

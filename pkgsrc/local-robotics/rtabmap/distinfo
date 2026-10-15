@@ -1,0 +1,19 @@
+# EmberBSD: verified official source and canonical port patches
+
+BLAKE2s (rtabmap-0.23.8.tar.gz) = 45e0aad158fa00e7e4d49a3d20ad55b4d00c9937540e50c7e2a7f300bdb0de4b
+SHA512 (rtabmap-0.23.8.tar.gz) = eae290284a5b17aed8f987a6e5813f8404b65452581a61eb3e2ebd05c22ff4754fc77e0bc9895b9a8fca04810d956a98f77211db3e9c6e41f010d2a9ef90724a
+Size (rtabmap-0.23.8.tar.gz) = 22276030 bytes
+SHA1 (patch-compression-alignment-rvl) = cbb819af4fb74f3201a82c802f9eeda2c16fcc6a
+SHA1 (patch-gtsam-optional) = 17cdf37bf8936adcef0f2ae90114e3a9ef84e7e3
+SHA1 (patch-gtsam4-dependencies) = 8d47361cd8ba8b1c7fe335e168a3a1eb8d022efc
+SHA1 (patch-lifecycle-ownership) = 50ddc69cd364491892be4d57a201837fff0822a1
+SHA1 (patch-opencv5-upstream) = 14ff14fb0b0d3bd492b925bbf88597759ca1d4e6
+SHA1 (patch-private-kdtree-initialization) = 3f419f9d703ae2006b3ec59ba2bdcadfd781d640
+SHA1 (patch-private-lz4-symbols) = 10a8ab772701ef5bdedad693de7d84fb67b23a0b
+SHA1 (patch-relocatable-exports) = 386b54dc0adffc0851bc5b55267f5ea813275f2e
+SHA1 (patch-resource-tool-install) = bfcf9e755a01a6b035dc03de53a98740a0e7cce5
+SHA1 (patch-shared-dependencies) = ca777b67e4e512959d8359db19c5ff992af3bd1d
+SHA1 (patch-umutex-destruction) = 1e448d4643c44e2f41b95a0f76fc26115adbf898
+SHA1 (patch-uthread-atomic) = db1680aef9d6a0031cb8f4e5e688b1eb9d8091f6
+SHA1 (patch-uthread-self-join) = 671da319a00c2260acd502d736b9a08f6e9a411a
+SHA1 (patch-uthread-termination) = 059d891ed0953459d8f324bf4f051a060a8357e2

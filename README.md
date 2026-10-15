@@ -199,9 +199,18 @@ runtime behavior are validated.
   packaging with common Eigen/Boost. Installed AArch64 QEMU checks pass known
   voxel centroids, ICP motion, independent CSV, twelve upstream programs and
   all eight package lifecycles. The [point-cloud example](https://github.com/oxtech-ember/EmberBSD-Examples/tree/main/robotics/pcl-cloud)
-  uses the shared libraries. [OpenVINS 2.7](probes/openvins/README.md)
-  and [RTAB-Map 0.23.8](probes/rtabmap/README.md) retain prepared source profiles;
-  their navigation scenarios still need target acceptance.
+  uses the shared libraries. The expanded thirteen-library PCL profile adds
+  MLS surface normals and plane segmentation; fourteen upstream programs pass
+  175 tests in the recorded-map package acceptance. [OpenVINS 2.7](probes/openvins/README.md)
+  retains a prepared source profile and still needs its navigation acceptance.
+- [Recorded RGB-D mapping](probes/rtabmap/README.md): RTAB-Map 0.23.8 has a
+  GCC16 cross package with common OpenCV 5.0.0, PCL 1.15.1nb1, GTSAM 4.3.0
+  and SQLite 3.54.0. The [recorded-map example](https://github.com/oxtech-ember/EmberBSD-Examples/tree/main/robotics/rtabmap-recorded-map)
+  maps twelve TUM RGB-D frames with supplied recorded poses, closes and reopens
+  SQLite storage, and exports 10,859 independently checked colored points.
+  Installed EmberBSD AArch64 QEMU checks include fourteen package lifecycles,
+  persistence/localization, invalid inputs and upstream dependency tests.
+  Physical sensors, visual odometry and real-time operation remain unverified.
 - [Local trajectory generation](probes/ruckig/README.md),
   [quadratic optimization](probes/osqp/README.md) and
   [motion planning](probes/ompl/README.md): Ruckig 0.19.4 and OSQP 1.0.0 pass
@@ -331,7 +340,7 @@ runtime behavior are validated.
   on AArch64/GCC 16.2, with legacy behavior preserved. The complete 27-source
   UMD cross-build and 85 actual no-device API checks also pass on A733.
   Kernel/DMA integration and model execution remain unverified.
-- [SQLite and local document retrieval](probes/sqlite/README.md): SQLite 3.53.4
+- [SQLite and local document retrieval](probes/sqlite/README.md): SQLite 3.54.0
   installed C consumers pass FTS5/JSON, transactions, concurrent readers and
   process-crash/reopen checks. A C application retrieves local documents and
   validates quotations from the existing llama.cpp CPU server on AArch64.

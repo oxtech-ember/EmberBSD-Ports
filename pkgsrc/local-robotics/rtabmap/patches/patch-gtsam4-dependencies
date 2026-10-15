@@ -1,0 +1,25 @@
+Use the actual GTSAM 4.3 dependency contract.
+
+GTSAM 4.3 uses the standard library instead of Boost. The RTAB-Map GTSAM
+adapter has no direct filesystem/program_options/timer dependency. Preserve
+the older optimizer and libpointmatcher conditions for their real users.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -594,4 +594,4 @@
+-IF(libpointmatcher_FOUND OR GTSAM_FOUND)
++IF(libpointmatcher_FOUND OR (GTSAM_FOUND AND GTSAM_VERSION VERSION_LESS "4.3.0"))
+     find_package(Boost COMPONENTS thread filesystem program_options date_time REQUIRED)
+     IF(Boost_MINOR_VERSION GREATER 80)
+         find_package(Boost COMPONENTS thread filesystem program_options date_time chrono timer serialization REQUIRED)
+@@ -607,7 +607,7 @@
+         MESSAGE(STATUS "Boost_LIBRARY_DIRS=${Boost_LIBRARY_DIRS}")
+         link_directories(${Boost_LIBRARY_DIRS})
+     ENDIF(WIN32)
+-ENDIF(libpointmatcher_FOUND OR GTSAM_FOUND)
++ENDIF()
+ 
+ IF(WITH_CCCORELIB)
+     find_package(CCCoreLib)

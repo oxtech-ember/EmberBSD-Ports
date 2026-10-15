@@ -105,6 +105,8 @@ main(int argc, char **argv)
 	if (strcmp(SQLITE_VERSION, sqlite3_libversion()) != 0 ||
 	    strcmp(SQLITE_SOURCE_ID, sqlite3_sourceid()) != 0)
 		fail("header/runtime source mismatch");
+	if (sqlite3_threadsafe() != 1)
+		fail("serialized thread-safe library required");
 	expect(db, "PRAGMA journal_mode=WAL", "wal");
 	exec_sql(db, "PRAGMA synchronous=FULL; CREATE TABLE facts(id INTEGER PRIMARY KEY, value TEXT);"
 	    "INSERT INTO facts VALUES(1,'committed');"
@@ -167,6 +169,8 @@ main(int argc, char **argv)
 	expect(db, "PRAGMA integrity_check", "ok");
 	if (sqlite3_close(db) != SQLITE_OK)
 		fail("final close");
+	if (sqlite3_shutdown() != SQLITE_OK)
+		fail("final SQLite shutdown");
 	alarm(0);
 	puts("PASS: bindings FTS5 JSON rollback WAL snapshots concurrent reader SIGKILL/reopen integrity");
 	return 0;

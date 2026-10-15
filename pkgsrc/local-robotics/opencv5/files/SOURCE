@@ -1,0 +1,11 @@
+Upstream: OpenCV 5.0.0, https://github.com/opencv/opencv/releases/tag/5.0.0
+Release: 2026-06-06; generic stable verified 2026-10-15.
+Commit: 40738fb16ceddb5fb3fea747585f7ce6abb0605b
+Archive: https://github.com/opencv/opencv/archive/refs/tags/5.0.0.tar.gz
+SHA256: b0528f5a1d379d59d4701cb28c36e22214cc51cf64594e5b56f2d3e6c0233095
+Copyright: OpenCV authors and contributors; original notices retained.
+License: Apache-2.0; selected third-party notices are installed separately.
+Local adaptation: EmberBSD, AI-assisted; not submitted or accepted upstream.
+CPU patch reuses the supported AArch64 NEON/half baseline from robotics-foundations.
+Filesystem patch reuses media's NetBSD POSIX filesystem implementation selection.
+No optional CPU instruction is enabled without runtime detection.

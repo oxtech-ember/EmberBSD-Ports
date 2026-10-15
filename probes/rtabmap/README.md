@@ -1,61 +1,75 @@
-# RTAB-Map headless core source probe
+# RTAB-Map recorded-data mapping
 
-Prepare **RTAB-Map 0.23.8** for an installed core mapping/localization scenario
-on the common Eigen 5.0.1, OpenCV 5.0.0, PCL 1.15.1, GTSAM 4.3.0 and SQLite
-3.53.4 stack. Qt and ROS are optional upstream; this profile enables neither.
-See [source provenance](PROVENANCE.md), [pin/hash](sources.tsv) and [license](LICENSE).
-The bundled utilite component remains LGPL-3.0-or-later.
+The shared, headless **RTAB-Map 0.23.8** profile uses GCC 16.2.0 and the common
+Eigen 5.0.1, Boost 1.92.0, OpenCV 5.0.0, PCL 1.15.1nb1, GTSAM 4.3.0,
+SQLite 3.54.0, PNG 1.6.59 and libjpeg-turbo 3.2.0nb2 providers.
+The [canonical package](../../pkgsrc/local-robotics/rtabmap) installs the core
+and utilite shared libraries, headers, relocatable CMake exports and notices.
+See [provenance](PROVENANCE.md), [validation](VALIDATION.md),
+[source pin](sources.tsv) and [license](LICENSE).
 
-**Source preparation only.** Source hashes, selected patch application and
-portable input guards passed on the host. Native configuration, compilation,
-installed consumer execution and numeric acceptance are not established.
-This directory must not be presented as a working mapping port yet.
+The [recorded-map example](https://github.com/oxtech-ember/EmberBSD-Examples/tree/main/robotics/rtabmap-recorded-map)
+imports twelve unchanged RGB/depth PNG pairs from TUM RGB-D `fr1/desk`, inserts
+their recorded poses, saves a SQLite database, closes and reopens it, and
+exports poses and a colored point cloud. A separate checker uses PNG, SQLite
+and independent camera/quaternion arithmetic to check the exports.
+This is mapping with supplied poses; it does not estimate camera motion.
+The original recording is CC-BY-4.0 and is downloaded separately.
 
-## Common dependencies and build
+## Cross build
 
-Use the expanded [media OpenCV provider](../media/README.md), including `video`,
-`stitching`, `photo` and `videoio`, with working PNG and JPEG codecs. RTAB-Map
-uses those codecs for map storage and reopening. The common [PCL](../pcl/README.md)
-profile includes `io`, `surface`, `segmentation` and their dependencies.
-GTSAM is the selected graph optimizer; TORO, GPL-derived optional algorithms,
-OpenMP, hardware backends, Python, GUI applications and tools are disabled.
+Use the fork's coherent AArch64 base sysroot and GCC16 C/C++ runtime. Install
+the exact dependency payloads into a writable copy of the common sysroot.
+The OpenCV [recorded-image provider](../../pkgsrc/local-robotics/opencv5)
+builds thirteen shared libraries, including its `flann` and `objdetect` closure.
+The PCL provider adds `surface`, `segmentation` and `ml` to the earlier profile;
+`geometry` and `2d` are header-only. [Codec helpers](codecs/README.md) reuse the
+canonical PNG and pinned pkgsrc JPEG recipes. Base zlib remains the provider.
+
+RTAB-Map generates database schema resources while building. Build the real
+upstream resource generator for the host first; an AArch64 executable cannot
+perform that step on the Linux host.
 
 ```sh
-EIGEN_PREFIX=/absolute/foundations/install \
-OPENCV_PREFIX=/absolute/media/install \
-PCL_PREFIX=/absolute/pcl/install \
-GTSAM_PREFIX=/absolute/gtsam/install \
-SQLITE_PREFIX=/absolute/sqlite/install \
-JOBS=1 sh probes/rtabmap/build.sh /absolute/new-rtabmap-work /absolute/archive-cache
-sh probes/rtabmap/test.sh /absolute/new-rtabmap-work
+sh probes/rtabmap/build-resource-tool.sh /absolute/rtabmap-0.23.8.tar.gz /absolute/new-host-tool
+CROSS_JOBS=2 sh probes/rtabmap/cross-build.sh /absolute/gcc-prefix /absolute/sysroot \
+  /absolute/rtabmap-0.23.8.tar.gz /absolute/new-host-tool/build/bin/rtabmap-res_tool \
+  /absolute/new-cross-work
 ```
 
-Use `/usr/pkg` for a dependency only when it provides the exact selected
-version; a stale system SQLite is not accepted. Reuse existing source recipes
-when a previous private installation has been removed. No older parallel
-library stack is introduced. Native C++17, CMake, Ninja, patch, curl, tar and
-SHA256 tools are required. The archive cache argument is optional.
+The cross builder verifies the archive, applies every canonical patch without
+fuzz, records the actual compilation database, and checks the two AArch64 DSOs
+and installed CMake exports for build-host paths. It stages under `/usr/pkg`.
+The native resource generator is a build dependency and is not installed in
+the selected library package. `RTABMAP_NATIVE_RES_TOOL` supplies it to pkgsrc
+when `USE_CROSS_COMPILE=yes`.
 
-The builder refuses an existing work path, verifies archives before extraction
-and records dependency prefixes. `JOBS=1` is the default. No address-space
-limit is imposed by default. An explicit positive `BUILD_AS_KIB` requests a
-verified soft limit; inherited hard limits and VM-wide settings stay unchanged.
-Failed builds retain their logs. Do not present old files as new build output.
-The recipe retains CMake's normal Release optimization flags.
+## Native control and target acceptance
 
-## Prepared installed contract
+```sh
+JOBS=1 sh probes/rtabmap/build.sh /absolute/common-prefix /absolute/new-native-work /absolute/archive-cache
+sh probes/rtabmap/test.sh /absolute/new-native-work /absolute/patched-opencv-source
+sh probes/rtabmap/run-target.sh /absolute/packages /absolute/target-tests /absolute/new-results
+```
 
-The C++ consumer generates six analytic RGB-D views and explicit, deterministic
-feature identities/descriptors. It uses the real core vocabulary, registration,
-graph optimization and SQLite persistence APIs. The map is closed and reopened
-for localization; JPEG RGB and 16-bit PNG depth must decode correctly. A known
-view must recover its 20 cm world position despite a 25 cm odometry error.
-An empty observation must fail, and read-only localization must not add nodes.
-World points, camera projections and expected positions are independent of
-RTAB-Map's solver and registration implementation.
+The first two commands require native EmberBSD/NetBSD and the exact installed
+dependencies. The target runner requires EmberBSD AArch64 and a disposable
+package database. It installs fourteen real packages, checks loaded libraries,
+runs the analytic and recorded mapping scenarios, protects dependencies from
+premature deletion, removes all packages, reinstalls them and repeats mapping.
+It also runs the selected PCL, OpenCV, PNG/JPEG and SQLite checks and the local
+thread, dynamic-loader, compression and private-index regressions.
 
-This isolates core mapping from image feature detection; it is not a camera
-front-end benchmark. Numeric limits are prospective until the native run.
-The installed consumer has a 180-second deadline and checks actual library
-and C++ runtime linkage. GUI, sensor capture, loop closure on real scenes,
-all optional optimizers and long-running map growth remain outside this scope.
+The analytic contract generates six views with deterministic feature identities,
+then reopens the map for localization. A known view must recover its 20 cm
+world position despite a 25 cm supplied pose error. Empty observations must
+not produce recognition, and read-only localization must not grow the database. This isolates
+mapping, persistence and localization from feature detection. The recorded
+example additionally exercises real ORB features and PNG database storage.
+
+GTSAM is the graph solver. Qt, ROS, OpenMP, device capture, Python bindings and
+optional GPL/noncommercial algorithms are disabled. OpenCV's upstream build
+does use Python for code generation. The bundled utilite remains LGPL-3.0-or-later;
+the package is not an all-BSD stack. Native memory analysis and target QEMU
+execution are separate checks. Physical sensors, calibration, autonomous
+navigation, long-running map growth and real-time performance remain untested.

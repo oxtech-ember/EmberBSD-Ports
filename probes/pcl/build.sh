@@ -128,7 +128,7 @@ run pcl-configure cmake -S "$work/source" -B "$work/pcl-build" -G Ninja \
     -DCMAKE_EXPORT_NO_PACKAGE_REGISTRY=ON
 run pcl-build cmake --build "$work/pcl-build" --parallel "$jobs" --target \
     pcl_common pcl_kdtree pcl_octree pcl_search pcl_sample_consensus \
-    pcl_filters pcl_features pcl_registration pcl_io pcl_io_ply
+    pcl_filters pcl_features pcl_registration pcl_io pcl_io_ply pcl_surface pcl_segmentation pcl_ml
 run pcl-install cmake --install "$work/pcl-build"
 run pcl-licenses sh "$recipe/files/install-licenses.sh" "$work/source" "$prefix" "$recipe"
 echo "Installed PCL in $prefix; run test.sh $work for the installed consumers."

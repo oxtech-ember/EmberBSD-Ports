@@ -1,0 +1,12 @@
+bin/sqlite3
+include/sqlite3.h
+include/sqlite3ext.h
+lib/libsqlite3.a
+lib/libsqlite3.so
+lib/libsqlite3.so.0
+lib/libsqlite3.so.3.54.0
+lib/pkgconfig/sqlite3.pc
+man/man1/sqlite3.1
+share/licenses/sqlite3/SOURCE
+share/licenses/sqlite3/SQLite-public-domain.txt
+share/licenses/sqlite3/autosetup-LICENSE
