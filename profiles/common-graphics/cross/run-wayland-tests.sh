@@ -2,14 +2,40 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD; run the complete enabled upstream suite against installed Wayland.
 set -eu
-[ "$#" -eq 1 ] || { echo "Usage: $0 NEW_RESULT_DIRECTORY" >&2; exit 2; }
-[ "$(uname -s)" = NetBSD ] && [ "$(uname -p)" = aarch64 ] || {
-  echo 'Run on EmberBSD/NetBSD AArch64' >&2; exit 2
+usage() { echo "Usage: $0 [--target aarch64|amd64] NEW_RESULT_DIRECTORY" >&2; exit 2; }
+target=aarch64
+target_seen=no
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --target)
+      [ "$#" -ge 2 ] && [ -n "$2" ] && [ "$target_seen" = no ] || usage
+      target=$2 target_seen=yes
+      shift 2
+      ;;
+    --*) usage;;
+    *) break;;
+  esac
+done
+[ "$#" -eq 1 ] || usage
+case "$target" in
+  aarch64) processor=aarch64;;
+  amd64) processor=x86_64;;
+  *) usage;;
+esac
+[ "$(uname -s)" = NetBSD ] && [ "$(uname -p)" = "$processor" ] || {
+  echo "Run on EmberBSD/NetBSD $target" >&2; exit 2
 }
-mkdir -m 700 -- "$1"
-result=$(cd -- "$1" && pwd -P)
+case "$1" in
+  /*) output=$1;;
+  *) output=$(pwd -P)/$1;;
+esac
 cd -- "$(dirname -- "$0")"
 bundle=$(pwd -P)
+[ -f target.txt ] && [ "$(cat target.txt)" = "$target" ] || {
+  echo 'Bundle target does not match selected target' >&2; exit 2
+}
+mkdir -m 700 -- "$output"
+result=$(cd -- "$output" && pwd -P)
 for manifest in artifacts.sha256 runtime.sha256; do
   while read -r expected file; do
     [ -f "$file" ] && [ "$(sha256 -q "$file")" = "$expected" ] || {
