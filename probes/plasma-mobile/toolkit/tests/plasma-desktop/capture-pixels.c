@@ -9,8 +9,10 @@ main(int argc, char **argv)
 {
 	png_image image = { 0 };
 	unsigned char *pixels;
-	unsigned int low[3] = { 255, 255, 255 }, high[3] = { 0, 0, 0 };
-	size_t visible = 0;
+	unsigned int low[6] = { 255, 255, 255, 255, 255, 255 };
+	unsigned int high[6] = { 0 };
+	unsigned long visible = 0;
+	int contrast = 0;
 	int result = EXIT_FAILURE;
 
 	if (argc != 2) {
@@ -29,7 +31,7 @@ main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 	image.format = PNG_FORMAT_RGBA;
-	pixels = malloc(PNG_IMAGE_SIZE(image));
+	pixels = malloc(320U * 256U * 4U);
 	if (pixels == NULL) {
 		png_image_free(&image);
 		return EXIT_FAILURE;
@@ -40,22 +42,27 @@ main(int argc, char **argv)
 	}
 	for (size_t i = 0; i < 320U * 256U; i++) {
 		const unsigned char *pixel = pixels + i * 4;
-		if (pixel[3] < 240)
-			continue;
-		visible++;
-		for (unsigned int c = 0; c < 3; c++) {
-			if (pixel[c] < low[c])
-				low[c] = pixel[c];
-			if (pixel[c] > high[c])
-				high[c] = pixel[c];
+		if (pixel[3] >= 240)
+			visible++;
+		/* Composite on both backgrounds to include monochrome alpha content. */
+		for (unsigned int c = 0; c < 6; c++) {
+			unsigned int value = pixel[c % 3] * pixel[3] / 255U;
+			if (c >= 3)
+				value += 255U - pixel[3];
+			if (value < low[c])
+				low[c] = value;
+			if (value > high[c])
+				high[c] = value;
 		}
 	}
-	if (visible < 256 ||
-	    (high[0] - low[0] < 32 && high[1] - low[1] < 32 && high[2] - low[2] < 32)) {
-		fprintf(stderr, "Empty or uniform capture: visible=%zu\n", visible);
+	for (unsigned int c = 0; c < 6; c++)
+		if (high[c] - low[c] >= 32)
+			contrast = 1;
+	if (visible < 256 || !contrast) {
+		fprintf(stderr, "Empty or uniform capture: visible=%lu\n", visible);
 		goto out;
 	}
-	printf("PASS: decoded visible containment content; opaque pixels=%zu\n", visible);
+	printf("PASS: decoded visible containment content; opaque pixels=%lu\n", visible);
 	result = EXIT_SUCCESS;
 out:
 	free(pixels);

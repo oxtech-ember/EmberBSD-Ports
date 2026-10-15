@@ -95,6 +95,29 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
   JS
   File.write("#{temp}/layout-test.js", node_test)
   run.call(:ok, 'node', "#{temp}/layout-test.js", "#{source}/layout.js")
+File.write("#{temp}/capture-layout-test.js", <<~'JS')
+  const fs = require('fs'), vm = require('vm');
+  const script = fs.readFileSync(process.argv[2], 'utf8');
+  let clocks = [], ready = false, calls = 0;
+  const ctx = {desktops: () => [{screen: 0, widgets: () => clocks,
+    addWidget: (type, x, y, w, h) => {
+      calls++;
+      if (!ready) return undefined;
+      if ([x,y,w,h].join(',') !== '128,128,384,256') throw Error('geometry');
+      const widget = {type}; clocks.push(widget); return widget;
+    }}], print: text => {if (text !== 'PASS: capture widget created') throw Error('evidence');}};
+  function rejected() {
+    try {vm.runInNewContext(script,ctx); return false;} catch (_) {return true;}
+  }
+  if (!rejected() || clocks.length) throw Error('Accepted unready item');
+  ready = true; vm.runInNewContext(script,ctx); vm.runInNewContext(script,ctx);
+  if (calls !== 2 || clocks.length !== 1) throw Error('Retry duplicated widget');
+  clocks.push(clocks[0]); if (!rejected()) throw Error('Accepted duplicates');
+  clocks = [{type:'wrong'}]; if (!rejected()) throw Error('Accepted wrong widget');
+  ctx.desktops = () => []; if (!rejected()) throw Error('Accepted missing desktop');
+  console.log('PASS: capture widget readiness, idempotence and invalid models');
+JS
+run.call(:ok, 'node', "#{temp}/capture-layout-test.js", "#{source}/capture-layout.js")
   # Run the real shell cleanup path after a forced startup failure. Only the
   # external graphics programs and clock are replaced in this temporary copy.
   %w[term kill].each do |mode|
@@ -180,7 +203,7 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
       #!#{RbConfig.ruby}
       count = File.file?('clock-count') ? File.read('clock-count').to_i : 0
       File.write('clock-count', (count + 1).to_s)
-      puts [0, 80, 86, 90][[count, 3].min]
+      puts [0, 78, 79, 80, 86, 90][[count, 5].min]
     RUBY
     # Keep the six liveness checks fast. Give the child time to handle TERM.
     File.write("#{work}/sleep", "#!/bin/sh\n[ \"$1\" = 5 ] || exec /bin/sleep 0.1\n")
@@ -207,7 +230,14 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
       when 'org.kde.PlasmaShell.shell'
         puts 'org.kde.plasma.desktop'
       when 'org.kde.PlasmaShell.evaluateScript'
-        puts ARGV.fetch(3).include?('capture widget created') ? 'PASS: capture widget created' : 'PASS: default desktop, panel and six applet models on 1280x1024'
+        if ARGV.fetch(3).include?('capture widget created')
+          count = File.file?('widget-count') ? File.read('widget-count').to_i + 1 : 1
+          File.write('widget-count', count.to_s)
+          abort 'Desktop quick item not ready' if count == 1
+          puts 'PASS: capture widget created'
+        else
+          puts 'PASS: default desktop, panel and six applet models on 1280x1024'
+        end
       when 'org.kde.PlasmaShell.grabContainmentImage'
         abort 'Unknown screen name' if ARGV[3] == 'Ember-Missing-Output'
         count = File.file?('capture-count') ? File.read('capture-count').to_i + 1 : 1
@@ -232,6 +262,7 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
     output = run.call(mode == 'ready' ? :ok : :fail,
                       {'EMBER_PLASMA_OUTPUT' => work, 'XDG_RUNTIME_DIR' => "#{work}/runtime",
                        'PATH' => "#{work}:#{ENV.fetch('PATH')}"}, '/bin/sh', "#{work}/session.sh")
+    abort 'Widget creation was not retried' unless File.read("#{work}/widget-count").to_i == 2
     abort 'Capture retries extended the startup deadline' unless
       File.read("#{work}/capture-timeouts").lines.map(&:to_i) == [10, 4]
     abort 'Capture attempts reused an image path' unless

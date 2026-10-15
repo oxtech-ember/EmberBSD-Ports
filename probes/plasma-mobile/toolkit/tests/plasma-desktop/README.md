@@ -14,7 +14,7 @@ The runner does not change users, device permissions, services or installed sett
 Keep all files in this directory together. Run this command on the target:
 
 ```sh
-sh run.sh /absolute/new-results
+sh run.sh /absolute/new-results /absolute/capture-pixels
 ```
 
 Use a short absolute output path. The output directory must not exist.
@@ -51,7 +51,7 @@ The runner requires all these observations:
 The output saves compositor and shell logs, query results, exit statuses,
 executable hashes, the desktop capture and its hash.
 Each capture attempt keeps separate request output, errors, exit status, timeout and PNG-check logs.
-Only a successful request with a valid PNG header becomes `desktop.png`.
+Only a successful request with a fully decoded, nonuniform image becomes `desktop.png`.
 The shell cleanup escalates to SIGKILL after five seconds if needed.
 That escalation fails the test. It does not count as a clean shutdown.
 Keep the output with the tested kernel, firmware and package-set identities.
@@ -121,11 +121,13 @@ Link `-lpng16` and use the target `/usr/pkg/lib` runtime search path.
 Pass this binary as the second argument to `run.sh`.
 The host contract is `capture-pixels-test.rb NEW_OUTPUT`; use `CPPFLAGS`, `CFLAGS`,
 and `LDFLAGS` for the host libpng and optional ASan/UBSan.
-The contract rejects transparency, a uniform black image, wrong dimensions,
+The contract accepts opaque color variation and monochrome content with alpha.
+It rejects full transparency, uniform black and white images, wrong dimensions,
 a truncated header-only file, and corrupted compressed data.
 
 The test creates a digital clock in its private desktop containment.
 An empty Folder View can produce a valid fully transparent image.
-The decoder requires at least 256 nearly opaque pixels and visible color variation.
+The decoder requires at least 256 nearly opaque pixels and visible color or alpha contrast.
+It checks composition on black and white backgrounds to accept monochrome glyphs.
 This proves visible containment content, not a composited panel or HDMI output.
 It does not replace manual image inspection or input acceptance.

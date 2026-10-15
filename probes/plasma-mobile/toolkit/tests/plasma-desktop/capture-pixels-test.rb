@@ -18,14 +18,16 @@ def png(width,height,kind)
   height.times do |y|
     raw << "\0"
     width.times do |x|
-      rgb=kind==:varied ? (x < width/2 ? [240,50,40] : [10,200,240]) : [0,0,0]
-      raw << (rgb+[kind==:transparent ? 0 : 255]).pack('C4')
+      rgb=kind==:varied ? (x < width/2 ? [240,50,40] : [10,200,240]) : (kind==:black_alpha ? [0,0,0] : [255,255,255])
+alpha=kind==:transparent || ([:white_alpha,:black_alpha].include?(kind) && x >= width/2) ? 0 : 255
+rgb=[0,0,0] if kind==:black
+raw << (rgb+[alpha]).pack('C4')
     end
   end
   "\x89PNG\r\n\x1a\n".b+chunk('IHDR',[width,height,8,6,0,0,0].pack('NNC5'))+chunk('IDAT',Zlib::Deflate.deflate(raw))+chunk('IEND','')
 end
 valid=png(320,256,:varied)
-cases={valid: [valid,true], transparent: [png(320,256,:transparent),false], black: [png(320,256,:black),false], dimensions: [png(319,256,:varied),false], truncated: [valid[0,24],false], corrupt: [valid.dup,false]}
+cases={valid: [valid,true], white_alpha: [png(320,256,:white_alpha),true], black_alpha: [png(320,256,:black_alpha),true], white: [png(320,256,:white),false], transparent: [png(320,256,:transparent),false], black: [png(320,256,:black),false], dimensions: [png(319,256,:varied),false], truncated: [valid[0,24],false], corrupt: [valid.dup,false]}
 cases[:corrupt][0].setbyte(45,cases[:corrupt][0].getbyte(45)^1)
 cases.each do |name,(bytes,expected)|
   path=File.join(output,"#{name}.png"); File.binwrite(path,bytes)
@@ -33,4 +35,4 @@ cases.each do |name,(bytes,expected)|
   File.write(File.join(output,"#{name}.log"),out+err)
   abort "Wrong result for #{name}: #{status.exitstatus}" unless status.exited? && status.success? == expected
 end
-puts "PASS: valid content and five PNG rejection controls"
+puts "PASS: three visible content cases and six PNG rejection controls"

@@ -2,10 +2,15 @@
 // Origin: EmberBSD (AI-assisted). Add visible content only in the private test HOME.
 (function () {
     var desktop = desktops().filter(function (item) { return item.screen === 0; })[0];
-    if (!desktop || desktop.widgets("org.kde.plasma.digitalclock").length !== 0) {
-        throw new Error("Expected an empty test desktop");
+    if (!desktop) {
+        throw new Error("The test desktop is not ready");
     }
-    var widget = desktop.addWidget("org.kde.plasma.digitalclock", 128, 128, 384, 256);
+    var clocks = desktop.widgets("org.kde.plasma.digitalclock");
+    if (clocks.length > 1) {
+        throw new Error("Unexpected duplicate capture widgets");
+    }
+    var widget = clocks.length === 1 ? clocks[0] :
+        desktop.addWidget("org.kde.plasma.digitalclock", 128, 128, 384, 256);
     if (!widget || widget.type !== "org.kde.plasma.digitalclock") {
         throw new Error("The capture widget did not load");
     }
