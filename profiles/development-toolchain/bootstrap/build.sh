@@ -170,6 +170,9 @@ set -- --target="$triplet" --prefix=/usr/pkg/gcc16 --libdir=/usr/pkg/gcc16/lib \
 if [ "$target" = amd64 ]; then
     set -- "$@" --with-arch=nocona --with-tune=nocona --with-fpmath=sse
 fi
+# Upstream top configure otherwise deletes every existing sub-Makefile.
+# Target metadata was invalidated explicitly; keep completed host state.
+[ "$resume" != runtime ] || set -- "$@" --no-recursion
 # Preserve the NetBSD recipe's supported API cache choices.
 export ac_cv_func_clock_gettime=yes ac_cv_func_gethostbyname_r=no
 export ac_cv_func_freelocale=no ac_cv_func_newlocale=no ac_cv_func_uselocale=no

@@ -171,7 +171,11 @@ The runtime recovery fixture checks full partial-stage preservation, target
 metadata invalidation, object reuse and rejection of changed frontend state.
 The layout fixture executes the install-directory shell sections from the
 actual prepared upstream configure scripts. It checks both target identities,
-the incorrect default and the explicit directory. It does not configure or
+the incorrect default and the explicit directory. It also executes the actual
+top configure recursion parser and Makefile removal loops with production
+configure arguments. Runtime-only recovery must retain host/build Makefiles;
+normal fresh and frontend recovery modes keep upstream invalidation behavior.
+It does not configure or
 build GCC, run a linker or establish installed runtime acceptance.
 The fixtures remove only their own temporary directories.
 
@@ -217,6 +221,12 @@ archives, shared libraries and libgcc symbol maps stay available. Top configure
 then passes the canonical `--with-toolexeclibdir` option to those libraries.
 No post-install rename or flattening substitutes for upstream installation.
 
+Runtime-only top configure uses upstream `--no-recursion`. Without this option,
+top configure deletes existing host/build Makefiles on every invocation, even
+when its other arguments do not change. Target Makefiles have already been
+invalidated explicitly. Keeping host/build Makefiles lets upstream make reuse
+the completed frontend without reconfiguring it.
+
 The GCC subdirectory retains its Makefile, cache, auto-host header and configure
 arguments. This mode skips the direct `all-gcc` step. Upstream target-library
 dependencies may enter the normal incremental `all-gcc` rule; its configure
@@ -224,6 +234,11 @@ rule reuses the existing GCC Makefile. Hashes of frontend configuration and
 `xgcc`, `cc1` and `cc1plus` must stay unchanged after top configure, library make
 and installation. A change fails recovery. Normal ELF, SONAME, dynamic-path,
 header and stage-receipt checks remain mandatory after the clean installation.
+
+A work tree already missing frontend state after a failed configure remains
+ineligible for runtime-only resume. This mode does not silently restore old
+Makefiles or accept a changed frontend hash. Preserve the failed tree and its
+backup for explicit, separately verified recovery.
 
 On a failed real build, preserve the work directory and its logs. The helper
 does not delete caller inputs, install into `/usr/pkg`, modify the seed,
