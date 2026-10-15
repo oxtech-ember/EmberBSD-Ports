@@ -80,7 +80,7 @@ MESON_BINARIES+=	llvm-config
 MESON_BINARY.llvm-config=	${LLVM_CONFIG_PATH}
 pre-configure:
 	${TEST} -x ${TOOL_PYTHONBIN:Q}
-	${TOOL_PYTHONBIN} -c 'import sys, mako, packaging, yaml; assert sys.version_info[:2] == (3, 14)'
+	${TOOL_PYTHONBIN} -c 'import sys, mako, packaging, yaml; assert sys.version_info[:2] == tuple(map(int, "${PYVERSSUFFIX}".split(".")))'
 .if ${USE_CROSS_COMPILE:tl} == "yes"
 	${TEST} "$$(${TOOLS_CMD.pkg-config} --modversion wayland-client)" = 1.26.0
 	${TEST} -s ${LLVM_CONFIG_PATH:H:H:Q}/inputs.sha256
