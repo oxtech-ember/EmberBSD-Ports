@@ -24,6 +24,11 @@ public consumer passes on CM5: 145 contended mutexes keep the descriptor count
 at three, instead of exhausting the old library's 1024-descriptor limit.
 The complete desktop session remains outside this acceptance.
 
+The NetBSD [KDirWatch descriptor budget](tests/kdirwatch-budget/README.md)
+uses the existing Stat backend when unique Qt paths reach half the finite soft
+descriptor limit. Actual-source baseline, boundary, failure and sanitizer tests
+pass. Real directory-tree and installed-library acceptance remain pending.
+
 ## Prepare the source tree
 
 ```sh
