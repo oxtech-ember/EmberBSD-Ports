@@ -5,6 +5,17 @@ GCC 16.2, common Qt 6.12.0 and Frameworks 6.31.0. They install into the common
 EmberBSD sysroot and pass focused installed-library checks on CM5.
 The full accelerated KWin/Plasma session remains unaccepted.
 
+## Package metadata consistency
+
+The 6.8.0 recipe uses SONAME 8 for libPlasma and libPlasmaQuick.
+The nb1 package revision rebuilds metadata with the complete current PLIST.
+A stale `+BUILD_INFO` can still advertise SONAME 7 and require its own
+SONAME 8 libraries. `pkg_add` checks those requirements before extraction.
+Regenerate metadata through the normal pkgsrc package target; do not remove
+requirements by hand or bypass the shared-library check. The
+[package-set auditor](../tests/package-set.md) rejects this mismatch before transfer.
+These metadata checks do not establish the new package's hardware behavior.
+
 ## Native package metadata tool
 
 libplasma's configure step imports KPackage's native tool. Build the actual

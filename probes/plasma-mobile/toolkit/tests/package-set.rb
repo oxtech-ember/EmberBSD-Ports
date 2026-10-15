@@ -25,7 +25,7 @@ def pack(tar, tree, destination)
     Dir.glob('**/*', File::FNM_DOTMATCH).reject { |name| File.directory?(name) }.sort
   end
   names.delete('+CONTENTS')
-  run!(tar, '-czf', destination, '--format=pax', '-C', tree, '+CONTENTS', *names)
+  run!({ 'COPYFILE_DISABLE' => '1' }, tar, '-czf', destination, '--format=pax', '-C', tree, '+CONTENTS', *names)
 end
 
 payload = File.join(work, 'payload')
@@ -43,11 +43,15 @@ cache = File.join(work, 'cache')
 Dir.mkdir(cache)
 { 'pkgset-leaf-1.0' => [long_name, 'share/pkgset/hardlink', 'share/pkgset/symlink'],
   'pkgset-root-1.0' => ['share/pkgset/root'] }.each do |name, files|
+  build_info = File.join(work, "#{name}.build-info")
+  info_bytes = File.read(File.join(work, 'build-info'))
+  info_bytes += "PROVIDES=/usr/pkg/#{files.first}\nREQUIRES=/usr/lib/libc.so.12\n"
+  File.write(build_info, info_bytes)
   plist = File.join(work, "#{name}.plist")
   File.write(plist, files.join("\n") + "\n")
   command = [create, '-p', payload, '-I', '/usr/pkg', '-f', plist,
              '-c', File.join(work, 'comment'), '-d', File.join(work, 'description'),
-             '-B', File.join(work, 'build-info')]
+             '-B', build_info]
   command += ['-P', 'pkgset-leaf>=1.0'] if name == 'pkgset-root-1.0'
   run!(*command, File.join(cache, "#{name}.tgz"))
 end
@@ -133,6 +137,28 @@ end
 mutate.call('changed-metadata', 'Archive metadata mismatch +DESC') do |tree|
   File.chmod(0644, File.join(tree, '+DESC'))
   File.write(File.join(tree, '+DESC'), "Different description\n")
+end
+# Stale metadata can match both the installed database and the archive.
+# Payload hashes alone must not accept an old provider or a self-dependency.
+{
+  'stale-provider' => ["PROVIDES=/usr/pkg/lib/libfixture.so.7\n", 'PROVIDES is absent from the manifest'],
+  'self-required-file' => ["REQUIRES=/usr/pkg/share/pkgset/hardlink\n", "REQUIRES names the package's own payload"],
+  'self-required-symlink' => ["REQUIRES=/usr/pkg/share/pkgset/symlink\n", "REQUIRES names the package's own payload"]
+}.each do |name, (extra, expected)|
+  directory = File.join(work, name)
+  tree = File.join(directory, 'tree')
+  database = File.join(directory, 'pkgdb')
+  FileUtils.mkdir_p(tree)
+  FileUtils.cp_r(pkgdb, database)
+  run!(tar, '-xf', leaf, '-C', tree)
+  bytes = File.read(File.join(tree, '+BUILD_INFO')) + extra
+  [File.join(tree, '+BUILD_INFO'), File.join(database, 'pkgset-leaf-1.0/+BUILD_INFO')].each do |path|
+    File.chmod(0644, path)
+    File.write(path, bytes)
+  end
+  archive = File.join(directory, 'pkgset-leaf-1.0.tgz')
+  pack(tar, tree, archive)
+  check_case.call(name, database, archive, expected)
 end
 # A stale copy must not hide a later cache archive that passes the full audit.
 check_case.call('valid-after-stale-cache-copy', pkgdb,

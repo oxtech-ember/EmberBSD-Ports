@@ -258,6 +258,7 @@ runtime behavior are validated.
   Plasma Desktop shell remain unaccepted. The current xdg-user-dirs 0.20
   cross package passes private-profile checks on CM5.
   [Desktop package preparation](probes/plasma-mobile/toolkit/cross/desktop-package-set.md)
+  Its auditor rejects missing library providers and package self-dependencies before transfer.
   now includes the Activities service, current Xwayland/libei/basu providers,
   cross XKB paths and repaired native QtDBus generators for KWin's property XML.
   Package-set and session-runner host checks pass. Full-session execution on
