@@ -172,8 +172,10 @@ its receipt and target sysroot paths before configuration.
 The build-tool layer supplies Mako 1.4.3, MarkupSafe 3.0.4 and PyYAML
 6.0.3nb1. Native generator checks use the installed packages. PyYAML requires
 Cython 3.3 and libyaml; its real extension is packaged and the upstream suite
-passes with its documented skips. Xorgproto 2026.1 and libudev-bsd 0.7.0.1
-complete the current graphics dependency recipes.
+passes with its documented skips. Xorgproto 2026.1 and libudev-bsd 0.7.0.1nb2
+complete the current graphics dependency recipes. The
+[libudev adaptation](cross/libudev-render-nodes.md) adds DRM render-node
+classification for KWin 6.8 and includes source and target enumeration probes.
 
 ## Bounded package contents
 

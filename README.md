@@ -87,6 +87,9 @@ runtime behavior are validated.
   in AArch64 UTM. Mesa26 passes installed llvmpipe/ORC acceptance below;
   Full LLVM/Clang/LLD 23.1.3 cross packages pass normal staging checks; LLVM core API/JIT and renewed Mesa acceptance pass on CM5. Installed Clang/LLD execution and the TinyGo consumer remain pending.
 - [Common graphics source packages](profiles/common-graphics/README.md):
+  [libudev-bsd render-node discovery](profiles/common-graphics/cross/libudev-render-nodes.md)
+  repairs DRM classification for KWin 6.8 with a real-source regression.
+  Target enumeration and the compositor remain separate checks.
   canonical MesaLib 26.2.4nb5, adapted libdrm 2.4.134nb2,
   Wayland 1.26.0nb1 and wayland-protocols 1.49 compose the common
   GCC16/Python314/Meson112/shared LLVM23 profile for NetBSD 11/AArch64.
