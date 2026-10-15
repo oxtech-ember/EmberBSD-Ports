@@ -38,6 +38,21 @@ verify_frontend_state() {
     shasum -a 256 -c --status "$resume_backup/frontend.sha256" || fail 'Completed frontend state changed during runtime-only recovery.'
 }
 
+verify_runtime_stage() {
+    (cd "$resume_backup/stage" && find . -print | LC_ALL=C sort) > "$resume_backup/stage.inventory.check"
+    cmp -s "$resume_backup/stage.inventory" "$resume_backup/stage.inventory.check" || fail 'Partial-stage inventory changed.'
+    (cd "$resume_backup/stage" && find . -type l -exec sh -c 'for path do printf "%s\t%s\n" "$path" "$(readlink "$path")"; done' sh {} + | LC_ALL=C sort) > "$resume_backup/stage.symlinks.check"
+    cmp -s "$resume_backup/stage.symlinks" "$resume_backup/stage.symlinks.check" || fail 'Partial-stage symlinks changed.'
+    resume_preserved_count=$(find "$resume_backup/stage" -type f | wc -l | tr -d ' ')
+    [ "$resume_preserved_count" = "$(wc -l < "$resume_backup/stage.sha256" | tr -d ' ')" ] || fail 'Incomplete preserved-stage checksums.'
+    if [ "$resume_preserved_count" = 0 ]; then
+        [ ! -s "$resume_backup/stage.sha256" ] || fail 'Unexpected empty-stage checksum data.'
+    else
+        (cd "$resume_backup/stage" && shasum -a 256 -c --status ../stage.sha256) || fail 'Partial-stage preservation failed.'
+    fi
+    rm "$resume_backup/stage.inventory.check" "$resume_backup/stage.symlinks.check"
+}
+
 backup_runtime_resume() {
     resume_backup=$(mktemp -d "$work/resume-runtime.XXXXXX") || fail 'Cannot preserve runtime installation.'
     cp "$work/inputs.txt" "$resume_backup/inputs.txt"
@@ -56,7 +71,7 @@ backup_runtime_resume() {
     resume_file_count=$(find "$work/stage" -type f | wc -l | tr -d ' ')
     [ "$resume_file_count" = "$(wc -l < "$resume_backup/stage.sha256" | tr -d ' ')" ] || fail 'Incomplete partial-stage checksums.'
     mv "$work/stage" "$resume_backup/stage"
-    (cd "$resume_backup/stage" && shasum -a 256 -c --status ../stage.sha256) || fail 'Partial-stage preservation failed.'
+    verify_runtime_stage
     mkdir "$work/stage"
     # Configure every existing target-library prerequisite again, not GCC.
     # libtool .la/.lai files embed the old installation directory. Keep target

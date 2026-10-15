@@ -32,7 +32,7 @@ Use a clean Ports revision and absolute paths without whitespace:
    existing `../cross/host-math.sh` prepares them. The builder also executes
    that workflow's GMP long-loop and periodic-signal contracts.
 6. A new work directory on a case-sensitive volume, host C/C++ compilers,
-   GNU make, tar, patch, realpath and shasum. Set `CROSS_JOBS` explicitly.
+   GNU make, tar, patch, realpath, shasum and cmp. Set `CROSS_JOBS` explicitly.
 
 The seed checks reject the wrong ELF architecture, missing base inputs and
 ELF links escaping the supplied sysroot. Use relative symlinks in the seed.
@@ -214,6 +214,12 @@ The helper preserves the old receipt, logs and top configure files in
 `WORK/resume-runtime.XXXXXX`. It inventories and checksums the entire partial
 stage, moves that stage into the backup, verifies it and creates an empty stage.
 The old installation cannot become the accepted runtime provider.
+Verification compares the complete path inventory and symlink targets after
+the move. Regular-file counts must match the checksum manifest. SHA256 file
+verification is skipped only when there are zero regular files and the
+manifest is empty. Empty stages and stages with only directories or symlinks
+retain the inventory checks. The new empty stage is created only after these
+preservation checks pass.
 
 Only target-library Makefiles, configure caches/status/logs, libtool scripts
 and `.la`/`.lai` metadata are moved out of the build tree. Target objects,

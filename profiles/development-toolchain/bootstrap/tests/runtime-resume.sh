@@ -25,6 +25,7 @@ fail() { echo "$*" >&2; exit 2; }
 . "$here/resume-state.sh"
 command -v backup_runtime_resume >/dev/null || { echo 'FAIL: target-only runtime recovery is missing' >&2; exit 1; }
 backup_runtime_resume
+partial_backup=$resume_backup
 verify_frontend_state
 [ -z "$(find "$work/stage" -type f -o -type l)" ]
 [ -f "$resume_backup/stage/usr/pkg/gcc16/$triplet/lib/libgcc_s.so.1" ]
@@ -36,6 +37,48 @@ grep -F 'libgcc_s.so' "$resume_backup/stage.symlinks" >/dev/null
 [ ! -e "$work/build/$triplet/libstdc++-v3/src/.libs/libstdc++.lai" ]
 grep -qx 'preserved target object' "$work/build/$triplet/libstdc++-v3/src/object.lo"
 grep -qx 'preserved libgcc map' "$work/build/$triplet/libgcc/libgcc.map"
+# A previous refusal can leave a completely empty replacement stage.
+backup_runtime_resume
+verify_frontend_state
+[ -d "$work/stage" ] && [ -z "$(find "$work/stage" -mindepth 1 -print)" ]
+[ ! -s "$resume_backup/stage.sha256" ] && [ ! -s "$resume_backup/stage.symlinks" ]
+[ "$(cat "$resume_backup/stage.inventory")" = . ]
+echo 'PASS: empty stage is preserved and replaced without parsing an empty checksum manifest'
+mkdir "$work/stage/empty-directory"
+ln -s missing-target "$work/stage/link-only"
+backup_runtime_resume
+verify_frontend_state
+[ ! -s "$resume_backup/stage.sha256" ]
+grep -F './empty-directory' "$resume_backup/stage.inventory" >/dev/null
+grep -F 'missing-target' "$resume_backup/stage.symlinks" >/dev/null
+printf 'unrecorded entry\n' > "$resume_backup/stage/unrecorded"
+if (verify_runtime_stage) > "$work/inventory-reject.log" 2>&1; then
+    echo 'FAIL: changed preserved-stage inventory accepted' >&2; exit 1
+fi
+grep -Fx 'Partial-stage inventory changed.' "$work/inventory-reject.log" >/dev/null
+rm "$resume_backup/stage/unrecorded" "$resume_backup/stage/link-only"
+ln -s other-target "$resume_backup/stage/link-only"
+if (verify_runtime_stage) > "$work/symlink-reject.log" 2>&1; then
+    echo 'FAIL: changed preserved-stage symlink target accepted' >&2; exit 1
+fi
+grep -Fx 'Partial-stage symlinks changed.' "$work/symlink-reject.log" >/dev/null
+rm "$resume_backup/stage/link-only"
+ln -s missing-target "$resume_backup/stage/link-only"
+printf 'malformed checksum data' > "$resume_backup/stage.sha256"
+if (verify_runtime_stage) > "$work/manifest-reject.log" 2>&1; then
+    echo 'FAIL: nonempty checksum data accepted for zero regular files' >&2; exit 1
+fi
+grep -Fx 'Unexpected empty-stage checksum data.' "$work/manifest-reject.log" >/dev/null
+: > "$resume_backup/stage.sha256"
+link_backup=$resume_backup
+resume_backup=$partial_backup
+printf 'changed target DSO\n' >> "$resume_backup/stage/usr/pkg/gcc16/$triplet/lib/libgcc_s.so.1"
+if (verify_runtime_stage) > "$work/digest-reject.log" 2>&1; then
+    echo 'FAIL: changed preserved-stage file bytes accepted' >&2; exit 1
+fi
+grep -Fx 'Partial-stage preservation failed.' "$work/digest-reject.log" >/dev/null
+resume_backup=$link_backup
+echo 'PASS: zero-file directory/symlink stages retain inventory checks; changed entries, links and file bytes fail'
 printf 'changed frontend config\n' >> "$work/build/gcc/configargs.h"
 if (verify_frontend_state) > "$work/reject.log" 2>&1; then
     echo 'FAIL: changed frontend configure state accepted' >&2; exit 1
