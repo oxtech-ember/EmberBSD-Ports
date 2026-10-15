@@ -3,8 +3,9 @@
 Origin: EmberBSD optional amd64 installer desktop profile, prepared with AI assistance.
 
 The EmberBSD installer offers **None** or **XFCE with a Wi-Fi manager** inside
-its existing System step. Plasma remains a disabled development option.
-This directory owns the pinned package closure and the GTK3 adaptation of the
+its existing System step. An experimental Plasma profile uses a separate
+audited package set. Its amd64 desktop session remains unqualified.
+This directory owns the pinned XFCE package closure and the GTK3 adaptation of the
 original [dhcpcd-ui 0.8.0](https://github.com/NetworkConfiguration/dhcpcd-ui/releases/tag/v0.8.0).
 The OS repository owns sysinst, the verified bundle preflight and installed
 `ember-desktop-install` / `ember-desktop` helpers.
@@ -74,6 +75,65 @@ The System step selects all five X11 sets when XFCE is chosen. sysinst copies
 and hashes the bundle before offering disk-write confirmation, then validates
 its target copy and every package archive before normal `pkg_add` execution.
 The bundle is available through the same USB or HTTP(S) set source as the OS.
+
+## Assemble a Plasma bundle
+
+Use the complete output of the [package-set auditor](../../probes/plasma-mobile/toolkit/tests/package-set.md)
+with `--target amd64`. Keep `packages/`, `packages.sha256`, `roots.txt`,
+`install-order.txt` and `target.txt` together. Supply native pkgtools, Ruby
+with Fiddle, and bsdtar/libarchive on the development host:
+
+```sh
+PKG_INFO=/absolute/native/pkg_info PKG_ADMIN=/absolute/native/pkg_admin \
+BSDTAR=/absolute/bsdtar \
+  ruby bundle-plasma.rb /absolute/audited-amd64-set /absolute/new-output
+```
+
+This helper uses only the supplied package closure. It does not use the XFCE
+lock or download replacement packages. It snapshots the source bytes and
+runs the installer's native `--target amd64 --verify-only` check. It then
+reconstructs a private metadata database and reruns the full package auditor.
+Every archive's metadata, payload digests and ELF target must pass again.
+The resulting dependency closure must contain exactly the supplied packages.
+The source set stays unchanged. Package scripts and target programs are not run.
+
+The closure must provide executable `/usr/pkg/bin/startplasma-wayland`,
+`kwin_wayland`, `plasmashell`, `Xwayland` and `dbus-run-session`. Symlinks
+must resolve to executable payloads inside the same closure.
+
+The new output contains:
+
+- `desktop-plasma.tar.xz`, with `All/*.tgz`, `ROOTS`, `SHA512` and `PROFILE=plasma`.
+- `SHA512`, with the outer archive digest for the installation-set manifest.
+- `PROVENANCE.json`, with source hashes, package sizes/digests, program owners,
+  producer revision when available, tool-source hashes and measured bundle size.
+
+Package archives retain their audited bytes. Outer tar entries use numeric
+owner/group zero and `root:wheel` names. macOS attributes, ACLs and file flags
+are excluded. Private staging is removed after completion or failure.
+Publication uses an atomic no-replace rename on macOS or Linux. Existing
+outputs, dangling symlinks and concurrently created destinations are preserved.
+The XFCE `bundle.rb` interface remains unchanged.
+
+The helper reports the actual archive byte count. The current OS installer
+has a **512 MiB** preflight and staging limit. The provenance records whether
+the bundle fits that limit. An oversized bundle can be retained for capacity
+work, but the current installer rejects it. Generation does not waive this
+gate or establish image, VM, session or physical-display acceptance.
+
+Run the small native package/tar regression with real pkgtools:
+
+```sh
+PKG_CREATE=/absolute/native/pkg_create PKG_INFO=/absolute/native/pkg_info \
+PKG_ADMIN=/absolute/native/pkg_admin BSDTAR=/absolute/bsdtar \
+  ruby tests/bundle-plasma.rb /absolute/new-results
+```
+
+Twelve macOS cases pass. Header-only ELF fixtures cover valid bundles,
+symlinked programs, wrong target/ELF, changed digests, invalid roots, absent or
+non-executable programs and output preservation, including a publication race.
+Tar checks cover package bytes, root names, inner/outer hashes and ownership.
+These fixtures are not a compiled or running Plasma desktop.
 
 ## Installed behavior and verification boundary
 
