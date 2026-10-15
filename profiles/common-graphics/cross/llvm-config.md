@@ -124,9 +124,29 @@ not select that profile or change the shared LLVM recipe by itself.
 After the same LLVM package has been staged and transferred to a target, run:
 
 ```sh
-sh record-llvm-config.sh /absolute/target-prefix/bin/llvm-config \
+sh record-llvm-config.sh --target amd64 /absolute/target-prefix/bin/llvm-config \
     /absolute/new-reference
 ```
+
+The default remains `--target aarch64`. The capture requires the selected
+NetBSD `uname -p`, a matching little-endian ELF64 executable, LLVM 23.1.3 and
+the matching NetBSD 11 target triple before it creates the output directory.
+Both GNU and `unknown` vendor spellings are accepted. Use the installed base
+`readelf`, or set `READELF` to an explicit target-native diagnostic executable.
+The standalone script requires no Ports checkout, compiler or headers on the
+target. `target.txt` retains its selected target, processor and GNU triple.
+
+From the Ports root, the bounded host source-contract fixture is:
+
+```sh
+READELF=/absolute/cross/bin/x86_64--netbsd-readelf \
+CROSS_TEST_TOOLS=/absolute/amd64-gcc16 \
+    ruby profiles/common-graphics/tests/acceptance-entrypoints.rb
+```
+
+It checks both targets and foreign-input refusal with real ELF inspection.
+Controlled `uname` and query boundaries do not execute NetBSD code on macOS
+or constitute the required real target capture.
 
 Transfer the reference directory back with a verified archive hash. On macOS:
 
