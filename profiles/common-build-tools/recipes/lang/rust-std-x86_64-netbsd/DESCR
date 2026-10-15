@@ -1,0 +1,5 @@
+The official Rust 1.99 standard library for x86_64-unknown-netbsd.
+This native host package adds target data to the shared official macOS Rust
+compiler. It does not install a compiler on NetBSD or rebuild rustc or LLVM.
+The package verifies the complete component and imports its metadata with
+the installed host compiler before packaging. Target execution is separate.

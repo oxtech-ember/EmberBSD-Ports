@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (rust-std-1.99.0-x86_64-unknown-netbsd.tar.xz) = 83882c2459a0a4c2aff724e13ab634dbd5b286a8fca415c1cf25d87a2768c966
+SHA512 (rust-std-1.99.0-x86_64-unknown-netbsd.tar.xz) = c1363d96e51077d7e24bf8c1a17cba0751f7f9654b20396163293d4d09074c8dbfcc1aa61dbbe67d0e0f18993ed357a4e750b3a312ff25d657452ad8691cff3c
+Size (rust-std-1.99.0-x86_64-unknown-netbsd.tar.xz) = 29582788 bytes
