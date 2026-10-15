@@ -48,6 +48,9 @@ its helpers retained the host sort wrapper path. Its SHA256 was
 Revision nb1 selects target sort through the shared cross-pkginstall patch.
 The [actual install-script check](../../../../../profiles/common-build-tools/tests/cross-install-scripts.rb)
 rejects that control archive and checks directory/configuration lifecycle.
+The corrected nb1 archive SHA256 is
+`458c855ed11ef2010957faf80376b2cdac0d1826eb66c4b28e13036d9aa5e746`.
+Its 40 installed payload files and target helper paths pass on CM5.
 No package metadata or payload is edited after packaging.
 
 The public-header installation uses POSIX sed syntax. The old BSD-sed
@@ -91,7 +94,23 @@ ruby runtime-errors.rb runtime-consumer.c /absolute/staged/usr/pkg /absolute/new
 It runs ASan/UBSan with distinct target errno values. Unsupported first calls
 return 77. A permission error remains exit 1. No unsupported result is PASS.
 
+Use a separate 4 MiB FFS2ea fixture when the root filesystem lacks xattrs:
+
+```sh
+# Root prepares the fixture; the named user runs the library and CLI checks.
+sh runtime-ffs.sh /usr/pkg /absolute/new-fixture /absolute/attr-abi-consumer vnd0 developer
+```
+
+Select an existing unprivileged account and a free vnode disk. The wrapper
+checks `vnconfig -l -m 1` before attachment and creates only a new image.
+Its format follows the OS tests `tests/fs/ffs/t_extattr.c` and
+`tests/sbin/fsck_ffs/t_extattr.sh`. It copies results out, unmounts and detaches
+its device before deleting its image. A failed runtime or cleanup preserves the image.
+It does not change the root filesystem. Execution still needs board acceptance.
+Tmpfs has no xattr vnode operations in the inspected OS source and is not a substitute.
+
 GCC16 `-fanalyzer` processes all 19 selected upstream translation units.
+
 Six fail to compile before the backend adaptation; all 19 compile afterwards.
 No path-analyzer finding was added. Cppcheck 2.22 checks the same target
 configuration; the changed backend and consumer pass its focused checks.
