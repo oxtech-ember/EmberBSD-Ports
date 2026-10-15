@@ -253,3 +253,15 @@ BMAKE=/absolute/bmake sh profiles/common-build-tools/tests/check-error-dir.sh \
 The regression uses real pkgsrc make fragments. It reproduces the original
 failure, accepts a valid payload and rejects five invalid payloads.
 It also checks all four direct writer targets and preserves the build cookie.
+
+The cross profile exports `LC_ALL=C` and selects `/usr/bin/sort` directly.
+pkgsrc passes `TOOLS_SORT` as one executable to its libtool PLIST expander.
+An `env` command in the tool path drops shared and static library entries.
+This check exercises the actual PLIST target under a non-C caller locale:
+
+```sh
+BMAKE=/absolute/host/bin/bmake ruby profiles/common-build-tools/tests/cross-sort.rb \
+    /absolute/prepared-pkgsrc /absolute/cross.mk.conf /absolute/new-sort-results
+```
+
+Its staged files test PLIST processing; they are not target ELF evidence.
