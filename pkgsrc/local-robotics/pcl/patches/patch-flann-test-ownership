@@ -1,0 +1,80 @@
+$NetBSD$
+
+Pass each FLANN test's index creator in the owning constructor argument.
+The first FlannSearch argument is bool. A raw pointer converts to true there
+and leaks while the default creator is used instead.
+Keep sorted results and the same KdTreeIndexCreator configuration.
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+
+--- a/test/search/test_flann_search.cpp
++++ b/test/search/test_flann_search.cpp
+@@ -75,7 +75,8 @@
+ /* Test for FlannSearch nearestKSearch */
+ TEST (PCL, FlannSearch_nearestKSearch)
+ {
+-  pcl::search::FlannSearch<PointXYZ> FlannSearch (new search::FlannSearch<PointXYZ>::KdTreeIndexCreator);
++  pcl::search::FlannSearch<PointXYZ> FlannSearch (
++      true, pcl::make_shared<search::FlannSearch<PointXYZ>::KdTreeIndexCreator> ());
+   FlannSearch.setInputCloud (cloud.makeShared ());
+   PointXYZ test_point (0.01f, 0.01f, 0.01f);
+   unsigned int no_of_neighbors = 20;
+@@ -118,7 +119,8 @@
+ 
+   ScopeTime scopeTime ("FLANN nearestKSearch");
+   {
+-    pcl::search::FlannSearch<PointXYZ> FlannSearch( new search::FlannSearch<PointXYZ>::KdTreeIndexCreator);
++    pcl::search::FlannSearch<PointXYZ> FlannSearch (
++        true, pcl::make_shared<search::FlannSearch<PointXYZ>::KdTreeIndexCreator> ());
+     //FlannSearch.initSearchDS ();
+     FlannSearch.setInputCloud (cloud_big.makeShared ());
+     for (const auto &point : cloud_big.points)
+@@ -132,7 +134,8 @@
+ 
+   unsigned int no_of_neighbors = 20;
+ 
+-  pcl::search::FlannSearch<PointXYZ> FlannSearch (new search::FlannSearch<PointXYZ>::KdTreeIndexCreator);
++  pcl::search::FlannSearch<PointXYZ> FlannSearch (
++      true, pcl::make_shared<search::FlannSearch<PointXYZ>::KdTreeIndexCreator> ());
+   //FlannSearch.initSearchDS ();
+   FlannSearch.setInputCloud (cloud_big.makeShared ());
+ 
+@@ -179,7 +182,8 @@
+   unsigned int no_of_neighbors = 20;
+ 
+ 
+-  pcl::search::FlannSearch<PointXYZ> FlannSearch (new search::FlannSearch<PointXYZ>::KdTreeIndexCreator);
++  pcl::search::FlannSearch<PointXYZ> FlannSearch (
++      true, pcl::make_shared<search::FlannSearch<PointXYZ>::KdTreeIndexCreator> ());
+   //FlannSearch.initSearchDS ();
+   FlannSearch.setInputCloud (cloud_big.makeShared ());
+ 
+@@ -212,7 +216,8 @@
+   unsigned int no_of_neighbors = 3;
+ 
+ 
+-  pcl::search::FlannSearch<PointXYZ> flann_search (new search::FlannSearch<PointXYZ>::KdTreeIndexCreator);
++  pcl::search::FlannSearch<PointXYZ> flann_search (
++      true, pcl::make_shared<search::FlannSearch<PointXYZ>::KdTreeIndexCreator> ());
+   //FlannSearch->initSearchDS ();
+   flann_search.setInputCloud (cloud_big.makeShared ());
+ 
+@@ -266,7 +271,8 @@
+   PointCloud<PointXYZ>::Ptr pc = cloud_big.makeShared();
+   {
+     ScopeTime scopeTime ("FLANN build");
+-    flann_search = new pcl::search::FlannSearch<PointXYZ> (new search::FlannSearch<PointXYZ>::KdTreeIndexCreator);
++    flann_search = new pcl::search::FlannSearch<PointXYZ> (
++        true, pcl::make_shared<search::FlannSearch<PointXYZ>::KdTreeIndexCreator> ());
+     flann_search->setInputCloud (pc);
+   }
+ 
+@@ -371,7 +377,8 @@
+   init ();
+ 
+   // Testing using explicit instantiation of inherited class
+-  pcl::search::FlannSearch<PointXYZ> FlannSearch ( new search::FlannSearch<PointXYZ>::KdTreeIndexCreator);
++  pcl::search::FlannSearch<PointXYZ> FlannSearch (
++      true, pcl::make_shared<search::FlannSearch<PointXYZ>::KdTreeIndexCreator> ());
+   FlannSearch.setInputCloud (cloud.makeShared ());
+ 
+   return (RUN_ALL_TESTS ());

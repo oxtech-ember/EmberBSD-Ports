@@ -1,0 +1,11 @@
+Upstream: GCC / GNU Atomic Library, Free Software Foundation contributors
+Version: 16.2.0
+Original archive: https://gcc.gnu.org/pub/gcc/releases/gcc-16.2.0/gcc-16.2.0.tar.xz
+SHA256: e6738e29597f733270731aa90600f37ffdc045079dfc27ec7e8192cc81085c3e
+Component: libatomic, config, include and required GCC build auxiliaries
+License: GPL-3.0-or-later WITH GCC-exception-3.1
+Source changes: none
+Packaging: EmberBSD, AI-assisted standalone component recipe and cross helper.
+This extends an incomplete GCC16 runtime sysroot. It does not install another
+compiler or substitute an older runtime. A complete gcc16 or gcc16-libs package
+must own its runtime files instead; the component package conflicts with both.

@@ -1,0 +1,7 @@
+The GNU Atomic Library implements atomic operations that the target cannot
+perform directly, including generic-sized C and C++ atomic objects. This
+package builds only libatomic from the same GCC 16.2.0 source as the common
+EmberBSD compiler. It does not install compiler frontends or older runtimes.
+
+Use this component only for an incomplete cross SDK. Full gcc16 and gcc16-libs
+packages already provide libatomic and conflict with this package.

@@ -27,11 +27,19 @@ CXX=$(cat "$work/logs/cxx.txt")
 EIGEN_PREFIX=$(cat "$work/logs/eigen-prefix.txt")
 OPENCV_PREFIX=$(cat "$work/logs/opencv-prefix.txt")
 CERES_PREFIX=$(cat "$work/logs/ceres-prefix.txt")
-LD_LIBRARY_PATH=$prefix/lib:$OPENCV_PREFIX/lib:$CERES_PREFIX/lib:/usr/pkg/lib
+BOOST_LIB_PATH=
+consumer_prefixes=
+if [ -e "$work/logs/boost-prefix.txt" ]; then
+    BOOST_PREFIX=$(cat "$work/logs/boost-prefix.txt")
+    BOOST_LIB_PATH=":$BOOST_PREFIX/lib"
+    consumer_prefixes="-DCMAKE_PREFIX_PATH=$BOOST_PREFIX"
+fi
+LD_LIBRARY_PATH=$prefix/lib:$OPENCV_PREFIX/lib:$CERES_PREFIX/lib$BOOST_LIB_PATH:/usr/pkg/lib
 export LD_LIBRARY_PATH
 cmake -S "$recipe/tests" -B "$work/test-build" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DPROBE_PREFIX="$prefix" -DEIGEN_PREFIX="$EIGEN_PREFIX" \
     -DCMAKE_CXX_COMPILER="$CXX" -DOPENCV_PREFIX="$OPENCV_PREFIX" -DCERES_PREFIX="$CERES_PREFIX" \
+    $consumer_prefixes \
     -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF \
     > "$work/logs/consumer-configure.log" 2>&1 || { cat "$work/logs/consumer-configure.log" >&2; exit 1; }
 cmake --build "$work/test-build" --parallel 1 > "$work/logs/consumer-build.log" 2>&1 || {

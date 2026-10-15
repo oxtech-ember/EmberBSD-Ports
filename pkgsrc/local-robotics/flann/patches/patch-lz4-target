@@ -1,0 +1,92 @@
+$NetBSD$
+
+Use common LZ4 imported targets in relocatable FLANN CMake exports.
+Publish valid pkg-config dependencies and libraries for the selected bindings.
+The upstream metadata retained the cross sysroot and an absent C library.
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -146,9 +146,8 @@
+     endif(CUDA_FOUND)
+ endif(BUILD_CUDA_LIB)
+ 
+-find_package(PkgConfig REQUIRED)
+-pkg_check_modules(LZ4 REQUIRED liblz4)
+-include_directories(${LZ4_INCLUDE_DIRS})
++# Use an imported target so installed exports do not retain a build sysroot.
++find_package(lz4 1.10.0 CONFIG REQUIRED)
+ 
+ #set the C/C++ include path to the "include" directory
+ include_directories(BEFORE ${PROJECT_SOURCE_DIR}/src/cpp)
+--- src/cpp/CMakeLists.txt.orig
++++ src/cpp/CMakeLists.txt
+@@ -9,7 +9,7 @@
+ file(GLOB_RECURSE CU_SOURCES *.cu)
+ 
+ add_library(flann_cpp_s STATIC ${CPP_SOURCES})
+-target_link_libraries(flann_cpp_s ${LZ4_LINK_LIBRARIES})
++target_link_libraries(flann_cpp_s LZ4::lz4)
+ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
+     set_target_properties(flann_cpp_s PROPERTIES COMPILE_FLAGS -fPIC)
+ endif()
+@@ -42,7 +42,7 @@
+     endif()
+ else()
+     add_library(flann_cpp SHARED ${CPP_SOURCES})
+-    target_link_libraries(flann_cpp ${LZ4_LINK_LIBRARIES})
++    target_link_libraries(flann_cpp LZ4::lz4)
+     # export lz4 headers, so that MSVC to creates flann_cpp.lib
+     set_target_properties(flann_cpp PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS YES)
+     if (BUILD_CUDA_LIB)
+@@ -80,7 +80,7 @@
+ 
+ if (BUILD_C_BINDINGS)
+     add_library(flann_s STATIC ${C_SOURCES})
+-    target_link_libraries(flann_s ${LZ4_LINK_LIBRARIES})
++    target_link_libraries(flann_s LZ4::lz4)
+     if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
+         set_target_properties(flann_s PROPERTIES COMPILE_FLAGS -fPIC)
+     endif()
+@@ -92,7 +92,7 @@
+         target_link_libraries(flann -Wl,-whole-archive flann_s -Wl,-no-whole-archive)
+     else()
+         add_library(flann SHARED ${C_SOURCES})
+-        target_link_libraries(flann ${LZ4_LINK_LIBRARIES})
++        target_link_libraries(flann LZ4::lz4)
+ 
+         if(MINGW AND OPENMP_FOUND)
+           target_link_libraries(flann gomp)
+--- cmake/Config.cmake.in.orig
++++ cmake/Config.cmake.in
+@@ -1,5 +1,8 @@
+ @PACKAGE_INIT@
+ 
++include(CMakeFindDependencyMacro)
++find_dependency(lz4 1.10.0 CONFIG)
++
+ include("${CMAKE_CURRENT_LIST_DIR}/@targets_export_name@.cmake")
+ check_required_components("flann")
+ 
+--- cmake/CMakeLists.txt.orig
++++ cmake/CMakeLists.txt
+@@ -1,4 +1,10 @@
+ set(PKG_DESC "Fast Library for Approximate Nearest Neighbors")
++# Public FLANN headers use LZ4. Keep package names and target libraries separate.
++set(PKG_EXTERNAL_DEPS liblz4)
++set(PKG_FLANN_LIBS "-lflann_cpp")
++if(BUILD_C_BINDINGS)
++    set(PKG_FLANN_LIBS "-lflann -lflann_cpp")
++endif()
+ set(pkg_conf_file ${CMAKE_CURRENT_BINARY_DIR}/flann.pc)
+ configure_file(flann.pc.in ${pkg_conf_file} @ONLY)
+ install(FILES ${pkg_conf_file}
+--- cmake/flann.pc.in.orig
++++ cmake/flann.pc.in
+@@ -8,6 +8,6 @@
+ Description: @PKG_DESC@
+ Version: @FLANN_VERSION@
+ Requires: @PKG_EXTERNAL_DEPS@
+-Libs: -L${libdir} @LZ4_STATIC_LDFLAGS@ -lflann -lflann_cpp
++Libs: -L${libdir} @PKG_FLANN_LIBS@
+ Cflags: -I${includedir}
+ 

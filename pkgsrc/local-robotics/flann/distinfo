@@ -1,0 +1,6 @@
+# EmberBSD: pinned official FLANN source
+
+BLAKE2s (flann-1.9.2.tar.gz) = 997d9cb47aec4c4874c4b47cfb9766eb7c21e87a169c2889e839a0a83c8820b3
+SHA512 (flann-1.9.2.tar.gz) = b8032a4a5ae040f572482c8599e39041a0913e4179f799ee316208a0835510cb4356c845d580dd5d0c570dea1958210ca4478c85b7c32036e29b472e5968c130
+Size (flann-1.9.2.tar.gz) = 34642850 bytes
+SHA1 (patch-lz4-target) = a9f4ec4e445813b301b41910135c35228f1e5755

@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: BSD-2-Clause
+BUILDLINK_TREE+=	lz4
+
+.if !defined(LZ4_BUILDLINK3_MK)
+LZ4_BUILDLINK3_MK:=
+BUILDLINK_API_DEPENDS.lz4+=	lz4>=1.10.0
+BUILDLINK_ABI_DEPENDS.lz4+=	lz4-1.10.0{,nb*}
+BUILDLINK_PKGSRCDIR.lz4?=	../../local-robotics/lz4
+GCC_REQD+=	16.2
+
+.endif
+
+BUILDLINK_TREE+=	-lz4

@@ -1,0 +1,6 @@
+# EmberBSD: pinned official LZ4 source
+
+BLAKE2s (lz4-1.10.0.tar.gz) = 808c7e29e470bced688f9c8f965518b4eb2ead74521cf6f79f1699593d756fca
+SHA512 (lz4-1.10.0.tar.gz) = 8c4ceb217e6dc8e7e0beba99adc736aca8963867bcf9f970d621978ba11ce92855912f8b66138037a1d2ae171e8e17beb7be99281fea840106aa60373c455b28
+Size (lz4-1.10.0.tar.gz) = 387114 bytes
+SHA1 (patch-zero-buffers) = c9f569fab0903a34f334325a7468e43258531b0d

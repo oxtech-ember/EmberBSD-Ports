@@ -177,20 +177,49 @@ structural: GTK4 no longer exports the wl_surface of a Gdk.Window, which
 upstream gtk4 branch solves this with gtk4-layer-shell - that small
 library is the next port, or the migration waits for upstream.
 
-## Deploy set for ember-rpi5-01 (2026-10-14)
+## Deploy set for ember-rpi5-01 (updated 2026-10-15)
 
-All chain packages are collected in the cross tree under
-`rpi5-deploy/packages` (18 binary packages, 21 MiB) with an
-`install-and-test.sh` that installs them on the board, compiles the
-gsettings schemas, checks binaries, and prints the console command for the
-interactive compositor run. The board must be back on the network first.
+The cross tree collects the deploy set under `rpi5-deploy/`:
+`packages/` holds the Pantheon chain (21 packages) and
+`packages-full/` holds the complete 118-package dependency closure as
+installed and verified on the local QEMU acceptance VM, with an
+`install-and-test.sh` that installs both sets, compiles the gsettings
+schemas, checks binaries, smokes `--help` for wingpanel and dock, and
+prints the console command for the interactive compositor run.
+
+## Validation record (2026-10-15): GIR, dock, VM acceptance
+
+- The GIR chain is complete in the cross sysroot through the local QEMU
+  acceptance VM (ssh alias `ember-vm-query`, 127.0.0.1:2222): gtk4,
+  graphene, and libadwaita (Adw-1.gir, Adw-1.typelib,
+  libadwaita-1.vapi). The libadwaita introspect binary links
+  `-lgirepository-1.0`; the pkgsrc compiler wrapper strips foreign
+  sysroot `-L` paths, so the recipe lifts libgirepository-1.0 into
+  `.buildlink/lib` in pre-configure, which the wrapper keeps.
+- Two pkgsrc-level fixes were needed on the Darwin cross host and remain
+  in the build tree pending fork review: `mk/check/check-files.mk` sorts
+  the expected/added file lists with `LC_ALL=C` (the host locale sorted
+  `pt_BR` before `pt`, failing every locale-carrying package), and the
+  mutter runtime needs `libeis.so.1`, provided by libei 1.6.0nb1 (the
+  accepted CM5 Plasma kit binary); the older 1.4.1 recipe disabled
+  libeis and its package lacks the library.
+- dock 8.3.3 cross-built (GTK4 + granite-7 + libadwaita): valac through
+  the host wrappers, protocol code from the host wayland-scanner 1.26.0
+  (rebuilt after the /tmp scratch loss; sources now under
+  `/Volumes/BigData/EmberBSD/work/ember-wayland26-cross`).
+  `bin/io.elementary.dock` is an AArch64 PIE ELF in the sysroot.
+- VM acceptance: the full 118-package closure installed with
+  `pkg_add -U` on the QEMU VM; `gala --help`, `wingpanel --help`, and
+  `dock --help` all load their libraries.
 
 ## Not yet done
 
-- mutter configure completion (glycin, gvdb), granite 7.8.1 and gala 8.6.2
-  builds, PLIST generation from destdirs.
 - colord daemon profile (data generation, sensor plugins, session glue).
-- Headless mutter smoke test in the AArch64 VM and hardware acceptance.
+- Interactive compositor run on the board console (DRM/KMS) and the E25
+  screenshot; the VM smoke covers library loading only.
+- libei recipe alignment at 1.6.0 with `libeis` enabled in the profile
+  the mutter consumers build from.
+- elementary session files (session launcher, portal configuration).
 
 ## Dependency fixes
 

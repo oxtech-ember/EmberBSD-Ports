@@ -1,0 +1,36 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Preserve cross-built libadwaita GIR outputs.
+Only temporary GType queries execute through the shared target launcher.
+
+--- src/meson.build.orig	2026-09-14 14:37:35.000000000 +0300
++++ src/meson.build	2026-10-14 17:44:42.593890393 +0300
+@@ -446,12 +446,19 @@
+ 
+ meson.override_dependency(package_api_name, libadwaita_dep)
+ 
++emberbsd_gir_args = []
++emberbsd_gir_env = environment()
++if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++  emberbsd_gir_args = ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++  emberbsd_gir_env.set('LD_LIBRARY_PATH', meson.current_build_dir())
++endif
++
+ if introspection
+ 
+    libadwaita_gir_extra_args = [
+      '--quiet',
+      '-DADWAITA_COMPILATION',
+-   ]
++   ] + emberbsd_gir_args
+    if gi_scanner.version().version_compare('>=1.83.2')
+      libadwaita_gir_extra_args += [
+        '--doc-format=gi-docgen',
+@@ -460,6 +467,7 @@
+ 
+ 
+    libadwaita_gir = gnome.generate_gir(libadwaita,
++               env: emberbsd_gir_env,
+                  sources: libadwaita_generated_headers + libadwaita_public_headers + libadwaita_public_sources,
+                nsversion: apiversion,
+                namespace: 'Adw',

@@ -1,0 +1,3 @@
+Fast Library for Approximate Nearest Neighbors (FLANN). This CPU C++ profile
+installs shared and static libraries, headers and CMake imported targets.
+The profile excludes C/Python/MATLAB bindings, CUDA, OpenMP, MPI and HDF5.

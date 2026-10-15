@@ -1,0 +1,9 @@
+# EmberBSD: official PCL source and Eigen 5 configuration patch
+
+BLAKE2s (pcl-1.15.1.tar.gz) = b237e8bbe8182db487b36b6fac93d34bb178d0835b6d62862c9f9296dbcc215e
+SHA512 (pcl-1.15.1.tar.gz) = a80462b5d59fe5fdf727a3d6e645f6a7f1e18e2ae9293d26c6dc62f4c734985af505eb645e191397627b946590008a422abd6330e8d13574b6a7be1075e5c240
+Size (pcl-1.15.1.tar.gz) = 68706780 bytes
+SHA1 (patch-cmake-rpath) = 151d6011ba3e58c833977526ec0b9fbe18806e10
+SHA1 (patch-eigen5) = 1d9225b16328c45cbd2165d1481ee1f3b2a2e9c1
+SHA1 (patch-flann-test-ownership) = 893b26c0aac7ff80f25743af338a481f181c1e17
+SHA1 (patch-relocatable-flann) = 2baa3c3e99eb228853a5b712237bc6ab3a6c9468

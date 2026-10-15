@@ -1,0 +1,37 @@
+$NetBSD$
+
+Avoid null pointer arithmetic for zero-length LZ4 frame API calls.
+Keep null output-buffer state semantics and dictionary ownership unchanged.
+Repeated frame-info queries invoke the affected decoder path internally.
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+
+--- lib/lz4frame.c.orig
++++ lib/lz4frame.c
+@@ -1616,7 +1616,8 @@
+                        const LZ4F_decompressOptions_t* decompressOptionsPtr)
+ {
+     LZ4F_decompressOptions_t optionsNull;
+-    const BYTE* const srcStart = (const BYTE*)srcBuffer;
++    const BYTE emptyInput = 0;
++    const BYTE* const srcStart = srcBuffer ? (const BYTE*)srcBuffer : &emptyInput;
+     const BYTE* const srcEnd = srcStart + *srcSizePtr;
+     const BYTE* srcPtr = srcStart;
+     BYTE* const dstStart = (BYTE*)dstBuffer;
+@@ -1883,7 +1884,7 @@
+             }   }
+ 
+             /* decode directly into destination buffer if there is enough room */
+-            if ( ((size_t)(dstEnd-dstPtr) >= dctx->maxBlockSize)
++            if ( (dstPtr != NULL && (size_t)(dstEnd-dstPtr) >= dctx->maxBlockSize)
+                  /* unless the dictionary is stored in tmpOut:
+                   * in which case it's faster to decode within tmpOut
+                   * to benefit from prefix speedup */
+@@ -2111,7 +2112,7 @@
+     }
+ 
+     *srcSizePtr = (size_t)(srcPtr - srcStart);
+-    *dstSizePtr = (size_t)(dstPtr - dstStart);
++    *dstSizePtr = dstStart ? (size_t)(dstPtr - dstStart) : 0;
+     return nextSrcSizeHint;
+ }
+ 

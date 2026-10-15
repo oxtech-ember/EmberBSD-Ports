@@ -1,0 +1,8 @@
+gcc16/lib/libatomic.a
+gcc16/lib/libatomic.la
+gcc16/lib/libatomic.so
+gcc16/lib/libatomic.so.3
+gcc16/lib/libatomic.so.3.0
+share/licenses/gcc16-libatomic/COPYING.RUNTIME
+share/licenses/gcc16-libatomic/COPYING3
+share/licenses/gcc16-libatomic/SOURCE

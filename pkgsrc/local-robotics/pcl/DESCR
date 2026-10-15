@@ -1,0 +1,5 @@
+Point Cloud Library provides algorithms for 3-D geometric processing.
+This shared CPU profile supports filtering, nearest-neighbor searches,
+point-cloud I/O and rigid registration with common Eigen and Boost.
+It uses the upstream core point-type instantiations and excludes GUI,
+CUDA, camera backends, surface reconstruction and segmentation.
