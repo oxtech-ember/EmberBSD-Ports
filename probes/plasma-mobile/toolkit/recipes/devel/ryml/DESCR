@@ -1,0 +1,2 @@
+Library to parse and emit YAML, meant to be very fast and to be
+used inline. Ships the c4core sources. Plasma 6.8 Union uses it.

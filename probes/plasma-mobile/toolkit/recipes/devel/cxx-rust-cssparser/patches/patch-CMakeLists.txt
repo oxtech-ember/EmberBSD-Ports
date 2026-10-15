@@ -1,0 +1,28 @@
+$NetBSD$
+
+Make the Corrosion find and the examples subdirectory optional;
+the cross recipe provides prebuilt crate artifacts.
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -14,7 +14,9 @@
+ 
+ set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+ 
++if (NOT DEFINED EMBER_RUST_LIB)
+ find_package(Corrosion REQUIRED)
++endif()
+ 
+ include(GNUInstallDirs)
+ set(LIB_INSTALL_DIR ${CMAKE_INSTALL_LIBDIR})
+@@ -41,7 +43,9 @@
+ add_subdirectory(rust)
+ add_subdirectory(cpp)
+ 
++if (BUILD_EXAMPLES)
+ add_subdirectory(examples)
++endif()
+ 
+ ecm_setup_version(
+     PROJECT

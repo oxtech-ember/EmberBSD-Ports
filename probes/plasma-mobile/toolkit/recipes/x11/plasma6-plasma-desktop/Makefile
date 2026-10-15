@@ -100,10 +100,11 @@ pre-configure:
 .include "../../x11/kf6-kwidgetsaddons/buildlink3.mk"
 .include "../../x11/kf6-kxmlgui/buildlink3.mk"
 .include "../../x11/kirigami-addons/buildlink3.mk"
-.include "../../x11/plasma6-libplasma/buildlink3.mk"
+
 .include "../../x11/plasma6-plasma-activities/buildlink3.mk"
 .include "../../x11/plasma6-plasma-activities-stats/buildlink3.mk"
 .include "../../x11/plasma6-plasma-workspace/buildlink3.mk"
+.include "../../x11/plasma6-union/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../x11/xcb-util-cursor/buildlink3.mk"
 .include "../../x11/xkeyboard-config/buildlink3.mk"

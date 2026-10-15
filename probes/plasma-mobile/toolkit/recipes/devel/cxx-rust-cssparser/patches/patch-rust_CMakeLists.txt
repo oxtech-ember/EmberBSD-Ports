@@ -1,0 +1,32 @@
+$NetBSD$
+
+Allow building without Corrosion: import the crate
+artifacts that the recipe builds with the host cargo driver.
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+--- rust/CMakeLists.txt.orig
++++ rust/CMakeLists.txt
+@@ -1,6 +1,23 @@
+ # SPDX-License-Identifier: BSD-2-Clause
+ # SPDX-FileCopyrightText: 2025 Arjen Hiemstra <ahiemstra@heimr.nl>
+ 
++if (DEFINED EMBER_RUST_LIB)
++# EmberBSD: the recipe drives the host cargo for the NetBSD target and
++# imports the built artifacts. Corrosion is not packaged.
++add_library(cxx_rust_cssparser_impl STATIC IMPORTED GLOBAL)
++set_target_properties(cxx_rust_cssparser_impl PROPERTIES
++    IMPORTED_LOCATION "${EMBER_RUST_LIB}")
++# The Rust standard library needs the target pthread at final link.
++set_property(TARGET cxx_rust_cssparser_impl PROPERTY INTERFACE_LINK_LIBRARIES pthread)
++add_library(cxx-rust-cssparser-impl-bridge STATIC IMPORTED GLOBAL)
++set_target_properties(cxx-rust-cssparser-impl-bridge PROPERTIES
++    IMPORTED_LOCATION "${EMBER_BRIDGE_LIB}")
++target_include_directories(cxx-rust-cssparser-impl-bridge INTERFACE
++    "${EMBER_BRIDGE_INCLUDE}"
++    "${EMBER_BRIDGE_INCLUDE}/cxx-rust-cssparser-impl/src")
++target_link_libraries(cxx-rust-cssparser-impl-bridge INTERFACE cxx_rust_cssparser_impl)
++return()
++endif()
+ corrosion_import_crate(MANIFEST_PATH Cargo.toml)
+ corrosion_set_env_vars(cxx_rust_cssparser_impl CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/output)
+ 

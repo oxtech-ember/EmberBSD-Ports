@@ -121,7 +121,8 @@ CONF_FILES+=	${PREFIX}/share/examples/kde-xdg/plasmanotifyrc \
 .include "../../x11/plasma6-kscreenlocker/buildlink3.mk"
 .include "../../x11/plasma6-layer-shell-qt/buildlink3.mk"
 .include "../../x11/plasma6-libkscreen/buildlink3.mk"
-.include "../../x11/plasma6-libplasma/buildlink3.mk"
+
+.include "../../x11/plasma6-union/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../x11/xcb-util-cursor/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
