@@ -17,7 +17,9 @@ The full Mesa package now passes normal cross packaging and sysroot installation
 and 37 upstream target invocations against its canonical runtime libraries.
 Its [libepoxy consumer](epoxy.md) passes installed EGL/GLES dynamic dispatch,
 four llvmpipe rendering lifecycles and four pure upstream tests on Zero 3W.
-Visible X11/Wayland sessions and physical GPU acceleration remain unverified.
+The separate [CM5 checks](mesa-cm5.md) cover hardware V3D rendering and a visible
+Plasma capture. A sustained complete desktop and native HDMI hotplug remain
+unverified. These CM5 results do not establish PowerVR graphics on Zero 3W.
 
 [Wayland 1.26 and protocols 1.49](wayland.md) use a matching host scanner,
 separate native metadata and the installed target libraries. Their target
@@ -25,7 +27,7 @@ tests are independent of the temporary Mesa diagnostic described below.
 
 Use the [GCC16 cross compiler](../../development-toolchain/cross/README.md),
 an AArch64 NetBSD 11 sysroot with its GCC16 CRT and base libpci, host Python
-3.14.8 and the fully prepared common Meson 1.12.1 source. The sysroot must
+3.15 and the fully prepared common Meson 1.12.1 source. The sysroot must
 contain real target libraries, headers and preserved SONAME links. Do not
 substitute host libraries. The original libdrm URL and SHA256 are recorded
 in [sources.tsv](../sources.tsv).
