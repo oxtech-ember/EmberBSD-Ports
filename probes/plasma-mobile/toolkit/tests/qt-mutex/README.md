@@ -97,6 +97,12 @@ GCC-preprocessed input and its experimental Clang importer also hit parser
 limits. No complete Cppcheck pass is claimed; no diagnostics are suppressed.
 The separate Clang path analysis covers the complete module.
 
+On physical CM5 with the previous QtCore, the retained public consumer reproduces the failure.
+It reports three descriptors before contention and 1024 at the sampled peak.
+The old library reports `sem_init` failures with `EMFILE`; the consumer returns 1.
+The failure path uses `_Exit` so teardown of the failed old pool cannot mask this result.
+The same consumer binary must pass after the updated package is installed.
+
 Full QtCore packaging, target condition-clock execution, the retained public
 consumer, and the desktop session remain pending. These checks do not claim a
 working accelerated Plasma session or a fix for a separate Mesa crash.

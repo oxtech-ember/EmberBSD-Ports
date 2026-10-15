@@ -40,4 +40,3 @@ struct udev_list *name(struct udev_device *device) { (void)device; abort(); }
 UNUSED_LIST(udev_device_get_properties_list)
 UNUSED_LIST(udev_device_get_sysattr_list)
 UNUSED_LIST(udev_device_get_tags_list)
-
