@@ -326,9 +326,16 @@ runtime behavior are validated.
   and package removal/reinstallation pass in EmberBSD AArch64 QEMU.
   [Validation](probes/onnxruntime/VALIDATION.md) separates installed API checks,
   native memory analysis and EmberBSD AArch64 target execution.
+- [ncnn CPU inference](probes/ncnn/README.md): the canonical 20260526 shared
+  C/C++ SDK cross-builds with GCC16. Installed CNN inference has independent
+  scalar answers, eight unchanged upstream programs, source regressions and
+  package removal/reinstallation in EmberBSD AArch64 QEMU. The
+  [validation record](probes/ncnn/VALIDATION.md) distinguishes target execution,
+  native memory checks, ABI controls and source-analysis limits.
 - [CPU inference and audio](probes/ai-engines/README.md): ncnn 20260526,
   RNNoise 0.2 and Silero VAD 6.2.3 use installed C/C++ consumers. The current
-  source profile shares the canonical ONNX Runtime 1.31.0 version and patches.
+  source profile shares the canonical ONNX Runtime 1.31.0 and ncnn profiles
+  and patches. The combined native build has not been rerun after this update.
   Historical ONNX Runtime 1.30.0 measurements cover seven native AArch64
   contracts for inference, stream state, speech/silence and invalid inputs.
   Worker affinity has a separate historical check. Microphones and accelerators

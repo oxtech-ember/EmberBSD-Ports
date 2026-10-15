@@ -1,0 +1,11 @@
+$NetBSD$
+
+BLAKE2s (ncnn-20260526.tar.gz) = 2f822d3bceefb859001657ae7c9024019b5c6dc04cb9d5fdec7a2b910216666e
+SHA512 (ncnn-20260526.tar.gz) = 515c6b6adda0b57b84427314c75375312e2e1f8a7c47900ca1419735cbf956b1dab14cd3caad008bda7269578e01cae2dda8b49565c6e0eceff724bbc11f6c55
+Size (ncnn-20260526.tar.gz) = 14182633 bytes
+SHA1 (patch-c-api-allocations) = 541cd3cdbc1e335be74e9f26eab5698a35ad7808
+SHA1 (patch-c-api-callback-failures) = d7bbb04e5b67524cb1b5ba67910c61c306f57cbc
+SHA1 (patch-c-api-mat-array) = 9a974416ab50939db8c91980329607367f11b289
+SHA1 (patch-c-api-type-visibility) = 3eee979e477827e08fcb1334536c393b5079600c
+SHA1 (patch-netbsd-cpu-count) = adc014473961b5f1536649ff02cf301bf6860c77
+SHA1 (patch-posix-cpu-once) = 2da9d29f150ac41523c8a31b2db4827fbe34adaf

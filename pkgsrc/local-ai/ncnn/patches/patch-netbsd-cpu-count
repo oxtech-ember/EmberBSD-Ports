@@ -1,0 +1,23 @@
+--- a/src/cpu.cpp
++++ b/src/cpu.cpp
+@@ -13,6 +13,9 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
++#if defined(__NetBSD__)
++#include <unistd.h>
++#endif
+ 
+ #ifdef _OPENMP
+ #if NCNN_SIMPLEOMP
+@@ -901,6 +904,10 @@
+ #elif __APPLE__
+     size_t len = sizeof(count);
+     sysctlbyname("hw.ncpu", &count, &len, NULL, 0);
++#elif defined(__NetBSD__)
++    const long online = sysconf(_SC_NPROCESSORS_ONLN);
++    if (online >= 1 && online <= INT_MAX)
++        count = (int)online;
+ #else
+ #ifdef _OPENMP
+     count = omp_get_max_threads();
