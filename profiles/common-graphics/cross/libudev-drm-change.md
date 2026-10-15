@@ -86,6 +86,19 @@ Valgrind Memcheck is unavailable on macOS/arm64; this is not a Valgrind result.
 Installed ndevd delivery, a live kernel producer, KWin output refresh and
 physical display behavior remain separate gates.
 
+## Native record-socket check
+
+The same actual-source fixture passes on CM5/EmberBSD AArch64 with a real
+UNIX `SOCK_SEQPACKET` pair. The previous parser rejects primary changes;
+the previous filter rejects `drm_minor`; the smaller receive buffer loses
+an oversized-record boundary. Each negative control exits with its expected
+failure. This validates parser, filter and record boundaries on the target.
+The full monitor thread and installed ndevd delivery are not exercised.
+
+The complete 0.7.0.1nb3 package is installed with native pkgtools. All five
+payload entries, automatic status and reverse dependencies are checked.
+The previous nb2 package is retained for rollback. The public ABI is unchanged.
+
 ## Sources
 
 - [libudev-bsd v0.7.0.1](https://github.com/kikadf/libudev-bsd/tree/v0.7.0.1),

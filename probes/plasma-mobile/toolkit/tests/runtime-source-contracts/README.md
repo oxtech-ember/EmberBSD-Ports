@@ -100,5 +100,9 @@ The check uses the offscreen Qt platform and new HOME/XDG directories.
 It invokes `kded6 --check` with a private version-6 update script.
 The script writes a marker through the actual target `kconf_update` process.
 The runner checks that marker because upstream KDED returns zero even when helper execution fails.
+On CM5, the old package fails this check because it embeds the host build path.
+The full 6.31.0nb1 package passes the same private update under an ordinary user.
+Its 22 installed files, automatic mark and reverse dependencies are verified.
+This accepts the runtime helper path, not all KDED modules or a full desktop.
 It does not contact the desktop bus or use the user's configuration.
 Keep the output directory as evidence until the result is reviewed.
