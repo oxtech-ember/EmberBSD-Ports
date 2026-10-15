@@ -94,7 +94,9 @@ runtime behavior are validated.
 - [Common graphics source packages](profiles/common-graphics/README.md):
   [libudev-bsd render-node discovery](profiles/common-graphics/cross/libudev-render-nodes.md)
   repairs DRM classification for KWin 6.8 with a real-source regression.
-  Target enumeration and the compositor remain separate checks.
+  [Native DRM change events](profiles/common-graphics/cross/libudev-drm-change.md)
+  preserve the ndevd wire format and pass the KWin `drm_minor` filter in source contracts.
+  Live delivery, HDMI hotplug and the compositor remain separate checks.
   A [bounded V3D allocation trace](profiles/common-graphics/cross/v3d-bo-trace.md) supports KWin diagnostics.
   A [fixed-size BO probe](profiles/common-graphics/cross/v3d-bo-alloc.md) checks allocation and release without GPU submission.
   The current MesaLib 26.2.4nb7 recipe adds a Wayland allocation-failure repair

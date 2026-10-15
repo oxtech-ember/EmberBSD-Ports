@@ -76,7 +76,8 @@ main(void)
 			}
 			config = get_subsystem_config_by_syspath(samples[i].path);
 			if (drm && (config == NULL ||
-			    config->create_handler != create_drm_handler || devtype != NULL))
+			    config->create_handler != create_drm_handler || devtype == NULL ||
+			    strcmp(devtype, "drm_minor") != 0))
 				abort();
 		}
 		if (udev_filter_add(&filters, UDEV_FILTER_TYPE_SUBSYSTEM,

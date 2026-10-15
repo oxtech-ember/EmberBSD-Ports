@@ -121,6 +121,11 @@ LLVM23, upstream tests and portable TLS. It never substitutes Mesa21,
 libLLVM13, another Python or native X11 GL/EGL/DRM/GLU providers. Native X11
 protocol libraries can still satisfy pkgsrc's actual version checks.
 
+The [native DRM change-event contract](cross/libudev-drm-change.md) preserves
+ndevd's packet format and supplies the `drm_minor` type used by KWin.
+Its causal source checks cover nb2 rejection and the nb3 parser/filter repair.
+Live delivery and physical HDMI hotplug remain unverified.
+
 ## Prepare and select
 
 ```sh
