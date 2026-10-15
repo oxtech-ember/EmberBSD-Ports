@@ -143,7 +143,7 @@ Dir.mktmpdir('plasma-session-host-', '/tmp') do |temp|
       when 'org.kde.PlasmaShell.evaluateScript'
         puts 'PASS: default desktop, panel and six applet models on 1280x1024'
       when 'org.kde.KWin.supportInformation'
-        puts "Compositing is active\nCompositing Type: OpenGL\nOpenGL renderer string: V3D 7.1\n"
+        puts "Compositing is active\nCompositing Type: OpenGL ES\nOpenGL renderer string: V3D 7.1\n"
       when 'org.kde.Shutdown.logout'
         File.write('logout.request', 'yes')
       else
