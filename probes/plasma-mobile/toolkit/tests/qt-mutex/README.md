@@ -22,6 +22,8 @@ a successful lock. Other platform branches remain unchanged.
 
 Use native Qt 6.12.0 with its matching private headers and an ASan/UBSan compiler.
 The runner verifies the source archive against the recipe's SHA512.
+It checks both patch SHA1 values after pkgsrc RCS-line canonicalization.
+A wrong checksum stops before extraction or compilation.
 
 ```sh
 ruby source-contract.rb /absolute/qtbase-everywhere-src-6.12.0.tar.xz /absolute/new-source-checks
