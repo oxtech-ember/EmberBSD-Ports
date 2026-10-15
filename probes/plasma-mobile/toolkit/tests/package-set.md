@@ -41,6 +41,8 @@ is illustrative. The command performs these checks before publishing output:
 - Check each regular payload with ELF magic for the selected class, byte
   order and machine. Reject truncated headers and foreign target objects.
 - Reject missing, duplicate and unlisted payload members or invalid paths.
+- Reject LLVM SDK packages, legacy monolithic LLVM, and runtime LLVM whose
+  identity or payload differs from the prepared LLVM23 runtime manifest.
 - Copy the selected archive and verify its SHA256 against the source digest.
 - Confirm that installed metadata did not change during the audit.
 
@@ -111,3 +113,7 @@ is changed. Cppcheck and compiler path analyzers do not analyze this Ruby code;
 the regression is not a Valgrind run.
 
 Origin: EmberBSD (AI-assisted).
+
+The [LLVM runtime/SDK contract](../../../../profiles/common-build-tools/cross/llvm-runtime.md)
+keeps target development tools in the build-host sysroot. This LLVM-specific
+gate does not establish runtime-only packaging for every other desktop package.

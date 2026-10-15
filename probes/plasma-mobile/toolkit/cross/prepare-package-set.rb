@@ -41,6 +41,20 @@ def target_metadata(build, context, target)
   end
 end
 
+# Execution-only desktop images must not inherit the LLVM target SDK from the
+# build-host sysroot. This is an explicit LLVM23 manifest, not archive pruning.
+def llvm_runtime_payload(name, paths)
+  check(!name.match?(/\Allvm-devel-[0-9]/), "LLVM SDK is forbidden in the desktop runtime closure: #{name}")
+  check(!name.match?(/\AlibLLVM-[0-9]/), "LLVM legacy provider is forbidden in the desktop runtime closure: #{name}")
+  return unless name.match?(/\Allvm-[0-9]/)
+  expected = %w[lib/libLLVM.so.23.1 lib/libLLVM-23.so lib/libLLVM.so
+                lib/libLTO.so.23.1 lib/libLTO.so lib/libRemarks.so.23.1
+                lib/libRemarks.so include/llvm/Support/LICENSE.TXT]
+             .map { |path| '/usr/pkg/' + path }
+  check(name == 'llvm-23.1.3nb1' && paths.keys.sort == expected.sort,
+        "LLVM runtime package has an unprepared identity or SDK/missing payload: #{name}")
+end
+
 def relative_name(name)
   name = name.delete_prefix('./').delete_suffix('/')
   check(!name.empty? && !name.start_with?('/') && !name.match?(/[\x00-\x1f\x7f]/) &&
@@ -265,6 +279,7 @@ begin
     contents = File.binread(File.join(pkgdb, name, '+CONTENTS'))
     check(contents.lines.grep(/^@name /) == ["@name #{name}\n"], "Package identity mismatch: #{name}")
     files, metadata, paths = package_manifest(contents)
+    llvm_runtime_payload(name, paths)
     manifests[name] = files
     payloads[name] = paths
     snapshots[name] = metadata.to_h { |entry| [entry, File.binread(File.join(pkgdb, name, entry))] }

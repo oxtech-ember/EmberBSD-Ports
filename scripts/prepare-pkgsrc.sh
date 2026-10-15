@@ -54,6 +54,13 @@ if [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ 
     [ -s "$root/profiles/common-build-tools/cross/mk.conf" ] || exit 2
     [ -s "$root/profiles/common-build-tools/cross/check-files-case.sh" ] || exit 2
 fi
+if [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
+    for llvm_sdk_file in Makefile buildlink3.mk DESCR PLIST; do
+        [ -s "$root/profiles/common-build-tools/recipes/lang/llvm-devel/$llvm_sdk_file" ] || {
+            echo "Incomplete LLVM SDK recipe: $llvm_sdk_file" >&2; exit 2;
+        }
+    done
+fi
 if [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
     media=$root/profiles/common-media
     sh "$media/validate.sh"
@@ -290,6 +297,10 @@ if [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ 
         rm -rf "$destination/$recipe"
         cp -R "$source" "$destination/$recipe"
     done
+    [ ! -e "$destination/lang/llvm-devel" ] && [ ! -L "$destination/lang/llvm-devel" ] || {
+        echo 'Upstream now owns lang/llvm-devel; review the overlay.' >&2; exit 2;
+    }
+    cp -R "$root/profiles/common-build-tools/recipes/lang/llvm-devel" "$destination/lang/llvm-devel"
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$root/profiles/common-build-tools/patches/current-python-selection.patch"
     for delta in python315-current-selection.patch current-libtool.patch pkgsrc-cross-packages.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch; do

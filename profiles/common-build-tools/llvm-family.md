@@ -41,7 +41,7 @@ Flang, OpenMP, extra tools and wasi runtimes cannot silently combine an LLVM21
 recipe with this archive. Repair consumers through Ports; do not install a
 second LLVM. Legacy independent pkgsrc recipes are not migrated here.
 
-Core keeps shared libLLVM, RTTI and static development components together:
+Core builds shared libLLVM, RTTI and static development components together:
 LLVM_BUILD_LLVM_DYLIB/LLVM_LINK_LLVM_DYLIB on, RTTI on, BUILD_SHARED_LIBS off,
 libc++ off and LLVM_INSTALL_TOOLCHAIN_ONLY off. Clang requests static libclang
 alongside shared libraries. LLD retains COFF/Common/ELF/MachO/MinGW/Wasm archives.
@@ -65,6 +65,11 @@ with LLVM_INSTALL_GTEST on: upstream needs the llvm_gtest target, not an unrelat
 googletest package. LLD's second LLVM test archive and unused libunwind buildlink
 are removed. C/C++ builds use pkgsrc wrappers with GCC_REQD16.2 and common Python.
 Native cache, RTTI, dependency and ELF evidence remains required.
+
+NetBSD cross builds now use the [runtime/SDK package split](cross/llvm-runtime.md).
+The execution-only image receives `llvm-23.1.3nb1`; the build-host target sysroot
+also needs `llvm-devel-23.1.3nb1`. Native LLVM remains a full package. Source
+packaging fixtures do not establish real split-package or runtime acceptance.
 
 ## Inherited patch decisions
 

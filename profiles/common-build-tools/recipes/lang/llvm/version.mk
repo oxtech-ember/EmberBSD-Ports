@@ -23,11 +23,11 @@ GITHUB_PROJECT=	llvm-project
 GITHUB_RELEASE=	llvmorg-${PKGVERSION_NOREV}
 EXTRACT_SUFX=	.tar.xz
 
-WRKSRC=		${WRKDIR}/${DISTNAME}/${PKGBASE:S/wasi-//}
+WRKSRC=		${WRKDIR}/${DISTNAME}/${PKGBASE:S/wasi-//:S/llvm-devel/llvm/}
 
 LLVM_MAJOR_VERSION=	${LLVM_VERSION:tu:C/\\.[[:digit:]\.]*//}
 
-EXTRACT_ELEMENTS=	${DISTNAME}/${PKGBASE:S/wasi-//}
+EXTRACT_ELEMENTS=	${DISTNAME}/${PKGBASE:S/wasi-//:S/llvm-devel/llvm/}
 EXTRACT_ELEMENTS+=	${DISTNAME}/cmake
 EXTRACT_ELEMENTS+=	${DISTNAME}/runtimes
 EXTRACT_ELEMENTS+=	${DISTNAME}/third-party
@@ -37,7 +37,7 @@ EXTRACT_ELEMENTS+=	${DISTNAME}/libc
 .include "../../mk/bsd.prefs.mk"
 
 # This exported profile has prepared only these matching family recipes.
-.if ${PKGPATH} != "lang/llvm" && ${PKGPATH} != "lang/clang" && \
+.if ${PKGPATH} != "lang/llvm" && ${PKGPATH} != "lang/llvm-devel" && ${PKGPATH} != "lang/clang" && \
     ${PKGPATH} != "devel/lld" && ${PKGPATH} != "devel/py-llvm-lit"
 PKG_FAIL_REASON+= "LLVM 23 family consumer ${PKGPATH} is not prepared in the common profile"
 .endif

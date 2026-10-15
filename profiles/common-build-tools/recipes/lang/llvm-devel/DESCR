@@ -1,0 +1,3 @@
+LLVM target SDK for the development-host sysroot.
+This package supplies headers, tools, static archives and CMake exports.
+Install only the matching llvm runtime package in execution-only images.
