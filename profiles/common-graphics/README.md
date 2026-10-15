@@ -1,7 +1,7 @@
 # Common graphics source packages
 
 This opt-in source profile prepares canonical MesaLib 26.2.4nb6, adapted
-libdrm 2.4.134nb2, Wayland 1.26.0nb1 and wayland-protocols 1.49 for
+libdrm 2.4.134nb4, Wayland 1.26.0nb1 and wayland-protocols 1.49 for
 EmberBSD/AArch64, retaining the NetBSD 11 ABI. Native builds and the explicit
 [macOS cross composition](cross/profile.md) consume the existing
 [common build tools](../common-build-tools/README.md): GCC16, Python3.14.8,
@@ -31,6 +31,10 @@ recorded internal skips. Matching libdrm nb2 discovers native platform GPUs
 without a DRM master. Mesa nb3 also repairs an upstream V3D import-allocation
 failure. Remote KWin/Plasma, shared-buffer exchange and sustained desktop use
 remain separate acceptance stages.
+
+The [GCC16 diagnostic regression](cross/libdrm-gcc16.md) preserves the imported
+i915 ABI and strict warnings for amd64 source compilation. Full nb4 package
+and device acceptance remain pending.
 
 The [graphics cross-build](cross/README.md) now builds the complete selected
 libdrm payload on macOS with GCC16. All 26 staged entries match PLIST, and

@@ -74,8 +74,8 @@ Dir.mktmpdir('ember-graphics-amd64-') do |work|
   check('foreign graphics target is rejected') { !foreign['PKG_FAIL_REASON'].empty? }
   host = query.call('OPSYS=Darwin', 'MACHINE_ARCH=arm64', 'USE_CROSS_COMPILE=no')
   check('recursive host dependency retains Darwin and no graphics profile') { host['EMBERBSD_COMMON_GRAPHICS'].empty? && host['OPSYS'] == 'Darwin' }
-  drm_arm = query.call('PKGPATH=x11/libdrm', 'RECIPE=drm', 'DISTNAME=libdrm-2.4.134', 'PKGREVISION=3')
-  drm_amd = query.call('MACHINE_ARCH=x86_64', 'PKGPATH=x11/libdrm', 'RECIPE=drm', 'DISTNAME=libdrm-2.4.134', 'PKGREVISION=3')
+  drm_arm = query.call('PKGPATH=x11/libdrm', 'RECIPE=drm', 'DISTNAME=libdrm-2.4.134', 'PKGREVISION=4')
+  drm_amd = query.call('MACHINE_ARCH=x86_64', 'PKGPATH=x11/libdrm', 'RECIPE=drm', 'DISTNAME=libdrm-2.4.134', 'PKGREVISION=4')
   check('AArch64 libdrm keeps Intel disabled') { drm_arm['PKG_FAIL_REASON'].empty? && drm_arm['MESON_ARGS'].include?('-Dintel=disabled') && drm_arm['PLIST.intel'].empty? }
   check('amd64 libdrm selects its own Intel module and payload') { drm_amd['PKG_FAIL_REASON'].empty? && drm_amd['MESON_ARGS'].include?('-Dintel=enabled') && drm_amd['PLIST.intel'] == 'yes' }
   mesa_plist = File.readlines("#{root}/recipes/graphics/MesaLib/PLIST", chomp: true)

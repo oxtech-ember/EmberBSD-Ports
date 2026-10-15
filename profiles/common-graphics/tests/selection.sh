@@ -68,7 +68,7 @@ for recipe in graphics/MesaLib x11/libdrm graphics/glu graphics/libepoxy x11/qt6
 done
 run graphics/MesaLib show-var VARNAME=PKGNAME | grep -x 'MesaLib-26.2.4nb7'
 run graphics/MesaLib show-var VARNAME=DEPENDS | grep 'vulkan-loader>=1.4.357.0:../../graphics/vulkan-loader' > /dev/null
-run x11/libdrm show-var VARNAME=PKGNAME | grep -x 'libdrm-2.4.134nb3'
+run x11/libdrm show-var VARNAME=PKGNAME | grep -x 'libdrm-2.4.134nb4'
 run x11/libdrm show-var VARNAME=PKG_SKIP_REASON > "$work/drm-skip.txt"
 [ ! -s "$work/drm-skip.txt" ] || [ -z "$(cat "$work/drm-skip.txt")" ]
 for recipe in graphics/glu graphics/libepoxy; do
@@ -92,7 +92,7 @@ grep 'requires the wayland Mesa option' "$work/negative-PKG_OPTIONS.MesaLib--way
 grep 'Meson configuration overrides' "$work/negative-MESON_ARGS--Dllvm-disabled.log"
 grep 'unprepared MesaLib' "$work/negative-BUILDLINK_PKGSRCDIR.MesaLib-..-..-graphics-old.log"
 grep 'one final /usr/pkg prefix' "$work/negative-PREFIX--opt-mesa.log"
-run x11/libdrm show-var VARNAME=PKG_FAIL_REASON PKGREVISION=0 | grep 'adapted libdrm 2.4.134nb3'
+run x11/libdrm show-var VARNAME=PKG_FAIL_REASON PKGREVISION=0 | grep 'adapted libdrm 2.4.134nb4'
 run graphics/MesaLib show-var VARNAME=PKG_FAIL_REASON PKGREVISION=0 | grep 'adapted MesaLib 26.2.4nb7'
 run graphics/MesaLib show-var VARNAME=MESON_ARGS > "$work/mesa-options.txt"
 for option in '-Dgallium-drivers=v3d,virgl,softpipe,llvmpipe,zink' '-Dllvm-orcjit=true' '-Dshared-llvm=enabled' '-Dbuild-tests=true'; do grep -- "$option" "$work/mesa-options.txt" > /dev/null; done
