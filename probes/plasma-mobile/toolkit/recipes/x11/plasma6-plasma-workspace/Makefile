@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.7 2026/09/06 10:23:33 markd Exp $
 
 DISTNAME=	plasma-workspace-${PLASMAVER}
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	x11
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -55,6 +55,7 @@ SUBST_SED.xdg+=		-e 's:{KDE_INSTALL_SYSCONFDIR}/xdg:{KDE_INSTALL_XDG_EX_DIR}:'
 SUBST_SED.xdg+=		-e 's:{KDE_INSTALL_AUTOSTARTDIR}:{KDE_INSTALL_AUTOSTARTEXDIR}:'
 
 MAKE_DIRS+=	${PKG_SYSCONFDIR}/xdg/autostart
+MAKE_DIRS+=	${PKG_SYSCONFDIR}/xdg/menus
 CONF_FILES+=	${PREFIX}/share/examples/kde-xdg/autostart/gmenudbusmenuproxy.desktop \
 		${PKG_SYSCONFDIR}/xdg/autostart/gmenudbusmenuproxy.desktop
 CONF_FILES+=	${PREFIX}/share/examples/kde-xdg/autostart/org.kde.plasma-fallback-session-restore.desktop \

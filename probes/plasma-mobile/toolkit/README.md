@@ -159,6 +159,8 @@ session are not yet accepted.
 [Plasma volume controls](cross/plasma-volume.md) add Plasma PA 6.8.0 and
 PulseAudioQt 1.9.0. The Workspace recipe declares its notifications QML provider.
 The provider checks distinguish package metadata, import and actual sound output.
+[Workspace configuration checks](tests/workspace-config.md) verify menu installation
+and preserve local edits during removal and reinstallation.
 
 [Designer plugin recipes](cross/designer-plugins.md) retain the full target payload.
 [Breeze generator repairs](cross/breeze.md) preserve input SVG files and reject
