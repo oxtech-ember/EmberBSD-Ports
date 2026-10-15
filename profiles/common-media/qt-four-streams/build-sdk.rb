@@ -149,7 +149,7 @@ selected.each do |component|
     when 'freetype' then args += %w[-DFT_DISABLE_HARFBUZZ=ON -DFT_DISABLE_BROTLI=ON]
     when 'sndfile' then args += %w[-DENABLE_EXTERNAL_LIBS=OFF -DENABLE_MPEG=OFF -DBUILD_PROGRAMS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=ON]
     else
-      args += %w[-DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF -DFEATURE_precompile_header=OFF]
+      args += %w[-DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF -DBUILD_WITH_PCH=OFF -DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON]
       if component == 'qtbase'
         args += %w[-DQT_QPA_DEFAULT_PLATFORM=vnc -DFEATURE_vnc=ON -DFEATURE_xcb=OFF -DFEATURE_opengl=OFF -DINPUT_opengl=no -DFEATURE_dbus=OFF -DFEATURE_icu=OFF -DFEATURE_fontconfig=OFF -DFEATURE_jpeg=OFF -DFEATURE_system_freetype=ON -DFEATURE_system_harfbuzz=ON -DFEATURE_system_png=ON -DFEATURE_system_pcre2=ON -DFEATURE_sql_mysql=OFF -DFEATURE_sql_psql=OFF -DFEATURE_sql_odbc=OFF]
         args << '-DQT_HOST_PATH=' + host_qt unless native
