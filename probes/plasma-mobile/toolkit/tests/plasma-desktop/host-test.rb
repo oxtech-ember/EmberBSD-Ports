@@ -24,12 +24,24 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
   File.symlink("#{temp}/absent", "#{temp}/dangling")
   run.call(:fail, '/bin/sh', "#{source}/run.sh", "#{temp}/dangling")
   checker = "#{source}/check-results.sh"
-  support = "Compositing is active\nCompositing Type: OpenGL\nOpenGL renderer string: V3D 7.1.10.2\n"
-  File.write("#{temp}/support", support)
-  run.call(:ok, '/bin/sh', checker, 'support', "#{temp}/support")
-  ['Compositing is active', 'Compositing Type: OpenGL', 'V3D '].each do |required|
-    File.write("#{temp}/support", support.sub(required, 'invalid'))
-    run.call(:fail, '/bin/sh', checker, 'support', "#{temp}/support")
+  # The GLES variant matches KWin 6.8 Workspace::supportInformation(), as
+  # recorded on hardware. The GL spelling remains valid for earlier packages.
+  support = "Compositing is active\nCompositing Type: OpenGL ES\nOpenGL renderer string: V3D 7.1.10.2\n"
+  ['OpenGL', 'OpenGL ES'].each do |api|
+    fixture = support.sub('OpenGL ES', api)
+    File.write("#{temp}/support", fixture)
+    run.call(:ok, '/bin/sh', checker, 'support', "#{temp}/support")
+    invalid = [
+      fixture.sub('Compositing is active', 'Compositing is inactive'),
+      fixture.sub("Compositing Type: #{api}", 'Compositing Type: QPainter'),
+      fixture.sub("Compositing Type: #{api}", 'Compositing Type: OpenGL ES invalid'),
+      fixture.sub('V3D 7.1.10.2', 'llvmpipe (LLVM 23.1.3, 128 bits)'),
+      fixture.sub('V3D 7.1.10.2', 'softpipe')
+    ]
+    invalid.each do |bad_support|
+      File.write("#{temp}/support", bad_support)
+      run.call(:fail, '/bin/sh', checker, 'support', "#{temp}/support")
+    end
   end
   renderer = 'qt.rhi.general: OpenGL VENDOR: Broadcom RENDERER: V3D 7.1.10.2 VERSION: 3.1'
   File.write("#{temp}/renderer", renderer)
