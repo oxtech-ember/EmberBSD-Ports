@@ -1,10 +1,11 @@
 # Current common build tools
 
-This profile prepares one common Python 3.14.8, Meson 1.12.1 and matching
+This profile prepares one common Python 3.15.0, Meson 1.12.1 and matching
 LLVM/Clang/LLD 23.1.3 with upstream lit and [Perl 5.44](cross/perl.md) for the
 GCC 16 / LLVM 23 / Mesa 26 dependency closure. The [Python package](python.md)
-cross-builds on macOS and passes installed AArch64 VM consumers and 21 selected
-upstream suites. Meson/Ninja also pass installed C/C++ consumers and focused
+cross-builds on macOS. The earlier Python 3.14.8 package passed installed AArch64
+VM consumers and 21 selected upstream suites. These results do not establish
+Python 3.15 acceptance. Meson/Ninja also pass installed C/C++ consumers and focused
 upstream tests in that VM. The installed [LLVM 23.1.3 core](cross/llvm-api-tests.md) passes C API, bitcode and four ORC JITLink lifecycles on CM5. Its rebuilt [Mesa consumer](../common-graphics/cross/mesa-llvm2313.md) also passes V3D/llvmpipe rendering and all 38 upstream invocations there. Full Clang/LLD cross packages pass ordinary staging checks; their target execution remains separate. The export itself installs no packages.
 
 [Groff 1.24.2](recipes/textproc/groff/README.md) includes a C23 function-prototype repair.
@@ -24,6 +25,10 @@ metadata, alternate-root updates and target script paths have regressions.
 Binutils includes a tested DWARF32/64 line-table repair. Its acceptance
 explicitly selects GNU as/ld; migration of the bootstrap GCC16 package's
 hardcoded base-tool paths remains pending.
+
+The [LLVM Python migration](cross/llvm-python315.md) keeps one lit provider and
+updates installed Clang helper interpreters. It records package changes separately
+from the original compiler build.
 
 The profile owns full Python, Meson and
 [LLVM family recipes](llvm-family.md), based on
@@ -60,7 +65,7 @@ in Git.
 A later native build's private MAKECONF includes the exported
 `EMBERBSD-COMMON-TOOLS-MK.CONF`. Include `EMBERBSD-DEVELOPMENT-MK.CONF` only
 when its documented C/C++ options are also intended. The common-tools file
-requires Python 314, Meson >=1.12.1 and pkgsrc GCC for native NetBSD 11/AArch64,
+requires Python 315, Meson >=1.12.1 and pkgsrc GCC for native NetBSD 11/AArch64,
 with final `LOCALBASE=PREFIX=/usr/pkg` and one worker. It sets `GCC_REQD+=16.2`,
 `PKGSRC_COMPILER=gcc`, `USE_PKGSRC_GCC=yes` and `USE_NATIVE_GCC=no`.
 `GCC_REQD` is a major.minor floor, not an exact installed-version check;

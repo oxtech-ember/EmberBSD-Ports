@@ -3,6 +3,9 @@
 .include "Makefile.common"
 
 PKGNAME=	clang-${LLVM_VERSION}
+PKGREVISION=	1
+# These installed scripts use Python without linking libpython.
+DEPENDS+=	${PYDEPENDENCY}
 
 COMMENT=	C language family frontend for LLVM
 
