@@ -88,6 +88,8 @@ runtime behavior are validated.
   recipes with upstream lit, scoped native Clang/GCC16 defaults, strict
   common selection and host source contracts. Focused native macro/selection
   checks cover Python, LLVM family selection and real GCC16 config metadata.
+  Upstream lit selects the common Python315 provider in native and cross recipes;
+  host launcher PASS/XFAIL/FAIL checks pass, while target package acceptance remains separate.
   The complete LLVM23 core package now passes normal packaging and installed
   [C API/bitcode and four ORC JITLink lifecycles](profiles/common-build-tools/cross/llvm-api-tests.md)
   on Zero 3W. Packaged upstream lit passes launcher and PASS/XFAIL/FAIL checks

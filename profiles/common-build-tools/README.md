@@ -33,6 +33,9 @@ changing GCC bootstrap options. The common MAKECONF selects
 the prepared GCC16 package for new native builds. LLVM family recipes also
 prepare scoped native Clang defaults. The default
 export and `development-toolchain` mode retain their previous behavior.
+The lit recipe now selects shared Python315 for native and cross packages.
+Its [selection and source checks](llvm-family.md#upstream-lit-and-focused-checks)
+pass on the host; target wheel installation remains separate.
 
 The [common graphics profile](../common-graphics/README.md) composes these
 tools with canonical MesaLib/libdrm source recipes. It does not change this

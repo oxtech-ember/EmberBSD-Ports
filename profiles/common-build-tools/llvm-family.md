@@ -1,7 +1,7 @@
 # LLVM 23 common family
 
 This profile prepares matching LLVM 23.1.3, Clang, LLD and upstream
-Python314 lit for the common Mesa26/TinyGo dependency closure. It extends
+Python315 lit for the common Mesa26/TinyGo dependency closure. It extends
 [the common profile](README.md), based on pkgsrc
 `fff4deb639a1a640476203c80f752fb77b6cb14b`. The previously accepted LLVM 23.1.2 core package
 cross-builds on macOS and passes installed C API and ORC JITLink acceptance
@@ -131,7 +131,7 @@ disable native defaults. Projects retain -nostdinc++, -nostdlib, -nodefaultlibs,
 ## Upstream lit and focused checks
 
 The new py-llvm-lit recipe uses upstream lit's module/setup.py and lit.py launcher,
-common Python314 and ordinary wheel machinery. LLVM no longer installs a
+common Python315 and ordinary wheel machinery. LLVM no longer installs a
 source/build-tree-dependent stub. Build-tree lit remains for upstream tests.
 Upstream reports 23.1.3dev; expected wheel metadata is 23.1.3.dev0, not silently
 relabeled. No project Python helper is added. Wheel payload/shebang/PLIST checks
@@ -172,9 +172,31 @@ Full native recipe parsing is separate. clang-config.sh uses fixture metadata an
 a real available Clang driver's traces, including causal no-config RED, C/C++, CRT
 search order, cross/SDK optout, static and no-default-library modes. Dummy CRT
 files are never linked. AppleClang21 is comparative evidence, not native LLVM23.
-llvm-lit.sh stages actual upstream modules in a private Python314 environment,
-renames the source tree away and runs upstream shell-format PASS/FAIL without
-PYTHONPATH. FAIL must return 1. The subsequent installed
+llvm-lit.sh stages actual upstream modules in a private Python315 environment,
+renames the source tree away and runs upstream shell-format PASS/XFAIL/FAIL without
+PYTHONPATH. FAIL must return 1. A missing or older interpreter is an error.
+LLVM 23.1.3 requires Python >=3.8 for its tests. Its lit package metadata has
+no upper Python bound, and its resource-limit fixture handles Python 3.15.
+The pinned source passes this bounded launcher contract on host Python 3.15.0.
+This does not establish target wheel installation or the full LLVM test suite.
+
+`llvm-lit-selection.rb` queries the complete recipe with real BSD make:
+
+```sh
+ruby profiles/common-build-tools/tests/llvm-lit-selection.rb \
+    /absolute/normal-export \
+    /absolute/source/profiles/common-build-tools/recipes/devel/py-llvm-lit/Makefile \
+    /absolute/bmake /absolute/native.mk.conf /absolute/cross.mk.conf \
+    /absolute/new-selection-output
+```
+
+It checks native, amd64 cross and recursive-host selection on Python315.
+Requests for Python314 and unsupported Python316 must fail. The candidate
+Makefile is parsed over the normal export; no package phase or database
+mutation runs. Verify the shared archive through normal pkgsrc `checksum.awk`
+and the unchanged recipe `distinfo` before the launcher test.
+
+The earlier installed
 `py314-llvm-lit-23.1.2` package passed wheel metadata, launcher/module and
 upstream shell-format PASS/XFAIL/FAIL checks in AArch64 UTM. The
 [installed runner](cross/run-llvm-lit-tests.sh) requires the failure exit code;

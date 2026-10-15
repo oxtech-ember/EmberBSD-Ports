@@ -6,9 +6,11 @@ set -eu
 archive=$1
 mkdir "$2"
 work=$(CDPATH= cd -- "$2" && pwd)
-python=${PYTHON:-python3.14}
-command -v "$python" >/dev/null 2>&1 || { echo 'SKIP: Python314 unavailable; installed lit gate required'; exit 0; }
-"$python" --version
+python=${PYTHON:-python3.15}
+command -v "$python" >/dev/null 2>&1 || { echo 'Python315 is required for the common lit source check' >&2; exit 2; }
+version=$("$python" --version)
+case "$version" in 'Python 3.15.'*) ;; *) echo "Python315 is required: $version" >&2; exit 2 ;; esac
+printf '%s\n' "$version"
 mkdir "$work/source"
 tar -xf "$archive" -C "$work/source" llvm-project-23.1.3.src/llvm/utils/lit
 source=$work/source/llvm-project-23.1.3.src/llvm/utils/lit
@@ -23,16 +25,19 @@ mkdir "$work/suite"
 cp "$source/tests/Inputs/shtest-shell/lit.cfg" "$work/suite/lit.cfg"
 printf '# RUN: true\n' > "$work/suite/pass.txt"
 printf '# RUN: false\n' > "$work/suite/fail.txt"
+printf '# XFAIL: *\n# RUN: false\n' > "$work/suite/expected.txt"
 mv "$work/source" "$work/source-unavailable"
 unset PYTHONPATH
 "$work/venv/bin/python" "$work/venv/bin/llvm-lit" --version | tee "$work/version.log"
 grep -q '23.1.3dev' "$work/version.log"
-"$work/venv/bin/python" "$work/venv/bin/llvm-lit" -v "$work/suite/pass.txt" > "$work/pass.log" 2>&1
+"$work/venv/bin/python" "$work/venv/bin/llvm-lit" -v "$work/suite/pass.txt" "$work/suite/expected.txt" > "$work/pass.log" 2>&1
+grep -q 'PASS:' "$work/pass.log"
+grep -q 'XFAIL:' "$work/pass.log"
 set +e
 "$work/venv/bin/python" "$work/venv/bin/llvm-lit" -v "$work/suite/fail.txt" > "$work/fail.log" 2>&1
 status=$?
 set -e
 [ "$status" = 1 ] || { echo "FAIL: actual lit failure status $status" >&2; exit 1; }
 grep -q 'FAIL:' "$work/fail.log"
-echo 'PASS: upstream lit staged module/launcher, source independence and actual FAIL=>1'
+echo 'PASS: upstream lit on Python315, source-independent launcher and actual PASS/XFAIL/FAIL=>1'
 echo 'PENDING: wheel metadata/entry shebang/package PLIST/native common Python'
