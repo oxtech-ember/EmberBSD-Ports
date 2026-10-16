@@ -7,7 +7,18 @@ require 'json'
 require 'open3'
 require 'shellwords'
 
-abort 'usage: seal-mesa-generators.rb MESA_ARCHIVE MESA_SOURCE MESA_BUILD SPIRV_VAL NEW_WORK' unless ARGV.size == 5
+profile = 'powervr'
+if ARGV.first == '--profile'
+    ARGV.shift
+    profile = ARGV.shift
+end
+profiles = case profile
+           when 'intel' then ['intel']
+           when 'powervr' then ['powervr']
+           when 'all' then %w[intel powervr]
+           else abort 'Use --profile intel, powervr or all'
+           end
+abort 'usage: seal-mesa-generators.rb [--profile intel|powervr|all] MESA_ARCHIVE MESA_SOURCE MESA_BUILD SPIRV_VAL NEW_WORK' unless ARGV.size == 5
 archive, source, build, validator = ARGV.first(4).map { |p| File.realpath(p) }
 work = File.expand_path(ARGV.last)
 abort 'Use new absolute paths without whitespace or shell metacharacters' unless ARGV.all? { |p| p.match?(%r{\A/[A-Za-z0-9_./-]+\z}) } && !File.exist?(work)
@@ -27,7 +38,8 @@ abort 'Wrong Mesa build version' unless project.fetch('version') == '26.2.4'
 options = JSON.parse(File.read(metadata + '/intro-buildoptions.json')).to_h { |o| [o.fetch('name'), o.fetch('value')] }
 abort 'Native tools must retain assertions' unless options.fetch('b_ndebug') == 'false'
 abort 'Native tools must use LLVM23' unless File.read(build + '/build.ninja').include?('23.1.3')
-tools = {'mesa_clc' => 'src/compiler/clc/mesa_clc', 'vtn_bindgen2' => 'src/compiler/spirv/vtn_bindgen2', 'pco_clc' => 'src/imagination/pco/uscgen/pco_clc'}
+tools = {'mesa_clc' => 'src/compiler/clc/mesa_clc', 'vtn_bindgen2' => 'src/compiler/spirv/vtn_bindgen2'}
+tools['pco_clc'] = 'src/imagination/pco/uscgen/pco_clc' if profiles.include?('powervr')
 tools.each_value do |path|
     file = build + '/' + path
     abort "Missing real native tool: #{file}" unless File.executable?(file) && File.binread(file, 8).unpack('V2') == [0xfeedfacf, 0x0100000c]
@@ -87,7 +99,13 @@ tools.each { |name, p| FileUtils.cp(build + '/' + p, work + '/bin/' + name) }
 %w[build.ninja compile_commands.json].each { |name| FileUtils.cp(build + '/' + name, work + '/metadata/' + name) }
 # The runtime and generated common programs consume this same reviewed header.
 run.call(['patch', '-f', '-N', '-F', '0', '-p0', '-d', work + '/reference', '-i', recipe + '/patches/patch-src_imagination_common_pvr__iface.h'], 'interface-patch')
-interfaces = %w[src/compiler/nir/nir.h src/compiler/nir/nir_serialize.c src/compiler/nir/nir_intrinsics.py src/compiler/spirv/spirv_to_nir.c src/imagination/common/pvr_iface.h src/imagination/pco/pco.h src/imagination/pco/pco_common.h.py src/imagination/pco/usclib/common.cl src/imagination/pco/usclib/sync.cl src/imagination/pco/usclib/tex.cl]
+interfaces = %w[src/compiler/nir/nir.h src/compiler/nir/nir_serialize.c src/compiler/nir/nir_intrinsics.py src/compiler/spirv/spirv_to_nir.c]
+if profiles.include?('powervr')
+    interfaces += %w[src/imagination/common/pvr_iface.h src/imagination/pco/pco.h src/imagination/pco/pco_common.h.py src/imagination/pco/usclib/common.cl src/imagination/pco/usclib/sync.cl src/imagination/pco/usclib/tex.cl]
+end
+if profiles.include?('intel')
+    interfaces += %w[libintel_shaders.h dgc.cl dgc_debug.cl generate.cl generate_draws.cl generate_draws_iris.cl query_copy.cl util.cl].map { |p| 'src/intel/shaders/' + p }
+end
 File.write(work + '/interface.sha256', interfaces.map { |p| "#{sha.call(work + '/reference/' + p)}  #{p}\n" }.join)
 line = File.readlines(build + '/build.ninja').find { |s| s.start_with?(' COMMAND = ') && s.include?('mesa_clc -o src/imagination/pco/usclib/pco_usclib.spv ') }
 abort 'Missing genuine upstream common-shader command' unless line
@@ -136,8 +154,12 @@ end
 File.write(work + '/shader-inputs.json', JSON.pretty_generate(shader_hashes) + "\n")
 run.call([validator, work + '/smoke/pco_usclib.spv'], 'common-validate')
 run.call([work + '/bin/vtn_bindgen2', work + '/smoke/pco_usclib.spv', work + '/smoke/pco_usclib.cpp', work + '/smoke/pco_usclib.h'], 'common-nir')
-run.call([work + '/bin/pco_clc', work + '/smoke/pco_usclib.spv', work + '/smoke/pco_uscgen_programs.h', work + '/smoke/pco_uscgen_programs.c'], 'common-pco', {'PCO_DEBUG' => 'no_pred_cf'})
-%w[pco_usclib.spv pco_usclib.cpp pco_usclib.h pco_uscgen_programs.h pco_uscgen_programs.c].each do |p|
+outputs = %w[pco_usclib.spv pco_usclib.cpp pco_usclib.h]
+if profiles.include?('powervr')
+    run.call([work + '/bin/pco_clc', work + '/smoke/pco_usclib.spv', work + '/smoke/pco_uscgen_programs.h', work + '/smoke/pco_uscgen_programs.c'], 'common-pco', {'PCO_DEBUG' => 'no_pred_cf'})
+    outputs += %w[pco_uscgen_programs.h pco_uscgen_programs.c]
+end
+outputs.each do |p|
     abort "Empty generated output: #{p}" unless File.size(work + '/smoke/' + p).positive?
 end
 input_hashes.merge!(deps.to_h { |p| [p, shader_hashes.fetch(p)] })
@@ -149,11 +171,16 @@ source_rows.each do |row|
     abort "Native source changed during sealing: #{relative}" unless sha.call(source + '/' + relative) == expected
 end
 [bvnc_patch, recipe + '/patches/patch-src_imagination_common_pvr__iface.h'].each { |p| input_hashes[p] = sha.call(p) }
+scope = 'Pinned native source and real compiled tools. Upstream common OpenCL to SPIR-V/NIR smoke.'
+scope += ' PowerVR PCO generation is checked.' if profiles.include?('powervr')
+scope += ' Intel shader interfaces are bound; full Intel shader generation is a separate target build gate.' if profiles.include?('intel')
+scope += ' No target execution.'
 receipt = {'schema' => 'ember-mesa-generators-1', 'mesa' => '26.2.4', 'llvm' => '23.1.3', 'source' => source, 'build' => build,
-           'archive_sha256' => pin, 'commands' => commands, 'inputs' => input_hashes, 'virtual_headers' => virtual_headers,
-           'scope' => 'Pinned native source, real compiled tools, full common OpenCL to SPIR-V/NIR/PCO generation. No target execution.'}
+           'archive_sha256' => pin, 'profiles' => profiles, 'commands' => commands, 'inputs' => input_hashes, 'virtual_headers' => virtual_headers,
+           'scope' => scope}
 File.write(work + '/receipt.json', JSON.pretty_generate(receipt) + "\n")
 File.write(work + '/FORMAT', "ember-mesa-generators-1\n")
+File.write(work + '/PROFILES', profiles.join(',') + "\n")
 # Keep evidence, but the extracted reference is not part of the sealed tools.
 FileUtils.rm_r(work + '/reference')
 files = Dir.glob(work + '/**/*').select { |p| File.file?(p) }.sort

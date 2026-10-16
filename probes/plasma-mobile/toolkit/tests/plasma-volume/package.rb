@@ -3,9 +3,7 @@
 # Origin: EmberBSD (AI-assisted).
 require 'digest'
 require 'open3'
-abort "Usage: #{$PROGRAM_NAME} PKGSRC PAQT_PREFIX PA_PREFIX DISTFILES PACKAGES" unless ARGV.length == 5
-pkgsrc, paqt, pa, distfiles, packages = ARGV.map { |p| File.expand_path(p) }
-toolkit = File.expand_path('../..', __dir__)
+require 'optparse'
 def check(condition, message)
   abort "FAIL: #{message}" unless condition
 end
@@ -13,6 +11,37 @@ def capture(*args)
   text, status = Open3.capture2e(*args)
   check(status.success?, "#{args.first}: #{text}")
   text
+end
+targets = {'aarch64' => {arch: 'aarch64', machine: 183},
+           'amd64' => {arch: 'x86_64', machine: 62}}.freeze
+target_name = 'aarch64'
+target_seen = false
+options = OptionParser.new do |parser|
+  parser.banner = "Usage: #{$PROGRAM_NAME} [--target aarch64|amd64] PKGSRC PAQT_PREFIX PA_PREFIX DISTFILES PACKAGES"
+  parser.on('--target NAME') do |name|
+    check(!target_seen, 'Target is repeated')
+    check(targets.key?(name), "Unsupported target: #{name.inspect}")
+    target_name = name
+    target_seen = true
+  end
+end
+begin
+  options.parse!(ARGV)
+rescue OptionParser::ParseError => error
+  abort "FAIL: #{error.message}\n#{options}"
+end
+abort options.to_s unless ARGV.length == 5
+target = targets.fetch(target_name)
+pkgsrc, paqt, pa, distfiles, packages = ARGV.map { |p| File.expand_path(p) }
+toolkit = File.expand_path('../..', __dir__)
+expected_metadata = {'OPSYS' => 'NetBSD', 'OS_VERSION' => '11.0',
+                     'MACHINE_ARCH' => target.fetch(:arch), 'OBJECT_FMT' => 'ELF'}
+def target_elf(bytes, target, context)
+  check(bytes.bytesize >= 64, "Truncated ELF header: #{context}")
+  check(bytes.start_with?("\x7fELF".b), "Not an ELF plugin: #{context}")
+  check(bytes.getbyte(4) == 2, "Unsupported ELF class: #{context}")
+  check(bytes.getbyte(5) == 1, "Unsupported ELF byte order: #{context}")
+  check(bytes.byteslice(18, 2).unpack1('v') == target.fetch(:machine), "Wrong ELF machine: #{context}")
 end
 # Inspect the real consumer, not a copied QML import list.
 record = File.readlines("#{toolkit}/sources.tsv").map { |line| line.chomp.split("\t") }
@@ -24,6 +53,14 @@ consumer = capture('tar', '-xOf', archive,
   'plasma-workspace-6.8.0/applets/notifications/global/PulseAudio.qml')
 check(consumer.match?(/^import org\.kde\.plasma\.private\.volume\b/), 'Expected notifications volume import is missing')
 bmake = ENV.fetch('BMAKE', 'bmake')
+%w[x11/plasma6-plasma-workspace audio/pulseaudio-qt audio/plasma6-plasma-pa].each do |recipe|
+  values = capture(bmake, '-C', "#{pkgsrc}/#{recipe}",
+    *expected_metadata.keys.flat_map { |key| ['-V', "${#{key}}"] }).lines.map(&:chomp)
+  check(values.length == expected_metadata.length, "Incomplete target metadata in #{recipe}")
+  expected_metadata.each_with_index do |(key, value), index|
+    check(values[index] == value, "Wrong target #{key} in #{recipe}")
+  end
+end
 depends = capture(bmake, '-C', "#{pkgsrc}/x11/plasma6-plasma-workspace", '-V', '${DEPENDS}')
 check(depends.split.any? { |d| d.match?(/^plasma6-plasma-pa>=6\.8\.0:..\/..\/audio\/plasma6-plasma-pa$/) },
   'Workspace has no runtime provider for its volume QML import')
@@ -37,6 +74,10 @@ check(!reverse.include?(':../../x11/plasma6-plasma-workspace'), 'Volume dependen
   archived = capture('tar', '-tzf', "#{packages}/#{package}.tgz").lines.map(&:chomp)
   archived.reject! { |line| line.start_with?('+') || line.end_with?('/') }
   check(!expected.empty? && archived.sort == expected, "#{package} archive payload differs from PLIST")
+  build = capture('tar', '-xOzf', "#{packages}/#{package}.tgz", '+BUILD_INFO')
+  expected_metadata.each do |key, value|
+    check(build.lines.grep(/^#{key}=/) == ["#{key}=#{value}\n"], "Wrong target #{key} in #{package}")
+  end
 end
 # Resolve the installed pkg-config variable and require its advertised headers.
 pc = File.read("#{paqt}/lib/pkgconfig/KF6PulseAudioQt.pc")
@@ -53,7 +94,8 @@ check(qmldir.match?(/^module org\.kde\.plasma\.private\.volume$/), 'Volume modul
 plugin = qmldir[/^(?:optional )?plugin ([A-Za-z0-9_-]+)(?:\s|$)/, 1]
 check(plugin, 'Volume plugin entry is missing')
 check(File.file?("#{module_dir}/lib#{plugin}.so"), 'Volume plugin file is missing')
-elf = File.binread("#{module_dir}/lib#{plugin}.so", 20)
-check(elf.start_with?("\x7fELF") && elf.getbyte(4) == 2 && elf.getbyte(5) == 1 && elf[18, 2].unpack1('v') == 183,
-  'Volume plugin is not little-endian ELF64 AArch64')
-puts 'PASS: real notifications import, runtime dependency, no cycle, installed headers, QML module and target ELF'
+target_elf(File.binread("#{module_dir}/lib#{plugin}.so", 64), target, 'staged volume plugin')
+member = "qt6/qml/org/kde/plasma/private/volume/lib#{plugin}.so"
+target_elf(capture('tar', '-xOzf', "#{packages}/plasma6-plasma-pa-6.8.0.tgz", member).b,
+  target, 'archived volume plugin')
+puts "PASS: #{target_name} metadata, real notifications import, runtime dependency, no cycle, installed headers, QML module and target ELF"

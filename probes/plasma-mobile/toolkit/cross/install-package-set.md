@@ -3,8 +3,10 @@
 Prepare the runtime closure with `prepare-package-set.rb` first.
 Pass each exact root package name once. Duplicate roots are rejected before output is created.
 Copy its complete output directory to the target.
-Keep `packages/`, `packages.sha256`, `install-order.txt` and `roots.txt` together.
-The current set uses the EmberBSD AArch64 ELF ABI with upstream `NetBSD 11.0` package identifiers.
+Keep `packages/`, `packages.sha256`, `install-order.txt`, `roots.txt` and `target.txt` together.
+Select `--target aarch64|amd64`; the default is `aarch64`.
+The selected ABI retains upstream `NetBSD 11.0` package identifiers.
+The amd64 target uses `MACHINE_ARCH=x86_64`; AArch64 uses `aarch64`.
 A matching package ABI does not establish the provenance of the board's base system.
 
 Verification is the default action and works on macOS with native pkgtools:
@@ -14,23 +16,34 @@ PKG_INFO=/absolute/native/pkg_info PKG_ADMIN=/absolute/native/pkg_admin \
     sh install-package-set.sh --verify-only /absolute/package-set
 ```
 
+For an amd64 set, add `--target amd64` before `--verify-only`.
+
 The target can use installed `pkg_info`, `pkg_admin` and `sha256` from `PATH`.
 The macOS fallback is `shasum -a 256`.
 Verification checks every archive SHA256 before reading package metadata.
 It rejects missing, extra, duplicate and symlinked archives or manifest entries.
 It checks each package identity, target metadata, roots and dependency order.
+The target receipt must exactly match the selected ABI. The original four-line
+AArch64 receipt is accepted. Missing, extra or duplicated fields are rejected.
+Every dependency receives the same metadata check. The auditor checks ELF
+headers during preparation; SHA256 then preserves those audited archive bytes.
 Dependency resolution uses the real pkgtools matcher with a private temporary metadata database.
 Verification does not install packages or change the installed package database.
 
 Stop the Plasma session before installation.
-Run the following command as root on the EmberBSD AArch64 target:
+Run the following command as root on the selected EmberBSD target:
 
 ```sh
 sh install-package-set.sh --install /absolute/package-set /absolute/new-install.log
 ```
 
+For amd64, add `--target amd64` before `--install`. Both mode and target
+options must precede the package-set path.
+
 Installation requires an explicit mode and a new log path.
 The script rejects other operating systems, other architectures and an active `plasmashell`.
+Before installation, `uname -p` must match `aarch64` or `x86_64`, as selected.
+An AArch64 receipt cannot be selected for amd64 installation.
 It uses `pkg_add -U` in the verified dependency order.
 New dependencies use `-A` and are marked automatic.
 Existing dependencies keep their manual or automatic status, including version upgrades.

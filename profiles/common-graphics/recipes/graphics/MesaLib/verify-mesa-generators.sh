@@ -2,12 +2,25 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted). Check bytes before execution.
 set -eu
-[ "$#" = 3 ] || { echo 'Usage: verify-mesa-generators.sh DIGEST SEALED_TOOLS MESA_SOURCE' >&2; exit 2; }
-digest=$1 tools=$2 source=$3
+[ "$#" = 3 ] || [ "$#" = 4 ] || { echo 'Usage: verify-mesa-generators.sh DIGEST SEALED_TOOLS MESA_SOURCE [intel|powervr|intel,powervr]' >&2; exit 2; }
+digest=$1 tools=$2 source=$3 requested=${4-powervr}
 fail() { echo "Mesa generator receipt: $*" >&2; exit 1; }
 [ -x "$digest" ] && [ -d "$tools" ] && [ -d "$source" ] || fail 'missing input'
 [ "$(cat "$tools/FORMAT")" = ember-mesa-generators-1 ] || fail 'wrong format'
 [ "$(cat "$source/VERSION")" = 26.2.4 ] || fail 'wrong source version'
+case "$requested" in intel|powervr|intel,powervr) ;; *) fail 'unsupported generator profile';; esac
+profiles=powervr
+if [ -f "$tools/PROFILES" ]; then profiles=$(cat "$tools/PROFILES"); fi
+case "$profiles" in intel|powervr|intel,powervr) ;; *) fail 'unsupported sealed profiles';; esac
+case "$requested" in intel|intel,powervr)
+    case ",$profiles," in *,intel,*) ;; *) fail 'seal does not supply Intel generators';; esac;;
+esac
+case "$requested" in powervr|intel,powervr)
+    case ",$profiles," in *,powervr,*) ;; *) fail 'seal does not supply PowerVR generators';; esac;;
+esac
+required='mesa_clc vtn_bindgen2'
+case "$requested" in powervr|intel,powervr) required="$required pco_clc";; esac
+
 verify() {
     root=$1 manifest=$2
     [ -s "$manifest" ] || fail 'empty manifest'
@@ -25,10 +38,13 @@ verify() {
     [ "$count" -gt 0 ] || fail 'empty manifest'
 }
 verify "$tools" "$tools/installed.sha256"
-for name in FORMAT receipt.json interface.sha256 bin/mesa_clc bin/vtn_bindgen2 bin/pco_clc; do
+names="FORMAT receipt.json interface.sha256"
+[ ! -f "$tools/PROFILES" ] || names="$names PROFILES"
+for program in $required; do names="$names bin/$program"; done
+for name in $names; do
     [ "$(awk -v name="$name" '$2 == name { n++ } END { print n+0 }' "$tools/installed.sha256")" = 1 ] || fail "missing or duplicate receipt entry: $name"
 done
-for name in mesa_clc vtn_bindgen2 pco_clc; do
+for name in $required; do
     [ -x "$tools/bin/$name" ] || fail "not executable: $name"
 done
 verify "$source" "$tools/interface.sha256"

@@ -3,8 +3,8 @@ $NetBSD$
 BLAKE2s (cxx-rust-cssparser-1.1.0.tar.gz) = 17d438474e9313c52701e74202356355294b74fa4d9ce2773feb958bac366386
 SHA512 (cxx-rust-cssparser-1.1.0.tar.gz) = c37ceaea63f077147962169d8d97b0f2248ca2de1fb94b8bd792f51258fe27182dea856041a74de3d969f407701988349dac1a664dc0179cb4a7ae63e66924da
 Size (cxx-rust-cssparser-1.1.0.tar.gz) = 67503 bytes
-BLAKE2s (cxx-rust-cssparser-vendor-1.1.0.tar.gz) = 424b412e0338f931886290c61b36c3354a2b47d2e4ae3c1b0d7048955ebf9890
-SHA512 (cxx-rust-cssparser-vendor-1.1.0.tar.gz) = e5d97c9592c4e9ad59a59477b81547c90c8b0c3b8bd52e50f66daf6f19e5ae51b07711200dc0e8fe344f96d77793691b5a501e10e130ebaa12ffd9a66529ffc4
-Size (cxx-rust-cssparser-vendor-1.1.0.tar.gz) = 6344525 bytes
+BLAKE2s (cxx-rust-cssparser-vendor-1.1.0-r1.tar) = a1399184454bc69c3b849c42ab4a134d726ec82f9c48bd51d84bad763542f6d8
+SHA512 (cxx-rust-cssparser-vendor-1.1.0-r1.tar) = 3b426050a5153d1a805c2b625671bf5978bccb000b8d0a99b7fe8c5071c2b3bda219812e125dfb8ec2c5d95bdcd800a9a51a1bceb1e0e04d9bbee277cbf94e8f
+Size (cxx-rust-cssparser-vendor-1.1.0-r1.tar) = 40816640 bytes
 SHA1 (patch-rust_CMakeLists.txt) = b1ebd17698df96c810bdc656f937b233dc04a839
 SHA1 (patch-CMakeLists.txt) = ee13cca98eaeb744e925e8b78bdd9f408af9dfda

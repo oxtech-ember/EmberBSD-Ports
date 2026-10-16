@@ -1,5 +1,5 @@
 Mesa is an open-source implementation of OpenGL and related graphics APIs.
-This bounded NetBSD 11/AArch64 source candidate selects classic VirGL,
-softpipe and llvmpipe/ORC using the common shared LLVM 23 runtime, with
+This NetBSD 11/AArch64 and amd64 source candidate selects classic VirGL,
+V3D on AArch64, Iris on amd64, and softpipe/llvmpipe using shared LLVM 23, with
 X11, Wayland, EGL, GBM, OpenGL and GLES. Package and native runtime acceptance
 remain separate from source preparation.

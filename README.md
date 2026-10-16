@@ -35,11 +35,18 @@ runtime behavior are validated.
   builds GCC16 on Apple Silicon macOS; cross-built C/C++20 consumers run on
   Zero 3W with its installed GCC16 runtime. Its installed tool-search layout
   also passes split-DWARF generation without an `objcopy` path override.
+  Relocated amd64 binutils also retain 67 default linker scripts and pass
+  a real secondary-emulation standalone link; OS boot remains separate.
   The recipe's `--kernel` mode prepares frontends without a userland sysroot;
   application mode retains target headers/runtime. The Linux GCC16 path also
   builds the full kernel, four modules, and three DTBs; all portable contracts
   and artifact checksums pass. See the [OS build evidence](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/cross-build.md#linux-gcc16).
   Boot acceptance remains separate.
+  The explicit amd64 target selects x86_64 tools and runtime paths; host
+  target-selection regressions pass. The runtime bootstrap and
+  [runtime-only package](profiles/development-toolchain/runtime/README.md)
+  keep compilers out of application images. Their host packaging fixtures
+  pass with native pkgtools; real amd64 runtime and desktop acceptance remain pending.
   Common Qt rebuilding and full-image integration
   remain pending.
   [GDB 18.1nb1](profiles/development-toolchain/gdb/README.md) is cross-built and
@@ -86,6 +93,8 @@ runtime behavior are validated.
   recipes with upstream lit, scoped native Clang/GCC16 defaults, strict
   common selection and host source contracts. Focused native macro/selection
   checks cover Python, LLVM family selection and real GCC16 config metadata.
+  Upstream lit selects the common Python315 provider in native and cross recipes;
+  host launcher PASS/XFAIL/FAIL checks pass, while target package acceptance remains separate.
   The complete LLVM23 core package now passes normal packaging and installed
   [C API/bitcode and four ORC JITLink lifecycles](profiles/common-build-tools/cross/llvm-api-tests.md)
   on Zero 3W. Packaged upstream lit passes launcher and PASS/XFAIL/FAIL checks
@@ -278,6 +287,10 @@ runtime behavior are validated.
   also pass payload, target indexing and Cyrillic/CJK selection checks.
   [ConsoleKit session launching](probes/plasma-mobile/toolkit/cross/desktop-session.md)
   now preserves child failures and passes seven real-daemon cases on CM5.
+  [Registration privilege host contracts](probes/plasma-mobile/toolkit/tests/consolekit/privilege.md)
+  check root-only parameter overrides and reject child execution after failed registration.
+  [NetBSD process snapshot host contracts](probes/plasma-mobile/toolkit/tests/consolekit/process-query.md)
+  check complete live records before metadata use; full target compilation awaits cross-built GLib.
   Ordinary-user login, device ownership and the complete desktop remain unaccepted.
 - [KWin on physical CM5](probes/plasma-mobile/toolkit/cross/cm5-kwin.md):
   KWin 6.8.0nb1 selects OpenGL ES/V3D under a non-root user.

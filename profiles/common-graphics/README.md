@@ -54,6 +54,10 @@ without a DRM master. Mesa nb3 also repairs an upstream V3D import-allocation
 failure. Remote KWin/Plasma, shared-buffer exchange and sustained desktop use
 remain separate acceptance stages.
 
+The [GCC16 diagnostic regression](cross/libdrm-gcc16.md) preserves the imported
+i915 ABI and strict warnings for amd64 source compilation. Full nb4 package
+and device acceptance remain pending.
+
 The [graphics cross-build](cross/README.md) now builds the complete selected
 libdrm payload on macOS with GCC16. All 26 staged entries match PLIST, and
 hash, drmsl and symbol checks pass in AArch64 UTM. Device enumeration is

@@ -6,10 +6,12 @@ require 'digest'
 require 'json'
 require 'open3'
 require 'tmpdir'
+require_relative 'llvm-target'
 
 abort 'usage: test-llvm-config.rb COMPLETED_WORK' unless ARGV.length == 1
 work = File.realpath(ARGV.fetch(0))
 receipt = JSON.parse(File.read("#{work}/receipt.json"))
+target_spec = EmberGraphicsLLVM.for_triple(receipt.fetch('target_triple'))
 tool = "#{work}/bin/llvm-config"
 builder = File.join(__dir__, 'build-llvm-config.rb')
 
@@ -24,11 +26,12 @@ end
 
 check('actual upstream tool reports target version/triple/RTTI/assertions') do
   out, _, status = query(tool, '--version', '--host-target', '--has-rtti', '--assertion-mode')
-  status.success? && out == "23.1.3\naarch64-unknown-netbsd\nYES\nOFF\n"
+  status.success? && out == "23.1.3\n#{target_spec.fetch(:processor)}-unknown-netbsd\nYES\nOFF\n"
 end
-check('target component graph includes non-native backends and ORC') do
+check('target component graph includes the selected backend and ORC') do
   out, _, status = query(tool, '--components')
-  status.success? && %w[aarch64 amdgpu riscv x86 xtensa orcjit jitlink native].all? { |c| out.split.include?(c) }
+  required = target_spec.fetch(:processor) == 'aarch64' ? %w[aarch64 amdgpu riscv x86 xtensa orcjit jitlink native] : %w[x86 orcjit jitlink native]
+  status.success? && required.all? { |c| out.split.include?(c) }
 end
 check('compiler flags preserve the target C++ ABI') do
   out, _, status = query(tool, '--cxxflags')

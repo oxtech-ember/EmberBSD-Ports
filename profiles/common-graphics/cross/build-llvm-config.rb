@@ -7,6 +7,7 @@ require 'fileutils'
 require 'json'
 require 'open3'
 require 'shellwords'
+require_relative 'llvm-target'
 
 UPSTREAM_SHA256 = '7c54727d9deda1689a7e6c9096f6627d73659da04a6ac88c3e0a0595f26e74bb'
 VERSION = '23.1.3'
@@ -73,7 +74,7 @@ tc, nc = cache("#{target}/CMakeCache.txt"), cache("#{native}/CMakeCache.txt")
 td, nd = [target, native].map { |p| definitions("#{p}/include/llvm/Config/llvm-config.h") }
 target_config = definitions("#{target}/include/llvm/Config/config.h")
 vars = definitions("#{target}/tools/llvm-config/BuildVariables.inc")
-fail!('target must be configured for NetBSD/aarch64') unless tc['CMAKE_SYSTEM_NAME'] == 'NetBSD' && tc['CMAKE_SYSTEM_PROCESSOR'] == 'aarch64'
+fail!('target must be configured for NetBSD/aarch64 or NetBSD/x86_64') unless tc['CMAKE_SYSTEM_NAME'] == 'NetBSD' && %w[aarch64 x86_64].include?(tc['CMAKE_SYSTEM_PROCESSOR'])
 fail!('supplied sysroot differs from the target configuration') unless tc['CMAKE_SYSROOT'] && File.directory?(tc['CMAKE_SYSROOT']) && File.realpath(tc['CMAKE_SYSROOT']) == sysroot
 fail!('target and native LLVM versions must both be 23.1.3') unless [td, nd].all? { |d| string(d, 'LLVM_VERSION_STRING') == VERSION }
 fail!('target PACKAGE_VERSION disagrees with LLVM_VERSION_STRING') unless string(target_config, 'PACKAGE_VERSION') == string(td, 'LLVM_VERSION_STRING')
@@ -84,9 +85,6 @@ target_cpp = "#{tc.fetch('CMAKE_HOME_DIRECTORY')}/tools/llvm-config/llvm-config.
 fail!('target llvm-config source differs from the pinned upstream source') unless File.file?(target_cpp) && Digest::SHA256.file(target_cpp).hexdigest == UPSTREAM_SHA256
 required << target_cpp
 initial_hashes[target_cpp] = Digest::SHA256.file(target_cpp).hexdigest
-%w[LLVM_HOST_TRIPLE LLVM_DEFAULT_TARGET_TRIPLE].each do |key|
-  fail!("inconsistent or non-NetBSD target #{key}") unless string(td, key) == tc[key] && string(td, key).match?(/\Aaarch64-.*netbsd/)
-end
 %w[LLVM_ENABLE_DYLIB LLVM_LINK_DYLIB LLVM_HAS_RTTI].each do |key|
   fail!("target requires #{key}=1") unless vars[key] == '1'
 end
@@ -95,10 +93,11 @@ fail!('only the canonical /usr/pkg install layout is supported') unless tc['CMAK
 fail!('unsupported target assertion mode') unless %w[ON OFF].include?(tc['LLVM_ENABLE_ASSERTIONS'])
 fail!('native assertion mode must be explicit') unless %w[ON OFF].include?(nc['LLVM_ENABLE_ASSERTIONS'])
 components = File.read("#{target}/tools/llvm-config/LibraryDependencies.inc")
-%w[bitwriter engine mcdisassembler mcjit core executionengine scalaropts transformutils instcombine native orcjit aarch64].each do |name|
-  fail!("missing target LLVM component: #{name}") unless components.match?(/\{ "#{Regexp.escape(name)}",/)
+begin
+  target_spec = EmberGraphicsLLVM.validate(tc, td, components)
+rescue ArgumentError => error
+  fail!(error.message)
 end
-fail!('native component must resolve to AArch64') unless components.match?(/\{ "native", nullptr, true, \{"aarch64"\} \}/)
 
 # An installed-layout prefix must be the actual output of this target build.
 # Development-tree mode remains available for metadata inspection before link.
@@ -117,7 +116,11 @@ unless prefix == target
   fail!('staged shared LLVM or its original target build output is missing') unless File.file?(library) && File.file?(built_library)
   fail!('staged shared LLVM resolves outside the target prefix') unless File.realpath(library).start_with?(prefix + '/lib/')
   header = File.binread(library, 20)
-  fail!('staged LLVM is not an AArch64 little-endian ELF shared library') unless header.byteslice(0, 6) == "\x7fELF\x02\x01" && header.byteslice(16, 4).unpack('v2') == [3, 183]
+  begin
+    EmberGraphicsLLVM.validate_elf(header, target_spec)
+  rescue ArgumentError => error
+    fail!(error.message)
+  end
   target_library_hash = Digest::SHA256.file(library).hexdigest
   built_hash = Digest::SHA256.file(built_library).hexdigest
   library_proof = {method: 'identical', built_library: built_library,
@@ -222,6 +225,7 @@ text = replace_once(text, "CurrentExecPrefix =\n      sys::path::parent_path(sys
 text = replace_once(text, '#if defined(NDEBUG)', '#if !EMBER_TARGET_ASSERTIONS')
 File.write("#{work}/llvm-config.cpp", text)
 FileUtils.cp(__FILE__, "#{work}/build-llvm-config.rb")
+FileUtils.cp(File.join(__dir__, 'llvm-target.rb'), "#{work}/llvm-target.rb")
 compile_args = [cxx, *host_flags, '-DLLVM_BUILD_STATIC', '-O2', (nc['LLVM_ENABLE_ASSERTIONS'] == 'OFF' ? '-DNDEBUG' : '-UNDEBUG'), "-I#{work}/metadata", "#{work}/llvm-config.cpp"]
 # Discover and hash the exact non-system headers before the compilation. The
 # generated metadata is private; all external headers must belong to the
@@ -256,7 +260,7 @@ File.write("#{work}/bin/llvm-config", <<~SH)
   exec "$base/bin/llvm-config.real" "$@"
 SH
 File.chmod(0755, "#{work}/bin/llvm-config")
-local_inputs = %w[metadata/BuildVariables.inc metadata/LibraryDependencies.inc metadata/ExtensionDependencies.inc llvm-config.cpp build-llvm-config.rb llvm-config.d dependencies.command compile.command receipt.json bin/llvm-config.real bin/llvm-config]
+local_inputs = %w[metadata/BuildVariables.inc metadata/LibraryDependencies.inc metadata/ExtensionDependencies.inc llvm-config.cpp build-llvm-config.rb llvm-target.rb llvm-config.d dependencies.command compile.command receipt.json bin/llvm-config.real bin/llvm-config]
 local_inputs += %w[strip.command strip.log] if library_proof && library_proof[:method] == 'cmake-install-strip'
 required.uniq.each do |p|
   fail!("input changed during compilation: #{p}; discard NEW_WORK") unless Digest::SHA256.file(p).hexdigest == initial_hashes.fetch(p)

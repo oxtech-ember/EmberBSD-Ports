@@ -74,23 +74,28 @@ enabled upstream tests (`-Dtests=true`). Prepare the target bundle from
 that exact WRKSRC and its installed cross sysroot:
 
 ```sh
-ruby prepare-wayland-tests.rb /absolute/wayland-WRKSRC \
+ruby prepare-wayland-tests.rb --target amd64 /absolute/wayland-WRKSRC \
     /absolute/target-sysroot /absolute/new-test-bundle
 ```
 
 The helper preserves all 26 invocations from Meson's actual introspection,
 their original test scripts/data, the exec descriptor helper and licence.
-It checks AArch64 ELF identity and records SHA256 for the bundle and target
-scanner/libraries. No target library is bundled as an alternate provider.
+Select `--target aarch64` or `--target amd64`; the default remains AArch64.
+The helper checks ELF64, little-endian encoding and the selected machine for
+every test ELF, the exec helper and all five installed runtime providers.
+It records the target in `target.txt`, bound by the bundle SHA256 manifest.
+It records SHA256 for the bundle and target scanner/libraries. No target library is bundled as an alternate provider.
 Transfer it without macOS extended attributes, preserving executability.
 
 On the target:
 
 ```sh
-sh /absolute/test-bundle/run-wayland-tests.sh /absolute/new-results
+sh /absolute/test-bundle/run-wayland-tests.sh --target amd64 /absolute/new-results
 ```
 
-The runner verifies bundle and installed runtime hashes, package identity,
+The runner checks its selected target, the bundle marker and actual `uname`
+before creating results. Unknown or duplicate target flags fail. The runner
+verifies bundle and installed runtime hashes, package identity,
 package contents and ELF dependency resolution. It clears loader overrides
 and leak/timeout-disabling variables. Each invocation retains the upstream
 30-second limit and an additional five-second kill grace. Exit 77 is
@@ -100,6 +105,18 @@ The result directory contains individual logs, loader paths and totals.
 Passing these tests establishes installed protocol-library and scanner
 behavior on the recorded kernel. It does not establish a compositor,
 physical display/input, accelerated Mesa or a VirGL/Wayland desktop.
+
+The host regression uses actual amd64 test inputs and labelled AArch64 ELF
+header fixtures. It preserves the 26-invocation selection and rejects foreign
+machines, truncated helpers, class/byte-order mismatches and changed timeouts.
+Runner guard fixtures do not execute target tests on the host:
+
+```sh
+ruby ../tests/wayland-targets.rb /absolute/wayland-WRKSRC \
+    /absolute/target-sysroot /absolute/new-check
+```
+
+This preparation check is separate from an installed amd64 suite result.
 
 ## Accepted target run
 

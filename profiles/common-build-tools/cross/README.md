@@ -1,8 +1,8 @@
 # Cross-building common packages on macOS
 
-This opt-in path builds EmberBSD/AArch64 pkgsrc packages with the
+This opt-in path builds EmberBSD/AArch64 or amd64 pkgsrc packages with the
 [GCC 16.2 cross compiler](../../development-toolchain/cross/README.md).
-The retained NetBSD 11 ABI and `aarch64--netbsd` triplet identify compatibility,
+The retained NetBSD 11 ABI and target triplet identify compatibility,
 not an upstream OS build. Follow the [sysroot provenance rules](sysroot.md).
 The compiler and build tools execute on macOS; installed packages are tested
 on EmberBSD. Python, Meson and Ninja are among the
@@ -19,9 +19,9 @@ checksums. The cross fixes also compose into profiles based on common tools.
 
 Prepare these separate directories, outside Git:
 
-- A working GCC16 cross prefix targeting `aarch64--netbsd`.
+- A working GCC16 cross prefix targeting `aarch64--netbsd` or `x86_64--netbsd`.
 - Host tools from the EmberBSD source tree, built on the Mac, including
-  `aarch64--netbsd-install`.
+  the corresponding target `install` utility.
 - A pkgsrc unprivileged macOS bootstrap with BSD make, the patched package tools,
   mksh and digest. Use the exported `pkg_install-20260227nb1` recipe: it fixes
   alternate-root replacement and suppresses target deinstall scripts during
@@ -38,8 +38,17 @@ Prepare these separate directories, outside Git:
   `autoreconf -fi`, and a stripped `PATH` that still fails at `libtoolize`.
 - A target sysroot with headers, complete base libraries and development
   files (including `libintl`), the complete accepted
-  `gcc16-16.2.0nb1` package, its dependency files and target package database.
+  GCC16 development files, a coherent runtime provider and target package database.
   Include base `/usr/bin/install-info` for packages shipping Info manuals.
+
+For amd64 application images, select `EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime`.
+The [runtime-only provider](../../development-toolchain/runtime/README.md)
+ships only target shared libraries and licenses. Keep headers and CRT objects
+in the build-host sysroot. This choice does not install a compiler in the VM.
+The runtime-only recipe currently supports amd64. AArch64 remains on the
+existing compiler provider until its runtime-only package is ported and tested.
+The default `compiler` provider preserves existing full-package workflows.
+The providers conflict; do not register both or fabricate full-package metadata.
 
 Do not substitute a host package database for the target database. The
 selected target GCC runtime needs its CRT files and `libstdc++.so.7`; a
@@ -54,6 +63,33 @@ sh profiles/common-build-tools/cross/prepare-tools.sh \
     /absolute/gcc16-prefix /absolute/netbsd-tools /absolute/new-cross-tools
 ```
 
+The default remains AArch64. For amd64, pass `--target amd64` before paths.
+Also set `EMBERBSD_CROSS_TARGET=amd64` in the cross MAKECONF. This selects
+`MACHINE_ARCH=x86_64` and the `x86_64--netbsd` compiler and CRT paths.
+Unknown targets and conflicting compiler or machine overrides fail.
+The selector does not prove an amd64 package build or desktop session.
+
+OpenSSL uses explicit upstream `BSD-x86_64` and `BSD-aarch64` Configure targets
+for NetBSD cross builds. OpenSSL 3.6's automatic `config` path reads host
+`POSIX::uname` and ignores the older target environment variables. Native
+selection stays unchanged. Unsupported NetBSD cross architectures fail before
+the build. Assembly, shared libraries and package checks remain enabled.
+The [focused regression](../tests/openssl-target.rb) uses real pkgsrc metadata
+and the verified upstream archive:
+
+```sh
+BMAKE=/absolute/host/bin/bmake GMAKE=/absolute/host/bin/gmake \
+    ruby profiles/common-build-tools/tests/openssl-target.rb \
+    /absolute/export /absolute/cross.mk.conf \
+    /absolute/distfiles/openssl-3.6.4.tar.gz /absolute/new-check
+```
+
+Run this check on macOS with a genuine amd64 GCC16 compiler and sysroot.
+It compares host detection with explicit targets, checks ARM and native
+metadata, rejects unknown targets, and compiles one unchanged upstream C file
+through its generated Makefile. ARM has configuration coverage only. These
+checks do not establish a complete package, target execution or TLS acceptance.
+
 A private MAKECONF includes the host bootstrap configuration first:
 
 ```make
@@ -62,6 +98,9 @@ A private MAKECONF includes the host bootstrap configuration first:
 EMBERBSD_CROSS_TOOLS=/absolute/new-cross-tools
 EMBERBSD_CROSS_SYSROOT=/absolute/target-sysroot
 EMBERBSD_CROSS_HOST_PREFIX=/absolute/host
+# Optional: amd64 rather than the AArch64 default.
+EMBERBSD_CROSS_TARGET=amd64
+EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime
 WRKOBJDIR=/absolute/work
 DISTDIR=/absolute/distfiles
 MAKE_JOBS=4
@@ -122,9 +161,22 @@ Build-time C/C++ generators use `/usr/bin/cc` and `/usr/bin/c++` on macOS.
 Override `EMBERBSD_CROSS_BUILD_CC` and `EMBERBSD_CROSS_BUILD_CXX` with absolute
 host compiler paths when necessary. They reach upstream configure as
 `CC_FOR_BUILD` and `CXX_FOR_BUILD`; target wrappers still compile the package.
-The profile also sets pkgsrc's `NATIVE_CC` and `NATIVE_CXX`, because recipes
-such as Bash append their generator compiler settings later. Conflicting
-command-line overrides fail rather than silently selecting the target compiler.
+The raw provider inputs remain absolute executable paths. Pkgsrc's `NATIVE_CC`
+and `NATIVE_CXX` are compiler commands. On Darwin, they append `-B/usr/bin/`
+so compiler subprocesses select the native assembler and linker despite the
+cross wrapper PATH. Recipes must preserve the complete command, including its
+arguments. Bash, libX11, libXt and FreeType receive this same native command.
+Conflicting command-line overrides fail. Target compiler flags, wrappers and
+sysroot selection remain unchanged. Native dependency recursion does not acquire
+these cross-only command settings.
+
+`tests/cross-native-routing.rb` takes a prepared pkgsrc tree, cross MAKECONF,
+failed libX11 work directory, FreeType source directory and a new work path.
+This Darwin/amd64 regression copies the actual cwrapper configuration into its private fixture and records
+commands and results. It links and runs native C/C++, the upstream makekeys
+source, and FreeType's unchanged native suffix probe under the polluted PATH.
+It also checks libXt's final configure command and a target ELF link.
+These checks do not establish full package or target runtime acceptance.
 The mDNSResponder version probe reads the target sysroot header during cross
 builds and the host header during native dependency recursion.
 Host tool dependencies read the host bootstrap MAKECONF, so interpreter and
@@ -188,6 +240,8 @@ Run `tests/cross-pkgsrc.sh` against a staged pkgconf package. It exercises real
 pkgsrc parsing, native dependency recursion, ELF metadata and failure cases.
 `tests/cross-tools.sh` checks tool composition, refusal of existing output,
 missing host tools and the constrained target Info utility selection.
+`ruby tests/cross-targets.rb BMAKE` checks both target tool compositions,
+real make variable expansion, runtime-provider selection and mixed-target rejection.
 `tests/cross-libc.rb BMAKE NEW_WORK` exercises the actual pre-extract guard:
 canonical aliases pass; four missing and four divergent libc paths fail.
 That guard detects inconsistent copies, not the origin of an otherwise
@@ -263,3 +317,15 @@ BMAKE=/absolute/bmake sh profiles/common-build-tools/tests/check-error-dir.sh \
 The regression uses real pkgsrc make fragments. It reproduces the original
 failure, accepts a valid payload and rejects five invalid payloads.
 It also checks all four direct writer targets and preserves the build cookie.
+
+The cross profile exports `LC_ALL=C` and selects `/usr/bin/sort` directly.
+pkgsrc passes `TOOLS_SORT` as one executable to its libtool PLIST expander.
+An `env` command in the tool path drops shared and static library entries.
+This check exercises the actual PLIST target under a non-C caller locale:
+
+```sh
+BMAKE=/absolute/host/bin/bmake ruby profiles/common-build-tools/tests/cross-sort.rb \
+    /absolute/prepared-pkgsrc /absolute/cross.mk.conf /absolute/new-sort-results
+```
+
+Its staged files test PLIST processing; they are not target ELF evidence.

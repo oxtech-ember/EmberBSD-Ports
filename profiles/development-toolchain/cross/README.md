@@ -1,11 +1,40 @@
-# GCC16 cross compiler for AArch64 EmberBSD
+# GCC16 cross compiler for EmberBSD
 
 Cross-compilation is the preferred build path: build GCC 16.2.0 on the
 development host and execute the resulting programs on EmberBSD. The tested
 hosts are Apple Silicon macOS (application mode) and Debian x86_64 Linux
 (kernel mode). There is no NetBSD-host
 check in the compiler build or compile-only acceptance scripts. The separate
-target runner requires AArch64 NetBSD because it executes target ELF files.
+target runner requires the selected EmberBSD/NetBSD architecture because it
+executes target ELF files. VM and boards run acceptance tests only.
+
+Target-dependent entry points accept `--target aarch64|amd64`. The default is `aarch64`.
+Unknown, empty and repeated target options fail before output creation.
+
+| Target | GNU triplet | Validation |
+| --- | --- | --- |
+| `aarch64` | `aarch64--netbsd` | Host builds and target checks recorded below |
+| `amd64` | `x86_64--netbsd` | Host orchestration fixtures only; real build and runtime checks pending |
+
+The triplets follow the fork's [machine selection](https://github.com/oxtech-ember/EmberBSD/blob/main/build.sh)
+and [GNU platform definitions](https://github.com/oxtech-ember/EmberBSD/blob/main/share/mk/bsd.own.mk).
+The same selected triplet controls binutils, compiler configuration, startup
+objects and target C++ headers. It is recorded in `inputs.txt`.
+
+The bootstrap copy also preserves the linker's adjacent `lib/ldscripts` tree.
+Copying the linker executable alone breaks default secondary emulations.
+The source script hashes are recorded in `linker-scripts.sha256`.
+The real amd64 bootstrap passes 67 unchanged scripts and an `elf_i386`
+standalone link through the relocated prefix. No target program is executed.
+The same test rejects the previous executable-only copy at script selection:
+
+```sh
+ruby profiles/development-toolchain/cross/tests/linker-relocation.rb \
+    /absolute/os-tools amd64 /absolute/new-relocation-receipt
+```
+
+This qualifies relocation of the supplied binutils. It does not qualify a
+new binutils version, a complete OS build or booting a BIOS loader.
 
 The compiler uses the same verified original GCC archive and frontend
 portability patches as the Ports native package, including the nb1 C++
@@ -25,18 +54,17 @@ Provide these absolute paths without whitespace:
 
 1. The prepared pkgsrc tree containing `lang/gcc16` and the modules repair.
 2. The original `gcc-16.2.0.tar.xz` archive.
-3. An AArch64 EmberBSD sysroot with `/usr/include`, startup objects, libc,
+3. An EmberBSD sysroot for the selected target with `/usr/include`, startup objects, libc,
    pthread and math libraries, loader, and the selected `/usr/pkg/gcc16`
    headers/runtime. Preserve relative symlinks. Resolve links escaping the
    sysroot when creating the snapshot; never resolve them against the host.
 4. A host `TOOLDIR` produced by the fork's
    [cross-build path](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/cross-build.md).
-   GNU make builds the compiler, and its AArch64 binutils are copied into the
+   GNU make builds the compiler, and its selected target binutils are copied into the
    compiler prefix. Qualifying current binutils remains separate work.
 5. A new work directory with room for sources, objects and the compiler.
 
-Use native compilation only for stages whose missing cross support is
-identified explicitly; port those stages through Ports. The compiler and
+Repair missing cross support through Ports or the OS. The compiler and
 linker must run on the build host. The sysroot libraries
 and startup objects must belong to the target. Equal CPU architecture does
 not make Darwin and NetBSD executables interchangeable.
@@ -47,6 +75,21 @@ HOST_CC=cc HOST_CXX=c++ \
     /absolute/pkgsrc /absolute/gcc-16.2.0.tar.xz /absolute/sysroot \
     /absolute/os-build/tools /absolute/new-gcc-cross
 ```
+
+For amd64, use a matching amd64 sysroot and fork-built x86_64 binutils:
+
+```sh
+HOST_CC=gcc-16 HOST_CXX=g++-16 CROSS_JOBS=2 \
+    sh profiles/development-toolchain/cross/build.sh --target amd64 \
+    /absolute/pkgsrc /absolute/gcc-16.2.0.tar.xz /absolute/sysroot-amd64 \
+    /absolute/os-build-amd64/tools /absolute/new-gcc-cross-amd64
+```
+
+The sysroot must already contain the matching GCC16 target runtime and C++
+headers. Kernel mode cannot provide them. Do not substitute AArch64 packages
+or base-compiler runtime files. The host needs C/C++ compilers, a POSIX shell,
+`awk`, `shasum`, `tar`, `patch`, and the fork's host GNU make and binutils.
+Automatic host math preparation also uses `curl` for missing archives.
 
 The five-argument command builds GMP 6.3.0, MPFR 4.2.2 and MPC 1.4.1 under
 `NEW_WORK/host-math`. It downloads missing pinned archives into
@@ -98,10 +141,10 @@ recorded paths. `HOST_CC`/`HOST_CXX` name the existing host compilers;
 host's online CPU count from `getconf`, with `sysctl` as a fallback.
 A failed stage returns nonzero.
 
-The installed prefix includes GCC's `aarch64--netbsd/bin` tool-search
+The installed prefix includes GCC's `<triplet>/bin` tool-search
 directory. This is required for the driver's `-gsplit-dwarf` invocation of
 `objcopy`, even when ordinary compilation already works. The build runs
-`tests/split-dwarf.sh CROSS_PREFIX NEW_WORK` with a clean PATH and no
+`tests/split-dwarf.sh --target TARGET CROSS_PREFIX NEW_WORK` with a clean PATH and no
 `-B` or compiler-search overrides. The resulting DWARF5 skeleton and DWO
 must both be readable and retain the named type. This contract passed on
 2026-10-08 with the current GMP-backed GCC16 prefix.
@@ -117,6 +160,9 @@ HOST_CC=gcc HOST_CXX=g++ CROSS_JOBS=4 \
     /absolute/pkgsrc /absolute/gcc-16.2.0.tar.xz \
     /absolute/os-build/tools /absolute/host-math/prefix /absolute/new-gcc-kernel
 ```
+
+Add `--target amd64` before or after `--kernel` for x86_64 kernel frontends.
+This changes no application sysroot requirements.
 
 The optional host math prefix works as in application mode: leave it out to
 build isolated prerequisites, or set `EMBER_HOST_MATH_PREFIX`. Kernel mode uses
@@ -145,11 +191,23 @@ stages the runtime without replacing a complete GCC16 provider. The
 Run the argument/prerequisite and real export regressions with:
 
 ```sh
-sh profiles/development-toolchain/cross/tests/build-modes.sh /absolute/os-build/tools
+sh profiles/development-toolchain/cross/tests/build-modes.sh
+sh profiles/development-toolchain/cross/tests/build-modes.sh --target amd64
+sh profiles/development-toolchain/cross/tests/targets.sh
+sh profiles/development-toolchain/cross/tests/configure-targets.sh
+sh profiles/development-toolchain/cross/tests/runtime-checker.sh
 sh profiles/development-toolchain/tests/prepare.sh /absolute/new-pkgsrc-test
 ```
 
-The second command retains a complete development-toolchain export. It exercises
+The first five commands use host fixtures. They check argument rejection,
+target-specific runtime/binutils selection, compile flags, and both configure
+modes. Runtime receipts also reject corruption, foreign paths and duplicate
+libraries without a target compiler. The configure fixture stops before
+building GCC. These checks do not
+prove amd64 compilation, ELF contents or runtime behavior. `build-modes.sh`
+also accepts an optional real `NETBSD_TOOLDIR` after the target option.
+
+The last command retains a complete development-toolchain export. It exercises
 `prepare-pkgsrc.sh` against the pinned submodule with GNU patch's zero-fuzz
 application and verifies the package revisions and source patch hashes.
 
@@ -159,6 +217,9 @@ application and verifies the package revisions and source patch hashes.
 sh profiles/development-toolchain/cross/compile-tests.sh \
     /absolute/new-gcc-cross/toolchain /absolute/sysroot /absolute/new-tests
 ```
+
+Pass `--target amd64` for an amd64 prefix and sysroot. The output includes
+`target.txt` and the target-option helper. Keep both with the test programs.
 
 This reuses the native C11 atomics/TLS and C++20 DSO test sources. It compiles
 C with and without LTO, and C++ with threads, TLS, strings and exceptions
@@ -174,10 +235,15 @@ then run:
 sh /absolute/target-tests/run-target.sh /absolute/target-tests
 ```
 
+For amd64, add `--target amd64` before the directory. The runner checks the
+host architecture and the compiled target receipt before executing programs.
+
 For archives made on macOS, use `COPYFILE_DISABLE=1 tar --no-xattrs --no-acls
 --no-fflags ...` so NetBSD tar does not fail restoring Apple metadata.
 The target runner checks actual loaded `libstdc++` and `libgcc_s` identities
-against the already installed `/usr/pkg/gcc16` compiler. Loader overrides
+against SHA256 receipts made from the accepted sysroot. Both libraries must
+resolve inside `/usr/pkg/gcc16`. It does not need a compiler on the target.
+Loader overrides
 are rejected. It does not install packages or change login defaults.
 
 ## Validation boundary

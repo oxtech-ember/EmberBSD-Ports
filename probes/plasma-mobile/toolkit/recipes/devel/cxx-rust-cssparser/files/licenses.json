@@ -1,0 +1,404 @@
+{
+  "original_source_sha256": "97bf4670e565bf43ae77348af74a38c1b432fc5dfa47ab15c375e04331fdb8e1",
+  "cargo_lock_sha256": "d2fa05be2697e96e1c2f11dfa361266938ea75c6eb6977d8d292f288ed79d031",
+  "vendor_archive_sha256": "d2e42517a49923fcd79fb7f05b650a4821c218c4d04d9c9691c7fdef55e74a2a",
+  "target": "x86_64-unknown-netbsd",
+  "graph_scope": "Actual Cargo 1.99.0 offline locked filtered metadata: 52 registry packages plus the local root. Includes host build dependencies; does not prove which objects are linked.",
+  "notice_scope": "All 103 original LICENSE/COPYING/NOTICE files from the full 61-crate source closure, plus five project license texts, original REUSE.toml and Cargo.lock. This is a superset of the target graph.",
+  "project": {
+    "source_spdx": "LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL",
+    "selected_pkgsrc_branch": "gnu-lgpl-v2.1",
+    "choice_basis": "The original C++ and Rust library source headers permit LGPL-2.1-only as one alternative. The package selects that branch. Original alternative license texts are retained. Build metadata uses BSD-2-Clause; REUSE.toml uses CC0-1.0.",
+    "pkgsrc_bsd_mapping": "BSD-2-Clause maps to 2-clause-bsd, not modified-bsd.",
+    "attribution_notices": [
+      "2020 Volker Krause <vkrause@kde.org>",
+      "2024 Arjen Hiemstra <ahiemstra@heimr.nl>",
+      "2025 Arjen Hiemstra <ahiemstra@heimr.nl>",
+      "2026 Arjen Hiemstra <ahiemstra@heimr.nl>"
+    ]
+  },
+  "mapping_notes": {
+    "Unicode-3.0": "Existing pkgsrc unicode-v3 identifier.",
+    "MIT/Apache-2.0": "Legacy Cargo alternative syntax; original siphasher COPYING explicitly permits Apache-2.0 or MIT, at your option.",
+    "composition": "AND combines components. OR remains within component choices. Equivalent repeated component expressions are grouped; mandatory MIT and Apache components are not changed into an all-OR choice."
+  },
+  "rust_std_scope": "The selected target std data package retains its own original licenses and COPYRIGHT. It is a build-host data provider, not automatically a runtime package. The Rust staticlib can embed std objects. Real compiler/link output must establish linked std/third-party scope before binary-package acceptance; this metadata graph does not resolve that scope.",
+  "pkgsrc_expression": "2-clause-bsd AND cc0-1.0-universal AND gnu-lgpl-v2.1 AND apache-2.0 AND mit AND mpl-2.0 AND zlib AND (mit OR apache-2.0) AND (unlicense OR mit) AND ((mit OR apache-2.0) AND unicode-v3)",
+  "pkgsrc_license_ids": [
+    "2-clause-bsd",
+    "apache-2.0",
+    "cc0-1.0-universal",
+    "gnu-lgpl-v2.1",
+    "mit",
+    "mpl-2.0",
+    "unicode-v3",
+    "unlicense",
+    "zlib"
+  ],
+  "registry_packages": [
+    {
+      "name": "bitflags",
+      "version": "2.13.1",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "b13b9b7edbbb039205f57f107acdba1840b7c8452c6fdf4e04bc58124f7b5e0c"
+    },
+    {
+      "name": "cc",
+      "version": "1.4.4",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "4a6cd63f7152a5f4e9a92188458c33b3e2df897f756c91f1792941c2385d7940"
+    },
+    {
+      "name": "codespan-reporting",
+      "version": "0.13.1",
+      "upstream_spdx": "Apache-2.0",
+      "pkgsrc_expression": "apache-2.0",
+      "manifest_sha256": "f20fccee95ee70f154bc65de14a358341251124a60bc2403319b240867b9893e"
+    },
+    {
+      "name": "cssparser",
+      "version": "0.37.0",
+      "upstream_spdx": "MPL-2.0",
+      "pkgsrc_expression": "mpl-2.0",
+      "manifest_sha256": "0ac783c96e15668a9efd9e43c9218953c49bf1441779ea622d065d7b643c7697"
+    },
+    {
+      "name": "cssparser-color",
+      "version": "0.5.0",
+      "upstream_spdx": "MPL-2.0",
+      "pkgsrc_expression": "mpl-2.0",
+      "manifest_sha256": "ee2bd594e562cdcb1393ad1c9fe977eb9e850b6cb46aa70bdd637caf1f0d498b"
+    },
+    {
+      "name": "cssparser-macros",
+      "version": "0.7.0",
+      "upstream_spdx": "MPL-2.0",
+      "pkgsrc_expression": "mpl-2.0",
+      "manifest_sha256": "40668dc2f688436f818ce0e8739b3b4c517afc242e5ce9145db706d1960fbd7e"
+    },
+    {
+      "name": "cxx",
+      "version": "1.0.199",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "04d13d27781889a1a70df60fbe94aed960aec29f488ab7183276e77398405389"
+    },
+    {
+      "name": "cxx-build",
+      "version": "1.0.199",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "635fa99664bca5d20091aa32fb38bdaec9302d0b228469703367cc566163f076"
+    },
+    {
+      "name": "cxxbridge-flags",
+      "version": "1.0.199",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "a4930a0447c7031f6075ec5e41c9c55829c699c32359aa5b92694c802e8d2933"
+    },
+    {
+      "name": "cxxbridge-macro",
+      "version": "1.0.199",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "a73510739df584b2738689586d07615ba07d1e79c5453e823901bb6aead97407"
+    },
+    {
+      "name": "derive_more",
+      "version": "2.1.1",
+      "upstream_spdx": "MIT",
+      "pkgsrc_expression": "mit",
+      "manifest_sha256": "f11dd5e6c080995c76e0916fc4e573b57457d145aff5c26e7bdcf243481a014c"
+    },
+    {
+      "name": "derive_more-impl",
+      "version": "2.1.1",
+      "upstream_spdx": "MIT",
+      "pkgsrc_expression": "mit",
+      "manifest_sha256": "a9c5ce200f3ea3822be272c1af53129a992b9e31f51b08c928ff340740d7c1c5"
+    },
+    {
+      "name": "dtoa",
+      "version": "1.0.11",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "7fdaeda50f9aff37983b1c0ef73f8b15264ffb174e43059b9c936d14e95eacaa"
+    },
+    {
+      "name": "dtoa-short",
+      "version": "0.3.5",
+      "upstream_spdx": "MPL-2.0",
+      "pkgsrc_expression": "mpl-2.0",
+      "manifest_sha256": "f6316d9ba867b8cdcdc39142bcc1690f769cc54e41c4425b96fe33ee442e11b5"
+    },
+    {
+      "name": "equivalent",
+      "version": "1.0.2",
+      "upstream_spdx": "Apache-2.0 OR MIT",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "92fcf6d8b32d99f40a5053b9026e417c958d6f5f19581c632d675211b7eeb9f9"
+    },
+    {
+      "name": "fastrand",
+      "version": "2.5.0",
+      "upstream_spdx": "Apache-2.0 OR MIT",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "3f01725ad91d1a1705762821e9231ea15ddfa62648143516e68d64021ae31e08"
+    },
+    {
+      "name": "find-msvc-tools",
+      "version": "0.1.11",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "5d4d49b1ad69bc8c86f8a1912996ff3503a6c253bd6039d6e32960b5e6c0cb18"
+    },
+    {
+      "name": "foldhash",
+      "version": "0.2.0",
+      "upstream_spdx": "Zlib",
+      "pkgsrc_expression": "zlib",
+      "manifest_sha256": "0a76cc29da1c33f4bdb505f5828ecdc20859c4cb9faa402e000f5f10511a27cc"
+    },
+    {
+      "name": "hashbrown",
+      "version": "0.17.1",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "afcb0e62d498f756bd4ddf69785c8282d01ee4fa40016158c7eac12ceb302f8c"
+    },
+    {
+      "name": "indexmap",
+      "version": "2.14.1",
+      "upstream_spdx": "Apache-2.0 OR MIT",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "a1711bc6d4c39407194075b916a998f71eb2c2edd4cfc89335e4f175e5bc65fe"
+    },
+    {
+      "name": "itoa",
+      "version": "1.0.18",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "894c215e4e7e973b556b0e9627bf9b6a719a043fac9b5af9838660816392a09f"
+    },
+    {
+      "name": "link-cplusplus",
+      "version": "1.0.12",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "16d55af64826ff1962ee65c5f8d0c1a4db600cff00a13372adc9d1a2a82e9def"
+    },
+    {
+      "name": "log",
+      "version": "0.4.34",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "a6b553a374b237960e65d91de04e102a1755a7a20ff21f2c1ef6ba74b9d0ab76"
+    },
+    {
+      "name": "memchr",
+      "version": "2.8.3",
+      "upstream_spdx": "Unlicense OR MIT",
+      "pkgsrc_expression": "(unlicense OR mit)",
+      "manifest_sha256": "a14f68b8fa55f15fd03b15dced37bcf66a0a628f568eedc82817cdb7f9281951"
+    },
+    {
+      "name": "new_debug_unreachable",
+      "version": "1.0.6",
+      "upstream_spdx": "MIT",
+      "pkgsrc_expression": "mit",
+      "manifest_sha256": "c89bebeeaf164811c20eca172f592e26a1d21d8d91b3c9a367ad745015eb78e2"
+    },
+    {
+      "name": "nom",
+      "version": "8.0.0",
+      "upstream_spdx": "MIT",
+      "pkgsrc_expression": "mit",
+      "manifest_sha256": "0c4c034419168b542235727a352b8c3d12476d839480a6e933f4fc7966c6a812"
+    },
+    {
+      "name": "phf",
+      "version": "0.13.1",
+      "upstream_spdx": "MIT",
+      "pkgsrc_expression": "mit",
+      "manifest_sha256": "5bf09dcab55c8fb28fc1ac96beb1b75b595ea026373e2f92b70cc395394579b0"
+    },
+    {
+      "name": "phf_codegen",
+      "version": "0.13.1",
+      "upstream_spdx": "MIT",
+      "pkgsrc_expression": "mit",
+      "manifest_sha256": "e60b819dc0d390ddaaeaa0646b495e4aab3f4cf68b7bd158f928f18892eba2e7"
+    },
+    {
+      "name": "phf_generator",
+      "version": "0.13.1",
+      "upstream_spdx": "MIT",
+      "pkgsrc_expression": "mit",
+      "manifest_sha256": "cb36f4b88da746daff3dbf428941278844bfb848c9afb8c742a7f534c2cc9441"
+    },
+    {
+      "name": "phf_macros",
+      "version": "0.13.1",
+      "upstream_spdx": "MIT",
+      "pkgsrc_expression": "mit",
+      "manifest_sha256": "a197994797a8b6b345f1882f3639f95e3f363d2bf57eb4bb4d610b51079d58d0"
+    },
+    {
+      "name": "phf_shared",
+      "version": "0.13.1",
+      "upstream_spdx": "MIT",
+      "pkgsrc_expression": "mit",
+      "manifest_sha256": "3d20d918764d9c014251ee6c51c41275b075ef63cbf81ee138ef39ed485e807d"
+    },
+    {
+      "name": "precomputed-hash",
+      "version": "0.1.1",
+      "upstream_spdx": "MIT",
+      "pkgsrc_expression": "mit",
+      "manifest_sha256": "594bc4437727edbf58c7cb9f88c3c1d80e89439dd4a505ef4771f9f344819386"
+    },
+    {
+      "name": "proc-macro2",
+      "version": "1.0.107",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "6bdbe54a7f052e552dcfca90351764476e2767237ec3f954df8bd9f602861056"
+    },
+    {
+      "name": "quote",
+      "version": "1.0.47",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "13d8c50837f14aff48cd622349f98fb2c46350b7a0c08fd574cf7de4def27d06"
+    },
+    {
+      "name": "rustc-hash",
+      "version": "2.1.3",
+      "upstream_spdx": "Apache-2.0 OR MIT",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "7e6727beb038213a2aa02f90cbbfb1d6651a9fda56f241dd95110a0cb287efc9"
+    },
+    {
+      "name": "rustc_version",
+      "version": "0.4.1",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "c7d1d07fcb4f604eac7c2f9ad1262f93c81f2e45c6be6031de2d83da5ab59ccb"
+    },
+    {
+      "name": "scratch",
+      "version": "1.0.9",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "f624bb9d40aa5b564bb140de1f5afe2a8d25cc15699ded0c467927c7904054a6"
+    },
+    {
+      "name": "selectors",
+      "version": "0.40.0",
+      "upstream_spdx": "MPL-2.0",
+      "pkgsrc_expression": "mpl-2.0",
+      "manifest_sha256": "f883725ad3e3ce9100c7b236858942d9182581c1ae6fe1511b41aa130657589b"
+    },
+    {
+      "name": "semver",
+      "version": "1.0.28",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "cf7fb84578260eec81ce5af4bdb176ec590d45fdcb78f06710f0aa13e3078761"
+    },
+    {
+      "name": "serde",
+      "version": "1.0.229",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "6883caefd46e86eb15d22d3a6d274ad304c5e7934ab70eb58d81b7c4a29ef9db"
+    },
+    {
+      "name": "serde_core",
+      "version": "1.0.229",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "c6049e170e4f7c2b48749fefab59db583bfac4e466cde6d0c53e4f49bc5044f7"
+    },
+    {
+      "name": "serde_derive",
+      "version": "1.0.229",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "d2581160ffa61baa386f882e08b0db20051dc3c782a82268d6473998b61c926e"
+    },
+    {
+      "name": "servo_arc",
+      "version": "0.4.3",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "9ab5a069f46a8d0122c464cf007abe362a3212e82ccfa1afd9dab3d969bf85a9"
+    },
+    {
+      "name": "shlex",
+      "version": "2.0.1",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "b6ead6cf404555ced33f7574c6c11413e29e7bcd5eb0ceeb59452830a46675ed"
+    },
+    {
+      "name": "siphasher",
+      "version": "1.0.3",
+      "upstream_spdx": "MIT/Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "e7b84f7acf4a759417326d28525baa2986f25e4bf8c96b146ed5e375bafb2959"
+    },
+    {
+      "name": "smallvec",
+      "version": "1.15.2",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "93c1f8da58bf139f7a3447c6d2a98a9e764d77b96cc44497d7356f1e3c2e8e5a"
+    },
+    {
+      "name": "stable_deref_trait",
+      "version": "1.2.1",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "5cddd84a243940e60e772ecba2f05b28b00cbd825d341d9e0b0881dcae7847dc"
+    },
+    {
+      "name": "syn",
+      "version": "2.0.119",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "da8b83ac2c66a7b404dc55d88ae42592f70714823251f51b620ae349b246a18f"
+    },
+    {
+      "name": "syn",
+      "version": "3.0.4",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "5d302a1de007d1717f29182b641e2291547e31088d0a253b36a32d682d80caaf"
+    },
+    {
+      "name": "termcolor",
+      "version": "1.4.1",
+      "upstream_spdx": "Unlicense OR MIT",
+      "pkgsrc_expression": "(unlicense OR mit)",
+      "manifest_sha256": "572fae34cf0bee9ca39a1398501c17fed5e98a2de908136cabbaba98cf97208e"
+    },
+    {
+      "name": "unicode-ident",
+      "version": "1.0.24",
+      "upstream_spdx": "(MIT OR Apache-2.0) AND Unicode-3.0",
+      "pkgsrc_expression": "((mit OR apache-2.0) AND unicode-v3)",
+      "manifest_sha256": "0bb9c0e006a21355cb85c7df72e78dd8ba6fffbb7dc3f1e7a4c19af53cd354da"
+    },
+    {
+      "name": "unicode-width",
+      "version": "0.2.2",
+      "upstream_spdx": "MIT OR Apache-2.0",
+      "pkgsrc_expression": "(mit OR apache-2.0)",
+      "manifest_sha256": "dbf0a72e293238d87afd46f58ba597408f40c86e372a1d0b271c89fb4c3639c4"
+    }
+  ]
+}

@@ -29,7 +29,7 @@ actual=$(git -C "$root/upstream/pkgsrc" rev-parse HEAD)
     exit 2
 }
 if [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
-    for recipe in lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako textproc/py-markupsafe textproc/py-yaml textproc/groff; do
+    for recipe in lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako textproc/py-markupsafe textproc/py-yaml textproc/groff; do
         source=$root/profiles/common-build-tools/recipes/$recipe
         [ -f "$source/Makefile" ] && [ -f "$source/PLIST" ] && \
             [ -f "$source/distinfo" ] || {
@@ -37,7 +37,7 @@ if [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ 
         }
         required=$(awk '/^SHA1 \(patch-/ { gsub(/[()]/, "", $2); print $2 }' "$source/distinfo")
         case "$recipe" in
-            lang/rust-bin|devel/lld|devel/py-llvm-lit|devel/py-mako|textproc/py-markupsafe|textproc/py-yaml) ;;
+            lang/rust-bin|lang/rust-std-x86_64-netbsd|devel/lld|devel/py-llvm-lit|devel/py-mako|textproc/py-markupsafe|textproc/py-yaml) ;;
             *) [ -n "$required" ] || { echo "No patch checksums: $recipe" >&2; exit 2; } ;;
         esac
         for name in $required; do
@@ -53,6 +53,13 @@ if [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ 
     done
     [ -s "$root/profiles/common-build-tools/cross/mk.conf" ] || exit 2
     [ -s "$root/profiles/common-build-tools/cross/check-files-case.sh" ] || exit 2
+fi
+if [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
+    for llvm_sdk_file in Makefile buildlink3.mk DESCR PLIST; do
+        [ -s "$root/profiles/common-build-tools/recipes/lang/llvm-devel/$llvm_sdk_file" ] || {
+            echo "Incomplete LLVM SDK recipe: $llvm_sdk_file" >&2; exit 2;
+        }
+    done
 fi
 if [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
     media=$root/profiles/common-media
@@ -276,14 +283,27 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     cp -RL "$root/profiles/development-toolchain/recipes/devel/gdb" "$destination/devel/gdb"
     cp "$root/profiles/development-toolchain/mk.conf" \
         "$destination/EMBERBSD-DEVELOPMENT-MK.CONF"
+    # Package audited external target runtimes without installing a compiler.
+    runtime_recipe=$root/profiles/development-toolchain/runtime/recipe
+    [ -f "$runtime_recipe/files/runtime.rb" ] || {
+        echo 'The GCC16 runtime recipe is incomplete.' >&2; exit 2;
+    }
+    [ ! -e "$destination/lang/gcc16-runtime" ] || {
+        echo 'Upstream now owns lang/gcc16-runtime; review the overlay.' >&2; exit 2;
+    }
+    cp -R "$runtime_recipe" "$destination/lang/gcc16-runtime"
 fi
 if [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
-    for recipe in lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako textproc/py-markupsafe textproc/py-yaml textproc/groff; do
+    for recipe in lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako textproc/py-markupsafe textproc/py-yaml textproc/groff; do
         source=$root/profiles/common-build-tools/recipes/$recipe
         # Replace only recipe paths inside this newly created export.
         rm -rf "$destination/$recipe"
         cp -R "$source" "$destination/$recipe"
     done
+    [ ! -e "$destination/lang/llvm-devel" ] && [ ! -L "$destination/lang/llvm-devel" ] || {
+        echo 'Upstream now owns lang/llvm-devel; review the overlay.' >&2; exit 2;
+    }
+    cp -R "$root/profiles/common-build-tools/recipes/lang/llvm-devel" "$destination/lang/llvm-devel"
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$root/profiles/common-build-tools/patches/current-python-selection.patch"
     for delta in python315-current-selection.patch current-libtool.patch pkgsrc-cross-packages.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch; do

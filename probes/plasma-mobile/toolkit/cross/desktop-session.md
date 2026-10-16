@@ -48,6 +48,24 @@ CMAKE=/absolute/cmake NINJA=/absolute/ninja HOST_CXX=/absolute/c++ \
 The recipe uses upstream's explicit `QTWAYLANDSCANNER_KDE_EXECUTABLE` interface.
 No board-native compilation or target executable on macOS is required.
 
+The scanner helper selects the exact version from the common `plasma6.mk`,
+then requires one matching `x11/plasma6-kwin` source-manifest entry and verifies
+its SHA256. It does not keep a separate old scanner version or accept an
+archive from another Plasma release. The current 6.8.0 upstream standalone
+scanner uses C++20, Qt Core and ECM; its full compositor dependencies are
+not required for this private host generator. Use the same native compiler
+ABI as the host Qt libraries.
+
+```sh
+ruby ../tests/kwin-scanner-source.rb VERIFIED_DISTFILES HOST_QT
+```
+
+This regression uses the actual checked KWin archive and host Qt version.
+It stops at a recorded native CMake configure boundary and never compiles
+the generator. Corrupt archives, duplicate source rows and a mixed shared
+Plasma version fail before work-directory creation. It establishes source
+selection, not scanner generation, target linking or desktop acceptance.
+
 Aurorae's launcher uses `/bin/sh`; it previously embedded the build host's
 shell path. Kscreenlocker's emergency-unlock script now embeds target paths
 for `ck-list-sessions` and Qt's `qdbus`. Both target files must exist in the

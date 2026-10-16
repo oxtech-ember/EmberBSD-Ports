@@ -16,15 +16,49 @@ Run the metadata check with the two staged `/usr/pkg` directories:
 
 ```sh
 BMAKE=/absolute/native/bmake MAKECONF=/absolute/cross/mk.conf \
-    ruby probes/plasma-mobile/toolkit/tests/plasma-volume/package.rb \
+    ruby probes/plasma-mobile/toolkit/tests/plasma-volume/package.rb --target amd64 \
     /absolute/pkgsrc /absolute/paqt-stage/usr/pkg /absolute/pa-stage/usr/pkg \
     /absolute/verified-distfiles /absolute/packages/All
 ```
 
-The check reads the verified Workspace archive and evaluates its real recipe.
+The selector accepts `aarch64` and `amd64`. The default remains `aarch64`.
+Use the matching cross MAKECONF. The amd64 pkgsrc architecture is `x86_64`.
+The check reads the verified Workspace archive and evaluates the three real recipes.
+It requires NetBSD 11.0, the selected MACHINE_ARCH, and ELF object format in each
+recipe and both package archives. Mixed or duplicate archive target metadata fails.
 It requires the runtime dependency, correct PulseAudioQt header metadata,
-the staged QML module, an AArch64 ELF plugin and exact archive payloads. It does not execute QML.
+the staged QML module and exact archive payloads. Both staged and archived plugins
+must have a complete ELF64 little-endian header for the selected machine.
+It does not execute QML or establish complete ELF dependency closure.
 A missing dependency, wrong include directory, empty archive or missing plugin must fail.
+The package names remain `pulseaudio-qt-1.9.0.tgz` and `plasma6-plasma-pa-6.8.0.tgz`.
+The pinned Workspace source and its checksum remain unchanged.
+
+### Test the host auditor with fixtures
+
+```sh
+BMAKE=/absolute/native/bmake PKG_CREATE=/absolute/native/pkg_create \
+TARGET_CC=/absolute/x86_64--netbsd-gcc TARGET_SYSROOT=/actual/target/sysroot \
+    ruby probes/plasma-mobile/toolkit/tests/plasma-volume/package-targets.rb \
+    /absolute/verified-distfiles /absolute/new-receipt
+```
+
+The regression uses real native pkgtools archives and real bmake. Its miniature
+Makefiles and payloads are fixtures. They are not built Plasma audio packages.
+Header-only ELF fixtures test the class, byte order and machine checks.
+The optional TARGET_CC/TARGET_SYSROOT pair adds one genuine GCC-built amd64 DSO.
+That DSO contains no Qt plugin or audio implementation. No target file is executed.
+The runner uses a private temporary pkgdb and never installs a native package.
+It retains logs, source hashes and labeled sample archives, then removes its
+temporary stages and compiler outputs.
+
+The 32-case run preserves default ARM success and accepts explicit ARM and amd64.
+It rejects wrong selectors, mixed recipe or archive metadata, missing plugins,
+wrong class/endian/machine, truncated or empty headers, and empty payload archives.
+Invalid selector checks use otherwise valid inputs, so positional usage errors
+cannot hide a missing target check. The original auditor fails 31 cases.
+The corrected auditor passes all 32, including the GCC16 DSO fixture.
+These host fixtures do not establish a completed amd64 audio package or runtime.
 
 ## Run the upstream validator on a supported host
 

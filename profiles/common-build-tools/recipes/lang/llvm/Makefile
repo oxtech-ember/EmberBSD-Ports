@@ -23,6 +23,7 @@
 # Always update all */buildlink3.mk to require the latest stable release
 # version in BUILDLINK_API_DEPENDS, as there is no backwards compatibility.
 
+EMBERBSD_LLVM_PKGDIR:= ${.PARSEDIR:tA}
 .include "version.mk"
 
 PKGNAME=	llvm-${LLVM_VERSION}
@@ -89,6 +90,51 @@ LDFLAGS.SunOS+=		-lsocket -lnsl
 
 .include "../../mk/bsd.prefs.mk"
 
+.if defined(EMBERBSD_LLVM_DEVEL)
+.if ${EMBERBSD_LLVM_DEVEL} != "yes" || ${PKGPATH} != "lang/llvm-devel"
+PKG_FAIL_REASON+= "The LLVM SDK role belongs to lang/llvm-devel"
+.endif
+PKGNAME= llvm-devel-${LLVM_VERSION}
+COMMENT= LLVM target SDK for the development-host sysroot
+DISTINFO_FILE= ${EMBERBSD_LLVM_PKGDIR}/distinfo
+PATCHDIR= ${EMBERBSD_LLVM_PKGDIR}/patches
+FILESDIR= ${EMBERBSD_LLVM_PKGDIR}/files
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes" || ${OPSYS} != "NetBSD"
+PKG_FAIL_REASON+= "The separate LLVM SDK requires a NetBSD cross build; native LLVM retains its full package"
+.endif
+.endif
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
+.if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
+PKG_FAIL_REASON+= "The LLVM runtime/SDK split requires the common aarch64 or amd64 cross target"
+.endif
+PKGREVISION= 1
+.if ${PKGREVISION} != 1
+PKG_FAIL_REASON+= "The LLVM runtime/SDK split requires package revision 1"
+.endif
+LLVM_FULL_PLIST_SRC= ${EMBERBSD_LLVM_PKGDIR}/PLIST
+LLVM_RUNTIME_PLIST_SRC= ${EMBERBSD_LLVM_PKGDIR}/PLIST.runtime
+LLVM_DEVEL_PLIST_SRC= ${EMBERBSD_LLVM_PKGDIR}/../llvm-devel/PLIST
+.if defined(EMBERBSD_LLVM_DEVEL)
+LLVM_PACKAGE_PART= devel
+.if ${LLVM_PACKAGE_PART} != "devel"
+PKG_FAIL_REASON+= "The LLVM SDK recipe must select the devel partition"
+.endif
+PLIST_SRC= ${LLVM_DEVEL_PLIST_SRC}
+DEPENDS+= llvm-${LLVM_VERSION}nb1:../../lang/llvm
+CONFLICTS+= llvm<${LLVM_VERSION}nb1
+.else
+LLVM_PACKAGE_PART= runtime
+.if ${LLVM_PACKAGE_PART} != "runtime"
+PKG_FAIL_REASON+= "The LLVM runtime recipe must select the runtime partition"
+.endif
+PLIST_SRC= ${LLVM_RUNTIME_PLIST_SRC}
+# The runtime contains no Python tools. Keep lit available for build tests.
+PYTHON_FOR_BUILD_ONLY= tool
+BUILDLINK_DEPMETHOD.py-llvm-lit= build
+.endif
+USE_TOOLS+= perl:build
+.endif
+
 .if ${USE_CROSS_COMPILE:tl} == "yes"
 # Fix the runtime Python path.
 SUBST_CLASSES+=		python
@@ -141,7 +187,7 @@ CMAKE_CONFIGURE_ARGS+=	-DPKGSRC_LLVM_PTHREADLIB=-lpthread
 .if defined(EMBERBSD_LLVM_NATIVE_TOOLS)
 .include "cross.mk"
 .else
-TOOL_DEPENDS+=		${PKGNAME}:../../${PKGPATH}
+TOOL_DEPENDS+=		llvm-${LLVM_VERSION}{,nb*}:../../lang/llvm
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_TABLEGEN:STRING=${TOOLBASE:Q}/bin/llvm-tblgen
 .endif
 .endif
@@ -149,7 +195,9 @@ CMAKE_CONFIGURE_ARGS+=	-DLLVM_TABLEGEN:STRING=${TOOLBASE:Q}/bin/llvm-tblgen
 .include "options.mk"
 
 .include "../../devel/py-llvm-lit/buildlink3.mk"
-DEPENDS+=	${PYPKGPREFIX}-llvm-lit-${LLVM_VERSION}{,nb*}:../../devel/py-llvm-lit
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes" || ${OPSYS} != "NetBSD" || defined(EMBERBSD_LLVM_DEVEL)
+DEPENDS+= ${PYPKGPREFIX}-llvm-lit-${LLVM_VERSION}{,nb*}:../../devel/py-llvm-lit
+.endif
 
 # replacing config.guess is required even for cmake.
 # It is used to detect correct LLVM_HOST_TRIPLE, e.g. for NetBSD/evbarm.
@@ -166,3 +214,19 @@ post-extract:
 .include "../../textproc/libxml2/buildlink3.mk"
 .include "../../mk/atomic64.mk"
 .include "../../mk/bsd.pkg.mk"
+
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
+# Each source package independently stages the full, unchanged LLVM build.
+post-install: llvm-select-stage
+.PHONY: llvm-select-stage
+.PHONY: ${WRKDIR}/.llvm-full-plist ${WRKDIR}/.llvm-runtime-plist ${WRKDIR}/.llvm-devel-plist
+llvm-select-stage: ${PLIST}
+.for _llvm_part in FULL RUNTIME DEVEL
+	${MAKE} ${WRKDIR:Q}/.llvm-${_llvm_part:tl}-plist \
+	    PLIST=${WRKDIR:Q}/.llvm-${_llvm_part:tl}-plist \
+	    PLIST_SRC=${LLVM_${_llvm_part}_PLIST_SRC:Q}
+.endfor
+	${PERL5} ${FILESDIR}/select-package-stage.pl ${LLVM_PACKAGE_PART:Q} \
+	    ${DESTDIR:Q}${PREFIX:Q} ${WRKDIR:Q}/.llvm-full-plist \
+	    ${WRKDIR:Q}/.llvm-runtime-plist ${WRKDIR:Q}/.llvm-devel-plist ${PLIST:Q}
+.endif

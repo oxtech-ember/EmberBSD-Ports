@@ -1,0 +1,4 @@
+@comment Target files follow the complete official component manifest.
+share/licenses/rust-std-x86_64-netbsd/COPYRIGHT
+share/licenses/rust-std-x86_64-netbsd/LICENSE-APACHE
+share/licenses/rust-std-x86_64-netbsd/LICENSE-MIT

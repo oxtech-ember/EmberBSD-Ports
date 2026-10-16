@@ -12,6 +12,44 @@ CONFLICTS+=	qt6-qtwayland<6.10.0
 
 .include "Makefile.common"
 
+.if defined(EMBERBSD_QTBASE_DEVEL)
+.if ${EMBERBSD_QTBASE_DEVEL} != "yes" || ${PKGPATH} != "x11/qt6-qtbase-devel"
+PKG_FAIL_REASON+= "The Qtbase SDK role belongs to x11/qt6-qtbase-devel"
+.endif
+PKGNAME= qt6-qtbase-devel-${QTVERSION}
+COMMENT= Qtbase target SDK for the development-host sysroot
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes" || ${OPSYS} != "NetBSD"
+PKG_FAIL_REASON+= "The separate Qtbase SDK requires a NetBSD cross build; native Qtbase retains its full package"
+.endif
+.endif
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
+.if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
+PKG_FAIL_REASON+= "The Qtbase runtime/SDK split requires the common aarch64 or amd64 cross target"
+.endif
+PKGREVISION= 1
+.if ${PKGREVISION} != 1
+PKG_FAIL_REASON+= "The Qtbase runtime/SDK split requires package revision 1"
+.endif
+QTBASE_FULL_PLIST_SRC= ${EMBERBSD_QTBASE_PKGDIR}/PLIST.NetBSD ${EMBERBSD_QTBASE_PKGDIR}/PLIST
+QTBASE_RUNTIME_PLIST_SRC= ${EMBERBSD_QTBASE_PKGDIR}/PLIST.runtime
+QTBASE_DEVEL_PLIST_SRC= ${EMBERBSD_QTBASE_PKGDIR}/PLIST.NetBSD ${EMBERBSD_QTBASE_PKGDIR}/../qt6-qtbase-devel/PLIST
+.if defined(EMBERBSD_QTBASE_DEVEL)
+QTBASE_PACKAGE_PART= devel
+.if ${QTBASE_PACKAGE_PART} != "devel"
+PKG_FAIL_REASON+= "The Qtbase SDK recipe must select the devel partition"
+.endif
+PLIST_SRC= ${QTBASE_DEVEL_PLIST_SRC}
+DEPENDS+= qt6-qtbase-${QTVERSION}nb1:../../x11/qt6-qtbase
+CONFLICTS+= qt6-qtbase<${QTVERSION}nb1
+.else
+QTBASE_PACKAGE_PART= runtime
+.if ${QTBASE_PACKAGE_PART} != "runtime"
+PKG_FAIL_REASON+= "The Qtbase runtime recipe must select the runtime partition"
+.endif
+PLIST_SRC= ${QTBASE_RUNTIME_PLIST_SRC}
+.endif
+.endif
+
 HAS_CONFIGURE=		yes
 CONFIGURE_ARGS+=	-prefix "${QTPREFIX}"
 CONFIGURE_ARGS+=	-I "${PREFIX}/include"
@@ -205,6 +243,7 @@ post-install: qt-target-metadata
 qt-target-metadata:
 	${PERL5} ${FILESDIR}/target-metadata.pl ${DESTDIR:Q}${QTPREFIX:Q} \
 	    ${CROSS_DESTDIR:Q} ${WRKDIR:Q} ${PREFIX:Q}
+
 .endif
 
 .include "options.mk"
@@ -303,3 +342,20 @@ BUILDLINK_API_DEPENDS.libxcb+=	libxcb>=1.11
 .include "../../mk/pthread.buildlink3.mk"
 .include "../../mk/atomic64.mk"
 .include "../../mk/bsd.pkg.mk"
+
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
+# Both recipes stage and normalize all files before selecting their package.
+# PLIST and WRKDIR are defined by bsd.pkg.mk before these dependencies expand.
+post-install: qtbase-select-stage
+.PHONY: qtbase-select-stage
+.PHONY: ${WRKDIR}/.qtbase-full-plist ${WRKDIR}/.qtbase-runtime-plist ${WRKDIR}/.qtbase-devel-plist
+qtbase-select-stage: qt-target-metadata pkgconfig-link ${PLIST}
+.for _qtbase_part in FULL RUNTIME DEVEL
+	${MAKE} ${WRKDIR:Q}/.qtbase-${_qtbase_part:tl}-plist \
+	    PLIST=${WRKDIR:Q}/.qtbase-${_qtbase_part:tl}-plist \
+	    PLIST_SRC=${QTBASE_${_qtbase_part}_PLIST_SRC:Q}
+.endfor
+	${PERL5} ${FILESDIR}/select-package-stage.pl ${QTBASE_PACKAGE_PART:Q} \
+	    ${DESTDIR:Q}${PREFIX:Q} ${WRKDIR:Q}/.qtbase-full-plist \
+	    ${WRKDIR:Q}/.qtbase-runtime-plist ${WRKDIR:Q}/.qtbase-devel-plist ${PLIST:Q}
+.endif

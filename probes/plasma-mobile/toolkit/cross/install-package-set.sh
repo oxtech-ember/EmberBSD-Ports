@@ -40,20 +40,36 @@ install_package() (
     fi
 )
 usage() {
-    echo "Usage: $0 [--verify-only] PACKAGE_SET" >&2
-    echo "       $0 --install PACKAGE_SET NEW_LOG" >&2
+    echo "Usage: $0 [--target aarch64|amd64] [--verify-only] PACKAGE_SET" >&2
+    echo "       $0 [--target aarch64|amd64] --install PACKAGE_SET NEW_LOG" >&2
     exit 2
 }
 mode=verify
-case ${1:-} in
-    --verify-only) shift ;;
-    --install) mode=install; shift ;;
-    --*) usage ;;
+target=aarch64 target_seen=no mode_seen=no
+while [ "$#" -gt 0 ]; do
+    case $1 in
+        --target)
+            [ "$#" -ge 2 ] && [ -n "$2" ] && [ "$target_seen" = no ] || usage
+            target=$2 target_seen=yes
+            shift 2 ;;
+        --verify-only|--install)
+            [ "$mode_seen" = no ] || usage
+            mode_seen=yes
+            [ "$1" != --install ] || mode=install
+            shift ;;
+        --*) usage ;;
+        *) break ;;
+    esac
+done
+case $target in
+    aarch64) machine_arch=aarch64 ;;
+    amd64) machine_arch=x86_64 ;;
+    *) fail "Unsupported target: $target" ;;
 esac
 if [ "$mode" = install ]; then [ "$#" = 2 ] || usage; else [ "$#" = 1 ] || usage; fi
 bundle=$(CDPATH= cd -- "$1" && pwd -P)
 log=${2:-}
-for name in packages.sha256 install-order.txt roots.txt; do
+for name in packages.sha256 install-order.txt roots.txt target.txt; do
     [ -f "$bundle/$name" ] && [ ! -L "$bundle/$name" ] || fail "Missing regular $name"
 done
 [ -d "$bundle/packages" ] && [ ! -L "$bundle/packages" ] || fail 'Missing regular packages directory'
@@ -66,11 +82,13 @@ trap 'rm -rf "$work"' EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 mkdir "$work/pkgdb"
-for name in packages.sha256 install-order.txt roots.txt; do
+for name in packages.sha256 install-order.txt roots.txt target.txt; do
     cp "$bundle/$name" "$work/$name"
     [ -s "$work/$name" ] || fail "Empty manifest: $name"
     [ "$(tail -c 1 "$work/$name" | od -An -tu1 | tr -d ' ' | sed 's/^0*//')" = 10 ] || fail "Manifest needs a final newline: $name"
 done
+printf 'OPSYS=NetBSD\nOS_VERSION=11.0\nMACHINE_ARCH=%s\nOBJECT_FMT=ELF\n' "$machine_arch" > "$work/expected-target.txt"
+cmp -s "$work/target.txt" "$work/expected-target.txt" || fail 'Target receipt mismatch'
 # A strict name grammar makes manifests unambiguous on both BSD and macOS.
 awk '
     !/^[a-zA-Z0-9][a-zA-Z0-9_.+-]*-[0-9][a-zA-Z0-9_.+-]*\.tgz$/ || seen[$0]++ { bad=1 }
@@ -122,10 +140,10 @@ while IFS= read -r archive; do
     awk -v name="$name" '/^@name / { count++; if ($0 != "@name " name) bad=1 } END { exit bad || count != 1 }' \
         "$work/pkgdb/$name/+CONTENTS" || fail "Package identity differs: $archive"
     "$info" -q -B "$bundle/packages/$archive" > "$work/build-info" || fail "Cannot read target metadata: $archive"
-    awk -F= '
+    awk -F= -v machine_arch="$machine_arch" '
         $1 == "OPSYS" { os++; bad=bad || $0 != "OPSYS=NetBSD" }
         $1 == "OS_VERSION" { version++; bad=bad || $0 != "OS_VERSION=11.0" }
-        $1 == "MACHINE_ARCH" { arch++; bad=bad || $0 != "MACHINE_ARCH=aarch64" }
+        $1 == "MACHINE_ARCH" { arch++; bad=bad || $0 != "MACHINE_ARCH=" machine_arch }
         $1 == "OBJECT_FMT" { object++; bad=bad || $0 != "OBJECT_FMT=ELF" }
         END { exit bad || os != 1 || version != 1 || arch != 1 || object != 1 }
     ' "$work/build-info" || fail "Package is not the prepared EmberBSD ABI: $archive"
@@ -154,7 +172,7 @@ count=$(wc -l < "$work/install-order.txt" | tr -d ' ')
 echo "PASS: $count archives, SHA256, target metadata, roots and dependency order verified"
 [ "$mode" = install ] || exit 0
 case $(uname -s) in NetBSD|EmberBSD) ;; *) fail 'Installation requires an EmberBSD target' ;; esac
-[ "$(uname -p)" = aarch64 ] || fail 'Installation requires aarch64'
+[ "$(uname -p)" = "$machine_arch" ] || fail "Installation requires $machine_arch"
 [ "$(id -u)" = 0 ] || fail 'Installation requires root'
 command -v pgrep >/dev/null || fail 'pgrep is required'
 if pgrep -x plasmashell > "$work/plasmashell"; then

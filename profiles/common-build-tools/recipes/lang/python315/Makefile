@@ -3,6 +3,7 @@
 .include "dist.mk"
 
 PKGNAME=	python315-${PY_DISTVERSION}
+PKGREVISION=	2
 CATEGORIES=	lang python
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -53,6 +54,9 @@ CONFIGURE_ARGS+=	ac_cv_header_uuid_h=false
 .  if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "aarch64"
 # NetBSD/AArch64 reports evbarm through uname(3), also used by sysconfig.
 MAKE_ENV+=		PYTHON_BUILD_DETAILS_PLATFORM=netbsd-${OS_VERSION}-evbarm
+.  elif ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "x86_64"
+# The NetBSD amd64 kernel reports amd64, independently of the build host.
+MAKE_ENV+=		PYTHON_BUILD_DETAILS_PLATFORM=netbsd-${OS_VERSION}-amd64
 .  endif
 # Installed extension consumers use target paths. Keep CONFIG_ARGS as the
 # original build receipt, and rewrite only the generated installed inputs.

@@ -6,6 +6,7 @@ Explicit host CMake/msgfmt selection breaks bootstrap cycles; gettext links
 its direct XML dependency on Darwin. Cross Ninja executes native build tools.
 Cross gettext uses host xz during the build and retains target xz for autopoint.
 Installed XZ scripts use the target shell while configure retains the host shell.
+Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection.
 
 --- a/archivers/xz/Makefile
 +++ b/archivers/xz/Makefile
@@ -863,6 +864,25 @@ Installed XZ scripts use the target shell while configure retains the host shell
 +    line = replace(line, ENVIRON["ICU_CROSS_SYSROOT"], "");
 +    print line;
 +}
+--- a/security/openssl/Makefile
++++ b/security/openssl/Makefile
+@@ -140,6 +140,16 @@
+ .endif
+ OPENSSL_HOST.Darwin-aarch64=	darwin64-arm64-cc
+ 
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
++# OpenSSL config uses POSIX::uname, not the target MACHINE/SYSTEM environment.
++# Use complete upstream targets. Keep their assembly and shared-library rules.
++OPENSSL_HOST.NetBSD-x86_64=	BSD-x86_64
++OPENSSL_HOST.NetBSD-aarch64=	BSD-aarch64
++.  if !defined(OPENSSL_HOST.${OPSYS}-${MACHINE_ARCH})
++PKG_FAIL_REASON+=	"Unsupported OpenSSL NetBSD cross architecture: ${MACHINE_ARCH}"
++.  endif
++.endif
++
+ # Ensure consistent socket interfaces are used across the codebase.
+ CPPFLAGS.SunOS+=	-D_XOPEN_SOURCE=600 -D__EXTENSIONS__
+ 
 --- a/www/curl/Makefile
 +++ b/www/curl/Makefile
 @@ -2,7 +2,8 @@

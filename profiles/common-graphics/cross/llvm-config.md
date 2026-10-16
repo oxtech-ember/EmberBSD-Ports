@@ -26,7 +26,7 @@ metadata. Keep the input trees unchanged through building, acceptance and
 sealing. The sealed tool then permits build-tree cleanup while checking the
 installed package on every query. Use a fresh output directory.
 The helper currently accepts the canonical
-NetBSD/AArch64, shared LLVM, RTTI and `/usr/pkg` layout with a macOS native
+NetBSD/AArch64 or NetBSD/amd64, shared LLVM, RTTI and `/usr/pkg` layout with a macOS native
 compiler. Whitespace in paths and different native system-library closures
 are rejected rather than guessed.
 
@@ -46,7 +46,7 @@ prefix: this LLVM build creates the `libLLVM-23.so` alias during installation.
 Missing shared libraries therefore produce a real failure until staging is
 complete. No placeholder library or fake success response is created.
 For staged mode the helper also checks matching generated public configuration
-headers, the AArch64 ELF header and shared-library identity against this target
+headers, the selected ELF64 machine and shared-library identity against this target
 build. An unchanged library must match byte for byte. For an `install-strip`
 payload, the generated shared-library install script must contain the exact
 no-argument `CMAKE_STRIP` operation and no RPATH transformation. The helper
@@ -124,9 +124,29 @@ not select that profile or change the shared LLVM recipe by itself.
 After the same LLVM package has been staged and transferred to a target, run:
 
 ```sh
-sh record-llvm-config.sh /absolute/target-prefix/bin/llvm-config \
+sh record-llvm-config.sh --target amd64 /absolute/target-prefix/bin/llvm-config \
     /absolute/new-reference
 ```
+
+The default remains `--target aarch64`. The capture requires the selected
+NetBSD `uname -p`, a matching little-endian ELF64 executable, LLVM 23.1.3 and
+the matching NetBSD 11 target triple before it creates the output directory.
+Both GNU and `unknown` vendor spellings are accepted. Use the installed base
+`readelf`, or set `READELF` to an explicit target-native diagnostic executable.
+The standalone script requires no Ports checkout, compiler or headers on the
+target. `target.txt` retains its selected target, processor and GNU triple.
+
+From the Ports root, the bounded host source-contract fixture is:
+
+```sh
+READELF=/absolute/cross/bin/x86_64--netbsd-readelf \
+CROSS_TEST_TOOLS=/absolute/amd64-gcc16 \
+    ruby profiles/common-graphics/tests/acceptance-entrypoints.rb
+```
+
+It checks both targets and foreign-input refusal with real ELF inspection.
+Controlled `uname` and query boundaries do not execute NetBSD code on macOS
+or constitute the required real target capture.
 
 Transfer the reference directory back with a verified archive hash. On macOS:
 

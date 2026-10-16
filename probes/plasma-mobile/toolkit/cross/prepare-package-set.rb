@@ -4,6 +4,7 @@
 require 'digest'
 require 'fileutils'
 require 'open3'
+require 'optparse'
 require 'rubygems/package'
 require 'shellwords'
 require 'tmpdir'
@@ -29,11 +30,30 @@ def check(condition, message)
   raise message unless condition
 end
 
-def target_metadata(build, context)
+TARGETS = {
+  'aarch64' => { arch: 'aarch64', machine: 183 },
+  'amd64' => { arch: 'x86_64', machine: 62 }
+}.freeze
+
+def target_metadata(build, context, target)
   { 'OPSYS' => 'NetBSD', 'OS_VERSION' => '11.0',
-    'MACHINE_ARCH' => 'aarch64', 'OBJECT_FMT' => 'ELF' }.each do |key, value|
+    'MACHINE_ARCH' => target.fetch(:arch), 'OBJECT_FMT' => 'ELF' }.each do |key, value|
     check(build.lines.grep(/^#{key}=/) == ["#{key}=#{value}\n"], "Wrong target #{key} in #{context}")
   end
+end
+
+# Execution-only desktop images must not inherit the LLVM target SDK from the
+# build-host sysroot. This is an explicit LLVM23 manifest, not archive pruning.
+def llvm_runtime_payload(name, paths)
+  check(!name.match?(/\Allvm-devel-[0-9]/), "LLVM SDK is forbidden in the desktop runtime closure: #{name}")
+  check(!name.match?(/\AlibLLVM-[0-9]/), "LLVM legacy provider is forbidden in the desktop runtime closure: #{name}")
+  return unless name.match?(/\Allvm-[0-9]/)
+  expected = %w[lib/libLLVM.so.23.1 lib/libLLVM-23.so lib/libLLVM.so
+                lib/libLTO.so.23.1 lib/libLTO.so lib/libRemarks.so.23.1
+                lib/libRemarks.so include/llvm/Support/LICENSE.TXT]
+             .map { |path| '/usr/pkg/' + path }
+  check(name == 'llvm-23.1.3nb1' && paths.keys.sort == expected.sort,
+        "LLVM runtime package has an unprepared identity or SDK/missing payload: #{name}")
 end
 
 def relative_name(name)
@@ -173,7 +193,7 @@ def pax_records(data)
   values
 end
 
-def archive_members(tar, path)
+def archive_members(tar, path, target)
   members = {}
   global = {}
   local = {}
@@ -205,12 +225,21 @@ def archive_members(tar, path)
           when '0', ''
             md5 = Digest::MD5.new
             data = name.start_with?('+') ? ''.b : nil
+            header = ''.b
             while (chunk = entry.read(1_048_576)) && !chunk.empty?
               md5.update(chunk)
+              header << chunk.byteslice(0, 64 - header.bytesize) if header.bytesize < 64
               data << chunk if data
               check(!data || data.bytesize <= 16_777_216, "Oversized package metadata: #{name}")
             end
             check(entry.bytes_read == entry.size, "Truncated archive member: #{name}")
+            if header.start_with?("\x7fELF".b)
+              check(header.bytesize == 64, "Truncated ELF header: #{name}")
+              check(header.getbyte(4) == 2, "Unsupported ELF class: #{name}")
+              check(header.getbyte(5) == 1, "Unsupported ELF byte order: #{name}")
+              machine = header.byteslice(18, 2).unpack1('v')
+              check(machine == target.fetch(:machine), "Wrong ELF machine #{machine}: #{name}")
+            end
             members[name] = [:file, md5.hexdigest, data]
           when '1'
             members[name] = [:hardlink, relative_name(link)]
@@ -235,11 +264,11 @@ def archive_members(tar, path)
   members
 end
 
-def audit_archive(tar, path, expected, files)
-  members = archive_members(tar, path)
+def audit_archive(tar, path, expected, files, target)
+  members = archive_members(tar, path, target)
   build = members.fetch('+BUILD_INFO', [])[2]
   check(build, "Missing regular +BUILD_INFO: #{path}")
-  target_metadata(build, path)
+  target_metadata(build, path, target)
   expected.each do |name, bytes|
     check(members[name]&.first == :file && members[name][2] == bytes, "Archive metadata mismatch #{name}: #{path}")
   end
@@ -264,7 +293,20 @@ end
 Signal.trap('TERM') { raise Interrupt, 'Package audit interrupted' }
 
 begin
-  check(ARGV.length >= 4, 'Usage: prepare-package-set.rb PKGDB ARCHIVE_PATHS NEW_OUTPUT ROOT_PACKAGE...')
+  target_name = 'aarch64'
+  target_seen = false
+  options = OptionParser.new do |parser|
+    parser.banner = 'Usage: prepare-package-set.rb [--target aarch64|amd64] PKGDB ARCHIVE_PATHS NEW_OUTPUT ROOT_PACKAGE...'
+    parser.on('--target TARGET') do |name|
+      check(!target_seen, 'Duplicate target option')
+      check(TARGETS.key?(name), "Unsupported target: #{name}")
+      target_name = name
+      target_seen = true
+    end
+  end
+  options.order!
+  target = TARGETS.fetch(target_name)
+  check(ARGV.length >= 4, options.banner)
   pkgdb, index, output, *roots = ARGV
   check(roots.uniq.length == roots.length, 'Duplicate root package')
   pkgdb = File.realpath(pkgdb)
@@ -290,12 +332,13 @@ begin
     contents = File.binread(File.join(pkgdb, name, '+CONTENTS'))
     check(contents.lines.grep(/^@name /) == ["@name #{name}\n"], "Package identity mismatch: #{name}")
     files, metadata, paths = package_manifest(contents)
+    llvm_runtime_payload(name, paths)
     manifests[name] = files
     payloads[name] = paths
     snapshots[name] = metadata.to_h { |entry| [entry, File.binread(File.join(pkgdb, name, entry))] }
     check(snapshots[name].fetch('+CONTENTS') == contents, "Installed manifest changed during read: #{name}")
-    target_metadata(snapshots[name].fetch('+BUILD_INFO'), "installed #{name}")
-    library_metadata(snapshots[name].fetch('+BUILD_INFO'), paths, "installed #{name}")
+    target_metadata(snapshots[name].fetch("+BUILD_INFO"), "installed #{name}", target)
+    library_metadata(snapshots[name].fetch("+BUILD_INFO"), paths, "installed #{name}")
     install_script_paths(snapshots[name], "installed #{name}")
     contents.lines.grep(/^@pkgdep /).each do |line|
       pattern = line.delete_prefix('@pkgdep ').strip
@@ -328,7 +371,7 @@ begin
       destination = File.join(staging, 'packages', "#{name}.tgz")
       digest = Digest::SHA256.file(original).hexdigest
       begin
-        audit_archive(tar, original, snapshots.fetch(name), manifests.fetch(name))
+        audit_archive(tar, destination, snapshots.fetch(name), manifests.fetch(name), target)
       rescue StandardError => error
         failures << "#{original}: #{error.message}"
         next
@@ -354,11 +397,11 @@ begin
   File.write(File.join(staging, 'packages.sha256'), hashes.join)
   File.write(File.join(staging, 'install-order.txt'), order.map { |name| "#{name}.tgz\n" }.join)
   File.write(File.join(staging, 'roots.txt'), roots.join("\n") + "\n")
-  File.write(File.join(staging, 'target.txt'), "OPSYS=NetBSD\nOS_VERSION=11.0\nMACHINE_ARCH=aarch64\nOBJECT_FMT=ELF\n")
+  File.write(File.join(staging, 'target.txt'), "OPSYS=NetBSD\nOS_VERSION=11.0\nMACHINE_ARCH=#{target.fetch(:arch)}\nOBJECT_FMT=ELF\n")
   check(!File.exist?(output) && !File.symlink?(output), 'Output appeared during audit')
   File.rename(staging, output)
   staging = nil
-  puts "PASS: #{order.length} NetBSD 11.0/AArch64 packages; archived payload, metadata and copied SHA256 verified"
+  puts "PASS: #{order.length} NetBSD 11.0/#{target_name} packages; archived payload, ELF headers, metadata and copied SHA256 verified"
   puts "Package files: #{output}"
 rescue Interrupt
   warn 'FAIL: package audit interrupted'

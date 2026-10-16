@@ -49,8 +49,8 @@ CFLAGS+=	-fno-strict-aliasing
 CONFIGURE_ENV.OpenBSD+=	ac_cv_func_mmap_fixed_mapped=no
 
 .if ${USE_CROSS_COMPILE:U:tl} == yes
-# The common cross profile supplies an absolute, verified host compiler.
-CONFIGURE_ENV+=		CC_BUILD=${EMBERBSD_CROSS_BUILD_CC:U${NATIVE_CC}:Q}
+# The common cross profile keeps native compiler subprocesses on the host.
+CONFIGURE_ENV+=		CC_BUILD=${NATIVE_CC:Q}
 .endif
 
 post-configure:

@@ -16,6 +16,12 @@ GCC_REQD+=		14
 BUILDLINK_API_DEPENDS.llvm+=	llvm>=23.1.3
 BUILDLINK_PKGSRCDIR.llvm?=	../../lang/llvm
 
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
+BUILDLINK_API_DEPENDS.llvm+= llvm>=23.1.3nb1
+BUILDLINK_ABI_DEPENDS.llvm+= llvm>=23.1.3nb1
+.include "../../lang/llvm-devel/buildlink3.mk"
+.endif
+
 LLVM_CONFIG_PATH?=		${BUILDLINK_PREFIX.llvm}/bin/llvm-config
 
 BUILDLINK_FILES.llvm+=		bin/FileCheck

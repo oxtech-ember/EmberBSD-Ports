@@ -30,6 +30,7 @@ _EMBERBSD_QTVERSION_RECIPES= \
     net/qt6-qtwebsockets \
     security/qt6-qtnetworkauth \
     x11/qt6-qtbase \
+    x11/qt6-qtbase-devel \
     x11/qt6-qtserialport \
     x11/qt6-qttranslations
 .if empty(_EMBERBSD_QTVERSION_RECIPES:M${PKGPATH})

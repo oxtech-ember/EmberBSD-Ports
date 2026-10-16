@@ -1,6 +1,33 @@
-# Python 3.14 cross package
+# Python cross packages
 
-The common profile owns the Python 3.14.8 recipe and its NetBSD adaptations.
+The current profile selects Python 3.15.0. Its NetBSD cross-host cases accept
+AArch64 and amd64, including the empty-vendor `x86_64--netbsd` triplet.
+Unknown hosts and unsupported NetBSD architectures still fail.
+Both maintained `configure.ac` cases match the shipped `configure` cases.
+
+The focused configure regression uses a previous patched source and the new source:
+
+```sh
+PKG_CONFIG=/absolute/host/bin/pkg-config \
+    sh profiles/common-build-tools/tests/python-amd64-configure.sh \
+    /absolute/baseline-python /absolute/patched-python /absolute/cross-prefix \
+    /absolute/target-sysroot /absolute/host/bin/python3.15 /absolute/new-results
+```
+
+The old source rejects amd64. The new source completes real GCC16 cross
+configuration with the selected target headers and libraries.
+No new configure cache answers are added; the test uses the recipe's existing answers.
+This checks configuration and LP64 metadata, not a target Python package or execution.
+The upstream unsupported-platform warning remains visible.
+
+The recipe declares the runtime platform for build-details generation.
+NetBSD `MACHINE_ARCH=x86_64` maps to its kernel machine name `amd64`;
+AArch64 retains `evbarm`. Both use the selected target `OS_VERSION`.
+`tests/python-build-platform.rb` checks real pkgsrc `MAKE_ENV` and the host
+generator against existing target sysconfig inputs. It writes only new outputs
+and disables bytecode writes to those inputs. No host platform fallback is used.
+
+The Python 3.14.8 package acceptance recorded below is historical.
 Build it with the [macOS cross-package configuration](cross/README.md), using
 the shared GCC16 compiler and a complete target sysroot. The source archive
 comes from Python upstream; [sources.tsv](sources.tsv) and recipe distinfo

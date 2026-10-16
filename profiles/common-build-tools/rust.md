@@ -139,5 +139,8 @@ The [target std package](rust-target-std.md) now installs the same-compiler
 source build into this shared host sysroot. Normal package integrity and
 AArch64 VM consumers pass TLS, unwind, C `dlopen`, and a Cargo target built
 with a macOS proc macro and build script. Host Rust/LLVM bytes are unchanged.
+An additional native host-data recipe imports the official x86_64 NetBSD std
+component. Source/ELF fixtures pass; real host metadata acceptance and target
+consumers remain pending. It shares the same Rust 1.99 compiler package.
 Full librsvg/GIR/pixbuf, labwc surfaces/input/VT and an installed NetBSD
 compiler remain separate acceptance steps.

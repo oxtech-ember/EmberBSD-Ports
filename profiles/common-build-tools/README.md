@@ -30,6 +30,8 @@ metadata, alternate-root updates and target script paths have regressions.
 Binutils includes a tested DWARF32/64 line-table repair. Its acceptance
 explicitly selects GNU as/ld; migration of the bootstrap GCC16 package's
 hardcoded base-tool paths remains pending.
+OpenSSL cross builds select complete upstream BSD targets instead of the
+build host's uname; the [cross checks](cross/README.md) keep package and runtime acceptance separate.
 
 The [LLVM Python migration](cross/llvm-python315.md) keeps one lit provider and
 updates installed Clang helper interpreters. It records package changes separately
@@ -43,6 +45,9 @@ changing GCC bootstrap options. The common MAKECONF selects
 the prepared GCC16 package for new native builds. LLVM family recipes also
 prepare scoped native Clang defaults. The default
 export and `development-toolchain` mode retain their previous behavior.
+The lit recipe now selects shared Python315 for native and cross packages.
+Its [selection and source checks](llvm-family.md#upstream-lit-and-focused-checks)
+pass on the host; target wheel installation remains separate.
 
 The [common graphics profile](../common-graphics/README.md) composes these
 tools with canonical MesaLib/libdrm source recipes. It does not change this

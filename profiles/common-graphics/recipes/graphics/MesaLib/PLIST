@@ -64,7 +64,8 @@ lib/dri/stm_dri.so
 lib/dri/sun4i-drm_dri.so
 lib/dri/swrast_dri.so
 lib/dri/udl_dri.so
-lib/dri/v3d_dri.so
+${PLIST.intel}lib/dri/iris_dri.so
+${PLIST.v3d}lib/dri/v3d_dri.so
 lib/dri/virtio_gpu_dri.so
 lib/dri/vkms_dri.so
 lib/dri/zink_dri.so
@@ -94,7 +95,8 @@ lib/pkgconfig/glesv1_cm.pc
 lib/pkgconfig/glesv2.pc
 lib/pkgconfig/glx.pc
 share/drirc.d/00-mesa-defaults.conf
-share/drirc.d/00-v3d-defaults.conf
+${PLIST.intel}share/drirc.d/00-iris-defaults.conf
+${PLIST.v3d}share/drirc.d/00-v3d-defaults.conf
 share/drirc.d/00-virtio_gpu-defaults.conf
 share/drirc.d/00-zink-defaults.conf
 ${PLIST.powervr}lib/libvulkan_powervr_mesa.so

@@ -1,6 +1,7 @@
 # Origin: EmberBSD (AI-assisted). First port; Union from Plasma 6.8 needs it.
 
 DISTNAME=	cxx-rust-cssparser-1.1.0
+PKGREVISION=	2
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=KDE/}
 GITHUB_TAG=	v1.1.0
@@ -8,11 +9,19 @@ EXTRACT_SUFX=	.tar.gz
 
 # Offline crate sources generated on the host with `cargo vendor` from
 # rust/Cargo.lock. Regenerate this archive when the crate set changes.
-DISTFILES=	cxx-rust-cssparser-1.1.0.tar.gz cxx-rust-cssparser-vendor-1.1.0.tar.gz
+_EMBER_CSS_VENDOR_DISTFILE= cxx-rust-cssparser-vendor-1.1.0-r1.tar
+DISTFILES=	cxx-rust-cssparser-1.1.0.tar.gz ${_EMBER_CSS_VENDOR_DISTFILE}
+# This archive is locally derived, not an upstream HTTP release asset.
+SITES.${_EMBER_CSS_VENDOR_DISTFILE}=
 
 HOMEPAGE=	https://invent.kde.org/libraries/cxx-rust-cssparser
 COMMENT=	C++ CSS parsing API implemented through the Rust cssparser crate
-LICENSE=	modified-bsd AND gnu-lgpl-v2.1 AND cc0-1.0-universal
+# Components use AND; alternatives stay within each component's expression.
+# files/licenses.json records the original SPDX expressions and mappings.
+LICENSE=	2-clause-bsd AND cc0-1.0-universal AND gnu-lgpl-v2.1 AND \
+		apache-2.0 AND mit AND mpl-2.0 AND zlib AND \
+		(mit OR apache-2.0) AND (unlicense OR mit) AND \
+		((mit OR apache-2.0) AND unicode-v3)
 
 .include "../../mk/bsd.prefs.mk"
 
@@ -22,45 +31,27 @@ USE_TOOLS+=	pkg-config ar
 CMAKE_CONFIGURE_ARGS+= -DBUILD_TESTING=OFF
 CMAKE_CONFIGURE_ARGS+= -DBUILD_EXAMPLES=OFF
 
+pre-fetch:
+	@${TEST} -f ${DISTDIR:Q}/${_EMBER_CSS_VENDOR_DISTFILE:Q} || { \
+		${ERROR_MSG} "Prepare ${_EMBER_CSS_VENDOR_DISTFILE} with files/vendor.rb and copy the verified archive into DISTDIR; see README.md."; exit 1; }
+	@expected=$$(${AWK} '$$1 == "SHA512" && $$2 == "(${_EMBER_CSS_VENDOR_DISTFILE})" {print $$4}' ${DISTINFO_FILE:Q}); \
+	actual=$$(${DIGEST} SHA512 ${DISTDIR:Q}/${_EMBER_CSS_VENDOR_DISTFILE:Q} | ${AWK} '{print $$NF}'); \
+	${TEST} -n "$$expected" && ${TEST} "$$actual" = "$$expected" || { \
+		${ERROR_MSG} "Derived CSS parser vendor checksum mismatch."; exit 1; }
+
 post-extract:
 	${MV} ${WRKDIR}/vendor ${WRKSRC}/rust/vendor
 
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-# The host cargo driver builds the crate for the NetBSD target; the target
-# std already lives in the host rustc sysroot and the wrapped GCC16 cross
-# compilers serve as the linker and the C++ bridge compiler.
-RUST_TARGET=	aarch64-unknown-netbsd
-RUST_OUT=	${WRKDIR}/rust-out
-BRIDGE_A=	${WRKDIR}/libcxx-rust-cssparser-impl-bridge.a
-BRIDGE_INC=	${WRKDIR}/bridge-include
-CARGO_ENV=	CARGO_HOME=${WRKDIR}/cargo-home
-CARGO_ENV+=	CARGO_TARGET_DIR=${RUST_OUT}
-CARGO_ENV+=	CARGO_TARGET_AARCH64_UNKNOWN_NETBSD_LINKER=${WRKDIR}/.cwrapper/bin/aarch64--netbsd-gcc
-CARGO_ENV+=	CXX_aarch64_unknown_netbsd=${WRKDIR}/.cwrapper/bin/aarch64--netbsd-g++
-CARGO_ENV+=	CC=/usr/bin/cc
-CARGO_ENV+=	CXX=/usr/bin/c++
-CARGO_ENV+=	CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=/usr/bin/cc
+post-install:
+	${SH} ${FILESDIR:Q}/install-notices.sh ${WRKSRC:Q} \
+	    ${DESTDIR:Q}${PREFIX:Q}/share/licenses/cxx-rust-cssparser \
+	    ${FILESDIR:Q}/notices.sha256 ${DIGEST:Q} ${INSTALL_DATA}
+	${INSTALL_DATA} ${FILESDIR:Q}/notices.sha256 \
+	    ${DESTDIR:Q}${PREFIX:Q}/share/licenses/cxx-rust-cssparser/NOTICES.sha256
+	${INSTALL_DATA} ${FILESDIR:Q}/licenses.json ${FILESDIR:Q}/vendor-r1.json \
+	    ${DESTDIR:Q}${PREFIX:Q}/share/licenses/cxx-rust-cssparser
 
-pre-configure:
-	@set -e; cd ${WRKSRC}/rust; \
-	mkdir -p .cargo; \
-	printf '[source.crates-io]\nreplace-with = "vendored-sources"\n\n[source.vendored-sources]\ndirectory = "vendor"\n' > .cargo/config.toml; \
-	${SETENV} ${CARGO_ENV} ${EMBERBSD_CROSS_HOST_PREFIX}/bin/cargo build \
-		--release --target ${RUST_TARGET} --offline; \
-	bdir="$$(${FIND} ${RUST_OUT}/${RUST_TARGET}/release/build -path '*out/cxxbridge/sources' -type d | head -1 | sed 's|/out/cxxbridge/sources||')"; \
-	[ -n "$$bdir" ] || { echo 'no cxxbridge output found' >&2; exit 1; }; \
-	${RM} -rf ${BRIDGE_INC}; \
-	${CP} -R $$bdir/out/cxxbridge/include ${BRIDGE_INC}; \
-	${WRKDIR}/.cwrapper/bin/aarch64--netbsd-g++ -std=c++20 -fPIC -O2 \
-		-Wno-maybe-uninitialized -I${BRIDGE_INC} \
-		-c $$bdir/out/cxxbridge/sources/cxx-rust-cssparser-impl/src/ffi.rs.cc \
-		-o ${WRKDIR}/bridge.o; \
-	${AR} qc ${BRIDGE_A} ${WRKDIR}/bridge.o
-
-CMAKE_CONFIGURE_ARGS+= -DEMBER_RUST_LIB=${RUST_OUT}/${RUST_TARGET}/release/libcxx_rust_cssparser_impl.a
-CMAKE_CONFIGURE_ARGS+= -DEMBER_BRIDGE_LIB=${BRIDGE_A}
-CMAKE_CONFIGURE_ARGS+= -DEMBER_BRIDGE_INCLUDE=${BRIDGE_INC}
-.endif
+.include "cross.mk"
 
 .include "../../devel/extra-cmake-modules/buildlink3.mk"
 .include "../../mk/pthread.buildlink3.mk"

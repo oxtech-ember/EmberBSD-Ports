@@ -1,0 +1,9 @@
+@comment LLVM shared runtime and upstream license notice
+${PLIST.notdylib}lib/libLLVM.${SHLIB_EXT}.23.1
+${PLIST.notdylib}lib/libLTO.${SHLIB_EXT}.23.1
+${PLIST.notdylib}lib/libRemarks.${SHLIB_EXT}.23.1
+include/llvm/Support/LICENSE.TXT
+lib/libLLVM-23.${SHLIB_EXT}
+lib/libLLVM.${SHLIB_EXT}
+lib/libLTO.${SHLIB_EXT}
+lib/libRemarks.${SHLIB_EXT}

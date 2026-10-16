@@ -1,4 +1,4 @@
-# NetBSD/AArch64 std for the shared Rust build host
+# Target std for the shared Rust build host
 
 `lang/rust-std-aarch64-netbsd` adds Rust 1.99 target libraries to the sysroot
 owned by the [shared macOS Rust package](rust.md). It is a native host package
@@ -101,3 +101,52 @@ The export passed 70 preflight refusals and exact common-tools composition.
 Full current librsvg, GIR/typelib generation, the pixbuf loader and labwc SVG
 surfaces are subsequent consumers. This package by itself makes no claim of
 an accelerated desktop or physical GPU/NPU support.
+
+## Official x86_64 target data
+
+`lang/rust-std-x86_64-netbsd` installs the official Rust 1.99 component for
+`x86_64-unknown-netbsd`. It is native macOS host data for the same shared
+`rust-bin` compiler. It installs no target compiler and rebuilds neither
+rustc nor LLVM. The source-built AArch64 recipe and its default remain unchanged.
+
+The [official release manifest](https://static.rust-lang.org/dist/channel-rust-1.99.0.toml)
+dated 2026-10-01 marks this component available. Its original archive SHA256
+is `8eb1d542fe204128ce622c1477bd7e44e1bb041fa30373996a5f24d34184f4aa`.
+The downloaded 29,582,788-byte archive matched that TLS-fetched manifest.
+Distinfo also pins its BLAKE2s, SHA512 and size. This check is not detached
+signature verification. The package retains the upstream licenses and copyright.
+
+Use the native MAKECONF and the shared host prefix:
+
+```sh
+MAKECONF=/absolute/native-mk.conf bmake -C /absolute/pkgsrc/lang/rust-std-x86_64-netbsd \
+  WRKOBJDIR=/absolute/external/work DISTDIR=/absolute/distfiles \
+  PACKAGES=/absolute/external/packages MAKE_JOBS=2 \
+  EMBERBSD_RUST_CROSS_TOOLS=/absolute/os-tools package-install
+```
+
+The tools prefix supplies host-executable `bin/x86_64--netbsd-readelf`.
+No target sysroot is needed to install this host data. The mandatory check
+compares all 53 staged component files with the original component manifest
+and payload. It checks ELF64/x86_64 identity, the three NEEDED names and the
+original `$ORIGIN/../lib` RPATH. It requires the official Rust 1.99 compiler
+commit and performs a real target `--emit=metadata` import from the staged
+sysroot. E0514 or any other compiler failure stops packaging.
+
+The official libstd retains its original RPATH. It does not select the common
+GCC16 runtime by itself. Target consumers must link through the shared GCC16
+provider and separately verify their loaded libc, pthread and libgcc closure.
+This host data is not a deployment bundle or target runtime acceptance.
+
+The host regression uses the pinned archive and real target readelf:
+
+```sh
+ruby tests/rust-target-prebuilt.rb /absolute/x86_64--netbsd-readelf \
+  /absolute/rust-std-1.99.0-x86_64-unknown-netbsd.tar.xz /absolute/new-check
+```
+
+Nine cases pass for the complete component, damaged/missing/extra data,
+foreign ELF, altered providers/RPATH and compiler rejection. The compiler
+boundary uses fixtures; it does not establish real metadata acceptance.
+Real native bmake variable evaluation passes. Package creation, installed
+ownership and real host-compiler metadata acceptance remain pending.

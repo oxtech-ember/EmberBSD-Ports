@@ -7,9 +7,15 @@ require 'json'
 require 'open3'
 require 'rbconfig'
 require 'shellwords'
-abort 'Usage: gi-query-contract.rb CROSS_TOOLS NEW_WORK' unless ARGV.size == 2
-cc = File.realpath(ARGV[0] + '/bin/aarch64--netbsd-gcc')
-readelf = File.realpath(ARGV[0] + '/bin/aarch64--netbsd-readelf')
+target = 'aarch64'
+if ARGV.first == '--target'
+  ARGV.shift; target = ARGV.shift
+end
+targets = {'aarch64' => ['aarch64', 'aarch64--netbsd', 183], 'amd64' => ['x86_64', 'x86_64--netbsd', 62]}
+abort 'Usage: gi-query-contract.rb [--target aarch64|amd64] CROSS_TOOLS NEW_WORK' unless ARGV.size == 2 && targets.key?(target)
+processor, triplet, machine = targets.fetch(target)
+cc = File.realpath(ARGV[0] + '/bin/' + triplet + '-gcc')
+readelf = File.realpath(ARGV[0] + '/bin/' + triplet + '-readelf')
 work = File.expand_path(ARGV[1])
 abort 'new absolute work required' unless ARGV[1].start_with?('/') && !File.exist?(work)
 FileUtils.mkdir_p(work)
@@ -29,11 +35,12 @@ run.call('dso', cc, '-nostdlib', '-shared', '-fPIC', work + '/build/library.c', 
 run.call('elf', cc, '-nostdlib', '-Wl,-e,_start', work + '/build/query.c', '-L' + work + '/build/provider', '-Wl,-l:libgi-probe.so.1', '-o', work + '/build/query')
 File.symlink(work + '/build/provider', work + '/provider-alias')
 marker = work + '/ssh-reached'
-File.write(work + '/bin/ssh', "#!/bin/sh\nprintf '%s\\n' reached >> #{marker.shellescape}\nexit 74\n")
+File.write(work + '/bin/ssh', "#!/bin/sh\nprintf '%s\\n' \"$@\" > #{(work + '/ssh-arguments').shellescape}\nprintf '%s\\n' reached >> #{marker.shellescape}\nexit 74\n")
 File.chmod(0755, work + '/bin/ssh')
 config = {'build_root' => work + '/build', 'sysroot' => work + '/sysroot',
           'cache' => work + '/cache', 'readelf' => readelf, 'ssh' => 'unused.invalid',
           'library_dirs' => [work + '/provider-alias']}
+config['target'] = target if target != 'aarch64'
 config_path = work + '/config.json'
 File.write(config_path, JSON.pretty_generate(config))
 env = {'EMBERBSD_GI_QUERY_CONFIG' => config_path, 'PATH' => work + '/bin:/usr/bin:/bin',
@@ -43,7 +50,30 @@ reject = lambda do |name, pattern, *args|
   File.write(work + '/' + name + '.log', output)
   abort "#{name} did not fail at expected boundary: #{output}" if status.success? || !output.match?(pattern) || File.exist?(marker)
 end
-run.call('check', env, RbConfig.ruby, helper, '--check', work + '/build', work + '/sysroot', readelf)
+run.call('check', env, RbConfig.ruby, helper, '--check', work + '/build', work + '/sysroot', readelf, target)
+# Real bmake evaluates the shared GI fragment for both target metadata sets.
+# This is a variable-selection fixture; it does not accept providers or a VM.
+make_tree = work + '/make'
+FileUtils.mkdir_p([make_tree + '/devel/gobject-introspection', make_tree + '/mk'])
+File.write(make_tree + '/mk/bsd.prefs.mk', '')
+FileUtils.cp(File.expand_path('../cross.mk', File.dirname(helper)), make_tree + '/devel/gobject-introspection/cross.mk')
+File.write(make_tree + '/devel/gobject-introspection/Makefile', ".include \"cross.mk\"\n")
+make_base = [ENV.fetch('BMAKE', 'bmake'), '-C', make_tree + '/devel/gobject-introspection',
+  'USE_CROSS_COMPILE=yes', 'OPSYS=NetBSD', 'CROSS_OPSYS=NetBSD', 'CROSS_OS_VERSION=11.0',
+  'EMBERBSD_GI_RUBY=' + RbConfig.ruby, 'EMBERBSD_GI_QUERY_CONFIG=' + config_path,
+  'EMBERBSD_CROSS_BUILD_CC=/usr/bin/cc', 'TOOLDIR=' + ARGV[0]]
+targets.to_a.reverse_each do |selected, (arch, gnu, _)|
+  args = ['MACHINE_ARCH=' + arch, 'CROSS_MACHINE_ARCH=' + arch, 'MACHINE_GNU_PLATFORM=' + gnu, 'EMBERBSD_CROSS_TARGET=' + selected]
+  fail_reason = run.call('make-' + selected, *make_base, *args, '-V', '${PKG_FAIL_REASON}')
+  abort 'supported GI target rejected: ' + fail_reason unless fail_reason.strip.empty?
+  settings = run.call('make-env-' + selected, *make_base, *args, '-V', '${MAKE_ENV}')
+  abort 'GI selected a foreign target readelf/environment' unless settings.include?('/bin/' + gnu + '-readelf') && settings.include?('EMBERBSD_GI_TARGET=' + selected)
+  foreign = arch == 'aarch64' ? 'x86_64' : 'aarch64'
+  rejected = run.call('make-mixed-' + selected, *make_base, *args, 'CROSS_MACHINE_ARCH=' + foreign, '-V', '${PKG_FAIL_REASON}')
+  abort 'GI accepted mixed architecture metadata' if rejected.strip.empty?
+  rejected = run.call('make-mixed-gnu-' + selected, *make_base, *args, 'MACHINE_GNU_PLATFORM=foreign--netbsd', '-V', '${PKG_FAIL_REASON}')
+  abort 'GI accepted a foreign GNU provider' if rejected.strip.empty?
+end
 File.write(config_path, JSON.pretty_generate(config.merge('host_key_alias' => 'unsafe alias')))
 reject.call('invalid-host-alias', /invalid host key alias/, '--check', work + '/build', work + '/sysroot', readelf)
 config['host_key_alias'] = 'target.example'
@@ -51,7 +81,32 @@ File.write(config_path, JSON.pretty_generate(config))
 reject.call('different-sysroot', /configuration differs/, '--check', work + '/build', work + '/outside', readelf)
 reject.call('outside-binary', /outside build root/, '/usr/bin/true')
 FileUtils.cp('/usr/bin/true', work + '/build/native')
-reject.call('native-binary', /not little-endian AArch64 ELF64/, work + '/build/native')
+reject.call('native-binary', /not little-endian .* ELF64/, work + '/build/native')
+other_target = target == 'aarch64' ? 'amd64' : 'aarch64'
+File.write(config_path, JSON.pretty_generate(config.merge('target' => other_target)))
+reject.call('foreign-query-config', /configuration differs|not little-endian .* ELF64/, '--check', work + '/build', work + '/sysroot', readelf, target)
+reject.call('foreign-query-architecture', /not little-endian .* ELF64/, work + '/build/query')
+legacy = config.dup; legacy.delete('target')
+File.write(config_path, JSON.pretty_generate(legacy))
+if target == 'amd64'
+  reject.call('legacy-is-not-amd64', /configuration differs/, '--check', work + '/build', work + '/sysroot', readelf, target)
+end
+run.call('legacy-aarch64-check', env, RbConfig.ruby, helper, '--check', work + '/build', work + '/sysroot', readelf)
+File.write(config_path, JSON.pretty_generate(config.merge('target' => 'unsupported')))
+reject.call('unknown-target', /unsupported GI target/, '--check', work + '/build', work + '/sysroot', readelf)
+File.write(config_path, JSON.pretty_generate(config))
+provider = work + '/build/provider/libgi-probe.so.1'
+bytes = File.binread(provider)
+foreign = bytes.dup; foreign[18, 2] = [machine == 62 ? 183 : 62].pack('v')
+File.binwrite(provider, foreign)
+reject.call('foreign-provider', /not little-endian .* ELF64/, work + '/build/query')
+foreign = bytes.dup; foreign.setbyte(4, 1)
+File.binwrite(provider, foreign)
+reject.call('foreign-class', /not little-endian .* ELF64/, work + '/build/query')
+foreign = bytes.dup; foreign.setbyte(5, 2)
+File.binwrite(provider, foreign)
+reject.call('foreign-endian', /not little-endian .* ELF64/, work + '/build/query')
+File.binwrite(provider, bytes)
 reject.call('unsupported-args', /only an optional/, work + '/build/query', '--delete')
 reject.call('execute-args', /only an optional/, '--execute', work + '/build/query', '--delete')
 File.write(work + '/build/types', 'get-type:gi_probe_answer' + "\n")
@@ -69,10 +124,30 @@ File.write(config_path, JSON.pretty_generate(config))
 output, status = Open3.capture2e(env, RbConfig.ruby, helper, work + '/build/query')
 File.write(work + '/valid-alias.log', output)
 abort 'valid target/alias did not reach bounded transport' unless !status.success? && output.include?('allocate failed (74)') && File.read(marker) == "reached\n"
-out = run.call('needed', {'EMBERBSD_GI_READELF' => readelf}, 'sh', needed, work + '/build/query')
+allocation = File.readlines(work + '/ssh-arguments', chomp: true).last
+abort 'selected target uname contract missing' unless allocation.include?('test "$(uname -s)" = NetBSD') && allocation.include?('test "$(uname -p)" = ' + processor)
+# Execute only the production identity shell body, with explicit host fixtures.
+# No VM, SSH target or target executable is run by this regression.
+identity_glue = <<~SH
+  uname() { case "$1" in -s) printf '%s\\n' "$GI_FIXTURE_OPSYS";; -p) printf '%s\\n' "$GI_FIXTURE_PROCESSOR";; *) return 2;; esac; }
+  mktemp() { printf 'allocated\\n' > #{(work + '/identity-allocated').shellescape}; printf '/tmp/ember-gir.AbCd1234\\n'; }
+SH
+[['NetBSD', processor, true], ['NetBSD', processor == 'aarch64' ? 'x86_64' : 'aarch64', false], ['Linux', processor, false]].each do |os, arch, accepted|
+  FileUtils.rm_f(work + '/identity-allocated')
+  output, status = Open3.capture2e({'GI_FIXTURE_OPSYS' => os, 'GI_FIXTURE_PROCESSOR' => arch}, 'sh', '-s', stdin_data: identity_glue + allocation)
+  abort 'remote identity did not gate allocation' unless status.success? == accepted && File.exist?(work + '/identity-allocated') == accepted
+end
+puts 'PASS: both target make metadata sets, explicit/default JSON targets, foreign ELF/class/endian and real identity shell guard'
+out = run.call('needed', {'EMBERBSD_GI_READELF' => readelf, 'EMBERBSD_GI_TARGET' => target}, 'sh', needed, work + '/build/query')
 abort 'wrong target SONAME' unless out == "libgi-probe.so.1\n"
-_, status = Open3.capture2e({'EMBERBSD_GI_READELF' => readelf}, 'sh', needed, work + '/build/native')
+_, status = Open3.capture2e({'EMBERBSD_GI_READELF' => readelf, 'EMBERBSD_GI_TARGET' => target}, 'sh', needed, work + '/build/native')
 abort 'native image accepted by SONAME helper' if status.success?
+_, status = Open3.capture2e({'EMBERBSD_GI_READELF' => readelf, 'EMBERBSD_GI_TARGET' => other_target}, 'sh', needed, work + '/build/query')
+abort 'foreign machine accepted by SONAME helper' if status.success?
+['', 'unsupported'].each do |invalid|
+  output, status = Open3.capture2e({'EMBERBSD_GI_READELF' => readelf, 'EMBERBSD_GI_TARGET' => invalid}, 'sh', needed, work + '/build/query')
+  abort 'empty or unknown SONAME target did not fail closed' if status.success? || !output.include?('unsupported GI target')
+end
 # Inject transport outcomes only; this does not emulate target execution.
 # Separate board acceptance runs actual cross-built upstream test binaries.
 File.write(work + '/bin/ssh', "#!#{RbConfig.ruby}\n" + <<~'RUBY')

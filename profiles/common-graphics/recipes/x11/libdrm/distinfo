@@ -6,6 +6,7 @@ Size (libdrm-2.4.134.tar.xz) = 437244 bytes
 SHA1 (patch-ac) = 8c5ca991174e3673e17cd67aa8d1e58c2f8907d8
 SHA1 (patch-amdgpu_amdgpu__cs.c) = b48780dd51d1386e194c8142702605380ceefb7d
 SHA1 (patch-include_drm_drm.h) = fb28cb7fee68f773275c8b5572c3bd231cbb88d9
+SHA1 (patch-include_drm_i915__drm.h) = 630ab8175762a4f5d570a0be4678356482786573
 SHA1 (patch-libsync.h) = a7d2f4757ce4c26db1b689c8746829ccb522337e
 SHA1 (patch-symbols-check.py) = 2f41e3d2f3694e82a7bdb02d3f0e431c1cd2360b
 SHA1 (patch-tests_nouveau_threaded.c) = 8ebef22d66308f55b4b018c21568a41a8e62d147

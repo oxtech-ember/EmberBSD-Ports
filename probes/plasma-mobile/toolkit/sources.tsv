@@ -158,7 +158,7 @@ x11/libei	libei-1.6.0.tar.bz2	5ed6078fa63afd554cc04b1001675615da0ed8fe23b80492ab
 x11/libei	munit-fbbdf1467eb0d04a6ee465def2e529e4c87f2118.tar.gz	d0c8bf80b9804d4df5301bd428702352fe7e14f84f22027c3a2c084a0d9f69a7	https://github.com/nemequ/munit/archive/fbbdf1467eb0d04a6ee465def2e529e4c87f2118.tar.gz
 devel/basu	basu-0.2.1.tar.gz	43b327073d1ac7bc6cbc0d3dfff729348fc970dfff0551ad40e366332e990204	https://git.sr.ht/~emersion/basu/archive/v0.2.1.tar.gz
 devel/cxx-rust-cssparser	cxx-rust-cssparser-1.1.0.tar.gz	97bf4670e565bf43ae77348af74a38c1b432fc5dfa47ab15c375e04331fdb8e1	https://github.com/KDE/cxx-rust-cssparser/archive/refs/tags/v1.1.0.tar.gz
-devel/cxx-rust-cssparser	cxx-rust-cssparser-vendor-1.1.0.tar.gz	a63f1d76b521f6c65294a746933afbf8b24463d57c70b6248974217647368150	https://github.com/KDE/cxx-rust-cssparser/blob/v1.1.0/rust/Cargo.lock
+devel/cxx-rust-cssparser	cxx-rust-cssparser-vendor-1.1.0-r1.tar	d2e42517a49923fcd79fb7f05b650a4821c218c4d04d9c9691c7fdef55e74a2a	derived:cssparser-vendor-r1
 devel/ryml	rapidyaml-0.16.0.tar.gz	ad4337d468c5f5d8624651bdc2900f7fe601c83fc3cff669dc972bf8634af4e9	https://github.com/biojppm/rapidyaml/archive/refs/tags/v0.16.0.tar.gz
 x11/plasma6-union	union-6.8.0.tar.xz	d7340ffe4e269c6ee676acc6c93b928932b06ee2654ae3e7b904b699fb46a46c	https://download.kde.org/stable/plasma/6.8.0/union-6.8.0.tar.xz
 x11/plasma6-plasma-nano	plasma-nano-6.8.0.tar.xz	8b4a8e3d07184bf239991274a019c8e4f03eefdb374684d39f043827ebccae58	https://download.kde.org/stable/plasma/6.8.0/plasma-nano-6.8.0.tar.xz

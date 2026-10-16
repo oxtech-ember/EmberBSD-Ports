@@ -28,6 +28,9 @@ TMPDIR=/absolute/external/tmp ruby seal-mesa-generators.rb \
     /absolute/native-mesa-build /absolute/spirv-val /absolute/new-generators
 ```
 
+The default seal retains the PowerVR profile. See [native generator profiles](mesa-generators.md)
+for Intel-only seals without `pco_clc` and the combined profile.
+
 The helper currently supports macOS ARM64 host tools. It checks the archive
 SHA256, the full pinned source file set and the selected build's metadata.
 The optional exact-BVNC CLI patch is the only accepted native source delta.
