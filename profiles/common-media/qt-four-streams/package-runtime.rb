@@ -47,7 +47,7 @@ elf = lambda do |path|
     needed = dynamic.scan(/\(NEEDED\).*\[([^\]]+)\]/).flatten
     abort 'Invalid ELF dependency' unless needed.all? { |name| name.match?(/\A[A-Za-z0-9_.+-]+\z/) }
     rpaths = dynamic.scan(/\((?:RUNPATH|RPATH)\).*\[([^\]]*)\]/).flatten.flat_map { |value| value.split(':') }
-    abort 'Host or unrecognized RPATH: ' + path unless rpaths.all? { |value| value == '/usr/pkg' || value.start_with?('/usr/pkg/', '/usr/lib/', '/lib/') }
+    abort 'Host or unrecognized RPATH: ' + path unless rpaths.all? { |value| %w[/usr/pkg /usr/lib /lib].include?(value) || value.start_with?('/usr/pkg/', '/usr/lib/', '/lib/') }
     { soname: dynamic[/\(SONAME\).*\[([^\]]+)\]/, 1], needed: needed, rpaths: rpaths }
   end
 end
