@@ -117,7 +117,9 @@ runtime behavior are validated.
   An optional [PowerVR ICD](profiles/common-graphics/cross/powervr.md) retains
   these providers and adds receipt-checked native Mesa generators. On Zero 3W,
   the installed nb5 package passes four native Vulkan enumeration lifecycles,
-  four llvmpipe EGL/pixel cycles and 38 upstream invocations. GPU submission
+  four llvmpipe EGL/pixel cycles and 38 upstream invocations. The same nb5
+  package passes three native compute cycles on the accepted Zero 3W kernel.
+  [Offscreen graphics](profiles/common-graphics/cross/powervr-offscreen.md)
   and accelerated Plasma remain separate steps. Earlier GL results below
   retain their recorded package and hardware scope.
   Source, export and dependency-selection checks cover X11/Wayland,

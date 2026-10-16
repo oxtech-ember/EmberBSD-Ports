@@ -1,0 +1,22 @@
+; SPDX-License-Identifier: BSD-2-Clause
+; Origin: EmberBSD contributors (AI-assisted).
+; Exact UNORM green. Raster coverage must preserve red outside the triangle.
+OpCapability Shader
+OpMemoryModel Logical GLSL450
+OpEntryPoint Fragment %main "main" %color
+OpExecutionMode %main OriginUpperLeft
+OpDecorate %color Location 0
+%void = OpTypeVoid
+%function = OpTypeFunction %void
+%float = OpTypeFloat 32
+%vec4 = OpTypeVector %float 4
+%output = OpTypePointer Output %vec4
+%zero = OpConstant %float 0
+%one = OpConstant %float 1
+%green = OpConstantComposite %vec4 %zero %one %zero %one
+%color = OpVariable %output Output
+%main = OpFunction %void None %function
+%entry = OpLabel
+OpStore %color %green
+OpReturn
+OpFunctionEnd
