@@ -27,7 +27,7 @@ The virtual output is 1280×1024. It does not set a physical monitor mode.
 Screen locking is disabled only in the private compositor session.
 The whole session has a 240-second timeout and a five-second kill grace period.
 D-Bus layout queries have five-second timeouts and two-second kill grace periods.
-The shell shares a 90-second startup deadline between layout creation and capture.
+The shell shares a 90-second startup deadline between layout creation, the unknown-output control and capture.
 A layout query can finish after this deadline; capture does not get a new deadline.
 Image capture retries while startup time remains because Quick items can become ready after their models.
 Each attempt uses at most 15 seconds, capped by the remaining startup time, plus a two-second kill grace period.
@@ -41,7 +41,7 @@ The runner requires all these observations:
 - The default Folder View and panel exist on the single virtual output.
 - The panel models contain Kickoff, Pager, Icons-Only Task Manager,
   System Tray, Digital Clock and Show Desktop.
-- An unknown connector is rejected without creating an image.
+- An unknown connector returns the exact `InvalidArgs` error without creating an image.
 - A desktop containment capture contains visible, nonuniform pixels in a decoded 320×256 PNG.
 - The shell's own Qt RHI log reports V3D OpenGL and no detected QML load error.
 - Six layout queries succeed over a further 30 seconds with the same shell process.
@@ -51,6 +51,12 @@ The runner requires all these observations:
 The output saves compositor and shell logs, query results, exit statuses,
 executable hashes, the desktop capture and its hash.
 Each capture attempt keeps separate request output, errors, exit status, timeout and PNG-check logs.
+The unknown-output control also keeps separate logs, statuses, timeouts and image paths for each attempt.
+Only timeout status 124 permits a retry, within the original startup deadline.
+Each retry has at most five seconds, capped by the remaining time, plus the kill grace period.
+The control requires qdbus status 2 and the exact `InvalidArgs` / `Unknown screen name` response.
+Unexpected success, another error, or a created image fails immediately.
+Image checks continue through capture, liveness checks and shell cleanup to detect late replies.
 Only a successful request with a fully decoded, nonuniform image becomes `desktop.png`.
 The shell cleanup escalates to SIGKILL after five seconds if needed.
 That escalation fails the test. It does not count as a clean shutdown.
@@ -60,6 +66,14 @@ Keep the output with the tested kernel, firmware and package-set identities.
 Inspect it after transfer. Its header check does not assess visual correctness.
 Applet model presence does not prove that each applet renders or accepts input.
 QML diagnostics are a further gate, not a complete functional check of every applet.
+
+A CM5 diagnostic run found a startup delay before the unknown-output method was called.
+The query's introspection response arrived after its five-second timeout.
+Plasma was waiting for the audio module's `Properties.GetAll` reply from KDED.
+The observed intervals were 9.61 seconds for introspection and 7.23 seconds for the audio properties.
+GDB and D-Bus monitoring were active; these durations are not a performance benchmark.
+The shell later answered normally and exited successfully.
+This supports bounded readiness retries. It does not establish a Qt defect or sustained Plasma stability.
 
 This runner does not start the full `startplasma-wayland` login sequence.
 It does not accept HDMI/KMS, a display manager, PAM, physical input, Fcitx input,
@@ -99,7 +113,7 @@ The common recipe fixes the source archive and checksum:
 
 ## Host regression checks
 
-The development host needs Ruby and Node.js for these bounded checks:
+The development host needs Ruby, Node.js and the repository history for these bounded checks:
 
 ```sh
 ruby host-test.rb
@@ -111,6 +125,11 @@ They execute the real session cleanup after a forced startup failure.
 Separate fixtures exercise SIGTERM success and forced SIGKILL failure.
 Capture fixtures require recovery after a cold request failure and rejection when the shared deadline expires.
 They check shrinking timeouts, separate image paths, retained errors and child cleanup.
+`unknown-output-host.rb` executes the actual negative-control shell block with bounded external-command fixtures.
+The prior one-shot control at commit `201a136` fails the delayed-introspection case.
+The new control passes that case but rejects persistent timeout at the original deadline.
+It also rejects success, wrong status, wrong error, a crashed query, and immediate or late image creation.
+Four mutated controls test the retry, deadline, exact-status and image guards.
 The temporary copy replaces external graphics commands, the clock and liveness sleeps.
 No target binaries run. These fixtures do not emulate a GPU or Plasma.
 All added scripts are EmberBSD code with AI assistance.

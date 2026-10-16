@@ -9,6 +9,8 @@ require 'tmpdir'
 
 source = File.expand_path(__dir__)
 checks = 0
+abort 'Unknown-output deadline regression failed' unless
+  system(RbConfig.ruby, File.join(source, 'unknown-output-host.rb'))
 run = lambda do |expected, *command|
   output, status = Open3.capture2e(*command)
   passed = expected == :ok ? status.success? : !status.success?
@@ -203,7 +205,7 @@ run.call(:ok, 'node', "#{temp}/capture-layout-test.js", "#{source}/capture-layou
       #!#{RbConfig.ruby}
       count = File.file?('clock-count') ? File.read('clock-count').to_i : 0
       File.write('clock-count', (count + 1).to_s)
-      puts [0, 78, 79, 80, 86, 90][[count, 5].min]
+      puts [0, 78, 79, 79, 80, 86, 90][[count, 6].min]
     RUBY
     # Keep the six liveness checks fast. Give the child time to handle TERM.
     File.write("#{work}/sleep", "#!/bin/sh\n[ \"$1\" = 5 ] || exec /bin/sleep 0.1\n")
@@ -240,7 +242,10 @@ run.call(:ok, 'node', "#{temp}/capture-layout-test.js", "#{source}/capture-layou
           puts 'PASS: default desktop, panel and six applet models on 1280x1024'
         end
       when 'org.kde.PlasmaShell.grabContainmentImage'
-        abort 'Unknown screen name' if ARGV[3] == 'Ember-Missing-Output'
+        if ARGV[3] == 'Ember-Missing-Output'
+          puts "Error: org.freedesktop.DBus.Error.InvalidArgs\nUnknown screen name"
+          exit 2
+        end
         count = File.file?('capture-count') ? File.read('capture-count').to_i + 1 : 1
         File.write('capture-count', count.to_s)
         File.open('capture-paths', 'a') { |file| file.puts(ARGV.fetch(6)) }

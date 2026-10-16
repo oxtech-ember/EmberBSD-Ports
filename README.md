@@ -108,7 +108,9 @@ runtime behavior are validated.
   initializes the missing mutex and unwinds creation failures.
   Normal installation verifies all 100 payload entries. The unchanged old
   libgallium consumer passes after LLD 23 linking with preserved symbol versions.
-  Full Plasma remains unaccepted. A bounded startup D-Bus delay remains under
+  Full Plasma remains unaccepted. The [Desktop probe](probes/plasma-mobile/toolkit/tests/plasma-desktop/README.md) retries timed-out startup introspection
+  within its original deadline. It requires the exact unknown-output rejection and no image.
+  A bounded startup D-Bus delay remains under
   investigation; the shell responds after an additional wait and exits normally.
   Physical HDMI presentation remains a separate gate.
   Adapted libdrm 2.4.134nb2, Wayland 1.26.0nb1 and wayland-protocols 1.49
