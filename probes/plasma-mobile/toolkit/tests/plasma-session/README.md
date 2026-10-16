@@ -32,6 +32,14 @@ XDG directories, temporary directory and D-Bus session. It derives `USER`,
 `LOGNAME` and `SHELL` from the existing account. It records the system identity,
 boot time, binary hashes, service PIDs, readiness evidence and process status.
 
+Preflight calls `org.freedesktop.DBus.GetId` on the system bus before creating
+output or starting the private session. It uses `qdbus --system` in a clean
+environment and validates the 32-digit bus ID. The call addresses the bus
+daemon itself; it does not activate another system service. A missing or
+unresponsive bus fails preflight and reports the original query status.
+Start the installed `dbus` rc.d service before retrying. A reachable bus does
+not prove that a login or power-management provider is installed.
+
 Preflight requires both `/usr/libexec/ld.elf_so` and `/libexec/ld.elf_so`.
 The prepared packages use these interpreter paths. The test records their
 links and hashes. It does not create loader aliases. File availability does
@@ -41,7 +49,12 @@ The main deadline is 240 seconds. Cleanup has a separate 12-second budget,
 plus the final bounded inventory and reap checks. Each `ps` call has a
 2-second timeout. Each D-Bus call has a 5-second timeout and 2-second kill grace.
 A forced kill, inventory failure or remaining marked process fails the test.
-Logs remain in the output directory on failure.
+Logs remain in the output directory on failure. `queries.tsv` records each
+query's start and end Unix time, phase, status, service, object and method.
+It excludes payloads and process environments. Readiness preserves the query
+status, including timeout status 124. Startup retries retain the existing
+deadline; a failed liveness query still fails acceptance immediately.
+The controller also prints its final phase and status on failure.
 
 ## Startup and logout contract
 
@@ -121,6 +134,7 @@ Run the host tests with native Perl and Ruby:
 ```sh
 PERL=/path/to/native/perl /path/to/native/ruby ./host-test.rb
 /path/to/native/ruby ./xauthority-host.rb
+/path/to/native/ruby ./diagnostics-host.rb
 ```
 
 On macOS, do not use Apple's protected system interpreters. SIP hides their
@@ -158,3 +172,9 @@ two failed 5,246,976-byte allocations with ENOMEM. The trace does not separate
 the global BO budget from DMA or GEM-handle allocation failure. The boot time
 remained unchanged, and temperature stayed below 66 degrees Celsius. This
 result is separate from the accepted bare Desktop capture and liveness test.
+
+The system-bus prerequisite and query diagnostics pass 71 host controls.
+The pinned previous runner misses an unavailable system bus and converts a
+query timeout to status 1. The new controls reproduce both causes and reject
+malformed bus IDs. They retain the exact service, object and method contract.
+The new runner still requires native full-session acceptance.

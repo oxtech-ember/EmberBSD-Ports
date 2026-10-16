@@ -26,6 +26,21 @@ for name in perl dbus-run-session kwin_wayland_wrapper kwin_wayland Xwayland \
     [ -x "/usr/pkg/bin/$name" ] || { echo "Missing executable: $name" >&2; exit 2; }
 done
 [ -x /usr/pkg/qt6/bin/qdbus ]
+# Probe the bus daemon itself. Do not activate a system service or create output.
+# Qt qdbus accepts --system before the service, object and qualified method.
+if system_bus_id=$(/usr/bin/env -i PATH=/usr/bin:/bin LC_ALL=C \
+    /usr/bin/timeout -k 2 5 /usr/pkg/qt6/bin/qdbus --system \
+    org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.GetId); then
+    if [ "${#system_bus_id}" -ne 32 ] ||
+        ! printf '%s\n' "$system_bus_id" | grep -Eq '^[0-9a-f]{32}$'; then
+        echo 'FAIL: system-bus preflight returned an invalid bus ID' >&2
+        exit 2
+    fi
+else
+    system_bus_status=$?
+    echo "FAIL: system-bus preflight status=$system_bus_status; start the installed dbus rc.d service" >&2
+    exit 2
+fi
 [ -x /usr/pkg/libexec/kactivitymanagerd ]
 # Existing packages and the current cross linker use these two interpreter
 # paths. Require the installed base to supply both; never make aliases here.
@@ -45,6 +60,7 @@ for file in guard.pl controller.sh environment.sh; do cp "$source_dir/$file" "$w
 for file in layout.js check-results.sh; do cp "$source_dir/../plasma-desktop/$file" "$work/$file"; done
 printf '[General]\nsystemdBoot=false\n' > "$work/config/startkderc"
 cd "$work"
+printf '%s\n' "$system_bus_id" > system-bus-id.txt
 id > user.txt
 uname -a > system.txt
 ls -l /usr/libexec/ld.elf_so /libexec/ld.elf_so > base-loaders.txt

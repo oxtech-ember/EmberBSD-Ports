@@ -4,8 +4,22 @@
 set -eu
 : "${EMBER_PLASMA_OUTPUT:?}" "${EMBER_PLASMA_SESSION_MARKER:?}"
 cd "$EMBER_PLASMA_OUTPUT"
-trap 'result=$?; printf "%s\n" "$result" > controller.status' 0
-query() { /usr/bin/timeout -k 2 5 /usr/pkg/qt6/bin/qdbus "$@"; }
+phase=display-environment
+trap 'result=$?; printf "%s\n" "$result" > controller.status; if [ "$result" -ne 0 ]; then echo "FAIL: controller phase=$phase status=$result" >&2; fi' 0
+query()
+{
+    query_started=$(date +%s)
+    query_status=0
+    /usr/bin/timeout -k 2 5 /usr/pkg/qt6/bin/qdbus "$@" || query_status=$?
+    query_finished=$(date +%s)
+    # Record the call identity, not its payload or the process environment.
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$query_started" "$query_finished" \
+        "$phase" "$query_status" "$1" "$2" "$3" >> queries.tsv
+    if [ "$query_status" -ne 0 ]; then
+        echo "FAIL: query phase=$phase status=$query_status service=$1 object=$2 method=$3" >&2
+    fi
+    return "$query_status"
+}
 owner()
 {
     query org.freedesktop.DBus /org/freedesktop/DBus \
@@ -56,28 +70,30 @@ plasma=$!
 printf '%s\n' "$plasma" > startplasma.pid
 ready()
 {
-    query org.kde.ksmserver /KSMServer org.kde.KSMServerInterface.isShuttingDown > ksm-ready.txt || return 1
-    grep -qx false ksm-ready.txt || return 1
-    query org.kde.ksmserver /KSMServer org.kde.KSMServerInterface.currentSession > ksm-session.txt || return 1
+    query org.kde.ksmserver /KSMServer org.kde.KSMServerInterface.isShuttingDown > ksm-ready.txt || return $?
+    grep -qx false ksm-ready.txt || return $?
+    query org.kde.ksmserver /KSMServer org.kde.KSMServerInterface.currentSession > ksm-session.txt || return $?
     query org.kde.ActivityManager /ActivityManager/Activities \
-        org.kde.ActivityManager.Activities.CurrentActivity > activity.txt || return 1
-    grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' activity.txt || return 1
+        org.kde.ActivityManager.Activities.CurrentActivity > activity.txt || return $?
+    grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' activity.txt || return $?
     grep -qx '00000000-0000-0000-0000-000000000000' activity.txt && return 1
     query org.kde.ActivityManager /ActivityManager/Activities \
-        org.kde.ActivityManager.Activities.ListActivities > activities.txt || return 1
-    grep -Fxq "$(cat activity.txt)" activities.txt || return 1
+        org.kde.ActivityManager.Activities.ListActivities > activities.txt || return $?
+    grep -Fxq "$(cat activity.txt)" activities.txt || return $?
     query org.kde.plasmashell /PlasmaShell org.freedesktop.DBus.Properties.Get \
-        org.kde.PlasmaShell shell > shell.txt || return 1
-    grep -qx org.kde.plasma.desktop shell.txt || return 1
+        org.kde.PlasmaShell shell > shell.txt || return $?
+    grep -qx org.kde.plasma.desktop shell.txt || return $?
     query org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
-        "$(cat layout.js)" > layout.txt || return 1
+        "$(cat layout.js)" > layout.txt || return $?
     grep -qx 'PASS: default desktop, panel and six applet models on 1280x1024' layout.txt
 }
+phase=startup-readiness
 while ! ready 2> readiness-error.log; do
     kill -0 "$wrapper" && kill -0 "$plasma"
     [ "$(date +%s)" -lt "$deadline" ] || { echo 'FAIL: full Plasma session readiness deadline' >&2; exit 1; }
     sleep 1
 done
+phase=service-owners
 services='org.kde.KWin org.kde.ksmserver org.kde.ActivityManager org.kde.plasmashell org.kde.kded6'
 for service in $services; do owner "$service" > "$service.pid"; done
 kwin=$(cat org.kde.KWin.pid)
@@ -85,10 +101,12 @@ kwin=$(cat org.kde.KWin.pid)
 ps -ax -o pid= -o ppid= -o comm= | awk -v parent="$kwin" \
     '$2 == parent && $3 ~ /(^|\/)Xwayland$/ { print $1 }' > xwayland.pid
 [ "$(wc -l < xwayland.pid | tr -d ' ')" = 1 ]
+phase=support-before
 query org.kde.KWin /KWin org.kde.KWin.supportInformation > support-before.txt
 /bin/sh ./check-results.sh support support-before.txt
 count=0
 while [ "$count" -lt 6 ]; do
+    phase=liveness-$((count + 1))
     sleep 5
     kill -0 "$wrapper" && kill -0 "$plasma" && kill -0 "$(cat xwayland.pid)"
     ready
@@ -97,12 +115,14 @@ while [ "$count" -lt 6 ]; do
     done
     count=$((count + 1))
 done
+phase=support-after
 query org.kde.KWin /KWin org.kde.KWin.supportInformation > support-after.txt
 /bin/sh ./check-results.sh support support-after.txt
 shell_pid=$(cat org.kde.plasmashell.pid)
 cat bus.log plasma-session.log compositor.log | awk -v prefix="[$shell_pid] " 'index($0, prefix) == 1' > shell-renderer.log
 /bin/sh ./check-results.sh renderer shell-renderer.log
 # This API performs logout only. It does not request halt or reboot.
+phase=logout
 query org.kde.Shutdown /Shutdown org.kde.Shutdown.logout > logout.log 2>&1
 : > logout.requested
 deadline=$(($(date +%s) + 45))

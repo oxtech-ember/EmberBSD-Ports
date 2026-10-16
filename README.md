@@ -295,7 +295,8 @@ runtime behavior are validated.
   Its auditor rejects stale library providers, self-dependencies and package-managed
   ABI requirements missing from the selected payload before transfer.
   It also rejects serialized host interpreters and helper paths before copying archives.
-  Package-set and session-runner host checks pass. Full-session execution on
+  Package-set and session-runner host checks pass. The session runner checks the
+  system bus before launch and preserves query statuses and phases. Full-session execution on
   CM5 remains a separate gate, including normal startup and logout.
   [Current desktop providers](probes/plasma-mobile/toolkit/cross/desktop-providers.md)
   add an SDL3 controller adaptation with eight CM5 cases and a UBSan repeat.
