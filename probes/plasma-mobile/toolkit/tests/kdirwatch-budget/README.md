@@ -97,4 +97,24 @@ The candidate must retain capacity to open an ordinary file.
 A nested file in the later recursive branch must report content changes,
 rename, deletion, and recreation. Repeated events must not grow native descriptors.
 Watcher destruction must release path descriptors. The fixture then removes its own tree.
-The native result remains pending until this consumer runs against the installed package.
+## CM5 package acceptance
+
+The same AArch64 consumer ran on CM5 before and after the complete nb3 package.
+Its SHA256 is `ef9f1ca2dfbfc53ec7deb8aaa6b568f1c70ad2cec4f637c54550323d13612c98`.
+With nb2, descriptors increased from 4 to 1024. The exact budget assertion failed.
+With nb3, 1200 paths used 519 descriptors. Repeated polling events kept that count.
+Watcher destruction restored the original 4 descriptors. The ordinary file open,
+recursive change, rename, deletion, and recreation checks passed.
+
+The complete package has 207 payload files. Its SHA256 is
+`e7c123e4ddebd1d9e27edb3e64dc24ed56815518704dd553258406a6479dd3e0`.
+Installation verified those files, the full dependency graph, and the automatic mark.
+The public headers, API exports, and SONAME remained compatible with nb2.
+This is a per-watcher regression. It does not prove a process-wide descriptor
+reserve or a stable full Plasma session.
+
+GCC16 `-fanalyzer` passed the actual target translation unit. Clang Static Analyzer
+reported an inherited Qt connection-ownership warning; inspected ownership code
+contradicts that report. Target-preprocessed Cppcheck stops at the inherited BSD
+assertion header in both variants. This is an analysis limitation, not a clean
+full-unit result. The source fixtures above retain their separate analyzer scope.
