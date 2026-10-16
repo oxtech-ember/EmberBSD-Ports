@@ -117,6 +117,7 @@ Run the host tests with native Perl and Ruby:
 
 ```sh
 PERL=/path/to/native/perl /path/to/native/ruby ./host-test.rb
+/path/to/native/ruby ./xauthority-host.rb
 ```
 
 On macOS, do not use Apple's protected system interpreters. SIP hides their
@@ -128,7 +129,20 @@ fixtures, and reject a session that is shutting down. The property fixture requi
 the exact service, object, interface, and property. It rejects the former method
 call and an incorrect property name at that protocol boundary.
 
-Host result: 30 controls passed on macOS with native Perl 5.44 and Ruby 4.0.
+The Xauthority checks follow KWin 6.8.0 `src/xwayland/lib/xauthority.cpp`:
+`generateXauthorityFile` uses `QStandardPaths::RuntimeLocation`, not `TMPDIR`.
+The controller accepts a direct regular file in this session's runtime directory.
+Both private directories require current-user ownership and mode 0700.
+The file requires current-user ownership and mode 0600. No filename length is assumed.
+Symlinks, nested paths, traversal and paths outside the session are rejected.
+The checks use the full BSD `stat` mode, including the file type.
+The fixture never reads or records a real authentication cookie.
+
+Host result: 30 full-controller controls and 25 focused Xauthority controls pass
+on macOS with native Perl 5.44 and Ruby 4.0. The focused test runs the actual
+controller block with real BSD `stat` mode formatting. Only a foreign UID is
+modeled without changing ownership. The pinned previous runner fails on the
+correct KWin runtime path. These are host controls, not a native session result.
 The scripts passed shell, Perl and Ruby syntax checks. No C/C++ source changes
 are present in this test, so Cppcheck and compiled-code sanitizer coverage do
 not apply to this patch. Target execution and target memory analysis remain

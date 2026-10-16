@@ -96,11 +96,11 @@ Dir.mktmpdir('plasma-session-host-', '/tmp') do |temp|
   end
   %w[ready wrong_session old_method wrong_property].each do |mode|
     work = "#{temp}/#{mode}"
-    %w[runtime tmp].each { |dir| FileUtils.mkdir_p("#{work}/#{dir}") }
+    %w[runtime tmp].each { |dir| FileUtils.mkdir_p("#{work}/#{dir}", mode: 0o700) }
     FileUtils.cp(["#{source}/../plasma-desktop/layout.js", "#{source}/../plasma-desktop/check-results.sh"], work)
     File.write("#{work}/bus.log", '')
-    File.write("#{work}/xauthority", 'fixture')
-    FileUtils.mv("#{work}/xauthority", "#{work}/tmp/xauthority")
+    File.write("#{work}/runtime/xauth_fixture", 'fixture')
+    File.chmod(0o600, "#{work}/runtime/xauth_fixture")
     File.write("#{work}/timeout", "#!/bin/sh\nshift 3\nexec \"$@\"\n")
     File.write("#{work}/sleep", "#!/bin/sh\nexec /bin/sleep 0.02\n")
     File.write("#{work}/date", <<~RUBY)
@@ -114,7 +114,7 @@ Dir.mktmpdir('plasma-session-host-', '/tmp') do |temp|
       require 'socket'
       File.write('wrapper-arguments', ARGV.join("\n"))
       socket = UNIXServer.new(ENV.fetch('XDG_RUNTIME_DIR') + '/wayland-0')
-      File.write('display-env', "wayland-0\n:77\n" + ENV.fetch('TMPDIR') + "/xauthority\n")
+      File.write('display-env', "wayland-0\n:77\n" + ENV.fetch('XDG_RUNTIME_DIR') + "/xauth_fixture\n")
       sleep 0.01 until File.file?('logout.request')
       socket.close
       File.unlink(ENV.fetch('XDG_RUNTIME_DIR') + '/wayland-0')
