@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.5 2026/07/08 07:41:45 wiz Exp $
 
 DISTNAME=	xwayland-24.1.14
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	wayland
 MASTER_SITES=	${MASTER_SITE_XORG:=xserver/}
 EXTRACT_SUFX=	.tar.xz
@@ -35,6 +35,8 @@ PKG_FAIL_REASON+= "Xwayland requires the common native Wayland scanner"
 .endif
 
 .if ${OPSYS} == "NetBSD"
+# Shared root-owned socket directories must survive clear_tmp at boot.
+RCD_SCRIPTS+=	x11_runtime
 MESON_ARGS+=	-Dsecure-rpc=false
 .  if ${OPSYS_VERSION} < 100000
 CPPFLAGS+=	-D_OPENBSD_SOURCE # reallocarray

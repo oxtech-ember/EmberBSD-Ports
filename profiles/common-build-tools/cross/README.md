@@ -78,6 +78,12 @@ EMBERBSD_CROSS_BUILD_PYTHON=/absolute/python3.14
 Keep `mk.conf` and its executable `sort-c.sh` together. The profile uses
 one executable path to preserve C collation in pkgsrc's `TOOLS_SORT`.
 An `env LC_ALL=C sort` command loses its arguments in libtool PLIST expansion.
+The cross profile defaults `RCD_SCRIPTS_DIR` to `/etc/rc.d` for the target rc framework.
+An explicit directory override remains supported. Package configurations stay in `/usr/pkg/etc`.
+The `../tests/cross-rcd-path.rb` check queries the real recipe and tests both paths.
+pkgsrc defaults `PKG_RCD_SCRIPTS` to `NO`; installation does not start services.
+See the [Xwayland lifecycle](../../../probes/plasma-mobile/toolkit/recipes/wayland/xwayland/README.md#shared-socket-directories).
+
 Package scripts substitute target `/usr/bin/sort` through `_CROSS_FILES_SUBST`.
 The host wrapper path must never enter the installed scripts.
 The regression runs the real helper and checks every library entry:
