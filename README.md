@@ -101,12 +101,16 @@ runtime behavior are validated.
   Live daemon delivery, HDMI hotplug and the compositor remain separate checks.
   A [bounded V3D allocation trace](profiles/common-graphics/cross/v3d-bo-trace.md) supports KWin diagnostics.
   A [fixed-size BO probe](profiles/common-graphics/cross/v3d-bo-alloc.md) checks allocation and release without GPU submission.
-  MesaLib 26.2.4nb7 passes four V3D EGL lifecycles and all 39 upstream
-  invocations on CM5 with LLVM 23.1.3. One internal case skips; nine NIR cases
-  remain disabled. Plasma 6.8 produces visible containment pixels, then crashes
-  in the V3D BO cache. The current nb8 recipe initializes its missing mutex and
-  unwinds creation failures; source checks pass and package acceptance is pending.
-  This is not yet a stable Plasma session or physical HDMI presentation.
+  MesaLib 26.2.4nb8 passes installed V3D shader rejection, triangle pixels,
+  four EGL lifecycles and all 39 upstream invocations on CM5 with LLVM 23.1.3.
+  One internal case skips; nine NIR cases remain disabled.
+  The [BO cache mutex repair](profiles/common-graphics/tests/mesa-v3d-cache-mutex/README.md)
+  initializes the missing mutex and unwinds creation failures.
+  Normal installation verifies all 100 payload entries. The unchanged old
+  libgallium consumer passes after LLD 23 linking with preserved symbol versions.
+  Full Plasma remains unaccepted. A bounded startup D-Bus delay remains under
+  investigation; the shell responds after an additional wait and exits normally.
+  Physical HDMI presentation remains a separate gate.
   Adapted libdrm 2.4.134nb2, Wayland 1.26.0nb1 and wayland-protocols 1.49
   compose the common GCC16/Python315/Meson112/shared LLVM23 profile for EmberBSD/AArch64.
   An optional [PowerVR ICD](profiles/common-graphics/cross/powervr.md) retains
@@ -127,10 +131,10 @@ runtime behavior are validated.
   The full [Mesa package](profiles/common-graphics/cross/mesa-package.md) now
   installs normally and passes four llvmpipe/LLVM23 EGL pixel lifecycles and
   all 37 upstream invocations on Zero 3W; one internal case skips and nine
-  NIR cases remain disabled. The current [CM5 V3D package](profiles/common-graphics/cross/mesa-cm5.md)
+  NIR cases remain disabled. The earlier [CM5 V3D package](profiles/common-graphics/cross/mesa-cm5.md)
   passes hardware GLES 3.0 and desktop OpenGL 3.1 shader/pixel lifecycles,
   automatic platform discovery and all 38 selected upstream invocations.
-  The [LLVM23.1.3 migration](profiles/common-graphics/cross/mesa-llvm2313.md) passes renewed V3D/llvmpipe rendering and all 38 upstream invocations. One transient large-buffer allocation failure remains unresolved.
+  The [LLVM23.1.3 migration](profiles/common-graphics/cross/mesa-llvm2313.md) records its earlier 38-test V3D/llvmpipe scope. Current nb8 acceptance is described above.
   Same-device PRIME and EGLImage also pass on CM5 after OS lifetime repairs.
   HDMI presentation and Plasma remain separate gates.
   The nb2 XCB pkg-config correction preserves
