@@ -12,3 +12,4 @@ work.*/
 !/profiles/network-diagnostics/recipes/**/Makefile
 # Source patches must remain visible when user ignores match upstream filenames.
 !**/patches/patch-*
+!/probes/electron/*/Makefile

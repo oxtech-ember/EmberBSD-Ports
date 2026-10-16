@@ -45,11 +45,12 @@ Node runs on the host, its products are target artifacts.
 4. Build Electron's Node 24.21.0 and the JS toolchain parts on the
    host; compile native code with the cross compiler for
    `aarch64--netbsd`.
-5. Cross toolchain: upstream Chromium builds with Clang only
-   (`is_clang=true`, LLVM >= 22). The quintet GCC16 invariant does not
-   apply to this profile; use a current LLVM cross from
-   common-build-tools. This is the upstream-required compiler, not a
-   downgrade; record the justification in the build profile.
+5. Cross toolchain (owner decision 2026-10-16): the shared GCC16
+   cross toolchain (ember-gcc16-toolchain 16.2.0) with the shared
+   EmberBSD sysroot, like every other EmberBSD cross profile. The
+   upstream `is_clang` default is turned off and the resulting build
+   breaks are fixed by patches with recorded provenance; missing
+   modern capability is recorded and the port continues.
 
 ## Status and boundaries
 
