@@ -53,9 +53,11 @@ It records the selected inputs in `receipt.json` and file identities in
 `sysroot-files.json`. The destination must not exist before the command.
 
 Extraction preserves regular-file bytes and modes. Absolute target symlinks
-become relative links within this snapshot. Traversal, escaping links,
-duplicate non-directory members, unsupported entry types, corrupt xz, and
-data after the tar end marker fail the import. This is an isolated compiler
+become relative links within this snapshot. Separate base and comp sets can
+share a symlink only when its target and mode match exactly. Traversal,
+escaping links, conflicting members, repeated non-directory members within
+one archive, unsupported entry types, corrupt xz, and data after the tar end
+marker fail the import. This is an isolated compiler
 sysroot. Do not extract these sets over the host or a running target.
 
 The OS sets supply headers, startup objects, link libraries, and runtime

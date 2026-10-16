@@ -40,6 +40,7 @@ module EmberSysrootArchive
       path
     end
     archives.each do |archive|
+      archive_members = {}
       Open3.popen3('xz', '-dc', archive) do |input, output, error, thread|
         input.close
         Gem::Package::TarReader.new(ForwardReader.new(output)) do |tar|
@@ -51,7 +52,19 @@ module EmberSysrootArchive
             end
             relative = path.delete_prefix(root + '/')
             kind, mode = entry.header.typeflag, entry.header.mode & 07777
-            raise Error, 'Duplicate non-directory archive member: ' + relative if inventory.key?(relative) && kind != '5'
+            previous = inventory[relative]
+            if previous && kind != '5'
+              # Base and comp both list selected shared-library aliases. Keep
+              # only identical symlinks from separate archives. Repetition in
+              # one archive and all file/hardlink conflicts remain errors.
+              identical_alias = !archive_members.key?(relative) && kind == '2' &&
+                previous['type'] == 'symlink' && previous['mode'] == mode &&
+                previous['archive_link'] == entry.header.linkname
+              raise Error, 'Duplicate non-directory archive member: ' + relative unless identical_alias
+              archive_members[relative] = true
+              next
+            end
+            archive_members[relative] = true
             case kind
             when '5'
               FileUtils.mkdir_p(path)

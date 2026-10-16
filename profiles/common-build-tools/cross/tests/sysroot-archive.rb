@@ -64,6 +64,9 @@ Dir.mktmpdir('ember-sysroot-archive') do |dir|
     {name: 'lib/libc.so.12', type: '2', link: 'libc.so.12.229', mode: 0777},
     {name: 'usr/lib/libc.so.12', type: '2', link: '/lib/libc.so.12', mode: 0777},
     {name: 'usr/lib/libc.so', type: '2', link: 'libc.so.12', mode: 0777},
+    # The OS base/comp lists intentionally share selected library aliases.
+    {name: 'usr/lib/libproc.so', type: '2', link: 'libproc.so.1.0', mode: 0755},
+    {name: 'usr/lib/libproc.so.1.0', data: library, mode: 0555},
     # Both links precede their provider, which arrives in the other set.
     {name: 'usr/lib/crt-chain.o', type: '1', link: 'usr/lib/crt-forward.o'},
     {name: 'usr/lib/crt-forward.o', type: '1', link: './usr/lib/crt0.o'}
@@ -73,6 +76,7 @@ Dir.mktmpdir('ember-sysroot-archive') do |dir|
     {name: './usr/', type: '5', mode: 0755},
     {name: './usr/lib/', type: '5', mode: 0755},
     {name: './usr/include/', type: '5', mode: 0755},
+    {name: 'usr/lib/libproc.so', type: '2', link: 'libproc.so.1.0', mode: 0755},
     {name: 'usr/include/stdio.h', data: header, mode: 0444},
     {name: 'usr/include/stdio-alias.h', type: '2', link: 'stdio.h', mode: 0777},
     {name: 'usr/lib/crt0.o', data: startup, mode: 0644},
@@ -102,7 +106,8 @@ Dir.mktmpdir('ember-sysroot-archive') do |dir|
     check(inventory.fetch(name).fetch('type') == 'directory', 'incorrect shared directory inventory')
   end
   {'lib/libc.so.12' => 'libc.so.12.229', 'usr/lib/libc.so.12' => '../../lib/libc.so.12',
-   'usr/lib/libc.so' => 'libc.so.12', 'usr/include/stdio-alias.h' => 'stdio.h'}.each do |name, link|
+   'usr/lib/libc.so' => 'libc.so.12', 'usr/lib/libproc.so' => 'libproc.so.1.0',
+   'usr/include/stdio-alias.h' => 'stdio.h'}.each do |name, link|
     path = File.join(root, name)
     check(File.symlink?(path) && File.readlink(path) == link, 'incorrect normalized alias: ' + name)
     check(File.realpath(path).start_with?(root + '/'), 'alias resolves outside the target: ' + name)
@@ -116,7 +121,8 @@ Dir.mktmpdir('ember-sysroot-archive') do |dir|
     check(inventory.fetch('usr/lib/' + name).fetch('type') == 'hardlink', 'incorrect hardlink inventory')
   end
   unchanged.call
-  puts 'PASS: split sets preserve binary bytes, modes, directory entries, relative/absolute aliases and forward hardlink chains'
+  check(inventory.fetch('usr/lib/libproc.so').fetch('mode') == 0755, 'shared symlink mode was changed')
+  puts 'PASS: split sets preserve bytes, modes, directories, identical shared symlinks, aliases and forward hardlink chains'
 
   # Run hostile cases in their own process group. A regression must fail within
   # eight seconds and must not leave a blocked decompressor behind.
@@ -174,8 +180,25 @@ Dir.mktmpdir('ember-sysroot-archive') do |dir|
   check(!File.symlink?(partial_alias) || File.realpath(partial_alias) == rejected_root, 'partial alias points outside the target')
   invalid.call('duplicate-file', [{name: 'same', data: 'one'}, {name: 'same', data: 'two'}], /Duplicate non-directory/)
   invalid.call('duplicate-link', [{name: 'same', type: '2', link: 'target'}, {name: 'same', type: '2', link: 'other'}], /Duplicate non-directory/)
+  invalid.call('identical-link-twice-in-one-archive', [{name: 'same', type: '2', link: 'target'},
+    {name: 'same', type: '2', link: 'target'}], /Duplicate non-directory/)
   duplicate = write_xz(File.join(dir, 'duplicate-set.tar.xz'), tar_bytes([{name: 'lib/libc.so.12.229', data: 'other'}]))
   refuse.call('duplicate-between-sets', [base, duplicate], /Duplicate non-directory/)
+  identical_file = write_xz(File.join(dir, 'identical-file.tar.xz'), tar_bytes([{name: 'lib/libc.so.12.229', data: library, mode: 0555}]))
+  refuse.call('identical-file-between-sets', [base, identical_file], /Duplicate non-directory/)
+  wrong_target = write_xz(File.join(dir, 'wrong-link-target.tar.xz'),
+    tar_bytes([{name: 'usr/lib/libproc.so', type: '2', link: 'libproc.so.2.0', mode: 0755}]))
+  refuse.call('shared-link-with-another-target', [base, wrong_target], /Duplicate non-directory/)
+  wrong_mode = write_xz(File.join(dir, 'wrong-link-mode.tar.xz'),
+    tar_bytes([{name: 'usr/lib/libproc.so', type: '2', link: 'libproc.so.1.0', mode: 0777}]))
+  refuse.call('shared-link-with-another-mode', [base, wrong_mode], /Duplicate non-directory/)
+  repeated_alias = write_xz(File.join(dir, 'repeated-shared-alias.tar.xz'), tar_bytes([
+    {name: 'usr/lib/libproc.so', type: '2', link: 'libproc.so.1.0', mode: 0755},
+    {name: 'usr/lib/libproc.so', type: '2', link: 'libproc.so.1.0', mode: 0755}]))
+  refuse.call('shared-link-repeated-in-second-archive', [base, repeated_alias], /Duplicate non-directory/)
+  identical_hardlink = write_xz(File.join(dir, 'identical-hardlink.tar.xz'),
+    tar_bytes([{name: 'usr/lib/crt-forward.o', type: '1', link: './usr/lib/crt0.o'}]))
+  refuse.call('identical-hardlink-between-sets', [base, identical_hardlink], /Duplicate non-directory/)
   invalid.call('unresolved-hardlink', [{name: 'alias', type: '1', link: 'missing'}], /Unresolved or cyclic/)
   invalid.call('cyclic-hardlinks', [{name: 'one', type: '1', link: 'two'}, {name: 'two', type: '1', link: 'one'}], /Unresolved or cyclic/)
   {'character-device' => '3', 'block-device' => '4', 'fifo' => '6', 'pax-extension' => 'x'}.each do |label, type|
