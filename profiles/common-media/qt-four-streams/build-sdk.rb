@@ -61,6 +61,7 @@ unless native
     set(CMAKE_CXX_FLAGS_INIT "-B#{sysroot}/usr/pkg/gcc16/lib/gcc/x86_64--netbsd/16.2.0/ -isystem #{sysroot}/usr/pkg/gcc16/include/c++ -isystem #{sysroot}/usr/pkg/gcc16/include/c++/x86_64--netbsd -isystem #{sysroot}/usr/pkg/gcc16/include/c++/backward -D_NETBSD_SOURCE")
     set(CMAKE_EXE_LINKER_FLAGS_INIT "-L#{sysroot}/usr/pkg/gcc16/lib -Wl,-rpath,/usr/pkg/gcc16/lib")
     set(CMAKE_SHARED_LINKER_FLAGS_INIT "-L#{sysroot}/usr/pkg/gcc16/lib -Wl,-rpath,/usr/pkg/gcc16/lib")
+    set(CMAKE_MODULE_LINKER_FLAGS_INIT "-L#{sysroot}/usr/pkg/gcc16/lib -Wl,-rpath,/usr/pkg/gcc16/lib")
     set(CMAKE_FIND_ROOT_PATH #{sysroot})
     set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
     set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
@@ -197,6 +198,9 @@ selected.each do |component|
   else
     args = ['cmake', '-S', src, '-B', build, '-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release', '-DBUILD_SHARED_LIBS=ON', '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON', '-DCMAKE_INSTALL_PREFIX=' + (component.start_with?('qt') ? qt_prefix : install_prefix), '-DCMAKE_INSTALL_RPATH=' + (native ? [prefix + '/qt6/lib', prefix + '/lib', ENV.fetch('NATIVE_MEDIA_PREFIX', prefix) + '/lib', ENV.fetch('NATIVE_MEDIA_PREFIX', prefix) + '/lib/ffmpeg9'].join(';') : '/usr/pkg/qt6/lib;/usr/pkg/lib;/usr/pkg/lib/ffmpeg9;/usr/pkg/gcc16/lib'), '-DCMAKE_PREFIX_PATH=' + (native ? prefix + '/qt6;' + prefix : sysroot + '/usr/pkg/qt6;' + sysroot + '/usr/pkg')]
     args << '-DCMAKE_TOOLCHAIN_FILE=' + toolchain unless native
+    # CMake modules use a separate linker flag cache. Pin their C++ provider
+    # explicitly, including when a prior configure initialized an empty cache.
+    args << '-DCMAKE_MODULE_LINKER_FLAGS=-L' + sysroot + '/usr/pkg/gcc16/lib -Wl,-rpath,/usr/pkg/gcc16/lib' unless native
     args += ['-DCMAKE_C_COMPILER=/usr/local/bin/gcc', '-DCMAKE_CXX_COMPILER=/usr/local/bin/g++'] if native
     if native && ENV['NATIVE_EXTRA_PREFIX']
       extra = ENV.fetch('NATIVE_EXTRA_PREFIX')
