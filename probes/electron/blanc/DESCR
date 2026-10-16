@@ -1,0 +1,7 @@
+Blanc is an open-source desktop browser with a minimal Island
+interface, built-in ad and tracker blocking, and private tabs.
+Electron application; runs on the system electron44 runtime.
+
+Probe status: skeleton; blocked on the Electron runtime port.
+Internal acceptance build; the Blanc name and logo are trademarks of
+their owner and this package is not for redistribution.
