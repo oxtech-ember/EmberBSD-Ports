@@ -7,8 +7,11 @@ ordinary user. KWin uses a 1280x1024 virtual output. The test requires OpenGL
 with a V3D renderer, Xwayland, KSMServer, Activities, KDED and Plasma Desktop.
 It verifies readiness for 30 seconds and requests normal logout.
 
-This is a prepared target test. It has not run on CM5. Host fixtures test
-failure handling and orchestration only. They do not execute KDE or Mesa.
+The test reaches KWin, Xwayland, KSMServer, Activities and the default layout
+on CM5. Full-session acceptance fails: V3D buffer allocation returns ENOMEM,
+and the first shell liveness query exceeds five seconds. Cleanup requires
+SIGKILL. Normal logout is not yet accepted. Host fixtures test orchestration;
+they do not execute KDE or Mesa.
 
 ## Run on the target
 
@@ -145,5 +148,13 @@ modeled without changing ownership. The pinned previous runner fails on the
 correct KWin runtime path. These are host controls, not a native session result.
 The scripts passed shell, Perl and Ruby syntax checks. No C/C++ source changes
 are present in this test, so Cppcheck and compiled-code sanitizer coverage do
-not apply to this patch. Target execution and target memory analysis remain
+not apply to this patch. Native execution passes the Xauthority gate but
+fails later during full-session acceptance. Target memory analysis remains
 unperformed.
+
+The failing native run used kernel `93dc0e3167a2e1381c9c4971cf8e4ee00f282685`,
+Mesa 26.2.4nb8 and Xwayland 24.1.14nb3. A process-local DRM trace observed
+two failed 5,246,976-byte allocations with ENOMEM. The trace does not separate
+the global BO budget from DMA or GEM-handle allocation failure. The boot time
+remained unchanged, and temperature stayed below 66 degrees Celsius. This
+result is separate from the accepted bare Desktop capture and liveness test.
