@@ -45,7 +45,10 @@ module EmberSysrootArchive
         Gem::Package::TarReader.new(ForwardReader.new(output)) do |tar|
           tar.each do |entry|
             path = member_path.call(entry.full_name)
-            next if path == root
+            if path == root
+              raise Error, 'Archive root must be a directory' unless entry.header.typeflag == '5'
+              next
+            end
             relative = path.delete_prefix(root + '/')
             kind, mode = entry.header.typeflag, entry.header.mode & 07777
             raise Error, 'Duplicate non-directory archive member: ' + relative if inventory.key?(relative) && kind != '5'

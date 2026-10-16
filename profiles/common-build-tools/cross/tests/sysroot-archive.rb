@@ -156,6 +156,9 @@ Dir.mktmpdir('ember-sysroot-archive') do |dir|
   end
   invalid.call('traversal-member', [{name: '../outside-sentinel', data: 'changed'}], /Unsafe archive member/)
   invalid.call('absolute-member', [{name: sentinel, data: 'changed'}], /Unsafe archive member/)
+  invalid.call('root-regular-file', [{name: '.', data: 'ignored bytes'}], /root must be a directory/)
+  invalid.call('root-symlink', [{name: '.', type: '2', link: sentinel}], /root must be a directory/)
+  invalid.call('root-device', [{name: '.', type: '3'}], /root must be a directory/)
   invalid.call('escaping-relative-symlink', [{name: 'usr/lib/escape', type: '2', link: '../../../outside-sentinel'}], /link escapes/)
   invalid.call('escaping-absolute-symlink', [{name: 'lib/escape', type: '2', link: '/../../outside-sentinel'}], /link escapes/)
   invalid.call('escaping-relative-hardlink', [{name: 'escape', type: '1', link: '../outside-sentinel'}], /Unsafe archive member/)
