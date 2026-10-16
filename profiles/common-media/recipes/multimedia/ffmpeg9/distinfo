@@ -23,3 +23,4 @@ SHA1 (patch-zz-rtp-clock-state) = 827a635c3a59c51815a7fe7dca5eb0ab7b3d06ef
 SHA1 (patch-zz-rtp-open-cleanup) = 94787fcbde3089829e0811e6a9392068d7a2ec76
 SHA1 (patch-zz-sunau-current-api) = f725b4ff94b9b55ed44718c9f3b1585de0ffcca6
 SHA1 (patch-zz-sdp-range-bounds) = 4d217db7e755c7cf8476fd63b39fbfdae2109470
+SHA1 (patch-zz-v4l2-native-m2m) = 9e0c6b6e5c2f92b53fc436ac0693c9ae917f9e88

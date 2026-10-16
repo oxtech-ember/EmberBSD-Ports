@@ -1,0 +1,247 @@
+$NetBSD$
+
+Select the native V4L2 ABI for stateful M2M codecs.
+Probe codec formats in the same native header used by the implementation.
+Keep the Linux header path on Linux. Do not provide missing kernel APIs.
+Initialize the reference semaphore once before probing devices.
+Check sem_init failure. Destroy only a successfully initialized semaphore.
+The previous no-device unwind dereferenced an uninitialized NetBSD sem_t.
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+
+--- configure.orig
++++ configure
+@@ -3566,7 +3566,8 @@
+ vaapi_encode_deps="vaapi"
+ vulkan_1_4_deps="vulkan"
+ vulkan_encode_deps="vulkan"
+-v4l2_m2m_deps="linux_videodev2_h sem_timedwait"
++v4l2_m2m_deps="sem_timedwait"
++v4l2_m2m_deps_any="linux_videodev2_h sys_videoio_h"
+ 
+ bilateral_cuda_filter_deps="ffnvcodec"
+ bilateral_cuda_filter_deps_any="cuda_nvcc cuda_llvm"
+@@ -7640,22 +7641,26 @@
+ test_code cc linux/videodev2.h "struct v4l2_frmsizeenum vfse; vfse.discrete.width = 0;" && enable_sanitized struct_v4l2_frmivalenum_discrete
+ test_code cc sys/ioctl.h "int ioctl(int, int, ...)" && enable ioctl_posix
+ 
++check_headers sys/videoio.h
++test_code cc sys/videoio.h "struct v4l2_frmsizeenum vfse; vfse.discrete.width = 0;" && enable_sanitized struct_v4l2_frmivalenum_discrete
++
++v4l2_header=linux/videodev2.h
++enabled sys_videoio_h && v4l2_header=sys/videoio.h
++
+ # check V4L2 codecs available in the API
+ if enabled v4l2_m2m; then
+-    check_cc v4l2_m2m linux/videodev2.h "int i = V4L2_CAP_VIDEO_M2M_MPLANE | V4L2_CAP_VIDEO_M2M | V4L2_BUF_FLAG_LAST;"
+-    check_cc vc1_v4l2_m2m linux/videodev2.h "int i = V4L2_PIX_FMT_VC1_ANNEX_G;"
+-    check_cc mpeg1_v4l2_m2m linux/videodev2.h "int i = V4L2_PIX_FMT_MPEG1;"
+-    check_cc mpeg2_v4l2_m2m linux/videodev2.h "int i = V4L2_PIX_FMT_MPEG2;"
+-    check_cc mpeg4_v4l2_m2m linux/videodev2.h "int i = V4L2_PIX_FMT_MPEG4;"
+-    check_cc hevc_v4l2_m2m linux/videodev2.h "int i = V4L2_PIX_FMT_HEVC;"
+-    check_cc h263_v4l2_m2m linux/videodev2.h "int i = V4L2_PIX_FMT_H263;"
+-    check_cc h264_v4l2_m2m linux/videodev2.h "int i = V4L2_PIX_FMT_H264;"
+-    check_cc vp8_v4l2_m2m linux/videodev2.h "int i = V4L2_PIX_FMT_VP8;"
+-    check_cc vp9_v4l2_m2m linux/videodev2.h "int i = V4L2_PIX_FMT_VP9;"
++    check_cc v4l2_m2m "$v4l2_header" "int i = V4L2_CAP_VIDEO_M2M_MPLANE | V4L2_CAP_VIDEO_M2M | V4L2_BUF_FLAG_LAST;"
++    check_cc vc1_v4l2_m2m "$v4l2_header" "int i = V4L2_PIX_FMT_VC1_ANNEX_G;"
++    check_cc mpeg1_v4l2_m2m "$v4l2_header" "int i = V4L2_PIX_FMT_MPEG1;"
++    check_cc mpeg2_v4l2_m2m "$v4l2_header" "int i = V4L2_PIX_FMT_MPEG2;"
++    check_cc mpeg4_v4l2_m2m "$v4l2_header" "int i = V4L2_PIX_FMT_MPEG4;"
++    check_cc hevc_v4l2_m2m "$v4l2_header" "int i = V4L2_PIX_FMT_HEVC;"
++    check_cc h263_v4l2_m2m "$v4l2_header" "int i = V4L2_PIX_FMT_H263;"
++    check_cc h264_v4l2_m2m "$v4l2_header" "int i = V4L2_PIX_FMT_H264;"
++    check_cc vp8_v4l2_m2m "$v4l2_header" "int i = V4L2_PIX_FMT_VP8;"
++    check_cc vp9_v4l2_m2m "$v4l2_header" "int i = V4L2_PIX_FMT_VP9;"
+ fi
+ 
+-check_headers sys/videoio.h
+-test_code cc sys/videoio.h "struct v4l2_frmsizeenum vfse; vfse.discrete.width = 0;" && enable_sanitized struct_v4l2_frmivalenum_discrete
+ 
+ check_lib user32 "windows.h winuser.h" GetShellWindow -luser32
+ check_lib vfw32 "windows.h vfw.h" capCreateCaptureWindow -lvfw32
+--- libavcodec/v4l2_buffers.c.orig
++++ libavcodec/v4l2_buffers.c
+@@ -21,7 +21,7 @@
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+  */
+ 
+-#include <linux/videodev2.h>
++#include "v4l2_compat.h"
+ #include <sys/ioctl.h>
+ #include <sys/mman.h>
+ #include <unistd.h>
+--- libavcodec/v4l2_buffers.h.orig
++++ libavcodec/v4l2_buffers.h
+@@ -26,7 +26,7 @@
+ 
+ #include <stdatomic.h>
+ #include <stddef.h>
+-#include <linux/videodev2.h>
++#include "v4l2_compat.h"
+ 
+ #include "libavutil/frame.h"
+ #include "packet.h"
+--- /dev/null
++++ libavcodec/v4l2_compat.h
+@@ -0,0 +1,33 @@
++/*
++ * Native V4L2 header selection.
++ *
++ * This file is part of FFmpeg.
++ *
++ * FFmpeg is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * FFmpeg is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with FFmpeg; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
++ */
++
++#ifndef AVCODEC_V4L2_COMPAT_H
++#define AVCODEC_V4L2_COMPAT_H
++
++#include "config.h"
++
++#if HAVE_SYS_VIDEOIO_H
++#include <sys/types.h>
++#include <sys/videoio.h>
++#else
++#include <linux/videodev2.h>
++#endif
++
++#endif /* AVCODEC_V4L2_COMPAT_H */
+--- libavcodec/v4l2_context.c.orig
++++ libavcodec/v4l2_context.c
+@@ -21,7 +21,7 @@
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+  */
+ 
+-#include <linux/videodev2.h>
++#include "v4l2_compat.h"
+ #include <sys/ioctl.h>
+ #include <sys/mman.h>
+ #include <unistd.h>
+--- libavcodec/v4l2_context.h.orig
++++ libavcodec/v4l2_context.h
+@@ -25,7 +25,7 @@
+ #define AVCODEC_V4L2_CONTEXT_H
+ 
+ #include <stdint.h>
+-#include <linux/videodev2.h>
++#include "v4l2_compat.h"
+ 
+ #include "libavutil/pixfmt.h"
+ #include "libavutil/frame.h"
+--- libavcodec/v4l2_fmt.c.orig
++++ libavcodec/v4l2_fmt.c
+@@ -21,7 +21,7 @@
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+  */
+ 
+-#include <linux/videodev2.h>
++#include "v4l2_compat.h"
+ #include <search.h>
+ #include "v4l2_fmt.h"
+ 
+--- libavcodec/v4l2_m2m.c.orig
++++ libavcodec/v4l2_m2m.c
+@@ -21,7 +21,7 @@
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+  */
+ 
+-#include <linux/videodev2.h>
++#include "v4l2_compat.h"
+ #include <sys/ioctl.h>
+ #include <sys/mman.h>
+ #include <unistd.h>
+@@ -70,8 +70,6 @@
+     s->capture.done = s->output.done = 0;
+     s->capture.name = "capture";
+     s->output.name = "output";
+-    atomic_init(&s->refcount, 0);
+-    sem_init(&s->refsync, 0, 0);
+ 
+     memset(&cap, 0, sizeof(cap));
+     ret = ioctl(s->fd, VIDIOC_QUERYCAP, &cap);
+@@ -253,7 +251,8 @@
+     V4L2m2mContext *s = context;
+ 
+     ff_v4l2_context_release(&s->capture);
+-    sem_destroy(&s->refsync);
++    if (s->refsync_initialized)
++        sem_destroy(&s->refsync);
+ 
+     if (s->fd >= 0)
+         close(s->fd);
+@@ -327,6 +326,8 @@
+ 
+ int ff_v4l2_m2m_create_context(V4L2m2mPriv *priv, V4L2m2mContext **s)
+ {
++    int ret;
++
+     *s = av_refstruct_alloc_ext(sizeof(**s), 0, NULL,
+                                 &v4l2_m2m_destroy_context);
+     if (!*s)
+@@ -341,6 +342,14 @@
+     priv->context->output.num_buffers  = priv->num_output_buffers;
+     priv->context->self_ref = priv->context;
+     priv->context->fd = -1;
++    atomic_init(&(*s)->refcount, 0);
++    if (sem_init(&(*s)->refsync, 0, 0) < 0) {
++        ret = AVERROR(errno);
++        av_refstruct_unref(&priv->context);
++        *s = NULL;
++        return ret;
++    }
++    (*s)->refsync_initialized = 1;
+ 
+     priv->context->frame = av_frame_alloc();
+     if (!priv->context->frame) {
+--- libavcodec/v4l2_m2m.h.orig
++++ libavcodec/v4l2_m2m.h
+@@ -27,7 +27,7 @@
+ #include <semaphore.h>
+ #include <unistd.h>
+ #include <dirent.h>
+-#include <linux/videodev2.h>
++#include "v4l2_compat.h"
+ 
+ #include "libavcodec/avcodec.h"
+ #include "v4l2_context.h"
+@@ -51,6 +51,7 @@
+     /* dynamic stream reconfig */
+     AVCodecContext *avctx;
+     sem_t refsync;
++    int refsync_initialized;
+     atomic_uint refcount;
+     int reinit;
+ 
+--- libavcodec/v4l2_m2m_dec.c.orig
++++ libavcodec/v4l2_m2m_dec.c
+@@ -21,7 +21,7 @@
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+  */
+ 
+-#include <linux/videodev2.h>
++#include "v4l2_compat.h"
+ #include <sys/ioctl.h>
+ #include "libavutil/pixfmt.h"
+ #include "libavutil/pixdesc.h"
+--- libavcodec/v4l2_m2m_enc.c.orig
++++ libavcodec/v4l2_m2m_enc.c
+@@ -21,7 +21,7 @@
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+  */
+ 
+-#include <linux/videodev2.h>
++#include "v4l2_compat.h"
+ #include <sys/ioctl.h>
+ #include <search.h>
+ #include "encode.h"

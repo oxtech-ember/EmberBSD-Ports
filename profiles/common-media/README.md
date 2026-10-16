@@ -1,5 +1,9 @@
 # Common multimedia source packages
 
+The [CIX P1 media prerequisites](cix-vpu/README.md) add native stateful V4L2
+M2M header selection and checked failure cleanup. Cross-build diagnostics
+pass; the CIX hardware driver and H.265 execution remain unverified.
+
 The [four-stream Qt CPU profile](qt-four-streams/README.md) cross-builds
 Qt 6.12 for EmberBSD amd64 with GCC16 and the common FFmpeg9 provider.
 It adds a bounded raster viewer, runtime payload checks and an independent
@@ -77,7 +81,7 @@ provider overrides and command-line replacement of configure arguments.
 ## Features and provenance
 
 The source pin comes from [the original stable release](https://ffmpeg.org/download.html)
-and [sources.tsv](sources.tsv). SHA256, BLAKE2s, SHA512, size and the 20
+and [sources.tsv](sources.tsv). SHA256, BLAKE2s, SHA512, size and the 21
 RCS-filtered patch SHA1 hashes are recorded. This is HTTPS/hash verification,
 not a claim of release-signature verification. The recipe base is pkgsrc
 `fff4deb639a1a640476203c80f752fb77b6cb14b`, `multimedia/ffmpeg9`.

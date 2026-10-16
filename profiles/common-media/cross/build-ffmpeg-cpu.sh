@@ -68,7 +68,7 @@ case "$expected" in *[!0-9a-f]*) echo 'Invalid archive hash.' >&2; exit 2;; esac
 printf '%s  %s\n' "$expected" "$archive" | sha256sum -c -
 # Verify the complete native patch inventory before source preparation.
 set -- "$recipe/patches/"patch-*
-[ "$#" = 20 ]
+[ "$#" = 21 ]
 for patch_file do
     name=$(basename "$patch_file")
     expected=$(awk -v name="($name)" '$1 == "SHA1" && $2 == name { print $4 }' "$recipe/distinfo")
