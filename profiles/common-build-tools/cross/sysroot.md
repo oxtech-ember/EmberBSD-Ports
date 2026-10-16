@@ -30,6 +30,51 @@ regression tests remain necessary. Reassess already-built consumers after
 changing any selected provider. A successful package build does not certify
 an entire base release.
 
+## Pinned AArch64 base and comp imports
+
+The OS owns the [AArch64 set builder and release contract](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/release/aarch64-sysroot.md).
+Select a published `build-FULL_SOURCE_COMMIT-aarch64-sysroot` release from
+`oxtech-ember/EmberBSD`. Record its full source commit and the SHA256 of its
+`manifest.json` through a trusted channel. A checksum downloaded beside a
+modified manifest does not establish that trust.
+
+On the Linux CI host, install Ruby with its standard library, curl, and xz.
+Run the importer with a new absolute work directory:
+
+```sh
+ruby profiles/common-build-tools/cross/fetch-sysroot.rb \
+    FULL_SOURCE_COMMIT TRUSTED_MANIFEST_SHA256 /absolute/new-sdk-work
+```
+
+The importer verifies the manifest pin, repository, architecture, source
+identity, set hashes, build profile, and required target qualification.
+It extracts `base.tar.xz` and `comp.tar.xz` into `new-sdk-work/sysroot`.
+It records the selected inputs in `receipt.json` and file identities in
+`sysroot-files.json`. The destination must not exist before the command.
+
+Extraction preserves regular-file bytes and modes. Absolute target symlinks
+become relative links within this snapshot. Traversal, escaping links,
+duplicate non-directory members, unsupported entry types, corrupt xz, and
+data after the tar end marker fail the import. This is an isolated compiler
+sysroot. Do not extract these sets over the host or a running target.
+
+The OS sets supply headers, startup objects, link libraries, and runtime
+providers from one fork build. They do not supply a Linux cross compiler or
+the Ports GCC16 package. Add the selected GCC16 target headers and runtime
+through the [cross compiler profile](../../development-toolchain/cross/README.md)
+and record their separate provenance. Keep the original OS snapshot intact.
+The set profile uses the in-tree GCC12 bootstrap; GCC16 consumer checks do
+not mean that the base OS was compiled with GCC16.
+
+Run the archive extractor regression on the Linux host:
+
+```sh
+ruby profiles/common-build-tools/cross/tests/sysroot-archive.rb
+```
+
+The regression covers archive mechanics and hostile inputs. Actual set and
+target acceptance belongs to the selected release's bound qualification.
+
 ## Verified libc repair, 2026-10-09
 
 A graphics cross sysroot contained the accepted fork's shared libc in

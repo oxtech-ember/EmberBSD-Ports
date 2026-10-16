@@ -1,5 +1,10 @@
 # Current common build tools
 
+The [sysroot import contract](cross/sysroot.md#pinned-aarch64-base-and-comp-imports)
+provides a pinned-manifest importer for OS-owned AArch64 `base` and `comp`
+releases. It verifies provenance and hashes before isolated extraction.
+The GCC16 compiler and target package remain separate inputs.
+
 This profile prepares one common Python 3.15.0, Meson 1.12.1 and matching
 LLVM/Clang/LLD 23.1.3 with upstream lit and [Perl 5.44](cross/perl.md) for the
 GCC 16 / LLVM 23 / Mesa 26 dependency closure. The [Python package](python.md)

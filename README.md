@@ -183,7 +183,9 @@ runtime behavior are validated.
   preserve all thirteen raster formats, metadata and thumbnailer payload.
   Four CM5 cycles pass complete and incremental decoding with pixel checks.
   The [sysroot rules](profiles/common-build-tools/cross/sysroot.md) preserve
-  fork libc provenance and reject divergent shared-library aliases.
+  fork libc provenance and reject divergent shared-library aliases. The
+  pinned-manifest importer verifies OS-owned AArch64 base/comp releases and
+  extracts an isolated sysroot for external CI. Compiler packages are separate.
   The [librsvg 2.63.2 consumer](profiles/common-graphics/cross/librsvg.md)
   passes four CM5 CPU cycles with SVG/PNG pixels, dynamic loading, AVIF,
   text and typelib invocation. Its corrected isolated bundle includes
