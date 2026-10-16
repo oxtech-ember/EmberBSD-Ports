@@ -33,6 +33,11 @@ an entire base release.
 ## Pinned AArch64 base and comp imports
 
 The OS owns the [AArch64 set builder and release contract](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/release/aarch64-sysroot.md).
+Its complete snapshot at `6dd57144183678938164b4c2dcfc370cdbde8473`
+passes GCC16 C11/C++20, shared/static libc CAS and GNU M4 checks in AArch64
+QEMU. The owning guide records hashes and scope. Binary publication remains
+pending; a retained CI candidate does not establish a public download channel.
+
 Select a published `build-FULL_SOURCE_COMMIT-aarch64-sysroot` release from
 `oxtech-ember/EmberBSD`. Record its full source commit and the SHA256 of its
 `manifest.json` through a trusted channel. A checksum downloaded beside a
@@ -107,7 +112,7 @@ identify the selected archives. Temporary execution preserved source hashes
 and removed its remote files. No base installation or reboot was performed.
 
 This establishes the repaired static provider and consistent shared aliases.
-Eight sampled base headers matched the inspected fork, but the entire header
-tree and base userland have not been rebuilt and accepted together. A complete
-current EmberBSD sysroot/base release remains outstanding; these bounded
-results must not be described as that release or as GPU/NPU acceleration.
+Eight sampled base headers matched the inspected fork. That repair did not
+rebuild the entire header tree and base userland together. Its existing SDK
+remains separate from the newer pinned snapshot above. Public binary release
+of that snapshot remains pending. Neither receipt establishes GPU/NPU acceleration.
