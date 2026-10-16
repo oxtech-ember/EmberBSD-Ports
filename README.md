@@ -94,12 +94,23 @@ runtime behavior are validated.
 - [Common graphics source packages](profiles/common-graphics/README.md):
   [libudev-bsd render-node discovery](profiles/common-graphics/cross/libudev-render-nodes.md)
   repairs DRM classification for KWin 6.8 with a real-source regression.
-  Target enumeration and the compositor remain separate checks.
+  [Native DRM change events](profiles/common-graphics/cross/libudev-drm-change.md)
+  preserve the ndevd wire format and pass the KWin `drm_minor` filter in source contracts.
+  Native CM5 contracts also pass through a real `SOCK_SEQPACKET` pair.
+  Three negative controls reproduce the old parser, filter and record-size failures.
+  Live daemon delivery, HDMI hotplug and the compositor remain separate checks.
   A [bounded V3D allocation trace](profiles/common-graphics/cross/v3d-bo-trace.md) supports KWin diagnostics.
   A [fixed-size BO probe](profiles/common-graphics/cross/v3d-bo-alloc.md) checks allocation and release without GPU submission.
-  The current MesaLib 26.2.4nb7 recipe adds a Wayland allocation-failure repair
-  to the common V3D/VirGL/softpipe/llvmpipe/Zink package. Its source contracts pass;
-  package and target acceptance remain separate. The installed CM5 package is still nb5.
+  MesaLib 26.2.4nb8 passes installed V3D shader rejection, triangle pixels,
+  four EGL lifecycles and all 39 upstream invocations on CM5 with LLVM 23.1.3.
+  One internal case skips; nine NIR cases remain disabled.
+  The [BO cache mutex repair](profiles/common-graphics/tests/mesa-v3d-cache-mutex/README.md)
+  initializes the missing mutex and unwinds creation failures.
+  Normal installation verifies all 100 payload entries. The unchanged old
+  libgallium consumer passes after LLD 23 linking with preserved symbol versions.
+  Full Plasma remains unaccepted. A bounded startup D-Bus delay remains under
+  investigation; the shell responds after an additional wait and exits normally.
+  Physical HDMI presentation remains a separate gate.
   Adapted libdrm 2.4.134nb2, Wayland 1.26.0nb1 and wayland-protocols 1.49
   compose the common GCC16/Python315/Meson112/shared LLVM23 profile for EmberBSD/AArch64.
   An optional [PowerVR ICD](profiles/common-graphics/cross/powervr.md) retains
@@ -120,10 +131,10 @@ runtime behavior are validated.
   The full [Mesa package](profiles/common-graphics/cross/mesa-package.md) now
   installs normally and passes four llvmpipe/LLVM23 EGL pixel lifecycles and
   all 37 upstream invocations on Zero 3W; one internal case skips and nine
-  NIR cases remain disabled. The current [CM5 V3D package](profiles/common-graphics/cross/mesa-cm5.md)
+  NIR cases remain disabled. The earlier [CM5 V3D package](profiles/common-graphics/cross/mesa-cm5.md)
   passes hardware GLES 3.0 and desktop OpenGL 3.1 shader/pixel lifecycles,
   automatic platform discovery and all 38 selected upstream invocations.
-  The [LLVM23.1.3 migration](profiles/common-graphics/cross/mesa-llvm2313.md) passes renewed V3D/llvmpipe rendering and all 38 upstream invocations. One transient large-buffer allocation failure remains unresolved.
+  The [LLVM23.1.3 migration](profiles/common-graphics/cross/mesa-llvm2313.md) records its earlier 38-test V3D/llvmpipe scope. Current nb8 acceptance is described above.
   Same-device PRIME and EGLImage also pass on CM5 after OS lifetime repairs.
   HDMI presentation and Plasma remain separate gates.
   The nb2 XCB pkg-config correction preserves

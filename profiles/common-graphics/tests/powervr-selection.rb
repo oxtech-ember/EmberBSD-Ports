@@ -39,7 +39,7 @@ end
 plain = query.call('plain', 'llvm x11 wayland', 'EMBERBSD_MESA_GENERATORS=/missing')
 check.call(plain.fetch('PKG_FAIL_REASON').empty? && !plain.fetch('MESON_ARGS').include?('vulkan-drivers=imagination') && plain.fetch('PLIST.powervr').empty?, 'default GL recipe does not require PowerVR tools')
 pvr = query.call('powervr', 'llvm x11 wayland powervr')
-check.call(pvr.fetch('PKG_FAIL_REASON').empty? && pvr.fetch('PKGNAME') == 'MesaLib-26.2.4nb7', 'PowerVR is an ordinary MesaLib package option')
+check.call(pvr.fetch('PKG_FAIL_REASON').empty? && pvr.fetch('PKGNAME') == 'MesaLib-26.2.4nb8', 'PowerVR is an ordinary MesaLib package option')
 %w[-Dgallium-drivers=v3d,virgl,softpipe,llvmpipe,zink -Dplatforms=x11,wayland -Dllvm=enabled -Dshared-llvm=enabled -Dvulkan-drivers=imagination -Dmesa-clc=system -Dprecomp-compiler=system -Dimagination-srv=false].each do |option|
     check.call(pvr.fetch('MESON_ARGS').split.include?(option), "keeps #{option}")
 end

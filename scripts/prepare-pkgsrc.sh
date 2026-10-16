@@ -195,7 +195,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             sysutils/seatd) approved='patch-common_drm.c patch-common_terminal.c patch-wscons-keyboard-restore' ;;
             x11/libdisplay-info) approved='patch-meson.build' ;;
             devel/libopeninput) approved='patch-src_wscons.c patch-src_wscons.h patch-wscons-absolute-pointer' ;;
-            devel/libudev-bsd) approved='patch-evdev-sysctl patch-render-nodes' ;;
+            devel/libudev-bsd) approved='patch-evdev-sysctl patch-render-nodes patch-udev-drm-change' ;;
             x11/xorgproto|devel/input-headers|graphics/libliftoff) approved='' ;;
         esac
         case "$recipe" in

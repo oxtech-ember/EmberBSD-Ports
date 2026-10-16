@@ -86,8 +86,8 @@ The controller checks these actual D-Bus interfaces:
 - `org.kde.KSMServerInterface.isShuttingDown` and `currentSession` at `/KSMServer`.
 - `org.kde.ActivityManager.Activities.CurrentActivity` and `ListActivities` at
   `/ActivityManager/Activities`. The current activity must have a nonzero UUID.
-- `org.kde.PlasmaShell.shell` and `evaluateScript` at `/PlasmaShell`.
-  The shared Desktop check requires the default desktop, panel and six applet models.
+- `org.freedesktop.DBus.Properties.Get` reads `shell` on `org.kde.PlasmaShell` at `/PlasmaShell`.
+  `evaluateScript` checks the default desktop, panel and six applet models.
 - `org.kde.KWin.supportInformation` at `/KWin`. The renderer must remain OpenGL/V3D.
 
 All readiness service owners must remain stable. Xwayland must be a live child
@@ -124,9 +124,11 @@ process environments from `ps`. The fixtures cover rejected arguments, exit
 status, deadlines, detached children, forced cleanup, inventory failure and
 inventory timeout after launch. They keep an unrelated process alive. They
 also test full-session readiness and normal logout with explicit protocol
-fixtures, and reject a session that is shutting down.
+fixtures, and reject a session that is shutting down. The property fixture requires
+the exact service, object, interface, and property. It rejects the former method
+call and an incorrect property name at that protocol boundary.
 
-Host result: 24 controls passed on macOS with native Perl 5.44 and Ruby 4.0.
+Host result: 30 controls passed on macOS with native Perl 5.44 and Ruby 4.0.
 The scripts passed shell, Perl and Ruby syntax checks. No C/C++ source changes
 are present in this test, so Cppcheck and compiled-code sanitizer coverage do
 not apply to this patch. Target execution and target memory analysis remain

@@ -59,6 +59,26 @@ An absent socket did not reproduce a null-pointer crash with native Qt 6.12.
 The connection guard also checks the nullable interface before use.
 The test does not claim to exercise every transport-disconnection timing window.
 
+## KDED runtime helper path
+
+```sh
+ruby kded-runtime-path.rb /absolute/distfiles /absolute/new-output
+```
+
+The KDED 6.31.0nb1 recipe separates its runtime helper from native build tools.
+A cross build uses `KDE_INSTALL_FULL_LIBEXECDIR_KF/kconf_update` on the target.
+Native builds retain the upstream `KF6::kconf_update` target-file selection.
+KConfig still installs the target helper and supplies native tools for code generation.
+
+The test verifies the archive and patch hashes before applying the patch.
+It evaluates the real `src/CMakeLists.txt` with external framework targets and generators doubled.
+The baseline embeds the imported host executable in three cross configurations.
+The patched source selects the target path with the default prefix, a prefix with spaces,
+and a separate libexec directory. Native target selection passes in both variants.
+The generated compilation database contains the actual `kded.cpp` target.
+This is a CMake source contract. It does not compile KDED or execute its target helper.
+No C++ implementation changes are involved. Package and target execution remain separate checks.
+
 ## Installed CM5 checks
 
 Workspace 6.8.0nb3 and KCoreAddons 6.31.0nb2 pass installed package checks for 6308 files.
@@ -68,3 +88,21 @@ The cross-built upstream KDirWatch default and Stat suites each pass all 19 case
 The default suite uses the native Qt/kqueue backend. The Stat suite checks the existing fallback.
 These are component checks. A later desktop launch still reports descriptor exhaustion in child services.
 The current tests do not establish full-session resource stability.
+
+## Installed KDED helper check
+
+```sh
+timeout 30 sh kded-runtime-path.sh /absolute/new-output
+```
+
+Run as the desktop user with installed KDED and KConfig. The optional second argument is the package prefix.
+The check uses the offscreen Qt platform and new HOME/XDG directories.
+It invokes `kded6 --check` with a private version-6 update script.
+The script writes a marker through the actual target `kconf_update` process.
+The runner checks that marker because upstream KDED returns zero even when helper execution fails.
+On CM5, the old package fails this check because it embeds the host build path.
+The full 6.31.0nb1 package passes the same private update under an ordinary user.
+Its 22 installed files, automatic mark and reverse dependencies are verified.
+This accepts the runtime helper path, not all KDED modules or a full desktop.
+It does not contact the desktop bus or use the user's configuration.
+Keep the output directory as evidence until the result is reviewed.

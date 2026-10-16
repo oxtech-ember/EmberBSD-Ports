@@ -12,15 +12,15 @@ done
 export PATH=/usr/pkg/gcc16/bin:/usr/pkg/bin:/usr/pkg/sbin:/bin:/usr/bin:/sbin:/usr/sbin
 unset PYTHONHOME PYTHONPATH LD_LIBRARY_PATH LD_PRELOAD
 mkdir "$work"
-pkg_info -e py314-llvm-lit-23.1.3
-pkg_admin check py314-llvm-lit > "$work/package-integrity.txt"
-metadata=/usr/pkg/lib/python3.14/site-packages/lit-23.1.3.dev0.dist-info
+pkg_info -e py315-llvm-lit-23.1.3nb1
+pkg_admin check py315-llvm-lit > "$work/package-integrity.txt"
+metadata=/usr/pkg/lib/python3.15/site-packages/lit-23.1.3.dev0.dist-info
 grep -Fx 'Version: 23.1.3.dev0' "$metadata/METADATA"
 grep -Fx 'Root-Is-Purelib: true' "$metadata/WHEEL"
 grep -Fx 'Tag: py3-none-any' "$metadata/WHEEL"
 test -s "$metadata/licenses/LICENSE.TXT"
 for command in lit llvm-lit; do
-    head -1 "/usr/pkg/bin/$command" | grep -Fx '#!/usr/pkg/bin/python3.14'
+    head -1 "/usr/pkg/bin/$command" | grep -Fx '#!/usr/pkg/bin/python3.15'
     "$command" --version | tee "$work/$command-version.txt"
     grep -q '23.1.3dev' "$work/$command-version.txt"
 done

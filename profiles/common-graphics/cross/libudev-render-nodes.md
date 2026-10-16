@@ -1,8 +1,10 @@
 # DRM render-node discovery
 
-The libudev-bsd 0.7.0.1nb2 recipe classifies decimal `/dev/dri/renderD*`
+The libudev-bsd 0.7.0.1nb3 recipe classifies decimal `/dev/dri/renderD*`
 paths as DRM devices. It selects the existing DRM metadata handler.
-Primary `card*` classification is unchanged. The public ABI is unchanged. The same package also repairs the existing
+Both primary and render nodes now expose `drm_minor`.
+The [native change-event contract](libudev-drm-change.md) covers monitor delivery.
+The public ABI is unchanged. The same package also repairs the existing
 evdev feature query. It initializes the sysctl buffer length and caches
 only a complete successful integer result. Errors and incorrect result
 lengths remain retryable. Partial output cannot enable evdev filtering.
@@ -55,7 +57,7 @@ scanner or kernel. A sanitizer run is not a Valgrind Memcheck result.
 Cross-build `tests/libudev-render-enumerate.c` against the EmberBSD sysroot
 and its packaged libudev. Use the [common cross configuration](profile.md).
 Link with `-ludev` and the normal `/usr/pkg/lib` runtime search path.
-Install the complete nb2 package through pkgsrc tools before acceptance.
+Install the complete selected package through pkgsrc tools before acceptance.
 Run the probe as the intended compositor user without loader overrides:
 
 ```sh

@@ -1,5 +1,32 @@
 # Installed Mesa V3D on CM5
 
+## Current package acceptance
+
+MesaLib 26.2.4nb7 and LLVM 23.1.3 pass installed-package acceptance on CM5
+with kernel `93dc0e3167a2` and base `f76133ff69a5`. The matching four modules
+remain installed. QtBase 6.12.0nb1 is the common Qt provider.
+All 39 upstream invocations pass, including Zink. Utility `Cache.List` skips
+internally and nine NIR cases remain disabled. Four V3D EGL lifecycles pass
+shader rejection and triangle pixels at 16x16. The bounded 39-second run
+records 64.758–67.506 degrees C without undervoltage or throttling.
+This is not sustained-load acceptance or Vulkan conformance.
+
+Plasma 6.8 selects V3D and produces a decoded 320x256 containment capture
+with 81,920 opaque pixels. It then fails the session-liveness check with
+SIGSEGV in `v3d_bo_alloc`. The native core shows a zeroed BO-cache mutex
+and already-unlinked cached BO links. The pinned source omits that mutex's
+initialization. The [nb8 lifecycle repair](../tests/mesa-v3d-cache-mutex/README.md)
+passes source regressions; its package and hardware repeat remain pending.
+A visible capture does not establish a complete desktop or HDMI scanout.
+
+The nb7 package SHA256 is
+`665f5b69e33260b124a84a72ccd637553528eb1e98b368ef0c28ca46bfd04278`.
+Its acceptance bundle SHA256 is
+`73de94010a461c3e5971dcf171efb4b77b9c9325e2a7be9ddb4a93a2857e053a`.
+Earlier checks below retain their exact package and hardware scope.
+
+## Initial V3D package
+
 MesaLib 26.2.4nb3 enables V3D in the same package as VirGL, softpipe and
 LLVM23 llvmpipe. libdrm 2.4.134nb2 maps EmberBSD's immutable platform metadata
 to the existing public DRM platform API. It requires no DRM master, primary

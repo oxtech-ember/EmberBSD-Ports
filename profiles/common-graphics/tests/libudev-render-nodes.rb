@@ -14,7 +14,7 @@ abort 'libudev-bsd 0.7.0.1 archive SHA256 mismatch' unless Digest::SHA256.file(a
 FileUtils.mkdir_p(work)
 tests = File.realpath(__dir__)
 recipe = File.expand_path('../recipes/devel/libudev-bsd', tests)
-patches = %w[patch-evdev-sysctl patch-render-nodes].map do |name|
+patches = %w[patch-evdev-sysctl patch-render-nodes patch-udev-drm-change].map do |name|
   path = File.join(recipe, 'patches', name)
   patch_sum = File.read(File.join(recipe, 'distinfo'))[/^SHA1 \(#{Regexp.escape(name)}\) = ([a-f0-9]{40})$/, 1]
   abort "patch SHA1 mismatch: #{name}" unless Digest::SHA1.file(path).hexdigest == patch_sum

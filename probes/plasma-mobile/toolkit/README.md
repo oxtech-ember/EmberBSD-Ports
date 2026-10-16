@@ -24,6 +24,11 @@ public consumer passes on CM5: 145 contended mutexes keep the descriptor count
 at three, instead of exhausting the old library's 1024-descriptor limit.
 The complete desktop session remains outside this acceptance.
 
+The NetBSD [KDirWatch descriptor budget](tests/kdirwatch-budget/README.md)
+uses the existing Stat backend when unique Qt paths reach half the finite soft
+descriptor limit. Actual-source baseline, boundary, failure and sanitizer tests
+pass. Real directory-tree and installed-library acceptance remain pending.
+
 ## Prepare the source tree
 
 ```sh
@@ -174,7 +179,8 @@ PulseAudioQt 1.9.0. The Workspace recipe declares its notifications QML provider
 Seven installed component tests and a real QML import pass on CM5.
 Actual sound output and full-session integration remain separate requirements.
 [KDE runtime source contracts](tests/runtime-source-contracts/README.md) cover
-helper argument lifetime, D-Bus errors and failed file-watcher registration.
+helper argument lifetime, D-Bus errors, failed file-watcher registration, and
+KDED target helper paths in cross builds.
 Workspace nb3 and KCoreAddons nb2 pass four helper and 38 filesystem-event cases on CM5.
 [Workspace configuration checks](tests/workspace-config.md) verify menu installation
 and preserve local edits during removal and reinstallation.

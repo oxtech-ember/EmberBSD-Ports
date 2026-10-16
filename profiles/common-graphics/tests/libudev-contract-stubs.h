@@ -10,6 +10,7 @@ UNUSED_HANDLER(create_touchscreen_handler)
 UNUSED_HANDLER(create_sysmouse_handler)
 UNUSED_HANDLER(create_kbdmux_handler)
 UNUSED_HANDLER(create_drm_handler)
+UNUSED_HANDLER(create_fido_handler)
 UNUSED_HANDLER(create_net_handler)
 
 const char *

@@ -19,3 +19,6 @@ SHA1 (patch-src_gallium_drivers_zink_zink__resource.c) = c701f424ca3fd35d8a1d547
 SHA1 (patch-src_gallium_drivers_zink_zink__query.c) = e4a02352f9ebbc6e5d10dd62525586ff73a78053
 SHA1 (patch-src_gallium_frontends_dri_dri2.c) = 10d657042cf352edc37b703953e4626db66f7b01
 SHA1 (patch-src_egl_drivers_dri2_platform__wayland.c) = cf5fb241e32e2d9d407d93ba87b674e3ad8fb6a5
+SHA1 (patch-src_gallium_drivers_v3d_v3d__screen.c) = 458b3978bedf1c97dbce8a4e54f85665ecdbbfe4
+SHA1 (patch-src_gallium_targets_dri_meson.build) = 6a7133acea81afe1608c16802dec6c4126198c9a
+SHA1 (patch-src_gallium_targets_dri_dri.sym.in) = ecfda913169a475567f797af791cb296db85ef27

@@ -48,7 +48,8 @@ ready()
     query org.kde.ActivityManager /ActivityManager/Activities \
         org.kde.ActivityManager.Activities.ListActivities > activities.txt || return 1
     grep -Fxq "$(cat activity.txt)" activities.txt || return 1
-    query org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.shell > shell.txt || return 1
+    query org.kde.plasmashell /PlasmaShell org.freedesktop.DBus.Properties.Get \
+        org.kde.PlasmaShell shell > shell.txt || return 1
     grep -qx org.kde.plasma.desktop shell.txt || return 1
     query org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
         "$(cat layout.js)" > layout.txt || return 1

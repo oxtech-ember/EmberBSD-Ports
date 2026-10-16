@@ -1,0 +1,43 @@
+Origin: EmberBSD; AI-assisted linker ABI repair, not submitted upstream.
+
+Keep the GNU default SONAME version for old consumers. LLD does not
+support --default-symver, but accepts the unquoted SONAME as a version node.
+GNU's script grammar rejects its hyphen. Retain GNU's flag when supported.
+The exported symbol patterns stay unchanged.
+
+--- src/gallium/targets/dri/meson.build.orig
++++ src/gallium/targets/dri/meson.build
+@@ -7,7 +7,19 @@
+ # configure.ac)
+ 
+ gallium_dri_c_args = []
+-gallium_dri_ld_args = [cc.get_supported_link_arguments('-Wl,--default-symver')]
++gallium_dri_ld_args = [cc.get_supported_link_arguments('-Wl,--default-symver')]
++if get_option('unversion-libgallium') or with_platform_android
++  libgallium_name = 'gallium_dri'
++else
++  libgallium_name = 'gallium-@0@'.format(meson.project_version())
++endif
++
++# Keep the installed GNU default-version ABI when using LLD.
++if host_machine.system() == 'netbsd' and gallium_dri_ld_args[0].length() == 0
++  sym_config.set('gallium_symbol_version', 'lib' + libgallium_name + '.so ')
++else
++  sym_config.set('gallium_symbol_version', '')
++endif
+ gallium_dri_link_depends = []
+ gallium_dri_drivers = []
+ gallium_dri_link_with = []
+@@ -33,12 +45,6 @@
+   gallium_dri_link_depends += files('../dri.dyn')
+ endif
+ 
+-if get_option('unversion-libgallium') or with_platform_android
+-  libgallium_name = 'gallium_dri'
+-else
+-  libgallium_name = 'gallium-@0@'.format(meson.project_version())
+-endif
+-
+ libgallium_dri = shared_library(
+   libgallium_name,
+   files('dri_target.c'),

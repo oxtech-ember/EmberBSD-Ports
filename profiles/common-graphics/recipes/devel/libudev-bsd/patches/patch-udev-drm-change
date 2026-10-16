@@ -1,0 +1,97 @@
+Origin: EmberBSD, AI-assisted. Local patch; not submitted upstream.
+
+Forward native DRM card changes through the existing ndevd packet format.
+Validate packet bounds and expose the DRM minor type used by KWin.
+
+--- udev-dev.c.orig
++++ udev-dev.c
+@@ -525,8 +525,18 @@
+ 		action = UD_ACTION_ADD;
+ 	else if (strcmp(msg.event, NDEVD_DETACH_EVENT) == 0)
+ 		action = UD_ACTION_REMOVE;
+-	else
+-        return (UD_ACTION_NONE);
++	else if (strcmp(msg.event, "device-change") == 0) {
++		const char *unit;
++
++		/* Native DRM changes name the registered primary node. */
++		if (strncmp(msg.device, "dri/card", 8) != 0)
++			return (UD_ACTION_NONE);
++		unit = msg.device + 8;
++		if (*unit == '\0' || unit[strspn(unit, "0123456789")] != '\0')
++			return (UD_ACTION_NONE);
++		action = UD_ACTION_HOTPLUG;
++	} else
++		return (UD_ACTION_NONE);
+ 
+ 	strlcpy(syspath, get_syspath_by_devpath(devpath), syspathlen);
+ 
+--- udev-monitor.c.orig
++++ udev-monitor.c
+@@ -154,13 +154,24 @@
+ #if !defined(__OpenBSD__)
+ #if defined(__NetBSD__)
+ static int
+-parse_ndevd_message(struct ndevd_msg msg, char *syspath, size_t syspathlen)
++parse_ndevd_message(const void *packet, size_t length, char *syspath,
++    size_t syspathlen)
+ {
+-	int action;
+-
+-	action = udev_dev_monitor(msg, syspath, syspathlen);
++	struct ndevd_msg msg;
+ 
+-	return (action);
++	if (syspathlen == 0)
++		return (UD_ACTION_NONE);
++	syspath[0] = '\0';
++	if (length != sizeof(msg))
++		return (UD_ACTION_NONE);
++	memcpy(&msg, packet, sizeof(msg));
++	if (memchr(msg.event, '\0', sizeof(msg.event)) == NULL ||
++	    memchr(msg.device, '\0', sizeof(msg.device)) == NULL ||
++	    memchr(msg.parent, '\0', sizeof(msg.parent)) == NULL)
++		return (UD_ACTION_NONE);
++	if (strlen(DEV_PATH_ROOT "/") + strlen(msg.device) >= syspathlen)
++		return (UD_ACTION_NONE);
++	return (udev_dev_monitor(msg, syspath, syspathlen));
+ }
+ #else
+ static int
+@@ -185,8 +196,9 @@
+ {
+ 	struct udev_monitor *um = args;
+ #if defined(__NetBSD__)
+-	struct ndevd_msg event;
+-	void *ev = &event;
++	/* An extra byte detects oversized SOCK_SEQPACKET records. */
++	char event[sizeof(struct ndevd_msg) + 1];
++	char *ev = event;
+ 	size_t ev_len = sizeof(event);
+ #else
+ 	char ev[1024];
+@@ -249,7 +261,7 @@
+ 				continue;
+ 			}
+ #if defined(__NetBSD__)
+-			action = parse_ndevd_message(event, syspath, sizeof(syspath));
++			action = parse_ndevd_message(event, (size_t)len, syspath, sizeof(syspath));
+ 			if (strncmp(syspath, "/dev/uhid", 9) == 0 && isdigit((unsigned char)syspath[9])) {
+ 				if ((action == UD_ACTION_ADD) && (!is_fido(syspath))) {
+ 					action = UD_ACTION_NONE;
+--- udev-utils.c.orig
++++ udev-utils.c
+@@ -120,11 +120,13 @@
+ 		.create_handler = create_mouse_handler,
+ 	}, {
+ 		.subsystem = "drm",
++		.devtype = "drm_minor",
+ 		.syspath = DEV_PATH_ROOT "/dri/card[0-9]*",
+ 		.symlink = DEV_PATH_ROOT "/drm/[0-9]*",
+ 		.create_handler = create_drm_handler,
+ 	}, {
+ 		.subsystem = "drm",
++		.devtype = "drm_minor",
+ 		.syspath = DEV_PATH_ROOT "/dri/renderD[0-9]*",
+ 		.unit_offset = sizeof(DEV_PATH_ROOT "/dri/renderD") - 1,
+ 		.create_handler = create_drm_handler,

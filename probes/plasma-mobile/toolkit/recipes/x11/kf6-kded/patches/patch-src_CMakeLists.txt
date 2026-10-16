@@ -1,0 +1,25 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Keep the runtime helper on the target system.
+Cross builds import KF6::kconf_update from the native host tooling. KDED
+executes this program at runtime, so it must use the installed target path.
+Keep the upstream target-file selection for native builds.
+
+--- src/CMakeLists.txt.orig
++++ src/CMakeLists.txt
+@@ -26,8 +26,14 @@ target_link_libraries(kded6
+     KF6::ConfigCore
+ )
+ 
++set(kconf_update_executable "$<TARGET_FILE:KF6::kconf_update>")
++if(CMAKE_CROSSCOMPILING)
++    # The imported executable belongs to the build host in a cross build.
++    set(kconf_update_executable "${KDE_INSTALL_FULL_LIBEXECDIR_KF}/kconf_update")
++endif()
++
+ target_compile_definitions(kded6 PRIVATE
+-    KCONF_UPDATE_EXE="$<TARGET_FILE:KF6::kconf_update>"
++    KCONF_UPDATE_EXE="${kconf_update_executable}"
+ )
+ 
+ install(TARGETS kded6 ${KF_INSTALL_TARGETS_DEFAULT_ARGS} )
