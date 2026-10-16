@@ -1,5 +1,10 @@
 # Common multimedia source packages
 
+The [four-stream Qt CPU profile](qt-four-streams/README.md) cross-builds
+Qt 6.12 for EmberBSD amd64 with GCC16 and the common FFmpeg9 provider.
+It adds a bounded raster viewer, runtime payload checks and an independent
+framebuffer reader. See its [measured validation limits](qt-four-streams/results.md).
+
 The [H.265 RTP CPU SDK](rtp/README.md) adds GCC16.2 cross builds for AArch64
 and AMD64. Installed FFmpeg/GStreamer C APIs pass bidirectional transport,
 packet faults and receiver restart checks in full-system QEMU. All 13 packages

@@ -10,6 +10,8 @@ The matching example is
 It starts four QMediaPlayer instances and checks actual decoded pixels,
 timestamps, window exposure, distinct paints, and process CPU time.
 Its RFB client independently reads the window framebuffer.
+See [validation results and limits](results.md) for the actual build,
+runtime packages, display checks and analyzer coverage.
 
 ## Inputs
 

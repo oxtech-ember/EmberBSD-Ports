@@ -310,6 +310,10 @@ runtime behavior are validated.
   Thirteen real packages pass dependency protection and removal/reinstallation;
   independent captures and pixel checks verify recovery. See the
   [results and limits](profiles/common-media/rtp/results.md).
+- [Four H.265 streams through Qt Multimedia](profiles/common-media/qt-four-streams/README.md):
+  a GCC16 amd64 CPU profile uses Qt 6.12 and the common FFmpeg9 provider.
+  The example verifies decoded pixels and reads the actual Qt framebuffer.
+  See [measurements and validation limits](profiles/common-media/qt-four-streams/results.md).
 - [MQTT smart-home foundation](probes/mosquitto/README.md): Mosquitto 2.1.2
   builds with common GCC 16.2, cJSON 1.7.19 and SQLite 3.53.4. Twelve installed
   AArch64 VM cases pass MQTT 3.1.1/5 QoS 0/1/2, authentication/ACL, verified
