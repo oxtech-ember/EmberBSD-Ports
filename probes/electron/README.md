@@ -24,7 +24,7 @@ needs a native Electron runtime first.
 | electron-44.5.1.tar.gz | 20284163 | 798e7647950ce10d6715892b5ee3c05af71d7f785dddb23d87c6f26f18b37363 | github.com/electron/electron tag v44.5.1 |
 | node-v24.21.0.tar.xz | 57357488 | a6f54defb6fd7c84f41dba13d61e78e9b4e0961712cf61f29715c05f5ced94fc | nodejs.org/dist/v24.21.0 |
 | blanc-1.25.0.tar.gz | 155108408 | b241d6b135b0fab5839f5dea6f64fafbdefa4f213b46ffa4a2f78820cb880971 | github.com/bnfy/blanc tag v1.25.0 |
-| chromium-152.0.7977.82.tar.xz | 5916124416 | pending download (disk space gate) | commondatastorage.googleapis.com/chromium-browser-official |
+| chromium-152.0.7977.82.tar.xz | 5916124416 | 82a42a16cd9caa49a5bd6d8f226bb2de2646031356e620da05f92cbfddeb35c3 | commondatastorage.googleapis.com/chromium-browser-official |
 
 Stored under `/Volumes/BigData/EmberBSD/distfiles/e12-electron/` on the
 build host. The npm dependency trees for Electron's JS build and for
