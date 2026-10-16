@@ -108,11 +108,10 @@ runtime behavior are validated.
   initializes the missing mutex and unwinds creation failures.
   Normal installation verifies all 100 payload entries. The unchanged old
   libgallium consumer passes after LLD 23 linking with preserved symbol versions.
-  Full Plasma remains unaccepted. The [Desktop probe](probes/plasma-mobile/toolkit/tests/plasma-desktop/README.md) retries timed-out startup introspection
-  within its original deadline. It requires the exact unknown-output rejection and no image.
-  A bounded startup D-Bus delay remains under
-  investigation; the shell responds after an additional wait and exits normally.
-  Physical HDMI presentation remains a separate gate.
+  The [Desktop probe](probes/plasma-mobile/toolkit/tests/plasma-desktop/README.md) passes on physical CM5 with V3D and a virtual Wayland output.
+  It verifies visible containment pixels, six layout checks over 30 seconds and normal shell exit.
+  The unknown-output control passes after a bounded startup retry.
+  The full login session and physical HDMI presentation remain separate gates.
   Adapted libdrm 2.4.134nb2, Wayland 1.26.0nb1 and wayland-protocols 1.49
   compose the common GCC16/Python315/Meson112/shared LLVM23 profile for EmberBSD/AArch64.
   An optional [PowerVR ICD](profiles/common-graphics/cross/powervr.md) retains
@@ -280,10 +279,11 @@ runtime behavior are validated.
   KWin 6.8.0nb1 selects OpenGL ES/V3D under a non-root user.
   Desktop 6.8.0 and Workspace 6.8.0nb3 are cross-packaged and installed.
   A 333-package set passes archive, dependency and ELF-provider checks.
-  The shell uses desktop OpenGL/V3D, but its pixel acceptance fails after GPU allocation errors.
+  The shell now passes the [bounded Desktop test](probes/plasma-mobile/toolkit/tests/plasma-desktop/README.md)
+  with Mesa nb8: V3D pixels, six layout checks over 30 seconds and normal exit.
   The [Mesa Wayland allocation repair](profiles/common-graphics/tests/mesa-wayland-oom/README.md)
-  passes actual-source failure/retry tests; hardware acceptance remains pending.
-  HDMI mode setting and the complete desktop session remain unaccepted.
+  also retains its actual-source failure/retry checks.
+  HDMI mode setting and the complete login session remain unaccepted.
   The earlier KWin 6.7.5 check also passed Qt Quick client pixels.
   The current xdg-user-dirs 0.20
   cross package passes private-profile checks on CM5.

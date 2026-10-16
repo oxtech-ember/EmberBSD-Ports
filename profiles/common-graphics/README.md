@@ -22,9 +22,11 @@ and all 39 upstream invocations on CM5. `Cache.List` skips and nine NIR cases
 remain disabled. Fifteen temperature samples range from 64.208 to 65.857 degrees
 Celsius, without reported throttling or undervoltage.
 
-Full Plasma remains unaccepted. A bounded startup D-Bus delay remains under investigation.
-The shell responds after an additional wait and exits normally.
-Physical HDMI presentation remains a separate check.
+The [Plasma Desktop probe](../../probes/plasma-mobile/toolkit/tests/plasma-desktop/README.md)
+now passes on physical CM5 with this package and a virtual Wayland output.
+It checks V3D rendering, visible containment pixels, six layout queries over 30 seconds and normal shell exit.
+The strict unknown-output control also passes after a bounded startup retry.
+The full login session and physical HDMI presentation remain separate checks.
 
 The nb6 recipe also includes Zink and its Vulkan loader dependency.
 Hardware Zink execution remains unaccepted; see [the package boundary](cross/zink.md).

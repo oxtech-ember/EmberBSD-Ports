@@ -79,7 +79,23 @@ This runner does not start the full `startplasma-wayland` login sequence.
 It does not accept HDMI/KMS, a display manager, PAM, physical input, Fcitx input,
 audio, network applets, remote desktop or sustained desktop use.
 It does not measure memory safety. No Valgrind run is claimed.
-Target execution is pending; host checks do not establish Plasma acceptance.
+
+## Physical CM5 acceptance
+
+The runner at commit `127a101d6a65addf65fb3c0c8f9646643e1973ad` passes on CM5 with MesaLib 26.2.4nb8.
+The installed Plasma Desktop, Workspace and KWin use version 6.8.0 with common Qt 6.12.
+KWin and the shell report V3D acceleration on the 1280×1024 virtual output.
+The default desktop, panel and six applet models pass all six layout checks over 30 seconds.
+The first unknown-output query times out with status 124.
+The retry returns the exact expected error with status 2.
+No negative-control image is created, including after shell cleanup.
+The session, client and shell statuses are all zero. The boot identity remains unchanged.
+
+The 320×256 containment capture has 81,920 opaque pixels and passes the pixel decoder.
+Manual inspection confirms a visible background, clock and date. It does not show the composited panel.
+The PNG SHA256 is `9b20f915a10c7d55a73079b6b23d4aeff99dcd3f225e2f01b642cc99f806b50d`.
+Twenty temperature samples range from 63.659 to 66.956 degrees Celsius, with no reported throttling or undervoltage.
+This is a bounded virtual-output Desktop result. Full login, HDMI and the other limits above remain separate gates.
 
 ## Verified source interfaces
 
