@@ -94,7 +94,7 @@ Dir.mktmpdir('plasma-session-host-', '/tmp') do |temp|
       nil
     end
   end
-  %w[ready wrong_session].each do |mode|
+  %w[ready wrong_session old_method wrong_property].each do |mode|
     work = "#{temp}/#{mode}"
     %w[runtime tmp].each { |dir| FileUtils.mkdir_p("#{work}/#{dir}") }
     FileUtils.cp(["#{source}/../plasma-desktop/layout.js", "#{source}/../plasma-desktop/check-results.sh"], work)
@@ -107,7 +107,7 @@ Dir.mktmpdir('plasma-session-host-', '/tmp') do |temp|
       #!#{RbConfig.ruby}
       n = File.file?('clock') ? File.read('clock').to_i : 0
       File.write('clock', (n + 1).to_s)
-      puts(#{mode == 'wrong_session'} && n > 0 ? 200 : 0)
+      puts(#{mode != 'ready'} && n > 0 && File.file?('readiness-error.log') ? 200 : 0)
     RUBY
     File.write("#{work}/wrapper", <<~RUBY)
       #!#{RbConfig.ruby}
@@ -138,7 +138,10 @@ Dir.mktmpdir('plasma-session-host-', '/tmp') do |temp|
         puts 'default'
       when 'org.kde.ActivityManager.Activities.CurrentActivity', 'org.kde.ActivityManager.Activities.ListActivities'
         puts '12345678-1234-1234-1234-123456789abc'
-      when 'org.kde.PlasmaShell.shell'
+      when 'org.freedesktop.DBus.Properties.Get'
+        expected = ['org.kde.plasmashell', '/PlasmaShell', 'org.freedesktop.DBus.Properties.Get',
+                    'org.kde.PlasmaShell', 'shell']
+        abort 'Unexpected property query: ' + ARGV.inspect unless ARGV == expected
         puts 'org.kde.plasma.desktop'
       when 'org.kde.PlasmaShell.evaluateScript'
         puts 'PASS: default desktop, panel and six applet models on 1280x1024'
@@ -161,6 +164,15 @@ Dir.mktmpdir('plasma-session-host-', '/tmp') do |temp|
       .gsub('/usr/pkg/bin/kwin_wayland_wrapper', "#{work}/wrapper")
       .gsub('/usr/pkg/bin/startplasma-wayland', "#{work}/startplasma")
       .gsub('/usr/pkg/qt6/bin/qdbus', "#{work}/qdbus")
+    if mode == 'old_method'
+      original = "org.freedesktop.DBus.Properties.Get \\\n        org.kde.PlasmaShell shell"
+      abort 'Missing property query mutation point' unless controller.include?(original)
+      controller = controller.sub(original, 'org.kde.PlasmaShell.shell')
+    elsif mode == 'wrong_property'
+      original = 'org.kde.PlasmaShell shell > shell.txt'
+      abort 'Missing property name mutation point' unless controller.include?(original)
+      controller = controller.sub(original, 'org.kde.PlasmaShell missing > shell.txt')
+    end
     File.write("#{work}/controller.sh", controller)
     environment = {'EMBER_PLASMA_OUTPUT'=>work, 'XDG_RUNTIME_DIR'=>"#{work}/runtime",
                    'TMPDIR'=>"#{work}/tmp", 'PATH'=>"#{work}:#{ENV.fetch('PATH')}"}
@@ -172,6 +184,15 @@ Dir.mktmpdir('plasma-session-host-', '/tmp') do |temp|
       checks += 1
     else
       abort 'A failed session requested logout acceptance' if File.file?("#{work}/logout.requested")
+      if mode == 'old_method'
+        expected = 'Unexpected D-Bus method: ["org.kde.plasmashell", "/PlasmaShell", "org.kde.PlasmaShell.shell"]'
+        abort 'Old method did not fail at the protocol boundary' unless File.read("#{work}/readiness-error.log").include?(expected)
+        checks += 1
+      elsif mode == 'wrong_property'
+        expected = 'Unexpected property query: ["org.kde.plasmashell", "/PlasmaShell", "org.freedesktop.DBus.Properties.Get", "org.kde.PlasmaShell", "missing"]'
+        abort 'Wrong property did not fail at the protocol boundary' unless File.read("#{work}/readiness-error.log").include?(expected)
+        checks += 1
+      end
       checks += 1
     end
   end
