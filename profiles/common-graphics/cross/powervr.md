@@ -4,13 +4,13 @@ The optional `powervr` pkgsrc option adds the upstream Imagination Vulkan
 ICD to MesaLib 26.2.4nb5. It retains V3D, VirGL, softpipe, llvmpipe,
 X11, Wayland, EGL, GBM and the shared LLVM 23.1.3 provider.
 The installed Vulkan loader now enumerates the physical GPU on Zero 3W.
-The normal package and bounded enumeration checks pass. GPU submission
-and accelerated Plasma remain unaccepted.
+The normal package and bounded enumeration checks pass. Native compute also passes
+on the accepted EmberBSD kernel. Graphics and accelerated Plasma remain unaccepted.
 
 This is a native PowerVR DRM consumer. It has no diagnostic-packet backend.
 The OS owns render-node identity, GEM buffers, GPU page tables and syncobj.
-`vkCreateDevice`, context creation, queue submission, GPU cache ownership,
-PRIME presentation and Plasma are separate acceptance steps.
+The bounded compute check covers device creation, submission and host readback.
+Graphics, PRIME presentation and Plasma require separate acceptance.
 
 ## Native build tools
 
@@ -156,8 +156,12 @@ It checks sixteen output words against `0x13579bdf XOR index`.
 It applies the required buffer barriers and host flush/invalidate operations.
 The fence wait is bounded. Failed submitted work does not trigger unsafe user cleanup.
 The runner records package identities and the normal loader closure.
-Physical execution of this consumer remains pending.
-Its ASan/UBSan boundary fixture does not replace that board check.
+On Zero 3W, kernel `4d9b68f3ec4866ad46810b4257daf4333ef10f38` passed three
+compute cycles with this installed nb5 package. All sixteen words matched.
+The 155 samples across installation and functional checks peaked at 62.310 degrees Celsius.
+The PLL and compute checks peaked at 61.938 degrees Celsius; the stop limit was 80.
+See the [OS acceptance boundary](https://github.com/oxtech-ember/EmberBSD/blob/c73b1ade9b76a4ede3fa8b64d69b8f118f21f38d/ember/boot/a733-pvr-execution.md).
+The separate [offscreen graphics consumer](powervr-offscreen.md) remains unaccepted on hardware.
 
 ## Physical acceptance
 
