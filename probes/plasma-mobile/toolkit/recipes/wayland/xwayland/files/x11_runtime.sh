@@ -18,8 +18,8 @@ x11_runtime_check()
 		warn "$1 must be a real directory."
 		return 1
 	fi
-	mode=$(/usr/bin/stat -f '%u:%g:%Lp' "$1") || return 1
-	if [ "$mode" != '0:0:1777' ]; then
+	mode=$(/usr/bin/stat -f '%u:%g:%p' "$1") || return 1
+	if [ "$mode" != '0:0:41777' ]; then
 		warn "$1 must have root:wheel ownership and mode 1777."
 		return 1
 	fi

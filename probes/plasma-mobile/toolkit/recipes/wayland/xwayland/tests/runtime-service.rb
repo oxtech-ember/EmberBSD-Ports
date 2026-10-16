@@ -38,10 +38,15 @@ Dir.mktmpdir('xwayland-runtime-', ENV.fetch('TMPDIR', '/tmp')) do |work|
       abort 'bad id arguments' unless ARGV == ['-u']
       puts state.fetch('uid')
     when 'stat'
-      abort 'bad stat arguments' unless ARGV.length == 3 && ARGV[0,2] == ['-f', '%u:%g:%Lp']
-      info = File.lstat(ARGV[2])
+      abort 'bad stat arguments' unless ARGV.length == 3 && ARGV[0] == '-f' && %w[%u:%g:%p %u:%g:%Lp].include?(ARGV[1])
+      # Keep the real BSD stat mode formatter. Only credentials are controlled.
+      # %Lp strips the sticky bit; a Ruby mode mask hid that target defect.
+      result = IO.popen(['/usr/bin/stat', *ARGV], &:read)
+      exit 1 unless $?.success?
+      fields = result.strip.split(':')
+      abort 'BSD stat with numeric mode output is required' unless fields.length == 3 && fields[2].match?(/\A[0-7]+\z/)
       uid, gid = state.fetch('owners').fetch(ARGV[2], [0, 0])
-      puts "#{uid}:#{gid}:#{(info.mode & 0o7777).to_s(8)}"
+      puts "#{uid}:#{gid}:#{fields[2]}"
     when 'mkdir'
       abort 'bad mkdir arguments' unless ARGV.length == 3 && ARGV[0,2] == ['-m', '1777']
       exit(system('/bin/mkdir', *ARGV) ? 0 : 1)
@@ -75,6 +80,7 @@ Dir.mktmpdir('xwayland-runtime-', ENV.fetch('TMPDIR', '/tmp')) do |work|
     text = source.gsub('/tmp/.X11-unix', "#{root}/tmp/.X11-unix")
                  .gsub('/tmp/.ICE-unix', "#{root}/tmp/.ICE-unix")
     text = text.sub('x11_runtime_check /tmp ', "x11_runtime_check #{root}/tmp ") if service
+    text = text.sub('for directory in /tmp ', "for directory in #{root}/tmp ") unless service
     text = text.sub('@RCD_SCRIPTS_SHELL@', '/bin/sh').sub('/etc/rc.subr', "#{work}/rc.subr")
     {'/usr/bin/id'=>'id', '/usr/bin/stat'=>'stat', '/bin/mkdir'=>'mkdir', '/sbin/chown'=>'chown'}.each do |old, name|
       text = text.gsub(old, "#{commands}/#{name}")
@@ -148,6 +154,61 @@ Dir.mktmpdir('xwayland-runtime-', ENV.fetch('TMPDIR', '/tmp')) do |work|
   prepare.call(runner_source, runner, false)
   output = invoke.call(2, runner, "/tmp/xwayland-preflight-#{Process.pid}")
   abort 'missing service diagnostic' unless output.include?('Missing or unsafe X11 runtime directory:') && output.include?('/etc/rc.d/x11_runtime start')
+
+  # Check the actual preflight block separately so an unsafe parent cannot
+  # pass merely because both child directories have root ownership.
+  start = runner_source.index('for directory in /tmp /tmp/.X11-unix /tmp/.ICE-unix; do') or abort 'missing parent preflight'
+  finish = runner_source.index("\ndone", start) or abort 'missing preflight end'
+  preflight = runner_source[start..finish + 4]
+  prepare.call("#!/bin/sh\nset -eu\n#{preflight}\n", "#{work}/preflight.sh", false)
+  reset.call
+  invoke.call(0, service, 'start')
+  invoke.call(0, "#{work}/preflight.sh")
+  # Reproduce the nb2 formatter failure with real BSD stat, not a mode mock.
+  old_service = service_source.gsub("'%u:%g:%p'", "'%u:%g:%Lp'").gsub("'0:0:41777'", "'0:0:1777'")
+  old_preflight = preflight.gsub("'%u:%g:%p'", "'%u:%g:%Lp'").gsub("'0:0:41777'", "'0:0:1777'")
+  abort 'missing mode mutation points' if old_service == service_source || old_preflight == preflight
+  prepare.call(old_service, "#{work}/old-stat-service.sh", true)
+  prepare.call("#!/bin/sh\nset -eu\n#{old_preflight}\n", "#{work}/old-stat-preflight.sh", false)
+  output = invoke.call(1, "#{work}/old-stat-service.sh", 'start')
+  abort 'wrong old-stat service failure' unless output.include?("#{root}/tmp must have root:wheel ownership and mode 1777.")
+  output = invoke.call(2, "#{work}/old-stat-preflight.sh")
+  abort 'wrong old-stat preflight failure' unless output.include?("Missing or unsafe X11 runtime directory: #{root}/tmp")
+  %w[parent x11 ice].each do |target|
+    failures = target == 'parent' ? %w[owner group mode symlink] : %w[owner group mode symlink dangling file]
+    failures.each do |failure|
+      reset.call
+      %w[.X11-unix .ICE-unix].each do |name|
+        path = "#{root}/tmp/#{name}"
+        Dir.mkdir(path)
+        File.chmod(0o1777, path)
+      end
+      path = target == 'parent' ? "#{root}/tmp" : "#{root}/tmp/#{target == 'x11' ? '.X11-unix' : '.ICE-unix'}"
+      case failure
+      when 'owner' then state['owners'][path] = [1000, 0]
+      when 'group' then state['owners'][path] = [0, 1000]
+      when 'mode' then File.chmod(target == 'parent' ? 0o777 : 0o755, path)
+      when 'symlink'
+        File.rename(path, "#{root}/displaced")
+        File.symlink("#{root}/displaced", path)
+      when 'dangling'
+        Dir.rmdir(path)
+        File.symlink("#{root}/absent", path)
+      when 'file'
+        Dir.rmdir(path)
+        File.write(path, 'unchanged')
+      end
+      save.call
+      output = invoke.call(2, "#{work}/preflight.sh")
+      abort "wrong rejected path: #{target}/#{failure}" unless output.include?("Missing or unsafe X11 runtime directory: #{path}")
+      abort 'preflight mutated a directory' if state['calls'].any? { |c| %w[chown mkdir].include?(c[0]) }
+      next unless target == 'parent' && failure == 'mode'
+      # This is the exact previous loop from commit 27ca2e9: no /tmp entry.
+      baseline = preflight.sub('for directory in /tmp ', 'for directory in ')
+      prepare.call("#!/bin/sh\nset -eu\n#{baseline}\n", "#{work}/preflight-baseline.sh", false)
+      invoke.call(0, "#{work}/preflight-baseline.sh")
+    end
+  end
 
   # A missing create step reproduces the original boot-lifecycle failure.
   reset.call
