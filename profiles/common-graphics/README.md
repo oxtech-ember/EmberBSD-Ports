@@ -99,6 +99,11 @@ The [current text/image closure](cross/labwc-dependencies.md) also cross-builds
 GLib 2.90.1, Pango 1.58.2, HarfBuzz 14.6.0 and Cairo 1.18.6 with normal package
 checks. Four installed AArch64 VM cycles pass font selection, shaping, CPU
 rasterization and PNG roundtrip with causal negative controls. Installed
+The D-Bus 1.16.2nb6 recipe uses the corrected common cross configuration.
+Its rc script sources base `/etc/rc.subr`; package configuration stays under
+`/usr/pkg/etc`. Actual pkgsrc generation and native-independence checks pass.
+Full package and installed service acceptance remain separate.
+
 [libsfdo and session D-Bus](cross/desktop-support.md) pass four unchanged upstream
 lookup/parser tests and actual bus ownership, method replies, errors and shutdown
 in AArch64. A [Rust 1.99 cross-std probe](../../probes/rust-cross-std/README.md)
