@@ -2,7 +2,8 @@
 
 The [CIX P1 media prerequisites](cix-vpu/README.md) add native stateful V4L2
 M2M header selection and checked failure cleanup. Cross-build diagnostics
-pass; the CIX hardware driver and H.265 execution remain unverified.
+and EmberBSD/AArch64 missing-device execution pass. Native CIX attachment,
+platform control and M2M queues remain unfinished; hardware H.265 is unverified.
 
 The [four-stream Qt CPU profile](qt-four-streams/README.md) cross-builds
 Qt 6.12 for EmberBSD amd64 with GCC16 and the common FFmpeg9 provider.

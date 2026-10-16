@@ -90,5 +90,15 @@ The actual native GStreamer plugin loads without a HEVC factory on Linux.
 Its strict Memcheck run retains upstream GLib/GType process globals;
 [analysis and limits](analysis.md) records this result without suppressions.
 
-CIX firmware execution, kernel attachment, hardware encode/decode, stream
-reset, concurrent clients and sustained operation remain unverified.
+The actual AArch64 binaries also pass in a compiler-free EmberBSD QEMU guest.
+Its accepted base/kernel revision is
+`6dd57144183678938164b4c2dcfc370cdbde8473`, without a CIX attachment or video device.
+All eight FFmpeg initialization refusals and four semaphore cases pass.
+The real GStreamer V4L2 plugin loads, registers its ordinary factory and
+correctly creates no HEVC hardware factory. No software decoder fallback is enabled.
+The first target run exposed the pre-fix semaphore SIGSEGV; the fixed rerun
+returns the expected errors and shuts down normally.
+
+CIX kernel attachment, platform power/reset control and native M2M queues
+remain unimplemented. Firmware execution, hardware encode/decode, stream reset,
+concurrent clients and sustained operation remain unverified.

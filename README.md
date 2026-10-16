@@ -327,6 +327,10 @@ runtime behavior are validated.
   Thirteen real packages pass dependency protection and removal/reinstallation;
   independent captures and pixel checks verify recovery. See the
   [results and limits](profiles/common-media/rtp/results.md).
+- [CIX P1 codec prerequisites](profiles/common-media/cix-vpu/README.md):
+  GCC16 cross-builds the real FFmpeg M2M backend and GStreamer V4L2 plugin.
+  EmberBSD/AArch64 VM checks cover missing-device refusals and repaired
+  semaphore cleanup. The native CIX driver and hardware H.265 remain unfinished.
 - [Four H.265 streams through Qt Multimedia](profiles/common-media/qt-four-streams/README.md):
   a GCC16 amd64 CPU profile uses Qt 6.12 and the common FFmpeg9 provider.
   The example verifies decoded pixels and reads the actual Qt framebuffer.

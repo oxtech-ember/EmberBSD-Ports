@@ -30,7 +30,10 @@ observes zero initialization calls and one invalid destruction call.
 The fixed path initializes once and reports a real `sem_init` error unchanged.
 It never destroys a semaphore after failed initialization.
 
-Target execution and CIX board acceptance remain separate evidence.
+The corrected AArch64 target run passes eight real initialization refusals,
+four semaphore lifetime cases and actual GStreamer plugin loading without
+a HEVC hardware factory. The guest has no compiler or video device.
+This execution and CIX board acceptance remain separate evidence.
 NetBSD/AArch64 is not a supported Valgrind execution platform in this setup.
 The Linux run verifies equivalent real userland source and POSIX lifetime paths;
 it does not check kernel code, CIX firmware, MMIO or physical DMA.
