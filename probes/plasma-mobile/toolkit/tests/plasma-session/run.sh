@@ -10,6 +10,15 @@ case "$work" in /*) ;; *) echo 'Absolute output path required.' >&2; exit 2 ;; e
 # KWin and D-Bus use Unix sockets with bounded path lengths.
 [ "${#work}" -le 70 ] || { echo 'Use an output path of at most 70 characters.' >&2; exit 2; }
 source_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# KWin creates Xwayland sockets as this user. Boot must prepare their parents.
+for directory in /tmp/.X11-unix /tmp/.ICE-unix; do
+    if [ -L "$directory" ] || [ ! -d "$directory" ] ||
+        [ "$(/usr/bin/stat -f '%u:%g:%Lp' "$directory" 2>/dev/null)" != '0:0:1777' ]; then
+        echo "Missing or unsafe X11 runtime directory: $directory" >&2
+        echo 'Ask root to activate the Xwayland x11_runtime rc.d service and run /etc/rc.d/x11_runtime start.' >&2
+        exit 2
+    fi
+done
 for name in timeout; do [ -x "/usr/bin/$name" ]; done
 for name in perl dbus-run-session kwin_wayland_wrapper kwin_wayland Xwayland \
     startplasma-wayland plasma_session ksmserver kded6 plasmashell \
