@@ -46,7 +46,7 @@ end
 File.write(work + '/powervr-offscreen-shaders.h', header)
 source = __dir__ + '/powervr-offscreen.c'
 command = [cc, "--sysroot=#{sysroot}", '-std=c11', '-D_NETBSD_SOURCE', '-O2', '-g', '-MD', '-MF', work + '/consumer.d', '-Wall', '-Wextra', '-Werror', "-I#{sysroot}/usr/pkg/include", "-I#{work}", source,
-           "-L#{sysroot}/usr/pkg/lib", '-lvulkan', '-Wl,-rpath,/usr/pkg/lib', '-Wl,-z,relro,-z,now', '-o', work + '/powervr-offscreen']
+           "-L#{sysroot}/usr/pkg/lib", '-lvulkan', '-Wl,-rpath,/usr/pkg/lib', '-Wl,--dynamic-linker,/libexec/ld.elf_so', '-Wl,-z,relro,-z,now', '-o', work + '/powervr-offscreen']
 run.call('build', command)
 run.call('compiler-specs', [cc, '-dumpspecs'])
 dependencies = File.read(work + '/consumer.d').gsub(/\\\n/, ' ').split(': ', 2).last
