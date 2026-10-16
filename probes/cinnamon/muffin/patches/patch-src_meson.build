@@ -1,0 +1,23 @@
+diff --git a/src/meson.build b/src/meson.build
+index 8add0ce..cac7c8b 100644
+--- src/meson.build.orig
++++ b/src/meson.build
+@@ -17,7 +17,6 @@ muffin_pkg_deps = [
+   gio_unix_dep,
+   glib_dep,
+   cinnamon_desktop_dep,
+-  gtk3_dep,
+   pango_dep,
+ ]
+ 
+@@ -384,10 +383,7 @@ muffin_sources = [
+   'core/window-private.h',
+   'core/workspace.c',
+   'core/workspace-private.h',
+-  'ui/frames.c',
+   'ui/frames.h',
+-  'ui/theme.c',
+-  'ui/theme-private.h',
+   'ui/ui.c',
+   'ui/ui.h',
+   'x11/atomnames.h',

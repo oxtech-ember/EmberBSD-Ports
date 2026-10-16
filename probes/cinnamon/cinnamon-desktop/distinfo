@@ -1,0 +1,7 @@
+$NetBSD$
+
+SHA512 (6c6c48d7c87359b34b5812486d364fde3ed730ed.tar.gz) = 44af180751a65b348cbb1f0e53602bdaabd936f2a7ea71bdf0b58f7355f1a8c566e8f3cd9ee6dc843884f5090e3f4693e0493d2f25b16c29636fb279c4b1163a
+Size (6c6c48d7c87359b34b5812486d364fde3ed730ed.tar.gz) = 319402 bytes
+
+SHA1 (patch-libcinnamon-desktop_meson.build) = b357aead01bb10b3a27f27229af1b72f73ddf504
+SHA1 (patch-meson.build) = c1c0a2c6b7818296b458dd93c89485b3bbe3ce05

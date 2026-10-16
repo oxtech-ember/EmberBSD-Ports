@@ -1,0 +1,3 @@
+Shared settings, schemas and utility library for the Cinnamon
+desktop (Wayland profile: enums, wall clock, idle monitor, languages,
+pnp ids, xkb info, edid).

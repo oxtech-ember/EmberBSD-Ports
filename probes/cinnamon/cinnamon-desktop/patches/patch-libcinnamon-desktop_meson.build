@@ -1,0 +1,65 @@
+diff --git a/libcinnamon-desktop/meson.build b/libcinnamon-desktop/meson.build
+index cc4a650..3097064 100644
+--- libcinnamon-desktop/meson.build.orig
++++ b/libcinnamon-desktop/meson.build
+@@ -14,28 +14,17 @@ dbus_idle_built_sources = gnome.gdbus_codegen('meta-dbus-idle-monitor',
+ libcinnamon_desktop_gir_sources = [
+   'display-name.c',
+   'edid-parse.c',
+-  'gnome-bg-crossfade.c',
+-  'gnome-bg.c',
+-  'gnome-desktop-thumbnail.c',
+-  'gnome-desktop-utils.c',
+   'gnome-gettext-portable.c',
+   'gnome-idle-monitor.c',
+   'gnome-languages.c',
+   'gnome-pnp-ids.c',
+-  'gnome-rr-config.c',
+-  'gnome-rr-labeler.c',
+-  'gnome-rr-output-info.c',
+-  'gnome-rr.c',
+   'gnome-systemd.c',
+-  'gnome-thumbnail-pixbuf-utils.c',
+   'gnome-wall-clock.c',
+   'gnome-xkb-info.c',
+ ]
+ 
+ libcinnamon_desktop_misc_headers = [
+   'gnome-datetime-source.h',
+-  'gnome-desktop-thumbnail-script.h',
+-  'gnome-rr-private.h',
+   'edid.h',
+   'private.h'
+ ]
+@@ -44,23 +33,15 @@ libcinnamon_desktop_sources = [
+   libcinnamon_desktop_gir_sources,
+   libcinnamon_desktop_misc_headers,
+   'gnome-datetime-source.c',
+-  'gnome-desktop-thumbnail-script.c',
+ ]
+ 
+ cdesktop_headers = [
+   'cdesktop-enums.h',
+ ]
+ libcinnamon_desktop_headers = [
+-  'gnome-bg-crossfade.h',
+-  'gnome-bg.h',
+-  'gnome-desktop-thumbnail.h',
+-  'gnome-desktop-utils.h',
+   'gnome-idle-monitor.h',
+   'gnome-languages.h',
+   'gnome-pnp-ids.h',
+-  'gnome-rr-config.h',
+-  'gnome-rr-labeler.h',
+-  'gnome-rr.h',
+   'gnome-systemd.h',
+   'gnome-wall-clock.h',
+   'gnome-xkb-info.h',
+@@ -91,7 +72,6 @@ pkgconfig.generate(
+   name: 'cinnamon-desktop',
+   description: 'Utility library for loading .desktop files',
+   version: meson.project_version(),
+-  requires: [ 'gtk+-3.0', ],
+   requires_private: [ 'xkbfile', ],
+   libraries: libcinnamon_desktop,
+   subdirs: join_paths('cinnamon-desktop'),
