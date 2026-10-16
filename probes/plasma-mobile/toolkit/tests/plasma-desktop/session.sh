@@ -5,6 +5,15 @@ set -eu
 : "${EMBER_PLASMA_OUTPUT:?Run this file through run.sh}"
 cd "$EMBER_PLASMA_OUTPUT"
 plasma_pid=
+check_missing_images()
+{
+    for missing_image in missing-output-*.png; do
+        if [ -e "$missing_image" ] || [ -L "$missing_image" ]; then
+            echo "FAIL: an unknown output created an image: $missing_image" >&2
+            return 1
+        fi
+    done
+}
 cleanup()
 {
     result=$?
@@ -26,6 +35,7 @@ cleanup()
         printf '%s\n' "$shell_status" > plasmashell.status
         [ "$shell_status" -eq 0 ] || result=1
     fi
+    check_missing_images || result=1
     printf '%s\n' "$result" > client.status
     exit "$result"
 }
@@ -87,13 +97,50 @@ while :; do
     sleep 1
 done
 # This internal API must reject an unknown connector; it must not save a file.
-if query org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.grabContainmentImage \
-        Ember-Missing-Output 320 256 "$PWD/missing.png" > missing-output.log 2>&1; then
-    echo 'FAIL: an unknown output was accepted' >&2
-    exit 1
-fi
-grep -q 'Unknown screen name' missing-output.log
-[ ! -e missing.png ]
+# Cold D-Bus introspection can time out before the method is called. Retry only
+# that timeout, within the original startup deadline. Do not accept it as proof.
+missing_attempt=0
+while :; do
+    check_missing_images
+    remaining=$((deadline - $(date +%s)))
+    [ "$remaining" -gt 0 ] || {
+        echo 'FAIL: unknown-output rejection did not arrive before the startup deadline' >&2
+        exit 1
+    }
+    kill -0 "$plasma_pid" 2>/dev/null || exit 1
+    missing_timeout=$remaining
+    [ "$missing_timeout" -le 5 ] || missing_timeout=5
+    missing_attempt=$((missing_attempt + 1))
+    missing_prefix="missing-output-$missing_attempt"
+    printf '%s\n' "$missing_timeout" > "$missing_prefix.timeout"
+    missing_status=0
+    /usr/bin/timeout -k 2 "$missing_timeout" /usr/pkg/qt6/bin/qdbus \
+        org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.grabContainmentImage \
+        Ember-Missing-Output 320 256 "$PWD/$missing_prefix.png" \
+        > "$missing_prefix.log" 2>&1 || missing_status=$?
+    printf '%s\n' "$missing_status" > "$missing_prefix.status"
+    check_missing_images
+    case "$missing_status" in
+    0)
+        echo 'FAIL: an unknown output was accepted' >&2
+        exit 1 ;;
+    124)
+        sleep 1 ;;
+    2)
+        # Workspace sends InvalidArgs. QtTools qdbus prints these two lines
+        # and returns 2 for the error reply. Other errors are not this control.
+        printf '%s\n' 'Error: org.freedesktop.DBus.Error.InvalidArgs' \
+            'Unknown screen name' | cmp -s - "$missing_prefix.log" || {
+            echo 'FAIL: unexpected unknown-output error reply' >&2
+            exit 1
+        }
+        cp "$missing_prefix.log" missing-output.log
+        break ;;
+    *)
+        echo "FAIL: unexpected unknown-output query status: $missing_status" >&2
+        exit 1 ;;
+    esac
+done
 # Layout models can precede a visible Quick item. Keep capture retries inside
 # the original startup deadline. Separate paths also isolate late D-Bus replies.
 capture_attempt=0
@@ -140,11 +187,13 @@ while :; do
     fi
     sleep 1
 done
+check_missing_images
 # Reject a software fallback in the shell itself, not only in the compositor.
 /bin/sh ./check-results.sh renderer plasmashell.log
 count=0
 while [ "$count" -lt 6 ]; do
     sleep 5
+    check_missing_images
     kill -0 "$plasma_pid"
     query org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
         "$(cat layout.js)" > "layout-$count.txt"
@@ -154,4 +203,5 @@ done
 /bin/sh ./check-results.sh renderer plasmashell.log
 query org.kde.KWin /KWin org.kde.KWin.supportInformation > supportinformation-after.txt
 /bin/sh ./check-results.sh support supportinformation-after.txt
+check_missing_images
 echo 'PASS: Plasma Desktop virtual shell; 30 seconds of layout liveness'

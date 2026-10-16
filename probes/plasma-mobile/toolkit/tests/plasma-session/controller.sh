@@ -30,8 +30,26 @@ done
 } < display-env
 printf '%s\n' "$WAYLAND_DISPLAY" | grep -Eq '^wayland-[0-9]+$'
 printf '%s\n' "$DISPLAY" | grep -Eq '^:[0-9]+$'
-case "$XAUTHORITY" in "$TMPDIR"/*) ;; *) echo 'FAIL: Xauthority is outside the private temporary directory' >&2; exit 1 ;; esac
-[ -f "$XAUTHORITY" ] && [ ! -L "$XAUTHORITY" ] && [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]
+# KWin 6.8 creates xauth_XXXXXX in QStandardPaths::RuntimeLocation.
+# Accept a direct file in this runner's private runtime directory only.
+case "$XDG_RUNTIME_DIR" in "$EMBER_PLASMA_OUTPUT/runtime") ;;
+    *) echo 'FAIL: Xauthority runtime directory does not belong to this session' >&2; exit 1 ;; esac
+uid=$(/usr/bin/id -u)
+for directory in "$EMBER_PLASMA_OUTPUT" "$XDG_RUNTIME_DIR"; do
+    if [ -L "$directory" ] || [ ! -d "$directory" ] ||
+        [ "$(/usr/bin/stat -f '%u:%p' "$directory" 2>/dev/null)" != "$uid:40700" ]; then
+        echo 'FAIL: unsafe private Xauthority directory' >&2; exit 1
+    fi
+done
+case "$XAUTHORITY" in "$XDG_RUNTIME_DIR"/*) authority_name=${XAUTHORITY#"$XDG_RUNTIME_DIR"/} ;;
+    *) echo 'FAIL: Xauthority is outside the private runtime directory' >&2; exit 1 ;; esac
+case "$authority_name" in ''|.|..|*/*)
+    echo 'FAIL: Xauthority is not a direct runtime file' >&2; exit 1 ;; esac
+if [ -L "$XAUTHORITY" ] || [ ! -f "$XAUTHORITY" ] ||
+    [ "$(/usr/bin/stat -f '%u:%p' "$XAUTHORITY" 2>/dev/null)" != "$uid:100600" ]; then
+    echo 'FAIL: unsafe private Xauthority file' >&2; exit 1
+fi
+[ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]
 export WAYLAND_DISPLAY DISPLAY XAUTHORITY
 /usr/pkg/bin/startplasma-wayland > plasma-session.log 2>&1 &
 plasma=$!

@@ -1,0 +1,38 @@
+; SPDX-License-Identifier: BSD-2-Clause
+; Origin: EmberBSD contributors (AI-assisted).
+; Three fixed clip-space positions, indexed only by VertexIndex 0..2.
+OpCapability Shader
+OpMemoryModel Logical GLSL450
+OpEntryPoint Vertex %main "main" %index %position
+OpDecorate %index BuiltIn VertexIndex
+OpDecorate %position BuiltIn Position
+%void = OpTypeVoid
+%function = OpTypeFunction %void
+%int = OpTypeInt 32 1
+%uint = OpTypeInt 32 0
+%float = OpTypeFloat 32
+%vec4 = OpTypeVector %float 4
+%three = OpConstant %uint 3
+%array = OpTypeArray %vec4 %three
+%input = OpTypePointer Input %int
+%output = OpTypePointer Output %vec4
+%local = OpTypePointer Function %array
+%element = OpTypePointer Function %vec4
+%zero = OpConstant %float 0
+%one = OpConstant %float 1
+%negative = OpConstant %float -1
+%a = OpConstantComposite %vec4 %negative %negative %zero %one
+%b = OpConstantComposite %vec4 %one %negative %zero %one
+%c = OpConstantComposite %vec4 %zero %one %zero %one
+%triangle = OpConstantComposite %array %a %b %c
+%index = OpVariable %input Input
+%position = OpVariable %output Output
+%main = OpFunction %void None %function
+%entry = OpLabel
+%vertices = OpVariable %local Function %triangle
+%i = OpLoad %int %index
+%pointer = OpAccessChain %element %vertices %i
+%value = OpLoad %vec4 %pointer
+OpStore %position %value
+OpReturn
+OpFunctionEnd

@@ -7,8 +7,11 @@ ordinary user. KWin uses a 1280x1024 virtual output. The test requires OpenGL
 with a V3D renderer, Xwayland, KSMServer, Activities, KDED and Plasma Desktop.
 It verifies readiness for 30 seconds and requests normal logout.
 
-This is a prepared target test. It has not run on CM5. Host fixtures test
-failure handling and orchestration only. They do not execute KDE or Mesa.
+The test reaches KWin, Xwayland, KSMServer, Activities and the default layout
+on CM5. Full-session acceptance fails: V3D buffer allocation returns ENOMEM,
+and the first shell liveness query exceeds five seconds. Cleanup requires
+SIGKILL. Normal logout is not yet accepted. Host fixtures test orchestration;
+they do not execute KDE or Mesa.
 
 ## Run on the target
 
@@ -117,6 +120,7 @@ Run the host tests with native Perl and Ruby:
 
 ```sh
 PERL=/path/to/native/perl /path/to/native/ruby ./host-test.rb
+/path/to/native/ruby ./xauthority-host.rb
 ```
 
 On macOS, do not use Apple's protected system interpreters. SIP hides their
@@ -128,8 +132,29 @@ fixtures, and reject a session that is shutting down. The property fixture requi
 the exact service, object, interface, and property. It rejects the former method
 call and an incorrect property name at that protocol boundary.
 
-Host result: 30 controls passed on macOS with native Perl 5.44 and Ruby 4.0.
+The Xauthority checks follow KWin 6.8.0 `src/xwayland/lib/xauthority.cpp`:
+`generateXauthorityFile` uses `QStandardPaths::RuntimeLocation`, not `TMPDIR`.
+The controller accepts a direct regular file in this session's runtime directory.
+Both private directories require current-user ownership and mode 0700.
+The file requires current-user ownership and mode 0600. No filename length is assumed.
+Symlinks, nested paths, traversal and paths outside the session are rejected.
+The checks use the full BSD `stat` mode, including the file type.
+The fixture never reads or records a real authentication cookie.
+
+Host result: 30 full-controller controls and 25 focused Xauthority controls pass
+on macOS with native Perl 5.44 and Ruby 4.0. The focused test runs the actual
+controller block with real BSD `stat` mode formatting. Only a foreign UID is
+modeled without changing ownership. The pinned previous runner fails on the
+correct KWin runtime path. These are host controls, not a native session result.
 The scripts passed shell, Perl and Ruby syntax checks. No C/C++ source changes
 are present in this test, so Cppcheck and compiled-code sanitizer coverage do
-not apply to this patch. Target execution and target memory analysis remain
+not apply to this patch. Native execution passes the Xauthority gate but
+fails later during full-session acceptance. Target memory analysis remains
 unperformed.
+
+The failing native run used kernel `93dc0e3167a2e1381c9c4971cf8e4ee00f282685`,
+Mesa 26.2.4nb8 and Xwayland 24.1.14nb3. A process-local DRM trace observed
+two failed 5,246,976-byte allocations with ENOMEM. The trace does not separate
+the global BO budget from DMA or GEM-handle allocation failure. The boot time
+remained unchanged, and temperature stayed below 66 degrees Celsius. This
+result is separate from the accepted bare Desktop capture and liveness test.
