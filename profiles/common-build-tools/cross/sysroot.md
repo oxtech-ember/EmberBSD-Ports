@@ -70,10 +70,13 @@ Run the archive extractor regression on the Linux host:
 
 ```sh
 ruby profiles/common-build-tools/cross/tests/sysroot-archive.rb
+ruby profiles/common-build-tools/cross/tests/fetch-sysroot.rb
 ```
 
-The regression covers archive mechanics and hostile inputs. Actual set and
-target acceptance belongs to the selected release's bound qualification.
+The regressions cover archive mechanics, hostile inputs, and CLI refusal
+controls with a local download fixture. They do not establish HTTPS behavior
+or target execution. Actual set and target acceptance belongs to the selected
+release's bound qualification.
 
 ## Verified libc repair, 2026-10-09
 
