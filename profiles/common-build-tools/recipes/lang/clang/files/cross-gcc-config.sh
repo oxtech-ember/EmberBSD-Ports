@@ -22,10 +22,10 @@ prefix=$(realpath "$sysroot$target_prefix")
 [ "$("$llvm" --version)" = 23.1.3 ] || fail 'expected LLVM 23.1.3'
 gcc_target=$("$gcc" -dumpmachine)
 triple=$("$llvm" --host-target)
-# The current common cross profile is AArch64. GCC's empty vendor is LLVM's
-# "unknown" vendor; OS version suffixes do not change the selected native ABI.
-case "$gcc_target" in aarch64--netbsd*) ;; *) fail 'unsupported GCC target' ;; esac
-case "$triple" in aarch64-unknown-netbsd*) ;; *) fail 'unsupported LLVM target' ;; esac
+# GCC's empty vendor is LLVM's "unknown" vendor; OS version suffixes do
+# not change the selected native ABI. Both tools must describe the same CPU.
+case "$gcc_target" in aarch64--netbsd*|x86_64--netbsd*) ;; *) fail 'unsupported GCC target' ;; esac
+case "$triple" in aarch64-unknown-netbsd*|x86_64-unknown-netbsd*) ;; *) fail 'unsupported LLVM target' ;; esac
 case "$gcc_target:$triple" in *[!a-zA-Z0-9_.:+-]*) fail 'unsafe target' ;; esac
 normalize() { printf '%s\n' "$1" | sed -e 's/--/-unknown-/' -e 's/netbsd[0-9.]*/netbsd/'; }
 [ "$(normalize "$gcc_target")" = "$(normalize "$triple")" ] || fail 'target ABI mismatch'

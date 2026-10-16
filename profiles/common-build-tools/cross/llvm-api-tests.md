@@ -1,6 +1,9 @@
 # Shared LLVM C API and ORC acceptance
 
-These consumers test the installed common LLVM package on EmberBSD/AArch64.
+These consumers test the installed common LLVM package on EmberBSD/AArch64
+or amd64. The builder selects the exact CPU from the checked metadata,
+records it in the hashed bundle and uses the selected GCC16 startup objects.
+The runner rejects a different target CPU.
 Current probes select 23.1.3; the earlier 23.1.2 runtime receipt remains historical.
 They do not install another runtime or build LLVM. Cross compilation requires
 the accepted GCC16 cross tools, the target sysroot with LLVM's dependencies,
@@ -37,7 +40,7 @@ existing absolute timeout executable with the same interface. Keep the logs.
 The C consumer builds and verifies IR, rejects a malformed module, serializes
 bitcode, parses it into a new context, and compares the round-tripped IR.
 The C++ consumer uses the default `LLJITBuilder` with no object-layer override.
-It requires AArch64 NetBSD, LLVM's `isa<ObjectLinkingLayer>` and a C++
+It requires NetBSD with the CPU selected when compiling the test, LLVM's `isa<ObjectLinkingLayer>` and a C++
 `dynamic_cast` across the shared LLVM ABI. Each of four lifecycles creates a
 JIT, checks a typed missing-symbol error, compiles and calls a function on three
 inputs, removes its resource tracker, checks the symbol is gone, and disposes

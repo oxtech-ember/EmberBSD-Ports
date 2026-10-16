@@ -55,6 +55,12 @@ Architecture hints use the selected target and inspect both supported loader
 locations inside the sysroot. They no longer disable shared libperl/dlopen
 because macOS lacks the target ELF loader.
 
+The experimental amd64 profile derives its target triplet and configured
+Perl architecture from `MACHINE_ARCH=x86_64`. The installed metadata helper
+accepts only the actual configured AArch64 or x86_64 threaded NetBSD ABI and
+preserves its architecture and feature answers. Separate amd64 package and
+runtime acceptance are required; the AArch64 results below do not cover it.
+
 The generated primary makefile is `GNUmakefile`. On case-insensitive macOS,
 upstream's removal of lowercase `makefile` otherwise also removes `Makefile`.
 The build uses native GNU make and native Perl generators.

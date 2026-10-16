@@ -21,6 +21,8 @@ sub read_file {
 }
 my $original = read_file("$source/config.sh");
 my $original_header = read_file("$source/config.h");
+my ($arch) = $original =~ /^archname='(aarch64|x86_64)-netbsd-thread-multi'$/m;
+defined $arch or die "Unsupported configured Perl target architecture\n";
 my $text = $original;
 my %replace = (
     cc => '/usr/pkg/gcc16/bin/gcc', ld => '/usr/pkg/gcc16/bin/gcc',
@@ -32,7 +34,7 @@ my %replace = (
     make => 'make', firstmakefile => 'makefile',
     usecrosscompile => 'undef',
     cf_by => 'EmberBSD-Ports', cf_email => '', perladmin => '',
-    myhostname => '', mydomain => '', myuname => 'EmberBSD aarch64 (cross-built)',
+    myhostname => '', mydomain => '', myuname => "EmberBSD $arch (cross-built)",
     config_args => '',
 );
 # These only describe transport and host generators. Installed ExtUtils builds
@@ -48,8 +50,8 @@ $text =~ s/^config_argc=[0-9]+$/config_argc=0/m
     or die "Missing configure argument count\n";
 $text =~ s{--sysroot=\Q$sysroot\E\b}{}g;
 $text =~ s{\Q$sysroot\E(?=/)}{}g;
-$text =~ s/^# Target system\s*:.*$/# Target system: EmberBSD aarch64 (cross-built)/m;
-$text =~ m{/Volumes/|/private/|/Users/|aarch64--netbsd-(?:gcc|ar|nm)|Cross/(?:run|to|from)}
+$text =~ s/^# Target system\s*:.*$/# Target system: EmberBSD $arch (cross-built)/m;
+$text =~ m{/Volumes/|/private/|/Users/|(?:aarch64|x86_64)--netbsd-(?:gcc|ar|nm)|Cross/(?:run|to|from)}
     and die "Untranslated build-host path or tool in installed metadata\n";
 # Every feature answer must remain unchanged. Metadata corrections
 # are not permission to invent target probe results.
@@ -77,7 +79,7 @@ for my $pair ([LOC_SED => 'full_sed'], [CPPSTDIN => 'cppstdin'], [CPPRUN => 'cpp
         or die "Missing header macro: $macro\n";
 }
 $header =~ s/^( \* Configured by\s*:).*$/$1 EmberBSD-Ports/m;
-$header =~ s/^( \* Target system\s*:).*$/$1 EmberBSD aarch64 (cross-built)/m;
+$header =~ s/^( \* Target system\s*:).*$/$1 EmberBSD $arch (cross-built)/m;
 open my $header_fh, '>', "$output/config.h" or die $!;
 print {$header_fh} $header;
 close $header_fh or die $!;

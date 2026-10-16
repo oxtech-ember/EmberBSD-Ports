@@ -37,6 +37,7 @@ EOF
 cat > "$work/source/configure" <<'EOF'
 #!/bin/sh
 printf '%s\n' "$@" > "$FIXTURE_CONFIGURE"
+printf '%s\n' "CPPFLAGS=$CPPFLAGS" "CFLAGS=$CFLAGS" "CXXFLAGS=$CXXFLAGS" "LDFLAGS=$LDFLAGS" > "$FIXTURE_CONFIGURE.flags"
 exit 97
 EOF
 chmod +x "$work/source/configure" "$work/host-cc"
@@ -57,6 +58,8 @@ printf '#!/bin/sh\necho fixture-tool\n' > "$work/tools/bin/nbgmake"
 chmod +x "$work/tools/bin/nbgmake"
 for pair in default:aarch64--netbsd aarch64:aarch64--netbsd amd64:x86_64--netbsd; do
     target=${pair%:*} triplet=${pair#*:}
+    mkdir -p "$work/tools/$triplet/lib/ldscripts"
+    printf 'fixture linker script\n' > "$work/tools/$triplet/lib/ldscripts/elf.x"
     for tool in ar as elfedit ld nm objcopy objdump ranlib readelf size strings strip; do
         cp "$work/tools/bin/nbgmake" "$work/tools/bin/$triplet-$tool"
     done
@@ -78,10 +81,15 @@ for pair in default:aarch64--netbsd aarch64:aarch64--netbsd amd64:x86_64--netbsd
         if [ "$mode" = applications ]; then set -- "$@" "$work/sysroot"; fi
         status=0
         HOST_CC=$work/host-cc HOST_CXX=$work/host-cc CROSS_JOBS=1 \
+            HOST_CPPFLAGS="-isysroot /fixture/sdk" HOST_LDFLAGS="-isysroot /fixture/link-sdk" \
             FIXTURE_CONFIGURE=$work/configure.txt \
             sh "$work/profile/cross/build.sh" "$@" "$work/tools" "$work/math" "$output" \
             > "$work/result.log" 2>&1 || status=$?
         [ "$status" -eq 97 ] || { cat "$work/result.log" >&2; exit 1; }
+        grep -Fxq 'CPPFLAGS=-isysroot /fixture/sdk' "$work/configure.txt.flags"
+        grep -Fxq 'CFLAGS=-O2 -isysroot /fixture/sdk' "$work/configure.txt.flags"
+        grep -Fxq 'CXXFLAGS=-O2 -isysroot /fixture/sdk' "$work/configure.txt.flags"
+        grep -Fxq 'LDFLAGS=-isysroot /fixture/link-sdk' "$work/configure.txt.flags"
         grep -Fxq -- "--target=$triplet" "$work/configure.txt"
         grep -Fxq -- "--with-as=$output/toolchain/bin/$triplet-as" "$work/configure.txt"
         grep -Fxq -- "--with-ld=$output/toolchain/bin/$triplet-ld" "$work/configure.txt"

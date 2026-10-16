@@ -104,8 +104,10 @@ remaining requirements before extraction and after deleting an older package.
 The original package was restored normally while this defect was repaired.
 
 `gcc-package-requires.patch` normalizes repeated `/./` in ELF loader paths
-before that subtraction. It changes no `../` or symlink resolution and retains
-external library checks. This is a local AI-assisted pkgsrc adaptation, not
+before that subtraction. Parent-spelled aliases are excluded only if the
+canonical path is explicitly owned by the package and both paths identify the
+same staged file. External, unlisted and symlink-distinct requirements remain
+checked. The regression covers both native and DESTDIR staging. This is a local AI-assisted pkgsrc adaptation, not
 submitted upstream. The actual metadata rule regression is RED before the
 repair and GREEN after it; an isolated pkg_add still rejects a missing external
 library. Run it with the actual exported file and BSD make:

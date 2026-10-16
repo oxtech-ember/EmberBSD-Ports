@@ -7,10 +7,15 @@ set -eu
 tree=$(CDPATH= cd -- "$1" && pwd)
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd)
 make=${BMAKE:-bmake}
+arch=${EMBERBSD_TEST_ARCH:-aarch64}
+case "$arch" in aarch64|x86_64) ;; *) echo 'Unsupported test architecture.' >&2; exit 2;; esac
 command -v "$make" >/dev/null 2>&1 || { echo 'BSD make is required.' >&2; exit 2; }
 mkdir "$2"
 work=$(CDPATH= cd -- "$2" && pwd)
-mkdir "$work/sys"
+mkdir "$work/sys" "$work/mesa-generators"
+# Parsing the actual Iris recipe requires a sealed-generator location. This
+# empty receipt only exercises metadata; no generator or build is executed.
+: > "$work/mesa-generators/installed.sha256"
 cat > "$work/sys/bsd.own.mk" <<'MK'
 # Only target MAKECONF inclusion is provided by the host boundary.
 .if exists(${MAKECONF})
@@ -56,12 +61,13 @@ cat > "$work/host-make" <<MAKE
     exec "$make" -r -m "$work/sys" \
         OPSYS=NetBSD OS_VERSION=11.0 OPSYS_VERSION=110000 \
         NATIVE_OPSYS=NetBSD NATIVE_OS_VERSION=11.0 NATIVE_OPSYS_VERSION=110000 \
-        LOWER_OPSYS=netbsd MACHINE_ARCH=aarch64 HOST_MACHINE_ARCH=aarch64 \
-        MACHINE_GNU_ARCH=aarch64 MACHINE_CPU=aarch64 OBJECT_FMT=ELF \
+        LOWER_OPSYS=netbsd MACHINE_ARCH=$arch HOST_MACHINE_ARCH=$arch \
+        MACHINE_GNU_ARCH=$arch MACHINE_CPU=$arch OBJECT_FMT=ELF \
         LOCALBASE=/usr/pkg PREFIX=/usr/pkg X11_TYPE=native CC=cc CXX=c++ \
         _GCC_VERSION=12.5.0 PKG_INFO="$work/pkg-info" PKG_ADMIN="$work/pkg-admin" \
         PKG_BUILD_OPTIONS.gcc16='c++ always-libgcc' PKG_BUILD_OPTIONS.llvm=tests \
         PKG_BUILD_OPTIONS.MesaLib='llvm x11 wayland' \
+        EMBERBSD_MESA_GENERATORS="$work/mesa-generators" \
         USE_BUILTIN.pthread=yes H_PTHREAD=/usr/include/pthread.h \
         _MAKE="$work/host-make" "\$@"
 MAKE
@@ -76,7 +82,8 @@ run() {
         -V 'ldflags=${_GCC_LDFLAGS}' -V 'wrapcc=${_WRAP_EXTRA_ARGS.CC}' \
         -V 'wrapcxx=${_WRAP_EXTRA_ARGS.CXX}' -V 'wrappers=${WRAPPER_TARGETS}' \
         -V 'gccdeps=${BUILDLINK_API_DEPENDS.gcc16}' \
-        -V 'python=${_PYTHON_VERSION}' -V 'fail=${PKG_FAIL_REASON}' "$@"
+        -V 'python=${_PYTHON_VERSION}' -V 'platforms=${ONLY_FOR_PLATFORM}' \
+        -V 'v3d=${PLIST.v3d:Uno}' -V 'meson=${MESON_ARGS}' -V 'fail=${PKG_FAIL_REASON}' "$@"
 }
 diagnostics() {
     log=$1 expected=${2:-}
@@ -121,10 +128,19 @@ selected() {
 # C-only and C++ consumers, then existing canonical family composition.
 selected c-only devel/zlib tools
 selected cxx textproc/icu tools
-selected python lang/python314 tools
+selected python lang/python315 tools
 selected llvm lang/llvm tools
 selected clang lang/clang tools
 selected graphics graphics/MesaLib graphics
+selected libdrm x11/libdrm graphics
+grep "^platforms=.*NetBSD-11.\*-$arch" "$work/graphics.log" >/dev/null
+grep "^platforms=.*NetBSD-11.\*-$arch" "$work/libdrm.log" >/dev/null
+case "$arch" in
+    aarch64) drivers=v3d,virgl,softpipe,llvmpipe,zink; v3d=yes ;;
+    x86_64) drivers=iris,virgl,softpipe,llvmpipe,zink; v3d=no ;;
+esac
+grep "^meson=.*-Dgallium-drivers=$drivers " "$work/graphics.log" >/dev/null
+grep -qx "v3d=$v3d" "$work/graphics.log"
 selected media multimedia/ffmpeg9 media
 selected same-floor devel/zlib tools GCC_REQD=16.2
 selected cache-chain devel/zlib tools 'PKGSRC_COMPILER=ccache gcc'
@@ -151,14 +167,14 @@ rejected package-optout 'selected pkgsrc GCC 16.2' USE_PKGSRC_GCC=no
 rejected separate-runtime 'complete gcc16 runtime' USE_PKGSRC_GCC_RUNTIME=yes
 rejected build-only 'full dependency' BUILDLINK_DEPMETHOD.gcc16=build
 rejected foreign-prefix 'one final /usr/pkg prefix' LOCALBASE=/opt/pkg
-rejected foreign-platform 'NetBSD 11/AArch64 only' MACHINE_ARCH=x86_64
+rejected foreign-platform 'NetBSD 11/AArch64 or amd64 only' MACHINE_ARCH=earmv7hf
 # Early profile cross guard only; actual cross metadata requires a target sysroot.
 cat > "$work/cross.mk" <<MK
 BSD_PKG_MK=yes
 .include "$tree/EMBERBSD-COMMON-TOOLS-MK.CONF"
 MK
 "$make" -r -m / -f "$work/cross.mk" OPSYS=NetBSD OS_VERSION=11.0 \
-    MACHINE_ARCH=aarch64 PREFIX=/usr/pkg LOCALBASE=/usr/pkg USE_CROSS_COMPILE=yes \
+    MACHINE_ARCH="$arch" PREFIX=/usr/pkg LOCALBASE=/usr/pkg USE_CROSS_COMPILE=yes \
     -V '${PKG_FAIL_REASON}' > "$work/cross.log"
 grep 'require native package builds' "$work/cross.log" >/dev/null
 for recipe in lang/gcc16 math/mpfr math/mpcomplex devel/gtexinfo; do

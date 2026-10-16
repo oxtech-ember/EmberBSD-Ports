@@ -116,6 +116,7 @@ mkdir "$work/src" "$work/build" "$prefix" "$prefix/bin"
 {
     uname -srm
     printf 'mode=%s\ntarget=%s\ntriplet=%s\nhost_cc=%s\nhost_cxx=%s\n' "$mode" "$target" "$triplet" "${HOST_CC:-cc}" "${HOST_CXX:-c++}"
+    printf 'host_cppflags=%s\nhost_ldflags=%s\n' "${HOST_CPPFLAGS:-}" "${HOST_LDFLAGS:-}"
     "${HOST_CC:-cc}" --version
     "${HOST_CC:-cc}" -dumpmachine
     "${HOST_CXX:-c++}" --version
@@ -155,7 +156,13 @@ if [ "$mode" = kernel ]; then
 else
     set -- --with-sysroot="$sysroot" --with-gxx-include-dir="$sysroot/usr/pkg/gcc16/include/c++"
 fi
-CC=${HOST_CC:-cc} CXX=${HOST_CXX:-c++} CFLAGS=-O2 CXXFLAGS=-O2 \
+# Recursive host libraries and generators also need the selected SDK flags.
+CPPFLAGS=${HOST_CPPFLAGS:-}
+export CPPFLAGS
+# Some host subprojects, including libcody, omit CPPFLAGS in compile rules.
+CC=${HOST_CC:-cc} CXX=${HOST_CXX:-c++} \
+    CFLAGS="-O2 ${HOST_CPPFLAGS:-}" CXXFLAGS="-O2 ${HOST_CPPFLAGS:-}" \
+    LDFLAGS=${HOST_LDFLAGS:-} \
     ../src/configure --target="$triplet" --prefix="$prefix" \
     "$@" \
     --with-gmp="$math" --with-mpfr="$math" --with-mpc="$math" \

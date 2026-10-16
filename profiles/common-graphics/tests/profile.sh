@@ -16,11 +16,12 @@ MK
 make=${BMAKE:-bmake}
 run() { (cd "$work" && "$make" -r -m / OPSYS=NetBSD OS_VERSION=11.0 MACHINE_ARCH=aarch64 PREFIX=/usr/pkg LOCALBASE=/usr/pkg EMBERBSD_COMMON_TOOLS=yes "$@"); }
 [ -z "$(run)" ]
+[ -z "$(run MACHINE_ARCH=x86_64)" ]
 run PKGSRC_COMPILER=clang | grep 'selected pkgsrc GCC 16.2 compiler'
 run GCC_REQD=12 | grep 'requires GCC_REQD=16.2'
 run USE_CROSS_COMPILE=yes | grep 'requires EMBERBSD_COMMON_GRAPHICS_CROSS=yes'
-run MACHINE_ARCH=x86_64 | grep 'NetBSD 11/AArch64 only'
-run OS_VERSION=10.1 | grep 'NetBSD 11/AArch64 only'
+run MACHINE_ARCH=earmv7hf | grep 'NetBSD 11/AArch64 or amd64 only'
+run OS_VERSION=10.1 | grep 'NetBSD 11/AArch64 or amd64 only'
 run EMBERBSD_COMMON_TOOLS=no | grep 'requires common build-tools'
 # Presence alone does not prove native tool acceptance; absent owner marker fails.
 run PYTHONBIN=/usr/pkg/bin/python3.14 | grep 'canonical Python 3.15'

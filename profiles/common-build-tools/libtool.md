@@ -102,3 +102,8 @@ static consumers, exception handling through a DSO, loaded GCC16 libraries,
 libtoolize macro installation, shlibtool and uninstall. Run it in an EmberBSD
 AArch64 guest after ordinary `pkg_add` installation, with a new output path.
 Fortran consumer execution remains outside this acceptance gate.
+
+The shared profile also selects the C Libtool tag explicitly in libiconv
+1.19nb1's hand-written compile/link rules. This keeps the actual consumer
+compiler when Libtool was configured with an additional language-standard
+flag; it does not change the compiler or skip Libtool checks.

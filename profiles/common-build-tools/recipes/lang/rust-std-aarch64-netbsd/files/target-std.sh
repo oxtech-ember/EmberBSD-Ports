@@ -66,6 +66,7 @@ configure)
         [ -f "$file" ] || { echo "missing target input: $file" >&2; exit 1; }
     done
     mkdir -p "$work/tmp" "$work/cargo-home"
+    sh "$(dirname "$0")/isolate-host-rust.sh" "$host" "$work/host-rust"
     for pair in "cc:$cc" "cxx:$cxx"; do
         name=${pair%%:*} compiler=${pair#*:}
         printf '#!/bin/sh\nexec "%s" "--sysroot=%s" "-B%s/" "-L%s/usr/pkg/gcc16/lib" -Wl,-rpath,/usr/pkg/gcc16/lib "$@"\n' \
@@ -78,8 +79,8 @@ change-id = "ignore"
 build = "aarch64-apple-darwin"
 host = ["aarch64-apple-darwin"]
 target = ["aarch64-unknown-netbsd"]
-rustc = "$host/bin/rustc"
-cargo = "$host/bin/cargo"
+rustc = "$work/host-rust/bin/rustc"
+cargo = "$work/host-rust/bin/cargo"
 local-rebuild = true
 locked-deps = true
 vendor = true

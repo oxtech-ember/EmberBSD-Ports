@@ -18,8 +18,9 @@ PKG_CONFIG=/absolute/native/pkgconf sh \
     /absolute/host-qt/qtbase /absolute/new-build
 ```
 
-The result is an AArch64 ELF executable. No target program executes on the
-host. Build objects and receipts stay outside the source checkout.
+Set `EMBERBSD_CROSS_ARCH=x86_64` for amd64; the default remains AArch64.
+The compiler triple must match the selection. The result is an ELF executable
+for that CPU. No target program executes on the host. Build objects and receipts stay outside the source checkout.
 
 ## Run on EmberBSD
 

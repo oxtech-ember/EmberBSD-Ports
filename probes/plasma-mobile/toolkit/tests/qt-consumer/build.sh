@@ -4,6 +4,9 @@
 set -eu
 [ "$#" = 4 ] || { echo "Usage: $0 CROSS_TOOLS SYSROOT HOST_QT NEW_WORK" >&2; exit 2; }
 tools=$1 sysroot=$2 host_qt=$3 work=$4
+arch=${EMBERBSD_CROSS_ARCH:-aarch64}
+case "$arch" in aarch64|x86_64) ;; *) echo 'Unsupported consumer CPU' >&2; exit 2;; esac
+[ "$("$tools/bin/$arch--netbsd-g++" -dumpmachine)" = "$arch--netbsd" ]
 : "${CMAKE:?Set the native CMake executable}"
 : "${NINJA:?Set the native Ninja executable}"
 : "${PKG_CONFIG:?Set the native pkg-config executable}"
@@ -18,14 +21,14 @@ PKG_CONFIG_PATH=; export PKG_CONFIG_PATH
 PATH="$(dirname "$CMAKE"):$PATH"; export PATH
 sh "$sysroot/usr/pkg/qt6/bin/qt-cmake" -S "$src" -B "$work" -G Ninja \
     -DCMAKE_MAKE_PROGRAM="$NINJA" \
-    -DCMAKE_SYSTEM_NAME=NetBSD -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+    -DCMAKE_SYSTEM_NAME=NetBSD -DCMAKE_SYSTEM_PROCESSOR="$arch" \
     -DCMAKE_SYSROOT="$sysroot" -DCMAKE_FIND_ROOT_PATH="$sysroot" \
     -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
     -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
     -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
     -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY \
-    -DCMAKE_CXX_COMPILER="$tools/bin/aarch64--netbsd-g++" \
-    -DCMAKE_CXX_FLAGS="-B$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0/" \
+    -DCMAKE_CXX_COMPILER="$tools/bin/$arch--netbsd-g++" \
+    -DCMAKE_CXX_FLAGS="-B$sysroot/usr/pkg/gcc16/lib/gcc/$arch--netbsd/16.2.0/" \
     -DCMAKE_EXE_LINKER_FLAGS="-L$sysroot/usr/pkg/gcc16/lib -L$sysroot/usr/pkg/lib" \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     -DCMAKE_INSTALL_RPATH='/usr/pkg/qt6/lib;/usr/pkg/gcc16/lib;/usr/pkg/lib' \

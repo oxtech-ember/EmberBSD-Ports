@@ -86,6 +86,23 @@ Three obsolete patches are removed with these concrete reasons:
 - Upstream removed texi2dvi's historical ksh re-exec branch, so the patch
   disabling it is obsolete.
 
+The additional `patches/texinfo-gettext-order.patch` removes direct
+`libintl.h` inclusions before gnulib's `gettext.h` in four C translation
+units. Native NetBSD libintl defines context-expression macros unless
+gettext's compatibility guard is already active; including it first breaks
+the later inline function definitions. The GNU wrapper includes libintl
+itself when NLS is enabled, so translations remain enabled. Package revision
+2 includes this repair. Test the prepared upstream source on NetBSD with:
+
+```sh
+sh profiles/development-toolchain/tests/texinfo-gettext.sh \
+    /absolute/patched-texinfo-source /absolute/compiler /absolute/new-check
+```
+
+The check uses each production header ordering and exercises gettext,
+context and plural lookup with NLS enabled and disabled. Full package and
+installed XS/Info/HTML checks are still required.
+
 The recipe retains Perl XS and external Perl module dependencies.
 Its PLIST follows the 7.3 Automake install destinations: Perl example
 converters still install below `Texinfo/Convert`, XS modules move into
@@ -151,3 +168,8 @@ compiler-test dependency, not the release development-runtime selection.
 Source preparation and native validation are separate evidence levels.
 The named native prerequisite checks do not establish a passed complete GCC
 test suite or the common C++ consumer migration.
+
+On Darwin, Texinfo selects GNU libiconv: the native implementation fails
+upstream's conversion-error test, which otherwise omits the shared C/XS
+implementation required by the package. The real configure test remains
+enabled; no cached success value substitutes for it.

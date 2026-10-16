@@ -30,11 +30,14 @@ prefix = query(config, '--prefix')
 metadata_receipt = "#{File.dirname(File.dirname(config))}/receipt.json"
 metadata = JSON.parse(File.read(metadata_receipt))
 abort 'require a validated staged target prefix and matching sysroot' unless prefix.start_with?('/') && File.directory?(prefix) && metadata.fetch('target_prefix') == prefix && metadata.fetch('sysroot') == sysroot && metadata.fetch('staged_library_sha256', nil)
-abort 'require staged LLVM 23.1.3 for AArch64 NetBSD' unless query(config, '--version') == '23.1.3' && query(config, '--host-target') == 'aarch64-unknown-netbsd'
+triple = query(config, '--host-target')
+arch = triple[/\A(aarch64|x86_64)-(?:unknown)?-netbsd(?:[0-9]+(?:\.[0-9]+)*)?\z/, 1]
+abort 'require staged LLVM 23.1.3 for a supported NetBSD CPU' unless query(config, '--version') == '23.1.3' && arch
+elf_machine, elf_label = {'aarch64' => [183, 'AArch64'], 'x86_64' => [62, 'Advanced Micro Devices X86-64']}.fetch(arch)
 abort 'LLVM must have shared linkage and RTTI' unless query(config, '--has-rtti') == 'YES' && query(config, '--link-shared', '--shared-mode', 'core', 'bitreader', 'bitwriter', 'orcjit', 'native') == 'shared'
-cc, cxx, readelf = %w[gcc g++ readelf].map { |name| "#{tools}/bin/aarch64--netbsd-#{name}" }
+cc, cxx, readelf = %w[gcc g++ readelf].map { |name| "#{tools}/bin/#{arch}--netbsd-#{name}" }
 abort 'missing cross compiler or ELF inspector' unless [cc, cxx, readelf].all? { |p| File.executable?(p) }
-abort 'unexpected cross compiler target' unless query(cc, '-dumpmachine') == 'aarch64--netbsd'
+abort 'unexpected cross compiler target' unless query(cc, '-dumpmachine') == "#{arch}--netbsd"
 libraries = Shellwords.split(query(config, '--link-shared', '--libfiles', 'core', 'bitreader', 'bitwriter', 'orcjit', 'native'))
 abort 'expected one shared LLVM provider in the target sysroot' unless libraries.length == 1 && libraries[0].start_with?(prefix + '/lib/') && File.file?(libraries[0])
 library = libraries[0]
@@ -43,13 +46,14 @@ dynamic = query(readelf, '-d', library)
 soname = dynamic[/\(SONAME\).*\[([^\]]+)\]/, 1]
 abort 'unexpected shared LLVM SONAME' unless soname && soname.match?(/\AlibLLVM(?:-23)?\.so(?:\.23(?:\.1(?:\.2)?)?)?\z/)
 header = File.binread(library, 20)
-abort 'LLVM must be an AArch64 ELF64 shared library' unless header.byteslice(0, 6) == "\x7fELF\x02\x01" && header.byteslice(16, 4).unpack('v2') == [3, 183]
+abort 'LLVM must be an ELF64 shared library for the selected CPU' unless header.byteslice(0, 6) == "\x7fELF\x02\x01" && header.byteslice(16, 4).unpack('v2') == [3, elf_machine]
 
 source_names = %w[llvm-c-api-test.c llvm-orc-test.cpp run-llvm-api-tests.sh]
 inputs = source_names.map { |name| "#{owner}/#{name}" } + [__FILE__, cc, cxx, readelf, config, library, metadata_receipt]
 initial = inputs.to_h { |p| [p, Digest::SHA256.file(p).hexdigest] }
 FileUtils.mkdir_p("#{work}/bundle/bin")
 FileUtils.mkdir_p("#{work}/bundle/source")
+File.write("#{work}/bundle/target-arch.txt", arch + "\n")
 source_names.first(2).each { |name| FileUtils.cp("#{owner}/#{name}", "#{work}/bundle/source/#{name}") }
 FileUtils.cp("#{owner}/run-llvm-api-tests.sh", "#{work}/bundle/run-llvm-api-tests.sh")
 File.chmod(0755, "#{work}/bundle/run-llvm-api-tests.sh")
@@ -64,10 +68,10 @@ link += ["-Wl,-rpath-link,#{prefix}/lib", "-Wl,-rpath-link,#{sysroot}/usr/pkg/li
   flags << '-std=c11' if is_c
   source = "#{work}/bundle/source/#{name}.#{is_c ? 'c' : 'cpp'}"
   binary = "#{work}/bundle/bin/#{name}"
-  run("#{work}/#{name}.build.log", is_c ? cc : cxx, "--sysroot=#{sysroot}", '-O2', '-Wall', '-Wextra', '-Werror', *flags, source, *link, '-o', binary)
+  run("#{work}/#{name}.build.log", is_c ? cc : cxx, "--sysroot=#{sysroot}", "-B#{sysroot}/usr/pkg/gcc16/lib/gcc/#{arch}--netbsd/16.2.0/", '-O2', '-Wall', '-Wextra', '-Werror', *flags, source, *link, '-o', binary)
   run("#{work}/#{name}.elf.log", readelf, '-h', '-d', binary)
   elf = File.read("#{work}/#{name}.elf.log")
-  abort "#{name} is not linked to the selected shared LLVM" unless elf.include?("[#{soname}]") && elf.include?('AArch64')
+  abort "#{name} is not linked to the selected shared LLVM" unless elf.include?("[#{soname}]") && elf.include?(elf_label)
   abort "#{name} leaks a build directory in dynamic metadata" if [prefix, sysroot, work].any? { |path| elf.include?(path) }
 end
 

@@ -54,7 +54,8 @@ SPIR-V and compiler binaries do not acquire this fix automatically.
 
 Mesa uses upstream Python generators. The checked host uses Python 3.14.8,
 Meson 1.12.1, Ninja 1.13.2, CMake 4.4.4, lxml 6.1.3, and rnc2rng 2.7.0.
-Install missing generator modules in a local virtual environment. Do not omit
+The dependency builder accepts `HOST_PYTHON` and `HOST_RUBY` to select installed
+native interpreters explicitly. Install missing generator modules in a local virtual environment. Do not omit
 XML schema validation. These helpers add no new Python implementation.
 
 The native SDK contains LLVM bitcode archives. Linking them performs LTO.

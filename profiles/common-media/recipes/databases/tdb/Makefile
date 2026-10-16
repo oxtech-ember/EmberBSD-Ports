@@ -53,6 +53,7 @@ PKG_FAIL_REASON+= "${_input} must name an existing absolute file without shell m
 EMBERBSD_TDB_QUERY= ${.CURDIR}/../../devel/gobject-introspection/files/target-query.rb
 EMBERBSD_TDB_EXECUTOR= ${EMBERBSD_GI_RUBY} ${EMBERBSD_TDB_QUERY} --execute
 CONFIGURE_ARGS+= --cross-compile --cross-execute=${EMBERBSD_TDB_EXECUTOR:Q}
+CONFIGURE_ENV+= EMBERBSD_GI_TARGET=${MACHINE_ARCH:S/x86_64/amd64/}
 CONFIGURE_ENV+= EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q}
 CONFIGURE_ENV+= EMBERBSD_GI_FAILURE_MARKER=${WRKDIR}/.tdb-query-failure
 CONFIGURE_ENV+= PYTHON=${TOOL_PYTHONBIN:Q}
@@ -63,7 +64,7 @@ CONFIGURE_ENV+= PYTHON_CONFIG=${TOOL_PYTHONBIN:Q}\ ${CROSS_DESTDIR}${PYTHONBIN}-
 pre-configure: emberbsd-tdb-query
 .PHONY: emberbsd-tdb-query
 emberbsd-tdb-query:
-	${RUN}${SETENV} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} ${EMBERBSD_GI_RUBY} ${EMBERBSD_TDB_QUERY} --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/aarch64--netbsd-readelf
+	${RUN}${SETENV} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} ${EMBERBSD_GI_RUBY} ${EMBERBSD_TDB_QUERY} --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-readelf ${MACHINE_ARCH:S/x86_64/amd64/:Q}
 	${RUN}${RM} -f ${WRKDIR}/.tdb-query-failure
 post-configure: emberbsd-tdb-query-result
 .PHONY: emberbsd-tdb-query-result

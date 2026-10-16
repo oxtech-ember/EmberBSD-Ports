@@ -291,3 +291,9 @@ General pkgsrc cross-package orchestration and Canadian-cross building of
 an installable target GCC package require separate build/host/target handling.
 The standalone cross compiler here is immediately usable for target source
 compilation; its availability does not establish those package workflows.
+
+Host compiler SDK selection can be passed through `HOST_CPPFLAGS` and
+`HOST_LDFLAGS`. The cross builder propagates the former to recursive host
+libraries and C/C++ rules, including libcody. For example, with an explicit
+Darwin SDK use `-isysroot /absolute/MacOSX.sdk` in both variables. These flags
+select host build inputs; target headers still come from the selected sysroot.

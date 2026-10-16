@@ -1,8 +1,7 @@
 Local AI-assisted EmberBSD pkgsrc metadata fix, not submitted upstream.
-Normalize ELF loader /./ spelling before pkgsrc subtracts package-owned files.
-Otherwise GCC16's own lib/./libgcc_s.so.1 becomes an external REQUIRES entry,
-which pkg_add checks before extraction (and after removing an updated package).
-Keep ../ and symlink resolution unchanged; preserve every external requirement.
+Normalize ELF loader /./ spelling before subtracting package-owned files.
+Parent-spelled aliases are excluded only when they identify the same staged
+file as a canonical PLIST entry. Preserve external and symlink-distinct paths.
 
 --- a/mk/pkgformat/pkg/metadata.mk
 +++ b/mk/pkgformat/pkg/metadata.mk
@@ -15,3 +14,54 @@ Keep ../ and symlink resolution unchanged; preserve every external requirement.
  		fi;							\
  		linklibs=`${AWK} '/.*\.so(\.[0-9]+)*$$/ { print "${DESTDIR}${PREFIX}/" $$0 }' ${_PLIST_NOKEYWORDS}`; \
  		for i in $$linklibs; do					\
+@@ -92,6 +92,9 @@
+ 				${CHMOD} +x $$i;			\
+ 			fi;						\
+ 		done;							\
++		requires=`printf '%s\n' "$$requires" | \
++		    ${PKGSRC_SETENV} AWK=${AWK:Q} ${SH} ${PKGSRCDIR}/mk/pkgformat/pkg/filter-owned-elf-requires.sh \
++		    ${DESTDIR:U:Q}"" ${PREFIX:Q} ${_PLIST_NOKEYWORDS:Q}`; \
+ 		;;							\
+ 	Mach-O)								\
+ 		libs=`${AWK} '/\/lib.*\.dylib/ { print "${DESTDIR}${PREFIX}/" $$0 } END { exit 0 }' ${_PLIST_NOKEYWORDS}`; \
+--- /dev/null
++++ b/mk/pkgformat/pkg/filter-owned-elf-requires.sh
+@@ -0,0 +1,38 @@
++#!/bin/sh
++# SPDX-License-Identifier: BSD-2-Clause
++# Origin: EmberBSD contributors (AI-assisted).
++# Remove only parent-spelled aliases of files owned by this package.
++set -eu
++[ "$#" = 3 ] || exit 2
++destdir=$1 prefix=$2 plist=$3
++awk=${AWK:-awk}
++while IFS= read -r required; do
++    case "$required" in
++        */../*)
++            canonical=$(printf '%s\n' "$required" | "$awk" '
++                {
++                    count = split($0, parts, "/"); depth = 0
++                    for (i = 1; i <= count; i++) {
++                        if (parts[i] == "" || parts[i] == ".") continue
++                        if (parts[i] == "..") { if (depth) depth--; continue }
++                        stack[++depth] = parts[i]
++                    }
++                    for (i = 1; i <= depth; i++) printf "/%s", stack[i]
++                    printf "\n"
++                }')
++            case "$canonical" in
++                "$prefix"/*)
++                    relative=${canonical#"$prefix"/}
++                    # Lexical collapse alone is unsafe across symlinks. Both
++                    # names must identify the same file in the package stage,
++                    # and its canonical name must be explicitly in the PLIST.
++                    if [ "$destdir$required" -ef "$destdir$canonical" ] &&
++                        "$awk" -v path="$relative" '$0 == path { found=1 } END { exit !found }' "$plist"; then
++                        continue
++                    fi
++                    ;;
++            esac
++            ;;
++    esac
++    printf '%s\n' "$required"
++done

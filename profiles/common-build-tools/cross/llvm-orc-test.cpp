@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-2-Clause
-// Origin: EmberBSD (AI-assisted), automatic AArch64 ELF JITLink acceptance.
+// Origin: EmberBSD (AI-assisted), automatic NetBSD ELF JITLink acceptance.
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -17,6 +17,14 @@
 
 using namespace llvm;
 using namespace llvm::orc;
+
+#if defined(__aarch64__)
+constexpr auto expectedArch = Triple::aarch64;
+#elif defined(__x86_64__)
+constexpr auto expectedArch = Triple::x86_64;
+#else
+#error Unsupported NetBSD JIT acceptance CPU
+#endif
 
 static int failure(StringRef stage, Error error) {
   errs() << "FAIL: " << stage << ": " << toString(std::move(error)) << '\n';
@@ -82,9 +90,9 @@ int main(int argc, char **argv) {
     if (!created)
       return failure("LLJIT creation", created.takeError());
     auto jit = std::move(*created);
-    if (jit->getTargetTriple().getArch() != Triple::aarch64 ||
+    if (jit->getTargetTriple().getArch() != expectedArch ||
         !jit->getTargetTriple().isOSNetBSD()) {
-      errs() << "FAIL: runtime target is not AArch64 NetBSD\n";
+      errs() << "FAIL: runtime target differs from the compiled NetBSD CPU\n";
       return 2;
     }
     if (!isa<ObjectLinkingLayer>(jit->getObjLinkingLayer()) ||
@@ -128,6 +136,6 @@ int main(int argc, char **argv) {
     outs() << "PASS: JITLink/RTTI cycle " << cycle + 1
            << " create, reject, execute, remove, dispose\n";
   }
-  outs() << "PASS: LLVM 23.1.3 ORC LLJIT, four AArch64 NetBSD JITLink lifecycles\n";
+  outs() << "PASS: LLVM 23.1.3 ORC LLJIT, four native NetBSD JITLink lifecycles\n";
   return 0;
 }

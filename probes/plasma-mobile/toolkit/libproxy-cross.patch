@@ -14,7 +14,7 @@ SHA256: a1fa55991998b80a567450a9e84382421a7176a84446c95caaa8b72cf09fa86f
  
  DISTNAME=	libproxy-0.5.12
 -PKGREVISION=	4
-+PKGREVISION=	5
++PKGREVISION=	6
  CATEGORIES=	www gnome
  MASTER_SITES=	${MASTER_SITE_GITHUB:=libproxy/}
  GITHUB_TAG=	${PKGVERSION_NOREV}
@@ -27,7 +27,7 @@ SHA256: a1fa55991998b80a567450a9e84382421a7176a84446c95caaa8b72cf09fa86f
  
  USE_CC_FEATURES=	c99
  USE_CXX_FEATURES=	c++11
-@@ -33,14 +33,22 @@
+@@ -33,14 +33,23 @@
  # https://github.com/libproxy/libproxy/issues/237
  LDFLAGS+=	${COMPILER_RPATH_FLAG}${PREFIX}/lib/libproxy
  
@@ -35,6 +35,7 @@ SHA256: a1fa55991998b80a567450a9e84382421a7176a84446c95caaa8b72cf09fa86f
 +.include "options.mk"
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 +EMBERBSD_GI_MESON_OPTIONS= no
++MAKE_ENV+= XDG_DATA_DIRS=${CROSS_DESTDIR:Q}${PREFIX:Q}/share
 +.include "../../devel/gobject-introspection/cross.mk"
 +MESON_CROSS_VARS+= emberbsd_gi_cross emberbsd_gi_ldd_wrapper
 +MESON_CROSS.emberbsd_gi_cross= true
@@ -180,7 +181,7 @@ SHA256: a1fa55991998b80a567450a9e84382421a7176a84446c95caaa8b72cf09fa86f
 +${PLIST.vala}share/vala/vapi/libproxy-1.0.vapi
 --- a/www/libproxy/options.mk
 +++ b/www/libproxy/options.mk
-@@ -0,0 +1,24 @@
+@@ -0,0 +1,50 @@
 +# Origin: EmberBSD (AI-assisted). Runtime proxy backends remain enabled.
 +PKG_OPTIONS_VAR= PKG_OPTIONS.libproxy
 +PKG_SUPPORTED_OPTIONS= doc vala
@@ -190,18 +191,44 @@ SHA256: a1fa55991998b80a567450a9e84382421a7176a84446c95caaa8b72cf09fa86f
 +.if !empty(PKG_OPTIONS:Mdoc)
 +PLIST.doc= yes
 +MESON_ARGS+= -Ddocs=true
-+TOOL_DEPENDS+= ${PYPKGPREFIX}-gi-docgen>=2026.1:../../devel/py-gi-docgen
 +TOOLS_CREATE+= gi-docgen
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && defined(EMBERBSD_GI_DOCGEN_HOST)
++.if empty(EMBERBSD_GI_DOCGEN_HOST:M/*) || !exists(${EMBERBSD_GI_DOCGEN_HOST}/bin/gi-docgen)
++PKG_FAIL_REASON+= "EMBERBSD_GI_DOCGEN_HOST must name an existing native gi-docgen prefix"
++.endif
++TOOLS_PATH.gi-docgen= ${EMBERBSD_GI_DOCGEN_HOST}/bin/gi-docgen
++MESON_BINARIES+= gi-docgen
++MESON_BINARY.gi-docgen= ${TOOLS_PATH.gi-docgen}
++pre-configure: emberbsd-proxy-docgen-check
++.PHONY: emberbsd-proxy-docgen-check
++emberbsd-proxy-docgen-check:
++	${RUN}${TEST} "$$(${TOOLS_PATH.gi-docgen} --version)" = '2026.1'
++.else
++TOOL_DEPENDS+= ${PYPKGPREFIX}-gi-docgen>=2026.1:../../devel/py-gi-docgen
 +TOOLS_PATH.gi-docgen= ${TOOLBASE}/bin/gi-docgen
++.endif
 +.else
 +MESON_ARGS+= -Ddocs=false
 +.endif
 +.if !empty(PKG_OPTIONS:Mvala)
 +PLIST.vala= yes
 +MESON_ARGS+= -Dvapi=true
-+TOOL_DEPENDS+= vala>=0.56.19:../../lang/vala
 +TOOLS_CREATE+= vapigen
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && defined(EMBERBSD_VALA_HOST)
++.if empty(EMBERBSD_VALA_HOST:M/*) || !exists(${EMBERBSD_VALA_HOST}/bin/vapigen)
++PKG_FAIL_REASON+= "EMBERBSD_VALA_HOST must name an existing native Vala prefix"
++.endif
++TOOLS_PATH.vapigen= ${EMBERBSD_VALA_HOST}/bin/vapigen
++MESON_BINARIES+= vapigen
++MESON_BINARY.vapigen= ${TOOLS_PATH.vapigen}
++pre-configure: emberbsd-proxy-vapigen-check
++.PHONY: emberbsd-proxy-vapigen-check
++emberbsd-proxy-vapigen-check:
++	${RUN}${TEST} "$$(${TOOLS_PATH.vapigen} --version)" = 'Vala API Generator 0.56.19'
++.else
++TOOL_DEPENDS+= vala>=0.56.19:../../lang/vala
 +TOOLS_PATH.vapigen= ${TOOLBASE}/bin/vapigen
++.endif
 +.else
 +MESON_ARGS+= -Dvapi=false
 +.endif
@@ -211,9 +238,9 @@ SHA256: a1fa55991998b80a567450a9e84382421a7176a84446c95caaa8b72cf09fa86f
  SHA512 (libproxy-0.5.12.tar.gz) = 19ffd1755e9ebfc645555e248020f9025ae81e93e73cbbb2583bff4495f7794b02ab1ef8ce944fa28e7604f5abf3e7e327c4966d21789648bd38f3d1c2cccecd
  Size (libproxy-0.5.12.tar.gz) = 60529 bytes
  SHA1 (patch-src_libproxy_meson.build) = 6d5ddacc59db7f770002bc304404c6582865cbf8
-+SHA1 (patch-src_libproxy_meson-cross.build) = bfc3272431f4684fc4d28d4c44bad76ff4bf4a39
---- a/www/libproxy/patches/patch-src_libproxy_meson-cross.build
-+++ b/www/libproxy/patches/patch-src_libproxy_meson-cross.build
++SHA1 (patch-src_libproxy_meson.build-cross) = bfc3272431f4684fc4d28d4c44bad76ff4bf4a39
+--- a/www/libproxy/patches/patch-src_libproxy_meson.build-cross
++++ b/www/libproxy/patches/patch-src_libproxy_meson.build-cross
 @@ -0,0 +1,36 @@
 +$NetBSD$
 +

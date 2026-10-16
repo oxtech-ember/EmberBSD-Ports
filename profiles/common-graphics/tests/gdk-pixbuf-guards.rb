@@ -5,12 +5,14 @@ require 'fileutils'
 require 'json'
 require 'open3'
 abort 'Usage: gdk-pixbuf-guards.rb BUILT_SOURCE HOST_PYTHON SYSROOT READELF NEW_WORK' unless ARGV.size == 5
+arch = ENV.fetch('EMBERBSD_CROSS_ARCH', 'aarch64')
+abort 'unsupported target architecture' unless %w[aarch64 x86_64].include?(arch)
 source, python, sysroot, readelf = ARGV.first(4).map { |p| File.realpath(p) }
 work = File.expand_path(ARGV.last)
 abort 'new absolute work required' unless ARGV.last.start_with?('/') && !File.exist?(work)
 FileUtils.mkdir_p([work + '/build', work + '/cache', work + '/bin'])
 helper = File.expand_path('../recipes/graphics/gdk-pixbuf2/files/target-tools.rb', __dir__)
-config = {'build_root' => work + '/build', 'cache' => work + '/cache', 'sysroot' => sysroot,
+config = {'target' => (arch == 'x86_64' ? 'amd64' : 'aarch64'), 'build_root' => work + '/build', 'cache' => work + '/cache', 'sysroot' => sysroot,
           'readelf' => readelf, 'ssh' => 'unused.invalid', 'library_dirs' => [sysroot + '/usr/pkg/gcc16/lib']}
 File.write(work + '/query.json', JSON.pretty_generate(config))
 # Any transport during a local refusal is a regression.
@@ -39,7 +41,7 @@ end
 FileUtils.cp('/usr/bin/true', mod)
 out, status = Open3.capture2e(env, RbConfig.ruby, helper, '--loaders', query, mod)
 File.write(work + '/wrong-architecture.log', out)
-abort 'host module accepted' if status.success? || !out.include?('not little-endian AArch64 ELF64') || out.include?('unexpected-transport')
+abort 'host module accepted' if status.success? || !out.include?("not little-endian #{arch} ELF64") || out.include?('unexpected-transport')
 # The original upstream script accepted nonzero exit when a printer emitted data.
 File.write(work + '/printer', "#!/bin/sh\nprintf 'image/png;'\nexit 7\n")
 File.chmod(0755, work + '/printer')

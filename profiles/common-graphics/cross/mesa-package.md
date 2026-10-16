@@ -1,6 +1,6 @@
 # Accept the installed common Mesa package
 
-Current nb8 passes installed V3D shader rejection, triangle pixels, four EGL
+Validated nb8 passes installed V3D shader rejection, triangle pixels, four EGL
 lifecycles, and 39 upstream invocations on CM5. Its 100-entry payload and unchanged
 old consumer also pass. See the [mutex and ABI acceptance](../tests/mesa-v3d-cache-mutex/README.md).
 `Cache.List` skips and nine NIR cases remain disabled.
@@ -83,8 +83,11 @@ ruby prepare-mesa-package-tests.rb /absolute/cross-tools /absolute/sysroot \
 
 The helper compiles the existing EGL/GLES pixel consumer against installed
 headers and libraries. It copies target ELF invocations from the actual Meson build.
-The current nb8 configuration has 39 invocations, including seven llvmpipe JIT
-tests, the V3D QPU disassembler, and the Zink format test. It preserves
+Set `EMBERBSD_CROSS_ARCH=x86_64` for the amd64 build;
+the default remains AArch64. The nb8 AArch64 configuration has 39 invocations,
+including seven llvmpipe JIT tests, the V3D QPU disassembler, and the Zink format
+test. The amd64 profile omits V3D and its QPU test. The bundle records its CPU;
+the runner requires the actual target CPU to match. It preserves
 upstream's test timeouts and XML configuration fixtures, including `.drirc`.
 It records tool, build-metadata, test-binary, package and library hashes.
 Every installed Mesa file/symlink is compared with the original package.
@@ -118,11 +121,11 @@ The second regression executes the production loader function and test loop
 with labelled host shell fixtures. It catches accidental replacement of a
 relative test basename by an absolute path inside the loader function.
 
-## Run on NetBSD/AArch64
+## Run on the selected NetBSD target
 
 Verify the archive SHA256 after transfer and extract it into a new private
-directory. NetBSD/AArch64, a baseline ARMv8 CPU and `/usr/bin/timeout` are
-required. LLVM detects the target CPU for JIT code. No DRM device, display
+directory. NetBSD with the recorded AArch64 or amd64 CPU and
+`/usr/bin/timeout` are required. LLVM detects the target CPU for JIT code. No DRM device, display
 server or physical GPU is needed for this surfaceless CPU-rendering check.
 
 ```sh
@@ -152,3 +155,8 @@ Wayland session, VirGL acceleration, physical GPU support or long-run stability.
 For a negative renderer check, use `virgl` as the expected name on the same
 surfaceless CPU path. This must fail with `unexpected renderer`, not timeout
 or loader failure. Preserve the failed run separately from the positive run.
+
+For the amd64 Iris driver, the preparer also requires all twelve Intel test
+invocations, including the upstream `genxml_test -quiet` arguments. With Zink
+this gives fifty target invocations. Intel compiler and layout tests do not
+establish kernel attachment, GPU rendering or panel presentation.

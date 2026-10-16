@@ -26,7 +26,10 @@ both in-tree libraries, including its private backend. This fixes the failed
 GIR link without adding build paths to installed library RPATHs.
 
 Libproxy's `doc` and `vala` package options default to enabled. They select
-native documentation/Vala generators. Set `PKG_OPTIONS.libproxy=-doc -vala`
+native documentation/Vala generators. Cross builds may select already-built
+`EMBERBSD_GI_DOCGEN_HOST` and `EMBERBSD_VALA_HOST` prefixes; configure verifies
+gi-docgen 2026.1 and Vala 0.56.19 before using them. Vala reads GIR data from
+the target sysroot. Set `PKG_OPTIONS.libproxy=-doc -vala`
 for a desktop runtime package without those optional files. This keeps the
 headers, GIR/typelib, GNOME/KDE/environment/portal configuration backends,
 Duktape PAC runner and curl support. It avoids a documentation-only Graphviz

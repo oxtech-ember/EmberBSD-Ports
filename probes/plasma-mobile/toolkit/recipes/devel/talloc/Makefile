@@ -61,6 +61,7 @@ CONFIGURE_ARGS+= --jobs=1
 # The Python binding probes build host binaries that the shared target
 # executor rightly refuses; the KIO SMB consumer needs the C library only.
 CONFIGURE_ARGS+= --disable-python
+CONFIGURE_ENV+= EMBERBSD_GI_TARGET=${MACHINE_ARCH:S/x86_64/amd64/}
 CONFIGURE_ENV+= EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q}
 CONFIGURE_ENV+= EMBERBSD_GI_FAILURE_MARKER=${WRKDIR}/.talloc-query-failure
 CONFIGURE_ENV+= PYTHON=${TOOL_PYTHONBIN:Q}
@@ -69,7 +70,7 @@ CONFIGURE_ENV+= PYTHON_CONFIG=${TOOL_PYTHONBIN:Q}\ ${CROSS_DESTDIR}${PYTHONBIN}-
 pre-configure: emberbsd-talloc-query
 .PHONY: emberbsd-talloc-query
 emberbsd-talloc-query:
-	${RUN}${SETENV} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} ${EMBERBSD_GI_RUBY} ${EMBERBSD_TALLOC_QUERY} --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/aarch64--netbsd-readelf
+	${RUN}${SETENV} EMBERBSD_GI_TARGET=${MACHINE_ARCH:S/x86_64/amd64/:Q} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} ${EMBERBSD_GI_RUBY} ${EMBERBSD_TALLOC_QUERY} --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${MACHINE_ARCH}--netbsd-readelf ${MACHINE_ARCH:S/x86_64/amd64/:Q}
 	${RUN}${RM} -f ${WRKDIR}/.talloc-query-failure
 post-configure: emberbsd-talloc-query-result
 .PHONY: emberbsd-talloc-query-result

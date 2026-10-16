@@ -13,8 +13,10 @@ shasum -a 256 "$source/config.sh" "$source/config.h" \
 shasum -a 256 "$source/config.sh" "$source/config.h" \
     "$source/lib/Config.pm" "$source/lib/Config_heavy.pl" > "$work/after.sha256"
 cmp "$work/before.sha256" "$work/after.sha256"
-"$perl" -I"$work/native/lib" -MConfig -e '
-    die "architecture\n" unless $Config{archname} eq "aarch64-netbsd-thread-multi";
+archname=$(sed -n "s/^archname='\([^']*\)'$/\1/p" "$source/config.sh")
+case "$archname" in aarch64-netbsd-thread-multi|x86_64-netbsd-thread-multi) ;; *) exit 1;; esac
+EMBER_TEST_PERL_ARCHNAME=$archname "$perl" -I"$work/native/lib" -MConfig -e '
+    die "architecture\n" unless $Config{archname} eq $ENV{EMBER_TEST_PERL_ARCHNAME};
     die "ABI\n" unless $Config{ptrsize} == 8 && $Config{ivsize} == 8;
     die "features\n" unless $Config{usedl} eq "define" && $Config{useshrplib} eq "true";
     die "compiler\n" unless $Config{cc} eq "/usr/pkg/gcc16/bin/gcc";

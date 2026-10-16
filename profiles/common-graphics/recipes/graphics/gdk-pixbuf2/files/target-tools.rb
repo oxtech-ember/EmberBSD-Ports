@@ -10,6 +10,10 @@ require 'shellwords'
 require 'tmpdir'
 
 config = JSON.parse(File.read(ENV.fetch('EMBERBSD_GI_QUERY_CONFIG')))
+target = config.fetch('target', 'aarch64')
+arch, machine = {'aarch64' => ['aarch64', 'AArch64'], 'amd64' => ['x86_64', 'Advanced Micro Devices X86-64']}[target]
+abort 'unsupported pixbuf target architecture' unless machine
+abort 'configuration differs from recipe target architecture' if ENV.key?('EMBERBSD_GI_TARGET') && ENV['EMBERBSD_GI_TARGET'] != target
 absolute = lambda do |key|
   value = config.fetch(key)
   abort "#{key} must be absolute" unless value.is_a?(String) && value.start_with?('/')
@@ -90,7 +94,7 @@ pending = [exe] + modules
 until pending.empty?
   file = pending.shift
   header, status = Open3.capture2e(readelf, '-h', file)
-  abort "not little-endian AArch64 ELF64: #{file}" unless status.success? && header.match?(/Machine:.*AArch64/) && header.match?(/Class:.*ELF64/) && header.match?(/Data:.*little endian/)
+  abort "not little-endian #{arch} ELF64: #{file}" unless status.success? && header.match?(/Machine:.*#{Regexp.escape(machine)}/) && header.match?(/Class:.*ELF64/) && header.match?(/Data:.*little endian/)
   dyn, status = Open3.capture2e(readelf, '-d', file)
   abort 'readelf failed' unless status.success?
   localdirs = dyn.scan(/\((?:RPATH|RUNPATH)\).*\[(.*?)\]/).flatten.flat_map { |s| s.split(':') }.map do |p|
@@ -123,7 +127,7 @@ File.write(work + '/sources.sha256', sources.map { |p, h| "#{h}  #{p}\n" }.join)
 run.call('tar', '/usr/bin/env', 'COPYFILE_DISABLE=1', 'tar', '--format=ustar', '--no-xattrs', '-czf', work + '/input.tar.gz', '-C', stage, '.')
 remote = nil
 begin
-  remote = run.call('allocate', *ssh, 'test "$(uname -s)" = NetBSD && test "$(uname -p)" = aarch64 && umask 077 && mktemp -d /tmp/ember-pixbuf.XXXXXXXX').strip
+  remote = run.call('allocate', *ssh, "test \"$(uname -s)\" = NetBSD && test \"$(uname -p)\" = #{arch.shellescape} && umask 077 && mktemp -d /tmp/ember-pixbuf.XXXXXXXX").strip
   abort 'invalid temporary directory' unless remote.match?(/\A\/tmp\/ember-pixbuf\.[A-Za-z0-9]{8}\z/)
   run.call('transfer', *ssh, "tar -xzf - -C #{remote.shellescape}", stdin_data: File.binread(work + '/input.tar.gz'))
   invocation = [remote + '/query']

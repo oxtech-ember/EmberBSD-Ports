@@ -150,3 +150,9 @@ foreign ELF, altered providers/RPATH and compiler rejection. The compiler
 boundary uses fixtures; it does not establish real metadata acceptance.
 Real native bmake variable evaluation passes. Package creation, installed
 ownership and real host-compiler metadata acceptance remain pending.
+
+The source-built AArch64 standard library uses a byte-identical temporary
+snapshot of package-owned Rust compiler files. This isolates its bootstrap
+loader from unrelated libraries in the shared host prefix, including GNU
+libiconv. It does not rebuild Rust or change the installed provider. The amd64
+recipe continues to use its separately validated official target archive.

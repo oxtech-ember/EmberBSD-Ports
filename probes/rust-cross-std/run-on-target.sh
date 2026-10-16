@@ -1,9 +1,11 @@
 #!/bin/sh
 # Exercise the cross-built consumers against the installed target providers.
 set -eu
+arch=${EMBERBSD_RUST_TARGET_ARCH:-aarch64}
+case "$arch" in aarch64|x86_64) ;; *) echo 'unsupported Rust target architecture' >&2; exit 2 ;; esac
 if [ "$#" -ne 1 ] || [ "$(uname -s)" != NetBSD ] ||
-    [ "$(uname -p)" != aarch64 ]; then
-    echo 'usage on NetBSD/AArch64: run-on-target.sh ABS_PROBE_DIR' >&2
+    [ "$(uname -p)" != "$arch" ]; then
+    echo 'usage on matching NetBSD target: run-on-target.sh ABS_PROBE_DIR' >&2
     exit 2
 fi
 case "$1" in /*) probe=$1 ;; *) exit 2 ;; esac

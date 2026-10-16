@@ -66,8 +66,10 @@ if [ "$verify_sysroot" = yes ]; then
     echo 'PASS: sysroot package files, links and libraries only; no target runtime was executed'
     exit 0
 fi
-[ "$(uname -s)" = NetBSD ] && [ "$(uname -p)" = aarch64 ] || {
-    echo 'Run on NetBSD/AArch64' >&2; exit 2;
+arch=$(cat "$bundle/target-arch.txt")
+case "$arch" in aarch64|x86_64) ;; *) echo 'Unsupported bundle CPU' >&2; exit 2;; esac
+[ "$(uname -s)" = NetBSD ] && [ "$(uname -p)" = "$arch" ] || {
+    echo "Run on NetBSD/$arch" >&2; exit 2;
 }
 for setting in LD_LIBRARY_PATH LD_PRELOAD LIBGL_DRIVERS_PATH GBM_BACKENDS_PATH \
     MESA_LOADER_DRIVER_OVERRIDE LIBGL_ALWAYS_SOFTWARE GALLIUM_DRIVER; do
@@ -111,6 +113,9 @@ while IFS="$(printf '\t')" read -r name executable limit; do
     check_loader "$bundle/bin/$executable" "$name"
     result=0
     case "$name" in
+        genxml_test)
+            env -i PATH=/bin:/usr/bin:/sbin:/usr/sbin:/usr/pkg/bin "$timeout" "$limit" "$bundle/bin/$executable" -quiet \
+                > "$logs/$name.log" 2>&1 || result=$?;;
         xmlconfig)
             # Upstream's real fixture home belongs only to this child process.
             env -i PATH=/bin:/usr/bin:/sbin:/usr/sbin:/usr/pkg/bin HOME="$bundle/fixtures/drirc_home" \

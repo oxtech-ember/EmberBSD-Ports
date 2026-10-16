@@ -3,9 +3,7 @@
 # Origin: EmberBSD (AI-assisted), installed shared LLVM target acceptance.
 set -eu
 [ "$#" = 2 ] || { echo 'Usage: run-llvm-api-tests.sh BUNDLE NEW_LOG_DIRECTORY' >&2; exit 2; }
-[ "$(uname -s)" = NetBSD ] && [ "$(uname -p)" = aarch64 ] || {
-    echo 'Run on NetBSD/AArch64' >&2; exit 2;
-}
+[ "$(uname -s)" = NetBSD ] || { echo 'Run on NetBSD' >&2; exit 2; }
 [ -z "${LD_LIBRARY_PATH:-}" ] && [ -z "${LD_PRELOAD:-}" ] || {
     echo 'Loader overrides are not permitted for installed-package acceptance' >&2; exit 2;
 }
@@ -26,6 +24,9 @@ while read -r expected file; do
         echo "Installed LLVM hash mismatch: $file" >&2; exit 1;
     }
 done < "$bundle/runtime-library.sha256"
+arch=$(cat "$bundle/target-arch.txt")
+case "$arch" in aarch64|x86_64) ;; *) echo 'Unsupported bundle CPU' >&2; exit 2;; esac
+[ "$(uname -p)" = "$arch" ] || { echo 'Bundle CPU differs from the target' >&2; exit 2; }
 uname -a > "$logs/platform.log"
 for executable in llvm-c-api-test llvm-orc-test; do
     ldd "$bundle/bin/$executable" > "$logs/$executable.ldd.log" 2>&1

@@ -30,8 +30,8 @@ run = lambda do |name, *args, **opts|
 end
 rustc = host + '/bin/rustc'
 pkg_info = host + '/sbin/pkg_info'
-pkg = 'rust-std-aarch64-netbsd-1.99.0'
-abort 'target package is not registered' unless run.call('package', pkg_info, '-e', pkg).strip == pkg
+pkg = run.call('package', pkg_info, '-e', 'rust-std-aarch64-netbsd-1.99.0{,nb[0-9]*}').strip
+abort 'target package is not registered uniquely' unless pkg.match?(/\Arust-std-aarch64-netbsd-1\.99\.0(?:nb[0-9]+)?\z/)
 run.call('package-check', host + '/sbin/pkg_admin', 'check', pkg)
 component = run.call('target-libdir', rustc, '--target', 'aarch64-unknown-netbsd', '--print', 'target-libdir').strip
 abort 'std outside shared host prefix' unless File.realpath(component) == host + '/lib/rustlib/aarch64-unknown-netbsd/lib'

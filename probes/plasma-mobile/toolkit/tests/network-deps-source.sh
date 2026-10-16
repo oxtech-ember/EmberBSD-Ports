@@ -42,7 +42,7 @@ www/libproxy libproxy-0.5.12.tar.gz
 DEPS
 cmp "$work/pkgsrc/www/libproxy/options.mk" "$prepared/www/libproxy/options.mk"
 if patch -f -N -F 0 -p0 -d "$work/source/libproxy" \
-    < "$work/pkgsrc/www/libproxy/patches/patch-src_libproxy_meson-cross.build" \
+    < "$work/pkgsrc/www/libproxy/patches/patch-src_libproxy_meson.build-cross" \
     > "$work/repeated.log" 2>&1; then exit 1; fi
 rm "$work/recipes.tar"
 echo 'PASS: pinned recipe deltas, exact prepared files, archive/patch hashes and zero-fuzz source patches'

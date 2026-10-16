@@ -13,9 +13,12 @@ abort 'usage: prepare-mesa-package-tests.rb CROSS_TOOLS SYSROOT MESA_SOURCE MESA
 tools, sysroot, source, build, package = ARGV.first(5).map { |p| File.realpath(p) }
 work = File.expand_path(ARGV.last)
 abort 'NEW_WORK must be a new absolute path' unless ARGV.last.start_with?('/') && !File.exist?(work)
+arch = ENV.fetch('EMBERBSD_CROSS_ARCH', 'aarch64')
+abort 'unsupported Mesa target CPU' unless %w[aarch64 x86_64].include?(arch)
+elf_machine = {'aarch64' => 183, 'x86_64' => 62}.fetch(arch)
 owner = File.dirname(File.realpath(__FILE__))
 prefix = "#{sysroot}/usr/pkg"
-cc, readelf = %w[gcc readelf].map { |name| "#{tools}/bin/aarch64--netbsd-#{name}" }
+cc, readelf = %w[gcc readelf].map { |name| "#{tools}/bin/#{arch}--netbsd-#{name}" }
 abort 'missing cross compiler or ELF inspector' unless [cc, readelf].all? { |p| File.executable?(p) }
 
 def query(*command)
@@ -28,13 +31,13 @@ def elf?(path)
   File.file?(path) && File.binread(path, 4) == "\x7fELF"
 end
 
-def target_elf!(path)
+def target_elf!(path, arch, machine)
   header = File.binread(path, 20)
-  abort "not an AArch64 ELF64 executable/library: #{path}" unless header.byteslice(0, 6) == "\x7fELF\x02\x01" &&
-    [2, 3].include?(header.byteslice(16, 2).unpack1('v')) && header.byteslice(18, 2).unpack1('v') == 183
+  abort "not an #{arch} ELF64 executable/library: #{path}" unless header.byteslice(0, 6) == "\x7fELF\x02\x01" &&
+    [2, 3].include?(header.byteslice(16, 2).unpack1('v')) && header.byteslice(18, 2).unpack1('v') == machine
 end
 
-abort 'unexpected cross compiler target' unless query(cc, '-dumpmachine') == 'aarch64--netbsd'
+abort 'unexpected cross compiler target' unless query(cc, '-dumpmachine') == "#{arch}--netbsd"
 info = "#{build}/meson-info"
 project = JSON.parse(File.read("#{info}/intro-projectinfo.json"))
 abort 'require Mesa 26.2.4 build metadata' unless project.fetch('version') == '26.2.4' && File.read("#{source}/VERSION").strip == '26.2.4'
@@ -45,9 +48,13 @@ options = JSON.parse(File.read("#{info}/intro-buildoptions.json")).to_h { |o| [o
 end
 drivers = options.fetch('gallium-drivers').sort
 with_zink = drivers.include?('zink')
-expected_drivers = %w[llvmpipe softpipe v3d virgl]
+with_iris = drivers.include?('iris')
+abort 'Iris acceptance requires amd64' if with_iris && arch != 'x86_64'
+expected_drivers = %w[llvmpipe softpipe virgl]
+expected_drivers << 'v3d' if arch == 'aarch64'
 expected_drivers << 'zink' if with_zink
-abort 'require complete common drivers/platforms' unless drivers == expected_drivers && options.fetch('platforms').sort == %w[wayland x11]
+expected_drivers << 'iris' if with_iris
+abort 'require complete common drivers/platforms' unless drivers == expected_drivers.sort && options.fetch('platforms').sort == %w[wayland x11]
 ninja = File.read("#{build}/build.ninja")
 abort 'require the actual shared LLVM23 ORC build' unless ninja.include?('-DGALLIVM_USE_ORCJIT=1') && ninja.include?('-DLLVM_IS_SHARED=1') && ninja.include?('23.1.3')
 inputs = [__FILE__, "#{owner}/mesa-render.c", "#{owner}/run-mesa-package-tests.sh", cc, readelf, package,
@@ -56,6 +63,7 @@ inputs = [__FILE__, "#{owner}/mesa-render.c", "#{owner}/run-mesa-package-tests.s
 initial = inputs.to_h { |p| [p, Digest::SHA256.file(p).hexdigest] }
 bundle = "#{work}/bundle"
 FileUtils.mkdir_p(["#{bundle}/bin", "#{bundle}/source", "#{bundle}/fixtures", "#{work}/elf"])
+File.write("#{bundle}/target-arch.txt", arch + "\n")
 FileUtils.cp("#{owner}/mesa-render.c", "#{bundle}/source")
 FileUtils.cp("#{owner}/run-mesa-package-tests.sh", bundle)
 File.chmod(0755, "#{bundle}/run-mesa-package-tests.sh")
@@ -93,17 +101,20 @@ Zlib::GzipReader.open(package) do |gzip|
   end
 end
 contents = File.read("#{bundle}/source/MesaLib.CONTENTS")
-abort 'unexpected package identity/prefix' unless contents.match?(/^@name MesaLib-26\.2\.4nb[45678]$/) && contents.include?("@cwd /usr/pkg\n")
-abort 'nb6/nb7/nb8 require Zink; earlier packages retain their original driver set' unless contents.match?(/^@name MesaLib-26\.2\.4nb[678]$/) == with_zink
+abort 'unexpected package identity/prefix' unless contents.match?(/^@name MesaLib-26\.2\.4nb[456789]$/) && contents.include?("@cwd /usr/pkg\n")
+abort 'nb6 and later require Zink; earlier packages retain their original driver set' unless contents.match?(/^@name MesaLib-26\.2\.4nb[6789]$/) == with_zink
 if with_zink
   abort 'missing Zink package payload' unless %w[/usr/pkg/lib/dri/zink_dri.so /usr/pkg/share/drirc.d/00-zink-defaults.conf].all? { |path| payload.key?(path) }
   abort 'missing Zink loader runtime dependency' unless contents.match?(/^@pkgdep vulkan-loader>=1\.4\.357\.0$/)
 end
+iris_payload = %w[/usr/pkg/lib/dri/iris_dri.so /usr/pkg/share/drirc.d/00-iris-defaults.conf]
+abort 'Iris requires package revision nb8 or later' if with_iris && !contents.match?(/^@name MesaLib-26\.2\.4nb[89]$/)
+abort 'Iris package payload does not match the build' unless iris_payload.all? { |path| payload.key?(path) == with_iris }
 abort 'package has no Mesa shared libraries' if mesa_elfs.empty?
 File.write("#{bundle}/mesa-package-files.sha256", payload.sort.map { |path, sha| "#{sha}  #{path}\n" }.join)
 File.write("#{bundle}/mesa-package-links.tsv", links.sort.map { |path, target| "#{path}\t#{target}\n" }.join)
 
-command = [cc, "--sysroot=#{sysroot}", '-O2', '-std=c11', '-D_NETBSD_SOURCE', '-Wall', '-Wextra', '-Werror',
+command = [cc, "--sysroot=#{sysroot}", "-B#{prefix}/gcc16/lib/gcc/#{arch}--netbsd/16.2.0/", '-O2', '-std=c11', '-D_NETBSD_SOURCE', '-Wall', '-Wextra', '-Werror',
            "-I#{prefix}/include", "#{bundle}/source/mesa-render.c", "-L#{prefix}/lib", '-lEGL', '-lGLESv2', '-lgbm',
            "-Wl,-rpath-link,#{prefix}/lib", "-Wl,-rpath-link,#{prefix}/gcc16/lib",
            '-Wl,-rpath,/usr/pkg/lib', '-Wl,-rpath,/usr/pkg/gcc16/lib', '-o', "#{bundle}/bin/mesa-render"]
@@ -115,8 +126,11 @@ abort 'render consumer compile/link failed' unless status.success?
 tests = []
 JSON.parse(File.read("#{info}/intro-tests.json")).each do |test|
   cmd = test.fetch('cmd')
-  next unless cmd.length == 1 && cmd[0].start_with?(build + '/') && elf?(cmd[0])
+  next unless cmd[0].start_with?(build + '/')
   name, executable = test.fetch('name'), File.basename(cmd[0])
+  abort "missing target test ELF: #{name}" unless elf?(cmd[0])
+  expected_args = name == 'genxml_test' && with_iris ? ['-quiet'] : []
+  abort "unhandled upstream test arguments: #{name}" unless cmd.drop(1) == expected_args
   abort 'unsafe test name' unless [name, executable].all? { |s| s.match?(/\A[A-Za-z0-9_-]+\z/) }
   abort "unsupported working directory/protocol: #{name}" unless test['workdir'].nil? && %w[exitcode gtest].include?(test.fetch('protocol'))
   expected_env = case name
@@ -135,7 +149,14 @@ JSON.parse(File.read("#{info}/intro-tests.json")).each do |test|
   FileUtils.cp(cmd[0], destination)
   tests << [name, executable, limit]
 end
-abort 'missing expected full-Mesa upstream tests' unless tests.length == (with_zink ? 39 : 38) && tests.any? { |t| t[0] == 'zink_format_test' } == with_zink && tests.any? { |t| t[0] == 'qpu_disasm' } && tests.count { |t| t[0].start_with?('lp_test_') } == 7 && tests.any? { |t| t[0] == 'xmlconfig' }
+iris_tests = %w[mda_tests intel_device_info_test isl_surf_get_image_offset isl_aux_info
+                isl_tile_std_y isl_tilememcpy isl_surf_get_image_range_B_tile
+                intel_compiler_gen_tests intel_compiler_brw_tests jay_tests
+                intel_compiler_elk_tests genxml_test]
+actual_iris = tests.map(&:first) & iris_tests
+abort 'incomplete or unexpected Intel test set' unless actual_iris.sort == (with_iris ? iris_tests.sort : [])
+expected_count = 37 + (arch == 'aarch64' ? 1 : 0) + (with_zink ? 1 : 0) + (with_iris ? iris_tests.length : 0)
+abort 'missing expected full-Mesa upstream tests' unless tests.length == expected_count && tests.any? { |t| t[0] == 'zink_format_test' } == with_zink && tests.any? { |t| t[0] == 'qpu_disasm' } == (arch == 'aarch64') && tests.count { |t| t[0].start_with?('lp_test_') } == 7 && tests.any? { |t| t[0] == 'xmlconfig' }
 File.write("#{bundle}/upstream-tests.tsv", tests.map { |row| row.join("\t") + "\n" }.join)
 %w[drirc_home drirc_configdir].each { |name| FileUtils.cp_r("#{source}/src/util/tests/#{name}", "#{bundle}/fixtures") }
 
@@ -159,13 +180,13 @@ until queue.empty?
   end
   next if seen[real]
   seen[real] = true
-  target_elf!(real)
+  target_elf!(real, arch, elf_machine)
   dynamic = query(readelf, '-d', real)
   File.write("#{work}/elf/#{Digest::SHA256.hexdigest(real)[0, 16]}.txt", "#{real}\n#{dynamic}\n")
   rpaths = dynamic.scan(/\((?:RUNPATH|RPATH)\).*\[([^\]]+)\]/).flatten.flat_map { |p| p.split(':') }
   abort "relative ELF runtime path: #{real}" unless rpaths.all? { |p| p.start_with?('/') }
   rpaths.map! { |p| File.expand_path(p) }
-  allowed = %w[/usr/pkg/lib /usr/pkg/gcc16/lib /usr/pkg/gcc16/aarch64--netbsd/lib /usr/pkg/lib/python3.15/config-3.15 /usr/lib /lib]
+  allowed = %W[/usr/pkg/lib /usr/pkg/gcc16/lib /usr/pkg/gcc16/#{arch}--netbsd/lib /usr/pkg/lib/python3.15/config-3.15 /usr/lib /lib]
   abort "foreign ELF runtime path: #{real}" unless rpaths.all? { |p| allowed.include?(p) }
   dynamic.scan(/\(NEEDED\).*\[([^\]]+)\]/).flatten.each do |name|
     abort "absolute/non-library NEEDED: #{name}" unless name.match?(/\Alib[A-Za-z0-9_.+-]+\z/)
@@ -182,7 +203,7 @@ initial.each { |path, sha| abort "input changed during preparation: #{path}" unl
 File.write("#{work}/inputs.sha256", initial.sort.map { |path, sha| "#{sha}  #{path}\n" }.join)
 File.write("#{bundle}/source/receipt.json", JSON.pretty_generate({package_sha256: initial.fetch(package), compiler: cc,
   compiler_version: query(cc, '--version'), source: source, build: build, sysroot: sysroot,
-  options: options, input_sha256: initial, target_invocations: tests.length}) + "\n")
+  target_arch: arch, options: options, input_sha256: initial, target_invocations: tests.length}) + "\n")
 artifacts = Dir.glob("#{bundle}/**/*", File::FNM_DOTMATCH).select { |p| File.file?(p) }.sort
 File.write("#{bundle}/artifacts.sha256", artifacts.map { |p| "#{Digest::SHA256.file(p).hexdigest}  #{p.delete_prefix(bundle + '/')}\n" }.join)
 archive = "#{work}/mesa-package-tests.tar.gz"
