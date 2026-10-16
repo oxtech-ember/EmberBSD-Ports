@@ -10,6 +10,8 @@ The matching example is
 It starts four QMediaPlayer instances and checks actual decoded pixels,
 timestamps, window exposure, distinct paints, and process CPU time.
 Its RFB client independently reads the window framebuffer.
+An installed EmberBSD amd64 VM passes four 2048×1500 H.265 inputs at
+approximately 9 fps, with a 640×480 raster window and full-pixel checks.
 See [validation results and limits](results.md) for the actual build,
 runtime packages, display checks and analyzer coverage.
 

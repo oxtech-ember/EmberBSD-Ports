@@ -49,18 +49,24 @@ The target needs package tools, not a compiler or build dependencies.
 ## Inputs and display checks
 
 The [example](https://github.com/oxtech-ember/EmberBSD-Examples/tree/main/media/qt-four-streams)
-uses four actual QMediaPlayer/QVideoSink pairs in one 1280×800 QWidget.
+uses four actual QMediaPlayer/QVideoSink pairs in one QWidget.
+The default window is 1280×800. The accepted target selection uses 640×480.
+All four decoders still produce full 2048×1500 frames.
 Each input is H.265, 2048×1500, 9 fps, with a different lossless I420 pattern.
 Both the 36-frame and 180-frame sets pass independent native decoding,
 whole-stream SHA256 comparisons and exact source-timestamp checks.
 The viewer verifies every active decoded luma and chroma byte and frame ID.
 An independent RFB client reads the actual displayed framebuffer.
 
-Sink handoff is bounded to eight frames per stream. Overflow is counted;
+Sink handoff is bounded to sixteen frames per stream. Overflow is counted;
 strict acceptance still fails if any expected source frame is absent.
 The SDR BT.709 CPU path scales decoded YUV to the viewport before RGB
-conversion through the current FFmpeg `sws_scale_frame` API.
+conversion through the current FFmpeg `sws_scale_frame` API, with point
+sampling by default and optional bilinear filtering. Dirty-quadrant repaint
+and cached static labels avoid repeated full-window drawing and text shaping.
 Full-resolution decoding and the independent pixel oracle remain enabled.
+The accepted command also uses `--ffmpeg-cpu-count 1`. This is a public
+FFmpeg hint for automatic thread-pool sizing, not a change to the four vCPUs.
 
 The initial target run exposed unbounded queued frame retention and GUI
 starvation. Both 36-frame runs decoded and verified every frame, but each
@@ -68,11 +74,55 @@ quadrant painted only twice. The 180-frame run exhausted a 2 GiB guest.
 These failures motivated the bounded handoff and viewport conversion.
 They are retained as failed evidence, not counted as accepted display runs.
 
-The corrected native Linux control decodes, verifies and paints all 180
-frames per stream in 20.167 seconds. Observed paints are 9.038–9.059 fps.
-CPU use is 57.57% of one core, including pixel checks and display work.
-Each mailbox peaks at one or two frames, with zero coalescences.
-This native result does not establish EmberBSD target throughput.
+## Installed target result
+
+Full-system QEMU 10.0.13 runs the real EmberBSD amd64 kernel and userland
+with TCG, four vCPUs and 2 GiB RAM. KVM is unavailable in this environment.
+The target creates six dependency packages and the viewer package with
+real `pkg_create`. It reuses seven hash-verified common runtime packages.
+All fourteen install, pass `pkg_admin check`, and survive normal removal
+and reinstallation. Required-package deletion is refused. The Qt package's
+registered conflict metadata is also checked.
+
+The first and reinstalled 36-frame runs each decode, verify and paint all
+144 frames. The final 180-frame run does the same for all 720 frames.
+There are zero missing IDs, mailbox coalescences, timestamp regressions or
+decoded-pixel errors. The loaded backend is FFmpeg; frames use CPU memory.
+All three target phases have independent full-coverage RFB captures with
+at least two different actual window images.
+
+The final long-run measurements use 640×480 windows and full-pixel checks:
+
+| Execution | Wall time | Delivered fps per stream | Painted fps per stream | Process CPU | Peak RSS |
+| --- | ---: | --- | --- | ---: | ---: |
+| EmberBSD amd64, four-vCPU TCG | 20.430 s | 9.100–9.305 | 9.114–9.326 | 372.55% | 262.5 MiB |
+| Native Linux control | 20.160 s | about 9.0 | 9.018 | 39.68% | 214.1 MiB |
+
+One fully used core equals 100%. These process measurements include player
+startup, decoding, full-pixel verification, conversion, drawing and the VNC
+server. QApplication initialization precedes the measured interval.
+Snapshot encoding and report serialization follow it. Guest CPU accounting
+does not measure QEMU's host overhead or predict physical workstation load.
+Short cold-start runs have wider frame-interval variation; they establish
+package and pixel correctness, not sustained throughput.
+
+`tests/check-report.rb` in Examples independently recomputes delivery and
+paint rates from the actual CSV, checks all expected IDs and cross-checks
+the JSON metrics. The long target and native runs pass an explicit 8.95 fps
+minimum, the lower rounding boundary for approximately 9.0 fps.
+Corrupted FPS and missing-row controls are rejected. This threshold does
+not replace the measured ranges above or change the media time base.
+
+RFB requests full snapshots once per second to bound observer traffic;
+RFB sampling does not measure presentation FPS. A sampled window oracle
+also accepts three unambiguous target captures from the two short runs.
+It identifies all four quadrants from actual RGB pixels. Downscaled marker bits can leave ambiguous
+frame IDs or channels, which it reports as failures. Full decoded-pixel
+checks and CSV validation cover every frame independently of that sampling.
+
+Larger-window and earlier unbounded/bilinear runs remain failed or slower
+controls. This result does not accept 1280×800 throughput on TCG, physical
+display timing, physical workstation performance or camera input.
 
 ## Analysis and limits
 

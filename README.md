@@ -324,6 +324,8 @@ runtime behavior are validated.
 - [Four H.265 streams through Qt Multimedia](profiles/common-media/qt-four-streams/README.md):
   a GCC16 amd64 CPU profile uses Qt 6.12 and the common FFmpeg9 provider.
   The example verifies decoded pixels and reads the actual Qt framebuffer.
+  Four 2048×1500, 9 fps inputs pass an installed amd64 VM run in a
+  640×480 raster window, including fourteen-package removal/reinstallation.
   See [measurements and validation limits](profiles/common-media/qt-four-streams/results.md).
 - [MQTT smart-home foundation](probes/mosquitto/README.md): Mosquitto 2.1.2
   builds with common GCC 16.2, cJSON 1.7.19 and SQLite 3.53.4. Twelve installed
