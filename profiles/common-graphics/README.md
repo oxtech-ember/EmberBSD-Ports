@@ -13,7 +13,18 @@ demonstration still require acceptance; individual package results follow.
 
 The [V3D BO cache mutex repair](tests/mesa-v3d-cache-mutex/README.md) in nb8
 passes actual-source lifecycle, allocation-error, sanitizer, and target analysis
-checks. Full package and physical desktop acceptance remain separate.
+checks. The complete GCC16/LLD23 package verifies all 100 installed payload entries.
+Its [linker regression](tests/mesa-symbol-version/README.md) preserves the existing
+libgallium symbol versions; the unchanged old consumer also passes on CM5.
+
+Installed nb8 passes V3D shader rejection, triangle pixels, four EGL lifecycles,
+and all 39 upstream invocations on CM5. `Cache.List` skips and nine NIR cases
+remain disabled. Fifteen temperature samples range from 64.208 to 65.857 degrees
+Celsius, without reported throttling or undervoltage.
+
+Full Plasma remains unaccepted. A bounded startup D-Bus delay remains under investigation.
+The shell responds after an additional wait and exits normally.
+Physical HDMI presentation remains a separate check.
 
 The nb6 recipe also includes Zink and its Vulkan loader dependency.
 Hardware Zink execution remains unaccepted; see [the package boundary](cross/zink.md).
@@ -25,10 +36,14 @@ four llvmpipe EGL/pixel cycles and all 38 target invocations. One internal
 utility skip and nine disabled NIR cases remain. GPU submission and Plasma
 are unaccepted. Earlier GL results retain their recorded package scope.
 
-The [LLVM 23.1.3 migration](cross/mesa-llvm2313.md) passes installed V3D and llvmpipe rendering and all 38 upstream invocations on CM5. A transient large-BO allocation failure remains under investigation. The [process-local V3D trace](cross/v3d-bo-trace.md) records allocation requests without changing the driver contract. A separate [bounded allocation CLI](cross/v3d-bo-alloc.md) checks fixed-size BO creation and release without GPU submission; its host contracts do not establish hardware acceptance.
+The [LLVM 23.1.3 migration](cross/mesa-llvm2313.md) records its earlier 38-test
+V3D/llvmpipe scope. Current nb8 acceptance is described above.
+The [process-local V3D trace](cross/v3d-bo-trace.md) records allocation requests
+without changing the driver contract. A separate [bounded allocation CLI](cross/v3d-bo-alloc.md)
+checks BO creation and release without GPU submission; its host contracts do not establish hardware acceptance.
 
 The same package now enables V3D alongside VirGL and both CPU renderers.
-On CM5, [installed hardware OpenGL acceptance](cross/mesa-cm5.md) passes
+The earlier nb3 [CM5 hardware OpenGL acceptance](cross/mesa-cm5.md) passes
 four EGL 1.5/GLES 3.0 shader/pixel lifecycles at 16x16 and 1280x800, with
 renderer `V3D 7.1.10.2`. All 38 upstream invocations pass, subject to the
 recorded internal skips. Matching libdrm nb2 discovers native platform GPUs
