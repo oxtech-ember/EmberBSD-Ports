@@ -29,7 +29,7 @@ executable = lambda do |path, text|
   File.write(path, text)
   File.chmod(0o700, path)
 end
-Dir.mktmpdir('plasma-session-diagnostics-', '/tmp') do |temp|
+Dir.mktmpdir('plasma-session-diagnostics-') do |temp|
   timeout = "#{temp}/timeout"
   executable.call(timeout, <<~SH)
     #!/bin/sh
