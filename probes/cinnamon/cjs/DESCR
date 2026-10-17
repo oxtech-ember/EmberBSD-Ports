@@ -1,0 +1,3 @@
+Javascript bindings for Cinnamon, based on SpiderMonkey 140
+and girepository-2.0. Fork of gjs maintained by the Cinnamon
+project; cjs-1.0 is the module namespace used by the Cinnamon shell.

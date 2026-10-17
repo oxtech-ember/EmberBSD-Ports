@@ -1,0 +1,3 @@
+Cinnamon window manager and Wayland compositor; mutter fork
+with in-tree cogl and clutter. Wayland profile: GTK3 SSD stack
+replaced by stubs.

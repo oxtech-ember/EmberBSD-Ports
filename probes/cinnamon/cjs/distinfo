@@ -1,0 +1,9 @@
+$NetBSD$
+
+SHA512 (84e7840ce148b75f9d38b57d82cdc9a47dd3a7eb.tar.gz) = 17ced486f256cea6371be10bab0c55387fee5035bf26d5088c45834f6043b8e97c09d389c78cabc7d1207b83c1545b57a96cf5d2a677a03c423be681dd26a54b
+Size (84e7840ce148b75f9d38b57d82cdc9a47dd3a7eb.tar.gz) = 1092318 bytes
+
+SHA1 (patch-installed-tests_js_libgjstesttools_meson.build) = 258a730497907e755922ccb2309b0844abc71278
+SHA1 (patch-libgjs-private_gjs-util.c) = ab2f615eb05c41098d277f1a5d0f749f992f02c2
+SHA1 (patch-meson.build) = 108da845afdb1259b71b4624de32bf4cb4105fdc
+SHA1 (patch-subprojects_gobject-introspection-tests_meson.build) = 7ac5863373e3cf2bb7baea0ecd190166ca92d1ac

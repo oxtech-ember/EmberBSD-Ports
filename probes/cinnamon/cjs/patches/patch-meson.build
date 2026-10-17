@@ -1,0 +1,90 @@
+$NetBSD$
+
+Cross builds cannot execute target binaries on the build host
+(meson aborts in cxx.run() before the upstream is_cross_build()
+warning branch), and introspection generation must go through the
+shared GI cross machinery with the target GType query launcher and
+ELF ldd wrapper.
+
+--- meson.build.orig
++++ meson.build
+@@ -297,7 +297,12 @@
+ # Check if a minimal SpiderMonkey program compiles, links, and runs. If not,
+ # it's most likely the case that SpiderMonkey was configured incorrectly, for
+ # example by building mozglue as a shared library.
+-minimal_program = cxx.run('''
++# EmberBSD cross: cxx.run() cannot execute target binaries on the build
++# host, so the cross branch compiles the same probe instead.
++recommended_configuration = ''' Check the recommended configuration:
++https://github.com/spidermonkey-embedders/spidermonkey-embedding-examples/blob/esr91/docs/Building%20SpiderMonkey.md'''
++if meson.is_cross_build()
++    minimal_compiled = cxx.compiles('''
+ #include <js/Initialization.h>
+ int main() {
+     if (!JS_Init()) return 1;
+@@ -305,24 +310,37 @@
+     return 0;
+ }
+ ''',
+-    args: debug_arg, dependencies: spidermonkey,
+-    name: 'SpiderMonkey sanity check')
+-
+-recommended_configuration = ''' Check the recommended configuration:
+-https://github.com/spidermonkey-embedders/spidermonkey-embedding-examples/blob/esr91/docs/Building%20SpiderMonkey.md'''
+-if not minimal_program.compiled()
+-    error('''A minimal SpiderMonkey program
++        args: debug_arg, dependencies: spidermonkey,
++        name: 'SpiderMonkey sanity check (compile only)')
++    if not minimal_compiled
++        error('''A minimal SpiderMonkey program
+ could not be compiled or linked. Most likely you should build it with a
+ different configuration.''' + recommended_configuration)
+-elif meson.is_cross_build()
++    endif
+     warning('''This is a cross build. A check that a minimal
+ SpiderMonkey program executes will not be performed. Before shipping GJS, you
+ should check that it does not crash on startup, since building SpiderMonkey with
+ the wrong configuration may cause that.''' + recommended_configuration)
+-elif minimal_program.returncode() != 0
+-    error('''A minimal SpiderMonkey program
++else
++    minimal_program = cxx.run('''
++#include <js/Initialization.h>
++int main() {
++    if (!JS_Init()) return 1;
++    JS_ShutDown();
++    return 0;
++}
++''',
++        args: debug_arg, dependencies: spidermonkey,
++        name: 'SpiderMonkey sanity check')
++    if not minimal_program.compiled()
++        error('''A minimal SpiderMonkey program
++could not be compiled or linked. Most likely you should build it with a
++different configuration.''' + recommended_configuration)
++    elif minimal_program.returncode() != 0
++        error('''A minimal SpiderMonkey program
+ failed to execute. Most likely you should build it with a different
+ configuration.''' + recommended_configuration)
++    endif
+ endif
+ 
+ ### Check for external programs ################################################
+@@ -591,8 +609,17 @@
+ 
+ ### Build GjsPrivate introspection library #####################################
+ 
++# EmberBSD cross: temporary GType queries run on the target through
++# the shared GI machinery (see devel/gobject-introspection/cross.mk).
++gir_extra_args = []
++gir_env = environment()
++if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++  gir_extra_args = ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++  gir_env.set('LD_LIBRARY_PATH', meson.project_build_root())
++endif
+ gjs_private_gir = gnome.generate_gir(libgjs,
+     includes: ['GObject-2.0', 'Gio-2.0'], sources: libgjs_private_sources,
++    extra_args: gir_extra_args, env: gir_env,
+     namespace: 'GjsPrivate', nsversion: '1.0', identifier_prefix: 'Gjs',
+     symbol_prefix: 'gjs_', fatal_warnings: get_option('werror'), install: true,
+     install_gir: false, install_dir_typelib: pkglibdir / 'girepository-1.0')

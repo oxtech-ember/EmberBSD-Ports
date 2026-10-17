@@ -1,0 +1,11 @@
+BUILDLINK_TREE+=	muffin
+
+.if !defined(MUFFIN_BUILDLINK3_MK)
+MUFFIN_BUILDLINK3_MK:=
+
+BUILDLINK_API_DEPENDS.muffin+=	muffin>=5.2
+BUILDLINK_PKGSRCDIR.muffin?=	../../wm/muffin
+
+.endif # MUFFIN_BUILDLINK3_MK
+
+BUILDLINK_TREE+=	-muffin
