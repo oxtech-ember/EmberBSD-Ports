@@ -1,4 +1,3 @@
-$NetBSD$
 
 Add NetBSD AArch64 hosts to the native CPU detection case so
 host_detect_local_cpu is provided by driver-aarch64.o; otherwise
