@@ -1,10 +1,11 @@
-Add NetBSD AArch64 hosts to the native CPU detection case so
-host_detect_local_cpu is provided by driver-aarch64.o; otherwise
+Description: add NetBSD AArch64 hosts to native CPU detection
+so driver-aarch64.o provides host_detect_local_cpu; otherwise
 EXTRA_SPEC_FUNCTIONS reference an undefined symbol at xgcc link time.
 
 --- gcc/config.host.orig
 +++ gcc/config.host
-@@ -102,7 +102,8 @@
+@@ -100,7 +100,7 @@
+ 
  case ${host} in
    aarch64*-*-freebsd* | aarch64*-*-linux* | aarch64*-*-fuchsia* |\
 -  aarch64*-*-darwin*)
@@ -12,3 +13,12 @@ EXTRA_SPEC_FUNCTIONS reference an undefined symbol at xgcc link time.
      case ${target} in
        aarch64*-*-*)
  	host_extra_gcc_objs="driver-aarch64.o"
+@@ -244,7 +244,7 @@
+         ;;
+     esac
+     ;;
+-  aarch64*-*-darwin*)
++  aarch64*-*-darwin* | aarch64*-*-netbsd*)
+     out_host_hook_obj="${out_host_hook_obj} host-aarch64-darwin.o"
+     host_xmake_file="${host_xmake_file} aarch64/x-darwin"
+     ;;
