@@ -1,0 +1,2 @@
+GNU binutils (as, ld and companions) targeting bare-metal AArch64 ELF,
+for building the board firmware. Current GNU release on the GCC 16 line.

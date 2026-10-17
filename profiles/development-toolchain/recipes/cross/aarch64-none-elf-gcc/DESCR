@@ -1,0 +1,2 @@
+GCC 16 cross compiler for bare-metal AArch64 ELF (freestanding C),
+for building TF-A and EDK2 board firmware on EmberBSD.

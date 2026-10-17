@@ -281,6 +281,12 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     # One current debugger recipe; dereference the shared Ports patch links.
     rm -rf "$destination/devel/gdb"
     cp -RL "$root/profiles/development-toolchain/recipes/devel/gdb" "$destination/devel/gdb"
+    # Firmware build-host toolchain: cross-adapted recipes overlay the
+    # upstream pins (gcc 8.2/binutils 2.31 violate the shared GCC16 line).
+    for recipe in devel/gmake sysutils/dtc cross/aarch64-none-elf-binutils cross/aarch64-none-elf-gcc; do
+        rm -rf "$destination/$recipe"
+        cp -R "$root/profiles/development-toolchain/recipes/$recipe" "$destination/$recipe"
+    done
     cp "$root/profiles/development-toolchain/mk.conf" \
         "$destination/EMBERBSD-DEVELOPMENT-MK.CONF"
     # Package audited external target runtimes without installing a compiler.

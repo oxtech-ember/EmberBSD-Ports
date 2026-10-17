@@ -1,0 +1,2 @@
+Device Tree Compiler for source (.dts) and compiled (.dtb) blobs,
+for the firmware build host.
