@@ -1,10 +1,10 @@
 # EmberBSD probe: Electron 44.5.1 runtime for NetBSD/aarch64.
 # Not buildable yet; see ../README.md for the plan and boundaries.
 
-DISTNAME=	electron-44.5.1
+DISTNAME=	electron-44.9.0
 CATEGORIES=	devel
 MASTER_SITES=	https://github.com/electron/electron/archive/refs/tags/
-DISTFILES=	v44.5.1${EXTRACT_SUFX}
+DISTFILES=	v44.9.0${EXTRACT_SUFX}
 DIST_SUBDIR=	e12-electron
 
 CHROMIUM_VERSION=	152.0.7977.82
