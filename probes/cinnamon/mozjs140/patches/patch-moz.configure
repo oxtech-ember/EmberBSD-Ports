@@ -1,0 +1,17 @@
+$NetBSD$
+
+The cross buildlink generates the builtin zlib.pc with an empty
+Version field (the base-system zlib works); drop the version
+constraint from the module check.
+
+--- moz.configure.orig
++++ moz.configure
+@@ -923,7 +923,7 @@
+         )
+ 
+ 
+-pkg_check_modules("MOZ_ZLIB", "zlib >= 1.2.3", when="--with-system-zlib")
++pkg_check_modules("MOZ_ZLIB", "zlib", when="--with-system-zlib")
+ 
+ set_config("MOZ_SYSTEM_ZLIB", True, when="--with-system-zlib")
+ 

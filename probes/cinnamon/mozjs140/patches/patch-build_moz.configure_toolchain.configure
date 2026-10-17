@@ -1,0 +1,23 @@
+$NetBSD$
+
+Cross builds from a Darwin host: with --enable-linker=ld64 the probe
+reaches Apple's classic linker, which never prints the "Logging ld64
+options" marker; recognize its plain rejection of --version as ld64.
+
+--- build/moz.configure/toolchain.configure.orig
++++ build/moz.configure/toolchain.configure
+@@ -2027,6 +2027,14 @@
+             env["LC_ALL"] = "C"
+             retcode, stdout, stderr = get_cmd_output(*cmd, env=env)
+             if retcode == 1 and "Logging ld64 options" in stderr:
++                kind = "ld64"
++            elif (
++                retcode == 1
++                and "unknown options: --version" in stderr
++                and target.kernel == "Darwin"
++            ):
++                # Classic Apple ld rejects --version identically on
++                # every toolchain vintage; treat it as ld64.
+                 kind = "ld64"
+ 
+             elif retcode != 0:
