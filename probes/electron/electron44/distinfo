@@ -4,3 +4,6 @@ SHA256 (e12-electron/node-v24.21.0.tar.xz) = a6f54defb6fd7c84f41dba13d61e78e9b4e
 Size (e12-electron/node-v24.21.0.tar.xz) = 57357488 bytes
 SHA256 (e12-electron/chromium-152.0.7977.82.tar.xz) = 82a42a16cd9caa49a5bd6d8f226bb2de2646031356e620da05f92cbfddeb35c3
 Size (e12-electron/chromium-152.0.7977.82.tar.xz) = 5916124416 bytes
+SHA256 (e12-electron/esbuild-darwin-arm64-0.25.1.tgz) = d5b5109ce4cbdb7057b867b8052f6bf9e51cb65d3e6318a751e35d7d0c4d8326
+Size (e12-electron/esbuild-darwin-arm64-0.25.1.tgz) = 17967547 bytes
+SHA256 (e12-electron/rollup-darwin-arm64-4.60.4.tgz) = 9bac26f54048827b2922bb9496deecd457911b3605a7a998243f7c92f07006f9
