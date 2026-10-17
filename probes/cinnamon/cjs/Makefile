@@ -12,6 +12,10 @@ COMMENT=	JavaScript bindings for Cinnamon (SpiderMonkey 140)
 LICENSE=	mit AND gnu-lgpl-v2
 
 USE_TOOLS+=	pkg-config
+# The gobject-introspection-tests subproject GIRs are test fixtures;
+# building only the install targets skips their scanner invocations
+# (the cross wrapper rewrites sysroot -I paths for its cpp pass).
+BUILD_TARGET=	install
 USE_LANGUAGES=	c c++
 
 # SpiderMonkey embedders must declare the target platform themselves

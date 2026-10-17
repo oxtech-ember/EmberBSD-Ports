@@ -1,8 +1,10 @@
 $NetBSD$
 
-Cross builds cannot execute target binaries on the build host;
-meson aborts in cxx.run() before the upstream is_cross_build()
-warning branch. Compile the same probe instead.
+Cross builds cannot execute target binaries on the build host
+(meson aborts in cxx.run() before the upstream is_cross_build()
+warning branch), and introspection generation must go through the
+shared GI cross machinery with the target GType query launcher and
+ELF ldd wrapper.
 
 --- meson.build.orig
 +++ meson.build
@@ -68,3 +70,21 @@ warning branch. Compile the same probe instead.
  endif
  
  ### Check for external programs ################################################
+@@ -591,8 +609,17 @@
+ 
+ ### Build GjsPrivate introspection library #####################################
+ 
++# EmberBSD cross: temporary GType queries run on the target through
++# the shared GI machinery (see devel/gobject-introspection/cross.mk).
++gir_extra_args = []
++gir_env = environment()
++if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++  gir_extra_args = ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++  gir_env.set('LD_LIBRARY_PATH', meson.project_build_root())
++endif
+ gjs_private_gir = gnome.generate_gir(libgjs,
+     includes: ['GObject-2.0', 'Gio-2.0'], sources: libgjs_private_sources,
++    extra_args: gir_extra_args, env: gir_env,
+     namespace: 'GjsPrivate', nsversion: '1.0', identifier_prefix: 'Gjs',
+     symbol_prefix: 'gjs_', fatal_warnings: get_option('werror'), install: true,
+     install_gir: false, install_dir_typelib: pkglibdir / 'girepository-1.0')

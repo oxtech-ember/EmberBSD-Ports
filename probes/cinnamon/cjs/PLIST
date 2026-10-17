@@ -1,1 +1,20 @@
-@comment placeholder: regenerated from the destdir after the first build
+bin/cjs
+bin/cjs-console
+include/cjs-1.0/cjs/context.h
+include/cjs-1.0/cjs/coverage.h
+include/cjs-1.0/cjs/error-types.h
+include/cjs-1.0/cjs/gjs.h
+include/cjs-1.0/cjs/macros.h
+include/cjs-1.0/cjs/mem.h
+include/cjs-1.0/cjs/profiler.h
+lib/cjs/girepository-1.0/GjsPrivate-1.0.typelib
+lib/libcjs.so
+lib/libcjs.so.0
+lib/libcjs.so.0.0.0
+lib/pkgconfig/cjs-1.0.pc
+libexec/installed-tests/cjs/libgimarshallingtests.so
+libexec/installed-tests/cjs/libregress.so
+libexec/installed-tests/cjs/libutility.so
+libexec/installed-tests/cjs/libwarnlib.so
+share/cjs-1.0/lsan/lsan.supp
+share/cjs-1.0/valgrind/gjs.supp

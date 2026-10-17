@@ -1,0 +1,26 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Test tooling GIR is not installed and
+its scanner cpp cannot run in cross mode; disable generation there.
+
+--- installed-tests/js/libgjstesttools/meson.build.orig
++++ installed-tests/js/libgjstesttools/meson.build
+@@ -16,12 +16,18 @@
+     include_directories: top_include, dependencies: libgjs_dep,
+     cpp_args: libgjs_cpp_args + libgjstesttools_extra_cpp_args,
+     install: get_option('installed_tests'), install_dir: installed_tests_execdir)
++if meson.is_cross_build()
++  # EmberBSD cross: test tooling GIR is not installed and its
++  # scanner cpp pass cannot run on the build host.
++  gjstest_tools_gir = [disabler(), disabler()]
++else
+ gjstest_tools_gir = gnome.generate_gir(libgjstesttools,
+     includes: ['GObject-2.0', 'Gio-2.0'], sources: gjstest_tools_sources,
+     namespace: 'GjsTestTools', nsversion: '1.0',
+     symbol_prefix: 'gjs_test_tools_', fatal_warnings: get_option('werror'),
+     install: get_option('installed_tests'), install_gir: false,
+     install_dir_typelib: installed_tests_execdir)
++endif
+ gjstest_tools_typelib = gjstest_tools_gir[1]
+ libgjstesttools_dep = declare_dependency(
+     link_with: libgjstesttools,

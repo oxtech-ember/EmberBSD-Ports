@@ -1,0 +1,105 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). These GIRs are test fixtures for the
+introspection test suite; under cross builds the scanner cpp pass
+cannot run against them and they are not installed. Disable their
+generation in cross mode (meson disabler keeps dependent test targets
+consistently disabled).
+
+--- subprojects/gobject-introspection-tests/meson.build.orig
++++ subprojects/gobject-introspection-tests/meson.build
+@@ -88,6 +88,11 @@
+     install: install,
+     install_dir: install_dir,
+ )
++if meson.is_cross_build()
++  # EmberBSD cross: fixture GIRs are not built; the introspection
++  # machinery runs only for the installed libraries.
++  utility_gir = [disabler(), disabler()]
++else
+ utility_gir = gnome.generate_gir(
+     libutility,
+     sources: utility_sources,
+@@ -101,6 +106,7 @@
+     install_typelib: install,
+     install_dir_typelib: install_dir,
+ )
++endif
+ utility_typelib = utility_gir[1]
+ 
+ regress_dependencies = [glib_dep, gobject_dep, gio_dep]
+@@ -119,6 +125,11 @@
+     install_dir: install_dir,
+     override_options: ['unity=off'],
+ )
++if meson.is_cross_build()
++  # EmberBSD cross: fixture GIRs are not built; the introspection
++  # machinery runs only for the installed libraries.
++  regress_gir = [disabler(), disabler()]
++else
+ regress_gir = gnome.generate_gir(
+     libregress,
+     sources: regress_sources,
+@@ -135,9 +146,13 @@
+     install_typelib: install,
+     install_dir_typelib: install_dir,
+ )
++endif
+ regress_typelib = regress_gir[1]
+ if host_machine.system() != 'windows'
+-    regress_unix_gir = gnome.generate_gir(
++    if meson.is_cross_build()
++  regress_unix_gir = [disabler(), disabler()]
++else
++regress_unix_gir = gnome.generate_gir(
+         libregress,
+         sources: regress_unix_sources,
+         includes: regress_gir_includes,
+@@ -151,6 +166,7 @@
+         install_typelib: install,
+         install_dir_typelib: install_dir,
+     )
++    endif
+ else
+     regress_unix_gir = [disabler(), disabler()]
+ endif
+@@ -166,6 +182,11 @@
+ )
+ # This should have --warn-all turned off, but there is currently no way to do so
+ # in gnome.generate_gir(). See https://github.com/mesonbuild/meson/issues/5876
++if meson.is_cross_build()
++  # EmberBSD cross: fixture GIRs are not built; the introspection
++  # machinery runs only for the installed libraries.
++  warnlib_gir = [disabler(), disabler()]
++else
+ warnlib_gir = gnome.generate_gir(
+     libwarnlib,
+     includes: ['Gio-2.0'],
+@@ -179,6 +200,7 @@
+     install_typelib: install,
+     install_dir_typelib: install_dir,
+ )
++endif
+ warnlib_typelib = warnlib_gir[1]
+ 
+ libgimarshallingtests = library(
+@@ -189,6 +211,11 @@
+     install: install,
+     install_dir: install_dir,
+ )
++if meson.is_cross_build()
++  # EmberBSD cross: fixture GIRs are not built; the introspection
++  # machinery runs only for the installed libraries.
++  gimarshallingtests_gir = [disabler(), disabler()]
++else
+ gimarshallingtests_gir = gnome.generate_gir(
+     libgimarshallingtests,
+     sources: gimarshallingtests_sources,
+@@ -201,6 +228,7 @@
+     install_typelib: install,
+     install_dir_typelib: install_dir,
+ )
++endif
+ gimarshallingtests_typelib = gimarshallingtests_gir[1]
+ 
+ deps = [glib_dep]
