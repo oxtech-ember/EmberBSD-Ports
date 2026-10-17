@@ -1,5 +1,0 @@
-ONNX Runtime provides a shared C API and C++ wrappers for ONNX model inference.
-This EmberBSD profile uses the CPU execution provider and standard operators.
-It uses the common Eigen headers and private upstream-pinned source inputs.
-Training, Python bindings, contrib/ML operators, telemetry and accelerator
-providers are disabled. Upstream Python generators run only during the build.

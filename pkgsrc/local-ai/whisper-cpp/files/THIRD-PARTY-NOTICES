@@ -1,5 +1,5 @@
 Source: ggml/src/ggml-cpu/llamafile/sgemm.cpp
-Upstream revision: d1be6fde11ac6e0407606b4e42fe72d34add8037
+Upstream revision: 927cfce34f31707e17f2bff35c349632fb9e2c3a
 
 // Copyright 2024 Mozilla Foundation
 //
@@ -24,7 +24,7 @@ Upstream revision: d1be6fde11ac6e0407606b4e42fe72d34add8037
 // SOFTWARE.
 
 Source: examples/miniaudio.h
-Upstream revision: d1be6fde11ac6e0407606b4e42fe72d34add8037
+Upstream revision: 927cfce34f31707e17f2bff35c349632fb9e2c3a
 
 /*
 This software is available as a choice of the following licenses. Choose
@@ -77,7 +77,7 @@ SOFTWARE.
 */
 
 Source: examples/stb_vorbis.c
-Upstream revision: d1be6fde11ac6e0407606b4e42fe72d34add8037
+Upstream revision: 927cfce34f31707e17f2bff35c349632fb9e2c3a
 
 /*
 ------------------------------------------------------------------------------

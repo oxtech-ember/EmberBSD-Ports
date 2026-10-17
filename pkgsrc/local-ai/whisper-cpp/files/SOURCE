@@ -1,13 +1,8 @@
 Project: whisper.cpp
-Release: v1.9.5
-Revision: d1be6fde11ac6e0407606b4e42fe72d34add8037
+Release: v1.9.4
+Revision: 927cfce34f31707e17f2bff35c349632fb9e2c3a
 Repository: https://github.com/ggml-org/whisper.cpp
-Archive SHA256: 645445da884df6dbd52b30f82d7be7c01d1767c938714e477e786b88d529e9f4
+Archive SHA256: 41b664fee09e79176ac277b5237debec34f8d74af3c7d71f333f1ec67989ecde
 License: MIT; bundled notices are preserved with the package.
 Profile: CPU, armv8-a on AArch64, no GPU, no OpenMP, no microphone capture.
 Packaging: EmberBSD, AI-assisted. No upstream acceptance is claimed.
-Compiler: GCC 16.2.0; native and cross builds share the CPU feature caches.
-Patch: check two GGML allocator metadata allocations before dereference.
-Patch: preserve CLI output failures, input/output identities and valid JSON.
-Patch: reject incomplete fixed ASR headers through file, buffer and callback loaders.
-Patch: release escaped CSV segment text after output.
