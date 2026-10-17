@@ -7,6 +7,11 @@ set -eu
     exit 2
 }
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+delta=$here/patches/gmp-t-rand-varargs.patch
+[ "$(shasum -a 256 "$delta" | awk '{print $1}')" = \
+    7ac7687eee380a35f2289baf2bf964c42b82c02bca2272aef6e2e46b23e87736 ] || {
+    echo 'GMP test patch SHA256 mismatch.' >&2; exit 1;
+}
 archives=$1 tools=$2 work=$3
 for path in "$@"; do
     case "$path" in /*) ;; *) echo 'Absolute paths required.' >&2; exit 2;; esac
@@ -56,6 +61,7 @@ mkdir "$prefix"
     "${HOST_CC:-cc}" -dumpmachine
     "${HOST_CXX:-c++}" --version
     printf 'jobs=%s\n' "$jobs"
+    shasum -a 256 "$delta"
 } > "$work/inputs.txt"
 unset CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH LIBRARY_PATH
 for item in gmp:6.3.0:tar.xz mpfr:4.2.2:tar.bz2 mpc:1.4.1:tar.xz; do
@@ -64,6 +70,10 @@ for item in gmp:6.3.0:tar.xz mpfr:4.2.2:tar.bz2 mpc:1.4.1:tar.xz; do
     mkdir "$work/$name-src" "$work/$name-build"
     shasum -a 256 "$archive" >> "$work/inputs.txt"
     tar -xf "$archive" --strip-components=1 -C "$work/$name-src"
+    if [ "$name" = gmp ]; then
+        patch -f -N -F 0 -p1 -d "$work/$name-src" < "$delta" \
+            > "$work/gmp-patch.log" 2>&1
+    fi
     (
         cd "$work/$name-build"
         set -- --prefix="$prefix" --disable-shared --enable-static

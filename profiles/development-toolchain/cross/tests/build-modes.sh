@@ -44,7 +44,9 @@ reject 'Usage:' --kernel "$work/pkgsrc" "$work/archive" "$work/new"
 reject 'Usage:' --kernel "$work/pkgsrc" "$work/archive" "$work/sysroot" "$work/tools" "$work/math" "$work/new"
 reject 'Unknown build mode.' --unknown "$work/pkgsrc" "$work/archive" "$work/tools" "$work/new"
 reject 'Absolute paths required.' --kernel relative "$work/archive" "$work/tools" "$work/new"
-(TEST_CROSS_JOBS=0 reject 'CROSS_JOBS must be positive.' --kernel "$work/pkgsrc" "$work/archive" "$work/tools" "$work/new")
+# POSIX shells may retain assignments made before a function call. Keep the
+# invalid job count local so later cases still exercise their own boundary.
+( TEST_CROSS_JOBS=0 reject 'CROSS_JOBS must be positive.' --kernel "$work/pkgsrc" "$work/archive" "$work/tools" "$work/new" )
 
 # Use the selected bootstrap layout for later prerequisite checks. An empty
 # archive must fail checksum validation before any build command runs.
