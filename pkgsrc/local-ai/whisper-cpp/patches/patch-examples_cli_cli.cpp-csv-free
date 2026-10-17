@@ -1,0 +1,14 @@
+$NetBSD$
+
+Release escaped CSV text after writing each segment.
+
+--- examples/cli/cli.cpp.orig	2026-10-15 00:00:00.000000000 +0000
++++ examples/cli/cli.cpp
+@@ -603,6 +603,7 @@ static void output_csv(struct whisper_context * ctx,
+             fout << estimate_diarization_speaker(pcmf32s, t0, t1, true) << ",";
+         }
+         fout << "\"" << text_escaped << "\"\n";
++        free(text_escaped);
+     }
+ }
+ 

@@ -6,3 +6,6 @@ Archive SHA256: 84050e783dbd0c4a4678f90f253b0881df04e90a98c20f73ae3709751c4a4850
 License: MIT; bundled notices are preserved with the package.
 Profile: CPU, armv8-a on AArch64, no GPU, no UI download, no OpenMP.
 Packaging: EmberBSD, AI-assisted. No upstream acceptance is claimed.
+Patch: check two GGML allocator metadata allocations before dereference.
+Patch contract: the existing unconditional GGML_ASSERT fatal OOM path and ABI.
+Compiler: GCC 16.2.0; native and cross builds share the same CPU feature caches.

@@ -1,0 +1,63 @@
+$NetBSD$
+
+Escape control bytes in JSON strings, including model file names.
+Keep UTF-8 bytes intact and use string ownership for escaped values.
+
+--- examples/cli/cli.cpp.orig	2026-10-15 00:00:00.000000000 +0000
++++ examples/cli/cli.cpp
+@@ -521,30 +521,23 @@ static void output_srt(struct whisper_context * ctx,
+-static char * escape_double_quotes_and_backslashes(const char * str) {
+-    if (str == NULL) {
+-        return NULL;
++static std::string escape_json_string(const char * str) {
++    std::string escaped;
++    if (str == nullptr) {
++        return escaped;
+     }
+ 
+-    size_t escaped_length = strlen(str) + 1;
+-
+-    for (size_t i = 0; str[i] != '\0'; i++) {
+-        if (str[i] == '"' || str[i] == '\\') {
+-            escaped_length++;
+-        }
+-    }
+-
+-    char * escaped = (char *)calloc(escaped_length, 1); // pre-zeroed
+-    if (escaped == NULL) {
+-        return NULL;
+-    }
+-
+-    size_t pos = 0;
+-    for (size_t i = 0; str[i] != '\0'; i++) {
+-        if (str[i] == '"' || str[i] == '\\') {
+-            escaped[pos++] = '\\';
++    static const char hex[] = "0123456789abcdef";
++    for (size_t i = 0; str[i] != '\0'; ++i) {
++        const unsigned char c = static_cast<unsigned char>(str[i]);
++        if (c == '"' || c == '\\') {
++            escaped += '\\';
++            escaped += static_cast<char>(c);
++        } else if (c < 0x20) {
++            escaped += "\\u00";
++            escaped += hex[c >> 4];
++            escaped += hex[c & 0x0f];
++        } else {
++            escaped += static_cast<char>(c);
+         }
+-        escaped[pos++] = str[i];
+     }
+ 
+-    // no need to set zero due to calloc() being used prior
+-
+     return escaped;
+ }
+@@ -669,7 +662,5 @@ static void output_json(
+     auto value_s = [&](const char *name, const char *val, bool end) {
+         start_value(name);
+-        char * val_escaped = escape_double_quotes_and_backslashes(val);
+-        fout << "\"" << val_escaped << (end ? "\"\n" : "\",\n");
+-        free(val_escaped);
++        fout << "\"" << escape_json_string(val) << (end ? "\"\n" : "\",\n");
+     };
+ 
