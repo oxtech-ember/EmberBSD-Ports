@@ -1,0 +1,2 @@
+Library for crypto UI and related tasks (gcr-base subset with
+introspection; the GTK3 UI library is not part of this profile).

@@ -1,0 +1,70 @@
+$NetBSD$
+
+Cross builds cannot execute target binaries on the build host;
+meson aborts in cxx.run() before the upstream is_cross_build()
+warning branch. Compile the same probe instead.
+
+--- meson.build.orig
++++ meson.build
+@@ -297,7 +297,12 @@
+ # Check if a minimal SpiderMonkey program compiles, links, and runs. If not,
+ # it's most likely the case that SpiderMonkey was configured incorrectly, for
+ # example by building mozglue as a shared library.
+-minimal_program = cxx.run('''
++# EmberBSD cross: cxx.run() cannot execute target binaries on the build
++# host, so the cross branch compiles the same probe instead.
++recommended_configuration = ''' Check the recommended configuration:
++https://github.com/spidermonkey-embedders/spidermonkey-embedding-examples/blob/esr91/docs/Building%20SpiderMonkey.md'''
++if meson.is_cross_build()
++    minimal_compiled = cxx.compiles('''
+ #include <js/Initialization.h>
+ int main() {
+     if (!JS_Init()) return 1;
+@@ -305,24 +310,37 @@
+     return 0;
+ }
+ ''',
+-    args: debug_arg, dependencies: spidermonkey,
+-    name: 'SpiderMonkey sanity check')
+-
+-recommended_configuration = ''' Check the recommended configuration:
+-https://github.com/spidermonkey-embedders/spidermonkey-embedding-examples/blob/esr91/docs/Building%20SpiderMonkey.md'''
+-if not minimal_program.compiled()
+-    error('''A minimal SpiderMonkey program
++        args: debug_arg, dependencies: spidermonkey,
++        name: 'SpiderMonkey sanity check (compile only)')
++    if not minimal_compiled
++        error('''A minimal SpiderMonkey program
+ could not be compiled or linked. Most likely you should build it with a
+ different configuration.''' + recommended_configuration)
+-elif meson.is_cross_build()
++    endif
+     warning('''This is a cross build. A check that a minimal
+ SpiderMonkey program executes will not be performed. Before shipping GJS, you
+ should check that it does not crash on startup, since building SpiderMonkey with
+ the wrong configuration may cause that.''' + recommended_configuration)
+-elif minimal_program.returncode() != 0
+-    error('''A minimal SpiderMonkey program
++else
++    minimal_program = cxx.run('''
++#include <js/Initialization.h>
++int main() {
++    if (!JS_Init()) return 1;
++    JS_ShutDown();
++    return 0;
++}
++''',
++        args: debug_arg, dependencies: spidermonkey,
++        name: 'SpiderMonkey sanity check')
++    if not minimal_program.compiled()
++        error('''A minimal SpiderMonkey program
++could not be compiled or linked. Most likely you should build it with a
++different configuration.''' + recommended_configuration)
++    elif minimal_program.returncode() != 0
++        error('''A minimal SpiderMonkey program
+ failed to execute. Most likely you should build it with a different
+ configuration.''' + recommended_configuration)
++    endif
+ endif
+ 
+ ### Check for external programs ################################################
