@@ -117,9 +117,18 @@ EMBERBSD_CROSS_BUILD_PYTHON=/absolute/python3.14
 Keep `mk.conf` and its executable `sort-c.sh` together. The profile uses
 one executable path to preserve C collation in pkgsrc's `TOOLS_SORT`.
 An `env LC_ALL=C sort` command loses its arguments in libtool PLIST expansion.
-The cross profile defaults `RCD_SCRIPTS_DIR` to `/etc/rc.d` for the target rc framework.
-An explicit directory override remains supported. Package configurations stay in `/usr/pkg/etc`.
-The `../tests/cross-rcd-path.rb` check queries the real recipe and tests both paths.
+The cross profile defaults `CROSS_SYSCONFBASE` to `/etc` for base `rc.subr`
+and `rc.conf`. `PKG_SYSCONFBASE` keeps pkgsrc's separate `${PREFIX}/etc` default.
+`RCD_SCRIPTS_DIR` defaults to `/etc/rc.d`. Explicit overrides remain supported.
+The `../tests/cross-rcd-path.rb` check queries the actual D-Bus recipe and
+runs pkgsrc's unmodified rc-script generator. It reproduces the wrong base
+path and old service-directory path. It also checks three explicit overrides
+and unchanged native output:
+
+```sh
+BMAKE=/absolute/host/bin/bmake ruby ../tests/cross-rcd-path.rb \
+  /absolute/pkgsrc/sysutils/dbus /absolute/cross.mk.conf /absolute/new-checks
+```
 pkgsrc defaults `PKG_RCD_SCRIPTS` to `NO`; installation does not start services.
 See the [Xwayland lifecycle](../../../probes/plasma-mobile/toolkit/recipes/wayland/xwayland/README.md#shared-socket-directories).
 

@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.146 2026/09/02 19:04:25 wiz Exp $
 
 DISTNAME=	dbus-1.16.2
-PKGREVISION=	5
+PKGREVISION=	6
 CATEGORIES=	sysutils
 MASTER_SITES=	https://dbus.freedesktop.org/releases/dbus/
 EXTRACT_SUFX=	.tar.xz
