@@ -4,7 +4,7 @@ Origin: EmberBSD (AI-assisted). Keep native defaults and expose the actual targe
 
 --- Makefile.in.orig
 +++ Makefile.in
-@@ -5,15 +5,17 @@
+@@ -5,15 +5,19 @@
  name = spnav
  lib_a = lib$(name).a
  
@@ -17,6 +17,8 @@ Origin: EmberBSD (AI-assisted). Keep native defaults and expose the actual targe
  
  CC ?= gcc
  AR ?= ar
++INSTALL_DATA ?= install -m 644
++INSTALL_LIB ?= install -m 755
  CFLAGS = $(opt) $(dbg) -std=c89 $(pic) -pedantic -Wall -fno-strict-aliasing $(incpaths) $(user_cflags)
  LDFLAGS = $(libpaths) $(user_ldflags) $(xlib) -lm
  
@@ -25,3 +27,25 @@ Origin: EmberBSD (AI-assisted). Keep native defaults and expose the actual targe
  	lib_so = libspnav.dylib
  	shared = -dynamiclib
  else
+@@ -50,17 +54,17 @@
+ .PHONY: install
+ install: $(lib_a) $(lib_so) $(hdr)
+ 	mkdir -p $(DESTDIR)$(PREFIX)/$(libdir) $(DESTDIR)$(PREFIX)/include
+-	cp $(lib_a) $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_a)
+-	cp $(lib_so) $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_so)
++	$(INSTALL_DATA) $(lib_a) $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_a)
++	$(INSTALL_LIB) $(lib_so) $(DESTDIR)$(PREFIX)/$(libdir)/$(lib_so)
+ 	[ -n "$(soname)" ] && \
+ 		rm -f $(DESTDIR)$(PREFIX)/$(libdir)/$(soname) $(DESTDIR)$(PREFIX)/$(libdir)/$(devlink) && \
+ 		cd $(DESTDIR)$(PREFIX)/$(libdir) && \
+ 		ln -s $(lib_so) $(soname) && \
+ 		ln -s $(soname) $(devlink) || \
+ 		true
+-	for h in $(hdr); do cp -p $(srcdir)/$$h $(DESTDIR)$(PREFIX)/include/; done
++	for h in $(hdr); do $(INSTALL_DATA) $(srcdir)/$$h $(DESTDIR)$(PREFIX)/include/; done
+ 	mkdir -p $(DESTDIR)$(PREFIX)/share/pkgconfig
+-	cp spnav.pc $(DESTDIR)$(PREFIX)/share/pkgconfig/spnav.pc
++	$(INSTALL_DATA) spnav.pc $(DESTDIR)$(PREFIX)/share/pkgconfig/spnav.pc
+ 
+ .PHONY: uninstall
+ uninstall:
