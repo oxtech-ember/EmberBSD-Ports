@@ -29,6 +29,10 @@ runtime behavior are validated.
   focused native regressions cover the source repairs; KiCad uses the
   current exception API. The complete OCCT package and installed STEP
   geometry checks remain pending.
+- [Common Eigen 5.0.1](profiles/common-graphics/cross/eigen.md): the existing
+  provider retains its CMake/header interfaces and full companion libraries.
+  GCC16 AArch64 packaging verifies all 613 entries; four selected native
+  numerical checks pass. Installed target checks remain pending.
 - [Maintained FreeImage sources](profiles/common-graphics/cross/freeimage.md):
   FreeImage/FreeImagePlus 3.19.25 and LibRaw 0.22.2 retain common codecs for
   OCCT. Source and focused native half checks pass; complete packages and
