@@ -1,0 +1,19 @@
+Propagate repeated-field allocation failure from message cloning.
+
+upb_Array_DeepClone can return NULL. Returning true in that case hides the
+failure and lets the caller return a clone whose repeated field is missing.
+The installed C contract has a bounded --array-oom allocator-failure case.
+
+Origin: EmberBSD local adaptation. Prepared with AI assistance.
+Upstream status: not submitted.
+
+--- upb/message/copy.c.orig
++++ upb/message/copy.c
+@@ -169,6 +169,7 @@
+ 
+   // Clear out upb_Array* due to parent memcpy.
+   upb_Message_SetBaseField(clone, field, &cloned_array);
++  if (cloned_array == NULL) return false;
+   return true;
+ }
+ 

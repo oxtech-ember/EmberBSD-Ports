@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-2-Clause
+// Copyright (c) 2026 EmberBSD contributors. Prepared with AI assistance.
+syntax = "proto3";
+package emberbsd.kicad;
+
+message Contract {
+  uint32 revision = 1;
+  string label = 2;
+  repeated sint32 samples = 3;
+}

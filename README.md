@@ -19,6 +19,13 @@ runtime behavior are validated.
 
 ## Current contents
 
+- [KiCad protobuf prerequisites](probes/kicad/protobuf/README.md): protobuf
+  36.2 and Abseil 20260817.0 build with native GCC16 and shared zlib 1.3.2.
+  Four allocation-failure controls reproduce upstream UPB defects and pass
+  after repair. The installed C++ API passes fourteen checks, including gzip.
+  Matching code generation retains its output and error behavior. Documented
+  process-lifetime exceptions keep the original CLI's memory failures visible.
+  AArch64 execution, packaging and KiCad integration remain pending.
 - [KiCad SPICE prerequisites](probes/kicad/ngspice/README.md): ngspice 47
   source repairs retain the shared C API, XSPICE, OpenMP, FFTW and Readline.
   Native numerical and causal ownership checks pass. Raw memory reports
