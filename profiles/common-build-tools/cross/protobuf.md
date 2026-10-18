@@ -26,13 +26,19 @@ directory paths, then uses `-lexecinfo` in both the option and its generator
 expression condition. A found nonstandard provider fails explicitly. Missing
 `execinfo` and native builds retain the upstream optional behavior.
 
-The next Abseil source repair selects its existing generic `backtrace`
+The Abseil stack-trace repair selects its existing generic `backtrace`
 implementation on NetBSD. Upstream otherwise selects the empty implementation
 on this platform. Thread-local recursion and early-initialization guards stay
 upstream-owned. The installed consumer in `tests/abseil-consumer` requires a
-known string result and a nonempty bounded stack trace. This additional source
-repair still requires its own before/after target execution; the earlier
-protobuf consumer results did not cover stack traces.
+known string result and a nonempty bounded stack trace. In the AArch64 VM,
+the same GCC16 consumer returns zero frames with the original selection and
+three non-null frames after repair. Loaded libraries match their recorded
+hashes, including the common GCC16 runtime and base `libexecinfo.so.0`.
+This source-probe result does not establish ordinary package acceptance.
+
+The generic implementation retains its upstream 64-frame limit. It does not
+recover frame sizes or context, and keeps its documented allocation and signal
+limitations. The consumer checks non-null addresses, not symbolic frame identity.
 
 The [common cross profile](README.md) supplies the target identity, sysroot and
 CMake search modes. Build programs stay native. Headers, libraries and package
@@ -92,6 +98,19 @@ The ordinary AArch64 Abseil configure also identifies NetBSD/AArch64 and enables
 CMake cross mode with the actual GCC16 compiler. The initial unadapted package
 exposed the metadata problem and is not accepted. Repaired package creation,
 installed SDK consumers and target execution remain separate gates here.
+
+The bounded native stack-trace build uses frame pointers and returns four
+frames. Its consumer passes strict Memcheck with no errors, live heap blocks
+or suppressions. The existing native protobuf graph stays unchanged. Its
+optimized Abseil build omits frame pointers and returns zero frames in this
+separate stack-trace check; the bounded result does not accept that behavior.
+
+Clang Static Analyzer 19.1.7 reports no diagnostics for five actual compile
+commands: target stacktrace before and after repair, native stacktrace, and
+the native and target consumer. Cppcheck 2.22.0 cannot complete these commands
+with the actual GCC16 headers. Per-command compiler queries resolve its feature
+predicate limitations, but its parser then stops in `type_traits` or `array`.
+The raw failures remain recorded; this is not a clean Cppcheck result.
 
 The [source probe](../../../probes/kicad/protobuf/README.md) already has native
 memory checks and actual AArch64 VM consumer results. Those results do not

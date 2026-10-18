@@ -34,7 +34,9 @@ metadata repair remains pending. These checks do not establish KiCad acceptance.
 The [protobuf 36.2 and Abseil 20260817.0 recipes](cross/protobuf.md) keep one
 common SDK provider and a separate native generator for cross consumers.
 Source, host-tool and CMake metadata regressions pass. Repaired ordinary
-package and installed-consumer acceptance remain separate.
+package and installed-consumer acceptance remain separate. A bounded AArch64
+source-probe regression verifies Abseil's NetBSD stack-trace repair: the same
+consumer changes from zero frames to three non-null frames.
 
 [Groff 1.24.2](recipes/textproc/groff/README.md) includes a C23 function-prototype repair.
 Its native macOS build renders the three Enchant manual pages as HTML.

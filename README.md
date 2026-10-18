@@ -38,6 +38,8 @@ runtime behavior are validated.
   The same C++ and UPB contracts pass in the AArch64 E34 guest with the
   GCC16-built shared-library closure. Ordinary pkgsrc ownership, package
   lifecycle and KiCad integration remain pending.
+  The [common Abseil recipe](profiles/common-build-tools/cross/protobuf.md)
+  repairs NetBSD stack traces; a separate AArch64 source-probe regression passes.
 - [KiCad SPICE prerequisites](probes/kicad/ngspice/README.md): ngspice 47
   source repairs retain the shared C API, XSPICE, OpenMP, FFTW and Readline.
   Native numerical and causal ownership checks pass. Raw memory reports
