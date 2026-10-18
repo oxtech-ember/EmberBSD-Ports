@@ -77,8 +77,11 @@ passes through the durable system pkgsrc configuration on that board.
 The [NetBSD numeric-locale repair](locale.md) prepares the shared GCC16
 header and library to avoid process-wide locale changes during C++ numeric
 conversion. Native checks and real AArch64 source-object execution preserve
-numeric behavior and repair the concurrent locale change. Installed repaired
-runtime and consumer acceptance remain separate gates.
+numeric behavior and repair the concurrent locale change. The ordinary
+[runtime-only nb3 package](runtime/README.md#aarch64-installed-acceptance)
+passes installed SDK and EmberBSD VM upgrade checks, including plain/LTO
+locale, threads, OpenMP, atomics and the rebuilt Skia contract. Its removal
+and reinstallation, broader consumer migration and image integration remain gates.
 
 The [TSVC portability backport](testsuite-portability.md) applies GCC's accepted
 NetBSD allocator fix without changing the compiler or runtime. The exported
