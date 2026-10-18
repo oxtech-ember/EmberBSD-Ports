@@ -39,6 +39,23 @@ concrete portability boundary to test after the common std is available.
 Other device, udev, DRM-ioctl and session contracts require actual compile
 and runtime checks. No successful no-op syscall replacement is provided.
 
+`eventfd.c` checks the existing target kernel and libc interface. All 15
+counter, nonblocking, close-on-exec flag, polling, invalid-write and
+semaphore contracts pass on the AArch64 VM. The test uses the real
+`sys/eventfd.h` API; it does not provide replacement calls or flag values.
+Compile it with the common GCC16, target sysroot, GCC16 startup/runtime
+paths, `-std=c11 -Wall -Wextra -Werror -fanalyzer`, and the usual target
+RPATH. Execute the ELF on an explicit EmberBSD target.
+
+GCC 16.2.0 path analysis passes. Cppcheck 2.22.0 checks the actual
+preprocessed target source with all categories enabled. Its visible
+findings treat `errno` as unchanged by the external `eventfd_read` and
+`eventfd_write` calls, plus unused inline functions from system headers.
+The runtime checks confirm the expected errno changes. No category is
+suppressed, and this is not a clean Cppcheck result. Darwin has no native
+eventfd interface, so this target-only probe has no native ASan/UBSan or
+Valgrind result. The test does not qualify Rustix, Smithay or COSMIC yet.
+
 This probe is an initial port, with AI assistance. It has no accepted
 COSMIC package or compositor runtime result yet. A dependency fetch or a
 successful compiler check does not prove a desktop session.
