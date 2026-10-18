@@ -18,7 +18,6 @@ USE_LANGUAGES=	c
 
 # The CinnamonDesktop-3.0 and CDesktopEnums-3.0 typelibs are imported
 # by the shell JS (wall clock, keybindings).
-BUILD_DEPENDS+=	glib2-introspection>=2.90.1nb1:../../devel/glib2-introspection
 EMBERBSD_GI_MESON_OPTIONS= no
 .include "../../devel/gobject-introspection/cross.mk"
 MESON_CROSS_VARS+= emberbsd_gi_cross emberbsd_gi_ldd_wrapper

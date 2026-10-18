@@ -1,7 +1,7 @@
 diff --git a/src/ui/ui.c b/src/ui/ui.c
 index 8357a80..2c9e9f2 100644
 --- src/ui/ui.c.orig
-+++ b/src/ui/ui.c
++++ src/ui/ui.c
 @@ -1,278 +1,208 @@
  /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*- */
 -

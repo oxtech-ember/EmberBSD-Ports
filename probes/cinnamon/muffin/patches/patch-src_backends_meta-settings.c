@@ -1,7 +1,7 @@
 diff --git a/src/backends/meta-settings.c b/src/backends/meta-settings.c
 index 7bf3ffd..ff034ca 100644
 --- src/backends/meta-settings.c.orig
-+++ b/src/backends/meta-settings.c
++++ src/backends/meta-settings.c
 @@ -28,7 +28,6 @@
  #include "backends/meta-backend-private.h"
  #include "backends/meta-logical-monitor.h"

@@ -1,0 +1,41 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Retain introspection during cross
+builds: the shared target GType query launcher and ELF ldd wrapper
+apply to this GIR; the original extra_args list is merged in, and
+the dumper links gck explicitly (gcr-base references its symbols).
+
+--- gcr/meson.build.orig
++++ gcr/meson.build
+@@ -186,7 +186,20 @@
+ )
+ 
+ if get_option('introspection')
++  # EmberBSD cross: shared GI machinery (target GType queries + ldd wrapper).
++  gir_extra_args = []
++  gir_env = environment()
++  if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++    gir_extra_args = ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++    gir_env.set('LD_LIBRARY_PATH', meson.current_build_dir())
++  endif
+   gcr_gir = gnome.generate_gir(gcr_base_lib,
++    extra_args: gir_extra_args + [
++      '-DGCR_COMPILATION',
++      '-DGCR_API_SUBJECT_TO_CHANGE',
++    ],
++    env: gir_env,
++    dependencies: [ gck_dep ],
+     sources: [ gcr_base_public_sources, gcr_base_headers ],
+     namespace: 'Gcr',
+     nsversion: '@0@'.format(gcr_major_version),
+@@ -197,10 +210,6 @@
+       gck_gir[0],
+     ],
+     header: 'gcr/gcr-base.h',
+-    extra_args: [
+-      '-DGCR_COMPILATION',
+-      '-DGCR_API_SUBJECT_TO_CHANGE',
+-    ],
+     install: true,
+   )
+ 

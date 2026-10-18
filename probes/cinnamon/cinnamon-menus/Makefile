@@ -15,7 +15,6 @@ USE_LANGUAGES=	c
 
 # The CMenu-3.0 typelib is imported by the shell JS; introspection
 # runs through the shared GI cross machinery with target GType queries.
-BUILD_DEPENDS+=	glib2-introspection>=2.90.1nb1:../../devel/glib2-introspection
 EMBERBSD_GI_MESON_OPTIONS= no
 .include "../../devel/gobject-introspection/cross.mk"
 MESON_CROSS_VARS+= emberbsd_gi_cross emberbsd_gi_ldd_wrapper

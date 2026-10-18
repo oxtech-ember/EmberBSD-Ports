@@ -1,0 +1,35 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Retain introspection during cross
+builds: the shared target GType query launcher and ELF ldd wrapper
+apply to this GIR; the original extra_args list is merged in.
+
+--- gck/meson.build.orig
++++ gck/meson.build
+@@ -127,17 +127,22 @@
+ ]
+ 
+ if get_option('introspection')
++  # EmberBSD cross: shared GI machinery (target GType queries + ldd wrapper).
++  gir_extra_args = []
++  gir_env = environment()
++  if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++    gir_extra_args = ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++    gir_env.set('LD_LIBRARY_PATH', meson.current_build_dir())
++  endif
+   gck_gir = gnome.generate_gir(gck_lib,
++    extra_args: gir_extra_args + ['-DGCK_COMPILATION', '-DGCK_API_SUBJECT_TO_CHANGE'],
++    env: gir_env,
+     sources: gck_gir_sources,
+     namespace: 'Gck',
+     nsversion: '@0@'.format(gck_major_version),
+     export_packages: 'gck-@0@'.format(gck_major_version),
+     includes: [ 'GObject-2.0', 'Gio-2.0' ],
+     header: 'gck/gck.h',
+-    extra_args: [
+-      '-DGCK_COMPILATION',
+-      '-DGCK_API_SUBJECT_TO_CHANGE',
+-    ],
+     install: true,
+   )
+ 

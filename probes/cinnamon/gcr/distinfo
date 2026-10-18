@@ -1,3 +1,8 @@
 $NetBSD$
+
 SHA512 (gcr-3.41.2.tar.xz) = 056c6c6a3910dae6997cef34fc95d22510ddea37be0ccc329996575a95e20582fa428bd491389aa77f8b6ffbd8674a2b3ba444cb83bdf3a2be5fd7aed276606d
 Size (gcr-3.41.2.tar.xz) = 1034532 bytes
+
+SHA1 (patch-gck_meson.build) = 40f28a6258a89d0e60e13d26a62b7ac2b2cf8d15
+SHA1 (patch-gcr_meson.build) = c20ee42c5f528da911cd792fd89125aa38cbfc82
+SHA1 (patch-gcr_test-secure-memory.c) = e8002f64467d001e06c8af28f16b0c1ffe7211ad

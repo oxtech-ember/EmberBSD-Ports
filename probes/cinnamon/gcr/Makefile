@@ -14,28 +14,44 @@ COMMENT=	Library for crypto UI and related tasks (gcr-base only)
 LICENSE=	gnu-gpl-v2
 
 TOOL_DEPENDS+=	gettext-m4-[0-9]*:../../devel/gettext-m4
-TOOL_DEPENDS+=	glib2-introspection-[0-9]*:../../devel/glib2-introspection
 DEPENDS+=	gnupg2-[0-9]*:../../security/gnupg2
 
-USE_TOOLS+=	gdbus-codegen intltool msgfmt perl pkg-config readlink
+# intltool comes from Homebrew (a pkgsrc intltool drags the whole p5
+# XML::Parser chain, whose native modules fail under the cwrapper).
+TOOLS_PLATFORM.intltool-extract=/opt/homebrew/bin/intltool-extract
+TOOLS_PLATFORM.intltool-merge=/opt/homebrew/bin/intltool-merge
+TOOLS_PLATFORM.intltool-prepare=/opt/homebrew/bin/intltool-prepare
+TOOLS_PLATFORM.intltool-update=/opt/homebrew/bin/intltool-update
+TOOLS_PLATFORM.intltoolize=/opt/homebrew/bin/intltoolize
+# tests reference internal test-only libraries; only the libraries install
+BUILD_TARGET=	install
+# gcr configure probes for a gpg executable; any host gpg satisfies it.
+TOOLS_PLATFORM.gpg=/opt/homebrew/bin/gpg
+USE_TOOLS+=	gdbus-codegen intltool-extract intltool-merge intltool-prepare intltool-update intltoolize msgfmt perl pkg-config readlink
 
 CPPFLAGS.NetBSD+=	-D_NETBSD_SOURCE
 
 MESON_ARGS=		-Dsystemd=disabled
 # Cross: documentation toolchain stays off.
 MESON_ARGS+=		-Dgtk_doc=false
+# The GTK3 UI pieces are not part of this profile; only gcr-base builds.
+MESON_ARGS+=		-Dgtk=false
 
 PKGCONFIG_OVERRIDE_STAGE=	pre-install
 PKGCONFIG_OVERRIDE+=		output/meson-private/gck-1.pc \
 			output/meson-private/gcr-base-3.pc
 
-REPLACE_PYTHON=		meson_post_install.py
+# The pkgsrc python rewrite targets /usr/pkg/bin/python3.15, which does
+# not exist on the Darwin host; rewrite the install script explicitly.
+post-extract:
+	${RUN}${SED} -e '1s|^#!.*python.*|#!${EMBERBSD_CROSS_BUILD_PYTHON}|' \
+		${WRKSRC}/meson_post_install.py > ${WRKSRC}/meson_post_install.py.tmp
+	${RUN}${MV} ${WRKSRC}/meson_post_install.py.tmp ${WRKSRC}/meson_post_install.py
+	${RUN}${CHMOD} +x ${WRKSRC}/meson_post_install.py
 
 # Gck-1/Gcr typelibs are imported by the shell keyring prompt.
 EMBERBSD_GI_MESON_OPTIONS= no
 .include "../../devel/gobject-introspection/cross.mk"
-MESON_ARGS+=	-Dgi_cross_use_prebuilt_gi=true
-MESON_ARGS+=	-Dgi_cross_ldd_wrapper=${EMBERBSD_GI_FILESDIR}/elf-needed.sh
 MESON_CROSS_VARS+= emberbsd_gi_cross emberbsd_gi_ldd_wrapper
 MESON_CROSS.emberbsd_gi_cross= true
 MESON_CROSS.emberbsd_gi_ldd_wrapper= '${EMBERBSD_GI_FILESDIR}/elf-needed.sh'

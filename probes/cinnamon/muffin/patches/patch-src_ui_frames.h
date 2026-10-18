@@ -1,7 +1,7 @@
 diff --git a/src/ui/frames.h b/src/ui/frames.h
 index 73dee17..e82cac7 100644
 --- src/ui/frames.h.orig
-+++ b/src/ui/frames.h
++++ src/ui/frames.h
 @@ -1,128 +1,32 @@
 -/* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*- */
 -

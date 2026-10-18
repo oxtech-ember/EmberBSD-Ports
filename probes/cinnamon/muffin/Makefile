@@ -26,21 +26,24 @@ MESON_ARGS+=	-Dnative_backend=true
 MESON_ARGS+=	-Dremote_desktop=false
 MESON_ARGS+=	-Degl_device=true
 MESON_ARGS+=	-Dwayland_eglstream=false
-MESON_ARGS+=	-Dudev=true -Dudev_dir=${PREFIX}/lib/udev
+# libudev-bsd provides libudev.pc; meson looks for udev.pc. Input
+# hotplug monitoring stays off until the pc alias is wired (recorded).
+MESON_ARGS+=	-Dudev=false
 MESON_ARGS+=	-Dlibwacom=false
 MESON_ARGS+=	-Dstartup_notification=false
 MESON_ARGS+=	-Dprofiler=false
 MESON_ARGS+=	-Dtests=false -Dinstalled_tests=false
 MESON_ARGS+=	-Dcogl_tests=false -Dclutter_tests=false -Dcore_tests=false
-MESON_ARGS+=	-Dxwayland_path=/usr/X11R7/bin/Xwayland
-MESON_ARGS+=	-Ddocs=false
+# The Xwayland binary lives on the target; meson checks the path exists.
+MESON_ARGS+=	-Dxwayland_path=/Volumes/BigData/EmberBSD/work/cinnamon-cross/shims/Xwayland
+# cvt runs at build time to generate test mode lines; host shim answers.
+MESON_BINARIES+= cvt
+MESON_BINARY.cvt= /Volumes/BigData/EmberBSD/work/cinnamon-cross/shims/cvt
 
 # Meta/Clutter/Cogl typelibs are imported by the shell JS at startup.
 BUILD_DEPENDS+=	glib2-introspection>=2.90.1nb1:../../devel/glib2-introspection
 EMBERBSD_GI_MESON_OPTIONS= no
 .include "../../devel/gobject-introspection/cross.mk"
-MESON_ARGS+=	-Dgi_cross_use_prebuilt_gi=true
-MESON_ARGS+=	-Dgi_cross_ldd_wrapper=${EMBERBSD_GI_FILESDIR}/elf-needed.sh
 MESON_CROSS_VARS+= emberbsd_gi_cross emberbsd_gi_ldd_wrapper
 MESON_CROSS.emberbsd_gi_cross= true
 MESON_CROSS.emberbsd_gi_ldd_wrapper= '${EMBERBSD_GI_FILESDIR}/elf-needed.sh'
@@ -50,6 +53,22 @@ MESON_BINARY.g-ir-compiler= ${TOOLBASE}/bin/g-ir-compiler
 MAKE_ENV+= XDG_DATA_DIRS=${CROSS_DESTDIR:Q}${PREFIX:Q}/share
 
 .include "../../devel/glib2/buildlink3.mk"
+.include "../../graphics/gdk-pixbuf2/buildlink3.mk"
+.include "../../devel/pango/buildlink3.mk"
+.include "../../graphics/cairo/buildlink3.mk"
+.include "../../fonts/harfbuzz/buildlink3.mk"
+.include "../../converters/fribidi/buildlink3.mk"
+.include "../../x11/libXau/buildlink3.mk"
+.include "../../x11/libXcursor/buildlink3.mk"
+.include "../../x11/libXdamage/buildlink3.mk"
+.include "../../x11/libXfixes/buildlink3.mk"
+.include "../../x11/libXi/buildlink3.mk"
+.include "../../x11/libXinerama/buildlink3.mk"
+.include "../../x11/libXrandr/buildlink3.mk"
+.include "../../x11/libXrender/buildlink3.mk"
+.include "../../x11/libXres/buildlink3.mk"
+.include "../../x11/libXtst/buildlink3.mk"
+.include "../../x11/libxcb/buildlink3.mk"
 .include "../../devel/gobject-introspection/buildlink3.mk"
 .include "../../textproc/json-glib/buildlink3.mk"
 .include "../../x11/cinnamon-desktop/buildlink3.mk"
@@ -59,10 +78,21 @@ MAKE_ENV+= XDG_DATA_DIRS=${CROSS_DESTDIR:Q}${PREFIX:Q}/share
 .include "../../devel/libudev-bsd/buildlink3.mk"
 .include "../../devel/input-headers/buildlink3.mk"
 .include "../../graphics/graphene/buildlink3.mk"
+.include "../../x11/libXcomposite/buildlink3.mk"
+.include "../../devel/at-spi2-core/buildlink3.mk"
+.include "../../devel/wayland/buildlink3.mk"
+.include "../../devel/wayland-protocols/buildlink3.mk"
+.include "../../x11/libICE/buildlink3.mk"
+.include "../../x11/libSM/buildlink3.mk"
 .include "../../graphics/MesaLib/buildlink3.mk"
 .include "../../x11/libdrm/buildlink3.mk"
 .include "../../x11/libX11/buildlink3.mk"
 .include "../../x11/libXcomposite/buildlink3.mk"
+.include "../../devel/at-spi2-core/buildlink3.mk"
+.include "../../devel/wayland/buildlink3.mk"
+.include "../../devel/wayland-protocols/buildlink3.mk"
+.include "../../x11/libICE/buildlink3.mk"
+.include "../../x11/libSM/buildlink3.mk"
 .include "../../x11/libXcursor/buildlink3.mk"
 .include "../../x11/libXdamage/buildlink3.mk"
 .include "../../x11/libXext/buildlink3.mk"

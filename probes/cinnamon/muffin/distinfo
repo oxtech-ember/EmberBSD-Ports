@@ -3,8 +3,9 @@ $NetBSD$
 SHA512 (17c958413753feafdbd5d58dc1e420f72a5f1859.tar.gz) = 5dd2e913a3f4b074c48ed0e815bceaf3d9fff11724a3bdac93f2efa92b1186d6480810148673a313f93b5536390dd796c056c0b16163e8c2e1731d069eaf1759
 Size (17c958413753feafdbd5d58dc1e420f72a5f1859.tar.gz) = 4680759 bytes
 
-SHA1 (patch-meson.build) = ef24adef1a19e82c8a04864711d18bd2288d8594
-SHA1 (patch-src_backends_meta-settings.c) = cca47c34d456743b65db70064e6493bec322b8b6
-SHA1 (patch-src_meson.build) = 11d4c76fd4e475a29fada4f891b967b66d995878
-SHA1 (patch-src_ui_frames.h) = 85a6919dc696b5a73f5512533b346c6801c89190
-SHA1 (patch-src_ui_ui.c) = d6056d8c535691d2ab9f44a6507b668317be73ea
+SHA1 (patch-meson.build) = 46e1dbc8313bed065048ed89b564cc56ff7cdff1
+SHA1 (patch-src_backends_meta-settings.c) = 2a63f652a12d733060d6fc378fe3539890236add
+SHA1 (patch-src_compositor_plugins_meson.build) = 0fd2f6e309b2be22c523e9079099e5652c445180
+SHA1 (patch-src_meson.build) = ccda19c891ac150014655e75f159c493c275a3b2
+SHA1 (patch-src_ui_frames.h) = 8bec7244b7c60d7ffac24eb2ebca43753b4a9fe8
+SHA1 (patch-src_ui_ui.c) = 344c4cf5adc5d52896101a077ece463bbf1d32f8

@@ -1,8 +1,12 @@
-diff --git a/src/meson.build b/src/meson.build
-index 8add0ce..cac7c8b 100644
+$NetBSD$
+
+The gudev and logind providers stay out of the NetBSD native
+backend (see the root meson.build patch); libudev resolves
+inline through libudev-bsd.
+
 --- src/meson.build.orig
-+++ b/src/meson.build
-@@ -17,7 +17,6 @@ muffin_pkg_deps = [
++++ src/meson.build
+@@ -17,7 +17,6 @@
    gio_unix_dep,
    glib_dep,
    cinnamon_desktop_dep,
@@ -10,7 +14,25 @@ index 8add0ce..cac7c8b 100644
    pango_dep,
  ]
  
-@@ -384,10 +383,7 @@ muffin_sources = [
+@@ -118,14 +117,14 @@
+ endif
+ 
+ if have_native_backend
++  # EmberBSD (NetBSD): gudev/logind providers stay out (see the root
++  # meson.build); libudev-bsd covers device monitoring.
+   muffin_pkg_private_deps += [
+     libdrm_dep,
+     libinput_dep,
+-    gudev_dep,
+     libgbm_dep,
+-    logind_provider_dep,
+-    libudev_dep,
+     xkbcommon_dep,
++    dependency('libudev'),
+   ]
+ endif
+ 
+@@ -384,10 +383,7 @@
    'core/window-private.h',
    'core/workspace.c',
    'core/workspace-private.h',

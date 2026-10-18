@@ -1,8 +1,14 @@
-diff --git a/meson.build b/meson.build
-index 7eaff84..8928575 100644
+$NetBSD$
+
+NetBSD carries no logind provider (systemd/elogind); the native
+backend builds with the launcher's no-session fallback instead of
+failing on a required elogind dependency. The libgudev assertion
+drops: device monitoring uses libudev-bsd without the gudev
+gobject bindings.
+
 --- meson.build.orig
-+++ b/meson.build
-@@ -86,7 +86,6 @@ muffin_installed_tests_libexecdir = join_paths(
++++ meson.build
+@@ -86,7 +86,6 @@
  m_dep = cc.find_library('m', required: true)
  x11_dep = dependency('x11')
  graphene_dep = dependency('graphene-gobject-1.0', version: graphene_req)
@@ -10,3 +16,31 @@ index 7eaff84..8928575 100644
  gdk_pixbuf_dep = dependency('gdk-pixbuf-2.0')
  pango_dep = dependency('pango', version: pango_req)
  cairo_dep = dependency('cairo', version: cairo_req)
+@@ -188,12 +187,9 @@
+   libgbm_dep = dependency('gbm', version: gbm_req)
+   libinput_dep = dependency('libinput', version: libinput_req)
+ 
+-  libsystemd_dep = dependency('libsystemd', required: false)
+-  if libsystemd_dep.found()
+-    logind_provider_dep = libsystemd_dep
+-  else
+-    logind_provider_dep = dependency('libelogind')
+-  endif
++  # EmberBSD (NetBSD): neither systemd nor elogind exists; the launcher
++  # falls back to the no-session path (meta-launcher guards).
++  logind_provider_dep = dependency('', required: false)
+ 
+   if not have_egl
+     error('The native backend requires EGL to be enabled')
+@@ -203,9 +199,8 @@
+     error('The native backend requires GLESv2 to be enabled')
+   endif
+ 
+-  if not have_libgudev
+-    error('The native backend requires udev to be enabled')
+-  endif
++  # EmberBSD (NetBSD): device monitoring goes through libudev-bsd with
++  # the libudev pkg-config module; gudev consumers build separately.
+ endif
+ 
+ have_egl_device = get_option('egl_device')
