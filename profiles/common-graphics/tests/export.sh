@@ -230,7 +230,10 @@ for mode in default development-toolchain common-build-tools common-graphics com
             cmp "$profile/mk.conf" "$tree/EMBERBSD-COMMON-GRAPHICS-MK.CONF"
             cmp "$profile/sources.tsv" "$tree/EMBERBSD-COMMON-GRAPHICS-SOURCES" ;;
         *)
-            [ ! -e "$tree/x11/libspnav" ] && [ ! -L "$tree/x11/libspnav" ]
+            # BEGIN libspnav-absence-guard
+            [ ! -e "$tree/x11/libspnav" ]
+            [ ! -L "$tree/x11/libspnav" ]
+            # END libspnav-absence-guard
             for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info www/webkit-gtk41 www/webkit-gtk60 math/eigen3 cad/ng-spice cad/ng-spice-shared; do diff -qr "$root/upstream/pkgsrc/$recipe" "$tree/$recipe"; done
             [ ! -e "$tree/EMBERBSD-COMMON-GRAPHICS-MK.CONF" ] ;;
     esac
