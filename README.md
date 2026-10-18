@@ -23,6 +23,11 @@ runtime behavior are validated.
   current 1.22.2 sources retain thread-safe GSS clients and explicit cross
   runtime/SDK roles. Real GCC16 Autoconf controls and target ABI probes pass.
   Split package and installed client acceptance remain separate gates.
+- [Boost cross build roles](profiles/common-build-tools/cross/boost.md):
+  native b2 retains the canonical 1.92.0 libraries and selects NetBSD,
+  target GCC16 tools and ABI properties explicitly. The native package,
+  real source graphs and three AArch64 assembly objects pass. Complete
+  target libraries and installed KiCad consumers remain pending.
 
 - [GCC16 NetBSD cross math capabilities](profiles/development-toolchain/cross-math.md):
   checked target declarations and libm links provide C++ math imports for the

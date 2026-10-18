@@ -1,5 +1,10 @@
 # Current common build tools
 
+The [Boost cross roles](cross/boost.md) keep one canonical 1.92.0 provider.
+Native b2 uses the selected target GCC wrappers and explicit NetBSD ABI
+properties. The native engine package, causal source graphs and three GCC16
+AArch64 assembly objects pass. Complete target libraries remain pending.
+
 The paired [Tcl/Tk 9.1 recipes](cross/tcltk.md) retain bundled extensions,
 system SQLite and ZipFS. Tcl's ordinary native GCC16 package and host
 generator contract pass. Platform branches, metadata and SQLite symbol

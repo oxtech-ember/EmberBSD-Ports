@@ -95,14 +95,4 @@ PRINT_PLIST_AWK+=	/boost_stacktrace_from_exception/ { $$0 = "$${PLIST.stacktrace
 .include "../../devel/zlib/buildlink3.mk"
 .include "../../textproc/icu/buildlink3.mk"
 .include "../../mk/pthread.buildlink3.mk"
-# Cross builds must not use the host darwin toolset. Route b2 to the
-# wrapped cross compiler through an explicit user-config.jam.
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-USE_TOOLS+=	printf
-post-patch:
-	${PRINTF} 'using gcc : : %s : <archiver>%s ;\n' "${CXX}" "${AR}" > ${WRKSRC}/user-config.jam
-BJAM_ARGS+=	--user-config=${WRKSRC}/user-config.jam
-BJAM_BUILD+=	architecture=arm address-model=64 binary-format=elf target-os=netbsd
-.endif
-
 .include "../../mk/bsd.pkg.mk"

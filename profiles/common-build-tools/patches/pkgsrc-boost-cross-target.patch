@@ -1,0 +1,58 @@
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Select the target OS, architecture and GCC tools for native b2 cross builds.
+Preserve native builds and every selected canonical Boost library.
+
+--- a/devel/boost-jam/bjam.mk
++++ b/devel/boost-jam/bjam.mk
+@@ -30,6 +30,30 @@
+ BJAM_BUILD+=	link=shared,static
+ BJAM_BUILD+=	linkflags=${LDFLAGS:Q}
+ 
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
++# The native b2 engine does not infer NetBSD from GCC's target triplet.
++# Context also needs the target ABI and object format on foreign hosts.
++.  if !empty(PKGSRC_COMPILER:Mgcc)
++BJAM_ARGS+=	--site-config=${WRKDIR}/pkgsrc-cross-site-config.jam
++BJAM_BUILD+=	target-os=netbsd address-model=64 binary-format=elf
++.    if ${MACHINE_ARCH} == "aarch64"
++BJAM_BUILD+=	architecture=arm abi=aapcs
++.    elif ${MACHINE_ARCH} == "x86_64"
++BJAM_BUILD+=	architecture=x86 abi=sysv
++.    else
++PKG_FAIL_REASON+= "Boost cross builds require aarch64 or x86_64 target metadata"
++.    endif
++BJAM_BUILD+=	cflags=${CFLAGS:Q} cxxflags=${CXXFLAGS:Q}
++BJAM_BUILD+=	compileflags=${CPPFLAGS:Q}
++
++pre-build:
++	${ECHO} 'using gcc : : ${CXX} : <archiver>${AR} ;' \
++	    > ${WRKDIR}/pkgsrc-cross-site-config.jam
++.  else
++PKG_FAIL_REASON+= "Boost cross builds require the selected GCC toolset"
++.  endif
++.endif
++
+ BJAM_CMD=	${SETENV} ${MAKE_ENV} ${BJAM} ${BJAM_ARGS}
+ 
+ UNLIMIT_RESOURCES+=	datasize
+--- a/devel/boost-libs/Makefile
++++ b/devel/boost-libs/Makefile
+@@ -1,6 +1,7 @@
+ # $NetBSD: Makefile,v 1.127 2026/05/15 09:13:49 adam Exp $
+ 
+ BOOST_PACKAGE=		libs
++PKGREVISION=		1
+ BOOST_COMMENT=		(binary libraries)
+ BOOST_CONFIG=		installed
+ BOOST_INSTALL_LIBS=	yes
+--- a/devel/boost-libs/buildlink3.mk
++++ b/devel/boost-libs/buildlink3.mk
+@@ -7,7 +7,7 @@
+ 
+ # Use a dependency pattern that guarantees the proper ABI.
+ BUILDLINK_API_DEPENDS.boost-libs+=	boost-libs-1.92.*
+-BUILDLINK_ABI_DEPENDS.boost-libs+=	boost-libs>=1.92.0
++BUILDLINK_ABI_DEPENDS.boost-libs+=	boost-libs>=1.92.0nb1
+ BUILDLINK_PKGSRCDIR.boost-libs?=	../../devel/boost-libs
+ 
+ .include "../../mk/bsd.fast.prefs.mk"

@@ -134,7 +134,7 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     [ "$(find "$root/profiles/common-build-tools/recipes/devel/protobuf-devel" -type l | wc -l | tr -d ' ')" = 0 ] || {
         echo 'Unexpected protobuf SDK recipe link.' >&2; exit 2;
     }
-    for delta in python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-cross-packages.patch pkgsrc-gettext-go-detection.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch pkgsrc-ncurses-terminfo-aliases.patch pkgsrc-host-autoconf.patch pkgsrc-cwrappers-unwrap-boundary.patch pkgsrc-cross-passthrough-rpath.patch pkgsrc-bsdtar-common-zlib.patch; do
+    for delta in python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-cross-packages.patch pkgsrc-gettext-go-detection.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch pkgsrc-ncurses-terminfo-aliases.patch pkgsrc-host-autoconf.patch pkgsrc-cwrappers-unwrap-boundary.patch pkgsrc-cross-passthrough-rpath.patch pkgsrc-bsdtar-common-zlib.patch pkgsrc-boost-cross-target.patch; do
         [ -s "$root/profiles/common-build-tools/patches/$delta" ] || {
             echo "Missing common-tools infrastructure patch: $delta" >&2; exit 2;
         }
@@ -585,6 +585,12 @@ if [ "$profile" = plasma-mobile ]; then
     patch -f -N -d "$destination" -p1 -F 0 < "$toolkit/current-fonts.patch"
     cp -R "$toolkit/shared/." "$destination/"
     cp "$toolkit/mk.conf" "$destination/EMBERBSD-PLASMA-TOOLKIT-MK.CONF"
+fi
+if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
+    # Apply after complete toolkit recipes so the shared Boost revision and
+    # native b2 cross roles survive every composed common profile.
+    patch -f -N -d "$destination" -p1 -F 0 < \
+        "$root/profiles/common-build-tools/patches/pkgsrc-boost-cross-target.patch"
 fi
 printf '%s\n' "$expected" > "$destination/EMBERBSD-PKGSRC-REVISION"
 printf 'Prepared %s with pkgsrc %s\n' "$destination" "$expected"
