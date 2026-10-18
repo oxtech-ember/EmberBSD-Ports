@@ -20,25 +20,30 @@ check_external_compiler() {
     external_cc1plus=$(realpath "$external_cc1plus")
     external_compiler_state=$(
         printf 'compiler_mode=external-posix\nversion=16.2.0\ntriplet=%s\nthread_model=posix\n' "$triplet"
-        printf 'support_target=libgcc-support\ntarget_objects=external-compiler\n'
+        printf 'support_target=gcc-leaf-metadata-v1\ntarget_objects=external-compiler\n'
         printf 'compiler=%s\ncc1=%s\ncc1plus=%s\n' "$kernel" "$external_cc1" "$external_cc1plus"
         shasum -a 256 "$cc" "$cxx" "$external_cc1" "$external_cc1plus"
     )
 }
 
 build_external_runtime() (
-    # Top-level target-library rules depend on all-gcc. Use the upstream
-    # support target, then configure each target library directly instead.
+    # libgcc-support also installs compiler headers through fixincludes,
+    # whose macro_list prerequisite builds cc1. Select metadata leaves only;
+    # the authenticated external compiler owns its existing internal headers.
     "$make" -j"$jobs" configure-gcc all-libiberty all-libcpp all-libdecnumber \
         all-libbacktrace all-build-libiberty all-build-libcpp \
         all-build-fixincludes all-fixincludes \
         > "$work/support-host.log" 2>&1
     "$make" -C "$work/build/gcc" -j"$jobs" \
-        "GCC_FOR_TARGET=$cc --sysroot=$sysroot" libgcc-support \
+        "GCC_FOR_TARGET=$cc --sysroot=$sysroot" \
+        libgcc.mvars tconfig.h machmode.h mode-classes.def version.h \
         > "$work/support-build.log" 2>&1
     for frontend in cc1 cc1plus; do
         [ ! -e "$work/build/gcc/$frontend" ] || fail 'External runtime mode unexpectedly built a frontend.'
     done
+    # Upstream libgcc install-unwind_h-forbuild writes into this output dir.
+    # It holds the newly built unwind header, not replacement compiler headers.
+    mkdir -p "$work/build/gcc/include"
     build_triplet=$(sh "$work/src/config.guess")
     export CC="$cc --sysroot=$sysroot -B$work/build/gcc/"
     # Use the C driver for C++ so it does not inject an old libstdc++ at link.
@@ -49,7 +54,7 @@ build_external_runtime() (
     export RANLIB="$RANLIB_FOR_TARGET" READELF="$READELF_FOR_TARGET" STRIP="$STRIP_FOR_TARGET"
     export LDFLAGS="-L$work/stage/usr/pkg/gcc16/lib -Wl,-rpath,/usr/pkg/gcc16/lib -Wl,-z,relro"
     {
-        printf 'support_target=libgcc-support\ntarget_objects=external-compiler\n'
+        printf 'support_target=gcc-leaf-metadata-v1\ntarget_objects=external-compiler\n'
         printf 'CC=%s\nCXX=%s\nLDFLAGS=%s\n' "$CC" "$CXX" "$LDFLAGS"
     } > "$work/external-runtime-plan.txt"
     for library in libgcc libstdc++-v3; do

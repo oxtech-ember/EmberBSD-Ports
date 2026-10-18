@@ -27,7 +27,7 @@ complete compiler package.
 The explicit `--external-compiler` mode uses an existing POSIX-threaded GCC16
 for all target objects. It records its drivers, frontends and GNU binutils
 without inventing a kernel-compiler build receipt. It builds only upstream
-`libgcc-support` metadata and host prerequisites in the new work tree.
+GCC metadata leaf targets and host prerequisites in the new work tree.
 It configures libgcc and libstdc++ directly; no compiler frontend or compiler
 prefix is installed. The kernel bootstrap and resume contracts are unchanged.
 See [external compiler runtime builds](external-compiler.md) for inputs,

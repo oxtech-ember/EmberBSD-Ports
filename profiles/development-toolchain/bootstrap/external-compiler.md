@@ -53,14 +53,21 @@ sh profiles/development-toolchain/cross/host-math.sh --native-clang \
   /absolute/archives /absolute/netbsd-tools /absolute/new-host-math
 ```
 
-The runtime builder configures the normal GCC source, builds native support
-libraries, including build-machine `libcpp` needed by `build/genmatch`, and
-invokes the actual upstream `libgcc-support` target. That target
-provides `libgcc.mvars`, headers and driver specs. It can build a host `xgcc`
-driver for metadata; it must not build `cc1` or `cc1plus`. The installed
-application compiler performs all target compilation with an explicit seed
-sysroot. Top-level target-library targets are excluded because their upstream
-rules depend on `all-gcc`.
+The runtime builder configures the normal GCC source and builds native support
+libraries. It selects genuine metadata leaf targets: `libgcc.mvars`, `tconfig.h`,
+`machmode.h`, `mode-classes.def` and `version.h`. The recorded support identity
+is `gcc-leaf-metadata-v1`. It can build a host `xgcc` metadata driver; it must
+not build `cc1` or `cc1plus`. The installed application compiler performs all
+target compilation with an explicit seed sysroot.
+
+The broad upstream `libgcc-support` target also installs compiler headers.
+Its fixincludes macro-list prerequisite builds a local `cc1`, even when its
+command uses the external compiler. This mode avoids that target. It keeps
+the authenticated external compiler's own internal and fixed headers. It
+disables no header feature. An empty `build/gcc/include` output directory lets
+upstream libgcc publish its freshly built `unwind.h`; it supplies no replacement
+compiler header. Top-level target-library targets remain excluded because
+their upstream rules depend on `all-gcc`.
 
 The builder then executes each runtime's real configure, make and staged install
 rules. It retains the POSIX-thread configuration, NetBSD ABI, current recipe

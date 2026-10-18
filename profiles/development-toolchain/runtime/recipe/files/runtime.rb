@@ -144,7 +144,7 @@ module GCC16Runtime
       end
       compiler = documents.fetch('external-compiler.txt')
       {'compiler_mode' => 'external-posix', 'version' => VERSION, 'triplet' => architecture.fetch(:triplet),
-       'thread_model' => 'posix', 'support_target' => 'libgcc-support', 'target_objects' => 'external-compiler'}.each do |key, expected|
+       'thread_model' => 'posix', 'support_target' => 'gcc-leaf-metadata-v1', 'target_objects' => 'external-compiler'}.each do |key, expected|
         raise Invalid, 'Wrong external compiler contract: ' + key unless field.call(compiler, key) == expected
       end
       prefix = field.call(compiler, 'compiler')
@@ -155,7 +155,7 @@ module GCC16Runtime
       paths = compiler.lines.filter_map { |line| match = line.match(/\A[0-9a-f]{64}  (.+)\n\z/); match[1] if match }
       raise Invalid, 'Incomplete external compiler hash inventory' unless paths.sort == expected.sort && expected.uniq.length == 4
       plan = documents.fetch('external-runtime-plan.txt')
-      raise Invalid, 'Wrong external support target' unless field.call(plan, 'support_target') == 'libgcc-support'
+      raise Invalid, 'Wrong external support target' unless field.call(plan, 'support_target') == 'gcc-leaf-metadata-v1'
       raise Invalid, 'Wrong target compiler owner' unless field.call(plan, 'target_objects') == 'external-compiler'
       seed = field.call(inputs, 'sysroot')
       command = field.call(plan, 'CC')

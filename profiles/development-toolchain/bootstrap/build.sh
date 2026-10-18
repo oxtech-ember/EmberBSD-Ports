@@ -130,7 +130,7 @@ printf 'resume=%s\ntoolexeclibdir=/usr/pkg/gcc16/lib\n' "$resume"
 printf 'runtime_libraries=%s\n' "$runtime_libraries"
 printf 'ar_for_target=%s\nnm_for_target=%s\n' "$AR_FOR_TARGET" "$NM_FOR_TARGET"
 if [ "$external_compiler" = yes ]; then
-    printf 'compiler_mode=external-posix\nsupport_target=libgcc-support\n'
+    printf 'compiler_mode=external-posix\nsupport_target=gcc-leaf-metadata-v1\n'
 fi
 [ "$check" = no ] || exit 0
 

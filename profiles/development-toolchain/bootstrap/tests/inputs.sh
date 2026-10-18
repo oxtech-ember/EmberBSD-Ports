@@ -130,7 +130,7 @@ external_run() {
 mv "$work/kernel/inputs.txt" "$work/kernel/inputs.saved"
 external_run > "$work/external.plan"
 grep -qx 'compiler_mode=external-posix' "$work/external.plan"
-grep -qx 'support_target=libgcc-support' "$work/external.plan"
+grep -qx 'support_target=gcc-leaf-metadata-v1' "$work/external.plan"
 [ ! -e "$work/output" ]
 external_reject() {
     if external_run > "$work/external-reject.log" 2>&1; then

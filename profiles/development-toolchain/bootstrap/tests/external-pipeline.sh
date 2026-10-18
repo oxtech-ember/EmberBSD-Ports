@@ -27,6 +27,8 @@ for argument; do
         printf 'build-machine libcpp\n' > "$BUILD_CPP_ARCHIVE"
     fi
     if [ "$argument" = libgcc-support ]; then
+        # Actual GCC16: stmp-int-hdrs -> fixincludes -> macro_list -> cc1.
+        : > "$EXPECTED_WORK/build/gcc/cc1"
         [ -f "$BUILD_CPP_ARCHIVE" ] || {
             echo 'Missing build-machine libcpp required by build/genmatch' >&2
             exit 94
@@ -81,7 +83,9 @@ grep -Fxq 'Target nm cannot inspect a native object' "$fixture/native-reject.log
 export AR=$fixture/native/tool NM=$fixture/native/tool RANLIB=$fixture/native/tool
 build_external_runtime
 [ "$(grep -c '^configure ' "$PIPELINE_LOG")" -eq 2 ]
-grep -Fq 'libgcc-support' "$PIPELINE_LOG"
+grep -Fq 'libgcc.mvars tconfig.h machmode.h mode-classes.def version.h' "$PIPELINE_LOG"
+[ -d "$work/build/gcc/include" ]
+[ -z "$(ls -A "$work/build/gcc/include")" ]
 grep -Fxq 'target_objects=external-compiler' "$work/external-runtime-plan.txt"
 : > "$work/build/gcc/cc1"
 if build_external_runtime > "$fixture/reject.log" 2>&1; then
