@@ -22,6 +22,9 @@ USE_TOOLS+=	pkg-config flex bison
 
 .include "cross.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# The lexer supplies yywrap itself; Flex is a native generator, not target libfl.
+TOOL_DEPENDS+=	flex>=2.5.4a:../../devel/flex
+TOOLS_PLATFORM.flex=	${TOOLBASE}/bin/flex
 MESON_ARGS+=	-Dpython=${TOOL_PYTHONBIN}
 .else
 MESON_ARGS+=	-Dpython=${PYTHONBIN}
@@ -58,3 +61,7 @@ BUILDLINK_API_DEPENDS.libffi+= libffi>=3.0.0
 .include "../../lang/python/application.mk"
 .include "../../lang/python/extension.mk"
 .include "../../mk/bsd.pkg.mk"
+
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${_TOOLS_USE_PKGSRC.flex:Uyes:tl} != "no"
+PKG_FAIL_REASON+= "GI cross builds require installed native Flex satisfying FLEX_REQD=${FLEX_REQD} at ${TOOLBASE}/bin/flex"
+.endif
