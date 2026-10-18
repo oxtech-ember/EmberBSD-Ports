@@ -18,9 +18,9 @@ enable_testing()
 add_executable(known-solve
   "${EIGEN_UPSTREAM}/doc/examples/Tutorial_PartialLU_solve.cpp")
 target_link_libraries(known-solve PRIVATE Eigen3::Eigen)
-add_test(NAME known-solve COMMAND known-solve)
-set_tests_properties(known-solve PROPERTIES PASS_REGULAR_EXPRESSION
-  "The solution is:[ \r\n]+-2[ \r\n]+1[ \r\n]+1[ \r\n]*$")
+add_test(NAME known-solve COMMAND "${CMAKE_COMMAND}"
+  "-DEXAMPLE=$<TARGET_FILE:known-solve>"
+  -P "${CMAKE_CURRENT_SOURCE_DIR}/known-solve.cmake")
 
 foreach(entry "cholesky;3" "eigensolver_selfadjoint;7" "jacobisvd;10")
   list(GET entry 0 name)
