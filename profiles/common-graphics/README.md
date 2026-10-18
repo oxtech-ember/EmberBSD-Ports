@@ -39,8 +39,8 @@ and installed EmberBSD numerical checks pass, including normal package
 removal and reinstallation. Companion BLAS/LAPACK runtime coverage remains pending.
 
 This opt-in source profile prepares canonical MesaLib 26.2.4nb8, adapted
-libdrm 2.4.134nb2, Wayland 1.26.0nb1 and wayland-protocols 1.49 for
-EmberBSD/AArch64, retaining the NetBSD 11 ABI. Native builds and the explicit
+libdrm 2.4.134nb2, Wayland 1.26.0 (native nb1/cross nb2) and wayland-protocols 1.49
+for EmberBSD/AArch64, retaining the NetBSD 11 ABI. Native builds and the explicit
 [macOS cross composition](cross/profile.md) consume the existing
 [common build tools](../common-build-tools/README.md): GCC16, Python3.15,
 Meson1.12.1 and shared LLVM23.1.3 remain one dependency graph with final
@@ -179,8 +179,10 @@ has its own receipt linked above.
 
 The cross Wayland revision-2 recipes separate runtime libraries from the
 target scanner and SDK. Native ownership stays complete. Actual pkgsrc metadata
-and copied-stage checks pass; normal split packages and installed runtime
-execution remain pending. See the [package boundary](cross/wayland.md#runtime-and-sdk-packages).
+and copied-stage checks pass. Both normal AArch64 packages verify all 13 runtime
+and 23 SDK entries; the installed runtime passes all 24 ELF invocations twice,
+including normal deletion/reinstallation. Native scanner and EGL symbol checks
+pass separately. See the [package boundary](cross/wayland.md#runtime-and-sdk-packages).
 
 The [Wayland 1.26.0nb1 package](cross/wayland.md) passes all 26 enabled
 upstream invocations on Zero 3W with the paired kernel IPC fixes. The common

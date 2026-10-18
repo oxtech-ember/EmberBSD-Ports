@@ -240,7 +240,9 @@ runtime behavior are validated.
   upstream hash, skip-list and exported-symbol checks in AArch64 UTM.
   Cross Wayland recipes now separate runtime libraries from scanner/SDK files.
   Real package metadata and complete-stage partition checks preserve the native
-  package; normal split-package and installed-runtime acceptance remain pending.
+  package. Normal AArch64 runtime/SDK packages verify all 13/23 entries; the
+  installed runtime passes 24 upstream ELF invocations before and after normal
+  deletion/reinstallation. Native scanner and target symbol checks pass separately.
   The installed [Wayland package](profiles/common-graphics/cross/wayland.md)
   passes all 26 enabled upstream invocations on Zero 3W.
   The full [Mesa package](profiles/common-graphics/cross/mesa-package.md) now
