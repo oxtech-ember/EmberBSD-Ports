@@ -15,7 +15,8 @@ file cannot be opened. The scanner is not in the runtime payload, so its
 revision remains `nb2`. Native Qtbase keeps its full package and manifest.
 The separate SDK requires cross mode.
 
-Both recipes use the same pinned archive, patches and source owner. Each performs
+Both recipes use the same pinned archive and source owner. The SDK also includes
+the scanner error-path patch. Each performs
 an independent full upstream build and installation into its own staging tree.
 This costs a second build and avoids a shared build-output handoff.
 
@@ -72,7 +73,44 @@ enforces the exact dependency and reinstalls runtime alone. Every installed
 payload byte and symlink must match the selected staging manifest.
 
 These fixtures contain labelled synthetic text files. They do not compile Qt or
-execute target programs. Real Qt cross builds, complete package checks, installed
-target replacement/deletion, ELF closure and a real cross CMake consumer remain
-required. Historical AArch64 acceptance in [Qt package results](qt-packages.md)
-describes the earlier full packages and does not validate these new packages.
+execute target programs. The actual AArch64 packages also pass complete upstream
+builds, staging, package and ELF checks. The installed cross sysroot passes the
+[Core/Gui/SVG CMake consumer](../tests/qt-consumer/README.md).
+[Qt package results](qt-packages.md) states the package hashes, installed runtime
+acceptance and remaining limits.
+
+## Build and installation
+
+Use the [target package configuration](README.md#target-package-build). Build and
+install the runtime before the SDK because the SDK requires its exact version.
+Each recipe keeps its full normal build, staging, partition and package checks.
+The current hooks use GNU Make for build and installation. Qt's recommendation
+to use Ninja does not change that recipe contract.
+
+For a packaging-only change, keep the compiled objects and use separate calls:
+
+```sh
+bmake install-clean
+bmake repackage
+```
+
+Do not combine cleaning and packaging in one bmake call. The global cleaning
+mode changes dependency-cookie gating. The normal repackage target also clears
+the staging tree before it repeats installation and package checks. Use normal
+`replace` for an installed
+sysroot update. During a replacement of the earlier full package, its SDK is
+unavailable until the separate SDK installation completes. Keep a verified full
+rollback package before that update.
+
+Use a public installation umask only for the package process:
+
+```sh
+(
+    umask 022
+    pkg_add -u "$archive"
+)
+```
+
+A private proof directory can retain umask 077. Do not let that mask reach
+`pkg_add`: new public plugin directories must be searchable by ordinary users.
+Verify installed payload bytes, modes, symlinks and directory permissions.

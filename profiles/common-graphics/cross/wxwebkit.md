@@ -25,69 +25,111 @@ metadata checks. The cross configuration still reports its missing X11 base
 path; the native configuration has no package failure reason. Neither result
 establishes a complete configure, library build, installed PLIST or GUI runtime.
 
-## WebKit upgrade audit
+## WebKitGTK 2.54.1
 
-The published wxWidgets recipe still depends on the canonical WebKitGTK
-provider. Its upgrade is a separate pending change. The upstream
-[WebKitGTK 2.54.1 release](https://webkitgtk.org/2026/10/02/webkitgtk2.54.1-released.html)
-archive has SHA256
+The common `webkit-gtk41` and `webkit-gtk60` recipes share the official
+[WebKitGTK 2.54.1 release](https://webkitgtk.org/2026/10/02/webkitgtk2.54.1-released.html),
+patch directory and distinfo. The archive SHA256 is
 `ea0bbb02dbdbc596874a4e7ad35b66645b3e0a232bd0e4081de5ed92eb0a397d`.
-The downloaded archive matches the publisher's checksum file. This check does
-not claim verification of the separate detached signature.
+The bytes match the publisher's checksum file. This does not establish
+verification of the separate detached signature.
 
-The current pkgsrc `webkit-gtk41` and `webkit-gtk60` recipes share one source
-version, patch directory and distinfo. An update must preserve that relationship.
-Of the 28 existing patches, 19 apply to 2.54.1 with zero fuzz. The other nine
-need source review, not relaxed patch matching:
+All 27 selected patches pass pkgsrc checksum verification and apply with zero
+fuzz. Nineteen pinned pkgsrc patches remain unchanged. Refreshed patches retain
+the X11 macro, numeric classification, DMA buffer and platform JIT boundaries.
+Upstream already supplies the old round-even and process-launch fixes.
+The ARM64 patch now calls GCC's real instruction-cache synchronization builtin.
+It does not replace an unsupported-platform error with a warning.
 
-- The old ARM64 cache-flush patch replaces an unsupported-platform error with
-  a warning. It does not implement NetBSD instruction-cache synchronization.
-- `MathExtras.h` now provides the round-to-even functions. The old MathCommon
-  patch replaces those calls with self-calls; it must not be copied blindly.
-- The old Skia `GrAutoLocaleSetter.h` became `src/core/SkAutoLocaleSetter.h`.
-  The current sysroot lacks its `uselocale` API. The old NetBSD patch makes
-  this helper a no-op; moving that patch would retain a limitation, not prove
-  locale-independent shader formatting.
-- The X11 `Status` collision and two `std::isnan` fixes need refreshed context.
-- The non-Linux DMA buffer guard and platform JIT defaults need refreshed context.
-- `ProcessLauncherGLib.cpp` already uses four arguments. Its old argument-count
-  patch is obsolete.
+GTK API 4.1 and API 6.0 keep their shared source version and separate libraries.
+Actual upstream CMake version calculations produce `0.24.4` and `0.11.8` for
+API 4.1, and `4.19.4` and `1.8.8` for API 6.0. The recipes update these four
+PLIST names. Complete installed PLIST validation remains pending.
 
-The existing pkgsrc JIT option defaults to off and selects the C loop. Keep
-this explicit inherited configuration until a real modern build proves the
-reported `OpcodeOrigin` failure resolved. The new header's WebAssembly guard
-alone is not that proof. Do not suppress cache-flush errors or fabricate a JIT
-implementation.
+The recipes select C++23, GCC16 and Ninja. Canonical X11/Wayland, GL, video,
+WebAudio, WebRTC, introspection, documentation and existing options remain.
+The inherited default keeps JIT off and the C loop on. The cache-flush source
+check does not establish that a complete modern JIT build works.
 
-## Cross generators and media
+## Native generators and target queries
 
-WebKit 2.54.1 requires C++23 and Ninja for GTK. Its GTK3/Soup3 API 4.1 remains
-supported. Preserve the selected X11/Wayland backends, GL, video, WebAudio,
-WebRTC, introspection and documentation. Existing recipe options and upstream
-platform defaults must remain explicit; missing dependencies are not a reason
-to add feature-disable flags.
+Build scripts use native `TOOL_PYTHONBIN`, the selected `${RUBY_NAME}` below
+`TOOLBASE`, and native gperf. Both current and legacy CMake Python variables
+receive the native interpreter. Ruby uses CMake's `Ruby_EXECUTABLE` spelling.
+Build-only shebang replacements retain that separation. No installed target
+script acquires a private native interpreter path.
 
-The canonical recipe's legacy `PYTHON_EXECUTABLE` and `RUBY_EXECUTABLE` values
-currently point into the target prefix in cross metadata. The common Python
-framework separately provides the correct native `TOOL_PYTHONBIN`. A reviewed
-recipe update must route build scripts, CMake interpreter queries, gperf and
-other generators to actual native providers. Installed target scripts must keep
-their target interpreter paths.
+Actual `bmake` metadata selects Python 3.15 and Ruby 4.0 for both API variants.
+The upstream builtins generator passes with native Python 3.15 on all 25 inputs
+from the release CMake file. The real color-table generator passes with gperf
+3.3. An earlier Ruby 3.3 diagnostic produced seven builtins/bytecode outputs;
+it does not validate the selected Ruby 4.0 provider. That run remains pending.
 
-The actual upstream builtins generator passes with native Python 3.15.0 on
-all 25 JavaScript inputs listed by the release CMake file. The upstream bytecode
-generator passes with native Ruby 3.3.8 and the release bytecode and Wasm inputs.
-The seven generated files are nonempty and have recorded hashes. This checks
-those generators, not every WebKit script or the eventual pkgsrc Ruby provider.
+LLInt settings and offset extractors describe target layouts. Upstream Ruby
+reads their ELF bytes; it does not execute them. Introspection uses the common
+native scanner/compiler, ELF dependency helper and real target-query launcher.
+Cross configuration rejects a missing dependency helper or launcher.
+The canonical query preflight also requires the actual native GI provider and
+query configuration. Those prerequisites are not yet available in this build.
+No GType values, target offsets or configure answers are invented.
 
-The LLInt settings and offset extractor binaries describe target layouts.
-Upstream Ruby reads their bytes; it does not execute those target binaries.
-Do not replace them with host-ABI extractors or invented offsets. Introspection
-must use the common target-query mechanism and actual target libraries.
-The existing `devel/libatomic` dependency also needs an explicit audited GCC16
-runtime provider selection; a second old GCC runtime is not an equivalent ABI.
+The recipe removes the separate older `devel/libatomic` runtime dependency.
+Its cross preflight verifies the actual GCC16 driver, literal target triplet,
+staged library identity and target ELF ABI. Upstream atomic link checks remain.
+On the actual AArch64 compiler, the upstream atomic test fails without libatomic
+and links with the common GCC16 `libatomic.so.3`. Wrong-target and base-provider
+controls reject their inputs. Full WebKit wrapper generation remains gated by
+its ordinary dependencies; the present environment stops on missing x11-links.
+
+## NetBSD numeric locale
+
+Skia's NetBSD locale scope owns a genuine `newlocale` result and stores the
+active scope in thread-local state. It restores the previous scope before
+freeing the current object. Locale creation failure remains fatal. Scoped
+formatting and parsing use the actual NetBSD `*_l` APIs. Other platforms keep
+their existing locale implementation. This does not change process locale or
+claim control over external libraries and asynchronous tasks.
+
+The contract exercises actual SkString, SkSL string and SkParse APIs, nested
+scopes, short/heap formatting and two concurrent workers. All 13 selected
+source units compile with native and AArch64 GCC16. Native execution and strict
+Memcheck pass with zero errors and no live allocations. The extra adapted
+output/debug/JSON units are compiled, not exercised by this runtime contract.
+
+Clang 19 analyzes the six changed callsite units without diagnostics. GCC16
+retains reference-count, abort-path and exception-path warnings also found in
+the original translation units. The JSON writer adds a modeled exception from
+C `vsnprintf_l`; its normal return still reaches `va_end`. These raw warnings
+remain visible. Cppcheck 2.22 cannot complete the actual target-header parse,
+including a retry on genuine preprocessed inputs. This is not a clean full
+static-analysis result or coverage of arbitrary formatting failures.
+
+Target execution exposed a separate global-locale mutation in GCC16's generic
+C++ numeric conversion. The [common runtime source repair](../../development-toolchain/locale.md)
+passes its actual target before/after contract. Rebuild that runtime and
+recompile the Skia consumer before repeating the target locale contract.
+Neither the old Skia no-op nor the unrepaired runtime is accepted as a working
+locale implementation. Whole Skia and WebKit runtime acceptance remain pending.
+
+Run the bounded source and locale checks with genuine tools and a new output:
+
+```sh
+DIGEST=/native/bin/digest ruby profiles/common-graphics/tests/webkit-source.rb \
+  /pinned/pkgsrc /downloads/webkitgtk-2.54.1.tar.xz \
+  /cross/bin/aarch64--netbsd-g++ /sdk /new/source-check
+NATIVE_CXX='/native/bin/g++ -B/usr/bin/' \
+  ruby profiles/common-graphics/tests/webkit-locale/build.rb \
+  /downloads/webkitgtk-2.54.1.tar.xz /cross/bin/aarch64--netbsd-g++ \
+  /sdk /new/locale-check
+```
+
+The native locale test requires a genuine comma-decimal locale. Set
+`COMMA_LOCALE` if its name differs from `fr_FR.UTF-8`. `MEMCHECK` can select the
+actual native Valgrind command. The helper does not deploy or run target code.
 
 For E14, compose the entire [common media profile](../../common-media/README.md):
-GStreamer 1.28.8 and FFmpeg 9.0.2. The core, plugin families and shared version
-metadata must change together. A partial plugin overlay would mix source
-versions. This source checkpoint does not install or accept that media graph.
+GStreamer 1.28.8 and FFmpeg 9.0.2. Core, plugin families and shared version
+metadata must change together. A partial plugin overlay would mix versions.
+This checkpoint supplies source recipes and bounded checks; full dependency
+composition, configure, packages, installed GI, target locale and GUI workflows
+remain required.

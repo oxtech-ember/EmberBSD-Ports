@@ -63,14 +63,21 @@ Node runs on the host, its products are target artifacts.
   metadata from the EmberBSD sysroot. The NTLM buffer writer object also
   builds after changing ambiguous parenthesized initialization to brace
   initialization (`SpanWriter` was parsed as a function declaration).
-- A later Chrome pass was interrupted by its owner at 1,755 of 76,507
-  scheduled steps. It reported no failed compile jobs before interruption.
-  The older pass stopped at 41,268 of 85,087 steps with 460 failed jobs;
-  that count is historical and must not be treated as current.
+- Fontconfig's bindgen action now generates its Rust bindings from the
+  EmberBSD target sysroot with the `aarch64-unknown-netbsd` target triple.
+  Its depfile contains EmberBSD headers and no macOS SDK headers. Host
+  `libclang` parses the C declarations; GCC16 compiles target C/C++ objects.
+  A separate GCC16.2.0 probe that includes the same Fontconfig header emitted
+  an AArch64 NetBSD ELF object.
+- A full pass on 2026-10-18 was interrupted at 2,142 of 76,506 tasks while
+  isolating the bindgen failure. A later regenerated graph scheduled 74,406
+  tasks. That attempt reached 771 tasks and failed 271 target actions with
+  exit code 127 because the GCC16 toolchain directory was missing from
+  `PATH`; those are environment failures, not compiler diagnostics. Resume
+  with the common GCC16 `bin` directory in `PATH`.
 - No complete Chromium link, Electron runtime, or Blanc package exists.
-  Resume by checking Ninja dependency timestamps after source-tree
-  reconstruction, then continue the Chrome build and classify actual
-  failures. Partial targets are not a Blanc result.
+  Continue the Chrome build and classify actual compiler failures. Partial
+  targets are not a Blanc result.
 - The source-level adaptation patch is kept separately from this public
   probe summary. It does not imply a complete Chromium build.
 - Measure free space before each build. The Chromium source tree and

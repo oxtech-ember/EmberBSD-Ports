@@ -9,6 +9,11 @@ selection is unchanged. Keep the flags before `--target`.
 The compiler and all build tools execute on the development host.
 The target VM is only for execution and acceptance.
 
+For the bounded NetBSD locale source repair, the separate
+[fresh libstdc++ helper](libstdcxx.md) uses an existing application compiler.
+It verifies inherited runtime components and leaves this builder's strict
+resume identities unchanged. Full rebuilt-library acceptance is separate.
+
 The output is an isolated **runtime-only bootstrap prerequisite**. It is not
 a complete `gcc16-16.2.0nb1` package. It has no package database registration,
 target compiler executables, complete compiler payload or package dependencies.
@@ -74,6 +79,9 @@ Choose `--target aarch64` with that target's own compiler and complete seed.
 
 Source preparation uses the same GCC archive SHA256, RCS-filtered patch hashes,
 zero-fuzz application and required modules repair as the cross workflow.
+Both source audits accept literal `+` in canonical `libstdc++` patch basenames.
+`tests/patch-names.rb EXPORTED_PKGSRC GCC_ARCHIVE NEW_WORK` checks the actual
+audits with the current recipe, unsafe names and a corrupted patch hash.
 The native-only `patch-gcc_Makefile.in` is audited and omitted, as in that
 workflow: a Darwin compiler prefix must not enter target driver links.
 No extracted source file is edited outside this private work directory.

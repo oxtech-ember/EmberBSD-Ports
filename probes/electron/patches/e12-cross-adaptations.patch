@@ -1333,7 +1333,7 @@ index 181d1597d6..3e5a095b77 100644
      (current_cpu == "ppc64" || current_cpu == "s390x")) {
    _libclang_path = rust_sysroot_absolute + "/lib64"
 diff --git a/build/rust/rust_bindgen_generator.gni b/build/rust/rust_bindgen_generator.gni
-index 4cc731bc00..132bd575f0 100644
+index 4cc731bc00..5309a6b7ed 100644
 --- a/build/rust/rust_bindgen_generator.gni
 +++ b/build/rust/rust_bindgen_generator.gni
 @@ -11,12 +11,12 @@ if (is_win) {
@@ -1364,14 +1364,14 @@ index 4cc731bc00..132bd575f0 100644
        clang_resource_dir,
      ]
  
-+    # EmberBSD cross profile (E12): on the macOS host, bindgen's libclang
-+    # needs the system SDK for C library headers such as limits.h; pass
-+    # the SDK used by the host toolchain.
-+    if (current_os == "mac" && use_system_xcode) {
-+      args += [
-+        "-isysroot",
-+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
-+      ]
++    # EmberBSD target libc headers are required when bindgen parses headers
++    # for the GCC16 cross target. This only configures libclang's parser; target
++    # objects are compiled by the GCC16 toolchain.
++    if (emberbsd_target_sysroot != "") {
++      args += [ "-isystem${emberbsd_target_sysroot}/usr/include" ]
++      if (current_os == "netbsd" && current_cpu == "arm64") {
++        args += [ "--target=aarch64-unknown-netbsd" ]
++      }
 +    }
 +
      if (is_win) {

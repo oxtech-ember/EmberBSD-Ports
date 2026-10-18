@@ -1,0 +1,248 @@
+$NetBSD$
+
+Use NetBSD explicit-locale libc calls for scoped Skia shader formatting.
+Preserve nested/thread ownership without changing the process locale.
+This is not an implementation of POSIX uselocale for external libraries.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- Source/ThirdParty/skia/src/core/SkAutoLocaleSetter.h.orig
++++ Source/ThirdParty/skia/src/core/SkAutoLocaleSetter.h
+@@ -9,6 +9,11 @@
+ #define SkAutoLocaleSetter_DEFINED
+ 
+ #include "include/private/SkNoncopyable.h"
++#include "include/private/SkAssert.h"
++
++#include <cstdarg>
++#include <cstdio>
++#include <cstdlib>
+ 
+ #if defined(SK_BUILD_FOR_WIN)
+ #include <optional>
+@@ -39,6 +44,10 @@
+  */
+ class SkAutoLocaleSetter : public SkNoncopyable {
+ public:
++#if defined(__NetBSD__)
++    // This state applies only to the explicit Skia *_l calls below.
++    static locale_t CurrentLocale() { return fCurrentLocale; }
++#endif
+     SkAutoLocaleSetter (const char* name) {
+ #if defined(SK_BUILD_FOR_WIN)
+         fOldPerThreadLocale = _configthreadlocale(_ENABLE_PER_THREAD_LOCALE);
+@@ -46,6 +55,13 @@
+         if (oldLocale) {
+             fOldLocale.emplace(oldLocale);
+         }
++#elif defined(__NetBSD__)
++        fLocale = newlocale(LC_ALL_MASK, name, nullptr);
++        if (!fLocale) {
++            SK_ABORT("Cannot create the requested Skia locale.");
++        }
++        fOldLocale = fCurrentLocale;
++        fCurrentLocale = fLocale;
+ #elif HAVE_LOCALE_T
+ #if HAVE_XLOCALE
+         // In xlocale nullptr means the C locale.
+@@ -70,6 +86,9 @@
+             setlocale(LC_ALL, fOldLocale->c_str());
+         }
+         _configthreadlocale(fOldPerThreadLocale);
++#elif defined(__NetBSD__)
++        fCurrentLocale = fOldLocale;
++        freelocale(fLocale);
+ #elif HAVE_LOCALE_T
+         if (fLocale) {
+              uselocale(fOldLocale);
+@@ -79,6 +98,9 @@
+     }
+ 
+ private:
++#if defined(__NetBSD__)
++    inline static thread_local locale_t fCurrentLocale = nullptr;
++#endif
+ #if defined(SK_BUILD_FOR_WIN)
+     int fOldPerThreadLocale;
+     std::optional<std::string> fOldLocale;
+@@ -88,6 +110,39 @@
+ #endif
+ };
+ 
++// NetBSD supplies explicit-locale libc functions but no uselocale. Keep the
++// requested locale private to synchronous Skia formatting and parsing calls.
++// Other platforms keep their existing libc/thread-locale implementation.
++inline int SkLocaleVsnprintf(char* buffer, size_t size, const char* format, va_list args)
++        SK_PRINTF_LIKE(3, 0);
++inline int SkLocaleVsnprintf(char* buffer, size_t size, const char* format, va_list args) {
++#if defined(__NetBSD__)
++    if (locale_t locale = SkAutoLocaleSetter::CurrentLocale()) {
++        return vsnprintf_l(buffer, size, locale, format, args);
++    }
++#endif
++    return std::vsnprintf(buffer, size, format, args);
++}
++
++inline int SkLocaleSnprintf(char* buffer, size_t size, const char* format, ...)
++        SK_PRINTF_LIKE(3, 4);
++inline int SkLocaleSnprintf(char* buffer, size_t size, const char* format, ...) {
++    va_list args;
++    va_start(args, format);
++    int result = SkLocaleVsnprintf(buffer, size, format, args);
++    va_end(args);
++    return result;
++}
++
++inline double SkLocaleStrtod(const char* string, char** end) {
++#if defined(__NetBSD__)
++    if (locale_t locale = SkAutoLocaleSetter::CurrentLocale()) {
++        return strtod_l(string, end, locale);
++    }
++#endif
++    return std::strtod(string, end);
++}
++
+ #undef HAVE_LOCALE_T
+ #undef HAVE_XLOCALE
+ 
+--- Source/ThirdParty/skia/src/core/SkString.cpp.orig
++++ Source/ThirdParty/skia/src/core/SkString.cpp
+@@ -6,6 +6,7 @@
+  */
+ 
+ #include "include/core/SkString.h"
++#include "src/core/SkAutoLocaleSetter.h"
+ 
+ #include "include/private/SkDebug.h"
+ #include "include/private/SkFloatingPoint.h"
+@@ -41,7 +42,7 @@
+     // First, attempt to print directly to the stack buffer.
+     va_list argsCopy;
+     va_copy(argsCopy, args);
+-    int outLength = std::vsnprintf(stackBuffer, SIZE, format, args);
++    int outLength = SkLocaleVsnprintf(stackBuffer, SIZE, format, args);
+     if (outLength < 0) {
+         SkDebugf("SkString: vsnprintf reported error.");
+         va_end(argsCopy);
+@@ -57,7 +58,7 @@
+     // byte at the end of the buffer for a null terminator, so we don't need to add one here.
+     heapBuffer->set(nullptr, outLength);
+     char* heapBufferDest = heapBuffer->data();
+-    SkDEBUGCODE(int checkLength =) std::vsnprintf(heapBufferDest, outLength + 1, format, argsCopy);
++    SkDEBUGCODE(int checkLength =) SkLocaleVsnprintf(heapBufferDest, outLength + 1, format, argsCopy);
+     SkASSERT(checkLength == outLength);
+     va_end(argsCopy);
+     return {heapBufferDest, outLength};
+@@ -182,7 +183,7 @@
+     static const char gFormat[] = "%.8g";
+     // make it 1 larger for the terminating 0
+     char buffer[kSkStrAppendScalar_MaxSize + 1];
+-    int len = snprintf(buffer, sizeof(buffer), gFormat, value);
++    int len = SkLocaleSnprintf(buffer, sizeof(buffer), gFormat, value);
+     memcpy(string, buffer, len);
+     SkASSERT(len <= kSkStrAppendScalar_MaxSize);
+     return string + len;
+--- Source/ThirdParty/skia/src/sksl/SkSLString.cpp.orig
++++ Source/ThirdParty/skia/src/sksl/SkSLString.cpp
+@@ -6,6 +6,7 @@
+  */
+ 
+ #include "src/core/SkStringView.h"
++#include "src/core/SkAutoLocaleSetter.h"
+ #include "src/sksl/SkSLDefines.h"
+ #include "src/sksl/SkSLString.h"
+ 
+@@ -101,12 +102,12 @@
+     char buffer[BUFFER_SIZE];
+     va_list reuse;
+     va_copy(reuse, args);
+-    size_t size = vsnprintf(buffer, BUFFER_SIZE, fmt, args);
++    size_t size = SkLocaleVsnprintf(buffer, BUFFER_SIZE, fmt, args);
+     if (BUFFER_SIZE >= size + 1) {
+         str->append(buffer, size);
+     } else {
+         auto newBuffer = std::unique_ptr<char[]>(new char[size + 1]);
+-        vsnprintf(newBuffer.get(), size + 1, fmt, reuse);
++        SkLocaleVsnprintf(newBuffer.get(), size + 1, fmt, reuse);
+         str->append(newBuffer.get(), size);
+     }
+     va_end(reuse);
+--- Source/ThirdParty/skia/src/sksl/SkSLOutputStream.cpp.orig
++++ Source/ThirdParty/skia/src/sksl/SkSLOutputStream.cpp
+@@ -6,6 +6,7 @@
+  */
+ 
+ #include "src/sksl/SkSLOutputStream.h"
++#include "src/core/SkAutoLocaleSetter.h"
+ 
+ #include <stdio.h>
+ #include <memory>
+@@ -27,10 +28,10 @@
+     char buffer[kBufferSize];
+     va_list copy;
+     va_copy(copy, args);
+-    int length = vsnprintf(buffer, kBufferSize, format, args);
++    int length = SkLocaleVsnprintf(buffer, kBufferSize, format, args);
+     if (length > (int) kBufferSize) {
+         std::unique_ptr<char[]> bigBuffer(new char[length + 1]);
+-        vsnprintf(bigBuffer.get(), length + 1, format, copy);
++        SkLocaleVsnprintf(bigBuffer.get(), length + 1, format, copy);
+         this->write(bigBuffer.get(), length);
+     } else {
+         this->write(buffer, length);
+--- Source/ThirdParty/skia/src/sksl/tracing/SkSLDebugTracePriv.cpp.orig
++++ Source/ThirdParty/skia/src/sksl/tracing/SkSLDebugTracePriv.cpp
+@@ -5,6 +5,7 @@
+  * found in the LICENSE file.
+  */
+ #include "src/sksl/tracing/SkSLDebugTracePriv.h"
++#include "src/core/SkAutoLocaleSetter.h"
+ 
+ #include "include/core/SkStream.h"
+ #include "include/core/SkTypes.h"
+@@ -68,7 +69,7 @@
+         }
+         default: {
+             char buffer[32];
+-            snprintf(buffer, std::size(buffer), "%.8g", value);
++            SkLocaleSnprintf(buffer, std::size(buffer), "%.8g", value);
+             return buffer;
+         }
+     }
+--- Source/ThirdParty/skia/src/utils/SkJSONWriter.cpp.orig
++++ Source/ThirdParty/skia/src/utils/SkJSONWriter.cpp
+@@ -6,6 +6,7 @@
+  */
+ 
+ #include "src/utils/SkJSONWriter.h"
++#include "src/core/SkAutoLocaleSetter.h"
+ 
+ #include <inttypes.h>
+ #include <stdarg.h>
+@@ -34,7 +35,7 @@
+ #ifdef SK_BUILD_FOR_WIN
+     int length = _vsnprintf_s(buffer, kBufferSize, _TRUNCATE, fmt, argp);
+ #else
+-    int length = vsnprintf(buffer, kBufferSize, fmt, argp);
++    int length = SkLocaleVsnprintf(buffer, kBufferSize, fmt, argp);
+ #endif
+     SkASSERT(length >= 0 && length < kBufferSize);
+     va_end(argp);
+--- Source/ThirdParty/skia/src/utils/SkParse.cpp.orig
++++ Source/ThirdParty/skia/src/utils/SkParse.cpp
+@@ -6,6 +6,7 @@
+  */
+ 
+ #include "include/core/SkScalar.h"
++#include "src/core/SkAutoLocaleSetter.h"
+ #include "include/core/SkTypes.h"
+ #include "include/private/SkTo.h"
+ #include "include/utils/SkParse.h"
+@@ -179,7 +180,7 @@
+     str = skip_ws(str);
+ 
+     char* stop;
+-    float v = (float)strtod(str, &stop);
++    float v = (float)SkLocaleStrtod(str, &stop);
+     if (str == stop) {
+         return nullptr;
+     }
