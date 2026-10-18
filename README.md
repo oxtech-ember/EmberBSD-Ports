@@ -30,6 +30,10 @@ runtime behavior are validated.
   and descriptor-zero repairs. Installed EmberBSD clients pass five socket
   contracts under an ordinary user, plus package removal and reinstallation.
   Physical input and X11 display acceptance remain pending.
+- [DNS-SD package cross build](profiles/common-build-tools/cross/mdns-build-tools.md):
+  mDNSResponder retains its complete package while correcting target OS and
+  generator selection. GCC16 AArch64 packaging and actual source/metadata
+  checks pass. Installed discovery and CUPS integration remain pending.
 - [Common SWIG 4.5.1](profiles/common-build-tools/cross/swig.md): the full
   native GCC16 package verifies all 846 files and the upstream Python 3.15
   example. A causal CCache repair preserves compiler fallback with closed

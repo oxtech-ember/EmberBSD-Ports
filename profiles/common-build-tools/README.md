@@ -15,6 +15,11 @@ headers and link paths to the SDK. Actual GCC16/CMake imported-target checks
 preserve target runtime paths and unchanged native provider selection. Explicit
 C++ imports retain the installed GCC16 runtime ABI.
 
+The [mDNSResponder build contract](cross/mdns-build-tools.md) preserves the
+complete DNS-SD package while fixing target OS selection and unused generator
+dependencies. Actual source graphs, platform metadata and the ordinary GCC16
+AArch64 package pass. Installed discovery and CUPS integration remain separate.
+
 The [sysroot import contract](cross/sysroot.md#pinned-aarch64-base-and-comp-imports)
 provides a pinned-manifest importer for OS-owned AArch64 `base` and `comp`
 releases. It verifies provenance and hashes before isolated extraction.
