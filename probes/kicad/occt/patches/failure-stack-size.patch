@@ -1,0 +1,15 @@
+# Origin: EmberBSD (AI-assisted). Bound arithmetic before exception trace allocation.
+# OCCT copyright and LGPL-2.1 exception remain unchanged. Not submitted upstream.
+--- a/src/FoundationClasses/TKernel/Standard/Standard_Failure.cxx
++++ b/src/FoundationClasses/TKernel/Standard/Standard_Failure.cxx
+@@ -79,7 +79,9 @@
+   if (aStackLength > 0)
+   {
+     // Limit stack allocation to 64KB to prevent stack overflow
+-    const int aStackBufLen = std::clamp(aStackLength * 200, 2048, 65536);
++    const int aStackBufLen = aStackLength > 65536 / 200
++                               ? 65536
++                               : std::max(aStackLength * 200, 2048);
+     char*     aStackBuffer = (char*)alloca(aStackBufLen);
+     if (aStackBuffer != nullptr)
+     {

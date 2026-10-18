@@ -24,6 +24,11 @@ runtime behavior are validated.
   loader and DXF platform selection. The bundled context implementation passes
   3,003 exchanges in the AArch64 VM and strict native Memcheck. Full KiCad
   configuration, package and CAD workflows remain pending.
+- [KiCad OCCT source](probes/kicad/occt/README.md): OCCT 8.0.1 retains
+  NetBSD locale, path and exception support. GCC16 target compilation and
+  focused native regressions cover the source repairs; KiCad uses the
+  current exception API. The complete OCCT package and installed STEP
+  geometry checks remain pending.
 - [KiCad protobuf prerequisites](probes/kicad/protobuf/README.md): protobuf
   36.2 and Abseil 20260817.0 build with native GCC16 and shared zlib 1.3.2.
   Four allocation-failure controls reproduce upstream UPB defects and pass

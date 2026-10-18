@@ -1,0 +1,39 @@
+# Origin: pkgsrc cad/occt patches at fff4deb639a1a640476203c80f752fb77b6cb14b.
+# Adapted to OCCT8.0.1 by EmberBSD (AI-assisted). Retain DESTDIR and portable headers.
+# OCCT copyright and LGPL-2.1 exception remain unchanged. Not submitted upstream.
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1142,17 +1142,8 @@
+   set (ADDITIONAL_CUSTOM_CONTENT "\nif [ -e \"\${aScriptPath}/${SUB_CUSTOM_NAME}\" ]; then\n  source \"\${aScriptPath}/${SUB_CUSTOM_NAME}\" \"\$1\" \"\$2\" \nfi")
+ endif()
+ 
+-# validating custom.bat/sh for changes
+-if (EXISTS "${CMAKE_BINARY_DIR}/custom.${SCRIPT_EXT}" AND EXISTS "${INSTALL_DIR}/${INSTALL_DIR_SCRIPT}/custom.${SCRIPT_EXT}")
+-  file (READ "${INSTALL_DIR}/${INSTALL_DIR_SCRIPT}/custom.${SCRIPT_EXT}" CUSTOM_CONTENT)
+-  string(FIND "${CUSTOM_CONTENT}" "${ADDITIONAL_CUSTOM_CONTENT}" pos)
+-  if (pos EQUAL -1)
+-    set (CUSTOM_CONTENT "${CUSTOM_CONTENT} ${ADDITIONAL_CUSTOM_CONTENT}")
+-    OCCT_CONFIGURE_AND_INSTALL ("adm/templates/custom.${SCRIPT_EXT}.main" "custom.${SCRIPT_EXT}" "custom.${SCRIPT_EXT}" "${INSTALL_DIR_SCRIPT}")
+-  endif()
+-else()
+-  OCCT_CONFIGURE_AND_INSTALL ("adm/templates/custom.${SCRIPT_EXT}.main" "custom.${SCRIPT_EXT}" "custom.${SCRIPT_EXT}" "${INSTALL_DIR_SCRIPT}")
+-endif()
++# Generate package scripts from this source, not an installed prefix.
++OCCT_CONFIGURE_AND_INSTALL ("adm/templates/custom.${SCRIPT_EXT}.main" "custom.${SCRIPT_EXT}" "custom.${SCRIPT_EXT}" "${INSTALL_DIR_SCRIPT}")
+ 
+ if (WIN32)
+   set (THIRDPARTY_DIR_REPLACE "%THIRDPARTY_DIR%")
+--- a/src/FoundationClasses/TKernel/OSD/OSD_MemInfo.cxx
++++ b/src/FoundationClasses/TKernel/OSD/OSD_MemInfo.cxx
+@@ -28,7 +28,10 @@
+   #include <malloc/malloc.h>
+ #else
+   #include <unistd.h>
+-  #include <malloc.h>
++  #if defined(__linux__)
++    #include <malloc.h>
++  #endif
++  #include <stdlib.h>
+ #endif
+ 
+ #include <OSD_MemInfo.hxx>

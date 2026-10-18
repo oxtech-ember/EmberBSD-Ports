@@ -1,0 +1,102 @@
+# Origin: EmberBSD (AI-assisted). Use the OCCT8 standard exception API.
+# KiCad source copyright and GPL remain unchanged. Not submitted upstream.
+--- a/pcbnew/exporters/step/exporter_step.cpp
++++ b/pcbnew/exporters/step/exporter_step.cpp
+@@ -650,7 +650,7 @@
+             m_reporter->Report( wxString::Format( _( "Could not add 3D model for %s.\n"
+                                                      "OpenCASCADE error: %s\n" ),
+                                                   aFootprint->GetReference(),
+-                                                  e.GetMessageString() ),
++                                                  e.what() ),
+                                 RPT_SEVERITY_WARNING );
+         }
+ 
+@@ -1376,7 +1376,7 @@
+     }
+     catch( const Standard_Failure& e )
+     {
+-        wxString errorMsg = e.GetMessageString();
++        wxString errorMsg = e.what();
+         m_reporter->Report( wxString::Format( _( "\nOpenCASCADE error: %s\n" ), errorMsg ),
+                             RPT_SEVERITY_ERROR );
+ 
+--- a/pcbnew/exporters/step/step_pcb_model.cpp
++++ b/pcbnew/exporters/step/step_pcb_model.cpp
+@@ -717,7 +717,7 @@
+         aReporter->Report( wxString::Format( _( "OpenCASCADE error while fusing shapes: %s\n"
+                                                 "This may indicate insufficient memory. Consider "
+                                                 "disabling shape fusing or reducing board complexity." ),
+-                                             e.GetMessageString() ),
++                                             e.what() ),
+                           RPT_SEVERITY_ERROR );
+         return false;
+     }
+@@ -783,7 +783,7 @@
+         catch( const Standard_Failure& e )
+         {
+             aReporter->Report( wxString::Format( _( "OpenCASCADE error while unifying shapes: %s" ),
+-                                                 e.GetMessageString() ),
++                                                 e.what() ),
+                               RPT_SEVERITY_ERROR );
+             return false;
+         }
+@@ -1300,9 +1300,9 @@
+     }
+     catch( const Standard_Failure& e )
+     {
+-        wxLogTrace( traceKiCad2Step, wxT( "AddCounterbore: EXCEPTION - %s" ), e.GetMessageString() );
++        wxLogTrace( traceKiCad2Step, wxT( "AddCounterbore: EXCEPTION - %s" ), e.what() );
+         m_reporter->Report( wxString::Format( _( "OCC exception creating counterbore: %s" ),
+-                                              e.GetMessageString() ),
++                                              e.what() ),
+                             RPT_SEVERITY_ERROR );
+         return false;
+     }
+@@ -1455,9 +1455,9 @@
+     }
+     catch( const Standard_Failure& e )
+     {
+-        wxLogTrace( traceKiCad2Step, wxT( "AddCountersink: EXCEPTION - %s" ), e.GetMessageString() );
++        wxLogTrace( traceKiCad2Step, wxT( "AddCountersink: EXCEPTION - %s" ), e.what() );
+         m_reporter->Report( wxString::Format( _( "OCC exception creating countersink: %s" ),
+-                                              e.GetMessageString() ),
++                                              e.what() ),
+                             RPT_SEVERITY_ERROR );
+         return false;
+     }
+@@ -2032,7 +2032,7 @@
+     catch( const Standard_Failure& e )
+     {
+         m_reporter->Report( wxString::Format( _( "OCC exception building shape segment: %s" ),
+-                                              e.GetMessageString() ),
++                                              e.what() ),
+                             RPT_SEVERITY_ERROR );
+         return false;
+     }
+@@ -2047,7 +2047,7 @@
+     catch( const Standard_Failure& e )
+     {
+         m_reporter->Report( wxString::Format( _( "OCC exception building face: %s" ),
+-                                              e.GetMessageString() ),
++                                              e.what() ),
+                             RPT_SEVERITY_ERROR );
+         return false;
+     }
+@@ -2265,7 +2265,7 @@
+     catch( const Standard_Failure& e )
+     {
+         aReporter->Report( wxString::Format( _( "OCC exception creating wire: %s" ),
+-                                             e.GetMessageString() ),
++                                             e.what() ),
+                            RPT_SEVERITY_ERROR );
+         return false;
+     }
+@@ -2435,7 +2435,7 @@
+             {
+                 m_reporter->Report( wxString::Format( _( "OCC exception creating contour %d: %s" ),
+                                                       static_cast<int>( contId ),
+-                                                      e.GetMessageString() ),
++                                                      e.what() ),
+                                     RPT_SEVERITY_ERROR );
+                 return false;
+             }

@@ -1,0 +1,102 @@
+# Origin: EmberBSD (AI-assisted). OCCT 8.0.1 NetBSD runtime interfaces.
+# Keep upstream LGPL-2.1 with OCCT exception. Not submitted upstream.
+--- a/src/FoundationClasses/TKernel/Standard/Standard_CLocaleSentry.hxx
++++ b/src/FoundationClasses/TKernel/Standard/Standard_CLocaleSentry.hxx
+@@ -37,7 +37,7 @@
+   #endif
+ 
+   //! We check _GNU_SOURCE for glibc extensions here and it is always defined by g++ compiler.
+-  #if defined(_GNU_SOURCE) && !defined(__ANDROID__)
++  #if defined(_GNU_SOURCE) && !defined(__ANDROID__) && !defined(__NetBSD__)
+     #define OCCT_CLOCALE_POSIX2008
+   #endif
+ #endif
+@@ -64,7 +64,8 @@
+   Standard_EXPORT ~Standard_CLocaleSentry();
+ 
+ public:
+-  #ifdef OCCT_CLOCALE_POSIX2008
++  // NetBSD has explicit-locale functions, but no uselocale().
++  #if defined(OCCT_CLOCALE_POSIX2008) || defined(__NetBSD__)
+   typedef locale_t clocale_t;
+   #elif defined(_MSC_VER)
+   typedef _locale_t clocale_t;
+--- a/src/FoundationClasses/TKernel/Standard/Standard_CLocaleSentry.cxx
++++ b/src/FoundationClasses/TKernel/Standard/Standard_CLocaleSentry.cxx
+@@ -29,7 +29,7 @@
+ {
+ public:
+   CLocalePtr()
+-  #ifdef OCCT_CLOCALE_POSIX2008
++  #if defined(OCCT_CLOCALE_POSIX2008) || defined(__NetBSD__)
+       : myLocale(newlocale(LC_ALL_MASK, "C", nullptr))
+   #elif defined(_MSC_VER)
+       : myLocale(_create_locale(LC_ALL, "C"))
+@@ -41,7 +41,7 @@
+ 
+   ~CLocalePtr()
+   {
+-  #ifdef OCCT_CLOCALE_POSIX2008
++  #if defined(OCCT_CLOCALE_POSIX2008) || defined(__NetBSD__)
+     freelocale(myLocale);
+   #elif defined(_MSC_VER)
+     _free_locale(myLocale);
+--- a/src/FoundationClasses/TKernel/Standard/Standard_CString.cxx
++++ b/src/FoundationClasses/TKernel/Standard/Standard_CString.cxx
+@@ -29,8 +29,8 @@
+ // of string to real and vice-versa
+ //======================================================================
+ 
+-#ifdef __APPLE__
+-  // There are a lot of *_l functions available on Mac OS X - we use them
++#if defined(__APPLE__) || defined(__NetBSD__)
++  // Use explicit-locale functions. NetBSD does not provide uselocale().
+   #define SAVE_TL()
+ #elif defined(_MSC_VER)
+   // MSVCRT has equivalents with slightly different syntax
+--- a/src/FoundationClasses/TKernel/OSD/OSD_Path.cxx
++++ b/src/FoundationClasses/TKernel/OSD/OSD_Path.cxx
+@@ -19,7 +19,7 @@
+ static OSD_SysType whereAmI()
+ {
+ #if defined(__digital__) || defined(__FreeBSD__) || defined(SUNOS) || defined(__APPLE__)           \
+-  || defined(__QNX__) || defined(__FreeBSD_kernel__)
++  || defined(__QNX__) || defined(__FreeBSD_kernel__) || defined(__NetBSD__)
+   return OSD_UnixBSD;
+ #elif defined(sgi) || defined(IRIX) || defined(__sun) || defined(SOLARIS) || defined(__sco__)      \
+   || defined(__hpux) || defined(HPUX)
+--- a/src/FoundationClasses/TKernel/OSD/OSD_Path.hxx
++++ b/src/FoundationClasses/TKernel/OSD/OSD_Path.hxx
+@@ -351,7 +351,7 @@
+   TCollection_AsciiString myTrek;
+   TCollection_AsciiString myName;
+   TCollection_AsciiString myExtension;
+-  bool                    myUNCFlag;
++  bool                    myUNCFlag = false;
+   OSD_SysType             mySysDep;
+ };
+ 
+--- a/adm/cmake/occt_csf.cmake
++++ b/adm/cmake/occt_csf.cmake
+@@ -132,7 +132,7 @@
+       set (CSF_OpenGlLibs "GL EGL")
+     endif()
+     set (CSF_OpenGlesLibs "EGL GLESv2")
+-    set (CSF_dl          "dl")
++    set (CSF_dl          "${CMAKE_DL_LIBS}")
+     if (USE_FREETYPE)
+       set (CSF_fontconfig "fontconfig expat")
+     endif()
+--- a/src/FoundationClasses/TKernel/CMakeLists.txt
++++ b/src/FoundationClasses/TKernel/CMakeLists.txt
+@@ -13,5 +13,10 @@
+   message (STATUS "Info: Used native memory manager")
+ endif()
+ 
++# NetBSD provides the backtrace API in its base libexecinfo.
++if (CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
++  target_link_libraries(TKernel PRIVATE execinfo)
++endif()
++
+ # Add the precompiled header
+ ADD_PRECOMPILED_HEADER(TKernel "TKernel_pch.hxx" FALSE)

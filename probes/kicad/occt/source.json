@@ -1,0 +1,27 @@
+{
+  "version": "8.0.1",
+  "url": "https://github.com/Open-Cascade-SAS/OCCT/archive/refs/tags/V8.0.1.tar.gz",
+  "sha256": "6297cc55a1720523a437c54d07dc16b9da8c5f5ab5800da3c6ebded568d53c18",
+  "commit": "b8f597c677811d1f9f4d8a97f5ae2825c0353a42",
+  "release": "https://github.com/Open-Cascade-SAS/OCCT/releases/tag/V8.0.1",
+  "release_date": "2026-07-30",
+  "license": "LGPL-2.1 with OCCT exception; commercial option",
+  "patches": [
+    {
+      "path": "patches/netbsd-runtime.patch",
+      "sha256": "763c57d035ab0a82e31846d13f64e10db1018cc3a4ad13884bc3f8e66da38055"
+    },
+    {
+      "path": "patches/stacktrace-bounds.patch",
+      "sha256": "66e9a0302a70d7fedb4e9a53a779979f627ff511d63c9005d4fe84032aa0a374"
+    },
+    {
+      "path": "patches/pkgsrc-install.patch",
+      "sha256": "4963fdcb1e5125897bee791ac4213682cc3652e5ab28dfe08e17a9338494266a"
+    },
+    {
+      "path": "patches/failure-stack-size.patch",
+      "sha256": "3957adde457167f1d9ba5554e5fd41cce4821469408b630316919b78f34f10eb"
+    }
+  ]
+}

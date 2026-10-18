@@ -1,0 +1,74 @@
+# Origin: EmberBSD (AI-assisted). Reject invalid buffer and frame bounds.
+# Keep upstream LGPL-2.1 with OCCT exception. Not submitted upstream.
+--- a/src/FoundationClasses/TKernel/Standard/Standard_StackTrace.cxx
++++ b/src/FoundationClasses/TKernel/Standard/Standard_StackTrace.cxx
+@@ -17,6 +17,9 @@
+ #include <Message.hxx>
+ 
+ #include <mutex>
++#include <cstdlib>
++#include <cstring>
++#include <limits>
+ 
+ #include <Standard_WarningDisableFunctionCast.hxx>
+ 
+@@ -196,6 +199,14 @@
+     return false;
+   }
+ 
++  // The caller must supply a terminated string inside the declared capacity.
++  const char* anEnd = static_cast<const char*>(
++    std::memchr(theBuffer, '\0', static_cast<size_t>(theBufferSize)));
++  if (anEnd == nullptr)
++  {
++    return false;
++  }
++
+ #if defined(__EMSCRIPTEN__)
+   // theNbTraces is ignored
+   return emscripten_get_callstack(EM_LOG_C_STACK | EM_LOG_NO_PATHS, theBuffer, theBufferSize) > 0;
+@@ -318,28 +329,41 @@
+   return false;
+   #endif
+ #else
++  if (theNbTopSkip >= std::numeric_limits<int>::max()
++      || theNbTraces > std::numeric_limits<int>::max() - theNbTopSkip - 1)
++  {
++    return false;
++  }
+   const int aTopSkip  = theNbTopSkip + 1; // skip this function call and specified extra number
+   int       aNbTraces = theNbTraces + aTopSkip;
+-  void**    aStackArr = (void**)alloca(sizeof(void*) * aNbTraces);
++  if (static_cast<size_t>(aNbTraces) > std::numeric_limits<size_t>::max() / sizeof(void*))
++  {
++    return false;
++  }
++  // Diagnostic depth is caller-controlled. Do not allocate it on the call stack.
++  void** aStackArr = static_cast<void**>(std::malloc(sizeof(void*) * static_cast<size_t>(aNbTraces)));
+   if (aStackArr == nullptr)
+   {
+     return false;
+   }
+ 
+   aNbTraces = ::backtrace(aStackArr, aNbTraces);
+-  if (aNbTraces <= 1)
++  if (aNbTraces <= aTopSkip)
+   {
++    std::free(aStackArr);
+     return false;
+   }
+ 
+   aNbTraces -= aTopSkip;
+   char** aStrings = ::backtrace_symbols(aStackArr + aTopSkip, aNbTraces);
++  std::free(aStackArr);
+   if (aStrings == nullptr)
+   {
+     return false;
+   }
+ 
+-  const size_t aLenInit = strlen(theBuffer);
++
++  const size_t aLenInit = static_cast<size_t>(anEnd - theBuffer);
+   size_t       aLimit   = (size_t)theBufferSize - aLenInit - 1;
+   if (aLimit > 14)
+   {
