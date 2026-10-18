@@ -84,13 +84,13 @@ Dir.glob(base + '/usr/lib/private/*.so*').sort.each { |p| copy_base.call(p.delet
   bin/sh bin/sync bin/cat bin/chmod bin/cp bin/ls bin/mkdir bin/mv bin/rm bin/test
   bin/date bin/tar bin/sleep bin/stty bin/hostname bin/kill bin/df bin/pwd bin/ps
   sbin/init sbin/mount sbin/mount_ffs sbin/mount_ptyfs sbin/halt sbin/reboot
-  sbin/sysctl sbin/ifconfig sbin/route sbin/nologin
+  sbin/sysctl sbin/ifconfig sbin/route sbin/nologin sbin/chown
   usr/bin/uname usr/bin/grep usr/bin/sha256 usr/bin/ldd usr/bin/sed usr/bin/awk
   usr/bin/env usr/bin/printf usr/bin/timeout usr/bin/mktemp usr/bin/id usr/bin/tty
-  usr/bin/getent usr/bin/true usr/bin/false usr/bin/du usr/bin/locale
+  usr/bin/getent usr/bin/true usr/bin/false usr/bin/du usr/bin/locale usr/bin/chgrp
   usr/bin/sort usr/bin/realpath usr/bin/wc usr/bin/tr usr/bin/dirname usr/bin/basename
   usr/bin/ktrace usr/bin/kdump usr/bin/fstat usr/bin/cmp usr/bin/readlink usr/bin/tee
-  usr/sbin/pkg_add usr/sbin/pkg_delete usr/sbin/pkg_info usr/sbin/pkg_admin
+  usr/sbin/pkg_add usr/sbin/pkg_delete usr/sbin/pkg_info usr/sbin/pkg_admin usr/sbin/chown
   usr/sbin/sshd usr/libexec/sshd-session usr/libexec/sshd-auth usr/libexec/sftp-server
   usr/libexec/ld.elf_so
 ].each { |path| copy_base.call(path) }

@@ -46,7 +46,8 @@ edit that tree's base files or change their permissions. It includes Citrus
 modules, encoding data and locales from the same base, without static archives.
 The generated FFS image is a separate writable file. The sysroot stays unchanged.
 The selected base commands include package installation, deletion and integrity
-tools, `cmp`/`readlink`/`mv` for payload checks, `tee` for recorded command output,
+tools, base `chown`/`chgrp` for package directory scripts,
+`cmp`/`readlink`/`mv` for payload checks, `tee` for recorded command output,
 `ktrace`/`kdump`, and `ps`/`fstat` for process
 and open-file inspection. Each comes from the same
 verified base and has a recorded hash. No target compiler is added.

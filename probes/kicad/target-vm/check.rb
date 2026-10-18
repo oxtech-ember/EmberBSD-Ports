@@ -43,13 +43,20 @@ SH
 abort 'ptyfs not mounted' unless identity.include?('on /dev/pts type ptyfs')
 libc = input.fetch('sources_sha256').keys.find { |path| path.match?(%r{/lib/libc\.so\.\d+\.\d+\z}) }
 abort 'base libc inventory missing' unless libc
-(%w[/bin/sh /usr/bin/uname /usr/bin/sha256 /usr/sbin/sshd] + [libc.delete_prefix(input.fetch('base'))]).each do |relative|
+(%w[/bin/sh /usr/bin/uname /usr/bin/sha256 /usr/sbin/sshd /sbin/chown /usr/sbin/chown /usr/bin/chgrp] + [libc.delete_prefix(input.fetch('base'))]).each do |relative|
   path = input.fetch('base') + relative
   expected = input.fetch('sources_sha256').fetch(path)
   abort "unverified base source: #{path}" unless expected.is_a?(String) && Digest::SHA256.file(path).hexdigest == expected
   actual = run.call('hash-' + File.basename(relative), 0, *ssh, 'sha256 -q ' + relative.shellescape).strip
   abort "guest base differs: #{relative}" unless actual == expected
 end
+run.call('package-directory-ownership', 0, *ssh, <<~SH)
+  set -eu
+  probe=$(mktemp /tmp/e14-ownership.XXXXXXXX)
+  trap 'rm -f "$probe"' EXIT HUP INT TERM
+  /usr/sbin/chown root "$probe"
+  /usr/bin/chgrp wheel "$probe"
+SH
 pty = run.call('pty', 0, work + '/bin/ssh', '-tt', 'ember-e14-query', 'test -t 0 && tty && stty -a')
 abort 'real target PTY missing' unless pty.include?('/dev/pts/')
 run.call('status37', 37, *ssh, 'exit 37')
