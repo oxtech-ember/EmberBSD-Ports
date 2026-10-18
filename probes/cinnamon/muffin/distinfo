@@ -3,9 +3,19 @@ $NetBSD$
 SHA512 (17c958413753feafdbd5d58dc1e420f72a5f1859.tar.gz) = 5dd2e913a3f4b074c48ed0e815bceaf3d9fff11724a3bdac93f2efa92b1186d6480810148673a313f93b5536390dd796c056c0b16163e8c2e1731d069eaf1759
 Size (17c958413753feafdbd5d58dc1e420f72a5f1859.tar.gz) = 4680759 bytes
 
+SHA1 (patch-clutter_clutter_meson.build) = 3150f806f2677ea5f63f731d544e721c895235a4
+SHA1 (patch-cogl_cogl_cogl-dma-buf-handle.c) = 34355a7c9770371bc4ae94c2e9eff6c26df17be1
+SHA1 (patch-cogl_cogl_meson.build) = 544e5fc51e44e4f5155a22fc360d81ae9285e2e4
 SHA1 (patch-meson.build) = 46e1dbc8313bed065048ed89b564cc56ff7cdff1
+SHA1 (patch-src_backends_meta-cursor-tracker.c) = 6bfcd3430dfd3dfda9c1b0fa5e35eb3bf1d93c99
 SHA1 (patch-src_backends_meta-settings.c) = 2a63f652a12d733060d6fc378fe3539890236add
+SHA1 (patch-src_compositor_meta-dnd.c) = 7391a3c825d088f9c5451700f51a22f13da43dbe
+SHA1 (patch-src_compositor_meta-shaped-texture.c) = 738c09cd28848b69933e2bbadbbfad3ab7ea280f
+SHA1 (patch-src_compositor_meta-window-actor.c) = fccc45e38ad7083d94516833334823318141b61a
+SHA1 (patch-src_compositor_meta-window-group.c) = 2809a4a85d0e3f98a96e8de2b3b97d8fcae6e857
 SHA1 (patch-src_compositor_plugins_meson.build) = 0fd2f6e309b2be22c523e9079099e5652c445180
-SHA1 (patch-src_meson.build) = ccda19c891ac150014655e75f159c493c275a3b2
+SHA1 (patch-src_core_place.c) = 9fa55c64685d83f362dc6b12fe103d2b23cf4568
+SHA1 (patch-src_meson.build) = 25f30b73a43a2d27df549c6ea9228239fe07566e
+SHA1 (patch-src_meta_common.h) = 71bdad908c6718ada06efb072404b0c5b3e5f12e
 SHA1 (patch-src_ui_frames.h) = 8bec7244b7c60d7ffac24eb2ebca43753b4a9fe8
 SHA1 (patch-src_ui_ui.c) = 344c4cf5adc5d52896101a077ece463bbf1d32f8
