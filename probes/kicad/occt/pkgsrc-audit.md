@@ -41,7 +41,8 @@ was rejected by an independent CMake 4.4.4 regression before publication.
 
 The full recipe must retain Foundation Classes, Modeling Data, Modeling
 Algorithms, Visualization, Application Framework and Data Exchange.
-Default `x11` and `occt-draw` options retain OpenGL, FreeImage and Tcl/Tk.
+Default `x11` and `occt-draw` options retain OpenGL/Xlib and Tcl/Tk.
+FreeImage remains enabled independently of Xlib.
 FreeType, fontconfig, Eigen and RapidJSON remain enabled. Release exception
 and range checks stay enabled. Common dependencies supply their own headers
 and libraries; OCCT must not download or install private replacements.
@@ -57,7 +58,9 @@ it is not described here as LTS.
 The full package's static `PLIST` must come from the actual complete installed
 stage and then pass ordinary pkgsrc checks. The old 7.8 header inventory is
 not an 8.0.1 inventory. Source preparation and a private recipe draft do not
-establish an accepted common package.
+establish an accepted common package. The [source recipe candidate](recipe/README.md)
+uses ordinary `patch-*` names and current Tcl/Tk 9.1 discovery, but intentionally
+has no packing list or common-export registration until that stage exists.
 
 After installation, the independent Examples STEP reader must verify component
 and assembly solids, closed shells, volume, bounds and mesh triangles through

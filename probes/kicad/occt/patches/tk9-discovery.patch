@@ -1,0 +1,27 @@
+Origin: EmberBSD (AI-assisted). Select the matching Unix Tk 9 library.
+
+--- a/adm/cmake/tk.cmake
++++ b/adm/cmake/tk.cmake
+@@ -63,6 +63,22 @@
+ 
+ # check tk include dir, library dir and shared library dir
+ COMPLIANCE_PRODUCT_CONSISTENCY(TK)
++
++# Tcl 9 uses a major-version prefix in the Unix Tk library name.
++# FindTCL still searches the older tk<version> spelling. Resolve the paired
++# library before that fallback can select a different Tcl ABI.
++if (UNIX AND BUILD_SHARED_LIBS AND NOT 3RDPARTY_TK_LIBRARY
++    AND 3RDPARTY_TCL_MAJOR_VERSION GREATER_EQUAL 9)
++  set (3RDPARTY_TK_LIBRARY "3RDPARTY_TK_LIBRARY-NOTFOUND" CACHE FILEPATH "TK library" FORCE)
++  find_library (3RDPARTY_TK_LIBRARY
++                NAMES "tcl${3RDPARTY_TCL_MAJOR_VERSION}tk${3RDPARTY_TCL_LIBRARY_VERSION_WITH_DOT}"
++                HINTS "${3RDPARTY_TK_LIBRARY_DIR}" "${3RDPARTY_TK_DIR}/lib")
++  if (NOT 3RDPARTY_TK_LIBRARY)
++    message (FATAL_ERROR "Tcl ${3RDPARTY_TCL_LIBRARY_VERSION_WITH_DOT} requires its matching Tk library")
++  endif()
++  get_filename_component (3RDPARTY_TK_LIBRARY_DIR "${3RDPARTY_TK_LIBRARY}" DIRECTORY)
++  set (3RDPARTY_TK_LIBRARY_DIR "${3RDPARTY_TK_LIBRARY_DIR}" CACHE FILEPATH "The directory containing TK library" FORCE)
++endif()
+ 
+ # use default (CMake) TCL search
+ find_package(TCL QUIET)
