@@ -3,14 +3,14 @@
 The common graphics profile replaces `graphics/freeimage` and
 `graphics/freeimageplus` together with the maintained FreeImage 3.19.25 release.
 It also updates the existing `graphics/libraw` provider to 0.22.2.
-These are source recipes. Complete native and target packages remain pending.
-The original native core build passes eight of nine upstream tests. The
-JPEG transform test exposes an unsupported path in the unmodified release.
-The source repair uses the common TurboJPEG public API and passes the focused
-coefficient contract below. The revised package's complete suite remains pending.
+The ordinary GCC16 AArch64 core nb3 and C++ nb2 packages pass package checks.
+All nine enabled upstream core tests and the original C++ wrapper test pass
+with the normally installed packages in the EmberBSD VM. The unmodified
+system-JPEG path fails a valid lossless transform. The repair uses the common
+TurboJPEG public API and passes the focused coefficient contract below.
+Complete revised native packages remain a separate acceptance gate.
 The static package list uses the `FreeImageTargets-noconfig.cmake` file produced
-by both ordinary native and AArch64 stages. The repaired complete packages
-have not yet passed their final package checks.
+by both ordinary native and AArch64 stages.
 
 ## Provenance and licensing
 
@@ -142,7 +142,8 @@ ruby profiles/common-graphics/tests/freeimage-pixels/check-source.rb \
 The common cross profile also selects the installed GCC16 C++ library during
 CMake discovery. The [provider contract](../../common-build-tools/cross/pkgconfig.md)
 prevents an explicit LibRaw `-lstdc++` from selecting the base C++ ABI alongside
-GCC16. Full FreeImage target relinking and package validation remain pending.
+GCC16. The complete target packages and all ten enabled upstream executables
+link the common `libstdc++.so.7`; their load-time providers match the SDK.
 
 On 2026-10-18, the complete common profile export succeeded with the new recipes.
 Real native and AArch64 pkgsrc metadata selects the expected versions and
@@ -175,7 +176,36 @@ It does not build or install a TIFF package. It records commands, statuses,
 source/provider hashes and memory diagnostics. It requires genuine native
 GCC16 and Valgrind; it does not execute a target binary.
 
-Next, install the common codec dependencies through ordinary pkgsrc. Build,
-test and package both FreeImage recipes. Validate their actual installed lists,
-shared-library closure, C/C++ image round trips and OCCT load/save operations.
-Target package lifecycle and KiCad's complete 3D workflow remain pending.
+## Installed AArch64 package acceptance
+
+Linux amd64 cross-built `freeimage-3.19.25nb3` and
+`freeimageplus-3.19.25nb2` with the common GCC16.2.0 and system codecs.
+Normal PLIST, permission, PIE/RELRO, RPATH and work-reference checks pass.
+SDK readback verifies all 14 core and five wrapper entries, including exact
+bytes, modes, links and package registrations. Normal VM installation and
+`pkg_admin check` pass.
+
+| Artifact | SHA256 |
+| --- | --- |
+| Core package | `454c4139da7039ee75f0034bb8028c1e6851b24a82fab5fd4be6229558b6ffb8` |
+| C++ wrapper package | `160f0d04ab2692bfa7d179b41b89db1fa4474e65ee8e61b2f9fce4789d31a519` |
+| Upstream executable and fixture bundle | `8e9cebeca798530b0c1186e7c464e159eecce3bf390defb78c004eef81f9581f` |
+
+The test selection comes from the real CTest metadata. It retains assertions
+and the original fixture working directories. All nine core invocations pass:
+`MainTestSuite`, `IffPbmRleTest`, `GifPlaybackBoundsTest`, `RasWordLoopTest`,
+`SaveErrorTest`, `DoubleRGBFTest`, `DependencyInfoTest`, `ImageAnalysisTest`
+and `UnicodeMultiPageTest`. The original `FreeImagePlusTest` also passes.
+No enabled test is removed. Upstream optional HEIF/JXL/JXR defaults remain
+unchanged. The runner uses installed libraries without loader overrides.
+All 31 load-time provider paths reported by target `ldd` match the exact SDK
+bytes. This is not a trace of libraries loaded dynamically after startup.
+
+The [machine-readable receipt](../tests/freeimage-target/acceptance.json)
+records these packages, source identity, exact test executables and providers.
+The selected AArch64 platform has no Valgrind support; no whole-library target
+memory-clean claim is made. The focused native memory results above retain
+their stated coverage.
+
+OCCT image operations, normal package removal/reinstallation and KiCad's
+complete 3D workflow remain separate acceptance work.

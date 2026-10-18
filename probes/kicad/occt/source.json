@@ -22,6 +22,10 @@
     {
       "path": "patches/failure-stack-size.patch",
       "sha256": "3957adde457167f1d9ba5554e5fd41cce4821469408b630316919b78f34f10eb"
+    },
+    {
+      "path": "patches/tk9-discovery.patch",
+      "sha256": "9cd0d64dfaad11a208d20674249962e7757d3c6c9833f28e0c1b8f587795b221"
     }
   ]
 }

@@ -1,0 +1,19 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Generate the exact regression input with POSIX printf. Do not depend on
+echo option handling or an installed xxd program.
+
+--- tests/test_json_parse_cli.test.orig
++++ tests/test_json_parse_cli.test
+@@ -11,8 +11,8 @@ fi
+ 
+ set -x -v
+ 
+-echo -n '"tenant=blue;note=CANARY_STACK_WINDOW_2026;status=ok"' > file1.dat
+-(printf '"' ; printf 'A%.0s' $(seq 1 16) ; echo 'e2'  | xxd -r -p) > file2.dat
++printf '%s' '"tenant=blue;note=CANARY_STACK_WINDOW_2026;status=ok"' > file1.dat
++printf '"AAAAAAAAAAAAAAAA\342' > file2.dat
+ 
+ TESTNAME="${0##*/}"
+ TESTNAME="${TESTNAME%.test}"

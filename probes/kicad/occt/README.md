@@ -22,6 +22,9 @@ The patches are AI-assisted EmberBSD work. They have not been submitted upstream
 - Validate stack-trace buffer termination and frame-count arithmetic.
   Reject an exhausted frame skip before calling `backtrace_symbols`.
   Allocate caller-sized frame storage on the heap and free it on every return path.
+- Find the genuine Unix shared Tk 9 library paired with the selected Tcl version.
+  Tcl/Tk 9.1 uses `libtcl9tk9.1.so`; CMake's older `tk9.1` search misses it.
+  Refuse a missing paired library instead of silently disabling requested Tk.
 
 NetBSD's explicit locale conversion functions do not change the process locale.
 The separate `Standard_CLocaleSentry` retains upstream's process-global fallback on NetBSD.
@@ -34,13 +37,19 @@ It does not define `No_Exception`.
 Use a verified download of the URL recorded in `source.json`:
 
 ```sh
-ruby probes/kicad/occt/prepare.rb /absolute/OCCT-V8.0.1.tar.gz /absolute/new-source
+python3.15 probes/kicad/occt/prepare.py --sdk-source /absolute/EmberBSD-SDK \
+    /absolute/OCCT-V8.0.1.tar.gz /absolute/new-source
 
 sh probes/kicad/occt/build.sh cross-full /absolute/new-source \
     /absolute/new-build /absolute/new-stage /usr/pkg /absolute/aarch64-gcc16.cmake
 ```
 
 Supply a coherent EmberBSD sysroot through the CMake toolchain file.
+Source preparation requires the native Python 3.15 interpreter and a clean,
+fully materialized SDK checkout providing host API 1. It records the selected
+SDK commit, interpreter, helper hash, and every extraction/patch status.
+Archive and patch hashes are checked before creating the new source directory.
+Failed commands retain their logs and partial source for inspection.
 Use the common GCC16 compiler and runtime.
 The script requires GCC16 in every mode and checks the cross target identity.
 It keeps FreeType, Eigen, RapidJSON, Xlib, OpenGL, FreeImage and Draw enabled.
@@ -55,6 +64,11 @@ It is not a substitute for the complete KiCad dependency.
 Both native modes omit the final toolchain argument.
 The prefix remains an explicit argument in every mode.
 The earlier restored native core used GCC 14.2.0. New builds require GCC16.
+
+The [canonical recipe candidate](recipe/README.md) retains the normal `cad/occt`
+provider and full default Draw/X11 features. It is a source checkpoint without
+a packing list or common-export registration. Complete installed-stage inventory,
+ordinary package checks and target STEP acceptance are still required.
 
 ## Checks
 
@@ -112,3 +126,29 @@ its helper DSO hash and does not claim that the helper library was rebuilt.
 The installation test executes actual upstream CMake fragments and macros.
 See the [canonical package audit](pkgsrc-audit.md) for retained and retired
 pkgsrc fixes, dependency requirements and the static packing-list boundary.
+
+## Tcl/Tk 9.1 source compatibility
+
+Six actual Draw translation units that call Tcl pass GCC16.2 C++17 syntax checks
+with the genuine Tcl/Tk 9.1 headers and installed native X11 headers. This includes
+`Draw_Main`, `Draw_Interpretor`, `Draw`, `Draw_VariableCommands`, `Draw_Window`
+and `ViewerTest_ViewerCommands`. The last retains an upstream unused-variable
+warning; no diagnostic is suppressed. OCCT already calls `Tcl_FindExecutable`
+before creating its interpreter. Tcl 9.1 retains the `int argc` callback used by
+`Tcl_CreateCommand`, so no callback cast or C++ API adaptation is needed here.
+These are native header-compatibility checks, not linked Draw or target execution.
+
+The discovery contract runs the real OCCT CMake modules and real Tcl provider:
+
+```sh
+cmake -S probes/kicad/occt/tests/tk-discovery -B /absolute/new-discovery \
+    -DOCCT_SOURCE=/absolute/patched-source -DTCL_PREFIX=/absolute/tcl-prefix \
+    -DTK_PREFIX=/absolute/tk-prefix
+```
+
+With an empty Tk prefix containing `include` and `lib`, original OCCT succeeds
+and silently turns Tk off (`-DEXPECT_MISSING=ON` records that baseline).
+The patched module fails with the matching-library diagnostic. This negative
+case passed with CMake 4.4.4 and installed Tcl 9.1. Positive discovery and linking
+await a genuine Tk 9.1 stage. The patch changes Unix shared automatic discovery;
+explicit user library overrides and static/Windows paths retain upstream behavior.
