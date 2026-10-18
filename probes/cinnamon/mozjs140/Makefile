@@ -129,8 +129,8 @@ post-install:
 # with the target std installed by lang/rust-std-aarch64-netbsd
 # (librsvg cross.mk pattern; pkgsrc rust.mk has no Darwin-cross mode).
 RUST_TYPE=	native
-TOOL_DEPENDS+=	rust-bin-1.99.0{,nb[0-9]*}:../../lang/rust-bin
-TOOL_DEPENDS+=	rust-std-aarch64-netbsd-1.99.0{,nb[0-9]*}:../../lang/rust-std-aarch64-netbsd
+TOOL_DEPENDS+=	rust-bin-1.99.1{,nb[0-9]*}:../../lang/rust-bin
+TOOL_DEPENDS+=	rust-std-aarch64-netbsd-1.99.1{,nb[0-9]*}:../../lang/rust-std-aarch64-netbsd
 TOOLS_CREATE+=	cargo rustc
 TOOLS_PATH.cargo=	${TOOLBASE}/bin/cargo
 TOOLS_PATH.rustc=	${TOOLBASE}/bin/rustc

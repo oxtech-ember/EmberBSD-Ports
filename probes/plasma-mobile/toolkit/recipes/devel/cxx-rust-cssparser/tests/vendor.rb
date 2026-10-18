@@ -174,12 +174,12 @@ if (archive = ENV['CSSPARSER_UPSTREAM_ARCHIVE'])
     File.write(host + '/bin/rustc', <<~SH)
       #!/bin/sh
       [ "$1" = -vV ] || exit 96
-      printf '%s\\n' 'rustc 1.99.0 (controlled provider-response fixture)' 'commit-hash: #{CssVendor::RUST_COMMIT}' 'release: 1.99.0' 'host: aarch64-apple-darwin'
+      printf '%s\\n' 'rustc 1.99.1 (controlled provider-response fixture)' 'commit-hash: #{CssVendor::RUST_COMMIT}' 'release: 1.99.1' 'host: aarch64-apple-darwin'
     SH
     File.write(host + '/bin/cargo', <<~SH)
       #!/bin/sh
       if [ "$1" = -V ]; then
-        printf '%s\\n' 'cargo 1.99.0 (controlled provider-response fixture)'
+        printf '%s\\n' 'cargo 1.99.1 (controlled provider-response fixture)'
         exit 0
       fi
       [ "$1" = vendor ] || exit 96

@@ -3,7 +3,7 @@
   "cargo_lock_sha256": "d2fa05be2697e96e1c2f11dfa361266938ea75c6eb6977d8d292f288ed79d031",
   "vendor_archive_sha256": "d2e42517a49923fcd79fb7f05b650a4821c218c4d04d9c9691c7fdef55e74a2a",
   "target": "x86_64-unknown-netbsd",
-  "graph_scope": "Actual Cargo 1.99.0 offline locked filtered metadata: 52 registry packages plus the local root. Includes host build dependencies; does not prove which objects are linked.",
+  "graph_scope": "Actual Cargo offline locked filtered metadata: 52 registry packages plus the local root. Includes host build dependencies; does not prove which objects are linked.",
   "notice_scope": "All 103 original LICENSE/COPYING/NOTICE files from the full 61-crate source closure, plus five project license texts, original REUSE.toml and Cargo.lock. This is a superset of the target graph.",
   "project": {
     "source_spdx": "LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL",

@@ -1,4 +1,4 @@
-Origin: EmberBSD; Rust 1.99.0 stage0 cross-standard-library integration; not submitted upstream.
+Origin: EmberBSD; Rust 1.99.1 stage0 cross-standard-library integration; not submitted upstream.
 
 Std::run builds cross std with local-rebuild=true, but StdLink only copies
 an initial sysroot and omits the new target stamp. Merge the host files,

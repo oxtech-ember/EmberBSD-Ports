@@ -1,7 +1,7 @@
 # Rust 1.99 target standard library on a macOS build host
 
 This source probe builds the NetBSD/AArch64 standard library with the official
-Rust 1.99.0 Apple Silicon compiler and the existing GCC 16.2.0 cross toolchain.
+Rust 1.99.1 Apple Silicon compiler and the existing GCC 16.2.0 cross toolchain.
 It provides the compiler/runtime compatibility check needed before building
 current librsvg for the common Wayland desktop. It is not an installed Rust,
 librsvg or desktop package.
@@ -42,19 +42,19 @@ Required inputs:
 
 - Apple Silicon macOS, Ruby, native build tools and upstream bootstrap's
   existing Python dependency; tested with Python 3.14.
-- Official Rust 1.99.0, commit `b940084d7eb6a299eb4bfeb8e34901bc051e7ac4`,
+- Official Rust 1.99.1, commit `58cf8f9c35b355199727627d07ae34a4e2846d67`,
   and matching native cargo/host std.
 - The [GCC16 cross toolchain](../../profiles/development-toolchain/cross/README.md)
   and a NetBSD/AArch64 sysroot containing its actual headers, CRT objects,
   libc, libpthread and `/usr/pkg/gcc16/lib/libgcc_s.so.1`.
-- The full verified `rustc-1.99.0-src.tar.xz`, which includes bootstrap and
+- The full verified `rustc-1.99.1-src.tar.xz`, which includes bootstrap and
   vendored crates. The smaller rust-src component is insufficient.
 - A new absolute work directory outside all inputs, with at least 8 GiB free.
 
 ```sh
 PYTHON=/absolute/path/to/python3 ruby build.rb \
   /absolute/host-rust /absolute/cross-tools /absolute/target-sysroot \
-  /absolute/downloads/rustc-1.99.0-src.tar.xz /absolute/new-work
+  /absolute/downloads/rustc-1.99.1-src.tar.xz /absolute/new-work
 ```
 
 The helper uses two jobs and offline vendored Cargo dependencies. It checks

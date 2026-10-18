@@ -38,10 +38,12 @@ bmake = ENV.fetch('BMAKE', 'bmake')
 make = [bmake, '-C', tree + '/devel/protobuf', "MAKECONF=#{makeconf}",
         "WRKDIR=#{work}/package", "WRKOBJDIR=#{work}/objects", "PACKAGES=#{work}/packages",
         "DISTDIR=#{distfiles}", '_PKGSRC_BARRIER=yes']
-metadata = %w[PKGNAME PKG_FAIL_REASON WRKSRC CONFIGURE_ARGS CMAKE_CONFIGURE_ARGS DEPENDS TOOL_DEPENDS].to_h do |name|
+metadata = %w[PKGNAME PKG_FAIL_REASON WRKSRC CONFIGURE_ARGS CMAKE_CONFIGURE_ARGS DEPENDS TOOL_DEPENDS USE_CROSS_COMPILE OPSYS].to_h do |name|
   [name, run.call('metadata-' + name, make + ['show-var', "VARNAME=#{name}"]).strip]
 end
-abort 'Wrong recipe metadata.' unless metadata['PKGNAME'] == 'protobuf-36.2' && metadata['PKG_FAIL_REASON'].empty?
+cross_split = metadata['USE_CROSS_COMPILE'].downcase == 'yes' && metadata['OPSYS'] == 'NetBSD'
+expected_name = cross_split ? 'protobuf-36.2nb1' : 'protobuf-36.2'
+abort 'Wrong recipe metadata.' unless metadata['PKGNAME'] == expected_name && metadata['PKG_FAIL_REASON'].empty?
 abort 'Non-private source path.' unless metadata['WRKSRC'] == work + '/package/protobuf-36.2'
 %w[-Dprotobuf_LOCAL_DEPENDENCIES_ONLY=ON -Dprotobuf_BUILD_SHARED_LIBS=ON].each do |flag|
   abort "Missing #{flag}" unless Shellwords.split(metadata['CMAKE_CONFIGURE_ARGS']).include?(flag)

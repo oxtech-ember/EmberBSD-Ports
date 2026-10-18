@@ -195,15 +195,9 @@
   "lock_sha256": "d2fa05be2697e96e1c2f11dfa361266938ea75c6eb6977d8d292f288ed79d031",
   "closure_sha256": "acb28098e0d59ce12c077710fffacfa628bc42ff139a9f3c2544c891b1ec5a01",
   "helper_sha256": "fbef6a9f660602f5960807c98e8f550daf193885a9ec843a51328f1fc86dc2fd",
-  "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: aarch64-apple-darwin\nrelease: 1.99.0\nLLVM version: 23.1.1\n",
-  "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)",
-  "ruby": "ruby 4.0.5 (2026-05-20 revision 64336ffd0e) +PRISM [arm64-darwin25]",
-  "rubygems": "4.0.11",
   "archive": "cxx-rust-cssparser-vendor-1.1.0-r1.tar",
   "archive_sha256": "d2e42517a49923fcd79fb7f05b650a4821c218c4d04d9c9691c7fdef55e74a2a",
   "archive_size": 40816640,
   "generator_commit": "73bd112c9d0dda110b27c1e3ae93b3120e171f43",
-  "independent_generations": 2,
-  "independent_receipts_byte_identical": true,
   "provenance": "Host-derived source, not an upstream release asset or signature. All original registry file bytes and license files retained."
 }

@@ -41,10 +41,10 @@ Dir.mktmpdir('ember-cssparser-targets-') do |work|
     variables.zip(values).to_h
   end
   arm = query.call
-  check('AArch64 target and host-tool dependency are preserved') { arm['PKG_FAIL_REASON'].empty? && arm['RUST_TARGET'] == 'aarch64-unknown-netbsd' && arm['TOOL_DEPENDS'].include?('rust-std-aarch64-netbsd-1.99.0') }
+  check('AArch64 target and host-tool dependency are preserved') { arm['PKG_FAIL_REASON'].empty? && arm['RUST_TARGET'] == 'aarch64-unknown-netbsd' && arm['TOOL_DEPENDS'].include?('rust-std-aarch64-netbsd-1.99.1') }
   amd = query.call('CROSS_MACHINE_ARCH=x86_64', 'MACHINE_ARCH=x86_64', 'MACHINE_GNU_PLATFORM=x86_64--netbsd')
   check('amd64 target selects matching linker and C++ bridge') { amd['PKG_FAIL_REASON'].empty? && amd['RUST_TARGET'] == 'x86_64-unknown-netbsd' && amd['CARGO_ENV'].include?('CARGO_TARGET_X86_64_UNKNOWN_NETBSD_LINKER=') && amd['CARGO_ENV'].include?('CXX_x86_64_unknown_netbsd=') && amd['_EMBER_CSS_GNU_TRIPLET'] == 'x86_64--netbsd' }
-  check('amd64 target std uses the common host data package') { amd['TOOL_DEPENDS'].include?('rust-std-x86_64-netbsd-1.99.0') }
+  check('amd64 target std uses the common host data package') { amd['TOOL_DEPENDS'].include?('rust-std-x86_64-netbsd-1.99.1') }
   check('foreign architecture fails explicitly') { !query.call('CROSS_MACHINE_ARCH=riscv64')['PKG_FAIL_REASON'].empty? }
   check('mixed GNU toolchain fails explicitly') { !query.call('CROSS_MACHINE_ARCH=x86_64')['PKG_FAIL_REASON'].empty? }
   check('mixed Rust target fails explicitly') { !query.call('RUST_TARGET=x86_64-unknown-netbsd')['PKG_FAIL_REASON'].empty? }

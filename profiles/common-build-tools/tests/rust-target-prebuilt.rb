@@ -7,7 +7,7 @@ require 'open3'
 abort 'Usage: rust-target-prebuilt.rb READ_ELF STD_ARCHIVE NEW_WORK' unless ARGV.length == 3
 readelf, archive, work = ARGV.map { |path| File.expand_path(path) }
 abort 'Archive SHA256 differs from the release manifest' unless
-  Digest::SHA256.file(archive).hexdigest == '8eb1d542fe204128ce622c1477bd7e44e1bb041fa30373996a5f24d34184f4aa'
+  Digest::SHA256.file(archive).hexdigest == '97569760ad6e042d56ccdac2fd295df8a10351403b9bbca2a19567f8ed6ae46b'
 Dir.mkdir(work)
 work = File.realpath(work)
 source = File.join(work, 'rust-std-1.99.1-x86_64-unknown-netbsd')
