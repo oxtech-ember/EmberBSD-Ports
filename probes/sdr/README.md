@@ -64,10 +64,9 @@ the observed Python 3.14.8/removed-distutils probe failure and its scope.
 
 ## Contracts and actual results
 
-The 2026-10-07 host run used Apple Clang 21.0.0, CMake 4.4.4 and Ninja 1.13.2.
+The host run uses Apple Clang 21.0.0, CMake 4.4.4 and Ninja 1.13.2.
 A fresh source-cache build and the complete installed-consumer test script
-passed, then passed again after rebuilding against the common libxml2 2.15.4
-provider. The tests use two small synthetic XML contexts and a generated,
+pass against the common libxml2 2.15.4 provider. The tests use two small synthetic XML contexts and a generated,
 deterministic 4096-sample signed IQ file. No RF recording or hardware metadata
 is needed.
 

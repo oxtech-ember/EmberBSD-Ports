@@ -10,3 +10,4 @@ process-name-return.patch
 source-name-lifetime.patch
 parser-error-ownership.patch
 shared-command-cleanup.patch
+target-memory-query.patch

@@ -124,9 +124,9 @@ with fixed-scale SE(3) ATE RMSE 0.01762/0.01712 m and maximum error
 0.07675/0.06781 m. Both returned to one native thread after shutdown.
 Its README records timing, RSS, input failures and strict export coverage.
 
-An earlier run without the explicit DUtils seed tracked only 487/573 frames
-and exposed the inherited missing-pose history defect. That failed result
-is retained; repairing its export does not accept its tracking. Two controlled
+A run without the explicit DUtils seed is retained as a negative control:
+487/573 frames and the inherited missing-pose history defect; repairing its
+export does not accept its tracking. Two controlled
 passes do not prove that the seed caused or eliminated the earlier tracking
 failure, general scheduling stability, real-time throughput or a long run.
 

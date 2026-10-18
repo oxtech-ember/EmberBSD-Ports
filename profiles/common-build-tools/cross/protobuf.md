@@ -132,8 +132,17 @@ licenses. Reinstallation passes the full payload comparison and both consumers.
 The package SHA256 is
 `15bceb9f867b9280c148065adaedc3bb5daa0b2b169bb95ea513a24099132706`.
 This establishes ordinary Abseil package acceptance, without target memory
-instrumentation. Protobuf split package creation and installed-consumer
-acceptance remain pending.
+instrumentation.
+
+The ordinary `protobuf-36.2nb1` runtime package passes the complete upstream
+build, exhaustive stage partition and normal pkgsrc package checks. An independent
+audit verifies its five AArch64 shared libraries, five links and two license texts.
+Its dependencies resolve to common Abseil, GCC16 and zlib 1.3.2. No build paths
+remain in ELF runtime lookup. All twelve entries match after normal SDK installation.
+The runtime archive SHA256 is
+`2f5beb96c1f0767707ad2ddd55d73741a8d854d8bfe68f75f5f2eeb9fd1c9525`.
+The SDK package, installed protobuf consumer checks and target runtime package
+lifecycle remain pending.
 
 The bounded native stack-trace build uses frame pointers and returns four
 frames. Its consumer passes strict Memcheck with no errors, live heap blocks

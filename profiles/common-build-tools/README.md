@@ -37,7 +37,8 @@ consumers. The cross protobuf runtime installs no target generator; the SDK
 retains the complete development interface. Native packaging stays complete.
 Source, host-tool and CMake metadata regressions pass. Abseil's ordinary package
 passes both installed SDK consumers on AArch64, all 816 payload checks and
-normal removal/reinstallation. Protobuf split package acceptance remains pending.
+normal removal/reinstallation. The protobuf runtime package passes normal checks
+and all twelve SDK payload entries; SDK packaging and target acceptance remain pending.
 A bounded AArch64
 source-probe regression verifies Abseil's NetBSD stack-trace repair: the same
 consumer changes from zero frames to three non-null frames.

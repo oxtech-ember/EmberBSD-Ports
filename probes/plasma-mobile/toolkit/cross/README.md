@@ -226,8 +226,8 @@ This establishes the build prerequisite, not Frameworks or KWin runtime acceptan
 
 ## Path-only file transfer descriptors
 
-Qt 6.12 initially enabled the desktop portal file-transfer format on EmberBSD,
-then failed to compile because `O_PATH` is unavailable. The recipe now tests
+Qt 6.12 cannot compile the desktop portal file-transfer format on EmberBSD
+because `O_PATH` is unavailable. The recipe tests
 this API with the target compiler before enabling that feature. Substituting
 `O_RDONLY` would change file permissions and directory semantics and could
 block on a FIFO. See the upstream [FileTransfer contract](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.FileTransfer.html).

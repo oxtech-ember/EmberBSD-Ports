@@ -1,16 +1,23 @@
-diff --git a/libcinnamon-desktop/meson.build b/libcinnamon-desktop/meson.build
-index cc4a650..3097064 100644
+$NetBSD$
+
+Wayland profile: the GTK3-era background, RandR and thumbnail code
+is not built (no GTK3 in this stack); gnome-desktop-utils.c stays
+(GTK-free, provides _gnome_desktop_init_i18n). Cross introspection
+runs through the shared GI machinery with the target GType query
+launcher and ELF ldd wrapper.
+
 --- libcinnamon-desktop/meson.build.orig
-+++ b/libcinnamon-desktop/meson.build
-@@ -14,28 +14,17 @@ dbus_idle_built_sources = gnome.gdbus_codegen('meta-dbus-idle-monitor',
++++ libcinnamon-desktop/meson.build
+@@ -14,28 +14,18 @@
  libcinnamon_desktop_gir_sources = [
    'display-name.c',
    'edid-parse.c',
 -  'gnome-bg-crossfade.c',
 -  'gnome-bg.c',
 -  'gnome-desktop-thumbnail.c',
--  'gnome-desktop-utils.c',
-   'gnome-gettext-portable.c',
++  'gnome-gettext-portable.c',
+   'gnome-desktop-utils.c',
+-  'gnome-gettext-portable.c',
    'gnome-idle-monitor.c',
    'gnome-languages.c',
    'gnome-pnp-ids.c',
@@ -31,7 +38,7 @@ index cc4a650..3097064 100644
    'edid.h',
    'private.h'
  ]
-@@ -44,23 +33,15 @@ libcinnamon_desktop_sources = [
+@@ -44,23 +34,16 @@
    libcinnamon_desktop_gir_sources,
    libcinnamon_desktop_misc_headers,
    'gnome-datetime-source.c',
@@ -45,8 +52,9 @@ index cc4a650..3097064 100644
 -  'gnome-bg-crossfade.h',
 -  'gnome-bg.h',
 -  'gnome-desktop-thumbnail.h',
--  'gnome-desktop-utils.h',
-   'gnome-idle-monitor.h',
++  'gnome-idle-monitor.h',
+   'gnome-desktop-utils.h',
+-  'gnome-idle-monitor.h',
    'gnome-languages.h',
    'gnome-pnp-ids.h',
 -  'gnome-rr-config.h',
@@ -55,7 +63,7 @@ index cc4a650..3097064 100644
    'gnome-systemd.h',
    'gnome-wall-clock.h',
    'gnome-xkb-info.h',
-@@ -91,7 +72,6 @@ pkgconfig.generate(
+@@ -91,22 +74,26 @@
    name: 'cinnamon-desktop',
    description: 'Utility library for loading .desktop files',
    version: meson.project_version(),
@@ -63,3 +71,38 @@ index cc4a650..3097064 100644
    requires_private: [ 'xkbfile', ],
    libraries: libcinnamon_desktop,
    subdirs: join_paths('cinnamon-desktop'),
+   variables: [ 'exec_prefix=${prefix}'],
+ )
+ 
++# EmberBSD cross: shared GI machinery (target GType queries + ldd wrapper).
++gir_extra_args = []
++gir_env = environment()
++if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++  gir_extra_args = ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++  gir_env.set('LD_LIBRARY_PATH', meson.current_build_dir())
++endif
+ cdesktop_gir = gnome.generate_gir(libcinnamon_desktop,
++  extra_args: gir_extra_args + ['-DGNOME_DESKTOP_USE_UNSTABLE_API'], env: gir_env,
+   sources: 'cdesktop-enums.h',
+   namespace: 'CDesktopEnums',
+   nsversion: '3.0',
+   identifier_prefix: 'CDesktop',
+   symbol_prefix: 'c_desktop',
+-  extra_args: [
+-    '-DGNOME_DESKTOP_USE_UNSTABLE_API',
+-  ],
+   install: true,
+ )
+ 
+@@ -118,9 +105,10 @@
+   identifier_prefix: 'Gnome',
+   symbol_prefix: 'gnome_',
+   includes: ['GObject-2.0', 'Gtk-3.0', cdesktop_gir[0], ],
+-  extra_args: [
++  extra_args: gir_extra_args + [
+     '-DGNOME_DESKTOP_USE_UNSTABLE_API',
+   ],
++  env: gir_env,
+   install: true,
+ )
+ 

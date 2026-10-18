@@ -5,7 +5,7 @@
 
 PKGNAME=	ng-spice-${VERSION}
 COMMENT=	Next generation circuit simulation program
-DEPENDS+=	ng-spice-shared-${VERSION}{,nb[0-9]*}:../../cad/ng-spice-shared
+DEPENDS+=	ng-spice-shared-${VERSION}nb${PKGREVISION}:../../cad/ng-spice-shared
 
 CONFIGURE_ARGS+=	--with-ngshared=no --with-readline=yes --with-editline=no --without-x
 

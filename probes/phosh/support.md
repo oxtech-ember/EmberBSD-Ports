@@ -86,13 +86,13 @@ This probe uses its existing client API required by Phosh.
 ## Native gettext ABI
 
 The installed NetBSD GLib/GIO stack uses `/usr/lib/libintl.so.1`.
-Direct Meson builds initially selected pkgsrc's `libintl.so.8` as well,
+Direct Meson builds would also select pkgsrc's `libintl.so.8`,
 creating a mixed gettext dependency set. The private
 [pkg-config wrapper](native-pkg-config.sh) replaces the `-lintl` token with
 the explicit native library path. Its substitution uses POSIX extended
 regular expressions supported by NetBSD `sed`.
 
-The final fresh build used this wrapper from its first Meson setup.
+Fresh builds use this wrapper from the first Meson setup.
 The helper's GTK `ldd` regression check rejects `libintl.so.8`.
 Inspection of the installed GTK, GNOME Bluetooth, libfeedback and
 libcallaudio libraries confirmed native `libintl.so.1`, without

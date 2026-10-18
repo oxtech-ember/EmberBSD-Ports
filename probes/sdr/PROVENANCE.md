@@ -72,10 +72,8 @@ local IIO, Python and MATLAB bindings, packaging and normal `iiod` are disabled.
 Zstandard must be enabled: libiio1's network client requires it at configure.
 
 Host evidence uses macOS arm64, Apple Clang 21, CMake 4.4.4 and Homebrew
-Zstandard 1.5.7. The initial investigation used the Apple SDK's libxml2 2.9.13
-declarations/system runtime as host infrastructure. The current recipe was
-rebuilt against project libxml2 2.15.4 and all installed RX contracts passed
-again. Loader tracing confirms `XML_PREFIX/lib/libxml2.16.1.4.dylib`.
+Zstandard 1.5.7. The recipe builds against the project libxml2 2.15.4;
+all installed RX contracts pass. Loader tracing confirms `XML_PREFIX/lib/libxml2.16.1.4.dylib`.
 Native dependency versions/ELF/base-GCC ABI remain unverified.
 No Python helper is introduced; the selected C/C++ build disables upstream
 Python bindings. SoapySDR 0.8.1 still runs optional upstream Python discovery

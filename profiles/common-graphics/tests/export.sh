@@ -96,7 +96,7 @@ cp "$profile/sources.tsv" "$work/saved-manifest"
 sed 's/bce5f7fb/00000000/' "$work/saved-manifest" > "$profile/sources.tsv"
 negative altered-manifest
 cp "$work/saved-manifest" "$profile/sources.tsv"
-for dependency in math/eigen3 x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info; do
+for dependency in math/eigen3 x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/lerc graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info; do
     # Every added consumer/dependency needs its exact source pin.
     awk -F '\t' -v dep="$dependency" 'BEGIN { OFS="\t" }
         $1 == dep { $3="0000000000000000000000000000000000000000000000000000000000000000" }
@@ -112,7 +112,7 @@ for dependency in devel/glib2-tools devel/glib2-introspection devel/gdbus-codege
     negative "missing-${dependency##*/}-family-recipe"
     mv "$work/family-Makefile" "$profile/recipes/$dependency/Makefile"
 done
-for entry in 'devel/libffi:patch-src_powerpc_ffi__powerpc.h' 'wayland/labwc:patch-docs_meson.build' 'wayland/labwc:patch-meson.build' 'wayland/labwc:patch-src_common_string-helpers.c' 'wayland/labwc:patch-src_cycle_osd-field.c' 'graphics/gdk-pixbuf2:patch-emberbsd_meson.build' 'graphics/gdk-pixbuf2:patch-emberbsd_gdk-pixbuf_meson.build' 'graphics/gdk-pixbuf2:patch-emberbsd_thumbnailer_meson.build' 'graphics/gdk-pixbuf2:patch-emberbsd_build-aux_gen-thumbnailer.py' 'databases/shared-mime-info:patch-src_update-mime-database.cpp' 'graphics/librsvg:patch-meson_gir-cross.build' 'graphics/librsvg:patch-rsvg_meson.build' 'graphics/librsvg:patch-gdk-pixbuf-loader_meson.build' 'graphics/librsvg:patch-.._vendor_wide-1.7.1_src_f32x4__.rs' 'devel/glib2:patch-meson.build' 'devel/glib2:patch-meson_gir-cross.build' 'devel/glib2:patch-girepository_compiler_meson.build' 'converters/fribidi:patch-bin_Makefile.in' 'archivers/lzo:patch-src_lzo1f__d.ch' 'x11/libXt:patch-util_Makefile.in'; do
+for entry in 'graphics/lerc:patch-src_LercLib_fpl__EsriHuffman.cpp' 'graphics/jbigkit:patch-test-cleanup' 'devel/libffi:patch-src_powerpc_ffi__powerpc.h' 'wayland/labwc:patch-docs_meson.build' 'wayland/labwc:patch-meson.build' 'wayland/labwc:patch-src_common_string-helpers.c' 'wayland/labwc:patch-src_cycle_osd-field.c' 'graphics/gdk-pixbuf2:patch-emberbsd_meson.build' 'graphics/gdk-pixbuf2:patch-emberbsd_gdk-pixbuf_meson.build' 'graphics/gdk-pixbuf2:patch-emberbsd_thumbnailer_meson.build' 'graphics/gdk-pixbuf2:patch-emberbsd_build-aux_gen-thumbnailer.py' 'databases/shared-mime-info:patch-src_update-mime-database.cpp' 'graphics/librsvg:patch-meson_gir-cross.build' 'graphics/librsvg:patch-rsvg_meson.build' 'graphics/librsvg:patch-gdk-pixbuf-loader_meson.build' 'graphics/librsvg:patch-.._vendor_wide-1.7.1_src_f32x4__.rs' 'devel/glib2:patch-meson.build' 'devel/glib2:patch-meson_gir-cross.build' 'devel/glib2:patch-girepository_compiler_meson.build' 'converters/fribidi:patch-bin_Makefile.in' 'archivers/lzo:patch-src_lzo1f__d.ch' 'x11/libXt:patch-util_Makefile.in'; do
     dependency=${entry%:*}
     name=${entry#*:}
     cp "$profile/recipes/$dependency/distinfo" "$work/new-dependency-distinfo"
@@ -155,11 +155,11 @@ shared=$profile/recipes/cad/ng-spice-shared
 mv "$shared/Makefile" "$work/ngspice-shared-Makefile"
 negative missing-ngspice-shared-recipe
 mv "$work/ngspice-shared-Makefile" "$shared/Makefile"
-delta=$ngspice/patches/patch-12-shared-command-cleanup
+delta=$ngspice/patches/patch-13-target-memory-query
 mv "$delta" "$work/ngspice-patch-link"
 negative missing-ngspice-patch
 # Matching bytes at an unexpected link destination must still be refused.
-ln -s "$root/probes/kicad/ngspice/patches/shared-command-cleanup.patch" "$delta"
+ln -s "$root/probes/kicad/ngspice/patches/target-memory-query.patch" "$delta"
 negative unexpected-ngspice-patch-origin
 rm "$delta"
 mv "$work/ngspice-patch-link" "$delta"
@@ -168,7 +168,7 @@ negative unexpected-ngspice-extra-link
 rm "$ngspice/unexpected-link"
 cp "$ngspice/distinfo" "$work/ngspice-distinfo"
 mv "$delta" "$work/ngspice-patch-link"
-sed '/SHA1 (patch-12-shared-command-cleanup)/d' "$work/ngspice-distinfo" > "$ngspice/distinfo"
+sed '/SHA1 (patch-13-target-memory-query)/d' "$work/ngspice-distinfo" > "$ngspice/distinfo"
 negative omitted-ngspice-patch-and-checksum
 mv "$work/ngspice-patch-link" "$delta"
 cp "$work/ngspice-distinfo" "$ngspice/distinfo"
@@ -207,11 +207,11 @@ for mode in default development-toolchain common-build-tools common-graphics com
     else sh "$script" "$tree" "$mode" > "$work/$mode.log" 2>&1; fi
     case "$mode" in
         common-graphics|common-media|plasma-mobile)
-            for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info math/eigen3 cad/ng-spice cad/ng-spice-shared; do diff -qr "$profile/recipes/$recipe" "$tree/$recipe"; done
+            for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info math/eigen3 cad/ng-spice cad/ng-spice-shared; do diff -qr "$profile/recipes/$recipe" "$tree/$recipe"; done
             cmp "$profile/mk.conf" "$tree/EMBERBSD-COMMON-GRAPHICS-MK.CONF"
             cmp "$profile/sources.tsv" "$tree/EMBERBSD-COMMON-GRAPHICS-SOURCES" ;;
         *)
-            for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info math/eigen3 cad/ng-spice cad/ng-spice-shared; do diff -qr "$root/upstream/pkgsrc/$recipe" "$tree/$recipe"; done
+            for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info math/eigen3 cad/ng-spice cad/ng-spice-shared; do diff -qr "$root/upstream/pkgsrc/$recipe" "$tree/$recipe"; done
             [ ! -e "$tree/EMBERBSD-COMMON-GRAPHICS-MK.CONF" ] ;;
     esac
     case "$mode" in common-build-tools|common-graphics|common-media|plasma-mobile)
