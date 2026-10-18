@@ -1,5 +1,9 @@
 # Common graphics source packages
 
+[wxWidgets 3.2.12](cross/wxwebkit.md) retains the stable 3.2 API and the
+canonical WebView, media and OpenGL configuration. Its source and recipe
+metadata checks pass; the WebKit upgrade and full GUI build remain pending.
+
 [Maintained FreeImage 3.19.25 and LibRaw 0.22.2](cross/freeimage.md)
 provide common source recipes for OCCT image support. Source preparation,
 GCC16 header selection and half conversions pass; complete codec packages

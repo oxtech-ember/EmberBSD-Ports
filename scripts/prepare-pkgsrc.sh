@@ -129,7 +129,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             $1 != "converters/fribidi" &&
             $1 != "graphics/png" && $1 != "graphics/freeimage" && $1 != "graphics/freeimageplus" && $1 != "graphics/libraw" &&
             $1 != "graphics/freetype2" &&
-            $1 != "archivers/lzo" && $1 != "x11/libXt" && $1 != "devel/pango" && $1 != "devel/libsfdo" && $1 != "sysutils/dbus" && $1 != "devel/gobject-introspection" && $1 != "graphics/librsvg" && $1 != "multimedia/dav1d" && $1 != "devel/xxhash" && $1 != "graphics/gdk-pixbuf2" && $1 != "databases/shared-mime-info" && $1 != "x11/gtk3" && $1 != "devel/at-spi2-core") ||
+            $1 != "archivers/lzo" && $1 != "x11/libXt" && $1 != "devel/pango" && $1 != "devel/libsfdo" && $1 != "sysutils/dbus" && $1 != "devel/gobject-introspection" && $1 != "graphics/librsvg" && $1 != "multimedia/dav1d" && $1 != "devel/xxhash" && $1 != "graphics/gdk-pixbuf2" && $1 != "databases/shared-mime-info" && $1 != "x11/gtk3" && $1 != "x11/wxGTK32" && $1 != "devel/at-spi2-core") ||
             $2 !~ /^[a-zA-Z0-9][a-zA-Z0-9._+-]*\.tar\.(xz|gz|bz2)$/ ||
             length($3) != 64 || $3 !~ /^[0-9a-f]+$/ ||
             $4 !~ /^https:\/\// || seen[$1]++ { bad=1 }
@@ -144,12 +144,13 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             !seen["converters/fribidi"] ||
             !seen["graphics/png"] || !seen["graphics/freeimage"] || !seen["graphics/freeimageplus"] || !seen["graphics/libraw"] ||
             !seen["graphics/freetype2"] ||
-            !seen["archivers/lzo"] || !seen["x11/libXt"] || !seen["devel/pango"] || !seen["devel/libsfdo"] || !seen["sysutils/dbus"] || !seen["devel/gobject-introspection"] || !seen["graphics/librsvg"] || !seen["multimedia/dav1d"] || !seen["devel/xxhash"] || !seen["graphics/gdk-pixbuf2"] || !seen["databases/shared-mime-info"] || !seen["x11/gtk3"] || !seen["devel/at-spi2-core"]) exit 1 }
+            !seen["archivers/lzo"] || !seen["x11/libXt"] || !seen["devel/pango"] || !seen["devel/libsfdo"] || !seen["sysutils/dbus"] || !seen["devel/gobject-introspection"] || !seen["graphics/librsvg"] || !seen["multimedia/dav1d"] || !seen["devel/xxhash"] || !seen["graphics/gdk-pixbuf2"] || !seen["databases/shared-mime-info"] || !seen["x11/gtk3"] || !seen["x11/wxGTK32"] || !seen["devel/at-spi2-core"]) exit 1 }
     ' "$graphics/sources.tsv" || { echo 'Invalid common graphics manifest.' >&2; exit 2; }
     while IFS="$(printf '\t')" read -r recipe archive sha url; do
         case "$recipe" in
             ''|'#'*) continue ;;
             cad/ng-spice) pin='ngspice-47.tar.gz:894e649651f1838a14095e5a5439e7d3aa63e87ede14d283173fda4fcdef675f:https://downloads.sourceforge.net/project/ngspice/ng-spice-rework/47/ngspice-47.tar.gz' ;;
+            x11/wxGTK32) pin='wxWidgets-3.2.12.tar.bz2:a62719bb5e1dcc41c1a6fc1eecd499c7ee8521f70402c7b1bb3342a1e16344e0:https://github.com/wxWidgets/wxWidgets/releases/download/v3.2.12/wxWidgets-3.2.12.tar.bz2' ;;
             x11/gtk3) pin='gtk-3.24.52.tar.xz:80931fa472a77b9a164f6740e3c0b444fac6770054632d35a7ff9d679e5e7b9f:https://download.gnome.org/sources/gtk/3.24/gtk-3.24.52.tar.xz' ;;
             devel/at-spi2-core) pin='at-spi2-core-2.62.1.tar.xz:cca6b6a86e4389d89b370288761ce2385ddeceb10c4412da78689bc30c88af2d:https://download.gnome.org/sources/at-spi2-core/2.62/at-spi2-core-2.62.1.tar.xz' ;;
             graphics/MesaLib) pin='mesa-26.2.4.tar.xz:bce5f7fbebb934373b86c999a064d52fb5065878dc57f287f95346648ec832e9:https://archive.mesa3d.org/mesa-26.2.4.tar.xz' ;;
@@ -192,7 +193,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
         esac
         [ "$archive:$sha:$url" = "$pin" ] || { echo "Incorrect common graphics source pin: $recipe" >&2; exit 2; }
     done < "$graphics/sources.tsv"
-    for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/freeimage graphics/freeimageplus graphics/libraw graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info x11/gtk3 devel/at-spi2-core cad/ng-spice cad/ng-spice-shared; do
+    for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/freeimage graphics/freeimageplus graphics/libraw graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info x11/gtk3 x11/wxGTK32 devel/at-spi2-core cad/ng-spice cad/ng-spice-shared; do
         source=$graphics/recipes/$recipe
         recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk'
         case "$recipe" in
@@ -200,6 +201,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             graphics/freeimageplus) recipe_files='Makefile DESCR PLIST buildlink3.mk files/CMakeLists.txt' ;;
             cad/ng-spice) recipe_files='Makefile Makefile.common DESCR PLIST distinfo' ;;
             cad/ng-spice-shared) recipe_files='Makefile DESCR PLIST buildlink3.mk' ;;
+            x11/wxGTK32) recipe_files='Makefile DESCR PLIST PLIST.Darwin PLIST.cmake PLIST.configure PLIST.gtk3 distinfo buildlink3.mk' ;;
             x11/gtk3) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk options.mk modules.mk' ;;
             wayland/labwc) recipe_files='Makefile DESCR PLIST distinfo options.mk files/startlabwc.sh.in' ;;
             devel/glib2-tools|devel/glib2-introspection) recipe_files='Makefile DESCR PLIST' ;;
@@ -222,6 +224,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             cad/ng-spice-shared) approved='' ;;
             devel/libffi) approved='patch-configure patch-configure_host patch-src_aarch64_ffi.c patch-src_arm_sysv.S patch-src_closures.c patch-src_m68k_ffi.c patch-src_m88k_elfbsd.S patch-src_mips_ffi.c patch-src_mips_ffitarget.h patch-src_powerpc_ffi.c patch-src_powerpc_ffi__powerpc.h patch-testsuite_lib_libffi.exp patch-testsuite_libffi.call_float2.c' ;;
             devel/at-spi2-core) approved='patch-meson-gir-cross.build patch-meson.build patch-registryd_registry.c' ;;
+            x11/wxGTK32) approved='patch-configure patch-src_unix_glegl.cpp patch-src_unix_utilsunx.cpp' ;;
             x11/gtk3) approved='patch-gdk_wayland_gdkdevice-wayland.c patch-gdk_x11_gdkscreen-x11.h patch-gdk_x11_gdkwindow-x11.h patch-gtk_a11y_gtkaccessibility.c patch-gtk_fallback-c89.c patch-gtk_gtkfontchooserwidget.c patch-gtk_gtklabel.c patch-meson-gir-cross.build patch-meson.build patch-meson_options.txt patch-tests_gtkgears.c' ;;
             devel/glib2) approved='patch-girepository_compiler_meson.build patch-meson_gir-cross.build patch-gio_gcredentialsprivate.h patch-gio_gdbus-2.0_codegen_meson.build patch-gio_glib-compile-schemas.c patch-gio_gresource-tool.c patch-gio_gunixcredentialsmessage.c patch-gio_gunixmounts.c patch-gio_inotify_inotify-kernel.c patch-gio_meson.build patch-gio_tests_iptosmessage.c patch-gio_tests_meson.build patch-girepository_gitypelib.c patch-glib_gatomic.c patch-glib_gatomic.h patch-glib_genviron.c patch-glib_glib-unix.c patch-glib_gspawn-posix.c patch-glib_gthread.c patch-glib_tests_hash.c patch-glib_tests_include.c patch-glib_tests_meson.build patch-glib_tests_testing.c patch-glib_tests_thread.c patch-gmodule_gmodule-dl.c patch-gmodule_gmodule.c patch-gobject_glib-mkenums.in patch-gobject_meson.build patch-meson.build patch-meson.options' ;;
             devel/gobject-introspection) approved='patch-gir_meson.build patch-girepository_gitypelib.c patch-giscanner_ast.py patch-giscanner_ccompiler.py patch-meson.build patch-tests_meson.build patch-tools_compiler.c patch-tools_generate.c patch-tools_meson.build' ;;
@@ -410,7 +413,7 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
         "$destination/EMBERBSD-CROSS-MK.CONF"
 fi
 if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
-    for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/freeimage graphics/freeimageplus graphics/libraw graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info x11/gtk3 devel/at-spi2-core cad/ng-spice cad/ng-spice-shared; do
+    for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/freeimage graphics/freeimageplus graphics/libraw graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info x11/gtk3 x11/wxGTK32 devel/at-spi2-core cad/ng-spice cad/ng-spice-shared; do
         rm -rf "$destination/$recipe"
         if [ "$recipe" = cad/ng-spice ]; then
             cp -RL "$graphics/recipes/$recipe" "$destination/$recipe"
