@@ -38,6 +38,8 @@ continues to use native tools. No target generator runs during the build.
 Set the host Python 3.15 executable through `EMBERBSD_CROSS_BUILD_PYTHON`.
 Set the explicit SDK API 1 source through `EMBERBSD_SDK_SOURCE`.
 The controller requires only the Python standard library and the SDK modules.
+Its thin policy wrapper requires `emberbsd_sdk.stage.STAGE_PARTITION_API = 1`.
+The shared SDK mechanism owns inventory validation and pruning.
 
 The full native GCC16 source package passes normal package checks. Its API consumer
 passes four concurrent principal/cache/AES lifecycles, modified-ciphertext
