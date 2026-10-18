@@ -141,8 +141,20 @@ Its dependencies resolve to common Abseil, GCC16 and zlib 1.3.2. No build paths
 remain in ELF runtime lookup. All twelve entries match after normal SDK installation.
 The runtime archive SHA256 is
 `2f5beb96c1f0767707ad2ddd55d73741a8d854d8bfe68f75f5f2eeb9fd1c9525`.
-The SDK package, installed protobuf consumer checks and target runtime package
-lifecycle remain pending.
+The ordinary `protobuf-devel-36.2nb1` package also passes the complete upstream
+build and normal package checks. Its 341 entries are disjoint from the runtime.
+Four generator executables and all 69 UPB archive members use AArch64 ELF64
+little-endian objects. Fourteen CMake/pkg-config files contain no build paths.
+The SDK archive SHA256 is
+`6bb53342f97b6bac446a2aab3cf666b7d9223b95478711c32ff881feb80bac6f`.
+All 353 runtime/SDK entries match after normal installation in the development
+sysroot. Both public contracts link with GCC16 through these installed providers.
+Their ordinary target runtime package execution and lifecycle remain pending.
+
+The actual KiCad API command generates all fifteen schemas with native protoc.
+Target compilation currently exposes a conflict between the `KiCadVersion`
+accessors and the system `major`/`minor` macros. This does not establish a
+complete API library or KiCad application build.
 
 The bounded native stack-trace build uses frame pointers and returns four
 frames. Its consumer passes strict Memcheck with no errors, live heap blocks
