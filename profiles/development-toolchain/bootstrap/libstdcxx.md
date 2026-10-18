@@ -48,6 +48,18 @@ Run `tests/compiler-command.rb` with the same eight positional inputs to check
 real C/C++ compilation and GCC16 support paths without executing target code.
 Use a separate new work path for this bounded compiler contract.
 
+Before configure, the helper runs the upstream `libgcc/Makefile.in` rule for
+`gthr-default.h` in the sibling libgcc build directory. The actual compiler's
+POSIX thread model selects `gthr-posix.h` through the upstream mapping.
+Both source inputs and the generated header are hashed. Configure still compiles
+its real gthreads probe; no cached result enables C++ thread support.
+`tests/gthreads.rb` takes the same eight inputs and a ninth prepared failed work
+directory. It replays that directory's recorded probe and configure arguments
+in new output, leaving its source and configuration unchanged.
+The GCC16 AArch64 check rejects the missing header, compiles the repaired probe,
+and obtains `_GLIBCXX_HAS_GTHREADS=1` from complete configure. This does not
+establish library build or target runtime acceptance.
+
 The installed locale header must match the prepared source. All C++ headers
 and libstdc++ outputs come from the fresh installation. An explicit list carries
 the original libgcc CRT/support objects and selected libgcc, OpenMP and atomic

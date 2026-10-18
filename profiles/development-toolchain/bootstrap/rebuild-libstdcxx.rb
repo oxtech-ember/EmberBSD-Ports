@@ -155,6 +155,26 @@ module GCC16Runtime
        'CXX' => [@tools['gcc'], *@flags, '-shared-libgcc', '-nostdinc++'].join(' ')}
     end
 
+    def prepare_gthreads(source)
+      # Standalone libstdc++ still probes the sibling libgcc build header.
+      mapping = source + '/config/gthr.m4'
+      makefile = source + '/libgcc/Makefile.in'
+      header = File.read(mapping)[/^\s+posix\)\s+thread_header=([A-Za-z0-9_.-]+) ;;/, 1]
+      raise Invalid, 'Unexpected upstream POSIX thread header' unless header == 'gthr-posix.h'
+      rule = File.read(makefile)[/^gthr-default\.h: \$\(srcdir\)\/\$\(thread_header\)\n\t-\$\(LN_S\) \$< \$@\n/]
+      raise Invalid, 'Unexpected upstream gthr-default rule' unless rule
+      directory = @work + '/build/' + @triplet + '/libgcc'
+      FileUtils.mkdir_p(directory)
+      rulefile = @work + '/gthreads.mk'
+      File.write(rulefile, rule)
+      run_logged('gthreads.log', {}, @make, '-f', rulefile, 'srcdir=' + source + '/libgcc',
+        'thread_header=' + header, 'LN_S=ln -s', 'gthr-default.h', chdir: directory)
+      generated = directory + '/gthr-default.h'
+      expected = source + '/libgcc/' + header
+      raise Invalid, 'Incorrect generated thread header' unless File.symlink?(generated) && File.realpath(generated) == File.realpath(expected)
+      [mapping, makefile, expected, rulefile, generated, @work + '/gthreads.log'].each { |path| record(path) }
+    end
+
     def build
       preflight
       return if @check
@@ -167,6 +187,7 @@ module GCC16Runtime
       parent_paths = {'archive' => File.expand_path(@archive), 'pkgsrc' => File.expand_path(@old_pkgsrc)}
       Stage.new(@work + '/parent', @work + '/parent-recipe', @archive, receipt_paths: parent_paths, allow_rebuild: false).verify
       run_logged('patch.log', {}, 'sh', @here + '/prepare-source.sh', @pkgsrc, @archive, @work + '/src')
+      prepare_gthreads(@work + '/src')
       build = @work + '/build/' + @triplet + '/libstdc++-v3'
       FileUtils.mkdir_p(build)
       target_flags = @target == 'amd64' ? '-O2 -march=nocona -mtune=nocona -mfpmath=sse' : '-O2'
