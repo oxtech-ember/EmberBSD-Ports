@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.53 2026/09/02 19:05:16 wiz Exp $
 
-PKGREVISION= 3
+PKGREVISION= 4
 .include "../../meta-pkgs/lxqt/Makefile.common"
 
 DISTNAME=	libqtxdg-4.4.0
@@ -20,6 +20,7 @@ SUBST_CLASSES+=		prefix
 SUBST_MESSAGE.prefix=	Fixing paths.
 SUBST_STAGE.prefix=	pre-configure
 SUBST_FILES.prefix=	src/qtxdg/xdgdirs.cpp
+SUBST_FILES.prefix+=	test/tst_xdgdirs.cpp
 SUBST_SED.prefix=	-e 's,/etc/xdg,${PKG_SYSCONFDIR},g'
 SUBST_SED.prefix+=	-e 's,/usr/share,${PREFIX}/share,g'
 
