@@ -151,6 +151,8 @@ FileUtils.cp(File.join(__dir__, 'guest-rc.sh'), root + '/etc/rc')
 File.chmod(0755, root + '/etc/rc')
 mtree = "/set uid=0 gid=0\n" + run.call('mtree', tools + '/nbmtree', '-c', '-k', 'type,mode,link', '-p', root)
 mtree << devices.lines.reject { |line| line.start_with?('. type=dir') }.map { |line| line.sub(%r{\A\./}, './dev/') }.join
+# Apply image metadata without changing the hardlinked immutable base file.
+mtree << "./usr/bin/fstat type=file uid=0 gname=kmem mode=02555\n"
 File.write(work + '/artifacts/guest.mtree', mtree)
 run.call('makefs', tools + '/nbmakefs', '-t', 'ffs', '-B', 'little', '-Z', '-s', "#{disk_mib}m",
          '-o', 'version=2,label=emberquery', '-f', free_inodes.to_s, '-F', work + '/artifacts/guest.mtree',
