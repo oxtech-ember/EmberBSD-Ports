@@ -76,6 +76,28 @@ The recorded AArch64 package used Python 3.14; new target acceptance remains sep
 A Meson native machine file keeps its C compiler on macOS.
 Cross `readelf` obtains ELF SONAMEs instead of invoking a host loader.
 
+Cross builds use installed native Flex from `${TOOLBASE}/bin/flex` through
+the normal pkgsrc version check and an explicit tool dependency. GI supplies
+its own `yywrap`; its generated lexer does not require target `libfl`.
+Missing or unsuitable native Flex fails before dependency recursion. Native
+package routing is unchanged.
+
+Run this bounded check with an exported tree, the existing cross MAKECONF
+and a new absolute work directory. Its prerequisites must already be installed:
+
+```sh
+ruby profiles/common-graphics/tests/gi-native-flex.rb \
+  /absolute/pkgsrc /absolute/cross.mk.conf /absolute/new-flex-check
+```
+
+The check compares real baseline/fixed and native metadata, rejects three
+invalid providers, and runs ordinary private `patch` and `wrapper` phases.
+It then runs native Flex/Bison on the complete upstream lexer/parser and
+compiles the lexer through the target GCC16 wrapper. The AArch64 run passed
+with Flex 2.6.4 and no unresolved `yywrap`. This is a source/tool-routing
+check; it does not build or install the complete GI package or execute a
+target binary.
+
 GType discovery executes small cross-built queries on an authorized EmberBSD
 VM or board of the selected architecture over SSH. The runner resolves ELF libraries
 from the build tree and sysroot, rejects incompatible/conflicting providers,
