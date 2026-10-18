@@ -58,8 +58,8 @@ runtime behavior are validated.
 - [OpenEXR and OpenJPH](profiles/common-graphics/cross/openexr.md): current
   3.5.2 and 0.32.0 providers retain shared libraries, tools and system codecs.
   Ordinary GCC16 native/AArch64 packages pass static payload checks. Native
-  image round trips and focused strict memory checks pass; full OpenEXR CTest
-  and target codec execution remain pending.
+  image round trips, focused strict memory checks and all 147 OpenEXR tests
+  pass. Target codec/API checks and normal package removal/reinstallation pass.
 - [KiCad protobuf prerequisites](probes/kicad/protobuf/README.md): protobuf
   36.2 and Abseil 20260817.0 build with native GCC16 and shared zlib 1.3.2.
   Four allocation-failure controls reproduce upstream UPB defects and pass
