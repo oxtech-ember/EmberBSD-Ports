@@ -38,14 +38,17 @@ export PATH PKG_CONFIG
     "$PKG_CONFIG" --version
     "$HOST_CC" --version
 } > "$work/inputs.txt"
+printf 'CFLAGS=%s\nCPPFLAGS=%s\nLDFLAGS=%s\n' \
+    "${CFLAGS-}" "${CPPFLAGS-}" "${LDFLAGS-}" > "$work/compiler-flags.txt"
 (cd "$work/source" && find . -type f -exec shasum -a 256 {} \;) > "$work/source.sha256"
 CC="$HOST_CC" "$HOST_PYTHON" "$MESON" setup "$work/build" "$work/source" \
-    --prefix="$work/prefix" --wrap-mode=nodownload \
+    --prefix="$work/prefix" --libdir=lib --wrap-mode=nodownload \
     -Dlibraries=false -Dscanner=true -Dtests=false \
     -Ddocumentation=false -Ddtd_validation=true > "$work/configure.log" 2>&1
 "$NINJA" -C "$work/build" -j2 > "$work/build.log" 2>&1
 "$HOST_PYTHON" "$MESON" install -C "$work/build" > "$work/install.log" 2>&1
 [ "$("$work/prefix/bin/wayland-scanner" --version 2>&1)" = 'wayland-scanner 1.26.0' ]
+[ -s "$work/prefix/lib/pkgconfig/wayland-scanner.pc" ]
 # Run upstream's actual scanner golden-output and malformed-input tests.
 mkdir "$work/scanner-output"
 TEST_DATA_DIR="$work/source/tests/data" TEST_OUTPUT_DIR="$work/scanner-output" \

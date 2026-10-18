@@ -25,6 +25,12 @@ with DTD validation and runs the original scanner golden/malformed-input
 tests. Source, tool and installed file hashes remain in the work directory.
 Keep the recipe and helper unchanged during execution.
 
+The helper fixes its native library directory to `lib`. This keeps the
+installed scanner metadata at the path required by protocol and Mesa consumers,
+including on Linux hosts whose Meson default uses a multiarch directory.
+It also records the actual compiler and linker flags. Private host libraries
+must remain discoverable when the installed generator runs.
+
 Set `EMBERBSD_WAYLAND_SCANNER` to `new-work/prefix/bin/wayland-scanner`.
 The build requires its successful exact version response. Scanner consumers
 also use its installed native `.pc` metadata through the cross profile.
