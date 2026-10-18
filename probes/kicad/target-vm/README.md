@@ -46,9 +46,17 @@ edit that tree's base files or change their permissions. It includes Citrus
 modules, encoding data and locales from the same base, without static archives.
 The generated FFS image is a separate writable file. The sysroot stays unchanged.
 The selected base commands include package installation, deletion and integrity
-tools, `cmp`/`readlink`/`mv` for payload checks, `ktrace`/`kdump`, and `ps`/`fstat` for process
+tools, `cmp`/`readlink`/`mv` for payload checks, `tee` for recorded command output,
+`ktrace`/`kdump`, and `ps`/`fstat` for process
 and open-file inspection. Each comes from the same
 verified base and has a recorded hash. No target compiler is added.
+The host staging root stays private with mode `0700`. The image root uses
+`root:wheel` (`0:0`) and mode `0755` from the pinned fork's
+`etc/mtree/NetBSD.dist.base`. This permits ordinary users to traverse `/`.
+The builder rejects missing, ambiguous or incompatible root metadata and records
+the source hash. Run
+`ruby check-root-metadata.rb BASE OS_REPOSITORY REVISION NETBSD_TOOLS NEW_WORK`
+on the base filesystem for the actual small FFS2 regression and source guards.
 The image metadata assigns `fstat` to `root:kmem` with mode `02555`.
 The builder resolves `kmem` from the accepted source group database; it does
 not change the hardlinked base file. Run
