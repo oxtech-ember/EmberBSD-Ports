@@ -15,6 +15,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sdk-source", required=True)
     parser.add_argument("--pkgsrc", required=True)
+    parser.add_argument("--baseline-recipe", required=True,
+                        help="Original net/mDNSResponder/Makefile from the pinned pkgsrc tree")
     parser.add_argument("--archive", required=True)
     parser.add_argument("--makeconf", required=True)
     parser.add_argument("--bmake", default="bmake")
@@ -36,7 +38,7 @@ def main():
     makeconf = Path(args.makeconf).resolve(strict=True)
     work = Path(paths.canonical_new(args.work))
     paths.reject_overlap(str(work), str(pkgsrc))
-    if inventory.sha256_file(archive) != "f3c4d25c572ae6e64e42e906672d410898fd3f3c59ed538d46c20de8d7725ed0":
+    if inventory.sha256_file(archive) != "f665cf02b5c930f9b70fb39b7567f03dd821997594c56ce399098eaa0372fb15":
         parser.error("The pinned upstream archive hash differs.")
     bmake = shutil.which(args.bmake)
     gmake = shutil.which(args.gmake)
@@ -63,21 +65,16 @@ def main():
     run("bmake-version", [bmake, "-r", "-f", "/dev/null", "-V", "MAKE_VERSION"])
     run("gmake-version", [gmake, "--version"])
     sdk_commit = run("sdk-commit", ["git", "-C", sdk, "rev-parse", "HEAD"]).strip()
-    patch = root / "profiles/common-build-tools/patches/pkgsrc-cross-packages.patch"
-    match = re.search(r"^--- a/net/mDNSResponder/Makefile\n.*?(?=^--- a/|\Z)", patch.read_text(), re.M | re.S)
-    if match is None:
-        raise SystemExit("The canonical mDNSResponder recipe patch is missing.")
-    delta = match.group().encode()
+    current = root / "profiles/common-build-tools/recipes/net/mDNSResponder"
     baseline = work / "baseline/net/mDNSResponder"
     baseline.mkdir(parents=True)
     source_recipe = pkgsrc / "net/mDNSResponder"
     shutil.copytree(source_recipe, baseline, dirs_exist_ok=True)
-    recipe = baseline / "Makefile"
+    recipe = Path(args.baseline_recipe).resolve(strict=True)
     original_hash = "5a7d683cb8323c63ab2202011b598d8089e17ca55238862276c9b22d300f96fd"
     if inventory.sha256_file(recipe) != original_hash:
-        run("reverse-current-recipe", ["patch", "-R", "-f", "--fuzz=0", "-p1", "-d", work / "baseline"], data=delta)
-    if inventory.sha256_file(recipe) != original_hash:
-        raise SystemExit("The recipe is not the pinned original or the exact common repair.")
+        raise SystemExit("The baseline recipe is not the pinned original.")
+    shutil.copy2(recipe, baseline / "Makefile")
     metadata = {}
     for variant in ("before", "after"):
         tree = work / variant
@@ -92,7 +89,7 @@ def main():
         package = tree / "net/mDNSResponder"
         shutil.copytree(baseline, package)
         if variant == "after":
-            run("apply-recipe", ["patch", "-f", "--fuzz=0", "-p1", "-d", tree], data=delta)
+            shutil.copytree(current, package, dirs_exist_ok=True)
         metadata[variant] = {}
         for system in ("NetBSD", "Linux", "Darwin"):
             # Tool choices are cached in WRKDIR. A shared work path would
@@ -117,7 +114,7 @@ def main():
             metadata[variant][system] = selected
     with tarfile.open(archive) as source:
         source.extractall(work / "source", filter="data")
-    source = work / "source/mDNSResponder-mDNSResponder-2559.1.1/mDNSPosix"
+    source = work / "source/mDNSResponder-mDNSResponder-2881.120.11/mDNSPosix"
     # GNU make replaces the recipe's environment value with the build-host OS.
     env = dict(os.environ, os="netbsd")
     before = run("source-host-selection", [gmake, "-n", "objects/prod/PosixDaemon.c.o"], cwd=source, env=env)
@@ -136,7 +133,7 @@ def main():
     jsonio.write_json(work / "result.json", dict(status="PASS", sdk_api=1, sdk_commit=sdk_commit,
         scope="Actual pkgsrc metadata and upstream GNU make dry runs. No package, target execution or Darwin build acceptance.",
         metadata=metadata, inputs={str(p): inventory.sha256_file(p) for p in
-        (archive, patch, Path(__file__).resolve(), *(sdk / "src/emberbsd_sdk" / name for name in
+        (archive, recipe, current / "Makefile", current / "distinfo", Path(__file__).resolve(), *(sdk / "src/emberbsd_sdk" / name for name in
         ("__init__.py", "inventory.py", "jsonio.py", "paths.py", "process.py")))}))
     print("PASS: actual dependency baseline, complete NetBSD graph, target OS selection and retained Darwin/explicit generators.")
 

@@ -234,10 +234,11 @@ check passed on 2026-10-18; this is not a complete ncurses package or VM test.
 
 The mDNSResponder version probe reads the target sysroot header during cross
 builds and the host header during native dependency recursion.
-The [mDNSResponder build contract](mdns-build-tools.md) also passes the target OS
-as a GNU Make argument. Its complete NetBSD graph needs no lexer/parser
-generator. Darwin retains Flex and Bison. The ordinary GCC16 AArch64 package
-passes its staging checks; installed DNS-SD and CUPS acceptance remain separate.
+The [mDNSResponder build contract](mdns-build-tools.md) selects Apple's current
+2881.120.11 source and passes the target OS as a GNU Make argument. Its complete
+NetBSD graph needs no lexer/parser generator. Darwin retains Flex and Bison.
+Ordinary native/AArch64 GCC16 packages and 518 native public API cases pass,
+including strict Memcheck. Installed DNS-SD and CUPS acceptance remain separate.
 Host tool dependencies read the host bootstrap MAKECONF, so interpreter and
 tool choices needed by those dependencies belong there as well.
 `EMBERBSD_BUILD_MSGFMT` accepts an existing absolute GNU gettext-tools 1.0+

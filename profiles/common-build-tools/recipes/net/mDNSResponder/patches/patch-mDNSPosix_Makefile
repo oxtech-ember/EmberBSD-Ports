@@ -1,0 +1,17 @@
+$NetBSD: patch-mDNSPosix_Makefile,v 1.1 2024/11/20 17:56:21 hauke Exp $
+
+Set PID_FILE and MDNS_UDS_SERVERPATH in the package Makefile
+
+Origin: EmberBSD (AI-assisted), adapt the original pkgsrc patch to 2881.120.11.
+
+--- mDNSPosix/Makefile.orig
++++ mDNSPosix/Makefile
+@@ -62,7 +62,7 @@
+ CP = cp
+ RM = rm
+ LN = ln -s -f
+-CFLAGS_COMMON = -I$(COREDIR) -I$(SHAREDDIR) -I$(UTILDIR) -I$(DSODIR) -I$(SERVICEREGISTRATIONDIR) -I$(OBJDIR) -fwrapv -W -Wall -DPOSIX_BUILD -DPID_FILE=\"/var/run/mdnsd.pid\" -DMDNS_UDS_SERVERPATH=\"/var/run/mdnsd\" -DMDNS_NO_STRICT=1
++CFLAGS_COMMON = -I$(COREDIR) -I$(SHAREDDIR) -I$(UTILDIR) -I$(DSODIR) -I$(SERVICEREGISTRATIONDIR) -I$(OBJDIR) -fwrapv -W -Wall -DPOSIX_BUILD -DMDNS_NO_STRICT=1
+ CFLAGS_PTHREAD =
+ LINKOPTS =
+ LINKOPTS_PTHREAD = -lpthread

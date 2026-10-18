@@ -60,7 +60,7 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     [ "$tcl_pin" = '536c45543f64d6eb11832d97ba3494aacff046fbc5040273bd55258d0e448ff1:https://downloads.sourceforge.net/project/tcl/Tcl/9.1.0/tcl9.1.0-src.tar.gz' ] || {
         echo 'Invalid current Tcl source pin.' >&2; exit 2;
     }
-    for recipe in lang/tcl lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib devel/abseil devel/protobuf textproc/py-markupsafe textproc/py-yaml textproc/groff; do
+    for recipe in lang/tcl lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib devel/abseil devel/protobuf textproc/py-markupsafe textproc/py-yaml textproc/groff net/mDNSResponder; do
         source=$root/profiles/common-build-tools/recipes/$recipe
         [ -f "$source/Makefile" ] && [ -f "$source/PLIST" ] && \
             [ -f "$source/distinfo" ] || {
@@ -76,6 +76,25 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
                 echo "Missing required patch: $recipe/$name" >&2; exit 2;
             }
         done
+        if [ "$recipe" = net/mDNSResponder ]; then
+            for name in DESCR buildlink3.mk builtin.mk files/mdnsd.sh; do
+                [ -s "$source/$name" ] || { echo "Incomplete mDNSResponder recipe: $name" >&2; exit 2; }
+            done
+            [ "$(find "$source" -type l | wc -l | tr -d ' ')" = 0 ] &&
+                [ "$(find "$source/patches" -name 'patch-*' | wc -l | tr -d ' ')" = 9 ] &&
+                [ "$(printf '%s\n' "$required" | awk 'NF { n++ } END { print n+0 }')" = 9 ] || {
+                echo 'Unexpected mDNSResponder patch inventory.' >&2; exit 2;
+            }
+            for name in $required; do
+                recorded=$(awk -v name="($name)" '$1 == "SHA1" && $2 == name { print $4 }' "$source/distinfo")
+                computed=$(sed '/[$]NetBSD.*/d' "$source/patches/$name" | shasum -a 1 | awk '{ print $1 }')
+                [ "$recorded" = "$computed" ] || { echo "mDNSResponder patch checksum differs: $name" >&2; exit 2; }
+            done
+            mdns_pin=$(awk -F '\t' '$1 == "mDNSResponder-2881.120.11.tar.gz" { print $2 ":" $3 }' "$root/profiles/common-build-tools/sources.tsv")
+            [ "$mdns_pin" = 'f665cf02b5c930f9b70fb39b7567f03dd821997594c56ce399098eaa0372fb15:https://github.com/apple-oss-distributions/mDNSResponder/archive/refs/tags/mDNSResponder-2881.120.11.tar.gz' ] || {
+                echo 'Invalid current mDNSResponder source pin.' >&2; exit 2;
+            }
+        fi
         if [ "$recipe" = lang/llvm ]; then
             for name in PLIST.runtime files/select-package-stage.py files/sdk_source.py files/reuse-package-stage.py files/prepare-reuse-inputs.py; do
                 [ -s "$source/$name" ] || {
@@ -496,7 +515,7 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     cp -R "$runtime_recipe" "$destination/lang/gcc16-runtime"
 fi
 if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
-    for recipe in lang/tcl lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib devel/abseil devel/protobuf textproc/py-markupsafe textproc/py-yaml textproc/groff; do
+    for recipe in lang/tcl lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib devel/abseil devel/protobuf textproc/py-markupsafe textproc/py-yaml textproc/groff net/mDNSResponder; do
         source=$root/profiles/common-build-tools/recipes/$recipe
         # Replace only recipe paths inside this newly created export.
         rm -rf "$destination/$recipe"

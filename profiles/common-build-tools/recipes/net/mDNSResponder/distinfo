@@ -1,0 +1,14 @@
+$NetBSD: distinfo,v 1.46 2025/07/03 10:10:34 jperkin Exp $
+
+BLAKE2s (mDNSResponder-2881.120.11.tar.gz) = 6491f1a66eec05b165ac5cb220ad84a561c6904befd898c9dc00371e66cc124d
+SHA512 (mDNSResponder-2881.120.11.tar.gz) = 98cbbe86cfea288d868dd8de2d6cfb13297781d798ae4b8cfe71a7fcf996e4ec9cc143d72776894a632610f39c0f0a5a24407beb12243f4a92c4b150ae1de767
+Size (mDNSResponder-2881.120.11.tar.gz) = 2018931 bytes
+SHA1 (patch-Clients_Makefile) = 7b3d6da98f8d8bdf1f3b11feafc68aa514e37d7e
+SHA1 (patch-DSO_dso.c) = 12139edda92d9cab01e4acaf707812a1d337124d
+SHA1 (patch-mDNSPosix_Makefile) = 70bc676a3421e6ccacd94b57bf9d2b8e05522e10
+SHA1 (patch-mDNSPosix_mDNSPosix.c) = 1e98da5ca488eb07afe51809309d62da587340eb
+SHA1 (patch-mDNSPosix_mDNSUNP.c) = a900ad9991aaee21fbe9094a65900b1d172c2abc
+SHA1 (patch-mDNSShared_CommonServices.h) = afcb24b5e52886a9060b6a923691d752ccdd9ce8
+SHA1 (patch-mDNSShared_PlatformCommon.c) = 2c40a8c1d40fc6246f2518345aefa24e3d51aeac
+SHA1 (patch-mDNSShared_dnsextd__parser.y) = dde7eca76c2b5158c2ac96764f91ce773464094a
+SHA1 (patch-mDNSShared_uds__daemon.c) = f621e785a3a5d86ab17cf88c47409529b1fe479c

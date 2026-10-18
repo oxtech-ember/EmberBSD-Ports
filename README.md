@@ -41,9 +41,10 @@ runtime behavior are validated.
   contracts under an ordinary user, plus package removal and reinstallation.
   Physical input and X11 display acceptance remain pending.
 - [DNS-SD package cross build](profiles/common-build-tools/cross/mdns-build-tools.md):
-  mDNSResponder retains its complete package while correcting target OS and
-  generator selection. GCC16 AArch64 packaging and actual source/metadata
-  checks pass. Installed discovery and CUPS integration remain pending.
+  current Apple mDNSResponder 2881.120.11 retains its complete package with
+  corrected platform and generator selection. Native/AArch64 GCC16 packages
+  and 518 native API cases pass, including strict memory checks. Installed
+  discovery and CUPS integration remain pending.
 - [Common SWIG 4.5.1](profiles/common-build-tools/cross/swig.md): the full
   native GCC16 package verifies all 846 files and the upstream Python 3.15
   example. A causal CCache repair preserves compiler fallback with closed
