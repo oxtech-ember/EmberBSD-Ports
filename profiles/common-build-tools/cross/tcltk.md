@@ -59,6 +59,14 @@ An additional Tcl patch separates two encoding API names in `Encoding.3`.
 The release manual installer otherwise joins them into one invalid alias.
 The correction retains both actual API manual names.
 
+The system-SQLite repair keeps `SQLITE_EXTERN` overrides in the bundled-only
+configure branch. System headers retain their external data declarations.
+The original unconditional flag defines three SQLite globals in the binding,
+including an invalid one-byte `sqlite3_version` array.
+The [object regression](../tests/tcl-sqlite-extern.py) compares actual compiled
+binding objects and checks their SQLite symbol ownership.
+The Tcl stub archive is installed with data-file permissions.
+
 Prepare sources through the supported exporter:
 
 ```sh

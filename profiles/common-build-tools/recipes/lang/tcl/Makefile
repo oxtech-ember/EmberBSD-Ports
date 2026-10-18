@@ -2,6 +2,7 @@
 
 DISTNAME=	tcl${TCL_VERSION}-src
 PKGNAME=	tcl-${TCL_VERSION}
+PKGREVISION=	1
 CATEGORIES=	lang
 MASTER_SITES=	${MASTER_SITE_SOURCEFORGE:=tcl/}
 
@@ -135,6 +136,7 @@ post-install:
 		MAN_INSTALL_DIR=${DESTDIR}${TCL_PREFIX}/${PKGMANDIR} \
 		install-binaries install-libraries install-headers \
 		install-private-headers install-msgs
+	${CHMOD} 644 ${DESTDIR}${TCL_PREFIX}/lib/libtclstub.a
 	cd ${DESTDIR}${TCL_PREFIX}/bin && ${LN} -fs tclsh${TCL_BASEVER} tclsh
 	cd ${DESTDIR}${TCL_PREFIX}/${PKGMANDIR}/man3 && ${MV} Thread.3 Tcl_Thread.3
 

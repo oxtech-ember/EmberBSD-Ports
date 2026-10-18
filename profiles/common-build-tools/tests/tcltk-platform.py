@@ -138,6 +138,16 @@ def main():
                                    'upstream': actual_old, 'patched': actual_new})
         manual = None
         if name == 'tcl':
+            sqlite_patch = recipe / 'patches/patch-sqlite-system-extern'
+            run(['patch', '-f', '-p0', '-F', '0', '-i', str(sqlite_patch)], cwd=patched)
+            sqlite = patched / 'pkgs/sqlite3.53.4'
+            if 'PKG_CFLAGS\t= @PKG_CFLAGS@ -DSQLITE_EXTERN=' in (sqlite / 'Makefile.in').read_text():
+                raise RuntimeError('System SQLite still overrides extern declarations')
+            if 'TEA_ADD_CFLAGS([-DSQLITE_API=MODULE_SCOPE -DSQLITE_EXTERN=])' not in (sqlite / 'configure.ac').read_text():
+                raise RuntimeError('Bundled SQLite extern flags changed')
+            if 'PKG_CFLAGS="$PKG_CFLAGS -DSQLITE_API=MODULE_SCOPE -DSQLITE_EXTERN="' not in (sqlite / 'configure').read_text():
+                raise RuntimeError('Generated SQLite extern flags differ')
+            run(['sh', '-n', str(sqlite / 'configure')])
             doc_patch = recipe / 'patches/patch-doc_Encoding.3'
             run(['patch', '-f', '-p0', '-F', '0', '-i', str(doc_patch)], cwd=patched)
             destinations = []
