@@ -32,9 +32,12 @@ including 1038 aliases, match the package and SDK. The cross-build Libtool
 metadata repair remains pending. These checks do not establish KiCad acceptance.
 
 The [protobuf 36.2 and Abseil 20260817.0 recipes](cross/protobuf.md) keep one
-common SDK provider and a separate native generator for cross consumers.
-Source, host-tool and CMake metadata regressions pass. Repaired ordinary
-package and installed-consumer acceptance remain separate. A bounded AArch64
+common runtime/SDK source provider and a separate native generator for cross
+consumers. The cross protobuf runtime installs no target generator; the SDK
+retains the complete development interface. Native packaging stays complete.
+Source, host-tool and CMake metadata regressions pass. Abseil's ordinary package
+and installed SDK consumer links pass. Protobuf split package acceptance and
+ordinary target execution remain pending. A bounded AArch64
 source-probe regression verifies Abseil's NetBSD stack-trace repair: the same
 consumer changes from zero frames to three non-null frames.
 

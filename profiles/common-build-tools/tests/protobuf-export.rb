@@ -43,6 +43,18 @@ File.unlink(recipe + '/extra-link')
 File.rename(recipe + '/host-protoc.mk', recipe + '/host-protoc.saved')
 reject.call('missing-host-protoc')
 File.rename(recipe + '/host-protoc.saved', recipe + '/host-protoc.mk')
+%w[PLIST.runtime files/select-package-stage.pl].each do |path|
+  File.rename(recipe + '/' + path, recipe + '/' + path + '.saved')
+  reject.call('missing-protobuf-' + File.basename(path))
+  File.rename(recipe + '/' + path + '.saved', recipe + '/' + path)
+end
+sdk = source + '/profiles/common-build-tools/recipes/devel/protobuf-devel'
+File.rename(sdk + '/PLIST', sdk + '/PLIST.saved')
+reject.call('missing-protobuf-sdk-plist')
+File.rename(sdk + '/PLIST.saved', sdk + '/PLIST')
+File.symlink(root + '/README.md', sdk + '/extra-link')
+reject.call('extra-protobuf-sdk-link')
+File.unlink(sdk + '/extra-link')
 recipe = source + '/profiles/common-build-tools/recipes/devel/abseil'
 patch = recipe + '/patches/patch-absl_debugging_CMakeLists.txt'
 content = File.binread(patch)

@@ -1,0 +1,3 @@
+Protocol buffers target SDK for the development-host sysroot.
+This package supplies headers, generators, the static UPB archive and metadata.
+Install the matching protobuf runtime package in execution-only images.

@@ -44,6 +44,8 @@ runtime behavior are validated.
   lifecycle and KiCad integration remain pending.
   The [common Abseil recipe](profiles/common-build-tools/cross/protobuf.md)
   repairs NetBSD stack traces; a separate AArch64 source-probe regression passes.
+  Cross protobuf recipes separate runtime libraries from target generators and
+  SDK files. Their source ownership checks preserve the full native package.
 - [KiCad SPICE prerequisites](probes/kicad/ngspice/README.md): ngspice 47
   source repairs retain the shared C API, XSPICE, OpenMP, FFTW and Readline.
   Native numerical and causal ownership checks pass. Raw memory reports

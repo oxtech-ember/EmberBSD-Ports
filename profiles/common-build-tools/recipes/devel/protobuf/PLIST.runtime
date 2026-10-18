@@ -1,0 +1,13 @@
+@comment Protobuf shared runtime and exact upstream license texts
+lib/libprotobuf-lite.so
+lib/libprotobuf-lite.so.${PKGVERSION}.0
+lib/libprotobuf.so
+lib/libprotobuf.so.${PKGVERSION}.0
+lib/libprotoc.so
+lib/libprotoc.so.${PKGVERSION}.0
+lib/libutf8_range.so
+lib/libutf8_range.so.${PKGVERSION}.0
+lib/libutf8_validity.so
+lib/libutf8_validity.so.${PKGVERSION}.0
+share/licenses/protobuf/LICENSE
+share/licenses/protobuf/utf8_range-LICENSE

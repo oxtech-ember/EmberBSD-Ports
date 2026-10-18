@@ -65,7 +65,7 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
             done
         fi
         if [ "$recipe" = devel/protobuf ]; then
-            for name in DESCR buildlink3.mk host-protoc.mk; do
+            for name in DESCR buildlink3.mk host-protoc.mk PLIST.runtime files/select-package-stage.pl; do
                 [ -f "$source/$name" ] || { echo "Incomplete protobuf recipe: $name" >&2; exit 2; }
             done
             fixes='patch-src_google_protobuf_compiler_main.cc patch-upb_message_array_oom patch-upb_message_copy.c patch-upb_message_string_oom'
@@ -88,6 +88,14 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
             done
         fi
     done
+    for protobuf_sdk_file in Makefile buildlink3.mk DESCR PLIST; do
+        [ -s "$root/profiles/common-build-tools/recipes/devel/protobuf-devel/$protobuf_sdk_file" ] || {
+            echo "Incomplete protobuf SDK recipe: $protobuf_sdk_file" >&2; exit 2;
+        }
+    done
+    [ "$(find "$root/profiles/common-build-tools/recipes/devel/protobuf-devel" -type l | wc -l | tr -d ' ')" = 0 ] || {
+        echo 'Unexpected protobuf SDK recipe link.' >&2; exit 2;
+    }
     for delta in python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-cross-packages.patch pkgsrc-gettext-go-detection.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch pkgsrc-ncurses-terminfo-aliases.patch pkgsrc-host-autoconf.patch pkgsrc-cwrappers-unwrap-boundary.patch pkgsrc-cross-passthrough-rpath.patch; do
         [ -s "$root/profiles/common-build-tools/patches/$delta" ] || {
             echo "Missing common-tools infrastructure patch: $delta" >&2; exit 2;
@@ -394,6 +402,10 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
         echo 'Upstream now owns lang/llvm-devel; review the overlay.' >&2; exit 2;
     }
     cp -R "$root/profiles/common-build-tools/recipes/lang/llvm-devel" "$destination/lang/llvm-devel"
+    [ ! -e "$destination/devel/protobuf-devel" ] && [ ! -L "$destination/devel/protobuf-devel" ] || {
+        echo 'Upstream now owns devel/protobuf-devel; review the overlay.' >&2; exit 2;
+    }
+    cp -R "$root/profiles/common-build-tools/recipes/devel/protobuf-devel" "$destination/devel/protobuf-devel"
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$root/profiles/common-build-tools/patches/current-python-selection.patch"
     for delta in python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-cross-packages.patch pkgsrc-gettext-go-detection.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch pkgsrc-ncurses-terminfo-aliases.patch pkgsrc-host-autoconf.patch pkgsrc-cwrappers-unwrap-boundary.patch pkgsrc-cross-passthrough-rpath.patch; do
