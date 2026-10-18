@@ -30,7 +30,9 @@ runtime behavior are validated.
   after repair. The installed C++ API passes fourteen checks, including gzip.
   Matching code generation retains its output and error behavior. Documented
   process-lifetime exceptions keep the original CLI's memory failures visible.
-  AArch64 execution, packaging and KiCad integration remain pending.
+  The same C++ and UPB contracts pass in the AArch64 E34 guest with the
+  GCC16-built shared-library closure. Ordinary pkgsrc ownership, package
+  lifecycle and KiCad integration remain pending.
 - [KiCad SPICE prerequisites](probes/kicad/ngspice/README.md): ngspice 47
   source repairs retain the shared C API, XSPICE, OpenMP, FFTW and Readline.
   Native numerical and causal ownership checks pass. Raw memory reports

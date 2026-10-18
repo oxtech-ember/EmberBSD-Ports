@@ -1,4 +1,4 @@
-# Protobuf native validation
+# Protobuf validation
 
 This record covers the restored protobuf 36.2 sources and local fixes.
 The source archives are pinned in `sources.sha256`.
@@ -23,7 +23,7 @@ Clang 19.1.7 analyzed the C++ command with the actual GCC16 C++ headers.
 | --- | --- | --- | --- |
 | `upb/message/copy.c`, Cppcheck, C23 | 22 findings | 20 findings | The repeated-field failure check no longer has an always-false condition. See the classifications below. |
 | `upb/message/copy.c`, GCC16 analyzer | No diagnostics | No diagnostics | Runtime allocation-failure tests are still necessary. |
-| `upb/message/copy.c`, Clang analyzer, C23 | One null-minitable warning | No diagnostics | The baseline path models inconsistent field types; it is not causal allocation-failure evidence. |
+| `upb/message/copy.c`, Clang analyzer, GNU17 | One null-minitable warning | No diagnostics | The baseline path models inconsistent field types; it is not causal allocation-failure evidence. |
 | `compiler/main.cc`, Clang analyzer, C++17 | Two dead-store warnings | The same two warnings | Both are in upstream `parse_context.h`; neither concerns CLI teardown. |
 | `compiler/main.cc`, Cppcheck | Incomplete | Incomplete | Tool limitation with the real GCC16 headers; this is not a clean result. |
 | Installed C consumer, Cppcheck, C23 | Not applicable | 24 findings | Const/style suggestions, intentional alignment members and the same pointer-union warning. |
@@ -80,6 +80,8 @@ The installed-consumer records are under
 The exact GCC-preprocessed Cppcheck attempts are under
 `$PROTOBUF_WORK/analysis-gcc-preprocessed`.
 Earlier incomplete attempts remain available in separate analysis directories.
+The final native Clang C command used its default GNU17 mode. The native
+Cppcheck C23 mode and GCC16 default GNU23 mode are separate checks.
 
 ## Execution checks
 
@@ -114,5 +116,67 @@ installed compiler library as the repaired CLI.
 Evidence directories are `upb-causal-results`, `protoc-causal-results`,
 `protoc-memory-results`, `protoc-memory-reviewed` and `protoc-memory-script`.
 All are below `PROTOBUF_WORK`. Failed configuration/analysis attempts remain
-separate from accepted results. AArch64 build/runtime, package lifecycle and
-KiCad acceptance remain unverified by this native checkpoint.
+separate from accepted results. Native execution does not establish target
+execution, package lifecycle or KiCad acceptance.
+
+## AArch64 cross-build and analysis
+
+The target build completed with GCC 16.2.0, CMake 4.4.4 and Ninja 1.12.1 on
+2026-10-18. It uses the same prepared sources and external shared Abseil.
+The selected zlib provider is the registered `zlib-1.3.2nb1` target package.
+Its shared library has SONAME `libz.so.1`; gzip support remains enabled.
+The native graph was not rebuilt during this target check.
+
+Abseil, protobuf and both installed contracts completed the normal CMake/Ninja
+build and full installation. Native and target contract generation produced
+identical C++ and header bytes. The private stage has 105 AArch64 ELF files.
+All 95 transitive library names resolve to files in that stage or the selected
+SDK. This file-level check does not establish runtime loader behavior.
+
+The original upstream install rules replace `INSTALL_RPATH` with `$ORIGIN`
+paths. The target linker flags now also retain `/usr/pkg/gcc16/lib`.
+Before/after ELF records confirm that all 102 C++ outputs carry that path.
+The installed libraries keep `$ORIGIN`; the installed generator keeps
+`$ORIGIN/../lib`. The contracts also keep `/usr/pkg/lib`.
+Only target link commands changed. The existing Abseil cache retained its
+original toolchain include, so its two linker cache values were explicitly
+refreshed through CMake before the normal relink. No generated build files or
+archive members were edited. Fresh builds use the updated toolchain defaults.
+
+The target zlib guard rejects actual AArch64 relocatable objects and static
+archives renamed as `libz.so` before CMake starts. It accepts the selected
+ELF64 little-endian shared provider with SONAME `libz.so.1`.
+An independent reviewer checked both this guard and the runtime-path change.
+
+Target source analysis uses the actual compilation databases, GCC16 feature
+query values, target headers and AArch64/LP64 layout. It applies no diagnostic
+suppressions. Clang C uses explicit GNU23 mode; C++ uses C++17.
+
+| Scope | Baseline | Patched | Interpretation |
+| --- | --- | --- | --- |
+| `copy.c`, Cppcheck 2.22.0 | 25 findings | 23 findings | Same two removed findings as the native check. Remaining items include two target `index` name-shadow warnings and one extra pointer-to-const suggestion. |
+| `copy.c`, GCC16 analyzer | No diagnostics | No diagnostics | Actual target command plus `-fanalyzer`. |
+| `copy.c`, Clang 19.1.7 | One null-minitable warning | No diagnostics | The same inconsistent field-type model described above. |
+| `main.cc`, Clang | Two header dead stores | The same two warnings | Unchanged `parse_context.h` paths. |
+| `main.cc`, Cppcheck | Incomplete | Incomplete | Abseil namespaced feature-query parsing stops analysis. |
+| Installed C consumer, Cppcheck | Not applicable | 27 findings | The 24 native findings plus target-header name-shadow and const suggestions. |
+| Installed C consumer, GCC16 | Not applicable | One getter union-copy warning | The same `has_scalar_text` model limitation described above. |
+| Installed C and C++ consumers, Clang | Not applicable | No diagnostics | Actual target headers and flags. |
+| Installed C++ consumer, Cppcheck | Not applicable | Incomplete | The same feature-query parsing limitation. |
+
+Target evidence is in `analysis-target-copy`, `analysis-target-main` and
+`analysis-target-contracts`. The explicit GNU23 Clang results have the
+`clang-c23` suffix; earlier default-standard attempts remain separate.
+Final build logs are `logs/target-runtime-rpath-final.log` and
+`logs/target-contracts-runtime-rpath-final.log`. The ELF and dependency records
+are `logs/target-stage-elf.json` and `logs/target-runtime-closure.json`.
+Build warnings retain upstream deprecated Abseil API use and base-libm
+compatibility/precision notices. They are not hidden or classified as errors.
+
+The two prebuilt contracts also pass on the verified AArch64 E34 guest:
+fourteen C++ checks and all four UPB allocation failures. The private runtime
+closure contains versioned shared libraries and the two contracts; no generator,
+headers or static libraries are installed. Loaded providers match the accepted
+stage and SDK hashes without loader overrides. This is source-probe execution,
+not ordinary pkgsrc package ownership or lifecycle acceptance. Target Memcheck
+and complete KiCad acceptance remain unverified.

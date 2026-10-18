@@ -13,7 +13,9 @@ set(CMAKE_CXX_COMPILER "$ENV{CROSS_PREFIX}g++")
 set(_gcc "$ENV{EMBERBSD_GCC_RUNTIME}")
 set(CMAKE_C_FLAGS_INIT "-B\"${_gcc}/lib/gcc/aarch64--netbsd/16.2.0/\"")
 set(CMAKE_CXX_FLAGS_INIT "-B\"${_gcc}/lib/gcc/aarch64--netbsd/16.2.0/\" -isystem \"${_gcc}/include/c++\" -isystem \"${_gcc}/include/c++/aarch64--netbsd\" -isystem \"${_gcc}/include/c++/backward\"")
-set(_libs "-L\"${_gcc}/lib\" -Wl,-rpath-link,\"$ENV{PROTOBUF_STAGE}/usr/pkg/lib\" -Wl,-rpath-link,\"${_gcc}/lib\"")
+# Upstream install rules replace target INSTALL_RPATH with $ORIGIN paths.
+# Keep the common compiler runtime in the linker flags as well.
+set(_libs "-L\"${_gcc}/lib\" -Wl,-rpath,/usr/pkg/gcc16/lib -Wl,-rpath-link,\"$ENV{PROTOBUF_STAGE}/usr/pkg/lib\" -Wl,-rpath-link,\"${_gcc}/lib\"")
 set(CMAKE_EXE_LINKER_FLAGS_INIT "${_libs}")
 set(CMAKE_SHARED_LINKER_FLAGS_INIT "${_libs}")
 set(CMAKE_FIND_ROOT_PATH "$ENV{PROTOBUF_STAGE}" "${CMAKE_SYSROOT}")

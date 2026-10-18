@@ -9,7 +9,7 @@ jobs=${JOBS:-2}
 case "$PROTOBUF_WORK" in /*) ;; *) echo "PROTOBUF_WORK must be absolute" >&2; exit 1;; esac
 case "$jobs" in ''|*[!0-9]*|0) echo "JOBS must be positive" >&2; exit 1;; esac
 mode=${1:-all}
-case "$mode" in prepare|native|target|native-contracts|target-contracts|contracts|all) ;; *) echo "Unknown mode: $mode" >&2; exit 1;; esac
+case "$mode" in prepare|native|target|target-abseil|target-protobuf|native-contracts|target-contracts|contracts|all) ;; *) echo "Unknown mode: $mode" >&2; exit 1;; esac
 mkdir -p "$PROTOBUF_WORK/downloads" "$PROTOBUF_WORK/logs"
 native=$PROTOBUF_WORK/native
 export PROTOBUF_STAGE=${PROTOBUF_STAGE:-$PROTOBUF_WORK/stage}
@@ -186,16 +186,54 @@ native_build()
     "$native/bin/protoc" --version
 }
 
+check_target_zlib()
+{
+    target_zlib=$EMBERBSD_SYSROOT/usr/pkg
+    [ -f "$target_zlib/include/zlib.h" ] &&
+        [ -f "$target_zlib/lib/libz.so" ] &&
+        grep -Eq '^#define[[:space:]]+ZLIB_VERSION[[:space:]]+"1\.3\.2"' \
+            "$target_zlib/include/zlib.h" || {
+        echo "Install the common target shared zlib 1.3.2 provider first" >&2
+        exit 1
+    }
+    zlib_elf=$PROTOBUF_WORK/logs/target-zlib.elf
+    LC_ALL=C "${CROSS_PREFIX}readelf" -h -d "$target_zlib/lib/libz.so" > "$zlib_elf"
+    [ "$(od -An -tx1 -N4 "$target_zlib/lib/libz.so" | tr -d '[:space:]')" = 7f454c46 ] &&
+        grep -Eq 'Class:[[:space:]]+ELF64' "$zlib_elf" &&
+        grep -Eq 'Data:.*little endian' "$zlib_elf" &&
+        grep -Eq 'Type:[[:space:]]+DYN' "$zlib_elf" &&
+        grep -Eq 'Machine:[[:space:]]+AArch64' "$zlib_elf" &&
+        grep -Eq '\(SONAME\).*\[libz\.so\.1\]' "$zlib_elf" || {
+        echo "The target zlib provider must contain an AArch64 shared library" >&2
+        exit 1
+    }
+    zlib_expected=$PROTOBUF_WORK/logs/target-zlib.expected
+    sha256sum "$target_zlib/include/zlib.h" "$target_zlib/lib/libz.so" > "$zlib_expected"
+    if [ -f "$PROTOBUF_STAGE/.emberbsd-protobuf-zlib" ]; then
+        cmp "$zlib_expected" "$PROTOBUF_STAGE/.emberbsd-protobuf-zlib" || {
+            echo "The target zlib provider changed; use a new private work directory" >&2
+            exit 1
+        }
+    else
+        cp "$zlib_expected" "$PROTOBUF_STAGE/.emberbsd-protobuf-zlib"
+    fi
+}
+
 target_build()
 (
     unset LIBRARY_PATH CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH OBJC_INCLUDE_PATH
     check_target
     prepare_stage
-    for component in abseil protobuf; do
+    [ "$#" -gt 0 ] || set -- abseil protobuf
+    for component in "$@"; do
         case "$component" in
             abseil) name=abseil-cpp-20260817.0; set -- -DBUILD_SHARED_LIBS=ON;;
-            protobuf) name=protobuf-36.2; set -- -Dprotobuf_BUILD_SHARED_LIBS=ON \
-                -Dprotobuf_LOCAL_DEPENDENCIES_ONLY=ON;;
+            protobuf) name=protobuf-36.2
+                check_target_zlib
+                set -- -Dprotobuf_BUILD_SHARED_LIBS=ON \
+                    -Dprotobuf_LOCAL_DEPENDENCIES_ONLY=ON \
+                    -DZLIB_INCLUDE_DIR="$target_zlib/include" \
+                    -DZLIB_LIBRARY_RELEASE="$target_zlib/lib/libz.so";;
         esac
         cmake -S "$PROTOBUF_WORK/$name" -B "$PROTOBUF_WORK/build-target-$component" \
             -G Ninja -DCMAKE_TOOLCHAIN_FILE="$probe/aarch64.cmake" \
@@ -227,9 +265,12 @@ target_contracts()
     unset LIBRARY_PATH CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH OBJC_INCLUDE_PATH
     check_target
     prepare_stage
+    check_target_zlib
     cmake -S "$probe" -B "$PROTOBUF_WORK/build-target-contract" -G Ninja \
         -DCMAKE_TOOLCHAIN_FILE="$probe/aarch64.cmake" -DCMAKE_BUILD_TYPE=RelWithDebInfo \
         -DCMAKE_INSTALL_PREFIX=/usr/pkg -DCMAKE_PREFIX_PATH=/usr/pkg \
+        -DZLIB_INCLUDE_DIR="$target_zlib/include" \
+        -DZLIB_LIBRARY_RELEASE="$target_zlib/lib/libz.so" \
         -DNATIVE_PROTOC="$native/bin/protoc" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
     cmake --build "$PROTOBUF_WORK/build-target-contract" -j "$jobs"
     DESTDIR="$PROTOBUF_STAGE" cmake --install "$PROTOBUF_WORK/build-target-contract"
@@ -237,6 +278,10 @@ target_contracts()
 
 case "$mode" in prepare|all) prepare;; esac
 case "$mode" in native|all) native_build;; esac
-case "$mode" in target|all) target_build;; esac
+case "$mode" in
+    target|all) target_build;;
+    target-abseil) target_build abseil;;
+    target-protobuf) target_build protobuf;;
+esac
 case "$mode" in native-contracts|contracts|all) native_contracts;; esac
 case "$mode" in target-contracts|contracts|all) target_contracts;; esac
