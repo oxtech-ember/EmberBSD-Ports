@@ -16,8 +16,9 @@ upstream tests in that VM. The installed [LLVM 23.1.3 core](cross/llvm-api-tests
 The shared [zlib 1.3.2nb1 recipe](recipes/devel/zlib/README.md) replaces the
 vendored 1.3.1 sources with the verified current release. It preserves pkgsrc
 Libtool naming and the complete gzip API. Two writer-seek repairs pass native
-GCC16 regression and strict Memcheck checks. Target package acceptance remains
-separate.
+GCC16 regression and strict Memcheck checks. The ordinary AArch64 cross package
+also passes installed VM compression, gzip, writer-seek, integrity and
+removal/reinstallation checks with the runtime-only GCC16 provider.
 
 [Groff 1.24.2](recipes/textproc/groff/README.md) includes a C23 function-prototype repair.
 Its native macOS build renders the three Enchant manual pages as HTML.
