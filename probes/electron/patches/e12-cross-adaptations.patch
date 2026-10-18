@@ -8272,3 +8272,16 @@ index cca673ee23..95d62ca371 100644
    // Convert an evdev code into DomCode.
    static DomCode EvdevCodeToDomCode(int evdev_code);
  
+diff --git a/base/scoped_observation.h b/base/scoped_observation.h
+index 7c7d54ac4b..da74dc1cb5 100644
+--- a/base/scoped_observation.h
++++ b/base/scoped_observation.h
+@@ -102,7 +102,7 @@ class ScopedObservation {
+   // Used to mark the observation as dangling untriaged.
+   // TODO(crbug.com/493572976): remove once no observation is dangling.
+   using LeakedDanglingUntriaged =
+-      ScopedObservation<Source, Observer, LeakedDanglingUntriaged>;
++      ScopedObservation<Source, Observer, base::RawPtrTraits::kMayDangle>;
+ 
+   explicit ScopedObservation(Observer* observer) : observer_(observer) {}
+   ScopedObservation(const ScopedObservation&) = delete;

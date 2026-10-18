@@ -116,6 +116,13 @@ Node runs on the host, its products are target artifacts.
   ELF. Cppcheck 2.22 passed with a narrow parser suppression for GCC-valid
   `__has_cpp_attribute` in an unchanged compiler header. Clang Static Analyzer
   21 reported one existing Abseil forwarding-reference diagnostic.
+- The next graph exposed GCC16 `-Wchanges-meaning` in `base::ScopedObservation`:
+  an inner alias reused the global `LeakedDanglingUntriaged` name. The alias now
+  names the identical `base::RawPtrTraits::kMayDangle` value explicitly. GCC16.2.0
+  rebuilt the three failing X11 objects. Cppcheck 2.22 passed on their compile
+  database with a narrow parser suppression for GCC-valid `__has_cpp_attribute`
+  in an unchanged header. Clang Static Analyzer 21 reported only existing
+  Abseil/base forwarding-reference findings.
 - No complete Chromium link, Electron runtime, or Blanc package exists.
   Continue the Chrome build and classify actual compiler failures. Partial
   targets are not a Blanc result.
