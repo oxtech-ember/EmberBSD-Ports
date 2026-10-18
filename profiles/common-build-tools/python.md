@@ -65,6 +65,15 @@ The existing native Python 3.15 interpreter runs all 16 upstream
 diagnostics confirm both GDBM libraries come from the selected 1.26 prefix.
 This focused check does not establish a complete native or target package.
 
+Separately, on 2026-10-18, the ordinary Linux GCC16 build of
+`python315-3.15.0nb4` passed package checks and installation. The installed
+interpreter passed seven upstream suites: sysconfig, NDBM, bzip2, zlib,
+ctypes, Readline and SSL. They ran 1093 cases, including 63 skips.
+The host library search selected the installed package providers before
+other private host libraries; an earlier search order loaded a narrow
+ncurses library and rejected `_curses`. The corrected build retains the
+wide curses modules. This does not establish the AArch64 Python package.
+
 The focused configure regression uses a previous patched source and the new source:
 
 ```sh
