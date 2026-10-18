@@ -132,6 +132,18 @@ Node runs on the host, its products are target artifacts.
   2.22 and Clang Static Analyzer 21 reported no findings on the changed source.
   Cppcheck required an address-specific parser suppression for the existing
   GCC `__has_cpp_attribute` expression at `base/compiler_specific.h:62`.
+- The next full pass reached task 384 before `chromium_language_matcher.cc`
+  failed because `std::to_array` moves `LanguageTag` values in a constant
+  expression, while that type's move constructor is not `constexpr`. Direct
+  `constexpr std::array` initialization avoids the move. GCC16.2.0 rebuilt the
+  target as AArch64 ELF. Cppcheck 2.22 passed with the same narrow parser
+  suppression at `base/compiler_specific.h:62`; Clang Static Analyzer 21 found
+  no diagnostics on the changed source.
+- The same pass found that `compiler-rt:atomic` uses Clang-only
+  `__c11_atomic_*` builtins. GN now enables this LLVM runtime only for Clang on
+  non-Apple targets. With `is_clang=false`, `use_llvm_libatomic` is false and
+  `gn refs` finds no reference to the target. The final link will confirm
+  whether GCC's existing runtime covers all required atomic operations.
 - The full Chrome graph has not passed yet. Resume it from the retained object
   tree and classify the next compiler result.
 - No complete Chromium link, Electron runtime, or Blanc package exists.
