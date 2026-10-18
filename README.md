@@ -187,9 +187,9 @@ runtime behavior are validated.
   [Gettext 1.0 localization checks](profiles/common-build-tools/tests/gettext-runtime/README.md)
   pass 27 installed CM5 cases, including the Fcitx translation function.
   The autopoint archive test explicitly skips without target Autoconf.
-  Binutils has a verified
-  DWARF32/64 line-table repair; GNU tools are selected explicitly during
-  acceptance, with GCC bootstrap-tool default migration still pending.
+  Binutils has a verified DWARF32/64 line-table repair. The GCC16 AArch64
+  cross recipe now selects Ports Binutils 2.47 by default; C/C++ collect2/LTO
+  links pass. The installed native GCC package still selects base as/ld.
   [Python 3.15 host preparation](profiles/common-build-tools/python.md) now
   fixes GCC16 constant-expression use and verifies Linux pkgsrc loader naming.
   Selected native suites pass; target 3.15 execution remains pending.

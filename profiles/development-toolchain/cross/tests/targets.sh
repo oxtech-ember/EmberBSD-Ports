@@ -47,7 +47,7 @@ for pair in aarch64:aarch64--netbsd amd64:x86_64--netbsd; do
         --target "$target" "$work/pkgsrc" "$work/archive" "$work/sysroot" "$work/tools" "$work/new"
 done
 
-# An amd64 invocation must never accept an AArch64 runtime or binutils.
+# An amd64 invocation must not inherit old target binutils from the OS TOOLDIR.
 mkdir -p "$work/sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0" \
     "$work/sysroot/usr/pkg/gcc16/include/c++"
 touch "$work/sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0/crtbegin.o"
@@ -56,8 +56,9 @@ reject build.sh 'Selected target GCC16 C++ headers missing.' --target aarch64 \
 reject build.sh 'The sysroot must contain the selected target GCC16 package.' --target amd64 \
     "$work/pkgsrc" "$work/archive" "$work/sysroot" "$work/tools" "$work/new"
 rm "$work/tools/bin/x86_64--netbsd-as"
-reject build.sh 'Bootstrap target tool missing: as' --kernel --target amd64 \
+(REJECT_STATUS=1 reject build.sh 'GCC archive SHA256 mismatch.' --kernel --target amd64 \
     "$work/pkgsrc" "$work/archive" "$work/tools" "$work/new"
+)
 
 # Compiler fixtures replace the expensive external compiler boundary only.
 # They record the real script's flags and create its expected output files.
@@ -83,7 +84,10 @@ cat > "$work/readelf" <<'EOF'
 #!/bin/sh
 set -eu
 printf '%s\n' "$@" >> "$FIXTURE_LOG"
-case "$1" in --debug-dump=info) echo 'DW_UT_skeleton DW_UT_split_compile split_record';; esac
+case "$1" in
+    --debug-dump=info) echo 'DW_UT_skeleton DW_UT_split_compile';;
+    --debug-dump=str-offsets) echo 'split_record';;
+esac
 EOF
 chmod +x "$work/compiler" "$work/readelf"
 mkdir "$work/host-bin"

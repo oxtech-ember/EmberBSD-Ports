@@ -22,5 +22,8 @@ export PATH
 "$prefix/bin/$triplet-readelf" --debug-dump=info "$work/test.o" > "$work/info.txt"
 grep -q 'DW_UT_skeleton' "$work/info.txt"
 grep -q 'DW_UT_split_compile' "$work/info.txt"
-grep -q 'split_record' "$work/info.txt"
+# Check the indexed DWARF5 strings in the separate object. The info dump does
+# not resolve this type's DW_FORM_strx name correctly on the current readers.
+"$prefix/bin/$triplet-readelf" --debug-dump=str-offsets "$work/test.dwo" > "$work/strings.txt"
+grep -q 'split_record' "$work/strings.txt"
 echo 'PASS: installed GCC creates and follows split DWARF without tool-path overrides'
