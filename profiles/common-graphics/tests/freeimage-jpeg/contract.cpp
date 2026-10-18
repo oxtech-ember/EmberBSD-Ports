@@ -15,6 +15,7 @@
 #include "FreeImage.h"
 
 static char message[512];
+static bool throwDiagnostic;
 static bool failAllocation;
 // Wrap the call instead of replacing new/delete. Memcheck keeps ownership
 // of the actual allocator and the allocation failure still reaches the TU.
@@ -28,6 +29,7 @@ extern "C" void *__wrap__Znwm(std::size_t size) {
 }
 extern "C" void DLL_CALLCONV
 FreeImage_OutputMessageProc(int, const char *format, ...) {
+    if(throwDiagnostic) throw std::runtime_error("diagnostic");
     va_list args;
     va_start(args, format);
     vsnprintf(message, sizeof(message), format, args);
@@ -304,7 +306,7 @@ int main() {
     assert(std::all_of(same.bytes.begin(),same.bytes.begin()+17,[](unsigned char b){return b==0xa5;}));
     exact(original, coefficients(same,17),5);
     // Callback errors, malformed input, and ownership paths must fail cleanly.
-    for(int fault = 0; fault < 7; ++fault) {
+    for(int fault = 0; fault < 8; ++fault) {
         auto source = makeJPEG(40,56);
         Stream destination;
         if(fault == 0) source.throwRead = true;
@@ -314,7 +316,9 @@ int main() {
         if(fault == 4) source.bytes.clear();
         if(fault == 5) source.bytes.assign(64, 0xff);
         if(fault == 6) source.bytes.resize(10);
+        if(fault == 7) { source.bytes.assign(64, 0xff); throwDiagnostic = true; }
         assert(!transform(source,&destination,0));
+        throwDiagnostic = false;
         ++cases;
     }
     for(int fault = 0; fault < 4; ++fault) {

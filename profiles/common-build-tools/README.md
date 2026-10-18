@@ -1,5 +1,10 @@
 # Current common build tools
 
+The paired [Tcl/Tk 9.1 recipes](cross/tcltk.md) retain bundled extensions,
+system SQLite and ZipFS. Actual generated platform branches and native/cross
+metadata pass focused checks. Full packages and installed GUI acceptance
+remain separate gates.
+
 The [cwrappers archive repair](cross/cwrappers-unwrap.md) preserves sibling
 directory paths in installed Libtool metadata. Actual native GCC16 wrapper
 checks and bounded module memory checks pass; package integration is separate.

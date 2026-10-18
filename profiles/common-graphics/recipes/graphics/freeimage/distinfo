@@ -5,4 +5,4 @@ SHA1 (patch-CMakeLists.txt) = 48aefb595546053ca3d7afa153a8195afaeb9d93
 SHA1 (patch-Source_FreeImage_PluginTIFF.cpp) = 50b1bfd5c8e7a3b1b08a7af2f4c37a13d81bb0a4
 SHA1 (patch-TestAPI_CMakeLists.txt) = fda297e4a718caa57d382f9b2ebf9065bec62a5d
 SHA1 (patch-Source_Utilities.h) = 6006a4cd0f0986677d1687959e2239fe0c9e77a0
-SHA1 (patch-Source_FreeImageToolkit_JPEGTransform.cpp) = 84c02d0fa403bae5a78a809e2f8065d240480b88
+SHA1 (patch-Source_FreeImageToolkit_JPEGTransform.cpp) = f42b766410adebed8da15835632cb60d2e93dd74

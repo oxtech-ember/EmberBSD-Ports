@@ -75,6 +75,10 @@ analysis = {}
 if target_mode:
     sysroot = Path(run("sysroot", [compiler, "-print-sysroot"]).strip()).resolve(strict=True)
     runtime_path = "/" + provider.relative_to(sysroot).as_posix() + "/lib"
+    cxx_runtime = provider / "gcc16/lib"
+    runtime_elf = run("gcc16-runtime-elf", ["readelf", "-d", cxx_runtime / "libstdc++.so"])
+    cxx_soname = re.search(r"\(SONAME\).*\[([^\]]+)\]", runtime_elf).group(1)
+    cxx_runtime_path = "/" + cxx_runtime.relative_to(sysroot).as_posix()
 else:
     runtime_path = str(provider / "lib")
     search = run("compiler-search", [compiler, "-E", "-x", "c++", "-v", "/dev/null"])
@@ -102,17 +106,23 @@ for variant in ("before", "after"):
     link = ["-L" + str(provider / "lib"), "-Wl,-rpath," + runtime_path,
             "-Wl,--gc-sections", "-Wl,--wrap=_Znwm", "-ljpeg", "-lturbojpeg"]
     if target_mode:
-        link += ["-Wl,-rpath,/usr/pkg/gcc16/lib"]
+        # RPATH controls loading, not the linker's implicit -lstdc++ search.
+        # Select the common GCC16 provider before compiler/base library paths.
+        link = ["-L" + str(cxx_runtime), *link, "-Wl,-rpath," + cxx_runtime_path]
     run(variant + "-compile", [compiler, *flags, "-ffunction-sections", "-fdata-sections", unit, fixture, *link, "-o", binary])
     if target_mode:
         run(variant + "-elf", ["readelf", "-h", binary])
+        dynamic = run(variant + "-dynamic", ["readelf", "-d", binary])
+        needed = re.findall(r"\(NEEDED\).*\[([^\]]+)\]", dynamic)
+        if [name for name in needed if name.startswith("libstdc++.")] != [cxx_soname]:
+            raise SystemExit("The target executable did not link the selected GCC16 C++ runtime.")
         sources[variant + "_binary"] = hashlib.file_digest(binary.open("rb"), "sha256").hexdigest()
         continue
     outcome = run(variant + "-run", [binary], expected=1 if variant == "before" else 0)
     if variant == "before":
         if "FAIL: valid perfect vertical transform: Lossless JPEG transforms are unavailable" not in outcome:
             raise SystemExit("The baseline did not reproduce the intended failure.")
-    elif "PASS: 334 transform/crop/error cases" not in outcome:
+    elif "PASS: 335 transform/crop/error cases" not in outcome:
         raise SystemExit("The repaired coefficient/error oracle did not finish.")
     if variant == "after":
         memory = run("memcheck", ["valgrind", "--error-exitcode=97", "--leak-check=full",
@@ -178,4 +188,4 @@ result = {"status": "BUILT_UNRUN" if target_mode else "PASS", "scope": "Real ups
           "input_sha256": {str(p): hashlib.file_digest(p.open("rb"), "sha256").hexdigest() for p in inputs}}
 (work / "result.json").write_text(json.dumps(result, indent=2) + "\n")
 print("BUILT_UNRUN: paired target executables; run before/contract (expect 1) and after/contract (expect 0) on EmberBSD." if target_mode else
-      "PASS: genuine unsupported-transform baseline, 334 repaired cases, strict Memcheck, paired static analysis and patched CMake linkage.")
+      "PASS: genuine unsupported-transform baseline, 335 repaired cases, strict Memcheck, paired static analysis and patched CMake linkage.")

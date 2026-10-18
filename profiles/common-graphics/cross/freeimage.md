@@ -81,13 +81,21 @@ In particular, JPEG-transform assertions remain active for package acceptance.
 The [JPEG contract](../tests/freeimage-jpeg/README.md) builds the complete real
 `JPEGTransform.cpp` translation unit against the native common codec provider.
 The original source fails a valid perfect vertical flip. The repaired source
-passes 334 transform, crop and error cases. Independent coefficient identities
+passes 335 transform, crop and error cases. Independent coefficient identities
 check every transformed DCT value, quantization tables and APP1/COM markers.
 All eight operations cover common subsampling types and grayscale, including
 partial edges. Tests also cover normalized and edge-relative rectangles,
 crop queries, nonzero same-handle offsets, short I/O, allocation failure and
 failed or throwing callbacks. Unknown 3:1 sampling keeps uncropped transforms
 and reports the public API's crop restriction consistently.
+
+The header decoder uses libjpeg's `setjmp` error contract in a plain helper
+with heap-owned state. This avoids a C++ exception crossing codec C frames
+without unwind tables. A matched AArch64 control with the former throwing
+callback aborts on malformed input. The repaired source passes all 335 cases
+in EmberBSD with the common GCC16 runtime. The runner explicitly selects
+that runtime during linking and verifies its actual SONAME. Target source
+execution does not establish installed FreeImage package acceptance.
 
 The repaired contract passes strict native Memcheck with zero errors and no
 live allocations. Clang19 reports no diagnostics for either source version

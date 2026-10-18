@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.15 2025/01/11 14:31:24 ryoon Exp $
+
+BLAKE2s (json-c-0.19.tar.gz) = ec497451577da5e2e2b5616bbebc0cf9f24c5c1200e566c9ba38c4a8588d9367
+SHA512 (json-c-0.19.tar.gz) = e373559ab029deada3a3b350f626d8975ef6ebb7b40d50a8b4d0284323368b13f6976d3611f52e34d0a824134ea6d0519d56041140e5d1911c0fbc1b84167f37
+Size (json-c-0.19.tar.gz) = 462232 bytes

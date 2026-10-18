@@ -1,0 +1,6 @@
+# $NetBSD$
+# The common Tcl recipe owns the paired release selection.
+.include "../../lang/tcl/Makefile.version"
+TK_SONUM=	${TCL_SONUM}
+TK_BASEVER=	${TCL_BASEVER}
+TK_VERSION=	${TCL_VERSION}

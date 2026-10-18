@@ -17,6 +17,9 @@ def main():
     parser.add_argument("--cmake", default="cmake")
     parser.add_argument("--ninja", default="ninja")
     args = parser.parse_args()
+    args.source = args.source.resolve()
+    args.toolchain = args.toolchain.resolve()
+    args.work = args.work.absolute()
     production = (args.source / "inputhandler/CMakeLists.txt").read_text()
     find_line = "find_package(Inotify REQUIRED)"
     if find_line not in production or "    Inotify::Inotify\n" not in production:
@@ -24,6 +27,8 @@ def main():
     if args.work.exists():
         parser.error("work directory already exists")
     args.work.mkdir(parents=True)
+    (args.work / "tmp").mkdir()
+    environment = dict(os.environ, TMPDIR=str(args.work / "tmp"))
     source = (args.source / "inputhandler").resolve()
     (args.work / "main.cpp").write_text(
         '#include "devicewatcher.h"\n#include <QCoreApplication>\n'
@@ -31,6 +36,12 @@ def main():
         'DeviceWatcher watcher; watcher.recheck(); return 0; }\n')
     (args.work / "CMakeLists.txt").write_text(f'''cmake_minimum_required(VERSION 3.30)
 project(bigscreen_inotify LANGUAGES CXX)
+if(NOT CMAKE_CROSSCOMPILING OR NOT CMAKE_SYSTEM_NAME STREQUAL "NetBSD"
+   OR NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+   OR CMAKE_CXX_COMPILER_VERSION VERSION_LESS "16.2"
+   OR NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "17")
+    message(FATAL_ERROR "Select the common GCC16 EmberBSD cross toolchain")
+endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 6.11 REQUIRED COMPONENTS Core)
@@ -56,7 +67,7 @@ endif()
         for operation, command in (("configure", configure), ("build", build)):
             log_path = args.work / f"{name}-{operation}.log"
             with log_path.open("w") as log:
-                result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT)
+                result = subprocess.run(command, env=environment, stdout=log, stderr=subprocess.STDOUT)
             results[f"{name}-{operation}"] = {"status": result.returncode, "command": command}
             if operation == "configure" and result.returncode:
                 raise SystemExit(f"{name} configure failed; inspect {log_path}")
