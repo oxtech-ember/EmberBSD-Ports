@@ -1,0 +1,3 @@
+openTPU provides a Python ISA simulator, compiler, kernels, and host tools.
+It packages the upstream Python distribution and does not enable hardware
+support.
