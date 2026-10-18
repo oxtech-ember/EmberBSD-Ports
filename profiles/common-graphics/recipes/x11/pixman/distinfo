@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.83 2025/07/20 21:15:03 wiz Exp $
+
+BLAKE2s (pixman-0.46.4.tar.xz) = 8f64af8d97d7bca42ba1e2065ea3a6e6bc299a2dc191fd9ca6bcd117f9bc63eb
+SHA512 (pixman-0.46.4.tar.xz) = 83b133e7969ba34f883f4e08dcc5d388c4397f43ce836c191c05945fe77c16ff501d531600780c12678a0d08105828a6bdeff2156b63f9c1a84087bc7f40ae9f
+Size (pixman-0.46.4.tar.xz) = 660536 bytes

@@ -288,6 +288,9 @@ runtime behavior are validated.
   with causal negative controls. Installed [desktop support](profiles/common-graphics/cross/desktop-support.md)
   also passes all four libsfdo 0.1.4 upstream tests and a private D-Bus 1.16.2
   session with name ownership, real method replies and error/lifecycle checks.
+  [Pixman 0.46.4](profiles/common-graphics/cross/pixman.md) also cross-builds its
+  complete default graph with automatic OpenMP test support and AArch64 NEON.
+  Its ordinary package checks pass; target test execution remains pending.
   A [Rust 1.99 std-only cross probe](probes/rust-cross-std/README.md) passes
   threads, TLS destructors, unwinding and C-library consumers in AArch64 VM.
   The [shared Rust host recipe and cargo-c](profiles/common-build-tools/rust.md)

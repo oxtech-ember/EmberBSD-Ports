@@ -156,6 +156,11 @@ lookup/parser tests and actual bus ownership, method replies, errors and shutdow
 in AArch64. A [Rust 1.99 cross-std probe](../../probes/rust-cross-std/README.md)
 passes target TLS/unwind and C-library consumers for the future SVG path.
 
+The [pixman 0.46.4 recipe](cross/pixman.md) restores automatic OpenMP detection
+for tests and benchmarks. Its full GCC16 AArch64 graph and ordinary package
+checks pass, preserving GNU assembly and NEON. Target test execution remains
+a separate acceptance step.
+
 The D-Bus 1.16.2nb6 recipe uses the corrected common cross configuration.
 Its rc script sources base `/etc/rc.subr`; package configuration stays under
 `/usr/pkg/etc`. Actual pkgsrc generation and native-independence checks pass.
