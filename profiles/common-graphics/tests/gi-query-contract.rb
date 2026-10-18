@@ -7,6 +7,10 @@ require 'json'
 require 'open3'
 require 'rbconfig'
 require 'shellwords'
+# A native launcher can supply a private Ruby runtime without target LD paths.
+ruby = ENV.fetch('EMBERBSD_TEST_RUBY', RbConfig.ruby)
+abort 'EMBERBSD_TEST_RUBY must name an absolute executable' unless ruby.start_with?('/') && File.file?(ruby) && File.executable?(ruby)
+ruby = File.realpath(ruby)
 target = 'aarch64'
 if ARGV.first == '--target'
   ARGV.shift; target = ARGV.shift
@@ -29,6 +33,8 @@ run = lambda do |name, *command, **options|
   abort "#{name}: #{output}" unless status.success?
   output
 end
+run.call('native-ruby-version', ruby, '--version')
+File.write(work + '/native-ruby-provider.json', JSON.pretty_generate({path: ruby, sha256: Digest::SHA256.file(ruby).hexdigest}) + "\n")
 File.write(work + '/build/library.c', 'int gi_probe_answer(void) { return 42; }' + "\n")
 File.write(work + '/build/query.c', 'extern int gi_probe_answer(void); void _start(void) { (void)gi_probe_answer(); }' + "\n")
 run.call('dso', cc, '-nostdlib', '-shared', '-fPIC', work + '/build/library.c', '-Wl,-soname,libgi-probe.so.1', '-o', work + '/build/provider/libgi-probe.so.1')
@@ -46,11 +52,11 @@ File.write(config_path, JSON.pretty_generate(config))
 env = {'EMBERBSD_GI_QUERY_CONFIG' => config_path, 'PATH' => work + '/bin:/usr/bin:/bin',
        'LD_LIBRARY_PATH' => nil, 'DYLD_LIBRARY_PATH' => nil, 'LD_PRELOAD' => nil}
 reject = lambda do |name, pattern, *args|
-  output, status = Open3.capture2e(env, RbConfig.ruby, helper, *args)
+  output, status = Open3.capture2e(env, ruby, helper, *args)
   File.write(work + '/' + name + '.log', output)
   abort "#{name} did not fail at expected boundary: #{output}" if status.success? || !output.match?(pattern) || File.exist?(marker)
 end
-run.call('check', env, RbConfig.ruby, helper, '--check', work + '/build', work + '/sysroot', readelf, target)
+run.call('check', env, ruby, helper, '--check', work + '/build', work + '/sysroot', readelf, target)
 # Real bmake evaluates the shared GI fragment for both target metadata sets.
 # This is a variable-selection fixture; it does not accept providers or a VM.
 make_tree = work + '/make'
@@ -60,7 +66,7 @@ FileUtils.cp(File.expand_path('../cross.mk', File.dirname(helper)), make_tree + 
 File.write(make_tree + '/devel/gobject-introspection/Makefile', ".include \"cross.mk\"\n")
 make_base = [ENV.fetch('BMAKE', 'bmake'), '-C', make_tree + '/devel/gobject-introspection',
   'USE_CROSS_COMPILE=yes', 'OPSYS=NetBSD', 'CROSS_OPSYS=NetBSD', 'CROSS_OS_VERSION=11.0',
-  'EMBERBSD_GI_RUBY=' + RbConfig.ruby, 'EMBERBSD_GI_QUERY_CONFIG=' + config_path,
+  'EMBERBSD_GI_RUBY=' + ruby, 'EMBERBSD_GI_QUERY_CONFIG=' + config_path,
   'EMBERBSD_CROSS_BUILD_CC=/usr/bin/cc', 'TOOLDIR=' + ARGV[0]]
 targets.to_a.reverse_each do |selected, (arch, gnu, _)|
   args = ['MACHINE_ARCH=' + arch, 'CROSS_MACHINE_ARCH=' + arch, 'MACHINE_GNU_PLATFORM=' + gnu, 'EMBERBSD_CROSS_TARGET=' + selected]
@@ -91,7 +97,7 @@ File.write(config_path, JSON.pretty_generate(legacy))
 if target == 'amd64'
   reject.call('legacy-is-not-amd64', /configuration differs/, '--check', work + '/build', work + '/sysroot', readelf, target)
 end
-run.call('legacy-aarch64-check', env, RbConfig.ruby, helper, '--check', work + '/build', work + '/sysroot', readelf)
+run.call('legacy-aarch64-check', env, ruby, helper, '--check', work + '/build', work + '/sysroot', readelf)
 File.write(config_path, JSON.pretty_generate(config.merge('target' => 'unsupported')))
 reject.call('unknown-target', /unsupported GI target/, '--check', work + '/build', work + '/sysroot', readelf)
 File.write(config_path, JSON.pretty_generate(config))
@@ -108,7 +114,6 @@ File.binwrite(provider, foreign)
 reject.call('foreign-endian', /not little-endian .* ELF64/, work + '/build/query')
 File.binwrite(provider, bytes)
 reject.call('unsupported-args', /only an optional/, work + '/build/query', '--delete')
-reject.call('execute-args', /only an optional/, '--execute', work + '/build/query', '--delete')
 File.write(work + '/build/types', 'get-type:gi_probe_answer' + "\n")
 File.write(work + '/outside/untouched', 'unchanged')
 File.symlink(work + '/outside/untouched', work + '/build/output')
@@ -121,11 +126,16 @@ reject.call('overlapping-roots', /build\/sysroot overlap/, '--check', work + '/b
 File.write(config_path, JSON.pretty_generate(config))
 # This real cross-linked fixture can resolve only through the symlinked directory.
 # The deliberately refusing SSH executable proves resolution reached that boundary.
-output, status = Open3.capture2e(env, RbConfig.ruby, helper, work + '/build/query')
+output, status = Open3.capture2e(env, ruby, helper, work + '/build/query')
 File.write(work + '/valid-alias.log', output)
 abort 'valid target/alias did not reach bounded transport' unless !status.success? && output.include?('allocate failed (74)') && File.read(marker) == "reached\n"
 allocation = File.readlines(work + '/ssh-arguments', chomp: true).last
 abort 'selected target uname contract missing' unless allocation.include?('test "$(uname -s)" = NetBSD') && allocation.include?('test "$(uname -p)" = ' + processor)
+# Literal execute arguments are valid. They still use the same verified transport.
+File.unlink(marker)
+output, status = Open3.capture2e(env, ruby, helper, '--execute', work + '/build/query', 'two words', "single'quote", '')
+File.write(work + '/execute-args.log', output)
+abort 'execute argv did not reach bounded transport' unless !status.success? && output.include?('allocate failed (74)') && File.read(marker) == "reached\n"
 # Execute only the production identity shell body, with explicit host fixtures.
 # No VM, SSH target or target executable is run by this regression.
 identity_glue = <<~SH
@@ -150,7 +160,7 @@ abort 'foreign machine accepted by SONAME helper' if status.success?
 end
 # Inject transport outcomes only; this does not emulate target execution.
 # Separate board acceptance runs actual cross-built upstream test binaries.
-File.write(work + '/bin/ssh', "#!#{RbConfig.ruby}\n" + <<~'RUBY')
+File.write(work + '/bin/ssh', "#!#{ruby}\n" + <<~'RUBY')
   command = ARGV.last
   mode = ENV.fetch('GI_TEST_MODE')
   phase = case command
@@ -210,7 +220,7 @@ expected.each do |mode, (phases, error)|
   outcome = work + '/build/' + mode + '.xml'
   transport_env = env.merge('GI_TEST_MODE' => mode, 'GI_TEST_PHASES' => trace,
                             'GI_TEST_INPUT' => work + '/build/types')
-  output, status = Open3.capture2e(transport_env, RbConfig.ruby, helper,
+  output, status = Open3.capture2e(transport_env, ruby, helper,
                                  work + '/build/query',
                                  "--introspect-dump=#{work}/build/types,#{outcome}")
   File.write(work + '/transport-' + mode + '.log', output)
@@ -255,19 +265,19 @@ puts 'PASS: real ELF and alias resolution; seven refusals before SSH; SONAME che
 %w[execute-pass execute-fail].each do |mode|
   phase_file = work + '/' + mode + '-phases'
   stdout, stderr, status = Open3.capture3(env.merge('GI_TEST_MODE' => mode,
-    'GI_TEST_PHASES' => phase_file), RbConfig.ruby, helper, '--execute', work + '/build/query')
+    'GI_TEST_PHASES' => phase_file), ruby, helper, '--execute', work + '/build/query')
   expected_status = mode == 'execute-fail' ? 7 : 0
   abort "#{mode}: lost probe streams/status" unless stdout == "probe stdout\n" &&
     stderr == "probe stderr\n" && status.exitstatus == expected_status
   abort "#{mode}: missing cleanup" unless File.readlines(phase_file, chomp: true) ==
     %w[allocate reuse transfer query status cleanup]
 end
-puts 'PASS: execute mode preserves separate streams and negative exit status, cleans both outcomes and rejects arguments'
+puts 'PASS: execute mode preserves separate streams and negative exit status, cleans both outcomes and accepts literal arguments'
 %w[query status cleanup].each do |mode|
   failure_marker = work + '/build/' + mode + '-failure'
   output, status = Open3.capture2e(env.merge('GI_TEST_MODE' => mode,
     'GI_TEST_PHASES' => work + '/execute-' + mode + '-phases',
-    'EMBERBSD_GI_FAILURE_MARKER' => failure_marker), RbConfig.ruby, helper,
+    'EMBERBSD_GI_FAILURE_MARKER' => failure_marker), ruby, helper,
     '--execute', work + '/build/query')
   abort "Unrecorded execute infrastructure failure: #{mode}: #{output}" if status.success? || !File.file?(failure_marker)
 end

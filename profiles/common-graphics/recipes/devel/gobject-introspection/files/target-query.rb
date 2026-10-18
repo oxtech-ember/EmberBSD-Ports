@@ -70,9 +70,9 @@ end
 exe = File.realpath(ARGV.shift || abort('binary required'))
 abort 'binary outside build root' unless inside.call(exe, base)
 args = ARGV.dup
-abort 'only an optional introspect-dump argument is supported' unless args.empty? || (!execute && args.size == 1 && args.first.start_with?('--introspect-dump='))
+abort 'only an optional introspect-dump argument is supported' unless execute || args.empty? || (args.size == 1 && args.first.start_with?('--introspect-dump='))
 in_path = out_path = nil
-if args.any?
+if !execute && args.any?
   in_path, out_path = args.first.delete_prefix('--introspect-dump=').split(',', 2)
   abort 'invalid dump paths' unless in_path && out_path && in_path.start_with?('/') && out_path.start_with?('/')
   in_path = File.realpath(in_path)
@@ -175,6 +175,7 @@ File.write(work + '/transfer-size.txt', "#{File.size(work + '/input.tar.gz')}\n"
 
   run.call('transfer', *ssh, "tar -xzf - -C #{remote.shellescape}", stdin_data: File.binread(work + '/input.tar.gz'))
   invocation = [remote + '/query']
+  invocation.concat(args) if execute
   invocation << "--introspect-dump=#{remote}/types.txt,#{remote}/dump.xml" if out_path
   script = <<~SH
     set -eu
