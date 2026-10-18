@@ -31,6 +31,11 @@ GCC16 regression and strict Memcheck checks. The ordinary AArch64 cross package
 also passes installed VM compression, gzip, writer-seek, integrity and
 removal/reinstallation checks with the runtime-only GCC16 provider.
 
+The [bsdtar bootstrap integration](cross/bsdtar-zlib.md) uses this registered
+zlib package in common profiles. Its ordinary native GCC16 package and strict
+gzip archive roundtrip pass. Outside the opt-in, bootstrap metadata stays intact.
+Cross metadata passes; target execution remains separate.
+
 Ordinary [FFTW and Readline packages](cross/README.md#installed-fftw-readline-and-ncurses)
 also pass GCC16 AArch64 VM numerical, terminal input/history and package
 removal/reinstallation checks. FFTW covers both precisions with pthread
