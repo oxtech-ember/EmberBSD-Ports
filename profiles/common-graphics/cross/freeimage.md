@@ -4,6 +4,11 @@ The common graphics profile replaces `graphics/freeimage` and
 `graphics/freeimageplus` together with the maintained FreeImage 3.19.25 release.
 It also updates the existing `graphics/libraw` provider to 0.22.2.
 These are source recipes. Complete native and target packages remain pending.
+The ordinary native core build passes eight of nine upstream tests. The
+remaining test reaches the release's unsupported system-JPEG transform path.
+The static package list uses the `FreeImageTargets-noconfig.cmake` file produced
+by both ordinary native and AArch64 stages. The repaired complete packages
+have not yet passed their final package checks.
 
 ## Provenance and licensing
 
@@ -67,6 +72,38 @@ complete codec acceptance. Their system-provider limitation requires a separate
 upstream repair if that broader behavior is needed.
 
 ## Checks and next integration
+
+`AssignPixel` copies the same eight supported pixel widths with `memcpy`.
+This removes word and floating-point accesses to potentially unaligned byte
+storage. Its unsupported-width assertion remains unchanged. All existing
+callers use separate storage: TIFF strip buffers and destination bitmaps,
+TARGA pixel buffers and scanlines, or rotation scratch arrays and newly
+allocated images. `FreeImage_Paste` does not call this internal helper.
+The change does not add an overlapping-buffer API contract.
+
+The focused [pixel contract](../tests/freeimage-pixels/check-source.rb) extracts
+the complete upstream function and retains the actual public byte/word types.
+Matched GCC16 `-O2` builds reproduce the original alignment-sanitizer failure
+and pass all eight widths at four unaligned offsets after the repair.
+Exact pixel bytes and untouched surrounding bytes are checked. The repaired
+native contract passes strict Memcheck with zero errors and no live allocations.
+Clang19 reports no diagnostics for either finite contract. Cppcheck2.22 on
+actual GCC16-preprocessed input removes fourteen incompatible-pointer-cast
+reports. The unchanged assertion and system-header style reports remain.
+The actual AArch64 rotation translation unit also compiles without its previous
+inline pixel-copy warnings. These checks do not establish target execution or
+complete FreeImage memory acceptance.
+
+```sh
+ruby profiles/common-graphics/tests/freeimage-pixels/check-source.rb \
+  /absolute/FreeImage-3.19.25-linux-source.tar.gz \
+  /absolute/native-g++ /absolute/new-pixel-check
+```
+
+The common cross profile also selects the installed GCC16 C++ library during
+CMake discovery. The [provider contract](../../common-build-tools/cross/pkgconfig.md)
+prevents an explicit LibRaw `-lstdc++` from selecting the base C++ ABI alongside
+GCC16. Full FreeImage target relinking and package validation remain pending.
 
 On 2026-10-18, the complete common profile export succeeded with the new recipes.
 Real native and AArch64 pkgsrc metadata selects the expected versions and
