@@ -3,5 +3,5 @@ $NetBSD: distinfo,v 1.15 2025/01/11 14:31:24 ryoon Exp $
 BLAKE2s (json-c-0.19.tar.gz) = ec497451577da5e2e2b5616bbebc0cf9f24c5c1200e566c9ba38c4a8588d9367
 SHA512 (json-c-0.19.tar.gz) = e373559ab029deada3a3b350f626d8975ef6ebb7b40d50a8b4d0284323368b13f6976d3611f52e34d0a824134ea6d0519d56041140e5d1911c0fbc1b84167f37
 Size (json-c-0.19.tar.gz) = 462232 bytes
-SHA1 (patch-tests_test_json_parse_cli.test) = a9be9f0fd6ec663e454529e0715b17c1976ea42b
-SHA1 (patch-json_object.c) = 53b4eb6ca4d1faea48363b5e4651ff22a0dc72ed
+SHA1 (patch-json_object.c) = 41746f08ab51b5f0d5009569cc41359492129932
+SHA1 (patch-tests_test_json_parse_cli.test) = 744a8833051940758d0c533eaa6c1adc826cb762
