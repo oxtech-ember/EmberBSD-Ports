@@ -10,6 +10,8 @@ and target KDocTools data. Native package builds retain their normal dependency.
 Use the verified Frameworks 6.31.0 archives in [sources.tsv](../sources.tsv),
 matching native Qt 6.12 tools, Extra CMake Modules 6.31 and a native prefix
 with libxml2, libxslt, DocBook XML 4.5, DocBook XSL, zlib, bzip2, XZ and Zstd.
+The native Perl interpreter must provide `URI::Escape` from `www/p5-URI`.
+Set `PERL5LIB` if these modules use a separate native installation prefix.
 The script verifies source hashes before extraction. It records generator hashes.
 
 ```sh
