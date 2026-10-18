@@ -17,6 +17,8 @@ LICENSE=	gnu-gpl-v2
 
 USE_TOOLS+=	pkg-config msgfmt
 USE_LANGUAGES=	c
+# The gudev pc include path is not rebased by the cross wrapper; add it.
+CPPFLAGS+=	-I/Volumes/BigData/EmberBSD/build/sysroot/usr/pkg/include/gudev-1.0
 
 # Wayland session core; X11 support stays compiled (upstream builds
 # both) and runs through Xwayland.

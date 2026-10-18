@@ -1,0 +1,40 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Retain introspection during cross
+builds: the shared target GType query launcher and ELF ldd wrapper
+apply to every generated GIR.
+
+--- clutter/clutter/meson.build.orig
++++ clutter/clutter/meson.build
+@@ -454,7 +454,15 @@
+     '-DG_LOG_DOMAIN="Clutter"'
+   ]
+ 
++  # EmberBSD cross: shared GI machinery (target GType queries + ldd wrapper).
++  gir_extra_args = []
++  gir_env = environment()
++  if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++    gir_extra_args = ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++    gir_env.set('LD_LIBRARY_PATH', meson.current_build_dir())
++  endif
+   libmuffin_clutter_gir = gnome.generate_gir(libmuffin_clutter,
++    extra_args: gir_extra_args, env: gir_env,
+     sources: [
+       clutter_built_sources,
+       clutter_built_headers,
+@@ -483,6 +491,7 @@
+   )
+ 
+   libmuffin_cally_gir = gnome.generate_gir(libmuffin_clutter,
++    extra_args: gir_extra_args, env: gir_env,
+     sources: [
+       cally_sources,
+       cally_headers,
+@@ -503,6 +512,7 @@
+ 
+   if have_x11
+     libmuffin_clutter_x11_gir = gnome.generate_gir(libmuffin_clutter,
++    extra_args: gir_extra_args, env: gir_env,
+       sources: [
+         clutter_x11_sources,
+         clutter_x11_headers,

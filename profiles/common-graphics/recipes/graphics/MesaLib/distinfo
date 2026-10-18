@@ -22,3 +22,4 @@ SHA1 (patch-src_egl_drivers_dri2_platform__wayland.c) = cf5fb241e32e2d9d407d93ba
 SHA1 (patch-src_gallium_drivers_v3d_v3d__screen.c) = 458b3978bedf1c97dbce8a4e54f85665ecdbbfe4
 SHA1 (patch-src_gallium_targets_dri_meson.build) = 6a7133acea81afe1608c16802dec6c4126198c9a
 SHA1 (patch-src_gallium_targets_dri_dri.sym.in) = ecfda913169a475567f797af791cb296db85ef27
+SHA1 (patch-src_util_u__process.c) = 9d0ef663ba79648c8e3f5fe5866d2b503c6d2cdf
