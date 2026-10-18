@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Existing POSIX GCC compiles target runtimes.
 check_external_compiler() {
-    [ "$resume" = no ] || fail 'External compiler mode does not support frontend resume.'
+    [ "$resume" = no ] || [ "$resume" = support ] || fail 'External compiler mode does not support frontend resume.'
     [ "$runtime_gomp$runtime_atomic" = nono ] || fail 'External compiler mode currently builds libgcc and libstdc++ only.'
     for compiler in "$cc" "$cxx"; do
         compiler_version=$("$compiler" -v 2>&1) || fail 'Cannot identify external compiler.'
@@ -77,3 +77,24 @@ build_external_runtime() (
         "$make" "DESTDIR=$work/stage" install > "$work/$library-install.log" 2>&1
     done
 )
+
+check_external_support_resume() {
+    check_runtime_libraries
+    for support_input in "scope=runtime-only-external-compiler" "target=$target" "triplet=$triplet" \
+        "seed_source=$origin" "compiler=$kernel" "sysroot=$sysroot" "math=$math" "jobs=$jobs" \
+        "host_cc=${HOST_CC:-cc}" "host_cxx=${HOST_CXX:-c++}" \
+        "host_cflags=${HOST_CFLAGS:--O2}" "host_cxxflags=${HOST_CXXFLAGS:--O2}" \
+        "host_ar=${AR:-auto}" "host_nm=${NM:-auto}" "host_ranlib=${RANLIB:-auto}"; do
+        grep -Fqx "$support_input" "$work/inputs.txt" || fail "Support resume input changed: $support_input"
+    done
+    # The closed leaf contract replaces only the historical support target.
+    prior_compiler_state=$(sed 's/^support_target=libgcc-support$/support_target=gcc-leaf-metadata-v1/' "$work/external-compiler.txt")
+    [ "$external_compiler_state" = "$prior_compiler_state" ] || fail 'External compiler changed before support resume.'
+    grep -Fqx "CFLAGS_FOR_TARGET = $target_flags" "$work/build/Makefile" && \
+        grep -Fqx "CXXFLAGS_FOR_TARGET = $target_flags" "$work/build/Makefile" && \
+        grep -Fqx 'LDFLAGS_FOR_TARGET = -Wl,-rpath,/usr/pkg/gcc16/lib -Wl,-z,relro' "$work/build/Makefile" || fail 'Support target flags changed.'
+    grep -Fqx "$(shasum -a 256 "$make")" "$work/inputs.txt" || fail 'Support GNU make provider changed.'
+    support_action=resume
+    [ "$check" != yes ] || support_action=check
+    sh "$here/support-resume.sh" "$support_action" "$work"
+}

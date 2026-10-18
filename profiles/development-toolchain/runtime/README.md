@@ -10,7 +10,10 @@ remain on the development host.
 The explicit [external-compiler bootstrap](../bootstrap/external-compiler.md)
 records one existing POSIX GCC16 and a separate generated support snapshot.
 Its `runtime-only-external-compiler` marker requires unchanged compiler and
-build-plan receipts. The same stage inventory, ELF, dependency, RELRO and
+build-plan receipts. A failed native support phase can use the explicit
+`runtime-only-external-support-resume` scope with its immutable parent failure
+and source/build/seed checkpoint. The verifier requires that parent chain.
+The same stage inventory, ELF, dependency, RELRO and
 package checks apply. This build mode does not alter package conflicts or
 authorize replacing files owned by an installed full `gcc16` package.
 

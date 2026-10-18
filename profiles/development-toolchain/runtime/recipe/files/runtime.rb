@@ -128,7 +128,61 @@ module GCC16Runtime
       {'GCC_RUNTIME_CXX_MATH_INPUTS_SHA256' => Digest::SHA256.hexdigest(MATH_PATCHES.values.join + regular.fetch(relative))}
     end
 
-    def verify_external_compiler(inputs, architecture)
+    def verify_support_parent(inputs, required)
+      claims = inputs.lines.grep(/^resume_support_prior_inputs_sha256=/)
+      return if claims.empty? && !required
+      raise Invalid, 'Unexpected support parent claim' if !required && !claims.empty?
+      raise Invalid, 'Invalid support parent claim' unless claims.length == 1 && claims[0].match?(/\Aresume_support_prior_inputs_sha256=[0-9a-f]{64}\n\z/)
+      parent = @work + '/support-parent'
+      raise Invalid, 'Invalid support parent directory' unless File.directory?(parent) && !File.symlink?(parent)
+      verify_document = lambda do |path, expected = nil|
+        raise Invalid, 'Invalid support parent file' unless File.file?(path) && !File.symlink?(path)
+        actual = hash(path)
+        receipts = inputs.lines.filter_map { |line| match = line.match(/\A([0-9a-f]{64})  (.+)\n\z/); match[1] if match && match[2] == path }
+        raise Invalid, 'Changed support parent receipt' unless receipts.any? && receipts.all? { |value| value == actual } && (!expected || expected == actual)
+      end
+      manifest = @work + '/support-parent.sha256'
+      verify_document.call(manifest)
+      expected_documents = %w[inputs.txt failure-exit.txt phase helper-prefix.txt helpers.sha256 checkpoint-producer.sh checkpoint-producer.sha256 support-build.log support-host.log configure.log patch.log] +
+                           %w[source build seed].flat_map { |tag| %w[inventory sha256 symlinks].map { |kind| tag + '.' + kind } }
+      parent_documents = []
+      File.readlines(manifest).each do |line|
+        match = line.match(/\A([0-9a-f]{64})  (.+)\n\z/)
+        raise Invalid, 'Unsafe support parent manifest' unless match && File.dirname(match[2]) == parent
+        parent_documents << File.basename(match[2])
+        verify_document.call(match[2], match[1])
+      end
+      expected_documents << 'external-compiler.txt' if parent_documents.include?('external-compiler.txt')
+      raise Invalid, 'Incomplete support parent documents' unless parent_documents.sort == expected_documents.sort
+      # Earlier checkpoints retain this identity through the original input hash.
+      verify_document.call(parent + '/external-compiler.txt')
+      raise Invalid, 'Wrong support checkpoint producer' unless File.read(parent + '/checkpoint-producer.sha256').split.first == hash(parent + '/checkpoint-producer.sh')
+      prior_compiler = File.read(parent + '/external-compiler.txt').sub("support_target=libgcc-support\n", "support_target=gcc-leaf-metadata-v1\n")
+      raise Invalid, 'Support resume changed the compiler identity' unless prior_compiler == File.read(@work + '/external-compiler.txt')
+      raise Invalid, 'Wrong support parent identity' unless hash(parent + '/inputs.txt') == claims[0].strip.split('=', 2)[1]
+      raise Invalid, 'Wrong support failure phase' unless File.read(parent + '/phase') == "failed-external-support\n"
+      raise Invalid, 'Missing support failure' unless File.read(parent + '/failure-exit.txt').match?(/\A[1-9][0-9]*\n\z/)
+      helpers = parent + '/helpers'
+      raise Invalid, 'Invalid frozen helper directory' unless File.directory?(helpers) && !File.symlink?(helpers)
+      File.readlines(parent + '/helpers.sha256').each do |line|
+        match = line.match(/\A([0-9a-f]{64})  (.+)\n\z/)
+        raise Invalid, 'Unsafe frozen helper manifest' unless match && File.dirname(match[2]) == helpers
+        verify_document.call(match[2], match[1])
+      end
+      original = File.read(parent + '/inputs.txt')
+      raise Invalid, 'Wrong original support scope' unless original.lines.grep(/^scope=/) == ["scope=runtime-only-external-compiler\n"]
+      identity_path = @work + '/external-compiler.txt'
+      identity_claims = original.lines.filter_map { |line| match = line.match(/\A([0-9a-f]{64})  (.+)\n\z/); match[1] if match && match[2] == identity_path }
+      raise Invalid, 'Original compiler identity hash mismatch' unless identity_claims == [hash(parent + '/external-compiler.txt')]
+      %w[target triplet seed_source compiler sysroot math jobs runtime_libraries host_cc host_cxx host_cflags host_cxxflags host_ar host_nm host_ranlib].each do |key|
+        before = original.lines.grep(/^#{Regexp.escape(key)}=/)
+        after = inputs.lines.grep(/^#{Regexp.escape(key)}=/)
+        raise Invalid, 'Support parent input changed: ' + key unless before.length == 1 && before == after
+      end
+    end
+
+    def verify_external_compiler(inputs, architecture, support_resumed = false)
+      verify_support_parent(inputs, support_resumed)
       support = %w[libgcc.mvars specs tconfig.h version.h auto-host.h Makefile config.status].map { |name| 'external-support/' + name }
       documents = (%w[external-compiler.txt external-runtime-plan.txt] + support).to_h do |name|
         path = @work + '/' + name
@@ -159,7 +213,7 @@ module GCC16Runtime
       raise Invalid, 'Wrong target compiler owner' unless field.call(plan, 'target_objects') == 'external-compiler'
       seed = field.call(inputs, 'sysroot')
       command = field.call(plan, 'CC')
-expected_command = prefix + '/bin/' + architecture.fetch(:triplet) + '-gcc --sysroot=' + seed + ' -B'
+      expected_command = prefix + '/bin/' + architecture.fetch(:triplet) + '-gcc --sysroot=' + seed + ' -B'
       support_path = command.delete_prefix(expected_command)
       raise Invalid, 'External runtime selected a different compiler or seed' unless command.start_with?(expected_command) && support_path.match?(%r{\A/[A-Za-z0-9_./-]+/build/gcc/\z}) && !support_path.split('/').include?('..')
       raise Invalid, 'External C++ runtime selected a different compiler' unless field.call(plan, 'CXX') == command + ' -shared-libgcc -nostdinc++'
@@ -168,7 +222,8 @@ expected_command = prefix + '/bin/' + architecture.fetch(:triplet) + '-gcc --sys
 
     def verify
       marker = File.read(@work + '/build-success')
-      external = marker == "runtime-only-external-compiler\n"
+      support_resumed = marker == "runtime-only-external-support-resume\n"
+      external = marker == "runtime-only-external-compiler\n" || support_resumed
       rebuild = marker == "runtime-libstdcxx-rebuild\n"
       relink = marker == "runtime-relro-relink\n"
       raise Invalid, 'No completed runtime stage' unless marker == "runtime-only-bootstrap\n" || external || ((rebuild || relink) && @allow_rebuild)
@@ -178,7 +233,7 @@ expected_command = prefix + '/bin/' + architecture.fetch(:triplet) + '-gcc --sys
         raise Invalid, "Missing or duplicate provenance: #{key}" unless lines.length == 1 && lines[0].end_with?("\n")
         [key, lines[0].delete_prefix(key + '=').delete_suffix("\n")]
       end
-      expected_scope = external ? 'runtime-only-external-compiler' : (relink ? 'runtime-relro-relink' : (rebuild ? 'runtime-libstdcxx-rebuild' : 'runtime-only-bootstrap'))
+      expected_scope = external ? (support_resumed ? 'runtime-only-external-support-resume' : 'runtime-only-external-compiler') : (relink ? 'runtime-relro-relink' : (rebuild ? 'runtime-libstdcxx-rebuild' : 'runtime-only-bootstrap'))
       raise Invalid, 'Expected runtime-only bootstrap scope' unless claims.fetch('scope') == expected_scope
       architecture = TARGETS[claims.fetch('target')]
       raise Invalid, 'Unsupported runtime target' unless architecture
@@ -204,7 +259,7 @@ expected_command = prefix + '/bin/' + architecture.fetch(:triplet) + '-gcc --sys
         matches = inputs.lines.filter_map { |l| m = l.match(/\A([0-9a-f]{64})  (.+)\n?\z/); m[1] if m && m[2].chomp == receipt_path }
         raise Invalid, "Source/recipe receipt mismatch: #{path}" unless matches == [hash(path)]
       end
-      verify_external_compiler(inputs, architecture) if external
+      verify_external_compiler(inputs, architecture, support_resumed) if external
       regular = {}; links = {}
       File.foreach(@work + '/stage.sha256') do |line|
         match = line.match(/\A([0-9a-f]{64})  (.+)\n\z/)

@@ -21,7 +21,11 @@ printf 'native-object\n' > "$fixture/native-object"
 cat > "$fixture/make" <<'EOF_MAKE'
 #!/bin/sh
 set -eu
+support_cpp=no
+configure_support=no
 for argument; do
+    [ "$argument" != all-build-libcpp ] || support_cpp=yes
+    [ "$argument" != configure-gcc ] || configure_support=yes
     case "$argument" in all-gcc|all-target-*|install-gcc|install-target-*) echo 'Forbidden compiler/frontend recursion' >&2; exit 99;; esac
     if [ "$argument" = all-build-libcpp ]; then
         printf 'build-machine libcpp\n' > "$BUILD_CPP_ARCHIVE"
@@ -40,6 +44,9 @@ for argument; do
         "${RANLIB:-ranlib}" "$NATIVE_OBJECT"
     fi
 done
+if [ "$configure_support" = yes ] && [ "$support_cpp" != yes ]; then
+    echo 'Missing upstream all-build-libcpp prerequisite' >&2; exit 94
+fi
 case "$PWD" in */libgcc|*/libstdc++-v3)
     [ "$AR" = "$AR_FOR_TARGET" ] && [ "$NM" = "$NM_FOR_TARGET" ] && [ "$RANLIB" = "$RANLIB_FOR_TARGET" ] || exit 95;;
 esac

@@ -3,7 +3,7 @@
 # Origin: EmberBSD; AI-assisted staged GCC16 runtime bootstrap.
 set -eu
 usage() {
-    echo 'Usage: build.sh [--check] [--external-compiler] [--resume|--resume-runtime] [--with-libgomp] [--with-libatomic] --target amd64|aarch64 EXPORTED_PKGSRC GCC_ARCHIVE COMPILER_PREFIX SYSROOT HOST_MATH_PREFIX WORK' >&2
+    echo 'Usage: build.sh [--check] [--external-compiler] [--resume|--resume-runtime|--resume-support] [--with-libgomp] [--with-libatomic] --target amd64|aarch64 EXPORTED_PKGSRC GCC_ARCHIVE COMPILER_PREFIX SYSROOT HOST_MATH_PREFIX WORK' >&2
     exit 2
 }
 fail() { echo "$*" >&2; exit 2; }
@@ -18,6 +18,7 @@ while :; do
         --check) check=yes; shift;;
         --external-compiler) external_compiler=yes; scope=runtime-only-external-compiler; shift;;
         --resume) [ "$resume" = no ] || usage; resume=yes; shift;;
+        --resume-support) [ "$resume" = no ] || usage; resume=support; shift;;
         --resume-runtime) [ "$resume" = no ] || usage; resume=runtime; shift;;
         --with-libgomp) [ "$runtime_gomp" = no ] || usage; runtime_gomp=yes; shift;;
         --with-libatomic) [ "$runtime_atomic" = no ] || usage; runtime_atomic=yes; shift;;
@@ -34,6 +35,8 @@ case "$target" in
         target_flags=-O2;;
     *) fail "Unsupported target: $target";;
 esac
+[ "$resume" != support ] || [ "$external_compiler" = yes ] || fail '--resume-support requires --external-compiler.'
+[ "$resume" != support ] || scope=runtime-only-external-support-resume
 [ "$#" -eq 6 ] || usage
 pkgsrc=$1 archive=$2 kernel=$3 sysroot=$4 math=$5 work=$6
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
@@ -123,7 +126,7 @@ case "$make" in /*) ;; *) fail 'GNU_MAKE must be an absolute executable path.';;
 . "$here/runtime-libraries.sh"
 select_runtime_libraries
 . "$here/resume-state.sh"
-[ "$resume" = no ] || check_resume
+if [ "$resume" = support ]; then check_external_support_resume; elif [ "$resume" != no ]; then check_resume; fi
 printf 'target=%s\ntriplet=%s\nabi=libstdc++.so.7\ntarget_flags=%s\n' "$target" "$triplet" "$target_flags"
 printf 'seed_source=%s\nruntime_prefix=/usr/pkg/gcc16\nstage=%s/stage\n' "$origin" "$work"
 printf 'resume=%s\ntoolexeclibdir=/usr/pkg/gcc16/lib\n' "$resume"
@@ -169,8 +172,13 @@ ${HOST_CC:-cc} ${HOST_CFLAGS:--O2} -I"$math/include" "$profile/cross/tests/host-
 "$work/host-gmp" timer >> "$work/host-gmp.log"
 sh "$here/prepare-source.sh" "$pkgsrc" "$archive" "$work/src" > "$work/patch.log" 2>&1
 else
-    if [ "$resume" = runtime ]; then backup_runtime_resume; else backup_resume; fi
-    record_runtime_libraries
+    if [ "$resume" = support ]; then
+        printf '%s\n' "$external_compiler_state" > "$work/external-compiler.txt"
+        shasum -a 256 "$work/external-compiler.txt" >> "$work/inputs.txt"
+    else
+        if [ "$resume" = runtime ]; then backup_runtime_resume; else backup_resume; fi
+        record_runtime_libraries
+    fi
 fi
 # Pin the helper revision and all target tools, including when an older
 # receipt predates explicit binutils selection. Keep the original receipt.
@@ -185,7 +193,7 @@ fi
         "$kernel/bin/$triplet-$bootstrap_tool" --version | sed -n '1p'
     done
     shasum -a 256 "$here/build.sh" "$here/target-tools.sh" "$here/resume-state.sh" "$here/runtime-libraries.sh" \
-        "$here/audit-source.sh" "$here/prepare-source.sh" "$here/external-compiler.sh" "$make" \
+        "$here/audit-source.sh" "$here/prepare-source.sh" "$here/external-compiler.sh" "$here/support-resume.sh" "$make" \
         "$work/src/configure" "$work/src/gcc/configure" "$work/src/libstdc++-v3/configure" \
         "$work/src/libgomp/configure" "$work/src/libatomic/configure"
 } >> "$work/inputs.txt"
@@ -213,11 +221,13 @@ export ac_cv_func_clock_gettime=yes ac_cv_func_gethostbyname_r=no
 export ac_cv_func_freelocale=no ac_cv_func_newlocale=no ac_cv_func_uselocale=no
 export CFLAGS_FOR_TARGET="$target_flags" CXXFLAGS_FOR_TARGET="$target_flags"
 export LDFLAGS_FOR_TARGET='-Wl,-rpath,/usr/pkg/gcc16/lib -Wl,-z,relro'
-CC=${HOST_CC:-cc} CXX=${HOST_CXX:-c++} CFLAGS=${HOST_CFLAGS:--O2} CXXFLAGS=${HOST_CXXFLAGS:--O2} \
-    "$work/src/configure" "$@" > "$work/configure.log" 2>&1
+if [ "$resume" != support ]; then
+    CC=${HOST_CC:-cc} CXX=${HOST_CXX:-c++} CFLAGS=${HOST_CFLAGS:--O2} CXXFLAGS=${HOST_CXXFLAGS:--O2} \
+        "$work/src/configure" "$@" > "$work/configure.log" 2>&1
+fi
 if [ "$external_compiler" = yes ]; then
     build_external_runtime
-mkdir "$work/external-support"
+    mkdir "$work/external-support"
     for file in libgcc.mvars specs tconfig.h version.h auto-host.h Makefile config.status; do
         [ -f "$work/build/gcc/$file" ] || fail 'Missing generated GCC runtime support.'
         cp "$work/build/gcc/$file" "$work/external-support/$file"

@@ -96,3 +96,40 @@ Use one declared runtime provider. The runtime-only package conflicts with the
 full compiler package; staging build inputs does not authorize overwriting its
 files or removing development packages. Installation ownership and target
 consumer acceptance remain separate checks.
+
+## Resume a failed native support phase
+
+The support prerequisites include upstream `all-build-libcpp`. Build-side
+programs use a different libcpp archive from the host-side `all-libcpp` target.
+
+Use the explicit checkpoint before changing helper source files. Keep the
+actual nonzero exit-status file from the failed parent command.
+
+```sh
+sh profiles/development-toolchain/bootstrap/support-resume.sh checkpoint \
+    /absolute/work /absolute/parent-failure-exit.txt
+```
+
+The checkpoint authenticates every original input hash. It freezes the
+original receipt, helper bytes and failed logs. It records complete source,
+build and seed inventories, regular-file hashes and symlink targets.
+These manifests do not pin mode bits, ownership or timestamps. They
+authenticate tree contents and links, not all filesystem metadata.
+It does not accept completed work, language frontends, target-library objects,
+a runtime build plan or a nonempty target stage.
+
+Run `build.sh --check --resume-support --external-compiler` with the original
+arguments, native tools and flags. Remove only `--check` to continue. The
+builder verifies the frozen parent and unchanged compiler, seed, source and
+support trees. It keeps generated configure state and valid native objects.
+Upstream make completes missing support prerequisites. It then builds fresh
+target libraries through the normal external-compiler path.
+
+The distinct `runtime-only-external-support-resume` marker requires the parent
+contract. Older verifiers reject this marker. The current receipt names the
+original parent input SHA256. The compiler identity can change only its old
+`libgcc-support` claim to `gcc-leaf-metadata-v1`; compiler binaries stay fixed.
+The old identity stays in the parent. Historical helper hash paths resolve to frozen copies; current helper hashes are recorded
+separately. The original parent receipt stays unchanged. The package verifier
+checks this explicit parent chain with its ordinary runtime and package gates.
+This mode cannot resume a target-library or frontend build.

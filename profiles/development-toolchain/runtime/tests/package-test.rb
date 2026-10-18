@@ -61,24 +61,29 @@ class RuntimePackageTest < Minitest::Test
     end
   end
 
+  def external_receipts
+    File.write(@work + '/build-success', "runtime-only-external-compiler\n")
+    prefix = '/fixture/compiler'
+    receipt = "compiler_mode=external-posix\nversion=16.2.0\ntriplet=#{@triplet}\nthread_model=posix\nsupport_target=gcc-leaf-metadata-v1\ntarget_objects=external-compiler\ncompiler=#{prefix}\ncc1=#{prefix}/libexec/cc1\ncc1plus=#{prefix}/libexec/cc1plus\n"
+    %W[#{prefix}/bin/#{@triplet}-gcc #{prefix}/bin/#{@triplet}-g++ #{prefix}/libexec/cc1 #{prefix}/libexec/cc1plus].each { |path| receipt << "#{'a' * 64}  #{path}\n" }
+    plan = "support_target=gcc-leaf-metadata-v1\ntarget_objects=external-compiler\nCC=#{prefix}/bin/#{@triplet}-gcc --sysroot=/fixture/seed -B/fixture/work/build/gcc/\nCXX=#{prefix}/bin/#{@triplet}-gcc --sysroot=/fixture/seed -B/fixture/work/build/gcc/ -shared-libgcc -nostdinc++\n"
+    compiler_path = @work + '/external-compiler.txt'
+    plan_path = @work + '/external-runtime-plan.txt'
+    File.write(compiler_path, receipt)
+    File.write(plan_path, plan)
+    inputs = File.read(@work + '/inputs.txt').sub('scope=runtime-only-bootstrap', 'scope=runtime-only-external-compiler') + "sysroot=/fixture/seed\n"
+    support = %w[libgcc.mvars specs tconfig.h version.h auto-host.h Makefile config.status].map { |name| @work + '/external-support/' + name }
+    FileUtils.mkdir_p(@work + '/external-support')
+    support.each { |path| File.write(path, 'generated support fixture') }
+    [compiler_path, plan_path, *support].each { |path| inputs << "#{Digest::SHA256.file(path).hexdigest}  #{path}\n" }
+    File.write(@work + '/inputs.txt', inputs)
+    [inputs, receipt, plan, compiler_path, plan_path, support]
+  end
+
   def test_external_compiler_receipt_and_mutations
     %w[amd64 aarch64].each do |target|
       with_fixture(target) do
-        File.write(@work + '/build-success', "runtime-only-external-compiler\n")
-        prefix = '/fixture/compiler'
-        receipt = "compiler_mode=external-posix\nversion=16.2.0\ntriplet=#{@triplet}\nthread_model=posix\nsupport_target=gcc-leaf-metadata-v1\ntarget_objects=external-compiler\ncompiler=#{prefix}\ncc1=#{prefix}/libexec/cc1\ncc1plus=#{prefix}/libexec/cc1plus\n"
-        %W[#{prefix}/bin/#{@triplet}-gcc #{prefix}/bin/#{@triplet}-g++ #{prefix}/libexec/cc1 #{prefix}/libexec/cc1plus].each { |path| receipt << "#{'a' * 64}  #{path}\n" }
-        plan = "support_target=gcc-leaf-metadata-v1\ntarget_objects=external-compiler\nCC=#{prefix}/bin/#{@triplet}-gcc --sysroot=/fixture/seed -B/fixture/work/build/gcc/\nCXX=#{prefix}/bin/#{@triplet}-gcc --sysroot=/fixture/seed -B/fixture/work/build/gcc/ -shared-libgcc -nostdinc++\n"
-        compiler_path = @work + '/external-compiler.txt'
-        plan_path = @work + '/external-runtime-plan.txt'
-        File.write(compiler_path, receipt)
-        File.write(plan_path, plan)
-        inputs = File.read(@work + '/inputs.txt').sub('scope=runtime-only-bootstrap', 'scope=runtime-only-external-compiler') + "sysroot=/fixture/seed\n"
-support = %w[libgcc.mvars specs tconfig.h version.h auto-host.h Makefile config.status].map { |name| @work + '/external-support/' + name }
-        FileUtils.mkdir_p(@work + '/external-support')
-        support.each { |path| File.write(path, 'generated support fixture') }
-        [compiler_path, plan_path, *support].each { |path| inputs << "#{Digest::SHA256.file(path).hexdigest}  #{path}\n" }
-        File.write(@work + '/inputs.txt', inputs)
+        inputs, receipt, plan, compiler_path, plan_path, support = external_receipts
         stage.verify
         # Rehashing an obsolete broad support claim must not authenticate it.
         old_receipt = receipt.sub('gcc-leaf-metadata-v1', 'libgcc-support')
@@ -110,6 +115,61 @@ support = %w[libgcc.mvars specs tconfig.h version.h auto-host.h Makefile config.
         File.write(support.first, 'changed generated support')
         assert_raises(GCC16Runtime::Invalid) { stage.verify }
       end
+    end
+  end
+
+  def test_failed_support_parent_contract
+    with_fixture('aarch64') do
+      inputs, receipt = external_receipts
+      identity = "compiler=/fixture/compiler\nmath=/fixture/math\njobs=2\nhost_cc=/native/cc\nhost_cxx=/native/c++\nhost_cflags=-O2\nhost_cxxflags=-O2\nhost_ar=/native/ar\nhost_nm=/native/nm\nhost_ranlib=/native/ranlib\nruntime_libraries=libgcc,libstdc++\n"
+      inputs += identity
+      parent = @work + '/support-parent'
+      FileUtils.mkdir_p(parent + '/helpers')
+      frozen = parent + '/helpers/build.sh'
+      File.write(frozen, 'Historical helper fixture')
+      digest_row = ->(path) { "#{Digest::SHA256.file(path).hexdigest}  #{path}\n" }
+      File.write(parent + '/helpers.sha256', digest_row.call(frozen))
+      old_compiler = receipt.sub('gcc-leaf-metadata-v1', 'libgcc-support')
+      original = inputs.sub(Digest::SHA256.hexdigest(receipt), Digest::SHA256.hexdigest(old_compiler))
+      File.write(parent + '/inputs.txt', original)
+      File.write(parent + '/external-compiler.txt', old_compiler)
+      File.write(parent + '/failure-exit.txt', "2\n")
+      File.write(parent + '/phase', "failed-external-support\n")
+      File.write(parent + '/helper-prefix.txt', "/original/helper\n")
+      File.write(parent + '/checkpoint-producer.sh', 'Snapshot producer fixture')
+      File.write(parent + '/checkpoint-producer.sha256', digest_row.call(parent + '/checkpoint-producer.sh'))
+      %w[support-build.log support-host.log configure.log patch.log].each { |name| File.write(parent + '/' + name, 'Actual failure log fixture') }
+      %w[source build seed].product(%w[inventory sha256 symlinks]).each { |tag, kind| File.write(parent + '/' + tag + '.' + kind, 'Tree manifest fixture') }
+      manifest = @work + '/support-parent.sha256'
+      File.write(manifest, Dir.children(parent).sort.filter_map { |name| path = parent + '/' + name; digest_row.call(path) if File.file?(path) }.join)
+      resumed = inputs.sub('scope=runtime-only-external-compiler', 'scope=runtime-only-external-support-resume')
+      resumed += "resume_support_prior_inputs_sha256=#{Digest::SHA256.hexdigest(original)}\n"
+      resumed += File.read(manifest) + digest_row.call(manifest) + digest_row.call(frozen) + digest_row.call(parent + '/external-compiler.txt')
+      File.write(@work + '/inputs.txt', resumed)
+      File.write(@work + '/build-success', "runtime-only-external-support-resume\n")
+      assert stage.verify
+      # The first checkpoint producer kept this identity in original inputs.
+      original_manifest = File.read(manifest)
+      legacy_manifest = original_manifest.lines.reject { |line| line.end_with?('/external-compiler.txt' + "\n") }.join
+      File.write(manifest, legacy_manifest)
+      File.write(@work + '/inputs.txt', resumed.sub(Digest::SHA256.hexdigest(original_manifest), Digest::SHA256.hexdigest(legacy_manifest)))
+      assert stage.verify
+      File.write(manifest, original_manifest)
+      File.write(@work + '/inputs.txt', resumed)
+      %w[failure-exit.txt inputs.txt source.sha256 build.sha256 seed.sha256 external-compiler.txt helpers/build.sh].each do |name|
+        path = parent + '/' + name
+        saved = File.read(path)
+        File.write(path, saved + 'tampered')
+        assert_raises(GCC16Runtime::Invalid, name) { stage.verify }
+        File.write(path, saved)
+      end
+      File.write(@work + '/inputs.txt', resumed.sub("jobs=2\n", "jobs=3\n"))
+      assert_raises(GCC16Runtime::Invalid) { stage.verify }
+      File.write(@work + '/inputs.txt', resumed.lines.reject { |line| line.start_with?('resume_support_prior_inputs_sha256=') }.join)
+      assert_raises(GCC16Runtime::Invalid) { stage.verify }
+      File.write(@work + '/inputs.txt', resumed)
+      File.write(@work + '/build-success', "runtime-only-external-compiler\n")
+      assert_raises(GCC16Runtime::Invalid) { stage.verify }
     end
   end
 
