@@ -80,7 +80,7 @@ workspace `pinned-shas.txt`).
 
 - pkgsrc caches the resolved dependency list in the work dir
   (`.depends`): recipe edits do not take effect until the work dir is
-  cleaned. This cost several "impossible" cbindgen failures.
+  cleaned.
 - The common-graphics cross gate rejects native builds of packages
   that are not cross-aware tool recipes; do not add plain TOOL_DEPENDS
   (use host tools in TOOLBASE or special -tools recipes).
