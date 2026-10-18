@@ -113,7 +113,8 @@ def prepare(args):
     common = [f'--sysroot={sysroot}', '-O2', '-g', '-Wall', '-Wextra', '-Werror',
               '-fsanitize=undefined', '-fsanitize-undefined-trap-on-error',
               '-fno-sanitize-recover=all', f'-I{sysroot}/usr/pkg/include',
-              f'-L{sysroot}/usr/pkg/lib', '-Wl,-rpath,/usr/pkg/lib:/usr/pkg/gcc16/lib',
+              f'-L{sysroot}/usr/pkg/gcc16/lib', f'-L{sysroot}/usr/pkg/lib',
+              '-Wl,-rpath,/usr/pkg/lib:/usr/pkg/gcc16/lib',
               f'-Wl,-rpath-link,{sysroot}/usr/pkg/lib',
               f'-Wl,-rpath-link,{sysroot}/usr/pkg/gcc16/lib']
     compile_commands = []
@@ -152,12 +153,18 @@ def prepare(args):
     runtime = {}
     objects = {}
     chosen = {}
+    common_stdcxx = (sysroot / 'usr/pkg/gcc16/lib/libstdc++.so').resolve(strict=True)
+    common_stdcxx_soname = read_elf_dynamic(str(common_stdcxx), machine=183)['soname']
+    if common_stdcxx_soname != 'libstdc++.so.7':
+        raise RuntimeError('require the current common GCC16 C++ runtime SONAME')
 
     def visit(path):
         path = path.resolve(strict=True)
         if not path.is_relative_to(sysroot):
             raise RuntimeError(f'runtime path escapes the SDK: {path}')
         target = '/' + str(path.relative_to(sysroot))
+        if path.name.startswith('libstdc++.so') and path != common_stdcxx:
+            raise RuntimeError(f'non-common C++ runtime in the consumer closure: {target}')
         if target in runtime:
             return
         runtime[target] = sha256_file(str(path))
@@ -180,6 +187,10 @@ def prepare(args):
         if header is None or header['type'] not in (2, 3):
             raise RuntimeError(f'not an AArch64 executable: {binary}')
         info = read_elf_dynamic(str(binary), machine=183)
+        if (any(name.startswith('libstdc++.so') and name != common_stdcxx_soname
+                for name in info['needed']) or
+                binary.name == 'glm-api' and common_stdcxx_soname not in info['needed']):
+            raise RuntimeError(f'the consumer did not select the common GCC16 C++ runtime: {binary}')
         objects['bin/' + binary.name] = info
         for soname in info['needed']:
             candidates = [directory / soname for directory in directories if (directory / soname).is_file()]
