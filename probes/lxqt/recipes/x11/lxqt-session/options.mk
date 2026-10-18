@@ -11,7 +11,11 @@ PKG_SUGGESTED_OPTIONS+=	udev
 .include "../../mk/bsd.options.mk"
 
 .if !empty(PKG_OPTIONS:Mudev)
-.  include "../../sysutils/libudev/buildlink3.mk"
+.  if ${OPSYS} == "NetBSD"
+.    include "../../devel/libudev-bsd/buildlink3.mk"
+.  else
+.    include "../../sysutils/libudev/buildlink3.mk"
+.  endif
 .else
 CMAKE_CONFIGURE_ARGS+=	-DWITH_LIBUDEV=OFF
 .endif
