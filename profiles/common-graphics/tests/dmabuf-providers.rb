@@ -13,8 +13,8 @@ abort 'NEW_WORK must be new and absolute' unless ARGV[3].start_with?('/') && !Fi
 FileUtils.mkdir_p(work)
 # Reuse the actual-callback fixture: it proves return to the caller on refusal,
 # not a target loader or renderer. No installed library is changed.
-callback_test = File.join(__dir__, 'epoxy-loader-callback.rb')
-abort 'callback regression failed' unless system('ruby', callback_test, source, "#{work}/callback")
+callback_test = File.join(__dir__, 'epoxy-loader-callback.py')
+abort 'callback regression failed' unless system(ENV.fetch('PYTHON', 'python3.15'), callback_test, source, "#{work}/callback")
 text = File.read(source)
 live_call = text.index('REQUIRE(dl_iterate_phdr(loaded_library, (void *)executable) == 0,')
 abort 'inventory must precede original BO/context cleanup' unless live_call && live_call < text.index('gbm_bo_unmap(bo, map_data)')

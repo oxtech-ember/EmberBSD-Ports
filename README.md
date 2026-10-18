@@ -65,8 +65,8 @@ runtime behavior are validated.
   and GUI integration remain pending.
 - [Maintained FreeImage sources](profiles/common-graphics/cross/freeimage.md):
   FreeImage/FreeImagePlus 3.19.25 and LibRaw 0.22.2 retain common codecs for
-  OCCT. Focused native half and unaligned pixel-copy checks pass. Complete
-  packages, JPEG lossless transforms and installed image workflows remain pending.
+  OCCT. Focused native half, unaligned pixel-copy and lossless JPEG coefficient
+  checks pass. Complete packages and installed image workflows remain pending.
 - [RapidJSON with GCC16](profiles/common-graphics/cross/rapidjson.md): the common
   current snapshot retains its header APIs, examples and strict unit/performance
   builds. Source repairs cover external pointer tokens and shared pool ownership.

@@ -56,7 +56,7 @@ on missing `xfixes`. After normal sysroot upgrade, this regression checks all
 seven modules, including private requirements, and compiles the pixel consumer:
 
 ```sh
-ruby ../tests/mesa-pkgconfig.rb /absolute/cross-tools /absolute/sysroot \
+python3.15 ../tests/mesa-pkgconfig.py /absolute/cross-tools /absolute/sysroot \
     /absolute/host/bin/pkg-config /absolute/new-metadata-test-work
 ```
 

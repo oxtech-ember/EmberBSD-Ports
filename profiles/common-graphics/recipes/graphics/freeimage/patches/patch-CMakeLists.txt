@@ -12,7 +12,18 @@ Origin: EmberBSD (AI-assisted), common Unix ABI and current system codecs.
  include(GNUInstallDirs)
  if(FREEIMAGE_USE_SYSTEM_LIBS)
      set(FREEIMAGE_SYSTEM_DEFAULT ON)
-@@ -759,7 +760,9 @@
+@@ -247,7 +248,9 @@
+ if(BUILD_LIBJPEG)
+     if(USE_SYSTEM_LIBJPEG)
+         find_package(JPEG REQUIRED)
+-        list(APPEND FreeImage_LIBS JPEG::JPEG)
++        find_package(PkgConfig REQUIRED)
++        pkg_check_modules(TURBOJPEG REQUIRED IMPORTED_TARGET libturbojpeg>=3.0.0)
++        list(APPEND FreeImage_LIBS JPEG::JPEG PkgConfig::TURBOJPEG)
+         add_definitions(-DFREEIMAGE_SYSTEM_LIBJPEG)
+     else()
+         set(FreeImage_LIBJPEG_SRCS
+@@ -759,7 +762,9 @@
          ./Source/OpenEXR/Half/halfFunction.h ./Source/OpenEXR/Half/halfLimits.h 
          ./Source/OpenEXR/Half/toFloat.h 
      )
@@ -23,7 +34,7 @@ Origin: EmberBSD (AI-assisted), common Unix ABI and current system codecs.
  # Not added to the global include path: half.cpp includes its own headers
  # with quotes (resolved relative to its own directory), and PluginTIFF.cpp/
  # PluginEXR.cpp's bundled-mode "../OpenEXR/Half/half.h" include is likewise
-@@ -1431,23 +1434,41 @@
+@@ -1431,23 +1436,41 @@
  endif()
  
  if(FREEIMAGE_LINUX_PACKAGE_LAYOUT)

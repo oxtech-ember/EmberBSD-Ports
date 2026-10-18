@@ -8,7 +8,11 @@ provider is introduced.
 
 Use the [graphics cross composition](profile.md) and normal pkgsrc `package`
 and sysroot installation targets for `graphics/libepoxy`. The target sysroot
-must already contain MesaLib 26.2.4nb2. The older package's stale `xfixes`
+must contain the accepted MesaLib 26.2.4nb9 package and LLVM 23.1.3.
+The Python preparation requires that exact Mesa identity in the hash-verified
+acceptance bundle. The current libepoxy package records the nb9 build provider
+and the recipe's `MesaLib>=26.2.4nb4` dependency floor. Both are checked.
+The older package's stale `xfixes`
 pkg-config requirement and unused Xlib Xdamage/Xfixes buildlinks prevented
 consumer configuration. The nb2 correction uses Mesa's actual `xcb-xfixes`
 provider; no extra Xlib libraries are installed to conceal that metadata error.
@@ -27,6 +31,13 @@ the installed canonical closure, without loader or driver overrides.
 
 ## Build and prepare the consumer
 
+The host helpers use Python 3.15 and its standard library, without pip or
+virtualenv. They do not add Python to the target runtime. These helpers use
+no shared SDK Python API; that API is not published yet. The target runner
+remains a NetBSD shell script. Set `CC` to the native GCC16 compiler for the
+callback regression. Ruby callers of that regression select the same host
+interpreter through `PYTHON` (default `python3.15`).
+
 The existing `mesa-render.c` retains direct EGL/GLES headers by default.
 `EMBER_EPOXY_DISPATCH` instead selects the installed epoxy headers and records
 NetBSD's live loaded libraries after drawing. The compiler uses PIC/PIE so
@@ -36,18 +47,22 @@ imports, and have no direct EGL/GLES dependency.
 
 ```sh
 # Preserve the default direct EGL/GLES build as a separate compile guard:
-ruby ../tests/mesa-pkgconfig.rb /absolute/cross-tools /absolute/sysroot \
+python3.15 ../tests/mesa-pkgconfig.py /absolute/cross-tools /absolute/sysroot \
     /absolute/host/bin/pkg-config /absolute/new-direct-consumer-work
-ruby ../tests/mesa-pkgconfig.rb /absolute/cross-tools /absolute/sysroot \
+python3.15 ../tests/mesa-pkgconfig.py /absolute/cross-tools /absolute/sysroot \
     /absolute/host/bin/pkg-config /absolute/new-epoxy-consumer-work epoxy
-ruby prepare-epoxy-tests.rb /absolute/cross-tools /absolute/sysroot \
+python3.15 prepare-epoxy-tests.py /absolute/cross-tools /absolute/sysroot \
     /absolute/libepoxy-1.5.10/output /absolute/libepoxy-1.5.10nb2.tgz \
     /absolute/accepted-mesa-bundle /absolute/new-epoxy-consumer-work \
     /absolute/new-epoxy-acceptance-work
-ruby ../tests/epoxy-bundle.rb /absolute/new-epoxy-acceptance-work/bundle \
+python3.15 ../tests/epoxy-bundle.py /absolute/new-epoxy-acceptance-work/bundle \
     /absolute/sysroot /absolute/new-integrity-test-work
-ruby ../tests/epoxy-loader-callback.rb ./mesa-render.c \
+python3.15 ../tests/epoxy-loader-callback.py ./mesa-render.c \
     /absolute/new-callback-test-work
+python3.15 ../tests/epoxy-bundle.test.py /absolute/cross-tools /absolute/sysroot \
+    /absolute/libepoxy-1.5.10/output /absolute/libepoxy-1.5.10nb2.tgz \
+    /absolute/accepted-mesa-bundle /absolute/new-epoxy-consumer-work \
+    /absolute/new-preparation-regression-work
 ```
 
 The Mesa bundle comes from [the installed package helper](mesa-package.md).
@@ -62,13 +77,23 @@ Meson gives these upstream executables one build-library `LD_LIBRARY_PATH`.
 Preparation accepts only that exact expected value, preserves the original
 metadata and removes the override for installed-library acceptance. Other
 unexpected test prerequisites fail. Display-dependent EGL/GLX tests are not
-included. All executable RPATHs must use the canonical installed providers.
+included. All executable RPATHs must use the canonical installed providers. Exact
+upstream timeout values remain bounded to 1–120 seconds and are recorded
+in `tests.tsv`. Duplicate or missing tests and extra environment settings
+fail preparation.
 
 The archive contains no runtime libraries. It records complete Mesa/libepoxy
 file hashes, exact symlink targets, runtime hashes, source/command provenance
 and every bundle artifact. Host integrity tests reject altered real consumer
 bytes, an installed epoxy header and the installed epoxy DSO. The isolated
 file fixture preserves the original sysroot.
+
+The preparation regression copies real test executables and Meson metadata.
+Its control accepts those inputs. Ten causal refusals cover wrong or duplicate
+Mesa identities, invalid timeout values, missing or duplicate tests, extra
+environment settings or arguments, and a changed ELF machine identifier.
+Identity fixtures have updated local artifact hashes so refusal comes from
+the package identity check. None of these host checks executes target code.
 
 The callback regression executes the actual C callback with a labelled host
 data fixture. Both exact NetBSD loader names, `/libexec/ld.elf_so` and
@@ -92,7 +117,8 @@ both direct loader dependencies and the providers reported by the live
 process after libepoxy opens EGL/GLES. The pixel consumer must load the
 recorded canonical libepoxy, EGL, GLES, gallium and LLVM libraries, reject
 invalid GLSL, read correct triangle pixels and finish four llvmpipe EGL
-lifecycles. Its limit is 60 seconds; each pure upstream test has 30 seconds.
+lifecycles. Its limit is 60 seconds; each pure upstream test uses its recorded
+Meson timeout (30 seconds in the accepted 1.5.10 build).
 All invocations add a five-second forced-kill grace period. A target probe
 with a child ignoring TERM verified the timeout's forced-kill behavior:
 a one-second timeout and two-second grace ended with status 137 after three
