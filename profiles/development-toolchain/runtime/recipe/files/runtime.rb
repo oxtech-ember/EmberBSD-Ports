@@ -12,7 +12,7 @@ require 'tmpdir'
 
 module GCC16Runtime
   VERSION = '16.2.0'
-  NAME = 'gcc16-runtime-16.2.0nb2'
+  NAME = 'gcc16-runtime-16.2.0nb3'
   SOURCE_SHA256 = 'e6738e29597f733270731aa90600f37ffdc045079dfc27ec7e8192cc81085c3e'
   LICENSES = %w[COPYING3 COPYING.RUNTIME].freeze
   CONFLICTS = %w[gcc16-[0-9]* gcc16-libs-[0-9]*].freeze
@@ -38,12 +38,15 @@ module GCC16Runtime
       @data.byteslice(offset, length)
     end
 
-    def verify(soname, target, runtime_sonames)
+    def verify(soname, target, runtime_sonames, require_relro: true)
       raise Invalid, "Expected ELF64 little-endian #{target.fetch(:machine_arch)} DSO" unless slice(0, 7) == "\x7fELF\x02\x01\x01".b && slice(16, 4).unpack('vv') == [3, target.fetch(:elf_machine)]
       offset = slice(32, 8).unpack1('Q<')
       size, count = slice(54, 4).unpack('vv')
       raise Invalid, 'Invalid ELF program headers' unless size == 56 && count.positive?
       headers = count.times.map { |i| slice(offset + i * size, size).unpack('VVQ<Q<Q<Q<Q<Q<') }
+      relro = headers.select { |h| h[0] == 0x6474e552 }
+      raise Invalid, 'Missing GNU_RELRO segment' if require_relro && relro.empty?
+      raise Invalid, 'Invalid GNU_RELRO segment' unless relro.all? { |r| r[6].positive? && headers.any? { |h| h[0] == 1 && r[3] >= h[3] && r[3] + r[6] <= h[3] + h[6] } }
       dynamic = headers.select { |h| h[0] == 2 }
       raise Invalid, 'Expected one ELF dynamic table' unless dynamic.length == 1
       dyn = dynamic.first
@@ -76,7 +79,7 @@ module GCC16Runtime
   end
 
   class Stage
-    def initialize(work, pkgsrc, archive, expected_source: SOURCE_SHA256, receipt_paths: nil, allow_rebuild: true)
+    def initialize(work, pkgsrc, archive, expected_source: SOURCE_SHA256, receipt_paths: nil, allow_rebuild: true, historical: false)
       @work = File.realpath(work)
       @pkgsrc = File.expand_path(pkgsrc)
       raise Invalid, 'Missing pkgsrc tree' unless File.directory?(@pkgsrc)
@@ -87,6 +90,9 @@ module GCC16Runtime
       # are historical identities; do not rewrite the parent's inputs.txt.
       @receipt_paths = receipt_paths
       @allow_rebuild = allow_rebuild
+      # Internal provenance reads can authenticate a frozen older stage.
+      # Installation and package creation always require current hardening.
+      @historical = historical
     rescue SystemCallError => e
       raise Invalid, e.message
     end
@@ -103,14 +109,15 @@ module GCC16Runtime
     def verify
       marker = File.read(@work + '/build-success')
       rebuild = marker == "runtime-libstdcxx-rebuild\n"
-      raise Invalid, 'No completed runtime stage' unless marker == "runtime-only-bootstrap\n" || (rebuild && @allow_rebuild)
+      relink = marker == "runtime-relro-relink\n"
+      raise Invalid, 'No completed runtime stage' unless marker == "runtime-only-bootstrap\n" || ((rebuild || relink) && @allow_rebuild)
       inputs = File.read(@work + '/inputs.txt')
       claims = %w[scope target triplet].to_h do |key|
         lines = inputs.lines.select { |line| line.start_with?(key + '=') }
         raise Invalid, "Missing or duplicate provenance: #{key}" unless lines.length == 1 && lines[0].end_with?("\n")
         [key, lines[0].delete_prefix(key + '=').delete_suffix("\n")]
       end
-      expected_scope = rebuild ? 'runtime-libstdcxx-rebuild' : 'runtime-only-bootstrap'
+      expected_scope = relink ? 'runtime-relro-relink' : (rebuild ? 'runtime-libstdcxx-rebuild' : 'runtime-only-bootstrap')
       raise Invalid, 'Expected runtime-only bootstrap scope' unless claims.fetch('scope') == expected_scope
       architecture = TARGETS[claims.fetch('target')]
       raise Invalid, 'Unsupported runtime target' unless architecture
@@ -187,7 +194,7 @@ module GCC16Runtime
         resolved_rel = resolved.delete_prefix(@stage + '/')
         raise Invalid, 'Runtime alias points outside the selected payload' unless selected.include?(resolved_rel)
         soname = runtime_sonames.find { |name| File.basename(path).match?(/\A#{Regexp.escape(name)}(?:\.[0-9]+)*\z/) }
-        elf[path.delete_prefix('usr/pkg/')] = ELF.new(resolved).verify(soname, architecture, runtime_sonames)
+        elf[path.delete_prefix('usr/pkg/')] = ELF.new(resolved).verify(soname, architecture, runtime_sonames, require_relro: !@historical)
       end
       recipe_digest = Digest::SHA256.hexdigest(recipe_files.sort.map { |p| "#{p.delete_prefix(recipe + "/")} #{hash(p)}\n" }.join)
       @result = {
@@ -207,12 +214,17 @@ module GCC16Runtime
         require_relative 'inheritance'
         @result[:metadata].merge!(Inheritance.verify(@work, @pkgsrc, @archive, @result, expected_source: @expected_source))
       end
+      if relink
+        require_relative 'relro'
+        @result[:metadata].merge!(Relro.verify(@work, @pkgsrc, @archive, @result, expected_source: @expected_source))
+      end
       @result
     rescue SystemCallError => e
       raise Invalid, e.message
     end
 
     def install(destination)
+      raise Invalid, 'Historical provenance cannot be installed or packaged' if @historical
       result = verify
       if result[:metadata].key?('GCC_RUNTIME_INHERITANCE_SHA256') && NAME == 'gcc16-runtime-16.2.0nb2'
         raise Invalid, 'A rebuilt runtime requires a new package revision; nb2 remains unchanged'

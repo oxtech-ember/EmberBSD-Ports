@@ -189,7 +189,7 @@ fi
 export ac_cv_func_clock_gettime=yes ac_cv_func_gethostbyname_r=no
 export ac_cv_func_freelocale=no ac_cv_func_newlocale=no ac_cv_func_uselocale=no
 export CFLAGS_FOR_TARGET="$target_flags" CXXFLAGS_FOR_TARGET="$target_flags"
-export LDFLAGS_FOR_TARGET='-Wl,-rpath,/usr/pkg/gcc16/lib'
+export LDFLAGS_FOR_TARGET='-Wl,-rpath,/usr/pkg/gcc16/lib -Wl,-z,relro'
 CC=${HOST_CC:-cc} CXX=${HOST_CXX:-c++} CFLAGS=${HOST_CFLAGS:--O2} CXXFLAGS=${HOST_CXXFLAGS:--O2} \
     "$work/src/configure" "$@" > "$work/configure.log" 2>&1
 # The kernel-only compiler has single-thread gthr headers. Rebuild host

@@ -51,7 +51,7 @@ module GCC16Runtime
     end
 
     def preflight
-      @parent = Stage.new(@old_work, @old_pkgsrc, @archive, allow_rebuild: false).verify
+      @parent = Stage.new(@old_work, @old_pkgsrc, @archive, allow_rebuild: false, historical: true).verify
       raise Invalid, 'Parent architecture mismatch' unless @parent[:metadata]['GCC_RUNTIME_TARGET'] == @target
       Inheritance.check_delta(@old_pkgsrc + '/lang/gcc16', @pkgsrc + '/lang/gcc16')
       @inputs = {}
@@ -185,7 +185,7 @@ module GCC16Runtime
       Inheritance::PARENT_FILES.each { |n| FileUtils.cp(@old_work + '/' + n, @work + '/parent/' + n, preserve: true) }
       FileUtils.cp_r(@old_work + '/stage', @work + '/parent', preserve: true)
       parent_paths = {'archive' => File.expand_path(@archive), 'pkgsrc' => File.expand_path(@old_pkgsrc)}
-      Stage.new(@work + '/parent', @work + '/parent-recipe', @archive, receipt_paths: parent_paths, allow_rebuild: false).verify
+      Stage.new(@work + '/parent', @work + '/parent-recipe', @archive, receipt_paths: parent_paths, allow_rebuild: false, historical: true).verify
       run_logged('patch.log', {}, 'sh', @here + '/prepare-source.sh', @pkgsrc, @archive, @work + '/src')
       prepare_gthreads(@work + '/src')
       build = @work + '/build/' + @triplet + '/libstdc++-v3'
@@ -193,7 +193,7 @@ module GCC16Runtime
       target_flags = @target == 'amd64' ? '-O2 -march=nocona -mtune=nocona -mfpmath=sse' : '-O2'
       env = compiler_commands.merge(
         'CFLAGS' => target_flags, 'CXXFLAGS' => target_flags, 'CPPFLAGS' => '',
-        'LDFLAGS' => "-L#{@sysroot}/usr/pkg/gcc16/lib -Wl,-rpath,/usr/pkg/gcc16/lib",
+        'LDFLAGS' => "-L#{@sysroot}/usr/pkg/gcc16/lib -Wl,-rpath,/usr/pkg/gcc16/lib -Wl,-z,relro",
         'ac_cv_func_clock_gettime' => 'yes', 'ac_cv_func_gethostbyname_r' => 'no',
         'ac_cv_func_freelocale' => 'no', 'ac_cv_func_newlocale' => 'no', 'ac_cv_func_uselocale' => 'no')
       %w[ar as ld nm objcopy objdump ranlib readelf strip].each { |name| env[name.upcase] = @tools[name] }
@@ -240,13 +240,13 @@ module GCC16Runtime
       manifests
       File.write(@work + '/build-success', "runtime-libstdcxx-rebuild\n")
       begin
-        result = Stage.new(@work, @pkgsrc, @archive).verify
+        result = Stage.new(@work, @pkgsrc, @archive, historical: true).verify
         File.write(@work + '/stage-check.json', JSON.pretty_generate(result) + "\n")
       rescue StandardError
         File.rename(@work + '/build-success', @work + '/failed-stage-marker')
         raise
       end
-      puts "Verified fresh runtime stage: #{@work}/stage (target execution pending)"
+      puts "Verified libstdc++ provenance: #{@work}/stage (inherited runtime hardening and target execution still require acceptance)"
     end
   end
 end

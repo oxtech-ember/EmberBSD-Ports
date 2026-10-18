@@ -7,6 +7,7 @@ require 'digest'
 require 'json'
 require_relative '../recipe/files/runtime'
 require_relative '../recipe/files/inheritance'
+require_relative '../recipe/files/relro'
 
 class RuntimePackageTest < Minitest::Test
   def elf(soname, machine = 62, needed = ['libc.so.12'])
@@ -18,11 +19,12 @@ class RuntimePackageTest < Minitest::Test
     dynamic << [0, 0]
     data = "\0".b * 512
     data[0, 16] = "\x7fELF\x02\x01\x01".b.ljust(16, "\0")
-    data[16, 48] = [3, machine, 1, 0, 64, 0, 0, 64, 56, 2, 0, 0, 0].pack('vvVQ<Q<Q<Vvvvvvv')
+    data[16, 48] = [3, machine, 1, 0, 64, 0, 0, 64, 56, 3, 0, 0, 0].pack('vvVQ<Q<Q<Vvvvvvv')
     bytes = dynamic.map { |tag, value| [tag, value].pack('Q<Q<') }.join
     total = 512 + strings.bytesize
     data[64, 56] = [1, 4, 0, 0x400000, 0x400000, total, total, 4096].pack('VVQ<Q<Q<Q<Q<Q<')
     data[120, 56] = [2, 4, 256, 0x400100, 0x400100, bytes.bytesize, bytes.bytesize, 8].pack('VVQ<Q<Q<Q<Q<Q<')
+    data[176, 56] = [0x6474e552, 4, 256, 0x400100, 0x400100, bytes.bytesize, bytes.bytesize, 1].pack('VVQ<Q<Q<Q<Q<Q<')
     data[256, bytes.bytesize] = bytes
     data + strings
   end
@@ -95,6 +97,35 @@ class RuntimePackageTest < Minitest::Test
       File.write(@stage + '/usr/pkg/gcc16/lib/' + name + '.a', 'build-only archive')
     end
     write_receipts
+  end
+
+  def test_relro_is_mandatory_but_old_provenance_is_readable
+    %w[amd64 aarch64].each do |target|
+      with_fixture(target) do |dir|
+        add_optional_libraries(GCC16Runtime::SELECTIONS.last)
+        %w[libgcc_s.so.1 libstdc++.so.7.36 libgomp.so.1.0 libatomic.so.3.0].each do |name|
+          path = @stage + '/usr/pkg/gcc16/lib/' + name
+          original = File.binread(path)
+          missing = original.dup
+          missing[176, 4] = [0].pack('V')
+          File.binwrite(path, missing); write_receipts
+          error = assert_raises(GCC16Runtime::Invalid) { stage.verify }
+          assert_match(/Missing GNU_RELRO/, error.message)
+          historical = GCC16Runtime::Stage.new(@work, @pkgsrc, @source, expected_source: @archive_sha, historical: true)
+          assert historical.verify
+          error = assert_raises(GCC16Runtime::Invalid) { historical.install(dir + '/forbidden') }
+          assert_match(/Historical provenance cannot be installed/, error.message)
+          refute File.exist?(dir + '/forbidden')
+          empty = original.dup
+          empty[216, 8] = [0].pack('Q<')
+          File.binwrite(path, empty); write_receipts
+          error = assert_raises(GCC16Runtime::Invalid) { stage.verify }
+          assert_match(/Invalid GNU_RELRO/, error.message)
+          File.binwrite(path, original); write_receipts
+        end
+        assert stage.verify
+      end
+    end
   end
 
   # These are synthetic ELF/receipt refusal fixtures, never build evidence.
@@ -172,6 +203,74 @@ class RuntimePackageTest < Minitest::Test
       if GCC16Runtime::NAME == 'gcc16-runtime-16.2.0nb2'
         error = assert_raises(GCC16Runtime::Invalid) { rebuilt.install(work + '/package') }
         assert_match(/new package revision/, error.message)
+      end
+    end
+  end
+
+  def with_relink
+    with_rebuild do |locale, parent, recipe|
+      locale.verify
+      work = File.dirname(parent) + '/relink'
+      FileUtils.mkdir_p(work + '/proof')
+      FileUtils.cp_r(parent + '/stage', work + '/stage')
+      backup = work + '/backup-fixture'
+      File.write(backup, 'Synthetic archived-input receipt, not a real compiler build')
+      commands = []; components = {}
+      GCC16Runtime::Relro::COMPONENTS.each do |library, name|
+        path = 'usr/pkg/gcc16/lib/' + name
+        before = work + '/proof/' + name + '.baseline'
+        after = work + '/proof/' + name + '.relro'
+        FileUtils.cp(parent + '/stage/' + path, before)
+        File.binwrite(after, File.binread(before) + 'synthetic link-only receipt fixture')
+        FileUtils.cp(after, work + '/stage/' + path)
+        components[library] = {path: path, before: Digest::SHA256.file(before).hexdigest, after: Digest::SHA256.file(after).hexdigest}
+        commands << {component: library, argv: ['/fixture/xgcc', '-shared', '-o', before], status: 0}
+        commands << {component: library, argv: ['/fixture/xgcc', '-shared', '-o', after, '-Wl,-z,relro'], status: 0}
+      end
+      File.write(work + '/commands.json', JSON.pretty_generate(commands))
+      receipt = {format: 1, parent_work: parent,
+        parent_receipts: GCC16Runtime::Relro::PARENT.to_h { |n| [n, Digest::SHA256.file(parent + '/' + n).hexdigest] },
+        backup: {path: backup, sha256: Digest::SHA256.file(backup).hexdigest},
+        inputs: {work + '/commands.json' => Digest::SHA256.file(work + '/commands.json').hexdigest}, components: components}
+      File.write(work + '/relink.json', JSON.pretty_generate(receipt))
+      base_inputs = File.read(parent + '/inputs.txt').sub('scope=runtime-libstdcxx-rebuild', 'scope=runtime-relro-relink')
+      repin = lambda do
+        File.write(work + '/inputs.txt', base_inputs + "#{Digest::SHA256.file(work + '/relink.json').hexdigest}  #{work}/relink.json\n")
+        all = GCC16Runtime::Inheritance.inventory(work + '/stage')
+        File.write(work + '/stage.sha256', all.sort.filter_map { |p, x| "#{x['sha256']}  ./#{p}\n" if x['sha256'] }.join)
+        File.write(work + '/stage.symlinks', all.sort.filter_map { |p, x| "./#{p}\t#{x['link']}\n" if x['link'] }.join)
+      end
+      repin.call
+      File.write(work + '/build-success', "runtime-relro-relink\n")
+      yield GCC16Runtime::Stage.new(work, recipe, @source, expected_source: @archive_sha), work, parent, repin
+    end
+  end
+
+  def test_relink_receipt_preserves_distinct_component_ownership
+    with_relink do |relinked, work, parent, _|
+      result = relinked.verify
+      assert_equal 'libstdcxx-and-runtime-relro-relink', result[:metadata]['GCC_RUNTIME_BUILD_MODE']
+      assert_equal File.binread(parent + '/stage/usr/pkg/gcc16/lib/libstdc++.so.7.36'), File.binread(work + '/stage/usr/pkg/gcc16/lib/libstdc++.so.7.36')
+    end
+    %w[parent archive baseline output ownership command selection].each do |mutation|
+      with_relink do |relinked, work, parent, repin|
+        file = work + '/relink.json'
+        receipt = JSON.parse(File.read(file))
+        case mutation
+        when 'parent' then File.write(parent + '/build-success', "runtime-relro-relink\n")
+        when 'archive' then File.write(work + '/backup-fixture', 'changed')
+        when 'baseline' then File.write(work + '/proof/libgcc_s.so.1.baseline', 'changed')
+        when 'output' then File.write(work + '/proof/libgcc_s.so.1.relro', 'changed')
+        when 'ownership' then File.write(work + '/stage/usr/pkg/gcc16/include/c++/vector', 'changed')
+        when 'selection' then receipt['components'].delete('libatomic')
+        when 'command'
+          path = work + '/commands.json'
+          commands = JSON.parse(File.read(path)); commands[1]['argv'] << '-Wl,-z,now'
+          File.write(path, JSON.pretty_generate(commands))
+          receipt['inputs'][path] = Digest::SHA256.file(path).hexdigest
+        end
+        File.write(file, JSON.pretty_generate(receipt)); repin.call
+        assert_raises(GCC16Runtime::Invalid, mutation) { relinked.verify }
       end
     end
   end

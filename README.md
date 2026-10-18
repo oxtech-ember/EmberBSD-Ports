@@ -128,6 +128,9 @@ runtime behavior are validated.
   A [fresh libstdc++ helper](profiles/development-toolchain/bootstrap/libstdcxx.md)
   supports the NetBSD locale repair with explicit inherited-component checks;
   its full rebuilt-library acceptance remains separate.
+  The [RELRO relink](profiles/development-toolchain/bootstrap/relro.md) reproduces
+  three original AArch64 runtime DSOs byte-for-byte, then passes ABI and stock
+  RELRO checks. New nb3 package/runtime acceptance remains separate.
   The real AArch64 nb2 runtime-only package also passes installed plain/LTO
   C11/C++20, threads, TLS, DSO exceptions, OpenMP and large atomic checks in
   the verified E34 QEMU guest. Removal and reinstallation preserve the expected
