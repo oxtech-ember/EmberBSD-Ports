@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.24 2025/08/11 08:44:47 wiz Exp $
 
 DISTNAME=	json-c-0.19
+PKGREVISION=	1
 CATEGORIES=	textproc
 MASTER_SITES=	https://s3.amazonaws.com/json-c_releases/releases/
 

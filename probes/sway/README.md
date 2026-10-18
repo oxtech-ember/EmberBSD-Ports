@@ -39,6 +39,29 @@ and work-reference checks. The shared sysroot installation matches all six
 libevdev and 24 JSON-C payload entries. These are package and source checks;
 installed API and compositor acceptance are separate checks below.
 
+The JSON-C patch uses POSIX `printf` to produce the exact upstream CLI
+regression input. The original test fails on Darwin because `echo -n`
+changes its input. It also fails on a target without `xxd`. The patched
+test retains both expected output lines and the expected failure status.
+All 28 upstream test scripts pass on the AArch64 target and under native
+ASan/UBSan. The baseline passes 27 of 28 on each platform.
+
+GCC analysis also found a copied-key leak when hash insertion fails.
+The source patch releases that copy, preserves constant-key ownership and
+leaves the value with the caller. `tests/json-key-failure.c` exercises the
+real table-capacity failure and counts the copied key's release. It fails
+on the original source and passes with the patch under ASan/UBSan.
+
+Cppcheck 2.22.0 and GCC 16.2.0 analyze all 14 production C modules with
+the real cross flags and headers. The changed module is analyzed again.
+Cppcheck reports no errors. Its inherited warnings include constant
+expressions after preprocessing and a negative `printbuf` position that
+violates the buffer invariant. Three GCC reports remain visible: two lose
+the object-type/table-length invariant, and one treats the successful
+hash insertion as a leak across a translation-unit boundary. On success,
+`lh_table_insert_w_hash` stores the key and the table later releases it.
+No diagnostic category is disabled. The analyzer run is not fully green.
+
 ## Sway recipe
 
 The recipe uses common PCRE2, matching upstream's `libpcre2-8` dependency.
@@ -66,6 +89,31 @@ X11 application, Vulkan/HDR or physical-device acceptance.
 contracts. Compile it with the common target compiler, installed
 `libevdev.pc` and normal target RPATH. Execute the target ELF on an explicitly
 selected EmberBSD VM. This check does not read an input device.
+
+All 14 contracts pass on the target. `tests/input-names-native.py` also
+passes with ASan/UBSan and detects the original missing APIs and a wrong
+event-code control. It compiles the actual provider and uses the installed
+BSD input headers. It does not duplicate event codes in a replacement API.
+
+`tests/json-target.py` transfers the cross-built test executables and
+upstream expected files to an explicit SSH target. It uses the installed
+library, records each result, and removes its guest work directory.
+The native sanitizer run uses the same source with a separate CMake build.
+Valgrind and LeakSanitizer are unavailable on the Darwin/AArch64 host.
+ASan/UBSan are not a Valgrind or general leak-check pass. The copied-key
+regression has its own allocation-lifetime assertion.
+
+Build the ownership regression against the matching native static library:
+
+```sh
+cc -O1 -g -D_GNU_SOURCE -fsanitize=address,undefined \
+  -fno-omit-frame-pointer -I/absolute/json-build -I/absolute/json-source \
+  probes/sway/tests/json-key-failure.c /absolute/json-build/libjson-c.a \
+  -lm -o /absolute/test-work/json-key-failure
+```
+
+Use the host sanitizer's supported options. The test expects the original
+source to fail its release assertion and the patched source to pass.
 
 Full Sway packaging, headless compositor/IPC acceptance and normal installed
 package removal/reinstallation are the next gates. A source recipe or a
