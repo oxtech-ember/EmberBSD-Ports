@@ -54,8 +54,9 @@ The source archive SHA256 is
 `154ab23b60070e8f27013c22977f1129425d67d1e8acd6e13010e617811e4cff`.
 Its SHA512 is
 `3126a1064374d8da40d4d70630c204ed1e75d542c447d53fca9778c7ceff095c28e9b445e15a313fef9729082d7966471ee6b5b715d479aa6d568528743e1d98`.
-Ports recipe and patch files match revision `8e93331`; the current Ports
-revision `0b53be7` has no changes to those inputs.
+The Ports recipe and source manifest match revision `8e93331`. Cross recipe
+commit `534ad94` adds the build and acceptance scripts without changing those
+Binutils source inputs.
 
 The [LTO acceptance script](../../development-toolchain/cross/tests/lto-binutils.sh)
 passed with the installed GCC 16.2 C and C++ drivers.
