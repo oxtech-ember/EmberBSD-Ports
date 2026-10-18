@@ -54,7 +54,8 @@ sh profiles/development-toolchain/cross/host-math.sh --native-clang \
 ```
 
 The runtime builder configures the normal GCC source, builds native support
-libraries, and invokes the actual upstream `libgcc-support` target. That target
+libraries, including build-machine `libcpp` needed by `build/genmatch`, and
+invokes the actual upstream `libgcc-support` target. That target
 provides `libgcc.mvars`, headers and driver specs. It can build a host `xgcc`
 driver for metadata; it must not build `cc1` or `cc1plus`. The installed
 application compiler performs all target compilation with an explicit seed

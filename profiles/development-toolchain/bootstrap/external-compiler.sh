@@ -30,7 +30,8 @@ build_external_runtime() (
     # Top-level target-library rules depend on all-gcc. Use the upstream
     # support target, then configure each target library directly instead.
     "$make" -j"$jobs" configure-gcc all-libiberty all-libcpp all-libdecnumber \
-        all-libbacktrace all-build-libiberty all-build-fixincludes all-fixincludes \
+        all-libbacktrace all-build-libiberty all-build-libcpp \
+        all-build-fixincludes all-fixincludes \
         > "$work/support-host.log" 2>&1
     "$make" -C "$work/build/gcc" -j"$jobs" \
         "GCC_FOR_TARGET=$cc --sysroot=$sysroot" libgcc-support \

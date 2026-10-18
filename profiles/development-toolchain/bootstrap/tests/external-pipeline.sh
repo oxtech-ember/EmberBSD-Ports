@@ -23,6 +23,15 @@ cat > "$fixture/make" <<'EOF_MAKE'
 set -eu
 for argument; do
     case "$argument" in all-gcc|all-target-*|install-gcc|install-target-*) echo 'Forbidden compiler/frontend recursion' >&2; exit 99;; esac
+    if [ "$argument" = all-build-libcpp ]; then
+        printf 'build-machine libcpp\n' > "$BUILD_CPP_ARCHIVE"
+    fi
+    if [ "$argument" = libgcc-support ]; then
+        [ -f "$BUILD_CPP_ARCHIVE" ] || {
+            echo 'Missing build-machine libcpp required by build/genmatch' >&2
+            exit 94
+        }
+    fi
     if [ "$argument" = configure-gcc ]; then
         "${NM:-nm}" "$NATIVE_OBJECT"
         "${AR:-ar}" "$NATIVE_OBJECT"
@@ -51,6 +60,7 @@ done
 chmod +x "$fixture/make"
 export PIPELINE_LOG=$fixture/commands.log EXPECTED_CC=$fixture/common-gcc
 export EXPECTED_SYSROOT=$fixture/seed EXPECTED_WORK=$work NATIVE_OBJECT=$fixture/native-object
+export BUILD_CPP_ARCHIVE=$fixture/build-libcpp.a
 make=$fixture/make jobs=2 cc=$EXPECTED_CC sysroot=$EXPECTED_SYSROOT
 triplet=aarch64--netbsd target_flags=-O2
 AR_FOR_TARGET=$fixture/target/aarch64--netbsd-ar
@@ -78,4 +88,4 @@ if build_external_runtime > "$fixture/reject.log" 2>&1; then
     echo 'FAIL: unexpected frontend build accepted' >&2; exit 1
 fi
 grep -Fxq 'External runtime mode unexpectedly built a frontend.' "$fixture/reject.log"
-echo 'PASS: native metadata tools, explicit target override and forbidden frontend controls'
+echo 'PASS: build libcpp prerequisite, native metadata tools, target override and forbidden frontends'
