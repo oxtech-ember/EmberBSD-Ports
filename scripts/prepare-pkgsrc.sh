@@ -265,7 +265,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
         done
         case "$recipe" in
             x11/libspnav) approved='patch-Makefile.in patch-src_spnav.c' ;;
-            graphics/freeimage) approved='patch-CMakeLists.txt patch-Source_FreeImage_PluginTIFF.cpp patch-TestAPI_CMakeLists.txt' ;;
+            graphics/freeimage) approved='patch-CMakeLists.txt patch-Source_FreeImage_PluginTIFF.cpp patch-Source_Utilities.h patch-TestAPI_CMakeLists.txt' ;;
             graphics/freeimageplus) approved='' ;;
             graphics/openexr) approved='patch-cmake_OpenEXRSetup.cmake patch-test-assertions patch-test-tmpdir' ;;
             graphics/OpenJPH) approved='' ;;

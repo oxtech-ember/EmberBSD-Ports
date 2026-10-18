@@ -4,3 +4,4 @@ Size (FreeImage-3.19.25-linux-source.tar.gz) = 30222871 bytes
 SHA1 (patch-CMakeLists.txt) = 11dbb6119d656ebc57b8390627577d1fa6b55131
 SHA1 (patch-Source_FreeImage_PluginTIFF.cpp) = 50b1bfd5c8e7a3b1b08a7af2f4c37a13d81bb0a4
 SHA1 (patch-TestAPI_CMakeLists.txt) = fda297e4a718caa57d382f9b2ebf9065bec62a5d
+SHA1 (patch-Source_Utilities.h) = 6006a4cd0f0986677d1687959e2239fe0c9e77a0

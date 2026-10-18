@@ -3,7 +3,7 @@ include/FreeImage.h
 lib/cmake/FreeImage/FreeImageCodecs.cmake
 lib/cmake/FreeImage/FreeImageConfig.cmake
 lib/cmake/FreeImage/FreeImageConfigVersion.cmake
-lib/cmake/FreeImage/FreeImageTargets-release.cmake
+lib/cmake/FreeImage/FreeImageTargets-noconfig.cmake
 lib/cmake/FreeImage/FreeImageTargets.cmake
 lib/libfreeimage.a
 ${PLIST.elf}lib/libfreeimage.so

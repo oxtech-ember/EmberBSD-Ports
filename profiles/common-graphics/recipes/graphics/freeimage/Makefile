@@ -2,6 +2,7 @@
 .include "Makefile.common"
 
 PKGNAME=	freeimage-3.19.25
+PKGREVISION=	1
 MAINTAINER=	pkgsrc-users@NetBSD.org
 COMMENT=	Image decoding, conversion and encoding library (maintained fork)
 
