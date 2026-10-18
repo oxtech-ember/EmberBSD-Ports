@@ -110,7 +110,7 @@ module. The original constructor overflows `INT_MAX * 200` before its clamp.
 The repair compares the frame count before multiplication. Negative, zero,
 one-frame, 327-frame, 328-frame and `INT_MAX` cases pass afterward, preserving
 exception messages and expected trace presence. The native helper TKernel
-is the earlier GCC14 library; this test does not claim a full GCC16 rebuild.
+comes from the GCC14-built library; this test does not claim a full GCC16 rebuild.
 
 Strict Memcheck of all six unsanitized exception cases reports the same
 24 reachable bytes in the two documented `CommonBaseAllocator` allocations.
