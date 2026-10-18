@@ -16,8 +16,8 @@ the same identity. A prepared receipt mode does not establish target acceptance.
 The [RELRO relink helper](../bootstrap/relro.md) hardens the three original
 runtime DSOs with their authenticated objects and actual upstream link commands.
 It reproduces all three baseline DSOs byte-for-byte before adding RELRO.
-The AArch64 link, ABI and stock pkgsrc RELRO checks pass. The new nb3 package
-and target runtime still need their ordinary acceptance checks.
+The AArch64 nb3 package passes normal pkgsrc checks, including RELRO, and
+installed SDK and EmberBSD VM checks. Its acceptance is detailed below.
 Normal stage verification requires RELRO. Historical provenance reads cannot
 install or create packages. No package check is disabled.
 
@@ -181,25 +181,11 @@ architecture guard through the real source verifier. This case retains
 synthetic stage DSOs. It accepts matching `MACHINE_ARCH` and rejects the
 opposite architecture for both targets.
 
-The earlier architecture-only host suite passed 9 tests and 209 assertions
-with all five tool/source variables, native pkgtools 20260227 and bmake
-20240909. The extended suite additionally packages optional runtimes; its
-synthetic ELF files do not execute any target code or establish runtime
-acceptance.
-On 2026-10-18 the extended suite passed 11 tests and 431 assertions with no
-skips using those native tools and the pinned GCC archive. Four synthetic-ELF
-packages (default and extended, both architectures) were created, inspected
-and installed into private host destinations. The real completed AArch64
-bootstrap also passed the extension's read-only preflight without modifying
-its stage. Actual optional-library installation and target execution were
-not part of these checks.
-
-An earlier completed amd64 runtime stage was also repackaged and
-installed with native pkgtools 20260227 into an isolated host destination.
-The old package reproduced `lacks pkg_install version data`.
-The new package installed without warnings; its DSO bytes, aliases and target
-metadata matched the original stage. This is host packaging evidence.
-The accepted target runtime artifact and shared package databases were unchanged.
+The current host suite passes 16 tests and 555 assertions with zero failures,
+errors or skips. It uses real native pkgtools, bmake, pkgsrc and the pinned
+GCC archive. Four synthetic-ELF packages cover both architectures and both
+library selections. Refusal checks also cover missing RELRO, changed inherited
+components, unowned relink changes and relative receipt input paths.
 
 These synthetic fixtures do not qualify a real runtime or installed consumer.
 Before release, build the actual stage and package from a clean
@@ -213,13 +199,25 @@ No compiler or target-side build is required for these runtime checks.
 
 ## AArch64 installed acceptance
 
-On 2026-10-18, a real extended stage and nb2 package passed read-only inventory,
-ELF, package creation and isolated host installation checks. The optional
-runtime extension used Ports commit `28510febf8194b9fb3f89f6b5f7a3d7ac411d430`.
-The application compiler used the cross recipe at commit
-`0635104994dd2e7b57c9f4c3158516f9c75e9b04` and native GCC 16.2.0.
-The runtime package SHA256 is
-`a1e274027ef6fc8183e0f373890a7080fe4c3176be2a45b4512695303dad1e54`.
+The accepted AArch64 package is `gcc16-runtime-16.2.0nb3`, prepared with the
+runtime recipe and RELRO helper at Ports commit
+`42925ebde42d1389f10f65d126988ce392e9390d`. Normal pkgsrc packaging passes
+all standard checks, including RELRO and runtime paths. Its SHA256 is
+`c6db6c55a44c8aa5de89b6569dddbd4d04bb164447b8af6b891be40ee6467335`.
+
+The fresh libstdc++ build includes the [locale repair](../locale.md) and
+retains all 6,190 defined dynamic symbol identities. The three other DSOs
+use authenticated original objects and upstream link commands. Each original
+link reproduces its accepted baseline byte-for-byte; adding `-Wl,-z,relro`
+preserves symbol identities and sizes, SONAMEs and dependencies.
+
+Normal SDK package replacement verifies all nine runtime payload entries.
+The matching 881-entry libstdc++ development stage is synchronized separately.
+Only `bits/c++locale.h` and four static archives change in that development
+update. All 26 support entries outside its ownership remain unchanged,
+including their modification times; the GCC16 prefix retains 912 entries.
+The SDK keeps the unversioned linker files, OpenMP headers and specs required
+by fresh cross-built consumers.
 
 The AArch64 QEMU guest used the fork's `EMBER64` kernel and verified E34
 development sets from OS commit `6dd57144183678938164b4c2dcfc370cdbde8473`.
@@ -232,25 +230,34 @@ supplied the base, comp and matching compressed kernel. Their SHA256 values are:
 | `comp.tar.xz` | `8c813303f0500ae1a4ba6381eee6a1189ffab86036963fb26f36ec313e02daa6` |
 | `netbsd-EMBER64.gz` | `fbc6fa0afe2a91e7798734f58a326d18ccb20bb46e20b1f3579359264e68ea90` |
 
-Target pkgtools installed and checked all nine package entries. Prebuilt
-C11 and C++20 tests passed plain/LTO compilation, threads, TLS, atomics,
-floating-point constant evaluation, DSO object exchange and exception unwinding.
-The [OpenMP contract](../tests/libgomp.md) passed reductions, locked tasks
-and worker TLS with four workers. The separate atomic contract passed
-256-byte load/store/exchange and 2,000 concurrent compare/exchange updates.
-Both OpenMP negative controls rejected the invalid inputs.
+Target `pkg_add -U` upgrades the installed provider to nb3. All nine payload
+entries match their package hashes or links, and package integrity passes.
+Fresh GCC16 consumers use the installed SDK header and ordinary runtime paths.
+C11/C++20 thread, TLS, atomic and floating-point constant-evaluation checks
+pass in plain and LTO builds. DSO object exchange and exception unwinding
+also pass. Numeric conversions and stream semantics pass with two workers
+and an independent ambient-locale observer, without a private conversion
+object. Both numeric conversion builds, plain and LTO, pass.
+
+The [OpenMP contract](../tests/libgomp.md) passes reductions, locked tasks
+and worker TLS with four workers in plain and LTO builds. The atomic contract
+passes 256-byte load/store/exchange and 2,000 concurrent compare/exchange updates
+in both builds. Both OpenMP negative controls return the expected status 1
+and diagnostic. The [Skia contract](../../common-graphics/cross/wxwebkit.md#netbsd-numeric-locale)
+also passes after rebuilding its 13 selected units against the new header.
+It uses genuine `fr_FR.UTF-8` locale data.
 
 Actual loaded providers matched these installed package hashes:
 
 | Provider under `/usr/pkg/gcc16/lib` | SHA256 |
 | --- | --- |
-| `libgcc_s.so.1` | `71c89f59a0b1d9d96f94d07303d0727e60addcfc5ad4533c024dea331d4d93f5` |
-| `libstdc++.so.7` | `b9b90b7d765eabacbe01c00a16fbb9846f0e3bfd4c56955599843e062173bf5c` |
-| `libgomp.so.1` | `b3718586235d5689b1d3339e0f2b64b8a1f8cb5a4e330cefd8947ec6d648dd19` |
-| `libatomic.so.3` | `10685292d1cc2e2558ffcb5b349329114c5102143c07cc07ff106cb799c26dce` |
+| `libgcc_s.so.1` | `e518f14d51dfca1157caba79ccc5a8c59c370a93ee039f387e3770a4360246fa` |
+| `libstdc++.so.7` | `ece362b9af59cb3d744a1d67e8a7dcd54b58c94f9ee6cee10f39545891288965` |
+| `libgomp.so.1` | `905b183142c69999210a2b5d458f8586530196c6e4b95c2678accdfb3caec276` |
+| `libatomic.so.3` | `3947e466cd5cd409f149699057369bd7405c202dc0c4e35ad4bb859ed5f3d2a8` |
 
-Package removal made the consumers fail at the loader for the absent DSOs.
-Reinstallation restored all functional results and package integrity checks.
-No loader override or target compiler was used. This qualifies this AArch64
-runtime package and these consumers. It does not qualify amd64 execution,
+No loader override or target compiler is used. This acceptance covers the
+normal nb3 upgrade and these installed consumers. Removal and reinstallation
+were checked for nb2; they have not been repeated for nb3. Complete the nb3
+lifecycle check before release. This does not qualify amd64 execution,
 KiCad, Plasma, a complete image or physical hardware.

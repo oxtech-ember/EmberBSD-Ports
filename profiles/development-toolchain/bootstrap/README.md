@@ -12,7 +12,8 @@ The target VM is only for execution and acceptance.
 For the bounded NetBSD locale source repair, the separate
 [fresh libstdc++ helper](libstdcxx.md) uses an existing application compiler.
 It verifies inherited runtime components and leaves this builder's strict
-resume identities unchanged. Full rebuilt-library acceptance is separate.
+resume identities unchanged. The fresh AArch64 library and matching headers
+pass [runtime-only nb3 installed checks](../runtime/README.md#aarch64-installed-acceptance).
 
 The output is an isolated **runtime-only bootstrap prerequisite**. It is not
 a complete `gcc16-16.2.0nb1` package. It has no package database registration,

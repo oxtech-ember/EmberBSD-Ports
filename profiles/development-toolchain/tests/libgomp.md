@@ -86,13 +86,16 @@ Run the actual target package and consumer before claiming those results.
 
 ## AArch64 execution
 
-On 2026-10-18, the application GCC16 cross compiler built this contract against
-the verified EmberBSD E34 SDK. The runtime-only nb2 package passed installation,
-removal and reinstallation in the AArch64 `EMBER64` QEMU guest.
-The four-worker contract and both negative controls passed.
-The separate 256-byte atomic contract also passed all 2,000 updates.
-Removing the package made both executables fail at the loader, as expected.
-Reinstalling it restored both results without loader overrides or a compiler
-in the guest. The loaded runtime hashes matched the package.
+The application GCC16 cross compiler builds this contract against the verified
+EmberBSD E34 SDK. The ordinary runtime-only nb3 package passes an installed
+upgrade in the AArch64 `EMBER64` QEMU guest. Plain and LTO builds both pass
+the four-worker contract. Both negative controls return the expected status 1
+and diagnostic. The separate 256-byte atomic contract passes all 2,000 updates
+in plain and LTO builds. Loaded providers match the accepted nb3 package hashes,
+without loader overrides or a compiler in the guest.
+
+Removal and reinstallation were checked for nb2, including the expected loader
+failure while its DSOs were absent. That lifecycle has not been repeated for
+nb3; the current nb3 result covers a normal upgrade and installed execution.
 See the [runtime package acceptance](../runtime/README.md#aarch64-installed-acceptance)
 for source and package identities. This does not establish KiCad acceptance.

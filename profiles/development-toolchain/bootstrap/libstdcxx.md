@@ -4,8 +4,9 @@
 [NetBSD locale repair](../locale.md). It uses the existing application GCC16
 compiler with POSIX threads. It does not rebuild compiler frontends or change
 the old runtime stage. The helper and inheritance verifier have host refusal
-tests. The complete new library build and target package acceptance remain
-separate checks.
+tests. The fresh AArch64 library retains all 6,190 defined dynamic symbol
+identities. Its matching SDK headers and runtime-only nb3 package pass
+[installed acceptance](../runtime/README.md#aarch64-installed-acceptance).
 
 Use the original GCC16.2 archive, the completed original bootstrap stage,
 its unchanged pkgsrc export, and a separate export with the locale repair.
@@ -57,8 +58,8 @@ its real gthreads probe; no cached result enables C++ thread support.
 directory. It replays that directory's recorded probe and configure arguments
 in new output, leaving its source and configuration unchanged.
 The GCC16 AArch64 check rejects the missing header, compiles the repaired probe,
-and obtains `_GLIBCXX_HAS_GTHREADS=1` from complete configure. This does not
-establish library build or target runtime acceptance.
+and obtains `_GLIBCXX_HAS_GTHREADS=1` from complete configure. This bounded
+probe is separate from the full library and installed acceptance above.
 
 The installed locale header must match the prepared source. All C++ headers
 and libstdc++ outputs come from the fresh installation. An explicit list carries
