@@ -63,7 +63,7 @@ if [ "$mode" = target ]; then
     done
     [ -f "$EMBERBSD_GCC_RUNTIME/include/c++/vector" ]
     [ -f "$EMBERBSD_GCC_RUNTIME/lib/libstdc++.so" ]
-    common="--sysroot=$EMBERBSD_SYSROOT -B$EMBERBSD_GCC_RUNTIME/lib/gcc/aarch64--netbsd/16.2.0/"
+    common="--sysroot=$EMBERBSD_SYSROOT -B$EMBERBSD_GCC_RUNTIME/lib/gcc/aarch64--netbsd/16.2.0/ -B$EMBERBSD_GCC_RUNTIME/lib/"
     CFLAGS="$CFLAGS $common"
     CXXFLAGS="$CXXFLAGS $common -isystem $EMBERBSD_GCC_RUNTIME/include/c++ -isystem $EMBERBSD_GCC_RUNTIME/include/c++/aarch64--netbsd -isystem $EMBERBSD_GCC_RUNTIME/include/c++/backward"
     LDFLAGS="${LDFLAGS:-} -L$EMBERBSD_GCC_RUNTIME/lib -Wl,-rpath-link,$EMBERBSD_GCC_RUNTIME/lib -Wl,-rpath,/usr/pkg/gcc16/lib:/usr/pkg/lib"

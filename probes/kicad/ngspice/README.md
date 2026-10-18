@@ -37,6 +37,21 @@ execute the cross-built generator. Use the common target Libtool profile
 for its NetBSD SONAME and runtime-path policy. Target installation uses
 `/usr/pkg`; stage it with `DESTDIR` before package integration.
 
+For registered target packages, use the ordinary
+[pkgsrc CLI/shared recipes](../../../profiles/common-graphics/cross/ngspice.md).
+Their compiler wrappers preserve the common runtime paths through Libtool.
+The direct helper remains a source probe; calling the cross-host Libtool
+outside its normal wrapper context is not a validated package build.
+
+The target flags select both GCC16 CRT files and the matching `libgomp.spec`
+through separate `-B` paths. A library `-L` path alone does not select OpenMP
+development metadata. See the [real compiler regression](../../../profiles/common-build-tools/cross/openmp-spec.md).
+Set `CC_FOR_BUILD` to the complete native compiler command. On Linux and
+Darwin, keep its `-B/usr/bin/` argument when target wrappers precede host
+binutils in `PATH`. Upstream configuration preserves that command for
+the native XSPICE generator. Set `CFLAGS_FOR_BUILD` and `LDFLAGS_FOR_BUILD`
+separately from target flags.
+
 The patches repair bounded history substitution, circuit file replacement,
 XSPICE cross generation, NetBSD loader/header selection, parsed token
 ownership, pre-initialization, retained source-name lifetime, recoverable

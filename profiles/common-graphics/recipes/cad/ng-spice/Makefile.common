@@ -1,0 +1,49 @@
+# $NetBSD: Makefile.common,v 1.6 2025/11/17 11:00:26 wiz Exp $
+# Used by cad/ng-spice and cad/ng-spice-shared.
+# Origin: EmberBSD (AI-assisted); current ngspice with both installed interfaces.
+
+VERSION=	47
+DISTNAME=	ngspice-${VERSION}
+CATEGORIES=	cad
+MASTER_SITES=	https://downloads.sourceforge.net/project/ngspice/ng-spice-rework/${VERSION}/
+
+DISTINFO_FILE=	${.CURDIR}/../../cad/ng-spice/distinfo
+PATCHDIR=	${.CURDIR}/../../cad/ng-spice/patches
+PATCH_STRIP=	-p1
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://ngspice.sourceforge.net/
+LICENSE=	modified-bsd AND gnu-lgpl-v2.1 AND gnu-gpl-v2 AND mpl-2.0
+
+USE_LIBTOOL=	yes
+USE_TOOLS+=	gmake autoconf autoheader pkg-config
+USE_LANGUAGES=	c c++
+GCC_REQD+=	16.2
+GNU_CONFIGURE=	yes
+CONFIGURE_HAS_LIBDIR=	yes
+CONFIGURE_ARGS+=	--enable-cider --enable-xspice --enable-osdi --enable-klu
+CONFIGURE_ARGS+=	--enable-openmp --with-fftw3=yes
+CONFIGURE_ARGS+=	--enable-shared --disable-static --disable-maintainer-mode
+CONFIGURE_ARGS+=	--disable-silent-rules
+PKGCONFIG_OVERRIDE+=	ngspice.pc.in
+
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:U:tl} == "yes"
+# Preserve the complete native command, including its host-binutils prefix.
+CONFIGURE_ENV+=	CC_FOR_BUILD=${NATIVE_CC:Q}
+CONFIGURE_ENV+=	CFLAGS_FOR_BUILD=${NATIVE_CFLAGS:U-O2:Q}
+CONFIGURE_ENV+=	CPPFLAGS_FOR_BUILD= LDFLAGS_FOR_BUILD=
+.endif
+
+pre-configure:
+	cd ${WRKSRC} && ${TOOLS_PATH.autoconf} && ${TOOLS_PATH.autoheader}
+
+post-configure: ngspice-feature-check
+.PHONY: ngspice-feature-check
+ngspice-feature-check:
+	${RUN} for feature in CIDER XSPICE OSDI KLU USE_OMP HAVE_LIBFFTW3; do \
+		${GREP} "^\#define $$feature " ${WRKSRC}/src/include/ngspice/config.h > /dev/null || exit 1; \
+	done
+
+BUILDLINK_API_DEPENDS.fftw+=	fftw>=3.3.11
+.include "../../math/fftw/buildlink3.mk"

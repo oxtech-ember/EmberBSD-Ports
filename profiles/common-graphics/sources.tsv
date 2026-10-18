@@ -1,4 +1,5 @@
 # Recipe	Archive	SHA256	Upstream URL
+cad/ng-spice	ngspice-47.tar.gz	894e649651f1838a14095e5a5439e7d3aa63e87ede14d283173fda4fcdef675f	https://downloads.sourceforge.net/project/ngspice/ng-spice-rework/47/ngspice-47.tar.gz
 graphics/MesaLib	mesa-26.2.4.tar.xz	bce5f7fbebb934373b86c999a064d52fb5065878dc57f287f95346648ec832e9	https://archive.mesa3d.org/mesa-26.2.4.tar.xz
 x11/libdrm	libdrm-2.4.134.tar.xz	ac5e74d157830eb8bee44c6a6bf3ad49774ef0dd2a72bdad74a8f20308b52a95	https://dri.freedesktop.org/libdrm/libdrm-2.4.134.tar.xz
 devel/wayland	wayland-1.26.0.tar.xz	64176eaa46e4969903e286f8e5ef8331affc17fdf03ac9b58381d2b23162b7a3	https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.26.0/downloads/wayland-1.26.0.tar.xz

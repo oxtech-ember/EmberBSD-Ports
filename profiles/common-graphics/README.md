@@ -1,5 +1,9 @@
 # Common graphics source packages
 
+The [ngspice 47 package pair](cross/ngspice.md) provides the CLI and shared
+SPICE API for KiCad, with common XSPICE modules and normal pkgsrc dependencies.
+Its target package and runtime checks remain pending.
+
 This opt-in source profile prepares canonical MesaLib 26.2.4nb8, adapted
 libdrm 2.4.134nb2, Wayland 1.26.0nb1 and wayland-protocols 1.49 for
 EmberBSD/AArch64, retaining the NetBSD 11 ABI. Native builds and the explicit

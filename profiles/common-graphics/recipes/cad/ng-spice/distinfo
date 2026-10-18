@@ -1,0 +1,17 @@
+$NetBSD$
+
+BLAKE2s (ngspice-47.tar.gz) = 232b1f7b7eb4a73dca705fe3e76f6ffe1e9a3f073858797cce639c7e26045fd0
+SHA512 (ngspice-47.tar.gz) = 0eec72a8450f6b654ea13ac62ea74c09a1f74093c8b3b88d098100bd0193df24f07ffe723dfe174dd576f6488f95484b2898934a20dee0865c3491b560dc6583
+Size (ngspice-47.tar.gz) = 13105136 bytes
+SHA1 (patch-01-libedit-netbsd) = 239bfe1b1a0c2f8192edcafb0f07f819bbaa015a
+SHA1 (patch-02-history-substitution) = d25772906de8b3d047c83c5d5cd658e51e6d9aad
+SHA1 (patch-03-cli-circuit-file) = 15f03346a5d9d153f2487bf6bbb20dfe9c2f4c96
+SHA1 (patch-04-xspice-cross-generator) = 9f0389bba0738d0a92851410ed5d01b13ec4efba
+SHA1 (patch-05-netbsd-dlopen) = 5522347c4a3b7119331fef888d0f380022c762ea
+SHA1 (patch-06-dotcards-token-list) = 35da291d5fb41420fbfcf7f8fa5db4af608adf58
+SHA1 (patch-07-shared-preinit) = a7993b20bab96f73f7de95577bab156b27f82183
+SHA1 (patch-08-dotcards-parenthesis) = 3074a49929a8d0be16c4e2000d871ab525e81540
+SHA1 (patch-09-process-name-return) = 16814f90071adc4306c7828a866ae5fead3192f3
+SHA1 (patch-10-source-name-lifetime) = 230ccd3e9f3c877304c84dd55cec158323dc86d1
+SHA1 (patch-11-parser-error-ownership) = f803fb984a40ea9721088468baf216e710f87ae4
+SHA1 (patch-12-shared-command-cleanup) = adb52c55191e3f33f47f5a9199a8d4ae275e247d
