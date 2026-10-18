@@ -32,4 +32,7 @@ post-install:
 
 BUILDLINK_API_DEPENDS.pcre2+=	pcre2>=10.49
 .include "../../devel/pcre2/buildlink3.mk"
+# The upstream CCache executable keeps its compressed-cache support.
+BUILDLINK_API_DEPENDS.zlib+=	zlib>=1.3.2
+.include "../../devel/zlib/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
