@@ -123,6 +123,17 @@ Node runs on the host, its products are target artifacts.
   database with a narrow parser suppression for GCC-valid `__has_cpp_attribute`
   in an unchanged header. Clang Static Analyzer 21 reported only existing
   Abseil/base forwarding-reference findings.
+- The following full pass exposed a private-union specialization in
+  `ui/events/gesture_event_details.cc`. The equality check already compares
+  `type_` before comparing the active union bytes. The constructor also clears
+  the union storage. Both operations now use the local
+  `byte_span_from_ref(allow_nonunique_obj, ...)` overload; the type-wide
+  specialization is removed. GCC16.2.0 rebuilt the AArch64 object. Cppcheck
+  2.22 and Clang Static Analyzer 21 reported no findings on the changed source.
+  Cppcheck required an address-specific parser suppression for the existing
+  GCC `__has_cpp_attribute` expression at `base/compiler_specific.h:62`.
+- The full Chrome graph has not passed yet. Resume it from the retained object
+  tree and classify the next compiler result.
 - No complete Chromium link, Electron runtime, or Blanc package exists.
   Continue the Chrome build and classify actual compiler failures. Partial
   targets are not a Blanc result.

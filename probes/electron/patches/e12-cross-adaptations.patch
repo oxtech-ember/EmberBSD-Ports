@@ -8285,3 +8285,44 @@ index 7c7d54ac4b..da74dc1cb5 100644
  
    explicit ScopedObservation(Observer* observer) : observer_(observer) {}
    ScopedObservation(const ScopedObservation&) = delete;
+diff --git a/ui/events/gesture_event_details.cc b/ui/events/gesture_event_details.cc
+index 62734f68c2..d34169d255 100644
+--- a/ui/events/gesture_event_details.cc
++++ b/ui/events/gesture_event_details.cc
+@@ -12,15 +12,6 @@
+ #include "base/containers/span.h"
+ #include "base/notreached.h"
+ 
+-// Since ui::GestureEventDetails::Details is a union structure that corresponds
+-// to only one EventType, allow conversion to a byte span to avoid using memset
+-// and memcmp.
+-namespace base {
+-template <>
+-inline constexpr bool
+-    kCanSafelyConvertToByteSpan<ui::GestureEventDetails::Details> = true;
+-}
+-
+ namespace ui {
+ 
+ GestureEventDetails::GestureEventDetails()
+@@ -91,8 +82,8 @@ GestureEventDetails::GestureEventDetails(ui::EventType type,
+ 
+ bool GestureEventDetails::operator==(const GestureEventDetails& other) const {
+   return type_ == other.type_ &&
+-         base::byte_span_from_ref(data_) ==
+-             base::byte_span_from_ref(other.data_) &&
++         base::byte_span_from_ref(base::allow_nonunique_obj, data_) ==
++             base::byte_span_from_ref(base::allow_nonunique_obj, other.data_) &&
+          device_type_ == other.device_type_ &&
+          touch_points_ == other.touch_points_ &&
+          bounding_box_ == other.bounding_box_;
+@@ -131,7 +122,8 @@ GestureEventDetails::GestureEventDetails(ui::EventType type,
+ }
+ 
+ GestureEventDetails::Details::Details() {
+-  std::ranges::fill(base::byte_span_from_ref(*this), 0);
++  std::ranges::fill(base::byte_span_from_ref(base::allow_nonunique_obj, *this),
++                    0);
+ }
+ 
+ }  // namespace ui
