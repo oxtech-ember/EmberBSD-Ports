@@ -115,6 +115,7 @@ MAKE_JOBS=4
 TOOLS_PLATFORM.makeinfo=/absolute/host-texinfo/bin/makeinfo
 EMBERBSD_BUILD_MSGFMT=/absolute/host-gettext/bin/msgfmt
 EMBERBSD_BUILD_CMAKE=/absolute/host-cmake/bin/cmake
+EMBERBSD_BUILD_AUTOCONF=/absolute/host-autoconf/bin/autoconf
 # Optional matching host interpreter for the Python target package:
 EMBERBSD_CROSS_BUILD_PYTHON=/absolute/python3.14
 .include "/absolute/EmberBSD-Ports/profiles/common-build-tools/cross/mk.conf"
@@ -225,6 +226,37 @@ CPack alongside it. Both version commands must succeed, and all package
 `CMAKE_REQD` floors still apply. The tools framework exposes the selected
 pair through its normal wrappers. Keep this setting in the host MAKECONF
 too. Clean a package's work directory after changing cached tool choices.
+
+`EMBERBSD_BUILD_AUTOCONF` selects an existing native Autoconf 2.73+ for plain
+`USE_TOOLS+=autoconf` build dependencies. Its version command must succeed.
+All `AUTOCONF_REQD` floors apply. The same directory must contain executable
+`autoheader`, `autom4te`, `autoreconf`, `autoscan`, `autoupdate` and `ifnames`
+with the same version. Invalid selections fail through `PKG_FAIL_REASON`.
+The seven tools use normal pkgsrc wrappers without a redundant native package
+dependency. This does not register an installed package or provide Automake.
+Explicit 2.13/2.69 requests and `autoconf:run` or `autoconf:test` retain their
+normal package dependencies and paths. A build-host path never substitutes
+for those runtime or test providers. With no opt-in, the original choice stays.
+Remove earlier `TOOLS_PATH`/`TOOLS_DEPENDS` overrides and put this setting in
+the host MAKECONF too. Use a normally configured installation; relocation
+environment variables that point at another Autoconf release must be removed.
+
+Run the regression with an export that does not yet contain this patch:
+
+```sh
+BMAKE=/absolute/host/bin/bmake ruby profiles/common-build-tools/tests/host-autoconf.rb \
+    /absolute/prepared-pkgsrc /absolute/native.mk.conf /absolute/cross.mk.conf \
+    /absolute/autoconf-2.73/bin/autoconf /absolute/new-autoconf-results
+```
+
+The test copies the real pkgsrc tool rules and consumer recipe. It checks
+native and cross metadata, creates seven actual wrappers in private work
+directories, and regenerates and executes a small configure/header contract.
+Default, legacy, runtime and test routes remain unchanged. Invalid paths,
+failed version commands, old versions, required-version floors and missing
+or mismatched companions are rejected. This checks host generators, not an
+installed target package or a complete `autoreconf`/Automake workflow.
+
 The [Python recipe](../python.md) validates the matching host interpreter and
 keeps installed extension metadata on the target side. SQLite and zstd
 receive explicit target platform settings during cross compilation.

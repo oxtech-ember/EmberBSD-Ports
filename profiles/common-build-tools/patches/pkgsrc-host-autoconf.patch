@@ -1,0 +1,97 @@
+# Origin: EmberBSD (AI-assisted), validated external native Autoconf tools.
+# Preserve default, legacy, runtime and test dependency routing.
+
+--- a/mk/tools/autoconf.mk
++++ b/mk/tools/autoconf.mk
+@@ -103,31 +103,44 @@
+ .    else
+ _TOOLS_DEPMETHOD.autoconf=	TOOL_DEPENDS
+ .    endif
++# This opt-in supplies build-host generators only. Runtime/test dependencies
++# and explicit older Autoconf requests retain their normal package routing.
++.    if defined(EMBERBSD_BUILD_AUTOCONF) && ${_TOOLS_DEPMETHOD.autoconf} == "TOOL_DEPENDS" && \
++        empty(USE_TOOLS:C/:.*//:Mautoconf213) && empty(USE_TOOLS:C/:.*//:Mautoconf269)
++.include "ember-autoconf.mk"
++.    endif
++_EMBERBSD_AUTOCONF_BINDIR= ${TOOLBASE}/bin
++_EMBERBSD_AUTOCONF_PATH= ${TOOLBASE}/bin/autoconf
++.    if defined(_EMBERBSD_HOST_AUTOCONF_SELECTED)
++_EMBERBSD_AUTOCONF_BINDIR= ${EMBERBSD_BUILD_AUTOCONF:H}
++_EMBERBSD_AUTOCONF_PATH= ${EMBERBSD_BUILD_AUTOCONF}
++.    else
+ TOOLS_DEPENDS.autoconf?=	autoconf>=${AUTOCONF_REQD}:../../devel/autoconf
+ .    if empty(${_TOOLS_DEPMETHOD.autoconf}:M${TOOLS_DEPENDS.autoconf})
+ ${_TOOLS_DEPMETHOD.autoconf}+=	${TOOLS_DEPENDS.autoconf}
+ .    endif
++.    endif
+ 
+ _TOOLS_AC_TYPE.autoconf=	TOOLS_CREATE
+-TOOLS_PATH.autoconf=		${TOOLBASE}/bin/autoconf
++TOOLS_PATH.autoconf=		${_EMBERBSD_AUTOCONF_PATH}
+ 
+ _TOOLS_AC_TYPE.autoheader=	TOOLS_CREATE
+-TOOLS_PATH.autoheader=		${TOOLBASE}/bin/autoheader
++TOOLS_PATH.autoheader=		${_EMBERBSD_AUTOCONF_BINDIR}/autoheader
+ 
+ _TOOLS_AC_TYPE.autom4te=	TOOLS_CREATE
+-TOOLS_PATH.autom4te=		${TOOLBASE}/bin/autom4te
++TOOLS_PATH.autom4te=		${_EMBERBSD_AUTOCONF_BINDIR}/autom4te
+ 
+ _TOOLS_AC_TYPE.autoreconf=	TOOLS_CREATE
+-TOOLS_PATH.autoreconf=		${TOOLBASE}/bin/autoreconf
++TOOLS_PATH.autoreconf=		${_EMBERBSD_AUTOCONF_BINDIR}/autoreconf
+ 
+ _TOOLS_AC_TYPE.autoscan=	TOOLS_CREATE
+-TOOLS_PATH.autoscan=		${TOOLBASE}/bin/autoscan
++TOOLS_PATH.autoscan=		${_EMBERBSD_AUTOCONF_BINDIR}/autoscan
+ 
+ _TOOLS_AC_TYPE.autoupdate=	TOOLS_CREATE
+-TOOLS_PATH.autoupdate=		${TOOLBASE}/bin/autoupdate
++TOOLS_PATH.autoupdate=		${_EMBERBSD_AUTOCONF_BINDIR}/autoupdate
+ 
+ _TOOLS_AC_TYPE.ifnames=		TOOLS_CREATE
+-TOOLS_PATH.ifnames=		${TOOLBASE}/bin/ifnames
++TOOLS_PATH.ifnames=		${_EMBERBSD_AUTOCONF_BINDIR}/ifnames
+ .  endif
+ .endif
+ 
+--- a/mk/tools/ember-autoconf.mk
++++ b/mk/tools/ember-autoconf.mk
+@@ -0,0 +1,37 @@
++# SPDX-License-Identifier: BSD-2-Clause
++# Origin: EmberBSD (AI-assisted), explicit native Autoconf build provider.
++.if !defined(_EMBERBSD_HOST_AUTOCONF_CHECKED)
++_EMBERBSD_HOST_AUTOCONF_CHECKED= yes
++_EMBERBSD_AUTOCONF_VALID= yes
++.  if empty(EMBERBSD_BUILD_AUTOCONF:M/*) || !exists(${EMBERBSD_BUILD_AUTOCONF})
++PKG_FAIL_REASON+= "EMBERBSD_BUILD_AUTOCONF must name an existing absolute host executable"
++_EMBERBSD_AUTOCONF_VALID= no
++.  else
++_EMBERBSD_AUTOCONF_VERSION!= if test -x ${EMBERBSD_BUILD_AUTOCONF:Q} && \
++    ember_ac_banner=$$(${EMBERBSD_BUILD_AUTOCONF:Q} --version); then \
++    printf '%s\n' "$$ember_ac_banner" | \
++    ${AWK} '/^autoconf \(GNU Autoconf\) [0-9]/ { print $$4; exit }'; fi
++.    for version in 2.73 ${AUTOCONF_REQD}
++_EMBERBSD_AUTOCONF_SUPPORTED!= ${PKG_ADMIN} pmatch 'autoconf>='${version:Q} \
++    autoconf-${_EMBERBSD_AUTOCONF_VERSION:Q} && echo yes || echo no
++.      if ${_EMBERBSD_AUTOCONF_SUPPORTED} != "yes"
++PKG_FAIL_REASON+= "EMBERBSD_BUILD_AUTOCONF must successfully report Autoconf >=${version}"
++_EMBERBSD_AUTOCONF_VALID= no
++.      endif
++.    endfor
++.    for tool in autoheader autom4te autoreconf autoscan autoupdate ifnames
++_EMBERBSD_AUTOCONF_COMPANION= ${EMBERBSD_BUILD_AUTOCONF:H}/${tool}
++_EMBERBSD_AUTOCONF_COMPANION_VERSION!= if test -x ${_EMBERBSD_AUTOCONF_COMPANION:Q} && \
++    ember_ac_banner=$$(${_EMBERBSD_AUTOCONF_COMPANION:Q} --version); then \
++    printf '%s\n' "$$ember_ac_banner" | ${AWK} -v tool=${tool:Q} \
++    '$$1 == tool && $$2 == "(GNU" && $$3 == "Autoconf)" && $$4 ~ /^[0-9]/ { print $$4; exit }'; fi
++.      if empty(_EMBERBSD_AUTOCONF_COMPANION_VERSION) || ${_EMBERBSD_AUTOCONF_COMPANION_VERSION} != ${_EMBERBSD_AUTOCONF_VERSION}
++PKG_FAIL_REASON+= "EMBERBSD_BUILD_AUTOCONF requires matching executable ${tool} alongside it"
++_EMBERBSD_AUTOCONF_VALID= no
++.      endif
++.    endfor
++.  endif
++.  if ${_EMBERBSD_AUTOCONF_VALID} == "yes"
++_EMBERBSD_HOST_AUTOCONF_SELECTED= yes
++.  endif
++.endif
