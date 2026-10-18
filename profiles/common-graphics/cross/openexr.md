@@ -136,7 +136,8 @@ codec-tool invocations pass strict Memcheck with zero errors and live blocks.
 The upstream default-off GoogleTest/codestream suite is not enabled or claimed.
 The ordinary AArch64 package also passes all package checks with the same
 20-entry packing list. Its tools and library are actual AArch64 ELF files
-with target runtime paths. Target codec execution remains pending.
+with target runtime paths. All twelve codec-tool calls also pass in the
+EmberBSD AArch64 VM, both before removal and after normal reinstallation.
 
 The actual OpenEXR configure accepts all four genuine external providers.
 Four controls remove one provider's discovery metadata at a time. Each fails
@@ -146,8 +147,26 @@ checks. Their static packing lists match all 208 payload entries. The target
 contains 16 regular AArch64 ELF files, target runtime paths and relocatable
 CMake/pkg-config metadata. The installed API consumer passes all eight half
 codecs and the float-channel check natively. Strict Memcheck reports zero
-errors and zero live blocks. The same consumer cross-compiles and links
-against the staged target package; target execution remains pending.
+errors and zero live blocks. The same GCC16 cross-compiled consumer passes
+all nine image checks in the EmberBSD AArch64 VM, before removal and after
+normal reinstallation. Its invalid output-directory control returns status 1.
+
+Normal `pkg_add` installs the eleven real target packages. All 963 dependency
+payload entries have `root:wheel` ownership; regular-file modes match the
+archives. OpenEXR and OpenJPH payload hashes and symlinks match all 208 and
+20 entries.
+The 19 libraries selected by the actual target loader match the accepted
+SDK hashes, including GCC16 runtime `16.2.0nb2`. Normal `pkg_delete` removes
+both packages, all 228 payload paths and both registrations. Reinstallation
+restores the same payloads and passes the same image checks. The nine
+previously installed packages retain all 4,859 checked files throughout.
+
+The accepted AArch64 archive SHA256 values are:
+
+| Package | SHA256 |
+| --- | --- |
+| `openexr-3.5.2` | `7dfb9f337c5afb4a9092348815ab862f86b8b3e15763e12dddae88540730f5fc` |
+| `OpenJPH-0.32.0` | `bf19f73d7024a7e55cb6b61fa31c494164ad2e77ad719ae9da19638c8e876585` |
 
 The installed consumer passes GCC16 path analysis and Clang19 analysis with
 the actual GCC16 standard-library headers. Cppcheck 2.22 cannot parse the
@@ -157,7 +176,10 @@ also pass GCC16 and Clang19 path analysis before and after the patch.
 Their Cppcheck attempts stop in the real math or Linux system headers.
 Three actual temporary-directory entry checks
 pass on valid paths. Their explicit failure paths return status 1 with zero
-Memcheck errors and live blocks. The complete 147-test native CTest run
-remains pending; no full-suite or target memory result is claimed.
+Memcheck errors and live blocks. The ordinary native package `test` target
+passes all 147 upstream CTest cases with zero failures and zero skips.
+It uses one test worker and the selected `TMPDIR`; its measured minimum
+free space is 1,014,427,648 bytes on the test filesystem. The full target
+CTest suite and target Memcheck remain outside this acceptance.
 
 The complete OCCT library and genuine STEP geometry check remain separate work.
