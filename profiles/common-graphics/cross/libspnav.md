@@ -52,6 +52,10 @@ The C client also cross-compiles for target execution.
 The [plain C peer](../tests/libspnav/socket-peer.c) forks that same client and
 exchanges the same known protocol packets. It needs no interpreter in the guest.
 Its three native protocol modes and strict peer memory check also pass.
+Its periodic deadline also interrupts a wait entered after the first expiry.
+Two real negative clients remain silent or complete the unchanged API client
+and refuse to exit. The peer terminates and reaps both clients at its deadline
+and removes its socket. Neither negative needs a simulated device.
 The matching GCC16 AArch64 peer is compiled; its target execution remains pending.
 After target installation, its invocation is:
 
@@ -67,6 +71,11 @@ physical input-device or X11 runtime acceptance.
 Ordinary Linux-native and AArch64 GCC16 packages pass the normal pkgsrc checks.
 The full static PLIST has nine entries: three headers, the static library,
 the shared library and its two links, `spnav.pc` and the original notice.
+The standard install commands set data/header modes to 0644 and the DSO to
+0755. pkgsrc creates all package-owned directories with public traversal.
+The [access contract](../tests/libspnav/package-access.rb) rejects private
+umask-derived modes and passes both corrected stages. Loading under a different
+uid remains part of installed-target acceptance.
 Both complete stages and package ownership match every payload byte/link.
 The original public headers and enabled X11 configuration match.
 All 70 upstream exported symbols remain present; the target linker also
@@ -76,6 +85,8 @@ Real GCC16 AArch64 consumers link against the shared provider and the complete
 static archive. Both outputs are AArch64 PIE with RELRO and target runtime
 paths. The target DSO retains `libspnav.so.0` and its actual NetBSD/X11 providers.
 All 148 exporter preflight refusal checks pass.
+The actual positive-export absence guard also rejects a regular file,
+directory, symlink and dangling symlink in the five-path regression.
 The full positive export matrix and installed target execution remain pending.
 
 GCC16, Clang 19 analysis and Cppcheck 2.22 use the actual native and target
