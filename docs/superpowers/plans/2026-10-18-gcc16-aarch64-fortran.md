@@ -33,9 +33,11 @@
 
 **Files:**
 - Modify: `profiles/development-toolchain/cross/build.sh`
+- Modify: `profiles/development-toolchain/cross/README.md`
 - Modify: `profiles/development-toolchain/cross/tests/build-modes.sh`
 - Create: `profiles/development-toolchain/cross/tests/fortran-smoke.sh`
 - Modify: `profiles/development-toolchain/bootstrap/build.sh`
+- Modify: `profiles/development-toolchain/bootstrap/README.md`
 - Modify: `profiles/development-toolchain/bootstrap/runtime-libraries.sh`
 - Modify: `profiles/development-toolchain/bootstrap/tests/runtime-libraries.sh`
 - Modify: `profiles/development-toolchain/runtime/recipe/files/runtime.rb`
@@ -64,6 +66,8 @@
 
 **Files:**
 - Modify: `profiles/common-build-tools/cross/mk.conf`
+- Modify: `profiles/common-build-tools/cross/README.md`
+- Modify: `profiles/common-build-tools/libtool.md`
 - Modify: `scripts/prepare-pkgsrc.sh`
 - Modify: `scripts/check-published-patches.sh`
 - Create: `profiles/common-build-tools/patches/pkgsrc-cross-fortran.patch`
