@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (openexr-3.5.2.tar.gz) = fd435c7ab03685500c0dfee7082af502ed042cd863c813c475b42991492b30f0
+SHA512 (openexr-3.5.2.tar.gz) = 4dba9cfb65a6bb98c10d9019b3b1e007c6ad751c8faac3df5e8b08e02c8a0ba6355fe35c25d0b175a91a7bdeb125d138cc87ab621f21cbf4050aad9b5391feab
+Size (openexr-3.5.2.tar.gz) = 26403944 bytes
+SHA1 (patch-cmake_OpenEXRSetup.cmake) = bde9c51d47a35a50ffa035a5b0b3f23522c045a0
+SHA1 (patch-test-assertions) = 1ba711b92ba155e4f3792bc1e0545fdf67ded767
+SHA1 (patch-test-tmpdir) = ec85335dfe68f3ff8bd917fda2ed0397b3c84517
