@@ -15,6 +15,7 @@ on the target. It does not use a nightly compiler or a target Clang.
 new source tree, preserves `Cargo.lock`, records the exact command and
 status, and keeps complete Cargo diagnostics. Use `--mode fetch` once to
 obtain the locked dependency closure. Later checks and builds are offline.
+Fetch covers both the NetBSD target and the native procedural-macro host.
 Use separate new work paths for fetch, check and build.
 
 ```sh

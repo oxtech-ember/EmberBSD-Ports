@@ -73,7 +73,10 @@ environment.update({
 })
 (args.work / "tmp").mkdir()
 command = [str(cargo), args.mode, "--locked", "--target", "aarch64-unknown-netbsd"]
-if args.mode != "fetch":
+if args.mode == "fetch":
+    # Procedural macros and build scripts also need the native host closure.
+    command += ["--target", "aarch64-apple-darwin"]
+else:
     command += ["--offline", "--jobs", str(args.jobs), "--no-default-features"]
     if args.component == "cosmic-session":
         command += ["--features", "autostart"]
