@@ -71,7 +71,15 @@ GdkPixbuf, the Basu tray backend and native scdoc. Cross builds use the
 receipt-verified native Wayland scanner. Missing tools or libraries fail
 configuration. Subproject fallback downloads are disabled.
 
-Use the ordinary common graphics export and its matching cross MAKECONF:
+The common exporter does not include these three new recipes yet. After
+the ordinary common graphics export, copy the following directories from
+this Ports checkout to the same paths in that export:
+
+- `profiles/common-graphics/recipes/wayland/sway` to `wayland/sway`.
+- `profiles/common-graphics/recipes/textproc/json-c` to `textproc/json-c`.
+- `profiles/common-graphics/recipes/devel/libevdev-chunk` to `devel/libevdev-chunk`.
+
+Use that export and its matching cross MAKECONF:
 
 ```sh
 env TMPDIR=/absolute/build-tmp bmake -C /absolute/pkgsrc/wayland/sway \
@@ -82,6 +90,38 @@ The selected common wlroots configuration determines Sway's backend
 features. The accepted DRM/GLES2 provider currently has no Xwayland.
 The initial port therefore targets a Wayland session. It does not claim
 X11 application, Vulkan/HDR or physical-device acceptance.
+
+The header patch makes `stringop.h` declare its own `va_list` dependency.
+An independent GCC16 translation unit fails with the original header and
+passes with the patch. The current recipe keeps upstream's fatal linker
+warnings. On NetBSD it selects direct ELF dependency resolution, matching
+Sway's declared libraries. The inherited `--copy-dt-needed-entries` default
+can warn about compatibility symbols that the application never uses;
+see the [upstream diagnosis](https://mail-index.netbsd.org/tech-toolchain/2026/09/18/msg004903.html)
+and [GNU dependency-resolution contract](https://sourceware.org/binutils/docs/ld/Options.html).
+
+`tests/link-dependencies.py` builds two real DSOs with the common GCC16.
+Its baseline reproduces the false warning. Direct dependency resolution
+passes the safe call, still fails on an actual warned call, and rejects
+an undeclared indirect dependency. The exact Sway link also passes with
+this mode and the unchanged `--fatal-warnings` flag.
+
+```sh
+python3 probes/sway/tests/link-dependencies.py \
+  --cc /absolute/common-cross/bin/aarch64--netbsd-gcc \
+  --sysroot /absolute/common-sysroot --work /absolute/new-link-test
+```
+
+Cppcheck 2.22.0 and GCC 16.2.0 analyze the 12 C modules changed by the
+inherited portability patches, before and after patching, with the real
+cross flags and headers. Findings remain visible on both versions. They
+include allocation-failure paths in command parsing, the input manager
+and tree output. These are existing upstream issues; this port does not
+claim a clean compositor analysis or allocation-failure acceptance.
+`tests/stringop-native.c` checks 14 contracts against the actual common
+string implementation under native ASan/UBSan. It covers high bytes,
+quoted arguments, empty input and owned return values. It does not inject
+allocation failures or establish a full compositor memory-check result.
 
 ## Input-name contract
 

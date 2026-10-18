@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.4 2026/09/02 19:04:51 wiz Exp $
 
 DISTNAME=	sway-1.12
-PKGREVISION=	3
+PKGREVISION=	4
 CATEGORIES=	wayland
 MASTER_SITES=	${MASTER_SITE_GITHUB:=swaywm/}
 

@@ -1,9 +1,25 @@
 $NetBSD: patch-meson.build,v 1.1 2026/04/14 11:32:14 kikadf Exp $
 
 * Install config files to examples
+* Use direct ELF dependencies on NetBSD. Keep fatal linker warnings.
+  Origin: EmberBSD (AI-assisted). Sway declares its direct dependencies.
+  NetBSD's copy-dt-needed default reports unused compatibility symbols
+  from indirect DSOs. The direct-dependency mode still rejects real calls.
 
 --- meson.build.orig	2025-12-13 15:37:00.995711394 +0000
 +++ meson.build
+@@ -30,6 +30,11 @@ add_project_arguments(
+ 
+ cc = meson.get_compiler('c')
+ 
++if host_machine.system() == 'netbsd'
++	# Resolve the dependencies declared below. Do not import indirect DSOs.
++	add_project_link_arguments('-Wl,--no-copy-dt-needed-entries', language: 'c')
++endif
++
+ is_freebsd = host_machine.system().startswith('freebsd')
+ datadir = get_option('datadir')
+ sysconfdir = get_option('sysconfdir')
 @@ -214,7 +214,7 @@ configure_file(
  	configuration: config,
  	input: 'config.in',
