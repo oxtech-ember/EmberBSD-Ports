@@ -8132,3 +8132,16 @@ index 7cffa35b09..e40ac925ee 100644
  # Copyright 2014 the V8 project authors. All rights reserved.
  # Use of this source code is governed by a BSD-style license that can be
  # found in the LICENSE file.
+diff --git a/third_party/webrtc/p2p/base/port_interface.h b/third_party/webrtc/p2p/base/port_interface.h
+index 24c9cce422..d77cea4655 100644
+--- a/third_party/webrtc/p2p/base/port_interface.h
++++ b/third_party/webrtc/p2p/base/port_interface.h
+@@ -52,7 +52,7 @@ class PortInterface {
+   virtual ~PortInterface();
+ 
+   virtual IceCandidateType Type() const = 0;
+-  virtual const Network* Network() const = 0;
++  virtual const ::webrtc::Network* Network() const = 0;
+ 
+   // Methods to set/get ICE role and tiebreaker values.
+   virtual void SetIceRole(IceRole role) = 0;

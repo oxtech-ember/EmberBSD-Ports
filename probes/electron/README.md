@@ -88,8 +88,16 @@ Node runs on the host, its products are target artifacts.
   those interfaces. NetBSD-specific config fixups now select the locale-safe
   formatter and the `statvfs` branch. GCC16.2.0 rebuilt `fccompat.o` and
   `fcstat.o`. Cppcheck 2.22, GCC16 `-fanalyzer`, and Clang Static Analyzer 21
-  reported no findings on those files. The full `chrome` graph is being
-  resumed; Chromium has not linked yet.
+  reported no findings on those files.
+- The next full `chrome` pass stopped at 2,179 of 70,608 scheduled tasks on
+  `third_party/webrtc/p2p/port_interface/port_interface.o`. GCC16 rejected the
+  unqualified `Network` return type because the method is also named
+  `Network`; qualifying it as `::webrtc::Network` fixes the meaning ambiguity
+  without changing the type or ABI. GCC16.2.0 rebuilt the object. Cppcheck 2.22
+  passed with a narrow parser suppression for the existing `RTC_NORETURN`
+  operator declaration in `rtc_base/checks.h:347`. Clang Static Analyzer 21
+  reported two move-forwarding diagnostics in unchanged Abseil/base headers;
+  neither refers to the changed WebRTC line. The full graph is ready to resume.
 - No complete Chromium link, Electron runtime, or Blanc package exists.
   Continue the Chrome build and classify actual compiler failures. Partial
   targets are not a Blanc result.
