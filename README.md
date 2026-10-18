@@ -110,6 +110,10 @@ runtime behavior are validated.
   C11/C++20, threads, TLS, DSO exceptions, OpenMP and large atomic checks in
   the verified E34 QEMU guest. Removal and reinstallation preserve the expected
   loader boundary. Desktop and amd64 runtime execution remain separate checks.
+  The [NetBSD C++ locale repair](profiles/development-toolchain/locale.md)
+  preserves configured numeric conversion behavior without changing the process
+  locale. Real AArch64 source-object comparisons reproduce the old concurrent
+  failure and pass after repair; installed runtime migration remains pending.
   Common Qt rebuilding and full-image integration
   remain pending.
   [GDB 18.1nb1](profiles/development-toolchain/gdb/README.md) is cross-built and
