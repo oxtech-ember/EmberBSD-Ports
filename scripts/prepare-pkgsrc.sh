@@ -45,6 +45,13 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
                 echo "Missing required patch: $recipe/$name" >&2; exit 2;
             }
         done
+        if [ "$recipe" = lang/llvm ]; then
+            for name in PLIST.runtime files/select-package-stage.py files/sdk_source.py files/reuse-package-stage.py files/prepare-reuse-inputs.py; do
+                [ -s "$source/$name" ] || {
+                    echo "Incomplete LLVM recipe: $name" >&2; exit 2;
+                }
+            done
+        fi
         if [ "$recipe" = devel/abseil ]; then
             [ -f "$source/DESCR" ] && [ -f "$source/buildlink3.mk" ] &&
                 [ -f "$source/patches/patch-absl_debugging_CMakeLists.txt" ] &&
