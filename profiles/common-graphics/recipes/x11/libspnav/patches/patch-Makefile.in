@@ -1,0 +1,27 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Keep native defaults and expose the actual target OS and compiler-managed search paths.
+
+--- Makefile.in.orig
++++ Makefile.in
+@@ -5,15 +5,17 @@
+ name = spnav
+ lib_a = lib$(name).a
+ 
+-incpaths = -I. -I/usr/local/include -I/usr/X11R6/include -I/opt/homebrew/include
+-libpaths = -L/usr/local/lib -L/usr/X11R6/lib -L/opt/homebrew/lib
++incpaths ?= -I. -I/usr/local/include -I/usr/X11R6/include -I/opt/homebrew/include
++libpaths ?= -L/usr/local/lib -L/usr/X11R6/lib -L/opt/homebrew/lib
++
++target_os ?= $(shell uname -s)
+ 
+ CC ?= gcc
+ AR ?= ar
+ CFLAGS = $(opt) $(dbg) -std=c89 $(pic) -pedantic -Wall -fno-strict-aliasing $(incpaths) $(user_cflags)
+ LDFLAGS = $(libpaths) $(user_ldflags) $(xlib) -lm
+ 
+-ifeq ($(shell uname -s), Darwin)
++ifeq ($(target_os), Darwin)
+ 	lib_so = libspnav.dylib
+ 	shared = -dynamiclib
+ else
