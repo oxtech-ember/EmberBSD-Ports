@@ -4097,6 +4097,49 @@ index 03525b3c2a..9a8f4fbbfd 100644
  # Copyright 2026 The Dawn & Tint Authors
  #
  # Redistribution and use in source and binary forms, with or without
+diff --git a/third_party/fontconfig/src/config-fixups.h b/third_party/fontconfig/src/config-fixups.h
+index 06d707d045..9e3634787a 100644
+--- a/third_party/fontconfig/src/config-fixups.h
++++ b/third_party/fontconfig/src/config-fixups.h
+@@ -23,6 +23,12 @@
+ 
+ /* This header file is supposed to be included in config.h */
+ 
++/* NetBSD exposes locale-specific formatting without uselocale(). */
++#ifdef __NetBSD__
++#  define HAVE_VASPRINTF_L 1
++#  define HAVE_STRUCT_STATVFS_F_FSTYPENAME 1
++#endif
++
+ /* just a hack to build the fat binaries:
+  * https://bugs.freedesktop.org/show_bug.cgi?id=20208
+  */
+diff --git a/third_party/fontconfig/src/src/fccompat.c b/third_party/fontconfig/src/src/fccompat.c
+index c8d4901510..17bc2094a5 100644
+--- a/third_party/fontconfig/src/src/fccompat.c
++++ b/third_party/fontconfig/src/src/fccompat.c
+@@ -373,7 +373,7 @@ FcLocaleCreate (FcLocaleMask mask, const char *locale)
+ #endif
+ }
+ 
+-#ifndef _WIN32
++#if !defined(_WIN32) && !HAVE_VASPRINTF_L && !HAVE__VSNPRINTF_L
+ FcLocale
+ FcLocaleSetCurrent (FcLocale loc)
+ {
+diff --git a/third_party/fontconfig/src/src/fcint.h b/third_party/fontconfig/src/src/fcint.h
+index 59a8e1ffb4..b519f41d14 100644
+--- a/third_party/fontconfig/src/src/fcint.h
++++ b/third_party/fontconfig/src/src/fcint.h
+@@ -970,7 +970,7 @@ FcReadLink (const FcChar8 *pathname,
+ FcPrivate FcLocale
+ FcLocaleCreate (FcLocaleMask mask, const char *locale);
+ 
+-#ifndef _WIN32
++#if !defined(_WIN32) && !HAVE_VASPRINTF_L && !HAVE__VSNPRINTF_L
+ FcPrivate FcLocale
+ FcLocaleSetCurrent (FcLocale loc);
+ #endif
 diff --git a/third_party/gperf/cipd/bin/gperf b/third_party/gperf/cipd/bin/gperf
 deleted file mode 100755
 index fbf26dec7575318e42c907d4df30f94f1b74c9e8..0000000000000000000000000000000000000000
