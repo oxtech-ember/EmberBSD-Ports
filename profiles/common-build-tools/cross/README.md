@@ -229,7 +229,9 @@ too. Clean a package's work directory after changing cached tool choices.
 
 For cross builds, the common profile also sets CMake's target system,
 processor and sysroot. Program lookup stays on the host. Header, library and
-package lookup uses the target sysroot and pkgsrc buildlink root. Native tool
+package lookup searches the pkgsrc buildlink root before the target sysroot.
+This order retains the selected package when base has the same library name.
+Base-only dependencies remain available through the sysroot. Native tool
 dependency recursion receives none of these cross settings. This corrects
 host-system detection even when the selected compiler already emits target
 objects. `tests/cmake-cross.rb EXPORTED_PKGSRC MAKECONF NEW_WORK` checks the
@@ -237,6 +239,16 @@ actual pkgsrc arguments and CMake identity/search behavior for AArch64 and
 amd64, plus unchanged native recursion. Its compiler-free fixture establishes
 configuration behavior; actual compiler and installed-consumer checks remain
 separate.
+
+`tests/cmake-dependency-roots.rb EXPORTED_PKGSRC MAKECONF PREPARED_WRKOBJDIR NEW_WORK`
+uses the real prepared protobuf buildlink stage, pkgsrc flags and environment.
+Its GCC16 control finds base zlib 1.3.1 with the previous root order, then
+the selected package's zlib 1.3.2 with buildlink first. Both API links pass.
+Base `execinfo` fallback remains unchanged, as do native configuration and
+provider hashes. This check configures and links; it does not execute target code.
+Existing CMake build directories retain cached dependency paths. Reconfigure
+them with the corrected profile and clear only the affected dependency cache
+entries before the normal dependency rebuild and package checks.
 
 `EMBERBSD_BUILD_AUTOCONF` selects an existing native Autoconf 2.73+ for plain
 `USE_TOOLS+=autoconf` build dependencies. Its version command must succeed.

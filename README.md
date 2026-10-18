@@ -51,6 +51,8 @@ runtime behavior are validated.
   SDK consumers, all 816 payload checks and removal/reinstallation.
   Cross protobuf recipes separate runtime libraries from target generators and
   SDK files. Their source ownership checks preserve the full native package.
+  Common CMake discovery now prefers selected package dependencies over base
+  namesakes; GCC16 zlib discovery/link controls preserve native behavior.
 - [KiCad SPICE prerequisites](probes/kicad/ngspice/README.md): ngspice 47
   source repairs retain the shared C API, XSPICE, OpenMP, FFTW and Readline.
   Native numerical and causal ownership checks pass. Raw memory reports

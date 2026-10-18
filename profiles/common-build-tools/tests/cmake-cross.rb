@@ -31,7 +31,7 @@ File.write(work + '/fixture/CMakeLists.txt', <<~'CMAKE')
   endif()
   file(WRITE "${CMAKE_BINARY_DIR}/identity.txt"
     "system=${CMAKE_SYSTEM_NAME}\nprocessor=${CMAKE_SYSTEM_PROCESSOR}\ncross=${CMAKE_CROSSCOMPILING}\n"
-    "sysroot=${CMAKE_SYSROOT}\nprogram=${CMAKE_FIND_ROOT_PATH_MODE_PROGRAM}\n"
+    "sysroot=${CMAKE_SYSROOT}\nroots=${CMAKE_FIND_ROOT_PATH}\nprogram=${CMAKE_FIND_ROOT_PATH_MODE_PROGRAM}\n"
     "library=${CMAKE_FIND_ROOT_PATH_MODE_LIBRARY}\ninclude=${CMAKE_FIND_ROOT_PATH_MODE_INCLUDE}\n"
     "package=${CMAKE_FIND_ROOT_PATH_MODE_PACKAGE}\nhost_cmake=${HOST_CMAKE}\n"
     "execinfo=${TARGET_EXECINFO}\nparam=${TARGET_PARAM}\n")
@@ -68,6 +68,8 @@ results = {}
     if revision == 'fixed' && kind != 'native'
       abort 'Wrong target identity.' unless identity['system'] == 'NetBSD' && identity['cross'] == 'TRUE' && identity['processor'] == (kind == 'amd64' ? 'x86_64' : kind)
       abort 'Wrong target root modes.' unless identity['program'] == 'NEVER' && %w[library include package].all? { |k| identity[k] == 'ONLY' }
+      roots = identity['roots'].split(';')
+      abort 'Package dependencies must precede target base files.' unless roots.size == 2 && roots[0].end_with?('/.buildlink') && roots[1] == identity['sysroot']
       abort 'Library/header escaped target root.' unless %w[execinfo param].all? { |k| identity[k].start_with?(identity['sysroot'] + '/') }
       abort 'Host program searched in target root.' if identity['host_cmake'].start_with?(identity['sysroot'] + '/')
     else
