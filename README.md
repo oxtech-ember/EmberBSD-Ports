@@ -19,6 +19,10 @@ runtime behavior are validated.
 
 ## Current contents
 
+- [Common libspnav 1.2](profiles/common-graphics/cross/libspnav.md): full
+  native/AArch64 GCC16 packages retain Unix and X11/Magellan interfaces.
+  Real native socket lifecycles pass strict memory checks after causal queue
+  and descriptor-zero repairs. Target execution and physical input remain pending.
 - [Common SWIG 4.5.1](profiles/common-build-tools/cross/swig.md): the full
   native GCC16 package verifies all 846 files and the upstream Python 3.15
   example. A causal CCache repair preserves compiler fallback with closed

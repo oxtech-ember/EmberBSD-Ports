@@ -1,5 +1,10 @@
 # Common graphics source packages
 
+The full [libspnav 1.2 provider](cross/libspnav.md) keeps Unix-socket and
+X11/Magellan interfaces. Ordinary native/AArch64 GCC16 packages and complete
+payload checks pass. Native real-socket lifecycle regressions pass strict
+memory checks. Installed target and physical-device acceptance remain pending.
+
 The [Lerc 4.2.0nb1 padding correction](cross/lerc.md) removes a reproduced
 uninitialized Huffman checksum input. Normal GCC16 native/AArch64 packages
 and all four original samples pass in EmberBSD. Package removal and
