@@ -209,7 +209,7 @@ def main():
     # A C-only process follows the fork libm's /lib RPATH. C++ consumers
     # already load the common GCC16 provider before libm. Retain both genuine
     # SDK files, but require exactly the appropriate provider in each process.
-    libm = read_elf_dynamic(str(sysroot / 'usr/lib/libm.so.0'), machine=183)
+    libm = read_elf_dynamic(str((sysroot / 'usr/lib/libm.so.0').resolve(strict=True)), machine=183)
     if ('libgcc_s.so.1' not in libm['needed'] or
             libm['rpath'] != '/lib'):
         raise RuntimeError('the fork libm provider policy changed; review actual loader selection')
