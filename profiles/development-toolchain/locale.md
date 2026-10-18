@@ -31,8 +31,8 @@ The full library source builds with its normal NetBSD declarations.
 The canonical recipe prepares `gcc16-16.2.0nb2` and `gcc16-libs-16.2.0nb3`.
 The installed header and rebuilt library must be deployed together.
 Consumers that instantiated the old inline formatting implementation must
-be rebuilt. Runtime-only package creation and installed-provider migration
-are separate gates; this source checkpoint does not establish them.
+be rebuilt. The AArch64 `gcc16-runtime-16.2.0nb3` package now passes ordinary
+pkgsrc packaging, including RELRO, and installed SDK/EmberBSD checks below.
 
 ## Reproduce the bounded check
 
@@ -93,6 +93,25 @@ syntax limitation. Its contract model run has no remaining code warning,
 but reports unavailable system headers. These incomplete Cppcheck runs
 are retained as limitations, not reported as clean whole-module analysis.
 
-The real Skia target failure and isolated libc success are preserved.
-Installed runtime acceptance, full WebKit compilation, amd64 execution,
+The normal AArch64 runtime-only nb3 package has SHA256
+`c6db6c55a44c8aa5de89b6569dddbd4d04bb164447b8af6b891be40ee6467335`.
+SDK migration verifies all nine runtime payload entries and installs the matching
+development headers. The sole changed header is `bits/c++locale.h`, SHA256
+`15202f54695ffa342c02f6aaea2070304ef47cb27e230b0e95cb9d358b66ae05`.
+The rebuilt library retains all 6,190 defined dynamic symbols. The separate
+RELRO relink repairs the three inherited runtime DSOs; it does not replace the
+fresh libstdc++ source build.
+
+Actual EmberBSD 11 AArch64 acceptance installs that ordinary package and checks
+all nine entries. Fresh consumers compiled against the installed header pass
+numeric/stream semantics, both conversion workers and ambient restoration in
+plain and LTO builds, without a private conversion object. The associated
+C11/C++20 TLS, threads, DSO exception, OpenMP and large-atomic checks also pass.
+All 13 selected Skia units were recompiled against the new header; the
+[real API contract](../common-graphics/cross/wxwebkit.md#netbsd-numeric-locale)
+passes with genuine `fr_FR.UTF-8` locale data. Guest provider hashes match the
+package; execution needs no library search override or target compiler.
+
+The original Skia failure, isolated libc success and source-object before/after
+comparison remain preserved. Full WebKit compilation, amd64 execution,
 physical-board execution and broader named-locale support remain unclaimed.
