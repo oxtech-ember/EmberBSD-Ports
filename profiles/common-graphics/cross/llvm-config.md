@@ -158,11 +158,16 @@ and repeats execution. Negative cases cover changed, missing or symlinked
 runtime files, directory escapes, foreign ELF machines and unsupported native
 triples. A real ELF also retains its interpreter as a direct dependency and
 passes closure copying and execution. On 2026-10-18 this contract passed 23
-checks on Linux amd64 with
-GCC16.2.0. This is native runtime retention coverage, not an LLVM build or full
-`seal-llvm-config.rb` acceptance: the new Linux helper still requires real
-LLVM23 native/target builds, installed target payload validation and the
-16-query agreement below. Earlier Darwin/board receipts do not validate it.
+checks on Linux amd64 with GCC16.2.0. It covers native runtime retention.
+
+The real Linux LLVM23 helper also passes 15 staged query/refusal checks.
+Two AArch64 EmberBSD VM captures of the exact SDK executable agree on all
+16 query groups before and after sealing. The seal contract passes 32
+integrity checks. Strict Memcheck covers all 16 metadata query kinds with
+no errors, live allocations or suppressions. The matching
+[runtime and SDK packages](../../common-build-tools/cross/llvm-runtime.md)
+retain normal installation. Mesa and the full LLVM upstream suite remain
+separate acceptance scopes.
 
 Repeat the 16-query comparison below with a fresh capture from the installed
 target after sealing. On 2026-10-08, the unchanged accepted executable agreed
