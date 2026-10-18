@@ -4,10 +4,16 @@
 require 'digest'
 require 'json'
 require 'fileutils'
+require_relative 'resources'
 abort 'usage: run.rb WORK' unless ARGV.size == 1
 work = File.realpath(ARGV[0])
 abort 'work must be an absolute canonical path' unless ARGV[0] == work
 manifest = JSON.parse(File.read(work + '/artifacts/input.json'))
+begin
+  ram_mib = QueryVmResources.ram_mib(manifest.fetch('ram_mib', QueryVmResources::DEFAULT_RAM_MIB))
+rescue ArgumentError => error
+  abort error.message
+end
 Dir.glob('/proc/[0-9]*/cmdline').each do |path|
   begin
     first = File.binread(path).split("\0").first
@@ -31,7 +37,7 @@ qemu = if selected_qemu.include?('/')
        end
 abort 'QEMU must be an executable ELF binary' unless File.executable?(qemu) && File.binread(qemu, 4) == "\x7fELF"
 command = [qemu, '-name', 'ember-e14-query', '-machine', 'virt,accel=tcg', '-cpu', 'cortex-a72',
-           '-m', '1024', '-smp', '2', '-display', 'none', '-serial', 'stdio', '-monitor', 'none', '-no-reboot',
+           '-m', ram_mib.to_s, '-smp', '2', '-display', 'none', '-serial', 'stdio', '-monitor', 'none', '-no-reboot',
            '-kernel', kernel, '-append', 'root=ld4a console=plcom0',
            '-drive', "file=#{disk},if=none,format=raw,id=root", '-device', 'virtio-blk-pci,drive=root',
            '-netdev', "user,id=net0,hostfwd=tcp:127.0.0.1:#{manifest.fetch('port')}-:22",

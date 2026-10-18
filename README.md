@@ -44,11 +44,15 @@ runtime behavior are validated.
   lifecycle and KiCad integration remain pending.
   The [common Abseil recipe](profiles/common-build-tools/cross/protobuf.md)
   repairs NetBSD stack traces; a separate AArch64 source-probe regression passes.
+  Cross protobuf recipes separate runtime libraries from target generators and
+  SDK files. Their source ownership checks preserve the full native package.
 - [KiCad SPICE prerequisites](probes/kicad/ngspice/README.md): ngspice 47
   source repairs retain the shared C API, XSPICE, OpenMP, FFTW and Readline.
   Native numerical and causal ownership checks pass. Raw memory reports
-  retain process-lifetime allocations. Target packaging and KiCad execution
-  remain pending.
+  retain process-lifetime allocations. Ordinary GCC16 AArch64 packages pass
+  installed API18, CLI, the KiCad-exported divider, OpenMP worker activation
+  and removal/reinstallation checks. A target memory-query diagnostic and
+  complete KiCad application execution remain pending.
   The common [Libtool runtime-path repair](profiles/common-build-tools/cross/libtool-runtime-paths.md)
   passes a real GCC16 C++ library regression for target RPATH and `.la` metadata.
 - [FFTW and terminal dependencies](profiles/common-build-tools/cross/README.md#installed-fftw-readline-and-ncurses):

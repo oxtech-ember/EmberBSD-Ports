@@ -350,3 +350,5 @@ lib/pkgconfig/protobuf-lite.pc
 lib/pkgconfig/protobuf.pc
 lib/pkgconfig/upb.pc
 lib/pkgconfig/utf8_range.pc
+${PLIST.runtime_split}share/licenses/protobuf/LICENSE
+${PLIST.runtime_split}share/licenses/protobuf/utf8_range-LICENSE

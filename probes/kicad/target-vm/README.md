@@ -35,11 +35,19 @@ has no PXE option ROM because this guest boots the supplied kernel directly.
 16,000 inodes beyond the installed base. Set `EMBERBSD_QUERY_DISK_MIB` (384 to
 16384) and `EMBERBSD_QUERY_FREE_INODES` (16000 to 1000000) before building to
 change these limits. `EMBERBSD_QUERY_PORT` defaults to 22614.
+Set `EMBERBSD_QUERY_RAM_MIB` to a decimal integer from 1024 to 8192 before
+building to select guest RAM. The default is 1024. The builder records this
+value in `artifacts/input.json`; the runner validates and uses that value.
+Older manifests without `ram_mib` retain the 1024 MiB default.
+Run `ruby check-resources.rb` for read-only default, boundary and invalid-input checks.
 
 The builder hardlinks immutable base files into a private staging tree. Do not
 edit that tree's base files or change their permissions. It includes Citrus
 modules, encoding data and locales from the same base, without static archives.
 The generated FFS image is a separate writable file. The sysroot stays unchanged.
+The selected base commands include package installation, deletion and integrity
+tools, their shell utilities, and `ktrace`/`kdump`. Each comes from the same
+verified base and has a recorded hash. No target compiler is added.
 
 ## SSH and acceptance
 

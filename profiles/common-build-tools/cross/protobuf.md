@@ -5,11 +5,18 @@ Both recipes replace the pinned pkgsrc provider at its canonical path.
 [Source pins](../sources.tsv) identify the official archives. Recipe `distinfo`
 files record the archive and patch checksums.
 
-The protobuf recipe keeps the existing single package boundary. It owns the
-headers, shared libraries, static UPB archive, CMake/pkg-config files and target
-`protoc`. It depends on the common Abseil and zlib 1.3.2 providers. Gzip stream
-support stays enabled. This SDK package is not a runtime-only VM package.
-Do not register a reduced payload as the complete package.
+Native protobuf keeps its existing full package. For NetBSD cross builds,
+`protobuf-36.2nb1` owns the five shared libraries, their links and upstream
+protobuf/utf8_range license texts. It installs no generators. The separate
+`protobuf-devel-36.2nb1` owns headers, schemas, target generators, the static
+UPB archive and CMake/pkg-config files. It requires the exact runtime package.
+
+Install both packages in the development-host sysroot. Install only the runtime
+package in an execution-only image. Each recipe performs a genuine complete
+upstream build and installation, then checks the exhaustive, disjoint PLIST
+partition before selecting its stage. No files or imported CMake targets are
+disabled. Both use common Abseil and zlib 1.3.2 with gzip support enabled.
+The source partition checks are separate from ordinary package acceptance.
 
 Four reviewed [source repairs](../../../probes/kicad/protobuf/README.md) release
 the CLI descriptor registry after it exits and propagate UPB allocation failure
@@ -48,7 +55,9 @@ recursion receives none of these cross settings.
 ## Native generator for a cross consumer
 
 Include `../../devel/protobuf/host-protoc.mk` only in consumers that generate
-source files. Keep their normal protobuf buildlink dependency. The fragment
+source files. Keep their normal protobuf buildlink dependency. Cross buildlink
+adds the SDK package as a build-only dependency; it keeps the shared runtime
+as the installed dependency. The host-tool fragment
 uses a genuine native `protobuf-36.2` package by default. It does not add a host
 generator dependency to library-only consumers or to protobuf itself.
 
@@ -66,6 +75,11 @@ CMake's `Protobuf_PROTOC_EXECUTABLE`. A consumer that calls config-mode
 `protobuf_generate()` must also pass `PROTOC_EXE` with that native executable.
 Do not execute the imported target `protobuf::protoc` during a cross build.
 
+KiCad 10.0.7 uses `Protobuf_PROTOC_EXECUTABLE` directly in its API generation
+command. Its top-level CMake selects `protobuf::protoc` only when that variable
+is unset. The explicit native generator therefore follows its actual source
+contract. This source inspection does not establish a complete KiCad configure.
+
 ## Checks and acceptance boundary
 
 Run these checks with the current native Ruby, CMake and GCC16 tools:
@@ -78,12 +92,17 @@ BMAKE=/absolute/bmake ruby profiles/common-build-tools/tests/cmake-cross.rb \
     EXPORTED_PKGSRC MAKECONF NEW_CMAKE_WORK
 ruby profiles/common-build-tools/tests/abseil-metadata.rb \
     ABSEIL_ARCHIVE TARGET_TOOLCHAIN NATIVE_GXX NEW_ABSEIL_WORK
+BMAKE=/absolute/bmake ruby profiles/common-build-tools/tests/protobuf-package-split.rb \
+    EXPORTED_PKGSRC MAKECONF PROTOBUF_RELEASE_SOURCE NEW_SPLIT_WORK
 ```
 
 The target toolchain must use the common GCC16 compiler and the audited target
 sysroot. Supply any environment inputs that its toolchain file requires.
 The source test needs both pinned probe archive names in `DISTFILES`.
 Each helper requires a new output directory and retains commands and diagnostics.
+The split check uses actual pkgsrc manifests and labelled staging fixtures.
+It checks exact ownership, licenses, native package behavior, dependency roles
+and rejection before pruning. It does not compile or register fixture payloads.
 
 The checks cover ordinary protobuf checksum and patch preparation, comparison
 of all 3515 release files with the accepted probe, real host generator selection
@@ -94,10 +113,15 @@ The nonstandard-library fixture fails configuration. Common-profile checks use
 real pkgsrc metadata and compiler-free CMake configuration for AArch64 and
 amd64; they do not establish an amd64 compiler or runtime result.
 
-The ordinary AArch64 Abseil configure also identifies NetBSD/AArch64 and enables
+The ordinary AArch64 Abseil configure identifies NetBSD/AArch64 and enables
 CMake cross mode with the actual GCC16 compiler. The initial unadapted package
-exposed the metadata problem and is not accepted. Repaired package creation,
-installed SDK consumers and target execution remain separate gates here.
+exposed the metadata problem and is not accepted. The repaired nb2 package
+passes the normal pkgsrc checks and an independent audit of all 94 ELF libraries
+and 220 CMake/pkg-config files. No build-host paths or unresolved providers remain.
+All 816 installed SDK entries match that package. Both CMake and pkg-config
+consumers link through the registered SDK provider with GCC16. These consumer
+links do not establish target execution of the ordinary package. Protobuf split
+package creation and installed-consumer acceptance remain pending.
 
 The bounded native stack-trace build uses frame pointers and returns four
 frames. Its consumer passes strict Memcheck with no errors, live heap blocks

@@ -1,18 +1,18 @@
 # Electron runtime probe for NetBSD/aarch64 (E12 Blanc browser)
 
-Goal: run the Blanc browser on EmberBSD/ARM64. Blanc v1.25.0 is an
-Electron 44.5.1 application without an engine abstraction, so the port
-needs a native Electron runtime first.
+Goal: run Blanc v1.25.0 on EmberBSD/ARM64. Blanc uses Electron and has
+no engine abstraction, so this port needs a native Electron runtime.
 
-## Upstream facts (verified 2026-10-16)
+## Upstream facts (verified 2026-10-17)
 
-- Blanc v1.25.0: Electron 44.5.1, MIT license, npm + electron-updater.
-  Filter lists are CC BY-SA 3.0+; Blanc/Bananify names and logos are
-  trademarks. Build for internal acceptance; do not redistribute.
 - Electron 44.9.0 (latest stable of the 44 line, 2026-10-17) bundles
   Chromium 152.0.7977.167 and Node 24.22.0. The port tracks the latest
   44.x patch release per the current-versions rule; Blanc pins its own
   application JS and runs on this runtime.
+- Blanc v1.25.0 uses Electron 44.5.1, MIT license, npm and
+  electron-updater. Filter lists are CC BY-SA 3.0+. Blanc/Bananify names
+  and logos are trademarks. Do not redistribute Blanc or its lists
+  without resolving their terms.
 - The official Chromium bucket publishes 152.0.7977.**82** only
   (chromium-browser-official). The .130 patchlevel is not published as
   a tarball. Plan: build the .**82** tree (exact match of the pkgsrc
@@ -59,12 +59,20 @@ Node runs on the host, its products are target artifacts.
 
 - Chromium's `libbase.a` milestone is complete. A previous full Chrome
   pass stopped at 41,268 of 85,087 steps with 460 failed jobs.
-- The GCC16 cross build of `crypto/nss_util.o` now passes with NSS and
-  NSPR metadata from the EmberBSD sysroot. The full Chrome pass has not
-  been rerun after this change, so the old failure count is not current.
-- The next step is to rerun the Chrome build and classify the remaining
-  failures. A successful Chromium link is still required before Electron
-  can be built. Partial targets are not a Blanc result.
+- The GCC16 cross build of `crypto/nss_util.o` passes with NSS and NSPR
+  metadata from the EmberBSD sysroot. The NTLM buffer writer object also
+  builds after changing ambiguous parenthesized initialization to brace
+  initialization (`SpanWriter` was parsed as a function declaration).
+- A later Chrome pass was interrupted by its owner at 1,755 of 76,507
+  scheduled steps. It reported no failed compile jobs before interruption.
+  The older pass stopped at 41,268 of 85,087 steps with 460 failed jobs;
+  that count is historical and must not be treated as current.
+- No complete Chromium link, Electron runtime, or Blanc package exists.
+  Resume by checking Ninja dependency timestamps after source-tree
+  reconstruction, then continue the Chrome build and classify actual
+  failures. Partial targets are not a Blanc result.
+- The E12 source tree is at `d6dc05235d` in the maintainer's local Git
+  history. `patches/e12-cross-adaptations.patch` must match this commit.
 - Measure free space before each build. The Chromium source tree and
   build output require about 120 GiB of working space.
 - FreeBSD ports carry `devel/electron42` (Chromium 148) at most; use it

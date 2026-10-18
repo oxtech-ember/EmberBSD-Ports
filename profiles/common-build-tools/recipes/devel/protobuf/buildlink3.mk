@@ -11,8 +11,15 @@ BUILDLINK_API_DEPENDS.protobuf+=	protobuf>=24.4
 BUILDLINK_ABI_DEPENDS.protobuf+=	protobuf>=36.2
 BUILDLINK_PKGSRCDIR.protobuf?=		../../devel/protobuf
 
+.include "../../mk/bsd.fast.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
+BUILDLINK_API_DEPENDS.protobuf+=	protobuf>=36.2nb1
+BUILDLINK_ABI_DEPENDS.protobuf+=	protobuf>=36.2nb1
+.include "../../devel/protobuf-devel/buildlink3.mk"
+.else
 BUILDLINK_FILES.protobuf+=	bin/protoc
 BUILDLINK_FILES.protobuf+=	bin/protoc-*
+.endif
 .include "../../devel/abseil/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"
 .endif	# PROTOBUF_BUILDLINK3_MK
