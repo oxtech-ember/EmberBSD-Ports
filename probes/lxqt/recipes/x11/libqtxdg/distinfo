@@ -4,3 +4,4 @@ BLAKE2s (libqtxdg-4.4.0.tar.xz) = 1ec52a33bb16346434bac66e1a1ce3c91668d29a15ec5e
 SHA512 (libqtxdg-4.4.0.tar.xz) = 22806f5a9a4156ae5f1a0ec3b9818d03a63180c2da9420c919b86b76cb67b8f360b90740afa2d8d8ef58e6f48470960a054e1e71e689be4bead6cf4e21cb2df1
 Size (libqtxdg-4.4.0.tar.xz) = 75152 bytes
 SHA1 (patch-CMakeLists.txt) = 62a8164883471f77dcef08160c0eabf6348b5a2e
+SHA1 (patch-src_qtxdg_CMakeLists.txt) = c09cb82e584c33fbb50cc0e327c1235e88d806dc

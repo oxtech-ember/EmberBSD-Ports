@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.53 2026/09/02 19:05:16 wiz Exp $
 
-PKGREVISION= 4
+PKGREVISION= 5
 .include "../../meta-pkgs/lxqt/Makefile.common"
 
 DISTNAME=	libqtxdg-4.4.0
@@ -23,12 +23,6 @@ SUBST_FILES.prefix=	src/qtxdg/xdgdirs.cpp
 SUBST_FILES.prefix+=	test/tst_xdgdirs.cpp
 SUBST_SED.prefix=	-e 's,/etc/xdg,${PKG_SYSCONFDIR},g'
 SUBST_SED.prefix+=	-e 's,/usr/share,${PREFIX}/share,g'
-
-SUBST_CLASSES+=		path
-SUBST_SED.path+=	-e 's,${BUILDLINK_DIR},${PREFIX},g'
-SUBST_FILES.path+=	${CMAKE_BUILD_DIR}/CMakeFiles/Export/*/qt6xdg-targets.cmake
-SUBST_MESSAGE.path=	Fixing path to glib2 in installed file.
-SUBST_STAGE.path=	post-build
 
 PKGCONFIG_OVERRIDE+=		${CMAKE_BUILD_DIR}/*.pc
 PKGCONFIG_OVERRIDE_STAGE=	post-configure

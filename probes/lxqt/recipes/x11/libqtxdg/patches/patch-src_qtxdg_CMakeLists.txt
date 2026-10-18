@@ -1,0 +1,17 @@
+$NetBSD$
+
+Keep implementation-only GLib libraries out of the public CMake link interface.
+Absolute target paths make a cross consumer fail before its compiler wrapper runs.
+The shared library retains its GLib dependencies. Public headers need Qt types.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- src/qtxdg/CMakeLists.txt.orig
++++ src/qtxdg/CMakeLists.txt
+@@ -83,6 +83,7 @@
+     PUBLIC
+         ${QTX_LIBRARIES}
+         ${QTXDGX_ICONLOADER_LIBRARY_NAME}
++    PRIVATE
+         ${GLIB_LIBRARIES}
+         ${GLIB_GOBJECT_LIBRARIES}
+         ${GLIB_GIO_LIBRARIES}
