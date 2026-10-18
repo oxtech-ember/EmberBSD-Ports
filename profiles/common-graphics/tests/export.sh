@@ -76,6 +76,15 @@ cp "$work/gi-distinfo" "$gi/distinfo"
 printf '\nchanged\n' >> "$gi/patches/patch-girepository_gthash-memory"
 negative altered-gi-gthash-patch
 cp "$root/profiles/common-graphics/recipes/devel/gobject-introspection/patches/patch-girepository_gthash-memory" "$gi/patches/patch-girepository_gthash-memory"
+mv "$gi/patches/patch-tests_scanner_test_ccompiler.py" "$work/gi-compiler-mock-patch"
+negative missing-gi-compiler-mock-patch
+sed '/SHA1 (patch-tests_scanner_test_ccompiler.py)/d' "$work/gi-distinfo" > "$gi/distinfo"
+negative omitted-gi-compiler-mock-patch-and-checksum
+mv "$work/gi-compiler-mock-patch" "$gi/patches/patch-tests_scanner_test_ccompiler.py"
+cp "$work/gi-distinfo" "$gi/distinfo"
+printf '\nchanged\n' >> "$gi/patches/patch-tests_scanner_test_ccompiler.py"
+negative altered-gi-compiler-mock-patch
+cp "$root/profiles/common-graphics/recipes/devel/gobject-introspection/patches/patch-tests_scanner_test_ccompiler.py" "$gi/patches/patch-tests_scanner_test_ccompiler.py"
 for name in cross.mk cargo-depends.mk; do
     helper=$profile/recipes/graphics/librsvg/$name
     mv "$helper" "$work/librsvg-helper"
@@ -137,7 +146,7 @@ cp "$profile/sources.tsv" "$work/saved-manifest"
 sed 's/bce5f7fb/00000000/' "$work/saved-manifest" > "$profile/sources.tsv"
 negative altered-manifest
 cp "$work/saved-manifest" "$profile/sources.tsv"
-for dependency in www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/lerc graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info; do
+for dependency in www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/lerc graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt x11/libspnav devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info; do
     # Every added consumer/dependency needs its exact source pin.
     awk -F '\t' -v dep="$dependency" 'BEGIN { OFS="\t" }
         $1 == dep { $3="0000000000000000000000000000000000000000000000000000000000000000" }
@@ -153,7 +162,7 @@ for dependency in devel/glib2-tools devel/glib2-introspection devel/gdbus-codege
     negative "missing-${dependency##*/}-family-recipe"
     mv "$work/family-Makefile" "$profile/recipes/$dependency/Makefile"
 done
-for entry in 'textproc/rapidjson:patch-shared-pool-owner' 'textproc/rapidjson:patch-wide-stream' 'textproc/rapidjson:patch-float-oracle' 'textproc/rapidjson:patch-pointer-token-copy' 'textproc/rapidjson:patch-allocator-ownership' 'textproc/rapidjson:patch-system-gtest' 'textproc/rapidjson:patch-gtest-suite' 'graphics/openexr:patch-test-tmpdir' 'graphics/openexr:patch-test-assertions' 'graphics/openexr:patch-cmake_OpenEXRSetup.cmake' 'www/webkit-gtk41:patch-Source_cmake_FindGI.cmake' 'www/webkit-gtk41:patch-Source_ThirdParty_skia_locale-l' 'graphics/lerc:patch-src_LercLib_fpl__EsriHuffman.cpp' 'graphics/jbigkit:patch-cli-cleanup' 'graphics/jbigkit:patch-test-cleanup' 'devel/libffi:patch-src_powerpc_ffi__powerpc.h' 'wayland/labwc:patch-docs_meson.build' 'wayland/labwc:patch-meson.build' 'wayland/labwc:patch-src_common_string-helpers.c' 'wayland/labwc:patch-src_cycle_osd-field.c' 'graphics/gdk-pixbuf2:patch-emberbsd_meson.build' 'graphics/gdk-pixbuf2:patch-emberbsd_gdk-pixbuf_meson.build' 'graphics/gdk-pixbuf2:patch-emberbsd_thumbnailer_meson.build' 'graphics/gdk-pixbuf2:patch-emberbsd_build-aux_gen-thumbnailer.py' 'databases/shared-mime-info:patch-src_update-mime-database.cpp' 'graphics/librsvg:patch-meson_gir-cross.build' 'graphics/librsvg:patch-rsvg_meson.build' 'graphics/librsvg:patch-gdk-pixbuf-loader_meson.build' 'graphics/librsvg:patch-.._vendor_wide-1.7.1_src_f32x4__.rs' 'devel/glib2:patch-meson.build' 'devel/glib2:patch-meson_gir-cross.build' 'devel/glib2:patch-girepository_compiler_meson.build' 'converters/fribidi:patch-bin_Makefile.in' 'archivers/lzo:patch-src_lzo1f__d.ch' 'x11/libXt:patch-util_Makefile.in'; do
+for entry in 'textproc/rapidjson:patch-shared-pool-owner' 'textproc/rapidjson:patch-wide-stream' 'textproc/rapidjson:patch-float-oracle' 'textproc/rapidjson:patch-pointer-token-copy' 'textproc/rapidjson:patch-allocator-ownership' 'textproc/rapidjson:patch-system-gtest' 'textproc/rapidjson:patch-gtest-suite' 'x11/libspnav:patch-Makefile.in' 'x11/libspnav:patch-src_spnav.c' 'graphics/openexr:patch-test-tmpdir' 'graphics/openexr:patch-test-assertions' 'graphics/openexr:patch-cmake_OpenEXRSetup.cmake' 'www/webkit-gtk41:patch-Source_cmake_FindGI.cmake' 'www/webkit-gtk41:patch-Source_ThirdParty_skia_locale-l' 'graphics/lerc:patch-src_LercLib_fpl__EsriHuffman.cpp' 'graphics/jbigkit:patch-cli-cleanup' 'graphics/jbigkit:patch-test-cleanup' 'devel/libffi:patch-src_powerpc_ffi__powerpc.h' 'wayland/labwc:patch-docs_meson.build' 'wayland/labwc:patch-meson.build' 'wayland/labwc:patch-src_common_string-helpers.c' 'wayland/labwc:patch-src_cycle_osd-field.c' 'graphics/gdk-pixbuf2:patch-emberbsd_meson.build' 'graphics/gdk-pixbuf2:patch-emberbsd_gdk-pixbuf_meson.build' 'graphics/gdk-pixbuf2:patch-emberbsd_thumbnailer_meson.build' 'graphics/gdk-pixbuf2:patch-emberbsd_build-aux_gen-thumbnailer.py' 'databases/shared-mime-info:patch-src_update-mime-database.cpp' 'graphics/librsvg:patch-meson_gir-cross.build' 'graphics/librsvg:patch-rsvg_meson.build' 'graphics/librsvg:patch-gdk-pixbuf-loader_meson.build' 'graphics/librsvg:patch-.._vendor_wide-1.7.1_src_f32x4__.rs' 'devel/glib2:patch-meson.build' 'devel/glib2:patch-meson_gir-cross.build' 'devel/glib2:patch-girepository_compiler_meson.build' 'converters/fribidi:patch-bin_Makefile.in' 'archivers/lzo:patch-src_lzo1f__d.ch' 'x11/libXt:patch-util_Makefile.in'; do
     dependency=${entry%:*}
     name=${entry#*:}
     cp "$profile/recipes/$dependency/distinfo" "$work/new-dependency-distinfo"
@@ -248,11 +257,16 @@ for mode in default development-toolchain common-build-tools common-graphics com
     else sh "$script" "$tree" "$mode" > "$work/$mode.log" 2>&1; fi
     case "$mode" in
         common-graphics|common-media|plasma-mobile)
+            diff -qr "$profile/recipes/x11/libspnav" "$tree/x11/libspnav"
             for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson cad/ng-spice cad/ng-spice-shared; do diff -qr "$profile/recipes/$recipe" "$tree/$recipe"; done
             diff -qr "$profile/recipes/devel/wayland-devel" "$tree/devel/wayland-devel"
             cmp "$profile/mk.conf" "$tree/EMBERBSD-COMMON-GRAPHICS-MK.CONF"
             cmp "$profile/sources.tsv" "$tree/EMBERBSD-COMMON-GRAPHICS-SOURCES" ;;
         *)
+            # BEGIN libspnav-absence-guard
+            [ ! -e "$tree/x11/libspnav" ]
+            [ ! -L "$tree/x11/libspnav" ]
+            # END libspnav-absence-guard
             for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson cad/ng-spice cad/ng-spice-shared; do diff -qr "$root/upstream/pkgsrc/$recipe" "$tree/$recipe"; done
             [ ! -e "$tree/devel/wayland-devel" ]
             [ ! -e "$tree/EMBERBSD-COMMON-GRAPHICS-MK.CONF" ] ;;

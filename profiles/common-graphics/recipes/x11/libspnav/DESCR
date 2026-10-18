@@ -1,0 +1,4 @@
+Libspnav receives six-degree-of-freedom input through a spacenav daemon.
+Its native Unix-domain socket interface supports device queries and
+configuration. Its X11 Magellan interface supports compatible daemons.
+The library also supplies the public Magellan compatibility API.

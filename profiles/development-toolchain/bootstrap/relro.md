@@ -36,8 +36,10 @@ The helper compares every defined dynamic symbol's name/version, size, type,
 binding and visibility. SONAME and dependencies must remain unchanged.
 The stock pkgsrc script must report all three missing baseline segments and
 no missing final segment. All ordinary runtime stage checks then run.
-The current AArch64 GCC16 check passes these gates. Normal package installation
-and target runtime acceptance are separate steps. The helper uses about
+The AArch64 nb3 result passes these gates, normal pkgsrc packaging, SDK
+replacement and [installed VM checks](../runtime/README.md#aarch64-installed-acceptance).
+The target result covers an upgrade; nb3 removal/reinstallation remains pending.
+The helper uses about
 85 MiB for selected inputs, proof DSOs and the assembled development stage.
 
 `relink.json` separates the freshly compiled locale parent from the three

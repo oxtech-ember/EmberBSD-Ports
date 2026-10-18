@@ -10,6 +10,7 @@ SHA1 (patch-giscanner_ast.py) = 76ac2965000833cc6b8d1f37fb997706557d8c5e
 SHA1 (patch-giscanner_ccompiler.py) = f2bf40307a9ed5847f760612f985acdb1d413472
 SHA1 (patch-meson.build) = 727127bfe927283c316831ba488359fe632013e6
 SHA1 (patch-tests_meson.build) = ab9664e1c9d47c8ffb75117d69ce24b63495a7b4
+SHA1 (patch-tests_scanner_test_ccompiler.py) = e6f3e43ec7a703d0b3dc97f85cafa9537b110a19
 SHA1 (patch-tools_compiler.c) = 799d5a086338e08378b8b249e6808e8b1a8101dc
 SHA1 (patch-tools_generate.c) = 3fa74dd0e2c7658768a4278b984be38bff729d94
 SHA1 (patch-tools_meson.build) = 890314be36554632765709f579b52f4733ac5fc1

@@ -19,6 +19,10 @@ runtime behavior are validated.
 
 ## Current contents
 
+- [Common libspnav 1.2](profiles/common-graphics/cross/libspnav.md): full
+  native/AArch64 GCC16 packages retain Unix and X11/Magellan interfaces.
+  Real native socket lifecycles pass strict memory checks after causal queue
+  and descriptor-zero repairs. Target execution and physical input remain pending.
 - [Common SWIG 4.5.1](profiles/common-build-tools/cross/swig.md): the full
   native GCC16 package verifies all 846 files and the upstream Python 3.15
   example. A causal CCache repair preserves compiler fallback with closed
@@ -49,7 +53,8 @@ runtime behavior are validated.
 - [wxWidgets and WebKit sources](profiles/common-graphics/cross/wxwebkit.md):
   stable wxWidgets 3.2.12 and paired WebKitGTK 2.54.1 recipes retain WebView,
   media and OpenGL. Native generator routing, actual GCC16 target link checks
-  and focused native Skia memory checks pass. Full packages, target locale
+  and focused native Skia memory checks pass. The rebuilt Skia locale contract
+  passes in EmberBSD with installed GCC16 runtime nb3. Full WebKit packages
   and GUI integration remain pending.
 - [Maintained FreeImage sources](profiles/common-graphics/cross/freeimage.md):
   FreeImage/FreeImagePlus 3.19.25 and LibRaw 0.22.2 retain common codecs for
@@ -131,21 +136,19 @@ runtime behavior are validated.
   installation pass for synthetic amd64 and AArch64 runtime fixtures with
   native pkgtools. Target triplet, ELF and package architecture must agree.
   A [fresh libstdc++ helper](profiles/development-toolchain/bootstrap/libstdcxx.md)
-  supports the NetBSD locale repair with explicit inherited-component checks;
-  its full rebuilt-library acceptance remains separate.
+  builds the NetBSD locale repair with explicit inherited-component checks
+  and retains all 6,190 defined dynamic symbol identities.
   The [RELRO relink](profiles/development-toolchain/bootstrap/relro.md) reproduces
   three original AArch64 runtime DSOs byte-for-byte, then passes ABI and stock
-  RELRO checks. New nb3 package/runtime acceptance remains separate.
-  The real AArch64 nb2 runtime-only package also passes installed plain/LTO
-  C11/C++20, threads, TLS, DSO exceptions, OpenMP and large atomic checks in
-  the verified E34 QEMU guest. Removal and reinstallation preserve the expected
-  loader boundary. Desktop and amd64 runtime execution remain separate checks.
+  RELRO checks. The ordinary AArch64 nb3 package passes all pkgsrc gates,
+  coordinated SDK migration and an installed upgrade in the verified E34 VM.
+  Plain/LTO thread, TLS, OpenMP and large atomic checks pass, together with
+  C11/C++20 DSO exceptions. The nb3 removal/reinstallation check remains pending.
   The [NetBSD C++ locale repair](profiles/development-toolchain/locale.md)
   preserves configured numeric conversion behavior without changing the process
-  locale. Real AArch64 source-object comparisons reproduce the old concurrent
-  failure and pass after repair; installed runtime migration remains pending.
-  Common Qt rebuilding and full-image integration
-  remain pending.
+  locale. Installed plain/LTO locale workers and the rebuilt Skia contract pass.
+  Desktop and amd64 runtime execution, common Qt rebuilding and full-image
+  integration remain separate checks.
   [GDB 18.1nb1](profiles/development-toolchain/gdb/README.md) is cross-built and
   installed in the AArch64 VM, with split/supplementary DWARF, Unicode and
   live register/signal-unwinding checks. Its [pkgsrc recipe](profiles/development-toolchain/gdb/package.md)
@@ -244,7 +247,9 @@ runtime behavior are validated.
   upstream hash, skip-list and exported-symbol checks in AArch64 UTM.
   Cross Wayland recipes now separate runtime libraries from scanner/SDK files.
   Real package metadata and complete-stage partition checks preserve the native
-  package; normal split-package and installed-runtime acceptance remain pending.
+  package. Normal AArch64 runtime/SDK packages verify all 13/23 entries; the
+  installed runtime passes 24 upstream ELF invocations before and after normal
+  deletion/reinstallation. Native scanner and target symbol checks pass separately.
   The installed [Wayland package](profiles/common-graphics/cross/wayland.md)
   passes all 26 enabled upstream invocations on Zero 3W.
   The full [Mesa package](profiles/common-graphics/cross/mesa-package.md) now
@@ -291,8 +296,9 @@ runtime behavior are validated.
   also passes those target lifecycles and a Cargo consumer with host proc macros.
   The [full GI package](profiles/common-graphics/cross/introspection.md) cross-builds
   with real GType discovery and upstream hash/search checks on EmberBSD/CM5.
-  Its revision-6 source repair releases temporary hash keys and a test buffer;
-  a native GCC16 regression confirms those fixes, with full package checks pending.
+  Its revision-6 native GCC16 package verifies all 180 entries and passes all
+  64 upstream Meson invocations with current setuptools test interception.
+  Temporary hash-key leaks are repaired; target revision-6 acceptance remains pending.
   Matching GLib 2.90.1 metadata now cross-builds all seven GIR/typelib pairs
   and passes target loading and introspection/libffi invocation on CM5.
   Current [GdkPixbuf and shared MIME packages](profiles/common-graphics/cross/gdk-pixbuf.md)

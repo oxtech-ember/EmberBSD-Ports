@@ -82,6 +82,14 @@ Node runs on the host, its products are target artifacts.
   that constructor fixed the cause. GCC16.2.0 then rebuilt
   `base/i18n/break_iterator.o` successfully. The full pass is being resumed;
   Chromium has not linked yet.
+- The resumed graph then exposed two Fontconfig target-OS assumptions. NetBSD
+  provides `vasprintf_l` but not `uselocale`, and provides
+  `statvfs.f_fstypename`/`fstatvfs`; the bundled Meson config did not select
+  those interfaces. NetBSD-specific config fixups now select the locale-safe
+  formatter and the `statvfs` branch. GCC16.2.0 rebuilt `fccompat.o` and
+  `fcstat.o`. Cppcheck 2.22, GCC16 `-fanalyzer`, and Clang Static Analyzer 21
+  reported no findings on those files. The full `chrome` graph is being
+  resumed; Chromium has not linked yet.
 - No complete Chromium link, Electron runtime, or Blanc package exists.
   Continue the Chrome build and classify actual compiler failures. Partial
   targets are not a Blanc result.
