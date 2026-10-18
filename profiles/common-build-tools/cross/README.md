@@ -182,7 +182,7 @@ Override `EMBERBSD_CROSS_BUILD_CC` and `EMBERBSD_CROSS_BUILD_CXX` with absolute
 host compiler paths when necessary. They reach upstream configure as
 `CC_FOR_BUILD` and `CXX_FOR_BUILD`; target wrappers still compile the package.
 The raw provider inputs remain absolute executable paths. Pkgsrc's `NATIVE_CC`
-and `NATIVE_CXX` are compiler commands. On Darwin, they append `-B/usr/bin/`
+and `NATIVE_CXX` are compiler commands. On Darwin and Linux, they append `-B/usr/bin/`
 so compiler subprocesses select the native assembler and linker despite the
 cross wrapper PATH. Recipes must preserve the complete command, including its
 arguments. Bash, libX11, libXt and FreeType receive this same native command.
@@ -197,6 +197,19 @@ commands and results. It links and runs native C/C++, the upstream makekeys
 source, and FreeType's unchanged native suffix probe under the polluted PATH.
 It also checks libXt's final configure command and a target ELF link.
 These checks do not establish full package or target runtime acceptance.
+
+`tests/cross-ncurses-native.rb` checks the Linux counterpart with native GCC16.
+Pass the exported pkgsrc, cross MAKECONF, existing ncurses 6.6 work directory,
+historical profile, current profile and a new output directory, in that order.
+Set `BMAKE` to the native pkgsrc make executable. The work directory supplies
+the real cwrappers, upstream configure check and recorded `confdefs.h`.
+The test copies wrapper configuration and redirects logs into its own output.
+It reproduces the target linker's `elf_x86_64` refusal before the fix, then
+compiles and executes the unchanged upstream native-compiler check afterward.
+It checks the complete ncurses `BUILD_CC` assignment, both native GCC16 command
+versions, and the unchanged AArch64 target ELF route. The x86-64 Linux-host
+check passed on 2026-10-18; this is not a complete ncurses package or VM test.
+
 The mDNSResponder version probe reads the target sysroot header during cross
 builds and the host header during native dependency recursion.
 Host tool dependencies read the host bootstrap MAKECONF, so interpreter and

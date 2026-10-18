@@ -15,7 +15,7 @@ require 'shellwords'
 v = File.readlines(ARGV.fetch(0)).map(&:chomp)
 [[v[1], v[2]], [v[3], v[4]]].each do |provider, command|
   expected = [provider]
-  expected << '-B/usr/bin/' if v[6] == 'Darwin'
+  expected << '-B/usr/bin/' if %w[Darwin Linux].include?(v[6])
   abort 'wrong native compiler command' unless provider.start_with?('/') && Shellwords.split(command) == expected
 end
 # Bash appends another CC_FOR_BUILD. Check every assignment, including the last.

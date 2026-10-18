@@ -99,6 +99,8 @@ runtime behavior are validated.
   replacement and rollback have regression checks. The
   [host cross-Libtool dispatcher](profiles/common-build-tools/libtool.md)
   now selects its target configuration; its nb1 package and installed checks pass.
+  Linux native-generator checks also retain the GCC16 host compiler and
+  binutils under the target wrapper PATH, including ncurses' actual probe.
   The RELRO regression still rejects unprotected target ELF libraries.
   [Gettext 1.0 localization checks](profiles/common-build-tools/tests/gettext-runtime/README.md)
   pass 27 installed CM5 cases, including the Fcitx translation function.
