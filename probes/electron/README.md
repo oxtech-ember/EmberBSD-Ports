@@ -10,9 +10,9 @@ needs a native Electron runtime first.
   Filter lists are CC BY-SA 3.0+; Blanc/Bananify names and logos are
   trademarks. Build for internal acceptance; do not redistribute.
 - Electron 44.9.0 (latest stable of the 44 line, 2026-10-17) bundles
-Chromium 152.0.7977.167 and Node 24.22.0. The port tracks the latest
-44.x patch release per the current-versions rule; Blanc pins its own
-application JS and runs on this runtime.
+  Chromium 152.0.7977.167 and Node 24.22.0. The port tracks the latest
+  44.x patch release per the current-versions rule; Blanc pins its own
+  application JS and runs on this runtime.
 - The official Chromium bucket publishes 152.0.7977.**82** only
   (chromium-browser-official). The .130 patchlevel is not published as
   a tarball. Plan: build the .**82** tree (exact match of the pkgsrc
@@ -25,12 +25,12 @@ application JS and runs on this runtime.
 | File | Size | SHA256 | Source |
 |---|---|---|---|
 | electron-44.9.0.tar.gz | 20553845 | 2b3eef38277bd50537685c67cc3d1674885efa14e5380bc31185992871a65bc3 | github.com/electron/electron tag v44.9.0 |
-| node-v24.21.0.tar.xz | 57357488 | a6f54defb6fd7c84f41dba13d61e78e9b4e0961712cf61f29715c05f5ced94fc | nodejs.org/dist/v24.21.0 |
+| node-v24.22.0.tar.xz | 57606320 | 41f97cff2c666f1f8293dc5f85c65e8dd605c16b43fd9febd49ede32ee1e0329 | nodejs.org/dist/v24.22.0 |
 | blanc-1.25.0.tar.gz | 155108408 | b241d6b135b0fab5839f5dea6f64fafbdefa4f213b46ffa4a2f78820cb880971 | github.com/bnfy/blanc tag v1.25.0 |
 | chromium-152.0.7977.82.tar.xz | 5916124416 | 82a42a16cd9caa49a5bd6d8f226bb2de2646031356e620da05f92cbfddeb35c3 | commondatastorage.googleapis.com/chromium-browser-official |
 
-Stored under `/Volumes/BigData/EmberBSD/distfiles/e12-electron/` on the
-build host. The npm dependency trees for Electron's JS build and for
+Stored in the build host's E12 distfile cache. The npm dependency trees
+for Electron's JS build and for
 Blanc are fetched to an offline mirror with the host Node 24 toolchain
 during the fetch phase, following the `local-chat/mattermost` pattern:
 Node runs on the host, its products are target artifacts.
@@ -45,7 +45,7 @@ Node runs on the host, its products are target artifacts.
    series for exactly this Chromium version.
 3. Apply the Electron patch series (`patches/chromium` of the Electron
    tag) re-targeted from .130 to .82; record every drift fix.
-4. Build Electron's Node 24.21.0 and the JS toolchain parts on the
+4. Build Electron's Node 24.22.0 and the JS toolchain parts on the
    host; compile native code with the cross compiler for
    `aarch64--netbsd`.
 5. Cross toolchain (owner decision 2026-10-16): the shared GCC16
@@ -57,9 +57,16 @@ Node runs on the host, its products are target artifacts.
 
 ## Status and boundaries
 
-- Recipe skeletons only; nothing builds yet.
-- Gate: the build host volume needs ~120 GiB free for the Chromium
-  tree and build output; see the space audit before expanding.
+- Chromium's `libbase.a` milestone is complete. A previous full Chrome
+  pass stopped at 41,268 of 85,087 steps with 460 failed jobs.
+- The GCC16 cross build of `crypto/nss_util.o` now passes with NSS and
+  NSPR metadata from the EmberBSD sysroot. The full Chrome pass has not
+  been rerun after this change, so the old failure count is not current.
+- The next step is to rerun the Chrome build and classify the remaining
+  failures. A successful Chromium link is still required before Electron
+  can be built. Partial targets are not a Blanc result.
+- Measure free space before each build. The Chromium source tree and
+  build output require about 120 GiB of working space.
 - FreeBSD ports carry `devel/electron42` (Chromium 148) at most; use it
   as a structural reference, not as a version match.
 
