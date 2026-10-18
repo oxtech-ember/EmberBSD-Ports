@@ -25,7 +25,7 @@ python3.15 prepare.py --sdk-source /path/to/EmberBSD-SDK \
   --work /path/to/new-work
 ```
 
-The producer checks all four package payloads against their installed
+The producer checks all four package payload bytes, modes and links against their installed
 catalogs and archives. It records source commits, compiler identities,
 commands, ELF metadata and hashes. It compiles every target executable
 with GCC16 and UBSan traps. The bundle contains no replacement libraries.
@@ -48,3 +48,5 @@ Keep that failure visible. KiCad 10.0.7 uses GLAD in
 NetBSD/AArch64 Valgrind support is unavailable in this workflow. The
 target UBSan trap checks do not establish a Valgrind result. Display-backed
 GLX, Wayland sessions and physical GPU drivers require separate tests.
+UBSan instruments these consumers. It does not instrument the installed
+libraries or establish a clean memory result for their complete code.
