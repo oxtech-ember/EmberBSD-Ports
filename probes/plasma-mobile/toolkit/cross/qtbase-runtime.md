@@ -26,6 +26,9 @@ manifest entry. Selection rejects missing, unknown, duplicate and unsafe paths
 before it removes any unselected file. Selected bytes, modes and symlinks remain
 unchanged. Ordinary package checks still apply after selection.
 
+The modern graphics profile requires EGLDevice in both CMake and the manifests.
+The contract remains stable before dependency headers or phase caches exist.
+
 The runtime owns license notices, including notices stored below SDK directories.
 The exact runtime dependency makes them available with the SDK without duplicate
 ownership. Runtime selection does not remove a file because of its directory

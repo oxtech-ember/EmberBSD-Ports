@@ -309,16 +309,18 @@ PLIST.x11=	yes
 .  if !empty(MESALIB_SUPPORTS_EGL:Myes)
 PLIST.egl=	yes
 .    if defined(EMBERBSD_COMMON_GRAPHICS)
-# The selected Mesa 26 header supplies EGL_DRM_MASTER_FD_EXT; require its
-# canonical installed header. Native configure/plugin/check-files still gate this.
-EGL_EXT_HEADER= ${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.MesaLib}/include/EGL/eglext.h
+# The modern Mesa dependency guarantees EGLDevice. Require the compiled
+# feature too; early PLIST expansion must not depend on installed headers
+# or a buildlink prefix cached by a later package phase.
+PLIST.egldevice=	yes
+CMAKE_CONFIGURE_ARGS+= -DFEATURE_eglfs_egldevice:BOOL=ON
 .    else
 EGL_EXT_HEADER= ${X11BASE}/include/EGL/eglext.h
-.    endif
-.    if exists(${EGL_EXT_HEADER})
+.      if exists(${EGL_EXT_HEADER})
 EGL_EXT_FILE=	cat ${EGL_EXT_HEADER:Q}
-.      if !empty(EGL_EXT_FILE:sh:MEGL_DRM_MASTER_FD_EXT)
+.        if !empty(EGL_EXT_FILE:sh:MEGL_DRM_MASTER_FD_EXT)
 PLIST.egldevice=	yes
+.        endif
 .      endif
 .    endif
 .  endif

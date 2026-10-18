@@ -192,12 +192,12 @@ runtime behavior are validated.
   One internal case skips; nine NIR cases remain disabled.
   The [BO cache mutex repair](profiles/common-graphics/tests/mesa-v3d-cache-mutex/README.md)
   initializes the missing mutex and unwinds creation failures.
-  Normal installation verifies all 100 payload entries. The unchanged old
+  Normal installation verifies all 100 payload entries. The unchanged
   libgallium consumer passes after LLD 23 linking with preserved symbol versions.
   The [Desktop probe](probes/plasma-mobile/toolkit/tests/plasma-desktop/README.md) passes on physical CM5 with V3D and a virtual Wayland output.
   It verifies visible containment pixels, six layout checks over 30 seconds and normal shell exit.
-  The unknown-output control passes after a bounded startup retry.
-  The full login session and physical HDMI presentation remain separate gates.
+  The unknown-output control rejects the invalid output without creating an image.
+  The complete virtual session passes the CM5 checks below. Graphical login, physical HDMI and hotplug remain unaccepted.
   Adapted libdrm 2.4.134nb2, Wayland 1.26.0nb1 and wayland-protocols 1.49
   compose the common GCC16/Python315/Meson112/shared LLVM23 profile for EmberBSD/AArch64.
   An optional [PowerVR ICD](profiles/common-graphics/cross/powervr.md) retains
@@ -206,26 +206,20 @@ runtime behavior are validated.
   four llvmpipe EGL/pixel cycles and 38 upstream invocations. The same nb5
   package passes three native compute cycles on the accepted Zero 3W kernel.
   [Offscreen graphics](profiles/common-graphics/cross/powervr-offscreen.md)
-  and accelerated Plasma remain separate steps. Earlier GL results below
-  retain their recorded package and hardware scope.
+  and accelerated Plasma remain separate steps for A733.
   Source, export and dependency-selection checks cover X11/Wayland,
   EGL/GBM and V3D/VirGL/softpipe/llvmpipe. The complete core-only libdrm
   payload cross-builds on macOS/GCC16, matches all 26 PLIST entries and passes
   upstream hash, skip-list and exported-symbol checks in AArch64 UTM.
-  A [temporary Mesa26 cross diagnostic](profiles/common-graphics/cross/README.md#temporary-headless-mesa-diagnostic)
-  passes software GLES shader/pixel checks and 30 upstream target test runs on
-  Orange Pi Zero 3W (A733). The installed
-  [Wayland package](profiles/common-graphics/cross/wayland.md) passes all 26
-  enabled upstream invocations there after the paired kernel IPC repairs.
+  The installed [Wayland package](profiles/common-graphics/cross/wayland.md)
+  passes all 26 enabled upstream invocations on Zero 3W.
   The full [Mesa package](profiles/common-graphics/cross/mesa-package.md) now
   installs normally and passes four llvmpipe/LLVM23 EGL pixel lifecycles and
   all 37 upstream invocations on Zero 3W; one internal case skips and nine
-  NIR cases remain disabled. The earlier [CM5 V3D package](profiles/common-graphics/cross/mesa-cm5.md)
-  passes hardware GLES 3.0 and desktop OpenGL 3.1 shader/pixel lifecycles,
-  automatic platform discovery and all 38 selected upstream invocations.
-  The [LLVM23.1.3 migration](profiles/common-graphics/cross/mesa-llvm2313.md) records its earlier 38-test V3D/llvmpipe scope. Current nb8 acceptance is described above.
+  NIR cases remain disabled. The [LLVM23.1.3 provider](profiles/common-graphics/cross/mesa-llvm2313.md)
+  supports both V3D and llvmpipe; current CM5 nb8 acceptance is described above.
   Same-device PRIME and EGLImage also pass on CM5 after OS lifetime repairs.
-  HDMI presentation and Plasma remain separate gates.
+  Physical HDMI, hotplug and long-duration Plasma stability remain unaccepted.
   The nb2 XCB pkg-config correction preserves
   byte-identical Mesa libraries. Installed [libepoxy](profiles/common-graphics/cross/epoxy.md)
   passes real dispatch through those providers and four pure upstream tests.
@@ -356,11 +350,12 @@ runtime behavior are validated.
   Flite and speech-dispatcher cross packages pass CM5 language, PCM and shutdown
   regressions. [Qt TextToSpeech](probes/plasma-mobile/toolkit/tests/qt-speech/README.md)
   passes both installed engines; [KCMUtils](probes/plasma-mobile/toolkit/cross/kcmutils.md)
-  passes its generated-settings test. Physical sound and full Plasma remain separate.
+  passes its generated-settings test. Physical sound and interactive audio integration remain unaccepted.
 - [Plasma shell libraries](probes/plasma-mobile/toolkit/cross/libplasma.md):
-  complete libplasma/PlasmaActivities 6.7.5 cross packages pass 13 CM5 tests.
-  Native KPackage metadata and Mesa EGL selection are repaired; the complete
-  accelerated desktop remains unaccepted. [Current Noto fonts](probes/plasma-mobile/toolkit/cross/fonts.md)
+  complete cross packages pass installed plugin, theme and shared-QML-engine
+  checks on CM5. Native KPackage metadata and common Mesa EGL selection are
+  retained. Complete virtual-session acceptance is described below.
+  [Current Noto fonts](probes/plasma-mobile/toolkit/cross/fonts.md)
   also pass payload, target indexing and Cyrillic/CJK selection checks.
   [ConsoleKit session launching](probes/plasma-mobile/toolkit/cross/desktop-session.md)
   now preserves child failures and passes seven real-daemon cases on CM5.
@@ -368,7 +363,7 @@ runtime behavior are validated.
   check root-only parameter overrides and reject child execution after failed registration.
   [NetBSD process snapshot host contracts](probes/plasma-mobile/toolkit/tests/consolekit/process-query.md)
   check complete live records before metadata use; full target compilation awaits cross-built GLib.
-  Ordinary-user login, device ownership and the complete desktop remain unaccepted.
+  Graphical login and physical-device ownership remain unaccepted.
 - [KWin on physical CM5](probes/plasma-mobile/toolkit/cross/cm5-kwin.md):
   KWin 6.8.0nb1 selects OpenGL ES/V3D under a non-root user.
   Desktop 6.8.0 and Workspace 6.8.0nb3 are cross-packaged and installed.
@@ -377,8 +372,14 @@ runtime behavior are validated.
   with Mesa nb8: V3D pixels, six layout checks over 30 seconds and normal exit.
   The [Mesa Wayland allocation repair](profiles/common-graphics/tests/mesa-wayland-oom/README.md)
   also retains its actual-source failure/retry checks.
-  HDMI mode setting and the complete login session remain unaccepted.
-  The earlier KWin 6.7.5 check also passed Qt Quick client pixels.
+  The installed Qtbase 6.12.0nb2 runtime passes the
+  [complete session test](probes/plasma-mobile/toolkit/tests/plasma-session/README.md)
+  twice with V3D, Xwayland, Activities, the original five-second query deadline,
+  30 seconds of liveness and normal logout. Readiness takes 18.408 and 15.661
+  seconds from controller start. BO usage returns to its initial value; recorded
+  temperature stays below 58 degrees Celsius without throttling or undervoltage.
+  Graphical login, physical input, HDMI/KMS, hotplug, remote display and
+  long-duration stability remain unaccepted.
   The current xdg-user-dirs 0.20
   cross package passes private-profile checks on CM5.
   [Desktop package preparation](probes/plasma-mobile/toolkit/cross/desktop-package-set.md)
@@ -388,8 +389,8 @@ runtime behavior are validated.
   ABI requirements missing from the selected payload before transfer.
   It also rejects serialized host interpreters and helper paths before copying archives.
   Package-set and session-runner host checks pass. The session runner checks the
-  system bus before launch and preserves query statuses and phases. Full-session execution on
-  CM5 remains a separate gate, including normal startup and logout.
+  system bus before launch and preserves query statuses and phases. The installed
+  CM5 virtual-session result above includes normal startup and logout.
   [Current desktop providers](probes/plasma-mobile/toolkit/cross/desktop-providers.md)
   add an SDL3 controller adaptation with eight CM5 cases and a UBSan repeat.
   Core event sounds retain their backends without mandatory GTK. Fcitx5/Qt6
@@ -399,7 +400,8 @@ runtime behavior are validated.
   and 25 Hunspell tests on CM5; full input acceptance remains pending.
 - [Plasma volume controls](probes/plasma-mobile/toolkit/cross/plasma-volume.md):
   Plasma PA 6.8.0 and PulseAudioQt 1.9.0 pass seven installed component tests
-  and a real QML import on CM5. Physical sound and full-session integration remain unaccepted.
+  and a real QML import on CM5. Physical sound and interactive audio integration
+  remain unaccepted.
   [KDE runtime repairs](probes/plasma-mobile/toolkit/tests/runtime-source-contracts/README.md)
   fix the D-Bus wait helper's argc lifetime and error result, and restore KDirWatch's fallback.
   The updated target packages pass four helper cases and 38 KDirWatch cases.
