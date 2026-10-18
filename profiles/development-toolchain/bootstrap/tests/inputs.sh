@@ -57,6 +57,7 @@ case "$1" in
     --version) echo 'gcc (GCC) 16.2.0';;
     -v) echo "Thread model: ${FIXTURE_THREADS:-posix}" >&2;;
     -dM)
+        cat >/dev/null
         echo '#define __GNUC__ 16'
         echo '#define __NetBSD__ 1'
         echo '#define __SIZEOF_POINTER__ 8'
@@ -168,7 +169,7 @@ if resume_check > "$work/resume-reject.log" 2>&1; then echo 'FAIL: partial stage
 # Target-only recovery accepts that partial stage only with a complete frontend
 # and the preceding explicit GNU target-binutils provenance.
 runtime_check() {
-    sh "$builder" --check --resume-runtime --target amd64 "$work/pkgsrc" "$work/gcc.tar.xz" \
+    sh "$builder" --check --resume-runtime "$@" --target amd64 "$work/pkgsrc" "$work/gcc.tar.xz" \
         "$work/kernel/toolchain" "$work/seed" "$work/math" "$work/output"
 }
 if runtime_check > "$work/resume-reject.log" 2>&1; then echo 'FAIL: missing binutils receipt accepted' >&2; exit 1; fi
@@ -185,6 +186,19 @@ rm "$work/output/stage/untracked"
 printf 'completed stage\n' > "$work/output/build-success"
 if resume_check > "$work/resume-reject.log" 2>&1; then echo 'FAIL: completed stage accepted for resume' >&2; exit 1; fi
 if runtime_check > "$work/resume-reject.log" 2>&1; then echo 'FAIL: completed stage accepted for runtime recovery' >&2; exit 1; fi
+# An explicit additional-library request may reuse an unchanged completed
+# stage. These are preflight fixtures, not compiler or target runtime outputs.
+printf 'runtime-only-bootstrap\n' > "$work/output/build-success"
+printf 'completed inventory fixture\n' > "$work/output/stage/recorded"
+(cd "$work/output/stage" && find . -type f -exec shasum -a 256 {} + | LC_ALL=C sort) > "$work/output/stage.sha256"
+: > "$work/output/stage.symlinks"
+runtime_check --with-libgomp --with-libatomic > "$work/runtime-extension.plan"
+grep -qx 'runtime_libraries=libgcc,libstdc++,libgomp,libatomic' "$work/runtime-extension.plan"
+grep -qx 'completed inventory fixture' "$work/output/stage/recorded"
+grep -qx runtime-only-bootstrap "$work/output/build-success"
+printf 'unrecorded fixture\n' > "$work/output/stage/additional"
+if runtime_check --with-libgomp > "$work/extension-reject.log" 2>&1; then echo 'FAIL: extended stage accepted an unrecorded file' >&2; exit 1; fi
+grep -qx 'Completed-stage file inventory or hashes changed.' "$work/extension-reject.log"
 rm -rf "$work/output"
 (target=riscv64 reject 'unsupported architecture')
 (FIXTURE_TRIPLET=aarch64--netbsd reject 'wrong compiler triplet')

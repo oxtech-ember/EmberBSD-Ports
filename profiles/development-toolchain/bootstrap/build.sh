@@ -3,17 +3,21 @@
 # Origin: EmberBSD; AI-assisted staged GCC16 runtime bootstrap.
 set -eu
 usage() {
-    echo 'Usage: build.sh [--check] [--resume|--resume-runtime] --target amd64|aarch64 EXPORTED_PKGSRC GCC_ARCHIVE KERNEL_PREFIX SYSROOT HOST_MATH_PREFIX WORK' >&2
+    echo 'Usage: build.sh [--check] [--resume|--resume-runtime] [--with-libgomp] [--with-libatomic] --target amd64|aarch64 EXPORTED_PKGSRC GCC_ARCHIVE KERNEL_PREFIX SYSROOT HOST_MATH_PREFIX WORK' >&2
     exit 2
 }
 fail() { echo "$*" >&2; exit 2; }
 check=no
 resume=no
+runtime_gomp=no
+runtime_atomic=no
 while :; do
     case ${1:-} in
         --check) check=yes; shift;;
         --resume) [ "$resume" = no ] || usage; resume=yes; shift;;
         --resume-runtime) [ "$resume" = no ] || usage; resume=runtime; shift;;
+        --with-libgomp) [ "$runtime_gomp" = no ] || usage; runtime_gomp=yes; shift;;
+        --with-libatomic) [ "$runtime_atomic" = no ] || usage; runtime_atomic=yes; shift;;
         *) break;;
     esac
 done
@@ -107,11 +111,14 @@ if [ -z "$make" ]; then make=$(command -v gmake || command -v make) || fail 'GNU
 case "$make" in /*) ;; *) fail 'GNU_MAKE must be an absolute executable path.';; esac
 [ -x "$make" ] && "$make" --version | grep -q '^GNU Make ' || fail 'GNU make is required.'
 . "$here/target-tools.sh"
+. "$here/runtime-libraries.sh"
+select_runtime_libraries
 . "$here/resume-state.sh"
 [ "$resume" = no ] || check_resume
 printf 'target=%s\ntriplet=%s\nabi=libstdc++.so.7\ntarget_flags=%s\n' "$target" "$triplet" "$target_flags"
 printf 'seed_source=%s\nruntime_prefix=/usr/pkg/gcc16\nstage=%s/stage\n' "$origin" "$work"
 printf 'resume=%s\ntoolexeclibdir=/usr/pkg/gcc16/lib\n' "$resume"
+printf 'runtime_libraries=%s\n' "$runtime_libraries"
 printf 'ar_for_target=%s\nnm_for_target=%s\n' "$AR_FOR_TARGET" "$NM_FOR_TARGET"
 [ "$check" = no ] || exit 0
 
@@ -122,6 +129,7 @@ mkdir "$work/build" "$work/stage"
 {
     uname -srm
     printf 'scope=runtime-only-bootstrap\ntarget=%s\ntriplet=%s\nseed_source=%s\n' "$target" "$triplet" "$origin"
+    printf 'runtime_libraries=%s\n' "$runtime_libraries"
     printf 'kernel=%s\nsysroot=%s\nmath=%s\njobs=%s\n' "$kernel" "$sysroot" "$math" "$jobs"
     printf 'host_cc=%s\nhost_cxx=%s\nhost_cflags=%s\nhost_cxxflags=%s\n' \
         "${HOST_CC:-cc}" "${HOST_CXX:-c++}" "${HOST_CFLAGS:--O2}" "${HOST_CXXFLAGS:--O2}"
@@ -143,6 +151,7 @@ ${HOST_CC:-cc} ${HOST_CFLAGS:--O2} -I"$math/include" "$profile/cross/tests/host-
 sh "$here/prepare-source.sh" "$pkgsrc" "$archive" "$work/src" > "$work/patch.log" 2>&1
 else
     if [ "$resume" = runtime ]; then backup_runtime_resume; else backup_resume; fi
+    record_runtime_libraries
 fi
 # Pin the helper revision and all target tools, including when an older
 # receipt predates explicit binutils selection. Keep the original receipt.
@@ -152,9 +161,10 @@ fi
         shasum -a 256 "$kernel/bin/$triplet-$bootstrap_tool"
         "$kernel/bin/$triplet-$bootstrap_tool" --version | sed -n '1p'
     done
-    shasum -a 256 "$here/build.sh" "$here/target-tools.sh" "$here/resume-state.sh" \
+    shasum -a 256 "$here/build.sh" "$here/target-tools.sh" "$here/resume-state.sh" "$here/runtime-libraries.sh" \
         "$here/audit-source.sh" "$here/prepare-source.sh" "$make" \
-        "$work/src/configure" "$work/src/gcc/configure" "$work/src/libstdc++-v3/configure"
+        "$work/src/configure" "$work/src/gcc/configure" "$work/src/libstdc++-v3/configure" \
+        "$work/src/libgomp/configure" "$work/src/libatomic/configure"
 } >> "$work/inputs.txt"
 cd "$work/build"
 unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH CONFIG_SITE
@@ -170,6 +180,8 @@ set -- --target="$triplet" --prefix=/usr/pkg/gcc16 --libdir=/usr/pkg/gcc16/lib \
 if [ "$target" = amd64 ]; then
     set -- "$@" --with-arch=nocona --with-tune=nocona --with-fpmath=sse
 fi
+[ "$runtime_gomp" = no ] || set -- "$@" --enable-libgomp
+[ "$runtime_atomic" = no ] || set -- "$@" --enable-libatomic
 # Upstream top configure otherwise deletes every existing sub-Makefile.
 # Target metadata was invalidated explicitly; keep completed host state.
 [ "$resume" != runtime ] || set -- "$@" --no-recursion
@@ -189,15 +201,21 @@ else
 fi
 "$work/build/gcc/xgcc" -v 2> "$work/frontend-version.txt"
 grep -qx 'Thread model: posix' "$work/frontend-version.txt" || fail 'Runtime compiler does not select POSIX threads.'
-"$make" -j"$jobs" all-target-libgcc all-target-libstdc++-v3 > "$work/runtime-build.log" 2>&1
+set -- all-target-libgcc all-target-libstdc++-v3
+[ "$runtime_gomp" = no ] || set -- "$@" all-target-libgomp
+[ "$runtime_atomic" = no ] || set -- "$@" all-target-libatomic
+"$make" -j"$jobs" "$@" > "$work/runtime-build.log" 2>&1
 [ "$resume" != runtime ] || verify_frontend_state
-"$make" "DESTDIR=$work/stage" install-target-libgcc install-target-libstdc++-v3 > "$work/runtime-install.log" 2>&1
+set -- install-target-libgcc install-target-libstdc++-v3
+[ "$runtime_gomp" = no ] || set -- "$@" install-target-libgomp
+[ "$runtime_atomic" = no ] || set -- "$@" install-target-libatomic
+"$make" "DESTDIR=$work/stage" "$@" > "$work/runtime-install.log" 2>&1
 [ "$resume" != runtime ] || verify_frontend_state
 runtime=$work/stage/usr/pkg/gcc16
 for crt in crtbegin.o crtbeginS.o crtend.o crtendS.o; do
     check_elf "$runtime/lib/gcc/$triplet/16.2.0/$crt" "$work/stage"
 done
-for library in libgcc_s.so.1 libstdc++.so.7; do
+for library in $runtime_sonames; do
     check_elf "$runtime/lib/$library" "$work/stage"
     "$readelf" -d "$runtime/lib/$library" > "$work/$library.dynamic"
     grep -F "[$library]" "$work/$library.dynamic" | grep -q SONAME || fail 'Runtime SONAME mismatch.'

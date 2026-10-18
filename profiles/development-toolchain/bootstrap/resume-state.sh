@@ -3,8 +3,13 @@
 # Source from build.sh. Validate before changing a failed runtime build.
 check_resume() {
     [ -f "$work/inputs.txt" ] && [ -d "$work/src" ] && [ -d "$work/build/gcc" ] && \
-        [ -d "$work/stage" ] || fail 'Incomplete runtime work directory.'
-    [ ! -e "$work/build-success" ] || fail 'Refusing to resume a completed runtime stage.'
+        [ -d "$work/stage" ] && [ ! -L "$work/stage" ] || fail 'Incomplete runtime work directory.'
+    check_runtime_libraries
+    [ ! -L "$work/build-success" ] || fail 'Runtime success marker must not be a symlink.'
+    if [ -e "$work/build-success" ]; then
+        [ "$resume" = runtime ] && [ "$runtime_extension" = yes ] || fail 'Refusing to resume a completed runtime stage without additional libraries.'
+        verify_completed_stage
+    fi
     if [ "$resume" != runtime ]; then
         [ -z "$(find "$work/stage" -type f -o -type l)" ] || fail 'Resume requires an uninstalled runtime stage.'
     fi
@@ -56,6 +61,9 @@ verify_runtime_stage() {
 backup_runtime_resume() {
     resume_backup=$(mktemp -d "$work/resume-runtime.XXXXXX") || fail 'Cannot preserve runtime installation.'
     cp "$work/inputs.txt" "$resume_backup/inputs.txt"
+    for resume_receipt in build-success stage.sha256 stage.symlinks; do
+        [ ! -f "$work/$resume_receipt" ] || cp "$work/$resume_receipt" "$resume_backup/original-$resume_receipt"
+    done
     for resume_log in configure.log frontends.log frontend-version.txt runtime-build.log runtime-install.log; do
         [ ! -f "$work/$resume_log" ] || cp "$work/$resume_log" "$resume_backup/"
     done
@@ -72,6 +80,12 @@ backup_runtime_resume() {
     [ "$resume_file_count" = "$(wc -l < "$resume_backup/stage.sha256" | tr -d ' ')" ] || fail 'Incomplete partial-stage checksums.'
     mv "$work/stage" "$resume_backup/stage"
     verify_runtime_stage
+    if [ -f "$work/build-success" ]; then
+        cmp -s "$work/build-success" "$resume_backup/original-build-success" || fail 'Completed marker changed while preserving stage.'
+        cmp -s "$resume_backup/stage.sha256" "$resume_backup/original-stage.sha256" || fail 'Completed file manifest changed while preserving stage.'
+        cmp -s "$resume_backup/stage.symlinks" "$resume_backup/original-stage.symlinks" || fail 'Completed link manifest changed while preserving stage.'
+        mv "$work/build-success" "$resume_backup/build-success"
+    fi
     mkdir "$work/stage"
     # Configure every existing target-library prerequisite again, not GCC.
     # libtool .la/.lai files embed the old installation directory. Keep target

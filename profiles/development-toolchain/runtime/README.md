@@ -1,6 +1,6 @@
 # Package the GCC16 target runtime
 
-This profile creates `gcc16-runtime-16.2.0nb1` for EmberBSD amd64 or AArch64.
+This profile creates `gcc16-runtime-16.2.0nb2` for EmberBSD amd64 or AArch64.
 It packages an audited [cross bootstrap stage](../bootstrap/README.md).
 All tools execute on the development host. The target receives only shared
 libraries and licenses under `/usr/pkg/gcc16` and `/usr/pkg/share/licenses`.
@@ -47,12 +47,20 @@ ruby recipe/files/runtime.rb check /absolute/bootstrap-work \
     /absolute/gcc-16.2.0.tar.xz /absolute/prepared-pkgsrc
 ```
 
-The payload consists of `libgcc_s.so.1`, `libstdc++.so.7`, and their
-numeric-version targets. It excludes the unversioned development linker
+The default payload consists of `libgcc_s.so.1`, `libstdc++.so.7`, and their
+numeric-version targets. A stage explicitly built with `--with-libgomp` and/or
+`--with-libatomic` also supplies `libgomp.so.1` and/or `libatomic.so.3`.
+These are the pinned GCC source's actual NetBSD SONAMEs; no base or Linux ABI
+alias is accepted. The unique `runtime_libraries` input must be the canonical
+ordered selection beginning with `libgcc,libstdc++`, optionally followed by
+`libgomp` and `libatomic`. A legacy receipt without that field means only the
+original pair. Unknown, duplicate, unordered or unterminated selections fail.
+Every selected SONAME must exist; an unselected or foreign versioned DSO in
+one of these runtime families fails even if recorded in the stage manifest.
+The package excludes the unversioned development linker
 script and aliases. Each selected file must be a little-endian ELF64
-DSO for the selected architecture. Its SONAME must be `libgcc_s.so.1`
-or `libstdc++.so.7`.
-The dynamic dependency list accepts only these runtimes and the expected
+DSO for the selected architecture with the selected SONAME.
+The dynamic dependency list accepts only the selected runtimes and the expected
 NetBSD base libc, libm and pthread libraries. Runtime search paths may
 contain only `/usr/pkg/gcc16/lib`, `/usr/lib` and `/lib`.
 The verifier reads ELF headers and dynamic tables directly. It executes
@@ -80,6 +88,8 @@ owner `root` and group `wheel`. `+BUILD_INFO` explicitly records
 `GCC_RUNTIME_TARGET`, `GCC_RUNTIME_TRIPLET` and `GCC_RUNTIME_MACHINE_ARCH`
 record the same verified selection. Package inspection requires each field
 exactly once with its original value.
+`GCC_RUNTIME_LIBRARIES` and `GCC_RUNTIME_SONAMES` retain the exact library set;
+all optional libraries belong to this same provider and conflict policy.
 The native host must resolve `root` and `wheel` to UID/GID 0.
 On Linux, a process-scoped NSS wrapper can provide the target group mapping.
 Do not change package ownership to match a different host group name.
@@ -135,6 +145,11 @@ conflicting target/triplet claims and output reuse. An AArch64 fixture
 reproduces the former rejection of every target except amd64.
 Mixed ELF architectures and uniformly wrong ELF architectures fail in
 both directions, including with updated stage hash receipts.
+Optional-library checks cover each selection, missing payload, incorrect
+SONAMEs, mixed architectures, unshipped intermediate aliases, second ABI
+copies, and dependencies on unselected runtimes. Both default and extended
+synthetic-ELF packages are created/installed for each architecture with real
+native pkgtools when available.
 With `PKG_CREATE`, they create
 and inspect a real package using synthetic target ELF files and license data.
 With `PKG_ADD`, they install it into a private destination using normal
@@ -152,11 +167,18 @@ architecture guard through the real source verifier. This case retains
 synthetic stage DSOs. It accepts matching `MACHINE_ARCH` and rejects the
 opposite architecture for both targets.
 
-The expanded host suite passes 9 tests and 209 assertions with no skips
-when all five tool/source variables are supplied. It uses native pkgtools
-20260227 and bmake 20240909. Both synthetic-ELF packages install into private
-host destinations with the expected target metadata and runtime bytes.
-These checks do not execute any target DSO or establish runtime acceptance.
+The earlier architecture-only host suite passed 9 tests and 209 assertions
+with all five tool/source variables, native pkgtools 20260227 and bmake
+20240909. The extended suite additionally packages optional runtimes; its
+synthetic ELF files do not execute any target code or establish runtime
+acceptance.
+On 2026-10-18 the extended suite passed 11 tests and 431 assertions with no
+skips using those native tools and the pinned GCC archive. Four synthetic-ELF
+packages (default and extended, both architectures) were created, inspected
+and installed into private host destinations. The real completed AArch64
+bootstrap also passed the extension's read-only preflight without modifying
+its stage. Actual optional-library installation and target execution were
+not part of these checks.
 
 An earlier completed amd64 runtime stage was also repackaged and
 installed with native pkgtools 20260227 into an isolated host destination.
@@ -170,5 +192,7 @@ fixtures. Before release, build the actual stage and package from a clean
 Ports commit. Install, remove and reinstall with target pkgtools in an
 EmberBSD VM of the selected architecture. Run prebuilt C11/C++20 threads, TLS, DSO exception and
 object-exchange consumers. Confirm the loaded runtime hashes and one
-libstdc++/libgcc_s provider per process. Repeat relevant Plasma acceptance.
+libstdc++/libgcc_s provider per process. An extended stage also needs actual
+OpenMP parallel-work and atomic-operation consumers with its selected library
+hashes. Repeat relevant Plasma acceptance.
 No compiler or target-side build is required for these runtime checks.

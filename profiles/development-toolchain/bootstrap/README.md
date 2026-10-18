@@ -3,6 +3,9 @@
 This bootstrap prepares target CRT objects, libgcc, libstdc++ and C++ headers
 from the audited GCC 16.2.0 source recipe. It supports explicit `amd64`
 (`x86_64--netbsd`) and `aarch64` (`aarch64--netbsd`) targets.
+Optional `--with-libgomp` and `--with-libatomic` flags add the same source
+release's OpenMP and atomic runtimes. Without these flags the original library
+selection is unchanged. Keep the flags before `--target`.
 The compiler and all build tools execute on the development host.
 The target VM is only for execution and acceptance.
 
@@ -83,6 +86,14 @@ support, disabled libstdc++ PCH, disabled libssp (SSP is in target libc),
 and no zstd/Graphite provider. It retains the NetBSD API cache choices from
 `Makefile.common`.
 
+The optional libraries retain GCC's actual NetBSD naming. `libgomp` uses
+`libtool_VERSION=1:0:0`, and `libatomic` uses `3:0:2`; the bundled NetBSD
+libtool selects its `sunos` version scheme. Their SONAMEs are therefore
+`libgomp.so.1` and `libatomic.so.3`. Linux's atomic SONAME and the older base
+OpenMP provider are not substitutes. No compatibility alias is added.
+Both optional libraries use the existing source/patch audit and target tools;
+the generated configure inputs are also hashed in `inputs.txt`.
+
 The bootstrap selects GNU target binutils from the audited kernel compiler
 prefix. It exports absolute `AR_FOR_TARGET`, `AS_FOR_TARGET`, `LD_FOR_TARGET`,
 `NM_FOR_TARGET`, `RANLIB_FOR_TARGET`, `OBJCOPY_FOR_TARGET`, `OBJDUMP_FOR_TARGET`,
@@ -106,11 +117,16 @@ host frontend with shared libraries and POSIX threads enabled, builds
 `all-target-libgcc` and `all-target-libstdc++-v3`. Upstream may build their
 normal target prerequisites. It installs only `install-target-libgcc` and
 `install-target-libstdc++-v3` with `DESTDIR=NEW_WORK/stage`.
+When requested, the corresponding `all-target-libgomp`/`libatomic` and
+`install-target-libgomp`/`libatomic` targets are included. A prerequisite being
+built does not imply that it was installed or included in the runtime package.
+The unique `runtime_libraries` receipt records the exact ordered selection.
 
 The target prefix is `/usr/pkg/gcc16`, not the host work directory:
 
 - CRT: `stage/usr/pkg/gcc16/lib/gcc/TRIPLET/16.2.0/crt{begin,end}*.o`.
-- Libraries: `stage/usr/pkg/gcc16/lib/libgcc_s.so.1` and `libstdc++.so.7`.
+- Libraries: `stage/usr/pkg/gcc16/lib/libgcc_s.so.1` and `libstdc++.so.7`, plus
+  `libgomp.so.1` and/or `libatomic.so.3` when explicitly selected.
 - Headers: `stage/usr/pkg/gcc16/include/c++`, including the target directory.
 
 Configure explicitly sets `--with-toolexeclibdir=/usr/pkg/gcc16/lib` for
@@ -119,7 +135,7 @@ defaults: libgcc and libstdc++ otherwise install under `PREFIX/TRIPLET/lib`.
 The configured directory also owns libtool install metadata. The builder
 does not flatten or copy files from an incorrect installation afterwards.
 
-The builder inspects all four shared/static CRT variants and both runtime
+The builder inspects all four shared/static CRT variants and every selected runtime
 DSOs, checks SONAMEs and rejects build-host paths in dynamic tags.
 It saves source/tool/seed hashes, configure/build/install logs, regular-file
 checksums and a symlink inventory. `build-success` means staging checks passed;
@@ -155,6 +171,7 @@ sh profiles/development-toolchain/bootstrap/tests/inputs.sh
 sh profiles/development-toolchain/bootstrap/tests/source.sh
 sh profiles/development-toolchain/bootstrap/tests/binutils.sh
 sh profiles/development-toolchain/bootstrap/tests/runtime-resume.sh
+sh profiles/development-toolchain/bootstrap/tests/runtime-libraries.sh
 ruby profiles/development-toolchain/bootstrap/tests/runtime-layout.rb \
     /absolute/prepared-gcc-source
 ```
@@ -177,6 +194,11 @@ configure arguments. Runtime-only recovery must retain host/build Makefiles;
 normal fresh and frontend recovery modes keep upstream invalidation behavior.
 It does not configure or
 build GCC, run a linker or establish installed runtime acceptance.
+The optional-library fixture checks selection, refusal of library removal,
+completed-stage file/link drift and preservation of stage/receipt/frontend
+state. Its text payload is deliberately not target ELF. The source layout
+check also executes GCC's actual NetBSD libtool version branch and verifies
+the pinned OpenMP/atomic SONAME calculations.
 The fixtures remove only their own temporary directories.
 
 ## Resume an incomplete runtime build
@@ -207,7 +229,8 @@ For completed POSIX frontends followed by an incorrect target-library install,
 use `--check --resume-runtime` with the original inputs and host settings.
 This mode requires the explicit GNU target-binutils receipt and all completed
 frontend configure files and language executables. A completed accepted stage
-is still refused. The read-only check does not move or configure anything.
+is refused unless the explicit library selection strictly adds runtimes as
+described below. The read-only check does not move or configure anything.
 
 After review, replace `--check --resume-runtime` with `--resume-runtime`.
 The helper preserves the old receipt, logs and top configure files in
@@ -245,6 +268,31 @@ A work tree already missing frontend state after a failed configure remains
 ineligible for runtime-only resume. This mode does not silently restore old
 Makefiles or accept a changed frontend hash. Preserve the failed tree and its
 backup for explicit, separately verified recovery.
+
+## Add libraries to a completed stage
+
+Use the original inputs and host settings with an explicit superset, for example
+`--check --resume-runtime --with-libgomp --with-libatomic --target aarch64`.
+The existing source/tool hashes and POSIX frontend must still match. The check
+also compares every completed-stage regular-file hash and symlink with the
+recorded inventories and rejects special files. Missing, added or changed
+files/links fail. A repeated selection or removal of a previously selected
+library does not authorize rebuilding an accepted stage.
+
+For the build, remove only `--check`. The existing stage is preserved by the
+same verified runtime-resume backup. Its original success marker and stage
+manifests are retained, and the active success marker is removed before the
+new stage can be installed. The prior input receipt remains in the backup;
+the active receipt has one updated library-selection line. Completed frontend
+configuration and executable hashes must remain unchanged. The usual source,
+SONAME, header, dynamic-path and stage checks apply to the new installation.
+Package this new stage with the common runtime owner; never register a second
+OpenMP/atomic provider or copy a base library under the requested filename.
+
+Host selection/packaging tests do not qualify these optional libraries.
+Before acceptance, run prebuilt GCC16 OpenMP parallel-work and atomic-operation
+contracts in EmberBSD and verify the loaded library hashes. The actual target
+runtime extension and these execution checks remain separate gates.
 
 On a failed real build, preserve the work directory and its logs. The helper
 does not delete caller inputs, install into `/usr/pkg`, modify the seed,

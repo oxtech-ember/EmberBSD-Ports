@@ -34,7 +34,7 @@ abort 'FAIL: upstream configure recursion decisions changed' unless arguments &&
       File.write(work + '/' + name, 'completed host configuration')
     end
     # Target metadata has already been moved by backup_runtime_resume.
-    initial = "target=amd64\ntriplet=x86_64--netbsd\nkernel=/kernel\nsysroot=/sysroot\nmath=/math\nresume=#{resume}\n"
+    initial = "target=amd64\ntriplet=x86_64--netbsd\nkernel=/kernel\nsysroot=/sysroot\nmath=/math\nresume=#{resume}\nruntime_gomp=no\nruntime_atomic=no\n"
     initial += arguments + "\nno_recursion=\nfor ac_option; do\ncase $ac_option in\n" + parser + "\n*) : ;;\nesac\ndone\n"
     initial += "build_configdirs=libiberty\nbuild_subdir=build-host\nconfigdirs='gcc libcpp'\ntarget_configdirs='libgcc libstdc++-v3'\ntarget_subdir=target\nbootstrap_fixincludes=no\nbootstrap_suffix=no-bootstrap\nbootstrap_target_libs=\n"
     _, stderr, status = Open3.capture3('sh', '-eu', stdin_data: initial + removal, chdir: work)
@@ -49,3 +49,19 @@ abort 'FAIL: upstream configure recursion decisions changed' unless arguments &&
 end
 puts 'PASS: actual upstream recursion parser/removal preserves host Makefiles only for runtime recovery'
 puts 'PASS: actual upstream libgcc/libstdc++ configure defaults differ; explicit canonical layout agrees for both targets'
+
+# GCC's bundled NetBSD libtool uses current, not current-age, as the SONAME.
+# Execute its actual sunos branch; do not substitute Linux's libatomic ABI.
+libtool = File.read(source + '/ltmain.sh')
+naming = libtool[/\tsunos\)\n\s+major="\.\$current"\n\s+versuffix="\.\$current\.\$revision"\n\s+;;/]
+abort 'FAIL: actual libtool sunos version branch changed' unless naming
+{'libgomp' => ['1:0:0', '.1', '.1.0'], 'libatomic' => ['3:0:2', '.3', '.3.0']}.each do |name, expected|
+  configure = File.read(source + '/' + name + '/configure')
+  version = configure[/^libtool_VERSION=([0-9]+:[0-9]+:[0-9]+)$/, 1]
+  abort "FAIL: #{name} pinned version or NetBSD naming changed" unless version == expected[0] && configure.match?(/^netbsd\*\)\n  version_type=sunos$/)
+  current, revision, age = version.split(':')
+  initial = "current=#{current}\nrevision=#{revision}\nage=#{age}\ncase sunos in\n"
+  out, err, status = Open3.capture3('sh', '-eu', stdin_data: initial + naming + "\nesac\nprintf '%s\\n%s\\n' \"$major\" \"$versuffix\"\n")
+  abort "FAIL: actual #{name} NetBSD SONAME calculation: #{err}" unless status.success? && out.lines.map(&:chomp) == expected.drop(1)
+end
+puts 'PASS: actual GCC16 NetBSD libtool selects libgomp.so.1 and libatomic.so.3; no target runtime execution'

@@ -29,6 +29,7 @@ class RuntimePackageTest < Minitest::Test
   def with_fixture(target = 'amd64')
     Dir.mktmpdir('gcc-runtime-test-') do |d|
       @target = target
+      @libraries = nil
       @triplet, @machine_arch, @elf_machine = case target
         when 'amd64' then ['x86_64--netbsd', 'x86_64', 62]
         when 'aarch64' then ['aarch64--netbsd', 'aarch64', 183]
@@ -49,6 +50,7 @@ class RuntimePackageTest < Minitest::Test
       File.symlink('libstdc++.so.7.36', @stage + '/usr/pkg/gcc16/lib/libstdc++.so.7')
       FileUtils.mkdir_p(@stage + '/usr/pkg/gcc16/include/c++')
       File.write(@stage + '/usr/pkg/gcc16/include/c++/vector', 'build-only header')
+      File.write(@stage + '/usr/pkg/gcc16/lib/libstdc++.so.7.36-gdb.py', 'build-only upstream debugger helper')
       write_receipts
       yield d
     end
@@ -56,6 +58,7 @@ class RuntimePackageTest < Minitest::Test
 
   def write_receipts
     inputs = "scope=runtime-only-bootstrap\ntarget=#{@target}\ntriplet=#{@triplet}\nseed_source=#{'b' * 40}\n"
+    inputs << "runtime_libraries=#{@libraries}\n" if @libraries
     inputs << "#{@archive_sha}  #{@source}\n"
     %w[distinfo Makefile Makefile.common].each do |n|
       path = @pkgsrc + '/lang/gcc16/' + n
@@ -77,6 +80,92 @@ class RuntimePackageTest < Minitest::Test
 
   def stage
     GCC16Runtime::Stage.new(@work, @pkgsrc, @source, expected_source: @archive_sha)
+  end
+
+  def add_optional_libraries(selection)
+    @libraries = selection
+    selection.split(',').drop(2).each do |name|
+      soname = GCC16Runtime::LIBRARIES.fetch(name)
+      path = @stage + '/usr/pkg/gcc16/lib/' + soname
+      File.binwrite(path + '.0', elf(soname, @elf_machine, %w[libpthread.so.1 libc.so.12]))
+      File.symlink(soname + '.0', path)
+      # Development files remain in the stage, never in the runtime package.
+      File.symlink(soname, @stage + '/usr/pkg/gcc16/lib/' + name + '.so')
+      File.write(@stage + '/usr/pkg/gcc16/lib/' + name + '.a', 'build-only archive')
+    end
+    write_receipts
+  end
+
+  def test_optional_library_selection_and_abi
+    %w[amd64 aarch64].each do |target|
+      GCC16Runtime::SELECTIONS.each do |selection|
+        with_fixture(target) do
+          add_optional_libraries(selection)
+          result = stage.verify
+          sonames = selection.split(',').map { |name| GCC16Runtime::LIBRARIES.fetch(name) }
+          assert_equal selection, result.fetch(:metadata).fetch('GCC_RUNTIME_LIBRARIES')
+          assert_equal sonames.join(','), result.fetch(:metadata).fetch('GCC_RUNTIME_SONAMES')
+          assert_equal sonames.sort, result.fetch(:elf).values.map { |row| row.fetch('soname') }.uniq.sort
+          sonames.each { |name| assert_includes result.fetch(:files), 'gcc16/lib/' + name }
+          refute result.fetch(:files).any? { |name| name.end_with?('.a', 'libgomp.so', 'libatomic.so') }
+        end
+      end
+    end
+  end
+
+  def test_optional_library_refusals
+    %w[amd64 aarch64].each do |target|
+      %w[duplicate empty reordered unknown unterminated].each do |mutation|
+        with_fixture(target) do
+          add_optional_libraries(GCC16Runtime::SELECTIONS.last)
+          path = @work + '/inputs.txt'
+          text = File.read(path)
+          text = case mutation
+            when 'duplicate' then text + "runtime_libraries=#{@libraries}\n"
+            when 'empty' then text.sub(@libraries, '')
+            when 'reordered' then text.sub(@libraries, 'libgcc,libstdc++,libatomic,libgomp')
+            when 'unknown' then text.sub(@libraries, 'libgcc,libstdc++,libquadmath')
+            when 'unterminated' then text.lines.reject { |line| line.start_with?('runtime_libraries=') }.join + 'runtime_libraries=' + @libraries
+          end
+          File.write(path, text)
+          assert_raises(GCC16Runtime::Invalid, mutation) { stage.verify }
+        end
+      end
+      with_fixture(target) do
+        add_optional_libraries(GCC16Runtime::SELECTIONS.last)
+        @libraries = nil
+        write_receipts
+        error = assert_raises(GCC16Runtime::Invalid) { stage.verify }
+        assert_match(/Unselected or foreign runtime ABI/, error.message)
+      end
+      %w[libgomp libatomic].each do |name|
+        %w[missing soname architecture unshipped-link unselected-dependency second-abi].each do |mutation|
+          with_fixture(target) do
+            add_optional_libraries('libgcc,libstdc++,' + name)
+            soname = GCC16Runtime::LIBRARIES.fetch(name)
+            path = @stage + '/usr/pkg/gcc16/lib/' + soname
+            case mutation
+            when 'missing'
+              File.unlink(path)
+              File.unlink(@stage + '/usr/pkg/gcc16/lib/' + name + '.so')
+            when 'soname' then File.binwrite(path + '.0', elf(name + '.so.2', @elf_machine))
+            when 'architecture' then File.binwrite(path + '.0', elf(soname, @elf_machine == 62 ? 183 : 62))
+            when 'unshipped-link'
+              File.unlink(path)
+              File.symlink('intermediate', path)
+              File.symlink(soname + '.0', File.dirname(path) + '/intermediate')
+            when 'unselected-dependency'
+              other = name == 'libgomp' ? 'libatomic.so.3' : 'libgomp.so.1'
+              File.binwrite(path + '.0', elf(soname, @elf_machine, [other]))
+            when 'second-abi'
+              File.binwrite(@stage + '/usr/pkg/gcc16/lib/' + name + '.so.2', elf(name + '.so.2', @elf_machine))
+            end
+            write_receipts
+            assert_raises(GCC16Runtime::Invalid, "#{target}/#{name}/#{mutation}") { stage.verify }
+          end
+        end
+      end
+    end
   end
 
   def test_select_only_target_runtime
@@ -175,11 +264,15 @@ class RuntimePackageTest < Minitest::Test
   def test_real_native_package
     pkg_create = ENV['PKG_CREATE']
     skip 'Set PKG_CREATE to a native host tool' unless pkg_create
-    %w[amd64 aarch64].each { |target| check_real_native_package(target, pkg_create) }
+    %w[amd64 aarch64].each do |target|
+      check_real_native_package(target, pkg_create)
+      check_real_native_package(target, pkg_create, GCC16Runtime::SELECTIONS.last)
+    end
   end
 
-  def check_real_native_package(target, pkg_create)
+  def check_real_native_package(target, pkg_create, libraries = nil)
     with_fixture(target) do |d|
+      add_optional_libraries(libraries) if libraries
       output = d + '/package'
       GCC16Runtime.create(stage, pkg_create, output)
       package = output + '/' + GCC16Runtime::NAME + '.tgz'
@@ -195,7 +288,8 @@ class RuntimePackageTest < Minitest::Test
       assert status.success?
       ["OPSYS=NetBSD", "OS_VERSION=11.0", "MACHINE_ARCH=#{@machine_arch}",
        "GCC_RUNTIME_TARGET=#{@target}", "GCC_RUNTIME_TRIPLET=#{@triplet}",
-       "GCC_RUNTIME_MACHINE_ARCH=#{@machine_arch}"].each do |line|
+       "GCC_RUNTIME_MACHINE_ARCH=#{@machine_arch}",
+       "GCC_RUNTIME_LIBRARIES=#{libraries || GCC16Runtime::SELECTIONS.first}"].each do |line|
         key = line.split('=', 2).first
         assert_equal [line], metadata.lines.map(&:chomp).grep(/^#{key}=/)
       end
@@ -210,6 +304,16 @@ class RuntimePackageTest < Minitest::Test
         refute_match(/warning|invalid pkg_install version|lacks pkg_install version data/, log)
         assert File.file?(dest + '/usr/pkg/pkgdb/' + GCC16Runtime::NAME + '/+BUILD_INFO')
         assert_equal File.binread(@stage + '/usr/pkg/gcc16/lib/libgcc_s.so.1'), File.binread(dest + '/usr/pkg/gcc16/lib/libgcc_s.so.1')
+        stage.verify.fetch(:files).each do |path|
+          source = @stage + '/usr/pkg/' + path
+          installed = dest + '/usr/pkg/' + path
+          if File.symlink?(source)
+            assert File.symlink?(installed)
+            assert_equal File.readlink(source), File.readlink(installed)
+          else
+            assert_equal File.binread(source), File.binread(installed)
+          end
+        end
         # Reproduce the pre-fix package with the real creator and installer.
         legacy = d + '/legacy'; FileUtils.mkdir(legacy)
         _, err, status = Open3.capture3('tar', '-xf', package, '-C', legacy)
@@ -281,15 +385,17 @@ class RuntimePackageTest < Minitest::Test
             @source = File.realpath(ENV.fetch('GCC_ARCHIVE'))
             @archive_sha = Digest::SHA256.file(@source).hexdigest
             assert_equal GCC16Runtime::SOURCE_SHA256, @archive_sha
+            add_optional_libraries(GCC16Runtime::SELECTIONS.last) if target == 'aarch64'
             write_receipts
             [@machine_arch, @machine_arch == 'aarch64' ? 'x86_64' : 'aarch64'].each do |package_arch|
               out, err, status = Open3.capture3(bmake, '-C', d + '/lang/gcc16-runtime',
                 'OPSYS=NetBSD', 'OS_VERSION=11.0', "MACHINE_ARCH=#{package_arch}",
                 "GCC16_RUNTIME_RUBY=#{RbConfig.ruby}", "GCC16_RUNTIME_WORK=#{@work}",
                 "GCC16_RUNTIME_ARCHIVE=#{@source}", "GCC16_RUNTIME_PKGSRC=#{@pkgsrc}",
-                '-v', 'GCC_RUNTIME_TRIPLET', '-v', 'PKG_FAIL_REASON')
+                '-v', 'GCC_RUNTIME_TRIPLET', '-v', 'GCC_RUNTIME_LIBRARIES', '-v', 'PKG_FAIL_REASON')
               assert status.success?, out + err
               assert_equal @triplet, out.lines.first.chomp
+              assert_equal @libraries || GCC16Runtime::SELECTIONS.first, out.lines[1].chomp
               refute_includes out, 'stage verification failed'
               message = 'Audited runtime architecture does not match the package target MACHINE_ARCH.'
               if package_arch == @machine_arch

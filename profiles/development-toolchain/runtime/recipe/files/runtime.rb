@@ -12,10 +12,15 @@ require 'tmpdir'
 
 module GCC16Runtime
   VERSION = '16.2.0'
-  NAME = 'gcc16-runtime-16.2.0nb1'
+  NAME = 'gcc16-runtime-16.2.0nb2'
   SOURCE_SHA256 = 'e6738e29597f733270731aa90600f37ffdc045079dfc27ec7e8192cc81085c3e'
   LICENSES = %w[COPYING3 COPYING.RUNTIME].freeze
   CONFLICTS = %w[gcc16-[0-9]* gcc16-libs-[0-9]*].freeze
+  LIBRARIES = {
+    'libgcc' => 'libgcc_s.so.1', 'libstdc++' => 'libstdc++.so.7',
+    'libgomp' => 'libgomp.so.1', 'libatomic' => 'libatomic.so.3'
+  }.freeze
+  SELECTIONS = %w[libgcc,libstdc++ libgcc,libstdc++,libgomp libgcc,libstdc++,libatomic libgcc,libstdc++,libgomp,libatomic].freeze
   TARGETS = {
     'amd64' => { triplet: 'x86_64--netbsd', machine_arch: 'x86_64', elf_machine: 62 }.freeze,
     'aarch64' => { triplet: 'aarch64--netbsd', machine_arch: 'aarch64', elf_machine: 183 }.freeze
@@ -33,7 +38,7 @@ module GCC16Runtime
       @data.byteslice(offset, length)
     end
 
-    def verify(soname, target)
+    def verify(soname, target, runtime_sonames)
       raise Invalid, "Expected ELF64 little-endian #{target.fetch(:machine_arch)} DSO" unless slice(0, 7) == "\x7fELF\x02\x01\x01".b && slice(16, 4).unpack('vv') == [3, target.fetch(:elf_machine)]
       offset = slice(32, 8).unpack1('Q<')
       size, count = slice(54, 4).unpack('vv')
@@ -58,7 +63,7 @@ module GCC16Runtime
       actual = values.call(14).map { |index| string.call(index) }
       raise Invalid, "Runtime SONAME mismatch: #{actual.inspect}" unless actual == [soname]
       needed = values.call(1).map { |index| string.call(index) }
-      allowed = %w[libc.so.12 libm.so.0 libpthread.so.1 libgcc_s.so.1 libstdc++.so.7]
+      allowed = %w[libc.so.12 libm.so.0 libpthread.so.1] + runtime_sonames
       raise Invalid, "Foreign runtime dependency: #{needed.inspect}" unless (needed - allowed).empty?
       [15, 29].each do |tag|
         values.call(tag).each do |index|
@@ -103,6 +108,13 @@ module GCC16Runtime
       architecture = TARGETS[claims.fetch('target')]
       raise Invalid, 'Unsupported runtime target' unless architecture
       raise Invalid, 'Runtime target/triplet mismatch' unless claims.fetch('triplet') == architecture.fetch(:triplet)
+      choices = inputs.lines.select { |line| line.start_with?('runtime_libraries=') }
+      raise Invalid, 'Duplicate runtime library selection' unless choices.length <= 1
+      raise Invalid, 'Unterminated runtime library selection' unless choices.empty? || choices.first.end_with?("\n")
+      # Legacy completed stages contain only the original libgcc/libstdc++ pair.
+      selection = choices.empty? ? SELECTIONS.first : choices.first.delete_prefix('runtime_libraries=').delete_suffix("\n")
+      raise Invalid, 'Unsupported runtime library selection' unless SELECTIONS.include?(selection)
+      runtime_sonames = selection.split(',').map { |name| LIBRARIES.fetch(name) }
       seed = inputs.lines.grep(/^seed_source=/)
       raise Invalid, 'Missing seed source commit' unless seed.length == 1 && seed[0].match?(/\Aseed_source=[0-9a-f]{40}\n\z/)
       raise Invalid, 'GCC source archive mismatch' unless hash(@archive) == @expected_source
@@ -144,8 +156,13 @@ module GCC16Runtime
         end
       end
       raise Invalid, 'Stage inventory mismatch' unless actual_regular.sort == regular.keys.sort && actual_links.sort == links.keys.sort
-      selected = (regular.keys + links.keys).select { |p| p.match?(%r{\Ausr/pkg/gcc16/lib/(libgcc_s\.so\.1|libstdc\+\+\.so\.7(?:\.[0-9]+)*)\z}) }.sort
-      required = %w[usr/pkg/gcc16/lib/libgcc_s.so.1 usr/pkg/gcc16/lib/libstdc++.so.7]
+      (regular.keys + links.keys).grep(%r{\Ausr/pkg/gcc16/lib/(?:libgcc_s|libstdc\+\+|libgomp|libatomic)\.so\.[0-9]+(?:\.[0-9]+)*\z}).each do |path|
+        raise Invalid, "Unselected or foreign runtime ABI in stage: #{path}" unless runtime_sonames.any? { |name| File.basename(path).match?(/\A#{Regexp.escape(name)}(?:\.[0-9]+)*\z/) }
+      end
+      selected = (regular.keys + links.keys).select do |path|
+        runtime_sonames.any? { |name| path.match?(%r{\Ausr/pkg/gcc16/lib/#{Regexp.escape(name)}(?:\.[0-9]+)*\z}) }
+      end.sort
+      required = runtime_sonames.map { |name| 'usr/pkg/gcc16/lib/' + name }
       raise Invalid, 'Required runtime DSOs missing' unless (required - selected).empty?
       elf = {}
       selected.each do |path|
@@ -157,8 +174,8 @@ module GCC16Runtime
         resolved = File.realpath(source)
         resolved_rel = resolved.delete_prefix(@stage + '/')
         raise Invalid, 'Runtime alias points outside the selected payload' unless selected.include?(resolved_rel)
-        soname = path.include?('libstdc++') ? 'libstdc++.so.7' : 'libgcc_s.so.1'
-        elf[path.delete_prefix('usr/pkg/')] = ELF.new(resolved).verify(soname, architecture)
+        soname = runtime_sonames.find { |name| File.basename(path).match?(/\A#{Regexp.escape(name)}(?:\.[0-9]+)*\z/) }
+        elf[path.delete_prefix('usr/pkg/')] = ELF.new(resolved).verify(soname, architecture, runtime_sonames)
       end
       recipe_digest = Digest::SHA256.hexdigest(recipe_files.sort.map { |p| "#{p.delete_prefix(recipe + "/")} #{hash(p)}\n" }.join)
       @result = {
@@ -166,6 +183,7 @@ module GCC16Runtime
         metadata: { 'OPSYS' => 'NetBSD', 'OS_VERSION' => '11.0', 'MACHINE_ARCH' => architecture.fetch(:machine_arch),
           'PKGPATH' => 'lang/gcc16-runtime', 'PKGNAME' => NAME, 'LICENSE' => 'gnu-gpl-v3',
           'GCC_VERSION' => VERSION, 'GCC_RUNTIME_SONAME' => 'libstdc++.so.7',
+          'GCC_RUNTIME_LIBRARIES' => selection, 'GCC_RUNTIME_SONAMES' => runtime_sonames.join(','),
           'GCC_RUNTIME_TARGET' => claims.fetch('target'), 'GCC_RUNTIME_TRIPLET' => architecture.fetch(:triplet),
           'GCC_RUNTIME_MACHINE_ARCH' => architecture.fetch(:machine_arch),
           'GCC_SOURCE_SHA256' => @expected_source, 'GCC_RECIPE_SHA256' => recipe_digest, 'GCC_RECIPE_DISTINFO_SHA256' => hash(recipe + '/distinfo'),
