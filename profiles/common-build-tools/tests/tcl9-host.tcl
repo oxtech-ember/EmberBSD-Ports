@@ -57,9 +57,10 @@ $statement close
 connection close
 
 package require Thread 3.0.7
-set worker [thread::create {thread::wait}]
+set worker [thread::create -joinable {thread::wait}]
 if {[thread::send $worker {expr {6 * 7}}] != 42} {
     error "Thread result differs"
 }
 thread::release $worker
+thread::join $worker
 puts "PASS: Tcl [info patchlevel]; ZipFS, Unicode, Itcl, system SQLite, TDBC and Thread"

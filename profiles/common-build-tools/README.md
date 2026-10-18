@@ -1,9 +1,10 @@
 # Current common build tools
 
 The paired [Tcl/Tk 9.1 recipes](cross/tcltk.md) retain bundled extensions,
-system SQLite and ZipFS. Actual generated platform branches and native/cross
-metadata pass focused checks. Full packages and installed GUI acceptance
-remain separate gates.
+system SQLite and ZipFS. Tcl's ordinary native GCC16 package and host
+generator contract pass. Platform branches, metadata and SQLite symbol
+ownership pass causal checks. Full upstream tests and strict memory checks
+retain documented failures; target GUI acceptance remains separate.
 
 The [cwrappers archive repair](cross/cwrappers-unwrap.md) preserves sibling
 directory paths in installed Libtool metadata. Actual native GCC16 wrapper
