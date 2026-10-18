@@ -13,16 +13,13 @@ trap 'rm -rf "$work"' EXIT
 trap 'exit 130' INT
 trap 'exit 143' HUP TERM
 if [ -z "$bootstrap" ]; then
-    # No build command runs in these early-rejection fixtures.
+    # No compiler build runs in these early-rejection fixtures.
     bootstrap=$work/bootstrap
     mkdir -p "$bootstrap/bin"
     printf '#!/bin/sh\nexit 99\n' > "$bootstrap/bin/nbgmake"
     chmod +x "$bootstrap/bin/nbgmake"
-    for tool in ar as elfedit ld nm objcopy objdump ranlib readelf size strings strip; do
-        cp "$bootstrap/bin/nbgmake" "$bootstrap/bin/$triplet-$tool"
-    done
 fi
-[ -x "$bootstrap/bin/nbgmake" ] || { echo 'Provide bootstrap GNU make and target binutils.' >&2; exit 2; }
+[ -x "$bootstrap/bin/nbgmake" ] || { echo 'Provide bootstrap GNU make.' >&2; exit 2; }
 
 reject() {
     expected=$1; shift

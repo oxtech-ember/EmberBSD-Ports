@@ -13,7 +13,7 @@ Unknown, empty and repeated target options fail before output creation.
 
 | Target | GNU triplet | Validation |
 | --- | --- | --- |
-| `aarch64` | `aarch64--netbsd` | Host builds and target checks recorded below |
+| `aarch64` | `aarch64--netbsd` | GCC16 cross C/C++ LTO links with Ports Binutils 2.47; target checks remain separate |
 | `amd64` | `x86_64--netbsd` | Host orchestration fixtures only; real build and runtime checks pending |
 
 The triplets follow the fork's [machine selection](https://github.com/oxtech-ember/EmberBSD/blob/main/build.sh)
@@ -21,20 +21,27 @@ and [GNU platform definitions](https://github.com/oxtech-ember/EmberBSD/blob/mai
 The same selected triplet controls binutils, compiler configuration, startup
 objects and target C++ headers. It is recorded in `inputs.txt`.
 
-The bootstrap copy also preserves the linker's adjacent `lib/ldscripts` tree.
-Copying the linker executable alone breaks default secondary emulations.
-The source script hashes are recorded in `linker-scripts.sha256`.
-The real amd64 bootstrap passes 67 unchanged scripts and an `elf_i386`
-standalone link through the relocated prefix. No target program is executed.
-The same test rejects the previous executable-only copy at script selection:
+The recipe uses GCC 16 host compilers by default: `gcc-16` and `g++-16`.
+Both must report GCC major version 16. Clang cannot build this cross toolchain.
+
+`build.sh` builds the host-runnable Binutils 2.47 tools from the pinned
+Common Ports source and patch set. It installs the selected triplet tools and
+the linker's full `lib/ldscripts` tree in the GCC prefix before it configures
+GCC. GCC's default `as` and `ld` paths point to those tools. No `-B` or specs
+file is required. `inputs.txt` records the archive and patch hashes.
+`linker-scripts.sha256` records the installed scripts. The AArch64 cross
+profile checks current Binutils with C and C++ LTO. It does not run target ELF.
+
+The separate relocation fixture checks secondary emulations in an OS tool
+directory without compiling GCC:
 
 ```sh
 ruby profiles/development-toolchain/cross/tests/linker-relocation.rb \
     /absolute/os-tools amd64 /absolute/new-relocation-receipt
 ```
 
-This qualifies relocation of the supplied binutils. It does not qualify a
-new binutils version, a complete OS build or booting a BIOS loader.
+This fixture checks path relocation only. It does not qualify amd64 builds,
+a complete OS build or booting a BIOS loader.
 
 The compiler uses the same verified original GCC archive and frontend
 portability patches as the Ports native package, including the nb1 C++
@@ -60,8 +67,8 @@ Provide these absolute paths without whitespace:
    sysroot when creating the snapshot; never resolve them against the host.
 4. A host `TOOLDIR` produced by the fork's
    [cross-build path](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/cross-build.md).
-   GNU make builds the compiler, and its selected target binutils are copied into the
-   compiler prefix. Qualifying current binutils remains separate work.
+   Its host GNU make builds GCC. The recipe builds target Binutils 2.47 from
+   the pinned Ports source and patches.
 5. A new work directory with room for sources, objects and the compiler.
 
 Repair missing cross support through Ports or the OS. The compiler and
@@ -70,13 +77,14 @@ and startup objects must belong to the target. Equal CPU architecture does
 not make Darwin and NetBSD executables interchangeable.
 
 ```sh
-HOST_CC=cc HOST_CXX=c++ \
+HOST_CC=gcc-16 HOST_CXX=g++-16 \
     sh profiles/development-toolchain/cross/build.sh \
     /absolute/pkgsrc /absolute/gcc-16.2.0.tar.xz /absolute/sysroot \
     /absolute/os-build/tools /absolute/new-gcc-cross
 ```
 
-For amd64, use a matching amd64 sysroot and fork-built x86_64 binutils:
+For amd64, use a matching amd64 sysroot. The recipe builds the selected
+`x86_64--netbsd` Binutils 2.47 tools:
 
 ```sh
 HOST_CC=gcc-16 HOST_CXX=g++-16 CROSS_JOBS=2 \
@@ -87,9 +95,11 @@ HOST_CC=gcc-16 HOST_CXX=g++-16 CROSS_JOBS=2 \
 
 The sysroot must already contain the matching GCC16 target runtime and C++
 headers. Kernel mode cannot provide them. Do not substitute AArch64 packages
-or base-compiler runtime files. The host needs C/C++ compilers, a POSIX shell,
-`awk`, `shasum`, `tar`, `patch`, and the fork's host GNU make and binutils.
-Automatic host math preparation also uses `curl` for missing archives.
+or base-compiler runtime files. The host needs GCC/G++ 16, a POSIX shell,
+`awk`, `shasum`, `tar`, `patch`, `curl`, and the fork's host GNU make.
+The recipe downloads Binutils 2.47 unless `EMBER_BINUTILS_ARCHIVE` names a
+cached archive. It checks the pinned SHA256, SHA512, and size before extraction.
+Automatic host math preparation also downloads missing archives.
 
 The five-argument command builds GMP 6.3.0, MPFR 4.2.2 and MPC 1.4.1 under
 `NEW_WORK/host-math`. It downloads missing pinned archives into
@@ -145,7 +155,8 @@ This does not remove the RPATH repair from native packages.
 The recipe installs into `new-gcc-cross/toolchain` and records inputs and
 build logs in the work directory. It never writes `/usr/bin`, `/usr/pkg`,
 `/etc/mk.conf` or a board. Keep the work directory and sysroot at their
-recorded paths. `HOST_CC`/`HOST_CXX` name the existing host compilers;
+recorded paths. `HOST_CC`/`HOST_CXX` default to `gcc-16` and `g++-16`.
+Explicit overrides must also select GCC 16;
 `CROSS_JOBS` optionally overrides concurrency. Both recipes default to the
 host's online CPU count from `getconf`, with `sysctl` as a fallback.
 A failed stage returns nonzero.
@@ -155,16 +166,24 @@ directory. This is required for the driver's `-gsplit-dwarf` invocation of
 `objcopy`, even when ordinary compilation already works. The build runs
 `tests/split-dwarf.sh --target TARGET CROSS_PREFIX NEW_WORK` with a clean PATH and no
 `-B` or compiler-search overrides. The resulting DWARF5 skeleton and DWO
-must both be readable and retain the named type. This contract passed on
-2026-10-08 with the current GMP-backed GCC16 prefix.
+must both be readable. The script checks the skeleton/split units and the
+record name in the DWO string-offset table.
+
+The AArch64 build also runs `tests/lto-binutils.sh CROSS_PREFIX NEW_WORK`.
+It checks default tool selection and compiles freestanding C and C++ with
+LTO. The link trace must name GCC's `collect2`, plugin, and `lto-wrapper`,
+plus the selected Ports `as` and `ld`. `readelf` must report AArch64 ELF
+executables. This check proves cross compile and link only. It does not prove
+target runtime without an accepted sysroot and target runner.
 
 ## Kernel frontends without a sysroot
 
 Use the same prepared pkgsrc export, pinned GCC archive, fork-built host
-TOOLDIR and current host math libraries. Omit the application sysroot:
+TOOLDIR, GCC16 host compilers and current host math libraries. Omit the
+application sysroot:
 
 ```sh
-HOST_CC=gcc HOST_CXX=g++ CROSS_JOBS=4 \
+HOST_CC=gcc-16 HOST_CXX=g++-16 CROSS_JOBS=4 \
     sh profiles/development-toolchain/cross/build.sh --kernel \
     /absolute/pkgsrc /absolute/gcc-16.2.0.tar.xz \
     /absolute/os-build/tools /absolute/host-math/prefix /absolute/new-gcc-kernel
@@ -177,8 +196,8 @@ The optional host math prefix works as in application mode: leave it out to
 build isolated prerequisites, or set `EMBER_HOST_MATH_PREFIX`. Kernel mode uses
 `--without-headers --disable-shared --disable-threads` and builds/installs
 `all-gcc`/`install-gcc`. It retains patch verification, the modules repair,
-target binutils copies, native-only RPATH patch exclusion and the installed
-split-DWARF contract. Select its `NEW_WORK/toolchain` through the fork's
+Ports Binutils 2.47, native-only RPATH patch exclusion, and the installed
+split-DWARF and LTO contracts. Select its `NEW_WORK/toolchain` through the fork's
 `EMBER_EXTERNAL_TOOLCHAIN`; inspect the owning OS wrapper for host-tool selection
 and kernel inputs. Compiler preparation alone does not establish kernel build
 or boot acceptance.
@@ -205,10 +224,13 @@ sh profiles/development-toolchain/cross/tests/build-modes.sh --target amd64
 sh profiles/development-toolchain/cross/tests/targets.sh
 sh profiles/development-toolchain/cross/tests/configure-targets.sh
 sh profiles/development-toolchain/cross/tests/runtime-checker.sh
+sh profiles/development-toolchain/cross/tests/lto-binutils.sh \
+    /absolute/gcc-cross/toolchain /absolute/new-lto-check
 sh profiles/development-toolchain/tests/prepare.sh /absolute/new-pkgsrc-test
 ```
 
-The first five commands use host fixtures. They check argument rejection,
+The argument, target, configure, and runtime-receipt commands use host fixtures.
+They check argument rejection,
 target-specific runtime/binutils selection, compile flags, and both configure
 modes. Runtime receipts also reject corruption, foreign paths and duplicate
 libraries without a target compiler. The configure fixture stops before

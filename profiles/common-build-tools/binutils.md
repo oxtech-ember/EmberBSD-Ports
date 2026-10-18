@@ -59,12 +59,20 @@ GCC CTF emission/linking/inspection, translation catalogs and
 unresolved-symbol errors. The DWARF64 check covers both assembler-generated
 32-bit and compiler-generated 64-bit line tables.
 
-The accepted GCC16 bootstrap package hardcodes `/usr/bin/as` and
+The installed native GCC16 package hardcodes `/usr/bin/as` and
 `/usr/bin/ld`; `-B` does not override those paths. The acceptance script
 selects the installed GNU assembler and direct ELF linker through a local
-standard GCC specs file and verifies the actual commands. It preserves
-the installed compiler and does not establish default-tool migration or
-the `collect2`/LTO path. Those require the subsequent GCC package update.
+standard GCC specs file and verifies the actual commands. This keeps the
+native package unchanged. It does not establish its default-tool migration.
+
+The separate [GCC16 cross recipe](../development-toolchain/cross/README.md)
+builds this pinned Binutils 2.47 source and patch set for the selected target.
+It installs `as`, `ld`, and the linker scripts in the cross prefix before it
+configures GCC. GCC uses those paths by default. Its
+[`lto-binutils.sh`](../development-toolchain/cross/tests/lto-binutils.sh)
+acceptance verifies the AArch64 `collect2`/plugin/LTO path without `-B` or
+specs. This cross-prefix result does not migrate the installed native package
+or establish target execution.
 
 This GNU CTF workflow is separate from the OS's NetBSD DWARF-to-CTF tools.
 Updating the package does not replace the OS bootstrap toolchain or prove

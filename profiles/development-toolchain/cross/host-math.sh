@@ -13,6 +13,8 @@ delta=$here/patches/gmp-t-rand-varargs.patch
     echo 'GMP test patch SHA256 mismatch.' >&2; exit 1;
 }
 archives=$1 tools=$2 work=$3
+host_cc=${HOST_CC:-gcc-16}
+host_cxx=${HOST_CXX:-g++-16}
 for path in "$@"; do
     case "$path" in /*) ;; *) echo 'Absolute paths required.' >&2; exit 2;; esac
     case "$path" in *[!A-Za-z0-9_./-]*) echo 'Use paths without whitespace or shell metacharacters.' >&2; exit 2;; esac
@@ -28,6 +30,15 @@ case "$jobs" in ''|*[!0-9]*) jobs=0;; esac
 [ "$jobs" -gt 0 ] 2>/dev/null || { echo 'CROSS_JOBS must be positive.' >&2; exit 2; }
 [ ! -e "$work" ] && [ ! -L "$work" ] || { echo 'NEW_WORK already exists.' >&2; exit 2; }
 [ -x "$tools/bin/nbgmake" ] || { echo 'Bootstrap GNU make missing.' >&2; exit 2; }
+for compiler in "$host_cc" "$host_cxx"; do
+    command -v "$compiler" >/dev/null 2>&1 || {
+        echo "Host GCC16 compiler missing: $compiler" >&2; exit 2;
+    }
+    version=$("$compiler" -dumpfullversion) || {
+        echo "Cannot identify host GCC16 compiler: $compiler" >&2; exit 2;
+    }
+    case "$version" in 16.*) ;; *) echo "GCC 16 host compiler required: $compiler ($version)" >&2; exit 2;; esac
+done
 mkdir -p "$archives"
 for item in gmp:6.3.0:tar.xz mpfr:4.2.2:tar.bz2 mpc:1.4.1:tar.xz; do
     name=${item%%:*}; rest=${item#*:}; version=${rest%%:*}; suffix=${rest#*:}
@@ -56,10 +67,10 @@ mkdir "$prefix"
 {
     uname -srm
     printf 'host_cc=%s\nhost_cxx=%s\ncflags=%s\ncxxflags=%s\n' \
-        "${HOST_CC:-cc}" "${HOST_CXX:-c++}" '-O2 -std=gnu17' '-O2'
-    "${HOST_CC:-cc}" --version
-    "${HOST_CC:-cc}" -dumpmachine
-    "${HOST_CXX:-c++}" --version
+        "$host_cc" "$host_cxx" '-O2 -std=gnu17' '-O2'
+    "$host_cc" --version
+    "$host_cc" -dumpmachine
+    "$host_cxx" --version
     printf 'jobs=%s\n' "$jobs"
     shasum -a 256 "$delta"
 } > "$work/inputs.txt"
@@ -83,14 +94,14 @@ for item in gmp:6.3.0:tar.xz mpfr:4.2.2:tar.bz2 mpc:1.4.1:tar.xz; do
         esac
         # GMP 6.3's configure probes use pre-C23 empty parameter lists.
         # Select their supported C dialect without changing the compiler.
-        CC=${HOST_CC:-cc} CXX=${HOST_CXX:-c++} CFLAGS='-O2 -std=gnu17' CXXFLAGS=-O2 \
+        CC=$host_cc CXX=$host_cxx CFLAGS='-O2 -std=gnu17' CXXFLAGS=-O2 \
             "$work/$name-src/configure" "$@" > "$work/$name-configure.log" 2>&1
         "$tools/bin/nbgmake" -j"$jobs" > "$work/$name-build.log" 2>&1
         "$tools/bin/nbgmake" -j"$jobs" check > "$work/$name-check.log" 2>&1
         "$tools/bin/nbgmake" install > "$work/$name-install.log" 2>&1
     )
 done
-${HOST_CC:-cc} -O2 -I"$prefix/include" "$here/tests/host-gmp.c" \
+"$host_cc" -O2 -I"$prefix/include" "$here/tests/host-gmp.c" \
     "$prefix/lib/libgmp.a" -o "$work/host-gmp"
 "$work/host-gmp"
 "$work/host-gmp" timer

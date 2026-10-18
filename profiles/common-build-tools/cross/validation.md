@@ -38,9 +38,39 @@ The test entry points and prerequisites are described in [README.md](README.md).
 Normal pkgsrc file, interpreter, permission, PIE/RELRO, RPATH and work-directory
 checks remained enabled. Installed package integrity was checked on the guest.
 
-Binutils acceptance explicitly selects the installed GNU as and direct ld
-through standard GCC specs; the bootstrap GCC16 package still hardcodes
-base as/ld. Default-tool migration and collect2/LTO remain separate gates.
+Binutils package acceptance explicitly selects the installed GNU as and
+direct ld through standard GCC specs. This applies to the installed native
+GCC16 package, which still hardcodes base as/ld.
+
+## GCC16 AArch64 cross prefix
+
+On Linux x86_64, the GCC16.2 AArch64 cross prefix selects Ports Binutils 2.47
+by default. `profiles/development-toolchain/cross/build.sh` now builds the
+pinned source and patch set before it configures GCC. No manual `-B` or specs
+file selects the tools. The build requires GCC 16 host compilers and records
+the source, patch, linker-script, and output hashes in `inputs.txt`.
+
+The source archive SHA256 is
+`154ab23b60070e8f27013c22977f1129425d67d1e8acd6e13010e617811e4cff`.
+Its SHA512 is
+`3126a1064374d8da40d4d70630c204ed1e75d542c447d53fca9778c7ceff095c28e9b445e15a313fef9729082d7966471ee6b5b715d479aa6d568528743e1d98`.
+Ports recipe and patch files match revision `8e93331`; the current Ports
+revision `0b53be7` has no changes to those inputs.
+
+The [LTO acceptance script](../../development-toolchain/cross/tests/lto-binutils.sh)
+passed with the installed GCC 16.2 C and C++ drivers.
+Both compilers reported `aarch64--netbsd`; both selected the prefix's `as`
+and `ld`. The link traces named `collect2`, GCC's `liblto_plugin.so`,
+`lto-wrapper`, and the selected assembler and linker. Both outputs are
+ELF64 AArch64 executables. The test used `-flto` and the linker plugin without
+manual tool overrides. Split-DWARF generation also passes with the selected
+Binutils `readelf`. A secondary `aarch64elf` emulation link passed through
+the installed linker scripts.
+
+This is compile/link acceptance only. No verified EmberBSD application
+sysroot or target VM was available in this check. It does not establish
+program execution or update the installed native GCC16 package.
+
 The [BFD repair](../binutils.md) resolves a real GCC16 DWARF64 CU with a
 DWARF32 line table. The same object fails with the saved original addr2line
 and resolves correctly with nb1. A matching CU64/line64 control is unchanged.
@@ -50,7 +80,8 @@ Meson acceptance also selects current GNU as/ld explicitly, with strict
 compiler/linker warnings. Base ld 2.42 fails the identical shared-library
 object because it emits unused compatibility-symbol warnings; GNU ld 2.47
 passes. Installed consumers load the selected GCC16 libstdc++.so.7 without
-loader-path overrides. This is not default-tool migration or LTO acceptance.
+loader-path overrides. The Meson check uses explicit specs; it is separate
+from the GCC16 cross-prefix default-tool and LTO acceptance above.
 
 Python uses the normal target loader, without library-path overrides. Its
 upstream cases exercise TLS, ctypes/libffi, SQLite, UUID, decimal, readline,

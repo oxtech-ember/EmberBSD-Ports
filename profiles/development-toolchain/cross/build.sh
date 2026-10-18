@@ -37,6 +37,8 @@ for path in "$@"; do
     case "$path" in /*) ;; *) echo 'Absolute paths required.' >&2; exit 2;; esac
     case "$path" in *[!A-Za-z0-9_./-]*) echo 'Use paths without whitespace or shell metacharacters.' >&2; exit 2;; esac
 done
+host_cc=${HOST_CC:-gcc-16}
+host_cxx=${HOST_CXX:-g++-16}
 if [ "${CROSS_JOBS+x}" = x ]; then
     jobs=$CROSS_JOBS
 else
@@ -57,11 +59,6 @@ if [ "$mode" = applications ]; then
     }
 fi
 [ -x "$tools/bin/nbgmake" ] || { echo 'Bootstrap GNU make missing.' >&2; exit 2; }
-for tool in ar as elfedit ld nm objcopy objdump ranlib readelf size strings strip; do
-    [ -x "$tools/bin/$triplet-$tool" ] || {
-        echo "Bootstrap target tool missing: $tool" >&2; exit 2;
-    }
-done
 check_math() {
     case "$math" in /*) ;; *) echo 'Absolute host math prefix required.' >&2; exit 2;; esac
     case "$math" in *[!A-Za-z0-9_./-]*) echo 'Use a simple host math prefix.' >&2; exit 2;; esac
@@ -103,30 +100,55 @@ done
 printf '%s\n' "$patches" | grep -qx patch-gcc_cp_module.cc || {
     echo 'GCC16 modules repair missing.' >&2; exit 1;
 }
+for compiler in "$host_cc" "$host_cxx"; do
+    command -v "$compiler" >/dev/null 2>&1 || {
+        echo "Host GCC16 compiler missing: $compiler" >&2; exit 2;
+    }
+    version=$("$compiler" -dumpfullversion) || {
+        echo "Cannot identify host GCC16 compiler: $compiler" >&2; exit 2;
+    }
+    case "$version" in 16.*) ;; *) echo "GCC 16 host compiler required: $compiler ($version)" >&2; exit 2;; esac
+done
 mkdir -p "$work"
 work=$(CDPATH= cd -- "$work" && pwd -P)
 if [ -z "$math" ]; then
-    sh "$profile/cross/host-math.sh" "${EMBER_HOST_MATH_ARCHIVES:-$work/host-archives}" \
+    HOST_CC=$host_cc HOST_CXX=$host_cxx \
+        sh "$profile/cross/host-math.sh" "${EMBER_HOST_MATH_ARCHIVES:-$work/host-archives}" \
         "$tools" "$work/host-math"
     math=$work/host-math/prefix
     check_math
 fi
 prefix=$work/toolchain
 mkdir "$work/src" "$work/build" "$prefix" "$prefix/bin"
+GMAKE="$tools/bin/nbgmake" sh "$profile/cross/build-binutils.sh" \
+    --target "$target" "$work/binutils"
+binutils=$work/binutils/prefix
+mkdir -p "$prefix/$triplet/bin" "$prefix/$triplet/lib"
+for tool in ar as elfedit ld nm objcopy objdump ranlib readelf size strings strip; do
+    [ -x "$binutils/bin/$triplet-$tool" ] || {
+        echo "Ports Binutils 2.47 tool missing: $tool" >&2; exit 1;
+    }
+    cp "$binutils/bin/$triplet-$tool" "$prefix/bin/"
+    # GCC's target-tool search path uses objcopy for split DWARF.
+    ln -s "../../bin/$triplet-$tool" "$prefix/$triplet/bin/$tool"
+done
+cp -R "$binutils/$triplet/lib/ldscripts" "$prefix/$triplet/lib/"
+shasum -a 256 "$binutils/$triplet/lib/ldscripts/"* > "$work/linker-scripts.sha256"
 {
     uname -srm
-    printf 'mode=%s\ntarget=%s\ntriplet=%s\nhost_cc=%s\nhost_cxx=%s\n' "$mode" "$target" "$triplet" "${HOST_CC:-cc}" "${HOST_CXX:-c++}"
+    printf 'mode=%s\ntarget=%s\ntriplet=%s\nhost_cc=%s\nhost_cxx=%s\n' "$mode" "$target" "$triplet" "$host_cc" "$host_cxx"
     printf 'host_cppflags=%s\nhost_ldflags=%s\n' "${HOST_CPPFLAGS:-}" "${HOST_LDFLAGS:-}"
-    "${HOST_CC:-cc}" --version
-    "${HOST_CC:-cc}" -dumpmachine
-    "${HOST_CXX:-c++}" --version
+    "$host_cc" --version
+    "$host_cc" -dumpmachine
+    "$host_cxx" --version
     shasum -a 256 "$archive" "$recipe/distinfo" "$recipe"/patches/patch-*
     "$tools/bin/nbgmake" --version
-    "$tools/bin/$triplet-ld" --version
-    printf 'sysroot=%s\nbootstrap=%s\nhost_math=%s\njobs=%s\n' "$sysroot" "$tools" "$math" "$jobs"
+    "$prefix/bin/$triplet-ld" --version
+    printf 'sysroot=%s\nbootstrap_make=%s\nhost_math=%s\njobs=%s\n' "$sysroot" "$tools" "$math" "$jobs"
     shasum -a 256 "$math/lib/libgmp.a" "$math/lib/libmpfr.a" "$math/lib/libmpc.a"
+    cat "$work/binutils/inputs.txt"
 } > "$work/inputs.txt"
-${HOST_CC:-cc} -O2 -I"$math/include" "$profile/cross/tests/host-gmp.c" \
+"$host_cc" -O2 -I"$math/include" "$profile/cross/tests/host-gmp.c" \
     "$math/lib/libgmp.a" -o "$work/host-gmp"
 "$work/host-gmp" > "$work/host-gmp.log"
 "$work/host-gmp" timer >> "$work/host-gmp.log"
@@ -137,18 +159,6 @@ for name in $patches; do
     [ "$name" != patch-gcc_Makefile.in ] || continue
     patch -f -N -F 0 -p0 -d "$work/src" < "$recipe/patches/$name"
 done > "$work/patch.log" 2>&1
-# A relocated linker also needs its adjacent default linker scripts.
-[ -d "$tools/$triplet/lib/ldscripts" ] || {
-    echo 'Bootstrap target linker scripts missing.' >&2; exit 1;
-}
-mkdir -p "$prefix/$triplet/bin" "$prefix/$triplet/lib"
-for tool in ar as elfedit ld nm objcopy objdump ranlib readelf size strings strip; do
-    cp "$tools/bin/$triplet-$tool" "$prefix/bin/"
-    # GCC invokes objcopy for -gsplit-dwarf through its target-tool search path.
-    ln -s "../../bin/$triplet-$tool" "$prefix/$triplet/bin/$tool"
-done
-cp -R "$tools/$triplet/lib/ldscripts" "$prefix/$triplet/lib/"
-shasum -a 256 "$tools/$triplet/lib/ldscripts/"* > "$work/linker-scripts.sha256"
 cd "$work/build"
 unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH
 if [ "$mode" = kernel ]; then
@@ -160,7 +170,7 @@ fi
 CPPFLAGS=${HOST_CPPFLAGS:-}
 export CPPFLAGS
 # Some host subprojects, including libcody, omit CPPFLAGS in compile rules.
-CC=${HOST_CC:-cc} CXX=${HOST_CXX:-c++} \
+CC=$host_cc CXX=$host_cxx \
     CFLAGS="-O2 ${HOST_CPPFLAGS:-}" CXXFLAGS="-O2 ${HOST_CPPFLAGS:-}" \
     LDFLAGS=${HOST_LDFLAGS:-} \
     ../src/configure --target="$triplet" --prefix="$prefix" \
@@ -176,6 +186,10 @@ for compiler in gcc g++; do
     [ "$("$prefix/bin/$triplet-$compiler" -dumpmachine)" = "$triplet" ]
 done
 sh "$profile/cross/tests/split-dwarf.sh" --target "$target" "$prefix" "$work/split-dwarf"
+if [ "$target" = aarch64 ]; then
+    sh "$profile/cross/tests/lto-binutils.sh" "$prefix" "$work/lto-binutils"
+    cat "$work/lto-binutils/inputs.txt" >> "$work/inputs.txt"
+fi
 echo "GCC16 cross compiler built: $prefix"
 if [ "$mode" = kernel ]; then
     echo 'Kernel frontends only; validate the selected fork kernel build and boot separately.'
