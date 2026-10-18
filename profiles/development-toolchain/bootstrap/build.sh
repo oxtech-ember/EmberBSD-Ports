@@ -150,6 +150,8 @@ fi
     printf 'sysroot=%s\nmath=%s\njobs=%s\n' "$sysroot" "$math" "$jobs"
     printf 'host_cc=%s\nhost_cxx=%s\nhost_cflags=%s\nhost_cxxflags=%s\n' \
         "${HOST_CC:-cc}" "${HOST_CXX:-c++}" "${HOST_CFLAGS:--O2}" "${HOST_CXXFLAGS:--O2}"
+    printf 'host_ar=%s\nhost_nm=%s\nhost_ranlib=%s\n' \
+        "${AR:-auto}" "${NM:-auto}" "${RANLIB:-auto}"
     "$cc" --version
     "$cxx" --version
     "$make" --version
