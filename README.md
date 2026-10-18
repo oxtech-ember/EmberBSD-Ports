@@ -32,7 +32,8 @@ runtime behavior are validated.
 - [Common Eigen 5.0.1](profiles/common-graphics/cross/eigen.md): the existing
   provider retains its CMake/header interfaces and full companion libraries.
   GCC16 AArch64 packaging verifies all 613 entries; four selected native
-  numerical checks pass. Installed target checks remain pending.
+  and installed EmberBSD numerical checks pass. Normal package removal and
+  reinstallation preserve the verified ownership boundary.
 - [JBIG-KIT 2.2](profiles/common-graphics/cross/jbigkit.md): the common provider
   keeps both libraries and all four image tools. Ordinary GCC16 native and
   AArch64 packages pass package checks; native upstream tests and installed

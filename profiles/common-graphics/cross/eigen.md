@@ -90,6 +90,16 @@ with the common GCC16 cross profile's actual compiler, sysroot and CMake target
 settings. Run the resulting programs on the target; do not execute them as
 native build-host tools.
 
+The installed AArch64 package passes the same four numerical checks in the
+coherent E34 EmberBSD VM. All 613 payload entries match the archive, including
+file modes and symlink targets; `pkg_admin check` passes. The measured GCC16
+runtime libraries match the SDK. Normal deletion removes all owned paths.
+The compiled header consumers correctly remain executable after deletion;
+that check establishes ownership, not a missing-library refusal. Normal
+reinstallation restores all entries, and all four numerical checks pass again.
+This subset does not establish runtime coverage of the companion BLAS/LAPACK
+libraries or the complete upstream test suite.
+
 ## Analysis and memory boundary
 
 Clang Static Analyzer 19.1.7 reports no diagnostics for all four native and
