@@ -138,14 +138,12 @@ The result is plain USTAR, using the standard RubyGems writer with
 0755 directory modes. Regular files use 0644 or 0755 according to their
 executable bit. The helper checks the writer's metadata contract; the archive
 has no compression-version dependency. `receipt.json` records input, helper,
-closure and output hashes plus actual provider and Ruby identities.
+closure and output hashes with input, helper and output hashes.
 
-Two fresh native Rust/Cargo 1.99.0 generations produced byte-identical archives
-and receipts. The original lock supplies 61 crates. Complete original file
-audits retained 103 license/notice files and restored 36 VCS metadata files.
-[vendor-r1.json](files/vendor-r1.json) records the actual derivation inputs,
-provider identities and hashes. It is a host derivation receipt, not an
-upstream release signature.
+The original lock supplies 61 crates. Complete original file audits retain
+103 license/notice files and 36 restored VCS metadata files.
+[vendor-r1.json](files/vendor-r1.json) records the derivation inputs and
+hashes. It is a host derivation receipt, not an upstream release signature.
 
 The resulting archive is 40,816,640 bytes. Its SHA256 is
 `d2e42517a49923fcd79fb7f05b650a4821c218c4d04d9c9691c7fdef55e74a2a`.

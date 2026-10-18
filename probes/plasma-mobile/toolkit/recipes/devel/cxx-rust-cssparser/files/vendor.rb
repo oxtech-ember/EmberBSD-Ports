@@ -224,7 +224,7 @@ module CssVendor
     result = complete_registry_metadata(vendor, cargo_home + '/registry/cache', packages)
     archive = work + '/' + ARCHIVE
     pack(vendor, archive)
-    receipt = result.merge('scope' => 'host-derived-cssparser-vendor-r1', 'source_sha256' => SOURCE_SHA, 'source_metadata' => source_metadata, 'lock_sha256' => LOCK_SHA, 'closure_sha256' => Digest::SHA256.hexdigest(manifest), 'helper_sha256' => Digest::SHA256.file(__FILE__).hexdigest, 'rustc' => rust, 'cargo' => cargo_version.strip, 'ruby' => RUBY_DESCRIPTION, 'rubygems' => Gem::VERSION, 'archive' => ARCHIVE, 'archive_sha256' => Digest::SHA256.file(archive).hexdigest, 'archive_size' => File.size(archive))
+    receipt = result.merge('scope' => 'host-derived-cssparser-vendor-r1', 'source_sha256' => SOURCE_SHA, 'source_metadata' => source_metadata, 'lock_sha256' => LOCK_SHA, 'closure_sha256' => Digest::SHA256.hexdigest(manifest), 'helper_sha256' => Digest::SHA256.file(__FILE__).hexdigest, 'archive' => ARCHIVE, 'archive_sha256' => Digest::SHA256.file(archive).hexdigest, 'archive_size' => File.size(archive))
     File.write(work + '/receipt.json', JSON.pretty_generate(receipt) + "\n")
     puts archive
   end
