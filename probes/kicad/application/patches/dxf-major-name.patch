@@ -1,0 +1,58 @@
+Avoid the BSD sys/types.h major() macro in the local ellipse variable.
+
+The pkgsrc cad/kicad patch-common_import__gfx_dxf__import__plugin.cpp
+(revision 1.1, 2024-04-26) identifies the same conflict. Rename the local
+variable instead of removing the system macro from this translation unit.
+Adaptation for KiCad 10.0.7: EmberBSD (AI-assisted).
+
+--- a/common/import_gfx/dxf_import_plugin.cpp
++++ b/common/import_gfx/dxf_import_plugin.cpp
+@@ -630,7 +630,7 @@
+     // For now, we assume ellipses in the XY plane.
+ 
+     VECTOR2D center( mapX( centerCoords.x ), mapY( centerCoords.y ) );
+-    VECTOR2D major( mapX( majorCoords.x ), mapY( majorCoords.y ) );
++    VECTOR2D majorAxis( mapX( majorCoords.x ), mapY( majorCoords.y ) );
+ 
+     // DXF elliptical arcs store their angles in radians (unlike circular arcs which use degrees)
+     // The arcs wind CCW as in KiCad.  The end angle must be greater than the start angle, and if
+@@ -646,7 +646,7 @@
+ 
+     if( aData.ratio == 1.0 )
+     {
+-        double radius = major.EuclideanNorm();
++        double radius = majorAxis.EuclideanNorm();
+ 
+         if( startAngle == endAngle )
+         {
+@@ -657,8 +657,8 @@
+         else
+         {
+             // Angles are relative to major axis
+-            startAngle -= EDA_ANGLE( major );
+-            endAngle -= EDA_ANGLE( major );
++            startAngle -= EDA_ANGLE( majorAxis );
++            endAngle -= EDA_ANGLE( majorAxis );
+ 
+             DL_ArcData arc( aData.cx, aData.cy, aData.cz, radius, startAngle.AsDegrees(),
+                             endAngle.AsDegrees() );
+@@ -670,7 +670,7 @@
+     // TODO: testcases for negative extrusion vector; handle it here
+ 
+     std::vector<BEZIER<double>> splines;
+-    ELLIPSE<double> ellipse( center, major, aData.ratio, startAngle, endAngle );
++    ELLIPSE<double> ellipse( center, majorAxis, aData.ratio, startAngle, endAngle );
+ 
+     TransformEllipseToBeziers( ellipse, splines );
+ 
+@@ -684,8 +684,8 @@
+         bufferToUse->AddSpline( b.Start, b.C1, b.C2, b.End, lineWidth );
+ 
+     // Naive bounding
+-    updateImageLimits( center + major );
+-    updateImageLimits( center - major );
++    updateImageLimits( center + majorAxis );
++    updateImageLimits( center - majorAxis );
+ }
+ 
+ 

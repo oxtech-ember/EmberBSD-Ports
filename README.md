@@ -19,6 +19,11 @@ runtime behavior are validated.
 
 ## Current contents
 
+- [KiCad application source](probes/kicad/application/README.md): the complete
+  10.0.7 source keeps QA and IPC. GCC16 causal checks repair NetBSD context,
+  loader and DXF platform selection. The bundled context implementation passes
+  3,003 exchanges in the AArch64 VM and strict native Memcheck. Full KiCad
+  configuration, package and CAD workflows remain pending.
 - [KiCad protobuf prerequisites](probes/kicad/protobuf/README.md): protobuf
   36.2 and Abseil 20260817.0 build with native GCC16 and shared zlib 1.3.2.
   Four allocation-failure controls reproduce upstream UPB defects and pass

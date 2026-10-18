@@ -1,0 +1,31 @@
+Enable the existing ELF context ABI and loader environment on NetBSD.
+
+Adapted for KiCad 10.0.7 from pkgsrc cad/kicad patches at
+fff4deb639a1a640476203c80f752fb77b6cb14b:
+patch-include_kiway.h (NetBSD revision 1.3, 2019-06-14) and
+patch-thirdparty_libcontext_libcontext.h (revision 1.1, 2022-01-02).
+The compiler branch already accepts GCC and Clang. No assembly is changed.
+Adaptation: EmberBSD (AI-assisted).
+
+--- a/include/kiway.h
++++ b/include/kiway.h
+@@ -115,7 +115,7 @@
+ #define KIFACE_INSTANCE_NAME_AND_VERSION   "KIFACE_1"
+ 
+ #ifndef SWIG
+-#if defined(__linux__) || defined(__FreeBSD__)
++#if defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__)
+  #define LIB_ENV_VAR    wxT( "LD_LIBRARY_PATH" )
+ #elif defined(__WXMAC__)
+  #define LIB_ENV_VAR    wxT( "DYLD_LIBRARY_PATH" )
+--- a/thirdparty/libcontext/libcontext.h
++++ b/thirdparty/libcontext/libcontext.h
+@@ -28,7 +28,7 @@
+ 
+     #define LIBCONTEXT_COMPILER_gcc
+ 
+-    #if defined(__linux__) || defined(__FreeBSD__)
++    #if defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__)
+     #if defined(__x86_64__) || defined(__amd64__)
+         #define LIBCONTEXT_PLATFORM_linux_x86_64
+         #define LIBCONTEXT_CALL_CONVENTION
