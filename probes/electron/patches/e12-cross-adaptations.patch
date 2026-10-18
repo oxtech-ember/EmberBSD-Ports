@@ -2628,6 +2628,37 @@ index 2753ef531a..d79d3310be 100755
  
          # Clang Linux will use the first 'ld' it finds on the path, which will
          # typically be the system one, so explicitly configure use of Clang's
+diff --git a/net/ntlm/ntlm_buffer_writer.cc b/net/ntlm/ntlm_buffer_writer.cc
+index 784772a7d6..51e9d5a115 100644
+--- a/net/ntlm/ntlm_buffer_writer.cc
++++ b/net/ntlm/ntlm_buffer_writer.cc
+@@ -35,7 +35,7 @@ bool NtlmBufferWriter::CanWrite(size_t len) const {
+ }
+ 
+ bool NtlmBufferWriter::WriteUInt16(uint16_t value) {
+-  base::SpanWriter writer(base::span(buffer_).subspan(cursor_));
++  base::SpanWriter writer{base::span(buffer_).subspan(cursor_)};
+   if (writer.WriteU16LittleEndian(value)) {
+     AdvanceCursor(sizeof(value));
+     return true;
+@@ -44,7 +44,7 @@ bool NtlmBufferWriter::WriteUInt16(uint16_t value) {
+ }
+ 
+ bool NtlmBufferWriter::WriteUInt32(uint32_t value) {
+-  base::SpanWriter writer(base::span(buffer_).subspan(cursor_));
++  base::SpanWriter writer{base::span(buffer_).subspan(cursor_)};
+   if (writer.WriteU32LittleEndian(value)) {
+     AdvanceCursor(sizeof(value));
+     return true;
+@@ -53,7 +53,7 @@ bool NtlmBufferWriter::WriteUInt32(uint32_t value) {
+ }
+ 
+ bool NtlmBufferWriter::WriteUInt64(uint64_t value) {
+-  base::SpanWriter writer(base::span(buffer_).subspan(cursor_));
++  base::SpanWriter writer{base::span(buffer_).subspan(cursor_)};
+   if (writer.WriteU64LittleEndian(value)) {
+     AdvanceCursor(sizeof(value));
+     return true;
 diff --git a/remoting/host/linux/BUILD.gn b/remoting/host/linux/BUILD.gn
 index 16c181c0d5..447fcf73ca 100644
 --- a/remoting/host/linux/BUILD.gn

@@ -7,6 +7,7 @@ require 'json'
 require 'open3'
 require 'shellwords'
 require 'zlib'
+require_relative 'resources'
 abort 'usage: build.rb BASE KERNEL_GZ OS_REPOSITORY NETBSD_TOOLS NEW_WORK' unless ARGV.size == 5
 abort 'simple absolute paths required' unless ARGV.all? { |p| p.match?(%r{\A/[A-Za-z0-9_./+-]+\z}) }
 base, kernel, source, tools, work = ARGV.map { |p| File.expand_path(p) }
@@ -18,6 +19,11 @@ abort 'kernel hash mismatch' unless kernel_hash.match?(/\A[0-9a-f]{64}\z/) && Di
 port = Integer(ENV.fetch('EMBERBSD_QUERY_PORT', '22614'), 10)
 disk_mib = Integer(ENV.fetch('EMBERBSD_QUERY_DISK_MIB', '384'), 10)
 free_inodes = Integer(ENV.fetch('EMBERBSD_QUERY_FREE_INODES', '16000'), 10)
+begin
+  ram_mib = QueryVmResources.ram_mib(ENV.fetch('EMBERBSD_QUERY_RAM_MIB', QueryVmResources::DEFAULT_RAM_MIB))
+rescue ArgumentError => error
+  abort error.message
+end
 abort 'invalid unprivileged SSH port' unless (1024..65535).cover?(port)
 abort 'disk must be 384..16384 MiB' unless (384..16384).cover?(disk_mib)
 abort 'inode reserve must be 16000..1000000' unless (16000..1000000).cover?(free_inodes)
@@ -75,12 +81,15 @@ Dir.glob(base + '/usr/lib/*.so*').sort.each { |p| copy_base.call(p.delete_prefix
 Dir.glob(base + '/usr/lib/private/*.so*').sort.each { |p| copy_base.call(p.delete_prefix(base + '/')) }
 %w[
   bin/sh bin/sync bin/cat bin/chmod bin/cp bin/ls bin/mkdir bin/rm bin/test
-  bin/date bin/tar bin/sleep bin/stty bin/hostname bin/kill bin/df
+  bin/date bin/tar bin/sleep bin/stty bin/hostname bin/kill bin/df bin/pwd
   sbin/init sbin/mount sbin/mount_ffs sbin/mount_ptyfs sbin/halt sbin/reboot
   sbin/sysctl sbin/ifconfig sbin/route sbin/nologin
   usr/bin/uname usr/bin/grep usr/bin/sha256 usr/bin/ldd usr/bin/sed usr/bin/awk
   usr/bin/env usr/bin/printf usr/bin/timeout usr/bin/mktemp usr/bin/id usr/bin/tty
   usr/bin/getent usr/bin/true usr/bin/false usr/bin/du usr/bin/locale
+  usr/bin/sort usr/bin/realpath usr/bin/wc usr/bin/tr usr/bin/dirname usr/bin/basename
+  usr/bin/ktrace usr/bin/kdump
+  usr/sbin/pkg_add usr/sbin/pkg_delete usr/sbin/pkg_info usr/sbin/pkg_admin
   usr/sbin/sshd usr/libexec/sshd-session usr/libexec/sshd-auth usr/libexec/sftp-server
   usr/libexec/ld.elf_so
 ].each { |path| copy_base.call(path) }
@@ -152,7 +161,7 @@ run.call('kernel-arm64-image', tools + '/nbmkubootimage', '-f', 'arm64', '-u', '
 abort 'base input changed during build' unless origins.all? do |path, value|
   value.is_a?(Hash) ? File.symlink?(path) && File.readlink(path) == value.fetch(:symlink) : Digest::SHA256.file(path).hexdigest == value
 end
-manifest = {base_revision: revision, base: base, port: port, disk_bytes: File.size(work + '/query.ffs'),
+manifest = {base_revision: revision, base: base, port: port, ram_mib: ram_mib, disk_bytes: File.size(work + '/query.ffs'),
             sparse_disk: true, allocated_disk_bytes: File.stat(work + '/query.ffs').blocks * 512,
             extra_free_inodes: free_inodes, initial_disk_sha256: Digest::SHA256.file(work + '/query.ffs').hexdigest,
             kernel_image_sha256: Digest::SHA256.file(work + '/artifacts/kernel.img').hexdigest,

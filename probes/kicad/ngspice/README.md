@@ -118,8 +118,11 @@ A focused rerun with those actual macros checked all three units and produced
 identical findings: 42 information and seven style records, with no errors.
 The other 30 inherited error records remain unclassified; they are not
 30 confirmed source defects. The confirmed missing-return error is removed.
-Target GCC16 cross-build, EmberBSD execution and complete KiCad acceptance
-remain pending.
+The ordinary GCC16 target packages now pass installed API18, CLI, the exported
+KiCad divider, BSIM OpenMP activation and package lifecycle checks in EmberBSD.
+See the [package acceptance scope](../../../profiles/common-graphics/cross/ngspice.md)
+for exact archive hashes and remaining memory-query diagnostics.
+Target memory analysis and complete KiCad application acceptance remain pending.
 Historical results from a lost workspace are not current acceptance evidence.
 
 The reusable checks are in `tests/`. `api-contract.c` uses the installed
