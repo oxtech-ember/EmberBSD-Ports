@@ -49,6 +49,16 @@ ruby profiles/common-graphics/tests/libspnav/socket-protocol.rb \
 
 `CPPFLAGS` and `LDFLAGS` can supply a separate native dependency prefix.
 The C client also cross-compiles for target execution.
+The [plain C peer](../tests/libspnav/socket-peer.c) forks that same client and
+exchanges the same known protocol packets. It needs no interpreter in the guest.
+Its three native protocol modes and strict peer memory check also pass.
+The matching GCC16 AArch64 peer is compiled; its target execution remains pending.
+After target installation, its invocation is:
+
+```sh
+./socket-peer ./socket-client events /tmp/new-libspnav-socket
+```
+
 The packet peer establishes a library/protocol contract; it does not establish
 physical input-device or X11 runtime acceptance.
 
