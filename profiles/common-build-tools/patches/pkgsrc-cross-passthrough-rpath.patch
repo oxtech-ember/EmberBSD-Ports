@@ -1,0 +1,25 @@
+# Origin: EmberBSD (AI-assisted), cross compiler runtime path ownership.
+# A passthrough directory inside CROSS_DESTDIR is a link-time SDK path.
+# Keep its header/library paths, but emit its target runtime path and
+# unwrap installed Libtool metadata. Native and unrelated paths are unchanged.
+
+--- a/mk/buildlink3/bsd.buildlink3.mk
++++ b/mk/buildlink3/bsd.buildlink3.mk
+@@ -1126,7 +1126,17 @@ _CWRAPPERS_TRANSFORM+=	R:${BUILDLINK_X11_DIR}:${X11BASE}
+ #
+ .for _dir_ in ${_BLNK_PASSTHRU_DIRS} ${_BLNK_PASSTHRU_RPATHDIRS}
+ _BLNK_TRANSFORM+=	rpath:${_dir_}:${_BLNK_MANGLE_DIR.${_dir_}}
++.  if ${USE_CROSS_COMPILE:tl} == "yes" && \
++      !empty(CROSS_DESTDIR) && ${CROSS_DESTDIR} != "/" && \
++      "${_dir_:M${CROSS_DESTDIR}/*}" != ""
++# Libtool infers RPATH from its SDK library search. The installed library
++# must search the target directory; compiler I/L/P paths remain untouched.
++_CWRAPPERS_TRANSFORM+=	R:${_dir_}:${_dir_:S,^${CROSS_DESTDIR},,}
++# The same distinction applies to installed .la dependency_libs entries.
++_CWRAPPERS_UNWRAP+=	${_dir_}:${_dir_:S,^${CROSS_DESTDIR},,}
++.  else
+ _CWRAPPERS_TRANSFORM+=	R:${_dir_}:${_dir_}
++.  endif
+ .endfor
+ #
+ # Convert direct paths to static libraries and libtool archives in

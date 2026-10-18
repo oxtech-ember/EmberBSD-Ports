@@ -43,6 +43,8 @@ runtime behavior are validated.
   Native numerical and causal ownership checks pass. Raw memory reports
   retain process-lifetime allocations. Target packaging and KiCad execution
   remain pending.
+  The common [Libtool runtime-path repair](profiles/common-build-tools/cross/libtool-runtime-paths.md)
+  passes a real GCC16 C++ library regression for target RPATH and `.la` metadata.
 - [FFTW and terminal dependencies](profiles/common-build-tools/cross/README.md#installed-fftw-readline-and-ncurses):
   ordinary GCC16 packages pass AArch64 VM Fourier, Readline input/history,
   PTY editing and removal/reinstallation checks. FFTW covers double/float

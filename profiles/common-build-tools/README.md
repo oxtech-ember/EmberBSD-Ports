@@ -51,6 +51,11 @@ hardcoded base-tool paths remains pending.
 OpenSSL cross builds select complete upstream BSD targets instead of the
 build host's uname; the [cross checks](cross/README.md) keep package and runtime acceptance separate.
 
+The [cross Libtool path check](cross/libtool-runtime-paths.md) repairs an SDK
+runtime path leak through pkgsrc passthrough directories. A genuine GCC16 C++
+shared-library consumer verifies target RPATH and installed Libtool metadata.
+Header and link-time search paths, native mappings and ABI remain unchanged.
+
 The [LLVM Python migration](cross/llvm-python315.md) keeps one lit provider and
 updates installed Clang helper interpreters. It records package changes separately
 from the original compiler build.
