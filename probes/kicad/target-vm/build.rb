@@ -8,6 +8,7 @@ require 'open3'
 require 'shellwords'
 require 'zlib'
 require_relative 'resources'
+require_relative 'root-metadata'
 abort 'usage: build.rb BASE KERNEL_GZ OS_REPOSITORY NETBSD_TOOLS NEW_WORK' unless ARGV.size == 5
 abort 'simple absolute paths required' unless ARGV.all? { |p| p.match?(%r{\A/[A-Za-z0-9_./+-]+\z}) }
 base, kernel, source, tools, work = ARGV.map { |p| File.expand_path(p) }
@@ -37,7 +38,7 @@ run = lambda do |name, *command, **options|
   stdout
 end
 # Read configuration and device definitions from the accepted fork revision.
-source_files = %w[etc/group etc/master.passwd etc/services etc/protocols etc/MAKEDEV.awk etc/MAKEDEV.tmpl
+source_files = %w[etc/group etc/master.passwd etc/services etc/protocols etc/mtree/NetBSD.dist.base etc/MAKEDEV.awk etc/MAKEDEV.tmpl
   etc/etc.aarch64/MAKEDEV.conf sys/conf/majors sys/arch/aarch64/conf/majors.aarch64
   sys/arch/aarch64/include/disklabel.h sys/arch/arm/include/disklabel.h sys/arch/evbarm/conf/mk.generic64]
 source_hashes = {}
@@ -88,7 +89,7 @@ Dir.glob(base + '/usr/lib/private/*.so*').sort.each { |p| copy_base.call(p.delet
   usr/bin/env usr/bin/printf usr/bin/timeout usr/bin/mktemp usr/bin/id usr/bin/tty
   usr/bin/getent usr/bin/true usr/bin/false usr/bin/du usr/bin/locale
   usr/bin/sort usr/bin/realpath usr/bin/wc usr/bin/tr usr/bin/dirname usr/bin/basename
-  usr/bin/ktrace usr/bin/kdump usr/bin/fstat usr/bin/cmp usr/bin/readlink
+  usr/bin/ktrace usr/bin/kdump usr/bin/fstat usr/bin/cmp usr/bin/readlink usr/bin/tee
   usr/sbin/pkg_add usr/sbin/pkg_delete usr/sbin/pkg_info usr/sbin/pkg_admin
   usr/sbin/sshd usr/libexec/sshd-session usr/libexec/sshd-auth usr/libexec/sftp-server
   usr/libexec/ld.elf_so
@@ -150,6 +151,8 @@ File.write(root + '/etc/nsswitch.conf', "group: files\npasswd: files\nhosts: fil
 FileUtils.cp(File.join(__dir__, 'guest-rc.sh'), root + '/etc/rc')
 File.chmod(0755, root + '/etc/rc')
 mtree = "/set uid=0 gid=0\n" + run.call('mtree', tools + '/nbmtree', '-c', '-k', 'type,mode,link', '-p', root)
+# The host staging root stays private; the image uses the accepted fork root metadata.
+mtree << QueryVmRootMetadata.image_root(work + '/source/etc', tools, &run)
 mtree << devices.lines.reject { |line| line.start_with?('. type=dir') }.map { |line| line.sub(%r{\A\./}, './dev/') }.join
 # Apply image metadata without changing the hardlinked immutable base file.
 mtree << "./usr/bin/fstat type=file uid=0 gname=kmem mode=02555\n"
