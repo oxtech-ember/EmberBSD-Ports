@@ -75,6 +75,21 @@ checks select the explicit cross tool. Native recipes retain their normal
 tool search.
 No cross-file response stub or fallback package provider is introduced.
 
+Mesa cross builds require native Flex at `${TOOLBASE}/bin/flex`, satisfying
+pkgsrc's `FLEX_REQD`. Missing, unrelated or older executables fail before
+configuration. All six upstream Mesa lexers handle `yywrap` themselves, so
+source generation does not require target libfl. Native package policy is
+unchanged. From this profile directory, run with actual bmake available
+through `BMAKE` or `PATH`:
+
+```sh
+"$HOST_PYTHON315" tests/mesa-native-flex.py \
+  PKGSRC MAKECONF MESA_ARCHIVE NEW_WORK
+```
+
+This checks real dependency routing, native policy, three provider refusals,
+the pinned source archive and native generation of all six lexers.
+
 Build the matching scanner with [build-wayland-scanner.sh](build-wayland-scanner.sh).
 Select its `prefix/bin/wayland-scanner` through `EMBERBSD_WAYLAND_SCANNER`.
 Mesa and protocols require the helper's real installed `wayland-scanner.pc`
