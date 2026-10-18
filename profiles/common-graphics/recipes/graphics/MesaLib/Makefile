@@ -2,7 +2,7 @@
 # Origin: EmberBSD; AI-assisted bounded NetBSD 11/AArch64 and amd64 candidate.
 DISTNAME=	mesa-26.2.4
 PKGNAME=	${DISTNAME:S/mesa/MesaLib/}
-PKGREVISION=	8
+PKGREVISION=	9
 CATEGORIES=	graphics
 MASTER_SITES=	https://archive.mesa3d.org/
 EXTRACT_SUFX=	.tar.xz
@@ -24,11 +24,16 @@ PYTHON_VERSION_REQD=	315
 .include "../../lang/python/pyversion.mk"
 .include "features.mk"
 .include "options.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# Mesa lexers handle yywrap themselves. Flex only generates source on the host.
+TOOL_DEPENDS+=	flex>=2.5.4a:../../devel/flex
+TOOLS_PLATFORM.flex=	${TOOLBASE}/bin/flex
+.endif
 .if !defined(EMBERBSD_COMMON_GRAPHICS)
 PKG_FAIL_REASON+= "Mesa requires the prepared common graphics profile"
 .endif
-.if ${DISTNAME} != "mesa-26.2.4" || ${PKGREVISION} != "8"
-PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.4nb8"
+.if ${DISTNAME} != "mesa-26.2.4" || ${PKGREVISION} != "9"
+PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.4nb9"
 .endif
 TOOL_DEPENDS+=	${PYPKGPREFIX}-mako>=1.4.3:../../devel/py-mako
 TOOL_DEPENDS+=	${PYPKGPREFIX}-packaging-[0-9]*:../../devel/py-packaging
@@ -147,3 +152,7 @@ BUILDLINK_API_DEPENDS.libxshmfence+= libxshmfence>=1.1
 .include "../../mk/pthread.buildlink3.mk"
 .include "../../mk/atomic64.mk"
 .include "../../mk/bsd.pkg.mk"
+
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${_TOOLS_USE_PKGSRC.flex:Uyes:tl} != "no"
+PKG_FAIL_REASON+= "Mesa cross builds require installed native Flex satisfying FLEX_REQD=${FLEX_REQD} at ${TOOLBASE}/bin/flex"
+.endif

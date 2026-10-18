@@ -1,8 +1,8 @@
 $NetBSD$
 
-The gudev and logind providers stay out of the NetBSD native
-backend (see the root meson.build patch); libudev resolves
-inline through libudev-bsd.
+Origin: EmberBSD (AI-assisted). Retain introspection during cross
+builds: the shared target GType query launcher and ELF ldd wrapper
+apply to every generated GIR.
 
 --- src/meson.build.orig
 +++ src/meson.build
@@ -43,3 +43,19 @@ inline through libudev-bsd.
    'ui/ui.c',
    'ui/ui.h',
    'x11/atomnames.h',
+@@ -1024,7 +1020,15 @@
+     endif
+   endforeach
+ 
++  # EmberBSD cross: shared GI machinery (target GType queries + ldd wrapper).
++  gir_extra_args = []
++  gir_env = environment()
++  if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++    gir_extra_args = ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++    gir_env.set('LD_LIBRARY_PATH', meson.current_build_dir())
++  endif
+   libmuffin_gir = gnome.generate_gir(libmuffin,
++    extra_args: gir_extra_args, env: gir_env,
+     sources: [
+       muffin_version,
+       muffin_enum_types[1],

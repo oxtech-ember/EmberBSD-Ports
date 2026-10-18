@@ -1,0 +1,31 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Retain introspection during cross
+builds: the shared target GType query launcher and ELF ldd wrapper
+apply to the Cogl GIR.
+
+--- cogl/cogl/meson.build.orig
++++ cogl/cogl/meson.build
+@@ -453,13 +453,21 @@
+ )
+ 
+ if have_introspection
++  # EmberBSD cross: shared GI machinery (target GType queries + ldd wrapper).
++  gir_extra_args = []
++  gir_env = environment()
++  if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++    gir_extra_args = ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++    gir_env.set('LD_LIBRARY_PATH', meson.current_build_dir())
++  endif
+   libmuffin_cogl_gir = gnome.generate_gir(libmuffin_cogl,
++    env: gir_env,
+     sources: cogl_introspected_headers,
+     nsversion: libmuffin_api_version,
+     namespace: 'Cogl',
+     includes: ['cairo-1.0', 'GL-1.0', 'GObject-2.0', 'Graphene-1.0'],
+     dependencies: [cogl_deps],
+-    extra_args: introspection_args + [
++    extra_args: gir_extra_args + introspection_args + [
+       '-UCOGL_COMPILATION',
+       '-D__COGL_H_INSIDE__',
+       '-D__COGL_XLIB_H_INSIDE__',
