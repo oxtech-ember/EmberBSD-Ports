@@ -1,0 +1,60 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted; not submitted upstream).
+Check a driver before use, reject malformed values, and release an older
+candidate before selecting another device of the same kind.
+
+--- lxqtbacklight/linux_backend/driver/lxqtbacklight_backend.c.orig
++++ lxqtbacklight/linux_backend/driver/lxqtbacklight_backend.c
+@@ -150,13 +150,13 @@
+ {
+     char *driver = get_driver();
+     int ok = True, value;
+-    int max_value = read_max_backlight(driver);
+-    if( driver == NULL ) {
+-        return;
+-    }
++    if( driver == NULL ) {
++        return;
++    }
++    int max_value = read_max_backlight(driver);
+     while(ok && !feof(stdin)) {
+         ok = scanf("%d", &value);
+-        if( ok != EOF && value > 0 && value <= max_value) {
++        if( ok == 1 && value > 0 && value <= max_value) {
+             set_backlight(driver, value);
+         }
+     }
+--- lxqtbacklight/linux_backend/driver/libbacklight_backend.c.orig
++++ lxqtbacklight/linux_backend/driver/libbacklight_backend.c
+@@ -132,8 +132,8 @@
+     int value;
+     int ok = fscanf(in, "%d", &value);
+     fclose(in);
+-    if( ok == EOF ) {
+-        value = 0;
++    if( ok != 1 ) {
++        value = -1;
+     }
+     return value;
+ }
+@@ -211,12 +211,16 @@
+                 if( ! strcmp("firmware", type) ) {
+                     drivers[FIRMWARE] = strdup(driver);
+                     break;
+-                } else if( ! strcmp("platform", type) )
++                } else if( ! strcmp("platform", type) ) {
++                    free(drivers[PLATFORM]);
+                     drivers[PLATFORM] = strdup(driver);
+-                else if( ! strcmp("raw", type) )
++                } else if( ! strcmp("raw", type) ) {
++                    free(drivers[RAW]);
+                     drivers[RAW] = strdup(driver);
+-                else // Only, firmware, platform and raw are defined, but...
++                } else { // Only, firmware, platform and raw are defined, but...
++                    free(drivers[OTHER]);
+                     drivers[OTHER] = strdup(driver);
++                }
+             }
+         }
+     } while (dp != NULL);
