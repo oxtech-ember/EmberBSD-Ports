@@ -13,7 +13,7 @@ module CssVendor
   SOURCE_SHA = '97bf4670e565bf43ae77348af74a38c1b432fc5dfa47ab15c375e04331fdb8e1'.freeze
   SOURCE_PAX_COMMENT = "52 comment=d7bd0b6a6ca1db88a8189aee81498f194f1e45a5\n".freeze
   LOCK_SHA = 'd2fa05be2697e96e1c2f11dfa361266938ea75c6eb6977d8d292f288ed79d031'.freeze
-  RUST_COMMIT = 'b940084d7eb6a299eb4bfeb8e34901bc051e7ac4'.freeze
+  RUST_COMMIT = '58cf8f9c35b355199727627d07ae34a4e2846d67'.freeze
   ARCHIVE = 'cxx-rust-cssparser-vendor-1.1.0-r1.tar'.freeze
   module_function
 
@@ -172,11 +172,11 @@ module CssVendor
     rustc = host + '/bin/rustc'
     cargo = host + '/bin/cargo'
     rust, status = Open3.capture2(rustc, '-vV')
-    need(status.success? && rust.lines.include?("commit-hash: #{RUST_COMMIT}\n") && rust.lines.include?("release: 1.99.0\n"), 'Official shared native Rust 1.99.0 required')
+    need(status.success? && rust.lines.include?("commit-hash: #{RUST_COMMIT}\n") && rust.lines.include?("release: 1.99.1\n"), 'Official shared native Rust 1.99.1 required')
     native = rust[/^host: (\S+)$/, 1]
     need(native && !native.end_with?('-netbsd'), 'Build-host Rust provider required')
     cargo_version, status = Open3.capture2(cargo, '-V')
-    need(status.success? && cargo_version.start_with?('cargo 1.99.0 '), 'Matching native Cargo 1.99.0 required')
+    need(status.success? && cargo_version.start_with?('cargo 1.99.1 '), 'Matching native Cargo 1.99.1 required')
     need(!File.exist?(work) && !File.symlink?(work), 'Work directory must be new')
     Dir.mkdir(work, 0700)
     source_root = work + '/cxx-rust-cssparser-1.1.0'

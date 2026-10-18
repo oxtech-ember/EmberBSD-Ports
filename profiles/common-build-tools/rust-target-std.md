@@ -111,7 +111,7 @@ rustc nor LLVM. The source-built AArch64 recipe and its default remain unchanged
 
 The [official release manifest](https://static.rust-lang.org/dist/channel-rust-1.99.1.toml)
 dated 2026-10-15 marks this component available. Its original archive SHA256
-is `8eb1d542fe204128ce622c1477bd7e44e1bb041fa30373996a5f24d34184f4aa`.
+is `97569760ad6e042d56ccdac2fd295df8a10351403b9bbca2a19567f8ed6ae46b`.
 The downloaded 29,582,788-byte archive matched that TLS-fetched manifest.
 Distinfo also pins its BLAKE2s, SHA512 and size. This check is not detached
 signature verification. The package retains the upstream licenses and copyright.

@@ -1,6 +1,6 @@
 # Cross-build the CSS parser bridge
 
-This recipe uses the shared Rust 1.99.0 build-host provider and the selected
+This recipe uses the shared Rust 1.99.1 build-host provider and the selected
 GCC16 target wrappers. It accepts only NetBSD 11 targets with matching pkgsrc,
 Rust and GNU identifiers:
 
@@ -95,7 +95,7 @@ the locally derived plain USTAR `cxx-rust-cssparser-vendor-1.1.0-r1.tar`.
 It does not advertise a replacement upstream HTTP asset.
 
 `files/vendor.rb` prepares the replacement on the build host using Ruby 3.1
-or newer, RubyGems and the shared official native Rust/Cargo 1.99.0 provider.
+or newer, RubyGems and the shared official native Rust/Cargo 1.99.1 provider.
 It does not compile Rust or require target std. Its original upstream archive
 and Cargo.lock hashes are pinned; `files/vendor-crates.tsv` records the exact
 61 registry crate identities and checksums from that lock. It rejects any

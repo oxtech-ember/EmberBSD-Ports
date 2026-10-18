@@ -2,8 +2,8 @@
 # Origin: EmberBSD (AI-assisted). Included only for cross builds, after
 # the librsvg cross recipe in profiles/common-graphics.
 RUST_TYPE= native
-TOOL_DEPENDS+= rust-bin-1.99.0{,nb[0-9]*}:../../lang/rust-bin
-TOOL_DEPENDS+= rust-std-aarch64-netbsd-1.99.0{,nb[0-9]*}:../../lang/rust-std-aarch64-netbsd
+TOOL_DEPENDS+= rust-bin-1.99.1{,nb[0-9]*}:../../lang/rust-bin
+TOOL_DEPENDS+= rust-std-aarch64-netbsd-1.99.1{,nb[0-9]*}:../../lang/rust-std-aarch64-netbsd
 
 MESON_ARGS+= -Dtriplet=aarch64-unknown-netbsd
 # Meson must compile its rust sanity check for the target triple.
