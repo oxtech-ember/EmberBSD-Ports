@@ -1,0 +1,137 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Honor TMPDIR in the standard Unix tests.
+Keep platform defaults and explicit directory failures. Release test-owned
+strings before existing fatal exits. Do not change codecs.
+
+--- src/test/OpenEXRTest/tmpDir.h.orig
++++ src/test/OpenEXRTest/tmpDir.h
+@@ -3,6 +3,11 @@
+ // Copyright (c) Contributors to the OpenEXR Project.
+ //
+ 
++#pragma once
++
++#include <cstdlib>
++#include <string>
++
+ #if defined(ANDROID) || defined(__ANDROID_API__)
+ #    define IMF_TMP_DIR "/sdcard/"
+ #    define IMF_PATH_SEPARATOR "/"
+@@ -18,3 +23,14 @@
+ #    define IMF_TMP_DIR "/var/tmp/"
+ #    define IMF_PATH_SEPARATOR "/"
+ #endif
++
++// Keep test files in the caller's writable temporary directory.
++inline std::string
++imf_test_temp_dir ()
++{
++    const char* selected = std::getenv ("TMPDIR");
++    std::string path = selected && *selected ? selected : IMF_TMP_DIR;
++    if (!path.empty () && path.back () != IMF_PATH_SEPARATOR[0])
++        path += IMF_PATH_SEPARATOR;
++    return path;
++}
+--- src/test/OpenEXRTest/main.cpp.orig
++++ src/test/OpenEXRTest/main.cpp
+@@ -127,7 +127,7 @@
+         // tempDir += IMF_PATH_SEPARATOR;
+         tempDir += "OpenEXRTest_";
+ #else
+-        tempDir = IMF_TMP_DIR "OpenEXRTest_";
++        tempDir = imf_test_temp_dir () + "OpenEXRTest_";
+ #endif
+         for (int i = 0; i < 8; ++i)
+             tempDir += ('A' + rand48.nexti () % 26);
+@@ -148,6 +148,7 @@
+                       << ") failed: "
+                          "errno = "
+                       << errno << std::endl;
++            std::string ().swap (tempDir);
+             exit (1);
+         }
+     }
+--- src/test/OpenEXRUtilTest/main.cpp.orig
++++ src/test/OpenEXRUtilTest/main.cpp
+@@ -63,7 +63,7 @@
+         // tempDir += IMF_PATH_SEPARATOR;
+         tempDir += "OpenEXRTest_";
+ #else
+-        tempDir = IMF_TMP_DIR "OpenEXRTest_";
++        tempDir = imf_test_temp_dir () + "OpenEXRTest_";
+ #endif
+         for (int i = 0; i < 8; ++i)
+             tempDir += ('A' + rand48.nexti () % 26);
+--- src/test/OpenEXRCoreTest/main.cpp.orig
++++ src/test/OpenEXRCoreTest/main.cpp
+@@ -30,21 +30,7 @@
+ #include "write.h"
+ #include "buffer.h"
+ 
+-#if defined(ANDROID) || defined(__ANDROID_API__)
+-#    define IMF_TMP_DIR "/sdcard/"
+-#    define IMF_PATH_SEPARATOR "/"
+-#elif defined(_WIN32) || defined(_WIN64)
+-#    define IMF_TMP_DIR                                                        \
+-        "" // TODO: get this from GetTempPath() or env var $TEMP or $TMP
+-#    define IMF_PATH_SEPARATOR "\\"
+-#    include <direct.h> // for _mkdir, _rmdir
+-#    define mkdir(name, mode) _mkdir (name)
+-#    define rmdir _rmdir
+-#else
+-#    include <sys/stat.h> // for mkdir
+-#    define IMF_TMP_DIR "/var/tmp/"
+-#    define IMF_PATH_SEPARATOR "/"
+-#endif
++#include "../OpenEXRTest/tmpDir.h"
+ 
+ #define TEST_STRING(x) #x
+ 
+@@ -97,19 +83,14 @@
+             if (trycount == 2) exit (1);
+         }
+ #else
+-        char tmpbuf[4096];
+-
+-        memset (tmpbuf, 0, 4096);
+-        const char* tmpdirname = IMF_TMP_DIR "OpenEXR_XXXXXX";
+-        size_t      tlen       = strlen (tmpdirname);
+-        memcpy (tmpbuf, tmpdirname, tlen);
+-
+-        char* tmpd = mkdtemp (tmpbuf);
++        std::string tmpbuf = imf_test_temp_dir () + "OpenEXR_XXXXXX";
++        char* tmpd = mkdtemp (&tmpbuf[0]);
+         if (tmpd) { tempDir = tmpd; }
+         else
+         {
+             std::cerr << "ERROR: mkdtemp( \"" << tmpbuf
+                       << "\" failed: " << strerror (errno) << std::endl;
++            std::string ().swap (tmpbuf);
+             exit (1);
+         }
+         int status = 0;
+--- src/test/OpenEXRTest/testBadTypeAttributes.cpp.orig
++++ src/test/OpenEXRTest/testBadTypeAttributes.cpp
+@@ -353,9 +353,10 @@
+ }
+ 
+ void
+-testWriteBadTypes ()
++testWriteBadTypes (const std::string& tempDir)
+ {
+-    static const char* tmpfile = IMF_TMP_DIR "badfile.exr";
++    const std::string filename = tempDir + "badfile.exr";
++    const char* tmpfile = filename.c_str ();
+ 
+     // attributes should be added automatically for deep files
+     check<DeepScanLineInputFile, DeepScanLineOutputFile> (
+@@ -432,7 +433,7 @@
+     cout << "Testing whether bad type attributes are fixed on write... "
+          << endl;
+ 
+-    testWriteBadTypes ();
++    testWriteBadTypes (tempDir);
+ 
+     cout << "ok\n" << endl;
+ }

@@ -16,6 +16,11 @@ provide common source recipes for OCCT image support. Source preparation,
 GCC16 header selection and half conversions pass; complete codec packages
 and installed OCCT image workflows remain pending.
 
+[OpenEXR 3.5.2 and OpenJPH 0.32.0](cross/openexr.md) retain shared libraries,
+tools and current system codecs. Ordinary GCC16 native/AArch64 packages pass
+their static packing-list checks. Native image round trips and focused strict
+memory checks pass. Full OpenEXR CTest and target codec execution remain pending.
+
 The [JBIG-KIT 2.2nb1 provider](cross/jbigkit.md) keeps shared/static libraries and
 all four image tools. Ordinary GCC16 native/AArch64 packages pass package checks.
 Native upstream, installed-library and 14 CLI memory/image checks pass.

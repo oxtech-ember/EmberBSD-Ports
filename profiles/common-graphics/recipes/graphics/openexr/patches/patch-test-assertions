@@ -1,0 +1,59 @@
+$NetBSD$
+
+Keep assertions active in the four remaining release-build test units.
+Match the existing upstream undef-before-includes convention.
+No library or tool source changes.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- src/test/IexTest/testMathExc.cpp.orig
++++ src/test/IexTest/testMathExc.cpp
+@@ -3,6 +3,10 @@
+ // Copyright (c) Contributors to the OpenEXR Project.
+ //
+ 
++#ifdef NDEBUG
++#    undef NDEBUG
++#endif
++
+ #include "testMathExc.h"
+ #include "mathFuncs.h"
+ #include "IexMathFloatExc.h"
+--- src/test/OpenEXRTest/random.cpp.orig
++++ src/test/OpenEXRTest/random.cpp
+@@ -1,6 +1,10 @@
+ // SPDX-License-Identifier: BSD-3-Clause
+ // Copyright (c) Contributors to the OpenEXR Project.
+ 
++#ifdef NDEBUG
++#    undef NDEBUG
++#endif
++
+ #include "random.h"
+ #include <assert.h>
+ #include <random>
+--- src/test/OpenEXRTest/testIDManifest.cpp.orig
++++ src/test/OpenEXRTest/testIDManifest.cpp
+@@ -1,6 +1,10 @@
+ // SPDX-License-Identifier: BSD-3-Clause
+ // Copyright (c) Contributors to the OpenEXR Project.
+ 
++#ifdef NDEBUG
++#    undef NDEBUG
++#endif
++
+ #include "testIDManifest.h"
+ 
+ #include <assert.h>
+--- src/test/OpenEXRTest/testLargeDataWindowOffsets.cpp.orig
++++ src/test/OpenEXRTest/testLargeDataWindowOffsets.cpp
+@@ -3,6 +3,10 @@
+ // Copyright (c) Weta Digital, Ltd and Contributors to the OpenEXR Project.
+ //
+ 
++#ifdef NDEBUG
++#    undef NDEBUG
++#endif
++
+ #include "ImfChannelList.h"
+ #include "ImfCompression.h"
+ #include "ImfFrameBuffer.h"
