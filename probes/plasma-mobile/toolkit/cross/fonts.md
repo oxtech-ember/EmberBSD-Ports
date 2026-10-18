@@ -17,8 +17,9 @@ monthly repository are not installed, matching the existing hinted TTF profile.
 
 pkgsrc's modular X font hooks previously requested `mkfontscale:run` and
 `mkfontdir:run` through the host tool framework, which rejects this cross case.
-[font-cross.patch](../font-cross.patch) makes them explicit target package
-dependencies and embeds target-prefix paths in the install hooks.
+[The shared font-role delta](../../../../profiles/common-build-tools/cross/font-runtime-roles.md)
+makes them explicit target package dependencies and embeds target X11 paths
+in both install frameworks. It covers bitmap, TrueType and Type1 fonts.
 The native build branch and non-modular font handling stay unchanged.
 The target package performs real font indexing during installation.
 

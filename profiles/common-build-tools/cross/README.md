@@ -36,6 +36,10 @@ paths in the selected SDK. Runtime paths retain their installed target prefix.
 Explicit C++ imports select the installed GCC16 runtime before the base runtime.
 The real GCC16/CMake regressions also verify unchanged native discovery.
 
+The [shared font roles](font-runtime-roles.md) keep native font compilers and
+target runtime indexers separate in both package install frameworks. Actual
+native/cross metadata checks retain the strict unsupported run-tool refusal.
+
 ## Prerequisites
 
 Prepare these separate directories, outside Git:
