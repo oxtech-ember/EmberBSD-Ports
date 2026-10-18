@@ -160,7 +160,7 @@ Dir.mktmpdir('plasma-session-host-', '/tmp') do |temp|
     SH
     %w[timeout sleep date wrapper startplasma qdbus ps].each { |f| File.chmod(0o700, "#{work}/#{f}") }
     controller = File.read("#{source}/controller.sh")
-      .gsub('/usr/bin/timeout', "#{work}/timeout")
+      .gsub('/usr/pkg/bin/perl', perl).gsub('/usr/bin/timeout', "#{work}/timeout")
       .gsub('/usr/pkg/bin/kwin_wayland_wrapper', "#{work}/wrapper")
       .gsub('/usr/pkg/bin/startplasma-wayland', "#{work}/startplasma")
       .gsub('/usr/pkg/qt6/bin/qdbus', "#{work}/qdbus")
@@ -181,7 +181,14 @@ Dir.mktmpdir('plasma-session-host-', '/tmp') do |temp|
       abort 'Logout API was not used' unless File.file?("#{work}/logout.requested")
       abort 'startplasma exit status is missing' unless File.read("#{work}/startplasma.status").strip == '0'
       abort 'Unexpected exit-with-session coupling' if File.read("#{work}/wrapper-arguments").include?('exit-with-session')
-      checks += 1
+      phases = File.readlines("#{work}/phases.tsv", chomp: true).map { |line| line.split("\t", -1) }
+      expected_phases = %w[controller-start compositor-ready session-ready logout-requested session-stopped]
+      abort 'Missing or unordered monotonic phases' unless phases.map(&:first) == expected_phases && phases.all? { |fields| fields.length == 2 }
+      times = phases.map { |fields| Float(fields.last) }
+      abort 'Invalid monotonic times' unless times.all? { |time| time.finite? && time.positive? } && times.each_cons(2).all? { |a, b| b >= a }
+      readiness = Float(File.read("#{work}/readiness-seconds.txt"))
+      abort 'Readiness interval does not match the recorded phases' unless readiness.finite? && readiness.positive? && (readiness - (times[2] - times[0])).abs <= 0.000002
+      checks += 4
     else
       abort 'A failed session requested logout acceptance' if File.file?("#{work}/logout.requested")
       if mode == 'old_method'

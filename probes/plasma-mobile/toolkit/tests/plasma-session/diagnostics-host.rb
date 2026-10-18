@@ -20,6 +20,7 @@ old = lambda do |name|
 end
 runner = File.read("#{source}/run.sh")
 controller = File.read("#{source}/controller.sh")
+perl = ENV.fetch('PERL', 'perl')
 checks = 0
 assert = lambda do |condition, message|
   abort message unless condition
@@ -63,7 +64,7 @@ Dir.mktmpdir('plasma-session-diagnostics-') do |temp|
         warn 'fixture: system bus unavailable' if #{query_status} != 0
         exit #{query_status}
       SCRIPT
-      block = text[a...b].gsub('/usr/bin/timeout', timeout).gsub('/usr/pkg/qt6/bin/qdbus', qdbus)
+      block = text[a...b].gsub('/usr/pkg/bin/perl', perl).gsub('/usr/bin/timeout', timeout).gsub('/usr/pkg/qt6/bin/qdbus', qdbus)
       script = "#{directory}/run.sh"
       File.write(script, "#!/bin/sh\nset -eu\n" + block + "mkdir '#{directory}/output'\n: > '#{directory}/launched'\n")
       out, status = Open3.capture2e({'DBUS_SYSTEM_BUS_ADDRESS'=>'invalid:', 'LD_LIBRARY_PATH'=>'/invalid'}, '/bin/sh', script)
@@ -104,7 +105,7 @@ Dir.mktmpdir('plasma-session-diagnostics-') do |temp|
         end
       SCRIPT
       script = "#{directory}/controller.sh"
-      body = (prefix + ready + "phase=liveness-1\nready\n").gsub('/usr/bin/timeout', timeout).gsub('/usr/pkg/qt6/bin/qdbus', qdbus)
+      body = (prefix + ready + "phase=liveness-1\nready\n").gsub('/usr/pkg/bin/perl', perl).gsub('/usr/bin/timeout', timeout).gsub('/usr/pkg/qt6/bin/qdbus', qdbus)
       File.write(script, body)
       out, status = Open3.capture2e({'EMBER_PLASMA_OUTPUT'=>directory, 'EMBER_PLASMA_SESSION_MARKER'=>'fixture'}, '/bin/sh', script)
       assert.call(status.exitstatus == expected, "query #{index}: expected #{expected}, got #{status.exitstatus}: #{out}")

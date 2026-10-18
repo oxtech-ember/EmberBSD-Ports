@@ -6,6 +6,12 @@ set -eu
 cd "$EMBER_PLASMA_OUTPUT"
 phase=display-environment
 trap 'result=$?; printf "%s\n" "$result" > controller.status; if [ "$result" -ne 0 ]; then echo "FAIL: controller phase=$phase status=$result" >&2; fi' 0
+stamp()
+{
+    /usr/pkg/bin/perl -MTime::HiRes=clock_gettime,CLOCK_MONOTONIC \
+        -e 'printf "%s\t%.6f\n", $ARGV[0], clock_gettime(CLOCK_MONOTONIC)' "$1" >> phases.tsv
+}
+stamp controller-start
 query()
 {
     query_started=$(date +%s)
@@ -65,6 +71,7 @@ if [ -L "$XAUTHORITY" ] || [ ! -f "$XAUTHORITY" ] ||
 fi
 [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]
 export WAYLAND_DISPLAY DISPLAY XAUTHORITY
+stamp compositor-ready
 /usr/pkg/bin/startplasma-wayland > plasma-session.log 2>&1 &
 plasma=$!
 printf '%s\n' "$plasma" > startplasma.pid
@@ -93,6 +100,8 @@ while ! ready 2> readiness-error.log; do
     [ "$(date +%s)" -lt "$deadline" ] || { echo 'FAIL: full Plasma session readiness deadline' >&2; exit 1; }
     sleep 1
 done
+stamp session-ready
+awk -F '\t' '$1 == "controller-start" { start=$2 } $1 == "session-ready" { printf "%.6f\n", $2-start }' phases.tsv > readiness-seconds.txt
 phase=service-owners
 services='org.kde.KWin org.kde.ksmserver org.kde.ActivityManager org.kde.plasmashell org.kde.kded6'
 for service in $services; do owner "$service" > "$service.pid"; done
@@ -125,6 +134,7 @@ cat bus.log plasma-session.log compositor.log | awk -v prefix="[$shell_pid] " 'i
 phase=logout
 query org.kde.Shutdown /Shutdown org.kde.Shutdown.logout > logout.log 2>&1
 : > logout.requested
+stamp logout-requested
 deadline=$(($(date +%s) + 45))
 while kill -0 "$wrapper" 2>/dev/null || kill -0 "$plasma" 2>/dev/null; do
     [ "$(date +%s)" -lt "$deadline" ] || { echo 'FAIL: normal Plasma logout deadline' >&2; exit 1; }
@@ -138,4 +148,5 @@ wait "$plasma" || plasma_status=$?
 printf '%s\n' "$plasma_status" > startplasma.status
 [ "$wrapper_status" -eq 0 ] && [ "$plasma_status" -eq 0 ]
 [ ! -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]
+stamp session-stopped
 echo 'PASS: full session stayed ready for 30 seconds and completed normal logout'

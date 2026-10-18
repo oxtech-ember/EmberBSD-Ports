@@ -7,11 +7,14 @@ ordinary user. KWin uses a 1280x1024 virtual output. The test requires OpenGL
 with a V3D renderer, Xwayland, KSMServer, Activities, KDED and Plasma Desktop.
 It verifies readiness for 30 seconds and requests normal logout.
 
-The test reaches KWin, Xwayland, KSMServer, Activities and the default layout
-on CM5. Full-session acceptance fails: V3D buffer allocation returns ENOMEM,
-and the first shell liveness query exceeds five seconds. Cleanup requires
-SIGKILL. Normal logout is not yet accepted. Host fixtures test orchestration;
-they do not execute KDE or Mesa.
+Native virtual sessions have completed on CM5. A later repeat established a
+Qt 6.12 NetBSD detached-launch defect: KWin can inherit forkfd state without
+its SIGCHLD handler. Xwayland then waits for startup-script completion and
+ordinary clients stall. The [Qt process regression](../qt-process/README.md)
+reproduces this failure independently of graphics. The source patch is in the
+common Qtbase recipe; installed patched-package acceptance remains required.
+The earlier 64 MiB BO-budget failure is separate and has a kernel repair.
+Host fixtures test orchestration; they do not execute KDE or Mesa.
 
 ## Run on the target
 
@@ -55,6 +58,12 @@ It excludes payloads and process environments. Readiness preserves the query
 status, including timeout status 124. Startup retries retain the existing
 deadline; a failed liveness query still fails acceptance immediately.
 The controller also prints its final phase and status on failure.
+`phases.tsv` records monotonic seconds for controller start, compositor display
+availability, complete session readiness, accepted logout and completed stop.
+`readiness-seconds.txt` records controller-to-readiness time. This interval
+includes display and session startup. It excludes the runner's prerequisite
+checks. These marks describe programmatic readiness, not first visible pixels
+or a sustained performance benchmark. Existing deadlines remain unchanged.
 
 ## Startup and logout contract
 
@@ -155,7 +164,7 @@ Symlinks, nested paths, traversal and paths outside the session are rejected.
 The checks use the full BSD `stat` mode, including the file type.
 The fixture never reads or records a real authentication cookie.
 
-Host result: 30 full-controller controls and 25 focused Xauthority controls pass
+Host result: 33 full-controller controls and 25 focused Xauthority controls pass
 on macOS with native Perl 5.44 and Ruby 4.0. The focused test runs the actual
 controller block with real BSD `stat` mode formatting. Only a foreign UID is
 modeled without changing ownership. The pinned previous runner fails on the
