@@ -19,7 +19,8 @@ and installed OCCT image workflows remain pending.
 [OpenEXR 3.5.2 and OpenJPH 0.32.0](cross/openexr.md) retain shared libraries,
 tools and current system codecs. Ordinary GCC16 native/AArch64 packages pass
 their static packing-list checks. Native image round trips and focused strict
-memory checks pass. Full OpenEXR CTest and target codec execution remain pending.
+memory checks pass, with all 147 native OpenEXR tests. Target codec/API checks
+and normal package removal/reinstallation also pass.
 
 The [JBIG-KIT 2.2nb1 provider](cross/jbigkit.md) keeps shared/static libraries and
 all four image tools. Ordinary GCC16 native/AArch64 packages pass package checks.
@@ -174,6 +175,11 @@ transitions, plus two whole-window captures verifying USB mouse dragging.
 Sustained desktop use remains unaccepted. Physical CM5 offscreen OpenGL
 has its own receipt linked above.
 
+
+The cross Wayland revision-2 recipes separate runtime libraries from the
+target scanner and SDK. Native ownership stays complete. Actual pkgsrc metadata
+and copied-stage checks pass; normal split packages and installed runtime
+execution remain pending. See the [package boundary](cross/wayland.md#runtime-and-sdk-packages).
 
 The [Wayland 1.26.0nb1 package](cross/wayland.md) passes all 26 enabled
 upstream invocations on Zero 3W with the paired kernel IPC fixes. The common

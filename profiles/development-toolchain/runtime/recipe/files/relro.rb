@@ -24,6 +24,7 @@ module GCC16Runtime
       backup = receipt.fetch('backup')
       raise Invalid, 'Archived build changed' unless Inheritance.hash(backup.fetch('path')) == backup.fetch('sha256')
       receipt.fetch('inputs').each do |path, sha|
+        raise Invalid, 'Relink inputs require canonical absolute paths' unless path.start_with?('/') && File.realpath(path) == path
         raise Invalid, 'Relink input changed' unless Inheritance.hash(path) == sha
       end
       old = Inheritance.inventory(parent_work + '/stage')

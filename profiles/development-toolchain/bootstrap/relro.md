@@ -26,7 +26,9 @@ The backup must be the verified full original bootstrap archive. It must retain
 the original work basename, genuine driver/link tools, objects, version maps,
 configuration and source receipts. The original seed and linker paths must
 still exist and match their recorded hashes. The helper restores only selected
-inputs. It executes the archived upstream link commands with the original
+inputs. Receipt input paths are canonical absolute paths; verification does not
+depend on the caller's working directory. It executes the archived upstream
+link commands with the original
 driver and linker. A baseline must reproduce each accepted DSO byte-for-byte.
 The second link changes only its output path and adds `-Wl,-z,relro`.
 

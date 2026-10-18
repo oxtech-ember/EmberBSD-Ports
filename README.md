@@ -58,8 +58,8 @@ runtime behavior are validated.
 - [OpenEXR and OpenJPH](profiles/common-graphics/cross/openexr.md): current
   3.5.2 and 0.32.0 providers retain shared libraries, tools and system codecs.
   Ordinary GCC16 native/AArch64 packages pass static payload checks. Native
-  image round trips and focused strict memory checks pass; full OpenEXR CTest
-  and target codec execution remain pending.
+  image round trips, focused strict memory checks and all 147 OpenEXR tests
+  pass. Target codec/API checks and normal package removal/reinstallation pass.
 - [KiCad protobuf prerequisites](probes/kicad/protobuf/README.md): protobuf
   36.2 and Abseil 20260817.0 build with native GCC16 and shared zlib 1.3.2.
   Four allocation-failure controls reproduce upstream UPB defects and pass
@@ -237,6 +237,9 @@ runtime behavior are validated.
   EGL/GBM and V3D/VirGL/softpipe/llvmpipe. The complete core-only libdrm
   payload cross-builds on macOS/GCC16, matches all 26 PLIST entries and passes
   upstream hash, skip-list and exported-symbol checks in AArch64 UTM.
+  Cross Wayland recipes now separate runtime libraries from scanner/SDK files.
+  Real package metadata and complete-stage partition checks preserve the native
+  package; normal split-package and installed-runtime acceptance remain pending.
   The installed [Wayland package](profiles/common-graphics/cross/wayland.md)
   passes all 26 enabled upstream invocations on Zero 3W.
   The full [Mesa package](profiles/common-graphics/cross/mesa-package.md) now

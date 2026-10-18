@@ -318,7 +318,8 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             graphics/MesaLib|x11/libdrm|x11/xkeyboard-config)
                 [ -f "$source/builtin.mk" ] || { echo "Missing builtin guard: $recipe" >&2; exit 2; } ;;
             devel/wayland)
-                [ -f "$source/cross-scanner.mk" ] && [ -f "$source/platform.mk" ] || exit 2 ;;
+                [ -f "$source/cross-scanner.mk" ] && [ -f "$source/platform.mk" ] &&
+                [ -s "$source/PLIST.runtime" ] && [ -s "$source/files/select-package-stage.pl" ] || exit 2 ;;
             devel/wayland-protocols)
                 [ -f "$source/cross-scanner.mk" ] || { echo 'Missing protocols host scanner integration' >&2; exit 2; } ;;
         esac
@@ -388,6 +389,14 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
     for name in features.mk options.mk version.mk mesa-generators.mk verify-mesa-generators.sh; do
         [ -f "$graphics/recipes/graphics/MesaLib/$name" ] || { echo "Incomplete Mesa recipe: $name" >&2; exit 2; }
     done
+    for wayland_sdk_file in Makefile buildlink3.mk DESCR PLIST; do
+        [ -s "$graphics/recipes/devel/wayland-devel/$wayland_sdk_file" ] || {
+            echo "Incomplete Wayland SDK recipe: $wayland_sdk_file" >&2; exit 2;
+        }
+    done
+    [ "$(find "$graphics/recipes/devel/wayland-devel" -type l | wc -l | tr -d ' ')" = 0 ] || {
+        echo 'Unexpected Wayland SDK recipe link.' >&2; exit 2;
+    }
     [ -f "$graphics/mk.conf" ] || { echo 'Missing common graphics configuration.' >&2; exit 2; }
 fi
 export_archive=$(mktemp "${TMPDIR:-/tmp}/ember-pkgsrc.XXXXXXXX")
@@ -482,6 +491,10 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             cp -R "$graphics/recipes/$recipe" "$destination/$recipe"
         fi
     done
+    [ ! -e "$destination/devel/wayland-devel" ] && [ ! -L "$destination/devel/wayland-devel" ] || {
+        echo 'Upstream now owns devel/wayland-devel; review the overlay.' >&2; exit 2;
+    }
+    cp -R "$graphics/recipes/devel/wayland-devel" "$destination/devel/wayland-devel"
     cp "$graphics/mk.conf" "$destination/EMBERBSD-COMMON-GRAPHICS-MK.CONF"
     cp "$graphics/sources.tsv" "$destination/EMBERBSD-COMMON-GRAPHICS-SOURCES"
 fi

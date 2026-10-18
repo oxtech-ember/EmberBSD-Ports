@@ -24,7 +24,8 @@ module GCC16Runtime
     end
 
     def record(path)
-      @inputs[path] = hash(path)
+      canonical = File.realpath(path)
+      @inputs[canonical] = hash(canonical)
     end
 
     def capture(*argv, chdir: @work, stdin_data: '')
