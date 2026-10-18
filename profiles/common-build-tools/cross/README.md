@@ -41,12 +41,14 @@ Prepare these separate directories, outside Git:
   GCC16 development files, a coherent runtime provider and target package database.
   Include base `/usr/bin/install-info` for packages shipping Info manuals.
 
-For amd64 application images, select `EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime`.
+For AArch64 or amd64 application images, select `EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime`.
 The [runtime-only provider](../../development-toolchain/runtime/README.md)
 ships only target shared libraries and licenses. Keep headers and CRT objects
 in the build-host sysroot. This choice does not install a compiler in the VM.
-The runtime-only recipe currently supports amd64. AArch64 remains on the
-existing compiler provider until its runtime-only package is ported and tested.
+The runtime-only recipe accepts both architectures and rejects mismatched
+target triplets, ELF machines and package metadata. Native package creation
+and isolated installation pass for both synthetic target fixtures. Actual
+target runtime package execution remains a separate acceptance step.
 The default `compiler` provider preserves existing full-package workflows.
 The providers conflict; do not register both or fabricate full-package metadata.
 

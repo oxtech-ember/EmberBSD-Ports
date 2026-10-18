@@ -1,6 +1,6 @@
 # Package the GCC16 target runtime
 
-This profile creates `gcc16-runtime-16.2.0nb1` for EmberBSD amd64.
+This profile creates `gcc16-runtime-16.2.0nb1` for EmberBSD amd64 or AArch64.
 It packages an audited [cross bootstrap stage](../bootstrap/README.md).
 All tools execute on the development host. The target receives only shared
 libraries and licenses under `/usr/pkg/gcc16` and `/usr/pkg/share/licenses`.
@@ -28,10 +28,19 @@ The full development package remains available for separate installations.
 The input is a completed bootstrap work directory, its original GCC archive,
 and the exact pkgsrc export used by that build. Keep their recorded paths.
 The verifier reads `build-success`, `inputs.txt`, `stage.sha256` and
-`stage.symlinks`. It requires the amd64 target, the exact GCC 16.2.0 archive
+`stage.symlinks`. It requires exactly one target and its matching triplet,
+the exact GCC 16.2.0 archive
 SHA256, a full EmberBSD seed commit, and unchanged recipe/patch bytes.
 It checks complete stage inventory and every recorded file hash and link.
 Missing or additional files, absolute links and escaping links fail.
+
+| Bootstrap target | Exact triplet | Package `MACHINE_ARCH` | ELF `e_machine` |
+| --- | --- | --- | --- |
+| `amd64` | `x86_64--netbsd` | `x86_64` | 62 |
+| `aarch64` | `aarch64--netbsd` | `aarch64` | 183 |
+
+Unknown targets, duplicate target/triplet claims and mismatched triplets fail.
+The stage cannot mix architectures, even when every file hash is recorded.
 
 ```sh
 ruby recipe/files/runtime.rb check /absolute/bootstrap-work \
@@ -41,7 +50,8 @@ ruby recipe/files/runtime.rb check /absolute/bootstrap-work \
 The payload consists of `libgcc_s.so.1`, `libstdc++.so.7`, and their
 numeric-version targets. It excludes the unversioned development linker
 script and aliases. Each selected file must be a little-endian ELF64
-x86_64 DSO. Its SONAME must be `libgcc_s.so.1` or `libstdc++.so.7`.
+DSO for the selected architecture. Its SONAME must be `libgcc_s.so.1`
+or `libstdc++.so.7`.
 The dynamic dependency list accepts only these runtimes and the expected
 NetBSD base libc, libm and pthread libraries. Runtime search paths may
 contain only `/usr/pkg/gcc16/lib`, `/usr/lib` and `/lib`.
@@ -66,7 +76,13 @@ payload. It extracts `COPYING3` and `COPYING.RUNTIME` from the verified
 original archive. It preserves their original text.
 It calls native host `pkg_create` with the installation prefix `/usr/pkg`,
 owner `root` and group `wheel`. `+BUILD_INFO` explicitly records
-`OPSYS=NetBSD`, `OS_VERSION=11.0` and `MACHINE_ARCH=x86_64`.
+`OPSYS=NetBSD`, `OS_VERSION=11.0` and the selected `MACHINE_ARCH`.
+`GCC_RUNTIME_TARGET`, `GCC_RUNTIME_TRIPLET` and `GCC_RUNTIME_MACHINE_ARCH`
+record the same verified selection. Package inspection requires each field
+exactly once with its original value.
+The native host must resolve `root` and `wheel` to UID/GID 0.
+On Linux, a process-scoped NSS wrapper can provide the target group mapping.
+Do not change package ownership to match a different host group name.
 Before creating the output, the packager queries the supplied native
 `pkg_create -V`. It requires one eight-digit version line and a valid
 calendar date. The package records this queried `PKGTOOLS_VERSION` and
@@ -99,9 +115,11 @@ GCC16_RUNTIME_ARCHIVE=/absolute/gcc-16.2.0.tar.xz
 GCC16_RUNTIME_PKGSRC=/absolute/prepared-pkgsrc
 ```
 
-Use the common cross configuration for the amd64 target, target metadata,
+Use the common cross configuration for the selected target, target metadata,
 DESTDIR and native package tools. The recipe must not install Ruby or a
 compiler on the target. Its `BUILD_DEFS` retain the same provenance fields.
+The recipe rejects a stage whose architecture differs from pkgsrc's
+`MACHINE_ARCH`. The stage selection never overrides the package target.
 The direct packager above also works on macOS without running target pkgtools.
 
 ## Checks and acceptance boundary
@@ -111,29 +129,46 @@ PKG_CREATE=/absolute/native/pkg_create PKG_ADD=/absolute/native/pkg_add \
     ruby tests/package-test.rb
 ```
 
-The fixtures test architecture, SONAME, old C++ dependencies, source/recipe
+The fixtures test both architectures, SONAME, old C++ dependencies, source/recipe
 mutations, incomplete inventory, link escapes, omitted intermediate aliases,
-conflicting target claims and output reuse. With `PKG_CREATE`, they create
+conflicting target/triplet claims and output reuse. An AArch64 fixture
+reproduces the former rejection of every target except amd64.
+Mixed ELF architectures and uniformly wrong ELF architectures fail in
+both directions, including with updated stage hash receipts.
+With `PKG_CREATE`, they create
 and inspect a real package using synthetic target ELF files and license data.
 With `PKG_ADD`, they install it into a private destination using normal
-`-I -K /usr/pkg/pkgdb -P DEST -m 'NetBSD/x86_64 11.0'` options.
+`-I -K /usr/pkg/pkgdb -P DEST -m 'NetBSD/ARCH 11.0'` options, where
+`ARCH` is `x86_64` or `aarch64` from the selected fixture.
 They also recreate the previous missing-version warning and require the
 corrected package to install without that warning. Invalid version queries,
 calendar dates and changes to the queried executable fail before stage access.
 They do not compile GCC and are not target runtime acceptance.
 Without that variable, the native-package fixture is explicitly skipped.
 
-The actual completed amd64 runtime stage has also been repackaged and
+Set `BMAKE` and `PKGSRC` to enable real pkgsrc recipe parsing.
+Also set `GCC_ARCHIVE` to the pinned original archive to check the recipe's
+architecture guard through the real source verifier. This case retains
+synthetic stage DSOs. It accepts matching `MACHINE_ARCH` and rejects the
+opposite architecture for both targets.
+
+The expanded host suite passes 9 tests and 209 assertions with no skips
+when all five tool/source variables are supplied. It uses native pkgtools
+20260227 and bmake 20240909. Both synthetic-ELF packages install into private
+host destinations with the expected target metadata and runtime bytes.
+These checks do not execute any target DSO or establish runtime acceptance.
+
+An earlier completed amd64 runtime stage was also repackaged and
 installed with native pkgtools 20260227 into an isolated host destination.
 The old package reproduced `lacks pkg_install version data`.
 The new package installed without warnings; its DSO bytes, aliases and target
 metadata matched the original stage. This is host packaging evidence.
 The accepted target runtime artifact and shared package databases were unchanged.
 
-No real amd64 runtime package or installed consumer is qualified by these
+No real amd64 or AArch64 runtime package or installed consumer is qualified by these
 fixtures. Before release, build the actual stage and package from a clean
 Ports commit. Install, remove and reinstall with target pkgtools in an
-EmberBSD amd64 VM. Run prebuilt C11/C++20 threads, TLS, DSO exception and
+EmberBSD VM of the selected architecture. Run prebuilt C11/C++20 threads, TLS, DSO exception and
 object-exchange consumers. Confirm the loaded runtime hashes and one
 libstdc++/libgcc_s provider per process. Repeat relevant Plasma acceptance.
 No compiler or target-side build is required for these runtime checks.

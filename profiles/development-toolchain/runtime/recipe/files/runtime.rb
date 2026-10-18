@@ -16,6 +16,10 @@ module GCC16Runtime
   SOURCE_SHA256 = 'e6738e29597f733270731aa90600f37ffdc045079dfc27ec7e8192cc81085c3e'
   LICENSES = %w[COPYING3 COPYING.RUNTIME].freeze
   CONFLICTS = %w[gcc16-[0-9]* gcc16-libs-[0-9]*].freeze
+  TARGETS = {
+    'amd64' => { triplet: 'x86_64--netbsd', machine_arch: 'x86_64', elf_machine: 62 }.freeze,
+    'aarch64' => { triplet: 'aarch64--netbsd', machine_arch: 'aarch64', elf_machine: 183 }.freeze
+  }.freeze
   class Invalid < StandardError; end
 
   # Inspect ELF bytes on the build host. Never execute target code.
@@ -29,8 +33,8 @@ module GCC16Runtime
       @data.byteslice(offset, length)
     end
 
-    def verify(soname)
-      raise Invalid, 'Expected ELF64 little-endian x86_64 DSO' unless slice(0, 7) == "\x7fELF\x02\x01\x01".b && slice(16, 4).unpack('vv') == [3, 62]
+    def verify(soname, target)
+      raise Invalid, "Expected ELF64 little-endian #{target.fetch(:machine_arch)} DSO" unless slice(0, 7) == "\x7fELF\x02\x01\x01".b && slice(16, 4).unpack('vv') == [3, target.fetch(:elf_machine)]
       offset = slice(32, 8).unpack1('Q<')
       size, count = slice(54, 4).unpack('vv')
       raise Invalid, 'Invalid ELF program headers' unless size == 56 && count.positive?
@@ -62,7 +66,7 @@ module GCC16Runtime
           raise Invalid, 'Unsafe runtime library path' unless (paths - %w[/usr/pkg/gcc16/lib /usr/lib /lib]).empty?
         end
       end
-      { 'soname' => soname, 'needed' => needed, 'machine' => 'x86_64' }
+      { 'soname' => soname, 'needed' => needed, 'machine' => target.fetch(:machine_arch) }
     end
   end
 
@@ -90,9 +94,15 @@ module GCC16Runtime
     def verify
       raise Invalid, 'No completed runtime stage' unless File.read(@work + '/build-success') == "runtime-only-bootstrap\n"
       inputs = File.read(@work + '/inputs.txt')
-      %w[scope=runtime-only-bootstrap target=amd64 triplet=x86_64--netbsd].each do |line|
-        raise Invalid, "Missing or duplicate provenance: #{line}" unless inputs.lines.select { |l| l.start_with?(line.split("=", 2)[0] + "=") } == [line + "\n"]
+      claims = %w[scope target triplet].to_h do |key|
+        lines = inputs.lines.select { |line| line.start_with?(key + '=') }
+        raise Invalid, "Missing or duplicate provenance: #{key}" unless lines.length == 1 && lines[0].end_with?("\n")
+        [key, lines[0].delete_prefix(key + '=').delete_suffix("\n")]
       end
+      raise Invalid, 'Expected runtime-only bootstrap scope' unless claims.fetch('scope') == 'runtime-only-bootstrap'
+      architecture = TARGETS[claims.fetch('target')]
+      raise Invalid, 'Unsupported runtime target' unless architecture
+      raise Invalid, 'Runtime target/triplet mismatch' unless claims.fetch('triplet') == architecture.fetch(:triplet)
       seed = inputs.lines.grep(/^seed_source=/)
       raise Invalid, 'Missing seed source commit' unless seed.length == 1 && seed[0].match?(/\Aseed_source=[0-9a-f]{40}\n\z/)
       raise Invalid, 'GCC source archive mismatch' unless hash(@archive) == @expected_source
@@ -148,14 +158,16 @@ module GCC16Runtime
         resolved_rel = resolved.delete_prefix(@stage + '/')
         raise Invalid, 'Runtime alias points outside the selected payload' unless selected.include?(resolved_rel)
         soname = path.include?('libstdc++') ? 'libstdc++.so.7' : 'libgcc_s.so.1'
-        elf[path.delete_prefix('usr/pkg/')] = ELF.new(resolved).verify(soname)
+        elf[path.delete_prefix('usr/pkg/')] = ELF.new(resolved).verify(soname, architecture)
       end
       recipe_digest = Digest::SHA256.hexdigest(recipe_files.sort.map { |p| "#{p.delete_prefix(recipe + "/")} #{hash(p)}\n" }.join)
       @result = {
         files: selected.map { |p| p.delete_prefix('usr/pkg/') },
-        metadata: { 'OPSYS' => 'NetBSD', 'OS_VERSION' => '11.0', 'MACHINE_ARCH' => 'x86_64',
+        metadata: { 'OPSYS' => 'NetBSD', 'OS_VERSION' => '11.0', 'MACHINE_ARCH' => architecture.fetch(:machine_arch),
           'PKGPATH' => 'lang/gcc16-runtime', 'PKGNAME' => NAME, 'LICENSE' => 'gnu-gpl-v3',
           'GCC_VERSION' => VERSION, 'GCC_RUNTIME_SONAME' => 'libstdc++.so.7',
+          'GCC_RUNTIME_TARGET' => claims.fetch('target'), 'GCC_RUNTIME_TRIPLET' => architecture.fetch(:triplet),
+          'GCC_RUNTIME_MACHINE_ARCH' => architecture.fetch(:machine_arch),
           'GCC_SOURCE_SHA256' => @expected_source, 'GCC_RECIPE_SHA256' => recipe_digest, 'GCC_RECIPE_DISTINFO_SHA256' => hash(recipe + '/distinfo'),
           'GCC_RUNTIME_INPUTS_SHA256' => hash(@work + '/inputs.txt'), 'GCC_RUNTIME_STAGE_SHA256' => hash(@work + '/stage.sha256'),
           'GCC_RUNTIME_LINKS_SHA256' => hash(@work + '/stage.symlinks'), 'EMBERBSD_SEED_SOURCE' => seed[0].strip.split('=', 2)[1] },

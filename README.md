@@ -45,8 +45,10 @@ runtime behavior are validated.
   The explicit amd64 target selects x86_64 tools and runtime paths; host
   target-selection regressions pass. The runtime bootstrap and
   [runtime-only package](profiles/development-toolchain/runtime/README.md)
-  keep compilers out of application images. Their host packaging fixtures
-  pass with native pkgtools; real amd64 runtime and desktop acceptance remain pending.
+  keep compilers out of application images. Host package creation and isolated
+  installation pass for synthetic amd64 and AArch64 runtime fixtures with
+  native pkgtools. Target triplet, ELF and package architecture must agree.
+  Real runtime package and desktop acceptance remain separate checks.
   Common Qt rebuilding and full-image integration
   remain pending.
   [GDB 18.1nb1](profiles/development-toolchain/gdb/README.md) is cross-built and

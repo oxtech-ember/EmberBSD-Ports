@@ -26,8 +26,14 @@ class RuntimePackageTest < Minitest::Test
     data + strings
   end
 
-  def with_fixture
+  def with_fixture(target = 'amd64')
     Dir.mktmpdir('gcc-runtime-test-') do |d|
+      @target = target
+      @triplet, @machine_arch, @elf_machine = case target
+        when 'amd64' then ['x86_64--netbsd', 'x86_64', 62]
+        when 'aarch64' then ['aarch64--netbsd', 'aarch64', 183]
+        else raise 'Unsupported fixture target'
+      end
       @work = d + '/work'; @pkgsrc = d + '/pkgsrc'; @stage = @work + '/stage'
       @source = d + '/gcc.tar.xz'
       FileUtils.mkdir_p(@stage + '/usr/pkg/gcc16/lib')
@@ -38,8 +44,8 @@ class RuntimePackageTest < Minitest::Test
       @archive_sha = Digest::SHA256.file(@source).hexdigest
       %w[distinfo Makefile Makefile.common].each { |n| File.write(@pkgsrc + '/lang/gcc16/' + n, n) }
       File.write(@work + '/build-success', "runtime-only-bootstrap\n")
-      File.write(@stage + '/usr/pkg/gcc16/lib/libgcc_s.so.1', elf('libgcc_s.so.1'))
-      File.write(@stage + '/usr/pkg/gcc16/lib/libstdc++.so.7.36', elf('libstdc++.so.7', 62, %w[libc.so.12 libgcc_s.so.1]))
+      File.write(@stage + '/usr/pkg/gcc16/lib/libgcc_s.so.1', elf('libgcc_s.so.1', @elf_machine))
+      File.write(@stage + '/usr/pkg/gcc16/lib/libstdc++.so.7.36', elf('libstdc++.so.7', @elf_machine, %w[libc.so.12 libgcc_s.so.1]))
       File.symlink('libstdc++.so.7.36', @stage + '/usr/pkg/gcc16/lib/libstdc++.so.7')
       FileUtils.mkdir_p(@stage + '/usr/pkg/gcc16/include/c++')
       File.write(@stage + '/usr/pkg/gcc16/include/c++/vector', 'build-only header')
@@ -49,7 +55,7 @@ class RuntimePackageTest < Minitest::Test
   end
 
   def write_receipts
-    inputs = "scope=runtime-only-bootstrap\ntarget=amd64\ntriplet=x86_64--netbsd\nseed_source=#{'b' * 40}\n"
+    inputs = "scope=runtime-only-bootstrap\ntarget=#{@target}\ntriplet=#{@triplet}\nseed_source=#{'b' * 40}\n"
     inputs << "#{@archive_sha}  #{@source}\n"
     %w[distinfo Makefile Makefile.common].each do |n|
       path = @pkgsrc + '/lang/gcc16/' + n
@@ -80,34 +86,100 @@ class RuntimePackageTest < Minitest::Test
       assert_equal 'x86_64', result.fetch(:metadata).fetch('MACHINE_ARCH')
       assert_equal 'NetBSD', result.fetch(:metadata).fetch('OPSYS')
       assert_equal '11.0', result.fetch(:metadata).fetch('OS_VERSION')
+      assert_equal 'amd64', result.fetch(:metadata).fetch('GCC_RUNTIME_TARGET')
+      assert_equal 'x86_64--netbsd', result.fetch(:metadata).fetch('GCC_RUNTIME_TRIPLET')
+      assert_equal 'x86_64', result.fetch(:metadata).fetch('GCC_RUNTIME_MACHINE_ARCH')
+      assert_equal ['x86_64'], result.fetch(:elf).values.map { |e| e.fetch('machine') }.uniq
+    end
+  end
+
+  def test_select_aarch64_runtime
+    with_fixture('aarch64') do
+      result = stage.verify
+      assert_equal %w[gcc16/lib/libgcc_s.so.1 gcc16/lib/libstdc++.so.7 gcc16/lib/libstdc++.so.7.36], result.fetch(:files)
+      metadata = result.fetch(:metadata)
+      assert_equal 'NetBSD', metadata.fetch('OPSYS')
+      assert_equal '11.0', metadata.fetch('OS_VERSION')
+      assert_equal 'aarch64', metadata.fetch('MACHINE_ARCH')
+      assert_equal 'aarch64', metadata.fetch('GCC_RUNTIME_TARGET')
+      assert_equal 'aarch64--netbsd', metadata.fetch('GCC_RUNTIME_TRIPLET')
+      assert_equal 'aarch64', metadata.fetch('GCC_RUNTIME_MACHINE_ARCH')
+      assert_equal ['aarch64'], result.fetch(:elf).values.map { |e| e.fetch('machine') }.uniq
+    end
+  end
+
+  def test_target_claims_are_unique_and_consistent
+    %w[amd64 aarch64].each do |target|
+      changes = {
+        'missing-target' => ->(s) { s.lines.reject { |l| l.start_with?('target=') }.join },
+        'missing-triplet' => ->(s) { s.lines.reject { |l| l.start_with?('triplet=') }.join },
+        'duplicate-target' => ->(s) { s + "target=#{@target}\n" },
+        'duplicate-triplet' => ->(s) { s + "triplet=#{@triplet}\n" },
+        'duplicate-scope' => ->(s) { s + "scope=runtime-only-bootstrap\n" },
+        'wrong-triplet' => ->(s) { s.sub("triplet=#{@triplet}", "triplet=#{@target == 'amd64' ? 'aarch64' : 'x86_64'}--netbsd") },
+        'noncanonical-triplet' => ->(s) { s.sub("triplet=#{@triplet}", "triplet=#{@machine_arch}-unknown-netbsd") },
+        'unknown-target' => ->(s) { s.sub("target=#{@target}", 'target=arm64') }
+      }
+      changes.each do |name, change|
+        with_fixture(target) do
+          path = @work + '/inputs.txt'
+          File.write(path, change.call(File.read(path)))
+          assert_raises(GCC16Runtime::Invalid, "#{target}/#{name}") { stage.verify }
+        end
+      end
+    end
+  end
+
+  def test_wrong_architecture_even_with_updated_receipts
+    %w[amd64 aarch64].each do |target|
+      %w[gcc-only cxx-only all].each do |selection|
+        with_fixture(target) do
+          wrong = @elf_machine == 62 ? 183 : 62
+          if selection != 'cxx-only'
+            File.binwrite(@stage + '/usr/pkg/gcc16/lib/libgcc_s.so.1', elf('libgcc_s.so.1', wrong))
+          end
+          if selection != 'gcc-only'
+            File.binwrite(@stage + '/usr/pkg/gcc16/lib/libstdc++.so.7.36', elf('libstdc++.so.7', wrong))
+          end
+          write_receipts
+          error = assert_raises(GCC16Runtime::Invalid, "#{target}/#{selection}") { stage.verify }
+          assert_match(/Expected ELF64 little-endian #{@machine_arch} DSO/, error.message)
+        end
+      end
     end
   end
 
   def test_fail_closed
     changes = {
-      'target' => -> { File.write(@work + '/inputs.txt', File.read(@work + '/inputs.txt').sub('target=amd64', 'target=aarch64')) },
-      'conflicting-target' => -> { File.write(@work + '/inputs.txt', File.read(@work + '/inputs.txt') + "target=aarch64\n") },
+      'target' => -> { File.write(@work + '/inputs.txt', File.read(@work + '/inputs.txt').sub("target=#{@target}", "target=#{@target == 'amd64' ? 'aarch64' : 'amd64'}")) },
+      'conflicting-target' => -> { File.write(@work + '/inputs.txt', File.read(@work + '/inputs.txt') + "target=#{@target}\n") },
       'source' => -> { File.write(@work + '/inputs.txt', File.read(@work + '/inputs.txt').sub(@archive_sha, 'c' * 64)) },
       'recipe' => -> { File.write(@pkgsrc + '/lang/gcc16/distinfo', 'modified') },
       'mutation' => -> { File.write(@stage + '/usr/pkg/gcc16/lib/libgcc_s.so.1', 'modified') },
       'unrecorded' => -> { File.write(@stage + '/unexpected', 'unrecorded') },
       'truncated-elf' => -> { File.write(@stage + '/usr/pkg/gcc16/lib/libgcc_s.so.1', "\x7fELF"); write_receipts },
       'rpath' => -> { p = @stage + '/usr/pkg/gcc16/lib/libgcc_s.so.1'; File.binwrite(p, File.binread(p).sub('/usr/pkg/gcc16/lib', '/tmp/bad'.ljust('/usr/pkg/gcc16/lib'.bytesize, 'x'))); write_receipts },
-      'arch' => -> { File.write(@stage + '/usr/pkg/gcc16/lib/libgcc_s.so.1', elf('libgcc_s.so.1', 183)); write_receipts },
-      'soname' => -> { File.write(@stage + '/usr/pkg/gcc16/lib/libstdc++.so.7.36', elf('libstdc++.so.9')); write_receipts },
-      'dependency' => -> { File.write(@stage + '/usr/pkg/gcc16/lib/libgcc_s.so.1', elf('libgcc_s.so.1', 62, ['libstdc++.so.9'])); write_receipts },
+      'arch' => -> { File.write(@stage + '/usr/pkg/gcc16/lib/libgcc_s.so.1', elf('libgcc_s.so.1', @elf_machine == 62 ? 183 : 62)); write_receipts },
+      'soname' => -> { File.write(@stage + '/usr/pkg/gcc16/lib/libstdc++.so.7.36', elf('libstdc++.so.9', @elf_machine)); write_receipts },
+      'dependency' => -> { File.write(@stage + '/usr/pkg/gcc16/lib/libgcc_s.so.1', elf('libgcc_s.so.1', @elf_machine, ['libstdc++.so.9'])); write_receipts },
       'escape' => -> { File.unlink(@stage + '/usr/pkg/gcc16/lib/libstdc++.so.7'); File.symlink('/usr/lib/libstdc++.so.9', @stage + '/usr/pkg/gcc16/lib/libstdc++.so.7'); write_receipts },
       'indirect-unshipped-link' => -> { File.unlink(@stage + '/usr/pkg/gcc16/lib/libstdc++.so.7'); File.symlink('alias', @stage + '/usr/pkg/gcc16/lib/libstdc++.so.7'); File.symlink('libstdc++.so.7.36', @stage + '/usr/pkg/gcc16/lib/alias'); write_receipts },
       'unrecorded-link' => -> { File.write(@work + '/stage.symlinks', '') }
     }
-    changes.each do |name, change|
-      with_fixture { change.call; assert_raises(GCC16Runtime::Invalid, name) { stage.verify } }
+    %w[amd64 aarch64].each do |target|
+      changes.each do |name, change|
+        with_fixture(target) { change.call; assert_raises(GCC16Runtime::Invalid, "#{target}/#{name}") { stage.verify } }
+      end
     end
   end
   def test_real_native_package
     pkg_create = ENV['PKG_CREATE']
     skip 'Set PKG_CREATE to a native host tool' unless pkg_create
-    with_fixture do |d|
+    %w[amd64 aarch64].each { |target| check_real_native_package(target, pkg_create) }
+  end
+
+  def check_real_native_package(target, pkg_create)
+    with_fixture(target) do |d|
       output = d + '/package'
       GCC16Runtime.create(stage, pkg_create, output)
       package = output + '/' + GCC16Runtime::NAME + '.tgz'
@@ -121,14 +193,19 @@ class RuntimePackageTest < Minitest::Test
       assert_includes contents, '@pkgcfl gcc16-libs-[0-9]*'
       metadata, status = Open3.capture2('tar', '-xOf', package, '+BUILD_INFO')
       assert status.success?
-      %w[OPSYS=NetBSD OS_VERSION=11.0 MACHINE_ARCH=x86_64].each { |line| assert_includes metadata, line }
+      ["OPSYS=NetBSD", "OS_VERSION=11.0", "MACHINE_ARCH=#{@machine_arch}",
+       "GCC_RUNTIME_TARGET=#{@target}", "GCC_RUNTIME_TRIPLET=#{@triplet}",
+       "GCC_RUNTIME_MACHINE_ARCH=#{@machine_arch}"].each do |line|
+        key = line.split('=', 2).first
+        assert_equal [line], metadata.lines.map(&:chomp).grep(/^#{key}=/)
+      end
       version, err, status = Open3.capture3(pkg_create, '-V')
       assert status.success?, err
       assert_equal ["PKGTOOLS_VERSION=#{version.chomp}"], metadata.lines.map(&:chomp).grep(/^PKGTOOLS_VERSION=/)
       assert_equal ["EMBERBSD_PKG_CREATE_SHA256=#{Digest::SHA256.file(pkg_create).hexdigest}"], metadata.lines.map(&:chomp).grep(/^EMBERBSD_PKG_CREATE_SHA256=/)
       if ENV['PKG_ADD']
         dest = d + '/installed'
-        log, status = Open3.capture2e(ENV.fetch('PKG_ADD'), '-I', '-K', '/usr/pkg/pkgdb', '-P', dest, '-m', 'NetBSD/x86_64 11.0', package)
+        log, status = Open3.capture2e(ENV.fetch('PKG_ADD'), '-I', '-K', '/usr/pkg/pkgdb', '-P', dest, '-m', "NetBSD/#{@machine_arch} 11.0", package)
         assert status.success?, log
         refute_match(/warning|invalid pkg_install version|lacks pkg_install version data/, log)
         assert File.file?(dest + '/usr/pkg/pkgdb/' + GCC16Runtime::NAME + '/+BUILD_INFO')
@@ -142,7 +219,7 @@ class RuntimePackageTest < Minitest::Test
         old_package = d + '/old.tgz'
         _, err, status = Open3.capture3(pkg_create, '-u', 'root', '-g', 'wheel', '-p', legacy, '-I', '/usr/pkg', '-B', legacy + '/BUILD_INFO', '-c', legacy + '/+COMMENT', '-d', legacy + '/+DESC', '-f', legacy + '/PLIST', old_package)
         assert status.success?, err
-        log, status = Open3.capture2e(ENV.fetch('PKG_ADD'), '-I', '-K', '/usr/pkg/pkgdb', '-P', d + '/legacy-installed', '-m', 'NetBSD/x86_64 11.0', old_package)
+        log, status = Open3.capture2e(ENV.fetch('PKG_ADD'), '-I', '-K', '/usr/pkg/pkgdb', '-P', d + '/legacy-installed', '-m', "NetBSD/#{@machine_arch} 11.0", old_package)
         assert status.success?, log
         assert_match(/warning: lacks pkg_install version data/, log)
       end
@@ -197,7 +274,33 @@ class RuntimePackageTest < Minitest::Test
         assert_includes out, 'audited runtime provenance'
         assert_includes err, 'GCC source archive mismatch'
       end
-
+      if ENV['GCC_ARCHIVE']
+        %w[amd64 aarch64].each do |target|
+          with_fixture(target) do
+            # Real source-pin verification with synthetic stage DSOs, not a GCC build.
+            @source = File.realpath(ENV.fetch('GCC_ARCHIVE'))
+            @archive_sha = Digest::SHA256.file(@source).hexdigest
+            assert_equal GCC16Runtime::SOURCE_SHA256, @archive_sha
+            write_receipts
+            [@machine_arch, @machine_arch == 'aarch64' ? 'x86_64' : 'aarch64'].each do |package_arch|
+              out, err, status = Open3.capture3(bmake, '-C', d + '/lang/gcc16-runtime',
+                'OPSYS=NetBSD', 'OS_VERSION=11.0', "MACHINE_ARCH=#{package_arch}",
+                "GCC16_RUNTIME_RUBY=#{RbConfig.ruby}", "GCC16_RUNTIME_WORK=#{@work}",
+                "GCC16_RUNTIME_ARCHIVE=#{@source}", "GCC16_RUNTIME_PKGSRC=#{@pkgsrc}",
+                '-v', 'GCC_RUNTIME_TRIPLET', '-v', 'PKG_FAIL_REASON')
+              assert status.success?, out + err
+              assert_equal @triplet, out.lines.first.chomp
+              refute_includes out, 'stage verification failed'
+              message = 'Audited runtime architecture does not match the package target MACHINE_ARCH.'
+              if package_arch == @machine_arch
+                refute_includes out, message
+              else
+                assert_includes out, message
+              end
+            end
+          end
+        end
+      end
     end
   end
 
