@@ -8,10 +8,10 @@ Full `gcc16` and `gcc16-libs` packages already provide this component. The
 component package conflicts with both. Native PCL recipes must use the normal
 GCC16 runtime provider instead of requiring this component unconditionally.
 
-Use the [cross helper](../../../profiles/development-toolchain/cross/build-libatomic.sh):
+Use the [cross helper](../../../profiles/development-toolchain/cross/build-libatomic.py):
 
 ```sh
-CROSS_JOBS=2 sh profiles/development-toolchain/cross/build-libatomic.sh \
+CROSS_JOBS=2 python3 -B profiles/development-toolchain/cross/build-libatomic.py \
     /absolute/gcc16-prefix /absolute/emberbsd-sysroot \
     /absolute/gcc-16.2.0.tar.xz /absolute/new-output
 ```

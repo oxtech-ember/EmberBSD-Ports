@@ -26,7 +26,7 @@ module InstallerRuntimeBundle
 
   def self.fingerprint(source)
     names = [NAME + '.tgz', 'package.sha256', 'provenance.json'].sort
-    check(Dir.children(source).sort == names, 'Input must be the complete runtime.rb create output')
+    check(Dir.children(source).sort == names, 'Input must be the complete runtime.py create output')
     names.to_h do |name|
       path = source + '/' + name
       check(File.file?(path) && !File.symlink?(path), "Missing regular runtime input: #{name}")
@@ -156,7 +156,7 @@ module InstallerRuntimeBundle
       provenance = { 'format' => 'emberbsd-installer-gcc16-v1', 'profile' => 'gcc16', 'target' => 'amd64',
         'source_sha256' => hashes, 'runtime_receipt' => result, 'package' => { 'file' => NAME + '.tgz', 'bytes' => File.size(package), 'sha256' => Digest::SHA256.file(package).hexdigest, 'sha512' => package_hash },
         'bundle' => { 'file' => ARCHIVE, 'bytes' => File.size(archive), 'sha512' => digest, 'limit_bytes' => LIMIT },
-        'tools_sha256' => [__FILE__, File.expand_path('../development-toolchain/runtime/recipe/files/runtime.rb', __dir__)].to_h { |p| [File.basename(p), Digest::SHA256.file(p).hexdigest] },
+        'tools_sha256' => [__FILE__, File.expand_path('../development-toolchain/runtime/recipe/files/runtime.py', __dir__)].to_h { |p| [File.basename(p), Digest::SHA256.file(p).hexdigest] },
         'validation' => 'Fresh payload, metadata, conflicts, licenses and ELF audit. Local receipts are not a source attestation. No target execution.' }
       File.write(directory + '/PROVENANCE.json', JSON.pretty_generate(provenance) + "\n")
       check(fingerprint(source) == hashes && Digest::SHA256.file(package).hexdigest == hashes.fetch(NAME + '.tgz'), 'Runtime source or package changed during preparation')

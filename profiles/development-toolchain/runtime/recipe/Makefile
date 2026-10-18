@@ -15,9 +15,10 @@ USE_LANGUAGES=	# none
 NO_CONFIGURE=	yes
 NO_BUILD=	yes
 
-# These are build-host paths. Never install Ruby or build tools on the target.
+# These are build-host paths. Never install Python or build tools on the target.
 # The stage and GCC archive remain external. The verifier does not change them.
-GCC16_RUNTIME_RUBY?=
+GCC16_RUNTIME_PYTHON?=
+EMBERBSD_SDK_SOURCE?=
 GCC16_RUNTIME_WORK?=
 GCC16_RUNTIME_ARCHIVE?=
 GCC16_RUNTIME_PKGSRC?=	${.CURDIR}/../..
@@ -26,15 +27,19 @@ FILESDIR?=	${.CURDIR}/files
 
 .include "../../mk/bsd.prefs.mk"
 
-.for _input in GCC16_RUNTIME_RUBY GCC16_RUNTIME_WORK GCC16_RUNTIME_ARCHIVE
+.if defined(GCC16_RUNTIME_RUBY)
+PKG_FAIL_REASON+= "GCC16_RUNTIME_RUBY is obsolete. Set GCC16_RUNTIME_PYTHON and EMBERBSD_SDK_SOURCE."
+.endif
+
+.for _input in GCC16_RUNTIME_PYTHON EMBERBSD_SDK_SOURCE GCC16_RUNTIME_WORK GCC16_RUNTIME_ARCHIVE
 .if empty(${_input})
 PKG_FAIL_REASON+=	"Set ${_input} to its audited absolute build-host path."
 .endif
 .endfor
 
-.if !empty(GCC16_RUNTIME_RUBY) && !empty(GCC16_RUNTIME_WORK) && !empty(GCC16_RUNTIME_ARCHIVE)
-_GCC16_RUNTIME_ARGS=	${GCC16_RUNTIME_WORK:Q} ${GCC16_RUNTIME_ARCHIVE:Q} ${GCC16_RUNTIME_PKGSRC:Q}
-_GCC16_RUNTIME_INFO!=	${GCC16_RUNTIME_RUBY:Q} ${FILESDIR:Q}/runtime.rb fields ${_GCC16_RUNTIME_ARGS}
+.if !empty(GCC16_RUNTIME_PYTHON) && !empty(EMBERBSD_SDK_SOURCE) && !empty(GCC16_RUNTIME_WORK) && !empty(GCC16_RUNTIME_ARCHIVE)
+_GCC16_RUNTIME_ARGS=	${GCC16_RUNTIME_WORK:Q} ${GCC16_RUNTIME_ARCHIVE:Q} ${GCC16_RUNTIME_PKGSRC:Q} --sdk-source ${EMBERBSD_SDK_SOURCE:Q}
+_GCC16_RUNTIME_INFO!=	${GCC16_RUNTIME_PYTHON:Q} -I -S -B ${FILESDIR:Q}/runtime.py fields ${_GCC16_RUNTIME_ARGS}
 .if empty(_GCC16_RUNTIME_INFO:MGCC_SOURCE_SHA256=*) || empty(_GCC16_RUNTIME_INFO:MGCC_RECIPE_SHA256=*) || empty(_GCC16_RUNTIME_INFO:MGCC_RUNTIME_INPUTS_SHA256=*) || empty(_GCC16_RUNTIME_INFO:MGCC_RUNTIME_STAGE_SHA256=*) || empty(_GCC16_RUNTIME_INFO:MGCC_RUNTIME_TARGET=*) || empty(_GCC16_RUNTIME_INFO:MGCC_RUNTIME_TRIPLET=*) || empty(_GCC16_RUNTIME_INFO:MGCC_RUNTIME_MACHINE_ARCH=*) || empty(_GCC16_RUNTIME_INFO:MGCC_RUNTIME_LIBRARIES=*) || empty(_GCC16_RUNTIME_INFO:MGCC_RUNTIME_SONAMES=*)
 PKG_FAIL_REASON+= "Cannot obtain audited runtime provenance; stage verification failed."
 .endif
@@ -47,9 +52,9 @@ PKG_FAIL_REASON+= "Audited runtime architecture does not match the package targe
 .endif
 .endif
 
-GENERATE_PLIST+=	${GCC16_RUNTIME_RUBY:Q} ${FILESDIR:Q}/runtime.rb plist ${_GCC16_RUNTIME_ARGS};
+GENERATE_PLIST+=	${GCC16_RUNTIME_PYTHON:Q} -I -S -B ${FILESDIR:Q}/runtime.py plist ${_GCC16_RUNTIME_ARGS};
 
 do-install:
-	${RUN} ${GCC16_RUNTIME_RUBY:Q} ${FILESDIR:Q}/runtime.rb install ${_GCC16_RUNTIME_ARGS} ${DESTDIR:Q}
+	${RUN} ${GCC16_RUNTIME_PYTHON:Q} -I -S -B ${FILESDIR:Q}/runtime.py install ${_GCC16_RUNTIME_ARGS} ${DESTDIR:Q}
 
 .include "../../mk/bsd.pkg.mk"

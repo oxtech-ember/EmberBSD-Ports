@@ -1,5 +1,11 @@
 # Stage the first GCC16 target runtime
 
+Host controllers use Python 3.15 and its standard library. Set
+`export EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK`, or pass `--sdk-source SOURCE`
+to each Python entry point. The source must provide `emberbsd_sdk` API1 under
+`src/`. Imports do not download, build or install the SDK. Target execution
+scripts under `cross/tests/target/` use only the target's POSIX shell.
+
 This bootstrap prepares target CRT objects, libgcc, libstdc++ and C++ headers
 from the audited GCC 16.2.0 source recipe. It supports explicit `amd64`
 (`x86_64--netbsd`) and `aarch64` (`aarch64--netbsd`) targets.
@@ -40,7 +46,7 @@ Use a clean Ports revision and absolute paths without whitespace:
 1. A prepared pkgsrc export with the current development-toolchain patches.
 2. The original GCC archive whose SHA256 is in `../sources.tsv`.
 3. A host-executable GCC16 kernel compiler built by
-   `../cross/build.sh --target TARGET --kernel`. Keep its sibling `inputs.txt`.
+   `../cross/build.py --target TARGET --kernel`. Keep its sibling `inputs.txt`.
    This bootstrap checks both compiler drivers, their target macros, the exact
    version, and the archive/patch-manifest hashes in that build receipt.
 4. A complete EmberBSD base sysroot with headers, libc, pthread, libm, the
@@ -49,10 +55,10 @@ Use a clean Ports revision and absolute paths without whitespace:
    source revision in `EMBERBSD_SYSROOT_SOURCE`; optionally pass the external
    provenance file as `EMBERBSD_SYSROOT_PROVENANCE`.
 5. Host static GMP 6.3.0, MPFR 4.2.2 and MPC 1.4.1 under one prefix. The
-   existing `../cross/host-math.sh` prepares them. The builder also executes
+   existing `../cross/host-math.py` prepares them. The builder also executes
    that workflow's GMP long-loop and periodic-signal contracts.
 6. A new work directory on a case-sensitive volume, host C/C++ compilers,
-   GNU make, tar, patch, realpath, shasum and cmp. Set `CROSS_JOBS` explicitly.
+   GNU make, tar, patch and Python3.15 with the explicit SDK API1 source. Set `CROSS_JOBS` explicitly.
 
 The seed checks reject the wrong ELF architecture, missing base inputs and
 ELF links escaping the supplied sysroot. Use relative symlinks in the seed.
@@ -73,7 +79,7 @@ HOST_CXX=/absolute/build/host-native/bin/g++ \
 GNU_MAKE=/opt/homebrew/bin/gmake CROSS_JOBS=4 \
 EMBERBSD_SYSROOT_SOURCE=c5d396f5698b68e956b29ee5b256bc7877e6c517 \
 EMBERBSD_SYSROOT_PROVENANCE=/absolute/build/sysroot-seed-provenance.json \
-sh profiles/development-toolchain/bootstrap/build.sh --target amd64 \
+python3 -B profiles/development-toolchain/bootstrap/build.py --target amd64 \
     /absolute/build/pkgsrc \
     /absolute/build/distfiles/gcc-16.2.0.tar.xz \
     /absolute/build/gcc-kernel/toolchain \
@@ -92,8 +98,8 @@ Choose `--target aarch64` with that target's own compiler and complete seed.
 Source preparation uses the same GCC archive SHA256, RCS-filtered patch hashes,
 zero-fuzz application and required modules repair as the cross workflow.
 Both source audits accept literal `+` in canonical `libstdc++` patch basenames.
-`tests/patch-names.rb EXPORTED_PKGSRC GCC_ARCHIVE NEW_WORK` checks the actual
-audits with the current recipe, unsafe names and a corrupted patch hash.
+The controller suite checks the source audit with literal `+` patch names,
+unsafe names and a corrupted patch hash.
 The native-only `patch-gcc_Makefile.in` is audited and omitted, as in that
 workflow: a Darwin compiler prefix must not enter target driver links.
 No extracted source file is edited outside this private work directory.
@@ -187,39 +193,35 @@ This bootstrap does not implement or claim that later compiler stage.
 ## Host checks and cleanup
 
 ```sh
-sh profiles/development-toolchain/bootstrap/tests/inputs.sh
-sh profiles/development-toolchain/bootstrap/tests/source.sh
-sh profiles/development-toolchain/bootstrap/tests/binutils.sh
-sh profiles/development-toolchain/bootstrap/tests/runtime-resume.sh
-sh profiles/development-toolchain/bootstrap/tests/runtime-libraries.sh
-ruby profiles/development-toolchain/bootstrap/tests/runtime-layout.rb \
+python3 -B profiles/development-toolchain/tests/python/controllers-test.py
+python3 -B profiles/development-toolchain/runtime/tests/package-test.py
+python3 -B profiles/development-toolchain/bootstrap/tests/runtime-layout.py \
     /absolute/prepared-gcc-source
 ```
 
-The first fixture exercises argument, architecture, compiler, seed, source
-receipt and ABI guards. The second uses real tar/patch operations and verifies
-the modules repair, native-driver exclusion, ABI substitution, corrupt archive
-rejection and refusal to overwrite sources. Neither compiles GCC or proves
-runtime packaging. These host checks do not establish a successful runtime build.
-The binutils fixture checks exported absolute tools, command-name lookup and
-rejection of a non-GNU `nm`. The input fixture also checks resume provenance,
-preserved objects and invalidation of failed configure/map/archive outputs.
-The runtime recovery fixture checks full partial-stage preservation, target
-metadata invalidation, object reuse and rejection of changed frontend state.
-The layout fixture executes the install-directory shell sections from the
-actual prepared upstream configure scripts. It checks both target identities,
-the incorrect default and the explicit directory. It also executes the actual
-top configure recursion parser and Makefile removal loops with production
-configure arguments. Runtime-only recovery must retain host/build Makefiles;
-normal fresh and frontend recovery modes keep upstream invalidation behavior.
-It does not configure or
-build GCC, run a linker or establish installed runtime acceptance.
-The optional-library fixture checks selection, refusal of library removal,
-completed-stage file/link drift and preservation of stage/receipt/frontend
-state. Its text payload is deliberately not target ELF. The source layout
-check also executes GCC's actual NetBSD libtool version branch and verifies
-the pinned OpenMP/atomic SONAME calculations.
-The fixtures remove only their own temporary directories.
+The controller suite checks both targets, kernel and external preflight,
+archive and RCS-filtered patch identities, GNU target tools, compiler receipts,
+optional library selection, completed-stage drift, resume preservation and
+failed-support checkpoints. It uses real tar and patch operations for the
+source fixture. Dispatch fixtures do not build a GCC compiler or qualify a
+target runtime. The runtime package suite uses synthetic ELF inputs; set
+`PKG_CREATE` and `PKG_ADD` to native host pkgtools to test isolated fixture
+package creation and installation. The layout test executes the actual
+upstream configure and NetBSD libtool decisions.
+
+Tests remove only their temporary directories. A failed real producer retains
+its work tree, logs and previous log versions. The CLI handles SIGINT, SIGTERM
+and SIGHUP. It waits for the SDK to drain the owned process session. Producer
+commands must not start another session. If the SDK cannot prove shutdown, the
+builder writes `WORK/.producer-ownership-unproven.json`. All resume modes and
+runtime packaging refuse this work until explicit recovery. Preserve that marker
+until the producer has stopped and the retained work has been checked. A failed
+command with a proven shutdown does not create this marker. Keep the source revision and
+SDK source used by every input receipt. Do not change completed receipts to
+match a newer helper. During failed-support recovery, the verifier maps each
+historical helper path to its hash-verified checkpoint copy. The new input
+receipt records each exact mapping and the current Python and SDK file hashes.
+The original parent receipt and bytes remain unchanged.
 
 ## Resume an incomplete runtime build
 

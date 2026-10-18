@@ -1,5 +1,11 @@
 # GCC16 cross compiler for EmberBSD
 
+Host controllers use Python 3.15 and its standard library. Set
+`export EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK`, or pass `--sdk-source SOURCE`
+to each Python entry point. The source must provide `emberbsd_sdk` API1 under
+`src/`. Imports do not download, build or install the SDK. Target execution
+scripts under `cross/tests/target/` use only the target's POSIX shell.
+
 Cross-compilation is the preferred build path: build GCC 16.2.0 on the
 development host and execute the resulting programs on EmberBSD. The tested
 hosts are Apple Silicon macOS (application mode) and Debian x86_64 Linux
@@ -24,7 +30,7 @@ objects and target C++ headers. It is recorded in `inputs.txt`.
 The recipe uses GCC 16 host compilers by default: `gcc-16` and `g++-16`.
 Both must report GCC major version 16. Clang cannot build this cross toolchain.
 
-`build.sh` builds the host-runnable Binutils 2.47 tools from the pinned
+`build.py` builds the host-runnable Binutils 2.47 tools from the pinned
 Common Ports source and patch set. It installs the selected triplet tools and
 the linker's full `lib/ldscripts` tree in the GCC prefix before it configures
 GCC. GCC's default `as` and `ld` paths point to those tools. No `-B` or specs
@@ -36,7 +42,7 @@ The separate relocation fixture checks secondary emulations in an OS tool
 directory without compiling GCC:
 
 ```sh
-ruby profiles/development-toolchain/cross/tests/linker-relocation.rb \
+python3 -B profiles/development-toolchain/cross/tests/linker-relocation.py \
     /absolute/os-tools amd64 /absolute/new-relocation-receipt
 ```
 
@@ -78,7 +84,7 @@ not make Darwin and NetBSD executables interchangeable.
 
 ```sh
 HOST_CC=gcc-16 HOST_CXX=g++-16 \
-    sh profiles/development-toolchain/cross/build.sh \
+    python3 -B profiles/development-toolchain/cross/build.py \
     /absolute/pkgsrc /absolute/gcc-16.2.0.tar.xz /absolute/sysroot \
     /absolute/os-build/tools /absolute/new-gcc-cross
 ```
@@ -88,7 +94,7 @@ For amd64, use a matching amd64 sysroot. The recipe builds the selected
 
 ```sh
 HOST_CC=gcc-16 HOST_CXX=g++-16 CROSS_JOBS=2 \
-    sh profiles/development-toolchain/cross/build.sh --target amd64 \
+    python3 -B profiles/development-toolchain/cross/build.py --target amd64 \
     /absolute/pkgsrc /absolute/gcc-16.2.0.tar.xz /absolute/sysroot-amd64 \
     /absolute/os-build-amd64/tools /absolute/new-gcc-cross-amd64
 ```
@@ -108,7 +114,7 @@ containing `gmp-6.3.0.tar.xz`, `mpfr-4.2.2.tar.bz2` and `mpc-1.4.1.tar.xz`.
 Original URLs and SHA256 are in [host sources](host-sources.tsv) and the
 [shared manifest](../sources.tsv).
 
-For reuse, `host-math.sh ARCHIVE_DIRECTORY NETBSD_TOOLDIR NEW_WORK` prepares
+For reuse, `host-math.py ARCHIVE_DIRECTORY NETBSD_TOOLDIR NEW_WORK` prepares
 the libraries separately. Pass its `NEW_WORK/prefix` through
 `EMBER_HOST_MATH_PREFIX`, or as an optional argument immediately before the
 compiler's `NEW_WORK`. Do not reuse the fork's old GMP 6.2.1 host library.
@@ -164,12 +170,12 @@ A failed stage returns nonzero.
 The installed prefix includes GCC's `<triplet>/bin` tool-search
 directory. This is required for the driver's `-gsplit-dwarf` invocation of
 `objcopy`, even when ordinary compilation already works. The build runs
-`tests/split-dwarf.sh --target TARGET CROSS_PREFIX NEW_WORK` with a clean PATH and no
+`tests/split-dwarf.py --target TARGET CROSS_PREFIX NEW_WORK` with a clean PATH and no
 `-B` or compiler-search overrides. The resulting DWARF5 skeleton and DWO
 must both be readable. The script checks the skeleton/split units and the
 record name in the DWO string-offset table.
 
-The AArch64 build also runs `tests/lto-binutils.sh CROSS_PREFIX NEW_WORK`.
+The AArch64 build also runs `tests/lto-binutils.py CROSS_PREFIX NEW_WORK`.
 It checks default tool selection and compiles freestanding C and C++ with
 LTO. The link trace must name GCC's `collect2`, plugin, and `lto-wrapper`,
 plus the selected Ports `as` and `ld`. `readelf` must report AArch64 ELF
@@ -184,7 +190,7 @@ application sysroot:
 
 ```sh
 HOST_CC=gcc-16 HOST_CXX=g++-16 CROSS_JOBS=4 \
-    sh profiles/development-toolchain/cross/build.sh --kernel \
+    python3 -B profiles/development-toolchain/cross/build.py --kernel \
     /absolute/pkgsrc /absolute/gcc-16.2.0.tar.xz \
     /absolute/os-build/tools /absolute/host-math/prefix /absolute/new-gcc-kernel
 ```
@@ -211,41 +217,31 @@ runtime acceptance remain unverified.
 
 For an application SDK that lacks `libatomic`, the
 [atomic component](../../../pkgsrc/local-robotics/gcc16-libatomic/README.md)
-uses the same GCC16 source and ABI. Its [cross helper](build-libatomic.sh)
+uses the same GCC16 source and ABI. Its [cross helper](build-libatomic.py)
 stages the runtime without replacing a complete GCC16 provider. The
 [PCL acceptance](../../../probes/pcl/VALIDATION.md) checks the component's
 256-byte operations, concurrent updates and actual AArch64 package lifecycle.
 
-Run the argument/prerequisite and real export regressions with:
+## Host controller checks
 
 ```sh
-sh profiles/development-toolchain/cross/tests/build-modes.sh
-sh profiles/development-toolchain/cross/tests/build-modes.sh --target amd64
-sh profiles/development-toolchain/cross/tests/targets.sh
-sh profiles/development-toolchain/cross/tests/configure-targets.sh
-sh profiles/development-toolchain/cross/tests/runtime-checker.sh
-sh profiles/development-toolchain/cross/tests/lto-binutils.sh \
+python3 -B profiles/development-toolchain/tests/python/controllers-test.py
+python3 -B profiles/development-toolchain/cross/tests/lto-binutils.py \
     /absolute/gcc-cross/toolchain /absolute/new-lto-check
 sh profiles/development-toolchain/tests/prepare.sh /absolute/new-pkgsrc-test
 ```
 
-The argument, target, configure, and runtime-receipt commands use host fixtures.
-They check argument rejection,
-target-specific runtime/binutils selection, compile flags, and both configure
-modes. Runtime receipts also reject corruption, foreign paths and duplicate
-libraries without a target compiler. The configure fixture stops before
-building GCC. These checks do not
-prove amd64 compilation, ELF contents or runtime behavior. `build-modes.sh`
-also accepts an optional real `NETBSD_TOOLDIR` after the target option.
-
-The last command retains a complete development-toolchain export. It exercises
-`prepare-pkgsrc.sh` against the pinned submodule with GNU patch's zero-fuzz
-application and verifies the package revisions and source patch hashes.
+The controller fixtures check both triplets, the two compiler modes, source
+and tool identities, native metadata tools, runtime selection and interrupted
+build state. They use deliberate invalid inputs and independent expected
+configure arguments. They do not establish a real GCC build. The optional
+LTO probe uses the actual selected compiler and Binutils. It does not execute
+target code. Keep compile, package, target and board acceptance separate.
 
 ## Compile here, execute on EmberBSD
 
 ```sh
-sh profiles/development-toolchain/cross/compile-tests.sh \
+python3 -B profiles/development-toolchain/cross/compile-tests.py \
     /absolute/new-gcc-cross/toolchain /absolute/sysroot /absolute/new-tests
 ```
 

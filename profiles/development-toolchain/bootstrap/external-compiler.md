@@ -1,6 +1,6 @@
 # Build the runtime with an existing POSIX GCC16
 
-Use `build.sh --external-compiler` to cross-build libgcc, its CRT and libstdc++
+Use `build.py --external-compiler` to cross-build libgcc, its CRT and libstdc++
 with an existing host-executable GCC16.2.0 application compiler. This mode
 supports amd64 and AArch64 without multilib. It records the actual compiler
 binaries; it does not claim that a missing compiler-build receipt exists.
@@ -23,7 +23,7 @@ AR=/absolute/native/ar NM=/absolute/native/nm RANLIB=/absolute/native/ranlib \
 GNU_MAKE=/absolute/native/gmake CROSS_JOBS=2 \
 EMBERBSD_SYSROOT_SOURCE=FULL_EMBERBSD_COMMIT \
 EMBERBSD_SYSROOT_PROVENANCE=/absolute/seed-provenance.json \
-sh profiles/development-toolchain/bootstrap/build.sh --check \
+python3 -B profiles/development-toolchain/bootstrap/build.py --check \
   --external-compiler --target aarch64 /absolute/prepared-pkgsrc \
   /absolute/gcc-16.2.0.tar.xz /absolute/application-compiler \
   /absolute/emberbsd-seed /absolute/host-math/prefix /absolute/new-work
@@ -49,7 +49,7 @@ It does not select Clang for any target compilation.
 
 ```sh
 HOST_CC=/absolute/native/clang HOST_CXX=/absolute/native/clang++ CROSS_JOBS=2 \
-sh profiles/development-toolchain/cross/host-math.sh --native-clang \
+python3 -B profiles/development-toolchain/cross/host-math.py --native-clang \
   /absolute/archives /absolute/netbsd-tools /absolute/new-host-math
 ```
 
@@ -80,9 +80,8 @@ SONAME, dependency, path, RELRO and package gates to this scope.
 Run the input and dispatcher fixtures, then the runtime package suite:
 
 ```sh
-sh profiles/development-toolchain/bootstrap/tests/inputs.sh
-sh profiles/development-toolchain/bootstrap/tests/external-pipeline.sh
-ruby profiles/development-toolchain/runtime/tests/package-test.rb
+python3 -B profiles/development-toolchain/tests/python/controllers-test.py
+python3 -B profiles/development-toolchain/runtime/tests/package-test.py
 ```
 
 Fixtures exercise both target selections, wrong compiler/seed/ABI, missing
@@ -106,7 +105,7 @@ Use the explicit checkpoint before changing helper source files. Keep the
 actual nonzero exit-status file from the failed parent command.
 
 ```sh
-sh profiles/development-toolchain/bootstrap/support-resume.sh checkpoint \
+python3 -B profiles/development-toolchain/bootstrap/support-resume.py checkpoint \
     /absolute/work /absolute/parent-failure-exit.txt
 ```
 
@@ -118,7 +117,7 @@ authenticate tree contents and links, not all filesystem metadata.
 It does not accept completed work, language frontends, target-library objects,
 a runtime build plan or a nonempty target stage.
 
-Run `build.sh --check --resume-support --external-compiler` with the original
+Run `build.py --check --resume-support --external-compiler` with the original
 arguments, native tools and flags. Remove only `--check` to continue. The
 builder verifies the frozen parent and unchanged compiler, seed, source and
 support trees. It keeps generated configure state and valid native objects.

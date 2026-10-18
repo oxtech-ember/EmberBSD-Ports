@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 sys.dont_write_bytecode = True
 
+PRODUCER_QUARANTINE = '.producer-ownership-unproven.json'
 _loaded = None
 
 
@@ -31,7 +32,7 @@ def load(source=None):
         raise RuntimeError('An ambient SDK package is already loaded')
     sys.path.insert(0, str(root / 'src'))
     sdk = importlib.import_module('emberbsd_sdk')
-    if Path(sdk.__file__).resolve().parent != package or type(sdk.API_VERSION) is not int or sdk.API_VERSION != 1:
+    if Path(sdk.__file__).resolve().parent != package or type(getattr(sdk, 'API_VERSION', None)) is not int or sdk.API_VERSION != 1:
         raise RuntimeError('SDK host API1 is required')
     _loaded = root
     return str(root)
@@ -61,3 +62,14 @@ def arguments(argv):
         index += 1
     load(source)
     return clean
+
+
+def install_signal_handlers():
+    """Install explicit CLI policy before a producer can start a child group."""
+    import signal
+
+    def interrupted(number, frame):
+        raise SystemExit(128 + number)
+
+    for number in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        signal.signal(number, interrupted)

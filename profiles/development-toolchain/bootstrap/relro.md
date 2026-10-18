@@ -5,7 +5,7 @@ The ordinary pkgsrc RELRO check remains enabled. Future full bootstraps pass
 `-Wl,-z,relro` to all target runtime links. The default partial RELRO policy
 does not require `-z,now`.
 
-`relink-relro.rb` supports the completed standalone locale rebuild. It uses
+`relink-relro.py` supports the completed standalone locale rebuild. It uses
 the authenticated original bootstrap archive to relink exactly `libgcc_s.so.1`,
 `libgomp.so.1.0` and `libatomic.so.3.0`. It does not compile these libraries again.
 It retains the newly compiled libstdc++, its headers and the original CRT/static
@@ -14,7 +14,7 @@ support files byte-for-byte. It does not edit ELF output after linking.
 Run the helper with the original bootstrap and locale work paths:
 
 ```sh
-ruby profiles/development-toolchain/bootstrap/relink-relro.rb \
+python3 -B profiles/development-toolchain/bootstrap/relink-relro.py \
     aarch64 /absolute/locale-pkgsrc /absolute/original-pkgsrc \
     /absolute/gcc-16.2.0.tar.xz /absolute/application-toolchain \
     /absolute/emberbsd-sysroot /absolute/original-runtime-work \
