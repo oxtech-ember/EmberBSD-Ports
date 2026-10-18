@@ -1,5 +1,9 @@
 # Current common build tools
 
+The [cwrappers archive repair](cross/cwrappers-unwrap.md) preserves sibling
+directory paths in installed Libtool metadata. Actual native GCC16 wrapper
+checks and bounded module memory checks pass; package integration is separate.
+
 The [sysroot import contract](cross/sysroot.md#pinned-aarch64-base-and-comp-imports)
 provides a pinned-manifest importer for OS-owned AArch64 `base` and `comp`
 releases. It verifies provenance and hashes before isolated extraction.
