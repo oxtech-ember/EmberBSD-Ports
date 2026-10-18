@@ -1,0 +1,1873 @@
+$NetBSD$
+
+EmberBSD, AI-assisted; not submitted upstream.
+Use the declared target system for core and bundled extension configuration.
+Native builds retain uname. Keep feature probes and native tool discovery.
+Do not classify a cross target from the build host's Debian marker.
+Maintained Autoconf inputs and their release-generated scripts change together.
+
+--- pkgs/itcl4.3.8/configure.orig
++++ pkgs/itcl4.3.8/configure
+@@ -2684,7 +2684,7 @@
+ 	CFLAGS=""
+     fi
+ 
+-    case "`uname -s`" in
++    case "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" in
+ 	*win32*|*WIN32*|*MINGW32_*|*MINGW64_*|*MSYS_*)
+ 	    # Extract the first word of "cygpath", so it can be a program name with args.
+ set dummy cygpath; ac_word=$2
+@@ -2803,16 +2803,16 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
+ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+@@ -2953,7 +2953,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -4146,7 +4146,7 @@
+ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
+ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
+ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tcl was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tcl.framework installed in an arbitrary location.
+@@ -6012,7 +6012,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tcl was built as a framework, attempt to use
+ 		# the framework's Headers directory
+ 		case ${TCL_DEFS} in
+@@ -6102,7 +6102,7 @@
+ 	# We want to ensure these are substituted so as not to require
+ 	# any *_NATIVE vars be defined in the Makefile
+ 	TCL_INCLUDES="-I${TCL_GENERIC_DIR_NATIVE} -I${TCL_PLATFORM_DIR_NATIVE}"
+-	if test "`uname -s`" = "Darwin"; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	    # If Tcl was built as a framework, attempt to use
+ 	    # the framework's Headers and PrivateHeaders directories
+ 	    case ${TCL_DEFS} in
+@@ -6172,7 +6172,7 @@
+ 
+ printf '%s\n' "#define _REENTRANT 1" >>confdefs.h
+ 
+-	    if test "`uname -s`" = "SunOS" ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "SunOS" ; then
+ 
+ printf '%s\n' "#define _POSIX_PTHREAD_SEMANTICS 1" >>confdefs.h
+ 
+@@ -6807,16 +6807,16 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
+ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+--- pkgs/itcl4.3.8/tclconfig/tcl.m4.orig
++++ pkgs/itcl4.3.8/tclconfig/tcl.m4
+@@ -104,7 +104,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -272,7 +272,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tkconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tkconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -398,7 +398,7 @@
+ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
+ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
+ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tcl was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tcl.framework installed in an arbitrary location.
+@@ -509,7 +509,7 @@
+ 	TK_LIB_SPEC="${TK_BUILD_LIB_SPEC}"
+ 	TK_STUB_LIB_SPEC="${TK_BUILD_STUB_LIB_SPEC}"
+ 	TK_STUB_LIB_PATH="${TK_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tk was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tk.framework installed in an arbitrary location.
+@@ -815,7 +815,7 @@
+ 	    AC_DEFINE(USE_THREAD_ALLOC, 1,
+ 		[Do we want to use the threaded memory allocator?])
+ 	    AC_DEFINE(_REENTRANT, 1, [Do we want the reentrant OS API?])
+-	    if test "`uname -s`" = "SunOS" ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "SunOS" ; then
+ 		AC_DEFINE(_POSIX_PTHREAD_SEMANTICS, 1,
+ 			[Do we really want to follow the standard? Yes we do!])
+ 	    fi
+@@ -1010,15 +1010,15 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		AC_MSG_WARN([can't find uname command])
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+@@ -2737,7 +2737,7 @@
+ 	CFLAGS=""
+     fi
+ 
+-    case "`uname -s`" in
++    case "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" in
+ 	*win32*|*WIN32*|*MINGW32_*|*MINGW64_*|*MSYS_*)
+ 	    AC_CHECK_PROG(CYGPATH, cygpath, cygpath -m, echo)
+ 	    EXEEXT=".exe"
+@@ -3430,7 +3430,7 @@
+ 	# We want to ensure these are substituted so as not to require
+ 	# any *_NATIVE vars be defined in the Makefile
+ 	TCL_INCLUDES="-I${TCL_GENERIC_DIR_NATIVE} -I${TCL_PLATFORM_DIR_NATIVE}"
+-	if test "`uname -s`" = "Darwin"; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	    # If Tcl was built as a framework, attempt to use
+ 	    # the framework's Headers and PrivateHeaders directories
+ 	    case ${TCL_DEFS} in
+@@ -3494,7 +3494,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tcl was built as a framework, attempt to use
+ 		# the framework's Headers directory
+ 		case ${TCL_DEFS} in
+@@ -3608,7 +3608,7 @@
+ 	if test "${TEA_WINDOWINGSYSTEM}" = "aqua"; then
+ 	   TK_INCLUDES="${TK_INCLUDES} -I\"${TK_SRC_DIR_NATIVE}/macosx\""
+ 	fi
+-	if test "`uname -s`" = "Darwin"; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	    # If Tk was built as a framework, attempt to use
+ 	    # the framework's Headers and PrivateHeaders directories
+ 	    case ${TK_DEFS} in
+@@ -3673,7 +3673,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tk was built as a framework, attempt to use
+ 		# the framework's Headers directory.
+ 		case ${TK_DEFS} in
+--- pkgs/sqlite3.53.4/configure.orig
++++ pkgs/sqlite3.53.4/configure
+@@ -2670,7 +2670,7 @@
+ 	CFLAGS=""
+     fi
+ 
+-    case "`uname -s`" in
++    case "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" in
+ 	*win32*|*WIN32*|*MINGW32_*|*MINGW64_*|*MSYS_*)
+ 	    # Extract the first word of "cygpath", so it can be a program name with args.
+ set dummy cygpath; ac_word=$2
+@@ -2789,16 +2789,16 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
+ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+@@ -2908,7 +2908,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -4098,7 +4098,7 @@
+ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
+ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
+ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tcl was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tcl.framework installed in an arbitrary location.
+@@ -6077,7 +6077,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tcl was built as a framework, attempt to use
+ 		# the framework's Headers directory
+ 		case ${TCL_DEFS} in
+@@ -6180,7 +6180,7 @@
+ 
+ printf '%s\n' "#define _REENTRANT 1" >>confdefs.h
+ 
+-	    if test "`uname -s`" = "SunOS" ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "SunOS" ; then
+ 
+ printf '%s\n' "#define _POSIX_PTHREAD_SEMANTICS 1" >>confdefs.h
+ 
+@@ -6837,16 +6837,16 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
+ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+--- pkgs/sqlite3.53.4/tclconfig/tcl.m4.orig
++++ pkgs/sqlite3.53.4/tclconfig/tcl.m4
+@@ -104,7 +104,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -269,7 +269,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tkconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tkconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -392,7 +392,7 @@
+ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
+ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
+ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tcl was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tcl.framework installed in an arbitrary location.
+@@ -503,7 +503,7 @@
+ 	TK_LIB_SPEC="${TK_BUILD_LIB_SPEC}"
+ 	TK_STUB_LIB_SPEC="${TK_BUILD_STUB_LIB_SPEC}"
+ 	TK_STUB_LIB_PATH="${TK_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tk was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tk.framework installed in an arbitrary location.
+@@ -835,7 +835,7 @@
+ 	    AC_DEFINE(USE_THREAD_ALLOC, 1,
+ 		[Do we want to use the threaded memory allocator?])
+ 	    AC_DEFINE(_REENTRANT, 1, [Do we want the reentrant OS API?])
+-	    if test "`uname -s`" = "SunOS" ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "SunOS" ; then
+ 		AC_DEFINE(_POSIX_PTHREAD_SEMANTICS, 1,
+ 			[Do we really want to follow the standard? Yes we do!])
+ 	    fi
+@@ -1030,15 +1030,15 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		AC_MSG_WARN([can't find uname command])
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+@@ -2757,7 +2757,7 @@
+ 	CFLAGS=""
+     fi
+ 
+-    case "`uname -s`" in
++    case "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" in
+ 	*win32*|*WIN32*|*MINGW32_*|*MINGW64_*|*MSYS_*)
+ 	    AC_CHECK_PROG(CYGPATH, cygpath, cygpath -m, echo)
+ 	    EXEEXT=".exe"
+@@ -3450,7 +3450,7 @@
+ 	# We want to ensure these are substituted so as not to require
+ 	# any *_NATIVE vars be defined in the Makefile
+ 	TCL_INCLUDES="-I${TCL_GENERIC_DIR_NATIVE} -I${TCL_PLATFORM_DIR_NATIVE}"
+-	if test "`uname -s`" = "Darwin"; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	    # If Tcl was built as a framework, attempt to use
+ 	    # the framework's Headers and PrivateHeaders directories
+ 	    case ${TCL_DEFS} in
+@@ -3514,7 +3514,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tcl was built as a framework, attempt to use
+ 		# the framework's Headers directory
+ 		case ${TCL_DEFS} in
+@@ -3628,7 +3628,7 @@
+ 	if test "${TEA_WINDOWINGSYSTEM}" = "aqua"; then
+ 	   TK_INCLUDES="${TK_INCLUDES} -I\"${TK_SRC_DIR_NATIVE}/macosx\""
+ 	fi
+-	if test "`uname -s`" = "Darwin"; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	    # If Tk was built as a framework, attempt to use
+ 	    # the framework's Headers and PrivateHeaders directories
+ 	    case ${TK_DEFS} in
+@@ -3693,7 +3693,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tk was built as a framework, attempt to use
+ 		# the framework's Headers directory.
+ 		case ${TK_DEFS} in
+--- pkgs/tdbc1.1.15/configure.orig
++++ pkgs/tdbc1.1.15/configure
+@@ -2639,7 +2639,7 @@
+ 	CFLAGS=""
+     fi
+ 
+-    case "`uname -s`" in
++    case "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" in
+ 	*win32*|*WIN32*|*MINGW32_*|*MINGW64_*|*MSYS_*)
+ 	    # Extract the first word of "cygpath", so it can be a program name with args.
+ set dummy cygpath; ac_word=$2
+@@ -2758,16 +2758,16 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
+ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+@@ -2877,7 +2877,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -4067,7 +4067,7 @@
+ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
+ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
+ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tcl was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tcl.framework installed in an arbitrary location.
+@@ -6186,7 +6186,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tcl was built as a framework, attempt to use
+ 		# the framework's Headers directory
+ 		case ${TCL_DEFS} in
+@@ -6289,7 +6289,7 @@
+ 
+ printf '%s\n' "#define _REENTRANT 1" >>confdefs.h
+ 
+-	    if test "`uname -s`" = "SunOS" ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "SunOS" ; then
+ 
+ printf '%s\n' "#define _POSIX_PTHREAD_SEMANTICS 1" >>confdefs.h
+ 
+@@ -6924,16 +6924,16 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
+ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+--- pkgs/tdbc1.1.15/tclconfig/tcl.m4.orig
++++ pkgs/tdbc1.1.15/tclconfig/tcl.m4
+@@ -104,7 +104,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -269,7 +269,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tkconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tkconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -392,7 +392,7 @@
+ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
+ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
+ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tcl was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tcl.framework installed in an arbitrary location.
+@@ -503,7 +503,7 @@
+ 	TK_LIB_SPEC="${TK_BUILD_LIB_SPEC}"
+ 	TK_STUB_LIB_SPEC="${TK_BUILD_STUB_LIB_SPEC}"
+ 	TK_STUB_LIB_PATH="${TK_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tk was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tk.framework installed in an arbitrary location.
+@@ -835,7 +835,7 @@
+ 	    AC_DEFINE(USE_THREAD_ALLOC, 1,
+ 		[Do we want to use the threaded memory allocator?])
+ 	    AC_DEFINE(_REENTRANT, 1, [Do we want the reentrant OS API?])
+-	    if test "`uname -s`" = "SunOS" ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "SunOS" ; then
+ 		AC_DEFINE(_POSIX_PTHREAD_SEMANTICS, 1,
+ 			[Do we really want to follow the standard? Yes we do!])
+ 	    fi
+@@ -1030,15 +1030,15 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		AC_MSG_WARN([can't find uname command])
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+@@ -2757,7 +2757,7 @@
+ 	CFLAGS=""
+     fi
+ 
+-    case "`uname -s`" in
++    case "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" in
+ 	*win32*|*WIN32*|*MINGW32_*|*MINGW64_*|*MSYS_*)
+ 	    AC_CHECK_PROG(CYGPATH, cygpath, cygpath -m, echo)
+ 	    EXEEXT=".exe"
+@@ -3450,7 +3450,7 @@
+ 	# We want to ensure these are substituted so as not to require
+ 	# any *_NATIVE vars be defined in the Makefile
+ 	TCL_INCLUDES="-I${TCL_GENERIC_DIR_NATIVE} -I${TCL_PLATFORM_DIR_NATIVE}"
+-	if test "`uname -s`" = "Darwin"; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	    # If Tcl was built as a framework, attempt to use
+ 	    # the framework's Headers and PrivateHeaders directories
+ 	    case ${TCL_DEFS} in
+@@ -3514,7 +3514,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tcl was built as a framework, attempt to use
+ 		# the framework's Headers directory
+ 		case ${TCL_DEFS} in
+@@ -3628,7 +3628,7 @@
+ 	if test "${TEA_WINDOWINGSYSTEM}" = "aqua"; then
+ 	   TK_INCLUDES="${TK_INCLUDES} -I\"${TK_SRC_DIR_NATIVE}/macosx\""
+ 	fi
+-	if test "`uname -s`" = "Darwin"; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	    # If Tk was built as a framework, attempt to use
+ 	    # the framework's Headers and PrivateHeaders directories
+ 	    case ${TK_DEFS} in
+@@ -3693,7 +3693,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tk was built as a framework, attempt to use
+ 		# the framework's Headers directory.
+ 		case ${TK_DEFS} in
+--- pkgs/tdbcmysql1.1.15/configure.orig
++++ pkgs/tdbcmysql1.1.15/configure
+@@ -2886,7 +2886,7 @@
+ 	CFLAGS=""
+     fi
+ 
+-    case "`uname -s`" in
++    case "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" in
+ 	*win32*|*WIN32*|*MINGW32_*|*MINGW64_*|*MSYS_*)
+ 	    # Extract the first word of "cygpath", so it can be a program name with args.
+ set dummy cygpath; ac_word=$2
+@@ -3005,16 +3005,16 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
+ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+@@ -3124,7 +3124,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -4314,7 +4314,7 @@
+ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
+ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
+ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tcl was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tcl.framework installed in an arbitrary location.
+@@ -6543,7 +6543,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tcl was built as a framework, attempt to use
+ 		# the framework's Headers directory
+ 		case ${TCL_DEFS} in
+@@ -6646,7 +6646,7 @@
+ 
+ printf '%s\n' "#define _REENTRANT 1" >>confdefs.h
+ 
+-	    if test "`uname -s`" = "SunOS" ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "SunOS" ; then
+ 
+ printf '%s\n' "#define _POSIX_PTHREAD_SEMANTICS 1" >>confdefs.h
+ 
+@@ -7281,16 +7281,16 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
+ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+--- pkgs/tdbcmysql1.1.15/tclconfig/tcl.m4.orig
++++ pkgs/tdbcmysql1.1.15/tclconfig/tcl.m4
+@@ -104,7 +104,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -269,7 +269,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tkconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tkconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -392,7 +392,7 @@
+ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
+ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
+ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tcl was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tcl.framework installed in an arbitrary location.
+@@ -503,7 +503,7 @@
+ 	TK_LIB_SPEC="${TK_BUILD_LIB_SPEC}"
+ 	TK_STUB_LIB_SPEC="${TK_BUILD_STUB_LIB_SPEC}"
+ 	TK_STUB_LIB_PATH="${TK_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tk was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tk.framework installed in an arbitrary location.
+@@ -835,7 +835,7 @@
+ 	    AC_DEFINE(USE_THREAD_ALLOC, 1,
+ 		[Do we want to use the threaded memory allocator?])
+ 	    AC_DEFINE(_REENTRANT, 1, [Do we want the reentrant OS API?])
+-	    if test "`uname -s`" = "SunOS" ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "SunOS" ; then
+ 		AC_DEFINE(_POSIX_PTHREAD_SEMANTICS, 1,
+ 			[Do we really want to follow the standard? Yes we do!])
+ 	    fi
+@@ -1030,15 +1030,15 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		AC_MSG_WARN([can't find uname command])
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+@@ -2757,7 +2757,7 @@
+ 	CFLAGS=""
+     fi
+ 
+-    case "`uname -s`" in
++    case "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" in
+ 	*win32*|*WIN32*|*MINGW32_*|*MINGW64_*|*MSYS_*)
+ 	    AC_CHECK_PROG(CYGPATH, cygpath, cygpath -m, echo)
+ 	    EXEEXT=".exe"
+@@ -3450,7 +3450,7 @@
+ 	# We want to ensure these are substituted so as not to require
+ 	# any *_NATIVE vars be defined in the Makefile
+ 	TCL_INCLUDES="-I${TCL_GENERIC_DIR_NATIVE} -I${TCL_PLATFORM_DIR_NATIVE}"
+-	if test "`uname -s`" = "Darwin"; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	    # If Tcl was built as a framework, attempt to use
+ 	    # the framework's Headers and PrivateHeaders directories
+ 	    case ${TCL_DEFS} in
+@@ -3514,7 +3514,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tcl was built as a framework, attempt to use
+ 		# the framework's Headers directory
+ 		case ${TCL_DEFS} in
+@@ -3628,7 +3628,7 @@
+ 	if test "${TEA_WINDOWINGSYSTEM}" = "aqua"; then
+ 	   TK_INCLUDES="${TK_INCLUDES} -I\"${TK_SRC_DIR_NATIVE}/macosx\""
+ 	fi
+-	if test "`uname -s`" = "Darwin"; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	    # If Tk was built as a framework, attempt to use
+ 	    # the framework's Headers and PrivateHeaders directories
+ 	    case ${TK_DEFS} in
+@@ -3693,7 +3693,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tk was built as a framework, attempt to use
+ 		# the framework's Headers directory.
+ 		case ${TK_DEFS} in
+--- pkgs/tdbcodbc1.1.15/configure.orig
++++ pkgs/tdbcodbc1.1.15/configure
+@@ -2881,7 +2881,7 @@
+ 	CFLAGS=""
+     fi
+ 
+-    case "`uname -s`" in
++    case "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" in
+ 	*win32*|*WIN32*|*MINGW32_*|*MINGW64_*|*MSYS_*)
+ 	    # Extract the first word of "cygpath", so it can be a program name with args.
+ set dummy cygpath; ac_word=$2
+@@ -3000,16 +3000,16 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
+ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+@@ -3119,7 +3119,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -4309,7 +4309,7 @@
+ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
+ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
+ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tcl was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tcl.framework installed in an arbitrary location.
+@@ -6538,7 +6538,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tcl was built as a framework, attempt to use
+ 		# the framework's Headers directory
+ 		case ${TCL_DEFS} in
+@@ -6641,7 +6641,7 @@
+ 
+ printf '%s\n' "#define _REENTRANT 1" >>confdefs.h
+ 
+-	    if test "`uname -s`" = "SunOS" ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "SunOS" ; then
+ 
+ printf '%s\n' "#define _POSIX_PTHREAD_SEMANTICS 1" >>confdefs.h
+ 
+@@ -7276,16 +7276,16 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
+ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+--- pkgs/tdbcodbc1.1.15/tclconfig/tcl.m4.orig
++++ pkgs/tdbcodbc1.1.15/tclconfig/tcl.m4
+@@ -104,7 +104,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -269,7 +269,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tkconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tkconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -392,7 +392,7 @@
+ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
+ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
+ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tcl was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tcl.framework installed in an arbitrary location.
+@@ -503,7 +503,7 @@
+ 	TK_LIB_SPEC="${TK_BUILD_LIB_SPEC}"
+ 	TK_STUB_LIB_SPEC="${TK_BUILD_STUB_LIB_SPEC}"
+ 	TK_STUB_LIB_PATH="${TK_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tk was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tk.framework installed in an arbitrary location.
+@@ -835,7 +835,7 @@
+ 	    AC_DEFINE(USE_THREAD_ALLOC, 1,
+ 		[Do we want to use the threaded memory allocator?])
+ 	    AC_DEFINE(_REENTRANT, 1, [Do we want the reentrant OS API?])
+-	    if test "`uname -s`" = "SunOS" ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "SunOS" ; then
+ 		AC_DEFINE(_POSIX_PTHREAD_SEMANTICS, 1,
+ 			[Do we really want to follow the standard? Yes we do!])
+ 	    fi
+@@ -1030,15 +1030,15 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		AC_MSG_WARN([can't find uname command])
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+@@ -2757,7 +2757,7 @@
+ 	CFLAGS=""
+     fi
+ 
+-    case "`uname -s`" in
++    case "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" in
+ 	*win32*|*WIN32*|*MINGW32_*|*MINGW64_*|*MSYS_*)
+ 	    AC_CHECK_PROG(CYGPATH, cygpath, cygpath -m, echo)
+ 	    EXEEXT=".exe"
+@@ -3450,7 +3450,7 @@
+ 	# We want to ensure these are substituted so as not to require
+ 	# any *_NATIVE vars be defined in the Makefile
+ 	TCL_INCLUDES="-I${TCL_GENERIC_DIR_NATIVE} -I${TCL_PLATFORM_DIR_NATIVE}"
+-	if test "`uname -s`" = "Darwin"; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	    # If Tcl was built as a framework, attempt to use
+ 	    # the framework's Headers and PrivateHeaders directories
+ 	    case ${TCL_DEFS} in
+@@ -3514,7 +3514,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tcl was built as a framework, attempt to use
+ 		# the framework's Headers directory
+ 		case ${TCL_DEFS} in
+@@ -3628,7 +3628,7 @@
+ 	if test "${TEA_WINDOWINGSYSTEM}" = "aqua"; then
+ 	   TK_INCLUDES="${TK_INCLUDES} -I\"${TK_SRC_DIR_NATIVE}/macosx\""
+ 	fi
+-	if test "`uname -s`" = "Darwin"; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	    # If Tk was built as a framework, attempt to use
+ 	    # the framework's Headers and PrivateHeaders directories
+ 	    case ${TK_DEFS} in
+@@ -3693,7 +3693,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tk was built as a framework, attempt to use
+ 		# the framework's Headers directory.
+ 		case ${TK_DEFS} in
+--- pkgs/tdbcpostgres1.1.15/configure.orig
++++ pkgs/tdbcpostgres1.1.15/configure
+@@ -2885,7 +2885,7 @@
+ 	CFLAGS=""
+     fi
+ 
+-    case "`uname -s`" in
++    case "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" in
+ 	*win32*|*WIN32*|*MINGW32_*|*MINGW64_*|*MSYS_*)
+ 	    # Extract the first word of "cygpath", so it can be a program name with args.
+ set dummy cygpath; ac_word=$2
+@@ -3004,16 +3004,16 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
+ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+@@ -3123,7 +3123,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -4313,7 +4313,7 @@
+ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
+ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
+ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tcl was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tcl.framework installed in an arbitrary location.
+@@ -6542,7 +6542,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tcl was built as a framework, attempt to use
+ 		# the framework's Headers directory
+ 		case ${TCL_DEFS} in
+@@ -6645,7 +6645,7 @@
+ 
+ printf '%s\n' "#define _REENTRANT 1" >>confdefs.h
+ 
+-	    if test "`uname -s`" = "SunOS" ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "SunOS" ; then
+ 
+ printf '%s\n' "#define _POSIX_PTHREAD_SEMANTICS 1" >>confdefs.h
+ 
+@@ -7280,16 +7280,16 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
+ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+--- pkgs/tdbcpostgres1.1.15/tclconfig/tcl.m4.orig
++++ pkgs/tdbcpostgres1.1.15/tclconfig/tcl.m4
+@@ -104,7 +104,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -269,7 +269,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tkconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tkconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -392,7 +392,7 @@
+ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
+ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
+ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tcl was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tcl.framework installed in an arbitrary location.
+@@ -503,7 +503,7 @@
+ 	TK_LIB_SPEC="${TK_BUILD_LIB_SPEC}"
+ 	TK_STUB_LIB_SPEC="${TK_BUILD_STUB_LIB_SPEC}"
+ 	TK_STUB_LIB_PATH="${TK_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tk was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tk.framework installed in an arbitrary location.
+@@ -835,7 +835,7 @@
+ 	    AC_DEFINE(USE_THREAD_ALLOC, 1,
+ 		[Do we want to use the threaded memory allocator?])
+ 	    AC_DEFINE(_REENTRANT, 1, [Do we want the reentrant OS API?])
+-	    if test "`uname -s`" = "SunOS" ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "SunOS" ; then
+ 		AC_DEFINE(_POSIX_PTHREAD_SEMANTICS, 1,
+ 			[Do we really want to follow the standard? Yes we do!])
+ 	    fi
+@@ -1030,15 +1030,15 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		AC_MSG_WARN([can't find uname command])
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+@@ -2757,7 +2757,7 @@
+ 	CFLAGS=""
+     fi
+ 
+-    case "`uname -s`" in
++    case "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" in
+ 	*win32*|*WIN32*|*MINGW32_*|*MINGW64_*|*MSYS_*)
+ 	    AC_CHECK_PROG(CYGPATH, cygpath, cygpath -m, echo)
+ 	    EXEEXT=".exe"
+@@ -3450,7 +3450,7 @@
+ 	# We want to ensure these are substituted so as not to require
+ 	# any *_NATIVE vars be defined in the Makefile
+ 	TCL_INCLUDES="-I${TCL_GENERIC_DIR_NATIVE} -I${TCL_PLATFORM_DIR_NATIVE}"
+-	if test "`uname -s`" = "Darwin"; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	    # If Tcl was built as a framework, attempt to use
+ 	    # the framework's Headers and PrivateHeaders directories
+ 	    case ${TCL_DEFS} in
+@@ -3514,7 +3514,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tcl was built as a framework, attempt to use
+ 		# the framework's Headers directory
+ 		case ${TCL_DEFS} in
+@@ -3628,7 +3628,7 @@
+ 	if test "${TEA_WINDOWINGSYSTEM}" = "aqua"; then
+ 	   TK_INCLUDES="${TK_INCLUDES} -I\"${TK_SRC_DIR_NATIVE}/macosx\""
+ 	fi
+-	if test "`uname -s`" = "Darwin"; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	    # If Tk was built as a framework, attempt to use
+ 	    # the framework's Headers and PrivateHeaders directories
+ 	    case ${TK_DEFS} in
+@@ -3693,7 +3693,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tk was built as a framework, attempt to use
+ 		# the framework's Headers directory.
+ 		case ${TK_DEFS} in
+--- pkgs/tdbcsqlite3-1.1.15/configure.orig
++++ pkgs/tdbcsqlite3-1.1.15/configure
+@@ -2520,7 +2520,7 @@
+ 	CFLAGS=""
+     fi
+ 
+-    case "`uname -s`" in
++    case "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" in
+ 	*win32*|*WIN32*|*MINGW32_*|*MINGW64_*|*MSYS_*)
+ 	    # Extract the first word of "cygpath", so it can be a program name with args.
+ set dummy cygpath; ac_word=$2
+@@ -2639,16 +2639,16 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
+ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+@@ -2758,7 +2758,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -3948,7 +3948,7 @@
+ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
+ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
+ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tcl was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tcl.framework installed in an arbitrary location.
+@@ -4515,7 +4515,7 @@
+ 
+ printf '%s\n' "#define _REENTRANT 1" >>confdefs.h
+ 
+-	    if test "`uname -s`" = "SunOS" ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "SunOS" ; then
+ 
+ printf '%s\n' "#define _POSIX_PTHREAD_SEMANTICS 1" >>confdefs.h
+ 
+@@ -5113,16 +5113,16 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
+ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+--- pkgs/tdbcsqlite3-1.1.15/tclconfig/tcl.m4.orig
++++ pkgs/tdbcsqlite3-1.1.15/tclconfig/tcl.m4
+@@ -104,7 +104,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -269,7 +269,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tkconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tkconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -392,7 +392,7 @@
+ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
+ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
+ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tcl was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tcl.framework installed in an arbitrary location.
+@@ -503,7 +503,7 @@
+ 	TK_LIB_SPEC="${TK_BUILD_LIB_SPEC}"
+ 	TK_STUB_LIB_SPEC="${TK_BUILD_STUB_LIB_SPEC}"
+ 	TK_STUB_LIB_PATH="${TK_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tk was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tk.framework installed in an arbitrary location.
+@@ -835,7 +835,7 @@
+ 	    AC_DEFINE(USE_THREAD_ALLOC, 1,
+ 		[Do we want to use the threaded memory allocator?])
+ 	    AC_DEFINE(_REENTRANT, 1, [Do we want the reentrant OS API?])
+-	    if test "`uname -s`" = "SunOS" ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "SunOS" ; then
+ 		AC_DEFINE(_POSIX_PTHREAD_SEMANTICS, 1,
+ 			[Do we really want to follow the standard? Yes we do!])
+ 	    fi
+@@ -1030,15 +1030,15 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		AC_MSG_WARN([can't find uname command])
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+@@ -2757,7 +2757,7 @@
+ 	CFLAGS=""
+     fi
+ 
+-    case "`uname -s`" in
++    case "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" in
+ 	*win32*|*WIN32*|*MINGW32_*|*MINGW64_*|*MSYS_*)
+ 	    AC_CHECK_PROG(CYGPATH, cygpath, cygpath -m, echo)
+ 	    EXEEXT=".exe"
+@@ -3450,7 +3450,7 @@
+ 	# We want to ensure these are substituted so as not to require
+ 	# any *_NATIVE vars be defined in the Makefile
+ 	TCL_INCLUDES="-I${TCL_GENERIC_DIR_NATIVE} -I${TCL_PLATFORM_DIR_NATIVE}"
+-	if test "`uname -s`" = "Darwin"; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	    # If Tcl was built as a framework, attempt to use
+ 	    # the framework's Headers and PrivateHeaders directories
+ 	    case ${TCL_DEFS} in
+@@ -3514,7 +3514,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tcl was built as a framework, attempt to use
+ 		# the framework's Headers directory
+ 		case ${TCL_DEFS} in
+@@ -3628,7 +3628,7 @@
+ 	if test "${TEA_WINDOWINGSYSTEM}" = "aqua"; then
+ 	   TK_INCLUDES="${TK_INCLUDES} -I\"${TK_SRC_DIR_NATIVE}/macosx\""
+ 	fi
+-	if test "`uname -s`" = "Darwin"; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	    # If Tk was built as a framework, attempt to use
+ 	    # the framework's Headers and PrivateHeaders directories
+ 	    case ${TK_DEFS} in
+@@ -3693,7 +3693,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tk was built as a framework, attempt to use
+ 		# the framework's Headers directory.
+ 		case ${TK_DEFS} in
+--- pkgs/thread3.0.7/configure.orig
++++ pkgs/thread3.0.7/configure
+@@ -2626,7 +2626,7 @@
+ 	CFLAGS=""
+     fi
+ 
+-    case "`uname -s`" in
++    case "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" in
+ 	*win32*|*WIN32*|*MINGW32_*|*MINGW64_*|*MSYS_*)
+ 	    # Extract the first word of "cygpath", so it can be a program name with args.
+ set dummy cygpath; ac_word=$2
+@@ -2745,16 +2745,16 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
+ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+@@ -2864,7 +2864,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -4054,7 +4054,7 @@
+ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
+ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
+ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tcl was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tcl.framework installed in an arbitrary location.
+@@ -5854,7 +5854,7 @@
+ 	{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: found NaviServer/AOLserver in $NS_DIR" >&5
+ printf '%s\n' "found NaviServer/AOLserver in $NS_DIR" >&6; }
+ 	NS_INCLUDES="-I\"${NS_DIR}/include\""
+-	if test "`uname -s`" = Darwin ; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = Darwin ; then
+ 	    aollibs=`ls ${NS_DIR}/lib/libns* 2>/dev/null`
+ 	    if test x"$aollibs" != x ; then
+ 		NS_LIBS="-L\"${NS_DIR}/lib\" -lnsd -lnsthread"
+@@ -6086,7 +6086,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tcl was built as a framework, attempt to use
+ 		# the framework's Headers directory
+ 		case ${TCL_DEFS} in
+@@ -6189,7 +6189,7 @@
+ 
+ printf '%s\n' "#define _REENTRANT 1" >>confdefs.h
+ 
+-	    if test "`uname -s`" = "SunOS" ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "SunOS" ; then
+ 
+ printf '%s\n' "#define _POSIX_PTHREAD_SEMANTICS 1" >>confdefs.h
+ 
+@@ -6824,16 +6824,16 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
+ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+--- pkgs/thread3.0.7/tclconfig/tcl.m4.orig
++++ pkgs/thread3.0.7/tclconfig/tcl.m4
+@@ -104,7 +104,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -269,7 +269,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tkconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tkconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -392,7 +392,7 @@
+ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
+ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
+ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tcl was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tcl.framework installed in an arbitrary location.
+@@ -503,7 +503,7 @@
+ 	TK_LIB_SPEC="${TK_BUILD_LIB_SPEC}"
+ 	TK_STUB_LIB_SPEC="${TK_BUILD_STUB_LIB_SPEC}"
+ 	TK_STUB_LIB_PATH="${TK_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tk was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tk.framework installed in an arbitrary location.
+@@ -835,7 +835,7 @@
+ 	    AC_DEFINE(USE_THREAD_ALLOC, 1,
+ 		[Do we want to use the threaded memory allocator?])
+ 	    AC_DEFINE(_REENTRANT, 1, [Do we want the reentrant OS API?])
+-	    if test "`uname -s`" = "SunOS" ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "SunOS" ; then
+ 		AC_DEFINE(_POSIX_PTHREAD_SEMANTICS, 1,
+ 			[Do we really want to follow the standard? Yes we do!])
+ 	    fi
+@@ -1030,15 +1030,15 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		AC_MSG_WARN([can't find uname command])
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+@@ -2757,7 +2757,7 @@
+ 	CFLAGS=""
+     fi
+ 
+-    case "`uname -s`" in
++    case "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" in
+ 	*win32*|*WIN32*|*MINGW32_*|*MINGW64_*|*MSYS_*)
+ 	    AC_CHECK_PROG(CYGPATH, cygpath, cygpath -m, echo)
+ 	    EXEEXT=".exe"
+@@ -3450,7 +3450,7 @@
+ 	# We want to ensure these are substituted so as not to require
+ 	# any *_NATIVE vars be defined in the Makefile
+ 	TCL_INCLUDES="-I${TCL_GENERIC_DIR_NATIVE} -I${TCL_PLATFORM_DIR_NATIVE}"
+-	if test "`uname -s`" = "Darwin"; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	    # If Tcl was built as a framework, attempt to use
+ 	    # the framework's Headers and PrivateHeaders directories
+ 	    case ${TCL_DEFS} in
+@@ -3514,7 +3514,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tcl was built as a framework, attempt to use
+ 		# the framework's Headers directory
+ 		case ${TCL_DEFS} in
+@@ -3628,7 +3628,7 @@
+ 	if test "${TEA_WINDOWINGSYSTEM}" = "aqua"; then
+ 	   TK_INCLUDES="${TK_INCLUDES} -I\"${TK_SRC_DIR_NATIVE}/macosx\""
+ 	fi
+-	if test "`uname -s`" = "Darwin"; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	    # If Tk was built as a framework, attempt to use
+ 	    # the framework's Headers and PrivateHeaders directories
+ 	    case ${TK_DEFS} in
+@@ -3693,7 +3693,7 @@
+ 	    fi
+ 	else
+ 	    list=""
+-	    if test "`uname -s`" = "Darwin"; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 		# If Tk was built as a framework, attempt to use
+ 		# the framework's Headers directory.
+ 		case ${TK_DEFS} in
+--- unix/configure.orig
++++ unix/configure
+@@ -5671,16 +5671,16 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
+ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+@@ -8602,7 +8602,7 @@
+ fi
+ 
+ 
+-if test "`uname -s`" = "Darwin" && \
++if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" && \
+ 	test "`uname -r | awk -F. '{print $1}'`" -lt 7; then
+     # prior to Darwin 7, realpath is not threadsafe, so don't
+     # use it when threads are enabled, c.f. bug # 711232
+@@ -9151,7 +9151,7 @@
+ 
+ fi
+ 
+-if test "`uname -s`" = "Darwin" && \
++if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" && \
+ 	test "`uname -r | awk -F. '{print $1}'`" -gt 5; then
+     # Starting with Darwin 6 (Mac OSX 10.2), gethostbyX
+     # are actually MT-safe as they always return pointers
+@@ -9163,7 +9163,7 @@
+ printf '%s\n' "#define HAVE_MTSAFE_GETHOSTBYADDR 1" >>confdefs.h
+ 
+ 
+-elif test "`uname -s`" = "HP-UX" && \
++elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "HP-UX" && \
+ 	test "`uname -r|sed -e 's|B\.||' -e 's|\..*$||'`" -gt 10; then
+     # Starting with HPUX 11.00 (we believe), gethostbyX
+     # are actually MT-safe as they always return pointers
+@@ -9773,7 +9773,7 @@
+ 
+ { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for advanced notifier support" >&5
+ printf %s "checking for advanced notifier support... " >&6; }
+-case x`uname -s` in
++case x${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`} in
+   xLinux)
+ 	{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: epoll(7)" >&5
+ printf '%s\n' "epoll(7)" >&6; }
+@@ -10713,7 +10713,7 @@
+ # Darwin specific API checks and defines
+ #--------------------------------------------------------------------
+ 
+-if test "`uname -s`" = "Darwin" ; then
++if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" ; then
+     ac_fn_c_check_header_compile "$LINENO" "copyfile.h" "ac_cv_header_copyfile_h" "$ac_includes_default"
+ if test "x$ac_cv_header_copyfile_h" = xyes
+ then :
+@@ -10919,16 +10919,16 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: can't find uname command" >&5
+ printf '%s\n' "$as_me: WARNING: can't find uname command" >&2;}
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi
+@@ -11129,9 +11129,9 @@
+ 
+     DTRACE_SRC="\${DTRACE_SRC}"
+     DTRACE_HDR="\${DTRACE_HDR}"
+-    if test "`uname -s`" != "Darwin" ; then
++    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" != "Darwin" ; then
+ 	DTRACE_OBJ="\${DTRACE_OBJ}"
+-	if test "`uname -s`" = "SunOS" -a "$SHARED_BUILD" = "0" ; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "SunOS" -a "$SHARED_BUILD" = "0" ; then
+ 	    # Need to create an intermediate object file to ensure tclDTrace.o
+ 	    # gets included when linking against the static tcl library.
+ 	    STLIB_LD='stlib_ld () { /usr/ccs/bin/ld -r -o $${1%.a}.o "$${@:2}" && '"${STLIB_LD}"' $${1} $${1%.a}.o ; } && stlib_ld'
+@@ -11224,9 +11224,9 @@
+ # AIX remembers this path and will attempt to use it at run-time to look
+ # up the Tcl library.
+ 
+-if test "`uname -s`" = "Darwin" ; then
++if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" ; then
+ 
+-    if test "`uname -s`" = "Darwin" ; then
++    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" ; then
+ 	{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking how to package libraries" >&5
+ printf %s "checking how to package libraries... " >&6; }
+ 	# Check whether --enable-framework was given.
+--- unix/configure.ac.orig
++++ unix/configure.ac
+@@ -240,7 +240,7 @@
+ AC_CHECK_FUNC(tcdrain, , [AC_DEFINE(NO_TCDRAIN, 1, [Do we have tcdrain()])])
+ AC_CHECK_FUNC(uname, , [AC_DEFINE(NO_UNAME, 1, [Do we have uname()])])
+ 
+-if test "`uname -s`" = "Darwin" && \
++if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" && \
+ 	test "`uname -r | awk -F. '{print [$]1}'`" -lt 7; then
+     # prior to Darwin 7, realpath is not threadsafe, so don't
+     # use it when threads are enabled, c.f. bug # 711232
+@@ -258,7 +258,7 @@
+ SC_TCL_GETPWNAM_R
+ SC_TCL_GETGRGID_R
+ SC_TCL_GETGRNAM_R
+-if test "`uname -s`" = "Darwin" && \
++if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" && \
+ 	test "`uname -r | awk -F. '{print [$]1}'`" -gt 5; then
+     # Starting with Darwin 6 (Mac OSX 10.2), gethostbyX
+     # are actually MT-safe as they always return pointers
+@@ -268,7 +268,7 @@
+     AC_DEFINE(HAVE_MTSAFE_GETHOSTBYADDR, 1,
+ 	    [Do we have MT-safe gethostbyaddr() ?])
+ 
+-elif test "`uname -s`" = "HP-UX" && \
++elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "HP-UX" && \
+ 	test "`uname -r|sed -e 's|B\.||' -e 's|\..*$||'`" -gt 10; then
+     # Starting with HPUX 11.00 (we believe), gethostbyX
+     # are actually MT-safe as they always return pointers
+@@ -336,7 +336,7 @@
+ #------------------------------------------------------------------------
+ 
+ AC_MSG_CHECKING([for advanced notifier support])
+-case x`uname -s` in
++case x${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`} in
+   xLinux)
+ 	AC_MSG_RESULT([epoll(7)])
+ 	AC_CHECK_HEADERS([sys/epoll.h],
+@@ -524,7 +524,7 @@
+ # Darwin specific API checks and defines
+ #--------------------------------------------------------------------
+ 
+-if test "`uname -s`" = "Darwin" ; then
++if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" ; then
+     AC_CHECK_HEADERS(copyfile.h)
+     AC_CHECK_FUNCS(copyfile)
+     if test $tcl_corefoundation = yes; then
+@@ -675,9 +675,9 @@
+     AC_DEFINE(USE_DTRACE, 1, [Are we building with DTrace support?])
+     DTRACE_SRC="\${DTRACE_SRC}"
+     DTRACE_HDR="\${DTRACE_HDR}"
+-    if test "`uname -s`" != "Darwin" ; then
++    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" != "Darwin" ; then
+ 	DTRACE_OBJ="\${DTRACE_OBJ}"
+-	if test "`uname -s`" = "SunOS" -a "$SHARED_BUILD" = "0" ; then
++	if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "SunOS" -a "$SHARED_BUILD" = "0" ; then
+ 	    # Need to create an intermediate object file to ensure tclDTrace.o
+ 	    # gets included when linking against the static tcl library.
+ 	    STLIB_LD='stlib_ld () { /usr/ccs/bin/ld -r -o $${1%.a}.o "$${@:2}" && '"${STLIB_LD}"' $${1} $${1%.a}.o ; } && stlib_ld'
+@@ -738,7 +738,7 @@
+ # AIX remembers this path and will attempt to use it at run-time to look
+ # up the Tcl library.
+ 
+-if test "`uname -s`" = "Darwin" ; then
++if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" ; then
+     SC_ENABLE_FRAMEWORK
+     TCL_SHLIB_LD_EXTRAS="-compatibility_version ${TCL_VERSION} -current_version ${TCL_VERSION}`echo ${TCL_PATCH_LEVEL} | awk ['{match($0, "\\\.[0-9]+"); print substr($0,RSTART,RLENGTH)}']`"
+     TCL_SHLIB_LD_EXTRAS="${TCL_SHLIB_LD_EXTRAS}"' -install_name "${DYLIB_INSTALL_DIR}"/${TCL_LIB_FILE}'
+--- unix/tcl.m4.orig
++++ unix/tcl.m4
+@@ -73,7 +73,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tclconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -206,7 +206,7 @@
+ 	    fi
+ 
+ 	    # on Darwin, check in Framework installation locations
+-	    if test "`uname -s`" = "Darwin" -a x"${ac_cv_c_tkconfig}" = x ; then
++	    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" -a x"${ac_cv_c_tkconfig}" = x ; then
+ 		for i in `ls -d ~/Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Library/Frameworks 2>/dev/null` \
+ 			`ls -d /Network/Library/Frameworks 2>/dev/null` \
+@@ -303,7 +303,7 @@
+ 	TCL_LIB_SPEC="${TCL_BUILD_LIB_SPEC}"
+ 	TCL_STUB_LIB_SPEC="${TCL_BUILD_STUB_LIB_SPEC}"
+ 	TCL_STUB_LIB_PATH="${TCL_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tcl was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tcl.framework installed in an arbitrary location.
+@@ -376,7 +376,7 @@
+ 	TK_LIB_SPEC="${TK_BUILD_LIB_SPEC}"
+ 	TK_STUB_LIB_SPEC="${TK_BUILD_STUB_LIB_SPEC}"
+ 	TK_STUB_LIB_PATH="${TK_BUILD_STUB_LIB_PATH}"
+-    elif test "`uname -s`" = "Darwin"; then
++    elif test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin"; then
+ 	# If Tk was built as a framework, attempt to use the libraries
+ 	# from the framework at the given location so that linking works
+ 	# against Tk.framework installed in an arbitrary location.
+@@ -545,7 +545,7 @@
+ #------------------------------------------------------------------------
+ 
+ AC_DEFUN([SC_ENABLE_FRAMEWORK], [
+-    if test "`uname -s`" = "Darwin" ; then
++    if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "Darwin" ; then
+ 	AC_MSG_CHECKING([how to package libraries])
+ 	AC_ARG_ENABLE(framework,
+ 	    AS_HELP_STRING([--enable-framework],
+@@ -781,15 +781,15 @@
+ 	if test "${TEA_PLATFORM}" = "windows" ; then
+ 	    tcl_cv_sys_version=windows
+ 	else
+-	    tcl_cv_sys_version=`uname -s`-`uname -r`
++	    tcl_cv_sys_version=${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}-${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 	    if test "$?" -ne 0 ; then
+ 		AC_MSG_WARN([can't find uname command])
+ 		tcl_cv_sys_version=unknown
+ 	    else
+-		if test "`uname -s`" = "AIX" ; then
+-		    tcl_cv_sys_version=AIX-`uname -v`.`uname -r`
++		if test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "AIX" ; then
++		    tcl_cv_sys_version=AIX-`uname -v`.${EMBERBSD_TCL_SYSTEM_RELEASE:-`uname -r`}
+ 		fi
+-		if test "`uname -s`" = "NetBSD" -a -f /etc/debian_version ; then
++		if test -z "${EMBERBSD_TCL_SYSTEM_NAME-}" && test "${EMBERBSD_TCL_SYSTEM_NAME:-`uname -s`}" = "NetBSD" -a -f /etc/debian_version ; then
+ 		    tcl_cv_sys_version=NetBSD-Debian
+ 		fi
+ 	    fi

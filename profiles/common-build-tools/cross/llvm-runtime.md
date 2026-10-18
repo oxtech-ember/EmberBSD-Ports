@@ -51,13 +51,14 @@ query requires installed native libxml2 option metadata. All writable recipe
 copies, objects, package archives and databases stay in the new test directory.
 
 ```sh
-ruby profiles/common-build-tools/tests/llvm-package-split.rb \
+export EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK
+python3 -B profiles/common-build-tools/tests/llvm-package-split.py \
     /absolute/exported-pkgsrc /absolute/native-prefix \
     /absolute/cross-tools /absolute/sysroot /absolute/new-split-check
-ruby profiles/common-build-tools/tests/llvm-package-lifecycle.rb \
+python3 -B profiles/common-build-tools/tests/llvm-package-lifecycle.py \
     /absolute/native-prefix /absolute/new-split-check /absolute/new-lifecycle
-ruby profiles/common-build-tools/tests/llvm-stage-links.rb \
-    profiles/common-build-tools/recipes/lang/llvm/files/select-package-stage.pl \
+python3 -B profiles/common-build-tools/tests/llvm-stage-links.py \
+    profiles/common-build-tools/recipes/lang/llvm/files/select-package-stage.py \
     /absolute/new-link-check
 BSDTAR=/absolute/bsdtar ruby probes/plasma-mobile/toolkit/tests/package-set-llvm.rb \
     /absolute/native-prefix /absolute/new-policy-check
@@ -73,8 +74,9 @@ both real builds, complete package checks, installed payload/ELF closure,
 C API/bitcode, four default ORC JITLink lifecycles and ordinary runtime
 removal/reinstallation in E34 VM. The accepted native metadata helper agrees
 with all 16 target query groups and passes sealing/integrity checks.
-Mesa's real LLVM pre-configure guards pass; a complete Mesa build and rendering
-on this stack remain a separate consumer milestone.
+The [Mesa26 consumer](../../common-graphics/cross/mesa-linux-aarch64.md) passes
+full packaging, installed llvmpipe rendering, all 39 target invocations and
+normal package removal/reinstallation on this stack.
 
 The separate [reuse validator](llvm-reuse.md) checks a repeat installation from
 accepted fresh objects. Its recipe adapter and actual package acceptance are

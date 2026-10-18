@@ -32,8 +32,9 @@ Linux/GCC16 builds, exact installed payload checks and API/JIT package lifecycle
 acceptance in E34 VM. Its sealed metadata helper agrees with all 16 actual
 target query groups. Complete Clang and [LLD](cross/lld.md) cross packages pass
 normal package checks and sysroot installation; their installed execution
-remains separate. Mesa's Linux/E34 build/rendering and renewed Qt acceptance
-remain consumer milestones. Dated 23.1.2 receipts retain their original scope.
+remains separate. The [Linux/E34 Mesa consumer](../common-graphics/cross/mesa-linux-aarch64.md)
+passes installed llvmpipe rendering and all 39 target invocations. Renewed Qt
+acceptance remains separate. Dated 23.1.2 receipts retain their original scope.
 
 ## One family and development payload
 
@@ -75,7 +76,8 @@ also needs `llvm-devel-23.1.3nb2`. Native LLVM remains a full package.
 The [Linux/GCC16 split-package acceptance](cross/llvm-linux-aarch64.md) passes
 both full builds and installed C API/ORC package lifecycle checks in E34 VM.
 Its sealed native metadata helper passes all 16 target query groups and Mesa's
-production LLVM guards. Full Mesa rendering on that stack remains separate.
+production LLVM guards. The linked Linux/E34 Mesa receipt covers installed
+CPU rendering and normal package removal/reinstallation on that stack.
 
 ## Inherited patch decisions
 
@@ -149,6 +151,7 @@ relabeled. No project Python helper is added. Wheel payload/shebang/PLIST checks
 await native staging.
 
 ```sh
+export EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK
 sh profiles/common-build-tools/tests/source-profile.sh \
     /absolute/verified-distfiles /absolute/new-work llvm-source
 ```
@@ -191,10 +194,10 @@ no upper Python bound, and its resource-limit fixture handles Python 3.15.
 The pinned source passes this bounded launcher contract on host Python 3.15.0.
 This does not establish target wheel installation or the full LLVM test suite.
 
-`llvm-lit-selection.rb` queries the complete recipe with real BSD make:
+`llvm-lit-selection.py` queries the complete recipe with real BSD make:
 
 ```sh
-ruby profiles/common-build-tools/tests/llvm-lit-selection.rb \
+python3 -B profiles/common-build-tools/tests/llvm-lit-selection.py \
     /absolute/normal-export \
     /absolute/source/profiles/common-build-tools/recipes/devel/py-llvm-lit/Makefile \
     /absolute/bmake /absolute/native.mk.conf /absolute/cross.mk.conf \
@@ -217,7 +220,7 @@ it uses the shared Python3.14 provider, without PYTHONPATH overrides.
 
 Use the [common cross composition](cross/README.md) and the
 [host LLVM metadata workflow](../common-graphics/cross/llvm-config.md).
-`cross/build-llvm-native.sh` builds matching native TableGen generators;
+`cross/build-llvm-native.py` builds matching native TableGen generators;
 `EMBERBSD_LLVM_NATIVE_TOOLS` selects their absolute directory. The recipe
 checks each executable's exact version and keeps host generators separate
 from target LLVM headers and libraries. It includes upstream libc utilities

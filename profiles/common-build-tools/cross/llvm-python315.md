@@ -9,9 +9,10 @@ because `bin/lit` and `bin/llvm-lit` have no ABI suffix.
 
 Normal new builds use the common current Python and LLVM packages. Existing
 23.1.3 packages can use the bounded
-[package preparation tool](prepare-llvm-python315.rb). Supply the accepted
+[package preparation tool](prepare-llvm-python315.py). Supply the accepted
 NetBSD/aarch64 Clang, LLD and Python315-lit archives, the matching upstream
 Clang source, host Python 3.15, host CMake, target readelf and host pkg_create.
+Set `EMBERBSD_SDK_SOURCE` to the SDK source directory.
 Run the tool with `--help` for its arguments. Use a new output directory.
 
 This operation does not rebuild the compiler. It verifies the original packing
@@ -28,13 +29,16 @@ SHA256. The JSON receipt records all input/output hashes and allowed changes.
 Historical Python paths in build provenance are not runtime dependencies.
 The output is not a claim of a fresh compiler build or target execution.
 
-The [metadata check](../tests/llvm-python315-metadata.rb) parses actual pkgsrc
-recipes and rejects the old ABI override. The [ownership fixture](../tests/llvm-lit-ownership.rb)
+The [metadata check](../tests/llvm-python315-metadata.py) parses actual pkgsrc
+recipes and rejects the old ABI override. The [ownership fixture](../tests/llvm-lit-ownership.py)
 checks co-install rejection, provider replacement and rollback with real pkgtools.
-The [packlist regression](../tests/llvm-python315-packlist.rb) verifies that
-`pkg_create` emits each generated metadata entry once.
+The [packlist regression](../tests/llvm-python315-packlist.py) verifies that
+`pkg_create` emits each generated metadata entry once. The
+[preparation fixture](../tests/llvm-python315-prepare.py) uses real pkgtools
+to check script replacement and reject a changed upstream body. It has no
+compiler or ELF payload.
 
-Run [the payload check](../tests/llvm-python315-payload.rb) on extracted output
+Run [the payload check](../tests/llvm-python315-payload.py) on extracted output
 packages with host Python 3.15. The original Clang package must fail the same
 check. Run upstream `clang/tools/scan-build-py` unit tests with Python 3.15,
 then run the existing [lit source check](../tests/llvm-lit.sh). The separate

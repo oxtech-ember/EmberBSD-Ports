@@ -28,4 +28,5 @@ Actual AArch64 VM execution passes this RED/GREEN contract without procfs.
 The focused native contract passes ASan/UBSan and strict Memcheck with no live blocks,
 errors or suppressions. Cppcheck, GCC `-fanalyzer` and Clang Static Analyzer report
 no findings in the extracted function before or after the patch using host bindings.
-These checks do not establish a complete nb9 package or graphics runtime acceptance.
+The [Linux/GCC16 package receipt](../../cross/mesa-linux-aarch64.md) separately
+records full nb9 packaging, installed CPU rendering and all 39 target invocations.

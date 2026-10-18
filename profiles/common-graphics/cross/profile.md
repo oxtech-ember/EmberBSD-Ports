@@ -2,7 +2,7 @@
 
 Use the prepared `common-graphics` export and the accepted
 [common cross tools](../../common-build-tools/cross/README.md). The cross
-composition consumes the same canonical GCC16/Python3.14/Meson1.12.1/LLVM23
+composition consumes the same canonical GCC16/Python3.15/Meson1.12.1/LLVM23
 package family. It does not include the native common-tools `mk.conf`, which
 selects an installed native compiler and rejects cross builds.
 
@@ -35,7 +35,7 @@ For cross libX11, the profile also binds `NATIVE_CC` to the common profile's
 absolute `EMBERBSD_CROSS_BUILD_CC`. The pkgsrc recipe appends its own
 `CC_FOR_BUILD` assignment. Its empty Darwin default otherwise clears the host
 compiler selection, and upstream finds the target `gcc` wrapper for `makekeys`.
-The generator must run on macOS while reading the target xorgproto headers.
+The generator must run on the build host while reading target xorgproto headers.
 Cross libxshmfence exposes the already selected host `libtoolize` through
 pkgsrc's tool creation mechanism. The pinned pkgsrc has no `USE_TOOLS`
 mapping for that program, and its cross PATH excludes `TOOLBASE/bin`.
@@ -58,7 +58,7 @@ Canonical real paths must agree between the common MAKECONF and helper input.
 The recipe verifies the helper's hash receipt independently before invoking
 it, then checks target triple, prefix/header/library directories, version,
 RTTI and shared ORC/native components. It does not run a target ELF tool on
-macOS or accept the native generator build's Darwin metadata.
+the build host or accept the native generator build's host metadata.
 
 Both graphics recipes use pkgsrc's `TOOL_PYTHONBIN`, including libdrm's
 build-script shebangs. `PYTHONBIN` continues to describe the target interpreter.
@@ -111,9 +111,10 @@ The sysroot needs the selected target libdrm, zstd/zlib, expat, libudev-bsd,
 Wayland 1.26.0nb1, protocols 1.49 and modular X11 dependencies. The matching host
 scanner is a build tool. It does not install a second target Wayland provider.
 
-This plumbing does not establish that the full Mesa package builds or runs.
-After LLVM and the remaining target dependencies are staged, use ordinary
-pkgsrc build, `check-files`, package and WRKREF checks. Run target LLVM/Mesa
+The [Linux/GCC16 receipt](mesa-linux-aarch64.md) passes full Mesa packaging,
+installed llvmpipe rendering and all 39 target invocations in E34 VM.
+For another stack, use ordinary pkgsrc build, `check-files`, package and
+WRKREF checks after staging the dependencies. Run target LLVM/Mesa
 API and ORC tests, then rebuild GLU, libepoxy, Qt/Wayland, compositor and other
 installed graphics consumers against the same canonical provider. Inspect
 loaded plugins as well as direct ELF dependencies. Do not substitute SONAME

@@ -4,8 +4,10 @@ The common graphics profile replaces `graphics/freeimage` and
 `graphics/freeimageplus` together with the maintained FreeImage 3.19.25 release.
 It also updates the existing `graphics/libraw` provider to 0.22.2.
 These are source recipes. Complete native and target packages remain pending.
-The ordinary native core build passes eight of nine upstream tests. The
-remaining test reaches the release's unsupported system-JPEG transform path.
+The original native core build passes eight of nine upstream tests. The
+JPEG transform test exposes an unsupported path in the unmodified release.
+The source repair uses the common TurboJPEG public API and passes the focused
+coefficient contract below. The revised package's complete suite remains pending.
 The static package list uses the `FreeImageTargets-noconfig.cmake` file produced
 by both ordinary native and AArch64 stages. The repaired complete packages
 have not yet passed their final package checks.
@@ -56,10 +58,15 @@ The original bundled half header can link against current Imath; no previous
 link failure is claimed. This change makes the selected system provider explicit.
 The bundled-header route remains available for upstream's bundled configuration.
 
-The release's system-TIFF G3 implementation returns failure. Its system-JPEG
-lossless transform implementation also returns failure. The previous canonical
-recipe omitted these two implementations. The new recipe does not claim their
-restoration and does not introduce replacement stubs. JPEG XR, HEIF and JPEG XL
+The release's system-TIFF G3 implementation returns failure. Its restoration
+remains separate work. The system-JPEG lossless implementation now uses
+`tj3Transform` from the same common libjpeg-turbo 3.2.0 package as libjpeg.
+It retains marker copying, trimming, perfect-transform checks, crop queries
+and same-handle writes. The original bundled-codec branch remains intact.
+TurboJPEG rejects crops of unknown sampling types. Both crop queries and
+output calls report that limit; uncropped transforms remain available.
+The recipes require the common libjpeg-turbo provider explicitly.
+JPEG XR, HEIF and JPEG XL
 retain upstream's Unix defaults (off). These boundaries do not prevent OCCT's
 normal FreeImage C API integration, which still needs its installed image tests.
 
@@ -67,11 +74,43 @@ normal FreeImage C API integration, which still needs its installed image tests.
 The core CTest suite and actual upstream FreeImagePlus test are retained.
 Their test-only loader environment selects the build library, then the package
 prefix, while retaining the existing host runtime search path.
-In particular, failing JPEG-transform checks must not be disabled to report
-complete codec acceptance. Their system-provider limitation requires a separate
-upstream repair if that broader behavior is needed.
+In particular, JPEG-transform assertions remain active for package acceptance.
 
 ## Checks and next integration
+
+The [JPEG contract](../tests/freeimage-jpeg/README.md) builds the complete real
+`JPEGTransform.cpp` translation unit against the native common codec provider.
+The original source fails a valid perfect vertical flip. The repaired source
+passes 335 transform, crop and error cases. Independent coefficient identities
+check every transformed DCT value, quantization tables and APP1/COM markers.
+All eight operations cover common subsampling types and grayscale, including
+partial edges. Tests also cover normalized and edge-relative rectangles,
+crop queries, nonzero same-handle offsets, short I/O, allocation failure and
+failed or throwing callbacks. Unknown 3:1 sampling keeps uncropped transforms
+and reports the public API's crop restriction consistently.
+
+The header decoder uses libjpeg's `setjmp` error contract in a plain helper
+with heap-owned state. This avoids a C++ exception crossing codec C frames
+without unwind tables. A matched AArch64 control with the former throwing
+callback aborts on malformed input. The repaired source passes all 335 cases
+in EmberBSD with the common GCC16 runtime. The runner explicitly selects
+that runtime during linking and verifies its actual SONAME. Target source
+execution does not establish installed FreeImage package acceptance.
+
+The repaired contract passes strict native Memcheck with zero errors and no
+live allocations. Clang19 reports no diagnostics for either source version
+with the selected GCC16 C++ headers. Cppcheck2.22 retains inherited source/header
+findings with modeled system headers. Its actual GCC16-preprocessed pass stops
+at a system `math.h` parser error in both versions. A clean full Cppcheck result
+is not claimed. The test runner retains both diagnostic sets without category
+suppression. It also compiles, links and runs the actual patched CMake JPEG
+branch. Full package and target execution remain separate gates.
+
+```sh
+python3.15 profiles/common-graphics/tests/freeimage-jpeg/check-source.py \
+  /absolute/FreeImage-3.19.25-linux-source.tar.gz \
+  /absolute/native-g++ /absolute/native-codec-prefix /absolute/new-check
+```
 
 `AssignPixel` copies the same eight supported pixel widths with `memcpy`.
 This removes word and floating-point accesses to potentially unaligned byte

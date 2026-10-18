@@ -1,5 +1,15 @@
 # Cross-building common packages on macOS
 
+Host controllers use Python 3.15 and the standard-library SDK API version 1.
+Set `EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK`, or pass `--sdk-source` to
+the controller. Run these host tools with `python3 -B`. Target run scripts
+remain POSIX shell and do not require host Python on the device.
+The host entrypoints handle INT, TERM and HUP. Signal exits use `128 + signal`.
+Completed producer failures retain their exit status. Imports do not install
+handlers. If the SDK cannot prove the producer session has stopped, it raises
+`ProcessOwnershipError`. Preserve the affected work for a process audit.
+The [LLVM reuse guard](llvm-reuse.md) also blocks another installation.
+
 This opt-in path builds EmberBSD/AArch64 or amd64 pkgsrc packages with the
 [GCC 16.2 cross compiler](../../development-toolchain/cross/README.md).
 The retained NetBSD 11 ABI and target triplet identify compatibility,
@@ -77,7 +87,7 @@ base selection with GCC16 metadata and checks the resulting target ELF links.
 Compose the existing tools without rebuilding them:
 
 ```sh
-sh profiles/common-build-tools/cross/prepare-tools.sh \
+python3 -B profiles/common-build-tools/cross/prepare-tools.py \
     /absolute/gcc16-prefix /absolute/netbsd-tools /absolute/new-cross-tools
 ```
 
@@ -128,7 +138,7 @@ EMBERBSD_BUILD_MSGFMT=/absolute/host-gettext/bin/msgfmt
 EMBERBSD_BUILD_CMAKE=/absolute/host-cmake/bin/cmake
 EMBERBSD_BUILD_AUTOCONF=/absolute/host-autoconf/bin/autoconf
 # Optional matching host interpreter for the Python target package:
-EMBERBSD_CROSS_BUILD_PYTHON=/absolute/python3.14
+EMBERBSD_CROSS_BUILD_PYTHON=/absolute/python3.15
 .include "/absolute/EmberBSD-Ports/profiles/common-build-tools/cross/mk.conf"
 .endif
 ```
@@ -338,9 +348,9 @@ fail explicitly. Libtool declares GNU M4 as a target package dependency.
 
 Run `tests/cross-pkgsrc.sh` against a staged pkgconf package. It exercises real
 pkgsrc parsing, native dependency recursion, ELF metadata and failure cases.
-`tests/cross-tools.sh` checks tool composition, refusal of existing output,
+`tests/cross-tools.py` checks tool composition, refusal of existing output,
 missing host tools and the constrained target Info utility selection.
-`ruby tests/cross-targets.rb BMAKE` checks both target tool compositions,
+`python3 -B tests/cross-targets.py BMAKE` checks both target tool compositions,
 real make variable expansion, runtime-provider selection and mixed-target rejection.
 `tests/cross-libc.rb BMAKE NEW_WORK` exercises the actual pre-extract guard:
 canonical aliases pass; four missing and four divergent libc paths fail.

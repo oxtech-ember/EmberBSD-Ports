@@ -7,13 +7,14 @@ it does not replace QDoc or remove Qt Designer from the package.
 
 ## Matching host tools
 
-First build the native LLVM tools with `build-llvm-native.sh`, as described in
+First build the native LLVM tools with `build-llvm-native.py`, as described in
 [the LLVM family](../llvm-family.md#cross-build-and-accepted-core). Then build
 only the matching native Clang generator from the same verified archive:
 
 ```sh
-HOST_PYTHON=/absolute/host-python3.14 JOBS=3 \
-    sh profiles/common-build-tools/cross/build-clang-native.sh \
+export EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK
+HOST_PYTHON=/absolute/host-python3.15 JOBS=3 \
+    python3 -B profiles/common-build-tools/cross/build-clang-native.py \
     /absolute/llvm-project-23.1.3.src.tar.xz /absolute/native-llvm \
     /absolute/new-clang-host-work /absolute/cmake /absolute/ninja
 ```
@@ -30,7 +31,7 @@ Add these inputs to the private MAKECONF used with the
 EMBERBSD_LLVM_NATIVE_TOOLS=/absolute/native-llvm/bin
 EMBERBSD_CLANG_TABLEGEN=/absolute/new-clang-host-work/native/bin/clang-tblgen
 EMBERBSD_CROSS_LLVM_CONFIG=/absolute/target-metadata/bin/llvm-config
-EMBERBSD_CROSS_BUILD_PYTHON=/absolute/host-python3.14
+EMBERBSD_CROSS_BUILD_PYTHON=/absolute/host-python3.15
 EMBERBSD_CROSS_BUILD_PERL=/absolute/host-perl5.44
 ```
 

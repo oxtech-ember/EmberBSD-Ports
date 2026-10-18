@@ -1,0 +1,3 @@
+FAIL: zero, short and exact capacities
+PASS: real NetBSD sysctl path=/tmp/e14-mesa-path-probe/target-after length=37 capacities=39 procfs=absent
+PASS: genuine GCC16 target baseline rejected; native sysctl repair passes with no procfs

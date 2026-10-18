@@ -1,0 +1,41 @@
+$NetBSD$
+
+EmberBSD, AI-assisted; not submitted upstream.
+Keep the SQLITE_EXTERN override only for the bundled SQLite amalgamation.
+System SQLite headers must retain extern data declarations. Otherwise this
+binding defines SQLite global variables and an incomplete version array.
+Keep the maintained configure input and generated script together.
+
+--- pkgs/sqlite3.53.4/Makefile.in.orig
++++ pkgs/sqlite3.53.4/Makefile.in
+@@ -148,7 +148,7 @@
+ INCLUDES	= @PKG_INCLUDES@ @TCL_INCLUDES@ -I. -I$(srcdir)/..
+ #INCLUDES	= @PKG_INCLUDES@ @TCL_INCLUDES@ @TK_INCLUDES@ @TK_XINCLUDES@
+ 
+-PKG_CFLAGS	= @PKG_CFLAGS@ -DSQLITE_EXTERN=
++PKG_CFLAGS	= @PKG_CFLAGS@
+ 
+ # TCL_DEFS is not strictly need here, but if you remove it, then you
+ # must make sure that configure.ac checks for the necessary components
+--- pkgs/sqlite3.53.4/configure.ac.orig
++++ pkgs/sqlite3.53.4/configure.ac
+@@ -124,7 +124,7 @@
+      [AC_DEFINE(USE_SYSTEM_SQLITE)
+       LIBS="$LIBS -lsqlite3"])])
+ else
+-    TEA_ADD_CFLAGS([-DSQLITE_API=MODULE_SCOPE])
++    TEA_ADD_CFLAGS([-DSQLITE_API=MODULE_SCOPE -DSQLITE_EXTERN=])
+ fi
+ 
+ #--------------------------------------------------------------------
+--- pkgs/sqlite3.53.4/configure.orig
++++ pkgs/sqlite3.53.4/configure
+@@ -6011,7 +6011,7 @@
+ 
+ else
+ 
+-    PKG_CFLAGS="$PKG_CFLAGS -DSQLITE_API=MODULE_SCOPE"
++    PKG_CFLAGS="$PKG_CFLAGS -DSQLITE_API=MODULE_SCOPE -DSQLITE_EXTERN="
+ 
+ 
+ fi

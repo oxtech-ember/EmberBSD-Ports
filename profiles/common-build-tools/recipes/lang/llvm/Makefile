@@ -209,12 +209,17 @@ CMAKE_CONFIGURE_ARGS+=	-DLLVM_TABLEGEN:STRING=${TOOLBASE:Q}/bin/llvm-tblgen
 DEPENDS+= ${PYPKGPREFIX}-llvm-lit-${LLVM_VERSION}{,nb*}:../../devel/py-llvm-lit
 .endif
 
+.include "reuse.mk"
+
+.if !defined(_EMBERBSD_LLVM_REUSE)
 # replacing config.guess is required even for cmake.
 # It is used to detect correct LLVM_HOST_TRIPLE, e.g. for NetBSD/evbarm.
 post-extract:
 .for f in config.guess config.sub
 	${CP} ../../mk/gnu-config/${f} ${WRKSRC}/cmake/${f}
 .endfor
+
+.endif
 
 .include "../../devel/cmake/build.mk"
 .include "../../archivers/zstd/buildlink3.mk"
@@ -226,7 +231,7 @@ post-extract:
 .include "../../mk/bsd.pkg.mk"
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
-# Each source package independently stages the full, unchanged LLVM build.
+# Stage the full LLVM payload before selecting the package partition.
 post-install: llvm-select-stage
 .PHONY: llvm-select-stage
 .PHONY: ${WRKDIR}/.llvm-full-plist ${WRKDIR}/.llvm-runtime-plist ${WRKDIR}/.llvm-devel-plist
@@ -236,7 +241,7 @@ llvm-select-stage: ${PLIST}
 	    PLIST=${WRKDIR:Q}/.llvm-${_llvm_part:tl}-plist \
 	    PLIST_SRC=${LLVM_${_llvm_part}_PLIST_SRC:Q}
 .endfor
-	${PERL5} ${FILESDIR}/select-package-stage.pl ${LLVM_PACKAGE_PART:Q} \
+	${TOOL_PYTHONBIN} -B ${FILESDIR}/select-package-stage.py --sdk-source ${EMBERBSD_SDK_SOURCE:Q} ${LLVM_PACKAGE_PART:Q} \
 	    ${DESTDIR:Q}${PREFIX:Q} ${WRKDIR:Q}/.llvm-full-plist \
 	    ${WRKDIR:Q}/.llvm-runtime-plist ${WRKDIR:Q}/.llvm-devel-plist ${PLIST:Q}
 .endif

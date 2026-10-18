@@ -13,7 +13,8 @@ may be the package stage's `/usr/pkg` directory or the installed sysroot's
 `/usr/pkg`. The library must match the metadata receipt in either case.
 
 ```sh
-ruby build-llvm-api-tests.rb /absolute/cross-tools /absolute/target-sysroot \
+export EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK
+python3 -B build-llvm-api-tests.py /absolute/cross-tools /absolute/target-sysroot \
     /absolute/metadata-tool/bin/llvm-config /absolute/new-work
 ```
 

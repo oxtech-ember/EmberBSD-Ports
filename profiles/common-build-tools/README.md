@@ -1,5 +1,11 @@
 # Current common build tools
 
+The paired [Tcl/Tk 9.1 recipes](cross/tcltk.md) retain bundled extensions,
+system SQLite and ZipFS. Tcl's ordinary native GCC16 package and host
+generator contract pass. Platform branches, metadata and SQLite symbol
+ownership pass causal checks. Full upstream tests and strict memory checks
+retain documented failures; target GUI acceptance remains separate.
+
 The [cwrappers archive repair](cross/cwrappers-unwrap.md) preserves sibling
 directory paths in installed Libtool metadata. Actual native GCC16 wrapper
 checks and bounded module memory checks pass; package integration is separate.
@@ -25,8 +31,9 @@ upstream tests in that VM. The installed [LLVM 23.1.3 core](cross/llvm-api-tests
 The [Linux/GCC16 runtime and SDK split](cross/llvm-linux-aarch64.md) passes both
 full builds, exact installed payload checks and C API/ORC package lifecycle
 acceptance in E34 VM. Its sealed host metadata helper agrees with all 16 target
-query groups and passes Mesa's production LLVM guards. Full Mesa acceptance
-on this stack remains separate.
+query groups and passes Mesa's production LLVM guards. The
+[Mesa26 consumer](../common-graphics/cross/mesa-linux-aarch64.md) passes installed
+llvmpipe rendering, all 39 target invocations and package removal/reinstallation.
 
 The native and cross profiles select the current canonical Ruby 4.0.7 provider.
 Recursive host generators use native Ruby and `ruby40-asciidoctor`.

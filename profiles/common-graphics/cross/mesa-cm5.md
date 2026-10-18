@@ -178,7 +178,7 @@ comparison passes four cycles and reports desktop GL 4.6 with LLVM 23.1.2.
 Cross-build the consumer on the development host:
 
 ```sh
-ruby ../tests/mesa-pkgconfig.rb /absolute/cross-tools /absolute/emberbsd-sysroot \
+python3.15 ../tests/mesa-pkgconfig.py /absolute/cross-tools /absolute/emberbsd-sysroot \
     /absolute/host/bin/pkg-config /absolute/new-desktop-gl-work desktop-gl
 ```
 

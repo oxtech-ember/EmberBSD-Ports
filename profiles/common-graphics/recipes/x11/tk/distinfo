@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (tk9.1.0-src.tar.gz) = 1d96722fb2b16511715dad76a1d165a2e68330c8d55da892fdf16b9030147ea1
+SHA512 (tk9.1.0-src.tar.gz) = 8a0e833b738f418ef380391c89724388a6b0dbbe164ba9e6af0f3a60499d351b7e26dcd9dd0f193884d0da97938de36f0e7d60ef62b06ef5bcd12ea5b3f8cda1
+Size (tk9.1.0-src.tar.gz) = 4948504 bytes
+SHA1 (patch-target-platform) = e0caecda6bd3a55ddf209adb8e2831b0e2968795

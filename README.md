@@ -52,6 +52,12 @@ runtime behavior are validated.
   GCC16 AArch64 packaging verifies all 613 entries; four selected native
   and installed EmberBSD numerical checks pass. Normal package removal and
   reinstallation preserve the verified ownership boundary.
+- [Installed GUI/CAD APIs](profiles/common-graphics/cross/gui-cad-api/README.md):
+  GCC16 AArch64 consumers verify GLU concave tessellation, Cairo image and
+  document output, and GLM numerical transforms through its installed CMake
+  target. The EmberBSD VM checks exact results and canonical runtime providers.
+  GLEW's separate EGL diagnostic retains its missing-GLX-display failure;
+  KiCad 10.0.7 uses GLAD. Complete CAD and display sessions remain pending.
 - [JBIG-KIT 2.2nb1](profiles/common-graphics/cross/jbigkit.md): the common provider
   keeps both libraries and all four image tools. Ordinary GCC16 native and
   AArch64 packages pass package checks; native upstream tests and installed
@@ -65,8 +71,8 @@ runtime behavior are validated.
   and GUI integration remain pending.
 - [Maintained FreeImage sources](profiles/common-graphics/cross/freeimage.md):
   FreeImage/FreeImagePlus 3.19.25 and LibRaw 0.22.2 retain common codecs for
-  OCCT. Focused native half and unaligned pixel-copy checks pass. Complete
-  packages, JPEG lossless transforms and installed image workflows remain pending.
+  OCCT. Focused native half, unaligned pixel-copy and lossless JPEG coefficient
+  checks pass. Complete packages and installed image workflows remain pending.
 - [RapidJSON with GCC16](profiles/common-graphics/cross/rapidjson.md): the common
   current snapshot retains its header APIs, examples and strict unit/performance
   builds. Source repairs cover external pointer tokens and shared pool ownership.
@@ -221,8 +227,10 @@ runtime behavior are validated.
   The [Linux/GCC16 runtime and SDK split](profiles/common-build-tools/cross/llvm-linux-aarch64.md)
   passes both full LLVM builds and installed C API/ORC package lifecycle checks
   in E34 VM. Its sealed native metadata helper agrees with all 16 target query
-  groups and passes Mesa's production LLVM guards. Mesa build/rendering on
-  this Linux/E34 stack remains the next consumer milestone.
+  groups and passes Mesa's production LLVM guards. The resulting
+  [Mesa26 package](profiles/common-graphics/cross/mesa-linux-aarch64.md) passes
+  installed llvmpipe rendering, all 39 target invocations and package
+  removal/reinstallation on this Linux/E34 stack.
 - [Common graphics source packages](profiles/common-graphics/README.md):
   [libudev-bsd render-node discovery](profiles/common-graphics/cross/libudev-render-nodes.md)
   repairs DRM classification for KWin 6.8 with a real-source regression.

@@ -33,7 +33,7 @@ See [the generator regression and bounded repair](../tests/kwin-inputdevice-xml.
 
 QDoc additionally needs matching LLVM/Clang **23.1.3** libraries and CMake exports
 on the host. On macOS/arm64 the verified official SDK can supply both paths;
-use [the preparation recipe](../../../../profiles/common-build-tools/cross/prepare-llvm-macos.sh)
+use [the preparation recipe](../../../../profiles/common-build-tools/cross/prepare-llvm-macos.py)
 with the archive named in the common-tools manifest. This native SDK is never
 installed in the target sysroot. Its static archives contain LLVM23 LTO bitcode;
 the builder selects the matching `libLTO.dylib` for Apple's linker. The older

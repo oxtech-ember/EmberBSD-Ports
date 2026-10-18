@@ -25,14 +25,14 @@ Build fixtures on the development host with the accepted current GCC16
 cross compiler and complete target sysroot:
 
 ```sh
-sh profiles/common-build-tools/cross/build-llvm-dwp-tests.sh \
+export EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK
+python3 -B profiles/common-build-tools/cross/build-llvm-dwp-tests.py \
     /absolute/gcc16/bin/aarch64--netbsd-gcc /absolute/sysroot \
     /absolute/new-fixtures
 ```
 
 The compiler's installed tool layout must support `-gsplit-dwarf`. The
-builder uses Ruby only to damage generated section copies. No Python helper
-is introduced. Transfer the fixtures and target runner without AppleDouble
+Python builder changes only the generated section copies. Transfer the fixtures and target runner without AppleDouble
 files, using `COPYFILE_DISABLE=1 tar --no-xattrs` on macOS. The original
 absolute build directory must not exist on the target.
 
@@ -50,7 +50,7 @@ create legal padding, shared TU tables and independent TU contributions:
 ```sh
 CC=/absolute/gcc16/bin/aarch64--netbsd-gcc \
 OBJCOPY=/absolute/gcc16/bin/aarch64--netbsd-objcopy \
-    ruby profiles/common-build-tools/cross/prepare-llvm-dwp-index-tests.rb \
+    python3 -B profiles/common-build-tools/cross/prepare-llvm-dwp-index-tests.py \
     /absolute/results /absolute/fixtures /absolute/new-indexed-fixtures
 ```
 

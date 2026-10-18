@@ -2,7 +2,7 @@
 .include "Makefile.common"
 
 PKGNAME=	freeimage-3.19.25
-PKGREVISION=	1
+PKGREVISION=	3
 MAINTAINER=	pkgsrc-users@NetBSD.org
 COMMENT=	Image decoding, conversion and encoding library (maintained fork)
 
@@ -25,6 +25,8 @@ BUILDLINK_API_DEPENDS.openexr+=	openexr>=3.5.2
 .include "../../graphics/png/buildlink3.mk"
 .include "../../graphics/tiff/buildlink3.mk"
 .include "../../math/imath/buildlink3.mk"
+JPEG_ACCEPTED=		libjpeg-turbo
+BUILDLINK_API_DEPENDS.libjpeg-turbo+=	libjpeg-turbo>=3.2.0
 .include "../../mk/jpeg.buildlink3.mk"
 .include "../../mk/bsd.prefs.mk"
 PLIST_VARS+=		darwin elf

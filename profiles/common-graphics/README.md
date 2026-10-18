@@ -1,5 +1,10 @@
 # Common graphics source packages
 
+The common [Tcl/Tk 9.1 pair](../common-build-tools/cross/tcltk.md) retains
+X11, Aqua, printing, accessibility, bidi text and ZipFS. Platform branch
+regressions and actual source install inventories pass. Complete target
+packages, Tk display tests and OCCT Draw remain separate acceptance work.
+
 The full [libspnav 1.2 provider](cross/libspnav.md) keeps Unix-socket and
 X11/Magellan interfaces. Ordinary native/AArch64 GCC16 packages and complete
 payload checks pass. Native real-socket lifecycle regressions pass strict
@@ -51,9 +56,9 @@ and installed EmberBSD numerical checks pass, including normal package
 removal and reinstallation. Companion BLAS/LAPACK runtime coverage remains pending.
 
 This opt-in source profile prepares canonical MesaLib 26.2.4nb9, adapted
-libdrm 2.4.134nb2, Wayland 1.26.0 (native nb1/cross nb2) and wayland-protocols 1.49
+libdrm 2.4.134nb4, Wayland 1.26.0 (native nb1/cross nb2) and wayland-protocols 1.49
 for EmberBSD/AArch64, retaining the NetBSD 11 ABI. Native builds and the explicit
-[macOS cross composition](cross/profile.md) consume the existing
+[macOS/Linux cross composition](cross/profile.md) consume the existing
 [common build tools](../common-build-tools/README.md): GCC16, Python3.15,
 Meson1.12.1 and shared LLVM23.1.3 remain one dependency graph with final
 `LOCALBASE=PREFIX=/usr/pkg`. Plasma Mobile uses this exact graphics layer.
@@ -63,7 +68,12 @@ demonstration still require acceptance; individual package results follow.
 
 The [NetBSD executable-path repair](tests/mesa-process-path/README.md) in nb9
 uses native sysctl without procfs. Its actual-source host contract and AArch64
-VM probe pass. Complete nb9 package and graphics acceptance remain pending.
+VM probe pass. The [Linux/GCC16 nb9 package](cross/mesa-linux-aarch64.md) passes
+normal package gates, installed llvmpipe rendering, all 39 target invocations
+and ordinary package removal/reinstallation in the E34 AArch64 VM.
+Its 97-entry payload and 113 runtime library paths match the accepted artifacts.
+One internal test skips; nine NIR cases remain disabled. GPU and GUI acceptance
+retain their separate hardware and consumer boundaries.
 
 The [V3D BO cache mutex repair](tests/mesa-v3d-cache-mutex/README.md) in nb8
 passes actual-source lifecycle, allocation-error, sanitizer, and target analysis

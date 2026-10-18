@@ -62,5 +62,5 @@ File.write(work+'/wlroots-drm.log',inventory)
 check(work,'recorded-live-policy',nil,'sh',work+'/policy.sh',work)
 File.open(work+'/wlroots-drm.log','a') { |f| f.puts 'LOADED: /usr/pkg/lib/gbm/virtio_gpu_gbm.so' }
 check(work,'extra-gbm-provider','Unrecorded package library:','sh',work+'/policy.sh',work)
-check(work,'callback',nil,'ruby',File.join(__dir__,'epoxy-loader-callback.rb'),bundle+'/source/wlroots-drm.c',work+'/callback')
+check(work,'callback',nil,ENV.fetch('PYTHON', 'python3.15'),File.join(__dir__,'epoxy-loader-callback.py'),bundle+'/source/wlroots-drm.c',work+'/callback')
 puts 'PASS: real payload/link verifier, modified keyboard data/DSO/ELF and actual live policy; no target code executed'
