@@ -1,5 +1,9 @@
 # Common graphics source packages
 
+The [Lerc 4.2.0nb1 padding correction](cross/lerc.md) removes a reproduced
+uninitialized Huffman checksum input. Normal GCC16 native/AArch64 packages
+and the original native samples pass. Target execution remains pending.
+
 [Maintained FreeImage 3.19.25 and LibRaw 0.22.2](cross/freeimage.md)
 provide common source recipes for OCCT image support. Source preparation,
 GCC16 header selection and half conversions pass; complete codec packages
