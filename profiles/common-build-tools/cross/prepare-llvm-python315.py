@@ -173,10 +173,10 @@ def prepare(args):
 
 
 if __name__ == '__main__':
-    from sdk_source import install_signal_handlers
+    from sdk_source import exit_error, install_signal_handlers
     install_signal_handlers()
     try:
         _, args = load_sdk()
         prepare(args)
     except Exception as error:
-        sys.exit(f'FAIL: {error}')
+        exit_error(error)

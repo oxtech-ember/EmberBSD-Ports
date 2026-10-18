@@ -106,7 +106,7 @@ def select(part, stage, *lists):
 
 
 if __name__ == '__main__':
-    from sdk_source import install_signal_handlers
+    from sdk_source import exit_error, install_signal_handlers
     install_signal_handlers()
     try:
         _, args = load_sdk()
@@ -114,4 +114,4 @@ if __name__ == '__main__':
             raise ValueError('usage: select-package-stage.py [--sdk-source SOURCE] runtime|devel|check STAGE FULL_PLIST RUNTIME_PLIST DEVEL_PLIST SELECTED_PLIST')
         select(*args)
     except Exception as error:
-        sys.exit(f'FAIL: {error}')
+        exit_error(error)

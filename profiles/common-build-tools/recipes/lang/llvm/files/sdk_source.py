@@ -37,7 +37,17 @@ def install_signal_handlers():
     import signal
 
     def interrupted(number, frame):
-        raise KeyboardInterrupt('Host operation interrupted by signal ' + str(number))
+        raise SystemExit(128 + number)
 
     for number in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
         signal.signal(number, interrupted)
+
+
+def exit_error(error, prefix='FAIL: '):
+    """Preserve completed producer status after explicit SDK selection."""
+    errors = sys.modules.get('emberbsd_sdk.errors')
+    status = 1
+    if errors is not None and isinstance(error, errors.CommandError):
+        status = error.returncode if error.returncode >= 0 else 128 - error.returncode
+    print(prefix + str(error), file=sys.stderr)
+    raise SystemExit(status)

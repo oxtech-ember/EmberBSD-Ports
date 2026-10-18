@@ -74,7 +74,8 @@ for kind in ('fetch', 'reuse'):
                 assert pids.exists(), (case / 'cli.log').read_text()
                 owned = list(map(int, pids.read_text().split()))
                 os.kill(process.pid, number)
-                assert process.wait(timeout=15) != 0
+                status = process.wait(timeout=15)
+                assert status == 128 + number, f'{kind}: expected {128 + number}, got {status}'
                 deadline = time.monotonic() + 3
                 while any(present(pid) for pid in owned) and time.monotonic() < deadline:
                     time.sleep(0.02)

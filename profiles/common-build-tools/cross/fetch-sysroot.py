@@ -82,7 +82,7 @@ def fetch_sysroot(revision, expected_manifest, work):
 
 
 if __name__ == '__main__':
-    from sdk_source import install_signal_handlers
+    from sdk_source import exit_error, install_signal_handlers
     install_signal_handlers()
     try:
         _, args = load_sdk()
@@ -90,4 +90,4 @@ if __name__ == '__main__':
             raise ValueError('Usage: fetch-sysroot.py --sdk-source SOURCE FULL_SOURCE_COMMIT MANIFEST_SHA256 /absolute/unused-work')
         fetch_sysroot(*args)
     except Exception as error:
-        sys.exit('Sysroot import stopped: ' + str(error))
+        exit_error(error, prefix='Sysroot import stopped: ')

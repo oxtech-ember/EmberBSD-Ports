@@ -55,6 +55,7 @@ def context(path):
         check(os.path.isabs(p) and p != '/', f'Invalid {key} tree')
         real_directory(p)
     check(value['build'].startswith(value['source'] + '/'), 'Build must belong to the recorded LLVM source')
+    reject_quarantine(value)
     for kind in ('compiler', 'native_tools', 'patches', 'target_abi'):
         paths = value['files'][kind]
         check(isinstance(paths, list) and paths and len(set(paths)) == len(paths), f'Missing or duplicate {kind} inputs')
@@ -147,20 +148,69 @@ def reject_overlaps(path, roots, message):
             raise ValueError(message) from error
 
 
+def quarantine_path(value):
+    from emberbsd_sdk.paths import canonical_existing, real_directory
+    build = canonical_existing(value['build'])
+    info = real_directory(build)
+    parent = Path(canonical_existing(value['source'])).parent
+    # Keep control metadata outside immutable source and object inventories.
+    # The inode key also covers an ancestor alias or a renamed build directory.
+    return str(parent / f'.llvm-reuse-{info.st_dev}-{info.st_ino}.quarantine.json')
+
+
+def reject_quarantine(value):
+    path = quarantine_path(value)
+    check(not os.path.lexists(path), f'LLVM build is quarantined; inspect {path}')
+    reject_overlaps(path, input_roots(value), 'Quarantine marker overlaps LLVM inputs')
+
+
+def guarded_install(value, command, log, env):
+    from emberbsd_sdk.errors import ProcessOwnershipError
+    from emberbsd_sdk.jsonio import read_json, write_json
+    from emberbsd_sdk.paths import canonical_existing, regular_file, stable_identity
+    from emberbsd_sdk.process import run_logged
+    reject_quarantine(value)
+    marker = quarantine_path(value)
+    state = dict(schema=1, state='install-started', build=canonical_existing(value['build']), log=log)
+    # Create before launch. Abrupt caller death must also refuse the next reuse.
+    write_json(marker, state, mode=0o600)
+    identity = stable_identity(regular_file(marker))
+
+    def clear():
+        check(stable_identity(regular_file(marker)) == identity and read_json(marker) == state,
+              'LLVM quarantine marker changed during install')
+        os.unlink(marker)
+
+    try:
+        run_logged(command, log, env=env)
+    except ProcessOwnershipError as error:
+        # Keep the initial marker even if the diagnostic update fails.
+        check(stable_identity(regular_file(marker)) == identity, 'LLVM quarantine marker changed during install')
+        write_json(marker, dict(state, state='ownership-uncertain', sid=error.sid, reason=error.reason), exclusive=False, mode=0o600)
+        raise
+    except BaseException:
+        # The SDK reports uncertain ownership with its distinct typed error.
+        # A completed producer failure or a drained interruption is retryable.
+        clear()
+        raise
+    else:
+        clear()
+
+
 def install_full(value, destdir):
     from emberbsd_sdk.paths import real_directory
     check(value['schema'] == 2, 'Legacy LLVM receipts support verification only; record current Python inputs before install')
     check(os.path.isabs(destdir) and destdir != '/', 'Existing private DESTDIR required')
+    reject_quarantine(value)
     real_directory(destdir)
     reject_overlaps(destdir, input_roots(value), 'SDK DESTDIR overlaps LLVM inputs')
     check(not os.listdir(destdir), 'SDK DESTDIR must be empty')
     command = [value['cmake'], '--install', value['build'], '--prefix', '/usr/pkg']
     if value['install_strip']:
         command.append('--strip')
-    from emberbsd_sdk.process import run_logged
     log = destdir + '.llvm-install.log'
     reject_overlaps(log, input_roots(value), 'SDK install log overlaps LLVM inputs')
-    run_logged(command, log, env=dict(os.environ, DESTDIR=destdir, PYTHONDONTWRITEBYTECODE='1'))
+    guarded_install(value, command, log, dict(os.environ, DESTDIR=destdir, PYTHONDONTWRITEBYTECODE='1'))
     check(all(p.startswith('usr/pkg/') for p in tree(destdir)), 'Install wrote outside the target prefix')
     return destdir + '/usr/pkg'
 
@@ -207,7 +257,7 @@ def install(config, receipt_path, expected_hash, destdir):
 
 
 if __name__ == '__main__':
-    from sdk_source import install_signal_handlers
+    from sdk_source import exit_error, install_signal_handlers
     install_signal_handlers()
     try:
         _, args = load_sdk()
@@ -216,4 +266,4 @@ if __name__ == '__main__':
               'Use record CONFIG DESTDIR RECEIPT, verify CONFIG RECEIPT SHA256, or install CONFIG RECEIPT SHA256 DESTDIR')
         globals()[command](*args)
     except Exception as error:
-        sys.exit(f'FAIL: {error}')
+        exit_error(error)

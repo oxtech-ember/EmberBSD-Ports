@@ -70,6 +70,21 @@ inputs before and after installation. CMake may rewrite `install_manifest.txt`;
 this is the only excluded generated metadata file. Original objects and source
 files must retain their bytes, modes and link targets.
 
+Before CMake starts, the helper creates a quarantine marker beside the canonical
+source directory. Its name records the build directory device and inode.
+The marker is outside all immutable input inventories. It prevents concurrent
+reuse and survives abrupt caller termination. After a completed producer or a
+proven interruption drain, the helper removes only its unchanged marker.
+A completed nonzero status, including `97`, permits a new empty stage.
+
+If the SDK raises `ProcessOwnershipError`, the helper retains the marker.
+All `record`, `verify`, and `install` calls then refuse the same build identity.
+An ancestor path alias or a renamed build directory does not remove this guard.
+Malformed markers and marker symlinks also cause refusal. Before recovery,
+prove that the producer session has stopped. Check the source and object hashes.
+Preserve the marker and install log as evidence before controlled marker removal.
+Do not relocate the source tree to avoid the quarantine check.
+
 The private full stage must match the reference bytes, modes and symlinks before
 partition selection. This check also rejects an input that changes temporarily
 during installation and then returns to its recorded state. Run the ordinary
@@ -81,6 +96,10 @@ the caller has preserved the required evidence.
 with labelled data fixtures. It checks input drift, incomplete stages, temporary
 object mutation, and mutation after installation. It does not compile LLVM or
 claim target runtime acceptance.
+`tests/llvm-reuse-recovery.py NEW_WORK` injects typed process results to check
+quarantine and safe retry policy without starting producers.
+`tests/llvm-host-status.py NEW_WORK` checks the actual native CLI main blocks
+with injected failures and signals. Set `EMBERBSD_SDK_SOURCE` for these tests.
 
 ## Prepare the current pkgsrc contract
 

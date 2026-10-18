@@ -97,7 +97,7 @@ def prepare(template, output, bmake, package, receipt, sdk_source):
 
 
 if __name__ == '__main__':
-    from sdk_source import install_signal_handlers
+    from sdk_source import exit_error, install_signal_handlers
     install_signal_handlers()
     try:
         sdk, args = load_sdk()
@@ -105,4 +105,4 @@ if __name__ == '__main__':
             raise ValueError('Usage: prepare-reuse-inputs.py [--sdk-source SOURCE] TEMPLATE OUTPUT BMAKE PACKAGE_DIRECTORY RECEIPT_OR_DASH')
         prepare(*args, sdk_source=sdk)
     except Exception as error:
-        sys.exit(f'FAIL: {error}')
+        exit_error(error)

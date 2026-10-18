@@ -65,6 +65,7 @@ obj = pathlib.Path({str(build / 'object.dat')!r})
 original = obj.read_bytes()
 mode = os.environ.get('LLVM_REUSE_TEST_MUTATE')
 try:
+    if mode == 'exit97': sys.exit(97)
     if mode == 'aba': obj.write_bytes(b'temporary wrong SDK bytes')
     result = subprocess.run([{cmake!r}, *sys.argv[1:]])
     dest = pathlib.Path(os.environ['DESTDIR'])

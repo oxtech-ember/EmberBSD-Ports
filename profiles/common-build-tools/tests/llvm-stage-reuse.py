@@ -11,6 +11,7 @@ sys.dont_write_bytecode = True
 from llvm_fixture import fixture, load_sdk, module, write_json
 
 sdk_source, args = load_sdk()
+from emberbsd_sdk.errors import CommandError
 if len(args) != 2:
     sys.exit('Usage: llvm-stage-reuse.py --sdk-source SDK CMAKE NEW_WORK')
 cmake, work = os.path.realpath(args[0]), Path(args[1])
@@ -40,6 +41,20 @@ def refused(label, expected, function, *arguments):
 
 
 before = reuse.snapshot(value)
+failed = work / 'safe-producer-failure'
+failed.mkdir()
+os.environ['LLVM_REUSE_TEST_MUTATE'] = 'exit97'
+try:
+    reuse.install(str(config), str(receipt), receipt_hash, str(failed))
+except CommandError as error:
+    assert error.returncode == 97, str(error)
+else:
+    raise AssertionError('Failed producer was accepted')
+finally:
+    os.environ.pop('LLVM_REUSE_TEST_MUTATE')
+reuse.verify(str(config), str(receipt), receipt_hash)
+assert not os.path.lexists(reuse.quarantine_path(value))
+checks.append('real completed producer exit97 preserves safe recovery')
 dest = work / 'valid'
 dest.mkdir()
 reuse.install(str(config), str(receipt), receipt_hash, str(dest))
