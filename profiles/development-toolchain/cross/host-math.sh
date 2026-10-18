@@ -42,8 +42,13 @@ for compiler in "$host_cc" "$host_cxx"; do
             echo 'Native Clang is required for the explicit host-only mode.' >&2; exit 2;
         }
         compiler_target=$("$compiler" -dumpmachine)
-        case "$(uname -m):$compiler_target" in
-            arm64:arm64-apple-*|arm64:aarch64-apple-*|aarch64:aarch64-*|x86_64:x86_64-*) ;;
+        case "$(uname -s):$(uname -m):$compiler_target" in
+            Darwin:arm64:arm64-apple-darwin*|Darwin:arm64:aarch64-apple-darwin*|Darwin:x86_64:x86_64-apple-darwin*) ;;
+            Linux:aarch64:aarch64-*-linux-gnu|Linux:x86_64:x86_64-*-linux-gnu)
+                case "$(getconf GNU_LIBC_VERSION 2>/dev/null || :)" in
+                    glibc\ *) ;;
+                    *) echo 'Host-only Clang target differs from the development host.' >&2; exit 2;;
+                esac;;
             *) echo 'Host-only Clang target differs from the development host.' >&2; exit 2;;
         esac
     else

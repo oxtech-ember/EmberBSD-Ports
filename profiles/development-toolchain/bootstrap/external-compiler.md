@@ -10,6 +10,10 @@ host math versions have the same guards as the kernel bootstrap. The existing
 compiler must report the exact version, target ABI and POSIX threads. Both
 frontends must resolve inside its prefix. Its drivers, frontends and GNU target
 binutils are hashed before building. Compiler hashes must remain unchanged.
+The initial libgcc configure can use existing bootstrap CRT/libgcc for conftests.
+Record those selected files, hashes and provenance in the seed receipt. They are
+bootstrap dependencies; fresh CRT/runtime outputs must replace them in final links.
+
 The caller authenticates the compiler and the fork-built seed; hashes alone
 cannot establish their source provenance.
 
@@ -30,7 +34,8 @@ OpenMP/atomic extensions. It leaves the supplied compiler and seed unchanged.
 
 The pinned host math helper retains its default native GCC16 contract.
 For native metadata prerequisites on a host with Clang, select its explicit
-host-only mode. This mode checks that Clang targets the development host.
+host-only mode. This mode accepts Darwin and GNU/Linux with matching architecture, OS and libc.
+It rejects a foreign OS or libc ABI on the same architecture.
 It retains source hashes, the GMP repair, upstream checks and GMP contracts.
 It does not select Clang for any target compilation.
 
