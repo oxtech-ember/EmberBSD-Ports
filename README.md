@@ -38,6 +38,12 @@ runtime behavior are validated.
   Native numerical and causal ownership checks pass. Raw memory reports
   retain process-lifetime allocations. Target packaging and KiCad execution
   remain pending.
+- [FFTW and terminal dependencies](profiles/common-build-tools/cross/README.md#installed-fftw-readline-and-ncurses):
+  ordinary GCC16 packages pass AArch64 VM Fourier, Readline input/history,
+  PTY editing and removal/reinstallation checks. FFTW covers double/float
+  with pthread/OpenMP. Installed ncurses terminfo files and aliases match
+  the package and SDK. Libtool metadata portability and full KiCad integration
+  remain pending.
 - [Robotics and ROS 2](profiles/robotics/README.md): Zenoh-Pico 1.10.1
   native package and tests verified; the Examples C controller exchanges
   typed commands and telemetry with ROS 2 Jazzy, including reconnect checks.

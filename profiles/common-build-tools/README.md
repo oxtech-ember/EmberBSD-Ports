@@ -20,6 +20,13 @@ GCC16 regression and strict Memcheck checks. The ordinary AArch64 cross package
 also passes installed VM compression, gzip, writer-seek, integrity and
 removal/reinstallation checks with the runtime-only GCC16 provider.
 
+Ordinary [FFTW and Readline packages](cross/README.md#installed-fftw-readline-and-ncurses)
+also pass GCC16 AArch64 VM numerical, terminal input/history and package
+removal/reinstallation checks. FFTW covers both precisions with pthread
+and OpenMP. Readline uses ncurses 6.6; all 2899 installed terminfo entries,
+including 1038 aliases, match the package and SDK. The cross-build Libtool
+metadata repair remains pending. These checks do not establish KiCad acceptance.
+
 [Groff 1.24.2](recipes/textproc/groff/README.md) includes a C23 function-prototype repair.
 Its native macOS build renders the three Enchant manual pages as HTML.
 The focused source check passes ASan/UBSan and preserves all errno cases.

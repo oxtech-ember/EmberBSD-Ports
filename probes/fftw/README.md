@@ -5,7 +5,8 @@ This Ports-owned probe installs shared double (`fftw3`) and float (`fftw3f`)
 libraries, headers, pkg-config/CMake metadata and separate pthread libraries.
 Both precisions use one upstream release and one installation prefix.
 The float library is the common dependency for liquid-dsp and future GNU Radio
-integration. This is a source profile, not an installable pkgsrc package.
+integration. The build helper here remains a source profile. The ordinary
+GCC16 pkgsrc package has separate [installed-package checks](../../profiles/common-build-tools/cross/README.md#installed-fftw-readline-and-ncurses).
 
 ## Build and test
 
@@ -65,6 +66,24 @@ Tests use explicit checks, including in Release builds; source build targets
 are not linked into consumers.
 
 ## Validation and limits
+
+On 2026-10-18, the ordinary `math/fftw` package `fftw-3.3.11` was
+cross-built with GCC 16.2.0 and installed in an EmberBSD AArch64 E34 VM.
+This package preserves its pkgsrc `openmp` and `simd` options and supplies
+both precisions, pthread and OpenMP libraries. Four installed consumers use
+the unchanged contract above, linking each precision to each thread backend.
+All numerical cases pass; the OpenMP consumers load the installed
+GCC16 `libgomp.so.1`. The upstream double and float `bench` verification
+sets also pass complex lengths 16/45 and real lengths 64/75.
+
+Normal package removal makes the double pthread and float OpenMP consumers
+fail at the loader with the missing FFTW library. Reinstallation restores
+all four consumers and passes `pkg_admin check`. All six installed FFTW
+DSOs match the SDK byte-for-byte. This is package lifecycle and numerical
+acceptance; it does not measure SIMD speed, sustained throughput or boards.
+The package's Libtool `.la` metadata still retains absolute SDK search paths;
+portable replacement archives remain pending.
+It is independent of the earlier native GCC12 source-profile result below.
 
 On 2026-10-07 the native source build, guards and both installed consumers
 passed on EmberBSD AArch64 in a VM with NetBSD 11.0 userland, EMBER64 kernel

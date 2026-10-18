@@ -417,3 +417,46 @@ BMAKE=/absolute/host/bin/bmake ruby profiles/common-build-tools/tests/cross-sort
 ```
 
 Its staged files test PLIST processing; they are not target ELF evidence.
+
+## Installed FFTW, Readline and ncurses
+
+On 2026-10-18 the ordinary `math/fftw`, `devel/ncurses` and `devel/readline`
+recipes cross-built `fftw-3.3.11`, `ncurses-6.6` and `readline-8.3nb1`
+with GCC 16.2.0 for the pinned E34 AArch64 sysroot. The packages retain
+normal pkgsrc ownership and dependencies on the runtime-only GCC16 package.
+Use the cross configuration above and each recipe's normal `package` target;
+install the resulting archives with target `pkg_add`, with ncurses before
+Readline. Host tool installation and target installation are separate.
+For an archive rebuilt under the same package version, use `pkg_add -U`.
+An ordinary `pkg_add -u` can return success without replacing that version.
+
+The installed [FFTW contract](../../../probes/fftw/README.md#numerical-contract)
+passes for double/float and pthread/OpenMP: four consumers, each checking
+analytical spectra, inverse recovery, real transforms and two workers.
+The upstream double and float `bench` verification sets also pass.
+Deleting FFTW makes two consumers fail with the expected missing-library
+diagnostic. Reinstallation restores all four and passes package integrity.
+
+The unchanged Readline 8.3 `examples/rltest.c` runs against installed
+`libreadline.so.8` and `libncurses.so.6`. Pipe input and an actual SSH PTY
+pass input/history checks. In the PTY, backspace changes `betx` to `beta`,
+Ctrl-P recalls it, and the upstream history listing reports both entries.
+Deleting Readline produces the expected loader refusal; reinstalling ncurses
+and Readline restores the consumer. All three packages pass `pkg_admin check`.
+All 3976 package payload entries match the archives, SDK and installed VM:
+regular-file SHA256 hashes, symbolic-link targets and permission modes.
+The six FFTW DSOs, Readline/history, five ncurses DSOs and GCC16
+`libgomp.so.1`/`libgcc_s.so.1` also pass a separate 15-library hash comparison.
+
+The fresh ordinary ncurses archive contains 1861 regular terminfo entries
+and 1038 relative aliases. All 2899 entries match the SDK and installed VM.
+The earlier archive omitted those aliases and failed `nxterm` lookup.
+The replacement passes `infocmp nxterm`; `tput -Tnxterm colors` returns eight.
+Readline PTY editing and history also pass with this replacement.
+The full packing-list and installed-package checks retain their distinct scope.
+
+The FFTW, ncurses and Readline `.la` files still contain absolute SDK search paths.
+Repairing that cross-build metadata and producing portable replacement
+archives remain pending; the ELF runtime checks above do not verify `.la`
+portability. Full ncurses terminal coverage, upstream library suites,
+physical-board performance and KiCad integration remain separate.
