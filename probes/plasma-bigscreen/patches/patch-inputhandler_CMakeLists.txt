@@ -1,0 +1,25 @@
+$NetBSD$
+
+Use ECM's inotify provider on systems with a separate libinotify.
+Keep the upstream input device watcher and controller suppression enabled.
+This AI-assisted EmberBSD adaptation has not been submitted upstream.
+
+--- inputhandler/CMakeLists.txt.orig
++++ inputhandler/CMakeLists.txt
+@@ -1,6 +1,8 @@
+ # SPDX-FileCopyrightText: 2026 Devin Lin <devin@kde.org>
+ # SPDX-License-Identifier: GPL-2.0-or-later
+ 
++find_package(Inotify REQUIRED)
++
+ add_executable(plasma-bigscreen-inputhandler)
+ if (Qt6_VERSION VERSION_GREATER_EQUAL "6.8.0")
+     set(private_code_option  "PRIVATE_CODE")
+@@ -52,6 +54,7 @@ target_link_libraries(plasma-bigscreen-inputhandler
+     KF6::DBusAddons
+     KF6::CoreAddons
+     KF6::WindowSystem
++    Inotify::Inotify
+     SDL3::SDL3
+ )
+ target_compile_definitions(plasma-bigscreen-inputhandler PRIVATE -DPROJECT_VERSION="${PROJECT_VERSION}")
