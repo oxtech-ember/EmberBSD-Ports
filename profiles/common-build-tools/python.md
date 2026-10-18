@@ -5,6 +5,40 @@ AArch64 and amd64, including the empty-vendor `x86_64--netbsd` triplet.
 Unknown hosts and unsupported NetBSD architectures still fail.
 Both maintained `configure.ac` cases match the shipped `configure` cases.
 
+The nb3 header keeps the C11 build assertion an integer constant expression.
+The earlier comma expression rejects a file-scope array in `Objects/typeobject.c`
+when the Linux pkgsrc build uses GCC16 and GNU C11. Multiplication by zero
+retains the same `_Static_assert` without evaluating an operand.
+The existing NetBSD, SunOS, C++ and MSVC branches stay unchanged.
+
+Run the actual-header regression with native or target GCC16:
+
+```sh
+CC=/absolute/gcc16 CFLAGS='--sysroot=/absolute/target-sysroot' \
+    sh profiles/common-build-tools/tests/python-array-ice.sh \
+    /absolute/patched/Include/pymacro.h /absolute/pristine/Include/pymacro.h \
+    /absolute/new-results
+```
+
+Omit `CFLAGS` for a native compiler. Keep the original `patchlevel.h` beside
+the patched header. Real native and AArch64 GCC16 compile checks pass for
+GNU C11, C17 and C23: array, enum and static initialization succeed; pointer,
+false and nonconstant assertions fail. The small native contract passes
+Cppcheck 2.22, GCC16 and Clang19 path analysis, execution and strict Memcheck.
+
+Full native `typeobject.c` reproduces the original GCC16 compilation failure.
+The repaired GCC analyzer completes with complexity bailouts; it is not a
+complete path proof. Clang19 retains one identical inherited null-refcount path.
+Cppcheck cannot parse the full GCC16/glibc input, including `__int128` types.
+These limits do not change the target Python package acceptance boundary.
+
+Linux's selected native upstream suites also expose the existing pkgsrc `.so`
+extension naming policy. The sysconfig tests now verify loader acceptance of
+that suffix and the actual preferred tagged loader ABI. This adds no skips.
+The corrected 41-case sysconfig run passes, with three upstream platform skips.
+The other six selected native suites pass. Target Python 3.15 execution remains
+separate from this host generator build and the older 3.14 receipts below.
+
 The focused configure regression uses a previous patched source and the new source:
 
 ```sh

@@ -1,10 +1,10 @@
 SHA256 (Python-3.15.0.tar.xz) = ba4bed1ba346b916890b76d9e320451420aa69f6408997d33c66482eeae3d575
 Size (Python-3.15.0.tar.xz) = 35688820 bytes
-SHA1 (patch-Include_pymacro.h) = 7611315fefc305a48b4965f2f2b9bee53ae3d987
+SHA1 (patch-Include_pymacro.h) = 40f053ac4df6723924129812a28e7ff47214698f
 SHA1 (patch-Lib___pyrepl_terminfo.py) = 905a1b281afa0a97302db22b55a9d6b7880c73ad
 SHA1 (patch-Lib_ctypes_util.py) = 671f4fcccb738ec96c4ba8ad62b66ea016172651
 SHA1 (patch-Lib_sysconfig_____init____.py) = 76a35b78b098978209f9bcc0e5357d439f281c6b
-SHA1 (patch-Lib_test_test__sysconfig.py) = 8cf6f8acbcf57d02857b4944d3438e06bca4bbd4
+SHA1 (patch-Lib_test_test__sysconfig.py) = ec9913de69fa1c2e28a75ab56bb78660f308dfda
 SHA1 (patch-Makefile.pre.in) = e91e47905220786b579819166f6da1a186905682
 SHA1 (patch-Misc_python-config.in) = 0fdf7f95762ccc983e398a6b96ea0f7163d1c991
 SHA1 (patch-Modules_faulthandler.c) = ca59c378d25bfc0769a7f5da887369d8c913e70c

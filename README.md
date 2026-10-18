@@ -91,6 +91,9 @@ runtime behavior are validated.
   Binutils has a verified
   DWARF32/64 line-table repair; GNU tools are selected explicitly during
   acceptance, with GCC bootstrap-tool default migration still pending.
+  [Python 3.15 host preparation](profiles/common-build-tools/python.md) now
+  fixes GCC16 constant-expression use and verifies Linux pkgsrc loader naming.
+  Selected native suites pass; target 3.15 execution remains pending.
   [Python 3.14.8](profiles/common-build-tools/python.md) also cross-builds and
   passes installed C/C++ embedding, extension loading and 21 upstream suites
   on the AArch64 VM. Meson 1.12.1 and Ninja 1.13.2 cross packages pass

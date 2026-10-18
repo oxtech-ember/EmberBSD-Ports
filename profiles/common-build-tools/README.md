@@ -152,7 +152,7 @@ these adaptations have not been submitted or accepted upstream.
 
 | Python patch | Decision and reason |
 | --- | --- |
-| `Include_pymacro.h` | Retain NetBSD/SunOS constant-expression assertion. |
+| `Include_pymacro.h` | Retain NetBSD/SunOS assertion; keep the C11 branch an integer constant expression on GCC16 hosts. |
 | `Lib___pyrepl_terminfo.py` | Retain NetBSD terminfo.cdb via ctypes and tmux alias. |
 | `Lib_ctypes_util.py` | Retain PREFIX/X11 clang search and conditional SunOS lookup. |
 | `Lib_sysconfig_____init____.py` | Retain coupled platform-only sysconfig and config-directory naming. |
@@ -161,7 +161,7 @@ these adaptations have not been submitted or accepted upstream.
 | `Modules_readline.c` | Retain selected readline portability; editline is not accepted here. |
 | `Modules_socketmodule.c` | Retain conditional SunOS declaration. |
 | `Misc_python-config.in` | Include the shared-library search directory for installed embedding, matching the shell script. |
-| `Lib_test_test__sysconfig.py` | Check retained pkgsrc `.so` naming and actual loader acceptance on NetBSD; keep tagged-priority coverage. |
+| `Lib_test_test__sysconfig.py` | Check retained pkgsrc `.so` naming and actual loader acceptance on NetBSD/Linux; retain tagged loader ABI and priority checks. |
 | `configure` / `configure.ac` | Retain packaging/UUID hunks; recognize NetBSD/AArch64 in both cross-host checks, preserving unknown-host rejection. |
 | `Tools_build_generate-build-details.py` | Describe the target NetBSD platform, version, ABI, loader suffixes and installed static library. |
 
