@@ -84,7 +84,7 @@ exports its five ordinary data-boundary symbols.
 Real GCC16 AArch64 consumers link against the shared provider and the complete
 static archive. Both outputs are AArch64 PIE with RELRO and target runtime
 paths. The target DSO retains `libspnav.so.0` and its actual NetBSD/X11 providers.
-All 148 exporter preflight refusal checks pass.
+All 157 exporter preflight refusal checks pass.
 The actual positive-export absence guard also rejects a regular file,
 directory, symlink and dangling symlink in the five-path regression.
 The full positive export matrix and installed target execution remain pending.
@@ -97,6 +97,12 @@ Native Cppcheck parsing stops at a Linux signed-128-bit declaration.
 Target preprocessing parses successfully, with 141 style and four
 float/integer representation portability findings retained.
 These reports retain findings.
+
+The plain C peer also passes GCC16 and Clang path analysis.
+Cppcheck parses its actual native and target preprocessing before and after
+the deadline repair. Its findings do not change. The standard POSIX socket
+cast, signal-handler representation and style findings remain visible.
+Client and timeout-negative analysis also retains branch-analysis limits.
 
 Fragmented stream input, event removal after EOF, the configuration-file
 lifetime warning, X11/device execution and complete KiCad integration remain
