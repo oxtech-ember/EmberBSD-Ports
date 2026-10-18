@@ -1,0 +1,16 @@
+PASS: shader rejection, clear, triangle pixels and four EGL lifecycles
+PASS: GCC16 UBSan-trap render consumer/header code; Mesa/LLVM libraries are uninstrumented
+FAIL: unexpected renderer (EGL 0x3000, GL 0)
+PASS: wrong expected renderer exits 1 at the renderer check
+PASS: shader rejection, clear, triangle pixels and four EGL lifecycles
+PASS: unchanged nb8-linked render consumer works with nb9
+Checked 9859 files from 45 packages.
+Done.
+/tmp/e14-mesa-accept-nb9/bin/mesa-render: Shared object "libEGL.so.1" not found
+/tmp/e14-mesa-accept-nb9/bin/mesa-render: Shared object "libEGL.so.1" not found
+PASS: removed Mesa fails at real loader, exit 1
+PASS: sysroot package files, links and libraries only; no target runtime was executed
+Checked 9956 files from 46 packages.
+Done.
+PASS: shader rejection, clear, triangle pixels and four EGL lifecycles
+PASS: normal Mesa removal/reinstallation, all97 payload entries and113 library paths, inventory, rendering and both process tests restored

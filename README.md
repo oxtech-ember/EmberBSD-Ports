@@ -221,8 +221,10 @@ runtime behavior are validated.
   The [Linux/GCC16 runtime and SDK split](profiles/common-build-tools/cross/llvm-linux-aarch64.md)
   passes both full LLVM builds and installed C API/ORC package lifecycle checks
   in E34 VM. Its sealed native metadata helper agrees with all 16 target query
-  groups and passes Mesa's production LLVM guards. Mesa build/rendering on
-  this Linux/E34 stack remains the next consumer milestone.
+  groups and passes Mesa's production LLVM guards. The resulting
+  [Mesa26 package](profiles/common-graphics/cross/mesa-linux-aarch64.md) passes
+  installed llvmpipe rendering, all 39 target invocations and package
+  removal/reinstallation on this Linux/E34 stack.
 - [Common graphics source packages](profiles/common-graphics/README.md):
   [libudev-bsd render-node discovery](profiles/common-graphics/cross/libudev-render-nodes.md)
   repairs DRM classification for KWin 6.8 with a real-source regression.

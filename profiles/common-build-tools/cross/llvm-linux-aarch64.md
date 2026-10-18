@@ -83,10 +83,12 @@ and retained native runtime files. Strict native Memcheck covers all 16 query
 kinds on the actual accepted executable: zero errors, live blocks or suppressions.
 This native metadata scope does not instrument target LLVM.
 
-The actual MesaLib 26.2.4nb8 recipe parses with this sealed helper and emits
+The actual MesaLib 26.2.4nb9 recipe parses with this sealed helper and emits
 its path into pkgsrc's real NetBSD/AArch64 Meson machine file. The exact production
 LLVM receipt, prefix, version, RTTI and shared ORC guards pass. Continue with the
 [complete graphics composition](../../common-graphics/cross/profile.md) using
-the sealed `bin/llvm-config`. Full Mesa configuration, package build and rendering
-on this Linux/E34 stack remain the next consumer milestone. Earlier CM5 Mesa
-receipts retain their separate package and hardware scope. KiCad is not built.
+the sealed `bin/llvm-config`. The resulting
+[Mesa26 package](../../common-graphics/cross/mesa-linux-aarch64.md) passes full
+packaging, installed llvmpipe rendering, all 39 target invocations and normal
+removal/reinstallation. Earlier CM5 receipts retain their separate package
+and hardware scope. KiCad is not built.

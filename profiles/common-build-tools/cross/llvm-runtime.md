@@ -73,8 +73,9 @@ both real builds, complete package checks, installed payload/ELF closure,
 C API/bitcode, four default ORC JITLink lifecycles and ordinary runtime
 removal/reinstallation in E34 VM. The accepted native metadata helper agrees
 with all 16 target query groups and passes sealing/integrity checks.
-Mesa's real LLVM pre-configure guards pass; a complete Mesa build and rendering
-on this stack remain a separate consumer milestone.
+The [Mesa26 consumer](../../common-graphics/cross/mesa-linux-aarch64.md) passes
+full packaging, installed llvmpipe rendering, all 39 target invocations and
+normal package removal/reinstallation on this stack.
 
 The separate [reuse validator](llvm-reuse.md) checks a repeat installation from
 accepted fresh objects. Its recipe adapter and actual package acceptance are

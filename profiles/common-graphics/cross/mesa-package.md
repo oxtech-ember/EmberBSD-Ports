@@ -1,5 +1,10 @@
 # Accept the installed common Mesa package
 
+The [Linux/GCC16 nb9 receipt](mesa-linux-aarch64.md) passes installed llvmpipe
+rendering, all 39 upstream invocations, exact payload/library checks and
+normal removal/reinstallation in the E34 AArch64 VM. Its default package
+has 97 payload entries. The hardware receipts below retain their own scope.
+
 Validated nb8 passes installed V3D shader rejection, triangle pixels, four EGL
 lifecycles, and 39 upstream invocations on CM5. Its 100-entry payload and unchanged
 old consumer also pass. See the [mutex and ABI acceptance](../tests/mesa-v3d-cache-mutex/README.md).
@@ -20,8 +25,6 @@ the current package name, including `PKGREVISION`. A revision bump can trigger
 automatic cleaning and rebuilding of the existing work directory. Preserve
 the accepted package, tests and receipts first; do not assume an incremental
 restage will retain old objects, and do not disable this stale-work check.
-This occurred during the nb1-to-nb2 metadata correction; the second package
-therefore uses a fresh Mesa build rather than repackaged old build objects.
 
 On 2026-10-08, Apple Silicon macOS/GCC16 cross-built MesaLib 26.2.4nb1 with
 VirGL, softpipe, llvmpipe/shared LLVM23 ORC, X11/Wayland, EGL, GL/GLES and GBM.
@@ -78,7 +81,7 @@ After installing the real package into the matching sysroot, run:
 ```sh
 ruby prepare-mesa-package-tests.rb /absolute/cross-tools /absolute/sysroot \
     /absolute/prepared-mesa-26.2.4 /absolute/mesa-build \
-    /absolute/MesaLib-26.2.4nb8.tgz /absolute/new-acceptance-work
+    /absolute/MesaLib-26.2.4nb9.tgz /absolute/new-acceptance-work
 ```
 
 The helper compiles the existing EGL/GLES pixel consumer against installed

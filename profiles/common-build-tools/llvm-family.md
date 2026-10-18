@@ -32,8 +32,9 @@ Linux/GCC16 builds, exact installed payload checks and API/JIT package lifecycle
 acceptance in E34 VM. Its sealed metadata helper agrees with all 16 actual
 target query groups. Complete Clang and [LLD](cross/lld.md) cross packages pass
 normal package checks and sysroot installation; their installed execution
-remains separate. Mesa's Linux/E34 build/rendering and renewed Qt acceptance
-remain consumer milestones. Dated 23.1.2 receipts retain their original scope.
+remains separate. The [Linux/E34 Mesa consumer](../common-graphics/cross/mesa-linux-aarch64.md)
+passes installed llvmpipe rendering and all 39 target invocations. Renewed Qt
+acceptance remains separate. Dated 23.1.2 receipts retain their original scope.
 
 ## One family and development payload
 
@@ -75,7 +76,8 @@ also needs `llvm-devel-23.1.3nb2`. Native LLVM remains a full package.
 The [Linux/GCC16 split-package acceptance](cross/llvm-linux-aarch64.md) passes
 both full builds and installed C API/ORC package lifecycle checks in E34 VM.
 Its sealed native metadata helper passes all 16 target query groups and Mesa's
-production LLVM guards. Full Mesa rendering on that stack remains separate.
+production LLVM guards. The linked Linux/E34 Mesa receipt covers installed
+CPU rendering and normal package removal/reinstallation on that stack.
 
 ## Inherited patch decisions
 

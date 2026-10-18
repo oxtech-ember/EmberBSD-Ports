@@ -1,0 +1,45 @@
+PASS: installed llvmpipe shader rejection, triangle and four EGL lifecycles
+PASS xmlconfig
+PASS util_tests
+[  SKIPPED ] Cache.List (1 ms)
+[  SKIPPED ] 1 test, listed below:
+[  SKIPPED ] Cache.List
+PASS process
+PASS process_with_overrides
+PASS clear
+PASS collision
+PASS delete_and_lookup
+PASS delete_management
+PASS destroy_callback
+PASS insert_and_lookup
+PASS insert_many
+PASS null_destroy
+PASS random_entry
+PASS remove_key
+PASS remove_null
+PASS replacement
+PASS vma_random
+PASS srgb
+PASS u_format_test
+PASS u_format_compatible_test
+PASS nir_tests
+  YOU HAVE 9 DISABLED TESTS
+PASS spirv_tests
+PASS general_ir_test
+PASS sampler_types_test
+PASS list_iterators
+PASS qpu_disasm
+PASS gallium-aux
+PASS lp_test_format
+PASS lp_test_arit
+PASS lp_test_blend
+PASS lp_test_lerp
+PASS lp_test_conv
+PASS lp_test_printf
+PASS lp_test_lookup_multiple
+PASS virgl_staging_mgr
+PASS zink_format_test
+PASS main-test
+PASS st_format_test
+PASS gbm-abi-check
+PASS: installed Mesa test invocations; inspect reported upstream skips/disabled tests separately
