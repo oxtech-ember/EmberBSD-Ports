@@ -24,6 +24,8 @@ The input JSON uses schema `1` and these fields:
   `x86_64`/`x86_64--netbsd`.
 - `source`, `build`, `recipe`, `sdk_recipe`: existing absolute tree paths.
   The generated build directory must be inside the recorded source tree.
+  Both DESTDIRs must be separate from all four input trees. Place the receipt
+  outside those input trees and the reference DESTDIR.
 - `flags`: the actual compile/ABI contract. The recipe adapter must produce
   this from current pkgsrc inputs, including the checked configure environment.
   A caller must not substitute the receipt's old flags for current values.

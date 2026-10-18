@@ -132,7 +132,7 @@ module LLVMStageReuse
     machine = target.fetch('arch') == 'aarch64' ? 183 : 62
     tree(stage).each do |name, entry|
       next unless entry.first == 'file'
-      header = File.binread(stage + '/' + name, 20)
+      header = File.binread(stage + '/' + name, 20) || ''.b
       if header.start_with?("\x7fELF")
         check(header.bytesize == 20 && header.getbyte(4) == 2 && header.getbyte(5) == 1 && header[18, 2].unpack1('v') == machine,
               "Wrong staged ELF ABI: #{name}")
@@ -142,10 +142,18 @@ module LLVMStageReuse
     end
   end
 
+  def input_roots(value)
+    %w[source build recipe sdk_recipe].map { |key| File.realpath(value.fetch(key)) }
+  end
+
+  def overlaps(path, roots)
+    roots.any? { |root| path == root || path.start_with?(root + '/') || root.start_with?(path + '/') }
+  end
+
   def install_full(value, destdir)
     check(destdir.start_with?('/') && destdir != '/' && File.directory?(destdir) && !File.symlink?(destdir), 'Existing private DESTDIR required')
+    check(!overlaps(File.realpath(destdir), input_roots(value)), 'SDK DESTDIR overlaps LLVM inputs')
     check(tree(destdir).empty?, 'SDK DESTDIR must be empty')
-    check(![value.fetch('source'), value.fetch('build')].any? { |p| destdir == p || destdir.start_with?(p + '/') || p.start_with?(destdir + '/') }, 'SDK DESTDIR overlaps LLVM inputs')
     command = [value.fetch('cmake'), '--install', value.fetch('build'), '--prefix', '/usr/pkg']
     command << '--strip' if value.fetch('install_strip')
     run({'DESTDIR' => destdir}, *command)
@@ -156,6 +164,9 @@ module LLVMStageReuse
   def record(config, destdir, output)
     check(!File.exist?(output) && !File.symlink?(output), 'Receipt already exists')
     value = context(config)
+    check(output.start_with?('/') && File.directory?(File.dirname(output)), 'Absolute receipt path with an existing parent required')
+    output = File.join(File.realpath(File.dirname(output)), File.basename(output))
+    check(!overlaps(output, input_roots(value) + [File.realpath(destdir)]), 'Receipt overlaps LLVM inputs or reference stage')
     before = snapshot(value)
     stage = install_full(value, destdir)
     validate_full_stage(value, stage)

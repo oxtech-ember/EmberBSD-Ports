@@ -18,12 +18,13 @@ source = work + '/source'; build = source + '/build'; recipe = work + '/recipe';
 FileUtils.cp(File.expand_path('../recipes/lang/llvm/files/select-package-stage.pl', __dir__), recipe + '/files/')
 File.write(recipe + '/patch', 'prepared patch'); File.write(sdk + '/PLIST', 'declared SDK')
 File.write(work + '/target-abi.h', 'target ABI fixture'); File.write(work + '/bin/gcc', 'GCC16 fixture'); File.write(work + '/bin/tblgen', 'LLVM23 fixture')
-File.write(source + '/runtime.dat', "runtime fixture\n"); File.write(source + '/license', "license fixture\n")
+File.write(source + '/empty.dat', ''); File.write(source + '/runtime.dat', "runtime fixture\n"); File.write(source + '/license', "license fixture\n")
 File.write(build + '/object.dat', "SDK object fixture\n")
 File.write(source + '/CMakeLists.txt', <<~CMAKE)
   cmake_minimum_required(VERSION 3.20)
   project(LLVMReuseFixture NONE)
   install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runtime.dat" DESTINATION lib RENAME libLLVM.so.23.1)
+  install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/empty.dat" DESTINATION include/llvm/IR RENAME Empty.h)
   install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/license" DESTINATION include/llvm/Support RENAME LICENSE.TXT)
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/object.dat" DESTINATION include/llvm/IR RENAME Module.h)
 CMAKE
@@ -38,6 +39,7 @@ File.write(wrapper, <<~WRAPPER)
   require 'fileutils'
   require 'json'
   File.write(#{(work + '/last-install-args.json').inspect}, JSON.generate(ARGV))
+  File.open(#{(work + '/install-invocations.log').inspect}, 'a') { |log| log.puts(ENV.fetch('DESTDIR')) }
   object = #{(build + '/object.dat').inspect}
   original = File.binread(object)
   mode = ENV['LLVM_REUSE_TEST_MUTATE']
@@ -61,7 +63,7 @@ reference = work + '/reference'; FileUtils.mkdir_p(reference)
 run(log, {'DESTDIR' => reference}, wrapper, '--install', build, '--prefix', '/usr/pkg', '--strip')
 stage = reference + '/usr/pkg'
 runtime = %w[lib/libLLVM.so.23.1 include/llvm/Support/LICENSE.TXT]
-devel = %w[include/llvm/IR/Module.h]
+devel = %w[include/llvm/IR/Module.h include/llvm/IR/Empty.h]
 lists = {'full' => runtime + devel, 'runtime' => runtime, 'devel' => devel}.to_h do |kind, paths|
   p = work + '/lists/' + kind; File.write(p, paths.join("\n") + "\n"); [kind, p]
 end
@@ -100,6 +102,26 @@ LLVMStageReuse.install(config, receipt, receipt_hash, dest)
 raise 'CMake lost the recorded strip mode' unless JSON.parse(File.read(work + '/last-install-args.json')).include?('--strip')
 raise 'SDK changed original objects' unless LLVMStageReuse.snapshot(value) == before
 checks << 'valid CMake install preserves original source and objects'
+raise 'empty installed file changed' unless File.zero?(dest + '/usr/pkg/include/llvm/IR/Empty.h')
+checks << 'valid empty installed file'
+%w[recipe sdk_recipe].each do |kind|
+  destination = value.fetch(kind) + '/private-stage'; Dir.mkdir(destination)
+  invocations = File.binread(work + '/install-invocations.log')
+  refused(checks, kind + ' destination overlap', 'overlaps LLVM inputs') do
+    LLVMStageReuse.install(config, receipt, receipt_hash, destination)
+  end
+  raise 'CMake ran for overlapping destination' unless File.binread(work + '/install-invocations.log') == invocations && Dir.children(destination).empty?
+end
+%w[source build recipe sdk_recipe].each do |kind|
+  output = value.fetch(kind) + '/rejected-receipt.json'
+  destination = work + '/record-overlap-' + kind; Dir.mkdir(destination)
+  invocations = File.binread(work + '/install-invocations.log')
+  refused(checks, kind + ' receipt overlap', 'Receipt overlaps LLVM inputs') do
+    LLVMStageReuse.record(config, destination, output)
+  end
+  raise 'overlapping receipt or stage was written' unless !File.exist?(output) && Dir.children(destination).empty? && File.binread(work + '/install-invocations.log') == invocations
+end
+
 %w[source patch compiler native-tool object normalized-plist target-ABI-header].zip([
   source + '/runtime.dat', recipe + '/patch', work + '/bin/gcc', work + '/bin/tblgen', build + '/object.dat', lists.fetch('full'), work + '/target-abi.h'
 ]).each do |label, path|
@@ -142,14 +164,27 @@ raise 'invalid receipt published' if File.exist?(work + '/invalid-receipt.json')
   File.binwrite(build + '/object.dat', object)
 end
 object = File.binread(build + '/object.dat')
-{'wrong-elf' => ["\x7fELF".b + [2, 1].pack('CC') + ("LLVMStageReuse.verify(config, receipt, receipt_hash)
-File.write(work + '/results.json'" * 12) + [62].pack('v'), 'Wrong staged ELF ABI'],
- 'host-macho' => [["cafebabf"].pack('H*') + ("LLVMStageReuse.verify(config, receipt, receipt_hash)
-File.write(work + '/results.json'" * 16), 'Host Mach-O']}.each do |label, (bytes, message)|
+elf = "\0".b * 64
+elf[0, 4] = "\x7fELF".b
+elf.setbyte(4, 2) # ELFCLASS64
+elf.setbyte(5, 1) # ELFDATA2LSB
+elf.setbyte(6, 1) # EV_CURRENT
+elf[16, 2] = [3].pack('v') # ET_DYN
+elf[18, 2] = [183].pack('v') # EM_AARCH64
+raise 'invalid positive ELF fixture' unless elf.bytesize == 64 && elf[18, 2].unpack1('v') == 183
+File.binwrite(build + '/object.dat', elf)
+destination = work + '/valid-elf'; Dir.mkdir(destination)
+LLVMStageReuse.record(config, destination, work + '/valid-elf-receipt.json')
+checks << 'matching AArch64 ELF header'
+elf[18, 2] = [62].pack('v') # EM_X86_64; this is the only changed field.
+raise 'invalid negative ELF fixture' unless elf.bytesize == 64 && elf[18, 2].unpack1('v') == 62
+{'wrong-elf' => [elf, 'Wrong staged ELF ABI'],
+ 'host-macho' => [["cafebabf"].pack('H*') + ("\0".b * 16), 'Host Mach-O']}.each do |label, (bytes, message)|
   File.binwrite(build + '/object.dat', bytes); destination = work + '/' + label; Dir.mkdir(destination)
   refused(checks, label + ' reference', message) { LLVMStageReuse.record(config, destination, work + '/' + label + '-receipt.json') }
   File.binwrite(build + '/object.dat', object)
 end
+
 LLVMStageReuse.verify(config, receipt, receipt_hash)
 File.write(work + '/results.json', JSON.pretty_generate({'scope' => 'CMake installation and integrity fixtures only; no LLVM package, compiler or hardware acceptance.', 'checks' => checks}) + "\n")
 puts "PASS: #{checks.size} LLVM stage reuse fixture contracts"
