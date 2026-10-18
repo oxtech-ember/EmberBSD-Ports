@@ -137,6 +137,10 @@ runtime behavior are validated.
   keep compilers out of application images. Host package creation and isolated
   installation pass for synthetic amd64 and AArch64 runtime fixtures with
   native pkgtools. Target triplet, ELF and package architecture must agree.
+  The [existing-compiler runtime mode](profiles/development-toolchain/bootstrap/external-compiler.md)
+  adds audited GCC16 support metadata without installing a new compiler prefix.
+  Input, dispatcher and package-receipt fixtures pass; a real runtime build and
+  installed provider ownership remain separate checks.
   A [fresh libstdc++ helper](profiles/development-toolchain/bootstrap/libstdcxx.md)
   builds the NetBSD locale repair with explicit inherited-component checks
   and retains all 6,190 defined dynamic symbol identities.

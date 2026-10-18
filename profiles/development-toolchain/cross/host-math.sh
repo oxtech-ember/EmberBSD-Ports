@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD; AI-assisted, isolated current GCC host prerequisites.
 set -eu
+host_mode=gcc16
+if [ "${1:-}" = --native-clang ]; then host_mode=native-clang; shift; fi
 [ "$#" -eq 3 ] || {
-    echo 'Usage: host-math.sh ARCHIVE_DIRECTORY NETBSD_TOOLDIR NEW_WORK' >&2
+    echo 'Usage: host-math.sh [--native-clang] ARCHIVE_DIRECTORY NETBSD_TOOLDIR NEW_WORK' >&2
     exit 2
 }
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
@@ -34,10 +36,22 @@ for compiler in "$host_cc" "$host_cxx"; do
     command -v "$compiler" >/dev/null 2>&1 || {
         echo "Host GCC16 compiler missing: $compiler" >&2; exit 2;
     }
-    version=$("$compiler" -dumpfullversion) || {
-        echo "Cannot identify host GCC16 compiler: $compiler" >&2; exit 2;
-    }
-    case "$version" in 16.*) ;; *) echo "GCC 16 host compiler required: $compiler ($version)" >&2; exit 2;; esac
+    if [ "$host_mode" = native-clang ]; then
+        identity=$("$compiler" --version)
+        printf '%s\n' "$identity" | grep -Eq '^(Apple )?clang version [0-9]+' || {
+            echo 'Native Clang is required for the explicit host-only mode.' >&2; exit 2;
+        }
+        compiler_target=$("$compiler" -dumpmachine)
+        case "$(uname -m):$compiler_target" in
+            arm64:arm64-apple-*|arm64:aarch64-apple-*|aarch64:aarch64-*|x86_64:x86_64-*) ;;
+            *) echo 'Host-only Clang target differs from the development host.' >&2; exit 2;;
+        esac
+    else
+        version=$("$compiler" -dumpfullversion) || {
+            echo "Cannot identify host GCC16 compiler: $compiler" >&2; exit 2;
+        }
+        case "$version" in 16.*) ;; *) echo "GCC 16 host compiler required: $compiler ($version)" >&2; exit 2;; esac
+    fi
 done
 mkdir -p "$archives"
 for item in gmp:6.3.0:tar.xz mpfr:4.2.2:tar.bz2 mpc:1.4.1:tar.xz; do
@@ -66,6 +80,7 @@ prefix=$work/prefix
 mkdir "$prefix"
 {
     uname -srm
+    printf 'host_compiler_mode=%s\n' "$host_mode"
     printf 'host_cc=%s\nhost_cxx=%s\ncflags=%s\ncxxflags=%s\n' \
         "$host_cc" "$host_cxx" '-O2 -std=gnu17' '-O2'
     "$host_cc" --version

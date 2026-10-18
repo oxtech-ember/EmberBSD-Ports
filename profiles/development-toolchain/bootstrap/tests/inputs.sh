@@ -4,7 +4,7 @@
 set -eu
 here=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
 [ -f "$here/build.sh" ] || { echo 'FAIL: runtime bootstrap entry point is missing' >&2; exit 1; }
-work=$(mktemp -d /tmp/ember-gcc-runtime-inputs.XXXXXX)
+work=$(mktemp -d ${TMPDIR:-/tmp}/ember-gcc-runtime-inputs.XXXXXX)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 mkdir -p "$work/profile/bootstrap" "$work/profile/cross" "$work/pkgsrc/lang/gcc16/patches" \
     "$work/kernel/toolchain/bin" "$work/seed/usr/include" "$work/seed/usr/lib" \
@@ -56,6 +56,7 @@ case "$1" in
     -dumpfullversion) echo "${FIXTURE_VERSION:-16.2.0}";;
     --version) echo 'gcc (GCC) 16.2.0';;
     -v) echo "Thread model: ${FIXTURE_THREADS:-posix}" >&2;;
+    -print-prog-name=*) echo "$(dirname "$(dirname "$0")")/libexec/${1#*=}";;
     -dM)
         cat >/dev/null
         echo '#define __GNUC__ 16'
@@ -97,6 +98,9 @@ for triplet in x86_64--netbsd aarch64--netbsd; do
         cp "$work/binutil" "$work/kernel/toolchain/bin/$triplet-$tool"
     done
 done
+mkdir -p "$work/kernel/toolchain/libexec"
+cp "$work/compiler" "$work/kernel/toolchain/libexec/cc1"
+cp "$work/compiler" "$work/kernel/toolchain/libexec/cc1plus"
 export GNU_MAKE=$work/gmake
 export EMBERBSD_SYSROOT_SOURCE=0123456789012345678901234567890123456789
 run() {
@@ -118,6 +122,33 @@ grep -qx 'target_flags=-O2 -march=nocona -mtune=nocona -mfpmath=sse' "$work/amd6
 (target=aarch64 FIXTURE_TRIPLET=aarch64--netbsd FIXTURE_MACHINE=AArch64 run) > "$work/aarch64.plan"
 grep -qx 'triplet=aarch64--netbsd' "$work/aarch64.plan"
 grep -qx 'target_flags=-O2' "$work/aarch64.plan"
+# An explicit existing POSIX compiler needs its own honest provenance mode.
+external_run() {
+    sh "$builder" --check --external-compiler --target "${target:-amd64}" "$work/pkgsrc" \
+        "$work/gcc.tar.xz" "$work/kernel/toolchain" "$work/seed" "$work/math" "$work/output"
+}
+mv "$work/kernel/inputs.txt" "$work/kernel/inputs.saved"
+external_run > "$work/external.plan"
+grep -qx 'compiler_mode=external-posix' "$work/external.plan"
+grep -qx 'support_target=libgcc-support' "$work/external.plan"
+[ ! -e "$work/output" ]
+external_reject() {
+    if external_run > "$work/external-reject.log" 2>&1; then
+        echo "FAIL: external mode accepted $1" >&2; exit 1
+    fi
+    [ ! -e "$work/output" ]
+}
+(FIXTURE_THREADS=single external_reject 'single-thread compiler')
+(FIXTURE_VERSION=12.5.0 external_reject 'old compiler')
+(FIXTURE_TRIPLET=aarch64--netbsd external_reject 'wrong compiler target')
+(FIXTURE_MACHINE=AArch64 external_reject 'wrong seed architecture')
+(EMBERBSD_SYSROOT_SOURCE=unknown external_reject 'unidentified seed')
+mv "$work/kernel/toolchain/libexec/cc1plus" "$work/cc1plus.saved"
+external_reject 'missing C++ frontend'
+mv "$work/cc1plus.saved" "$work/kernel/toolchain/libexec/cc1plus"
+(target=aarch64 FIXTURE_TRIPLET=aarch64--netbsd FIXTURE_MACHINE=AArch64 external_run) > "$work/external-aarch64.plan"
+grep -qx 'triplet=aarch64--netbsd' "$work/external-aarch64.plan"
+mv "$work/kernel/inputs.saved" "$work/kernel/inputs.txt"
 # A resume preflight must validate the old input receipt and keep objects.
 mkdir -p "$work/output/src" "$work/output/build/gcc" "$work/output/stage"
 cp "$work/compiler" "$work/output/build/gcc/xgcc"

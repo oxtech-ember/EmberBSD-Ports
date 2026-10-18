@@ -22,6 +22,17 @@ The separate `../runtime/` owner packages target DSOs as the explicit shared
 `gcc16-runtime` provider. Runtime-only data must never be relabeled as the
 complete compiler package.
 
+## Existing application compiler
+
+The explicit `--external-compiler` mode uses an existing POSIX-threaded GCC16
+for all target objects. It records its drivers, frontends and GNU binutils
+without inventing a kernel-compiler build receipt. It builds only upstream
+`libgcc-support` metadata and host prerequisites in the new work tree.
+It configures libgcc and libstdc++ directly; no compiler frontend or compiler
+prefix is installed. The kernel bootstrap and resume contracts are unchanged.
+See [external compiler runtime builds](external-compiler.md) for inputs,
+checks, receipts and limits.
+
 ## Inputs and provenance
 
 Use a clean Ports revision and absolute paths without whitespace:
