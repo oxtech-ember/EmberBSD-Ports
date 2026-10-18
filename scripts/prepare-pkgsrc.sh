@@ -248,7 +248,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             graphics/cairo) approved='patch-meson.build patch-src_cairo-bentley-ottmann-rectangular.c patch-src_cairo-colr-glyph-render.c patch-src_cairo-image-surface.c patch-test_pdf-structure.c patch-util_cairo-missing_getline.c' ;;
             fonts/harfbuzz) approved='patch-src_meson.build patch-util_meson.build' ;;
             converters/fribidi) approved='patch-bin_Makefile.am patch-bin_Makefile.in' ;;
-            graphics/jbigkit) approved='patch-Makefile patch-libjbig_Makefile patch-pbmtools_Makefile patch-test-cleanup' ;;
+            graphics/jbigkit) approved='patch-cli-cleanup patch-Makefile patch-libjbig_Makefile patch-pbmtools_Makefile patch-test-cleanup' ;;
             graphics/png) approved='patch-libpng-config.in patch-pngpriv.h' ;;
             graphics/freetype2) approved='patch-builds_unix_freetype-config.in patch-builds_unix_unix-cc.in' ;;
             devel/pango) approved='patch-emberbsd-gir-cross.build patch-pango_pangocairo-coretextfont.c patch-pango_pangocairo-coretextfontmap.c patch-pango_pangocoretext-private.h patch-pango_pangocoretext.c patch-pangocairo-coretext.h' ;;
@@ -369,7 +369,7 @@ for category in "$root"/pkgsrc/*; do
 done
 if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ] || \
     [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
-    for delta in pkgsrc-gcc16.2.patch strict-tests.patch current-prerequisites.patch texinfo-gettext-order.patch stable-expect.patch gcc-tsvc-netbsd.patch gcc-modules-fallocate.patch gcc-package-requires.patch; do
+    for delta in pkgsrc-gcc16.2.patch strict-tests.patch current-prerequisites.patch texinfo-gettext-order.patch stable-expect.patch gcc-tsvc-netbsd.patch gcc-modules-fallocate.patch gcc-netbsd-locale.patch gcc-package-requires.patch; do
         patch -f -E -d "$destination" -p1 -F 0 < \
             "$root/profiles/development-toolchain/patches/$delta"
     done

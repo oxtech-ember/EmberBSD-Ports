@@ -7,3 +7,4 @@ SHA1 (patch-Makefile) = b6597fab5c77f2f16fdb2da10b1d582cdc08182f
 SHA1 (patch-libjbig_Makefile) = fed52546e567e2a0f63854980965d71229e98137
 SHA1 (patch-pbmtools_Makefile) = dc62dd2cdc792304e8ed63f9d2e17176fbb5688f
 SHA1 (patch-test-cleanup) = 693bd05be6f827017bb399ef5b4a861849620658
+SHA1 (patch-cli-cleanup) = c16bf8c055fd0e260bc65fefb9b847479e5a3219

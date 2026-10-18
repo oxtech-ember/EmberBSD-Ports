@@ -34,10 +34,11 @@ runtime behavior are validated.
   GCC16 AArch64 packaging verifies all 613 entries; four selected native
   and installed EmberBSD numerical checks pass. Normal package removal and
   reinstallation preserve the verified ownership boundary.
-- [JBIG-KIT 2.2](profiles/common-graphics/cross/jbigkit.md): the common provider
+- [JBIG-KIT 2.2nb1](profiles/common-graphics/cross/jbigkit.md): the common provider
   keeps both libraries and all four image tools. Ordinary GCC16 native and
   AArch64 packages pass package checks; native upstream tests and installed
-  library memory checks pass. Target execution and TIFF integration remain pending.
+  library memory checks pass. Fourteen installed CLI memory/image cases also pass.
+  Target execution and TIFF integration remain pending.
 - [Maintained FreeImage sources](profiles/common-graphics/cross/freeimage.md):
   FreeImage/FreeImagePlus 3.19.25 and LibRaw 0.22.2 retain common codecs for
   OCCT. Source and focused native half checks pass; complete packages and
@@ -49,15 +50,16 @@ runtime behavior are validated.
   Matching code generation retains its output and error behavior. Documented
   process-lifetime exceptions keep the original CLI's memory failures visible.
   The same C++ and UPB contracts pass in the AArch64 E34 guest with the
-  GCC16-built shared-library closure. Ordinary protobuf package ownership,
-  lifecycle and KiCad integration remain pending.
+  GCC16-built shared-library closure. Ordinary protobuf package execution,
+  lifecycle and complete KiCad integration remain pending.
   The [common Abseil recipe](profiles/common-build-tools/cross/protobuf.md)
   repairs NetBSD stack traces. Its ordinary AArch64 package passes two installed
   SDK consumers, all 816 payload checks and removal/reinstallation.
   Cross protobuf recipes separate runtime libraries from target generators and
   SDK files. Their source ownership checks preserve the full native package.
-  The runtime package passes normal checks and all twelve SDK payload entries;
-  SDK packaging and installed KiCad integration remain pending.
+  Both packages pass normal checks, all 353 installed SDK payload entries and
+  two GCC16 consumer links. Actual KiCad API generation passes; target compilation
+  exposes a system `major`/`minor` macro conflict.
   Common CMake discovery now prefers selected package dependencies over base
   namesakes; GCC16 zlib discovery/link controls preserve native behavior.
 - [KiCad SPICE prerequisites](probes/kicad/ngspice/README.md): ngspice 47
@@ -109,6 +111,10 @@ runtime behavior are validated.
   C11/C++20, threads, TLS, DSO exceptions, OpenMP and large atomic checks in
   the verified E34 QEMU guest. Removal and reinstallation preserve the expected
   loader boundary. Desktop and amd64 runtime execution remain separate checks.
+  The [NetBSD C++ locale repair](profiles/development-toolchain/locale.md)
+  preserves configured numeric conversion behavior without changing the process
+  locale. Real AArch64 source-object comparisons reproduce the old concurrent
+  failure and pass after repair; installed runtime migration remains pending.
   Common Qt rebuilding and full-image integration
   remain pending.
   [GDB 18.1nb1](profiles/development-toolchain/gdb/README.md) is cross-built and

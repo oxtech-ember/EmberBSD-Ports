@@ -1,4 +1,4 @@
-# JBIG-KIT 2.2 common provider
+# JBIG-KIT 2.2nb1 common provider
 
 The common graphics profile updates the existing `graphics/jbigkit` provider.
 [The publisher](https://www.cl.cam.ac.uk/~mgk25/jbigkit/) released 2.2 on 2026-10-09.
@@ -90,24 +90,34 @@ The target package also passes the PIE check.
 Native upstream core and PBM suites pass through the ordinary recipe.
 All three installed-library core tests pass, including strict native Memcheck.
 The target installed-library test executables cross-link to SONAME 2.
-All four installed image tools preserve the known PBM pixels and reference encoding.
-Their strict Memcheck runs fail on inherited exit-owned buffers or open streams:
+The separate nb1 patch repairs successful CLI completion ownership.
+Before repair, strict Memcheck fails on retained buffers or input streams:
 `jbgtopbm` retains 8,472 bytes, `pbmtojbg` 513,696 bytes,
 `pbmtojbg85` 1,120 bytes and `jbgtopbm85` 11,736 bytes.
 The unchanged upstream `jbgtopbm` reproduces the exact 8,472-byte failure.
-These CLI lifetime findings remain owned by upstream JBIG-KIT; they are not
-covered by the separate test-program cleanup patch or described as memory-clean.
+The patch frees command-owned image buffers and closes non-stdin input streams.
+The diagnostic branch skips decoder cleanup because it never initializes a decoder.
+Early fatal/error exits remain unchanged and are outside this lifetime claim.
+
+All 14 [installed CLI cases](../tests/jbigkit/check-tools.sh) pass strict native
+Memcheck with zero errors, zero live blocks and no suppressions.
+They cover file and standard streams, bytewise T.85 decoding, diagnostics,
+verbose output and multi-plane PGM. Pixels and the reference encoding match exactly.
+Run them with `sh check-tools.sh PREFIX PATCHED_SOURCE NEW_WORK`.
+Set `JBIG_MEMCHECK=yes` to apply the strict native memory checks to every command.
 Target execution, package lifecycle, TIFF integration and the full KiCad workflow
 remain separate acceptance checks.
 
 Cppcheck 2.22 uses actual GCC16 C90 macros and header search paths for all ten C files.
-Its 46 style and six warning findings match the pristine 2.2 baseline.
-Clang findings also match that baseline after source-root normalization.
-Clang 19 path analysis reports inherited codec allocation/shift paths,
+The 2.2 pass retained 46 style and six warning findings from pristine upstream.
+The nb1 CLI pass adds no finding and removes one scope-style finding.
+Clang 19 still reports inherited codec allocation/shift paths,
 uninitialized-value paths, PBM stream-state paths and dead stores.
-These are upstream JBIG-KIT findings; the codec and tool C files are unchanged.
-They require separate input/path diagnosis and are not reported as clean analysis.
-The two touched test modules have no Clang path finding.
-GCC16 `-fanalyzer` reports only the existing test-label `sprintf` range warning;
-the actual loop has four layer values and three orders, so its counter is 1 through 12.
+The nb1 control flow also exposes an unchanged invalid-diagnostic early-return leak.
+Explicit input ownership removes the analyzer path that treated an opened file as stdin.
+The codec C remains unchanged; the four CLI files change only final resource ownership.
+Open upstream diagnostic/error-path findings remain separate work, not a clean-analysis claim.
+The two patched test modules have no Clang path finding.
+GCC16 `-fanalyzer` retains four upstream realloc-failure ownership findings in `jbgtopbm`.
+The test-label `sprintf` range warning also remains; the real counter is 1 through 12.
 No warning category or analyzer finding is suppressed.

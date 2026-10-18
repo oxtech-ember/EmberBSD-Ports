@@ -1,0 +1,255 @@
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+Keep numeric conversions local to the real NetBSD C locale.
+Preserve GCC GPLv3+ and Runtime Library Exception; package the changed
+installed header and runtime together without changing the generic locale ABI.
+
+--- a/lang/gcc16/Makefile
++++ b/lang/gcc16/Makefile
+@@ -4,7 +4,7 @@
+ ## When bumping the PKGREVISION of this package the PKGREVISION of
+ ## lang/gcc16-libs needs to be bumped to be at least 1 more than the
+ ## PKGREVISION of this package!
+-PKGREVISION=	1
++PKGREVISION=	2
+ COMMENT=	The GNU Compiler Collection (GCC) - 16.0 Release Series
+ 
+ LANGS=		c
+--- a/lang/gcc16-libs/Makefile
++++ b/lang/gcc16-libs/Makefile
+@@ -9,7 +9,7 @@
+ ## The PKGREVISION of this package needs to be at least 1 more than the
+ ## PKGREVISION of the lang/gcc16 package so that with the dependence pattern
+ ## '{gcc16,gcc16-libs}>=16.1.*' pkg_add will choose gcc16-libs over gcc16.
+-PKGREVISION=	2
++PKGREVISION=	3
+ 
+ CATEGORIES=	lang
+ MASTER_SITES=	# empty
+--- a/lang/gcc16/distinfo
++++ b/lang/gcc16/distinfo
+@@ -1,5 +1,6 @@
+ $NetBSD: distinfo,v 1.4 2026/09/26 12:39:53 wiz Exp $
+ 
++SHA1 (patch-libstdc++-v3_config_locale_generic_c__locale) = 9efefe7bda8401456abcd477b41c3f7790052a00
+ SHA1 (patch-gcc_cp_module.cc) = 6215bbcde8e9c6ea44df9da284971f1a5706554c
+ SHA1 (patch-gcc_testsuite_gcc.dg_vect_tsvc_tsvc.h) = eb86527a4697d2d1ed34b22c8083796644888b68
+ BLAKE2s (gcc-16.2.0.tar.xz) = b2a4b0c96c7025de8336afaa77eb1c7ce61021110dcf8d3ada3cd064830e5afa
+--- /dev/null
++++ b/lang/gcc16/patches/patch-libstdc++-v3_config_locale_generic_c__locale
+@@ -0,0 +1,216 @@
++$NetBSD$
++
++Use the real immutable NetBSD C locale for generic numeric conversion.
++Keep the generic int* locale ABI, stream grammar, overflow and errno handling;
++other platforms retain the original generic backend. No process setlocale.
++Origin: EmberBSD (AI-assisted); not submitted upstream.
++
++--- libstdc++-v3/config/locale/generic/c_locale.h.orig
+++++ libstdc++-v3/config/locale/generic/c_locale.h
++@@ -40,6 +40,19 @@
++ 
++ #include <clocale>
++ 
+++#if defined(__NetBSD__)
+++#include <cstddef>
+++// These are existing NetBSD libc interfaces.  Declare their exact ABI here
+++// as well because feature-test macros can hide the NetBSD C locale constant
+++// (or the locale_t typedef) from an otherwise valid ISO C++ application.
+++extern "C"
+++{
+++  struct _locale;
+++  extern const struct _locale _lc_C_locale;
+++  int vsnprintf_l(char*, size_t, struct _locale*, const char*, __builtin_va_list);
+++}
+++#endif
+++
++ #define _GLIBCXX_NUM_CATEGORIES 0
++ 
++ namespace std _GLIBCXX_VISIBILITY(default)
++@@ -57,6 +70,7 @@
++ 		   const int __size __attribute__((__unused__)),
++ 		   const char* __fmt, ...)
++   {
+++#if !defined(__NetBSD__)
++     char* __old = std::setlocale(LC_NUMERIC, 0);
++     char* __sav = 0;
++     if (__builtin_strcmp(__old, "C"))
++@@ -67,10 +81,15 @@
++ 	std::setlocale(LC_NUMERIC, "C");
++       }
++ 
+++#endif
++     __builtin_va_list __args;
++     __builtin_va_start(__args, __fmt);
++ 
++-#if _GLIBCXX_USE_C99_STDIO && !_GLIBCXX_HAVE_BROKEN_VSNPRINTF
+++#if defined(__NetBSD__)
+++    // LC_C_LOCALE's public object is immutable and needs no allocation/free.
+++    const int __ret = ::vsnprintf_l(__out, __size,
+++        const_cast<struct _locale*>(&_lc_C_locale), __fmt, __args);
+++#elif _GLIBCXX_USE_C99_STDIO && !_GLIBCXX_HAVE_BROKEN_VSNPRINTF
++     const int __ret = __builtin_vsnprintf(__out, __size, __fmt, __args);
++ #else
++     const int __ret = __builtin_vsprintf(__out, __fmt, __args);
++@@ -78,11 +97,13 @@
++ 
++     __builtin_va_end(__args);
++ 
+++#if !defined(__NetBSD__)
++     if (__sav)
++       {
++ 	std::setlocale(LC_NUMERIC, __sav);
++ 	delete [] __sav;
++       }
+++#endif
++     return __ret;
++   }
++ 
++--- libstdc++-v3/config/locale/generic/c_locale.cc.orig
+++++ libstdc++-v3/config/locale/generic/c_locale.cc
++@@ -53,6 +53,7 @@
++       int _M_errno;
++     };
++ 
+++#if !defined(__NetBSD__)
++     // calls setlocale(LC_ALL, "C") and returns a string containing the old
++     // locale name. Caller must delete[] the string. Returns NULL on error.
++     const char*
++@@ -68,6 +69,7 @@
++ 	}
++       return __sav;
++     }
+++#endif
++   }
++ 
++   template<>
++@@ -76,12 +78,14 @@
++ 		   const __c_locale&) throw()
++     {
++       // Assumes __s formatted for "C" locale.
+++#if !defined(__NetBSD__)
++       const char* __sav = __set_C_locale();
++       if (!__sav)
++ 	{
++ 	  __err = ios_base::failbit;
++ 	  return;
++ 	}
+++#endif
++       char* __sanity;
++       bool __overflow = false;
++ 
++@@ -90,9 +94,17 @@
++ #endif
++ 
++ #ifdef _GLIBCXX_HAVE_STRTOF
+++#if defined(__NetBSD__)
+++      __v = strtof_l(__s, &__sanity, LC_C_LOCALE);
+++#else
++       __v = strtof(__s, &__sanity);
+++#endif
+++#else
+++#if defined(__NetBSD__)
+++      double __d = strtod_l(__s, &__sanity, LC_C_LOCALE);
++ #else
++       double __d = strtod(__s, &__sanity);
+++#endif
++       __v = static_cast<float>(__d);
++ #ifdef _GLIBCXX_HAVE_FINITEF
++       if (!finitef (__v))
++@@ -132,8 +144,10 @@
++ 	  __err = ios_base::failbit;
++ 	}
++ 
+++#if !defined(__NetBSD__)
++       setlocale(LC_ALL, __sav);
++       delete [] __sav;
+++#endif
++     }
++ 
++   template<>
++@@ -142,19 +156,25 @@
++ 		   const __c_locale&) throw()
++     {
++       // Assumes __s formatted for "C" locale.
+++#if !defined(__NetBSD__)
++       const char* __sav = __set_C_locale();
++       if (!__sav)
++ 	{
++ 	  __err = ios_base::failbit;
++ 	  return;
++ 	}
+++#endif
++       char* __sanity;
++ 
++ #if !__DBL_HAS_INFINITY__
++       const _Save_errno __save_errno;
++ #endif
++ 
+++#if defined(__NetBSD__)
+++      __v = strtod_l(__s, &__sanity, LC_C_LOCALE);
+++#else
++       __v = strtod(__s, &__sanity);
+++#endif
++ 
++       // _GLIBCXX_RESOLVE_LIB_DEFECTS
++       // 23. Num_get overflow result.
++@@ -178,8 +198,10 @@
++ 	  __err = ios_base::failbit;
++ 	}
++ 
+++#if !defined(__NetBSD__)
++       setlocale(LC_ALL, __sav);
++       delete [] __sav;
+++#endif
++     }
++ 
++   template<>
++@@ -188,12 +210,14 @@
++ 		   ios_base::iostate& __err, const __c_locale&) throw()
++     {
++       // Assumes __s formatted for "C" locale.
+++#if !defined(__NetBSD__)
++       const char* __sav = __set_C_locale();
++       if (!__sav)
++ 	{
++ 	  __err = ios_base::failbit;
++ 	  return;
++ 	}
+++#endif
++ 
++ #if !__LDBL_HAS_INFINITY__
++       const _Save_errno __save_errno;
++@@ -201,14 +225,22 @@
++ 
++ #if defined(_GLIBCXX_HAVE_STRTOLD) && !defined(_GLIBCXX_HAVE_BROKEN_STRTOLD)
++       char* __sanity;
+++#if defined(__NetBSD__)
+++      __v = strtold_l(__s, &__sanity, LC_C_LOCALE);
+++#else
++       __v = strtold(__s, &__sanity);
+++#endif
++ 
++       // _GLIBCXX_RESOLVE_LIB_DEFECTS
++       // 23. Num_get overflow result.
++       if (__sanity == __s || *__sanity != '\0')
++ #else
++       typedef char_traits<char>::int_type int_type;
+++#if defined(__NetBSD__)
+++      int __p = sscanf_l(__s, LC_C_LOCALE, "%Lf", &__v);
+++#else
++       int __p = sscanf(__s, "%Lf", &__v);
+++#endif
++ 
++       if (!__p || static_cast<int_type>(__p) == char_traits<char>::eof())
++ #endif
++@@ -231,8 +263,10 @@
++ 	  __err = ios_base::failbit;
++ 	}
++ 
+++#if !defined(__NetBSD__)
++       setlocale(LC_ALL, __sav);
++       delete [] __sav;
+++#endif
++     }
++ 
++   void
