@@ -105,7 +105,9 @@ def main():
         keys = ("BJAM_ARGS", "BJAM_BUILD", "CXX", "AR", "TOOL_DEPENDS", "PLIST.context", "PLIST.fiber", "PLIST.log", "PKG_FAIL_REASON", "WRKDIR")
         for case, (config, extra) in cases.items():
             argv = [tools["bmake"], "MAKECONF=" + str(configs[config]), "WRKOBJDIR=" + str(work / "objects" / variant / case), "MAKE_JOBS=1", *extra]
-            lines = run(variant + "-" + case, [*argv, *(arg for key in keys for arg in ("-V", "${" + key + "}"))], cwd=tree / "devel/boost-libs").splitlines()
+            # Expanded -V expressions also enter .MAKEFLAGS. A value that
+            # contains b2's -j option can falsely trip pkgsrc's own -j guard.
+            lines = run(variant + "-" + case, [*argv, *(arg for key in keys for arg in ("-v", key))], cwd=tree / "devel/boost-libs").splitlines()
             assert len(lines) == len(keys)
             value = dict(zip(keys, lines))
             metadata[variant][case] = value
@@ -120,6 +122,8 @@ def main():
                 assert "aarch64 or x86_64 target metadata" in value["PKG_FAIL_REASON"]
             if case in ("native", "host-recursion"):
                 assert "target-os=netbsd" not in shlex.split(value["BJAM_BUILD"])
+            if case in ("native", "aarch64", "host-recursion"):
+                assert not value["PKG_FAIL_REASON"], (variant, case, value["PKG_FAIL_REASON"])
         # Run the actual make target. A successful metadata query alone must
         # not hide a malformed Jam configuration or shell redirection.
         config = metadata[variant]["aarch64"]
