@@ -1,0 +1,12 @@
+libedit-netbsd.patch
+history-substitution.patch
+cli-circuit-file.patch
+xspice-cross-generator.patch
+netbsd-dlopen.patch
+dotcards-token-list.patch
+shared-preinit.patch
+dotcards-parenthesis.patch
+process-name-return.patch
+source-name-lifetime.patch
+parser-error-ownership.patch
+shared-command-cleanup.patch

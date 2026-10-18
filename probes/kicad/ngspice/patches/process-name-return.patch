@@ -1,0 +1,14 @@
+Origin: EmberBSD; AI-assisted repair for ngspice 47.
+License: Same terms as the patched upstream files.
+Return no name if the optional process-name file cannot be opened. The caller already accepts NULL.
+
+--- a/src/sharedspice.c
++++ b/src/sharedspice.c
+@@ -2649,6 +2649,7 @@
+             fclose(f);
+         return NULL;
+     }
++    return NULL;
+ #elif defined(_WIN32)
+     char processPath[MAX_PATH];
+     // Passing NULL retrieves the path of the executable for the current process

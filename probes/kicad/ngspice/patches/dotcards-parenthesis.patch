@@ -1,0 +1,41 @@
+Origin: EmberBSD; AI-assisted repair for ngspice 47.
+License: Same terms as the patched upstream files.
+Reject missing closing parentheses and allocate the complete current-vector name.
+
+--- a/src/frontend/dotcards.c
++++ b/src/frontend/dotcards.c
+@@ -116,6 +116,7 @@
+             name = gettok(&s);
+ 
+             if ((w = gettoks(s)) == NULL) {
++                tfree(name);
+                 fprintf(cp_err, "Warning: no nodes given: %s\n", iline->wl_word);
+             } else {
+                 if (isaplot) {
+@@ -661,7 +662,14 @@
+             continue;
+         }
+ 
+-        r = strchr(t, ')');
++        r = strchr(l + 1, ')');
++        if (!r) {
++            fprintf(cp_err, "Error: missing ')' in vector expression: %s\n", t);
++            tfree(t);
++            tfree(s0);
++            wl_free(list);
++            return NULL;
++        }
+ 
+         c = strchr(t, ',');
+         if (!c)
+@@ -679,9 +687,7 @@
+         if ((*(l - 1) == 'i' ||
+              ((*(l - 1) == 'I') && (l - 1 == t))) ||
+             ((l > t + 1) && isspace(*(l-2)))) {
+-            char buf[513];
+-            sprintf(buf, "%s#branch", l + 1);
+-            wl->wl_word = copy(buf);
++            wl->wl_word = tprintf("%s#branch", l + 1);
+             c = r = NULL;
+         }
+         else {

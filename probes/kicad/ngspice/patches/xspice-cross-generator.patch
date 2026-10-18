@@ -1,0 +1,101 @@
+Origin: EmberBSD; AI-assisted repair for ngspice 47.
+License: Same terms as the patched upstream files.
+Use the configured host generator and preserve configured compile/link flags. Fail when list generation fails.
+
+--- a/src/xspice/cmpp/main.c
++++ b/src/xspice/cmpp/main.c
+@@ -136,7 +136,7 @@
+                 print_error("Unable to print paths to stdout");
+                 exit(-1);
+             }
+-            exit(n_item);
++            exit(EXIT_SUCCESS);
+         }
+         else { /* Wrong number of arguments */
+             if (argc < 3) {
+--- a/src/xspice/icm/GNUmakefile.in
++++ b/src/xspice/icm/GNUmakefile.in
+@@ -49,23 +49,25 @@
+ NGSRCBUILDDIR = $(CURDIR)/../..
+ 
+ dstring.o: $(NGSRCDIR)/misc/dstring.c $(NGSRCDIR)/include/ngspice/dstring.h
+-	$(CC) $(CFLAGS) -I$(NGSRCDIR)/include -I$(NGSRCBUILDDIR)/include -fPIC -o $@ -c $<
++	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(NGSRCDIR)/include -I$(NGSRCBUILDDIR)/include -fPIC -o $@ -c $<
+ 
+ msline_common.o: $(srcdir)/../tlines/msline_common.c $(srcdir)/../tlines/msline_common.h
+-	$(CC) $(CFLAGS) -I$(srcdir)/../tlines -I$(NGSRCDIR)/include -I$(NGSRCBUILDDIR)/include -fPIC -o $@ -c $<
++	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(srcdir)/../tlines -I$(NGSRCDIR)/include -I$(NGSRCBUILDDIR)/include -fPIC -o $@ -c $<
+ 
+ tline_common.o: $(srcdir)/../tlines/tline_common.c $(srcdir)/../tlines/tline_common.h
+-	$(CC) $(CFLAGS) -I$(srcdir)/../tlines -I$(NGSRCDIR)/include -I$(NGSRCBUILDDIR)/include -fPIC -o $@ -c $<
++	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(srcdir)/../tlines -I$(NGSRCDIR)/include -I$(NGSRCBUILDDIR)/include -fPIC -o $@ -c $<
+ 
+ ifdef cm
+ 
+-ifeq ($(OS),Windows_NT)
+-    cmpp = ../cmpp/cmpp.exe
+-else
+-    cmpp = ../cmpp/cmpp
+-endif
++cmpp = $(CMPP)
+ modlst := $(shell $(cmpp) -p $(srcdir)/$(cm)/modpath.lst)
++ifneq ($(.SHELLSTATUS),0)
++$(error CMPP failed to read $(srcdir)/$(cm)/modpath.lst)
++endif
+ udnlst := $(shell $(cmpp) -p $(srcdir)/$(cm)/udnpath.lst)
++ifneq ($(.SHELLSTATUS),0)
++$(error CMPP failed to read $(srcdir)/$(cm)/udnpath.lst)
++endif
+ 
+ cm-dirs := $(cm) $(udnlst:%=$(cm)/%) $(modlst:%=$(cm)/%)
+ cm-dep-dirs := $(cm-dirs:%=%/.deps)
+@@ -121,7 +123,7 @@
+ #-----
+ 
+ $(cm)/$(cm).cm : $(cm-objs)
+-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $(VIS_CFLAGS) $(LDFLAGS) $^ $(LIBS) -o $@
++	$(CC) $(CPPFLAGS) $(CFLAGS) $(EXTRA_CFLAGS) $(VIS_CFLAGS) $(SHARED_LDFLAGS) $(LDFLAGS) $^ $(LIBS) -o $@
+ 
+ # "order-only" prerequisites
+ #   (info "(make) Prerequisite Types")
+@@ -163,7 +165,7 @@
+ 	rm $$x.pp
+ endef
+ 
+-COMPILE = $(CC) $(INCLUDES) -I$(cm) -I$(srcdir)/$(cm) $(CFLAGS) $(EXTRA_CFLAGS) $(VIS_CFLAGS)
++COMPILE = $(CC) $(CPPFLAGS) $(INCLUDES) -I$(cm) -I$(srcdir)/$(cm) $(CFLAGS) $(EXTRA_CFLAGS) $(VIS_CFLAGS)
+ 
+ $(cm)/dlmain.o : $(srcdir)/dlmain.c $(cm-descr)
+ 	$(COMPILE) $(gen_pp)  -o $@ -c $<
+--- a/src/xspice/icm/makedefs.in
++++ b/src/xspice/icm/makedefs.in
+@@ -15,6 +15,8 @@
+ # C compiler to use
+ CC = @CC@
+ CFLAGS = @CFLAGS@
++CPPFLAGS = @CPPFLAGS@
++LDFLAGS = @LDFLAGS@
+ VIS_CFLAGS = @VIS_CFLAGS@
+ EXEEXT = @EXEEXT@
+ BUILD_EXEEXT = @BUILD_EXEEXT@
+@@ -47,16 +49,16 @@
+ LIBS = -lm
+ 
+ # Flags to use when linking shared library
+-LDFLAGS = -shared
++SHARED_LDFLAGS = -shared
+ ifeq ($(ISMINGW), 1)
+-  LDFLAGS = -shared @LDFLAGS@
++  SHARED_LDFLAGS = -shared @LDFLAGS@
+ endif
+ ifeq "$(strip $(uname))" "Darwin"
+-  LDFLAGS = -bundle -flat_namespace -undefined suppress
++  SHARED_LDFLAGS = -bundle -flat_namespace -undefined suppress
+ endif
+ ifeq "$(strip $(uname))" "SunOS"
+   ifneq "$(CC)" "gcc"
+-    LDFLAGS = -G
++    SHARED_LDFLAGS = -G
+   endif
+ endif
+ 

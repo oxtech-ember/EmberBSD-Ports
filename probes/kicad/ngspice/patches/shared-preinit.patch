@@ -1,0 +1,64 @@
+Origin: EmberBSD; AI-assisted repair for ngspice 47.
+License: Same terms as the patched upstream files.
+Permit the documented no-init-file calls before ngSpice_Init. Honor the setting on password-database platforms too.
+
+--- a/src/sharedspice.c
++++ b/src/sharedspice.c
+@@ -202,6 +202,8 @@
+ 
+ /* Frontend and circuit options */
+ IFsimulator* ft_sim = NULL;
++static bool defer_no_spinit;
++static bool defer_no_spiceinit;
+ 
+ char* errRtn;     /* name of the routine declaring error */
+ char* errMsg = NULL;     /* descriptive message about what went wrong */
+@@ -806,7 +808,9 @@
+ ngSpice_nospinit(void)
+ {
+     bool t = TRUE;
+-    cp_vset("no_spinit", CP_BOOL, &t);
++    defer_no_spinit = TRUE;
++    if (ft_sim)
++        cp_vset("no_spinit", CP_BOOL, &t);
+     return 0;
+ }
+ 
+@@ -816,7 +820,9 @@
+ ngSpice_nospiceinit(void)
+ {
+     bool t = TRUE;
+-    cp_vset("no_spiceinit", CP_BOOL, &t);
++    defer_no_spiceinit = TRUE;
++    if (ft_sim)
++        cp_vset("no_spiceinit", CP_BOOL, &t);
+     return 0;
+ }
+ 
+@@ -925,6 +931,10 @@
+ 
+     /*IFsimulator struct initilised*/
+     SIMinit(&nutmeginfo, &ft_sim);
++    if (defer_no_spinit)
++        cp_vset("no_spinit", CP_BOOL, &defer_no_spinit);
++    if (defer_no_spiceinit)
++        cp_vset("no_spiceinit", CP_BOOL, &defer_no_spiceinit);
+ 
+     /* program name*/
+     cp_program = ft_sim->simulator;
+@@ -958,6 +968,7 @@
+ 
+     /* Read the user config files */
+ #ifdef HAVE_PWD_H
++    if (!cp_getvar("no_spiceinit", CP_BOOL, NULL, 0)) {
+     /* Try to source either .spiceinit or ~/.spiceinit. */
+     if (access(".spiceinit", 0) == 0) {
+         inp_source(".spiceinit");
+@@ -976,6 +987,7 @@
+             tfree(s);
+         }
+     }
++    }
+ #else /* ~ HAVE_PWD_H */
+     /* load user's initialisation file
+       try accessing the initialisation file .spiceinit

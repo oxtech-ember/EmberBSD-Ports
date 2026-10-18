@@ -1,0 +1,26 @@
+Origin: EmberBSD; AI-assisted repair for ngspice 47.
+License: Same terms as the patched upstream files.
+NetBSD supplies dlopen in libc. Keep XSPICE and OSDI enabled without -ldl.
+
+--- a/configure.ac
++++ b/configure.ac
+@@ -1113,7 +1113,7 @@
+     XSPICEINIT="*"
+     if test "x$enable_osdi" = xyes || test "x$enable_osdi" = x ; then\
+         case $host_os in
+-            *mingw* | *msys* | *cygwin* | *solaris* )
++            *mingw* | *msys* | *cygwin* | *solaris* | *netbsd* )
+                 XSPICEDLLIBS=""
+                 ;;
+             * )
+@@ -1134,6 +1134,10 @@
+             AC_DEFINE([IPC_UNIX_SOCKETS], [1], [Client-Server via socket.])
+             XSPICEDLLIBS=""
+             ;;
++        *netbsd* )
++            AC_DEFINE([IPC_UNIX_SOCKETS], [1], [Client-Server via socket.])
++            XSPICEDLLIBS=""
++            ;;
+         *freebsd* )
+             AC_DEFINE([IPC_UNIX_SOCKETS], [1], [Client-Server via socket.])
+             XSPICEDLLIBS="-ldl"

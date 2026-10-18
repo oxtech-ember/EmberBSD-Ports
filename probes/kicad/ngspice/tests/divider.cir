@@ -1,0 +1,10 @@
+EmberBSD known voltage divider
+V1 vin 0 DC 10
+R1 vin vout 3k
+R2 vout 0 2k
+.control
+op
+print v(vin) v(vout) i(v1)
+quit
+.endc
+.end

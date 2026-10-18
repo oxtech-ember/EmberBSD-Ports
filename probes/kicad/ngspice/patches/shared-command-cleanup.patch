@@ -1,0 +1,131 @@
+Origin: EmberBSD; AI-assisted repair for ngspice 47.
+License: Same terms as the patched upstream files.
+Release active disjoint command lists before controlled shared-library exit. The frame covers dispatch, including nested source, after substitution and redirection.
+
+--- a/src/frontend/control.c
++++ b/src/frontend/control.c
+@@ -25,6 +25,30 @@
+ 
+ static void cp_free_control(void); /* needed by resetcontrol */
+ 
++#ifdef SHARED_MODULE
++struct command_frame {
++    wordlist *previous, *current, *following;
++    struct command_frame *outer;
++};
++#if defined(_MSC_VER)
++static __declspec(thread) struct command_frame *active_commands;
++#else
++static _Thread_local struct command_frame *active_commands;
++#endif
++
++void
++cp_free_active_commands(void)
++{
++    while (active_commands) {
++        struct command_frame *frame = active_commands;
++        active_commands = frame->outer;
++        wl_free(frame->previous);
++        wl_free(frame->current);
++        wl_free(frame->following);
++    }
++}
++#endif
++
+ /* Are we waiting for a command? This lets signal handling be
+  * more clever. */
+ 
+@@ -174,6 +198,9 @@
+         int i;
+         struct comm *command;
+         wordlist *nextc, *ee;
++#ifdef SHARED_MODULE
++        struct command_frame frame;
++#endif
+ 
+         nextc = wl_find(cp_csep, wlist);
+ 
+@@ -207,6 +234,14 @@
+ 
+         command = &cp_coms[i];
+ 
++#ifdef SHARED_MODULE
++        /* wl_chop made these three list heads disjoint. */
++        frame.previous = ee ? rwlist : NULL;
++        frame.current = wlist;
++        frame.following = nextc;
++        frame.outer = active_commands;
++        active_commands = &frame;
++#endif
+         /* Now give the user-supplied command routine a try... */
+         if (!command->co_func && cp_oddcomm(s, wlist->wl_next))
+             goto out;
+@@ -247,6 +282,9 @@
+         }
+ 
+     out:
++#ifdef SHARED_MODULE
++        active_commands = frame.outer;
++#endif
+         wl_append(ee, wlist);
+         wl_append(wlist, nextc);
+ 
+@@ -865,6 +903,10 @@
+             cend[stackp]->co_text = wl_copy(wlist);
+         }
+ 
++        /* Control nodes own copies of their input words. */
++        wl_free(freewl);
++        freewl = NULL;
++
+         if (!cend[stackp]->co_parent) {
+             x = cend[stackp];
+             /* We have to toss this do-while loop in here so
+@@ -894,7 +936,6 @@
+                     x = x->co_next;
+             } while (x);
+         }
+-        wl_free(freewl);
+         if (string)
+             return (1); /* The return value is irrelevant. */
+     } /* end of unconditional loop */
+--- a/src/frontend/control.h
++++ b/src/frontend/control.h
+@@ -6,6 +6,9 @@
+ #define ngspice_CONTROL_H
+ 
+ #include "ngspice/bool.h"
++#ifdef SHARED_MODULE
++void cp_free_active_commands(void);
++#endif
+ 
+ /* Stuff to do control structures. We keep a history (seperate from
+  * the cshpar history, for now at least) of commands and their event
+--- a/src/sharedspice.c
++++ b/src/sharedspice.c
+@@ -157,6 +157,7 @@
+ #include "frontend/misccoms.h"
+ #include "ngspice/stringskip.h"
+ #include "frontend/variable.h"
++#include "frontend/control.h"
+ 
+ /* To interupt a spice run */
+ #include <signal.h>
+@@ -2143,6 +2144,7 @@
+    but ask for graceful shutdown (e.g. being detached) via a callback function */
+ ATTRIBUTE_NORETURN void shared_exit(int status)
+ {
++    cp_free_active_commands();
+     /* alert caller to detach dll (if we are in the main thread),
+     or detach after a short sleep, if immediate is true, and we are
+     in a worker thread */
+--- a/src/frontend/misccoms.c
++++ b/src/frontend/misccoms.c
+@@ -122,6 +122,7 @@
+     unset_all();
+     cp_resetcontrol(FALSE);
+     sh_delete_myvec();
++    tfree(Infile_Path);
+     /* add 1000 to notify that we exit from 'quit' */
+     controlled_exit(1000 + exitcode);
+ #else

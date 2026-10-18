@@ -1,0 +1,84 @@
+Origin: EmberBSD; AI-assisted repair for ngspice 47.
+License: Same terms as the patched upstream files.
+Bound substitution allocations and release the copied pattern on every path.
+
+--- a/src/frontend/com_history.c
++++ b/src/frontend/com_history.c
+@@ -491,40 +491,47 @@
+ static char *
+ dohs(char *pat, char *str)
+ {
+-    char schar, *s, *p, buf[BSIZE_SP];
+-    int i = 0, plen;
+-    bool ok = FALSE;
++    char schar, *pattern, *replacement, *end, *match, *result;
++    size_t prefix_len, pattern_len, replacement_len, suffix_len, total;
+ 
+-    pat = copy(pat);    /* Don't want to mangle anything. */
+-    schar = *pat++;
+-    s = strchr(pat, schar);
+-    if (s == NULL) {
++    if (!pat || !*pat || !str)
++        return NULL;
++    pattern = copy(pat);
++    schar = pattern[0];
++    replacement = strchr(pattern + 1, schar);
++    if (!replacement) {
+         fprintf(cp_err, "Bad substitute.\n");
+-        return (NULL);
++        tfree(pattern);
++        return NULL;
+     }
+-    *s++ = '\0';
+-
+-    p = strchr(s, schar);
+-    if (p)
+-        *p = '\0';
+-
+-    plen = (int) strlen(pat) - 1;
+-    for (i = 0; *str; str++) {
+-        if ((*str == *pat) && prefix(pat, str) && (ok == FALSE)) {
+-            for (p = s; *p; p++)
+-                buf[i++] = *p;
+-            str += plen;
+-            ok = TRUE;
+-        } else {
+-            buf[i++] = *str;
+-        }
++    *replacement++ = '\0';
++    end = strchr(replacement, schar);
++    if (end)
++        *end = '\0';
++    /* An empty search pattern had no match in the original implementation. */
++    match = pattern[1] ? strstr(str, pattern + 1) : NULL;
++    if (!match) {
++        tfree(pattern);
++        return NULL;
+     }
+-    buf[i] = '\0';
+-
+-    if (ok)
+-        return (copy(buf));
+-    else
+-        return (NULL);
++    prefix_len = (size_t)(match - str);
++    pattern_len = strlen(pattern + 1);
++    replacement_len = strlen(replacement);
++    suffix_len = strlen(match + pattern_len);
++    if (prefix_len > (size_t)-1 - replacement_len ||
++        prefix_len + replacement_len > (size_t)-1 - suffix_len - 1) {
++        fprintf(cp_err, "Substitution is too long.\n");
++        tfree(pattern);
++        return NULL;
++    }
++    total = prefix_len + replacement_len + suffix_len;
++    result = tmalloc(total + 1);
++    memcpy(result, str, prefix_len);
++    memcpy(result + prefix_len, replacement, replacement_len);
++    memcpy(result + prefix_len + replacement_len,
++           match + pattern_len, suffix_len + 1);
++    tfree(pattern);
++    return result;
+ }
+ 
+ 

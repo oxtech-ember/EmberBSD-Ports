@@ -19,6 +19,11 @@ runtime behavior are validated.
 
 ## Current contents
 
+- [KiCad SPICE prerequisites](probes/kicad/ngspice/README.md): ngspice 47
+  source repairs retain the shared C API, XSPICE, OpenMP, FFTW and Readline.
+  Native numerical and causal ownership checks pass. Raw memory reports
+  retain process-lifetime allocations. Target packaging and KiCad execution
+  remain pending.
 - [Robotics and ROS 2](profiles/robotics/README.md): Zenoh-Pico 1.10.1
   native package and tests verified; the Examples C controller exchanges
   typed commands and telemetry with ROS 2 Jazzy, including reconnect checks.

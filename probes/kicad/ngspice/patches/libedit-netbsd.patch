@@ -1,0 +1,83 @@
+Origin: EmberBSD; AI-assisted repair for ngspice 47.
+License: Same terms as the patched upstream files.
+Accept the NetBSD libedit header layout and its configured terminal provider.
+
+--- a/configure.ac
++++ b/configure.ac
+@@ -1300,7 +1300,9 @@
+         AC_MSG_RESULT([BSD editline disabled.])
+     else
+         AC_MSG_RESULT([Checking for editline:])
+-        AC_CHECK_HEADERS([editline/readline.h],
++        AC_CHECK_HEADERS([editline/readline.h readline/readline.h])
++        AS_IF([test "x$ac_cv_header_editline_readline_h" = xyes ||
++               test "x$ac_cv_header_readline_readline_h" = xyes],
+             [AC_DEFINE([HAVE_BSDEDITLINE], [1], [Define to enable BSD editline])],
+             [AC_MSG_ERROR([Couldn't find BSD editline headers.])])
+         AC_SEARCH_LIBS([tputs], [tinfo termcap ncurses],
+@@ -1308,8 +1310,7 @@
+             [AC_MSG_ERROR([Found neither ncurses/terminfo or termcap])])
+         AC_CHECK_LIB([edit], [readline],
+             [LIBS="$LIBS -ledit"],
+-            [AC_MSG_ERROR([Couldn't find editline libraries.])],
+-            [-lncurses])
++            [AC_MSG_ERROR([Couldn't find editline libraries.])])
+     fi
+ fi
+ 
+--- a/src/main.c
++++ b/src/main.c
+@@ -25,7 +25,11 @@
+ /* editline development has added the following typdef to readline.h in 06/2018.
+    It is not vailable with older libedit versions (pre-1.42.2) , thus we have to set it ourselves */
+ #ifdef HAVE_BSDEDITLINE
++#ifdef HAVE_EDITLINE_READLINE_H
+ #include <editline/readline.h>
++#else
++#include <readline/readline.h>
++#endif
+ #include "../misc/tilde.h"
+ #ifndef rl_hook_func_t
+     typedef int rl_hook_func_t(void);
+--- a/src/frontend/signal_handler.c
++++ b/src/frontend/signal_handler.c
+@@ -34,7 +34,11 @@
+ 
+ #ifdef HAVE_BSDEDITLINE
+ /* SJB added edit line support 2005-05-05 */
++#ifdef HAVE_EDITLINE_READLINE_H
+ #include <editline/readline.h>
++#else
++#include <readline/readline.h>
++#endif
+ #endif /* HAVE_BSDEDITLINE */
+ 
+ JMP_BUF jbuf;
+--- a/src/frontend/misccoms.c
++++ b/src/frontend/misccoms.c
+@@ -31,7 +31,11 @@
+ #endif
+ 
+ #ifdef HAVE_BSDEDITLINE
++#ifdef HAVE_EDITLINE_READLINE_H
+ #include <editline/readline.h>
++#else
++#include <readline/readline.h>
++#endif
+ extern char history_file[];
+ #endif
+ #endif
+--- a/src/frontend/com_history.c
++++ b/src/frontend/com_history.c
+@@ -18,7 +18,11 @@
+ 
+ #ifdef HAVE_BSDEDITLINE
+ /* SJB added edit line support 2005-05-05 */
++#ifdef HAVE_EDITLINE_READLINE_H
+ #include <editline/readline.h>
++#else
++#include <readline/readline.h>
++#endif
+ #endif
+ 
+ 

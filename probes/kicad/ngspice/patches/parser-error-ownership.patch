@@ -1,0 +1,91 @@
+Origin: EmberBSD; AI-assisted repair for ngspice 47.
+License: Same terms as the patched upstream files.
+Keep recoverable rejected circuits owned until explicit removal. Restore caller controls and IO on this error path; preserve the public ngSpice_Circ return convention.
+
+--- a/src/frontend/inp.c
++++ b/src/frontend/inp.c
+@@ -513,6 +513,7 @@
+     FILE *lastin, *lastout, *lasterr;
+     double temperature_value;
+     bool expr_w_temper = FALSE;
++    int parse_status = 0;
+ 
+     double startTime, loadTime = 0., endTime;
+ 
+@@ -1093,8 +1094,7 @@
+             /* Parsing the circuit 5.
+                This is the next major step:
+                load deck into ft_curckt -- the current circuit. */
+-            if(inp_dodeck(deck, tt, wl_first, FALSE, options, filename) != 0)
+-                return 1;
++            parse_status = inp_dodeck(deck, tt, wl_first, FALSE, options, filename);
+ 
+             if (ft_curckt) {
+                 ft_curckt->devtlist = devtlist;
+@@ -1104,6 +1104,10 @@
+             /* inp_dodeck did take ownership */
+             tt = NULL;
+             options = NULL;
++            if (parse_status) {
++                wl_free(controls);
++                goto source_done;
++            }
+ 
+         }     /*  if (deck->nextcard) */
+ 
+@@ -1299,6 +1303,7 @@
+ #endif
+     }
+ 
++source_done:
+     /* Now reset everything.  Pop the control stack, and fix up the IO
+      * as it was before the source.  */
+     cp_popcontrol();
+@@ -1310,9 +1315,7 @@
+     tfree(tt);
+     tfree(dir_name);
+ 
+-
+-
+-    return 0;
++    return parse_status;
+ }
+ 
+ 
+@@ -1500,7 +1503,6 @@
+                         if (ft_stricterror)
+                             controlled_exit(EXIT_BAD);
+                         have_err = TRUE;
+-                        return 1;
+                     }
+                     else {
+                         fprintf(stderr, "Error on line %d or its substitute:\n  %s\n%s\n",
+@@ -1508,7 +1510,6 @@
+                         if (ft_stricterror)
+                             controlled_exit(EXIT_BAD);
+                         have_err = TRUE;
+-                        return 1;
+                     }
+ 
+                 } else {
+@@ -1579,6 +1580,10 @@
+ #endif
+     ct->ci_filename = copy(filename);
+ 
++    /* The rejected circuit now owns all parser allocations. */
++    if (have_err)
++        return 1;
++
+     /* load the optran data, if provided by .spiceinit or spinit.
+        Return immediately, if optran is not selected.*/
+     com_optran(NULL);
+--- a/src/spicelib/parser/inp2d.c
++++ b/src/spicelib/parser/inp2d.c
+@@ -56,6 +56,7 @@
+             break;
+         }
+         if (i >= max_i) {
++            tfree(token);
+             LITERR ("could not find a valid modelname");
+             return;
+         }

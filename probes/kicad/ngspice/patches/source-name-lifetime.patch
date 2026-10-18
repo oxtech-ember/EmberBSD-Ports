@@ -1,0 +1,159 @@
+Origin: EmberBSD; AI-assisted repair for ngspice 47.
+License: Same terms as the patched upstream files.
+Keep borrowed card source names in a session-owned pool. Clear it only after circuits and the retained reset deck are destroyed.
+
+--- a/src/frontend/inpcom.c
++++ b/src/frontend/inpcom.c
+@@ -118,7 +118,15 @@
+ /* number of parameter substitutions */
+ long dynsubst; /* spicenum.c 221 */
+ 
+-wordlist* sourceinfo = NULL;
++static wordlist *sourceinfo = NULL;
++static wordlist *sourceinfo_tail = NULL;
++
++void
++inp_clear_sourceinfo(void)
++{
++    wl_free(sourceinfo);
++    sourceinfo = sourceinfo_tail = NULL;
++}
+ 
+ static bool has_if = FALSE; /* if we have an .if ... .endif pair */
+ 
+@@ -1356,7 +1364,7 @@
+         add_to_sourcepath(sourcelineinfo, NULL);
+     }
+ 
+-    wl_append_word(&sourceinfo, &sourceinfo, sourcelineinfo);
++    wl_append_word(&sourceinfo, &sourceinfo_tail, sourcelineinfo);
+ 
+     /* First read in all lines & put them in the struct cc */
+     for (;;) {
+@@ -1633,7 +1641,7 @@
+             }
+ 
+             char* tmpstr = copy(nexttok(buffer));
+-            wl_append_word(&sourceinfo, &sourceinfo, tmpstr);
++            wl_append_word(&sourceinfo, &sourceinfo_tail, tmpstr);
+ 
+             /*  Set the compatibility mode flag to 1, if pslt is read. */
+             for (tmpcard = newcard; tmpcard; tmpcard = tmpcard->nextcard) {
+--- a/src/sharedspice.c
++++ b/src/sharedspice.c
+@@ -351,7 +351,6 @@
+ static void printsend(void);
+ #endif
+ 
+-extern wordlist* sourceinfo;
+ 
+ static int totalreset(void);
+ extern void destroy_wallace(void);
+@@ -2574,8 +2573,6 @@
+     wordlist star = { "*", NULL, NULL };
+ 
+     tfree(Infile_Path);
+-    wl_free(sourceinfo);
+-    sourceinfo = NULL;
+ 
+     com_destroy(&all);
+     com_unalias(&star);
+@@ -2595,6 +2592,8 @@
+     while (ft_curckt) {
+         com_remcirc(NULL);
+     }
++    inp_remove_recent();
++    inp_clear_sourceinfo();
+ 
+     cp_destroy_keywords();
+     destroy_ivars();
+--- a/src/frontend/inp.c
++++ b/src/frontend/inp.c
+@@ -73,7 +73,6 @@
+ 
+ extern bool ft_batchmode;
+ extern int dynmaxline;
+-extern wordlist* sourceinfo;
+ 
+ /* from inpcom.c */
+ extern struct nscope* inp_add_levels(struct card *deck);
+@@ -418,6 +417,8 @@
+ /* remove the 'recent' deck */
+ void
+ inp_remove_recent(void) {
++    if (mc_deck == recent_deck)
++        mc_deck = NULL;
+     if (recent_deck)
+         line_free(recent_deck, TRUE);
+ }
+@@ -1577,7 +1578,6 @@
+         tfree(ct->ci_filename);
+ #endif
+     ct->ci_filename = copy(filename);
+-    ct->ci_sourceinfo = sourceinfo;
+ 
+     /* load the optran data, if provided by .spiceinit or spinit.
+        Return immediately, if optran is not selected.*/
+--- a/src/frontend/runcoms.c
++++ b/src/frontend/runcoms.c
+@@ -37,7 +37,6 @@
+ extern NGHASHPTR modtabhash;
+ extern struct dbcomm *dbs;
+ extern void NIresetwarnmsg(void);
+-extern wordlist* sourceinfo;
+ 
+ /* Routines for the commands op, tran, ac, dc, listing, device, state,
+  * resume, stop, trace, run, end.  Op, tran, ac, and dc cause the action
+@@ -111,7 +110,6 @@
+     /* get the model table for the current circuit, store it in the global variable modtab */
+     modtab = ft_curckt->ci_modtab;
+     /* get the current input file names */
+-    sourceinfo = ft_curckt->ci_sourceinfo;
+     modtabhash = ft_curckt->ci_modtabhash;
+     /* get the database for save, iplot, stop */
+     dbs = ft_curckt->ci_dbs;
+--- a/src/include/ngspice/ftedefs.h
++++ b/src/include/ngspice/ftedefs.h
+@@ -52,7 +52,6 @@
+     struct ccom *ci_nodes;    /* ccom structs for the nodes... */
+     struct ccom *ci_devices;  /* and devices in the circuit. */
+     char *ci_filename;        /* Where this circuit came from. */
+-    wordlist* ci_sourceinfo;  /* paths and names of input files */
+     TSKtask *ci_defTask;      /* default task for this circuit */
+     TSKtask *ci_specTask;     /* special task for command line jobs */
+     TSKtask *ci_curTask;      /* most recent task for this circuit */
+--- a/src/include/ngspice/fteext.h
++++ b/src/include/ngspice/fteext.h
+@@ -208,6 +208,7 @@
+ extern void inp_mc_free(void);
+ extern void inp_source_recent(void);
+ extern void inp_remove_recent(void);
++void inp_clear_sourceinfo(void);
+ 
+ extern char **circarray;
+ extern void rem_tlist(struct pt_temper *p);
+--- a/src/frontend/misccoms.c
++++ b/src/frontend/misccoms.c
+@@ -96,7 +96,6 @@
+     /* Destroy CKT when quit. */
+     if (!ft_nutmeg) {
+         while (ft_curckt) {
+-            wl_delete(ft_curckt->ci_sourceinfo);
+             com_remcirc(NULL);
+         }
+     }
+@@ -107,11 +106,13 @@
+     pl_rempar();
+ 
+     while (ft_curckt) {
+-//        wl_delete(ft_curckt->ci_sourceinfo);
+         com_remcirc(NULL);
+     }
+ #endif
+ 
++    inp_remove_recent();
++    inp_clear_sourceinfo();
++
+     tfree(errMsg);
+     byemesg();
+ 
