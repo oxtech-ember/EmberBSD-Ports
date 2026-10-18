@@ -17,6 +17,8 @@ def main():
     parser.add_argument("--cxx", default="c++")
     parser.add_argument("--make", default="gmake")
     args = parser.parse_args()
+    args.archive = args.archive.resolve()
+    args.work = args.work.absolute()
     if hashlib.sha256(args.archive.read_bytes()).hexdigest() != "f9c1efd5bebbe37fc6e1063db7473ce8df1e3e0be4ff0f43ce04fce57e9c5dd9":
         parser.error("the common groff 1.24.2 archive SHA256 differs")
     if args.work.exists():

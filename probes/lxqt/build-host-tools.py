@@ -17,6 +17,9 @@ def main():
     parser.add_argument("--cmake", default="cmake")
     parser.add_argument("--ninja", default="ninja")
     args = parser.parse_args()
+    args.archive = args.archive.resolve()
+    args.host_qt = args.host_qt.resolve()
+    args.work = args.work.absolute()
     expected = "14999ff954e820a23af44389b9f7c65f9e58b2f1c0a559f0badd38f9b459aee6"
     if hashlib.sha256(args.archive.read_bytes()).hexdigest() != expected:
         parser.error("LXQt 2.4.0 archive SHA256 differs")
@@ -39,6 +42,8 @@ def main():
     ]
     environment = os.environ.copy()
     environment["DESTDIR"] = str(args.work / "stage")
+    (args.work / "tmp").mkdir()
+    environment["TMPDIR"] = str(args.work / "tmp")
     for number, command in enumerate(commands):
         with (args.work / f"{number}.log").open("w") as log:
             subprocess.run(command, env=environment, stdout=log,
