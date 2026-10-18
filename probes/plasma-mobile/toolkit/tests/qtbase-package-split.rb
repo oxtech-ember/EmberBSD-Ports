@@ -86,6 +86,38 @@ run = lambda do |label, package, *arguments|
   abort label + ': ' + output unless status.success?
   output
 end
+# The modern Mesa dependency guarantees EGLDevice support. PLIST selection
+# must not depend on a header or a buildlink prefix cached by a later phase.
+egl_header = work + '/eglext.h'
+File.write(egl_header, "#define EGL_DRM_MASTER_FD_EXT 0x333C\n")
+%w[early late].each do |phase|
+  directory = work + '/egldevice-' + phase
+  Dir.mkdir(directory)
+  if phase == 'late'
+    File.write(directory + '/.stage-install_makevars.mk', <<~MAKE)
+      .if !defined(_MAKEVARS_MK)
+      _MAKEVARS_MK= defined
+      BUILDLINK_PREFIX.MesaLib= /usr/pkg
+      .endif
+    MAKE
+  end
+  header = phase == 'early' ? work + '/not-installed-eglext.h' : egl_header
+  mode = [*cross, 'EMBERBSD_COMMON_GRAPHICS=yes', 'MESALIB_SUPPORTS_EGL=yes',
+    'EGL_EXT_HEADER=' + header, 'WRKDIR=' + directory]
+  variables = run.call('egldevice-' + phase + '-vars', 'qt6-qtbase-devel', *mode,
+    '-V', '${PLIST.egldevice}', '-V', '${CMAKE_CONFIGURE_ARGS}')
+  abort 'modern EGLDevice contract depends on early header/cache availability' unless
+    variables.lines.first.strip == 'yes' &&
+    variables.include?('-DFEATURE_eglfs_egldevice:BOOL=ON')
+  run.call('egldevice-' + phase + '-plist', 'qt6-qtbase-devel', *mode, 'plist')
+  entries = File.readlines(directory + '/.PLIST_nokeywords', chomp: true)
+    .grep(%r{\Aqt6/lib/cmake/Qt6Gui/Qt6QEglFSKmsEglDeviceIntegrationPlugin})
+  abort 'modern EGLDevice metadata partition is incomplete' unless entries.size == 7
+  File.write(work + '/egldevice-' + phase + '-entries', entries.sort.join("\n") + "\n")
+end
+abort 'early and cached EGLDevice manifests differ' unless
+  File.binread(work + '/egldevice-early-entries') == File.binread(work + '/egldevice-late-entries')
+
 plist = lambda do |label, package, *mode|
   directory = work + '/' + label
   run.call(label, package, *mode, 'WRKDIR=' + directory, 'plist')
