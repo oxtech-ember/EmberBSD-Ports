@@ -1,0 +1,4 @@
+# recipe	archive	sha256	url
+wayland/sway	sway-1.12.tar.gz	29ca7caac960d13e02d8213418d91a5422c7c23102a283ceab944c57c5e1efcf	https://github.com/swaywm/sway/archive/refs/tags/1.12.tar.gz
+textproc/json-c	json-c-0.19.tar.gz	37ad0249902e301bd9052bf712e511fcc6acff4ecaad4b5900aad9ce564e26de	https://s3.amazonaws.com/json-c_releases/releases/json-c-0.19.tar.gz
+devel/libevdev-chunk	libevdev-openbsd-20231112.tar.gz	2689f7bc4c11d3d40dd06ed7f8ca528fb92a24966a8a0031ac3f64956988d319	https://code.tetaneutral.net/mherrb/libevdev-openbsd/archive/20231112.tar.gz
