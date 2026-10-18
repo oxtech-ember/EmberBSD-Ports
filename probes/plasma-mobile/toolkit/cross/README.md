@@ -9,7 +9,7 @@ The final target prefix remains `/usr/pkg/qt6`.
 
 Use the seven original Qt archives in [sources.tsv](../sources.tsv): qtbase,
 qtsvg, qtshadertools, qtdeclarative, qttools, qtquicktimeline and qtquick3d. The host recipe verifies their
-SHA256 before extracting anything. It builds unmodified upstream sources;
+SHA256 before extracting anything. It uses upstream sources with the shared missing-XML null guard;
 EmberBSD target portability patches are applied separately by pkgsrc.
 
 Qt requires matching host and target versions. An installed Qt 6.11 toolkit
@@ -77,6 +77,44 @@ import, nonempty mesh, generated QML bytecode and missing-input check.
 The check inspects output files because upstream `balsam` can return exit
 status zero even when import fails. This is generator acceptance, not a GPU
 rendering result or a working Plasma session.
+
+## Reuse an installed native Qt
+
+An installed Qt 6.12.0 can supply Core, BuildInternals and the usual host tools.
+If it lacks `Qt6WaylandScannerTools`, build only the missing native scanner:
+
+```sh
+CMAKE=/absolute/native/cmake NINJA=/absolute/native/ninja \
+HOST_CC=/absolute/native/cc HOST_CXX=/absolute/native/c++ \
+WAYLAND_SCANNER=/absolute/wayland-1.26/bin/wayland-scanner \
+sh probes/plasma-mobile/toolkit/cross/build-qtwaylandscanner.sh \
+    /absolute/verified-distfiles /absolute/native-qt \
+    /absolute/new-scanner-source /absolute/scanner-objects \
+    /absolute/new-scanner-prefix
+scanner=$(cat /absolute/scanner-objects/installed-scanner-path.txt)
+sh probes/plasma-mobile/toolkit/cross/check-qtwaylandscanner.sh \
+    "$scanner" /absolute/new-scanner-check
+```
+
+The recipe verifies the pinned Qt archive and native versions. It builds the
+upstream scanner with the shared Qtbase missing-XML null guard, the installed
+Qt build internals and Core.
+It preserves the upstream licenses, input hashes and tool logs. Use `RESUME=1`
+with the same arguments to verify inputs and reuse its objects. The object
+file `installed-scanner-path.txt` records the actual executable path.
+The check generates client/server headers and rejects missing or invalid XML.
+`check-qtwaylandscanner-inputs.sh DISTFILES HOST_QT NEW_WORK` uses the same
+tool environment and rejects unsafe paths, changed inputs, corrupt archives
+and interrupted full-host extraction without a patched-source proof.
+This bootstrap neither builds target libraries nor disables target Wayland.
+
+With `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY`, CMake can miss native tool
+exports in an installed Qt prefix. Pass exact native metadata directories
+through `CMAKE_CONFIGURE_ARGS`: `Qt6CoreTools_DIR`, `Qt6GuiTools_DIR`,
+`Qt6DBusTools_DIR` and `Qt6WidgetsTools_DIR`. Each value names that host
+prefix's `lib/cmake/Qt6<Module>Tools` directory. Set
+`Qt6WaylandScannerTools_DIR` to the bootstrap prefix's matching directory.
+Keep target package root modes unchanged. Do not select target tool exports.
 
 ## Generator acceptance
 

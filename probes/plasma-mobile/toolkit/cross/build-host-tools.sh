@@ -4,6 +4,8 @@
 set -eu
 [ "$#" = 2 ] || { echo "Usage: $0 DISTFILES NEW_ABSOLUTE_WORK" >&2; exit 2; }
 distfiles=$1 work=$2
+toolkit=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+scanner_patch=$toolkit/recipes/x11/qt6-qtbase/patches/patch-src_tools_qtwaylandscanner_qtwaylandscanner.cpp
 RESUME=${RESUME:-0}
 : "${CMAKE:?Set an absolute native CMake executable}"
 : "${NINJA:?Set an absolute native Ninja executable}"
@@ -22,6 +24,12 @@ done
 for tool in "$CMAKE" "$NINJA" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX"; do
     [ -x "$tool" ] || { echo "Missing executable: $tool" >&2; exit 2; }
 done
+# Interrupted extraction must not make an unpatched tree resumable.
+if [ "$RESUME" = 1 ] && [ -d "$work/source/qtbase-everywhere-src-6.12.0" ]; then
+    [ -f "$work/qtbase-scanner-source.sha256" ] || {
+        echo 'Missing patched Qt scanner proof; use a new work directory.' >&2; exit 2;
+    }
+fi
 [ "$("$WAYLAND_SCANNER" --version 2>&1)" = 'wayland-scanner 1.26.0' ]
 [ "$("$HOST_LLVM_BUILD/bin/llvm-config" --version)" = 23.1.3 ]
 [ -s "$HOST_CLANG_BUILD/lib/libclang.dylib" ]
@@ -41,7 +49,7 @@ if [ -e "$work" ] || [ -L "$work" ]; then
     [ "$RESUME" = 1 ] && [ ! -L "$work" ] && [ -f "$work/inputs.txt" ] || {
         echo 'Output already exists; resume only a build created by this recipe' >&2; exit 2;
     }
-    for tool in "$CMAKE" "$NINJA" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" $host_dbus_inputs; do
+    for tool in "$0" "$toolkit/sources.tsv" "$CMAKE" "$NINJA" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$scanner_patch" $host_dbus_inputs; do
         shasum -a 256 "$tool" | grep -F -x -f - "$work/inputs.txt" >/dev/null || {
             echo "Host input changed; use a new work directory: $tool" >&2; exit 2;
         }
@@ -49,7 +57,6 @@ if [ -e "$work" ] || [ -L "$work" ]; then
 else
     [ "$RESUME" = 0 ] || { echo 'Cannot resume missing work' >&2; exit 2; }
 fi
-toolkit=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 modules='qtbase qtsvg qtshadertools qtdeclarative qttools qtquicktimeline qtquick3d'
 for module in $modules; do
     archive=$module-everywhere-src-6.12.0.tar.xz
@@ -65,7 +72,7 @@ ln -sf "$NINJA" "$work/bin/ninja"
 PATH="$work/bin:$PATH"
 export PATH
 {
-    shasum -a 256 "$0" "$toolkit/sources.tsv" "$CMAKE" "$NINJA" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" $host_dbus_inputs
+    shasum -a 256 "$0" "$toolkit/sources.tsv" "$CMAKE" "$NINJA" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$scanner_patch" $host_dbus_inputs
     "$CMAKE" --version
     "$NINJA" --version
     shasum -a 256 "$HOST_LLVM_BUILD/lib/cmake/llvm/LLVMConfig.cmake" \
@@ -78,6 +85,11 @@ for module in $modules; do
     shasum -a 256 "$distfiles/$archive" >> "$work/inputs.txt"
     if [ ! -d "$work/source/$module-everywhere-src-6.12.0" ]; then
         tar -xf "$distfiles/$archive" -C "$work/source"
+        if [ "$module" = qtbase ]; then
+            patch -d "$work/source/$module-everywhere-src-6.12.0" -p0 -F0 -i "$scanner_patch"
+            (cd "$work/source/$module-everywhere-src-6.12.0" &&
+                shasum -a 256 src/tools/qtwaylandscanner/qtwaylandscanner.cpp > "$work/qtbase-scanner-source.sha256")
+        fi
     fi
     mkdir -p "$work/$module"
     for log in configure build; do
@@ -86,6 +98,11 @@ for module in $modules; do
         fi
     done
     if [ "$module" = qtbase ]; then
+        [ -f "$work/qtbase-scanner-source.sha256" ] &&
+            (cd "$work/source/$module-everywhere-src-6.12.0" &&
+                shasum -a 256 -c "$work/qtbase-scanner-source.sha256") || {
+            echo 'Patched Qt scanner source proof failed; use a new work directory.' >&2; exit 2;
+        }
         # Find the portable XML generator on macOS too. Do this at initial
         # configure: developer builds cache failed package searches.
         (cd "$work/$module" && CC="$HOST_CC" CXX="$HOST_CXX" \

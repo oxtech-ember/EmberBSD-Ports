@@ -32,7 +32,7 @@ File.write(work + '/COMMENT', 'Labelled Qtbase package partition fixture')
 File.write(work + '/DESCR', "Synthetic text payloads for pkgtools contracts. This is not a Qt binary package.\n")
 old = 'qt6-qtbase-6.12.0'
 runtime = 'qt6-qtbase-6.12.0nb2'
-sdk = 'qt6-qtbase-devel-6.12.0nb2'
+sdk = 'qt6-qtbase-devel-6.12.0nb3'
 packages = {}
 {
   old => ['normalized-full', 'full', nil],

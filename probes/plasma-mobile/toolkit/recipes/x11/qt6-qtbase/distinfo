@@ -35,3 +35,4 @@ SHA1 (patch-src_corelib_thread_qmutex__p.h) = 118eda8444d1d0d7be32e2350d9b75c3e4
 SHA1 (patch-src_corelib_thread_qmutex__unix.cpp) = bd010b997cbaae80611463b6053161ed0071f809
 SHA1 (patch-src_plugins_platforms_vnc_qvncscreen.cpp) = 7a793488140d3c1185cbb604018cac05daee30b9
 SHA1 (patch-src_corelib_io_qprocess__unix.cpp-detached) = b374a3c3f03a63f48518046b11b5fc165ba78493
+SHA1 (patch-src_tools_qtwaylandscanner_qtwaylandscanner.cpp) = 2586cd28c2a06b8a80fcf6b151a49c42de5f3efa

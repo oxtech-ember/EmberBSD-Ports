@@ -5,12 +5,15 @@ NetBSD cross builds for AArch64 and amd64 produce two ordinary source packages:
 | Package | Payload and dependency role |
 | --- | --- |
 | `qt6-qtbase-6.12.0nb2` | Shared libraries, plugins, `qtpaths`, `qtpaths6`, runtime configuration, SBOM and upstream license notices. |
-| `qt6-qtbase-devel-6.12.0nb2` | Headers, target generators, static libraries, CMake, pkg-config and other SDK metadata. Requires the exact runtime version. |
+| `qt6-qtbase-devel-6.12.0nb3` | Headers, target generators, static libraries, CMake, pkg-config and other SDK metadata. Requires the exact runtime version. |
 
 The runtime keeps its original package name for normal dependency, update and
-vulnerability matching. Revision `nb2` includes the detached-process correction and distinguishes it from the earlier full
-package. The SDK conflicts with that earlier package. Native Qtbase keeps its
-existing full package and manifest; the separate SDK requires cross mode.
+vulnerability matching. Revision `nb2` includes the detached-process correction
+and distinguishes it from the earlier full package. The SDK conflicts with that
+package. SDK `nb3` and native `nb5` fix the XML scanner error path when an input
+file cannot be opened. The scanner is not in the runtime payload, so its
+revision remains `nb2`. Native Qtbase keeps its full package and manifest.
+The separate SDK requires cross mode.
 
 Both recipes use the same pinned archive, patches and source owner. Each performs
 an independent full upstream build and installation into its own staging tree.
