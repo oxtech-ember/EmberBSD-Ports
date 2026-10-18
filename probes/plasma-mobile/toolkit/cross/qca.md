@@ -75,8 +75,7 @@ The CM5 result archive SHA256 is
 
 Cppcheck 2.22 inspected the actual compilation database for 147 translation
 units, but Qt preprocessing errors and inherited warnings prevent a clean
-result. A second attempt on GCC16 target-preprocessed `qca_textfilter.cpp`
-stopped on an unsupported target `assert.h` construct. No C/C++ implementation
+result. GCC16 target-preprocessed analysis stops on an unsupported target `assert.h` construct. No C/C++ implementation
 is changed by this port; the changes are recipe and test-path configuration.
 The inherited warnings remain upstream QCA review items, not confirmed port
 regressions. Valgrind was not run: this target lacks a supported runner.

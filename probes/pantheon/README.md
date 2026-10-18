@@ -15,7 +15,7 @@ upstream once it builds.
 | gnome-desktop (the `gnome-desktop-4` library) | 51.0 | download.gnome.org, SHA512 pinned |
 | gala | 8.6.2 | later probe |
 
-Freshness audit of the native build chain (2026-10-12): gtk 3.24.52 and
+Freshness audit of the native build chain : gtk 3.24.52 and
 4.22.4, pango 1.58.2, cairo 1.18.6, gdk-pixbuf 2.44.8,
 gobject-introspection 1.86.0, glib2 2.90.1, cmake 4.4.3 — current lines of
 the pinned quarterly; the graphics profile pins Mesa 26.2.4,
@@ -23,7 +23,7 @@ libdrm 2.4.134, wayland 1.26.0 and wayland-protocols 1.49. No component of
 the chain requires a version bump; fixes are patches only, per project
 policy.
 
-## Validation record (2026-10-12)
+## Validation record 
 
 - Distfiles fetched from the original GNOME server; SHA512 recorded in
   each `distinfo`. `gnome-desktop` 51.0 confirmed to still build the
@@ -44,7 +44,7 @@ policy.
   on the project storage volume; probe recipes live here and graduate to
   a profile after the first successful build.
 
-## Cross-build record (2026-10-14, macOS host, GCC16 + sysroot)
+## Cross-build record
 
 All cross builds run on the development host; boards and VMs receive binary
 packages only. Chain state after this pass:
@@ -80,7 +80,7 @@ packages only. Chain state after this pass:
   hashes did not match the patch files) and `patch-mdk_mdk-stream.c`
   joined the set.
 
-**mutter 49.8 cross-built and installed (2026-10-14, second pass).**
+**mutter 49.8 cross-built and installed .**
 `gvdb` turned out to ship in the mutter tarball (no wrap download);
 `glycin-2` is now fully ported:
 
@@ -143,7 +143,7 @@ packages only. Chain state after this pass:
 + granite 7.8.1 + gala 8.6.2, all installed in the private sysroot with
 `gala` as a target ELF.
 
-## Dock chain (2026-10-14, evening)
+## Dock chain 
 
 elementary replaced plank with **dock 8.3.3** (GTK4 + granite-7 +
 libadwaita). New recipes: **libxmlb 0.3.29nb1** (introspection off - the
@@ -187,7 +187,7 @@ installed and verified on the local QEMU acceptance VM, with an
 schemas, checks binaries, smokes `--help` for wingpanel and dock, and
 prints the console command for the interactive compositor run.
 
-## Validation record (2026-10-15): GIR, dock, VM acceptance
+## Validation record : GIR, dock, VM acceptance
 
 - The GIR chain is complete in the cross sysroot through the local QEMU
   acceptance VM (ssh alias `ember-vm-query`, 127.0.0.1:2222): gtk4,

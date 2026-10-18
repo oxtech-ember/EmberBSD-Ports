@@ -18,7 +18,7 @@ support claim.
 
 ## Sources and profile
 
-The ONNX Runtime source pin was updated to 1.31.0 on 2026-10-15. The other
+The ONNX Runtime source pin is 1.31.0. The other
 components retain the release metadata checked on 2026-10-07. The release
 URLs, immutable revisions, licenses and local patches are described in
 [PROVENANCE.md](PROVENANCE.md). [sources.tsv](sources.tsv) pins source archives;

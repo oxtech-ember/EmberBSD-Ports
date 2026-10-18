@@ -71,8 +71,8 @@ Node runs on the host, its products are target artifacts.
   Resume by checking Ninja dependency timestamps after source-tree
   reconstruction, then continue the Chrome build and classify actual
   failures. Partial targets are not a Blanc result.
-- The E12 source tree is at `d6dc05235d` in the maintainer's local Git
-  history. `patches/e12-cross-adaptations.patch` must match this commit.
+- The source-level adaptation patch is kept separately from this public
+  probe summary. It does not imply a complete Chromium build.
 - Measure free space before each build. The Chromium source tree and
   build output require about 120 GiB of working space.
 - FreeBSD ports carry `devel/electron42` (Chromium 148) at most; use it

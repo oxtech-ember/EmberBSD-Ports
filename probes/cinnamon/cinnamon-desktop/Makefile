@@ -15,7 +15,6 @@ LICENSE=	gnu-lgpl-v2
 USE_TOOLS+=	pkg-config msgfmt
 USE_LANGUAGES=	c
 
-MESON_ARGS+=	-Ddeprecated_warnings=false
 
 # The CinnamonDesktop-3.0 and CDesktopEnums-3.0 typelibs are imported
 # by the shell JS (wall clock, keybindings).
@@ -31,8 +30,13 @@ MESON_BINARY.g-ir-compiler= ${TOOLBASE}/bin/g-ir-compiler
 MAKE_ENV+= XDG_DATA_DIRS=${CROSS_DESTDIR:Q}${PREFIX:Q}/share
 
 .include "../../devel/glib2/buildlink3.mk"
-.include "../../misc/iso-codes/buildlink3.mk"
+.include "../../textproc/iso-codes/buildlink3.mk"
+.include "../../x11/libXext/buildlink3.mk"
 .include "../../x11/libxkbfile/buildlink3.mk"
+.include "../../fonts/fontconfig/buildlink3.mk"
+.include "../../devel/libudev-bsd/buildlink3.mk"
+# libcvc (mint27 volume control for the shell) needs libpulse.
+.include "../../audio/pulseaudio/buildlink3.mk"
 .include "../../x11/xkeyboard-config/buildlink3.mk"
 .include "../../devel/gobject-introspection/buildlink3.mk"
 .include "../../devel/meson/build.mk"
