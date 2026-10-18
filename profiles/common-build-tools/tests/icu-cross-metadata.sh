@@ -27,7 +27,8 @@ file="$work/dest/usr/pkg/bin/icu-config"
 [ "$("$buildshell" "$file" --noverify --cc | sed 's/[[:space:]]*$//')" = /usr/pkg/gcc16/bin/gcc ]
 [ "$("$buildshell" "$file" --noverify --cxx | sed 's/[[:space:]]*$//')" = '/usr/pkg/gcc16/bin/g++ -std=gnu++11' ]
 for file in "$work/dest/usr/pkg/bin/icu-config" "$work/dest/usr/pkg/lib/icu/$version/Makefile.inc" "$work/dest/usr/pkg/lib/icu/$version/pkgdata.inc"; do
-    if grep -F "$buildshell" "$file" || grep -F "$sysroot" "$file" || \
+    if { [ "$buildshell" != /bin/sh ] && grep -F "$buildshell" "$file"; } || \
+        grep -F "$sysroot" "$file" || \
         grep -E 'aarch64--netbsd-(gcc|g\+\+|ar|ranlib)|-o [^ ]+ -g ' "$file"; then
         echo 'Installed ICU metadata retains a build-host command' >&2; exit 1
     fi
@@ -38,4 +39,8 @@ done > "$work/rewritten.sha256"
 shasum -a 256 -c "$work/rewritten.sha256" > "$work/idempotent.log"
 "$bmake" -C "$pkgsrc/textproc/icu" MAKECONF="$conf" show-icu-cross-tools > "$work/native-tools.txt"
 test -s "$work/native-tools.txt"
+"$bmake" -C "$pkgsrc/textproc/icu" MAKECONF="$conf" \
+    ICU_CROSS_DIR="$work/cross-tools" ICU_CROSS_COOKIE="$work/cross-tools/.cookie" \
+    icu-cross-tools > "$work/cross-tools.log" 2>&1
+grep -qx "CROSS_ICU_VERSION=$version" "$work/cross-tools/config/icucross.mk"
 echo 'PASS: real ICU cross metadata, target shell/compiler settings, native release match and idempotent installation'

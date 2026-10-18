@@ -1,0 +1,4 @@
+This cross-only package provides ICU headers, linker interfaces, static
+libraries, generators and build metadata for the development-host sysroot.
+It requires the exact matching ICU runtime. Keep this SDK on the development
+host. Native builds retain the complete ordinary ICU package.

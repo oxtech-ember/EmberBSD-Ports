@@ -1,0 +1,21 @@
+# $NetBSD: buildlink3.mk,v 1.58 2026/01/07 08:45:46 wiz Exp $
+
+BUILDLINK_TREE+=	icu
+
+.if !defined(ICU_BUILDLINK3_MK)
+ICU_BUILDLINK3_MK:=
+
+BUILDLINK_API_DEPENDS.icu+=	icu>=3.4
+BUILDLINK_ABI_DEPENDS.icu+=	icu>=78.1
+BUILDLINK_PKGSRCDIR.icu?=	../../textproc/icu
+
+.include "../../mk/bsd.fast.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
+BUILDLINK_ABI_DEPENDS.icu+= icu>=78.3nb2
+.include "../../textproc/icu-devel/buildlink3.mk"
+.endif
+
+GCC_REQD+=		4.9
+.endif # ICU_BUILDLINK3_MK
+
+BUILDLINK_TREE+=	-icu

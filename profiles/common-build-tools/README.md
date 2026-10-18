@@ -1,5 +1,10 @@
 # Current common build tools
 
+The [ICU 78.3 package policy](cross/icu.md) keeps native packaging complete
+and separates cross runtime files from an exact matching target SDK on the
+development host. Both real 274-file payloads pass ownership and refusal
+checks. Final split packages and installed target acceptance remain separate.
+
 The [Boost cross roles](cross/boost.md) keep one canonical 1.92.0 provider.
 Native b2 uses the selected target GCC wrappers and explicit NetBSD ABI
 properties. The native engine package, causal source graphs and three GCC16

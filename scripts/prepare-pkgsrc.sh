@@ -60,7 +60,7 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     [ "$tcl_pin" = '536c45543f64d6eb11832d97ba3494aacff046fbc5040273bd55258d0e448ff1:https://downloads.sourceforge.net/project/tcl/Tcl/9.1.0/tcl9.1.0-src.tar.gz' ] || {
         echo 'Invalid current Tcl source pin.' >&2; exit 2;
     }
-    for recipe in lang/tcl lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib devel/abseil devel/protobuf textproc/py-markupsafe textproc/py-yaml textproc/groff net/mDNSResponder; do
+    for recipe in lang/tcl lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib devel/abseil devel/protobuf textproc/py-markupsafe textproc/py-yaml textproc/groff net/mDNSResponder textproc/icu; do
         source=$root/profiles/common-build-tools/recipes/$recipe
         [ -f "$source/Makefile" ] && [ -f "$source/PLIST" ] && \
             [ -f "$source/distinfo" ] || {
@@ -94,6 +94,21 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
             [ "$mdns_pin" = 'f665cf02b5c930f9b70fb39b7567f03dd821997594c56ce399098eaa0372fb15:https://github.com/apple-oss-distributions/mDNSResponder/archive/refs/tags/mDNSResponder-2881.120.11.tar.gz' ] || {
                 echo 'Invalid current mDNSResponder source pin.' >&2; exit 2;
             }
+        fi
+        if [ "$recipe" = textproc/icu ]; then
+            for name in DESCR buildlink3.mk PLIST.full-cross PLIST.runtime files/cross-metadata.awk files/sdk_source.py files/select-stage.py; do
+                [ -s "$source/$name" ] || { echo "Incomplete ICU recipe: $name" >&2; exit 2; }
+            done
+            [ "$(find "$source" -type l | wc -l | tr -d ' ')" = 0 ] &&
+                [ "$(find "$source/patches" -name 'patch-*' | wc -l | tr -d ' ')" = 18 ] &&
+                [ "$(printf '%s\n' "$required" | awk 'NF { n++ } END { print n+0 }')" = 18 ] || {
+                echo 'Unexpected ICU patch inventory.' >&2; exit 2;
+            }
+            for name in $required; do
+                recorded=$(awk -v name="($name)" '$1 == "SHA1" && $2 == name { print $4 }' "$source/distinfo")
+                computed=$(sed '/[$]NetBSD.*/d' "$source/patches/$name" | shasum -a 1 | awk '{ print $1 }')
+                [ "$recorded" = "$computed" ] || { echo "ICU patch checksum differs: $name" >&2; exit 2; }
+            done
         fi
         if [ "$recipe" = lang/llvm ]; then
             for name in PLIST.runtime files/select-package-stage.py files/sdk_source.py files/reuse-package-stage.py files/prepare-reuse-inputs.py; do
@@ -145,6 +160,18 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
             done
         fi
     done
+    icu_pin=$(awk -F '\t' '$1 == "icu4c-78.3-sources.tgz" { print $2 ":" $3 }' "$root/profiles/common-build-tools/sources.tsv")
+    [ "$icu_pin" = '3a2e7a47604ba702f345878308e6fefeca612ee895cf4a5f222e7955fabfe0c0:https://github.com/unicode-org/icu/releases/download/release-78.3/icu4c-78.3-sources.tgz' ] || {
+        echo 'Invalid ICU source pin.' >&2; exit 2;
+    }
+    for icu_sdk_file in Makefile buildlink3.mk DESCR PLIST; do
+        [ -s "$root/profiles/common-build-tools/recipes/textproc/icu-devel/$icu_sdk_file" ] || {
+            echo "Incomplete ICU SDK recipe: $icu_sdk_file" >&2; exit 2;
+        }
+    done
+    [ "$(find "$root/profiles/common-build-tools/recipes/textproc/icu-devel" -type l | wc -l | tr -d ' ')" = 0 ] || {
+        echo 'Unexpected ICU SDK recipe link.' >&2; exit 2;
+    }
     for protobuf_sdk_file in Makefile buildlink3.mk DESCR PLIST; do
         [ -s "$root/profiles/common-build-tools/recipes/devel/protobuf-devel/$protobuf_sdk_file" ] || {
             echo "Incomplete protobuf SDK recipe: $protobuf_sdk_file" >&2; exit 2;
@@ -515,7 +542,7 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     cp -R "$runtime_recipe" "$destination/lang/gcc16-runtime"
 fi
 if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
-    for recipe in lang/tcl lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib devel/abseil devel/protobuf textproc/py-markupsafe textproc/py-yaml textproc/groff net/mDNSResponder; do
+    for recipe in lang/tcl lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib devel/abseil devel/protobuf textproc/py-markupsafe textproc/py-yaml textproc/groff net/mDNSResponder textproc/icu; do
         source=$root/profiles/common-build-tools/recipes/$recipe
         # Replace only recipe paths inside this newly created export.
         rm -rf "$destination/$recipe"
@@ -536,6 +563,10 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
         echo 'Upstream now owns devel/protobuf-devel; review the overlay.' >&2; exit 2;
     }
     cp -R "$root/profiles/common-build-tools/recipes/devel/protobuf-devel" "$destination/devel/protobuf-devel"
+    [ ! -e "$destination/textproc/icu-devel" ] && [ ! -L "$destination/textproc/icu-devel" ] || {
+        echo 'Upstream now owns textproc/icu-devel; review the overlay.' >&2; exit 2;
+    }
+    cp -R "$root/profiles/common-build-tools/recipes/textproc/icu-devel" "$destination/textproc/icu-devel"
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$root/profiles/common-build-tools/patches/current-python-selection.patch"
     for delta in python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-cross-packages.patch pkgsrc-gettext-go-detection.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch pkgsrc-ncurses-terminfo-aliases.patch pkgsrc-host-autoconf.patch pkgsrc-cwrappers-unwrap-boundary.patch pkgsrc-cross-passthrough-rpath.patch pkgsrc-bsdtar-common-zlib.patch; do
