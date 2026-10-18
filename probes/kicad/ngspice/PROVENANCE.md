@@ -15,11 +15,14 @@
   only for bootstrap generators and Linux fixture checks.
 - Native analyzers: GCC 14.2.0 `-fanalyzer`, Clang 19, Cppcheck 2.22.0 and
   Valgrind 3.24.0. See the README for completed checks and remaining gates.
-- Target acceptance: the initial 12-patch ordinary GCC16 AArch64 packages passed
-  the installed contracts and lifecycle checks listed in the README.
-  The thirteenth patch changes only the procfs configure guard. Its three
+- Target acceptance: both ordinary GCC16 AArch64 packages `47nb1` passed in a fresh
+  EmberBSD guest: installed API18, CLI, KiCad exported divider, BSIM OpenMP,
+  exact payload/provider hashes and normal removal/reinstallation.
+  The installed library's memory query matches independent HW_PHYSMEM64
+  without procfs diagnostics. Exact archive hashes and limits are in the
+  [package acceptance record](../../../profiles/common-graphics/cross/ngspice.md).
+  The target-memory patch changes only the procfs configure guard. The three
   upstream query modules passed a separate native GCC16 and EmberBSD regression.
-  The revision-1 ordinary packages still need rebuild and installed acceptance.
 - Memory-query source notices: preserve David Robert Nadeau's CC BY 3.0
   attribution and Holger Vogt's modification notice in the unchanged modules.
   The new contract and build helper use BSD-2-Clause. The configure patch

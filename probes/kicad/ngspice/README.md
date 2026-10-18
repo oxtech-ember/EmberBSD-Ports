@@ -117,15 +117,15 @@ Style findings change from 16,587 to 16,588. Analysis of the three OS-query unit
 Unix compiler macros produces identical findings: 42 information and seven style records, with no errors.
 The other 30 inherited error records remain unclassified; they are not
 30 confirmed source defects. The confirmed missing-return error is removed.
-The ordinary GCC16 target packages now pass installed API18, CLI, the exported
+The ordinary GCC16 target packages `47nb1` pass installed API18, CLI, the exported
 KiCad divider, BSIM OpenMP activation and package lifecycle checks in EmberBSD.
 See the [package acceptance scope](../../../profiles/common-graphics/cross/ngspice.md)
-for exact revision-0 archive hashes. A thirteenth patch now limits the procfs
+for exact archive hashes. The target-memory patch limits the procfs
 probe to Linux/Cygwin targets. All 13 patches replay without fuzz and match
 4,378 files prepared by ordinary pkgsrc patch rules. A separate GCC16 native
 and AArch64 [memory-query regression](tests/memory-query.md) validates that repair.
-Revision-1 package acceptance, target Memcheck and complete KiCad application
-acceptance remain pending.
+The installed library returns the independent positive NetBSD memory total without procfs
+diagnostics. Target Memcheck and complete KiCad application acceptance remain pending.
 Historical results from a lost workspace are not current acceptance evidence.
 
 The reusable checks are in `tests/`. `api-contract.c` uses the installed
