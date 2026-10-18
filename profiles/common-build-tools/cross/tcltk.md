@@ -106,6 +106,31 @@ Native prerequisites have normal package registrations. The Tk source PLIST
 follows the real 9.1 script, header, demo and manual installation rules.
 That inventory configuration does not establish enabled feature behavior.
 
-Complete native package acceptance, cross packages, installed EmberBSD
-extension tests, Tk display behavior and OCCT Draw remain separate checks.
-Source checks do not establish a working GUI package.
+The ordinary Linux/GCC16 `tcl-9.1.0nb1` package passes the package checks.
+All payload bytes, links and modes match its complete stage. Its executable
+and extension libraries are native x86_64 ELF files. The native
+[host contract](../tests/tcl9-host.tcl) passes ZipFS archive creation,
+Unicode data, Itcl state, a system SQLite query, TDBC SQLite and Thread.
+The actual binding-object regression removes all three invalid SQLite
+data definitions and retains its real SQLite API import.
+
+The full upstream runner exits zero but reports failures. The core reports
+503,271 passed, 8,066 skipped and 16 failed tests out of 511,353.
+External HTTP connections fail in a proxy-only environment. A reserved-port
+test fails where unprivileged low ports are enabled. Two files exit under
+the C locale. Those two files pass in a clean UTF-8 test directory:
+17,038 passed, 30 skipped, zero failed tests out of 17,068.
+The SQLite extension's leap-second test fails because common SQLite 3.53.4
+returns NULL for `julianday('2012-06-30 23:59:60')`. The binding and the real
+SQLite CLI agree. The expected Julian date remains an unresolved test limit.
+Other bundled extension targets report no failed tests; raw results retain
+skips and zero-test subgroups. This is not full upstream test acceptance.
+
+Strict Valgrind 3.24 Memcheck of the native host contract remains nonclean.
+It reports no definite or indirect loss, but 2,573,312 possibly lost bytes
+and 221,996 reachable bytes. There are 124 reported contexts and no
+suppressions. Native allocator memory acceptance remains pending.
+
+Cross packages, installed EmberBSD extension tests, Tk display behavior and
+OCCT Draw remain separate checks. Native host preparation does not establish
+a working GUI package.

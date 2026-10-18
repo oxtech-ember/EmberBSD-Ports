@@ -23,7 +23,7 @@ CONFIGURE_ARGS+=	--with-tcl=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.tcl}/lib
 CONFIGURE_ARGS+=	--enable-zipfs
 CONFIGURE_ENV+=		LIB_RUNTIME_DIR=${PREFIX}/lib
 PKGCONFIG_OVERRIDE+=	unix/tk.pc.in
-USE_TOOLS+=		ln pkg-config
+USE_TOOLS+=		gmake ln pkg-config
 TOOL_DEPENDS+=		zip-[0-9]*:../../archivers/zip
 TEST_TARGET=		test
 CHECK_PORTABILITY_SKIP=	win/configure
