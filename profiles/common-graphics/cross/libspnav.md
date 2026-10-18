@@ -53,11 +53,12 @@ The [plain C peer](../tests/libspnav/socket-peer.c) forks that same client and
 exchanges the same known protocol packets. It needs no interpreter in the guest.
 Its three native protocol modes and strict peer memory check also pass.
 Its periodic deadline also interrupts a wait entered after the first expiry.
-Two real negative clients remain silent or complete the unchanged API client
+Two native negative clients remain silent or complete the unchanged API client
 and refuse to exit. The peer terminates and reaps both clients at its deadline
 and removes its socket. Neither negative needs a simulated device.
-The matching GCC16 AArch64 peer is compiled; its target execution remains pending.
-After target installation, its invocation is:
+The matching GCC16 AArch64 peer and client pass the five public socket
+contracts in EmberBSD.
+After target installation, their invocation is:
 
 ```sh
 ./socket-peer ./socket-client events /tmp/new-libspnav-socket
@@ -74,8 +75,9 @@ the shared library and its two links, `spnav.pc` and the original notice.
 The standard install commands set data/header modes to 0644 and the DSO to
 0755. pkgsrc creates all package-owned directories with public traversal.
 The [access contract](../tests/libspnav/package-access.rb) rejects private
-umask-derived modes and passes both corrected stages. Loading under a different
-uid remains part of installed-target acceptance.
+umask-derived modes and passes both corrected stages. The installed target
+library also loads under the real `nobody` account, with no supplementary groups.
+That user reads all seven regular payloads byte-identically to the GCC16 stage.
 Both complete stages and package ownership match every payload byte/link.
 The original public headers and enabled X11 configuration match.
 All 70 upstream exported symbols remain present; the target linker also
@@ -84,10 +86,24 @@ exports its five ordinary data-boundary symbols.
 Real GCC16 AArch64 consumers link against the shared provider and the complete
 static archive. Both outputs are AArch64 PIE with RELRO and target runtime
 paths. The target DSO retains `libspnav.so.0` and its actual NetBSD/X11 providers.
-All 157 exporter preflight refusal checks pass.
+The provider's exporter preflight refusal checks pass.
 The actual positive-export absence guard also rejects a regular file,
 directory, symlink and dangling symlink in the five-path regression.
-The full positive export matrix and installed target execution remain pending.
+The full positive export matrix remains pending.
+
+The ordinary target package installs with genuine `libX11`, `libxcb`, `libXau`
+and `libXdmcp` packages. This adds no compiler or generator package.
+All 3,554 payload entries match their package bytes, symlink targets,
+permissions and owners.
+All 6,187 prior paths under `/usr/pkg`, excluding its package database, retain
+their bytes, modes, uid and gid.
+The shared-library client and the client linked with the complete static
+archive each pass five checks as `nobody`:
+closed state, failed opens, descriptor-zero events, legacy sensitivity, and
+known motion/button values with disconnect and reconnect.
+Normal package deletion removes all nine provider paths. The real nonroot
+loader then refuses the missing `libspnav.so.0`. Reinstallation of the same
+verified archive restores every entry and repeats all five shared checks.
 
 GCC16, Clang 19 analysis and Cppcheck 2.22 use the actual native and target
 compile flags for all four library translation units, before and after repair.

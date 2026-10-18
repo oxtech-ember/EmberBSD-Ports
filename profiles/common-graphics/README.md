@@ -3,7 +3,9 @@
 The full [libspnav 1.2 provider](cross/libspnav.md) keeps Unix-socket and
 X11/Magellan interfaces. Ordinary native/AArch64 GCC16 packages and complete
 payload checks pass. Native real-socket lifecycle regressions pass strict
-memory checks. Installed target and physical-device acceptance remain pending.
+memory checks. Installed EmberBSD clients pass five socket contracts under an
+ordinary user. Package removal, loader refusal and reinstallation also pass.
+Physical-device and X11 display acceptance remain pending.
 
 The [Lerc 4.2.0nb1 padding correction](cross/lerc.md) removes a reproduced
 uninitialized Huffman checksum input. Normal GCC16 native/AArch64 packages
