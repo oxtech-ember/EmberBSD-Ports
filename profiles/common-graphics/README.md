@@ -1,5 +1,10 @@
 # Common graphics source packages
 
+The common [Tcl/Tk 9.1 pair](../common-build-tools/cross/tcltk.md) retains
+X11, Aqua, printing, accessibility, bidi text and ZipFS. Platform branch
+regressions and actual source install inventories pass. Complete target
+packages, Tk display tests and OCCT Draw remain separate acceptance work.
+
 The full [libspnav 1.2 provider](cross/libspnav.md) keeps Unix-socket and
 X11/Magellan interfaces. Ordinary native/AArch64 GCC16 packages and complete
 payload checks pass. Native real-socket lifecycle regressions pass strict
