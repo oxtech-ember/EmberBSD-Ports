@@ -22,8 +22,10 @@ runtime behavior are validated.
 - [KiCad application source](probes/kicad/application/README.md): the complete
   10.0.7 source keeps QA and IPC. GCC16 causal checks repair NetBSD context,
   loader and DXF platform selection. The bundled context implementation passes
-  3,003 exchanges in the AArch64 VM and strict native Memcheck. Full KiCad
-  configuration, package and CAD workflows remain pending.
+  3,003 exchanges in the AArch64 VM and strict native Memcheck. The actual
+  API library and version-message consumer pass native memory checks and
+  AArch64 execution. Full KiCad configuration, package and CAD workflows
+  remain pending.
 - [KiCad OCCT source](probes/kicad/occt/README.md): OCCT 8.0.1 retains
   NetBSD locale, path and exception support. GCC16 target compilation and
   focused native regressions cover the source repairs; KiCad uses the
@@ -55,16 +57,17 @@ runtime behavior are validated.
   Matching code generation retains its output and error behavior. Documented
   process-lifetime exceptions keep the original CLI's memory failures visible.
   The same C++ and UPB contracts pass in the AArch64 E34 guest with the
-  GCC16-built shared-library closure. Ordinary protobuf package execution,
-  lifecycle and complete KiCad integration remain pending.
+  GCC16-built shared-library closure. The ordinary runtime package also passes
+  both contracts, all payload checks and normal removal/reinstallation.
+  Complete KiCad integration remains pending.
   The [common Abseil recipe](profiles/common-build-tools/cross/protobuf.md)
   repairs NetBSD stack traces. Its ordinary AArch64 package passes two installed
   SDK consumers, all 816 payload checks and removal/reinstallation.
   Cross protobuf recipes separate runtime libraries from target generators and
   SDK files. Their source ownership checks preserve the full native package.
   Both packages pass normal checks, all 353 installed SDK payload entries and
-  two GCC16 consumer links. Actual KiCad API generation passes; target compilation
-  exposes a system `major`/`minor` macro conflict.
+  two GCC16 consumer links. Actual KiCad API generation preserves all schema
+  bytes; its scoped system-macro repair passes native and target contracts.
   Common CMake discovery now prefers selected package dependencies over base
   namesakes; GCC16 zlib discovery/link controls preserve native behavior.
 - [KiCad SPICE prerequisites](probes/kicad/ngspice/README.md): ngspice 47

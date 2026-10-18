@@ -1,0 +1,47 @@
+Keep KiCad protobuf version accessors valid with NetBSD system headers.
+
+Origin: EmberBSD (AI-assisted), against KiCad 10.0.7.
+Preinclude the real system header, then undefine only its colliding device
+macros for kiapi and its CMake consumers. Preserve every schema field and
+the generated source bytes. Other platforms retain their compile flags.
+
+--- a/api/CMakeLists.txt
++++ b/api/CMakeLists.txt
+@@ -70,6 +70,13 @@
+     ${KIAPI_CPP_HEADERS}
+     )
+ 
++# NetBSD exposes device macros that conflict with the version message accessors.
++# Propagate the same header environment to the API library and its consumers.
++if( CMAKE_SYSTEM_NAME STREQUAL "NetBSD" )
++    target_compile_options( kiapi PUBLIC
++        "SHELL:-include \"${CMAKE_CURRENT_SOURCE_DIR}/netbsd_proto_compat.h\"" )
++endif()
++
+ target_compile_definitions( kiapi PRIVATE KIAPI_IMPORTEXPORT=APIEXPORT )
+ target_compile_definitions( kiapi INTERFACE KIAPI_IMPORTEXPORT=APIIMPORT )
+ 
+--- /dev/null
++++ b/api/netbsd_proto_compat.h
+@@ -0,0 +1,21 @@
++/*
++ * SPDX-License-Identifier: GPL-3.0-or-later
++ * Copyright (C) 2026 EmberBSD contributors. Prepared with AI assistance.
++ *
++ * Keep KiCad's protobuf version field names on NetBSD. The system device
++ * macros share their names and would expand inside generated C++ methods.
++ */
++#ifndef KICAD_NETBSD_PROTO_COMPAT_H
++#define KICAD_NETBSD_PROTO_COMPAT_H
++
++#if defined( __NetBSD__ )
++#include <sys/types.h>
++#ifdef major
++#undef major
++#endif
++#ifdef minor
++#undef minor
++#endif
++#endif
++
++#endif

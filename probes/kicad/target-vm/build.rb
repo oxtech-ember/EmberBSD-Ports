@@ -81,14 +81,14 @@ Dir.glob(base + '/usr/lib/*.so*').sort.each { |p| copy_base.call(p.delete_prefix
 Dir.glob(base + '/usr/lib/private/*.so*').sort.each { |p| copy_base.call(p.delete_prefix(base + '/')) }
 %w[
   bin/sh bin/sync bin/cat bin/chmod bin/cp bin/ls bin/mkdir bin/rm bin/test
-  bin/date bin/tar bin/sleep bin/stty bin/hostname bin/kill bin/df bin/pwd
+  bin/date bin/tar bin/sleep bin/stty bin/hostname bin/kill bin/df bin/pwd bin/ps
   sbin/init sbin/mount sbin/mount_ffs sbin/mount_ptyfs sbin/halt sbin/reboot
   sbin/sysctl sbin/ifconfig sbin/route sbin/nologin
   usr/bin/uname usr/bin/grep usr/bin/sha256 usr/bin/ldd usr/bin/sed usr/bin/awk
   usr/bin/env usr/bin/printf usr/bin/timeout usr/bin/mktemp usr/bin/id usr/bin/tty
   usr/bin/getent usr/bin/true usr/bin/false usr/bin/du usr/bin/locale
   usr/bin/sort usr/bin/realpath usr/bin/wc usr/bin/tr usr/bin/dirname usr/bin/basename
-  usr/bin/ktrace usr/bin/kdump
+  usr/bin/ktrace usr/bin/kdump usr/bin/fstat
   usr/sbin/pkg_add usr/sbin/pkg_delete usr/sbin/pkg_info usr/sbin/pkg_admin
   usr/sbin/sshd usr/libexec/sshd-session usr/libexec/sshd-auth usr/libexec/sftp-server
   usr/libexec/ld.elf_so
@@ -151,6 +151,8 @@ FileUtils.cp(File.join(__dir__, 'guest-rc.sh'), root + '/etc/rc')
 File.chmod(0755, root + '/etc/rc')
 mtree = "/set uid=0 gid=0\n" + run.call('mtree', tools + '/nbmtree', '-c', '-k', 'type,mode,link', '-p', root)
 mtree << devices.lines.reject { |line| line.start_with?('. type=dir') }.map { |line| line.sub(%r{\A\./}, './dev/') }.join
+# Apply image metadata without changing the hardlinked immutable base file.
+mtree << "./usr/bin/fstat type=file uid=0 gname=kmem mode=02555\n"
 File.write(work + '/artifacts/guest.mtree', mtree)
 run.call('makefs', tools + '/nbmakefs', '-t', 'ffs', '-B', 'little', '-Z', '-s', "#{disk_mib}m",
          '-o', 'version=2,label=emberquery', '-f', free_inodes.to_s, '-F', work + '/artifacts/guest.mtree',

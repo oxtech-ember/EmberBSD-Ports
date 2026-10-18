@@ -46,8 +46,16 @@ edit that tree's base files or change their permissions. It includes Citrus
 modules, encoding data and locales from the same base, without static archives.
 The generated FFS image is a separate writable file. The sysroot stays unchanged.
 The selected base commands include package installation, deletion and integrity
-tools, their shell utilities, and `ktrace`/`kdump`. Each comes from the same
+tools, their shell utilities, `ktrace`/`kdump`, and `ps`/`fstat` for process
+and open-file inspection. Each comes from the same
 verified base and has a recorded hash. No target compiler is added.
+The image metadata assigns `fstat` to `root:kmem` with mode `02555`.
+The builder resolves `kmem` from the accepted source group database; it does
+not change the hardlinked base file. Run
+`ruby check-fstat-metadata.rb BASE SOURCE_ETC NETBSD_TOOLS NEW_WORK`
+on the base filesystem for a small actual FFS2 check.
+The two commands also passed execution with matching base library providers
+in the E34 AArch64 guest. This does not qualify the complete KiCad application.
 
 ## SSH and acceptance
 
