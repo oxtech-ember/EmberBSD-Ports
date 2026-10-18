@@ -39,6 +39,10 @@ macho=$work/source/profiles/common-build-tools/patches/pkgsrc-macho-load-command
 mv "$macho" "$work/macho-patch"
 negative missing-macho-infrastructure
 mv "$work/macho-patch" "$macho"
+bsdtar=$work/source/profiles/common-build-tools/patches/pkgsrc-bsdtar-common-zlib.patch
+mv "$bsdtar" "$work/bsdtar-zlib-patch"
+negative missing-bsdtar-zlib-infrastructure
+mv "$work/bsdtar-zlib-patch" "$bsdtar"
 for name in cross.mk files/target-query.rb files/elf-needed.sh; do
     helper=$profile/recipes/devel/gobject-introspection/$name
     mv "$helper" "$work/gi-helper"
