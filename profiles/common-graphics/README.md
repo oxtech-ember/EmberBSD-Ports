@@ -27,7 +27,10 @@ WebKit packages and GUI execution remain pending.
 [Maintained FreeImage 3.19.25 and LibRaw 0.22.2](cross/freeimage.md)
 provide common source recipes for OCCT image support. Source preparation,
 GCC16 header selection, half conversions and unaligned pixel-copy checks pass.
-Complete codec packages and installed OCCT image workflows remain pending.
+The ordinary GCC16 AArch64 FreeImage nb3 and wrapper nb2 packages pass all nine
+enabled core tests and the original wrapper test with installed libraries.
+The repaired JPEG contract passes all 335 cases natively and in EmberBSD.
+Installed OCCT image workflows remain pending.
 
 [RapidJSON with GCC16](cross/rapidjson.md) retains the current canonical snapshot,
 header APIs and examples. Required installed GoogleTest enables strict unit and

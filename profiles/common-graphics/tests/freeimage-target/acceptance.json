@@ -1,0 +1,192 @@
+{
+  "scope": "GCC16 Linux-amd64 cross build and installed EmberBSD AArch64 upstream execution. This does not establish OCCT or KiCad behavior.",
+  "source_commit": "e114db7a1edcd127437877f48a4b2d82594b1439",
+  "upstream_archive_sha256": "dab013044c3d9122b0a93cee7b53a656426bccc571d3d46880dd8d90a10d1968",
+  "patched_jpeg_source_sha256": "9ca273c28e4c61afc338bf3b42fd75f7011bee6bed2362413865de80b3422f09",
+  "compiler": "GCC 16.2.0",
+  "target": "EmberBSD AArch64 / NetBSD 11 ABI",
+  "packages": {
+    "freeimage-3.19.25nb3": {
+      "archive_sha256": "454c4139da7039ee75f0034bb8028c1e6851b24a82fab5fd4be6229558b6ffb8",
+      "catalog_sha256": "625583ffb6ffd83734c365bdacb61edb5d2fad5e8a04115b55c0b2e63b65c0c6",
+      "entries": 14,
+      "result": "PASS"
+    },
+    "freeimageplus-3.19.25nb2": {
+      "archive_sha256": "160f0d04ab2692bfa7d179b41b89db1fa4474e65ee8e61b2f9fce4789d31a519",
+      "catalog_sha256": "950dcf7d69be0dd66c46ee6a5bdd15efabab5d32b3615edf203c02b51811a8a7",
+      "entries": 5,
+      "result": "PASS"
+    }
+  },
+  "upstream_bundle_sha256": "8e9cebeca798530b0c1186e7c464e159eecce3bf390defb78c004eef81f9581f",
+  "upstream_executables": {
+    "MainTestSuite": {
+      "sha256": "f6e47dbaf4a17e1ab5da08ad67d618a2a9567d42d38a6988d6317f30ccc001c2",
+      "result": "PASS"
+    },
+    "IffPbmRleTest": {
+      "sha256": "3bccc2d07a314d96eb510e21b4abb30c58c79f125fbf5cc6c3710dc645ac68f1",
+      "result": "PASS"
+    },
+    "GifPlaybackBoundsTest": {
+      "sha256": "f3eb0bdf5dc1df222e24bf12547d7cf2ff5ed71fd8eb875c0b2c89e6d56c7e7f",
+      "result": "PASS"
+    },
+    "RasWordLoopTest": {
+      "sha256": "57f1f5759bb1914164fd99d8b955448fb90d0483c505a85ad8851d278f88b5a3",
+      "result": "PASS"
+    },
+    "SaveErrorTest": {
+      "sha256": "e0a528798bf14f572110a14021a2cacec2ba362ca8e1b128cf2106e16add6520",
+      "result": "PASS"
+    },
+    "DoubleRGBFTest": {
+      "sha256": "062bf677cc4e56bdf67d6508756eefd57cde5d5af0e36ccbadefb15390db6a14",
+      "result": "PASS"
+    },
+    "DependencyInfoTest": {
+      "sha256": "1bdac41c3b9ffc069c9b9261cccee853f14bc3a1471e3efc1058a0665ca49464",
+      "result": "PASS"
+    },
+    "ImageAnalysisTest": {
+      "sha256": "098273f230c322422d41ec7cd4a4dc77a30a46a5266fdd439997057ee0f3b7b1",
+      "result": "PASS"
+    },
+    "UnicodeMultiPageTest": {
+      "sha256": "d221d12c9e2daffaedfc060242928849f6a68cdba6014dc1c018363418b42337",
+      "result": "PASS"
+    },
+    "FreeImagePlusTest": {
+      "sha256": "d7dc2fdb0aed6280f6ea05e762b4e5387e718f5269f63a6fc5e961a4341110c0",
+      "result": "PASS"
+    }
+  },
+  "runtime_providers": [
+    {
+      "path": "/usr/lib/libc.so.12",
+      "sha256": "327dce99c63b19a38c13bd2347c09a6458e38d86261493f3795e639a3e95e35c"
+    },
+    {
+      "path": "/usr/lib/libm.so.0",
+      "sha256": "04c2144d1505e6f00edacb69354ced9bb1c366e7536ed83d7a117d02b0d51112"
+    },
+    {
+      "path": "/usr/lib/libpthread.so.1",
+      "sha256": "18ec5d7493a344f392339bc990c9b0e1189219507ff5aa34cce97e4be9b6f4f0"
+    },
+    {
+      "path": "/usr/pkg/gcc16/lib/libgcc_s.so.1",
+      "sha256": "e518f14d51dfca1157caba79ccc5a8c59c370a93ee039f387e3770a4360246fa"
+    },
+    {
+      "path": "/usr/pkg/gcc16/lib/libgomp.so.1",
+      "sha256": "905b183142c69999210a2b5d458f8586530196c6e4b95c2678accdfb3caec276"
+    },
+    {
+      "path": "/usr/pkg/gcc16/lib/libstdc++.so.7",
+      "sha256": "ece362b9af59cb3d744a1d67e8a7dcd54b58c94f9ee6cee10f39545891288965"
+    },
+    {
+      "path": "/usr/pkg/lib/libIex-3_5.so.34",
+      "sha256": "8437f8dd3dc6a0996fd8e016c0cd224687242de6d73546f326e5d61dc92fae8b"
+    },
+    {
+      "path": "/usr/pkg/lib/libIlmThread-3_5.so.34",
+      "sha256": "477ffdcef45816588d6738458e890f12ea8c788d65dd83043a9f6a4fab4e681c"
+    },
+    {
+      "path": "/usr/pkg/lib/libImath-3_2.so.30",
+      "sha256": "9ae78fa6bead807a51057f8994d20948e316dfe5bcf311cbee3247a42855b592"
+    },
+    {
+      "path": "/usr/pkg/lib/libLerc.so.4",
+      "sha256": "244c07e6bf5b3ccc55c350341963e4358958775a7334272c370d7d55541eb0a3"
+    },
+    {
+      "path": "/usr/pkg/lib/libOpenEXR-3_5.so.34",
+      "sha256": "35e185e850016cb39f5812bf7ef039f89185d3a5d4b09dc0beae92bfe7acaeb9"
+    },
+    {
+      "path": "/usr/pkg/lib/libOpenEXRCore-3_5.so.34",
+      "sha256": "6962dc89bc17864d45665665c5b831edd788a65dfcc6607c7ea7d618586aae56"
+    },
+    {
+      "path": "/usr/pkg/lib/libdeflate.so.0",
+      "sha256": "ef337aa10149d6a7ab2f62f3e2a43d46603d6b524ff1c5435efd1900a546cb03"
+    },
+    {
+      "path": "/usr/pkg/lib/libfreeimage.so.3",
+      "sha256": "574388f8a3f524e246511cd3a972b579024e5c593c6a9668e1999a878a4d1c1c"
+    },
+    {
+      "path": "/usr/pkg/lib/libfreeimageplus.so.3",
+      "sha256": "ec3c3ed8f40b89e0378a7be02f15e4bd6e6810b629c9711835cebb4422a1da73"
+    },
+    {
+      "path": "/usr/pkg/lib/libjbig.so.2",
+      "sha256": "8d6b642625f1a2056051278da645c11181c1f5cd0a310d0d512eca280ddaf80a"
+    },
+    {
+      "path": "/usr/pkg/lib/libjpeg.so.8",
+      "sha256": "5b7935acf4d1349c72250f6d51df5eeb11bb34970928e4d2e79ab782c1b8722c"
+    },
+    {
+      "path": "/usr/pkg/lib/liblcms2.so.2",
+      "sha256": "3e0a3c7459b09f625d114baf661e15a0b037294dd2a62ed0a2a917f92f0ccc49"
+    },
+    {
+      "path": "/usr/pkg/lib/liblzma.so.5",
+      "sha256": "da02f3ffbe5298fc32f8ea654066b333b0e0db9bb3f8086f37bd3b2587cf2bb6"
+    },
+    {
+      "path": "/usr/pkg/lib/libopenjp2.so.7",
+      "sha256": "001a9ea96d983a2eca70376b1e4aa51eca4279b99a3936578d76dacee98a5e15"
+    },
+    {
+      "path": "/usr/pkg/lib/libopenjph.so.0.32",
+      "sha256": "0f172ac4fe7d6ba717e05597dd5d181f9d0c4af71498e5647175699ffb6a2aad"
+    },
+    {
+      "path": "/usr/pkg/lib/libpng16.so.16",
+      "sha256": "7bf4112810ceba9d1456287f47bf136fb2da10b9f3e2c7c196a57069affe4b89"
+    },
+    {
+      "path": "/usr/pkg/lib/libraw.so.25",
+      "sha256": "de51c68cd2277c567abf02b3aa441cfe67711b9a2e4d7204f81d9769eeb15164"
+    },
+    {
+      "path": "/usr/pkg/lib/libsharpyuv.so.0",
+      "sha256": "c3a79d2579c0e0f9c0f1a11fe30a7a9c19bd716342664ffa82d3e879b11a9759"
+    },
+    {
+      "path": "/usr/pkg/lib/libtiff.so.6",
+      "sha256": "e17f744a16b3bdd31b75422ffccf57fbc16d1a13243d5fbc88d01feb0fdd41a8"
+    },
+    {
+      "path": "/usr/pkg/lib/libturbojpeg.so.0",
+      "sha256": "eaa2b4cebfbad4db5c949af05fbc84845079a6accc105ed58ac817f4000ed82f"
+    },
+    {
+      "path": "/usr/pkg/lib/libwebp.so.7",
+      "sha256": "d24349a8233e9ed89dba4f37c48360fa9ff9626cb8cac65d56cf7e3b2534cc4e"
+    },
+    {
+      "path": "/usr/pkg/lib/libwebpdemux.so.2",
+      "sha256": "2f5cdcb298a8dd56292ea2a1d09e1852496a39b1453f58c9b287f07330a7accf"
+    },
+    {
+      "path": "/usr/pkg/lib/libwebpmux.so.3",
+      "sha256": "faea7c4f42b0371974ef1f8c9be421419706258e670ebaadee53d7cb2323bb2c"
+    },
+    {
+      "path": "/usr/pkg/lib/libz.so.1",
+      "sha256": "0e2701bf604faa5072381d820ff934c65ec00a2d72e0d0e0ffc3640599ba99cf"
+    },
+    {
+      "path": "/usr/pkg/lib/libzstd.so.1",
+      "sha256": "65013b8bb8df8ea7642b9d7da3a9ccfd291105238d4d151a07d5afa23a5a2783"
+    }
+  ],
+  "memory_scope": "No target Valgrind or complete library memory acceptance. Focused native contracts have independent documented results."
+}

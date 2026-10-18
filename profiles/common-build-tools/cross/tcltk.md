@@ -144,6 +144,16 @@ the same host contract runs. With full finalization, strict Memcheck reports
 no reachable bytes and no access errors. It still exits with failure.
 This diagnostic build does not replace ordinary package memory acceptance.
 
-Cross packages, installed EmberBSD extension tests, Tk display behavior and
-OCCT Draw remain separate checks. Native host preparation does not establish
-a working GUI package.
+The ordinary GCC16.2.0 AArch64 `tcl-9.1.0nb1` package also passes all package
+checks. Its SHA256 is
+`a85f78c6621c3f8c7a68f5de8a48344e6a46e9e2d19b52e9c1b44b7201b55b30`.
+Complete SDK readback verifies all 1,217 entries, including 623 hardlink manual
+aliases, file bytes, modes, symlinks and package registration.
+Normal installation in the EmberBSD VM passes. The unchanged contract above
+then passes ZipFS creation, Unicode, Itcl, system SQLite, TDBC and an actual
+joined worker thread with the installed target interpreter and libraries.
+This is bounded extension acceptance, not the full upstream target suite or
+a target memory check. Valgrind does not support this NetBSD/AArch64 target.
+
+Tk cross packaging, display behavior and OCCT Draw remain separate checks.
+The Tcl interpreter and its extensions do not establish a working GUI package.
