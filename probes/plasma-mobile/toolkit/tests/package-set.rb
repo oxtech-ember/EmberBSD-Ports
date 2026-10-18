@@ -152,6 +152,61 @@ end
 mutate.call('corrupt-payload', 'Archive payload mismatch') do |tree|
   File.write(File.join(tree, long_name), "Changed bytes with unchanged manifest\n")
 end
+# Model a changing shared cache: hash bad A, audit valid B, then copy bad A.
+# Both archives retain the installed +CONTENTS, but A has corrupt payload bytes.
+race_dir = File.join(work, 'cache-race')
+Dir.mkdir(race_dir)
+race_source = File.join(race_dir, 'pkgset-leaf-1.0.tgz')
+bad_archive = File.join(work, 'corrupt-payload/pkgset-leaf-1.0.tgz')
+FileUtils.cp(bad_archive, race_source)
+race_observer = File.join(race_dir, 'swap-archive.rb')
+File.write(race_observer, <<~'OBSERVER')
+  require 'digest'
+  require 'fileutils'
+  class << Digest::SHA256
+    alias_method :race_original_file, :file
+    def file(path, *args)
+      digest = race_original_file(path, *args)
+      if path == ENV.fetch('PKGSET_RACE_SOURCE') && !@race_swapped
+        @race_swapped = true
+        File.binwrite(path, File.binread(ENV.fetch('PKGSET_RACE_GOOD')))
+        File.open(ENV.fetch('PKGSET_RACE_EVENTS'), 'a') { |log| log.puts('hash-a-then-b') }
+      end
+      digest
+    end
+  end
+  module FileUtils
+    class << self
+      alias_method :race_original_cp, :cp
+      def cp(source, destination, *args)
+        if source == ENV.fetch('PKGSET_RACE_SOURCE')
+          File.binwrite(source, File.binread(ENV.fetch('PKGSET_RACE_BAD')))
+          File.open(ENV.fetch('PKGSET_RACE_EVENTS'), 'a') { |log| log.puts('restore-a-before-copy') }
+        end
+        race_original_cp(source, destination, *args)
+      end
+    end
+  end
+OBSERVER
+File.write(index, [race_source, root].join("\n") + "\n")
+race_output = File.join(work, 'set-cache-race')
+race_events = File.join(race_dir, 'events.log')
+output, error, status = Open3.capture3(
+  { 'PKG_INFO' => info, 'BSDTAR' => tar, 'PKGSET_RACE_SOURCE' => race_source,
+    'PKGSET_RACE_GOOD' => leaf, 'PKGSET_RACE_BAD' => bad_archive,
+    'PKGSET_RACE_EVENTS' => race_events },
+  RbConfig.ruby, '-r', race_observer, auditor, pkgdb, index, race_output, 'pkgset-root-1.0')
+File.write(File.join(work, 'cache-race.log'), output + error)
+raise 'Cache race did not execute A-to-B-to-A transitions' unless
+  File.readlines(race_events, chomp: true) == ['hash-a-then-b', 'restore-a-before-copy']
+raise "Mutable cache published a corrupt archive: #{output}#{error}" if status.success?
+raise "Cache race failed for a different cause: #{output}#{error}" unless
+  (output + error).include?('Archive payload mismatch')
+raise 'Cache race left an accepted output' if File.exist?(race_output)
+raise 'Cache race left staging files' unless Dir[File.join(work, '.set-cache-race-*')].empty?
+count += 1
+puts 'PASS: reject-cache-a-to-b-to-a'
+
 mutate.call('changed-symlink', 'Archive payload mismatch') do |tree|
   path = File.join(tree, 'share/pkgset/symlink')
   File.unlink(path)

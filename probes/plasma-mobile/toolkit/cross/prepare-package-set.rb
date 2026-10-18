@@ -378,6 +378,8 @@ begin
       end
       FileUtils.cp(original, destination)
       check(Digest::SHA256.file(destination).hexdigest == digest, "Archive changed during copy: #{name}")
+      # The shared source can change between hashing, auditing and copying.
+      audit_archive(tar, destination, snapshots.fetch(name), manifests.fetch(name), target)
       hashes << "#{digest}  packages/#{name}.tgz\n"
       accepted = true
       break
