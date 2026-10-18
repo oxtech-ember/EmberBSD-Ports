@@ -3,3 +3,4 @@ $NetBSD$
 BLAKE2s (swig-4.5.1.tar.gz) = 2d3f42e0011c126f8d7a5a512abda4665ec1318af8e369e0678cefc403a03eb6
 SHA512 (swig-4.5.1.tar.gz) = bf89652ddcfac38e42a52224ff79c5717e973779d174b822a03ad48866303779cadf9d5181bbceed4d5dd4a0ff5ed5dea4a0c7cf10c5bc4a59310cdba64f47dd
 Size (swig-4.5.1.tar.gz) = 9191718 bytes
+SHA1 (patch-CCache_ccache.c) = ef3bb4d72793465c10d4f09c933a85600a2004b1
