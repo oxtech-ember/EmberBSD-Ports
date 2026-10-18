@@ -1,0 +1,98 @@
+{
+  "schema": 1,
+  "scope": "Linux amd64 GCC16 cross packaging and installed EmberBSD AArch64 MIT Kerberos/GSS APIs",
+  "upstream": {
+    "version": "1.22.2",
+    "archive": "krb5-1.22.2.tar.gz",
+    "url": "https://web.mit.edu/kerberos/dist/krb5/1.22/krb5-1.22.2.tar.gz",
+    "sha256": "3243ffbc8ea4d4ac22ddc7dd2a1dc54c57874c40648b60ff97009763554eaf13"
+  },
+  "source": {
+    "ports_repair_commit": "1fdd37a895d729c8f9a8ca1aac61d555bb64ef34",
+    "ports_shared_selector_commit": "dfbbb67ad30d3ee15402027ed50d42011d2b6d43",
+    "sdk_partition_commit": "e98655f680602bad58e84ea9299e14272abfed6a",
+    "sdk_api": 1,
+    "stage_partition_api": 1,
+    "pkgsrc_commit": "fff4deb639a1a640476203c80f752fb77b6cb14b"
+  },
+  "toolchain": {
+    "native": "GCC 16.2.0",
+    "cross": "GCC 16.2.0",
+    "target_triplet": "aarch64--netbsd",
+    "host_controller": "CPython 3.15.0 standard library"
+  },
+  "packages": {
+    "runtime": {
+      "name": "mit-krb5-1.22.2nb2",
+      "sha256": "005d496ba44fdf61f943a08b72a6dd59d84d935299ff83946a2edf24d8dd2717",
+      "entries": 101
+    },
+    "sdk": {
+      "name": "mit-krb5-devel-1.22.2nb2",
+      "sha256": "a6e2e9980109a9c5e8c11630a889698ecbb37bbb180dbd4cc1d7490fd41472c6",
+      "entries": 91
+    },
+    "native_full": {
+      "name": "mit-krb5-1.22.2nb2",
+      "sha256": "35856bdf53bd99ad517f9053e04dc2713f0c4e06d3cf40d8dd88d92fefc3022f"
+    }
+  },
+  "host_checks": {
+    "normal_package_gates": "PASS for all three packages",
+    "real_autoconf_cases": 7,
+    "real_stage_cases": 10,
+    "source_nodelete_branch_cases": 8,
+    "native_threaded_api": "PASS; four concurrent principal/cache/AES lifecycles and GSS mechanism/name operations",
+    "native_nodelete": "PASS; genuine dlclose/RTLD_NOLOAD after causal failure without the flag",
+    "analysis": "GCC16 -fanalyzer and Cppcheck 2.22 native/target consumer checks; Clang19 native analysis; no runtime C changes",
+    "memcheck": {
+      "exit": 99,
+      "invalid_accesses": 0,
+      "definitely_lost_bytes": 0,
+      "indirectly_lost_bytes": 0,
+      "possibly_lost_bytes": 0,
+      "still_reachable_bytes": 4648,
+      "still_reachable_blocks": 37,
+      "suppressions": 0,
+      "scope": "Actual native installed-stage API consumer; upstream LIB_UNLOAD_PREVENTED process-global retention remains visible"
+    }
+  },
+  "sdk_readback": {
+    "runtime": "101 entries; bytes/links match; one host ownership normalization",
+    "devel": "91 entries; exact byte/mode/link and catalog checks",
+    "normalization": {
+      "path": "bin/ksu",
+      "archive_mode": "4555",
+      "unprivileged_host_sdk_mode": "0555",
+      "bytes_unchanged": true,
+      "target_root_wheel_mode": "4555; verified in VM",
+      "reason": "Bundled libarchive removes SUID when archive root ownership cannot be established"
+    }
+  },
+  "target": {
+    "system": "EmberBSD AArch64; NetBSD 11 ABI",
+    "kernel_sha256": "b813c4344e4aeef15a087567dacf3609273851e8955def1ae86ff13af8b3e46e",
+    "normal_nb1_to_nb2_upgrade": "PASS",
+    "runtime_only_no_sdk_generators": "PASS",
+    "bundle_sha256": "da47f0457699dfa80a79c4134aea3335a5de8981f62e76c4d4cec190c61f1447",
+    "binary_invocations": 5,
+    "abi": "Exact upstream constructor/destructor, missing-attribute negative, positional sprintf/strcmp probes pass",
+    "api": "Four concurrent principal/cache/AES lifecycles, modified-ciphertext rejection, GSS mechanism/name operations pass",
+    "nodelete": "Genuine loader failure before repair and dlclose/RTLD_NOLOAD success after normal upgrade",
+    "runtime_library_hashes": 5,
+    "memory_scope": "GCC16 UBSan-trap consumer; dependency libraries are not instrumented; target Valgrind not run",
+    "final_pkg_admin": {
+      "checked_files": 20111,
+      "packages": 81,
+      "result": "PASS"
+    }
+  },
+  "unaccepted": [
+    "Network realm authentication and credentials",
+    "KDC deployment",
+    "CUPS authenticated printing",
+    "LDAP backend execution",
+    "amd64 target execution",
+    "Physical hardware and GUI/CAD application acceptance"
+  ]
+}
