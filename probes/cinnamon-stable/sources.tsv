@@ -1,0 +1,8 @@
+x11/cinnamon	cinnamon-6.6.9.tar.gz	62fe4a47f727fda66b4f38a83d21b23a7ccb9f2af169a5f8e7c0b4258131d6bf	https://github.com/linuxmint/cinnamon/archive/refs/tags/6.6.9.tar.gz	806c1a4e8cd23e528d3446b9e3cf5a3c7a3ddf18
+x11/cinnamon-desktop	cinnamon-desktop-6.6.2.tar.gz	4ed0d52a072551c6d536f1be68d4fcdb4166454fc9e48567ab2550282086b0f4	https://github.com/linuxmint/cinnamon-desktop/archive/refs/tags/6.6.2.tar.gz	7c53123b0c1ff02d4001371441de22b2a154317a
+x11/cinnamon-menus	cinnamon-menus-6.6.0.tar.gz	87596380720077991f58afdbbabe72d9afd10f56d64043076cf7b09bc6b0f3c1	https://github.com/linuxmint/cinnamon-menus/archive/refs/tags/6.6.0.tar.gz	29d614cf6cc74606c79b69f59cd716844e7d0dee
+x11/cinnamon-session	cinnamon-session-6.6.4.tar.gz	a5a2e5674671921f51f4dbbceb3cb2ac1088c0591c011078f75a214bcbfd641c	https://github.com/linuxmint/cinnamon-session/archive/refs/tags/6.6.4.tar.gz	55047b7638116d7c113d2ae0b72013c8b200c116
+sysutils/cinnamon-settings-daemon	cinnamon-settings-daemon-6.6.4.tar.gz	215006afe3e59e4998fd3bb9f8ecf1b7c926a08b5398b42e482c5008483c970a	https://github.com/linuxmint/cinnamon-settings-daemon/archive/refs/tags/6.6.4.tar.gz	82dd790fb1e23c6beb11bef6a9372fd3488e1b8e
+wm/muffin	muffin-6.6.3.tar.gz	af1aa8e68699895a841415c007c7f3f48efc06f07c50d219d30f8131a981248e	https://github.com/linuxmint/muffin/archive/refs/tags/6.6.3.tar.gz	25f17c16175cc10a25a4581cfa8609443a05bab0
+sysutils/nemo	nemo-6.6.4.tar.gz	258807feb2e7bac523707d6b3daf2d9439e7135123cbe795183d5aaa6fd691ed	https://github.com/linuxmint/nemo/archive/refs/tags/6.6.4.tar.gz	8d23a398a2fde79910b962ebbf5526daf43fd0ce
+lang/cjs	cjs-140.1.tar.gz	1e223ce6229a7dc926b5ec3ee42040f6848e466ab51eb36c415c283b0b03098c	https://github.com/linuxmint/cjs/archive/refs/tags/140.1.tar.gz	3f8ca7c65bd1d8c4f1e93c984f179d44d71fcb65
