@@ -8201,3 +8201,74 @@ index 0848788799..de37950300 100644
  			   uint32_t crtc_w, uint32_t crtc_h,
  			   uint32_t src_x, uint32_t src_y,
  			   uint32_t src_w, uint32_t src_h);
+diff --git a/ui/events/keycodes/dom/keycode_converter.cc b/ui/events/keycodes/dom/keycode_converter.cc
+index 3193bf3989..6719ad6c22 100644
+--- a/ui/events/keycodes/dom/keycode_converter.cc
++++ b/ui/events/keycodes/dom/keycode_converter.cc
+@@ -15,7 +15,7 @@
+ #include "ui/events/keycodes/dom/dom_code.h"
+ #include "ui/events/keycodes/dom/dom_key.h"
+ 
+-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD) || BUILDFLAG(IS_NETBSD)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
+ #include <linux/input.h>
+ #endif
+ 
+@@ -67,7 +67,7 @@ struct DomKeyMapEntry {
+ #undef DOM_KEY_UNI
+ #undef DOM_KEY_MAP_DECLARATION_END
+ 
+-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)  || BUILDFLAG(IS_NETBSD)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
+ 
+ // The offset between XKB Keycode and evdev code.
+ constexpr int kXkbKeycodeOffset = 8;
+@@ -105,7 +105,7 @@ uint32_t EvdevCodeToXkbKeycode(int evdev_code) {
+   return static_cast<uint32_t>(evdev_code + kXkbKeycodeOffset);
+ }
+ 
+-#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
++#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+ 
+@@ -202,7 +202,9 @@ uint32_t KeycodeConverter::DomCodeToXkbKeycode(DomCode code) {
+   // TODO(crbug.com/40151699): Replace with evdev.
+   return static_cast<uint32_t>(DomCodeToNativeKeycode(code));
+ }
++#endif
+ 
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
+ // static
+ DomCode KeycodeConverter::EvdevCodeToDomCode(int evdev_code) {
+   // Currently XKB keycode is the native keycode.
+@@ -216,7 +218,7 @@ int KeycodeConverter::DomCodeToEvdevCode(DomCode code) {
+   // TODO(crbug.com/40151699): Replace with evdev.
+   return XkbKeycodeToEvdevCode(DomCodeToXkbKeycode(code));
+ }
+-#endif
++#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+ // static
+diff --git a/ui/events/keycodes/dom/keycode_converter.h b/ui/events/keycodes/dom/keycode_converter.h
+index cca673ee23..95d62ca371 100644
+--- a/ui/events/keycodes/dom/keycode_converter.h
++++ b/ui/events/keycodes/dom/keycode_converter.h
+@@ -66,12 +66,14 @@ class KeycodeConverter {
+   static int DomCodeToNativeKeycode(DomCode code);
+ 
+ #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD) || BUILDFLAG(IS_NETBSD)
+-  // Convert a XKB keycode into a DomCode.
++  // Convert an XKB keycode into a DomCode.
+   static DomCode XkbKeycodeToDomCode(uint32_t xkb_keycode);
+ 
+-  // Convert a DomCode into a XKB keycode.
++  // Convert a DomCode into an XKB keycode.
+   static uint32_t DomCodeToXkbKeycode(DomCode code);
++#endif
+ 
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
+   // Convert an evdev code into DomCode.
+   static DomCode EvdevCodeToDomCode(int evdev_code);
+ 

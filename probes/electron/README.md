@@ -108,6 +108,14 @@ Node runs on the host, its products are target artifacts.
   expression to `unsigned`. GCC `-fanalyzer` and Clang Static Analyzer 21 still
   report findings in unchanged upstream allocation/device-info paths; none is
   in the changed NetBSD branches.
+- The following full pass stopped at 3 of 67,711 tasks because Chromium's
+  keycode converter included Linux `input.h` for NetBSD. NetBSD uses XKB keycodes
+  here, while its sysroot does not provide the Linux evdev header. The converter
+  now keeps XKB methods available on NetBSD and limits evdev-only methods to
+  Linux, ChromeOS, and FreeBSD. GCC16.2.0 rebuilt the target object as AArch64
+  ELF. Cppcheck 2.22 passed with a narrow parser suppression for GCC-valid
+  `__has_cpp_attribute` in an unchanged compiler header. Clang Static Analyzer
+  21 reported one existing Abseil forwarding-reference diagnostic.
 - No complete Chromium link, Electron runtime, or Blanc package exists.
   Continue the Chrome build and classify actual compiler failures. Partial
   targets are not a Blanc result.
