@@ -29,7 +29,7 @@ actual=$(git -C "$root/upstream/pkgsrc" rev-parse HEAD)
     exit 2
 }
 if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
-    for recipe in lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib textproc/py-markupsafe textproc/py-yaml textproc/groff; do
+    for recipe in lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib devel/abseil devel/protobuf textproc/py-markupsafe textproc/py-yaml textproc/groff; do
         source=$root/profiles/common-build-tools/recipes/$recipe
         [ -f "$source/Makefile" ] && [ -f "$source/PLIST" ] && \
             [ -f "$source/distinfo" ] || {
@@ -45,6 +45,46 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
                 echo "Missing required patch: $recipe/$name" >&2; exit 2;
             }
         done
+        if [ "$recipe" = devel/abseil ]; then
+            [ -f "$source/DESCR" ] && [ -f "$source/buildlink3.mk" ] &&
+                [ -f "$source/patches/patch-absl_debugging_CMakeLists.txt" ] &&
+                grep -q '^SHA1 (patch-absl_debugging_CMakeLists.txt) = ' "$source/distinfo" || {
+                echo 'Incomplete Abseil cross metadata repair.' >&2; exit 2;
+            }
+            [ "$(find "$source" -type l | wc -l | tr -d ' ')" = 0 ] &&
+                [ "$(find "$source/patches" -name 'patch-*' | wc -l | tr -d ' ')" = 6 ] &&
+                [ "$(printf '%s\n' "$required" | awk 'NF { n++ } END { print n+0 }')" = 6 ] || {
+                echo 'Unexpected Abseil patch inventory.' >&2; exit 2;
+            }
+            for name in $required; do
+                recorded=$(awk -v name="($name)" '$1 == "SHA1" && $2 == name { print $4 }' "$source/distinfo")
+                computed=$(sed '/[$]NetBSD.*/d' "$source/patches/$name" | shasum -a 1 | awk '{ print $1 }')
+                [ "$recorded" = "$computed" ] || { echo "Abseil patch checksum differs: $name" >&2; exit 2; }
+            done
+        fi
+        if [ "$recipe" = devel/protobuf ]; then
+            for name in DESCR buildlink3.mk host-protoc.mk; do
+                [ -f "$source/$name" ] || { echo "Incomplete protobuf recipe: $name" >&2; exit 2; }
+            done
+            fixes='patch-src_google_protobuf_compiler_main.cc patch-upb_message_array_oom patch-upb_message_copy.c patch-upb_message_string_oom'
+            for name in $fixes; do
+                [ -L "$source/patches/$name" ] &&
+                [ "$(readlink "$source/patches/$name")" = "../../../../../../probes/kicad/protobuf/patches/$name" ] || {
+                    echo "Unexpected protobuf patch origin: $name" >&2; exit 2;
+                }
+                grep -q "^SHA1 ($name) = " "$source/distinfo" || exit 2
+            done
+            [ "$(find "$source" -type l | wc -l | tr -d ' ')" = 4 ] &&
+                [ "$(find "$source/patches" -name 'patch-*' | wc -l | tr -d ' ')" = 6 ] &&
+                [ "$(printf '%s\n' "$required" | awk 'NF { n++ } END { print n+0 }')" = 6 ] || {
+                echo 'Unexpected protobuf patch inventory.' >&2; exit 2;
+            }
+            for name in $required; do
+                recorded=$(awk -v name="($name)" '$1 == "SHA1" && $2 == name { print $4 }' "$source/distinfo")
+                computed=$(sed '/[$]NetBSD.*/d' "$source/patches/$name" | shasum -a 1 | awk '{ print $1 }')
+                [ "$recorded" = "$computed" ] || { echo "Protobuf patch checksum differs: $name" >&2; exit 2; }
+            done
+        fi
     done
     for delta in python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-cross-packages.patch pkgsrc-gettext-go-detection.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch pkgsrc-ncurses-terminfo-aliases.patch pkgsrc-host-autoconf.patch pkgsrc-cwrappers-unwrap-boundary.patch pkgsrc-cross-passthrough-rpath.patch; do
         [ -s "$root/profiles/common-build-tools/patches/$delta" ] || {
@@ -327,11 +367,16 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     cp -R "$runtime_recipe" "$destination/lang/gcc16-runtime"
 fi
 if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
-    for recipe in lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib textproc/py-markupsafe textproc/py-yaml textproc/groff; do
+    for recipe in lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib devel/abseil devel/protobuf textproc/py-markupsafe textproc/py-yaml textproc/groff; do
         source=$root/profiles/common-build-tools/recipes/$recipe
         # Replace only recipe paths inside this newly created export.
         rm -rf "$destination/$recipe"
-        cp -R "$source" "$destination/$recipe"
+        if [ "$recipe" = devel/protobuf ]; then
+            # The preflight approved exactly four public source patch links.
+            cp -RL "$source" "$destination/$recipe"
+        else
+            cp -R "$source" "$destination/$recipe"
+        fi
     done
     [ ! -e "$destination/lang/llvm-devel" ] && [ ! -L "$destination/lang/llvm-devel" ] || {
         echo 'Upstream now owns lang/llvm-devel; review the overlay.' >&2; exit 2;

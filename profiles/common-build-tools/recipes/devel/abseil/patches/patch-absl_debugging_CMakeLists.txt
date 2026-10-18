@@ -1,0 +1,44 @@
+$NetBSD$
+
+Keep the cross NetBSD execinfo link in installed metadata without a sysroot path.
+Reject libraries outside the compiler's real implicit search directories.
+Native configuration and the existing library discovery stay unchanged.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- absl/debugging/CMakeLists.txt.orig
++++ absl/debugging/CMakeLists.txt
+@@ -15,6 +15,25 @@
+ #
+ 
+ find_library(EXECINFO_LIBRARY execinfo)
++set(_absl_execinfo_linkopt "${EXECINFO_LIBRARY}")
++if(CMAKE_CROSSCOMPILING AND CMAKE_SYSTEM_NAME STREQUAL "NetBSD"
++   AND EXECINFO_LIBRARY)
++  # LINKOPTS also enters installed pkg-config and static CMake metadata.
++  # Use the target link name only for a compiler-searched base library.
++  get_filename_component(_absl_execinfo_dir "${EXECINFO_LIBRARY}" DIRECTORY)
++  get_filename_component(_absl_execinfo_dir "${_absl_execinfo_dir}" REALPATH)
++  set(_absl_execinfo_implicit FALSE)
++  foreach(_absl_implicit_dir IN LISTS CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES)
++    get_filename_component(_absl_implicit_dir "${_absl_implicit_dir}" REALPATH)
++    if(_absl_execinfo_dir STREQUAL _absl_implicit_dir)
++      set(_absl_execinfo_implicit TRUE)
++    endif()
++  endforeach()
++  if(NOT _absl_execinfo_implicit)
++    message(FATAL_ERROR "Cross execinfo must be in a compiler implicit library directory")
++  endif()
++  set(_absl_execinfo_linkopt "-lexecinfo")
++endif()
+ 
+ absl_cc_library(
+   NAME
+@@ -36,7 +55,7 @@
+   COPTS
+     ${ABSL_DEFAULT_COPTS}
+   LINKOPTS
+-    $<$<BOOL:${EXECINFO_LIBRARY}>:${EXECINFO_LIBRARY}>
++    $<$<BOOL:${_absl_execinfo_linkopt}>:${_absl_execinfo_linkopt}>
+   DEPS
+     absl::debugging_internal
+     absl::config
