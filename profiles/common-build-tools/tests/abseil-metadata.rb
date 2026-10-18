@@ -15,7 +15,7 @@ root = File.expand_path('../../..', __dir__)
 recipe = root + '/profiles/common-build-tools/recipes/devel/abseil'
 patches = Dir.glob(recipe + '/patches/patch-*').sort
 fix = recipe + '/patches/patch-absl_debugging_CMakeLists.txt'
-abort 'Expected six source patches.' unless patches.size == 6 && patches.include?(fix)
+abort 'Expected seven source patches.' unless patches.size == 7 && patches.include?(fix)
 FileUtils.mkdir_p(work)
 commands = []
 run = lambda do |name, argv, env = {}, success = true|

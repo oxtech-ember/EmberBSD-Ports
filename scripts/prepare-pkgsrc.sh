@@ -48,12 +48,14 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
         if [ "$recipe" = devel/abseil ]; then
             [ -f "$source/DESCR" ] && [ -f "$source/buildlink3.mk" ] &&
                 [ -f "$source/patches/patch-absl_debugging_CMakeLists.txt" ] &&
-                grep -q '^SHA1 (patch-absl_debugging_CMakeLists.txt) = ' "$source/distinfo" || {
+                grep -q '^SHA1 (patch-absl_debugging_CMakeLists.txt) = ' "$source/distinfo" &&
+                [ -f "$source/patches/patch-absl_debugging_internal_stacktrace_config.h" ] &&
+                grep -q '^SHA1 (patch-absl_debugging_internal_stacktrace_config.h) = ' "$source/distinfo" || {
                 echo 'Incomplete Abseil cross metadata repair.' >&2; exit 2;
             }
             [ "$(find "$source" -type l | wc -l | tr -d ' ')" = 0 ] &&
-                [ "$(find "$source/patches" -name 'patch-*' | wc -l | tr -d ' ')" = 6 ] &&
-                [ "$(printf '%s\n' "$required" | awk 'NF { n++ } END { print n+0 }')" = 6 ] || {
+                [ "$(find "$source/patches" -name 'patch-*' | wc -l | tr -d ' ')" = 7 ] &&
+                [ "$(printf '%s\n' "$required" | awk 'NF { n++ } END { print n+0 }')" = 7 ] || {
                 echo 'Unexpected Abseil patch inventory.' >&2; exit 2;
             }
             for name in $required; do

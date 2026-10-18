@@ -1,6 +1,6 @@
 # Common protobuf and Abseil packages
 
-The common profile selects protobuf 36.2 and Abseil 20260817.0nb1.
+The common profile selects protobuf 36.2 and Abseil 20260817.0nb2.
 Both recipes replace the pinned pkgsrc provider at its canonical path.
 [Source pins](../sources.tsv) identify the official archives. Recipe `distinfo`
 files record the archive and patch checksums.
@@ -25,6 +25,14 @@ one of the compiler's real implicit library directories. It compares canonical
 directory paths, then uses `-lexecinfo` in both the option and its generator
 expression condition. A found nonstandard provider fails explicitly. Missing
 `execinfo` and native builds retain the upstream optional behavior.
+
+The next Abseil source repair selects its existing generic `backtrace`
+implementation on NetBSD. Upstream otherwise selects the empty implementation
+on this platform. Thread-local recursion and early-initialization guards stay
+upstream-owned. The installed consumer in `tests/abseil-consumer` requires a
+known string result and a nonempty bounded stack trace. This additional source
+repair still requires its own before/after target execution; the earlier
+protobuf consumer results did not cover stack traces.
 
 The [common cross profile](README.md) supplies the target identity, sysroot and
 CMake search modes. Build programs stay native. Headers, libraries and package

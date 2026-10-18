@@ -50,7 +50,7 @@ CHECK_PORTABILITY_SKIP+=	src/google/protobuf/compiler/zip_output_unittest.sh
 
 .include "../../devel/cmake/build.mk"
 #.include "../../devel/googletest/buildlink3.mk"
-BUILDLINK_API_DEPENDS.abseil+=	abseil>=20260817.0nb1
+BUILDLINK_API_DEPENDS.abseil+=	abseil>=20260817.0nb2
 .include "../../devel/abseil/buildlink3.mk"
 BUILDLINK_API_DEPENDS.zlib+=	zlib>=1.3.2
 .include "../../devel/zlib/buildlink3.mk"

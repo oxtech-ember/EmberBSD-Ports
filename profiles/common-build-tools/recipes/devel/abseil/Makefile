@@ -2,7 +2,7 @@
 
 # Origin: EmberBSD (AI-assisted); preserve target execinfo in installed metadata.
 DISTNAME=	abseil-20260817.0
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=abseil/}
 GITHUB_PROJECT=	abseil-cpp
