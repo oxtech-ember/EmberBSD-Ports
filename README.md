@@ -715,6 +715,12 @@ to an independent working tree. Experimental probes remain under `probes/`
 until their package integration and runtime are validated. No signed binary
 package repository is provided yet.
 
+Standard profiles retain the complete pinned gmake and dtc recipes and select
+the common GCC16 toolchain. The separate
+[board-firmware checkpoint](profiles/development-toolchain/README.md#source-and-preparation)
+is incomplete. Its explicit opt-in fails before export until complete GCC16
+firmware recipes are published. `EMBERBSD-PKGSRC-CONFIG` records this selection.
+
 The [toolkit export checks](probes/plasma-mobile/toolkit/tests/manifest.md) cover
 all recipe directories, shared source owners, supplemental archives and patch publication.
 A clean export preserves 150 complete toolkit recipes and the Boost toolset overlay.

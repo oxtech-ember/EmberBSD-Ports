@@ -131,7 +131,10 @@ pkgsrc `fff4deb639a1a640476203c80f752fb77b6cb14b`. It composes the established
 changing GCC bootstrap options. The common MAKECONF selects
 the prepared GCC16 package for new native builds. LLVM family recipes also
 prepare scoped native Clang defaults. The default
-export and `development-toolchain` mode retain their previous behavior.
+export and `development-toolchain` mode retain their common GCC16 selection.
+Standard profiles preserve the complete pinned gmake and dtc providers.
+The incomplete [board-firmware toolchain checkpoint](../development-toolchain/README.md#source-and-preparation)
+requires an explicit opt-in and does not affect these exports.
 The lit recipe now selects shared Python315 for native and cross packages.
 Its [selection and source checks](llvm-family.md#upstream-lit-and-focused-checks)
 pass on the host; target wheel installation remains separate.

@@ -12,6 +12,11 @@ case "$profile" in
     ''|development-toolchain|common-build-tools|common-graphics|common-media|plasma-mobile) ;;
     *) echo 'Unknown profile.' >&2; exit 2 ;;
 esac
+firmware_toolchain=${EMBERBSD_FIRMWARE_TOOLCHAIN:-no}
+case "$firmware_toolchain" in
+    yes|no) ;;
+    *) echo 'EMBERBSD_FIRMWARE_TOOLCHAIN must be yes or no.' >&2; exit 2 ;;
+esac
 destination=$1
 case "$destination" in
     /*) ;;
@@ -22,6 +27,43 @@ case "$destination" in
 esac
 [ ! -e "$destination" ] && [ ! -L "$destination" ] || { echo 'Destination already exists.' >&2; exit 2; }
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+if [ "$firmware_toolchain" = yes ]; then
+    [ -n "$profile" ] || {
+        echo 'The firmware toolchain requires a development or common profile.' >&2; exit 2;
+    }
+    # This separate build-host checkpoint must be complete before it can
+    # replace any pinned provider. Standard profiles do not select it.
+    for recipe in devel/gmake sysutils/dtc cross/aarch64-none-elf-binutils cross/aarch64-none-elf-gcc; do
+        source=$root/profiles/development-toolchain/recipes/$recipe
+        for name in Makefile DESCR PLIST distinfo; do
+            [ -s "$source/$name" ] || {
+                echo "Incomplete GCC16 firmware toolchain: $recipe/$name. Complete the source checkpoint or use EMBERBSD_FIRMWARE_TOOLCHAIN=no." >&2
+                exit 2
+            }
+        done
+        [ "$(find "$source" -type l | wc -l | tr -d ' ')" = 0 ] || {
+            echo "Unexpected firmware recipe link: $recipe" >&2; exit 2;
+        }
+        required=$(awk '/^SHA1 \(patch-/ { gsub(/[()]/, "", $2); print $2 }' "$source/distinfo")
+        for name in $required; do
+            [ -f "$source/patches/$name" ] || {
+                echo "Missing firmware patch: $recipe/$name" >&2; exit 2;
+            }
+            recorded=$(awk -v name="($name)" '$1 == "SHA1" && $2 == name { print $4 }' "$source/distinfo")
+            computed=$(sed '/[$]NetBSD.*/d' "$source/patches/$name" | shasum -a 1 | awk '{ print $1 }')
+            [ "$recorded" = "$computed" ] || {
+                echo "Firmware patch checksum differs: $recipe/$name" >&2; exit 2;
+            }
+        done
+    done
+    [ -s "$root/profiles/development-toolchain/recipes/devel/gmake/options.mk" ] || {
+        echo 'Incomplete firmware gmake recipe: options.mk' >&2; exit 2;
+    }
+    grep -Eq '^DISTNAME=[[:space:]]*gcc-16[.]' \
+        "$root/profiles/development-toolchain/recipes/cross/aarch64-none-elf-gcc/Makefile" || {
+        echo 'The firmware compiler must use the common GCC16 line.' >&2; exit 2;
+    }
+fi
 expected=$(git -C "$root" ls-files --stage -- upstream/pkgsrc | awk '$1 == "160000" { print $2 }')
 actual=$(git -C "$root/upstream/pkgsrc" rev-parse HEAD)
 [ -n "$expected" ] && [ "$actual" = "$expected" ] || {
@@ -523,12 +565,12 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     # One current debugger recipe; dereference the shared Ports patch links.
     rm -rf "$destination/devel/gdb"
     cp -RL "$root/profiles/development-toolchain/recipes/devel/gdb" "$destination/devel/gdb"
-    # Firmware build-host toolchain: cross-adapted recipes overlay the
-    # upstream pins (gcc 8.2/binutils 2.31 violate the shared GCC16 line).
-    for recipe in devel/gmake sysutils/dtc cross/aarch64-none-elf-binutils cross/aarch64-none-elf-gcc; do
-        rm -rf "$destination/$recipe"
-        cp -R "$root/profiles/development-toolchain/recipes/$recipe" "$destination/$recipe"
-    done
+    if [ "$firmware_toolchain" = yes ]; then
+        for recipe in devel/gmake sysutils/dtc cross/aarch64-none-elf-binutils cross/aarch64-none-elf-gcc; do
+            rm -rf "$destination/$recipe"
+            cp -R "$root/profiles/development-toolchain/recipes/$recipe" "$destination/$recipe"
+        done
+    fi
     cp "$root/profiles/development-toolchain/mk.conf" \
         "$destination/EMBERBSD-DEVELOPMENT-MK.CONF"
     # Package audited external target runtimes without installing a compiler.
@@ -643,4 +685,6 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
         "$root/profiles/common-build-tools/patches/pkgsrc-boost-cross-target.patch"
 fi
 printf '%s\n' "$expected" > "$destination/EMBERBSD-PKGSRC-REVISION"
+printf 'profile=%s\nfirmware_toolchain=%s\n' "$profile" "$firmware_toolchain" > \
+    "$destination/EMBERBSD-PKGSRC-CONFIG"
 printf 'Prepared %s with pkgsrc %s\n' "$destination" "$expected"
