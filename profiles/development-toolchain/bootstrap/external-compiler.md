@@ -19,6 +19,7 @@ cannot establish their source provenance.
 
 ```sh
 HOST_CC=/absolute/native/cc HOST_CXX=/absolute/native/c++ \
+AR=/absolute/native/ar NM=/absolute/native/nm RANLIB=/absolute/native/ranlib \
 GNU_MAKE=/absolute/native/gmake CROSS_JOBS=2 \
 EMBERBSD_SYSROOT_SOURCE=FULL_EMBERBSD_COMMIT \
 EMBERBSD_SYSROOT_PROVENANCE=/absolute/seed-provenance.json \
@@ -27,6 +28,13 @@ sh profiles/development-toolchain/bootstrap/build.sh --check \
   /absolute/gcc-16.2.0.tar.xz /absolute/application-compiler \
   /absolute/emberbsd-seed /absolute/host-math/prefix /absolute/new-work
 ```
+
+Use absolute native `AR`, `NM` and `RANLIB` paths for host metadata.
+A compiler prefix can contain generic aliases for target binutils. Those
+aliases cannot inspect native host objects. The standard variables reach
+upstream native configure and make unchanged. The receipt records their
+selection. Direct target library rules then select the audited absolute
+`*_FOR_TARGET` tools. No LTO feature or diagnostic is disabled.
 
 After checking the printed inputs, remove only `--check` to build. The work
 path must be new. This mode does not support frontend resume or optional
