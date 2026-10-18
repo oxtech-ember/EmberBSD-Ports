@@ -52,6 +52,12 @@ runtime behavior are validated.
   GCC16 AArch64 packaging verifies all 613 entries; four selected native
   and installed EmberBSD numerical checks pass. Normal package removal and
   reinstallation preserve the verified ownership boundary.
+- [Installed GUI/CAD APIs](profiles/common-graphics/cross/gui-cad-api/README.md):
+  GCC16 AArch64 consumers verify GLU concave tessellation, Cairo image and
+  document output, and GLM numerical transforms through its installed CMake
+  target. The EmberBSD VM checks exact results and canonical runtime providers.
+  GLEW's separate EGL diagnostic retains its missing-GLX-display failure;
+  KiCad 10.0.7 uses GLAD. Complete CAD and display sessions remain pending.
 - [JBIG-KIT 2.2nb1](profiles/common-graphics/cross/jbigkit.md): the common provider
   keeps both libraries and all four image tools. Ordinary GCC16 native and
   AArch64 packages pass package checks; native upstream tests and installed
