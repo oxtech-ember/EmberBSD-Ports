@@ -91,7 +91,7 @@ abort 'Unrelated default changed.' unless unrelated['RUBY_VERSION_DEFAULT'] == '
   abort 'Obsolete override was not rejected.' unless data['PKG_FAIL_REASON'].include?('requires the current Ruby 4.0 provider')
 end
 File.write(work + '/native-cross-rejected.conf', File.read(configs.fetch('fixed-cross')) +
-  "\n.include \"#{work}/fixed-native.mk\"\n")
+  "\nPREFIX?=\${LOCALBASE}\n.include \"#{work}/fixed-native.mk\"\n")
 native_cross = query.call('native-cross-rejected', work + '/native-cross-rejected.conf')
 abort 'Native-only barrier changed.' unless native_cross['PKG_FAIL_REASON'].include?('require native package builds')
 File.write(work + '/result.json', JSON.pretty_generate({
