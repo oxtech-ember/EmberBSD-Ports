@@ -28,6 +28,12 @@ for native, AArch64, amd64 and host recursion. It preserves compiler routing,
 native-only barriers and the unrelated pkgsrc default. Ruby package builds
 and target execution remain separate checks.
 
+The common [SWIG 4.5.1 provider](cross/swig.md) retains all language backends,
+839 templates and compressed CCache support. Its ordinary native GCC16 package,
+upstream Python 3.15 example and closed-stderr compiler regression pass.
+Strict memory checks retain upstream allocation findings; target packaging
+and complete KiCad bindings remain pending.
+
 The shared [zlib 1.3.2nb1 recipe](recipes/devel/zlib/README.md) replaces the
 vendored 1.3.1 sources with the verified current release. It preserves pkgsrc
 Libtool naming and the complete gzip API. Two writer-seek repairs pass native

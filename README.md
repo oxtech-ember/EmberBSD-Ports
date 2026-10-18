@@ -19,6 +19,11 @@ runtime behavior are validated.
 
 ## Current contents
 
+- [Common SWIG 4.5.1](profiles/common-build-tools/cross/swig.md): the full
+  native GCC16 package verifies all 846 files and the upstream Python 3.15
+  example. A causal CCache repair preserves compiler fallback with closed
+  stderr. Strict memory findings, target packaging and KiCad bindings remain
+  separate acceptance work.
 - [KiCad application source](probes/kicad/application/README.md): the complete
   10.0.7 source keeps QA and IPC. GCC16 causal checks repair NetBSD context,
   loader and DXF platform selection. The bundled context implementation passes
