@@ -7,6 +7,12 @@ source=$1 work=$2
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cmake=${CMAKE:-cmake}
 mkdir "$work"
+recipe=$root/recipes/lang/llvm
+delta=$recipe/patches/patch-tools_llvm-config_CMakeLists.txt
+# pkgsrc removes RCS ID lines before it verifies a patch checksum.
+expected=$(awk '/^SHA1 \(patch-tools_llvm-config_CMakeLists.txt\)/ {print $4}' "$recipe/distinfo")
+actual=$(sed '/[$]NetBSD.*/d' "$delta" | shasum -a 1 | awk '{print $1}')
+[ "$expected" = "$actual" ] || { echo 'FAIL: llvm-config patch checksum differs from pkgsrc.' >&2; exit 1; }
 mkdir -p "$work/fixed/tools/llvm-config"
 flags='-L/private/target-root/usr/pkg/gcc16/lib -Wl,-rpath,/usr/pkg/gcc16/lib -Wl,-rpath-link,/private/target-root/usr/pkg/lib -Wl,-rpath-link,/private/target-root/usr/pkg/gcc16/lib -Wl,-rpath-link,/private/target-root-other/usr/pkg/lib -Wl,-rpath-link,/usr/pkg/lib -L/usr/lib'
 reported='-L/usr/pkg/gcc16/lib -Wl,-rpath,/usr/pkg/gcc16/lib -Wl,-rpath-link,/private/target-root-other/usr/pkg/lib -Wl,-rpath-link,/usr/pkg/lib -L/usr/lib'
