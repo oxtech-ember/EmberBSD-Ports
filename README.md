@@ -50,15 +50,16 @@ runtime behavior are validated.
   Matching code generation retains its output and error behavior. Documented
   process-lifetime exceptions keep the original CLI's memory failures visible.
   The same C++ and UPB contracts pass in the AArch64 E34 guest with the
-  GCC16-built shared-library closure. Ordinary protobuf package ownership,
-  lifecycle and KiCad integration remain pending.
+  GCC16-built shared-library closure. Ordinary protobuf package execution,
+  lifecycle and complete KiCad integration remain pending.
   The [common Abseil recipe](profiles/common-build-tools/cross/protobuf.md)
   repairs NetBSD stack traces. Its ordinary AArch64 package passes two installed
   SDK consumers, all 816 payload checks and removal/reinstallation.
   Cross protobuf recipes separate runtime libraries from target generators and
   SDK files. Their source ownership checks preserve the full native package.
-  The runtime package passes normal checks and all twelve SDK payload entries;
-  SDK packaging and installed KiCad integration remain pending.
+  Both packages pass normal checks, all 353 installed SDK payload entries and
+  two GCC16 consumer links. Actual KiCad API generation passes; target compilation
+  exposes a system `major`/`minor` macro conflict.
   Common CMake discovery now prefers selected package dependencies over base
   namesakes; GCC16 zlib discovery/link controls preserve native behavior.
 - [KiCad SPICE prerequisites](probes/kicad/ngspice/README.md): ngspice 47

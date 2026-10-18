@@ -196,6 +196,9 @@ loader overrides. Loaded provider hashes match the accepted stage and SDK.
 The guest receives no generator, headers or static libraries for this check.
 
 This stage is a CMake probe payload. It is not a registered pkgsrc provider.
-Canonical packaging must update protobuf from 36.1 to 36.2, carry these fixes,
-check its PLIST and rebuild ABI consumers. The common Abseil recipe already
-selects 20260817.0. Package lifecycle and KiCad acceptance remain separate work.
+The separate [canonical packages](../../../profiles/common-build-tools/cross/protobuf.md)
+now carry the same fixes. Their complete builds, disjoint runtime/SDK partition,
+all 353 installed SDK entries and two GCC16 consumer links pass.
+Ordinary protobuf package execution and lifecycle remain separate work.
+Actual KiCad API generation passes; target compilation exposes a `major`/`minor`
+system-macro conflict. Full KiCad acceptance remains pending.
