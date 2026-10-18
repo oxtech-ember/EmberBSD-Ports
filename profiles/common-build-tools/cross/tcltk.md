@@ -157,3 +157,6 @@ a target memory check. Valgrind does not support this NetBSD/AArch64 target.
 
 Tk cross packaging, display behavior and OCCT Draw remain separate checks.
 The Tcl interpreter and its extensions do not establish a working GUI package.
+The [installed Tk contract](../../common-graphics/tests/tk-installed.md) checks
+real X11 windows, Unicode widgets, PNG round trips, events and embedded scripts.
+Its source-only preparation does not establish positive GUI execution.
