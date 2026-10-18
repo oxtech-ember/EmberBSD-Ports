@@ -4,6 +4,7 @@
 # Adapted with AI assistance for stable NNG 1.12.3.
 # Upstream: https://github.com/nanomsg/nng/commit/8fa3b2aa8e9191669f137be39ba61ad39243483a
 # Upstream: https://github.com/nanomsg/nng/commit/71e459eea31e9e47c0ce64a78e32b242d357f9a0
+# Upstream: https://github.com/nanomsg/nng/commit/2c98a72d5135a09bcb860eed06b3029d27b7c797
 # Stop and drain AIO, task and reap work before deallocating their state.
 # Keep stable 1.x implicit initialization and task completion semantics.
 # Drain an individual queue on partial initialization before its stop assertion.
@@ -287,6 +288,14 @@
  }
  
  int
+@@ -105,6 +108,7 @@
+ {
+ 	int rv;
+ 
++	reap_exit = false;
+ 	// If this fails, we don't fail init, instead we will try to
+ 	// start up at reap time.
+ 	if ((rv = nni_thr_init(&reap_thr, reap_worker, NULL)) != 0) {
 --- a/src/core/reap.h
 +++ b/src/core/reap.h
 @@ -1,5 +1,5 @@
