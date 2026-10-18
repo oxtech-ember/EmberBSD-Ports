@@ -8,6 +8,8 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cmake=${CMAKE:-cmake}
 mkdir "$work"
 mkdir -p "$work/fixed/tools/llvm-config"
+flags='-L/private/target-root/usr/pkg/gcc16/lib -Wl,-rpath,/usr/pkg/gcc16/lib -Wl,-rpath-link,/private/target-root/usr/pkg/lib -Wl,-rpath-link,/private/target-root/usr/pkg/gcc16/lib -Wl,-rpath-link,/private/target-root-other/usr/pkg/lib -Wl,-rpath-link,/usr/pkg/lib -L/usr/lib'
+reported='-L/usr/pkg/gcc16/lib -Wl,-rpath,/usr/pkg/gcc16/lib -Wl,-rpath-link,/private/target-root-other/usr/pkg/lib -Wl,-rpath-link,/usr/pkg/lib -L/usr/lib'
 input=$source/llvm/tools/llvm-config/CMakeLists.txt
 cp "$input" "$work/fixed/tools/llvm-config/"
 patch -f -N -F 0 -p0 -d "$work/fixed" < \
@@ -28,17 +30,17 @@ for variant in baseline fixed; do
         cat > "$work/case.cmake" <<EOF
 set(CMAKE_CROSSCOMPILING $cross)
 set(CMAKE_SYSROOT "$sysroot")
-set(CMAKE_CXX_LINK_FLAGS "-L/private/target-root/usr/pkg/gcc16/lib -Wl,-rpath,/usr/pkg/gcc16/lib -L/usr/lib")
+set(CMAKE_CXX_LINK_FLAGS "$flags")
 include("$work/$variant.cmake")
 file(WRITE "$work/$variant-$mode.txt" "\${LLVM_LDFLAGS}\n\${CMAKE_CXX_LINK_FLAGS}\n")
 EOF
         "$cmake" -P "$work/case.cmake"
-        tail -1 "$work/$variant-$mode.txt" | grep -Fq -- '-L/private/target-root/usr/pkg/gcc16/lib'
         if [ "$variant:$mode" = fixed:cross ]; then
-            head -1 "$work/$variant-$mode.txt" | grep -Fx -- '-L/usr/pkg/gcc16/lib -Wl,-rpath,/usr/pkg/gcc16/lib -L/usr/lib'
+            printf '%s\n%s\n' "$reported" "$flags" > "$work/expected.txt"
         else
-            head -1 "$work/$variant-$mode.txt" | grep -Fq -- '-L/private/target-root/usr/pkg/gcc16/lib'
+            printf '%s\n%s\n' "$flags" "$flags" > "$work/expected.txt"
         fi
+        cmp "$work/expected.txt" "$work/$variant-$mode.txt"
     done
 done
-echo 'PASS: cross metadata loses only its build sysroot; build flags and native/no-sysroot paths remain intact.'
+echo 'PASS: cross metadata drops common build-only rpath-link paths and roots -L; actual build flags, other paths and native/no-sysroot metadata stay intact.'

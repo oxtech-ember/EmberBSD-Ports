@@ -1,19 +1,25 @@
 $NetBSD$
 
-Origin: EmberBSD (AI-assisted), keep the build sysroot out of installed metadata.
-The actual compiler/linker flags retain the sysroot. Only llvm-config's reported
-target search paths change; host packages and builds without a sysroot are intact.
+Origin: EmberBSD (AI-assisted), keep build paths out of installed metadata.
+The actual compiler/linker flags retain the sysroot and transitive dependency
+searches. Report target -L paths, but omit the two common build-only rpath-link
+arguments. Host packages and builds without a sysroot are intact.
 Not submitted upstream. SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 --- tools/llvm-config/CMakeLists.txt.orig
 +++ tools/llvm-config/CMakeLists.txt
-@@ -76,6 +76,10 @@
+@@ -76,6 +76,15 @@
  
  # Use the C++ link flags, since they should be a superset of C link flags.
  set(LLVM_LDFLAGS "${CMAKE_CXX_LINK_FLAGS}")
 +if(CMAKE_CROSSCOMPILING AND CMAKE_SYSROOT)
 +  string(REPLACE "-L${CMAKE_SYSROOT}/" "-L/"
 +    LLVM_LDFLAGS "${LLVM_LDFLAGS}")
++  separate_arguments(LLVM_LDFLAGS_LIST UNIX_COMMAND "${LLVM_LDFLAGS}")
++  list(REMOVE_ITEM LLVM_LDFLAGS_LIST
++    "-Wl,-rpath-link,${CMAKE_SYSROOT}/usr/pkg/lib"
++    "-Wl,-rpath-link,${CMAKE_SYSROOT}/usr/pkg/gcc16/lib")
++  list(JOIN LLVM_LDFLAGS_LIST " " LLVM_LDFLAGS)
 +endif()
  set(LLVM_BUILDMODE ${CMAKE_BUILD_TYPE})
  set(LLVM_SYSTEM_LIBS ${SYSTEM_LIBS})

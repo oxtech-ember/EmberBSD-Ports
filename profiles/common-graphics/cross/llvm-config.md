@@ -67,6 +67,8 @@ sysroot. The selected LLVM prefix's libdir comes first, as in upstream.
 Runtime RPATH flags remain target paths. Metadata already containing the private
 sysroot or unknown external search paths fails. Fix such a leak in the target
 LLVM metadata generation first; the host helper must not conceal it.
+The LLVM producer omits the common profile's two sysroot `rpath-link` arguments
+from reported metadata. Actual build links retain both dependency searches.
 The receipt preserves both original and mapped flags, and the supplied sysroot
 must match the target configuration.
 

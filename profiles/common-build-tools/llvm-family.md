@@ -220,8 +220,10 @@ checks each executable's exact version and keeps host generators separate
 from target LLVM headers and libraries. It includes upstream libc utilities
 needed by LLVM23; these are build sources, not a second installed libc.
 
-The llvm-config CMake adaptation removes only the build sysroot from reported
-target linker search paths. It does not change actual compiler/linker flags.
+The llvm-config CMake adaptation removes the build sysroot from reported target
+`-L` paths. It omits the two common build-only `rpath-link` arguments from
+reported flags. Actual compiler/linker flags keep those transitive searches.
+Runtime RPATHs, other link arguments and native/no-sysroot metadata stay intact.
 Source-causal CMake and real pkgsrc selection tests cover this boundary.
 The host metadata executable uses the generated target build metadata.
 Its stage proof reproduces CMake's exact target strip operation and requires
