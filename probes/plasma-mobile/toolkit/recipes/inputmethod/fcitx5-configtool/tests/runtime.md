@@ -65,7 +65,6 @@ It does not establish physical input, Wayland text-input, full Plasma, long-run 
 All 104 C++ source/header files match the pinned upstream archive.
 Three production translation units were checked with actual GCC16/AArch64 parameters.
 Clang 23.1.3 reports no diagnostics for the keyboard layout, process runner and Configtool entry point.
-The entry point was checked again after its initially missing generated UI header became available.
 Cppcheck 2.22 cannot parse `Q_SLOTS` in two units. The layout unit has 15 inherited style findings.
 No finding or category was suppressed. Full static analysis remains incomplete.
 No Valgrind, target sanitizer or leak-checking acceptance is claimed.
