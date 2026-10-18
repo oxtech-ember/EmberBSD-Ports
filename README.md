@@ -19,6 +19,11 @@ runtime behavior are validated.
 
 ## Current contents
 
+- [MIT Kerberos for GUI printing](profiles/common-graphics/cross/mit-krb5.md):
+  current 1.22.2 sources retain thread-safe GSS clients and explicit cross
+  runtime/SDK roles. Real GCC16 Autoconf controls and target ABI probes pass.
+  Split package and installed client acceptance remain separate gates.
+
 - [GCC16 NetBSD cross math capabilities](profiles/development-toolchain/cross-math.md):
   checked target declarations and libm links provide C++ math imports for the
   complete standard modules. The source regression retains missing-input

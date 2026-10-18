@@ -1,0 +1,2 @@
+MIT Kerberos headers, static libraries, metadata and target generators.
+Install this package in the development-host sysroot with the matching runtime.

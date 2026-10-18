@@ -1,5 +1,10 @@
 # Common graphics source packages
 
+[MIT Kerberos 1.22.2](cross/mit-krb5.md) retains GSS and thread-safe clients
+for CUPS printing. Explicit runtime/SDK roles keep target generators on the
+development host. Real cross and native configuration contracts pass; split
+packages and installed target client acceptance remain pending.
+
 The common [Tcl/Tk 9.1 pair](../common-build-tools/cross/tcltk.md) retains
 X11, Aqua, printing, accessibility, bidi text and ZipFS. Platform branch
 regressions and actual source install inventories pass. Complete target

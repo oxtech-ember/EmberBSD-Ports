@@ -1,0 +1,36 @@
+Origin: EmberBSD (AI-assisted), for MIT Kerberos 1.22.2.
+
+Qualify NetBSD ELF compiler and libc contracts during cross configuration.
+Keep native execution tests and reject unknown cross targets.
+
+--- configure.ac.orig
++++ configure.ac
+@@ -966,7 +966,27 @@
+           return 0;
+       }]])],
+   [ac_cv_printf_positional=yes], [ac_cv_printf_positional=no],
+-  [AC_MSG_ERROR(Cannot test for printf positional argument support when cross compiling)])])
++  [case $krb5_cv_host:$GCC in
++     *-*-netbsd*:yes)
++       # NetBSD libc implements POSIX positional printf specifications.
++       # Retain a target link and format check, with no host execution.
++       krb5_save_CFLAGS=$CFLAGS
++       CFLAGS="$CFLAGS -Werror=format"
++       AC_LINK_IFELSE([AC_LANG_SOURCE([[
++         #if !defined(__NetBSD__) || !defined(__ELF__)
++         #error expected the NetBSD ELF target
++         #endif
++         #include <stdio.h>
++         int main(void) {
++             char buf[30];
++             return sprintf(buf, "%2\$x %1\$d", 100, 512) < 0;
++         }
++       ]])], [ac_cv_printf_positional=yes],
++       [AC_MSG_ERROR(NetBSD positional printf link test failed)])
++       CFLAGS=$krb5_save_CFLAGS
++       ;;
++     *) AC_MSG_ERROR(Cannot test for printf positional argument support when cross compiling) ;;
++   esac])])
+ # Nothing for autoconf.h for now.
+ AC_MSG_RESULT($ac_cv_printf_positional)
+ 

@@ -1,0 +1,22 @@
+Origin: EmberBSD (AI-assisted), for MIT Kerberos 1.22.2.
+
+Separate build-host generators from the installed target script.
+Native installation keeps its existing AWK and SED defaults.
+
+--- util/et/Makefile.in.orig
++++ util/et/Makefile.in
+@@ -113,8 +113,13 @@
+ 	path
+ 	$(OUTPRE)test_et$(EXEEXT)
+ 
++INSTALL_AWK = $(AWK)
++INSTALL_SED = $(SED)
++
+ install-unix: compile_et compile_et.1
+-	$(INSTALL) compile_et $(DESTDIR)$(bindir)/compile_et
++	$(SHELL) $(srcdir)/config_script $(srcdir)/compile_et.sh \
++		"$(mydatadir)" $(INSTALL_AWK) $(INSTALL_SED) > compile_et.install
++	$(INSTALL) compile_et.install $(DESTDIR)$(bindir)/compile_et
+ 	test -d $(DESTDIR)$(mydatadir) || mkdir $(DESTDIR)$(mydatadir)
+ 	$(INSTALL_DATA) $(srcdir)/et_c.awk $(DESTDIR)$(mydatadir)
+ 	$(INSTALL_DATA) $(srcdir)/et_h.awk $(DESTDIR)$(mydatadir)

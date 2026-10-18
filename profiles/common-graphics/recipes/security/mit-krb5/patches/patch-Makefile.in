@@ -1,0 +1,36 @@
+$NetBSD: patch-Makefile.in,v 1.4 2026/04/07 14:12:48 tnn Exp $
+
+Don't build plugin examples and tests to avoid libtool problems.
+
+--- Makefile.in.orig	2025-08-20 19:44:32.000000000 +0000
++++ Makefile.in
+@@ -9,28 +9,15 @@ mydir=.
+ SUBDIRS=util include lib \
+ 	@sam2_plugin@ \
+ 	plugins/audit \
+-	plugins/audit/test \
+ 	@audit_plugin@ \
+-	plugins/kadm5_hook/test \
+-	plugins/kadm5_auth/test \
+-	plugins/gssapi/negoextest \
+-	plugins/hostrealm/test \
+-	plugins/localauth/test \
+-	plugins/pwqual/test \
+-	plugins/authdata/greet_server \
+-	plugins/authdata/greet_client \
+-	plugins/certauth/test \
+ 	plugins/kdb/db2 \
+ 	@ldap_plugin_dir@ \
+ 	@lmdb_plugin_dir@ \
+-	plugins/kdb/test \
+-	plugins/kdcpolicy/test \
+ 	plugins/preauth/otp \
+ 	plugins/preauth/pkinit \
+ 	plugins/preauth/spake \
+-	plugins/preauth/test \
+ 	plugins/tls/k5tls \
+-	kdc kadmin kprop clients appl tests \
++	kdc kadmin kprop clients appl \
+ 	config-files build-tools man doc @po@
+ WINSUBDIRS=include util lib ccapi windows clients appl plugins\preauth\spake \
+ 	$(PKINIT_SUBDIR)

@@ -1,0 +1,37 @@
+Origin: EmberBSD (AI-assisted), for MIT Kerberos 1.22.2.
+
+Qualify NetBSD ELF compiler and libc contracts during cross configuration.
+Keep native execution tests and reject unknown cross targets.
+
+--- aclocal.m4.orig
++++ aclocal.m4
+@@ -1347,7 +1347,28 @@
+       int main () { return 0; }]])],
+     [test -r conftest.1 || a=yes
+      test -r conftest.2 || b=yes],
+-  [], [AC_MSG_ERROR(Cannot test for constructor/destructor support when cross compiling)])
++  [], [case $krb5_cv_host:$GCC in
++       *-*-netbsd*:yes)
++         # NetBSD ELF calls these sections in its startup/termination code.
++         # Check the selected target compiler and linker, not the build host.
++         krb5_save_CFLAGS=$CFLAGS
++         CFLAGS="$CFLAGS -Werror=attributes"
++         AC_LINK_IFELSE([AC_LANG_SOURCE([[
++           #if !defined(__NetBSD__) || !defined(__ELF__)
++           #error expected the NetBSD ELF target
++           #endif
++           #include <unistd.h>
++           void foo1(void) __attribute__((constructor));
++           void foo1(void) { unlink("conftest.1"); }
++           void foo2(void) __attribute__((destructor));
++           void foo2(void) { unlink("conftest.2"); }
++           int main(void) { return 0; }
++         ]])], [a=yes; b=yes],
++         [AC_MSG_ERROR(NetBSD ELF constructor/destructor link test failed)])
++         CFLAGS=$krb5_save_CFLAGS
++         ;;
++       *) AC_MSG_ERROR(Cannot test for constructor/destructor support when cross compiling) ;;
++     esac])
+ case $krb5_cv_host in
+ *-*-aix4.*)
+ 	# Under AIX 4.3.3, at least, shared library destructor functions
