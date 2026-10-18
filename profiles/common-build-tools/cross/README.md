@@ -23,7 +23,8 @@ This metadata check does not establish Ruby package or target acceptance.
 
 The [pkg-config environment](pkgconfig.md) roots target compile/link search
 paths in the selected SDK. Runtime paths retain their installed target prefix.
-The real GCC16/CMake regression also verifies unchanged native discovery.
+Explicit C++ imports select the installed GCC16 runtime before the base runtime.
+The real GCC16/CMake regressions also verify unchanged native discovery.
 
 ## Prerequisites
 

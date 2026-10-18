@@ -6,7 +6,8 @@ checks and bounded module memory checks pass; package integration is separate.
 
 The [pkg-config sysroot contract](cross/pkgconfig.md) maps target dependency
 headers and link paths to the SDK. Actual GCC16/CMake imported-target checks
-preserve target runtime paths and unchanged native provider selection.
+preserve target runtime paths and unchanged native provider selection. Explicit
+C++ imports retain the installed GCC16 runtime ABI.
 
 The [sysroot import contract](cross/sysroot.md#pinned-aarch64-base-and-comp-imports)
 provides a pinned-manifest importer for OS-owned AArch64 `base` and `comp`

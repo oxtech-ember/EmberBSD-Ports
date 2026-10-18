@@ -1,5 +1,11 @@
 # Target pkg-config paths
 
+CMake also searches the selected SDK's `usr/pkg/gcc16/lib` before the base
+C++ runtime. `FindPkgConfig` converts explicit `-lstdc++` entries into absolute
+library paths; the compiler's `-B` runtime selection cannot change such a path.
+The common target-only `CMAKE_LIBRARY_PATH` setting keeps these imported targets
+on the installed GCC16 ABI. It does not alter native CMake discovery.
+
 The common cross profile supplies `PKG_CONFIG_SYSROOT_DIR` in both configure
 and build environments. The value is the selected `CROSS_DESTDIR`.
 The ordinary pkgsrc wrapper still restricts discovery to buildlink metadata.
@@ -27,3 +33,19 @@ with GCC16. It verifies AArch64 ELF linkage, the real installed zstd provider
 and an explicit target runtime-path allowlist. Native metadata and provider
 selection must remain identical. It writes no package database or SDK files.
 This check establishes target linkage; it does not execute target binaries.
+
+After ordinary FreeImage configure has prepared its real native and target
+wrappers, check explicit C++ provider selection with installed LibRaw 0.22.2:
+
+```sh
+BMAKE=/absolute/native-bmake \
+  ruby profiles/common-build-tools/tests/pkgconfig-cxx-runtime.rb \
+    /absolute/exported-pkgsrc /absolute/cross.mk.conf \
+    /absolute/target-objects /absolute/native-objects /absolute/new-results
+```
+
+The AArch64 regression observes the original `libstdc++.so.9` and `.7` link,
+then requires only the installed GCC16 `libstdc++.so.7`. It checks real CMake
+imported paths, unchanged provider hashes and target runtime paths. Both native
+variants execute and retain identical discovery metadata. This is a compiler
+and link contract; target execution and complete FreeImage acceptance are separate.
