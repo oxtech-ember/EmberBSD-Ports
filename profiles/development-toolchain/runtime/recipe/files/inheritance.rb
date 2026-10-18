@@ -75,7 +75,7 @@ module GCC16Runtime
         raise Invalid, 'Changed parent receipt' unless hash(work + '/parent/' + name) == receipt.fetch('parent_receipts').fetch(name)
       end
       parent = Stage.new(work + '/parent', work + '/parent-recipe', archive,
-        expected_source: expected_source, receipt_paths: receipt.fetch('parent_paths'), allow_rebuild: false).verify
+        expected_source: expected_source, receipt_paths: receipt.fetch('parent_paths'), allow_rebuild: false, historical: true).verify
       %w[GCC_RUNTIME_TARGET GCC_RUNTIME_TRIPLET GCC_RUNTIME_LIBRARIES EMBERBSD_SEED_SOURCE].each do |key|
         raise Invalid, 'Parent runtime identity changed' unless parent[:metadata][key] == current[:metadata][key]
       end

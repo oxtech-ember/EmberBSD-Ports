@@ -1,6 +1,6 @@
 # Package the GCC16 target runtime
 
-This profile creates `gcc16-runtime-16.2.0nb2` for EmberBSD amd64 or AArch64.
+This profile creates `gcc16-runtime-16.2.0nb3` for EmberBSD amd64 or AArch64.
 It packages an audited [cross bootstrap stage](../bootstrap/README.md).
 All tools execute on the development host. The target receives only shared
 libraries and licenses under `/usr/pkg/gcc16` and `/usr/pkg/share/licenses`.
@@ -12,6 +12,14 @@ The verifier also supports the explicit
 parent snapshot and disjoint component ownership before the same ELF/package
 gates. The rebuild must use a new package revision; it cannot replace nb2 under
 the same identity. A prepared receipt mode does not establish target acceptance.
+
+The [RELRO relink helper](../bootstrap/relro.md) hardens the three original
+runtime DSOs with their authenticated objects and actual upstream link commands.
+It reproduces all three baseline DSOs byte-for-byte before adding RELRO.
+The AArch64 link, ABI and stock pkgsrc RELRO checks pass. The new nb3 package
+and target runtime still need their ordinary acceptance checks.
+Normal stage verification requires RELRO. Historical provenance reads cannot
+install or create packages. No package check is disabled.
 
 The provider conflicts with `gcc16` and `gcc16-libs`. Select one provider
 for a coherent package closure. Do not combine the providers or fabricate

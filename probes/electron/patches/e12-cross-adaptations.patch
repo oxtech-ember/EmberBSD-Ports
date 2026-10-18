@@ -303,6 +303,19 @@ index cfe10db679..43450bc756 100644
      default;
  inline constexpr ImmutableString& ImmutableString::operator=(
      ImmutableString&&) noexcept = default;
+diff --git a/base/i18n/language_tag.h b/base/i18n/language_tag.h
+index 25e6338beb..37f9276745 100644
+--- a/base/i18n/language_tag.h
++++ b/base/i18n/language_tag.h
+@@ -50,7 +50,7 @@ class BASE_I18N_EXPORT LanguageTag {
+   using ImmutableStringType = i18n_internal::ImmutableString;
+ 
+   constexpr LanguageTag(const LanguageTag&) noexcept = default;
+-  constexpr LanguageTag(LanguageTag&& other) noexcept = default;
++  LanguageTag(LanguageTag&& other) noexcept = default;
+   constexpr LanguageTag& operator=(const LanguageTag&) noexcept = default;
+   constexpr LanguageTag& operator=(LanguageTag&&) noexcept = default;
+ 
 diff --git a/base/metrics/runtime_field_trial_overrides.cc b/base/metrics/runtime_field_trial_overrides.cc
 index 3012324b83..aaf894ac46 100644
 --- a/base/metrics/runtime_field_trial_overrides.cc
