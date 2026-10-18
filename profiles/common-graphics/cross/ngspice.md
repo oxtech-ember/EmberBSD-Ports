@@ -18,6 +18,9 @@ cross profile supplies the GCC16 CRT and OpenMP metadata paths, target
 runtime paths and the complete native compiler command for XSPICE `cmpp`.
 Do not run a target `cmpp` on the build host. Do not invoke the cross-host
 Libtool directly outside its pkgsrc wrapper environment.
+Set optimization and debug flags in `MAKECONF`. Passing `CFLAGS` on the make
+command line overrides the language and OpenMP flags added by `configure`.
+Check actual compile commands and `_OPENMP`, not only `USE_OMP` in config.h.
 
 The twelve source patches have one owner in the
 [ngspice probe](../../../probes/kicad/ngspice/README.md).
@@ -44,6 +47,25 @@ packages through `pkg_add` before configuring KiCad. Use the installed
 [C API and SPICE contracts](../../../probes/kicad/ngspice/tests)
 for runtime acceptance. ELF linking and package creation alone do not
 establish target execution.
+
+The [OpenMP workload](../../../probes/kicad/ngspice/tests/openmp-contract.sh)
+uses the exact upstream `examples/mos/nmos_pmos_BSIM482.sp` circuit.
+The preserved fixture and upstream COPYING file are next to the script.
+Its SHA256 is `817b8ed1a1879fce346a1750268fbca0005e759a68fa1d41204fcbf3c3f38ecb`.
+The script replaces interactive controls with one DC sweep, file output and
+explicit one/two-thread selection. Device and model definitions stay unchanged.
+Run it on EmberBSD with the installed CLI and base `ktrace`, `kdump` and `sha256`:
+
+```sh
+sh probes/kicad/ngspice/tests/openmp-contract.sh \
+    /usr/pkg/bin/ngspice /absolute/new-openmp-check
+```
+
+The check compares 31 DC points within a stated absolute/relative tolerance.
+It also requires more successful `_lwp_create` calls in the two-thread run.
+This tests parallel activation and numerical agreement, not an independent
+analytic solution for BSIM4. The divider remains the known-answer circuit.
+The new kernel-trace workload still requires its target execution check.
 
 The source preparation and native bootstrap results remain documented in
 the probe. The ordinary GCC16 target packages and their EmberBSD runtime
