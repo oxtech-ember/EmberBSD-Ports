@@ -3,7 +3,7 @@
 # Origin: EmberBSD; installed GUI/CAD consumer acceptance.
 set -eu
 if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
-    echo 'usage: run.sh BUNDLE NEW_LOG_DIRECTORY [--without-glew]' >&2
+    echo 'usage: run.sh BUNDLE NEW_LOG_DIRECTORY [--with-glew-egl]' >&2
     exit 2
 fi
 bundle=$(cd "$1" && pwd -P)
@@ -20,10 +20,10 @@ while read -r expected path; do
 done < runtime-libraries.sha256
 unset LD_LIBRARY_PATH LD_PRELOAD LD_PRELOAD_32 LD_PRELOAD_64
 export LIBGL_ALWAYS_SOFTWARE=true GALLIUM_DRIVER=llvmpipe
-tests='glu-api cairo-api glm-api glew-egl'
+tests='glu-api cairo-api glm-api'
 case ${3-} in
     '') ;;
-    --without-glew) tests='glu-api cairo-api glm-api';;
+    --with-glew-egl) tests="$tests glew-egl";;
     *) echo 'unknown selection' >&2; exit 2;;
 esac
 for name in $tests; do
@@ -40,6 +40,15 @@ for name in $tests; do
             exit 1
         }
     done < "$logs/$name.loaded"
+    test "$(awk '/\/libgcc_s[.]so[.]/ { count++ } END { print count+0 }' \
+        "$logs/$name.loaded")" = 1
+    required=$(awk -v name="$name" '$1 == name { print $2 }' required-providers.tsv)
+    test -n "$required"
+    grep -F -x "$required" "$logs/$name.loaded" > /dev/null
+    if grep -E '^/(lib|usr/lib)/libstdc[+][+][.]' "$logs/$name.loaded" > /dev/null; then
+        echo 'unexpected base C++ runtime' >&2
+        exit 1
+    fi
     cat "$logs/$name.log"
 done
 echo 'PASS: selected installed GUI/CAD consumers and all observed library providers'

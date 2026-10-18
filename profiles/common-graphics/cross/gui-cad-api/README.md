@@ -31,10 +31,19 @@ commands, ELF metadata and hashes. It compiles every target executable
 with GCC16 and UBSan traps. The bundle contains no replacement libraries.
 The target runner checks the bundle and installed runtime hashes, then
 rejects loaded libraries outside the recorded canonical provider set.
+It requires one compiler-support provider per process. GLU, GLM and Mesa
+use common GCC16. The C-only Cairo consumer follows the fork libm's
+`/lib` RPATH and uses its original base compiler-support library. Both
+files come from the same SDK. Their hashes and required consumers are
+explicit. The runner rejects provider coexistence and base C++ runtimes.
 Install the normal runtime package closure separately. Verify the archive
 SHA256 before extraction. Run `sh BUNDLE/run.sh BUNDLE NEW_LOG_DIRECTORY`.
-The explicit `--without-glew` selection qualifies only the other three
-consumers. It must not be described as GLEW acceptance.
+The default selection qualifies GLU, Cairo and GLM. The optional
+`--with-glew-egl` selection also requires GLEW EGL acceptance. GLEW's
+default Unix build calls `glxewInit()` after initializing OpenGL. A valid
+EGL context without a GLX display can therefore fail with code 4.
+Keep that failure visible. KiCad 10.0.7 uses GLAD in
+`common/gal/opengl/opengl_gal.cpp`; it does not use this GLEW initialization.
 
 NetBSD/AArch64 Valgrind support is unavailable in this workflow. The
 target UBSan trap checks do not establish a Valgrind result. Display-backed

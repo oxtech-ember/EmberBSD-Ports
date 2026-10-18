@@ -4,6 +4,7 @@
 """Build consumers with GCC16. Do not install packages or start a target."""
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -44,6 +45,8 @@ def main():
     work = args.work
     if not work.is_absolute() or work.exists() or work.is_symlink():
         parser.error('--work must be a new absolute path')
+    if work.parent.resolve(strict=True) != work.parent:
+        parser.error('--work must have real existing ancestors')
     for source in (sysroot, tools, packages, ports, sdk_source):
         if work.is_relative_to(source) or source.is_relative_to(work):
             parser.error('work must not overlap an input tree')
@@ -105,8 +108,9 @@ def main():
                 if entry.name.startswith('+') or entry.isdir():
                     continue
                 target = sysroot / 'usr/pkg' / relative
+                if not target.resolve(strict=True).is_relative_to(sysroot):
+                    raise RuntimeError(f'installed package path escapes the SDK: {target}')
                 if entry.isfile():
-                    import hashlib
                     expected = hashlib.file_digest(package.extractfile(entry), 'sha256').hexdigest()
                     if target.is_symlink() or sha256_file(str(target)) != expected:
                         raise RuntimeError(f'installed package file differs: {target}')
@@ -202,6 +206,25 @@ def main():
         visit(gallium)
     else:
         raise RuntimeError('require the current Mesa 26.2.4 software driver')
+    # A C-only process follows the fork libm's /lib RPATH. C++ consumers
+    # already load the common GCC16 provider before libm. Retain both genuine
+    # SDK files, but require exactly the appropriate provider in each process.
+    libm = read_elf_dynamic(str(sysroot / 'usr/lib/libm.so.0'), machine=183)
+    if ('libgcc_s.so.1' not in libm['needed'] or
+            libm['rpath'] != '/lib'):
+        raise RuntimeError('the fork libm provider policy changed; review actual loader selection')
+    base_gcc = (sysroot / 'lib/libgcc_s.so.1').resolve(strict=True)
+    if read_elf_dynamic(str(base_gcc), machine=183)['soname'] != 'libgcc_s.so.1':
+        raise RuntimeError('unexpected base compiler-support SONAME')
+    visit(base_gcc)
+    common_gcc = (sysroot / 'usr/pkg/gcc16/lib/libgcc_s.so.1').resolve(strict=True)
+    if base_gcc == common_gcc:
+        raise RuntimeError('base and common GCC16 provider identities must remain distinct')
+    required = {'cairo-api': base_gcc, 'glu-api': common_gcc,
+                'glm-api': common_gcc, 'glew-egl': common_gcc}
+    (bundle / 'required-providers.tsv').write_text(
+        ''.join(f'{name}\t/{path.relative_to(sysroot)}\n'
+                for name, path in sorted(required.items())), encoding='utf-8')
     (bundle / 'runtime-libraries.sha256').write_text(
         ''.join(f'{digest}  {name}\n' for name, digest in sorted(runtime.items())), encoding='utf-8')
     (work / 'objects.json').write_text(json.dumps(objects, indent=2) + '\n', encoding='utf-8')
