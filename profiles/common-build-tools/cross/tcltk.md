@@ -131,6 +131,19 @@ It reports no definite or indirect loss, but 2,573,312 possibly lost bytes
 and 221,996 reachable bytes. There are 124 reported contexts and no
 suppressions. Native allocator memory acceptance remains pending.
 
+The existing `TCL_FINALIZE_ON_EXIT=1` diagnostic requests full finalization
+in the ordinary installed package. It still reports 2,442,240 possibly lost
+bytes and 296,896 reachable bytes in 132 heap-only contexts.
+No invalid-access or uninitialized-value record occurs in either run.
+
+A separate build with the existing `debug` option enables `TCL_MEM_DEBUG`.
+Upstream then disables `USE_THREAD_ALLOC` and adds its memory diagnostics.
+The actual debug interpreter and all loaded extensions are checked before
+the same host contract runs. With full finalization, strict Memcheck reports
+1,706 possibly lost bytes in 14 records, no definite or indirect loss,
+no reachable bytes and no access errors. It still exits with failure.
+This diagnostic build does not replace ordinary package memory acceptance.
+
 Cross packages, installed EmberBSD extension tests, Tk display behavior and
 OCCT Draw remain separate checks. Native host preparation does not establish
 a working GUI package.
