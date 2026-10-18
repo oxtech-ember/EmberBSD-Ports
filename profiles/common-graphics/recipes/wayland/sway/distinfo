@@ -5,6 +5,7 @@ SHA512 (sway-1.12.tar.gz) = 797a99ce108df21ada805f1169260a7a75051449af533d7659ec
 Size (sway-1.12.tar.gz) = 5590239 bytes
 SHA1 (patch-common_stringop.c) = 1d89d81d0e665dec83b312e4d47645923dedbea3
 SHA1 (patch-common_util.c) = 6092b87d425096740409e00b0d9dac3bc5dae8f7
+SHA1 (patch-include_stringop.h) = 282e263210e1c1227d3c5d0962651d90cf104a71
 SHA1 (patch-meson.build) = 40b74709af65b55b4f3e93a5fa45b783f88b6463
 SHA1 (patch-sway_commands.c) = 792b1746fcfccafa1ac2bb7386012a31e327d63a
 SHA1 (patch-sway_commands_move.c) = 8b5682f523ccc626e376c4dcceac53a2c2a739f3
