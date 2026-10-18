@@ -37,6 +37,18 @@ module EmberGraphicsLLVMNative
     path.is_a?(String) && path.start_with?('/') && !path.match?(/[\s\x00-\x1f]/) && !path.split('/').include?('..')
   end
 
+  def validate_header(path, roots, forbidden:)
+    raise ArgumentError, "unsafe native header dependency: #{path}" unless safe_absolute?(path)
+    resolved = File.realpath(path)
+    if forbidden.any? { |root| resolved == root || resolved.start_with?(root + '/') }
+      raise ArgumentError, "native header resolves inside a target tree: #{path}"
+    end
+    unless roots.any? { |root| path.start_with?(root + '/') || resolved.start_with?(root + '/') }
+      raise ArgumentError, "unexpected native header dependency: #{path}"
+    end
+    resolved
+  end
+
   def elf(path, expected_machine)
     bytes = File.binread(path, 20)
     valid = bytes.bytesize == 20 && bytes.byteslice(0, 7) == "\x7fELF\x02\x01\x01".b &&
@@ -115,7 +127,7 @@ module EmberGraphicsLLVMNative
     end
     needed = dynamic(binary, readelf).fetch(:needed) + files.flat_map { |file| file.fetch('needed') }
     raise ArgumentError, 'native runtime closure is incomplete' unless (needed - paths.keys).empty?
-    reachable = [loader_name, *dynamic(binary, readelf).fetch(:needed)]
+    reachable = [loader_name, *dynamic(binary, readelf).fetch(:needed)].uniq
     loop do
       more = files.select { |file| reachable.include?(file['name']) }.flat_map { |file| file['needed'] }
       break if (more - reachable).empty?

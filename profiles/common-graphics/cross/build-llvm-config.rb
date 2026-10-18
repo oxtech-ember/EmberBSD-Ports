@@ -262,13 +262,18 @@ compile_args = [cxx, *host_flags, '-DLLVM_BUILD_STATIC', '-O2', (nc['LLVM_ENABLE
 # system headers; Darwin preserves the existing non-system dependency scan. The
 # generated metadata is private; all external headers must belong to the
 # matching native source/build, never the target platform headers.
-dependency_command = [*compile_args, (native_platform == 'linux-gnu' ? '-M' : '-MM'), '-MT', 'llvm-config', '-MF', "#{work}/llvm-config.d"]
+dependency_mode = native_platform == 'linux-gnu' ? %w[-fno-canonical-system-headers -M] : ['-MM']
+dependency_command = [*compile_args, *dependency_mode, '-MT', 'llvm-config', '-MF', "#{work}/llvm-config.d"]
 File.write("#{work}/dependencies.command", Shellwords.join(dependency_command) + "\n")
 capture(*dependency_command)
 dependencies = Shellwords.split(File.read("#{work}/llvm-config.d").gsub("\\\n", ' ').sub(/\Allvm-config:\s*/, ''))
 dependencies.each do |path|
+  begin
+    EmberGraphicsLLVMNative.validate_header(path, [work, source, native, *native_headers], forbidden: [sysroot, target])
+  rescue ArgumentError => error
+    fail!(error.message)
+  end
   next if path.start_with?(work + '/')
-  fail!("unexpected native header dependency: #{path}") unless path.start_with?(source + '/') || path.start_with?(native + '/') || native_headers.any? { |root| File.realpath(path).start_with?(root + '/') }
   required << path
   initial_hashes[path] ||= Digest::SHA256.file(path).hexdigest
 end
@@ -288,7 +293,17 @@ if native_platform == 'linux-gnu'
   end
   native_runtime.fetch('tools').each { |path, hash| required << path; initial_hashes[path] = hash }
 end
-File.write("#{work}/receipt.json", JSON.pretty_generate({version: VERSION, source: source, target_build: target, native_build: native, native_sdk: native_sdk, native_platform: native_platform, native_triple: native_triple, native_header_roots: native_headers, native_system_libraries: host_system, native_runtime: native_runtime, sysroot: sysroot, target_prefix: prefix, target_triple: string(td, 'LLVM_HOST_TRIPLE'), target_assertions: tc['LLVM_ENABLE_ASSERTIONS'], staged_library_sha256: target_library_hash, library_proof: library_proof, compiler: cxx, compiler_version: capture(cxx, '--version'), original_ldflags: original_ldflags, mapped_ldflags: mapped_ldflags, command: command}) + "\n")
+triple_query = ["#{work}/bin/llvm-config.real", '--host-target']
+if native_runtime
+  triple_query.unshift("#{work}/#{native_runtime.fetch('loader')}", '--inhibit-cache', '--library-path', "#{work}/native/lib")
+end
+begin
+  reported_triple = EmberGraphicsLLVMNative.capture(*triple_query).strip
+  fail!('upstream reported target disagrees with generated target metadata') unless EmberGraphicsLLVM.for_triple(reported_triple) == target_spec
+rescue ArgumentError => error
+  fail!(error.message)
+end
+File.write("#{work}/receipt.json", JSON.pretty_generate({version: VERSION, source: source, target_build: target, native_build: native, native_sdk: native_sdk, native_platform: native_platform, native_triple: native_triple, native_header_roots: native_headers, native_system_libraries: host_system, native_runtime: native_runtime, sysroot: sysroot, target_prefix: prefix, configured_target_triple: string(td, 'LLVM_HOST_TRIPLE'), target_triple: reported_triple, target_triple_query: triple_query, target_assertions: tc['LLVM_ENABLE_ASSERTIONS'], staged_library_sha256: target_library_hash, library_proof: library_proof, compiler: cxx, compiler_version: capture(cxx, '--version'), original_ldflags: original_ldflags, mapped_ldflags: mapped_ldflags, command: command}) + "\n")
 shasum = capture('/usr/bin/which', 'shasum')
 fail!('shasum must have an absolute executable path') unless shasum.start_with?('/') && File.executable?(shasum)
 File.write("#{work}/bin/llvm-config", <<~SH)

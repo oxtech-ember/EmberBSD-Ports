@@ -70,6 +70,26 @@ check.call('real GCC16 native contract executes with the retained loader and run
   run.call('original-run', "#{original}/#{runtime.fetch('loader')}", '--inhibit-cache', '--library-path', "#{original}/native/lib", binary) == expected
 end
 
+# LLVM Support can make the ELF interpreter a direct DT_NEEDED entry too.
+# Keep that real dependency; the closure comparison treats names as a set.
+direct = "#{work}/direct-loader"
+FileUtils.mkdir_p("#{direct}/bin")
+direct_binary = "#{direct}/bin/llvm-config.real"
+loader = runtime.fetch('files').find { |file| file.fetch('path') == runtime.fetch('loader') }
+raise 'retained native loader is missing' unless loader
+run.call('direct-loader-compile', cxx, '-std=c++20', '-O2', '-Wall', '-Wextra', '-Werror', '-pthread',
+  source, '-Wl,--no-as-needed', loader.fetch('source'), '-Wl,--as-needed', '-o', direct_binary)
+check.call('real native ELF retains its interpreter as a direct dependency') do
+  native.dynamic(direct_binary, native.executable(ENV.fetch('NATIVE_READELF', 'readelf'))).fetch(:needed).include?(loader.fetch('name'))
+end
+direct_runtime = native.retain(direct_binary, direct, triple, compiler.fetch(:compiler_libraries))
+check.call('direct-loader dependency resolves to one complete retained closure') do
+  native.loaded(native.verify(direct_binary, direct, direct_runtime)).length == direct_runtime.fetch('files').length
+end
+check.call('direct-loader native program executes with the retained runtime') do
+  run.call('direct-loader-run', "#{direct}/#{direct_runtime.fetch('loader')}", '--inhibit-cache', '--library-path', "#{direct}/native/lib", direct_binary) == expected
+end
+
 sealed = "#{work}/sealed"
 FileUtils.mkdir_p("#{sealed}/bin")
 FileUtils.cp(binary, "#{sealed}/bin/llvm-config.real")

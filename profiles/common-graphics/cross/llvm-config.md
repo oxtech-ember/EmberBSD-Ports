@@ -40,8 +40,10 @@ assertion setting also come from that configuration. All native platform and
 ABI headers remain native. Report-only substitutions occur after those headers;
 target configuration is never substituted into the Support library interfaces.
 The source hash and replacement contexts are checked before compilation.
-The target triple is preserved literally, including `aarch64--netbsd`; a
-comparison must match the actual captured triple, not a normalized spelling.
+Target triple macros retain their configured spelling. Upstream `llvm-config`
+normalizes its reported `--host-target`, including an empty vendor field.
+The receipt keeps both the configured and actually queried target triples.
+Comparison uses the reported triple captured from the actual executable.
 
 An explicit target prefix replaces upstream's executable-location detection.
 For an installed layout it points to the real staged `/usr/pkg` directory;
@@ -84,6 +86,11 @@ On Linux, the compiler reports its real include search roots and GCC16 runtime
 locations. The dependency file includes system headers as well as LLVM headers;
 all are hashed and must belong to those measured native roots or the matching
 LLVM source/build. Headers and loaded libraries inside the target trees fail.
+The Linux dependency scan retains GCC's include-search header names. This
+supports native UAPI header symlinks without admitting their entire destination
+directory. A header that resolves inside a target tree still fails.
+The focused `tests/llvm-native-headers.rb` regression uses real GCC16 UAPI
+dependencies and a work-directory link to an actual target SDK header.
 The native Support/TargetParser/Demangle archives remain static. `readelf` and
 `ldd` inspect the real compiled helper and its complete ELF dependency graph;
 the loaded `libstdc++` and `libgcc_s` must be the selected compiler's files.
@@ -149,7 +156,9 @@ checks exact loader resolution, copies it with the production runtime-copy
 routine, removes the original helper pathname by renaming its private tree,
 and repeats execution. Negative cases cover changed, missing or symlinked
 runtime files, directory escapes, foreign ELF machines and unsupported native
-triples. On 2026-10-18 this contract passed 20 checks on Linux amd64 with
+triples. A real ELF also retains its interpreter as a direct dependency and
+passes closure copying and execution. On 2026-10-18 this contract passed 23
+checks on Linux amd64 with
 GCC16.2.0. This is native runtime retention coverage, not an LLVM build or full
 `seal-llvm-config.rb` acceptance: the new Linux helper still requires real
 LLVM23 native/target builds, installed target payload validation and the
