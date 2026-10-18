@@ -6,9 +6,9 @@ use warnings;
 use File::Find;
 use File::Spec;
 
-@ARGV == 6 or die "usage: $0 runtime|devel STAGE FULL_PLIST RUNTIME_PLIST DEVEL_PLIST SELECTED_PLIST\n";
+@ARGV == 6 or die "usage: $0 runtime|devel|check STAGE FULL_PLIST RUNTIME_PLIST DEVEL_PLIST SELECTED_PLIST\n";
 my ($part, $stage, @lists) = @ARGV;
-$part eq 'runtime' || $part eq 'devel' or die "unknown LLVM package part\n";
+$part eq 'runtime' || $part eq 'devel' || $part eq 'check' or die "unknown LLVM package part\n";
 File::Spec->file_name_is_absolute($stage) && $stage ne '/' && -d $stage && !-l $stage
     or die "absolute regular staging directory required\n";
 $stage =~ s{/$}{};
@@ -38,7 +38,7 @@ for my $name (keys %$runtime) {
 my %union = (%$runtime, %$devel);
 keys(%union) == keys(%$full) && !grep { !$union{$_} } keys %$full
     or die "LLVM partition union differs from the complete PLIST\n";
-my $wanted = $part eq 'runtime' ? $runtime : $devel;
+my $wanted = $part eq 'check' ? $full : $part eq 'runtime' ? $runtime : $devel;
 keys(%$wanted) == keys(%$selected) && !grep { !$wanted->{$_} } keys %$selected
     or die "selected package PLIST differs from its declared partition\n";
 
@@ -99,6 +99,10 @@ for my $name (sort keys %actual) {
         or die "LLVM stage link does not resolve to a listed file: $name\n";
     !$runtime->{$name} || $runtime->{$terminal}
         or die "runtime link resolves to SDK: $name -> $terminal\n";
+}
+if ($part eq 'check') {
+    print "PASS: complete LLVM stage has an exhaustive, disjoint partition\n";
+    exit 0;
 }
 for my $name (sort keys %actual) {
     next if $wanted->{$name};

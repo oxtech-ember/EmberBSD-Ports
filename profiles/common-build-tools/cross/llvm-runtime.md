@@ -71,3 +71,7 @@ lifecycle behavior. They do not compile LLVM or execute target programs.
 Real runtime and SDK builds, complete package checks, packaged ELF/SONAME
 closure, a cross Mesa consumer and installed target execution remain required.
 No historical full-package acceptance validates these new split packages.
+
+The separate [reuse validator](llvm-reuse.md) checks a repeat installation from
+accepted fresh objects. Its recipe adapter and actual package acceptance are
+separate from these default independent builds.
