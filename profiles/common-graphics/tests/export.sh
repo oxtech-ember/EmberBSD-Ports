@@ -43,6 +43,20 @@ bsdtar=$work/source/profiles/common-build-tools/patches/pkgsrc-bsdtar-common-zli
 mv "$bsdtar" "$work/bsdtar-zlib-patch"
 negative missing-bsdtar-zlib-infrastructure
 mv "$work/bsdtar-zlib-patch" "$bsdtar"
+swig=$work/source/profiles/common-build-tools/recipes/devel/swig4
+for name in Makefile PLIST patches/patch-CCache_ccache.c; do
+    mv "$swig/$name" "$work/swig-input"
+    negative "missing-swig-${name##*/}"
+    mv "$work/swig-input" "$swig/$name"
+done
+cp "$swig/distinfo" "$work/swig-distinfo"
+sed '/SHA1 (patch-CCache_ccache.c)/d' "$work/swig-distinfo" > "$swig/distinfo"
+negative missing-swig-patch-checksum
+mv "$work/swig-distinfo" "$swig/distinfo"
+shared_pcre2=$profile/recipes/devel/pcre2/options.mk
+mv "$shared_pcre2" "$work/pcre2-options.mk"
+negative missing-shared-pcre2-options
+mv "$work/pcre2-options.mk" "$shared_pcre2"
 for name in cross.mk files/target-query.rb files/elf-needed.sh; do
     helper=$profile/recipes/devel/gobject-introspection/$name
     mv "$helper" "$work/gi-helper"
@@ -219,10 +233,15 @@ for mode in default development-toolchain common-build-tools common-graphics com
             [ ! -e "$tree/EMBERBSD-COMMON-GRAPHICS-MK.CONF" ] ;;
     esac
     case "$mode" in common-build-tools|common-graphics|common-media|plasma-mobile)
+        diff -qr "$root/profiles/common-build-tools/recipes/devel/swig4" "$tree/devel/swig4"
+        diff -qr "$root/profiles/common-graphics/recipes/devel/pcre2" "$tree/devel/pcre2"
         for recipe in lang/python315 lang/rust-bin lang/rust-std-aarch64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako textproc/py-markupsafe textproc/py-yaml; do diff -qr "$root/profiles/common-build-tools/recipes/$recipe" "$tree/$recipe"; done
         # Python 3.15 is the common overlay; the older upstream recipe stays intact.
         diff -qr "$root/upstream/pkgsrc/lang/python314" "$tree/lang/python314"
         cmp "$root/profiles/common-build-tools/mk.conf" "$tree/EMBERBSD-COMMON-TOOLS-MK.CONF" ;;
+    *)
+        diff -qr "$root/upstream/pkgsrc/devel/swig4" "$tree/devel/swig4"
+        diff -qr "$root/upstream/pkgsrc/devel/pcre2" "$tree/devel/pcre2" ;;
     esac
     case "$mode" in development-toolchain|common-build-tools|common-graphics|common-media|plasma-mobile)
         cmp "$root/profiles/development-toolchain/mk.conf" "$tree/EMBERBSD-DEVELOPMENT-MK.CONF" ;;

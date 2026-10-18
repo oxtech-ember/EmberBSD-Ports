@@ -108,6 +108,33 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     [ -s "$root/profiles/common-build-tools/cross/check-files-case.sh" ] || exit 2
 fi
 if [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
+    swig=$root/profiles/common-build-tools/recipes/devel/swig4
+    for name in Makefile DESCR PLIST distinfo patches/patch-CCache_ccache.c; do
+        [ -s "$swig/$name" ] || { echo "Incomplete current SWIG recipe: $name" >&2; exit 2; }
+    done
+    [ "$(find "$swig" -type l | wc -l | tr -d ' ')" = 0 ] &&
+        [ "$(find "$swig/patches" -name 'patch-*' | wc -l | tr -d ' ')" = 1 ] || {
+        echo 'Unexpected SWIG patch inventory.' >&2; exit 2;
+    }
+    recorded=$(awk '$1 == "SHA1" && $2 == "(patch-CCache_ccache.c)" { print $4 }' "$swig/distinfo")
+    computed=$(sed '/[$]NetBSD.*/d' "$swig/patches/patch-CCache_ccache.c" | shasum -a 1 | awk '{ print $1 }')
+    [ "$recorded" = "$computed" ] || { echo 'SWIG patch checksum differs.' >&2; exit 2; }
+    swig_pin=$(awk -F '\t' '$1 == "swig-4.5.1.tar.gz" { print $2 ":" $3 }' "$root/profiles/common-build-tools/sources.tsv")
+    [ "$swig_pin" = '7fec50b27deddab5455a9633780b6341eddfb96215a7619e93a76eb27178f653:https://downloads.sourceforge.net/project/swig/swig/swig-4.5.1/swig-4.5.1.tar.gz' ] || {
+        echo 'Invalid current SWIG source pin.' >&2; exit 2;
+    }
+    # One source owner supplies PCRE2 to SWIG and the graphics dependency graph.
+    shared_pcre2=$root/profiles/common-graphics/recipes/devel/pcre2
+    for name in Makefile DESCR PLIST distinfo buildlink3.mk options.mk; do
+        [ -s "$shared_pcre2/$name" ] || { echo "Incomplete shared PCRE2 recipe: $name" >&2; exit 2; }
+    done
+    [ "$(find "$shared_pcre2" -type l | wc -l | tr -d ' ')" = 0 ] || {
+        echo 'Unexpected shared PCRE2 recipe link.' >&2; exit 2;
+    }
+    pcre2_pin=$(awk -F '\t' '$1 == "devel/pcre2" { print $2 ":" $3 ":" $4 }' "$root/profiles/common-graphics/sources.tsv")
+    [ "$pcre2_pin" = 'pcre2-10.49.tar.gz:929f0b20e62879252a15886b06c89f1edef61a363cbd5826fb041080a5e557ae:https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.49/pcre2-10.49.tar.gz' ] || {
+        echo 'Invalid shared PCRE2 source pin.' >&2; exit 2;
+    }
     for llvm_sdk_file in Makefile buildlink3.mk DESCR PLIST; do
         [ -s "$root/profiles/common-build-tools/recipes/lang/llvm-devel/$llvm_sdk_file" ] || {
             echo "Incomplete LLVM SDK recipe: $llvm_sdk_file" >&2; exit 2;
@@ -440,6 +467,11 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
         "$destination/sort-c.sh"
     cp "$root/profiles/common-build-tools/cross/mk.conf" \
         "$destination/EMBERBSD-CROSS-MK.CONF"
+fi
+if [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
+    rm -rf "$destination/devel/swig4" "$destination/devel/pcre2"
+    cp -R "$swig" "$destination/devel/swig4"
+    cp -R "$shared_pcre2" "$destination/devel/pcre2"
 fi
 if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
     for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/lerc graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freeimage graphics/freeimageplus graphics/libraw graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info x11/gtk3 x11/wxGTK32 www/webkit-gtk41 www/webkit-gtk60 devel/at-spi2-core math/eigen3 cad/ng-spice cad/ng-spice-shared; do
