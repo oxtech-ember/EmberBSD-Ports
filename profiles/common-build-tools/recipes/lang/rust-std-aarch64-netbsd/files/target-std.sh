@@ -61,7 +61,7 @@ configure)
     grep -qx 'commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67' "$work/compiler.txt"
     grep -qx 'host: aarch64-apple-darwin' "$work/compiler.txt"
     "$host/bin/cargo" -V > "$work/cargo.txt"
-    grep '^cargo 1\.99\.0 ' "$work/cargo.txt"
+    grep '^cargo 1\.99\.1 ' "$work/cargo.txt"
     [ "$("$cc" -dumpfullversion)" = 16.2.0 ]
     for file in "$cxx" "$ar" "$readelf" "$crt/crtbeginS.o" "$sysroot/usr/include/stdio.h" \
         "$sysroot/usr/pkg/gcc16/lib/libgcc_s.so.1" "$sysroot/usr/lib/libc.so"; do

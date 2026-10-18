@@ -1,7 +1,7 @@
 # Origin: EmberBSD (AI-assisted); same-compiler target std, no rustc/LLVM rebuild.
 DISTNAME= rustc-1.99.1-src
 PKGNAME= rust-std-aarch64-netbsd-1.99.1
-PKGREVISION= 1
+PKGREVISION= 2
 CATEGORIES= lang
 MASTER_SITES= https://static.rust-lang.org/dist/
 EXTRACT_SUFX= .tar.xz
