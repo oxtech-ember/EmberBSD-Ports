@@ -7,3 +7,4 @@ mpc	1.4.1	https://ftp.gnu.org/gnu/mpc/mpc-1.4.1.tar.xz	91204cd32f164bd3b7c992d4a
 texinfo	7.3	https://ftp.gnu.org/gnu/texinfo/texinfo-7.3.tar.xz	51f74eb0f51cfa9873b85264dfdd5d46e8957ec95b88f0fb762f63d9e164c72e
 expect	5.45.4	https://downloads.sourceforge.net/project/expect/Expect/5.45.4/expect5.45.4.tar.gz	49a7da83b0bdd9f46d04a04deec19c7767bb9a323e40c4781f89caf760b92c34
 gcc-modules-fallocate	a94156b8ee7165c32f73f9cd11c9b8f3b8687d3b	https://github.com/gcc-mirror/gcc/commit/a94156b8ee7165c32f73f9cd11c9b8f3b8687d3b.patch	411d0d6224451894d21154090a6f889ce7ce1c212ac509b71258643abf2f6b13
+autoconf-generator	2.69	https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz	64ebcec9f8ac5b2487125a86a7760d2591ac9e1d3dbd59489633f9de62a57684

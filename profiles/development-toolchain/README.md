@@ -83,6 +83,11 @@ passes installed SDK and EmberBSD VM upgrade checks, including plain/LTO
 locale, threads, OpenMP, atomics and the rebuilt Skia contract. Its removal
 and reinstallation, broader consumer migration and image integration remain gates.
 
+The [NetBSD cross math capability repair](cross-math.md) uses real declaration
+and libm link probes for the C++ standard modules. The new source recipes
+target compiler nb3, libs nb4 and runtime-only nb4. Source/module compilation
+and installed package/runtime acceptance are separate checks.
+
 The [TSVC portability backport](testsuite-portability.md) applies GCC's accepted
 NetBSD allocator fix without changing the compiler or runtime. The exported
 recipe keeps every vectorization assertion and the strict test exit status.

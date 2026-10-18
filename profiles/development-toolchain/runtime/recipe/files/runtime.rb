@@ -12,7 +12,7 @@ require 'tmpdir'
 
 module GCC16Runtime
   VERSION = '16.2.0'
-  NAME = 'gcc16-runtime-16.2.0nb3'
+  NAME = 'gcc16-runtime-16.2.0nb4'
   SOURCE_SHA256 = 'e6738e29597f733270731aa90600f37ffdc045079dfc27ec7e8192cc81085c3e'
   LICENSES = %w[COPYING3 COPYING.RUNTIME].freeze
   CONFLICTS = %w[gcc16-[0-9]* gcc16-libs-[0-9]*].freeze
@@ -25,6 +25,13 @@ module GCC16Runtime
     'amd64' => { triplet: 'x86_64--netbsd', machine_arch: 'x86_64', elf_machine: 62 }.freeze,
     'aarch64' => { triplet: 'aarch64--netbsd', machine_arch: 'aarch64', elf_machine: 183 }.freeze
   }.freeze
+  MATH_PATCHES = {
+    'patch-libstdc++-v3_crossconfig.m4' => 'e0efdd76a89b3b317ad9964156c6f6a47ebbf425067b763c0dc056b827910f71',
+    'patch-libstdc++-v3_configure_math' => '2957e7c72d37c95a8657f27a806bc1e731b21685b869a1dfc84cc38c1e6b0ea2'
+  }.freeze
+  MATH_FUNCTIONS = %w[acosf acosl asinf asinl atan2f atan2l atanf atanl ceilf ceill cosf coshf coshl cosl
+                      expf expl fabsf fabsl floorf floorl fmodf fmodl frexpl ldexpf ldexpl log10f log10l
+                      logf logl modff modfl powf powl sinf sinhf sinhl sinl sqrtf sqrtl tanf tanhf tanhl tanl].freeze
   class Invalid < StandardError; end
 
   # Inspect ELF bytes on the build host. Never execute target code.
@@ -104,6 +111,21 @@ module GCC16Runtime
     def relative(path)
       raise Invalid, "Unsafe stage path: #{path}" unless path.start_with?('./usr/pkg/gcc16/') && !path.split('/').include?('..') && path.match?(/\A[A-Za-z0-9_+.\/-]+\z/)
       path.delete_prefix('./')
+    end
+
+    def verify_math_inputs(recipe, regular, architecture)
+      return {} if @historical
+      MATH_PATCHES.each do |name, expected|
+        path = recipe + '/patches/' + name
+        raise Invalid, 'Missing or changed GCC16 math source input' unless File.file?(path) && !File.symlink?(path) && hash(path) == expected
+      end
+      relative = 'usr/pkg/gcc16/include/c++/' + architecture.fetch(:triplet) + '/bits/c++config.h'
+      raise Invalid, 'Missing generated GCC16 math capability header' unless regular.key?(relative)
+      header = File.read(@stage + '/' + relative)
+      MATH_FUNCTIONS.each do |name|
+        raise Invalid, 'Missing or ambiguous generated math capability: ' + name unless header.scan(/^#define _GLIBCXX_HAVE_#{name.upcase} 1$/).length == 1
+      end
+      {'GCC_RUNTIME_CXX_MATH_INPUTS_SHA256' => Digest::SHA256.hexdigest(MATH_PATCHES.values.join + regular.fetch(relative))}
     end
 
     def verify_external_compiler(inputs, architecture)
@@ -215,6 +237,7 @@ expected_command = prefix + '/bin/' + architecture.fetch(:triplet) + '-gcc --sys
         end
       end
       raise Invalid, 'Stage inventory mismatch' unless actual_regular.sort == regular.keys.sort && actual_links.sort == links.keys.sort
+      math_inputs = verify_math_inputs(recipe, regular, architecture)
       (regular.keys + links.keys).grep(%r{\Ausr/pkg/gcc16/lib/(?:libgcc_s|libstdc\+\+|libgomp|libatomic)\.so\.[0-9]+(?:\.[0-9]+)*\z}).each do |path|
         raise Invalid, "Unselected or foreign runtime ABI in stage: #{path}" unless runtime_sonames.any? { |name| File.basename(path).match?(/\A#{Regexp.escape(name)}(?:\.[0-9]+)*\z/) }
       end
@@ -250,6 +273,7 @@ expected_command = prefix + '/bin/' + architecture.fetch(:triplet) + '-gcc --sys
           'GCC_RUNTIME_LINKS_SHA256' => hash(@work + '/stage.symlinks'), 'EMBERBSD_SEED_SOURCE' => seed[0].strip.split('=', 2)[1] },
         elf: elf
       }
+      @result[:metadata].merge!(math_inputs)
       if rebuild
         require_relative 'inheritance'
         @result[:metadata].merge!(Inheritance.verify(@work, @pkgsrc, @archive, @result, expected_source: @expected_source))

@@ -31,6 +31,7 @@ class RuntimePackageTest < Minitest::Test
 
   def with_fixture(target = 'amd64')
     Dir.mktmpdir('gcc-runtime-test-') do |d|
+      d = File.realpath(d)
       @target = target
       @libraries = nil
       @triplet, @machine_arch, @elf_machine = case target
@@ -54,6 +55,7 @@ class RuntimePackageTest < Minitest::Test
       FileUtils.mkdir_p(@stage + '/usr/pkg/gcc16/include/c++')
       File.write(@stage + '/usr/pkg/gcc16/include/c++/vector', 'build-only header')
       File.write(@stage + '/usr/pkg/gcc16/lib/libstdc++.so.7.36-gdb.py', 'build-only upstream debugger helper')
+      math_inputs
       write_receipts
       yield d
     end
@@ -99,11 +101,58 @@ support = %w[libgcc.mvars specs tconfig.h version.h auto-host.h Makefile config.
     end
   end
 
+  # Import real recipe inputs. ELF and installed headers remain unit fixtures.
+  def math_inputs
+    delta = File.readlines(File.expand_path('../../patches/gcc-netbsd-math.patch', __dir__))
+    %w[patch-libstdc++-v3_crossconfig.m4 patch-libstdc++-v3_configure_math].each do |name|
+      at = delta.index("+++ b/lang/gcc16/patches/#{name}\n")
+      raise 'Missing real math patch' unless at
+      count = delta.fetch(at + 1)[/\+1,(\d+)/, 1].to_i
+      bytes = delta.slice(at + 2, count).map do |line|
+        raise 'Invalid real math patch' unless line.start_with?('+')
+        line.delete_prefix('+')
+      end.join
+      File.write(@pkgsrc + '/lang/gcc16/patches/' + name, bytes)
+    end
+    names = File.read(File.expand_path('../../tests/cross-math/imports.cc', __dir__)).scan(/^auto address_(\w+) =/).flatten
+    raise 'Expected independent math fixture' unless names.length == 43
+    path = @stage + '/usr/pkg/gcc16/include/c++/' + @triplet + '/bits/c++config.h'
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, names.map { |n| "#define _GLIBCXX_HAVE_#{n.upcase} 1\n" }.join)
+  end
+
+  def test_current_math_input_is_required
+    with_fixture do
+      stage.verify
+      header = @stage + '/usr/pkg/gcc16/include/c++/' + @triplet + '/bits/c++config.h'
+      saved = File.read(header)
+      File.write(header, saved.sub('#define _GLIBCXX_HAVE_ACOSF 1', '#undef _GLIBCXX_HAVE_ACOSF'))
+      write_receipts
+      assert_raises(GCC16Runtime::Invalid) { stage.verify }
+      File.unlink(header); write_receipts
+      assert_raises(GCC16Runtime::Invalid) { stage.verify }
+      historical = GCC16Runtime::Stage.new(@work, @pkgsrc, @source, expected_source: @archive_sha, historical: true)
+      assert historical.verify
+      assert_raises(GCC16Runtime::Invalid) { historical.install(@work + '/not-installed') }
+      refute File.exist?(@work + '/not-installed')
+      File.write(header, saved)
+      %w[patch-libstdc++-v3_crossconfig.m4 patch-libstdc++-v3_configure_math].each do |name|
+        path = @pkgsrc + '/lang/gcc16/patches/' + name
+        original = File.read(path)
+        File.write(path, original + "\nchanged patch\n"); write_receipts
+        assert_raises(GCC16Runtime::Invalid) { stage.verify }
+        File.unlink(path); write_receipts
+        assert_raises(GCC16Runtime::Invalid) { stage.verify }
+        File.write(path, original)
+      end
+    end
+  end
+
   def write_receipts
     inputs = "scope=runtime-only-bootstrap\ntarget=#{@target}\ntriplet=#{@triplet}\nseed_source=#{'b' * 40}\n"
     inputs << "runtime_libraries=#{@libraries}\n" if @libraries
     inputs << "#{@archive_sha}  #{@source}\n"
-    %w[distinfo Makefile Makefile.common].each do |n|
+    (%w[distinfo Makefile Makefile.common] + Dir.children(@pkgsrc + '/lang/gcc16/patches').map { |n| 'patches/' + n }).each do |n|
       path = @pkgsrc + '/lang/gcc16/' + n
       inputs << "#{Digest::SHA256.file(path).hexdigest}  #{path}\n"
     end

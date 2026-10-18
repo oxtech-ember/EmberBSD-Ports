@@ -19,6 +19,11 @@ runtime behavior are validated.
 
 ## Current contents
 
+- [GCC16 NetBSD cross math capabilities](profiles/development-toolchain/cross-math.md):
+  checked target declarations and libm links provide C++ math imports for the
+  complete standard modules. The source regression retains missing-input
+  refusals. Installed package and target module execution remain separate gates.
+
 - [Common libspnav 1.2](profiles/common-graphics/cross/libspnav.md): full
   native/AArch64 GCC16 packages retain Unix and X11/Magellan interfaces.
   Real native socket lifecycles pass strict memory checks after causal queue
