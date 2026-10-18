@@ -17,6 +17,13 @@ VM consumers and 21 selected upstream suites. These results do not establish
 Python 3.15 acceptance. Meson/Ninja also pass installed C/C++ consumers and focused
 upstream tests in that VM. The installed [LLVM 23.1.3 core](cross/llvm-api-tests.md) passes C API, bitcode and four ORC JITLink lifecycles on CM5. Its rebuilt [Mesa consumer](../common-graphics/cross/mesa-llvm2313.md) also passes V3D/llvmpipe rendering and all 38 upstream invocations there. Full Clang/LLD cross packages pass ordinary staging checks; their target execution remains separate. The export itself installs no packages.
 
+The native and cross profiles select the current canonical Ruby 4.0.7 provider.
+Recursive host generators use native Ruby and `ruby40-asciidoctor`.
+The [selection check](tests/ruby-selection.rb) queries actual pkgsrc metadata
+for native, AArch64, amd64 and host recursion. It preserves compiler routing,
+native-only barriers and the unrelated pkgsrc default. Ruby package builds
+and target execution remain separate checks.
+
 The shared [zlib 1.3.2nb1 recipe](recipes/devel/zlib/README.md) replaces the
 vendored 1.3.1 sources with the verified current release. It preserves pkgsrc
 Libtool naming and the complete gzip API. Two writer-seek repairs pass native
