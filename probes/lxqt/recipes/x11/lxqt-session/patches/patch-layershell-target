@@ -1,0 +1,27 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted; not submitted upstream).
+Use the supported exported target from the common Plasma 6.8 provider.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -23,7 +23,7 @@
+ set(LXQT_MINIMUM_VERSION "2.4.0")
+ set(QTXDG_MINIMUM_VERSION "4.4.0")
+ set(QT_MINIMUM_VERSION "6.6.0")
+-set(SHELLQT_MINIMUM_VERSION "6.0.0")
++set(SHELLQT_MINIMUM_VERSION "6.8.0")
+ 
+ find_package(Qt6DBus ${QT_MINIMUM_VERSION} REQUIRED)
+ find_package(Qt6LinguistTools ${QT_MINIMUM_VERSION} REQUIRED)
+--- lxqt-leave/CMakeLists.txt.orig
++++ lxqt-leave/CMakeLists.txt
+@@ -53,7 +53,7 @@
+ 
+ target_link_libraries(lxqt-leave
+     lxqt
+-    LayerShellQtInterface
++    LayerShellQt::Interface
+ )
+ 
+ install(TARGETS

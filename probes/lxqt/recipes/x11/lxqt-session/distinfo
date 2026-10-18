@@ -5,3 +5,4 @@ SHA512 (lxqt-session-2.4.0.tar.xz) = ab016a09cae36cbcf223187cf94b2d1c46d281c665a
 Size (lxqt-session-2.4.0.tar.xz) = 224600 bytes
 SHA1 (patch-CMakeLists.txt) = c1e1e86f8339753228d707fdd2e5773a30dc80fd
 SHA1 (patch-autostart_CMakeLists.txt) = a791cc51e03e794e1bf81bf0d6f8462ba11e2e84
+SHA1 (patch-layershell-target) = f1addfcc98d4e26c93ffe7ad69e3c7bdd2ff1023
