@@ -13,6 +13,12 @@ VM consumers and 21 selected upstream suites. These results do not establish
 Python 3.15 acceptance. Meson/Ninja also pass installed C/C++ consumers and focused
 upstream tests in that VM. The installed [LLVM 23.1.3 core](cross/llvm-api-tests.md) passes C API, bitcode and four ORC JITLink lifecycles on CM5. Its rebuilt [Mesa consumer](../common-graphics/cross/mesa-llvm2313.md) also passes V3D/llvmpipe rendering and all 38 upstream invocations there. Full Clang/LLD cross packages pass ordinary staging checks; their target execution remains separate. The export itself installs no packages.
 
+The shared [zlib 1.3.2nb1 recipe](recipes/devel/zlib/README.md) replaces the
+vendored 1.3.1 sources with the verified current release. It preserves pkgsrc
+Libtool naming and the complete gzip API. Two writer-seek repairs pass native
+GCC16 regression and strict Memcheck checks. Target package acceptance remains
+separate.
+
 [Groff 1.24.2](recipes/textproc/groff/README.md) includes a C23 function-prototype repair.
 Its native macOS build renders the three Enchant manual pages as HTML.
 The focused source check passes ASan/UBSan and preserves all errno cases.

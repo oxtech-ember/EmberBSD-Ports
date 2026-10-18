@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (zlib-1.3.2.tar.xz) = 072693cee8ba5a15d2f50414dce2d9ae3ae28b5218b0ba82aa78394c0c032422
+SHA512 (zlib-1.3.2.tar.xz) = cf3d49fbabddc57cca99858feeca8f910e9de42a16014cddd406814d2d24ee33fee2af3805d7efbb1b04b05f55818092b000daf82502b675df65f2512c353f73
+Size (zlib-1.3.2.tar.xz) = 1320064 bytes
+SHA1 (patch-gzguts.h) = 880e50c7aaa7f54ad6e20e8f52194fe1b240a0a7
+SHA1 (patch-gzlib.c) = 88f9552a37102f3cc87b1eae9c33ff0999bace66
+SHA1 (patch-gzwrite.c) = 2135248ce28c5f32fdef4f713487cfa9f09190a0
