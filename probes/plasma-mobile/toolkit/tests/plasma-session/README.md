@@ -187,9 +187,9 @@ failed launches. A separate Qt/GLES consumer verifies shader pixels in two
 Wayland GPU processes and completes compositor cleanup.
 
 The virtual output does not establish physical HDMI, hotplug, physical input,
-a remote desktop or long-duration stability. An earlier instrumented kernel
-reported a separate CL completion failure. Its cause is not established by
-these successful sessions. Target memory analysis remains unperformed.
+a remote desktop or long-duration stability. General CL completion recovery
+remains unqualified; short successful samples do not establish the cause of
+a non-completing job. Target memory analysis remains unperformed.
 
 The system-bus prerequisite and query diagnostics pass 71 host controls.
 The pinned previous runner misses an unavailable system bus and converts a
