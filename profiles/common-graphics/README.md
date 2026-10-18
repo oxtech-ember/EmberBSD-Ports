@@ -155,7 +155,9 @@ selected payload and runs real GType queries on EmberBSD/CM5. Three unchanged
 upstream hash/search cases also pass there.
 The revision-6 GI recipe also fixes temporary hash-key and test-buffer leaks.
 A GCC16 native causal check confirms the repair while preserving explicit
-GLib reachable-allocation and Cppcheck parser limits; package acceptance is pending.
+GLib reachable-allocation and Cppcheck parser limits. The normal native package
+verifies all 180 entries and passes all 64 upstream Meson invocations with the
+current setuptools test mock. Target revision-6 acceptance remains pending.
 The matching GLib 2.90.1 metadata
 package supplies all seven GIR/typelib pairs and passes four target load/invoke
 cycles on CM5. The [complete text/GTK introspection packages](cross/desktop-introspection.md) also cross-build; their real GType queries pass on CM5 with the shared query transport.

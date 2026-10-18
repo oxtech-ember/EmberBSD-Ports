@@ -287,8 +287,9 @@ runtime behavior are validated.
   also passes those target lifecycles and a Cargo consumer with host proc macros.
   The [full GI package](profiles/common-graphics/cross/introspection.md) cross-builds
   with real GType discovery and upstream hash/search checks on EmberBSD/CM5.
-  Its revision-6 source repair releases temporary hash keys and a test buffer;
-  a native GCC16 regression confirms those fixes, with full package checks pending.
+  Its revision-6 native GCC16 package verifies all 180 entries and passes all
+  64 upstream Meson invocations with current setuptools test interception.
+  Temporary hash-key leaks are repaired; target revision-6 acceptance remains pending.
   Matching GLib 2.90.1 metadata now cross-builds all seven GIR/typelib pairs
   and passes target loading and introspection/libffi invocation on CM5.
   Current [GdkPixbuf and shared MIME packages](profiles/common-graphics/cross/gdk-pixbuf.md)

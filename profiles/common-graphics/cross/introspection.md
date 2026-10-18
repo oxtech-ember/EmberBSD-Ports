@@ -3,8 +3,9 @@
 The current `gobject-introspection-1.86.0nb6` recipe releases the temporary
 typelib hash keys and the upstream hash test's packed buffer. This two-line
 ownership repair preserves the ABI, hash format and complete build graph.
-Its native GCC16 regression is described below; ordinary revision-6 package
-and installed target acceptance remain separate pending checks.
+Its normal native GCC16 package verifies all 180 installed entries. With the
+current setuptools test mock, all 64 upstream Meson invocations pass.
+Revision-6 installed target acceptance remains pending.
 
 The recorded AArch64 cross build of `gobject-introspection-1.86.0nb5` used
 macOS, GCC16, Python 3.14.8 and GLib 2.90.1.
@@ -58,11 +59,57 @@ preprocessed translation units still encounters unsupported `_Pragma`/typedef
 syntax in GLib cleanup declarations. This Cppcheck coverage is incomplete;
 the raw inherited findings remain recorded without suppressions.
 
-All ten recipe patches pass pkgsrc checksums and apply without fuzz to the
+All eleven recipe patches pass pkgsrc checksums and apply without fuzz to the
 pinned archive. Actual native/cross metadata selects revision 6. The exporter
 rejects a missing, altered or jointly omitted patch/checksum before export.
-These source checks do not imply a rebuilt package, target execution or a
-complete GI/GLib memory audit.
+These source checks do not imply target execution or a complete GI/GLib
+memory audit.
+
+## Native package and upstream tests
+
+The normal Linux GCC 16.2.0 package `gobject-introspection-1.86.0nb6` passes
+pkgsrc package checks and verifies all 180 installed files and links. Its
+archive SHA256 is
+`8784c50ab507d06128b213ef6443ba19e54ec8335a11a6593b31076e65b8c98d`.
+The test-only patch below changes no installed file; all 180 entries have
+identical bytes, modes and link targets before and after the test run.
+
+Run the normal pkgsrc test phase in the completed native recipe directory:
+
+```sh
+bmake do-test
+```
+
+Use the same native `MAKECONF` and work-directory settings as the package.
+This invokes Ninja's test target with pkgsrc's compiler and `pkg-config`
+environment. Ninja first builds the upstream `meson-test-prereq` graph,
+including the test GIR and typelib files. Direct `meson test --no-rebuild`
+does not build those prerequisites. A scanner test also needs the package's
+GLib `pkg-config` provider.
+
+Current setuptools executes compiler commands through `Compiler.call`.
+The upstream argument tests previously mocked only `Compiler.spawn`, so
+their dummy command names escaped the mock. The
+[test patch](../recipes/devel/gobject-introspection/patches/patch-tests_scanner_test_ccompiler.py)
+selects `call` when present and retains `spawn` for older distutils interfaces.
+It preserves every argument assertion and all upstream skips and expected
+failures. It changes only the uninstalled `tests/scanner/test_ccompiler.py`.
+
+The [causal check](../tests/gi-compiler-mock.rb) runs both archive-derived
+variants against the configured scanner and the actual native interpreter:
+
+```sh
+ruby ../tests/gi-compiler-mock.rb /absolute/native/output \
+    /absolute/gobject-introspection-1.86.0.tar.xz \
+    /absolute/native/python3.15 /absolute/new-results
+```
+
+All 19 cases remain present. Thirteen original mock errors become zero;
+the same two skipped cases and two expected failures remain. The full normal
+pkgsrc test phase then passes all 64 Meson invocations with zero failures.
+The current native package uses Python 3.15 and GLib 2.90.1. This does not
+establish target execution, an older-distutils runtime result or a complete
+memory-clean GI/GLib suite. The hash-test memory limits above still apply.
 
 ## Build and execution roles
 
