@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.53 2026/09/02 19:05:16 wiz Exp $
 
-PKGREVISION= 2
+PKGREVISION= 3
 .include "../../meta-pkgs/lxqt/Makefile.common"
 
 DISTNAME=	libqtxdg-4.4.0
@@ -42,10 +42,15 @@ BUILDLINK_TRANSFORM.SunOS+=	rm:-fuse-linker-plugin
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .include "../../meta-pkgs/lxqt/host-tools.mk"
+# The native qtpaths tool reports the host plugin directory.
+CMAKE_CONFIGURE_ARGS+= -DQTXDGX_ICONENGINEPLUGIN_INSTALL_PATH=${PREFIX}/qt6/plugins/iconengines
 .else
 TOOL_DEPENDS+=	lxqt-build-tools>=2.4.0:../../devel/lxqt-build-tools
 TOOL_DEPENDS+=	qt6-qttools-[0-9]*:../../devel/qt6-qttools
 .endif
+
+# Build the real upstream tests. Target execution is a separate check.
+CMAKE_CONFIGURE_ARGS+= -DBUILD_TESTS=ON
 
 .include "../../mk/bsd.prefs.mk"
 .if ${OPSYS} != "NetBSD" || ${X11_TYPE} == "modular"

@@ -38,6 +38,11 @@ The cross recipes select its `Qt6LinguistTools` export explicitly.
 The generated LXQt configuration retains the target `/usr/pkg` paths.
 Native pkgsrc builds retain their original `TOOL_DEPENDS` behavior.
 
+libqtxdg also selects the target icon-engine directory explicitly. A native
+`qtpaths --query QT_INSTALL_PLUGINS` returns the host path during cross builds.
+The ordinary target package must retain `/usr/pkg/qt6/plugins/iconengines`.
+Its upstream tests are compiled with `BUILD_TESTS=ON`; execution remains separate.
+
 The helper verifies the original archive before extraction and refuses an
 existing output directory. It preserves configure, build and install logs.
 On macOS/arm64 it passes with the common Qt 6.12 host tools.
