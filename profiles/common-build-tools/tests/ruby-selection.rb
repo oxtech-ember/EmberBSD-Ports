@@ -35,7 +35,8 @@ configs = {}
       abort 'Expected one cross-profile include.' unless text.scan(pattern).size == 1
       text = text.sub(pattern, '.include "' + path + '"')
     else
-      text += "\n.include \"#{path}\"\n"
+      # The native profile requires PREFIX/LOCALBASE before its include.
+      text += "\nPREFIX?=\${LOCALBASE}\n.include \"#{path}\"\n"
     end
     configs[revision + '-' + kind] = work + '/' + revision + '-' + kind + '.conf'
     File.write(configs.fetch(revision + '-' + kind), text)
@@ -89,7 +90,9 @@ abort 'Unrelated default changed.' unless unrelated['RUBY_VERSION_DEFAULT'] == '
   data = query.call('override-' + kind, configs.fetch('fixed-' + kind), ['RUBY_VERSION_DEFAULT=34'])
   abort 'Obsolete override was not rejected.' unless data['PKG_FAIL_REASON'].include?('requires the current Ruby 4.0 provider')
 end
-native_cross = query.call('native-cross-rejected', configs.fetch('fixed-native'), ['USE_CROSS_COMPILE=yes'])
+File.write(work + '/native-cross-rejected.conf', File.read(configs.fetch('fixed-cross')) +
+  "\n.include \"#{work}/fixed-native.mk\"\n")
+native_cross = query.call('native-cross-rejected', work + '/native-cross-rejected.conf')
 abort 'Native-only barrier changed.' unless native_cross['PKG_FAIL_REASON'].include?('require native package builds')
 File.write(work + '/result.json', JSON.pretty_generate({
   scope: 'Actual pkgsrc metadata for native/common cross/host recursion; no Ruby build or target execution.',
