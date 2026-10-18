@@ -5,9 +5,11 @@ uninitialized Huffman checksum input. Normal GCC16 native/AArch64 packages
 and all four original samples pass in EmberBSD. Package removal and
 reinstallation also pass, with verified runtime providers.
 
-[wxWidgets 3.2.12](cross/wxwebkit.md) retains the stable 3.2 API and the
-canonical WebView, media and OpenGL configuration. Its source and recipe
-metadata checks pass; the WebKit upgrade and full GUI build remain pending.
+[wxWidgets 3.2.12 and WebKitGTK 2.54.1](cross/wxwebkit.md) retain the
+canonical WebView, media and OpenGL configuration. Both WebKit API recipes
+share current sources and native generator routes. Source, GCC16 target link
+and focused native Skia memory checks pass. Full dependency composition,
+packages, target locale and GUI execution remain pending.
 
 [Maintained FreeImage 3.19.25 and LibRaw 0.22.2](cross/freeimage.md)
 provide common source recipes for OCCT image support. Source preparation,

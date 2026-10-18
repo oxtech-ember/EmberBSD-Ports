@@ -44,3 +44,5 @@ graphics/libraw	LibRaw-0.22.2.tar.gz	de86b035655accff8d4010f1a221fdf50d353cb7b14
 graphics/lerc	lerc-4.2.0.tar.gz	a1fb593ed1fcb5b38800caf3c4454f872745202e961d00d745e53d81447e17c9	https://github.com/Esri/lerc/archive/v4.2.0.tar.gz
 x11/wxGTK32	wxWidgets-3.2.12.tar.bz2	a62719bb5e1dcc41c1a6fc1eecd499c7ee8521f70402c7b1bb3342a1e16344e0	https://github.com/wxWidgets/wxWidgets/releases/download/v3.2.12/wxWidgets-3.2.12.tar.bz2
 graphics/jbigkit	jbigkit-2.2.tar.gz	3302109c93b7befbffa3cfe8bceb4355f19dea0ee7dcb5f33710b1648bf6645c	https://www.cl.cam.ac.uk/~mgk25/jbigkit/download/jbigkit-2.2.tar.gz
+www/webkit-gtk41	webkitgtk-2.54.1.tar.xz	ea0bbb02dbdbc596874a4e7ad35b66645b3e0a232bd0e4081de5ed92eb0a397d	https://webkitgtk.org/releases/webkitgtk-2.54.1.tar.xz
+www/webkit-gtk60	webkitgtk-2.54.1.tar.xz	ea0bbb02dbdbc596874a4e7ad35b66645b3e0a232bd0e4081de5ed92eb0a397d	https://webkitgtk.org/releases/webkitgtk-2.54.1.tar.xz

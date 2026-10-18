@@ -1,199 +1,148 @@
 # Qt 6.12 target package acceptance
 
-The new [Qtbase runtime/SDK split](qtbase-runtime.md) has separate source packaging
-checks. The historical full-package results below do not accept that split.
+The AArch64 Qtbase runtime and SDK pass independent full GCC 16.2 builds,
+complete upstream staging, manifest partition checks and ordinary pkgsrc QA.
+The runtime installs on EmberBSD and the SDK installs in the cross sysroot.
+The installed [Core/Gui/SVG consumer](../tests/qt-consumer/README.md) configures
+and links through the packaged Qt CMake entry point and matching native tools.
+The SDK is not installed on the target board.
 
-On 2026-10-11–12, Qtbase, SVG, ShaderTools, ImageFormats, LanguageServer and Declarative 6.12.0 cross-built on macOS/arm64
-for EmberBSD/AArch64. All six passed normal pkgsrc staging, manifests,
-interpreter/permission, PIE, RELRO, RPATH and work-directory checks. They
-installed in the fork's build sysroot through pkg_add; Qtbase also passed
-ordinary package replacement after its CMake metadata correction.
+## Packages and provenance
 
-The installed [Core/Gui/SVG consumer](../tests/qt-consumer/README.md) also passes
-on CM5, including real image pixels, plugin rejection, restart and SVG package
-removal/reinstallation. qmake version lookup passes. The [Wayland/EGL consumer](../tests/qt-wayland-gl/README.md) also passes V3D
-shader pixels and repeated processes on CM5. The [Qt Quick consumer](../tests/qt-quick-gpu/README.md)
-also passes compiled QML scene/layer pixels through V3D. Other module runtimes
-and Plasma remain unaccepted.
-
-## QtBase private mutex package
-
-QtBase 6.12.0nb1 was rebuilt completely from the pinned Qt 6.12 archive.
-It uses GCC 16.2, Mesa 26.2.4nb7 and LLVM 23.1.3 from the EmberBSD sysroot.
-The [private mutex event](../tests/qt-mutex/README.md) avoids descriptor allocation
-by the NetBSD mutex pool. The full build preserves all 460 configured Qt features.
-QtCore retains its SONAME and all 7,588 dynamic exports. The public mutex header
-is unchanged. The matching private header is installed with the full package.
-
-Normal package checks pass. The archive audit verifies all 4,564 payload entries,
-71 AArch64 ELF files, three static archives and target install helpers.
-It also checks payload-to-library-metadata correlation. This is not a complete
-ELF dependency-closure check or physical runtime acceptance.
-Normal replacement also passes in the common cross sysroot and on CM5.
-The target checks all 4,564 package files and retains package consumers and flags.
-The same retained public consumer reports three descriptors before and during
-contention by 145 workers. The previous library reached 1024 and reported `EMFILE`.
-This physical result validates the mutex fix; it does not accept a full desktop
-session or resolve the separate Mesa failure.
-
-The compilation source is Ports `672ea3e`. Packaging corrections are in `8674ded`.
-The packaging-only repair preserves 39,105 original source and build files.
-Dependency snapshots match before and after compilation. The only concurrent
-sysroot update changed Python install helpers, not payload or compiler inputs.
-No payload from the previous QtBase package is reused.
-
-## TextToSpeech and KDE settings
-
-The [installed TextToSpeech consumer](../tests/qt-speech/README.md) passes both
-Flite PCM synthesis and speech-dispatcher/eSpeak service lifecycles on CM5.
-[KCMUtils](kcmutils.md) now cross-packages with explicit native metadata tooling;
-its generated-settings test passes on the board. Full Plasma remains unaccepted.
-
-## Quick3D and Multimedia packages
-
-Quick3D and Multimedia 6.12.0nb1 now cross-package and install with their full
-selected payloads. The [installed player check](../tests/qt-multimedia/README.md)
-passes exact video frames, end of media, process restart and failure controls
-on CM5 with FFmpeg 9.0.2. Quick3D host OBJ import and generated QML bytecode
-also pass. Target Quick3D scenes, spatial audio and full Plasma remain unaccepted.
-
-## Full QtTools package
-
-QtTools 6.12.0nb2 also passes the ordinary complete package checks and installs
-in the same build sysroot. Designer, Assistant, Help, UiTools, Linguist and
-Clang-backed QDoc remain present; no component or package check is disabled.
-The manifest includes the new Designer private headers and QDoc conversion
-and generator headers declared by upstream Qt 6.12.
-
-Assistant links the common shared `liblitehtml.so.0`. The recipe enables the
-upstream system-provider option and makes its `find_package` required, so a
-missing dependency cannot silently select the bundled copy. The real selection
-regression reproduces the old silent behavior, rejects a disabled required
-provider and checks installed Assistant/QDoc ELF dependencies.
-
-```sh
-BMAKE=/absolute/native/bmake CMAKE=/absolute/native/cmake ruby \
-    tests/qttools-provider.rb /absolute/pkgsrc /absolute/cross.mk.conf \
-    /absolute/configured-qttools /absolute/sysroot \
-    /absolute/cross-readelf /absolute/new-results
-```
-
-The test path above is relative to this toolkit. Package SHA256:
-`07846c3c84fae12bdff27046fe8fc60c4d7148b51f9f7b8f4e2a92cb2fe0a21b`.
-The full package was rebuilt against LLVM/Clang 23.1.3 and replaced in the
-common sysroot on 2026-10-12. The shared-provider regression passes again;
-package metadata requires Clang >=23.1.3. Normal CM5 installation and package-file
-checks also pass. The unchanged `tests/qdoc/run.sh` consumer creates C++ class
-and member HTML through the installed Clang-backed QDoc, checks index content,
-and rejects missing configuration. CM5 result archive SHA256:
-`3ba618ab65c42f065d12549e75a84f358ca932f9f0be9de6eaceee396e78daa1`.
-This validates target documentation generation, not Assistant/Designer windows
-or the complete QtTools runtime.
-[Native QDoc](README.md) also uses 23.1.3
-and independently passes real C++ documentation generation on the build host.
-
-## Inputs and packages
-
-The [toolkit manifest](../sources.tsv) pins original Qt 6.12 archives and
-SHA256. The base pkgsrc revision is `fff4deb639a1a640476203c80f752fb77b6cb14b`.
-The [host generators](README.md) use the same Qt release. The target uses
-GCC 16.2, the verified fork sysroot, CMake 4.4.4, Mesa 26.2.4nb3,
-libdrm 2.4.134nb2 and the common LLVM23 stack. Final prefixes remain
-`/usr/pkg` and `/usr/pkg/qt6`; no older target Qt is added.
+The [toolkit manifest](../sources.tsv) pins the original Qt 6.12 archives and
+SHA256. The base pkgsrc revision is
+`fff4deb639a1a640476203c80f752fb77b6cb14b`. Target objects use the common
+GCC 16.2 toolchain and EmberBSD sysroot. Host generators use Qt 6.12.0.
+Prefixes remain `/usr/pkg` and `/usr/pkg/qt6`.
 
 | Package | SHA256 |
 | --- | --- |
-| qt6-qtbase-6.12.0nb1.tgz | `1890cb73a6811e46390965d2b1f570c6ea54446124795e7db59f2740eb9019f5` |
+| qt6-qtbase-6.12.0nb2.tgz | `fcba145913e274c288ea27fadaac4297f37c22ead5c801732bad5b0733987320` |
+| qt6-qtbase-devel-6.12.0nb3.tgz | `2fa0da3ee5ee167e1fdb83ff69b55a8664b50f08d2d20cdb46b0410d95de67cc` |
 | qt6-qtsvg-6.12.0.tgz | `7a4e524ed141f77b1977b1c6079e9e4c007577f21c365d0d81939c9305a8e903` |
 | qt6-qtshadertools-6.12.0.tgz | `44c8f7a86d8649b0d28b2a310e9f876e426e6ef8f7fa163dbebfe017d6c2f0f5` |
+| qt6-qtimageformats-6.12.0.tgz | `e305054f67451b546e08577dfcfe97ecf2416c4fabf643d585b169582909fdb3` |
+| qt6-qtlanguageserver-6.12.0.tgz | `7588f28ef7a9c3882df644d973e28014b342ad5f0e322502356d0a8a5b4c8ee0` |
+| qt6-qtdeclarative-6.12.0.tgz | `741d97e690647a91b36c5ca08f91d036914340a9db766add278c5c4ba9206911` |
+| qt6-qttools-6.12.0nb2.tgz | `07846c3c84fae12bdff27046fe8fc60c4d7148b51f9f7b8f4e2a92cb2fe0a21b` |
 
-ImageFormats SHA256: `e305054f67451b546e08577dfcfe97ecf2416c4fabf643d585b169582909fdb3`
-for `qt6-qtimageformats-6.12.0.tgz`. All seven image plugins are packaged.
+Qtbase runtime compilation uses Ports `dc73cc6`, which includes the detached
+process correction. The SDK Qtbase recipe and patches use clean `fcf13a1`, including the scanner
+error-path correction. The SDK packaging recipe is `60cdaf6`. That recipe makes
+EGLDevice a required modern-profile feature and fixes early/late manifest
+expansion. Its original compiled cache already has EGLDevice enabled; the
+compile did not receive the later required CMake argument. Restaging uses all
+compiled objects and the ordinary complete package lifecycle.
 
-LanguageServer SHA256: `7588f28ef7a9c3882df644d973e28014b342ad5f0e322502356d0a8a5b4c8ee0`
-for `qt6-qtlanguageserver-6.12.0.tgz`. It built and installed through ordinary
-dependency recursion before Declarative configuration.
+Each full Qtbase build has 1,463 entries in its actual compilation database.
+Both preserve all 468 unique configured feature definitions. The 13 runtime
+DSO export sets are unchanged from the previous full package. QtCore retains
+its SONAME and 7,588 dynamic exports. Runtime and SDK Core code sections match.
+All 2,702 installed SDK include entries match the previous full package.
 
-Declarative SHA256: `741d97e690647a91b36c5ca08f91d036914340a9db766add278c5c4ba9206911`
-for `qt6-qtdeclarative-6.12.0.tgz`. Both sysroot installation and ordinary
-installation on CM5 pass; the linked consumer uses only the common stack.
+## Package and sysroot checks
 
-Qtbase retains one upstream permission warning: `qt_cyclonedx_generator.py`
-has an executable bit without a shebang. No package check was disabled to
-produce these results. The inherited Python build/runtime dependencies remain.
+The [runtime/SDK contract](qtbase-runtime.md) requires disjoint ownership and
+complete coverage of the full manifest. The runtime has 131 file or symlink
+payload entries and 55 AArch64 ELF files. It contains no SDK headers, static
+archives, CMake metadata or target generators. The SDK requires the exact
+runtime package. Archive audits verify each payload checksum, mode and symlink,
+ELF architecture, static archive members and install-helper paths.
 
-## Corrections exercised by actual builds
+Normal interpreter, permission, PIE, RELRO, RPATH and work-directory checks pass.
+Both packages install through normal package tools in the cross sysroot.
+Installed payload bytes, modes and symlinks match their archives. Public Qt
+package directories have mode 0755. Scope umask 022 around package installation
+as described in [the installation contract](qtbase-runtime.md#build-and-installation).
 
-The old pre-configure loop copied qmake.conf over every mkspecs entry,
-including generated qmodule.pri and the REUSE license manifest. It also
-created fake configurations in common/features/modules/unsupported directories.
-The corrected loop changes only existing platform configurations. The regression
-runs the actual recipe loop twice, preserving metadata and licensing each time;
-it fails with the original recipe. Existing damaged work trees need restoration
-of the license file from the verified archive and regeneration of qmodule.pri.
-Do not discard compiled objects merely to repair these files.
-The loop removes patch backups from feature directories too. The manifest does
-not require a fabricated `mkspecs/devices/qmake.conf`. Both cases have regression
-checks. A fresh Qtbase build exposed these two packaging defects.
-The repair changes no compiled source or Qt feature configuration.
+The real CMake consumer uses the installed `qt-cmake`, target headers and
+libraries, native Qt 6.12 generators, and GCC 16.2. Its finite Core/Gui/SVG
+scenario checks resource data, queued worker signals, SVG pixels, image plugins,
+PNG round trips and rejected invalid inputs. Direct execution of this exact
+new executable passes four finite cycles on EmberBSD with the installed runtime.
+This accepts the SDK-to-runtime ABI for that scenario; the target has no SDK or
+qmake installation. The broader package removal/restart wrapper is separate.
 
-Cross Qt installs target development tools and libraries, but upstream omits
-Android deployment host tools. The manifest reflects that distinction and the
-actual Qt 6.12 headers/protocol files. SVG's renamed private paint-server header
-also replaces the obsolete entry. Native-host manifests remain separately untested.
+## Installed runtime checks
 
-The installed SDK must not retain build-host qmake wrappers, preliminary CMake
-files or build-root compiler paths. `files/target-metadata.pl` in the Qtbase
-recipe normalizes those generated files, keeps target tools and writes a
-relative qt.conf. Module packages use the same checked metadata conversion.
-Unexpected remaining work/sysroot paths cause installation to fail.
+The [private mutex consumer](../tests/qt-mutex/README.md) checks descriptor use
+under contention. The previous library reached the descriptor limit; the fixed
+library retains three descriptors with 145 workers. The
+[process matrix](../tests/qt-process/README.md) checks 320 child exits and 16
+failed launches with the installed runtime. The
+[Wayland/EGL consumer](../tests/qt-wayland-gl/README.md) checks V3D shader pixels
+and repeated processes. The [Qt Quick consumer](../tests/qt-quick-gpu/README.md)
+checks compiled QML scene and layer pixels through V3D.
 
-A real SVG cross build then exposed CMake's imported-target behavior: absolute
-`/usr/pkg/include` is checked on the build host before compiler wrappers run.
-Qt's exported platform include/library directories now resolve relative to its
-installed prefix. SVG and ShaderTools configure and compile against this
-installed Qtbase, using native generators and target libraries. The common
-recipe invokes the module configuration script from the selected sysroot.
+The installed [Plasma virtual-output runner](../tests/plasma-session/README.md)
+passes two complete sessions with readiness at 18.407673 and 15.660989 seconds,
+30 seconds of liveness, normal logout near 2.037 seconds and desktop pixels.
+GPU buffer use returns to its baseline with no recorded allocation failure.
+These are virtual-output GPU results. They do not accept physical HDMI, display
+hotplug, input devices or long-duration stability.
 
-Qt 6.12 disables automatic selection of JasPer and MNG. The unchanged
-manifest required their plugins although configuration found the libraries
-and left both features off. The recipe now explicitly requires both features.
-The real rebuild includes QJp2Plugin/QMngPlugin and passes the full package
-manifest; no codec entries or package checks were removed.
+## Other module checks
 
-Qt 6.12 moves QmlLint headers out of QmlCompiler, adds QmlDesignSupport,
-Native/FluentWinUI3 controls and other development files. Declarative's manifest
-now follows actual staging; no component was dropped to pass packaging.
-Cross target QmlTime metadata uses the upstream `_native.qmltypes` name,
-while the native-build branch retains its unsuffixed name. Native packaging
-remains untested. The inherited AArch64 JIT policy remains disabled.
+The [TextToSpeech consumer](../tests/qt-speech/README.md) passes Flite PCM
+synthesis and speech-dispatcher/eSpeak service lifecycles.
+[KCMUtils](kcmutils.md) passes its generated-settings target check.
+The [Multimedia player](../tests/qt-multimedia/README.md) passes exact video
+frames, end of media, restart and rejected invalid input with FFmpeg 9.0.2.
+Quick3D passes host OBJ import and generated QML bytecode; target Quick3D scenes
+and spatial audio remain unaccepted.
 
-## Reproduction and remaining runtime checks
+QtTools retains Designer, Assistant, Help, UiTools, Linguist and Clang-backed
+QDoc. Assistant requires the common shared litehtml provider. The
+[provider regression](../tests/qttools-provider.rb) rejects silent bundled
+fallback and checks installed ELF dependencies. The unchanged
+[QDoc consumer](../tests/qdoc/run.sh) generates C++ class and member HTML,
+checks index content and rejects missing configuration on EmberBSD. This does
+not accept Assistant or Designer windows. Native QDoc uses the same LLVM/Clang
+23.1.3 release and passes host documentation generation.
 
-Prepare the [common cross configuration](README.md#target-package-build),
-then use ordinary bmake package/install in `x11/qt6-qtbase`,
-`graphics/qt6-qtsvg`, `graphics/qt6-qtshadertools`, `graphics/qt6-qtimageformats`
-`lang/qt6-qtlanguageserver` and `lang/qt6-qtdeclarative`. Keep host and target
-package databases and output directories separate. For a packaging-only repair,
-`install-clean plist-clean` regenerates staging and manifests while retaining
-compiled objects. Use the normal `replace` target when updating an installed
-sysroot package.
+## Analysis and dependency limits
 
-```sh
-BMAKE=/absolute/native/bmake sh \
-    probes/plasma-mobile/toolkit/tests/mkspecs-preservation.sh \
-    probes/plasma-mobile/toolkit/recipes/x11/qt6-qtbase /absolute/new-loop-test
-sh probes/plasma-mobile/toolkit/tests/target-metadata.sh \
-    probes/plasma-mobile/toolkit/recipes/x11/qt6-qtbase /absolute/new-metadata-test
-```
+The scanner correction has actual missing-input and invalid-XML regressions.
+The original missing-input path terminates with SIGSEGV. The patched path
+returns status 1. Cppcheck 2.22 reports the same 11 reviewed findings before and
+after the patch. Clang Static Analyzer 21 reports no findings in either version.
+Native ASan/UBSan reproduces the original null access and passes the corrected
+valid and invalid cases. This analysis covers the real native scanner source
+and compile options. It does not establish memory safety for all target Qt.
+Valgrind has no validated EmberBSD/AArch64 execution path.
 
-The metadata checks cover native tool paths, relocatable CMake exports, preserved
-executable permissions, repeat installation, module-only staging and rejection
-of an unhandled build path. Actual module compilation supplies the CMake
-consumer check; fixture success alone would not prove it.
+Both full builds retain the same compiler diagnostics in Qt's cryptographic
+hash code, QDebug template completion and base libutil compatibility references.
+They are unconfirmed inherited findings, not a clean compiler-warning claim.
+The SDK retains the upstream executable-bit warning for
+`qt_cyclonedx_generator.py`. No diagnostic category is suppressed.
 
-Next follow the [migration sequence](../MIGRATION.md): target EGL/OpenGL
-consumers, Quick/Wayland, then HDMI Plasma and remote acceptance. The completed
-Core/resource and SVG/plugin checks are scoped in their receipt. Memory analysis of target Qt execution remains pending; Valgrind
-has no validated EmberBSD/AArch64 path. These package checks are not a Valgrind,
-upstream Qt test-suite or accelerated-desktop pass.
+The runtime dependency audit resolves 90 installed package nodes and all 64
+external required library paths to one provider each. That metadata closure
+is not a complete offline package set or an execution-only image closure.
+The recipe still requires the full GCC 16 package and Python 3.15; the libproxy
+path also retains Python 3.14 through gobject-introspection.
+
+The pkg-vulnerabilities database revision 1.805 reports four inherited
+advisories: Expat 2.8.5 CVE-2025-66382 through DBus, and Python 3.14.8
+CVE-2025-15367, CVE-2025-12781 and CVE-2026-3479 through libproxy and
+introspection. The audit exits 1. No vulnerability bypass is enabled.
+These advisories are separate from the Qt process correction. The packages
+and image closure are not declared vulnerability-clean.
+
+## Reproduction
+
+Prepare the [common cross configuration](README.md#target-package-build).
+Use ordinary `bmake package` and `bmake install` for a new package, or `replace`
+for an installed sysroot update. Build Qtbase runtime before its exact SDK.
+Use separate `install-clean` and `repackage` calls for a packaging-only repair;
+`repackage` recreates the stage and retains compiled objects. Keep host and
+target package databases and package output directories separate.
+
+The [source packaging checks](qtbase-runtime.md#source-packaging-checks) cover
+manifest ownership, early and late EGLDevice state, seven rejected invalid
+stages, exact dependency matching and ordinary package replacement/removal.
+The [mkspecs check](../tests/mkspecs-preservation.sh) preserves generated metadata
+and licensing. The [target metadata check](../tests/target-metadata.sh) rejects
+host compiler paths and verifies relocatable CMake exports. Fixtures complement
+the actual package builds and consumers; they do not execute target Qt.

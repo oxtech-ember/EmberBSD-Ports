@@ -7,6 +7,12 @@ libraries and licenses under `/usr/pkg/gcc16` and `/usr/pkg/share/licenses`.
 Compiler drivers, headers, CRT objects, static libraries and build tools
 remain on the development host.
 
+The verifier also supports the explicit
+[fresh libstdc++ rebuild](../bootstrap/libstdcxx.md) receipt. It checks a frozen
+parent snapshot and disjoint component ownership before the same ELF/package
+gates. The rebuild must use a new package revision; it cannot replace nb2 under
+the same identity. A prepared receipt mode does not establish target acceptance.
+
 The provider conflicts with `gcc16` and `gcc16-libs`. Select one provider
 for a coherent package closure. Do not combine the providers or fabricate
 a complete `gcc16` package registration. Build consumers with the matching

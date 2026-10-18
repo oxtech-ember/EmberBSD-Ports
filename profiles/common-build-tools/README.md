@@ -4,6 +4,10 @@ The [cwrappers archive repair](cross/cwrappers-unwrap.md) preserves sibling
 directory paths in installed Libtool metadata. Actual native GCC16 wrapper
 checks and bounded module memory checks pass; package integration is separate.
 
+The [pkg-config sysroot contract](cross/pkgconfig.md) maps target dependency
+headers and link paths to the SDK. Actual GCC16/CMake imported-target checks
+preserve target runtime paths and unchanged native provider selection.
+
 The [sysroot import contract](cross/sysroot.md#pinned-aarch64-base-and-comp-imports)
 provides a pinned-manifest importer for OS-owned AArch64 `base` and `comp`
 releases. It verifies provenance and hashes before isolated extraction.
@@ -30,6 +34,11 @@ Libtool naming and the complete gzip API. Two writer-seek repairs pass native
 GCC16 regression and strict Memcheck checks. The ordinary AArch64 cross package
 also passes installed VM compression, gzip, writer-seek, integrity and
 removal/reinstallation checks with the runtime-only GCC16 provider.
+
+The [bsdtar bootstrap integration](cross/bsdtar-zlib.md) uses this registered
+zlib package in common profiles. Its ordinary native GCC16 package and strict
+gzip archive roundtrip pass. Outside the opt-in, bootstrap metadata stays intact.
+Cross metadata passes; target execution remains separate.
 
 Ordinary [FFTW and Readline packages](cross/README.md#installed-fftw-readline-and-ncurses)
 also pass GCC16 AArch64 VM numerical, terminal input/history and package

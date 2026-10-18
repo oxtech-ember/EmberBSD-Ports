@@ -41,6 +41,11 @@ runtime behavior are validated.
   AArch64 packages pass package checks; native upstream tests and installed
   library memory checks pass. Fourteen installed CLI memory/image cases also pass.
   Target execution and TIFF integration remain pending.
+- [wxWidgets and WebKit sources](profiles/common-graphics/cross/wxwebkit.md):
+  stable wxWidgets 3.2.12 and paired WebKitGTK 2.54.1 recipes retain WebView,
+  media and OpenGL. Native generator routing, actual GCC16 target link checks
+  and focused native Skia memory checks pass. Full packages, target locale
+  and GUI integration remain pending.
 - [Maintained FreeImage sources](profiles/common-graphics/cross/freeimage.md):
   FreeImage/FreeImagePlus 3.19.25 and LibRaw 0.22.2 retain common codecs for
   OCCT. Source and focused native half checks pass; complete packages and
@@ -110,6 +115,9 @@ runtime behavior are validated.
   keep compilers out of application images. Host package creation and isolated
   installation pass for synthetic amd64 and AArch64 runtime fixtures with
   native pkgtools. Target triplet, ELF and package architecture must agree.
+  A [fresh libstdc++ helper](profiles/development-toolchain/bootstrap/libstdcxx.md)
+  supports the NetBSD locale repair with explicit inherited-component checks;
+  its full rebuilt-library acceptance remains separate.
   The real AArch64 nb2 runtime-only package also passes installed plain/LTO
   C11/C++20, threads, TLS, DSO exceptions, OpenMP and large atomic checks in
   the verified E34 QEMU guest. Removal and reinstallation preserve the expected
@@ -146,6 +154,8 @@ runtime behavior are validated.
   [Binutils 2.47nb1](profiles/common-build-tools/binutils.md) pass ordinary package checks
   and installed AArch64 VM consumers with GCC16. Cross metadata, package
   replacement and rollback have regression checks. The
+  [pkg-config sysroot check](profiles/common-build-tools/cross/pkgconfig.md)
+  verifies actual GCC16/CMake target links and unchanged native discovery. The
   [host cross-Libtool dispatcher](profiles/common-build-tools/libtool.md)
   now selects its target configuration; its nb1 package and installed checks pass.
   Linux native-generator checks also retain the GCC16 host compiler and

@@ -6,6 +6,7 @@ require 'fileutils'
 require 'digest'
 require 'json'
 require_relative '../recipe/files/runtime'
+require_relative '../recipe/files/inheritance'
 
 class RuntimePackageTest < Minitest::Test
   def elf(soname, machine = 62, needed = ['libc.so.12'])
@@ -94,6 +95,134 @@ class RuntimePackageTest < Minitest::Test
       File.write(@stage + '/usr/pkg/gcc16/lib/' + name + '.a', 'build-only archive')
     end
     write_receipts
+  end
+
+  # These are synthetic ELF/receipt refusal fixtures, never build evidence.
+  def with_rebuild
+    with_fixture('aarch64') do |dir|
+      File.write(@pkgsrc + '/lang/gcc16/Makefile', "PKGREVISION=\t1\n")
+      add_optional_libraries(GCC16Runtime::SELECTIONS.last)
+      GCC16Runtime::Inheritance::CRT_FILES.each do |name|
+        path = @stage + "/usr/pkg/gcc16/lib/gcc/#{@triplet}/16.2.0/#{name}"
+        FileUtils.mkdir_p(File.dirname(path)); File.write(path, 'Receipt fixture, not real CRT: ' + name)
+      end
+      write_receipts
+      parent = stage.verify
+      work = dir + '/rebuild'; recipe = dir + '/new-recipe'
+      FileUtils.mkdir_p(work)
+      FileUtils.cp_r(@work, work + '/parent')
+      FileUtils.cp_r(@pkgsrc, work + '/parent-recipe')
+      FileUtils.cp_r(@pkgsrc, recipe)
+      patch_name = GCC16Runtime::Inheritance::PATCH
+      outer = File.read(File.expand_path('../../patches/gcc-netbsd-locale.patch', __dir__))
+      patch = outer.split("+++ b/lang/gcc16/patches/#{patch_name}\n", 2).fetch(1).lines.drop(1).map do |line|
+        raise 'Unexpected source patch format' unless line.start_with?('+')
+        line.delete_prefix('+')
+      end.join
+      File.write(recipe + '/lang/gcc16/patches/' + patch_name, patch)
+      File.write(recipe + '/lang/gcc16/Makefile', "PKGREVISION=\t2\n")
+      sha1 = Digest::SHA1.hexdigest(patch.lines.reject { |l| l.match?(/[$]NetBSD.*/) }.join)
+      File.write(recipe + '/lang/gcc16/distinfo', "SHA1 (#{patch_name}) = #{sha1}\n" + File.read(@pkgsrc + '/lang/gcc16/distinfo'))
+      FileUtils.cp_r(@stage, work + '/stage')
+      # Model a changed freshly installed DSO and all new C++ header ownership.
+      File.open(work + '/stage/usr/pkg/gcc16/lib/libstdc++.so.7.36', 'ab') { |f| f.write('rebuilt ELF fixture') }
+      locale = work + "/stage/usr/pkg/gcc16/include/c++/#{@triplet}/bits/c++locale.h"
+      FileUtils.mkdir_p(File.dirname(locale)); File.write(locale, 'fresh header fixture')
+      all = GCC16Runtime::Inheritance.inventory(work + '/stage')
+      old = GCC16Runtime::Inheritance.inventory(work + '/parent/stage')
+      inherited = GCC16Runtime::Inheritance.inherited_paths(parent).to_h { |p| [p, old.fetch(p)] }
+      all.keys.grep(%r{/lib/(?:gcc/|libgcc|libgomp|libatomic)}).each do |path|
+        next if inherited.key?(path)
+        File.unlink(work + '/stage/' + path)
+        all.delete(path)
+      end
+      fresh = all.reject { |p, _| inherited.key?(p) }
+      logs = %w[configure.log runtime-build.log runtime-install.log].to_h do |name|
+        File.write(work + '/' + name, 'Synthetic receipt fixture; no actual build')
+        [name, Digest::SHA256.file(work + '/' + name).hexdigest]
+      end
+      configuration = GCC16Runtime::Inheritance::CONFIG_FILES.to_h do |name|
+        path = work + '/' + name
+        FileUtils.mkdir_p(File.dirname(path)); File.write(path, 'Synthetic configuration fixture; no actual build')
+        [name, Digest::SHA256.file(path).hexdigest]
+      end
+      receipt = {format: 1, parent_paths: {archive: @source, pkgsrc: @pkgsrc},
+        parent_receipts: GCC16Runtime::Inheritance::PARENT_FILES.to_h { |n| [n, Digest::SHA256.file(work + '/parent/' + n).hexdigest] },
+        inherited: inherited, rebuilt: fresh, build_logs: logs, configuration: configuration}
+      File.write(work + '/inheritance.json', JSON.pretty_generate(receipt) + "\n")
+      inputs = "scope=runtime-libstdcxx-rebuild\ntarget=#{@target}\ntriplet=#{@triplet}\nseed_source=#{'b' * 40}\nruntime_libraries=#{@libraries}\n"
+      ([ @source, work + '/inheritance.json' ] + configuration.keys.map { |n| work + '/' + n } + Dir.glob(recipe + '/lang/gcc16/{Makefile,Makefile.common,distinfo,patches/*}')).each do |path|
+        inputs << "#{Digest::SHA256.file(path).hexdigest}  #{path}\n"
+      end
+      File.write(work + '/inputs.txt', inputs)
+      File.write(work + '/build-success', "runtime-libstdcxx-rebuild\n")
+      File.write(work + '/stage.sha256', all.sort.filter_map { |p, x| "#{x['sha256']}  ./#{p}\n" if x['sha256'] }.join)
+      File.write(work + '/stage.symlinks', all.sort.filter_map { |p, x| "./#{p}\t#{x['link']}\n" if x['link'] }.join)
+      yield GCC16Runtime::Stage.new(work, recipe, @source, expected_source: @archive_sha), work, recipe
+    end
+  end
+
+  def test_rebuilt_components_and_historical_parent_paths
+    with_rebuild do |rebuilt, work, _|
+      result = rebuilt.verify
+      assert_equal 'standalone-libstdcxx', result[:metadata]['GCC_RUNTIME_BUILD_MODE']
+      assert_equal 7, result[:files].size
+      # The copied original receipt still names the original recipe location.
+      assert_equal File.read(@work + '/inputs.txt'), File.read(work + '/parent/inputs.txt')
+      if GCC16Runtime::NAME == 'gcc16-runtime-16.2.0nb2'
+        error = assert_raises(GCC16Runtime::Invalid) { rebuilt.install(work + '/package') }
+        assert_match(/new package revision/, error.message)
+      end
+    end
+  end
+
+  def test_rebuild_refuses_component_and_provenance_drift
+    %w[parent-receipt parent-payload parent-recipe new-patch new-recipe inherited rebuilt log configuration receipt scope nested-parent].each do |mutation|
+      with_rebuild do |rebuilt, work, recipe|
+        case mutation
+        when 'parent-receipt' then File.write(work + '/parent/inputs.txt', 'changed')
+        when 'parent-payload' then File.write(work + '/parent/stage/usr/pkg/gcc16/lib/libgcc_s.so.1', 'changed')
+        when 'parent-recipe' then File.write(work + '/parent-recipe/lang/gcc16/Makefile.common', 'changed')
+        when 'new-patch' then File.write(recipe + '/lang/gcc16/patches/' + GCC16Runtime::Inheritance::PATCH, 'changed')
+        when 'new-recipe' then File.write(recipe + '/lang/gcc16/Makefile.common', 'changed')
+        when 'inherited' then File.write(work + '/stage/usr/pkg/gcc16/lib/libgcc_s.so.1', 'changed')
+        when 'rebuilt' then File.write(work + '/stage/usr/pkg/gcc16/include/c++/vector', 'changed')
+        when 'log' then File.write(work + '/runtime-build.log', 'changed')
+        when 'configuration' then File.write(work + '/configuration/config.h', 'changed')
+        when 'receipt' then File.write(work + '/inheritance.json', '{}')
+        when 'scope' then File.write(work + '/build-success', "runtime-only-bootstrap\n")
+        when 'nested-parent'
+          File.write(work + '/parent/build-success', "runtime-libstdcxx-rebuild\n")
+        end
+        assert_raises(GCC16Runtime::Invalid, mutation) { rebuilt.verify }
+      end
+    end
+  end
+
+  def test_rebuild_refuses_rehashed_false_ownership_and_old_dso
+    %w[inherited-bytes missing-component old-dso].each do |mutation|
+      with_rebuild do |rebuilt, work, _|
+        receipt_path = work + '/inheritance.json'
+        receipt = JSON.parse(File.read(receipt_path))
+        if mutation == 'inherited-bytes'
+          path = 'usr/pkg/gcc16/lib/libgcc_s.so.1'
+          File.open(work + '/stage/' + path, 'ab') { |f| f.write('changed') }
+        elsif mutation == 'missing-component'
+          receipt.fetch('inherited').delete('usr/pkg/gcc16/lib/libgcc_s.so.1')
+        else
+          path = 'usr/pkg/gcc16/lib/libstdc++.so.7.36'
+          FileUtils.cp(work + '/parent/stage/' + path, work + '/stage/' + path)
+          receipt.fetch('rebuilt')[path] = GCC16Runtime::Inheritance.inventory(work + '/stage').fetch(path)
+        end
+        all = GCC16Runtime::Inheritance.inventory(work + '/stage')
+        File.write(work + '/stage.sha256', all.sort.filter_map { |p, x| "#{x['sha256']}  ./#{p}\n" if x['sha256'] }.join)
+        File.write(receipt_path, JSON.pretty_generate(receipt) + "\n")
+        inputs = File.readlines(work + '/inputs.txt').reject { |l| l.end_with?('  ' + receipt_path + "\n") }.join
+        File.write(work + '/inputs.txt', inputs + "#{Digest::SHA256.file(receipt_path).hexdigest}  #{receipt_path}\n")
+        error = assert_raises(GCC16Runtime::Invalid, mutation) { rebuilt.verify }
+        assert_match(/component|rebuilt libstdc/, error.message)
+      end
+    end
   end
 
   def test_optional_library_selection_and_abi
