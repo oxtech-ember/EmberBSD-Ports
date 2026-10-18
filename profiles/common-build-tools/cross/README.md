@@ -238,7 +238,8 @@ objects. `tests/cmake-cross.rb EXPORTED_PKGSRC MAKECONF NEW_WORK` checks the
 actual pkgsrc arguments and CMake identity/search behavior for AArch64 and
 amd64, plus unchanged native recursion. Its compiler-free fixture establishes
 configuration behavior; actual compiler and installed-consumer checks remain
-separate.
+separate. It also checks LLVM's final recipe arguments, so its local settings
+cannot override the shared package-first order.
 
 `tests/cmake-dependency-roots.rb EXPORTED_PKGSRC MAKECONF PREPARED_WRKOBJDIR NEW_WORK`
 uses the real prepared protobuf buildlink stage, pkgsrc flags and environment.
