@@ -79,6 +79,27 @@ results = {}
   end
 end
 abort 'Native recursion changed.' unless results['before-native'] == results['fixed-native']
+# LLVM keeps equivalent local cross settings. Check its final argument order
+# too, because a later recipe setting can override the shared profile.
+%w[aarch64 amd64 native].each do |kind|
+  name = 'llvm-' + kind
+  args = [bmake, '-C', tree + '/lang/llvm', "MAKECONF=#{work}/fixed.conf",
+          "WRKOBJDIR=#{work}/objects", "PACKAGES=#{work}/packages", '_PKGSRC_BARRIER=yes']
+  args += kind == 'native' ? ['USE_CROSS_COMPILE=no'] : ["EMBERBSD_CROSS_TARGET=#{kind}"]
+  flags = Shellwords.split(run.call(name + '-metadata', args + ['show-var', 'VARNAME=CMAKE_CONFIGURE_ARGS']))
+  selected = flags.select { |s| s.match?(/\A-DCMAKE_(?:SYSTEM_NAME|SYSTEM_PROCESSOR|SYSROOT|FIND_ROOT_PATH)(?::|_)/) }
+  run.call(name + '-configure', [cmake, '-S', work + '/fixture', '-B', work + '/' + name] + selected)
+  identity = File.readlines(work + '/' + name + '/identity.txt', chomp: true).to_h { |line| line.split('=', 2) }
+  if kind == 'native'
+    abort 'LLVM native recursion was forced cross.' unless selected.empty? && identity['cross'] == 'FALSE'
+  else
+    roots = identity['roots'].split(';')
+    abort 'LLVM overrides package-first lookup.' unless roots.size == 2 && roots[0].end_with?('/.buildlink') && roots[1] == identity['sysroot']
+    abort 'Wrong LLVM target identity.' unless identity['system'] == 'NetBSD' && identity['processor'] == (kind == 'amd64' ? 'x86_64' : kind)
+    abort 'Wrong LLVM root modes.' unless identity['program'] == 'NEVER' && %w[library include package].all? { |key| identity[key] == 'ONLY' }
+  end
+  results[name] = { selected_flags: selected, identity: identity }
+end
 File.write(work + '/result.json', JSON.pretty_generate({
   scope: 'Real pkgsrc metadata and compiler-free CMake identity/search checks; amd64 is metadata only.',
   profile_sha256: Digest::SHA256.file(profile).hexdigest, results: results
