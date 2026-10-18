@@ -127,7 +127,6 @@ main(int argc, char **argv)
 	} while (waited == -1 && errno == EINTR && !timed_out);
 	if (waited != child)
 		goto stop_child;
-	child = -1;
 	if (WIFEXITED(status) && WEXITSTATUS(status) == 0 && !timed_out)
 		result = 0;
 	goto done;
