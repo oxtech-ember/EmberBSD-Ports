@@ -119,6 +119,10 @@ EMBERBSD_CROSS_BUILD_PYTHON=/absolute/python3.14
 Keep `mk.conf` and its executable `sort-c.sh` together. The profile uses
 one executable path to preserve C collation in pkgsrc's `TOOLS_SORT`.
 An `env LC_ALL=C sort` command loses its arguments in libtool PLIST expansion.
+The prepared export includes both files. Check the exported helper with
+`BMAKE=/absolute/host/bin/bmake sh scripts/tests/cross-export-sort.sh /absolute/pkgsrc`.
+The check reads the actual exported profile and executes its selected sort path.
+
 The cross profile defaults `CROSS_SYSCONFBASE` to `/etc` for base `rc.subr`
 and `rc.conf`. `PKG_SYSCONFBASE` keeps pkgsrc's separate `${PREFIX}/etc` default.
 `RCD_SCRIPTS_DIR` defaults to `/etc/rc.d`. Explicit overrides remain supported.

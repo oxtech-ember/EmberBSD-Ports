@@ -51,6 +51,9 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
             echo "Missing common-tools infrastructure patch: $delta" >&2; exit 2;
         }
     done
+    [ -x "$root/profiles/common-build-tools/cross/sort-c.sh" ] || {
+        echo 'Missing executable common-tools cross sort helper.' >&2; exit 2;
+    }
     [ -s "$root/profiles/common-build-tools/cross/mk.conf" ] || exit 2
     [ -s "$root/profiles/common-build-tools/cross/check-files-case.sh" ] || exit 2
 fi
@@ -320,6 +323,8 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
         "$destination/mk/check/ember-case-files.sh"
     cp "$root/profiles/common-build-tools/mk.conf" \
         "$destination/EMBERBSD-COMMON-TOOLS-MK.CONF"
+    cp "$root/profiles/common-build-tools/cross/sort-c.sh" \
+        "$destination/sort-c.sh"
     cp "$root/profiles/common-build-tools/cross/mk.conf" \
         "$destination/EMBERBSD-CROSS-MK.CONF"
 fi
