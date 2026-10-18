@@ -33,6 +33,10 @@ runtime behavior are validated.
   provider retains its CMake/header interfaces and full companion libraries.
   GCC16 AArch64 packaging verifies all 613 entries; four selected native
   numerical checks pass. Installed target checks remain pending.
+- [JBIG-KIT 2.2](profiles/common-graphics/cross/jbigkit.md): the common provider
+  keeps both libraries and all four image tools. Ordinary GCC16 native and
+  AArch64 packages pass package checks; native upstream tests and installed
+  library memory checks pass. Target execution and TIFF integration remain pending.
 - [Maintained FreeImage sources](profiles/common-graphics/cross/freeimage.md):
   FreeImage/FreeImagePlus 3.19.25 and LibRaw 0.22.2 retain common codecs for
   OCCT. Source and focused native half checks pass; complete packages and
@@ -58,8 +62,9 @@ runtime behavior are validated.
   Native numerical and causal ownership checks pass. Raw memory reports
   retain process-lifetime allocations. Ordinary GCC16 AArch64 packages pass
   installed API18, CLI, the KiCad-exported divider, OpenMP worker activation
-  and removal/reinstallation checks. A target memory-query diagnostic and
-  complete KiCad application execution remain pending.
+  and removal/reinstallation checks. A separate GCC16 target regression repairs
+  the configure-time memory-query selection; revision-1 package acceptance
+  and complete KiCad application execution remain pending.
   The common [Libtool runtime-path repair](profiles/common-build-tools/cross/libtool-runtime-paths.md)
   passes a real GCC16 C++ library regression for target RPATH and `.la` metadata.
 - [FFTW and terminal dependencies](profiles/common-build-tools/cross/README.md#installed-fftw-readline-and-ncurses):

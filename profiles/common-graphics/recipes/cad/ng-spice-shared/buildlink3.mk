@@ -6,6 +6,7 @@ BUILDLINK_TREE+=	ng-spice-shared
 NG_SPICE_SHARED_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.ng-spice-shared+=	ng-spice-shared>=47
+BUILDLINK_ABI_DEPENDS.ng-spice-shared+=	ng-spice-shared>=47nb1
 BUILDLINK_PKGSRCDIR.ng-spice-shared?=	../../cad/ng-spice-shared
 
 .include "../../math/fftw/buildlink3.mk"

@@ -1,0 +1,59 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Release caller-owned test buffers.
+Strict Memcheck found retained main buffers and the T.85 three-line buffer.
+Preserve normal test checks and the optional reference-image export.
+Codec implementation and upstream GPL license remain unchanged. Not submitted upstream.
+
+--- libjbig/tstcodec.c.orig
++++ libjbig/tstcodec.c
+@@ -359,7 +359,7 @@
+     fprintf(f, "%10lu\n%10lu\n", 1960LU, 1951LU);
+     fwrite(testpic, 1, TESTPIC_SIZE, f);
+     fclose(f);
+-    exit(0);
++    goto cleanup;
+   }
+ 
+ #if 1
+@@ -546,5 +546,10 @@
+   else
+     puts("Congratulations, everything is fine.\n");
+ 
++cleanup:
++  free(se);
++  free(sd);
++  free(testpic);
++  free(testbuf);
+   return problems != 0;
+ }
+--- libjbig/tstcodec85.c.orig
++++ libjbig/tstcodec85.c
+@@ -242,6 +242,7 @@
+     }
+   }
+   free(image);
++  free(buffer);
+ 
+ #endif
+   puts("");
+@@ -304,7 +305,7 @@
+     fprintf(f, "1960 1951\n");
+     fwrite(testpic, 1, TESTPIC_SIZE, f);
+     fclose(f);
+-    exit(0);
++    goto cleanup;
+   }
+ 
+ #if 1
+@@ -452,5 +453,10 @@
+   else
+     puts("Congratulations, everything is fine.\n");
+ 
++cleanup:
++  free(se);
++  free(sd);
++  free(testpic);
++  free(testbuf);
+   return problems != 0;
+ }

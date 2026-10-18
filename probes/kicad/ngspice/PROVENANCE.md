@@ -15,5 +15,13 @@
   only for bootstrap generators and Linux fixture checks.
 - Native analyzers: GCC 14.2.0 `-fanalyzer`, Clang 19, Cppcheck 2.22.0 and
   Valgrind 3.24.0. See the README for completed checks and remaining gates.
-- Target acceptance: pending for the reconstructed source set. Host bootstrap
-  tests and EmberBSD GCC16 execution are separate scopes.
+- Target acceptance: the initial 12-patch ordinary GCC16 AArch64 packages passed
+  the installed contracts and lifecycle checks listed in the README.
+  The thirteenth patch changes only the procfs configure guard. Its three
+  upstream query modules passed a separate native GCC16 and EmberBSD regression.
+  The revision-1 ordinary packages still need rebuild and installed acceptance.
+- Memory-query source notices: preserve David Robert Nadeau's CC BY 3.0
+  attribution and Holger Vogt's modification notice in the unchanged modules.
+  The new contract and build helper use BSD-2-Clause. The configure patch
+  retains upstream licensing. GCC16 `-fanalyzer`, Clang 19, Cppcheck 2.22.0
+  and Valgrind 3.24.0 were used for this bounded follow-up.

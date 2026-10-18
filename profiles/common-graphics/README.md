@@ -14,6 +14,11 @@ provide common source recipes for OCCT image support. Source preparation,
 GCC16 header selection and half conversions pass; complete codec packages
 and installed OCCT image workflows remain pending.
 
+The [JBIG-KIT 2.2 provider](cross/jbigkit.md) keeps shared/static libraries and
+all four image tools. Ordinary GCC16 native/AArch64 packages pass package checks.
+Native upstream and installed-library memory checks pass; target execution and
+TIFF integration remain pending.
+
 The [ngspice 47 package pair](cross/ngspice.md) provides the CLI and shared
 SPICE API for KiCad, with common XSPICE modules and normal pkgsrc dependencies.
 Its target package and runtime checks remain pending.

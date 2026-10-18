@@ -18,7 +18,7 @@ pin = File.read(probe + '/sources.tsv').split
 abort 'Wrong archive.' unless File.basename(archive) == pin[0] && Digest::SHA256.file(archive).hexdigest == pin[1]
 patches = Dir.glob(tree + '/cad/ng-spice/patches/patch-*').sort
 series = File.readlines(probe + '/patches/series', chomp: true)
-abort 'Expected twelve exported regular patches.' unless patches.length == 12 && series.length == 12 && patches.all? { |p| File.file?(p) && !File.symlink?(p) }
+abort 'Expected thirteen exported regular patches.' unless patches.length == 13 && series.length == 13 && patches.all? { |p| File.file?(p) && !File.symlink?(p) }
 patches.zip(series).each do |exported, name|
   abort "Patch differs: #{exported}" unless File.binread(exported) == File.binread(probe + '/patches/' + name)
 end
@@ -43,7 +43,7 @@ metadata = {}
     run.call(package + '-' + name, make + ['show-var', "VARNAME=#{name}"]).strip
   end
   values = %w[PKGNAME PKG_FAIL_REASON WRKDIR WRKSRC ERROR_DIR CONFIGURE_ARGS CONFIGURE_ENV DEPENDS PATCHDIR DISTINFO_FILE].to_h { |name| [name, query.call(name)] }
-  abort 'Package metadata failed.' unless values['PKG_FAIL_REASON'].empty? && values['PKGNAME'] == package + '-47'
+  abort 'Package metadata failed.' unless values['PKG_FAIL_REASON'].empty? && values['PKGNAME'] == package + '-47nb1'
   %w[WRKDIR WRKSRC ERROR_DIR].each do |name|
     path = File.expand_path(values[name])
     abort "Non-private #{name}" unless path.start_with?(work + '/')
@@ -58,7 +58,7 @@ metadata = {}
     %w[--with-readline=yes --with-editline=no --without-x --with-ngshared=no].each do |option|
       abort "Missing CLI option #{option}" unless options.include?(option)
     end
-    abort 'Missing matching common provider.' unless Shellwords.split(values['DEPENDS']).include?('ng-spice-shared-47{,nb[0-9]*}:../../cad/ng-spice-shared')
+    abort 'Missing matching common provider.' unless Shellwords.split(values['DEPENDS']).include?('ng-spice-shared-47nb1:../../cad/ng-spice-shared')
   else
     abort 'Shared interface absent.' unless options.include?('--with-ngshared=yes')
     run.call('archive-checksum', make + ['checksum'])
@@ -82,4 +82,4 @@ File.write(work + '/result.json', JSON.pretty_generate({
   inputs: inputs.to_h { |path| [path, Digest::SHA256.file(path).hexdigest] },
   metadata: metadata, compared_source_files: source_files.length
 }) + "\n")
-puts "PASS: both package interfaces, twelve materialized patches and #{source_files.length} prepared source files match."
+puts "PASS: both package interfaces, thirteen materialized patches and #{source_files.length} prepared source files match."

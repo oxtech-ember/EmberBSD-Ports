@@ -1,0 +1,9 @@
+$NetBSD$
+
+BLAKE2s (jbigkit-2.2.tar.gz) = 2f0950d0b2a05087a324b5fdb77d0d75cdea46a04e31bc010620afb44264dad1
+SHA512 (jbigkit-2.2.tar.gz) = a247d5a48578ccb677070b70bc27ca42160ec72c99d6ed3d3aacba866842e997625f643667a25ee8259458b58983e71c878b2aedba9f8d1d5bf1195603cdc91d
+Size (jbigkit-2.2.tar.gz) = 441594 bytes
+SHA1 (patch-Makefile) = b6597fab5c77f2f16fdb2da10b1d582cdc08182f
+SHA1 (patch-libjbig_Makefile) = fed52546e567e2a0f63854980965d71229e98137
+SHA1 (patch-pbmtools_Makefile) = dc62dd2cdc792304e8ed63f9d2e17176fbb5688f
+SHA1 (patch-test-cleanup) = 693bd05be6f827017bb399ef5b4a861849620658

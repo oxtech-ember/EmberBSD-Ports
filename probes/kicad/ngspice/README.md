@@ -56,7 +56,8 @@ The patches repair bounded history substitution, circuit file replacement,
 XSPICE cross generation, NetBSD loader/header selection, parsed token
 ownership, pre-initialization, retained source-name lifetime, recoverable
 parser-error ownership, command cleanup before controlled exit, malformed
-vector expressions and the optional process-name return value.
+vector expressions, the optional process-name return value and target memory
+query selection during cross configuration.
 
 The source-name pool lasts until session reset or quit. A rejected circuit
 remains owned and current until explicit removal. `ngSpice_Circ` retains
@@ -67,7 +68,7 @@ It does not claim to repair every earlier parser or command error path.
 ## Validation boundary
 
 On 2026-10-18 the official stable-release page identified version 47. The
-pinned archive and all 12 patches replayed without fuzz into a fresh source
+pinned archive and the initial 12 patches replayed without fuzz into a fresh source
 tree. An independent source review found no blocking ownership issue.
 The replay matches the edited source; only its provenance marker is additional.
 The native bootstrap helper built and staged both interfaces with GCC 14.2.0
@@ -121,8 +122,12 @@ The other 30 inherited error records remain unclassified; they are not
 The ordinary GCC16 target packages now pass installed API18, CLI, the exported
 KiCad divider, BSIM OpenMP activation and package lifecycle checks in EmberBSD.
 See the [package acceptance scope](../../../profiles/common-graphics/cross/ngspice.md)
-for exact archive hashes and remaining memory-query diagnostics.
-Target memory analysis and complete KiCad application acceptance remain pending.
+for exact revision-0 archive hashes. A thirteenth patch now limits the procfs
+probe to Linux/Cygwin targets. All 13 patches replay without fuzz and match
+4,378 files prepared by ordinary pkgsrc patch rules. A separate GCC16 native
+and AArch64 [memory-query regression](tests/memory-query.md) validates that repair.
+Revision-1 package acceptance, target Memcheck and complete KiCad application
+acceptance remain pending.
 Historical results from a lost workspace are not current acceptance evidence.
 
 The reusable checks are in `tests/`. `api-contract.c` uses the installed

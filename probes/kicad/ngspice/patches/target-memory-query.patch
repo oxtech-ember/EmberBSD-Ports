@@ -1,0 +1,20 @@
+Origin: EmberBSD; AI-assisted repair for ngspice 47.
+License: Same terms as the patched upstream file.
+Do not select Linux procfs from an absolute build-host file in a BSD cross build.
+Keep the existing Linux/Cygwin probe and the existing BSD memory-query paths.
+
+--- a/configure.ac
++++ b/configure.ac
+@@ -730,8 +730,10 @@
+         ;;
+     * )
+ 
+-# Check for /proc (virtual process information file system)
+-AC_CHECK_HEADERS([/proc/meminfo])
++# Only these target systems use the Linux-compatible procfs memory layout.
++# An absolute header probe can otherwise inspect the build host during cross builds.
++AS_CASE([$host_os], [linux*|cygwin*],
++    [AC_CHECK_HEADERS([/proc/meminfo])])
+ 
+ # Checks for X11 header files and libraries - X11 support can be disabled
+ # by passing the '--without-x' option to configure:

@@ -22,7 +22,7 @@ Set optimization and debug flags in `MAKECONF`. Passing `CFLAGS` on the make
 command line overrides the language and OpenMP flags added by `configure`.
 Check actual compile commands and `_OPENMP`, not only `USE_OMP` in config.h.
 
-The twelve source patches have one owner in the
+The thirteen source patches have one owner in the
 [ngspice probe](../../../probes/kicad/ngspice/README.md).
 The recipe links those exact files in their reviewed order. The exporter
 verifies each link and checksum, then materializes regular patch files in
@@ -65,7 +65,7 @@ The check compares 31 DC points within a stated absolute/relative tolerance.
 It also requires more successful `_lwp_create` calls in the two-thread run.
 This tests parallel activation and numerical agreement, not an independent
 analytic solution for BSIM4. The divider remains the known-answer circuit.
-The ordinary GCC 16.2.0 AArch64 packages passed installation, removal and
+The revision-0 GCC 16.2.0 AArch64 packages passed installation, removal and
 reinstallation in the E34 EmberBSD guest. All 37 installed payload entries
 match their package stages. The C API passed 18 checks, including the divider,
 XSPICE gain, rejected input, circuit switching, reset and controlled exit.
@@ -83,8 +83,16 @@ An earlier private invocation overrode configure's OpenMP flags; that package
 was superseded before runtime acceptance. Actual accepted compile commands
 define `_OPENMP=202111`, and both interfaces import `GOMP_parallel`.
 
-The current configure check incorrectly detects the build host's `/proc/meminfo`.
-The target emits that missing-file diagnostic during memory queries; numerical
-checks still pass. This portability issue remains open. Target memory analysis,
-complete CIDER/OSDI/KLU workflows and KiCad application integration remain pending.
+Revision 1 repairs the configure check that detected the build host's
+`/proc/meminfo`. The probe now runs only for Linux and Cygwin targets.
+A separate GCC16 regression executes the three unchanged upstream query modules
+in EmberBSD. The baseline returns zero with two missing-file diagnostics.
+The repaired configuration returns the exact positive `HW_PHYSMEM64` value
+without those diagnostics. Native Linux behavior remains unchanged.
+The inherited BSD available-memory result still equals total memory; the
+selected OpenMP configuration still reports zero RSS. These are not new APIs.
+See the [memory-query regression](../../../probes/kicad/ngspice/tests/memory-query.md).
+The revision-1 package rebuild and installed checks remain pending; the archive
+hashes above identify revision 0. Target Memcheck, complete CIDER/OSDI/KLU
+workflows and KiCad application integration also remain pending.
 The source and native analysis limits remain documented in the probe.

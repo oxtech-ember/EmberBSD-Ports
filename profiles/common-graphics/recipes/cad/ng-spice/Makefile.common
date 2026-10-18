@@ -3,6 +3,7 @@
 # Origin: EmberBSD (AI-assisted); current ngspice with both installed interfaces.
 
 VERSION=	47
+PKGREVISION=	1
 DISTNAME=	ngspice-${VERSION}
 CATEGORIES=	cad
 MASTER_SITES=	https://downloads.sourceforge.net/project/ngspice/ng-spice-rework/${VERSION}/
