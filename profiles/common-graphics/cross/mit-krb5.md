@@ -1,6 +1,6 @@
 # MIT Kerberos for GUI clients
 
-The common graphics profile keeps MIT Kerberos 1.22.2nb1 and its GSS API.
+The common graphics profile keeps MIT Kerberos 1.22.2nb2 and its GSS API.
 GTK and Tk printing can use this provider through CUPS. Set `KRB5_DEFAULT=mit-krb5`
 in the build configuration. This does not configure a realm or start a KDC.
 
@@ -39,7 +39,7 @@ Set the host Python 3.15 executable through `EMBERBSD_CROSS_BUILD_PYTHON`.
 Set the explicit SDK API 1 source through `EMBERBSD_SDK_SOURCE`.
 The controller requires only the Python standard library and the SDK modules.
 
-The full native GCC16 package passes normal package checks. Its API consumer
+The full native GCC16 source package passes normal package checks. Its API consumer
 passes four concurrent principal/cache/AES lifecycles, modified-ciphertext
 rejection and GSS mechanism/name operations. GCC16 path analysis, Clang 19
 analysis and Cppcheck 2.22 pass for this consumer. Strict native Memcheck reports
@@ -47,7 +47,11 @@ no invalid access or lost blocks, but retains 4,648 bytes in 37 process-global
 blocks. The upstream Linux `LIB_UNLOAD_PREVENTED` policy omits their finalizers.
 This is not a clean whole-library memory result.
 
-The split cross packages and installed target API acceptance remain pending.
+The libtool link also preserves the upstream NetBSD/Linux GNU ELF `nodelete`
+policy. Upstream disables global finalizers for this policy. The original
+pkgsrc link lost the flag. A real native GSS `dlopen`/`dlclose` control fails
+without it and passes with it. ELF `NODELETE` and `RTLD_NOLOAD` verify the result.
+The nb2 ordinary packages and installed target API acceptance remain pending.
 The default LDAP-disabled build does not establish LDAP backend execution.
 Realm authentication, credentials, network KDC service and CUPS integration
 remain separate acceptance tasks.

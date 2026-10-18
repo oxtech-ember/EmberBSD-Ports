@@ -6,7 +6,7 @@ BUILDLINK_TREE+=	mit-krb5
 MIT_KRB5_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.mit-krb5+=	mit-krb5>=1.22.2
-BUILDLINK_ABI_DEPENDS.mit-krb5+=	mit-krb5>=1.22.2nb1
+BUILDLINK_ABI_DEPENDS.mit-krb5+=	mit-krb5>=1.22.2nb2
 BUILDLINK_PKGSRCDIR.mit-krb5?=		../../security/mit-krb5
 .include "../../mk/bsd.fast.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"

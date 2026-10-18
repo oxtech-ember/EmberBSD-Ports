@@ -306,7 +306,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             [ -f "$source/$name" ] || { echo "Incomplete graphics recipe: $recipe/$name" >&2; exit 2; }
         done
         case "$recipe" in
-            security/mit-krb5) approved='patch-z-cross-aclocal_m4 patch-z-cross-configure_ac patch-util_et_Makefile.in' ;;
+            security/mit-krb5) approved='patch-z-cross-aclocal_m4 patch-z-cross-configure_ac patch-util_et_Makefile.in patch-zz-libtool-nodelete' ;;
             x11/libspnav) approved='patch-Makefile.in patch-src_spnav.c' ;;
             graphics/freeimage) approved='patch-CMakeLists.txt patch-Source_FreeImage_PluginTIFF.cpp patch-Source_Utilities.h patch-TestAPI_CMakeLists.txt' ;;
             security/mit-krb5-devel) approved='' ;;

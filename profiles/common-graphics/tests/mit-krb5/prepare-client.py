@@ -28,18 +28,22 @@ def main():
     if subprocess.check_output([str(cc), '-dumpfullversion'], text=True).strip() != '16.2.0':
         raise ValueError('The common GCC16 is required')
     prefix = arg.sysroot / 'usr/pkg'
-    for package in ('mit-krb5-1.22.2nb1', 'mit-krb5-devel-1.22.2nb1'):
+    for package in ('mit-krb5-1.22.2nb2', 'mit-krb5-devel-1.22.2nb2'):
         if not (prefix / 'pkgdb' / package / '+CONTENTS').is_file():
             raise ValueError('Install matching ordinary runtime and SDK packages first')
     owner = Path(__file__).resolve().parent
-    sources = [owner / p for p in ('client.c', 'constructor.c', 'printf.c', 'run.sh')]
+    sources = [owner / p for p in ('client.c', 'constructor.c', 'printf.c', 'unload.c', 'run.sh')]
     sonames = ('libkrb5.so.3', 'libgssapi_krb5.so.2', 'libk5crypto.so.3', 'libcom_err.so.3', 'libkrb5support.so.0')
     libraries = [prefix / 'lib' / n for n in sonames]
     inputs = [*sources, *libraries, cc]
     initial = {str(p):sha256_file(p.resolve(strict=True)) for p in inputs}
+    readelf = arg.cross_tools / 'bin/aarch64--netbsd-readelf'
     for p in libraries:
         if read_elf_dynamic(p.resolve(strict=True), machine=183)['soname'] != p.name:
             raise ValueError('MIT library target or SONAME differs: ' + p.name)
+        dynamic_text = subprocess.check_output([str(readelf), '-d', str(p)], text=True)
+        if not any('(FLAGS_1)' in line and 'NODELETE' in line for line in dynamic_text.splitlines()):
+            raise ValueError('MIT library lost its configured unload-prevention policy: ' + p.name)
     bundle = arg.work / 'bundle'
     (bundle / 'source').mkdir(parents=True)
     for p in sources:
@@ -51,7 +55,7 @@ def main():
             '-Wl,-rpath-link,' + str(prefix / 'lib'), '-Wl,-rpath-link,' + str(prefix / 'gcc16/lib')]
     commands = []
     for name, source, extra in [('client', 'client.c', ['-lgssapi_krb5', '-lkrb5', '-lk5crypto', '-lcom_err', '-pthread']),
-                                ('constructor', 'constructor.c', []), ('printf', 'printf.c', []),
+                                ('constructor', 'constructor.c', []), ('printf', 'printf.c', []), ('unload', 'unload.c', []),
                                 ('constructor-no-attributes', 'constructor.c', ['-D__attribute__(x)='])]:
         command = [str(cc), *flags, str(bundle / 'source' / source), *link, *extra, '-o', str(bundle / name)]
         with (arg.work / (name + '.build.log')).open('wb') as log:

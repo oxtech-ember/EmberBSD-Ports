@@ -20,4 +20,5 @@ rm conftest.1 conftest.2
 timeout 15 ./printf
 printf 'PASS: upstream positional printf runtime probe\n'
 KRB5_CONFIG="$PWD/krb5.conf" timeout 45 ./client
+timeout 15 ./unload /usr/pkg/lib
 ldd ./client

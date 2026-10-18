@@ -42,3 +42,4 @@ SHA1 (patch-util_verto_verto-k5ev.c) = 8f074ddccbaaa03576f0302437aed3aaad1b738d
 SHA1 (patch-z-cross-aclocal_m4) = 1e6f9b55bf16ac6d3a182167338eee11e88661ac
 SHA1 (patch-z-cross-configure_ac) = 07f879e1fd5debdaa69415864156b2f668393e6f
 SHA1 (patch-util_et_Makefile.in) = 17ab1ba30eb9720b84363d96875ed2ae854122be
+SHA1 (patch-zz-libtool-nodelete) = 284e5202a85042ded48dea7155579cd728949a80

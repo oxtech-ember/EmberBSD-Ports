@@ -1,0 +1,23 @@
+Origin: EmberBSD (AI-assisted), for MIT Kerberos 1.22.2.
+
+Keep the upstream NetBSD/Linux GNU ELF nodelete policy in libtool links.
+LIB_UNLOAD_PREVENTED disables finalizers, so the loader must retain the DSO.
+
+--- config/shlib.conf.orig
++++ config/shlib.conf
+@@ -320,4 +320,15 @@
+ CC_LINK_LIBTOOL='$(LIBTOOL) --mode=link '"$CC_LINK_SHARED"
+ LALIB_EXPFLAGS='$(SHLIB_EXPFLAGS)'
+ LIBTOOL_TAIL='-rpath $(KRB5_LIBDIR) -version-info $(LIBMAJOR):$(LIBMINOR)'
++# Preserve the selected GNU/ELF library lifetime policy with pkgsrc libtool.
++# configure disables finalizers when upstream LDCOMBINE requests nodelete.
++case $krb5_cv_host:$GCC in
++*-*-netbsd*:yes | *-*-linux*:yes)
++    case $LDCOMBINE in
++    *-z,nodelete* | *"-z nodelete"*)
++        LIBTOOL_TAIL="$LIBTOOL_TAIL -Wl,-z,nodelete"
++        ;;
++    esac
++    ;;
++esac
+ INSTALL_SHLIB='$(INSTALL)'

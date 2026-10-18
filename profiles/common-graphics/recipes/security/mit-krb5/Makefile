@@ -5,7 +5,7 @@ EMBERBSD_MIT_KRB5_PKGDIR:= ${.PARSEDIR:tA}
 BRANCHNAME=	1.22
 DISTNAME=	krb5-${BRANCHNAME}.2
 PKGNAME=	mit-${DISTNAME}
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	security
 # It is not clear how stable this URL scheme is.
 MASTER_SITES=	http://web.mit.edu/kerberos/dist/krb5/${BRANCHNAME}/
@@ -90,8 +90,8 @@ PATCHDIR= ${EMBERBSD_MIT_KRB5_PKGDIR}/patches
 FILESDIR= ${EMBERBSD_MIT_KRB5_PKGDIR}/files
 RCD_SCRIPTS=
 OWN_DIRS_PERMS=
-DEPENDS+= mit-krb5-${BRANCHNAME}.2nb1:../../security/mit-krb5
-CONFLICTS+= mit-krb5<${BRANCHNAME}.2nb1
+DEPENDS+= mit-krb5-${BRANCHNAME}.2nb2:../../security/mit-krb5
+CONFLICTS+= mit-krb5<${BRANCHNAME}.2nb2
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes" || ${OPSYS} != "NetBSD"
 PKG_FAIL_REASON+= "The MIT Kerberos SDK requires a NetBSD cross build; native builds keep the full package"
 .endif
