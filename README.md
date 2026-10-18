@@ -39,6 +39,11 @@ runtime behavior are validated.
   AArch64 packages pass package checks; native upstream tests and installed
   library memory checks pass. Fourteen installed CLI memory/image cases also pass.
   Target execution and TIFF integration remain pending.
+- [wxWidgets and WebKit sources](profiles/common-graphics/cross/wxwebkit.md):
+  stable wxWidgets 3.2.12 and paired WebKitGTK 2.54.1 recipes retain WebView,
+  media and OpenGL. Native generator routing, actual GCC16 target link checks
+  and focused native Skia memory checks pass. Full packages, target locale
+  and GUI integration remain pending.
 - [Maintained FreeImage sources](profiles/common-graphics/cross/freeimage.md):
   FreeImage/FreeImagePlus 3.19.25 and LibRaw 0.22.2 retain common codecs for
   OCCT. Source and focused native half checks pass; complete packages and
