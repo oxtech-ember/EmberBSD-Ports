@@ -150,7 +150,11 @@ Its rc script sources base `/etc/rc.subr`; package configuration stays under
 Full package and installed service acceptance remain separate.
 The [GI 1.86.0 cross package](cross/introspection.md) preserves the complete
 selected payload and runs real GType queries on EmberBSD/CM5. Three unchanged
-upstream hash/search cases also pass there. The matching GLib 2.90.1 metadata
+upstream hash/search cases also pass there.
+The revision-6 GI recipe also fixes temporary hash-key and test-buffer leaks.
+A GCC16 native causal check confirms the repair while preserving explicit
+GLib reachable-allocation and Cppcheck parser limits; package acceptance is pending.
+The matching GLib 2.90.1 metadata
 package supplies all seven GIR/typelib pairs and passes four target load/invoke
 cycles on CM5. The [complete text/GTK introspection packages](cross/desktop-introspection.md) also cross-build; their real GType queries pass on CM5 with the shared query transport.
 The complete [GdkPixbuf 2.44.8 and shared MIME packages](cross/gdk-pixbuf.md)

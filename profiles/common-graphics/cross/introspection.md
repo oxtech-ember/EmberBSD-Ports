@@ -1,5 +1,11 @@
 # GObject Introspection for EmberBSD cross builds
 
+The current `gobject-introspection-1.86.0nb6` recipe releases the temporary
+typelib hash keys and the upstream hash test's packed buffer. This two-line
+ownership repair preserves the ABI, hash format and complete build graph.
+Its native GCC16 regression is described below; ordinary revision-6 package
+and installed target acceptance remain separate pending checks.
+
 The recorded AArch64 cross build of `gobject-introspection-1.86.0nb5` used
 macOS, GCC16, Python 3.14.8 and GLib 2.90.1.
 Its complete selected pkgsrc payload is preserved: library, tools, Python
@@ -13,6 +19,50 @@ The [recipe](../recipes/devel/gobject-introspection/Makefile) preserves the
 pinned pkgsrc import and attribution. EmberBSD's patches are not submitted
 upstream. They separate native generators from target libraries and retain
 installed test source data that upstream omits during cross builds.
+
+## Typelib hash memory ownership
+
+`_gi_typelib_hash_builder_prepare()` duplicates keys into a NULL-terminated
+vector. Bundled CMPH borrows that vector; its adapter destructor frees only
+the adapter and wrapper. After both CMPH destructors, `g_strfreev()` releases
+the keys and vector on the existing success/failure cleanup path. The finished
+BDZ hash owns its hash state and lookup arrays independently. The upstream test now
+also frees its packed buffer after all four lookup assertions.
+
+The [causal check](../tests/gi-gthash-memory.rb) compares the original archive
+with the two configured modules, applies the reviewed patch, and builds both
+variants using the actual native pkgsrc compiler/link commands. It reuses the
+unchanged real CMPH archive and records its members' hashes. Run it against
+a completed **unpatched** native revision-5 build:
+
+```sh
+ruby ../tests/gi-gthash-memory.rb /absolute/gobject-introspection-1.86.0/output \
+    /absolute/gobject-introspection-1.86.0.tar.xz \
+    /absolute/gcc16 /absolute/gcc16-ar /absolute/new-results
+```
+
+GCC 16.2.0 and Valgrind 3.24.0 reproduce 80 bytes definitely lost and
+55 bytes indirectly lost in the original test. Both become zero after the
+repair; all four lookup assertions still pass. Both variants retain exactly
+23,424 reachable bytes in eleven GLib initialization/test contexts. Strict
+`--errors-for-leak-kinds=all` therefore exits 99 in both runs, with fourteen
+versus eleven error contexts. No suppression is used, and this is not an
+all-leak-clean result. The helper verifies that the reported contexts are
+leak records and rejects invalid-memory diagnostics or changed inputs.
+
+Both complete modules, before and after, pass GCC16 `-fanalyzer` and Clang
+Static Analyzer 19.1.7 with empty diagnostics. Cppcheck 2.22 reads the actual
+compiler database but reports the same 89 diagnostics in each variant,
+including five parser failures in GLib headers. Supplying GCC's actual
+preprocessed translation units still encounters unsupported `_Pragma`/typedef
+syntax in GLib cleanup declarations. This Cppcheck coverage is incomplete;
+the raw inherited findings remain recorded without suppressions.
+
+All ten recipe patches pass pkgsrc checksums and apply without fuzz to the
+pinned archive. Actual native/cross metadata selects revision 6. The exporter
+rejects a missing, altered or jointly omitted patch/checksum before export.
+These source checks do not imply a rebuilt package, target execution or a
+complete GI/GLib memory audit.
 
 ## Build and execution roles
 

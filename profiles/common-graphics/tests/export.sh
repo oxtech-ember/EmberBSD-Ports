@@ -63,6 +63,17 @@ for name in cross.mk files/target-query.rb files/elf-needed.sh; do
     negative "missing-gi-${name##*/}"
     mv "$work/gi-helper" "$helper"
 done
+gi=$profile/recipes/devel/gobject-introspection
+cp "$gi/distinfo" "$work/gi-distinfo"
+mv "$gi/patches/patch-girepository_gthash-memory" "$work/gi-gthash-patch"
+negative missing-gi-gthash-patch
+sed '/SHA1 (patch-girepository_gthash-memory)/d' "$work/gi-distinfo" > "$gi/distinfo"
+negative omitted-gi-gthash-patch-and-checksum
+mv "$work/gi-gthash-patch" "$gi/patches/patch-girepository_gthash-memory"
+cp "$work/gi-distinfo" "$gi/distinfo"
+printf '\nchanged\n' >> "$gi/patches/patch-girepository_gthash-memory"
+negative altered-gi-gthash-patch
+cp "$root/profiles/common-graphics/recipes/devel/gobject-introspection/patches/patch-girepository_gthash-memory" "$gi/patches/patch-girepository_gthash-memory"
 for name in cross.mk cargo-depends.mk; do
     helper=$profile/recipes/graphics/librsvg/$name
     mv "$helper" "$work/librsvg-helper"
