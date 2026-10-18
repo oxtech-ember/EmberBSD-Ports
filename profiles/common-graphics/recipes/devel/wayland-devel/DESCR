@@ -1,0 +1,5 @@
+This package contains the complete Wayland target SDK for a cross-build
+sysroot on the development host. It supplies headers, pkg-config metadata,
+protocol data and the target scanner. It depends on the exact matching
+Wayland runtime package. Do not install target build tools in runtime images.
+Native builds retain the complete ordinary Wayland package.

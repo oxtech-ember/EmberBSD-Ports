@@ -171,6 +171,11 @@ Sustained desktop use remains unaccepted. Physical CM5 offscreen OpenGL
 has its own receipt linked above.
 
 
+The cross Wayland revision-2 recipes separate runtime libraries from the
+target scanner and SDK. Native ownership stays complete. Actual pkgsrc metadata
+and copied-stage checks pass; normal split packages and installed runtime
+execution remain pending. See the [package boundary](cross/wayland.md#runtime-and-sdk-packages).
+
 The [Wayland 1.26.0nb1 package](cross/wayland.md) passes all 26 enabled
 upstream invocations on Zero 3W with the paired kernel IPC fixes. The common
 [LLVM23 core](../common-build-tools/llvm-family.md) passes installed C API and

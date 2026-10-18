@@ -5,11 +5,17 @@ require 'json'
 require 'fileutils'
 require 'digest'
 
-usage = "Usage: #{$PROGRAM_NAME} [--target aarch64|amd64] WRKSRC TARGET_SYSROOT NEW_BUNDLE"
+usage = "Usage: #{$PROGRAM_NAME} [--runtime] [--target aarch64|amd64] WRKSRC TARGET_SYSROOT NEW_BUNDLE"
 target = 'aarch64'
 target_seen = false
+runtime_only = false
 while ARGV.first&.start_with?('--')
   option = ARGV.shift
+  if option == '--runtime'
+    abort usage if runtime_only
+    runtime_only = true
+    next
+  end
   abort usage unless option == '--target' && !target_seen && ARGV.first
   target = ARGV.shift
   target_seen = true
@@ -51,10 +57,19 @@ entries = tests.map do |test|
   relative = "tests/#{File.basename(input)}"
   [input, name, relative, kind, 30]
 end
+# Runtime images have no target scanner or symbol-inspection tools. Preserve
+# both source invocations as explicit host/SDK checks, not target successes.
+excluded = runtime_only ? entries.reject { |entry| entry[3] == 'elf' } : []
+if runtime_only
+  abort 'Unexpected non-runtime upstream tests' unless excluded.map { |e| e[1] }.sort == ['scanner-test', 'wayland-egl-symbols-check']
+  entries = entries.select { |entry| entry[3] == 'elf' }
+  abort 'Expected 24 upstream runtime invocations' unless entries.size == 24
+end
 # Validate helpers and installed providers for the same target before output.
 verify_elf.call(File.join(build, 'tests/exec-fd-leak-checker'))
-runtime_files = %w[bin/wayland-scanner lib/libwayland-client.so lib/libwayland-server.so
+runtime_files = %w[lib/libwayland-client.so lib/libwayland-server.so
                   lib/libwayland-cursor.so lib/libwayland-egl.so]
+runtime_files.unshift('bin/wayland-scanner') unless runtime_only
 runtime_files.each { |file| verify_elf.call(File.join(sysroot, 'usr/pkg', file)) }
 FileUtils.mkdir_p(File.join(bundle, 'tests'))
 FileUtils.cp(File.join(source, 'COPYING'), bundle)
@@ -64,6 +79,8 @@ FileUtils.cp_r(File.join(source, 'tests/data'), File.join(bundle, 'tests'))
 FileUtils.cp(File.join(__dir__, 'run-wayland-tests.sh'), bundle)
 
 File.write(File.join(bundle, 'target.txt'), target + "\n")
+File.write(File.join(bundle, 'suite.txt'), runtime_only ? "runtime\n" : "full\n")
+File.write(File.join(bundle, 'host-tests.tsv'), excluded.map { |e| e[1..].join("\t") }.join("\n") + (excluded.empty? ? '' : "\n"))
 File.open(File.join(bundle, 'tests.tsv'), 'w') do |manifest|
   entries.each do |input, *fields|
     FileUtils.cp(input, File.join(bundle, fields[1]))
@@ -85,4 +102,4 @@ File.open(File.join(bundle, 'artifacts.sha256'), 'w') do |manifest|
     manifest.puts "#{Digest::SHA256.file(path).hexdigest}  #{path.delete_prefix(bundle + '/')}"
   end
 end
-puts "Prepared #{tests.size} upstream invocations in #{bundle}"
+puts "Prepared #{entries.size} upstream invocations in #{bundle}; #{excluded.size} separate host/SDK checks"
