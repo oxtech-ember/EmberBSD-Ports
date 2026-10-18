@@ -35,6 +35,14 @@ application compiler receipt, target architecture, version, POSIX threads,
 GNU binutils and EmberBSD seed hashes. Two explicit `-B` directories select
 GCC16 CRT and libgcc. Base OS CRT/libgcc must not satisfy these inputs.
 The old source archive and recipe identities remain unchanged.
+The application receipt must contain one `mode=applications` field and at least
+one canonical target `triplet` field. Repeated triplets must all agree: the
+application producer appends its binutils receipt, which repeats that identity.
+Missing, conflicting and noncanonical triplets or repeated mode fields are
+rejected. Run `ruby tests/compiler-receipt.rb` from this directory for the
+actual preflight receipt and source-hash contract. Parent-stage and recipe
+services are modeled in this bounded host test; target tool checks remain in
+the complete read-only preflight.
 
 Source preparation uses the ordinary complete archive, zero-fuzz patches and
 the existing `libstdc++.so.7` ABI substitution. The helper runs the actual

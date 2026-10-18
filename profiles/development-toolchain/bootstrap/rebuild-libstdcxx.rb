@@ -62,7 +62,11 @@ module GCC16Runtime
       end
       @receipt = @compiler + '/../inputs.txt'
       text = File.read(@receipt)
-      raise Invalid, 'Missing application compiler provenance' unless text.lines.count("mode=applications\n") == 1 && text.lines.count("triplet=#{@triplet}\n") == 1
+      # The application producer appends binutils inputs with the same triplet.
+      modes = text.lines.grep(/^mode=/)
+      triplets = text.lines.grep(/^triplet=/)
+      raise Invalid, 'Missing application compiler provenance' unless modes == ["mode=applications\n"] &&
+        !triplets.empty? && triplets.all? { |line| line == "triplet=#{@triplet}\n" }
       [digest(@archive), digest(@old_pkgsrc + '/lang/gcc16/distinfo')].each do |sha|
         raise Invalid, 'Application compiler source identity differs' unless text.lines.any? { |l| l.start_with?(sha + '  ') }
       end
