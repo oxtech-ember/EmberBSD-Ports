@@ -17,9 +17,9 @@ host=$(CDPATH= cd -- "$host" && pwd -P)
 rustc=$host/bin/rustc cargo=$host/bin/cargo
 [ -x "$rustc" ] && [ -x "$cargo" ] || fail 'The shared native rust-bin provider is missing.'
 version=$("$rustc" -vV)
-printf '%s\n' "$version" | grep -qx 'rustc 1.99.0 (b940084d7 2026-09-28)' || fail 'The shared official Rust 1.99.0 compiler is required.'
-printf '%s\n' "$version" | grep -qx 'commit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4' || fail 'Rust compiler producer mismatch.'
-"$cargo" -V | grep -q '^cargo 1[.]99[.]0 ' || fail 'The matching shared Cargo 1.99.0 is required.'
+printf '%s\n' "$version" | grep -qx 'rustc 1.99.1 (58cf8f9c3 2026-10-13)' || fail 'The shared official Rust 1.99.1 compiler is required.'
+printf '%s\n' "$version" | grep -qx 'commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67' || fail 'Rust compiler producer mismatch.'
+"$cargo" -V | grep -q '^cargo 1[.]99[.]1 ' || fail 'The matching shared Cargo 1.99.1 is required.'
 native=$(printf '%s\n' "$version" | sed -n 's/^host: //p')
 case "$native" in ''|*[!a-zA-Z0-9_-]*) fail 'Invalid Rust build-host triple.';; esac
 [ "$native" != "$target" ] || fail 'This recipe requires a build-host compiler distinct from the target.'

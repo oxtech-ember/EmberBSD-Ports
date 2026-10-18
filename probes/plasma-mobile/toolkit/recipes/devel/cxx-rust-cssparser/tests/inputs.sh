@@ -14,8 +14,8 @@ cat > "$work/host/bin/rustc" <<'SH'
 #!/bin/sh
 case "$1" in
   -vV)
-    echo 'rustc 1.99.0 (b940084d7 2026-09-28)'
-    echo 'commit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4'
+    echo 'rustc 1.99.1 (58cf8f9c3 2026-10-13)'
+    echo 'commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67'
     echo "host: ${FIXTURE_HOST_TRIPLE:-aarch64-apple-darwin}";;
   --target)
     [ "$3" = --print ] && [ "$4" = target-libdir ] || exit 99
@@ -33,7 +33,7 @@ SH
 cat > "$work/host/bin/cargo" <<'SH'
 #!/bin/sh
 [ "$1" = -V ] || { echo 'FAIL: cargo must not build during preflight' >&2; exit 99; }
-echo 'cargo 1.99.0 (fixture)'
+echo 'cargo 1.99.1 (fixture)'
 SH
 for triplet in aarch64--netbsd x86_64--netbsd; do
   for driver in gcc g++; do
