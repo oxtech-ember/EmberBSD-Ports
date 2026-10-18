@@ -46,6 +46,14 @@ The ordinary target package must retain `/usr/pkg/qt6/plugins/iconengines`.
 Its upstream tests are compiled with `BUILD_TESTS=ON`; execution remains separate.
 The directory tests use the same package prefix as `xdgdirs.cpp`.
 
+GLib, GObject and GIO are private implementation dependencies of the shared
+libqtxdg library. Its public headers contain Qt and libqtxdg types.
+The CMake export keeps these libraries out of `INTERFACE_LINK_LIBRARIES`.
+This prevents Ninja from searching the build host for `/usr/pkg/lib/libglib-2.0.so`
+before a compiler wrapper can map the path. The real qtxdg-tools consumer
+reproduces the original failure and builds after this change. Both libqtxdg
+DSOs retain the same bytes, exported symbols, SONAME and `DT_NEEDED` entries.
+
 The current LayerShellQt package exports `LayerShellQt::Interface`.
 The leave dialog uses this target and requires LayerShellQt 6.8.
 
@@ -100,6 +108,15 @@ are absent after the patch. Clang Static Analyzer checks both the C helper
 and its C++ consumer with the target compilation flags. It is analysis-only.
 The existing style findings remain visible.
 
+The Qt model uses `Q_MOC_OUTPUT_REVISION=69` from Qt 6.12.
+The libqtxdg baseline and patched source have the same unique Cppcheck
+diagnostics. Three `strPlusChar` and three `pointerOutOfBounds` reports in
+`tst_xdgdirs.cpp` are Qt literal model errors. Qt's `operator""_L1` returns
+`QLatin1StringView`; these expressions concatenate strings and `QChar` values.
+Clang analysis and the target tests cover these expressions without error.
+Cppcheck 2.22 cannot parse the complete expanded Qt system-header configuration;
+this separate parser limitation is retained in the analysis receipts.
+
 The luit recipe declares zlib and the existing common encodings package.
 It selects target `locale.alias` and `encodings.dir` paths explicitly.
 The configure patch preserves native file checks. In cross mode, the recipe
@@ -121,9 +138,15 @@ host or EmberBSD/aarch64 guest. These sanitizer runs are not Memcheck runs.
 The common GCC16 build compiles libqtxdg 4.4.0, liblxqt 2.4.0,
 qtxdg-tools 4.4.0 and lxqt-session 2.4.0. The three real libqtxdg test
 programs pass 21 cases on an unprivileged EmberBSD/aarch64 VM with the
-offscreen Qt platform plugin. This component run uses an application runtime
-bundle from the same common sysroot. It does not establish package installation
-or a desktop session.
+offscreen Qt platform plugin. The tested DSO and test programs come from the
+ordinary libqtxdg package build. A negative control runs the prefixed directory
+test against the original library and reports the three expected directory
+mismatches. The matching package library passes all 21 cases.
+
+The VM component run uses an application runtime bundle from the same common
+sysroot. It does not establish complete package installation or a desktop
+session. The packaged qtxdg-mat executable also passes its version and help
+controls under the unprivileged user.
 
 Prepared host modules are a build prerequisite. Compilation and component
 tests do not establish power control, input or rendering.
