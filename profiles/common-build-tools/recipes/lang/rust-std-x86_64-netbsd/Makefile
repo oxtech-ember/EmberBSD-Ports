@@ -2,7 +2,7 @@
 DISTNAME= rust-std-1.99.1-x86_64-unknown-netbsd
 PKGNAME= rust-std-x86_64-netbsd-1.99.1
 CATEGORIES= lang
-MASTER_SITES= https://static.rust-lang.org/dist/2026-10-01/
+MASTER_SITES= https://static.rust-lang.org/dist/2026-10-15/
 EXTRACT_SUFX= .tar.xz
 
 MAINTAINER= pkgsrc-users@NetBSD.org

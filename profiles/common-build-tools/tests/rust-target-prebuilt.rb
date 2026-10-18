@@ -21,8 +21,8 @@ File.write(File.join(host, 'bin/rustc'), <<~SH)
   #!/bin/sh
   set -eu
   if [ "$1" = -vV ]; then
-      echo "rustc ${FIXTURE_VERSION:-1.99.1} (b940084d7 2026-09-28)"
-      echo 'commit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4'
+      echo "rustc ${FIXTURE_VERSION:-1.99.1} (58cf8f9c3 2026-10-13)"
+      echo 'commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67'
       echo 'host: aarch64-apple-darwin'
       exit
   fi

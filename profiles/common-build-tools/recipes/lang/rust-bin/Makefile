@@ -105,7 +105,7 @@ DISTFILES:=	${DISTFILES} ${DISTNAME}-${RUST_ARCH}.tar.gz
 
 NBSUF=
 
-.if ${MACHINE_PLATFORM:MNetBSD-*-aarch64} || make(distinfo) || make(makesum) || make(mdi)
+.if ${MACHINE_PLATFORM:MNetBSD-*-aarch64}
 RUST_ARCH:=	aarch64-unknown-netbsd
 DN:=		${DISTNAME}${NBSUF}
 EXTRACT_SUFX=	.tar.xz
@@ -113,7 +113,7 @@ DF:=		${DN}-${RUST_ARCH}${EXTRACT_SUFX}
 DISTFILES:=	${DISTFILES} ${DF}
 SITES.${DF}=	${NETBSD_REPO}
 .endif
-.if ${MACHINE_PLATFORM:MNetBSD-*-aarch64eb} || make(distinfo) || make(makesum) || make(mdi)
+.if ${MACHINE_PLATFORM:MNetBSD-*-aarch64eb}
 RUST_ARCH:=	aarch64_be-unknown-netbsd
 DN:=		${DISTNAME}${NBSUF}
 EXTRACT_SUFX=	.tar.xz
@@ -121,7 +121,7 @@ DF:=		${DN}-${RUST_ARCH}${EXTRACT_SUFX}
 DISTFILES:=	${DISTFILES} ${DF}
 SITES.${DF}=	${NETBSD_REPO}
 .endif
-.if ${MACHINE_PLATFORM:MNetBSD-*-earmv6hf} || make(distinfo) || make(makesum) || make(mdi)
+.if ${MACHINE_PLATFORM:MNetBSD-*-earmv6hf}
 RUST_ARCH:=	armv6-unknown-netbsd-eabihf
 DN:=		${DISTNAME}${NBSUF}
 EXTRACT_SUFX=	.tar.xz
@@ -129,7 +129,7 @@ DF:=		${DN}-${RUST_ARCH}${EXTRACT_SUFX}
 DISTFILES:=	${DISTFILES} ${DF}
 SITES.${DF}=	${NETBSD_REPO}
 .endif
-.if ${MACHINE_PLATFORM:MNetBSD-*-earmv7hf} || make(distinfo) || make(makesum) || make(mdi)
+.if ${MACHINE_PLATFORM:MNetBSD-*-earmv7hf}
 RUST_ARCH:=	armv7-unknown-netbsd-eabihf
 DN:=		${DISTNAME}${NBSUF}
 EXTRACT_SUFX=	.tar.xz
@@ -137,7 +137,7 @@ DF:=		${DN}-${RUST_ARCH}${EXTRACT_SUFX}
 DISTFILES:=	${DISTFILES} ${DF}
 SITES.${DF}=	${NETBSD_REPO}
 .endif
-#.if ${MACHINE_PLATFORM:MNetBSD-*-i386} || make(distinfo) || make(makesum) || make(mdi)
+#.if ${MACHINE_PLATFORM:MNetBSD-*-i386}
 #RUST_ARCH:=	i586-unknown-netbsd
 #DN:=		${DISTNAME}${NBSUF}
 #EXTRACT_SUFX=	.tar.xz
@@ -145,7 +145,7 @@ SITES.${DF}=	${NETBSD_REPO}
 #DISTFILES:=	${DISTFILES} ${DF}
 #SITES.${DF}=	${NETBSD_REPO}
 #.endif
-.if ${MACHINE_PLATFORM:MNetBSD-*-powerpc} || make(distinfo) || make(makesum) || make(mdi)
+.if ${MACHINE_PLATFORM:MNetBSD-*-powerpc}
 RUST_ARCH:=	powerpc-unknown-netbsd
 DN:=		${DISTNAME}${NBSUF}
 EXTRACT_SUFX=	.tar.xz
@@ -153,7 +153,7 @@ DF:=		${DN}-${RUST_ARCH}${EXTRACT_SUFX}
 DISTFILES:=	${DISTFILES} ${DF}
 SITES.${DF}=	${NETBSD_REPO}
 .endif
-.if ${MACHINE_PLATFORM:MNetBSD-*-sparc64} || make(distinfo) || make(makesum) || make(mdi)
+.if ${MACHINE_PLATFORM:MNetBSD-*-sparc64}
 RUST_ARCH:=	sparc64-unknown-netbsd
 DN:=		${DISTNAME}${NBSUF}
 EXTRACT_SUFX=	.tar.xz
@@ -161,7 +161,7 @@ DF:=		${DN}-${RUST_ARCH}${EXTRACT_SUFX}
 DISTFILES:=	${DISTFILES} ${DF}
 SITES.${DF}=	${NETBSD_REPO}
 .endif
-#.if ${MACHINE_PLATFORM:MNetBSD-*-mipsel} || make(distinfo) || make(makesum) || make(mdi)
+#.if ${MACHINE_PLATFORM:MNetBSD-*-mipsel}
 #RUST_ARCH:=	mipsel-unknown-netbsd
 #DN:=		${DISTNAME}${NBSUF}
 #EXTRACT_SUFX=	.tar.xz
@@ -169,7 +169,7 @@ SITES.${DF}=	${NETBSD_REPO}
 #DISTFILES:=	${DISTFILES} ${DF}
 #SITES.${DF}=	${NETBSD_REPO}
 #.endif
-.if ${MACHINE_PLATFORM:MNetBSD-*-riscv64} || make(distinfo) || make(makesum) || make(mdi)
+.if ${MACHINE_PLATFORM:MNetBSD-*-riscv64}
 RUST_ARCH:=	riscv64gc-unknown-netbsd
 DN:=		${DISTNAME}${NBSUF}
 EXTRACT_SUFX=	.tar.xz
@@ -179,7 +179,7 @@ SITES.${DF}=	${NETBSD_REPO}
 .endif
 
 # Illumos:
-#.if ${MACHINE_PLATFORM:MSunOS-*-x86_64} || make(distinfo) || make(makesum) || make(mdi)
+#.if ${MACHINE_PLATFORM:MSunOS-*-x86_64}
 #RUST_ARCH:=	x86_64-unknown-illumos
 #DN:=		${DISTNAME}
 #EXTRACT_SUFX=	.tar.gz
