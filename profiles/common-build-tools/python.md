@@ -39,6 +39,32 @@ The corrected 41-case sysconfig run passes, with three upstream platform skips.
 The other six selected native suites pass. Target Python 3.15 execution remains
 separate from this host generator build and the older 3.14 receipts below.
 
+The nb4 recipe uses its existing GDBM compatibility provider for Linux `_dbm`.
+It no longer also requests Berkeley DB through `bdb.buildlink3.mk` on Linux.
+Other platforms retain that provider selection, including NetBSD's base `db1`.
+This changes dependencies only. Configure still discovers the NDBM header and
+library, and the separately packaged `_gdbm` policy stays unchanged.
+
+Run the dependency regression with real Linux and NetBSD configurations:
+
+```sh
+BMAKE=/absolute/host/bin/bmake ruby profiles/common-build-tools/tests/python-linux-ndbm.rb \
+    /absolute/prepared-pkgsrc /absolute/linux.mk.conf /absolute/netbsd.mk.conf \
+    /absolute/previous-Makefile /absolute/new-Makefile /absolute/new-results
+```
+
+This checks real pkgsrc metadata without installing dependencies. The Linux
+before/after check removes only Berkeley DB dependencies and preserves NDBM
+link routing and configure arguments. NetBSD provider metadata stays identical.
+
+Native GCC16 verification on 2026-10-18 uses installed pkgsrc GDBM 1.26 headers
+and libraries. Actual CPython 3.15 configure selects `USE_NDBM` with
+`-lgdbm_compat`. Its unchanged `make Modules/_dbm.so` target builds the module.
+The existing native Python 3.15 interpreter runs all 16 upstream
+`test.test_dbm_ndbm` tests with that module; all pass without skips. Loader
+diagnostics confirm both GDBM libraries come from the selected 1.26 prefix.
+This focused check does not establish a complete native or target package.
+
 The focused configure regression uses a previous patched source and the new source:
 
 ```sh

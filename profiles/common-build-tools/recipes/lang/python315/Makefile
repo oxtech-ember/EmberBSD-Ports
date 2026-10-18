@@ -3,7 +3,7 @@
 .include "dist.mk"
 
 PKGNAME=	python315-${PY_DISTVERSION}
-PKGREVISION=	3
+PKGREVISION=	4
 CATEGORIES=	lang python
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -241,7 +241,10 @@ PREFER.expat=	pkgsrc # needs expat_config.h
 .endif
 .include "../../textproc/expat/buildlink3.mk"
 .include "../../mk/atomic64.mk"
+# Linux uses the gdbm_compat NDBM provider included above.
+.if ${OPSYS} != "Linux"
 .include "../../mk/bdb.buildlink3.mk"
+.endif
 .include "../../mk/curses.buildlink3.mk"
 .include "../../mk/dlopen.buildlink3.mk"
 .include "../../mk/oss.buildlink3.mk"
