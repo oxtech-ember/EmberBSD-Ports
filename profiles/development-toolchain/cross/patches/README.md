@@ -16,5 +16,5 @@ unchanged static library. The print-mode call is corrected as well.
 
 The adaptation changes only argument types. It preserves all expected values,
 algorithms and tests; no test is skipped and no library code changes.
-`host-math.sh` verifies and records the patch hash, applies it with zero fuzz,
+`host-math.py` verifies and records the patch hash, applies it with zero fuzz,
 and still requires the full upstream GMP/MPFR/MPC suites and host contracts.

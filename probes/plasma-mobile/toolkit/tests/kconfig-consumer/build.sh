@@ -4,7 +4,7 @@
 set -eu
 usage() { echo "Usage: $0 [--target aarch64|amd64] CROSS_TOOLS SYSROOT HOST_QT KF6_HOST_TOOLING NEW_WORK" >&2; exit 2; }
 src=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
-target_options=$src/../../../../../profiles/development-toolchain/cross/target-options.sh
+target_options=$src/../../../../../profiles/development-toolchain/cross/tests/target/target-options.sh
 kernel_allowed=no
 . "$target_options"
 [ "$#" = 5 ] || usage

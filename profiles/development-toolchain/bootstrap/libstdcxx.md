@@ -1,6 +1,6 @@
 # Rebuild libstdc++ with the application compiler
 
-`rebuild-libstdcxx.rb` prepares a fresh library build for the
+`rebuild-libstdcxx.py` prepares a fresh library build for the
 [NetBSD locale repair](../locale.md). It uses the existing application GCC16
 compiler with POSIX threads. It does not rebuild compiler frontends or change
 the old runtime stage. The helper and inheritance verifier have host refusal
@@ -12,13 +12,13 @@ Use the original GCC16.2 archive, the completed original bootstrap stage,
 its unchanged pkgsrc export, and a separate export with the locale repair.
 The permitted recipe delta is the pinned two-file locale patch and its compiler
 package revision. Other source changes require a different build path.
-The source pin is in [inheritance.rb](../runtime/recipe/files/inheritance.rb).
+The source pin is in [inheritance.py](../runtime/recipe/files/inheritance.py).
 It includes the configured `sscanf` conversion fallback.
 
 First run the read-only preflight:
 
 ```sh
-CROSS_JOBS=2 ruby profiles/development-toolchain/bootstrap/rebuild-libstdcxx.rb \
+CROSS_JOBS=2 python3 -B profiles/development-toolchain/bootstrap/rebuild-libstdcxx.py \
     --check aarch64 /absolute/new-pkgsrc /absolute/original-pkgsrc \
     /absolute/gcc-16.2.0.tar.xz /absolute/application-toolchain \
     /absolute/emberbsd-sysroot /absolute/original-runtime-work \
@@ -39,7 +39,7 @@ The application receipt must contain one `mode=applications` field and at least
 one canonical target `triplet` field. Repeated triplets must all agree: the
 application producer appends its binutils receipt, which repeats that identity.
 Missing, conflicting and noncanonical triplets or repeated mode fields are
-rejected. Run `ruby tests/compiler-receipt.rb` from this directory for the
+rejected. Run `python3 -B ../tests/python/controllers-test.py` from this directory for the
 actual preflight receipt and source-hash contract. Parent-stage and recipe
 services are modeled in this bounded host test; target tool checks remain in
 the complete read-only preflight.
@@ -53,7 +53,7 @@ raw C++ driver uses `-nostdinc++`; new generated headers serve the library build
 No old generated configure output or library objects are reused.
 The preserved cache settings are recipe policy, not new target API measurements.
 Compiler environment values use plain validated words for Autoconf expansion.
-Run `tests/compiler-command.rb` with the same eight positional inputs to check
+Run `tests/compiler-command.py` with the same eight positional inputs to check
 real C/C++ compilation and GCC16 support paths without executing target code.
 Use a separate new work path for this bounded compiler contract.
 
@@ -62,7 +62,7 @@ Before configure, the helper runs the upstream `libgcc/Makefile.in` rule for
 POSIX thread model selects `gthr-posix.h` through the upstream mapping.
 Both source inputs and the generated header are hashed. Configure still compiles
 its real gthreads probe; no cached result enables C++ thread support.
-`tests/gthreads.rb` takes the same eight inputs and a ninth prepared failed work
+`tests/gthreads.py` takes the same eight inputs and a ninth prepared failed work
 directory. It replays that directory's recorded probe and configure arguments
 in new output, leaving its source and configuration unchanged.
 The GCC16 AArch64 check rejects the missing header, compiles the repaired probe,

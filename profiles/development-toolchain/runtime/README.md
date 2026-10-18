@@ -50,7 +50,7 @@ The full development package remains available for separate installations.
 ## Verify the stage
 
 The input is a completed bootstrap work directory, its original GCC archive,
-and the exact pkgsrc export used by that build. Keep their recorded paths.
+and the exact pkgsrc export used by that build. Keep their recorded paths. Set `EMBERBSD_SDK_SOURCE` to the explicit SDK API1 source. The verifier uses Python 3.15 and its standard library. It imports the SDK from that source without downloading or installing it. Each command also accepts `--sdk-source SOURCE` before or after its positional arguments.
 The verifier reads `build-success`, `inputs.txt`, `stage.sha256` and
 `stage.symlinks`. It requires exactly one target and its matching triplet,
 the exact GCC 16.2.0 archive
@@ -67,7 +67,7 @@ Unknown targets, duplicate target/triplet claims and mismatched triplets fail.
 The stage cannot mix architectures, even when every file hash is recorded.
 
 ```sh
-ruby recipe/files/runtime.rb check /absolute/bootstrap-work \
+python3 -B recipe/files/runtime.py check /absolute/bootstrap-work \
     /absolute/gcc-16.2.0.tar.xz /absolute/prepared-pkgsrc
 ```
 
@@ -98,7 +98,7 @@ that the recorded source revision was the one used to produce arbitrary bytes.
 ## Create a package with native host pkgtools
 
 ```sh
-ruby recipe/files/runtime.rb create /absolute/bootstrap-work \
+python3 -B recipe/files/runtime.py create /absolute/bootstrap-work \
     /absolute/gcc-16.2.0.tar.xz /absolute/prepared-pkgsrc \
     /absolute/native/pkg_create /absolute/new-package-output
 ```
@@ -143,14 +143,15 @@ The recipe performs no compilation. It uses the same verifier and produces
 a generated PLIST from the audited stage. Supply these build-host variables:
 
 ```text
-GCC16_RUNTIME_RUBY=/absolute/native/ruby
+GCC16_RUNTIME_PYTHON=/absolute/native/python3
+EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK
 GCC16_RUNTIME_WORK=/absolute/bootstrap-work
 GCC16_RUNTIME_ARCHIVE=/absolute/gcc-16.2.0.tar.xz
 GCC16_RUNTIME_PKGSRC=/absolute/prepared-pkgsrc
 ```
 
 Use the common cross configuration for the selected target, target metadata,
-DESTDIR and native package tools. The recipe must not install Ruby or a
+DESTDIR and native package tools. The recipe must not install Python or a
 compiler on the target. Its `BUILD_DEFS` retain the same provenance fields.
 The recipe rejects a stage whose architecture differs from pkgsrc's
 `MACHINE_ARCH`. The stage selection never overrides the package target.
@@ -160,7 +161,7 @@ The direct packager above also works on macOS without running target pkgtools.
 
 ```sh
 PKG_CREATE=/absolute/native/pkg_create PKG_ADD=/absolute/native/pkg_add \
-    ruby tests/package-test.rb
+    python3 -B tests/package-test.py
 ```
 
 The fixtures test both architectures, SONAME, old C++ dependencies, source/recipe
@@ -191,8 +192,7 @@ architecture guard through the real source verifier. This case retains
 synthetic stage DSOs. It accepts matching `MACHINE_ARCH` and rejects the
 opposite architecture for both targets.
 
-The current host suite passes 16 tests and 555 assertions with zero failures,
-errors or skips. It uses real native pkgtools, bmake, pkgsrc and the pinned
+The Python host suite checks both architectures, every optional library selection and fail-closed source, inventory, ELF, dependency and RELRO rules. Real package checks use the supplied native pkgtools. It uses real native pkgtools, bmake, pkgsrc and the pinned
 GCC archive. Four synthetic-ELF packages cover both architectures and both
 library selections. Refusal checks also cover missing RELRO, changed inherited
 components, unowned relink changes and relative receipt input paths.

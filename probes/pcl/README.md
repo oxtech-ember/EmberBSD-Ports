@@ -46,7 +46,7 @@ listed in [sources.tsv](sources.tsv), [dependency sources](cross/dependency-sour
 and [test sources](test-sources.tsv).
 
 If the SDK lacks `libatomic.so.3`, first use the common
-[atomic component helper](../../profiles/development-toolchain/cross/build-libatomic.sh).
+[atomic component helper](../../profiles/development-toolchain/cross/build-libatomic.py).
 Its recipe documents the source hash, staging layout and collision boundary.
 Import only its verified missing stage into the task sysroot.
 

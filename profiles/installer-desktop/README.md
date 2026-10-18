@@ -171,7 +171,7 @@ BSDTAR=/absolute/bsdtar ruby bundle-gcc16.rb \
 ```
 
 The input must be the complete, unchanged output of
-[`runtime.rb create`](../development-toolchain/runtime/README.md):
+[`runtime.py create`](../development-toolchain/runtime/README.md):
 `gcc16-runtime-16.2.0nb1.tgz`, `package.sha256` and `provenance.json`.
 The helper snapshots those inputs. It checks the receipt schema, fixed amd64
 metadata, source pin, package bytes, payload digests, licenses, runtime conflicts

@@ -440,7 +440,7 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
         "$destination/EMBERBSD-DEVELOPMENT-MK.CONF"
     # Package audited external target runtimes without installing a compiler.
     runtime_recipe=$root/profiles/development-toolchain/runtime/recipe
-    [ -f "$runtime_recipe/files/runtime.rb" ] || {
+    [ -f "$runtime_recipe/files/runtime.py" ] || {
         echo 'The GCC16 runtime recipe is incomplete.' >&2; exit 2;
     }
     [ ! -e "$destination/lang/gcc16-runtime" ] || {

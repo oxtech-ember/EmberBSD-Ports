@@ -9,8 +9,9 @@ import shutil
 import sys
 import tempfile
 
-from emberbsd_sdk import inventory, paths, process
-from emberbsd_sdk.errors import SDKError
+from emberbsd_sdk import inventory, jsonio, paths, process
+from emberbsd_sdk.errors import SDKError, ProcessOwnershipError
+from sdk_source import PRODUCER_QUARANTINE
 
 PROFILE = Path(__file__).resolve().parent
 VERSION = '16.2.0'
@@ -19,6 +20,7 @@ TOOLS = 'ar as ld nm objcopy objdump ranlib readelf strip'.split()
 BINUTILS = 'ar as elfedit ld nm objcopy objdump ranlib readelf size strings strip'.split()
 CACHE = {'ac_cv_func_clock_gettime': 'yes', 'ac_cv_func_gethostbyname_r': 'no', 'ac_cv_func_freelocale': 'no', 'ac_cv_func_newlocale': 'no', 'ac_cv_func_uselocale': 'no'}
 sha = inventory.sha256_file
+QUARANTINE = PRODUCER_QUARANTINE
 
 
 def require(condition, message):
@@ -57,14 +59,35 @@ def capture(argv, env=None, cwd=None, input=None):
     return result.stdout.decode('utf-8')
 
 
-def logged(argv, log, env=None, cwd=None, append=False):
+def assert_recoverable(work):
+    marker = Path(work) / QUARANTINE
+    require(paths.entry(marker) is None, 'Producer shutdown is unproven. Recover this work explicitly before reuse: ' + str(marker))
+
+
+def logged(argv, log, env=None, cwd=None, append=False, quarantine=None):
     log = Path(log)
+    if quarantine is not None:
+        assert_recoverable(quarantine)
     if not append and paths.entry(log) is not None:
         paths.regular_file(log)
         descriptor, previous = tempfile.mkstemp(prefix=log.name + '.previous.', dir=log.parent)
         os.close(descriptor)
         log.replace(previous)
-    return process.run_logged([str(arg) for arg in argv], log, cwd=cwd, env=environment(env), append=append)
+    try:
+        return process.run_logged([str(arg) for arg in argv], log, cwd=cwd, env=environment(env), append=append)
+    except ProcessOwnershipError as error:
+        if quarantine is not None:
+            marker = Path(quarantine) / QUARANTINE
+            try:
+                jsonio.write_json(marker, {'schema': 1, 'state': 'producer-ownership-unproven', 'work': str(quarantine), 'log': str(log), 'argv': [str(arg) for arg in argv], 'error': str(error), 'session': error.sid, 'reason': error.reason})
+            except Exception as marker_error:
+                raise SDKError('Producer shutdown is unproven. Cannot persist the reuse refusal at ' + str(marker) + ': ' + str(marker_error)) from error
+        raise
+
+
+def policy_sources():
+    import sdk_source
+    return [Path(__file__), Path(sdk_source.__file__)] + sorted((Path(sdk_source.load()) / 'src/emberbsd_sdk').glob('*.py'))
 
 
 def digest_rows(files):
@@ -108,15 +131,19 @@ def audit_source(pkgsrc, archive, runtime=True):
     return expected, patches
 
 
-def prepare_source(pkgsrc, archive, source, runtime=True):
+def prepare_source(pkgsrc, archive, source, runtime=True, quarantine=None, output=None):
     source = new_path(source)
     _, patches = audit_source(pkgsrc, archive, runtime)
     source.mkdir()
-    capture(['tar', '-xf', archive, '--strip-components=1', '-C', source])
+    extract_log = source.parent / (source.name + '-extract.log')
+    require(paths.entry(extract_log) is None, 'Source extraction log already exists')
+    logged(['tar', '-xf', archive, '--strip-components=1', '-C', source], extract_log, quarantine=quarantine)
     for name in patches:
         if name != 'patch-gcc_Makefile.in':
-            result = process.capture(['patch', '-f', '-N', '-F', '0', '-p0', '-d', str(source)], input=(Path(pkgsrc) / 'lang/gcc16/patches' / name).read_bytes(), env=environment())
-            sys.stdout.buffer.write(result.stdout)
+            patch_log = source.parent / (source.name + '-' + name + '.log')
+            require(paths.entry(patch_log) is None, 'Source patch log already exists')
+            logged(['patch', '-f', '-N', '-F', '0', '-p0', '-d', source, '-i', Path(pkgsrc) / 'lang/gcc16/patches' / name], patch_log, quarantine=quarantine)
+            (output if output is not None else sys.stdout.buffer).write(patch_log.read_bytes())
     if runtime:
         configure = source / 'libstdc++-v3/configure'
         data = configure.read_bytes()
@@ -179,5 +206,5 @@ def target_tools(prefix, target):
 def manifests(root, output):
     tree = inventory.snapshot_tree(root)
     output = Path(output)
-    (output / 'stage.sha256').write_text(''.join(record['sha256'] + '  ./' + name + '\n' for name, record in tree.items() if record['kind'] == 'file'))
+    (output / 'stage.sha256').write_text(''.join(sorted(record['sha256'] + '  ./' + name + '\n' for name, record in tree.items() if record['kind'] == 'file')))
     (output / 'stage.symlinks').write_text(''.join('./' + name + '\t' + record['target'] + '\n' for name, record in tree.items() if record['kind'] == 'link'))

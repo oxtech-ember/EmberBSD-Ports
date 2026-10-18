@@ -29,11 +29,13 @@ and the selected canonical target. The helper never executes target programs.
 
 ```sh
 sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc development-toolchain
-GNU_MAKE=/absolute/gmake ruby profiles/development-toolchain/tests/cross-math/check.rb \
+EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK GNU_MAKE=/absolute/gmake \
+python3 -B profiles/development-toolchain/tests/cross-math/check.py \
     aarch64 /absolute/new-pkgsrc /absolute/gcc-16.2.0.tar.xz \
     /absolute/gcc16-prefix /absolute/emberbsd-sdk /absolute/new-output
 sh profiles/development-toolchain/tests/source-profile.sh
-ruby profiles/development-toolchain/runtime/tests/package-test.rb
+python3 -B profiles/development-toolchain/runtime/tests/package-test.py \
+    --sdk-source /absolute/EmberBSD-SDK
 ```
 
 The independent fixture keeps relocations for 43 literal function names.
