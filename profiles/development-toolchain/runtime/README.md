@@ -187,8 +187,8 @@ The new package installed without warnings; its DSO bytes, aliases and target
 metadata matched the original stage. This is host packaging evidence.
 The accepted target runtime artifact and shared package databases were unchanged.
 
-No real amd64 or AArch64 runtime package or installed consumer is qualified by these
-fixtures. Before release, build the actual stage and package from a clean
+These synthetic fixtures do not qualify a real runtime or installed consumer.
+Before release, build the actual stage and package from a clean
 Ports commit. Install, remove and reinstall with target pkgtools in an
 EmberBSD VM of the selected architecture. Run prebuilt C11/C++20 threads, TLS, DSO exception and
 object-exchange consumers. Confirm the loaded runtime hashes and one
@@ -196,3 +196,47 @@ libstdc++/libgcc_s provider per process. An extended stage also needs actual
 OpenMP parallel-work and atomic-operation consumers with its selected library
 hashes. Repeat relevant Plasma acceptance.
 No compiler or target-side build is required for these runtime checks.
+
+## AArch64 installed acceptance
+
+On 2026-10-18, a real extended stage and nb2 package passed read-only inventory,
+ELF, package creation and isolated host installation checks. The optional
+runtime extension used Ports commit `28510febf8194b9fb3f89f6b5f7a3d7ac411d430`.
+The application compiler used the cross recipe at commit
+`0635104994dd2e7b57c9f4c3158516f9c75e9b04` and native GCC 16.2.0.
+The runtime package SHA256 is
+`a1e274027ef6fc8183e0f373890a7080fe4c3176be2a45b4512695303dad1e54`.
+
+The AArch64 QEMU guest used the fork's `EMBER64` kernel and verified E34
+development sets from OS commit `6dd57144183678938164b4c2dcfc370cdbde8473`.
+The [E34 workflow](https://github.com/oxtech-ember/EmberBSD/actions/runs/38843939746)
+supplied the base, comp and matching compressed kernel. Their SHA256 values are:
+
+| Input | SHA256 |
+| --- | --- |
+| `base.tar.xz` | `688dc6701cd83283d1287fc18dee8b9af35f067096cdd4a92de7e0593fdacddb` |
+| `comp.tar.xz` | `8c813303f0500ae1a4ba6381eee6a1189ffab86036963fb26f36ec313e02daa6` |
+| `netbsd-EMBER64.gz` | `fbc6fa0afe2a91e7798734f58a326d18ccb20bb46e20b1f3579359264e68ea90` |
+
+Target pkgtools installed and checked all nine package entries. Prebuilt
+C11 and C++20 tests passed plain/LTO compilation, threads, TLS, atomics,
+floating-point constant evaluation, DSO object exchange and exception unwinding.
+The [OpenMP contract](../tests/libgomp.md) passed reductions, locked tasks
+and worker TLS with four workers. The separate atomic contract passed
+256-byte load/store/exchange and 2,000 concurrent compare/exchange updates.
+Both OpenMP negative controls rejected the invalid inputs.
+
+Actual loaded providers matched these installed package hashes:
+
+| Provider under `/usr/pkg/gcc16/lib` | SHA256 |
+| --- | --- |
+| `libgcc_s.so.1` | `71c89f59a0b1d9d96f94d07303d0727e60addcfc5ad4533c024dea331d4d93f5` |
+| `libstdc++.so.7` | `b9b90b7d765eabacbe01c00a16fbb9846f0e3bfd4c56955599843e062173bf5c` |
+| `libgomp.so.1` | `b3718586235d5689b1d3339e0f2b64b8a1f8cb5a4e330cefd8947ec6d648dd19` |
+| `libatomic.so.3` | `10685292d1cc2e2558ffcb5b349329114c5102143c07cc07ff106cb799c26dce` |
+
+Package removal made the consumers fail at the loader for the absent DSOs.
+Reinstallation restored all functional results and package integrity checks.
+No loader override or target compiler was used. This qualifies this AArch64
+runtime package and these consumers. It does not qualify amd64 execution,
+KiCad, Plasma, a complete image or physical hardware.

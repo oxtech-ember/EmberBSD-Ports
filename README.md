@@ -60,7 +60,10 @@ runtime behavior are validated.
   keep compilers out of application images. Host package creation and isolated
   installation pass for synthetic amd64 and AArch64 runtime fixtures with
   native pkgtools. Target triplet, ELF and package architecture must agree.
-  Real runtime package and desktop acceptance remain separate checks.
+  The real AArch64 nb2 runtime-only package also passes installed plain/LTO
+  C11/C++20, threads, TLS, DSO exceptions, OpenMP and large atomic checks in
+  the verified E34 QEMU guest. Removal and reinstallation preserve the expected
+  loader boundary. Desktop and amd64 runtime execution remain separate checks.
   Common Qt rebuilding and full-image integration
   remain pending.
   [GDB 18.1nb1](profiles/development-toolchain/gdb/README.md) is cross-built and

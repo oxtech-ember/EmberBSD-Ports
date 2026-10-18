@@ -58,6 +58,11 @@ compiler executable alone does not satisfy these prerequisites. This profile
 rejects building `lang/gcc16` as a consumer: its Canadian-cross package recipe
 is a separate, unfinished step.
 
+For OpenMP, also stage the matching GCC16 `omp.h` and `libgomp.spec`.
+The C/C++ wrappers select that specs file through the runtime prefix.
+The [real specs-selection regression](openmp-spec.md) compares the historical
+base selection with GCC16 metadata and checks the resulting target ELF links.
+
 Compose the existing tools without rebuilding them:
 
 ```sh
