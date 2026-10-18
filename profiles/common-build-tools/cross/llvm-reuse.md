@@ -1,6 +1,6 @@
 # LLVM full-stage reuse validator
 
-`recipes/lang/llvm/files/reuse-package-stage.rb` validates a repeat installation
+`recipes/lang/llvm/files/reuse-package-stage.py` validates a repeat installation
 from one accepted LLVM 23.1.3 cross build. It does not build LLVM, install a
 package into a sysroot, or create a package identity. The opt-in pkgsrc adapter retains ordinary SDK package checks.
 Acceptance of an actual runtime/SDK pair remains a separate build result.
@@ -16,7 +16,7 @@ It checks the full partition, directly staged ELF headers and Mach-O magic.
 The archive digest is a trust input. This helper does not replace the archive
 or dependency-closure auditor.
 
-The input JSON uses schema `1` and these fields:
+The input JSON uses schema `2` and these fields:
 
 - `version`: `23.1.3`.
 - `target`: `opsys`, `version`, `arch`, and `triple`. Supported pairs are
@@ -28,29 +28,39 @@ The input JSON uses schema `1` and these fields:
   Both DESTDIRs must be separate from all four input trees. Place the receipt
   outside those input trees and the reference DESTDIR.
 - `flags`: the actual compile/ABI contract. The recipe adapter must produce
-  this from current pkgsrc inputs, including the checked configure environment.
-  `prepare-reuse-inputs.rb` replaces this field with current values. It queries
+  this from current pkgsrc inputs, including the checked configure environment, `MAKE_ENV`, `CMAKE_BUILD_ARGS`,
+  selected build tool, build directories and targets, and install command fields.
+  `prepare-reuse-inputs.py` replaces this field with current values. It queries
   both roles at `runtime_work` and does not rewrite flag or environment strings.
   A caller must not substitute the receipt's old flags for current values.
 - `files`: lists of absolute input paths, grouped by `compiler`, `native_tools`,
   `patches`, and `target_abi`. The last group records the actual external target
   headers and library inputs. Additional groups can hold compile databases
   and provenance.
-- `cmake`, `perl`, `tar`: selected executable native tools. All three must also
+- `cmake`, `python`, `tar`: selected executable native tools. All three must also
   occur in `files.native_tools`.
+- `sdk_source`: the explicit SDK API source. The preparer records all API
+  Python files in `files.sdk_api`.
 - `install_strip`: the current CMake strip mode (`true` or `false`). Match
   pkgsrc `INSTALL_TARGET`. Record the actual target strip tool and wrapper in
   `files.compiler`. Use the same strip mode for the full reference stage.
 - `runtime`: the accepted `archive` path and its `sha256`.
 - `manifests`: paths named `full`, `runtime`, and `devel`.
 
-Use a native Ruby interpreter. The commands are:
+Use one native Python interpreter and SDK API version 1. Set
+`EMBERBSD_SDK_SOURCE` to the explicit SDK source directory. The helper does
+not install the SDK. The commands are:
 
 ```sh
-ruby reuse-package-stage.rb record INPUTS.json EMPTY_REFERENCE_DESTDIR NEW_RECEIPT.json
-ruby reuse-package-stage.rb verify CURRENT_INPUTS.json RECEIPT.json ACCEPTED_SHA256
-ruby reuse-package-stage.rb install CURRENT_INPUTS.json RECEIPT.json ACCEPTED_SHA256 EMPTY_DESTDIR
+python3 -B reuse-package-stage.py record INPUTS.json EMPTY_REFERENCE_DESTDIR NEW_RECEIPT.json
+python3 -B reuse-package-stage.py verify CURRENT_INPUTS.json RECEIPT.json ACCEPTED_SHA256
+python3 -B reuse-package-stage.py install CURRENT_INPUTS.json RECEIPT.json ACCEPTED_SHA256 EMPTY_DESTDIR
 ```
+
+Schema 1 receipts remain readable for immutable verification. They cannot
+run a new installation. Record schema 2 with current Python and SDK inputs
+for a new installation. Full LLVM inventories use a bounded 128 MiB JSON
+limit; the ordinary SDK JSON default remains 16 MiB.
 
 Accept and pin the receipt hash outside the helper before using `install`.
 The helper hashes source, recipe, patch, compiler, native-tool and object inputs.
@@ -66,20 +76,21 @@ SDK selector and pkgsrc package checks after this gate. A successful helper run
 is not SDK package acceptance. Keep failed private stages for diagnosis until
 the caller has preserved the required evidence.
 
-`tests/llvm-stage-reuse.rb CMAKE PERL NEW_WORK` exercises real CMake installation
+`tests/llvm-stage-reuse.py CMAKE NEW_WORK` exercises real CMake installation
 with labelled data fixtures. It checks input drift, incomplete stages, temporary
 object mutation, and mutation after installation. It does not compile LLVM or
 claim target runtime acceptance.
 
 ## Prepare the current pkgsrc contract
 
-Supply a native Ruby executable with `EMBERBSD_LLVM_REUSE_RUBY` and the input
+Supply a native Python executable with `EMBERBSD_LLVM_REUSE_PYTHON` and the input
 inventory JSON with `EMBERBSD_LLVM_REUSE_INPUTS`. Run `llvm-reuse-inputs` in the
 runtime recipe after the ordinary runtime package and archive checks. Use the
 same selected environment and command-line compilation settings as the build.
-The target writes `${WRKDIR}/.llvm-reuse-inputs.json`.
+The target writes `${WRKDIR}/.llvm-reuse-inputs.json`. It rejects overlap with
+the accepted receipt, including a hardlink alias, before an atomic JSON write.
 
-The Ruby preparer runs the current recipe's post-barrier metadata query at the
+The Python preparer runs the current recipe's post-barrier metadata query at the
 common runtime WRKDIR. It retains command-line overrides through MAKEFLAGS and
 uses bmake `-v` to read expanded variables. `_MAKEVARS_MK=defined` prevents the
 query from reading old phase caches. This is a read-only query; it does not
@@ -100,11 +111,12 @@ Use the generated context with `record`. Pin the accepted receipt hash. Check
 that the ordinary SDK target dependencies are already installed before starting
 its package phase. Coordinate any provider replacement separately.
 
-For the SDK package, set all four variables:
+For the SDK package, set the explicit SDK source and all four reuse variables:
 
 ```sh
 bmake package \
-  EMBERBSD_LLVM_REUSE_RUBY=/absolute/native/ruby \
+  EMBERBSD_SDK_SOURCE=/absolute/SDK/source \
+  EMBERBSD_LLVM_REUSE_PYTHON=/absolute/native/python3 \
   EMBERBSD_LLVM_REUSE_INPUTS=/absolute/inventory.json \
   EMBERBSD_LLVM_REUSE_RECEIPT=/absolute/accepted-receipt.json \
   EMBERBSD_LLVM_REUSE_SHA256=ACCEPTED_SHA256
@@ -119,7 +131,7 @@ partition selector and ordinary package checks. Source and object trees stay at
 the accepted common location. Native full LLVM and default cross builds retain
 their existing path.
 
-`tests/llvm-reuse-adapter.rb PKGSRC MAKECONF BMAKE NEW_WORK` uses actual pkgsrc
+`tests/llvm-reuse-adapter.py PKGSRC MAKECONF BMAKE NEW_WORK` uses actual pkgsrc
 queries with an explicitly labelled input fixture. It checks command override
 propagation, literal SDK paths inside arbitrary flags and environment values,
 refusal of an unaccepted receipt at the extract, patch and install hooks, and

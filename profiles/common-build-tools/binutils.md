@@ -69,7 +69,7 @@ The separate [GCC16 cross recipe](../development-toolchain/cross/README.md)
 builds this pinned Binutils 2.47 source and patch set for the selected target.
 It installs `as`, `ld`, and the linker scripts in the cross prefix before it
 configures GCC. GCC uses those paths by default. Its
-[`lto-binutils.sh`](../development-toolchain/cross/tests/lto-binutils.sh)
+[`lto-binutils.py`](../development-toolchain/cross/tests/lto-binutils.py)
 acceptance verifies the AArch64 `collect2`/plugin/LTO path without `-B` or
 specs. This cross-prefix result does not migrate the installed native package
 or establish target execution.

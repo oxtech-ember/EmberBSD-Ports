@@ -47,7 +47,8 @@ On the Linux CI host, install Ruby with its standard library, curl, and xz.
 Run the importer with a new absolute work directory:
 
 ```sh
-ruby profiles/common-build-tools/cross/fetch-sysroot.rb \
+export EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK
+python3 -B profiles/common-build-tools/cross/fetch-sysroot.py \
     FULL_SOURCE_COMMIT TRUSTED_MANIFEST_SHA256 /absolute/new-sdk-work
 ```
 
@@ -76,8 +77,8 @@ not mean that the base OS was compiled with GCC16.
 Run the archive extractor regression on the Linux host:
 
 ```sh
-ruby profiles/common-build-tools/cross/tests/sysroot-archive.rb
-ruby profiles/common-build-tools/cross/tests/fetch-sysroot.rb
+python3 -B profiles/common-build-tools/cross/tests/sysroot-archive.py
+python3 -B profiles/common-build-tools/cross/tests/fetch-sysroot.py
 ```
 
 The regressions cover archive mechanics, hostile inputs, and CLI refusal

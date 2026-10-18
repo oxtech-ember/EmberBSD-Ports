@@ -45,7 +45,7 @@ GCC16 package, which still hardcodes base as/ld.
 ## GCC16 AArch64 cross prefix
 
 On Linux x86_64, the GCC16.2 AArch64 cross prefix selects Ports Binutils 2.47
-by default. `profiles/development-toolchain/cross/build.sh` now builds the
+by default. `profiles/development-toolchain/cross/build.py` now builds the
 pinned source and patch set before it configures GCC. No manual `-B` or specs
 file selects the tools. The build requires GCC 16 host compilers and records
 the source, patch, linker-script, and output hashes in `inputs.txt`.
@@ -58,7 +58,7 @@ The Ports recipe and source manifest match revision `8e93331`. Cross recipe
 commit `534ad94` adds the build and acceptance scripts without changing those
 Binutils source inputs.
 
-The [LTO acceptance script](../../development-toolchain/cross/tests/lto-binutils.sh)
+The [LTO acceptance script](../../development-toolchain/cross/tests/lto-binutils.py)
 passed with the installed GCC 16.2 C and C++ drivers.
 Both compilers reported `aarch64--netbsd`; both selected the prefix's `as`
 and `ld`. The link traces named `collect2`, GCC's `liblto_plugin.so`,

@@ -241,7 +241,7 @@ llvm-select-stage: ${PLIST}
 	    PLIST=${WRKDIR:Q}/.llvm-${_llvm_part:tl}-plist \
 	    PLIST_SRC=${LLVM_${_llvm_part}_PLIST_SRC:Q}
 .endfor
-	${PERL5} ${FILESDIR}/select-package-stage.pl ${LLVM_PACKAGE_PART:Q} \
+	${TOOL_PYTHONBIN} -B ${FILESDIR}/select-package-stage.py --sdk-source ${EMBERBSD_SDK_SOURCE:Q} ${LLVM_PACKAGE_PART:Q} \
 	    ${DESTDIR:Q}${PREFIX:Q} ${WRKDIR:Q}/.llvm-full-plist \
 	    ${WRKDIR:Q}/.llvm-runtime-plist ${WRKDIR:Q}/.llvm-devel-plist ${PLIST:Q}
 .endif

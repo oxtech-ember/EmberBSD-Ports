@@ -151,6 +151,7 @@ relabeled. No project Python helper is added. Wheel payload/shebang/PLIST checks
 await native staging.
 
 ```sh
+export EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK
 sh profiles/common-build-tools/tests/source-profile.sh \
     /absolute/verified-distfiles /absolute/new-work llvm-source
 ```
@@ -193,10 +194,10 @@ no upper Python bound, and its resource-limit fixture handles Python 3.15.
 The pinned source passes this bounded launcher contract on host Python 3.15.0.
 This does not establish target wheel installation or the full LLVM test suite.
 
-`llvm-lit-selection.rb` queries the complete recipe with real BSD make:
+`llvm-lit-selection.py` queries the complete recipe with real BSD make:
 
 ```sh
-ruby profiles/common-build-tools/tests/llvm-lit-selection.rb \
+python3 -B profiles/common-build-tools/tests/llvm-lit-selection.py \
     /absolute/normal-export \
     /absolute/source/profiles/common-build-tools/recipes/devel/py-llvm-lit/Makefile \
     /absolute/bmake /absolute/native.mk.conf /absolute/cross.mk.conf \
@@ -219,7 +220,7 @@ it uses the shared Python3.14 provider, without PYTHONPATH overrides.
 
 Use the [common cross composition](cross/README.md) and the
 [host LLVM metadata workflow](../common-graphics/cross/llvm-config.md).
-`cross/build-llvm-native.sh` builds matching native TableGen generators;
+`cross/build-llvm-native.py` builds matching native TableGen generators;
 `EMBERBSD_LLVM_NATIVE_TOOLS` selects their absolute directory. The recipe
 checks each executable's exact version and keeps host generators separate
 from target LLVM headers and libraries. It includes upstream libc utilities
