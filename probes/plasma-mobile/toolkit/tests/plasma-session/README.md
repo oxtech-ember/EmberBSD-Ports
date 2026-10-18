@@ -12,7 +12,7 @@ Qt 6.12 NetBSD detached-launch defect: KWin can inherit forkfd state without
 its SIGCHLD handler. Xwayland then waits for startup-script completion and
 ordinary clients stall. The [Qt process regression](../qt-process/README.md)
 reproduces this failure independently of graphics. The source patch is in the
-common Qtbase recipe; installed patched-package acceptance remains required.
+common Qtbase recipe. The installed corrected runtime passes the checks below.
 The earlier 64 MiB BO-budget failure is separate and has a kernel repair.
 Host fixtures test orchestration; they do not execute KDE or Mesa.
 
@@ -168,22 +168,31 @@ Host result: 33 full-controller controls and 25 focused Xauthority controls pass
 on macOS with native Perl 5.44 and Ruby 4.0. The focused test runs the actual
 controller block with real BSD `stat` mode formatting. Only a foreign UID is
 modeled without changing ownership. The pinned previous runner fails on the
-correct KWin runtime path. These are host controls, not a native session result.
-The scripts passed shell, Perl and Ruby syntax checks. No C/C++ source changes
-are present in this test, so Cppcheck and compiled-code sanitizer coverage do
-not apply to this patch. Native execution passes the Xauthority gate but
-fails later during full-session acceptance. Target memory analysis remains
-unperformed.
+correct KWin runtime path. These are host controls. The scripts pass shell,
+Perl and Ruby syntax checks. They do not change C/C++ source.
 
-The failing native run used kernel `93dc0e3167a2e1381c9c4971cf8e4ee00f282685`,
-Mesa 26.2.4nb8 and Xwayland 24.1.14nb3. A process-local DRM trace observed
-two failed 5,246,976-byte allocations with ENOMEM. The trace does not separate
-the global BO budget from DMA or GEM-handle allocation failure. The boot time
-remained unchanged, and temperature stayed below 66 degrees Celsius. This
-result is separate from the accepted bare Desktop capture and liveness test.
+The complete installed Qtbase 6.12.0nb2 runtime passes two clean sessions on
+CM5 with kernel `ecb7a4258aa2263da18088f7ee0a76233ffce92f`, Mesa 26.2.4nb8,
+KWin 6.8.0nb1, Workspace 6.8.0nb3 and Xwayland 24.1.14nb3. Controller start to
+full readiness takes 18.408 and 15.661 seconds. Each session keeps the original
+five-second query deadline, passes 30 seconds of liveness and completes normal
+logout in about two seconds. BO accounting returns to its initial value and
+reports no allocation failures. The recorded temperature stays below 58 degrees
+Celsius without throttling or undervoltage.
+
+These runs use ordinary installed libraries. They do not use library
+interposition, tracing, a private QtCore or larger response deadlines.
+The installed Qt process matrix also passes 320 child exits and 16 expected
+failed launches. A separate Qt/GLES consumer verifies shader pixels in two
+Wayland GPU processes and completes compositor cleanup.
+
+The virtual output does not establish physical HDMI, hotplug, physical input,
+a remote desktop or long-duration stability. An earlier instrumented kernel
+reported a separate CL completion failure. Its cause is not established by
+these successful sessions. Target memory analysis remains unperformed.
 
 The system-bus prerequisite and query diagnostics pass 71 host controls.
 The pinned previous runner misses an unavailable system bus and converts a
 query timeout to status 1. The new controls reproduce both causes and reject
 malformed bus IDs. They retain the exact service, object and method contract.
-The new runner still requires native full-session acceptance.
+The native session result above does not qualify physical display output.

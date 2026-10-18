@@ -4,6 +4,10 @@ The [Lerc 4.2.0nb1 padding correction](cross/lerc.md) removes a reproduced
 uninitialized Huffman checksum input. Normal GCC16 native/AArch64 packages
 and the original native samples pass. Target execution remains pending.
 
+[wxWidgets 3.2.12](cross/wxwebkit.md) retains the stable 3.2 API and the
+canonical WebView, media and OpenGL configuration. Its source and recipe
+metadata checks pass; the WebKit upgrade and full GUI build remain pending.
+
 [Maintained FreeImage 3.19.25 and LibRaw 0.22.2](cross/freeimage.md)
 provide common source recipes for OCCT image support. Source preparation,
 GCC16 header selection and half conversions pass; complete codec packages
@@ -12,6 +16,11 @@ and installed OCCT image workflows remain pending.
 The [ngspice 47 package pair](cross/ngspice.md) provides the CLI and shared
 SPICE API for KiCad, with common XSPICE modules and normal pkgsrc dependencies.
 Its target package and runtime checks remain pending.
+
+The [common Eigen 5.0.1 provider](cross/eigen.md) retains `math/eigen3`,
+`Eigen3::Eigen` and the full upstream headers and companion libraries. Its
+ordinary GCC16 AArch64 package passes all 613 payload checks. Four native
+numerical checks pass; installed target checks remain pending.
 
 This opt-in source profile prepares canonical MesaLib 26.2.4nb8, adapted
 libdrm 2.4.134nb2, Wayland 1.26.0nb1 and wayland-protocols 1.49 for

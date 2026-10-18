@@ -29,6 +29,10 @@ runtime behavior are validated.
   focused native regressions cover the source repairs; KiCad uses the
   current exception API. The complete OCCT package and installed STEP
   geometry checks remain pending.
+- [Common Eigen 5.0.1](profiles/common-graphics/cross/eigen.md): the existing
+  provider retains its CMake/header interfaces and full companion libraries.
+  GCC16 AArch64 packaging verifies all 613 entries; four selected native
+  numerical checks pass. Installed target checks remain pending.
 - [Maintained FreeImage sources](profiles/common-graphics/cross/freeimage.md):
   FreeImage/FreeImagePlus 3.19.25 and LibRaw 0.22.2 retain common codecs for
   OCCT. Source and focused native half checks pass; complete packages and
@@ -40,12 +44,15 @@ runtime behavior are validated.
   Matching code generation retains its output and error behavior. Documented
   process-lifetime exceptions keep the original CLI's memory failures visible.
   The same C++ and UPB contracts pass in the AArch64 E34 guest with the
-  GCC16-built shared-library closure. Ordinary pkgsrc ownership, package
+  GCC16-built shared-library closure. Ordinary protobuf package ownership,
   lifecycle and KiCad integration remain pending.
   The [common Abseil recipe](profiles/common-build-tools/cross/protobuf.md)
-  repairs NetBSD stack traces; a separate AArch64 source-probe regression passes.
+  repairs NetBSD stack traces. Its ordinary AArch64 package passes two installed
+  SDK consumers, all 816 payload checks and removal/reinstallation.
   Cross protobuf recipes separate runtime libraries from target generators and
   SDK files. Their source ownership checks preserve the full native package.
+  Common CMake discovery now prefers selected package dependencies over base
+  namesakes; GCC16 zlib discovery/link controls preserve native behavior.
 - [KiCad SPICE prerequisites](probes/kicad/ngspice/README.md): ngspice 47
   source repairs retain the shared C API, XSPICE, OpenMP, FFTW and Readline.
   Native numerical and causal ownership checks pass. Raw memory reports

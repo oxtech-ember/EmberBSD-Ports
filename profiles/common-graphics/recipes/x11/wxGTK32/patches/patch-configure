@@ -1,0 +1,16 @@
+$NetBSD: patch-configure,v 1.7 2026/03/27 09:10:59 adam Exp $
+
+Use standard sonames on SunOS.
+
+--- configure.orig	2026-02-28 12:50:12.000000000 +0000
++++ configure
+@@ -44587,7 +44587,8 @@ fi
+       *-*-solaris2* )
+         SONAME_FLAG="-h "
+         USE_SOVERSION=1
+-        USE_SOVERSOLARIS=1
++        USE_SOVERLINUX=1
++        USE_SOTWOSYMLINKS=1
+       ;;
+ 
+       *-*-darwin* )

@@ -36,8 +36,9 @@ common runtime/SDK source provider and a separate native generator for cross
 consumers. The cross protobuf runtime installs no target generator; the SDK
 retains the complete development interface. Native packaging stays complete.
 Source, host-tool and CMake metadata regressions pass. Abseil's ordinary package
-and installed SDK consumer links pass. Protobuf split package acceptance and
-ordinary target execution remain pending. A bounded AArch64
+passes both installed SDK consumers on AArch64, all 816 payload checks and
+normal removal/reinstallation. Protobuf split package acceptance remains pending.
+A bounded AArch64
 source-probe regression verifies Abseil's NetBSD stack-trace repair: the same
 consumer changes from zero frames to three non-null frames.
 
