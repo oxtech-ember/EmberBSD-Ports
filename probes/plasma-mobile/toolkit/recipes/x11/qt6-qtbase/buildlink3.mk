@@ -10,8 +10,8 @@ BUILDLINK_ABI_DEPENDS.qt6-qtbase+=	qt6-qtbase>=6.12.0
 BUILDLINK_PKGSRCDIR.qt6-qtbase?=	../../x11/qt6-qtbase
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
-BUILDLINK_API_DEPENDS.qt6-qtbase+= qt6-qtbase>=6.12.0nb1
-BUILDLINK_ABI_DEPENDS.qt6-qtbase+= qt6-qtbase>=6.12.0nb1
+BUILDLINK_API_DEPENDS.qt6-qtbase+= qt6-qtbase>=6.12.0nb2
+BUILDLINK_ABI_DEPENDS.qt6-qtbase+= qt6-qtbase>=6.12.0nb2
 # The installed image needs the runtime; CMake consumers also need the SDK
 # in the build-host sysroot. BUILD_DEPENDS remains a target cross dependency.
 .include "../../x11/qt6-qtbase-devel/buildlink3.mk"

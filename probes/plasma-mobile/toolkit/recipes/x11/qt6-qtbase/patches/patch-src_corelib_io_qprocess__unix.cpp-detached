@@ -1,0 +1,33 @@
+Origin: EmberBSD (AI-assisted).
+Source: https://github.com/qt/qtbase/blob/v6.12.0/src/corelib/io/qprocess_unix.cpp
+Source blob: 58d582b2bb2f10a5e6e2df91c9309e57fa758a84
+
+Use a private address space for the NetBSD detached-launch intermediate child.
+The child calls the forkfd fallback, which initializes process-global state.
+vfork shares those state writes with the parent, but does not share sigaction.
+This can leave the parent with an initialized forkfd and no SIGCHLD handler.
+Keep normal QProcess launch selection and signal-mask cleanup unchanged.
+
+--- src/corelib/io/qprocess_unix.cpp.orig
++++ src/corelib/io/qprocess_unix.cpp
+@@ -358,12 +358,20 @@ struct QChildProcess
+     template <typename Lambda> int doFork(Lambda &&childLambda)
+     {
+         pid_t pid;
++#if defined(Q_OS_NETBSD)
++        // startDetached() calls startChild() in this intermediate child.
++        // NetBSD's forkfd fallback initializes process-global state there.
++        // Keep that state private: vfork() shares the parent's address space,
++        // but changes to SIGCHLD handling belong only to the child process.
++        pid = fork();
++#else
+         if (isUsingVfork) {
+             QT_IGNORE_DEPRECATIONS(pid = vfork();)
+         } else {
+             pid = fork();
+         }
++#endif
+         if (pid == 0)
+             _exit(childLambda());
+         return pid;
+     }

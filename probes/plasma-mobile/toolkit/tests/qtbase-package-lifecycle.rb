@@ -31,8 +31,8 @@ INFO
 File.write(work + '/COMMENT', 'Labelled Qtbase package partition fixture')
 File.write(work + '/DESCR', "Synthetic text payloads for pkgtools contracts. This is not a Qt binary package.\n")
 old = 'qt6-qtbase-6.12.0'
-runtime = 'qt6-qtbase-6.12.0nb1'
-sdk = 'qt6-qtbase-devel-6.12.0nb1'
+runtime = 'qt6-qtbase-6.12.0nb2'
+sdk = 'qt6-qtbase-devel-6.12.0nb2'
 packages = {}
 {
   old => ['normalized-full', 'full', nil],
@@ -43,7 +43,7 @@ packages = {}
   abort 'prepared source-contract fixture required' unless File.directory?(prefix)
   files = File.read(fixture + '/' + manifest + '/.PLIST_nokeywords')
   text = "@name #{name}\n@cwd /usr/pkg\n"
-  text += "@pkgdep #{dependency}\n@pkgcfl qt6-qtbase<6.12.0nb1\n" if dependency
+  text += "@pkgdep #{dependency}\n@pkgcfl qt6-qtbase<6.12.0nb2\n" if dependency
   text += files
   list = work + '/' + name + '.plist'
   File.write(list, text)

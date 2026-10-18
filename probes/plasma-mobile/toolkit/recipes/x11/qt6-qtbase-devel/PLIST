@@ -4012,7 +4012,6 @@ qt6/mkspecs/devices/linux-tegra2-g++/qmake.conf
 qt6/mkspecs/devices/linux-tegra2-g++/qplatformdefs.h
 qt6/mkspecs/devices/linux-tinkerboard-g++/qmake.conf
 qt6/mkspecs/devices/linux-tinkerboard-g++/qplatformdefs.h
-qt6/mkspecs/devices/qmake.conf
 qt6/mkspecs/dummy/qmake.conf
 qt6/mkspecs/features/android/android.prf
 qt6/mkspecs/features/android/android_deployment_settings.prf
