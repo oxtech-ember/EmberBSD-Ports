@@ -69,8 +69,9 @@ BMAKE=/absolute/native/bmake ruby ../tests/wayland-package-split.rb \
 ```
 
 These checks pass with the actual GCC16 AArch64 revision-1 stage.
-They do not establish new revision-2 package creation, SDK installation or
-target execution. Those normal package and installed-runtime checks remain pending.
+Separate fresh revision-2 builds now pass ordinary package creation and the
+installed AArch64 checks below. The source-stage contract itself does not
+substitute for those package and runtime results.
 
 ## epoll-shim configuration
 
@@ -145,6 +146,8 @@ and leak/timeout-disabling variables. Each invocation retains the upstream
 30-second limit and an additional five-second kill grace. Exit 77 is
 reported separately as SKIP. A failed process makes the suite fail.
 The result directory contains individual logs, loader paths and totals.
+Minimal images must also provide the ordinary base utilities used by the
+runner, including `tee`.
 
 Passing these tests establishes installed protocol-library behavior on the
 recorded kernel. It does not establish target scanner behavior, a compositor,
@@ -179,7 +182,40 @@ It prepares all 24 real AArch64 runtime test executables. Their ELF RPATH
 entries contain only installed target library directories. No target
 execution or new runtime package acceptance is inferred from these checks.
 
-## Accepted target run
+## Accepted runtime-only AArch64 VM run
+
+On 2026-10-18, two fresh ordinary pkgsrc builds on Linux/GCC16.2 produced the
+complete runtime and SDK partitions with all upstream tests enabled. Both pass
+file, interpreter, permission, PIE, RELRO, RPATH and work-directory checks.
+Normal SDK installation verifies all 13 runtime and 23 development entries,
+including their bytes, modes and links. The package SHA256 values are:
+
+| Package | SHA256 |
+| --- | --- |
+| `wayland-1.26.0nb2` | `66fa58ed077199d192eab2c7db082c53f2c39b1649c0c15d418d2c1bc53c38c1` |
+| `wayland-devel-1.26.0nb2` | `5b46ee4da1f15df0baf4dc71e43914cd876fb3c0ce84daa9e3c9d76b5cfa7253` |
+
+The EmberBSD 11 AArch64 VM installs only the runtime package and its genuine
+runtime dependencies. All 153 entries across these seven packages match their
+recorded SDK providers. The 24 upstream ELF invocations pass twice with zero
+skips or failures, before and after normal deletion/reinstallation. The removed
+library causes the real client loader to fail as expected. Loader overrides,
+leak-check suppression and target SDK/scanner installation are absent.
+The native scanner golden/malformed-input test and target EGL symbol check
+pass separately; they are not counted as target runtime executions.
+
+An initial run stopped because the minimal image lacked `tee`. Its exact
+utility from the verified E34 base set was added, and the unchanged runner
+then passed. Those partial logs remain with the successful results. All
+5,822 prior package paths retain their hashes and metadata. Two verified
+source/evidence archives preserve the full builds and guest readback; scoped
+temporary guest files were removed after process, descriptor and mount checks.
+
+This validates the new runtime package on the recorded AArch64 VM. It does not
+establish a new native or amd64 package run, target scanner execution, a
+compositor, physical display/input or KiCad WebView behavior.
+
+## Earlier full-package board run
 
 On 2026-10-08 the package cross-built on Apple Silicon with Ports GCC16.2
 and passed pkgsrc file, dependency, interpreter, PIE, RELRO, RPATH and
