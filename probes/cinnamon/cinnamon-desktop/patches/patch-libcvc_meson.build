@@ -1,0 +1,24 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Retain introspection during cross
+builds: the shared target GType query launcher and ELF ldd wrapper
+apply to the Cvc GIR.
+
+--- libcvc/meson.build.orig
++++ libcvc/meson.build
+@@ -59,7 +59,15 @@
+   version: '0.0.0',
+ )
+ 
++# EmberBSD cross: shared GI machinery (target GType queries + ldd wrapper).
++gir_extra_args = []
++gir_env = environment()
++if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++  gir_extra_args = ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++  gir_env.set('LD_LIBRARY_PATH', meson.current_build_dir())
++endif
+ gnome.generate_gir(libcvc,
++  extra_args: gir_extra_args, env: gir_env,
+   sources: libcvc_gir_sources + libcvc_headers + libcvc_enums,
+   namespace: 'Cvc',
+   nsversion: '1.0',
