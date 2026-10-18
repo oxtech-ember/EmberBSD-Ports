@@ -94,10 +94,23 @@ refused('uncertain drain blocks verify', reuse.verify, str(config), str(receipt)
 refused('uncertain drain blocks install', reuse.install, str(config), str(receipt), digest, destination('blocked-install'))
 refused('uncertain drain blocks new record', reuse.record, str(config), destination('blocked-record'), str(work / 'new-receipt.json'))
 assert not (work / 'new-receipt.json').exists()
-assert hashlib.sha256(receipt.read_bytes()).hexdigest() == digest and reuse.snapshot(value) == original
-checks.append('quarantine is outside immutable trees and preserves the accepted receipt')
+assert hashlib.sha256(receipt.read_bytes()).hexdigest() == digest
+refused('quarantine blocks direct snapshot', reuse.snapshot, value)
+# Inspect the reserved control file separately. The production snapshot never
+# excludes it: an existing marker makes the complete snapshot refuse.
+assert reuse.tree(value['build'], ['install_manifest.txt', '.llvm-reuse-quarantine.json']) == original['build']
+assert reuse.tree(value['source'], ['build']) == original['source']
+checks.append('quarantine preserves accepted receipt and immutable source/object bytes')
 marker = reuse.quarantine_path(value)
 assert Path(marker).is_file()
+# Keep the same source/build inodes but change the source parent. The marker
+# must travel with the build, not remain in the previous parent directory.
+relocated = work / 'different-parent'
+relocated.mkdir()
+Path(value['source']).rename(relocated / 'source')
+moved = dict(value, source=str(relocated / 'source'), build=str(relocated / 'source/build'))
+refused('whole source move keeps quarantine', reuse.reject_quarantine, moved)
+(relocated / 'source').rename(Path(value['source']))
 state = json.loads(Path(marker).read_text())
 assert state['state'] == 'ownership-uncertain' and state['sid'] == 12345
 alias = work / 'alias'

@@ -70,6 +70,7 @@ def context(path):
 
 
 def snapshot(value):
+    reject_quarantine(value)
     build = value['build']
     check(not os.path.islink(build + '/install_manifest.txt'), 'CMake install manifest must not be a symlink')
     return dict(files={kind: {p: hash_file(p) for p in paths} for kind, paths in value['files'].items()},
@@ -151,17 +152,15 @@ def reject_overlaps(path, roots, message):
 def quarantine_path(value):
     from emberbsd_sdk.paths import canonical_existing, real_directory
     build = canonical_existing(value['build'])
-    info = real_directory(build)
-    parent = Path(canonical_existing(value['source'])).parent
-    # Keep control metadata outside immutable source and object inventories.
-    # The inode key also covers an ancestor alias or a renamed build directory.
-    return str(parent / f'.llvm-reuse-{info.st_dev}-{info.st_ino}.quarantine.json')
+    real_directory(build)
+    # The reserved marker travels with the build if any ancestor is renamed.
+    # Reject it before snapshots. Remove it only after proven process drainage.
+    return str(Path(build) / '.llvm-reuse-quarantine.json')
 
 
 def reject_quarantine(value):
     path = quarantine_path(value)
     check(not os.path.lexists(path), f'LLVM build is quarantined; inspect {path}')
-    reject_overlaps(path, input_roots(value), 'Quarantine marker overlaps LLVM inputs')
 
 
 def guarded_install(value, command, log, env):

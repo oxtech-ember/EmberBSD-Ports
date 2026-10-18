@@ -70,16 +70,18 @@ inputs before and after installation. CMake may rewrite `install_manifest.txt`;
 this is the only excluded generated metadata file. Original objects and source
 files must retain their bytes, modes and link targets.
 
-Before CMake starts, the helper creates a quarantine marker beside the canonical
-source directory. Its name records the build directory device and inode.
-The marker is outside all immutable input inventories. It prevents concurrent
-reuse and survives abrupt caller termination. After a completed producer or a
-proven interruption drain, the helper removes only its unchanged marker.
+Before CMake starts, the helper creates `.llvm-reuse-quarantine.json` inside
+the canonical build directory. This reserved marker moves with the build when
+any ancestor is renamed. It prevents concurrent reuse and survives abrupt
+caller termination. An existing marker rejects every input snapshot. The
+helper does not exclude the marker from an accepted immutable inventory.
+After a completed producer or a proven interruption drain, the helper removes
+only its unchanged marker.
 A completed nonzero status, including `97`, permits a new empty stage.
 
 If the SDK raises `ProcessOwnershipError`, the helper retains the marker.
 All `record`, `verify`, and `install` calls then refuse the same build identity.
-An ancestor path alias or a renamed build directory does not remove this guard.
+An ancestor alias, build rename, or complete source relocation keeps this guard.
 Malformed markers and marker symlinks also cause refusal. Before recovery,
 prove that the producer session has stopped. Check the source and object hashes.
 Preserve the marker and install log as evidence before controlled marker removal.
