@@ -76,6 +76,15 @@ cp "$work/gi-distinfo" "$gi/distinfo"
 printf '\nchanged\n' >> "$gi/patches/patch-girepository_gthash-memory"
 negative altered-gi-gthash-patch
 cp "$root/profiles/common-graphics/recipes/devel/gobject-introspection/patches/patch-girepository_gthash-memory" "$gi/patches/patch-girepository_gthash-memory"
+mv "$gi/patches/patch-tests_scanner_test_ccompiler.py" "$work/gi-compiler-mock-patch"
+negative missing-gi-compiler-mock-patch
+sed '/SHA1 (patch-tests_scanner_test_ccompiler.py)/d' "$work/gi-distinfo" > "$gi/distinfo"
+negative omitted-gi-compiler-mock-patch-and-checksum
+mv "$work/gi-compiler-mock-patch" "$gi/patches/patch-tests_scanner_test_ccompiler.py"
+cp "$work/gi-distinfo" "$gi/distinfo"
+printf '\nchanged\n' >> "$gi/patches/patch-tests_scanner_test_ccompiler.py"
+negative altered-gi-compiler-mock-patch
+cp "$root/profiles/common-graphics/recipes/devel/gobject-introspection/patches/patch-tests_scanner_test_ccompiler.py" "$gi/patches/patch-tests_scanner_test_ccompiler.py"
 for name in cross.mk cargo-depends.mk; do
     helper=$profile/recipes/graphics/librsvg/$name
     mv "$helper" "$work/librsvg-helper"
