@@ -24,8 +24,12 @@ int main(int argc, char **argv)
         process.waitForFinished(1000);
         app.exit(2);
     });
+    QObject::connect(&process, &QProcess::errorOccurred, [&](QProcess::ProcessError error) {
+        std::fprintf(stderr, "error=%d message=%s\n", int(error), qPrintable(process.errorString()));
+        app.exit(3);
+    });
     elapsed.start();
     timeout.start(5000);
-    process.start(QStringLiteral("/bin/true"));
+    process.start(QStringLiteral("/bin/sh"), {QStringLiteral("-c"), QStringLiteral("exit 0")});
     return app.exec();
 }
