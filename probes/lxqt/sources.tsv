@@ -3,3 +3,6 @@ lxqt-build-tools-2.4.0.tar.xz	14999ff954e820a23af44389b9f7c65f9e58b2f1c0a559f0ba
 libqtxdg-4.4.0.tar.xz	34d25949ae7b6275fb54da46187dd8ba41771600353405b15e53bdc90b9e287a	https://github.com/lxqt/libqtxdg/releases/download/4.4.0/libqtxdg-4.4.0.tar.xz
 xterm-412.tgz	b48bc780c1cbc14f6d89269f7e593712af6095876960d650be28b55e5dad65a6	https://invisible-island.net/archives/xterm/xterm-412.tgz
 luit-20260907.tgz	97bd13da3e3aa59785d64504d37389612a327953bb7581508c5fea5182f9f561	https://invisible-island.net/archives/luit/luit-20260907.tgz
+liblxqt-2.4.0.tar.xz	6627215644eb370723536274555743db52baed919db6ffc32ebc2bdf3cf8ee4a	https://github.com/lxqt/liblxqt/releases/download/2.4.0/liblxqt-2.4.0.tar.xz
+lxqt-session-2.4.0.tar.xz	d77f378ece0bfc7195f1964e88f55919729c3b0a55a858d7155ffaacc57bba44	https://github.com/lxqt/lxqt-session/releases/download/2.4.0/lxqt-session-2.4.0.tar.xz
+qtxdg-tools-4.4.0.tar.xz	f21ba4308eac0effd417d910cc4916df7b6202aaeee777b51bb120f7abc6c5ac	https://github.com/lxqt/qtxdg-tools/releases/download/4.4.0/qtxdg-tools-4.4.0.tar.xz
