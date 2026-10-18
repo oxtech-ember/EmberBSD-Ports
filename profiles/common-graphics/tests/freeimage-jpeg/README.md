@@ -16,12 +16,14 @@ For cross builds, add `--target`, supply the common NetBSD GCC16 C++ compiler,
 and use the codec prefix inside its configured sysroot. This mode builds both
 executables and records `BUILT_UNRUN`. Run `before/contract` on EmberBSD and
 expect status 1 with the unsupported-transform diagnostic. Run `after/contract`
-and expect status 0 with all 334 cases complete. Target mode does not run native
+and expect status 0 with all 335 cases complete. Target mode does not run native
 analyzers or claim execution. Its RPATH selects the target codec prefix and
-the common `/usr/pkg/gcc16/lib` runtime. It never writes to the sysroot.
+the common `/usr/pkg/gcc16/lib` runtime. It selects that library at link time
+and verifies the executable's `NEEDED` entry against its actual SONAME.
+It never writes to the sysroot.
 
 The original system-provider implementation fails a valid perfect vertical
-flip. The repaired implementation passes 334 cases. The oracle checks actual
+flip. The repaired implementation passes 335 cases. The oracle checks actual
 DCT coefficients, quantization tables and APP1/COM markers. It covers all eight
 operations, crop expansion, rectangle normalization, edge-relative positions,
 perfect-transform refusals and trimming. It exercises 4:4:4, 4:2:2, 4:2:0,
@@ -32,6 +34,14 @@ short reads, short writes, failed and throwing callbacks, malformed input,
 and a real `std::bad_alloc` from the source input buffer. GNU ld wraps the
 allocation call; it preserves the allocator and Memcheck's ownership tracking.
 Every assertion stays active, including CMake Release builds.
+
+The system libjpeg header callback uses `setjmp` recovery inside a plain
+helper. Its state is allocated on the heap. The error path does not throw
+through codec C frames or cross a C++ object's lifetime with `longjmp`.
+The AArch64 common libjpeg has no C++ unwind tables. A matched GCC16 control
+with the former throwing callback aborts on malformed input. The repaired
+callback passes the same 335 cases on EmberBSD with the common C++ runtime.
+These source contracts do not establish installed FreeImage package behavior.
 
 TurboJPEG's public API rejects crops for unknown sampling types. The contract
 checks exact uncropped transforms of a 3:1 sample and consistent crop/query

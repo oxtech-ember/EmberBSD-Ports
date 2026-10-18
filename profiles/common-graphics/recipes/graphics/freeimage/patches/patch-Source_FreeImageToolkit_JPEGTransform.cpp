@@ -22,7 +22,7 @@ Origin: EmberBSD (AI-assisted), public system-JPEG lossless transforms.
  
  // ----------------------------------------------------------
  //   Source manager & Destination manager setup
-@@ -160,14 +166,156 @@
+@@ -160,14 +166,206 @@
  }
  
  #ifdef FREEIMAGE_SYSTEM_LIBJPEG
@@ -31,10 +31,69 @@ Origin: EmberBSD (AI-assisted), public system-JPEG lossless transforms.
 -// jpegtran example source, not a public dev header) - report cleanly
 -// unsupported rather than failing the build.
 +// Use the public TurboJPEG API. The jpegtran transupp API is not installed.
++struct SystemJPEGError {
++	jpeg_error_mgr manager;
++	jmp_buf recovery;
++};
++
++struct SystemJPEGHeader {
++	int width, height, mcuWidth, mcuHeight;
++};
++
++METHODDEF(void)
++system_jpeg_output_message(j_common_ptr cinfo) {
++	BOOL failed = FALSE;
++	try {
++		ls_jpeg_output_message(cinfo);
++	}
++	catch(...) {
++		failed = TRUE;
++	}
++	// Finish exception cleanup before jumping out of a user callback failure.
++	if(failed) {
++		SystemJPEGError* error = reinterpret_cast<SystemJPEGError*>(cinfo->err);
++		longjmp(error->recovery, 1);
++	}
++}
++
 +METHODDEF(void)
 +system_jpeg_error_exit(j_common_ptr cinfo) {
 +	(*cinfo->err->output_message)(cinfo);
-+	throw FIF_JPEG;
++	SystemJPEGError* error = reinterpret_cast<SystemJPEGError*>(cinfo->err);
++	longjmp(error->recovery, 1);
++}
++
++static BOOL
++readSystemJPEGHeader(const unsigned char* input, unsigned long length, SystemJPEGHeader* info) {
++	// C codec libraries need not contain C++ unwind tables. Keep recovery in
++	// this helper, with no C++ objects across longjmp. Heap-owned state stays
++	// defined after longjmp, including partially created libjpeg allocations.
++	struct HeaderState {
++		jpeg_decompress_struct header;
++		SystemJPEGError error;
++	};
++	HeaderState* const state = static_cast<HeaderState*>(calloc(1, sizeof(HeaderState)));
++	if(!state) return FALSE;
++	state->header.err = jpeg_std_error(&state->error.manager);
++	state->error.manager.error_exit = system_jpeg_error_exit;
++	state->error.manager.output_message = system_jpeg_output_message;
++	if(setjmp(state->error.recovery)) {
++		jpeg_destroy_decompress(&state->header);
++		free(state);
++		return FALSE;
++	}
++	jpeg_create_decompress(&state->header);
++	jpeg_mem_src(&state->header, input, length);
++	const BOOL result = jpeg_read_header(&state->header, TRUE) == JPEG_HEADER_OK;
++	if(result) {
++		info->width = state->header.image_width;
++		info->height = state->header.image_height;
++		info->mcuWidth = DCTSIZE * (state->header.num_components == 1 ? 1 : state->header.max_h_samp_factor);
++		info->mcuHeight = DCTSIZE * (state->header.num_components == 1 ? 1 : state->header.max_v_samp_factor);
++	}
++	jpeg_destroy_decompress(&state->header);
++	free(state);
++	return result;
 +}
 +
  static BOOL
@@ -52,8 +111,6 @@ Origin: EmberBSD (AI-assisted), public system-JPEG lossless transforms.
 +		}
 +	}
 +
-+	jpeg_decompress_struct header = {};
-+	jpeg_error_mgr error;
 +	tjhandle transformer = NULL;
 +	unsigned char* output = NULL;
 +	size_t output_size = 0;
@@ -80,12 +137,8 @@ Origin: EmberBSD (AI-assisted), public system-JPEG lossless transforms.
 +
 +		// Public libjpeg headers also describe unusual sampling factors that
 +		// TurboJPEG reports as TJSAMP_UNKNOWN. Do not guess their iMCU size.
-+		header.err = jpeg_std_error(&error);
-+		header.err->error_exit = system_jpeg_error_exit;
-+		header.err->output_message = ls_jpeg_output_message;
-+		jpeg_create_decompress(&header);
-+		jpeg_mem_src(&header, input.data(), (unsigned long)input.size());
-+		if(jpeg_read_header(&header, TRUE) != JPEG_HEADER_OK) {
++		SystemJPEGHeader header;
++		if(!readSystemJPEGHeader(input.data(), (unsigned long)input.size(), &header)) {
 +			throw(1);
 +		}
 +
@@ -109,12 +162,10 @@ Origin: EmberBSD (AI-assisted), public system-JPEG lossless transforms.
 +			default:
 +				transform.op = TJXOP_NONE; break;
 +		}
-+		const int fullWidth = swappedDim ? header.image_height : header.image_width;
-+		const int fullHeight = swappedDim ? header.image_width : header.image_height;
-+		const int mcuWidth = DCTSIZE * (header.num_components == 1 ? 1 :
-+			(swappedDim ? header.max_v_samp_factor : header.max_h_samp_factor));
-+		const int mcuHeight = DCTSIZE * (header.num_components == 1 ? 1 :
-+			(swappedDim ? header.max_h_samp_factor : header.max_v_samp_factor));
++		const int fullWidth = swappedDim ? header.height : header.width;
++		const int fullHeight = swappedDim ? header.width : header.height;
++		const int mcuWidth = swappedDim ? header.mcuHeight : header.mcuWidth;
++		const int mcuHeight = swappedDim ? header.mcuWidth : header.mcuHeight;
 +		if(perfect == TRUE && ((trimH && fullWidth % mcuWidth) ||
 +			(trimV && fullHeight % mcuHeight))) {
 +			FreeImage_OutputMessageProc(FIF_JPEG, "Transformation is not perfect");
@@ -180,7 +231,6 @@ Origin: EmberBSD (AI-assisted), public system-JPEG lossless transforms.
 +	}
 +	tj3Free(output);
 +	if(transformer) tj3Destroy(transformer);
-+	jpeg_destroy_decompress(&header);
 +	return result;
  }
  #else

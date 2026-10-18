@@ -2,7 +2,7 @@
 .include "../../graphics/freeimage/Makefile.common"
 
 PKGNAME=	freeimageplus-3.19.25
-PKGREVISION=	1
+PKGREVISION=	2
 MAINTAINER=	pkgsrc-users@NetBSD.org
 COMMENT=	C++ wrapper for the maintained FreeImage library
 CMAKE_CONFIGURE_ARGS+=	-DFREEIMAGE_SOURCE_ROOT=${WRKSRC}
@@ -11,7 +11,7 @@ TEST_TARGET=		test
 pre-configure:
 	${CP} ${FILESDIR}/CMakeLists.txt ${WRKSRC}/CMakeLists.txt
 
-BUILDLINK_API_DEPENDS.freeimage+=	freeimage>=3.19.25nb2
+BUILDLINK_API_DEPENDS.freeimage+=	freeimage>=3.19.25nb3
 .include "../../graphics/freeimage/buildlink3.mk"
 .include "../../mk/bsd.prefs.mk"
 PLIST_VARS+=		darwin elf
