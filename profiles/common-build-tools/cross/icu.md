@@ -53,7 +53,10 @@ file, duplicate entry, leaked generator, missing file, missing SDK feature and
 a boolean in place of the integer feature version.
 The real native and AArch64 payload checks pass. Native metadata retains the
 complete package; cross metadata selects the two roles and exact dependency.
-These checks do not establish final split package or installed target acceptance.
+The complete GCC16 AArch64 runtime and SDK packages also pass the ordinary
+package-list, permission, PIE, RELRO, runtime-path and work-reference gates.
+All 18 runtime and 256 SDK entries match their installed sysroot bytes, modes,
+links and registration. The native package remains the full 78.3nb1 provider.
 
 Build resource fixtures with the matching native package on the development
 host. Then build the consumer with the target SDK:
@@ -70,5 +73,17 @@ sh profiles/common-build-tools/tests/icu-cross-consumer.sh \
 Copy the consumer directory to EmberBSD and run `sh run.sh .`. The target
 runner requires the runtime package and rejects installed ICU SDK files and
 generators. It checks conversion, collation and consumption of host-generated
-resources. Native `genrb` and `pkgdata` fixture generation passes. Final split
-packages, installed lifecycle checks and amd64 execution remain separate gates.
+resources. Native `genrb` and `pkgdata` fixture generation passes. The native
+installed API consumer passes strict Memcheck with zero errors and zero live
+allocations. This is a bounded API check, not the full upstream suite.
+
+The installed AArch64 runtime passes the runner in EmberBSD. UTF-8/UTF-16LE
+conversion preserves its bytes, collation has the expected order, and the
+host-generated resource returns 42. Its loader uses the common GCC16
+`libstdc++.so.7` and `libgcc_s.so.1`. All 18 runtime file bytes and link targets
+match the archive. The guest contains no ICU SDK or generators.
+Normal deletion makes the unchanged consumer fail to find `libicui18n.so.78`.
+Normal reinstallation restores all checks and package integrity.
+The [acceptance receipt](../tests/icu-installed-aarch64.json) records package
+and consumer identities. amd64 execution and complete upstream tests remain
+separate gates.

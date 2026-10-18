@@ -19,6 +19,11 @@ runtime behavior are validated.
 
 ## Current contents
 
+- [ICU runtime and target SDK](profiles/common-build-tools/cross/icu.md):
+  complete GCC16 AArch64 packages split runtime libraries and user commands
+  from generators and build interfaces. Installed Unicode conversion,
+  collation, host-generated resources and the C API pass in EmberBSD,
+  including normal runtime removal/reinstallation. All 274 SDK entries match.
 - [MIT Kerberos for GUI printing](profiles/common-graphics/cross/mit-krb5.md):
   current 1.22.2nb2 packages retain thread-safe GSS clients and explicit
   runtime/SDK roles. Normal GCC16 native/cross packages and installed AArch64
@@ -43,8 +48,9 @@ runtime behavior are validated.
 - [DNS-SD package cross build](profiles/common-build-tools/cross/mdns-build-tools.md):
   current Apple mDNSResponder 2881.120.11 retains its complete package with
   corrected platform and generator selection. Native/AArch64 GCC16 packages
-  and 518 native API cases pass, including strict memory checks. Installed
-  discovery and CUPS integration remain pending.
+  and 518 native and installed AArch64 API cases pass. Native API and socket
+  regressions pass strict memory checks. Network discovery and CUPS service
+  integration remain pending.
 - [Common SWIG 4.5.1](profiles/common-build-tools/cross/swig.md): the full
   native GCC16 package verifies all 846 files and the upstream Python 3.15
   example. A causal CCache repair preserves compiler fallback with closed
@@ -87,7 +93,8 @@ runtime behavior are validated.
 - [Maintained FreeImage sources](profiles/common-graphics/cross/freeimage.md):
   FreeImage/FreeImagePlus 3.19.25 and LibRaw 0.22.2 retain common codecs for
   OCCT. Focused native half, unaligned pixel-copy and lossless JPEG coefficient
-  checks pass. Complete packages and installed image workflows remain pending.
+  checks pass. Complete AArch64 packages pass nine upstream image tests and
+  the original C++ wrapper test in the installed VM. KiCad integration remains pending.
 - [RapidJSON with GCC16](profiles/common-graphics/cross/rapidjson.md): the common
   current snapshot retains its header APIs, examples and strict unit/performance
   builds. Source repairs cover external pointer tokens and shared pool ownership.
