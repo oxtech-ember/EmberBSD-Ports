@@ -32,21 +32,20 @@
 ### Task 1: Add the GCC16 AArch64 Fortran compiler and runtime
 
 **Files:**
-- Modify: `profiles/development-toolchain/cross/build.sh`
+- Modify: `profiles/development-toolchain/cross/pipeline.py`
 - Modify: `profiles/development-toolchain/cross/README.md`
-- Modify: `profiles/development-toolchain/cross/tests/build-modes.sh`
-- Create: `profiles/development-toolchain/cross/tests/fortran-smoke.sh`
-- Modify: `profiles/development-toolchain/bootstrap/build.sh`
+- Modify: `profiles/development-toolchain/tests/python/controllers-test.py`
+- Create: `profiles/development-toolchain/cross/tests/fortran-smoke.py`
+- Modify: `profiles/development-toolchain/bootstrap/pipeline.py`
 - Modify: `profiles/development-toolchain/bootstrap/README.md`
-- Modify: `profiles/development-toolchain/bootstrap/runtime-libraries.sh`
-- Modify: `profiles/development-toolchain/bootstrap/tests/runtime-libraries.sh`
-- Modify: `profiles/development-toolchain/runtime/recipe/files/runtime.rb`
+- Modify: `profiles/development-toolchain/bootstrap/runtime_libraries.py`
+- Modify: `profiles/development-toolchain/runtime/recipe/files/runtime.py`
 - Modify: `profiles/development-toolchain/runtime/recipe/Makefile`
 - Modify: `profiles/development-toolchain/runtime/recipe/PLIST`
 - Modify: `profiles/development-toolchain/runtime/recipe/DESCR`
-- Modify: `profiles/development-toolchain/runtime/recipe/files/relro.rb`
-- Modify: `profiles/development-toolchain/runtime/recipe/files/inheritance.rb`
-- Modify: `profiles/development-toolchain/runtime/tests/package-test.rb`
+- Modify: `profiles/development-toolchain/runtime/recipe/files/relro.py`
+- Modify: `profiles/development-toolchain/runtime/recipe/files/inheritance.py`
+- Modify: `profiles/development-toolchain/runtime/tests/package-test.py`
 - Modify: `profiles/development-toolchain/runtime/README.md`
 
 **Interfaces:**
@@ -71,7 +70,7 @@
 - Modify: `scripts/prepare-pkgsrc.sh`
 - Modify: `scripts/check-published-patches.sh`
 - Create: `profiles/common-build-tools/patches/pkgsrc-cross-fortran.patch`
-- Create: `profiles/common-build-tools/tests/cross-fortran.rb`
+- Create: `profiles/common-build-tools/tests/cross-fortran.py`
 - Modify: `profiles/common-build-tools/tests/source-profile.sh`
 
 **Interfaces:**
