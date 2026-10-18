@@ -120,11 +120,10 @@ that host check does not establish NetBSD runtime support.
 On 2026-10-07, native LGI compilation, its Cairo/Pango/Gio/coroutine
 contract, all 13 icon comparisons, lgi-check and awesome CMake configuration
 passed after the system Lua pthread fix. The documentation generator also
-passed with an explicit build-only Lua module path. After a memory guard
-deferred the first attempt, native compilation and installation completed
-in a coordinated build window. Two runtime regressions exposed incorrect
-Lua/LGI version fields and the upstream `WM_S_S0` selection name. The source
-patches fix both, and the unchanged shared X11 test now passes WM identity,
+passed with an explicit build-only Lua module path. Native compilation and
+installation complete in a coordinated build window. The source patches fix
+the Lua/LGI version fields and the upstream `WM_S_S0` selection name, and
+the unchanged shared X11 test passes WM identity,
 fullscreen/restore, two application windows, focus, keyboard input through
 XTEST, exact saved text and clean session exit.
 
