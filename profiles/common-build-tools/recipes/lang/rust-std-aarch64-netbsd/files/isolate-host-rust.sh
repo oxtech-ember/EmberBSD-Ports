@@ -19,7 +19,7 @@ case "$host/" in "$snapshot/"*) echo 'Snapshot contains installed provider' >&2;
 # required by the unmodified official compiler. Keep those unrelated DSOs out
 # of this temporary bootstrap input, without changing or rebuilding Rust.
 mkdir "$snapshot"
-"$host/sbin/pkg_info" -qL 'rust-bin-1.99.0{,nb[0-9]*}' > "$snapshot/package-files.txt"
+"$host/sbin/pkg_info" -qL 'rust-bin-1.99.1{,nb[0-9]*}' > "$snapshot/package-files.txt"
 while IFS= read -r file; do
     case "$file" in "$host/"*) relative=${file#"$host/"};; '') continue;; *) exit 2;; esac
     case "$relative" in

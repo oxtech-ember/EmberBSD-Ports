@@ -53,7 +53,7 @@ digests before extraction. Cargo builds offline with `--locked`.
 ## Cross adaptation
 
 The recipe uses pkgsrc's `RUST_TYPE=native` mode with declared host tool
-dependencies: Rust 1.99.0, cargo-c 0.10.25 and the matching target std package.
+dependencies: Rust 1.99.1, cargo-c 0.10.25 and the matching target std package.
 GI's validated target metadata selects one coherent provider set:
 
 | pkgsrc architecture | GNU tools | Rust ABI | Native std data package |
@@ -64,7 +64,7 @@ GI's validated target metadata selects one coherent provider set:
 Meson's triplet, `nm`/`strip`/`ar`, Cargo target linker and target C/C++ keys
 use that same selection. Unknown or mixed target metadata fails.
 The native Cargo linker key comes from the actual shared compiler's host
-triple after checking its official 1.99.0 release and producer commit.
+triple after checking its official 1.99.1 release and producer commit.
 It does not assume that the build host has the target architecture.
 Native build scripts and
 procedural macros use the Mac compiler and archiver; target code uses the
@@ -73,7 +73,7 @@ is part of this consumer recipe. Rust source locations are remapped so panic
 strings do not retain private build paths.
 
 Before configure, the recipe checks the selected GCC16 wrapper identities,
-matching Cargo, and the official shared Rust 1.99.0 compiler producer.
+matching Cargo, and the official shared Rust 1.99.1 compiler producer.
 The selected std directory must resolve inside that same native provider.
 Exactly one nonempty, regular, nonsymlink `std` and `core` rlib must exist there.
 The actual compiler then imports std with `--emit=metadata` and records
@@ -161,7 +161,7 @@ BMAKE=/absolute/native/bmake ruby profiles/common-graphics/tests/librsvg-targets
 ```
 
 It evaluates both canonical target metadata sets with real `bmake` and rejects
-unknown or mixed inputs. The actual native Rust 1.99.0 provider imports its
+unknown or mixed inputs. The actual native Rust 1.99.1 provider imports its
 official amd64 std metadata. A private fixture copies genuine native Darwin
 std/core bytes to a target sysroot and delegates all queries to the real
 compiler; E0461 rejects that foreign data. No Cargo responses are fabricated.

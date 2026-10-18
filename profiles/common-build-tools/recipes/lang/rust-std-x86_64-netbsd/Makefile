@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); official target data for the shared Rust host.
-DISTNAME= rust-std-1.99.0-x86_64-unknown-netbsd
-PKGNAME= rust-std-x86_64-netbsd-1.99.0
+DISTNAME= rust-std-1.99.1-x86_64-unknown-netbsd
+PKGNAME= rust-std-x86_64-netbsd-1.99.1
 CATEGORIES= lang
 MASTER_SITES= https://static.rust-lang.org/dist/2026-10-01/
 EXTRACT_SUFX= .tar.xz
@@ -15,7 +15,7 @@ USE_LANGUAGES= # none: this package installs foreign target data
 USE_TOOLS+= pax
 NO_BUILD= yes
 NO_CONFIGURE= yes
-DEPENDS+= rust-bin-1.99.0{,nb[0-9]*}:../../lang/rust-bin
+DEPENDS+= rust-bin-1.99.1{,nb[0-9]*}:../../lang/rust-bin
 
 # Foreign ELF libraries cannot pass the native Mach-O loader check.
 # The mandatory helper verifies their complete payload and target identity.

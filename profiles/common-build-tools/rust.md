@@ -1,6 +1,6 @@
 # Shared Rust 1.99 build-host provider
 
-The common profiles export `lang/rust-bin` 1.99.0nb1 for the build-host compiler
+The common profiles export `lang/rust-bin` 1.99.1nb1 for the build-host compiler
 needed by current cargo-c and librsvg. The archive is the official Rust release;
 this step does not compile another rustc or LLVM. Native and target components
 remain distinct: a macOS compiler needs a compatible NetBSD target std before
@@ -98,7 +98,7 @@ references and undeclared or build-only package owners must be diagnosed.
 The dependency-owner fixture uses a controlled pkg_info response; it does not
 register fake packages. The legacy resolver remains a causal negative control.
 
-On macOS/Apple Silicon, `rust-bin-1.99.0nb1` passes a normal package build with
+On macOS/Apple Silicon, `rust-bin-1.99.1nb1` passes a normal package build with
 `CHECK_SHLIBS=yes`, ordinary installation, and the installed five-provider
 byte/native-runtime check. Both generated package archives contain the newly
 resolved metadata. All six export modes pass composition checks, including

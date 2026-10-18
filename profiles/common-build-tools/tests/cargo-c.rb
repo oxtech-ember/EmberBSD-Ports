@@ -47,7 +47,7 @@ providers = %w[rustc cargo cargo-cbuild cargo-ctest cargo-cinstall].to_h do |nam
   [path, Digest::SHA256.file(path).hexdigest]
 end
 version = run.call('rustc-version', host + '/bin/rustc', '-vV')
-abort 'Rust 1.99 required' unless version.include?("release: 1.99.0\n")
+abort 'Rust 1.99 required' unless version.include?("release: 1.99.1\n")
 version = run.call('cargo-c-version', host + '/bin/cargo-cbuild', '--version')
 abort 'cargo-c 0.10.25 required' unless version.match?(/\b0\.10\.25\b/)
 run.call('cbuild', host + '/bin/cargo', 'cbuild', '--offline', '--release', '--prefix', work + '/installed')

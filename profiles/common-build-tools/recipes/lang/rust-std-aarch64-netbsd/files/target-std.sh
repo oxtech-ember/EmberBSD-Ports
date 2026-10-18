@@ -55,7 +55,7 @@ configure)
     [ "$#" -eq 0 ] || exit 2
     grep 'pub fn cp_link_r_excluding' "$source/src/bootstrap/src/lib.rs" > /dev/null
     "$host/bin/rustc" -vV > "$work/compiler.txt"
-    grep -qx 'rustc 1.99.0 (b940084d7 2026-09-28)' "$work/compiler.txt"
+    grep -qx 'rustc 1.99.1 (58cf8f9c3 2026-10-13)' "$work/compiler.txt"
     grep -qx 'commit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4' "$work/compiler.txt"
     grep -qx 'host: aarch64-apple-darwin' "$work/compiler.txt"
     "$host/bin/cargo" -V > "$work/cargo.txt"

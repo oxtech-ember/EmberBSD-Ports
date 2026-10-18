@@ -8,7 +8,7 @@ NetBSD/AArch64 cross toolchain.
 
 ## Source and compatibility
 
-The original `rustc-1.99.0-src.tar.xz` comes from static.rust-lang.org. The
+The original `rustc-1.99.1-src.tar.xz` comes from static.rust-lang.org. The
 [common source manifest](sources.tsv) pins its SHA256, and the recipe's distinfo
 pins BLAKE2s, SHA512, size and patch SHA1. The original Rust licenses are installed.
 The only source patch is the existing
@@ -109,8 +109,8 @@ an accelerated desktop or physical GPU/NPU support.
 `rust-bin` compiler. It installs no target compiler and rebuilds neither
 rustc nor LLVM. The source-built AArch64 recipe and its default remain unchanged.
 
-The [official release manifest](https://static.rust-lang.org/dist/channel-rust-1.99.0.toml)
-dated 2026-10-01 marks this component available. Its original archive SHA256
+The [official release manifest](https://static.rust-lang.org/dist/channel-rust-1.99.1.toml)
+dated 2026-10-15 marks this component available. Its original archive SHA256
 is `8eb1d542fe204128ce622c1477bd7e44e1bb041fa30373996a5f24d34184f4aa`.
 The downloaded 29,582,788-byte archive matched that TLS-fetched manifest.
 Distinfo also pins its BLAKE2s, SHA512 and size. This check is not detached
@@ -142,7 +142,7 @@ The host regression uses the pinned archive and real target readelf:
 
 ```sh
 ruby tests/rust-target-prebuilt.rb /absolute/x86_64--netbsd-readelf \
-  /absolute/rust-std-1.99.0-x86_64-unknown-netbsd.tar.xz /absolute/new-check
+  /absolute/rust-std-1.99.1-x86_64-unknown-netbsd.tar.xz /absolute/new-check
 ```
 
 Nine cases pass for the complete component, damaged/missing/extra data,

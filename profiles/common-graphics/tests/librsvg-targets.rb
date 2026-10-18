@@ -45,7 +45,7 @@ native_host = native[/^host: (\S+)$/, 1] || abort('real Rust host missing')
   abort 'supported target rejected: ' + reason unless reason.strip.empty?
   settings = run.call(target + '-settings', *args, '-V', '${TOOL_DEPENDS}', '-V', '${MESON_ARGS}', '-V', '${MESON_BINARY.nm}', '-V', '${MESON_BINARY.strip}', '-V', '${MAKE_ENV}')
   key = rust.upcase.tr('-', '_'); cc_key = rust.tr('-', '_')
-  [std + '-1.99.0', '-Dtriplet=' + rust, triplet + '-nm', triplet + '-strip', triplet + '-ar',
+  [std + '-1.99.1', '-Dtriplet=' + rust, triplet + '-nm', triplet + '-strip', triplet + '-ar',
    'CARGO_TARGET_' + key + '_LINKER=', 'CC_' + cc_key + '=', 'CXX_' + cc_key + '=', 'AR_' + cc_key + '=',
    'CARGO_TARGET_' + native_host.upcase.tr('-', '_') + '_LINKER=/usr/bin/cc'].each do |expected|
     abort 'wrong target/native provider setting: ' + expected unless settings.include?(expected)

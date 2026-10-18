@@ -19,7 +19,7 @@ run = lambda do |name, *args|
   output
 end
 version = run.call('version', File.join(staged, 'bin/rustc'), '-vV')
-abort 'official Rust 1.99 macOS/AArch64 required' unless version.lines.first.chomp == 'rustc 1.99.0 (b940084d7 2026-09-28)' &&
+abort 'official Rust 1.99 macOS/AArch64 required' unless version.lines.first.chomp == 'rustc 1.99.1 (b940084d7 2026-09-28)' &&
   version.include?("host: aarch64-apple-darwin\n")
 relative = %w[bin/rustc bin/cargo lib/libLLVM.dylib] +
   Dir.glob('lib/librustc_driver-*.dylib', base: original) +

@@ -10,7 +10,7 @@ abort 'Archive SHA256 differs from the release manifest' unless
   Digest::SHA256.file(archive).hexdigest == '8eb1d542fe204128ce622c1477bd7e44e1bb041fa30373996a5f24d34184f4aa'
 Dir.mkdir(work)
 work = File.realpath(work)
-source = File.join(work, 'rust-std-1.99.0-x86_64-unknown-netbsd')
+source = File.join(work, 'rust-std-1.99.1-x86_64-unknown-netbsd')
 output, error, status = Open3.capture3('tar', '-xf', archive, '-C', work)
 abort output + error unless status.success?
 host = File.join(work, 'host')
@@ -21,7 +21,7 @@ File.write(File.join(host, 'bin/rustc'), <<~SH)
   #!/bin/sh
   set -eu
   if [ "$1" = -vV ]; then
-      echo "rustc ${FIXTURE_VERSION:-1.99.0} (b940084d7 2026-09-28)"
+      echo "rustc ${FIXTURE_VERSION:-1.99.1} (b940084d7 2026-09-28)"
       echo 'commit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4'
       echo 'host: aarch64-apple-darwin'
       exit
@@ -54,7 +54,7 @@ check = lambda do |name, expected = nil, extra = {}|
   puts "PASS: #{name}"
 end
 check.call('official-elf-and-component')
-check.call('foreign-compiler', 'official Rust 1.99.0 required', { 'FIXTURE_VERSION' => '1.98.0' })
+check.call('foreign-compiler', 'official Rust 1.99.1 required', { 'FIXTURE_VERSION' => '1.98.0' })
 check.call('incompatible-metadata', 'E0514', { 'FIXTURE_REJECT_METADATA' => '1' })
 component = File.join(stage, 'lib/rustlib/x86_64-unknown-netbsd/lib')
 core = Dir[File.join(component, 'libcore-*.rmeta')].fetch(0)

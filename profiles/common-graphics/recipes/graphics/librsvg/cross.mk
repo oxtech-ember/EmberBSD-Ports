@@ -2,7 +2,7 @@
 # Origin: EmberBSD (AI-assisted), native Rust tools and real target GType queries.
 # Included only for cross builds. Rust's target ABI name remains unchanged.
 RUST_TYPE= native
-TOOL_DEPENDS+= rust-bin-1.99.0{,nb[0-9]*}:../../lang/rust-bin
+TOOL_DEPENDS+= rust-bin-1.99.1{,nb[0-9]*}:../../lang/rust-bin
 BUILD_DEPENDS+= glib2-introspection>=2.90.1nb1:../../devel/glib2-introspection
 
 EMBERBSD_GI_MESON_OPTIONS= no
@@ -21,7 +21,7 @@ RUST_TARGET= ${_EMBER_RSVG_RUST_TARGET:Uunsupported}
 PKG_FAIL_REASON+= "librsvg Rust target must match the selected GI/GNU target"
 .endif
 .if defined(_EMBER_RSVG_STD_PACKAGE)
-TOOL_DEPENDS+= ${_EMBER_RSVG_STD_PACKAGE}-1.99.0{,nb[0-9]*}:../../lang/${_EMBER_RSVG_STD_PACKAGE}
+TOOL_DEPENDS+= ${_EMBER_RSVG_STD_PACKAGE}-1.99.1{,nb[0-9]*}:../../lang/${_EMBER_RSVG_STD_PACKAGE}
 .endif
 _EMBER_RSVG_RUST_KEY= ${RUST_TARGET:tu:S/-/_/g}
 _EMBER_RSVG_CC_KEY= ${RUST_TARGET:S/-/_/g}
@@ -56,9 +56,9 @@ MAKE_ENV+= CARGO_TARGET_${_EMBER_RSVG_RUST_KEY}_LINKER=${WRAPPER_BINDIR}/cc
 .if exists(${TOOLBASE}/bin/rustc)
 _EMBER_RSVG_RUST_HOST!= version=$$(${TOOLBASE:Q}/bin/rustc -vV) && printf '%s\n' "$$version" | awk \
     '/^release: / {release=$$2} /^commit-hash: / {commit=$$2} /^host: / {host=$$2} \
-    END {if (release == "1.99.0" && commit == "b940084d7eb6a299eb4bfeb8e34901bc051e7ac4") print host; else exit 1}'
+    END {if (release == "1.99.1" && commit == "58cf8f9c35b355199727627d07ae34a4e2846d67") print host; else exit 1}'
 .if empty(_EMBER_RSVG_RUST_HOST) || !empty(_EMBER_RSVG_RUST_HOST:C/[A-Za-z0-9_-]//g)
-PKG_FAIL_REASON+= "librsvg requires the shared official native Rust 1.99.0 provider"
+PKG_FAIL_REASON+= "librsvg requires the shared official native Rust 1.99.1 provider"
 .else
 _EMBER_RSVG_HOST_KEY= ${_EMBER_RSVG_RUST_HOST:tu:S/-/_/g}
 MAKE_ENV+= CARGO_TARGET_${_EMBER_RSVG_HOST_KEY}_LINKER=${EMBERBSD_CROSS_BUILD_CC}
@@ -81,8 +81,8 @@ emberbsd-librsvg-rust:
 	${RUN}set -eu; \
 	rustc=${TOOLBASE:Q}/bin/rustc; cargo=${TOOLBASE:Q}/bin/cargo; \
 	version=$$("$$rustc" -vV); \
-	printf '%s\n' "$$version" | grep -qx 'release: 1.99.0'; \
-	printf '%s\n' "$$version" | grep -qx 'commit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4'; \
+	printf '%s\n' "$$version" | grep -qx 'release: 1.99.1'; \
+	printf '%s\n' "$$version" | grep -qx 'commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67'; \
 	printf '%s\n' "$$version" | grep -qx 'host: ${_EMBER_RSVG_RUST_HOST}'; \
 	test '${_EMBER_RSVG_RUST_HOST}' != '${RUST_TARGET}'; \
 	"$$cargo" -V | grep -q '^cargo 1[.]99[.]0 '; \
