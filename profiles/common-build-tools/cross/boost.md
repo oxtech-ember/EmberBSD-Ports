@@ -78,11 +78,14 @@ retain every component selected by the canonical recipe, shared and static.
 The real build reports ICU support and completes 2343 b2 targets. All 39
 shared ELF files in the library archive identify AArch64.
 
-The [installed API consumer](boost-api/README.md) uses the normal CMake
-packages for locale, filesystem, thread and Boost.Test. It also checks the
-header-only System API. Its native header companion passes strict Memcheck;
-the full target source passes GCC16 compilation and Clang static analysis.
-Installed target execution remains a separate acceptance step.
+The [installed API consumer](boost-api/README.md) passes a real GCC16 cross
+build through the installed CMake packages for locale, filesystem, thread
+and Boost.Test. It also checks the header-only System API. Normal packages
+are installed in an isolated sysroot for this check. All 18 runtime providers
+match either the existing SDK or the normal Boost archive. The target RPATH
+selects the common GCC16 runtime and package libraries.
+Its native header companion passes strict Memcheck. The full target source
+passes Clang static analysis. Installed target execution remains separate.
 
 ## Acceptance boundary
 

@@ -45,6 +45,11 @@ the recorded closure. It requires the four Boost libraries, common C++ runtime
 and exactly one GCC unwind runtime. This is a focused installed API test; it
 does not replace the full upstream Boost test suite or establish KiCad acceptance.
 
+An actual GCC16 AArch64 configure and build through these installed imported
+targets passes. The helper verifies the complete selected package payloads
+and records 18 runtime providers. The runtime search path is
+`/usr/pkg/gcc16/lib:/usr/pkg/lib`. Target execution remains a separate gate.
+
 ## Native companion and analysis
 
 The optional native companion runs the first two header-only cases. It embeds
