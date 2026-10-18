@@ -25,15 +25,15 @@ contracts, negative-input checks and the exported version selection pass.
 The DWP repair remains applied once. Matching native generators execute on
 macOS; the actual host metadata helper reports target AArch64, shared LLVM
 and RTTI. QDoc also passes a C++ documentation consumer with the official
-native LLVM/Clang SDK. The full LLVM 23.1.3 core now passes cross-package checks
-and installation into the common build sysroot. Its staged metadata helper
-passes 15 query/refusal checks. The package SHA256 is
-`052b4a4e7afd291c21ee78f9c2cbd5e9c125164ff1faad44bbfb27d922793cfe`.
-The complete Clang and [LLD](cross/lld.md) 23.1.3 packages also pass normal
-cross-package checks and sysroot installation. Installed 23.1.3 target
-execution and renewed Mesa/Qt runtime
-acceptance are still in progress. The dated 23.1.2 receipts below are historical
-evidence and must not be relabeled as 23.1.3 results.
+native LLVM/Clang SDK. The full LLVM 23.1.3 core passes installed C API and
+ORC JITLink checks on CM5. The current
+[runtime/SDK split](cross/llvm-linux-aarch64.md) also passes both independent
+Linux/GCC16 builds, exact installed payload checks and API/JIT package lifecycle
+acceptance in E34 VM. Its sealed metadata helper agrees with all 16 actual
+target query groups. Complete Clang and [LLD](cross/lld.md) cross packages pass
+normal package checks and sysroot installation; their installed execution
+remains separate. Mesa's Linux/E34 build/rendering and renewed Qt acceptance
+remain consumer milestones. Dated 23.1.2 receipts retain their original scope.
 
 ## One family and development payload
 
@@ -71,8 +71,11 @@ Native cache, RTTI, dependency and ELF evidence remains required.
 
 NetBSD cross builds now use the [runtime/SDK package split](cross/llvm-runtime.md).
 The execution-only image receives `llvm-23.1.3nb1`; the build-host target sysroot
-also needs `llvm-devel-23.1.3nb1`. Native LLVM remains a full package. Source
-packaging fixtures do not establish real split-package or runtime acceptance.
+also needs `llvm-devel-23.1.3nb2`. Native LLVM remains a full package.
+The [Linux/GCC16 split-package acceptance](cross/llvm-linux-aarch64.md) passes
+both full builds and installed C API/ORC package lifecycle checks in E34 VM.
+Its sealed native metadata helper passes all 16 target query groups and Mesa's
+production LLVM guards. Full Mesa rendering on that stack remains separate.
 
 ## Inherited patch decisions
 

@@ -51,6 +51,17 @@ A successful build proves API/link compatibility. Runtime acceptance requires
 the actual target logs. These focused checks do not establish Mesa rendering,
 Vulkan, other CPU backends or the complete upstream LLVM test suite.
 
+## E34 VM: split LLVM 23.1.3 packages, 2026-10-18
+
+The [Linux/GCC16 receipt](llvm-linux-aarch64.md) records ordinary runtime and
+SDK builds, installed C API/bitcode and four default JITLink/RTTI lifecycles.
+Normal runtime removal causes a real missing-DSO loader failure; reinstallation
+restores the exact payload and passes the APIs again. UBSan trap instrumentation
+also passes for both consumers; LLVM itself is uninstrumented. The guest
+contains runtime libraries only. A sealed native helper agrees with all 16
+query groups from the exact SDK tools run as temporary target QA fixtures.
+This result does not establish the full upstream suite or Mesa rendering.
+
 ## CM5: LLVM 23.1.3, 2026-10-12
 
 The complete cross package was upgraded normally on Compute Module 5 Rev 1

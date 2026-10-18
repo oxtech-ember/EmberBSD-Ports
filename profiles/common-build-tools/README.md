@@ -22,6 +22,12 @@ VM consumers and 21 selected upstream suites. These results do not establish
 Python 3.15 acceptance. Meson/Ninja also pass installed C/C++ consumers and focused
 upstream tests in that VM. The installed [LLVM 23.1.3 core](cross/llvm-api-tests.md) passes C API, bitcode and four ORC JITLink lifecycles on CM5. Its rebuilt [Mesa consumer](../common-graphics/cross/mesa-llvm2313.md) also passes V3D/llvmpipe rendering and all 38 upstream invocations there. Full Clang/LLD cross packages pass ordinary staging checks; their target execution remains separate. The export itself installs no packages.
 
+The [Linux/GCC16 runtime and SDK split](cross/llvm-linux-aarch64.md) passes both
+full builds, exact installed payload checks and C API/ORC package lifecycle
+acceptance in E34 VM. Its sealed host metadata helper agrees with all 16 target
+query groups and passes Mesa's production LLVM guards. Full Mesa acceptance
+on this stack remains separate.
+
 The native and cross profiles select the current canonical Ruby 4.0.7 provider.
 Recursive host generators use native Ruby and `ruby40-asciidoctor`.
 The [selection check](tests/ruby-selection.rb) queries actual pkgsrc metadata
