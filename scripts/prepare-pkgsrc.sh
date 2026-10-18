@@ -46,7 +46,7 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
             }
         done
     done
-    for delta in python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-cross-packages.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch; do
+    for delta in python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-cross-packages.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch pkgsrc-ncurses-terminfo-aliases.patch; do
         [ -s "$root/profiles/common-build-tools/patches/$delta" ] || {
             echo "Missing common-tools infrastructure patch: $delta" >&2; exit 2;
         }
@@ -315,7 +315,7 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     cp -R "$root/profiles/common-build-tools/recipes/lang/llvm-devel" "$destination/lang/llvm-devel"
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$root/profiles/common-build-tools/patches/current-python-selection.patch"
-    for delta in python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-cross-packages.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch; do
+    for delta in python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-cross-packages.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch pkgsrc-ncurses-terminfo-aliases.patch; do
         patch -f -N -d "$destination" -p1 -F 0 < \
             "$root/profiles/common-build-tools/patches/$delta"
     done

@@ -1,0 +1,16 @@
+# Origin: EmberBSD (AI-assisted), retain terminfo aliases in the package.
+# A native tic can install relative symbolic links during a cross install.
+# Inventory these entries like the normal pkgsrc file checks do. Do not
+# follow links or change the terminal database or its installation policy.
+
+--- a/devel/ncurses/Makefile
++++ b/devel/ncurses/Makefile
+@@ -119,7 +119,7 @@ post-install:
+ 	${RM} -f ${DESTDIR}${PREFIX}/${TERMINFODIR}/68/hp2621A
+ 	${RM} -f ${DESTDIR}${PREFIX}/${TERMINFODIR}/68/hp70092A
+ .endif
+-	${FIND} ${DESTDIR}${PREFIX}/${TERMINFODIR} -type f -print | ${SORT} | \
++	${FIND} ${DESTDIR}${PREFIX}/${TERMINFODIR} \( -type f -o -type l \) -print | ${SORT} | \
+ 		${SED} -e "s,^${DESTDIR}${PREFIX}/,," >${WRKDIR}/PLIST.terminfo
+ 	${RM} -f ${DESTDIR}${PREFIX}/lib/terminfo
+ 

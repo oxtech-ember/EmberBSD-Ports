@@ -351,6 +351,27 @@ The regression uses real pkgsrc make fragments. It reproduces the original
 failure, accepts a valid payload and rejects five invalid payloads.
 It also checks all four direct writer targets and preserves the build cookie.
 
+The ncurses 6.6 export inventories both regular terminfo files and symbolic
+aliases. A native `tic` can use relative symbolic links during a cross install.
+The original recipe lists only regular files, so normal `check-files` rejects
+those installed aliases. The patch does not follow links or change `tic`.
+
+Run the regression against an unpatched ncurses recipe and an actual installed
+stage. It copies the stage into new private directories and invokes the normal
+`post-install`, `plist` and `check-files` targets:
+
+```sh
+BMAKE=/absolute/host/bin/bmake ruby profiles/common-build-tools/tests/ncurses-terminfo.rb \
+    /absolute/prepared-pkgsrc /absolute/cross.mk.conf \
+    /absolute/ncurses-work/.destdir /absolute/new-terminfo-results
+```
+
+The AArch64 stage checked on 2026-10-18 contains 1861 regular entries and 1038
+aliases. The original check rejects exactly those aliases; the patched check
+accepts all 2899 entries. Extra-file and missing-alias controls still fail.
+The test verifies that input aliases resolve within the staged database.
+This is a packing-list check, not package installation or target execution.
+
 The cross profile exports `LC_ALL=C` and selects `/usr/bin/sort` directly.
 pkgsrc passes `TOOLS_SORT` as one executable to its libtool PLIST expander.
 An `env` command in the tool path drops shared and static library entries.
