@@ -45,6 +45,29 @@ sh probes/plasma-mobile/toolkit/cross/build-kconfig-tool.sh \
     /absolute/sysroot/usr/pkg/share/ECM/cmake /absolute/new-kconfig-host
 ```
 
+`HOST_QT` can also name an installed Qt 6.12.0 prefix. The builder requires
+its Core, Xml and LinguistTools CMake modules and selects their exact paths.
+It builds the Xml target only when the prefix contains a CMake build cache.
+An installed prefix is not modified. Missing selected modules fail before
+CMake can find another host Qt.
+
+The installed-prefix regression builds the real native tools and generates a
+configuration class with an integer default. It rejects malformed XML and a
+prefix without Xml. A separate dispatch fixture requires the existing Qt
+build-tree path to request Xml and propagate build failure:
+
+```sh
+CMAKE=/absolute/native/cmake NINJA=/absolute/native/ninja \
+HOST_CC=/absolute/native/cc HOST_CXX=/absolute/native/c++ JOBS=2 \
+ruby probes/plasma-mobile/toolkit/tests/kconfig-host.rb \
+    /absolute/verified-distfiles /absolute/installed-qt \
+    /absolute/sysroot/usr/pkg/share/ECM/cmake /absolute/new-host-check
+```
+
+The generated native tooling is under `new-host-check/built/tooling`.
+These checks execute native macOS tools. They do not run target KConfig or
+accept the complete Qt build-tree lifecycle. No upstream C++ source changes.
+
 The private native build produces only the generator and its Qt Xml
 prerequisite. GUI/QML/DBus remain enabled in the separate target package.
 The generated `tooling/KF6Config` import contains only a native executable,
