@@ -10,7 +10,7 @@ expected=$(awk -F '\t' '$1 == "gcc" && $2 == "16.2.0" {print $4}' "$profile/sour
 patches=$(awk '/^SHA1 \(patch-/ && $2 != "(patch-isl_configure)" { gsub(/[()]/, "", $2); print $2 }' "$recipe/distinfo")
 [ -n "$patches" ] || { echo 'No recipe patches.' >&2; exit 1; }
 for name in $patches; do
-    case "$name" in patch-*[!A-Za-z0-9_.-]*|*/*) echo 'Invalid patch name.' >&2; exit 1;; esac
+    case "$name" in patch-*[!A-Za-z0-9_.+-]*|*/*) echo 'Invalid patch name.' >&2; exit 1;; esac
     [ -f "$recipe/patches/$name" ] || { echo "Missing patch: $name" >&2; exit 1; }
     recorded=$(awk -v name="($name)" '$1 == "SHA1" && $2 == name {print $4}' "$recipe/distinfo")
     actual=$(sed '/[$]NetBSD.*/d' "$recipe/patches/$name" | shasum -a 1 | awk '{print $1}')

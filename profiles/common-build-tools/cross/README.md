@@ -21,6 +21,10 @@ generators. Recursive host dependencies keep host compilers and paths.
 both target metadata modes, host recursion and the unchanged native barrier.
 This metadata check does not establish Ruby package or target acceptance.
 
+The [pkg-config environment](pkgconfig.md) roots target compile/link search
+paths in the selected SDK. Runtime paths retain their installed target prefix.
+The real GCC16/CMake regression also verifies unchanged native discovery.
+
 ## Prerequisites
 
 Prepare these separate directories, outside Git:

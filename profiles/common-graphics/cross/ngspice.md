@@ -65,34 +65,35 @@ The check compares 31 DC points within a stated absolute/relative tolerance.
 It also requires more successful `_lwp_create` calls in the two-thread run.
 This tests parallel activation and numerical agreement, not an independent
 analytic solution for BSIM4. The divider remains the known-answer circuit.
-The revision-0 GCC 16.2.0 AArch64 packages passed installation, removal and
-reinstallation in the E34 EmberBSD guest. All 37 installed payload entries
-match their package stages. The C API passed 18 checks, including the divider,
-XSPICE gain, rejected input, circuit switching, reset and controlled exit.
-The CLI passed repeated-input and malformed-vector checks. An actual KiCad
-10.0.7 exported circuit produced 5 V, 2.5 V and -2.5 mA; its checker rejected 3 V.
-The BSIM workload passed all 31 points. Successful worker creation increased
-from zero to one between the one-thread and two-thread runs.
-The loaded API/CLI providers match the compiler SDK, including GCC16 libgomp.
+The GCC 16.2.0 AArch64 packages passed fresh installation, removal and
+reinstallation in an E34 EmberBSD guest. The shared archive
+`ng-spice-shared-47nb1.tgz` has SHA256
+`68082926573c7f681558b587f96a11c5efcd3da066ee561bf28b2ad6e8023781`;
+the CLI archive `ng-spice-47nb1.tgz` has SHA256
+`f87cb37107f9867e84b361b318528c7fe496af9e31a163fa49469e6eb3719f7d`.
+All 37 ngspice payload entries and the complete 4,013-entry closure with
+FFTW 3.3.11, ncurses 6.6 and Readline 8.3nb1 match their actual archives;
+installed ownership is root:wheel. All ten loaded providers match the SDK.
+The C API passed 18 checks, including after normal removal and
+reinstallation. These cover the divider, XSPICE gain, rejected input, circuit
+switching, reset and controlled exit. CLI repeated-input and malformed-vector
+checks passed. The actual KiCad 10.0.7 exported divider produced 5 V, 2.5 V
+and -2.5 mA; the
+independent checker rejected 3 V. All 31 BSIM points agree for one/two threads,
+with successful worker creation increasing from zero to one.
+Actual accepted compilation commands define `_OPENMP=202111`, and both
+interfaces import `GOMP_parallel`.
 
-The accepted shared archive has SHA256
-`3bc665c463ee4ccf2aa55a724df8c8992ec48525e91c0c2435e076eb1c802a73`.
-The CLI archive has SHA256
-`1eb7c16f545a08ccb7e0fed797f3e816744d44a3a89402f9354dcc6d09f26444`.
-An earlier private invocation overrode configure's OpenMP flags; that package
-was superseded before runtime acceptance. Actual accepted compile commands
-define `_OPENMP=202111`, and both interfaces import `GOMP_parallel`.
+The configure probe for `/proc/meminfo` runs only for Linux and Cygwin targets.
+This selects the existing sysctl implementation on EmberBSD and preserves
+native Linux behavior. The [memory-query regression](../../../probes/kicad/ngspice/tests/memory-query.md)
+checks the three unchanged upstream modules with actual target configuration.
+The installed library's internal memory query returned 4,276,011,008 bytes,
+matching independent `HW_PHYSMEM64`, with empty stderr. Available memory
+still equals total and both selected RSS results remain zero.
 
-Revision 1 repairs the configure check that detected the build host's
-`/proc/meminfo`. The probe now runs only for Linux and Cygwin targets.
-A separate GCC16 regression executes the three unchanged upstream query modules
-in EmberBSD. The baseline returns zero with two missing-file diagnostics.
-The repaired configuration returns the exact positive `HW_PHYSMEM64` value
-without those diagnostics. Native Linux behavior remains unchanged.
-The inherited BSD available-memory result still equals total memory; the
-selected OpenMP configuration still reports zero RSS. These are not new APIs.
-See the [memory-query regression](../../../probes/kicad/ngspice/tests/memory-query.md).
-The revision-1 package rebuild and installed checks remain pending; the archive
-hashes above identify revision 0. Target Memcheck, complete CIDER/OSDI/KLU
-workflows and KiCad application integration also remain pending.
+The dependency payload comparison does not claim all development metadata
+is portable: inherited SDK paths in dependency `.la` files remain tracked
+separately. Target Memcheck, complete CIDER/OSDI/KLU workflows and KiCad
+application integration remain pending.
 The source and native analysis limits remain documented in the probe.

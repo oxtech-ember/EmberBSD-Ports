@@ -70,4 +70,14 @@ Raw initial failures and final diagnostics remain separate.
 
 The ordinary recipes use revision 1 and require the exact matching shared package.
 This module-level evidence does not replace rebuilt package or installed API checks.
-The earlier revision-0 package hashes and acceptance remain separately documented.
+Both `47nb1` interfaces were built through ordinary pkgsrc.
+All 1,500 shared and 1,497 CLI C compilation commands retain GNU11/OpenMP;
+the measured `_OPENMP` value is 202111. In a fresh E34 guest with 4 GiB RAM,
+the installed library's four version-specific query symbols returned
+`total=4276011008 available=4276011008 peak=0 current=0`, with empty stderr.
+The total matches an independent `HW_PHYSMEM64` request. These internal symbols
+are separate from the installed public sharedspice API, whose 18 checks also
+passed before and after ordinary package removal/reinstallation.
+The CLI, actual KiCad exported divider and BSIM OpenMP workload passed too.
+See the [package acceptance record](../../../../profiles/common-graphics/cross/ngspice.md)
+for archive hashes and the remaining application-level limits.
