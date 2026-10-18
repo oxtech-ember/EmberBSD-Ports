@@ -8,8 +8,9 @@ reinstallation also pass, with verified runtime providers.
 [wxWidgets 3.2.12 and WebKitGTK 2.54.1](cross/wxwebkit.md) retain the
 canonical WebView, media and OpenGL configuration. Both WebKit API recipes
 share current sources and native generator routes. Source, GCC16 target link
-and focused native Skia memory checks pass. Full dependency composition,
-packages, target locale and GUI execution remain pending.
+and focused native Skia memory checks pass. The rebuilt Skia locale contract
+passes in EmberBSD with installed GCC16 runtime nb3. Full dependency composition,
+WebKit packages and GUI execution remain pending.
 
 [Maintained FreeImage 3.19.25 and LibRaw 0.22.2](cross/freeimage.md)
 provide common source recipes for OCCT image support. Source preparation,

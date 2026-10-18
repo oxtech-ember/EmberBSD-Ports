@@ -106,10 +106,22 @@ static-analysis result or coverage of arbitrary formatting failures.
 
 Target execution exposed a separate global-locale mutation in GCC16's generic
 C++ numeric conversion. The [common runtime source repair](../../development-toolchain/locale.md)
-passes its actual target before/after contract. Rebuild that runtime and
-recompile the Skia consumer before repeating the target locale contract.
-Neither the old Skia no-op nor the unrepaired runtime is accepted as a working
-locale implementation. Whole Skia and WebKit runtime acceptance remain pending.
+passes its actual target before/after contract. The normal
+`gcc16-runtime-16.2.0nb3` package and its matching development headers are now
+installed in the AArch64 SDK. All 13 Skia units were rebuilt against the actual
+new `bits/c++locale.h`; compiler dependency output verifies the selected header.
+Native API output remains unchanged and strict Memcheck again reports zero
+errors and no live allocations.
+
+The rebuilt Skia contract also passes in EmberBSD 11 AArch64 with the normally
+installed nb3 runtime and genuine `fr_FR.UTF-8` locale data: formatting, parsing,
+nested scopes, both concurrent workers and ambient-locale restoration pass.
+The transferred executable and all installed runtime payload entries were
+hash-verified; execution used the installed loader paths without a library
+search override. This accepts the exercised Skia APIs with the repaired runtime.
+The extra output/debug/JSON units remain compile-only; whole Skia, WebKit and
+GUI acceptance remain pending. The earlier no-op and unrepaired-runtime failures
+are retained as causal evidence.
 
 Run the bounded source and locale checks with genuine tools and a new output:
 
@@ -131,5 +143,5 @@ For E14, compose the entire [common media profile](../../common-media/README.md)
 GStreamer 1.28.8 and FFmpeg 9.0.2. Core, plugin families and shared version
 metadata must change together. A partial plugin overlay would mix versions.
 This checkpoint supplies source recipes and bounded checks; full dependency
-composition, configure, packages, installed GI, target locale and GUI workflows
+composition, configure, packages, installed GI and GUI workflows
 remain required.
