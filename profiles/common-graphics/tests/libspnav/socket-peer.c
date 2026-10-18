@@ -3,6 +3,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/un.h>
 #include <sys/wait.h>
 #include <errno.h>
@@ -46,6 +47,7 @@ main(int argc, char **argv)
 {
 	struct sockaddr_un address;
 	struct sigaction action;
+	struct itimerval timer = { { 0, 100000 }, { 8, 0 } };
 	struct stat st;
 	int32_t command, motion[8] = { 0, 11, -12, 13, -14, 15, -16, 17 };
 	int32_t button[8] = { 1, 4, 0, 0, 0, 0, 0, 0 };
@@ -99,7 +101,9 @@ main(int argc, char **argv)
 		execl(argv[1], argv[1], argv[2], (char *)NULL);
 		_exit(127);
 	}
-	(void)alarm(8);
+	/* Repeated interruption also covers a syscall entered after the deadline. */
+	if (setitimer(ITIMER_REAL, &timer, NULL) == -1)
+		goto stop_child;
 	for (i = 0; i < cycles; ++i) {
 		do {
 			connection = accept(listener, NULL, NULL);
@@ -132,13 +136,15 @@ main(int argc, char **argv)
 	goto done;
 
 stop_child:
-	(void)alarm(0);
-	(void)kill(child, SIGTERM);
+	memset(&timer, 0, sizeof(timer));
+	(void)setitimer(ITIMER_REAL, &timer, NULL);
+	(void)kill(child, SIGKILL);
 	do {
 		waited = waitpid(child, &status, 0);
 	} while (waited == -1 && errno == EINTR);
 done:
-	(void)alarm(0);
+	memset(&timer, 0, sizeof(timer));
+	(void)setitimer(ITIMER_REAL, &timer, NULL);
 	if (connection >= 0)
 		(void)close(connection);
 	if (listener >= 0)
