@@ -32,10 +32,17 @@ def hash_file(path)
 end
 
 check('caller anchor agrees with the original manifest') { hash_file("#{old}/inputs.sha256") == original_hash }
+r = JSON.parse(File.read("#{old}/receipt.json"))
+native_files = r['native_runtime'] ? r.fetch('native_runtime').fetch('files').map { |file| file.fetch('path') } : []
 check('unchanged compiled executable, historical receipt, manifest and launcher') do
   { 'bin/llvm-config.real' => 'bin/llvm-config.real', 'receipt.json' => 'receipt.json',
     'provenance/receipt.json' => 'receipt.json', 'provenance/inputs.sha256' => 'inputs.sha256',
     'provenance/original-launcher' => 'bin/llvm-config' }.all? { |new_path, original_path| File.binread("#{sealed}/#{new_path}") == File.binread("#{old}/#{original_path}") }
+end
+unless native_files.empty?
+  check('Linux sealer preserves every native loader/runtime file byte for byte') do
+    native_files.all? { |path| File.binread("#{old}/#{path}") == File.binread("#{sealed}/#{path}") }
+  end
 end
 check('16 real queries agree with freshly captured target executable') do
   _, _, status = run("#{work}/target-agreement.log", 'ruby', comparer, sealed, reference)
@@ -58,13 +65,13 @@ check('sealed runtime receipt has no temporary source/build dependency') do
   paths.select { |p| p.start_with?('/') }.all? { |p| p.start_with?(r.fetch('target_prefix') + '/') }
 end
 # Each case copies only the small helper, not LLVM sources or libraries.
-%w[metadata/BuildVariables.inc bin/llvm-config.real receipt.json].each_with_index do |path, i|
+(%w[metadata/BuildVariables.inc bin/llvm-config.real receipt.json] + native_files).each_with_index do |path, i|
   fixture = "#{work}/original-drift-#{i}"
   FileUtils.cp_r(old, fixture)
   File.open("#{fixture}/#{path}", 'a') { |f| f.write('changed accepted artifact') }
   check("sealing rejects original #{path} drift") do
     _, err, status = run("#{work}/original-drift-#{i}.log", 'ruby', sealer, fixture, original_hash, "#{work}/rejected-#{i}")
-    !status.success? && err.include?('mismatch')
+    !status.success? && (err.include?('mismatch') || err.include?('retained native runtime changed'))
   end
   FileUtils.rm_r(fixture)
 end
@@ -82,7 +89,6 @@ check('unknown paths cannot become disposable build inputs') do
   !status.success? && err.include?('unclassified original inputs')
 end
 FileUtils.rm_r(fixture)
-r = JSON.parse(File.read("#{old}/receipt.json"))
 FileUtils.cp_r(old, fixture)
 removed = "#{r['native_build']}/CMakeCache.txt"
 File.write("#{fixture}/inputs.sha256", File.readlines("#{fixture}/inputs.sha256").reject { |line| line.end_with?("  #{removed}\n") }.join)
@@ -107,7 +113,7 @@ FileUtils.rm_r(fixture)
   end
   FileUtils.rm_r(fixture)
 end
-%w[bin/llvm-config.real metadata/LibraryDependencies.inc provenance/inputs.sha256 provenance/receipt.json seal.json].each_with_index do |path, i|
+(%w[bin/llvm-config.real metadata/LibraryDependencies.inc provenance/inputs.sha256 provenance/receipt.json seal.json] + native_files).each_with_index do |path, i|
   clone = "#{work}/sealed-drift-#{i}"
   FileUtils.cp_r(sealed, clone)
   File.open("#{clone}/#{path}", 'a') { |f| f.write('changed sealed artifact') }

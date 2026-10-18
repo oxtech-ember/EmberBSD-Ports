@@ -1,9 +1,9 @@
 # Run target LLVM metadata queries on the build host
 
-Mesa's cross configuration needs an executable on macOS that describes the
-EmberBSD LLVM package. The existing native generator build's `llvm-config`
-describes Darwin and must not be used as target metadata. The target executable
-cannot run directly on macOS.
+Mesa's cross configuration needs an executable on the build host that describes
+the EmberBSD LLVM package. The existing native generator build's `llvm-config`
+describes that host and must not be used as target metadata. The target
+executable cannot run directly on macOS or Linux.
 
 `build-llvm-config.rb` compiles the pinned upstream LLVM 23.1.3
 `tools/llvm-config/llvm-config.cpp`. It reuses the existing native Support,
@@ -26,9 +26,12 @@ metadata. Keep the input trees unchanged through building, acceptance and
 sealing. The sealed tool then permits build-tree cleanup while checking the
 installed package on every query. Use a fresh output directory.
 The helper currently accepts the canonical
-NetBSD/AArch64 or NetBSD/amd64, shared LLVM, RTTI and `/usr/pkg` layout with a macOS native
-compiler. Whitespace in paths and different native system-library closures
-are rejected rather than guessed.
+NetBSD/AArch64 or NetBSD/amd64, shared LLVM, RTTI and `/usr/pkg` layout with a
+macOS native compiler or genuine GCC16 on GNU/Linux amd64 or AArch64. Linux
+requires native `readelf` and `ldd`. Whitespace in paths and unsupported native
+library arguments are rejected rather than guessed. Linux triples accept both
+`x86_64-linux-gnu` and `x86_64-unknown-linux-gnu` (likewise AArch64); musl and
+other native platforms are not covered.
 
 Target `BuildVariables.inc`, `LibraryDependencies.inc` and
 `ExtensionDependencies.inc` provide the actual component graph and options.
@@ -37,6 +40,8 @@ assertion setting also come from that configuration. All native platform and
 ABI headers remain native. Report-only substitutions occur after those headers;
 target configuration is never substituted into the Support library interfaces.
 The source hash and replacement contexts are checked before compilation.
+The target triple is preserved literally, including `aarch64--netbsd`; a
+comparison must match the actual captured triple, not a normalized spelling.
 
 An explicit target prefix replaces upstream's executable-location detection.
 For an installed layout it points to the real staged `/usr/pkg` directory;
@@ -67,11 +72,25 @@ must match the target configuration.
 
 `receipt.json`, `compile.command` and `compile.log` record the inputs and build.
 `inputs.sha256` covers the source, original generated metadata/configuration,
-compiler, native archives, actual non-system header dependencies and resulting
+compiler, native archives, actual header dependencies and resulting
 tool. Input changes during compilation fail. The `bin/llvm-config` launcher
 checks the receipt before every invocation,
 then executes the real compiled program; it does not parse query options or
 synthesize results. Changed inputs require a fresh tool build.
+
+On Linux, the compiler reports its real include search roots and GCC16 runtime
+locations. The dependency file includes system headers as well as LLVM headers;
+all are hashed and must belong to those measured native roots or the matching
+LLVM source/build. Headers and loaded libraries inside the target trees fail.
+The native Support/TargetParser/Demangle archives remain static. `readelf` and
+`ldd` inspect the real compiled helper and its complete ELF dependency graph;
+the loaded `libstdc++` and `libgcc_s` must be the selected compiler's files.
+The loader and every loaded DSO are copied byte for byte under `native/lib`.
+An execution of the copied loader with its cache disabled verifies that the
+complete closure resolves inside that payload. Unresolved dependencies,
+architecture mismatches, unexpected loaded libraries and shared native LLVM
+dependencies fail. The launcher clears loader injection/search environment
+variables and invokes the retained loader with that library directory.
 
 ## Preserve an accepted tool across build cleanup
 
@@ -107,6 +126,32 @@ live installed headers/library, then runs the same upstream program. No query
 answers are synthesized. Source/build cleanup no longer affects execution;
 installed-library drift still fails before any query. Preserve the sealed tree
 and use its `bin/llvm-config` in the graphics cross MAKECONF.
+
+Linux sealing also retains and verifies the complete native ELF payload. Its
+original system/compiler library paths and inspection tools become historical
+inputs; the sealed manifest checks their retained copies. The target package's
+installed headers and LLVM DSO remain live inputs. This permits later removal
+of native compiler/build directories without falling back to another host GCC
+runtime. Darwin retains its existing system-library inspection and launcher.
+
+The bounded Linux runtime contract needs no LLVM source or fabricated target
+metadata:
+
+```sh
+HOST_CXX=/absolute/native-gcc16/bin/g++ \
+    ruby ../tests/llvm-native-runtime.rb /absolute/new-native-test-work
+```
+
+It compiles and executes a real C++ threads/containers/exceptions program,
+checks exact loader resolution, copies it with the production runtime-copy
+routine, removes the original helper pathname by renaming its private tree,
+and repeats execution. Negative cases cover changed, missing or symlinked
+runtime files, directory escapes, foreign ELF machines and unsupported native
+triples. On 2026-10-18 this contract passed 20 checks on Linux amd64 with
+GCC16.2.0. This is native runtime retention coverage, not an LLVM build or full
+`seal-llvm-config.rb` acceptance: the new Linux helper still requires real
+LLVM23 native/target builds, installed target payload validation and the
+16-query agreement below. Earlier Darwin/board receipts do not validate it.
 
 Repeat the 16-query comparison below with a fresh capture from the installed
 target after sealing. On 2026-10-08, the unchanged accepted executable agreed
@@ -148,7 +193,7 @@ It checks both targets and foreign-input refusal with real ELF inspection.
 Controlled `uname` and query boundaries do not execute NetBSD code on macOS
 or constitute the required real target capture.
 
-Transfer the reference directory back with a verified archive hash. On macOS:
+Transfer the reference directory back with a verified archive hash. On the build host:
 
 ```sh
 ruby compare-llvm-config.rb /absolute/new-work /absolute/reference

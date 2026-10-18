@@ -7,6 +7,7 @@ require 'json'
 require 'open3'
 require 'shellwords'
 require_relative 'llvm-target'
+require_relative 'llvm-native'
 
 def fail!(message)
   abort "seal-llvm-config: #{message}"
@@ -38,10 +39,18 @@ end
 # Authenticate the receipt before using it to classify any absolute path.
 fail!('original receipt mismatch') unless manifest['receipt.json'] && digest("#{old}/receipt.json") == manifest['receipt.json']
 r = JSON.parse(File.read("#{old}/receipt.json"))
-%w[source target_build native_build native_sdk sysroot target_prefix compiler].each do |key|
+native_platform = r.fetch('native_platform', 'darwin')
+fail!('unsupported native platform') unless %w[darwin linux-gnu].include?(native_platform)
+paths = %w[source target_build native_build sysroot target_prefix compiler]
+paths << 'native_sdk' if native_platform == 'darwin'
+paths.each do |key|
   p = r.fetch(key)
   fail!("unsupported receipt path #{key}") unless p.start_with?('/') && safe_path?(p)
 end
+native_roots = native_platform == 'darwin' ? [r.fetch('native_sdk')] : r.fetch('native_header_roots')
+fail!('unsupported native header search roots') unless native_roots.is_a?(Array) && !native_roots.empty? && native_roots.all? { |path| path.is_a?(String) && path != '/' && path.start_with?('/') && safe_path?(path) }
+native_runtime = native_platform == 'linux-gnu' ? r.fetch('native_runtime') : nil
+fail!('missing native Linux runtime receipt') if native_platform == 'linux-gnu' && !native_runtime.is_a?(Hash)
 source, target, native, prefix = r.values_at('source', 'target_build', 'native_build', 'target_prefix')
 fail!('requires an accepted installed LLVM 23.1.3 helper') unless r['version'] == '23.1.3' && prefix == r['sysroot'] + '/usr/pkg'
 begin
@@ -57,6 +66,19 @@ fail!('unsupported historical library proof') unless %w[identical cmake-install-
 
 local = %w[metadata/BuildVariables.inc metadata/LibraryDependencies.inc metadata/ExtensionDependencies.inc llvm-config.cpp build-llvm-config.rb llvm-config.d dependencies.command compile.command receipt.json bin/llvm-config.real bin/llvm-config]
 local << 'llvm-target.rb' if manifest.key?('llvm-target.rb')
+local << 'llvm-native.rb' if manifest.key?('llvm-native.rb')
+native_files = native_runtime ? native_runtime.fetch('files').map { |file| file.fetch('path') } : []
+if native_runtime
+  fail!('missing accepted native inspector') unless manifest.key?('llvm-native.rb')
+  fail!('accepted native executable mismatch') unless manifest['bin/llvm-config.real'] && digest("#{old}/bin/llvm-config.real") == manifest['bin/llvm-config.real']
+  begin
+    fail!('native receipt triples differ') unless native_runtime.fetch('triple') == r.fetch('native_triple')
+    EmberGraphicsLLVMNative.verify("#{old}/bin/llvm-config.real", old, native_runtime)
+  rescue ArgumentError => error
+    fail!(error.message)
+  end
+  local += native_files
+end
 local += %w[strip.command strip.log] if proof['method'] == 'cmake-install-strip'
 local.each do |p|
   fail!("accepted local artifact mismatch: #{p}") unless manifest[p] && digest("#{old}/#{p}") == manifest[p]
@@ -72,6 +94,20 @@ historical = ["#{target}/CMakeCache.txt", "#{native}/CMakeCache.txt", proof.fetc
               "#{source}/tools/llvm-config/llvm-config.cpp", "#{native}/bin/llvm-config"]
 historical += %w[llvm-config.h config.h abi-breaking.h].map { |p| "#{native}/include/llvm/Config/#{p}" }
 historical += %w[LLVMTargetParser LLVMSupport LLVMDemangle].map { |p| "#{native}/lib/lib#{p}.a" }
+historical += r.fetch('native_system_libraries', []).select { |arg| arg.start_with?('/') }
+if native_runtime
+  native_runtime.fetch('files').each do |file|
+    path = file.fetch('source')
+    fail!('unsupported native runtime source path') unless path.start_with?('/') && safe_path?(path)
+    fail!('native runtime source hash differs from original manifest') unless manifest[path] == file.fetch('sha256')
+    historical << path
+  end
+  native_runtime.fetch('tools').each do |path, hash|
+    fail!('unsupported native audit-tool source path') unless path.start_with?('/') && safe_path?(path)
+    fail!('native audit-tool hash differs from original manifest') unless manifest[path] == hash
+    historical << path
+  end
+end
 if proof['method'] == 'cmake-install-strip'
   fail!('unsupported strip proof paths') unless proof['strip'].start_with?('/') && safe_path?(proof['strip']) && proof['install_script'] == "#{target}/tools/llvm-shlib/cmake_install.cmake"
   historical += [proof.fetch('strip'), proof.fetch('install_script')]
@@ -92,7 +128,7 @@ deps.each do |p|
     next
   end
   header = p.start_with?(source + '/include/') || p.start_with?(native + '/include/')
-  sdk = p.start_with?(r['native_sdk'] + '/')
+  sdk = native_roots.any? { |root| p.start_with?(root + '/') }
   fail!("unclassified compile dependency: #{p}") unless safe_path?(p) && (header || sdk)
   historical << p
 end
@@ -124,19 +160,36 @@ rescue ArgumentError => error
 end
 # A newly generated guard must not accidentally hide a dynamic native LLVM
 # dependency. The accepted helper links its LLVM support archives statically.
-linked, error, status = Open3.capture3('/usr/bin/otool', '-L', "#{old}/bin/llvm-config.real")
-fail!("cannot inspect accepted native executable: #{error}") unless status.success?
-linked.lines.drop(1).each do |line|
-  p = line.strip.split.first
-  fail!("unexpected native runtime dependency: #{p}") unless p && (p.start_with?('/usr/lib/') || p.start_with?('/System/Library/'))
+if native_runtime
+  begin
+    linked = EmberGraphicsLLVMNative.verify("#{old}/bin/llvm-config.real", old, native_runtime)
+  rescue ArgumentError => error
+    fail!(error.message)
+  end
+else
+  linked, error, status = Open3.capture3('/usr/bin/otool', '-L', "#{old}/bin/llvm-config.real")
+  fail!("cannot inspect accepted native executable: #{error}") unless status.success?
+  linked.lines.drop(1).each do |line|
+    p = line.strip.split.first
+    fail!("unexpected native runtime dependency: #{p}") unless p && (p.start_with?('/usr/lib/') || p.start_with?('/System/Library/'))
+  end
 end
 FileUtils.mkdir_p("#{work}/provenance")
 FileUtils.cp(manifest_path, "#{work}/provenance/inputs.sha256")
 local.each do |p|
+  next if native_files.include?(p)
   destination = p == 'bin/llvm-config' ? 'provenance/original-launcher' : p
   FileUtils.mkdir_p(File.dirname("#{work}/#{destination}"))
   FileUtils.cp("#{old}/#{p}", "#{work}/#{destination}")
   fail!("copied local artifact changed: #{p}") unless digest("#{work}/#{destination}") == manifest[p]
+end
+if native_runtime
+  begin
+    EmberGraphicsLLVMNative.copy("#{old}/bin/llvm-config.real", old, work, native_runtime,
+      copied_binary: "#{work}/bin/llvm-config.real")
+  rescue ArgumentError => error
+    fail!(error.message)
+  end
 end
 FileUtils.cp("#{old}/receipt.json", "#{work}/provenance/receipt.json")
 metadata_names.each do |p|
@@ -162,7 +215,7 @@ File.write("#{work}/bin/llvm-config", <<~SH)
       echo 'llvm-config: sealed input receipt changed' >&2
       exit 1
   }
-  exec "$base/bin/llvm-config.real" "$@"
+  #{EmberGraphicsLLVMNative.launcher(native_runtime)}
 SH
 File.chmod(0755, "#{work}/bin/llvm-config")
 # Preserve all immutable provenance, including observed losses; only installed

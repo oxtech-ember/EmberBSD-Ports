@@ -8,6 +8,7 @@ require 'json'
 require 'open3'
 require 'shellwords'
 require_relative 'llvm-target'
+require_relative 'llvm-native'
 
 UPSTREAM_SHA256 = '7c54727d9deda1689a7e6c9096f6627d73659da04a6ac88c3e0a0595f26e74bb'
 VERSION = '23.1.3'
@@ -152,24 +153,53 @@ host_config = "#{native}/bin/llvm-config"
 fail!('missing runnable native llvm-config') unless File.executable?(host_config)
 initial_hashes[host_config] = Digest::SHA256.file(host_config).hexdigest
 fail!('native llvm-config version mismatch') unless capture(host_config, '--version') == VERSION
-fail!('native llvm-config must describe Darwin') unless capture(host_config, '--host-target').include?('darwin')
+native_triple = capture(host_config, '--host-target')
+begin
+  native_platform = EmberGraphicsLLVMNative.platform(native_triple)
+rescue ArgumentError => error
+  fail!(error.message)
+end
 host_flags = Shellwords.split(capture(host_config, '--cxxflags'))
 host_libs = Shellwords.split(capture(host_config, '--link-static', '--libfiles', 'support', 'targetparser'))
 expected_libs = %w[LLVMSupport LLVMTargetParser LLVMDemangle].map { |l| "#{native}/lib/lib#{l}.a" }
 fail!('native Support library closure differs from the supported minimal closure') unless host_libs.sort == expected_libs.sort
 host_system = Shellwords.split(capture(host_config, '--link-static', '--system-libs', 'support', 'targetparser'))
-fail!('unexpected native system library requirements') unless host_system == ['-lm']
+if native_platform == 'darwin'
+  fail!('unexpected native system library requirements') unless host_system == ['-lm']
+else
+  fail!('unsupported native system library argument') unless host_system.all? do |arg|
+    (arg.match?(/\A-l[A-Za-z0-9_+.-]+\z/) && !arg.start_with?('-lLLVM')) ||
+      (arg.start_with?('/') && File.file?(arg) && arg.match?(/\.(?:a|so(?:\.[0-9]+)*)\z/) && !File.basename(arg).start_with?('libLLVM'))
+  end
+end
 cxx = nc.fetch('CMAKE_CXX_COMPILER')
 fail!('native C++ compiler must be an existing absolute executable') unless cxx.start_with?('/') && File.executable?(cxx)
-native_sdk = nc.fetch('CMAKE_OSX_SYSROOT', '')
-native_sdk = capture('/usr/bin/xcrun', '--show-sdk-path') if native_sdk.empty?
-fail!('native macOS SDK must be an existing absolute directory') unless native_sdk.start_with?('/') && File.directory?(native_sdk)
-native_sdk = File.realpath(native_sdk)
-host_flags += ['-isysroot', native_sdk]
-deployment_target = nc.fetch('CMAKE_OSX_DEPLOYMENT_TARGET', '')
-host_flags << "-mmacosx-version-min=#{deployment_target}" unless deployment_target.empty?
+native_sdk = nil
+native_headers = []
+compiler_runtime = []
+if native_platform == 'darwin'
+  native_sdk = nc.fetch('CMAKE_OSX_SYSROOT', '')
+  native_sdk = capture('/usr/bin/xcrun', '--show-sdk-path') if native_sdk.empty?
+  fail!('native macOS SDK must be an existing absolute directory') unless native_sdk.start_with?('/') && File.directory?(native_sdk)
+  native_sdk = File.realpath(native_sdk)
+  host_flags += ['-isysroot', native_sdk]
+  deployment_target = nc.fetch('CMAKE_OSX_DEPLOYMENT_TARGET', '')
+  host_flags << "-mmacosx-version-min=#{deployment_target}" unless deployment_target.empty?
+  native_headers = [native_sdk]
+else
+  begin
+    native_inputs = EmberGraphicsLLVMNative.compiler(cxx, native_triple, host_flags)
+    native_headers = native_inputs.fetch(:header_roots)
+    compiler_runtime = native_inputs.fetch(:compiler_libraries)
+  rescue ArgumentError => error
+    fail!(error.message)
+  end
+  fail!('native include search enters a target tree') if native_headers.any? { |path| [sysroot, target].any? { |root| path == root || path.start_with?(root + '/') } }
+end
 required.concat([host_config, cxx] + host_libs)
+required.concat(host_system.select { |arg| arg.start_with?('/') })
 ([cxx] + host_libs).each { |p| initial_hashes[p] = Digest::SHA256.file(p).hexdigest }
+host_system.select { |arg| arg.start_with?('/') }.each { |p| initial_hashes[p] = Digest::SHA256.file(p).hexdigest }
 
 # Map target library search paths, never runtime RPATHs. The target prefix's
 # libdir is already prepended by upstream llvm-config. Dependencies use sysroot.
@@ -226,24 +256,39 @@ text = replace_once(text, '#if defined(NDEBUG)', '#if !EMBER_TARGET_ASSERTIONS')
 File.write("#{work}/llvm-config.cpp", text)
 FileUtils.cp(__FILE__, "#{work}/build-llvm-config.rb")
 FileUtils.cp(File.join(__dir__, 'llvm-target.rb'), "#{work}/llvm-target.rb")
+FileUtils.cp(File.join(__dir__, 'llvm-native.rb'), "#{work}/llvm-native.rb")
 compile_args = [cxx, *host_flags, '-DLLVM_BUILD_STATIC', '-O2', (nc['LLVM_ENABLE_ASSERTIONS'] == 'OFF' ? '-DNDEBUG' : '-UNDEBUG'), "-I#{work}/metadata", "#{work}/llvm-config.cpp"]
-# Discover and hash the exact non-system headers before the compilation. The
+# Discover and hash the exact headers before the compilation. Linux includes
+# system headers; Darwin preserves the existing non-system dependency scan. The
 # generated metadata is private; all external headers must belong to the
 # matching native source/build, never the target platform headers.
-dependency_command = [*compile_args, '-MM', '-MT', 'llvm-config', '-MF', "#{work}/llvm-config.d"]
+dependency_command = [*compile_args, (native_platform == 'linux-gnu' ? '-M' : '-MM'), '-MT', 'llvm-config', '-MF', "#{work}/llvm-config.d"]
 File.write("#{work}/dependencies.command", Shellwords.join(dependency_command) + "\n")
 capture(*dependency_command)
 dependencies = Shellwords.split(File.read("#{work}/llvm-config.d").gsub("\\\n", ' ').sub(/\Allvm-config:\s*/, ''))
 dependencies.each do |path|
   next if path.start_with?(work + '/')
-  fail!("unexpected native header dependency: #{path}") unless path.start_with?(source + '/') || path.start_with?(native + '/') || File.realpath(path).start_with?(native_sdk + '/')
+  fail!("unexpected native header dependency: #{path}") unless path.start_with?(source + '/') || path.start_with?(native + '/') || native_headers.any? { |root| File.realpath(path).start_with?(root + '/') }
   required << path
   initial_hashes[path] ||= Digest::SHA256.file(path).hexdigest
 end
 command = [*compile_args, *host_libs, *host_system, '-o', "#{work}/bin/llvm-config.real"]
 File.write("#{work}/compile.command", Shellwords.join(command) + "\n")
 File.open("#{work}/compile.log", 'w') { |log| fail!('host llvm-config compilation failed; see compile.log') unless system(*command, out: log, err: [:child, :out]) }
-File.write("#{work}/receipt.json", JSON.pretty_generate({version: VERSION, source: source, target_build: target, native_build: native, native_sdk: native_sdk, sysroot: sysroot, target_prefix: prefix, target_triple: string(td, 'LLVM_HOST_TRIPLE'), staged_library_sha256: target_library_hash, library_proof: library_proof, compiler: cxx, compiler_version: capture(cxx, '--version'), original_ldflags: original_ldflags, mapped_ldflags: mapped_ldflags, command: command}) + "\n")
+native_runtime = nil
+if native_platform == 'linux-gnu'
+  begin
+    native_runtime = EmberGraphicsLLVMNative.retain("#{work}/bin/llvm-config.real", work, native_triple, compiler_runtime, forbidden: [target, sysroot])
+  rescue ArgumentError => error
+    fail!(error.message)
+  end
+  native_runtime.fetch('files').each do |file|
+    required << file.fetch('source')
+    initial_hashes[file.fetch('source')] = file.fetch('sha256')
+  end
+  native_runtime.fetch('tools').each { |path, hash| required << path; initial_hashes[path] = hash }
+end
+File.write("#{work}/receipt.json", JSON.pretty_generate({version: VERSION, source: source, target_build: target, native_build: native, native_sdk: native_sdk, native_platform: native_platform, native_triple: native_triple, native_header_roots: native_headers, native_system_libraries: host_system, native_runtime: native_runtime, sysroot: sysroot, target_prefix: prefix, target_triple: string(td, 'LLVM_HOST_TRIPLE'), target_assertions: tc['LLVM_ENABLE_ASSERTIONS'], staged_library_sha256: target_library_hash, library_proof: library_proof, compiler: cxx, compiler_version: capture(cxx, '--version'), original_ldflags: original_ldflags, mapped_ldflags: mapped_ldflags, command: command}) + "\n")
 shasum = capture('/usr/bin/which', 'shasum')
 fail!('shasum must have an absolute executable path') unless shasum.start_with?('/') && File.executable?(shasum)
 File.write("#{work}/bin/llvm-config", <<~SH)
@@ -257,10 +302,11 @@ File.write("#{work}/bin/llvm-config", <<~SH)
       echo 'llvm-config: input receipt changed; rebuild metadata tool' >&2
       exit 1
   }
-  exec "$base/bin/llvm-config.real" "$@"
+  #{EmberGraphicsLLVMNative.launcher(native_runtime)}
 SH
 File.chmod(0755, "#{work}/bin/llvm-config")
-local_inputs = %w[metadata/BuildVariables.inc metadata/LibraryDependencies.inc metadata/ExtensionDependencies.inc llvm-config.cpp build-llvm-config.rb llvm-target.rb llvm-config.d dependencies.command compile.command receipt.json bin/llvm-config.real bin/llvm-config]
+local_inputs = %w[metadata/BuildVariables.inc metadata/LibraryDependencies.inc metadata/ExtensionDependencies.inc llvm-config.cpp build-llvm-config.rb llvm-target.rb llvm-native.rb llvm-config.d dependencies.command compile.command receipt.json bin/llvm-config.real bin/llvm-config]
+local_inputs += native_runtime.fetch('files').map { |file| file.fetch('path') } if native_runtime
 local_inputs += %w[strip.command strip.log] if library_proof && library_proof[:method] == 'cmake-install-strip'
 required.uniq.each do |p|
   fail!("input changed during compilation: #{p}; discard NEW_WORK") unless Digest::SHA256.file(p).hexdigest == initial_hashes.fetch(p)

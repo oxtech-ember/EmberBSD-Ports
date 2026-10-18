@@ -26,7 +26,8 @@ end
 
 check('actual upstream tool reports target version/triple/RTTI/assertions') do
   out, _, status = query(tool, '--version', '--host-target', '--has-rtti', '--assertion-mode')
-  status.success? && out == "23.1.3\n#{target_spec.fetch(:processor)}-unknown-netbsd\nYES\nOFF\n"
+  assertions = receipt.fetch('target_assertions', 'OFF')
+  status.success? && out == "23.1.3\n#{receipt.fetch('target_triple')}\nYES\n#{assertions}\n"
 end
 check('target component graph includes the selected backend and ORC') do
   out, _, status = query(tool, '--components')
@@ -57,7 +58,7 @@ Dir.mktmpdir('ember-llvm-config-tests-') do |tmp|
       !status.success? && out.empty? && err.include?('input receipt changed')
     end
   end
-  check('rejects native Darwin metadata as target input') do
+  check('rejects native metadata as target input') do
     _, err, status = Open3.capture3('ruby', builder, receipt.fetch('source'), receipt.fetch('native_build'), receipt.fetch('native_build'), receipt.fetch('sysroot'), receipt.fetch('target_prefix'), "#{tmp}/wrong-target")
     !status.success? && err.include?('target must be configured for NetBSD/aarch64')
   end

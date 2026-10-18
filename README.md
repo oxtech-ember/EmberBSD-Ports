@@ -107,6 +107,10 @@ runtime behavior are validated.
   on Zero 3W. Packaged upstream lit passes launcher and PASS/XFAIL/FAIL checks
   in AArch64 UTM. Mesa26 passes installed llvmpipe/ORC acceptance below;
   Full LLVM/Clang/LLD 23.1.3 cross packages pass normal staging checks; LLVM core API/JIT and renewed Mesa acceptance pass on CM5. Installed Clang/LLD execution and the TinyGo consumer remain pending.
+  [Linux metadata-helper preparation](profiles/common-graphics/cross/llvm-config.md)
+  retains the exact native GCC16 ELF loader and runtime closure. Native
+  relocation and refusal checks pass; the complete Linux LLVM helper and
+  target-query agreement remain pending.
 - [Common graphics source packages](profiles/common-graphics/README.md):
   [libudev-bsd render-node discovery](profiles/common-graphics/cross/libudev-render-nodes.md)
   repairs DRM classification for KWin 6.8 with a real-source regression.

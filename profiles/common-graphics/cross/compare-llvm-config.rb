@@ -13,8 +13,8 @@ abort 'reference capture is incomplete' unless File.read("#{reference}/status").
 abort 'comparison requires an installed/staged prefix, not a development tree' if r.fetch('target_prefix') == r.fetch('target_build')
 target_prefix = File.read("#{reference}/prefix").strip
 abort 'invalid reference prefix' unless target_prefix.start_with?('/') && !target_prefix.match?(/\s/)
-spec = EmberGraphicsLLVM.for_triple(r.fetch('target_triple'))
-abort 'reference must match the selected LLVM 23.1.3 NetBSD target' unless File.read("#{reference}/version").strip == '23.1.3' && File.read("#{reference}/host-target").strip == "#{spec.fetch(:processor)}-unknown-netbsd"
+EmberGraphicsLLVM.for_triple(r.fetch('target_triple'))
+abort 'reference must match the selected LLVM 23.1.3 NetBSD target exactly' unless File.read("#{reference}/version").strip == '23.1.3' && File.read("#{reference}/host-target").strip == r.fetch('target_triple')
 components = %w[bitwriter engine mcdisassembler mcjit core executionengine scalaropts transformutils instcombine native orcjit]
 options = %w[version host-target has-rtti assertion-mode targets-built components prefix cppflags cflags cxxflags ldflags shared-mode libs libnames libfiles system-libs]
 failed = []
