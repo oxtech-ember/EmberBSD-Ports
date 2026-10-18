@@ -33,6 +33,10 @@ runtime behavior are validated.
   provider retains its CMake/header interfaces and full companion libraries.
   GCC16 AArch64 packaging verifies all 613 entries; four selected native
   numerical checks pass. Installed target checks remain pending.
+- [JBIG-KIT 2.2](profiles/common-graphics/cross/jbigkit.md): the common provider
+  keeps both libraries and all four image tools. Ordinary GCC16 native and
+  AArch64 packages pass package checks; native upstream tests and installed
+  library memory checks pass. Target execution and TIFF integration remain pending.
 - [Maintained FreeImage sources](profiles/common-graphics/cross/freeimage.md):
   FreeImage/FreeImagePlus 3.19.25 and LibRaw 0.22.2 retain common codecs for
   OCCT. Source and focused native half checks pass; complete packages and

@@ -1,0 +1,21 @@
+$NetBSD$
+
+Origin: pkgsrc libtool integration, updated for JBIG-KIT 2.2 (AI-assisted).
+Keep upstream tools, diagnostics and all three library tests.
+Preserve compiler flags and clean generated libtool files.
+
+--- Makefile.orig
++++ Makefile
+@@ -1,10 +1,10 @@
+ # Unix makefile for JBIG-KIT
+ 
+ # Select an ANSI/ISO C compiler here, GNU gcc is recommended
+-CC = gcc
++CC ?= gcc
+ 
+ # Options for the compiler: A high optimization level is suggested
+-CFLAGS = -O2 -W
++CFLAGS ?= -O2 -W
+ # CFLAGS = -O -g -W -Wall -ansi -pedantic # -DDEBUG
+ 
+ export CC CFLAGS
