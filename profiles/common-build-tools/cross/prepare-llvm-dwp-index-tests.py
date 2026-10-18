@@ -7,7 +7,7 @@ import shutil
 import struct
 import sys
 sys.dont_write_bytecode = True
-from llvm_host import load_sdk, query
+from llvm_host import load_sdk, query, log_run
 
 
 def sections(path):
@@ -59,7 +59,6 @@ def rewrite_index(data, update):
 
 
 def prepare(args):
-    from emberbsd_sdk.process import capture
     if len(args) != 3:
         raise ValueError('Use ACCEPTED_RESULTS SOURCE_FIXTURES NEW_WORK')
     results, fixtures, output = map(os.path.abspath, args)
@@ -67,7 +66,7 @@ def prepare(args):
     cc, objcopy = os.environ['CC'], os.environ['OBJCOPY']
     if query([cc, '-dumpfullversion']) != '16.2.0' or query([cc, '-dumpmachine']) not in ('aarch64--netbsd', 'x86_64--netbsd'):
         raise ValueError('Common GCC16 target compiler required')
-    capture([cc, '-x', 'assembler', '-c', '/dev/null', '-o', output + '/empty.o'])
+    log_run(output + '/empty.log', [cc, '-x', 'assembler', '-c', '/dev/null', '-o', output + '/empty.o'])
     with open(output + '/cases.tsv', 'w') as cases:
         for line in Path(fixtures, 'cases.tsv').read_text().splitlines(keepends=True):
             name, version, types = line.split()
@@ -99,13 +98,15 @@ def prepare(args):
                 path = directory / (section + '.bin')
                 path.write_bytes(data)
                 command.extend(['--update-section', section + '=' + str(path)])
-            capture(command + [str(source), str(directory / 'program.dwp')])
+            log_run(directory / 'update.log', command + [str(source), str(directory / 'program.dwp')])
             shutil.copyfile(Path(fixtures, name, 'program'), directory / 'program')
             cases.write(line)
     print('Prepared indexed padding, shared tables and independent TU contributions.')
 
 
 if __name__ == '__main__':
+    from sdk_source import install_signal_handlers
+    install_signal_handlers()
     try:
         _, args = load_sdk()
         prepare(args)

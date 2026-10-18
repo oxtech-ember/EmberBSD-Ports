@@ -11,7 +11,6 @@ from llvm_host import checked_paths, load_sdk, query, log_run
 
 
 def build(args):
-    from emberbsd_sdk.process import capture
     if len(args) != 3:
         raise ValueError('Use GCC16_DRIVER SYSROOT NEW_WORK')
     cc, sysroot, work = args
@@ -43,7 +42,7 @@ def build(args):
     malformed.mkdir()
     source = work + '/v5-w64-64-plain/main.dwo'
     for name, section in [('offsets', '.debug_str_offsets.dwo'), ('info', '.debug_info.dwo'), ('strings', '.debug_str.dwo')]:
-        capture([objcopy, '--dump-section', section + '=' + str(malformed / (name + '.bin')), source])
+        log_run(malformed / (name + '.dump.log'), [objcopy, '--dump-section', section + '=' + str(malformed / (name + '.bin')), source])
     offsets, info, strings = [(malformed / (p + '.bin')).read_bytes() for p in ('offsets', 'info', 'strings')]
     damaged = {'short-header': offsets[:8], 'short-entry': offsets[:-1], 'short-unit': info[:8], 'unterminated': strings[:-1]}
     for name, data, offset, value in [('long-table', offsets, 4, len(offsets) + 64), ('bad-string', offsets, 16, 2**64 - 1), ('long-unit', info, 4, 2**64 - 1), ('suffix-strings', offsets + struct.pack('<Q', 1), 4, len(offsets) + 8 - 12)]:
@@ -54,15 +53,17 @@ def build(args):
         path = malformed / (name + '.bin')
         path.write_bytes(data)
         section = '.debug_info.dwo' if 'unit' in name else '.debug_str.dwo' if name == 'unterminated' else '.debug_str_offsets.dwo'
-        capture([objcopy, '--update-section', section + '=' + str(path), source, str(malformed / (name + '.dwo'))])
+        log_run(malformed / (name + '.update.log'), [objcopy, '--update-section', section + '=' + str(path), source, str(malformed / (name + '.dwo'))])
     for width in (32, 64):
         for kind in ('max-strx', 'truncated-strx'):
             flags = (['-DDW64'] if width == 64 else []) + (['-DTRUNCATED'] if kind == 'truncated-strx' else [])
-            capture([cc, '--sysroot=' + sysroot, *flags, '-c', str(here / 'llvm-dwp-malformed.S'), '-o', str(malformed / f'{kind}-w{width}.dwo')])
+            log_run(malformed / f'{kind}-w{width}.assemble.log', [cc, '--sysroot=' + sysroot, *flags, '-c', str(here / 'llvm-dwp-malformed.S'), '-o', str(malformed / f'{kind}-w{width}.dwo')])
     print('Built 16 two-CU DWP fixtures, 11 malformed inputs and a string-suffix input.')
 
 
 if __name__ == '__main__':
+    from sdk_source import install_signal_handlers
+    install_signal_handlers()
     try:
         _, args = load_sdk()
         build(args)

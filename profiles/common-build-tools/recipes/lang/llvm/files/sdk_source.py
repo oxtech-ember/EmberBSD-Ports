@@ -30,3 +30,14 @@ def load_sdk(arguments=None):
     if type(sdk.API_VERSION) is not int or sdk.API_VERSION != 1 or Path(sdk.__file__).resolve().parent != package:
         raise ValueError('The selected SDK must provide API version 1')
     return str(root), args
+
+
+def install_signal_handlers():
+    """Set entrypoint policy. Library imports do not change signal handlers."""
+    import signal
+
+    def interrupted(number, frame):
+        raise KeyboardInterrupt('Host operation interrupted by signal ' + str(number))
+
+    for number in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        signal.signal(number, interrupted)

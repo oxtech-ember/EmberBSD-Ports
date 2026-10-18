@@ -9,7 +9,8 @@ Before recording a reference, complete the ordinary runtime package checks and
 archive audit. Supply that archive's accepted SHA256 in the input JSON.
 The validator runs
 `cmake --install` with the recipe's strip mode into an empty private reference
-DESTDIR. It checks source and object inputs before and after that installation.
+DESTDIR. It records CMake output in `DESTDIR.llvm-install.log`.
+It checks source and object inputs before and after that installation.
 Use the complete normalized pkgsrc PLIST and both normalized partition PLISTs.
 The validator compares the runtime subset with the accepted package manifest.
 It checks the full partition, directly staged ELF headers and Mach-O magic.

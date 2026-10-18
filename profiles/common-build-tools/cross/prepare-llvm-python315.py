@@ -9,7 +9,7 @@ import re
 import sys
 import tarfile
 sys.dont_write_bytecode = True
-from llvm_host import load_sdk, query
+from llvm_host import load_sdk, query, log_run
 
 SCRIPTS = {'bin/analyze-build': 'tools/scan-build-py/bin/analyze-build', 'bin/git-clang-format': 'tools/clang-format/git-clang-format', 'bin/hmaptool': 'utils/hmaptool/hmaptool', 'bin/intercept-build': 'tools/scan-build-py/bin/intercept-build', 'bin/scan-build-py': 'tools/scan-build-py/bin/scan-build', 'bin/scan-view': 'tools/scan-view/bin/scan-view', 'libexec/analyze-c++': 'tools/scan-build-py/libexec/analyze-c++', 'libexec/analyze-cc': 'tools/scan-build-py/libexec/analyze-cc', 'libexec/intercept-c++': 'tools/scan-build-py/libexec/intercept-c++', 'libexec/intercept-cc': 'tools/scan-build-py/libexec/intercept-cc', 'share/clang/clang-format-diff.py': 'tools/clang-format/clang-format-diff.py', 'share/scan-view/Reporter.py': 'tools/scan-view/share/Reporter.py', 'share/scan-view/startfile.py': 'tools/scan-view/share/startfile.py'}
 
@@ -23,7 +23,6 @@ def prepare(args):
     from emberbsd_sdk.inventory import sha256_file
     from emberbsd_sdk.jsonio import write_json
     from emberbsd_sdk.elf import read_elf_dynamic
-    from emberbsd_sdk.process import capture
     parser = argparse.ArgumentParser()
     for name in ('clang', 'lld', 'lit', 'clang-source', 'python', 'cmake', 'readelf', 'pkg-create'):
         parser.add_argument('--' + name, required=True)
@@ -106,8 +105,7 @@ def prepare(args):
                 path.chmod(mode)
                 expected[rel] = state(path)
                 changes[rel] = dict(kind='interpreter only', upstream=source_rel, upstream_sha256=sha256_file(source))
-            result = capture([options['python'], '-B', '-c', 'import pathlib,sys; [compile(pathlib.Path(p).read_bytes(), p, "exec") for p in sys.argv[1:]]', *[str(stage / rel) for rel in SCRIPTS]])
-            (out / 'py-compile.log').write_bytes(result.stdout + result.stderr)
+            log_run(out / 'py-compile.log', [options['python'], '-B', '-c', 'import pathlib,sys; [compile(pathlib.Path(p).read_bytes(), p, "exec") for p in sys.argv[1:]]', *[str(stage / rel) for rel in SCRIPTS]])
         changed_inodes = {}
         for rel in payload:
             path = stage / rel
@@ -127,7 +125,7 @@ def prepare(args):
                     raise ValueError('Unexpected or ambiguous RPATH string: ' + rel)
                 cmake = out / 'change-rpath.cmake'
                 cmake.write_text('file(RPATH_CHANGE FILE [==[' + str(path) + ']==] OLD_RPATH [==[' + old_rpath.decode() + ']==] NEW_RPATH [==[' + new_rpath.decode() + ']==])\n')
-                capture([options['cmake'], '-P', str(cmake)])
+                log_run(out / ('rpath-' + str(len(changes)) + '.log'), [options['cmake'], '-P', str(cmake)])
                 wanted = data[:offset] + new_rpath.ljust(len(old_rpath), b'\0') + data[offset + len(old_rpath):]
                 if path.read_bytes() != wanted:
                     raise ValueError('Unexpected ELF byte change: ' + rel)
@@ -160,8 +158,7 @@ def prepare(args):
                 command.extend([flag, str(stage / entry)])
         if (stage / '+REQUIRE').exists():
             raise ValueError('Unexpected +REQUIRE script')
-        result = capture(command + [str(result_path)])
-        (out / (kind + '-pkg-create.log')).write_bytes(result.stdout + result.stderr)
+        log_run(out / (kind + '-pkg-create.log'), command + [str(result_path)])
         with tarfile.open(result_path) as package:
             final_contents = package.extractfile('+CONTENTS').read().decode()
         controls = re.findall(r'^@ignore\n([+][^\n]+)\n', final_contents, re.M)
@@ -176,6 +173,8 @@ def prepare(args):
 
 
 if __name__ == '__main__':
+    from sdk_source import install_signal_handlers
+    install_signal_handlers()
     try:
         _, args = load_sdk()
         prepare(args)

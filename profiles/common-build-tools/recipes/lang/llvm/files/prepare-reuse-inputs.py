@@ -97,6 +97,8 @@ def prepare(template, output, bmake, package, receipt, sdk_source):
 
 
 if __name__ == '__main__':
+    from sdk_source import install_signal_handlers
+    install_signal_handlers()
     try:
         sdk, args = load_sdk()
         if len(args) != 5:

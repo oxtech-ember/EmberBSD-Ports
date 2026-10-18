@@ -35,6 +35,8 @@ def prepare(args):
 
 
 if __name__ == '__main__':
+    from sdk_source import install_signal_handlers
+    install_signal_handlers()
     try:
         _, args = load_sdk()
         prepare(args)

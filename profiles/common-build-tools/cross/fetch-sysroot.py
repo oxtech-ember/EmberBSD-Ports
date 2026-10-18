@@ -16,7 +16,7 @@ def fetch_sysroot(revision, expected_manifest, work):
     from emberbsd_sdk.inventory import sha256_file
     from emberbsd_sdk.jsonio import read_json, write_json
     from emberbsd_sdk.paths import canonical_existing, inside
-    from emberbsd_sdk.process import capture
+    from emberbsd_sdk.process import run_logged
     from emberbsd_sdk.elf import read_elf_header
 
     def check(value, message):
@@ -35,7 +35,7 @@ def fetch_sysroot(revision, expected_manifest, work):
     def fetch(name):
         check(re.fullmatch('[A-Za-z0-9][A-Za-z0-9._-]*', name), 'Unsafe asset name')
         path = downloads + '/' + name
-        capture(['curl', '--fail', '--location', '--silent', '--show-error', '--proto', '=https', '--proto-redir', '=https', '--tlsv1.2', '--output', path, base + name])
+        run_logged(['curl', '--fail', '--location', '--silent', '--show-error', '--proto', '=https', '--proto-redir', '=https', '--tlsv1.2', '--output', path, base + name], work + '/' + name + '.download.log')
         return path
 
     manifest_path = fetch('manifest.json')
@@ -82,6 +82,8 @@ def fetch_sysroot(revision, expected_manifest, work):
 
 
 if __name__ == '__main__':
+    from sdk_source import install_signal_handlers
+    install_signal_handlers()
     try:
         _, args = load_sdk()
         if len(args) != 3:

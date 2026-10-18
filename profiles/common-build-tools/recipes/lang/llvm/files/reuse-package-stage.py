@@ -157,7 +157,10 @@ def install_full(value, destdir):
     command = [value['cmake'], '--install', value['build'], '--prefix', '/usr/pkg']
     if value['install_strip']:
         command.append('--strip')
-    run(command, env=dict(os.environ, DESTDIR=destdir, PYTHONDONTWRITEBYTECODE='1'))
+    from emberbsd_sdk.process import run_logged
+    log = destdir + '.llvm-install.log'
+    reject_overlaps(log, input_roots(value), 'SDK install log overlaps LLVM inputs')
+    run_logged(command, log, env=dict(os.environ, DESTDIR=destdir, PYTHONDONTWRITEBYTECODE='1'))
     check(all(p.startswith('usr/pkg/') for p in tree(destdir)), 'Install wrote outside the target prefix')
     return destdir + '/usr/pkg'
 
@@ -204,6 +207,8 @@ def install(config, receipt_path, expected_hash, destdir):
 
 
 if __name__ == '__main__':
+    from sdk_source import install_signal_handlers
+    install_signal_handlers()
     try:
         _, args = load_sdk()
         command = args.pop(0) if args else ''

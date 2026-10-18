@@ -4,6 +4,8 @@ Host controllers use Python 3.15 and the standard-library SDK API version 1.
 Set `EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK`, or pass `--sdk-source` to
 the controller. Run these host tools with `python3 -B`. Target run scripts
 remain POSIX shell and do not require host Python on the device.
+The host entrypoints handle INT, TERM and HUP. The SDK process runner stops
+owned producer processes before it returns. Imports do not install handlers.
 
 This opt-in path builds EmberBSD/AArch64 or amd64 pkgsrc packages with the
 [GCC 16.2 cross compiler](../../development-toolchain/cross/README.md).
