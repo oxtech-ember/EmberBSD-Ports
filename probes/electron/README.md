@@ -89,7 +89,7 @@ Node runs on the host, its products are target artifacts.
   formatter and the `statvfs` branch. GCC16.2.0 rebuilt `fccompat.o` and
   `fcstat.o`. Cppcheck 2.22, GCC16 `-fanalyzer`, and Clang Static Analyzer 21
   reported no findings on those files.
-- The next full `chrome` pass stopped at 2,179 of 70,608 scheduled tasks on
+- The next full `chrome` pass stopped at 2,150 of 70,608 scheduled tasks on
   `third_party/webrtc/p2p/port_interface/port_interface.o`. GCC16 rejected the
   unqualified `Network` return type because the method is also named
   `Network`; qualifying it as `::webrtc::Network` fixes the meaning ambiguity
@@ -98,6 +98,16 @@ Node runs on the host, its products are target artifacts.
   operator declaration in `rtc_base/checks.h:347`. Clang Static Analyzer 21
   reported two move-forwarding diagnostics in unchanged Abseil/base headers;
   neither refers to the changed WebRTC line. The full graph is ready to resume.
+- The resumed graph exposed two bundled libdrm NetBSD assumptions. The GN
+  target defined `MAJOR_IN_SYSMACROS` unconditionally, but NetBSD provides
+  `major`, `minor`, and `makedev` through `sys/types.h`. The definition is now
+  limited to non-NetBSD targets. `drmModeSetPlane` already used unsigned
+  coordinates in its NetBSD implementation; its header now declares matching
+  types. GCC16.2.0 rebuilt both libdrm objects as AArch64 ELF. Cppcheck 2.22 is
+  clean on the two source files after explicitly casting the DCC block-size
+  expression to `unsigned`. GCC `-fanalyzer` and Clang Static Analyzer 21 still
+  report findings in unchanged upstream allocation/device-info paths; none is
+  in the changed NetBSD branches.
 - No complete Chromium link, Electron runtime, or Blanc package exists.
   Continue the Chrome build and classify actual compiler failures. Partial
   targets are not a Blanc result.

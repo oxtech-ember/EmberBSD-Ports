@@ -8145,3 +8145,59 @@ index 24c9cce422..d77cea4655 100644
  
    // Methods to set/get ICE role and tiebreaker values.
    virtual void SetIceRole(IceRole role) = 0;
+diff --git a/third_party/libdrm/BUILD.gn b/third_party/libdrm/BUILD.gn
+index 43cc4de4ef..02344177b4 100644
+--- a/third_party/libdrm/BUILD.gn
++++ b/third_party/libdrm/BUILD.gn
+@@ -36,8 +36,11 @@ config("libdrm_private_config") {
+   # https://patchwork.kernel.org/patch/9628231/ lands.
+   cflags = [ "-Wno-#pragma-messages" ]
+ 
+-  # glibc version >= 2.25 explicitly include <sys/sysmacros.h>
+-  cflags += [ "-DMAJOR_IN_SYSMACROS=1" ]
++  # glibc version >= 2.25 explicitly includes <sys/sysmacros.h>.
++  # NetBSD provides major/minor/makedev through <sys/types.h>.
++  if (!is_netbsd) {
++    cflags += [ "-DMAJOR_IN_SYSMACROS=1" ]
++  }
+ 
+   if (is_clang) {
+     cflags += [
+diff --git a/third_party/libdrm/src/xf86drm.c b/third_party/libdrm/src/xf86drm.c
+index d4bfec8a41..42ea966269 100644
+--- a/third_party/libdrm/src/xf86drm.c
++++ b/third_party/libdrm/src/xf86drm.c
+@@ -443,7 +443,7 @@ drmGetFormatModifierNameFromAmd(uint64_t modifier)
+ 
+         if (AMD_FMT_MOD_GET(DCC, modifier)) {
+             fprintf(fp, ",DCC,DCC_MAX_COMPRESSED_BLOCK=%uB",
+-                    64 << AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier));
++                    (unsigned)(64 << AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier)));
+ 
+             /* Other DCC fields are unused by GFX12. */
+         }
+@@ -492,7 +492,7 @@ drmGetFormatModifierNameFromAmd(uint64_t modifier)
+             }
+ 
+             fprintf(fp, ",DCC,DCC_MAX_COMPRESSED_BLOCK=%uB",
+-                    64 << AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier));
++                    (unsigned)(64 << AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier)));
+ 
+             if (AMD_FMT_MOD_GET(DCC_INDEPENDENT_64B, modifier))
+                 fprintf(fp, ",DCC_INDEPENDENT_64B");
+diff --git a/third_party/libdrm/src/xf86drmMode.h b/third_party/libdrm/src/xf86drmMode.h
+index 0848788799..de37950300 100644
+--- a/third_party/libdrm/src/xf86drmMode.h
++++ b/third_party/libdrm/src/xf86drmMode.h
+@@ -436,7 +436,11 @@ extern drmModePlaneResPtr drmModeGetPlaneResources(int fd);
+ extern drmModePlanePtr drmModeGetPlane(int fd, uint32_t plane_id);
+ extern int drmModeSetPlane(int fd, uint32_t plane_id, uint32_t crtc_id,
+ 			   uint32_t fb_id, uint32_t flags,
++#if defined(__NetBSD__)
++			   uint32_t crtc_x, uint32_t crtc_y,
++#else
+ 			   int32_t crtc_x, int32_t crtc_y,
++#endif
+ 			   uint32_t crtc_w, uint32_t crtc_h,
+ 			   uint32_t src_x, uint32_t src_y,
+ 			   uint32_t src_w, uint32_t src_h);
