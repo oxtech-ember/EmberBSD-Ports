@@ -24,7 +24,8 @@ MAKE_FLAGS+=	CC=${CC:Q} AR=${AR:Q} target_os=${OPSYS:Q}
 MAKE_FLAGS+=	incpaths=${SPNAV_CPPFLAGS:Q} libpaths=
 MAKE_FLAGS+=	INSTALL_DATA=${INSTALL_DATA:Q} INSTALL_LIB=${INSTALL_LIB:Q}
 
-INSTALLATION_DIRS+=	include lib share/pkgconfig share/licenses/libspnav
+INSTALLATION_DIRS+=	include lib share share/pkgconfig share/licenses \
+			share/licenses/libspnav
 
 post-install:
 	${INSTALL_DATA} ${WRKSRC}/LICENSE \
