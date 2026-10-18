@@ -252,7 +252,7 @@ class RuntimePackageTest < Minitest::Test
       assert_equal 'libstdcxx-and-runtime-relro-relink', result[:metadata]['GCC_RUNTIME_BUILD_MODE']
       assert_equal File.binread(parent + '/stage/usr/pkg/gcc16/lib/libstdc++.so.7.36'), File.binread(work + '/stage/usr/pkg/gcc16/lib/libstdc++.so.7.36')
     end
-    %w[parent archive baseline output ownership command selection].each do |mutation|
+    %w[parent archive baseline output ownership command selection relative-input].each do |mutation|
       with_relink do |relinked, work, parent, repin|
         file = work + '/relink.json'
         receipt = JSON.parse(File.read(file))
@@ -263,6 +263,8 @@ class RuntimePackageTest < Minitest::Test
         when 'output' then File.write(work + '/proof/libgcc_s.so.1.relro', 'changed')
         when 'ownership' then File.write(work + '/stage/usr/pkg/gcc16/include/c++/vector', 'changed')
         when 'selection' then receipt['components'].delete('libatomic')
+        when 'relative-input'
+          receipt['inputs'] = {'commands.json' => receipt['inputs'].values.first}
         when 'command'
           path = work + '/commands.json'
           commands = JSON.parse(File.read(path)); commands[1]['argv'] << '-Wl,-z,now'
