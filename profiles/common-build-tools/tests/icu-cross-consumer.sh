@@ -14,7 +14,8 @@ cp "$fixtures/en.res" "$fixtures/emberprobe.dat" "$work/"
     -B"$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0/" \
     -I"$sysroot/usr/pkg/include" -L"$sysroot/usr/pkg/lib" \
     -L"$sysroot/usr/pkg/gcc16/lib" -Wl,-rpath,/usr/pkg/lib \
-    -Wl,-rpath,/usr/pkg/gcc16/lib -Wall -Wextra -Werror \
+    -Wl,-rpath,/usr/pkg/gcc16/lib -std=c23 -O2 -g -Wall -Wextra -Werror \
+    -fsanitize=undefined -fsanitize-trap=undefined \
     "$src/icu-consumer.c" -licui18n -licuuc -licudata -o "$work/consumer"
 cp "$src/icu-installed.sh" "$work/run.sh"
 file "$work/consumer"

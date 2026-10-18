@@ -82,6 +82,8 @@ conversion preserves its bytes, collation has the expected order, and the
 host-generated resource returns 42. Its loader uses the common GCC16
 `libstdc++.so.7` and `libgcc_s.so.1`. All 18 runtime file bytes and link targets
 match the archive. The guest contains no ICU SDK or generators.
+The target C consumer also passes with GCC16 UBSan traps. The packaged
+provider remains uninstrumented; this does not replace whole-library memory tests.
 Normal deletion makes the unchanged consumer fail to find `libicui18n.so.78`.
 Normal reinstallation restores all checks and package integrity.
 The [acceptance receipt](../tests/icu-installed-aarch64.json) records package

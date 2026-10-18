@@ -2,14 +2,14 @@
   "scope": "Installed AArch64 ICU runtime API, Unicode conversion, collation, host-generated resources and normal package lifecycle",
   "compiler": "GCC 16.2.0",
   "source_commit": "035ee7650fbbb7a79db30b38a17ed5c7f0709092",
-  "sdk_source_commit": "e98655f",
+  "sdk_source_commit": "e98655f680602bad58e84ea9299e14272abfed6a",
   "runtime_package": "icu-78.3nb2",
   "runtime_package_sha256": "f972b0c5aa737aa218d44a8d382e6ebf881ee64b676f026e66831ef45eaeecbb",
   "sdk_package": "icu-devel-78.3nb2",
   "sdk_package_sha256": "166354154b0d7bd1ffc835c5f77adfe8a485129d98ae1d893403f820145f4220",
   "sdk_verified_entries": 274,
   "target_runtime_verified_entries": 18,
-  "consumer_sha256": "fe6d1d0aca02019348114a920f67ea2c577bcfb6c55e2713aa664ec191d928fc",
+  "consumer_sha256": "cfe489159d0592b6a5d0e10d242d18ee72edd58a090895158e720a566a87d0e2",
   "en_resource_sha256": "5bbe9b48fca3cdbf2a6f3d715a946f5c63a7f7aac0cb4314232ef2aa3009e15c",
   "common_resource_sha256": "e0bb148dcee3152ca2e76f1fd10a417ac915327da7d5ef071300a65a146432be",
   "native_memcheck": {
@@ -23,5 +23,9 @@
     "Not the complete ICU test suite",
     "Target Valgrind is unavailable",
     "No amd64 execution result"
-  ]
+  ],
+  "lifecycle_consumer_sha256": "fe6d1d0aca02019348114a920f67ea2c577bcfb6c55e2713aa664ec191d928fc",
+  "consumer_instrumentation": "GCC16 UBSan traps; provider uninstrumented",
+  "consumer_source_sha256": "a17841f1816f9bfba9501b2f90ae66b98d742de32419d7926ef1e91a8b5e290c",
+  "consumer_controller_sha256": "ce5de7ae1eedd432a15fe6a38be37cffcf02caf599894cb731cdd75cd2bf2ee7"
 }
