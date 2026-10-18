@@ -1,0 +1,17 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted; not submitted upstream).
+Keep an explicit target encoding path during cross configuration. The recipe
+checks the actual dependency file inside the shared target sysroot.
+
+--- aclocal.m4.orig
++++ aclocal.m4
+@@ -2913,7 +2913,7 @@
+ 	done
+ 	;;
+ (*)
+-	if test ! -f "$ENCODINGS_DIR_FILE" ; then
++	if test "$cross_compiling" != yes && test ! -f "$ENCODINGS_DIR_FILE" ; then
+ 		AC_MSG_WARN(Encodings file not found: $ENCODINGS_DIR_FILE)
+ 		ENCODINGS_DIR_FILE=/usr/share/fonts/X11
+ 	fi

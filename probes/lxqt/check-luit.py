@@ -32,7 +32,8 @@ def main():
         command = [args.binary] + options
         if args.ssh:
             command = [args.ssh_program, args.ssh,
-                       "env LC_ALL=C " + shlex.join(command)]
+                       "env LC_ALL=C ASAN_OPTIONS=halt_on_error=1 "
+                       "UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 " + shlex.join(command)]
         result = subprocess.run(command, input=data, capture_output=True,
                                 timeout=30, env=environment)
         (args.output / f"{index:02}.stdout").write_bytes(result.stdout)

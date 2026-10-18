@@ -1,0 +1,17 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted; not submitted upstream).
+Keep an explicit target encoding path during cross configuration. The recipe
+checks the actual dependency file inside the shared target sysroot.
+
+--- configure.orig
++++ configure
+@@ -9964,7 +9964,7 @@
+ 	done
+ 	;;
+ (*)
+-	if test ! -f "$ENCODINGS_DIR_FILE" ; then
++	if test "$cross_compiling" != yes && test ! -f "$ENCODINGS_DIR_FILE" ; then
+ 		{ echo "$as_me:9968: WARNING: Encodings file not found: $ENCODINGS_DIR_FILE" >&5
+ echo "$as_me: WARNING: Encodings file not found: $ENCODINGS_DIR_FILE" >&2;}
+ 		ENCODINGS_DIR_FILE=/usr/share/fonts/X11

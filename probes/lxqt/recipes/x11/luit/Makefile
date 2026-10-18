@@ -2,7 +2,7 @@
 
 DISTNAME=		luit-20260907
 PKGNAME=		luit-2.0.20260907
-PKGREVISION=		3
+PKGREVISION=		4
 CATEGORIES=		x11
 MASTER_SITES=		https://invisible-island.net/archives/luit/
 EXTRACT_SUFX=		.tgz
@@ -19,6 +19,12 @@ CONFIGURE_ENV+=		APP_MAN_SUFFIX=1
 DEPENDS+=		encodings>=1.1.0:../../fonts/encodings
 CONFIGURE_ARGS+=	--with-encodings-dir=${PREFIX}/share/fonts/X11/encodings/encodings.dir
 CONFIGURE_ARGS+=	--with-locale-alias=${BUILDLINK_PREFIX.libX11}/share/X11/locale/locale.alias
+
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+pre-configure:
+	${TEST} -f ${CROSS_DESTDIR}${PREFIX}/share/fonts/X11/encodings/encodings.dir
+.endif
 
 .include "../../converters/libiconv/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"
