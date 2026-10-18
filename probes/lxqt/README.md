@@ -56,6 +56,10 @@ DSOs retain the same bytes, exported symbols, SONAME and `DT_NEEDED` entries.
 
 The current LayerShellQt package exports `LayerShellQt::Interface`.
 The leave dialog uses this target and requires LayerShellQt 6.8.
+The EmberBSD session package retains the upstream device monitor by default.
+It uses the common `devel/libudev-bsd` interface. The Linux-only
+`sysutils/libudev` package is not the NetBSD provider.
+Device event delivery still needs separate drvctl/ndevd runtime acceptance.
 
 The helper verifies the original archive before extraction and refuses an
 existing output directory. It preserves configure, build and install logs.
@@ -107,6 +111,9 @@ The helper's null-driver finding and two GCC `-fanalyzer` ownership findings
 are absent after the patch. Clang Static Analyzer checks both the C helper
 and its C++ consumer with the target compilation flags. It is analysis-only.
 The existing style findings remain visible.
+The packaged GCC16 helper also passes the no-device stdin path under an
+unprivileged VM user. This check requires an absent `/sys/class/backlight`
+and supplies no brightness value. It does not test physical backlight control.
 
 The Qt model uses `Q_MOC_OUTPUT_REVISION=69` from Qt 6.12.
 The libqtxdg baseline and patched source have the same unique Cppcheck
@@ -116,6 +123,15 @@ diagnostics. Three `strPlusChar` and three `pointerOutOfBounds` reports in
 Clang analysis and the target tests cover these expressions without error.
 Cppcheck 2.22 cannot parse the complete expanded Qt system-header configuration;
 this separate parser limitation is retained in the analysis receipts.
+
+Two complete libqtxdg upstream test programs pass ten native ASan/UBSan cases
+with the existing Qt 6.12 host libraries and common GLib 2.90.1 provider.
+Both the library and the test executables use the sanitizer flags.
+The native memory run does not cover the directory suite, because Darwin
+`QStandardPaths` uses different default directories. The target run covers
+all 21 cases.
+The native Qt and GLib dependency libraries are not instrumented.
+Leak checking remains outside this sanitizer coverage.
 
 The luit recipe declares zlib and the existing common encodings package.
 It selects target `locale.alias` and `encodings.dir` paths explicitly.
@@ -135,8 +151,10 @@ host or EmberBSD/aarch64 guest. These sanitizer runs are not Memcheck runs.
 
 ## Acceptance boundary
 
-The common GCC16 build compiles libqtxdg 4.4.0, liblxqt 2.4.0,
-qtxdg-tools 4.4.0 and lxqt-session 2.4.0. The three real libqtxdg test
+The ordinary common GCC16 package build passes all pkgsrc checks for
+libqtxdg 4.4.0nb5, liblxqt 2.4.0nb3, qtxdg-tools 4.4.0nb2 and
+lxqt-session 2.4.0nb5. These packages are installed in the shared cross sysroot.
+The three real libqtxdg test
 programs pass 21 cases on an unprivileged EmberBSD/aarch64 VM with the
 offscreen Qt platform plugin. The tested DSO and test programs come from the
 ordinary libqtxdg package build. A negative control runs the prefixed directory
@@ -147,6 +165,10 @@ The VM component run uses an application runtime bundle from the same common
 sysroot. It does not establish complete package installation or a desktop
 session. The packaged qtxdg-mat executable also passes its version and help
 controls under the unprivileged user.
+The packaged session, configuration and leave executables also pass six
+version/help controls. Their CLI run uses unavailable private D-Bus addresses
+and starts no event loop or autostart program. It proves library loading and
+application construction only.
 
 Prepared host modules are a build prerequisite. Compilation and component
 tests do not establish power control, input or rendering.
