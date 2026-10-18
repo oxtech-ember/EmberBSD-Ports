@@ -47,6 +47,19 @@ The helper verifies the original archive before extraction and refuses an
 existing output directory. It preserves configure, build and install logs.
 On macOS/arm64 it passes with the common Qt 6.12 host tools.
 
+The terminal closure retains xterm 412 and current luit 20260907. xterm needs
+the native `tbl` generator to prepare its complete manual. Use an existing
+current groff `tbl`, or prepare it from the common source and patches:
+
+```sh
+python3 probes/lxqt/build-tbl.py /absolute/distfiles/groff-1.24.2.tar.gz \
+    /absolute/new-native-tbl-work --make /absolute/gmake
+```
+
+Set `TOOLS_PLATFORM.tbl` to the printed executable. This builds the original
+upstream generator and all its required generated headers. It does not change
+the target groff options or install another target provider.
+
 ## Acceptance boundary
 
 Prepared host modules are a build prerequisite. They do not establish

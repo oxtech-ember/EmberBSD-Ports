@@ -2,7 +2,7 @@
 
 DISTNAME=		luit-20260907
 PKGNAME=		luit-2.0.20260907
-PKGREVISION=		1
+PKGREVISION=		2
 CATEGORIES=		x11
 MASTER_SITES=		https://invisible-island.net/archives/luit/
 EXTRACT_SUFX=		.tgz
@@ -16,6 +16,7 @@ GNU_CONFIGURE=		yes
 USE_TOOLS+=		pkg-config
 
 CONFIGURE_ENV+=		APP_MAN_SUFFIX=1
+CONFIGURE_ARGS+=	--with-locale-alias=${BUILDLINK_PREFIX.libX11}/share/X11/locale/locale.alias
 
 .include "../../converters/libiconv/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"
