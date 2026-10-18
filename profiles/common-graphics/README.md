@@ -24,7 +24,8 @@ and installed OCCT image workflows remain pending.
 [OpenEXR 3.5.2 and OpenJPH 0.32.0](cross/openexr.md) retain shared libraries,
 tools and current system codecs. Ordinary GCC16 native/AArch64 packages pass
 their static packing-list checks. Native image round trips and focused strict
-memory checks pass. Full OpenEXR CTest and target codec execution remain pending.
+memory checks pass, with all 147 native OpenEXR tests. Target codec/API checks
+and normal package removal/reinstallation also pass.
 
 The [JBIG-KIT 2.2nb1 provider](cross/jbigkit.md) keeps shared/static libraries and
 all four image tools. Ordinary GCC16 native/AArch64 packages pass package checks.
@@ -155,7 +156,11 @@ Its rc script sources base `/etc/rc.subr`; package configuration stays under
 Full package and installed service acceptance remain separate.
 The [GI 1.86.0 cross package](cross/introspection.md) preserves the complete
 selected payload and runs real GType queries on EmberBSD/CM5. Three unchanged
-upstream hash/search cases also pass there. The matching GLib 2.90.1 metadata
+upstream hash/search cases also pass there.
+The revision-6 GI recipe also fixes temporary hash-key and test-buffer leaks.
+A GCC16 native causal check confirms the repair while preserving explicit
+GLib reachable-allocation and Cppcheck parser limits; package acceptance is pending.
+The matching GLib 2.90.1 metadata
 package supplies all seven GIR/typelib pairs and passes four target load/invoke
 cycles on CM5. The [complete text/GTK introspection packages](cross/desktop-introspection.md) also cross-build; their real GType queries pass on CM5 with the shared query transport.
 The complete [GdkPixbuf 2.44.8 and shared MIME packages](cross/gdk-pixbuf.md)
@@ -175,6 +180,11 @@ transitions, plus two whole-window captures verifying USB mouse dragging.
 Sustained desktop use remains unaccepted. Physical CM5 offscreen OpenGL
 has its own receipt linked above.
 
+
+The cross Wayland revision-2 recipes separate runtime libraries from the
+target scanner and SDK. Native ownership stays complete. Actual pkgsrc metadata
+and copied-stage checks pass; normal split packages and installed runtime
+execution remain pending. See the [package boundary](cross/wayland.md#runtime-and-sdk-packages).
 
 The [Wayland 1.26.0nb1 package](cross/wayland.md) passes all 26 enabled
 upstream invocations on Zero 3W with the paired kernel IPC fixes. The common

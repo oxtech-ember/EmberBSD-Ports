@@ -9,6 +9,11 @@ BUILDLINK_API_DEPENDS.wayland+=	wayland>=1.21.0
 BUILDLINK_PKGSRCDIR.wayland?=	../../devel/wayland
 
 .include "../../mk/bsd.fast.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
+BUILDLINK_API_DEPENDS.wayland+= wayland>=1.26.0nb2
+BUILDLINK_ABI_DEPENDS.wayland+= wayland>=1.26.0nb2
+.include "../../devel/wayland-devel/buildlink3.mk"
+.endif
 .if ${OPSYS} != "Linux"
 .  include "../../devel/libepoll-shim/buildlink3.mk"
 .endif

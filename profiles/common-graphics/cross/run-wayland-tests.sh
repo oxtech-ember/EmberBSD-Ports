@@ -2,11 +2,29 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD; run the complete enabled upstream suite against installed Wayland.
 set -eu
-usage() { echo "Usage: $0 [--target aarch64|amd64] NEW_RESULT_DIRECTORY" >&2; exit 2; }
+check_runtime_sdk_absent() {
+  scanner=$1 query=$2 evidence=$3
+  status=0
+  "$query" -e 'wayland-devel-[0-9]*' > "$evidence/sdk-query.stdout" \
+      2> "$evidence/sdk-query.stderr" || status=$?
+  [ "$status" -eq 1 ] && [ ! -s "$evidence/sdk-query.stdout" ] &&
+      [ ! -s "$evidence/sdk-query.stderr" ] && [ ! -e "$scanner" ] &&
+      [ ! -L "$scanner" ] || {
+    echo 'Runtime verification requires no target Wayland SDK/scanner and a successful package query' >&2
+    return 1
+  }
+}
+usage() { echo "Usage: $0 [--runtime] [--target aarch64|amd64] NEW_RESULT_DIRECTORY" >&2; exit 2; }
 target=aarch64
 target_seen=no
+suite=full
 while [ "$#" -gt 0 ]; do
   case "$1" in
+    --runtime)
+      [ "$suite" = full ] || usage
+      suite=runtime
+      shift
+      ;;
     --target)
       [ "$#" -ge 2 ] && [ -n "$2" ] && [ "$target_seen" = no ] || usage
       target=$2 target_seen=yes
@@ -34,6 +52,9 @@ bundle=$(pwd -P)
 [ -f target.txt ] && [ "$(cat target.txt)" = "$target" ] || {
   echo 'Bundle target does not match selected target' >&2; exit 2
 }
+[ -f suite.txt ] && [ "$(cat suite.txt)" = "$suite" ] || {
+  echo 'Bundle suite does not match selected suite' >&2; exit 2
+}
 mkdir -m 700 -- "$output"
 result=$(cd -- "$output" && pwd -P)
 for manifest in artifacts.sha256 runtime.sha256; do
@@ -48,8 +69,13 @@ unset LD_LIBRARY_PATH LD_PRELOAD DYLD_LIBRARY_PATH
 unset WAYLAND_TEST_NO_LEAK_CHECK WAYLAND_TEST_NO_TIMEOUTS
 ulimit -c 0
 uname -a > "$result/platform.txt"
-/usr/sbin/pkg_info -e wayland-1.26.0nb1 > "$result/package.txt"
-/usr/sbin/pkg_admin check wayland-1.26.0nb1 > "$result/package-check.txt" 2>&1
+package=wayland-1.26.0nb1
+if [ "$suite" = runtime ]; then
+  package=wayland-1.26.0nb2
+  check_runtime_sdk_absent /usr/pkg/bin/wayland-scanner /usr/sbin/pkg_info "$result"
+fi
+/usr/sbin/pkg_info -e "$package" > "$result/package.txt"
+/usr/sbin/pkg_admin check "$package" > "$result/package-check.txt" 2>&1
 # Upstream adds a directory and socket name; result paths can exceed sun_path.
 runtime=$(mktemp -d /tmp/ew.XXXXXXXX)
 trap 'rm -rf "$runtime"' EXIT HUP INT TERM
@@ -57,8 +83,12 @@ mkdir -m 700 "$result/scanner-output"
 export XDG_RUNTIME_DIR=$runtime
 export TEST_SRC_DIR=$bundle/tests TEST_BUILD_DIR=$bundle/tests
 export TEST_DATA_DIR=$bundle/tests/data TEST_OUTPUT_DIR=$result/scanner-output
-export SED=/usr/bin/sed WAYLAND_SCANNER=/usr/pkg/bin/wayland-scanner
-export WAYLAND_EGL_LIB=/usr/pkg/lib/libwayland-egl.so NM=/usr/bin/nm
+if [ "$suite" = full ]; then
+  export SED=/usr/bin/sed WAYLAND_SCANNER=/usr/pkg/bin/wayland-scanner
+  export WAYLAND_EGL_LIB=/usr/pkg/lib/libwayland-egl.so NM=/usr/bin/nm
+else
+  unset SED WAYLAND_SCANNER WAYLAND_EGL_LIB NM
+fi
 passed=0 skipped=0 failed=0
 while IFS="$(printf '\t')" read -r name executable kind limit; do
   if [ "$kind" = elf ]; then

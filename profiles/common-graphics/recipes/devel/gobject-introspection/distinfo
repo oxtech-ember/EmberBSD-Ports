@@ -5,6 +5,7 @@ SHA512 (gobject-introspection-1.86.0.tar.xz) = a9d2edbe1cea710e10ef1ea8059a45cf5
 Size (gobject-introspection-1.86.0.tar.xz) = 1083172 bytes
 SHA1 (patch-gir_meson.build) = 72e29bfbf03c9c92a701e7add10986f2c61e91f4
 SHA1 (patch-girepository_gitypelib.c) = b5fa0fe0fc22a5dfb2b2916dfbb87e16fc732640
+SHA1 (patch-girepository_gthash-memory) = c8dc8519924d041ae91a30cd1ef357affca281ed
 SHA1 (patch-giscanner_ast.py) = 76ac2965000833cc6b8d1f37fb997706557d8c5e
 SHA1 (patch-giscanner_ccompiler.py) = f2bf40307a9ed5847f760612f985acdb1d413472
 SHA1 (patch-meson.build) = 727127bfe927283c316831ba488359fe632013e6

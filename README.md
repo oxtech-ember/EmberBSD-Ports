@@ -62,8 +62,8 @@ runtime behavior are validated.
 - [OpenEXR and OpenJPH](profiles/common-graphics/cross/openexr.md): current
   3.5.2 and 0.32.0 providers retain shared libraries, tools and system codecs.
   Ordinary GCC16 native/AArch64 packages pass static payload checks. Native
-  image round trips and focused strict memory checks pass; full OpenEXR CTest
-  and target codec execution remain pending.
+  image round trips, focused strict memory checks and all 147 OpenEXR tests
+  pass. Target codec/API checks and normal package removal/reinstallation pass.
 - [KiCad protobuf prerequisites](probes/kicad/protobuf/README.md): protobuf
   36.2 and Abseil 20260817.0 build with native GCC16 and shared zlib 1.3.2.
   Four allocation-failure controls reproduce upstream UPB defects and pass
@@ -132,6 +132,9 @@ runtime behavior are validated.
   A [fresh libstdc++ helper](profiles/development-toolchain/bootstrap/libstdcxx.md)
   supports the NetBSD locale repair with explicit inherited-component checks;
   its full rebuilt-library acceptance remains separate.
+  The [RELRO relink](profiles/development-toolchain/bootstrap/relro.md) reproduces
+  three original AArch64 runtime DSOs byte-for-byte, then passes ABI and stock
+  RELRO checks. New nb3 package/runtime acceptance remains separate.
   The real AArch64 nb2 runtime-only package also passes installed plain/LTO
   C11/C++20, threads, TLS, DSO exceptions, OpenMP and large atomic checks in
   the verified E34 QEMU guest. Removal and reinstallation preserve the expected
@@ -238,6 +241,9 @@ runtime behavior are validated.
   EGL/GBM and V3D/VirGL/softpipe/llvmpipe. The complete core-only libdrm
   payload cross-builds on macOS/GCC16, matches all 26 PLIST entries and passes
   upstream hash, skip-list and exported-symbol checks in AArch64 UTM.
+  Cross Wayland recipes now separate runtime libraries from scanner/SDK files.
+  Real package metadata and complete-stage partition checks preserve the native
+  package; normal split-package and installed-runtime acceptance remain pending.
   The installed [Wayland package](profiles/common-graphics/cross/wayland.md)
   passes all 26 enabled upstream invocations on Zero 3W.
   The full [Mesa package](profiles/common-graphics/cross/mesa-package.md) now
@@ -284,6 +290,8 @@ runtime behavior are validated.
   also passes those target lifecycles and a Cargo consumer with host proc macros.
   The [full GI package](profiles/common-graphics/cross/introspection.md) cross-builds
   with real GType discovery and upstream hash/search checks on EmberBSD/CM5.
+  Its revision-6 source repair releases temporary hash keys and a test buffer;
+  a native GCC16 regression confirms those fixes, with full package checks pending.
   Matching GLib 2.90.1 metadata now cross-builds all seven GIR/typelib pairs
   and passes target loading and introspection/libffi invocation on CM5.
   Current [GdkPixbuf and shared MIME packages](profiles/common-graphics/cross/gdk-pixbuf.md)

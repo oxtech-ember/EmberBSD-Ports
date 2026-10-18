@@ -1,0 +1,28 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Release the copied keys after CMPH has finished borrowing the vector, and
+release the upstream test's packed buffer after its lookup assertions.
+CMPH's vector adapter owns only its wrapper, not the supplied string vector.
+No ABI, hash format or algorithm changes. Not submitted upstream.
+
+--- girepository/gthash.c.orig
++++ girepository/gthash.c
+@@ -131,6 +131,7 @@ _gi_typelib_hash_builder_prepare (GITypeli
+  out:
+   cmph_config_destroy (config);
+   cmph_io_vector_adapter_destroy (io);
++  g_strfreev (strs);
+   return builder->buildable;
+ }
+ 
+--- girepository/gthash-test.c.orig
++++ girepository/gthash-test.c
+@@ -51,6 +51,7 @@ test_build_retrieve (void)
+   g_assert (_gi_typelib_hash_search (buf, "ZLibDecompressor", 4) == 42);
+   g_assert (_gi_typelib_hash_search (buf, "VolumeMonitor", 4) == 9);
+   g_assert (_gi_typelib_hash_search (buf, "FileMonitorFlags", 4) == 31);
++  g_free (buf);
+ }
+ 
+ int

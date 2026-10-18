@@ -75,6 +75,13 @@ Node runs on the host, its products are target artifacts.
   exit code 127 because the GCC16 toolchain directory was missing from
   `PATH`; those are environment failures, not compiler diagnostics. Resume
   with the common GCC16 `bin` directory in `PATH`.
+- The corrected full pass used GCC16 and scheduled 73,904 tasks. It reached
+  1,909 tasks before five related failures exposed a GCC error: the defaulted
+  `LanguageTag` move constructor was marked `constexpr` while its
+  `ImmutableString` member move constructor is not. Removing `constexpr` from
+  that constructor fixed the cause. GCC16.2.0 then rebuilt
+  `base/i18n/break_iterator.o` successfully. The full pass is being resumed;
+  Chromium has not linked yet.
 - No complete Chromium link, Electron runtime, or Blanc package exists.
   Continue the Chrome build and classify actual compiler failures. Partial
   targets are not a Blanc result.

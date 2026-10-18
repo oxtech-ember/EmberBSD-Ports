@@ -1,6 +1,6 @@
 # Cross-build and validate the common Wayland provider
 
-Ports owns Wayland 1.26.0nb1 and wayland-protocols 1.49 in the common graphics
+Ports owns Wayland 1.26.0 and wayland-protocols 1.49 in the common graphics
 profile. The selected versions follow the [upstream releases](https://wayland.freedesktop.org/releases.html).
 [sources.tsv](../sources.tsv) pins original archives and SHA256; each recipe
 retains pkgsrc provenance and patch checksums. The upstream libraries and
@@ -36,6 +36,41 @@ The build requires its successful exact version response. Scanner consumers
 also use its installed native `.pc` metadata through the cross profile.
 The target `/usr/pkg/bin/wayland-scanner` must never execute on the Mac.
 Both source-package and standalone generator checks retain their failures.
+
+## Runtime and SDK packages
+
+The NetBSD AArch64 and amd64 cross recipes split Wayland at revision 2.
+`wayland-1.26.0nb2` contains twelve shared-library files and aliases, plus
+the original `COPYING` notice. `wayland-devel-1.26.0nb2` contains the other
+23 entries: headers, scanner, protocol data and development metadata.
+It depends on that exact runtime. The two partitions do not overlap.
+Their union is the complete upstream installation plus the notice.
+
+Both ordinary recipes retain the complete Meson build, scanner and tests.
+After installation, the selector first validates the complete staged inventory
+and all symlink targets. Only then does it remove the other partition.
+New, missing, unsafe or overlapping entries fail the package.
+Normal package checks remain enabled. Native builds retain the full
+35-entry `wayland-1.26.0nb1` package.
+
+The cross buildlink requires `wayland-devel` only during target compilation.
+Application runtime dependencies retain `wayland`. The build-host scanner
+still comes from native Wayland or the verified external scanner above.
+Do not install `wayland-devel` in a runtime image.
+
+The source contract checks actual pkgsrc metadata and a copy of a completed
+normal package stage. It checks both partitions, unchanged bytes/modes/links,
+native ownership, scanner routing and malformed-input refusals:
+
+```sh
+BMAKE=/absolute/native/bmake ruby ../tests/wayland-package-split.rb \
+    /absolute/pkgsrc /absolute/cross.mk.conf /absolute/wayland-WRKSRC \
+    /absolute/complete-DESTDIR /absolute/new-check
+```
+
+These checks pass with the actual GCC16 AArch64 revision-1 stage.
+They do not establish new revision-2 package creation, SDK installation or
+target execution. Those normal package and installed-runtime checks remain pending.
 
 ## epoll-shim configuration
 
@@ -80,23 +115,26 @@ enabled upstream tests (`-Dtests=true`). Prepare the target bundle from
 that exact WRKSRC and its installed cross sysroot:
 
 ```sh
-ruby prepare-wayland-tests.rb --target amd64 /absolute/wayland-WRKSRC \
+ruby prepare-wayland-tests.rb --runtime --target amd64 /absolute/wayland-WRKSRC \
     /absolute/target-sysroot /absolute/new-test-bundle
 ```
 
-The helper preserves all 26 invocations from Meson's actual introspection,
-their original test scripts/data, the exec descriptor helper and licence.
+The helper preserves all 26 invocations in Meson's original introspection.
+Runtime mode selects the 24 ELF invocations and retains their original
+data, exec descriptor helper and licence. `host-tests.tsv` explicitly records
+the two separate checks: scanner golden tests and EGL symbols.
+Neither target scanner nor `nm` is required in the runtime image.
 Select `--target aarch64` or `--target amd64`; the default remains AArch64.
 The helper checks ELF64, little-endian encoding and the selected machine for
-every test ELF, the exec helper and all five installed runtime providers.
+every test ELF, the exec helper and all four installed runtime libraries.
 It records the target in `target.txt`, bound by the bundle SHA256 manifest.
-It records SHA256 for the bundle and target scanner/libraries. No target library is bundled as an alternate provider.
+It records SHA256 for the bundle and installed libraries. No target library is bundled as an alternate provider.
 Transfer it without macOS extended attributes, preserving executability.
 
 On the target:
 
 ```sh
-sh /absolute/test-bundle/run-wayland-tests.sh --target amd64 /absolute/new-results
+sh /absolute/test-bundle/run-wayland-tests.sh --runtime --target amd64 /absolute/new-results
 ```
 
 The runner checks its selected target, the bundle marker and actual `uname`
@@ -108,8 +146,8 @@ and leak/timeout-disabling variables. Each invocation retains the upstream
 reported separately as SKIP. A failed process makes the suite fail.
 The result directory contains individual logs, loader paths and totals.
 
-Passing these tests establishes installed protocol-library and scanner
-behavior on the recorded kernel. It does not establish a compositor,
+Passing these tests establishes installed protocol-library behavior on the
+recorded kernel. It does not establish target scanner behavior, a compositor,
 physical display/input, accelerated Mesa or a VirGL/Wayland desktop.
 
 The host regression uses actual amd64 test inputs and labelled AArch64 ELF
@@ -123,6 +161,23 @@ ruby ../tests/wayland-targets.rb /absolute/wayland-WRKSRC \
 ```
 
 This preparation check is separate from an installed amd64 suite result.
+The default helper mode retains the historical 26-invocation full package
+check. Explicit `--runtime` selects the new package boundary and requires
+that the target scanner and SDK package are absent.
+
+Run the two separate source checks and prepare the runtime bundle together:
+
+```sh
+ruby ../tests/wayland-runtime.rb /absolute/wayland-WRKSRC /absolute/sysroot \
+    /absolute/native/wayland-scanner /absolute/cross-nm \
+    /absolute/cross-readelf /absolute/new-check
+```
+
+This passes the actual native 1.26.0 scanner golden/malformed-input cases
+and checks the target library exports with the actual cross `nm`.
+It prepares all 24 real AArch64 runtime test executables. Their ELF RPATH
+entries contain only installed target library directories. No target
+execution or new runtime package acceptance is inferred from these checks.
 
 ## Accepted target run
 

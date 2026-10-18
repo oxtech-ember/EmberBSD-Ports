@@ -277,7 +277,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             x11/wxGTK32) approved='patch-configure patch-src_unix_glegl.cpp patch-src_unix_utilsunx.cpp' ;;
             x11/gtk3) approved='patch-gdk_wayland_gdkdevice-wayland.c patch-gdk_x11_gdkscreen-x11.h patch-gdk_x11_gdkwindow-x11.h patch-gtk_a11y_gtkaccessibility.c patch-gtk_fallback-c89.c patch-gtk_gtkfontchooserwidget.c patch-gtk_gtklabel.c patch-meson-gir-cross.build patch-meson.build patch-meson_options.txt patch-tests_gtkgears.c' ;;
             devel/glib2) approved='patch-girepository_compiler_meson.build patch-meson_gir-cross.build patch-gio_gcredentialsprivate.h patch-gio_gdbus-2.0_codegen_meson.build patch-gio_glib-compile-schemas.c patch-gio_gresource-tool.c patch-gio_gunixcredentialsmessage.c patch-gio_gunixmounts.c patch-gio_inotify_inotify-kernel.c patch-gio_meson.build patch-gio_tests_iptosmessage.c patch-gio_tests_meson.build patch-girepository_gitypelib.c patch-glib_gatomic.c patch-glib_gatomic.h patch-glib_genviron.c patch-glib_glib-unix.c patch-glib_gspawn-posix.c patch-glib_gthread.c patch-glib_tests_hash.c patch-glib_tests_include.c patch-glib_tests_meson.build patch-glib_tests_testing.c patch-glib_tests_thread.c patch-gmodule_gmodule-dl.c patch-gmodule_gmodule.c patch-gobject_glib-mkenums.in patch-gobject_meson.build patch-meson.build patch-meson.options' ;;
-            devel/gobject-introspection) approved='patch-gir_meson.build patch-girepository_gitypelib.c patch-giscanner_ast.py patch-giscanner_ccompiler.py patch-meson.build patch-tests_meson.build patch-tools_compiler.c patch-tools_generate.c patch-tools_meson.build' ;;
+            devel/gobject-introspection) approved='patch-gir_meson.build patch-girepository_gitypelib.c patch-girepository_gthash-memory patch-giscanner_ast.py patch-giscanner_ccompiler.py patch-meson.build patch-tests_meson.build patch-tools_compiler.c patch-tools_generate.c patch-tools_meson.build' ;;
             graphics/gdk-pixbuf2) approved='patch-emberbsd_build-aux_gen-thumbnailer.py patch-emberbsd_gdk-pixbuf_meson.build patch-emberbsd_meson.build patch-emberbsd_thumbnailer_meson.build patch-gdk-pixbuf_gdk-pixbuf-scaled-anim.c patch-gdk-pixbuf_meson.build patch-tests_meson.build patch-thumbnailer_meson.build' ;;
             databases/shared-mime-info) approved='patch-src_update-mime-database.cpp' ;;
             graphics/librsvg) approved='patch-.._vendor_matrixmultiply-0.3.11_src_dgemm__kernel.rs patch-.._vendor_matrixmultiply-0.3.11_src_sgemm__kernel.rs patch-.._vendor_memchr-2.8.3_src_arch_aarch64_memchr.rs patch-.._vendor_memchr-2.8.3_src_arch_aarch64_mod.rs patch-.._vendor_memchr-2.8.3_src_memchr.rs patch-.._vendor_memchr-2.8.3_src_memmem_searcher.rs patch-.._vendor_memchr-2.8.3_src_vector.rs patch-.._vendor_wide-1.7.1_src_f32x4__.rs patch-.._vendor_wide-1.7.1_src_f64x2__.rs patch-.._vendor_wide-1.7.1_src_i16x16__.rs patch-.._vendor_wide-1.7.1_src_i16x32__.rs patch-.._vendor_wide-1.7.1_src_i16x8__.rs patch-.._vendor_wide-1.7.1_src_i32x16__.rs patch-.._vendor_wide-1.7.1_src_i32x4__.rs patch-.._vendor_wide-1.7.1_src_i32x8__.rs patch-.._vendor_wide-1.7.1_src_i64x2__.rs patch-.._vendor_wide-1.7.1_src_i64x4__.rs patch-.._vendor_wide-1.7.1_src_i64x8__.rs patch-.._vendor_wide-1.7.1_src_i8x16__.rs patch-.._vendor_wide-1.7.1_src_i8x32__.rs patch-.._vendor_wide-1.7.1_src_u16x8__.rs patch-.._vendor_wide-1.7.1_src_u32x4__.rs patch-.._vendor_wide-1.7.1_src_u64x2__.rs patch-.._vendor_wide-1.7.1_src_u8x16__.rs patch-.._vendor_zune-jpeg-0.5.15_src_idct.rs patch-.._vendor_zune-jpeg-0.5.15_src_unsafe__utils.rs patch-.._vendor_zune-jpeg-0.5.15_src_unsafe__utils__neon.rs patch-meson.build patch-meson_gir-cross.build patch-rsvg_meson.build patch-gdk-pixbuf-loader_meson.build' ;;
@@ -320,7 +320,8 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             graphics/MesaLib|x11/libdrm|x11/xkeyboard-config)
                 [ -f "$source/builtin.mk" ] || { echo "Missing builtin guard: $recipe" >&2; exit 2; } ;;
             devel/wayland)
-                [ -f "$source/cross-scanner.mk" ] && [ -f "$source/platform.mk" ] || exit 2 ;;
+                [ -f "$source/cross-scanner.mk" ] && [ -f "$source/platform.mk" ] &&
+                [ -s "$source/PLIST.runtime" ] && [ -s "$source/files/select-package-stage.pl" ] || exit 2 ;;
             devel/wayland-protocols)
                 [ -f "$source/cross-scanner.mk" ] || { echo 'Missing protocols host scanner integration' >&2; exit 2; } ;;
         esac
@@ -390,6 +391,14 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
     for name in features.mk options.mk version.mk mesa-generators.mk verify-mesa-generators.sh; do
         [ -f "$graphics/recipes/graphics/MesaLib/$name" ] || { echo "Incomplete Mesa recipe: $name" >&2; exit 2; }
     done
+    for wayland_sdk_file in Makefile buildlink3.mk DESCR PLIST; do
+        [ -s "$graphics/recipes/devel/wayland-devel/$wayland_sdk_file" ] || {
+            echo "Incomplete Wayland SDK recipe: $wayland_sdk_file" >&2; exit 2;
+        }
+    done
+    [ "$(find "$graphics/recipes/devel/wayland-devel" -type l | wc -l | tr -d ' ')" = 0 ] || {
+        echo 'Unexpected Wayland SDK recipe link.' >&2; exit 2;
+    }
     [ -f "$graphics/mk.conf" ] || { echo 'Missing common graphics configuration.' >&2; exit 2; }
 fi
 export_archive=$(mktemp "${TMPDIR:-/tmp}/ember-pkgsrc.XXXXXXXX")
@@ -484,6 +493,10 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             cp -R "$graphics/recipes/$recipe" "$destination/$recipe"
         fi
     done
+    [ ! -e "$destination/devel/wayland-devel" ] && [ ! -L "$destination/devel/wayland-devel" ] || {
+        echo 'Upstream now owns devel/wayland-devel; review the overlay.' >&2; exit 2;
+    }
+    cp -R "$graphics/recipes/devel/wayland-devel" "$destination/devel/wayland-devel"
     cp "$graphics/mk.conf" "$destination/EMBERBSD-COMMON-GRAPHICS-MK.CONF"
     cp "$graphics/sources.tsv" "$destination/EMBERBSD-COMMON-GRAPHICS-SOURCES"
 fi

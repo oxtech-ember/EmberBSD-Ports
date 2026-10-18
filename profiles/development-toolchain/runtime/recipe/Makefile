@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD; AI-assisted package of prebuilt, audited target runtime DSOs.
 DISTNAME=	gcc16-runtime-16.2.0
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	lang
 MASTER_SITES=	# none
 DISTFILES=	# none

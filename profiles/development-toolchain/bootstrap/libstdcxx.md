@@ -81,6 +81,9 @@ The new marker is `runtime-libstdcxx-rebuild`. The original bootstrap marker and
 resume rules remain unchanged. A rebuilt stage cannot be packaged as nb2;
 package revision and coordinated SDK import belong to the runtime owner.
 Keep both stages and their receipts until the new package and consumers pass.
+The helper verifies this intermediate stage's provenance. Original inherited
+DSOs can lack RELRO. Complete the [authenticated RELRO relink](relro.md) before
+normal nb3 package verification; historical verification cannot install it.
 
 Full source preparation needs about 1.4 GiB before objects and stages. Reserve
 at least 1.8 GiB and additional space for concurrent builds. The helper does not
