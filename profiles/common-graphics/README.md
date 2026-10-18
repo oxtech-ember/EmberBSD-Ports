@@ -1,5 +1,10 @@
 # Common graphics source packages
 
+[Maintained FreeImage 3.19.25 and LibRaw 0.22.2](cross/freeimage.md)
+provide common source recipes for OCCT image support. Source preparation,
+GCC16 header selection and half conversions pass; complete codec packages
+and installed OCCT image workflows remain pending.
+
 The [ngspice 47 package pair](cross/ngspice.md) provides the CLI and shared
 SPICE API for KiCad, with common XSPICE modules and normal pkgsrc dependencies.
 Its target package and runtime checks remain pending.

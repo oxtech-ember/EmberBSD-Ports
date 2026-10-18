@@ -1,0 +1,18 @@
+@comment Origin: EmberBSD, maintained FreeImage Unix shared/static payload.
+include/FreeImage.h
+lib/cmake/FreeImage/FreeImageCodecs.cmake
+lib/cmake/FreeImage/FreeImageConfig.cmake
+lib/cmake/FreeImage/FreeImageConfigVersion.cmake
+lib/cmake/FreeImage/FreeImageTargets-release.cmake
+lib/cmake/FreeImage/FreeImageTargets.cmake
+lib/libfreeimage.a
+${PLIST.elf}lib/libfreeimage.so
+${PLIST.elf}lib/libfreeimage.so.3
+${PLIST.elf}lib/libfreeimage.so.3.19.25
+lib/pkgconfig/freeimage.pc
+share/licenses/freeimage-maintained/license-fi.txt
+share/licenses/freeimage-maintained/license-gplv2.txt
+share/licenses/freeimage-maintained/license-gplv3.txt
+${PLIST.darwin}lib/libfreeimage.dylib
+${PLIST.darwin}lib/libfreeimage.3.dylib
+${PLIST.darwin}lib/libfreeimage.3.19.25.dylib

@@ -29,6 +29,10 @@ runtime behavior are validated.
   focused native regressions cover the source repairs; KiCad uses the
   current exception API. The complete OCCT package and installed STEP
   geometry checks remain pending.
+- [Maintained FreeImage sources](profiles/common-graphics/cross/freeimage.md):
+  FreeImage/FreeImagePlus 3.19.25 and LibRaw 0.22.2 retain common codecs for
+  OCCT. Source and focused native half checks pass; complete packages and
+  installed image workflows remain pending.
 - [KiCad protobuf prerequisites](probes/kicad/protobuf/README.md): protobuf
   36.2 and Abseil 20260817.0 build with native GCC16 and shared zlib 1.3.2.
   Four allocation-failure controls reproduce upstream UPB defects and pass

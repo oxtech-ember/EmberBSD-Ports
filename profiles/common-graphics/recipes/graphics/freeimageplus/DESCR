@@ -1,0 +1,3 @@
+FreeImagePlus is the upstream C++ wrapper for FreeImage.
+This package uses the same maintained release as the common FreeImage
+C library. It provides image, metadata, memory and multi-page wrappers.

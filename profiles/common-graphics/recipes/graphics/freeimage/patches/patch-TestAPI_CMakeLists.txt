@@ -1,0 +1,16 @@
+Origin: EmberBSD (AI-assisted), common Unix ABI and current system codecs.
+
+--- TestAPI/CMakeLists.txt.orig
++++ TestAPI/CMakeLists.txt
+@@ -179,3 +179,11 @@
+     endif()
+     add_test(NAME UnicodeMultiPageTest COMMAND UnicodeMultiPageTest)
+ endif()
++
++# Tests use assert for their numerical and decoder oracles, including Release.
++get_property(FreeImage_TEST_TARGETS DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
++foreach(FreeImage_TEST_TARGET IN LISTS FreeImage_TEST_TARGETS)
++    target_compile_options(${FreeImage_TEST_TARGET} PRIVATE
++        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-UNDEBUG>
++        $<$<CXX_COMPILER_ID:MSVC>:/UNDEBUG>)
++endforeach()

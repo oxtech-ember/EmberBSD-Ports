@@ -1,0 +1,3 @@
+FreeImage is an image decoding, conversion and encoding library.
+This package uses the maintained danoli3 fork of the original FreeImage
+project. It links the common system codec providers and keeps the C API.

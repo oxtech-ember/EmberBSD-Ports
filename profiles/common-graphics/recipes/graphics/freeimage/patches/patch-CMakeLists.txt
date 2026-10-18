@@ -1,0 +1,73 @@
+Origin: EmberBSD (AI-assisted), common Unix ABI and current system codecs.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -105,7 +105,8 @@
+ # can still be overridden individually). Mirrors what MSYS2's
+ # mingw-w64-freeimage package does by unbundling all vendored sub-deps.
+ option(FREEIMAGE_USE_SYSTEM_LIBS "Link against system copies of vendored sub-dependencies instead of bundling them" OFF)
+-option(FREEIMAGE_LINUX_PACKAGE_LAYOUT "Install the Linux libfreeimage.so.3 package layout" OFF)
++option(FREEIMAGE_LINUX_PACKAGE_LAYOUT "Install the Unix libfreeimage.so.3 package layout" OFF)
++option(FREEIMAGE_BUILD_STATIC "Also install the static archive in a shared build" OFF)
+ include(GNUInstallDirs)
+ if(FREEIMAGE_USE_SYSTEM_LIBS)
+     set(FREEIMAGE_SYSTEM_DEFAULT ON)
+@@ -759,7 +760,9 @@
+         ./Source/OpenEXR/Half/halfFunction.h ./Source/OpenEXR/Half/halfLimits.h 
+         ./Source/OpenEXR/Half/toFloat.h 
+     )
+-list(APPEND FreeImage_SOURCES ${FreeImage_OPENEXR_HALF_SRCS})
++if(NOT (BUILD_OPENEXR AND USE_SYSTEM_OPENEXR))
++    list(APPEND FreeImage_SOURCES ${FreeImage_OPENEXR_HALF_SRCS})
++endif()
+ # Not added to the global include path: half.cpp includes its own headers
+ # with quotes (resolved relative to its own directory), and PluginTIFF.cpp/
+ # PluginEXR.cpp's bundled-mode "../OpenEXR/Half/half.h" include is likewise
+@@ -1431,23 +1434,41 @@
+ endif()
+ 
+ if(FREEIMAGE_LINUX_PACKAGE_LAYOUT)
+-    if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR FREEIMAGE_STATIC)
+-        message(FATAL_ERROR "FREEIMAGE_LINUX_PACKAGE_LAYOUT requires a Linux shared build")
++    if(NOT UNIX OR FREEIMAGE_STATIC)
++        message(FATAL_ERROR "FREEIMAGE_LINUX_PACKAGE_LAYOUT requires a Unix shared build")
+     endif()
+     set_target_properties(${PROJECT_NAME} PROPERTIES
+         OUTPUT_NAME freeimage VERSION ${PROJECT_VERSION} SOVERSION 3)
+     configure_file(cmake/freeimage.pc.in freeimage.pc @ONLY)
+     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/freeimage.pc
+         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig COMPONENT Development)
+-    install(FILES license-fi.txt license-gplv2.txt
++    install(FILES license-fi.txt license-gplv2.txt license-gplv3.txt
+         DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/freeimage-maintained
+         COMPONENT Runtime)
+-    install(FILES Source/OpenEXR/Copyrights/ilmbase/LICENSE
+-        DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/freeimage-maintained
+-        RENAME OpenEXR-Half-LICENSE COMPONENT Runtime)
++    if(NOT (BUILD_OPENEXR AND USE_SYSTEM_OPENEXR))
++        install(FILES Source/OpenEXR/Copyrights/ilmbase/LICENSE
++            DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/freeimage-maintained
++            RENAME OpenEXR-Half-LICENSE COMPONENT Runtime)
++    endif()
++endif()
++
++# Retain the separate development archive when packaging the shared library.
++# Reuse the same source, definitions and codec providers as the shared target.
++if(FREEIMAGE_BUILD_STATIC AND NOT FREEIMAGE_STATIC)
++    add_library(FreeImageStatic STATIC ${FreeImage_SOURCES})
++    set_target_properties(FreeImageStatic PROPERTIES
++        OUTPUT_NAME freeimage POSITION_INDEPENDENT_CODE ON)
++    target_compile_definitions(FreeImageStatic PRIVATE FREEIMAGE_LIB
++        $<TARGET_PROPERTY:FreeImage,COMPILE_DEFINITIONS>)
++    target_include_directories(FreeImageStatic PRIVATE
++        $<TARGET_PROPERTY:FreeImage,INCLUDE_DIRECTORIES>)
++    target_link_libraries(FreeImageStatic PRIVATE ${FreeImage_LIBS})
++    install(TARGETS FreeImageStatic ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
++        COMPONENT Development)
+ endif()
+ 
+ # Test suite
++
+ if (BUILD_TESTS)
+     include(CTest)
+     enable_testing()
