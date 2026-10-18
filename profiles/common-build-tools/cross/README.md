@@ -15,6 +15,12 @@ Use the `common-build-tools` export from the parent profile. It preserves the
 pinned pkgsrc revision and obtains original upstream archives with recipe
 checksums. The cross fixes also compose into profiles based on common tools.
 
+The common profiles select canonical Ruby 4.0.7 for packages and native
+generators. Recursive host dependencies keep host compilers and paths.
+`tests/ruby-selection.rb` in the parent profile verifies actual selection,
+both target metadata modes, host recursion and the unchanged native barrier.
+This metadata check does not establish Ruby package or target acceptance.
+
 ## Prerequisites
 
 Prepare these separate directories, outside Git:
