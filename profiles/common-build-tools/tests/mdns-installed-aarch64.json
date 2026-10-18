@@ -1,0 +1,18 @@
+{
+  "scope": "Installed AArch64 public DNS-SD API; no network discovery or daemon-service acceptance",
+  "result": "PASS",
+  "compiler": "GCC 16.2.0",
+  "target": "aarch64 NetBSD ABI on EmberBSD",
+  "cases": 518,
+  "package": "mDNSResponder-2881.120.11",
+  "package_sha256": "c988e38424756a342d808eb6fad3699aaa0ffd08ed731a7de6bd523856a14022",
+  "consumer_sha256": "4a3b43ddb8b6e69cba4a42738585bcb40ecc3263b6e8ce920f06b8eb7dbfe92a",
+  "consumer_source_sha256": "5a914a62cb21672963ae05603e6388affd8fa6dd87ffc93e76f9d5723fcf2bb7",
+  "source_commit": "8dcdab27d34973c80556c0445882cde9e1d8c8e0",
+  "providers": {
+    "/usr/pkg/lib/libdns_sd.so": "cba4522c6a524bcc97e3c30e06d5321c8af0c7cc096dab0928101d6b3ebb9170",
+    "/usr/lib/libc.so.12": "327dce99c63b19a38c13bd2347c09a6458e38d86261493f3795e639a3e95e35c"
+  },
+  "instrumentation": "UBSan traps in the consumer; package provider is not instrumented",
+  "package_integrity": "PASS"
+}

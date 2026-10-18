@@ -75,7 +75,11 @@ normally under a ten-second timeout. No daemon or multicast service runs.
 The AArch64 consumer builds with GCC16 undefined-behavior trap instrumentation
 (`-fsanitize=undefined -fsanitize-trap=undefined`). It needs only `libdns_sd.so`
 and `libc.so.12`. This instruments the consumer; it does not instrument the
-packaged provider. Target execution remains a separate acceptance step.
+packaged provider. All 518 cases also pass against the ordinary installed
+AArch64 package in an EmberBSD VM. The installed library hash matches the
+package and SDK. `ldd` selects `/usr/pkg/lib/libdns_sd.so` and the verified fork
+libc. The package integrity check passes. This tests the public local API;
+it does not establish network discovery or daemon service operation.
 
 The [socket regression](../tests/mdns-sockets.py) links the complete ordinary
 native daemon objects. It renames the real daemon entry point and runs the
