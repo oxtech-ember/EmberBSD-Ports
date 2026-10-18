@@ -1,0 +1,266 @@
+--- a/devel/gettext/patches/patch-gettext-tools_go-compiler
++++ b/devel/gettext/patches/patch-gettext-tools_go-compiler
+@@ -0,0 +1,242 @@
++$NetBSD$
++
++Origin: EmberBSD (AI-assisted), not submitted upstream.
++Reject unrelated executables during automatic Go compiler discovery.
++Keep compiler preference, PATH fallback and explicit GO overrides.
++Generated configure uses Autoconf 2.72.
++
++--- gettext-tools/gnulib-m4/gocomp.m4.orig
+++++ gettext-tools/gnulib-m4/gocomp.m4
++@@ -103,11 +103,29 @@
++   pushdef([AC_MSG_RESULT],[:])dnl
++   dnl Prefer golang over gcc by default, because it produces much smaller
++   dnl executables (see above).
++-  if test "$GO_CHOICE" = gcc; then
++-    AC_PATH_PROGS([GO], [go-30 go-29 go-28 go-27 go-26 go-25 go-24 go-23 go-22 go-21 go-20 go-19 go-18 go-17 go-16 go-15 go-14 go-13 go-12 go-11 go-10 go-9 go-8 go-7 go-6 go-5 go])
++-  else
++-    AC_PATH_PROGS([GO], [go go-30 go-29 go-28 go-27 go-26 go-25 go-24 go-23 go-22 go-21 go-20 go-19 go-18 go-17 go-16 go-15 go-14 go-13 go-12 go-11 go-10 go-9 go-8 go-7 go-6 go-5])
++-  fi
+++if test "$GO_CHOICE" = gcc; then
+++  gt_go_candidates="go-30 go-29 go-28 go-27 go-26 go-25 go-24 go-23 go-22 go-21 go-20 go-19 go-18 go-17 go-16 go-15 go-14 go-13 go-12 go-11 go-10 go-9 go-8 go-7 go-6 go-5 go"
+++else
+++  gt_go_candidates="go go-30 go-29 go-28 go-27 go-26 go-25 go-24 go-23 go-22 go-21 go-20 go-19 go-18 go-17 go-16 go-15 go-14 go-13 go-12 go-11 go-10 go-9 go-8 go-7 go-6 go-5"
+++fi
+++dnl An unrelated program named go can occur before the Go toolchain.
+++dnl Keep the implementation/version preference while checking each PATH.
+++AC_CACHE_VAL([ac_cv_path_GO], [
+++  for gt_go_candidate in $gt_go_candidates; do
+++    AC_PATH_PROGS_FEATURE_CHECK([GO], [$gt_go_candidate], [
+++      if gt_go_version=`"$ac_path_GO" version 2>/dev/null`; then
+++        case "$gt_go_version" in
+++          'go version '*)
+++            ac_cv_path_GO=$ac_path_GO
+++            ac_path_GO_found=:
+++            ;;
+++        esac
+++      fi
+++    ])
+++    test -n "$ac_cv_path_GO" && break
+++  done
+++])
+++GO=$ac_cv_path_GO
++   popdef([AC_MSG_RESULT])dnl
++   popdef([AC_CHECKING])dnl
++   popdef([AC_MSG_CHECKING])dnl
++--- gettext-tools/configure.orig
+++++ gettext-tools/configure
++@@ -43342,21 +43342,20 @@
++   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for Go compiler" >&5
++ printf %s "checking for Go compiler... " >&6; }
++   HAVE_GOCOMP=1
++-            if test "$GO_CHOICE" = gcc; then
++-    for ac_prog in go-30 go-29 go-28 go-27 go-26 go-25 go-24 go-23 go-22 go-21 go-20 go-19 go-18 go-17 go-16 go-15 go-14 go-13 go-12 go-11 go-10 go-9 go-8 go-7 go-6 go-5 go
++-do
++-  # Extract the first word of "$ac_prog", so it can be a program name with args.
++-set dummy $ac_prog; ac_word=$2
++-:
+++          if test "$GO_CHOICE" = gcc; then
+++  gt_go_candidates="go-30 go-29 go-28 go-27 go-26 go-25 go-24 go-23 go-22 go-21 go-20 go-19 go-18 go-17 go-16 go-15 go-14 go-13 go-12 go-11 go-10 go-9 go-8 go-7 go-6 go-5 go"
+++else
+++  gt_go_candidates="go go-30 go-29 go-28 go-27 go-26 go-25 go-24 go-23 go-22 go-21 go-20 go-19 go-18 go-17 go-16 go-15 go-14 go-13 go-12 go-11 go-10 go-9 go-8 go-7 go-6 go-5"
+++fi
++ if test ${ac_cv_path_GO+y}
++ then :
++   printf %s "(cached) " >&6
++ else case e in #(
++-  e) case $GO in
++-  [\\/]* | ?:[\\/]*)
++-  ac_cv_path_GO="$GO" # Let the user override the test with a path.
++-  ;;
++-  *)
+++  e)
+++  for gt_go_candidate in $gt_go_candidates; do
+++    if test -z "$GO"; then
+++  ac_path_GO_found=false
+++  # Loop through the user's path and test for each of PROGNAME-LIST
++   as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
++ for as_dir in $PATH
++ do
++@@ -43366,81 +43365,40 @@
++     */) ;;
++     *) as_dir=$as_dir/ ;;
++   esac
+++    for ac_prog in $gt_go_candidate
+++   do
++     for ac_exec_ext in '' $ac_executable_extensions; do
++-  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
++-    ac_cv_path_GO="$as_dir$ac_word$ac_exec_ext"
++-    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
++-    break 2
++-  fi
++-done
+++      ac_path_GO="$as_dir$ac_prog$ac_exec_ext"
+++      as_fn_executable_p "$ac_path_GO" || continue
+++
+++      if gt_go_version=`"$ac_path_GO" version 2>/dev/null`; then
+++        case "$gt_go_version" in
+++          'go version '*)
+++            ac_cv_path_GO=$ac_path_GO
+++            ac_path_GO_found=:
+++            ;;
+++        esac
+++      fi
+++
+++      $ac_path_GO_found && break 3
+++    done
+++  done
++   done
++ IFS=$as_save_IFS
++-
++-  ;;
++-esac ;;
++-esac
++-fi
++-GO=$ac_cv_path_GO
++-if test -n "$GO"; then
++-  :
+++  if test -z "$ac_cv_path_GO"; then
+++    :
+++  fi
++ else
++-  :
+++  ac_cv_path_GO=$GO
++ fi
++ 
++-
++-  test -n "$GO" && break
++-done
++-
++-  else
++-    for ac_prog in go go-30 go-29 go-28 go-27 go-26 go-25 go-24 go-23 go-22 go-21 go-20 go-19 go-18 go-17 go-16 go-15 go-14 go-13 go-12 go-11 go-10 go-9 go-8 go-7 go-6 go-5
++-do
++-  # Extract the first word of "$ac_prog", so it can be a program name with args.
++-set dummy $ac_prog; ac_word=$2
++-:
++-if test ${ac_cv_path_GO+y}
++-then :
++-  printf %s "(cached) " >&6
++-else case e in #(
++-  e) case $GO in
++-  [\\/]* | ?:[\\/]*)
++-  ac_cv_path_GO="$GO" # Let the user override the test with a path.
++-  ;;
++-  *)
++-  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
++-for as_dir in $PATH
++-do
++-  IFS=$as_save_IFS
++-  case $as_dir in #(((
++-    '') as_dir=./ ;;
++-    */) ;;
++-    *) as_dir=$as_dir/ ;;
++-  esac
++-    for ac_exec_ext in '' $ac_executable_extensions; do
++-  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
++-    ac_cv_path_GO="$as_dir$ac_word$ac_exec_ext"
++-    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
++-    break 2
++-  fi
++-done
+++    test -n "$ac_cv_path_GO" && break
++   done
++-IFS=$as_save_IFS
++-
++-  ;;
++-esac ;;
+++ ;;
++ esac
++ fi
++-GO=$ac_cv_path_GO
++-if test -n "$GO"; then
++-  :
++-else
++-  :
++-fi
++-
++-
++-  test -n "$GO" && break
++-done
++ 
++-  fi
+++GO=$ac_cv_path_GO
++         if test -n "$GO"; then
++     case "$GO" in
++       go | */go ) GOCOMPFLAGS= ;;
++@@ -50159,8 +50117,8 @@
++         LIBS="$saved_LIBS"
++         test $gl_pthread_api = yes && break
++       done
++-      echo "$as_me:50162: gl_pthread_api=$gl_pthread_api" >&5
++-      echo "$as_me:50163: LIBPTHREAD=$LIBPTHREAD" >&5
+++      echo "$as_me:50120: gl_pthread_api=$gl_pthread_api" >&5
+++      echo "$as_me:50121: LIBPTHREAD=$LIBPTHREAD" >&5
++ 
++       gl_pthread_in_glibc=no
++       # On Linux with glibc >= 2.34, libc contains the fully functional
++@@ -50189,7 +50147,7 @@
++   *) :
++      ;;
++ esac
++-      echo "$as_me:50192: gl_pthread_in_glibc=$gl_pthread_in_glibc" >&5
+++      echo "$as_me:50150: gl_pthread_in_glibc=$gl_pthread_in_glibc" >&5
++ 
++       # Test for libpthread by looking for pthread_kill.
++       if test $gl_pthread_api = yes && test -z "$LIBPTHREAD"
++@@ -50441,7 +50399,7 @@
++ fi
++ 
++ fi
++-      echo "$as_me:50444: LIBPMULTITHREAD=$LIBPMULTITHREAD" >&5
+++      echo "$as_me:50402: LIBPMULTITHREAD=$LIBPMULTITHREAD" >&5
++ 
++ fi
++     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether POSIX threads API is available" >&5
++@@ -50731,8 +50689,8 @@
++         LIBS="$saved_LIBS"
++         test $gl_pthread_api = yes && break
++       done
++-      echo "$as_me:50734: gl_pthread_api=$gl_pthread_api" >&5
++-      echo "$as_me:50735: LIBPTHREAD=$LIBPTHREAD" >&5
+++      echo "$as_me:50692: gl_pthread_api=$gl_pthread_api" >&5
+++      echo "$as_me:50693: LIBPTHREAD=$LIBPTHREAD" >&5
++ 
++       gl_pthread_in_glibc=no
++       # On Linux with glibc >= 2.34, libc contains the fully functional
++@@ -50761,7 +50719,7 @@
++   *) :
++      ;;
++ esac
++-      echo "$as_me:50764: gl_pthread_in_glibc=$gl_pthread_in_glibc" >&5
+++      echo "$as_me:50722: gl_pthread_in_glibc=$gl_pthread_in_glibc" >&5
++ 
++       # Test for libpthread by looking for pthread_kill.
++       if test $gl_pthread_api = yes && test -z "$LIBPTHREAD"
++@@ -51013,7 +50971,7 @@
++ fi
++ 
++ fi
++-      echo "$as_me:51016: LIBPMULTITHREAD=$LIBPMULTITHREAD" >&5
+++      echo "$as_me:50974: LIBPMULTITHREAD=$LIBPMULTITHREAD" >&5
++ 
++ fi
++     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether POSIX threads API is available" >&5
+--- a/devel/gettext/distinfo
++++ b/devel/gettext/distinfo
+@@ -11,6 +11,7 @@
+ SHA1 (patch-gettext-tools_Makefile.in) = f93519ba8e17d905bbc5abac25caf3d756805230
+ SHA1 (patch-gettext-tools_configure) = 64a1e6cabd7d244c5dc6a33008f26bf61beaa245
+ SHA1 (patch-gettext-tools_gnulib-lib_Makefile.in) = 1e2ae3e92fa4b530649ec938cffee6743219ce1c
++SHA1 (patch-gettext-tools_go-compiler) = 50f5a9a92b1f2fb407f0cfa1ab7f200d4348474b
+ SHA1 (patch-gettext-tools_po_Makefile.in.in) = a425dd4b5e9705438d01f4ebb92e4c74f0ec1579
+ SHA1 (patch-gettext-tools_src_Makefile.am) = 89b7b617e7231833d547bb43415b9c17ff17e797
+ SHA1 (patch-gettext-tools_src_Makefile.in) = d4f92f0923fa5110989ab12030283bdddf9ef32d
+--- a/devel/gettext-tools/Makefile
++++ b/devel/gettext-tools/Makefile
+@@ -3,7 +3,7 @@
+ .include "../../devel/gettext/Makefile.common"
+ 
+ PKGNAME=	${DISTNAME:S/-/-tools-/}
+-PKGREVISION=	2
++PKGREVISION=	3
+ COMMENT=	Tools for providing messages in different languages
+ 
+ DISTINFO_FILE=	${.CURDIR}/../../devel/gettext/distinfo

@@ -284,6 +284,8 @@ preserved defaults and libintl, rejection of invalid tools and a real
 translated plural/context catalog consumer on the Mac host.
 `tests/host-cmake.sh` checks the native/cross selection, preserved defaults,
 version and companion-tool guards, and a compiled/installed host C/C++ consumer.
+The [Go discovery repair](gettext-go-detection.md) rejects unrelated programs
+named `go` and preserves compiler preference and explicit overrides.
 `tests/host-gettext-xml.sh` checks installed XML translation after the direct
 libxml2 link repair in gettext-tools 1.0nb1. Maintained and generated makefiles
 carry the same change; the macOS host package retains its XML functionality.
