@@ -127,9 +127,7 @@ Fresh builds and runtime checks used EmberBSD `EMBER64` from OS revision
 The complete upstream Phosh test suite was not run. GTK's full test suite
 and physical-device functionality remain unverified. Mouse automation in
 the UTM client did not reliably move the guest pointer; recorded input
-checks initially used keyboard navigation. The extended session was then
-checked on a separate Xvfb display through a localhost-only SSH/VNC viewer,
-while the main UTM display was occupied by kernel development. This proved
+checks also ran on a separate Xvfb display through a localhost-only SSH/VNC viewer. This proved
 pointer navigation and OSK clicks through X11, not UTM USB or touch input.
 The extended checks used the experimental EMBERGPU kernel; no GPU result
 is inferred from these software-rendered sessions.
