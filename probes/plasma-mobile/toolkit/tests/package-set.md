@@ -46,6 +46,7 @@ is illustrative. The command performs these checks before publishing output:
 - Reject LLVM SDK packages, legacy monolithic LLVM, and runtime LLVM whose
   identity or payload differs from the prepared LLVM23 runtime manifest.
 - Copy the selected archive and verify its SHA256 against the source digest.
+- Repeat the complete archive audit on the private copy before publication.
 - Confirm that installed metadata did not change during the audit.
 
 A rejected candidate does not hide a later valid archive with the same name.
@@ -78,11 +79,16 @@ PKG_ADMIN=/absolute/native/pkg_admin BSDTAR=/absolute/native/bsdtar \
     ruby probes/plasma-mobile/toolkit/tests/package-set-targets.rb /absolute/new-target-tests
 ```
 
-The 18 cases include PAX paths and link targets longer than the ustar limits,
+The 19 cases include PAX paths and link targets longer than the ustar limits,
 hard links, dependency order and copied SHA256. Negative cases cover a stale
 manifest, wrong archive architecture or OS version, modified payload bytes,
 changed symbolic links, missing or unlisted payload, changed metadata, missing
 dependencies and truncated archives. A valid later cache candidate is accepted.
+A copy observer requires the original archives to pass before copying.
+Rejected payloads must never reach the copy call. A cache-race fixture hashes
+corrupt archive A, substitutes valid archive B for the source audit, then restores
+A before copying. The private copy must fail its full payload audit even when
+its SHA256 matches the first digest. This failure leaves no published output.
 Duplicate roots are rejected. An existing completed output is not replaced.
 Matching database and archive metadata must still reject a missing provider
 or a self-required regular file or symbolic link. Valid provider paths and

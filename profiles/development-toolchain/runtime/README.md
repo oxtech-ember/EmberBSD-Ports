@@ -7,6 +7,13 @@ libraries and licenses under `/usr/pkg/gcc16` and `/usr/pkg/share/licenses`.
 Compiler drivers, headers, CRT objects, static libraries and build tools
 remain on the development host.
 
+The explicit [external-compiler bootstrap](../bootstrap/external-compiler.md)
+records one existing POSIX GCC16 and a separate generated support snapshot.
+Its `runtime-only-external-compiler` marker requires unchanged compiler and
+build-plan receipts. The same stage inventory, ELF, dependency, RELRO and
+package checks apply. This build mode does not alter package conflicts or
+authorize replacing files owned by an installed full `gcc16` package.
+
 The verifier also supports the explicit
 [fresh libstdc++ rebuild](../bootstrap/libstdcxx.md) receipt. It checks a frozen
 parent snapshot and disjoint component ownership before the same ELF/package

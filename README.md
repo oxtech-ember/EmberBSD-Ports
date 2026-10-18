@@ -137,6 +137,10 @@ runtime behavior are validated.
   keep compilers out of application images. Host package creation and isolated
   installation pass for synthetic amd64 and AArch64 runtime fixtures with
   native pkgtools. Target triplet, ELF and package architecture must agree.
+  The [existing-compiler runtime mode](profiles/development-toolchain/bootstrap/external-compiler.md)
+  adds audited GCC16 support metadata without installing a new compiler prefix.
+  Input, dispatcher and package-receipt fixtures pass; a real runtime build and
+  installed provider ownership remain separate checks.
   A [fresh libstdc++ helper](profiles/development-toolchain/bootstrap/libstdcxx.md)
   builds the NetBSD locale repair with explicit inherited-component checks
   and retains all 6,190 defined dynamic symbol identities.
@@ -416,6 +420,8 @@ runtime behavior are validated.
   KWin 6.8.0nb1 selects OpenGL ES/V3D under a non-root user.
   Desktop 6.8.0 and Workspace 6.8.0nb3 are cross-packaged and installed.
   A 333-package set passes archive, dependency and ELF-provider checks.
+  The package-set auditor validates each source archive before copying it.
+  Real pkgtools fixtures reject damaged inputs without copying them.
   The shell now passes the [bounded Desktop test](probes/plasma-mobile/toolkit/tests/plasma-desktop/README.md)
   with Mesa nb8: V3D pixels, six layout checks over 30 seconds and normal exit.
   The [Mesa Wayland allocation repair](profiles/common-graphics/tests/mesa-wayland-oom/README.md)

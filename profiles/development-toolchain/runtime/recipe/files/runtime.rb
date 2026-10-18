@@ -106,18 +106,57 @@ module GCC16Runtime
       path.delete_prefix('./')
     end
 
+    def verify_external_compiler(inputs, architecture)
+      support = %w[libgcc.mvars specs tconfig.h version.h auto-host.h Makefile config.status].map { |name| 'external-support/' + name }
+      documents = (%w[external-compiler.txt external-runtime-plan.txt] + support).to_h do |name|
+        path = @work + '/' + name
+        raise Invalid, 'Missing external compiler receipt' unless File.file?(path) && !File.symlink?(path)
+        receipts = inputs.lines.filter_map { |line| match = line.match(/\A([0-9a-f]{64})  (.+)\n\z/); match[1] if match && match[2] == path }
+        raise Invalid, 'External compiler receipt changed' unless receipts == [hash(path)]
+        [name, File.read(path)]
+      end
+      field = lambda do |text, key|
+        rows = text.lines.select { |line| line.start_with?(key + '=') }
+        raise Invalid, 'Missing or duplicate external compiler field: ' + key unless rows.length == 1 && rows[0].end_with?("\n")
+        rows[0].delete_prefix(key + '=').delete_suffix("\n")
+      end
+      compiler = documents.fetch('external-compiler.txt')
+      {'compiler_mode' => 'external-posix', 'version' => VERSION, 'triplet' => architecture.fetch(:triplet),
+       'thread_model' => 'posix', 'support_target' => 'libgcc-support', 'target_objects' => 'external-compiler'}.each do |key, expected|
+        raise Invalid, 'Wrong external compiler contract: ' + key unless field.call(compiler, key) == expected
+      end
+      prefix = field.call(compiler, 'compiler')
+      raise Invalid, 'Unsafe external compiler prefix' unless prefix.match?(%r{\A/[A-Za-z0-9_./-]+\z}) && !prefix.split('/').include?('..')
+      frontends = %w[cc1 cc1plus].map { |key| field.call(compiler, key) }
+      raise Invalid, 'External frontend escapes its prefix' unless frontends.all? { |path| path.start_with?(prefix + '/') && !path.split('/').include?('..') }
+      expected = %w[gcc g++].map { |name| prefix + '/bin/' + architecture.fetch(:triplet) + '-' + name } + frontends
+      paths = compiler.lines.filter_map { |line| match = line.match(/\A[0-9a-f]{64}  (.+)\n\z/); match[1] if match }
+      raise Invalid, 'Incomplete external compiler hash inventory' unless paths.sort == expected.sort && expected.uniq.length == 4
+      plan = documents.fetch('external-runtime-plan.txt')
+      raise Invalid, 'Wrong external support target' unless field.call(plan, 'support_target') == 'libgcc-support'
+      raise Invalid, 'Wrong target compiler owner' unless field.call(plan, 'target_objects') == 'external-compiler'
+      seed = field.call(inputs, 'sysroot')
+      command = field.call(plan, 'CC')
+expected_command = prefix + '/bin/' + architecture.fetch(:triplet) + '-gcc --sysroot=' + seed + ' -B'
+      support_path = command.delete_prefix(expected_command)
+      raise Invalid, 'External runtime selected a different compiler or seed' unless command.start_with?(expected_command) && support_path.match?(%r{\A/[A-Za-z0-9_./-]+/build/gcc/\z}) && !support_path.split('/').include?('..')
+      raise Invalid, 'External C++ runtime selected a different compiler' unless field.call(plan, 'CXX') == command + ' -shared-libgcc -nostdinc++'
+      raise Invalid, 'External runtime selected compiler recursion' if plan.match?(/(?:^|\s)(?:all-gcc|all-target-|install-gcc)/)
+    end
+
     def verify
       marker = File.read(@work + '/build-success')
+      external = marker == "runtime-only-external-compiler\n"
       rebuild = marker == "runtime-libstdcxx-rebuild\n"
       relink = marker == "runtime-relro-relink\n"
-      raise Invalid, 'No completed runtime stage' unless marker == "runtime-only-bootstrap\n" || ((rebuild || relink) && @allow_rebuild)
+      raise Invalid, 'No completed runtime stage' unless marker == "runtime-only-bootstrap\n" || external || ((rebuild || relink) && @allow_rebuild)
       inputs = File.read(@work + '/inputs.txt')
       claims = %w[scope target triplet].to_h do |key|
         lines = inputs.lines.select { |line| line.start_with?(key + '=') }
         raise Invalid, "Missing or duplicate provenance: #{key}" unless lines.length == 1 && lines[0].end_with?("\n")
         [key, lines[0].delete_prefix(key + '=').delete_suffix("\n")]
       end
-      expected_scope = relink ? 'runtime-relro-relink' : (rebuild ? 'runtime-libstdcxx-rebuild' : 'runtime-only-bootstrap')
+      expected_scope = external ? 'runtime-only-external-compiler' : (relink ? 'runtime-relro-relink' : (rebuild ? 'runtime-libstdcxx-rebuild' : 'runtime-only-bootstrap'))
       raise Invalid, 'Expected runtime-only bootstrap scope' unless claims.fetch('scope') == expected_scope
       architecture = TARGETS[claims.fetch('target')]
       raise Invalid, 'Unsupported runtime target' unless architecture
@@ -143,6 +182,7 @@ module GCC16Runtime
         matches = inputs.lines.filter_map { |l| m = l.match(/\A([0-9a-f]{64})  (.+)\n?\z/); m[1] if m && m[2].chomp == receipt_path }
         raise Invalid, "Source/recipe receipt mismatch: #{path}" unless matches == [hash(path)]
       end
+      verify_external_compiler(inputs, architecture) if external
       regular = {}; links = {}
       File.foreach(@work + '/stage.sha256') do |line|
         match = line.match(/\A([0-9a-f]{64})  (.+)\n\z/)

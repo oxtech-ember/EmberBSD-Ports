@@ -59,6 +59,46 @@ class RuntimePackageTest < Minitest::Test
     end
   end
 
+  def test_external_compiler_receipt_and_mutations
+    %w[amd64 aarch64].each do |target|
+      with_fixture(target) do
+        File.write(@work + '/build-success', "runtime-only-external-compiler\n")
+        prefix = '/fixture/compiler'
+        receipt = "compiler_mode=external-posix\nversion=16.2.0\ntriplet=#{@triplet}\nthread_model=posix\nsupport_target=libgcc-support\ntarget_objects=external-compiler\ncompiler=#{prefix}\ncc1=#{prefix}/libexec/cc1\ncc1plus=#{prefix}/libexec/cc1plus\n"
+        %W[#{prefix}/bin/#{@triplet}-gcc #{prefix}/bin/#{@triplet}-g++ #{prefix}/libexec/cc1 #{prefix}/libexec/cc1plus].each { |path| receipt << "#{'a' * 64}  #{path}\n" }
+        plan = "support_target=libgcc-support\ntarget_objects=external-compiler\nCC=#{prefix}/bin/#{@triplet}-gcc --sysroot=/fixture/seed -B/fixture/work/build/gcc/\nCXX=#{prefix}/bin/#{@triplet}-gcc --sysroot=/fixture/seed -B/fixture/work/build/gcc/ -shared-libgcc -nostdinc++\n"
+        compiler_path = @work + '/external-compiler.txt'
+        plan_path = @work + '/external-runtime-plan.txt'
+        File.write(compiler_path, receipt)
+        File.write(plan_path, plan)
+        inputs = File.read(@work + '/inputs.txt').sub('scope=runtime-only-bootstrap', 'scope=runtime-only-external-compiler') + "sysroot=/fixture/seed\n"
+support = %w[libgcc.mvars specs tconfig.h version.h auto-host.h Makefile config.status].map { |name| @work + '/external-support/' + name }
+        FileUtils.mkdir_p(@work + '/external-support')
+        support.each { |path| File.write(path, 'generated support fixture') }
+        [compiler_path, plan_path, *support].each { |path| inputs << "#{Digest::SHA256.file(path).hexdigest}  #{path}\n" }
+        File.write(@work + '/inputs.txt', inputs)
+        stage.verify
+        File.write(compiler_path, receipt.sub('thread_model=posix', 'thread_model=single'))
+        assert_raises(GCC16Runtime::Invalid) { stage.verify }
+        File.write(compiler_path, receipt)
+        changed = receipt.sub('thread_model=posix', 'thread_model=single')
+        File.write(compiler_path, changed)
+        File.write(@work + '/inputs.txt', inputs.sub(Digest::SHA256.hexdigest(receipt), Digest::SHA256.hexdigest(changed)))
+        assert_raises(GCC16Runtime::Invalid) { stage.verify }
+        File.write(compiler_path, receipt)
+        File.write(@work + '/inputs.txt', inputs)
+        File.write(plan_path, plan.sub('/fixture/seed', '/foreign/seed'))
+        changed_inputs = inputs.sub(Digest::SHA256.hexdigest(plan), Digest::SHA256.file(plan_path).hexdigest)
+        File.write(@work + '/inputs.txt', changed_inputs)
+        assert_raises(GCC16Runtime::Invalid) { stage.verify }
+        File.write(plan_path, plan)
+        File.write(@work + '/inputs.txt', inputs)
+        File.write(support.first, 'changed generated support')
+        assert_raises(GCC16Runtime::Invalid) { stage.verify }
+      end
+    end
+  end
+
   def write_receipts
     inputs = "scope=runtime-only-bootstrap\ntarget=#{@target}\ntriplet=#{@triplet}\nseed_source=#{'b' * 40}\n"
     inputs << "runtime_libraries=#{@libraries}\n" if @libraries

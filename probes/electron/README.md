@@ -88,8 +88,52 @@ Node runs on the host, its products are target artifacts.
   those interfaces. NetBSD-specific config fixups now select the locale-safe
   formatter and the `statvfs` branch. GCC16.2.0 rebuilt `fccompat.o` and
   `fcstat.o`. Cppcheck 2.22, GCC16 `-fanalyzer`, and Clang Static Analyzer 21
-  reported no findings on those files. The full `chrome` graph is being
-  resumed; Chromium has not linked yet.
+  reported no findings on those files.
+- The next full `chrome` pass stopped at 2,150 of 70,608 scheduled tasks on
+  `third_party/webrtc/p2p/port_interface/port_interface.o`. GCC16 rejected the
+  unqualified `Network` return type because the method is also named
+  `Network`; qualifying it as `::webrtc::Network` fixes the meaning ambiguity
+  without changing the type or ABI. GCC16.2.0 rebuilt the object. Cppcheck 2.22
+  passed with a narrow parser suppression for the existing `RTC_NORETURN`
+  operator declaration in `rtc_base/checks.h:347`. Clang Static Analyzer 21
+  reported two move-forwarding diagnostics in unchanged Abseil/base headers;
+  neither refers to the changed WebRTC line. The full graph is ready to resume.
+- The resumed graph exposed two bundled libdrm NetBSD assumptions. The GN
+  target defined `MAJOR_IN_SYSMACROS` unconditionally, but NetBSD provides
+  `major`, `minor`, and `makedev` through `sys/types.h`. The definition is now
+  limited to non-NetBSD targets. `drmModeSetPlane` already used unsigned
+  coordinates in its NetBSD implementation; its header now declares matching
+  types. GCC16.2.0 rebuilt both libdrm objects as AArch64 ELF. Cppcheck 2.22 is
+  clean on the two source files after explicitly casting the DCC block-size
+  expression to `unsigned`. GCC `-fanalyzer` and Clang Static Analyzer 21 still
+  report findings in unchanged upstream allocation/device-info paths; none is
+  in the changed NetBSD branches.
+- The following full pass stopped at 3 of 67,711 tasks because Chromium's
+  keycode converter included Linux `input.h` for NetBSD. NetBSD uses XKB keycodes
+  here, while its sysroot does not provide the Linux evdev header. The converter
+  now keeps XKB methods available on NetBSD and limits evdev-only methods to
+  Linux, ChromeOS, and FreeBSD. GCC16.2.0 rebuilt the target object as AArch64
+  ELF. Cppcheck 2.22 passed with a narrow parser suppression for GCC-valid
+  `__has_cpp_attribute` in an unchanged compiler header. Clang Static Analyzer
+  21 reported one existing Abseil forwarding-reference diagnostic.
+- The next graph exposed GCC16 `-Wchanges-meaning` in `base::ScopedObservation`:
+  an inner alias reused the global `LeakedDanglingUntriaged` name. The alias now
+  names the identical `base::RawPtrTraits::kMayDangle` value explicitly. GCC16.2.0
+  rebuilt the three failing X11 objects. Cppcheck 2.22 passed on their compile
+  database with a narrow parser suppression for GCC-valid `__has_cpp_attribute`
+  in an unchanged header. Clang Static Analyzer 21 reported only existing
+  Abseil/base forwarding-reference findings.
+- The following full pass exposed a private-union specialization in
+  `ui/events/gesture_event_details.cc`. The equality check already compares
+  `type_` before comparing the active union bytes. The constructor also clears
+  the union storage. Both operations now use the local
+  `byte_span_from_ref(allow_nonunique_obj, ...)` overload; the type-wide
+  specialization is removed. GCC16.2.0 rebuilt the AArch64 object. Cppcheck
+  2.22 and Clang Static Analyzer 21 reported no findings on the changed source.
+  Cppcheck required an address-specific parser suppression for the existing
+  GCC `__has_cpp_attribute` expression at `base/compiler_specific.h:62`.
+- The full Chrome graph has not passed yet. Resume it from the retained object
+  tree and classify the next compiler result.
 - No complete Chromium link, Electron runtime, or Blanc package exists.
   Continue the Chrome build and classify actual compiler failures. Partial
   targets are not a Blanc result.

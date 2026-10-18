@@ -8132,3 +8132,197 @@ index 7cffa35b09..e40ac925ee 100644
  # Copyright 2014 the V8 project authors. All rights reserved.
  # Use of this source code is governed by a BSD-style license that can be
  # found in the LICENSE file.
+diff --git a/third_party/webrtc/p2p/base/port_interface.h b/third_party/webrtc/p2p/base/port_interface.h
+index 24c9cce422..d77cea4655 100644
+--- a/third_party/webrtc/p2p/base/port_interface.h
++++ b/third_party/webrtc/p2p/base/port_interface.h
+@@ -52,7 +52,7 @@ class PortInterface {
+   virtual ~PortInterface();
+ 
+   virtual IceCandidateType Type() const = 0;
+-  virtual const Network* Network() const = 0;
++  virtual const ::webrtc::Network* Network() const = 0;
+ 
+   // Methods to set/get ICE role and tiebreaker values.
+   virtual void SetIceRole(IceRole role) = 0;
+diff --git a/third_party/libdrm/BUILD.gn b/third_party/libdrm/BUILD.gn
+index 43cc4de4ef..02344177b4 100644
+--- a/third_party/libdrm/BUILD.gn
++++ b/third_party/libdrm/BUILD.gn
+@@ -36,8 +36,11 @@ config("libdrm_private_config") {
+   # https://patchwork.kernel.org/patch/9628231/ lands.
+   cflags = [ "-Wno-#pragma-messages" ]
+ 
+-  # glibc version >= 2.25 explicitly include <sys/sysmacros.h>
+-  cflags += [ "-DMAJOR_IN_SYSMACROS=1" ]
++  # glibc version >= 2.25 explicitly includes <sys/sysmacros.h>.
++  # NetBSD provides major/minor/makedev through <sys/types.h>.
++  if (!is_netbsd) {
++    cflags += [ "-DMAJOR_IN_SYSMACROS=1" ]
++  }
+ 
+   if (is_clang) {
+     cflags += [
+diff --git a/third_party/libdrm/src/xf86drm.c b/third_party/libdrm/src/xf86drm.c
+index d4bfec8a41..42ea966269 100644
+--- a/third_party/libdrm/src/xf86drm.c
++++ b/third_party/libdrm/src/xf86drm.c
+@@ -443,7 +443,7 @@ drmGetFormatModifierNameFromAmd(uint64_t modifier)
+ 
+         if (AMD_FMT_MOD_GET(DCC, modifier)) {
+             fprintf(fp, ",DCC,DCC_MAX_COMPRESSED_BLOCK=%uB",
+-                    64 << AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier));
++                    (unsigned)(64 << AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier)));
+ 
+             /* Other DCC fields are unused by GFX12. */
+         }
+@@ -492,7 +492,7 @@ drmGetFormatModifierNameFromAmd(uint64_t modifier)
+             }
+ 
+             fprintf(fp, ",DCC,DCC_MAX_COMPRESSED_BLOCK=%uB",
+-                    64 << AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier));
++                    (unsigned)(64 << AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier)));
+ 
+             if (AMD_FMT_MOD_GET(DCC_INDEPENDENT_64B, modifier))
+                 fprintf(fp, ",DCC_INDEPENDENT_64B");
+diff --git a/third_party/libdrm/src/xf86drmMode.h b/third_party/libdrm/src/xf86drmMode.h
+index 0848788799..de37950300 100644
+--- a/third_party/libdrm/src/xf86drmMode.h
++++ b/third_party/libdrm/src/xf86drmMode.h
+@@ -436,7 +436,11 @@ extern drmModePlaneResPtr drmModeGetPlaneResources(int fd);
+ extern drmModePlanePtr drmModeGetPlane(int fd, uint32_t plane_id);
+ extern int drmModeSetPlane(int fd, uint32_t plane_id, uint32_t crtc_id,
+ 			   uint32_t fb_id, uint32_t flags,
++#if defined(__NetBSD__)
++			   uint32_t crtc_x, uint32_t crtc_y,
++#else
+ 			   int32_t crtc_x, int32_t crtc_y,
++#endif
+ 			   uint32_t crtc_w, uint32_t crtc_h,
+ 			   uint32_t src_x, uint32_t src_y,
+ 			   uint32_t src_w, uint32_t src_h);
+diff --git a/ui/events/keycodes/dom/keycode_converter.cc b/ui/events/keycodes/dom/keycode_converter.cc
+index 3193bf3989..6719ad6c22 100644
+--- a/ui/events/keycodes/dom/keycode_converter.cc
++++ b/ui/events/keycodes/dom/keycode_converter.cc
+@@ -15,7 +15,7 @@
+ #include "ui/events/keycodes/dom/dom_code.h"
+ #include "ui/events/keycodes/dom/dom_key.h"
+ 
+-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD) || BUILDFLAG(IS_NETBSD)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
+ #include <linux/input.h>
+ #endif
+ 
+@@ -67,7 +67,7 @@ struct DomKeyMapEntry {
+ #undef DOM_KEY_UNI
+ #undef DOM_KEY_MAP_DECLARATION_END
+ 
+-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)  || BUILDFLAG(IS_NETBSD)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
+ 
+ // The offset between XKB Keycode and evdev code.
+ constexpr int kXkbKeycodeOffset = 8;
+@@ -105,7 +105,7 @@ uint32_t EvdevCodeToXkbKeycode(int evdev_code) {
+   return static_cast<uint32_t>(evdev_code + kXkbKeycodeOffset);
+ }
+ 
+-#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
++#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+ 
+@@ -202,7 +202,9 @@ uint32_t KeycodeConverter::DomCodeToXkbKeycode(DomCode code) {
+   // TODO(crbug.com/40151699): Replace with evdev.
+   return static_cast<uint32_t>(DomCodeToNativeKeycode(code));
+ }
++#endif
+ 
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
+ // static
+ DomCode KeycodeConverter::EvdevCodeToDomCode(int evdev_code) {
+   // Currently XKB keycode is the native keycode.
+@@ -216,7 +218,7 @@ int KeycodeConverter::DomCodeToEvdevCode(DomCode code) {
+   // TODO(crbug.com/40151699): Replace with evdev.
+   return XkbKeycodeToEvdevCode(DomCodeToXkbKeycode(code));
+ }
+-#endif
++#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+ // static
+diff --git a/ui/events/keycodes/dom/keycode_converter.h b/ui/events/keycodes/dom/keycode_converter.h
+index cca673ee23..95d62ca371 100644
+--- a/ui/events/keycodes/dom/keycode_converter.h
++++ b/ui/events/keycodes/dom/keycode_converter.h
+@@ -66,12 +66,14 @@ class KeycodeConverter {
+   static int DomCodeToNativeKeycode(DomCode code);
+ 
+ #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD) || BUILDFLAG(IS_NETBSD)
+-  // Convert a XKB keycode into a DomCode.
++  // Convert an XKB keycode into a DomCode.
+   static DomCode XkbKeycodeToDomCode(uint32_t xkb_keycode);
+ 
+-  // Convert a DomCode into a XKB keycode.
++  // Convert a DomCode into an XKB keycode.
+   static uint32_t DomCodeToXkbKeycode(DomCode code);
++#endif
+ 
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
+   // Convert an evdev code into DomCode.
+   static DomCode EvdevCodeToDomCode(int evdev_code);
+ 
+diff --git a/base/scoped_observation.h b/base/scoped_observation.h
+index 7c7d54ac4b..da74dc1cb5 100644
+--- a/base/scoped_observation.h
++++ b/base/scoped_observation.h
+@@ -102,7 +102,7 @@ class ScopedObservation {
+   // Used to mark the observation as dangling untriaged.
+   // TODO(crbug.com/493572976): remove once no observation is dangling.
+   using LeakedDanglingUntriaged =
+-      ScopedObservation<Source, Observer, LeakedDanglingUntriaged>;
++      ScopedObservation<Source, Observer, base::RawPtrTraits::kMayDangle>;
+ 
+   explicit ScopedObservation(Observer* observer) : observer_(observer) {}
+   ScopedObservation(const ScopedObservation&) = delete;
+diff --git a/ui/events/gesture_event_details.cc b/ui/events/gesture_event_details.cc
+index 62734f68c2..d34169d255 100644
+--- a/ui/events/gesture_event_details.cc
++++ b/ui/events/gesture_event_details.cc
+@@ -12,15 +12,6 @@
+ #include "base/containers/span.h"
+ #include "base/notreached.h"
+ 
+-// Since ui::GestureEventDetails::Details is a union structure that corresponds
+-// to only one EventType, allow conversion to a byte span to avoid using memset
+-// and memcmp.
+-namespace base {
+-template <>
+-inline constexpr bool
+-    kCanSafelyConvertToByteSpan<ui::GestureEventDetails::Details> = true;
+-}
+-
+ namespace ui {
+ 
+ GestureEventDetails::GestureEventDetails()
+@@ -91,8 +82,8 @@ GestureEventDetails::GestureEventDetails(ui::EventType type,
+ 
+ bool GestureEventDetails::operator==(const GestureEventDetails& other) const {
+   return type_ == other.type_ &&
+-         base::byte_span_from_ref(data_) ==
+-             base::byte_span_from_ref(other.data_) &&
++         base::byte_span_from_ref(base::allow_nonunique_obj, data_) ==
++             base::byte_span_from_ref(base::allow_nonunique_obj, other.data_) &&
+          device_type_ == other.device_type_ &&
+          touch_points_ == other.touch_points_ &&
+          bounding_box_ == other.bounding_box_;
+@@ -131,7 +122,8 @@ GestureEventDetails::GestureEventDetails(ui::EventType type,
+ }
+ 
+ GestureEventDetails::Details::Details() {
+-  std::ranges::fill(base::byte_span_from_ref(*this), 0);
++  std::ranges::fill(base::byte_span_from_ref(base::allow_nonunique_obj, *this),
++                    0);
+ }
+ 
+ }  // namespace ui

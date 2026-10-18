@@ -3,17 +3,20 @@
 # Origin: EmberBSD; AI-assisted staged GCC16 runtime bootstrap.
 set -eu
 usage() {
-    echo 'Usage: build.sh [--check] [--resume|--resume-runtime] [--with-libgomp] [--with-libatomic] --target amd64|aarch64 EXPORTED_PKGSRC GCC_ARCHIVE KERNEL_PREFIX SYSROOT HOST_MATH_PREFIX WORK' >&2
+    echo 'Usage: build.sh [--check] [--external-compiler] [--resume|--resume-runtime] [--with-libgomp] [--with-libatomic] --target amd64|aarch64 EXPORTED_PKGSRC GCC_ARCHIVE COMPILER_PREFIX SYSROOT HOST_MATH_PREFIX WORK' >&2
     exit 2
 }
 fail() { echo "$*" >&2; exit 2; }
 check=no
+external_compiler=no
+scope=runtime-only-bootstrap
 resume=no
 runtime_gomp=no
 runtime_atomic=no
 while :; do
     case ${1:-} in
         --check) check=yes; shift;;
+        --external-compiler) external_compiler=yes; scope=runtime-only-external-compiler; shift;;
         --resume) [ "$resume" = no ] || usage; resume=yes; shift;;
         --resume-runtime) [ "$resume" = no ] || usage; resume=runtime; shift;;
         --with-libgomp) [ "$runtime_gomp" = no ] || usage; runtime_gomp=yes; shift;;
@@ -57,6 +60,7 @@ if [ -n "$provenance" ]; then
     case "$provenance" in /*) ;; *) fail 'Use an absolute seed provenance path.';; esac
     [ -f "$provenance" ] || fail 'Missing seed provenance file.'
 fi
+if [ "$external_compiler" = yes ]; then kernel=$(CDPATH= cd -- "$kernel" && pwd -P); fi
 cc=$kernel/bin/$triplet-gcc
 cxx=$kernel/bin/$triplet-g++
 readelf=$kernel/bin/$triplet-readelf
@@ -102,10 +106,15 @@ for item in gmp:__GNU_MP_VERSION:6:__GNU_MP_VERSION_MINOR:3:__GNU_MP_VERSION_PAT
 done
 . "$here/audit-source.sh"
 kernel_receipt=$kernel/../inputs.txt
-[ -f "$kernel_receipt" ] && grep -qx 'mode=kernel' "$kernel_receipt" || fail 'Missing audited kernel compiler inputs.txt receipt.'
-for input_hash in "$expected" "$(shasum -a 256 "$recipe/distinfo" | awk '{print $1}')"; do
-    grep -Eq "^$input_hash[[:space:]]" "$kernel_receipt" || fail 'Kernel compiler source or patch receipt does not match.'
-done
+. "$here/external-compiler.sh"
+if [ "$external_compiler" = yes ]; then
+    check_external_compiler
+else
+    [ -f "$kernel_receipt" ] && grep -qx 'mode=kernel' "$kernel_receipt" || fail 'Missing audited kernel compiler inputs.txt receipt.'
+    for input_hash in "$expected" "$(shasum -a 256 "$recipe/distinfo" | awk '{print $1}')"; do
+        grep -Eq "^$input_hash[[:space:]]" "$kernel_receipt" || fail 'Kernel compiler source or patch receipt does not match.'
+    done
+fi
 make=${GNU_MAKE:-}
 if [ -z "$make" ]; then make=$(command -v gmake || command -v make) || fail 'GNU make is required.'; fi
 case "$make" in /*) ;; *) fail 'GNU_MAKE must be an absolute executable path.';; esac
@@ -120,17 +129,25 @@ printf 'seed_source=%s\nruntime_prefix=/usr/pkg/gcc16\nstage=%s/stage\n' "$origi
 printf 'resume=%s\ntoolexeclibdir=/usr/pkg/gcc16/lib\n' "$resume"
 printf 'runtime_libraries=%s\n' "$runtime_libraries"
 printf 'ar_for_target=%s\nnm_for_target=%s\n' "$AR_FOR_TARGET" "$NM_FOR_TARGET"
+if [ "$external_compiler" = yes ]; then
+    printf 'compiler_mode=external-posix\nsupport_target=libgcc-support\n'
+fi
 [ "$check" = no ] || exit 0
 
 if [ "$resume" = no ]; then
 mkdir "$work"
 work=$(CDPATH= cd -- "$work" && pwd -P)
 mkdir "$work/build" "$work/stage"
+if [ "$external_compiler" = yes ]; then
+    kernel_receipt=$work/external-compiler.txt
+    printf '%s\n' "$external_compiler_state" > "$kernel_receipt"
+fi
 {
     uname -srm
-    printf 'scope=runtime-only-bootstrap\ntarget=%s\ntriplet=%s\nseed_source=%s\n' "$target" "$triplet" "$origin"
+    printf 'scope=%s\ntarget=%s\ntriplet=%s\nseed_source=%s\n' "$scope" "$target" "$triplet" "$origin"
     printf 'runtime_libraries=%s\n' "$runtime_libraries"
-    printf 'kernel=%s\nsysroot=%s\nmath=%s\njobs=%s\n' "$kernel" "$sysroot" "$math" "$jobs"
+    if [ "$external_compiler" = yes ]; then printf 'compiler=%s\n' "$kernel"; else printf 'kernel=%s\n' "$kernel"; fi
+    printf 'sysroot=%s\nmath=%s\njobs=%s\n' "$sysroot" "$math" "$jobs"
     printf 'host_cc=%s\nhost_cxx=%s\nhost_cflags=%s\nhost_cxxflags=%s\n' \
         "${HOST_CC:-cc}" "${HOST_CXX:-c++}" "${HOST_CFLAGS:--O2}" "${HOST_CXXFLAGS:--O2}"
     "$cc" --version
@@ -138,7 +155,7 @@ mkdir "$work/build" "$work/stage"
     "$make" --version
     shasum -a 256 "$archive" "$recipe/distinfo" "$recipe/Makefile" "$recipe/Makefile.common" "$kernel_receipt" \
         "$cc" "$cxx" "$readelf" "$math/lib/libgmp.a" "$math/lib/libmpfr.a" "$math/lib/libmpc.a"
-    for name in $patches; do shasum -a 256 "$recipe/patches/$name"; done
+    for file in "$recipe"/patches/*; do [ ! -f "$file" ] || shasum -a 256 "$file"; done
     for name in stddef.h stdio.h pthread.h math.h; do shasum -a 256 "$sysroot/usr/include/$name"; done
     for name in libc.so.12 libpthread.so.1 libm.so.0 crt0.o; do shasum -a 256 "$sysroot/usr/lib/$name"; done
     [ -z "$provenance" ] || shasum -a 256 "$provenance"
@@ -156,13 +173,17 @@ fi
 # Pin the helper revision and all target tools, including when an older
 # receipt predates explicit binutils selection. Keep the original receipt.
 {
-    printf 'target_binutils=audited-kernel-prefix\n'
+    if [ "$external_compiler" = yes ]; then
+        printf 'target_binutils=external-compiler-prefix\n'
+    else
+        printf 'target_binutils=audited-kernel-prefix\n'
+    fi
     for bootstrap_tool in ar as ld nm objcopy objdump ranlib readelf strip; do
         shasum -a 256 "$kernel/bin/$triplet-$bootstrap_tool"
         "$kernel/bin/$triplet-$bootstrap_tool" --version | sed -n '1p'
     done
     shasum -a 256 "$here/build.sh" "$here/target-tools.sh" "$here/resume-state.sh" "$here/runtime-libraries.sh" \
-        "$here/audit-source.sh" "$here/prepare-source.sh" "$make" \
+        "$here/audit-source.sh" "$here/prepare-source.sh" "$here/external-compiler.sh" "$make" \
         "$work/src/configure" "$work/src/gcc/configure" "$work/src/libstdc++-v3/configure" \
         "$work/src/libgomp/configure" "$work/src/libatomic/configure"
 } >> "$work/inputs.txt"
@@ -192,6 +213,16 @@ export CFLAGS_FOR_TARGET="$target_flags" CXXFLAGS_FOR_TARGET="$target_flags"
 export LDFLAGS_FOR_TARGET='-Wl,-rpath,/usr/pkg/gcc16/lib -Wl,-z,relro'
 CC=${HOST_CC:-cc} CXX=${HOST_CXX:-c++} CFLAGS=${HOST_CFLAGS:--O2} CXXFLAGS=${HOST_CXXFLAGS:--O2} \
     "$work/src/configure" "$@" > "$work/configure.log" 2>&1
+if [ "$external_compiler" = yes ]; then
+    build_external_runtime
+mkdir "$work/external-support"
+    for file in libgcc.mvars specs tconfig.h version.h auto-host.h Makefile config.status; do
+        [ -f "$work/build/gcc/$file" ] || fail 'Missing generated GCC runtime support.'
+        cp "$work/build/gcc/$file" "$work/external-support/$file"
+        shasum -a 256 "$work/external-support/$file" >> "$work/inputs.txt"
+    done
+    shasum -a 256 "$work/external-runtime-plan.txt" >> "$work/inputs.txt"
+else
 # The kernel-only compiler has single-thread gthr headers. Rebuild host
 # frontends with POSIX threads; install only target libraries below.
 if [ "$resume" = runtime ]; then
@@ -211,6 +242,7 @@ set -- install-target-libgcc install-target-libstdc++-v3
 [ "$runtime_atomic" = no ] || set -- "$@" install-target-libatomic
 "$make" "DESTDIR=$work/stage" "$@" > "$work/runtime-install.log" 2>&1
 [ "$resume" != runtime ] || verify_frontend_state
+fi
 runtime=$work/stage/usr/pkg/gcc16
 for crt in crtbegin.o crtbeginS.o crtend.o crtendS.o; do
     check_elf "$runtime/lib/gcc/$triplet/16.2.0/$crt" "$work/stage"
@@ -229,6 +261,10 @@ done
 cd "$work/stage"
 find . -type f -exec shasum -a 256 {} + | LC_ALL=C sort > "$work/stage.sha256"
 find . -type l -exec sh -c 'for path do printf "%s\t%s\n" "$path" "$(readlink "$path")"; done' sh {} + | LC_ALL=C sort > "$work/stage.symlinks"
-printf 'runtime-only-bootstrap\n' > "$work/build-success"
+if [ "$external_compiler" = yes ]; then
+    check_external_compiler
+    printf '%s\n' "$external_compiler_state" | cmp - "$work/external-compiler.txt" || fail 'External compiler changed during the build.'
+fi
+printf '%s\n' "$scope" > "$work/build-success"
 printf 'Staged target runtime: %s\n' "$runtime"
 echo 'This is not a complete gcc16 package or runtime acceptance.'

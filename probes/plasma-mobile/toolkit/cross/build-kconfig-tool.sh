@@ -14,6 +14,12 @@ for path in "$distfiles" "$qt" "$ecm" "$work" "$CMAKE" "$NINJA" "$HOST_CC" "$HOS
     case "$path" in *[!a-zA-Z0-9_./+-]*) echo 'Use paths without shell/CMake metacharacters' >&2; exit 2;; esac
 done
 [ "$("$qt/bin/qmake" -query QT_VERSION)" = 6.12.0 ]
+for module in Core Xml LinguistTools; do
+    [ -f "$qt/lib/cmake/Qt6$module/Qt6${module}Config.cmake" ] || {
+        echo "Missing native Qt module: $module" >&2; exit 2;
+    }
+done
+
 toolkit=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 archive=kconfig-6.31.0.tar.xz
 expected=$(awk -F '\t' '$1 == "devel/kf6-kconfig" { print $3 }' "$toolkit/sources.tsv")
@@ -21,12 +27,17 @@ expected=$(awk -F '\t' '$1 == "devel/kf6-kconfig" { print $3 }' "$toolkit/source
 mkdir "$work"
 mkdir "$work/source" "$work/tooling" "$work/tooling/KF6Config"
 tar -xf "$distfiles/$archive" -C "$work/source"
-"$CMAKE" --build "$qt" --target Xml --parallel "$JOBS" > "$work/qt-xml-build.log" 2>&1
+# An installed Qt already supplies Xml. Only a Qt build tree can build it.
+if [ -f "$qt/CMakeCache.txt" ]; then
+    "$CMAKE" --build "$qt" --target Xml --parallel "$JOBS" > "$work/qt-xml-build.log" 2>&1
+fi
 # This private native build exists solely to produce kconfig_compiler. The full
 # target package independently keeps its Gui, Qml, Quick and DBus components.
 "$CMAKE" -S "$work/source/kconfig-6.31.0" -B "$work/build" -G Ninja \
     -DCMAKE_MAKE_PROGRAM="$NINJA" -DCMAKE_C_COMPILER="$HOST_CC" -DCMAKE_CXX_COMPILER="$HOST_CXX" \
     -DCMAKE_PREFIX_PATH="$qt" -DECM_DIR="$ecm" -DCMAKE_BUILD_TYPE=Release \
+    -DQt6_DIR="$qt/lib/cmake/Qt6" -DQt6Core_DIR="$qt/lib/cmake/Qt6Core" \
+    -DQt6Xml_DIR="$qt/lib/cmake/Qt6Xml" \
     -DBUILD_TESTING=OFF -DKCONFIG_USE_GUI=OFF -DKCONFIG_USE_QML=OFF -DUSE_DBUS=OFF \
     -DQt6LinguistTools_DIR="$qt/lib/cmake/Qt6LinguistTools" > "$work/configure.log" 2>&1
 "$CMAKE" --build "$work/build" --target kconfig_compiler kconf_update --parallel "$JOBS" > "$work/build.log" 2>&1
