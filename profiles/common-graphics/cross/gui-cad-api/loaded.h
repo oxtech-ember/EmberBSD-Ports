@@ -15,7 +15,7 @@ static int
 loaded(struct dl_phdr_info *info, size_t size, void *argument)
 {
 	char path[PATH_MAX];
-	const char *executable = argument;
+	const char *executable = (const char *)argument;
 
 	(void)size;
 	if (info->dlpi_name[0] == '\0' ||
