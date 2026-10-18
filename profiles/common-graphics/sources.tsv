@@ -1,4 +1,5 @@
 # Recipe	Archive	SHA256	Upstream URL
+math/eigen3	eigen-5.0.1.tar.gz	e9c326dc8c05cd1e044c71f30f1b2e34a6161a3b6ecf445d56b53ff1669e3dec	https://gitlab.com/libeigen/eigen/-/archive/5.0.1/eigen-5.0.1.tar.gz
 cad/ng-spice	ngspice-47.tar.gz	894e649651f1838a14095e5a5439e7d3aa63e87ede14d283173fda4fcdef675f	https://downloads.sourceforge.net/project/ngspice/ng-spice-rework/47/ngspice-47.tar.gz
 graphics/MesaLib	mesa-26.2.4.tar.xz	bce5f7fbebb934373b86c999a064d52fb5065878dc57f287f95346648ec832e9	https://archive.mesa3d.org/mesa-26.2.4.tar.xz
 x11/libdrm	libdrm-2.4.134.tar.xz	ac5e74d157830eb8bee44c6a6bf3ad49774ef0dd2a72bdad74a8f20308b52a95	https://dri.freedesktop.org/libdrm/libdrm-2.4.134.tar.xz

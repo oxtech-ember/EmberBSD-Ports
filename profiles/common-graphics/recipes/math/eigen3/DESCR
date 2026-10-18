@@ -1,0 +1,8 @@
+Eigen is a C++ template library for linear algebra, geometry and numerical
+algorithms. It supports dense and sparse matrices, fixed and dynamic sizes,
+decompositions, solvers, explicit vectorization and expression templates.
+
+The common provider retains the math/eigen3 package path, include/eigen3,
+Eigen3::Eigen CMake target and eigen3.pc. Eigen 5 requires C++14. Its CMake
+version checks follow semantic versioning; consumers that accept both Eigen
+3 and Eigen 5 must request an appropriate version range.
