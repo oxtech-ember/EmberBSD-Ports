@@ -13,7 +13,7 @@ tree = work + '/pkgsrc'; profile = File.expand_path('..', __dir__)
 Dir.children(pkgsrc).reject { |n| n.start_with?('.') || n == 'lang' }.each { |n| File.symlink(pkgsrc + '/' + n, tree + '/' + n) }
 Dir.children(pkgsrc + '/lang').reject { |n| %w[llvm llvm-devel].include?(n) }.each { |n| File.symlink(pkgsrc + '/lang/' + n, tree + '/lang/' + n) }
 %w[llvm llvm-devel].each { |n| FileUtils.cp_r(profile + '/recipes/lang/' + n, tree + '/lang/' + n) }
-vars = %w[PKGNAME WRKDIR CFLAGS CXXFLAGS CPPFLAGS LDFLAGS CMAKE_CONFIGURE_ARGS CONFIGURE_ENV PYTHON_FOR_BUILD_ONLY PYTHONBIN REPLACE_PYTHON DEPENDS BUILD_DEPENDS TOOL_DEPENDS]
+vars = %w[PKGNAME WRKDIR CFLAGS CXXFLAGS CPPFLAGS LDFLAGS CMAKE_CONFIGURE_ARGS CONFIGURE_ENV PYTHON_FOR_BUILD_ONLY PYTHONBIN REPLACE_PYTHON DEPENDS BUILD_DEPENDS TOOL_DEPENDS BUILDLINK_DEPMETHOD.py-llvm-lit]
 rows = [%w[llvm yes], %w[llvm-devel yes], %w[llvm no]].map do |package, cross|
   output, error, status = Open3.capture3({'MAKECONF' => makeconf}, bmake, '-C', tree + '/lang/' + package,
     '_PKGSRC_BARRIER=yes', 'USE_CROSS_COMPILE=' + cross, 'WRKOBJDIR=' + work + '/objects', *vars.flat_map { |k| ['-V', '${' + k + '}'] })
@@ -29,6 +29,7 @@ runtime, sdk, native = rows
 end
 abort 'LLVM role identities differ' unless runtime.fetch('PKGNAME') == 'llvm-23.1.3nb1' && sdk.fetch('PKGNAME') == 'llvm-devel-23.1.3nb2' && native.fetch('PKGNAME') == 'llvm-23.1.3'
 abort 'Cross Python is not a native tool' unless [runtime, sdk].all? { |r| r.fetch('PYTHON_FOR_BUILD_ONLY') == 'tool' && r.fetch('TOOL_DEPENDS').match?(/python[0-9]+>=/) }
+abort 'Cross lit buildlink role changed' unless [runtime, sdk].all? { |r| r.fetch('BUILDLINK_DEPMETHOD.py-llvm-lit') == 'build' }
 abort 'Runtime gained target Python/lit' if runtime.fetch('DEPENDS').match?(/python[0-9]+|llvm-lit/)
 abort 'SDK lost target Python/lit' unless sdk.fetch('DEPENDS').match?(/python[0-9]+>=/) && sdk.fetch('DEPENDS').include?('llvm-lit-23.1.3')
 abort 'Target shebang changed' unless runtime.fetch('PYTHONBIN') == sdk.fetch('PYTHONBIN') && sdk.fetch('PYTHONBIN').start_with?('/usr/pkg/bin/python') && runtime.fetch('REPLACE_PYTHON') == sdk.fetch('REPLACE_PYTHON')

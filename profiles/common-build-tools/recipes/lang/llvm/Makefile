@@ -120,6 +120,8 @@ PKG_FAIL_REASON+= "The LLVM runtime requires package revision 1"
 .endif
 # Both partitions come from the same full build with native Python tools.
 PYTHON_FOR_BUILD_ONLY= tool
+# lit supplies build/test scripts, not target library search paths.
+BUILDLINK_DEPMETHOD.py-llvm-lit= build
 LLVM_FULL_PLIST_SRC= ${EMBERBSD_LLVM_PKGDIR}/PLIST
 LLVM_RUNTIME_PLIST_SRC= ${EMBERBSD_LLVM_PKGDIR}/PLIST.runtime
 LLVM_DEVEL_PLIST_SRC= ${EMBERBSD_LLVM_PKGDIR}/../llvm-devel/PLIST
@@ -139,8 +141,6 @@ LLVM_PACKAGE_PART= runtime
 PKG_FAIL_REASON+= "The LLVM runtime recipe must select the runtime partition"
 .endif
 PLIST_SRC= ${LLVM_RUNTIME_PLIST_SRC}
-# The runtime contains no Python tools. Keep lit available for build tests.
-BUILDLINK_DEPMETHOD.py-llvm-lit= build
 .endif
 USE_TOOLS+= perl:build
 .endif

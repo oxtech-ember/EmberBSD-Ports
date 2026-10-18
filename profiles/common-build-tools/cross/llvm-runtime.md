@@ -10,8 +10,10 @@ NetBSD cross builds for AArch64 and amd64 produce two ordinary source packages:
 The runtime keeps the original name for dependency and vulnerability matching.
 Runtime revision `nb1` distinguishes it from the earlier complete package.
 SDK revision `nb2` adds the direct Python dependency for installed scripts.
-Both cross roles use native Python tools without Python C API build flags. The SDK
-conflicts with that earlier package. Native LLVM keeps its complete manifest
+Both cross roles use native Python tools without Python C API build flags.
+Their lit buildlink role supplies build/test scripts without target RPATHs.
+The SDK retains explicit Python/lit runtime dependencies and conflicts with
+that earlier package. Native LLVM keeps its complete manifest
 and package identity. The separate SDK requires a NetBSD cross build.
 
 Both recipes use the same LLVM 23.1.3 archive, patches and source component.
