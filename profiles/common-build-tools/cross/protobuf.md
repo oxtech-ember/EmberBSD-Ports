@@ -119,9 +119,21 @@ exposed the metadata problem and is not accepted. The repaired nb2 package
 passes the normal pkgsrc checks and an independent audit of all 94 ELF libraries
 and 220 CMake/pkg-config files. No build-host paths or unresolved providers remain.
 All 816 installed SDK entries match that package. Both CMake and pkg-config
-consumers link through the registered SDK provider with GCC16. These consumer
-links do not establish target execution of the ordinary package. Protobuf split
-package creation and installed-consumer acceptance remain pending.
+consumers link through the registered SDK provider with GCC16. The same two
+executables pass on EmberBSD/AArch64 with the normally installed nb2 package:
+each returns the known string and three non-null stack frames. The loader uses
+the installed Abseil libraries, common GCC16 runtime and base `libexecinfo.so.0`.
+No loader-path override is required.
+
+Target acceptance compares all 816 installed files and links with the package,
+checks root:wheel ownership, and passes `pkg_admin check`. Normal removal deletes
+all package payload paths while preserving the separate protobuf files and
+licenses. Reinstallation passes the full payload comparison and both consumers.
+The package SHA256 is
+`15bceb9f867b9280c148065adaedc3bb5daa0b2b169bb95ea513a24099132706`.
+This establishes ordinary Abseil package acceptance, without target memory
+instrumentation. Protobuf split package creation and installed-consumer
+acceptance remain pending.
 
 The bounded native stack-trace build uses frame pointers and returns four
 frames. Its consumer passes strict Memcheck with no errors, live heap blocks
@@ -138,6 +150,6 @@ The raw failures remain recorded; this is not a clean Cppcheck result.
 
 The [source probe](../../../probes/kicad/protobuf/README.md) already has native
 memory checks and actual AArch64 VM consumer results. Those results do not
-establish acceptance of these ordinary packages. The recipes keep the original
+establish acceptance of the ordinary protobuf packages. The recipes keep the original
 upstream licenses and ownership. Local adaptations and tests are AI-assisted
 EmberBSD work; they have not been accepted upstream.

@@ -40,10 +40,11 @@ runtime behavior are validated.
   Matching code generation retains its output and error behavior. Documented
   process-lifetime exceptions keep the original CLI's memory failures visible.
   The same C++ and UPB contracts pass in the AArch64 E34 guest with the
-  GCC16-built shared-library closure. Ordinary pkgsrc ownership, package
+  GCC16-built shared-library closure. Ordinary protobuf package ownership,
   lifecycle and KiCad integration remain pending.
   The [common Abseil recipe](profiles/common-build-tools/cross/protobuf.md)
-  repairs NetBSD stack traces; a separate AArch64 source-probe regression passes.
+  repairs NetBSD stack traces. Its ordinary AArch64 package passes two installed
+  SDK consumers, all 816 payload checks and removal/reinstallation.
   Cross protobuf recipes separate runtime libraries from target generators and
   SDK files. Their source ownership checks preserve the full native package.
 - [KiCad SPICE prerequisites](probes/kicad/ngspice/README.md): ngspice 47
