@@ -174,10 +174,11 @@ The revision-6 GI recipe also fixes temporary hash-key and test-buffer leaks.
 A GCC16 native causal check confirms the repair while preserving explicit
 GLib reachable-allocation and Cppcheck parser limits. The normal native package
 verifies all 180 entries and passes all 64 upstream Meson invocations with the
-current setuptools test mock. Target revision-6 acceptance remains pending.
+current setuptools test mock. Its revision-6 AArch64 SDK package also verifies
+all 180 entries and passes five real GType queries in the E34 VM.
 The matching GLib 2.90.1 metadata
 package supplies all seven GIR/typelib pairs and passes four target load/invoke
-cycles on CM5. The [complete text/GTK introspection packages](cross/desktop-introspection.md) also cross-build; their real GType queries pass on CM5 with the shared query transport.
+cycles in the E34 VM and on CM5. The [complete text/GTK introspection packages](cross/desktop-introspection.md) also cross-build; their real GType queries pass on CM5 with the shared query transport.
 The complete [GdkPixbuf 2.44.8 and shared MIME packages](cross/gdk-pixbuf.md)
 preserve thirteen raster formats, introspection and thumbnailer payload;
 four CM5 cycles pass complete and incremental decoding with pixel checks.

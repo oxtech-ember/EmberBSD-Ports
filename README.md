@@ -303,9 +303,10 @@ runtime behavior are validated.
   with real GType discovery and upstream hash/search checks on EmberBSD/CM5.
   Its revision-6 native GCC16 package verifies all 180 entries and passes all
   64 upstream Meson invocations with current setuptools test interception.
-  Temporary hash-key leaks are repaired; target revision-6 acceptance remains pending.
+  Temporary hash-key leaks are repaired. The revision-6 AArch64 SDK package
+  verifies all 180 entries and passes five real GType queries in the E34 VM.
   Matching GLib 2.90.1 metadata now cross-builds all seven GIR/typelib pairs
-  and passes target loading and introspection/libffi invocation on CM5.
+  and passes four target loading/invocation cycles in the E34 VM and on CM5.
   Current [GdkPixbuf and shared MIME packages](profiles/common-graphics/cross/gdk-pixbuf.md)
   preserve all thirteen raster formats, metadata and thumbnailer payload.
   Four CM5 cycles pass complete and incremental decoding with pixel checks.

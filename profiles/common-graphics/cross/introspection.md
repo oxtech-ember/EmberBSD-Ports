@@ -5,10 +5,8 @@ typelib hash keys and the upstream hash test's packed buffer. This two-line
 ownership repair preserves the ABI, hash format and complete build graph.
 Its normal native GCC16 package verifies all 180 installed entries. With the
 current setuptools test mock, all 64 upstream Meson invocations pass.
-Revision-6 installed target acceptance remains pending.
-
-The recorded AArch64 cross build of `gobject-introspection-1.86.0nb5` used
-macOS, GCC16, Python 3.14.8 and GLib 2.90.1.
+The Linux GCC16 AArch64 package also verifies all 180 installed SDK entries.
+Five real GType queries pass in an EmberBSD AArch64 E34 VM.
 Its complete selected pkgsrc payload is preserved: library, tools, Python
 scanner extension, GIRepository GIR/typelib, headers and test sources.
 The GLib-family GIR files belong to the separate `glib2-introspection` package.
@@ -119,8 +117,8 @@ GI 1.86.0 is a declared tool dependency. Meson runs native Python and native
 `g-ir-scanner`/`g-ir-compiler`; pkgsrc's target sysconfig remains responsible
 for Python headers, extension ABI and matching installed target shebangs.
 The current common interpreter installs `/usr/pkg/bin/python3.15` shebangs.
-The recorded AArch64 package used Python 3.14; new target acceptance remains separate.
-A Meson native machine file keeps its C compiler on macOS.
+The accepted Linux AArch64 package uses Python 3.15 and GLib 2.90.1.
+A Meson native machine file keeps the build compiler on the development host.
 Cross `readelf` obtains ELF SONAMEs instead of invoking a host loader.
 
 Cross builds use installed native Flex from `${TOOLBASE}/bin/flex` through
@@ -226,16 +224,17 @@ and rejects invalid host-key aliases and unsupported probe arguments.
 
 The normal package passes PLIST, interpreter, RPATH, PIE/RELRO, shared-library
 and work-reference checks. All 180 payload files/links match the installed
-package; its 186 recorded entries include six metadata files. Actual target
+package. Actual target
 queries produce GLib, GModule, GObject, Gio and GIRepository metadata.
-On CM5, unchanged upstream `gthash-test` passes its build/retrieve case;
-`cmph-bdz-test` passes ordinary and packed search. These use the selected
-current GLib and EmberBSD libc in temporary directories.
+All five E34 VM query exits, provider checks and temporary-directory cleanups pass.
+The revision-6 AArch64 SDK package has SHA256
+`ad88282d203b7da8e08a786609af3408720a88c05aca3772b6fe527fe223661e`.
+This does not execute the target scanner or complete target upstream test suite.
 
-Accepted package SHA256:
-`24c970a890a14083bfdae22426515a12023aea7901dc59fc7f78699fde0cf83f`.
-The installed regular-file manifest has SHA256
-`e7dedd45cc6eb3d6cc76cc42b6b0a5d33b55b231cf18c54194e6930c83f074c1`.
+Separate CM5 checks of the earlier package run unchanged upstream
+`gthash-test` through its build/retrieve case;
+`cmph-bdz-test` passes ordinary and packed search. These use the selected
+GLib and EmberBSD libc in temporary directories.
 
 `tests/gi-query-contract.rb [--target aarch64|amd64] CROSS_TOOLS NEW_WORK` builds
 real ELF fixtures with the selected GCC cross compiler. AArch64 is the default.
@@ -277,18 +276,19 @@ The recipe also carries the same target libc printf/strlcpy properties as
 remains a generator dependency; these changes add no project Python helper.
 
 Normal packaging and cross-sysroot installation pass with all 14 payload files.
-Seven real GType queries ran on EmberBSD/AArch64 CM5 in temporary directories.
+Seven real GType queries ran in the EmberBSD/AArch64 E34 VM in temporary directories.
 All query exits and cleanup statuses were zero. Package SHA256:
-`9c577a6a88dddc170ba98e76fa8cbe175494590c87d94ed6a5afd18df3ca0b0a`.
+`ffe31d4972de18289f23d9b0c62fc8ecccfcdcb20366b7ea7e3b89243c6c9265`.
 
 The selection regression extracts the actual patched Meson code. It checks
 default cross refusal, explicit cross generators, unchanged native behavior,
 and all 14 generated package rules. The target consumer verifies that installed
 typelib bytes match the archive, then embeds those exact bytes in an ELF fixture.
-Four CM5 cycles load all seven namespaces and invoke `g_get_monotonic_time`
+Four E34 VM cycles load all seven namespaces and invoke `g_get_monotonic_time`
 through introspection/libffi with a checked return value. Malformed metadata
 and an incorrect argument count are rejected. This checks target metadata
 loading and invocation, not the complete GLib or installed scanner test suites.
+The same bounded load/invoke contract also has separate CM5 acceptance.
 
 ```sh
 ruby tests/glib-introspection-cross.rb /path/to/built/glib-2.90.1 \
