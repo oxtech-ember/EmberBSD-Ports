@@ -5,6 +5,8 @@ set -eu
 [ "$#" -ge 6 ] || { echo 'target-std.sh MODE SOURCE WORK HOST CROSS SYSROOT [ARG]' >&2; exit 2; }
 mode=$1 source=$2 work=$3 host=$4 cross=$5 sysroot=$6
 shift 6
+jobs=${EMBERBSD_RUST_BUILD_JOBS-1}
+case "$jobs" in ''|0*|*[!0-9]*) echo 'positive Rust build job count required' >&2; exit 2 ;; esac
 # Paths also enter TOML and wrapper scripts: reject unsupported spellings.
 for path in "$source" "$work" "$host" "$cross" "$sysroot"; do
     case "$path" in /*) ;; *) echo 'absolute paths required' >&2; exit 2 ;; esac
@@ -85,7 +87,7 @@ local-rebuild = true
 locked-deps = true
 vendor = true
 extended = false
-jobs = 2
+jobs = $jobs
 build-dir = "$work/out"
 [llvm]
 download-ci-llvm = false
@@ -104,7 +106,7 @@ build)
     [ "$#" -eq 1 ] && [ -x "$1" ] || exit 2
     python=$1
     cd "$source"
-    "$python" x.py build library --stage 0 --target aarch64-unknown-netbsd -j2 --dry-run > "$work/std-plan.log" 2>&1 || {
+    "$python" x.py build library --stage 0 --target aarch64-unknown-netbsd "-j$jobs" --dry-run > "$work/std-plan.log" 2>&1 || {
         cat "$work/std-plan.log"; exit 1;
     }
     cat "$work/std-plan.log"
@@ -112,7 +114,7 @@ build)
     if grep -E 'Building (stage[1-9]|LLVM|LLD|stage0 compiler)' "$work/std-plan.log"; then
         echo 'refusing unexpected compiler/backend build' >&2; exit 1
     fi
-    "$python" x.py build library --stage 0 --target aarch64-unknown-netbsd -j2
+    "$python" x.py build library --stage 0 --target aarch64-unknown-netbsd "-j$jobs"
     ;;
 check)
     [ "$#" -eq 1 ] && [ -d "$1" ] || exit 2
