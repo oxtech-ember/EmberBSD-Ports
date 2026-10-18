@@ -34,10 +34,11 @@ runtime behavior are validated.
   GCC16 AArch64 packaging verifies all 613 entries; four selected native
   and installed EmberBSD numerical checks pass. Normal package removal and
   reinstallation preserve the verified ownership boundary.
-- [JBIG-KIT 2.2](profiles/common-graphics/cross/jbigkit.md): the common provider
+- [JBIG-KIT 2.2nb1](profiles/common-graphics/cross/jbigkit.md): the common provider
   keeps both libraries and all four image tools. Ordinary GCC16 native and
   AArch64 packages pass package checks; native upstream tests and installed
-  library memory checks pass. Target execution and TIFF integration remain pending.
+  library memory checks pass. Fourteen installed CLI memory/image cases also pass.
+  Target execution and TIFF integration remain pending.
 - [Maintained FreeImage sources](profiles/common-graphics/cross/freeimage.md):
   FreeImage/FreeImagePlus 3.19.25 and LibRaw 0.22.2 retain common codecs for
   OCCT. Source and focused native half checks pass; complete packages and

@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.9 2020/08/03 21:34:06 wiz Exp $
 
 DISTNAME=	jbigkit-2.2
+PKGREVISION=	1
 CATEGORIES=	graphics
 MASTER_SITES=	https://www.cl.cam.ac.uk/~mgk25/jbigkit/download/
 
