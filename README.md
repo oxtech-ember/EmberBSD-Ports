@@ -55,6 +55,11 @@ runtime behavior are validated.
   FreeImage/FreeImagePlus 3.19.25 and LibRaw 0.22.2 retain common codecs for
   OCCT. Source and focused native half checks pass; complete packages and
   installed image workflows remain pending.
+- [RapidJSON with GCC16](profiles/common-graphics/cross/rapidjson.md): the common
+  current snapshot retains its header APIs, examples and strict unit/performance
+  builds. Source repairs cover external pointer tokens and shared pool ownership.
+  Ordinary native/AArch64 packages, 471 native unit tests and strict Memcheck
+  pass. Installed target execution remains pending.
 - [OpenEXR and OpenJPH](profiles/common-graphics/cross/openexr.md): current
   3.5.2 and 0.32.0 providers retain shared libraries, tools and system codecs.
   Ordinary GCC16 native/AArch64 packages pass static payload checks. Native

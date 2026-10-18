@@ -1,0 +1,23 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Capture the owned shared-buffer pointer before releasing additional chunks.
+Only that owned pointer can be freed; caller buffers remain borrowed.
+Keep GCC16 diagnostics and the allocator layout and API unchanged.
+
+--- include/rapidjson/allocators.h.orig
++++ include/rapidjson/allocators.h
+@@ -265,10 +265,11 @@
+             --shared_->refcount;
+             return;
+         }
++        SharedData* const ownBuffer = shared_->ownBuffer ? shared_ : 0;
+         Clear();
+         BaseAllocator *a = shared_->ownBaseAllocator;
+-        if (shared_->ownBuffer) {
+-            baseAllocator_->Free(shared_);
++        if (ownBuffer) {
++            baseAllocator_->Free(ownBuffer);
+         }
+         RAPIDJSON_DELETE(a);
+     }

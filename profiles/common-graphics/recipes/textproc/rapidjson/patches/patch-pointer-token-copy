@@ -1,0 +1,70 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Copy each token name when appending to an externally supplied token array.
+Such pointers have no owned contiguous name buffer. Preserve the token ABI.
+Add the actual constructor-plus-append regression to the upstream suite.
+
+--- include/rapidjson/pointer.h.orig
++++ include/rapidjson/pointer.h
+@@ -883,28 +883,21 @@
+             ownAllocator_ = allocator_ = RAPIDJSON_NEW(Allocator)();
+ 
+         size_t nameBufferSize = rhs.tokenCount_; // null terminators for tokens
+-        for (Token *t = rhs.tokens_; t != rhs.tokens_ + rhs.tokenCount_; ++t)
+-            nameBufferSize += t->length;
++        for (size_t i = 0; i < rhs.tokenCount_; ++i)
++            nameBufferSize += rhs.tokens_[i].length;
+ 
+         tokenCount_ = rhs.tokenCount_ + extraToken;
+         tokens_ = static_cast<Token *>(allocator_->Malloc(tokenCount_ * sizeof(Token) + (nameBufferSize + extraNameBufferSize) * sizeof(Ch)));
+         nameBuffer_ = reinterpret_cast<Ch *>(tokens_ + tokenCount_);
+-        if (rhs.tokenCount_ > 0) {
+-            std::memcpy(tokens_, rhs.tokens_, rhs.tokenCount_ * sizeof(Token));
+-        }
+-        if (nameBufferSize > 0) {
+-            std::memcpy(nameBuffer_, rhs.nameBuffer_, nameBufferSize * sizeof(Ch));
+-        }
+-
+-        // The names of each token point to a string in the nameBuffer_. The
+-        // previous memcpy copied over string pointers into the rhs.nameBuffer_,
+-        // but they should point to the strings in the new nameBuffer_.
++        // User-supplied tokens do not have a contiguous name buffer.
++        Ch* name = nameBuffer_;
+         for (size_t i = 0; i < rhs.tokenCount_; ++i) {
+-          // The offset between the string address and the name buffer should
+-          // still be constant, so we can just get this offset and set each new
+-          // token name according the new buffer start + the known offset.
+-          std::ptrdiff_t name_offset = rhs.tokens_[i].name - rhs.nameBuffer_;
+-          tokens_[i].name = nameBuffer_ + name_offset;
++            tokens_[i] = rhs.tokens_[i];
++            tokens_[i].name = name;
++            const size_t length = static_cast<size_t>(rhs.tokens_[i].length) + 1;
++            std::memcpy(name, rhs.tokens_[i].name, (length - 1) * sizeof(Ch));
++            name[length - 1] = '\0';
++            name += length;
+         }
+ 
+         return nameBuffer_ + nameBufferSize;
+--- test/unittest/pointertest.cpp.orig
++++ test/unittest/pointertest.cpp
+@@ -594,6 +594,19 @@
+ #endif
+ }
+ 
++TEST(Pointer, AppendUserSuppliedTokens) {
++    const Pointer::Token tokens[] = { { "foo suffix", 3, kPointerInvalidIndex }, { "0 suffix", 1, 0 } };
++    Pointer p(tokens, sizeof(tokens) / sizeof(tokens[0]));
++    Pointer q = p.Append("tail");
++    EXPECT_TRUE(Pointer("/foo/0/tail") == q);
++    EXPECT_NE(tokens[0].name, q.GetTokens()[0].name);
++    EXPECT_EQ('\0', q.GetTokens()[0].name[3]);
++    EXPECT_EQ('\0', q.GetTokens()[1].name[1]);
++    q = q.Append("");
++    EXPECT_TRUE(Pointer("/foo/0/tail/") == q);
++    EXPECT_TRUE(Pointer("/foo/0") == p);
++}
++
+ TEST(Pointer, Equality) {
+     EXPECT_TRUE(Pointer("/foo/0") == Pointer("/foo/0"));
+     EXPECT_FALSE(Pointer("/foo/0") == Pointer("/foo/1"));

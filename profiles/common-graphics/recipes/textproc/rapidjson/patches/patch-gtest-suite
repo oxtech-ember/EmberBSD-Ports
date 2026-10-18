@@ -1,0 +1,20 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Use the supported typed-test API when the selected GoogleTest provides it.
+Keep the legacy source-provider spelling only for older GoogleTest headers.
+
+--- test/unittest/documenttest.cpp.orig
++++ test/unittest/documenttest.cpp
+@@ -461,7 +461,11 @@
+ };
+ 
+ typedef ::testing::Types< CrtAllocator, MemoryPoolAllocator<> > MoveAllocatorTypes;
++#if defined(TYPED_TEST_SUITE)
++TYPED_TEST_SUITE(DocumentMove, MoveAllocatorTypes);
++#else
+ TYPED_TEST_CASE(DocumentMove, MoveAllocatorTypes);
++#endif
+ 
+ TYPED_TEST(DocumentMove, MoveConstructor) {
+     typedef TypeParam Allocator;

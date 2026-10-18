@@ -1,0 +1,23 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Use the stream traits EOF-capable integer type on signed and unsigned wchar hosts.
+Preserve the actual wide-stream tests and strict conversion diagnostics.
+
+--- test/unittest/readertest.cpp.orig
++++ test/unittest/readertest.cpp
+@@ -1418,12 +1418,12 @@
+   WIStreamWrapper(std::wistream& is) : is_(is) {}
+ 
+   Ch Peek() const {
+-    unsigned c = is_.peek();
++    std::char_traits<wchar_t>::int_type c = is_.peek();
+     return c == std::char_traits<wchar_t>::eof() ? Ch('\0') : static_cast<Ch>(c);
+   }
+ 
+   Ch Take() {
+-    unsigned c = is_.get();
++    std::char_traits<wchar_t>::int_type c = is_.get();
+     return c == std::char_traits<wchar_t>::eof() ? Ch('\0') : static_cast<Ch>(c);
+   }
+ 

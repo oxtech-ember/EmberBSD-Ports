@@ -48,3 +48,4 @@ www/webkit-gtk41	webkitgtk-2.54.1.tar.xz	ea0bbb02dbdbc596874a4e7ad35b66645b3e0a2
 www/webkit-gtk60	webkitgtk-2.54.1.tar.xz	ea0bbb02dbdbc596874a4e7ad35b66645b3e0a232bd0e4081de5ed92eb0a397d	https://webkitgtk.org/releases/webkitgtk-2.54.1.tar.xz
 graphics/openexr	openexr-3.5.2.tar.gz	85a291b9b8563fabef1aa3f6e912d744ce1d4b9fd5a8f978eda194cd51b15ae9	https://github.com/AcademySoftwareFoundation/openexr/archive/refs/tags/v3.5.2.tar.gz
 graphics/OpenJPH	OpenJPH-0.32.0.tar.gz	5cb1ebe18e5ee1322d23ff2130b37562d447d1ad5586c3d16cf84be3ae30f719	https://github.com/aous72/OpenJPH/archive/refs/tags/0.32.0.tar.gz
+textproc/rapidjson	rapidjson-1.1.0.20250205-24b5e7a8b27f42fa16b96fc70aade9106cf7102f.tar.gz	2d2601a82d2d3b7e143a3c8d43ef616671391034bc46891a9816b79cf2d3e7a8	https://github.com/Tencent/rapidjson/archive/24b5e7a8b27f42fa16b96fc70aade9106cf7102f.tar.gz

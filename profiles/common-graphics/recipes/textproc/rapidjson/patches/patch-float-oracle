@@ -1,0 +1,42 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Use the existing zero-tolerance floating-point oracle for seven finite values.
+Keep exact comparisons and strict -Wfloat-equal with GoogleTest 1.18.
+
+--- test/unittest/valuetest.cpp.orig
++++ test/unittest/valuetest.cpp
+@@ -652,9 +652,9 @@
+ 
+     // Templated functions
+     EXPECT_TRUE(z.Is<double>());
+-    EXPECT_EQ(56.78, z.Get<double>());
+-    EXPECT_EQ(57.78, z.Set(57.78).Get<double>());
+-    EXPECT_EQ(58.78, z.Set<double>(58.78).Get<double>());
++    EXPECT_NEAR(56.78, z.Get<double>(), 0.0);
++    EXPECT_NEAR(57.78, z.Set(57.78).Get<double>(), 0.0);
++    EXPECT_NEAR(58.78, z.Set<double>(58.78).Get<double>(), 0.0);
+ }
+ 
+ TEST(Value, Float) {
+@@ -682,16 +682,16 @@
+ 
+     // Issue 573
+     z.SetInt(0);
+-    EXPECT_EQ(0.0f, z.GetFloat());
++    EXPECT_NEAR(0.0f, z.GetFloat(), 0.0);
+ 
+     z = 56.78f;
+     EXPECT_NEAR(56.78f, z.GetFloat(), 0.0f);
+ 
+     // Templated functions
+     EXPECT_TRUE(z.Is<float>());
+-    EXPECT_EQ(56.78f, z.Get<float>());
+-    EXPECT_EQ(57.78f, z.Set(57.78f).Get<float>());
+-    EXPECT_EQ(58.78f, z.Set<float>(58.78f).Get<float>());
++    EXPECT_NEAR(56.78f, z.Get<float>(), 0.0);
++    EXPECT_NEAR(57.78f, z.Set(57.78f).Get<float>(), 0.0);
++    EXPECT_NEAR(58.78f, z.Set<float>(58.78f).Get<float>(), 0.0);
+ }
+ 
+ TEST(Value, IsLosslessDouble) {

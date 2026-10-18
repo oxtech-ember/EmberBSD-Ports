@@ -1,0 +1,51 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Reuse the shared base allocator when a copy first grows a user-buffer pool.
+Do not overwrite and leak the first lazy owner from another pool instance.
+The upstream regression checks the number of live real allocator instances.
+
+--- include/rapidjson/allocators.h.orig
++++ include/rapidjson/allocators.h
+@@ -390,6 +390,8 @@
+     */
+     bool AddChunk(size_t capacity) {
+         if (!baseAllocator_)
++            baseAllocator_ = shared_->ownBaseAllocator;
++        if (!baseAllocator_)
+             shared_->ownBaseAllocator = baseAllocator_ = RAPIDJSON_NEW(BaseAllocator)();
+         if (ChunkHeader* chunk = static_cast<ChunkHeader*>(baseAllocator_->Malloc(SIZEOF_CHUNK_HEADER + capacity))) {
+             chunk->capacity = capacity;
+--- test/unittest/allocatorstest.cpp.orig
++++ test/unittest/allocatorstest.cpp
+@@ -173,6 +173,30 @@
+     }
+ }
+ 
++struct SharedPoolBaseAllocator : CrtAllocator {
++    static unsigned live;
++    SharedPoolBaseAllocator() { ++live; }
++    ~SharedPoolBaseAllocator() { --live; }
++};
++
++unsigned SharedPoolBaseAllocator::live = 0;
++
++TEST(Allocator, SharedBufferOwner) {
++    char buffer[256];
++    {
++        MemoryPoolAllocator<SharedPoolBaseAllocator> pool(buffer, sizeof(buffer), 128);
++        {
++            MemoryPoolAllocator<SharedPoolBaseAllocator> copy(pool);
++            EXPECT_TRUE(copy.Malloc(4096) != 0);
++            EXPECT_EQ(1u, SharedPoolBaseAllocator::live);
++        }
++        pool.Clear();
++        EXPECT_TRUE(pool.Malloc(4096) != 0);
++        EXPECT_EQ(1u, SharedPoolBaseAllocator::live);
++    }
++    EXPECT_EQ(0u, SharedPoolBaseAllocator::live);
++}
++
+ TEST(Allocator, CrtAllocator) {
+     CrtAllocator a;
+ 

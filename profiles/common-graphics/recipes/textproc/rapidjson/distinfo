@@ -1,0 +1,13 @@
+$NetBSD: distinfo,v 1.6 2025/12/21 09:00:30 markd Exp $
+
+BLAKE2s (rapidjson-1.1.0.20250205-24b5e7a8b27f42fa16b96fc70aade9106cf7102f.tar.gz) = 0e32a47adbb9bf6e8cae712d64424baac9df92f19f26903dbf19dc215a92b9db
+SHA512 (rapidjson-1.1.0.20250205-24b5e7a8b27f42fa16b96fc70aade9106cf7102f.tar.gz) = 50f8723414a6e63eadd45f97be5c44e9fff2d06216c8cc4df802f5bfc2a9416a039f2c69e9bb1882f7e756cd38a7097eea05cab76c739f45805dc41617140799
+Size (rapidjson-1.1.0.20250205-24b5e7a8b27f42fa16b96fc70aade9106cf7102f.tar.gz) = 1116703 bytes
+SHA1 (patch-allocator-ownership) = 23989ad045337499239b4ea6fefbd3add6ffd9ad
+SHA1 (patch-example_CMakeLists.txt) = c7e1fff4b43c1e027cf49206d30b82b14b08aeb5
+SHA1 (patch-float-oracle) = 8589a7c086d066bd8e715bd9bace2aeb49564fbe
+SHA1 (patch-gtest-suite) = 359e6442ce4956a2771c548af0d43eefb474631d
+SHA1 (patch-pointer-token-copy) = e7dfd5c50af1005d80aec517bffd998ccef7b7a3
+SHA1 (patch-shared-pool-owner) = 68f2101720102eb8102629860bda0aa3f297ede6
+SHA1 (patch-system-gtest) = 3b2ec5a7972028912224b9eeb2196fa67e2a7482
+SHA1 (patch-wide-stream) = 1c8cd4812b4a389765e934b32aacbd4e99932dcb

@@ -16,6 +16,11 @@ provide common source recipes for OCCT image support. Source preparation,
 GCC16 header selection and half conversions pass; complete codec packages
 and installed OCCT image workflows remain pending.
 
+[RapidJSON with GCC16](cross/rapidjson.md) retains the current canonical snapshot,
+header APIs and examples. Required installed GoogleTest enables strict unit and
+performance builds. Ordinary native/AArch64 packages and all 471 native unit
+tests pass. Strict native Memcheck passes; installed target execution is pending.
+
 [OpenEXR 3.5.2 and OpenJPH 0.32.0](cross/openexr.md) retain shared libraries,
 tools and current system codecs. Ordinary GCC16 native/AArch64 packages pass
 their static packing-list checks. Native image round trips and focused strict
