@@ -227,6 +227,17 @@ CPack alongside it. Both version commands must succeed, and all package
 pair through its normal wrappers. Keep this setting in the host MAKECONF
 too. Clean a package's work directory after changing cached tool choices.
 
+For cross builds, the common profile also sets CMake's target system,
+processor and sysroot. Program lookup stays on the host. Header, library and
+package lookup uses the target sysroot and pkgsrc buildlink root. Native tool
+dependency recursion receives none of these cross settings. This corrects
+host-system detection even when the selected compiler already emits target
+objects. `tests/cmake-cross.rb EXPORTED_PKGSRC MAKECONF NEW_WORK` checks the
+actual pkgsrc arguments and CMake identity/search behavior for AArch64 and
+amd64, plus unchanged native recursion. Its compiler-free fixture establishes
+configuration behavior; actual compiler and installed-consumer checks remain
+separate.
+
 `EMBERBSD_BUILD_AUTOCONF` selects an existing native Autoconf 2.73+ for plain
 `USE_TOOLS+=autoconf` build dependencies. Its version command must succeed.
 All `AUTOCONF_REQD` floors apply. The same directory must contain executable
