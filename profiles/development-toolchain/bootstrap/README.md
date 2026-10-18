@@ -9,6 +9,11 @@ selection is unchanged. Keep the flags before `--target`.
 The compiler and all build tools execute on the development host.
 The target VM is only for execution and acceptance.
 
+For the bounded NetBSD locale source repair, the separate
+[fresh libstdc++ helper](libstdcxx.md) uses an existing application compiler.
+It verifies inherited runtime components and leaves this builder's strict
+resume identities unchanged. Full rebuilt-library acceptance is separate.
+
 The output is an isolated **runtime-only bootstrap prerequisite**. It is not
 a complete `gcc16-16.2.0nb1` package. It has no package database registration,
 target compiler executables, complete compiler payload or package dependencies.

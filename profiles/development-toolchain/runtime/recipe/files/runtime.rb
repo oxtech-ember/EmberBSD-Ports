@@ -76,13 +76,17 @@ module GCC16Runtime
   end
 
   class Stage
-    def initialize(work, pkgsrc, archive, expected_source: SOURCE_SHA256)
+    def initialize(work, pkgsrc, archive, expected_source: SOURCE_SHA256, receipt_paths: nil, allow_rebuild: true)
       @work = File.realpath(work)
       @pkgsrc = File.expand_path(pkgsrc)
       raise Invalid, 'Missing pkgsrc tree' unless File.directory?(@pkgsrc)
       @archive = File.expand_path(archive)
       @stage = File.join(@work, 'stage')
       @expected_source = expected_source
+      # A rebuild retains an exact parent snapshot. Its original receipt paths
+      # are historical identities; do not rewrite the parent's inputs.txt.
+      @receipt_paths = receipt_paths
+      @allow_rebuild = allow_rebuild
     rescue SystemCallError => e
       raise Invalid, e.message
     end
@@ -97,14 +101,17 @@ module GCC16Runtime
     end
 
     def verify
-      raise Invalid, 'No completed runtime stage' unless File.read(@work + '/build-success') == "runtime-only-bootstrap\n"
+      marker = File.read(@work + '/build-success')
+      rebuild = marker == "runtime-libstdcxx-rebuild\n"
+      raise Invalid, 'No completed runtime stage' unless marker == "runtime-only-bootstrap\n" || (rebuild && @allow_rebuild)
       inputs = File.read(@work + '/inputs.txt')
       claims = %w[scope target triplet].to_h do |key|
         lines = inputs.lines.select { |line| line.start_with?(key + '=') }
         raise Invalid, "Missing or duplicate provenance: #{key}" unless lines.length == 1 && lines[0].end_with?("\n")
         [key, lines[0].delete_prefix(key + '=').delete_suffix("\n")]
       end
-      raise Invalid, 'Expected runtime-only bootstrap scope' unless claims.fetch('scope') == 'runtime-only-bootstrap'
+      expected_scope = rebuild ? 'runtime-libstdcxx-rebuild' : 'runtime-only-bootstrap'
+      raise Invalid, 'Expected runtime-only bootstrap scope' unless claims.fetch('scope') == expected_scope
       architecture = TARGETS[claims.fetch('target')]
       raise Invalid, 'Unsupported runtime target' unless architecture
       raise Invalid, 'Runtime target/triplet mismatch' unless claims.fetch('triplet') == architecture.fetch(:triplet)
@@ -121,7 +128,12 @@ module GCC16Runtime
       recipe = @pkgsrc + '/lang/gcc16'
       recipe_files = %w[distinfo Makefile Makefile.common].map { |f| recipe + '/' + f } + Dir.glob(recipe + '/patches/*').select { |f| File.file?(f) }
       [@archive, *recipe_files].each do |path|
-        matches = inputs.lines.filter_map { |l| m = l.match(/\A([0-9a-f]{64})  (.+)\n?\z/); m[1] if m && m[2].chomp == path }
+        receipt_path = if @receipt_paths
+          path == @archive ? @receipt_paths.fetch('archive') : @receipt_paths.fetch('pkgsrc') + path.delete_prefix(@pkgsrc)
+        else
+          path
+        end
+        matches = inputs.lines.filter_map { |l| m = l.match(/\A([0-9a-f]{64})  (.+)\n?\z/); m[1] if m && m[2].chomp == receipt_path }
         raise Invalid, "Source/recipe receipt mismatch: #{path}" unless matches == [hash(path)]
       end
       regular = {}; links = {}
@@ -191,12 +203,20 @@ module GCC16Runtime
           'GCC_RUNTIME_LINKS_SHA256' => hash(@work + '/stage.symlinks'), 'EMBERBSD_SEED_SOURCE' => seed[0].strip.split('=', 2)[1] },
         elf: elf
       }
+      if rebuild
+        require_relative 'inheritance'
+        @result[:metadata].merge!(Inheritance.verify(@work, @pkgsrc, @archive, @result, expected_source: @expected_source))
+      end
+      @result
     rescue SystemCallError => e
       raise Invalid, e.message
     end
 
     def install(destination)
       result = verify
+      if result[:metadata].key?('GCC_RUNTIME_INHERITANCE_SHA256') && NAME == 'gcc16-runtime-16.2.0nb2'
+        raise Invalid, 'A rebuilt runtime requires a new package revision; nb2 remains unchanged'
+      end
       prefix = File.join(destination, 'usr/pkg')
       result.fetch(:files).each do |path|
         source = @stage + '/usr/pkg/' + path
