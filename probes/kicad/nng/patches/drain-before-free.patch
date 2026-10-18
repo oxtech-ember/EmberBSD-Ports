@@ -1,0 +1,374 @@
+# SPDX-License-Identifier: MIT
+# Copyright 2024 Staysail Systems, Inc. <info@staysail.tech>
+# Author: Garrett D'Amore <garrett@damore.org>
+# Adapted with AI assistance for stable NNG 1.12.3.
+# Upstream: https://github.com/nanomsg/nng/commit/8fa3b2aa8e9191669f137be39ba61ad39243483a
+# Upstream: https://github.com/nanomsg/nng/commit/71e459eea31e9e47c0ce64a78e32b242d357f9a0
+# Stop and drain AIO, task and reap work before deallocating their state.
+# Keep stable 1.x implicit initialization and task completion semantics.
+# Drain an individual queue on partial initialization before its stop assertion.
+
+--- a/src/core/aio.c
++++ b/src/core/aio.c
+@@ -9,6 +9,7 @@
+ //
+ 
+ #include "core/nng_impl.h"
++#include "core/taskq.h"
+ 
+ #include <limits.h>
+ #include <string.h>
+@@ -20,6 +21,7 @@
+ 	nni_thr  eq_thr;
+ 	nni_time eq_next; // next expiration
+ 	bool     eq_exit;
++	bool     eq_stop;
+ };
+ 
+ static nni_aio_expire_q **nni_aio_expire_q_list;
+@@ -348,7 +350,7 @@
+ 	aio->a_abort     = false;
+ 
+ 	// We should not reschedule anything at this point.
+-	if (aio->a_stop) {
++	if (aio->a_stop || eq->eq_stop) {
+ 		aio->a_result    = NNG_ECANCELED;
+ 		aio->a_cancel_fn = NULL;
+ 		aio->a_expire    = NNI_TIME_NEVER;
+@@ -390,7 +392,7 @@
+ 		return (rv);
+ 	}
+ 
+-	if (aio->a_stop) {
++	if (aio->a_stop || eq->eq_stop) {
+ 		nni_mtx_unlock(&eq->eq_mtx);
+ 		return (NNG_ECLOSED);
+ 	}
+@@ -608,16 +610,15 @@
+ 			nni_mtx_unlock(mtx);
+ 			return;
+ 		}
+-		if (now < next) {
+-			// Early wake up (just to reschedule), no need to
+-			// rescan the list.  This is an optimization.
++		if (now < next && !(q->eq_stop && aio != NULL)) {
++			// nothing to do!
+ 			nni_cv_until(cv, next);
+ 			continue;
+ 		}
+ 		q->eq_next = NNI_TIME_NEVER;
+ 		exp_idx    = 0;
+ 		while (aio != NULL) {
+-			if ((aio->a_expire < now) &&
++			if ((q->eq_stop || aio->a_expire < now) &&
+ 			    (exp_idx < NNI_EXPIRE_BATCH)) {
+ 				nni_aio *nxt;
+ 
+@@ -640,7 +641,14 @@
+ 
+ 		for (uint32_t i = 0; i < exp_idx; i++) {
+ 			aio = expires[i];
+-			rv  = aio->a_expire_ok ? 0 : NNG_ETIMEDOUT;
++			if (q->eq_stop) {
++				rv = NNG_ECANCELED;
++			} else if (aio->a_expire_ok) {
++				aio->a_expire_ok = false;
++				rv               = 0;
++			} else {
++				rv = NNG_ETIMEDOUT;
++			}
+ 
+ 			nni_aio_cancel_fn cancel_fn  = aio->a_cancel_fn;
+ 			void             *cancel_arg = aio->a_cancel_arg;
+@@ -652,7 +660,15 @@
+ 			// If there is no cancellation function, then we cannot
+ 			// terminate the aio - we've tried, but it has to run
+ 			// to its natural conclusion.
+-			if (cancel_fn != NULL) {
++			//
++			// For the special case of sleeping, we don't need to
++			// drop the lock and call the cancel function, we are
++			// already doing it right here!
++			if (aio->a_sleep) {
++				aio->a_result = rv;
++				aio->a_sleep  = false;
++				nni_task_dispatch(&aio->a_task);
++			} else if (cancel_fn != NULL) {
+ 				nni_mtx_unlock(mtx);
+ 				cancel_fn(aio, cancel_arg, rv);
+ 				nni_mtx_lock(mtx);
+@@ -660,10 +676,6 @@
+ 			aio->a_expiring = false;
+ 		}
+ 		nni_cv_wake(cv);
+-
+-		if (now < q->eq_next) {
+-			nni_cv_until(cv, q->eq_next);
+-		}
+ 	}
+ }
+ 
+@@ -793,12 +805,32 @@
+ 	}
+ }
+ 
++static bool
++nni_aio_expire_q_stop(nni_aio_expire_q *eq)
++{
++	bool result = false;
++	if (eq != NULL) {
++		nni_mtx_lock(&eq->eq_mtx);
++		eq->eq_stop = true;
++		nni_cv_wake(&eq->eq_cv);
++		while (!nni_list_empty(&eq->eq_list)) {
++			result = true;
++			nni_cv_wait(&eq->eq_cv);
++		}
++		nni_mtx_unlock(&eq->eq_mtx);
++	}
++	return (result);
++}
++
+ static void
+ nni_aio_expire_q_free(nni_aio_expire_q *eq)
+ {
+ 	if (eq == NULL) {
+ 		return;
+ 	}
++	// Allocation can fail before the subsystem-wide drain.
++	nni_aio_expire_q_stop(eq);
++	NNI_ASSERT(eq->eq_stop);
+ 	if (!eq->eq_exit) {
+ 		nni_mtx_lock(&eq->eq_mtx);
+ 		eq->eq_exit = true;
+@@ -835,6 +867,18 @@
+ 	return (eq);
+ }
+ 
++bool
++nni_aio_sys_drain(void)
++{
++	bool result = false;
++	for (int i = 0; i < nni_aio_expire_q_cnt; i++) {
++		if (nni_aio_expire_q_stop(nni_aio_expire_q_list[i])) {
++			result = true;
++		}
++	}
++	return (result);
++}
++
+ void
+ nni_aio_sys_fini(void)
+ {
+--- a/src/core/aio.h
++++ b/src/core/aio.h
+@@ -202,6 +202,7 @@
+     nni_aio_completions *, nni_aio *, int, size_t);
+ 
+ extern int  nni_aio_sys_init(void);
++extern bool nni_aio_sys_drain(void);
+ extern void nni_aio_sys_fini(void);
+ 
+ typedef struct nni_aio_expire_q nni_aio_expire_q;
+--- a/src/core/aio_test.c
++++ b/src/core/aio_test.c
+@@ -72,6 +72,46 @@
+ 	nng_aio_free(aio);
+ }
+ 
++static void
++sleep_reap(void *arg)
++{
++	nng_aio *aio = *(nng_aio **) arg;
++	if (nng_aio_result(aio) != NNG_ECANCELED) {
++		NUTS_FAIL(nng_aio_result(aio), NNG_ECANCELED);
++	}
++	nng_aio_reap(aio);
++}
++
++static void
++test_sleep_fini(void)
++{
++	static nng_aio *aio;
++	NUTS_TRUE(nng_aio_alloc(&aio, sleep_reap, &aio) == 0);
++	nng_sleep_aio(20000, aio);
++	nng_msleep(1);
++	// intentionally we do not free the aio here. reap should clean it.
++	nng_fini();
++	// NNG 1.x initializes implicitly; TEST_FINI can call nng_fini again.
++}
++
++static void
++test_sleep_fini_many(void)
++{
++#define NIOS 2000
++	static nng_aio *aios[NIOS];
++	for (int i = 0; i < NIOS; i++) {
++		int rv = nng_aio_alloc(&(aios[i]), sleep_reap, &(aios[i]));
++		if (rv != 0) {
++			NUTS_ASSERT(rv == 0);
++		}
++	}
++	for (int i = 0; i < NIOS; i++) {
++		nng_sleep_aio(20000, aios[i]);
++	}
++	nng_fini();
++	// NNG 1.x initializes implicitly; TEST_FINI can call nng_fini again.
++}
++
+ void
+ test_insane_nio(void)
+ {
+@@ -400,6 +440,8 @@
+ NUTS_TESTS = {
+ 	{ "sleep", test_sleep },
+ 	{ "sleep timeout", test_sleep_timeout },
++	{ "sleep fini", test_sleep_fini },
++	{ "sleep fini many", test_sleep_fini_many },
+ 	{ "insane nio", test_insane_nio },
+ 	{ "provider cancel", test_provider_cancel },
+ 	{ "consumer cancel", test_consumer_cancel },
+--- a/src/core/init.c
++++ b/src/core/init.c
+@@ -165,12 +165,19 @@
+ 		return;
+ 	}
+ 	nni_sp_tran_sys_fini();
++
++	// Drain everything. This is important because some of
++	// these subsystems can dispatch things to other ones.
++	// So we need them *all* to be empty before proceeding.
++	while ((nni_aio_sys_drain() || nni_taskq_sys_drain() ||
++	    nni_reap_sys_drain())) {
++		continue;
++	}
+ 	nni_tls_sys_fini();
+-	nni_reap_drain();
+-	nni_aio_sys_fini();
+ 	nni_taskq_sys_fini();
+-	nni_reap_sys_fini(); // must be before timer and aio (expire)
++	nni_aio_sys_fini();
+ 	nni_id_map_sys_fini();
++	nni_reap_sys_fini(); // must be near the end
+ 	nni_init_params_fini();
+ 
+ 	nni_plat_fini();
+--- a/src/core/reap.c
++++ b/src/core/reap.c
+@@ -18,9 +18,9 @@
+ static nni_reap_list *reap_list = NULL;
+ static nni_thr        reap_thr;
+ static bool           reap_exit = false;
+-static nni_mtx        reap_mtx = NNI_MTX_INITIALIZER;
++static nni_mtx        reap_mtx  = NNI_MTX_INITIALIZER;
+ static bool           reap_empty;
+-static nni_cv         reap_work_cv = NNI_CV_INITIALIZER(&reap_mtx);
++static nni_cv         reap_work_cv  = NNI_CV_INITIALIZER(&reap_mtx);
+ static nni_cv         reap_empty_cv = NNI_CV_INITIALIZER(&reap_mtx);
+ 
+ static void
+@@ -90,14 +90,17 @@
+ 	nni_mtx_unlock(&reap_mtx);
+ }
+ 
+-void
+-nni_reap_drain(void)
++bool
++nni_reap_sys_drain(void)
+ {
++	bool result = false;
+ 	nni_mtx_lock(&reap_mtx);
+ 	while (!reap_empty) {
++		result = true;
+ 		nni_cv_wait(&reap_empty_cv);
+ 	}
+ 	nni_mtx_unlock(&reap_mtx);
++	return (result);
+ }
+ 
+ int
+--- a/src/core/reap.h
++++ b/src/core/reap.h
+@@ -1,5 +1,5 @@
+ //
+-// Copyright 2020 Staysail Systems, Inc. <info@staysail.tech>
++// Copyright 2024 Staysail Systems, Inc. <info@staysail.tech>
+ // Copyright 2018 Capitar IT Group BV <info@capitar.com>
+ //
+ // This software is supplied under the terms of the MIT License, a
+@@ -56,8 +56,9 @@
+ 
+ extern void nni_reap(nni_reap_list *, void *);
+ 
+-// nni_reap_drain waits for the reap queue to be drained.
+-extern void nni_reap_drain(void);
++// nni_reap_sys_drain waits for the reap queue to be drained.
++// It returns true if it found anything to wait for.
++extern bool nni_reap_sys_drain(void);
+ 
+ extern int  nni_reap_sys_init(void);
+ extern void nni_reap_sys_fini(void);
+--- a/src/core/taskq.c
++++ b/src/core/taskq.c
+@@ -58,6 +58,7 @@
+ 			continue;
+ 		}
+ 
++		nni_cv_wake(&tq->tq_wait_cv);
+ 		if (!tq->tq_run) {
+ 			break;
+ 		}
+@@ -126,6 +127,19 @@
+ 	NNI_FREE_STRUCT(tq);
+ }
+ 
++bool
++nni_taskq_drain(nni_taskq *tq)
++{
++	bool result = false;
++	nni_mtx_lock(&tq->tq_mtx);
++	while (!nni_list_empty(&tq->tq_tasks)) {
++		result = true;
++		nni_cv_wait(&tq->tq_wait_cv);
++	}
++	nni_mtx_unlock(&tq->tq_mtx);
++	return (result);
++}
++
+ void
+ nni_task_exec(nni_task *task)
+ {
+@@ -273,6 +287,12 @@
+ 	return (nni_taskq_init(&nni_taskq_systq, num_thr));
+ }
+ 
++bool
++nni_taskq_sys_drain(void)
++{
++	return (nni_taskq_drain(nni_taskq_systq));
++}
++
+ void
+ nni_taskq_sys_fini(void)
+ {
+--- a/src/core/taskq.h
++++ b/src/core/taskq.h
+@@ -60,6 +60,7 @@
+ extern void nni_task_fini(nni_task *);
+ 
+ extern int  nni_taskq_sys_init(void);
++extern bool nni_taskq_sys_drain(void);
+ extern void nni_taskq_sys_fini(void);
+ 
+ // nni_task implementation details are not to be used except by the
+--- a/src/platform/windows/win_ipcdial.c
++++ b/src/platform/windows/win_ipcdial.c
+@@ -283,7 +283,7 @@
+ {
+ 	ipc_dial_work *worker = &ipc_connector;
+ 
+-	nni_reap_drain(); // so that listeners get cleaned up.
++	nni_reap_sys_drain(); // so that listeners get cleaned up.
+ 
+ 	nni_mtx_lock(&worker->mtx);
+ 	worker->exit = 1;
