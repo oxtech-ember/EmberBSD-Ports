@@ -199,6 +199,8 @@ This stage is a CMake probe payload. It is not a registered pkgsrc provider.
 The separate [canonical packages](../../../profiles/common-build-tools/cross/protobuf.md)
 now carry the same fixes. Their complete builds, disjoint runtime/SDK partition,
 all 353 installed SDK entries and two GCC16 consumer links pass.
-Ordinary protobuf package execution and lifecycle remain separate work.
-Actual KiCad API generation passes; target compilation exposes a `major`/`minor`
-system-macro conflict. Full KiCad acceptance remains pending.
+The ordinary runtime package also passes both contracts in the AArch64 VM,
+full payload verification and normal removal/reinstallation. Its 341 SDK
+entries remain absent from the guest. The [actual KiCad API contract](../application/tests/api/README.md)
+passes native and target compilation and execution with unchanged generated
+bytes. Full KiCad acceptance remains pending.

@@ -149,12 +149,19 @@ The SDK archive SHA256 is
 `6bb53342f97b6bac446a2aab3cf666b7d9223b95478711c32ff881feb80bac6f`.
 All 353 runtime/SDK entries match after normal installation in the development
 sysroot. Both public contracts link with GCC16 through these installed providers.
-Their ordinary target runtime package execution and lifecycle remain pending.
+The ordinary runtime package passes fourteen C++ checks and four UPB allocation
+failure modes in the AArch64 VM, both before and after normal removal and
+reinstallation. All 837 runtime/dependency files and links match their package
+archives with root:wheel ownership. Removing protobuf removes its twelve
+entries and preserves all 825 dependency entries. All 341 SDK entries stay
+absent. Loaded provider hashes match the development sysroot; this is not
+target memory analysis.
 
-The actual KiCad API command generates all fifteen schemas with native protoc.
-Target compilation currently exposes a conflict between the `KiCadVersion`
-accessors and the system `major`/`minor` macros. This does not establish a
-complete API library or KiCad application build.
+The [actual KiCad API contract](../../../probes/kicad/application/tests/api/README.md)
+generates all fifteen schemas with native protoc, builds `kiapi` and a separate
+consumer with GCC16, and runs on the host and target. A target-scoped header
+resolves the system `major`/`minor` macro conflict without changing schemas
+or the thirty generated files. The full KiCad application remains separate.
 
 The bounded native stack-trace build uses frame pointers and returns four
 frames. Its consumer passes strict Memcheck with no errors, live heap blocks
@@ -169,8 +176,8 @@ with the actual GCC16 headers. Per-command compiler queries resolve its feature
 predicate limitations, but its parser then stops in `type_traits` or `array`.
 The raw failures remain recorded; this is not a clean Cppcheck result.
 
-The [source probe](../../../probes/kicad/protobuf/README.md) already has native
-memory checks and actual AArch64 VM consumer results. Those results do not
-establish acceptance of the ordinary protobuf packages. The recipes keep the original
+The [source probe](../../../probes/kicad/protobuf/README.md) separately records
+native memory checks and allocation-failure controls. The ordinary package
+checks above use the registered runtime provider. The recipes keep the original
 upstream licenses and ownership. Local adaptations and tests are AI-assisted
 EmberBSD work; they have not been accepted upstream.

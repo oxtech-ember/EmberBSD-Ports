@@ -18,6 +18,10 @@ dates 10.0.7 to 2026-10-07. It is the latest stable release listed by the
 - `occt8-api.patch` replaces 12 deprecated `GetMessageString()` calls with
   OCCT 8's `what()` API. It preserves the existing exception handlers and
   message lifetimes. KiCad 10.0.7 has no `Standard_Failure::Raise` call.
+- `netbsd-proto-macros.patch` keeps the protobuf version accessors valid when
+  NetBSD system headers define device macros with the same names. The
+  `kiapi` target and its consumers receive a scoped compatibility header.
+  Schemas and generated source bytes remain unchanged.
 
 The platform changes adapt pkgsrc `cad/kicad` patches at commit
 `fff4deb639a1a640476203c80f752fb77b6cb14b`.
@@ -37,7 +41,7 @@ Download the archive named in `sources.tsv`. Pass absolute paths:
 
 The script verifies SHA256 before creating the source directory.
 It refuses an existing output path, including a dangling symlink.
-It extracts the full archive and applies all three patches with zero fuzz.
+It extracts the full archive and applies all four patches with zero fuzz.
 It retains QA data, demos and all application components.
 A failed extraction or patch leaves its partial output for inspection.
 Use a new output path for another attempt.
@@ -96,9 +100,9 @@ validation; successful discovery alone is not that validation.
 
 Inspect `ember-logs` after configuration. The script records compiler macros,
 generator versions, target package metadata and the actual CMake result.
-The recorded protoc and Protobuf version strings do not yet verify their
-shared source release. That comparison remains pending until the current
-common Protobuf provider is restored; do not infer it from successful discovery.
+The [API contract](tests/api/README.md) checks the actual API subdirectory
+with matching protobuf 36.2 generation and installed target SDK discovery.
+That bounded result does not establish full KiCad configuration.
 The install prefix and RPATH contain target paths, not the host sysroot.
 Build and stage only after the required dependencies and source adaptations
 are complete:
@@ -132,6 +136,14 @@ builds. The DXF check retains the system macro after the repaired function.
 The receipt marks target execution and full KiCad as unrun.
 For native Memcheck, compile the contract with `EMBER_VALGRIND` and real
 Valgrind headers to register its alternate stacks.
+
+## API source contract
+
+The [actual API harness](tests/api/README.md) builds all 15 upstream schemas
+and a separate consumer with common GCC16. It checks version accessors,
+known protobuf bytes and descriptor/JSON field names. Native memory checks,
+target links and the AArch64 VM contract pass. The harness documents the
+analyzer and runtime limits.
 
 ## Validation boundary
 
