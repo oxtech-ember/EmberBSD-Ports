@@ -51,7 +51,7 @@ and installed EmberBSD numerical checks pass, including normal package
 removal and reinstallation. Companion BLAS/LAPACK runtime coverage remains pending.
 
 This opt-in source profile prepares canonical MesaLib 26.2.4nb9, adapted
-libdrm 2.4.134nb2, Wayland 1.26.0 (native nb1/cross nb2) and wayland-protocols 1.49
+libdrm 2.4.134nb4, Wayland 1.26.0 (native nb1/cross nb2) and wayland-protocols 1.49
 for EmberBSD/AArch64, retaining the NetBSD 11 ABI. Native builds and the explicit
 [macOS/Linux cross composition](cross/profile.md) consume the existing
 [common build tools](../common-build-tools/README.md): GCC16, Python3.15,
