@@ -126,7 +126,7 @@ File.write(tree + '/devel/llvm-split-consumer/Makefile', <<~MAKE)
 MAKE
 out = run.call('buildlink', '../devel/llvm-split-consumer', *cross,
   '-V', '${BUILD_DEPENDS}', '-V', '${DEPENDS}')
-abort 'SDK was not a separate target build-only dependency' unless out.lines[0].include?('llvm-devel>=23.1.3nb1:') && !out.lines[1].include?('llvm-devel') && out.lines[1].include?('llvm>=23.1.3nb1:')
+abort 'SDK was not a separate target build-only dependency' unless out.lines[0].include?('llvm-devel>=23.1.3nb2:') && !out.lines[1].include?('llvm-devel') && out.lines[1].include?('llvm>=23.1.3nb1:')
 
 fields = run.call('runtime-dependencies', 'llvm', *cross,
   '-V', '${DEPENDS}', '-V', '${BUILD_DEPENDS}', '-V', '${TOOL_DEPENDS}',
@@ -134,7 +134,7 @@ fields = run.call('runtime-dependencies', 'llvm', *cross,
 abort 'runtime retained SDK or Python/lit runtime dependencies' if fields[0].match?(/llvm-devel|llvm-lit|python[0-9]/)
 abort 'runtime lost shared-library dependencies' unless %w[zstd libxml2].all? { |name| fields[0].include?(name + '>=') }
 abort 'zlib provider missing' unless fields[0].include?('zlib>=') || fields[5] == 'yes'
-abort 'lit is not a build dependency or Python is not a native tool dependency' unless fields[1].include?('llvm-lit>=23.1.3:') && fields[2].match?(/python[0-9]+>=/)
+abort 'lit is not a build dependency or Python is not a native tool dependency' unless fields[1].include?('llvm-lit>=23.1.3nb1:') && fields[2].match?(/python[0-9]+>=/)
 abort 'cross native-tool fallback depends on a target SDK/revision' unless fields[2].include?('llvm-23.1.3{,nb*}:../../lang/llvm') && !fields[2].include?('llvm-devel')
 flags = fields[3]
 %w[LLVM_BUILD_LLVM_DYLIB=ON LLVM_LINK_LLVM_DYLIB=ON LLVM_ENABLE_RTTI=ON BUILD_SHARED_LIBS=OFF LLVM_INSTALL_TOOLCHAIN_ONLY=OFF LLVM_INCLUDE_TESTS=ON LLVM_INSTALL_GTEST=ON].each do |flag|

@@ -107,15 +107,26 @@ PKG_FAIL_REASON+= "The separate LLVM SDK requires a NetBSD cross build; native L
 .if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
 PKG_FAIL_REASON+= "The LLVM runtime/SDK split requires the common aarch64 or amd64 cross target"
 .endif
+.if defined(EMBERBSD_LLVM_DEVEL)
+PKGREVISION= 2
+.if ${PKGREVISION} != 2
+PKG_FAIL_REASON+= "The LLVM SDK requires package revision 2"
+.endif
+.else
 PKGREVISION= 1
 .if ${PKGREVISION} != 1
-PKG_FAIL_REASON+= "The LLVM runtime/SDK split requires package revision 1"
+PKG_FAIL_REASON+= "The LLVM runtime requires package revision 1"
 .endif
+.endif
+# Both partitions come from the same full build with native Python tools.
+PYTHON_FOR_BUILD_ONLY= tool
 LLVM_FULL_PLIST_SRC= ${EMBERBSD_LLVM_PKGDIR}/PLIST
 LLVM_RUNTIME_PLIST_SRC= ${EMBERBSD_LLVM_PKGDIR}/PLIST.runtime
 LLVM_DEVEL_PLIST_SRC= ${EMBERBSD_LLVM_PKGDIR}/../llvm-devel/PLIST
 .if defined(EMBERBSD_LLVM_DEVEL)
 LLVM_PACKAGE_PART= devel
+# The installed scripts need Python, but LLVM does not link its C API.
+DEPENDS+= ${PYDEPENDENCY}
 .if ${LLVM_PACKAGE_PART} != "devel"
 PKG_FAIL_REASON+= "The LLVM SDK recipe must select the devel partition"
 .endif
@@ -129,7 +140,6 @@ PKG_FAIL_REASON+= "The LLVM runtime recipe must select the runtime partition"
 .endif
 PLIST_SRC= ${LLVM_RUNTIME_PLIST_SRC}
 # The runtime contains no Python tools. Keep lit available for build tests.
-PYTHON_FOR_BUILD_ONLY= tool
 BUILDLINK_DEPMETHOD.py-llvm-lit= build
 .endif
 USE_TOOLS+= perl:build

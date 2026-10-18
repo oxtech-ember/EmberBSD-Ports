@@ -32,7 +32,7 @@ File.write(work + '/COMMENT', 'Labelled LLVM package partition fixture')
 File.write(work + '/DESCR', "Synthetic text payloads for pkgtools contracts. This is not a LLVM binary package.\n")
 old = 'llvm-23.1.3'
 runtime = 'llvm-23.1.3nb1'
-sdk = 'llvm-devel-23.1.3nb1'
+sdk = 'llvm-devel-23.1.3nb2'
 packages = {}
 {
   old => ['full-stage', 'full', nil],
