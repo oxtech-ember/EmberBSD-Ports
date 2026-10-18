@@ -3,6 +3,11 @@
 PKG_OPTIONS_VAR=		PKG_OPTIONS.lxqt-session
 PKG_SUPPORTED_OPTIONS=		udev
 
+# Preserve the upstream monitor with the common BSD libudev implementation.
+.if ${OPSYS} == "NetBSD"
+PKG_SUGGESTED_OPTIONS+=	udev
+.endif
+
 .include "../../mk/bsd.options.mk"
 
 .if !empty(PKG_OPTIONS:Mudev)

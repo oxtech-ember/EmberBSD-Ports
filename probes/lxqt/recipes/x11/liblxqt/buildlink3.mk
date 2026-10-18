@@ -6,7 +6,7 @@ BUILDLINK_TREE+=	liblxqt
 LIBLXQT_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.liblxqt+=	liblxqt>=2.2.0
-BUILDLINK_ABI_DEPENDS.liblxqt?=	liblxqt>=2.4.0nb2
+BUILDLINK_ABI_DEPENDS.liblxqt?=	liblxqt>=2.4.0nb3
 BUILDLINK_PKGSRCDIR.liblxqt?=	../../x11/liblxqt
 
 .include "../../x11/qt6-qtbase/buildlink3.mk"
