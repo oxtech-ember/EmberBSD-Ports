@@ -14,6 +14,21 @@ info = ENV.fetch('PKG_INFO', 'pkg_info')
 tar = ENV.fetch('BSDTAR', 'bsdtar')
 auditor = File.expand_path('../cross/prepare-package-set.rb', __dir__)
 
+# Rejected inputs must never reach the real archive-copy operation.
+copy_observer = File.join(work, 'copy-observer.rb')
+File.write(copy_observer, <<~'OBSERVER')
+  require 'fileutils'
+  module FileUtils
+    class << self
+      alias_method :observed_original_cp, :cp
+      def cp(source, destination, *args)
+        File.open(ENV.fetch('PKGSET_COPY_LOG'), 'a') { |log| log.puts(source) }
+        observed_original_cp(source, destination, *args)
+      end
+    end
+  end
+OBSERVER
+
 def run!(*command)
   output, error, status = Open3.capture3(*command)
   raise "Command failed: #{command.inspect}\n#{output}#{error}" unless status.success?
@@ -84,11 +99,15 @@ count = 0
 check_case = lambda do |name, database, leaf_archive, expected, root_archive = root|
   File.write(index, (Array(leaf_archive) + [root_archive]).join("\n") + "\n")
   destination = File.join(work, "set-#{name}")
-  output, error, status = Open3.capture3({ 'PKG_INFO' => info, 'BSDTAR' => tar },
-                                      RbConfig.ruby, auditor, database, index, destination, 'pkgset-root-1.0')
+  copy_log = File.join(work, "#{name}.copies.log")
+  output, error, status = Open3.capture3(
+    { 'PKG_INFO' => info, 'BSDTAR' => tar, 'PKGSET_COPY_LOG' => copy_log },
+    RbConfig.ruby, '-r', copy_observer, auditor, database, index, destination, 'pkgset-root-1.0')
   File.write(File.join(work, "#{name}.log"), output + error)
   if expected.nil?
     raise "#{name} failed: #{output}#{error}" unless status.success?
+    raise 'Only verified source archives may be copied' unless
+      File.readlines(copy_log, chomp: true) == [leaf, root_archive]
     raise 'Wrong dependency installation order' unless
       File.read(File.join(destination, 'install-order.txt')) == "pkgset-leaf-1.0.tgz\npkgset-root-1.0.tgz\n"
     File.readlines(File.join(destination, 'packages.sha256')).each do |line|
@@ -102,6 +121,7 @@ check_case = lambda do |name, database, leaf_archive, expected, root_archive = r
   else
     raise "#{name} did not reject the cause: #{output}#{error}" if status.success? || !(output + error).include?(expected)
     raise "Failed audit left an accepted output: #{destination}" if File.exist?(destination)
+    raise 'Rejected archive was copied before validation' if File.exist?(copy_log)
   end
   raise 'Failed audit left staging files' unless Dir[File.join(work, ".set-#{name}-*")].empty?
   count += 1

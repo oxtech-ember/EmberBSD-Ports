@@ -371,7 +371,7 @@ begin
       destination = File.join(staging, 'packages', "#{name}.tgz")
       digest = Digest::SHA256.file(original).hexdigest
       begin
-        audit_archive(tar, destination, snapshots.fetch(name), manifests.fetch(name), target)
+        audit_archive(tar, original, snapshots.fetch(name), manifests.fetch(name), target)
       rescue StandardError => error
         failures << "#{original}: #{error.message}"
         next

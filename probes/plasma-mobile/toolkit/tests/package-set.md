@@ -83,6 +83,8 @@ hard links, dependency order and copied SHA256. Negative cases cover a stale
 manifest, wrong archive architecture or OS version, modified payload bytes,
 changed symbolic links, missing or unlisted payload, changed metadata, missing
 dependencies and truncated archives. A valid later cache candidate is accepted.
+A copy observer requires the original
+archives to pass before copying. Rejected payloads must never reach the copy call.
 Duplicate roots are rejected. An existing completed output is not replaced.
 Matching database and archive metadata must still reject a missing provider
 or a self-required regular file or symbolic link. Valid provider paths and

@@ -416,6 +416,8 @@ runtime behavior are validated.
   KWin 6.8.0nb1 selects OpenGL ES/V3D under a non-root user.
   Desktop 6.8.0 and Workspace 6.8.0nb3 are cross-packaged and installed.
   A 333-package set passes archive, dependency and ELF-provider checks.
+  The package-set auditor validates each source archive before copying it.
+  Real pkgtools fixtures reject damaged inputs without copying them.
   The shell now passes the [bounded Desktop test](probes/plasma-mobile/toolkit/tests/plasma-desktop/README.md)
   with Mesa nb8: V3D pixels, six layout checks over 30 seconds and normal exit.
   The [Mesa Wayland allocation repair](profiles/common-graphics/tests/mesa-wayland-oom/README.md)
