@@ -2,7 +2,8 @@
 
 The [Lerc 4.2.0nb1 padding correction](cross/lerc.md) removes a reproduced
 uninitialized Huffman checksum input. Normal GCC16 native/AArch64 packages
-and the original native samples pass. Target execution remains pending.
+and all four original samples pass in EmberBSD. Package removal and
+reinstallation also pass, with verified runtime providers.
 
 [wxWidgets 3.2.12](cross/wxwebkit.md) retains the stable 3.2 API and the
 canonical WebView, media and OpenGL configuration. Its source and recipe

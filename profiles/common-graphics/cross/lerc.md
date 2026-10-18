@@ -54,7 +54,16 @@ Normal native and AArch64 package file, permission, RELRO, RPATH and work-path
 checks pass. The target package also passes its PIE check. Its installed SDK
 payload matches all packing-list checksums and symlink targets. The upstream
 AArch64 consumer links to `libLerc.so.4` and the common GCC16 runtime, using
-only target runtime paths. Its execution in EmberBSD remains pending.
+only target runtime paths.
+
+The ordinary 4.2.0nb1 package also passes in the coherent EmberBSD AArch64 VM.
+All four unmodified upstream samples pass. The installed five-file packing
+list passes `pkg_admin check`; measured headers, metadata, DSO and GCC16
+runtime hashes match the SDK. File ownership is `root:wheel`. Normal removal
+removes every owned path and causes the expected missing-library refusal.
+After normal reinstallation, the integrity check and all four samples pass
+again without loader overrides. This is software execution in a VM, not
+physical graphics or the complete KiCad workflow.
 
 Clang 19 Static Analyzer reports no diagnostics in the actual changed
 translation unit, before or after the patch, for native and AArch64 inputs.
