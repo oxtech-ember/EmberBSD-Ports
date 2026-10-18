@@ -191,7 +191,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
     graphics=$root/profiles/common-graphics
     awk -F '\t' '
         /^#/ || /^$/ { next }
-        NF != 4 || ($1 != "graphics/MesaLib" && $1 != "x11/libdrm" &&
+        NF != 4 || ($1 != "security/mit-krb5" && $1 != "graphics/MesaLib" && $1 != "x11/libdrm" &&
             $1 != "devel/wayland" && $1 != "devel/wayland-protocols" &&
             $1 != "x11/xorgproto" && $1 != "devel/libudev-bsd" &&
             $1 != "wayland/wlroots" && $1 != "wayland/labwc" && $1 != "x11/xkeyboard-config" && $1 != "devel/input-headers" && $1 != "x11/libxkbcommon" && $1 != "sysutils/hwdata" && $1 != "sysutils/seatd" && $1 != "x11/libdisplay-info" && $1 != "graphics/libliftoff" && $1 != "devel/libopeninput" &&
@@ -217,7 +217,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             !seen["converters/fribidi"] ||
             !seen["graphics/openexr"] || !seen["graphics/OpenJPH"] || !seen["graphics/jbigkit"] || !seen["graphics/lerc"] || !seen["graphics/png"] || !seen["graphics/freeimage"] || !seen["graphics/freeimageplus"] || !seen["graphics/libraw"] ||
             !seen["graphics/freetype2"] ||
-            !seen["archivers/lzo"] || !seen["x11/libXt"] || !seen["devel/pango"] || !seen["devel/libsfdo"] || !seen["sysutils/dbus"] || !seen["devel/gobject-introspection"] || !seen["graphics/librsvg"] || !seen["multimedia/dav1d"] || !seen["devel/xxhash"] || !seen["graphics/gdk-pixbuf2"] || !seen["databases/shared-mime-info"] || !seen["x11/gtk3"] || !seen["x11/wxGTK32"] || !seen["www/webkit-gtk41"] || !seen["www/webkit-gtk60"] || !seen["devel/at-spi2-core"] || !seen["x11/tk"]) exit 1 }
+            !seen["archivers/lzo"] || !seen["x11/libXt"] || !seen["devel/pango"] || !seen["devel/libsfdo"] || !seen["sysutils/dbus"] || !seen["devel/gobject-introspection"] || !seen["graphics/librsvg"] || !seen["multimedia/dav1d"] || !seen["devel/xxhash"] || !seen["graphics/gdk-pixbuf2"] || !seen["databases/shared-mime-info"] || !seen["x11/gtk3"] || !seen["x11/wxGTK32"] || !seen["www/webkit-gtk41"] || !seen["www/webkit-gtk60"] || !seen["devel/at-spi2-core"] || !seen["x11/tk"] || !seen["security/mit-krb5"]) exit 1 }
     ' "$graphics/sources.tsv" || { echo 'Invalid common graphics manifest.' >&2; exit 2; }
     while IFS="$(printf '\t')" read -r recipe archive sha url; do
         case "$recipe" in
