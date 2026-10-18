@@ -146,7 +146,7 @@ cp "$profile/sources.tsv" "$work/saved-manifest"
 sed 's/bce5f7fb/00000000/' "$work/saved-manifest" > "$profile/sources.tsv"
 negative altered-manifest
 cp "$work/saved-manifest" "$profile/sources.tsv"
-for dependency in www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/lerc graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt x11/libspnav devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info; do
+for dependency in www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 x11/pixman graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/lerc graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt x11/libspnav devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info; do
     # Every added consumer/dependency needs its exact source pin.
     awk -F '\t' -v dep="$dependency" 'BEGIN { OFS="\t" }
         $1 == dep { $3="0000000000000000000000000000000000000000000000000000000000000000" }
@@ -156,6 +156,11 @@ for dependency in www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjs
     mv "$profile/recipes/$dependency/Makefile" "$work/dependency-Makefile"
     negative "missing-${dependency##*/}-recipe"
     mv "$work/dependency-Makefile" "$profile/recipes/$dependency/Makefile"
+done
+for name in builtin.mk hacks.mk; do
+    mv "$profile/recipes/x11/pixman/$name" "$work/pixman-$name"
+    negative "missing-pixman-$name"
+    mv "$work/pixman-$name" "$profile/recipes/x11/pixman/$name"
 done
 for dependency in devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen; do
     mv "$profile/recipes/$dependency/Makefile" "$work/family-Makefile"

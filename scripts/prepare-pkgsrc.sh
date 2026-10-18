@@ -159,7 +159,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             $1 != "wayland/wlroots" && $1 != "wayland/labwc" && $1 != "x11/xkeyboard-config" && $1 != "devel/input-headers" && $1 != "x11/libxkbcommon" && $1 != "sysutils/hwdata" && $1 != "sysutils/seatd" && $1 != "x11/libdisplay-info" && $1 != "graphics/libliftoff" && $1 != "devel/libopeninput" &&
             $1 != "math/eigen3" && $1 != "textproc/rapidjson" && $1 != "cad/ng-spice" && $1 != "devel/glib2" && $1 != "devel/libffi" &&
             $1 != "devel/pcre2" && $1 != "x11/libspnav" &&
-            $1 != "graphics/cairo" &&
+            $1 != "x11/pixman" && $1 != "graphics/cairo" &&
             $1 != "fonts/harfbuzz" &&
             $1 != "converters/fribidi" &&
             $1 != "graphics/openexr" && $1 != "graphics/OpenJPH" && $1 != "graphics/jbigkit" && $1 != "graphics/lerc" && $1 != "graphics/png" && $1 != "graphics/freeimage" && $1 != "graphics/freeimageplus" && $1 != "graphics/libraw" &&
@@ -174,7 +174,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             !seen["wayland/wlroots"] || !seen["wayland/labwc"] || !seen["x11/xkeyboard-config"] || !seen["devel/input-headers"] || !seen["x11/libxkbcommon"] || !seen["sysutils/hwdata"] || !seen["sysutils/seatd"] || !seen["x11/libdisplay-info"] || !seen["graphics/libliftoff"] || !seen["devel/libopeninput"] ||
             !seen["math/eigen3"] || !seen["textproc/rapidjson"] || !seen["cad/ng-spice"] || !seen["devel/glib2"] || !seen["devel/libffi"] ||
             !seen["devel/pcre2"] || !seen["x11/libspnav"] ||
-            !seen["graphics/cairo"] ||
+            !seen["x11/pixman"] || !seen["graphics/cairo"] ||
             !seen["fonts/harfbuzz"] ||
             !seen["converters/fribidi"] ||
             !seen["graphics/openexr"] || !seen["graphics/OpenJPH"] || !seen["graphics/jbigkit"] || !seen["graphics/lerc"] || !seen["graphics/png"] || !seen["graphics/freeimage"] || !seen["graphics/freeimageplus"] || !seen["graphics/libraw"] ||
@@ -211,6 +211,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             devel/glib2) pin='glib-2.90.1.tar.xz:93c941aa17d5eb1d53fe838365f29a8b4e539c222a256d974ec8f30fc413e396:https://download.gnome.org/sources/glib/2.90/glib-2.90.1.tar.xz' ;;
             devel/libffi) pin='libffi-3.8.0.tar.gz:7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4:https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz' ;;
             devel/pcre2) pin='pcre2-10.49.tar.gz:929f0b20e62879252a15886b06c89f1edef61a363cbd5826fb041080a5e557ae:https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.49/pcre2-10.49.tar.gz' ;;
+            x11/pixman) pin='pixman-0.46.4.tar.xz:a098c33924754ad43f981b740f6d576c70f9ed1006e12221b1845431ebce1239:https://xorg.freedesktop.org/archive/individual/lib/pixman-0.46.4.tar.xz' ;;
             graphics/cairo) pin='cairo-1.18.6.tar.xz:1c767308174337a74694da0f3ec069c271452163a1ef4540964c50c301f157d4:https://cairographics.org/releases/cairo-1.18.6.tar.xz' ;;
             fonts/harfbuzz) pin='harfbuzz-14.6.0.tar.xz:d07a007327277708a2a73ae437887cdbaf282937f6d03ca5467723e9099af586:https://github.com/harfbuzz/harfbuzz/releases/download/14.6.0/harfbuzz-14.6.0.tar.xz' ;;
             converters/fribidi) pin='fribidi-1.0.17.tar.xz:6949dcde27d41cebad1fd741fcafc36d55a1020d2d872d4a6eb3914caabbada2:https://github.com/fribidi/fribidi/releases/download/v1.0.17/fribidi-1.0.17.tar.xz' ;;
@@ -236,10 +237,11 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
         esac
         [ "$archive:$sha:$url" = "$pin" ] || { echo "Incorrect common graphics source pin: $recipe" >&2; exit 2; }
     done < "$graphics/sources.tsv"
-    for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/lerc graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freeimage graphics/freeimageplus graphics/libraw graphics/freetype2 archivers/lzo x11/libXt x11/libspnav devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info x11/gtk3 x11/wxGTK32 www/webkit-gtk41 www/webkit-gtk60 devel/at-spi2-core math/eigen3 textproc/rapidjson cad/ng-spice cad/ng-spice-shared; do
+    for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 x11/pixman graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/lerc graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freeimage graphics/freeimageplus graphics/libraw graphics/freetype2 archivers/lzo x11/libXt x11/libspnav devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info x11/gtk3 x11/wxGTK32 www/webkit-gtk41 www/webkit-gtk60 devel/at-spi2-core math/eigen3 textproc/rapidjson cad/ng-spice cad/ng-spice-shared; do
         source=$graphics/recipes/$recipe
         recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk'
         case "$recipe" in
+            x11/pixman) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk builtin.mk hacks.mk' ;;
             graphics/freeimage) recipe_files='Makefile Makefile.common DESCR PLIST distinfo buildlink3.mk' ;;
             graphics/freeimageplus) recipe_files='Makefile DESCR PLIST buildlink3.mk files/CMakeLists.txt' ;;
             cad/ng-spice) recipe_files='Makefile Makefile.common DESCR PLIST distinfo' ;;
@@ -271,7 +273,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             graphics/lerc) approved='patch-src_LercLib_fpl__EsriHuffman.cpp' ;;
             graphics/libraw) approved='patch-libraw__r.pc.in' ;;
             cad/ng-spice) approved='patch-01-libedit-netbsd patch-02-history-substitution patch-03-cli-circuit-file patch-04-xspice-cross-generator patch-05-netbsd-dlopen patch-06-dotcards-token-list patch-07-shared-preinit patch-08-dotcards-parenthesis patch-09-process-name-return patch-10-source-name-lifetime patch-11-parser-error-ownership patch-12-shared-command-cleanup patch-13-target-memory-query' ;;
-            math/eigen3|cad/ng-spice-shared) approved='' ;;
+            x11/pixman|math/eigen3|cad/ng-spice-shared) approved='' ;;
             devel/libffi) approved='patch-configure patch-configure_host patch-src_aarch64_ffi.c patch-src_arm_sysv.S patch-src_closures.c patch-src_m68k_ffi.c patch-src_m88k_elfbsd.S patch-src_mips_ffi.c patch-src_mips_ffitarget.h patch-src_powerpc_ffi.c patch-src_powerpc_ffi__powerpc.h patch-testsuite_lib_libffi.exp patch-testsuite_libffi.call_float2.c' ;;
             devel/at-spi2-core) approved='patch-meson-gir-cross.build patch-meson.build patch-registryd_registry.c' ;;
             www/webkit-gtk41) approved='patch-Source_JavaScriptCore_assembler_ARM64Assembler.h patch-Source_JavaScriptCore_parser_VariableEnvironment.h patch-Source_JavaScriptCore_runtime_DefinePropertyAttributes.h patch-Source_JavaScriptCore_runtime_JSCBytecodeCacheVersion.cpp patch-Source_ThirdParty_ANGLE_src_common_SimpleMutex.h patch-Source_ThirdParty_ANGLE_src_common_platform.h patch-Source_ThirdParty_ANGLE_src_common_system__utils__linux.cpp patch-Source_ThirdParty_ANGLE_src_libANGLE_renderer_gl_egl_DisplayEGL.cpp patch-Source_ThirdParty_skia_CMakeLists.txt patch-Source_ThirdParty_skia_locale-l patch-Source_ThirdParty_skia_src_ports_SkMemory__malloc.cpp patch-Source_WTF_wtf_InlineASM.h patch-Source_WTF_wtf_PlatformEnable.h patch-Source_WTF_wtf_StackBounds.cpp patch-Source_WebCore_loader_cache_CachedResource.h patch-Source_WebCore_page_NavigatorBase.cpp patch-Source_WebCore_platform_graphics_gbm_MemoryMappedGPUBuffer.cpp patch-Source_WebCore_platform_graphics_skia_PlatformDisplaySkia.cpp patch-Source_WebCore_platform_graphics_x11_XErrorTrapper.h patch-Source_WebCore_rendering_RenderBox.h patch-Source_WebCore_rendering_shapes_ShapeOutsideInfo.cpp patch-Source_WebKit_UIProcess_gtk_AcceleratedBackingStore.cpp patch-Source_WebKit_UIProcess_gtk_DisplayX11.cpp patch-Source_WebKit_WebProcess_WebPage_CoordinatedGraphics_ThreadedCompositor.cpp patch-Source_cmake_FindFlite.cmake patch-Source_cmake_FindGI.cmake patch-Source_cmake_WebKitFeatures.cmake' ;;
@@ -358,7 +360,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
         done
         required=$(awk '/^SHA1 \(patch-/ { gsub(/[()]/, "", $2); print $2 }' "$source/distinfo")
         case "$recipe" in
-            graphics/OpenJPH|math/eigen3|x11/xorgproto|devel/libudev-bsd|devel/input-headers|graphics/libliftoff|devel/pcre2|devel/libsfdo|devel/xxhash|multimedia/dav1d) ;;
+            x11/pixman|graphics/OpenJPH|math/eigen3|x11/xorgproto|devel/libudev-bsd|devel/input-headers|graphics/libliftoff|devel/pcre2|devel/libsfdo|devel/xxhash|multimedia/dav1d) ;;
             *) [ -n "$required" ] || { echo "No graphics patch checksums: $recipe" >&2; exit 2; } ;;
         esac
         actual=0
@@ -487,7 +489,7 @@ if [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ 
     cp -R "$shared_pcre2" "$destination/devel/pcre2"
 fi
 if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
-    for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/lerc graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freeimage graphics/freeimageplus graphics/libraw graphics/freetype2 archivers/lzo x11/libXt x11/libspnav devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info x11/gtk3 x11/wxGTK32 www/webkit-gtk41 www/webkit-gtk60 devel/at-spi2-core math/eigen3 textproc/rapidjson cad/ng-spice cad/ng-spice-shared; do
+    for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 x11/pixman graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/lerc graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freeimage graphics/freeimageplus graphics/libraw graphics/freetype2 archivers/lzo x11/libXt x11/libspnav devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info x11/gtk3 x11/wxGTK32 www/webkit-gtk41 www/webkit-gtk60 devel/at-spi2-core math/eigen3 textproc/rapidjson cad/ng-spice cad/ng-spice-shared; do
         rm -rf "$destination/$recipe"
         if [ "$recipe" = cad/ng-spice ]; then
             cp -RL "$graphics/recipes/$recipe" "$destination/$recipe"
