@@ -43,6 +43,10 @@ feature defaults and canonical NetBSD API cache settings. The real compiler's
 raw C++ driver uses `-nostdinc++`; new generated headers serve the library build.
 No old generated configure output or library objects are reused.
 The preserved cache settings are recipe policy, not new target API measurements.
+Compiler environment values use plain validated words for Autoconf expansion.
+Run `tests/compiler-command.rb` with the same eight positional inputs to check
+real C/C++ compilation and GCC16 support paths without executing target code.
+Use a separate new work path for this bounded compiler contract.
 
 The installed locale header must match the prepared source. All C++ headers
 and libstdc++ outputs come from the fresh installation. An explicit list carries

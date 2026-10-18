@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD; AI-assisted fresh libstdc++ build with audited inheritance.
 require 'rbconfig'
-require 'shellwords'
 require_relative '../runtime/recipe/files/runtime'
 require_relative '../runtime/recipe/files/inheritance'
 
@@ -149,6 +148,13 @@ module GCC16Runtime
       File.write(@work + '/stage.symlinks', entries.sort.filter_map { |p, x| "./#{p}\t#{x['link']}\n" if x['link'] }.join)
     end
 
+    def compiler_commands
+      # Autoconf expands these values as words; it does not unescape shell text.
+      # Compiler paths and the paths in @flags passed the simple-path guard.
+      {'CC' => [@tools['gcc'], *@flags].join(' '),
+       'CXX' => [@tools['gcc'], *@flags, '-shared-libgcc', '-nostdinc++'].join(' ')}
+    end
+
     def build
       preflight
       return if @check
@@ -164,11 +170,11 @@ module GCC16Runtime
       build = @work + '/build/' + @triplet + '/libstdc++-v3'
       FileUtils.mkdir_p(build)
       target_flags = @target == 'amd64' ? '-O2 -march=nocona -mtune=nocona -mfpmath=sse' : '-O2'
-      env = {'CC' => Shellwords.join([@tools['gcc'], *@flags]), 'CXX' => Shellwords.join([@tools['gcc'], *@flags, '-shared-libgcc', '-nostdinc++']),
+      env = compiler_commands.merge(
         'CFLAGS' => target_flags, 'CXXFLAGS' => target_flags, 'CPPFLAGS' => '',
         'LDFLAGS' => "-L#{@sysroot}/usr/pkg/gcc16/lib -Wl,-rpath,/usr/pkg/gcc16/lib",
         'ac_cv_func_clock_gettime' => 'yes', 'ac_cv_func_gethostbyname_r' => 'no',
-        'ac_cv_func_freelocale' => 'no', 'ac_cv_func_newlocale' => 'no', 'ac_cv_func_uselocale' => 'no'}
+        'ac_cv_func_freelocale' => 'no', 'ac_cv_func_newlocale' => 'no', 'ac_cv_func_uselocale' => 'no')
       %w[ar as ld nm objcopy objdump ranlib readelf strip].each { |name| env[name.upcase] = @tools[name] }
       build_triplet = capture('sh', @work + '/src/config.guess').strip
       args = ["--build=#{build_triplet}", "--host=#{@triplet}", "--target=#{@triplet}", "--with-cross-host=#{build_triplet}", "--with-target-subdir=#{@triplet}",
