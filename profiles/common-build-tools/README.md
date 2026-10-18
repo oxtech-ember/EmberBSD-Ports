@@ -7,8 +7,10 @@ checks. Final split packages and installed target acceptance remain separate.
 
 The [Boost cross roles](cross/boost.md) keep one canonical 1.92.0 provider.
 Native b2 uses the selected target GCC wrappers and explicit NetBSD ABI
-properties. The native engine package, causal source graphs and three GCC16
-AArch64 assembly objects pass. Complete target libraries remain pending.
+properties. Native engine and complete GCC16 AArch64 packages pass, including
+ICU build integration, causal source graphs and three assembly objects. The
+installed [API consumer](cross/boost-api/README.md) retains a separate target
+execution gate.
 
 The paired [Tcl/Tk 9.1 recipes](cross/tcltk.md) retain bundled extensions,
 system SQLite and ZipFS. Tcl's ordinary native GCC16 package and host

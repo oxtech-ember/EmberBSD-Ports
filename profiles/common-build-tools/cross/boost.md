@@ -70,11 +70,25 @@ assembly sources. Real target header preprocessing identifies NetBSD,
 AArch64 and GCC16. The same compiler produces three AArch64 ELF objects.
 The amd64 result covers metadata only; it does not qualify an amd64 toolchain.
 
+## Complete target package
+
+The ordinary GCC 16.2.0 AArch64 `boost-headers-1.92.0` and
+`boost-libs-1.92.0nb1` packages pass the normal pkgsrc checks. The libraries
+retain every component selected by the canonical recipe, shared and static.
+The real build reports ICU support and completes 2343 b2 targets. All 39
+shared ELF files in the library archive identify AArch64.
+
+The [installed API consumer](boost-api/README.md) uses the normal CMake
+packages for locale, filesystem, thread and Boost.Test. It also checks the
+header-only System API. Its native header companion passes strict Memcheck;
+the full target source passes GCC16 compilation and Clang static analysis.
+Installed target execution remains a separate acceptance step.
+
 ## Acceptance boundary
 
-These results qualify source selection, the native engine package and the
-focused target objects. Complete target Boost libraries, ICU integration,
-installed consumers and KiCad remain separate acceptance work.
+These results qualify source selection, native and complete AArch64 packages,
+ICU build integration and the focused target objects. Installed target API
+execution, complete upstream suites and KiCad remain separate acceptance work.
 
 Strict native Memcheck passes the engine's `-v` query with zero live blocks
 and zero errors. A real raw-Jam file action produces the expected bytes but
