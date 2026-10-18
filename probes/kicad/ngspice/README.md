@@ -93,8 +93,18 @@ claim. Cppcheck 2.22.0 completed the same 22 configurations before and after
 the patches. Its reports contain 555 and 554 entries, including informational
 and inherited findings. The missing-return diagnostic is removed. Both
 strict analyzer runs return 1; these are not clean analysis passes.
-The full Cppcheck comparison is still in progress. Target GCC16
-cross-build, EmberBSD execution and complete KiCad acceptance remain pending.
+The full Cppcheck comparison attempted 1,680 configurations per source tree:
+all CLI C units plus the touched shared-library units.
+Both reports contain 19,252 entries. Errors decrease from 34 to 33;
+warnings remain 998, portability findings 63, and informational entries 1,570.
+Style findings change from 16,587 to 16,588. Three OS-query units initially
+failed analysis because the adapter omitted measured Unix compiler macros.
+A focused rerun with those actual macros checked all three units and produced
+identical findings: 42 information and seven style records, with no errors.
+The other 30 inherited error records remain unclassified; they are not
+30 confirmed source defects. The confirmed missing-return error is removed.
+Target GCC16 cross-build, EmberBSD execution and complete KiCad acceptance
+remain pending.
 Historical results from a lost workspace are not current acceptance evidence.
 
 The reusable checks are in `tests/`. `api-contract.c` uses the installed
