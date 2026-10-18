@@ -18,6 +18,8 @@ loaded(struct dl_phdr_info *info, size_t size, void *argument)
 	const char *executable = (const char *)argument;
 
 	(void)size;
+	if (info->dlpi_name == NULL || executable == NULL)
+		return 1;
 	if (info->dlpi_name[0] == '\0' ||
 	    strcmp(info->dlpi_name, executable) == 0)
 		return 0;
