@@ -155,11 +155,11 @@ shared=$profile/recipes/cad/ng-spice-shared
 mv "$shared/Makefile" "$work/ngspice-shared-Makefile"
 negative missing-ngspice-shared-recipe
 mv "$work/ngspice-shared-Makefile" "$shared/Makefile"
-delta=$ngspice/patches/patch-12-shared-command-cleanup
+delta=$ngspice/patches/patch-13-target-memory-query
 mv "$delta" "$work/ngspice-patch-link"
 negative missing-ngspice-patch
 # Matching bytes at an unexpected link destination must still be refused.
-ln -s "$root/probes/kicad/ngspice/patches/shared-command-cleanup.patch" "$delta"
+ln -s "$root/probes/kicad/ngspice/patches/target-memory-query.patch" "$delta"
 negative unexpected-ngspice-patch-origin
 rm "$delta"
 mv "$work/ngspice-patch-link" "$delta"
@@ -168,7 +168,7 @@ negative unexpected-ngspice-extra-link
 rm "$ngspice/unexpected-link"
 cp "$ngspice/distinfo" "$work/ngspice-distinfo"
 mv "$delta" "$work/ngspice-patch-link"
-sed '/SHA1 (patch-12-shared-command-cleanup)/d' "$work/ngspice-distinfo" > "$ngspice/distinfo"
+sed '/SHA1 (patch-13-target-memory-query)/d' "$work/ngspice-distinfo" > "$ngspice/distinfo"
 negative omitted-ngspice-patch-and-checksum
 mv "$work/ngspice-patch-link" "$delta"
 cp "$work/ngspice-distinfo" "$ngspice/distinfo"

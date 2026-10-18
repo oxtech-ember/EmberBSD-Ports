@@ -58,8 +58,9 @@ runtime behavior are validated.
   Native numerical and causal ownership checks pass. Raw memory reports
   retain process-lifetime allocations. Ordinary GCC16 AArch64 packages pass
   installed API18, CLI, the KiCad-exported divider, OpenMP worker activation
-  and removal/reinstallation checks. A target memory-query diagnostic and
-  complete KiCad application execution remain pending.
+  and removal/reinstallation checks. A separate GCC16 target regression repairs
+  the configure-time memory-query selection; revision-1 package acceptance
+  and complete KiCad application execution remain pending.
   The common [Libtool runtime-path repair](profiles/common-build-tools/cross/libtool-runtime-paths.md)
   passes a real GCC16 C++ library regression for target RPATH and `.la` metadata.
 - [FFTW and terminal dependencies](profiles/common-build-tools/cross/README.md#installed-fftw-readline-and-ncurses):

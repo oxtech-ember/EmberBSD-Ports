@@ -229,7 +229,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             graphics/freeimage) approved='patch-CMakeLists.txt patch-Source_FreeImage_PluginTIFF.cpp patch-TestAPI_CMakeLists.txt' ;;
             graphics/freeimageplus) approved='' ;;
             graphics/libraw) approved='patch-libraw__r.pc.in' ;;
-            cad/ng-spice) approved='patch-01-libedit-netbsd patch-02-history-substitution patch-03-cli-circuit-file patch-04-xspice-cross-generator patch-05-netbsd-dlopen patch-06-dotcards-token-list patch-07-shared-preinit patch-08-dotcards-parenthesis patch-09-process-name-return patch-10-source-name-lifetime patch-11-parser-error-ownership patch-12-shared-command-cleanup' ;;
+            cad/ng-spice) approved='patch-01-libedit-netbsd patch-02-history-substitution patch-03-cli-circuit-file patch-04-xspice-cross-generator patch-05-netbsd-dlopen patch-06-dotcards-token-list patch-07-shared-preinit patch-08-dotcards-parenthesis patch-09-process-name-return patch-10-source-name-lifetime patch-11-parser-error-ownership patch-12-shared-command-cleanup patch-13-target-memory-query' ;;
             math/eigen3|cad/ng-spice-shared) approved='' ;;
             devel/libffi) approved='patch-configure patch-configure_host patch-src_aarch64_ffi.c patch-src_arm_sysv.S patch-src_closures.c patch-src_m68k_ffi.c patch-src_m88k_elfbsd.S patch-src_mips_ffi.c patch-src_mips_ffitarget.h patch-src_powerpc_ffi.c patch-src_powerpc_ffi__powerpc.h patch-testsuite_lib_libffi.exp patch-testsuite_libffi.call_float2.c' ;;
             devel/at-spi2-core) approved='patch-meson-gir-cross.build patch-meson.build patch-registryd_registry.c' ;;
@@ -325,7 +325,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
                         echo "Unexpected ngspice patch origin: $name" >&2; exit 2;
                     }
                 done
-                [ "$(find "$source" -type l | wc -l | tr -d ' ')" = 12 ] || {
+                [ "$(find "$source" -type l | wc -l | tr -d ' ')" = 13 ] || {
                     echo 'Unexpected additional ngspice recipe link.' >&2; exit 2;
                 }
                 actual=$(find "$source/patches" -name 'patch-*' | wc -l | tr -d ' ')
