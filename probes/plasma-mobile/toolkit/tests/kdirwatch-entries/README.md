@@ -72,3 +72,29 @@ On the tested native host, CSA reports the same inherited Qt invokeMethod
 ownership warning in nb3 and nb4. Cppcheck stops at the same Q_DECLARE_FLAGS
 framework-macro boundary in both direct runs. Both compiler-preprocessed runs
 stop at the host SDK errno_t declaration. No diagnostic category is suppressed.
+
+## Target acceptance
+
+The nb4 package was cross-built for EmberBSD AArch64 with GCC16 16.2.0 and
+LLD 23.1.3. Its archive audit passed. It retained all 207 payload paths and
+77 unchanged public headers.
+The library kept its 804 exports and the QML plugin kept its 17 exports,
+including symbol types, binding, visibility, object sizes and version names.
+SONAME and dependency checks passed. The target sysroot was unchanged.
+
+The same target lifecycle executable reached each intended CHECK with installed
+nb3, then passed all three cases with installed nb4. Private headers, feature
+configuration and dependency headers matched across the two builds. The existing
+installed descriptor-budget consumer also passed. The lifecycle checks still
+control the event-slot call; they do not prove native kqueue event delivery.
+
+One installed Plasma session passed readiness, 30-second liveness and normal
+logout checks with hardware V3D, Wayland, Xwayland, Activities and the desktop.
+The output was a virtual 1280x1024 display. This check does not cover HDMI, KMS,
+hotplug, input or a long stress run.
+
+Paired analysis of the actual target translation unit used GCC16 preprocessing
+with the target sysroot. Cppcheck stopped at the same target assert.h parser
+boundary in both versions. CSA with target headers reported the same inherited
+Qt invokeMethod warning. Analysis of GCC-expanded C++ also hit GNU16 builtin
+limits. These parser limits are not clean analysis results.
