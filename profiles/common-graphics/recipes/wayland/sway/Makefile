@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.4 2026/09/02 19:04:51 wiz Exp $
 
 DISTNAME=	sway-1.12
-PKGREVISION=	6
+PKGREVISION=	7
 CATEGORIES=	wayland
 MASTER_SITES=	${MASTER_SITE_GITHUB:=swaywm/}
 
@@ -48,6 +48,8 @@ post-install:
 .include "../../devel/wayland-protocols/buildlink3.mk"
 .include "../../graphics/cairo/buildlink3.mk"
 .include "../../graphics/gdk-pixbuf2/buildlink3.mk"
+.include "../../x11/libdrm/buildlink3.mk"
+.include "../../x11/pixman/buildlink3.mk"
 .include "../../sysutils/seatd/buildlink3.mk"
 .include "../../textproc/json-c/buildlink3.mk"
 .include "../../wayland/wlroots/buildlink3.mk"

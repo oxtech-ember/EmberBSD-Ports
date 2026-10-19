@@ -67,8 +67,9 @@ No diagnostic category is disabled. The analyzer run is not fully green.
 The recipe uses common PCRE2, matching upstream's `libpcre2-8` dependency.
 It retains sway, swaybar, swaymsg, swaynag, wallpapers, completions, the
 session helper, configuration and manual pages. It explicitly requires
-GdkPixbuf, the Basu tray backend and native scdoc. Cross builds use the
-receipt-verified native Wayland scanner. Missing tools or libraries fail
+GdkPixbuf, the Basu tray backend, Pixman, libdrm and native scdoc. These are
+direct Meson dependencies. The package has no GTK3 dependency. Cross builds use
+the receipt-verified native Wayland scanner. Missing tools or libraries fail
 configuration. Subproject fallback downloads are disabled.
 
 The common exporter does not include these three new recipes yet. After
