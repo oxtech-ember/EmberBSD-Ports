@@ -3,3 +3,6 @@ $NetBSD: distinfo,v 1.18 2026/04/28 07:59:10 pin Exp $
 BLAKE2s (libfm-qt-2.4.0.tar.xz) = 4bf9a9df550d35a1aad992ae07401f341a6b798429f4dcfffcd29706d8af703c
 SHA512 (libfm-qt-2.4.0.tar.xz) = 10bac2515311665b05589a4ffab31119d0842aaf25a00a64f56ab5848a12cd6766af1e52537b367fa03a1117ef4608d9eabfdd8e8ed9ddc80177212a7b3a9277
 Size (libfm-qt-2.4.0.tar.xz) = 439504 bytes
+SHA1 (patch-CMakeLists.txt) = 6ff1d9618dc9ee143669de62ec20f9d8d56eab98
+SHA1 (patch-cmake_fm-qt-config.cmake.in) = db514ca9eca29b350727961fedc015123880036b
+SHA1 (patch-src_CMakeLists.txt) = 6962bca93c2b80fc1bbf9cf8707eb77e4f925c8a

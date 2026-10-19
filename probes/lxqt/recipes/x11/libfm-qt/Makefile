@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.61 2026/09/02 19:05:16 wiz Exp $
 
-PKGREVISION= 3
+PKGREVISION= 4
 .include "../../meta-pkgs/lxqt/Makefile.common"
 
 DISTNAME=	libfm-qt-2.4.0
@@ -22,28 +22,6 @@ SUBST_FILES.prefix=	src/core/fileinfo.cpp
 SUBST_FILES.prefix+=	src/core/vfs/vfs-menu.c
 SUBST_SED.prefix=	-e 's,/etc/xdg,${PKG_SYSCONFDIR},g'
 SUBST_SED.prefix+=	-e 's,/usr/share,${PREFIX}/share,g'
-
-# Some of the files in ${BUILDLINK_DIR} are from xsrc, some from
-# pkgsrc in the NetBSD X.org native case; these need to be handled
-# differently, so we need multiple sed expressions.
-#
-# This is probably fragile and needs to be checked on updates.
-SUBST_CLASSES+=		unbl3
-SUBST_MESSAGE.unbl3=	Undoing buildlink3 paths in cmake exports.
-SUBST_STAGE.unbl3=	post-build
-SUBST_FILES.unbl3+=	${CMAKE_BUILD_DIR}/src/CMakeFiles/Export/*/fm-qt6-targets.cmake
-# these are from pkgsrc
-SUBST_SED.unbl3+=	-e 's,${BUILDLINK_DIR}\(/lib/libxcb-cursor\),${PREFIX}\1,g'
-SUBST_SED.unbl3+=	-e 's,${BUILDLINK_DIR}\(/lib/libxcb-ewmh\),${PREFIX}\1,g'
-SUBST_SED.unbl3+=	-e 's,${BUILDLINK_DIR}\(/lib/libxcb-icccm\),${PREFIX}\1,g'
-SUBST_SED.unbl3+=	-e 's,${BUILDLINK_DIR}\(/lib/libxcb-image\),${PREFIX}\1,g'
-SUBST_SED.unbl3+=	-e 's,${BUILDLINK_DIR}\(/lib/libxcb-keysyms\),${PREFIX}\1,g'
-SUBST_SED.unbl3+=	-e 's,${BUILDLINK_DIR}\(/lib/libxcb-render-util\),${PREFIX}\1,g'
-SUBST_SED.unbl3+=	-e 's,${BUILDLINK_DIR}\(/lib/libxcb-util\),${PREFIX}\1,g'
-# all other libxcb* are from X
-SUBST_SED.unbl3+=	-e 's,${BUILDLINK_DIR}\(/lib/libxcb\),${X11BASE}\1,g'
-# the rest of the libraries are from pkgsrc again
-SUBST_SED.unbl3+=	-e 's,${BUILDLINK_DIR},${PREFIX},g'
 
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"

@@ -1,0 +1,22 @@
+$NetBSD$
+
+Export dependency targets that resolve in the consumer build.
+Keep public GLib, menu-cache and XCB interfaces available.
+
+--- cmake/fm-qt-config.cmake.in.orig
++++ cmake/fm-qt-config.cmake.in
+@@ -32,6 +32,14 @@
+ endif()
+ 
+ include(CMakeFindDependencyMacro)
++find_dependency(Qt6Widgets @QT_MINIMUM_VERSION@)
++find_dependency(PkgConfig)
++pkg_check_modules(FM_QT_DEPS REQUIRED IMPORTED_TARGET
++    glib-2.0>=@GLIB_MINIMUM_VERSION@
++    gio-2.0 gio-unix-2.0 gobject-2.0 gthread-2.0
++    libmenu-cache>=@LIBMENUCACHE_MINIMUM_VERSION@
++    libexif xcb
++)
+ 
+ if (NOT TARGET @LIBFM_QT_LIBRARY_NAME@)
+     if (POLICY CMP0024)
