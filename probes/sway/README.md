@@ -149,15 +149,23 @@ python3 probes/sway/tests/ipc-values.py --source /absolute/original/sway-1.12 \
 
 ## Compositor and shutdown checks
 
-Sway 1.12nb6 passes the ordinary GCC16 package build and all package checks.
-Its package SHA256 is
-`d2d33534b80522a1a8e5f80fca06ef252a6ecaa78db99245b6396846f0f08ae7`.
-Its uninstalled staged executable passes Pixman/headless acceptance on an
+Sway 1.12nb8 passes a clean GCC16 package build and pkgsrc checks for file lists,
+interpreters, permissions, PIE, RELRO, RPATH and work-directory references.
+Its 42-entry payload has SHA256
+`d2e9b7444182137021d22eaf80bb4a5420cfb9fd02cadf0a696ea7d44648c6d1`.
+Pkgsrc resolves `dbus>=1.16.2nb6`, `libdrm>=2.4.134nb2` and
+`pixman>=0.40.0nb3`. The package metadata contains no GTK3 reference. The
+unmodified `pkgtools/verifypc` reports additional transitive pkg-config
+providers and the scdoc build tool; it reports no missing direct Pixman or
+libdrm provider. No warning list is suppressed.
+
+The prior uninstalled nb6 executable passed Pixman/headless acceptance on an
 isolated AArch64 VM: version, workspace switching, output creation, tree queries,
-the exit reply and actual process exit status 0. It also passes the
-[invalid IPC path and partial cleanup checks](startup-cleanup.md).
-Installed payload and package lifecycle acceptance covers nb5, whose 33 entries
-match the installed package. The nb6 package has not been installed by this check.
+the exit reply and actual process exit status 0. It also passed the
+[invalid IPC path and partial cleanup checks](startup-cleanup.md). This VM has
+no physical graphics or input device. The nb8 package has not been installed
+or run on a VM. Installed payload and package lifecycle acceptance covers nb5,
+whose 33 entries match its installed package.
 
 The original nb4 package reproduces reply loss despite process exit status 0:
 the display loop stops before the queued IPC response is written.
