@@ -155,6 +155,30 @@ The causal libXpm rebuild passes the ordinary RPATH and work-directory checks.
 The [extended-source analysis](source-analysis.md) records the platform-plugin
 and file-manager scopes, inherited findings and parser limitations.
 
+The Wayland qdbus helper uses `/bin/sh`, calls Qt's installed qdbus path and
+declares `qt6-qttools` as a runtime dependency. `check-wayland-qdbus.py`
+applies the actual package patch to the pinned archive and exercises the
+helper with a fake qdbus command under `/bin/sh`:
+
+```sh
+python3 probes/lxqt/check-wayland-qdbus.py \
+    /absolute/distfiles/lxqt-wayland-session-0.4.1.tar.xz \
+    probes/lxqt/recipes/wayland/lxqt-wayland-session
+```
+
+The LXQt CMake finder for `xdg-user-dirs-update` checks a path and does not run
+the target program. Cross builds pass the target `/usr/pkg/bin` path and check
+that the executable exists in the sysroot. Run the source contract check with
+the recipe and target sysroot paths:
+
+```sh
+python3 probes/lxqt/check-wayland-target-tool.py \
+    probes/lxqt/recipes/wayland/lxqt-wayland-session \
+    /absolute/target-sysroot
+```
+
+This check does not execute `xdg-user-dirs-update` or start a Wayland session.
+
 The liblxqt backlight helper checks the driver before reading its files.
 It accepts one integer from `scanf` and `fscanf` and rejects invalid input.
 It releases a previous driver candidate before replacing that candidate.
