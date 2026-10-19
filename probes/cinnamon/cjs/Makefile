@@ -1,11 +1,11 @@
 # cjs: Cinnamon's JavaScript bindings (gjs fork on SpiderMonkey 140).
-# Cinnamon probe; pinned to the mint27 branch line that carries the
-# Wayland-complete Cinnamon 6.8 development state.
-DISTNAME=	84e7840ce148b75f9d38b57d82cdc9a47dd3a7eb
-PKGNAME=	cjs-140.1
+# Use the stable CJS 140.1 tag from the Cinnamon 6.6 source set.
+DISTNAME=	cjs-140.1
+DISTFILES=	140.1.tar.gz
+SITES.140.1.tar.gz=	-https://github.com/linuxmint/cjs/archive/refs/tags/
+PKGREVISION=1
 CATEGORIES=	lang
-MASTER_SITES=	https://github.com/linuxmint/cjs/archive/
-WRKSRC=		${WRKDIR}/cjs-${DISTNAME}
+WRKSRC=		${WRKDIR}/cjs-140.1
 
 HOMEPAGE=	https://github.com/linuxmint/cjs
 COMMENT=	JavaScript bindings for Cinnamon (SpiderMonkey 140)
@@ -21,8 +21,11 @@ USE_LANGUAGES=	c c++
 # SpiderMonkey embedders must declare the target platform themselves
 # (mozilla/UniquePtrExtensions.h needs XP_UNIX for FileHandleType).
 CPPFLAGS+=	-DXP_UNIX
-# NetBSD feature macros: uselocale(3) needs _NETBSD_SOURCE with -std=c99.
+# NetBSD feature macros expose the locale_t and *_l interfaces with -std=c99.
 CPPFLAGS+=	-D_NETBSD_SOURCE
+# EmberBSD libc has no uselocale(3). Do not emulate thread selection by
+# returning LC_GLOBAL_LOCALE: report ENOTSUP for setters and preserve queries.
+CPPFLAGS+=	-DEMBERBSD_NO_USELOCALE
 
 # meson project defaults: cpp_std=c++17, RTTI and exceptions off,
 # matching the SpiderMonkey build configuration.
