@@ -78,6 +78,11 @@ runtime behavior are validated.
   GCC16 AArch64 packaging verifies all 613 entries; four selected native
   and installed EmberBSD numerical checks pass. Normal package removal and
   reinstallation preserve the verified ownership boundary.
+- [fmt 12.2.0](profiles/common-graphics/cross/fmtlib.md): the current common
+  C++ formatting provider cross-builds with GCC16 for AArch64 NetBSD. The
+  exported CMake target links a target consumer and the staged 24-entry PLIST
+  matches exactly. Native ASan/UBSan checks pass; package lifecycle and target
+  execution remain pending.
 - [Installed GUI/CAD APIs](profiles/common-graphics/cross/gui-cad-api/README.md):
   GCC16 AArch64 consumers verify GLU concave tessellation, Cairo image and
   document output, and GLM numerical transforms through its installed CMake

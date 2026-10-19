@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.1 2026/10/19 00:00:00 emberbsd Exp $
+
+BLAKE2s (fmt-12.2.0.tar.gz) = 4f523f59bc8a504617a503b28fb68271a9b01a19fbd5ddc62048990a98e65d2f
+SHA512 (fmt-12.2.0.tar.gz) = 5ac2ba0f54a484999ed5407d82b77aad170cea49a267decd2c0eedadf3b14413e2a83fcc8e9ca9c16640595e019b8636e160f72314d8be50653324e82ac745eb
+Size (fmt-12.2.0.tar.gz) = 738355 bytes

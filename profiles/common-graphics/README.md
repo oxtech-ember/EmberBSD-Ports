@@ -1,5 +1,10 @@
 # Common graphics source packages
 
+[fmt 12.2.0](cross/fmtlib.md) supplies the current shared C++ formatting
+library and its CMake/pkg-config interfaces. The GCC16 AArch64 stage, exported
+CMake target consumer and exact 24-entry PLIST pass; target execution and the
+normal pkgsrc package lifecycle remain pending.
+
 [MIT Kerberos 1.22.2nb2](cross/mit-krb5.md) retains GSS and thread-safe clients
 for printing dependencies. Normal native/cross packages, complete SDK readback,
 installed AArch64 APIs and actual loader checks pass. Explicit runtime/SDK roles

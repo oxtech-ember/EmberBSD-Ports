@@ -19,6 +19,7 @@ graphics/libliftoff	libliftoff-0.5.0.tar.gz	3309218c3137a70faada653690802b514e4e
 devel/libopeninput	libopeninput-1.31.3-10995219206280da0f1a3ba124abe4c8ef89e021.tar.gz	fbba09ed60a9a411b9ae7ee5c92daf069a3b4926ad052ac8cbcfb7c3ff82abbf	https://github.com/sizeofvoid/libopeninput/archive/10995219206280da0f1a3ba124abe4c8ef89e021.tar.gz
 devel/glib2	glib-2.90.1.tar.xz	93c941aa17d5eb1d53fe838365f29a8b4e539c222a256d974ec8f30fc413e396	https://download.gnome.org/sources/glib/2.90/glib-2.90.1.tar.xz
 devel/pcre2	pcre2-10.49.tar.gz	929f0b20e62879252a15886b06c89f1edef61a363cbd5826fb041080a5e557ae	https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.49/pcre2-10.49.tar.gz
+devel/fmtlib	fmt-12.2.0.tar.gz	8b852bb5aa6e7d8564f9e81394055395dd1d1936d38dfd3a17792a02bebd7af0	https://github.com/fmtlib/fmt/archive/refs/tags/12.2.0.tar.gz
 graphics/cairo	cairo-1.18.6.tar.xz	1c767308174337a74694da0f3ec069c271452163a1ef4540964c50c301f157d4	https://cairographics.org/releases/cairo-1.18.6.tar.xz
 fonts/harfbuzz	harfbuzz-14.6.0.tar.xz	d07a007327277708a2a73ae437887cdbaf282937f6d03ca5467723e9099af586	https://github.com/harfbuzz/harfbuzz/releases/download/14.6.0/harfbuzz-14.6.0.tar.xz
 converters/fribidi	fribidi-1.0.17.tar.xz	6949dcde27d41cebad1fd741fcafc36d55a1020d2d872d4a6eb3914caabbada2	https://github.com/fribidi/fribidi/releases/download/v1.0.17/fribidi-1.0.17.tar.xz

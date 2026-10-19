@@ -1,0 +1,2 @@
+{fmt} is a modern formatting library for C++. It provides a type-safe API,
+including the fmt::format interface used by current desktop software.
