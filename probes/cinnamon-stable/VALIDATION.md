@@ -47,6 +47,53 @@ The analysis uses one file-and-line suppression for that report. It does
 not add a source suppression or disable a diagnostic category. The unchanged
 `uselessAssignmentPtrArg` warning is in the common GLib 2.90.1 header.
 
+## Cinnamon Desktop 6.6.2nb1
+
+The source is the upstream `6.6.2` tag (SHA512
+`0637056bc92373909c2ec74bd362819e8fa27092cbcbc79d28a492ac222edd7e7e5e6a6187d1be19084f169a452e64eee5986933c64f8c4f23d425037e6eec0a`,
+508,681 bytes). The package cross-built for EmberBSD/AArch64 with GCC 16.2.0.
+All 151 Meson build steps completed. The package archive is 263,281 bytes
+with SHA256
+`e6430c4905d2f9119ed2a8e3613f5bbe0a1e2c6bfd5956fd8c1c32b7ffcca5c5`.
+
+The port omits the GTK 3-only background, RandR and thumbnail components.
+The `check-no-gtk3.py` regression check passed against the package archive,
+pkg-config log, Meson setup log and Meson dependency record. It checks GIR
+and typelib contents, pkg-config metadata and the package file list. A
+negative control that adds `gtk+-3.0` to the pkg-config log is rejected.
+This proves the Cinnamon Desktop package has no GTK 3 dependency; it does not
+claim runtime acceptance of a complete Cinnamon session.
+
+Cppcheck 2.22.0 analyzed all 21 C translation units with the Meson compilation
+database, target headers and GCC16 predefined macros. Upstream and patched
+runs each reported five findings, with no finding delta. The two
+`autoVariables` reports in `gnome-languages.c` are false positives for
+`g_steal_pointer()` transfers: the function returns the allocated capture
+string and clears the automatic-cleanup owner. The two
+`CastAddressToIntegerAtReturn` reports are the paired `GPOINTER_TO_INT()`
+reads of integer counters stored with `GINT_TO_POINTER()`. The unchanged
+`uselessAssignmentPtrArg` report is in the common GLib 2.90.1 header.
+
+GCC 16.2.0 `-fanalyzer` analyzed all 11 patched C translation units and
+reported one `-Wanalyzer-null-argument` at `gnome-languages.c:300`; the same
+report occurs in the upstream source. This is an inter-library contract
+false positive for the selected EmberBSD source revision
+`c31375ea778b72aed57871c2e9e4aeb4b386e76d`: its
+`lib/libc/locale/nl_langinfo.c` maps `CODESET` to `LC_CTYPE` and returns an
+empty string if the stored codeset pointer is null. Therefore
+`nl_langinfo_l(CODESET, locale)` returns a non-null string for a valid locale.
+No analyzer suppression or source change was added for this finding.
+Clang Static Analyzer 21.0.0 analyzed all 11 patched translation units with
+no diagnostics. Its upstream comparison, like GCC's, could not compile the
+upstream-only GDK header and an ungenerated D-Bus header without restoring the
+GTK 3 dependency.
+
+The host `verifypc` check is incomplete because `pkg_admin` is unavailable on
+the build host; GCC16 provider PLIST lookups also warn in the sparse host
+pkgsrc tree. The build emitted an existing unused-variable warning in
+`gvc-mixer-control.c` and compatibility warnings from target `libm`. No VM
+or full-session runtime acceptance is claimed.
+
 ## CJS 140.1 locale-array cleanup
 
 The input is the upstream `140.1` tag at

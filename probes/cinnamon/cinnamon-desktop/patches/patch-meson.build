@@ -1,16 +1,27 @@
-diff --git a/meson.build b/meson.build
-index a95e917..fbd74b1 100644
+$NetBSD$
+
+Wayland profile removes unused GTK3, GdkPixbuf and RandR dependencies.
+Require Meson 1.2 for the cross GI environment argument.
+
 --- meson.build.orig
 +++ meson.build
-@@ -29,17 +29,16 @@ endif
+@@ -1,7 +1,7 @@
+ # Meson build file
+ 
+ # https://github.com/linuxmint/cinnamon-desktop
+-project('cinnamon-desktop', 'c', version : '6.6.2', meson_version : '>=0.56.0')
++project('cinnamon-desktop', 'c', version : '6.6.2', meson_version : '>=1.2.0')
+ 
+ # Before making a release, the LT_VERSION string should be modified.
+ # The string is of the form C.R.A.
+@@ -29,25 +29,21 @@
  
  math    = cc.find_library('m')
  
 -gdk_pixb= dependency('gdk-pixbuf-2.0',  version: '>=2.22.0')
-+# Wayland profile: no GTK3 in the stack; background, RandR and
-+# thumbnail code are not built (see libcinnamon-desktop/meson.build).
- gio     = dependency('gio-2.0',         version: '>=2.70')
- glib    = dependency('glib-2.0',        version: '>=2.70')
++# Wayland profile omits GTK3-only background, thumbnail and RandR code.
+ gio     = dependency('gio-2.0',         version: '>=2.37.3')
+ glib    = dependency('glib-2.0',        version: '>=2.37.3')
 -gtk     = dependency('gtk+-3.0',        version: '>=3.3.16')
  systemd = dependency('libsystemd',      required: get_option('systemd'))
  
@@ -22,9 +33,6 @@ index a95e917..fbd74b1 100644
  iso_codes = dependency('iso-codes')
  udev    = dependency('libudev')
  
-@@ -61,10 +60,8 @@ fontconfig = dependency('fontconfig', required: bwrap_opt)
- have_bwrap = bwrap_arch_ok and not bwrap_opt.disabled() and seccomp.found() and fontconfig.found()
- 
  cinnamon_deps = [
 -  gdk_pixb,
    gio,
@@ -33,11 +41,11 @@ index a95e917..fbd74b1 100644
    math,
    systemd,
    udev,
-@@ -72,7 +69,6 @@ cinnamon_deps = [
+@@ -55,7 +51,6 @@
    xext,
    xkbconf,
    xkbfile,
 -  xrandr,
  ]
  
- if have_bwrap
+ use_alsa = get_option('alsa')

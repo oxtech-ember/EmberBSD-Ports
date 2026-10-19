@@ -2,7 +2,10 @@
 
 The stable source set in `sources.tsv` uses Cinnamon 6.6.9 and matching
 6.6 component releases. CJS 140.1 uses the common SpiderMonkey 140 ESR
-provider. The source set keeps the current common GTK 3 provider.
+provider. GTK 3 is outside the accepted Cinnamon dependency closure. Keep
+GTK 3 out of buildlink dependencies, generated introspection metadata and
+runtime package requirements. Port components that still require GTK 3 in
+Ports against the current supported stack.
 
 Cinnamon Menus 6.6.0nb3 builds for EmberBSD/AArch64 with GCC 16.2.0,
 GLib 2.90.1, GObject Introspection 1.86.0 and Meson 1.12.1. Its package

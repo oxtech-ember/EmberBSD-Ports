@@ -1,23 +1,19 @@
 $NetBSD$
 
-Wayland profile: the GTK3-era background, RandR and thumbnail code
-is not built (no GTK3 in this stack); gnome-desktop-utils.c stays
-(GTK-free, provides _gnome_desktop_init_i18n). Cross introspection
-runs through the shared GI machinery with the target GType query
-launcher and ELF ldd wrapper.
+Wayland profile omits GTK3-only background, thumbnail and RandR sources.
+Keep the shared cross GI query and linker wrapper.
 
 --- libcinnamon-desktop/meson.build.orig
 +++ libcinnamon-desktop/meson.build
-@@ -14,28 +14,18 @@
+@@ -14,27 +14,18 @@
  libcinnamon_desktop_gir_sources = [
    'display-name.c',
    'edid-parse.c',
 -  'gnome-bg-crossfade.c',
 -  'gnome-bg.c',
 -  'gnome-desktop-thumbnail.c',
-+  'gnome-gettext-portable.c',
    'gnome-desktop-utils.c',
--  'gnome-gettext-portable.c',
+   'gnome-gettext-portable.c',
    'gnome-idle-monitor.c',
    'gnome-languages.c',
    'gnome-pnp-ids.c',
@@ -33,28 +29,19 @@ launcher and ELF ldd wrapper.
  
  libcinnamon_desktop_misc_headers = [
    'gnome-datetime-source.h',
--  'gnome-desktop-thumbnail-script.h',
 -  'gnome-rr-private.h',
    'edid.h',
    'private.h'
  ]
-@@ -44,23 +34,16 @@
-   libcinnamon_desktop_gir_sources,
-   libcinnamon_desktop_misc_headers,
-   'gnome-datetime-source.c',
--  'gnome-desktop-thumbnail-script.c',
- ]
- 
- cdesktop_headers = [
+@@ -49,16 +40,10 @@
    'cdesktop-enums.h',
  ]
  libcinnamon_desktop_headers = [
 -  'gnome-bg-crossfade.h',
 -  'gnome-bg.h',
 -  'gnome-desktop-thumbnail.h',
-+  'gnome-idle-monitor.h',
    'gnome-desktop-utils.h',
--  'gnome-idle-monitor.h',
+   'gnome-idle-monitor.h',
    'gnome-languages.h',
    'gnome-pnp-ids.h',
 -  'gnome-rr-config.h',
@@ -63,7 +50,7 @@ launcher and ELF ldd wrapper.
    'gnome-systemd.h',
    'gnome-wall-clock.h',
    'gnome-xkb-info.h',
-@@ -91,22 +74,26 @@
+@@ -89,22 +74,26 @@
    name: 'cinnamon-desktop',
    description: 'Utility library for loading .desktop files',
    version: meson.project_version(),
@@ -82,7 +69,6 @@ launcher and ELF ldd wrapper.
 +  gir_env.set('LD_LIBRARY_PATH', meson.current_build_dir())
 +endif
  cdesktop_gir = gnome.generate_gir(libcinnamon_desktop,
-+  extra_args: gir_extra_args + ['-DGNOME_DESKTOP_USE_UNSTABLE_API'], env: gir_env,
    sources: 'cdesktop-enums.h',
    namespace: 'CDesktopEnums',
    nsversion: '3.0',
@@ -91,14 +77,17 @@ launcher and ELF ldd wrapper.
 -  extra_args: [
 -    '-DGNOME_DESKTOP_USE_UNSTABLE_API',
 -  ],
++  extra_args: gir_extra_args + ['-DGNOME_DESKTOP_USE_UNSTABLE_API'], env: gir_env,
    install: true,
  )
  
-@@ -118,9 +105,10 @@
+@@ -115,10 +104,11 @@
+   export_packages: 'cinnamon-desktop',
    identifier_prefix: 'Gnome',
    symbol_prefix: 'gnome_',
-   includes: ['GObject-2.0', 'Gtk-3.0', cdesktop_gir[0], ],
+-  includes: ['GObject-2.0', 'Gtk-3.0', cdesktop_gir[0], ],
 -  extra_args: [
++  includes: ['GObject-2.0', cdesktop_gir[0], ],
 +  extra_args: gir_extra_args + [
      '-DGNOME_DESKTOP_USE_UNSTABLE_API',
    ],

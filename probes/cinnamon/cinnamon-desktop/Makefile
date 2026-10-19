@@ -2,11 +2,12 @@
 # Cinnamon probe, Wayland profile: the GTK3-era background, RandR and
 # thumbnail code is not built; the mint27 wallpaper painter lives in the
 # cinnamon package itself (GTK4 + layer-shell).
-DISTNAME=	6c6c48d7c87359b34b5812486d364fde3ed730ed
-PKGNAME=	cinnamon-desktop-6.7.9
+DISTNAME=	cinnamon-desktop-6.6.2
+PKGREVISION=1
 CATEGORIES=	x11
-MASTER_SITES=	https://github.com/linuxmint/cinnamon-desktop/archive/
-WRKSRC=		${WRKDIR}/cinnamon-desktop-${DISTNAME}
+MASTER_SITES=	https://github.com/linuxmint/cinnamon-desktop/archive/refs/tags/
+DISTFILES=	6.6.2.tar.gz
+WRKSRC=		${WRKDIR}/${DISTNAME}
 
 HOMEPAGE=	https://github.com/linuxmint/cinnamon-desktop
 COMMENT=	Shared settings and utilities for the Cinnamon desktop
@@ -32,6 +33,9 @@ MAKE_ENV+= XDG_DATA_DIRS=${CROSS_DESTDIR:Q}${PREFIX:Q}/share
 .include "../../textproc/iso-codes/buildlink3.mk"
 .include "../../x11/libXext/buildlink3.mk"
 .include "../../x11/libxkbfile/buildlink3.mk"
+# The public XKB header and the pkg-config closure use X11 and Xdmcp.
+.include "../../x11/libX11/buildlink3.mk"
+.include "../../x11/libXdmcp/buildlink3.mk"
 .include "../../fonts/fontconfig/buildlink3.mk"
 .include "../../devel/libudev-bsd/buildlink3.mk"
 # libcvc (mint27 volume control for the shell) needs libpulse.
