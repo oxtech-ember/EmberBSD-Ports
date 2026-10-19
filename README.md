@@ -156,7 +156,11 @@ runtime behavior are validated.
   typed commands and telemetry with ROS 2 Jazzy, including reconnect checks.
 - [Common development toolchain](profiles/development-toolchain/README.md):
   GCC 16.2.0 builds in the AArch64 VM and runs there and on physical Zero 3W,
-  passing C11/C++20 threads, TLS and shared-library runtime checks. The full upstream
+  passing C11/C++20 threads, TLS and shared-library runtime checks. A
+  [host GMP regression](profiles/development-toolchain/cross/README.md)
+  retains original/fixed runtime diagnostics and independently rejects all
+  three incorrect variadic argument types against the pinned source.
+  The full upstream
   suite exposes platform compatibility failures; a tested upstream backport
   repairs TSVC allocation on NetBSD. The common package MAKECONF now selects
   the prepared compiler after native-GCC bootstrap; actual pkgsrc wrapper and

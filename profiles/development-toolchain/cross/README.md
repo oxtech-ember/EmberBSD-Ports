@@ -137,6 +137,34 @@ against the unchanged library. The helper pins the patch and keeps the full
 upstream suites mandatory. This repair does not establish a compiler or
 target build result by itself.
 
+The standalone regression uses the same pinned archive and patch:
+
+```sh
+python3 -B profiles/development-toolchain/cross/tests/host-gmp-rand.py \
+    /absolute/gmp-6.3.0.tar.xz /absolute/new-gmp-rand-check
+```
+
+It builds one static host library with GCC16. It preserves the original and
+patched `t-rand` runtime statuses and diagnostics. The patched test must pass
+both upstream value tables and four print-mode checks. An independent C type
+assertion rejects the original three variadic calls and each individual
+missing-cast mutant. This control works even when an ABI hides the runtime
+error. The library hash must remain unchanged across the comparison.
+
+Use `--require-baseline-failure` when reproducing the original runtime failure.
+Use `--sanitize` for ASan/UBSan on supported hosts. `GMAKE` selects GNU make.
+`HOST_CPPFLAGS` and `HOST_LDFLAGS` can select an explicit host SDK. The work
+directory retains source copies, command logs, a compilation database and
+`results.json`. This focused check does not replace the full host-math suites
+or establish a target build. GMP's original license headers remain intact.
+
+On Apple Silicon macOS, GCC16.2 with ASan/UBSan reproduces original exit 1
+and patched exit 0. All value, print and individual missing-cast controls pass.
+GCC's analyzer and Clang Static Analyzer report no findings in either test.
+Cppcheck retains the same two upstream const-style findings in both versions.
+Valgrind is not supported on this host. Assembly is outside sanitizer coverage;
+this test does not qualify the complete library or a target system.
+
 GMP 6.2.1 uses the reserved Darwin `x18` register in ARM64 assembly. During a
 LiteRT build this caused intermittent compiler crashes in GMP/MPFR constant
 evaluation. The compiler's attempt to print a backtrace then failed in Apple

@@ -18,3 +18,8 @@ The adaptation changes only argument types. It preserves all expected values,
 algorithms and tests; no test is skipped and no library code changes.
 `host-math.py` verifies and records the patch hash, applies it with zero fuzz,
 and still requires the full upstream GMP/MPFR/MPC suites and host contracts.
+
+The [standalone Python regression](../tests/host-gmp-rand.py) preserves the
+original runtime baseline. It checks each missing cast with a compile-time
+API type assertion against the same source and unchanged library. It keeps
+baseline diagnostics when the host ABI does not expose a runtime failure.

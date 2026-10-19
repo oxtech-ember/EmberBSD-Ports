@@ -15,6 +15,7 @@ from target_options import parse
 
 HERE = PROFILE / 'cross'
 PORTS = PROFILE.parents[1]
+GMP_RAND_PATCH_SHA256 = '7ac7687eee380a35f2289baf2bf964c42b82c02bca2272aef6e2e46b23e87736'
 
 
 def host_math_main(args):
@@ -26,7 +27,7 @@ def host_math_main(args):
     work = new_path(args[2])
     count = jobs()
     delta = HERE / 'patches/gmp-t-rand-varargs.patch'
-    require(sha(delta) == '7ac7687eee380a35f2289baf2bf964c42b82c02bca2272aef6e2e46b23e87736', 'GMP test patch SHA256 mismatch')
+    require(sha(delta) == GMP_RAND_PATCH_SHA256, 'GMP test patch SHA256 mismatch')
     make = tools / 'bin/nbgmake'
     require(os.access(make, os.X_OK), 'Bootstrap GNU make missing')
     cc, cxx = host_compilers(native_clang)
