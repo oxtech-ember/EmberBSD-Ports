@@ -15,7 +15,14 @@ It retains the target plugin paths and fixes the backlight helper defects
 described below.
 It is AI-assisted EmberBSD work and has not been submitted upstream.
 
-Copy the recipe overlay into a prepared `plasma-mobile` pkgsrc export.
+Prepare a fresh common profile with the tracked LXQt overlay:
+
+```sh
+python3 probes/lxqt/prepare-pkgsrc.py /absolute/new-pkgsrc-export
+```
+
+The exporter checks that every overlay file is tracked by Git. It uses the
+standard `plasma-mobile` exporter and records the applied recipe inventory.
 Include the common cross, graphics, media and toolkit profiles in that order.
 Use the shared EmberBSD sysroot and GCC16 toolchain.
 Build ordinary packages with `bmake package`.
@@ -39,6 +46,11 @@ Set `EMBERBSD_QT_HOST_PATH` to the existing matching native Qt prefix.
 The cross recipes select its `Qt6LinguistTools` export explicitly.
 The generated LXQt configuration retains the target `/usr/pkg` paths.
 Native pkgsrc builds retain their original `TOOL_DEPENDS` behavior.
+
+The same host-tool selection now covers libfm-qt, PCManFM-Qt, globalkeys,
+notificationd, runner, themes, the Qt platform plugin and the policy agent.
+Their source recipes retain the pinned pkgsrc manifests and patches.
+Package and installed-session acceptance for these consumers remains pending.
 
 libqtxdg also selects the target icon-engine directory explicitly. A native
 `qtpaths --query QT_INSTALL_PLUGINS` returns the host path during cross builds.

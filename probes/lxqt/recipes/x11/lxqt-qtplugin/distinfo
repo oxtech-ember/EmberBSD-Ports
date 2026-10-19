@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.17 2026/04/28 08:23:32 pin Exp $
+
+BLAKE2s (lxqt-qtplugin-2.4.0.tar.xz) = ff5f0294cab7bf978798e639d22ba0d85caaafbc041973af225cbf7ffea8bcb0
+SHA512 (lxqt-qtplugin-2.4.0.tar.xz) = b5671f4d975449d768152c08287733a63e3f64d8868bebe11ffa11f8b5336adcd257fcf738c9196f7de217b099e356886a539279dd6ff2c3657afd3961ff2933
+Size (lxqt-qtplugin-2.4.0.tar.xz) = 25100 bytes
