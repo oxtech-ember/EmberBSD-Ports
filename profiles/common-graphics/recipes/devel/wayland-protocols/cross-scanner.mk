@@ -13,8 +13,14 @@ _EMBERBSD_SCANNER_RECEIPT= ${_EMBERBSD_SCANNER_PREFIX:H}/installed.sha256
 PKG_FAIL_REASON+= "The host scanner must include its real installed metadata and hash receipt"
 .endif
 USE_TOOLS+= digest
+.if empty(MESON_BINARIES:Mwayland-scanner)
 MESON_BINARIES+= wayland-scanner
+.endif
+.if !defined(MESON_BINARY.wayland-scanner)
 MESON_BINARY.wayland-scanner= ${EMBERBSD_WAYLAND_SCANNER}
+.elif "${MESON_BINARY.wayland-scanner}" != "${EMBERBSD_WAYLAND_SCANNER}"
+PKG_FAIL_REASON+= "The common graphics profile selected a different host Wayland scanner"
+.endif
 _EMBERBSD_SCANNER_NATIVE= ${WRKDIR}/.meson-scanner-native
 MESON_NATIVE_ARGS+= --native-file ${_EMBERBSD_SCANNER_NATIVE:Q}
 
