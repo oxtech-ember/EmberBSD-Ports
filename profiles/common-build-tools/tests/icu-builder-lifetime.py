@@ -170,12 +170,14 @@ def main():
         good(label + "-preprocess", [cxx, *target_flags, *includes, "-E", translation, "-o", preprocessed])
         # Exact target preprocessing retains the selected macros, headers and LP64 data model.
         run(label + "-cppcheck", [args.cppcheck, "--language=c++", "--std=c++17",
-            "--platform=unix64", "--enable=warning,style,performance,portability,information",
+            "--platform=unix64", "--funsigned-char",
+            "--enable=warning,style,performance,portability,information",
             "--inconclusive", "--xml", "--xml-version=2", "--error-exitcode=1", preprocessed])
         # Cppcheck models the standard library when its GCC16 header parser fails.
         # This pass retains the real ICU headers and the selected target macros.
         _, _, errors = run(label + "-cppcheck-icu-headers", [args.cppcheck,
-            "--language=c++", "--std=c++17", "--platform=unix64", "--library=std,posix",
+            "--language=c++", "--std=c++17", "--platform=unix64", "--funsigned-char",
+            "--library=std,posix",
             "--check-level=exhaustive",
             "--enable=warning,style,performance,portability,information,missingInclude",
             "--inconclusive", "--xml", "--xml-version=2", "--error-exitcode=1",

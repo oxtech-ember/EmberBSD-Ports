@@ -134,7 +134,8 @@ The [component receipt](../tests/icu-builder-lifetime.json) records the source
 hashes, 16 executed cases and unchanged object sizes.
 
 Cppcheck receives the actual GCC16-preprocessed target translation unit and
-the LP64 data model. Clang Static Analyzer uses the same source, implementation
+the LP64 data model and unsigned plain `char`, as selected by the common
+AArch64 GCC16 predefined macros. Clang Static Analyzer uses the same source, implementation
 macros, target headers and AArch64 NetBSD target, without producing target
 objects. All diagnostics and command statuses remain in the result directory;
 the controller does not turn unresolved analyzer findings into a clean result.
