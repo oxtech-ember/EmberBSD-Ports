@@ -7,8 +7,8 @@ the common Qt 6.12 Wayland runtime. These are current stable releases.
 uses labwc and swaylock together. The compositor retains the panel, file
 manager and LXQt Session Settings interfaces.
 
-The revision-6 session defaults set `compositor=labwc` and
-`lock_command_wayland=swaylock`. The meta-package requires this revision.
+The session defaults set `compositor=labwc` and
+`lock_command_wayland=swaylock`. The meta-package requires revision 6 or later.
 `lxqt-leave --lockscreen` calls `LXQt::ScreenSaver::lockScreen`. On Wayland,
 that object reads `lock_command_wayland` from the session settings and starts
 the command through `QProcess`. User settings retain their existing priority.
@@ -44,7 +44,16 @@ session and liblxqt source. The old and two incomplete defaults are rejected.
 This is a source/data check. It does not execute a locker or authentication.
 The X11 label and command are checked from the patched desktop input.
 
-Complete package and runtime acceptance remain pending. Required work includes
+The ordinary GCC16 revision-7 package completes all 200 build steps and the
+normal pkgsrc package checks. Its SHA256 is
+`8adff3ace0442e50c455deac0d4b5091979df55018bf731a7546c4eecab2e5b6`.
+The actual archive contains the three selected commands in
+`share/lxqt/session.conf`. Its X11 autostart entry has the new name and no
+old localized names. All 174 payload paths match the existing package
+manifest. All 50 C++ and header inputs are unchanged. This package is not
+installed; the common sysroot still has the accepted revision-5 session.
+
+Complete closure and runtime acceptance remain pending. Required work includes
 the Wayland wrapper's declared shell and qdbus runtime provider, panel plugins,
 input configuration, the remaining meta-package applications, normal package
 lifecycle and an installed graphical session. Compositor rendering, input,

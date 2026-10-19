@@ -110,8 +110,8 @@ is `3f61ac713ac2eb7dbb242cb7a9c9f0526697a65a1dd34168391048d4846ec804`.
 Its 62 installed payload files and `pkg_admin check` pass.
 
 The [session policy](session-policy.md) selects a GTK-free Wayland default.
-It retains real lock and idle consumers and records the separate X11 and
-installed-session acceptance gates.
+Its revision-7 package retains real lock and idle consumers. The policy
+records the remaining closure, X11 and installed-session acceptance gates.
 
 GLib, GObject and GIO are private implementation dependencies of the shared
 libqtxdg library. Its public headers contain Qt and libqtxdg types.
