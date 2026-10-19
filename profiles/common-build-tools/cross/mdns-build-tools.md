@@ -48,6 +48,15 @@ the missing client library, select `SYSTEM=NetBSD` with `-ldns_sd`, and show
 that an environment value alone is insufficient. This graph check does not
 establish a compiled package.
 
+The 2881.120.11nb1 package also passes the ordinary GCC16 cross build and all
+pkgsrc package checks on a Darwin host. The 34 recorded target compile and
+link commands select the common GCC16 tools and target sysroot. The recursive
+client links `-ldns_sd`; its ELF machine is AArch64. All 11 package files match
+the installed cross sysroot payload and sole package owner. The rooted native
+`pkg_admin` check passes against a metadata copy; it does not execute a guest
+package lifecycle. This package SHA256 is
+`d5030a879133c29d609dfd0b62ceb421db0444b0dc6af6a8b09cf8a4238b0c4d`.
+
 The [build regression](../tests/mdns-build-tools.py) uses Python 3.15 and
 SDK library API 1. It compares actual pkgsrc metadata with the original pinned
 recipe. Separate work directories prevent cached tool selections from hiding
