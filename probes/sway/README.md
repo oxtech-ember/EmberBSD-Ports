@@ -117,7 +117,7 @@ inherited portability patches, before and after patching, with the real
 cross flags and headers. Findings remain visible on both versions. They
 include allocation-failure paths in command parsing, the input manager
 and tree output. These are existing upstream issues; this port does not
-claim a clean compositor analysis or allocation-failure acceptance.
+claim a clean compositor analysis or allocation-failure acceptance outside IPC.
 `tests/stringop-native.c` checks 14 contracts against the actual common
 string implementation under native ASan/UBSan. It covers high bytes,
 quoted arguments, empty input and owned return values. It does not inject
@@ -146,14 +146,17 @@ python3 probes/sway/tests/ipc-values.py --source /absolute/original/sway-1.12 \
 
 ## Compositor and shutdown checks
 
-Sway 1.12nb4 passed the ordinary GCC16 package build and all package checks.
+Sway 1.12nb5 passed the ordinary GCC16 package build and all package checks.
 All 33 installed payload entries match that package in the shared sysroot.
-The same package is installed on the isolated AArch64 VM with its verified
-runtime dependency closure. Its actual unprivileged Pixman/headless compositor
-passes version, workspace switching, output creation and tree queries.
+Its package SHA256 is
+`14294d586f593e33c8ac15a011591a4fe8ab9766fcdd08ba5337fb7cc5b54c69`.
+The same package passes installed acceptance on an isolated AArch64 VM.
+The unprivileged Pixman/headless compositor passes version, workspace switching,
+output creation, tree queries, the exit reply and actual process exit status 0.
 
-The strict exit check fails on that package: the display loop stops before
-the queued IPC response is written. The source patch uses the existing
+The original nb4 package reproduces reply loss despite process exit status 0:
+the display loop stops before the queued IPC response is written.
+The source patch uses the existing
 nonblocking writer once before teardown closes each connection. It handles a
 writer that already disconnected the client. This is one best-effort write;
 it does not guarantee delivery of a large or blocked backlog.
@@ -163,8 +166,8 @@ destruction functions with the real list implementation and native sockets.
 The original source reproduces reply loss. The patched source passes reply,
 closed-peer and blocked-socket cases under ASan/UBSan. A test-only Wayland event
 ownership model checks each removal and release; it does not replace a target
-Wayland implementation. Target packaging and the unchanged strict exit check
-must pass before the new revision is accepted.
+Wayland implementation. Both native runners use short owned directories under
+`TMPDIR`, independently of their build paths, to fit Unix socket path limits.
 
 IPC startup now returns an error to the existing main cleanup path. It checks
 address/list allocations and event registration, rolls back owned resources,
@@ -178,10 +181,11 @@ teardown and termination functions with the real list/log code. Eleven original
 lifecycle failures become twelve passing sanitizer controls. Three allocator
 failures, event registration, both environment publications, path construction,
 bind/listen failure, and early/late shutdown have independent resource assertions.
-The native sandbox forbids Unix socket bind. The explicit test-only bind/listen
-boundary uses owned files; socket descriptors, descriptor flags and filesystem
+The explicit test-only bind/listen failure boundary uses owned files;
+socket descriptors, descriptor flags and filesystem
 cleanup are real. Wayland event ownership also uses a test boundary. These checks
-do not establish native or target compositor startup acceptance.
+do not establish compositor acceptance under injected target allocation failures.
+The separate installed VM check uses the actual Wayland event loop and sockets.
 
 Full target-header analysis covers both IPC and main. GCC16 path analysis passes.
 Cppcheck retains five warnings from GLib inline headers on each module. The two
@@ -195,9 +199,15 @@ python3 probes/sway/tests/headless.py --host explicit-target \
 ```
 
 The runner requires an installed package and an existing unprivileged `nobody`
-account. It requires the exit reply and process termination, saves the compositor
+account. A parent waits for the compositor and records its real exit status.
+The runner requires the exit reply and status 0, saves the compositor
 log, and removes only its own guest directory. The VM has no physical graphics
 or input device. This check does not qualify a hardware desktop session.
+
+Ordinary `pkg_delete` removes all 33 package payload entries on the VM.
+Ordinary `pkg_add` restores the same 33 entries with matching hashes and modes.
+The existing configuration remains unchanged and `pkg_admin check sway` passes.
+The same strict headless checks pass after reinstallation.
 
 ## Input-name contract
 
@@ -230,7 +240,3 @@ cc -O1 -g -D_GNU_SOURCE -fsanitize=address,undefined \
 
 Use the host sanitizer's supported options. The test expects the original
 source to fail its release assertion and the patched source to pass.
-
-Acceptance of the shutdown revision and normal installed package
-removal/reinstallation remain pending. A linked executable alone does not
-establish a desktop session.
