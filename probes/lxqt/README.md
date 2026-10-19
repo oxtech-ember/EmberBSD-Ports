@@ -50,7 +50,8 @@ Native pkgsrc builds retain their original `TOOL_DEPENDS` behavior.
 The same host-tool selection now covers libfm-qt, PCManFM-Qt, globalkeys,
 notificationd, runner, themes, the Qt platform plugin and the policy agent.
 Their source recipes retain the pinned pkgsrc manifests and patches.
-Package and installed-session acceptance for these consumers remains pending.
+libfm-qt, PCManFM-Qt, themes and the platform plugin pass ordinary package
+checks. Other application packages and the installed session remain pending.
 
 The PCManFM dependency recipes select upstream libfm 1.4.1 and menu-cache
 1.1.1. The source archives match the hashes in the official LXDE release
@@ -100,6 +101,17 @@ host or fixed dependency paths. PCManFM-Qt is the target consumer regression.
 The buildlink API requires revision 5 for this CMake interface and selects
 `pkg-config` as a native tool. The ABI floor remains revision 2 because the
 SONAME and all 1,634 public ELF symbols are unchanged.
+The tested libfm-qt 2.4.0nb5 archive SHA256 is
+`765a8925ec8b7f0e71b36596b5e820995a7cffffc90f51187ab60b77ae3061d6`.
+All 158 installed files match the archive and their sole owner.
+The real PCManFM-Qt 2.4.1nb3 consumer passes configuration, all 84 build steps
+and ordinary package checks against this installed export. Its archive SHA256
+is `3f61ac713ac2eb7dbb242cb7a9c9f0526697a65a1dd34168391048d4846ec804`.
+Its 62 installed payload files and `pkg_admin check` pass.
+
+The [session policy](session-policy.md) selects a GTK-free Wayland default.
+It retains real lock and idle consumers and records the separate X11 and
+installed-session acceptance gates.
 
 GLib, GObject and GIO are private implementation dependencies of the shared
 libqtxdg library. Its public headers contain Qt and libqtxdg types.

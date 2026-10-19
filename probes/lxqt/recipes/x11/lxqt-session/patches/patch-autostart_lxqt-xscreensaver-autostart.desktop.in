@@ -1,0 +1,18 @@
+$NetBSD$
+
+Use the GTK-free X11 locker and its idle consumer.
+Keep the existing configuration filename and X11-only scope.
+
+--- autostart/lxqt-xscreensaver-autostart.desktop.in.orig
++++ autostart/lxqt-xscreensaver-autostart.desktop.in
+@@ -1,8 +1,8 @@
+ [Desktop Entry]
+ Type=Application
+ Version=1.0
+-TryExec=xscreensaver
+-Exec=xscreensaver -no-splash
++TryExec=xss-lock
++Exec=xss-lock -- i3lock --nofork
+ OnlyShowIn=LXQt;
+ X-LXQt-X11-Only=true;
+ 

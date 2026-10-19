@@ -54,11 +54,14 @@ uninitialized `blksize_` and `blocks_` members; their complete use paths remain
 upstream audit work. Clang Static Analyzer reproduces the null argument before
 the guard and reports no finding after it. No ABI field or virtual API changes.
 
-The broader initial libfm-qt comparison covers 80 C++ and seven C source files.
-Its C++ macro profile does not qualify the C subset. Its system-header parser
-reports and inherited findings remain visible. This comparison establishes no
-complete source-analysis pass. Separate C analysis and review of the remaining
-file-manager paths remain pending.
+The complete revision-5 comparison covers 80 C++ and seven C source files with
+separate actual GCC16 predefined macros and target compilation flags. Cppcheck
+finds no new or removed diagnostic. Its C parser uses the C11 model for the
+GNU C23 build. The Qt `qstdlibdetection.h` parser report and inherited findings
+remain visible. This is not a complete clean source-analysis result.
+GCC16 `-fanalyzer` checks the changed `vfs-menu.c` prefix-substitution module
+before and after the port. Both runs have zero findings. Review of the other
+file-manager paths remains pending.
 
 These native checks instrument the extracted block, not the dependency
 libraries or the complete file manager. Valgrind Memcheck does not support the
