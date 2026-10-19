@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import tempfile
 
 p = argparse.ArgumentParser(description=__doc__)
 for name in ['baseline', 'patched', 'wayland', 'wayland-include', 'work']:
@@ -59,12 +60,12 @@ for label, source in [('baseline', a.baseline), ('patched', a.patched)]:
     assert built.returncode == 0, built.stderr
     for case in ['success', 'before', 'after', 'alloc1', 'alloc2', 'alloc3',
                  'event', 'env1', 'env2', 'path', 'bind', 'listen']:
-        directory = a.work / (label + '-' + case)
-        directory.mkdir()
-        result = subprocess.run([str(binary), case, str(directory)],
-            env={**os.environ, 'ASAN_OPTIONS': 'detect_leaks=0:abort_on_error=1',
-                 'UBSAN_OPTIONS': 'halt_on_error=1:print_stacktrace=1'},
-            capture_output=True, text=True, timeout=10)
+        # Keep the socket path below sun_path even when --work is long.
+        with tempfile.TemporaryDirectory(prefix='s-', dir=os.environ.get('TMPDIR')) as directory:
+            result = subprocess.run([str(binary), case, directory],
+                env={**os.environ, 'ASAN_OPTIONS': 'detect_leaks=0:abort_on_error=1',
+                     'UBSAN_OPTIONS': 'halt_on_error=1:print_stacktrace=1'},
+                capture_output=True, text=True, timeout=10)
         records.append(dict(source=label, case=case, status=result.returncode,
                             stdout=result.stdout, stderr=result.stderr))
         (a.work / 'receipt.json').write_text(json.dumps(records, indent=2) + '\n')

@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import tempfile
 
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--baseline', type=Path, required=True)
@@ -72,12 +73,12 @@ void ipc_client_disconnect(struct ipc_client *);
     (a.work / (label + '-build.log')).write_text(result.stdout + result.stderr)
     assert result.returncode == 0, result.stderr
     for case in ('reply', 'closed', 'blocked'):
-        directory = a.work / (label + '-' + case)
-        directory.mkdir()
-        result = subprocess.run([str(binary), case, str(directory)],
-            env={**os.environ, 'ASAN_OPTIONS': 'abort_on_error=1:detect_leaks=0',
-                 'UBSAN_OPTIONS': 'halt_on_error=1:print_stacktrace=1'},
-            capture_output=True, text=True, timeout=10)
+        # Keep the socket path below sun_path even when --work is long.
+        with tempfile.TemporaryDirectory(prefix='s-', dir=os.environ.get('TMPDIR')) as directory:
+            result = subprocess.run([str(binary), case, directory],
+                env={**os.environ, 'ASAN_OPTIONS': 'abort_on_error=1:detect_leaks=0',
+                     'UBSAN_OPTIONS': 'halt_on_error=1:print_stacktrace=1'},
+                capture_output=True, text=True, timeout=10)
         record = dict(source=label, case=case, status=result.returncode,
                       stdout=result.stdout, stderr=result.stderr)
         records.append(record)
