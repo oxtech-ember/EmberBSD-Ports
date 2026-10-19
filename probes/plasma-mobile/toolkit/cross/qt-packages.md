@@ -7,6 +7,14 @@ The installed [Core/Gui/SVG consumer](../tests/qt-consumer/README.md) configures
 and links through the packaged Qt CMake entry point and matching native tools.
 The SDK is not installed on the target board.
 
+Qtbase buildlink reads pkgsrc preferences before it selects the cross SDK.
+An ordinary libdbusmenu-lxqt build exposed the previous ordering error:
+`QEvent` existed in the installed SDK but was absent from buildlink. Reading
+preferences first adds `qt6-qtbase-devel>=6.12.0nb3` to `BUILD_DEPENDS` and the
+buildlink tree. The actual before/after metadata checks also confirm that it
+stays out of runtime `DEPENDS`, and native mode does not select the target SDK.
+This metadata check is separate from the consumer package build.
+
 ## Packages and provenance
 
 The [toolkit manifest](../sources.tsv) pins the original Qt 6.12 archives and

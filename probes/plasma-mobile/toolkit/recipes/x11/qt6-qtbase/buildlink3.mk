@@ -5,6 +5,8 @@ BUILDLINK_TREE+=	qt6-qtbase
 .if !defined(QT6_QTBASE_BUILDLINK3_MK)
 QT6_QTBASE_BUILDLINK3_MK:=
 
+.include "../../mk/bsd.fast.prefs.mk"
+
 BUILDLINK_API_DEPENDS.qt6-qtbase+=	qt6-qtbase>=6.12.0
 BUILDLINK_ABI_DEPENDS.qt6-qtbase+=	qt6-qtbase>=6.12.0
 BUILDLINK_PKGSRCDIR.qt6-qtbase?=	../../x11/qt6-qtbase
