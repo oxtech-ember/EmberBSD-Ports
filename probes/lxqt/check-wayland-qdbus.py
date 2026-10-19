@@ -94,6 +94,8 @@ def main() -> int:
             raise SystemExit(f"unexpected qdbus calls: {calls!r}")
 
     recipe = makefile.read_text()
+    if any(line.startswith("REPLACE_SH=") for line in recipe.splitlines()):
+        raise SystemExit("POSIX target shell must not be replaced with a host interpreter")
     if "DEPENDS+=\tqt6-qttools>=6.12.0:../../devel/qt6-qttools" not in recipe:
         raise SystemExit("the qdbus runtime provider is not a package dependency")
     print("LXQt qdbus target path, POSIX shell, and runtime provider checks passed")

@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.4 2026/09/02 19:04:50 wiz Exp $
 
-PKGREVISION= 3
+PKGREVISION= 4
 .include "../../meta-pkgs/lxqt/Makefile.common"
 
 DISTNAME=	lxqt-wayland-session-0.4.1
@@ -13,8 +13,6 @@ LICENSE=	gnu-lgpl-v2.1 AND gnu-lgpl-v2 AND gnu-lgpl-v3 AND \
 		mit AND modified-bsd AND cc-by-sa-v4.0
 
 USE_TOOLS+=	pkg-config perl
-
-REPLACE_SH=	lxqt-qdbus.in
 
 SUBST_CLASSES+=		path
 SUBST_STAGE.path=	pre-configure
