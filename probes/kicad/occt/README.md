@@ -88,6 +88,12 @@ The core check verifies C-locale conversion, process-locale restoration, path ro
 Add the GCC16 toolchain file when cross-compiling these consumers.
 Execute target binaries only in an EmberBSD acceptance guest or on a target board.
 
+On 2026-10-19, the core consumer passed its `C` locale case against the
+installed OCCT runtime in a clean NetBSD 11.0 AArch64 VM as an ordinary user.
+The stack-trace consumer passed `unterminated`, `capacity`, `overflow`, `skip-overflow`,
+`exhausted`, and `valid` modes in the same VM. This is focused runtime evidence;
+the complete OCCT package and installed STEP geometry checks remain pending.
+
 The causal stack-trace test compiles the actual upstream C++ module twice:
 
 ```sh

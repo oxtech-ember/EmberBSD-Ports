@@ -85,13 +85,23 @@ are installed in an isolated sysroot for this check. All 18 runtime providers
 match either the existing SDK or the normal Boost archive. The target RPATH
 selects the common GCC16 runtime and package libraries.
 Its native header companion passes strict Memcheck. The full target source
-passes Clang static analysis. Installed target execution remains separate.
+passes Clang static analysis.
+
+On 2026-10-19, the API consumer was run against the installed GCC16 package in
+a clean NetBSD 11.0 AArch64 VM. Four ordinary-user cycles passed,
+covering five API cases and 33 assertions per cycle, provider inventory checks,
+and the deliberate Boost.Test failure control. The package-specific target
+`pkg_admin check` verified all 296 package files. The package archive used for
+this run has SHA256
+`902701a047a59a8c987d96576e76ce9a4c0f7e394a30fdfcb4f0aefb5b08644f`.
+The full package database scan after reinstall was not completed. Complete
+upstream suites and KiCad remain separate acceptance work.
 
 ## Acceptance boundary
 
 These results qualify source selection, native and complete AArch64 packages,
-ICU build integration and the focused target objects. Installed target API
-execution, complete upstream suites and KiCad remain separate acceptance work.
+ICU build integration, the focused target objects and the installed consumer
+run. Complete upstream suites and KiCad remain separate acceptance work.
 
 Strict native Memcheck passes the engine's `-v` query with zero live blocks
 and zero errors. A real raw-Jam file action produces the expected bytes but

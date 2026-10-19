@@ -36,8 +36,9 @@ runtime behavior are validated.
 - [Boost cross build roles](profiles/common-build-tools/cross/boost.md):
   native b2 retains the canonical 1.92.0 libraries and selects NetBSD,
   target GCC16 tools and ABI properties explicitly. Native and complete
-  AArch64 packages pass, including ICU build integration. The installed API
-  consumer and KiCad retain separate execution gates.
+  AArch64 packages pass, including ICU build integration. The API consumer
+  passes against the installed package in a clean NetBSD 11.0 AArch64 VM;
+  complete KiCad acceptance remains a separate gate.
 
 - [GCC16 NetBSD cross math capabilities](profiles/development-toolchain/cross-math.md):
   checked target declarations and libm links provide C++ math imports for the
@@ -70,9 +71,10 @@ runtime behavior are validated.
   remain pending.
 - [KiCad OCCT source](probes/kicad/occt/README.md): OCCT 8.0.1 retains
   NetBSD locale, path and exception support. GCC16 target compilation and
-  focused native regressions cover the source repairs; KiCad uses the
-  current exception API. The complete OCCT package and installed STEP
-  geometry checks remain pending.
+  focused native regressions cover the source repairs; core and six
+  stack-trace consumer modes pass against the installed runtime in a clean
+  NetBSD 11.0 AArch64 VM. KiCad uses the current exception API. The complete
+  OCCT package and installed STEP geometry checks remain pending.
 - [Common Eigen 5.0.1](profiles/common-graphics/cross/eigen.md): the existing
   provider retains its CMake/header interfaces and full companion libraries.
   GCC16 AArch64 packaging verifies all 613 entries; four selected native
