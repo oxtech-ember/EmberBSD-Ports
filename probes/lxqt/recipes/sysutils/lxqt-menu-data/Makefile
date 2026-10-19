@@ -33,11 +33,9 @@ CONF_FILES+=	${MENU_CONF}/lxqt-panel-applications.menu \
 
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-.include "../../meta-pkgs/lxqt/host-tools.mk"
-CMAKE_CONFIGURE_ARGS+= -DQt6_DIR=${EMBERBSD_QT_HOST_PATH}/lib/cmake/Qt6
+.include "../../meta-pkgs/lxqt/host-modules.mk"
 .else
 TOOL_DEPENDS+=	lxqt-build-tools>=2.4.0:../../devel/lxqt-build-tools
-TOOL_DEPENDS+=	qt6-qttools-[0-9]*:../../devel/qt6-qttools
 .endif
 
 .include "../../devel/cmake/build.mk"
