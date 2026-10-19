@@ -90,3 +90,54 @@ assert dwp.rewrite_index(data, lambda offset, length: offset + 16) == struct.pac
 assert dwp.rewrite_index(struct.pack('<10I', *(words[:7] + [1] + words[8:])), lambda o, n: 123) == struct.pack('<10I', *(words[:7] + [1] + words[8:]))
 refused(dwp.rewrite_index, data[:20], lambda o, n: 16)
 print('PASS: native controller source pin, argv, generator-only targets, repeat refusal, job guard and DWP index mutation fixtures')
+
+# Run the real indexed-layout preparation on a new directory. Only external
+# compiler/objcopy boundaries are doubles; ELF parsing and file copying are real.
+import subprocess
+import stat
+fixtures, accepted = work / 'dwp-fixtures', work / 'dwp-accepted'
+fixtures.mkdir()
+accepted.mkdir()
+case = 'mode-case'
+(fixtures / 'cases.tsv').write_text(case + '\t5\tplain\n')
+(fixtures / case).mkdir()
+(accepted / case).mkdir()
+program = fixtures / case / 'program'
+program.write_text('#!' + sys.executable + '\nprint("dwp executable fixture")\n')
+program.chmod(0o751)
+# ELF64 little-endian with one CU index and a string-offset contribution.
+names = b'\0.shstrtab\0.debug_cu_index\0.debug_str_offsets.dwo\0'
+chunks = [names, data, b'\0' * 8]
+payload = bytearray(64)
+headers = [bytes(64)]
+for name, chunk in zip(('.shstrtab', '.debug_cu_index', '.debug_str_offsets.dwo'), chunks):
+    position = len(payload)
+    payload.extend(chunk)
+    headers.append(struct.pack('<IIQQQQIIQQ', names.index(name.encode()), 3 if name == '.shstrtab' else 1,
+                               0, 0, position, len(chunk), 0, 0, 1, 0))
+table = len(payload)
+payload.extend(b''.join(headers))
+payload[:64] = struct.pack('<16sHHIQQQIHHHHHH', b'\x7fELF\x02\x01\x01' + b'\0' * 9,
+                          1, 183, 1, 0, 0, table, 0, 64, 0, 0, 64, 4, 1)
+(accepted / case / 'input.dwp').write_bytes(payload)
+dwp.query = lambda argv: '16.2.0' if argv[1] == '-dumpfullversion' else 'aarch64--netbsd'
+calls = []
+def record_tool(path, argv):
+    calls.append(argv)
+    Path(path).write_text('Compiler/objcopy boundary fixture; no target output.\n')
+dwp.log_run = record_tool
+os.environ['CC'] = 'gcc16-fixture'
+os.environ['OBJCOPY'] = 'objcopy-fixture'
+old_umask = os.umask(0o077)
+try:
+    indexed = work / 'dwp-indexed'
+    dwp.prepare([str(accepted), str(fixtures), str(indexed)])
+finally:
+    os.umask(old_umask)
+copy = indexed / case / 'program'
+assert copy.read_bytes() == program.read_bytes()
+assert stat.S_IMODE(copy.stat().st_mode) == 0o751, 'program permissions were lost'
+assert subprocess.check_output([str(copy)], text=True) == 'dwp executable fixture\n'
+assert (indexed / 'cases.tsv').read_bytes() == (fixtures / 'cases.tsv').read_bytes()
+assert len(calls) == 2
+print('PASS: clean indexed DWP preparation preserves program mode and execution')

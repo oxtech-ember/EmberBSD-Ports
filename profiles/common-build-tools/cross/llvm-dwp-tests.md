@@ -54,6 +54,7 @@ OBJCOPY=/absolute/gcc16/bin/aarch64--netbsd-objcopy \
     /absolute/results /absolute/fixtures /absolute/new-indexed-fixtures
 ```
 
+The preparer preserves each program's file mode, including execute permissions.
 Transfer that directory and run the same target runner with fresh results.
 Its empty ELF input forces the multi-input writer without adding another CU.
 

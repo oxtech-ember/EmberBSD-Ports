@@ -13,7 +13,7 @@ from llvm_host import load_sdk, query, log_run
 def sections(path):
     from emberbsd_sdk.elf import parse_elf_header
     elf = Path(path).read_bytes()
-    if parse_elf_header(elf) is None:
+    if parse_elf_header(elf[:64]) is None:
         raise ValueError('Expected ELF64 little endian input')
     table = struct.unpack_from('<Q', elf, 40)[0]
     width, count, strings = struct.unpack_from('<HHH', elf, 58)
@@ -99,7 +99,7 @@ def prepare(args):
                 path.write_bytes(data)
                 command.extend(['--update-section', section + '=' + str(path)])
             log_run(directory / 'update.log', command + [str(source), str(directory / 'program.dwp')])
-            shutil.copyfile(Path(fixtures, name, 'program'), directory / 'program')
+            shutil.copy(Path(fixtures, name, 'program'), directory / 'program')
             cases.write(line)
     print('Prepared indexed padding, shared tables and independent TU contributions.')
 
