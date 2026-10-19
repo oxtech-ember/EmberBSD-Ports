@@ -94,6 +94,16 @@ def main():
     parser.add_argument("--webchannel-archive", type=Path)
     args = parser.parse_args()
     owner = Path(__file__).resolve().parent
+    repository = owner.parents[1]
+    tracked = set(subprocess.check_output([
+        "git", "-C", str(repository), "ls-files", "-z",
+        "probes/plasma-bigscreen/recipes"], text=True).split("\0"))
+    recipe_inputs = sorted(str(path.relative_to(repository))
+                           for path in (owner / "recipes").rglob("*")
+                           if path.is_file())
+    missing = sorted(set(recipe_inputs) - tracked)
+    if missing:
+        raise ValueError("recipe inputs are absent from Git: " + ", ".join(missing))
     pins = json.loads((owner / "dependency-sources.json").read_text())
     archive_checks = {}
     for recipe, archive_path in [("www/qt6-qtwebengine", args.webengine_archive),
@@ -179,6 +189,7 @@ def main():
     assert 'is_gcc CONDITION UNIX AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU"' in toolchains
     assert "-DKF_IGNORE_PLATFORM_CHECK=OFF" in (bluezqt / "Makefile").read_text()
     print(json.dumps({"status": "PASS", "scope": "source preparation only; no compilation",
+                      "tracked_recipe_inputs": len(recipe_inputs),
                       "pkgsrc_revision": revision, "bluezqt_sha256": hashlib.sha256(archive).hexdigest(),
                       "optional_archive_checks": archive_checks,
                       "bluezqt_exact_patch_contexts": contexts, "changed_context_controls": len(contexts),

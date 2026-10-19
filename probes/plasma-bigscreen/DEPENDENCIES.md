@@ -38,7 +38,18 @@ No accepted Qt provider must be replaced before package and consumer checks.
 
 The native generator is GNU gperf 3.3 from the existing pinned pkgsrc recipe.
 Its archive matches the release-author SHA256. The old system gperf 3.0.3
-is not selected. Qt WebChannel 6.12.0 has a separate target recipe in this
+is not selected. Its ordinary native package checks and complete upstream
+`check` target pass. The installed generator passes the four-file package
+integrity check. The package SHA256 is
+`41c3323cf36332579eef4c778bd664be35d62e1fd68360185eb2e70342918419`.
+
+Cross builds can set `EMBERBSD_WEBENGINE_NODE` to an absolute native Node.js
+executable. Upstream executes that program and checks its version and 64-bit
+architecture. This input does not change native builds or the default
+pkgsrc Node 26 dependency. Keep the upstream checks enabled. The selected
+Python 3.15 must also provide the required `html5lib` module.
+
+Qt WebChannel 6.12.0 has a separate target recipe in this
 source layer. It keeps the common Qt ABI and builds upstream tests. Its
 archive matches the installed Homebrew source formula SHA256. Package and
 target test acceptance remain separate from this source verification.

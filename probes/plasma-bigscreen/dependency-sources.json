@@ -55,7 +55,10 @@
       "url": "https://ftp.gnu.org/gnu/gperf/gperf-3.3.tar.gz",
       "sha256": "fd87e0aba7e43ae054837afd6cd4db03a3f2693deb3619085e6ed9d8d9604ad8",
       "hash_source": "https://lists.gnu.org/archive/html/info-gnu/2025-04/msg00013.html",
-      "provenance": "Archive matches the release-author SHA256 and existing pinned pkgsrc recipe. No older generator is selected."
+      "provenance": "Archive matches the release-author SHA256 and existing pinned pkgsrc recipe. No older generator is selected.",
+      "native_package": "gperf-3.3",
+      "native_package_sha256": "41c3323cf36332579eef4c778bd664be35d62e1fd68360185eb2e70342918419",
+      "checks": "Ordinary native package QA, complete upstream check target, installed version and four-file package integrity pass. This is a host generator, not a target dependency."
     }
   ]
 }
