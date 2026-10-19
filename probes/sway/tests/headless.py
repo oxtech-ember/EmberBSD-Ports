@@ -46,14 +46,16 @@ def process_exit():
     assert result.returncode in (0, 3), ("exit status query", result.stderr)
     return int(result.stdout) if result.returncode == 0 else None
 
-def wait_for_exit(seconds):
+def wait_for_exit(seconds, required=True):
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
         status = process_exit()
         if status is not None:
             return status
         time.sleep(0.1)
-    raise AssertionError("Sway supervisor did not record process termination")
+    if required:
+        raise AssertionError("Sway supervisor did not record process termination")
+    return None
 
 try:
     checked("umask 077; mkdir " + shlex.quote(runtime))
@@ -82,7 +84,7 @@ try:
                 pid = int(found.stdout)
                 assert pid > 1
         matches = checked("find " + shlex.quote(runtime) + " -type s -name 'sway-ipc.*.sock'").decode().splitlines()
-        if matches:
+        if matches and pid is not None:
             assert len(matches) == 1
             socket = matches[0]
             break
@@ -134,9 +136,11 @@ finally:
             log = ssh("cat " + shlex.quote(remote + "/" + name))
             (args.results / name).write_bytes(log.stdout + log.stderr)
         if pid is not None:
-            status = process_exit()
+            # An IPC error can arrive while orderly display teardown is active.
+            status = wait_for_exit(15, required=False)
             if status is None:
-                actual = checked(shlex.join(["ps", "-p", str(pid), "-o", "pid=,ppid=,uid=,command="])).decode()
+                actual = checked(shlex.join(["ps", "-p", str(pid), "-o", "pid=",
+                    "-o", "ppid=", "-o", "uid=", "-o", "command="])).decode()
                 results["cleanup_process_identity"] = actual
                 fields = actual.split(None, 3)
                 assert len(fields) == 4 and int(fields[0]) == pid and int(fields[2]) == uid
