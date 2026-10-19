@@ -6,3 +6,4 @@ Size (libfm-qt-2.4.0.tar.xz) = 439504 bytes
 SHA1 (patch-CMakeLists.txt) = 6ff1d9618dc9ee143669de62ec20f9d8d56eab98
 SHA1 (patch-cmake_fm-qt-config.cmake.in) = db514ca9eca29b350727961fedc015123880036b
 SHA1 (patch-src_CMakeLists.txt) = 6962bca93c2b80fc1bbf9cf8707eb77e4f925c8a
+SHA1 (patch-src_core_fileinfo.cpp) = 7f86ecd35f10309041ed1ee3d239a96360ed7552

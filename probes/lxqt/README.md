@@ -57,7 +57,8 @@ The PCManFM dependency recipes select upstream libfm 1.4.1 and menu-cache
 inventory. Their download URLs pin that inventory's Git commit. Only the
 upstream `--with-extra-only` libfm component is selected; this library uses
 GLib and retains its LGPL 2.1 license. It does not build the GTK file manager.
-Their package acceptance remains pending.
+Both libraries pass ordinary GCC16 package checks and installed-payload audits.
+They retain 12 and 10 payload files, respectively.
 
 The menu-data 2.4.0nb3 package passes the ordinary GCC16 cross profile checks.
 It has no compiled source or Qt library dependency. Its CMake project selects
@@ -80,8 +81,22 @@ sets it to `${PREFIX}/qt6/plugins`. Native builds retain the real Qt query and
 reject a missing directory. `check-qtplugin-path.py` exercises the actual source
 path block and the retained LXQt query function. Its eight cases reproduce the
 host-path error, check the cross override and retain query failure checks.
-This CMake check does not establish the final package path. The ordinary
-`lxqt-qtplugin` package archive still requires inspection after the build.
+The ordinary GCC16 `lxqt-qtplugin-2.4.0nb4.tgz` archive has one payload file:
+`qt6/plugins/platformthemes/libqtlxqt.so`, below the package `/usr/pkg` prefix.
+Its SHA256 is
+`24ac939a47a0d443253d46b8b96426e35168ec762ea29b909dc0063255100b03`.
+The CMake install manifest and script select this same target path. The ELF
+contains target library search paths and no host Qt path. All 103 registered
+runtime dependencies resolve without GTK2, GTK3, Qt4 or Qt5. The ordinary
+sysroot installation verifies the file hash, sole owner and `pkg_admin check`.
+The preserved `+BUILD_INFO` records build provenance; it is not installed
+payload. Plugin loading, normal target removal/reinstallation and a complete
+session remain separate acceptance gates.
+
+libfm-qt exports its public GLib, menu-cache and XCB requirements through a
+PkgConfig imported target. Its installed CMake config resolves these interfaces
+in the consumer build. It retains public headers and avoids exporting build
+host or fixed dependency paths. PCManFM-Qt is the target consumer regression.
 
 GLib, GObject and GIO are private implementation dependencies of the shared
 libqtxdg library. Its public headers contain Qt and libqtxdg types.
@@ -121,6 +136,9 @@ Both compiler tags and `LTCC` retain the selected GCC16 tool names.
 The causal libXpm rebuild passes the ordinary RPATH and work-directory checks.
 
 ## Source regressions
+
+The [extended-source analysis](source-analysis.md) records the platform-plugin
+and file-manager scopes, inherited findings and parser limitations.
 
 The liblxqt backlight helper checks the driver before reading its files.
 It accepts one integer from `scanf` and `fscanf` and rejects invalid input.
