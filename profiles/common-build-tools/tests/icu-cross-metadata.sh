@@ -39,6 +39,15 @@ done > "$work/rewritten.sha256"
 shasum -a 256 -c "$work/rewritten.sha256" > "$work/idempotent.log"
 "$bmake" -C "$pkgsrc/textproc/icu" MAKECONF="$conf" show-icu-cross-tools > "$work/native-tools.txt"
 test -s "$work/native-tools.txt"
+for mode in yes no; do
+    env USE_CROSS_COMPILE="$mode" "$bmake" -C "$pkgsrc/textproc/icu" \
+        MAKECONF="$conf" show-vars \
+        VARNAMES='EMBERBSD_CROSS_BUILD_PYTHON TEST_MAKE_FLAGS' > "$work/test-python-$mode"
+    python=$(sed -n '1p' "$work/test-python-$mode")
+    flags=$(sed -n '2p' "$work/test-python-$mode")
+    case "$python" in /*) ;; *) echo 'Use an explicit native Python path' >&2; exit 1;; esac
+    "$python" -B -c 'import shlex,sys; assert sys.version_info[:2] == (3,15); assert "ICU_TEST_PYTHON=" + sys.argv[2] in shlex.split(sys.argv[1])' "$flags" "$python"
+done
 "$bmake" -C "$pkgsrc/textproc/icu" MAKECONF="$conf" \
     ICU_CROSS_DIR="$work/cross-tools" ICU_CROSS_COOKIE="$work/cross-tools/.cookie" \
     icu-cross-tools > "$work/cross-tools.log" 2>&1
