@@ -32,6 +32,11 @@ CONFIGURE_ENV+=		U_MAKE=${TOOLS_GMAKE}
 # Fixes circular dependency on Python and Sqlite3 with ICU.
 CONFIGURE_ENV+=		ac_cv_prog_PYTHON=""
 
+# The upstream data tests require the explicit development-host Python.
+.if defined(EMBERBSD_CROSS_BUILD_PYTHON)
+TEST_MAKE_FLAGS+= ICU_TEST_PYTHON=${EMBERBSD_CROSS_BUILD_PYTHON:Q}
+.endif
+
 .include "../../mk/bsd.prefs.mk"
 
 .if defined(EMBERBSD_ICU_DEVEL)

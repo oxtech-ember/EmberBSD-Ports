@@ -5,7 +5,8 @@ all installed features. It comes from pkgsrc commit
 `fff4deb639a1a640476203c80f752fb77b6cb14b`, with the existing common cross
 host-tool and installed-metadata repairs. The recipe retains all 18 actual
 pkgsrc patches and their hashes. The lifetime repair below is an additional
-EmberBSD patch. The imported distinfo removes one stale
+EmberBSD patch. A separate test-only repair below preserves the explicit
+native Python input. The imported distinfo removes one stale
 checksum for `patch-i18n_measunit_extra.cpp`, which that commit does not contain.
 The upstream source archive hashes are unchanged.
 
@@ -153,3 +154,14 @@ On Darwin AArch64, Memcheck and LeakSanitizer are unavailable. The explicit
 builder translation unit. Linked ICU archives remain uninstrumented. This is
 a bounded component regression; it does not qualify whole-library memory
 behavior, package installation or a graphical session.
+
+## Upstream test interpreter
+
+The bootstrap recipe leaves configured Python empty to avoid a dependency
+cycle. The upstream data test originally substituted that empty value into
+its command, so `bmake test` tried to execute `-m`. The test-only repair adds
+`ICU_TEST_PYTHON`, with the unchanged configured value as its default.
+`TEST_MAKE_FLAGS` passes the explicit `EMBERBSD_CROSS_BUILD_PYTHON` input to
+all recursive test make processes. Use the common Python 3.15 interpreter.
+The normal source build still uses the prebuilt ICU data archive. No runtime
+dependency or data test is removed.

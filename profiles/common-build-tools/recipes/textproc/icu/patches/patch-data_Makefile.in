@@ -1,0 +1,19 @@
+$NetBSD$
+
+Allow an explicit native Python for tests without changing bootstrap builds.
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+
+--- data/Makefile.in.orig
++++ data/Makefile.in
+@@ -121,8 +121,10 @@
+ 	$(RMV) $(OUTDIR)
+ 	$(RMV) $(LIBDIR)/*$(LIB_ICUDATA_NAME)*.$(SO)* $(LIBDIR)/$(LIB_STATIC_ICUDATA_NAME).$(A)
+ 
++ICU_TEST_PYTHON ?= @PYTHON@
++
+ check-local:
+-	PYTHONPATH=$(top_srcdir)/python @PYTHON@ -m icutools.databuilder.test
++	PYTHONPATH=$(top_srcdir)/python "$(ICU_TEST_PYTHON)" -m icutools.databuilder.test
+ 
+ # Find out if we have a source archive.
+ # If we have that, then use that instead of building everything from scratch.
