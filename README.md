@@ -701,6 +701,11 @@ runtime behavior are validated.
   [Native checks](probes/xfce/VALIDATION.md) cover Thunar navigation,
   Mousepad save/reopen/edit, menu application launch, X11 window/input
   behavior and clean exit. Hardware input and GPU acceleration are unverified.
+- [Kodi source probe](probes/kodi/README.md): the latest stable Kodi 21.3
+  consumer uses current PCRE2 10.49 with focused capture, ownership and failure
+  regressions. Native ASan/UBSan, Cppcheck baseline comparison, Clang Static
+  Analyzer and GCC16 AArch64 cross-link checks cover the source changes. Kodi
+  has no NetBSD backend yet; packaging, installation and playback remain pending.
 - [Installer XFCE profile](profiles/installer-desktop/README.md): pinned
   pkgsrc amd64 binaries and an original dhcpcd-ui 0.8.0 leaf adapted to GTK3.
   Source hashes, cross build, native package creation and installer contracts

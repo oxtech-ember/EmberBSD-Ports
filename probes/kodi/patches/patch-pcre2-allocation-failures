@@ -1,0 +1,69 @@
+Origin: EmberBSD (AI-assisted), Kodi 21.3 PCRE2 allocation failure handling.
+
+Return errors when PCRE2 context or match-data allocation fails. Preserve the
+explicit PCRE-compatible newline mode and clear stale match-vector pointers.
+
+--- a/xbmc/utils/RegExp.cpp
++++ b/xbmc/utils/RegExp.cpp
+@@ -283,7 +283,19 @@
+   Cleanup();
+ 
+   ctxt = pcre2_compile_context_create(NULL);
+-  pcre2_set_newline(ctxt, PCRE2_NEWLINE_ANY);
++  if (!ctxt)
++  {
++    m_pattern.clear();
++    CLog::Log(LOGERROR, "PCRE: Failed to allocate compile context");
++    return false;
++  }
++  if (pcre2_set_newline(ctxt, PCRE2_NEWLINE_ANY) != 0)
++  {
++    pcre2_compile_context_free(ctxt);
++    m_pattern.clear();
++    CLog::Log(LOGERROR, "PCRE: Failed to select newline mode");
++    return false;
++  }
+   m_re = pcre2_compile(reinterpret_cast<PCRE2_SPTR>(re), PCRE2_ZERO_TERMINATED, options, &errCode,
+                        &errOffset, ctxt);
+   pcre2_compile_context_free(ctxt);
+@@ -345,8 +357,15 @@
+     return -1;
+   }
+ 
+-  if (!m_ctxt)
++  if (m_jitCompiled && !m_ctxt)
++  {
+     m_ctxt = pcre2_match_context_create(NULL);
++    if (!m_ctxt)
++    {
++      CLog::Log(LOGERROR, "PCRE: Failed to allocate match context");
++      return -1;
++    }
++  }
+ 
+   if (m_jitCompiled && !m_jitStack)
+   {
+@@ -362,7 +381,15 @@
+ 
+   m_subject.assign(str + startoffset, bufferLen - startoffset);
+   if (m_matchData == nullptr)
++  {
+     m_matchData = pcre2_match_data_create(OVECCOUNT, nullptr);
++    if (!m_matchData)
++    {
++      m_iOvector = nullptr;
++      CLog::Log(LOGERROR, "PCRE: Failed to allocate match data");
++      return -1;
++    }
++  }
+   int rc = pcre2_match(m_re, reinterpret_cast<PCRE2_SPTR>(m_subject.c_str()), m_subject.length(), 0,
+                        0, m_matchData, m_ctxt);
+   m_iOvector = pcre2_get_ovector_pointer(m_matchData);
+@@ -602,6 +629,7 @@
+     pcre2_match_data_free(m_matchData);
+     m_matchData = nullptr;
+   }
++  m_iOvector = nullptr;
+ }
+ 
+ inline bool CRegExp::IsValidSubNumber(int iSub) const

@@ -1,0 +1,69 @@
+{
+  "sources": [
+    {
+      "name": "Kodi 21.3 Omega",
+      "archive": "xbmc-21.3-Omega.tar.gz",
+      "url": "https://github.com/xbmc/xbmc/archive/refs/tags/21.3-Omega.tar.gz",
+      "tag": "21.3-Omega",
+      "commit": "a3a448d26b8d560a65655dab2cd122994dc4e146",
+      "license": "GPL-2.0-or-later",
+      "sha256": "a60afcb556e4a00cb19fc35b7e77758107c9a8096c6ce9b66af5f92396be31aa"
+    },
+    {
+      "name": "fmt",
+      "archive": "fmt-12.2.0.tar.gz",
+      "url": "https://github.com/fmtlib/fmt/archive/refs/tags/12.2.0.tar.gz",
+      "tag": "12.2.0",
+      "license": "MIT",
+      "sha256": "8b852bb5aa6e7d8564f9e81394055395dd1d1936d38dfd3a17792a02bebd7af0"
+    }
+  ],
+  "provider": {
+    "name": "PCRE2",
+    "version": "10.49",
+    "profile": "profiles/common-graphics/recipes/devel/pcre2",
+    "target_library": "libpcre2-8.so.0"
+  },
+  "patches": [
+    {
+      "file": "patches/patch-pcre2-upstream",
+      "origin": "https://github.com/xbmc/xbmc/commit/8e0c4fd22a0b1f9c54b0536960752263f0d5a04f",
+      "sha256": "643d3d58b7377e57d664f138dd0799cd72fa026713a3286f843cda30aae3858a"
+    },
+    {
+      "file": "patches/patch-pcre2-match-lifetime",
+      "origin": "https://github.com/xbmc/xbmc/commit/6efd635acb9e8ce9252459cc30f8b994c3c09e9f",
+      "sha256": "021ef85a4d255fcbc6d14c87d390dde94e3710a4cc7c919bd3aa723756d55822"
+    },
+    {
+      "file": "patches/patch-pcre2-named-captures",
+      "origin": "EmberBSD adaptation for Kodi 21.3",
+      "sha256": "048967327cb4b82383b27f991ab8e9d2c4d36e95076defd583f3c0d62ee1c33a"
+    },
+    {
+      "file": "patches/patch-pcre2-owned-captures",
+      "origin": "EmberBSD correction to copy capture storage and guard invalid capture state",
+      "sha256": "fa159e0678e4e065d1ee6dab05cfe9e1d6a4fb6d0e3789df0605c7aad925934b"
+    },
+    {
+      "file": "patches/patch-pcre2-cmake-provider",
+      "origin": "EmberBSD CMake finder for the current common PCRE2 provider",
+      "sha256": "6e253fb845c3a414ec371edc4bf96534c11c269cee758f93d9171620b71898ff"
+    },
+    {
+      "file": "patches/patch-pcre2-allocation-failures",
+      "origin": "EmberBSD PCRE2 allocation failure handling and regression injection",
+      "sha256": "0b5ff41f8b535359fa9e22e6d5a928ec54a44a672d6636753bf28b10628f7576"
+    },
+    {
+      "file": "patches/patch-pcre2-named-failure-state",
+      "origin": "EmberBSD guard for named PCRE2 lookups after failed compilation",
+      "sha256": "c87c767daf675f62b7369af5b7c59aa09407b5421111db88abe18141df449ef4"
+    },
+    {
+      "file": "patches/patch-pcre2-utf-error-offset",
+      "origin": "EmberBSD use of PCRE2's validated UTF error position",
+      "sha256": "0eca9047eb5d0d946980b5ba18f1313b2e4f00470ac224aae68e91059107ce53"
+    }
+  ]
+}

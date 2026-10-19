@@ -1,0 +1,25 @@
+Origin: EmberBSD (AI-assisted), Kodi 21.3 named capture API migration.
+
+The supported release has two named-capture methods absent from the upstream
+migration context. Resolve both through the checked PCRE2 8-bit API.
+
+--- a/xbmc/utils/RegExp.cpp
++++ b/xbmc/utils/RegExp.cpp
+@@ -531,7 +531,7 @@
+ bool CRegExp::GetNamedSubPattern(const char* strName, std::string& strMatch) const
+ {
+   strMatch.clear();
+-  int iSub = pcre_get_stringnumber(m_re, strName);
++  int iSub = pcre2_substring_number_from_name(m_re, reinterpret_cast<PCRE2_SPTR>(strName));
+   if (!IsValidSubNumber(iSub))
+     return false;
+   strMatch = GetMatch(iSub);
+@@ -540,7 +540,7 @@
+ 
+ int CRegExp::GetNamedSubPatternNumber(const char* strName) const
+ {
+-  return pcre_get_stringnumber(m_re, strName);
++  return pcre2_substring_number_from_name(m_re, reinterpret_cast<PCRE2_SPTR>(strName));
+ }
+ 
+ void CRegExp::DumpOvector(int iLog /* = LOGDEBUG */)

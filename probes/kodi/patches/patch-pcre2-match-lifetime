@@ -1,0 +1,77 @@
+From: Markus Härer <markus.haerer@gmx.net>
+Origin: https://github.com/xbmc/xbmc/commit/6efd635acb9e8ce9252459cc30f8b994c3c09e9f
+Adaptation: EmberBSD (AI-assisted), unchanged upstream memory repair.
+
+Keep match data alive while the capture offsets refer to it.
+
+diff --git a/xbmc/utils/RegExp.cpp b/xbmc/utils/RegExp.cpp
+index cb620208dcba8..c4ada8422af78 100644
+--- a/xbmc/utils/RegExp.cpp
++++ b/xbmc/utils/RegExp.cpp
+@@ -46,6 +46,7 @@ void CRegExp::InitValues(bool caseless /*= false*/, CRegExp::utf8Mode utf8 /*= a
+   m_jitCompiled = false;
+   m_bMatched    = false;
+   m_iMatchCount = 0;
++  m_matchData = nullptr;
+   m_iOvector = nullptr;
+   m_jitStack = NULL;
+ }
+@@ -204,6 +205,7 @@ CRegExp::CRegExp(const CRegExp& re)
+ {
+   m_re = NULL;
+   m_ctxt = nullptr;
++  m_matchData = nullptr;
+   m_iOvector = nullptr;
+   m_jitStack = NULL;
+   m_utf8Mode = re.m_utf8Mode;
+@@ -303,7 +305,6 @@ int CRegExp::RegFind(const char *str, unsigned int startoffset /*= 0*/, int maxN
+ 
+ int CRegExp::PrivateRegFind(size_t bufferLen, const char *str, unsigned int startoffset /* = 0*/, int maxNumberOfCharsToTest /*= -1*/)
+ {
+-  pcre2_match_data* md;
+   PCRE2_SIZE offset;
+ 
+   m_offset      = 0;
+@@ -344,12 +345,12 @@ int CRegExp::PrivateRegFind(size_t bufferLen, const char *str, unsigned int star
+     bufferLen = std::min<size_t>(bufferLen, startoffset + maxNumberOfCharsToTest);
+ 
+   m_subject.assign(str + startoffset, bufferLen - startoffset);
+-  md = pcre2_match_data_create(OVECCOUNT, nullptr);
++  if (m_matchData == nullptr)
++    m_matchData = pcre2_match_data_create(OVECCOUNT, nullptr);
+   int rc = pcre2_match(m_re, reinterpret_cast<PCRE2_SPTR>(m_subject.c_str()), m_subject.length(), 0,
+-                       0, md, m_ctxt);
+-  m_iOvector = pcre2_get_ovector_pointer(md);
+-  offset = pcre2_get_startchar(md);
+-  pcre2_match_data_free(md);
++                       0, m_matchData, m_ctxt);
++  m_iOvector = pcre2_get_ovector_pointer(m_matchData);
++  offset = pcre2_get_startchar(m_matchData);
+ 
+   if (rc<1)
+   {
+@@ -549,6 +550,12 @@ void CRegExp::Cleanup()
+     pcre2_jit_stack_free(m_jitStack);
+     m_jitStack = NULL;
+   }
++
++  if (m_matchData)
++  {
++    pcre2_match_data_free(m_matchData);
++    m_matchData = nullptr;
++  }
+ }
+ 
+ inline bool CRegExp::IsValidSubNumber(int iSub) const
+diff --git a/xbmc/utils/RegExp.h b/xbmc/utils/RegExp.h
+index 90d3db541e77a..2d018265c0f0a 100644
+--- a/xbmc/utils/RegExp.h
++++ b/xbmc/utils/RegExp.h
+@@ -134,6 +134,7 @@ class CRegExp
+   pcre2_match_context* m_ctxt;
+   static const int OVECCOUNT=(m_MaxNumOfBackrefrences + 1) * 3;
+   unsigned int m_offset;
++  pcre2_match_data* m_matchData;
+   PCRE2_SIZE* m_iOvector;
+   utf8Mode    m_utf8Mode;
+   int         m_iMatchCount;

@@ -1,0 +1,37 @@
+Origin: EmberBSD (AI-assisted), Kodi 21.3 external PCRE2 provider.
+Require the current common PCRE2 package through pkg-config.
+
+--- /dev/null
++++ b/cmake/modules/FindPCRE2.cmake
+@@ -0,0 +1,31 @@
++#.rst:
++# FindPCRE2
++# --------
++# Finds the current shared PCRE2 8-bit library through pkg-config.
++#
++# This defines ${APP_NAME_LC}::PCRE2 and the variables consumed by
++# Kodi's core_require_dep() helper.
++
++if(NOT TARGET ${APP_NAME_LC}::${CMAKE_FIND_PACKAGE_NAME})
++  find_package(PkgConfig QUIET)
++  if(PkgConfig_FOUND)
++    pkg_check_modules(PCRE2 QUIET IMPORTED_TARGET GLOBAL "libpcre2-8>=10.49")
++  endif()
++
++  include(FindPackageHandleStandardArgs)
++  find_package_handle_standard_args(PCRE2
++    REQUIRED_VARS PCRE2_LINK_LIBRARIES PCRE2_INCLUDE_DIRS
++    VERSION_VAR PCRE2_VERSION)
++
++  if(PCRE2_FOUND)
++    set(PCRE2_LIBRARIES "${PCRE2_LINK_LIBRARIES}")
++    set(PCRE2_DEFINITIONS "${PCRE2_CFLAGS_OTHER}")
++    if(NOT TARGET ${APP_NAME_LC}::${CMAKE_FIND_PACKAGE_NAME})
++      add_library(${APP_NAME_LC}::${CMAKE_FIND_PACKAGE_NAME} INTERFACE IMPORTED GLOBAL)
++      set_target_properties(${APP_NAME_LC}::${CMAKE_FIND_PACKAGE_NAME} PROPERTIES
++        INTERFACE_INCLUDE_DIRECTORIES "${PCRE2_INCLUDE_DIRS}"
++        INTERFACE_COMPILE_OPTIONS "${PCRE2_CFLAGS_OTHER}"
++        INTERFACE_LINK_LIBRARIES "PkgConfig::PCRE2")
++    endif()
++  endif()
++endif()

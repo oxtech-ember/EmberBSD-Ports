@@ -1,0 +1,95 @@
+Origin: EmberBSD (AI-assisted), Kodi 21.3 consumer ownership and input repair.
+
+Copy PCRE2 match storage with the expression. Do not retain source capture
+pointers or its JIT stack callback. Preserve self-assignment and reject a
+null subject before strlen. ASan controls reproduce both original failures.
+
+--- a/xbmc/utils/RegExp.cpp
++++ b/xbmc/utils/RegExp.cpp
+@@ -215,29 +215,45 @@
+ 
+ CRegExp& CRegExp::operator=(const CRegExp& re)
+ {
+-  size_t size;
++  if (this == &re)
++    return *this;
++
+   Cleanup();
+-  m_jitCompiled = false;
++  InitValues(false, re.m_utf8Mode);
++  m_iOptions = re.m_iOptions;
+   m_pattern = re.m_pattern;
+-  if (re.m_re)
+-  {
+-    if (pcre2_pattern_info(re.m_re, PCRE2_INFO_SIZE, &size) >= 0)
++  if (!re.m_re)
++    return *this;
++
++  m_re = pcre2_code_copy(re.m_re);
++  if (m_re && re.m_ctxt)
++  {
++    m_ctxt = pcre2_match_context_copy(re.m_ctxt);
++    if (m_ctxt)
++      pcre2_jit_stack_assign(m_ctxt, nullptr, nullptr);
++  }
++  if (m_re && re.m_matchData)
++  {
++    const uint32_t count = pcre2_get_ovector_count(re.m_matchData);
++    m_matchData = pcre2_match_data_create(count, nullptr);
++    if (m_matchData)
+     {
+-      if ((m_re = pcre2_code_copy(re.m_re)))
+-      {
+-        if (re.m_ctxt)
+-          m_ctxt = pcre2_match_context_copy(re.m_ctxt);
+-        m_iOvector = re.m_iOvector;
+-        m_offset = re.m_offset;
+-        m_iMatchCount = re.m_iMatchCount;
+-        m_bMatched = re.m_bMatched;
+-        m_subject = re.m_subject;
+-        m_iOptions = re.m_iOptions;
+-      }
+-      else
+-        CLog::Log(LOGFATAL, "{}: Failed to allocate memory", __FUNCTION__);
+-    }
+-  }
++      m_iOvector = pcre2_get_ovector_pointer(m_matchData);
++      std::copy_n(re.m_iOvector, 2 * count, m_iOvector);
++    }
++  }
++  if (!m_re || (re.m_ctxt && !m_ctxt) || (re.m_matchData && !m_matchData))
++  {
++    Cleanup();
++    m_iOvector = nullptr;
++    m_pattern.clear();
++    CLog::Log(LOGFATAL, "{}: Failed to allocate memory", __FUNCTION__);
++    return *this;
++  }
++  m_offset = re.m_offset;
++  m_iMatchCount = re.m_iMatchCount;
++  m_bMatched = re.m_bMatched;
++  m_subject = re.m_subject;
+   return *this;
+ }
+ 
+@@ -300,7 +316,7 @@
+ 
+ int CRegExp::RegFind(const char *str, unsigned int startoffset /*= 0*/, int maxNumberOfCharsToTest /*= -1*/)
+ {
+-  return PrivateRegFind(strlen(str), str, startoffset, maxNumberOfCharsToTest);
++  return PrivateRegFind(str ? strlen(str) : 0, str, startoffset, maxNumberOfCharsToTest);
+ }
+ 
+ int CRegExp::PrivateRegFind(size_t bufferLen, const char *str, unsigned int startoffset /* = 0*/, int maxNumberOfCharsToTest /*= -1*/)
+--- a/xbmc/utils/RegExp.cpp
++++ b/xbmc/utils/RegExp.cpp
+@@ -606,7 +606,8 @@
+ 
+ inline bool CRegExp::IsValidSubNumber(int iSub) const
+ {
+-  return iSub >= 0 && iSub <= m_iMatchCount && iSub <= m_MaxNumOfBackrefrences;
++  return m_bMatched && m_iOvector && iSub >= 0 && iSub < m_iMatchCount &&
++         iSub <= m_MaxNumOfBackrefrences;
+ }
+ 
+ 

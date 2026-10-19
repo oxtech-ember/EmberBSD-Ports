@@ -1,0 +1,38 @@
+Origin: EmberBSD (AI-assisted), use PCRE2's validated UTF error offset.
+
+PCRE2 10.49 sets match-data startchar for invalid UTF errors but does not
+initialize the capture vector. Use the documented error offset for diagnostics.
+
+--- a/xbmc/utils/RegExp.cpp
++++ b/xbmc/utils/RegExp.cpp
+@@ -442,15 +442,24 @@
+       {
+         char errbuf[120];
+ 
+         pcre2_get_error_message(rc, reinterpret_cast<PCRE2_UCHAR*>(errbuf), sizeof(errbuf));
+-        const size_t startPos = (m_iOvector[0] > fragmentLen) ? CUtf8Utils::RFindValidUtf8Char(m_subject, m_iOvector[0] - fragmentLen) : 0;
+-        if ((int)m_iOvector[0] >= 0 && startPos != std::string::npos)
+-          CLog::Log(LOGERROR,
+-                    "PCRE: Bad UTF-8 character, error code: {}, position: {}. Text before bad "
+-                    "char: \"{}\"",
+-                    errbuf, offset, m_subject.substr(startPos, m_iOvector[0] - startPos + 1));
++        const size_t errorPos = static_cast<size_t>(offset);
++        if (errorPos < m_subject.length())
++        {
++          const size_t startPos = (errorPos > fragmentLen)
++                                      ? CUtf8Utils::RFindValidUtf8Char(m_subject, errorPos - fragmentLen)
++                                      : 0;
++          if (startPos != std::string::npos)
++            CLog::Log(LOGERROR,
++                      "PCRE: Bad UTF-8 character, error code: {}, position: {}. Text before bad "
++                      "char: \"{}\"",
++                      errbuf, offset, m_subject.substr(startPos, errorPos - startPos + 1));
++          else
++            CLog::Log(LOGERROR, "PCRE: Bad UTF-8 character, error code: {}, position: {}", errbuf,
++                      offset);
++        }
+         else
+           CLog::Log(LOGERROR, "PCRE: Bad UTF-8 character, error code: {}, position: {}", errbuf,
+                     offset);
+         return -1;
+       }

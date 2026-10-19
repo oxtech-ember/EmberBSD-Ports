@@ -1,0 +1,21 @@
+Origin: EmberBSD (AI-assisted), protect PCRE2 named lookups after compile failure.
+
+PCRE2 10.49 dereferences its compiled-code argument during a named capture
+lookup. Reject lookups when Kodi has no compiled expression.
+
+--- a/xbmc/utils/RegExp.cpp
++++ b/xbmc/utils/RegExp.cpp
+@@ -574,6 +574,6 @@ bool CRegExp::GetNamedSubPattern(const char* strName, std::string& strMatch) const
+ {
+   strMatch.clear();
+-  int iSub = pcre2_substring_number_from_name(m_re, reinterpret_cast<PCRE2_SPTR>(strName));
++  int iSub = GetNamedSubPatternNumber(strName);
+   if (!IsValidSubNumber(iSub))
+     return false;
+   strMatch = GetMatch(iSub);
+@@ -584,3 +584,5 @@ int CRegExp::GetNamedSubPatternNumber(const char* strName) const
+ {
++  if (!m_re || !strName)
++    return PCRE2_ERROR_NOSUBSTRING;
+   return pcre2_substring_number_from_name(m_re, reinterpret_cast<PCRE2_SPTR>(strName));
+ }
