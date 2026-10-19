@@ -354,6 +354,11 @@ Run `tests/cross-pkgsrc.sh` against a staged pkgconf package. It exercises real
 pkgsrc parsing, native dependency recursion, ELF metadata and failure cases.
 `tests/cross-tools.py` checks tool composition, refusal of existing output,
 missing host tools and the constrained target Info utility selection.
+`python3 -B tests/prepare-tools-target.py --sdk-source SDK NEW_WORK` runs the real
+helper with fake amd64 tools. It needs no compiler or pkgsrc export. It checks the
+imports, every composed link, a wrong compiler and existing output.
+In this helper, the GCC16 `host.py` resolves `sdk_source` to the LLVM module.
+That module therefore defines the same `PRODUCER_QUARANTINE`; the test compares both values.
 `python3 -B tests/cross-targets.py BMAKE` checks both target tool compositions,
 real make variable expansion, runtime-provider selection and mixed-target rejection.
 `tests/cross-libc.rb BMAKE NEW_WORK` exercises the actual pre-extract guard:

@@ -6,6 +6,11 @@ import os
 from pathlib import Path
 import sys
 
+# prepare-tools.py imports the GCC16 host.py with only this module on the
+# path, and host.py imports this name.  Keep the value equal to the GCC16
+# runtime sdk_source.py; tests/prepare-tools-target.py compares them.
+PRODUCER_QUARANTINE = '.producer-ownership-unproven.json'
+
 
 def load_sdk(arguments=None):
     args = sys.argv[1:] if arguments is None else list(arguments)
