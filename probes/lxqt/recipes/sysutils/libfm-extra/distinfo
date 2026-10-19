@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.4 2021/10/26 11:19:46 nia Exp $
+
+BLAKE2s (libfm-1.4.1.tar.xz) = e1366a0f589ca1b372ca8b4818bc53c69946af01436662e89e045e0163d87294
+SHA512 (libfm-1.4.1.tar.xz) = 552da1ec08a5ec82cbde2b2f1e669ccfead339a92ba21b308040a8c87623b0d1639fe703016176c783ff9c143e55febf72c24c75ed2fc6a4c3f38211ae97292f
+Size (libfm-1.4.1.tar.xz) = 958328 bytes

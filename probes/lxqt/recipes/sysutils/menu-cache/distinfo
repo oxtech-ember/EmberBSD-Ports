@@ -1,0 +1,7 @@
+$NetBSD: distinfo,v 1.8 2021/10/26 11:19:51 nia Exp $
+
+BLAKE2s (menu-cache-1.1.1.tar.xz) = 1f24716325fd322637059c06355d8cd334e82e6643d895343d051e3de30d748e
+SHA512 (menu-cache-1.1.1.tar.xz) = a337c7da3f236120799ea0f55e31ef03d5b6ff44f1f5bbc4da7584fb94529ac4cb177009d12d44d5b855638b07715eb24a724195515182191ac7e42edc9f23c6
+Size (menu-cache-1.1.1.tar.xz) = 292576 bytes
+SHA1 (patch-libmenu-cache_menu-cache.c) = 8263d7effc8f345c189ea8a62b8cf37a9f0727ce
+SHA1 (patch-menu-cache-daemon_menu-cached.c) = b7a9f80313c2265906bcf98ff369c595b141a53f

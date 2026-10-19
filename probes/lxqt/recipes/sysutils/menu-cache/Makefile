@@ -1,0 +1,30 @@
+# $NetBSD: Makefile,v 1.12 2026/09/02 19:04:33 wiz Exp $
+#
+
+DISTNAME=	menu-cache-1.1.1
+CATEGORIES=	sysutils
+MASTER_SITES=	https://raw.githubusercontent.com/lxde/releases/5226c729f1f5cf5f7e78b3574a36b4818bcafb8d/releases/
+EXTRACT_SUFX=	.tar.xz
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://lxde.sourceforge.net/
+COMMENT=	Cache for freedesktop.org menu spec
+LICENSE=	gnu-gpl-v2
+
+GNU_CONFIGURE=		yes
+INSTALLATION_DIRS=	share/doc/menu-cache
+USE_LIBTOOL=		yes
+USE_TOOLS+=		pkg-config
+
+PKGCONFIG_OVERRIDE+=	libmenu-cache/libmenu-cache.pc.in
+
+LDFLAGS.SunOS+=	-lsocket -lnsl
+
+post-install:
+	${INSTALL_DATA} ${WRKSRC}/README \
+		${DESTDIR}${PREFIX}/share/doc/menu-cache/
+
+BUILDLINK_API_DEPENDS.glib2+=	glib2>=2.16.0
+.include "../../devel/glib2/buildlink3.mk"
+.include "../../sysutils/libfm-extra/buildlink3.mk"
+.include "../../mk/bsd.pkg.mk"

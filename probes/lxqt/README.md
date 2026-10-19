@@ -52,6 +52,13 @@ notificationd, runner, themes, the Qt platform plugin and the policy agent.
 Their source recipes retain the pinned pkgsrc manifests and patches.
 Package and installed-session acceptance for these consumers remains pending.
 
+The PCManFM dependency recipes select upstream libfm 1.4.1 and menu-cache
+1.1.1. The source archives match the hashes in the official LXDE release
+inventory. Their download URLs pin that inventory's Git commit. Only the
+upstream `--with-extra-only` libfm component is selected; this library uses
+GLib and retains its LGPL 2.1 license. It does not build the GTK file manager.
+Their package acceptance remains pending.
+
 libqtxdg also selects the target icon-engine directory explicitly. A native
 `qtpaths --query QT_INSTALL_PLUGINS` returns the host path during cross builds.
 The ordinary target package must retain `/usr/pkg/qt6/plugins/iconengines`.

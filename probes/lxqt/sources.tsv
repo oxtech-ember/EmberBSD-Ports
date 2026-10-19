@@ -6,3 +6,5 @@ luit-20260907.tgz	97bd13da3e3aa59785d64504d37389612a327953bb7581508c5fea5182f9f5
 liblxqt-2.4.0.tar.xz	6627215644eb370723536274555743db52baed919db6ffc32ebc2bdf3cf8ee4a	https://github.com/lxqt/liblxqt/releases/download/2.4.0/liblxqt-2.4.0.tar.xz
 lxqt-session-2.4.0.tar.xz	d77f378ece0bfc7195f1964e88f55919729c3b0a55a858d7155ffaacc57bba44	https://github.com/lxqt/lxqt-session/releases/download/2.4.0/lxqt-session-2.4.0.tar.xz
 qtxdg-tools-4.4.0.tar.xz	f21ba4308eac0effd417d910cc4916df7b6202aaeee777b51bb120f7abc6c5ac	https://github.com/lxqt/qtxdg-tools/releases/download/4.4.0/qtxdg-tools-4.4.0.tar.xz
+libfm-1.4.1.tar.xz	5caa820443d558974648583e37b4d956ae67a6e3df23493f99c2d0e26a11c665	https://raw.githubusercontent.com/lxde/releases/5226c729f1f5cf5f7e78b3574a36b4818bcafb8d/releases/libfm-1.4.1.tar.xz
+menu-cache-1.1.1.tar.xz	8232399b45b0b99bd480ec6df8fb9a5b8e034cc31c90b375916b372631f4531a	https://raw.githubusercontent.com/lxde/releases/5226c729f1f5cf5f7e78b3574a36b4818bcafb8d/releases/menu-cache-1.1.1.tar.xz
