@@ -12,9 +12,12 @@ import uuid
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--host", required=True)
+parser.add_argument("--sway", default="/usr/pkg/bin/sway",
+                    help="Absolute target executable, including an uninstalled staged build")
 parser.add_argument("--results", type=Path, required=True)
 parser.add_argument("--renderer", choices=["gles2", "pixman"], required=True)
 args = parser.parse_args()
+assert args.sway.startswith("/"), "Use an absolute target executable path"
 assert not args.results.exists(), "Use a new result directory"
 args.results.mkdir(parents=True)
 remote = "/tmp/emberbsd-sway-headless-" + uuid.uuid4().hex
@@ -66,7 +69,7 @@ try:
         "XDG_RUNTIME_DIR=" + runtime, "XDG_CONFIG_HOME=" + remote,
         "WLR_BACKENDS=headless", "WLR_HEADLESS_OUTPUTS=1", "WLR_LIBINPUT_NO_DEVICES=1",
         "WLR_RENDERER=" + args.renderer, "LIBGL_ALWAYS_SOFTWARE=1",
-        "WLR_RENDERER_ALLOW_SOFTWARE=1", "/usr/pkg/bin/sway", "--debug", "--config", remote + "/config"])
+        "WLR_RENDERER_ALLOW_SOFTWARE=1", args.sway, "--debug", "--config", remote + "/config"])
     # Keep a parent that waits for Sway and records its actual exit status.
     supervise = ("cd " + shlex.quote(remote) + "; " + command + " </dev/null >" +
         shlex.quote(remote + "/sway.log") + " 2>&1 & child=$!; " +
@@ -153,7 +156,8 @@ finally:
     except Exception as error:
         cleanup_error = {"type": type(error).__name__, "message": str(error)}
     (args.results / "receipt.json").write_text(json.dumps({"target": identity[0],
-        "renderer": args.renderer, "uid": uid, "pid": pid, "checks": results,
+        "renderer": args.renderer, "sway_executable": args.sway,
+        "uid": uid, "pid": pid, "checks": results,
         "failure": failure, "cleanup_error": cleanup_error,
         "remote_work_removed": removed}, indent=2) + "\n")
     if cleanup_error is not None and failure is None:
