@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.4 2026/09/02 19:04:51 wiz Exp $
 
 DISTNAME=	sway-1.12
-PKGREVISION=	7
+PKGREVISION=	8
 CATEGORIES=	wayland
 MASTER_SITES=	${MASTER_SITE_GITHUB:=swaywm/}
 
@@ -11,6 +11,9 @@ COMMENT=	Tilling, i3-compatible Wayland compositor
 LICENSE=	mit
 
 USE_TOOLS+=	pkg-config
+
+# startsway creates a session bus with dbus-run-session.
+DEPENDS+=	dbus>=1.16.2nb6:../../sysutils/dbus
 
 # Origin: pkgsrc, adapted by EmberBSD (AI-assisted).
 # Require each selected desktop feature and use native source generators.

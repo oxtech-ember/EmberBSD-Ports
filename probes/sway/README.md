@@ -70,7 +70,9 @@ session helper, configuration and manual pages. It explicitly requires
 GdkPixbuf, the Basu tray backend, Pixman, libdrm and native scdoc. These are
 direct Meson dependencies. The package has no GTK3 dependency. Cross builds use
 the receipt-verified native Wayland scanner. Missing tools or libraries fail
-configuration. Subproject fallback downloads are disabled.
+configuration. Subproject fallback downloads are disabled. The `startsway`
+session helper runs `dbus-run-session`; the package declares the current D-Bus
+runtime provider separately from Basu's tray backend.
 
 The common exporter does not include these three new recipes yet. After
 the ordinary common graphics export, copy the following directories from
