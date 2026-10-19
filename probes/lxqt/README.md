@@ -179,6 +179,15 @@ python3 probes/lxqt/check-wayland-target-tool.py \
 
 This check does not execute `xdg-user-dirs-update` or start a Wayland session.
 
+The `lxqt-wayland-session-0.4.1nb4` package passes the GCC16 cross build and
+pkgsrc package checks. Its archive installs the qdbus helper with a `/bin/sh`
+shebang and declares `qt6-qttools` and `xdg-user-dirs` as runtime dependencies.
+The configured CMake cache selects `/usr/pkg/bin/xdg-user-dirs-update` from the
+target sysroot. The archive SHA256 is
+`ffecd1259055f8110d2c33fc33d8e06d0c12e6e66a61cea068404d460872a8e3`.
+Installed-session execution and full LXQt runtime closure remain separate
+acceptance gates.
+
 The liblxqt backlight helper checks the driver before reading its files.
 It accepts one integer from `scanf` and `fscanf` and rejects invalid input.
 It releases a previous driver candidate before replacing that candidate.
