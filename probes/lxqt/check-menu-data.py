@@ -48,9 +48,9 @@ def main():
         checked.append(name)
     for path in sorted((root / "desktop-directories").glob("*.directory.in")):
         stem = path.name.removesuffix(".directory.in")
-        translations = sorted((root / "translations").glob(stem + "[_.]*directory.yaml"))
-        command = [str(args.perl), str(translator), str(path), stem]
-        command += [str(p) for p in translations]
+        # The upstream translator expands its third argument with Perl glob().
+        translations = root / "translations" / (stem + "[_.]*directory.yaml")
+        command = [str(args.perl), str(translator), str(path), stem, str(translations)]
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if result.returncode or result.stderr:
             raise RuntimeError("The upstream translation tool failed: " + repr(result))

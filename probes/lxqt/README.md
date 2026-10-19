@@ -59,6 +59,16 @@ upstream `--with-extra-only` libfm component is selected; this library uses
 GLib and retains its LGPL 2.1 license. It does not build the GTK file manager.
 Their package acceptance remains pending.
 
+The menu-data 2.4.0nb3 package passes the ordinary GCC16 cross profile checks.
+It has no compiled source or Qt library dependency. Its CMake project selects
+only the desktop YAML translator from the matching native LXQt modules.
+`check-menu-data.py` compares all five source menu files and all 25 translated
+directory files with the package. All 30 comparisons and 30 changed-byte
+refusals pass. The package SHA256 is
+`5091730bcb57800079bd7244aa3914a39586a0665be2e7c90e1b8c52ac282d99`.
+This checks packaged data. Installed menu selection and the full session remain
+separate acceptance steps.
+
 libqtxdg also selects the target icon-engine directory explicitly. A native
 `qtpaths --query QT_INSTALL_PLUGINS` returns the host path during cross builds.
 The ordinary target package must retain `/usr/pkg/qt6/plugins/iconengines`.
