@@ -97,6 +97,9 @@ libfm-qt exports its public GLib, menu-cache and XCB requirements through a
 PkgConfig imported target. Its installed CMake config resolves these interfaces
 in the consumer build. It retains public headers and avoids exporting build
 host or fixed dependency paths. PCManFM-Qt is the target consumer regression.
+The buildlink API requires revision 5 for this CMake interface and selects
+`pkg-config` as a native tool. The ABI floor remains revision 2 because the
+SONAME and all 1,634 public ELF symbols are unchanged.
 
 GLib, GObject and GIO are private implementation dependencies of the shared
 libqtxdg library. Its public headers contain Qt and libqtxdg types.
