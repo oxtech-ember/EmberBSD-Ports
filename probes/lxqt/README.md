@@ -159,9 +159,10 @@ The Wayland qdbus helper uses `/bin/sh`, calls Qt's installed qdbus path and
 declares `qt6-qttools` as a runtime dependency. `check-wayland-qdbus.py`
 applies the actual package patch to the pinned archive and exercises the
 helper with a fake qdbus command under `dash`, which rejects Bash-only
-parameter substitution. It checks the `run` branch for `qterminal`,
-`pcmanfm-qt` and `lximage-qt`, plus `openmenu`. The data paths include spaces
-to check directory splitting and quoting:
+parameter substitution. It checks the default labwc shortcuts Win+Enter,
+Win+F and Print still invoke `run qterminal`, `run featherpad` and
+`run screengrab`, then exercises those commands plus `openmenu`. The data paths
+include spaces to check directory splitting and quoting:
 
 ```sh
 python3 probes/lxqt/check-wayland-qdbus.py \
@@ -182,14 +183,16 @@ python3 probes/lxqt/check-wayland-target-tool.py \
 
 This check does not execute `xdg-user-dirs-update` or start a Wayland session.
 
-The `lxqt-wayland-session-0.4.1nb4` package passes the GCC16 cross build and
+The `lxqt-wayland-session-0.4.1nb5` package passes the GCC16 cross build and
 pkgsrc package checks. Its archive installs the qdbus helper with a `/bin/sh`
 shebang and declares `qt6-qttools` and `xdg-user-dirs` as runtime dependencies.
 The configured CMake cache selects `/usr/pkg/bin/xdg-user-dirs-update` from the
 target sysroot. The archive SHA256 is
-`ffecd1259055f8110d2c33fc33d8e06d0c12e6e66a61cea068404d460872a8e3`.
-Installed-session execution and full LXQt runtime closure remain separate
-acceptance gates.
+`c3fb976aa621859b909f8038a5b8af6aeb1ef08d91ef5e0d23bfe6bf9dcecfc0`.
+The installed helper passed `run qterminal`, `run featherpad`, `run screengrab`
+and `openmenu` under host `dash` and `/bin/sh`; package install, removal and
+reinstallation passed in an isolated target root. Actual EmberBSD runtime
+execution and a full LXQt session remain separate acceptance gates.
 
 The liblxqt backlight helper checks the driver before reading its files.
 It accepts one integer from `scanf` and `fscanf` and rejects invalid input.

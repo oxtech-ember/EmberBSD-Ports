@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import tarfile
@@ -13,6 +14,12 @@ from pathlib import Path
 
 
 SOURCE_MEMBER = "lxqt-wayland-session-0.4.1/lxqt-qdbus.in"
+SHORTCUTS_MEMBER = "lxqt-wayland-session-0.4.1/configurations/labwc/rc.xml"
+DEFAULT_SHORTCUTS = {
+    "W-Return": "qterminal",
+    "W-f": "featherpad",
+    "Print": "screengrab",
+}
 
 
 def main() -> int:
@@ -34,6 +41,22 @@ def main() -> int:
         if source is None:
             raise SystemExit(f"missing {SOURCE_MEMBER} in {args.distfile}")
         upstream = source.read()
+        shortcuts = archive.extractfile(SHORTCUTS_MEMBER)
+        if shortcuts is None:
+            raise SystemExit(f"missing {SHORTCUTS_MEMBER} in {args.distfile}")
+        shortcut_config = shortcuts.read().decode()
+
+    for key, application in DEFAULT_SHORTCUTS.items():
+        pattern = (
+            rf'<keybind\s+key="{re.escape(key)}">\s*'
+            rf'<action name="Execute" command="lxqt-qdbus run '
+            rf'{re.escape(application)}"\s*/>\s*</keybind>'
+        )
+        if re.search(pattern, shortcut_config) is None:
+            raise SystemExit(
+                f"default {key} shortcut no longer invokes "
+                f"lxqt-qdbus run {application}"
+            )
 
     with tempfile.TemporaryDirectory(prefix="lxqt-wayland-qdbus-") as tmp:
         root = Path(tmp)
@@ -84,7 +107,7 @@ def main() -> int:
         app_dir.mkdir(parents=True)
         empty_data_dir.mkdir()
         env["XDG_DATA_DIRS"] = f"{empty_data_dir}:{app_data_dir}"
-        applications = ("qterminal", "pcmanfm-qt", "lximage-qt")
+        applications = tuple(DEFAULT_SHORTCUTS.values())
         for application in applications:
             (app_dir / f"{application}.desktop").write_text(
                 f"[Desktop Entry]\nExec={application}\n"
