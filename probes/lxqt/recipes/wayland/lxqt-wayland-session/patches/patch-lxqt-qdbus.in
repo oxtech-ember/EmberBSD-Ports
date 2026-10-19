@@ -51,7 +51,31 @@ Use the installed Qt 6 qdbus path and keep the helper POSIX shell compatible.
  
  MODE=$1
  # argument: <application> | module | [1-10] | up , down, mute
-@@ -61,7 +73,7 @@
+@@ -56,7 +68,19 @@
+ if [ "$MODE" = "run" ]; then
+-    for dir in ${XDG_DATA_DIRS//:/ }; do
+-        DESKTOP_FILE=$(grep -l "^Exec=[a-zA-Z0-9_/]*\b$ARGUMENT\b" $dir/applications/*.desktop 2>/dev/null | head -n1)
+-        [ -n "$DESKTOP_FILE" ] && break
+-    done
++    data_dirs=${XDG_DATA_DIRS:-/usr/local/share:/usr/share}
++    while :; do
++        case "$data_dirs" in
++            *:*)
++                dir=${data_dirs%%:*}
++                data_dirs=${data_dirs#*:}
++                ;;
++            *)
++                dir=$data_dirs
++                data_dirs=
++                ;;
++        esac
++        DESKTOP_FILE=$(grep -l "^Exec=[a-zA-Z0-9_/]*\b$ARGUMENT\b" "$dir"/applications/*.desktop 2>/dev/null | head -n1)
++        [ -n "$DESKTOP_FILE" ] && break
++        [ -n "$data_dirs" ] || break
++    done
+     # Checks
+     if [ -n "$DESKTOP_FILE" ]; then
+@@ -61,7 +85,7 @@
      # Checks
      if [ -n "$DESKTOP_FILE" ]; then
          DESKTOP_FILE=$(basename "$DESKTOP_FILE")
@@ -60,7 +84,7 @@ Use the installed Qt 6 qdbus path and keep the helper POSIX shell compatible.
      else
          notify-send -i configure-shortcuts -a "LXQt Wayland Shortcut" "No matching desktop entry found for '$ARGUMENT'"
          exit 1
-@@ -69,66 +81,66 @@
+@@ -69,66 +93,66 @@
  
  elif  [ "$MODE" = "openmenu" ]; then # open main|fancy menu
      # check for dbus object

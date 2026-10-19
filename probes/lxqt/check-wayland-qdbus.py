@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import subprocess
 import tarfile
 import tempfile
@@ -21,6 +22,9 @@ def main() -> int:
     args = parser.parse_args()
     args.distfile = args.distfile.resolve()
     args.recipe = args.recipe.resolve()
+    dash = shutil.which("dash")
+    if dash is None:
+        raise SystemExit("dash is required to test the helper without Bash extensions")
 
     patch_dir = args.recipe / "patches"
     patch_file = patch_dir / "patch-lxqt-qdbus.in"
@@ -49,7 +53,9 @@ def main() -> int:
             raise SystemExit("patched helper does not use the target /bin/sh")
         if any(token in patched for token in ("[[", "]]", "=~", "valid=(")):
             raise SystemExit("patched helper still contains Bash-only syntax")
-        subprocess.run(["/bin/sh", "-n", str(source_path)], check=True)
+        if "${XDG_DATA_DIRS//:" in patched:
+            raise SystemExit("run still uses Bash-only parameter substitution")
+        subprocess.run([dash, "-n", str(source_path)], check=True)
 
         prefix = root / "target-prefix"
         qdbus = prefix / "qt6" / "bin" / "qdbus"
@@ -72,8 +78,34 @@ def main() -> int:
         env = os.environ.copy()
         env["PATH"] = "/usr/bin:/bin"
         env["QDBUS_LOG"] = str(log)
+        empty_data_dir = root / "empty data"
+        app_data_dir = root / "desktop entries"
+        app_dir = app_data_dir / "applications"
+        app_dir.mkdir(parents=True)
+        empty_data_dir.mkdir()
+        env["XDG_DATA_DIRS"] = f"{empty_data_dir}:{app_data_dir}"
+        applications = ("qterminal", "pcmanfm-qt", "lximage-qt")
+        for application in applications:
+            (app_dir / f"{application}.desktop").write_text(
+                f"[Desktop Entry]\nExec={application}\n"
+            )
+
+        for application in applications:
+            result = subprocess.run(
+                [dash, str(installed), "run", application],
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            if result.returncode != 0:
+                raise SystemExit(
+                    f"run {application!r} failed under dash:\n"
+                    f"stdout: {result.stdout}\nstderr: {result.stderr}"
+                )
+
         result = subprocess.run(
-            [str(installed), "openmenu"],
+            [dash, str(installed), "openmenu"],
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -81,11 +113,14 @@ def main() -> int:
         )
         if result.returncode != 0:
             raise SystemExit(
-                "openmenu failed under /bin/sh:\n"
+                "openmenu failed under dash:\n"
                 f"stdout: {result.stdout}\nstderr: {result.stderr}"
             )
         calls = log.read_text().splitlines()
         expected = [
+            f"org.lxqt.session /LXQtSession execDesktopFile {application}.desktop"
+            for application in applications
+        ] + [
             "org.kde.StatusNotifierWatcher",
             "org.kde.StatusNotifierWatcher fancymenu/show_hide "
             "org.lxqt.global_key_shortcuts.client.activated",
@@ -98,7 +133,7 @@ def main() -> int:
         raise SystemExit("POSIX target shell must not be replaced with a host interpreter")
     if "DEPENDS+=\tqt6-qttools>=6.12.0:../../devel/qt6-qttools" not in recipe:
         raise SystemExit("the qdbus runtime provider is not a package dependency")
-    print("LXQt qdbus target path, POSIX shell, and runtime provider checks passed")
+    print("LXQt qdbus run shortcuts, menu path, POSIX shell, and runtime provider checks passed")
     return 0
 
 

@@ -158,7 +158,10 @@ and file-manager scopes, inherited findings and parser limitations.
 The Wayland qdbus helper uses `/bin/sh`, calls Qt's installed qdbus path and
 declares `qt6-qttools` as a runtime dependency. `check-wayland-qdbus.py`
 applies the actual package patch to the pinned archive and exercises the
-helper with a fake qdbus command under `/bin/sh`:
+helper with a fake qdbus command under `dash`, which rejects Bash-only
+parameter substitution. It checks the `run` branch for `qterminal`,
+`pcmanfm-qt` and `lximage-qt`, plus `openmenu`. The data paths include spaces
+to check directory splitting and quoting:
 
 ```sh
 python3 probes/lxqt/check-wayland-qdbus.py \
