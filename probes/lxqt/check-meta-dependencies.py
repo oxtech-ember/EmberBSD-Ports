@@ -42,7 +42,7 @@ def main():
         dependencies = run.stdout.split()
         paths = {d.split(':', 1)[1] for d in dependencies}
         names = {Path(d).name for d in paths}
-        assert not names & {'gtk2', 'gtk3', 'xscreensaver', 'xlockmore'}
+        assert not names & {'gtk2', 'gtk3', 'xscreensaver', 'xlockmore', 'xfce4-wm', 'libxfce4ui'}
         result['selections'][label] = {'command': cmd, 'dependencies': dependencies, 'names': sorted(names)}
         if label == 'x11':
             assert X11 <= names and not names & WAYLAND
@@ -57,9 +57,15 @@ def main():
         result['wrong_session_graph_rejected'] = True
     else:
         raise AssertionError('The Wayland check accepted the X11 graph')
-    result['checks_passed'] = 3
+    cmd = [a.bmake, '-C', str(recipe), 'PKG_OPTIONS.lxqt=-wayland xfce4-wm',
+           'show-var', 'VARNAME=PKG_FAIL_REASON']
+    run = subprocess.run(cmd, env=env, capture_output=True, text=True)
+    (a.output/'xfce4-wm-refusal.log').write_text(run.stdout + run.stderr)
+    assert run.returncode == 0 and 'xfce4-wm' in run.stdout and 'not supported' in run.stdout
+    result['unsupported_xfce4_wm'] = {'command': cmd, 'package_fail_reason': run.stdout.strip()}
+    result['checks_passed'] = 4
     (a.output/'result.json').write_text(json.dumps(result, indent=2)+'\n')
-    print(json.dumps({'output': str(a.output), 'checks_passed': 3,
+    print(json.dumps({'output': str(a.output), 'checks_passed': 4,
                       'added': sorted(after-before), 'removed': sorted(before-after)}, indent=2))
 
 

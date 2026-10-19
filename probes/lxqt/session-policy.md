@@ -20,12 +20,15 @@ is `i3lock --nofork`; its X11-only autostart command is
 No meta option depends on XScreenSaver or xlockmore. Their pinned recipes
 require GTK3 and GTK2, respectively. The X11 alternative remains unqualified;
 its authentication and idle behavior have not been accepted on the target.
+The old `xfce4-wm` alternative is unsupported because its UI dependency needs
+GTK3. The normal pkgsrc option guard rejects an explicit request for it.
 
 `check-meta-dependencies.py` queries ordinary pkgsrc metadata for the default
 Wayland selection and explicit X11 selection. It checks that each has its
 required compositor or window manager, locker and idle consumer. It rejects
 the X11 graph as a Wayland result. Neither direct graph may contain GTK2,
 GTK3, XScreenSaver or xlockmore.
+The fourth check requires a package refusal for `-wayland xfce4-wm`.
 
 `check-session-defaults.py` verifies the pinned original source and applies
 the actual data patch at fuzz zero. It checks the lock route in the actual

@@ -2,7 +2,7 @@
 
 PKG_OPTIONS_VAR=		PKG_OPTIONS.lxqt
 PKG_OPTIONS_OPTIONAL_GROUPS=	wm
-PKG_OPTIONS_GROUP.wm=		openbox xfce4-wm wayland
+PKG_OPTIONS_GROUP.wm=		openbox wayland
 PKG_SUGGESTED_OPTIONS=		wayland
 
 .include "../../mk/bsd.options.mk"
@@ -10,10 +10,6 @@ PKG_SUGGESTED_OPTIONS=		wayland
 .if !empty(PKG_OPTIONS:Mopenbox)
 DEPENDS+=	openbox>=3.6.1:../../wm/openbox
 DEPENDS+=	obconf-qt>=0.16.6:../../wm/obconf-qt
-.endif
-
-.if !empty(PKG_OPTIONS:Mxfce4-wm)
-DEPENDS+=	xfce4-wm>=4.14.6:../../wm/xfce4-wm
 .endif
 
 # The selected Wayland session retains a compositor, lock action and idle
