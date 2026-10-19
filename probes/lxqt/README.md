@@ -65,6 +65,14 @@ The ordinary target package must retain `/usr/pkg/qt6/plugins/iconengines`.
 Its upstream tests are compiled with `BUILD_TESTS=ON`; execution remains separate.
 The directory tests use the same package prefix as `xdgdirs.cpp`.
 
+The platform plugin also accepts an explicit `QT_PLUGINS_DIR`. The cross recipe
+sets it to `${PREFIX}/qt6/plugins`. Native builds retain the real Qt query and
+reject a missing directory. `check-qtplugin-path.py` exercises the actual source
+path block and the retained LXQt query function. Its eight cases reproduce the
+host-path error, check the cross override and retain query failure checks.
+This CMake check does not establish the final package path. The ordinary
+`lxqt-qtplugin` package archive still requires inspection after the build.
+
 GLib, GObject and GIO are private implementation dependencies of the shared
 libqtxdg library. Its public headers contain Qt and libqtxdg types.
 The CMake export keeps these libraries out of `INTERFACE_LINK_LIBRARIES`.
