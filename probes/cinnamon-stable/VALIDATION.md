@@ -1,4 +1,53 @@
-# CJS 140.1 locale-array cleanup
+# Cinnamon stable port validation
+
+## Cinnamon Menus 6.6.0nb3
+
+The source is the upstream `6.6.0` tag (SHA512
+`65402ac018ca4dfd5d7b26808dc665916564b2d2dcac72a8b57125e903bd95c1ecf4c35efb8088fcffd5fab3f394e85d3643816fae4e055d85a3f9622148b756`,
+96,541 bytes). The package was cross-built for EmberBSD/AArch64 with GCC
+16.2.0, GLib 2.90.1, GObject Introspection 1.86.0 and Meson 1.12.1. All
+10 Meson build steps completed. Package checks passed for the headers,
+shared library, GIR, typelib, permissions, PIE, RELRO, runtime search
+paths and work-directory references. Pkgsrc reported three empty fake-home
+directories after the build. The package archive is 71,550 bytes and its
+SHA256 is
+`d737b5631c2139299e3419045dce77bb2d8819f536ede46a0b8d568eca69f87e`.
+
+The upstream GIR omitted the `GioUnix` namespace, which left the
+`launch_uris_as_manager` callback type unresolved. Its GTK-Doc closure
+annotations also described the user-data arguments instead of their
+callbacks. The patch adds `GioUnix-2.0` to the GIR includes and puts each
+closure annotation on the matching callback. A regression check accepts
+the packaged GIR and rejects the `nb1` GIR because `GioUnix` is missing.
+The patch also raises the upstream Meson minimum to 1.2.0 because the
+cross-build environment passed to `gnome.generate_gir()` uses the Meson
+`env` argument, which was not available under the previous declared
+minimum.
+
+`verifypc` exited successfully with `zlib` ignored because the target base
+system provides its `.pc` file. The sparse host pkgsrc copy does not
+contain the GCC16 package PLIST, so the checker prints lookup warnings for
+that external compiler provider. The upstream Cinnamon Menus source has no
+executable unit-test suite; no VM runtime acceptance is claimed.
+
+The local compatibility patch uses `g_string_free_and_steal()` and assigns
+the returned buffer to the menu tree. This preserves ownership and uses the
+current GLib transfer API. GCC 16.2.0 `-fanalyzer` analyzed all seven C
+translation units against the upstream archive and the patched source. The
+upstream build reported one ignored-result warning in `menu-layout.c`; the
+patched build reported no analyzer findings.
+
+Cppcheck 2.22.0 analyzed all seven C translation units with the actual
+pkgsrc compile commands, target headers and GCC16 predefined macros. The
+upstream and patched runs each reported 57 findings with no finding delta.
+One `legacyUninitvar` report in `desktop_entry_copy()` is a Cppcheck false
+positive: the unreachable branch calls GLib's `g_assert_not_reached()`,
+which expands to the declared `G_NORETURN` `g_assertion_message_expr()`.
+The analysis uses one file-and-line suppression for that report. It does
+not add a source suppression or disable a diagnostic category. The unchanged
+`uselessAssignmentPtrArg` warning is in the common GLib 2.90.1 header.
+
+## CJS 140.1 locale-array cleanup
 
 The input is the upstream `140.1` tag at
 `3f8ca7c65bd1d8c4f1e93c984f179d44d71fcb65`.

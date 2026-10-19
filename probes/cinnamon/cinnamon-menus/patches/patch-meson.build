@@ -1,0 +1,10 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Declare Meson 1.2.0, which introduced the
+environment argument used by the GObject Introspection generation patch.
+
+--- meson.build.orig
++++ meson.build
+@@ -1,1 +1,1 @@
+-project('cinnamon-menus', 'c', version : '6.6.0', meson_version : '>=0.56.0')
++project('cinnamon-menus', 'c', version : '6.6.0', meson_version : '>=1.2.0')

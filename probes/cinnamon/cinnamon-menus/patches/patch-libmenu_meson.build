@@ -24,3 +24,7 @@ apply to the CMenu GIR generation.
      namespace: 'CMenu',
      nsversion: '3.0',
      sources: public_sources,
+@@ -77,2 +86,2 @@
+-    includes: 'Gio-2.0',
++    includes: ['Gio-2.0', 'GioUnix-2.0'],
+     install: true,

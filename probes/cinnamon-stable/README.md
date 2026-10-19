@@ -1,13 +1,19 @@
-# Cinnamon 6.6 stable source control
+# Cinnamon 6.6 stable port
 
-The stable source set in `sources.tsv` uses Cinnamon 6.6.9 and the matching
+The stable source set in `sources.tsv` uses Cinnamon 6.6.9 and matching
 6.6 component releases. CJS 140.1 uses the common SpiderMonkey 140 ESR
 provider. The source set keeps the current common GTK 3 provider.
-These source pins do not establish a complete package set or session.
+
+Cinnamon Menus 6.6.0nb3 builds for EmberBSD/AArch64 with GCC 16.2.0,
+GLib 2.90.1, GObject Introspection 1.86.0 and Meson 1.12.1. Its package
+includes the CMenu library, GIR and typelib. The port repairs the CMenu
+launch callback introspection metadata. CJS 140.1 has focused source and
+target-compiler checks, but the full shell and session remain blocked by
+the missing libc `uselocale()` interface. The other stable components
+still need package recipes and target checks.
 
 The earlier development probe used Cinnamon 6.7 snapshots and GTK 4
-adaptations. The stable control does not carry its removed decoration code,
-no-op locale implementation, disabled tests, or private host paths.
+adaptations. It is not the package basis for this stable port.
 
 ## CJS thread cleanup
 

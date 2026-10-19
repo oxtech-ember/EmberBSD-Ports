@@ -1,10 +1,11 @@
 # cinnamon-menus: freedesktop menu library for Cinnamon (CMenu-3.0).
 # Cinnamon probe; GIR is required by the shell at runtime.
-DISTNAME=	1461debf15c829672f4732b141d11fa00ec50d30
-PKGNAME=	cinnamon-menus-6.7.1
+DISTNAME=	cinnamon-menus-6.6.0
+PKGREVISION=3
 CATEGORIES=	x11
-MASTER_SITES=	https://github.com/linuxmint/cinnamon-menus/archive/
-WRKSRC=		${WRKDIR}/cinnamon-menus-${DISTNAME}
+MASTER_SITES=	https://github.com/linuxmint/cinnamon-menus/archive/refs/tags/
+DISTFILES=	6.6.0.tar.gz
+WRKSRC=		${WRKDIR}/${DISTNAME}
 
 HOMEPAGE=	https://github.com/linuxmint/cinnamon-menus
 COMMENT=	Freedesktop menu specification library for Cinnamon
@@ -25,6 +26,7 @@ MESON_BINARY.g-ir-scanner= ${TOOLBASE}/bin/g-ir-scanner
 MESON_BINARY.g-ir-compiler= ${TOOLBASE}/bin/g-ir-compiler
 MAKE_ENV+= XDG_DATA_DIRS=${CROSS_DESTDIR:Q}${PREFIX:Q}/share
 
+BUILDLINK_API_DEPENDS.glib2+= glib2>=2.82.0
 .include "../../devel/glib2/buildlink3.mk"
 .include "../../devel/gobject-introspection/buildlink3.mk"
 .include "../../devel/meson/build.mk"
