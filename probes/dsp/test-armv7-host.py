@@ -10,12 +10,14 @@ import io
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
 from unittest.mock import patch
 
 
+sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parent
 SPEC = importlib.util.spec_from_file_location("cross_armv7", ROOT / "cross-armv7.py")
 BUILD = importlib.util.module_from_spec(SPEC)
