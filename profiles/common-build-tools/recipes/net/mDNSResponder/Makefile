@@ -4,6 +4,7 @@
 DISTNAME=	${GITHUB_PROJECT}-${PKGVER}
 GITHUB_PROJECT=	mDNSResponder
 PKGVER=		2881.120.11
+PKGREVISION=	1
 GITHUB_TAG=	refs/tags/${GITHUB_PROJECT}-${PKGVER}
 MASTER_SITES=	${MASTER_SITE_GITHUB:=apple-oss-distributions/}
 
@@ -42,6 +43,9 @@ MAKE_FLAGS.SunOS+=	os=solaris
 MAKE_FLAGS.Linux+=	os=linux tls=no
 MAKE_FLAGS.Darwin+=	os=x
 MAKE_FLAGS.*+=		os=netbsd
+# Clients/Makefile has a separate host-uname check for libdns_sd linkage.
+# Command arguments also reach the recursive client make invocation.
+MAKE_FLAGS+=		SYSTEM=${OPSYS}
 
 OPSYSVARS+=		SO_SUFFIX
 SO_SUFFIX.Darwin=	dylib

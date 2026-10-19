@@ -39,6 +39,15 @@ remain intact. Explicit `dnsextd` is outside the NetBSD package's installed list
 The existing Linux TLS selection remains platform-specific; the NetBSD source
 branch has no POSIX TLS object selection. This update adds no TLS restriction.
 
+The recursive `Clients/Makefile` uses a separate `SYSTEM` variable. The recipe
+passes `SYSTEM=${OPSYS}` as a make command argument. This prevents a Darwin
+cross host from selecting the implicit system-library branch for a NetBSD
+client. `mdns-client-platform.py` checks the actual recursive make graph and
+the expanded pkgsrc flags. Four cases retain native `SYSTEM=Darwin`, reproduce
+the missing client library, select `SYSTEM=NetBSD` with `-ldns_sd`, and show
+that an environment value alone is insufficient. This graph check does not
+establish a compiled package.
+
 The [build regression](../tests/mdns-build-tools.py) uses Python 3.15 and
 SDK library API 1. It compares actual pkgsrc metadata with the original pinned
 recipe. Separate work directories prevent cached tool selections from hiding
