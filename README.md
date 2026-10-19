@@ -511,6 +511,9 @@ runtime behavior are validated.
   [KDE runtime repairs](probes/plasma-mobile/toolkit/tests/runtime-source-contracts/README.md)
   fix the D-Bus wait helper's argc lifetime and error result, and restore KDirWatch's fallback.
   The updated target packages pass four helper cases and 38 KDirWatch cases.
+  The nb4 [KDirWatch entry lifecycle patch](probes/plasma-mobile/toolkit/tests/kdirwatch-entries/README.md)
+  passes complete native-library tests for child creation, parent removal, and
+  repeated missing-file events. Target-package acceptance remains separate.
 - [Media and OpenCV videoio](probes/media/README.md): FFmpeg 9.0.2,
   GStreamer 1.28.7 and OpenCV 5.0.0 pass installed file/video pipeline checks
   on AArch64, including both videoio backends, timestamps, seeking, lossless

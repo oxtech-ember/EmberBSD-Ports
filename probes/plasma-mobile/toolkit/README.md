@@ -27,7 +27,10 @@ The complete desktop session remains outside this acceptance.
 The NetBSD [KDirWatch descriptor budget](tests/kdirwatch-budget/README.md)
 uses the existing Stat backend when unique Qt paths reach half the finite soft
 descriptor limit. Actual-source baseline, boundary, failure and sanitizer tests
-pass. Real directory-tree and installed-library acceptance remain pending.
+pass. The accepted nb3 package also passes the installed directory-tree and
+descriptor-count regression on CM5. The nb4 [entry lifecycle contract](tests/kdirwatch-entries/README.md)
+checks recursive child creation, parent removal, and repeated missing-file events
+against the complete native library. Its target-package acceptance remains pending.
 
 ## Prepare the source tree
 

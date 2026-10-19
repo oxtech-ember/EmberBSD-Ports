@@ -12,6 +12,11 @@ Keep the remaining entries on the existing Stat backend. This is a per-watcher
 budget, not a process-wide descriptor reserve. Re-registration uses the same
 policy. Keep polling entries stable to preserve their timer accounting.
 
+Snapshot child paths before recursive Qt events. Scanning a child can remove
+it from its parent's list and delete an unowned parent. Look up each path
+again during recursion. Re-register files only while they exist; repeated
+missing-file events must not append duplicate parent dependencies.
+
 --- src/lib/io/kdirwatch.cpp.orig
 +++ src/lib/io/kdirwatch.cpp
 @@ -48,6 +48,9 @@
@@ -88,7 +93,27 @@ policy. Keep polling entries stable to preserve their timer accounting.
  }
  #endif
  
-@@ -1658,7 +1693,12 @@
+@@ -1648,17 +1683,28 @@
+             addWatch(entry);
+         } else if (entry->isDir) {
+             // Check if any file or dir was created under this directory, that we were waiting for
+-            for (Entry *sub_entry : std::as_const(entry->m_entries)) {
+-                fswEventReceived(sub_entry->path); // recurse, to call scanEntry and see if something changed
+-            }
+-        } else {
++            // Scanning a child can remove it from this list and delete the parent entry.
++            QStringList subEntryPaths;
++            subEntryPaths.reserve(entry->m_entries.size());
++            for (const Entry *sub_entry : std::as_const(entry->m_entries)) {
++                subEntryPaths.append(sub_entry->path);
++            }
++            for (const QString &subEntryPath : std::as_const(subEntryPaths)) {
++                fswEventReceived(subEntryPath); // look up each child again after earlier scans
++            }
++        } else if (entry->m_status == Normal) {
+             /* Even though QFileSystemWatcher only reported the file as modified, it is possible that the file
+              * was in fact just deleted and then immediately recreated.  If the file was deleted, QFileSystemWatcher
+              * will delete the watch, and will ignore the file, even after it is recreated.  Since it is impossible
               * to reliably detect this case, always re-request the watch on a dirty signal, to avoid losing the
               * underlying OS monitor.
               */

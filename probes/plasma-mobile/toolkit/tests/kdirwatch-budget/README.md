@@ -1,6 +1,6 @@
 # KDirWatch descriptor budget
 
-The NetBSD backend of KCoreAddons 6.31.0nb3 uses a finite per-watcher budget.
+The NetBSD backend of KCoreAddons 6.31.0nb4 retains a finite per-watcher budget.
 Qt's kqueue backend opens one descriptor for each watched path.
 The budget counts unique files and directories already held by QFileSystemWatcher.
 It allows at most half the current soft `RLIMIT_NOFILE` limit.
@@ -13,6 +13,8 @@ An unavailable, infinite, or unusably small limit selects Stat with a warning.
 Polling entries remain on Stat during re-registration and queued file events.
 This preserves `statEntries` and timer accounting.
 The file-event path uses the same registration policy.
+The nb4 [entry lifecycle regression](../kdirwatch-entries/README.md) also checks
+recursive scans and missing-file events against the complete native library.
 Other platforms keep their previous selection.
 
 ## Actual-source regression
