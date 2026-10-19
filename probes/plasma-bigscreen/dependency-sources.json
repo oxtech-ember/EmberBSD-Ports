@@ -10,13 +10,14 @@
       "size": 580351104,
       "blake2s": "d28d300a63efe02ad3f7bae1db286058309de5368f96af92ebcf338f4de57735",
       "sha512": "1bb67ca80ed8daf4fab2ac4afe8261903175b9685e499a73dfb1432f5dda39c15c299ca2e0f9681dbac9b92a0cc185b14890036301bebabe8134074350c164ea",
-      "provenance": "Pinned pkgsrc distinfo; archive not yet fetched or checked by this continuation.",
+      "provenance": "The exact archive bytes match the pinned pkgsrc BLAKE2s, SHA512 and size. SHA256 was computed from those verified bytes. Download used a Qt-listed mirror; the primary server timed out.",
       "version_basis": "Latest stable source in the official Qt 6.11 index. Separate WebEngine 6.140.0 is visible as RC. Check the stable release index again before fetching.",
       "primary_sources": [
         "https://download.qt.io/official_releases/qt/6.11/",
         "https://download.qt.io/development_releases/qtwebengine/",
         "https://www.qt.io/blog/qt-webengine-will-release-separate"
-      ]
+      ],
+      "sha256": "6101c1aa00ff933d1b65ee5d167f76e8d71b9ac5b378b0111277723ebda7c163"
     },
     {
       "recipe": "comms/kf6-bluez-qt",
@@ -34,6 +35,27 @@
       "primary_sources": [
         "https://download.kde.org/stable/release-service/26.08.2/src/"
       ]
+    },
+    {
+      "recipe": "www/qt6-qtwebchannel",
+      "version": "6.12.0",
+      "url": "https://download.qt.io/official_releases/qt/6.12/6.12.0/submodules/qtwebchannel-everywhere-src-6.12.0.tar.xz",
+      "sha256": "9afdfb64855b33c1cc16a4fdce69a556876f0d5b9df79d88de7306ffa2dca327",
+      "blake2s": "1067f26a84ffa544b1a0a4de01558b201a1fd75d330bf13c11129153ae02fa71",
+      "sha512": "e3e749c9aa3c1e8cb09e636e011e98a4a3e012315c002ddb31a62216f99c9ddcd6c7a0447a34d63c8d41f9eccbf76479c1ff5ddbad896a3feed4fe91434f757b",
+      "size": 194940,
+      "provenance": "Archive SHA256 matches the installed Homebrew core qtwebchannel6.12.0_1 source formula. The archive comes from a Qt-listed mirror.",
+      "hash_source": "https://github.com/Homebrew/homebrew-core/blob/master/Formula/q/qtwebchannel.rb",
+      "status": "Target package and upstream test execution pending."
+    },
+    {
+      "recipe": "devel/gperf",
+      "role": "native build generator",
+      "version": "3.3",
+      "url": "https://ftp.gnu.org/gnu/gperf/gperf-3.3.tar.gz",
+      "sha256": "fd87e0aba7e43ae054837afd6cd4db03a3f2693deb3619085e6ed9d8d9604ad8",
+      "hash_source": "https://lists.gnu.org/archive/html/info-gnu/2025-04/msg00013.html",
+      "provenance": "Archive matches the release-author SHA256 and existing pinned pkgsrc recipe. No older generator is selected."
     }
   ]
 }

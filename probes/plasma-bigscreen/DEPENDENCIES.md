@@ -17,8 +17,10 @@ stable index before building. An RC is not selected as a stable release.
 `QTVERSION` selects the common Qt ABI. The upstream project derives its module
 version from the selected Qt BuildInternals. The PLIST uses `QTMODULE_VERSION`
 for those paths. This requires confirmation by an actual configure and package.
-The archive has not been fetched in this continuation. Its BLAKE2s, SHA512 and
-size come from the pinned pkgsrc distinfo, not from a new archive check.
+The downloaded archive matches the pinned pkgsrc BLAKE2s, SHA512 and exact
+size. `sources.tsv` records the computed SHA256. The primary Qt server timed
+out; a Qt-listed mirror supplied the identical verified source bytes.
+This is not a release-signature verification.
 
 The candidate retains fatal linker warnings. The Linux glibc requirement
 remains active; NetBSD does not require glibc. The recipe selects common
@@ -31,6 +33,15 @@ fresh prepared toolkit export, then overlay the complete recipe directory.
 The normal toolkit exporter does not yet select this candidate. Updating its
 registry and selection regression is a separate integration step.
 No accepted Qt provider must be replaced before package and consumer checks.
+
+## Required WebEngine generators and modules
+
+The native generator is GNU gperf 3.3 from the existing pinned pkgsrc recipe.
+Its archive matches the release-author SHA256. The old system gperf 3.0.3
+is not selected. Qt WebChannel 6.12.0 has a separate target recipe in this
+source layer. It keeps the common Qt ABI and builds upstream tests. Its
+archive matches the installed Homebrew source formula SHA256. Package and
+target test acceptance remain separate from this source verification.
 
 ## BluezQt
 

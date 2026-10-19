@@ -1,14 +1,16 @@
 $NetBSD$
 
-Select the explicitly prepared WebEngine recipe without changing QTVERSION.
+Select the explicitly prepared WebChannel and WebEngine recipes.
+Keep the common QTVERSION unchanged.
 Origin: EmberBSD (AI-assisted); not submitted upstream.
 
 --- meta-pkgs/qt6/Makefile.common.orig
 +++ meta-pkgs/qt6/Makefile.common
-@@ -29,6 +29,7 @@
+@@ -29,6 +29,8 @@
      multimedia/qt6-qtmultimedia \
      net/qt6-qtwebsockets \
      security/qt6-qtnetworkauth \
++    www/qt6-qtwebchannel \
 +    www/qt6-qtwebengine \
      x11/qt6-qtbase \
      x11/qt6-qtbase-devel \

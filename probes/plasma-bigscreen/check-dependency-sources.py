@@ -90,9 +90,23 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pkgsrc", type=Path, required=True)
     parser.add_argument("--bluezqt-archive", type=Path, required=True)
+    parser.add_argument("--webengine-archive", type=Path)
+    parser.add_argument("--webchannel-archive", type=Path)
     args = parser.parse_args()
     owner = Path(__file__).resolve().parent
     pins = json.loads((owner / "dependency-sources.json").read_text())
+    archive_checks = {}
+    for recipe, archive_path in [("www/qt6-qtwebengine", args.webengine_archive),
+                                 ("www/qt6-qtwebchannel", args.webchannel_archive)]:
+        if archive_path is None:
+            continue
+        pin = next(item for item in pins["sources"] if item["recipe"] == recipe)
+        assert archive_path.stat().st_size == pin["size"], archive_path
+        for algorithm in ["sha256", "sha512", "blake2s"]:
+            with archive_path.open("rb") as stream:
+                actual = hashlib.file_digest(stream, algorithm).hexdigest()
+            assert actual == pin[algorithm], (archive_path, algorithm)
+        archive_checks[recipe] = "SHA256, SHA512, BLAKE2s and size match"
     revision = subprocess.check_output(
         ["git", "-C", str(args.pkgsrc), "rev-parse", "HEAD"], text=True).strip()
     assert revision == pins["pkgsrc_revision"], revision
@@ -166,6 +180,7 @@ def main():
     assert "-DKF_IGNORE_PLATFORM_CHECK=OFF" in (bluezqt / "Makefile").read_text()
     print(json.dumps({"status": "PASS", "scope": "source preparation only; no compilation",
                       "pkgsrc_revision": revision, "bluezqt_sha256": hashlib.sha256(archive).hexdigest(),
+                      "optional_archive_checks": archive_checks,
                       "bluezqt_exact_patch_contexts": contexts, "changed_context_controls": len(contexts),
                       "bluezqt_linux_source_unchanged": linux_unchanged,
                       "webengine_inherited_patch_count": patch_count,
