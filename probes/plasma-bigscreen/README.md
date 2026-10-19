@@ -11,6 +11,12 @@ The common sysroot currently has no accepted providers for these components.
 Source configuration and a component link test do not establish a complete
 Bigscreen package or an interactive session.
 
+[Dependency source candidates](DEPENDENCIES.md) retain the pinned pkgsrc
+WebEngine NetBSD patches and prepare the current BluezQt D-Bus client.
+Their source checks pass. Ordinary GCC16 builds, packages and native
+Bluetooth service support remain pending. The WebEngine source release is
+versioned independently from the selected common Qt ABI.
+
 BluezQt 6.31.0 rejects `NetBSD` through ECM and its `metainfo.yaml` platform
 contract. Its client API requires a running BlueZ 5 D-Bus service. The Linux
 rfkill implementation also uses `/dev/rfkill` and Linux event structures.

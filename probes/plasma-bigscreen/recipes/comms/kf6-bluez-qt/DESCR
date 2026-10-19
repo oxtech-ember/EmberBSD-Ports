@@ -1,0 +1,4 @@
+BluezQt provides asynchronous Qt clients for the BlueZ 5 D-Bus interfaces.
+It includes adapter, device, GATT, media and OBEX APIs and a QML module.
+The library requires real BlueZ services. The source port does not supply
+a native Bluetooth daemon or a NetBSD radio-switch implementation.

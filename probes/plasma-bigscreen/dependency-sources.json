@@ -1,0 +1,39 @@
+{
+  "status": "source candidates; ordinary GCC16 packages and runtime acceptance pending",
+  "pkgsrc_revision": "fff4deb639a1a640476203c80f752fb77b6cb14b",
+  "qt_abi": "6.12.0",
+  "sources": [
+    {
+      "recipe": "www/qt6-qtwebengine",
+      "version": "6.11.2",
+      "url": "https://download.qt.io/official_releases/qt/6.11/6.11.2/submodules/qtwebengine-everywhere-src-6.11.2.tar.xz",
+      "size": 580351104,
+      "blake2s": "d28d300a63efe02ad3f7bae1db286058309de5368f96af92ebcf338f4de57735",
+      "sha512": "1bb67ca80ed8daf4fab2ac4afe8261903175b9685e499a73dfb1432f5dda39c15c299ca2e0f9681dbac9b92a0cc185b14890036301bebabe8134074350c164ea",
+      "provenance": "Pinned pkgsrc distinfo; archive not yet fetched or checked by this continuation.",
+      "version_basis": "Latest stable source in the official Qt 6.11 index. Separate WebEngine 6.140.0 is visible as RC. Check the stable release index again before fetching.",
+      "primary_sources": [
+        "https://download.qt.io/official_releases/qt/6.11/",
+        "https://download.qt.io/development_releases/qtwebengine/",
+        "https://www.qt.io/blog/qt-webengine-will-release-separate"
+      ]
+    },
+    {
+      "recipe": "comms/kf6-bluez-qt",
+      "version": "6.31.0",
+      "url": "https://download.kde.org/stable/frameworks/6.31/bluez-qt-6.31.0.tar.xz",
+      "sha256": "22b25448c6b5372ee4fba15bb938e698a599cec0d69816ceb0405451c879c827",
+      "provenance": "Archive SHA256 checked against sources.tsv.",
+      "boundary": "Complete D-Bus client source, QML and upstream tests remain enabled. A native org.bluez service and radio-state backend are not supplied."
+    },
+    {
+      "recipe": "net/kdeconnect-kde",
+      "version": "26.08.2",
+      "url": "https://download.kde.org/stable/release-service/26.08.2/src/kdeconnect-kde-26.08.2.tar.xz",
+      "provenance": "Official release-service index only. Archive/hash and recipe remain pending; do not fetch an unverified archive into a build.",
+      "primary_sources": [
+        "https://download.kde.org/stable/release-service/26.08.2/src/"
+      ]
+    }
+  ]
+}

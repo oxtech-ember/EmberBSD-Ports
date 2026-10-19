@@ -1,0 +1,39 @@
+$NetBSD: patch-src_3rdparty_chromium_third__party_zlib_BUILD.gn,v 1.4 2026/08/18 18:26:06 adam Exp $
+
+* Part of patchset to build chromium on NetBSD
+* Based on OpenBSD's chromium patches, and
+  pkgsrc's qt5-qtwebengine patches
+
+--- src/3rdparty/chromium/third_party/zlib/BUILD.gn.orig	2026-08-11 12:42:19.000000000 +0000
++++ src/3rdparty/chromium/third_party/zlib/BUILD.gn
+@@ -140,7 +140,7 @@ if (use_arm_neon_optimizations) {
+     defines = [ "CRC32_ARMV8_CRC32" ]
+     if (is_android) {
+       defines += [ "ARMV8_OS_ANDROID" ]
+-    } else if (is_linux || is_chromeos || is_ohos) {
++    } else if ((is_linux || is_chromeos || is_ohos) && !is_bsd) {
+       defines += [ "ARMV8_OS_LINUX" ]
+     } else if (is_mac) {
+       defines += [ "ARMV8_OS_MACOS" ]
+@@ -150,6 +150,12 @@ if (use_arm_neon_optimizations) {
+       defines += [ "ARMV8_OS_FUCHSIA" ]
+     } else if (is_win) {
+       defines += [ "ARMV8_OS_WINDOWS" ]
++    } else if (is_openbsd) {
++      defines += [ "ARMV8_OS_OPENBSD" ]
++    } else if (is_freebsd) {
++      defines += [ "ARMV8_OS_FREEBSD" ]
++    } else if (is_netbsd) {
++      defines += [ "ARMV8_OS_NETBSD" ]
+     } else {
+       assert(false, "Unsupported ARM OS")
+     }
+@@ -475,7 +481,7 @@ static_library("bundled_minizip") {
+     ]
+   }
+ 
+-  if (is_apple || is_android) {
++  if (is_apple || is_android || is_bsd) {
+     # Mac, Android and the BSDs don't have fopen64, ftello64, or fseeko64. We
+     # use fopen, ftell, and fseek instead on these systems.
+     defines = [ "USE_FILE32API" ]

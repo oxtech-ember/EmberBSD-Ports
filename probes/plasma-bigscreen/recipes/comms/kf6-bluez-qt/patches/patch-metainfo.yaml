@@ -1,0 +1,17 @@
+$NetBSD$
+
+Describe the D-Bus client platform and its external service requirement.
+This does not provide a native BlueZ daemon or radio-state backend.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- metainfo.yaml.orig
++++ metainfo.yaml
+@@ -7,6 +7,8 @@
+ platforms:
+     - name: Linux
+       note: Functional only with running BlueZ 5
++    - name: NetBSD
++      note: D-Bus client only; requires a running BlueZ 5 service
+ libraries:
+     - cmake: KF6::BluezQt
+ cmakename: KF6BluezQt
