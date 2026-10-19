@@ -1,7 +1,7 @@
 # fmt 12.2.0
 
 The common graphics profile provides the current stable [fmt 12.2.0 release](https://github.com/fmtlib/fmt/releases/tag/12.2.0)
-as `devel/fmtlib`. The source manifest pins the original archive SHA256
+as `textproc/fmtlib`. The source manifest pins the original archive SHA256
 `8b852bb5aa6e7d8564f9e81394055395dd1d1936d38dfd3a17792a02bebd7af0`.
 The recipe retains upstream source without a portability patch and installs the
 shared library, C API archive, CMake package, pkg-config file and public headers.

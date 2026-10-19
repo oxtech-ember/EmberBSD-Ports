@@ -7,7 +7,7 @@ FMTLIB_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.fmtlib+=	fmtlib>=12.2.0
 BUILDLINK_ABI_DEPENDS.fmtlib+=	fmtlib>=12.2.0
-BUILDLINK_PKGSRCDIR.fmtlib?=	../../devel/fmtlib
+BUILDLINK_PKGSRCDIR.fmtlib?=	../../textproc/fmtlib
 .endif	# FMTLIB_BUILDLINK3_MK
 
 BUILDLINK_TREE+=	-fmtlib

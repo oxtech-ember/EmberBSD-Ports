@@ -14,10 +14,10 @@ case "$TMPDIR" in /*) ;; *) echo 'TMPDIR must be absolute.' >&2; exit 2;; esac
 case "$TMPDIR" in *[!A-Za-z0-9_./-]*) echo 'Use a simple TMPDIR path.' >&2; exit 2;; esac
 [ ! -e "$out" ] && [ ! -L "$out" ] || { echo 'Output path already exists.' >&2; exit 2; }
 ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
-recipe=$ports/profiles/common-graphics/recipes/devel/fmtlib
+recipe=$ports/profiles/common-graphics/recipes/textproc/fmtlib
 manifest=$ports/profiles/common-graphics/sources.tsv
-expected_archive=$(awk -F '\t' '$1 == "devel/fmtlib" {print $2}' "$manifest")
-expected_sha=$(awk -F '\t' '$1 == "devel/fmtlib" {print $3}' "$manifest")
+expected_archive=$(awk -F '\t' '$1 == "textproc/fmtlib" {print $2}' "$manifest")
+expected_sha=$(awk -F '\t' '$1 == "textproc/fmtlib" {print $3}' "$manifest")
 [ "$(basename -- "$archive")" = "$expected_archive" ] || { echo 'Unexpected fmt archive name.' >&2; exit 2; }
 python3 - "$archive" "$recipe/distinfo" "$expected_sha" <<'PY'
 import hashlib

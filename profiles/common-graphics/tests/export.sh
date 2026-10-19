@@ -23,6 +23,13 @@ ln -s "$root/probes" "$work/source/probes"
 cp -R "$root/pkgsrc" "$work/source/pkgsrc"
 script=$work/source/scripts/prepare-pkgsrc.sh
 profile=$work/source/profiles/common-graphics
+fmt_recipe=$profile/recipes/textproc/fmtlib
+[ -f "$fmt_recipe/Makefile" ]
+[ ! -e "$profile/recipes/devel/fmtlib" ]
+grep -Fqx 'PKGNAME=	${DISTNAME:S/fmt/fmtlib/}' "$fmt_recipe/Makefile"
+grep -Fqx 'BUILDLINK_PKGSRCDIR.fmtlib?=	../../textproc/fmtlib' "$fmt_recipe/buildlink3.mk"
+[ "$(awk -F '\t' '$1 == "textproc/fmtlib" { count++ } END { print count + 0 }' "$profile/sources.tsv")" -eq 1 ]
+printf 'PASS: fmtlib uses its pkgsrc textproc path and matching package name\n'
 negative_count=0
 negative() {
     if sh "$script" "$work/rejected" common-graphics > "$work/$1.log" 2>&1; then exit 1; fi
@@ -146,7 +153,7 @@ cp "$profile/sources.tsv" "$work/saved-manifest"
 sed 's/bce5f7fb/00000000/' "$work/saved-manifest" > "$profile/sources.tsv"
 negative altered-manifest
 cp "$work/saved-manifest" "$profile/sources.tsv"
-for dependency in www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 devel/fmtlib x11/pixman graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/lerc graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt x11/libspnav devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info; do
+for dependency in www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 textproc/fmtlib x11/pixman graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/lerc graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt x11/libspnav devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info; do
     # Every added consumer/dependency needs its exact source pin.
     awk -F '\t' -v dep="$dependency" 'BEGIN { OFS="\t" }
         $1 == dep { $3="0000000000000000000000000000000000000000000000000000000000000000" }
@@ -263,7 +270,7 @@ for mode in default development-toolchain common-build-tools common-graphics com
     case "$mode" in
         common-graphics|common-media|plasma-mobile)
             diff -qr "$profile/recipes/x11/libspnav" "$tree/x11/libspnav"
-            for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 devel/fmtlib graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson cad/ng-spice cad/ng-spice-shared; do diff -qr "$profile/recipes/$recipe" "$tree/$recipe"; done
+            for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 textproc/fmtlib graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson cad/ng-spice cad/ng-spice-shared; do diff -qr "$profile/recipes/$recipe" "$tree/$recipe"; done
             diff -qr "$profile/recipes/devel/wayland-devel" "$tree/devel/wayland-devel"
             cmp "$profile/mk.conf" "$tree/EMBERBSD-COMMON-GRAPHICS-MK.CONF"
             cmp "$profile/sources.tsv" "$tree/EMBERBSD-COMMON-GRAPHICS-SOURCES" ;;
@@ -272,7 +279,7 @@ for mode in default development-toolchain common-build-tools common-graphics com
             [ ! -e "$tree/x11/libspnav" ]
             [ ! -L "$tree/x11/libspnav" ]
             # END libspnav-absence-guard
-            for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 devel/fmtlib graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson cad/ng-spice cad/ng-spice-shared; do diff -qr "$root/upstream/pkgsrc/$recipe" "$tree/$recipe"; done
+            for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 textproc/fmtlib graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson cad/ng-spice cad/ng-spice-shared; do diff -qr "$root/upstream/pkgsrc/$recipe" "$tree/$recipe"; done
             [ ! -e "$tree/devel/wayland-devel" ]
             [ ! -e "$tree/EMBERBSD-COMMON-GRAPHICS-MK.CONF" ] ;;
     esac
