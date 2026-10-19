@@ -142,8 +142,8 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
                 [ -s "$source/$name" ] || { echo "Incomplete ICU recipe: $name" >&2; exit 2; }
             done
             [ "$(find "$source" -type l | wc -l | tr -d ' ')" = 0 ] &&
-                [ "$(find "$source/patches" -name 'patch-*' | wc -l | tr -d ' ')" = 18 ] &&
-                [ "$(printf '%s\n' "$required" | awk 'NF { n++ } END { print n+0 }')" = 18 ] || {
+                [ "$(find "$source/patches" -name 'patch-*' | wc -l | tr -d ' ')" = 20 ] &&
+                [ "$(printf '%s\n' "$required" | awk 'NF { n++ } END { print n+0 }')" = 20 ] || {
                 echo 'Unexpected ICU patch inventory.' >&2; exit 2;
             }
             for name in $required; do
