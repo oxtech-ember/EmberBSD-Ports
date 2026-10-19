@@ -53,6 +53,58 @@ FFTW, fmt and C++ runtime rather than creating older private copies.
 The component provenance pages retain licenses and distinguish pkgsrc patches
 from local EmberBSD adaptations.
 
+## ARMv7 GCC16 cross build
+
+The [ARMv7 builder](cross-armv7.py) stages FFTW 3.3.11 and liquid-dsp 1.8.3
+for EmberBSD `earmv7hf`. Both FFTW precisions use shared libraries and pthreads.
+liquid-dsp uses the common float FFTW library and the existing CMake patch.
+This is an image staging probe, not a pkgsrc package with uninstall support.
+
+Use Python 3.9 or later with its standard library, GNU make, CMake, tar and
+patch on the build host. curl is required when no source cache is supplied.
+The target compiler must be GCC 16.2.0 for `armv7--netbsdelf-eabihf`.
+Pass a coherent EmberBSD sysroot explicitly; do not use headers or libraries
+from an unrelated NetBSD build. The compiler's default sysroot is not used.
+The builder checks the compiler and libc architecture. Those checks cannot
+establish the origin of a sysroot supplied by the caller.
+
+```sh
+python3 probes/dsp/test-armv7-host.py
+python3 probes/dsp/cross-armv7.py \
+  /opt/ember-gcc16 /opt/ember-sysroot /var/tmp/ember-armv7-dsp --jobs 4
+# Review the stage, then install it into a separate target image.
+# On that target, run the installed consumers:
+sh /usr/pkg/libexec/ember-dsp/test.sh
+```
+
+The wrapper selects AAPCS frames with `-mno-apcs-frame` and keeps the
+hard-float argument ABI. This avoids the GCC16 APCS-frame sibling-call path
+that motivated the original ARMv7 integration. The real transform of length
+75 remains part of the installed FFTW consumer; it must pass on the target.
+
+Source archives and the FFTW-selection patch are hash-checked before use.
+The original liquid-dsp configuration must fail its backend-selection
+control; the patched configuration must compile it and import FFTW symbols.
+All staged ELF libraries and consumers must use the ARM hard-float ABI.
+`inputs.json` records input hashes. `files.sha256` covers regular stage files.
+The completion marker confirms construction only, never target execution.
+
+Linux GCC16 cross compilation and host guard tests pass for this recipe.
+The guards reject old compilers, Clang, wrong targets, missing inputs,
+reused output directories and incorrect installed-library providers.
+Fresh target execution, physical radio I/O and real-time deadlines remain
+separate acceptance checks. Earlier ARMv7 Cppcheck scans reported inherited
+library warnings, including liquid-dsp allocation-failure paths outside the
+tested consumers. This integration does not claim warning-free analysis.
+The [FFTW](../fftw/README.md) and [liquid-dsp](../liquid-dsp/README.md)
+profiles describe the common consumer contracts.
+
+The Python builder and target shell runner are AI-assisted EmberBSD work
+under [MIT](LICENSE). They adapt the existing shared-library profiles and
+retain their upstream notices. The staged FFTW library remains
+GPL-2.0-or-later; liquid-dsp retains its MIT license. The stage includes
+both upstream licenses and the original source and patch provenance.
+
 ## Native validation
 
 On 2026-10-07 the four DSP/IMU foundation profiles passed 19 installed CTest cases

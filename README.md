@@ -19,6 +19,11 @@ runtime behavior are validated.
 
 ## Current contents
 
+- [ARMv7 DSP cross staging](probes/dsp/README.md#armv7-gcc16-cross-build):
+  GCC16 builds the common FFTW float/double and liquid-dsp shared libraries
+  for EmberBSD earmv7hf. Host guards, causal FFTW-selection checks and
+  hard-float ELF checks pass. Installed target execution and physical radio
+  integration remain separate acceptance gates.
 - [ICU runtime and target SDK](profiles/common-build-tools/cross/icu.md):
   complete GCC16 AArch64 packages split runtime libraries and user commands
   from generators and build interfaces. Installed Unicode conversion,
