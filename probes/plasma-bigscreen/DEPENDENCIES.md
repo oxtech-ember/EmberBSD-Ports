@@ -41,6 +41,14 @@ keeps ECM platform validation enabled. It does not set an ignore-platform
 escape. QML support and all upstream tests stay enabled. The PLIST is derived
 from the exact source install declarations and remains a package candidate.
 
+The source also selects macOS byte-order definitions for native memory checks.
+The explicit `macOS` metadata entry uses ECM's actual platform identifier.
+Native configuration passes with Qt 6.12.0, ECM 6.31.0, testing enabled and the
+platform check enabled. The subsequent build was interrupted. No native test
+invocation completed, and no complete native library or memory pass is accepted.
+`check-bluezqt-native.py` provides the full source, QML and upstream-test runner
+for a later permitted work directory. Only its Python syntax is checked here.
+
 This client adaptation is not a native Bluetooth implementation. Upstream's
 non-Linux rfkill state remains `Unknown`. NetBSD HCI `BTF_UP` and `BTF_RUNNING`
 are adapter states, not hardware and software radio-block states. They must
@@ -60,7 +68,8 @@ A configure placeholder or an empty QML module cannot satisfy that contract.
 
 Run `check-dependency-sources.py` with the pinned pkgsrc directory and verified
 BluezQt archive. The check verifies source checksums, exact patch contexts,
-unchanged inherited WebEngine patches and recipe boundaries. It does not
+unchanged Linux rfkill and codec source, the active Linux glibc requirement,
+NetBSD/GNU GN selection, inherited WebEngine patches and recipe boundaries. It does not
 compile source and is not a substitute for Cppcheck, Clang Static Analyzer,
 ordinary GCC16 package checks or target execution. These checks remain pending
 for the new candidates. The earlier accepted DeviceWatcher probe has its own

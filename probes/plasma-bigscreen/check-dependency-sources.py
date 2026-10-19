@@ -11,6 +11,37 @@ import subprocess
 import tarfile
 
 
+def linux_rfkill_projection(text):
+    """Select only Q_OS_LINUX branches; preserve all other source bytes."""
+    stack = []
+    output = []
+    active = True
+    for line in text.splitlines(keepends=True):
+        match = re.match(r"#(ifdef|ifndef) Q_OS_LINUX\s*$", line)
+        if match:
+            condition = match[1] == "ifdef"
+            stack.append(("linux", active, condition))
+            active = active and condition
+        elif re.match(r"#if(?:def|ndef)?\b", line):
+            stack.append(("other", active, True))
+            if active:
+                output.append(line)
+        elif line.startswith("#else") and stack and stack[-1][0] == "linux":
+            kind, parent, condition = stack[-1]
+            stack[-1] = (kind, parent, not condition)
+            active = parent and not condition
+        elif line.startswith("#endif") and stack:
+            kind, parent, _ = stack.pop()
+            if kind == "other" and active:
+                output.append(line)
+            active = parent
+        elif active:
+            output.append(line)
+    if stack:
+        raise ValueError("unbalanced source platform guards")
+    return "".join(output)
+
+
 def apply_exact(original, patch):
     """Apply one unified file diff in memory, with no offset or fuzz."""
     lines = original.splitlines(keepends=True)
@@ -69,6 +100,7 @@ def main():
     assert hashlib.sha256(archive).hexdigest() == pins["sources"][1]["sha256"]
     bluezqt = owner / "recipes/comms/kf6-bluez-qt"
     contexts = []
+    linux_unchanged = []
     with tarfile.open(args.bluezqt_archive) as source:
         for patch in sorted((bluezqt / "patches").iterdir()):
             text = patch.read_text()
@@ -76,6 +108,18 @@ def main():
             original = source.extractfile("bluez-qt-6.31.0/" + name).read().decode()
             changed = apply_exact(original, text)
             assert changed != original
+            if name in ["src/rfkill.cpp", "src/rfkill_p.h"]:
+                assert linux_rfkill_projection(original) == linux_rfkill_projection(changed)
+                linux_unchanged.append(name)
+            elif name == "src/a2dp-codecs.h":
+                projected = re.sub(r"#if defined\(__NetBSD__\).*?#endif\n",
+                                   "#include <endian.h>\n", changed, count=1, flags=re.DOTALL)
+                for before, after in [("BLUEZQT_BYTE_ORDER", "__BYTE_ORDER"),
+                                      ("BLUEZQT_LITTLE_ENDIAN", "__LITTLE_ENDIAN"),
+                                      ("BLUEZQT_BIG_ENDIAN", "__BIG_ENDIAN")]:
+                    projected = projected.replace(before, after)
+                assert projected == original
+                linux_unchanged.append(name)
             # A changed source context must be rejected, not silently relocated.
             try:
                 apply_exact("deliberate invalid first line\n" + original, text)
@@ -106,11 +150,27 @@ def main():
     assert "-DQT_FEATURE_webengine_vulkan=OFF" not in (webengine / "Makefile").read_text()
     assert "+#qt_webengine_configure_check(\"glibc\"" not in (
         webengine / "patches/patch-configure.cmake").read_text()
+    configure_patch = (webengine / "patches/patch-configure.cmake").read_text()
+    target_lines = "".join(line[1:] for line in configure_patch.splitlines(keepends=True)
+                           if line.startswith((" ", "+")) and not line.startswith("+++"))
+    glibc_block = ('qt_webengine_configure_check("glibc"\n'
+        '    MODULES QtWebEngine\n'
+        '    CONDITION NOT LINUX OR TEST_glibc\n'
+        '    MESSAGE "A suitable version >= ${QT_CONFIGURE_CHECK_glibc_version} of glibc is required."\n'
+        '    DOCUMENTATION "Glibc library at least ${QT_CONFIGURE_CHECK_glibc_version} version or later."\n'
+        '    TAGS LINUX_PLATFORM\n)')
+    assert target_lines.count(glibc_block) == 1, "Linux glibc check must stay active"
+    toolchains = (webengine / "patches/patch-cmake_QtToolchainHelpers.cmake").read_text()
+    assert '+    elseif(NETBSD)\n+        set(${result} "netbsd" PARENT_SCOPE)' in toolchains
+    assert 'is_gcc CONDITION UNIX AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU"' in toolchains
     assert "-DKF_IGNORE_PLATFORM_CHECK=OFF" in (bluezqt / "Makefile").read_text()
     print(json.dumps({"status": "PASS", "scope": "source preparation only; no compilation",
                       "pkgsrc_revision": revision, "bluezqt_sha256": hashlib.sha256(archive).hexdigest(),
                       "bluezqt_exact_patch_contexts": contexts, "changed_context_controls": len(contexts),
+                      "bluezqt_linux_source_unchanged": linux_unchanged,
                       "webengine_inherited_patch_count": patch_count,
+                      "webengine_linux_glibc_check": "active",
+                      "webengine_netbsd_gn_target": "netbsd/GNU",
                       "webengine_changed_files": differences,
                       "all_candidate_patch_checksums": "PASS"}, indent=2))
 

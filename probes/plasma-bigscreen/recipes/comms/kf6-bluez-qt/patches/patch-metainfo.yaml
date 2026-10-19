@@ -6,11 +6,13 @@ Origin: EmberBSD (AI-assisted); not submitted upstream.
 
 --- metainfo.yaml.orig
 +++ metainfo.yaml
-@@ -7,6 +7,8 @@
+@@ -7,6 +7,10 @@
  platforms:
      - name: Linux
        note: Functional only with running BlueZ 5
 +    - name: NetBSD
++      note: D-Bus client only; requires a running BlueZ 5 service
++    - name: macOS
 +      note: D-Bus client only; requires a running BlueZ 5 service
  libraries:
      - cmake: KF6::BluezQt
