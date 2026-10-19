@@ -17,6 +17,8 @@ The default-data patch does not replace other session settings.
 The explicit X11 option selects i3lock 2.16 and xss-lock 0.3.0. Its lock command
 is `i3lock --nofork`; its X11-only autostart command is
 `xss-lock -- i3lock --nofork`. The existing configuration filename is retained.
+Its displayed name is `X11 Screen Lock`. Old XScreenSaver translations are
+not merged into this replacement entry. Reviewed translations remain pending.
 No meta option depends on XScreenSaver or xlockmore. Their pinned recipes
 require GTK3 and GTK2, respectively. The X11 alternative remains unqualified;
 its authentication and idle behavior have not been accepted on the target.
@@ -30,10 +32,17 @@ the X11 graph as a Wayland result. Neither direct graph may contain GTK2,
 GTK3, XScreenSaver or xlockmore.
 The fourth check requires a package refusal for `-wayland xfce4-wm`.
 
+The recursive default Wayland graph resolves 176 registered providers and
+32 source-recipe nodes without GTK2, GTK3, Qt4 or Qt5. Missing providers are
+queried through ordinary pkgsrc `DEPENDS`; this graph is not a completed
+package build or an installed runtime closure. It includes the source recipe
+for PCManFM-Qt, whose package was installed after that node was queried.
+
 `check-session-defaults.py` verifies the pinned original source and applies
 the actual data patch at fuzz zero. It checks the lock route in the actual
 session and liblxqt source. The old and two incomplete defaults are rejected.
 This is a source/data check. It does not execute a locker or authentication.
+The X11 label and command are checked from the patched desktop input.
 
 Complete package and runtime acceptance remain pending. Required work includes
 the Wayland wrapper's declared shell and qdbus runtime provider, panel plugins,

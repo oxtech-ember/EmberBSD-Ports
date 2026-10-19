@@ -36,6 +36,8 @@ def main():
     with tarfile.open(a.archive) as tf:
         original = tf.extractfile('lxqt-session-2.4.0/config/session.conf').read().decode()
         leave = tf.extractfile('lxqt-session-2.4.0/lxqt-leave/main.cpp').read().decode()
+        desktop = tf.extractfile('lxqt-session-2.4.0/autostart/lxqt-xscreensaver-autostart.desktop.in').read().decode()
+        autostart = tf.extractfile('lxqt-session-2.4.0/autostart/CMakeLists.txt').read().decode()
     source = a.output/'source/config/session.conf'
     source.parent.mkdir(parents=True)
     source.write_text(original)
@@ -44,6 +46,27 @@ def main():
     run = subprocess.run(cmd, cwd=source.parent.parent, capture_output=True, text=True)
     (a.output/'patch.log').write_text(run.stdout + run.stderr)
     assert run.returncode == 0, (run.stdout, run.stderr)
+    autostart_dir = source.parent.parent/'autostart'
+    autostart_dir.mkdir()
+    desktop_file = autostart_dir/'lxqt-xscreensaver-autostart.desktop.in'
+    desktop_file.write_text(desktop)
+    (autostart_dir/'CMakeLists.txt').write_text(autostart)
+    for name in ['patch-autostart_CMakeLists.txt',
+                 'patch-autostart_lxqt-xscreensaver-autostart.desktop.in']:
+        data_patch = patch.parent/name
+        command = [a.patch_tool, '-p0', '-F0', '-i', str(data_patch.resolve())]
+        applied = subprocess.run(command, cwd=source.parent.parent, capture_output=True, text=True)
+        (a.output/(name+'.log')).write_text(applied.stdout + applied.stderr)
+        assert applied.returncode == 0, (applied.stdout, applied.stderr)
+    entry = read(desktop_file.read_text())['Desktop Entry']
+    assert entry['name'] == 'X11 Screen Lock'
+    assert entry['tryexec'] == 'xss-lock'
+    assert entry['exec'] == 'xss-lock -- i3lock --nofork'
+    assert entry['x-lxqt-x11-only'] == 'true;'
+    assert not any(key.startswith('name[') for key in entry)
+    generator = (autostart_dir/'CMakeLists.txt').read_text()
+    assert 'configure_file(' in generator and 'COPYONLY' in generator
+    assert 'lxqt_translate_desktop(' not in generator
     before = read(original)
     after = read(source.read_text())
     selected(after)
@@ -71,6 +94,7 @@ def main():
     result = {'archive_sha256': pin, 'patch_command': cmd,
               'defaults': after['General'], 'preserved_existing_settings': True,
               'rejected_incomplete_defaults': rejected,
+              'x11_autostart': entry,
               'source_route': ['lxqt-leave --lockscreen', 'LXQt::ScreenSaver::lockScreen',
                                'session lock_command_wayland', 'QProcess::start swaylock'],
               'liblxqt_source_sha256': hashlib.sha256(saver.read_bytes()).hexdigest(),

@@ -5,10 +5,11 @@ Keep the existing configuration filename and X11-only scope.
 
 --- autostart/lxqt-xscreensaver-autostart.desktop.in.orig
 +++ autostart/lxqt-xscreensaver-autostart.desktop.in
-@@ -1,8 +1,8 @@
+@@ -1,8 +1,9 @@
  [Desktop Entry]
  Type=Application
  Version=1.0
++Name=X11 Screen Lock
 -TryExec=xscreensaver
 -Exec=xscreensaver -no-splash
 +TryExec=xss-lock

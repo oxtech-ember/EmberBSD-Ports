@@ -1,10 +1,29 @@
-$NetBSD: patch-autostart_CMakeLists.txt,v 1.1 2020/12/07 13:03:40 pin Exp $
+$NetBSD$
 
-Install config file to proper location
+Install the GTK-free X11 locker configuration to the example directory.
+Do not merge translations which still describe the replaced XScreenSaver.
 
---- autostart/CMakeLists.txt.orig	2020-10-31 08:58:17.000000000 +0000
+--- autostart/CMakeLists.txt.orig
 +++ autostart/CMakeLists.txt
-@@ -10,6 +10,6 @@ add_custom_target(lxqt_sesstion_autostar
+@@ -1,16 +1,14 @@
+-file(GLOB DESKTOP_FILES_IN *.desktop.in)
+-
+-# Translations **********************************
+-lxqt_translate_desktop(DESKTOP_FILES
+-    SOURCES
+-        ${DESKTOP_FILES_IN}
+-    USE_YAML
+-)
+-add_custom_target(lxqt_sesstion_autostart_desktop_files ALL DEPENDS ${DESKTOP_FILES})
+-#************************************************
++# The replacement locker has no reviewed translations yet.
++# Retain the existing configuration filename for package upgrades.
++set(DESKTOP_FILES "${CMAKE_CURRENT_BINARY_DIR}/lxqt-xscreensaver-autostart.desktop")
++configure_file(
++    lxqt-xscreensaver-autostart.desktop.in
++    "${DESKTOP_FILES}"
++    COPYONLY
++)
  
  install(FILES
      ${DESKTOP_FILES}
