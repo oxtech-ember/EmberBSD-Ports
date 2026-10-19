@@ -166,6 +166,29 @@ ownership model checks each removal and release; it does not replace a target
 Wayland implementation. Target packaging and the unchanged strict exit check
 must pass before the new revision is accepted.
 
+IPC startup now returns an error to the existing main cleanup path. It checks
+address/list allocations and event registration, rolls back owned resources,
+and registers the display listener only after preparation succeeds. The
+subscriber query tolerates startup and completed teardown. The main cleanup
+state is initialized before its first error jump. This avoids invoking a
+termination callback that can return or send an event before IPC exists.
+
+`tests/ipc-startup-native.py` executes the actual startup, address, subscriber,
+teardown and termination functions with the real list/log code. Eleven original
+lifecycle failures become twelve passing sanitizer controls. Three allocator
+failures, event registration, both environment publications, path construction,
+bind/listen failure, and early/late shutdown have independent resource assertions.
+The native sandbox forbids Unix socket bind. The explicit test-only bind/listen
+boundary uses owned files; socket descriptors, descriptor flags and filesystem
+cleanup are real. Wayland event ownership also uses a test boundary. These checks
+do not establish native or target compositor startup acceptance.
+
+Full target-header analysis covers both IPC and main. GCC16 path analysis passes.
+Cppcheck retains five warnings from GLib inline headers on each module. The two
+IPC allocation warnings are removed. A separate actual-main GCC16 check rejects
+the original jump across `nag_gpu` initialization and accepts the patched source.
+The wider command/input/tree allocation-failure findings remain outside this fix.
+
 ```sh
 python3 probes/sway/tests/headless.py --host explicit-target \
   --renderer pixman --results /absolute/new-headless-results

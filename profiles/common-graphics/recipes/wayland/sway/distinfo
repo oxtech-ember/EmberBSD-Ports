@@ -19,3 +19,4 @@ SHA1 (patch-swaybar_i3bar.c) = b71e4c995ab4b64f76d6604f1010e83d459e4c29
 SHA1 (patch-swaybar_tray_icon.c) = 4cb661059fb46e207e0da1f3a716c1f8a63d8604
 SHA1 (patch-sway_ipc-server.c) = 8bdc263af80ecab8e30821fa15802e6ddf3bf632
 SHA1 (patch-include_ipc.h) = ab10a3f8abbfd2c0db74512397c1f5b461c62bdc
+SHA1 (patch-sway_ipc-startup.c) = 7fe52a288bb4a00d0c6bdee5a95b49aae417145b
