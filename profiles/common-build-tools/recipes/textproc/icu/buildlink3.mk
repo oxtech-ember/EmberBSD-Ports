@@ -11,7 +11,7 @@ BUILDLINK_PKGSRCDIR.icu?=	../../textproc/icu
 
 .include "../../mk/bsd.fast.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
-BUILDLINK_ABI_DEPENDS.icu+= icu>=78.3nb2
+BUILDLINK_ABI_DEPENDS.icu+= icu>=78.3nb3
 .include "../../textproc/icu-devel/buildlink3.mk"
 .endif
 

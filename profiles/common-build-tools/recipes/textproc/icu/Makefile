@@ -4,7 +4,7 @@ EMBERBSD_ICU_PKGDIR:= ${.PARSEDIR:tA}
 
 DISTNAME=	icu4c-78.3-sources
 PKGNAME=	${DISTNAME:S/4c//:S/-sources//}
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	textproc
 MASTER_SITES=	${MASTER_SITE_GITHUB:=unicode-org/}
 GITHUB_PROJECT=	icu
@@ -43,15 +43,15 @@ COMMENT= ICU target SDK for the development-host sysroot
 DISTINFO_FILE= ${EMBERBSD_ICU_PKGDIR}/distinfo
 PATCHDIR= ${EMBERBSD_ICU_PKGDIR}/patches
 FILESDIR= ${EMBERBSD_ICU_PKGDIR}/files
-DEPENDS+= icu-${PKGVERSION_NOREV}nb2:../../textproc/icu
-CONFLICTS+= icu<${PKGVERSION_NOREV}nb2
+DEPENDS+= icu-${PKGVERSION_NOREV}nb3:../../textproc/icu
+CONFLICTS+= icu<${PKGVERSION_NOREV}nb3
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes" || ${OPSYS} != "NetBSD"
 PKG_FAIL_REASON+= "The ICU SDK requires a NetBSD cross build; native builds keep the full package"
 .endif
 .endif
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
-PKGREVISION= 2
+PKGREVISION= 3
 .if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
 PKG_FAIL_REASON+= "The ICU split requires a common AArch64 or amd64 target"
 .endif

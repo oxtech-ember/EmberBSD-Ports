@@ -17,6 +17,7 @@ SHA1 (patch-config_mh-darwin) = 4fd2c664b23078692b61557ebb66693712d333cd
 SHA1 (patch-config_mh-scoosr5) = 47703dcc184f58c0382da3225f849424ab74d472
 SHA1 (patch-configure) = d490321c93d67f7d3a70319ce8a86ca36fd3825c
 SHA1 (patch-configure.ac) = 86f4b142afddb9784f2aec98f147ee29217b6124
+SHA1 (patch-i18n_collation-builder-lifetime) = 54a8ed6e26a6e85f738a93bd04f4285e2081259d
 SHA1 (patch-i18n_double-conversion-utils.h) = 9bee115bb9ddc597607e30f95050de7b21751fca
 SHA1 (patch-icudefs.mk.in) = 15be482cf7541c9b518b8bfb05865ac994313cb7
 SHA1 (patch-runConfigureICU) = 6aa0de86506440aeb13005959e9014a53ed63036
