@@ -123,6 +123,59 @@ string implementation under native ASan/UBSan. It covers high bytes,
 quoted arguments, empty input and owned return values. It does not inject
 allocation failures or establish a full compositor memory-check result.
 
+Some of the inherited multi-module Cppcheck inputs stop at GLib diagnostic
+pragmas. Those parser failures limit that comparison. The IPC module has a
+separate complete comparison with the actual target headers and flags.
+Its analysis copies omit only GCC diagnostic pragmas and retain line numbers;
+the compiler inputs and executable code remain unchanged. The signed event
+flags give ten C11 shift errors in the original header. The patch uses unsigned
+shifts and preserves all 32-bit protocol values. Existing style and warning
+findings remain visible.
+
+`tests/ipc-values.py` reproduces the original strict GCC shift rejection and
+runtime UBSan mask failure. The patched actual header passes GCC path analysis
+and native ASan/UBSan. It checks ten event wire values, eleven masks, command
+values and enum width. The subscription-mask contract still requires an event
+index below 32; all upstream defined event indices are below 22.
+
+```sh
+python3 probes/sway/tests/ipc-values.py --source /absolute/original/sway-1.12 \
+  --cc /absolute/common-cross/bin/aarch64--netbsd-gcc \
+  --sysroot /absolute/common-sysroot --work /absolute/new-ipc-value-check
+```
+
+## Compositor and shutdown checks
+
+Sway 1.12nb4 passed the ordinary GCC16 package build and all package checks.
+All 33 installed payload entries match that package in the shared sysroot.
+The same package is installed on the isolated AArch64 VM with its verified
+runtime dependency closure. Its actual unprivileged Pixman/headless compositor
+passes version, workspace switching, output creation and tree queries.
+
+The strict exit check fails on that package: the display loop stops before
+the queued IPC response is written. The source patch uses the existing
+nonblocking writer once before teardown closes each connection. It handles a
+writer that already disconnected the client. This is one best-effort write;
+it does not guarantee delivery of a large or blocked backlog.
+
+`tests/ipc-shutdown-native.py` compiles the actual writer, disconnect and display
+destruction functions with the real list implementation and native sockets.
+The original source reproduces reply loss. The patched source passes reply,
+closed-peer and blocked-socket cases under ASan/UBSan. A test-only Wayland event
+ownership model checks each removal and release; it does not replace a target
+Wayland implementation. Target packaging and the unchanged strict exit check
+must pass before the new revision is accepted.
+
+```sh
+python3 probes/sway/tests/headless.py --host explicit-target \
+  --renderer pixman --results /absolute/new-headless-results
+```
+
+The runner requires an installed package and an existing unprivileged `nobody`
+account. It requires the exit reply and process termination, saves the compositor
+log, and removes only its own guest directory. The VM has no physical graphics
+or input device. This check does not qualify a hardware desktop session.
+
 ## Input-name contract
 
 `tests/input-names.c` checks 14 independent ABI, event-name and invalid-input
@@ -155,6 +208,6 @@ cc -O1 -g -D_GNU_SOURCE -fsanitize=address,undefined \
 Use the host sanitizer's supported options. The test expects the original
 source to fail its release assertion and the patched source to pass.
 
-Full Sway packaging, headless compositor/IPC acceptance and normal installed
-package removal/reinstallation are the next gates. A source recipe or a
-linked executable alone does not establish a desktop session.
+Acceptance of the shutdown revision and normal installed package
+removal/reinstallation remain pending. A linked executable alone does not
+establish a desktop session.
