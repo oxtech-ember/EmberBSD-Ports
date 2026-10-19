@@ -353,6 +353,8 @@ runtime behavior are validated.
   pass macOS installation and native C ABI checks after a Mach-O packaging repair.
   Their [normally installed EmberBSD target std](profiles/common-build-tools/rust-target-std.md)
   also passes those target lifecycles and a Cargo consumer with host proc macros.
+  The installed-package helper selects AArch64 or amd64. Host fixtures cover
+  both selections; a new amd64 target execution remains pending.
   The [full GI package](profiles/common-graphics/cross/introspection.md) cross-builds
   with real GType discovery and upstream hash/search checks on EmberBSD/CM5.
   Its revision-6 native GCC16 package verifies all 180 entries and passes all

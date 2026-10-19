@@ -73,12 +73,33 @@ ruby tests/rust-target-package.rb /absolute/host /absolute/cross-tools \
   /absolute/target-sysroot /absolute/new-consumer-check
 ```
 
+The installed-package consumer also accepts `--target amd64` before the paths.
+It selects the official x86_64 target-data package and matching GCC16 tools.
+The default remains `aarch64`. This consumer check runs on macOS/AArch64 hosts.
+Both targets retain the installed package ownership, provider hashes, native
+control and Rust/C/Cargo consumer checks. The component must match its registered
+file manifest; its file count can vary between targets and package revisions.
+For amd64 target execution, set `EMBERBSD_RUST_TARGET_ARCH=x86_64` when using
+the target runner below.
+
+Run the host selection regression with:
+
+```sh
+python3 tests/rust-target-package-host.py
+```
+
+It executes the actual helper with controlled package and compiler providers.
+It checks both targets, package revisions, wrong or duplicate package replies,
+component manifest mismatches, compiler mismatches and selected Cargo paths.
+Fixtures do not establish real Rust metadata compatibility, target linking or
+EmberBSD execution.
+
 The first check uses disposable directory fixtures. It rejects overlapping
 source/work paths, aliases, a GCC facade and inputs nested inside work. The
 second exercises actual upstream copy methods and reproduces the destructive
 old-helper failure. The package check verifies registration, file integrity and
-ownership of all 53 target files. It uses the installed compiler with no
-`--sysroot` override, preserves provider hashes, runs native TLS/unwind, and
+the exact registered file manifest for the selected target. It uses the installed
+compiler with no `--sysroot` override, preserves provider hashes, runs native TLS/unwind, and
 links target Rust bin/cdylib and C consumers. An offline Cargo target also runs
 a host proc macro and build script; both assert the correct host/target split.
 
@@ -127,7 +148,7 @@ MAKECONF=/absolute/native-mk.conf bmake -C /absolute/pkgsrc/lang/rust-std-x86_64
 
 The tools prefix supplies host-executable `bin/x86_64--netbsd-readelf`.
 No target sysroot is needed to install this host data. The mandatory check
-compares all 53 staged component files with the original component manifest
+compares the staged component files with the original component manifest
 and payload. It checks ELF64/x86_64 identity, the three NEEDED names and the
 original `$ORIGIN/../lib` RPATH. It requires the official Rust 1.99 compiler
 commit and performs a real target `--emit=metadata` import from the staged

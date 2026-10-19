@@ -6,12 +6,20 @@ require 'fileutils'
 require 'open3'
 require 'shellwords'
 
-abort 'usage: rust-target-package.rb HOST_PREFIX CROSS_TOOLS TARGET_SYSROOT NEW_WORK' unless ARGV.size == 4
+target = 'aarch64'
+if ARGV.first == '--target'
+  ARGV.shift
+  target = ARGV.shift
+end
+arch = {'aarch64' => 'aarch64', 'amd64' => 'x86_64'}[target]
+abort 'usage: rust-target-package.rb [--target aarch64|amd64] HOST_PREFIX CROSS_TOOLS TARGET_SYSROOT NEW_WORK' unless ARGV.size == 4 && arch
+triple = arch + '-unknown-netbsd'
+package_name = 'rust-std-' + arch + '-netbsd-1.99.1'
 host, tools, sysroot = ARGV.first(3).map { |p| File.realpath(p) }
 work = File.expand_path(ARGV[3])
 abort 'new absolute work directory required' unless ARGV[3].start_with?('/') && !File.exist?(work)
 parent = File.realpath(File.dirname(work))
-cross_provider = File.dirname(File.dirname(File.realpath(tools + '/bin/aarch64--netbsd-gcc')))
+cross_provider = File.dirname(File.dirname(File.realpath(tools + '/bin/' + arch + '--netbsd-gcc')))
 abort 'work overlaps providers' if [host, tools, sysroot, cross_provider].any? { |p| parent == p || parent.start_with?(p + '/') }
 FileUtils.mkdir_p(work)
 env = {'PATH' => host + '/bin:/usr/bin:/bin:/usr/sbin:/sbin',
@@ -30,25 +38,29 @@ run = lambda do |name, *args, **opts|
 end
 rustc = host + '/bin/rustc'
 pkg_info = host + '/sbin/pkg_info'
-pkg = run.call('package', pkg_info, '-e', 'rust-std-aarch64-netbsd-1.99.1{,nb[0-9]*}').strip
-abort 'target package is not registered uniquely' unless pkg.match?(/\Arust-std-aarch64-netbsd-1\.99\.0(?:nb[0-9]+)?\z/)
+pkg = run.call('package', pkg_info, '-e', package_name + '{,nb[0-9]*}').strip
+abort 'target package is not registered uniquely' unless pkg.match?(/\A#{Regexp.escape(package_name)}(?:nb[0-9]+)?\z/)
 run.call('package-check', host + '/sbin/pkg_admin', 'check', pkg)
-component = run.call('target-libdir', rustc, '--target', 'aarch64-unknown-netbsd', '--print', 'target-libdir').strip
-abort 'std outside shared host prefix' unless File.realpath(component) == host + '/lib/rustlib/aarch64-unknown-netbsd/lib'
+component = run.call('target-libdir', rustc, '--target', triple, '--print', 'target-libdir').strip
+abort 'std outside shared host prefix' unless File.realpath(component) == host + '/lib/rustlib/' + triple + '/lib'
+component = File.realpath(component)
 files = Dir.glob(component + '/**/*').select { |p| File.file?(p) }.sort
-owned = run.call('package-files', pkg_info, '-qL', pkg).lines.map(&:chomp).select { |p| File.file?(p) }.map { |p| File.realpath(p) }
-abort 'empty or unowned target component' unless files.size == 53 && files.all? { |p| owned.include?(File.realpath(p)) }
+owned = run.call('package-files', pkg_info, '-qL', pkg).lines.map(&:chomp)
+owned = owned.map { |p| File.exist?(p) ? File.realpath(p) : File.expand_path(p) }
+owned = owned.select { |p| p.start_with?(component + '/') }.sort
+abort 'empty or mismatched target component manifest' unless !files.empty? && files.map { |p| File.realpath(p) }.sort == owned
 providers = [rustc, host + '/bin/cargo', host + '/bin/cargo-cbuild', host + '/bin/cargo-cinstall'] + files
 hashes = providers.to_h { |p| [p, Digest::SHA256.file(p).hexdigest] }
 File.write(work + '/providers.sha256', hashes.map { |p, h| "#{h}  #{p}\n" }.join)
 probe = File.expand_path('../../../probes/rust-cross-std', __dir__)
 %w[runtime.rs consumer.c run-on-target.sh].each { |p| FileUtils.cp(probe + '/' + p, work + '/' + p) }
-cc = tools + '/bin/aarch64--netbsd-gcc'
-crt = sysroot + '/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0/'
+cc = tools + '/bin/' + arch + '--netbsd-gcc'
+crt = sysroot + '/usr/pkg/gcc16/lib/gcc/' + arch + '--netbsd/16.2.0/'
+abort 'wrong GCC16 target compiler' unless run.call('compiler-target', cc, '-dumpmachine').strip == arch + '--netbsd' && run.call('compiler-version', cc, '-dumpfullversion').strip == '16.2.0'
 flags = ['--sysroot=' + sysroot, '-B' + crt, '-L' + sysroot + '/usr/pkg/gcc16/lib', '-Wl,-rpath,/usr/pkg/gcc16/lib']
 File.write(work + '/netbsd-cc', "#!/bin/sh\nexec #{([cc] + flags).shelljoin} \"$@\"\n")
 File.chmod(0755, work + '/netbsd-cc')
-rustflags = ['--target', 'aarch64-unknown-netbsd', '--edition=2024', '-C', 'opt-level=2', '-C', 'linker=' + work + '/netbsd-cc']
+rustflags = ['--target', triple, '--edition=2024', '-C', 'opt-level=2', '-C', 'linker=' + work + '/netbsd-cc']
 # No --sysroot override: these consumers must use the registered shared package.
 run.call('rust-bin', rustc, *rustflags, work + '/runtime.rs', '-o', work + '/rust-runtime')
 run.call('rust-dso', rustc, *rustflags, '--crate-type', 'cdylib', work + '/runtime.rs', '-o', work + '/librust-runtime.so')
@@ -84,7 +96,7 @@ RUST
 File.write(work + '/cargo/build.rs', <<~RUST)
   fn main() {
       assert_eq!(std::env::var("HOST").unwrap(), "aarch64-apple-darwin");
-      assert_eq!(std::env::var("TARGET").unwrap(), "aarch64-unknown-netbsd");
+      assert_eq!(std::env::var("TARGET").unwrap(), "#{triple}");
       println!("cargo::rustc-check-cfg=cfg(ember_cross_checked)");
       println!("cargo::rustc-cfg=ember_cross_checked");
   }
@@ -99,8 +111,8 @@ File.write(work + '/cargo/src/main.rs', <<~RUST)
       println!("PASS: packaged std with host proc macro and build script");
   }
 RUST
-env['CARGO_TARGET_AARCH64_UNKNOWN_NETBSD_LINKER'] = work + '/netbsd-cc'
-run.call('cargo-cross', host + '/bin/cargo', 'build', '--offline', '--release', '--target', 'aarch64-unknown-netbsd', chdir: work + '/cargo')
-FileUtils.cp(work + '/cargo-target/aarch64-unknown-netbsd/release/ember_target_std_check', work + '/rust-cargo-consumer')
+env['CARGO_TARGET_' + triple.upcase.tr('-', '_') + '_LINKER'] = work + '/netbsd-cc'
+run.call('cargo-cross', host + '/bin/cargo', 'build', '--offline', '--release', '--target', triple, chdir: work + '/cargo')
+FileUtils.cp(work + '/cargo-target/' + triple + '/release/ember_target_std_check', work + '/rust-cargo-consumer')
 hashes.each { |p, h| abort "provider changed: #{p}" unless Digest::SHA256.file(p).hexdigest == h }
 puts 'PASS: package ownership/integrity, unchanged shared providers, native TLS/unwind, target bin/cdylib/C and Cargo proc-macro consumers linked; target execution required'
