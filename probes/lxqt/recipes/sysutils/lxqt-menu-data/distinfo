@@ -4,4 +4,4 @@ BLAKE2s (lxqt-menu-data-2.4.0.tar.xz) = b28ee0582a2b82f6593c9132b44103ac61deb7d1
 SHA512 (lxqt-menu-data-2.4.0.tar.xz) = a3227024584b23b4149cba1d33072486464c203d4d2f489348f15ec67bdabbd23fbdddc81735348a6d85ed5c3c9c5dee847d15789038bf9688a662eab9a18f1b
 Size (lxqt-menu-data-2.4.0.tar.xz) = 55904 bytes
 SHA1 (patch-menu_CMakeLists.txt) = 7ae9350e753a96c582b9c4806a3775d15db989dd
-SHA1 (patch-CMakeLists.txt) = 6dcde5873578a69091e8baff7589d28adbf00e07
+SHA1 (patch-CMakeLists.txt) = 8456af13997cfe02af0888b721079a835a174bf1
