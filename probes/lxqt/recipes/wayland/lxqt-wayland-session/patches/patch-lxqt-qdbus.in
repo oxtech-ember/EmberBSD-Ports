@@ -1,0 +1,151 @@
+$NetBSD$
+
+Use the installed Qt 6 qdbus path and keep the helper POSIX shell compatible.
+
+--- lxqt-qdbus.in.orig	2026-03-05 17:53:50.000000000 +0000
++++ lxqt-qdbus.in
+@@ -1,4 +1,4 @@
+-#!/bin/bash
++#!/bin/sh
+ # Helper script for setting shortcuts on Wayland compositors
+ 
+ print_help() {
+@@ -35,19 +35,31 @@
+         ;;
+ esac
+ 
+-# Search and set qdbus command
+-QDBUS=$(command -v qdbus6 qdbus-qt6 qdbus 2>/dev/null |head -n1)
+-if [[ -z "${QDBUS:-}" ]]; then
++# Prefer the Qt 6 tool installed by qt6-qttools.
++QDBUS="@CMAKE_INSTALL_PREFIX@/qt6/bin/qdbus"
++if [ ! -x "$QDBUS" ]; then
++    QDBUS=
++    for candidate in qdbus6 qdbus-qt6 qdbus; do
++        if command -v "$candidate" >/dev/null 2>&1; then
++            QDBUS=$(command -v "$candidate")
++            break
++        fi
++    done
++fi
++if [ -z "$QDBUS" ]; then
+     notify-send -i lxqt "No qdbus command available, please install it"
+     exit 1
+ fi
+ 
+-valid=("run" "openmenu" "lxqt-clip" "showdesktop" "restart" "task" "volume")
+-if [[ ! " ${valid[*]} " =~ " $1 " ]]; then
+-    echo "Invalid argument: $1"
+-    print_help
+-    exit 1
+-fi
++case "$1" in
++    run|openmenu|lxqt-clip|showdesktop|restart|task|volume)
++        ;;
++    *)
++        echo "Invalid argument: $1"
++        print_help
++        exit 1
++        ;;
++esac
+ 
+ MODE=$1
+ # argument: <application> | module | [1-10] | up , down, mute
+@@ -61,7 +73,7 @@
+     # Checks
+     if [ -n "$DESKTOP_FILE" ]; then
+         DESKTOP_FILE=$(basename "$DESKTOP_FILE")
+-        $QDBUS org.lxqt.session /LXQtSession execDesktopFile $DESKTOP_FILE
++        "$QDBUS" org.lxqt.session /LXQtSession execDesktopFile "$DESKTOP_FILE"
+     else
+         notify-send -i configure-shortcuts -a "LXQt Wayland Shortcut" "No matching desktop entry found for '$ARGUMENT'"
+         exit 1
+@@ -69,66 +81,66 @@
+ 
+ elif  [ "$MODE" = "openmenu" ]; then # open main|fancy menu
+     # check for dbus object
+-    menu=$($QDBUS org.kde.StatusNotifierWatcher | grep -E '(fancy|main)menu' | head -n1)
+-    if [[ -z "$menu" ]]; then
++    menu=$("$QDBUS" org.kde.StatusNotifierWatcher | grep -E '(fancy|main)menu' | head -n1)
++    if [ -z "$menu" ]; then
+         notify-send --icon=lxqt "No fancy menu plugin found on panels"
+     else
+-        $QDBUS org.kde.StatusNotifierWatcher $menu/show_hide org.lxqt.global_key_shortcuts.client.activated
++        "$QDBUS" org.kde.StatusNotifierWatcher "$menu/show_hide" org.lxqt.global_key_shortcuts.client.activated
+     fi
+ 
+ elif  [ "$MODE" = "lxqt-clip" ]; then # open lxqt-clip
+     # check for dbus object
+-    clip=$($QDBUS org.lxqt.lxqt-clip | grep lxqt)
+-    if [[ -z "$clip" ]]; then
++    clip=$("$QDBUS" org.lxqt.lxqt-clip | grep lxqt)
++    if [ -z "$clip" ]; then
+         notify-send --icon=lxqt "Is lxqt-clip installed and running?"
+     else
+-        $QDBUS org.lxqt.lxqt-clip /org/lxqt/clip show
++        "$QDBUS" org.lxqt.lxqt-clip /org/lxqt/clip show
+     fi
+ 
+ elif  [ "$MODE" = "showdesktop" ]; then # show desktop
+     # check for dbus object
+-    showdesktop=$($QDBUS org.kde.StatusNotifierWatcher | grep showdesktop | head -n1)
+-    if [[ -z "$showdesktop" ]]; then
++    showdesktop=$("$QDBUS" org.kde.StatusNotifierWatcher | grep showdesktop | head -n1)
++    if [ -z "$showdesktop" ]; then
+         notify-send --icon=lxqt "No showdesktop plugin found on panels"
+     else
+-        $QDBUS org.kde.StatusNotifierWatcher $showdesktop/show_hide org.lxqt.global_key_shortcuts.client.activated
++        "$QDBUS" org.kde.StatusNotifierWatcher "$showdesktop/show_hide" org.lxqt.global_key_shortcuts.client.activated
+     fi
+ 
+ elif  [ "$MODE" = "restart" ]; then # restart <module>
+     # check for dbus object
+-    modules=$($QDBUS org.lxqt.session /LXQtSession org.lxqt.session.listModules | grep lxqt-$2.desktop)
+-    if [[ -z "$modules" ]]; then
++    modules=$("$QDBUS" org.lxqt.session /LXQtSession org.lxqt.session.listModules | grep "lxqt-$2.desktop")
++    if [ -z "$modules" ]; then
+         notify-send --icon=lxqt "Module lxqt-$2 not found"
+     else
+-        $QDBUS org.lxqt.session /LXQtSession org.lxqt.session.stopModule lxqt-"$2".desktop;
++        "$QDBUS" org.lxqt.session /LXQtSession org.lxqt.session.stopModule "lxqt-$2.desktop"
+         sleep 1;
+-        $QDBUS org.lxqt.session /LXQtSession org.lxqt.session.startModule lxqt-"$2".desktop;
++        "$QDBUS" org.lxqt.session /LXQtSession org.lxqt.session.startModule "lxqt-$2.desktop"
+     fi
+ 
+ elif  [ "$MODE" = "task" ]; then # activate taskbar button
+     # check for dbus object
+-    taskbar=$($QDBUS org.kde.StatusNotifierWatcher | grep taskbar | head -n1)
+-    if [[ -z "$taskbar" ]]; then
++    taskbar=$("$QDBUS" org.kde.StatusNotifierWatcher | grep taskbar | head -n1)
++    if [ -z "$taskbar" ]; then
+         notify-send --icon=lxqt "No taskbar plugin found on panels"
+     else
+-        $QDBUS org.kde.StatusNotifierWatcher $taskbar/task_$2 org.lxqt.global_key_shortcuts.client.activated
++        "$QDBUS" org.kde.StatusNotifierWatcher "$taskbar/task_$2" org.lxqt.global_key_shortcuts.client.activated
+     fi
+ 
+ elif  [ "$MODE" = "volume" ]; then
+     # check for dbus object
+-    volume=$($QDBUS org.kde.StatusNotifierWatcher | grep volume | head -n1)
++    volume=$("$QDBUS" org.kde.StatusNotifierWatcher | grep volume | head -n1)
+     # Fallback for no volume plugin on panels
+-    if [[ -z "$volume" ]]; then
++    if [ -z "$volume" ]; then
+         notify-send "No volume plugin found on panels" # debug for niri
+     echo $ARGUMENT
+-        if [[ $ARGUMENT = "up" ]]; then
++        if [ "$ARGUMENT" = "up" ]; then
+             wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
+-        elif [[ $ARGUMENT = "down" ]]; then
++        elif [ "$ARGUMENT" = "down" ]; then
+             wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+-        elif [[ $ARGUMENT = "mute" ]]; then
++        elif [ "$ARGUMENT" = "mute" ]; then
+             wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+        fi
+     else
+-        $QDBUS org.kde.StatusNotifierWatcher $volume/$ARGUMENT org.lxqt.global_key_shortcuts.client.activated
++        "$QDBUS" org.kde.StatusNotifierWatcher "$volume/$ARGUMENT" org.lxqt.global_key_shortcuts.client.activated
+     fi
+ fi
