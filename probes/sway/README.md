@@ -146,13 +146,15 @@ python3 probes/sway/tests/ipc-values.py --source /absolute/original/sway-1.12 \
 
 ## Compositor and shutdown checks
 
-Sway 1.12nb5 passed the ordinary GCC16 package build and all package checks.
-All 33 installed payload entries match that package in the shared sysroot.
+Sway 1.12nb6 passes the ordinary GCC16 package build and all package checks.
 Its package SHA256 is
-`14294d586f593e33c8ac15a011591a4fe8ab9766fcdd08ba5337fb7cc5b54c69`.
-The same package passes installed acceptance on an isolated AArch64 VM.
-The unprivileged Pixman/headless compositor passes version, workspace switching,
-output creation, tree queries, the exit reply and actual process exit status 0.
+`d2d33534b80522a1a8e5f80fca06ef252a6ecaa78db99245b6396846f0f08ae7`.
+Its uninstalled staged executable passes Pixman/headless acceptance on an
+isolated AArch64 VM: version, workspace switching, output creation, tree queries,
+the exit reply and actual process exit status 0. It also passes the
+[invalid IPC path and partial cleanup checks](startup-cleanup.md).
+Installed payload and package lifecycle acceptance covers nb5, whose 33 entries
+match the installed package. The nb6 package has not been installed by this check.
 
 The original nb4 package reproduces reply loss despite process exit status 0:
 the display loop stops before the queued IPC response is written.
@@ -169,23 +171,9 @@ ownership model checks each removal and release; it does not replace a target
 Wayland implementation. Both native runners use short owned directories under
 `TMPDIR`, independently of their build paths, to fit Unix socket path limits.
 
-IPC startup now returns an error to the existing main cleanup path. It checks
-address/list allocations and event registration, rolls back owned resources,
-and registers the display listener only after preparation succeeds. The
-subscriber query tolerates startup and completed teardown. The main cleanup
-state is initialized before its first error jump. This avoids invoking a
-termination callback that can return or send an event before IPC exists.
-
-`tests/ipc-startup-native.py` executes the actual startup, address, subscriber,
-teardown and termination functions with the real list/log code. Eleven original
-lifecycle failures become twelve passing sanitizer controls. Three allocator
-failures, event registration, both environment publications, path construction,
-bind/listen failure, and early/late shutdown have independent resource assertions.
-The explicit test-only bind/listen failure boundary uses owned files;
-socket descriptors, descriptor flags and filesystem
-cleanup are real. Wayland event ownership also uses a test boundary. These checks
-do not establish compositor acceptance under injected target allocation failures.
-The separate installed VM check uses the actual Wayland event loop and sockets.
+The [startup checks](startup-cleanup.md) cover IPC rollback, seat destruction
+before configuration loading, native ownership controls and actual target
+startup errors. Target allocation-failure injection remains a separate boundary.
 
 Full target-header analysis covers both IPC and main. GCC16 path analysis passes.
 Cppcheck retains five warnings from GLib inline headers on each module. The two
@@ -198,13 +186,14 @@ python3 probes/sway/tests/headless.py --host explicit-target \
   --renderer pixman --results /absolute/new-headless-results
 ```
 
-The runner requires an installed package and an existing unprivileged `nobody`
-account. A parent waits for the compositor and records its real exit status.
+The runner requires the runtime dependencies, installed IPC client and an existing
+unprivileged `nobody` account. `--sway` can select an absolute staged executable.
+A parent waits for the compositor and records its real exit status.
 The runner requires the exit reply and status 0, saves the compositor
 log, and removes only its own guest directory. The VM has no physical graphics
 or input device. This check does not qualify a hardware desktop session.
 
-Ordinary `pkg_delete` removes all 33 package payload entries on the VM.
+For nb5, ordinary `pkg_delete` removes all 33 package payload entries on the VM.
 Ordinary `pkg_add` restores the same 33 entries with matching hashes and modes.
 The existing configuration remains unchanged and `pkg_admin check sway` passes.
 The same strict headless checks pass after reinstallation.
