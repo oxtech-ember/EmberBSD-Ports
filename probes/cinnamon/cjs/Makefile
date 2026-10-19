@@ -2,7 +2,7 @@
 # Use the stable CJS 140.1 tag from the Cinnamon 6.6 source set.
 DISTNAME=	cjs-140.1
 DISTFILES=	140.1.tar.gz
-SITES.140.1.tar.gz=	-https://github.com/linuxmint/cjs/archive/refs/tags/
+SITES.140.1.tar.gz=	-https://github.com/linuxmint/cjs/archive/refs/tags/140.1.tar.gz
 PKGREVISION=1
 CATEGORIES=	lang
 WRKSRC=		${WRKDIR}/cjs-140.1
