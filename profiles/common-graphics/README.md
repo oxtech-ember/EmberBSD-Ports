@@ -236,6 +236,11 @@ Sustained desktop use remains unaccepted. Physical CM5 offscreen OpenGL
 has its own receipt linked above.
 
 
+Sway 1.12, JSON-C 0.19 and the BSD libevdev provider are included in the
+validated common-graphics export. Sway retains its complete selected
+compositor package and does not add a GTK3 dependency. Its GCC16 package and
+headless runtime evidence are recorded in the [Sway port](../../probes/sway/README.md).
+
 The cross Wayland revision-2 recipes separate runtime libraries from the
 target scanner and SDK. Native ownership stays complete. Actual pkgsrc metadata
 and copied-stage checks pass. Both normal AArch64 packages verify all 13 runtime

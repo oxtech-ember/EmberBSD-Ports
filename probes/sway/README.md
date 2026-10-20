@@ -74,18 +74,13 @@ configuration. Subproject fallback downloads are disabled. The `startsway`
 session helper runs `dbus-run-session`; the package declares the current D-Bus
 runtime provider separately from Basu's tray backend.
 
-The common exporter does not include these three new recipes yet. After
-the ordinary common graphics export, copy the following directories from
-this Ports checkout to the same paths in that export:
-
-- `profiles/common-graphics/recipes/wayland/sway` to `wayland/sway`.
-- `profiles/common-graphics/recipes/textproc/json-c` to `textproc/json-c`.
-- `profiles/common-graphics/recipes/devel/libevdev-chunk` to `devel/libevdev-chunk`.
-
-Use that export and its matching cross MAKECONF:
+The standard common-graphics exporter includes Sway, JSON-C and the BSD
+libevdev provider, validates their source pins and patch hashes, and records
+their inventory. Prepare a fresh export and use its matching cross MAKECONF:
 
 ```sh
-env TMPDIR=/absolute/build-tmp bmake -C /absolute/pkgsrc/wayland/sway \
+sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc common-graphics
+env TMPDIR=/absolute/build-tmp bmake -C /absolute/new-pkgsrc/wayland/sway \
   MAKECONF=/absolute/cross.mk.conf MAKE_JOBS=1 package
 ```
 
