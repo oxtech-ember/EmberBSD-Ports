@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.20 2024/07/06 06:51:30 adam Exp $
+
+BLAKE2s (libsecret-0.20.5.tar.xz) = c1744de6f6203c5de8f4b57aaa2f404c6004f527591477984dd0fb87d3beff7b
+SHA512 (libsecret-0.20.5.tar.xz) = 61ca248aafd265e1f31d56c9084c68d880ebf03660ace3d4a6c6622ab306b56e921ac24647b6a60633bfa99c8a0407d4ae1aa6148511f289bf5ce2025b72692a
+Size (libsecret-0.20.5.tar.xz) = 187340 bytes
