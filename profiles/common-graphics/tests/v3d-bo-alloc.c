@@ -25,9 +25,11 @@ int test_close(int);
 
 static const uint32_t sizes[] = {
 	4096, 1048576, 4194304, 5246976, 7475200, 8388608, 16777216,
+	16781312, 33554432,
 	5246976, 5246976, 7475200
 };
-static uint32_t live[11], live_bytes, peak_bytes;
+enum { SINGLE_COUNT = 9, REQUEST_COUNT = 12 };
+static uint32_t live[REQUEST_COUNT + 1], live_bytes, peak_bytes, held_peak_bytes;
 static unsigned creates, releases, opened, closed, versions;
 static int fail_create, fail_release, fail_errno;
 static bool fail_open, fail_version, wrong_driver, zero_handle, fail_close;
@@ -75,8 +77,10 @@ test_ioctl(int fd, unsigned long request, ...)
 	CHECK(versions == 1 && !wrong_driver && !fail_version);
 	if (request == DRM_IOCTL_V3D_CREATE_BO) {
 		create = argument;
-		CHECK(creates < 10);
+		CHECK(creates < REQUEST_COUNT);
 		CHECK(create->size == sizes[creates]);
+		if (creates <= SINGLE_COUNT)
+			CHECK(live_bytes == 0);
 		CHECK(create->flags == 0 && create->handle == 0 && create->offset == 0);
 		creates++;
 		if ((int)creates == fail_create) {
@@ -92,13 +96,18 @@ test_ioctl(int fd, unsigned long request, ...)
 		live_bytes += create->size;
 		if (live_bytes > peak_bytes)
 			peak_bytes = live_bytes;
-		CHECK(live_bytes < 24U * 1048576U);
+		CHECK(live_bytes <= 32U * 1048576U);
+		if (creates > SINGLE_COUNT) {
+			CHECK(live_bytes <= 17969152U);
+			if (live_bytes > held_peak_bytes)
+				held_peak_bytes = live_bytes;
+		}
 		errno = EBUSY; /* Success must not print stale errno. */
 		return (0);
 	}
 	CHECK(request == DRM_IOCTL_GEM_CLOSE);
 	release = argument;
-	CHECK(release->handle > 0 && release->handle <= 10);
+	CHECK(release->handle > 0 && release->handle <= REQUEST_COUNT);
 	CHECK(live[release->handle] != 0 && release->pad == 0);
 	releases++;
 	if ((int)releases == fail_release) {
@@ -129,12 +138,13 @@ static void
 reset(void)
 {
 	memset(live, 0, sizeof(live));
-	live_bytes = peak_bytes = 0;
+	live_bytes = peak_bytes = held_peak_bytes = 0;
 	creates = releases = opened = closed = versions = 0;
 	fail_create = fail_release = 0;
 	fail_errno = ENOMEM;
 	fail_open = fail_version = wrong_driver = zero_handle = fail_close = false;
-	rewind(capture);
+	CHECK(fseek(capture, 0, SEEK_SET) == 0);
+	clearerr(capture);
 	CHECK(ftruncate(capture_fd, 0) == 0);
 }
 
@@ -151,7 +161,8 @@ run(int expected)
 	CHECK(opened == 1 && closed == (fail_open ? 0U : 1U));
 	CHECK(live_bytes == 0);
 	CHECK(fflush(stdout) == 0);
-	rewind(capture);
+	CHECK(fseek(capture, 0, SEEK_SET) == 0);
+	clearerr(capture);
 	length = fread(text, 1, sizeof(text) - 1, capture);
 	text[length] = '\0';
 	CHECK(strstr(text, "errno=16") == NULL); /* stale EBUSY */
@@ -175,15 +186,16 @@ main(void)
 	result = dup2(capture_fd, STDOUT_FILENO);
 	CHECK(result == STDOUT_FILENO);
 	reset(); run(0); tests++;
-	CHECK(creates == 10 && releases == 10 && peak_bytes == 17969152);
-	for (i = 1; i <= 10; i++) {
+	CHECK(creates == REQUEST_COUNT && releases == REQUEST_COUNT &&
+	    peak_bytes == 33554432 && held_peak_bytes == 17969152);
+	for (i = 1; i <= REQUEST_COUNT; i++) {
 		reset(); fail_create = (int)i; run(1); tests++;
-		CHECK(creates == (i <= 7 ? 10 : i));
+		CHECK(creates == (i <= SINGLE_COUNT ? REQUEST_COUNT : i));
 		CHECK(releases == creates - 1);
 	}
-	for (i = 1; i <= 10; i++) {
+	for (i = 1; i <= REQUEST_COUNT; i++) {
 		reset(); fail_release = (int)i; run(1); tests++;
-		CHECK(creates == (i <= 7 ? i : 10));
+		CHECK(creates == (i <= SINGLE_COUNT ? i : REQUEST_COUNT));
 		CHECK(releases == creates);
 	}
 	reset(); fail_open = true; run(1); tests++;
@@ -193,12 +205,12 @@ main(void)
 	reset(); wrong_driver = true; run(1); tests++;
 	CHECK(creates == 0);
 	reset(); zero_handle = true; run(1); tests++;
-	CHECK(creates == 10 && releases == 9);
+	CHECK(creates == REQUEST_COUNT && releases == REQUEST_COUNT - 1);
 	reset(); fail_close = true; run(1); tests++;
-	reset(); fail_create = 8; fail_errno = EINTR; run(1); tests++;
-	CHECK(creates == 8 && releases == 7);
-	reset(); fail_release = 8; fail_errno = EINTR; run(1); tests++;
-	CHECK(creates == 10 && releases == 10);
+	reset(); fail_create = SINGLE_COUNT + 1; fail_errno = EINTR; run(1); tests++;
+	CHECK(creates == SINGLE_COUNT + 1 && releases == SINGLE_COUNT);
+	reset(); fail_release = SINGLE_COUNT + 1; fail_errno = EINTR; run(1); tests++;
+	CHECK(creates == REQUEST_COUNT && releases == REQUEST_COUNT);
 	/* A real output failure must not skip BO or descriptor cleanup. */
 	reset();
 	unreadable = open("/dev/null", O_RDONLY);
@@ -207,7 +219,8 @@ main(void)
 	CHECK(result == STDOUT_FILENO);
 	CHECK(close(unreadable) == 0);
 	result = v3d_bo_alloc_main(1, args);
-	CHECK(result == 1 && creates == 10 && releases == 10);
+	CHECK(result == 1 && creates == REQUEST_COUNT &&
+	    releases == REQUEST_COUNT);
 	CHECK(closed == 1 && live_bytes == 0);
 	tests++;
 	/* Discard the failed write buffer before restoring the real stdout. */

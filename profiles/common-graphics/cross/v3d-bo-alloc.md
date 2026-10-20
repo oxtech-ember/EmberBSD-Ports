@@ -8,12 +8,15 @@ It does not map BOs, access MMIO, submit GPU jobs, or change driver limits.
 A successful run proves allocation and handle release only. It does not prove GPU rendering.
 
 The first phase creates and immediately closes each size:
-4096, 1048576, 4194304, 5246976, 7475200, 8388608, and 16777216 bytes.
+4096, 1048576, 4194304, 5246976, 7475200, 8388608, 16777216, 16781312,
+and 33554432 bytes. The last two requests test 16 MiB plus 4 KiB and 32 MiB.
 Allocation failures do not stop the remaining size probes.
 An explicit close failure stops further allocation and closes the descriptor.
 
 The second phase retains two 5246976-byte BOs and one 7475200-byte BO.
-The maximum requested live allocation is 17969152 bytes, below 24 MiB.
+This phase requests at most 17969152 live bytes, below 24 MiB.
+The single and held phases do not overlap. The complete probe requests at most
+33554432 live bytes (32 MiB), from one single-phase BO.
 A failed held allocation stops that phase. All earlier handles are released in reverse order.
 Every acquired descriptor receives one close attempt. Close errors are not retried.
 Process exit releases residual file resources if an explicit release fails.
