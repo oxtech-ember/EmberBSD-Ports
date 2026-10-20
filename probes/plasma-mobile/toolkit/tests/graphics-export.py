@@ -1,0 +1,140 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: BSD-2-Clause
+# Origin: EmberBSD contributors (AI-assisted).
+"""Check graphics patch composition and native/cross metadata without a build."""
+import sys
+sys.dont_write_bytecode = True
+import argparse
+import json
+import os
+from pathlib import Path
+import shlex
+
+KEYS = """PKGNAME PKG_FAIL_REASON MESON_ARGS PLIST.introspection TOOLBASE
+TOOL_DEPENDS MESON_BINARY.glib-mkenums MESON_BINARY.glib-genmarshal
+MAKE_ENV MESON_CROSS.emberbsd_gi_cross""".split()
+RECIPES = ("sysutils/libnotify", "sysutils/gsettings-desktop-schemas")
+
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+
+def check_metadata(recipe, mode, values, plist):
+    cross = mode == "yes"
+    options = shlex.split(values["MESON_ARGS"])
+    introspection = [v for v in options if v.startswith("-Dintrospection=")]
+    bindings = values["PLIST.introspection"] == "yes"
+    errors = shlex.split(values["PKG_FAIL_REASON"])
+    environment = dict(v.split("=", 1) for v in shlex.split(values["MAKE_ENV"]))
+    if recipe.endswith("libnotify"):
+        expected = "disabled" if cross else "enabled"
+        require(introspection == ["-Dintrospection=" + expected], "libnotify GI selection changed")
+        require(bindings != cross, "libnotify PLIST selection changed")
+        require(not errors, "libnotify prerequisites failed: " + repr(errors))
+        if cross:
+            for name in ("glib-mkenums", "glib-genmarshal"):
+                require(values["MESON_BINARY." + name] == values["TOOLBASE"] + "/bin/" + name,
+                        "libnotify did not select the native " + name)
+        else:
+            require("glib2-introspection-" in values["TOOL_DEPENDS"], "Native GI tool was removed")
+    else:
+        require(values["PKGNAME"] == "gsettings-desktop-schemas-51.0", "Wrong schema release")
+        require(introspection == ["-Dintrospection=true"] and bindings,
+                "The complete toolkit lost GDesktopEnums bindings")
+        for name in ("lib/girepository-1.0/GDesktopEnums-3.0.typelib",
+                     "share/gir-1.0/GDesktopEnums-3.0.gir"):
+            require("${PLIST.introspection}" + name in plist.splitlines(), "Missing binding: " + name)
+        if cross:
+            require(values["MESON_BINARY.glib-mkenums"] == values["TOOLBASE"] + "/bin/glib-mkenums",
+                    "GSettings did not select native glib-mkenums")
+            require(values["MESON_CROSS.emberbsd_gi_cross"] == "true", "Missing GI cross property")
+            require("target-query.rb" in environment.get("GI_CROSS_LAUNCHER", ""),
+                    "Missing real target query launcher")
+            require("gobject-introspection>=" in values["TOOL_DEPENDS"], "Missing native GI tool")
+            allowed = {name + " must name an existing absolute file without shell metacharacters"
+                       for name in ("EMBERBSD_GI_RUBY", "EMBERBSD_GI_QUERY_CONFIG", "EMBERBSD_CROSS_BUILD_CC")}
+            require(set(errors) <= allowed, "Unexpected GI prerequisite failure: " + repr(errors))
+        else:
+            require("GI_CROSS_LAUNCHER" not in environment and not errors,
+                    "Native GSettings selected the cross runner or failed prerequisites")
+    return errors
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--pkgsrc", type=Path, required=True)
+    parser.add_argument("--makeconf", type=Path, required=True)
+    parser.add_argument("--bmake", required=True)
+    parser.add_argument("--sdk-source", required=True)
+    parser.add_argument("--work", type=Path, required=True)
+    args = parser.parse_args()
+    ports = Path(__file__).resolve().parents[4]
+    sys.path.insert(0, str(ports / "profiles/development-toolchain/runtime/recipe/files"))
+    import sdk_source
+    sdk_source.load(args.sdk_source)
+    sdk_source.install_signal_handlers()
+    from emberbsd_sdk.process import capture
+    from emberbsd_sdk.inventory import hash_file
+    from emberbsd_sdk.errors import CommandError, ProcessOwnershipError
+    work = args.work.absolute()
+    require(not work.exists() and not work.is_symlink(), "Select a new work directory")
+    prepared = args.pkgsrc.resolve(strict=True)
+    makeconf = args.makeconf.resolve(strict=True)
+    work.mkdir(parents=True)
+    fixture = work / "pkgsrc"
+    fixture.mkdir()
+    receipt = {"scope": "source-composition-and-metadata-only", "commands": [], "queries": [],
+               "patches": {}, "makeconf_sha256": hash_file(makeconf), "status": "running"}
+
+    def run(argv, **kwargs):
+        receipt["commands"].append(argv)
+        result = capture(argv, **kwargs)
+        return result.stdout
+
+    code = 0
+    try:
+        archive = work / "recipes.tar"
+        archive.write_bytes(run(["git", "-C", str(ports / "upstream/pkgsrc"), "archive", "HEAD",
+                                 *RECIPES, "devel/libidn2", "www/libproxy", "www/curl"]))
+        run(["tar", "-xf", str(archive), "-C", str(fixture)])
+        for relative in ("profiles/common-build-tools/patches/pkgsrc-curl-security.patch",
+                         "profiles/common-graphics/cross/libnotify-cross-tools.patch",
+                         "profiles/common-graphics/cross/gsettings-desktop-schemas-cross-gir.patch",
+                         "probes/plasma-mobile/toolkit/libproxy-cross.patch",
+                         "probes/plasma-mobile/toolkit/current-network-deps.patch"):
+            patch = ports / relative
+            receipt["patches"][relative] = hash_file(patch)
+            run(["patch", "-f", "-N", "-F", "0", "-p1", "-d", str(fixture)], input=patch.read_bytes())
+        for recipe in RECIPES:
+            for name in ("Makefile", "PLIST"):
+                require((fixture / recipe / name).read_bytes() == (prepared / recipe / name).read_bytes(),
+                        "Prepared recipe differs from patch composition: " + recipe + "/" + name)
+            for mode in ("yes", "no"):
+                argv = [args.bmake, "-C", str(prepared / recipe), "_MAKEVARS_MK=defined",
+                        "_PKGSRC_BARRIER=yes", "USE_CROSS_COMPILE=" + mode]
+                for key in KEYS:
+                    argv.extend(("-v", key))
+                lines = run(argv, env={**os.environ, "MAKECONF": str(makeconf)}).decode().splitlines()
+                require(len(lines) == len(KEYS), "Unexpected bmake response length")
+                values = dict(zip(KEYS, lines))
+                missing = check_metadata(recipe, mode, values, (prepared / recipe / "PLIST").read_text())
+                receipt["queries"].append({"recipe": recipe, "cross": mode, "values": values,
+                                           "missing_prerequisites": missing})
+        receipt["status"] = "source-composition-and-native-cross-metadata-pass"
+    except CommandError as error:
+        code = error.returncode
+        receipt.update(status="command-failed", error=str(error),
+                       stdout=error.stdout.decode(errors="replace"), stderr=error.stderr.decode(errors="replace"))
+    except (ProcessOwnershipError, ValueError) as error:
+        code = 1
+        receipt.update(status="failed", error=str(error))
+    finally:
+        (work / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+    print(receipt["status"])
+    return code
+
+
+if __name__ == "__main__":
+    sys.exit(main())

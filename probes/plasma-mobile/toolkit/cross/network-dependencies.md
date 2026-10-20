@@ -21,7 +21,12 @@ historical. Literal path replacement handles metacharacters and an empty
 replacement source safely.
 
 Libproxy and GSettings use the common native introspection generators and
-real target GType query runner. The temporary libproxy query links and loads
+real target GType query runner. The complete toolkit export keeps both
+`GDesktopEnums-3.0.gir` and `GDesktopEnums-3.0.typelib` in native and cross
+packages. Apply its schema delta after the common graphics delta. The common
+runtime profile alone does not require these optional bindings.
+
+The temporary libproxy query links and loads
 both in-tree libraries, including its private backend. This fixes the failed
 GIR link without adding build paths to installed library RPATHs.
 
@@ -40,6 +45,10 @@ build in the desktop's dependency path.
 From the Ports root, after preparing the `plasma-mobile` export:
 
 ```sh
+python3 probes/plasma-mobile/toolkit/tests/graphics-export.py \
+    --sdk-source /absolute/EmberBSD-SDK --bmake /absolute/native/bmake \
+    --makeconf /absolute/mk.conf --pkgsrc /absolute/prepared-pkgsrc \
+    --work /absolute/new-export-check
 DIGEST=/absolute/native/digest \
 sh probes/plasma-mobile/toolkit/tests/network-deps-source.sh \
     /absolute/distfiles /absolute/prepared-pkgsrc /absolute/new-source-check
@@ -52,6 +61,12 @@ sh probes/plasma-mobile/toolkit/tests/libproxy-cross-consumer.sh \
     /absolute/cross-tools /absolute/sysroot /absolute/patched-libproxy-source \
     /absolute/new-libproxy-consumer
 ```
+
+The export check applies the common and toolkit patches with zero fuzz.
+It checks native and cross package metadata without building a package.
+It reports missing GI query inputs separately. It does not supply a target
+runner or establish target execution. The existing libnotify native and cross
+introspection defaults remain unchanged.
 
 Execute the resulting ELF files with the existing
 [GI target query runner](../../../../profiles/common-graphics/recipes/devel/gobject-introspection/files/target-query.rb)

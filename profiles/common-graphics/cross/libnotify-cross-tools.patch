@@ -23,7 +23,7 @@
  
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 +# Cross consumers use the C API; target-side GIR output is unnecessary.
-+MESON_ARGS+	-Dintrospection=disabled
++MESON_ARGS+=	-Dintrospection=disabled
 +MESON_BINARIES+=	glib-mkenums glib-genmarshal
 +MESON_BINARY.glib-mkenums=	${TOOLBASE}/bin/glib-mkenums
 +MESON_BINARY.glib-genmarshal=	${TOOLBASE}/bin/glib-genmarshal
@@ -34,11 +34,10 @@
  
  # Apply removals to post-wrapper transformed arguments.
  BUILDLINK_TRANSFORM.SunOS+=	rm:-Wl,--version-script
-@@ -36,8 +49,9 @@
+@@ -36,7 +49,9 @@
  .include "../../graphics/gdk-pixbuf2/buildlink3.mk"
  BUILDLINK_API_DEPENDS.glib2+=	glib2>=2.38.0
  .include "../../devel/glib2/buildlink3.mk"
--
 +.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
  BUILDLINK_DEPMETHOD.gobject-introspection=	build
  .include "../../devel/gobject-introspection/buildlink3.mk"

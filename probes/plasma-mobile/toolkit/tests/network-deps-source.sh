@@ -15,6 +15,8 @@ git -C "$root/upstream/pkgsrc" archive --format=tar HEAD \
 tar -xf "$work/recipes.tar" -C "$work/pkgsrc"
 patch -f -N -F 0 -p1 -d "$work/pkgsrc" < \
     "$root/profiles/common-build-tools/patches/pkgsrc-curl-security.patch"
+patch -f -N -F 0 -p1 -d "$work/pkgsrc" < \
+    "$root/profiles/common-graphics/cross/gsettings-desktop-schemas-cross-gir.patch"
 for delta in libproxy-cross current-network-deps; do
     patch -f -N -F 0 -p1 -d "$work/pkgsrc" < "$toolkit/$delta.patch"
 done
