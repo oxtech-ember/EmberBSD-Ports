@@ -17,3 +17,23 @@ sysroot.
 
 The package build compiled its test objects but did not execute target tests.
 Runtime execution and full KiCad integration remain pending.
+
+## git-base 2.55.0
+
+KiCad's pkgsrc recipe also requires `git-base`. The GCC16 AArch64
+`git-base-2.55.0nb1` package was built and installed in the same sysroot. Its
+archive SHA256 is
+`aa810f190ff8ff36df200f82c903244afd5cebfdbac767789ae65e7832c35c4e`.
+`git`, `git-shell`, `git-remote-http` and `git-remote-https` are ELF64/AArch64.
+
+The pkgsrc profile's cross-only Makefile adjustment makes Git select
+`${OPSYS}` (`NetBSD`) instead of inferring Linux from the build host. This
+prevents Git from enabling Linux-only `sys/sysinfo.h`. It also omits the
+target `sh:run` tool dependency during cross builds: the build uses the host
+shell supplied by `devel/git/Makefile.common`, while NetBSD provides `/bin/sh`
+at runtime. Native builds retain the original `sh:run` declaration. The full
+common-graphics export test applies this adjustment to its pinned pkgsrc
+snapshot.
+
+The Git command has not been run here because it is an AArch64 NetBSD binary.
+Target execution and full KiCad integration remain pending.

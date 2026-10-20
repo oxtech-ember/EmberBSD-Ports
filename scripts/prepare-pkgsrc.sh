@@ -642,6 +642,8 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             cp -R "$graphics/recipes/$recipe" "$destination/$recipe"
         fi
     done
+    patch -f -N -d "$destination" -p1 -F 0 < \
+        "$graphics/cross/git-base-cross-tools.patch"
     [ ! -e "$destination/devel/wayland-devel" ] && [ ! -L "$destination/devel/wayland-devel" ] || {
         echo 'Upstream now owns devel/wayland-devel; review the overlay.' >&2; exit 2;
     }

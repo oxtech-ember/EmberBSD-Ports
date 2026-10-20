@@ -1,0 +1,14 @@
+--- a/devel/git-base/Makefile
++++ b/devel/git-base/Makefile
+@@ -12,5 +12,10 @@
+ USE_CC_FEATURES=	c99
+ USE_LANGUAGES=		c
+-USE_TOOLS+=		sh:run msgfmt bash:test
++USE_TOOLS+=		msgfmt bash:test
++.if ${USE_CROSS_COMPILE:tl} == "yes"
++MAKE_FLAGS+=	uname_S=${OPSYS:Q}
++.else
++USE_TOOLS+=		sh:run
++.endif
+ 
+ CFLAGS+=		-DHAVE_DEV_TTY
