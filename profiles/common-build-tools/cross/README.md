@@ -339,7 +339,10 @@ symlink aliases resolve inside the target staging tree and sysroot; loops fail. 
 filtering and `CHECK_SHLIBS_SKIP` shell patterns remain supported.
 
 Compiler wrappers preserve the selected GCC16 CRT and runtime paths even
-when Libtool reconstructs its link command. Packages retain normal pkgsrc
+when Libtool reconstructs its link command. They also add the sysroot
+`/usr/lib` as a link search path. GNU ld needs it to resolve base libraries,
+such as `libm.so.0`, that package libraries require. The profile rejects a
+sysroot whose GCC16 C++ headers do not define `_GLIBCXX_HAVE_TLS`. Packages retain normal pkgsrc
 file, permission, RPATH and shared-library checks, and record root/wheel
 ownership rather than the Mac user's UID.
 

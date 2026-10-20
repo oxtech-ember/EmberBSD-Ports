@@ -49,10 +49,20 @@ with tempfile.TemporaryDirectory(prefix='ember-cross-targets-') as temporary:
     assert 'Unsupported cross target' in read('EMBERBSD_CROSS_TARGET=mips', '-v', 'PKG_FAIL_REASON')
     assert 'selected cross target' in read('EMBERBSD_CROSS_TARGET=amd64', 'CROSS_MACHINE_ARCH=aarch64', '-v', 'PKG_FAIL_REASON')
     # GNU ld resolves base DT_NEEDED entries of package libraries through rpath-link.
-    for language in ('cc', 'cxx'):
-        append = read('EMBERBSD_CROSS_TARGET=amd64', '-v', 'CWRAPPERS_APPEND.' + language).split()
-        assert '-Wl,-rpath-link,' + str(work / 'sysroot/usr/lib') in append, append
-    assert '/usr/lib' not in read('EMBERBSD_CROSS_TARGET=amd64', '-v', 'LDFLAGS').replace('/usr/pkg/', '')
+    for target in ('aarch64', 'amd64'):
+        for language in ('cc', 'cxx'):
+            append = read('EMBERBSD_CROSS_TARGET=' + target, '-v', 'CWRAPPERS_APPEND.' + language).split()
+            assert '-Wl,-rpath-link,' + str(work / 'sysroot/usr/lib') in append, append
+        assert '/usr/lib' not in read('EMBERBSD_CROSS_TARGET=' + target, '-v', 'LDFLAGS').replace('/usr/pkg/', '')
+    # Stale non-TLS C++ headers fail; the TLS header passes.
+    config = work / 'sysroot/usr/pkg/gcc16/include/c++/x86_64--netbsd/bits/c++config.h'
+    config.parent.mkdir(parents=True)
+    config.write_text('/* #undef _GLIBCXX_HAVE_TLS */\n')
+    assert 'TLS runtime stage' in read('EMBERBSD_CROSS_TARGET=amd64', '-v', 'PKG_FAIL_REASON')
+    config.write_text('#define _GLIBCXX_HAVE_TLS 1\n#define _GLIBCXX_HAVE_TLS 1\n')
+    assert 'TLS runtime stage' in read('EMBERBSD_CROSS_TARGET=amd64', '-v', 'PKG_FAIL_REASON')
+    config.write_text('#define _GLIBCXX_HAVE_TLS 1\n')
+    assert not read('EMBERBSD_CROSS_TARGET=amd64', '-v', 'PKG_FAIL_REASON')
     deps = read('EMBERBSD_CROSS_TARGET=amd64', 'EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime', '-v', 'DEPENDS')
     assert 'gcc16-runtime>=16.2.0nb5:../../lang/gcc16-runtime' in deps and 'gcc16>=' not in deps
     arguments = ['EMBERBSD_CROSS_TARGET=amd64', 'EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime', 'PKGPATH=lang/gcc16-runtime']

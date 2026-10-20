@@ -31,6 +31,15 @@ if [ "$RESUME" = 1 ] && [ -d "$work/source/qtbase-everywhere-src-6.12.0" ]; then
     }
 fi
 [ "$("$WAYLAND_SCANNER" --version 2>&1)" = 'wayland-scanner 1.26.0' ]
+# QtCore uses the CMake archive API with Zstandard. Check before work starts.
+zstd_probe=$(mktemp -d "${TMPDIR:-/tmp}/ember-cmake-zstd.XXXXXXXX")
+: > "$zstd_probe/empty"
+if ! (cd "$zstd_probe" && "$CMAKE" -E tar cf probe.tar.zst --zstd empty) > "$zstd_probe/log" 2>&1; then
+    rm -rf "$zstd_probe"
+    echo 'CMAKE must support Zstandard archives; see README.md' >&2
+    exit 2
+fi
+rm -rf "$zstd_probe"
 [ "$("$HOST_LLVM_BUILD/bin/llvm-config" --version)" = 23.1.3 ]
 [ -s "$HOST_CLANG_BUILD/lib/libclang.dylib" ]
 [ -s "$HOST_CLANG_BUILD/lib/libclangHandleCXX.a" ]
