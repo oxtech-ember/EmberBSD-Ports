@@ -202,7 +202,7 @@ def build_main(args):
     probes = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(probes)
     with (work / 'split-dwarf.log').open('x') as output, contextlib.redirect_stdout(output):
-        probes.split_dwarf(['--target', target, prefix, work / 'split-dwarf'])
+        probes.split_dwarf(['--target', target, str(prefix), str(work / 'split-dwarf')])
     if target == 'aarch64':
         with (work / 'lto-binutils.log').open('x') as output, contextlib.redirect_stdout(output):
             probes.lto_binutils([prefix, work / 'lto-binutils'])

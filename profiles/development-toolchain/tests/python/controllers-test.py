@@ -493,11 +493,24 @@ exit 1
             with tarfile.open(self.archive,'w') as archive:archive.add(source,arcname='gcc-16.2.0')
             row[3] = inventory.sha256_file(self.archive)
             events = []
+            real_spec = importlib.util.spec_from_file_location('real_compiler_probes', PROFILE / 'cross/tests/compiler_probes.py')
+            real_probes = importlib.util.module_from_spec(real_spec)
+            real_spec.loader.exec_module(real_probes)
+            def compile_split(argv, log, env):
+                Path(argv[-1]).with_suffix('.dwo').write_bytes(b'split DWARF fixture')
+            def inspect_split(argv, env):
+                return 'split_record\n' if argv[1] == '--debug-dump=str-offsets' else 'DW_UT_skeleton DW_UT_split_compile\n'
+            def split(args):
+                events.append('split-dwarf')
+                # Keep the real CLI parser and workspace setup at this boundary.
+                # Only target compilation and ELF inspection use fixtures.
+                with patch.object(real_probes, 'logged', side_effect=compile_split), patch.object(real_probes, 'capture', side_effect=inspect_split):
+                    real_probes.split_dwarf(args)
             class Probes:
                 def create_module(self, spec):
                     return None
                 def exec_module(self, module):
-                    module.split_dwarf = lambda args: events.append('split-dwarf')
+                    module.split_dwarf = split
                     def lto(args):
                         events.append('lto')
                         args[1].mkdir()
@@ -514,6 +527,8 @@ exit 1
                     args = (['--kernel'] if mode != 'applications' else []) + (['--bootstrap-libgcc'] if mode == 'kernel-bootstrap' else [])
                     args += [str(self.pkgsrc), str(self.archive)] + ([str(self.seed)] if mode == 'applications' else []) + [str(tools), str(self.math), str(output)]
                     cross.build_main(args)
+                    self.assertIn('split_record', (output / 'split-dwarf/test.c').read_text())
+                    self.assertIn('DW_UT_skeleton', (output / 'split-dwarf/info.txt').read_text())
                     self.assertEqual(events[:2], ['split-dwarf', 'lto'])
                     self.assertEqual(len(events), 3 if mode == 'kernel-bootstrap' else 2)
                     if mode == 'kernel-bootstrap':
