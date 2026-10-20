@@ -1,0 +1,12 @@
+--- a/graphics/graphene/Makefile
++++ b/graphics/graphene/Makefile
+@@ -25,7 +25,9 @@
+ PYTHON_FOR_BUILD_ONLY=	tool
+ 
+ .include "../../devel/glib2/buildlink3.mk"
+ .include "../../devel/gobject-introspection/buildlink3.mk"
++EMBERBSD_GI_MESON_OPTIONS= no
++.include "../../devel/gobject-introspection/cross.mk"
+ .include "../../lang/python/tool.mk"
+ .include "../../devel/meson/build.mk"
+ .include "../../mk/bsd.pkg.mk"
