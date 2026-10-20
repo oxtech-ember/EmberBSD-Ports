@@ -163,25 +163,26 @@ Plasma and physical desktop acceptance are separate work.
 
 A base built with GCC16 and `MKCXX=yes` needs its matching runtime before
 post-install C++ utilities run. This requirement is independent of the desktop
-selection, including **None**. Prepare its separate bundle on the build host:
+selection, including **None**. Use Python 3.15, `bsdtar`/libarchive, and the
+explicit SDK API1 source. Prepare its separate bundle on the build host:
 
 ```sh
-BSDTAR=/absolute/bsdtar ruby bundle-gcc16.rb \
-  /absolute/runtime-create-output /absolute/new-runtime-bundle
+python3 -B bundle-gcc16.py /absolute/runtime-create-output \
+  /absolute/new-runtime-bundle --sdk-source /absolute/emberbsd-sdk-source
 ```
 
 The input must be the complete, unchanged output of
 [`runtime.py create`](../development-toolchain/runtime/README.md):
-`gcc16-runtime-16.2.0nb1.tgz`, `package.sha256` and `provenance.json`.
+`gcc16-runtime-16.2.0nb5.tgz`, `package.sha256` and `provenance.json`.
 The helper snapshots those inputs. It checks the receipt schema, fixed amd64
 metadata, source pin, package bytes, payload digests, licenses, runtime conflicts
 and packing-list directives. Package metadata must include the queried native
 `PKGTOOLS_VERSION` and `EMBERBSD_PKG_CREATE_SHA256` with exact, unique values.
 Missing or malformed pkgtools provenance fails the strict receipt schema.
-It uses `GCC16Runtime.audit_package` and its ELF
-parser again. Only the selected `libgcc_s.so.1`, `libstdc++.so.7` and versioned
-aliases are accepted. Headers, CRT objects, static archives, compiler programs
-and installation commands are rejected. It does not execute target programs.
+It uses the Python runtime API's package audit and ELF parser again. Only the
+selected `libgcc_s.so.1`, `libstdc++.so.7` and versioned aliases are accepted.
+Headers, CRT objects, static archives, compiler programs and installation
+commands are rejected. It does not execute target programs.
 The source receipts record local provenance; they are not a source attestation
 or a signature. The recipe's earlier source and stage checks remain required.
 
@@ -200,8 +201,8 @@ The Plasma closure must contain the identical runtime package, including when
 its set is assembled later. Compare the actual artifacts before media assembly:
 
 ```sh
-cmp /absolute/runtime-create-output/gcc16-runtime-16.2.0nb1.tgz \
-  /absolute/audited-amd64-set/packages/gcc16-runtime-16.2.0nb1.tgz
+cmp /absolute/runtime-create-output/gcc16-runtime-16.2.0nb5.tgz \
+  /absolute/audited-amd64-set/packages/gcc16-runtime-16.2.0nb5.tgz
 ```
 
 A matching package name or version is insufficient. Include both bundle hashes
@@ -236,16 +237,17 @@ symlink targets, the configuration hash and the selected readelf hash.
 Changes during inspection fail. Source C files do not satisfy this gate.
 This checks the bootstrap closure; it does not qualify all base executables.
 
-Run the native package and cross-linked ELF fixtures with explicit host tools:
+Run the native package and synthetic ELF fixtures with explicit host tools:
 
 ```sh
 PKG_CREATE=/absolute/native/pkg_create \
-CROSS_BIN=/absolute/tools/bin/x86_64--netbsd- BSDTAR=/absolute/bsdtar \
-  ruby tests/runtime-installer.rb
+READ_ELF=/absolute/host/bin/readelf BSDTAR=/absolute/bsdtar \
+  python3 -B tests/runtime-installer.py --sdk-source /absolute/emberbsd-sdk-source
 ```
 
-The fixtures use native `pkg_create`, cross `as`/`ld`, host readelf and tar.
-They include an incompressible runtime payload above 64 MiB to exercise the
-capacity gate. They never execute target code. Actual runtime packaging,
-DESTDIR bootstrap acceptance, installation and image boot remain separate
-checks until their real artifacts are available.
+The bundle fixtures use native `pkg_create` and synthetic ELF records accepted
+by the production runtime parser. The optional bootstrap audit cases use host
+binutils `readelf`. They include an incompressible runtime payload above
+64 MiB to exercise the capacity gate. They never execute target code. Actual
+runtime packaging, DESTDIR bootstrap acceptance, installation and image boot
+remain separate checks until their real artifacts are available.
