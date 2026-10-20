@@ -137,7 +137,7 @@ def prepare_source(pkgsrc, archive, source, runtime=True, quarantine=None, outpu
     source.mkdir()
     extract_log = source.parent / (source.name + '-extract.log')
     require(paths.entry(extract_log) is None, 'Source extraction log already exists')
-    logged(['tar', '-xf', archive, '--strip-components=1', '-C', source], extract_log, quarantine=quarantine)
+    logged(['tar', '-xpf', archive, '--strip-components=1', '-C', source], extract_log, quarantine=quarantine)
     for name in patches:
         if name != 'patch-gcc_Makefile.in':
             patch_log = source.parent / (source.name + '-' + name + '.log')

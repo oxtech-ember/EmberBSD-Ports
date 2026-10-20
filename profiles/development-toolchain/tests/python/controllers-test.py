@@ -295,7 +295,11 @@ class ControllerTest(unittest.TestCase):
         with tarfile.open(self.archive,'w') as archive:archive.add(source,arcname='gcc-16.2.0')
         with patch.object(host,'source_row',return_value=['gcc','16.2.0','fixture',inventory.sha256_file(self.archive)]):
             output=self.root/'prepared'
-            host.prepare_source(self.pkgsrc,self.archive,output)
+            previous_mask = os.umask(0o077)
+            try:
+                host.prepare_source(self.pkgsrc,self.archive,output)
+            finally:
+                os.umask(previous_mask)
             self.assertEqual((output/'fixture').read_text(),'after\n')
             self.assertEqual((output/'libstdc++-v3/configure').read_text(),'libtool_VERSION=7:36:0\n')
             self.assertEqual((output/'libstdc++-v3/configure').stat().st_mode&0o777,0o755)
