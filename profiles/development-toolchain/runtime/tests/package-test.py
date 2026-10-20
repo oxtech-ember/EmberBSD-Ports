@@ -21,7 +21,8 @@ import runtime as rt
 from emberbsd_sdk import inventory, jsonio
 
 
-def elf(soname, machine=62, needed=('libc.so.12',), relro=True, kind=3, rpath='/usr/pkg/gcc16/lib'):
+def elf(soname, machine=62, needed=('libc.so.12',), relro=True, kind=3, rpath='/usr/pkg/gcc16/lib',
+        tls_symbols=None):
     strings = bytearray(b'\0')
     indexes = []
     for name in [soname] + list(needed) + [rpath]:
@@ -38,7 +39,29 @@ def elf(soname, machine=62, needed=('libc.so.12',), relro=True, kind=3, rpath='/
     if relro:
         data[176:232] = struct.pack('<IIQQQQQQ', 0x6474e552, 4, 256, 0x400100, 0x400100, len(entries), len(entries), 1)
     data[256:256+len(entries)] = entries
-    return bytes(data + strings)
+    data += strings
+    if soname == 'libstdc++.so.7':
+        symbols = tls_symbols if tls_symbols is not None else {
+            '_ZSt11__once_call': 6, '_ZSt15__once_callable': 6, '__once_proxy': 2}
+        names = bytearray(b'\0')
+        entries = bytearray(24)
+        for name, symbol_kind in symbols.items():
+            entries += struct.pack('<IBBHQQ', len(names), 0x10 | symbol_kind, 0,
+                                   3 if symbol_kind == 6 else 4, 0, 8)
+            names += name.encode() + b'\0'
+        strings_offset = len(data)
+        data += names
+        symbols_offset = len(data)
+        data += entries
+        section_offset = len(data)
+        data += bytes(64)
+        data += struct.pack('<IIQQQQIIQQ', 0, 3, 0, 0, strings_offset, len(names), 0, 0, 1, 0)
+        data += struct.pack('<IIQQQQIIQQ', 0, 11, 0, 0, symbols_offset, len(entries), 1, 0, 8, 24)
+        data += struct.pack('<IIQQQQIIQQ', 0, 8, 0x403, 0, 0, 16, 0, 0, 8, 0)
+        data += struct.pack('<IIQQQQIIQQ', 0, 1, 6, 0, 0, 8, 0, 0, 4, 0)
+        struct.pack_into('<Q', data, 40, section_offset)
+        struct.pack_into('<HH', data, 58, 64, 5)
+    return bytes(data)
 
 
 class RuntimePackageTest(unittest.TestCase):
@@ -124,6 +147,61 @@ class RuntimePackageTest(unittest.TestCase):
 
     def verifier(self, **kwargs):
         return rt.Stage(self.work, self.pkgsrc, self.archive, expected_source=rt.hash_file(self.archive), **kwargs)
+
+    def test_tls_abi_symbols_and_table_bounds(self):
+        path = self.lib / 'libstdc++.so.7.36'
+        original = path.read_bytes()
+        symbols = {'_ZSt11__once_call': 6, '_ZSt15__once_callable': 6, '__once_proxy': 2}
+        for name in symbols:
+            for change in ('missing', 'wrong-kind'):
+                altered = dict(symbols)
+                if change == 'missing':
+                    del altered[name]
+                else:
+                    altered[name] = 1
+                with self.subTest(name=name, change=change):
+                    path.write_bytes(elf('libstdc++.so.7', tls_symbols=altered))
+                    self.receipts()
+                    with self.assertRaisesRegex(rt.Invalid, 'TLS ABI export'):
+                        self.verifier().verify()
+        for field, value in ((40, len(original) + 1), (58, 32), (60, 0)):
+            altered = bytearray(original)
+            struct.pack_into('<Q' if field == 40 else '<H', altered, field, value)
+            path.write_bytes(altered)
+            self.receipts()
+            with self.assertRaisesRegex(rt.Invalid, 'TLS ABI'):
+                self.verifier().verify()
+        # Old global functor exports are optional, not a compatibility claim.
+        symbols['_ZSt14__once_functor'] = 1
+        path.write_bytes(elf('libstdc++.so.7', tls_symbols=symbols))
+        self.receipts()
+        result = self.verifier().verify()
+        self.assertEqual(result['tls_abi']['legacy_exports'], ['_ZSt14__once_functor'])
+        self.assertIn('not-qualified', result['tls_abi']['old_non_tls_consumer_compatibility'])
+
+    def test_tls_abi_rejects_invalid_definitions(self):
+        path = self.lib / 'libstdc++.so.7.36'
+        original = path.read_bytes()
+        sections = struct.unpack_from('<Q', original, 40)[0]
+        symbols = struct.unpack_from('<Q', original, sections + 2 * 64 + 24)[0]
+        mutations = (
+            (symbols + 24, '<I', 0xffffffff),  # Invalid name offset.
+            (symbols + 24 + 4, '<B', 6),       # Local symbol.
+            (symbols + 24 + 5, '<B', 2),       # Hidden symbol.
+            (symbols + 24 + 6, '<H', 0),       # Undefined symbol.
+            (symbols + 24 + 6, '<H', 65535),   # Unsupported extended section.
+            (sections + 3 * 64 + 8, '<Q', 3), # TLS symbol in a non-TLS section.
+            (sections + 2 * 64 + 56, '<Q', 16), # Wrong dynamic entry size.
+            (sections + 4, '<I', 11),         # Ambiguous dynamic table.
+        )
+        for offset, form, value in mutations:
+            with self.subTest(offset=offset, value=value):
+                altered = bytearray(original)
+                struct.pack_into(form, altered, offset, value)
+                path.write_bytes(altered)
+                self.receipts()
+                with self.assertRaisesRegex(rt.Invalid, 'TLS ABI'):
+                    self.verifier().verify()
 
     def test_both_targets_and_all_library_selections(self):
         for target in rt.TARGETS:
@@ -236,6 +314,17 @@ class RuntimePackageTest(unittest.TestCase):
         self.assertRaisesRegex(rt.Invalid, 'shutdown is unproven', stage.verify)
 
     def test_historical_cannot_install(self):
+        # Old authenticated parents remain usable for provenance, never install.
+        (self.lib / 'libstdc++.so.7.36').write_bytes(elf(
+            'libstdc++.so.7', needed=('libc.so.12', 'libgcc_s.so.1'),
+            tls_symbols={'_ZSt14__once_functor': 1, '__once_proxy': 2}))
+        self.receipts()
+        with self.assertRaisesRegex(rt.Invalid, 'TLS ABI export'):
+            self.verifier().verify()
+        header = self.stage / ('usr/pkg/gcc16/include/c++/' +
+                               rt.TARGETS[self.target]['triplet'] + '/bits/c++config.h')
+        header.write_text(header.read_text().replace('#define _GLIBCXX_HAVE_TLS 1\n', ''))
+        self.receipts()
         self.verifier(historical=True).verify()
         self.assertRaises(rt.Invalid, self.verifier(historical=True).install, self.root / 'dest')
 

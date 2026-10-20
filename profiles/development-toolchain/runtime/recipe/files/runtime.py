@@ -269,6 +269,11 @@ class Stage:
         result = {'files': [path.removeprefix('usr/pkg/') for path in selected], 'metadata': {
             'OPSYS': 'NetBSD', 'OS_VERSION': '11.0', 'MACHINE_ARCH': architecture['machine_arch'], 'PKGPATH': 'lang/gcc16-runtime', 'PKGNAME': NAME, 'LICENSE': 'gnu-gpl-v3', 'GCC_VERSION': VERSION, 'GCC_RUNTIME_SONAME': 'libstdc++.so.7', 'GCC_RUNTIME_LIBRARIES': selection, 'GCC_RUNTIME_SONAMES': ','.join(sonames), 'GCC_RUNTIME_TARGET': target, 'GCC_RUNTIME_TRIPLET': architecture['triplet'], 'GCC_RUNTIME_MACHINE_ARCH': architecture['machine_arch'], 'GCC_SOURCE_SHA256': self.expected_source, 'GCC_RECIPE_SHA256': digest, 'GCC_RECIPE_DISTINFO_SHA256': hash_file(recipe / 'distinfo'), 'GCC_RUNTIME_INPUTS_SHA256': hash_file(self.work / 'inputs.txt'), 'GCC_RUNTIME_STAGE_SHA256': hash_file(self.work / 'stage.sha256'), 'GCC_RUNTIME_LINKS_SHA256': hash_file(self.work / 'stage.symlinks'), 'EMBERBSD_SEED_SOURCE': seed}, 'elf': records}
         result['metadata'].update(capability_inputs)
+        if not self.historical:
+            import tls_abi
+            result['tls_abi'] = tls_abi.inspect(
+                (self.stage / 'usr/pkg/gcc16/lib/libstdc++.so.7').resolve(strict=True),
+                architecture['elf_machine'])
         if rebuild:
             import inheritance
             result['metadata'].update(inheritance.verify(self.work, self.pkgsrc, self.archive, result, expected_source=self.expected_source))

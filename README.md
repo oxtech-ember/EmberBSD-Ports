@@ -19,6 +19,11 @@ runtime behavior are validated.
 
 ## Current contents
 
+- [GCC16 cross TLS ABI checks](profiles/development-toolchain/cross-tls.md):
+  runtime verification requires the native `std::call_once` TLS exports.
+  Real AArch64 configure and object regressions pass on Debian 13.
+  Earlier non-TLS consumers require a coherent rebuild.
+
 - [ARMv7 DSP cross staging](probes/dsp/README.md#armv7-gcc16-cross-build):
   GCC16 builds the common FFTW float/double and liquid-dsp shared libraries
   for EmberBSD earmv7hf. Host guards, causal FFTW-selection checks and

@@ -57,6 +57,14 @@ TLS source patches and exactly one `#define _GLIBCXX_HAVE_TLS 1` in the staged
 `c++config.h`. It records `GCC_RUNTIME_CXX_TLS_INPUTS_SHA256`. A nb4 stage
 fails this check; build a new stage.
 
+Normal runtime verification also reads the staged `libstdc++.so.7` dynamic
+symbol table. Both `std::__once_call` and `std::__once_callable` must be
+defined, externally visible TLS symbols. `__once_proxy` must be a defined
+function. Bounded ELF table checks reject malformed or ambiguous records.
+The result reports any legacy exports without claiming binary compatibility.
+Historical parent verification remains available for provenance and cannot
+install a package.
+
 ## Checks
 
 ```sh
@@ -70,6 +78,27 @@ TLS patch. Each mutation must fail. The source profile applies the full delta
 series to the pinned pkgsrc with zero fuzz. The [cross math check](cross-math.md)
 removes the TLS and math configure deltas in reverse order for its baseline.
 
+The ABI tests remove required exports, change symbol types, visibility and
+section flags, and corrupt table bounds. The ordinary verifier must reject
+each mutation even after its inventory is regenerated.
+
+To exercise the real cross probe and the original upstream implementation:
+
+```sh
+GNU_MAKE=/absolute/gmake python3 -B \
+    profiles/development-toolchain/tests/cross-tls/check.py \
+    aarch64 /absolute/prepared-pkgsrc /absolute/prepared-gcc-source \
+    /absolute/posix-gcc16-prefix /absolute/seed-sysroot /absolute/new-check \
+    --sdk-source /absolute/EmberBSD-SDK
+```
+
+Use a POSIX application compiler and a source tree with all prepared GCC
+patches applied. The check configures libstdc++ before and after the TLS
+delta. A third configuration rejects only TLS compilation and must leave
+`HAVE_TLS` undefined. It compiles the unchanged `mutex.cc` and
+`compatibility-thread-c++0x.cc` before and after the change, then checks
+their target ELF symbol tables. No target program executes.
+
 ## Evidence
 
 - An amd64 runtime build from a macOS host configured libstdc++ with
@@ -80,3 +109,7 @@ removes the TLS and math configure deltas in reverse order for its baseline.
 - On a Jasper Lake amd64 laptop, LLVM 23 and Mesa 26 Iris built with native
   GCC16 headers loaded with this runtime. An EGL GBM probe passed three runs
   with hardware rendering.
+- On Debian 13 x86_64, GCC16.2.0 targeting AArch64 passed all three configure
+  cases and the original C++ object checks. The old objects define the
+  global functor; the repaired objects define both TLS variables. This is
+  cross compilation evidence, separate from target execution acceptance.

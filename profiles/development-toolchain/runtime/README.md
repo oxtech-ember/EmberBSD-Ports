@@ -1,6 +1,11 @@
 # Package the GCC16 target runtime
 
 This profile creates `gcc16-runtime-16.2.0nb5` for EmberBSD amd64 or AArch64.
+
+Normal verification requires the TLS `std::call_once` exports in the actual
+`libstdc++.so.7`, alongside the authenticated configuration and source inputs.
+See the [TLS capability check](../cross-tls.md) for the coherent consumer
+rebuild boundary and the cross compilation regression.
 It packages an audited [cross bootstrap stage](../bootstrap/README.md).
 All tools execute on the development host. The target receives only shared
 libraries and licenses under `/usr/pkg/gcc16` and `/usr/pkg/share/licenses`.

@@ -116,6 +116,8 @@ cross libstdc++ configuration, as native builds do. It selects the native
 `std::call_once` ABI with `std::__once_call` and advances the recipes to
 compiler nb4, libs nb5 and runtime-only nb5. Rebuild consumers of the earlier
 non-TLS runtime; see [compatibility](cross-tls.md#compatibility).
+The runtime verifier checks actual dynamic TLS exports. A Debian-hosted
+AArch64 regression confirms the configure probe and original C++ objects.
 
 The [TSVC portability backport](testsuite-portability.md) applies GCC's accepted
 NetBSD allocator fix without changing the compiler or runtime. The exported

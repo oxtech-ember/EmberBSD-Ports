@@ -15,7 +15,7 @@ for name in patch-gcc_testsuite_gcc.dg_vect_tsvc_tsvc.h patch-gcc_cp_module.cc; 
     actual=$(sed '/[$]NetBSD.*/d' "$destination/lang/gcc16/patches/$name" | shasum -a 1 | awk '{print $1}')
     [ -n "$recorded" ] && [ "$actual" = "$recorded" ] || { echo "Exported patch differs: $name" >&2; exit 1; }
 done
-for name in Makefile PLIST DESCR files/runtime.py files/inheritance.py files/relro.py files/sdk_source.py; do
+for name in Makefile PLIST DESCR files/runtime.py files/inheritance.py files/relro.py files/sdk_source.py files/tls_abi.py; do
     cmp "$root/profiles/development-toolchain/runtime/recipe/$name" "$destination/lang/gcc16-runtime/$name"
 done
 for name in runtime inheritance relro; do
