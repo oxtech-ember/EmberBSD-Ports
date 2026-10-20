@@ -37,4 +37,32 @@ if sh "$helper" "$work/stage" "$work/expected" "$work/added" > "$work/ambiguous.
 fi
 cmp "$work/before-rejection" "$work/added"
 grep -q 'Ambiguous target files' "$work/ambiguous.log"
-echo 'PASS: case-preserving target paths, extra-file retention and collision rejection'
+
+# OpenSSL emits case-only manual aliases. Preserve aliases that point to one
+# staged symlink target and the two names generated from one POD page.
+man3=$work/stage/usr/pkg/man/man3
+mkdir -p "$man3"
+target=$man3/OpenSSL_version.3
+upper=$man3/OPENSSL_VERSION_MAJOR.3
+lower=$man3/OPENSSL_version_major.3
+: > "$target"
+ln -s OpenSSL_version.3 "$upper"
+if [ ! -e "$lower" ]; then
+    ln -s OpenSSL_version.3 "$lower"
+fi
+printf '%s\n%s\n' "$upper" "$lower" > "$work/alias-expected"
+printf '%s\n' "$upper" > "$work/alias-added"
+sh "$helper" "$work/stage" "$work/alias-expected" "$work/alias-added"
+cmp "$work/alias-expected" "$work/alias-added"
+
+trace_upper=$man3/OSSL_TRACE_ENABLED.3
+trace_lower=$man3/OSSL_trace_enabled.3
+printf '.SH NAME\nOSSL_trace_enabled, OSSL_TRACE_ENABLED\n' > "$trace_upper"
+if [ ! -e "$trace_lower" ]; then
+    cp "$trace_upper" "$trace_lower"
+fi
+printf '%s\n%s\n' "$trace_upper" "$trace_lower" > "$work/trace-expected"
+printf '%s\n' "$trace_upper" > "$work/trace-added"
+sh "$helper" "$work/stage" "$work/trace-expected" "$work/trace-added"
+cmp "$work/trace-expected" "$work/trace-added"
+echo 'PASS: case-preserving paths, OpenSSL aliases, extra files and collision rejection'
