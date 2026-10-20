@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 import shlex
 
-BASELINE = '499b4af4f9c50b75ab3a892b791647d846a96fcf'
+BASELINE = '8b0508d72da7adf676af5a4ab1b069b2099b2e07'
 ICD = '/usr/pkg/share/vulkan/icd.d/powervr_mesa_icd.json'
 POWER = 'zink Vulkan 1.2(PowerVR B-Series BXM-4-64 MC1 (IMAGINATION_OPEN_SOURCE_MESA))'
 V3D = 'V3D 7.1.10.2'
@@ -139,16 +139,37 @@ def main():
         link = work / 'link'; link.symlink_to('/dev/null')
         icd = work / 'icd.json'; icd.write_text('{}\n')
         for index, (nodes, path, profile, status) in enumerate([
-            ('/dev/null', icd, 'powervr-zink', 0),
-            (str(regular) + ' /dev/null', icd, 'v3d', 0),
-            (str(regular), icd, 'v3d', 2), (str(link), icd, 'v3d', 2),
-            (str(work / 'missing'), icd, 'v3d', 2),
-            ('/dev/null', work / 'missing', 'powervr-zink', 2),
-            ('/dev/null', work, 'powervr-zink', 2),
-            ('/dev/null', work / 'missing', 'v3d', 0),
+            (['/dev/null'], icd, 'powervr-zink', 0),
+            ([str(regular), '/dev/null'], icd, 'v3d', 0),
+            ([str(regular)], icd, 'v3d', 2), ([str(link)], icd, 'v3d', 2),
+            ([str(work / 'missing')], icd, 'v3d', 2),
+            (['/dev/null'], work / 'missing', 'powervr-zink', 2),
+            (['/dev/null'], work, 'powervr-zink', 2),
+            (['/dev/null'], work / 'missing', 'v3d', 0),
         ]):
-            body = 'profile=' + shlex.quote(profile) + '\n' + prerequisites.replace('/dev/dri/renderD*', nodes).replace(ICD, str(path))
+            body = 'profile=' + shlex.quote(profile) + '\n' + prerequisites.replace('/dev/dri/renderD*', shlex.join(nodes)).replace(ICD, shlex.quote(str(path)))
             script('prerequisite-' + str(index), body, expected=status)
+
+        # Reproduce the former unquoted ICD assignment, even with a plain --work.
+        spaced = work / 'renderer fixture'; spaced.mkdir()
+        spaced_icd = spaced / 'installed ICD.json'; spaced_icd.write_text('{}\n')
+        prefix = 'profile=powervr-zink\n'
+        unsafe = prerequisites.replace('/dev/dri/renderD*', '/dev/null').replace(ICD, str(spaced_icd))
+        safe = prerequisites.replace('/dev/dri/renderD*', '/dev/null').replace(ICD, shlex.quote(str(spaced_icd)))
+        script('unquoted-icd-baseline', prefix + unsafe, expected=None,
+               env=dict(os.environ, LC_ALL='C'))
+        require(results[-1]['code'] in (1, 127) and
+                any(text in results[-1]['stderr'] for text in ['not found', 'No such file or directory']),
+                'The unquoted baseline did not fail at the split shell command')
+        script('quoted-icd-fixed', prefix + safe)
+        # Observe the for-loop words without changing its access predicate.
+        nodes = [str(spaced / 'absent node'), '/dev/null']
+        observed = prerequisites.replace('; do\n', '; do\n    printf "%s\\n" "$node"\n', 1)
+        observed = observed.replace(ICD, shlex.quote(str(spaced_icd)))
+        split = script('unquoted-nodes-baseline', prefix + observed.replace('/dev/dri/renderD*', ' '.join(nodes)))
+        intact = script('quoted-nodes-fixed', prefix + observed.replace('/dev/dri/renderD*', shlex.join(nodes)))
+        expected = ('\n'.join(nodes) + '\n').encode()
+        require(split != expected and intact == expected, 'Node quoting control missed shell word splitting')
 
         # Use the real env -i dispatch. Replace only its target Perl/guard command.
         dispatch = '# These argv entries enter only the clean session environment.\n' + section(runner, '# These argv entries enter only the clean session environment.\n', '/sbin/sysctl kern.boottime > boot.after')
