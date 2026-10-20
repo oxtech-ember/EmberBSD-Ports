@@ -55,7 +55,7 @@ The default pkgsrc path remains unchanged.
 +	provider = path
 +	if (destdir != "" && exists(destdir path)) provider = destdir path
 +	else if (cross_destdir != "") provider = cross_destdir path
-+	return system("lipo -verify_arch " shquote(arch) " " shquote(provider) " >/dev/null 2>&1") == 0
++	return system("lipo " shquote(provider) " -verify_arch " shquote(arch) " >/dev/null 2>&1") == 0
 +}
 +
 +function checkshlib(DSO,    physical, kind, command, status, archline, archs, n, i) {
