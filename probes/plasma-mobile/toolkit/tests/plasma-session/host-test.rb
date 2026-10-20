@@ -98,7 +98,7 @@ Dir.mktmpdir('plasma-session-host-', '/tmp') do |temp|
     work = "#{temp}/#{mode}"
     %w[runtime tmp].each { |dir| FileUtils.mkdir_p("#{work}/#{dir}", mode: 0o700) }
     FileUtils.cp(["#{source}/../plasma-desktop/layout.js", "#{source}/../plasma-desktop/check-results.sh"], work)
-    File.write("#{work}/bus.log", '')
+    %w[bus.log compositor.log plasma-session.log].each { |name| File.write("#{work}/#{name}", '') }
     File.write("#{work}/runtime/xauth_fixture", 'fixture')
     File.chmod(0o600, "#{work}/runtime/xauth_fixture")
     File.write("#{work}/timeout", "#!/bin/sh\nshift 3\nexec \"$@\"\n")

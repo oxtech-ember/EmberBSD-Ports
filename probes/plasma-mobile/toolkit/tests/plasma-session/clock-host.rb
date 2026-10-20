@@ -31,6 +31,7 @@ extract = lambda do |text, pattern, message|
   text[pattern] or abort message
 end
 clock = extract.call(controller, /^monotonic_seconds\(\)\n\{\n.*?^\}\n/m, 'Missing actual monotonic clock function')
+health = extract.call(controller, /^render_health\(\)\n\{\n.*?^\}\n/m, 'Missing actual render-health function')
 perl = ENV.fetch('PERL', 'perl')
 out, status = Open3.capture2e('/bin/sh', '-c', clock.gsub('/usr/pkg/bin/perl', perl) + "monotonic_seconds\nmonotonic_seconds\n")
 times = out.lines.map(&:strip)
@@ -76,6 +77,7 @@ Dir.mktmpdir('plasma-clock-', ENV.fetch('TMPDIR', '/tmp')) do |temp|
         Dir.mkdir(directory)
         File.write("#{directory}/tick", '0')
         File.write("#{directory}/display-env", 'fixture')
+        %w[bus.log compositor.log plasma-session.log].each { |name| File.write("#{directory}/#{name}", '') }
         expected = if is_old && step.positive?
           1
         elsif is_old && step.negative? && !ready_after
@@ -105,6 +107,7 @@ Dir.mktmpdir('plasma-clock-', ENV.fetch('TMPDIR', '/tmp')) do |temp|
           }
         SH
         fixture += clock.gsub('/usr/pkg/bin/perl', clock_service) unless is_old
+        fixture += health unless is_old
         fixture += body + "printf '%s\\n' \"$iteration\" > reached\n"
         File.write("#{directory}/test.sh", fixture)
         out, status = Open3.capture2e('/bin/sh', "#{directory}/test.sh")

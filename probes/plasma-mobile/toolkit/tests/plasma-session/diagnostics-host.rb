@@ -86,6 +86,7 @@ Dir.mktmpdir('plasma-session-diagnostics-') do |temp|
       directory = "#{temp}/query-#{is_old ? 'old' : 'new'}-#{index}"
       Dir.mkdir(directory)
       File.write("#{directory}/layout.js", 'fixture layout')
+      %w[bus.log compositor.log plasma-session.log].each { |name| File.write("#{directory}/#{name}", '') }
       qdbus = "#{directory}/qdbus"
       executable.call(qdbus, <<~SCRIPT)
         #!#{RbConfig.ruby}

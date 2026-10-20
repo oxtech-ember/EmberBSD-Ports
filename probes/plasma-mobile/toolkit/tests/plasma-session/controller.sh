@@ -31,6 +31,24 @@ query()
     fi
     return "$query_status"
 }
+render_health()
+{
+    for render_log in bus.log compositor.log plasma-session.log; do
+        if [ -L "$render_log" ] || [ ! -f "$render_log" ] || [ ! -r "$render_log" ]; then
+            echo "FAIL: render health phase=$phase unreadable regular log=$render_log" >&2
+            return 1
+        fi
+        render_status=0
+        # stderr is also captured in bus.log. Stop after the first match so
+        # this scan cannot read its own error output back from that log.
+        awk 'index($0, "MESA: error:") { printf "%s:%d:%s\n", FILENAME, FNR, $0; exit 1 }' \
+            "$render_log" >&2 || render_status=$?
+        if [ "$render_status" -ne 0 ]; then
+            echo "FAIL: render health phase=$phase log=$render_log status=$render_status" >&2
+            return 1
+        fi
+    done
+}
 owner()
 {
     query org.freedesktop.DBus /org/freedesktop/DBus \
@@ -77,6 +95,7 @@ fi
 [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]
 export WAYLAND_DISPLAY DISPLAY XAUTHORITY
 stamp compositor-ready
+: > plasma-session.log
 /usr/pkg/bin/startplasma-wayland > plasma-session.log 2>&1 &
 plasma=$!
 printf '%s\n' "$plasma" > startplasma.pid
@@ -97,10 +116,12 @@ ready()
     grep -qx org.kde.plasma.desktop shell.txt || return $?
     query org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
         "$(cat layout.js)" > layout.txt || return $?
-    grep -qx 'PASS: default desktop, panel and six applet models on 1280x1024' layout.txt
+    grep -qx 'PASS: default desktop, panel and six applet models on 1280x1024' layout.txt || return $?
+    render_health || return $?
 }
 phase=startup-readiness
 while ! ready 2> readiness-error.log; do
+    render_health || exit 1
     kill -0 "$wrapper" && kill -0 "$plasma"
     [ "$(monotonic_seconds)" -lt "$deadline" ] || { echo 'FAIL: full Plasma session readiness deadline' >&2; exit 1; }
     sleep 1
@@ -137,6 +158,7 @@ cat bus.log plasma-session.log compositor.log | awk -v prefix="[$shell_pid] " 'i
 /bin/sh ./check-results.sh renderer shell-renderer.log
 # This API performs logout only. It does not request halt or reboot.
 phase=logout
+render_health || exit 1
 query org.kde.Shutdown /Shutdown org.kde.Shutdown.logout > logout.log 2>&1
 : > logout.requested
 stamp logout-requested
@@ -151,7 +173,9 @@ printf '%s\n' "$wrapper_status" > wrapper.status
 plasma_status=0
 wait "$plasma" || plasma_status=$?
 printf '%s\n' "$plasma_status" > startplasma.status
-[ "$wrapper_status" -eq 0 ] && [ "$plasma_status" -eq 0 ]
+[ "$wrapper_status" -eq 0 ]
+[ "$plasma_status" -eq 0 ]
 [ ! -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]
+render_health || exit 1
 stamp session-stopped
 echo 'PASS: full session stayed ready for 30 seconds and completed normal logout'

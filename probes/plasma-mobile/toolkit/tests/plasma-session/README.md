@@ -130,6 +130,14 @@ of KWin. KSMServer's source selects Qt's `xcb` backend before it exposes its
 D-Bus service. The renderer log must contain V3D evidence from the actual
 plasmashell PID, selected through the private bus.
 
+The controller rejects the literal Mesa prefix `MESA: error:` in `bus.log`,
+`compositor.log` and `plasma-session.log`. It checks readiness, each liveness
+pass, the logout boundary and the final stopped-session boundary. The first
+matching file, line number and original row remain in the diagnostics.
+Missing, unreadable, symlink or nonregular logs fail acceptance. Empty logs
+and ordinary warnings are allowed. Renderer identity and the absence of this
+known error prefix do not prove successful draw completion or visible pixels.
+
 The supervisor creates a private process group and a random environment marker.
 It verifies marker visibility before launching the session. It records PID,
 UID and start time, without saving process environments. It checks the marker
@@ -155,6 +163,7 @@ PERL=/path/to/native/perl /path/to/native/ruby ./host-test.rb
 /path/to/native/ruby ./xauthority-host.rb
 /path/to/native/ruby ./diagnostics-host.rb
 PERL=/path/to/native/perl /path/to/native/ruby ./clock-host.rb
+/path/to/native/ruby ./render-health-host.rb
 ```
 
 On macOS, do not use Apple's protected system interpreters. SIP hides their
@@ -213,3 +222,9 @@ They model forward and backward civil clock steps, bounded monotonic expiry,
 changed civil boot time and unsuccessful or missing process statuses.
 The pinned previous harness reproduces the false expiry, extended wait and
 skipped status check. These controls do not execute a target desktop session.
+
+The render-health controls execute the actual predicate and its readiness,
+liveness, logout and final acceptance callers. They reproduce the previous
+ready false success with Mesa draw/TFU errors, reject unavailable logs and
+retain expected warnings. Omitted-call controls detect the missing gates.
+These host controls do not qualify successful target rendering.
