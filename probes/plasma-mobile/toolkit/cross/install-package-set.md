@@ -1,6 +1,9 @@
 # Install a prepared Plasma package set
 
-Prepare the runtime closure with `prepare-package-set.rb` first.
+Prepare the runtime closure with `prepare-package-set.py` first.
+Select its SDK API1 source explicitly, as defined in the
+[package audit contract](../tests/package-set.md). The installer itself does not
+require Python or SDK host modules on the target.
 Pass each exact root package name once. Duplicate roots are rejected before output is created.
 Copy its complete output directory to the target.
 Keep `packages/`, `packages.sha256`, `install-order.txt`, `roots.txt` and `target.txt` together.
@@ -70,7 +73,7 @@ Run the data-only package regression with real native pkgtools:
 ```sh
 PKG_CREATE=/absolute/native/pkg_create PKG_INFO=/absolute/native/pkg_info \
 PKG_ADMIN=/absolute/native/pkg_admin PKG_ADD=/absolute/native/pkg_add \
-    ruby ../tests/install-package-set.rb /absolute/new-results
+    ruby ../tests/install-package-set.py /absolute/new-results
 ```
 
 The regression creates actual package archives with `pkg_create`.

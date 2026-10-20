@@ -1,21 +1,27 @@
 # Runtime package-set audit
 
-`cross/prepare-package-set.rb` prepares an offline EmberBSD package set for
+`cross/prepare-package-set.py` prepares an offline EmberBSD package set for
 the selected sysroot. Its target metadata uses the retained NetBSD
 11.0 ABI identifiers. The caller supplies exact installed root package names.
 Native `pkg_info -K ... -e ...` resolves their actual `@pkgdep` constraints.
 The output order places each dependency before its consumer.
 
 The archive index contains one absolute `.tgz` path per line. The output must
-not exist. Use native Ruby and bsdtar with libarchive support.
+not exist. Use one host CPython 3.15 with its standard library, native pkgtools
+and bsdtar with libarchive support. Select an EmberBSD-SDK API1 source explicitly
+with `--sdk-source /absolute/EmberBSD-SDK` or `EMBERBSD_SDK_SOURCE`. The source
+must provide `PRODUCER_STREAM_API = 1` and `TAR_STREAM_API = 1`. Older API1
+sources without these capabilities fail before a producer starts. No pip,
+virtual environment or target Python is required.
 Use `--target aarch64|amd64` before the input paths. The default is `aarch64`.
 The amd64 target requires `MACHINE_ARCH=x86_64` and ELF machine 62.
 The AArch64 target requires `MACHINE_ARCH=aarch64` and ELF machine 183.
 Both targets require 64-bit little-endian ELF headers.
 
 ```sh
+export EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK
 PKG_INFO=/absolute/native/pkg_info BSDTAR=/absolute/native/bsdtar \
-    ruby probes/plasma-mobile/toolkit/cross/prepare-package-set.rb \
+    python3 -B probes/plasma-mobile/toolkit/cross/prepare-package-set.py \
     /absolute/sysroot/usr/pkg/pkgdb /absolute/archive-paths.txt \
     /absolute/new-package-set plasma6-plasma-desktop-6.8.0nb4
 ```
@@ -52,7 +58,17 @@ is illustrative. The command performs these checks before publishing output:
 A rejected candidate does not hide a later valid archive with the same name.
 The auditor copies into a private temporary directory beside the output.
 It renames that directory only after all packages pass. Normal errors and
-interrupts remove that temporary directory. An existing output is preserved.
+interrupts remove that temporary directory only after producer ownership is
+resolved. An unproven session drain retains the directory and writes
+`.producer-ownership-unproven.json` if possible. It never publishes a set.
+Do not remove retained work until its producer ownership is resolved.
+An existing output is preserved.
+Each producer has a 300-second read/drain deadline. Stderr is bounded to one
+MiB. Failed producers retain their exact status, including status 97 and signal
+status. An archive-policy failure can try a later candidate; an unexpected
+producer failure stops the audit. The SDK owns process drainage and raw tar
+reading. Package-specific policy stays in this auditor.
+
 Forced process termination or power loss can leave a hidden temporary directory;
 it is never an accepted package set.
 
@@ -72,11 +88,11 @@ It does not modify the build sysroot or inspect the complete desktop closure.
 ```sh
 PKG_CREATE=/absolute/native/pkg_create PKG_INFO=/absolute/native/pkg_info \
 BSDTAR=/absolute/native/bsdtar \
-    ruby probes/plasma-mobile/toolkit/tests/package-set.rb /absolute/new-tests
+    python3 -B probes/plasma-mobile/toolkit/tests/package-set.py /absolute/new-tests
 
 PKG_CREATE=/absolute/native/pkg_create PKG_INFO=/absolute/native/pkg_info \
 PKG_ADMIN=/absolute/native/pkg_admin BSDTAR=/absolute/native/bsdtar \
-    ruby probes/plasma-mobile/toolkit/tests/package-set-targets.rb /absolute/new-target-tests
+    python3 -B probes/plasma-mobile/toolkit/tests/package-set-targets.py /absolute/new-target-tests
 ```
 
 The 19 cases include PAX paths and link targets longer than the ustar limits,
@@ -102,7 +118,7 @@ The separate script regression uses the same real archive auditor:
 ```sh
 PKG_CREATE=/absolute/native/pkg_create PKG_INFO=/absolute/native/pkg_info \
 BSDTAR=/absolute/native/bsdtar \
-    ruby probes/plasma-mobile/toolkit/tests/package-install-scripts.rb /absolute/new-script-tests
+    python3 -B probes/plasma-mobile/toolkit/tests/package-install-scripts.py /absolute/new-script-tests
 ```
 
 Its 20 cases cover all three script names, embedded helper scripts, quoted and
@@ -120,6 +136,21 @@ resolve shell variables, command substitutions, `PATH` commands or symlinks.
 This is a cross-package portability check, not a shell security audit.
 Custom runtime logic still needs its own target lifecycle tests.
 
+The separate process regression uses the actual Python CLI and SDK modules:
+
+```sh
+PKG_CREATE=/absolute/native/pkg_create PKG_INFO=/absolute/native/pkg_info \
+BSDTAR=/absolute/native/bsdtar \
+    python3 -B probes/plasma-mobile/toolkit/tests/package-set-process.py /absolute/new-process-tests
+```
+
+It checks producer status 97, negative signal status, and INT/TERM/HUP drainage.
+A producer creates a TERM-ignoring writer in its owned session. The writer must
+stop before the CLI returns. Ownership fault injection runs after a real drain;
+it checks retained staging both with and without a writable quarantine marker.
+Other controls cover SDK capabilities, a restrictive umask, late metadata
+changes and raw PAX policy. These controls do not claim package installation.
+
 The implementation reads PAX records by their byte lengths. Libarchive converts
 supported input compression to a stream; no package payload is extracted.
 Sparse members, non-file special devices, metadata above 16 MiB and PAX size
@@ -134,7 +165,7 @@ matching EmberBSD sysroot and target loader checks.
 This is a package integrity and closure check. It does not prove that target
 ELF objects load, that target libraries are ABI-compatible, or that Plasma renders.
 Those checks require the separate target acceptance scenario. No C/C++ source
-is changed. Cppcheck and compiler path analyzers do not analyze this Ruby code;
+is changed. Cppcheck and compiler path analyzers do not analyze this Python code;
 the regression is not a Valgrind run.
 
 Origin: EmberBSD (AI-assisted).

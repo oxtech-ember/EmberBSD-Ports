@@ -60,7 +60,8 @@ python3 -B profiles/common-build-tools/tests/llvm-package-lifecycle.py \
 python3 -B profiles/common-build-tools/tests/llvm-stage-links.py \
     profiles/common-build-tools/recipes/lang/llvm/files/select-package-stage.py \
     /absolute/new-link-check
-BSDTAR=/absolute/bsdtar ruby probes/plasma-mobile/toolkit/tests/package-set-llvm.rb \
+EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK \
+BSDTAR=/absolute/bsdtar python3 -B probes/plasma-mobile/toolkit/tests/package-set-llvm.py \
     /absolute/native-prefix /absolute/new-policy-check
 ```
 

@@ -15,9 +15,11 @@ create = ENV.fetch('PKG_CREATE', 'pkg_create')
 info = ENV.fetch('PKG_INFO', 'pkg_info')
 admin = ENV.fetch('PKG_ADMIN', 'pkg_admin')
 tar = ENV.fetch('BSDTAR', 'bsdtar')
+python = ENV.fetch('PYTHON', 'python3')
+sdk = ENV.fetch('EMBERBSD_SDK_SOURCE')
 environment = { 'PKG_INFO' => info, 'PKG_ADMIN' => admin, 'BSDTAR' => tar }
 bundler = File.expand_path('../bundle-plasma.rb', __dir__)
-auditor = File.expand_path('../../../probes/plasma-mobile/toolkit/cross/prepare-package-set.rb', __dir__)
+auditor = File.expand_path('../../../probes/plasma-mobile/toolkit/cross/prepare-package-set.py', __dir__)
 run = lambda do |*command|
   output, error, status = Open3.capture3(*command)
   raise "Command failed: #{command.inspect}\n#{output}#{error}" unless status.success?
@@ -75,7 +77,7 @@ fixture = lambda do |name, options = {}|
       "#{Digest::SHA256.file(path).hexdigest}  packages/#{File.basename(path)}\n"
     end.join)
   else
-    run.call(environment, RbConfig.ruby, auditor, '--target', 'amd64', database, index, source, 'plasma-fixture-root-1.0')
+    run.call(environment, python, '-B', '-I', '-S', auditor, '--sdk-source', sdk, '--target', 'amd64', database, index, source, 'plasma-fixture-root-1.0')
   end
   source
 end
@@ -115,7 +117,13 @@ check = lambda do |name, source, expected = nil, destination = nil|
     end
   end
   raise 'Bundler changed source input' unless before.all? { |path, hash| Digest::SHA256.file(path).hexdigest == hash }
-  raise 'Bundler left temporary staging' unless Dir[File.join(File.dirname(destination), ".#{File.basename(destination)}-*")].empty?
+  retained = Dir[File.join(File.dirname(destination), ".#{File.basename(destination)}-*")]
+  if name == 'foreign-elf'
+    raise 'Failed auditor workspace was removed' unless retained.length == 1 &&
+      error.include?("Retained incomplete auditor workspace: #{retained.first}")
+  else
+    raise 'Bundler left temporary staging' unless retained.empty?
+  end
   count += 1
   puts "PASS: #{name}"
   destination

@@ -81,11 +81,13 @@ The bundle is available through the same USB or HTTP(S) set source as the OS.
 Use the complete output of the [package-set auditor](../../probes/plasma-mobile/toolkit/tests/package-set.md)
 with `--target amd64`. Keep `packages/`, `packages.sha256`, `roots.txt`,
 `install-order.txt` and `target.txt` together. Supply native pkgtools, Ruby
-with Fiddle, and bsdtar/libarchive on the development host:
+with Fiddle, host Python, an explicit SDK API1 source with stream/raw-tar
+capabilities, and bsdtar/libarchive on the development host:
 
 ```sh
 PKG_INFO=/absolute/native/pkg_info PKG_ADMIN=/absolute/native/pkg_admin \
-BSDTAR=/absolute/bsdtar \
+BSDTAR=/absolute/bsdtar PYTHON=/absolute/python3 \
+EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK \
   ruby bundle-plasma.rb /absolute/audited-amd64-set /absolute/new-output
 ```
 
@@ -110,7 +112,10 @@ The new output contains:
 
 Package archives retain their audited bytes. Outer tar entries use numeric
 owner/group zero and `root:wheel` names. macOS attributes, ACLs and file flags
-are excluded. Private staging is removed after completion or failure.
+are excluded. Private staging is removed after completion or a failure outside
+the auditor dispatch. A failed or interrupted auditor retains the workspace
+and reports its path, even if a quarantine marker could not be written.
+Resolve producer ownership before removing that retained work.
 Publication uses an atomic no-replace rename on macOS or Linux. Existing
 outputs, dangling symlinks and concurrently created destinations are preserved.
 The XFCE `bundle.rb` interface remains unchanged.
@@ -126,6 +131,7 @@ Run the small native package/tar regression with real pkgtools:
 ```sh
 PKG_CREATE=/absolute/native/pkg_create PKG_INFO=/absolute/native/pkg_info \
 PKG_ADMIN=/absolute/native/pkg_admin BSDTAR=/absolute/bsdtar \
+PYTHON=/absolute/python3 EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK \
   ruby tests/bundle-plasma.rb /absolute/new-results
 ```
 

@@ -119,12 +119,16 @@ begin
   output = File.join(parent, File.basename(output))
   check(!output.start_with?(source + '/'), 'Output must be outside the source package set')
   source_hashes = fingerprint(source)
+  python = ENV.fetch('PYTHON', 'python3')
+  sdk = ENV.fetch('EMBERBSD_SDK_SOURCE')
+  check(sdk.start_with?('/'), 'SDK source must be an absolute path')
+  sdk = File.realpath(sdk)
   tar = ENV.fetch('BSDTAR', 'bsdtar')
   environment = { 'BSDTAR' => tar, 'COPYFILE_DISABLE' => '1', 'TAR_OPTIONS' => nil }
   check(run!(environment, tar, '--version').include?('libarchive'), 'Use bsdtar/libarchive')
   cross = File.expand_path('../../probes/plasma-mobile/toolkit/cross', __dir__)
   installer = File.join(cross, 'install-package-set.sh')
-  auditor = File.join(cross, 'prepare-package-set.rb')
+  auditor = File.join(cross, 'prepare-package-set.py')
   workspace = Dir.mktmpdir(".#{File.basename(output)}-", parent)
   snapshot = File.join(workspace, 'snapshot')
   FileUtils.mkdir_p(File.join(snapshot, 'packages'))
@@ -156,7 +160,12 @@ begin
   index = File.join(workspace, 'archives.txt')
   File.write(index, order.map { |name| File.join(snapshot, 'packages', name) + "\n" }.join)
   verified = File.join(workspace, 'verified')
-  run!(environment, RbConfig.ruby, auditor, '--target', 'amd64', database, index, verified, *roots)
+  # A failed auditor can retain a producer with unproven ownership. Keep its
+  # entire workspace even if its quarantine marker could not be written.
+  audit_incomplete = true
+  run!(environment, python, '-B', '-I', '-S', auditor, '--sdk-source', sdk,
+       '--target', 'amd64', database, index, verified, *roots)
+  audit_incomplete = false
   check(File.readlines(File.join(verified, 'install-order.txt'), chomp: true).sort == order.sort,
         'Package set contains archives outside its root dependency closure')
 
@@ -216,5 +225,11 @@ rescue StandardError => error
   warn "FAIL: #{error.message}"
   exit 1
 ensure
-  FileUtils.remove_entry(workspace) if defined?(workspace) && workspace && File.directory?(workspace)
+  if defined?(workspace) && workspace && File.directory?(workspace)
+    if defined?(audit_incomplete) && audit_incomplete
+      warn "Retained incomplete auditor workspace: #{workspace}"
+    else
+      FileUtils.remove_entry(workspace)
+    end
+  end
 end
