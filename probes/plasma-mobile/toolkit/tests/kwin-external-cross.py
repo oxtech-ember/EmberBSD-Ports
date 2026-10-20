@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
-"""Configure both real KWin demos with the production cross-cache transfer."""
+"""Configure both KWin demos and run the pip Wayland generators."""
 import sys
 sys.dont_write_bytecode = True
 import argparse
@@ -15,7 +15,7 @@ CMAKE_FIND_ROOT_PATH_MODE_PROGRAM CMAKE_FIND_ROOT_PATH_MODE_LIBRARY
 CMAKE_FIND_ROOT_PATH_MODE_INCLUDE CMAKE_FIND_ROOT_PATH_MODE_PACKAGE
 CMAKE_PREFIX_PATH CMAKE_C_FLAGS CMAKE_CXX_FLAGS CMAKE_EXE_LINKER_FLAGS
 ECM_DIR Qt6_DIR QT_HOST_PATH QT_HOST_PATH_CMAKE_DIR Qt6CoreTools_DIR
-Qt6GuiTools_DIR PKG_CONFIG_EXECUTABLE WaylandScanner_EXECUTABLE
+Qt6GuiTools_DIR Qt6WaylandScannerTools_DIR PKG_CONFIG_EXECUTABLE WaylandScanner_EXECUTABLE
 WaylandProtocols_DATADIR""".split()
 
 
@@ -60,7 +60,8 @@ def main():
             if key in CONTEXT:
                 values[key] = value
     for key in ("CMAKE_SYSTEM_NAME", "CMAKE_SYSROOT", "CMAKE_C_COMPILER",
-                "CMAKE_CXX_COMPILER", "Qt6CoreTools_DIR", "Qt6GuiTools_DIR"):
+                "CMAKE_CXX_COMPILER", "Qt6CoreTools_DIR", "Qt6GuiTools_DIR",
+                "Qt6WaylandScannerTools_DIR"):
         if not values.get(key) or values[key].endswith("-NOTFOUND"):
             raise ValueError("Missing accepted parent input: " + key)
     work.mkdir(parents=True)
@@ -84,16 +85,26 @@ def main():
             commands.append([args.cmake, "-C" + str(work / "cross/cross-demo-cache.cmake"),
                              "-GUnix Makefiles", "-S", str(source / "tests" / demo),
                              "-B", str(work / demo)])
+        commands.append([args.cmake, "--build", str(work / "pip"),
+                         "--target", "piptest_autogen_timestamp_deps", "--parallel", "1"])
         commands.append([args.cmake, "-S", str(fixture), "-B", str(work / "native")])
         for index, argv in enumerate(commands):
             receipt["commands"].append(argv)
             run_logged(argv, work / (str(index) + ".log"))
         if (work / "native/cross-demo-cache.cmake").exists():
             raise ValueError("Native configuration unexpectedly created a cross cache")
-        receipt["status"] = "both-real-demos-configured-native-transfer-absent"
+        receipt["generated"] = {}
+        for protocol in ("wayland", "xdg-shell", "xx-pip-v1"):
+            for suffix in ("h", "cpp"):
+                name = "qwayland-" + protocol + "." + suffix
+                output = work / "pip" / name
+                if not output.is_file() or not output.stat().st_size:
+                    raise ValueError("Missing generated protocol output: " + name)
+                receipt["generated"][name] = hashlib.sha256(output.read_bytes()).hexdigest()
+        receipt["status"] = "both-demos-configured-pip-generated-native-transfer-absent"
     except CommandError as error:
         code = error.returncode
-        receipt.update(status="configure-failed", error=str(error))
+        receipt.update(status="configure-or-generation-failed", error=str(error))
     except ProcessOwnershipError as error:
         code = 1
         receipt.update(status="ownership-unproven", sid=error.sid, error=str(error))

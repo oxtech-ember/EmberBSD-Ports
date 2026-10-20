@@ -15,10 +15,12 @@ Old GCC 12 compatibility patches and unresolved-symbol suppression are not used.
 The two external Wayland demo builds now inherit the parent cross platform,
 sysroot, Qt metadata and native scanners. Both demo binaries cross-link successfully.
 
-KWin 6.8 also passes the selected `Qt6CoreTools_DIR` and `Qt6GuiTools_DIR`
-to both external demos. Without these inputs, ECM can select the target
-`qtpaths` during a cross configure. Both real demo configurations pass with
-the selected host tools. Native configuration does not create a cross cache.
+KWin 6.8 passes the selected `Qt6CoreTools_DIR`, `Qt6GuiTools_DIR` and
+`Qt6WaylandScannerTools_DIR` to both external demos. Without these inputs,
+ECM can select the target `qtpaths` during configure. Qt can also select the
+target `qtwaylandscanner` during protocol generation. Both real demo
+configurations and the pip protocol generation target pass with the selected
+host tools. Native configuration does not create a cross cache.
 This check does not establish a complete KWin package or target execution.
 
 Run the regression in the package's `ALL_ENV` environment.
