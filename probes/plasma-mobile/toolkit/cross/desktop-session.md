@@ -15,6 +15,22 @@ Old GCC 12 compatibility patches and unresolved-symbol suppression are not used.
 The two external Wayland demo builds now inherit the parent cross platform,
 sysroot, Qt metadata and native scanners. Both demo binaries cross-link successfully.
 
+KWin 6.8 also passes the selected `Qt6CoreTools_DIR` and `Qt6GuiTools_DIR`
+to both external demos. Without these inputs, ECM can select the target
+`qtpaths` during a cross configure. Both real demo configurations pass with
+the selected host tools. Native configuration does not create a cross cache.
+This check does not establish a complete KWin package or target execution.
+
+Run the regression in the package's `ALL_ENV` environment.
+Use the patched KWin source and its accepted parent CMake cache.
+Select a new probe directory in the shared object tree.
+
+```sh
+python3 ../tests/kwin-external-cross.py --sdk-source SDK_SOURCE \
+  --source KWIN_SOURCE --parent-cache PARENT_BUILD/CMakeCache.txt \
+  --cmake CMAKE --work NEW_PROBE_DIRECTORY
+```
+
 ## Host tools and runtime commands
 
 [Native KPackage](libplasma.md) creates package metadata during the host build.

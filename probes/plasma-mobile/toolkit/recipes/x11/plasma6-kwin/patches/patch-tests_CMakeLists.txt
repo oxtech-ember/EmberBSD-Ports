@@ -4,7 +4,7 @@ Origin: EmberBSD (AI-assisted), not submitted upstream.
 
 --- tests/CMakeLists.txt.orig
 +++ tests/CMakeLists.txt
-@@ -1,9 +1,32 @@
+@@ -1,9 +1,33 @@
  include(ExternalProject)
  
 +# External target demos need the same platform and native generators as KWin.
@@ -20,6 +20,7 @@ Origin: EmberBSD (AI-assisted), not submitted upstream.
 +            CMAKE_FIND_ROOT_PATH_MODE_PACKAGE CMAKE_PREFIX_PATH
 +            CMAKE_C_FLAGS CMAKE_CXX_FLAGS CMAKE_EXE_LINKER_FLAGS
 +            ECM_DIR Qt6_DIR QT_HOST_PATH QT_HOST_PATH_CMAKE_DIR
++            Qt6CoreTools_DIR Qt6GuiTools_DIR
 +            PKG_CONFIG_EXECUTABLE WaylandScanner_EXECUTABLE WaylandProtocols_DATADIR)
 +        if(DEFINED ${variable})
 +            file(APPEND "${kwin_demo_cache}"
