@@ -1,0 +1,313 @@
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+Detect thread-local storage in NetBSD libstdc++ cross configuration.
+Keep generated configure synchronized with crossconfig.m4 using Autoconf2.69.
+Preserve GCC licenses, OpenBSD behavior and the native configuration path.
+
+--- a/lang/gcc16/Makefile
++++ b/lang/gcc16/Makefile
+@@ -4,7 +4,7 @@
+ ## When bumping the PKGREVISION of this package the PKGREVISION of
+ ## lang/gcc16-libs needs to be bumped to be at least 1 more than the
+ ## PKGREVISION of this package!
+-PKGREVISION=	3
++PKGREVISION=	4
+ COMMENT=	The GNU Compiler Collection (GCC) - 16.0 Release Series
+ 
+ LANGS=		c
+--- a/lang/gcc16/distinfo
++++ b/lang/gcc16/distinfo
+@@ -2,6 +2,8 @@
+ 
+ SHA1 (patch-libstdc++-v3_crossconfig.m4) = dbac37c604488becbdc75f201b540717c0cf5ab3
+ SHA1 (patch-libstdc++-v3_configure_math) = f04163866acf946c5819cc6ae1c24543c46b4fd9
++SHA1 (patch-libstdc++-v3_configure_tls) = 1ac77653897f2bc259f984580b68044d7d4afd20
++SHA1 (patch-libstdc++-v3_crossconfig_tls) = 3ae4c63a91e4cc2744755ae5e8ffd656c23f7715
+ SHA1 (patch-libstdc++-v3_config_locale_generic_c__locale) = 9efefe7bda8401456abcd477b41c3f7790052a00
+ SHA1 (patch-gcc_cp_module.cc) = 6215bbcde8e9c6ea44df9da284971f1a5706554c
+ SHA1 (patch-gcc_testsuite_gcc.dg_vect_tsvc_tsvc.h) = eb86527a4697d2d1ed34b22c8083796644888b68
+--- /dev/null
++++ b/lang/gcc16/patches/patch-libstdc++-v3_configure_tls
+@@ -0,0 +1,246 @@
++$NetBSD$
++
++Detect thread-local storage during NetBSD cross configuration.
++Upstream crossconfig.m4 calls GCC_CHECK_TLS for other targets, but not NetBSD.
++Without it, cross builds omit _GLIBCXX_HAVE_TLS and std::__once_call, unlike
++native NetBSD builds. Generated configure uses GNU Autoconf2.69.
++Origin: EmberBSD (AI-assisted); local, not submitted upstream.
++Preserve GCC GPLv3+ and the GCC Runtime Library Exception.
++
++--- libstdc++-v3/configure.orig
+++++ libstdc++-v3/configure
++@@ -46259,6 +46259,7 @@
++ 
++     case "${host}" in
++       *-netbsd*)
+++
++   ac_test_CXXFLAGS="${CXXFLAGS+set}"
++   ac_save_CXXFLAGS="$CXXFLAGS"
++   CXXFLAGS='-fno-builtin -D_GNU_SOURCE'
++@@ -49026,7 +49027,216 @@
++ 
++   LIBS="$ac_save_LIBS"
++   CXXFLAGS="$ac_save_CXXFLAGS"
++- ;;
+++
+++
+++
+++   # Check whether --enable-tls was given.
+++if test "${enable_tls+set}" = set; then :
+++  enableval=$enable_tls;
+++      case "$enableval" in
+++       yes|no) ;;
+++       *) as_fn_error $? "Argument to enable/disable tls must be yes or no" "$LINENO" 5 ;;
+++      esac
+++
+++else
+++  enable_tls=yes
+++fi
+++
+++
+++  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether the target supports thread-local storage" >&5
+++$as_echo_n "checking whether the target supports thread-local storage... " >&6; }
+++if ${gcc_cv_have_tls+:} false; then :
+++  $as_echo_n "(cached) " >&6
+++else
+++
+++    if test "$cross_compiling" = yes; then :
+++                if test x$gcc_no_link = xyes; then
+++  as_fn_error $? "Link tests are not allowed after GCC_NO_EXECUTABLES." "$LINENO" 5
+++fi
+++cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+++/* end confdefs.h.  */
+++__thread int a; int b; int main() { return a = b; }
+++_ACEOF
+++if ac_fn_c_try_link "$LINENO"; then :
+++  chktls_save_LDFLAGS="$LDFLAGS"
+++	  	  	  case $host in
+++	    *-*-linux* | -*-uclinuxfdpic*)
+++	      LDFLAGS="-shared -Wl,--no-undefined $LDFLAGS"
+++	      ;;
+++	  esac
+++	  chktls_save_CFLAGS="$CFLAGS"
+++	  CFLAGS="-fPIC $CFLAGS"
+++	  	  if test x$gcc_no_link = xyes; then
+++  as_fn_error $? "Link tests are not allowed after GCC_NO_EXECUTABLES." "$LINENO" 5
+++fi
+++cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+++/* end confdefs.h.  */
+++int f() { return 0; }
+++_ACEOF
+++if ac_fn_c_try_link "$LINENO"; then :
+++  if test x$gcc_no_link = xyes; then
+++  as_fn_error $? "Link tests are not allowed after GCC_NO_EXECUTABLES." "$LINENO" 5
+++fi
+++cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+++/* end confdefs.h.  */
+++__thread int a; int b; int f() { return a = b; }
+++_ACEOF
+++if ac_fn_c_try_link "$LINENO"; then :
+++  gcc_cv_have_tls=yes
+++else
+++  gcc_cv_have_tls=no
+++fi
+++rm -f core conftest.err conftest.$ac_objext \
+++    conftest$ac_exeext conftest.$ac_ext
+++else
+++  gcc_cv_have_tls=yes
+++fi
+++rm -f core conftest.err conftest.$ac_objext \
+++    conftest$ac_exeext conftest.$ac_ext
+++	  CFLAGS="$chktls_save_CFLAGS"
+++	  LDFLAGS="$chktls_save_LDFLAGS"
+++else
+++  gcc_cv_have_tls=no
+++fi
+++rm -f core conftest.err conftest.$ac_objext \
+++    conftest$ac_exeext conftest.$ac_ext
+++
+++
+++else
+++  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+++/* end confdefs.h.  */
+++__thread int a; int b; int main() { return a = b; }
+++_ACEOF
+++if ac_fn_c_try_run "$LINENO"; then :
+++                      chktls_save_LDFLAGS="$LDFLAGS"
+++      LDFLAGS="-static $LDFLAGS"
+++      if test x$gcc_no_link = xyes; then
+++  as_fn_error $? "Link tests are not allowed after GCC_NO_EXECUTABLES." "$LINENO" 5
+++fi
+++cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+++/* end confdefs.h.  */
+++int main() { return 0; }
+++_ACEOF
+++if ac_fn_c_try_link "$LINENO"; then :
+++  if test "$cross_compiling" = yes; then :
+++  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+++$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+++as_fn_error $? "cannot run test program while cross compiling
+++See \`config.log' for more details" "$LINENO" 5; }
+++else
+++  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+++/* end confdefs.h.  */
+++__thread int a; int b; int main() { return a = b; }
+++_ACEOF
+++if ac_fn_c_try_run "$LINENO"; then :
+++  gcc_cv_have_tls=yes
+++else
+++  gcc_cv_have_tls=no
+++fi
+++rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+++  conftest.$ac_objext conftest.beam conftest.$ac_ext
+++fi
+++
+++else
+++  gcc_cv_have_tls=yes
+++fi
+++rm -f core conftest.err conftest.$ac_objext \
+++    conftest$ac_exeext conftest.$ac_ext
+++      LDFLAGS="$chktls_save_LDFLAGS"
+++      if test $gcc_cv_have_tls = yes; then
+++						chktls_save_CFLAGS="$CFLAGS"
+++	thread_CFLAGS=failed
+++	for flag in '' '-pthread' '-lpthread'; do
+++	  CFLAGS="$flag $chktls_save_CFLAGS"
+++	  if test x$gcc_no_link = xyes; then
+++  as_fn_error $? "Link tests are not allowed after GCC_NO_EXECUTABLES." "$LINENO" 5
+++fi
+++cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+++/* end confdefs.h.  */
+++#include <pthread.h>
+++		void *g(void *d) { return NULL; }
+++int
+++main ()
+++{
+++pthread_t t; pthread_create(&t,NULL,g,NULL);
+++  ;
+++  return 0;
+++}
+++_ACEOF
+++if ac_fn_c_try_link "$LINENO"; then :
+++  thread_CFLAGS="$flag"
+++fi
+++rm -f core conftest.err conftest.$ac_objext \
+++    conftest$ac_exeext conftest.$ac_ext
+++	  if test "X$thread_CFLAGS" != Xfailed; then
+++	    break
+++	  fi
+++	done
+++	CFLAGS="$chktls_save_CFLAGS"
+++	if test "X$thread_CFLAGS" != Xfailed; then
+++	  CFLAGS="$thread_CFLAGS $chktls_save_CFLAGS"
+++ 	  	  	  	  	  	  if test "$cross_compiling" = yes; then :
+++  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+++$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+++as_fn_error $? "cannot run test program while cross compiling
+++See \`config.log' for more details" "$LINENO" 5; }
+++else
+++  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+++/* end confdefs.h.  */
+++#include <pthread.h>
+++		__thread int a;
+++		static int *volatile a_in_other_thread;
+++		static void *
+++		thread_func (void *arg)
+++		{
+++		  a_in_other_thread = &a;
+++		  return (void *)0;
+++		}
+++int
+++main ()
+++{
+++pthread_t thread;
+++		void *thread_retval;
+++		int *volatile a_in_main_thread;
+++		a_in_main_thread = &a;
+++		if (pthread_create (&thread, (pthread_attr_t *)0,
+++				    thread_func, (void *)0))
+++		  return 0;
+++		if (pthread_join (thread, &thread_retval))
+++		  return 0;
+++		return (a_in_other_thread == a_in_main_thread);
+++  ;
+++  return 0;
+++}
+++_ACEOF
+++if ac_fn_c_try_run "$LINENO"; then :
+++  gcc_cv_have_tls=yes
+++else
+++  gcc_cv_have_tls=no
+++fi
+++rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+++  conftest.$ac_objext conftest.beam conftest.$ac_ext
+++fi
+++
+++	  CFLAGS="$chktls_save_CFLAGS"
+++	fi
+++      fi
+++else
+++  gcc_cv_have_tls=no
+++fi
+++rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+++  conftest.$ac_objext conftest.beam conftest.$ac_ext
+++fi
+++
+++fi
+++{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $gcc_cv_have_tls" >&5
+++$as_echo "$gcc_cv_have_tls" >&6; }
+++  if test "$enable_tls $gcc_cv_have_tls" = "yes yes"; then
+++
+++$as_echo "#define HAVE_TLS 1" >>confdefs.h
+++
+++  fi
+++        ;;
++     esac
++     $as_echo "#define HAVE_FINITEF 1" >>confdefs.h
++ 
++@@ -56927,7 +57137,7 @@
++     CXXFLAGS='-O0 -S'
++ 
++     cat > conftest.$ac_ext << EOF
++-#line 56930 "configure"
+++#line 57140 "configure"
++ #include <stddef.h>
++ int main()
++ {
+--- /dev/null
++++ b/lang/gcc16/patches/patch-libstdc++-v3_crossconfig_tls
+@@ -0,0 +1,23 @@
++$NetBSD$
++
++Detect thread-local storage during NetBSD cross configuration.
++Upstream crossconfig.m4 calls GCC_CHECK_TLS for other targets, but not NetBSD.
++Without it, cross builds omit _GLIBCXX_HAVE_TLS and std::__once_call, unlike
++native NetBSD builds. Generated configure uses GNU Autoconf2.69.
++Origin: EmberBSD (AI-assisted); local, not submitted upstream.
++Preserve GCC GPLv3+ and the GCC Runtime Library Exception.
++
++--- libstdc++-v3/crossconfig.m4.orig
+++++ libstdc++-v3/crossconfig.m4
++@@ -203,7 +203,10 @@
++     AC_SUBST(SECTION_FLAGS) 
++     GLIBCXX_CHECK_LINKER_FEATURES
++     case "${host}" in
++-      *-netbsd*) GLIBCXX_CHECK_MATH_SUPPORT ;;
+++      *-netbsd*)
+++        GLIBCXX_CHECK_MATH_SUPPORT
+++        GCC_CHECK_TLS
+++        ;;
++     esac
++     AC_DEFINE(HAVE_FINITEF)
++     AC_DEFINE(HAVE_FINITE)
+--- a/lang/gcc16-libs/Makefile
++++ b/lang/gcc16-libs/Makefile
+@@ -9,7 +9,7 @@
+ ## The PKGREVISION of this package needs to be at least 1 more than the
+ ## PKGREVISION of the lang/gcc16 package so that with the dependence pattern
+ ## '{gcc16,gcc16-libs}>=16.1.*' pkg_add will choose gcc16-libs over gcc16.
+-PKGREVISION=	4
++PKGREVISION=	5
+ 
+ CATEGORIES=	lang
+ MASTER_SITES=	# empty

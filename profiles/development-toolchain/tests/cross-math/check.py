@@ -60,8 +60,10 @@ def main(arguments):
     baseline = work / 'baseline'
     (baseline / 'libstdc++-v3').mkdir(parents=True)
     shutil.copy2(source / 'libstdc++-v3/configure', baseline / 'libstdc++-v3/configure')
-    delta = tree / 'lang/gcc16/patches/patch-libstdc++-v3_configure_math'
-    run('baseline-configure', ['patch', '-f', '-R', '-F', '0', '-p0', '-i', delta], directory=baseline)
+    # Remove later configure deltas first; each reverse patch needs zero fuzz.
+    for name in ('tls', 'math'):
+        delta = tree / ('lang/gcc16/patches/patch-libstdc++-v3_configure_' + name)
+        run('baseline-configure-' + name, ['patch', '-f', '-R', '-F', '0', '-p0', '-i', delta], directory=baseline)
     flags = ['--sysroot=' + str(sysroot), '-B' + str(sysroot / 'usr/pkg/gcc16/lib/gcc' / triplet / VERSION) + '/', '-B' + str(sysroot / 'usr/pkg/gcc16/lib') + '/']
     tools = {name.upper(): str(prefix / 'bin' / (triplet + '-' + name)) for name in 'ar as ld nm objcopy objdump ranlib readelf strip'.split()}
     build_triplet = capture(['sh', source / 'config.guess'], env).strip()

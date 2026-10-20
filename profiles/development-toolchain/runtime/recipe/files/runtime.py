@@ -32,7 +32,7 @@ from emberbsd_sdk.errors import SDKError, CommandError, ProcessOwnershipError
 from emberbsd_sdk import elf as sdk_elf, inventory as sdk_inventory, jsonio, paths, process
 
 VERSION = '16.2.0'
-NAME = 'gcc16-runtime-16.2.0nb4'
+NAME = 'gcc16-runtime-16.2.0nb5'
 SOURCE_SHA256 = 'e6738e29597f733270731aa90600f37ffdc045079dfc27ec7e8192cc81085c3e'
 LICENSES = ('COPYING3', 'COPYING.RUNTIME')
 CONFLICTS = ('gcc16-[0-9]*', 'gcc16-libs-[0-9]*')
@@ -42,6 +42,8 @@ TARGETS = {'amd64': {'triplet': 'x86_64--netbsd', 'machine_arch': 'x86_64', 'elf
            'aarch64': {'triplet': 'aarch64--netbsd', 'machine_arch': 'aarch64', 'elf_machine': 183}}
 MATH_PATCHES = {'patch-libstdc++-v3_crossconfig.m4': 'e0efdd76a89b3b317ad9964156c6f6a47ebbf425067b763c0dc056b827910f71',
                 'patch-libstdc++-v3_configure_math': '2957e7c72d37c95a8657f27a806bc1e731b21685b869a1dfc84cc38c1e6b0ea2'}
+TLS_PATCHES = {'patch-libstdc++-v3_configure_tls': 'dc9b9b3507ce81859ad6aca40e955b719ab8a5c234842d6169a9373240e5dd1d',
+               'patch-libstdc++-v3_crossconfig_tls': '21f6cbb1d1493920782117f923c540a498cb3e9350744b573af2445aa876e06c'}
 MATH_FUNCTIONS = 'acosf acosl asinf asinl atan2f atan2l atanf atanl ceilf ceill cosf coshf coshl cosl expf expl fabsf fabsl floorf floorl fmodf fmodl frexpl ldexpf ldexpl log10f log10l logf logl modff modfl powf powl sinf sinhf sinhl sinl sqrtf sqrtl tanf tanhf tanhl tanl'.split()
 Invalid = SDKError
 hash_file = sdk_inventory.sha256_file
@@ -105,7 +107,7 @@ class Stage:
         self.allow_rebuild = allow_rebuild
         self.historical = historical
 
-    def verify_math_inputs(self, recipe, regular, architecture):
+    def verify_capability_inputs(self, recipe, regular, architecture):
         if self.historical:
             return {}
         for name, expected in MATH_PATCHES.items():
@@ -115,7 +117,14 @@ class Stage:
         header = text(self.stage / name)
         for name_ in MATH_FUNCTIONS:
             require(len(re.findall(r'^#define _GLIBCXX_HAVE_' + name_.upper() + r' 1$', header, re.M)) == 1, 'Missing or ambiguous generated math capability: ' + name_)
-        return {'GCC_RUNTIME_CXX_MATH_INPUTS_SHA256': hashlib.sha256((''.join(MATH_PATCHES.values()) + regular[name]).encode()).hexdigest()}
+        result = {'GCC_RUNTIME_CXX_MATH_INPUTS_SHA256': hashlib.sha256((''.join(MATH_PATCHES.values()) + regular[name]).encode()).hexdigest()}
+        # Native NetBSD libstdc++ detects TLS. A cross runtime without it lacks
+        # std::__once_call and std::__once_callable, which consumers import.
+        for name_, expected in TLS_PATCHES.items():
+            require(hash_file(recipe / 'patches' / name_) == expected, 'Missing or changed GCC16 TLS source input')
+        require(len(re.findall(r'^#define _GLIBCXX_HAVE_TLS 1$', header, re.M)) == 1, 'Missing or ambiguous generated TLS capability')
+        result['GCC_RUNTIME_CXX_TLS_INPUTS_SHA256'] = hashlib.sha256((''.join(TLS_PATCHES.values()) + regular[name]).encode()).hexdigest()
+        return result
 
     def verify_support_parent(self, inputs, required):
         claims = [line for line in rows(inputs) if line.startswith('resume_support_prior_inputs_sha256=')]
@@ -239,7 +248,7 @@ class Stage:
                 actual_links[path] = record['target']
                 require(paths.inside((self.stage / path).resolve(strict=True), self.stage / 'usr/pkg/gcc16'), 'Stage symlink escapes runtime prefix')
         require(actual_regular == regular and actual_links == links, 'Stage inventory or file hash mismatch')
-        math_inputs = self.verify_math_inputs(recipe, regular, architecture)
+        capability_inputs = self.verify_capability_inputs(recipe, regular, architecture)
         all_paths = list(regular) + list(links)
         for path in all_paths:
             if re.fullmatch(r'usr/pkg/gcc16/lib/(?:libgcc_s|libstdc\+\+|libgomp|libatomic)\.so\.[0-9]+(?:\.[0-9]+)*', path):
@@ -259,7 +268,7 @@ class Stage:
         digest = hashlib.sha256(''.join(str(path.relative_to(recipe)) + ' ' + hash_file(path) + '\n' for path in sorted(recipe_files)).encode()).hexdigest()
         result = {'files': [path.removeprefix('usr/pkg/') for path in selected], 'metadata': {
             'OPSYS': 'NetBSD', 'OS_VERSION': '11.0', 'MACHINE_ARCH': architecture['machine_arch'], 'PKGPATH': 'lang/gcc16-runtime', 'PKGNAME': NAME, 'LICENSE': 'gnu-gpl-v3', 'GCC_VERSION': VERSION, 'GCC_RUNTIME_SONAME': 'libstdc++.so.7', 'GCC_RUNTIME_LIBRARIES': selection, 'GCC_RUNTIME_SONAMES': ','.join(sonames), 'GCC_RUNTIME_TARGET': target, 'GCC_RUNTIME_TRIPLET': architecture['triplet'], 'GCC_RUNTIME_MACHINE_ARCH': architecture['machine_arch'], 'GCC_SOURCE_SHA256': self.expected_source, 'GCC_RECIPE_SHA256': digest, 'GCC_RECIPE_DISTINFO_SHA256': hash_file(recipe / 'distinfo'), 'GCC_RUNTIME_INPUTS_SHA256': hash_file(self.work / 'inputs.txt'), 'GCC_RUNTIME_STAGE_SHA256': hash_file(self.work / 'stage.sha256'), 'GCC_RUNTIME_LINKS_SHA256': hash_file(self.work / 'stage.symlinks'), 'EMBERBSD_SEED_SOURCE': seed}, 'elf': records}
-        result['metadata'].update(math_inputs)
+        result['metadata'].update(capability_inputs)
         if rebuild:
             import inheritance
             result['metadata'].update(inheritance.verify(self.work, self.pkgsrc, self.archive, result, expected_source=self.expected_source))

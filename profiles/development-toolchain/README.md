@@ -28,7 +28,8 @@ Its `--kernel` mode prepares the same patched compiler frontends without a
 userland sysroot. Application mode retains the target GCC16 headers/runtime
 requirement; kernel compilation and boot need their own OS acceptance.
 The cross entry points also accept `--target amd64` (`x86_64--netbsd`).
-Host orchestration fixtures pass; real amd64 compiler and runtime checks remain pending.
+Real amd64 kernel-compiler and runtime-stage builds pass their checks.
+Installed amd64 runtime package acceptance remains pending.
 
 The [GDB 18.1nb1 native debugger](gdb/README.md) also cross-builds on macOS.
 It reads split and standard supplementary DWARF in the AArch64 VM and
@@ -107,9 +108,14 @@ locale, threads, OpenMP, atomics and the rebuilt Skia contract. Its removal
 and reinstallation, broader consumer migration and image integration remain gates.
 
 The [NetBSD cross math capability repair](cross-math.md) uses real declaration
-and libm link probes for the C++ standard modules. The new source recipes
-target compiler nb3, libs nb4 and runtime-only nb4. Source/module compilation
+and libm link probes for the C++ standard modules. It introduced compiler nb3,
+libs nb4 and runtime-only nb4. Source/module compilation
 and installed package/runtime acceptance are separate checks.
+The [NetBSD cross TLS repair](cross-tls.md) detects thread-local storage in
+cross libstdc++ configuration, as native builds do. It selects the native
+`std::call_once` ABI with `std::__once_call` and advances the recipes to
+compiler nb4, libs nb5 and runtime-only nb5. Rebuild consumers of the earlier
+non-TLS runtime; see [compatibility](cross-tls.md#compatibility).
 
 The [TSVC portability backport](testsuite-portability.md) applies GCC's accepted
 NetBSD allocator fix without changing the compiler or runtime. The exported

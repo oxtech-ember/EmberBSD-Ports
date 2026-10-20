@@ -76,10 +76,12 @@ class RuntimePackageTest(unittest.TestCase):
         self.selection = rt.SELECTIONS[0]
         # Independent synthetic math input bytes retain the production selection.
         self._old_math = dict(rt.MATH_PATCHES)
+        self._old_tls = dict(rt.TLS_PATCHES)
         self.addCleanup(self.restore_math)
-        for name in rt.MATH_PATCHES:
-            (self.recipe / 'patches' / name).write_text('math input fixture: ' + name)
+        for name in list(rt.MATH_PATCHES) + list(rt.TLS_PATCHES):
+            (self.recipe / 'patches' / name).write_text('C++ capability input fixture: ' + name)
         rt.MATH_PATCHES = {name: rt.hash_file(self.recipe / 'patches' / name) for name in self._old_math}
+        rt.TLS_PATCHES = {name: rt.hash_file(self.recipe / 'patches' / name) for name in self._old_tls}
         self.configure()
 
     def cleanup_work(self):
@@ -90,6 +92,7 @@ class RuntimePackageTest(unittest.TestCase):
 
     def restore_math(self):
         rt.MATH_PATCHES = self._old_math
+        rt.TLS_PATCHES = self._old_tls
 
     def configure(self, target='amd64', selection=None):
         self.target = target
@@ -106,7 +109,7 @@ class RuntimePackageTest(unittest.TestCase):
             (self.lib / soname).write_bytes(elf(soname, machine))
         header = self.stage / ('usr/pkg/gcc16/include/c++/' + triplet + '/bits/c++config.h')
         header.parent.mkdir(parents=True, exist_ok=True)
-        header.write_text(''.join('#define _GLIBCXX_HAVE_' + name.upper() + ' 1\n' for name in rt.MATH_FUNCTIONS))
+        header.write_text(''.join('#define _GLIBCXX_HAVE_' + name.upper() + ' 1\n' for name in rt.MATH_FUNCTIONS + ['tls']))
         (self.work / 'build-success').write_text('runtime-only-bootstrap\n')
         self.receipts()
 
@@ -153,6 +156,30 @@ class RuntimePackageTest(unittest.TestCase):
         path = self.lib / 'libgcc_s.so.1'
         path.write_bytes(path.read_bytes() + b'changed')
         self.assertRaises(rt.Invalid, self.verifier().verify)
+
+    def test_tls_capability_and_inputs(self):
+        result = self.verifier().verify()
+        self.assertIn('GCC_RUNTIME_CXX_TLS_INPUTS_SHA256', result['metadata'])
+        header = self.stage / ('usr/pkg/gcc16/include/c++/' + rt.TARGETS[self.target]['triplet'] + '/bits/c++config.h')
+        original = header.read_text()
+        for changed in (original.replace('#define _GLIBCXX_HAVE_TLS 1\n', ''), original + '#define _GLIBCXX_HAVE_TLS 1\n'):
+            with self.subTest(header=changed[-40:]):
+                header.write_text(changed)
+                self.receipts()
+                with self.assertRaisesRegex(rt.Invalid, 'TLS capability'):
+                    self.verifier().verify()
+        header.write_text(original)
+        for name in rt.TLS_PATCHES:
+            with self.subTest(patch=name):
+                patch = self.recipe / 'patches' / name
+                patch_bytes = patch.read_bytes()
+                patch.write_bytes(patch_bytes + b'changed')
+                self.receipts()
+                with self.assertRaisesRegex(rt.Invalid, 'TLS source input'):
+                    self.verifier().verify()
+                patch.write_bytes(patch_bytes)
+        self.receipts()
+        self.verifier().verify()
 
     def test_wrong_elf_policy_after_rehash(self):
         for target in rt.TARGETS:

@@ -1,6 +1,6 @@
 # Package the GCC16 target runtime
 
-This profile creates `gcc16-runtime-16.2.0nb3` for EmberBSD amd64 or AArch64.
+This profile creates `gcc16-runtime-16.2.0nb5` for EmberBSD amd64 or AArch64.
 It packages an audited [cross bootstrap stage](../bootstrap/README.md).
 All tools execute on the development host. The target receives only shared
 libraries and licenses under `/usr/pkg/gcc16` and `/usr/pkg/share/licenses`.

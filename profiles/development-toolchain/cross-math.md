@@ -55,9 +55,9 @@ remain separate gates. No replacement pkg_tools implementation is provided.
 
 ## Package identity
 
-The prepared compiler recipe targets `gcc16-16.2.0nb3`, its companion libs
-recipe nb4, and the runtime-only recipe nb4. The old accepted runtime nb3 cohort
-retains its identity. The current runtime verifier authenticates both exact
+This repair introduced compiler `gcc16-16.2.0nb3`, companion libs nb4 and the
+runtime-only nb4. The [TLS repair](cross-tls.md) advances them to nb4, nb5
+and nb5. The old accepted runtime nb3 cohort retains its identity. The current runtime verifier authenticates both exact
 source patches and the staged target capability header through the existing
 source and stage manifests. A historical verifier remains read-only and cannot
 install or package an old stage as the new revision. The locale-only

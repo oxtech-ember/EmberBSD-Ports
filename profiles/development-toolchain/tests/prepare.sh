@@ -8,8 +8,8 @@ destination=$1
 sh "$root/scripts/prepare-pkgsrc.sh" "$destination" development-toolchain
 expected=$(git -C "$root" ls-files --stage -- upstream/pkgsrc | awk '$1 == "160000" {print $2}')
 [ "$(cat "$destination/EMBERBSD-PKGSRC-REVISION")" = "$expected" ]
-grep -q '^PKGREVISION=[[:space:]]*3$' "$destination/lang/gcc16/Makefile"
-grep -q '^PKGREVISION=[[:space:]]*4$' "$destination/lang/gcc16-libs/Makefile"
+grep -q '^PKGREVISION=[[:space:]]*4$' "$destination/lang/gcc16/Makefile"
+grep -q '^PKGREVISION=[[:space:]]*5$' "$destination/lang/gcc16-libs/Makefile"
 for name in patch-gcc_testsuite_gcc.dg_vect_tsvc_tsvc.h patch-gcc_cp_module.cc; do
     recorded=$(awk -v name="($name)" '$1 == "SHA1" && $2 == name {print $4}' "$destination/lang/gcc16/distinfo")
     actual=$(sed '/[$]NetBSD.*/d' "$destination/lang/gcc16/patches/$name" | shasum -a 1 | awk '{print $1}')
