@@ -34,6 +34,11 @@ The path must contain at most 70 characters. The test creates a private HOME,
 XDG directories, temporary directory and D-Bus session. It derives `USER`,
 `LOGNAME` and `SHELL` from the existing account. It records the system identity,
 boot time, binary hashes, service PIDs, readiness evidence and process status.
+`boot.before` and `boot.after` are civil-time context. `boot-time-change.txt`
+records whether they differ. A clock correction can change `kern.boottime`
+without rebooting. Acceptance requires one uninterrupted runner and guard
+process chain to complete with successful statuses. The unique output path
+cannot be resumed after a reboot.
 
 Preflight calls `org.freedesktop.DBus.GetId` on the system bus before creating
 output or starting the private session. It uses `qdbus --system` in a clean
@@ -47,6 +52,11 @@ Preflight requires both `/usr/libexec/ld.elf_so` and `/libexec/ld.elf_so`.
 The prepared packages use these interpreter paths. The test records their
 links and hashes. It does not create loader aliases. File availability does
 not prove that a mixed base and package set has a compatible ABI.
+
+Startup readiness, normal logout and supervisor deadlines use `CLOCK_MONOTONIC`
+from the existing Perl `Time::HiRes` dependency. Civil clock steps do not change
+these budgets. Query start and end Unix times remain diagnostic evidence;
+a backward clock step can put the recorded end before the start.
 
 The main deadline is 240 seconds. Cleanup has a separate 12-second budget,
 plus the final bounded inventory and reap checks. Each `ps` call has a
@@ -144,6 +154,7 @@ Run the host tests with native Perl and Ruby:
 PERL=/path/to/native/perl /path/to/native/ruby ./host-test.rb
 /path/to/native/ruby ./xauthority-host.rb
 /path/to/native/ruby ./diagnostics-host.rb
+PERL=/path/to/native/perl /path/to/native/ruby ./clock-host.rb
 ```
 
 On macOS, do not use Apple's protected system interpreters. SIP hides their
@@ -196,3 +207,9 @@ The pinned previous runner misses an unavailable system bus and converts a
 query timeout to status 1. The new controls reproduce both causes and reject
 malformed bus IDs. They retain the exact service, object and method contract.
 The native session result above does not qualify physical display output.
+
+The clock controls execute the actual deadline loops and post-guard checks.
+They model forward and backward civil clock steps, bounded monotonic expiry,
+changed civil boot time and unsuccessful or missing process statuses.
+The pinned previous harness reproduces the false expiry, extended wait and
+skipped status check. These controls do not execute a target desktop session.

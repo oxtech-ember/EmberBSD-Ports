@@ -82,10 +82,19 @@ status=0
     /usr/pkg/bin/dbus-run-session -- /bin/sh ./controller.sh > bus.log 2>&1 || status=$?
 printf '%s\n' "$status" > status
 /sbin/sysctl kern.boottime > boot.after
-cmp boot.before boot.after
+# This live runner waits for one non-resumable guard process. A reboot cannot
+# return through that wait. Civil kern.boottime can change after a clock step.
+if cmp -s boot.before boot.after; then
+    echo unchanged
+else
+    echo changed
+fi > boot-time-change.txt
 cat bus.log
-[ "$status" -eq 0 ] && [ "$(cat guard.status)" = 0 ] && [ "$(cat controller.status)" = 0 ]
-[ "$(cat wrapper.status)" = 0 ] && [ "$(cat startplasma.status)" = 0 ]
+[ "$status" -eq 0 ]
+[ "$(cat guard.status)" = 0 ]
+[ "$(cat controller.status)" = 0 ]
+[ "$(cat wrapper.status)" = 0 ]
+[ "$(cat startplasma.status)" = 0 ]
 [ -f logout.requested ]
 if find runtime -type s | grep -q .; then
     echo 'FAIL: a private runtime socket remains.' >&2

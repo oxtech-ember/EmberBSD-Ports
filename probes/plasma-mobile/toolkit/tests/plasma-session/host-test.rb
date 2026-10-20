@@ -164,6 +164,11 @@ Dir.mktmpdir('plasma-session-host-', '/tmp') do |temp|
       .gsub('/usr/pkg/bin/kwin_wayland_wrapper', "#{work}/wrapper")
       .gsub('/usr/pkg/bin/startplasma-wayland', "#{work}/startplasma")
       .gsub('/usr/pkg/qt6/bin/qdbus', "#{work}/qdbus")
+    # Keep the negative readiness fixtures fast. Civil query timestamps no
+    # longer control the controller's startup deadline.
+    clock = /^monotonic_seconds\(\)\n\{\n.*?^\}\n/m
+    abort 'Missing monotonic fixture boundary' unless controller.match?(clock)
+    controller = controller.sub(clock, "monotonic_seconds()\n{\n    if [ -f readiness-error.log ] && [ '#{mode}' != ready ]; then echo 200; else echo 0; fi\n}\n")
     if mode == 'old_method'
       original = "org.freedesktop.DBus.Properties.Get \\\n        org.kde.PlasmaShell shell"
       abort 'Missing property query mutation point' unless controller.include?(original)

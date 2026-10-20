@@ -11,6 +11,11 @@ stamp()
     /usr/pkg/bin/perl -MTime::HiRes=clock_gettime,CLOCK_MONOTONIC \
         -e 'printf "%s\t%.6f\n", $ARGV[0], clock_gettime(CLOCK_MONOTONIC)' "$1" >> phases.tsv
 }
+monotonic_seconds()
+{
+    /usr/pkg/bin/perl -MTime::HiRes=clock_gettime,CLOCK_MONOTONIC \
+        -e 'printf "%d\n", clock_gettime(CLOCK_MONOTONIC)'
+}
 stamp controller-start
 query()
 {
@@ -35,11 +40,11 @@ owner()
     --xwayland --no-lockscreen '/bin/sh ./environment.sh' > compositor.log 2>&1 &
 wrapper=$!
 printf '%s\n' "$wrapper" > wrapper.pid
-deadline=$(($(date +%s) + 100))
+deadline=$(($(monotonic_seconds) + 100))
 while :; do
     kill -0 "$wrapper"
     if [ -f display-env ] && owner org.kde.KWinWrapper > wrapper-owner.pid 2> query-error.log; then break; fi
-    [ "$(date +%s)" -lt "$deadline" ] || { echo 'FAIL: KWin display environment deadline' >&2; exit 1; }
+    [ "$(monotonic_seconds)" -lt "$deadline" ] || { echo 'FAIL: KWin display environment deadline' >&2; exit 1; }
     sleep 1
 done
 [ "$(cat wrapper-owner.pid)" = "$wrapper" ]
@@ -97,7 +102,7 @@ ready()
 phase=startup-readiness
 while ! ready 2> readiness-error.log; do
     kill -0 "$wrapper" && kill -0 "$plasma"
-    [ "$(date +%s)" -lt "$deadline" ] || { echo 'FAIL: full Plasma session readiness deadline' >&2; exit 1; }
+    [ "$(monotonic_seconds)" -lt "$deadline" ] || { echo 'FAIL: full Plasma session readiness deadline' >&2; exit 1; }
     sleep 1
 done
 stamp session-ready
@@ -135,9 +140,9 @@ phase=logout
 query org.kde.Shutdown /Shutdown org.kde.Shutdown.logout > logout.log 2>&1
 : > logout.requested
 stamp logout-requested
-deadline=$(($(date +%s) + 45))
+deadline=$(($(monotonic_seconds) + 45))
 while kill -0 "$wrapper" 2>/dev/null || kill -0 "$plasma" 2>/dev/null; do
-    [ "$(date +%s)" -lt "$deadline" ] || { echo 'FAIL: normal Plasma logout deadline' >&2; exit 1; }
+    [ "$(monotonic_seconds)" -lt "$deadline" ] || { echo 'FAIL: normal Plasma logout deadline' >&2; exit 1; }
     sleep 1
 done
 wrapper_status=0
