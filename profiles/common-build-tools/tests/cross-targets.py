@@ -49,7 +49,7 @@ with tempfile.TemporaryDirectory(prefix='ember-cross-targets-') as temporary:
     assert 'Unsupported cross target' in read('EMBERBSD_CROSS_TARGET=mips', '-v', 'PKG_FAIL_REASON')
     assert 'selected cross target' in read('EMBERBSD_CROSS_TARGET=amd64', 'CROSS_MACHINE_ARCH=aarch64', '-v', 'PKG_FAIL_REASON')
     deps = read('EMBERBSD_CROSS_TARGET=amd64', 'EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime', '-v', 'DEPENDS')
-    assert 'gcc16-runtime>=16.2.0nb1:../../lang/gcc16-runtime' in deps and 'gcc16>=' not in deps
+    assert 'gcc16-runtime>=16.2.0nb5:../../lang/gcc16-runtime' in deps and 'gcc16>=' not in deps
     arguments = ['EMBERBSD_CROSS_TARGET=amd64', 'EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime', 'PKGPATH=lang/gcc16-runtime']
     assert not read(*arguments, '-v', 'DEPENDS') and not read(*arguments, '-v', 'PKG_FAIL_REASON')
     assert 'requires the runtime provider' in read('PKGPATH=lang/gcc16-runtime', '-v', 'PKG_FAIL_REASON')
