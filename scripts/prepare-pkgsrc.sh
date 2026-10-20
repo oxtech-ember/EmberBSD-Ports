@@ -670,6 +670,19 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
         "$graphics/cross/netpbm-native-build-tools.patch"
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$graphics/cross/netpbm-cross-no-manweb.patch"
+    patch -f -N -d "$destination" -p1 -F 0 < \
+        "$graphics/cross/libproxy-cross-disable-introspection.patch"
+    glib_networking=$destination/net/glib-networking
+    glib_networking_patch=patch-emberbsd_meson.build
+    [ ! -e "$glib_networking/patches/$glib_networking_patch" ] || {
+        echo "Unexpected pkgsrc patch collision: net/glib-networking/$glib_networking_patch" >&2; exit 2;
+    }
+    cp "$graphics/cross/glib-networking-gio-module-path.patch" \
+        "$glib_networking/patches/$glib_networking_patch"
+    glib_networking_patch_sha=$(sed '/[$]NetBSD.*/d' \
+        "$glib_networking/patches/$glib_networking_patch" | shasum -a 1 | awk '{ print $1 }')
+    printf 'SHA1 (%s) = %s\n' "$glib_networking_patch" "$glib_networking_patch_sha" \
+        >> "$glib_networking/distinfo"
     [ ! -e "$destination/devel/wayland-devel" ] && [ ! -L "$destination/devel/wayland-devel" ] || {
         echo 'Upstream now owns devel/wayland-devel; review the overlay.' >&2; exit 2;
     }

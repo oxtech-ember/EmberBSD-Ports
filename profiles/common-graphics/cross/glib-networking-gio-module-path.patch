@@ -1,0 +1,23 @@
+$NetBSD$
+
+Avoid sysrooted pkg-config variables when choosing a cross-install path.
+
+--- meson.build.orig
++++ meson.build
+@@ -63,8 +63,14 @@
+ gobject_dep = dependency('gobject-2.0')
+ gmodule_dep = dependency('gmodule-2.0')
+ 
+-gio_module_dir = gio_dep.get_variable('giomoduledir',
+-                                       pkgconfig_define: ['libdir', join_paths(prefix, libdir)])
++if meson.is_cross_build()
++  # pkg-config sysroots absolute values returned by --variable, but Meson
++  # applies DESTDIR itself when installing these target modules.
++  gio_module_dir = join_paths(libdir, 'gio', 'modules')
++else
++  gio_module_dir = gio_dep.get_variable('giomoduledir',
++                                         pkgconfig_define: ['libdir', join_paths(prefix, libdir)])
++endif
+ assert(gio_module_dir != '', 'GIO_MODULE_DIR is missing from gio-2.0.pc')
+ 
+ # *** Checks for LibProxy   ***
