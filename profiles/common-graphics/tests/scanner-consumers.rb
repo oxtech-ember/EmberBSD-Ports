@@ -50,6 +50,24 @@ check('production machine files separate host metadata and the cross scanner bin
   native.include?("PKG_CONFIG_SYSROOT_DIR=") && native.include?(File.dirname(File.dirname(scanner)) + '/lib/pkgconfig') && cross.include?("wayland-scanner = '#{scanner}'")
 end
 
+swaylock_base = [make, '-C', "#{tree}/wayland/swaylock", "MAKECONF=#{work}/mk.conf"]
+swaylock_names = %w[PKG_FAIL_REASON MESON_BINARIES MESON_BINARY.wayland-scanner MESON_NATIVE_ARGS]
+swaylock_values = run("#{work}/swaylock-parse.log", *swaylock_base, 'show-vars', "VARNAMES=#{swaylock_names.join(' ')}").lines.map(&:chomp)
+abort 'unexpected Swaylock diagnostic lines' unless swaylock_values.length == swaylock_names.length
+swaylock = swaylock_names.zip(swaylock_values).to_h
+check('Swaylock selects the validated host scanner and its native metadata') do
+  swaylock.fetch('PKG_FAIL_REASON').empty? &&
+    swaylock.fetch('MESON_BINARIES').split.include?('wayland-scanner') &&
+    swaylock.fetch('MESON_BINARY.wayland-scanner') == scanner &&
+    swaylock.fetch('MESON_NATIVE_ARGS').include?('--native-file')
+end
+run("#{work}/swaylock-scanner-guard.log", *swaylock_base, 'emberbsd-scanner-check')
+native_swaylock = run("#{work}/swaylock-native-parse.log", *swaylock_base, 'USE_CROSS_COMPILE=no',
+  'show-vars', 'VARNAMES=MESON_BINARIES MESON_BINARY.wayland-scanner').lines.map(&:chomp)
+check('native Swaylock does not inherit the cross scanner binding') do
+  native_swaylock.length == 2 && native_swaylock.all?(&:empty?)
+end
+
 FileUtils.mkdir_p("#{work}/empty-pc")
 env = {'PKG_CONFIG' => "#{v.fetch('TOOLBASE')}/bin/pkg-config", 'PKG_CONFIG_FOR_BUILD' => "#{v.fetch('TOOLBASE')}/bin/pkg-config", 'PKG_CONFIG_PATH' => '', 'PKG_CONFIG_PATH_FOR_BUILD' => '', 'PKG_CONFIG_LIBDIR' => "#{work}/empty-pc", 'PKG_CONFIG_SYSROOT_DIR' => v.fetch('CROSS_DESTDIR'), 'CMAKE' => '/usr/bin/false', 'CMAKE_FOR_BUILD' => '/usr/bin/false'}
 common_args = ['--cross-file', v.fetch('MESON_CROSS_FILE'), '--prefix=/usr/pkg', '--wrap-mode=nodownload', *Shellwords.split(v.fetch('MESON_ARGS'))]
