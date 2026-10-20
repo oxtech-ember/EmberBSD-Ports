@@ -80,15 +80,15 @@ The bundle is available through the same USB or HTTP(S) set source as the OS.
 
 Use the complete output of the [package-set auditor](../../probes/plasma-mobile/toolkit/tests/package-set.md)
 with `--target amd64`. Keep `packages/`, `packages.sha256`, `roots.txt`,
-`install-order.txt` and `target.txt` together. Supply native pkgtools, Ruby
-with Fiddle, host Python, an explicit SDK API1 source with stream/raw-tar
-capabilities, and bsdtar/libarchive on the development host:
+`install-order.txt` and `target.txt` together. Supply native pkgtools, host
+Python, an explicit SDK API1 source with stream/raw-tar, raw-header facts and
+directory-publication capabilities, and bsdtar/libarchive on the development host:
 
 ```sh
 PKG_INFO=/absolute/native/pkg_info PKG_ADMIN=/absolute/native/pkg_admin \
-BSDTAR=/absolute/bsdtar PYTHON=/absolute/python3 \
-EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK \
-  ruby bundle-plasma.rb /absolute/audited-amd64-set /absolute/new-output
+BSDTAR=/absolute/bsdtar \
+  /absolute/python3 -B -I -S bundle-plasma.py --sdk-source /absolute/EmberBSD-SDK \
+  /absolute/audited-amd64-set /absolute/new-output
 ```
 
 This helper uses only the supplied package closure. It does not use the XFCE
@@ -112,13 +112,21 @@ The new output contains:
 
 Package archives retain their audited bytes. Outer tar entries use numeric
 owner/group zero and `root:wheel` names. macOS attributes, ACLs and file flags
-are excluded. Private staging is removed after completion or a failure outside
-the auditor dispatch. A failed or interrupted auditor retains the workspace
-and reports its path, even if a quarantine marker could not be written.
-Resolve producer ownership before removing that retained work.
+are excluded. Outer entry timestamps are not normalized; separate bundle runs
+do not promise identical compressed bytes. Private staging is removed after
+completion or an error outside the auditor when producer shutdown is known.
+A failed or interrupted auditor, or unproven producer ownership at any step,
+retains the workspace and reports its path, even if a quarantine marker could
+not be written. Resolve ownership before removing retained work.
 Publication uses an atomic no-replace rename on macOS or Linux. Existing
 outputs, dangling symlinks and concurrently created destinations are preserved.
 The XFCE `bundle.rb` interface remains unchanged.
+
+The helper checks SDK capabilities and native publication availability before
+starting a producer. Required producer errors retain their exit status; signal
+termination returns `128 + signal`. Command output is bounded to 16 MiB, and
+each producer read/drain has a 30-minute deadline. SDK session-stop bounds also
+apply. The package auditor keeps its own narrower archive and metadata limits.
 
 The helper reports the actual archive byte count. The current OS installer
 has a **512 MiB** preflight and staging limit. The provenance records whether
@@ -131,15 +139,18 @@ Run the small native package/tar regression with real pkgtools:
 ```sh
 PKG_CREATE=/absolute/native/pkg_create PKG_INFO=/absolute/native/pkg_info \
 PKG_ADMIN=/absolute/native/pkg_admin BSDTAR=/absolute/bsdtar \
-PYTHON=/absolute/python3 EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK \
-  ruby tests/bundle-plasma.rb /absolute/new-results
+/absolute/python3 -B -I -S tests/bundle-plasma.py \
+  --sdk-source /absolute/EmberBSD-SDK /absolute/new-results
 ```
 
-Twelve macOS cases pass. Header-only ELF fixtures cover valid bundles,
+Native macOS checks use header-only ELF fixtures for valid bundles,
 symlinked programs, wrong target/ELF, changed digests, invalid roots, absent or
 non-executable programs and output preservation, including a publication race.
 Tar checks cover package bytes, root names, inner/outer hashes and ownership.
-These fixtures are not a compiled or running Plasma desktop.
+Additional controls check SDK capability refusal before producers, exact error
+status, bounded output, actual CLI interruption, retained work and source changes.
+Ownership-error injection remains a model. These fixtures are not a compiled or
+running Plasma desktop.
 
 ## Installed behavior and verification boundary
 

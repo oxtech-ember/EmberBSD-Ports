@@ -73,10 +73,13 @@ Run the data-only package regression with real native pkgtools:
 ```sh
 PKG_CREATE=/absolute/native/pkg_create PKG_INFO=/absolute/native/pkg_info \
 PKG_ADMIN=/absolute/native/pkg_admin PKG_ADD=/absolute/native/pkg_add \
-    ruby ../tests/install-package-set.py /absolute/new-results
+    /absolute/python3 -B -I -S ../tests/install-package-set.py \
+    --sdk-source /absolute/EmberBSD-SDK /absolute/new-results
 ```
 
-The regression creates actual package archives with `pkg_create`.
+The host regression uses Python with the explicit SDK API1 stream/raw-tar
+source. It creates actual package archives with `pkg_create`. The target
+installer remains a POSIX shell script and does not require Python.
 It checks valid verification and causal failures before installation.
 The macOS run also checks that the explicit install mode rejects the host.
 Two native data-only fixtures also exercise the exact installation helper in private prefixes and package databases.

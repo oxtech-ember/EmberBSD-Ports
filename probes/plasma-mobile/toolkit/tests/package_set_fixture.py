@@ -30,7 +30,7 @@ def elf(machine, klass=2, endian=1):
 
 
 class Fixture:
-    def __init__(self, arguments, *, llvm=False, optional_auditor=False):
+    def __init__(self, arguments, *, llvm=False, optional_auditor=False, publication=False):
         self.ports = Path(__file__).resolve().parents[4]
         sys.path.insert(0, str(self.ports / 'profiles/development-toolchain/runtime/recipe/files'))
         import sdk_source
@@ -40,6 +40,12 @@ class Fixture:
         from emberbsd_sdk.stream import capture_streamed, PRODUCER_STREAM_API
         from emberbsd_sdk.tarstream import TAR_STREAM_API
         check(PRODUCER_STREAM_API == TAR_STREAM_API == 1, 'SDK stream/raw-tar API1 required')
+        if publication:
+            from emberbsd_sdk import publication as publisher, tarstream
+            capabilities = ((publisher, 'DIRECTORY_PUBLICATION_API'), (tarstream, 'TAR_HEADER_FACTS_API'))
+            check(all(type(getattr(module, name, None)) is int and getattr(module, name) == 1
+                      for module, name in capabilities), 'SDK publication/raw-header facts API1 required')
+            publisher.require_directory_publication()
         self.capture = capture_streamed
         required = 2 if llvm else 1
         check(required <= len(args) <= required + int(optional_auditor),
