@@ -88,7 +88,11 @@ def source_revision(env):
 
 
 def lines(data):
-    return data.splitlines()
+    # Match the original binary Ruby lines/chomp behavior, not splitlines().
+    records = data.split(b'\n')
+    if records[-1] == b'':
+        records.pop()
+    return [line.removesuffix(b'\r') for line in records]
 
 
 def installed_files(contents, archive):

@@ -17,6 +17,7 @@ from unittest.mock import patch
 def run_controls(f, bundler, valid):
     from package_set_fixture import check
     from emberbsd_sdk.errors import CommandError, ProcessOwnershipError
+    from emberbsd_sdk import jsonio
     from emberbsd_sdk.jsonio import read_json
     from emberbsd_sdk.process import OwnedProcessGroup
     count = 0
@@ -98,6 +99,12 @@ def run_controls(f, bundler, valid):
     module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
     module.load_sdk(['--sdk-source', f.sdk])
     real_command = module.command
+    sample = b'@cwd /usr/pkg\n@comment first\rbin/fake\nbin/real\r\n'
+    check(set(module.installed_files(sample, Path('fixture.tgz'))) == {b'/usr/pkg/bin/real'},
+          'PLIST parser changed binary Ruby line semantics')
+    check(module.lines(b'a\fb\nlast\r') == [b'a\fb', b'last'] and module.lines(b'') == [],
+          'PLIST parser normalized other control bytes')
+    passed('binary-plist-line-separators')
 
     # This uses the production stream wrapper with a small, explicit test bound.
     producer = shell('bounded-output', "printf 123456789; printf bounded-reason >&2; exit 97")
@@ -125,7 +132,7 @@ def run_controls(f, bundler, valid):
         with patch.object(module, 'command', dispatch), patch.dict(os.environ, f.env), \
                 contextlib.redirect_stdout(out), contextlib.redirect_stderr(err), contextlib.ExitStack() as stack:
             if marker_fails:
-                stack.enter_context(patch.object(module, 'write_json', side_effect=OSError('fixture marker failure')))
+                stack.enter_context(patch.object(jsonio, 'write_json', side_effect=OSError('fixture marker failure')))
             code = module.main(['--sdk-source', f.sdk, str(valid), str(destination)])
         (f.work / (name + '.log')).write_text(out.getvalue() + err.getvalue())
         retained = list(f.work.glob('.' + name + '-*'))
