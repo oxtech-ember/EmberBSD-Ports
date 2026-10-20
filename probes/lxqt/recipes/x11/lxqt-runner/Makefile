@@ -29,6 +29,7 @@ TOOL_DEPENDS+=	qt6-qttools-[0-9]*:../../devel/qt6-qttools
 .endif
 
 .include "../../x11/lxqt-globalkeys/buildlink3.mk"
+BUILDLINK_API_DEPENDS.muparser+= muparser>=2.3.6
 .include "../../math/muparser/buildlink3.mk"
 .include "../../x11/plasma6-layer-shell-qt/buildlink3.mk"
 .include "../../devel/cmake/build.mk"

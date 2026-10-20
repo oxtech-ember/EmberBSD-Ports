@@ -1,0 +1,10 @@
+BUILDLINK_TREE+=	muparser
+
+.if !defined(MUPARSER_BUILDLINK3_MK)
+MUPARSER_BUILDLINK3_MK:=
+
+BUILDLINK_API_DEPENDS.muparser+=	muparser>=2.3.6
+BUILDLINK_PKGSRCDIR.muparser?=		../../math/muparser
+.endif # MUPARSER_BUILDLINK3_MK
+
+BUILDLINK_TREE+=	-muparser

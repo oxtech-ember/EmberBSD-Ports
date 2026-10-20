@@ -1,0 +1,2 @@
+muparser is a fast math parser library for C and C++. It supports custom
+functions and operators, variables, and optional OpenMP execution.
