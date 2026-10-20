@@ -48,9 +48,9 @@ Prepare these separate directories, outside Git:
 - Host tools from the EmberBSD source tree, built on the Mac, including
   the corresponding target `install` utility.
 - A pkgsrc unprivileged macOS bootstrap with BSD make, the patched package tools,
-  mksh and digest. Use the exported `pkg_install-20260227nb1` recipe: it fixes
-  alternate-root replacement and suppresses target deinstall scripts during
-  cross updates. Its package database describes host executables only.
+  mksh and digest. Use the exported `pkg_install-20260227nb2` recipe: it fixes
+  alternate-root replacement and successful dry runs. It suppresses target
+  deinstall scripts during cross updates. Its package database describes host executables only.
   The bootstrap must also own native `libtool-base-2.6.2` and `m4-1.4.21`
   built from the same export (`bmake -C export/devel/libtool-base MAKECONF=`
   *host*`/etc/mk.conf package`, then `pkg_add` both). Recipes that run
@@ -386,6 +386,18 @@ also rejects missing compiler exports and invalid compiler paths.
 The separate `tests/pkg-add-sysroot.sh` compares original and repaired host
 package tools. It checks replacement, same-version reinstall, shared-directory
 ownership, partial-extraction rollback and native behavior.
+The cross package tools also carry the OS replacement dry-run repair from
+EmberBSD `c22fa34ebe0`. A successful simulated deletion returns zero. Real
+deletion results and metadata errors retain their original return values.
+Run `python3 -B tests/pkg-add-dryrun.py --sdk-source SDK --source PERFORM_C
+--work NEW_WORK` from this profile to check both complete source functions.
+The fixture adapts the OS contract for alternate-root script selection.
+It checks 69 cases, including all `Fake`, `Destdir` and `NoInstall` combinations.
+Use `--extract-only` for separate target compilation and analysis. Use
+`--compiler` and repeated `--cflag=FLAG` options for native memory checks.
+The test uses private metadata directories. It launches no package tools.
+A passing source fixture does not qualify an installed package transaction.
+
 These scripts print their required positional arguments when called without
 arguments. Set `BMAKE` to the host bootstrap BSD make.
 

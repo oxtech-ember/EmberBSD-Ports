@@ -19,6 +19,11 @@ runtime behavior are validated.
 
 ## Current contents
 
+- [Package replacement preflight](profiles/common-build-tools/cross/README.md#acceptance):
+  cross package tools retain successful dry runs and real deletion failures.
+  The source contract checks metadata ownership and alternate-root script
+  selection. Installed update acceptance remains separate.
+
 - [GCC16 cross TLS ABI checks](profiles/development-toolchain/cross-tls.md):
   runtime verification requires the native `std::call_once` TLS exports.
   Real AArch64 configure and object regressions pass on Debian 13.
