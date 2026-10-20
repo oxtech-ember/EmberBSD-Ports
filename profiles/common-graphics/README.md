@@ -41,6 +41,10 @@ consumer link pass; cross packaging omits optional docs, Vala bindings and
 GObject introspection data while retaining the C API. D-Bus service runtime
 acceptance remains pending.
 
+[libgit2 1.9.7nb1](cross/libgit2.md) is installed in the same sysroot for
+KiCad's Git library integration. The GCC16 package and a `git_libgit2_init()`
+consumer link pass; target runtime execution remains pending.
+
 [Maintained FreeImage 3.19.25 and LibRaw 0.22.2](cross/freeimage.md)
 provide common source recipes for OCCT image support. Source preparation,
 GCC16 header selection, half conversions and unaligned pixel-copy checks pass.
