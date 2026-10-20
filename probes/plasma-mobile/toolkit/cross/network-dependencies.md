@@ -1,6 +1,6 @@
 # Qt networking prerequisites on EmberBSD
 
-The current target packages use curl 8.22.0nb1, libidn2 2.3.8,
+The current target packages use curl 8.23.0nb1, libidn2 2.3.8,
 GSettings desktop schemas 51.0 and libproxy 0.5.12. Their build and test
 executables are cross-compiled on macOS with GCC 16.2. The CM5 only runs
 those executables. This acceptance does not establish a Qt or Plasma session.
@@ -75,8 +75,30 @@ Source-delta reproduction, archive and patch hashes, zero-fuzz application,
 exact prepared-file comparisons and repeated-patch rejection passed.
 The curl metadata regression also passed, including an idempotent second run.
 
-On CM5 Rev 1.0 (BCM2712D0, Waveshare CM5-NANO-B), the network consumer passed,
-including a repeat against the final curl nb1 payload. All three upstream libproxy API tests
+On 2026-10-20, curl was updated from 8.22.0 to 8.23.0nb1 for
+CVE-2026-92392. Upstream lists 8.22.0 as affected and 8.23.0 as fixed.
+The pinned pkgsrc options enable HTTP/2 by default. The source regression
+verified the 8.23.0 archive hashes, exact prepared Makefile and distinfo, and
+zero-fuzz application. `show-depends` resolved GCC16, libidn2, nghttp2 and
+zlib. GCC16 cross packaging passed pkgsrc file, interpreter, permissions,
+PIE, RELRO, RPATH and work-directory checks. The resulting package was
+installed in the shared AArch64 sysroot with `pkg_add -U`; all seven recorded
+reverse dependencies remain registered. The installed consumer cross-builds
+as an AArch64 NetBSD 11.0 ELF and asserts curl 8.23.0 with SSL, IDN and HTTP/2.
+`network-cross-consumer.sh` and the curl metadata regression pass. Cppcheck 2.22.0
+compared upstream `lib/http2.c` from 8.22.0 and 8.23.0 using target headers,
+GCC16 type definitions and the generated curl configuration. It reported 42
+and 46 findings respectively. The common array-bound report is a false
+positive: the copied GOAWAY reason is capped at `sizeof(scratch) - 1`. The
+additional null-pointer reports concern the non-null easy-handle argument
+passed through the HTTP/2 filter callbacks; the traced call sites use the
+active transfer handle. GCC16 `-fanalyzer` on both releases and Clang Static
+Analyzer on 8.23.0 reported no findings. No diagnostic was suppressed.
+The 8.23.0 consumer has not yet been executed on the target; the earlier
+CM5 run below used the previous curl 8.22.0 package.
+
+On CM5 Rev 1.0 (BCM2712D0, Waveshare CM5-NANO-B), the network consumer passed
+against the earlier curl 8.22.0 payload. All three upstream libproxy API tests
 passed: proxy lookup, boxed-object copy and freeing a null proxy list.
 The real libproxy GType query completed and generated GIR/typelib data.
 These runs used isolated copies of the selected sysroot libraries; they do
@@ -93,7 +115,7 @@ full upstream suites and installed-package lifecycle acceptance remain open.
 Final cross-package SHA256 values (binaries remain outside Git):
 
 ```text
-5daca679a93add098434042060620f9cd3247ab967f49ceea3671941bcaf0399  curl-8.22.0nb1.tgz
+b9145c6e621873fe8fe67cd5191929eb2514efbfd6a4b35eb784ca955236f3e2  curl-8.23.0nb1.tgz
 363a85fdbde9b6c7f36329471327a2b857ed277437d92ea607c8b875dc618627  libidn2-2.3.8.tgz
 dd7a34aa08d5eccf99818b0269870d7148a4ab33c84e53537834469b9c456db9  gsettings-desktop-schemas-51.0.tgz
 aef773ad1eeabc4f629649acfe9374c4477c8f7e9bedcb2332784f7181141127  libproxy-0.5.12nb5.tgz

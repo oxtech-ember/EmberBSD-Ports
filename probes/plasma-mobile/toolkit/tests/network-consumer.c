@@ -23,7 +23,7 @@ main(void)
 	if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK)
 		return 1;
 	version = curl_version_info(CURLVERSION_NOW);
-	if (strcmp(version->version, "8.22.0") != 0 ||
+	if (strcmp(version->version, "8.23.0") != 0 ||
 	    strcmp(idn2_check_version(NULL), "2.3.8") != 0 ||
 	    (version->features & (CURL_VERSION_SSL | CURL_VERSION_IDN |
 	    CURL_VERSION_HTTP2)) != (CURL_VERSION_SSL | CURL_VERSION_IDN |
