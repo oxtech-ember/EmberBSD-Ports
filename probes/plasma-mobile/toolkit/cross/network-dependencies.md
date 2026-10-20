@@ -8,7 +8,8 @@ those executables. This acceptance does not establish a Qt or Plasma session.
 The [network delta](../current-network-deps.patch) records the original GNU
 and GNOME archives and SHA256. The [libproxy delta](../libproxy-cross.patch)
 retains the pinned upstream release and records its original archive and hash.
-Both apply after pkgsrc `fff4deb639a1a640476203c80f752fb77b6cb14b`.
+Both use pkgsrc `fff4deb639a1a640476203c80f752fb77b6cb14b`.
+Apply each toolkit delta after its common graphics delta.
 Changes are AI-assisted EmberBSD work, not accepted upstream patches.
 
 ## Cross-build repairs
@@ -25,6 +26,8 @@ real target GType query runner. The complete toolkit export keeps both
 `GDesktopEnums-3.0.gir` and `GDesktopEnums-3.0.typelib` in native and cross
 packages. Apply its schema delta after the common graphics delta. The common
 runtime profile alone does not require these optional bindings.
+The toolkit libproxy delta also restores the complete profile after the
+common runtime delta. It keeps GIR and typelib data in native and cross builds.
 
 The temporary libproxy query links and loads
 both in-tree libraries, including its private backend. This fixes the failed
@@ -65,8 +68,9 @@ sh probes/plasma-mobile/toolkit/tests/libproxy-cross-consumer.sh \
 The export check applies the common and toolkit patches with zero fuzz.
 It checks native and cross package metadata without building a package.
 It reports missing GI query inputs separately. It does not supply a target
-runner or establish target execution. The existing libnotify native and cross
-introspection defaults remain unchanged.
+runner or establish target execution. The check also covers libproxy with
+default options and with both optional data sets disabled. The existing libnotify native and cross introspection
+defaults remain unchanged.
 
 Execute the resulting ELF files with the existing
 [GI target query runner](../../../../profiles/common-graphics/recipes/devel/gobject-introspection/files/target-query.rb)

@@ -7,10 +7,14 @@ All runtime proxy backends and GIR data remain enabled.
 https://github.com/libproxy/libproxy/archive/refs/tags/0.5.12.tar.gz
 SHA256: a1fa55991998b80a567450a9e84382421a7176a84446c95caaa8b72cf09fa86f
 
+Apply this delta after the common graphics libproxy delta.
+Keep the complete toolkit output and its GIR query path unchanged.
+
 --- a/www/libproxy/Makefile
 +++ b/www/libproxy/Makefile
-@@ -1,7 +1,7 @@
+@@ -1,8 +1,7 @@
  # $NetBSD: Makefile,v 1.73 2026/09/02 19:04:59 wiz Exp $
+-.include "../../mk/bsd.prefs.mk"
  
  DISTNAME=	libproxy-0.5.12
 -PKGREVISION=	4
@@ -18,16 +22,35 @@ SHA256: a1fa55991998b80a567450a9e84382421a7176a84446c95caaa8b72cf09fa86f
  CATEGORIES=	www gnome
  MASTER_SITES=	${MASTER_SITE_GITHUB:=libproxy/}
  GITHUB_TAG=	${PKGVERSION_NOREV}
-@@ -11,7 +11,7 @@
+@@ -12,9 +11,7 @@
  COMMENT=	Library that provides automatic proxy configuration management
  LICENSE=	gnu-lgpl-v2.1
  
+-.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 -TOOL_DEPENDS+=	glib2-introspection-[0-9]*:../../devel/glib2-introspection
+-.endif
 +BUILD_DEPENDS+=	glib2-introspection>=2.90.1nb1:../../devel/glib2-introspection
  
  USE_CC_FEATURES=	c99
  USE_CXX_FEATURES=	c++11
-@@ -33,14 +33,23 @@
+@@ -23,16 +20,6 @@
+ 
+ PKGCONFIG_OVERRIDE+=		output/meson-private/libproxy-1.0.pc
+ PKGCONFIG_OVERRIDE_STAGE=	post-configure
+-
+-PLIST_VARS+=	docs introspection vapi
+-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+-# Consumers need the C API, not optional GIR or documentation.
+-MESON_ARGS+=	-Ddocs=false -Dintrospection=false -Dvapi=false -Dtests=false
+-.else
+-PLIST.docs=	yes
+-PLIST.introspection=	yes
+-PLIST.vapi=	yes
+-.endif
+ 
+ # For Darwin
+ TEST_ENV+=	DYLD_LIBRARY_PATH=${WRKSRC}/output/src/backend:${WRKSRC}/output/src/libproxy
+@@ -46,18 +33,23 @@
  # https://github.com/libproxy/libproxy/issues/237
  LDFLAGS+=	${COMPILER_RPATH_FLAG}${PREFIX}/lib/libproxy
  
@@ -45,78 +68,94 @@ SHA256: a1fa55991998b80a567450a9e84382421a7176a84446c95caaa8b72cf09fa86f
 +.endif
  .include "../../devel/meson/build.mk"
  .include "../../devel/glib2/buildlink3.mk"
+-.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
  .include "../../devel/gobject-introspection/buildlink3.mk"
 -BUILDLINK_API_DEPENDS.py-gi-docgen+=	${PYPKGPREFIX}-gi-docgen>=2025.3
 -.include "../../devel/py-gi-docgen/buildlink3.mk"
+-.endif
  .include "../../devel/zlib/buildlink3.mk"
  .include "../../lang/libduktape/buildlink3.mk"
+-.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 -.include "../../lang/vala/buildlink3.mk"
+-.endif
  .include "../../sysutils/gsettings-desktop-schemas/buildlink3.mk"
  .include "../../www/curl/buildlink3.mk"
  .include "../../mk/dlopen.buildlink3.mk"
 --- a/www/libproxy/PLIST
 +++ b/www/libproxy/PLIST
+@@ -1,7 +1,7 @@
+ @comment $NetBSD: PLIST,v 1.9 2025/11/30 13:59:59 wiz Exp $
+ bin/proxy
+ include/libproxy/proxy.h
+-${PLIST.introspection}lib/girepository-1.0/Libproxy-1.0.typelib
++lib/girepository-1.0/Libproxy-1.0.typelib
+ lib/libproxy.a
+ lib/libproxy.so
+ lib/libproxy.so.${PKGVERSION}
 @@ -9,63 +9,63 @@
  lib/libproxy/libpxbackend-1.0.so
  lib/pkgconfig/libproxy-1.0.pc
  man/man8/proxy.8
--share/doc/libproxy-1.0/RedHatDisplay-Black.woff
--share/doc/libproxy-1.0/RedHatDisplay-Black.woff2
--share/doc/libproxy-1.0/RedHatDisplay-BlackItalic.woff
--share/doc/libproxy-1.0/RedHatDisplay-BlackItalic.woff2
--share/doc/libproxy-1.0/RedHatDisplay-Bold.woff
--share/doc/libproxy-1.0/RedHatDisplay-Bold.woff2
--share/doc/libproxy-1.0/RedHatDisplay-BoldItalic.woff
--share/doc/libproxy-1.0/RedHatDisplay-BoldItalic.woff2
--share/doc/libproxy-1.0/RedHatDisplay-Italic.woff
--share/doc/libproxy-1.0/RedHatDisplay-Italic.woff2
--share/doc/libproxy-1.0/RedHatDisplay-Medium.woff
--share/doc/libproxy-1.0/RedHatDisplay-Medium.woff2
--share/doc/libproxy-1.0/RedHatDisplay-MediumItalic.woff
--share/doc/libproxy-1.0/RedHatDisplay-MediumItalic.woff2
--share/doc/libproxy-1.0/RedHatDisplay-Regular.woff
--share/doc/libproxy-1.0/RedHatDisplay-Regular.woff2
--share/doc/libproxy-1.0/RedHatText-Bold.woff
--share/doc/libproxy-1.0/RedHatText-Bold.woff2
--share/doc/libproxy-1.0/RedHatText-BoldItalic.woff
--share/doc/libproxy-1.0/RedHatText-BoldItalic.woff2
--share/doc/libproxy-1.0/RedHatText-Italic.woff
--share/doc/libproxy-1.0/RedHatText-Italic.woff2
--share/doc/libproxy-1.0/RedHatText-Medium.woff
--share/doc/libproxy-1.0/RedHatText-Medium.woff2
--share/doc/libproxy-1.0/RedHatText-MediumItalic.woff
--share/doc/libproxy-1.0/RedHatText-MediumItalic.woff2
--share/doc/libproxy-1.0/RedHatText-Regular.woff
--share/doc/libproxy-1.0/RedHatText-Regular.woff2
--share/doc/libproxy-1.0/SourceCodePro-It.ttf.woff
--share/doc/libproxy-1.0/SourceCodePro-Regular.ttf.woff
--share/doc/libproxy-1.0/SourceCodePro-Semibold.ttf.woff
--share/doc/libproxy-1.0/applications.html
--share/doc/libproxy-1.0/architecture.html
--share/doc/libproxy-1.0/build-steps.html
--share/doc/libproxy-1.0/configuration-logic.html
--share/doc/libproxy-1.0/ctor.ProxyFactory.new.html
--share/doc/libproxy-1.0/fonts.css
--share/doc/libproxy-1.0/fzy.js
--share/doc/libproxy-1.0/go-up-symbolic.png
--share/doc/libproxy-1.0/index.html
--share/doc/libproxy-1.0/index.json
--share/doc/libproxy-1.0/libproxy-1.0.devhelp2
--share/doc/libproxy-1.0/libproxy.svg
--share/doc/libproxy-1.0/main.js
--share/doc/libproxy-1.0/method.ProxyFactory.free.html
--share/doc/libproxy-1.0/method.ProxyFactory.get_proxies.html
--share/doc/libproxy-1.0/perl.html
--share/doc/libproxy-1.0/proxy-authentication.html
--share/doc/libproxy-1.0/python.html
--share/doc/libproxy-1.0/ruby.html
--share/doc/libproxy-1.0/search.js
--share/doc/libproxy-1.0/solarized-dark.css
--share/doc/libproxy-1.0/solarized-light.css
--share/doc/libproxy-1.0/struct.ProxyFactory.html
--share/doc/libproxy-1.0/style.css
--share/doc/libproxy-1.0/type_func.ProxyFactory.free_proxies.html
--share/doc/libproxy-1.0/vala.html
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatDisplay-Black.woff
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatDisplay-Black.woff2
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatDisplay-BlackItalic.woff
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatDisplay-BlackItalic.woff2
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatDisplay-Bold.woff
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatDisplay-Bold.woff2
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatDisplay-BoldItalic.woff
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatDisplay-BoldItalic.woff2
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatDisplay-Italic.woff
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatDisplay-Italic.woff2
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatDisplay-Medium.woff
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatDisplay-Medium.woff2
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatDisplay-MediumItalic.woff
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatDisplay-MediumItalic.woff2
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatDisplay-Regular.woff
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatDisplay-Regular.woff2
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatText-Bold.woff
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatText-Bold.woff2
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatText-BoldItalic.woff
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatText-BoldItalic.woff2
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatText-Italic.woff
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatText-Italic.woff2
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatText-Medium.woff
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatText-Medium.woff2
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatText-MediumItalic.woff
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatText-MediumItalic.woff2
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatText-Regular.woff
+-${PLIST.docs}share/doc/libproxy-1.0/RedHatText-Regular.woff2
+-${PLIST.docs}share/doc/libproxy-1.0/SourceCodePro-It.ttf.woff
+-${PLIST.docs}share/doc/libproxy-1.0/SourceCodePro-Regular.ttf.woff
+-${PLIST.docs}share/doc/libproxy-1.0/SourceCodePro-Semibold.ttf.woff
+-${PLIST.docs}share/doc/libproxy-1.0/applications.html
+-${PLIST.docs}share/doc/libproxy-1.0/architecture.html
+-${PLIST.docs}share/doc/libproxy-1.0/build-steps.html
+-${PLIST.docs}share/doc/libproxy-1.0/configuration-logic.html
+-${PLIST.docs}share/doc/libproxy-1.0/ctor.ProxyFactory.new.html
+-${PLIST.docs}share/doc/libproxy-1.0/fonts.css
+-${PLIST.docs}share/doc/libproxy-1.0/fzy.js
+-${PLIST.docs}share/doc/libproxy-1.0/go-up-symbolic.png
+-${PLIST.docs}share/doc/libproxy-1.0/index.html
+-${PLIST.docs}share/doc/libproxy-1.0/index.json
+-${PLIST.docs}share/doc/libproxy-1.0/libproxy-1.0.devhelp2
+-${PLIST.docs}share/doc/libproxy-1.0/libproxy.svg
+-${PLIST.docs}share/doc/libproxy-1.0/main.js
+-${PLIST.docs}share/doc/libproxy-1.0/method.ProxyFactory.free.html
+-${PLIST.docs}share/doc/libproxy-1.0/method.ProxyFactory.get_proxies.html
+-${PLIST.docs}share/doc/libproxy-1.0/perl.html
+-${PLIST.docs}share/doc/libproxy-1.0/proxy-authentication.html
+-${PLIST.docs}share/doc/libproxy-1.0/python.html
+-${PLIST.docs}share/doc/libproxy-1.0/ruby.html
+-${PLIST.docs}share/doc/libproxy-1.0/search.js
+-${PLIST.docs}share/doc/libproxy-1.0/solarized-dark.css
+-${PLIST.docs}share/doc/libproxy-1.0/solarized-light.css
+-${PLIST.docs}share/doc/libproxy-1.0/struct.ProxyFactory.html
+-${PLIST.docs}share/doc/libproxy-1.0/style.css
+-${PLIST.docs}share/doc/libproxy-1.0/type_func.ProxyFactory.free_proxies.html
+-${PLIST.docs}share/doc/libproxy-1.0/vala.html
+-${PLIST.introspection}share/gir-1.0/Libproxy-1.0.gir
+-${PLIST.vapi}share/vala/vapi/libproxy-1.0.deps
+-${PLIST.vapi}share/vala/vapi/libproxy-1.0.vapi
 +${PLIST.doc}share/doc/libproxy-1.0/RedHatDisplay-Black.woff
 +${PLIST.doc}share/doc/libproxy-1.0/RedHatDisplay-Black.woff2
 +${PLIST.doc}share/doc/libproxy-1.0/RedHatDisplay-BlackItalic.woff
@@ -174,11 +213,16 @@ SHA256: a1fa55991998b80a567450a9e84382421a7176a84446c95caaa8b72cf09fa86f
 +${PLIST.doc}share/doc/libproxy-1.0/style.css
 +${PLIST.doc}share/doc/libproxy-1.0/type_func.ProxyFactory.free_proxies.html
 +${PLIST.doc}share/doc/libproxy-1.0/vala.html
- share/gir-1.0/Libproxy-1.0.gir
--share/vala/vapi/libproxy-1.0.deps
--share/vala/vapi/libproxy-1.0.vapi
++share/gir-1.0/Libproxy-1.0.gir
 +${PLIST.vala}share/vala/vapi/libproxy-1.0.deps
 +${PLIST.vala}share/vala/vapi/libproxy-1.0.vapi
+--- a/www/libproxy/distinfo
++++ b/www/libproxy/distinfo
+@@ -4,3 +4,4 @@
+ SHA512 (libproxy-0.5.12.tar.gz) = 19ffd1755e9ebfc645555e248020f9025ae81e93e73cbbb2583bff4495f7794b02ab1ef8ce944fa28e7604f5abf3e7e327c4966d21789648bd38f3d1c2cccecd
+ Size (libproxy-0.5.12.tar.gz) = 60529 bytes
+ SHA1 (patch-src_libproxy_meson.build) = 6d5ddacc59db7f770002bc304404c6582865cbf8
++SHA1 (patch-src_libproxy_meson.build-cross) = bfc3272431f4684fc4d28d4c44bad76ff4bf4a39
 --- a/www/libproxy/options.mk
 +++ b/www/libproxy/options.mk
 @@ -0,0 +1,50 @@
@@ -232,13 +276,6 @@ SHA256: a1fa55991998b80a567450a9e84382421a7176a84446c95caaa8b72cf09fa86f
 +.else
 +MESON_ARGS+= -Dvapi=false
 +.endif
---- a/www/libproxy/distinfo
-+++ b/www/libproxy/distinfo
-@@ -4,3 +4,4 @@
- SHA512 (libproxy-0.5.12.tar.gz) = 19ffd1755e9ebfc645555e248020f9025ae81e93e73cbbb2583bff4495f7794b02ab1ef8ce944fa28e7604f5abf3e7e327c4966d21789648bd38f3d1c2cccecd
- Size (libproxy-0.5.12.tar.gz) = 60529 bytes
- SHA1 (patch-src_libproxy_meson.build) = 6d5ddacc59db7f770002bc304404c6582865cbf8
-+SHA1 (patch-src_libproxy_meson.build-cross) = bfc3272431f4684fc4d28d4c44bad76ff4bf4a39
 --- a/www/libproxy/patches/patch-src_libproxy_meson.build-cross
 +++ b/www/libproxy/patches/patch-src_libproxy_meson.build-cross
 @@ -0,0 +1,36 @@
