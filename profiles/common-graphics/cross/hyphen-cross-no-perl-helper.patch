@@ -1,0 +1,31 @@
+--- a/textproc/hyphen/Makefile
++++ b/textproc/hyphen/Makefile
+@@ -16,4 +16,19 @@
+ 
+ REPLACE_PERL=	substrings.pl
+ 
++.include "../../mk/bsd.prefs.mk"
++
++# This helper converts source dictionaries during the build, but it needs
++# a target Perl interpreter at runtime. Do not ship it in minimal cross sysroots.
++PLIST_VARS+=	substrings
++.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++PLIST.substrings= yes
++.else
++SUBST_CLASSES+=	cross
++SUBST_STAGE.cross=	pre-configure
++SUBST_FILES.cross=	Makefile.in
++SUBST_SED.cross+=	-e 's,^bin_SCRIPTS = substrings.pl,bin_SCRIPTS =,'
++SUBST_MESSAGE.cross=	Disable build-only dictionary helper in target package.
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
+--- a/textproc/hyphen/PLIST
++++ b/textproc/hyphen/PLIST
+@@ -1,5 +1,5 @@
+ @comment $NetBSD: PLIST,v 1.1 2013/11/23 14:53:48 jaapb Exp $
+-bin/substrings.pl
++${PLIST.substrings}bin/substrings.pl
+ include/hyphen.h
+ lib/libhyphen.la
+ share/hyphen/hyph_en_US.dic
