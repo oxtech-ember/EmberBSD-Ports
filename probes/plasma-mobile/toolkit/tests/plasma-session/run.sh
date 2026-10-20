@@ -2,13 +2,38 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Installed classic Plasma session acceptance.
 set -eu
-[ "$#" -eq 1 ] || { echo "Usage: $0 ABSOLUTE_NEW_OUTPUT" >&2; exit 2; }
+usage()
+{
+    echo "Usage: $0 [--renderer v3d|powervr-zink] ABSOLUTE_NEW_OUTPUT" >&2
+    exit 2
+}
+profile=v3d
+case "$#" in
+1) ;;
+3) [ "$1" = --renderer ] || usage; profile=$2; shift 2 ;;
+*) usage ;;
+esac
+case "$profile" in v3d|powervr-zink) ;; *) usage ;; esac
 work=$1
 case "$work" in /*) ;; *) echo 'Absolute output path required.' >&2; exit 2 ;; esac
 [ ! -e "$work" ] && [ ! -L "$work" ] || { echo 'Output already exists.' >&2; exit 2; }
 [ "$(id -u)" -ne 0 ] || { echo 'Run as an ordinary desktop user.' >&2; exit 2; }
 # KWin and D-Bus use Unix sockets with bounded path lengths.
 [ "${#work}" -le 70 ] || { echo 'Use an output path of at most 70 characters.' >&2; exit 2; }
+# Check access without creating nodes or changing their permissions.
+render_node=
+for node in /dev/dri/renderD*; do
+    if [ ! -L "$node" ] && [ -c "$node" ] && [ -r "$node" ] && [ -w "$node" ]; then
+        render_node=$node
+        break
+    fi
+done
+[ -n "$render_node" ] || { echo 'No accessible DRM render character device.' >&2; exit 2; }
+icd=/usr/pkg/share/vulkan/icd.d/powervr_mesa_icd.json
+if [ "$profile" = powervr-zink ] && { [ ! -f "$icd" ] || [ ! -r "$icd" ]; }; then
+    echo "Missing installed PowerVR ICD: $icd" >&2
+    exit 2
+fi
 source_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # KWin creates Xwayland sockets as this user. Boot must prepare their parents.
 for directory in /tmp /tmp/.X11-unix /tmp/.ICE-unix; do
@@ -61,6 +86,11 @@ for file in layout.js check-results.sh; do cp "$source_dir/../plasma-desktop/$fi
 printf '[General]\nsystemdBoot=false\n' > "$work/config/startkderc"
 cd "$work"
 printf '%s\n' "$system_bus_id" > system-bus-id.txt
+printf '%s\n' "$profile" > renderer-profile.txt
+printf '%s\n' "$render_node" > render-node.txt
+if [ "$profile" = powervr-zink ]; then
+    /usr/bin/cksum -a SHA256 "$icd" > renderer-icd.sha256
+fi
 id > user.txt
 uname -a > system.txt
 ls -l /usr/libexec/ld.elf_so /libexec/ld.elf_so > base-loaders.txt
@@ -70,13 +100,20 @@ ls -l /usr/libexec/ld.elf_so /libexec/ld.elf_so > base-loaders.txt
     /usr/pkg/bin/kwin_wayland_wrapper /usr/pkg/bin/kwin_wayland /usr/pkg/bin/Xwayland \
     /usr/pkg/bin/plasmashell /usr/pkg/bin/ksmserver /usr/pkg/libexec/kactivitymanagerd \
     guard.pl controller.sh environment.sh layout.js check-results.sh > inputs.sha256
+# These argv entries enter only the clean session environment.
+set --
+if [ "$profile" = powervr-zink ]; then
+    set -- KWIN_COMPOSE=O2ES GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink \
+        "VK_DRIVER_FILES=$icd" PVR_I_WANT_A_BROKEN_VULKAN_DRIVER=1
+fi
 status=0
-/usr/bin/env -i PATH=/usr/pkg/qt6/bin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin \
+/usr/bin/env -i "$@" PATH=/usr/pkg/qt6/bin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin \
     HOME="$work/home" USER="$account" LOGNAME="$account" SHELL="$login_shell" LC_ALL=C.UTF-8 TMPDIR="$work/tmp" XDG_RUNTIME_DIR="$work/runtime" \
     XDG_CONFIG_HOME="$work/config" XDG_CONFIG_DIRS=/usr/pkg/etc/xdg \
     XDG_CACHE_HOME="$work/cache" XDG_DATA_HOME="$work/data" XDG_STATE_HOME="$work/state" \
     XDG_DATA_DIRS=/usr/pkg/share XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=KDE \
     QT_QPA_PLATFORM=wayland QSG_RHI_BACKEND=opengl QSG_INFO=1 \
+    EMBER_PLASMA_RENDERER_PROFILE="$profile" \
     QT_MESSAGE_PATTERN='[%{pid}] %{category}: %{message}' EMBER_PLASMA_OUTPUT="$work" \
     /usr/pkg/bin/perl ./guard.pl "$work" 240 -- \
     /usr/pkg/bin/dbus-run-session -- /bin/sh ./controller.sh > bus.log 2>&1 || status=$?
@@ -100,6 +137,6 @@ if find runtime -type s | grep -q .; then
     echo 'FAIL: a private runtime socket remains.' >&2
     exit 1
 fi
-/bin/sh ./check-results.sh support support-after.txt
-/bin/sh ./check-results.sh renderer shell-renderer.log
-echo 'PASS: installed classic Plasma session, V3D, Xwayland, Activities and logout; virtual output only'
+/bin/sh ./check-results.sh support support-after.txt "$profile"
+/bin/sh ./check-results.sh renderer shell-renderer.log "$profile"
+echo "PASS: installed classic Plasma session, $profile, Xwayland, Activities and logout; virtual output only"

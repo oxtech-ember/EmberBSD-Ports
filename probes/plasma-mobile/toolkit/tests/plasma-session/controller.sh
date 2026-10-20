@@ -3,6 +3,8 @@
 # Origin: EmberBSD (AI-assisted). Private-bus full session controller.
 set -eu
 : "${EMBER_PLASMA_OUTPUT:?}" "${EMBER_PLASMA_SESSION_MARKER:?}"
+profile=${EMBER_PLASMA_RENDERER_PROFILE-v3d}
+case "$profile" in v3d|powervr-zink) ;; *) exit 2 ;; esac
 cd "$EMBER_PLASMA_OUTPUT"
 phase=display-environment
 trap 'result=$?; printf "%s\n" "$result" > controller.status; if [ "$result" -ne 0 ]; then echo "FAIL: controller phase=$phase status=$result" >&2; fi' 0
@@ -138,7 +140,7 @@ ps -ax -o pid= -o ppid= -o comm= | awk -v parent="$kwin" \
 [ "$(wc -l < xwayland.pid | tr -d ' ')" = 1 ]
 phase=support-before
 query org.kde.KWin /KWin org.kde.KWin.supportInformation > support-before.txt
-/bin/sh ./check-results.sh support support-before.txt
+/bin/sh ./check-results.sh support support-before.txt "$profile"
 count=0
 while [ "$count" -lt 6 ]; do
     phase=liveness-$((count + 1))
@@ -152,10 +154,10 @@ while [ "$count" -lt 6 ]; do
 done
 phase=support-after
 query org.kde.KWin /KWin org.kde.KWin.supportInformation > support-after.txt
-/bin/sh ./check-results.sh support support-after.txt
+/bin/sh ./check-results.sh support support-after.txt "$profile"
 shell_pid=$(cat org.kde.plasmashell.pid)
 cat bus.log plasma-session.log compositor.log | awk -v prefix="[$shell_pid] " 'index($0, prefix) == 1' > shell-renderer.log
-/bin/sh ./check-results.sh renderer shell-renderer.log
+/bin/sh ./check-results.sh renderer shell-renderer.log "$profile"
 # This API performs logout only. It does not request halt or reboot.
 phase=logout
 render_health || exit 1

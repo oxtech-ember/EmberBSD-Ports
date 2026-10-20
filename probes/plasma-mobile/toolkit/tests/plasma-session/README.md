@@ -4,7 +4,7 @@ Origin: EmberBSD, AI-assisted implementation and source audit.
 
 This test starts the installed `startplasma-wayland` classic session as an
 ordinary user. KWin uses a 1280x1024 virtual output. The test requires OpenGL
-with a V3D renderer, Xwayland, KSMServer, Activities, KDED and Plasma Desktop.
+with the selected hardware renderer, Xwayland, KSMServer, Activities, KDED and Plasma Desktop.
 It verifies readiness for 30 seconds and requests normal logout.
 
 Native virtual sessions have completed on CM5. A later repeat established a
@@ -21,14 +21,42 @@ Host fixtures test orchestration; they do not execute KDE or Mesa.
 Install the prepared common Qt, Mesa, Plasma Desktop, Plasma Workspace,
 KActivityManagerD, KWin, Xwayland and their package dependencies. Install the
 common Perl package for the supervisor. Use an existing ordinary account with
-access to the V3D render device. Do not run this test through `sudo`.
+read and write access to a DRM render character device. Do not run this test through `sudo`.
 
 Keep this directory next to [plasma-desktop](../plasma-desktop/README.md).
 No target compilation is required. Select a new absolute output directory:
 
 ```sh
 sh ./run.sh /tmp/plasma-session-check
+sh ./run.sh --renderer powervr-zink /tmp/plasma-powervr-check
 ```
+
+The default renderer profile is `v3d`. The only other profile is
+`powervr-zink`. Unknown profiles fail before output creation or session launch.
+The runner requires at least one readable and writable `/dev/dri/renderD*`
+character device. It rejects symlink nodes. It does not select a fixed node
+number, create devices or change permissions. Actual renderer evidence
+must still match the selected profile.
+
+The PowerVR profile requires the installed
+`/usr/pkg/share/vulkan/icd.d/powervr_mesa_icd.json`. It sets these values only
+inside the clean session environment:
+
+| Variable | Value |
+| --- | --- |
+| `KWIN_COMPOSE` | `O2ES` |
+| `GALLIUM_DRIVER` | `zink` |
+| `MESA_LOADER_DRIVER_OVERRIDE` | `zink` |
+| `VK_DRIVER_FILES` | `/usr/pkg/share/vulkan/icd.d/powervr_mesa_icd.json` |
+| `PVR_I_WANT_A_BROKEN_VULKAN_DRIVER` | `1` |
+
+The last variable is the explicit upstream experimental PowerVR opt-in.
+This profile uses one installed ICD. It does not accept a private library
+prefix, library interposition or an inherited driver list. It records the
+profile, accessible node and ICD hash. The node record proves access only;
+it does not identify the device which KWin selects.
+The V3D profile keeps its existing clean environment and driver selection.
+No profile starts GPU, display or NPU diagnostic stages.
 
 The path must contain at most 70 characters. The test creates a private HOME,
 XDG directories, temporary directory and D-Bus session. It derives `USER`,
@@ -123,12 +151,17 @@ The controller checks these actual D-Bus interfaces:
   `/ActivityManager/Activities`. The current activity must have a nonzero UUID.
 - `org.freedesktop.DBus.Properties.Get` reads `shell` on `org.kde.PlasmaShell` at `/PlasmaShell`.
   `evaluateScript` checks the default desktop, panel and six applet models.
-- `org.kde.KWin.supportInformation` at `/KWin`. The renderer must remain OpenGL/V3D.
+- `org.kde.KWin.supportInformation` at `/KWin`. The renderer must remain OpenGL with the selected hardware profile.
 
 All readiness service owners must remain stable. Xwayland must be a live child
 of KWin. KSMServer's source selects Qt's `xcb` backend before it exposes its
-D-Bus service. The renderer log must contain V3D evidence from the actual
-plasmashell PID, selected through the private bus.
+D-Bus service. The renderer log must contain evidence from the actual
+plasmashell PID, selected through the private bus. V3D values must start
+with `V3D `. PowerVR values must contain both `zink` and `PowerVR` in the
+same renderer field. Values from the vendor, version, environment or another
+log line do not satisfy that check. Every reported renderer value must match.
+The checker rejects llvmpipe, lavapipe, softpipe and QPainter. The existing
+QML error checks remain mandatory.
 
 The controller rejects the literal Mesa prefix `MESA: error:` in `bus.log`,
 `compositor.log` and `plasma-session.log`. It checks readiness, each liveness
@@ -156,7 +189,25 @@ hardware acceptance record separate.
 
 ## Host controls
 
-Run the host tests with native Perl and Ruby:
+Run the renderer controls with Python's standard library and an explicit
+[SDK host API1 source](https://github.com/oxtech-ember/EmberBSD-SDK).
+Select a new output directory in the shared object area:
+
+```sh
+python3 -B ./renderer-host.py --sdk-source /absolute/EmberBSD-SDK \
+  --work /absolute/new-renderer-probe
+```
+
+These controls execute the actual shell parser, renderer checks and clean
+environment dispatch. They cover both profiles, the legacy two-argument
+checker, mixed renderers, software fallbacks, unrelated text and missing
+installed prerequisites. They preserve the guard arguments, return status
+and controller lifecycle. Baseline and mutated predicates demonstrate the
+cause of rejected or falsely accepted evidence. Target paths are explicit
+host doubles. These controls do not execute KDE or establish PowerVR Plasma
+acceptance. No C or C++ source changes in this profile update.
+
+Run the existing host tests with native Perl and Ruby:
 
 ```sh
 PERL=/path/to/native/perl /path/to/native/ruby ./host-test.rb
