@@ -48,6 +48,11 @@ with tempfile.TemporaryDirectory(prefix='ember-cross-targets-') as temporary:
     assert not read('EMBERBSD_CROSS_TARGET=amd64', '-v', 'PKG_FAIL_REASON')
     assert 'Unsupported cross target' in read('EMBERBSD_CROSS_TARGET=mips', '-v', 'PKG_FAIL_REASON')
     assert 'selected cross target' in read('EMBERBSD_CROSS_TARGET=amd64', 'CROSS_MACHINE_ARCH=aarch64', '-v', 'PKG_FAIL_REASON')
+    # GNU ld resolves base DT_NEEDED entries of package libraries through rpath-link.
+    for language in ('cc', 'cxx'):
+        append = read('EMBERBSD_CROSS_TARGET=amd64', '-v', 'CWRAPPERS_APPEND.' + language).split()
+        assert '-Wl,-rpath-link,' + str(work / 'sysroot/usr/lib') in append, append
+    assert '/usr/lib' not in read('EMBERBSD_CROSS_TARGET=amd64', '-v', 'LDFLAGS').replace('/usr/pkg/', '')
     deps = read('EMBERBSD_CROSS_TARGET=amd64', 'EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime', '-v', 'DEPENDS')
     assert 'gcc16-runtime>=16.2.0nb5:../../lang/gcc16-runtime' in deps and 'gcc16>=' not in deps
     arguments = ['EMBERBSD_CROSS_TARGET=amd64', 'EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime', 'PKGPATH=lang/gcc16-runtime']
