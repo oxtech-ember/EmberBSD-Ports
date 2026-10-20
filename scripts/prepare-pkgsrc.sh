@@ -222,7 +222,7 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     [ "$(find "$root/profiles/common-build-tools/recipes/devel/protobuf-devel" -type l | wc -l | tr -d ' ')" = 0 ] || {
         echo 'Unexpected protobuf SDK recipe link.' >&2; exit 2;
     }
-    for delta in python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-cross-packages.patch pkgsrc-gettext-go-detection.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch pkgsrc-ncurses-terminfo-aliases.patch pkgsrc-host-autoconf.patch pkgsrc-cwrappers-unwrap-boundary.patch pkgsrc-cross-passthrough-rpath.patch pkgsrc-bsdtar-common-zlib.patch pkgsrc-boost-cross-target.patch pkgsrc-font-runtime-roles.patch; do
+    for delta in python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-curl-security.patch pkgsrc-cross-packages.patch pkgsrc-gettext-go-detection.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch pkgsrc-ncurses-terminfo-aliases.patch pkgsrc-host-autoconf.patch pkgsrc-cwrappers-unwrap-boundary.patch pkgsrc-cross-passthrough-rpath.patch pkgsrc-bsdtar-common-zlib.patch pkgsrc-boost-cross-target.patch pkgsrc-font-runtime-roles.patch; do
         [ -s "$root/profiles/common-build-tools/patches/$delta" ] || {
             echo "Missing common-tools infrastructure patch: $delta" >&2; exit 2;
         }
@@ -613,7 +613,7 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     cp -R "$root/profiles/common-build-tools/recipes/textproc/icu-devel" "$destination/textproc/icu-devel"
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$root/profiles/common-build-tools/patches/current-python-selection.patch"
-    for delta in python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-cross-packages.patch pkgsrc-gettext-go-detection.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch pkgsrc-ncurses-terminfo-aliases.patch pkgsrc-host-autoconf.patch pkgsrc-cwrappers-unwrap-boundary.patch pkgsrc-cross-passthrough-rpath.patch pkgsrc-bsdtar-common-zlib.patch pkgsrc-font-runtime-roles.patch; do
+    for delta in python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-curl-security.patch pkgsrc-cross-packages.patch pkgsrc-gettext-go-detection.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch pkgsrc-ncurses-terminfo-aliases.patch pkgsrc-host-autoconf.patch pkgsrc-cwrappers-unwrap-boundary.patch pkgsrc-cross-passthrough-rpath.patch pkgsrc-bsdtar-common-zlib.patch pkgsrc-font-runtime-roles.patch; do
         patch -f -N -d "$destination" -p1 -F 0 < \
             "$root/profiles/common-build-tools/patches/$delta"
     done
