@@ -26,6 +26,11 @@ sh probes/plasma-mobile/toolkit/cross/build-host-tools.sh \
     /absolute/verified-distfiles /absolute/new-host-qt
 ```
 
+`CMAKE` must support Zstandard archives. Qt uses the CMake archive API for its
+MIME database and stops with `CMake was not built with zstd support` otherwise.
+The pkgsrc host CMake links pkgsrc libarchive, which is configured
+`--without-zstd`. Select another native CMake 4.4 build with Zstandard support.
+
 Native QtDBus needs a current D-Bus development prefix at `HOST_DBUS_PREFIX`.
 The builder records its headers, library and CMake metadata, then links directly.
 This prevents empty complex signatures in KWin's generated D-Bus XML.
