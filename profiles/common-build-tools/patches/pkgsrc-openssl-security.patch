@@ -26,3 +26,12 @@ SHA256: a2157c2830efdec3788939b00c9b0638306d3f0bbb76dc4832ee503bb397df98
 +BLAKE2s (openssl-3.6.5.tar.gz) = d08a63cc272d055412eb67e2e906c31e7067cc64d37ed5443a696e42f77cc7bd
 +SHA512 (openssl-3.6.5.tar.gz) = 1243d8ef75be54d38233251a06609eef1f1f1085999bfd85d509cc298498d2820956465eed7bba094d940f08c0f7cf9c5247eca78bb978d12a3c3ea16f2afa4e
 +Size (openssl-3.6.5.tar.gz) = 55078161 bytes
+--- a/security/openssl/PLIST
++++ b/security/openssl/PLIST
+@@ -5259,4 +5259,6 @@
+ man/man3/X509V3_EXT_d2i.3
+ man/man3/X509V3_EXT_i2d.3
++man/man3/X509V3_EXT_nconf.3
++man/man3/X509V3_EXT_nconf_nid.3
+ man/man3/X509V3_EXT_print.3
+ man/man3/X509V3_EXT_print_fp.3
