@@ -7,5 +7,6 @@ SHA1 (patch-01-bsd-executable-path-source) = 70c474c5d6d50530be5ca2c0bf31eb71650
 SHA1 (patch-02-netbsd-executable-path) = ab35fbc7c5d26656f0069c5839fd33604f354365
 SHA1 (patch-07-vulkan-dynamic-dispatch) = 03ffa84646a5f4c556f141bc8626f398c14adf75
 SHA1 (patch-09-discovered-metadata-interpreter) = 43833d04ef48ad65161bfc71b088c93bb2540494
+SHA1 (patch-10-null-safe-libinput-udev) = e152608b0140949c5b1ee4e61dff64520ea15793
 SHA1 (patch-tests_CMakeLists.txt) = 74d4fe578317cb0da03ff8097c052cd0dbd8b8e2
 SHA1 (patch-KWinConfig.cmake.in) = d2964814d094ac1673400a7d63dea0923d19acae
