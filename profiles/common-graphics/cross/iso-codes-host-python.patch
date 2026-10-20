@@ -1,0 +1,8 @@
+--- a/textproc/iso-codes/Makefile
++++ b/textproc/iso-codes/Makefile
+@@ -26,1 +26,1 @@
+-SUBST_SED.python3+=	-e "s,python3,${PYTHONBIN},"
++SUBST_SED.python3+=	-e "s,python3,${TOOL_PYTHONBIN},"
+@@ -39,1 +39,1 @@
+-PYTHON_FOR_BUILD_ONLY=		yes
++PYTHON_FOR_BUILD_ONLY=		tool
