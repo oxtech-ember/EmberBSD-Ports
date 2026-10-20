@@ -666,6 +666,8 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
         "$graphics/cross/libnotify-cross-tools.patch"
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$graphics/cross/gsettings-desktop-schemas-cross-gir.patch"
+    patch -f -N -d "$destination" -p1 -F 0 < \
+        "$graphics/cross/netpbm-native-build-tools.patch"
     [ ! -e "$destination/devel/wayland-devel" ] && [ ! -L "$destination/devel/wayland-devel" ] || {
         echo 'Upstream now owns devel/wayland-devel; review the overlay.' >&2; exit 2;
     }

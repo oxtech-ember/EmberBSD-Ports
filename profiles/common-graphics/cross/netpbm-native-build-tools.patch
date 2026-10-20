@@ -1,0 +1,31 @@
+--- a/graphics/netpbm/Makefile
++++ b/graphics/netpbm/Makefile
+@@ -21,6 +21,8 @@
+ COMMENT=	Toolkit for conversion of images between different formats
+ LICENSE=	gnu-gpl-v2
+ 
++.include "../../mk/bsd.prefs.mk"
++
+ USE_TOOLS+=	gmake gdate flex pax perl
+ USE_FEATURES=	snprintf
+ 
+@@ -30,6 +32,11 @@
+ MAKE_FLAGS+=	PKGMANDIR=${PKGMANDIR}
+ MAKE_FLAGS+=	CFLAGS_FOR_BUILD=${CFLAGS:Q}
+ MAKE_FLAGS+=	LDFLAGS_FOR_BUILD=${LDFLAGS:Q}
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# Netpbm executes these compiler-built generators during its cross build.
++MAKE_FLAGS+=	CC_FOR_BUILD=${NATIVE_CC:Q}
++MAKE_FLAGS+=	LD_FOR_BUILD=${NATIVE_CC:Q}
++.endif
+ MAKE_FILE=	GNUmakefile
+ REPLACE_PERL+=	converter/pbm/pbmtox10bm
+ REPLACE_PERL+=	editor/pnmflip
+@@ -54,7 +61,6 @@
+ # needs pkg-config and x11?!
+ TEST_TARGET=	test
+ 
+-.include "../../mk/bsd.prefs.mk"
+ 
+ # only used if NEED_RUNTIME_PATH is set, so set it unconditionally
+ MAKE_FLAGS+=	NETPBMLIB_RUNTIME_PATH=${PREFIX}
