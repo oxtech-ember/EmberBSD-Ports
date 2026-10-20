@@ -672,6 +672,8 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
         "$graphics/cross/netpbm-cross-no-manweb.patch"
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$graphics/cross/libproxy-cross-disable-introspection.patch"
+    patch -f -N -d "$destination" -p1 -F 0 < \
+        "$graphics/cross/libsoup3-cross-disable-tls-probe.patch"
     glib_networking=$destination/net/glib-networking
     glib_networking_patch=patch-emberbsd_meson.build
     [ ! -e "$glib_networking/patches/$glib_networking_patch" ] || {

@@ -63,9 +63,9 @@ CMAKE_CONFIGURE_ARGS+=		-DUSE_LIBBACKTRACE=OFF
 CMAKE_CONFIGURE_ARGS+=		-DUSE_LIBDRM=OFF
 .endif
 
-# Retain the canonical explicit SQLite provider selection. Normal package
-# checks must validate the complete Ninja build's installed linkage.
-CMAKE_CONFIGURE_ARGS+=		-DSQLite3_LIBRARY=${BUILDLINK_PREFIX.sqlite3}/lib/libsqlite3.so
+# Keep CMake's imported SQLite target inside the staged cross buildlink tree.
+# The pkgsrc prefix (/usr/pkg) is a target path and does not exist on the host.
+CMAKE_CONFIGURE_ARGS+=		-DSQLite3_LIBRARY:FILEPATH=${BUILDLINK_DIR}/lib/libsqlite3.so
 
 # required for faking a better user-agent
 CMAKE_CONFIGURE_ARGS+=		-DUSER_AGENT_BRANDING="Linux ${MACHINE_ARCH}"
@@ -149,6 +149,7 @@ SUBST_FILES.ruby+=	Source/WebKit/Scripts/generate-unified-sources.sh
 SUBST_SED.ruby+=	-e 's,env ruby,env ${_WEBKIT_BUILD_RUBY},'
 SUBST_STAGE.ruby=	pre-configure
 SUBST_MESSAGE.ruby=	Fixing path to ruby binary.
+SUBST_NOOP_OK.ruby=	yes
 
 .include "../../lang/ruby/rubyversion.mk"
 # These release scripts run only during the build; no Ruby script is installed.
@@ -165,6 +166,7 @@ PYTHON_FOR_BUILD_ONLY=	yes
 CMAKE_CONFIGURE_ARGS+=	-DPython_EXECUTABLE:FILEPATH=${TOOL_PYTHONBIN}
 CMAKE_CONFIGURE_ARGS+=	-DPYTHON_EXECUTABLE:FILEPATH=${TOOL_PYTHONBIN}
 CMAKE_CONFIGURE_ARGS+=	-DGPERF_EXECUTABLE:FILEPATH=${TOOLBASE}/bin/gperf
+CMAKE_CONFIGURE_ARGS+=	-DGLIB_COMPILE_RESOURCES_EXECUTABLE:FILEPATH=${TOOLBASE}/bin/glib-compile-resources
 
 CXXFLAGS.SunOS+=	-fpermissive
 
@@ -225,6 +227,7 @@ PREFER.gettext=	pkgsrc
 JPEG_ACCEPTED=		libjpeg-turbo
 .include "../../mk/jpeg.buildlink3.mk"
 .include "../../multimedia/gst-plugins1-base/buildlink3.mk"
+.include "../../multimedia/gst-plugins1-bad/buildlink3.mk"
 .include "../../multimedia/gst-plugins1-good/buildlink3.mk"
 .include "../../multimedia/gstreamer1/buildlink3.mk"
 .include "../../net/libsoup3/buildlink3.mk"
