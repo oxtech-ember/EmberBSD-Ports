@@ -71,7 +71,7 @@ configure = lambda do |label, script, args|
   dir = work + '/' + label
   FileUtils.mkdir_p(dir)
   run.call(label + '-extract', ['tar', '-xzf', archive, '-C', dir])
-  src = dir + '/openssl-3.6.4'
+  src = dir + '/openssl-3.6.5'
   run.call(label + '-configure', [perl, script, *args], env, src)
   query = 'print JSON::PP::encode_json({config=>{map {$_=>$configdata::config{$_}} qw(target CC CFLAGS CPPFLAGS LDFLAGS)},target=>{map {$_=>$configdata::target{$_}} qw(asm_arch perlasm_scheme shared_target)}})'
   data = JSON.parse(run.call(label + '-data', [perl, '-I.', '-Mconfigdata', '-MJSON::PP', '-e', query], env, src))

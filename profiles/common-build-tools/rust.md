@@ -112,7 +112,7 @@ The existing `devel/cargo-c` 0.10.25 recipe supplies its checksummed crate closu
 and uses the installed host OpenSSL provider.
 
 It builds and installs with the shared Rust on macOS/Apple Silicon, with
-`CHECK_SHLIBS=yes` and OpenSSL 3.6.4nb1. The source archive does not ship
+`CHECK_SHLIBS=yes` and OpenSSL 3.6.5. The source archive does not ship
 Cargo.lock; the offline build resolves only the recipe's pinned vendored crates.
 Use the same native MAKECONF and separate work directory:
 

@@ -113,7 +113,7 @@ and the verified upstream archive:
 BMAKE=/absolute/host/bin/bmake GMAKE=/absolute/host/bin/gmake \
     ruby profiles/common-build-tools/tests/openssl-target.rb \
     /absolute/export /absolute/cross.mk.conf \
-    /absolute/distfiles/openssl-3.6.4.tar.gz /absolute/new-check
+    /absolute/distfiles/openssl-3.6.5.tar.gz /absolute/new-check
 ```
 
 Run this check on macOS with a genuine amd64 GCC16 compiler and sysroot.
