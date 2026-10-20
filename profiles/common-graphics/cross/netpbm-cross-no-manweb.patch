@@ -1,0 +1,36 @@
+--- a/graphics/netpbm/Makefile
++++ b/graphics/netpbm/Makefile
+@@ -32,6 +32,13 @@
+ MAKE_FLAGS+=	PKGMANDIR=${PKGMANDIR}
+ MAKE_FLAGS+=	CFLAGS_FOR_BUILD=${CFLAGS:Q}
+ MAKE_FLAGS+=	LDFLAGS_FOR_BUILD=${LDFLAGS:Q}
++PLIST_VARS+=	manweb
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# The optional Perl browser helper cannot run in a minimal cross sysroot.
++MAKE_FLAGS+=	SCRIPTS=
++.else
++PLIST.manweb=	yes
++.endif
+ .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+ # Netpbm executes these compiler-built generators during its cross build.
+ MAKE_FLAGS+=	CC_FOR_BUILD=${NATIVE_CC:Q}
+--- a/graphics/netpbm/PLIST
++++ b/graphics/netpbm/PLIST
+@@ -35,7 +35,7 @@
+ bin/leaftoppm
+ bin/lispmtopgm
+ bin/macptopbm
+-bin/manweb
++${PLIST.manweb}bin/manweb
+ bin/mdatopbm
+ bin/mgrtopbm
+ bin/mrftopbm
+@@ -447,7 +447,7 @@
+ man/man1/libnetpbm_dir.1
+ man/man1/lispmtopgm.1
+ man/man1/macptopbm.1
+-man/man1/manweb.1
++${PLIST.manweb}man/man1/manweb.1
+ man/man1/mdatopbm.1
+ man/man1/mgrtopbm.1
+ man/man1/mrf.1
