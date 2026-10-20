@@ -241,26 +241,52 @@ or boot acceptance.
 ### Static support for the first OS seed
 
 Add `--bootstrap-libgcc` to a new `--kernel` build when no EmberBSD base
-sysroot exists. Keep all options before the positional inputs:
+sysroot exists. First install the selected target's headers from a clean
+EmberBSD source commit with the fork's native host tools. Use a separate
+`DESTDIR`, the selected `MACHINE`/`MACHINE_ARCH`, and sequential `obj`,
+`do-distrib-dirs` and `includes` targets. These stages do not compile target
+libraries. Preserve the installed relative `usr/include/machine` link.
+Do not copy headers from an upstream NetBSD sysroot.
+
+Supply this header sysroot immediately after the GCC archive. Set
+`EMBERBSD_SYSROOT_SOURCE` to its verified full EmberBSD source commit.
+`EMBERBSD_SYSROOT_PROVENANCE` can name a file with the source revision,
+header installation commands and hashes. This follows the existing
+[runtime bootstrap provenance convention](../bootstrap/README.md).
+Ports records the caller's verified source claim and optional provenance
+file hash; it does not independently reconstruct the header installation.
+Keep all options before the positional inputs:
 
 ```sh
 HOST_CC=gcc-16 HOST_CXX=g++-16 CROSS_JOBS=4 \
+    EMBERBSD_SYSROOT_SOURCE=FULL_40_CHARACTER_EMBERBSD_SOURCE_COMMIT \
+    EMBERBSD_SYSROOT_PROVENANCE=/absolute/header-install-receipt.json \
     python3 -B profiles/development-toolchain/cross/build.py \
     --kernel --bootstrap-libgcc --target aarch64 \
-    /absolute/pkgsrc /absolute/gcc-16.2.0.tar.xz \
+    /absolute/pkgsrc /absolute/gcc-16.2.0.tar.xz /absolute/header-sysroot \
     /absolute/os-build/tools /absolute/host-math/prefix /absolute/new-gcc-seed
 ```
 
 The option requires `--kernel`. Application mode, duplicate options and
 unsupported targets fail before work is created. Without the option, kernel
-mode remains frontend-only.
+mode remains frontend-only. The header sysroot must contain the original
+`stddef.h`, `stdio.h`, `sys/types.h`, `sys/cdefs.h`, `sys/common_ansi.h` and
+the selected `machine/ansi.h`. AArch64 also requires `arm/ansi.h`. It must
+not contain compiled libraries or objects. The builder records the complete
+header sysroot inventory in `bootstrap-headers.json`. Escaping links,
+a missing source claim, a mismatched machine link or changed inputs fail.
 
 The new build first installs the audited kernel frontends. It then runs
 upstream `all-target-libgcc` and `install-target-libgcc` in that build tree.
 The target tools come from the same audited prefix. The frontend must retain
 `inhibit_libc=true`, shared support disabled and the single thread model.
 The target library configuration must also disable shared support. This
-build requires no target libc or headers.
+build requires no target libc. GCC's NetBSD `stddef.h` includes
+`machine/ansi.h` even in this mode, so actual target ABI headers are required.
+The compiler uses `--with-sysroot=HEADERS` together with `--without-headers`.
+The producer explicitly sets GCC's configure input `inhibit_libc=true` and
+checks the generated Makefile: with a sysroot, GCC does not infer this value.
+It retains upstream libgcov, static support targets and all diagnostic checks.
 
 The builder checks all installed `libgcc.a` members and the four required
 GCC CRT objects for the selected target ELF architecture. It also checks any
@@ -269,10 +295,13 @@ The compiler must select those exact files through its normal search paths.
 An empty archive, shared libgcc or C++ runtime fails the check. The separate
 `bootstrap-libgcc.json` records configuration and artifact hashes with the
 scope `static-libgcc-bootstrap-only`. It is not a runtime bootstrap success
-marker or a POSIX runtime provider.
+marker or a POSIX runtime provider. The receipt includes the header input
+record hash. The complete header snapshot and optional provenance file must
+remain unchanged through compiler and static support construction.
 
 Use this prefix to compile the first seed from the selected EmberBSD sources:
-headers, OS CRT, libc, libm, pthread and the loader. Keep the seed's source
+OS CRT, libc, libm, pthread and the loader, using the installed headers.
+Keep the seed's source
 commit, build commands and file hashes. Do not select
 `EMBER_EXTERNAL_GCC_RUNTIME` for this stage; that adapter requires the full
 accepted POSIX runtime. The kernel compiler's own prefix supplies its static

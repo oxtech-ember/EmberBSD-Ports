@@ -12,7 +12,7 @@ import sdk_source
 from emberbsd_sdk import inventory, paths
 from host import *
 from target_options import parse
-from bootstrap_libgcc import build as build_bootstrap_libgcc
+from bootstrap_libgcc import build as build_bootstrap_libgcc, headers as bootstrap_headers
 
 HERE = PROFILE / 'cross'
 PORTS = PROFILE.parents[1]
@@ -146,17 +146,21 @@ def build_main(args):
     bootstrap_libgcc = mode == 'kernel-bootstrap'
     if bootstrap_libgcc:
         mode = 'kernel'
-    require(len(args) in ((4, 5) if mode == 'kernel' else (5, 6)), 'Usage: build.py [--target TARGET] [--kernel [--bootstrap-libgcc]] PKGSRC ARCHIVE [SYSROOT] TOOLDIR [MATH] NEW_WORK --sdk-source SOURCE')
+    has_sysroot = mode != 'kernel' or bootstrap_libgcc
+    require(len(args) in ((5, 6) if has_sysroot else (4, 5)), 'Usage: build.py [--target TARGET] [--kernel [--bootstrap-libgcc]] PKGSRC ARCHIVE [SYSROOT_OR_BOOTSTRAP_HEADERS] TOOLDIR [MATH] NEW_WORK --sdk-source SOURCE')
     count = jobs()
     values = [build_path(value) for value in args]
     pkgsrc, archive = values[:2]
-    offset = 2 if mode == 'kernel' else 3
-    sysroot = None if mode == 'kernel' else values[2]
+    offset = 3 if has_sysroot else 2
+    sysroot = values[2] if has_sysroot else None
     tools, *remaining = values[offset:]
     math = remaining[0] if len(remaining) == 2 else os.environ.get('EMBER_HOST_MATH_PREFIX')
     work = new_path(values[-1])
     triplet = TARGETS[target][0]
-    if sysroot:
+    header_inputs = bootstrap_headers(sysroot, target) if bootstrap_libgcc else None
+    if bootstrap_libgcc:
+        paths.reject_overlap(sysroot, work)
+    if sysroot and not bootstrap_libgcc:
         require((sysroot / 'usr/include/stddef.h').is_file() and (sysroot / ('usr/pkg/gcc16/lib/gcc/' + triplet + '/' + VERSION + '/crtbegin.o')).is_file(), 'The sysroot must contain selected target GCC16 package')
         require((sysroot / ('usr/pkg/gcc16/include/c++/' + triplet)).is_dir(), 'Selected target GCC16 C++ headers missing')
     make = tools / 'bin/nbgmake'
@@ -166,6 +170,8 @@ def build_main(args):
     audit_source(pkgsrc, archive, runtime=False)
     cc, cxx = host_compilers()
     work.mkdir()
+    if bootstrap_libgcc:
+        jsonio.write_json(work / 'bootstrap-headers.json', header_inputs)
     if not math:
         host_math_main([os.environ.get('EMBER_HOST_MATH_ARCHIVES', str(work / 'host-archives')), str(tools), str(work / 'host-math')])
         math = check_math(work / 'host-math/prefix')
@@ -181,7 +187,8 @@ def build_main(args):
     receipt += 'sysroot=' + (str(sysroot) if sysroot else '') + '\nbootstrap_make=' + str(tools) + '\nhost_math=' + str(math) + '\njobs=' + count + '\n' + digest_rows([math / 'lib' / ('lib' + name + '.a') for name in ('gmp', 'mpfr', 'mpc')]) + (work / 'binutils/inputs.txt').read_text()
     receipt += digest_rows(policy_sources() + sorted(HERE.glob('*.py')) + sorted((HERE / 'tests').glob('*.py')))
     if bootstrap_libgcc:
-        receipt += 'bootstrap_libgcc=yes\n'
+        receipt += 'bootstrap_libgcc=yes\ninhibit_libc=true\nseed_source=' + header_inputs['source_commit'] + '\n'
+        receipt += digest_rows([work / 'bootstrap-headers.json'])
     (work / 'inputs.txt').write_text(receipt)
     logged([cc, '-O2', '-I' + str(math / 'include'), HERE / 'tests/host-gmp.c', math / 'lib/libgmp.a', '-o', work / 'host-gmp'], work / 'host-gmp-build.log')
     logged([work / 'host-gmp'], work / 'host-gmp.log')
@@ -189,9 +196,15 @@ def build_main(args):
     prepare_source(pkgsrc, archive, work / 'src', runtime=False)
     configure = [work / 'src/configure', '--target=' + triplet, '--prefix=' + str(prefix)]
     configure += ['--without-headers', '--disable-shared', '--disable-threads'] if mode == 'kernel' else ['--with-sysroot=' + str(sysroot), '--with-gxx-include-dir=' + str(sysroot / 'usr/pkg/gcc16/include/c++')]
+    if bootstrap_libgcc:
+        configure.append('--with-sysroot=' + str(sysroot))
     configure += ['--with-' + name + '=' + str(math) for name in ('gmp', 'mpfr', 'mpc')] + ['--with-as=' + str(prefix / 'bin' / (triplet + '-as')), '--with-ld=' + str(prefix / 'bin' / (triplet + '-ld')), '--enable-languages=c,c++', '--disable-bootstrap', '--disable-multilib', '--disable-nls', '--without-isl']
     flags = os.environ.get('HOST_CPPFLAGS', '')
     env = {'CC': cc, 'CXX': cxx, 'CPPFLAGS': flags, 'CFLAGS': '-O2 ' + flags, 'CXXFLAGS': '-O2 ' + flags, 'LDFLAGS': os.environ.get('HOST_LDFLAGS', '')}
+    if bootstrap_libgcc:
+        # GCC preserves this configure input when a header sysroot is present.
+        # The first static support build must still avoid target libc calls.
+        env['inhibit_libc'] = 'true'
     logged(configure, work / 'configure.log', env, work / 'build')
     logged([make, '-j' + count, 'all-gcc'], work / 'build.log', env, work / 'build')
     logged([make, 'install-gcc'], work / 'install.log', env, work / 'build')

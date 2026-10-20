@@ -200,7 +200,49 @@ class ControllerTest(unittest.TestCase):
             self.assertRaises(SDKError, parse, options, True, True)
         self.assertRaises(SDKError, parse, ['--kernel', '--bootstrap-libgcc'], True)
         self.assertRaises(SDKError, parse, ['--bootstrap-libgcc'], False, True)
+        spec_ = importlib.util.spec_from_file_location('cross_pipeline', PROFILE / 'cross/pipeline.py')
+        cross = importlib.util.module_from_spec(spec_)
+        spec_.loader.exec_module(cross)
+        self.assertRaisesRegex(SDKError, 'Usage:', cross.build_main,
+            ['--kernel', '--bootstrap-libgcc', str(self.pkgsrc), str(self.archive),
+             str(self.root / 'tools'), str(self.root / 'output')])
         self.assertFalse((self.root / 'output').exists())
+
+    def header_seed(self, target):
+        root = self.root / ('headers-' + target)
+        include = root / 'usr/include'
+        for directory in ('sys', target):
+            (include / directory).mkdir(parents=True)
+        for name in ('stddef.h', 'stdio.h', 'sys/types.h', 'sys/cdefs.h', 'sys/common_ansi.h', target + '/ansi.h'):
+            (include / name).write_text('source header fixture\n')
+        (include / 'machine').symlink_to(target)
+        if target == 'aarch64':
+            (include / 'arm').mkdir()
+            (include / 'arm/ansi.h').write_text('arm ABI header fixture\n')
+        return root
+
+    def test_bootstrap_headers_require_source_and_contained_target_inventory(self):
+        spec_ = importlib.util.spec_from_file_location('bootstrap_libgcc', PROFILE / 'cross/bootstrap_libgcc.py')
+        support = importlib.util.module_from_spec(spec_)
+        spec_.loader.exec_module(support)
+        root = self.header_seed('aarch64')
+        record = support.headers(root, 'aarch64')
+        self.assertEqual(record['source_commit'], 'a' * 40)
+        self.assertEqual(record['root'], str(root))
+        self.assertIn('usr/include/machine', record['inventory'])
+        with patch.dict(os.environ, {'EMBERBSD_SYSROOT_SOURCE': ''}):
+            self.assertRaisesRegex(SDKError, 'source commit', support.headers, root, 'aarch64')
+        provenance = self.root / 'headers-provenance.json'
+        provenance.write_text('{"source": "fixture"}\n')
+        with patch.dict(os.environ, {'EMBERBSD_SYSROOT_PROVENANCE': str(provenance)}):
+            claimed = support.headers(root, 'aarch64')
+            self.assertEqual(claimed['provenance']['sha256'], inventory.sha256_file(provenance))
+        (root / 'usr/include/stddef.h').write_text('changed source header\n')
+        self.assertNotEqual(support.headers(root, 'aarch64'), record)
+        self.assertRaises(SDKError, support.headers, root, 'amd64')
+        (root / 'usr/include/machine').unlink()
+        (root / 'usr/include/machine').symlink_to(self.seed / 'usr/include')
+        self.assertRaises(SDKError, support.headers, root, 'aarch64')
 
     def test_bootstrap_libgcc_checks_installed_target_support(self):
         spec_ = importlib.util.spec_from_file_location('bootstrap_libgcc', PROFILE / 'cross/bootstrap_libgcc.py')
@@ -218,6 +260,8 @@ class ControllerTest(unittest.TestCase):
         library.parent.mkdir(parents=True)
         library.write_text('enable_shared = no\n')
         (work / 'inputs.txt').write_text('mode=kernel\nbootstrap_libgcc=yes\n')
+        headers = self.header_seed('aarch64')
+        jsonio.write_json(work / 'bootstrap-headers.json', support.headers(headers, 'aarch64'))
         object_ = b'\x7fELF\x02\x01\x01'.ljust(16, b'\0') + struct.pack('<HHIQQQIHHHHHH', 1, 183, 1, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0)
         member = b'probe.o/'.ljust(16) + b'0'.ljust(12) + b'0'.ljust(6) + b'0'.ljust(6) + b'100644'.ljust(8) + str(len(object_)).encode().ljust(10) + b'`\n' + object_
         archive = crt / 'libgcc.a'
@@ -231,8 +275,10 @@ class ControllerTest(unittest.TestCase):
             commands.append([str(value) for value in argv])
         def capture(argv, **kwargs):
             self.assertEqual(str(argv[0]), str(prefix / 'bin' / (triplet + '-gcc')))
+            if argv[1] == '-print-sysroot':
+                return str(headers) + '\n'
             return str(crt / str(argv[1]).removeprefix('-print-file-name=')) + '\n'
-        configured = b'Configured with: /source/configure --without-headers --disable-shared --disable-threads\n'
+        configured = ('Configured with: /source/configure --without-headers --disable-shared --disable-threads --with-sysroot=' + str(headers) + '\n').encode()
         banner = SimpleNamespace(stdout=b'', stderr=configured + b'Thread model: single\n')
         with patch.object(support, 'logged', side_effect=logged), patch.object(support, 'capture', side_effect=capture), patch.object(support, 'target_tools', return_value={'AR_FOR_TARGET': 'audited-ar'}), patch.object(support.process, 'capture', return_value=banner):
             support.build(work, prefix, 'aarch64', self.make, '2', {})
@@ -241,6 +287,7 @@ class ControllerTest(unittest.TestCase):
             self.assertEqual(record['scope'], 'static-libgcc-bootstrap-only')
             self.assertEqual(record['archive']['elf_members'], 1)
             self.assertEqual(record['target'], 'aarch64')
+            self.assertEqual(record['bootstrap_headers_sha256'], inventory.sha256_file(work / 'bootstrap-headers.json'))
             self.assertFalse((work / 'build-success').exists())
             self.assertEqual(len(record['files']), 5)
             (work / 'bootstrap-libgcc.json').unlink()
@@ -269,8 +316,29 @@ class ControllerTest(unittest.TestCase):
             banner.stderr = configured + b'Thread model: single\n'
             frontend.write_text('inhibit_libc = false\n')
             count = len(commands)
-            self.assertRaisesRegex(SDKError, 'headerless', support.build, work, prefix, 'aarch64', self.make, '2', {})
+            self.assertRaisesRegex(SDKError, 'inhibit_libc', support.build, work, prefix, 'aarch64', self.make, '2', {})
             self.assertEqual(len(commands), count)
+            frontend.write_text('inhibit_libc = true\n')
+            (headers / 'usr/include/stddef.h').write_text('changed after compiler configuration\n')
+            self.assertRaisesRegex(SDKError, 'headers changed', support.build, work, prefix, 'aarch64', self.make, '2', {})
+            self.assertEqual(len(commands), count)
+            (headers / 'usr/include/stddef.h').write_text('source header fixture\n')
+            def changed_header(argv, log, env, cwd, **kwargs):
+                logged(argv, log, env, cwd, **kwargs)
+                if argv[-1] == 'install-target-libgcc':
+                    (headers / 'usr/include/stddef.h').write_text('changed during support build\n')
+            with patch.object(support, 'logged', side_effect=changed_header):
+                self.assertRaisesRegex(SDKError, 'headers changed during', support.build, work, prefix, 'aarch64', self.make, '2', {})
+            self.assertFalse((work / 'bootstrap-libgcc.json').exists())
+            (headers / 'usr/include/stddef.h').write_text('source header fixture\n')
+            def changed_record(argv, log, env, cwd, **kwargs):
+                logged(argv, log, env, cwd, **kwargs)
+                if argv[-1] == 'install-target-libgcc':
+                    with (work / 'bootstrap-headers.json').open('a') as stream:
+                        stream.write('\n')
+            with patch.object(support, 'logged', side_effect=changed_record):
+                self.assertRaisesRegex(SDKError, 'header input record changed', support.build, work, prefix, 'aarch64', self.make, '2', {})
+            self.assertFalse((work / 'bootstrap-libgcc.json').exists())
 
     def test_patch_literal_plus_unsafe_hash_and_abi(self):
         patch_=self.recipe/'patches/patch-libstdc++-v3_configure_math'
@@ -436,7 +504,7 @@ printf '%s\n' "$*" >> 'LOG'
         source=self.root/'cross-source';source.mkdir()
         (source/'fixture').write_text('before\n')
         config=self.root/'configure.json'
-        self.executable(source/'configure',"printf '%s\\n' \"$@\" > 'CONFIG'\nprintf '%s\\n' \"CPPFLAGS=$CPPFLAGS\" \"CFLAGS=$CFLAGS\" \"CXXFLAGS=$CXXFLAGS\" \"LDFLAGS=$LDFLAGS\" > 'CONFIG.flags'\nexit 97\n".replace('CONFIG',str(config)))
+        self.executable(source/'configure',"printf '%s\\n' \"$@\" > 'CONFIG'\nprintf '%s\\n' \"CPPFLAGS=$CPPFLAGS\" \"CFLAGS=$CFLAGS\" \"CXXFLAGS=$CXXFLAGS\" \"LDFLAGS=$LDFLAGS\" \"inhibit_libc=${inhibit_libc-}\" > 'CONFIG.flags'\nexit 97\n".replace('CONFIG',str(config)))
         self.source_patch.write_text('--- fixture.orig\n+++ fixture\n@@ -1 +1 @@\n-before\n+after\n');self.distinfo()
         with tarfile.open(self.archive,'w') as archive:archive.add(source,arcname='gcc-16.2.0')
         row=['gcc','16.2.0','fixture',inventory.sha256_file(self.archive)]
@@ -466,13 +534,14 @@ exit 1
         with patch.object(host,'source_row',return_value=row),patch.object(cross,'host_compilers',return_value=(str(host_cc),str(host_cc))),patch.object(cross,'binutils_main',side_effect=binutils),patch.dict(os.environ,{'HOST_CPPFLAGS':'-isysroot /fixture/sdk','HOST_LDFLAGS':'-isysroot /fixture/link-sdk'}):
             for target in host.TARGETS:
                 triplet=host.TARGETS[target][0]
+                headers = self.header_seed(target)
                 runtime=self.seed/'usr/pkg/gcc16'
                 (runtime/'lib/gcc'/triplet/'16.2.0').mkdir(parents=True)
                 (runtime/'lib/gcc'/triplet/'16.2.0/crtbegin.o').write_text('crt fixture')
                 (runtime/'include/c++'/triplet).mkdir(parents=True)
                 for mode in ('applications','kernel','kernel-bootstrap'):
                     output=self.root/(target+'-'+mode)
-                    args=['--target',target]+(['--kernel'] if mode!='applications' else [])+(['--bootstrap-libgcc'] if mode=='kernel-bootstrap' else [])+[str(self.pkgsrc),str(self.archive)]+([str(self.seed)] if mode=='applications' else [])+[str(tools),str(self.math),str(output)]
+                    args=['--target',target]+(['--kernel'] if mode!='applications' else [])+(['--bootstrap-libgcc'] if mode=='kernel-bootstrap' else [])+[str(self.pkgsrc),str(self.archive)]+([str(self.seed)] if mode=='applications' else ([str(headers)] if mode=='kernel-bootstrap' else []))+[str(tools),str(self.math),str(output)]
                     with self.assertRaises(SDKError) as raised:cross.build_main(args)
                     self.assertEqual(getattr(raised.exception,'returncode',None),97)
                     arguments=config.read_text().splitlines()
@@ -482,7 +551,8 @@ exit 1
                     self.assertEqual('--without-headers' in arguments,mode!='applications')
                     self.assertEqual('--disable-threads' in arguments,mode!='applications')
                     self.assertEqual('--with-sysroot='+str(self.seed) in arguments,mode=='applications')
-                    self.assertEqual((Path(str(config)+'.flags')).read_text().splitlines(),['CPPFLAGS=-isysroot /fixture/sdk','CFLAGS=-O2 -isysroot /fixture/sdk','CXXFLAGS=-O2 -isysroot /fixture/sdk','LDFLAGS=-isysroot /fixture/link-sdk'])
+                    self.assertEqual('--with-sysroot='+str(headers) in arguments,mode=='kernel-bootstrap')
+                    self.assertEqual((Path(str(config)+'.flags')).read_text().splitlines(),['CPPFLAGS=-isysroot /fixture/sdk','CFLAGS=-O2 -isysroot /fixture/sdk','CXXFLAGS=-O2 -isysroot /fixture/sdk','LDFLAGS=-isysroot /fixture/link-sdk','inhibit_libc=' + ('true' if mode=='kernel-bootstrap' else '')])
                     self.assertEqual(os.readlink(output/'toolchain'/triplet/'bin/objcopy'),'../../bin/'+triplet+'-objcopy')
                     self.assertEqual((output/'src/fixture').read_text(),'after\n')
                     self.assertEqual('bootstrap_libgcc=yes\n' in (output/'inputs.txt').read_text(),mode=='kernel-bootstrap')
@@ -525,7 +595,7 @@ exit 1
                     events.clear()
                     output = self.root / ('complete-' + mode)
                     args = (['--kernel'] if mode != 'applications' else []) + (['--bootstrap-libgcc'] if mode == 'kernel-bootstrap' else [])
-                    args += [str(self.pkgsrc), str(self.archive)] + ([str(self.seed)] if mode == 'applications' else []) + [str(tools), str(self.math), str(output)]
+                    args += [str(self.pkgsrc), str(self.archive)] + ([str(self.seed)] if mode == 'applications' else ([str(self.root / 'headers-aarch64')] if mode == 'kernel-bootstrap' else [])) + [str(tools), str(self.math), str(output)]
                     cross.build_main(args)
                     self.assertIn('split_record', (output / 'split-dwarf/test.c').read_text())
                     self.assertIn('DW_UT_skeleton', (output / 'split-dwarf/info.txt').read_text())
