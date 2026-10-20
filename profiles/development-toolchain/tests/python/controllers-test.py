@@ -189,6 +189,89 @@ class ControllerTest(unittest.TestCase):
                 self.assertRaises(SDKError,host.jobs)
         self.assertRaises(SDKError,self.state('--external-compiler','--with-libgomp').preflight)
 
+    def test_bootstrap_libgcc_requires_explicit_kernel_mode(self):
+        for options in (['--kernel', '--bootstrap-libgcc'],
+                        ['--bootstrap-libgcc', '--target', 'aarch64', '--kernel']):
+            self.assertEqual(parse(options, True, True), ('aarch64', 'kernel-bootstrap', []))
+        for options in (['--bootstrap-libgcc'],
+                        ['--kernel', '--bootstrap-libgcc', '--bootstrap-libgcc'],
+                        ['--kernel', '--kernel', '--bootstrap-libgcc'],
+                        ['--kernel', '--bootstrap-libgcc', '--target', 'unknown']):
+            self.assertRaises(SDKError, parse, options, True, True)
+        self.assertRaises(SDKError, parse, ['--kernel', '--bootstrap-libgcc'], True)
+        self.assertRaises(SDKError, parse, ['--bootstrap-libgcc'], False, True)
+        self.assertFalse((self.root / 'output').exists())
+
+    def test_bootstrap_libgcc_checks_installed_target_support(self):
+        spec_ = importlib.util.spec_from_file_location('bootstrap_libgcc', PROFILE / 'cross/bootstrap_libgcc.py')
+        support = importlib.util.module_from_spec(spec_)
+        spec_.loader.exec_module(support)
+        work = self.root / 'bootstrap-cross'
+        prefix = work / 'toolchain'
+        triplet = 'aarch64--netbsd'
+        crt = prefix / 'lib/gcc' / triplet / host.VERSION
+        crt.mkdir(parents=True)
+        frontend = work / 'build/gcc/Makefile'
+        frontend.parent.mkdir(parents=True)
+        frontend.write_text('inhibit_libc = true\n')
+        library = work / 'build' / triplet / 'libgcc/Makefile'
+        library.parent.mkdir(parents=True)
+        library.write_text('enable_shared = no\n')
+        (work / 'inputs.txt').write_text('mode=kernel\nbootstrap_libgcc=yes\n')
+        object_ = b'\x7fELF\x02\x01\x01'.ljust(16, b'\0') + struct.pack('<HHIQQQIHHHHHH', 1, 183, 1, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0)
+        member = b'probe.o/'.ljust(16) + b'0'.ljust(12) + b'0'.ljust(6) + b'0'.ljust(6) + b'100644'.ljust(8) + str(len(object_)).encode().ljust(10) + b'`\n' + object_
+        archive = crt / 'libgcc.a'
+        archive.write_bytes(b'!<arch>\n' + member)
+        for name in ('crtbegin.o', 'crtbeginS.o', 'crtend.o', 'crtendS.o'):
+            (crt / name).write_bytes(object_)
+        commands = []
+        def logged(argv, log, env, cwd, **kwargs):
+            self.assertEqual(kwargs.get('quarantine'), work)
+            self.assertEqual(cwd, work / 'build')
+            commands.append([str(value) for value in argv])
+        def capture(argv, **kwargs):
+            self.assertEqual(str(argv[0]), str(prefix / 'bin' / (triplet + '-gcc')))
+            return str(crt / str(argv[1]).removeprefix('-print-file-name=')) + '\n'
+        configured = b'Configured with: /source/configure --without-headers --disable-shared --disable-threads\n'
+        banner = SimpleNamespace(stdout=b'', stderr=configured + b'Thread model: single\n')
+        with patch.object(support, 'logged', side_effect=logged), patch.object(support, 'capture', side_effect=capture), patch.object(support, 'target_tools', return_value={'AR_FOR_TARGET': 'audited-ar'}), patch.object(support.process, 'capture', return_value=banner):
+            support.build(work, prefix, 'aarch64', self.make, '2', {})
+            self.assertEqual([command[-1] for command in commands], ['all-target-libgcc', 'install-target-libgcc'])
+            record = jsonio.read_json(work / 'bootstrap-libgcc.json')
+            self.assertEqual(record['scope'], 'static-libgcc-bootstrap-only')
+            self.assertEqual(record['archive']['elf_members'], 1)
+            self.assertEqual(record['target'], 'aarch64')
+            self.assertFalse((work / 'build-success').exists())
+            self.assertEqual(len(record['files']), 5)
+            (work / 'bootstrap-libgcc.json').unlink()
+            archive.write_bytes(b'!<arch>\n')
+            self.assertRaisesRegex(SDKError, 'empty', support.build, work, prefix, 'aarch64', self.make, '2', {})
+            self.assertFalse((work / 'bootstrap-libgcc.json').exists())
+            archive.write_bytes(b'!<arch>\n' + member)
+            (crt / 'crtbeginS.o').write_bytes(object_[:18] + struct.pack('<H', 62) + object_[20:])
+            self.assertRaises(SDKError, support.build, work, prefix, 'aarch64', self.make, '2', {})
+            (crt / 'crtbeginS.o').write_bytes(object_)
+            library.write_text('enable_shared = yes\n')
+            self.assertRaisesRegex(SDKError, 'shared', support.build, work, prefix, 'aarch64', self.make, '2', {})
+            library.write_text('enable_shared = no\n')
+            (crt / 'libgcc_s.so.1').write_bytes(object_)
+            self.assertRaisesRegex(SDKError, 'Shared libgcc', support.build, work, prefix, 'aarch64', self.make, '2', {})
+            (crt / 'libgcc_s.so.1').unlink()
+            with patch.object(support, 'capture', return_value='/wrong/bootstrap/libgcc.a\n'):
+                self.assertRaises(SDKError, support.build, work, prefix, 'aarch64', self.make, '2', {})
+            banner.stderr = configured + b'Thread model: posix\n'
+            count = len(commands)
+            self.assertRaisesRegex(SDKError, 'single-thread', support.build, work, prefix, 'aarch64', self.make, '2', {})
+            self.assertEqual(len(commands), count)
+            banner.stderr = b'Thread model: single\n'
+            self.assertRaisesRegex(SDKError, 'nonshared', support.build, work, prefix, 'aarch64', self.make, '2', {})
+            self.assertEqual(len(commands), count)
+            banner.stderr = configured + b'Thread model: single\n'
+            frontend.write_text('inhibit_libc = false\n')
+            count = len(commands)
+            self.assertRaisesRegex(SDKError, 'headerless', support.build, work, prefix, 'aarch64', self.make, '2', {})
+            self.assertEqual(len(commands), count)
+
     def test_patch_literal_plus_unsafe_hash_and_abi(self):
         patch_=self.recipe/'patches/patch-libstdc++-v3_configure_math'
         patch_.write_text('$NetBSD: provenance$\nnormalized patch data\n')
@@ -383,22 +466,54 @@ exit 1
                 (runtime/'lib/gcc'/triplet/'16.2.0').mkdir(parents=True)
                 (runtime/'lib/gcc'/triplet/'16.2.0/crtbegin.o').write_text('crt fixture')
                 (runtime/'include/c++'/triplet).mkdir(parents=True)
-                for mode in ('applications','kernel'):
+                for mode in ('applications','kernel','kernel-bootstrap'):
                     output=self.root/(target+'-'+mode)
-                    args=['--target',target]+(['--kernel'] if mode=='kernel' else [])+[str(self.pkgsrc),str(self.archive)]+([str(self.seed)] if mode=='applications' else [])+[str(tools),str(self.math),str(output)]
+                    args=['--target',target]+(['--kernel'] if mode!='applications' else [])+(['--bootstrap-libgcc'] if mode=='kernel-bootstrap' else [])+[str(self.pkgsrc),str(self.archive)]+([str(self.seed)] if mode=='applications' else [])+[str(tools),str(self.math),str(output)]
                     with self.assertRaises(SDKError) as raised:cross.build_main(args)
                     self.assertEqual(getattr(raised.exception,'returncode',None),97)
                     arguments=config.read_text().splitlines()
                     self.assertIn('--target='+triplet,arguments)
                     self.assertIn('--with-as='+str(output/'toolchain/bin'/(triplet+'-as')),arguments)
                     self.assertIn('--with-ld='+str(output/'toolchain/bin'/(triplet+'-ld')),arguments)
-                    self.assertEqual('--without-headers' in arguments,mode=='kernel')
-                    self.assertEqual('--disable-threads' in arguments,mode=='kernel')
+                    self.assertEqual('--without-headers' in arguments,mode!='applications')
+                    self.assertEqual('--disable-threads' in arguments,mode!='applications')
                     self.assertEqual('--with-sysroot='+str(self.seed) in arguments,mode=='applications')
                     self.assertEqual((Path(str(config)+'.flags')).read_text().splitlines(),['CPPFLAGS=-isysroot /fixture/sdk','CFLAGS=-O2 -isysroot /fixture/sdk','CXXFLAGS=-O2 -isysroot /fixture/sdk','LDFLAGS=-isysroot /fixture/link-sdk'])
                     self.assertEqual(os.readlink(output/'toolchain'/triplet/'bin/objcopy'),'../../bin/'+triplet+'-objcopy')
                     self.assertEqual((output/'src/fixture').read_text(),'after\n')
-            self.assertEqual(len(observed),4)
+                    self.assertEqual('bootstrap_libgcc=yes\n' in (output/'inputs.txt').read_text(),mode=='kernel-bootstrap')
+            self.assertEqual(len(observed),6)
+            # Complete the dispatch fixture. A bootstrap receipt must hash the
+            # final inputs after the AArch64 installed-compiler probe appends.
+            source.joinpath('configure').write_text(source.joinpath('configure').read_text().replace('exit 97\n', ''))
+            with tarfile.open(self.archive,'w') as archive:archive.add(source,arcname='gcc-16.2.0')
+            row[3] = inventory.sha256_file(self.archive)
+            events = []
+            class Probes:
+                def create_module(self, spec):
+                    return None
+                def exec_module(self, module):
+                    module.split_dwarf = lambda args: events.append('split-dwarf')
+                    def lto(args):
+                        events.append('lto')
+                        args[1].mkdir()
+                        (args[1] / 'inputs.txt').write_text('installed-lto-probe=passed\n')
+                    module.lto_binutils = lto
+            def static_support(work, prefix, target, make, count, env):
+                self.assertIn('installed-lto-probe=passed\n', (work / 'inputs.txt').read_text())
+                events.append(('bootstrap', inventory.sha256_file(work / 'inputs.txt')))
+            probe_spec = importlib.machinery.ModuleSpec('gcc16_compiler_probes', Probes())
+            with patch.object(cross, 'check_compilers'), patch.object(cross, 'build_bootstrap_libgcc', side_effect=static_support), patch.object(importlib.util, 'spec_from_file_location', return_value=probe_spec):
+                for mode in ('applications', 'kernel', 'kernel-bootstrap'):
+                    events.clear()
+                    output = self.root / ('complete-' + mode)
+                    args = (['--kernel'] if mode != 'applications' else []) + (['--bootstrap-libgcc'] if mode == 'kernel-bootstrap' else [])
+                    args += [str(self.pkgsrc), str(self.archive)] + ([str(self.seed)] if mode == 'applications' else []) + [str(tools), str(self.math), str(output)]
+                    cross.build_main(args)
+                    self.assertEqual(events[:2], ['split-dwarf', 'lto'])
+                    self.assertEqual(len(events), 3 if mode == 'kernel-bootstrap' else 2)
+                    if mode == 'kernel-bootstrap':
+                        self.assertEqual(events[2], ('bootstrap', inventory.sha256_file(output / 'inputs.txt')))
 
     @unittest.skipUnless(os.name == 'posix', 'Owned producer groups require POSIX')
     def test_actual_cli_term_and_hup_drain_descendants(self):

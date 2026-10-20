@@ -12,6 +12,7 @@ import sdk_source
 from emberbsd_sdk import inventory, paths
 from host import *
 from target_options import parse
+from bootstrap_libgcc import build as build_bootstrap_libgcc
 
 HERE = PROFILE / 'cross'
 PORTS = PROFILE.parents[1]
@@ -141,8 +142,11 @@ def relocate_binutils(binutils, prefix, triplet, work):
 
 
 def build_main(args):
-    target, mode, args = parse(args, kernel_allowed=True)
-    require(len(args) in ((4, 5) if mode == 'kernel' else (5, 6)), 'Usage: build.py [--target TARGET] [--kernel] PKGSRC ARCHIVE [SYSROOT] TOOLDIR [MATH] NEW_WORK --sdk-source SOURCE')
+    target, mode, args = parse(args, kernel_allowed=True, bootstrap_allowed=True)
+    bootstrap_libgcc = mode == 'kernel-bootstrap'
+    if bootstrap_libgcc:
+        mode = 'kernel'
+    require(len(args) in ((4, 5) if mode == 'kernel' else (5, 6)), 'Usage: build.py [--target TARGET] [--kernel [--bootstrap-libgcc]] PKGSRC ARCHIVE [SYSROOT] TOOLDIR [MATH] NEW_WORK --sdk-source SOURCE')
     count = jobs()
     values = [build_path(value) for value in args]
     pkgsrc, archive = values[:2]
@@ -176,6 +180,8 @@ def build_main(args):
     receipt += capture([cc, '--version']) + capture([cc, '-dumpmachine']) + capture([cxx, '--version']) + digest_rows([archive, recipe / 'distinfo'] + sorted((recipe / 'patches').glob('patch-*'))) + capture([make, '--version']) + capture([prefix / 'bin' / (triplet + '-ld'), '--version'])
     receipt += 'sysroot=' + (str(sysroot) if sysroot else '') + '\nbootstrap_make=' + str(tools) + '\nhost_math=' + str(math) + '\njobs=' + count + '\n' + digest_rows([math / 'lib' / ('lib' + name + '.a') for name in ('gmp', 'mpfr', 'mpc')]) + (work / 'binutils/inputs.txt').read_text()
     receipt += digest_rows(policy_sources() + sorted(HERE.glob('*.py')) + sorted((HERE / 'tests').glob('*.py')))
+    if bootstrap_libgcc:
+        receipt += 'bootstrap_libgcc=yes\n'
     (work / 'inputs.txt').write_text(receipt)
     logged([cc, '-O2', '-I' + str(math / 'include'), HERE / 'tests/host-gmp.c', math / 'lib/libgmp.a', '-o', work / 'host-gmp'], work / 'host-gmp-build.log')
     logged([work / 'host-gmp'], work / 'host-gmp.log')
@@ -202,6 +208,8 @@ def build_main(args):
             probes.lto_binutils([prefix, work / 'lto-binutils'])
         with (work / 'inputs.txt').open('a') as output:
             output.write((work / 'lto-binutils/inputs.txt').read_text())
+    if bootstrap_libgcc:
+        build_bootstrap_libgcc(work, prefix, target, make, count, env)
     print('GCC16 cross compiler built: ' + str(prefix))
     print('Kernel build and boot remain separate.' if mode == 'kernel' else 'Run the compiled acceptance programs on EmberBSD before accepting this toolchain.')
 

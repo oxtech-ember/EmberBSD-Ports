@@ -53,8 +53,10 @@ The compiler uses the same verified original GCC archive and frontend
 portability patches as the Ports native package, including the nb1 C++
 modules repair. The default application mode uses an accepted sysroot's GCC16
 headers/runtime. `--kernel` builds C/C++ frontends without a userland sysroot,
-shared libraries or target threads. Both modes install only the compiler;
-neither rebuilds the target runtime or creates a distribution image.
+shared libraries or target threads. Both modes normally install only the compiler.
+The explicit `--kernel --bootstrap-libgcc` option also builds static support
+for the first OS seed. None of these modes builds the POSIX target runtime or
+creates a distribution image.
 
 ## Application inputs
 
@@ -235,6 +237,53 @@ split-DWARF and LTO contracts. Select its `NEW_WORK/toolchain` through the fork'
 `EMBER_EXTERNAL_TOOLCHAIN`; inspect the owning OS wrapper for host-tool selection
 and kernel inputs. Compiler preparation alone does not establish kernel build
 or boot acceptance.
+
+### Static support for the first OS seed
+
+Add `--bootstrap-libgcc` to a new `--kernel` build when no EmberBSD base
+sysroot exists. Keep all options before the positional inputs:
+
+```sh
+HOST_CC=gcc-16 HOST_CXX=g++-16 CROSS_JOBS=4 \
+    python3 -B profiles/development-toolchain/cross/build.py \
+    --kernel --bootstrap-libgcc --target aarch64 \
+    /absolute/pkgsrc /absolute/gcc-16.2.0.tar.xz \
+    /absolute/os-build/tools /absolute/host-math/prefix /absolute/new-gcc-seed
+```
+
+The option requires `--kernel`. Application mode, duplicate options and
+unsupported targets fail before work is created. Without the option, kernel
+mode remains frontend-only.
+
+The new build first installs the audited kernel frontends. It then runs
+upstream `all-target-libgcc` and `install-target-libgcc` in that build tree.
+The target tools come from the same audited prefix. The frontend must retain
+`inhibit_libc=true`, shared support disabled and the single thread model.
+The target library configuration must also disable shared support. This
+build requires no target libc or headers.
+
+The builder checks all installed `libgcc.a` members and the four required
+GCC CRT objects for the selected target ELF architecture. It also checks any
+installed `libgcov.a`, `libgcc_eh.a`, `crtbeginT.o` and `crtfastmath.o`.
+The compiler must select those exact files through its normal search paths.
+An empty archive, shared libgcc or C++ runtime fails the check. The separate
+`bootstrap-libgcc.json` records configuration and artifact hashes with the
+scope `static-libgcc-bootstrap-only`. It is not a runtime bootstrap success
+marker or a POSIX runtime provider.
+
+Use this prefix to compile the first seed from the selected EmberBSD sources:
+headers, OS CRT, libc, libm, pthread and the loader. Keep the seed's source
+commit, build commands and file hashes. Do not select
+`EMBER_EXTERNAL_GCC_RUNTIME` for this stage; that adapter requires the full
+accepted POSIX runtime. The kernel compiler's own prefix supplies its static
+libgcc and GCC CRT. The OS supplies `crt0.o`, `crti.o` and `crtn.o`.
+
+Next run the normal [runtime bootstrap](../bootstrap/README.md) against that
+seed. Build the application compiler against a separate union of the seed
+and accepted POSIX runtime. Rebuild the final SDK sysroot with that
+application compiler. Static bootstrap support must not replace any of those
+later stages. Controller fixtures validate this option and its artifact
+guards; a complete first-seed build and target execution remain separate checks.
 
 On 2026-10-11, the public recipe built GCC16.2 with host GCC16.2 on Debian
 x86_64 Linux, passed its installed split-DWARF contract, and cross-built the
