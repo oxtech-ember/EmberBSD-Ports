@@ -11,7 +11,7 @@ import urllib.request
 import sdk_source
 from emberbsd_sdk import inventory, paths
 from host import *
-from target_options import parse
+from target_options import FIRMWARE_TARGETS, parse
 from bootstrap_libgcc import build as build_bootstrap_libgcc, headers as bootstrap_headers
 
 HERE = PROFILE / 'cross'
@@ -76,8 +76,13 @@ def host_math_main(args):
 def binutils_main(args, make_override=None):
     target, _, args = parse(args)
     require(len(args) == 1, 'Usage: build-binutils.py [--target TARGET] NEW_WORK --sdk-source SOURCE')
-    triplet = TARGETS[target][0]
-    work, count = new_path(args[0]), jobs()
+    return _build_binutils(target, args[0], make_override)
+
+
+def _build_binutils(target, new_work, make_override=None):
+    require(target in TARGETS or target in FIRMWARE_TARGETS, 'Unsupported Binutils target: ' + target)
+    triplet = TARGETS[target][0] if target in TARGETS else FIRMWARE_TARGETS[target]
+    work, count = new_path(new_work), jobs()
     make = str(make_override) if make_override else os.environ.get('GMAKE', 'gmake')
     require(shutil.which(make), 'GNU make missing')
     cc, cxx = host_compilers()

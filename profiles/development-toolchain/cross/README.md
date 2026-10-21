@@ -58,6 +58,9 @@ The explicit `--kernel --bootstrap-libgcc` option also builds static support
 for the first OS seed. None of these modes builds the POSIX target runtime or
 creates a distribution image.
 
+The separate [firmware entry point](firmware.md) prepares an explicit
+`arm-none-eabi` C frontend without extending the OS target policy.
+
 ## Application inputs
 
 Prepare the development-toolchain or common-tools pkgsrc export using

@@ -190,6 +190,10 @@ runtime behavior are validated.
   builds the full kernel, four modules, and three DTBs; all portable contracts
   and artifact checksums pass. See the [OS build evidence](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/cross-build.md#linux-gcc16).
   Boot acceptance remains separate.
+  The separate [firmware entry point](profiles/development-toolchain/cross/firmware.md)
+  selects `arm-none-eabi` C frontends for Cortex-M4 Thumb objects without a
+  runtime or sysroot. Host orchestration checks pass; real toolchain and
+  firmware execution acceptance remain separate.
   The explicit amd64 target selects x86_64 tools and runtime paths; host
   target-selection regressions pass. The runtime bootstrap and
   [runtime-only package](profiles/development-toolchain/runtime/README.md)

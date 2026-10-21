@@ -25,3 +25,17 @@ def parse(args, kernel_allowed=False, bootstrap_allowed=False):
     if bootstrap:
         mode = 'kernel-bootstrap'
     return target, mode, args
+
+
+# Firmware policy does not extend application or kernel targets.
+FIRMWARE_TARGETS = {'arm-none-eabi': 'arm-none-eabi'}
+
+
+def parse_firmware(args):
+    args = list(args)
+    require(len(args) >= 2 and args[0] == '--target', 'An explicit firmware --target is required')
+    target = args[1]
+    require(target in FIRMWARE_TARGETS, 'Unsupported firmware target: ' + target)
+    args = args[2:]
+    require(not any(value.startswith('--') for value in args), 'Unknown or repeated firmware option')
+    return target, args

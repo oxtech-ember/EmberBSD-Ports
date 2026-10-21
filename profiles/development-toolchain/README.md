@@ -31,6 +31,11 @@ The cross entry points also accept `--target amd64` (`x86_64--netbsd`).
 Real amd64 kernel-compiler and runtime-stage builds pass their checks.
 Installed amd64 runtime package acceptance remains pending.
 
+The separate [firmware frontend](cross/firmware.md) requires
+`--target arm-none-eabi`. It builds only the C frontend and Binutils for
+freestanding Cortex-M4 Thumb objects. It does not add an application sysroot,
+a target runtime or ARM userland support. Real firmware acceptance is separate.
+
 The [GDB 18.1nb1 native debugger](gdb/README.md) also cross-builds on macOS.
 It reads split and standard supplementary DWARF in the AArch64 VM and
 passes live breakpoints, locals, FP registers and signal-frame unwinding.
