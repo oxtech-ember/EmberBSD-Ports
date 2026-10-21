@@ -19,7 +19,6 @@ GNU_CONFIGURE=		yes
 CONFIGURE_ARGS+=	--disable-multi-os-directory
 CONFIGURE_ARGS+=	--includedir=${PREFIX}/include
 PKGCONFIG_OVERRIDE+=	libffi.pc.in
-INFO_FILES=		yes
 TEST_DEPENDS+=		dejagnu-[0-9]*:../../devel/dejagnu
 TEST_TARGET=		check
 
@@ -31,6 +30,11 @@ pre-build:
 .endif
 
 .include "../../mk/bsd.prefs.mk"
+
+# Cross sysroots cannot register info indexes with install-info:run.
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+INFO_FILES=		yes
+.endif
 
 # patch-src_m68k_ffi.c uses m68k_sync_icache(2)
 .if ${MACHINE_PLATFORM:MNetBSD-*-m68k}
