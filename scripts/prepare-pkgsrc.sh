@@ -232,6 +232,7 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     }
     [ -s "$root/profiles/common-build-tools/cross/mk.conf" ] || exit 2
     [ -s "$root/profiles/common-build-tools/cross/check-files-case.sh" ] || exit 2
+    [ -s "$root/profiles/common-build-tools/cross/gcc16-external-runtime.sh" ] || exit 2
 fi
 if [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
     swig=$root/profiles/common-build-tools/recipes/devel/swig4
@@ -577,7 +578,7 @@ for category in "$root"/pkgsrc/*; do
 done
 if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ] || \
     [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
-    for delta in pkgsrc-gcc16.2.patch strict-tests.patch current-prerequisites.patch texinfo-gettext-order.patch stable-expect.patch gcc-tsvc-netbsd.patch gcc-modules-fallocate.patch gcc-netbsd-locale.patch gcc-netbsd-math.patch gcc-package-requires.patch gcc-netbsd-tls.patch; do
+    for delta in pkgsrc-gcc16.2.patch strict-tests.patch current-prerequisites.patch texinfo-gettext-order.patch stable-expect.patch gcc-tsvc-netbsd.patch gcc-modules-fallocate.patch gcc-netbsd-locale.patch gcc-netbsd-math.patch gcc-package-requires.patch gcc-netbsd-tls.patch gcc-cross-native.patch; do
         patch -f -E -d "$destination" -p1 -F 0 < \
             "$root/profiles/development-toolchain/patches/$delta"
     done
@@ -640,6 +641,8 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
         "$destination/EMBERBSD-COMMON-TOOLS-MK.CONF"
     cp "$root/profiles/common-build-tools/cross/sort-c.sh" \
         "$destination/sort-c.sh"
+    cp "$root/profiles/common-build-tools/cross/gcc16-external-runtime.sh" \
+        "$destination/gcc16-external-runtime.sh"
     cp "$root/profiles/common-build-tools/cross/mk.conf" \
         "$destination/EMBERBSD-CROSS-MK.CONF"
 fi

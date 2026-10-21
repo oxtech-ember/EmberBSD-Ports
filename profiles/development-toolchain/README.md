@@ -123,6 +123,9 @@ compiler nb4, libs nb5 and runtime-only nb5. Rebuild consumers of the earlier
 non-TLS runtime; see [compatibility](cross-tls.md#compatibility).
 The runtime verifier checks actual dynamic TLS exports. A Debian-hosted
 AArch64 regression confirms the configure probe and original C++ objects.
+The [cross-native delta](cross-native.md) builds the target compiler package
+on the development host. It advances the recipes to compiler nb5 and libs nb6.
+In a runtime-provider closure, this compiler layers over `gcc16-runtime` nb6.
 
 The [TSVC portability backport](testsuite-portability.md) applies GCC's accepted
 NetBSD allocator fix without changing the compiler or runtime. The exported

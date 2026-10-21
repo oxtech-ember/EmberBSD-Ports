@@ -335,7 +335,8 @@ class RuntimePackageTest(unittest.TestCase):
         self.assertTrue((destination / 'usr/pkg/share/licenses/gcc16-runtime/COPYING3').is_file())
         self.assertFalse((destination / 'usr/pkg/gcc16/include').exists())
         self.assertRaises(rt.Invalid, self.verifier().install, destination)
-        self.assertIn('@pkgcfl gcc16-[0-9]*', rt.plist(result))
+        self.assertIn('@pkgcfl gcc16<16.2.0nb5', rt.plist(result))
+        self.assertNotIn('@pkgcfl gcc16-[0-9]*', rt.plist(result))
 
     def test_pkgtools_calendar(self):
         for value in ('20260229', '20261301', '20260001', '20260100', '00000101', 'nb4', '20260101\n', None):

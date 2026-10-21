@@ -70,6 +70,26 @@ with tempfile.TemporaryDirectory(prefix='ember-cross-targets-') as temporary:
     assert 'requires the runtime provider' in read('PKGPATH=lang/gcc16-runtime', '-v', 'PKG_FAIL_REASON')
     assert 'not a provider' in read('PKGPATH=lang/gcc16-libs', '-v', 'PKG_FAIL_REASON')
     assert 'single GCC16 runtime provider' in read('EMBERBSD_GCC16_RUNTIME_PROVIDER=invalid', '-v', 'PKG_FAIL_REASON')
+    # The compiler provider imports its compiler. The runtime provider builds
+    # a layered compiler with the development profile's option selection.
+    compiler = ['EMBERBSD_CROSS_TARGET=amd64', 'PKGPATH=lang/gcc16']
+    assert 'Import the repaired target GCC16' in read(*compiler, '-v', 'PKG_FAIL_REASON')
+    assert not read(*compiler, '-v', 'GCC16_CROSS_TARGET_FLAGS')
+    layered = compiler + ['EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime']
+    assert not read(*layered, '-v', 'PKG_FAIL_REASON')
+    deps = read(*layered, '-v', 'DEPENDS').split()
+    assert 'gcc16-runtime>=16.2.0nb6:../../lang/gcc16-runtime' in deps and not [d for d in deps if d.startswith('gcc16>=')], deps
+    profile = (root / 'profiles/development-toolchain/mk.conf').read_text().replace('\\\n', ' ')
+    expected = next(line.split('=', 1)[1].split() for line in profile.splitlines() if line.startswith('PKG_OPTIONS.gcc16='))
+    assert read(*layered, '-v', 'PKG_OPTIONS.gcc16').split() == expected
+    crt = str(work / 'sysroot/usr/pkg/gcc16/lib/gcc/x86_64--netbsd/16.2.0') + '/'
+    assert read(*layered, '-v', 'GCC16_CROSS_TARGET_FLAGS') == '-B' + crt
+    assert read(*layered, '-v', '_EMBER_GCC16_LAYER') == str(root / 'profiles/common-build-tools/cross/gcc16-external-runtime.sh')
+    assert 'emberbsd-gcc16-external-runtime' not in read('EMBERBSD_CROSS_TARGET=amd64', 'EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime', '-V', '${.ALLTARGETS}').split()
+    assert 'emberbsd-gcc16-external-runtime' in read(*layered, '-V', '${.ALLTARGETS}').split()
+    # GCC builds its build-host libiberty with host archive tools.
+    assert read('-v', 'NATIVE_AR') == '/usr/bin/ar' and read('-v', 'NATIVE_RANLIB') == '/usr/bin/ranlib'
+    assert 'EMBERBSD_CROSS_BUILD_AR must name an existing absolute host tool' in read('EMBERBSD_CROSS_BUILD_AR=ar', '-v', 'PKG_FAIL_REASON')
     (work / 'sysroot/usr/pkg/gcc16/lib/gcc/x86_64--netbsd/16.2.0/crtbeginS.o').unlink()
     assert 'GCC16 CRT and runtime' in read('EMBERBSD_CROSS_TARGET=amd64', '-v', 'PKG_FAIL_REASON')
 print('PASS: explicit ARM/amd64 target fixtures, unsupported and mixed target refusals; no compiler build')

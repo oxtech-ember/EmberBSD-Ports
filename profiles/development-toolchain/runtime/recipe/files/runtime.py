@@ -32,10 +32,10 @@ from emberbsd_sdk.errors import SDKError, CommandError, ProcessOwnershipError
 from emberbsd_sdk import elf as sdk_elf, inventory as sdk_inventory, jsonio, paths, process
 
 VERSION = '16.2.0'
-NAME = 'gcc16-runtime-16.2.0nb5'
+NAME = 'gcc16-runtime-16.2.0nb6'
 SOURCE_SHA256 = 'e6738e29597f733270731aa90600f37ffdc045079dfc27ec7e8192cc81085c3e'
 LICENSES = ('COPYING3', 'COPYING.RUNTIME')
-CONFLICTS = ('gcc16-[0-9]*', 'gcc16-libs-[0-9]*')
+CONFLICTS = ('gcc16<16.2.0nb5', 'gcc16-libs-[0-9]*')
 LIBRARIES = {'libgcc': 'libgcc_s.so.1', 'libstdc++': 'libstdc++.so.7', 'libgomp': 'libgomp.so.1', 'libatomic': 'libatomic.so.3'}
 SELECTIONS = ('libgcc,libstdc++', 'libgcc,libstdc++,libgomp', 'libgcc,libstdc++,libatomic', 'libgcc,libstdc++,libgomp,libatomic')
 TARGETS = {'amd64': {'triplet': 'x86_64--netbsd', 'machine_arch': 'x86_64', 'elf_machine': 62},

@@ -1,0 +1,88 @@
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+Build the GCC16 target compiler on another build host (build != host == target).
+Use the existing cross tools for target libraries and assembler/linker probes.
+Select the same Binutils release for the installed driver. Native builds are unchanged.
+
+--- a/lang/gcc16/Makefile
++++ b/lang/gcc16/Makefile
+@@ -4,7 +4,7 @@
+ ## When bumping the PKGREVISION of this package the PKGREVISION of
+ ## lang/gcc16-libs needs to be bumped to be at least 1 more than the
+ ## PKGREVISION of this package!
+-PKGREVISION=	4
++PKGREVISION=	5
+ COMMENT=	The GNU Compiler Collection (GCC) - 16.0 Release Series
+ 
+ LANGS=		c
+@@ -58,6 +58,60 @@
+ .if ${USE_CROSS_COMPILE:U:tl} == "yes"
+ CONFIGURE_ENV+=		CC_FOR_BUILD=${NATIVE_CC:Q}
+ CONFIGURE_ENV+=		CXX_FOR_BUILD=${NATIVE_CXX:Q}
++CONFIGURE_ENV+=		AR_FOR_BUILD=${NATIVE_AR:Q}
++CONFIGURE_ENV+=		RANLIB_FOR_BUILD=${NATIVE_RANLIB:Q}
++# Build-host programs must not inherit target search paths or linker flags.
++CONFIGURE_ENV+=		CPPFLAGS_FOR_BUILD= LDFLAGS_FOR_BUILD=
++CONFIGURE_ENV+=		CFLAGS_FOR_BUILD=-O2 CXXFLAGS_FOR_BUILD=-O2
++.if empty(NATIVE_AR) || empty(NATIVE_RANLIB)
++PKG_FAIL_REASON+=	"Set NATIVE_AR and NATIVE_RANLIB for build-host libraries"
++.endif
++# Build a native compiler on another build host (build != host == target).
++# The existing cross compiler of the same release builds target libraries.
++GCC16_CROSS_TOOL_PREFIX?=	${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-
++GCC16_CROSS_TARGET_FLAGS?=
++GCC16_CROSS_TARGET_CFLAGS?=	-O2
++CONFIGURE_ARGS+=	--target=${MACHINE_GNU_PLATFORM:Q}
++CONFIGURE_ARGS+=	--with-build-sysroot=${CROSS_DESTDIR:Q}
++.for _tool_ in AR AS LD NM OBJCOPY OBJDUMP RANLIB READELF STRIP
++CONFIGURE_ENV+=		${_tool_}_FOR_TARGET=${GCC16_CROSS_TOOL_PREFIX:Q}${_tool_:tl}
++.endfor
++# Apply the code generation defaults that an in-tree driver would have.
++_GCC16_TARGET_DEFAULTS=	${CONFIGURE_ARGS:M--with-arch=*:S/^--with-arch=/-march=/} \
++			${CONFIGURE_ARGS:M--with-tune=*:S/^--with-tune=/-mtune=/} \
++			${CONFIGURE_ARGS:M--with-fpmath=*:S/^--with-fpmath=/-mfpmath=/}
++_GCC16_CC_FOR_TARGET=	${GCC16_CROSS_TOOL_PREFIX}gcc ${_GCC16_TARGET_DEFAULTS} ${GCC16_CROSS_TARGET_FLAGS}
++# Like the in-tree driver, do not read installed C++ headers. Otherwise the
++# libstdc++ probes see C++ overloads and disable C99 features.
++_GCC16_CXX_FOR_TARGET=	${GCC16_CROSS_TOOL_PREFIX}g++ -nostdinc++ ${_GCC16_TARGET_DEFAULTS} ${GCC16_CROSS_TARGET_FLAGS}
++CONFIGURE_ENV+=		CC_FOR_TARGET=${_GCC16_CC_FOR_TARGET:Q}
++CONFIGURE_ENV+=		GCC_FOR_TARGET=${_GCC16_CC_FOR_TARGET:Q}
++CONFIGURE_ENV+=		CXX_FOR_TARGET=${_GCC16_CXX_FOR_TARGET:Q}
++CONFIGURE_ENV+=		CFLAGS_FOR_TARGET=${GCC16_CROSS_TARGET_CFLAGS:Q}
++CONFIGURE_ENV+=		CXXFLAGS_FOR_TARGET=${GCC16_CROSS_TARGET_CFLAGS:Q}
++# gcc/configure cannot run the installed assembler and linker. Its feature
++# probes use AS_FOR_TARGET and LD_FOR_TARGET, the cross Binutils. The
++# installed driver therefore uses the same Binutils release.
++CONFIGURE_ARGS.NetBSD:=	${CONFIGURE_ARGS.NetBSD:N--with-as=*:N--with-ld=*}
++DEPENDS+=		binutils>=2.47:../../devel/binutils
++GCC16_BINUTILS_DIR=	${LOCALBASE}/${MACHINE_GNU_PLATFORM}/bin
++# The installed fixincl and mkheaders run on the target. This sed must
++# exist on the build host too, where fixincludes runs during the build.
++GCC16_TARGET_SED?=	/usr/bin/sed
++GCC16_TARGET_SHELL?=	/bin/sh
++MAKE_ENV+=		ac_cv_path_SED=${GCC16_TARGET_SED:Q}
++.if !exists(${GCC16_TARGET_SED})
++PKG_FAIL_REASON+=	"GCC16_TARGET_SED must exist on the build host and the target"
++.endif
++post-install: gcc16-cross-target-paths
++.PHONY: gcc16-cross-target-paths
++gcc16-cross-target-paths:
++	${RUN} dir=${DESTDIR}${GCC_PREFIX}/libexec/gcc/${MACHINE_GNU_PLATFORM}/${GCC16_DIST_VERSION}; \
++	for tool in as ld; do ${LN} -sf ${GCC16_BINUTILS_DIR}/$$tool $$dir/$$tool; done; \
++	${SED} -e 's|${CONFIG_SHELL}|${GCC16_TARGET_SHELL}|g' \
++	    $$dir/install-tools/mkheaders > $$dir/install-tools/mkheaders.target; \
++	${CAT} $$dir/install-tools/mkheaders.target > $$dir/install-tools/mkheaders; \
++	${RM} $$dir/install-tools/mkheaders.target
+ .endif
+ 
+ CONFIGURE_ARGS+=	--enable-languages=${LANGS:Q}
+--- a/lang/gcc16-libs/Makefile
++++ b/lang/gcc16-libs/Makefile
+@@ -9,7 +9,7 @@
+ ## The PKGREVISION of this package needs to be at least 1 more than the
+ ## PKGREVISION of the lang/gcc16 package so that with the dependence pattern
+ ## '{gcc16,gcc16-libs}>=16.1.*' pkg_add will choose gcc16-libs over gcc16.
+-PKGREVISION=	5
++PKGREVISION=	6
+ 
+ CATEGORIES=	lang
+ MASTER_SITES=	# empty

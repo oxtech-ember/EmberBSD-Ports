@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD; AI-assisted package of prebuilt, audited target runtime DSOs.
 DISTNAME=	gcc16-runtime-16.2.0
-PKGREVISION=	5
+PKGREVISION=	6
 CATEGORIES=	lang
 MASTER_SITES=	# none
 DISTFILES=	# none
@@ -9,7 +9,9 @@ HOMEPAGE=	https://gcc.gnu.org/
 COMMENT=	GCC16 target shared runtime without compiler tools
 LICENSE=	gnu-gpl-v3
 
-CONFLICTS+=	gcc16-[0-9]* gcc16-libs-[0-9]*
+# Complete compilers up to nb4 own these runtime files. A later cross-built
+# compiler layers over this package and depends on it instead.
+CONFLICTS+=	gcc16<16.2.0nb5 gcc16-libs-[0-9]*
 ONLY_FOR_PLATFORM=	NetBSD-11.*-x86_64 NetBSD-11.*-aarch64
 USE_LANGUAGES=	# none
 NO_CONFIGURE=	yes

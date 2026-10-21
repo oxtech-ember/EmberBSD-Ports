@@ -1,6 +1,6 @@
 # Package the GCC16 target runtime
 
-This profile creates `gcc16-runtime-16.2.0nb5` for EmberBSD amd64 or AArch64.
+This profile creates `gcc16-runtime-16.2.0nb6` for EmberBSD amd64 or AArch64.
 
 Normal verification requires the TLS `std::call_once` exports in the actual
 `libstdc++.so.7`, alongside the authenticated configuration and source inputs.
@@ -36,9 +36,11 @@ installed SDK and EmberBSD VM checks. Its acceptance is detailed below.
 Normal stage verification requires RELRO. Historical provenance reads cannot
 install or create packages. No package check is disabled.
 
-The provider conflicts with `gcc16` and `gcc16-libs`. Select one provider
-for a coherent package closure. Do not combine the providers or fabricate
-a complete `gcc16` package registration. Build consumers with the matching
+The provider conflicts with `gcc16-libs` and with complete `gcc16` packages
+up to nb4. Select one provider for a coherent package closure. Do not
+combine the providers or fabricate a complete `gcc16` package registration.
+A [target compiler built on the development host](../cross-native.md)
+depends on this package instead. It omits these files after an ABI check. Build consumers with the matching
 GCC16 cross compiler and retain their ordinary `/usr/pkg/gcc16/lib` runtime
 paths. Do not rename SONAMEs or use an alternate loader search path.
 
