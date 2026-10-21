@@ -44,6 +44,27 @@ package-set auditor rejects an LLVM SDK, the old monolith, or an LLVM runtime
 with missing or additional payload. It accepts only the prepared runtime
 identity. A future LLVM update must update this explicit policy.
 
+## Repeated cross configuration
+
+Pkgsrc supplies `CC` and `CXX` in `CONFIGURE_ENV`. Let CMake resolve them instead
+of passing bare compiler names with `-D`. Set `CMAKE_CXX_LINK_FLAGS:STRING` to
+the exact ordered `LDFLAGS` value.
+
+On a Darwin host, a bounded GCC16 cross fixture for NetBSD/AArch64 reproduces
+the old compiler cache churn. The corrected recipe arguments keep the typed
+compiler cache, compile database, link commands and ordered flags stable across
+two configures. The second build invokes no compiler or linker. Object and ELF
+bytes stay equal.
+
+Both configures must use the same post-barrier pkgsrc contract. A pre-barrier
+negative query loses exactly `-L/usr/lib -Wl,-R/usr/lib -L/usr/pkg/lib -Wl,-R/usr/pkg/lib`.
+The strict ordered-flag check rejects that change. No build follows the negative
+configuration.
+
+The actual child linker is GNU ld 2.42. This fixture does not qualify Binutils
+2.47, a full LLVM build, an installed target runtime or an SDK. It does not
+execute target programs.
+
 ## Source packaging checks
 
 Use the real exported pkgsrc tree and native pkgtools. The native manifest
