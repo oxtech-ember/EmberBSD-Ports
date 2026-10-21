@@ -1,0 +1,30 @@
+--- a/src/backend/libc/fs/syscalls.rs
++++ b/src/backend/libc/fs/syscalls.rs
+@@ -1628,13 +1628,26 @@
+         f_bavail: from.f_bavail as u64,
+         f_files: from.f_files as u64,
+         f_ffree: from.f_ffree as u64,
+-        f_favail: from.f_ffree as u64,
++        f_favail: from.f_favail as u64,
+         #[cfg(not(target_os = "aix"))]
+         f_fsid: from.f_fsid as u64,
+         #[cfg(target_os = "aix")]
+         f_fsid: ((from.f_fsid.val[0] as u64) << 32) | from.f_fsid.val[1],
+         f_flag: StatVfsMountFlags::from_bits_retain(from.f_flag as u64),
+         f_namemax: from.f_namemax as u64,
++    }
++}
++
++#[cfg(all(test, not(target_os = "wasi")))]
++mod statvfs_conversion_tests {
++    use super::*;
++
++    #[test]
++    fn f_favail_uses_available_inode_count() {
++        let mut from: c::statvfs = unsafe { core::mem::zeroed() };
++        from.f_ffree = 29;
++        from.f_favail = 11;
++        assert_eq!(libc_statvfs_to_statvfs(from).f_favail, 11);
+     }
+ }
+ 

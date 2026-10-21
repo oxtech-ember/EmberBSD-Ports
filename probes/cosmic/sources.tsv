@@ -1,3 +1,3 @@
 # component	sha256	url
-cosmic-comp	148b8dcc2cf868026cf741035044759f3e0dfde71c9f0bfda2e13673281b7f4f	https://github.com/pop-os/cosmic-comp/archive/41497b42d9744d9963c4c6d17e8add49489b45ee.tar.gz
-cosmic-session	4a699b2d3f9baa7324631a712ecb8c6611a54db061d2bb0bc8bd360153d18296	https://github.com/pop-os/cosmic-session/archive/8093b59bb1262b0612d814e6540ba936303f735a.tar.gz
+cosmic-comp	17e6cfccb612d4e9fcb2c9d44617a700ca91a9db922bf30f60fb8fadbb6b19be	https://github.com/pop-os/cosmic-comp/archive/8cb1802caada438bb5cc7670dfabdaca5fad0502.tar.gz
+cosmic-session	8ad562ea4fc7c0536dd65f0755a70435f2aff6e34425c86cc2f939f77595fc01	https://github.com/pop-os/cosmic-session/archive/4b0a0a24e98b9e755b6a7146e4cb29539cacda0a.tar.gz

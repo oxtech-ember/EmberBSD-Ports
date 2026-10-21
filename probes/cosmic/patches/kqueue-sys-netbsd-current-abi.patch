@@ -1,0 +1,47 @@
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -2,7 +2,6 @@
+ #[allow(unused_imports)]
+ use libc::{c_int, c_short, c_uint, c_ushort, c_void, intptr_t, size_t, timespec, uintptr_t};
+ 
+-#[cfg(not(target_os = "netbsd"))]
+ use core::ptr;
+ 
+ pub mod constants;
+@@ -36,7 +35,8 @@
+     pub flags: EventFlag,
+     pub fflags: FilterFlag,
+     pub data: i64,
+-    pub udata: intptr_t,
++    pub udata: *mut c_void,
++    pub ext: [u64; 4],
+ }
+ 
+ #[cfg(target_os = "freebsd")]
+@@ -83,7 +83,8 @@
+             flags,
+             fflags,
+             data: 0,
+-            udata: 0,
++            udata: ptr::null_mut(),
++            ext: [0; 4],
+         }
+     }
+ 
+@@ -106,10 +107,16 @@
+     }
+ }
+ 
++#[cfg(all(target_os = "netbsd", target_arch = "aarch64"))]
++const _: [(); 72] = [(); core::mem::size_of::<kevent>()];
++#[cfg(all(target_os = "netbsd", target_arch = "aarch64"))]
++const _: [(); 40] = [(); core::mem::offset_of!(kevent, ext)];
++
+ #[allow(improper_ctypes)]
+ extern "C" {
+     pub fn kqueue() -> c_int;
+ 
++    #[cfg_attr(target_os = "netbsd", link_name = "__kevent100")]
+     pub fn kevent(
+         kq: c_int,
+         changelist: *const kevent,

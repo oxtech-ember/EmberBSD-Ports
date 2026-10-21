@@ -1,0 +1,12 @@
+diff --git a/src/utils/sealed_file.rs b/src/utils/sealed_file.rs
+--- a/src/utils/sealed_file.rs
++++ b/src/utils/sealed_file.rs
+@@ -53,8 +53,8 @@
+     /// Create a `[SealedFile]` with the given binary data.
+     #[cfg(not(any(target_os = "linux", target_os = "freebsd", target_os = "android")))]
+     pub fn with_data(name: &CStr, data: &[u8]) -> Result<Self, std::io::Error> {
+-        use rand::{Rng, distr::Alphanumeric};
++        use rand::{RngExt, distr::Alphanumeric};
+         use rustix::{
+             io::Errno,
+             shm::{self, Mode},

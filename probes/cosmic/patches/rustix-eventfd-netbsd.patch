@@ -1,0 +1,80 @@
+diff --git a/src/event/mod.rs b/src/event/mod.rs
+--- a/src/event/mod.rs
++++ b/src/event/mod.rs
+@@ -6,7 +6,8 @@
+     linux_kernel,
+     target_os = "freebsd",
+     target_os = "illumos",
+-    target_os = "espidf"
++    target_os = "espidf",
++    target_os = "netbsd"
+ ))]
+ mod eventfd;
+ #[cfg(bsd)]
+@@ -24,7 +25,8 @@
+     linux_kernel,
+     target_os = "freebsd",
+     target_os = "illumos",
+-    target_os = "espidf"
++    target_os = "espidf",
++    target_os = "netbsd"
+ ))]
+ pub use eventfd::{eventfd, EventfdFlags};
+ #[cfg(not(any(windows, target_os = "redox", target_os = "wasi")))]
+diff --git a/src/backend/libc/event/types.rs b/src/backend/libc/event/types.rs
+--- a/src/backend/libc/event/types.rs
++++ b/src/backend/libc/event/types.rs
+@@ -1,10 +1,11 @@
+-#[cfg(any(linux_kernel, target_os = "freebsd", target_os = "illumos"))]
++#[cfg(any(linux_kernel, target_os = "freebsd", target_os = "illumos", target_os = "netbsd"))]
+ use crate::backend::c;
+ #[cfg(any(
+     linux_kernel,
+     target_os = "freebsd",
+     target_os = "illumos",
+-    target_os = "espidf"
++    target_os = "espidf",
++    target_os = "netbsd"
+ ))]
+ use bitflags::bitflags;
+ 
+@@ -12,7 +13,8 @@
+     linux_kernel,
+     target_os = "freebsd",
+     target_os = "illumos",
+-    target_os = "espidf"
++    target_os = "espidf",
++    target_os = "netbsd"
+ ))]
+ bitflags! {
+     /// `EFD_*` flags for use with [`eventfd`].
+diff --git a/src/backend/libc/event/syscalls.rs b/src/backend/libc/event/syscalls.rs
+--- a/src/backend/libc/event/syscalls.rs
++++ b/src/backend/libc/event/syscalls.rs
+@@ -10,7 +10,8 @@
+     linux_kernel,
+     target_os = "freebsd",
+     target_os = "illumos",
+-    target_os = "espidf"
++    target_os = "espidf",
++    target_os = "netbsd"
+ ))]
+ use crate::event::EventfdFlags;
+ #[cfg(any(bsd, linux_kernel, target_os = "wasi"))]
+@@ -45,6 +46,7 @@
+     linux_kernel,
+     target_os = "freebsd",
+     target_os = "illumos",
+-    target_os = "espidf"
++    target_os = "espidf",
++    target_os = "netbsd"
+ ))]
+ pub(crate) fn eventfd(initval: u32, flags: EventfdFlags) -> io::Result<OwnedFd> {
+@@ -80,6 +81,6 @@
+     }
+ 
+-    #[cfg(any(target_os = "illumos", target_os = "espidf"))]
++    #[cfg(any(target_os = "illumos", target_os = "espidf", target_os = "netbsd"))]
+     unsafe {
+         ret_owned_fd(c::eventfd(initval, bitflags_bits!(flags)))
+     }

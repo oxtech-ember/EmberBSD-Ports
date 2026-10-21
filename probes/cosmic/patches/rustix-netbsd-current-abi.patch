@@ -1,0 +1,85 @@
+--- a/src/backend/libc/c.rs
++++ b/src/backend/libc/c.rs
+@@ -5,6 +5,82 @@
+ // Import everything from libc, but we'll add some stuff and override some
+ // things below.
+ pub(crate) use libc::*;
++
++#[cfg(target_os = "netbsd")]
++#[repr(C)]
++#[derive(Clone, Copy)]
++pub(crate) struct kevent {
++    pub(crate) ident: uintptr_t,
++    pub(crate) filter: u32,
++    pub(crate) flags: u32,
++    pub(crate) fflags: u32,
++    pub(crate) data: i64,
++    pub(crate) udata: *mut c_void,
++    pub(crate) ext: [u64; 4],
++}
++
++#[cfg(target_os = "netbsd")]
++#[repr(C)]
++pub(crate) struct statvfs {
++    pub(crate) f_flag: c_ulong,
++    pub(crate) f_bsize: c_ulong,
++    pub(crate) f_frsize: c_ulong,
++    pub(crate) f_iosize: c_ulong,
++    pub(crate) f_blocks: fsblkcnt_t,
++    pub(crate) f_bfree: fsblkcnt_t,
++    pub(crate) f_bavail: fsblkcnt_t,
++    pub(crate) f_bresvd: fsblkcnt_t,
++    pub(crate) f_files: fsfilcnt_t,
++    pub(crate) f_ffree: fsfilcnt_t,
++    pub(crate) f_favail: fsfilcnt_t,
++    pub(crate) f_fresvd: fsfilcnt_t,
++    pub(crate) f_syncreads: u64,
++    pub(crate) f_syncwrites: u64,
++    pub(crate) f_asyncreads: u64,
++    pub(crate) f_asyncwrites: u64,
++    pub(crate) f_fsidx: fsid_t,
++    pub(crate) f_fsid: c_ulong,
++    pub(crate) f_namemax: c_ulong,
++    pub(crate) f_owner: uid_t,
++    pub(crate) f_spare: [u64; 4],
++    pub(crate) f_fstypename: [c_char; 32],
++    pub(crate) f_mntonname: [c_char; 1024],
++    pub(crate) f_mntfromname: [c_char; 1024],
++    pub(crate) f_mntfromlabel: [c_char; 1024],
++}
++
++#[cfg(target_os = "netbsd")]
++extern "C" {
++    #[link_name = "__kevent100"]
++    pub(crate) fn kevent(
++        kq: c_int,
++        changelist: *const kevent,
++        nchanges: size_t,
++        eventlist: *mut kevent,
++        nevents: size_t,
++        timeout: *const timespec,
++    ) -> c_int;
++
++    #[link_name = "__dup3100"]
++    pub(crate) fn dup3(src: c_int, dst: c_int, flags: c_int) -> c_int;
++
++    #[link_name = "__statvfs90"]
++    pub(crate) fn statvfs(path: *const c_char, buf: *mut statvfs) -> c_int;
++
++    #[link_name = "__fstatvfs90"]
++    pub(crate) fn fstatvfs(fd: c_int, buf: *mut statvfs) -> c_int;
++}
++
++#[cfg(all(target_os = "netbsd", target_arch = "aarch64"))]
++const _: [(); 72] = [(); core::mem::size_of::<kevent>()];
++#[cfg(all(target_os = "netbsd", target_arch = "aarch64"))]
++const _: [(); 40] = [(); core::mem::offset_of!(kevent, ext)];
++#[cfg(all(target_os = "netbsd", target_arch = "aarch64"))]
++const _: [(); 3296] = [(); core::mem::size_of::<statvfs>()];
++#[cfg(all(target_os = "netbsd", target_arch = "aarch64"))]
++const _: [(); 160] = [(); core::mem::offset_of!(statvfs, f_spare)];
++#[cfg(all(target_os = "netbsd", target_arch = "aarch64"))]
++const _: [(); 2272] = [(); core::mem::offset_of!(statvfs, f_mntfromlabel)];
+ 
+ /// `PROC_SUPER_MAGIC`—The magic number for the procfs filesystem.
+ #[cfg(all(linux_kernel, target_env = "musl"))]

@@ -1,0 +1,63 @@
+--- a/src/unix/bsd/netbsdlike/netbsd/mod.rs
++++ b/src/unix/bsd/netbsdlike/netbsd/mod.rs
+@@ -315,6 +315,7 @@
+         pub fflags: u32,
+         pub data: i64,
+         pub udata: *mut c_void,
++        pub ext: [u64; 4],
+     }
+ 
+     pub struct dqblk {
+@@ -2044,7 +2045,7 @@
+         newlen: size_t,
+     ) -> c_int;
+     pub fn sysctlnametomib(sname: *const c_char, name: *mut c_int, namelenp: *mut size_t) -> c_int;
+-    #[link_name = "__kevent50"]
++    #[link_name = "__kevent100"]
+     pub fn kevent(
+         kq: c_int,
+         changelist: *const crate::kevent,
+@@ -2153,6 +2154,7 @@
+     #[link_name = "__settimeofday50"]
+     pub fn settimeofday(tv: *const crate::timeval, tz: *const c_void) -> c_int;
+ 
++    #[link_name = "__dup3100"]
+     pub fn dup3(src: c_int, dst: c_int, flags: c_int) -> c_int;
+ 
+     pub fn kqueue1(flags: c_int) -> c_int;
+--- a/src/unix/mod.rs
++++ b/src/unix/mod.rs
+@@ -1671,9 +1671,11 @@
+     pub fn sem_post(sem: *mut sem_t) -> c_int;
+     #[cfg(not(all(target_os = "linux", target_env = "gnu")))] // defined in new/glibc
+     #[cfg_attr(gnu_file_offset_bits64, link_name = "statvfs64")]
++    #[cfg_attr(target_os = "netbsd", link_name = "__statvfs90")]
+     pub fn statvfs(path: *const c_char, buf: *mut crate::statvfs) -> c_int;
+     #[cfg(not(all(target_os = "linux", target_env = "gnu")))] // defined in new/glibc
+     #[cfg_attr(gnu_file_offset_bits64, link_name = "fstatvfs64")]
++    #[cfg_attr(target_os = "netbsd", link_name = "__fstatvfs90")]
+     pub fn fstatvfs(fd: c_int, buf: *mut crate::statvfs) -> c_int;
+ 
+     #[cfg_attr(target_os = "netbsd", link_name = "__sigemptyset14")]
+--- a/src/new/netbsd/sys/statvfs.rs
++++ b/src/new/netbsd/sys/statvfs.rs
+@@ -35,8 +35,7 @@
+         pub f_namemax: c_ulong,
+         pub f_owner: crate::uid_t,
+ 
+-        // This type is updated in a future version
+-        f_spare: Padding<[u32; 4]>,
++        f_spare: Padding<[u64; 4]>,
+ 
+         #[custom_default([0; _VFS_NAMELEN])]
+         pub f_fstypename: [c_char; _VFS_NAMELEN],
+@@ -44,7 +43,7 @@
+         pub f_mntonname: [c_char; _VFS_MNAMELEN],
+         #[custom_default([0; _VFS_MNAMELEN])]
+         pub f_mntfromname: [c_char; _VFS_MNAMELEN],
+-        // Added in NetBSD10
+-        // pub f_mntfromlabel: [c_char; _VFS_MNAMELEN],
++        #[custom_default([0; _VFS_MNAMELEN])]
++        pub f_mntfromlabel: [c_char; _VFS_MNAMELEN],
+     }
+ }

@@ -1,0 +1,10 @@
+--- a/lib.rs
++++ b/lib.rs
+@@ -47,6 +47,7 @@
+     /// starting any more threads or enabling any POSIX signals.
+     ///
+     /// See also [`setlocale(3)`](https://www.man7.org/linux/man-pages/man3/setlocale.3.html).
++    #[cfg_attr(target_os = "netbsd", link_name = "__setlocale50")]
+     pub fn setlocale(category: c_int, locale: *const c_char) -> *mut c_char;
+ }
+ 

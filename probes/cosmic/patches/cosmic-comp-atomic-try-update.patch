@@ -1,0 +1,42 @@
+diff --git a/src/shell/element/stack.rs b/src/shell/element/stack.rs
+--- a/src/shell/element/stack.rs
++++ b/src/shell/element/stack.rs
+@@ -327,7 +327,7 @@
+                     if !p.group_focused.load(Ordering::SeqCst) {
+                         if let Ok(old) =
+                             p.active
+-                                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |val| {
++                                .try_update(Ordering::SeqCst, Ordering::SeqCst, |val| {
+                                     val.checked_sub(1)
+                                 })
+                         {
+@@ -354,7 +354,7 @@
+                         let max = p.windows.lock().unwrap().len();
+                         if let Ok(old) =
+                             p.active
+-                                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |val| {
++                                .try_update(Ordering::SeqCst, Ordering::SeqCst, |val| {
+                                     if val < max - 1 { Some(val + 1) } else { None }
+                                 })
+                         {
+@@ -1524,7 +1524,7 @@
+             let len = windows.len();
+             let _ = p
+                 .active
+-                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |active| {
++                .try_update(Ordering::SeqCst, Ordering::SeqCst, |active| {
+                     (active >= len).then_some(len - 1)
+                 });
+             let active = p.active.load(Ordering::SeqCst);
+diff --git a/src/utils/ids.rs b/src/utils/ids.rs
+--- a/src/utils/ids.rs
++++ b/src/utils/ids.rs
+@@ -14,7 +14,7 @@
+             }
+ 
+             let id = loop {
+-                let new_id = $id_name.fetch_update(
++                let new_id = $id_name.try_update(
+                     std::sync::atomic::Ordering::SeqCst,
+                     std::sync::atomic::Ordering::SeqCst,
+                     |mut id| {
