@@ -141,13 +141,14 @@ It cannot establish the driver's complete allocation budget.
 Native KDirWatch fallback and the D-Bus helper now pass their installed component checks.
 Descriptor exhaustion in session child services remains a separate unresolved observation.
 
-The current HDMI path displays the firmware console at 1920x1080.
-The kernel exports that framebuffer through genfb/wsdisplay. A read-only
-`DRM_IOCTL_MODE_GETRESOURCES` on the active V3D primary node returns
-`EOPNOTSUPP`. The V3D driver advertises GEM, render nodes and sync objects,
-without `DRIVER_MODESET`. Unattached static primary nodes return `ENODEV`.
-Native display KMS and accelerated HDMI presentation remain unaccepted.
-The virtual output size does not change the physical display signal.
+Ordinary kernel profiles retain the passive V3D observer. The manually
+selected native display profile has a separate
+[fixed-mode KMS contract](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/bcmv3d-kms.md).
+The public [session diagnostic](../tests/plasma-session/README.md) accepts
+`--backend drm` with its fixed 1920x1080 policy. Its source and host controls
+check backend selection and current output fields. Target acceptance of this
+public CLI remains separate. It does not qualify physical HDMI, input,
+seat ownership or first visible pixels. The default backend remains virtual.
 
 ## Analysis scope
 

@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import shlex
+import re
 
 BASELINE = '8b0508d72da7adf676af5a4ab1b069b2099b2e07'
 ICD = '/usr/pkg/share/vulkan/icd.d/powervr_mesa_icd.json'
@@ -42,7 +43,7 @@ def main():
     work.mkdir()
     work = work.resolve()
     checker = source.parent / 'plasma-desktop/check-results.sh'
-    inputs = [source / 'run.sh', source / 'controller.sh', source / 'guard.pl', checker, Path(__file__)]
+    inputs = [source / 'run.sh', source / 'controller.sh', source / 'guard.pl', checker, source.parent / 'plasma-desktop/layout.js', Path(__file__)]
     pins = {str(p.relative_to(ports)): hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs}
     runner = (source / 'run.sh').read_text()
     controller = (source / 'controller.sh').read_text()
@@ -147,13 +148,13 @@ def main():
             (['/dev/null'], work, 'powervr-zink', 2),
             (['/dev/null'], work / 'missing', 'v3d', 0),
         ]):
-            body = 'profile=' + shlex.quote(profile) + '\n' + prerequisites.replace('/dev/dri/renderD*', shlex.join(nodes)).replace(ICD, shlex.quote(str(path)))
+            body = 'backend=virtual\nprofile=' + shlex.quote(profile) + '\n' + prerequisites.replace('/dev/dri/renderD*', shlex.join(nodes)).replace(ICD, shlex.quote(str(path)))
             script('prerequisite-' + str(index), body, expected=status)
 
         # Reproduce the former unquoted ICD assignment, even with a plain --work.
         spaced = work / 'renderer fixture'; spaced.mkdir()
         spaced_icd = spaced / 'installed ICD.json'; spaced_icd.write_text('{}\n')
-        prefix = 'profile=powervr-zink\n'
+        prefix = 'backend=virtual\nprofile=powervr-zink\n'
         unsafe = prerequisites.replace('/dev/dri/renderD*', '/dev/null').replace(ICD, str(spaced_icd))
         safe = prerequisites.replace('/dev/dri/renderD*', '/dev/null').replace(ICD, shlex.quote(str(spaced_icd)))
         script('unquoted-icd-baseline', prefix + unsafe, expected=None,
@@ -179,18 +180,20 @@ def main():
         for profile in ['v3d', 'powervr-zink']:
             for status in [0, 7]:
                 directory = work / (profile + '-' + str(status)); directory.mkdir()
-                body = 'work=' + shlex.quote(str(directory)) + '\ncd "$work"\nprofile=' + profile + '\naccount=fixture\nlogin_shell=/bin/sh\nicd=' + ICD + '\n'
+                backend = 'drm' if status == 7 else 'virtual'
+                body = 'work=' + shlex.quote(str(directory)) + '\ncd "$work"\nbackend=' + backend + '\nprofile=' + profile + '\naccount=fixture\nlogin_shell=/bin/sh\nicd=' + ICD + '\n'
                 body += dispatch.replace('/usr/pkg/bin/perl ./guard.pl', 'TEST_EXIT=' + str(status) + ' ' + shlex.quote(sys.executable) + ' ' + shlex.quote(str(recorder)) + ' ./guard.pl')
-                env = dict(os.environ, LD_LIBRARY_PATH='/untrusted', LD_PRELOAD='/untrusted', VK_ICD_FILENAMES='/untrusted', VK_DRIVER_FILES='/untrusted', GALLIUM_DRIVER='softpipe')
+                env = dict(os.environ, LD_LIBRARY_PATH='/untrusted', LD_PRELOAD='/untrusted', VK_ICD_FILENAMES='/untrusted', VK_DRIVER_FILES='/untrusted', GALLIUM_DRIVER='softpipe', KWIN_DRM_DEVICES='/untrusted')
                 script('dispatch-' + profile + '-' + str(status), body, env=env)
                 row = json.loads((directory / 'bus.log').read_text())
                 require((directory / 'status').read_text().strip() == str(status), 'Guard status lost')
                 require(row['argv'] == ['./guard.pl', str(directory), '240', '--', '/usr/pkg/bin/dbus-run-session', '--', '/bin/sh', './controller.sh'], 'Supervisor dispatch changed')
                 for key, value in expected_power.items():
                     require(row['env'].get(key) == (value if profile == 'powervr-zink' else None), 'Incorrect environment: ' + key)
-                for key in ['LD_LIBRARY_PATH', 'LD_PRELOAD', 'LIBGL_DRIVERS_PATH', 'VK_ICD_FILENAMES', 'QT_PLUGIN_PATH', 'QML_IMPORT_PATH']:
+                for key in ['LD_LIBRARY_PATH', 'LD_PRELOAD', 'LIBGL_DRIVERS_PATH', 'VK_ICD_FILENAMES', 'QT_PLUGIN_PATH', 'QML_IMPORT_PATH', 'KWIN_DRM_DEVICES']:
                     require(key not in row['env'], 'Inherited private override: ' + key)
                 require(row['env']['EMBER_PLASMA_RENDERER_PROFILE'] == profile, 'Profile lost at dispatch')
+                require(row['env']['EMBER_PLASMA_BACKEND'] == backend, 'Backend lost at dispatch')
 
         # The controller must pass the selected profile at all three call sites.
         calls = [line for line in controller.splitlines() if line.startswith('/bin/sh ./check-results.sh ')]
@@ -203,11 +206,165 @@ def main():
             (work / 'check-results.sh').write_text(check_text)
             script('controller-checks-' + profile, 'profile=' + profile + '\n' + '\n'.join(calls) + '\n')
 
+        # The backend enum is independent of renderer selection and option order.
+        parser_backend = runner.split('[ "$(id -u)" -ne 0 ]', 1)[0]
+        parser_backend += 'printf "%s %s\\n" "$backend" "$profile"\n'
+        for backend in ['virtual', 'drm']:
+            for profile in ['v3d', 'powervr-zink']:
+                for order in [['--backend', backend, '--renderer', profile],
+                              ['--renderer', profile, '--backend', backend]]:
+                    require(script('backend-parser-' + str(len(results)), parser_backend,
+                                   [*order, str(out)]) == (backend + ' ' + profile + '\n').encode(),
+                            'Backend/profile parser changed')
+        for argv in [['--backend'], ['--backend', '', str(out)],
+                     ['--backend', 'unknown', str(out)], ['--backend', 'drm'],
+                     ['--backend', 'drm', '--backend', 'virtual', str(out)],
+                     ['--backend', 'drm', str(out), '--renderer', 'v3d'],
+                     ['--width', '1920', str(out)], ['--drm', str(out)]]:
+            script('backend-parser-reject-' + str(len(results)), parser_backend, argv, 2)
+            require(not out.exists(), 'Rejected backend created output')
+        call('full-unknown-backend', ['/bin/sh', str(source / 'run.sh'), '--backend', 'unknown', str(out)], 2)
+
+        # Only target paths are replaced; real character/access/symlink tests run.
+        for backend, nodes, expected in [
+                ('drm', ['/dev/null'], 0), ('virtual', [str(regular)], 0),
+                ('drm', [str(regular)], 2), ('drm', [str(link)], 2),
+                ('drm', [str(work / 'absent-primary')], 2)]:
+            body = 'backend=' + backend + '\nprofile=v3d\n' + prerequisites.replace(
+                '/dev/dri/renderD*', '/dev/null').replace('/dev/dri/card*', shlex.join(nodes))
+            script('backend-primary-' + str(len(results)), body, expected=expected)
+        # Model only access(2) answers to cover unreadable/unwritable devices.
+        primary_gate = 'primary_node=\n' + section(runner, 'primary_node=\n', 'icd=')
+        for permission in ['-r', '-w']:
+            before = '[ ' + permission + ' "$node" ]'
+            require(primary_gate.count(before) == 1, 'Primary access boundary changed')
+            script('primary-no-' + permission, 'backend=drm\n' + primary_gate.replace(
+                '/dev/dri/card*', '/dev/null').replace(before, 'false'), expected=2)
+        no_primary = prerequisites.replace('/dev/dri/renderD*', '/dev/null').replace(
+            '/dev/dri/card*', shlex.quote(str(regular)))
+        script('mutant-drop-primary-access', 'backend=drm\nprofile=v3d\n' + no_primary.replace(
+            '[ -n "$primary_node" ] ||', 'true ||'), expected=0)
+        # The same ordinary-user gate still precedes target access and launch.
+        user_gate = '[ "$(id -u)" -ne 0 ] || { echo \'Run as an ordinary desktop user.\' >&2; exit 2; }'
+        require(runner.count(user_gate) == 1, 'Ordinary-user gate changed')
+        script('backend-root-refusal', 'id() { echo 0; }\n' + user_gate + '\n', expected=2)
+
+        policy_start = 'backend=${EMBER_PLASMA_BACKEND-virtual}\n'
+        policy = policy_start + section(controller, policy_start, 'cd "$EMBER_PLASMA_OUTPUT"\n')
+        predicate = 'backend_check()\n' + section(controller, 'backend_check()\n', 'owner()\n')
+        launch_start = 'case "$backend" in\nvirtual) set -- --virtual'
+        launch = launch_start + section(controller, launch_start, 'wrapper=$!\n')
+        require('KWIN_DRM_DEVICES=' not in runner and 'Noop' not in runner + controller,
+                'Launcher must not override DRM device or seat policy')
+        layout_word = next(line.strip().split(' > layout.txt')[0] for line in controller.splitlines()
+                           if '"var emberExpectedWidth=' in line)
+        layout = (source.parent / 'plasma-desktop/layout.js').read_text()
+        layout_test = work / 'layout-test.js'
+        layout_test.write_text(r'''
+const fs = require('fs'), vm = require('vm');
+const [file, width, height, outcome] = process.argv.slice(2);
+let printed = '';
+const ctx = {screenCount: 1, screenGeometry: () => ({width: +width, height: +height}),
+ desktops: () => [{screen: 0, type: 'org.kde.plasma.folder'}],
+ panels: () => [{screen: 0, type: 'org.kde.panel', widgets: () =>
+ ['kickoff','pager','icontasks','systemtray','digitalclock','showdesktop'].map(n => ({type:'org.kde.plasma.'+n}))}],
+ print: line => {printed = line;}};
+let rejected = false;
+try {vm.runInNewContext(fs.readFileSync(file, 'utf8'), ctx, {timeout:1000});} catch (_) {rejected = true;}
+if (rejected !== (outcome === 'reject')) {console.error('FAIL: actual layout geometry outcome'); process.exit(1);}
+if (!rejected && printed !== 'PASS: default desktop, panel and six applet models on '+width+'x'+height) {
+ console.error('FAIL: actual layout evidence'); process.exit(1);
+}
+console.log('PASS: actual layout geometry');
+''')
+        wrapper = work / 'wrapper'
+        wrapper.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > wrapper-arguments\n')
+        wrapper.chmod(0o700)
+        for backend, width, height, name, backend_name in [
+                ('virtual', 1280, 1024, 'Virtual-0', 'KWin::VirtualBackend'),
+                ('drm', 1920, 1080, 'HDMI-A-1', 'DRM')]:
+            env = dict(os.environ, EMBER_PLASMA_BACKEND=backend)
+            directory = work / ('launch-' + backend); directory.mkdir()
+            actual_launch = launch.replace('/usr/pkg/bin/kwin_wayland_wrapper', shlex.quote(str(wrapper)))
+            script('launch-' + backend, policy + 'cd ' + shlex.quote(str(directory)) + '\n' + actual_launch + 'wait "$!"\n', env=env)
+            expected = (['--virtual', '--width', '1280', '--height', '1024'] if backend == 'virtual' else ['--drm'])
+            expected += ['--xwayland', '--no-lockscreen', '/bin/sh ./environment.sh']
+            require((directory / 'wrapper-arguments').read_text().splitlines() == expected,
+                    'Actual backend launch arguments changed')
+            payload = work / ('layout-' + backend + '.js')
+            (work / 'layout.js').write_text(layout)
+            payload.write_bytes(script('layout-payload-' + backend, policy + 'printf "%s\\n" ' + layout_word + '\n', env=env))
+            call('layout-' + backend, ['node', str(layout_test), str(payload), str(width), str(height), 'accept'])
+            call('layout-wrong-' + backend, ['node', str(layout_test), str(payload), '800', '600', 'reject'])
+            evidence = ('LogicalOutput backend\n==============\nName: ' + backend_name + '\n\nScreens\n=======\n'
+                        'Number of Screens: 1\n\nScreen 0:\n---------\nName: ' + name + '\nEnabled: 1\n'
+                        'Geometry: 0,0,' + str(width) + 'x' + str(height) + '\nScale: 1\nRefresh Rate: 60000\n\nCompositing\n')
+            for phase in ['before', 'after']:
+                f = work / ('backend-' + backend + '-' + phase + '.txt'); f.write_text(evidence)
+                script('backend-' + backend + '-' + phase, policy + predicate + 'backend_check "$1"\n', [str(f)], env=env)
+            for label, bad in [
+                    ('wrong-backend', evidence.replace('Name: ' + backend_name + '\n', 'Name: wrong-backend\n', 1)),
+                    ('wrong-output', evidence.replace('Name: ' + name + '\n', 'Name: Virtual-99\n')),
+                    ('wrong-mode', evidence.replace('Geometry: 0,0,', 'Geometry: 1,0,')),
+                    ('wrong-size', evidence.replace('Geometry: 0,0,' + str(width), 'Geometry: 0,0,800')),
+                    ('disabled', evidence.replace('Enabled: 1', 'Enabled: 0')),
+                    ('scaled', evidence.replace('Scale: 1', 'Scale: 2')),
+                    ('wrong-refresh', evidence.replace('Refresh Rate: 60000', 'Refresh Rate: 50000')),
+                    ('duplicate', evidence.replace('Name: ' + name, 'Name: ' + name + '\nName: ' + name)),
+                    ('two-screens', evidence.replace('Number of Screens: 1', 'Number of Screens: 2')),
+                    ('unrelated', evidence.replace('LogicalOutput backend', 'unrelated'))]:
+                f = work / ('backend-' + backend + '-' + label + '.txt'); f.write_text(bad)
+                script('backend-' + backend + '-' + label, policy + predicate + 'backend_check "$1"\n', [str(f)], 1, env)
+            if backend == 'drm':
+                wrong_launch = actual_launch.replace('drm) set -- --drm ;;', 'drm) set -- --virtual --width 1280 --height 1024 ;;')
+                script('mutant-virtual-drm-launch', policy + 'cd ' + shlex.quote(str(directory)) + '\n' + wrong_launch + 'wait "$!"\n', env=env)
+                require((directory / 'wrapper-arguments').read_text().splitlines() != expected,
+                        'Wrong virtual-to-DRM launch mutant was not observed')
+                bad = work / 'virtual-as-drm.txt'
+                bad.write_text(evidence.replace('Name: DRM\n', 'Name: KWin::VirtualBackend\n'))
+                mutant = predicate.replace('bad += ($0 != "Name: " expected_backend)', 'bad += 0')
+                script('mutant-drop-backend-name', policy + mutant + 'backend_check "$1"\n', [str(bad)], 0, env)
+                script('fixed-backend-name', policy + predicate + 'backend_check "$1"\n', [str(bad)], 1, env)
+                # Exercise both actual support callers with renderer-valid
+                # evidence from the wrong output backend. No KDE runs here.
+                (work / 'check-results.sh').write_text(check_text)
+                bad.write_text(bad.read_text() + support(V3D))
+                for phase, end in [('before', 'count=0\n'), ('after', 'shell_pid=')]:
+                    start = 'phase=support-' + phase + '\n'
+                    caller = start + section(controller, start, end)
+                    stub = 'query() { cat ' + shlex.quote(str(bad)) + '; }\nprofile=v3d\n'
+                    script('caller-' + phase + '-wrong-backend', policy + predicate + stub + caller,
+                           expected=1, env=env)
+                    mutant_caller = caller.replace('backend_check support-' + phase + '.txt\n', '')
+                    script('mutant-drop-' + phase + '-backend-gate', policy + predicate + stub + mutant_caller,
+                           expected=0, env=env)
+                mutant_payload = work / 'layout-mutant.js'
+                mutant_payload.write_text(payload.read_text().replace('geometry.width === width && geometry.height === height', 'true'))
+                row = len(results)
+                call('mutant-drop-layout-size', ['node', str(layout_test), str(mutant_payload), '800', '600', 'reject'], 1)
+                require('FAIL: actual layout geometry outcome' in results[row]['stderr'], 'Unrelated layout mutant failure')
+        script('controller-unknown-backend', policy, env=dict(os.environ, EMBER_PLASMA_BACKEND='unknown'), expected=2)
+        for phase in ['before', 'after']:
+            require(controller.count('backend_check support-' + phase + '.txt\n') == 1,
+                    'Missing actual backend evidence gate ' + phase)
+        require(runner.count('EMBER_PLASMA_BACKEND="$backend"') == 1 and
+                '"$backend" > backend.txt' in runner and '"$primary_node" > primary-node.txt' in runner,
+                'Selected backend/evidence dispatch lost')
+
         # Compare preserved lifecycle source with the exact upstream baseline.
         relative = source.relative_to(ports)
         old = lambda name: capture(['git', '-C', str(ports), 'show', BASELINE + ':' + str(relative / name)]).stdout.decode()
         original_controller = old('controller.sh')
-        projected = controller.replace('profile=${EMBER_PLASMA_RENDERER_PROFILE-v3d}\ncase "$profile" in v3d|powervr-zink) ;; *) exit 2 ;; esac\n', '')
+        projected = controller.replace(policy, '').replace(predicate, '')
+        projected = re.sub(r'^printf .* > output-policy.txt\n', '', projected, flags=re.M)
+        old_launch = re.search(r'^/usr/pkg/bin/kwin_wayland_wrapper .*? &\n',
+                               original_controller, re.M | re.S).group()
+        projected = projected.replace(launch, old_launch)
+        projected = re.sub(r'^backend_check support-(before|after)\.txt\n', '', projected, flags=re.M)
+        projected = projected.replace('var emberExpectedWidth=${width-1280}; var emberExpectedHeight=${height-1024}; ', '')
+        projected = projected.replace('"PASS: default desktop, panel and six applet models on ${width-1280}x${height-1024}"',
+                                      "'PASS: default desktop, panel and six applet models on 1280x1024'")
+        projected = projected.replace('profile=${EMBER_PLASMA_RENDERER_PROFILE-v3d}\ncase "$profile" in v3d|powervr-zink) ;; *) exit 2 ;; esac\n', '')
         projected = projected.replace(' "$profile"\n', '\n')
         require(projected == original_controller, 'Controller changed outside profile plumbing')
         require((source / 'guard.pl').read_text() == old('guard.pl'), 'Supervisor changed')

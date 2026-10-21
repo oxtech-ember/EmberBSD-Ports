@@ -5,7 +5,15 @@ set -eu
 : "${EMBER_PLASMA_OUTPUT:?}" "${EMBER_PLASMA_SESSION_MARKER:?}"
 profile=${EMBER_PLASMA_RENDERER_PROFILE-v3d}
 case "$profile" in v3d|powervr-zink) ;; *) exit 2 ;; esac
+backend=${EMBER_PLASMA_BACKEND-virtual}
+# Only this enum selects the launch arguments and layout assertion values.
+case "$backend" in
+virtual) width=1280; height=1024; output_name=Virtual-0; backend_name=KWin::VirtualBackend ;;
+drm) width=1920; height=1080; output_name=HDMI-A-1; backend_name=DRM ;;
+*) exit 2 ;;
+esac
 cd "$EMBER_PLASMA_OUTPUT"
+printf '%s %s %s\n' "$backend" "$width" "$height" > output-policy.txt
 phase=display-environment
 trap 'result=$?; printf "%s\n" "$result" > controller.status; if [ "$result" -ne 0 ]; then echo "FAIL: controller phase=$phase status=$result" >&2; fi' 0
 stamp()
@@ -51,12 +59,40 @@ render_health()
         fi
     done
 }
+backend_check()
+{
+    # Match the KWin 6.8 backend and current output fields, not unrelated names.
+    if ! awk -v expected_backend="$backend_name" -v expected_name="$output_name" \
+        -v expected_geometry="0,0,${width}x${height}" '
+        $0 == "LogicalOutput backend" { section="backend"; next }
+        section == "backend" && /^Name: / { names++; bad += ($0 != "Name: " expected_backend); next }
+        section == "backend" && $0 == "" { section="" }
+        $0 == "Screens" { section="screens"; next }
+        $0 == "Compositing" { section="" }
+        section == "screens" && /^Number of Screens: / { counts++; bad += ($0 != "Number of Screens: 1") }
+        section == "screens" && /^Screen [0-9]+:$/ { screens++; bad += ($0 != "Screen 0:") }
+        section == "screens" && /^Name: / { outputs++; bad += ($0 != "Name: " expected_name) }
+        section == "screens" && /^Enabled: / { enabled++; bad += ($0 != "Enabled: 1") }
+        section == "screens" && /^Geometry: / { geometry++; bad += ($0 != "Geometry: " expected_geometry) }
+        section == "screens" && /^Scale: / { scale++; bad += ($0 != "Scale: 1") }
+        section == "screens" && /^Refresh Rate: / { refresh++; bad += ($0 != "Refresh Rate: 60000") }
+        END { exit (bad || names != 1 || counts != 1 || screens != 1 || outputs != 1 ||
+                    enabled != 1 || geometry != 1 || scale != 1 || refresh != 1) }
+    ' "$1"; then
+        echo "FAIL: backend=$backend output policy mismatch in $1" >&2
+        return 1
+    fi
+}
 owner()
 {
     query org.freedesktop.DBus /org/freedesktop/DBus \
         org.freedesktop.DBus.GetConnectionUnixProcessID "$1"
 }
-/usr/pkg/bin/kwin_wayland_wrapper --virtual --width 1280 --height 1024 \
+case "$backend" in
+virtual) set -- --virtual --width "$width" --height "$height" ;;
+drm) set -- --drm ;;
+esac
+/usr/pkg/bin/kwin_wayland_wrapper "$@" \
     --xwayland --no-lockscreen '/bin/sh ./environment.sh' > compositor.log 2>&1 &
 wrapper=$!
 printf '%s\n' "$wrapper" > wrapper.pid
@@ -117,8 +153,8 @@ ready()
         org.kde.PlasmaShell shell > shell.txt || return $?
     grep -qx org.kde.plasma.desktop shell.txt || return $?
     query org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
-        "$(cat layout.js)" > layout.txt || return $?
-    grep -qx 'PASS: default desktop, panel and six applet models on 1280x1024' layout.txt || return $?
+        "var emberExpectedWidth=${width-1280}; var emberExpectedHeight=${height-1024}; $(cat layout.js)" > layout.txt || return $?
+    grep -qx "PASS: default desktop, panel and six applet models on ${width-1280}x${height-1024}" layout.txt || return $?
     render_health || return $?
 }
 phase=startup-readiness
@@ -140,6 +176,7 @@ ps -ax -o pid= -o ppid= -o comm= | awk -v parent="$kwin" \
 [ "$(wc -l < xwayland.pid | tr -d ' ')" = 1 ]
 phase=support-before
 query org.kde.KWin /KWin org.kde.KWin.supportInformation > support-before.txt
+backend_check support-before.txt
 /bin/sh ./check-results.sh support support-before.txt "$profile"
 count=0
 while [ "$count" -lt 6 ]; do
@@ -154,6 +191,7 @@ while [ "$count" -lt 6 ]; do
 done
 phase=support-after
 query org.kde.KWin /KWin org.kde.KWin.supportInformation > support-after.txt
+backend_check support-after.txt
 /bin/sh ./check-results.sh support support-after.txt "$profile"
 shell_pid=$(cat org.kde.plasmashell.pid)
 cat bus.log plasma-session.log compositor.log | awk -v prefix="[$shell_pid] " 'index($0, prefix) == 1' > shell-renderer.log

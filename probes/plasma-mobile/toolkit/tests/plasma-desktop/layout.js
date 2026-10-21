@@ -6,10 +6,14 @@
             throw new Error(description);
         }
     }
-    require(screenCount === 1, "Expected one virtual output");
+    var width = typeof emberExpectedWidth === "undefined" ? 1280 : emberExpectedWidth;
+    var height = typeof emberExpectedHeight === "undefined" ? 1024 : emberExpectedHeight;
+    require((width === 1280 && height === 1024) || (width === 1920 && height === 1080),
+            "Unknown output geometry policy");
+    require(screenCount === 1, "Expected one output");
     var geometry = screenGeometry(0);
-    require(geometry.width === 1280 && geometry.height === 1024,
-            "Unexpected virtual output size");
+    require(geometry.width === width && geometry.height === height,
+            "Unexpected output size");
     var desktop = desktops().filter(function (item) { return item.screen === 0; });
     require(desktop.length === 1 && desktop[0].type === "org.kde.plasma.folder",
             "The default Folder View desktop is missing");
@@ -23,5 +27,5 @@
     required.forEach(function (type) {
         require(types.indexOf(type) !== -1, "Missing default applet: " + type);
     });
-    print("PASS: default desktop, panel and six applet models on 1280x1024");
+    print("PASS: default desktop, panel and six applet models on " + width + "x" + height);
 })();

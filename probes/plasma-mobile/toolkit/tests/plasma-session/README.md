@@ -3,7 +3,9 @@
 Origin: EmberBSD, AI-assisted implementation and source audit.
 
 This test starts the installed `startplasma-wayland` classic session as an
-ordinary user. KWin uses a 1280x1024 virtual output. The test requires OpenGL
+ordinary user. The default backend uses a 1280x1024 virtual output. An explicit
+`--backend drm` selects the current native BCM2712 1920x1080 diagnostic policy.
+The test requires OpenGL
 with the selected hardware renderer, Xwayland, KSMServer, Activities, KDED and Plasma Desktop.
 It verifies readiness for 30 seconds and requests normal logout.
 
@@ -29,7 +31,13 @@ No target compilation is required. Select a new absolute output directory:
 ```sh
 sh ./run.sh /tmp/plasma-session-check
 sh ./run.sh --renderer powervr-zink /tmp/plasma-powervr-check
+sh ./run.sh --backend drm --renderer v3d /tmp/plasma-drm-check
 ```
+
+The backend is `virtual` or `drm`. `virtual` remains the default.
+The renderer and backend options can appear in either order. Duplicate,
+missing and unknown options fail before output creation or session launch.
+No arbitrary dimensions or KWin arguments are accepted.
 
 The default renderer profile is `v3d`. The only other profile is
 `powervr-zink`. Unknown profiles fail before output creation or session launch.
@@ -55,6 +63,27 @@ This profile uses one installed ICD. It does not accept a private library
 prefix, library interposition or an inherited driver list. It records the
 profile, accessible node and ICD hash. The node record proves access only;
 it does not identify the device which KWin selects.
+For `drm`, an existing ordinary account also needs read and write access to
+at least one nonsymlink `/dev/dri/card*` character device. `primary-node.txt`
+records an accessible candidate; it does not prove which device KWin opens.
+
+The runner does not change permissions, create accounts or select DRM devices
+through `KWIN_DRM_DEVICES`. It leaves session selection to installed KWin.
+
+KWin 6.8 tries logind, ConsoleKit and then its Noop fallback. The test does not
+force that fallback or qualify it as a working seat. A reachable system bus
+and device access do not establish login, device leasing or input ownership.
+
+`backend.txt` records the requested backend. `output-policy.txt` records the
+checked backend, width and height. DRM uses `--drm` without windowed-size
+arguments. It requires one enabled `HDMI-A-1` output at 1920x1080, scale 1 and
+60000 mHz. The virtual policy requires `Virtual-0` at 1280x1024 with the same
+scale and refresh rate. Both support snapshots must contain the selected
+KWin backend and those actual output fields. The Plasma layout script checks
+the same geometry, desktop, panel and applet models during readiness.
+These are programmatic diagnostics. They do not establish visible pixels,
+physical HDMI, input devices or a complete seat implementation.
+
 The V3D profile keeps its existing clean environment and driver selection.
 No profile starts GPU, display or NPU diagnostic stages.
 
@@ -107,8 +136,9 @@ or a sustained performance benchmark. Existing deadlines remain unchanged.
 
 The route follows the unpacked KWin and Plasma Workspace 6.8.0 sources:
 
-1. `kwin_wayland_wrapper --virtual --width 1280 --height 1024 --xwayland
-   --no-lockscreen` receives one positional application: `/bin/sh ./environment.sh`.
+1. The virtual route uses `kwin_wayland_wrapper --virtual --width 1280 --height
+   1024`. The DRM route uses `kwin_wayland_wrapper --drm`. Both add `--xwayland
+   --no-lockscreen` and one positional application: `/bin/sh ./environment.sh`.
 2. KWin passes its actual Wayland socket, X display and Xauthority path to
    that short application. The application writes these three values.
 3. The controller waits for `org.kde.KWinWrapper` on the private bus. It checks
@@ -182,7 +212,8 @@ it still terminates its known live child and private process group. It reports
 failure because it cannot prove cleanup of detached processes without a fresh
 inventory. It does not guess their identity or signal an unverified PID.
 
-This test does not validate physical HDMI, display modes, input devices,
+This test checks only the selected fixed output policy. It does not validate
+physical HDMI, arbitrary display modes, input devices,
 a display-manager login, screen locking, remote desktop or a long running
 session. Run the separate Desktop capture check for pixel evidence. Keep the
 hardware acceptance record separate.
@@ -198,7 +229,8 @@ python3 -B ./renderer-host.py --sdk-source /absolute/EmberBSD-SDK \
   --work /absolute/new-renderer-probe
 ```
 
-These controls execute the actual shell parser, renderer checks and clean
+These controls execute the actual shell parser, backend and renderer checks,
+layout JavaScript, current-output predicates, and clean
 environment dispatch. They cover both profiles, the legacy two-argument
 checker, mixed renderers, software fallbacks, unrelated text and missing
 installed prerequisites. They preserve the guard arguments, return status
@@ -234,6 +266,12 @@ The file requires current-user ownership and mode 0600. No filename length is as
 Symlinks, nested paths, traversal and paths outside the session are rejected.
 The checks use the full BSD `stat` mode, including the file type.
 The fixture never reads or records a real authentication cookie.
+
+The backend controls include unknown and duplicate options, primary access,
+DRM/virtual launch arguments, fixed geometry, and both actual support callers.
+Named mutants expose omitted primary access, a virtual launch requested as
+DRM, missing backend checks and disabled layout-size assertions. They do not
+execute KDE. The new public DRM CLI has no target acceptance claim here.
 
 Host result: 33 full-controller controls and 25 focused Xauthority controls pass
 on macOS with native Perl 5.44 and Ruby 4.0. The focused test runs the actual

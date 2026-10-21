@@ -496,8 +496,11 @@ runtime behavior are validated.
   30 seconds of liveness and normal logout. Readiness takes 18.408 and 15.661
   seconds from controller start. BO usage returns to its initial value; recorded
   temperature stays below 58 degrees Celsius without throttling or undervoltage.
-  Graphical login, physical input, HDMI/KMS, hotplug, remote display and
-  long-duration stability remain unaccepted.
+  The session runner also provides an explicit DRM diagnostic backend.
+  Host controls check its CLI, primary access and fixed 1920x1080 output policy.
+  Target acceptance of that public route remains separate. Graphical login,
+  physical input, HDMI, hotplug, remote display and long-duration stability
+  remain unaccepted.
   The current xdg-user-dirs 0.20
   cross package passes private-profile checks on CM5.
   [Desktop package preparation](probes/plasma-mobile/toolkit/cross/desktop-package-set.md)

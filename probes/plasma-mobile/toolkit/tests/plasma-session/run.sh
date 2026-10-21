@@ -4,16 +4,27 @@
 set -eu
 usage()
 {
-    echo "Usage: $0 [--renderer v3d|powervr-zink] ABSOLUTE_NEW_OUTPUT" >&2
+    echo "Usage: $0 [--backend virtual|drm] [--renderer v3d|powervr-zink] ABSOLUTE_NEW_OUTPUT" >&2
     exit 2
 }
 profile=v3d
-case "$#" in
-1) ;;
-3) [ "$1" = --renderer ] || usage; profile=$2; shift 2 ;;
-*) usage ;;
-esac
+backend=virtual
+renderer_seen=no
+backend_seen=no
+while [ "$#" -gt 1 ]; do
+    case "$1" in
+    --renderer)
+        [ "$renderer_seen" = no ] && [ "$#" -ge 3 ] || usage
+        profile=$2; renderer_seen=yes; shift 2 ;;
+    --backend)
+        [ "$backend_seen" = no ] && [ "$#" -ge 3 ] || usage
+        backend=$2; backend_seen=yes; shift 2 ;;
+    *) usage ;;
+    esac
+done
+[ "$#" -eq 1 ] || usage
 case "$profile" in v3d|powervr-zink) ;; *) usage ;; esac
+case "$backend" in virtual|drm) ;; *) usage ;; esac
 work=$1
 case "$work" in /*) ;; *) echo 'Absolute output path required.' >&2; exit 2 ;; esac
 [ ! -e "$work" ] && [ ! -L "$work" ] || { echo 'Output already exists.' >&2; exit 2; }
@@ -29,6 +40,16 @@ for node in /dev/dri/renderD*; do
     fi
 done
 [ -n "$render_node" ] || { echo 'No accessible DRM render character device.' >&2; exit 2; }
+primary_node=
+if [ "$backend" = drm ]; then
+    for node in /dev/dri/card*; do
+        if [ ! -L "$node" ] && [ -c "$node" ] && [ -r "$node" ] && [ -w "$node" ]; then
+            primary_node=$node
+            break
+        fi
+    done
+    [ -n "$primary_node" ] || { echo 'No accessible DRM primary character device.' >&2; exit 2; }
+fi
 icd=/usr/pkg/share/vulkan/icd.d/powervr_mesa_icd.json
 if [ "$profile" = powervr-zink ] && { [ ! -f "$icd" ] || [ ! -r "$icd" ]; }; then
     echo "Missing installed PowerVR ICD: $icd" >&2
@@ -87,6 +108,8 @@ printf '[General]\nsystemdBoot=false\n' > "$work/config/startkderc"
 cd "$work"
 printf '%s\n' "$system_bus_id" > system-bus-id.txt
 printf '%s\n' "$profile" > renderer-profile.txt
+printf '%s\n' "$backend" > backend.txt
+if [ "$backend" = drm ]; then printf '%s\n' "$primary_node" > primary-node.txt; fi
 printf '%s\n' "$render_node" > render-node.txt
 if [ "$profile" = powervr-zink ]; then
     /usr/bin/cksum -a SHA256 "$icd" > renderer-icd.sha256
@@ -113,7 +136,7 @@ status=0
     XDG_CACHE_HOME="$work/cache" XDG_DATA_HOME="$work/data" XDG_STATE_HOME="$work/state" \
     XDG_DATA_DIRS=/usr/pkg/share XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=KDE \
     QT_QPA_PLATFORM=wayland QSG_RHI_BACKEND=opengl QSG_INFO=1 \
-    EMBER_PLASMA_RENDERER_PROFILE="$profile" \
+    EMBER_PLASMA_RENDERER_PROFILE="$profile" EMBER_PLASMA_BACKEND="$backend" \
     QT_MESSAGE_PATTERN='[%{pid}] %{category}: %{message}' EMBER_PLASMA_OUTPUT="$work" \
     /usr/pkg/bin/perl ./guard.pl "$work" 240 -- \
     /usr/pkg/bin/dbus-run-session -- /bin/sh ./controller.sh > bus.log 2>&1 || status=$?
@@ -139,4 +162,4 @@ if find runtime -type s | grep -q .; then
 fi
 /bin/sh ./check-results.sh support support-after.txt "$profile"
 /bin/sh ./check-results.sh renderer shell-renderer.log "$profile"
-echo "PASS: installed classic Plasma session, $profile, Xwayland, Activities and logout; virtual output only"
+echo "PASS: installed classic Plasma session, $profile, Xwayland, Activities and logout; $backend backend, programmatic readiness only"
