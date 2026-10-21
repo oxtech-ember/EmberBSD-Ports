@@ -4,4 +4,4 @@ BLAKE2s (lxqt-config-2.4.0.tar.xz) = f857f4a66b3e2d489585bb411527ec818dee1758e23
 SHA512 (lxqt-config-2.4.0.tar.xz) = ba4c653c74fa87bc5fb957e454388399ee1a7d1f21b22f9fe0b62112f1d81254fec9d66070304737001412b56e7388a0a4b3615ddba6bcdecc74e9e59560d25c
 Size (lxqt-config-2.4.0.tar.xz) = 416440 bytes
 SHA1 (patch-lxqt-config-input_keyboardlayoutconfig.h) = ba7ce5b75579f4478fe14a96dd852027f3570a79
-SHA1 (patch-lxqt-config-monitor_monitorpicture.cpp) = 0ad64663c05ff25bdd5860471fa0e369f5b79c4c
+SHA1 (patch-lxqt-config-monitor_monitorpicture.cpp) = d349ab033281df1215defa9cf68649e6db9fccb2
