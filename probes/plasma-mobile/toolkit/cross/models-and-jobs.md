@@ -18,6 +18,14 @@ folding. Case-sensitive stages are unchanged. No file check is disabled.
 The source regression reproduces the mismatch, retains an extra-file error,
 and rejects collisions without modifying the original comparison input.
 
+The helper cannot detect a PLIST entry with the wrong directory spelling.
+The case-folded comparison accepts it, and the package installs the header
+in the wrong directory on the target. `tests/plist-header-case.py` checks
+all recipe PLIST files. ECM installs lowercase `.h` headers in the lowercase
+directory. The check rejects such a header in a CamelCase directory that has
+a lowercase sibling. KIO 6.31.0nb1 corrects `kio/renamefilewarningdialog.h`.
+Build a package on a case-sensitive stage to confirm its complete file list.
+
 KWindowSystem and KGuiAddons buildlinks now follow Qt 6.12's move of
 WaylandClient into Qtbase. The real KCrash/KColorScheme dependency graph
 passes `tests/wayland-client-deps.sh`; restoring the previous buildlinks

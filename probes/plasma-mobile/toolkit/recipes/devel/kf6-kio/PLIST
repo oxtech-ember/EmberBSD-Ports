@@ -197,7 +197,6 @@ include/KF6/KIOWidgets/KIO/RenameFileWarningDialog
 include/KF6/KIOWidgets/KIO/SkipDialog
 include/KF6/KIOWidgets/KIO/SslUi
 include/KF6/KIOWidgets/KIO/WidgetsAskUserActionHandler
-include/KF6/KIOWidgets/KIO/renamefilewarningdialog.h
 include/KF6/KIOWidgets/KOpenWithDialog
 include/KF6/KIOWidgets/KPropertiesDialog
 include/KF6/KIOWidgets/KPropertiesDialogPlugin
@@ -224,6 +223,7 @@ include/KF6/KIOWidgets/kio/paste.h
 include/KF6/KIOWidgets/kio/pastejob.h
 include/KF6/KIOWidgets/kio/renamedialog.h
 include/KF6/KIOWidgets/kio/renamefiledialog.h
+include/KF6/KIOWidgets/kio/renamefilewarningdialog.h
 include/KF6/KIOWidgets/kio/skipdialog.h
 include/KF6/KIOWidgets/kio/sslui.h
 include/KF6/KIOWidgets/kio/widgetsaskuseractionhandler.h
