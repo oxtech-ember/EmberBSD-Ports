@@ -31,14 +31,7 @@ pre-build:
 
 .include "../../mk/bsd.prefs.mk"
 
-# Cross sysroots cannot register info indexes with install-info:run.
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-# Upstream make install still generates an untracked index in DESTDIR.
-post-install:
-	${RM} -f ${DESTDIR}${PREFIX}/share/info/dir
-.else
 INFO_FILES=		yes
-.endif
 
 # patch-src_m68k_ffi.c uses m68k_sync_icache(2)
 .if ${MACHINE_PLATFORM:MNetBSD-*-m68k}

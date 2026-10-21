@@ -1,0 +1,17 @@
+--- a/mk/pkginstall/bsd.pkginstall.mk
++++ b/mk/pkginstall/bsd.pkginstall.mk
+@@ -709,4 +709,14 @@
+ _INSTALL_UNPACK_TMPL+=		${_INSTALL_INFO_FILES_FILE}
+ _INSTALL_DATA_TMPL+=		${_INSTALL_INFO_FILES_DATAFILE}
+ 
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && defined(INFO_FILES)
++# Cross-built target packages cannot run the install-info tool on the builder.
++.undef INFO_FILES
++post-install: _emberbsd_cross_info_index_cleanup
++.PHONY: _emberbsd_cross_info_index_cleanup
++_emberbsd_cross_info_index_cleanup:
++	${RUN}${RM} -f ${DESTDIR}${PREFIX}/info/dir \
++	    ${DESTDIR}${PREFIX}/share/info/dir
++.endif
++
+ .if defined(INFO_FILES)
