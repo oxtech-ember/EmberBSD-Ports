@@ -17,6 +17,10 @@ BUILDLINK_ABI_DEPENDS.qt6-qtbase+= qt6-qtbase>=6.12.0nb3
 # The installed image needs the runtime; CMake consumers also need the SDK
 # in the build-host sysroot. BUILD_DEPENDS remains a target cross dependency.
 .include "../../x11/qt6-qtbase-devel/buildlink3.mk"
+# Qt libraries need other Qt libraries from qt6/lib through their RPATH.
+# The cross GNU ld has no sysroot, so it resolves them only through
+# rpath-link.
+LDFLAGS+=	-Wl,-rpath-link,${CROSS_DESTDIR}/usr/pkg/qt6/lib
 .endif
 
 BUILDLINK_INCDIRS.qt6-qtbase+=	qt6/include
