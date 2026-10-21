@@ -55,6 +55,16 @@ returned zero: the sed suite had 64 passes and eleven skips; Gnulib had
 passed after isolated source installation and after uninstall/reinstall.
 These source lifecycle checks do not establish pkgsrc package acceptance.
 
+A separate native NetBSD11/amd64 pkgsrc build used the installed complete
+GCC16.2.0 package and the common development profile. Normal staging,
+file checks, package creation and replacement passed for `gsed-4.10nb1`.
+Package `make test` returned zero: sed had 62 passes and thirteen skips;
+Gnulib had 236 passes and fifty skips. No test failed or errored.
+The installed package passed all thirteen local C/UTF-8 cases.
+Its archive SHA256 is
+`8d1445da7e837e8a42ec7994217e7729cda962c198e2ee9b953d45dfc0009b8b`.
+Removing and reinstalling this pkgsrc package remains untested.
+
 Static analysis covers the two changed translation units with matching
 NetBSD target headers and configured Gnulib macros. GCC16 `-fanalyzer`
 returned zero with seven inherited compiler warnings in each version.
@@ -69,5 +79,5 @@ Cppcheck pass. No warning suppressions were introduced.
 
 Valgrind is not installed on the checked native platform, and the accepted
 compiler seed was built without sanitizer runtimes. No Memcheck, ASan or
-UBSan success is claimed. Package staging/check-files, installed pkgsrc
-consumers, cross builds and dynamic memory checks remain separate gates.
+UBSan success is claimed. Cross builds, additional installed consumers,
+package removal/reinstallation and dynamic memory checks remain separate gates.
