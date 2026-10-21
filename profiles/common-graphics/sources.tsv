@@ -2,6 +2,7 @@
 x11/libspnav	libspnav-1.2.tar.gz	093747e7e03b232e08ff77f1ad7f48552c06ac5236316a5012db4269951c39db	https://github.com/FreeSpacenav/libspnav/releases/download/v1.2/libspnav-1.2.tar.gz
 math/eigen3	eigen-5.0.1.tar.gz	e9c326dc8c05cd1e044c71f30f1b2e34a6161a3b6ecf445d56b53ff1669e3dec	https://gitlab.com/libeigen/eigen/-/archive/5.0.1/eigen-5.0.1.tar.gz
 cad/ng-spice	ngspice-47.tar.gz	894e649651f1838a14095e5a5439e7d3aa63e87ede14d283173fda4fcdef675f	https://downloads.sourceforge.net/project/ngspice/ng-spice-rework/47/ngspice-47.tar.gz
+cad/kicad10	kicad-10.0.7.tar.bz2	2fd6e4a0f6212fe0d26582be01e85c4d6fd59ce664018c0ffb94b2f1b074be51	https://gitlab.com/kicad/code/kicad/-/archive/10.0.7/kicad-10.0.7.tar.bz2
 graphics/MesaLib	mesa-26.2.4.tar.xz	bce5f7fbebb934373b86c999a064d52fb5065878dc57f287f95346648ec832e9	https://archive.mesa3d.org/mesa-26.2.4.tar.xz
 x11/libdrm	libdrm-2.4.134.tar.xz	ac5e74d157830eb8bee44c6a6bf3ad49774ef0dd2a72bdad74a8f20308b52a95	https://dri.freedesktop.org/libdrm/libdrm-2.4.134.tar.xz
 devel/wayland	wayland-1.26.0.tar.xz	64176eaa46e4969903e286f8e5ef8331affc17fdf03ac9b58381d2b23162b7a3	https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.26.0/downloads/wayland-1.26.0.tar.xz

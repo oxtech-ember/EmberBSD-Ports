@@ -1,0 +1,16 @@
+$NetBSD$
+
+Pass pkgsrc linker flags to the dynamically loaded pcbnew interface.
+
+--- pcbnew/CMakeLists.txt.orig
++++ pcbnew/CMakeLists.txt
+@@ -911,6 +911,9 @@
+     $<$<BOOL:${KICAD_MAKE_LINK_MAPS}>:-Wl,--cref,-Map=_pcbnew.kiface.map>
+     )
+ 
++set_property(TARGET pcbnew_kiface APPEND_STRING
++    PROPERTY LINK_FLAGS " $ENV{LDFLAGS}")
++
+ #if building pcbnew, then also build pcbnew_kiface if out of date.
+ add_dependencies( pcbnew pcbnew_kiface )
+ 

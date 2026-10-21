@@ -1,0 +1,20 @@
+$NetBSD: distinfo,v 1.30 2025/12/22 15:33:09 adam Exp $
+
+BLAKE2s (kicad-10.0.7.tar.bz2) = a4366f598eaabfec82b783df7904c96dd1c267536306327c0823163c896fa6fa
+SHA512 (kicad-10.0.7.tar.bz2) = 805784dedb877857d60ee1c6b515fc908692b698bfd72da00205e875c358e13856d788640dbe26c010d20b17459ad3150fdacd7fc7f1bc6e41f3dbdb188e004e
+Size (kicad-10.0.7.tar.bz2) = 234602726 bytes
+SHA1 (patch-3d-viewer_3d_cache_sg_CMakeLists.txt) = c6e55d62646e890ba02b2a56dc3481f75ffba8a0
+SHA1 (patch-cmake_config.h.cmake) = 325b9c81e90477152b778e04c4fabe41548aa51d
+SHA1 (patch-common_import__gfx_dxf__import__plugin.cpp) = 9ba67a398f9d9c0bd487b0cc5a8954be9cf8e274
+SHA1 (patch-cvpcb_CMakeLists.txt) = a839b465f73727786495dace80c1706d457b33e4
+SHA1 (patch-eeschema_CMakeLists.txt) = 89d5b25822f6d5856f827823e0646be80cbbfcb4
+SHA1 (patch-eeschema_sim_kibis_kibis.cpp) = 18d804db727498cffef4dffc36b30dbe2c608bcb
+SHA1 (patch-eeschema_sim_sim_property.cpp) = 3edb3ba6d1ac3f15d7562cb5b6c11815ee77d7d2
+SHA1 (patch-gerbview_CMakeLists.txt) = ae4d813f4247b46546ef0945785ae99114d2d68d
+SHA1 (patch-include_kiway.h) = 7208f474e895ea07ba5e5f56bab46d4d529b9e57
+SHA1 (patch-pagelayout__editor_CMakeLists.txt) = d6ee568713ce666f2ece34974a922698d9479c8e
+SHA1 (patch-pcb__calculator_CMakeLists.txt) = 4b496498c6bef100f2eca99209e3efa521a3c653
+SHA1 (patch-pcbnew_CMakeLists.txt) = 428d7fabb492f71feeac6d989afc50f778daea43
+SHA1 (patch-plugins_3d_idf_CMakeLists.txt) = 9061c5c5eac3311625ba93e541d557007c83eddc
+SHA1 (patch-plugins_3d_vrml_CMakeLists.txt) = ea6942a953432c5c0124c57e9afb01f8a5c5325d
+SHA1 (patch-thirdparty_libcontext_libcontext.h) = cde252b7ee114f88527d953aa0c3ebcdd905c4a9
