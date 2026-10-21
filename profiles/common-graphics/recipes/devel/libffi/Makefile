@@ -32,7 +32,11 @@ pre-build:
 .include "../../mk/bsd.prefs.mk"
 
 # Cross sysroots cannot register info indexes with install-info:run.
-.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# Upstream make install still generates an untracked index in DESTDIR.
+post-install:
+	${RM} -f ${DESTDIR}${PREFIX}/share/info/dir
+.else
 INFO_FILES=		yes
 .endif
 
