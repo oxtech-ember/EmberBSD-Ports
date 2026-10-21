@@ -1,0 +1,91 @@
+EmberBSD local, AI-assisted; not submitted upstream.
+Initialize opaque multibyte states completely with GCC 15 and later.
+
+--- a/textproc/gsed/Makefile
++++ b/textproc/gsed/Makefile
+@@ -2,6 +2,7 @@
+ 
+ DISTNAME=	sed-4.10
+ PKGNAME=	g${DISTNAME}
++PKGREVISION=	1
+ CATEGORIES=	textproc editors
+ MASTER_SITES=	${MASTER_SITE_GNU:=sed/}
+ EXTRACT_SUFX=	.tar.xz
+--- a/textproc/gsed/distinfo
++++ b/textproc/gsed/distinfo
+@@ -5,3 +5,5 @@
+ Size (sed-4.10.tar.xz) = 1732800 bytes
+ SHA1 (patch-Makefile.in) = 43e496f0305756eef1c821ae47f25709eb8e65e9
+ SHA1 (patch-gnulib-tests_pselect.c) = d25ce77076386804a01a0085d6619c9896ecf5d3
++SHA1 (patch-sed_compile.c) = 331869ceb7397f2e7c844e13fb5b20b9296657b1
++SHA1 (patch-sed_execute.c) = c9d132b4ad6c06d0515d99e098b9a2c29618ae71
+--- a/textproc/gsed/patches/patch-sed_compile.c
++++ b/textproc/gsed/patches/patch-sed_compile.c
+@@ -0,0 +1,43 @@
++$NetBSD$
++
++Origin: EmberBSD (AI-assisted), not submitted upstream.
++Zero the complete opaque mbstate_t before first use. GCC 15 and later
++initialize only the first member of a union for a nonempty initializer.
++NetBSD uses a 128-byte union with an 8-byte alignment member first.
++https://gcc.gnu.org/gcc-15/changes.html
++
++--- sed/compile.c.orig
+++++ sed/compile.c
++@@ -450,7 +450,9 @@
++ {
++   struct buffer *b;
++   int ch;
++-  mbstate_t cur_stat = { 0, };
+++  mbstate_t cur_stat;
+++
+++  memset (&cur_stat, 0, sizeof cur_stat);
++ 
++   /* We allow only 1 byte characters for a slash.  */
++   if (IS_MB_CHAR (slash, &cur_stat))
++@@ -1204,7 +1206,9 @@
++                 idx_t *src_lens = XNMALLOC (len, idx_t);
++                 char **trans_pairs;
++                 size_t mbclen;
++-                mbstate_t cur_stat = { 0, };
+++                mbstate_t cur_stat;
+++
+++                memset (&cur_stat, 0, sizeof cur_stat);
++ 
++                 /* Enumerate how many character the source buffer has.  */
++                 for (i = 0, j = 0; i < len;)
++@@ -1321,7 +1325,9 @@
++   int bracket_state = 0;
++ 
++   size_t mbclen;
++-  mbstate_t cur_stat = { 0, };
+++  mbstate_t cur_stat;
+++
+++  memset (&cur_stat, 0, sizeof cur_stat);
++ 
++   while (p < bufend)
++     {
+--- a/textproc/gsed/patches/patch-sed_execute.c
++++ b/textproc/gsed/patches/patch-sed_execute.c
+@@ -0,0 +1,21 @@
++$NetBSD$
++
++Origin: EmberBSD (AI-assisted), not submitted upstream.
++Zero the complete opaque mbstate_t before first use. GCC 15 and later
++initialize only the first member of a union for a nonempty initializer.
++NetBSD uses a 128-byte union with an 8-byte alignment member first.
++https://gcc.gnu.org/gcc-15/changes.html
++
++--- sed/execute.c.orig
+++++ sed/execute.c
++@@ -1192,7 +1192,9 @@
++ translate_mb (char *const *trans)
++ {
++   idx_t idx; /* index in the input line.  */
++-  mbstate_t mbstate = { 0, };
+++  mbstate_t mbstate;
+++
+++  memset (&mbstate, 0, sizeof mbstate);
++   for (idx = 0; idx < line.length;)
++     {
++       idx_t i;

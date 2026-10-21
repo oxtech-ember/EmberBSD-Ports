@@ -1,5 +1,10 @@
 # Common development toolchain (candidate)
 
+The [GNU sed multibyte repair](gsed.md) clears opaque conversion states in
+four production paths. It fixes sed state handling with GCC15+ on NetBSD without
+forcing C locale behavior or weakening patch checksums. Native GCC16 runtime
+and upstream checks are recorded separately from package acceptance.
+
 This profile builds GCC 16.2.0 for native EmberBSD/NetBSD 11 AArch64.
 The candidate package builds in the AArch64 VM and runs there and on physical
 Orange Pi Zero 3W, passing C11/C++20 thread, TLS, shared-library and runtime-identity probes. It is the

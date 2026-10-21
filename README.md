@@ -19,6 +19,11 @@ runtime behavior are validated.
 
 ## Current contents
 
+- [GNU sed UTF-8 state initialization](profiles/development-toolchain/gsed.md):
+  complete opaque-state initialization fixes native GCC15+ union behavior.
+  Native GCC16 execution and all sed/Gnulib suites pass; package integration
+  and dynamic memory checks remain separate.
+
 - [Package replacement preflight](profiles/common-build-tools/cross/README.md#acceptance):
   cross package tools retain successful dry runs and real deletion failures.
   The source contract checks metadata ownership and alternate-root script
