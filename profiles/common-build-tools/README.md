@@ -66,7 +66,7 @@ upstream Python 3.15 example and closed-stderr compiler regression pass.
 Strict memory checks retain upstream allocation findings; target packaging
 and complete KiCad bindings remain pending.
 
-The shared [zlib 1.3.2nb1 recipe](recipes/devel/zlib/README.md) replaces the
+The shared [zlib 1.3.2nb2 recipe](recipes/devel/zlib/README.md) replaces the
 vendored 1.3.1 sources with the verified current release. It preserves pkgsrc
 Libtool naming and the complete gzip API. Two writer-seek repairs pass native
 GCC16 regression and strict Memcheck checks. The ordinary AArch64 cross package

@@ -2,7 +2,7 @@
 # EmberBSD: use the verified upstream release, with the pkgsrc libtool ABI.
 
 DISTNAME=	zlib-1.3.2
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	devel
 MASTER_SITES=	https://zlib.net/
 EXTRACT_SUFX=	.tar.xz

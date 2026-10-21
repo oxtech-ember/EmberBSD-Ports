@@ -21,9 +21,15 @@ The buildlink floor requires this repaired common provider.
 | `gzguts.h` | Retain the original pkgsrc `<unistd.h>` declaration include. |
 | `gzlib.c` | Initialize `past` for writers, since seeking and position queries read it in both modes. |
 | `gzwrite.c` | Allocate the input buffer before a deferred seek writes zero bytes. A seek can precede the first `gzputc`. |
+| `zconf.h` | Test `HAVE_UNISTD_H` and `HAVE_STDARG_H` with `defined()` first. Consumers built with `-Werror=undef` accept the installed header. |
 
-The latter two changes are AI-assisted EmberBSD fixes. They have not been
+The `gzlib.c`, `gzwrite.c` and `zconf.h` changes are AI-assisted EmberBSD fixes. They have not been
 submitted upstream. The first patch preserves the existing pkgsrc adaptation.
+The `zconf.h` change keeps the upstream selection: an undefined or zero name
+leaves `Z_HAVE_UNISTD_H` or `Z_HAVE_STDARG_H` unset. It changes no library
+object, so the buildlink floor stays at nb1. Run
+`CC=/absolute/cc sh tests/zlib-wundef.sh /absolute/distfiles /absolute/new-work`
+from `profiles/common-build-tools`; it fails with the unchanged header.
 No compression, gzip, append, seek or error behavior is disabled.
 
 `files/seek-writer.c` tests deferred writer seeks, position queries, zero
