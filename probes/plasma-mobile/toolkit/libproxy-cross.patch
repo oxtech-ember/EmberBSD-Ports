@@ -315,3 +315,17 @@ Keep the complete toolkit output and its GIR query path unchanged.
 +       'DYLD_LIBRARY_PATH': meson.project_build_root() + '/src/libproxy'
 +     },
 +     extra_args: libproxy_gir_extra_args,
+--- a/www/libproxy/buildlink3.mk
++++ b/www/libproxy/buildlink3.mk
+@@ -10,6 +10,11 @@
+ BUILDLINK_PKGSRCDIR.libproxy?=		../../www/libproxy
+ 
+ BUILDLINK_INCDIRS.libproxy+=		include/libroxy
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# libproxy.so needs its private backend in lib/libproxy. The cross GNU ld
++# has no sysroot, so it finds that DT_NEEDED entry only through rpath-link.
++LDFLAGS+=	-Wl,-rpath-link,${CROSS_DESTDIR}/usr/pkg/lib/libproxy
++.endif
+ 
+ .include "../../devel/glib2/buildlink3.mk"
+ .endif # LIBPROXY_BUILDLINK3_MK
