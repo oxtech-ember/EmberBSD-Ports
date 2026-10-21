@@ -64,6 +64,14 @@ lookup with a real CMake target-only root. The corrected lookup passes; the
 original lookup and missing-import controls fail. The complete KService 6.31
 package now builds its translated manuals through the selected native tooling.
 
+Relocatable stylesheets import DocBook XSL through `../../../xsl/docbook`.
+They also load localization data from the `xsl` subdirectory.
+libxslt resolves these paths relative to the symbolic link.
+It does not use the link target.
+In cross mode, the KDocTools `buildlink3.mk` links the complete customization
+tree and the DocBook XSL tree into the consumer's buildlink directory.
+The consumer gets DocBook XSL as a build dependency only.
+
 ## Reproduce the checks
 
 
@@ -86,12 +94,29 @@ The second check applies the recipe patch to the pinned pkgsrc with zero fuzz,
 compares the export, rejects repeated application, and inspects the actual
 package's Perl dependency and installed interpreter line.
 
+```sh
+BMAKE=/absolute/bmake MAKECONF=/absolute/cross.mk \
+    sh ../tests/kdoctools-buildlink.sh /absolute/prepared-pkgsrc \
+    /absolute/new-buildlink-test
+```
+
+Install the KService dependencies into the cross sysroot before this check.
+The check reads the dependency metadata and the KDocTools contents filter.
+It prepares a real KService buildlink directory. Then the native `meinproc6`
+from `EMBERBSD_KF6_DOCTOOLS_HOST` generates English and German manual pages.
+
 On 2026-10-12, the complete GCC16 cross packages passed dependency, manifest,
 interpreter, permissions, PIE, RELRO, RPATH and build-path checks. Native
 DocBook generation and the input/recipe checks passed on macOS ARM64.
 Target KDocTools execution, its complete upstream suite, memory analysis and
 the desktop session remain separate acceptance gates. No C/C++ source changed
 in these recipes; these checks do not claim whole-source static analysis.
+
+On 2026-10-21 on macOS ARM64, the buildlink check passed for the amd64
+target. Manual controls failed: the previous KDocTools `buildlink3.mk`,
+a full DocBook dependency and a filter without the customization tree.
+The previous file failed with the DocBook XSL import error.
+The DocBook recipe check still passed.
 
 | Package | SHA256 |
 | --- | --- |

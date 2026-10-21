@@ -15,6 +15,15 @@ BUILDLINK_FILES.kf6-kdoctools+=		share/kf6/kdoctools/customization/*.xsl
 BUILDLINK_FILES.kf6-kdoctools+=		bin/checkXML6
 BUILDLINK_FILES.kf6-kdoctools+=		bin/meinproc6
 
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# Relocatable stylesheets load customization data and DocBook XSL through
+# relative paths below the buildlink prefix. Keep the default filter terms.
+BUILDLINK_CONTENTS_FILTER.kf6-kdoctools?=	\
+	${EGREP} '(include.*/|\.h$$|\.idl$$|\.pc$$|/lib[^/]*\.[^/]*$$|lib/cmake/|share/cmake/|^share/kf6/kdoctools/customization/)'
+BUILDLINK_DEPMETHOD.docbook-xsl?=	build
+.include "../../textproc/docbook-xsl/buildlink3.mk"
+.endif
+
 .include "../../textproc/libxslt/buildlink3.mk"
 .include "../../textproc/libxml2/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"

@@ -13,6 +13,7 @@ git -C "$root/upstream/pkgsrc" archive HEAD textproc/docbook-xsl > "$work/recipe
 tar -xf "$work/recipe.tar" -C "$work/pkgsrc"
 patch -f -N -F 0 -p1 -d "$work/pkgsrc" < "$root/probes/plasma-mobile/toolkit/docbook-cross.patch" > "$work/patch.log"
 cmp "$work/pkgsrc/textproc/docbook-xsl/Makefile" "$prepared/textproc/docbook-xsl/Makefile"
+cmp "$work/pkgsrc/textproc/docbook-xsl/buildlink3.mk" "$prepared/textproc/docbook-xsl/buildlink3.mk"
 if patch -f -N -F 0 -p1 -d "$work/pkgsrc" < "$root/probes/plasma-mobile/toolkit/docbook-cross.patch" > "$work/repeated.log" 2>&1; then exit 1; fi
 recipe=$prepared/textproc/docbook-xsl
 "$BMAKE" -C "$recipe" -V '${PKG_FAIL_REASON}' > "$work/reasons.txt"
