@@ -299,7 +299,7 @@ runtime behavior are validated.
   The [Desktop probe](probes/plasma-mobile/toolkit/tests/plasma-desktop/README.md) passes on physical CM5 with V3D and a virtual Wayland output.
   It verifies visible containment pixels, six layout checks over 30 seconds and normal shell exit.
   The unknown-output control rejects the invalid output without creating an image.
-  The complete virtual session passes the CM5 checks below. Graphical login, physical HDMI and hotplug remain unaccepted.
+  The persistent standard session also passes physical CM5 HDMI and automatic startup as described below. Graphical login and hotplug remain unaccepted.
   Adapted libdrm 2.4.134nb2, Wayland 1.26.0nb1 and wayland-protocols 1.49
   compose the common GCC16/Python315/Meson112/shared LLVM23 profile for EmberBSD/AArch64.
   An optional [PowerVR ICD](profiles/common-graphics/cross/powervr.md) retains
@@ -326,7 +326,7 @@ runtime behavior are validated.
   NIR cases remain disabled. The [LLVM23.1.3 provider](profiles/common-graphics/cross/mesa-llvm2313.md)
   supports both V3D and llvmpipe; current CM5 nb8 acceptance is described above.
   Same-device PRIME and EGLImage also pass on CM5 after OS lifetime repairs.
-  Physical HDMI, hotplug and long-duration Plasma stability remain unaccepted.
+  The persistent session passes physical CM5 HDMI. Hotplug and long-duration Plasma stability remain unaccepted.
   The nb2 XCB pkg-config correction preserves
   byte-identical Mesa libraries. Installed [libepoxy](profiles/common-graphics/cross/epoxy.md)
   passes real dispatch through those providers and four pure upstream tests.
@@ -500,11 +500,15 @@ runtime behavior are validated.
   Host controls check its CLI, primary access and fixed 1920x1080 output policy.
   That unmodified public route passes on CM5 with V3D, 30 seconds of liveness
   and normal logout. A separate BO snapshot contains desktop pixels. Graphical
-  login, physical input, HDMI, seat ownership, hotplug, remote display and
+  login, physical input, seat ownership, hotplug, remote display and
   long-duration stability remain unaccepted.
   The opt-in [persistent Plasma service](probes/plasma-mobile/toolkit/service/README.md)
-  starts the standard entry for an existing non-root account. Its source and
-  host ownership checks are separate from target service acceptance.
+  starts the standard entry for an existing non-root account. The current Qt
+  runtime fixes early KDE theme initialization. Physical HDMI desktop and panel,
+  atomic DRM/V3D rendering and automatic startup after reboot pass on CM5.
+  The optional service recipe uses standard pkgsrc rc.d hooks and defaults
+  to disabled. Host package lifecycle checks are separate from target package
+  installation acceptance.
   The current xdg-user-dirs 0.20
   cross package passes private-profile checks on CM5.
   [Desktop package preparation](probes/plasma-mobile/toolkit/cross/desktop-package-set.md)

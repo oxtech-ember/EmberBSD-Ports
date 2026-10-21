@@ -1,0 +1,13 @@
+===========================================================================
+Install this package and its dependencies with PKG_RCD_SCRIPTS=yes to install
+the standard rc.d files. Package installation does not start Plasma.
+
+In /etc/rc.conf, enable the existing system bus and select an existing account:
+    dbus=YES
+    ember_plasma=YES
+    ember_plasma_user=desktopuser
+
+The default is disabled. Do not select root. This is an intentional automatic
+unauthenticated session. Device access and seat policy remain administrator
+choices. The service creates no accounts and changes no device permissions.
+===========================================================================

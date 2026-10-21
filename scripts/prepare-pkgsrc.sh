@@ -712,7 +712,11 @@ if [ "$profile" = plasma-mobile ]; then
             cp -R "$toolkit/recipes/$recipe/." "$destination/$recipe/"
         else
             rm -rf "$destination/$recipe"
-            cp -R "$toolkit/recipes/$recipe" "$destination/$recipe"
+            if [ "$kind" = local ]; then
+                cp -RL "$toolkit/recipes/$recipe" "$destination/$recipe"
+            else
+                cp -R "$toolkit/recipes/$recipe" "$destination/$recipe"
+            fi
         fi
     done
     cp "$toolkit/sources.tsv" "$destination/EMBERBSD-PLASMA-TOOLKIT-SOURCES"

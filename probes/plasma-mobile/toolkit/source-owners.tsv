@@ -9,3 +9,4 @@ textproc/nlohmann-json	textproc/nlohmann-json	package	nlohmann-json-3.12.0.tar.g
 x11/libei	x11/libei	package	libei-1.6.0.tar.bz2
 devel/cxx-rust-cssparser	devel/cxx-rust-cssparser	package	cxx-rust-cssparser-1.1.0.tar.gz
 x11/qt6-qtbase-devel	x11/qt6-qtbase	package	-
+sysutils/ember-plasma-session	sysutils/ember-plasma-session	local	-

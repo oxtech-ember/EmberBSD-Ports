@@ -11,6 +11,7 @@ Use tabs between fields. Use `-` when the owner's selection is sufficient.
 - `package` requires a Makefile and PLIST. A shared consumer must include its owner's `Makefile.common` directly and unconditionally.
 - `meta` requires `META_PACKAGE=yes`. It can own shared source metadata without a fake PLIST.
 - `overlay` contains only changed files. The exporter preserves the pinned base recipe and copies those files over it.
+- `local` is limited to the explicit self-owned `sysutils/ember-plasma-session` recipe. It has empty `DISTFILES`, `NO_BUILD=yes`, no archive metadata and only the two exact relative links to regular canonical service files inside the toolkit. The exporter materializes those files into the standalone recipe. It does not exempt upstream recipes from source checks.
 - Multiple archives require an explicit primary archive. Source patches apply only to that archive. Supplemental dictionaries and test data still require checksums.
 
 A source owner must have one complete `distinfo`. It must list every archive and patch exactly once.

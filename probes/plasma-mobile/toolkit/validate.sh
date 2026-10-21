@@ -30,8 +30,10 @@ awk -F '\t' -v inventory="$work/inventory" -v plan="$work/sources" '
     }
     /^#/ || /^$/ { next }
     FILENAME == ARGV[1] {
-        if (NF != 4 || !recipe($1) || !recipe($2) || ($3 != "package" && $3 != "meta" && $3 != "overlay") ||
+        if (NF != 4 || !recipe($1) || !recipe($2) || ($3 != "package" && $3 != "meta" && $3 != "overlay" && $3 != "local") ||
             ($4 != "-" && !archive($4)) || mapped[$1]++) fail("Invalid source-owner entry: " $0)
+        if ($3 == "local" && ($1 != "sysutils/ember-plasma-session" || $2 != $1 || $4 != "-"))
+            fail("Invalid local source-owner binding: " $1)
         owner[$1]=$2; kind[$1]=$3
         if ($4 != "-") {
             if ($1 != $2) fail("Only a source owner can select a primary archive: " $1)
@@ -77,7 +79,9 @@ awk -F '\t' -v inventory="$work/inventory" -v plan="$work/sources" '
         }
         for (i=1; i<=recipes; i++) {
             name=names[i]; actual=owner[name] ? owner[name] : name
-            if (!count[actual]) fail("Missing toolkit source owner: " name " -> " actual)
+            if (kind[name] == "local") {
+                if (count[actual]) fail("Local recipe must not select an archive: " name)
+            } else if (!count[actual]) fail("Missing toolkit source owner: " name " -> " actual)
             print name "\t" actual "\t" (kind[name] ? kind[name] : "package") > inventory
         }
         for (i=1; i<=rows; i++)
@@ -138,6 +142,23 @@ while IFS="$(printf '\t')" read -r recipe owner kind; do
             fail "Metadata-only recipe must declare META_PACKAGE=yes: $recipe"
     else
         [ -f "$pkg/PLIST" ] || fail "Incomplete toolkit recipe: $recipe/PLIST"
+    fi
+    if [ "$kind" = local ]; then
+        [ ! -L "$toolkit/recipes" ] && [ ! -L "$toolkit/recipes/sysutils" ] &&
+        [ ! -L "$pkg" ] && [ ! -L "$pkg/files" ] && [ ! -L "$toolkit/service" ] || fail "External local source directory: $recipe"
+        for path in "$pkg/distinfo" "$pkg/patches"; do
+            [ ! -e "$path" ] && [ ! -L "$path" ] || fail "Local recipe has archive metadata: $recipe"
+        done
+        grep -Eq '^DISTFILES[[:space:]]*=[[:space:]]*(#.*)?$' "$pkg/Makefile" &&
+            grep -Eq '^NO_BUILD[[:space:]]*=[[:space:]]*yes([[:space:]]*(#.*)?)?$' "$pkg/Makefile" ||
+            fail "Local recipe must use empty DISTFILES and NO_BUILD=yes: $recipe"
+        [ "$(find "$pkg" -type l | wc -l | tr -d ' ')" = 2 ] &&
+            [ "$(find "$pkg/files" -type f | wc -l | tr -d ' ')" = 0 ] || fail "Unexpected local source files: $recipe"
+        for name in plasma-service.pl ember_plasma.rc; do
+            [ -L "$pkg/files/$name" ] && [ "$(readlink "$pkg/files/$name")" = "../../../../service/$name" ] &&
+                [ -f "$toolkit/service/$name" ] && [ ! -L "$toolkit/service/$name" ] ||
+                fail "Missing or external canonical local source: $recipe/$name"
+        done
     fi
     if [ "$recipe" != "$owner" ]; then
         check_shared_reference "$pkg/Makefile"

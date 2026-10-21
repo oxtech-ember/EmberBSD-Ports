@@ -22,18 +22,25 @@ permissions, create accounts, start ConsoleKit, select a seat implementation,
 or force a graphics driver. It does not replace a display manager or qualify
 physical HDMI, input, locking, or seat ownership.
 
-Install these two files as root from a reviewed source checkout:
+Use the optional [service package](../recipes/sysutils/ember-plasma-session/README.md)
+from the current toolkit export. It installs these exact sources and requires
+the corrected common Qt runtime. Install its audited dependency closure with
+normal package scripts:
 
 ```sh
-install -d -o root -g wheel -m 0755 /usr/pkg/libexec
-install -o root -g wheel -m 0755 plasma-service.pl /usr/pkg/libexec/ember-plasma-service
-install -o root -g wheel -m 0755 ember_plasma.rc /etc/rc.d/ember_plasma
+PKG_RCD_SCRIPTS=yes pkg_add /absolute/ember-plasma-session-1.0.tgz
 ```
+
+The explicit environment setting installs rc.d files through pkgsrc's hooks.
+It does not start Plasma or change `rc.conf`. Existing D-Bus and Xwayland
+packages must also have their standard rc.d files installed. The package
+instructions describe the normal reinstall route if those files are absent.
 
 Set these values in `/etc/rc.conf`. Replace `desktopuser` with the existing
 account. Do not select root.
 
 ```sh
+dbus=YES
 ember_plasma=YES
 ember_plasma_user=desktopuser
 ```
@@ -101,3 +108,39 @@ unchanged.
 These checks do not execute KDE or DRM. They do not prove native `ps`
 environment visibility, service boot ordering, or target desktop readiness.
 The source and host contract require separate target service acceptance.
+
+## Package contract
+
+After the normal cross staging step, query the recipe's actual dependencies.
+Use the staging prefix and work directory reported by that same build:
+
+```sh
+bmake MAKECONF=/absolute/common-cross.mk.conf -V '${DEPENDS}' > /absolute/depends.txt
+ruby package-contract.rb /absolute/host-pkgtools /absolute/workdir /absolute/stage/usr/pkg /absolute/depends.txt /absolute/new-results
+```
+
+The check runs native `pkg_create`, `pkg_add`, `pkg_info` and `pkg_delete`.
+Both the package database and installation prefix are absolute private paths.
+It uses `-K` and prefix relocation with `-p`. It does not use a destination
+root or the host package database. The native data lifecycle suppresses target
+hooks with `-I` and `-D`. Synthetic providers check missing dependencies, old
+Qt rejection, provider retention, removal and reinstallation.
+
+The check separately executes the actual generated file hook. Only its single
+rc.d data record is relocated below the test prefix. It checks disabled
+installation by default, explicit activation, repeated installation, removal
+and preservation of a locally modified rc.d file. It does not run the service.
+The accepted fixture passes 54 native-tool and hook commands with pkgtools
+20260227. The local-source validator also passes 13 causal cases. These host
+checks do not establish installation on EmberBSD or hardware output.
+
+## Hardware boundary
+
+One CM5 Rev 1.0 on CM5-NANO-B passes the ordinary standard Plasma entry with
+the current shared Qt, Mesa and Plasma stack. Native DRM HDMI at 1920x1080
+60 Hz and V3D direct rendering are accepted. The default desktop, panel and
+five session services become ready. Persistent automatic startup passes a
+planned reboot, and an operator confirms the visible HDMI desktop and panel.
+Input, seat ownership, VT switching, hotplug and long load remain separate
+acceptance boundaries. This result covers the canonical service sources;
+the package installation path requires its own lifecycle and target checks.

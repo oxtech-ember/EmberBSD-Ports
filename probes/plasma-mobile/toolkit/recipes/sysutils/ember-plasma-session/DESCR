@@ -1,0 +1,4 @@
+Start the standard Plasma Wayland session for an explicitly selected existing
+ordinary account. Keep persistent HOME configuration, protected runtime
+ownership and bounded managed shutdown. Startup is disabled until an
+administrator enables it and selects the account in rc.conf.
