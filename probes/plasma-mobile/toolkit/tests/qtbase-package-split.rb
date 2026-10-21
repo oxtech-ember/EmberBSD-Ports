@@ -126,10 +126,10 @@ end
 runtime = plist.call('runtime', 'qt6-qtbase', *cross)
 abort 'runtime PLIST still contains target SDK or generators' if runtime.any? { |path| path.start_with?('qt6/include/') || path.end_with?('.cmake') || %w[qt6/bin/qmake qt6/libexec/moc qt6/libexec/rcc qt6/libexec/uic].include?(path) }
 abort 'runtime qtpaths missing' unless %w[qt6/bin/qtpaths qt6/bin/qtpaths6].all? { |path| runtime.include?(path) }
-abort 'runtime package identity was not revised' unless run.call('runtime-name', 'qt6-qtbase', *cross, '-V', '${PKGNAME}').strip == 'qt6-qtbase-6.12.0nb2'
+abort 'runtime package identity was not revised' unless run.call('runtime-name', 'qt6-qtbase', *cross, '-V', '${PKGNAME}').strip == 'qt6-qtbase-6.12.0nb3'
 abort 'SDK recipe missing' unless File.directory?(tree + '/x11/qt6-qtbase-devel')
 sdk = plist.call('devel', 'qt6-qtbase-devel', *cross)
-abort 'SDK scanner fix lacks a revised identity' unless run.call('devel-name', 'qt6-qtbase-devel', *cross, '-V', '${PKGNAME}').strip == 'qt6-qtbase-devel-6.12.0nb3'
+abort 'SDK scanner fix lacks a revised identity' unless run.call('devel-name', 'qt6-qtbase-devel', *cross, '-V', '${PKGNAME}').strip == 'qt6-qtbase-devel-6.12.0nb4'
 abort 'SDK PLIST lost the CMake/generator contract' unless %w[qt6/bin/qmake qt6/libexec/moc qt6/libexec/rcc qt6/libexec/uic qt6/lib/cmake/Qt6/Qt6Config.cmake].all? { |path| sdk.include?(path) }
 abort 'partition overlaps' unless (runtime & sdk).empty?
 owner = tree + '/x11/qt6-qtbase'
@@ -144,7 +144,7 @@ native = plist.call('native', 'qt6-qtbase', 'USE_CROSS_COMPILE=no', 'PKGSRC_COMP
   'CC=/usr/bin/clang', 'CXX=/usr/bin/clang++', 'USE_NATIVE_GCC=no', 'USE_PKGSRC_GCC=no')
 abort 'native full SDK behavior changed' unless native.include?('qt6/bin/qmake') && native.any? { |path| path.start_with?('qt6/include/') }
 reasons = run.call('devel-metadata', 'qt6-qtbase-devel', *cross, '-V', '${PKG_FAIL_REASON}', '-V', '${DEPENDS}', '-V', '${DISTINFO_FILE}', '-V', '${PATCHDIR}')
-abort 'SDK source owner, exact runtime or platform contract differs' unless reasons.lines.first.strip.empty? && reasons.include?('qt6-qtbase-6.12.0nb2:') && reasons.include?(owner + '/distinfo') && reasons.include?(owner + '/patches')
+abort 'SDK source owner, exact runtime or platform contract differs' unless reasons.lines.first.strip.empty? && reasons.include?('qt6-qtbase-6.12.0nb3:') && reasons.include?(owner + '/distinfo') && reasons.include?(owner + '/patches')
 FileUtils.mkdir_p(tree + '/devel/qtbase-split-consumer')
 File.write(tree + '/devel/qtbase-split-consumer/Makefile', <<~MAKE)
   DISTNAME= qtbase-split-contract-1
@@ -158,7 +158,7 @@ File.write(tree + '/devel/qtbase-split-consumer/Makefile', <<~MAKE)
 MAKE
 out = run.call('buildlink', '../devel/qtbase-split-consumer', *cross,
   '-V', '${BUILD_DEPENDS}', '-V', '${DEPENDS}')
-abort 'SDK was not a separate target build-only dependency' unless out.lines[0].include?('qt6-qtbase-devel>=6.12.0nb3:') && !out.lines[1].include?('qt6-qtbase-devel') && out.lines[1].include?('qt6-qtbase>=6.12.0nb2:')
+abort 'SDK was not a separate target build-only dependency' unless out.lines[0].include?('qt6-qtbase-devel>=6.12.0nb4:') && !out.lines[1].include?('qt6-qtbase-devel') && out.lines[1].include?('qt6-qtbase>=6.12.0nb3:')
 
 # These payload bytes are labelled source-contract fixtures, not compiled Qt.
 # Exercise the actual normalization/selection targets and preserve every byte

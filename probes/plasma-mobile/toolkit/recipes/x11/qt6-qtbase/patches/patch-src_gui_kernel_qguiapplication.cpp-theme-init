@@ -1,0 +1,21 @@
+Origin: EmberBSD (AI-assisted).
+Source: https://github.com/qt/qtbase/blob/v6.12.0/src/gui/kernel/qguiapplication.cpp
+
+Ignore constructor-time theme notifications until the platform theme is installed.
+A synchronous QPA can deliver QKdeTheme::refresh() before createPlatformTheme()
+returns. Initial style hints, palette, fonts and theme hints are read after
+installation. Keep all theme-change delivery after installation unchanged.
+
+--- src/gui/kernel/qguiapplication.cpp.orig
++++ src/gui/kernel/qguiapplication.cpp
+@@ -2825,7 +2825,9 @@ void QGuiApplicationPrivate::processThemeChanged(QWindowSystemInterfacePrivate::ThemeChangeEvent *)
+     // FIXME: Remove check once we ensure that the platform plugin is
+     // torn down before QGuiApplication.
+-    if (!qGuiApp)
++    // A theme can notify us from its constructor before it is installed.
++    // Initial theme state is read after platform integration initialization.
++    if (!qGuiApp || !platformTheme())
+         return;
+ 
+     if (auto *guiAppPrivate = QGuiApplicationPrivate::instance())
+         guiAppPrivate->handleThemeChanged();
