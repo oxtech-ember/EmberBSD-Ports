@@ -8,6 +8,9 @@ PLASMA6_LIBPLASMA_BUILDLINK3_MK:=
 BUILDLINK_API_DEPENDS.plasma6-libplasma+=	plasma6-libplasma>=6.8.0
 BUILDLINK_ABI_DEPENDS.plasma6-libplasma?=		plasma6-libplasma>=6.8.0
 BUILDLINK_PKGSRCDIR.plasma6-libplasma?=		../../x11/plasma6-libplasma
+# Cross KDE builds name these files relative to the buildlink prefix.
+BUILDLINK_FILES.plasma6-libplasma+=	qt6/metatypes/qt6plasma_metatypes.json
+BUILDLINK_FILES.plasma6-libplasma+=	qt6/metatypes/qt6plasmaquick_metatypes.json
 
 .include "../../devel/kf6-kconfig/buildlink3.mk"
 .include "../../devel/kf6-kcoreaddons/buildlink3.mk"

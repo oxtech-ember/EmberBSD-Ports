@@ -8,6 +8,9 @@ KF6_KCONFIG_BUILDLINK3_MK:=
 BUILDLINK_API_DEPENDS.kf6-kconfig+=	kf6-kconfig>=6.31.0
 BUILDLINK_ABI_DEPENDS.kf6-kconfig+=	kf6-kconfig>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-kconfig?=	../../devel/kf6-kconfig
+# Cross KDE builds name these files relative to the buildlink prefix.
+BUILDLINK_FILES.kf6-kconfig+=	qt6/metatypes/qt6kf6configcore_metatypes.json
+BUILDLINK_FILES.kf6-kconfig+=	qt6/metatypes/qt6kf6configgui_metatypes.json
 
 BUILDLINK_FILES.kf6-kconfig+=		libexec/kf6/*
 

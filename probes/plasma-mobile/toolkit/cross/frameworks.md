@@ -15,6 +15,14 @@ relative `qt6/plugins`, `qt6/qml`, `qt6/metatypes` and `qt6/doc` destinations.
 `tests/selection.sh` exercises the production cross/native selection; normal
 package checks verify actual staged files.
 
+With the relative metatypes directory, exported CMake targets name
+`${_IMPORT_PREFIX}/qt6/metatypes/*.json` as interface sources. A consumer
+finds the provider below its buildlink prefix, so each KDE provider lists
+its metatypes files in `BUILDLINK_FILES`. Without them, KCrash fails at CMake
+generation unless another dependency, such as Declarative, links the whole
+directory. `python3 -B tests/kde-metatypes-buildlink.py` checks every toolkit
+KDE recipe that installs metatypes.
+
 KCoreAddons, KConfig, KCodecs, KDBusAddons and KArchive use QtTools only for translation
 generators. Their [Linguist helper](../recipes/devel/qt6-qttools/linguist.mk)
 imports the matching native component without adding host library search
