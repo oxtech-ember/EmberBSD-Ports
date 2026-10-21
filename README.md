@@ -21,9 +21,10 @@ runtime behavior are validated.
 
 - [libxslt RVT ownership candidate](profiles/development-toolchain/libxslt-security.md):
   isolated GCC16 builds preserve public symbols and pass 747 upstream tests
-  plus twelve API cases. The carried upstream proposal includes a release-wrapper
-  correction. Paired libxml2 mitigation, normal package integration and dynamic
-  memory checks retain explicit boundaries; vulnerability checks remain enabled.
+  plus twelve API cases and eleven allocation/header checks. The carried proposal
+  includes release-wrapper and allocation-ownership corrections. Paired libxml2
+  mitigation, package integration and memory checks retain explicit boundaries.
+  Vulnerability checks remain enabled.
 
 - [GNU sed UTF-8 state initialization](profiles/development-toolchain/gsed.md):
   complete opaque-state initialization fixes native GCC15+ union behavior.

@@ -3,7 +3,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 
 --- a/textproc/libxslt/patches/patch-libxslt_transform.c
 +++ b/textproc/libxslt/patches/patch-libxslt_transform.c
-@@ -0,0 +1,217 @@
+@@ -0,0 +1,219 @@
 +$NetBSD$
 +
 +Origin: Daniel Cheng, upstream merge request 77, head
@@ -13,6 +13,9 @@ See libxslt-security.md for the paired dependency and validation limits.
 +013cdd55ce00d5e2e0802c4b58f8b4cdb2618e0564f1aaa752269c24b31fbce3
 +Separate RVT ownership lists from XML document sibling links (CVE-2025-10911).
 +EmberBSD AI-assisted correction initializes list->RVT in xsltReleaseRVT.
++Local ownership transfers retain existing nodes without allocation.
++Variable evaluation allocates its list before obtaining a document.
++List-transfer helpers are internal declarations only.
 +This does not fix standalone libxslt CVE-2025-7425.
 +
 +--- libxslt/transform.c.orig
@@ -46,7 +49,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 + 	}
 +     }
 +     /*
-+@@ -2264,38 +2265,36 @@
++@@ -2264,38 +2265,35 @@
 +  * are preserved; all other fragments are freed/cached.
 +  */
 + static void
@@ -81,8 +84,8 @@ See libxslt-security.md for the paired dependency and validation limits.
 ++        if (tmp->RVT->compression == XSLT_RVT_LOCAL) {
 ++            xsltReleaseRVTList(ctxt, tmp);
 ++        } else if (tmp->RVT->compression == XSLT_RVT_GLOBAL) {
-++            xsltRegisterPersistRVT(ctxt, tmp->RVT);
-++            xmlFree(tmp);
+++            tmp->next = ctxt->persistRVTList;
+++            ctxt->persistRVTList = tmp;
 ++        } else if (tmp->RVT->compression == XSLT_RVT_FUNC_RESULT) {
 +             /*
 +              * This will either register the RVT again or move it to the
@@ -90,9 +93,8 @@ See libxslt-security.md for the paired dependency and validation limits.
 +              */
 +-            xsltRegisterLocalRVT(ctxt, tmp);
 +-            tmp->compression = XSLT_RVT_FUNC_RESULT;
-++            xsltRegisterLocalRVT(ctxt, tmp->RVT);
+++            xsltRegisterLocalRVTList(ctxt, tmp);
 ++            tmp->RVT->compression = XSLT_RVT_FUNC_RESULT;
-++            xmlFree(tmp);
 +         } else {
 +             xmlGenericError(xmlGenericErrorContext,
 +-                    "xsltReleaseLocalRVTs: Unexpected RVT flag %p\n",
@@ -102,7 +104,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 +         }
 +     } while (cur != base);
 + }
-+@@ -2323,7 +2322,7 @@
++@@ -2323,7 +2321,7 @@
 +     xmlNodePtr oldInsert, oldInst, oldCurInst, oldContextNode;
 +     xmlNodePtr cur, insert, copy = NULL;
 +     int level = 0, oldVarsNr;
@@ -111,7 +113,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 + 
 + #ifdef XSLT_REFACTORED
 +     xsltStylePreCompPtr info;
-+@@ -2369,7 +2368,7 @@
++@@ -2369,7 +2367,7 @@
 +     }
 +     ctxt->depth++;
 + 
@@ -120,7 +122,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 +     oldInsert = insert = ctxt->insert;
 +     oldInst = oldCurInst = ctxt->inst;
 +     oldContextNode = ctxt->node;
-+@@ -2603,7 +2602,7 @@
++@@ -2603,7 +2601,7 @@
 + 		    /*
 + 		    * Cleanup temporary tree fragments.
 + 		    */
@@ -129,7 +131,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 + 			xsltReleaseLocalRVTs(ctxt, oldLocalFragmentTop);
 + 
 + 		    ctxt->insert = oldInsert;
-+@@ -2698,7 +2697,7 @@
++@@ -2698,7 +2696,7 @@
 + 		    /*
 + 		    * Cleanup temporary tree fragments.
 + 		    */
@@ -138,7 +140,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 + 			xsltReleaseLocalRVTs(ctxt, oldLocalFragmentTop);
 + 
 + 		    ctxt->insert = oldInsert;
-+@@ -2764,7 +2763,7 @@
++@@ -2764,7 +2762,7 @@
 + 		/*
 + 		* Cleanup temporary tree fragments.
 + 		*/
@@ -147,7 +149,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 + 		    xsltReleaseLocalRVTs(ctxt, oldLocalFragmentTop);
 + 
 +                 ctxt->insert = oldInsert;
-+@@ -2894,7 +2893,7 @@
++@@ -2894,7 +2892,7 @@
 + 		/*
 + 		* Cleanup temporary tree fragments.
 + 		*/
@@ -156,7 +158,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 + 		    xsltReleaseLocalRVTs(ctxt, oldLocalFragmentTop);
 + 
 +                 ctxt->insert = oldInsert;
-+@@ -3073,7 +3072,7 @@
++@@ -3073,7 +3071,7 @@
 +     int oldVarsBase = 0;
 +     xmlNodePtr cur;
 +     xsltStackElemPtr tmpParam = NULL;
@@ -165,7 +167,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 + #ifdef WITH_PROFILER
 +     long start = 0;
 + #endif
-+@@ -3121,8 +3120,8 @@
++@@ -3121,8 +3119,8 @@
 +         return;
 + 	}
 + 
@@ -176,7 +178,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 + 
 +     /*
 +     * Initiate a distinct scope of local params/variables.
-+@@ -3233,16 +3232,16 @@
++@@ -3233,16 +3231,16 @@
 +     * user code should now use xsltRegisterLocalRVT() instead
 +     * of the obsolete xsltRegisterTmpRVT().
 +     */
@@ -203,7 +205,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 + 
 +     /*
 +     * Pop the xsl:template declaration from the stack.
-+@@ -5320,7 +5319,7 @@
++@@ -5320,7 +5318,7 @@
 + 
 + #ifdef XSLT_FAST_IF
 +     {
@@ -212,7 +214,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 + 
 + 	res = xsltPreCompEvalToBoolean(ctxt, contextNode, comp);
 + 
-+@@ -5328,7 +5327,7 @@
++@@ -5328,7 +5326,7 @@
 + 	* Cleanup fragments created during evaluation of the
 + 	* "select" expression.
 + 	*/
@@ -223,7 +225,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 + 
 --- a/textproc/libxslt/patches/patch-libxslt_variables.c
 +++ b/textproc/libxslt/patches/patch-libxslt_variables.c
-@@ -0,0 +1,416 @@
+@@ -0,0 +1,443 @@
 +$NetBSD$
 +
 +Origin: Daniel Cheng, upstream merge request 77, head
@@ -233,6 +235,9 @@ See libxslt-security.md for the paired dependency and validation limits.
 +013cdd55ce00d5e2e0802c4b58f8b4cdb2618e0564f1aaa752269c24b31fbce3
 +Separate RVT ownership lists from XML document sibling links (CVE-2025-10911).
 +EmberBSD AI-assisted correction initializes list->RVT in xsltReleaseRVT.
++Local ownership transfers retain existing nodes without allocation.
++Variable evaluation allocates its list before obtaining a document.
++List-transfer helpers are internal declarations only.
 +This does not fix standalone libxslt CVE-2025-7425.
 +
 +--- libxslt/variables.c.orig
@@ -323,7 +328,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 +     return(0);
 + }
 + 
-+@@ -159,11 +177,16 @@
++@@ -159,11 +177,24 @@
 + xsltRegisterLocalRVT(xsltTransformContextPtr ctxt,
 + 		     xmlDocPtr RVT)
 + {
@@ -333,26 +338,36 @@ See libxslt-security.md for the paired dependency and validation limits.
 + 	return(-1);
 + 
 +-    RVT->prev = NULL;
++-    RVT->compression = XSLT_RVT_LOCAL;
 ++    list = xsltRVTListCreate();
 ++    if (list == NULL) return(-1);
 ++
-+     RVT->compression = XSLT_RVT_LOCAL;
 ++    list->RVT = RVT;
+++    xsltRegisterLocalRVTList(ctxt, list);
+++    return(0);
+++}
+++
+++/* Transfer an already owned list node without another allocation. */
+++void
+++xsltRegisterLocalRVTList(xsltTransformContextPtr ctxt, xsltRVTListPtr list)
+++{
+++    list->RVT->compression = XSLT_RVT_LOCAL;
 + 
 +     /*
 +     * When evaluating "select" expressions of xsl:variable
-+@@ -174,8 +197,8 @@
++@@ -174,20 +205,18 @@
 +     if ((ctxt->contextVariable != NULL) &&
 + 	(XSLT_TCTXT_VARIABLE(ctxt)->flags & XSLT_VAR_IN_SELECT))
 +     {
 +-	RVT->next = (xmlNodePtr) XSLT_TCTXT_VARIABLE(ctxt)->fragment;
 +-	XSLT_TCTXT_VARIABLE(ctxt)->fragment = RVT;
++-	return(0);
 ++	list->next = XSLT_TCTXT_VARIABLE(ctxt)->fragment;
 ++	XSLT_TCTXT_VARIABLE(ctxt)->fragment = list;
-+ 	return(0);
+++	return;
 +     }
 +     /*
-+@@ -183,10 +206,8 @@
++     * Store the fragment in the scope of the current instruction.
 +     * If not reference by a returning instruction (like EXSLT's function),
 +     * then this fragment will be freed, when the instruction exits.
 +     */
@@ -360,12 +375,14 @@ See libxslt-security.md for the paired dependency and validation limits.
 +-    if (ctxt->localRVT != NULL)
 +-	ctxt->localRVT->prev = (xmlNodePtr) RVT;
 +-    ctxt->localRVT = RVT;
++-    return(0);
 ++    list->next = ctxt->localRVTList;
 ++    ctxt->localRVTList = list;
-+     return(0);
+++    return;
 + }
 + 
-+@@ -344,8 +365,9 @@
++ /**
++@@ -344,8 +373,9 @@
 +  * @ctxt:  an XSLT transformation context
 +  * @RVT:  a result value tree (Result Tree Fragment)
 +  *
@@ -377,7 +394,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 +  */
 + void
 + xsltReleaseRVT(xsltTransformContextPtr ctxt, xmlDocPtr RVT)
-+@@ -353,36 +375,65 @@
++@@ -353,36 +383,65 @@
 +     if (RVT == NULL)
 + 	return;
 + 
@@ -459,7 +476,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 + 
 + 	ctxt->cache->nbRVT++;
 + 
-+@@ -394,11 +445,12 @@
++@@ -394,11 +453,12 @@
 +     /*
 +     * Free it.
 +     */
@@ -477,7 +494,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 + }
 + 
 + /**
-+@@ -416,14 +468,17 @@
++@@ -416,14 +476,17 @@
 + int
 + xsltRegisterPersistRVT(xsltTransformContextPtr ctxt, xmlDocPtr RVT)
 + {
@@ -500,7 +517,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 +     return(0);
 + }
 + 
-+@@ -438,52 +493,55 @@
++@@ -438,52 +501,55 @@
 + void
 + xsltFreeRVTs(xsltTransformContextPtr ctxt)
 + {
@@ -581,7 +598,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 + }
 + 
 + /************************************************************************
-+@@ -571,21 +629,22 @@
++@@ -571,21 +637,21 @@
 +     * Release the list of temporary Result Tree Fragments.
 +     */
 +     if (elem->context) {
@@ -602,9 +619,8 @@ See libxslt-security.md for the paired dependency and validation limits.
 ++            if (cur->RVT->compression == XSLT_RVT_LOCAL) {
 ++		xsltReleaseRVTList(elem->context, cur);
 ++            } else if (cur->RVT->compression == XSLT_RVT_FUNC_RESULT) {
-++                xsltRegisterLocalRVT(elem->context, cur->RVT);
+++                xsltRegisterLocalRVTList(elem->context, cur);
 ++                cur->RVT->compression = XSLT_RVT_FUNC_RESULT;
-++                xmlFree(cur);
 +             } else {
 +                 xmlGenericError(xmlGenericErrorContext,
 +                         "xsltFreeStackElem: Unexpected RVT flag %d\n",
@@ -613,7 +629,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 +             }
 + 	}
 +     }
-+@@ -944,6 +1003,7 @@
++@@ -944,6 +1010,7 @@
 + 	} else {
 + 	    if (variable->tree) {
 + 		xmlDocPtr container;
@@ -621,20 +637,33 @@ See libxslt-security.md for the paired dependency and validation limits.
 + 		xmlNodePtr oldInsert;
 + 		xmlDocPtr  oldOutput;
 +                 const xmlChar *oldLastText;
-+@@ -968,7 +1028,11 @@
++@@ -953,9 +1020,14 @@
++ 		/*
++ 		* Generate a result tree fragment.
++ 		*/
+++                rvtList = xsltRVTListCreate();
+++                if (rvtList == NULL)
+++                    goto error;
++ 		container = xsltCreateRVT(ctxt);
++-		if (container == NULL)
+++		if (container == NULL) {
+++                    xmlFree(rvtList);
++ 		    goto error;
+++                }
++ 		/*
++ 		* NOTE: Local Result Tree Fragments of params/variables
++ 		* are not registered globally anymore; the life-time
++@@ -968,7 +1040,8 @@
 + 		* when the variable is freed, it will also free
 + 		* the Result Tree Fragment.
 + 		*/
 +-		variable->fragment = container;
-++                rvtList = xsltRVTListCreate();
-++                if (rvtList == NULL)
-++                    goto error;
 ++                rvtList->RVT = container;
 ++		variable->fragment = rvtList;
 +                 container->compression = XSLT_RVT_LOCAL;
 + 
 + 		oldOutput = ctxt->output;
-+@@ -2372,5 +2436,3 @@
++@@ -2372,5 +2445,3 @@
 + 
 +     return(valueObj);
 + }
@@ -642,7 +671,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 +-
 --- a/textproc/libxslt/patches/patch-libxslt_xsltInternals.h
 +++ b/textproc/libxslt/patches/patch-libxslt_xsltInternals.h
-@@ -0,0 +1,86 @@
+@@ -0,0 +1,91 @@
 +$NetBSD$
 +
 +Origin: Daniel Cheng, upstream merge request 77, head
@@ -652,6 +681,9 @@ See libxslt-security.md for the paired dependency and validation limits.
 +013cdd55ce00d5e2e0802c4b58f8b4cdb2618e0564f1aaa752269c24b31fbce3
 +Separate RVT ownership lists from XML document sibling links (CVE-2025-10911).
 +EmberBSD AI-assisted correction initializes list->RVT in xsltReleaseRVT.
++Local ownership transfers retain existing nodes without allocation.
++Variable evaluation allocates its list before obtaining a document.
++List-transfer helpers are internal declarations only.
 +This does not fix standalone libxslt CVE-2025-7425.
 +
 +--- libxslt/xsltInternals.h.orig
@@ -711,20 +743,22 @@ See libxslt-security.md for the paired dependency and validation limits.
 + 			   the instruction which created the fragment
 +                            exits */
 +     xmlDocPtr localRVTBase; /* Obsolete */
-+@@ -1932,8 +1939,11 @@
++@@ -1932,8 +1939,13 @@
 + XSLTPUBFUN void XSLTCALL
 + 			xsltFreeRVTs		(xsltTransformContextPtr ctxt);
 + XSLTPUBFUN void XSLTCALL
 +-			xsltReleaseRVT		(xsltTransformContextPtr ctxt,
 ++			xsltReleaseRVT          (xsltTransformContextPtr ctxt,
 + 						 xmlDocPtr RVT);
-++XSLTPUBFUN void XSLTCALL
-++			xsltReleaseRVTList	(xsltTransformContextPtr ctxt,
-++						 xsltRVTListPtr list);
+++#ifdef IN_LIBXSLT
+++/* Internal ownership transfers do not allocate new list nodes. */
+++void xsltReleaseRVTList(xsltTransformContextPtr ctxt, xsltRVTListPtr list);
+++void xsltRegisterLocalRVTList(xsltTransformContextPtr ctxt, xsltRVTListPtr list);
+++#endif
 + /*
 +  * Extra functions for Attribute Value Templates
 +  */
-+@@ -1992,4 +2002,3 @@
++@@ -1992,4 +2004,3 @@
 + #endif
 + 
 + #endif /* __XML_XSLT_H__ */
@@ -754,7 +788,7 @@ See libxslt-security.md for the paired dependency and validation limits.
  BLAKE2s (libxslt-1.1.45.tar.xz) = fdcf75869a2584d939ec8fb7ce1f38c9b415b5b8963f7c4653e0ed5878f8a209
  SHA512 (libxslt-1.1.45.tar.xz) = 8f0608aad7250ccfe62808169d464a1641535b41a73b4fbbc1eeec9c9e785bbd8f4860d571eb567ee1e7abbd89ac3d707a5f3e3a9e836ecaf38155793ce47d78
  Size (libxslt-1.1.45.tar.xz) = 1519992 bytes
-+SHA1 (patch-libxslt_transform.c) = bc91d7ba06a8532377832304d9b60643919c8fb4
-+SHA1 (patch-libxslt_variables.c) = eb39cac6fda092e9dee2ecfa006a102192f3ea5e
-+SHA1 (patch-libxslt_xsltInternals.h) = 2fed911c287a49e0dc884e46e4bb90b9c6b4394a
++SHA1 (patch-libxslt_transform.c) = b7cea66c4ab46d04444d2fec5e743fe5269c4bf6
++SHA1 (patch-libxslt_variables.c) = 709e56ab0737866a4c891e4b940ed860d77b783a
++SHA1 (patch-libxslt_xsltInternals.h) = b745b961e749617b53dcd2e9bbbb47bf7ea0b7d7
 +SHA1 (Makefile) = 05fe78490b53ef3e87067d228cda5e12959465ff

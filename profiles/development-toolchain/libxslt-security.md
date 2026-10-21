@@ -23,6 +23,9 @@ has 22,066 bytes and SHA256
 `013cdd55ce00d5e2e0802c4b58f8b4cdb2618e0564f1aaa752269c24b31fbce3`.
 The EmberBSD adaptation also assigns `list->RVT = RVT` in `xsltReleaseRVT`.
 Without that assignment, the proposed public release wrapper dereferences NULL.
+Internal ownership transitions reuse existing list nodes without allocation.
+Variable evaluation obtains its list before a document and frees the list if
+document creation fails. List-transfer helper declarations require `IN_LIBXSLT`.
 This local correction and its tests are AI-assisted work, not an upstream acceptance.
 
 The repair addresses the RVT ownership cause described in
@@ -80,6 +83,23 @@ results with the independently expected output `global:local`.
 The ID check changes the attribute type flags and requires ID lookup removal
 after attribute destruction. It does not dereference a freed attribute.
 
+The additional allocation checks use the actual configured `transform.c` and
+`variables.c` translation units with the other production PIC objects.
+Standard `xmlMemSetup` hooks deny selected allocation sizes deterministically.
+The checks use valid, owned local documents. They cover persistent and function
+result transfers, selected-variable ownership, stack cleanup, fresh/cached
+variable evaluation and document allocation failure. Targeted document/list
+accounting reaches zero after cleanup; this is not a general memory checker.
+Three compiler controls check the public API and private helper declaration.
+
+Run them with a configured native GCC16 build and a new output directory:
+
+```sh
+python3 profiles/development-toolchain/tests/libxslt-alloc.py \
+    /absolute/configured/libxslt-1.1.45 /absolute/libxml2-prefix \
+    /absolute/new/allocation-results --cc /absolute/gcc16/bin/gcc --ar /usr/bin/ar
+```
+
 `tests/libxslt-layout.c` compares relevant structure sizes and offsets.
 Compile it with the original headers, then with repaired headers and `-DFIXED`.
 These checks preserve layout; they do not promise the same private field names
@@ -100,6 +120,11 @@ and plugin support; their package integration is not accepted by this pilot.
 | Corrected candidate | 12/12 pass. |
 | Installed candidate after source reinstall | 12/12 pass. |
 | Original-header consumer linked to repaired libraries | 12/12 pass. |
+
+The ownership/header regression passes 11/11 checks after the review corrections.
+The first candidate passed 3/11: seven ownership cases failed, and the helper
+was incorrectly visible in the public header. The positive document-allocation
+error control already passed.
 
 Full upstream `make check` returns zero before and after the repair.
 Each run reports 747 tests and no errors. Both emit the upstream C-locale
@@ -125,6 +150,12 @@ analysis debt, not a clean static-analysis result. No suppressions were added.
 Valgrind is absent on the checked host. The accepted GCC16 seed explicitly
 disables sanitizer runtimes; neither `libasan` nor `libubsan` is available.
 No Memcheck, ASan or UBSan success is claimed. Exit-zero functional results do
-not prove memory safety. Fault-injected allocation paths, instrumented UAF
+not prove memory safety. Additional allocation-failure paths, instrumented UAF
 checks, full package integration, cross execution and downstream Qt/KDE
 acceptance remain separate gates. The generic advisory remains open.
+
+A further source audit identifies fresh-document registration callers that
+still ignore allocation failure. These remain in `xsltEvalGlobalVariable`
+and EXSLT `common.c`, `functions.c`, `strings.c` and `dynamic.c`.
+Their ownership/error paths are not repaired or accepted by this follow-up.
+They need separate focused checks before a wider allocation-safety acceptance.
