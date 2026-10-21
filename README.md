@@ -498,9 +498,10 @@ runtime behavior are validated.
   temperature stays below 58 degrees Celsius without throttling or undervoltage.
   The session runner also provides an explicit DRM diagnostic backend.
   Host controls check its CLI, primary access and fixed 1920x1080 output policy.
-  Target acceptance of that public route remains separate. Graphical login,
-  physical input, HDMI, hotplug, remote display and long-duration stability
-  remain unaccepted.
+  That unmodified public route passes on CM5 with V3D, 30 seconds of liveness
+  and normal logout. A separate BO snapshot contains desktop pixels. Graphical
+  login, physical input, HDMI, seat ownership, hotplug, remote display and
+  long-duration stability remain unaccepted.
   The current xdg-user-dirs 0.20
   cross package passes private-profile checks on CM5.
   [Desktop package preparation](probes/plasma-mobile/toolkit/cross/desktop-package-set.md)

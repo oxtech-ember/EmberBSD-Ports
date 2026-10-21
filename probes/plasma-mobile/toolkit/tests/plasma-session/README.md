@@ -271,7 +271,7 @@ The backend controls include unknown and duplicate options, primary access,
 DRM/virtual launch arguments, fixed geometry, and both actual support callers.
 Named mutants expose omitted primary access, a virtual launch requested as
 DRM, missing backend checks and disabled layout-size assertions. They do not
-execute KDE. The new public DRM CLI has no target acceptance claim here.
+execute KDE. Host controls alone do not establish the installed target result.
 
 Host result: 33 full-controller controls and 25 focused Xauthority controls pass
 on macOS with native Perl 5.44 and Ruby 4.0. The focused test runs the actual
@@ -279,6 +279,18 @@ controller block with real BSD `stat` mode formatting. Only a foreign UID is
 modeled without changing ownership. The pinned previous runner fails on the
 correct KWin runtime path. These are host controls. The scripts pass shell,
 Perl and Ruby syntax checks. They do not change C/C++ source.
+
+The unmodified public DRM route from `ab2a05a8` passes on CM5 as UID 1000
+with kernel `8c26cd72`. KWin reports V3D and one 1920x1080 DRM output.
+Full readiness takes 15.279604 seconds. Thirty seconds of liveness and normal
+logout pass with all five statuses zero. All 259 BO allocations are released;
+reserved memory returns to 12,500,992 bytes without allocation or owner faults.
+
+A separate diagnostic snapshot maps the complete 8,298,496-byte BO and copies
+only its visible 1920x1080 RGB pixels. It contains the wallpaper, panel and an
+Fcitx diagnostic window, with 144,494 colors and no black pixels. This does not
+qualify physical HDMI, first visible-pixel timing, input, seat ownership,
+hotplug or long-duration stability.
 
 The complete installed Qtbase 6.12.0nb2 runtime passes two clean sessions on
 CM5 with kernel `ecb7a4258aa2263da18088f7ee0a76233ffce92f`, Mesa 26.2.4nb8,

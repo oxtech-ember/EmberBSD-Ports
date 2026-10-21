@@ -1,8 +1,9 @@
 # CM5 KWin OpenGL session
 
 The full KWin Wayland compositor runs on physical CM5 with Mesa's V3D renderer.
-This is a virtual-output result. HDMI presentation and the complete Plasma
-Desktop remain unaccepted.
+The complete installed Plasma session also passes the bounded public DRM
+route at 1920x1080. Physical HDMI observation, seat ownership, input and
+hotplug remain separate acceptance gates.
 
 ## Runtime dependency repair
 
@@ -146,9 +147,11 @@ selected native display profile has a separate
 [fixed-mode KMS contract](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/bcmv3d-kms.md).
 The public [session diagnostic](../tests/plasma-session/README.md) accepts
 `--backend drm` with its fixed 1920x1080 policy. Its source and host controls
-check backend selection and current output fields. Target acceptance of this
-public CLI remains separate. It does not qualify physical HDMI, input,
-seat ownership or first visible pixels. The default backend remains virtual.
+check backend selection and current output fields. The unmodified public
+CLI passes installed CM5 readiness, 30-second liveness and normal logout with
+V3D. A separate BO snapshot contains visible desktop content. This does not
+qualify physical HDMI, input, seat ownership or first visible-pixel timing.
+The default backend remains virtual.
 
 ## Analysis scope
 
