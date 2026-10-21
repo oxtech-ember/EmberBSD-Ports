@@ -7,16 +7,20 @@ require 'json'
 require 'open3'
 require 'optparse'
 require 'pathname'
+require 'shellwords'
 
 abort 'Use Ruby 4 or newer' if RUBY_VERSION.to_i < 4
-options = { perl: '/usr/bin/perl' }
+options = { perl: '/usr/bin/perl', rc_shell: '/bin/sh' }
 OptionParser.new do |p|
-  p.banner = 'Usage: host-test.rb --work NEW_DIRECTORY [--perl PATH]'
+  p.banner = 'Usage: host-test.rb --rc-subr PATH --work NEW_DIRECTORY [--perl PATH] [--rc-shell PATH]'
+  p.on('--rc-shell PATH') { |v| options[:rc_shell] = File.realpath(v) }
+  p.on('--rc-subr PATH') { |v| options[:rc_subr] = File.realpath(v) }
   p.on('--work PATH') { |v| options[:work] = File.expand_path(v) }
   p.on('--perl PATH') { |v| options[:perl] = File.expand_path(v) }
 end.parse!
 abort 'Select a new work directory with an existing parent' unless ARGV.empty? &&
   options[:work] && !File.exist?(options[:work]) && File.directory?(File.dirname(options[:work]))
+abort 'Provide the actual EmberBSD rc.subr with --rc-subr PATH' unless options[:rc_subr] && File.file?(options[:rc_subr])
 work = options[:work]
 Dir.mkdir(work, 0700)
 source = File.realpath(__dir__)
@@ -266,6 +270,35 @@ begin
     File.write(script, "#!/bin/sh\nset -eu\nember_plasma_user='#{user}'\n" + account + "ember_plasma_account\n")
     call.call(name, ['/bin/sh', script], status)
   end
+  # Execute the complete actual rc.subr and actual service command dispatch.
+  # Only configuration input and privileged leaf commands are controlled.
+  fake_su = work + '/su'
+  executable.call(fake_su, <<~'SH')
+    #!/bin/sh
+    [ "$#" -eq 4 ] && [ "$1" = '-m' ] && [ "$2" = 'ordinary' ] && [ "$3" = '-c' ] || exit 98
+    [ "$4" = 'exec /usr/bin/env -i PATH=/usr/pkg/bin:/usr/bin:/bin /usr/pkg/bin/perl /usr/pkg/libexec/ember-plasma-service status' ] || exit 99
+    echo controlled-status-reached
+  SH
+  dispatch = rc.dup
+  substitutions = {
+    '. /etc/rc.subr' => '. ' + Shellwords.escape(options[:rc_subr]),
+    'load_rc_config "$name"' => "ember_plasma=YES\nember_plasma_user=ordinary",
+    '/usr/bin/id' => Shellwords.escape(fake_id),
+    '/usr/bin/su' => Shellwords.escape(fake_su)
+  }
+  substitutions.each do |old, replacement|
+    check.call(dispatch.include?(old), 'RC dispatch boundary changed: ' + old)
+    dispatch = dispatch.gsub(old) { replacement }
+  end
+  File.write(work + '/rc-dispatch-replacements.json', JSON.pretty_generate(substitutions) + "\n")
+  script = work + '/rc-dispatch.sh'; File.write(script, dispatch)
+  out, err = call.call('rc-dispatch-status', [options[:rc_shell], script, 'status'])
+  check.call(out == "controlled-status-reached\n" && !err.include?('unknown directive'), 'Actual rc.subr did not dispatch status')
+  declaration = "extra_commands=\"status\"\n"
+  check.call(dispatch.scan(Regexp.new(Regexp.escape(declaration))).length == 1, 'Extra status declaration changed')
+  script = work + '/rc-dispatch-missing-status.sh'; File.write(script, dispatch.sub(declaration, ''))
+  out, err = call.call('rc-dispatch-missing-status', [options[:rc_shell], script, 'status'], 1)
+  check.call(err.include?("unknown directive 'status'") && !out.include?('controlled-status-reached'), 'Missing extra command did not reproduce the real status failure')
   check.call(rc.include?('# REQUIRE: DAEMON LOGIN dbus x11_runtime') && !rc.include?('# BEFORE: LOGIN'), 'Desktop starts before LOGIN')
   check.call(rc.include?('exec /usr/bin/env -i PATH=/usr/pkg/bin:/usr/bin:/bin /usr/pkg/bin/perl'), 'Interpreter inherits caller environment')
   check.call(!rc.include?('command_background') && !production.include?('KWIN_DRM_DEVICES') &&
@@ -284,6 +317,8 @@ ensure
   end
   File.write(work + '/receipt.json', JSON.pretty_generate({
     status: failure ? 'FAIL' : 'PASS', failure: failure, source_sha256: pins, commands: rows,
+    rc_subr: { path: options[:rc_subr], sha256: Digest::SHA256.file(options[:rc_subr]).hexdigest },
+    rc_shell: { path: options[:rc_shell], sha256: Digest::SHA256.file(options[:rc_shell]).hexdigest },
     limits: 'Explicit host passwd/ps/Perl command doubles; no KDE, DRM or native marker-visibility claim.'
   }) + "\n")
 end

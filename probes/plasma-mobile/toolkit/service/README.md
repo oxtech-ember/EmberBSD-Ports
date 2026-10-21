@@ -79,19 +79,24 @@ ownership handshake and a 30-second parent acknowledgement deadline.
 ## Host contract
 
 Run the focused test with Ruby 4 and a new work directory under an existing
-parent:
+parent. Supply an actual EmberBSD `etc/rc.subr`. Use `--rc-shell PATH` if
+the host's `/bin/sh` cannot parse that file. An existing POSIX shell such as
+`/bin/dash` can run this host check without changing the source.
 
 ```sh
-ruby host-test.rb --work /absolute/new-work
+ruby host-test.rb --rc-subr /absolute/emberbsd/etc/rc.subr --work /absolute/new-work
 ```
 
-The test executes the actual supervisor and rc.d account function. It replaces
+The test executes the actual supervisor, rc.d account function and command
+dispatch through the complete supplied EmberBSD `rc.subr`. It replaces
 passwd data, target command paths, and process inventory with explicit host
 Perl doubles. It checks clean environment, singleton start, stale and foreign PID
 metadata, generation isolation, normal exit, error exit, detached cleanup,
 forced cleanup failure, ownership refusal and unsafe paths. A causal mutation
 removes the marker predicate and must release a launch that the real predicate
-refuses. The old bounded session-test guard remains unchanged.
+refuses. Removing the extra `status` declaration must reproduce the real
+`rc.subr` unknown-directive failure. The old bounded session-test guard remains
+unchanged.
 
 These checks do not execute KDE or DRM. They do not prove native `ps`
 environment visibility, service boot ordering, or target desktop readiness.

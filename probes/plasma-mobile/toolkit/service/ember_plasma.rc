@@ -10,6 +10,7 @@ rcvar=$name
 start_cmd=ember_plasma_start
 stop_cmd=ember_plasma_stop
 status_cmd=ember_plasma_status
+extra_commands="status"
 load_rc_config "$name"
 : "${ember_plasma:=NO}"
 : "${ember_plasma_user:=}"
