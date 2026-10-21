@@ -50,6 +50,9 @@ The recipes select C++23, GCC16 and Ninja. Canonical X11/Wayland, GL, video,
 WebAudio, WebRTC, introspection, documentation and existing options remain.
 The inherited default keeps JIT off and the C loop on. The cache-flush source
 check does not establish that a complete modern JIT build works.
+Release C and C++ flags use `-O2 -DNDEBUG` to keep the GCC16 WebKit cross-build
+optimized while avoiding the excessive compile cost of `-O3` on large unified
+source files.
 
 ## Native generators and target queries
 

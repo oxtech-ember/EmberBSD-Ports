@@ -56,6 +56,10 @@ INSTALL_UNSTRIPPED=	yes
 #CFLAGS+=		-DRELEASE_WITHOUT_OPTIMIZATIONS
 .else
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_BUILD_TYPE=Release
+# Keep the GCC16 cross-build optimized while avoiding WebKit's unusually slow
+# default -O3 passes on the large unified JavaScriptCore/WebCore translation units.
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_C_FLAGS_RELEASE:STRING=-O2\ -DNDEBUG
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_CXX_FLAGS_RELEASE:STRING=-O2\ -DNDEBUG
 .endif
 
 #
