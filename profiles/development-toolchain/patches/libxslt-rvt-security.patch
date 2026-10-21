@@ -225,7 +225,7 @@ See libxslt-security.md for the paired dependency and validation limits.
 + 
 --- a/textproc/libxslt/patches/patch-libxslt_variables.c
 +++ b/textproc/libxslt/patches/patch-libxslt_variables.c
-@@ -0,0 +1,443 @@
+@@ -0,0 +1,456 @@
 +$NetBSD$
 +
 +Origin: Daniel Cheng, upstream merge request 77, head
@@ -663,7 +663,20 @@ See libxslt-security.md for the paired dependency and validation limits.
 +                 container->compression = XSLT_RVT_LOCAL;
 + 
 + 		oldOutput = ctxt->output;
-+@@ -2372,5 +2445,3 @@
++@@ -1205,7 +1278,11 @@
++ 	    * Let the lifetime of the tree fragment be handled by
++ 	    * the Libxslt's garbage collector.
++ 	    */
++-	    xsltRegisterPersistRVT(ctxt, container);
+++            if (xsltRegisterPersistRVT(ctxt, container) < 0) {
+++                xmlFreeDoc(container);
+++                ctxt->state = XSLT_STATE_STOPPED;
+++                goto error;
+++            }
++ 
++ 	    oldOutput = ctxt->output;
++ 	    oldInsert = ctxt->insert;
++@@ -2372,5 +2449,3 @@
 + 
 +     return(valueObj);
 + }
@@ -763,6 +776,138 @@ See libxslt-security.md for the paired dependency and validation limits.
 + 
 + #endif /* __XML_XSLT_H__ */
 +-
+--- a/textproc/libxslt/patches/patch-libexslt_common.c
++++ b/textproc/libxslt/patches/patch-libexslt_common.c
+@@ -0,0 +1,23 @@
++$NetBSD$
++
++Origin: EmberBSD (AI-assisted), not submitted upstream.
++Handle the fallible RVT registration introduced by the carried MR77 proposal.
++Release unregistered documents and propagate allocation errors.
++https://gitlab.gnome.org/GNOME/libxslt/-/merge_requests/77
++
++--- libexslt/common.c.orig
+++++ libexslt/common.c
++@@ -42,7 +42,12 @@
++ 	    tctxt->state = XSLT_STATE_STOPPED;
++ 	    return;
++ 	}
++-	xsltRegisterLocalRVT(tctxt, fragment);
+++        if (xsltRegisterLocalRVT(tctxt, fragment) < 0) {
+++            xmlFreeDoc(fragment);
+++            xmlXPathSetError(ctxt, XPATH_MEMORY_ERROR);
+++            tctxt->state = XSLT_STATE_STOPPED;
+++            return;
+++        }
++ 
++ 	strval = xmlXPathPopString (ctxt);
++ 
+--- a/textproc/libxslt/patches/patch-libexslt_functions.c
++++ b/textproc/libxslt/patches/patch-libexslt_functions.c
+@@ -0,0 +1,22 @@
++$NetBSD$
++
++Origin: EmberBSD (AI-assisted), not submitted upstream.
++Handle the fallible RVT registration introduced by the carried MR77 proposal.
++Release unregistered documents and propagate allocation errors.
++https://gitlab.gnome.org/GNOME/libxslt/-/merge_requests/77
++
++--- libexslt/functions.c.orig
+++++ libexslt/functions.c
++@@ -783,7 +783,11 @@
++ 	    return;
++ 	}
++         /* Mark as function result. */
++-        xsltRegisterLocalRVT(ctxt, container);
+++        if (xsltRegisterLocalRVT(ctxt, container) < 0) {
+++            xmlFreeDoc(container);
+++            data->error = 1;
+++            return;
+++        }
++         container->compression = XSLT_RVT_FUNC_RESULT;
++ 
++ 	oldInsert = ctxt->insert;
+--- a/textproc/libxslt/patches/patch-libexslt_strings.c
++++ b/textproc/libxslt/patches/patch-libexslt_strings.c
+@@ -0,0 +1,52 @@
++$NetBSD$
++
++Origin: EmberBSD (AI-assisted), not submitted upstream.
++Handle the fallible RVT registration introduced by the carried MR77 proposal.
++Release unregistered documents and propagate allocation errors.
++https://gitlab.gnome.org/GNOME/libxslt/-/merge_requests/77
++
++--- libexslt/strings.c.orig
+++++ libexslt/strings.c
++@@ -64,7 +64,13 @@
++ 
++     container = xsltCreateRVT(tctxt);
++     if (container != NULL) {
++-        xsltRegisterLocalRVT(tctxt, container);
+++        if (xsltRegisterLocalRVT(tctxt, container) < 0) {
+++            xmlFreeDoc(container);
+++            xmlFree(str);
+++            xmlFree(delimiters);
+++            xmlXPathSetError(ctxt, XPATH_MEMORY_ERROR);
+++            return;
+++        }
++         ret = xmlXPathNewNodeSet(NULL);
++         if (ret != NULL) {
++             for (cur = str, token = str; *cur != 0; cur += clen) {
++@@ -171,7 +177,13 @@
++     */
++     container = xsltCreateRVT(tctxt);
++     if (container != NULL) {
++-        xsltRegisterLocalRVT(tctxt, container);
+++        if (xsltRegisterLocalRVT(tctxt, container) < 0) {
+++            xmlFreeDoc(container);
+++            xmlFree(str);
+++            xmlFree(delimiter);
+++            xmlXPathSetError(ctxt, XPATH_MEMORY_ERROR);
+++            return;
+++        }
++         ret = xmlXPathNewNodeSet(NULL);
++         if (ret != NULL) {
++             for (cur = str, token = str; *cur != 0; cur++) {
++@@ -565,7 +577,11 @@
++         xmlXPathSetError(ctxt, XPATH_MEMORY_ERROR);
++         return(-1);
++     }
++-    xsltRegisterLocalRVT(tctxt, container);
+++    if (xsltRegisterLocalRVT(tctxt, container) < 0) {
+++        xmlFreeDoc(container);
+++        xmlXPathSetError(ctxt, XPATH_MEMORY_ERROR);
+++        return(-1);
+++    }
++ 
++     text_node = xmlNewTextLen(str, len);
++     if (text_node == NULL) {
+--- a/textproc/libxslt/patches/patch-libexslt_dynamic.c
++++ b/textproc/libxslt/patches/patch-libexslt_dynamic.c
+@@ -0,0 +1,23 @@
++$NetBSD$
++
++Origin: EmberBSD (AI-assisted), not submitted upstream.
++Handle the fallible RVT registration introduced by the carried MR77 proposal.
++Release unregistered documents and propagate allocation errors.
++https://gitlab.gnome.org/GNOME/libxslt/-/merge_requests/77
++
++--- libexslt/dynamic.c.orig
+++++ libexslt/dynamic.c
++@@ -155,7 +155,12 @@
++ 	      "dyn:map : internal error container == NULL\n");
++ 	goto cleanup;
++     }
++-    xsltRegisterLocalRVT(tctxt, container);
+++    if (xsltRegisterLocalRVT(tctxt, container) < 0) {
+++        xmlFreeDoc(container);
+++        container = NULL;
+++        xmlXPathSetError(ctxt, XPATH_MEMORY_ERROR);
+++        goto cleanup;
+++    }
++     if (nodeset && nodeset->nodeNr > 0) {
++         xmlXPathNodeSetSort(nodeset);
++         ctxt->context->contextSize = nodeset->nodeNr;
 --- a/textproc/libxslt/Makefile
 +++ b/textproc/libxslt/Makefile
 @@ -1,6 +1,8 @@
@@ -784,11 +929,15 @@ See libxslt-security.md for the paired dependency and validation limits.
  .include "../../mk/bsd.pkg.mk"
 --- a/textproc/libxslt/distinfo
 +++ b/textproc/libxslt/distinfo
-@@ -3,3 +3,7 @@
+@@ -3,3 +3,11 @@
  BLAKE2s (libxslt-1.1.45.tar.xz) = fdcf75869a2584d939ec8fb7ce1f38c9b415b5b8963f7c4653e0ed5878f8a209
  SHA512 (libxslt-1.1.45.tar.xz) = 8f0608aad7250ccfe62808169d464a1641535b41a73b4fbbc1eeec9c9e785bbd8f4860d571eb567ee1e7abbd89ac3d707a5f3e3a9e836ecaf38155793ce47d78
  Size (libxslt-1.1.45.tar.xz) = 1519992 bytes
 +SHA1 (patch-libxslt_transform.c) = b7cea66c4ab46d04444d2fec5e743fe5269c4bf6
-+SHA1 (patch-libxslt_variables.c) = 709e56ab0737866a4c891e4b940ed860d77b783a
++SHA1 (patch-libxslt_variables.c) = 1140625507efabe9667542de2ac41c4e0a9d1e4b
 +SHA1 (patch-libxslt_xsltInternals.h) = b745b961e749617b53dcd2e9bbbb47bf7ea0b7d7
++SHA1 (patch-libexslt_common.c) = 2d8115ea527492ed4a32af50fed6258c2e9bb0aa
++SHA1 (patch-libexslt_functions.c) = e85ed5b93d0b6d5ca15a11dc5dc39f1fec4dbfd4
++SHA1 (patch-libexslt_strings.c) = 61917b207414fce8acdc4a38d2d80e25ad3c55de
++SHA1 (patch-libexslt_dynamic.c) = a75a933eaf86fce1cefdec2ff226185818878cbc
 +SHA1 (Makefile) = 05fe78490b53ef3e87067d228cda5e12959465ff

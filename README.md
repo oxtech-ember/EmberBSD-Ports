@@ -21,7 +21,8 @@ runtime behavior are validated.
 
 - [libxslt RVT ownership candidate](profiles/development-toolchain/libxslt-security.md):
   isolated GCC16 builds preserve public symbols and pass 747 upstream tests
-  plus twelve API cases and eleven allocation/header checks. The carried proposal
+  plus twelve API cases, eleven ownership/header checks and fourteen fresh-document
+  checks. The carried proposal
   includes release-wrapper and allocation-ownership corrections. Paired libxml2
   mitigation, package integration and memory checks retain explicit boundaries.
   Vulnerability checks remain enabled.

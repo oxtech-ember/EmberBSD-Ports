@@ -6,6 +6,8 @@
 #include <libxml/xmlmemory.h>
 static size_t denied_size;
 static int denied_hits;
+static int deny_list_after_doc;
+static int doc_seen;
 static int live_docs;
 static int live_lists;
 struct tracked { void *ptr; size_t size; };
@@ -22,7 +24,7 @@ static void track(void *p, size_t n) {
     }
     abort();
 }
-static void untrack(void *p) {
+static void untrack(const void *p) {
     if (!p) return;
     for (size_t i=0; i<sizeof(tracked)/sizeof(tracked[0]); ++i) {
         if (tracked[i].ptr==p) {
@@ -34,6 +36,10 @@ static void untrack(void *p) {
     abort();
 }
 static void *test_malloc(size_t n) {
+    if (deny_list_after_doc && n==sizeof(xmlDoc)) doc_seen=1;
+    if (deny_list_after_doc && doc_seen && n==sizeof(xsltRVTList)) {
+        deny_list_after_doc=0; ++denied_hits; return NULL;
+    }
     if (denied_size && n==denied_size) { ++denied_hits; return NULL; }
     void *p=malloc(n); track(p,n); return p;
 }

@@ -14,7 +14,7 @@ The upstream archive is
 Its SHA256 is
 `9acfe68419c4d06a45c550321b3212762d92f41465062ca4ea19e632ee5d216e`.
 
-The three source patches adapt Daniel Cheng's
+The core source patches adapt Daniel Cheng's
 [upstream MR77](https://gitlab.gnome.org/GNOME/libxslt/-/merge_requests/77),
 head `a3139eabb3e204f62e42ae226c8eeea964611733`.
 That proposal remains unmerged. The corresponding
@@ -26,7 +26,9 @@ Without that assignment, the proposed public release wrapper dereferences NULL.
 Internal ownership transitions reuse existing list nodes without allocation.
 Variable evaluation obtains its list before a document and frees the list if
 document creation fails. List-transfer helper declarations require `IN_LIBXSLT`.
-This local correction and its tests are AI-assisted work, not an upstream acceptance.
+Local corrections and their tests are AI-assisted work, not an upstream acceptance.
+Four additional EXSLT source patches handle registration failure before an
+unowned document can escape. Global variable evaluation has the same check.
 
 The repair addresses the RVT ownership cause described in
 [CVE-2025-10911 / issue144](https://gitlab.gnome.org/GNOME/libxslt/-/issues/144).
@@ -100,6 +102,19 @@ python3 profiles/development-toolchain/tests/libxslt-alloc.py \
     /absolute/new/allocation-results --cc /absolute/gcc16/bin/gcc --ar /usr/bin/ar
 ```
 
+The fresh-document fixture checks seven registration callers and seven normal
+success controls. It covers global variables, EXSLT `node-set`, content-based
+`func:result`, `tokenize`, `split`, string return and dynamic `map`.
+One list allocation is denied after the fresh document allocation. Each error
+must be visible, and the unregistered document must be freed. Normal controls
+check independent text/node-set results and final document/list accounting.
+
+```sh
+python3 profiles/development-toolchain/tests/libxslt-fresh.py \
+    /absolute/configured/libxslt-1.1.45 /absolute/libxml2-prefix \
+    /absolute/new/fresh-results --cc /absolute/gcc16/bin/gcc --ar /usr/bin/ar
+```
+
 `tests/libxslt-layout.c` compares relevant structure sizes and offsets.
 Compile it with the original headers, then with repaired headers and `-DFIXED`.
 These checks preserve layout; they do not promise the same private field names
@@ -126,6 +141,11 @@ The first candidate passed 3/11: seven ownership cases failed, and the helper
 was incorrectly visible in the public header. The positive document-allocation
 error control already passed.
 
+The fresh-document fixture passes 14/14 after its corrections. Before them,
+all seven normal controls passed. All seven allocation failures lost a document
+and failed to report the operation error. The corrected error paths free the
+document and propagate XPath, transformation or function errors.
+
 Full upstream `make check` returns zero before and after the repair.
 Each run reports 747 tests and no errors. Both emit the upstream C-locale
 collation warning. The positive XPath controls also pass before the repair;
@@ -135,14 +155,16 @@ The original upstream exploit attachments were not used.
 Isolated source install, uninstall and reinstall return zero.
 The consumer loads only its selected libxslt, libexslt, libxml2 and base C,
 pthread and math libraries. Actual runtime versions are libxml 21504,
-libxslt 10145 and libexslt 825. All 232 defined public function symbol names
-remain present, with no additions or removals. Checked structure sizes and
+libxslt 10145 and libexslt 825. All 232 libxslt and thirteen libexslt defined
+public function symbol names remain present, with no additions or removals. Checked structure sizes and
 mapped field offsets match. Normal pkgsrc package lifecycle remains untested.
 
-Static analysis covers `transform.c` and `variables.c` with configured NetBSD
-headers and settings. GCC16 `-fanalyzer` reports no warnings before or after.
-Cppcheck2.22 reports the same thirty diagnostics in both versions and returns
-one. Clang23.1.1 Static Analyzer reports the same nine diagnostics in both versions.
+Static analysis covers six translation units: `transform.c`, `variables.c`, and
+EXSLT `common.c`, `functions.c`, `strings.c` and `dynamic.c`.
+The comparison uses configured NetBSD headers and settings before and after the
+fresh-registration correction. GCC16 `-fanalyzer` reports no warnings in either
+version. Cppcheck2.22 reports the same 38 diagnostics and returns one.
+Clang23.1.1 Static Analyzer reports the same nine diagnostics in both versions.
 Their diagnostic-message multisets have no additions. These inherited findings
 include potential NULL arguments and redundant checks; they remain an upstream
 analysis debt, not a clean static-analysis result. No suppressions were added.
@@ -153,9 +175,3 @@ No Memcheck, ASan or UBSan success is claimed. Exit-zero functional results do
 not prove memory safety. Additional allocation-failure paths, instrumented UAF
 checks, full package integration, cross execution and downstream Qt/KDE
 acceptance remain separate gates. The generic advisory remains open.
-
-A further source audit identifies fresh-document registration callers that
-still ignore allocation failure. These remain in `xsltEvalGlobalVariable`
-and EXSLT `common.c`, `functions.c`, `strings.c` and `dynamic.c`.
-Their ownership/error paths are not repaired or accepted by this follow-up.
-They need separate focused checks before a wider allocation-safety acceptance.
