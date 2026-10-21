@@ -1,0 +1,49 @@
+#!/bin/sh
+# SPDX-License-Identifier: BSD-2-Clause
+# PROVIDE: ember_plasma
+# REQUIRE: DAEMON LOGIN dbus x11_runtime
+# KEYWORD: shutdown
+# Origin: EmberBSD (AI-assisted). Explicit ordinary-user automatic session.
+. /etc/rc.subr
+name=ember_plasma
+rcvar=$name
+start_cmd=ember_plasma_start
+stop_cmd=ember_plasma_stop
+status_cmd=ember_plasma_status
+load_rc_config "$name"
+: "${ember_plasma:=NO}"
+: "${ember_plasma_user:=}"
+ember_plasma_account()
+{
+    case "$ember_plasma_user" in ''|-*|*[!a-zA-Z0-9_-]*) echo 'Set ember_plasma_user to an existing ordinary account.' >&2; return 1 ;; esac
+    service_uid=$(/usr/bin/id -u "$ember_plasma_user") || return 1
+    service_gid=$(/usr/bin/id -g "$ember_plasma_user") || return 1
+    [ "$service_uid" -ne 0 ] || { echo 'A root desktop is forbidden.' >&2; return 1; }
+}
+ember_plasma_dispatch()
+{
+    /usr/bin/su -m "$ember_plasma_user" -c "exec /usr/bin/env -i PATH=/usr/pkg/bin:/usr/bin:/bin /usr/pkg/bin/perl /usr/pkg/libexec/ember-plasma-service $1"
+}
+ember_plasma_start()
+{
+    ember_plasma_account || return 1
+    [ "$(/usr/bin/id -u)" -eq 0 ] || { echo 'The rc.d start requires root to prepare runtime ownership.' >&2; return 1; }
+    parent=/var/run/ember-plasma
+    if [ ! -e "$parent" ] && [ ! -L "$parent" ]; then /usr/bin/install -d -o root -g wheel -m 0755 "$parent" || return 1; fi
+    [ ! -L "$parent" ] && [ -d "$parent" ] && [ "$(/usr/bin/stat -f '%u:%p' "$parent")" = '0:40755' ] || return 1
+    state=$parent/$service_uid
+    if [ ! -e "$state" ] && [ ! -L "$state" ]; then /usr/bin/install -d -o "$service_uid" -g "$service_gid" -m 0700 "$state" || return 1; fi
+    [ ! -L "$state" ] && [ -d "$state" ] && [ "$(/usr/bin/stat -f '%u:%p' "$state")" = "$service_uid:40700" ] || return 1
+    ember_plasma_dispatch start
+}
+ember_plasma_stop()
+{
+    ember_plasma_account || return 1
+    ember_plasma_dispatch stop
+}
+ember_plasma_status()
+{
+    ember_plasma_account || return 1
+    ember_plasma_dispatch status
+}
+run_rc_command "$1"

@@ -502,6 +502,9 @@ runtime behavior are validated.
   and normal logout. A separate BO snapshot contains desktop pixels. Graphical
   login, physical input, HDMI, seat ownership, hotplug, remote display and
   long-duration stability remain unaccepted.
+  The opt-in [persistent Plasma service](probes/plasma-mobile/toolkit/service/README.md)
+  starts the standard entry for an existing non-root account. Its source and
+  host ownership checks are separate from target service acceptance.
   The current xdg-user-dirs 0.20
   cross package passes private-profile checks on CM5.
   [Desktop package preparation](probes/plasma-mobile/toolkit/cross/desktop-package-set.md)
