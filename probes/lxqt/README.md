@@ -47,6 +47,14 @@ The cross recipes select its `Qt6LinguistTools` export explicitly.
 The generated LXQt configuration retains the target `/usr/pkg` paths.
 Native pkgsrc builds retain their original `TOOL_DEPENDS` behavior.
 
+The panel also needs the native Qt Wayland protocol generator. Build its
+matching host-only module with
+`probes/plasma-mobile/toolkit/cross/build-qtwaylandscanner.sh` and set
+`EMBERBSD_QT_WAYLAND_HOST_PATH` to that recipe's installed prefix. The panel
+selects the prefix's `Qt6WaylandScannerTools` CMake export explicitly; this
+prevents CMake from trying to execute `qtwaylandscanner` from the target
+sysroot. Native pkgsrc builds keep their upstream tool dependency.
+
 The same host-tool selection now covers libfm-qt, PCManFM-Qt, globalkeys,
 notificationd, runner, themes, the Qt platform plugin and the policy agent.
 Their source recipes retain the pinned pkgsrc manifests and patches.

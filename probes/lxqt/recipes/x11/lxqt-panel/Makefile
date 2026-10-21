@@ -48,6 +48,13 @@ CONF_FILES+=	${PANEL_CONF}/panel.conf \
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .include "../../meta-pkgs/lxqt/host-tools.mk"
+.if !defined(EMBERBSD_QT_WAYLAND_HOST_PATH) || \
+	!exists(${EMBERBSD_QT_WAYLAND_HOST_PATH}/share/qt/libexec/qtwaylandscanner) || \
+	!exists(${EMBERBSD_QT_WAYLAND_HOST_PATH}/lib/cmake/Qt6WaylandScannerTools/Qt6WaylandScannerToolsConfig.cmake)
+PKG_FAIL_REASON+= "Set EMBERBSD_QT_WAYLAND_HOST_PATH to matching native Qt Wayland tools"
+.else
+CMAKE_CONFIGURE_ARGS+=	-DQt6WaylandScannerTools_DIR:PATH=${EMBERBSD_QT_WAYLAND_HOST_PATH}/lib/cmake/Qt6WaylandScannerTools
+.endif
 .else
 TOOL_DEPENDS+=	lxqt-build-tools>=2.4.0:../../devel/lxqt-build-tools
 TOOL_DEPENDS+=	qt6-qttools-[0-9]*:../../devel/qt6-qttools
