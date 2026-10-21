@@ -134,7 +134,13 @@ This keeps the selected host compiler and all upstream tests. The input record
 includes compiler versions/triplet, C/C++ flags and source/library hashes.
 
 On macOS, set `SDKROOT=$(xcrun --show-sdk-path)` when the selected host GCC
-cannot locate the system library. The host GMP suite uses a
+cannot locate the system library. The Ports producer policy passes this selected
+SDK to captured and logged commands on Darwin. A nonempty value must name an
+existing absolute directory. Explicit command environment values take precedence;
+an empty value keeps compiler-default selection available. Other hosts do not
+inherit ambient `SDKROOT`. Ambient `CONFIG_SITE` and unrelated variables remain
+excluded by the SDK's shared environment sanitizer.
+The host GMP suite uses a
 [type-correct variadic test adaptation](patches/README.md): `t-rand` must pass
 `unsigned long` to `gmp_randinit`, as required by the upstream API. The original
 GCC16.2/Darwin run fails; the same test with correct argument types passes
@@ -335,10 +341,16 @@ stages the runtime without replacing a complete GCC16 provider. The
 
 ```sh
 python3 -B profiles/development-toolchain/tests/python/controllers-test.py
+python3 -B profiles/development-toolchain/tests/python/environment-test.py
 python3 -B profiles/development-toolchain/cross/tests/lto-binutils.py \
     /absolute/gcc-cross/toolchain /absolute/new-lto-check
 sh profiles/development-toolchain/tests/prepare.sh /absolute/new-pkgsrc-test
 ```
+
+The environment contract executes real captured and logged children. It checks
+Darwin-only SDK inheritance, explicit overrides and malformed paths. On Darwin,
+it also compiles, links and executes a C probe with the selected SDK and GCC16.
+These checks retain the normal process ownership guard.
 
 The controller fixtures check both triplets, the two compiler modes, source
 and tool identities, native metadata tools, runtime selection and interrupted

@@ -50,7 +50,12 @@ def environment(values=None):
     env = process.sanitized_environment()
     env.pop('CONFIG_SITE', None)
     env['PYTHONDONTWRITEBYTECODE'] = '1'
+    if platform.system() == 'Darwin' and 'SDKROOT' in os.environ:
+        env['SDKROOT'] = os.environ['SDKROOT']
     env.update(values or {})
+    if platform.system() == 'Darwin' and env.get('SDKROOT'):
+        sdk = Path(env['SDKROOT'])
+        require(sdk.is_absolute() and sdk.is_dir(), 'SDKROOT must name an existing absolute directory')
     return env
 
 
