@@ -53,6 +53,8 @@ file list from the sysroot package database. For each file, it compares:
 Only after all files match does it remove them from the compiler stage.
 The staged C++ headers must also select the TLS `std::call_once` ABI.
 Development links such as `libstdc++.so` remain in the compiler package.
+The profile disables libtool archive expansion for this PLIST, because
+`libstdc++.la` would otherwise list the removed runtime libraries.
 
 `gcc16-runtime-16.2.0nb6` conflicts only with complete compilers up to nb4
 and with `gcc16-libs`. A complete compiler with the same files is still
@@ -78,3 +80,21 @@ The first check uses fixtures. It must refuse different symbol versions,
 object sizes, `NEEDED` entries, links, a missing file, non-TLS headers and a
 different `c++config.h`. Its stub package database also has no nb6 runtime case. The second check covers the profile selection. The third
 check reads the real recipe metadata for cross and native builds.
+
+## Recorded result and limits
+
+On macOS arm64, the amd64 packages built from the pinned pkgsrc:
+
+```text
+78c886a93e34ea12bcc8ac48e2fd3ee4113ece5d23915271978bbfe2bdf097d5  gcc16-16.2.0nb5.tgz
+586514c8f5aaa8712a6ceb49d1d3c2daaa8c414ecffa23e47a011cef4495701d  gcc16-runtime-16.2.0nb6.tgz
+```
+
+The runtime stage was rebuilt from the same export. Its C++ headers match the
+earlier nb5 stage. The layer matched all seven files of the nb6 runtime:
+`libgcc_s`, `libstdc++`, `libgomp` and `libatomic` with their links. The
+staged `c++config.h` matched the sysroot copy. The pkgsrc file, interpreter,
+permission, RELRO, run-time path and work-directory checks passed. Both
+packages install in the shared amd64 sysroot with `pkg_add`.
+The target driver, its `as`/`ld` links and its C/C++ code generation have not
+yet run on EmberBSD.

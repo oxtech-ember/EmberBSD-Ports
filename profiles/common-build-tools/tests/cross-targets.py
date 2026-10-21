@@ -84,6 +84,7 @@ with tempfile.TemporaryDirectory(prefix='ember-cross-targets-') as temporary:
     assert read(*layered, '-v', 'PKG_OPTIONS.gcc16').split() == expected
     crt = str(work / 'sysroot/usr/pkg/gcc16/lib/gcc/x86_64--netbsd/16.2.0') + '/'
     assert read(*layered, '-v', 'GCC16_CROSS_TARGET_FLAGS') == '-B' + crt
+    assert read(*layered, '-v', 'LIBTOOLIZE_PLIST') == 'no' and read(*compiler, '-v', 'LIBTOOLIZE_PLIST') != 'no'
     assert read(*layered, '-v', '_EMBER_GCC16_LAYER') == str(root / 'profiles/common-build-tools/cross/gcc16-external-runtime.sh')
     assert 'emberbsd-gcc16-external-runtime' not in read('EMBERBSD_CROSS_TARGET=amd64', 'EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime', '-V', '${.ALLTARGETS}').split()
     assert 'emberbsd-gcc16-external-runtime' in read(*layered, '-V', '${.ALLTARGETS}').split()
