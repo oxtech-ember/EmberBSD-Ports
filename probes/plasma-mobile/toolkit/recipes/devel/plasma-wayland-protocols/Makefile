@@ -17,4 +17,11 @@ USE_LANGUAGES=	c c++
 BUILDLINK_API_DEPENDS.extra-cmake-modules+=	extra-cmake-modules>=5.60.0
 .include "../../devel/extra-cmake-modules/buildlink3.mk"
 .include "../../devel/wayland/buildlink3.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# KDEInstallDirs6 always queries qtpaths for QT_INSTALL_PREFIX. A cross build
+# finds the host qtpaths only through the target Qt6 configuration and
+# QT_HOST_PATH. The package installs no Qt files, so Qt is a build dependency.
+BUILDLINK_DEPMETHOD.qt6-qtbase?=	build
+.include "../../x11/qt6-qtbase/buildlink3.mk"
+.endif
 .include "../../mk/bsd.pkg.mk"
