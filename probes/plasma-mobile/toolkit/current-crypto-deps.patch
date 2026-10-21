@@ -16,7 +16,7 @@ SHA256: bf149d01a2b9fcc0e4589b8ae8697d3d5c557ea48ed95a3fa55dd3b1187e6039
  MASTER_SITES=	${MASTER_SITE_GNUPG:=gnupg/}
 --- a/security/gnupg2/distinfo
 +++ b/security/gnupg2/distinfo
-@@ -1,6 +1,6 @@
+@@ -1,6 +1,7 @@
  $NetBSD: distinfo,v 1.100 2026/09/07 05:19:50 adam Exp $
  
 -BLAKE2s (gnupg-2.5.22.tar.bz2) = c642f2c49daecf09a6acb4a3faaceca65427f68f7a741a5d558bf369f796ba5a
@@ -26,6 +26,28 @@ SHA256: bf149d01a2b9fcc0e4589b8ae8697d3d5c557ea48ed95a3fa55dd3b1187e6039
 +SHA512 (gnupg-2.5.24.tar.bz2) = c60b0c105ef710defec5b23d6c1382ae8adabc3207917fb484960b1c37ae7b542da2ece5eafaa5d53fa13485647b52c2d371fe099e5600aba4c84e7d83ceb1df
 +Size (gnupg-2.5.24.tar.bz2) = 8431157 bytes
  SHA1 (patch-common_sysutils.c) = 569c12e21172c1521284922244b2f4f361c945d6
++SHA1 (patch-g13_Makefile.in) = c8b9823299e9b36fbba439e252006925d0eca82b
+--- /dev/null
++++ b/security/gnupg2/patches/patch-g13_Makefile.in
+@@ -0,0 +1,18 @@
++$NetBSD$
++
++Link the g13 tests with libintl. libcommon calls gettext, and the common
++tests already link $(LIBINTL). GNU ld does not add the indirect libintl
++dependency of libgpg-error to the link.
++Origin: EmberBSD (AI-assisted); not yet submitted upstream.
++
++--- g13/Makefile.in.orig
+++++ g13/Makefile.in
++@@ -528,7 +528,7 @@
++ 
++ module_tests = t-g13tuple
++ t_common_ldadd = $(libcommon) $(LIBGCRYPT_LIBS) \
++-	         $(LIBASSUAN_LIBS) $(GPG_ERROR_LIBS) $(LIBICONV)
+++	         $(LIBASSUAN_LIBS) $(GPG_ERROR_LIBS) $(LIBINTL) $(LIBICONV)
++ 
++ t_g13tuple_SOURCES = t-g13tuple.c g13tuple.c
++ t_g13tuple_LDADD = $(t_common_ldadd)
 --- a/security/libassuan2/Makefile
 +++ b/security/libassuan2/Makefile
 @@ -1,6 +1,7 @@

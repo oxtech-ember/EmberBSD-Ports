@@ -39,7 +39,9 @@ for option in --cflags --libs --variable=host; do
 done
 ! grep -F "$sysroot" "$work/target-metadata.txt"
 grep -q -- "-I$prefix/include" "$work/target-metadata.txt"
-grep -q 'aarch64.*netbsd' "$work/target-metadata.txt"
+# The MAKECONF selects the target: aarch64 or x86_64.
+arch=$("$BMAKE" -C "$prepared/security/libassuan2" "MAKECONF=$conf" -V '${MACHINE_GNU_ARCH}')
+grep -Eq "^$arch-.*netbsd" "$work/target-metadata.txt"
 if patch -f -N -F 0 -p1 -d "$work/pkgsrc" < "$root/probes/plasma-mobile/toolkit/current-crypto-deps.patch" > "$work/repeated.log" 2>&1; then exit 1; fi
 rm "$work/recipes.tar"
 echo 'PASS: current GnuPG archive, zero-fuzz source patch, exact export, target GPG metadata and unchanged native selection'
