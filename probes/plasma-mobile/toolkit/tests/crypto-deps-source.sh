@@ -15,7 +15,7 @@ mkdir "$work/pkgsrc" "$work/source"
 git -C "$root/upstream/pkgsrc" archive --format=tar HEAD security/gnupg2 security/libassuan2 security/libgpg-error > "$work/recipes.tar"
 tar -xf "$work/recipes.tar" -C "$work/pkgsrc"
 patch -f -N -F 0 -p1 -d "$work/pkgsrc" < "$root/probes/plasma-mobile/toolkit/current-crypto-deps.patch"
-for file in security/gnupg2/Makefile security/gnupg2/distinfo security/libassuan2/Makefile security/libgpg-error/buildlink3.mk; do
+for file in security/gnupg2/Makefile security/gnupg2/distinfo security/gnupg2/patches/patch-g13_Makefile.in security/libassuan2/Makefile security/libgpg-error/buildlink3.mk; do
     cmp "$work/pkgsrc/$file" "$prepared/$file"
 done
 export DIGEST
@@ -41,6 +41,7 @@ done
 grep -q -- "-I$prefix/include" "$work/target-metadata.txt"
 # The MAKECONF selects the target: aarch64 or x86_64.
 arch=$("$BMAKE" -C "$prepared/security/libassuan2" "MAKECONF=$conf" -V '${MACHINE_GNU_ARCH}')
+[ -n "$arch" ]
 grep -Eq "^$arch-.*netbsd" "$work/target-metadata.txt"
 if patch -f -N -F 0 -p1 -d "$work/pkgsrc" < "$root/probes/plasma-mobile/toolkit/current-crypto-deps.patch" > "$work/repeated.log" 2>&1; then exit 1; fi
 rm "$work/recipes.tar"

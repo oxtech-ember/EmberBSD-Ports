@@ -17,6 +17,11 @@ The libgpg-error buildlink now selects the target POSIX shell script and its
 metadata. Native builds keep the original selection. `bsd.prefs.mk` must be
 loaded before testing `USE_CROSS_COMPILE`; an early unset value loses the fix.
 
+GnuPG 2.5.24 links its g13 tests without `$(LIBINTL)`, although libcommon
+calls `gettext`. GNU ld does not use the indirect libintl dependency of
+libgpg-error, so the link fails. `patch-g13_Makefile.in` adds the library.
+The amd64 result is a build check only; runtime evidence remains AArch64.
+
 polkit uses native GLib generators, g-ir-scanner and g-ir-compiler. Its GIR
 queries are cross-compiled and executed on the board through the existing
 [common introspection workflow](../../../../profiles/common-graphics/recipes/devel/gobject-introspection/cross.mk).
