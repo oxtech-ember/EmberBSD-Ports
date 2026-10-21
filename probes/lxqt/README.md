@@ -55,6 +55,15 @@ selects the prefix's `Qt6WaylandScannerTools` CMake export explicitly; this
 prevents CMake from trying to execute `qtwaylandscanner` from the target
 sysroot. Native pkgsrc builds keep their upstream tool dependency.
 
+The `lxqt-panel-2.4.1nb3` cross package passes ordinary GCC16 pkgsrc checks.
+Its archive SHA256 is
+`0317669ca0c9a1a07631afa274b6b100f17e440e0c42b3240a1b57ec047e101d`.
+The package metadata and resolved sysroot dependency records contain no GTK
+packages. Its `libstatgrab` dependency uses target Perl 5.44.0 at runtime.
+Build-time scanner selection and native-mode dependency retention pass
+`check-lxqt-panel-host-tools.py`. Installed-panel execution and a full LXQt
+session remain separate acceptance steps.
+
 The same host-tool selection now covers libfm-qt, PCManFM-Qt, globalkeys,
 notificationd, runner, themes, the Qt platform plugin and the policy agent.
 Their source recipes retain the pinned pkgsrc manifests and patches.
@@ -169,7 +178,8 @@ The causal libXpm rebuild passes the ordinary RPATH and work-directory checks.
 ## Source checks
 
 The [source analysis and helper regressions](source-analysis.md) record source
-coverage, inherited findings, parser limits and runtime helper checks.
+coverage, inherited findings, parser limits and runtime helper checks,
+including the lxqt-panel compilation database comparison.
 
 ## Acceptance boundary
 

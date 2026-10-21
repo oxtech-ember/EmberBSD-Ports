@@ -184,3 +184,15 @@ All six upstream check modes and two exact-byte encoding conversions pass
 with the GCC16 target binary. The same eight cases pass in a native
 ASan/UBSan build. Valgrind Memcheck does not support the tested macOS/arm64
 host or EmberBSD/aarch64 guest. These sanitizer runs are not Memcheck runs.
+
+## lxqt-panel 2.4.1
+
+Cppcheck 2.22.0 compares all 168 target compilation commands with GCC16
+macros, target headers, Qt 6.12 and C++20. Upstream and packaged sources each
+produce 865 normalized diagnostic lines, with no new or removed findings.
+Two Qt header `syntaxError` reports remain parser limitations in `qtypes.h`
+and `qpixelformat.h`. No diagnostic category is suppressed.
+
+Clang Static Analyzer 23.1.3 checks the four C++ translation units changed by
+pkgsrc path substitutions. All upstream and packaged runs exit successfully
+with no diagnostics. Clang is used for analysis only; GCC16 builds the target.
