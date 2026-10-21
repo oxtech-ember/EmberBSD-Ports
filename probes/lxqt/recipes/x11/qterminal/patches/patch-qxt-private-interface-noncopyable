@@ -1,0 +1,15 @@
+$NetBSD$
+
+Declare the private copy operations without definitions.
+They disable copying and do not need bodies.
+
+--- src/third-party/qxtglobal.h.orig
++++ src/third-party/qxtglobal.h
+@@ -227,5 +227,5 @@
+ private:
+-    QxtPrivateInterface(const QxtPrivateInterface&) { }
+-    QxtPrivateInterface& operator=(const QxtPrivateInterface&) { }
++    QxtPrivateInterface(const QxtPrivateInterface&);
++    QxtPrivateInterface& operator=(const QxtPrivateInterface&);
+     QxtPrivate<PUB>* pvt;
+ };

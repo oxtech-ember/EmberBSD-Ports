@@ -1,0 +1,26 @@
+$NetBSD$
+
+Ignore navigation when no terminal widget remains.
+Use the first terminal when none has focus.
+
+--- src/termwidgetholder.cpp.orig
++++ src/termwidgetholder.cpp
+@@ -198,6 +198,9 @@
+ void TermWidgetHolder::directionalNavigation(NavigationDirection dir) {
+     // Find an active widget
+     QList<TermWidget*> l = findChildren<TermWidget*>();
++    if (l.isEmpty()) {
++        return;
++    }
+     int ix = -1;
+     for (TermWidget * w : std::as_const(l))
+     {
+@@ -208,7 +211,7 @@
+         }
+     }
+-    if (ix > l.count())
++    if (ix >= l.count())
+     {
+         l.at(0)->impl()->setFocus(Qt::OtherFocusReason);
+         return;
+     }

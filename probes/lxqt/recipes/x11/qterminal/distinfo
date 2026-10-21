@@ -1,0 +1,8 @@
+$NetBSD: distinfo,v 1.17 2026/04/28 08:06:17 pin Exp $
+
+BLAKE2s (qterminal-2.4.0.tar.xz) = 2c6f91068ef99ec67eae0382363a1e64ba62392abd8867f3d05b14f98fae868c
+SHA512 (qterminal-2.4.0.tar.xz) = 75c6a622976afd7fb3578f7535dad6b86458fa549fc31ef5fcba88fb71c597ed5768544c83a0fb91c27605cb4c3b3262ca82ef7776e9b42c042ce8f395c13822
+Size (qterminal-2.4.0.tar.xz) = 417816 bytes
+SHA1 (patch-qxt-private-interface-noncopyable) = 29213523b3f93c0af6c93b56da88afdf1607b88c
+SHA1 (patch-termwidgetholder-empty-navigation) = dbb9083791eb1ec7b5abef24e4fc533e531899d1
+SHA1 (patch-tab-switcher-appinfo-index) = 74f8ba11277bfa1c599698751bc9ca74c30e766d

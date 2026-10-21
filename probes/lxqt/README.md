@@ -78,6 +78,16 @@ GCC16 build passes all 93 steps and pkgsrc checks. The archive SHA256 is
 runtime dependencies are `gcc16>=16.2.0nb1` and `qt6-qtbase>=6.12.0nb3`. No
 GTK dependency is present.
 
+The qterminal 2.4.0nb4 overlay selects matching host Qt LinguistTools in
+cross mode and retains the native pkgsrc tool dependencies. Its three source
+patches remove undefined Qxt copy operations, guard empty terminal navigation
+and initialize the tab-switcher index. The ordinary GCC16 package build passes
+all pkgsrc checks. Its SHA256 is
+`f535d1cb7e4d814fa321963950737d21515327c1082e0d63098b1a92e5b6c887`. Runtime
+dependencies resolve to the existing qtermwidget 2.4.0nb3 and Qt 6.12 package
+set. No GTK dependency is present. Target installation and execution remain
+separate acceptance steps.
+
 The PCManFM dependency recipes select upstream libfm 1.4.1 and menu-cache
 1.1.1. The source archives match the hashes in the official LXDE release
 inventory. Their download URLs pin that inventory's Git commit. Only the
@@ -206,6 +216,7 @@ Prepared host modules are a build prerequisite. Compilation and component
 tests do not establish power control, input or rendering.
 The qtermwidget archive build passes on the macOS cross host. The host
 `pkg_add` correctly refuses to install a NetBSD package into a Darwin package
-database; target installation and runtime execution remain pending.
+database. The qterminal archive also passes the ordinary GCC16 package checks;
+target installation and runtime execution remain pending for both packages.
 X11 and Wayland session execution require separate target acceptance.
 The Wayland session requires a supported compositor and its own package.

@@ -1,0 +1,12 @@
+$NetBSD$
+
+Initialize an AppInfo value when its caller does not supply a tab index.
+
+--- src/tab-switcher.h.orig
++++ src/tab-switcher.h
+@@ -21,4 +21,4 @@
+     struct AppInfo {
+         QString name;
+-        int index;
++        int index = -1;
+     };

@@ -80,6 +80,26 @@ MOC files and macros. Three uninitialized-buffer reports end in
 `delete[]` paths without a read from the buffer. No source-level
 Clang Static Analyzer run applies to this recipe-only change.
 
+## qterminal 2.4.0
+
+Cppcheck 2.22.0 compares the upstream and patched sources for 18 real C++
+translation units in the GCC16 AArch64 compilation database. It uses the
+target headers, macros and Qt model. The generated MOC/UI units are excluded
+because Cppcheck cannot parse those generated files; no diagnostic category
+is suppressed. The upstream run reports 72 findings: four warnings, two
+errors, 54 style findings, seven performance findings and five information
+reports. The patched run reports 66. It removes the two missing-return errors
+in Qxt's private copy operations, their two pointer-state warnings, the
+uninitialized tab index warning and the terminal-list bounds warning. No
+normalized diagnostic is added. The inherited style, performance and
+information findings remain.
+
+Clang Static Analyzer 23.1.4 checks `termwidgetholder.cpp`, `tab-switcher.cpp`,
+`qxtglobalshortcut.cpp` and `qxtglobalshortcut_x11.cpp` against the target
+sysroot and GCC16 C++ headers. All four upstream and all four patched runs
+exit successfully without diagnostics. Clang runs in analysis mode only; GCC16
+builds all target objects.
+
 ## LXQt helper regressions
 
 The Wayland qdbus helper uses `/bin/sh`, calls Qt's installed qdbus path and
