@@ -65,7 +65,7 @@ Prepare these separate directories, outside Git:
 - A target sysroot with headers, complete base libraries and development
   files (including `libintl`), the complete accepted
   GCC16 development files, a coherent runtime provider and target package database.
-  Include base `/usr/bin/install-info` for packages shipping Info manuals.
+  For Info manuals, use the target base `/usr/bin/install-info` when it is present. If the target base omits it, pkgsrc supplies `pkgtools/pkg_install-info` as a target run dependency. The cross profile writes `/usr/pkg/bin/pkg_install-info` into package lifecycle scripts; it never substitutes the build-host helper.
 
 For AArch64 or amd64 application images, select `EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime`.
 The [runtime-only provider](../../development-toolchain/runtime/README.md)
@@ -347,20 +347,23 @@ sysroot whose GCC16 C++ headers do not define `_GLIBCXX_HAVE_TLS`. Packages reta
 file, permission, RPATH and shared-library checks, and record root/wheel
 ownership rather than the Mac user's UID.
 
-The only base runtime-tool exception is `install-info`, verified in the
-sysroot. Its build wrapper is a no-op and the installation script names
-`/usr/bin/install-info` on the target. A Perl runtime tool is allowed only when
-the target Perl package is staged at `/usr/pkg/bin/perl`. Pkgsrc retains Perl
-as a target runtime dependency and writes the target path into Perl script
-shebangs. Other unsupported `:run` tools still fail explicitly. Libtool
-declares GNU M4 as a target package dependency.
+For Info manuals, cross package scripts use the target base
+`/usr/bin/install-info` when it is present. If the base sysroot omits it,
+pkgsrc adds `pkgtools/pkg_install-info` as a target runtime dependency and
+records `/usr/pkg/bin/pkg_install-info` for the target. The build wrapper is a
+no-op in both cases. A Perl runtime tool is allowed only when the target Perl
+package is staged at `/usr/pkg/bin/perl`. Pkgsrc retains Perl as a target
+runtime dependency and writes the target path into Perl script shebangs. Other
+unsupported `:run` tools still fail explicitly. Libtool declares GNU M4 as a
+target package dependency.
 
 ## Acceptance
 
 Run `tests/cross-pkgsrc.sh` against a staged pkgconf package. It exercises real
 pkgsrc parsing, native dependency recursion, ELF metadata and failure cases.
 `tests/cross-tools.py` checks tool composition, refusal of existing output,
-missing host tools and the constrained target Info utility selection.
+missing host tools, target Info utility routing and the pkgsrc runtime
+dependency. It does not execute target binaries on the host.
 `tests/cross-runtime-perl.py` checks staged target Perl dependency and shebang
 selection, refusal when Perl is absent, and unchanged native behavior.
 `python3 -B tests/prepare-tools-target.py --sdk-source SDK NEW_WORK` runs the real

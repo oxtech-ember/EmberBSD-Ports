@@ -402,7 +402,7 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
 +				fi; \
 +				requires=`${SORT} -u ${WRKDIR}/.elf-requires`; \
 +			else \
- 			requires=`(${PKGSRC_SETENV} ${LDD_ENV:U} $$ldd $$bins $$libs 2>/dev/null || ${TRUE}) | ${AWK} '$$2 == "=>" && $$3 ~ "/" { while (gsub(/\/\.\//, "/", $$3)) {}; print $$3 }' | ${SORT} -u`; \
+ 			requires=`(${PKGSRC_SETENV} ${LDD_ENV:U} $$ldd $$bins $$libs 2>/dev/null || ${TRUE}) | ${AWK} '$$2 == "=>" && $$3 ~ "/" { print $$3 }' | ${SORT} -u`; \
 +			fi; \
  		fi;							\
  		linklibs=`${AWK} '/.*\.so(\.[0-9]+)*$$/ { print "${DESTDIR}${PREFIX}/" $$0 }' ${_PLIST_NOKEYWORDS}`; \
@@ -442,16 +442,15 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  _TOOLS_USE_PKGSRC.msgfmt?=	no
 --- a/mk/tools/replace.mk
 +++ b/mk/tools/replace.mk
-@@ -140,8 +140,27 @@
+@@ -140,8 +140,33 @@
  _TOOLS_DEPMETHOD.${_t_:C/:.*//}=	TOOL_DEPENDS
  .endfor
  .for _t_ in ${USE_TOOLS:M*\:run}
--.  if ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} != ${NATIVE_OPSYS}
 +# install-info is never executed during the build: its wrapper is a no-op.
 +# Standard NetBSD base utilities get the same treatment for packages whose
 +# target scripts use them (for example mozilla-rootcerts' extraction);
 +# permit the verified NetBSD base paths in target package scripts only.
-+.  if ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} != ${NATIVE_OPSYS}
+ .  if ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} != ${NATIVE_OPSYS}
 +EMBER_CROSS_RUN_OK=	no
 +.    for _b_ in install-info awk echo expr ln ls openssl rm mkdir
 +.      if ${_t_} == "${_b_}:run" && ${OPSYS} == "NetBSD" && \
@@ -460,6 +459,12 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
 +EMBER_CROSS_RUN_OK=	yes
 +.      endif
 +.    endfor
++# pkgsrc supplies install-info as a target runtime dependency when the base
++# sysroot does not provide it. Its build-host wrapper remains a no-op.
++.    if ${_t_} == "install-info:run" && ${OPSYS} == "NetBSD" && \
++        !empty(_TOOLS_USE_PKGSRC.install-info:M[yY][eE][sS])
++EMBER_CROSS_RUN_OK=	yes
++.    endif
 +# The staged target Perl package supports scripts with a Perl runtime.
 +.    if ${_t_} == "perl:run" && ${OPSYS} == "NetBSD" && \
 +        exists(${CROSS_DESTDIR}/usr/pkg/bin/perl)
@@ -471,7 +476,20 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  .  endif
  _TOOLS_DEPMETHOD.${_t_:C/:.*//}=	DEPENDS
  .endfor
-@@ -978,4 +997,9 @@
+@@ -535,6 +560,12 @@
+ TOOLS_DEPENDS.install-info?=	pkg_install-info-[0-9]*:../../pkgtools/pkg_install-info
+ TOOLS_CREATE+=			install-info
+ TOOLS_PATH.install-info=	${TOOLBASE}/bin/pkg_install-info
++.    if ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++        ${NATIVE_OPSYS} != "NetBSD" && \
++        !empty(_TOOLS_USE_PKGSRC.install-info:M[yY][eE][sS])
++# Package lifecycle scripts run on the target and must not retain TOOLBASE.
++TOOLS_PATH.install-info=	${CROSS_LOCALBASE}/bin/pkg_install-info
++.    endif
+ .  endif
+ .endif
+ #
+@@ -978,6 +1009,11 @@
  TOOLS_DEPENDS.${_t_}?=		perl>=${PERL5_REQD}:../../lang/perl5
  TOOLS_CREATE+=			${_t_}
  TOOLS_PATH.${_t_}=		${TOOLBASE}/bin/${_t_}
@@ -481,6 +499,8 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
 +TOOLS_PATH.${_t_}=	${PREFIX}/bin/perl
 +.    endif
  .    endif
+ .  endif
+ .endfor
 --- a/mk/pkgformat/pkg/package.mk
 +++ b/mk/pkgformat/pkg/package.mk
 @@ -148,10 +148,7 @@

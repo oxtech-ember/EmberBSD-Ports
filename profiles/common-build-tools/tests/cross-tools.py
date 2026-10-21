@@ -33,9 +33,48 @@ assert 'Output already exists' in run('existing', command, False)
 assert 'Missing cross tool or NetBSD host install' in run('missing', [sys.executable, '-B', helper, '--sdk-source', sdk, compiler, work / 'missing-os-tools', work / 'rejected'], False)
 assert not (work / 'rejected').exists()
 base = [bmake, '-C', pkgsrc + '/devel/m4', 'MAKECONF=' + makeconf]
-result = run('info-present', base + ['show-vars', 'VARNAMES=PKG_FAIL_REASON INSTALL_INFO TOOLS_SCRIPT.install-info DEPENDS']).splitlines()
-assert result[:3] == ['', '/usr/bin/install-info', 'exit 0'] and not any('pkg_install-info-' in line for line in result)
-(work / 'empty-sysroot').mkdir()
-assert 'install-info:run not supported in cross-compilation' in run('info-missing', base + ['EMBERBSD_CROSS_SYSROOT=' + str(work / 'empty-sysroot'), '-v', 'PKG_FAIL_REASON'])
+source_sysroot = Path(run('target-sysroot', base + ['show-vars', 'VARNAMES=CROSS_DESTDIR']).strip())
+required_runtime = (
+    'usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0/crtbeginS.o',
+    'usr/pkg/gcc16/lib/libstdc++.so.7',
+    'usr/pkg/gcc16/include/c++/aarch64--netbsd/bits/c++config.h',
+)
+
+def info_sysroot(name, utility=None):
+    target = work / name
+    for relative in required_runtime:
+        source = source_sysroot / relative
+        if not source.is_file():
+            raise SystemExit('Missing runtime fixture input: ' + str(source))
+        destination = target / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.symlink_to(source)
+    if utility is not None:
+        # The profile selects the base path by sysroot file presence only.
+        destination = target / utility
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text('metadata fixture only\n')
+    return target
+
+query = 'show-vars'
+variables = 'VARNAMES=PKG_FAIL_REASON INSTALL_INFO TOOLS_SCRIPT.install-info TOOLS_PATH.install-info DEPENDS'
+base_tool = info_sysroot('sysroot-base-install-info', 'usr/bin/install-info')
+result = run('info-base-provider', base + ['EMBERBSD_CROSS_SYSROOT=' + str(base_tool), query, variables]).splitlines()
+assert 'install-info:run not supported in cross-compilation' not in result[0], result
+assert result[1:4] == ['/usr/bin/install-info', 'exit 0', '/usr/bin/install-info'], result
+assert not any('pkg_install-info-' in line for line in result[4:]), result
+
+package_tool = info_sysroot('sysroot-pkg-install-info')
+result = run('info-package-provider', base + ['EMBERBSD_CROSS_SYSROOT=' + str(package_tool), query, variables]).splitlines()
+assert 'install-info:run not supported in cross-compilation' not in result[0], result
+assert result[1:4] == ['/usr/pkg/bin/pkg_install-info', 'exit 0', '/usr/pkg/bin/pkg_install-info'], result
+assert any('pkg_install-info-' in line and ':../../pkgtools/pkg_install-info' in line
+           for line in result[4:]), result
+
+missing_tool = info_sysroot('sysroot-missing-install-info')
+assert 'install-info:run not supported in cross-compilation' in run(
+    'info-no-provider', base + ['EMBERBSD_CROSS_SYSROOT=' + str(missing_tool),
+    '_TOOLS_USE_PKGSRC.install-info=no', 'TOOLS_PLATFORM.install-info=',
+    query, 'VARNAMES=PKG_FAIL_REASON'])
 assert 'gm4:run not supported in cross-compilation' in run('other-runtime-tool', base + ['USE_TOOLS=sh pwd gm4:run', '-v', 'PKG_FAIL_REASON'])
-print('PASS: GCC16 tool composition, existing/missing refusals and target install-info routing')
+print('PASS: GCC16 tool composition, base/package install-info routing and unsupported-tool refusal')
