@@ -2,7 +2,7 @@
 
 DISTNAME=	libsecret-0.21.8.2
 CATEGORIES=	security gnome
-MASTER_SITES=	${MASTER_SITE_GNOME:=sources/libsecret/${PKGVERSION_NOREV:C/([0-9]+\.[0-9]+)\..*//}/}
+MASTER_SITES=	${MASTER_SITE_GNOME:=sources/libsecret/${PKGVERSION_NOREV:C/^([0-9]+\.[0-9]+)\..*/\1/}/}
 EXTRACT_SUFX=	.tar.xz
 
 MAINTAINER=	ryoon@NetBSD.org

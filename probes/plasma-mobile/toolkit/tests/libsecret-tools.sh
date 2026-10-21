@@ -7,12 +7,16 @@ pkgsrc=$1 config=$2 work=$3
 : "${BMAKE:=bmake}"
 mkdir "$work"
 for mode in yes no; do
-    for variable in PKGNAME PKG_FAIL_REASON MESON_BINARIES MESON_NATIVE_ARGS BUILD_DEPENDS TOOL_DEPENDS BUILDLINK_API_DEPENDS.vala BUILDLINK_API_DEPENDS.py-gi-docgen MESON_ARGS; do
+    for variable in PKGNAME MASTER_SITES PKG_FAIL_REASON MESON_BINARIES MESON_NATIVE_ARGS BUILD_DEPENDS TOOL_DEPENDS BUILDLINK_API_DEPENDS.vala BUILDLINK_API_DEPENDS.py-gi-docgen MESON_ARGS; do
         MAKECONF="$config" "$BMAKE" -C "$pkgsrc/security/libsecret" USE_CROSS_COMPILE="$mode" -V "\${$variable}" > "$work/$mode-$variable.txt"
     done
     grep -qx libsecret-0.21.8.2 "$work/$mode-PKGNAME.txt"
     [ ! -s "$work/$mode-PKG_FAIL_REASON.txt" ] || [ "$(cat "$work/$mode-PKG_FAIL_REASON.txt")" = '' ]
-    ! grep -E -- '-D(introspection|vapi|gtk_doc)=false' "$work/$mode-MESON_ARGS.txt"
+    if grep -E -- '-D(introspection|vapi|gtk_doc)=false' "$work/$mode-MESON_ARGS.txt"; then exit 1; fi
+    # GNOME publishes the archive below its major.minor series directory.
+    tr -s ' ' '\n' < "$work/$mode-MASTER_SITES.txt" > "$work/$mode-sites.txt"
+    grep -q '/sources/libsecret/0\.21/$' "$work/$mode-sites.txt"
+    if grep -v '/sources/libsecret/0\.21/$' "$work/$mode-sites.txt"; then exit 1; fi
 done
 grep -q g-ir-scanner "$work/yes-MESON_BINARIES.txt"
 grep -q vapigen "$work/yes-MESON_BINARIES.txt"
