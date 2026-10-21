@@ -12,6 +12,16 @@ the build host using the target build's actual metadata. The separate
 [complete cross composition](profile.md) selects host tools and target
 dependencies without changing the native profile.
 
+KiCad 10.0.7 requires `protobuf>=36.2nb1` only for NetBSD cross builds; the
+native package remains compatible with `protobuf-36.2`. The actual pkgsrc
+dependency regression check is `tests/kicad-protobuf.rb`. Run it against the
+prepared tree and cross make configuration:
+
+```sh
+BMAKE=/absolute/bmake ruby ../tests/kicad-protobuf.rb \
+    /absolute/prepared-pkgsrc /absolute/cross-makeconf /absolute/new-work
+```
+
 The package path accepts EmberBSD 11/AArch64 and amd64. The amd64 selection
 keeps Iris, VirGL, softpipe, llvmpipe and Zink, with the Intel libdrm module.
 Its LLVM metadata must bind `x86_64-unknown-netbsd`, native component `x86`
