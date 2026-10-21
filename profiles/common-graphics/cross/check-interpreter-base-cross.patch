@@ -1,0 +1,29 @@
+--- a/mk/check/check-interpreter.mk
++++ b/mk/check/check-interpreter.mk
+@@ -18,6 +18,10 @@
+ #
+ # Package-settable variables:
+ #
++# CHECK_INTERPRETER_BASE_PATHS
++#	Target base-system interpreters absent from a packages-only cross sysroot.
++#	These are accepted as supplied by the target OS.
++#
+ # CHECK_INTERPRETER_SKIP
+ #	The list of file patterns that are skipped by the check.
+ #	All files in share/examples and share/doc are skipped as well.
+@@ -34,6 +38,7 @@
+ .else
+ CHECK_INTERPRETER?=		no
+ .endif
++CHECK_INTERPRETER_BASE_PATHS?=	# empty
+ CHECK_INTERPRETER_SKIP?=	# empty
+ 
+ _CHECK_INTERP_SKIP=		share/doc/*
+@@ -80,6 +85,7 @@
+ 			fi;						\
+ 			continue;;					\
+ 		esac;							\
++		case " ${CHECK_INTERPRETER_BASE_PATHS} " in *" $$interp "*) continue ;; esac; \
+ 		if { [ ! -f ${DESTDIR:Q}"$$interp" ] &&			\
+ 		     [ ! -f ${_CROSS_DESTDIR:U:Q}"$$interp" ]; }; then	\
+ 			${DELAYED_ERROR_MSG} "[check-interpreter.mk] The interpreter \"$$interp\" of \"${DESTDIR}${PREFIX}/$$file\" does not exist."; \
