@@ -55,11 +55,7 @@ NOT_FOR_PLATFORM+=	Darwin-*-*
 .include "../../devel/cmake/build.mk"
 .include "../../devel/gettext-tools/msgfmt-desktop.mk"
 .include "../../devel/libgit2/buildlink3.mk"
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 BUILDLINK_API_DEPENDS.protobuf+=	protobuf>=36.2nb1
-.else
-BUILDLINK_API_DEPENDS.protobuf+=	protobuf>=36.2
-.endif
 .include "../../devel/protobuf/buildlink3.mk"
 .include "../../devel/protobuf/host-protoc.mk"
 .include "../../net/nng/buildlink3.mk"
