@@ -1,16 +1,14 @@
-# EmberBSD probe: Electron 44.5.1 runtime for NetBSD/aarch64.
+# EmberBSD probe: Electron 44.9.3 runtime for NetBSD/aarch64.
 # Not buildable yet; see ../README.md for the plan and boundaries.
 
-DISTNAME=	electron-44.9.0
+DISTNAME=	electron-44.9.3
 CATEGORIES=	devel
 MASTER_SITES=	https://github.com/electron/electron/archive/refs/tags/
-DISTFILES=	v44.9.0${EXTRACT_SUFX}
+DISTFILES=	v44.9.3${EXTRACT_SUFX}
 DIST_SUBDIR=	e12-electron
 
-CHROMIUM_VERSION=	152.0.7977.82
-NODE_VERSION=		24.21.0
-DISTFILES+=	chromium-${CHROMIUM_VERSION}.tar.xz
-SITES.chromium-${CHROMIUM_VERSION}.tar.xz=	https://commondatastorage.googleapis.com/chromium-browser-official/
+CHROMIUM_VERSION=	152.0.7977.167
+NODE_VERSION=		24.22.0
 DISTFILES+=	node-v${NODE_VERSION}.tar.xz
 SITES.node-v${NODE_VERSION}.tar.xz=	https://nodejs.org/dist/v${NODE_VERSION}/
 
@@ -29,9 +27,11 @@ USE_TOOLS+=		pkg-config
 BUILD_HOST_NODE=	${EMBERBSD_HOST_NODE}
 BUILD_HOST_NPM=		${EMBERBSD_HOST_NPM}
 
-# TODO(build): GN args for cross aarch64 (target_os/target_cpu, is_clang,
-# use_sysroot from the cross profile), chromium-nb patch series, Electron
-# patch series re-targeted .130 -> .82, node host build, packaging.
-# No silent stubs: each step lands with its real command and check.
+# Electron v44.9.3 pins Chromium ${CHROMIUM_VERSION} in DEPS.  The Chromium
+# source comes from the pinned gclient dependency graph, not a mismatched
+# chromium-browser-official tarball.  Keep its DEPS revision and the NetBSD
+# overlay revision in the build receipt.
+# TODO(build): apply the NetBSD patch set to this exact Chromium pin, add the
+# Electron target GN configuration, build with GCC16, and package the runtime.
 
 .include "../../mk/bsd.pkg.mk"

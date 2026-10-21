@@ -1,160 +1,69 @@
 # Electron runtime probe for NetBSD/aarch64 (E12 Blanc browser)
 
-Goal: run Blanc v1.25.0 on EmberBSD/ARM64. Blanc uses Electron and has
-no engine abstraction, so this port needs a native Electron runtime.
+Goal: run Blanc v1.25.0 on EmberBSD/aarch64. Blanc uses Electron and has no
+engine abstraction, so this port needs the native Electron runtime.
 
-## Upstream facts (verified 2026-10-17)
+## Source pins
 
-- Electron 44.9.0 (latest stable of the 44 line, 2026-10-17) bundles
-  Chromium 152.0.7977.167 and Node 24.22.0. The port tracks the latest
-  44.x patch release per the current-versions rule; Blanc pins its own
-  application JS and runs on this runtime.
-- Blanc v1.25.0 uses Electron 44.5.1, MIT license, npm and
-  electron-updater. Filter lists are CC BY-SA 3.0+. Blanc/Bananify names
-  and logos are trademarks. Do not redistribute Blanc or its lists
-  without resolving their terms.
-- The official Chromium bucket publishes 152.0.7977.**82** only
-  (chromium-browser-official). The .130 patchlevel is not published as
-  a tarball. Plan: build the .**82** tree (exact match of the pkgsrc
-  `www/chromium` pin and its `chromium-nb` overlay) and adapt the
-  Electron patch series from .130 to .82. Both are patch releases of
-  the same 152.0.7977 build branch.
+| Component | Pin | Source |
+|---|---|---|
+| Electron | 44.9.3 (`c542df1ecbc2c2978e8f53f8c7baf602404d166f`) | GitHub tag `v44.9.3` |
+| Chromium | 152.0.7977.167 (`dd78960ccd8a03a2fe1f629543d27783885b78e9`) | Electron `DEPS` |
+| Node.js | 24.22.0 | Electron `DEPS` |
+| Blanc | 1.25.0 (`ff55d5948f5c71e802ba2ac464659ef96e055ca9`) | GitHub tag `v1.25.0` |
 
-## Distfiles (SHA256)
+Electron's `DEPS` graph is the Chromium source of record. Do not substitute the
+pkgsrc `.82` archive. Chromium sources require `gclient`; the older archive does
+not match Electron's pinned revision.
 
-| File | Size | SHA256 | Source |
-|---|---|---|---|
-| electron-44.9.0.tar.gz | 20553845 | 2b3eef38277bd50537685c67cc3d1674885efa14e5380bc31185992871a65bc3 | github.com/electron/electron tag v44.9.0 |
-| node-v24.22.0.tar.xz | 57606320 | 41f97cff2c666f1f8293dc5f85c65e8dd605c16b43fd9febd49ede32ee1e0329 | nodejs.org/dist/v24.22.0 |
-| blanc-1.25.0.tar.gz | 155108408 | b241d6b135b0fab5839f5dea6f64fafbdefa4f213b46ffa4a2f78820cb880971 | github.com/bnfy/blanc tag v1.25.0 |
-| chromium-152.0.7977.82.tar.xz | 5916124416 | 82a42a16cd9caa49a5bd6d8f226bb2de2646031356e620da05f92cbfddeb35c3 | commondatastorage.googleapis.com/chromium-browser-official |
+| Distfile | Size | SHA256 |
+|---|---:|---|
+| `v44.9.3.tar.gz` | 20,838,185 | `e4e84b70a501c7dffec78bf037309bfe336daee6886289f94f9ac035ec54d80f` |
+| `node-v24.22.0.tar.xz` | 57,606,320 | `41f97cff2c666f1f8293dc5f85c65e8dd605c16b43fd9febd49ede32ee1e0329` |
+| `blanc-1.25.0.tar.gz` | 155,108,408 | `b241d6b135b0fab5839f5dea6f64fafbdefa4f213b46ffa4a2f78820cb880971` |
 
-Stored in the build host's E12 distfile cache. The npm dependency trees
-for Electron's JS build and for
-Blanc are fetched to an offline mirror with the host Node 24 toolchain
-during the fetch phase, following the `local-chat/mattermost` pattern:
-Node runs on the host, its products are target artifacts.
+## Target contract
 
-## Build plan
+- Build on the developer host. Cross-compile all target objects for
+  `aarch64--netbsd` with GCC 16.2.0 and the exported EmberBSD sysroot.
+- Keep host tools separate. Xcode Clang may build host-only tools; target
+  compilation must use GCC16.
+- Enable Linux-conditioned Chromium source dependencies only to fetch their
+  shared code. Do not use a Linux sysroot or Linux target objects.
+- Adapt the `chromium-nb` and Electron patch sets to the exact Chromium pin.
+  Record the overlay revision and every required drift fix.
+- Keep Electron's Chromium sandbox enabled. Do not replace Chromium or Electron
+  with another browser engine.
 
-1. Extract the Chromium 152.0.7977.82 tree; it is self-contained like
-   the pkgsrc `www/chromium` distfile.
-2. Apply the `chromium-nb` overlay knowledge from the vendored pkgsrc
-   pin (`upstream/pkgsrc/www/chromium`, submodule `fff4deb639a1`):
-   GN arguments, NetBSD system-library substitutions, and the patch
-   series for exactly this Chromium version.
-3. Apply the Electron patch series (`patches/chromium` of the Electron
-   tag) re-targeted from .130 to .82; record every drift fix.
-4. Build Electron's Node 24.22.0 and the JS toolchain parts on the
-   host; compile native code with the cross compiler for
-   `aarch64--netbsd`.
-5. Cross toolchain (owner decision 2026-10-16): the shared GCC16
-   cross toolchain (ember-gcc16-toolchain 16.2.0) with the shared
-   EmberBSD sysroot, like every other EmberBSD cross profile. The
-   upstream `is_clang` default is turned off and the resulting build
-   breaks are fixed by patches with recorded provenance; missing
-   modern capability is recorded and the port continues.
+## Current status
 
-## Status and boundaries
+- Electron and Node distfiles are pinned to the current supported Electron 44.x
+  release and its exact Chromium revision.
+- The pkgsrc Chromium baseline is 152.0.7977.82 with `chromium-nb` 151.1. A
+  per-patch dry run against Electron's 152.0.7977.167 source applied 1,622 of
+  1,641 patches. Five patch hunks need adaptation and fourteen targets are
+  absent from the Electron tree. A dry run does not establish patch ordering or
+  build correctness.
+- The NetBSD GCC16 toolchain and cross sysroot are available. Chromium's GN
+  target dispatch and the remaining NetBSD source adaptations still need a
+  successful generation and build.
+- No complete Chromium link, Electron runtime package, Blanc package, or target
+  application acceptance run exists yet. Do not treat partial object builds as
+  completion.
+- The host checkout has no `bmake` in `PATH`; pkgsrc package lifecycle checks
+  remain pending.
 
-- Chromium's `libbase.a` milestone is complete. A previous full Chrome
-  pass stopped at 41,268 of 85,087 steps with 460 failed jobs.
-- The GCC16 cross build of `crypto/nss_util.o` passes with NSS and NSPR
-  metadata from the EmberBSD sysroot. The NTLM buffer writer object also
-  builds after changing ambiguous parenthesized initialization to brace
-  initialization (`SpanWriter` was parsed as a function declaration).
-- Fontconfig's bindgen action now generates its Rust bindings from the
-  EmberBSD target sysroot with the `aarch64-unknown-netbsd` target triple.
-  Its depfile contains EmberBSD headers and no macOS SDK headers. Host
-  `libclang` parses the C declarations; GCC16 compiles target C/C++ objects.
-  A separate GCC16.2.0 probe that includes the same Fontconfig header emitted
-  an AArch64 NetBSD ELF object.
-- A full pass on 2026-10-18 was interrupted at 2,142 of 76,506 tasks while
-  isolating the bindgen failure. A later regenerated graph scheduled 74,406
-  tasks. That attempt reached 771 tasks and failed 271 target actions with
-  exit code 127 because the GCC16 toolchain directory was missing from
-  `PATH`; those are environment failures, not compiler diagnostics. Resume
-  with the common GCC16 `bin` directory in `PATH`.
-- The corrected full pass used GCC16 and scheduled 73,904 tasks. It reached
-  1,909 tasks before five related failures exposed a GCC error: the defaulted
-  `LanguageTag` move constructor was marked `constexpr` while its
-  `ImmutableString` member move constructor is not. Removing `constexpr` from
-  that constructor fixed the cause. GCC16.2.0 then rebuilt
-  `base/i18n/break_iterator.o` successfully. The full pass is being resumed;
-  Chromium has not linked yet.
-- The resumed graph then exposed two Fontconfig target-OS assumptions. NetBSD
-  provides `vasprintf_l` but not `uselocale`, and provides
-  `statvfs.f_fstypename`/`fstatvfs`; the bundled Meson config did not select
-  those interfaces. NetBSD-specific config fixups now select the locale-safe
-  formatter and the `statvfs` branch. GCC16.2.0 rebuilt `fccompat.o` and
-  `fcstat.o`. Cppcheck 2.22, GCC16 `-fanalyzer`, and Clang Static Analyzer 21
-  reported no findings on those files.
-- The next full `chrome` pass stopped at 2,150 of 70,608 scheduled tasks on
-  `third_party/webrtc/p2p/port_interface/port_interface.o`. GCC16 rejected the
-  unqualified `Network` return type because the method is also named
-  `Network`; qualifying it as `::webrtc::Network` fixes the meaning ambiguity
-  without changing the type or ABI. GCC16.2.0 rebuilt the object. Cppcheck 2.22
-  passed with a narrow parser suppression for the existing `RTC_NORETURN`
-  operator declaration in `rtc_base/checks.h:347`. Clang Static Analyzer 21
-  reported two move-forwarding diagnostics in unchanged Abseil/base headers;
-  neither refers to the changed WebRTC line. The full graph is ready to resume.
-- The resumed graph exposed two bundled libdrm NetBSD assumptions. The GN
-  target defined `MAJOR_IN_SYSMACROS` unconditionally, but NetBSD provides
-  `major`, `minor`, and `makedev` through `sys/types.h`. The definition is now
-  limited to non-NetBSD targets. `drmModeSetPlane` already used unsigned
-  coordinates in its NetBSD implementation; its header now declares matching
-  types. GCC16.2.0 rebuilt both libdrm objects as AArch64 ELF. Cppcheck 2.22 is
-  clean on the two source files after explicitly casting the DCC block-size
-  expression to `unsigned`. GCC `-fanalyzer` and Clang Static Analyzer 21 still
-  report findings in unchanged upstream allocation/device-info paths; none is
-  in the changed NetBSD branches.
-- The following full pass stopped at 3 of 67,711 tasks because Chromium's
-  keycode converter included Linux `input.h` for NetBSD. NetBSD uses XKB keycodes
-  here, while its sysroot does not provide the Linux evdev header. The converter
-  now keeps XKB methods available on NetBSD and limits evdev-only methods to
-  Linux, ChromeOS, and FreeBSD. GCC16.2.0 rebuilt the target object as AArch64
-  ELF. Cppcheck 2.22 passed with a narrow parser suppression for GCC-valid
-  `__has_cpp_attribute` in an unchanged compiler header. Clang Static Analyzer
-  21 reported one existing Abseil forwarding-reference diagnostic.
-- The next graph exposed GCC16 `-Wchanges-meaning` in `base::ScopedObservation`:
-  an inner alias reused the global `LeakedDanglingUntriaged` name. The alias now
-  names the identical `base::RawPtrTraits::kMayDangle` value explicitly. GCC16.2.0
-  rebuilt the three failing X11 objects. Cppcheck 2.22 passed on their compile
-  database with a narrow parser suppression for GCC-valid `__has_cpp_attribute`
-  in an unchanged header. Clang Static Analyzer 21 reported only existing
-  Abseil/base forwarding-reference findings.
-- The following full pass exposed a private-union specialization in
-  `ui/events/gesture_event_details.cc`. The equality check already compares
-  `type_` before comparing the active union bytes. The constructor also clears
-  the union storage. Both operations now use the local
-  `byte_span_from_ref(allow_nonunique_obj, ...)` overload; the type-wide
-  specialization is removed. GCC16.2.0 rebuilt the AArch64 object. Cppcheck
-  2.22 and Clang Static Analyzer 21 reported no findings on the changed source.
-  Cppcheck required an address-specific parser suppression for the existing
-  GCC `__has_cpp_attribute` expression at `base/compiler_specific.h:62`.
-- The next full pass reached task 384 before `chromium_language_matcher.cc`
-  failed because `std::to_array` moves `LanguageTag` values in a constant
-  expression, while that type's move constructor is not `constexpr`. Direct
-  `constexpr std::array` initialization avoids the move. GCC16.2.0 rebuilt the
-  target as AArch64 ELF. Cppcheck 2.22 passed with the same narrow parser
-  suppression at `base/compiler_specific.h:62`; Clang Static Analyzer 21 found
-  no diagnostics on the changed source.
-- The same pass found that `compiler-rt:atomic` uses Clang-only
-  `__c11_atomic_*` builtins. GN now enables this LLVM runtime only for Clang on
-  non-Apple targets. With `is_clang=false`, `use_llvm_libatomic` is false and
-  `gn refs` finds no reference to the target. The final link will confirm
-  whether GCC's existing runtime covers all required atomic operations.
-- The full Chrome graph has not passed yet. Resume it from the retained object
-  tree and classify the next compiler result.
-- No complete Chromium link, Electron runtime, or Blanc package exists.
-  Continue the Chrome build and classify actual compiler failures. Partial
-  targets are not a Blanc result.
-- The source-level adaptation patch is kept separately from this public
-  probe summary. It does not imply a complete Chromium build.
-- Measure free space before each build. The Chromium source tree and
-  build output require about 120 GiB of working space.
-- FreeBSD ports carry `devel/electron42` (Chromium 148) at most; use it
-  as a structural reference, not as a version match.
+## Acceptance
 
-Owner: Ports (recipe) and OS (kernel/libc gaps found by the build).
+Run the installed package in the target VM. Check HTTPS navigation, tabs,
+Russian text input, file download, ad blocking, persistent profiles, private
+profile cleanup, site permissions, sandbox behavior, and package lifecycle.
+Check touch input, media codecs, and hardware acceleration separately. Record
+VM image identity, kernel revision, package hashes, and test results.
+
+Blanc is MIT licensed. Its filter lists are CC BY-SA 3.0+, and its name and
+logos are trademarks. Resolve redistribution terms before publishing Blanc or
+its filter lists.
+
+Owner: Ports (recipe) and OS (kernel/libc gaps).
 Task: E12 in the private debt registry.
