@@ -319,3 +319,8 @@ fixtures for duplicate or foreign runtimes. The separate
 [Zero 3W validation](native-validation.md) confirms the installed dependency
 set and actual common pkgsrc selection. Self-hosting, current-binutils validation,
 common consumer repairs and release-image integration remain unaccepted.
+
+The [libxslt RVT ownership candidate](libxslt-security.md) carries the proposed
+security repair with a tested release-wrapper correction. The common profile
+requires current libxml2 for paired ID cleanup. Functional and upstream tests
+pass; normal package and dynamic memory acceptance remain separate.

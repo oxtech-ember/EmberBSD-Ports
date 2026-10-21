@@ -10,11 +10,12 @@ trap 'exit 143' HUP TERM
 expected=$(git -C "$root" ls-files --stage -- upstream/pkgsrc | awk '$1 == "160000" { print $2 }')
 [ "$(git -C "$root/upstream/pkgsrc" rev-parse HEAD)" = "$expected" ]
 git -C "$root/upstream/pkgsrc" archive -o "$work/base.tar" "$expected" \
-    lang/gcc16 lang/gcc16-libs lang/gcc16-libjit math/mpfr math/mpcomplex devel/gmp devel/gtexinfo lang/tcl-expect textproc/gsed mk/pkgformat/pkg/metadata.mk
+    lang/gcc16 lang/gcc16-libs lang/gcc16-libjit math/mpfr math/mpcomplex devel/gmp devel/gtexinfo lang/tcl-expect textproc/gsed textproc/libxslt mk/pkgformat/pkg/metadata.mk
 tar -xf "$work/base.tar" -C "$work"
-for delta in pkgsrc-gcc16.2.patch strict-tests.patch current-prerequisites.patch texinfo-gettext-order.patch gsed-mbstate-zero.patch stable-expect.patch gcc-tsvc-netbsd.patch gcc-modules-fallocate.patch gcc-netbsd-locale.patch gcc-netbsd-math.patch gcc-package-requires.patch gcc-netbsd-tls.patch gcc-cross-native.patch; do
+for delta in pkgsrc-gcc16.2.patch strict-tests.patch current-prerequisites.patch texinfo-gettext-order.patch gsed-mbstate-zero.patch libxslt-rvt-security.patch stable-expect.patch gcc-tsvc-netbsd.patch gcc-modules-fallocate.patch gcc-netbsd-locale.patch gcc-netbsd-math.patch gcc-package-requires.patch gcc-netbsd-tls.patch gcc-cross-native.patch; do
     patch -f -E -d "$work" -p1 -F 0 < "$root/profiles/development-toolchain/patches/$delta"
 done
+python3 "$root/profiles/development-toolchain/tests/libxslt-source.py" "$work"
 grep -q '16.2.0' "$work/lang/gcc16/version.mk"
 grep -q 'gcc-16.2.0.tar.xz' "$work/lang/gcc16/distinfo"
 grep -qx 'DISTNAME=[[:space:]]*mpfr-4.2.2' "$work/math/mpfr/Makefile"
