@@ -116,3 +116,27 @@ Libtool's default C tag and patches GTS's generated compile and link rules to
 pass `--tag=CC`; it bumps GTS to nb9 and records the pkgsrc patch checksum.
 This keeps the C-only build contract and the feature used by the host Graphviz
 dependency. It does not disable the feature or suppress build checks.
+
+Cppcheck 2.22.0 compares the 35 C translation units in the host GTS build
+before and after this recipe-only change. Both runs report 122 diagnostics
+with zero errors and the same diagnostic identifiers. The parser also reports
+one syntax limitation in the Darwin SDK `sys/_types/_errno_t.h` header.
+Clang Static Analyzer 21.0.0 reports the same 27 findings in both trees:
+18 dead stores, three conditional null dereferences and six assignments from
+uninitialized values. No source patch or diagnostic suppression was added.
+
+The `boundary_loops` warning follows an abstract empty-list path. Its only
+caller first adds the three edges of a valid triangle to the boundary. The
+`gts_triangle_vertices_edges` warning requires a triangle without its required
+edges; `gts_triangle_set` rejects null edges, and valid triangle construction
+sets all three edges. The ear-clipping warning requires a missing surface edge
+class or invalid ear vertices; valid constructed surfaces supply both. These
+are upstream object-contract paths, not changes in the Libtool rules. Six
+expansion warnings depend on positive lengths: callers pass fixed length four
+or lengths returned by zero-eliminating helpers, which return at least one.
+The malformed-triangle API path remains an upstream robustness item.
+
+GCC16 `-fanalyzer` was not run. The host GTS package uses Apple Clang, and the
+target package attempt stopped in Netpbm's native `typegen` build before GTS
+configuration because that generator received target linker flags. The host
+analysis does not establish target runtime behavior.

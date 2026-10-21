@@ -53,6 +53,14 @@ Their source recipes retain the pinned pkgsrc manifests and patches.
 libfm-qt, PCManFM-Qt, themes and the platform plugin pass ordinary package
 checks. Other application packages and the installed session remain pending.
 
+The qtermwidget 2.4.0nb3 overlay selects matching staged LXQt and Qt host
+tools only in cross mode; native builds retain the pkgsrc tool dependencies.
+Its manifest includes the three historical color-schema files. The ordinary
+GCC16 build passes all 93 steps and pkgsrc checks. The archive SHA256 is
+`40a4d1dfd556b5c54ed84248a26f363c3a4129fa7a291e69a6effe04f0e753f7`. Its
+runtime dependencies are `gcc16>=16.2.0nb1` and `qt6-qtbase>=6.12.0nb3`. No
+GTK dependency is present.
+
 The PCManFM dependency recipes select upstream libfm 1.4.1 and menu-cache
 1.1.1. The source archives match the hashes in the official LXDE release
 inventory. Their download URLs pin that inventory's Git commit. Only the
@@ -150,113 +158,10 @@ wrapper `PATH`. This lets pkgsrc map buildlink paths during shared linking.
 Both compiler tags and `LTCC` retain the selected GCC16 tool names.
 The causal libXpm rebuild passes the ordinary RPATH and work-directory checks.
 
-## Source regressions
+## Source checks
 
-The [extended-source analysis](source-analysis.md) records the platform-plugin
-and file-manager scopes, inherited findings and parser limitations.
-
-The Wayland qdbus helper uses `/bin/sh`, calls Qt's installed qdbus path and
-declares `qt6-qttools` as a runtime dependency. `check-wayland-qdbus.py`
-applies the actual package patch to the pinned archive and exercises the
-helper with a fake qdbus command under `dash`, which rejects Bash-only
-parameter substitution. It checks the default labwc shortcuts Win+Enter,
-Win+F and Print still invoke `run qterminal`, `run featherpad` and
-`run screengrab`, then exercises those commands plus `openmenu`. The data paths
-include spaces to check directory splitting and quoting:
-
-```sh
-python3 probes/lxqt/check-wayland-qdbus.py \
-    /absolute/distfiles/lxqt-wayland-session-0.4.1.tar.xz \
-    probes/lxqt/recipes/wayland/lxqt-wayland-session
-```
-
-The LXQt CMake finder for `xdg-user-dirs-update` checks a path and does not run
-the target program. Cross builds pass the target `/usr/pkg/bin` path and check
-that the executable exists in the sysroot. Run the source contract check with
-the recipe and target sysroot paths:
-
-```sh
-python3 probes/lxqt/check-wayland-target-tool.py \
-    probes/lxqt/recipes/wayland/lxqt-wayland-session \
-    /absolute/target-sysroot
-```
-
-This check does not execute `xdg-user-dirs-update` or start a Wayland session.
-
-The `lxqt-wayland-session-0.4.1nb5` package passes the GCC16 cross build and
-pkgsrc package checks. Its archive installs the qdbus helper with a `/bin/sh`
-shebang and declares `qt6-qttools` and `xdg-user-dirs` as runtime dependencies.
-The configured CMake cache selects `/usr/pkg/bin/xdg-user-dirs-update` from the
-target sysroot. The archive SHA256 is
-`c3fb976aa621859b909f8038a5b8af6aeb1ef08d91ef5e0d23bfe6bf9dcecfc0`.
-The installed helper passed `run qterminal`, `run featherpad`, `run screengrab`
-and `openmenu` under host `dash` and `/bin/sh`; package install, removal and
-reinstallation passed in an isolated target root. Actual EmberBSD runtime
-execution and a full LXQt session remain separate acceptance gates.
-
-The liblxqt backlight helper checks the driver before reading its files.
-It accepts one integer from `scanf` and `fscanf` and rejects invalid input.
-It releases a previous driver candidate before replacing that candidate.
-The driver priority and valid brightness range are unchanged.
-
-Run the regression against a clean original liblxqt archive and the same
-source with `patch-backlight-null-driver` applied:
-
-```sh
-python3 probes/lxqt/check-backlight.py /absolute/original-liblxqt \
-    /absolute/new-baseline-results --baseline
-python3 probes/lxqt/check-backlight.py /absolute/patched-liblxqt \
-    /absolute/new-port-results
-```
-
-The test includes the real source. It uses synthetic files and checks missing
-devices, replaced allocation ownership, malformed input and valid boundaries.
-It does not access a backlight device. The native run uses ASan and UBSan.
-An explicit allocation counter checks the replaced driver strings because
-LeakSanitizer is unavailable on the macOS/arm64 host.
-
-Baseline and patched Cppcheck runs use the GCC16 target headers and macros.
-The helper's null-driver finding and two GCC `-fanalyzer` ownership findings
-are absent after the patch. Clang Static Analyzer checks both the C helper
-and its C++ consumer with the target compilation flags. It is analysis-only.
-The existing style findings remain visible.
-The packaged GCC16 helper also passes the no-device stdin path under an
-unprivileged VM user. This check requires an absent `/sys/class/backlight`
-and supplies no brightness value. It does not test physical backlight control.
-
-The Qt model uses `Q_MOC_OUTPUT_REVISION=69` from Qt 6.12.
-The libqtxdg baseline and patched source have the same unique Cppcheck
-diagnostics. Three `strPlusChar` and three `pointerOutOfBounds` reports in
-`tst_xdgdirs.cpp` are Qt literal model errors. Qt's `operator""_L1` returns
-`QLatin1StringView`; these expressions concatenate strings and `QChar` values.
-Clang analysis and the target tests cover these expressions without error.
-Cppcheck 2.22 cannot parse the complete expanded Qt system-header configuration;
-this separate parser limitation is retained in the analysis receipts.
-
-Two complete libqtxdg upstream test programs pass ten native ASan/UBSan cases
-with the existing Qt 6.12 host libraries and common GLib 2.90.1 provider.
-Both the library and the test executables use the sanitizer flags.
-The native memory run does not cover the directory suite, because Darwin
-`QStandardPaths` uses different default directories. The target run covers
-all 21 cases.
-The native Qt and GLib dependency libraries are not instrumented.
-Leak checking remains outside this sanitizer coverage.
-
-The luit recipe declares zlib and the existing common encodings package.
-It selects target `locale.alias` and `encodings.dir` paths explicitly.
-The configure patch preserves native file checks. In cross mode, the recipe
-checks these files in the common sysroot before configuration.
-
-```sh
-python3 probes/lxqt/check-luit.py /usr/pkg/bin/luit /absolute/new-luit-results
-python3 probes/lxqt/check-luit.py /usr/pkg/bin/luit /absolute/new-target-results \
-    --ssh ember-test-host
-```
-
-All six upstream check modes and two exact-byte encoding conversions pass
-with the GCC16 target binary. The same eight cases pass in a native
-ASan/UBSan build. Valgrind Memcheck does not support the tested macOS/arm64
-host or EmberBSD/aarch64 guest. These sanitizer runs are not Memcheck runs.
+The [source analysis and helper regressions](source-analysis.md) record source
+coverage, inherited findings, parser limits and runtime helper checks.
 
 ## Acceptance boundary
 
@@ -281,5 +186,8 @@ application construction only.
 
 Prepared host modules are a build prerequisite. Compilation and component
 tests do not establish power control, input or rendering.
+The qtermwidget archive build passes on the macOS cross host. The host
+`pkg_add` correctly refuses to install a NetBSD package into a Darwin package
+database; target installation and runtime execution remain pending.
 X11 and Wayland session execution require separate target acceptance.
 The Wayland session requires a supported compositor and its own package.
