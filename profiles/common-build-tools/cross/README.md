@@ -346,10 +346,13 @@ sysroot whose GCC16 C++ headers do not define `_GLIBCXX_HAVE_TLS`. Packages reta
 file, permission, RPATH and shared-library checks, and record root/wheel
 ownership rather than the Mac user's UID.
 
-The only cross runtime-tool exception is base `install-info`, verified
-in the sysroot. Its build wrapper is a no-op and the installation script names
-`/usr/bin/install-info` on the target. Other unsupported `:run` tools still
-fail explicitly. Libtool declares GNU M4 as a target package dependency.
+The only base runtime-tool exception is `install-info`, verified in the
+sysroot. Its build wrapper is a no-op and the installation script names
+`/usr/bin/install-info` on the target. A Perl runtime tool is allowed only when
+the target Perl package is staged at `/usr/pkg/bin/perl`. Pkgsrc retains Perl
+as a target runtime dependency and writes the target path into Perl script
+shebangs. Other unsupported `:run` tools still fail explicitly. Libtool
+declares GNU M4 as a target package dependency.
 
 ## Acceptance
 
@@ -357,6 +360,8 @@ Run `tests/cross-pkgsrc.sh` against a staged pkgconf package. It exercises real
 pkgsrc parsing, native dependency recursion, ELF metadata and failure cases.
 `tests/cross-tools.py` checks tool composition, refusal of existing output,
 missing host tools and the constrained target Info utility selection.
+`tests/cross-runtime-perl.py` checks staged target Perl dependency and shebang
+selection, refusal when Perl is absent, and unchanged native behavior.
 `python3 -B tests/prepare-tools-target.py --sdk-source SDK NEW_WORK` runs the real
 helper with fake amd64 tools. It needs no compiler or pkgsrc export. It checks the
 imports, every composed link, a wrong compiler and existing output.
