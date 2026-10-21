@@ -5,3 +5,4 @@ SHA512 (lxqt-config-2.4.0.tar.xz) = ba4c653c74fa87bc5fb957e454388399ee1a7d1f21b2
 Size (lxqt-config-2.4.0.tar.xz) = 416440 bytes
 SHA1 (patch-lxqt-config-input_keyboardlayoutconfig.h) = ba7ce5b75579f4478fe14a96dd852027f3570a79
 SHA1 (patch-lxqt-config-monitor_monitorpicture.cpp) = 687cc57802f9d8694a0e12868b6214047ff64a5c
+SHA1 (patch-lxqt-config-monitor_kscreenutils.cpp) = 5987bafdd11030a60ad7e7229a046c9d6e0979df
