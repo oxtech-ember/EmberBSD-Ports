@@ -598,16 +598,6 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  		delete_package(FALSE, &pkg->plist, FALSE, Destdir);
  	}
  
---- a/pkgtools/pkg_install/Makefile
-+++ b/pkgtools/pkg_install/Makefile
-@@ -7,6 +7,7 @@
- # change in the pkg_* tools that pkgsrc relies on for proper operation.
- 
- PKGNAME=		pkg_install-${VERSION}
-+PKGREVISION=		2
- CATEGORIES=		pkgtools
- 
- MAINTAINER=		agc@NetBSD.org
 --- a/pkgtools/pkg_install/files/lib/plist.c
 +++ b/pkgtools/pkg_install/files/lib/plist.c
 @@ -71,7 +71,7 @@

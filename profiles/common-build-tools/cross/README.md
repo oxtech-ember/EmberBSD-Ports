@@ -48,9 +48,10 @@ Prepare these separate directories, outside Git:
 - Host tools from the EmberBSD source tree, built on the Mac, including
   the corresponding target `install` utility.
 - A pkgsrc unprivileged macOS bootstrap with BSD make, the patched package tools,
-  mksh and digest. Use the exported `pkg_install-20260227nb2` recipe: it fixes
-  alternate-root replacement and successful dry runs. It suppresses target
-  deinstall scripts during cross updates. Its package database describes host executables only.
+  mksh and digest. Use the exported `pkg_install-20260227nb3` recipe: it fixes
+  alternate-root replacement, successful dry runs and DESTDIR-aware pkg_admin
+  add/rebuild operations. It suppresses target deinstall scripts during cross
+  updates. Its package database describes host executables only.
   The bootstrap must also own native `libtool-base-2.6.2` and `m4-1.4.21`
   built from the same export (`bmake -C export/devel/libtool-base MAKECONF=`
   *host*`/etc/mk.conf package`, then `pkg_add` both). Recipes that run
@@ -391,6 +392,9 @@ also rejects missing compiler exports and invalid compiler paths.
 The separate `tests/pkg-add-sysroot.sh` compares original and repaired host
 package tools. It checks replacement, same-version reinstall, shared-directory
 ownership, partial-extraction rollback and native behavior.
+The separate `tests/pkg-admin-destdir.sh ORIGINAL_PKG_ADMIN FIXED_PKG_ADMIN NEW_WORK`
+checks `pkg_admin rebuild` and `add` against a staged tree. It verifies that
+file checks use DESTDIR while B-tree keys retain target paths.
 The cross package tools also carry the OS replacement dry-run repair from
 EmberBSD `c22fa34ebe0`. A successful simulated deletion returns zero. Real
 deletion results and metadata errors retain their original return values.

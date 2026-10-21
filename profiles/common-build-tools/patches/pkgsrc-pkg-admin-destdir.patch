@@ -1,0 +1,198 @@
+--- a/pkgtools/pkg_install/files/admin/main.c
++++ b/pkgtools/pkg_install/files/admin/main.c
+@@ -124,7 +124,8 @@
+ };
+ SLIST_HEAD(pkg_reqd_by_head, pkg_reqd_by);
+ 
+-static const char Options[] = "C:K:SVbd:qs:v";
++static const char Options[] = "C:K:P:SVbd:qs:v";
++static const char *Destdir;
+ 
+ int	quiet, verbose;
+ 
+@@ -135,7 +136,7 @@
+ void
+ usage(void)
+ {
+-	(void) fprintf(stderr, "usage: %s [-bqSVv] [-C config] [-d lsdir] [-K pkg_dbdir] [-s sfx] command [args ...]\n"
++	(void) fprintf(stderr, "usage: %s [-bqSVv] [-C config] [-d lsdir] [-K pkg_dbdir] [-P destdir] [-s sfx] command [args ...]\n"
+ 	    "Where 'commands' and 'args' are:\n"
+ 	    " rebuild                     - rebuild pkgdb from +CONTENTS files\n"
+ 	    " rebuild-tree                - rebuild +REQUIRED_BY files from forward deps\n"
+@@ -164,6 +165,71 @@
+ }
+ 
+ /*
++ * Return a path inside the alternate root.
++ */
++static char *
++destdir_path(const char *path)
++{
++	char *root, *result;
++	size_t len;
++
++	if (Destdir == NULL || Destdir[0] == '\0')
++		return xstrdup(path);
++
++	root = xstrdup(Destdir);
++	len = strlen(root);
++	while (len > 1 && root[len - 1] == '/')
++		root[--len] = '\0';
++
++	if (path[0] == '/') {
++		if (strcmp(root, "/") == 0)
++			result = xstrdup(path);
++		else
++			result = xasprintf("%s%s", root, path);
++	} else if (strcmp(root, "/") == 0) {
++		result = xasprintf("/%s", path);
++	} else {
++		result = xasprintf("%s/%s", root, path);
++	}
++
++	free(root);
++	return result;
++}
++
++/*
++ * Convert a package database path below DESTDIR to its target path.
++ */
++static char *
++target_path(const char *path)
++{
++	char *root, *result;
++	size_t len;
++
++	if (Destdir == NULL || Destdir[0] == '\0')
++		return xstrdup(path);
++
++	root = xstrdup(Destdir);
++	len = strlen(root);
++	while (len > 1 && root[len - 1] == '/')
++		root[--len] = '\0';
++
++	if (strcmp(root, "/") != 0 && strlen(path) >= len &&
++	    strncmp(path, root, len) == 0 &&
++	    (path[len] == '/' || path[len] == '\0')) {
++		result = xstrdup(path + len);
++		if (result[0] == '\0') {
++			free(result);
++			result = xstrdup("/");
++		}
++	} else {
++		result = xstrdup(path);
++	}
++
++	free(root);
++	return result;
++}
++
++/*
+  * add1pkg(<pkg>)
+  *	adds the files listed in the +CONTENTS of <pkg> into the
+  *	pkgdb.byfile.db database file in the current package dbdir.  It
+@@ -176,7 +242,8 @@
+ 	plist_t	       *p;
+ 	package_t	Plist;
+ 	char 	       *contents;
+-	char *PkgName, *dirp;
++	char *PkgName, *dirp, *dirp_allocated = NULL;
++	char *destfile;
+ 	char 		file[MaxPathSize];
+ 	struct pkgdb_count *count;
+ 
+@@ -205,8 +272,9 @@
+ 				errx(EXIT_FAILURE, "@cwd not yet found, please send-pr!");
+ 			}
+ 			(void) snprintf(file, sizeof(file), "%s/%s", dirp, p->name);
+-			if (!(isfile(file) || islinktodir(file))) {
+-				if (isbrokenlink(file)) {
++			destfile = destdir_path(file);
++			if (!(isfile(destfile) || islinktodir(destfile))) {
++				if (isbrokenlink(destfile)) {
+ 					warnx("%s: Symlink `%s' exists and is in %s but target does not exist!",
+ 						PkgName, file, CONTENTS_FNAME);
+ 				} else {
+@@ -217,16 +285,23 @@
+ 				pkgdb_store(file, PkgName);
+ 				++count->files;
+ 			}
++			free(destfile);
+ 			break;
+ 		case PLIST_PKGDIR:
+ 			add_pkgdir(PkgName, dirp, p->name);
+ 			++count->directories;
+ 			break;
+ 		case PLIST_CWD:
+-			if (strcmp(p->name, ".") != 0)
++			free(dirp_allocated);
++			dirp_allocated = NULL;
++			if (strcmp(p->name, ".") != 0) {
+ 				dirp = p->name;
+-			else
+-				dirp = pkgdb_pkg_dir(pkgdir);
++			} else {
++				char *pkgdir_path = pkgdb_pkg_dir(pkgdir);
++				dirp_allocated = target_path(pkgdir_path);
++				free(pkgdir_path);
++				dirp = dirp_allocated;
++			}
+ 			break;
+ 		case PLIST_IGNORE:
+ 			p = p->next;
+@@ -249,6 +324,7 @@
+ 			break;
+ 		}
+ 	}
++	free(dirp_allocated);
+ 	free_plist(&Plist);
+ 	fclose(f);
+ 	pkgdb_close();
+@@ -529,6 +605,10 @@
+ 			pkgdb_set_dir(optarg, 3);
+ 			break;
+ 
++		case 'P':
++			Destdir = optarg;
++			break;
++
+ 		case 'S':
+ 			sfx[0] = 0x0;
+ 			use_default_sfx = FALSE;
+--- a/pkgtools/pkg_install/files/admin/pkg_admin.1
++++ b/pkgtools/pkg_install/files/admin/pkg_admin.1
+@@ -40,6 +40,7 @@
+ .Op Fl C Ar config
+ .Op Fl d Ar lsdir
+ .Op Fl K Ar pkg_dbdir
++.Op Fl P Ar destdir
+ .Op Fl s Ar sfx_pattern
+ .Ar command Op args ...
+ .Sh DESCRIPTION
+@@ -70,6 +71,18 @@
+ .Dv PKG_DBDIR
+ configuration option with the value
+ .Ar pkg_dbdir .
++.It Fl P Ar destdir
++Prefix file-system checks in the
++.Cm add
++and
++.Cm rebuild
++commands with
++.Ar destdir .
++Package database keys remain target paths without this prefix.
++For a staged tree, use
++.Fl K
++with the package database directory under
++.Ar destdir .
+ .It Fl q
+ Perform checks in a quiet manner.
+ In normal operation,
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -11,4 +11,5 @@
+ PKGNAME=		pkg_install-${VERSION}
++PKGREVISION=		3
+ CATEGORIES=		pkgtools
+ 
+ MAINTAINER=		agc@NetBSD.org
