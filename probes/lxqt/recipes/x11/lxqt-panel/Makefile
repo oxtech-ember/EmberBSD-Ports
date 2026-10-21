@@ -1,0 +1,72 @@
+# $NetBSD: Makefile,v 1.77 2026/09/02 19:05:19 wiz Exp $
+
+PKGREVISION= 3
+.include "../../meta-pkgs/lxqt/Makefile.common"
+
+DISTNAME=	lxqt-panel-2.4.1
+CATEGORIES=	x11
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://github.com/lxqt/lxqt-panel/
+COMMENT=	Desktop panel
+LICENSE=	gnu-lgpl-v2.1
+
+USE_TOOLS+=	pkg-config perl
+
+# Requires libsensors, unavailable in pkgsrc
+CMAKE_CONFIGURE_ARGS+=	-DSENSORS_PLUGIN=No
+
+# Requires sysstat-qt6, unavailable in pkgsrc
+CMAKE_CONFIGURE_ARGS+=	-DSYSSTAT_PLUGIN=No
+
+# Appear non-functional on NetBSD currently.
+CMAKE_CONFIGURE_ARGS+=	-DCPULOAD_PLUGIN=No
+CMAKE_CONFIGURE_ARGS+=	-DMOUNT_PLUGIN=No
+
+AUTOSTART_CONF=		share/examples/autostart
+PANEL_CONF=		share/examples/lxqt
+PKG_SYSCONFSUBDIR=	xdg
+MAKE_DIRS+=		${PKG_SYSCONFDIR}/autostart
+MAKE_DIRS+=		${PKG_SYSCONFDIR}/lxqt
+
+SUBST_CLASSES+=		prefix
+SUBST_MESSAGE.prefix=	Fixing paths.
+SUBST_STAGE.prefix=	pre-configure
+SUBST_FILES.prefix=	plugin-directorymenu/directorymenuconfiguration.cpp
+SUBST_FILES.prefix+=	plugin-fancymenu/lxqtfancymenuconfiguration.cpp
+SUBST_FILES.prefix+=	plugin-mainmenu/lxqtmainmenuconfiguration.cpp
+SUBST_FILES.prefix+=	plugin-kbindicator/src/x11/kbdlayout.cpp
+SUBST_SED.prefix=	-e 's,/etc/xdg,${PKG_SYSCONFDIR},g'
+SUBST_SED.prefix+=	-e 's,/usr/bin,${PREFIX}/bin,g'
+SUBST_SED.prefix+=	-e 's,/usr/share,${PREFIX}/share,g'
+
+CONF_FILES+=	${AUTOSTART_CONF}/lxqt-panel.desktop \
+		${PKG_SYSCONFDIR}/autostart/lxqt-panel.desktop
+CONF_FILES+=	${PANEL_CONF}/panel.conf \
+		${PKG_SYSCONFDIR}/lxqt/panel.conf
+
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.include "../../meta-pkgs/lxqt/host-tools.mk"
+.else
+TOOL_DEPENDS+=	lxqt-build-tools>=2.4.0:../../devel/lxqt-build-tools
+TOOL_DEPENDS+=	qt6-qttools-[0-9]*:../../devel/qt6-qttools
+.endif
+
+.include "options.mk"
+
+.include "../../devel/cmake/build.mk"
+
+.include "../../devel/libdbusmenu-lxqt/buildlink3.mk"
+.include "../../devel/libstatgrab/buildlink3.mk"
+.include "../../sysutils/kf6-solid/buildlink3.mk"
+.include "../../sysutils/lxqt-menu-data/buildlink3.mk"
+.include "../../x11/kf6-kguiaddons/buildlink3.mk"
+.include "../../x11/kf6-kwindowsystem/buildlink3.mk"
+.include "../../x11/libXcomposite/buildlink3.mk"
+.include "../../x11/libXdamage/buildlink3.mk"
+.include "../../x11/libXtst/buildlink3.mk"
+.include "../../x11/lxqt-globalkeys/buildlink3.mk"
+.include "../../x11/plasma6-layer-shell-qt/buildlink3.mk"
+.include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../mk/bsd.pkg.mk"
