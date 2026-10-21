@@ -107,3 +107,12 @@ The shared profile also selects the C Libtool tag explicitly in libiconv
 1.19nb1's hand-written compile/link rules. This keeps the actual consumer
 compiler when Libtool was configured with an additional language-standard
 flag; it does not change the compiler or skip Libtool checks.
+
+The pinned GTS 0.7.6 recipe disabled all Libtool tags. Libtool 2.6.2 then
+failed to select its C compiler for the ordinary untagged compile command.
+Passing `CC` to `--with-tags` is invalid because GTS uses that option only to
+add secondary tags. The common-tools export removes the empty override, keeps
+Libtool's default C tag and patches GTS's generated compile and link rules to
+pass `--tag=CC`; it bumps GTS to nb9 and records the pkgsrc patch checksum.
+This keeps the C-only build contract and the feature used by the host Graphviz
+dependency. It does not disable the feature or suppress build checks.

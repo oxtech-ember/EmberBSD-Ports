@@ -111,6 +111,23 @@ source compiler. Do not install a separate compiler for cargo-c or librsvg.
 The existing `devel/cargo-c` 0.10.25 recipe supplies its checksummed crate closure
 and uses the installed host OpenSSL provider.
 
+The common cross profile also defaults to `RUST_TYPE=bin`. Cargo build tools
+then use the shared build-host provider instead of requesting pkgsrc's
+source-built Rust and LLVM runtime. Package recipes can select another mode
+when they have a tested host/target contract. Verify the exported selection
+against the real pkgsrc consumer:
+
+```sh
+python3 tests/rust-cross-selection.py /absolute/pkgsrc \
+  /absolute/cross-mk.conf /absolute/host/bin/bmake \
+  /absolute/new-rust-cross-selection
+```
+
+The check removes any explicit `RUST_TYPE` assignment from the supplied
+MAKECONF, then queries `devel/cargo-c` and the explicit `graphics/librsvg`
+override. It requires the `rust-bin` provider for Cargo and preserves
+`librsvg`'s native-tool selection.
+
 It builds and installs with the shared Rust on macOS/Apple Silicon, with
 `CHECK_SHLIBS=yes` and OpenSSL 3.6.5. The source archive does not ship
 Cargo.lock; the offline build resolves only the recipe's pinned vendored crates.

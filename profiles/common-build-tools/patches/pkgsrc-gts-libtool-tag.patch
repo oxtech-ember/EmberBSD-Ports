@@ -1,0 +1,132 @@
+Origin: EmberBSD (AI-assisted); make GTS select the C tag with common Libtool 2.6.2.
+Not submitted upstream.
+
+--- a/graphics/gts/Makefile
++++ b/graphics/gts/Makefile
+@@ -1,5 +1,5 @@
+ DISTNAME=	gts-0.7.6
+-PKGREVISION=	8
++PKGREVISION=	9
+ CATEGORIES=	graphics
+ MASTER_SITES=	${MASTER_SITE_SOURCEFORGE:=gts/}
+ 
+@@ -13,8 +13,7 @@
+ USE_LIBTOOL=		yes
+ USE_TOOLS+=		gmake pkg-config
+ GNU_CONFIGURE=		yes
+-# it is not necessary to configure libtool
+-CONFIGURE_ARGS+=	--with-tags=""
++# Keep Libtool's default C tag; the GTS rules select it explicitly.
+ PKGCONFIG_OVERRIDE+=	gts.pc.in
+ 
+ CPPFLAGS+=	-I${BUILDLINK_PREFIX.netpbm}/include/netpbm
+--- a/graphics/gts/distinfo
++++ b/graphics/gts/distinfo
+@@ -3,3 +3,4 @@
+ BLAKE2s (gts-0.7.6.tar.gz) = 0c495194678c99bd8f63a52e3a342a185af7038154c06f8c43855f0a011c8ae4
+ SHA512 (gts-0.7.6.tar.gz) = 645123b72dba3d04dad3c5d936d7e55947826be0fb25e84595368919b720deccddceb7c3b30865a5a40f2458254c2af793b7c014e6719cf07e7f8e6ff30890f8
+ Size (gts-0.7.6.tar.gz) = 948847 bytes
++SHA1 (patch-libtool-tags) = 059ccb70e89dd0554ee0fd4e67ee7fcb79e3427c
+--- /dev/null
++++ b/graphics/gts/patches/patch-libtool-tags
+@@ -0,0 +1,100 @@
++$NetBSD$
++
++Pass the C tag explicitly to the shared Libtool wrapper.
++
++--- src/Makefile.in.orig
+++++ src/Makefile.in
++@@ -86,11 +86,11 @@
++ @AMDEP_TRUE@	./$(DEPDIR)/vertex.Plo ./$(DEPDIR)/vopt.Plo
++ COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
++ 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
++-LTCOMPILE = $(LIBTOOL) --mode=compile $(CC) $(DEFS) \
+++LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
++ 	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
++ 	$(AM_CFLAGS) $(CFLAGS)
++ CCLD = $(CC)
++-LINK = $(LIBTOOL) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+++LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
++ 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
++ SOURCES = $(libgts_la_SOURCES)
++ DIST_SOURCES = $(libgts_la_SOURCES)
++--- tools/Makefile.in.orig
+++++ tools/Makefile.in
++@@ -87,11 +87,11 @@
++ @AMDEP_TRUE@	./$(DEPDIR)/gtscompare.Po ./$(DEPDIR)/stl2gts.Po
++ COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
++ 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
++-LTCOMPILE = $(LIBTOOL) --mode=compile $(CC) $(DEFS) \
+++LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
++ 	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
++ 	$(AM_CFLAGS) $(CFLAGS)
++ CCLD = $(CC)
++-LINK = $(LIBTOOL) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+++LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
++ 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
++ SOURCES = gts2dxf.c gts2oogl.c gts2stl.c gtscheck.c gtscompare.c \
++ 	stl2gts.c
++--- examples/Makefile.in.orig
+++++ examples/Makefile.in
++@@ -155,11 +155,11 @@
++ @AMDEP_TRUE@	./$(DEPDIR)/volume.Po
++ COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
++ 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
++-LTCOMPILE = $(LIBTOOL) --mode=compile $(CC) $(DEFS) \
+++LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
++ 	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
++ 	$(AM_CFLAGS) $(CFLAGS)
++ CCLD = $(CC)
++-LINK = $(LIBTOOL) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+++LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
++ 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
++ SOURCES = cartesian.c cleanup.c coarsen.c delaunay.c gtstoc.c \
++ 	happrox.c iso.c merge.c oocs.c optimize.c partition.c refine.c \
++--- test/boolean/Makefile.in.orig
+++++ test/boolean/Makefile.in
++@@ -66,11 +66,11 @@
++ @AMDEP_TRUE@	./$(DEPDIR)/set.Po
++ COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
++ 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
++-LTCOMPILE = $(LIBTOOL) --mode=compile $(CC) $(DEFS) \
+++LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
++ 	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
++ 	$(AM_CFLAGS) $(CFLAGS)
++ CCLD = $(CC)
++-LINK = $(LIBTOOL) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+++LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
++ 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
++ SOURCES = boole.c cubes.c set.c
++ DIST_SOURCES = boole.c cubes.c set.c
++--- test/coarsen/Makefile.in.orig
+++++ test/coarsen/Makefile.in
++@@ -76,11 +76,11 @@
++ @AMDEP_TRUE@	./$(DEPDIR)/double_prism.Po
++ COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
++ 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
++-LTCOMPILE = $(LIBTOOL) --mode=compile $(CC) $(DEFS) \
+++LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
++ 	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
++ 	$(AM_CFLAGS) $(CFLAGS)
++ CCLD = $(CC)
++-LINK = $(LIBTOOL) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+++LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
++ 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
++ SOURCES = c1.c c2.c c3.c cartesian.c double_prism.c
++ DIST_SOURCES = c1.c c2.c c3.c cartesian.c double_prism.c
++--- test/delaunay/Makefile.in.orig
+++++ test/delaunay/Makefile.in
++@@ -61,11 +61,11 @@
++ @AMDEP_TRUE@DEP_FILES = ./$(DEPDIR)/cartesian.Po ./$(DEPDIR)/random.Po
++ COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
++ 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
++-LTCOMPILE = $(LIBTOOL) --mode=compile $(CC) $(DEFS) \
+++LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
++ 	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
++ 	$(AM_CFLAGS) $(CFLAGS)
++ CCLD = $(CC)
++-LINK = $(LIBTOOL) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+++LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
++ 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
++ SOURCES = cartesian.c random.c
++ DIST_SOURCES = cartesian.c random.c
