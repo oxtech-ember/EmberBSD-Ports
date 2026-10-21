@@ -22,6 +22,8 @@ USE_LANGUAGES=		c c++
 USE_TOOLS+=		pkg-config msgfmt msgmerge xgettext
 
 CMAKE_CONFIGURE_ARGS+=		-DCMAKE_BUILD_TYPE=Release
+# Keep the default-on IPC API explicit; its providers are direct dependencies.
+CMAKE_CONFIGURE_ARGS+=		-DKICAD_IPC_API=ON
 CMAKE_CONFIGURE_ARGS+=		-DKICAD_SCRIPTING_WXPYTHON=OFF
 CMAKE_CONFIGURE_ARGS+=		-DKICAD_BUILD_I18N=ON
 
@@ -53,6 +55,10 @@ NOT_FOR_PLATFORM+=	Darwin-*-*
 .include "../../devel/cmake/build.mk"
 .include "../../devel/gettext-tools/msgfmt-desktop.mk"
 .include "../../devel/libgit2/buildlink3.mk"
+BUILDLINK_API_DEPENDS.protobuf+=	protobuf>=36.2nb1
+.include "../../devel/protobuf/buildlink3.mk"
+.include "../../devel/protobuf/host-protoc.mk"
+.include "../../net/nng/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"
 .include "../../graphics/MesaLib/buildlink3.mk"
 .include "../../graphics/cairo/buildlink3.mk"
@@ -65,6 +71,7 @@ BUILDLINK_API_DEPENDS.glm+=	glm>=0.9.9.8
 .include "../../security/libsecret/buildlink3.mk"
 .include "../../sysutils/desktop-file-utils/desktopdb.mk"
 .include "../../www/curl/buildlink3.mk"
+.include "../../x11/libspnav/buildlink3.mk"
 .include "../../x11/wxGTK32/buildlink3.mk"
 # needs 64-bit CAS for std::atomic<size_t>
 .include "../../mk/atomic64.mk"
