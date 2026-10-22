@@ -52,7 +52,7 @@ done
     echo 'x265 patch inventory differs.' >&2; exit 2;
 }
 
-expected="multimedia/libaom libaom-3.15.0.tar.gz ea08c38ecc078bc85bb1b691020e52b06250f1a81fe7ca5b624629225081af96 https://storage.googleapis.com/aom-releases/libaom-3.15.0.tar.gz"
+expected="multimedia/libaom libaom-3.15.2.tar.gz 67bb54b245f33ed98600e08269e6139986e48114e14042474ddd8885801dfddc https://storage.googleapis.com/aom-releases/libaom-3.15.2.tar.gz"
 actual=$(awk '$1=="multimedia/libaom" { if (NF != 4) exit 1; print $1, $2, $3, $4 }' "$profile/sources.tsv")
 [ "$actual" = "$expected" ] || { echo "Incorrect libaom source pin." >&2; exit 2; }
 

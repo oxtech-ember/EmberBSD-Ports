@@ -10,6 +10,16 @@ The separate [cloud CPU cross selection](cross/README.md) now passes installatio
 exact FFV1 pixels, timestamps, inverse filters, PCM samples and package cycles
 in AArch64 QEMU. That record does not extend the CM5 external-codec scope.
 
+The current libaom recipe selects the stable 3.15.2 bug-fix release.
+Its AArch64 dispatch patch is unchanged. The board acceptance below uses
+libaom 3.15.0nb1. See the [upstream release notes](https://aomedia.googlesource.com/aom/+log/v3.15.1..v3.15.2).
+
+The 3.15.2 amd64 package also passes GCC 16 cross-build and complete package
+payload checks. On NetBSD 11, its staged encoder and decoder round-trip one
+16 by 16 I420 frame without loss and reject a malformed AV1 IVF payload.
+This bounded, privileged CLI check uses the build sysroot libraries. It does
+not extend the board, full codec-suite or memory-analysis acceptance below.
+
 ## AArch64 dispatch repairs
 
 The inherited libaom 3.15.0 and libvpx 1.16.0 recipes disabled runtime CPU
