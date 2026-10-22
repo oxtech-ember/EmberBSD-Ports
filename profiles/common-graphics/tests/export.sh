@@ -277,6 +277,7 @@ for mode in default development-toolchain common-build-tools common-graphics com
     else sh "$script" "$tree" "$mode" > "$work/$mode.log" 2>&1; fi
     case "$mode" in
         common-graphics|common-media|plasma-mobile)
+            grep -Fqx 'CMAKE_CONFIGURE_ARGS+=	-DNNG_TOOLS:BOOL=ON' "$tree/net/nng/Makefile"
             diff -qr "$profile/recipes/x11/libspnav" "$tree/x11/libspnav"
             cmp "$profile/recipes/devel/flex/patches/patch-src_main.c" "$tree/devel/flex/patches/patch-src_main.c"
             grep -Fqx "SHA1 (patch-src_main.c) = $(sed '/[$]NetBSD.*/d' "$flex_patch" | shasum -a 1 | awk '{ print $1 }')" "$tree/devel/flex/distinfo"

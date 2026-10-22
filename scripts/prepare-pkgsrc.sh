@@ -720,6 +720,8 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
     # Select GLEW's platform from the target, not the build host's uname.
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$graphics/cross/glew-target-system.patch"
+    patch -f -N -d "$destination" -p1 -F 0 < \
+        "$graphics/cross/nng-enable-tools.patch"
     [ ! -e "$destination/devel/wayland-devel" ] && [ ! -L "$destination/devel/wayland-devel" ] || {
         echo 'Upstream now owns devel/wayland-devel; review the overlay.' >&2; exit 2;
     }

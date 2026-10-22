@@ -98,7 +98,26 @@ else:
 assert info_result[1] == 'yes' and info_result[2] == '/usr/pkg/' + info_result[3], info_result
 assert info_result[4:7] == [expected_info_tool, 'exit 0', expected_info_tool], info_result
 assert 'gm4:run not supported in cross-compilation' in run('other-runtime-tool', base + ['USE_TOOLS=sh pwd gm4:run', '-v', 'PKG_FAIL_REASON'])
+# Heimdal's flex:run entry selects a host source generator. The target sysroot
+# does not need flex, and a missing host provider must still block the package.
+heimdal = [bmake, '-C', pkgsrc + '/security/heimdal', 'MAKECONF=' + makeconf]
+heimdal_reason = run('heimdal-host-flex-reason', heimdal + [
+    'show-vars', 'VARNAMES=PKG_FAIL_REASON']).strip()
+assert not heimdal_reason, heimdal_reason
+host_flex = run('heimdal-host-flex-path', heimdal + [
+    'show-vars', 'VARNAMES=TOOLS_PLATFORM.flex']).strip()
+assert host_flex and Path(host_flex).is_file() and os.access(host_flex, os.X_OK), host_flex
+assert run('heimdal-flex-method', heimdal + [
+    'show-vars', 'VARNAMES=_TOOLS_DEPMETHOD.flex']).strip() == 'TOOL_DEPENDS'
+assert not (source_sysroot / 'usr/bin/flex').exists()
+assert not (source_sysroot / 'bin/flex').exists()
+heimdal_dependencies = run('heimdal-runtime-dependencies', heimdal + [
+    'show-vars', 'VARNAMES=DEPENDS']).split()
+assert not any(dependency.startswith('flex-') for dependency in heimdal_dependencies), heimdal_dependencies
+assert 'USE_TOOLS+=flex:run not supported in cross-compilation' in run(
+    'heimdal-no-host-flex', heimdal + ['TOOLS_PLATFORM.flex=', 'show-vars',
+    'VARNAMES=PKG_FAIL_REASON'])
 gts_base = [bmake, '-C', pkgsrc + '/graphics/gts', 'MAKECONF=' + makeconf]
 gts_result = run('gts-libtool-tag', gts_base + [query, 'VARNAMES=PKG_FAIL_REASON PKGREVISION']).splitlines()
 assert len(gts_result) == 2 and not gts_result[0].strip() and gts_result[1].strip() == '9', gts_result
-print('PASS: GCC16 tools, gzip INFO_FILES, target install-info, GTS Libtool tag and cross-tool refusal')
+print('PASS: GCC16 tools, gzip INFO_FILES, target install-info, Heimdal host flex, GTS Libtool tag and cross-tool refusal')

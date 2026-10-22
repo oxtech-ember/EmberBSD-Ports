@@ -1,0 +1,9 @@
+--- a/net/nng/Makefile
++++ b/net/nng/Makefile
+@@ -16,5 +16,6 @@
+ USE_CMAKE=	yes
+ USE_LANGUAGES=	c99 c++
++CMAKE_CONFIGURE_ARGS+=	-DNNG_TOOLS:BOOL=ON
+ 
+ .include "options.mk"
+ 
