@@ -18,6 +18,17 @@ separate streams, literal arguments, execution receipts and cleanup.
 The production manifest/resource shell also runs with `prefix-bin`. These
 controls do not execute target ELF or qualify LLVM metadata queries.
 
+Explicit SDK library controls use a real GCC16 DSO that the query does not
+name in NEEDED. Its own dependency uses the ordinary resolver. Refusals cover
+list/name/hash bounds, non-SDK files, direct-link identity, foreign ELF,
+missing SONAME and collisions. A NEEDED entry for an explicit SONAME must
+resolve to the declared canonical SDK provider. A different provider with
+identical bytes fails before SSH. Flat and prefix layouts retain the added
+DSO and alias hashes. The actual production shell creates and checks the
+alias. Replacing it with a same-byte regular file fails before a verified
+execution receipt. Changed source symlinks also fail. These are host-only
+fixtures; they do not qualify actual LLVM file discovery or metadata results.
+
 The production launcher reads target ELF headers and dynamic entries through the
 SDK. The `readelf` configuration field remains required for recipe identity
 compatibility. It must name a regular executable file. Both contracts reject

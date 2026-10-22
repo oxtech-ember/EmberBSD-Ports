@@ -362,6 +362,105 @@ def main():
     reject('overlapping-roots', r'build/sysroot overlap', '--check', work / 'build',
            work / 'build', readelf)
     write_config(config)
+    # Explicit SDK libraries need no artificial NEEDED entry in the program.
+    sdk_lib = work / 'sysroot/usr/pkg/lib'
+    sdk_lib.mkdir(parents=True)
+    input_provider = sdk_lib / 'libgi-input.so.2'
+    input_alias = sdk_lib / 'libgi-input.so'
+    (work / 'build/input.c').write_text(
+        'extern int gi_probe_answer(void); int gi_input_answer(void) { return gi_probe_answer(); }\n')
+    run('input-dso', cc, '-nostdlib', '-shared', '-fPIC', work / 'build/input.c',
+        '-Wl,-soname,libgi-input.so.2', '-L' + str(provider.parent),
+        '-Wl,-l:libgi-probe.so.1', '-o', input_provider)
+    input_original = input_provider.read_bytes()
+    input_alias.symlink_to(input_provider.name)
+    library_input = {'name': input_alias.name, 'sha256': sdk.sha256_file(str(input_provider))}
+
+    def reject_library(name, pattern, entries):
+        write_config(dict(config, library_inputs=entries))
+        reject('library-' + name, pattern, '--execute', work / 'build/query')
+
+    for number, value in enumerate((None, 'libgi-input.so', {})):
+        reject_library('list-' + str(number), 'bounded array', value)
+    reject_library('count', 'bounded array', [library_input] * 33)
+    for number, value in enumerate((None, {}, dict(library_input, source=str(input_provider)))):
+        reject_library('entry-' + str(number), 'invalid library input entry', [value])
+    for name in ('', '.', '..', '../libgi-input.so', '/libgi-input.so', 'lib/file', '-library'):
+        reject_library('name-' + str(len(name)) + name.replace('/', '_'), 'unsafe or duplicate',
+                       [dict(library_input, name=name)])
+    reject_library('duplicate', 'unsafe or duplicate', [library_input, library_input])
+    for number, value in enumerate((None, 'F' * 64, '0' * 63)):
+        reject_library('sha-format-' + str(number), 'invalid library input SHA256',
+                       [dict(library_input, sha256=value)])
+    reject_library('missing', 'missing or ambiguous', [dict(library_input, name='libmissing.so')])
+    reject_library('hash', 'input SHA256 differs', [dict(library_input, sha256='0' * 64)])
+    input_alias.unlink(); shutil.copyfile(input_provider, input_alias)
+    reject_library('regular', 'must be a symbolic link', [library_input])
+    input_alias.unlink()
+    for number, target_link in enumerate(('/tmp/libgi-input.so.2', '../libgi-input.so.2',
+                                          input_alias.name)):
+        input_alias.symlink_to(target_link)
+        reject_library('target-' + str(number), 'direct basename link|expected a regular file', [library_input])
+        input_alias.unlink()
+    chain = sdk_lib / 'libgi-chain.so'
+    chain.symlink_to(input_provider.name); input_alias.symlink_to(chain.name)
+    reject_library('chain', 'expected a regular file', [library_input])
+    input_alias.unlink(); chain.unlink(); input_alias.symlink_to(input_provider.name)
+    second_lib = work / 'sysroot/usr/lib'
+    second_lib.mkdir(parents=True)
+    shutil.copyfile(input_provider, second_lib / input_provider.name)
+    (second_lib / input_alias.name).symlink_to(input_provider.name)
+    reject_library('ambiguous', 'missing or ambiguous', [library_input])
+    (second_lib / input_alias.name).unlink()
+    for label, offset, value in (('machine', 18, 183 if machine == 62 else 62), ('type', 16, 2)):
+        changed = bytearray(input_original); changed[offset:offset+2] = struct.pack('<H', value)
+        input_provider.write_bytes(changed)
+        reject_library(label, 'expected ELF64|requires ET_DYN',
+                       [dict(library_input, sha256=sdk.sha256_file(str(input_provider)))])
+    input_provider.write_bytes(input_original)
+    no_soname = sdk_lib / 'libgi-no-soname.so'
+    run('input-no-soname', cc, '-nostdlib', '-shared', '-fPIC', work / 'build/library.c', '-o', no_soname)
+    input_alias.unlink(); input_alias.symlink_to(no_soname.name)
+    reject_library('no-soname', 'requires ET_DYN and a safe SONAME',
+                   [dict(library_input, sha256=sdk.sha256_file(str(no_soname)))])
+    input_alias.unlink(); input_alias.symlink_to(input_provider.name)
+    copy = sdk_lib / 'libgi-copy.so.2'; shutil.copyfile(input_provider, copy)
+    copy_alias = sdk_lib / 'libgi-copy.so'; copy_alias.symlink_to(copy.name)
+    reject_library('soname-conflict', 'conflicting SDK library input SONAME',
+                   [library_input, dict(library_input, name=copy_alias.name)])
+    copy_alias.unlink()
+    collision = sdk_lib / 'libgi-probe.so.1'; collision.symlink_to(input_provider.name)
+    reject_library('alias-collision', 'alias collides with a provider',
+                   [dict(library_input, name=collision.name)])
+    collision.unlink()
+    (provider.parent / 'libgi-build-only.so').symlink_to(provider.name)
+    reject_library('build-only', 'missing or ambiguous', [dict(library_input, name='libgi-build-only.so')])
+    # Equal bytes do not permit a different provider for an explicit SDK SONAME.
+    candidate = work / 'build/input-candidate/libgi-input.so.2'
+    candidate.parent.mkdir()
+    shutil.copyfile(input_provider, candidate)
+    require(candidate.resolve() != input_provider.resolve() and
+            sdk.sha256_file(str(candidate)) == library_input['sha256'],
+            'provider identity control needs distinct paths with equal bytes')
+    (work / 'build/input-query.c').write_text(
+        'extern int gi_input_answer(void); void _start(void) { (void)gi_input_answer(); }\n')
+    input_query = work / 'build/input-query'
+    run('input-needed-elf', cc, '-nostdlib', '-Wl,-e,_start', work / 'build/input-query.c',
+        '-L' + str(candidate.parent), '-Wl,-l:libgi-input.so.2',
+        '-L' + str(provider.parent), '-Wl,-l:libgi-probe.so.1', '-o', input_query)
+    from emberbsd_sdk.elf import read_elf_dynamic
+    require(input_provider.name in read_elf_dynamic(str(input_query), machine=machine)['needed'],
+            'provider identity control needs the declared SONAME in NEEDED')
+    write_config(dict(config, library_inputs=[library_input],
+                      library_dirs=[str(candidate.parent), str(provider.parent)]))
+    reject('library-needed-same-bytes-different-provider', 'declared SDK provider differs',
+           '--execute', input_query)
+    write_config(dict(config, library_inputs=[]))
+    run('empty-library-inputs', python, '-E', '-S', helper, '--check', work / 'build',
+        work / 'sysroot', readelf, target, env=environment)
+    write_config(config)
+    print('PASS: explicit SDK library list/name/hash, direct-link, source, ELF, SONAME '
+          'and collision refusals before SSH; empty list retains the ordinary contract')
     # Execute data never shares the query/lib/types/manifest namespace. Use the
     # same real ELF fixtures, but refuse malformed data before the first SSH.
     resource = work / 'sysroot/STEP'
@@ -527,7 +626,7 @@ def main():
     (work / 'build/output').unlink()
     # These fixtures select a real installed sysroot ELF provider. The earlier
     # alias fixture keeps checking an in-tree provider that must be uploaded.
-    (work / 'sysroot/usr/pkg/lib').mkdir(parents=True)
+    (work / 'sysroot/usr/pkg/lib').mkdir(parents=True, exist_ok=True)
     installed = work / 'sysroot/usr/pkg/lib/libgi-probe.so.1'
     shutil.copyfile(provider, installed)
     write_config(dict(config, library_dirs=[str(installed.parent)]))
@@ -619,8 +718,11 @@ def main():
     print('PASS: real ELF and alias resolution; refusals before SSH; SONAME checks; '
           'transport failures, installed-provider reuse and successful publication')
     # Both fixed executable layouts preserve the original streams and status.
-    for label, layout in (('omitted', None), ('flat', 'flat'), ('prefix-bin', 'prefix-bin')):
+    for label, layout in (('omitted', None), ('flat', 'flat'), ('prefix-bin', 'prefix-bin'),
+                          ('input-flat', 'flat'), ('input-prefix', 'prefix-bin')):
         selected = dict(config, library_dirs=[str(installed.parent)])
+        if label.startswith('input-'):
+            selected['library_inputs'] = [library_input]
         if layout is not None:
             selected['executable_layout'] = layout
         write_config(selected)
@@ -662,15 +764,40 @@ def main():
                 require(sdk.sha256_file(str(work / 'build/query')) + '  ' + relative in manifest and
                         sdk.sha256_file(str(installed)) + '  lib/libgi-probe.so.1' in manifest,
                         f'{name}: manifest lost executable/provider identity')
+                if label.startswith('input-'):
+                    require(library_input['sha256'] + '  lib/libgi-input.so.2' in manifest and
+                            library_input['sha256'] + '  lib/libgi-input.so' in manifest and
+                            './lib/libgi-input.so' not in archive.getnames() and
+                            archive.extractfile('./lib/libgi-input.so.2').read() == input_original,
+                            f'{name}: explicit DSO/alias identity or usual closure missing')
             created = set((work / 'cache').glob('gi-query-*')) - before
             require(len(created) == 1, f'{name}: missing query receipt')
             receipt = created.pop()
             require((receipt / 'cleanup.log').read_bytes().startswith(b'0\n') and
                     not (receipt / 'stage').exists() and not (receipt / 'input.tar.gz').exists(),
                     f'{name}: temporary stage survived cleanup')
+            if label.startswith('input-'):
+                evidence = read_json(str(receipt / 'library-inputs.json'))['inputs']
+                require(len(evidence) == 1 and evidence[0]['name'] == library_input['name'] and
+                        evidence[0]['sha256'] == library_input['sha256'] and
+                        evidence[0]['soname'] == input_provider.name and
+                        evidence[0]['provider'] == str(input_provider), 'SDK input provenance differs')
     write_config(dict(config, library_dirs=[str(installed.parent)]))
     print('PASS: omitted/flat/prefix-bin layouts preserve ELF bytes, mode, manifests, '
           'literal arguments, separate streams, status0/7 and cleanup')
+    write_config(dict(config, library_dirs=[str(installed.parent)],
+                      executable_layout='prefix-bin', library_inputs=[library_input]))
+    phases = work / 'library-before-transfer-phases'
+    failure = work / 'build/library-before-transfer-failure'
+    result = capture(python, '-E', '-S', helper, '--execute', work / 'build/query', env=dict(
+        environment, GI_TEST_MODE='library-before-transfer', GI_TEST_PHASES=str(phases),
+        GI_TEST_LIBRARY_ALIAS=str(input_alias), EMBERBSD_GI_FAILURE_MARKER=str(failure)))
+    output = record('library-before-transfer', result)
+    require(result.returncode != 0 and 'SDK library input identity changed' in output
+            and failure.is_file() and phases.read_text().splitlines() == ['allocate', 'reuse', 'cleanup'],
+            'changed SDK alias was transferred or accepted without infrastructure refusal')
+    write_config(dict(config, library_dirs=[str(installed.parent)]))
+    print('PASS: source SDK alias change after allocation/reuse refuses before transfer and cleans')
     for mode in ('query', 'status', 'cleanup'):
         failure = work / 'build' / (mode + '-failure')
         result = capture(python, '-E', '-S', helper, '--execute', work / 'build/query', env=dict(
@@ -702,10 +829,14 @@ def main():
                         ('data-source', 'source providers changed'),
                         ('data-metadata', 'file changed during inspection'),
                         ('data-root', 'data root identity changed'),
-                        ('data-prefix', None)):
-        relative = 'bin/query' if mode == 'data-prefix' else 'query'
+                        ('data-prefix', None), ('data-library-flat', None),
+                        ('data-library-prefix', None),
+                        ('data-library-corrupt', 'execution-status failed'),
+                        ('data-library-source', 'SDK library input identity changed')):
+        relative = 'bin/query' if mode in ('data-prefix', 'data-library-prefix') else 'query'
         write_config(dict(data_config, library_dirs=[str(installed.parent)],
-                          executable_layout='prefix-bin' if mode == 'data-prefix' else 'flat'))
+                          library_inputs=[library_input] if mode.startswith('data-library-') else [],
+                          executable_layout='prefix-bin' if relative == 'bin/query' else 'flat'))
         resource.write_bytes(b'upstream resource fixture\n')
         resource.chmod(0o644)
         trace = work / (mode + '-phases')
@@ -718,6 +849,8 @@ def main():
                             GI_TEST_DATA_BUILD=str(work / 'build'),
                             GI_TEST_DATA_TAR=str(saved_tar), GI_TEST_DATA_SCRIPT=str(saved_script),
                             GI_TEST_DATA_SHA=resource_hash, GI_TEST_EXECUTABLE=relative,
+                            GI_TEST_LIBRARY_ALIAS=str(input_alias),
+                            GI_TEST_LIBRARY_SHA=library_input['sha256'],
                             EMBERBSD_GI_FAILURE_MARKER=str(failure))
         before = set((work / 'cache').glob('gi-query-*'))
         result = capture(python, '-E', '-S', helper, '--execute', work / 'build/query',
@@ -822,6 +955,9 @@ if mode == phase:
     raise SystemExit(74)
 if phase == 'transfer' and 'GI_TEST_ARCHIVE' in os.environ:
     Path(os.environ['GI_TEST_ARCHIVE']).write_bytes(script)
+if phase == 'reuse' and mode == 'library-before-transfer':
+    alias = Path(os.environ['GI_TEST_LIBRARY_ALIAS'])
+    target = os.readlink(alias); alias.unlink(); alias.symlink_to(target)
 if mode.startswith('data-'):
     mock = Path(os.environ['GI_TEST_DATA_MOCK'])
     if phase == 'allocate':
@@ -842,9 +978,16 @@ if mode.startswith('data-'):
                 "  test \"$CSF_STEPDefaults\" = \"$GI_TEST_DATA_MOCK/data/occt/XSTEPResource\" || return 85\n"
                 "  test \"$(sha256 -q \"$CSF_STEPDefaults/STEP\")\" = \"$GI_TEST_DATA_SHA\" || return 86\n"
                 "  if test \"$GI_TEST_MODE\" = data-corrupt; then printf corrupted >> \"$CSF_STEPDefaults/STEP\"; fi\n"
+                "  case \"$GI_TEST_MODE\" in data-library-*)\n"
+                "    test \"$(readlink lib/libgi-input.so)\" = libgi-input.so.2 || return 87\n"
+                "    test \"$(sha256 -q lib/libgi-input.so)\" = \"$GI_TEST_LIBRARY_SHA\" || return 88;; esac\n"
+                "  if test \"$GI_TEST_MODE\" = data-library-corrupt; then rm lib/libgi-input.so; cp lib/libgi-input.so.2 lib/libgi-input.so; fi\n"
                 "  printf 'probe stdout\\n'\n  printf 'probe stderr\\n' >&2\n}\n")
         result = subprocess.run(['sh', '-s'], input=(glue + body).encode('utf-8'),
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+        if mode == 'data-library-source':
+            alias = Path(os.environ['GI_TEST_LIBRARY_ALIAS'])
+            target = os.readlink(alias); alias.unlink(); alias.symlink_to(target)
         if mode == 'data-source':
             Path(os.environ['GI_TEST_DATA_SOURCE']).write_bytes(b'changed resource\n')
         if mode == 'data-metadata':

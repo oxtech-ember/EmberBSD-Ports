@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 import tarfile
@@ -58,7 +59,7 @@ def query(arguments):
     from emberbsd_sdk.inventory import sha256_file
     from emberbsd_sdk.jsonio import read_json, write_json
     from emberbsd_sdk.paths import (canonical_existing, real_directory, regular_file, relative_inside,
-                                   open_regular, stable_identity, verify_stable)
+                                   open_regular, stable_identity, verify_stable, entry)
     from emberbsd_sdk import stream
 
     require(getattr(stream, 'PRODUCER_STREAM_API', None) == 1,
@@ -76,6 +77,19 @@ def query(arguments):
     require(isinstance(layout, str) and layout in ('flat', 'prefix-bin'),
             'unsupported executable layout')
     query_relative = 'query' if layout == 'flat' else 'bin/query'
+    library_inputs = config.get('library_inputs', [])
+    require(isinstance(library_inputs, list) and len(library_inputs) <= 32,
+            'library_inputs must be a bounded array')
+    def library_name(value):
+        return isinstance(value, str) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.+-]{0,254}', value)
+    input_names = set()
+    for item in library_inputs:
+        require(isinstance(item, dict) and set(item) == {'name', 'sha256'}, 'invalid library input entry')
+        require(library_name(item['name']) and item['name'] not in input_names,
+                'unsafe or duplicate library input name')
+        require(isinstance(item['sha256'], str) and re.fullmatch('[0-9a-f]{64}', item['sha256']),
+                'invalid library input SHA256')
+        input_names.add(item['name'])
     require('EMBERBSD_GI_TARGET' not in os.environ or os.environ['EMBERBSD_GI_TARGET'] == target,
             'configuration differs from recipe target')
 
@@ -244,7 +258,61 @@ def query(arguments):
                 'library_dirs must be an array of strings')
         search = list(dict.fromkeys(mapdir(path) for path in configured + environment.get('LD_LIBRARY_PATH', '').split(':') if path))
         defaults = [mapdir(path) for path in ('/usr/pkg/gcc16/lib', '/usr/pkg/lib', '/usr/lib', '/lib')]
-        files, pending = {}, [exe]
+        files, pending, declared_libraries = {}, [exe], []
+        library_root = real_directory(sysroot) if library_inputs else None
+        sdk_directories = []
+        if library_inputs:
+            for suffix in ('/usr/pkg/gcc16/lib', '/usr/pkg/lib', '/usr/lib', '/lib'):
+                path = sysroot + suffix
+                if os.path.isdir(path):
+                    path = canonical_existing(path)
+                    require(within(path, sysroot), 'SDK library directory escapes sysroot')
+                    real_directory(path)
+                    if path not in sdk_directories:
+                        sdk_directories.append(path)
+        for item in library_inputs:
+            matches = [os.path.join(directory, item['name']) for directory in sdk_directories
+                       if entry(os.path.join(directory, item['name'])) is not None]
+            require(len(matches) == 1, 'SDK library input is missing or ambiguous')
+            source = matches[0]
+            info = entry(source)
+            require(info is not None and stat.S_ISLNK(info.st_mode), 'SDK library input must be a symbolic link')
+            link = os.readlink(source)
+            require(library_name(link), 'SDK library input requires a direct basename link')
+            provider = os.path.join(os.path.dirname(source), link)
+            provider_info = regular_file(provider)
+            require(canonical_existing(provider) == provider and within(provider, sysroot),
+                    'SDK library provider is not canonical')
+            require(sha256_file(provider) == item['sha256'], 'SDK library input SHA256 differs')
+            dynamic = read_elf_dynamic(provider, machine=machine)
+            require(dynamic['type'] == 3 and library_name(dynamic['soname']),
+                    'SDK library input requires ET_DYN and a safe SONAME')
+            soname = dynamic['soname']
+            require(soname not in files or files[soname] == provider, 'conflicting SDK library input SONAME')
+            files[soname] = provider
+            if provider not in pending:
+                pending.append(provider)
+            declared_libraries.append(dict(name=item['name'], sha256=item['sha256'], source=source,
+                source_identity=stable_identity(info), source_link=link, provider=provider,
+                provider_identity=stable_identity(provider_info), soname=soname))
+
+        def verify_library_inputs():
+            if library_root is not None:
+                require(canonical_existing(sysroot) == sysroot and
+                        stable_identity(real_directory(sysroot))[:3] == stable_identity(library_root)[:3],
+                        'SDK library root identity changed')
+            for item in declared_libraries:
+                source, provider = item['source'], item['provider']
+                info = entry(source)
+                require(info is not None and stable_identity(info) == tuple(item['source_identity'])
+                        and stat.S_ISLNK(info.st_mode) and os.readlink(source) == item['source_link']
+                        and canonical_existing(os.path.dirname(source)) == os.path.dirname(source)
+                        and canonical_existing(source) == provider, 'SDK library input identity changed')
+                info = regular_file(provider)
+                require(stable_identity(info) == tuple(item['provider_identity']) and
+                        sha256_file(provider) == item['sha256'], 'SDK library provider changed')
+        verify_library_inputs()
+        declared_providers = {item['soname']: item['provider'] for item in declared_libraries}
         while pending:
             file = pending.pop(0)
             try:
@@ -263,6 +331,9 @@ def query(arguments):
                 require(candidate is not None, f'missing provider: {name}')
                 candidate = canonical_existing(candidate)
                 require(any(within(candidate, root) for root in roots), 'provider outside target/build roots')
+                if name in declared_providers:
+                    require(candidate == declared_providers[name],
+                            f'declared SDK provider differs: {name}')
                 if name in files:
                     require(sha256_file(candidate) == sha256_file(files[name]),
                             f'conflicting {name}: {files[name]} versus {candidate}')
@@ -270,6 +341,8 @@ def query(arguments):
                     files[name] = candidate
                     pending.append(candidate)
 
+        aliases = [item for item in declared_libraries if item['name'] != item['soname']]
+        require(all(item['name'] not in files for item in aliases), 'SDK library alias collides with a provider')
         sources = {path: sha256_file(path) for path in sorted({exe, *files.values(), *([in_path] if in_path else [])})}
         query_path = stage / query_relative
         query_path.parent.mkdir(parents=True, exist_ok=True)
@@ -277,6 +350,11 @@ def query(arguments):
         query_path.chmod(0o755)
         for name, path in files.items():
             shutil.copy(path, stage / 'lib' / name)
+        for item in declared_libraries:
+            require(sha256_file(stage / 'lib' / item['soname']) == item['sha256'],
+                    'staged SDK library input SHA256 differs')
+        if declared_libraries:
+            write_json(work / 'library-inputs.json', dict(inputs=declared_libraries))
         if in_path:
             shutil.copy(in_path, stage / 'types.txt')
         for source, path, expected, info in artifacts:
@@ -303,6 +381,8 @@ def query(arguments):
                        for source, path, expected, info in artifacts], environment=resource_env))
         manifest = ''.join(f'{sha256_file(path)}  {path.relative_to(stage).as_posix()}\n'
                            for path in sorted(stage.rglob('*')) if path.is_file())
+        manifest += ''.join(item['sha256'] + '  lib/' + item['name'] + '\n'
+                            for item in sorted(aliases, key=lambda item: item['name']))
         (stage / 'files.sha256').write_text(manifest, encoding='utf-8')
         (work / 'files.sha256').write_text(manifest, encoding='utf-8')
         (work / 'sources.sha256').write_text(''.join(f'{digest}  {path}\n' for path, digest in sources.items()), encoding='utf-8')
@@ -333,6 +413,7 @@ def query(arguments):
                 output.add(stage, arcname='.')
             (work / 'tar.log').write_bytes(b'')
             (work / 'transfer-size.txt').write_text(f'{archive.stat().st_size}\n', encoding='ascii')
+            verify_library_inputs()
             run('transfer', ssh + [f'tar -xzf - -C {shlex.quote(remote)}'], archive.read_bytes())
             invocation = [remote + '/' + query_relative]
             if execute:
@@ -342,9 +423,14 @@ def query(arguments):
             exports = ''.join('export ' + name + '=' + shlex.quote(
                 value['literal'] if 'literal' in value else remote + '/' + value['stage_path']) + '\n'
                 for name, value in sorted(resource_env.items()))
+            alias_setup, alias_verify = '', ''
+            for item in aliases:
+                name, target = shlex.quote('lib/' + item['name']), shlex.quote(item['soname'])
+                alias_setup += f'test ! -e {name}\ntest ! -L {name}\nln -s {target} {name}\n'
+                alias_verify += f'test -L {name}\ntest "$(readlink {name})" = {target}\n'
             script = f'''set -eu
 cd {shlex.quote(remote)}
-while read hash name; do
+{alias_setup}{alias_verify}while read hash name; do
   test "$(sha256 -q "$name")" = "$hash" || exit 90
 done < files.sha256
 ulimit -c 0
@@ -355,7 +441,7 @@ unset LD_PRELOAD
 timeout -k 5 60 {shlex.join(invocation)} > stdout.log 2> stderr.log
 result=$?
 set -e
-while read hash name; do
+{alias_verify}while read hash name; do
   test "$(sha256 -q "$name")" = "$hash" || exit 91
 done < files.sha256
 cat stdout.log
@@ -413,6 +499,7 @@ exit "$result"
         except (OSError, SDKError):
             unchanged = False
         require(unchanged, 'source providers changed during query')
+        verify_library_inputs()
         for source, unused_path, unused_hash, info in artifacts:
             require(canonical_existing(source) == source, 'data source ancestors changed during query')
             verify_stable(source, info)

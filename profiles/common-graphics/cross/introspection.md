@@ -211,6 +211,21 @@ from its executable location. No arbitrary executable path is accepted.
 The layout does not add library aliases or change resource declarations,
 arguments, manifests, loader settings or execution checks.
 
+A program can discover an SDK DSO by filename without linking it. Declare
+that file with `library_inputs`, for example
+`[{"name": "libLLVM-23.so", "sha256": "<exact lowercase SHA256>"}]`.
+The optional list accepts at most 32 unique basenames. It accepts no paths.
+Each name must select one direct SDK symlink to a regular file in the same
+canonical SDK library directory. Absolute links, link chains and ambiguous
+sources fail. The provider must be target ELF64 ET_DYN with a safe SONAME
+and the declared SHA256. The runner adds it to the ordinary recursive ELF
+closure. It records source/link identities in `library-inputs.json`.
+It creates only a checked alias to the transferred SONAME below `ROOT/lib`.
+Both manifest passes check the bytes. Separate link checks reject replacement
+of the alias. Source identity checks run before transfer and after execution.
+An omitted or empty list retains the ordinary closure. This interface does not
+install a library or permit arbitrary executable or resource inputs.
+
 ## Compiled configure probes
 
 The same runner accepts `--execute BINARY [ARG...]` for configure probes.
