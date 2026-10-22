@@ -278,6 +278,9 @@ if [ "$profile" = plasma-mobile ]; then
 fi
 if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
     graphics=$root/profiles/common-graphics
+    [ -s "$graphics/cross/current-cups.patch" ] || {
+        echo 'Missing common CUPS dependency patch.' >&2; exit 2;
+    }
     awk -F '\t' '
         /^#/ || /^$/ { next }
         NF != 4 || ($1 != "security/libsecret" && $1 != "security/mit-krb5" && $1 != "graphics/MesaLib" && $1 != "x11/libdrm" &&
@@ -674,6 +677,8 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
         fi
     done
     patch -f -N -d "$destination" -p1 -F 0 < \
+        "$graphics/cross/current-cups.patch"
+    patch -f -N -d "$destination" -p1 -F 0 < \
         "$graphics/cross/git-base-cross-tools.patch"
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$graphics/cross/graphene-gir-cross.patch"
@@ -755,7 +760,6 @@ if [ "$profile" = plasma-mobile ]; then
     done
     cp "$toolkit/sources.tsv" "$destination/EMBERBSD-PLASMA-TOOLKIT-SOURCES"
     cp "$toolkit/source-owners.tsv" "$destination/EMBERBSD-PLASMA-TOOLKIT-SOURCE-OWNERS"
-    patch -f -N -d "$destination" -p1 -F 0 < "$toolkit/current-cups.patch"
     patch -f -N -d "$destination" -p1 -F 0 < "$toolkit/libproxy-cross.patch"
     patch -f -N -d "$destination" -p1 -F 0 < "$toolkit/current-network-deps.patch"
     patch -f -N -d "$destination" -p1 -F 0 < "$toolkit/current-crypto-deps.patch"

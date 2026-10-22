@@ -1,5 +1,12 @@
 # Common graphics source packages
 
+The [common CUPS 2.4.20 provider](cross/current-cups.patch) retains the original
+release archive, pkgsrc portability patches and selected Kerberos provider.
+GSS headers follow the target OS, so Darwin host frameworks do not enter a
+NetBSD build. The [actual-build check](tests/cups-cross-settings.py) verifies
+the configured provider, target headers, linker flags and AArch64 library.
+Printing and installed runtime acceptance remain separate checks.
+
 [fmt 12.2.0](cross/fmtlib.md) supplies the current shared C++ formatting
 library and its CMake/pkg-config interfaces. The GCC16 AArch64 stage, exported
 CMake target consumer and exact 24-entry PLIST pass; target execution and the

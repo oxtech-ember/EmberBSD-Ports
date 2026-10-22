@@ -143,14 +143,8 @@ size and pkgsrc's RCS-filtered patch SHA1.
 | Qt audio temporary buffer | Refresh context around the upstream nonblocking annotation; retain the NetBSD alloca branch. |
 | Qt FFmpeg VAAPI linkage | Link VAAPI directly on platforms where the Linux/Android stub helpers are unavailable, even when FFmpeg metadata lists `va`. Preserve Linux/Android stub selection. |
 
-The [CUPS dependency delta](current-cups.patch) selects OpenPrinting CUPS 2.4.20
-(2026-10-05) for Qt printing. It records the original release archive and SHA256,
-updates pkgsrc checksums and retains the existing portability patches. It also
-selects GSS headers by target OS and uses pkgsrc's selected Kerberos configuration
-script, preventing Darwin framework flags from entering an EmberBSD build.
-On 2026-10-11, the GCC16 macOS-to-AArch64 libcups package build, staging checks
-and `tests/cups-cross-settings.sh` passed. The test checks the actual configure
-outputs and linked target ELF; printing and target runtime are not yet accepted.
+Qt uses the [common CUPS printing provider](../../../profiles/common-graphics/README.md).
+It shares the release, target GSSAPI selection and cross checks with other consumers.
 
 The [network prerequisites](cross/network-dependencies.md) now include current
 libidn2/GSettings releases and native cross-build generators for libproxy.
