@@ -405,6 +405,13 @@ also rejects missing compiler exports and invalid compiler paths.
 The separate `tests/pkg-add-sysroot.sh` compares original and repaired host
 package tools. It checks replacement, same-version reinstall, shared-directory
 ownership, partial-extraction rollback and native behavior.
+`tests/pkg-deinstall-sysroot.py PKGTOOLS_SBIN NEW_WORK --bmake BMAKE`
+runs the actual cross deinstall make rule with isolated data packages.
+The rule passes a logical database and prefix separately from DESTDIR.
+The regression reproduces stale ownership with the original rule, then checks
+payload, package records, ownership keys and replacement with the repair.
+It also checks unchanged native flags and dependency protection. Use the
+patched native package tools described above; no force flags are used.
 The separate `tests/pkg-admin-destdir.sh ORIGINAL_PKG_ADMIN FIXED_PKG_ADMIN NEW_WORK`
 checks `pkg_admin rebuild` and `add` against a staged tree. It verifies that
 file checks use DESTDIR while B-tree keys retain target paths.

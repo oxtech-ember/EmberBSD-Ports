@@ -526,6 +526,17 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  .    endif
  .  endif
  .endfor
+--- a/mk/pkgformat/pkg/deinstall.mk
++++ b/mk/pkgformat/pkg/deinstall.mk
+@@ -26,7 +26,7 @@
+ .endif
+ 
+ .if !empty(USE_CROSS_COMPILE:M[yY][eE][sS])
+-_PKG_ARGS_DEINSTALL+=	-p ${_CROSS_DESTDIR}${PREFIX}
++_PKG_ARGS_DEINSTALL+=	-K ${PKG_DBDIR:Q} -P ${_CROSS_DESTDIR:Q} -p ${PREFIX:Q}
+ .endif
+ 
+ # _pkgformat-deinstall:
 --- a/mk/pkgformat/pkg/package.mk
 +++ b/mk/pkgformat/pkg/package.mk
 @@ -148,10 +148,7 @@
