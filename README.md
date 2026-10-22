@@ -19,6 +19,11 @@ runtime behavior are validated.
 
 ## Current contents
 
+- [Flex epsilon-closure repair](probes/flex-nfa/README.md): a bounded
+  worklist replaces recursive generator traversal. The ordinary native
+  GCC16 package, all 114 upstream tests and installed scanner consumers pass.
+  Instrumented memory execution and cross-package checks remain unverified.
+
 - [libxslt RVT ownership candidate](profiles/development-toolchain/libxslt-security.md):
   isolated GCC16 builds preserve public symbols and pass 747 upstream tests
   plus twelve API cases, eleven ownership/header checks and fourteen fresh-document

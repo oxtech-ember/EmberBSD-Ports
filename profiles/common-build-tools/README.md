@@ -1,5 +1,10 @@
 # Current common build tools
 
+The [Flex epsilon-closure repair](../../probes/flex-nfa/README.md) replaces
+recursive graph traversal with a bounded worklist. Native GCC16 packaging,
+all 114 upstream tests and installed scanner consumers pass. Instrumented
+memory execution and cross-package acceptance remain separate.
+
 The [ICU 78.3 package policy](cross/icu.md) keeps native packaging complete
 and separates cross runtime files from an exact matching target SDK on the
 development host. Both real 274-file payloads pass ownership and refusal

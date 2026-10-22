@@ -102,7 +102,7 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     [ "$tcl_pin" = '536c45543f64d6eb11832d97ba3494aacff046fbc5040273bd55258d0e448ff1:https://downloads.sourceforge.net/project/tcl/Tcl/9.1.0/tcl9.1.0-src.tar.gz' ] || {
         echo 'Invalid current Tcl source pin.' >&2; exit 2;
     }
-    for recipe in lang/tcl lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib devel/abseil devel/protobuf textproc/py-markupsafe textproc/py-yaml textproc/groff net/mDNSResponder textproc/icu; do
+    for recipe in lang/tcl lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson devel/flex lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib devel/abseil devel/protobuf textproc/py-markupsafe textproc/py-yaml textproc/groff net/mDNSResponder textproc/icu; do
         source=$root/profiles/common-build-tools/recipes/$recipe
         [ -f "$source/Makefile" ] && [ -f "$source/PLIST" ] && \
             [ -f "$source/distinfo" ] || {
@@ -635,7 +635,7 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     cp -R "$runtime_recipe" "$destination/lang/gcc16-runtime"
 fi
 if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
-    for recipe in lang/tcl lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib devel/abseil devel/protobuf textproc/py-markupsafe textproc/py-yaml textproc/groff net/mDNSResponder textproc/icu; do
+    for recipe in lang/tcl lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson devel/flex lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib devel/abseil devel/protobuf textproc/py-markupsafe textproc/py-yaml textproc/groff net/mDNSResponder textproc/icu; do
         source=$root/profiles/common-build-tools/recipes/$recipe
         # Replace only recipe paths inside this newly created export.
         rm -rf "$destination/$recipe"
