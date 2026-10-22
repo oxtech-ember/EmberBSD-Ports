@@ -16,12 +16,13 @@ Not submitted upstream.
  EXTRACT_SUFX=	.tar.xz
 --- a/lang/vala/distinfo
 +++ b/lang/vala/distinfo
-@@ -4,3 +4,5 @@
+@@ -4,3 +4,6 @@
  SHA512 (vala-0.56.19.tar.xz) = 68e87db80362243a071b33dd33b35e0b788e6f16fa993bcf1bbf3ccc65fb704fd3be50d41a8d50530328061c55edbe53a4fd094745435b858fd07851e963ef36
  Size (vala-0.56.19.tar.xz) = 4007612 bytes
  SHA1 (patch-build-aux_testrunner.sh) = d30ce05459b398a18e9dbd4420f28d8bfdf7323a
 +SHA1 (patch-codegen_valaccodearraymodule.c) = 42e8b1a9538a0e6c606754a432299414fba917cc
 +SHA1 (patch-codegen_valaccodearraymodule.vala) = fccfc9b6876880e755af170b6f3db849537ad968
++SHA1 (patch-tests_objects_property-array.c-expected) = bdb2b117c0e2ca973f29f442f4352dce9b53b343
 --- /dev/null
 +++ b/lang/vala/patches/patch-codegen_valaccodearraymodule.c
 @@ -0,0 +1,18 @@
@@ -65,3 +66,93 @@ Not submitted upstream.
 + 				length_expr = new CCodeBinaryExpression (CCodeBinaryOperator.PLUS, length_expr, new CCodeConstant ("1"));
 + 				length_check_op = CCodeBinaryOperator.GREATER_THAN_OR_EQUAL;
 + 			} else {
+--- /dev/null
++++ b/lang/vala/patches/patch-tests_objects_property-array.c-expected
+@@ -0,0 +1,87 @@
++$NetBSD$
++
++Update the upstream C golden file for the nullable array copy repair.
++Keep the Vala regression source and its assertions unchanged.
++Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
++The upstream LGPL-2.1-or-later license and authorship are unchanged.
++
++--- tests/objects/property-array.c-expected.orig
+++++ tests/objects/property-array.c-expected
++@@ -313,10 +313,10 @@
++ _vala_array_dup1 (Manam** self,
++                   gssize length)
++ {
++-	if (length > 0) {
+++	if (length >= 0) {
++ 		Manam** result;
++ 		gssize i;
++-		result = g_new0 (Manam*, length);
+++		result = g_new0 (Manam*, length + 1);
++ 		for (i = 0; i < length; i++) {
++ 			Manam* _tmp0_;
++ 			_tmp0_ = _manam_dup0 (self[i]);
++@@ -395,10 +395,10 @@
++ _vala_array_dup2 (Manam** self,
++                   gssize length)
++ {
++-	if (length > 0) {
+++	if (length >= 0) {
++ 		Manam** result;
++ 		gssize i;
++-		result = g_new0 (Manam*, length);
+++		result = g_new0 (Manam*, length + 1);
++ 		for (i = 0; i < length; i++) {
++ 			Manam* _tmp0_;
++ 			_tmp0_ = _manam_dup0 (self[i]);
++@@ -443,10 +443,10 @@
++ _vala_array_dup3 (Manam** self,
++                   gssize length)
++ {
++-	if (length > 0) {
+++	if (length >= 0) {
++ 		Manam** result;
++ 		gssize i;
++-		result = g_new0 (Manam*, length);
+++		result = g_new0 (Manam*, length + 1);
++ 		for (i = 0; i < length; i++) {
++ 			Manam* _tmp0_;
++ 			_tmp0_ = _manam_dup0 (self[i]);
++@@ -512,10 +512,10 @@
++ _vala_array_dup4 (Manam** self,
++                   gssize length)
++ {
++-	if (length > 0) {
+++	if (length >= 0) {
++ 		Manam** result;
++ 		gssize i;
++-		result = g_new0 (Manam*, length);
+++		result = g_new0 (Manam*, length + 1);
++ 		for (i = 0; i < length; i++) {
++ 			Manam* _tmp0_;
++ 			_tmp0_ = _manam_dup0 (self[i]);
++@@ -905,10 +905,10 @@
++ _vala_array_dup7 (Manam** self,
++                   gssize length)
++ {
++-	if (length > 0) {
+++	if (length >= 0) {
++ 		Manam** result;
++ 		gssize i;
++-		result = g_new0 (Manam*, length);
+++		result = g_new0 (Manam*, length + 1);
++ 		for (i = 0; i < length; i++) {
++ 			Manam* _tmp0_;
++ 			_tmp0_ = _manam_dup0 (self[i]);
++@@ -979,10 +979,10 @@
++ _vala_array_dup8 (Manam** self,
++                   gssize length)
++ {
++-	if (length > 0) {
+++	if (length >= 0) {
++ 		Manam** result;
++ 		gssize i;
++-		result = g_new0 (Manam*, length);
+++		result = g_new0 (Manam*, length + 1);
++ 		for (i = 0; i < length; i++) {
++ 			Manam* _tmp0_;
++ 			_tmp0_ = _manam_dup0 (self[i]);
