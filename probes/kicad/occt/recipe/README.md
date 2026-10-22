@@ -11,7 +11,7 @@ RapidJSON and Tcl/Tk 9.1. Release range and exception checks remain active.
 FreeImage is independent of the Xlib option. Optional upstream features keep
 their existing defaults; no new diagnostic or test exclusions are added.
 
-The five `patch-*` symlinks refer to the authoritative probe patches. These
+The eight `patch-*` symlinks refer to the authoritative probe patches. These
 names are required by pkgsrc's ordinary patch discovery. Copy the candidate
 with symlinks dereferenced into an isolated pkgsrc source view when testing it;
 do not replace the shared export or the tracked upstream submodule with a link.

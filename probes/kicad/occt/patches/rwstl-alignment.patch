@@ -1,0 +1,25 @@
+# Origin: EmberBSD (AI-assisted). Read unaligned STL float fields without a typed load.
+# OCCT copyright and LGPL-2.1 exception remain unchanged. Not submitted upstream.
+--- a/src/DataExchange/TKDESTL/RWStl/RWStl_Reader.cxx
++++ b/src/DataExchange/TKDESTL/RWStl/RWStl_Reader.cxx
+@@ -27,6 +27,7 @@
+ #include <Standard_CLocaleSentry.hxx>
+ 
+ #include <algorithm>
++#include <cstring>
+ #include <limits>
+ 
+ IMPLEMENT_STANDARD_RTTIEXT(RWStl_Reader, Standard_Transient)
+@@ -102,8 +103,10 @@
+   bidargum.i |= (theData[3] & 0xFF) << 0x18;
+   return bidargum.f;
+ #else
+-  // on little-endian platform, use plain cast
+-  return *reinterpret_cast<const float*>(theData);
++  // STL records are 50 bytes long, so float data can be unaligned.
++  float aValue;
++  std::memcpy(&aValue, theData, sizeof(aValue));
++  return aValue;
+ #endif
+ }
+ 

@@ -22,6 +22,10 @@ The patches are AI-assisted EmberBSD work. They have not been submitted upstream
 - Validate stack-trace buffer termination and frame-count arithmetic.
   Reject an exhausted frame skip before calling `backtrace_symbols`.
   Allocate caller-sized frame storage on the heap and free it on every return path.
+- Parse STL coordinates without changing the process locale on NetBSD.
+  Read unaligned binary STL fields with `memcpy`.
+- Retain guarded SunOS allocator and signal adaptations. SunOS execution
+  remains unverified.
 - Find the genuine Unix shared Tk 9 library paired with the selected Tcl version.
   Tcl/Tk 9.1 uses `libtcl9tk9.1.so`; CMake's older `tk9.1` search misses it.
   Refuse a missing paired library instead of silently disabling requested Tk.

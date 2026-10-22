@@ -1,0 +1,119 @@
+# Origin: pkgsrc cad/occt at fff4deb639a1a640476203c80f752fb77b6cb14b.
+# Adapted to OCCT 8.0.1 by EmberBSD (AI-assisted). Retain guarded SunOS headers and signals.
+# Use delivered signal information when available. Keep optional libsunmath calls conditional.
+# OCCT copyright and LGPL-2.1 exception remain unchanged. Not submitted upstream.
+--- a/src/Visualization/TKMeshVS/MeshVS/MeshVS_MeshPrsBuilder.cxx
++++ b/src/Visualization/TKMeshVS/MeshVS/MeshVS_MeshPrsBuilder.cxx
+@@ -45,6 +45,8 @@
+ 
+ #ifdef _WIN32
+   #include <malloc.h> // for alloca()
++#elif defined(__sun)
++  #include <alloca.h>
+ #endif
+ 
+ IMPLEMENT_STANDARD_RTTIEXT(MeshVS_MeshPrsBuilder, MeshVS_PrsBuilder)
+--- a/src/Visualization/TKOpenGl/OpenGl/OpenGl_ShaderObject.cxx
++++ b/src/Visualization/TKOpenGl/OpenGl/OpenGl_ShaderObject.cxx
+@@ -24,6 +24,8 @@
+ 
+ #ifdef _WIN32
+   #include <malloc.h> // for alloca()
++#elif defined(__sun)
++  #include <alloca.h>
+ #endif
+ 
+ IMPLEMENT_STANDARD_RTTIEXT(OpenGl_ShaderObject, OpenGl_Resource)
+--- a/src/Visualization/TKOpenGl/OpenGl/OpenGl_ShaderProgram.cxx
++++ b/src/Visualization/TKOpenGl/OpenGl/OpenGl_ShaderProgram.cxx
+@@ -29,6 +29,8 @@
+ 
+ #ifdef _WIN32
+   #include <malloc.h> // for alloca()
++#elif defined(__sun)
++  #include <alloca.h>
+ #endif
+ 
+ IMPLEMENT_STANDARD_RTTIEXT(OpenGl_ShaderProgram, OpenGl_NamedResource)
+--- a/src/FoundationClasses/TKernel/Standard/Standard_Failure.cxx
++++ b/src/FoundationClasses/TKernel/Standard/Standard_Failure.cxx
+@@ -20,6 +20,10 @@
+ #include <atomic>
+ #include <cstring>
+ 
++#if defined(__sun)
++  #include <alloca.h>
++#endif
++
+ namespace
+ {
+ //! Global parameter defining default length of stack trace.
+--- a/src/FoundationClasses/TKernel/OSD/OSD_signal.cxx
++++ b/src/FoundationClasses/TKernel/OSD/OSD_signal.cxx
+@@ -24,6 +24,18 @@
+ #include <csignal>
+ 
+ #include <Standard_WarningDisableFunctionCast.hxx>
++
++#if defined(__sun)
++  #include <alloca.h>
++  #include <sys/siginfo.h>
++  #define FPE_FLTDIV_TRAP FPE_FLTDIV
++  #define FPE_INTDIV_TRAP FPE_INTDIV
++  #define FPE_FLTOVF_TRAP FPE_FLTOVF
++  #define FPE_INTOVF_TRAP FPE_INTOVF
++  #define FPE_FLTUND_TRAP FPE_FLTUND
++  #define FPE_FLTRES_TRAP FPE_FLTRES
++  #define FPE_FLTINV_TRAP FPE_FLTINV
++#endif
+ 
+ static std::atomic<OSD_SignalMode> OSD_WasSetSignal{OSD_SignalMode_AsIs};
+ static std::atomic<int>            OSD_SignalStackTraceLength{0};
+@@ -791,7 +803,9 @@
+   //==== SIGSEGV is handled by "SegvHandler()"
+   //============================================================================
+   #ifdef SA_SIGINFO
+-static void Handler(const int theSignal, siginfo_t* /*theSigInfo*/, void* const /*theContext*/)
++static void Handler(const int theSignal,
++                    [[maybe_unused]] siginfo_t* theSigInfo,
++                    void* const /*theContext*/)
+   #else
+ static void Handler(const int theSignal)
+   #endif
+@@ -863,6 +877,7 @@
+       break;
+   #endif
+     case SIGFPE:
++    {
+       sigaddset(&set, SIGFPE);
+       sigprocmask(SIG_UNBLOCK, &set, nullptr);
+   #ifdef __linux__
+@@ -873,6 +888,11 @@
+       break;
+   #else
+       // Reste SOLARIS
++    #ifdef SA_SIGINFO
++      siginfo_t* aSigInfo = theSigInfo;
++    #else
++      siginfo_t* aSigInfo = nullptr;
++    #endif
+       if (aSigInfo)
+       {
+         switch (aSigInfo->si_code)
+@@ -909,6 +929,7 @@
+       }
+   #endif
+       break;
++    }
+     default:
+   #ifdef OCCT_DEBUG
+       std::cout << "Unexpected signal " << theSignal << std::endl;
+@@ -999,7 +1020,7 @@
+   {
+     fedisableexcept(_OSD_FPX);
+   }
+-  #elif defined(__sun) || defined(SOLARIS)
++  #elif (defined(__sun) || defined(SOLARIS)) && defined(HAVE_SUNMATH) && HAVE_SUNMATH
+   int                 aSunStat     = 0;
+   sigfpe_handler_type anFpeHandler = (theFloatingSignal ? (sigfpe_handler_type)Handler : NULL);
+   aSunStat                         = ieee_handler("set", "invalid", anFpeHandler);

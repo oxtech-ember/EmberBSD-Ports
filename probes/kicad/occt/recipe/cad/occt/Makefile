@@ -1,6 +1,5 @@
 # $NetBSD$
 # Origin: EmberBSD (AI-assisted), based on pkgsrc cad/occt.
-# Source checkpoint: derive and review static PLIST from the full stage.
 
 VERSION=	8.0.1
 DISTNAME=	OCCT-${VERSION}
@@ -20,9 +19,8 @@ LICENSE=	gnu-lgpl-v2.1
 USE_LANGUAGES=	c c++
 USE_CXX_FEATURES=	c++17
 GCC_REQD+=	16.2
-CMAKE_REQD+=	4.4.4
-USE_TOOLS+=	bash
-DEPENDS+=	bash>=5.3:../../shells/bash
+CMAKE_REQD+=	3.10
+USE_TOOLS+=	bash:run
 REPLACE_BASH+=	adm/templates/draw.sh
 
 .include "../../mk/bsd.prefs.mk"

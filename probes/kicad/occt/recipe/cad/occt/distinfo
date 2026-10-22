@@ -3,8 +3,11 @@ $NetBSD$
 BLAKE2s (OCCT-8.0.1.tar.gz) = 9d7cc8301ff10674c57858a837f0040e01594d9932606b0c073bd00c6866c009
 SHA512 (OCCT-8.0.1.tar.gz) = d7c63f41fdbbe202e223bc17a13ef3964938f1219e1c1fa8d7e66be0ed058f3d39726daa878328a2338da9eb2081b596487b13a15f4a9d309d86fde5a82a267a
 Size (OCCT-8.0.1.tar.gz) = 45129885 bytes
-SHA1 (patch-netbsd-runtime) = 042aab0015b3779faebe58bb9fa99511b0e971c1
-SHA1 (patch-stacktrace-bounds) = bd0cb062b7ca241f75126c0939f147c9b6eae4be
-SHA1 (patch-pkgsrc-install) = 88272fae9469f2e44e3eef03a227bf2de7bb8f7a
 SHA1 (patch-failure-stack-size) = 982e304a5330f8380f2ea2a9bddf504cfcf5815b
+SHA1 (patch-netbsd-runtime) = 042aab0015b3779faebe58bb9fa99511b0e971c1
+SHA1 (patch-pkgsrc-install) = 88272fae9469f2e44e3eef03a227bf2de7bb8f7a
+SHA1 (patch-rwstl-alignment) = 923c55433334831b123b9ec88226819bc815b958
+SHA1 (patch-rwstl-netbsd) = b53cd5db5abe6cbfed4a61b1cd8636a70a4fc276
+SHA1 (patch-stacktrace-bounds) = bd0cb062b7ca241f75126c0939f147c9b6eae4be
+SHA1 (patch-sunos-portability) = f2ad178fc7c665e3730874e8bf08cef9779ab989
 SHA1 (patch-tk9-discovery) = 7f7f47b76bef6d9c306757aa2bf2f9409d98fe27

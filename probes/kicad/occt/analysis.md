@@ -128,3 +128,51 @@ The resulting text differs only in the 12 `GetMessageString()` to `what()`
 replacements. An actual AArch64 GCC16 compile with OCCT8 headers rejects the
 old deprecated API under `-Werror=deprecated-declarations` and accepts `what()`.
 Full KiCad compilation remains pending.
+
+## STL locale and alignment checks
+
+NetBSD `ReadAscii` keeps OCCT's locale-independent `Strtod` parser and no longer
+changes the process locale. The old `sscanf_l` macro is unused in 8.0.1. Actual
+AArch64 GCC16.2 objects retain `Strtod`; only the original object calls the
+process-global locale sentry constructor and destructor.
+
+The alignment patch uses `memcpy` for potentially unaligned STL float fields.
+The reusable regression extracts the actual upstream helper, without replacing
+its implementation. Native AArch64 GCC16.2 and SDK 27.0 run C++17, `-O1`,
+`-fsanitize=undefined` and `-fno-sanitize-recover=all`. The original aligned
+control passes; the unaligned input fails UBSan. Both patched cases return the
+independent expected value `1.25`. A volatile call target prevents constant folding.
+
+```sh
+python3.15 -B probes/kicad/occt/tests/check-rwstl-alignment.py \
+    /absolute/original-source /absolute/patched-source /absolute/new-check \
+    --cxx /absolute/native-g++-16 --sysroot /absolute/native-sdk
+```
+
+Omit `--sysroot` when the compiler has a working system SDK. Valgrind is unavailable
+on the native macOS host; this UBSan result is not a Valgrind pass. The original
+diagnostic warns about unreliable dyld backtraces, while clearly identifying the
+misaligned load. Complete installed STL reader execution remains separate.
+
+Exhaustive Cppcheck 2.18.0 uses actual GCC16 target predefines, NetBSD headers and
+the RWStl compilation database. Diagnostics change from 284 to 283. Only
+`invalidPointerCast` disappears; exact unchanged-line mapping reveals no new
+finding. The 283 inherited findings contain 24 errors, 72 warnings, 185 style
+findings and two performance findings, mostly in template headers. The errors
+are 16 `returnTempReference` and eight `returnDanglingLifetime` reports in
+`NCollection_IndexedDataMap`, `NCollection_DataMap` and `NCollection_Map`.
+No parser, unknown-macro or preprocessor failure occurs. The inherited
+lifetime reports require a separate OCCT template audit; they are not
+declared false positives without a causal test. They remain
+visible for the OCCT source audit; this is not a clean gate. No finding is suppressed.
+Clang Static Analyzer 21.0.0 checks AArch64 NetBSD with the same headers. Both
+variants report one inherited `deadcode.DeadStores` finding in `ReadVertex`.
+Clang generates no target objects.
+
+Preserved SunOS allocator and signal guards use delivered `siginfo_t` data when
+available and condition libsunmath calls on `HAVE_SUNMATH`. Original and patched
+`OSD_signal` pass GCC16 NetBSD syntax checks. SunOS compilation and execution
+remain unverified. Removed headers and the NetBSD stack-trace stub stay retired.
+The existing actual-source install regression passes with CMake 4.4.4: original
+`custom.sh` omission, repaired installation and one `DESTDIR` boundary. Complete
+OCCT packaging, installed STL/STEP and KiCad acceptance remain separate gates.

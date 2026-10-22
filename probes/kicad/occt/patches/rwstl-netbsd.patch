@@ -1,0 +1,15 @@
+# Origin: EmberBSD (AI-assisted). Keep STL parsing independent of the process locale on NetBSD.
+# OCCT copyright and LGPL-2.1 exception remain unchanged. Not submitted upstream.
+--- a/src/DataExchange/TKDESTL/RWStl/RWStl_Reader.cxx
++++ b/src/DataExchange/TKDESTL/RWStl/RWStl_Reader.cxx
+@@ -224,8 +224,8 @@
+ }
+ 
+ // adapted from const char*.cxx
+-#ifdef __APPLE__
+-  // There are a lot of *_l functions available on Mac OS X - we use them
++#if defined(__APPLE__) || defined(__NetBSD__)
++  // ReadVertex uses locale-independent Strtod. Do not change the process locale.
+   #define SAVE_TL()
+ #elif defined(_MSC_VER)
+   // MSVCRT has equivalents with slightly different syntax

@@ -26,6 +26,18 @@
     {
       "path": "patches/tk9-discovery.patch",
       "sha256": "9cd0d64dfaad11a208d20674249962e7757d3c6c9833f28e0c1b8f587795b221"
+    },
+    {
+      "path": "patches/rwstl-netbsd.patch",
+      "sha256": "a08bbea042e23b1a0de671f836f34798138ee2b1f8f9a7fa980061577417d2ef"
+    },
+    {
+      "path": "patches/sunos-portability.patch",
+      "sha256": "fc980ba4029f0b7b499eb874e3a449b9851f8114c76ad6fd8cf4e5f782c2011b"
+    },
+    {
+      "path": "patches/rwstl-alignment.patch",
+      "sha256": "38f9327ecb4b3d545e06e49c01b622b4be729c7cef5bd2c5e96ee804b02029fe"
     }
   ]
 }
