@@ -11,7 +11,8 @@ BUILDLINK_PKGSRCDIR.pulseaudio?=	../../audio/pulseaudio
 
 .include "../../mk/bsd.fast.prefs.mk"
 
-.if ${OPSYS} != "NetBSD" || !exists(/usr/include/sys/atomic.h)
+# Consumers use the same target-sysroot check as the package recipe.
+.if ${OPSYS} != "NetBSD" || !exists(${_CROSS_DESTDIR}/usr/include/sys/atomic.h)
 .include "../../devel/libatomic_ops/buildlink3.mk"
 .endif
 

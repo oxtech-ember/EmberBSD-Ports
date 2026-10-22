@@ -17,7 +17,10 @@ work, with no upstream submission or acceptance claim.
 
 The recipe separates host Bash for `git-version-gen` from target Bash for
 installed helpers and completions. It checks atomic-header availability in the
-target sysroot. Normal installation uses pkgsrc's existing service-account
+target sysroot. Its `buildlink3.mk` uses the same check, so consumers do not
+require `libatomic_ops` because the build host lacks `sys/atomic.h`.
+`tests/pulseaudio-atomic.sh PKGSRC NEW_WORK` checks the real recipe and the
+Qt Multimedia consumer with the cross MAKECONF. Normal installation uses pkgsrc's existing service-account
 hooks; installing files into a sysroot does not create accounts on the host.
 
 Two defects were reproduced on CM5 before source changes:
