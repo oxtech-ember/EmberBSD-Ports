@@ -121,7 +121,9 @@ class CaptureTest(unittest.TestCase):
                             if observed:break
                             time.sleep(.02)
                         self.assertTrue(observed,'Actual GCC16 frontend was not observed: '+variant)
-                        os.kill(group.pid,signal.SIGTERM)
+                        producer_pid = getattr(group.child, 'producer_pid', None)
+                        signal_pid = group.pid if producer_pid is None else producer_pid
+                        os.kill(signal_pid, signal.SIGTERM)
                         deadline=time.monotonic()+20
                         while time.monotonic()<deadline and group.poll() is None:time.sleep(.02)
                         self.assertEqual(group.poll(),143)
