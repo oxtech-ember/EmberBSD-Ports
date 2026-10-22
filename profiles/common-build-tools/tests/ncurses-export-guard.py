@@ -14,9 +14,12 @@ assert work.is_absolute() and not work.exists() and not work.is_symlink()
 root = Path(__file__).resolve().parents[3]
 script = (root / "scripts/prepare-pkgsrc.sh").read_text()
 name = "pkgsrc-ncurses-native-headers.patch"
-assert script.count(name) == 2, "Require preflight and application selections"
-block = re.search(r'    for delta in [^\n]+; do\n        \[ -s "\$root/profiles/common-build-tools/patches/\$delta" \] \|\| \{\n.*?\n    done\n', script, re.S)
-assert block and name in block.group()
+assert script.count(name) == 1, "Require one shared selection"
+deltas = re.search(r'^common_tools_deltas="[^"\n]+"\n', script, re.M)
+assert deltas and name in deltas.group().split('"')[1].split()
+assert script.count("for delta in $common_tools_deltas") == 2, "Require preflight and application loops"
+block = re.search(r'    for delta in \$common_tools_deltas[^\n]*; do\n        \[ -s "\$root/profiles/common-build-tools/patches/\$delta" \] \|\| \{\n.*?\n    done\n', script, re.S)
+assert block
 patches = work / "profiles/common-build-tools/patches"
 patches.mkdir(parents=True)
 for patch in (root / "profiles/common-build-tools/patches").iterdir():
@@ -26,7 +29,7 @@ commands = []
 for label, expected in [("present", 0), ("missing", 2)]:
     if label == "missing":
         (patches / name).unlink()
-    argv = ["/bin/sh", "-c", 'set -eu; root=$1;\n' + block.group(), "preflight", str(work)]
+    argv = ["/bin/sh", "-c", 'set -eu; root=$1;\n' + deltas.group() + block.group(), "preflight", str(work)]
     result = subprocess.run(argv, capture_output=True, text=True)
     commands.append(dict(case=label, argv=argv, exit=result.returncode, stdout=result.stdout, stderr=result.stderr))
     assert result.returncode == expected, commands[-1]
