@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.84 2026/07/03 20:58:49 he Exp $
 
 DISTNAME=	rust-1.99.1
-PKGREVISION=	1
+PKGREVISION=	2
 PKGNAME=	${DISTNAME:S/rust/rust-bin/1}
 CATEGORIES=	lang
 MASTER_SITES=	https://static.rust-lang.org/dist/
@@ -202,12 +202,17 @@ do-install:
 	${RM} -f ${DESTDIR}${PREFIX}/lib/rustlib/manifest-*
 	${RM} -f ${DESTDIR}${PREFIX}/lib/rustlib/uninstall.sh
 
-# Preserve the official Darwin layout and loader-relative paths.
-# Absolute install-name expansion can exceed the prebuilt Mach-O header.
-# Native execution and unchanged provider bytes are checked in rust-darwin.rb.
+# Keep loader-relative paths. Give the bundled LLVM a private identity.
+# The native regression checks every actual LLVM import and selected providers.
 .if ${OPSYS} == "Darwin"
 MACHO_USE_LOAD_COMMANDS=	yes
 CHECK_SHLIBS_SKIP=	# check every native Mach-O provider
+PYTHON_FOR_BUILD_ONLY= tool
+.include "../../lang/python/tool.mk"
+
+post-install:
+	${TOOL_PYTHONBIN} ${FILESDIR}/darwin-llvm.py ${DESTDIR}${PREFIX} \
+	    ${WRKDIR}/darwin-llvm.json
 .else
 
 

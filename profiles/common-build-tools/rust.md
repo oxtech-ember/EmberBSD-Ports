@@ -1,6 +1,6 @@
 # Shared Rust 1.99 build-host provider
 
-The common profiles export `lang/rust-bin` 1.99.1nb1 for the build-host compiler
+The common profiles export `lang/rust-bin` 1.99.1nb2 for the build-host compiler
 needed by current cargo-c and librsvg. The archive is the official Rust release;
 this step does not compile another rustc or LLVM. Native and target components
 remain distinct: a macOS compiler needs a compatible NetBSD target std before
@@ -17,13 +17,22 @@ additional official SHA256 pin in [sources.tsv](sources.tsv).
 The recipe does not advertise NetBSD i386/mipsel or SunOS, for which this
 import has no active archive selection and matching checksum.
 
-Revision nb1 preserves upstream Mach-O install names and loader-relative
-paths on Darwin. The inherited post-install script expands `@rpath` into an
-absolute package prefix; this can exceed a prebuilt library's available load
-command space. A real package build reported that error for libstd but still
-created a package, because the shell loop lost the tool's error status.
-The relative layout already works from the upstream component installation.
-Non-Darwin `patchelf` behavior is retained.
+Revision nb2 gives the two bundled Darwin LLVM providers the private basename
+`librustLLVM.dylib`. It changes their install IDs and every actual import from
+`@rpath/libLLVM.dylib` to `@rpath/librustLLVM.dylib`. The upstream runpaths and
+their order stay unchanged. The shared LLVM package keeps its own names.
+The helper checks all Mach-O slices in `bin`, `lib` and `libexec`. It refuses
+unexpected provider layouts, differing provider bytes, existing private names
+and shared hard links before it writes. Each changed image gets an ad hoc
+signature and a strict signature check. No compiler is rebuilt.
+
+The inherited post-install script expanded `@rpath` into an absolute package
+prefix. This can exceed a prebuilt library's load-command space. Revision nb1
+removed that expansion. It retained a second problem: the Rust distribution
+and the common LLVM package both owned `lib/libLLVM.dylib`, so normal package
+installation refused their collision. The private basename fixes that ownership
+conflict without replacing common LLVM. Non-Darwin `patchelf` behavior remains
+unchanged. Python is a Darwin build-only dependency for this helper.
 
 The recipe also opts into `MACHO_USE_LOAD_COMMANDS=yes` in the exported pkgsrc
 infrastructure. The old `otool -L` metadata includes a dylib's own install ID
@@ -42,10 +51,9 @@ own runpaths, including its universal sanitizer libraries. The ordering follows
 [Apple's runpath documentation](https://developer.apple.com/library/archive/documentation/DeveloperTools/Conceptual/DynamicLibraries/100-Articles/RunpathDependentLibraries.html).
 
 This is an EmberBSD adaptation with AI assistance, not an upstream-accepted
-change. Re-evaluate it when the upstream recipe changes. The correction does
-not rely on invalid code signatures: both the original and rewritten rustc
-passed the observed signature check. The reproduced problem is load-command
-overflow and unnecessary rewriting of a working relative layout.
+change. Re-evaluate it when the upstream recipe changes. The helper preserves
+loader-relative paths and checks each rewritten signature.
+It does not claim that a native compiler check validates target execution.
 
 ## Build and verify
 
@@ -74,16 +82,41 @@ Run the regression against a verified upstream component installation and the
 new package's staged prefix before installing it:
 
 ```sh
-ruby tests/rust-darwin.rb /absolute/original-rust \
-  /absolute/staged-prefix /absolute/new-check
+python3 -B tests/rust-darwin.py /absolute/original-rust \
+  /absolute/staged-prefix /absolute/pkgsrc /absolute/new-check
 ```
 
-The check compares the exact bytes of rustc, cargo, the rustc driver, its LLVM
-library and host libstd. It reproduces the old install-name overflow on a
-disposable real library. The staged compiler then builds and runs a native
-allocation/thread/TLS/unwind consumer, with no dynamic-loader override.
-Cargo's version is checked too. This does not validate every extra tool in the
-full upstream distribution or any non-Darwin platform.
+The regression reads the real runtime Mach-O graph. The tested Apple Silicon
+layout contains 43 images, two byte-identical LLVM providers and 24 actual LLVM
+consumers. It compares every architecture, install ID, import and runpath before
+and after the helper. Both private providers and all changed consumers must
+pass strict signature checks. Each restored generic import must fail against
+a foreign generic LLVM sentinel. Removing either private provider must also
+fail its real consumer. A real unrelated dylib in `DYLD_LIBRARY_PATH` is
+ignored under the generic basename. Under the private basename it must fail
+with a missing LLVM symbol. The check preserves both inputs and reproduces
+the old absolute-name overflow on a disposable library.
+
+The staged compiler builds and runs the native allocation/thread/TLS/unwind
+consumer. Rust tools and the bundled LLVM assembler, verifier, disassembler
+and linker run from the relocated prefix. The real pkgsrc load-command checker
+must resolve both private providers. Normal runs have no loader override.
+The runtime trees come from upstream component manifests; documentation files
+are neither copied nor scanned as executable inputs. These checks do not
+register a package, establish memory-leak acceptance or execute target code.
+
+Check the fresh-stage refusal separately with a real partial import rewrite:
+
+```sh
+python3 -B tests/rust-darwin.py --mixed-preflight /absolute/original-rust \
+  /absolute/new-preflight-check
+```
+
+It changes only the import of the upstream `rustfmt` in a private clone.
+Both original LLVM providers and the mandatory rustc/driver imports remain.
+The helper must refuse the mixed graph before any rename or byte change.
+Removing only the guard must reach the first rename. The witness intercepts
+that boundary before mutation; its graph inspection remains real.
 
 Run the Mach-O regression on macOS with the exported pkgsrc tree:
 
@@ -98,12 +131,13 @@ references and undeclared or build-only package owners must be diagnosed.
 The dependency-owner fixture uses a controlled pkg_info response; it does not
 register fake packages. The legacy resolver remains a causal negative control.
 
-On macOS/Apple Silicon, `rust-bin-1.99.1nb1` passes a normal package build with
-`CHECK_SHLIBS=yes`, ordinary installation, and the installed five-provider
-byte/native-runtime check. Both generated package archives contain the newly
-resolved metadata. All six export modes pass composition checks, including
-refusal when the Mach-O infrastructure patch is absent. This validates the
-build-host compiler; it is not an installed NetBSD compiler package.
+The earlier nb1 package passed normal packaging, installation and the selected
+five-file runtime check on a separate host prefix. That result did not cover
+co-installation with the common LLVM provider. Revision nb2 has a separate
+full runtime-graph regression; normal package creation, ownership metadata and
+shared-prefix installation must also pass before accepting the new package.
+All six export modes previously passed composition checks, including refusal
+when the Mach-O infrastructure patch was absent.
 
 Use normal `bmake install` after acceptance. Native Rust consumers explicitly
 select `RUST_TYPE=bin`; otherwise the pinned pkgsrc tree defaults to its older

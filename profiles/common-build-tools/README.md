@@ -112,8 +112,9 @@ Its native macOS build renders the three Enchant manual pages as HTML.
 The focused source check passes ASan/UBSan and preserves all errno cases.
 The complete target package and graphical HTML pipeline remain unaccepted.
 
-The shared [Rust 1.99 host package](rust.md) preserves upstream macOS binaries
-and repairs Mach-O dependency resolution for cargo-c/librsvg builds. Its
+The shared [Rust 1.99 host package](rust.md) keeps upstream runpaths and gives
+its bundled Darwin LLVM a private name. It checks actual Mach-O imports for
+cargo-c/librsvg builds. Its
 [target std package](rust-target-std.md) installs into the same host sysroot and passes AArch64 VM consumers.
 
 The [macOS cross-package path](cross/README.md) uses GCC16 and ordinary pkgsrc

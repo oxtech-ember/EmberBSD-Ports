@@ -108,6 +108,11 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
             [ -f "$source/distinfo" ] || {
             echo "Incomplete common-tools recipe: $recipe" >&2; exit 2;
         }
+        if [ "$recipe" = lang/rust-bin ]; then
+            [ -s "$source/files/darwin-llvm.py" ] || {
+                echo 'Missing Darwin Rust LLVM helper.' >&2; exit 2;
+            }
+        fi
         required=$(awk '/^SHA1 \(patch-/ { gsub(/[()]/, "", $2); print $2 }' "$source/distinfo")
         case "$recipe" in
             lang/rust-bin|lang/rust-std-x86_64-netbsd|devel/lld|devel/py-llvm-lit|devel/py-mako|textproc/py-markupsafe|textproc/py-yaml) ;;
