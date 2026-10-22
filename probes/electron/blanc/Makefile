@@ -119,6 +119,8 @@ BUILD_HOST_PYTHON=	${EMBERBSD_CROSS_BUILD_PYTHON}
 DEPENDS+=	${BLANC_ELECTRON_DEPENDS}
 INSTALLATION_DIRS+=	bin lib/blanc share/applications share/doc/blanc
 
+.include "../../mk/bsd.prefs.mk"
+
 .if !defined(EMBERBSD_SDK_SOURCE) || empty(EMBERBSD_SDK_SOURCE:M/*) || !exists(${EMBERBSD_SDK_SOURCE}/src/emberbsd_sdk/__init__.py)
 PKG_FAIL_REASON+=	"Blanc requires an explicit EmberBSD_SDK_SOURCE API 1 source"
 .endif
