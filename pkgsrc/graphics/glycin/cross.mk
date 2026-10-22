@@ -5,13 +5,9 @@ RUST_TYPE= native
 TOOL_DEPENDS+= rust-bin-1.99.1{,nb[0-9]*}:../../lang/rust-bin
 TOOL_DEPENDS+= rust-std-aarch64-netbsd-1.99.1{,nb[0-9]*}:../../lang/rust-std-aarch64-netbsd
 
-MESON_ARGS+= -Dtriplet=aarch64-unknown-netbsd
-# Meson must compile its rust sanity check for the target triple.
+# The upstream meson build reads the cargo target from this property.
 MESON_CROSS_VARS+= rust_target
 MESON_CROSS.rust_target= 'aarch64-unknown-netbsd'
-# Declare rustc as the cross rust compiler so sanity checks use the target.
-MESON_BINARIES+= rustc
-MESON_BINARY.rustc= ${TOOLBASE}/bin/rustc
 
 # The installed-library step inspects target ELF, not Mach-O.
 MESON_BINARIES+= nm strip
@@ -41,5 +37,5 @@ RUSTFLAGS+= --remap-path-prefix=${WRKDIR}=.
 pre-configure: emberbsd-glycin-rust
 .PHONY: emberbsd-glycin-rust
 emberbsd-glycin-rust:
-	${RUN}${TOOLBASE}/bin/rustc --version | ${GREP} '^rustc 1\.99\.0 '
+	${RUN}${TOOLBASE}/bin/rustc --version | ${GREP} '^rustc 1\.99\.1 '
 	${RUN}${TEST} -n "$$(${FIND} ${TOOLBASE}/lib/rustlib/aarch64-unknown-netbsd/lib -name 'libstd-*.rlib' -print)"

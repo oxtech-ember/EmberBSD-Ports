@@ -84,6 +84,29 @@ packages only. Chain state after this pass:
 `gvdb` turned out to ship in the mutter tarball (no wrap download);
 `glycin-2` is now fully ported:
 
+- **glycin 2.2.3** (recipe in the shared overlay `pkgsrc/graphics/glycin/`): libglycin only
+  (`-Dglycin-loaders=false -Dglycin-thumbnailer=false -Dlibglycin-gtk4=false
+  -Dintrospection=false`), cross cargo via the packaged rust-bin 1.99.1 +
+  rust-std-aarch64-netbsd (`RUST_TYPE=native`, target linker = wrapper cc).
+  Upstream reads the cargo target from the meson cross property
+  `rust_target`. Outside Linux, upstream glycin decodes in-process with
+  Rust decoders (no bwrap, seccomp, memfd, fontconfig or lcms2), so no crate
+  patch is necessary. One patch remains: the meson `rust` language is
+  dropped from project() because its cross sanity check cannot link a
+  target program. The loaders are not sandboxed on NetBSD (debt: pledge(2)
+  style sandbox).
+- **mutter 49.8** recipe corrections: `-Dsystemd=false` is gone in 49.8
+  (now `-Dlogind=false`); `-Dtests=disabled` (feature type); gtk3,
+  gnome-settings-daemon and startup-notification buildlinks dropped
+  (tests-only or optional deps); colord buildlink added (unconditional
+  upstream). The six patch SHA1s in `distinfo` were recomputed (the staged
+  hashes did not match the patch files) and `patch-mdk_mdk-stream.c`
+  joined the set.
+
+**mutter 49.8 cross-built and installed .**
+`gvdb` turned out to ship in the mutter tarball (no wrap download);
+`glycin-2` is now fully ported:
+
 - **glycin 2.0.8** (new recipe, now in the shared overlay `pkgsrc/graphics/glycin/`): libglycin only
   (`-Dglycin-loaders=false -Dglycin-thumbnailer=false -Dlibglycin-gtk4=false
   -Dintrospection=false`), cross cargo via the packaged rust-bin 1.99 +

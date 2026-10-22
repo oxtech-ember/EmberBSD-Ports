@@ -1,8 +1,8 @@
 # $NetBSD$
 
-DISTNAME=	glycin-2.0.8
+DISTNAME=	glycin-2.2.3
 CATEGORIES=	graphics gnome
-MASTER_SITES=	${MASTER_SITE_GNOME:=sources/glycin/2.0/}
+MASTER_SITES=	${MASTER_SITE_GNOME:=sources/glycin/2.2/}
 EXTRACT_SUFX=	.tar.xz
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -22,13 +22,6 @@ MESON_ARGS+=	-Dintrospection=false
 MESON_ARGS+=	-Dvapi=false
 MESON_ARGS+=	-Dtests=false
 
-# Cross: the version script must run on the host; macOS python3 is too old
-# for tomllib, so point the shebang at the build python.
-SUBST_CLASSES+=		pyfix
-SUBST_STAGE.pyfix=		pre-configure
-SUBST_FILES.pyfix=		build-aux/crates-version.py
-SUBST_SED.pyfix=		-e "s,/usr/bin/python3,/private/tmp/ember-common-stack/host/bin/python3.14,"
-
 .include "../../mk/bsd.prefs.mk"
 
 # This chain tree is cross-only; unconditioned so dependency walkers
@@ -37,10 +30,9 @@ SUBST_SED.pyfix=		-e "s,/usr/bin/python3,/private/tmp/ember-common-stack/host/bi
 
 .include "cargo-depends.mk"
 .include "../../devel/meson/build.mk"
-BUILDLINK_API_DEPENDS.glib2+=	glib2>=2.66
+# Outside Linux, glycin decodes in-process with Rust decoders; it needs no
+# libseccomp, fontconfig or lcms2.
+BUILDLINK_API_DEPENDS.glib2+=	glib2>=2.60
 .include "../../devel/glib2/buildlink3.mk"
-.include "../../devel/glib2/schemas.mk"
-.include "../../graphics/lcms2/buildlink3.mk"
-.include "../../fonts/fontconfig/buildlink3.mk"
 .include "../../lang/rust/cargo.mk"
 .include "../../mk/bsd.pkg.mk"
