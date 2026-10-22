@@ -1,8 +1,8 @@
-# Origin: EmberBSD (AI-assisted). Select the target OS for GLEW cross builds.
-# The upstream Makefile guesses SYSTEM from the build host's uname.
+# Origin: EmberBSD (AI-assisted). Select the pkgsrc target OS for GLEW.
+# Upstream GLEW guesses SYSTEM from the build host uname.
 
---- Makefile.orig
-+++ Makefile
+--- a/graphics/glew/Makefile
++++ b/graphics/glew/Makefile
 @@ -18,6 +18,8 @@
  MAKE_FLAGS+=		GLEW_DEST=${PREFIX}
  MAKE_FLAGS+=		GLEW_PREFIX=${PREFIX}

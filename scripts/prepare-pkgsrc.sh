@@ -717,18 +717,9 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
     cp "$graphics/recipes/devel/flex/patches/$flex_patch" "$flex/patches/$flex_patch"
     flex_patch_sha=$(sed '/[$]NetBSD.*/d' "$flex/patches/$flex_patch" | shasum -a 1 | awk '{ print $1 }')
     printf 'SHA1 (%s) = %s\n' "$flex_patch" "$flex_patch_sha" >> "$flex/distinfo"
-    glew=$destination/graphics/glew
-    glew_patch=patch-Makefile
-    [ -f "$glew/Makefile" ] && [ -f "$glew/distinfo" ] || {
-        echo 'Missing upstream pkgsrc GLEW recipe.' >&2; exit 2;
-    }
-    [ ! -e "$glew/patches/$glew_patch" ] || {
-        echo 'Unexpected pkgsrc GLEW patch collision.' >&2; exit 2;
-    }
-    mkdir -p "$glew/patches"
-    cp "$graphics/recipes/graphics/glew/patches/$glew_patch" "$glew/patches/$glew_patch"
-    glew_patch_sha=$(sed '/[$]NetBSD.*/d' "$glew/patches/$glew_patch" | shasum -a 1 | awk '{ print $1 }')
-    printf 'SHA1 (%s) = %s\n' "$glew_patch" "$glew_patch_sha" >> "$glew/distinfo"
+    # Select GLEW's platform from the target, not the build host's uname.
+    patch -f -N -d "$destination" -p1 -F 0 < \
+        "$graphics/cross/glew-target-system.patch"
     [ ! -e "$destination/devel/wayland-devel" ] && [ ! -L "$destination/devel/wayland-devel" ] || {
         echo 'Upstream now owns devel/wayland-devel; review the overlay.' >&2; exit 2;
     }
