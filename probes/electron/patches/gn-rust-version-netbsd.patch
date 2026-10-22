@@ -1,0 +1,39 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Upstream: Chromium dd78960ccd8a03a2fe1f629543d27783885b78e9 with NetBSD adaptations.
+Status: local cross-build fix; not submitted upstream.
+
+Keep GN defaults free of host Rust probes for a NetBSD cross build.
+Require the declared version for an external cross Rust sysroot.
+Keep native NetBSD and unrelated platform defaults unchanged.
+
+--- a/build/config/rust.gni
++++ b/build/config/rust.gni
+@@ -67,8 +67,13 @@
+   # set this to the output of `rustc -V`. Changing this string will cause all
+   # Rust targets to be rebuilt, which allows you to update your toolchain and
+   # not break incremental builds.
+-  rustc_version = exec_script("//build/gn_run_binary.py",
+-    [ "rustc", "-V" ], "trim string")
++  # GN evaluates declare_args() defaults before it applies args.gn overrides.
++  # A NetBSD cross build must provide the pinned host Rust version explicitly.
++  rustc_version = ""
++  if (host_os == "netbsd" || target_os != "netbsd") {
++    rustc_version = exec_script("//build/gn_run_binary.py",
++      [ "rustc", "-V" ], "trim string")
++  }
+ 
+   # Whether artifacts produced by the Rust compiler can participate in ThinLTO.
+   #
+@@ -168,6 +173,10 @@
+     rust_channel = "dev"
+   } else {
+     toolchain_has_rust = custom_toolchain_supports_platform
++    if (target_os == "netbsd" && host_os != "netbsd") {
++      assert(rustc_version != "",
++             "cross-building for NetBSD with rust_sysroot_absolute requires rustc_version")
++    }
+     rustc_revision = rustc_version
+     # Example:
+     # rustc 1.88.0 c8f94230282a8e8c1148f3e657f0199aad909228 (c8f94230282a8e8c1148f3e657f0199aad909228-1-llvmorg-21-init-9266-g09006611 chromium)

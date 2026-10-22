@@ -5,10 +5,11 @@ Run these commands from the Ports repository root.
 Run the regressions with host CPython 3.15 and its standard library. Select an
 SDK API 1 source with `--sdk-source`. Each test checks the API and module origin.
 Commands, stable SHA256 hashes and JSON receipts use that SDK. Select the
-host GN and pkgconf explicitly. The sysroot must contain the real
-`gio-unix-2.0` and GTK3 metadata and their dependency closure. POSIX `patch`
-must be available on `PATH`. Each output path must be new and outside the
-selected source and sysroot.
+host GN and pkgconf explicitly. The full integration test requires a sysroot
+with real `gio-unix-2.0` and GTK3 metadata and their dependency closure. The
+x64 selector test uses an empty synthetic sysroot and mock pkgconf. POSIX
+`patch` must be available on `PATH`. Each `NEW_WORK` path must be new and
+outside the selected source and any external sysroot.
 
 ```sh
 python3.15 -E -S probes/electron/tests/gn-pkgconfig.py \
@@ -16,6 +17,11 @@ python3.15 -E -S probes/electron/tests/gn-pkgconfig.py \
   --source /absolute/chromium/src --sysroot /absolute/target-sysroot \
   --gn /absolute/host-gn --pkg-config /absolute/host-pkgconf \
   /absolute/NEW_PKGCONFIG_WORK
+python3.15 -E -S probes/electron/tests/gn-netbsd-x64-pkgconfig.py \
+  --sdk-source /absolute/EmberBSD-SDK \
+  --source /absolute/chromium/src --gn /absolute/host-gn \
+  --patch /absolute/Ports/probes/electron/patches/gn-netbsd-x64-targets.patch \
+  /absolute/NEW_PKGCONFIG_X64_WORK
 python3.15 -E -S probes/electron/tests/gn-readelf.py \
   --sdk-source /absolute/EmberBSD-SDK \
   --source /absolute/chromium/src --gn /absolute/host-gn \
@@ -28,6 +34,7 @@ python3.15 -E -S probes/electron/tests/gn-rust-bindgen.py \
   --rustfmt /absolute/chromium/src/third_party/rust-toolchain/bin/rustfmt \
   --sysroot /absolute/target-sysroot \
   --patch /absolute/Ports/probes/electron/patches/gn-rust-bindgen-host-tools.patch \
+  --x64-patch /absolute/Ports/probes/electron/patches/gn-netbsd-x64-targets.patch \
   /absolute/NEW_BINDGEN_WORK
 python3.15 -E -S probes/electron/tests/gn-clang-resource-version.py \
   --sdk-source /absolute/EmberBSD-SDK \
@@ -65,20 +72,28 @@ python3.15 -E -S probes/electron/tests/partition-alloc-netbsd-gcc16.py \
 
 The tests accept the original or already fixed source. They apply the carried
 patch in an isolated fixture and preserve source hashes and command receipts.
-The pkg-config test covers sixteen before/after cases. Real pkgconf queries
-resolve target gio/GTK paths; the existing cache case must make no pkgconf
-calls. The readelf test covers ten cases with production `gcc_toolchain.gni`
+The pkg-config integration test uses real pkgconf queries to resolve target
+gio/GTK paths; the existing cache case must make no pkgconf calls. The
+NetBSD x64 pkg-config test uses the exact production GN template and script,
+an empty synthetic sysroot, and a controlled mock pkgconf. It records sixteen
+before/after GN snapshots. Baseline x64 GN succeeds with empty metadata; the
+patch restores mock include and library flags for default and custom-wrapper
+queries. ARM64 default/custom behavior and the GN arguments for native NetBSD,
+Linux, and no-sysroot cases stay unchanged. Native-host execution is not part
+of this fixture. It does not read a real target sysroot or claim installed GTK
+metadata. The readelf test covers ten cases with production `gcc_toolchain.gni`
 and generated `solink` and assembly commands. It preserves host and native
 fallback and rejects a missing cross tool. A real `.S` graph input checks that
 target and host assembler markers stay separate. Unset assembler commands
 remain byte-identical. The selected host Rust compiler supplies only
 its `-V` result for an unrelated production GN version probe.
 
-The bindgen test covers twelve before/after GN metadata cases. It also runs
-the pinned host bindgen and rustfmt on two minimal C headers, with host and
-NetBSD ARM64 parser arguments. It uses the exact libclang directory below the
-pinned Rust toolchain. The smoke headers do not include system headers or
-exercise the full allocator action. The smoke does not project GCC-only
+The bindgen test covers twelve before/after GN metadata cases and four NetBSD
+x64 cases. It also runs the pinned host bindgen and rustfmt on minimal C
+headers with host, NetBSD ARM64, and NetBSD x64 parser arguments. It uses the
+exact libclang directory below the pinned Rust toolchain. The smoke headers do
+not include system headers or exercise the full allocator action. The x64
+smoke does not validate sysroot headers. Neither smoke projects GCC-only
 `--param` or `-B` flags. Its shared library check currently requires a macOS
 host toolchain with `libclang.dylib`.
 
@@ -201,3 +216,30 @@ cover AArch64. Cppcheck 2.18 cannot parse the unchanged pinned libc++ input in
 either variant, so no clean Cppcheck result is claimed. Apple Clang 21 static
 analysis of the function and exception-enabled memory fixtures finds no issues
 in either variant. Static analysis does not establish runtime memory safety.
+
+
+The Rust-version test covers the production `build/config/rust.gni` default.
+The supplemental `gn-rust-version-netbsd.patch` skips the default `rustc -V`
+probe only for a cross build from a non-NetBSD host to NetBSD. A custom Rust
+sysroot must provide `rustc_version`; the bundled Chromium Rust toolchain keeps
+using its pinned `VERSION` file. Native NetBSD and unrelated targets retain the
+existing host Rust fallback. Apply this patch after the NetBSD source adaptations
+and before GN generation:
+
+```sh
+(cd /absolute/chromium/src && patch -p1 -F0 < /absolute/Ports/probes/electron/patches/gn-rust-version-netbsd.patch)
+python3.15 -B -I -S probes/electron/tests/gn-rust-version-netbsd.py \
+  --source /absolute/chromium/src --gn /absolute/host-gn \
+  --patch /absolute/Ports/probes/electron/patches/gn-rust-version-netbsd.patch \
+  --sdk-source /absolute/EmberBSD-SDK --ports-root /absolute/Ports \
+  --sysroot /absolute/target-sysroot /absolute/NEW_RUST_VERSION_WORK
+```
+
+The runner accepts either the exact baseline or the exact patched `rust.gni`.
+It proves that state with strict forward and reverse patch checks, then makes
+both fixture variants from isolated copies. Six GN cases cover the original
+missing-`./rustc` failure, an explicit cross version, a missing-version error,
+the bundled toolchain, native NetBSD, and an unrelated Linux target. It verifies
+that only the intended native/unrelated cases invoke `rustc -V`. The test does
+not run a real Rust compiler, build Rust targets, or generate the complete
+Chromium graph.

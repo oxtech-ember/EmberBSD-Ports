@@ -13,7 +13,7 @@ from pathlib import Path
 import shutil
 
 parser = argparse.ArgumentParser(description=__doc__)
-for name in ("source", "gn", "bindgen", "rustfmt", "sdk-source", "sysroot", "patch"):
+for name in ("source", "gn", "bindgen", "rustfmt", "sdk-source", "sysroot", "patch", "x64-patch"):
     parser.add_argument("--" + name, required=True, type=Path)
 parser.add_argument("new_work", type=Path, metavar="NEW_WORK")
 args = parser.parse_args()
@@ -41,14 +41,17 @@ SOURCE, GN, BINDGEN, RUSTFMT = (p.resolve(strict=True) for p in
     (args.source, args.gn, args.bindgen, args.rustfmt))
 SYSROOT = args.sysroot.resolve(strict=True)
 ROOT = args.new_work.resolve()
-if ROOT.is_relative_to(SOURCE):
-    parser.error("NEW_WORK must be outside Chromium source")
+if any(ROOT.is_relative_to(p) or p.is_relative_to(ROOT)
+       for p in (SOURCE, SDK_SOURCE, SYSROOT, Path(__file__).resolve().parents[3])):
+    parser.error("NEW_WORK must be disjoint from source, SDK, sysroot, and Ports")
 ROOT.mkdir(parents=True)
 LOGS = ROOT / "logs"
 LOGS.mkdir()
 PATCH = args.patch.resolve(strict=True)
+X64_PATCH = args.x64_patch.resolve(strict=True)
 GENERATOR = Path("build/rust/rust_bindgen_generator.gni")
 WRAPPER = Path("build/rust/rust_bindgen.gni")
+PKG_CONFIG = Path("build/config/linux/pkg_config.gni")
 
 # Minimal GN root. The two production templates are copied byte-for-byte; the
 # imported Chromium configuration files are replaced with minimal fixture stubs.
@@ -177,12 +180,36 @@ env = process.sanitized_environment()
 env["PYTHONDONTWRITEBYTECODE"] = "1"
 # Record hashes before GN executes. The test works only in NEW_WORK and must
 # leave every source-side input byte-for-byte unchanged.
-source_files = (GENERATOR, WRAPPER)
+source_files = (GENERATOR, WRAPPER, PKG_CONFIG)
 source_hash_before = {p: sha256_file(SOURCE / p) for p in source_files}
 head = capture(["git", "-C", str(SOURCE), "rev-parse", "HEAD"], env=env).stdout.decode().strip()
 capture(["git", "-C", str(SOURCE), "diff", "--quiet", "--", *map(str, source_files)], env=env)
 capture(["git", "-C", str(SOURCE), "diff", "--cached", "--quiet", "--", *map(str, source_files)], env=env)
 source_templates = {rel: (SOURCE / rel).read_text() for rel in source_files}
+arm64_selector = '''      if (current_os == "netbsd" && current_cpu == "arm64") {
+        args += [ "--target=aarch64-unknown-netbsd" ]
+      }'''
+x64_selector = '''      if (current_os == "netbsd" && current_cpu == "arm64") {
+        args += [ "--target=aarch64-unknown-netbsd" ]
+      } else if (current_os == "netbsd" && current_cpu == "x64") {
+        args += [ "--target=x86_64-unknown-netbsd" ]
+      }'''
+if x64_selector in source_templates[GENERATOR]:
+    assert source_templates[GENERATOR].count(x64_selector) == 1
+    source_templates[GENERATOR] = source_templates[GENERATOR].replace(x64_selector, arm64_selector)
+else:
+    assert source_templates[GENERATOR].count(arm64_selector) == 1, "unrecognized bindgen CPU selector"
+pkg_selector_before = '''_emberbsd_cross_pkg_config =
+    host_os == "mac" && current_os == "netbsd" && current_cpu == "arm64" &&
+    emberbsd_target_sysroot != ""'''
+pkg_selector_after = '''_emberbsd_cross_pkg_config = host_os == "mac" && current_os == "netbsd" &&
+                             (current_cpu == "arm64" || current_cpu == "x64") &&
+                             emberbsd_target_sysroot != ""'''
+if pkg_selector_after in source_templates[PKG_CONFIG]:
+    assert source_templates[PKG_CONFIG].count(pkg_selector_after) == 1
+    source_templates[PKG_CONFIG] = source_templates[PKG_CONFIG].replace(pkg_selector_after, pkg_selector_before)
+else:
+    assert source_templates[PKG_CONFIG].count(pkg_selector_before) == 1, "unrecognized pkg-config CPU selector"
 source_is_patched = (
     '_bindgen_path = "${rust_bindgen_root}/bin/bindgen"' in source_templates[GENERATOR]
     and '_rustfmt_path = "${rust_bindgen_root}/bin/rustfmt"' in source_templates[GENERATOR]
@@ -295,3 +322,115 @@ write_json(ROOT / "result.json", result)
 print(json.dumps(dict(status=result["status"], source_head=result["source_head"],
                       patch_sha256=result["patch_sha256"], gn_version=result["gn_version"],
                       cases=len(observations)), sort_keys=True))
+
+# E12 NetBSD/amd64 regression. The baseline is the already-applied host-tools
+# patch; the x64 patch is applied only to a private copy below.
+def read_x64_action_args(output, target, tree):
+    label = target.replace("/", "_").replace(":", "_").replace("(", "_").replace(")", "_")
+    desc = run("x64-desc-" + label,
+               [GN, "desc", output, target, "args", "--format=json"], tree, env)
+    assert desc.returncode == 0, (target, desc.stdout, desc.stderr)
+    data = json.loads(desc.stdout)
+    if isinstance(data, dict):
+        data = data.get("args", data)
+    return "\n".join(map(str, data)) if isinstance(data, list) else json.dumps(data, sort_keys=True)
+
+def write_x64_args(output, *, target_os="netbsd", target_cpu="arm64",
+                   host_os="mac", host_cpu="arm64"):
+    lines = [f'fixture_target_os = "{target_os}"',
+             f'fixture_target_cpu = "{target_cpu}"',
+             f'fixture_host_os = "{host_os}"',
+             f'fixture_host_cpu = "{host_cpu}"',
+             'rust_bindgen_root = "//custom/rust-toolchain"',
+             'emberbsd_target_sysroot = "/fixture/emberbsd-sysroot"']
+    (output / "args.gn").write_text("\n".join(lines) + "\n")
+
+baseline_tree = ROOT / "after"
+baseline_out = baseline_tree / "out" / "e12-x64-baseline"
+baseline_out.mkdir(parents=True)
+write_x64_args(baseline_out, target_cpu="x64")
+baseline_gen = run("x64-before-gen", [GN, "gen", baseline_out, "--root=" + str(baseline_tree)], ROOT, env)
+assert baseline_gen.returncode == 0, (baseline_gen.stdout[-3000:], baseline_gen.stderr[-3000:])
+baseline_target = read_x64_action_args(baseline_out, "//third_party/fixture:direct", baseline_tree)
+baseline_host = read_x64_action_args(baseline_out, "//third_party/fixture:direct(//toolchain:host)", baseline_tree)
+assert "-isystem/fixture/emberbsd-sysroot/usr/include" in baseline_target
+assert "--target=x86_64-unknown-netbsd" not in baseline_target
+assert "--target=aarch64-unknown-netbsd" not in baseline_target
+assert "-isystem/fixture/emberbsd-sysroot/usr/include" not in baseline_host
+
+x64_tree = ROOT / "x64"
+shutil.copytree(baseline_tree, x64_tree, ignore=shutil.ignore_patterns("out"))
+pkg_config_file = x64_tree / PKG_CONFIG
+pkg_config_file.parent.mkdir(parents=True, exist_ok=True)
+pkg_config_file.write_text(source_templates[PKG_CONFIG])
+x64_patch_result = run("x64-apply-patch",
+                       ["/usr/bin/patch", "-p1", "-F0", "-i", X64_PATCH],
+                       x64_tree, env)
+assert x64_patch_result.returncode == 0, (x64_patch_result.stdout, x64_patch_result.stderr)
+
+x64_observations = {}
+for name, target_os, target_cpu, host_os, host_cpu in (
+    ("cross-x64", "netbsd", "x64", "mac", "arm64"),
+    ("cross-arm64", "netbsd", "arm64", "mac", "arm64"),
+    ("native-netbsd-x64", "netbsd", "x64", "netbsd", "x64"),
+    ("linux", "linux", "x64", "mac", "arm64"),
+):
+    output = x64_tree / "out" / name
+    output.mkdir(parents=True)
+    write_x64_args(output, target_os=target_os, target_cpu=target_cpu,
+                   host_os=host_os, host_cpu=host_cpu)
+    gen = run("x64-" + name + "-gen", [GN, "gen", output, "--root=" + str(x64_tree)], ROOT, env)
+    assert gen.returncode == 0, (name, gen.stdout[-3000:], gen.stderr[-3000:])
+    target = read_x64_action_args(output, "//third_party/fixture:direct", x64_tree)
+    host = read_x64_action_args(output, "//third_party/fixture:direct(//toolchain:host)", x64_tree)
+    x64_observations[name] = {"target": target, "host": host}
+
+cross = x64_observations["cross-x64"]["target"]
+assert "-isystem/fixture/emberbsd-sysroot/usr/include" in cross
+assert "--target=x86_64-unknown-netbsd" in cross
+assert "--target=aarch64-unknown-netbsd" not in cross
+assert "-isystem/fixture/emberbsd-sysroot/usr/include" not in x64_observations["cross-x64"]["host"]
+arm64 = x64_observations["cross-arm64"]["target"]
+assert "--target=aarch64-unknown-netbsd" in arm64
+assert "--target=x86_64-unknown-netbsd" not in arm64
+for case in ("native-netbsd-x64", "linux"):
+    for action in x64_observations[case].values():
+        assert "--target=x86_64-unknown-netbsd" not in action
+        assert "--target=aarch64-unknown-netbsd" not in action
+
+# The pinned host bindgen accepts the x86_64 NetBSD parser triple on a header
+# with no system includes. This does not compile a target object or validate
+# the selected sysroot's x86_64 headers.
+output = smoke / "target-netbsd-x64.rs"
+command = [sys.executable, str(run_script), "--bindgen-exe", str(BINDGEN),
+           "--rustfmt-exe", str(RUSTFMT), "--header", str(header),
+           "--depfile", str(smoke / "target-netbsd-x64.d"), "--output", str(output),
+           "--libclang-path", str(libclang_dir), "--bindgen-flags", "--",
+           "-resource-dir", str(resource_dir), "-isystem" + str(SYSROOT / "usr/include"),
+           "--target=x86_64-unknown-netbsd", "-fparse-all-comments", "-fvisibility=default"]
+x64_smoke = run("bindgen-smoke-target-netbsd-x64", command, smoke, env)
+assert x64_smoke.returncode == 0, (x64_smoke.stdout[-3000:], x64_smoke.stderr[-3000:])
+assert "e12_probe" in output.read_text()
+assert output.with_suffix(".d").is_file()
+
+source_hashes = {p: sha256_file(SOURCE / p) for p in source_files}
+assert source_hashes == source_hash_before, "x64 fixture modified Chromium source"
+result_path = ROOT / "result.json"
+result = json.loads(result_path.read_text())
+result["x64_patch_sha256"] = sha256_file(X64_PATCH)
+result["test_sha256"] = sha256_file(Path(__file__).resolve(strict=True))
+result["x64_regression"] = {
+    "baseline_cross_x64_args": baseline_target,
+    "patched_cases": x64_observations,
+    "host_tools": "pinned bindgen/rustfmt; one header-only x86_64-unknown-netbsd parser smoke",
+    "limit": "GN metadata and header-free bindgen parser smoke only; no target C/C++ compilation, linking, sysroot header validation, or Electron build",
+}
+result["commands"] = commands
+result["source_sha256_after_x64"] = {str(k): v for k, v in source_hashes.items()}
+write_json(result_path, result, exclusive=False)
+print(json.dumps({"status": "PASS", "x64_baseline_has_target_triple": False,
+                  "x64_patched_target_triple": "x86_64-unknown-netbsd",
+                  "arm64_preserved": "aarch64-unknown-netbsd",
+                  "x64_GN_metadata_cases": len(x64_observations),
+                  "x64_bindgen_smoke": x64_smoke.returncode,
+                  "result": str(result_path)}, sort_keys=True))

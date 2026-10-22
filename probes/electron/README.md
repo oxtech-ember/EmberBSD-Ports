@@ -116,6 +116,8 @@ patch -p0 -F 0 < /absolute/Ports/probes/electron/patches/gn-pkgconfig-libdir.pat
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-readelf.patch
 patch -p0 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-asmflags.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-bindgen-host-tools.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-netbsd-x64-targets.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-version-netbsd.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-clang-resource-version.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-bindgen-gcc-warnings.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-host-node-inputs.patch
@@ -137,6 +139,9 @@ The Rust patch restores the pinned `bindgen`, `rustfmt`, and libclang paths
 from `rust_bindgen_root`. It adds EmberBSD parser headers only to a NetBSD
 target toolchain whose OS or CPU differs from the build host. Host actions,
 native NetBSD, and unrelated target platforms do not receive those headers.
+The x64 supplement extends the existing pkgsrc metadata selection and adds
+`x86_64-unknown-netbsd` to the bindgen parser arguments. It preserves the
+existing ARM64 selector and triple.
 The resource-version patch restores the upstream Clang version selection.
 The Apple host tools use the pinned compiler below `clang_base_path`, so their
 headers and compiler runtime must use that compiler's resource version.

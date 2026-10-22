@@ -1251,7 +1251,7 @@ index 172ccc2cae..a811a14525 100644
    # not break incremental builds.
    rustc_version = exec_script("//build/gn_run_binary.py",
 -    [ "@PREFIX@/bin/rustc", "-V" ], "trim string")
-+    [ "/Users/smolev/.rustup/toolchains/nightly-2026-06-17-aarch64-apple-darwin/bin/rustc", "-V" ], "trim string")
++    [ "rustc", "-V" ], "trim string")
  
    # Whether artifacts produced by the Rust compiler can participate in ThinLTO.
    #
