@@ -102,6 +102,10 @@ Also set `EMBERBSD_CROSS_TARGET=amd64` in the cross MAKECONF. This selects
 Unknown targets and conflicting compiler or machine overrides fail.
 The selector does not prove an amd64 package build or desktop session.
 
+The [root certificate recipe](rootcerts.md) separates native data generators
+from the explicit NetBSD 11 full-base script contract. The compiler SDK does
+not need target command binaries for that data-only package.
+
 OpenSSL uses explicit upstream `BSD-x86_64` and `BSD-aarch64` Configure targets
 for NetBSD cross builds. OpenSSL 3.6's automatic `config` path reads host
 `POSIX::uname` and ignores the older target environment variables. Native

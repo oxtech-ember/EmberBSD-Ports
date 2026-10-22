@@ -1,42 +1,52 @@
 # SPDX-License-Identifier: BSD-2-Clause
-# Origin: EmberBSD (AI-assisted), separate native extraction from target script paths.
+# Origin: EmberBSD (AI-assisted), native generators and NetBSD 11 base contract.
 --- a/security/mozilla-rootcerts/Makefile
 +++ b/security/mozilla-rootcerts/Makefile
 @@ -4,6 +4,7 @@
  # and bump its version when updating this package.
  
  DISTNAME=	mozilla-rootcerts-1.1.${CERTDATA_DATE}
-+PKGREVISION=	1
++PKGREVISION=	2
  CATEGORIES=	security
  MASTER_SITES=	-https://hg.mozilla.org/mozilla-central/raw-file/${CERTDATA_COMMIT}/security/nss/lib/ckfw/builtins/certdata.txt
  EXTRACT_SUFX=	# empty
-@@ -49,6 +50,25 @@
+@@ -49,6 +50,35 @@
  SUBST_VARS.paths=	AWK DATADIR ECHO EXPR LN LS MKDIR PREFIX RM SH SSLDIR
  SUBST_SED.paths=	-e 's,@OPENSSL@,${TOOLS_PATH.openssl},g'
  
 +.include "../../mk/bsd.prefs.mk"
 +
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
-+# The installed script uses target utilities. Its extract step still executes
-+# the selected build-host awk and OpenSSL through the script's environment API.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    !empty(OS_VERSION:M11.*)
++# NetBSD 11 full base supplies the installed script's standard utilities.
++# The compiler SDK contains headers and libraries, not base executables.
++# Reclassify only this consumer's named tools. Other :run guards stay active.
++.for _rootcerts_tool_ in awk echo expr ln ls openssl rm mkdir
++USE_TOOLS:= ${USE_TOOLS:N${_rootcerts_tool_}\:run}
++.endfor
++USE_TOOLS+= awk echo expr ln ls rm mkdir
++TOOL_DEPENDS+= openssl>=3.6.5:../../security/openssl
++_CERT_HOST_OPENSSL= ${TOOLBASE}/bin/openssl
++# Target runtime paths are separate from host paths used for extraction.
 +SUBST_VARS.paths= DATADIR PREFIX SSLDIR
 +SUBST_SED.paths= -e 's,@AWK@,/usr/bin/awk,g' \
 +                -e 's,@ECHO@,/bin/echo,g' -e 's,@EXPR@,/bin/expr,g' \
 +                -e 's,@LN@,/bin/ln,g' -e 's,@LS@,/bin/ls,g' \
 +                -e 's,@MKDIR@,/bin/mkdir,g' -e 's,@RM@,/bin/rm,g' \
 +                -e 's,@SH@,/bin/sh,g'
-+.if ${USE_BUILTIN.openssl:U:tl} == "yes"
++.  if ${USE_BUILTIN.openssl:U:tl} == "yes"
 +SUBST_SED.paths+= -e 's,@OPENSSL@,/usr/bin/openssl,g'
-+.else
++.  else
++DEPENDS+= openssl>=3.6.5:../../security/openssl
 +SUBST_SED.paths+= -e 's,@OPENSSL@,${PREFIX}/bin/openssl,g'
-+.endif
-+_CERT_BUILD_ENV= ${SETENV} AWK=${AWK:Q} OPENSSL=${TOOLS_PATH.openssl:Q}
++.  endif
++_CERT_BUILD_ENV= ${SETENV} AWK=${AWK:Q} OPENSSL=${_CERT_HOST_OPENSSL:Q}
 +.endif
 +
  INSTALLATION_DIRS=	sbin ${DATADIR} share/doc/${PKGBASE}
  
  do-extract:
-@@ -58,7 +78,7 @@
+@@ -58,7 +88,7 @@
  do-build:
  	${MKDIR} ${WRKSRC}/certs
  	cd ${WRKSRC}/certs && \
