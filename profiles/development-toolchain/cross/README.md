@@ -239,6 +239,10 @@ selected target, including its GCC16 CRT and `libgcc` files under
 `usr/pkg/gcc16`. It selects these startup objects and libraries explicitly.
 It checks cross links only; it does not execute target code.
 
+The amd64 check passes on macOS arm64 with GCC 16.2.0, patched Ports
+Binutils 2.47 and a source-built EmberBSD 11.0 sysroot. Both indirect cases
+link without warnings. The direct `gets` reference still fails with a link warning.
+
 ## Kernel frontends without a sysroot
 
 Use the same prepared pkgsrc export, pinned GCC archive, fork-built host
