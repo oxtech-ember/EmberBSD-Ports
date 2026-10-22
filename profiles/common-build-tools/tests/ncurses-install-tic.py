@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shlex
 from pathlib import Path
 import subprocess
@@ -26,6 +27,8 @@ def main():
     for name in ('before', 'after', 'native_prefix', 'new_work'):
         cli.add_argument(name, type=Path)
     cli.add_argument('--shell', default='/bin/sh')
+    cli.add_argument('--tic-provider', type=Path)
+    cli.add_argument('--target-cfg', type=Path, required=True)
     cli.add_argument('--target-config', type=Path, required=True)
     cli.add_argument('--target-prefix', default='/usr/pkg')
     cli.add_argument('--target-metadata-dir', type=Path, required=True)
@@ -42,13 +45,22 @@ def main():
     producer_paths = metadata_producer_paths(args.producer_path, native, args.target_prefix)
     host_prefix = None if native == Path(args.target_prefix) else str(native)
     pc_files = [metadata / (name + '.pc') for name in ('ncurses', 'ncurses++', 'gnuform', 'gnumenu', 'gnupanel')]
-    tic, infocmp = native / 'bin/tic', native / 'bin/infocmp'
+    tic = (args.tic_provider or native / 'bin/tic').resolve(strict=True)
+    infocmp = native / 'bin/infocmp'
+    cfg = args.target_cfg.resolve(strict=True)
+    definitions = re.findall(r'^#define MIXEDCASE_FILENAMES[ \t]+(.*)$', cfg.read_text(), re.M)
+    if len(definitions) > 1 or (definitions and definitions[0] not in ('0', '1')):
+        raise ValueError('Use the actual configured target header with a Boolean filename layout.')
+    target_leaf = 's' if definitions == ['1'] else '73'
     old = ': "${tic_path:=tic}"'
     new = ': "${tic_path:=' + str(tic) + '}"'
     original, repaired = before.read_text(), after.read_text()
+    path_control = original.count(old) == 1
+    if not path_control:
+        old = ': "${tic_path:=' + str(native / 'bin/tic') + '}"'
     if original.count(old) != 1 or original.replace(old, new) != repaired:
         raise ValueError('Require actual before/after scripts with only the tic selection changed.')
-    inputs = {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in (before, after, target, tic, infocmp, native / 'bin/ncurses6-config', *pc_files)}
+    inputs = {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in (before, after, target, cfg, tic, infocmp, native / 'bin/ncurses6-config', *pc_files)}
     work.mkdir(mode=0o700)
     (work / 'tmp').mkdir()
     (work / 'bin').mkdir()
@@ -85,15 +97,26 @@ def main():
                    BINDIR=str(prefix / 'bin'), TICDIR=str(prefix / 'share/terminfo'),
                    tic_source=str(terms))
         result = run(label, [args.shell, script], env)
-        if not expected:
+        if not expected and path_control:
             if result.returncode == 0 or not marker.exists():
                 raise ValueError('The original install script did not expose the PATH tool selection.')
             marker.unlink()
+        elif not expected:
+            if result.returncode or marker.exists():
+                raise ValueError('The baseline script failed to use its absolute native tic.')
         elif result.returncode or marker.exists() or str(tic).encode() not in result.stdout:
             raise ValueError('The repaired script did not use the selected native tic.')
-    dump = run('roundtrip', [infocmp, '-x', '-I', '-A', work / 'after/share/terminfo', 'scrt'])
-    if dump.returncode or terminal(dump.stdout) != terminal(source.stdout):
-        raise ValueError('Native terminfo compile/readback changed the real terminal data.')
+    compiled = work / 'after/share/terminfo' / target_leaf / 'scrt'
+    other_leaf = '73' if target_leaf == 's' else 's'
+    if not compiled.is_file() or (work / 'after/share/terminfo' / other_leaf / 'scrt').exists():
+        raise ValueError('The compiled database layout does not match the actual target configuration.')
+    # Upstream quickdump decodes these exact bytes without a host-layout lookup.
+    # A rejected quickdump can fall back to another database. Require its marker.
+    dump = run('roundtrip', [infocmp, '-x', '-I', 'scrt'],
+               dict(environment, TERMINFO='hex:' + compiled.read_bytes().hex()))
+    if (dump.returncode or not dump.stdout.startswith(b'#\tReconstructed via infocmp from file: $TERMINFO\n') or
+            terminal(dump.stdout) != terminal(source.stdout)):
+        raise ValueError('Native quickdump decode changed the exact compiled terminal data.')
     text = target.read_text()
     if not text.startswith('#!/bin/sh\n') or (host_prefix and host_prefix in text) or '@SHELL@' in text:
         raise ValueError('The target helper retains a build-host interpreter.')
@@ -127,8 +150,9 @@ def main():
     if any(hashlib.sha256(Path(p).read_bytes()).hexdigest() != digest for p, digest in inputs.items()):
         raise ValueError('Selected input changed during the test.')
     (work / 'result.json').write_text(json.dumps(dict(status='pass', inputs_sha256=inputs,
-        scope='Actual configured install scripts, hostile PATH control, real native scrt compile/readback, target-helper POSIX shell CLI and consumer flags, and five real pkg-config files without selected producer paths. No target execution.'), indent=2) + '\n')
-    print('PASS: native tic selection, real terminfo roundtrip and clean target consumer metadata')
+        compiled_entry_sha256=hashlib.sha256(compiled.read_bytes()).hexdigest(), target_leaf=target_leaf,
+        scope='Actual configured install scripts, hostile PATH or absolute-provider baseline, real scrt compilation with the target filename layout, exact-entry native quickdump decode, target-helper POSIX shell CLI and consumer flags, and five real pkg-config files without selected producer paths. No target execution or memory-safety acceptance.'), indent=2) + '\n')
+    print('PASS: native tic selection, target terminfo layout, exact-entry roundtrip and clean consumer metadata')
 
 
 if __name__ == '__main__':

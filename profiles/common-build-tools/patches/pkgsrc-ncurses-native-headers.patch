@@ -1,6 +1,7 @@
 Origin: EmberBSD (AI-assisted). Configure build-machine generator headers separately.
 Use normal native pkgsrc compiler policy and a clean environment.
 Target configure answers and library headers remain separate.
+Use a private native tic with the actual target database layout.
 
 --- a/devel/ncurses/Makefile
 +++ b/devel/ncurses/Makefile
@@ -8,11 +9,38 @@ Target configure answers and library headers remain separate.
  # $NetBSD: Makefile,v 1.124 2026/01/20 10:07:04 wiz Exp $
  
  DISTNAME=	ncurses-6.6
-+PKGREVISION=	2
++PKGREVISION=	3
  CATEGORIES=	devel
  MASTER_SITES=	${MASTER_SITE_GNU:=ncurses/}
  
-@@ -69,6 +70,43 @@
+@@ -64,11 +65,83 @@
+ 
+ .include "../../mk/bsd.prefs.mk"
+ 
++# This private native role uses the configured target's database layout.
++# Ordinary native builds retain their platform defaults.
++.if defined(EMBERBSD_NCURSES_TIC_LAYOUT)
++.if ${USE_CROSS_COMPILE:Uno:tl} != "no"
++PKG_FAIL_REASON+= "The private install tic must use a native build"
++.elif ${EMBERBSD_NCURSES_TIC_LAYOUT} != "character" && ${EMBERBSD_NCURSES_TIC_LAYOUT} != "hex"
++PKG_FAIL_REASON+= "The private install tic layout must be character or hex"
++.else
++CONFIGURE_ARGS:= ${CONFIGURE_ARGS:N--enable-mixed-case*:N--disable-mixed-case*}
++CONFIGURE_ARGS.${OPSYS}:= ${CONFIGURE_ARGS.${OPSYS}:N--enable-mixed-case*:N--disable-mixed-case*}
++.if ${EMBERBSD_NCURSES_TIC_LAYOUT} == "character"
++CONFIGURE_ARGS+= --enable-mixed-case
++.else
++CONFIGURE_ARGS+= --disable-mixed-case
++.endif
++.PHONY: emberbsd-build-install-tic
++emberbsd-build-install-tic: configure
++	${RUN}cd ${WRKSRC:Q}/include && ${BUILD_MAKE_CMD} all
++	${RUN}cd ${WRKSRC:Q}/progs && ${BUILD_MAKE_CMD} tic
++.endif
++.endif
++
+ .if ${USE_CROSS_COMPILE:U:tl} == yes
+ TOOL_DEPENDS+=		ncurses-[0-9]*:../../devel/ncurses
  CONFIGURE_ENV+=		BUILD_CC=${NATIVE_CC:Q}
  CONFIGURE_ENV+=		ac_cv_path_TIC_PATH=${TOOLBASE:Q}/bin/tic
 +CONFIGURE_ENV+=		TIC=${TOOLBASE:Q}/bin/tic
@@ -31,6 +59,19 @@ Target configure answers and library headers remain separate.
 +_EMBER_NCURSES_HOST_OBJ= ${WRKDIR}/native-config
 +_EMBER_NCURSES_HOST_SRC= ${_EMBER_NCURSES_HOST_OBJ}/devel/ncurses/work/${DISTNAME}
 +_EMBER_NCURSES_HOST_MAKE= ${_EMBER_NCURSES_HOST_SRC}/ncurses/Makefile
++
++_EMBER_NCURSES_TIC_OBJ= ${WRKDIR}/native-tic
++_EMBER_NCURSES_TIC_SRC= ${_EMBER_NCURSES_TIC_OBJ}/devel/ncurses/work/${DISTNAME}
++_EMBER_NCURSES_TIC= ${_EMBER_NCURSES_TIC_SRC}/progs/tic
++_EMBER_NCURSES_TIC_ENV= PATH=${TOOLBASE:Q}/bin:${TOOLBASE:Q}/sbin:${_PATH_ORIG:Q}
++_EMBER_NCURSES_TIC_ENV+= HOME=${WRKDIR:Q}/.home LC_ALL=C CONFIG_SITE=/dev/null
++_EMBER_NCURSES_TIC_ENV+= TMPDIR=${_EMBER_NCURSES_TIC_OBJ:Q}/tmp
++_EMBER_NCURSES_TIC_ENV+= TMP=${_EMBER_NCURSES_TIC_OBJ:Q}/tmp TEMP=${_EMBER_NCURSES_TIC_OBJ:Q}/tmp
++
++# Invoke this strict class only after the private provider passes its probe.
++SUBST_CLASSES+= install-tic
++SUBST_FILES.install-tic= misc/run_tic.sh
++SUBST_SED.install-tic= -e 's|^: "$${tic_path:=${TOOLBASE}/bin/tic}"$$|: "$${tic_path:=${_EMBER_NCURSES_TIC}}"|'
 +CONFIGURE_ENV+= BUILD_CPPFLAGS="-DNCURSES_BUILD_HEADERS -I${_EMBER_NCURSES_HOST_SRC}/include $$(${SED} -n 's/^CPPFLAGS[[:blank:]]*=[[:blank:]]*//p' ${_EMBER_NCURSES_HOST_MAKE})"
 +CONFIGURE_ENV+= BUILD_CFLAGS="$$(${SED} -n 's/^CFLAGS[[:blank:]]*=[[:blank:]]*//p' ${_EMBER_NCURSES_HOST_MAKE})"
 +CONFIGURE_ENV+= BUILD_LDFLAGS="$$(${SED} -n 's/^LDFLAGS[[:blank:]]*=[[:blank:]]*//p' ${_EMBER_NCURSES_HOST_MAKE})"
@@ -56,13 +97,59 @@ Target configure answers and library headers remain separate.
  .endif
  
  # If there's no native tbl(1) then the tools infrastructure would pull in
+@@ -104,6 +177,42 @@
+ CHECK_WRKREF_SKIP+=	man/man?/*
+ 
+ post-configure:
++.if ${USE_CROSS_COMPILE:U:tl} == yes
++	${RUN}${MKDIR} ${_EMBER_NCURSES_TIC_OBJ:Q}/tmp
++	${RUN}${PKGSRC_SETENV} ${MAKE_ENV} ${MAKE_PROGRAM} -C ${WRKSRC:Q}/include ncurses_def.h
++	${RUN}${PKGSRC_SETENV} ${MAKE_ENV} ${CPP} -dM -I${WRKSRC:Q}/include -include ${WRKSRC:Q}/include/ncurses_cfg.h - < /dev/null > ${WRKDIR:Q}/tic-layout.macros
++	${RUN}set -eu; \
++	layout=$$(${AWK} 'BEGIN { layout="hex" } $$2 == "MIXEDCASE_FILENAMES" { if (NF != 3 || ($$3 != "0" && $$3 != "1")) exit 1; layout=($$3 == "1" ? "character" : "hex"); count++ } END { if (count != 1) exit 1; print layout }' ${WRKDIR:Q}/tic-layout.macros); \
++	if test "$$layout" = character; then \
++		: > ${_EMBER_NCURSES_TIC_OBJ:Q}/tmp/case-sensitive-a; \
++		if test -e ${_EMBER_NCURSES_TIC_OBJ:Q}/tmp/case-sensitive-A; then \
++			${ECHO} 'Character terminfo layout requires a case-sensitive build filesystem.' >&2; exit 1; \
++		fi; \
++		${RM} -f ${_EMBER_NCURSES_TIC_OBJ:Q}/tmp/case-sensitive-a; \
++	fi; \
++	cd ${PKGDIR:Q} && ${SETENV} -i ${_EMBER_NCURSES_TIC_ENV} \
++		${MAKE} MAKECONF=${MAKECONF:Q} USE_CROSS_COMPILE=no \
++		WRKOBJDIR=${_EMBER_NCURSES_TIC_OBJ:Q} WRKDIR_BASENAME=work \
++		CC=${NATIVE_CC:Q} CXX=${NATIVE_CXX:Q} MAKE_JOBS=${MAKE_JOBS:U1} \
++		DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency \
++		EMBERBSD_NCURSES_TIC_LAYOUT=$$layout configure emberbsd-build-install-tic
++	${RUN}set -eu; \
++	case $$(${_EMBER_NCURSES_TIC:Q} -V) in \
++		"${DISTNAME:S/ncurses-/ncurses /}."*) ;; \
++		*) ${ECHO} 'The private tic version does not match the target source.' >&2; exit 1 ;; \
++	esac; \
++	${PRINTF} '%s\n' 'emberbsd-tic-layout|EmberBSD-tic-layout|EmberBSD install tic layout probe,' ' cols#80, lines#24,' > ${_EMBER_NCURSES_TIC_OBJ:Q}/layout.src; \
++	${_EMBER_NCURSES_TIC:Q} -x -o ${_EMBER_NCURSES_TIC_OBJ:Q}/layout-output ${_EMBER_NCURSES_TIC_OBJ:Q}/layout.src; \
++	if ${GREP} -q '^#define MIXEDCASE_FILENAMES 1$$' ${WRKDIR:Q}/tic-layout.macros; then \
++		lower=e; upper=E; other=65; \
++	else lower=65; upper=45; other=e; fi; \
++	test -f ${_EMBER_NCURSES_TIC_OBJ:Q}/layout-output/$$lower/emberbsd-tic-layout; \
++	test -f ${_EMBER_NCURSES_TIC_OBJ:Q}/layout-output/$$upper/EmberBSD-tic-layout; \
++	test ! -e ${_EMBER_NCURSES_TIC_OBJ:Q}/layout-output/$$other/emberbsd-tic-layout; \
++	${CMP} -s ${_EMBER_NCURSES_TIC_OBJ:Q}/layout-output/$$lower/emberbsd-tic-layout ${_EMBER_NCURSES_TIC_OBJ:Q}/layout-output/$$upper/EmberBSD-tic-layout; \
++	test "$$(${GREP} -Fxc ': "$${tic_path:=${TOOLBASE}/bin/tic}"' ${WRKSRC:Q}/misc/run_tic.sh)" = 1
++	${RUN}cd ${PKGDIR:Q} && ${MAKE} MAKECONF=${MAKECONF:Q} subst-install-tic
++.endif
+ 	cd ${WRKSRC}/man;					\
+ 	for f in *.1m; do					\
+ 		mv -f $${f} `${BASENAME} $${f} .1m`.1; 	\
 --- a/devel/ncurses/distinfo
 +++ b/devel/ncurses/distinfo
-@@ -7,3 +7,4 @@
+@@ -5,5 +5,7 @@
+ Size (ncurses-6.6.tar.gz) = 3791150 bytes
+ SHA1 (patch-misc_run__tic.in) = d8e425c3197451ccda6128f444a8bdf97a909fff
  SHA1 (patch-ncurses_base_lib_initscr.c) = 3f47c8ce9b98a82aa8db6b6da55810727559d30c
- SHA1 (patch-ncurses_tinfo_lib_raw.c) = 1adea51819538433b681c209f9754a18d0e37ebb
- SHA1 (patch-test_demo__new__pair.c) = a80a9f0b296b566c32ccaec549678c8b5aa76c63
 +SHA1 (patch-ncurses_build.priv.h) = 17ae8e7619ec477f3087b6af227da597857213e2
+ SHA1 (patch-ncurses_tinfo_lib_raw.c) = 1adea51819538433b681c209f9754a18d0e37ebb
++SHA1 (patch-ncurses_tinfo_read__entry.c) = 4f479b925072cc6930cfc6277ff62989ce2ce18c
+ SHA1 (patch-test_demo__new__pair.c) = a80a9f0b296b566c32ccaec549678c8b5aa76c63
 --- /dev/null
 +++ b/devel/ncurses/patches/patch-ncurses_build.priv.h
 @@ -0,0 +1,41 @@
@@ -107,3 +194,41 @@ Target configure answers and library headers remain separate.
 + 
 + /* usually in <unistd.h> */
 + #ifndef EXIT_SUCCESS
+--- /dev/null
++++ b/devel/ncurses/patches/patch-ncurses_tinfo_read__entry.c
+@@ -0,0 +1,35 @@
++$NetBSD$
++
++Origin: EmberBSD (AI-assisted), not submitted upstream.
++Promote input bytes to unsigned before numeric left shifts.
++Keep numeric widths, sign extension and sentinel values unchanged.
++
++--- ncurses/tinfo/read_entry.c.orig
+++++ ncurses/tinfo/read_entry.c
++@@ -62,7 +62,7 @@
++ 	Numbers[i] = 0;
++ 	for (j = 0; j < size; ++j) {
++ 	    ch = UChar(*buf++);
++-	    Numbers[i] |= (ch << (8 * j));
+++	    Numbers[i] |= ((unsigned) ch << (8 * j));
++ 	    mask <<= 8;
++ 	}
++ 	if (ch & 0x80) {
++@@ -89,7 +89,7 @@
++ 	Numbers[i] = 0;
++ 	for (j = 0; j < size; ++j) {
++ 	    ch = UChar(*buf++);
++-	    Numbers[i] |= (ch << (8 * j));
+++	    Numbers[i] |= ((unsigned) ch << (8 * j));
++ 	}
++ 	/* "unsigned" and NCURSES_INT2 are the same size - no sign-extension */
++ 	TR(TRACE_DATABASE, ("get Numbers[%d]=%d", i, Numbers[i]));
++@@ -106,7 +106,7 @@
++ 	int value = 0;
++ 	for (j = 0; j < SIZEOF_32BITS; ++j) {
++ 	    ch = UChar(*buf++);
++-	    value |= (ch << (8 * j));
+++	    value |= ((unsigned) ch << (8 * j));
++ 	}
++ 	if (value == -1)
++ 	    Numbers[i] = ABSENT_NUMERIC;
