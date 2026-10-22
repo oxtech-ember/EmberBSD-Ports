@@ -104,13 +104,14 @@ The application package cannot be installed until the target runtime is built.
 
 ## GN target inputs
 
-The three source patches retain the exact Chromium pin above. Apply them after
+The four source patches retain the exact Chromium pin above. Apply them after
 its NetBSD GN adaptations, from the Chromium source root:
 
 ```sh
 patch -p0 -F 0 < /absolute/Ports/probes/electron/patches/gn-pkgconfig-libdir.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-readelf.patch
 patch -p0 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-asmflags.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-bindgen-host-tools.patch
 ```
 
 The pkg-config patch keeps the effective `pkg/lib` value in the common cross
@@ -122,6 +123,10 @@ host toolchains retain their existing `readelf` fallback. It does not enable
 stripping or change the compiler selection. The assembler patch forwards
 `ASFLAGS` and `BUILD_ASFLAGS` to their respective toolchains. Select the target
 sysroot and other assembler flags through `ASFLAGS`. Unset values stay empty.
+The Rust patch restores the pinned `bindgen`, `rustfmt`, and libclang paths
+from `rust_bindgen_root`. It adds EmberBSD parser headers only to a NetBSD
+target toolchain whose OS or CPU differs from the build host. Host actions,
+native NetBSD, and unrelated target platforms do not receive those headers.
 
 Run the regressions with host CPython 3.15 and its standard library. Select an
 SDK API 1 source with `--sdk-source`. Each test checks the API and module origin.
@@ -142,9 +147,17 @@ python3.15 -E -S probes/electron/tests/gn-readelf.py \
   --source /absolute/chromium/src --gn /absolute/host-gn \
   --readelf /absolute/target-readelf --rustc /absolute/host-rustc \
   /absolute/NEW_READELF_WORK
+python3.15 -E -S probes/electron/tests/gn-rust-bindgen.py \
+  --sdk-source /absolute/EmberBSD-SDK \
+  --source /absolute/chromium/src --gn /absolute/host-gn \
+  --bindgen /absolute/chromium/src/third_party/rust-toolchain/bin/bindgen \
+  --rustfmt /absolute/chromium/src/third_party/rust-toolchain/bin/rustfmt \
+  --sysroot /absolute/target-sysroot \
+  --patch /absolute/Ports/probes/electron/patches/gn-rust-bindgen-host-tools.patch \
+  /absolute/NEW_BINDGEN_WORK
 ```
 
-Both tests accept the original or already fixed source. They apply the carried
+The tests accept the original or already fixed source. They apply the carried
 patch in an isolated fixture and preserve source hashes and command receipts.
 The pkg-config test covers sixteen before/after cases. Real pkgconf queries
 resolve target gio/GTK paths; the existing cache case must make no pkgconf
@@ -154,6 +167,14 @@ fallback and rejects a missing cross tool. A real `.S` graph input checks that
 target and host assembler markers stay separate. Unset assembler commands
 remain byte-identical. The selected host Rust compiler supplies only
 its `-V` result for an unrelated production GN version probe.
+
+The bindgen test covers twelve before/after GN metadata cases. It also runs
+the pinned host bindgen and rustfmt on two minimal C headers, with host and
+NetBSD ARM64 parser arguments. It uses the exact libclang directory below the
+pinned Rust toolchain. The smoke headers do not include system headers or
+exercise the full allocator action. The smoke does not project GCC-only
+`--param` or `-B` flags. Its shared library check currently requires a macOS
+host toolchain with `libclang.dylib`.
 
 These tests pass on macOS. The fixture supplies the E12 macOS cross profile
 explicitly; it does not depend on the machine that runs GN. Linux and native
