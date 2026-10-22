@@ -498,7 +498,7 @@ runtime behavior are validated.
   retains a prepared source profile and still needs its navigation acceptance.
 - [Recorded RGB-D mapping](probes/rtabmap/README.md): RTAB-Map 0.23.8 has a
   GCC16 cross package with common OpenCV 5.0.0, PCL 1.15.1nb1, GTSAM 4.3.0
-  and SQLite 3.54.0. The [recorded-map example](https://github.com/oxtech-ember/EmberBSD-Examples/tree/main/robotics/rtabmap-recorded-map)
+  and the common SQLite provider. The [recorded-map example](https://github.com/oxtech-ember/EmberBSD-Examples/tree/main/robotics/rtabmap-recorded-map)
   maps twelve TUM RGB-D frames with supplied recorded poses, closes and reopens
   SQLite storage, and exports 10,859 independently checked colored points.
   Installed EmberBSD AArch64 QEMU checks include fourteen package lifecycles,
@@ -713,10 +713,10 @@ runtime behavior are validated.
   on AArch64/GCC 16.2, with legacy behavior preserved. The complete 27-source
   UMD cross-build and 85 actual no-device API checks also pass on A733.
   Kernel/DMA integration and model execution remain unverified.
-- [SQLite and local document retrieval](probes/sqlite/README.md): SQLite 3.54.0
-  installed C consumers pass FTS5/JSON, transactions, concurrent readers and
-  process-crash/reopen checks. A C application retrieves local documents and
-  validates quotations from the existing llama.cpp CPU server on AArch64.
+- [SQLite and local document retrieval](probes/sqlite/README.md): the common
+  recipe selects SQLite 3.54.1. Earlier 3.54.0 installed consumers passed
+  FTS5/JSON, transactions, concurrent readers and process-crash/reopen checks.
+  Rebuilt 3.54.1 target consumers require separate acceptance.
 - [Native Wayland and VirGL build probe](probes/wayland-utm/README.md): pinned
   current Mesa 26.2.4 source adaptation with DSO-lifetime and numeric
   regressions, paired libdrm, wlroots and labwc recipes. Mesa26 headless

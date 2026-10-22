@@ -1,5 +1,5 @@
 RTAB-Map is a graph-based mapping and localization library from IntRoLab.
 This headless CPU profile uses shared OpenCV 5, Eigen 5, PCL 1.15.1,
-GTSAM 4.3.0 and SQLite 3.54.0 with GCC 16.2.0.
+GTSAM 4.3.0 and SQLite 3.54.1 with GCC 16.2.0.
 The bundled utilite component is LGPL-3.0-or-later; original notices remain.
 Qt, ROS, live devices and optional noncommercial/GPL algorithms are disabled.

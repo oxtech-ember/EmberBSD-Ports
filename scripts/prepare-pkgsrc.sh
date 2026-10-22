@@ -106,7 +106,7 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     [ "$tcl_pin" = '536c45543f64d6eb11832d97ba3494aacff046fbc5040273bd55258d0e448ff1:https://downloads.sourceforge.net/project/tcl/Tcl/9.1.0/tcl9.1.0-src.tar.gz' ] || {
         echo 'Invalid current Tcl source pin.' >&2; exit 2;
     }
-    for recipe in lang/tcl lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson devel/flex lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib archivers/libzip devel/abseil devel/protobuf textproc/py-markupsafe textproc/py-yaml textproc/groff net/mDNSResponder textproc/icu; do
+    for recipe in lang/tcl lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson devel/flex lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib archivers/libzip databases/sqlite3 databases/sqlite3-diff databases/sqlite3-docs databases/sqlite3-tcl devel/lemon devel/abseil devel/protobuf textproc/py-markupsafe textproc/py-yaml textproc/groff net/mDNSResponder textproc/icu; do
         source=$root/profiles/common-build-tools/recipes/$recipe
         [ -f "$source/Makefile" ] && [ -f "$source/PLIST" ] && \
             [ -f "$source/distinfo" ] || {
@@ -119,7 +119,7 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
         fi
         required=$(awk '/^SHA1 \(patch-/ { gsub(/[()]/, "", $2); print $2 }' "$source/distinfo")
         case "$recipe" in
-            lang/rust-bin|lang/rust-std-x86_64-netbsd|devel/lld|devel/py-llvm-lit|devel/py-mako|textproc/py-markupsafe|textproc/py-yaml) ;;
+            databases/sqlite3-diff|databases/sqlite3-docs|databases/sqlite3-tcl|devel/lemon|lang/rust-bin|lang/rust-std-x86_64-netbsd|devel/lld|devel/py-llvm-lit|devel/py-mako|textproc/py-markupsafe|textproc/py-yaml) ;;
             *) [ -n "$required" ] || { echo "No patch checksums: $recipe" >&2; exit 2; } ;;
         esac
         for name in $required; do
@@ -693,7 +693,7 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     cp -R "$runtime_recipe" "$destination/lang/gcc16-runtime"
 fi
 if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ] || [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
-    for recipe in lang/tcl lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson devel/flex lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib archivers/libzip devel/abseil devel/protobuf textproc/py-markupsafe textproc/py-yaml textproc/groff net/mDNSResponder textproc/icu; do
+    for recipe in lang/tcl lang/python315 lang/perl5 lang/rust-bin lang/rust-std-aarch64-netbsd lang/rust-std-x86_64-netbsd devel/meson devel/flex lang/llvm lang/clang devel/lld devel/py-llvm-lit devel/binutils devel/py-mako devel/zlib archivers/libzip databases/sqlite3 databases/sqlite3-diff databases/sqlite3-docs databases/sqlite3-tcl devel/lemon devel/abseil devel/protobuf textproc/py-markupsafe textproc/py-yaml textproc/groff net/mDNSResponder textproc/icu; do
         source=$root/profiles/common-build-tools/recipes/$recipe
         # Replace only recipe paths inside this newly created export.
         rm -rf "$destination/$recipe"

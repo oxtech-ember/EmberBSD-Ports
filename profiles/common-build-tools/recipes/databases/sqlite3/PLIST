@@ -1,10 +1,11 @@
+@comment $NetBSD: PLIST,v 1.8 2025/04/04 14:05:07 jperkin Exp $
 bin/sqlite3
 include/sqlite3.h
 include/sqlite3ext.h
 lib/libsqlite3.a
 lib/libsqlite3.so
 lib/libsqlite3.so.0
-lib/libsqlite3.so.3.54.0
+lib/libsqlite3.so.${PKGVERSION}
 lib/pkgconfig/sqlite3.pc
 man/man1/sqlite3.1
 share/licenses/sqlite3/SOURCE

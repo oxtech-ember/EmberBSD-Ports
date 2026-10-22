@@ -38,6 +38,6 @@ post-install:
 .include "../../local-robotics/opencv5/buildlink3.mk"
 .include "../../local-robotics/pcl/buildlink3.mk"
 .include "../../local-robotics/gtsam/buildlink3.mk"
-.include "../../local-robotics/sqlite3/buildlink3.mk"
+.include "../../databases/sqlite3/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

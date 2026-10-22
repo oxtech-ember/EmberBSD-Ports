@@ -11,7 +11,7 @@ find_package(PCL 1.15.1 EXACT REQUIRED CONFIG PATHS "${PCL_PREFIX}/share/pcl-1.1
 find_package(GTSAM 4.3.0 EXACT REQUIRED CONFIG PATHS "${GTSAM_PREFIX}/lib/cmake/GTSAM" NO_DEFAULT_PATH)
 set(SQLite3_INCLUDE_DIR "${SQLITE_PREFIX}/include")
 set(SQLite3_LIBRARY "${SQLITE_PREFIX}/lib/libsqlite3.so")
-find_package(SQLite3 3.54.0 EXACT REQUIRED)
+find_package(SQLite3 3.54.1 REQUIRED)
 find_package(RTABMap 0.23.8 EXACT REQUIRED COMPONENTS core utilite
     PATHS "${PROBE_PREFIX}/lib/rtabmap-0.23" NO_DEFAULT_PATH)
 find_package(lz4 1.10.0 EXACT REQUIRED CONFIG)

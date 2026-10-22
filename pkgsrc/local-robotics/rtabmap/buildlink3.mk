@@ -8,6 +8,6 @@ BUILDLINK_PKGSRCDIR.rtabmap?= ../../local-robotics/rtabmap
 .include "../../local-robotics/opencv5/buildlink3.mk"
 .include "../../local-robotics/pcl/buildlink3.mk"
 .include "../../local-robotics/gtsam/buildlink3.mk"
-.include "../../local-robotics/sqlite3/buildlink3.mk"
+.include "../../databases/sqlite3/buildlink3.mk"
 .endif
 BUILDLINK_TREE+= -rtabmap

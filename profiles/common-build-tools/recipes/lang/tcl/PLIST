@@ -43,8 +43,8 @@ lib/itcl${ITCL_VERSION}/pkgIndex.tcl
 lib/libtcl${BASEVER}.so
 lib/libtclstub.a
 lib/pkgconfig/tcl.pc
-lib/sqlite${SQLITE3_VERSION}/libtcl9sqlite${SQLITE3_VERSION}.so
-lib/sqlite${SQLITE3_VERSION}/pkgIndex.tcl
+lib/sqlite${TCL_SQLITE3_VERSION}/libtcl9sqlite${TCL_SQLITE3_VERSION}.so
+lib/sqlite${TCL_SQLITE3_VERSION}/pkgIndex.tcl
 lib/tcl${BASEVER}/auto.tcl
 lib/tcl${BASEVER}/autoexecok.tcl
 lib/tcl${BASEVER}/clock.tcl

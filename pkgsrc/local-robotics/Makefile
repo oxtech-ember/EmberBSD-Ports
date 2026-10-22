@@ -14,7 +14,6 @@ SUBDIR+=	osqp
 SUBDIR+=	pcl
 SUBDIR+=	ruckig
 SUBDIR+=	rtabmap
-SUBDIR+=	sqlite3
 SUBDIR+=	zenoh-pico
 
 .include "../mk/misc/category.mk"

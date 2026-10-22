@@ -10,6 +10,6 @@ if(NOT result STREQUAL "1" OR NOT error MATCHES "no such table")
 endif()
 execute_process(COMMAND "${CLI}" :memory: "SELECT sqlite_version();"
   RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error)
-if(NOT result STREQUAL "0" OR NOT output STREQUAL "3.54.0\n")
+if(NOT result STREQUAL "0" OR NOT output STREQUAL "3.54.1\n")
   message(FATAL_ERROR "Unexpected runtime SQLite version: ${result}: ${output}")
 endif()

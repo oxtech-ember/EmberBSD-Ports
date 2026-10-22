@@ -45,18 +45,6 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  PTHREAD_OPTS=		optional
  
  .include "../../mk/pthread.buildlink3.mk"
---- a/databases/sqlite3/Makefile
-+++ b/databases/sqlite3/Makefile
-@@ -24,6 +24,9 @@
- .include "../../mk/bsd.prefs.mk"
- 
- .if ${USE_CROSS_COMPILE:tl} == "yes"
-+# Origin: EmberBSD (AI-assisted), autosetup needs explicit target identity.
-+CONFIGURE_ARGS+=	--build=${NATIVE_MACHINE_GNU_PLATFORM:Q}
-+CONFIGURE_ARGS+=	--host=${MACHINE_GNU_PLATFORM:S/--/-unknown-/:Q}
- CONFIGURE_ENV+=		CC_FOR_BUILD=${TOOLS_CMD.native-cc:Q}
- TOOLS_CREATE+=		native-cc
- TOOLS_SCRIPT.native-cc=	exec ${NATIVE_CC} "$$@"
 --- a/devel/ninja-build/Makefile
 +++ b/devel/ninja-build/Makefile
 @@ -53,8 +53,21 @@

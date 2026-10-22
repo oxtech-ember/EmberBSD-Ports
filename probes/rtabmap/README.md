@@ -2,7 +2,7 @@
 
 The shared, headless **RTAB-Map 0.23.8** profile uses GCC 16.2.0 and the common
 Eigen 5.0.1, Boost 1.92.0, OpenCV 5.0.0, PCL 1.15.1nb1, GTSAM 4.3.0,
-SQLite 3.54.0, PNG 1.6.59 and libjpeg-turbo 3.2.0nb2 providers.
+SQLite 3.54.1, PNG 1.6.59 and libjpeg-turbo 3.2.0nb2 providers.
 The [canonical package](../../pkgsrc/local-robotics/rtabmap) installs the core
 and utilite shared libraries, headers, relocatable CMake exports and notices.
 See [provenance](PROVENANCE.md), [validation](VALIDATION.md),
@@ -73,3 +73,6 @@ does use Python for code generation. The bundled utilite remains LGPL-3.0-or-lat
 the package is not an all-BSD stack. Native memory analysis and target QEMU
 execution are separate checks. Physical sensors, calibration, autonomous
 navigation, long-running map growth and real-time performance remain untested.
+
+The common SQLite migration requires a fresh RTABMap build and installed
+consumer check. Existing validation records apply to their recorded inputs.

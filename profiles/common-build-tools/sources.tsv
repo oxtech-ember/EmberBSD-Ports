@@ -33,3 +33,6 @@ libarchive-3.8.10.tar.xz	56cad765459d5ee25a3b761f90c47d99379d28297fbfb72d908880d
 pkgsrc-libarchive-3.8.10-import.patch	6fb33f0e6d48672efb8e3c33bf5e7528561929daa9286da8864a100d461a26d1	https://github.com/NetBSD/pkgsrc/commit/f09692cc2727cf2defd37e5331aab77679b5d1e7.patch
 pkgsrc-libarchive-3.8.10.patch	91ea356e46b95efcdc368bad07f0febe277c9b7391ad93169c89ddfe9eb24291	https://github.com/NetBSD/pkgsrc/commit/fa7406b5b9db17afe08b0ab675ee45f3121b365e.patch
 pkgsrc-libarchive-bmake.patch	a1d68e4f0ca19c7f744512cf846efc40853a192535700a8d339955bcb91ee598	https://github.com/NetBSD/pkgsrc/commit/318cf4509f47ad80519d1905ac7673a3c516bb31.patch
+sqlite-autoconf-3540100.tar.gz	926ef8d3eab93fbf6e06011901273eec076b25594a4e1cdadd50c987f4f6d64e	https://sqlite.org/2026/sqlite-autoconf-3540100.tar.gz
+sqlite-src-3540100.zip	387e7f6cad4797b17848c07d453dc6606917bb356a6cfe5a3abafd38c240c71b	https://sqlite.org/2026/sqlite-src-3540100.zip
+sqlite-doc-3540100.zip	e9f634ac28a4c7b48f5c389e4b08c039654ec1487512092b330ccfcfdc0816e0	https://sqlite.org/2026/sqlite-doc-3540100.zip

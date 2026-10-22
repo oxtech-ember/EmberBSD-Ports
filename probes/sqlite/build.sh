@@ -25,8 +25,8 @@ jobs=${JOBS:-1}
 case "$jobs" in ''|*[!0-9]*) jobs=0;; esac
 [ "$jobs" -gt 0 ] 2>/dev/null || { echo 'JOBS must be positive.' >&2; exit 2; }
 probe=$(CDPATH= cd "$(dirname "$0")" && pwd -P)
-recipe=$probe/../../pkgsrc/local-robotics/sqlite3
-expected=$(awk '$1=="sqlite-autoconf-3540000.tar.gz" {print $2}' "$probe/sources.tsv")
+recipe=$probe/../../profiles/common-build-tools/recipes/databases/sqlite3
+expected=$(awk '$1=="sqlite-autoconf-3540100.tar.gz" {print $2}' "$probe/sources.tsv")
 [ "${#expected}" = 64 ]
 printf '%s  %s\n' "$expected" "$archive" | sha256sum -c -
 build_cc=$(command -v "${BUILD_CC:-gcc}")
@@ -56,7 +56,9 @@ for tool in make tar cmake ninja; do command -v "$tool" >/dev/null; done
 unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH
 mkdir -p "$out/source" "$out/build" "$out/logs"
 tar -xf "$archive" --strip-components=1 -C "$out/source"
+(cd "$out/source" && patch -f -p0 -F 0 -i "$recipe/patches/patch-autosetup_proj.tcl")
 feature_flags=$(awk '/^SQLITE_CONFIGURE_ARGS=/ {sub(/^[^=]*=[ \t]*/, ""); print}' "$recipe/features.mk")
+feature_flags="$feature_flags $(awk '/^SQLITE_ELF_CONFIGURE_ARGS=/ {sub(/^[^=]*=[ \t]*/, ""); print}' "$recipe/features.mk")"
 feature_defines=$(awk '/^SQLITE_CPPFLAGS=/ {sub(/^[^=]*=[ \t]*/, ""); print}' "$recipe/features.mk")
 [ -n "$feature_flags" ] && [ -n "$feature_defines" ]
 {
@@ -67,7 +69,7 @@ feature_defines=$(awk '/^SQLITE_CPPFLAGS=/ {sub(/^[^=]*=[ \t]*/, ""); print}' "$
     make --version
     cmake --version
     printf 'mode=%s\nprefix=%s\nsysroot=%s\njobs=%s\nfeatures=%s\ndefines=%s\n' "$mode" "$prefix" "$sysroot" "$jobs" "$feature_flags" "$feature_defines"
-    sha256sum "$archive" "$0" "$recipe/features.mk" "$recipe/files/SOURCE"
+    sha256sum "$archive" "$0" "$recipe/features.mk" "$recipe/files/SOURCE" "$recipe/patches/patch-autosetup_proj.tcl"
 } > "$out/inputs.txt"
 run() {
     name=$1; shift
@@ -92,10 +94,10 @@ run licenses sh "$recipe/files/install-licenses.sh" "$out/source" "$out/stage$pr
 printf '%s\n' "$prefix" > "$out/prefix.txt"
 (cd "$out/stage$prefix" && find . \( -type f -o -type l \) | sed 's|^./||' | LC_ALL=C sort) > "$out/PLIST"
 if [ -f "$recipe/PLIST" ]; then
-    sed '/^@comment/d;/^$/d' "$recipe/PLIST" | LC_ALL=C sort > "$out/expected-PLIST"
+    sed '/^@comment/d;/^$/d;s/${PKGVERSION}/3.54.1/g' "$recipe/PLIST" | LC_ALL=C sort > "$out/expected-PLIST"
     cmp "$out/PLIST" "$out/expected-PLIST"
 fi
-"$readelf" -h -d "$out/stage$prefix/lib/libsqlite3.so.3.54.0" "$out/stage$prefix/bin/sqlite3" > "$out/elf.txt"
+"$readelf" -h -d "$out/stage$prefix/lib/libsqlite3.so.3.54.1" "$out/stage$prefix/bin/sqlite3" > "$out/elf.txt"
 grep 'NEEDED.*\[libsqlite3.so.0\]' "$out/elf.txt" >/dev/null
 [ "$(grep -E '(RPATH|RUNPATH)' "$out/elf.txt" | grep -F -c "$prefix/lib")" = 2 ] || {
     echo 'The shared library and CLI must retain the selected runtime prefix.' >&2; exit 1;
@@ -108,4 +110,4 @@ if [ "$mode" = --cross ]; then
         fi
     done
 fi
-echo "Staged SQLite 3.54.0: $out/stage$prefix"
+echo "Staged SQLite 3.54.1: $out/stage$prefix"

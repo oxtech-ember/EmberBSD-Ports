@@ -1,7 +1,7 @@
 # Shared SQLite and installed consumers
 
-The common SQLite target is **3.54.0**, released on 2026-10-09. The
-[package recipe](../../pkgsrc/local-robotics/sqlite3) replaces the older pkgsrc
+The common SQLite target is **3.54.1**, released on 2026-10-16. The
+[package recipe](../../profiles/common-build-tools/recipes/databases/sqlite3) is exported as `databases/sqlite3` and replaces the older pkgsrc
 SQLite provider at the same prefix. It introduces no parallel SQLite ABI.
 [Provenance](PROVENANCE.md) records the original archive and official checksum.
 The [validation boundary](VALIDATION.md) separates completed controls from limits.
@@ -9,7 +9,9 @@ The [validation boundary](VALIDATION.md) separates completed controls from limit
 The profile retains serialized thread safety, FTS3/4/5, built-in JSON,
 RTree, Geopoly, column metadata, DBSTAT and math functions. It installs shared
 and static libraries, headers, pkg-config metadata and the CLI. The CLI links
-to the selected shared library. Interactive readline support is excluded.
+to the selected shared library. The package retains pkgsrc readline selection
+and the optional ICU dependency. Session, statement-vtab and unlock-notify
+interfaces remain enabled for existing pkgsrc consumers.
 
 ## Cross-build with GCC16
 
@@ -18,7 +20,7 @@ common GCC 16.2.0 compiler. Use new output directories:
 
 ```sh
 sh probes/sqlite/build.sh --cross /absolute/gcc16-prefix /absolute/sysroot \
-    /absolute/sqlite-autoconf-3540000.tar.gz /absolute/new-sqlite-build
+    /absolute/sqlite-autoconf-3540100.tar.gz /absolute/new-sqlite-build
 sh probes/sqlite/check.sh --cross /absolute/gcc16-prefix /absolute/sysroot \
     /absolute/new-sqlite-build/stage/usr/pkg /absolute/new-sqlite-consumer
 ```
@@ -45,7 +47,7 @@ can also stage the same source with a native GCC16 compiler for memory checks:
 
 ```sh
 sh probes/sqlite/build.sh --native /absolute/private-prefix \
-    /absolute/sqlite-autoconf-3540000.tar.gz /absolute/new-native-build
+    /absolute/sqlite-autoconf-3540100.tar.gz /absolute/new-native-build
 mkdir -p /absolute/private-prefix
 ruby probes/pcl/cross/import-stage.rb \
     /absolute/new-native-build/stage/absolute/private-prefix /absolute/private-prefix
@@ -89,5 +91,5 @@ Run the portable helper guards without compiling another library:
 
 ```sh
 sh probes/sqlite/tests/input-guards.sh /absolute/gcc16-prefix /absolute/sysroot \
-    /absolute/sqlite-autoconf-3540000.tar.gz /absolute/new-guard-results
+    /absolute/sqlite-autoconf-3540100.tar.gz /absolute/new-guard-results
 ```

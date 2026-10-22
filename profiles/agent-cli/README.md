@@ -10,7 +10,7 @@ packages or static binaries on the board.
 | Tool | Version | Path |
 |---|---|---|
 | jq | 1.8.2nb2 | pkgsrc devel/jq |
-| SQLite CLI | 3.54.0 | local-robotics/sqlite3 (shared provider) |
+| SQLite CLI | 3.54.1 | databases/sqlite3 (common-build-tools) |
 | rsync | 3.5.0 | pkgsrc net/rsync |
 | libarchive (bsdtar) | 3.8.9 | pkgsrc archivers/libarchive |
 | git | 2.55.0nb1 | pkgsrc devel/git-base |

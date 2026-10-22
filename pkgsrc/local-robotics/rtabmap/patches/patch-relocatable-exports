@@ -36,7 +36,7 @@ Origin: EmberBSD (AI-assisted), not submitted upstream.
  
  # Mandatory dependencies
 -find_dependency(OpenCV @CONF_OPENCV_VERSION_MAJOR@ COMPONENTS @CONF_OPENCV_COMPONENTS@ OPTIONAL_COMPONENTS @CONF_OPENCV_OPTIONAL_COMPONENTS@)
-+find_dependency(SQLite3 3.54.0 EXACT)
++find_dependency(SQLite3 3.54.1)
 +if(@GTSAM_FOUND@)
 +    find_dependency(GTSAM 4.3.0 EXACT CONFIG)
 +endif()

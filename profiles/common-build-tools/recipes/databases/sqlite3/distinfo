@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (sqlite-autoconf-3540100.tar.gz) = c080b728a72a5dea36aafc016ebdab3b32915c5d73afd11a5c5f546687efdc79
+SHA512 (sqlite-autoconf-3540100.tar.gz) = 3df4348f54f5cd0554eec6d91e1d08a70535b7b78f497b2c6f24910b5087f6ef70483c9e35fa388bd8f38483cb8d1cb84e98ccdd58b9f525a10e0cf48c8c6742
+Size (sqlite-autoconf-3540100.tar.gz) = 3332984 bytes
+SHA1 (patch-autosetup_proj.tcl) = b0e8241e57e82a1dadd721a64128f62e7409f600

@@ -83,6 +83,14 @@ main(int argc, char **argv)
 	sqlite3_stmt *stmt = NULL;
 	int fd, pipefd[2], status;
 	char ready;
+	const char *features[] = {
+		"ENABLE_COLUMN_METADATA", "ENABLE_DBSTAT_VTAB",
+		"ENABLE_FTS3", "ENABLE_FTS4", "ENABLE_FTS5",
+		"ENABLE_GEOPOLY", "ENABLE_RTREE", "ENABLE_MATH_FUNCTIONS",
+		"ENABLE_SESSION", "ENABLE_PREUPDATE_HOOK",
+		"ENABLE_STMTVTAB", "ENABLE_UNLOCK_NOTIFY"
+	};
+	size_t i;
 	const char *payload = "quote ' ; DROP TABLE facts; --";
 
 	if (argc != 2) {
@@ -107,6 +115,10 @@ main(int argc, char **argv)
 		fail("header/runtime source mismatch");
 	if (sqlite3_threadsafe() != 1)
 		fail("serialized thread-safe library required");
+	for (i = 0; i < sizeof(features) / sizeof(features[0]); i++) {
+		if (!sqlite3_compileoption_used(features[i]))
+			fail(features[i]);
+	}
 	expect(db, "PRAGMA journal_mode=WAL", "wal");
 	exec_sql(db, "PRAGMA synchronous=FULL; CREATE TABLE facts(id INTEGER PRIMARY KEY, value TEXT);"
 	    "INSERT INTO facts VALUES(1,'committed');"

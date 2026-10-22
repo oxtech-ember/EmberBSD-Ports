@@ -74,13 +74,13 @@ SUBST_SED.tclsh+=	-e '\|^\#! */bin/sh|,+2s|^exec tclsh |exec ${TCL_PREFIX}/bin/t
 PLIST_SUBST+=		SONUM=${TCL_SONUM}
 PLIST_SUBST+=		BASEVER=${TCL_BASEVER}
 PLIST_SUBST+=		ITCL_VERSION=${ITCL_VERSION}
-PLIST_SUBST+=		SQLITE3_VERSION=${SQLITE3_VERSION}
+PLIST_SUBST+=		TCL_SQLITE3_VERSION=${TCL_SQLITE3_VERSION}
 PLIST_SUBST+=		TDBC_VERSION=${TDBC_VERSION}
 PLIST_SUBST+=		THREAD_VERSION=${THREAD_VERSION}
 
 SUBST_CLASSES+=		sqllink
 SUBST_STAGE.sqllink=	pre-configure
-SUBST_FILES.sqllink=	pkgs/sqlite${SQLITE3_VERSION}/configure
+SUBST_FILES.sqllink=	pkgs/sqlite${TCL_SQLITE3_VERSION}/configure
 SUBST_SED.sqllink=	-e "/LIBS=/s|-lsqlite3|-L${BUILDLINK_PREFIX.sqlite3}/lib ${COMPILER_RPATH_FLAG}${BUILDLINK_PREFIX.sqlite3}/lib -lsqlite3|g"
 
 # install-sh requires $SHELL is an extremely close match to /bin/sh
@@ -88,7 +88,7 @@ MAKE_ENV+=		SHELL=${SH:Q}
 
 # xxx software that comes with the tcl distribution, could put be put
 # in their own individual pkgsrc packages if they aren't already there
-EMB_SRC=	itcl-${ITCL_VERSION} sqlite-${SQLITE3_VERSION} tdbc-${TDBC_VERSION} \
+EMB_SRC=	itcl-${ITCL_VERSION} sqlite-${TCL_SQLITE3_VERSION} tdbc-${TDBC_VERSION} \
 		tdbcmysql-${TDBC_VERSION} tdbcodbc-${TDBC_VERSION} \
 		tdbcpostgres-${TDBC_VERSION} tdbcsqlite3-${TDBC_VERSION} \
 		thread-${THREAD_VERSION}
@@ -115,7 +115,7 @@ pre-fetch:
 .if ${OPSYS} == "Darwin"
 post-build:
 .  for lib in itcl${ITCL_VERSION}/libtcl9itcl${ITCL_VERSION}.dylib \
-	      sqlite${SQLITE3_VERSION}/libtcl9sqlite${SQLITE3_VERSION}.dylib \
+	      sqlite${TCL_SQLITE3_VERSION}/libtcl9sqlite${TCL_SQLITE3_VERSION}.dylib \
 	      tdbc${TDBC_VERSION}/libtcl9tdbc${TDBC_VERSION}.dylib \
 	      tdbcmysql${TDBC_VERSION}/libtcl9tdbcmysql${TDBC_VERSION}.dylib \
 	      tdbcodbc${TDBC_VERSION}/libtcl9tdbcodbc${TDBC_VERSION}.dylib \
@@ -142,7 +142,7 @@ post-install:
 	cd ${DESTDIR}${TCL_PREFIX}/bin && ${LN} -fs tclsh${TCL_BASEVER} tclsh
 	cd ${DESTDIR}${TCL_PREFIX}/${PKGMANDIR}/man3 && ${MV} Thread.3 Tcl_Thread.3
 
-BUILDLINK_API_DEPENDS.sqlite3+=	sqlite3>=${SQLITE3_VERSION}
+BUILDLINK_API_DEPENDS.sqlite3+=	sqlite3>=${TCL_SQLITE3_VERSION}
 .include "../../databases/sqlite3/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"
 .include "../../mk/pthread.buildlink3.mk"

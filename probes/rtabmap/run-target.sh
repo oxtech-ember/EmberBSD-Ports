@@ -16,7 +16,7 @@ done
 mkdir -p "$out/first" "$out/reinstalled" "$out/upstream" "$out/controls"
 install_packages()
 {
-    for package in eigen3-5.0.1 boost-headers-1.92.0 boost-libs-1.92.0 gcc16-libatomic-16.2.0 lz4-1.10.0 flann-1.9.2 boost-iostreams-1.92.0 pcl-1.15.1nb1 gtsam-4.3.0 png-1.6.59 libjpeg-turbo-3.2.0nb2 sqlite3-3.54.0 opencv5-5.0.0 rtabmap-0.23.8; do
+    for package in eigen3-5.0.1 boost-headers-1.92.0 boost-libs-1.92.0 gcc16-libatomic-16.2.0 lz4-1.10.0 flann-1.9.2 boost-iostreams-1.92.0 pcl-1.15.1nb1 gtsam-4.3.0 png-1.6.59 libjpeg-turbo-3.2.0nb2 sqlite3-3.54.1 opencv5-5.0.0 rtabmap-0.23.8; do
         pkg_add "$packages/$package.tgz"
     done
 }

@@ -1,8 +1,16 @@
-# SQLite 3.54.0 validation boundary
+# SQLite validation boundary
+
+The selected recipe is now 3.54.1. The results below apply to 3.54.0 only.
+They do not establish acceptance of the new package or rebuilt consumers.
+See the [current recipe](../../profiles/common-build-tools/recipes/databases/sqlite3/README.md)
+for the migration checks and remaining target work.
+
+## Historical 3.54.0 checks
 
 Source: the official 3.54.0 autoconf archive, verified against the upstream
 SHA3-256 and recorded SHA256. SQLite C source has no local patch.
-[The provenance record](PROVENANCE.md) gives its source ID and checksums.
+The earlier recipe revision records its source ID and checksums.
+The current provenance page describes 3.54.1.
 
 The GCC16.2.0 cross build targets AArch64 EmberBSD with the fork's sysroot.
 The library and dynamically linked CLI are AArch64 ELF files, retain the
