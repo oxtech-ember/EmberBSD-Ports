@@ -99,4 +99,7 @@ assert info_result[1:6] == [
     'yes', '/usr/pkg/info', expected_info_tool, 'exit 0', expected_info_tool,
 ], info_result
 assert 'gm4:run not supported in cross-compilation' in run('other-runtime-tool', base + ['USE_TOOLS=sh pwd gm4:run', '-v', 'PKG_FAIL_REASON'])
-print('PASS: GCC16 tool composition, gzip INFO_FILES, target install-info routing and unsupported-tool refusal')
+gts_base = [bmake, '-C', pkgsrc + '/graphics/gts', 'MAKECONF=' + makeconf]
+gts_result = run('gts-libtool-tag', gts_base + [query, 'VARNAMES=PKG_FAIL_REASON PKGREVISION']).splitlines()
+assert len(gts_result) == 2 and not gts_result[0].strip() and gts_result[1].strip() == '9', gts_result
+print('PASS: GCC16 tools, gzip INFO_FILES, target install-info, GTS Libtool tag and cross-tool refusal')

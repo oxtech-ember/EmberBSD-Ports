@@ -280,8 +280,11 @@ runtime behavior are validated.
   install-RPATH checks with explicit current GNU as/ld. The profile provides
   matching LLVM/Clang/LLD 23.1.3 source
   recipes with upstream lit, scoped native Clang/GCC16 defaults, strict
-  common selection and host source contracts. Focused native macro/selection
-  checks cover Python, LLVM family selection and real GCC16 config metadata.
+  common selection and host source contracts. Cross LLVM configuration pins
+  both host and default-target triples to the selected NetBSD GNU triplet;
+  `llvm-cross.sh` checks the target arguments and native generator dependency.
+  Focused native macro/selection checks cover Python, LLVM family selection
+  and real GCC16 config metadata.
   Upstream lit selects the common Python315 provider in native and cross recipes;
   host launcher PASS/XFAIL/FAIL checks pass, while target package acceptance remains separate.
   The complete LLVM23 core package now passes normal packaging and installed

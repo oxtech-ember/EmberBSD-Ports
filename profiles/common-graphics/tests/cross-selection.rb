@@ -37,7 +37,7 @@ vars = %w[PKG_FAIL_REASON PREFIX LOCALBASE TOOLBASE TOOL_PYTHONBIN PYTHONBIN LLV
 values = run("#{work}/mesa.log", *base, 'show-vars', "VARNAMES=#{vars.join(' ')}").lines.map(&:chomp)
 abort 'unexpected diagnostic lines in real pkgsrc parse; inspect mesa.log' unless values.length == vars.length
 v = vars.zip(values).to_h
-check('cross Mesa full recipe parses without package failure') { v['PKG_FAIL_REASON'].empty? }
+check('cross Mesa full recipe parses without package failure') { v['PKG_FAIL_REASON'].strip.empty? }
 check('target prefix remains /usr/pkg and Python runs from host TOOLBASE') do
   v['PREFIX'] == '/usr/pkg' && v['LOCALBASE'] == '/usr/pkg' && v['PYTHONBIN'] == '/usr/pkg/bin/python3.15' && v['TOOL_PYTHONBIN'] == "#{v['TOOLBASE']}/bin/python3.15" && v['SUBST_SED.python'].include?(v['TOOL_PYTHONBIN'])
 end
@@ -50,7 +50,7 @@ check('Mesa uses the explicit real LLVM metadata helper') { v['LLVM_CONFIG_PATH'
   abort 'unexpected native dependency diagnostic lines' unless host_values.length == host_vars.length
   h = host_vars.zip(host_values).to_h
   check("#{package} native dependency retains macOS host configuration") do
-    h['PKG_FAIL_REASON'].empty? && h['OPSYS'] == 'Darwin' && h['LOCALBASE'] == v['TOOLBASE'] && h['PKGSRC_COMPILER'] == 'clang' && h['EMBERBSD_COMMON_GRAPHICS'].empty? && h['LLVM_CONFIG_PATH'].empty?
+    h['PKG_FAIL_REASON'].strip.empty? && h['OPSYS'] == 'Darwin' && h['LOCALBASE'] == v['TOOLBASE'] && h['PKGSRC_COMPILER'] == 'clang' && h['EMBERBSD_COMMON_GRAPHICS'].empty? && h['LLVM_CONFIG_PATH'].empty?
   end
 end
 # Execute the actual pkgsrc cross-file target, not a handwritten stand-in.
@@ -78,7 +78,7 @@ drm_vars = %w[PKG_FAIL_REASON MESON_BINARY.python REPLACE.tool-python.new MESON_
 drm_values = run("#{work}/libdrm.log", *libdrm, 'show-vars', "VARNAMES=#{drm_vars.join(' ')}").lines.map(&:chomp)
 abort 'unexpected libdrm diagnostic lines' unless drm_values.length == drm_vars.length
 d = drm_vars.zip(drm_values).to_h
-check('libdrm full recipe uses host Python for Meson and build scripts') { d['PKG_FAIL_REASON'].empty? && d['MESON_BINARY.python'] == v['TOOL_PYTHONBIN'] && d['REPLACE.tool-python.new'] == v['TOOL_PYTHONBIN'] }
+check('libdrm full recipe uses host Python for Meson and build scripts') { d['PKG_FAIL_REASON'].strip.empty? && d['MESON_BINARY.python'] == v['TOOL_PYTHONBIN'] && d['REPLACE.tool-python.new'] == v['TOOL_PYTHONBIN'] }
 FileUtils.mkdir_p(File.dirname(d.fetch('MESON_CROSS_FILE')))
 run("#{work}/drm-cross-file.log", *libdrm, d.fetch('MESON_CROSS_FILE'))
 check('libdrm actual cross file contains the host Python path') { File.read(d.fetch('MESON_CROSS_FILE')).include?("python = '#{v['TOOL_PYTHONBIN']}'") }

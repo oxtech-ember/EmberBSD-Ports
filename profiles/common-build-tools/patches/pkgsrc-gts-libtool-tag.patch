@@ -3,7 +3,7 @@ Not submitted upstream.
 
 --- a/graphics/gts/Makefile
 +++ b/graphics/gts/Makefile
-@@ -1,5 +1,5 @@
+@@ -3,5 +3,5 @@
  DISTNAME=	gts-0.7.6
 -PKGREVISION=	8
 +PKGREVISION=	9

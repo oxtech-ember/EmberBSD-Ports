@@ -50,6 +50,11 @@ Pkgsrc supplies `CC` and `CXX` in `CONFIGURE_ENV`. Let CMake resolve them instea
 of passing bare compiler names with `-D`. Set `CMAKE_CXX_LINK_FLAGS:STRING` to
 the exact ordered `LDFLAGS` value.
 
+Set both `LLVM_HOST_TRIPLE` and `LLVM_DEFAULT_TARGET_TRIPLE` to
+`MACHINE_GNU_PLATFORM`. Otherwise LLVM can retain the Darwin build host's
+default triple in target-generated metadata. `tests/llvm-cross.sh` checks both
+typed cross arguments and the ordinary host-generator dependency.
+
 On a Darwin host, a bounded GCC16 cross fixture for NetBSD/AArch64 reproduces
 the old compiler cache churn. The corrected recipe arguments keep the typed
 compiler cache, compile database, link commands and ordered flags stable across

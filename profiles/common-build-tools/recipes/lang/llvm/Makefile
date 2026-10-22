@@ -151,7 +151,10 @@ SUBST_FILES.python=	${CMAKE_BUILD_DIR}/bin/llvm-lit
 SUBST_SED.python=	-e '1s,\#!.*python.*,\#!${PYTHONBIN},'
 .endif
 
-PLIST_VARS+=	notdylib
+PLIST_VARS+=	darwin notdylib
+.if ${OPSYS} == "Darwin"
+PLIST.darwin=	yes
+.endif
 .if ${SHLIB_TYPE} != "dylib"
 PLIST.notdylib=	yes
 .endif

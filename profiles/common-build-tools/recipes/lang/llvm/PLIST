@@ -176,6 +176,8 @@ ${PLIST.gtest}lib/libLLVMTestingAnnotations.a
 ${PLIST.gtest}lib/libLLVMTestingSupport.a
 ${PLIST.gtest}lib/libllvm_gtest.a
 ${PLIST.gtest}lib/libllvm_gtest_main.a
+${PLIST.darwin}lib/libLLVM.23.1.${SHLIB_EXT}
+${PLIST.darwin}lib/libRemarks.23.1.${SHLIB_EXT}
 ${PLIST.notdylib}lib/libLLVM.${SHLIB_EXT}.23.1
 ${PLIST.notdylib}lib/libLTO.${SHLIB_EXT}.23.1
 ${PLIST.notdylib}lib/libRemarks.${SHLIB_EXT}.23.1
