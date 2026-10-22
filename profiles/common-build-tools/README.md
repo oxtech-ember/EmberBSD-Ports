@@ -319,6 +319,24 @@ ELF fixup, exports exact recipes, compares unchanged GCC recipe composition,
 and rejects existing destinations and unknown profiles. Logs and extracted
 sources remain in the private output directory.
 
+The shared work-reference check opens one append stream after the first
+retained file. It preserves skip patterns, existing list entries, diagnostics
+and failure status. Empty and fully skipped inputs do not create a new list.
+Run the real BSD make and mksh regression with a stock pkgsrc input:
+
+```sh
+BMAKE=/absolute/bin/bmake MKSH=/absolute/bin/mksh python3 -B \
+    profiles/common-build-tools/tests/check-wrkref.py \
+    /absolute/stock-pkgsrc /absolute/new-wrkref-check
+```
+
+The regression compares actual file lists and grep diagnostics. Descriptor
+offsets distinguish repeated opens from one shared append description. Printing
+comments keep stdout. A pre-opened parent descriptor stays unchanged. It also
+checks empty inputs, duplicate and spaced paths, skip globs, pre-existing lists,
+and open/read/write failures. The inherited left-pipeline read-failure status
+is recorded as it is. The test does not add a new failure-propagation policy.
+
 The named `llvm-source` third argument checks the LLVM family, metadata,
 Clang command traces and upstream lit, while comparing unchanged common
 recipes. Its source/native boundaries are documented in [llvm-family.md](llvm-family.md).

@@ -1,0 +1,28 @@
+# Origin: EmberBSD (AI-assisted), keep one work-reference append stream.
+# Open the stream only for the first retained file. Keep empty and skipped
+# input behavior. Keep stdout unchanged. Isolate descriptor 3 in the pipeline subshell.
+
+--- a/mk/check/check-wrkref.mk
++++ b/mk/check/check-wrkref.mk
+@@ -91,14 +91,19 @@
+ 	${RUN}								\
+ 	${STEP_MSG} "Checking for work-directory references in ${PKGNAME}"; \
+ 	${_CHECK_WRKREF_FILELIST_CMD} | ${SORT} |			\
++	( _check_wrkref_output_open=no;				\
+ 	while read file; do						\
+ 		case "$$file" in					\
+ 		${CHECK_WRKREF_SKIP:@p@${p} | ${PREFIX}/${p}) continue;; @} \
+ 		*) ;;							\
+ 		esac;							\
+ 		${SHCOMMENT} "[$$file]";				\
+-		${ECHO} "${DESTDIR}$$file" >>${ERROR_DIR}/${.TARGET}.tmp; \
+-	done;								\
++		if [ "$$_check_wrkref_output_open" = no ]; then		\
++			exec 3>>${ERROR_DIR}/${.TARGET}.tmp;		\
++			_check_wrkref_output_open=yes;			\
++		fi;							\
++		${ECHO} "${DESTDIR}$$file" >&3;				\
++	done );								\
+ 	if [ -s ${ERROR_DIR}/${.TARGET}.tmp ]; then			\
+ 		${XARGS} -n 256 ${EGREP} ${_CHECK_WRKREF_DIRS:ts|:Q}	\
+ 			< ${ERROR_DIR}/${.TARGET}.tmp 2>/dev/null	\
