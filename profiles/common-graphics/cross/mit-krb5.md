@@ -1,10 +1,10 @@
 # MIT Kerberos for GUI clients
 
 MIT Kerberos 1.22.2 provides the common thread-safe GSS client API for GUI
-printing dependencies. Normal GCC16 1.22.2nb2 packages pass on Linux amd64 and
-for the EmberBSD AArch64 sysroot. Installed target API and loader checks pass in the
-acceptance VM. Realm authentication and CUPS printing remain separate checks.
-See the [measured receipt](mit-krb5-linux-aarch64.json).
+printing dependencies. GCC16 1.22.2nb6 runtime and SDK packages pass ordinary
+amd64 packaging and development-host installation. Earlier Linux amd64 and
+EmberBSD AArch64 checks keep their [recorded scope](mit-krb5-linux-aarch64.json).
+Realm authentication and CUPS printing remain separate checks.
 
 The selected release archive comes from MIT. Its SHA256 is
 `3243ffbc8ea4d4ac22ddc7dd2a1dc54c57874c40648b60ff97009763554eaf13`.
@@ -69,12 +69,23 @@ because 4,648 bytes in 37 process-global blocks remain reachable under the
 upstream `LIB_UNLOAD_PREVENTED` policy. There are no suppressions. This is not
 a clean whole-library memory result. Target Valgrind was not run.
 
-Recipe revision nb3 resolves its compiler RPATH marker before Autoconf generates
+The recipe resolves its compiler RPATH marker before Autoconf generates
 `krb5-config`. The [metadata contract](../tests/mit-krb5/README.md#installed-metadata-generation)
 uses real pkgsrc substitution and MIT library macros. It rejects the original
 literal variable, verifies native Darwin output equality, and links the repaired
 AArch64 GSS consumer. This accepts metadata generation and linking; it does not
-claim an installed nb3 package or a new target runtime check.
+replace installed package or target runtime checks.
+
+The amd64 consumers also pass on a physical NetBSD11 system with the exact
+staged nb6 libraries and their verified dependency closure. Constructor and
+positional printf checks, four concurrent cache/AES/GSS lifecycles, and the
+NODELETE loader check pass. The new public keytab API check resolves the target
+`FILE:/var/krb5/user/%{euid}/client.keytab` default without opening a keytab.
+The positive consumer exits zero. A deliberate incorrect state-directory
+expectation exits one, as required by its negative control. Cppcheck 2.18,
+GCC16 path analysis and Clang Static Analyzer 21 pass before and after this
+fixture change. The fixtures use GCC16 UBSan traps; shared libraries are not
+instrumented. These checks install no target package or realm credentials.
 
 The reproducible contracts are in [tests/mit-krb5](../tests/mit-krb5).
 Pass `--sdk-source /absolute/SDK` to each Python command. `configure-contract.py`
@@ -83,4 +94,4 @@ Autoconf and unused work. `stage-contract.py` uses the real complete stage and
 its three normalized packing lists. `prepare-client.py` consumes the installed
 runtime/SDK pair. Verify its archive hash before running `sh run.sh` on target.
 LDAP backend execution, real realm credentials, authenticated printing,
-amd64 target execution and physical GUI/CAD acceptance remain unverified.
+the amd64 target package lifecycle and physical GUI/CAD acceptance remain unverified.

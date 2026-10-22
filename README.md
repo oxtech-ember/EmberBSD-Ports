@@ -76,9 +76,10 @@ runtime behavior are validated.
   collation, host-generated resources and the C API pass in EmberBSD,
   including normal runtime removal/reinstallation. All 274 SDK entries match.
 - [MIT Kerberos for GUI printing](profiles/common-graphics/cross/mit-krb5.md):
-  current 1.22.2nb2 packages retain thread-safe GSS clients and explicit
-  runtime/SDK roles. Normal GCC16 native/cross packages and installed AArch64
-  API, loader and upgrade checks pass. Realm and CUPS acceptance remain pending.
+  current 1.22.2nb6 packages retain thread-safe GSS clients and explicit
+  runtime/SDK roles. Ordinary amd64 packages, host-sysroot installation and
+  bounded staged API/loader checks pass on physical NetBSD11. Earlier native
+  and AArch64 checks retain their scope. Realm and CUPS acceptance remain pending.
 - [Boost cross build roles](profiles/common-build-tools/cross/boost.md):
   native b2 retains the canonical 1.92.0 libraries and selects NetBSD,
   target GCC16 tools and ABI properties explicitly. Native and complete
