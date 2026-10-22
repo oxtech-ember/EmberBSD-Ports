@@ -95,31 +95,6 @@ packages only. Chain state after this pass:
   dropped from project() because its cross sanity check cannot link a
   target program. The loaders are not sandboxed on NetBSD (debt: pledge(2)
   style sandbox).
-- **mutter 49.8** recipe corrections: `-Dsystemd=false` is gone in 49.8
-  (now `-Dlogind=false`); `-Dtests=disabled` (feature type); gtk3,
-  gnome-settings-daemon and startup-notification buildlinks dropped
-  (tests-only or optional deps); colord buildlink added (unconditional
-  upstream). The six patch SHA1s in `distinfo` were recomputed (the staged
-  hashes did not match the patch files) and `patch-mdk_mdk-stream.c`
-  joined the set.
-
-**mutter 49.8 cross-built and installed .**
-`gvdb` turned out to ship in the mutter tarball (no wrap download);
-`glycin-2` is now fully ported:
-
-- **glycin 2.0.8** (new recipe, now in the shared overlay `pkgsrc/graphics/glycin/`): libglycin only
-  (`-Dglycin-loaders=false -Dglycin-thumbnailer=false -Dlibglycin-gtk4=false
-  -Dintrospection=false`), cross cargo via the packaged rust-bin 1.99 +
-  rust-std-aarch64-netbsd (`RUST_TYPE=native`, target linker = wrapper cc).
-  A `triplet` meson option patches `--target aarch64-unknown-netbsd` into
-  every cargo call (upstream builds for the host only); the meson `rust`
-  language is dropped from project() because its cross sanity check cannot
-  run; a host-python rst2man-style fix covers `crates-version.py` (tomllib).
-  Crate patch: NetBSD has no memfd_create(2), no file seals, no seccomp and
-  no bwrap — shared memory falls back to POSIX shm (unlinked object,
-  descriptor lifetime), `seal_fd` becomes a no-op and the Linux sandbox
-  machinery is cfg-gated; the loader runs unsandboxed until a pledge(2)
-  sandbox lands (debt).
 - **mutter 49.8** now builds with twelve additional patches beyond the
   original six: pango autoptr redefinition, glibc-only `uint`, vendored
   RenderDoc header platform list, the dma-buf `export_sync_file` UAPI,
