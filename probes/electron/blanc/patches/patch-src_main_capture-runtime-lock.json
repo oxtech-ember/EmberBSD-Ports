@@ -1,0 +1,19 @@
+$NetBSD$
+
+Select the pinned generic Electron capture runtime on NetBSD.
+Keep all runtime and permission bytes unchanged. The NetBSD baseline
+identifies imported source; it does not claim multimedia acceptance.
+Origin: EmberBSD (AI-assisted), based on Blanc v1.25.0; not submitted upstream.
+
+--- src/main/capture-runtime-lock.json.orig
++++ src/main/capture-runtime-lock.json
+@@ -3,7 +3,8 @@
+   "baselines": {
+     "darwin": "fda425eb",
+     "win32": "c26127eb",
+-    "linux": "c26127eb"
++    "linux": "c26127eb",
++    "netbsd": "c26127eb"
+   },
+   "files": {
+     "src/main/capture-preload-playout.js": "63b7ecc1eec07d5b6e1ee61fded120471d8e9f94f91501cb82a44821ac602e46",

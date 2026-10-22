@@ -50,8 +50,15 @@ not match Electron's pinned revision.
 - No complete Chromium link, Electron runtime package, Blanc package, or target
   application acceptance run exists yet. Do not treat partial object builds as
   completion.
-- The host checkout has no `bmake` in `PATH`; pkgsrc package lifecycle checks
-  remain pending.
+- Full runtime and application package lifecycle checks remain pending.
+- The Blanc source patches select an explicit NetBSD capture descriptor. It
+  uses the existing generic Electron/DOM/WebRTC broker, preload and helper.
+  All nine runtime and fourteen shared permission hashes remain unchanged.
+  A causal host Node24 test fails with `Unsupported capture platform` before
+  the change; the patched source passes all 76 focused capture tests. This
+  verifies source dispatch and locks. It does not verify native Electron
+  startup or NetBSD media capture. Changes to these generic files require
+  impact review for Windows and NetBSD.
 
 ## Acceptance
 

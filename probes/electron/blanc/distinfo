@@ -1,2 +1,8 @@
 SHA256 (e12-electron/blanc-1.25.0.tar.gz) = b241d6b135b0fab5839f5dea6f64fafbdefa4f213b46ffa4a2f78820cb880971
 Size (e12-electron/blanc-1.25.0.tar.gz) = 155108408 bytes
+
+SHA1 (patch-src_main_capture-platform.js) = ca64abf8dedad393e0dfbff6f70e71e6d2c5ad70
+SHA1 (patch-src_main_capture-runtime-lock.json) = 5a26ce1407dcf4d9ff0de777a961fd33adc7c68d
+SHA1 (patch-test_unit_display-capture-netbsd.test.js) = 4ebc9e99330fc2bf37bf22bb38a90e37e8ac132f
+SHA1 (patch-test_unit_display-capture-packaged-lock.test.js) = 59f8bc9cc15ad20a17381c341c4527c9cb375d30
+SHA1 (patch-test_unit_display-capture-platform-lock.test.js) = 6f3dd8d472025bd9fbceb2c968e9a55b90e4c29e
