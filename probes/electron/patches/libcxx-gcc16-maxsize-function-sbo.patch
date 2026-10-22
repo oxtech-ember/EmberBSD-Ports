@@ -1,0 +1,161 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Upstream: llvm-libc++ b16984ce99c702355a5b2b4c52574e82cec41fb9.
+Status: local GCC16 portability fix; not submitted upstream.
+
+Bound string allocation arithmetic and preserve its inline capacity.
+Use one size, alignment, and copy predicate for function inline storage.
+Keep object layout, virtual interfaces, and compiler diagnostics unchanged.
+
+--- a/include/string
++++ b/include/string
+@@ -1238,21 +1238,33 @@
+   }
+ 
+   [[__nodiscard__]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX20 size_type max_size() const _NOEXCEPT {
+-    if (size_type __m = __alloc_traits::max_size(__alloc_); __m <= std::numeric_limits<size_type>::max() / 2) {
+-      size_type __res = __m - __alignment;
+-
+-      // When the __endian_factor == 2, our string representation assumes that the capacity
+-      // (including the null terminator) is always even, so we have to make sure the lowest bit isn't set when the
+-      // string grows to max_size()
+-      if (__endian_factor == 2)
+-        __res &= ~size_type(1);
+-
+-      // We have to allocate space for the null terminator, but max_size() doesn't include it.
+-      return __res - 1;
+-    } else {
+-      bool __uses_lsb = __endian_factor == 2;
+-      return __uses_lsb ? __m - __alignment - 1 : (__m / 2) - __alignment - 1;
++    size_type __m = __alloc_traits::max_size(__alloc_);
++    __m = std::min<size_type>(__m, std::numeric_limits<difference_type>::max());
++    __m = std::min<size_type>(__m, std::numeric_limits<ptrdiff_t>::max() / sizeof(value_type));
++
++    size_type __max_size = 0;
++    if (__m > __alignment) {
++      if (__m <= std::numeric_limits<size_type>::max() / 2) {
++        size_type __res = __m - __alignment;
++
++        // When the __endian_factor == 2, our string representation assumes that the capacity
++        // (including the null terminator) is always even, so we have to make sure the lowest bit isn't set when the
++        // string grows to max_size()
++        if (__endian_factor == 2)
++          __res &= ~size_type(1);
++
++        // We have to allocate space for the null terminator, but max_size() doesn't include it.
++        if (__res != 0)
++          __max_size = __res - 1;
++      } else {
++        bool __uses_lsb = __endian_factor == 2;
++        __max_size = __uses_lsb ? __m - __alignment - 1 : (__m / 2) - __alignment - 1;
++      }
+     }
++
++    // The short buffer does not use the allocator. Keep its full capacity available even when the allocator's
++    // maximum allocation size is smaller than the short buffer.
++    return std::max<size_type>(__max_size, __min_cap - 1);
+   }
+ 
+   [[__nodiscard__]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX20 size_type capacity() const _NOEXCEPT {
+--- a/include/__functional/function.h
++++ b/include/__functional/function.h
+@@ -14,6 +14,7 @@
+ #include <__config>
+ #include <__cstddef/nullptr_t.h>
+ #include <__exception/exception.h>
++#include <__exception/terminate.h>
+ #include <__functional/binary_function.h>
+ #include <__functional/unary_function.h>
+ #include <__memory/addressof.h>
+@@ -82,6 +83,10 @@
+ 
+ namespace __function {
+ 
++_LIBCPP_SUPPRESS_DEPRECATED_PUSH
++typedef typename aligned_storage<3 * sizeof(void*)>::type __value_func_storage;
++_LIBCPP_SUPPRESS_DEPRECATED_POP
++
+ template <class _Rp>
+ struct __maybe_derive_from_unary_function {};
+ 
+@@ -159,16 +164,30 @@
+   _Fp __func_;
+ 
+ public:
++  static _LIBCPP_HIDE_FROM_ABI constexpr bool __fits_in_sbo() _NOEXCEPT;
++
+   _LIBCPP_HIDE_FROM_ABI explicit __func(_Fp&& __f) : __func_(std::move(__f)) {}
+   _LIBCPP_HIDE_FROM_ABI explicit __func(const _Fp& __f) : __func_(__f) {}
+ 
+   _LIBCPP_HIDE_FROM_ABI_VIRTUAL __base<_Rp(_ArgTypes...)>* __clone() const override { return new __func(__func_); }
+ 
+   _LIBCPP_HIDE_FROM_ABI_VIRTUAL void __clone(__base<_Rp(_ArgTypes...)>* __p) const override {
+-    ::new ((void*)__p) __func(__func_);
+-  }
+-
+-  _LIBCPP_HIDE_FROM_ABI_VIRTUAL void destroy() _NOEXCEPT override { __func_.~_Fp(); }
++    if (__fits_in_sbo()) {
++      ::new ((void*)__p) __func(__func_);
++    } else {
++      // __value_func only calls this overload for its small-buffer objects.
++      std::terminate();
++    }
++  }
++
++  _LIBCPP_HIDE_FROM_ABI_VIRTUAL void destroy() _NOEXCEPT override {
++    if (__fits_in_sbo()) {
++      __func_.~_Fp();
++    } else {
++      // __value_func only calls this overload for its small-buffer objects.
++      std::terminate();
++    }
++  }
+   _LIBCPP_HIDE_FROM_ABI_VIRTUAL void destroy_deallocate() _NOEXCEPT override { delete this; }
+   _LIBCPP_HIDE_FROM_ABI_VIRTUAL _Rp operator()(_ArgTypes&&... __arg) override {
+     return std::__invoke_r<_Rp>(__func_, std::forward<_ArgTypes>(__arg)...);
+@@ -183,6 +202,13 @@
+ #  endif // _LIBCPP_HAS_RTTI
+ };
+ 
++template <class _Fp, class _Rp, class... _ArgTypes>
++_LIBCPP_HIDE_FROM_ABI constexpr bool __func<_Fp, _Rp(_ArgTypes...)>::__fits_in_sbo() _NOEXCEPT {
++  return sizeof(__func<_Fp, _Rp(_ArgTypes...)>) <= sizeof(__value_func_storage) &&
++         alignof(__func<_Fp, _Rp(_ArgTypes...)>) <= alignof(__value_func_storage) &&
++         is_nothrow_copy_constructible<_Fp>::value;
++}
++
+ // __value_func creates a value-type from a __func.
+ 
+ template <class _Fp>
+@@ -190,9 +216,7 @@
+ 
+ template <class _Rp, class... _ArgTypes>
+ class __value_func<_Rp(_ArgTypes...)> {
+-  _LIBCPP_SUPPRESS_DEPRECATED_PUSH
+-  typename aligned_storage<3 * sizeof(void*)>::type __buf_;
+-  _LIBCPP_SUPPRESS_DEPRECATED_POP
++  __function::__value_func_storage __buf_;
+ 
+   typedef __base<_Rp(_ArgTypes...)> __func;
+   __func* __f_;
+@@ -209,7 +233,7 @@
+     if (__function::__is_null(__f))
+       return;
+ 
+-    if (sizeof(_Fun) <= sizeof(__buf_) && is_nothrow_copy_constructible<_Fp>::value) {
++    if (_Fun::__fits_in_sbo()) {
+       __f_ = ::new (std::addressof(__buf_)) _Fun(std::move(__f));
+     } else {
+       __f_ = new _Fun(std::move(__f));
+@@ -279,9 +303,7 @@
+     if (std::addressof(__f) == this)
+       return;
+     if ((void*)__f_ == &__buf_ && (void*)__f.__f_ == &__f.__buf_) {
+-      _LIBCPP_SUPPRESS_DEPRECATED_PUSH
+-      typename aligned_storage<sizeof(__buf_)>::type __tempbuf;
+-      _LIBCPP_SUPPRESS_DEPRECATED_POP
++      __function::__value_func_storage __tempbuf;
+       __func* __t = __as_base(&__tempbuf);
+       __f_->__clone(__t);
+       __f_->destroy();

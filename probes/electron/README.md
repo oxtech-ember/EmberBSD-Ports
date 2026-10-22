@@ -1,6 +1,6 @@
-# Electron runtime probe for NetBSD/aarch64 (E12 Blanc browser)
+# Electron runtime probe for NetBSD (E12 Blanc browser)
 
-Goal: run Blanc v1.25.0 on EmberBSD/aarch64. Blanc uses Electron and has no
+Goal: run Blanc v1.25.0 on EmberBSD. Blanc uses Electron and has no
 engine abstraction, so this port needs the native Electron runtime.
 
 ## Source pins
@@ -26,7 +26,8 @@ not match Electron's pinned revision.
 ## Target contract
 
 - Build on the developer host. Cross-compile all target objects for
-  `aarch64--netbsd` with GCC 16.2.0 and the exported EmberBSD sysroot.
+  `aarch64--netbsd` or `x86_64--netbsd` with GCC 16.2.0 and the matching
+  EmberBSD sysroot. GN names those CPUs `arm64` and `x64` respectively.
 - Keep host tools separate. Xcode Clang may build host-only tools; target
   compilation must use GCC16.
 - Enable Linux-conditioned Chromium source dependencies only to fetch their
@@ -155,13 +156,27 @@ metadata invariant. It keeps other libc signatures and allocator policy.
 
 Commands, coverage, and limitations are in [the GN regression guide](tests/README.md).
 
+Apply the carried libc++ fix from its separate source root after its exact
+DEPS revision and Electron patches are present:
+
+```sh
+cd /absolute/chromium/src/third_party/libc++/src
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/libcxx-gcc16-maxsize-function-sbo.patch
+```
+
+The fix bounds string allocation arithmetic and preserves the allocator-free
+short buffer. The legacy function implementation uses one size, alignment,
+and copy predicate for inline construction, cloning, and destruction. Its
+storage layout and virtual interface stay unchanged. GCC diagnostics remain
+enabled. Focused regressions do not establish a complete runtime build.
+
 ## Acceptance
 
-Run the installed package in the target VM. Check HTTPS navigation, tabs,
+Run the installed package in the selected EmberBSD target. Check HTTPS navigation, tabs,
 Russian text input, file download, ad blocking, persistent profiles, private
 profile cleanup, site permissions, sandbox behavior, and package lifecycle.
 Check touch input, media codecs, and hardware acceleration separately. Record
-VM image identity, kernel revision, package hashes, and test results.
+target identity, kernel revision, package hashes, and test results.
 
 Blanc is MIT licensed. Its filter lists are CC BY-SA 3.0+, and its name and
 logos are trademarks. Resolve redistribution terms before publishing Blanc or
