@@ -43,11 +43,19 @@ def select(part, stage, *lists):
     full, runtime, devel = map(manifest, lists)
     # Conversion, inspection and resource dumping are installed user commands.
     # Data generators, link interfaces and build metadata belong to the SDK.
-    expected = {
-        "bin/derb", "bin/icuinfo", "bin/uconv",
-        "man/man1/derb.1", "man/man1/uconv.1",
-        "share/icu/78.3/LICENSE",
-    }
+    expected = {"bin/derb", "bin/icuinfo", "bin/uconv",
+                "share/icu/78.3/LICENSE"}
+    # pkgsrc expands man-page PLIST entries through PKGMANDIR. Accept the
+    # standard "man" and "share/man" layouts, but require exactly one path
+    # for each runtime command.
+    for command in ("derb", "uconv"):
+        manpages = {
+            f"{root}/man1/{command}.1"
+            for root in ("man", "share/man")
+        } & full
+        if len(manpages) != 1:
+            raise ValueError(f"ICU full PLIST requires one {command} manual")
+        expected.update(manpages)
     expected.update(name for name in full
                     if re.fullmatch(r"lib/libicu[a-z0-9]+\.so\.78(?:\.3)?", name))
     if not expected <= full or runtime != expected:

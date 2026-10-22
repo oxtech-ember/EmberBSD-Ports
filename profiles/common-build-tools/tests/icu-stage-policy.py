@@ -31,6 +31,11 @@ def main():
         paths.reject_overlap(str(work), str(item))
     paths.real_directory(source)
     work.mkdir()
+    man_roots = [root for root in ("man", "share/man")
+                 if (source / root / "man1/derb.1").is_file()]
+    if len(man_roots) != 1:
+        parser.error("complete ICU stage must contain one supported man-page layout")
+    man_root = man_roots[0]
     manifests = {}
     for part, path in {
             "full": recipe / "PLIST.full-cross",
@@ -38,19 +43,32 @@ def main():
             "devel": recipe.parent / "icu-devel/PLIST"}.items():
         data = path.read_text(encoding="utf-8").replace("${PKGVERSION}", "78.3")
         data = data.replace("${MH_NAME}", args.mh_name)
+        data = "\n".join(
+            man_root + name[3:] if name.startswith("man/") else name
+            for name in data.splitlines()) + "\n"
         destination = work / (part + ".plist")
         destination.write_text(data, encoding="utf-8")
         manifests[part] = destination
     files = [name for name in manifests["full"].read_text().splitlines()
              if name and not name.startswith("@comment")]
 
-    def copy_stage(label):
+    def copy_stage(label, selected_manifests=manifests):
         destination = work / label
         destination.mkdir()
-        for name in files:
+        selected_files = [
+            name for name in selected_manifests["full"].read_text().splitlines()
+            if name and not name.startswith("@comment")
+        ]
+        for name in selected_files:
             target = destination / name
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source / name, target, follow_symlinks=False)
+            origin = source / name
+            if not os.path.lexists(origin) and name.startswith("man/"):
+                origin = source / "share" / name
+            elif (not os.path.lexists(origin)
+                  and name.startswith("share/man/")):
+                origin = source / name.removeprefix("share/")
+            shutil.copy2(origin, target, follow_symlinks=False)
         return destination
 
     def run(label, part, payload, lists=manifests, *, success=True, sdk_path=sdk):
@@ -86,6 +104,20 @@ def main():
     if inventory.snapshot_tree(sdk_stage) != expected:
         raise ValueError("partition union changed the complete payload")
 
+    # The checked-in PLIST uses man/man1. Verify that the selector also accepts
+    # that layout when the installed full PLIST has not been relocated by pkgsrc.
+    raw_manifests = {}
+    for part, path in manifests.items():
+        data = "\n".join(
+            name.removeprefix("share/")
+            if name.startswith("share/man/") else name
+            for name in path.read_text(encoding="utf-8").splitlines()) + "\n"
+        raw_path = work / (part + "-man.plist")
+        raw_path.write_text(data, encoding="utf-8")
+        raw_manifests[part] = raw_path
+    raw_runtime = copy_stage("raw-man-layout", raw_manifests)
+    run("raw-man-layout", "runtime", raw_runtime, raw_manifests)
+
     rejected = copy_stage("rejected")
     run("unknown-part", "other", rejected, success=False)
     (rejected / "unlisted-file").write_text("unexpected", encoding="utf-8")
@@ -113,8 +145,8 @@ def main():
     (old_sdk / "stage.py").write_text("STAGE_PARTITION_API = True\n")
     run("boolean-feature", "runtime", rejected, success=False,
         sdk_path=old_sdk.parents[1])
-    print(f"PASS: real {len(files)}-file ICU payload partitions and seven refusals; "
-          "payload policy checks do not establish a split target package")
+    print(f"PASS: real {len(files)}-file ICU payload partitions, both man layouts, "
+          "and seven refusals; payload policy checks do not establish a split target package")
 
 
 if __name__ == "__main__":
