@@ -10,7 +10,8 @@ import sys
 import tempfile
 
 from emberbsd_sdk import inventory, jsonio, paths, process
-from emberbsd_sdk.errors import SDKError, ProcessOwnershipError
+from emberbsd_sdk.errors import SDKError, CommandError, ProcessOwnershipError
+from emberbsd_sdk.stream import PRODUCER_STREAM_API, PRODUCER_INPUT_API, capture_streamed
 from sdk_source import PRODUCER_QUARANTINE
 
 PROFILE = Path(__file__).resolve().parent
@@ -60,8 +61,19 @@ def environment(values=None):
 
 
 def capture(argv, env=None, cwd=None, input=None):
-    result = process.capture([str(arg) for arg in argv], env=environment(env), cwd=cwd, input=input)
-    return result.stdout.decode('utf-8')
+    require(type(PRODUCER_STREAM_API) is int and PRODUCER_STREAM_API == 1 and
+            type(PRODUCER_INPUT_API) is int and PRODUCER_INPUT_API == 1,
+            'SDK producer stream and input API1 are required')
+    try:
+        result = capture_streamed([str(arg) for arg in argv], env=environment(env),
+                                  cwd=cwd, input=input, stdout_limit=16 * 1024 * 1024,
+                                  stderr_limit=1024 * 1024, timeout=120)
+    except CommandError as error:
+        require(not error.stdout_truncated, 'Host query stdout exceeds the capture limit')
+        require(not error.stderr_truncated, 'Host query stderr exceeds the capture limit')
+        raise
+    require(not result.stderr_truncated, 'Host query stderr exceeds the capture limit')
+    return result.value.decode('utf-8')
 
 
 def assert_recoverable(work):

@@ -368,6 +368,7 @@ stages the runtime without replacing a complete GCC16 provider. The
 ```sh
 python3 -B profiles/development-toolchain/tests/python/controllers-test.py
 python3 -B profiles/development-toolchain/tests/python/environment-test.py
+python3 -B profiles/development-toolchain/tests/python/host-capture-test.py
 python3 -B profiles/development-toolchain/cross/tests/lto-binutils.py \
     /absolute/gcc-cross/toolchain /absolute/new-lto-check
 python3 -B profiles/development-toolchain/cross/tests/plugin-needed-warnings.py \
@@ -375,6 +376,13 @@ python3 -B profiles/development-toolchain/cross/tests/plugin-needed-warnings.py 
     /absolute/new-plugin-check --sdk-source /absolute/EmberBSD-SDK
 sh profiles/development-toolchain/tests/prepare.sh /absolute/new-pkgsrc-test
 ```
+
+Host query capture uses SDK producer stream and input API1. It owns each
+query session, including compiler preprocessing. It keeps nonzero status
+and exact output bytes within the limits. It refuses stdout above 16 MiB,
+stderr above 1 MiB, or a query above 120 seconds. An unproven session drain
+raises `ProcessOwnershipError`; the caller must quarantine its work and
+retain its input leases until explicit recovery.
 
 The environment contract executes real captured and logged children. It checks
 Darwin-only SDK inheritance, explicit overrides and malformed paths. On Darwin,
