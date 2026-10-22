@@ -1,0 +1,20 @@
+$NetBSD$
+
+# Origin: AI-assisted EmberBSD adaptation; not submitted upstream.
+# Upstream: Chromium 152.0.7977.167, source pin dd78960ccd8a03a2fe1f629543d27783885b78e9.
+# File: build/toolchain/mac/BUILD.gn.
+--- a/build/toolchain/mac/BUILD.gn
++++ b/build/toolchain/mac/BUILD.gn
+@@ -26,6 +26,12 @@
+       # globally for its GCC toolchain; the file-scope args override would
+       # leak into this macOS host toolchain. The host stays Clang.
+       is_clang = true
++
++      # The cross target can enable split DWARF, but this macOS host toolchain
++      # does not emit .dwo files. Keep it on the Apple default.
++      if (target_os != "mac") {
++        use_debug_fission = false
++      }
+ 
+       if (target_os == "ios") {
+         # Use LLD for the host part of a chrome/ios build.

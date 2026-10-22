@@ -1,0 +1,22 @@
+$NetBSD$
+
+Select the existing POSIX main and stdio helper for NetBSD. Keep the glibc
+environment shim in the Linux branch.
+Origin: EmberBSD (AI-assisted), Electron 44.9.3 at
+c542df1ecbc2c2978e8f53f8c7baf602404d166f; not submitted upstream.
+
+--- a/electron/BUILD.gn
++++ b/electron/BUILD.gn
+@@ -1679,6 +1679,12 @@
+         "shell/app/uv_stdio_fix.cc",
+         "shell/app/uv_stdio_fix.h",
+       ]
++    } else if (current_os == "netbsd") {
++      sources = [
++        "shell/app/electron_main_linux.cc",
++        "shell/app/uv_stdio_fix.cc",
++        "shell/app/uv_stdio_fix.h",
++      ]
+     }
+     include_dirs = [ "." ]
+     deps = electron_app_link_deps + [ ":packed_resources" ]
