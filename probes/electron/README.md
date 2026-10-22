@@ -105,7 +105,7 @@ match the independent allowlist build byte-for-byte. The full pkgsrc dependency
 lifecycle, target startup, and kernel sandbox acceptance remain unverified.
 The application package cannot be installed until the target runtime is built.
 
-## GN target inputs
+## GN and C++ target inputs
 
 The GN and parser patches retain the exact Chromium pin above. Apply them after
 its NetBSD GN adaptations, from the Chromium source root:
@@ -120,6 +120,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-bindgen-gcc-warnings
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-host-node-inputs.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-netbsd-main.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-mac-host-debug-fission.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/partition-alloc-netbsd-gcc16.patch
 ```
 
 The pkg-config patch keeps the effective `pkg/lib` value in the common cross
@@ -148,6 +149,9 @@ The Electron main patch selects the upstream POSIX main and stdio helper for
 NetBSD. Its glibc environment shim stays in the unchanged Linux branch.
 The Mac patch keeps ordinary DWARF in host objects during cross-builds. Target
 GCC16 still emits split DWARF. Native Mac toolchain arguments stay unchanged.
+The PartitionAlloc patch matches NetBSD's const-qualified `malloc_usable_size`
+declaration. It also uses a width-checked unsigned shift for the existing slot
+metadata invariant. It keeps other libc signatures and allocator policy.
 
 Commands, coverage, and limitations are in [the GN regression guide](tests/README.md).
 

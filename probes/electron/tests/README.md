@@ -1,4 +1,4 @@
-# Electron GN regression tests
+# Electron cross-build regression tests
 
 Run these commands from the Ports repository root.
 
@@ -55,6 +55,12 @@ python3.15 -E -S probes/electron/tests/gn-mac-host-debug-fission.py \
   --target-cxx /absolute/GCC16-target-g++ --target-sysroot /absolute/target-sysroot \
   --target-gcc-lib-version /absolute/GCC16-target-lib-version \
   --target-gcc-lib /absolute/GCC16-target-lib /absolute/NEW_MAC_DWARF_WORK
+python3.15 -E -S probes/electron/tests/partition-alloc-netbsd-gcc16.py \
+  --sdk-source /absolute/EmberBSD-SDK --ports-root /absolute/Ports \
+  --source-root /absolute/chromium/src \
+  --patch /absolute/Ports/probes/electron/patches/partition-alloc-netbsd-gcc16.patch \
+  --cxx /absolute/GCC16-target-g++ --sysroot /absolute/target-sysroot \
+  --workdir /absolute/NEW_PARTITION_ALLOC_WORK
 ```
 
 The tests accept the original or already fixed source. They apply the carried
@@ -114,3 +120,18 @@ output declarations. The generated original host command fails on its extra
 GCC16 target probe retains its object, depfile, and `.dwo`. A native Mac probe is
 unchanged, and an intentional GCC warning still fails under `-Werror`. The test
 does not evaluate the complete Apple template or compile Chromium source files.
+
+The PartitionAlloc test checks seven outcomes with GCC16 for NetBSD/aarch64.
+It copies two production files, proves forward/reverse patch application, and
+extracts the exact metadata assertion into a small compile fixture. The original
+assertion fails on signedness; the fixed assertion passes. An out-of-range shift
+fails its intended assertion before a shift is evaluated. The real target malloc
+header rejects the original shim and accepts the patched shim as an AArch64 ELF
+object. Mocked non-NetBSD headers retain the original pointer signature. These
+isolated probes do not compile the complete allocator or execute its runtime.
+
+Target analyzer coverage is partial. Cppcheck 2.18 stops at an unchanged
+`time.h` AST error in both revisions. Apple Clang 21 analyzes the metadata TU
+with the same three dead-store warnings, but rejects unchanged NetBSD libc
+`__THROW`/`noexcept` declarations in the shim TU. These are analyzer limits;
+they do not establish a clean analysis of the complete allocator.

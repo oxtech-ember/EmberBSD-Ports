@@ -1,0 +1,48 @@
+$NetBSD$
+
+# Status: AI-assisted EmberBSD patch; not submitted upstream.
+# Generated with AI assistance. Adaptation for EmberBSD target compatibility.
+# Upstream: Chromium 152.0.7977.167, base revision dd78960ccd8a03a2fe1f629543d27783885b78e9.
+# Preserve other libc malloc_usable_size signatures, use NetBSD's const-qualified API,
+# and make the metadata multiplier shift unsigned and width-checked.
+--- a/base/allocator/partition_allocator/src/partition_alloc/partition_alloc.cc
++++ b/base/allocator/partition_allocator/src/partition_alloc/partition_alloc.cc
+@@ -74,14 +74,18 @@
+           std::numeric_limits<size_t>::max() / 2,
+       "Calculation in GetInSlotMetadataIndexMultiplierShift() must not "
+       "underflow.");
++  constexpr size_t kSizeTBits =
++      static_cast<size_t>(std::numeric_limits<size_t>::digits);
+   // Check that the GetInSlotMetadataIndexMultiplierShift() calculation is
+-  // correct.
++  // correct. The bound short-circuits the shift if it cannot fit in size_t.
+   STATIC_ASSERT_OR_PA_CHECK(
+-      (1 << internal::GetInSlotMetadataIndexMultiplierShift()) ==
+-          (internal::SystemPageSize() /
+-           (sizeof(internal::InSlotMetadata) *
+-            (internal::kSuperPageSize / internal::SystemPageSize()))),
+-      "Bitshift must match the intended multiplication.");
++      internal::GetInSlotMetadataIndexMultiplierShift() < kSizeTBits &&
++          (size_t{1} <<
++           internal::GetInSlotMetadataIndexMultiplierShift()) ==
++              (internal::SystemPageSize() /
++               (sizeof(internal::InSlotMetadata) *
++                (internal::kSuperPageSize / internal::SystemPageSize()))),
++      "Bitshift must fit in size_t and match the intended multiplication.");
+   STATIC_ASSERT_OR_PA_CHECK(
+       ((sizeof(internal::InSlotMetadata) *
+         (internal::kSuperPageSize / internal::SystemPageSize()))
+--- a/base/allocator/partition_allocator/src/partition_alloc/shim/allocator_shim_override_libc_symbols.h
++++ b/base/allocator/partition_allocator/src/partition_alloc/shim/allocator_shim_override_libc_symbols.h
+@@ -80,7 +80,11 @@
+   return ShimGetSizeEstimate(address, nullptr);
+ }
+ 
++#if PA_BUILDFLAG(IS_NETBSD)
++SHIM_ALWAYS_EXPORT size_t malloc_usable_size(const void* address) __THROW {
++#else
+ SHIM_ALWAYS_EXPORT size_t malloc_usable_size(void* address) __THROW {
++#endif
+   return ShimGetSizeEstimate(address, nullptr);
+ }
+ 
