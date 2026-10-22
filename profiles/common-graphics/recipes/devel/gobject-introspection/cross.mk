@@ -17,11 +17,22 @@ PKG_FAIL_REASON+= "The GI cross recipe supports only aarch64 and x86_64"
     "${EMBERBSD_CROSS_TARGET:U${_EMBER_GI_TARGET:U}}" != "${_EMBER_GI_TARGET:U}"
 PKG_FAIL_REASON+= "GI requires matching NetBSD 11 target, architecture and GNU provider metadata"
 .endif
-.for _input in EMBERBSD_GI_PYTHON EMBERBSD_GI_QUERY_CONFIG EMBERBSD_CROSS_BUILD_CC
+# Keep the published GI selector compatible with the common Python provider.
+.if defined(EMBERBSD_GI_PYTHON)
+.if defined(EMBERBSD_CROSS_BUILD_PYTHON) && "${EMBERBSD_CROSS_BUILD_PYTHON}" != "${EMBERBSD_GI_PYTHON}"
+PKG_FAIL_REASON+= "GI and common build tools must select the same Python provider"
+.else
+EMBERBSD_CROSS_BUILD_PYTHON?= ${EMBERBSD_GI_PYTHON}
+.endif
+.endif
+.for _input in EMBERBSD_CROSS_BUILD_PYTHON EMBERBSD_GI_QUERY_CONFIG EMBERBSD_CROSS_BUILD_CC
 .if empty(${_input}:M/*) || !empty(${_input}:C/[A-Za-z0-9_.\/-]//g) || !exists(${${_input}})
 PKG_FAIL_REASON+= "${_input} must name an existing absolute file without shell metacharacters"
 .endif
 .endfor
+.if empty(EMBERBSD_SDK_SOURCE:M/*) || !empty(EMBERBSD_SDK_SOURCE:C/[A-Za-z0-9_.\/-]//g) || !exists(${EMBERBSD_SDK_SOURCE}/src/emberbsd_sdk/__init__.py)
+PKG_FAIL_REASON+= "EMBERBSD_SDK_SOURCE must name an absolute SDK source directory without shell metacharacters"
+.endif
 # Cross dependency traversal builds the native tool package independently.
 TOOL_DEPENDS+= gobject-introspection>=1.86.0nb4:../../devel/gobject-introspection
 EMBERBSD_GI_FILESDIR?= ${.CURDIR}/../../devel/gobject-introspection/files
@@ -30,7 +41,8 @@ EMBERBSD_GI_FILESDIR?= ${.CURDIR}/../../devel/gobject-introspection/files
 MESON_ARGS+= -Dgi_cross_use_prebuilt_gi=true
 MESON_ARGS+= -Dgi_cross_ldd_wrapper=${EMBERBSD_GI_FILESDIR}/elf-needed.sh
 .endif
-MAKE_ENV+= GI_CROSS_LAUNCHER=${EMBERBSD_GI_PYTHON:Q}\ ${EMBERBSD_GI_FILESDIR:Q}/target-query.py
+MAKE_ENV+= GI_CROSS_LAUNCHER=${EMBERBSD_CROSS_BUILD_PYTHON:Q}\ -E\ -S\ ${EMBERBSD_GI_FILESDIR:Q}/target-query.py
+MAKE_ENV+= EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q}
 MAKE_ENV+= EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q}
 MAKE_ENV+= EMBERBSD_GI_TARGET=${_EMBER_GI_TARGET:Q}
 MAKE_ENV+= EMBERBSD_GI_READELF=${TOOLDIR:Q}/bin/${_EMBER_GI_TRIPLET}-readelf
@@ -41,7 +53,7 @@ MESON_BINARY.pkg-config= ${WRKDIR}/.meson-gi-pkg-config
 pre-configure: emberbsd-gi-native
 .PHONY: emberbsd-gi-native
 emberbsd-gi-native:
-	${RUN}${SETENV} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} ${EMBERBSD_GI_PYTHON} ${EMBERBSD_GI_FILESDIR}/target-query.py --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${_EMBER_GI_TRIPLET}-readelf ${_EMBER_GI_TARGET}
+	${RUN}${SETENV} EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} ${EMBERBSD_CROSS_BUILD_PYTHON} -E -S ${EMBERBSD_GI_FILESDIR}/target-query.py --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${_EMBER_GI_TRIPLET}-readelf ${_EMBER_GI_TARGET}
 	${RUN}${TEST} -x ${TOOLBASE}/bin/g-ir-scanner && ${TEST} -x ${TOOLBASE}/bin/g-ir-compiler
 	${RUN}version=$$(env PKG_CONFIG_SYSROOT_DIR= PKG_CONFIG_PATH= PKG_CONFIG_LIBDIR=${TOOLBASE}/lib/pkgconfig:${TOOLBASE}/share/pkgconfig ${TOOLBASE}/bin/pkg-config --modversion gobject-introspection-1.0); ${TEST} "$$version" = 1.86.0
 	${RUN}${SED} \

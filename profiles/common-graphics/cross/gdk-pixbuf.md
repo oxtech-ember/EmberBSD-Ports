@@ -123,16 +123,17 @@ Host selection checks use the accepted native prefix and cross compiler.
 ```sh
 ruby tests/gdk-pixbuf-source.rb /path/to/gdk-pixbuf-2.44.8.tar.xz \
   /path/to/BUILT_SOURCE /path/to/new-source-check
-ruby tests/gdk-pixbuf-cross.rb /path/to/BUILT_SOURCE \
+python3.15 tests/gdk-pixbuf-cross.py --sdk-source /absolute/EmberBSD-SDK /path/to/BUILT_SOURCE \
   /path/to/native-prefix /path/to/cross-tools/bin/aarch64--netbsd-gcc \
   /path/to/new-selection-check
-python3.15 tests/gdk-pixbuf-guards.py --sdk-source /path/to/SDK /path/to/SOURCE \
+python3.15 tests/gdk-pixbuf-guards.py --sdk-source /absolute/EmberBSD-SDK /path/to/BUILT_SOURCE \
   /path/to/native-python /path/to/sysroot \
   /path/to/cross-tools/bin/aarch64--netbsd-readelf /path/to/new-guard-check
 ruby tests/gdk-pixbuf-prepare.rb /path/to/cross-tools /path/to/sysroot \
   /path/to/BUILT_SOURCE /path/to/gdk-pixbuf2-2.44.8nb2.tgz \
   /path/to/shared-mime-info-2.5.1.tgz /path/to/work/new-consumer
-EMBERBSD_GI_QUERY_CONFIG=/path/to/private/query.json python3.15 \
+EMBERBSD_SDK_SOURCE=/path/to/EmberBSD-SDK \
+EMBERBSD_GI_QUERY_CONFIG=/path/to/private/query.json /path/to/native/python3.15 \
   recipes/devel/gobject-introspection/files/target-query.py \
   /path/to/work/new-consumer/gdk-pixbuf-consumer
 ```

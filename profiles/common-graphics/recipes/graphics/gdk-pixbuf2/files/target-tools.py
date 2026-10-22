@@ -1,203 +1,222 @@
-#!/usr/bin/env python3.15
+#!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
-# Origin: EmberBSD (AI-assisted), ported from the EmberBSD Ruby target-tool runner.
-"""Run GdkPixbuf loader and MIME queries with verified target providers."""
+# Origin: EmberBSD (AI-assisted). Ported from target-tools.rb.
+"""Run GdkPixbuf build tools against verified EmberBSD target modules."""
+
+import hashlib
 import os
 from pathlib import Path
 import re
 import shlex
 import shutil
-import signal
 import subprocess
 import sys
+import tarfile
 import tempfile
 
+sys.dont_write_bytecode = True
 
-class QueryError(Exception):
-    pass
+from sdk_source import install_signal_handlers, load_sdk
+
+TARGETS = {'aarch64': ('aarch64', 183), 'amd64': ('x86_64', 62)}
+REMOTE_DIRECTORY = re.compile(r'/tmp/ember-pixbuf\.[A-Za-z0-9]{8}')
+MODULE_LINE = re.compile(rb'^"(/[^"\n]+\.so)"$', re.MULTILINE)
+
+
+class ToolError(Exception):
+    """A pixbuf policy or transport check refused the query."""
 
 
 def require(condition, message):
     if not condition:
-        raise QueryError(message)
+        raise ToolError(message)
 
 
-def bind_sdk():
-    require(sys.version_info[:2] == (3, 15), 'Use the qualified native Python 3.15 interpreter.')
-    selected = os.environ.get('EMBERBSD_SDK_SOURCE')
-    require(isinstance(selected, str) and selected.startswith('/'), 'SDK source must be an explicit absolute path')
-    require((Path(selected) / 'src/emberbsd_sdk/__init__.py').is_file(), 'SDK source must exist and provide host API 1')
-    source = Path(selected).resolve(strict=True)
-    sys.path.insert(0, str(source / 'src'))
-    import emberbsd_sdk
-    require(emberbsd_sdk.API_VERSION == 1 and
-            Path(emberbsd_sdk.__file__).resolve().parent == source / 'src/emberbsd_sdk',
-            'The selected SDK source must provide host API 1.')
+def query(arguments):
+    from emberbsd_sdk.elf import read_elf_dynamic
+    from emberbsd_sdk.errors import CommandError, SDKError
     from emberbsd_sdk.inventory import sha256_file
     from emberbsd_sdk.jsonio import read_json
-    return sha256_file, read_json
+    from emberbsd_sdk import stream
+    from emberbsd_sdk.paths import canonical_existing, real_directory, regular_file, relative_inside
 
-
-def inside(path, root):
-    return path == root or path.startswith(root + '/')
-
-
-def canonical(value):
-    return str(Path(value).resolve(strict=True))
-
-
-def capture(command, *, data=None, merged=True):
-    try:
-        return subprocess.run(command, input=data, stdout=subprocess.PIPE,
-                              stderr=subprocess.STDOUT if merged else subprocess.PIPE,
-                              timeout=180, check=False)
-    except subprocess.TimeoutExpired as error:
-        raise QueryError('host command timed out: ' + command[0]) from error
-
-
-def status_of(result):
-    return result.returncode if result.returncode >= 0 else 1
-
-
-def main(args):
-    digest, read_json = bind_sdk()
+    require(getattr(stream, 'PRODUCER_STREAM_API', None) == 1,
+            'selected SDK lacks producer stream API 1')
+    require(getattr(stream, 'PRODUCER_INPUT_API', None) == 1,
+            'selected SDK lacks producer input API 1')
+    require(getattr(stream, 'PRODUCER_INSPECTION_API', None) == 1,
+            'selected SDK lacks producer inspection API 1')
     config = read_json(os.environ['EMBERBSD_GI_QUERY_CONFIG'])
-    targets = {'aarch64': ('aarch64', 'AArch64'), 'amd64': ('x86_64', 'Advanced Micro Devices X86-64')}
+    require(isinstance(config, dict), 'GI query configuration must be an object')
     target = config.get('target', 'aarch64')
-    require(target in targets, 'unsupported pixbuf target architecture')
-    processor, machine = targets[target]
-    require(os.environ.get('EMBERBSD_GI_TARGET', target) == target,
+    require(isinstance(target, str) and target in TARGETS, 'unsupported pixbuf target architecture')
+    arch, machine = TARGETS[target]
+    require('EMBERBSD_GI_TARGET' not in os.environ or os.environ['EMBERBSD_GI_TARGET'] == target,
             'configuration differs from recipe target architecture')
+
     def absolute(key):
         value = config[key]
-        require(isinstance(value, str) and value.startswith('/'), key + ' must be absolute')
-        return canonical(value)
-    base, sysroot, cache, readelf = map(absolute, ('build_root', 'sysroot', 'cache', 'readelf'))
-    require(os.path.isfile(readelf) and os.access(readelf, os.X_OK), 'readelf is not executable')
+        require(isinstance(value, str) and value.startswith('/'), f'{key} must be absolute')
+        return canonical_existing(value)
+
+    # Legacy config/--check retains the selected readelf identity. SDK API 1
+    # reads ELF bytes directly and does not invoke the configured tool.
+    base, sysroot, cache, readelf = (absolute(key) for key in ('build_root', 'sysroot', 'cache', 'readelf'))
+    for directory in (base, sysroot, cache):
+        real_directory(directory)
+    regular_file(readelf)
+    require(os.access(readelf, os.X_OK), 'readelf is not executable')
     roots = (base, sysroot)
-    require(not inside(base, sysroot) and not inside(sysroot, base), 'build/sysroot overlap')
-    require(not inside(cache, sysroot) and not inside(sysroot, cache), 'cache overlaps providers')
+
+    def within(path, root):
+        return relative_inside(path, root) is not None
+
+    require(not within(base, sysroot) and not within(sysroot, base), 'build/sysroot overlap')
+    require(not within(cache, sysroot) and not within(sysroot, cache), 'cache overlaps providers')
     host = config['ssh']
-    require(isinstance(host, str) and re.fullmatch(
-        r'(?:[A-Za-z0-9_][A-Za-z0-9_.-]*@)?[A-Za-z0-9][A-Za-z0-9_.-]*', host), 'invalid SSH destination')
-    ssh = ['ssh', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'ConnectTimeout=5',
-           '-o', 'ServerAliveInterval=10', '-o', 'ServerAliveCountMax=3']
+    require(isinstance(host, str) and re.fullmatch(r'(?:[A-Za-z0-9_][A-Za-z0-9_.-]*@)?[A-Za-z0-9][A-Za-z0-9_.-]*', host),
+            'invalid SSH destination')
+    ssh = ['ssh', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes',
+           '-o', 'ConnectTimeout=5', '-o', 'ServerAliveInterval=10', '-o', 'ServerAliveCountMax=3']
     if 'host_key_alias' in config:
         alias = config['host_key_alias']
         require(isinstance(alias, str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*', alias),
                 'invalid host key alias')
         ssh += ['-o', 'HostKeyAlias=' + alias]
     ssh.append(host)
-    if args and args[0] == '--check':
-        require(len(args) == 4, 'usage: --check WORKDIR SYSROOT READELF')
-        workdir, target_root, tool = map(canonical, args[1:])
-        require(inside(workdir, base) and target_root == sysroot and tool == readelf,
-                'configuration differs from recipe')
+    if arguments and arguments[0] == '--check':
+        require(len(arguments) == 4, 'usage: --check WORKDIR SYSROOT READELF')
+        workdir, target_root, tool = map(canonical_existing, arguments[1:])
+        require(within(workdir, base) and target_root == sysroot and tool == readelf, 'configuration differs from recipe')
         print('PASS: GI query configuration matches the selected work, sysroot and readelf')
         return 0
-    require(bool(args) and args[0] in ('--loaders', '--mime'),
+
+    require(bool(arguments) and arguments[0] in ('--loaders', '--mime'),
             'usage: --loaders QUERY MODULE... | --mime PRINTER CACHE')
-    mode, *args = args
-    require(bool(args), 'binary required')
-    exe = canonical(args[0])
-    arguments = args[1:]
-    require(inside(exe, base), 'binary outside build root')
+    mode, *arguments = arguments
+    require(bool(arguments), 'binary required')
+    exe, *arguments = arguments
+    exe = canonical_existing(exe)
+    require(within(exe, base), 'binary outside build root')
     expected = 'gdk-pixbuf-query-loaders' if mode == '--loaders' else 'gdk-pixbuf-print-mime-types'
     require(os.path.basename(exe) == expected, 'unexpected target tool')
-    cache_input = None
+    cache_input = cache_bytes = None
     if mode == '--loaders':
-        modules = list(map(canonical, arguments))
+        modules = list(map(canonical_existing, arguments))
     else:
         require(len(arguments) == 1, 'one cache required')
-        cache_input = canonical(arguments[0])
-        require(inside(cache_input, base), 'cache outside build root')
-        modules = [canonical(path) for path in re.findall(r'^"(/[^"\n]+\.so)"$', Path(cache_input).read_text(encoding='utf-8'), re.M)]
-    require(modules, 'missing target modules')
+        cache_input = canonical_existing(arguments[0])
+        require(within(cache_input, base), 'cache outside build root')
+        cache_bytes = Path(cache_input).read_bytes()
+        cache_bytes.decode('utf-8', 'strict')
+        modules = [canonical_existing(path.decode('utf-8', 'strict')) for path in MODULE_LINE.findall(cache_bytes)]
+    require(bool(modules), 'missing target modules')
     require(len({os.path.basename(path) for path in modules}) == len(modules), 'duplicate target modules')
     for path in modules:
-        require(inside(path, base) and re.fullmatch(r'libpixbufloader-[a-z0-9]+\.so', os.path.basename(path)),
+        require(within(path, base) and re.fullmatch(r'libpixbufloader-[a-z0-9]+\.so', os.path.basename(path)),
                 'invalid target module')
+
     work = Path(tempfile.mkdtemp(prefix='pixbuf-tool-', dir=cache))
     stage = work / 'stage'
-    for name in ['lib', 'loaders']:
-        (stage / name).mkdir(parents=True)
-    def run(name, *command, data=None):
-        result = capture(list(command), data=data)
-        (work / (name + '.log')).write_bytes(result.stdout)
-        require(result.returncode == 0, f'{name} failed ({status_of(result)}); see {work}')
-        return result.stdout
+    (stage / 'lib').mkdir(parents=True)
+    (stage / 'loaders').mkdir()
+    environment = dict(os.environ)
+
+    def completed(command, data=None):
+        try:
+            result = stream.capture_streamed(command, env=environment, input=data,
+                                                timeout=180, stdout_limit=16 * 1024 * 1024,
+                                            empty_snapshot_timeout=30)
+            require(not result.stderr_truncated, 'host command stderr exceeds capture limit')
+            return subprocess.CompletedProcess(command, 0, result.value, result.stderr)
+        except CommandError as error:
+            require(not error.stdout_truncated and not error.stderr_truncated,
+                    'host command output exceeds capture limit')
+            return subprocess.CompletedProcess(command, error.returncode, error.stdout, error.stderr)
+
+    def run(name, command, data=None):
+        result = completed(command, data)
+        output = result.stdout + result.stderr
+        (work / (name + '.log')).write_bytes(output)
+        require(result.returncode == 0, f'{name} failed ({result.returncode}); see {work}')
+        return output
+
     def mapdir(path):
+        require(isinstance(path, str), 'library directories must be strings')
         if os.path.isdir(path):
-            resolved = canonical(path)
-            if any(inside(resolved, root) for root in roots):
+            resolved = canonical_existing(path)
+            if any(within(resolved, root) for root in roots):
                 return resolved
-        if any(inside(path, root) for root in roots):
+        if any(within(path, root) for root in roots):
             return path
         return sysroot + path if path.startswith('/') else os.path.abspath(path)
-    extra = config.get('library_dirs', [])
-    require(isinstance(extra, list) and all(isinstance(path, str) for path in extra), 'invalid library directories')
-    search = [os.path.dirname(path) for path in modules] + extra + os.environ.get('LD_LIBRARY_PATH', '').split(':')
-    search = list(dict.fromkeys(mapdir(path) for path in search if path))
+
+    configured = config.get('library_dirs', [])
+    require(isinstance(configured, list) and all(isinstance(path, str) for path in configured),
+            'library_dirs must be an array of strings')
+    candidates = [os.path.dirname(path) for path in modules] + configured + environment.get('LD_LIBRARY_PATH', '').split(':')
+    search = list(dict.fromkeys(mapdir(path) for path in candidates if path))
     defaults = [mapdir(path) for path in ('/usr/pkg/gcc16/lib', '/usr/pkg/lib', '/usr/lib', '/lib')]
     files, pending = {}, [exe, *modules]
     while pending:
         file = pending.pop(0)
-        result = capture([readelf, '-h', file])
-        header = result.stdout.decode('utf-8', 'replace')
-        actual = re.search(r'^\s*Machine:\s*(.*?)\s*$', header, re.M)
-        require(result.returncode == 0 and actual and actual[1] == machine and
-                re.search(r'Class:.*ELF64', header) and re.search(r'Data:.*little endian', header),
-                f'not little-endian {processor} ELF64: {file}')
-        result = capture([readelf, '-d', file])
-        require(result.returncode == 0, 'readelf failed')
-        dynamic = result.stdout.decode('utf-8', 'replace')
-        localdirs = [mapdir(path.replace('${ORIGIN}', os.path.dirname(file)).replace('$ORIGIN', os.path.dirname(file)))
-                     for paths in re.findall(r'\((?:RPATH|RUNPATH)\).*\[(.*?)\]', dynamic) for path in paths.split(':')]
-        for name in re.findall(r'\(NEEDED\).*\[(.*?)\]', dynamic):
+        try:
+            dynamic = read_elf_dynamic(file, machine=machine)
+        except SDKError as error:
+            raise ToolError(f'not little-endian {arch} ELF64: {file}: {error}') from error
+        localdirs = []
+        for value in (dynamic['rpath'], dynamic['runpath']):
+            if value is not None:
+                localdirs.extend(mapdir(path.replace('${ORIGIN}', os.path.dirname(file)).replace('$ORIGIN', os.path.dirname(file)))
+                                 for path in value.split(':'))
+        for name in dynamic['needed']:
             require(re.fullmatch(r'[a-zA-Z0-9._+-]+', name), 'unsafe SONAME')
-            candidate = next((directory + '/' + name for directory in search + localdirs + defaults
-                              if os.path.isfile(directory + '/' + name)), None)
-            require(candidate is not None, 'missing provider: ' + name)
-            candidate = canonical(candidate)
-            require(any(inside(candidate, root) for root in roots), 'provider outside target/build roots')
+            candidate = next((os.path.join(directory, name) for directory in search + localdirs + defaults
+                              if os.path.isfile(os.path.join(directory, name))), None)
+            require(candidate is not None, f'missing provider: {name}')
+            candidate = canonical_existing(candidate)
+            require(any(within(candidate, root) for root in roots), 'provider outside target/build roots')
             if name in files:
-                require(digest(candidate) == digest(files[name]),
+                require(sha256_file(candidate) == sha256_file(files[name]),
                         f'conflicting {name}: {files[name]} versus {candidate}')
             else:
                 files[name] = candidate
                 pending.append(candidate)
-    sources = {path: digest(path) for path in sorted({exe, *files.values(), *modules, *([cache_input] if cache_input else [])})}
-    shutil.copyfile(exe, stage / 'query')
+
+    inputs = {exe, *files.values(), *modules, *([cache_input] if cache_input else [])}
+    sources = {path: sha256_file(path) for path in sorted(inputs)}
+    shutil.copy(exe, stage / 'query')
     (stage / 'query').chmod(0o755)
     for name, path in files.items():
-        shutil.copyfile(path, stage / 'lib' / name)
+        shutil.copy(path, stage / 'lib' / name)
     for path in modules:
-        shutil.copyfile(path, stage / 'loaders' / os.path.basename(path))
-    entries = sorted(path for path in stage.rglob('*') if path.is_file())
-    manifest = ''.join(f'{digest(path)}  {path.relative_to(stage)}\n' for path in entries)
+        shutil.copy(path, stage / 'loaders' / os.path.basename(path))
+    manifest = ''.join(f'{sha256_file(path)}  {path.relative_to(stage).as_posix()}\n'
+                       for path in sorted(stage.rglob('*')) if path.is_file())
     (stage / 'files.sha256').write_text(manifest, encoding='utf-8')
     (work / 'files.sha256').write_text(manifest, encoding='utf-8')
-    (work / 'sources.sha256').write_text(''.join(f'{value}  {path}\n' for path, value in sources.items()), encoding='utf-8')
+    (work / 'sources.sha256').write_text(''.join(f'{digest}  {path}\n' for path, digest in sources.items()), encoding='utf-8')
     archive = work / 'input.tar.gz'
-    run('tar', '/usr/bin/env', 'COPYFILE_DISABLE=1', 'tar', '--format=ustar', '--no-xattrs', '-czf', str(archive), '-C', str(stage), '.')
+    with tarfile.open(archive, 'x:gz', format=tarfile.USTAR_FORMAT) as output:
+        output.add(stage, arcname='.')
+    (work / 'tar.log').write_bytes(b'')
     remote = None
     try:
-        remote = run('allocate', *ssh, 'test "$(uname -s)" = NetBSD && test "$(uname -p)" = ' + shlex.quote(processor) +
-                     ' && umask 077 && mktemp -d /tmp/ember-pixbuf.XXXXXXXX').decode().strip()
-        require(re.fullmatch(r'/tmp/ember-pixbuf\.[A-Za-z0-9]{8}', remote), 'invalid temporary directory')
-        run('transfer', *ssh, 'tar -xzf - -C ' + shlex.quote(remote), data=archive.read_bytes())
+        allocation = ('test "$(uname -s)" = NetBSD && test "$(uname -p)" = ' + arch
+                      + ' && umask 077 && mktemp -d /tmp/ember-pixbuf.XXXXXXXX')
+        remote = run('allocate', ssh + [allocation]).decode('utf-8', 'strict').strip()
+        require(REMOTE_DIRECTORY.fullmatch(remote), 'invalid temporary directory')
+        run('transfer', ssh + [f'tar -xzf - -C {shlex.quote(remote)}'], archive.read_bytes())
         invocation = [remote + '/query']
         if mode == '--loaders':
-            invocation += [remote + '/loaders/' + os.path.basename(path) for path in modules]
+            invocation.extend(remote + '/loaders/' + os.path.basename(path) for path in modules)
         else:
-            target_cache = Path(cache_input).read_text(encoding='utf-8')
+            target_cache = Path(cache_input).read_bytes()
             for path in modules:
-                target_cache = target_cache.replace(path, remote + '/loaders/' + os.path.basename(path))
-            data = target_cache.encode()
-            import hashlib
-            value = hashlib.sha256(data).hexdigest()
-            (work / 'mime-cache.sha256').write_text(value + '  loaders.cache\n', encoding='ascii')
-            run('cache', *ssh, f"cat > {remote}/loaders.cache && printf '%s\\n' '{value}  loaders.cache' >> {remote}/files.sha256", data=data)
+                target_cache = target_cache.replace(path.encode('utf-8'), (remote + '/loaders/' + os.path.basename(path)).encode('utf-8'))
+            digest = hashlib.sha256(target_cache).hexdigest()
+            (work / 'mime-cache.sha256').write_text(digest + '  loaders.cache\n', encoding='ascii')
+            run('cache', ssh + [f"cat > {remote}/loaders.cache && printf '%s\\n' '{digest}  loaders.cache' >> {remote}/files.sha256"], target_cache)
         script = f'''set -eu
 cd {shlex.quote(remote)}
 while read hash name; do
@@ -219,45 +238,60 @@ cat stdout.log
 cat stderr.log >&2
 exit "$result"
 '''
-        result = capture([*ssh, 'sh -s'], data=script.encode(), merged=False)
+        result = completed(ssh + ['sh -s'], script.encode('utf-8'))
         output = result.stdout
+        output.decode('utf-8', 'strict')
         (work / 'target.log').write_bytes(output)
         (work / 'target.stderr').write_bytes(result.stderr)
-        (work / 'exit.txt').write_text(str(status_of(result)) + '\n', encoding='ascii')
+        (work / 'exit.txt').write_text(f'{result.returncode}\n', encoding='ascii')
         sys.stderr.buffer.write(result.stderr)
-        require(result.returncode == 0, f'target query failed ({status_of(result)}), {work}')
+        require(result.returncode == 0, f'target query failed ({result.returncode}), {work}')
     finally:
-        if remote and re.fullmatch(r'/tmp/ember-pixbuf\.[A-Za-z0-9]{8}', remote):
-            result = capture([*ssh, 'rm -rf -- ' + shlex.quote(remote)])
-            (work / 'cleanup.log').write_bytes(str(status_of(result)).encode() + b'\n' + result.stdout)
-            require(result.returncode == 0, 'remote cleanup failed: ' + remote)
-    require(all(digest(path) == expected for path, expected in sources.items()), 'source providers changed during query')
-    text = output.decode('utf-8', 'strict')
+        if remote is not None and REMOTE_DIRECTORY.fullmatch(remote):
+            cleanup = completed(ssh + [f'rm -rf -- {shlex.quote(remote)}'])
+            (work / 'cleanup.log').write_bytes(f'{cleanup.returncode}\n'.encode('ascii') + cleanup.stdout + cleanup.stderr)
+            require(cleanup.returncode == 0, f'remote cleanup failed: {remote}')
+    try:
+        unchanged = all(sha256_file(path) == digest for path, digest in sources.items())
+    except (OSError, SDKError):
+        unchanged = False
+    require(unchanged, 'source providers changed during query')
     if mode == '--loaders':
         for path in modules:
-            text = text.replace(remote + '/loaders/' + os.path.basename(path), path)
-        require(remote not in text, 'query output contains remote path')
-        require(sorted(re.findall(r'^"(/[^"\n]+\.so)"$', text, re.M)) == sorted(modules), 'incomplete loader query')
+            output = output.replace((remote + '/loaders/' + os.path.basename(path)).encode('utf-8'), path.encode('utf-8'))
+        require(remote.encode('ascii') not in output, 'query output contains remote path')
+        require(sorted(MODULE_LINE.findall(output)) == sorted(path.encode('utf-8') for path in modules), 'incomplete loader query')
     else:
-        require(re.fullmatch(r'[a-zA-Z0-9.+_-]+/[a-zA-Z0-9.+_-]+;(?:[a-zA-Z0-9.+_-]+/[a-zA-Z0-9.+_-]+;)*', text),
+        require(re.fullmatch(rb'[a-zA-Z0-9.+_-]+/[a-zA-Z0-9.+_-]+;(?:[a-zA-Z0-9.+_-]+/[a-zA-Z0-9.+_-]+;)*', output),
                 'invalid MIME query output')
-    sys.stdout.buffer.write(text.encode())
+    sys.stdout.buffer.write(output)
     shutil.rmtree(stage)
     archive.unlink()
     return 0
 
 
-def terminated(signum, _frame):
-    raise SystemExit(128 + signum)
+def main(arguments=None):
+    try:
+        require(sys.implementation.name == "cpython" and sys.version_info[:2] == (3, 15),
+                "use the selected build-host CPython 3.15")
+        arguments = list(sys.argv[1:] if arguments is None else arguments)
+        selection = []
+        while arguments and arguments[0] == '--sdk-source':
+            selection.extend(arguments[:2])
+            del arguments[:2]
+        unused_source, unused_options = load_sdk(selection)
+        install_signal_handlers()
+        return query(arguments)
+    except (ToolError, OSError, ValueError, KeyError) as error:
+        print(str(error), file=sys.stderr)
+        return 1
+    except Exception as error:
+        from emberbsd_sdk.errors import SDKError
+        if not isinstance(error, SDKError):
+            raise
+        print(str(error), file=sys.stderr)
+        return 1
 
 
 if __name__ == '__main__':
-    signal.signal(signal.SIGTERM, terminated)
-    try:
-        sys.exit(main(sys.argv[1:]))
-    except (QueryError, OSError, ValueError, KeyError, TypeError) as error:
-        sys.exit(str(error))
-    except Exception as error:
-        if error.__class__.__module__.startswith('emberbsd_sdk.'):
-            sys.exit(str(error))
-        raise
+    raise SystemExit(main())

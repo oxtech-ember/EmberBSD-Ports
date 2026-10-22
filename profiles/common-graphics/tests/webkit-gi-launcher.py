@@ -57,6 +57,7 @@ def main():
         config.write_text("{}\n")
         base = [args.bmake, "-C", args.pkgsrc / ("www/webkit-gtk" + api),
                 "MAKECONF=" + str(args.makeconf), "WRKOBJDIR=" + str(args.work / "objects"),
+                "EMBERBSD_CROSS_BUILD_PYTHON=" + str(args.python),
                 "EMBERBSD_GI_PYTHON=" + str(args.python), "EMBERBSD_GI_QUERY_CONFIG=" + str(config),
                 "EMBERBSD_CROSS_BUILD_CC=/usr/bin/cc"]
         query = run("metadata-" + api, [*base, *[v for key in keys for v in ["-v", key]]])
@@ -95,8 +96,9 @@ def main():
         assert checked.returncode == 0, "Actual FindGI/configure launcher failed; see configure log"
         assert "PASS: GI query configuration matches" in checked.stdout
         launcher = shlex.split(environment["GI_CROSS_LAUNCHER"])
-        assert len(launcher) == 2 and Path(launcher[0]).resolve() == args.python
-        assert launcher[1].endswith("/target-query.py") and Path(launcher[1]).is_file()
+        assert len(launcher) == 4 and Path(launcher[0]).resolve() == args.python
+        assert launcher[1:3] == ["-E", "-S"]
+        assert launcher[3].endswith("/target-query.py") and Path(launcher[3]).is_file()
         assert "target-query.rb" not in values["CONFIGURE_ENV"] + values["MAKE_ENV"]
         native = run("native-" + api, [*base, "USE_CROSS_COMPILE=no", "-v", "CONFIGURE_ENV"])
         assert native.returncode == 0 and "GI_CROSS_LAUNCHER=" not in native.stdout

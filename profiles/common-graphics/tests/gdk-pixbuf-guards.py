@@ -14,6 +14,8 @@ import struct
 import subprocess
 import sys
 
+sys.dont_write_bytecode = True
+
 
 def require(condition, message):
     if not condition:
@@ -21,18 +23,29 @@ def require(condition, message):
 
 
 def digest(path):
-    with path.open('rb') as stream:
-        return hashlib.file_digest(stream, 'sha256').hexdigest()
+    from emberbsd_sdk.inventory import sha256_file
+    return sha256_file(str(path))
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--sdk-source', required=True, type=Path)
+    parser.add_argument('--sdk-source', default=os.environ.get('EMBERBSD_SDK_SOURCE'), type=Path)
+    parser.add_argument('--helper', type=Path)
     for name in ['source', 'python', 'sysroot', 'readelf', 'new_work']:
         parser.add_argument(name, type=Path)
     args = parser.parse_args()
+    require(sys.implementation.name == 'cpython' and sys.version_info[:2] == (3, 15),
+            'use the selected build-host CPython 3.15')
+    require(args.sdk_source is not None and args.sdk_source.is_absolute(),
+            'set an absolute --sdk-source or EMBERBSD_SDK_SOURCE')
     source, python, sysroot, readelf, sdk = [path.resolve(strict=True) for path in
         [args.source, args.python, args.sysroot, args.readelf, args.sdk_source]]
+    require(python == Path(sys.executable).resolve(strict=True), 'HOST_PYTHON must be the selected sys.executable')
+    sys.path.insert(0, str(sdk / 'src'))
+    import emberbsd_sdk
+    require(type(emberbsd_sdk.API_VERSION) is int and emberbsd_sdk.API_VERSION == 1 and
+            Path(emberbsd_sdk.__file__).resolve().parent == sdk / 'src/emberbsd_sdk',
+            'the selected SDK must provide API version 1')
     processor = os.environ.get('EMBERBSD_CROSS_ARCH', 'aarch64')
     require(processor in ('aarch64', 'x86_64'), 'unsupported target architecture')
     target = 'amd64' if processor == 'x86_64' else 'aarch64'
@@ -40,13 +53,15 @@ def main():
     work = args.new_work
     for directory in ['build/provider', 'build/other', 'cache', 'bin', 'outside', 'tmp']:
         (work / directory).mkdir(mode=0o700, parents=True, exist_ok=True)
-    helper = Path(__file__).resolve().parent.parent / 'recipes/graphics/gdk-pixbuf2/files/target-tools.py'
+    helper = (args.helper or Path(__file__).resolve().parent.parent /
+              'recipes/graphics/gdk-pixbuf2/files/target-tools.py').resolve(strict=True)
     cc = readelf.with_name(readelf.name.removesuffix('readelf') + 'gcc')
     require(cc.is_file(), 'matching cross GCC driver missing')
     env = dict(os.environ, EMBERBSD_SDK_SOURCE=str(sdk), EMBERBSD_GI_TARGET=target,
                PATH=str(work / 'bin') + ':/usr/bin:/bin', TMPDIR=str(work / 'tmp'), TMP=str(work / 'tmp'),
                TEMP=str(work / 'tmp'), PYTHONDONTWRITEBYTECODE='1')
-    env.pop('LD_LIBRARY_PATH', None)
+    for name in ('LD_LIBRARY_PATH', 'LD_PRELOAD', 'DYLD_LIBRARY_PATH'):
+        env.pop(name, None)
     receipts = []
     def capture(name, command, *, changes=None, data=None):
         selected = dict(env)
@@ -91,22 +106,22 @@ def main():
     ssh.chmod(0o755)
     def reject(name, reason, *arguments, changes=None):
         marker.unlink(missing_ok=True)
-        result = capture(name, [python, helper, *arguments], changes=changes)
+        result = capture(name, [python, '-E', '-S', helper, *arguments], changes=changes)
         require(result.returncode != 0 and reason.encode() in result.stderr and not marker.exists() and not result.stdout,
                 name + ': expected local refusal: ' + result.stderr.decode(errors='replace'))
     for name, value, reason in [
-        ('sdk-missing', None, 'SDK source must be an explicit absolute path'),
-        ('sdk-relative', os.path.relpath(sdk), 'SDK source must be an explicit absolute path'),
-        ('sdk-absent-directory', str(work / 'missing-sdk'), 'SDK source must exist')]:
+        ('sdk-missing', None, 'Use --sdk-source or EMBERBSD_SDK_SOURCE with an absolute SDK source'),
+        ('sdk-relative', os.path.relpath(sdk), 'Use --sdk-source or EMBERBSD_SDK_SOURCE with an absolute SDK source'),
+        ('sdk-absent-directory', str(work / 'missing-sdk'), 'missing-sdk')]:
         reject(name, reason, '--check', work / 'build', sysroot, readelf,
                changes={'EMBERBSD_SDK_SOURCE': value})
     foreign_sdk = work / 'foreign-sdk/src/emberbsd_sdk'
     foreign_sdk.mkdir(parents=True)
     (foreign_sdk / '__init__.py').write_text('API_VERSION=99\n')
-    reject('sdk-foreign-api', 'The selected SDK source must provide host API 1',
+    reject('sdk-foreign-api', 'The selected SDK must provide API version 1',
            '--check', work / 'build', sysroot, readelf,
            changes={'EMBERBSD_SDK_SOURCE': str(work / 'foreign-sdk')})
-    result = capture('sdk-preflight', [python, helper, '--check', work / 'build', sysroot, readelf])
+    result = capture('sdk-preflight', [python, '-E', '-S', helper, '--check', work / 'build', sysroot, readelf])
     require(result.returncode == 0 and not marker.exists(), 'SDK preflight reached transport or failed')
     cases = [('unknown-mode', 'usage:', '--other', query), ('no-modules', 'missing target modules', '--loaders', query),
              ('duplicate-modules', 'duplicate target modules', '--loaders', query, module, module),
@@ -211,7 +226,7 @@ elif phase=='query':
                  ('remote-leak', '--loaders', 'query output contains remote path', ['allocate', 'transfer', 'query', 'cleanup']),
                  ('bad-mime', '--mime', 'invalid MIME query output', ['allocate', 'transfer', 'cache', 'query', 'cleanup'])]
     for name, mode, reason, phases in transport:
-        result = capture(name, [python, helper, mode, query if mode == '--loaders' else printer,
+        result = capture(name, [python, '-E', '-S', helper, mode, query if mode == '--loaders' else printer,
             module if mode == '--loaders' else cache_input], changes={'PIXBUF_GUARD_WORK':str(work),
             'PIXBUF_GUARD_CASE':name,'PIXBUF_GUARD_MODE':mode,'PIXBUF_GUARD_MODULE':str(module)})
         require((work / (name + '.phases')).read_text().splitlines() == phases, name + ': wrong cleanup phases')

@@ -179,13 +179,19 @@ and the other consumers of GI's shared cross fragment.
 Add these private MAKECONF settings:
 
 ```make
-EMBERBSD_GI_PYTHON=/absolute/native/python3.15
+EMBERBSD_CROSS_BUILD_PYTHON=/absolute/native/python3.15
+EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK
 EMBERBSD_GI_QUERY_CONFIG=/absolute/private/query.json
 ```
 
 The GI launcher and its host contracts use Python with the standard library.
+Production helper commands pass `-E -S` to the selected host Python.
+They ignore target Python site settings and use the explicitly selected SDK.
+The target library environment and command arguments remain unchanged.
 The GdkPixbuf loader/MIME runner uses the same selected Python. It also uses
 SDK host API 1 through the explicit `EMBERBSD_SDK_SOURCE` setting.
+`EMBERBSD_GI_PYTHON` remains an alias for the common Python provider. If both
+selectors are set, they must name the same executable.
 
 Then use ordinary host `bmake ... package install` for the exported
 `devel/gobject-introspection` recipe. `install` populates only the private
@@ -226,7 +232,7 @@ An optional `host_key_alias` JSON field selects an already verified SSH host
 key when the destination uses a numeric address. Strict key checking remains
 mandatory. Keep addresses and this machine-specific configuration private.
 
-`python3.15 tests/target-execute.py CC SYSROOT QUERY_CONFIG NEW_WORK` compiles two target
+`python3.15 tests/target-execute.py --sdk-source /absolute/EmberBSD-SDK CC SYSROOT QUERY_CONFIG NEW_WORK` compiles two target
 probes and verifies their real stdout/stderr, exit codes 0 and 7, receipts and
 cleanup. `NEW_WORK` must be inside the configured build root. The existing
 `gi-query-contract.py` also tests this mode with controlled transport failures
@@ -251,7 +257,7 @@ Separate CM5 checks of the earlier package run unchanged upstream
 `cmph-bdz-test` passes ordinary and packed search. These use the selected
 GLib and EmberBSD libc in temporary directories.
 
-`python3.15 tests/gi-query-contract.py [--target aarch64|amd64] CROSS_TOOLS NEW_WORK` builds
+`python3.15 tests/gi-query-contract.py --sdk-source /absolute/EmberBSD-SDK [--target aarch64|amd64] CROSS_TOOLS NEW_WORK` builds
 real ELF fixtures with the selected GCC cross compiler. AArch64 is the default.
 The amd64 host contract uses real cross-linked x86_64 ELF and native `bmake`
 evaluation of both target metadata sets. It rejects a foreign query or provider,
@@ -311,7 +317,8 @@ ruby tests/glib-introspection-cross.rb /path/to/built/glib-2.90.1 \
   /path/to/new-selection-check
 ruby tests/prepare-glib-typelib.rb /path/to/cross-tools /path/to/sysroot \
   /path/to/glib2-introspection-2.90.1nb1.tgz /path/to/work/new-typelib-check
-EMBERBSD_GI_QUERY_CONFIG=/path/to/private/query.json python3.15 \
+EMBERBSD_SDK_SOURCE=/path/to/EmberBSD-SDK \
+EMBERBSD_GI_QUERY_CONFIG=/path/to/private/query.json /path/to/native/python3.15 \
   recipes/devel/gobject-introspection/files/target-query.py \
   /path/to/work/new-typelib-check/glib-typelib
 ```

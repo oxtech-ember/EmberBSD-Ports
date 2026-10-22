@@ -54,7 +54,8 @@ def check_metadata(recipe, mode, values, plist):
                     "Missing real target query launcher")
             require("gobject-introspection>=" in values["TOOL_DEPENDS"], "Missing native GI tool")
             allowed = {name + " must name an existing absolute file without shell metacharacters"
-                       for name in ("EMBERBSD_GI_PYTHON", "EMBERBSD_GI_QUERY_CONFIG", "EMBERBSD_CROSS_BUILD_CC")}
+                       for name in ("EMBERBSD_CROSS_BUILD_PYTHON", "EMBERBSD_GI_QUERY_CONFIG", "EMBERBSD_CROSS_BUILD_CC")}
+            allowed.add("EMBERBSD_SDK_SOURCE must name an absolute SDK source directory without shell metacharacters")
             require(set(errors) <= allowed, "Unexpected GI prerequisite failure: " + repr(errors))
         else:
             require("GI_CROSS_LAUNCHER" not in environment and not errors,
@@ -81,7 +82,8 @@ def check_metadata(recipe, mode, values, plist):
                     "Missing libproxy target query launcher")
             require("gobject-introspection>=" in values["TOOL_DEPENDS"], "Missing libproxy native GI tool")
             allowed = {name + " must name an existing absolute file without shell metacharacters"
-                       for name in ("EMBERBSD_GI_PYTHON", "EMBERBSD_GI_QUERY_CONFIG", "EMBERBSD_CROSS_BUILD_CC")}
+                       for name in ("EMBERBSD_CROSS_BUILD_PYTHON", "EMBERBSD_GI_QUERY_CONFIG", "EMBERBSD_CROSS_BUILD_CC")}
+            allowed.add("EMBERBSD_SDK_SOURCE must name an absolute SDK source directory without shell metacharacters")
             require(set(errors) <= allowed, "Unexpected libproxy prerequisite failure: " + repr(errors))
         else:
             require("GI_CROSS_LAUNCHER" not in environment and not errors,

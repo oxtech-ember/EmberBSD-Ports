@@ -1,24 +1,29 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
-# Origin: EmberBSD (AI-assisted), ported from the EmberBSD Ruby launcher.
-"""Run GI queries with verified EmberBSD providers and a real SSH target."""
+# Origin: EmberBSD (AI-assisted). Ported from target-query.rb.
+"""Run GI queries against real EmberBSD target libraries with SDK API 1."""
 
-import atexit
-import hashlib
-import json
 import os
 from pathlib import Path
 import re
 import shlex
-import signal
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
+
+sys.dont_write_bytecode = True
+
+from sdk_source import install_signal_handlers, load_sdk
+
+TARGETS = {'aarch64': ('aarch64', 183), 'amd64': ('x86_64', 62)}
+REMOTE_DIRECTORY = re.compile(r'/tmp/ember-gir\.[A-Za-z0-9]{8}')
+XML_LIMIT = 16 * 1024 * 1024
 
 
 class QueryError(Exception):
-    pass
+    """A GI policy or transport check refused the query."""
 
 
 def require(condition, message):
@@ -26,207 +31,235 @@ def require(condition, message):
         raise QueryError(message)
 
 
-def digest(path):
-    with open(path, "rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
+class FailureMarker:
+    """Keep the first incomplete execute query visible to configure."""
+
+    def __init__(self, path):
+        self.path = path
+        self.complete = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *unused):
+        if self.path is not None and not self.complete:
+            try:
+                fd = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            except FileExistsError:
+                return
+            with os.fdopen(fd, 'wb') as output:
+                output.write(b'Target query did not complete with verified execution and cleanup.\n')
 
 
-def inside(path, root):
-    return path == root or path.startswith(root + "/")
+def query(arguments):
+    # SDK selection happens in main before any SDK import or producer starts.
+    from emberbsd_sdk.elf import read_elf_dynamic
+    from emberbsd_sdk.errors import CommandError, ProcessOwnershipError, SDKError
+    from emberbsd_sdk.inventory import sha256_file
+    from emberbsd_sdk.jsonio import read_json
+    from emberbsd_sdk.paths import canonical_existing, real_directory, regular_file, relative_inside
+    from emberbsd_sdk import stream
 
-
-def canonical(value):
-    return str(Path(value).resolve(strict=True))
-
-
-def status_of(result):
-    return result.returncode if result.returncode >= 0 else 1
-
-
-def capture(command, *, data=None, merged=True):
-    try:
-        return subprocess.run(command, input=data, stdout=subprocess.PIPE,
-                              stderr=subprocess.STDOUT if merged else subprocess.PIPE,
-                              timeout=180, check=False)
-    except subprocess.TimeoutExpired as error:
-        raise QueryError("host command timed out: " + command[0]) from error
-
-
-def main(args):
-    with open(os.environ["EMBERBSD_GI_QUERY_CONFIG"], encoding="utf-8") as stream:
-        config = json.load(stream)
-    target = config.get("target", "aarch64")
-    targets = {"aarch64": ("aarch64", "AArch64"),
-               "amd64": ("x86_64", "Advanced Micro Devices X86-64")}
-    require(target in targets, "unsupported GI target")
-    processor, machine = targets[target]
-    require(os.environ.get("EMBERBSD_GI_TARGET", target) == target,
-            "configuration differs from recipe target")
+    require(getattr(stream, 'PRODUCER_STREAM_API', None) == 1,
+            'selected SDK lacks producer stream API 1')
+    require(getattr(stream, 'PRODUCER_INPUT_API', None) == 1,
+            'selected SDK lacks producer input API 1')
+    require(getattr(stream, 'PRODUCER_INSPECTION_API', None) == 1,
+            'selected SDK lacks producer inspection API 1')
+    config = read_json(os.environ['EMBERBSD_GI_QUERY_CONFIG'])
+    require(isinstance(config, dict), 'GI query configuration must be an object')
+    target = config.get('target', 'aarch64')
+    require(isinstance(target, str) and target in TARGETS, 'unsupported GI target')
+    processor, machine = TARGETS[target]
+    require('EMBERBSD_GI_TARGET' not in os.environ or os.environ['EMBERBSD_GI_TARGET'] == target,
+            'configuration differs from recipe target')
 
     def absolute(key):
         value = config[key]
-        require(isinstance(value, str) and value.startswith("/"), key + " must be absolute")
-        return canonical(value)
+        require(isinstance(value, str) and value.startswith('/'), f'{key} must be absolute')
+        return canonical_existing(value)
 
-    base, sysroot, cache, readelf = map(absolute, ("build_root", "sysroot", "cache", "readelf"))
-    require(os.path.isfile(readelf) and os.access(readelf, os.X_OK), "readelf is not executable")
+    # Keep the legacy readelf configuration and --check identity contract.
+    # SDK API 1 reads target ELF bytes directly; it does not invoke this tool.
+    base, sysroot, cache, readelf = (absolute(key) for key in ('build_root', 'sysroot', 'cache', 'readelf'))
+    for directory in (base, sysroot, cache):
+        real_directory(directory)
+    regular_file(readelf)
+    require(os.access(readelf, os.X_OK), 'readelf is not executable')
     roots = (base, sysroot)
-    require(not inside(base, sysroot) and not inside(sysroot, base), "build/sysroot overlap")
-    require(not inside(cache, sysroot) and not inside(sysroot, cache), "cache overlaps providers")
-    host = config["ssh"]
-    require(isinstance(host, str) and re.fullmatch(
-        r"(?:[A-Za-z0-9_][A-Za-z0-9_.-]*@)?[A-Za-z0-9][A-Za-z0-9_.-]*", host),
-        "invalid SSH destination")
-    ssh = ["ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
-           "-o", "ConnectTimeout=5", "-o", "ServerAliveInterval=10",
-           "-o", "ServerAliveCountMax=3"]
-    if "host_key_alias" in config:
-        alias = config["host_key_alias"]
-        require(isinstance(alias, str) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", alias),
-                "invalid host key alias")
-        ssh += ["-o", "HostKeyAlias=" + alias]
+
+    def within(path, root):
+        return relative_inside(path, root) is not None
+
+    require(not within(base, sysroot) and not within(sysroot, base), 'build/sysroot overlap')
+    require(not within(cache, sysroot) and not within(sysroot, cache), 'cache overlaps providers')
+    host = config['ssh']
+    require(isinstance(host, str) and re.fullmatch(r'(?:[A-Za-z0-9_][A-Za-z0-9_.-]*@)?[A-Za-z0-9][A-Za-z0-9_.-]*', host),
+            'invalid SSH destination')
+    ssh = ['ssh', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes',
+           '-o', 'ConnectTimeout=5', '-o', 'ServerAliveInterval=10', '-o', 'ServerAliveCountMax=3']
+    if 'host_key_alias' in config:
+        alias = config['host_key_alias']
+        require(isinstance(alias, str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*', alias), 'invalid host key alias')
+        ssh += ['-o', 'HostKeyAlias=' + alias]
     ssh.append(host)
-    if args and args[0] == "--check":
-        require(len(args) in (4, 5), "usage: --check WORKDIR SYSROOT READELF [aarch64|amd64]")
-        workdir, target_root, tool = map(canonical, args[1:4])
-        expected = args[4] if len(args) == 5 else "aarch64"
-        require(inside(workdir, base) and target_root == sysroot and tool == readelf and expected == target,
-                "configuration differs from recipe")
-        print("PASS: GI query configuration matches the selected work, sysroot and readelf")
+    if arguments and arguments[0] == '--check':
+        require(len(arguments) in (4, 5), 'usage: --check WORKDIR SYSROOT READELF [aarch64|amd64]')
+        expected_target = arguments[4] if len(arguments) == 5 else 'aarch64'
+        workdir, target_root, tool = map(canonical_existing, arguments[1:4])
+        require(within(workdir, base) and target_root == sysroot and tool == readelf and expected_target == target,
+                'configuration differs from recipe')
+        print('PASS: GI query configuration matches the selected work, sysroot and readelf')
         return 0
 
-    execute = bool(args and args[0] == "--execute")
+    execute = bool(arguments and arguments[0] == '--execute')
     if execute:
-        args = args[1:]
-    completed = [False]
-    if execute and "EMBERBSD_GI_FAILURE_MARKER" in os.environ:
-        marker = os.environ["EMBERBSD_GI_FAILURE_MARKER"]
-        require(marker.startswith("/") and inside(canonical(os.path.dirname(marker)), base)
-                and not os.path.islink(marker), "failure marker outside build root")
+        arguments = arguments[1:]
+    marker = None
+    if execute and 'EMBERBSD_GI_FAILURE_MARKER' in os.environ:
+        marker = os.environ['EMBERBSD_GI_FAILURE_MARKER']
+        require(marker.startswith('/') and within(canonical_existing(os.path.dirname(marker)), base)
+                and not os.path.islink(marker), 'failure marker outside build root')
+        marker = os.path.join(canonical_existing(os.path.dirname(marker)), os.path.basename(marker))
 
-        def record_failure():
-            if not completed[0]:
-                try:
-                    with open(marker, "x", encoding="utf-8", opener=lambda p, f: os.open(p, f, 0o600)) as stream:
-                        stream.write("Target query did not complete with verified execution and cleanup.\n")
-                except FileExistsError:
-                    pass
-        atexit.register(record_failure)
+    with FailureMarker(marker) as failure:
+        require(bool(arguments), 'binary required')
+        program, *args = arguments
+        # Waf base commands use the sysroot's regular file, never target PATH.
+        # They execute as query; do not allow argv[0]-dependent base utilities.
+        commands = {'getconf': '/usr/bin/getconf'}
+        if '/' not in program:
+            require(execute and program in commands, f'unsupported target command: {program}')
+            exe = sysroot + commands[program]
+            require(os.path.isfile(exe), f'target command missing from sysroot: {program}')
+            require(not os.path.islink(exe) and canonical_existing(exe) == exe,
+                    f'target command is not a sysroot regular file: {program}')
+        else:
+            exe = canonical_existing(program)
+            require(within(exe, base), 'binary outside build root')
+        require(execute or not args or (len(args) == 1 and args[0].startswith('--introspect-dump=')),
+                'only an optional introspect-dump argument is supported')
+        in_path = out_path = None
+        if not execute and args:
+            paths = args[0].removeprefix('--introspect-dump=').split(',', 1)
+            require(len(paths) == 2 and all(path.startswith('/') for path in paths), 'invalid dump paths')
+            in_path = canonical_existing(paths[0])
+            parent = canonical_existing(os.path.dirname(paths[1]))
+            require(within(in_path, base) and within(parent, base), 'dump paths outside build root')
+            out_path = os.path.join(parent, os.path.basename(paths[1]))
+            require(not os.path.lexists(out_path), 'dump output already exists')
 
-    require(bool(args), "binary required")
-    program, *arguments = args
-    if "/" not in program:
-        require(execute and program == "getconf", "unsupported target command: " + program)
-        exe = sysroot + "/usr/bin/getconf"
-        require(os.path.isfile(exe), "target command missing from sysroot: " + program)
-        require(not os.path.islink(exe) and canonical(exe) == exe,
-                "target command is not a sysroot regular file: " + program)
-    else:
-        exe = canonical(program)
-        require(inside(exe, base), "binary outside build root")
-    require(execute or not arguments or (len(arguments) == 1 and arguments[0].startswith("--introspect-dump=")),
-            "only an optional introspect-dump argument is supported")
-    in_path = out_path = None
-    if not execute and arguments:
-        paths = arguments[0].removeprefix("--introspect-dump=").split(",", 1)
-        require(len(paths) == 2 and all(p.startswith("/") for p in paths), "invalid dump paths")
-        in_path, out_path = canonical(paths[0]), paths[1]
-        require(inside(in_path, base) and inside(canonical(os.path.dirname(out_path)), base),
-                "dump paths outside build root")
-        require(not os.path.lexists(out_path), "dump output already exists")
-    work = Path(tempfile.mkdtemp(prefix="gi-query-", dir=cache))
-    stage = work / "stage"
-    (stage / "lib").mkdir(parents=True)
+        work = Path(tempfile.mkdtemp(prefix='gi-query-', dir=cache))
+        stage = work / 'stage'
+        (stage / 'lib').mkdir(parents=True)
+        environment = dict(os.environ)
 
-    def run(name, *command, data=None):
-        result = capture(list(command), data=data)
-        (work / (name + ".log")).write_bytes(result.stdout)
-        require(result.returncode == 0, f"{name} failed ({status_of(result)}); see {work}")
-        return result.stdout
+        def completed(command, data=None):
+            try:
+                result = stream.capture_streamed(command, env=environment, input=data,
+                                                timeout=180, stdout_limit=16 * 1024 * 1024,
+                                                empty_snapshot_timeout=30)
+                require(not result.stderr_truncated, 'host command stderr exceeds capture limit')
+                return subprocess.CompletedProcess(command, 0, result.value, result.stderr)
+            except CommandError as error:
+                require(not error.stdout_truncated and not error.stderr_truncated,
+                        'host command output exceeds capture limit')
+                return subprocess.CompletedProcess(command, error.returncode, error.stdout, error.stderr)
 
-    def mapdir(path):
-        if os.path.isdir(path):
-            resolved = canonical(path)
-            if any(inside(resolved, root) for root in roots):
-                return resolved
-        if any(inside(path, root) for root in roots):
-            return path
-        return sysroot + path if path.startswith("/") else os.path.abspath(path)
+        def run(name, command, data=None):
+            result = completed(command, data)
+            output = result.stdout + result.stderr
+            (work / (name + '.log')).write_bytes(output)
+            require(result.returncode == 0, f'{name} failed ({result.returncode}); see {work}')
+            return output
 
-    search = config.get("library_dirs", []) + os.environ.get("LD_LIBRARY_PATH", "").split(":")
-    search = list(dict.fromkeys(mapdir(p) for p in search if p))
-    defaults = [mapdir(p) for p in ("/usr/pkg/gcc16/lib", "/usr/pkg/lib", "/usr/lib", "/lib")]
-    files, pending = {}, [exe]
-    while pending:
-        file = pending.pop(0)
-        header = capture([readelf, "-h", file])
-        text = header.stdout.decode("utf-8", errors="replace")
-        actual = re.search(r"^\s*Machine:\s*(.*?)\s*$", text, re.M)
-        require(header.returncode == 0 and actual and actual[1] == machine
-                and re.search(r"Class:.*ELF64", text) and re.search(r"Data:.*little endian", text),
-                f"not little-endian {processor} ELF64: {file}")
-        dynamic = capture([readelf, "-d", file])
-        require(dynamic.returncode == 0, "readelf failed")
-        text = dynamic.stdout.decode("utf-8", errors="replace")
-        localdirs = [mapdir(p.replace("${ORIGIN}", os.path.dirname(file)).replace("$ORIGIN", os.path.dirname(file)))
-                     for paths in re.findall(r"\((?:RPATH|RUNPATH)\).*\[(.*?)\]", text)
-                     for p in paths.split(":")]
-        for name in re.findall(r"\(NEEDED\).*\[(.*?)\]", text):
-            require(re.fullmatch(r"[a-zA-Z0-9._+-]+", name), "unsafe SONAME")
-            candidate = next((d + "/" + name for d in search + localdirs + defaults
-                              if os.path.isfile(d + "/" + name)), None)
-            require(candidate is not None, "missing provider: " + name)
-            candidate = canonical(candidate)
-            require(any(inside(candidate, r) for r in roots), "provider outside target/build roots")
-            if name in files:
-                require(digest(candidate) == digest(files[name]),
-                        f"conflicting {name}: {files[name]} versus {candidate}")
-            else:
-                files[name] = candidate
-                pending.append(candidate)
-    sources = {p: digest(p) for p in sorted({exe, *files.values(), *([in_path] if in_path else [])})}
-    shutil.copyfile(exe, stage / "query")
-    (stage / "query").chmod(0o755)
-    for name, path in files.items():
-        shutil.copyfile(path, stage / "lib" / name)
-    if in_path:
-        shutil.copyfile(in_path, stage / "types.txt")
-    entries = sorted(p for p in stage.rglob("*") if p.is_file())
-    manifest = "".join(f"{digest(p)}  {p.relative_to(stage)}\n" for p in entries)
-    (stage / "files.sha256").write_text(manifest, encoding="utf-8")
-    (work / "files.sha256").write_text(manifest, encoding="utf-8")
-    (work / "sources.sha256").write_text("".join(f"{h}  {p}\n" for p, h in sources.items()), encoding="utf-8")
-    remote = None
-    try:
-        remote = run("allocate", *ssh, 'test "$(uname -s)" = NetBSD && test "$(uname -p)" = '
-                     + processor + ' && umask 077 && mktemp -d /tmp/ember-gir.XXXXXXXX').decode().strip()
-        require(re.fullmatch(r"/tmp/ember-gir\.[A-Za-z0-9]{8}", remote), "invalid temporary directory")
-        reusable = {n: p for n, p in files.items() if inside(p, sysroot)}
-        if reusable:
-            script = "set -eu\ncd " + shlex.quote(remote) + "\nmkdir -p lib\n"
-            for name, path in reusable.items():
-                installed, output, expected = shlex.quote(path[len(sysroot):]), shlex.quote("lib/" + name), sources[path]
-                script += (f'if test -f {installed} && test "$(sha256 -q {installed})" = {expected}; then\n'
-                           f'  cp {installed} {output}\n'
-                           f'  test "$(sha256 -q {output})" = {expected} || exit 92\n'
-                           f"  printf '%s\\n' {shlex.quote(name)}\nfi\n")
-            (work / "reuse.sh").write_text(script, encoding="utf-8")
-            reused = run("reuse", *ssh, "sh -s -- ember-gir-reuse", data=script.encode()).decode().splitlines()
-            require(len(set(reused)) == len(reused) and all(n in reusable for n in reused),
-                    "invalid reused library response")
-            for name in reused:
-                (stage / "lib" / name).unlink()
-        archive = work / "input.tar.gz"
-        run("tar", "/usr/bin/env", "COPYFILE_DISABLE=1", "tar", "--format=ustar", "--no-xattrs",
-            "-czf", str(archive), "-C", str(stage), ".")
-        (work / "transfer-size.txt").write_text(str(archive.stat().st_size) + "\n", encoding="ascii")
-        run("transfer", *ssh, "tar -xzf - -C " + shlex.quote(remote), data=archive.read_bytes())
-        invocation = [remote + "/query"]
-        if execute:
-            invocation += arguments
-        if out_path:
-            invocation += [f"--introspect-dump={remote}/types.txt,{remote}/dump.xml"]
-        script = f'''set -eu
+        def mapdir(path):
+            require(isinstance(path, str), 'library directories must be strings')
+            if os.path.isdir(path):
+                resolved = canonical_existing(path)
+                if any(within(resolved, root) for root in roots):
+                    return resolved
+            if any(within(path, root) for root in roots):
+                return path
+            return sysroot + path if path.startswith('/') else os.path.abspath(path)
+
+        configured = config.get('library_dirs', [])
+        require(isinstance(configured, list) and all(isinstance(path, str) for path in configured),
+                'library_dirs must be an array of strings')
+        search = list(dict.fromkeys(mapdir(path) for path in configured + environment.get('LD_LIBRARY_PATH', '').split(':') if path))
+        defaults = [mapdir(path) for path in ('/usr/pkg/gcc16/lib', '/usr/pkg/lib', '/usr/lib', '/lib')]
+        files, pending = {}, [exe]
+        while pending:
+            file = pending.pop(0)
+            try:
+                dynamic = read_elf_dynamic(file, machine=machine)
+            except SDKError as error:
+                raise QueryError(f'not little-endian {processor} ELF64: {file}: {error}') from error
+            localdirs = []
+            for value in (dynamic['rpath'], dynamic['runpath']):
+                if value is not None:
+                    localdirs.extend(mapdir(path.replace('${ORIGIN}', os.path.dirname(file)).replace('$ORIGIN', os.path.dirname(file)))
+                                     for path in value.split(':'))
+            for name in dynamic['needed']:
+                require(re.fullmatch(r'[a-zA-Z0-9._+-]+', name), 'unsafe SONAME')
+                candidate = next((os.path.join(directory, name) for directory in search + localdirs + defaults
+                                  if os.path.isfile(os.path.join(directory, name))), None)
+                require(candidate is not None, f'missing provider: {name}')
+                candidate = canonical_existing(candidate)
+                require(any(within(candidate, root) for root in roots), 'provider outside target/build roots')
+                if name in files:
+                    require(sha256_file(candidate) == sha256_file(files[name]),
+                            f'conflicting {name}: {files[name]} versus {candidate}')
+                else:
+                    files[name] = candidate
+                    pending.append(candidate)
+
+        sources = {path: sha256_file(path) for path in sorted({exe, *files.values(), *([in_path] if in_path else [])})}
+        shutil.copy(exe, stage / 'query')
+        (stage / 'query').chmod(0o755)
+        for name, path in files.items():
+            shutil.copy(path, stage / 'lib' / name)
+        if in_path:
+            shutil.copy(in_path, stage / 'types.txt')
+        manifest = ''.join(f'{sha256_file(path)}  {path.relative_to(stage).as_posix()}\n'
+                           for path in sorted(stage.rglob('*')) if path.is_file())
+        (stage / 'files.sha256').write_text(manifest, encoding='utf-8')
+        (work / 'files.sha256').write_text(manifest, encoding='utf-8')
+        (work / 'sources.sha256').write_text(''.join(f'{digest}  {path}\n' for path, digest in sources.items()), encoding='utf-8')
+        remote = None
+        try:
+            allocation = ('test "$(uname -s)" = NetBSD && test "$(uname -p)" = ' + processor
+                          + ' && umask 077 && mktemp -d /tmp/ember-gir.XXXXXXXX')
+            remote = run('allocate', ssh + [allocation]).decode('utf-8', 'strict').strip()
+            require(REMOTE_DIRECTORY.fullmatch(remote), 'invalid temporary directory')
+            # Reuse only byte-identical installed sysroot providers. In-tree
+            # libraries always travel. Both manifests cover all reused bytes.
+            reusable = {name: path for name, path in files.items() if within(path, sysroot)}
+            if reusable:
+                reuse_script = f'set -eu\ncd {shlex.quote(remote)}\nmkdir -p lib\n'
+                for name, path in reusable.items():
+                    installed, expected, copy = path.removeprefix(sysroot), sources[path], 'lib/' + name
+                    reuse_script += (f'if test -f {shlex.quote(installed)} && test "$(sha256 -q {shlex.quote(installed)})" = {expected}; then\n'
+                                     f'  cp {shlex.quote(installed)} {shlex.quote(copy)}\n'
+                                     f'  test "$(sha256 -q {shlex.quote(copy)})" = {expected} || exit 92\n'
+                                     f"  printf '%s\\n' {shlex.quote(name)}\nfi\n")
+                (work / 'reuse.sh').write_text(reuse_script, encoding='utf-8')
+                reused = run('reuse', ssh + ['sh -s -- ember-gir-reuse'], reuse_script.encode('utf-8')).decode('utf-8', 'strict').splitlines()
+                require(len(set(reused)) == len(reused) and all(name in reusable for name in reused), 'invalid reused library response')
+                for name in reused:
+                    (stage / 'lib' / name).unlink()
+            archive = work / 'input.tar.gz'
+            with tarfile.open(archive, 'x:gz', format=tarfile.USTAR_FORMAT) as output:
+                output.add(stage, arcname='.')
+            (work / 'tar.log').write_bytes(b'')
+            (work / 'transfer-size.txt').write_text(f'{archive.stat().st_size}\n', encoding='ascii')
+            run('transfer', ssh + [f'tar -xzf - -C {shlex.quote(remote)}'], archive.read_bytes())
+            invocation = [remote + '/query']
+            if execute:
+                invocation.extend(args)
+            if out_path:
+                invocation.append(f'--introspect-dump={remote}/types.txt,{remote}/dump.xml')
+            script = f'''set -eu
 cd {shlex.quote(remote)}
 while read hash name; do
   test "$(sha256 -q "$name")" = "$hash" || exit 90
@@ -247,52 +280,90 @@ cat stderr.log >&2
 printf '%s\\n' "$result" > execution.status
 exit "$result"
 '''
-        result = capture([*ssh, "sh -s"], data=script.encode(), merged=not execute)
-        (work / "target.log").write_bytes(result.stdout)
-        if execute:
-            (work / "target-stderr.log").write_bytes(result.stderr)
-            sys.stdout.buffer.write(result.stdout)
-            sys.stderr.buffer.write(result.stderr)
-        else:
-            sys.stderr.buffer.write(result.stdout)
-        target_status = status_of(result)
-        (work / "exit.txt").write_text(str(target_status) + "\n", encoding="ascii")
-        if execute:
-            receipt = run("execution-status", *ssh, "cat " + remote + "/execution.status").decode().strip()
-            require(receipt == str(target_status), "target execution receipt differs from transport status")
-        require(execute or result.returncode == 0, f"target query failed ({target_status}), {work}")
+            result = completed(ssh + ['sh -s'], script.encode('utf-8'))
+            if execute:
+                (work / 'target.log').write_bytes(result.stdout)
+                (work / 'target-stderr.log').write_bytes(result.stderr)
+                sys.stdout.buffer.write(result.stdout)
+                sys.stderr.buffer.write(result.stderr)
+            else:
+                output = result.stdout + result.stderr
+                (work / 'target.log').write_bytes(output)
+                sys.stderr.buffer.write(output)
+            target_status = result.returncode if result.returncode >= 0 else 1
+            (work / 'exit.txt').write_text(f'{target_status}\n', encoding='ascii')
+            if execute:
+                receipt = run('execution-status', ssh + [f'cat {remote}/execution.status']).strip()
+                require(receipt == str(target_status).encode('ascii'), 'target execution receipt differs from transport status')
+            require(execute or result.returncode == 0, f'target query failed ({target_status}), {work}')
+            if out_path:
+                command = ssh + [f'test -s {remote}/dump.xml && cat {remote}/dump.xml']
+                try:
+                    xml_result = stream.capture_streamed(command, env=environment, stdout_limit=XML_LIMIT, timeout=180,
+                                                         empty_snapshot_timeout=30)
+                    xml, diagnostics, xml_status = xml_result.value, xml_result.stderr, 0
+                    xml_truncated = xml_result.stderr_truncated
+                except CommandError as error:
+                    xml, diagnostics, xml_status = error.stdout, error.stderr, error.returncode
+                    xml_truncated = error.stdout_truncated or error.stderr_truncated
+                except ProcessOwnershipError:
+                    raise
+                except SDKError as error:
+                    # capture_streamed drains and checks the producer before
+                    # it reports overflow. It does not expose a completed
+                    # result for this refusal, so do not invent an exit code.
+                    (work / 'xml-transfer.log').write_text(
+                        f'refused: {error}\nstdout_limit={XML_LIMIT}\n', encoding='utf-8')
+                    raise QueryError('invalid introspection XML') from error
+                (work / 'xml-transfer.log').write_bytes(f'exit={xml_status} bytes={len(xml)}\n'.encode('ascii') + diagnostics)
+                if len(xml) <= XML_LIMIT:
+                    (work / 'dump.xml').write_bytes(xml)
+                require(xml_status == 0 and not xml_truncated and len(xml) <= XML_LIMIT and b'<dump' in xml,
+                        'invalid introspection XML')
+        finally:
+            if remote is not None and REMOTE_DIRECTORY.fullmatch(remote):
+                cleanup = completed(ssh + [f'rm -rf -- {shlex.quote(remote)}'])
+                (work / 'cleanup.log').write_bytes(f'{cleanup.returncode}\n'.encode('ascii') + cleanup.stdout + cleanup.stderr)
+                require(cleanup.returncode == 0, f'remote cleanup failed: {remote}')
+        try:
+            unchanged = all(sha256_file(path) == digest for path, digest in sources.items())
+        except (OSError, SDKError):
+            unchanged = False
+        require(unchanged, 'source providers changed during query')
         if out_path:
-            xml_result = capture([*ssh, f"test -s {remote}/dump.xml && cat {remote}/dump.xml"], merged=False)
-            xml = xml_result.stdout
-            (work / "xml-transfer.log").write_bytes(
-                f"exit={status_of(xml_result)} bytes={len(xml)}\n".encode() + xml_result.stderr)
-            if len(xml) <= 16 * 1024 * 1024:
-                (work / "dump.xml").write_bytes(xml)
-            require(xml_result.returncode == 0 and len(xml) <= 16 * 1024 * 1024 and b"<dump" in xml,
-                    "invalid introspection XML")
-    finally:
-        if remote and re.fullmatch(r"/tmp/ember-gir\.[A-Za-z0-9]{8}", remote):
-            result = capture([*ssh, "rm -rf -- " + shlex.quote(remote)])
-            (work / "cleanup.log").write_bytes(str(status_of(result)).encode() + b"\n" + result.stdout)
-            require(result.returncode == 0, "remote cleanup failed: " + remote)
-    require(all(digest(p) == h for p, h in sources.items()), "source providers changed during query")
-    if out_path:
-        with open(out_path, "xb", opener=lambda p, f: os.open(p, f, 0o600)) as stream:
-            stream.write(xml)
-    shutil.rmtree(stage)
-    archive.unlink()
-    completed[0] = True
-    return target_status if execute else 0
+            fd = os.open(out_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, 'wb') as output:
+                output.write(xml)
+        shutil.rmtree(stage)
+        archive.unlink()
+        failure.complete = True
+        return target_status if execute else 0
 
 
-def terminated(signum, _frame):
-    # Unwind the transfer finally block before recording an interrupted query.
-    raise SystemExit(128 + signum)
-
-
-if __name__ == "__main__":
-    signal.signal(signal.SIGTERM, terminated)
+def main(arguments=None):
     try:
-        sys.exit(main(sys.argv[1:]))
-    except (QueryError, OSError, ValueError, KeyError, TypeError) as error:
-        sys.exit(str(error))
+        require(sys.implementation.name == "cpython" and sys.version_info[:2] == (3, 15),
+                "use the selected build-host CPython 3.15")
+        arguments = list(sys.argv[1:] if arguments is None else arguments)
+        selection = []
+        # SDK options belong before the query mode/program. Preserve every
+        # later argument, including a literal target --sdk-source option.
+        while arguments and arguments[0] == '--sdk-source':
+            selection.extend(arguments[:2])
+            del arguments[:2]
+        unused_source, unused_options = load_sdk(selection)
+        install_signal_handlers()
+        return query(arguments)
+    except (QueryError, OSError, ValueError, KeyError) as error:
+        print(str(error), file=sys.stderr)
+        return 1
+    except Exception as error:
+        from emberbsd_sdk.errors import SDKError
+        if not isinstance(error, SDKError):
+            raise
+        print(str(error), file=sys.stderr)
+        return 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

@@ -92,21 +92,21 @@ def main():
                EMBERBSD_GI_FAILURE_MARKER=str(work / 'probes/transport-failed'))
     if Path(env['EMBERBSD_GI_FAILURE_MARKER']).exists():
         raise ValueError('an earlier transport failure needs review')
-    run('query-config', 0, sys.executable, launcher, '--check', work / 'probes', source['base'], readelf, env=env)
+    run('query-config', 0, sys.executable, '-E', '-S', launcher, '--check', work / 'probes', source['base'], readelf, env=env)
     values = ['two words', "single'quote", 'double"quote', '', '$(touch /tmp/ember-query-injection)', '; exit 99']
     body = f'test "$#" = {len(values)} || exit 41\n'
     for value in values:
         body += f'test "$1" = {shlex.quote(value)} || exit 42\nshift\n'
     body += "printf '%s\\n' ARGV_OK\nexit 37\n"
-    output = run('query-literal-argv', 37, sys.executable, launcher, '--execute', shell, '-c', body, 'query', *values, env=env)
+    output = run('query-literal-argv', 37, sys.executable, '-E', '-S', launcher, '--execute', shell, '-c', body, 'query', *values, env=env)
     if output != b'ARGV_OK\n':
         raise ValueError('literal argv oracle failed')
-    run('query-success', 0, sys.executable, launcher, '--execute', shell, '-c', 'printf TARGET_OK', env=env)
-    run('query-negative', 1, sys.executable, launcher, '--execute', shell, '-c', 'false', env=env)
+    run('query-success', 0, sys.executable, '-E', '-S', launcher, '--execute', shell, '-c', 'printf TARGET_OK', env=env)
+    run('query-negative', 1, sys.executable, '-E', '-S', launcher, '--execute', shell, '-c', 'false', env=env)
     if Path(env['EMBERBSD_GI_FAILURE_MARKER']).exists():
         raise ValueError('legitimate target status became a transport failure')
     no_marker = {key: value for key, value in env.items() if key != 'EMBERBSD_GI_FAILURE_MARKER'}
-    run('dump-args-still-rejected', 1, sys.executable, launcher, shell, 'literal', env=no_marker)
+    run('dump-args-still-rejected', 1, sys.executable, '-E', '-S', launcher, shell, 'literal', env=no_marker)
     if b'only an optional introspect-dump' not in (logs / 'check-dump-args-still-rejected.log').read_bytes():
         raise ValueError('dump mode unexpectedly accepted literal args')
     run('cleanup', 0, *ssh, '''set -eu

@@ -414,12 +414,12 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             devel/libevdev-chunk) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk' ;;
             textproc/json-c) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk hacks.mk options.mk' ;;
             devel/glib2-tools|devel/glib2-introspection) recipe_files='Makefile DESCR PLIST' ;;
-            graphics/gdk-pixbuf2) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk options.mk loaders.mk files/loaders.tmpl files/target-tools.py' ;;
+            graphics/gdk-pixbuf2) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk options.mk loaders.mk files/loaders.tmpl files/target-tools.py files/sdk_source.py' ;;
             databases/shared-mime-info) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk INSTALL DEINSTALL mimedb.mk files/install.tmpl' ;;
             graphics/librsvg) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk available.mk options.mk tool.mk cargo-depends.mk cross.mk' ;;
             devel/xxhash) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk files/Makefile' ;;
             textproc/fmtlib) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk' ;;
-            devel/gobject-introspection) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk cross.mk files/target-query.py files/elf-needed.sh files/target-pkg-config.sh files/target-gir-scanner.sh' ;;
+            devel/gobject-introspection) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk cross.mk files/target-query.py files/sdk_source.py files/elf-needed.sh files/target-pkg-config.sh files/target-gir-scanner.sh' ;;
             devel/gdbus-codegen) recipe_files='Makefile DESCR PLIST distinfo' ;;
             sysutils/dbus) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk INSTALL options.mk hacks.mk files/dbus.sh files/smf/manifest.xml files/smf/dbus.sh' ;;
         esac

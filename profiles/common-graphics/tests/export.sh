@@ -66,7 +66,7 @@ shared_pcre2=$profile/recipes/devel/pcre2/options.mk
 mv "$shared_pcre2" "$work/pcre2-options.mk"
 negative missing-shared-pcre2-options
 mv "$work/pcre2-options.mk" "$shared_pcre2"
-for name in cross.mk files/target-query.py files/elf-needed.sh; do
+for name in cross.mk files/target-query.py files/sdk_source.py files/elf-needed.sh; do
     helper=$profile/recipes/devel/gobject-introspection/$name
     mv "$helper" "$work/gi-helper"
     negative "missing-gi-${name##*/}"

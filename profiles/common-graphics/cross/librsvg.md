@@ -156,7 +156,8 @@ module installation path and actual full-build outputs.
 The target selection and std guard also have a separate host regression:
 
 ```sh
-BMAKE=/absolute/native/bmake ruby profiles/common-graphics/tests/librsvg-targets.rb \
+EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK BMAKE=/absolute/native/bmake \
+  /absolute/native/python3.15 profiles/common-graphics/tests/librsvg-targets.py \
   /absolute/native-prefix /absolute/cross-tools /absolute/new-target-check
 ```
 
@@ -186,7 +187,8 @@ ruby profiles/common-graphics/tests/prepare-librsvg-package.rb \
   /absolute/packages/librsvg-2.63.2.tgz \
   /absolute/packages/shared-mime-info-2.5.1.tgz /absolute/original-librsvg-source \
   /absolute/build-root/new-consumer
-env EMBERBSD_GI_QUERY_CONFIG=/absolute/query.json python3.15 \
+env EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK \
+  EMBERBSD_GI_QUERY_CONFIG=/absolute/query.json /absolute/native/python3.15 \
   profiles/common-graphics/recipes/devel/gobject-introspection/files/target-query.py \
   /absolute/build-root/new-consumer/librsvg-package
 ```
@@ -209,7 +211,7 @@ executed directly in a fresh target scratch directory with the same providers.
 tests the production CLI status predicate and reproduces the old false
 positives with real missing-executable and signal exits.
 With `EMBERBSD_GI_QUERY_CONFIG` set, run
-`ruby profiles/common-graphics/tests/librsvg-mime-regression.rb /absolute/prepared-consumer /absolute/new-work`
+`python3.15 profiles/common-graphics/tests/librsvg-mime-regression.py --sdk-source /absolute/EmberBSD-SDK /absolute/prepared-consumer /absolute/new-work`
 to reproduce the MIME omission using the real target loader. Both directories
 must be inside the configured query build root. The negative control must
 fail specifically at SVG format detection and clean its target directory.

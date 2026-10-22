@@ -48,19 +48,23 @@ SUBST_SED.docbook+=	-e 's,http://docbook.sourceforge.net/release/xsl/current,${P
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # Waf runs on the host; its compiled feature probes run on the EmberBSD
 # target through the shared executor (same flow as databases/tdb).
-.for _input in EMBERBSD_GI_PYTHON EMBERBSD_GI_QUERY_CONFIG
+.for _input in EMBERBSD_CROSS_BUILD_PYTHON EMBERBSD_GI_QUERY_CONFIG
 .if empty(${_input}:M/*) || !empty(${_input}:C/[A-Za-z0-9_.\/-]//g) || !exists(${${_input}})
 PKG_FAIL_REASON+= "${_input} must name an existing absolute file without shell metacharacters"
 .endif
 .endfor
+.if empty(EMBERBSD_SDK_SOURCE:M/*) || !empty(EMBERBSD_SDK_SOURCE:C/[A-Za-z0-9_.\/-]//g) || !exists(${EMBERBSD_SDK_SOURCE}/src/emberbsd_sdk/__init__.py)
+PKG_FAIL_REASON+= "EMBERBSD_SDK_SOURCE must name an absolute SDK source directory without shell metacharacters"
+.endif
 EMBERBSD_TALLOC_QUERY= ${.CURDIR}/../../devel/gobject-introspection/files/target-query.py
-EMBERBSD_TALLOC_EXECUTOR= ${EMBERBSD_GI_PYTHON} ${EMBERBSD_TALLOC_QUERY} --execute
+EMBERBSD_TALLOC_EXECUTOR= ${EMBERBSD_CROSS_BUILD_PYTHON} -E -S ${EMBERBSD_TALLOC_QUERY} --execute
 CONFIGURE_ARGS+= --cross-compile --cross-execute=${EMBERBSD_TALLOC_EXECUTOR:Q}
 # Parallel configure mutates provider files while a query walks them.
 CONFIGURE_ARGS+= --jobs=1
 # The Python binding probes build host binaries that the shared target
 # executor rightly refuses; the KIO SMB consumer needs the C library only.
 CONFIGURE_ARGS+= --disable-python
+CONFIGURE_ENV+= EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q}
 CONFIGURE_ENV+= EMBERBSD_GI_TARGET=${MACHINE_ARCH:S/x86_64/amd64/}
 CONFIGURE_ENV+= EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q}
 CONFIGURE_ENV+= EMBERBSD_GI_FAILURE_MARKER=${WRKDIR}/.talloc-query-failure
@@ -70,7 +74,7 @@ CONFIGURE_ENV+= PYTHON_CONFIG=${TOOL_PYTHONBIN:Q}\ ${CROSS_DESTDIR}${PYTHONBIN}-
 pre-configure: emberbsd-talloc-query
 .PHONY: emberbsd-talloc-query
 emberbsd-talloc-query:
-	${RUN}${SETENV} EMBERBSD_GI_TARGET=${MACHINE_ARCH:S/x86_64/amd64/:Q} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} ${EMBERBSD_GI_PYTHON} ${EMBERBSD_TALLOC_QUERY} --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${MACHINE_ARCH}--netbsd-readelf ${MACHINE_ARCH:S/x86_64/amd64/:Q}
+	${RUN}${SETENV} EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q} EMBERBSD_GI_TARGET=${MACHINE_ARCH:S/x86_64/amd64/:Q} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} ${EMBERBSD_CROSS_BUILD_PYTHON} -E -S ${EMBERBSD_TALLOC_QUERY} --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${MACHINE_ARCH}--netbsd-readelf ${MACHINE_ARCH:S/x86_64/amd64/:Q}
 	${RUN}${RM} -f ${WRKDIR}/.talloc-query-failure
 post-configure: emberbsd-talloc-query-result
 .PHONY: emberbsd-talloc-query-result
