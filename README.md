@@ -24,6 +24,12 @@ runtime behavior are validated.
   GCC16 package, all 114 upstream tests and installed scanner consumers pass.
   Instrumented memory execution and cross-package checks remain unverified.
 
+- [Vala nullable array copies](profiles/common-build-tools/cross/vala.md):
+  the common generator reserves the NULL terminator for nullable value types.
+  Paired GCC16 host regressions pass the upstream C golden-file comparisons
+  and runtime checks after the repair. A separate D-Bus test change preserves descriptor
+  exhaustion and both assertions. Target package acceptance remains pending.
+
 - [Electron GN cross inputs](probes/electron/README.md#gn-target-inputs):
   production GN regressions preserve explicit NetBSD target readelf selection
   and target pkgsrc metadata. Target and host assembler flags stay separate;

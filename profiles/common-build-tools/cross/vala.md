@@ -88,6 +88,13 @@ is removed. GCC 16 `-fanalyzer` also checks the unmodified C translation units
 with their real headers and flags. It reports no analyzer finding. Both
 variants retain the same GLib atomic qualifier compiler warning.
 
+Apple Clang 21 Static Analyzer also checks the actual C module with the
+same host configuration and SDK headers. A deliberate NULL-dereference
+control confirms checker operation. Both variants complete with status zero
+and the same four `deadcode.DeadStores` findings. They are unused generated
+`self` assignments owned by upstream Vala. No checker is suppressed.
+Clang runs only in analysis mode and produces no target objects.
+
 Valgrind is unavailable on the Apple Silicon validation host. The ASan/UBSan
 runs check invalid memory access and frees. They do not establish leak or
 uninitialized-value acceptance. ASan emits a module-map warning in the
