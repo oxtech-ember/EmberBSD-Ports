@@ -2,7 +2,7 @@
 
 DISTNAME=	gdk-pixbuf-2.44.8
 PKGNAME=	${DISTNAME:S/pixbuf/pixbuf2/}
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	graphics gnome
 MASTER_SITES=	${MASTER_SITE_GNOME:=sources/gdk-pixbuf/${PKGVERSION_NOREV:R}/}
 EXTRACT_SUFX=	.tar.xz
@@ -53,6 +53,9 @@ PLIST.native=	yes
 
 .if ${USE_CROSS_COMPILE:tl} == "yes"
 
+.if empty(EMBERBSD_SDK_SOURCE:M/*) || !exists(${EMBERBSD_SDK_SOURCE}/src/emberbsd_sdk/__init__.py)
+PKG_FAIL_REASON+= "GdkPixbuf cross tools require an explicit SDK host API source"
+.endif
 TOOL_DEPENDS+=			glib2-tools>=0:../../devel/glib2-tools
 EMBERBSD_GI_MESON_OPTIONS=	no
 .include "../../devel/gobject-introspection/cross.mk"
@@ -60,7 +63,13 @@ MESON_CROSS_VARS+=	emberbsd_gi_cross emberbsd_gi_ldd_wrapper emberbsd_pixbuf_run
 MESON_CROSS.emberbsd_gi_cross=	true
 MESON_CROSS.emberbsd_pixbuf_python=	'${TOOL_PYTHONBIN}'
 MESON_CROSS.emberbsd_gi_ldd_wrapper=	'${EMBERBSD_GI_FILESDIR}/elf-needed.sh'
-MESON_CROSS.emberbsd_pixbuf_runner=	['${EMBERBSD_GI_RUBY}', '${FILESDIR}/target-tools.rb']
+MESON_CROSS.emberbsd_pixbuf_runner=	['${EMBERBSD_GI_PYTHON}', '${FILESDIR}/target-tools.py']
+MAKE_ENV+=	EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q}
+pre-configure: emberbsd-pixbuf-native
+.PHONY: emberbsd-pixbuf-native
+emberbsd-pixbuf-native:
+	${RUN}${SETENV} EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} EMBERBSD_GI_TARGET=${_EMBER_GI_TARGET:Q} ${EMBERBSD_GI_PYTHON} ${FILESDIR}/target-tools.py --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${_EMBER_GI_TRIPLET}-readelf
+
 MESON_BINARIES+=		glib-genmarshal glib-mkenums
 MESON_BINARY.glib-genmarshal=	${TOOLBASE}/bin/glib-genmarshal
 MESON_BINARY.glib-mkenums=	${TOOLBASE}/bin/glib-mkenums

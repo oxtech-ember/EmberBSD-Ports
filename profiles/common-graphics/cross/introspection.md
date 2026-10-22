@@ -184,8 +184,8 @@ EMBERBSD_GI_QUERY_CONFIG=/absolute/private/query.json
 ```
 
 The GI launcher and its host contracts use Python with the standard library.
-The separate GdkPixbuf loader-query helper still has its existing
-`EMBERBSD_GI_RUBY` input. This change replaces the GI launcher only.
+The GdkPixbuf loader/MIME runner uses the same selected Python. It also uses
+SDK host API 1 through the explicit `EMBERBSD_SDK_SOURCE` setting.
 
 Then use ordinary host `bmake ... package install` for the exported
 `devel/gobject-introspection` recipe. `install` populates only the private

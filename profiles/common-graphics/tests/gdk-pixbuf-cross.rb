@@ -31,9 +31,9 @@ File.write(work + '/source/meson.build', "project('pixbuf-tool-selection', 'c')\
   endif
   message('scanner arguments: ' + ' '.join(gir_args))
 MESON
-helper = File.expand_path('../recipes/graphics/gdk-pixbuf2/files/target-tools.rb', __dir__)
+helper = File.expand_path('../recipes/graphics/gdk-pixbuf2/files/target-tools.py', __dir__)
 needed = File.expand_path('../recipes/devel/gobject-introspection/files/elf-needed.sh', __dir__)
-properties = "emberbsd_gi_cross = true\nemberbsd_pixbuf_python = '#{host}/bin/python3.15'\nemberbsd_gi_ldd_wrapper = '#{needed}'\nemberbsd_pixbuf_runner = ['#{RbConfig.ruby}', '#{helper}']\n"
+properties = "emberbsd_gi_cross = true\nemberbsd_pixbuf_python = '#{host}/bin/python3.15'\nemberbsd_gi_ldd_wrapper = '#{needed}'\nemberbsd_pixbuf_runner = ['#{host}/bin/python3.15', '#{helper}']\n"
 binaries = "[binaries]\nc = '#{cc}'\ng-ir-scanner = '/usr/bin/false'\n"
 machine = "[host_machine]\nsystem = 'netbsd'\ncpu_family = 'aarch64'\ncpu = 'aarch64'\nendian = 'little'\n"
 File.write(work + '/cross.ini', binaries + machine)

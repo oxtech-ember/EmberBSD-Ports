@@ -414,7 +414,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             devel/libevdev-chunk) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk' ;;
             textproc/json-c) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk hacks.mk options.mk' ;;
             devel/glib2-tools|devel/glib2-introspection) recipe_files='Makefile DESCR PLIST' ;;
-            graphics/gdk-pixbuf2) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk options.mk loaders.mk files/loaders.tmpl files/target-tools.rb' ;;
+            graphics/gdk-pixbuf2) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk options.mk loaders.mk files/loaders.tmpl files/target-tools.py' ;;
             databases/shared-mime-info) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk INSTALL DEINSTALL mimedb.mk files/install.tmpl' ;;
             graphics/librsvg) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk available.mk options.mk tool.mk cargo-depends.mk cross.mk' ;;
             devel/xxhash) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk files/Makefile' ;;

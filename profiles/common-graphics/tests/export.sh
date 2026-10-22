@@ -116,7 +116,7 @@ for name in options.mk files/startlabwc.sh.in; do
     negative "missing-labwc-${name##*/}"
     mv "$work/labwc-helper" "$helper"
 done
-helper=$profile/recipes/graphics/gdk-pixbuf2/files/target-tools.rb
+helper=$profile/recipes/graphics/gdk-pixbuf2/files/target-tools.py
 mv "$helper" "$work/gdk-target-helper"
 negative missing-gdk-target-helper
 mv "$work/gdk-target-helper" "$helper"
