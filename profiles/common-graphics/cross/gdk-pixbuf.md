@@ -2,9 +2,8 @@
 
 The graphics profile supplies recipes for `gdk-pixbuf2-2.44.8nb3` and
 `shared-mime-info-2.5.1`. The selected payload loads raster formats and exposes
-GdkPixbuf through GObject Introspection. The preceding revision-2 packages
-cross-built on macOS with GCC16 for EmberBSD/AArch64. Revision-3 package
-and installed acceptance remain pending.
+GdkPixbuf through GObject Introspection. The current packages cross-build on
+macOS with GCC16 for EmberBSD/AArch64 and pass ordinary package/install checks.
 EmberBSD Ports owns the recipes, target-query adaptation and acceptance tests.
 
 The selected upstream releases were checked on 2026-10-09:
@@ -56,8 +55,8 @@ It publishes output only after successful execution, cleanup and unchanged
 local inputs. Each query is limited to 60 seconds. The target receives no
 package or base-system installation. Strict SDK JSON parsing rejects duplicate
 metadata keys. The runner retains the optional pinned `host_key_alias`.
-The Python host migration passed the scoped guards on Darwin. Target package
-and real loader/MIME execution after that migration remain separate checks.
+The Python host migration passes the scoped guards on Darwin. The revision-3
+build also completes real target loader, MIME and GIR/typelib generation.
 
 Set up the private query JSON and MAKECONF as in the GI instructions. For a
 GCC16 runtime closure, select its provider consistently in the JSON:
@@ -85,19 +84,22 @@ complete verified base release or SDK.
 
 ## Acceptance
 
-The preceding revision-2 package/install checks pass, including PLIST, interpreters,
+The revision-3 package/install checks pass, including PLIST, interpreters,
 permissions, PIE, RELRO, runtime search paths and work-directory references.
 All 147 GdkPixbuf payload files/links and 84 shared-mime-info payload
 files/links match the installed packages. Accepted package SHA256 values:
 
 | Package | SHA256 |
 | --- | --- |
-| `gdk-pixbuf2-2.44.8nb2.tgz` | `4c660c73876ca4cc5ecb21657126f90f7522461f0f0a173d90a63b4278c20ac0` |
-| `shared-mime-info-2.5.1.tgz` | `64b6f76d49a629e0ed59e96b7ee6d87ba266ad5c4db847d1f1b8b673119dbc47` |
+| `gdk-pixbuf2-2.44.8nb3.tgz` | `54263763b6bea137c40361d144e9b69d650c1bdf667521acc68c0e356ce18277` |
+| `shared-mime-info-2.5.1.tgz` | `0cf32ca0e3dce5ad34c510f2c4ff1ed815b155d917ff95e6dca7c913c4a12dbb` |
 
-Two real GType queries, the loader-cache query and the thumbnail MIME query
-completed on CM5 with zero exit and cleanup statuses. On 2026-10-09 the
-installed-package consumer passed on EmberBSD/AArch64 CM5, running EMBER64 #5
+The current normal build completes real AArch64 GType, loader-cache and
+thumbnail MIME queries through the production target transport. Generated
+GIR/typelib files and all installed package payload bytes are verified.
+
+The preceding revision-2 installed-package consumer passed on 2026-10-09
+on EmberBSD/AArch64 CM5, running EMBER64 #5
 from source `4eb2495`. It embeds the installed modules, nine typelibs and MIME
 source data; the target `update-mime-database` creates a temporary database.
 
@@ -113,6 +115,26 @@ These are bounded CPU image and metadata checks. The complete upstream test
 suite, thumbnailer CLI operation and long-running application behavior are
 not covered. They establish neither display output nor GPU acceleration.
 Board firmware and hardware revision were not re-audited by these tests.
+
+## Printer source analysis
+
+The actual configured MIME printer remains byte-identical to pinned upstream:
+`thumbnailer/gdk-pixbuf-print-mime-types.c` has SHA256
+`bfea22e9f5118b48ed062831cc333dfcf1f3183ce152221936ca3b15b25c9cc6`.
+The eight project headers included by this unit are also unchanged.
+The paired checks use the real Meson compilation database, wrapper-expanded
+GCC16 arguments, AArch64 headers and generated feature/enum headers.
+The checks retain hashes for the real input files. Generated headers are kept
+as built; no replacement configuration is used.
+
+GCC 16.2.0 `-fanalyzer` and Clang Static Analyzer 21 report no findings for
+this unit before or after the recipe patches. This is selected-unit coverage.
+Cppcheck 2.18 and current 2.22 both stop in GLib 2.90.1 autoptr macro/pragma
+syntax when they read the actual GCC-preprocessed unit. Cppcheck 2.22's Clang
+importer also fails on an AST scratch-space location with the real target and
+sysroot restored. These parser failures establish no completed Cppcheck
+coverage. No diagnostic category or source check is suppressed. These source
+checks do not establish whole-library, dynamic memory or GUI acceptance.
 
 ## Reproduce the checks
 
@@ -138,6 +160,9 @@ EMBERBSD_GI_QUERY_CONFIG=/path/to/private/query.json /path/to/native/python3.15 
   /path/to/work/new-consumer/gdk-pixbuf-consumer
 ```
 
+The consumer preparation command above reproduces the revision-2 board check;
+that helper still requires its exact `nb2` package. It does not accept `nb3`.
+The current revision-3 target queries run during the normal package build.
 The consumer directory must be inside the query JSON's `build_root`.
 The source check verifies the upstream hash, applies eight patches without
 fuzz and compares the six affected files to the accepted build. The Meson
