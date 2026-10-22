@@ -1,5 +1,25 @@
 # MIT Kerberos contracts
 
+## Cross-build client keytab default
+
+Run `default-client-keytab.py` after pkgsrc extracts and patches the MIT source.
+Pass the target `MIT_KRB5_STATEDIR` value from `bmake -v MIT_KRB5_STATEDIR`
+in the configured target package context.
+The check executes only the generated Autoconf default-selection block with a
+fake build-host `krb5-config`. It checks that cross builds use the target path
+and that the upstream host default remains unchanged.
+
+```sh
+python3.15 -E -S profiles/common-graphics/tests/mit-krb5/default-client-keytab.py \
+    --sdk-source /absolute/EmberBSD-SDK \
+    --source /absolute/krb5-1.22.2/src \
+    --recipe /absolute/pkgsrc/security/mit-krb5/Makefile \
+    --target-statedir /var --work /absolute/new-keytab-work
+```
+
+This is a source-level configure-policy check. It does not compile or run
+target code.
+
 These host checks use CPython 3.15 and an explicit SDK source. They require
 SDK API 1. The metadata check also requires producer stream and inspection
 API 1. No pip packages are required.

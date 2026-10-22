@@ -28,7 +28,7 @@ def main():
     if subprocess.check_output([str(cc), '-dumpfullversion'], text=True).strip() != '16.2.0':
         raise ValueError('The common GCC16 is required')
     prefix = arg.sysroot / 'usr/pkg'
-    for package in ('mit-krb5-1.22.2nb2', 'mit-krb5-devel-1.22.2nb2'):
+    for package in ('mit-krb5-1.22.2nb6', 'mit-krb5-devel-1.22.2nb6'):
         if not (prefix / 'pkgdb' / package / '+CONTENTS').is_file():
             raise ValueError('Install matching ordinary runtime and SDK packages first')
     owner = Path(__file__).resolve().parent

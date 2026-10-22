@@ -5,7 +5,7 @@ EMBERBSD_MIT_KRB5_PKGDIR:= ${.PARSEDIR:tA}
 BRANCHNAME=	1.22
 DISTNAME=	krb5-${BRANCHNAME}.2
 PKGNAME=	mit-${DISTNAME}
-PKGREVISION=	5
+PKGREVISION=	6
 CATEGORIES=	security
 # It is not clear how stable this URL scheme is.
 MASTER_SITES=	http://web.mit.edu/kerberos/dist/krb5/${BRANCHNAME}/
@@ -74,6 +74,8 @@ CONFIGURE_ARGS+=	--without-system-verto
 CONFIGURE_ENV+=		BUILDLINK_PREFIX_OPENSSL=${BUILDLINK_PREFIX.openssl}
 CONFIGURE_ENV+=		DEFKTNAME=FILE:${PKG_SYSCONFDIR}/krb5.keytab
 .if ${USE_CROSS_COMPILE:Uno} == "yes"
+# Use the target default. krb5-config resolves build-host defaults.
+CONFIGURE_ENV+=		DEFCKTNAME=FILE:${MIT_KRB5_STATEDIR}/krb5/user/%{euid}/client.keytab
 # Build-time compile_et keeps host tools. The installed script uses target tools.
 MAKE_FLAGS+=		INSTALL_AWK=/usr/bin/awk INSTALL_SED=/usr/bin/sed
 .endif
@@ -104,8 +106,8 @@ PATCHDIR= ${EMBERBSD_MIT_KRB5_PKGDIR}/patches
 FILESDIR= ${EMBERBSD_MIT_KRB5_PKGDIR}/files
 RCD_SCRIPTS=
 OWN_DIRS_PERMS=
-DEPENDS+= mit-krb5>=${BRANCHNAME}.2nb2:../../security/mit-krb5
-CONFLICTS+= mit-krb5<${BRANCHNAME}.2nb2
+DEPENDS+= mit-krb5>=${BRANCHNAME}.2nb6:../../security/mit-krb5
+CONFLICTS+= mit-krb5<${BRANCHNAME}.2nb6
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes" || ${OPSYS} != "NetBSD"
 PKG_FAIL_REASON+= "The MIT Kerberos SDK requires a NetBSD cross build; native builds keep the full package"
 .endif
