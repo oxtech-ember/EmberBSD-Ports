@@ -1,0 +1,31 @@
+$NetBSD$
+
+Remove GCC-only diagnostic switches and optimizer parameters from libclang's
+parser inputs. Keep the target compiler arguments and -Werror unchanged.
+Origin: EmberBSD (AI-assisted), Chromium 152.0.7977.167; not submitted upstream.
+
+--- a/build/rust/gni_impl/filter_clang_args.py
++++ b/build/rust/gni_impl/filter_clang_args.py
+@@ -14,6 +14,13 @@
+ 
+ 
+ def filter_clang_args(clangargs):
++  # These warning groups and optimization tuning flags are GCC-only. Keep
++  # target GCC flags unchanged, but do not pass them to libclang's parser.
++  gcc_only_warning_suppressions = {
++      '-Wno-class-memaccess',
++      '-Wno-maybe-uninitialized',
++      '-Wno-packed-not-aligned',
++  }
+ 
+   def do_filter(args):
+     i = 0
+@@ -27,6 +34,8 @@
+           i += 2
+       elif args[i] == '-ftime-trace':
+         pass
++      elif args[i] in gcc_only_warning_suppressions or args[i].startswith('--param='):
++        pass
+       else:
+         yield args[i]
+       i += 1

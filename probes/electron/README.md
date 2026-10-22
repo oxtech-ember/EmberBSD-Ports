@@ -106,7 +106,7 @@ The application package cannot be installed until the target runtime is built.
 
 ## GN target inputs
 
-The five source patches retain the exact Chromium pin above. Apply them after
+The GN and parser patches retain the exact Chromium pin above. Apply them after
 its NetBSD GN adaptations, from the Chromium source root:
 
 ```sh
@@ -115,6 +115,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-readelf.pat
 patch -p0 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-asmflags.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-bindgen-host-tools.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-clang-resource-version.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-bindgen-gcc-warnings.patch
 ```
 
 The pkg-config patch keeps the effective `pkg/lib` value in the common cross
@@ -134,6 +135,9 @@ The resource-version patch restores the upstream Clang version selection.
 The Apple host tools use the pinned compiler below `clang_base_path`, so their
 headers and compiler runtime must use that compiler's resource version.
 The target C/C++ compiler remains GCC16.
+The parser patch removes three GCC-only diagnostic switches and `--param=`
+optimizer settings only from libclang's inputs. Target compiler arguments,
+`-Werror`, target triple, and sysroot remain unchanged.
 
 Run the regressions with host CPython 3.15 and its standard library. Select an
 SDK API 1 source with `--sdk-source`. Each test checks the API and module origin.
@@ -167,6 +171,11 @@ python3.15 -E -S probes/electron/tests/gn-clang-resource-version.py \
   --source /absolute/chromium/src --gn /absolute/host-gn \
   --patch /absolute/Ports/probes/electron/patches/gn-clang-resource-version.patch \
   /absolute/NEW_CLANG_RESOURCE_WORK
+python3.15 -E -S probes/electron/tests/gn-bindgen-gcc-args.py \
+  --sdk-source /absolute/EmberBSD-SDK --source /absolute/chromium/src \
+  --out /absolute/EXISTING_NETBSD_GN_OUT \
+  --patch /absolute/Ports/probes/electron/patches/gn-bindgen-gcc-warnings.patch \
+  /absolute/NEW_BINDGEN_ARGS_WORK
 ```
 
 The tests accept the original or already fixed source. They apply the carried
@@ -193,6 +202,12 @@ selects the pinned compiler's resource version, the NetBSD target retains
 version 23, and the forced head revision retains version 24. The test checks
 the actual host compiler's `-print-resource-dir` result, a resource header,
 and the Darwin compiler runtime archive. It does not compile target objects.
+
+The GCC argument test replays the actual generated allocator bindgen action
+before and after the parser patch. It requires the macOS ARM64 host graph
+and NetBSD ARM64 unbundle target. The host argument projection stays unchanged.
+An unmapped warning option and an intentional header warning still fail with
+`-Werror`. The tested allocator header has no system header dependencies.
 
 These tests pass on macOS. The fixture supplies the E12 macOS cross profile
 explicitly; it does not depend on the machine that runs GN. Linux and native
