@@ -604,6 +604,9 @@ runtime behavior are validated.
   passes real package/dependency cycles, exact FFV1 pixels, timestamps, filters
   and PCM samples in AArch64 QEMU. The current XML provider retains its ABI,
   repairs a schema shift and passes target contracts plus native UBSan tests.
+  The current [libaom 3.15.2 recipe](profiles/common-media/ffmpeg-runtime.md)
+  also passes GCC16 amd64 packaging and a staged NetBSD 11 lossless AV1
+  round-trip and malformed-input check. Full codec and GUI acceptance stay separate.
 - [H.265 over RTP with FFmpeg and GStreamer](profiles/common-media/rtp/README.md):
   GCC16.2 cross builds pass installed C API checks in AArch64 and AMD64 QEMU.
   Both directions recover from packet loss, duplication, reordering and a blackout.
