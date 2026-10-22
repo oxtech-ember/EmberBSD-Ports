@@ -15,7 +15,7 @@ mkdir -p "$work/source"
 cd "$work"
 pkg_info -e meson-1.12.1
 pkg_info -e ninja-build-1.13.2
-pkg_info -e binutils-2.47nb1
+pkg_info -e binutils-2.47nb2
 pkg_admin check meson ninja-build binutils > package-integrity.txt
 uname -a > platform.txt
 meson --version > meson-version.txt
