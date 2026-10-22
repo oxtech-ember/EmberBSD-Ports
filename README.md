@@ -241,7 +241,7 @@ runtime behavior are validated.
   The recipe's `--kernel` mode prepares frontends without a userland sysroot;
   application mode retains target headers/runtime. The Linux GCC16 path also
   builds the full kernel, four modules, and three DTBs; all portable contracts
-  and artifact checksums pass. See the [OS build evidence](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/cross-build.md#linux-gcc16).
+  and artifact checksums pass. See the [OS build evidence](https://github.com/oxtech-ember/EmberBSD/blob/main/tools/docs/cross-build.md#linux-gcc16).
   Boot acceptance remains separate.
   The separate [firmware entry point](profiles/development-toolchain/cross/firmware.md)
   selects `arm-none-eabi` C frontends for Cortex-M4 Thumb objects without a

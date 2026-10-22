@@ -32,7 +32,8 @@ an entire base release.
 
 ## Pinned AArch64 base and comp imports
 
-The OS owns the [AArch64 set builder and release contract](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/release/aarch64-sysroot.md).
+The SDK owns [OS release orchestration and receipt validation](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/docs/os-release.md).
+The OS owns distribution rules, set contents and target execution probes.
 Its complete snapshot at `6dd57144183678938164b4c2dcfc370cdbde8473`
 passes GCC16 C11/C++20, shared/static libc CAS and GNU M4 checks in AArch64
 QEMU. The owning guide records hashes and scope. Binary publication remains
@@ -43,7 +44,7 @@ Select a published `build-FULL_SOURCE_COMMIT-aarch64-sysroot` release from
 `manifest.json` through a trusted channel. A checksum downloaded beside a
 modified manifest does not establish that trust.
 
-On the Linux CI host, install Ruby with its standard library, curl, and xz.
+Use host Python, the selected SDK source, curl, and xz.
 Run the importer with a new absolute work directory:
 
 ```sh
@@ -54,6 +55,14 @@ python3 -B profiles/common-build-tools/cross/fetch-sysroot.py \
 
 The importer verifies the manifest pin, repository, architecture, source
 identity, set hashes, build profile, and required target qualification.
+It accepts historical `emberbsd.aarch64.sysroot.v1` and current
+`emberbsd.aarch64.sysroot.v2`. Version 1 keeps its existing source, set and
+qualification checks. Version 2 additionally uses the selected SDK's schema-2
+build validator: exact GCC16 command plan, compiler/runtime identities, source
+export and output bindings. Its qualification binds the kernel and evidence
+hashes, GCC16 consumers and the recorded target execution platform. An older
+SDK without these validators cannot import version 2.
+
 It extracts `base.tar.xz` and `comp.tar.xz` into `new-sdk-work/sysroot`.
 It records the selected inputs in `receipt.json` and file identities in
 `sysroot-files.json`. The destination must not exist before the command.
@@ -71,8 +80,11 @@ providers from one fork build. They do not supply a Linux cross compiler or
 the Ports GCC16 package. Add the selected GCC16 target headers and runtime
 through the [cross compiler profile](../../development-toolchain/cross/README.md)
 and record their separate provenance. Keep the original OS snapshot intact.
-The set profile uses the in-tree GCC12 bootstrap; GCC16 consumer checks do
-not mean that the base OS was compiled with GCC16.
+Historical schema-1 sets use the in-tree GCC12 bootstrap; their GCC16 consumer
+checks do not mean the base was compiled with GCC16. Schema-2 sets use the
+common GCC16 producer with a staged runtime as a build input. Runtime and
+headers from the GCC16 package remain separate Ports inputs for both formats.
+Keep the versioned provenance; do not describe both formats as the same build.
 
 Run the archive extractor regression on the Linux host:
 
@@ -98,7 +110,7 @@ profiled archive was quarantined outside the sysroot pending a proper rebuild.
 The artifacts come from EmberBSD commit
 `cffffd40b995ee0c1ada70d6f4c156409b22bae5`, built with GCC 12.5 on Zero 3W.
 They are not a new GCC16 build of libc. The OS owns their
-[source repair and original acceptance](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/aarch64-outlined-cas.md).
+[source repair and original acceptance](https://github.com/oxtech-ember/EmberBSD/blob/main/common/lib/libc/arch/aarch64/atomic/docs/aarch64-outlined-cas.md).
 
 | Artifact | SHA256 |
 | --- | --- |

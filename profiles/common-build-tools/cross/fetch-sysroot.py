@@ -41,14 +41,25 @@ def fetch_sysroot(revision, expected_manifest, work):
     manifest_path = fetch('manifest.json')
     check(sha256_file(manifest_path) == expected_manifest, 'Pinned manifest SHA256 differs')
     manifest = read_json(manifest_path)
-    check([manifest.get(k) for k in ('schema', 'repository', 'source_commit', 'release_tag', 'architecture', 'machine')] ==
-          ['emberbsd.aarch64.sysroot.v1', 'oxtech-ember/EmberBSD', revision, tag, 'aarch64', 'evbarm'], 'Wrong source, schema or architecture')
+    schema = manifest.get('schema')
+    modern = schema == 'emberbsd.aarch64.sysroot.v2'
+    check(schema in ('emberbsd.aarch64.sysroot.v1', 'emberbsd.aarch64.sysroot.v2') and
+          [manifest.get(k) for k in ('repository', 'source_commit', 'release_tag', 'architecture', 'machine')] ==
+          ['oxtech-ember/EmberBSD', revision, tag, 'aarch64', 'evbarm'], 'Wrong source, schema or architecture')
     qualification = manifest['qualification']
     check(isinstance(qualification, dict) and qualification.get('source_commit') == revision, 'Published sysroot has no target qualification')
     required = ('libc_aliases', 'cross_c11', 'cross_cxx20', 'target_c11', 'target_cxx20', 'base_loader_smoke', 'fork_cas')
     check(all(qualification.get('checks', {}).get(name) is True for name in required), 'Incomplete target qualification')
     files = manifest['files']
     check(isinstance(files, list) and all(isinstance(file, dict) for file in files), 'Invalid file manifest')
+    if modern:
+        from emberbsd_sdk.os_release import require_qualification
+        names = [file.get('name') for file in files]
+        check(all(isinstance(name, str) and re.fullmatch('[A-Za-z0-9][A-Za-z0-9._-]*', name) for name in names) and
+              len(names) == len(set(names)), 'Invalid or duplicate asset name')
+        check(all(isinstance(file.get('sha256'), str) and re.fullmatch('[0-9a-f]{64}', file['sha256']) and
+                  type(file.get('size')) is int and 0 < file['size'] < 2**31 for file in files), 'Invalid asset hash or size')
+        require_qualification(manifest, 'aarch64-sysroot')
     for name in ('base.tar.xz', 'comp.tar.xz', 'build-profile.json'):
         matches = [file for file in files if file.get('name') == name]
         check(len(matches) == 1, 'Missing or duplicate asset: ' + name)
@@ -58,6 +69,14 @@ def fetch_sysroot(revision, expected_manifest, work):
         check(os.path.getsize(path) == file['size'] and sha256_file(path) == file['sha256'], 'Downloaded asset differs: ' + name)
     profile = read_json(downloads + '/build-profile.json')
     check(profile == manifest['build_profile'] and profile['source_commit'] == revision and profile['status'] == 'built' and profile['source_repository'] == 'https://github.com/oxtech-ember/EmberBSD', 'Build provenance differs')
+    if modern:
+        from emberbsd_sdk.os_release_builder import validate_profile
+        validate_profile(profile, revision, 'aarch64')
+        check(manifest.get('product_version') == profile['product_version'], 'Product version provenance differs')
+        check(manifest.get('source_archive_sha256') == profile['source_sha256'], 'Source export provenance differs')
+        kernel_digest = next(file['sha256'] for file in files if file['name'] == 'netbsd-EMBER64.gz')
+        check(profile['output_sha256']['netbsd-EMBER64.gz'] == kernel_digest == qualification['kernel_gzip_sha256'],
+              'Mixed kernel provenance: netbsd-EMBER64.gz')
     for part in ('base', 'comp'):
         name = part + '.tar.xz'
         digest = next(file['sha256'] for file in files if file['name'] == name)
@@ -75,7 +94,7 @@ def fetch_sysroot(revision, expected_manifest, work):
     for path in (root + '/usr/lib/crt0.o', canonical_existing(root + '/lib/libc.so.12')):
         check(read_elf_header(path, machine=183), 'Wrong target ELF architecture')
     write_json(work + '/sysroot-files.json', inventory)
-    write_json(work + '/receipt.json', dict(source_commit=revision, manifest_sha256=expected_manifest, release_url=base, libc_aliases=aliases, entries=len(inventory),
+    write_json(work + '/receipt.json', dict(source_commit=revision, manifest_schema=schema, manifest_sha256=expected_manifest, release_url=base, libc_aliases=aliases, entries=len(inventory),
         links='Absolute archive symlinks are normalized to relative paths inside this target snapshot. Regular file bytes are unchanged.',
         scope='OS base/comp only. Cross compiler and GCC16 package headers/runtime are separate inputs.'))
     print('PASS: verified AArch64 OS sysroot at ' + root)

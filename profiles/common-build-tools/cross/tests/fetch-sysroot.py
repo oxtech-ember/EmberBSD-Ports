@@ -157,4 +157,104 @@ shutil.copyfile(pathlib.Path(os.environ['FIXTURE_SERVED']) / name, path)
     result = invoke(template, accepted, digest(template / 'manifest.json'))
     assert result.returncode and 'fresh work directory' in result.stdout and not calls.read_text()
     assert (accepted / 'receipt.json').read_bytes() == receipt
-print('PASS: 13 importer CLI contracts; HTTPS and target execution remain outside the fixture')
+    # Fresh schema-1 kits derive the version from source, without a command
+    # override. Import preserves its original source/hash/qualification rules.
+    source_version = root / 'source-version-v1'
+    shutil.copytree(template, source_version)
+    v1_manifest = copy.deepcopy(manifest)
+    v1_profile = copy.deepcopy(profile)
+    v1_profile.update(schema=1, commands=[['sh', './build.sh', 'tools'], ['sh', './build.sh', 'sets']])
+    v1_manifest.update(product_version='2.7+dev', build_profile=v1_profile)
+    write_json(source_version / 'build-profile.json', v1_profile)
+    v1_manifest['files'] = [record(source_version, 'build-profile.json') if f['name'] == 'build-profile.json' else f for f in v1_manifest['files']]
+    write_json(source_version / 'manifest.json', v1_manifest)
+    result = invoke(source_version, root / 'accepted-source-version-v1', digest(source_version / 'manifest.json'))
+    assert result.returncode == 0, result.stdout
+
+    # Schema 2 delegates its build-receipt contract to the selected SDK. Construct
+    # synthetic provenance and real archives; no compiler or target is executed.
+    from emberbsd_sdk.os_release_builder import producer_commands
+    from emberbsd_sdk.targets import target_definition
+    paths = {name: '/fixture/' + name for name in ('os', 'ports', 'sdk-source', 'compiler', 'runtime-prefix', 'objects', 'tools', 'destination')}
+    host = {'cc': {'path': '/fixture/host/cc'}, 'c++': {'path': '/fixture/host/c++'}}
+    flags, argv = producer_commands('aarch64', paths, host, revision, 1, '1', '/bin/sh')
+    binary_names = ('gcc g++ cpp ar as ld nm objcopy objdump ranlib readelf strip '
+                    'resolved-cc1 resolved-cc1plus resolved-collect2 resolved-lto1 resolved-as resolved-ld').split()
+    outputs = dict(profile['output_sha256'], **{'netbsd-EMBER64.gz': 'f' * 64})
+    signature = dict(product_version='2.7+dev', target=target_definition('aarch64'), flags=flags, host_tools=host,
+        environment={'LC_ALL': 'C', 'MAKECONF': '/dev/null'},
+        compiler=dict(version='16.2.0', threads='posix', triplet='aarch64--netbsd',
+                      binaries={name: {'sha256': '1' * 64} for name in binary_names}),
+        runtime={'report': {'metadata': dict(GCC_VERSION='16.2.0', GCC_RUNTIME_TRIPLET='aarch64--netbsd',
+            GCC_RUNTIME_TARGET='aarch64', EMBERBSD_SEED_SOURCE='b' * 40,
+            GCC_RUNTIME_INPUTS_SHA256='2' * 64, GCC_RUNTIME_STAGE_SHA256='3' * 64, GCC_RUNTIME_LINKS_SHA256='4' * 64)}})
+    modern_profile = dict(profile, schema=2, product_version='2.7+dev', architecture='aarch64', machine='evbarm',
+        source_sha256='d' * 64, source_timestamp=1, jobs='1', shell='/bin/sh', commands=argv, output_sha256=outputs,
+        sdk_receipt=dict(format='emberbsd-os-release-build', version=2, qualification='built-and-inspected',
+            execution_acceptance='not-run', sources={name: {'commit': revision} for name in ('os', 'ports', 'sdk')},
+            signature=signature, paths=paths, outputs=outputs,
+            commands=[dict(argv=a, status='passed', exit_status=0) for a in argv]))
+    modern_manifest = copy.deepcopy(manifest)
+    modern_manifest.update(schema='emberbsd.aarch64.sysroot.v2', product_version='2.7+dev', source_archive_sha256='d' * 64,
+                           build_profile=modern_profile)
+    modern_manifest['files'] += [dict(name='netbsd-EMBER64.gz', size=64, sha256='f' * 64),
+                                 dict(name='target-acceptance.log', size=64, sha256='e' * 64)]
+    modern_manifest['qualification'].update(kernel_gzip_sha256='f' * 64, consumer_compiler='fixture GCC 16.2.0',
+        execution='EmberBSD aarch64 full-system QEMU TCG', evidence_sha256={'target-acceptance.log': 'e' * 64})
+    modern_cases = ['accepted-v2', 'v2-profile-schema', 'v2-compiler', 'v2-runtime', 'v2-command', 'v2-source-export',
+                    'v2-qualification-evidence', 'v2-qualification-kernel', 'v2-qualification-platform',
+                    'v2-missing-check', 'v2-changed-set', 'v2-manifest-pin', 'v2-profile-set', 'v2-source', 'unknown-schema', 'v2-profile-kernel', 'v2-product-version']
+    for label in modern_cases:
+        served = root / label
+        shutil.copytree(template, served)
+        m, p = copy.deepcopy(modern_manifest), copy.deepcopy(modern_profile)
+        if label == 'v2-profile-schema': p['schema'] = 1
+        elif label == 'v2-compiler': p['sdk_receipt']['signature']['compiler']['version'] = '12.5.0'
+        elif label == 'v2-runtime': p['sdk_receipt']['signature']['runtime']['report']['metadata']['GCC_RUNTIME_TRIPLET'] = 'x86_64--netbsd'
+        elif label == 'v2-command': p['commands'][0].append('NOCHECKFLIST=yes')
+        elif label == 'v2-source-export': m['source_archive_sha256'] = '0' * 64
+        elif label == 'v2-qualification-evidence': m['qualification']['evidence_sha256']['target-acceptance.log'] = '0' * 64
+        elif label == 'v2-qualification-kernel': m['qualification']['kernel_gzip_sha256'] = '0' * 64
+        elif label == 'v2-qualification-platform': m['qualification']['execution'] = 'host fixture'
+        elif label == 'v2-missing-check': del m['qualification']['checks']['target_cxx20']
+        elif label == 'v2-profile-set': p['output_sha256']['release/evbarm-aarch64/binary/sets/base.tar.xz'] = '0' * 64
+        elif label == 'v2-product-version': m['product_version'] = '3.0'
+        elif label == 'v2-profile-kernel':
+            p['output_sha256']['netbsd-EMBER64.gz'] = '0' * 64
+            p['sdk_receipt']['outputs']['netbsd-EMBER64.gz'] = '0' * 64
+        elif label == 'v2-source': m['repository'] = 'foreign/OS'
+        elif label == 'unknown-schema': m['schema'] = 'emberbsd.aarch64.sysroot.v3'
+        elif label == 'v2-changed-set':
+            with (served / 'base.tar.xz').open('ab') as out: out.write(b'changed')
+        write_json(served / 'build-profile.json', p)
+        m['build_profile'] = p
+        m['files'] = [record(served, 'build-profile.json') if f['name'] == 'build-profile.json' else f for f in m['files']]
+        write_json(served / 'manifest.json', m)
+        pin = '0' * 64 if label == 'v2-manifest-pin' else digest(served / 'manifest.json')
+        work = root / ('import-' + label)
+        result = invoke(served, work, pin)
+        if label == 'accepted-v2':
+            assert result.returncode == 0, label + ': ' + result.stdout
+            assert (work / 'sysroot/usr/lib/libc.so').read_bytes() == elf
+            assert json.loads((work / 'receipt.json').read_text())['manifest_schema'] == 'emberbsd.aarch64.sysroot.v2'
+        else:
+            reason = {
+                'v2-profile-schema': 'Incomplete release build profile',
+                'v2-compiler': 'Unverified common GCC16 compiler',
+                'v2-runtime': 'Mixed GCC16 runtime receipt',
+                'v2-command': 'Build command does not select the exact required profile',
+                'v2-source-export': 'Source export provenance differs',
+                'v2-qualification-evidence': 'Qualification lacks bound target evidence',
+                'v2-qualification-kernel': 'Qualification has another netbsd-EMBER64.gz',
+                'v2-qualification-platform': 'Unrecorded target execution platform',
+                'v2-missing-check': 'Incomplete target qualification',
+                'v2-changed-set': 'Downloaded asset differs',
+                'v2-manifest-pin': 'Pinned manifest SHA256 differs',
+                'v2-profile-set': 'Mixed set provenance',
+                'v2-product-version': 'Product version provenance differs',
+                'v2-profile-kernel': 'Mixed kernel provenance',
+                'v2-source': 'Wrong source',
+                'unknown-schema': 'Wrong source',
+            }[label]
+            assert result.returncode and reason in result.stdout and not (work / 'receipt.json').exists(), label + ': ' + result.stdout
+print('PASS: 14 legacy and 17 schema-v2 importer CLI contracts; HTTPS and target execution remain outside the fixture')
