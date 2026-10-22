@@ -53,7 +53,8 @@ Its DWARF2–5/32–64 matrix and general entry-value expressions pass with the
 installed package; [entry-state tests](gdb/entry-value.md) distinguish recovered
 values from unavailable history.
 Ports carries the current native backend and dependency compatibility
-repairs. The profile exports one current `devel/gdb` package recipe;
+repairs. The shared layer has one current `devel/gdb` package recipe
+(`pkgsrc/devel/gdb`);
 the [package guide](gdb/package.md) connects it to the OS-owned development image.
 
 ## Source and preparation

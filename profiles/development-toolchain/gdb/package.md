@@ -1,7 +1,7 @@
 # GDB 18.1nb1 package
 
 The development profile replaces `devel/gdb` with the current
-[canonical recipe](../recipes/devel/gdb). Sources still come from the
+[canonical recipe](../../../pkgsrc/devel/gdb). Sources still come from the
 upstream release server; the recipe verifies archive and patch checksums.
 The export dereferences links to the shared Ports patches and helper.
 It does not retain an older GDB recipe alongside this one.

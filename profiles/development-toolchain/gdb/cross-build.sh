@@ -5,7 +5,7 @@ set -eu
 [ "$#" = 4 ] || { echo "Usage: $0 GDB_ARCHIVE GCC16_PREFIX SYSROOT NEW_WORK" >&2; exit 2; }
 archive=$1 compiler=$2 sysroot=$3 work=$4
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-recipe=$here/../recipes/devel/gdb
+recipe=$here/../../../pkgsrc/devel/gdb
 for path do
     case "$path" in /*) ;; *) echo 'Absolute paths required.' >&2; exit 2 ;; esac
     case "$path" in *[!A-Za-z0-9_./-]*) echo 'Use paths without shell metacharacters.' >&2; exit 2 ;; esac

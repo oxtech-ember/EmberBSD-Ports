@@ -601,8 +601,9 @@ git -C "$root/upstream/pkgsrc" archive --format=tar --output="$export_archive" "
 mkdir "$destination"
 tar -xf "$export_archive" -C "$destination"
 # The shared overlay is in every export. A new category is copied as a
-# whole. In an upstream category, the overlay adds packages. It replaces
-# an upstream package only if pkgsrc/replaces names that package.
+# whole and links in recipes are dereferenced. In an upstream category,
+# the overlay adds packages. It replaces an upstream package only if
+# pkgsrc/replaces names that package.
 replaces=$root/pkgsrc/replaces
 replaced() {
     [ -f "$replaces" ] && grep -v '^#' "$replaces" | grep -qxF "$1"
@@ -620,7 +621,7 @@ for category in "$root"/pkgsrc/*; do
     [ -d "$category" ] || continue
     name=${category##*/}
     if [ ! -e "$destination/$name" ] && [ ! -L "$destination/$name" ]; then
-        cp -R "$category" "$destination/$name"
+        cp -RL "$category" "$destination/$name"
         continue
     fi
     [ -d "$destination/$name" ] && [ -f "$destination/$name/Makefile" ] &&
@@ -637,7 +638,7 @@ for category in "$root"/pkgsrc/*; do
             }
             rm -rf "$destination/$name/${package##*/}"
         fi
-        cp -R "$package" "$destination/$name/${package##*/}"
+        cp -RL "$package" "$destination/$name/${package##*/}"
     done
 done
 if [ "$profile" = electron ]; then
@@ -671,9 +672,6 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
         patch -f -E -d "$destination" -p1 -F 0 < \
             "$root/profiles/development-toolchain/patches/$delta"
     done
-    # One current debugger recipe; dereference the shared Ports patch links.
-    rm -rf "$destination/devel/gdb"
-    cp -RL "$root/profiles/development-toolchain/recipes/devel/gdb" "$destination/devel/gdb"
     if [ "$firmware_toolchain" = yes ]; then
         for recipe in devel/gmake sysutils/dtc cross/aarch64-none-elf-binutils cross/aarch64-none-elf-gcc; do
             rm -rf "$destination/$recipe"

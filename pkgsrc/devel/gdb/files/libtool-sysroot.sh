@@ -1,0 +1,1 @@
+../../../../profiles/development-toolchain/gdb/libtool-sysroot.sh
