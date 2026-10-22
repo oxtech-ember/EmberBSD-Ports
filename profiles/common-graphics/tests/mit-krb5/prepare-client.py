@@ -68,7 +68,9 @@ def main():
              '-O2', '-g', '-Wall', '-Wextra', '-Werror', '-I' + str(prefix / 'include'),
              '-fsanitize=undefined', '-fsanitize-undefined-trap-on-error', '-fno-sanitize-recover=all']
     link = ['-L' + str(prefix / 'lib'), '-L' + str(prefix / 'gcc16/lib'), '-Wl,-rpath,/usr/pkg/lib', '-Wl,-rpath,/usr/pkg/gcc16/lib',
-            '-Wl,-rpath-link,' + str(prefix / 'lib'), '-Wl,-rpath-link,' + str(prefix / 'gcc16/lib')]
+            '-Wl,-rpath-link,' + str(prefix / 'lib'), '-Wl,-rpath-link,' + str(prefix / 'gcc16/lib'),
+            '-Wl,-rpath-link,' + str(arg.sysroot / 'usr/lib'),
+            '-Wl,-rpath-link,' + str(arg.sysroot / 'lib')]
     commands = []
     for name, source, extra in [('client', 'client.c', ['-lgssapi_krb5', '-lkrb5', '-lk5crypto', '-lcom_err', '-pthread']),
                                 ('constructor', 'constructor.c', []), ('printf', 'printf.c', []), ('unload', 'unload.c', []),
