@@ -41,6 +41,9 @@ prepared input receipts. Output creation is exclusive. Each metadata subprocess
 has a timeout; `--max-nodes` bounds the selected closure.
 
 The exporter asks bmake for expanded dependency variables and loaded makefiles.
+It requires native `-dg1` variable inventory output. It queries the listed
+`FILESDIR.*` variables with `-V` to resolve shared copied-source trees.
+Inventory failures omit the debug dump because it can contain private values.
 It passes `PKGNAME_REQD` during dependency evaluation and uses native
 `pkg_admin pmatch` to check each selected package. It does not parse Makefiles
 or implement a package version solver. All configured dependency kinds are
@@ -61,8 +64,10 @@ remain responsible for output paths and package installation conflicts.
 
 The input hash covers effective query environments, target settings, required
 package patterns, evaluated metadata, loaded makefiles, package files,
-`PATCHDIR`, `FILESDIR`, `DISTINFO_FILE`, `PLIST_SRC`, and the package's subtree
-under `LOCALPATCHES`. External paths stay out of graph output. Configuration,
+`PATCHDIR`, `FILESDIR`, additional `FILESDIR.*` trees, `DISTINFO_FILE`,
+`PLIST_SRC`, and the package's subtree
+under `LOCALPATCHES`. A copied-source change updates its consumers' input hashes
+without adding package dependency edges. External paths stay out of graph output. Configuration,
 bmake, pkg_admin, the exporter, and its restricted environment are shared inputs.
 Private values can affect hashes without being printed in the graph.
 

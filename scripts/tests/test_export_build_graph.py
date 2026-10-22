@@ -74,6 +74,15 @@ values.setdefault('PKGSRC_MAKE_ENV', 'MAKECONF=' + settings['MAKECONF'])
 values.setdefault('CROSSTARGETSETTINGS', 'TARGET_OPSYS=NetBSD TARGET_MACHINE_ARCH=aarch64')
 with (root / 'calls.jsonl').open('a') as stream:
     stream.write(json.dumps({'package': package, 'settings': settings}) + '\n')
+if '-dg1' in args:
+    print('#*** Global Variables:', file=sys.stderr)
+    for name in sorted(values):
+        if name.startswith('FILESDIR.'):
+            print(name + ' = ' + values[name], file=sys.stderr)
+    print('#*** Command-line Variables:', file=sys.stderr)
+    if values.get('_inventory_error'):
+        print('PRIVATE_VALUE = ' + values['_inventory_error'], file=sys.stderr)
+        sys.exit(2)
 for index, arg in enumerate(args):
     if arg == '-V':
         print(values.get(args[index + 1][2:-1], ''))
@@ -163,6 +172,67 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
     def test_patch_change_is_local(self):
         before = self.nodes(self.run_export())
         (self.pkgsrc / 'devel/library/patches/patch-one').write_text('repaired\n')
+        after = self.nodes(self.run_export())
+        self.assertEqual([key for key in before if before[key]['input_sha256'] != after[key]['input_sha256']],
+                         ['target:devel/library'])
+
+    def test_failed_inventory_does_not_print_private_values(self):
+        self.packages['devel/app']['_inventory_error'] = 'private-makeconf-secret'
+        error = self.run_export(success=False)
+        self.assertIn('variable inventory query failed', error)
+        self.assertNotIn('private-makeconf-secret', error)
+        self.assertNotIn('Global Variables', error)
+
+    def test_vendor_tree_change_only_changes_consumers(self):
+        vendor = self.pkgsrc / 'archivers/vendor/files'
+        vendor.mkdir(parents=True)
+        source = vendor / 'archive.c'
+        source.write_text('original source')
+        for package in ('devel/library', 'devel/runtime'):
+            self.packages[package]['FILESDIR.libarchive'] = '../../archivers/vendor/files'
+        before_graph = self.run_export()
+        before = self.nodes(before_graph)
+        source.write_text('repaired source')
+        after_graph = self.run_export()
+        after = self.nodes(after_graph)
+        self.assertEqual([key for key in before if before[key]['input_sha256'] != after[key]['input_sha256']],
+                         ['target:devel/library', 'target:devel/runtime'])
+        self.assertEqual(before_graph['context'], after_graph['context'])
+        self.assertEqual(set(before), set(after))
+        for key in before:
+            self.assertEqual(before[key]['dependencies'], after[key]['dependencies'])
+
+    @unittest.skipUnless(os.environ.get('EMBERBSD_BMAKE'), 'set EMBERBSD_BMAKE for native metadata checks')
+    def test_real_bmake_expands_vendor_tree(self):
+        vendor = self.pkgsrc / 'archivers/vendor/files'
+        vendor.mkdir(parents=True)
+        source = vendor / 'archive.c'
+        source.write_text('original source')
+        for package in ('devel/app', 'devel/library'):
+            text = ('PKGNAME=' + package.split('/')[1] + '-1\n'
+                    'PKGVERSION=1\nMACHINE_ARCH=x86_64\n'
+                    'MACHINE_GNU_PLATFORM=x86_64--linux\n')
+            if package == 'devel/app':
+                text += ('VENDOR=../../archivers/vendor\n'
+                         '.for component in libarchive\n'
+                         'FILESDIR.${component}=${VENDOR}/files\n.endfor\n')
+            (self.pkgsrc / package / 'Makefile').write_text(text + 'all:\n')
+        args = ('--bmake', os.environ['EMBERBSD_BMAKE'], '--mode', 'native',
+                '--target', 'x86_64', '--triplet', 'x86_64--linux', '--root', 'devel/library')
+        before = self.nodes(self.run_export(*args))
+        source.write_text('repaired source')
+        after = self.nodes(self.run_export(*args))
+        self.assertEqual([key for key in before if before[key]['input_sha256'] != after[key]['input_sha256']],
+                         ['host:devel/app'])
+
+    def test_external_vendor_filename_is_an_input(self):
+        vendor = self.path / 'external vendor files'
+        vendor.mkdir()
+        source = vendor / 'archive.c'
+        source.write_text('same bytes')
+        self.packages['devel/library']['FILESDIR.vendor'] = str(vendor)
+        before = self.nodes(self.run_export())
+        source.rename(vendor / 'renamed.c')
         after = self.nodes(self.run_export())
         self.assertEqual([key for key in before if before[key]['input_sha256'] != after[key]['input_sha256']],
                          ['target:devel/library'])

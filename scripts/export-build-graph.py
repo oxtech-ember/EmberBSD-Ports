@@ -77,9 +77,11 @@ class Exporter:
         completed = subprocess.run(command, text=True, capture_output=True,
                                    timeout=self.args.timeout, **kwargs)
         if completed.returncode:
-            raise ExportError('metadata command failed: ' +
-                              completed.stderr.strip()[:2000])
-        return completed.stdout
+            # The debug inventory can contain private MAKECONF values.
+            detail = ('bmake variable inventory query failed' if '-dg1' in command
+                      else completed.stderr.strip()[:2000])
+            raise ExportError('metadata command failed: ' + detail)
+        return completed
 
     def package_path(self, path, parent=None):
         candidate = ((parent or self.root) / path).resolve(strict=True)
@@ -95,12 +97,30 @@ class Exporter:
         command += [key + '=' + value for key, value in sorted(settings.items())]
         if pattern:
             command.append('PKGNAME_REQD=' + pattern)
+        queries = []
         for variable in VARIABLES:
-            command += ['-V', '${' + variable + '}']
-        values = self.run(command, env=environment).splitlines()
+            queries += ['-V', '${' + variable + '}']
+        # bmake has no GNU .VARIABLES inventory. Its native input graph lists
+        # defined names. Query their expanded values separately through -V.
+        completed = self.run(command + ['-dg1'] + queries, env=environment)
+        if '#*** Global Variables:' not in completed.stderr:
+            raise ExportError('bmake did not report its native variable inventory')
+        extra_trees = sorted(set(re.findall(
+            r'^(FILESDIR\.[^\s=]+)[ \t]*=', completed.stderr, re.MULTILINE)))
+        if any(not re.fullmatch(r'FILESDIR\.[A-Za-z0-9_.-]+', name) for name in extra_trees):
+            raise ExportError('unsupported FILESDIR variable name in native metadata')
+        values = completed.stdout.splitlines()
         if len(values) != len(VARIABLES):
             raise ExportError('unexpected bmake metadata line count for ' + package)
         result = dict(zip(VARIABLES, values))
+        if extra_trees:
+            queries = []
+            for variable in extra_trees:
+                queries += ['-V', '${' + variable + '}']
+            values = self.run(command + queries, env=environment).stdout.splitlines()
+            if len(values) != len(extra_trees):
+                raise ExportError('unexpected bmake FILESDIR line count for ' + package)
+            result.update(zip(extra_trees, values))
         if not result['PKGNAME'] or not result['PKGVERSION']:
             raise ExportError('missing package identity: ' + package)
         if result['USE_CROSS_COMPILE'].lower() != cross:
@@ -138,7 +158,9 @@ class Exporter:
                     paths.add(path)
                 else:
                     missing.append(variable + ':' + value)
-        for variable in ('PATCHDIR', 'FILESDIR', 'LOCALPATCHES'):
+        trees = ['PATCHDIR', 'FILESDIR', 'LOCALPATCHES']
+        trees += sorted(name for name in metadata if name.startswith('FILESDIR.'))
+        for variable in trees:
             value = metadata[variable]
             if variable == 'LOCALPATCHES' and value:
                 value = str(Path(value) / package)
