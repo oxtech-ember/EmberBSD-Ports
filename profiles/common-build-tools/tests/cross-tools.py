@@ -76,5 +76,27 @@ assert 'install-info:run not supported in cross-compilation' in run(
     'info-no-provider', base + ['EMBERBSD_CROSS_SYSROOT=' + str(missing_tool),
     '_TOOLS_USE_PKGSRC.install-info=no', 'TOOLS_PLATFORM.install-info=',
     query, 'VARNAMES=PKG_FAIL_REASON'])
+
+# gzip is an actual pkgsrc consumer of INFO_FILES. Keep the index and route
+# its package lifecycle command to the selected target provider.
+info_variables = (
+    'VARNAMES=PKG_FAIL_REASON INFO_FILES GNU_CONFIGURE_INFODIR INSTALL_INFO '
+    'TOOLS_SCRIPT.install-info TOOLS_PATH.install-info DEPENDS'
+)
+info_result = run('info-files-enabled', [bmake, '-C', pkgsrc + '/archivers/gzip',
+    'MAKECONF=' + makeconf, 'show-vars', info_variables]).splitlines()
+assert 'install-info:run not supported in cross-compilation' not in info_result[0], info_result
+if (source_sysroot / 'usr/bin/install-info').is_file():
+    expected_info_tool = '/usr/bin/install-info'
+    assert not any('pkg_install-info-' in line for line in info_result[6:]), info_result
+elif (source_sysroot / 'usr/pkg/bin/pkg_install-info').is_file():
+    expected_info_tool = '/usr/pkg/bin/pkg_install-info'
+    assert any('pkg_install-info-' in line and ':../../pkgtools/pkg_install-info' in line
+               for line in info_result[6:]), info_result
+else:
+    raise SystemExit('The target sysroot has no accepted install-info provider')
+assert info_result[1:6] == [
+    'yes', '/usr/pkg/info', expected_info_tool, 'exit 0', expected_info_tool,
+], info_result
 assert 'gm4:run not supported in cross-compilation' in run('other-runtime-tool', base + ['USE_TOOLS=sh pwd gm4:run', '-v', 'PKG_FAIL_REASON'])
-print('PASS: GCC16 tool composition, base/package install-info routing and unsupported-tool refusal')
+print('PASS: GCC16 tool composition, gzip INFO_FILES, target install-info routing and unsupported-tool refusal')

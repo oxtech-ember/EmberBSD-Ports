@@ -694,8 +694,6 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$graphics/cross/libsoup3-cross-disable-tls-probe.patch"
     patch -f -N -d "$destination" -p1 -F 0 < \
-        "$graphics/cross/info-files-cross.patch"
-    patch -f -N -d "$destination" -p1 -F 0 < \
         "$graphics/cross/check-interpreter-base-cross.patch"
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$graphics/cross/flex-pkgsrc-revision.patch"

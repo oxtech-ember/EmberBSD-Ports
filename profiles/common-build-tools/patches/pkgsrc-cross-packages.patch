@@ -402,7 +402,7 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
 +				fi; \
 +				requires=`${SORT} -u ${WRKDIR}/.elf-requires`; \
 +			else \
- 			requires=`(${PKGSRC_SETENV} ${LDD_ENV:U} $$ldd $$bins $$libs 2>/dev/null || ${TRUE}) | ${AWK} '$$2 == "=>" && $$3 ~ "/" { print $$3 }' | ${SORT} -u`; \
+ 			requires=`(${PKGSRC_SETENV} ${LDD_ENV:U} $$ldd $$bins $$libs 2>/dev/null || ${TRUE}) | ${AWK} '$$2 == "=>" && $$3 ~ "/" { while (gsub(/\/\.\//, "/", $$3)) {}; print $$3 }' | ${SORT} -u`; \
 +			fi; \
  		fi;							\
  		linklibs=`${AWK} '/.*\.so(\.[0-9]+)*$$/ { print "${DESTDIR}${PREFIX}/" $$0 }' ${_PLIST_NOKEYWORDS}`; \
