@@ -197,9 +197,16 @@ local source hashes. The scanner still performs its ordinary XML parsing.
 The same runner accepts `--execute BINARY` for no-argument configure probes.
 It preserves target stdout, stderr and exit status independently, including
 negative feature results. The same ELF-provider checks, 60-second limit,
-hash receipts and cleanup apply. This mode does not accept arbitrary target
-commands or additional arguments. TDB's Waf cross executor uses it while all
-compilation stays on the development host. The target writes an execution
+hash receipts and cleanup apply. Literal probe arguments pass unchanged.
+TDB's Waf cross executor uses it while all compilation stays on the
+development host.
+
+Waf's `CHECK_COMMAND` also runs `getconf LFS_CFLAGS` on the target.
+For this bare command name, execute mode runs the sysroot's `/usr/bin/getconf`
+with its sysroot providers. It never runs a program from the target's `PATH`.
+Other bare command names fail before SSH and leave the failure marker.
+On the amd64 target, TDB configuration now completes. `getconf` reports the
+variable as unknown, as on a native EmberBSD host. The target writes an execution
 receipt only after its post-run manifest check. The runner verifies that receipt
 against the SSH status before accepting a negative feature result.
 
@@ -219,6 +226,7 @@ probes and verifies their real stdout/stderr, exit codes 0 and 7, receipts and
 cleanup. `NEW_WORK` must be inside the configured build root. The existing
 `gi-query-contract.rb` also tests this mode with controlled transport failures
 and rejects invalid host-key aliases and unsupported probe arguments.
+It also checks the sysroot `getconf` selection and rejects other bare commands.
 
 ## Acceptance and limits
 

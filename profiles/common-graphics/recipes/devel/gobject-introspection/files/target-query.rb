@@ -67,8 +67,21 @@ if execute && ENV.key?('EMBERBSD_GI_FAILURE_MARKER')
     end
   end
 end
-exe = File.realpath(ARGV.shift || abort('binary required'))
-abort 'binary outside build root' unless inside.call(exe, base)
+name = ARGV.shift || abort('binary required')
+# Waf's CHECK_COMMAND runs selected base utilities on the target, for example
+# `getconf LFS_CFLAGS`. Execute mode runs the sysroot's own program with its
+# sysroot providers. It never runs a program from the target's PATH.
+target_commands = {'getconf' => '/usr/bin/getconf'}
+if !name.include?('/')
+  abort "unsupported target command: #{name}" unless execute && target_commands.key?(name)
+  command = sysroot + target_commands.fetch(name)
+  abort "target command missing from sysroot: #{name}" unless File.file?(command)
+  exe = File.realpath(command)
+  abort 'target command outside sysroot' unless inside.call(exe, sysroot)
+else
+  exe = File.realpath(name)
+  abort 'binary outside build root' unless inside.call(exe, base)
+end
 args = ARGV.dup
 abort 'only an optional introspect-dump argument is supported' unless execute || args.empty? || (args.size == 1 && args.first.start_with?('--introspect-dump='))
 in_path = out_path = nil

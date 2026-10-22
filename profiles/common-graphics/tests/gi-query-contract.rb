@@ -136,6 +136,22 @@ File.unlink(marker)
 output, status = Open3.capture2e(env, ruby, helper, '--execute', work + '/build/query', 'two words', "single'quote", '')
 File.write(work + '/execute-args.log', output)
 abort 'execute argv did not reach bounded transport' unless !status.success? && output.include?('allocate failed (74)') && File.read(marker) == "reached\n"
+# Waf runs `getconf LFS_CFLAGS` through the executor. Only the sysroot's
+# getconf may run, and only in execute mode.
+File.unlink(marker)
+reject.call('missing-command', /target command missing from sysroot: getconf/, '--execute', 'getconf', 'LFS_CFLAGS')
+FileUtils.mkdir_p(work + '/sysroot/usr/bin')
+FileUtils.cp(work + '/build/query', work + '/sysroot/usr/bin/getconf')
+reject.call('command-without-execute', /unsupported target command: getconf/, 'getconf')
+reject.call('unlisted-command', /unsupported target command: sh/, '--execute', 'sh', '-c', 'true')
+before = Dir.glob(work + '/cache/gi-query-*')
+output, status = Open3.capture2e(env, ruby, helper, '--execute', 'getconf', 'LFS_CFLAGS')
+File.write(work + '/execute-getconf.log', output)
+abort 'sysroot getconf did not reach bounded transport' unless !status.success? && output.include?('allocate failed (74)') && File.read(marker) == "reached\n"
+created = Dir.glob(work + '/cache/gi-query-*') - before
+abort 'missing getconf receipt' unless created.size == 1
+abort 'getconf receipt names another program' unless File.read(created.first + '/sources.sha256').include?(work + '/sysroot/usr/bin/getconf')
+puts 'PASS: execute mode runs only the sysroot getconf for target commands'
 # Execute only the production identity shell body, with explicit host fixtures.
 # No VM, SSH target or target executable is run by this regression.
 identity_glue = <<~SH
