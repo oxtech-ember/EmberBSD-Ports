@@ -131,11 +131,16 @@ references and undeclared or build-only package owners must be diagnosed.
 The dependency-owner fixture uses a controlled pkg_info response; it does not
 register fake packages. The legacy resolver remains a causal negative control.
 
-The earlier nb1 package passed normal packaging, installation and the selected
-five-file runtime check on a separate host prefix. That result did not cover
-co-installation with the common LLVM provider. Revision nb2 has a separate
-full runtime-graph regression; normal package creation, ownership metadata and
-shared-prefix installation must also pass before accepting the new package.
+Revision nb2 passed normal package creation and installation beside the registered
+common LLVM package. A complete archive-to-prefix readback checked all 66,170 payload
+entries, their bytes, modes and links, and the registered package metadata.
+The metadata records the new recipe and both private provider names.
+The installed compiler also passed the native allocation/thread/TLS/unwind
+consumer. All 26 changed images passed strict signature checks. A real loader
+trace selected the private LLVM provider. Common LLVM state and protected build
+tools stayed unchanged. This accepts the Darwin build-host package; target
+execution and memory-leak checks remain separate.
+
 All six export modes previously passed composition checks, including refusal
 when the Mach-O infrastructure patch was absent.
 
