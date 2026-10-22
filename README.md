@@ -837,7 +837,9 @@ This repository does not implement another package manager.
 `upstream/pkgsrc` pins the pkgsrc-2026Q3 base as a Git submodule. Local recipes
 under `pkgsrc/` use ordinary `Makefile`, `distinfo`, `DESCR`, and `PLIST` files.
 `scripts/prepare-pkgsrc.sh` exports that pinned base and adds the local recipes
-to an independent working tree. Experimental probes remain under `probes/`
+to an independent working tree. A local recipe can replace an upstream
+recipe only if `pkgsrc/replaces` names its path, one path on each line.
+Experimental probes remain under `probes/`
 until their package integration and runtime are validated. No signed binary
 package repository is provided yet.
 

@@ -601,7 +601,21 @@ git -C "$root/upstream/pkgsrc" archive --format=tar --output="$export_archive" "
 mkdir "$destination"
 tar -xf "$export_archive" -C "$destination"
 # The shared overlay is in every export. A new category is copied as a
-# whole. In an upstream category, the overlay can only add packages.
+# whole. In an upstream category, the overlay adds packages. It replaces
+# an upstream package only if pkgsrc/replaces names that package.
+replaces=$root/pkgsrc/replaces
+replaced() {
+    [ -f "$replaces" ] && grep -v '^#' "$replaces" | grep -qxF "$1"
+}
+if [ -f "$replaces" ]; then
+    grep -v '^#' "$replaces" | while read -r recipe; do
+        [ -n "$recipe" ] || continue
+        [ -d "$root/pkgsrc/$recipe" ] && [ -f "$destination/$recipe/Makefile" ] || {
+            echo "pkgsrc/replaces names $recipe, but the overlay or upstream does not have it." >&2
+            exit 2
+        }
+    done
+fi
 for category in "$root"/pkgsrc/*; do
     [ -d "$category" ] || continue
     name=${category##*/}
@@ -616,10 +630,13 @@ for category in "$root"/pkgsrc/*; do
     }
     for package in "$category"/*; do
         [ -d "$package" ] || { echo "Unexpected overlay file: pkgsrc/$name/${package##*/}" >&2; exit 2; }
-        [ ! -e "$destination/$name/${package##*/}" ] && [ ! -L "$destination/$name/${package##*/}" ] || {
-            echo "Upstream already has $name/${package##*/}; review the overlay." >&2
-            exit 2
-        }
+        if [ -e "$destination/$name/${package##*/}" ] || [ -L "$destination/$name/${package##*/}" ]; then
+            replaced "$name/${package##*/}" || {
+                echo "Upstream already has $name/${package##*/}; add it to pkgsrc/replaces or remove it." >&2
+                exit 2
+            }
+            rm -rf "$destination/$name/${package##*/}"
+        fi
         cp -R "$package" "$destination/$name/${package##*/}"
     done
 done
