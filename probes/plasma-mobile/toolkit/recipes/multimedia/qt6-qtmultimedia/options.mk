@@ -36,7 +36,8 @@ CONFIGURE_ARGS+=	-no-pulseaudio
 # NetBSD supports FFmpeg video without a low-level audio backend.
 # Keep the normal PulseAudio and Darwin selection on other platforms.
 .if !empty(PKG_OPTIONS:Mpulseaudio) || ${OPSYS} == "Darwin" || ${OPSYS} == "NetBSD"
-CONFIGURE_ARGS+=	-ffmpeg
+# Qt 6.12 has no -ffmpeg option. The generic feature option enforces FFmpeg.
+CONFIGURE_ARGS+=	-feature-ffmpeg
 .include "../../multimedia/ffmpeg9/buildlink3.mk"
 PLIST.ffmpeg=		yes
 .  if ${PKG_BUILD_OPTIONS.ffmpeg9:Mvaapi}

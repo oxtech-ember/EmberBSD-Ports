@@ -52,8 +52,17 @@ for opsys in NetBSD Darwin Linux; do
         [ "$(field GST_BASE "$raw")" = "$gst" ] || fail "$opsys/$selection GStreamer base dependency"
         [ "$(field GST_BAD "$raw")" = "$gst" ] || fail "$opsys/$selection GStreamer bad dependency"
         if [ "$ffmpeg" = yes ]; then
-            case " $(field ARGS "$raw") " in *' -ffmpeg '*) ;; *) fail "$opsys/$selection explicit FFmpeg configuration" ;; esac
+            case " $(field ARGS "$raw") " in *' -feature-ffmpeg '*) ;; *) fail "$opsys/$selection explicit FFmpeg configuration" ;; esac
         fi
+        # Qt 6.12 src/multimedia/qt_cmdline.cmake defines these options.
+        # Qt's configure also accepts the generic [-no]-feature-NAME form.
+        for arg in $(field ARGS "$raw"); do
+            case "$arg" in
+                -alsa|-no-alsa|-gstreamer|-no-gstreamer|-pulseaudio|-no-pulseaudio) ;;
+                -feature-*|-no-feature-*) ;;
+                *) fail "$opsys/$selection unknown Qt configure option $arg" ;;
+            esac
+        done
         if [ "$opsys" = Darwin ]; then
             [ "$(field PLIST_X11 "$raw")" = no ] || fail 'Darwin X11 selection changed'
         else
