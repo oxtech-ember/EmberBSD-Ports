@@ -3,7 +3,7 @@
 from host import TARGETS, require
 
 
-def parse(args, kernel_allowed=False, bootstrap_allowed=False):
+def parse(args, kernel_allowed=False, bootstrap_allowed=False, fortran_allowed=False):
     args = list(args)
     target, mode, seen = 'aarch64', 'applications', False
     bootstrap = False
@@ -15,6 +15,9 @@ def parse(args, kernel_allowed=False, bootstrap_allowed=False):
         elif option == '--kernel':
             require(kernel_allowed and mode == 'applications', 'Unknown build mode')
             mode = 'kernel'
+        elif option == '--with-fortran':
+            require(fortran_allowed and mode == 'applications', 'Fortran requires application mode and cannot be repeated')
+            mode = 'applications-fortran'
         elif option == '--bootstrap-libgcc':
             require(bootstrap_allowed and not bootstrap, 'Unknown or repeated --bootstrap-libgcc')
             bootstrap = True

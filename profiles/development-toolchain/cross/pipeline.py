@@ -147,12 +147,26 @@ def relocate_binutils(binutils, prefix, triplet, work):
 
 
 def build_main(args):
-    target, mode, args = parse(args, kernel_allowed=True, bootstrap_allowed=True)
+    target, mode, args = parse(args, kernel_allowed=True, bootstrap_allowed=True, fortran_allowed=True)
+    if mode != 'applications-fortran':
+        return _build_compiler(target, mode, args)
+    owned = {}
+    try:
+        return _build_compiler(target, mode, args, owned=owned)
+    except ProcessOwnershipError as error:
+        if owned:
+            from fortran_support import quarantine_work
+            quarantine_work(owned, error)
+        raise
+
+
+def _build_compiler(target, mode, args, *, owned=None):
+    fortran = mode == 'applications-fortran'
     bootstrap_libgcc = mode == 'kernel-bootstrap'
     if bootstrap_libgcc:
         mode = 'kernel'
     has_sysroot = mode != 'kernel' or bootstrap_libgcc
-    require(len(args) in ((5, 6) if has_sysroot else (4, 5)), 'Usage: build.py [--target TARGET] [--kernel [--bootstrap-libgcc]] PKGSRC ARCHIVE [SYSROOT_OR_BOOTSTRAP_HEADERS] TOOLDIR [MATH] NEW_WORK --sdk-source SOURCE')
+    require(len(args) in ((5, 6) if has_sysroot else (4, 5)), 'Usage: build.py [--target TARGET] [--with-fortran | --kernel [--bootstrap-libgcc]] PKGSRC ARCHIVE [SYSROOT_OR_BOOTSTRAP_HEADERS] TOOLDIR [MATH] NEW_WORK --sdk-source SOURCE')
     count = jobs()
     values = [build_path(value) for value in args]
     pkgsrc, archive = values[:2]
@@ -173,8 +187,14 @@ def build_main(args):
     if math:
         math = check_math(math)
     audit_source(pkgsrc, archive, runtime=False)
+    if fortran:
+        from fortran_support import source_state
+        fortran_sources = source_state(pkgsrc, archive)
     cc, cxx = host_compilers()
     work.mkdir()
+    if owned is not None:
+        identity = paths.real_directory(work)
+        owned.update(path=str(work), device=identity.st_dev, inode=identity.st_ino)
     if bootstrap_libgcc:
         jsonio.write_json(work / 'bootstrap-headers.json', header_inputs)
     if not math:
@@ -194,6 +214,8 @@ def build_main(args):
     if bootstrap_libgcc:
         receipt += 'bootstrap_libgcc=yes\ninhibit_libc=true\nseed_source=' + header_inputs['source_commit'] + '\n'
         receipt += digest_rows([work / 'bootstrap-headers.json'])
+    if fortran:
+        receipt += 'languages=c,c++,fortran\n'
     (work / 'inputs.txt').write_text(receipt)
     logged([cc, '-O2', '-I' + str(math / 'include'), HERE / 'tests/host-gmp.c', math / 'lib/libgmp.a', '-o', work / 'host-gmp'], work / 'host-gmp-build.log')
     logged([work / 'host-gmp'], work / 'host-gmp.log')
@@ -203,7 +225,7 @@ def build_main(args):
     configure += ['--without-headers', '--disable-shared', '--disable-threads'] if mode == 'kernel' else ['--with-sysroot=' + str(sysroot), '--with-gxx-include-dir=' + str(sysroot / 'usr/pkg/gcc16/include/c++')]
     if bootstrap_libgcc:
         configure.append('--with-sysroot=' + str(sysroot))
-    configure += ['--with-' + name + '=' + str(math) for name in ('gmp', 'mpfr', 'mpc')] + ['--with-as=' + str(prefix / 'bin' / (triplet + '-as')), '--with-ld=' + str(prefix / 'bin' / (triplet + '-ld')), '--enable-languages=c,c++', '--disable-bootstrap', '--disable-multilib', '--disable-nls', '--without-isl']
+    configure += ['--with-' + name + '=' + str(math) for name in ('gmp', 'mpfr', 'mpc')] + ['--with-as=' + str(prefix / 'bin' / (triplet + '-as')), '--with-ld=' + str(prefix / 'bin' / (triplet + '-ld')), '--enable-languages=' + ('c,c++,fortran' if fortran else 'c,c++'), '--disable-bootstrap', '--disable-multilib', '--disable-nls', '--without-isl']
     flags = os.environ.get('HOST_CPPFLAGS', '')
     env = {'CC': cc, 'CXX': cxx, 'CPPFLAGS': flags, 'CFLAGS': '-O2 ' + flags, 'CXXFLAGS': '-O2 ' + flags, 'LDFLAGS': os.environ.get('HOST_LDFLAGS', '')}
     if bootstrap_libgcc:
@@ -228,6 +250,11 @@ def build_main(args):
             output.write((work / 'lto-binutils/inputs.txt').read_text())
     if bootstrap_libgcc:
         build_bootstrap_libgcc(work, prefix, target, make, count, env)
+    if fortran:
+        from fortran_support import qualify
+        capability = qualify(prefix, target, work / 'fortran-check', fortran_sources, pkgsrc, archive, quarantine=work)
+        with (work / 'inputs.txt').open('a') as output:
+            output.write(digest_rows([capability]))
     print('GCC16 cross compiler built: ' + str(prefix))
     print('Kernel build and boot remain separate.' if mode == 'kernel' else 'Run the compiled acceptance programs on EmberBSD before accepting this toolchain.')
 

@@ -64,6 +64,10 @@ The explicit `--kernel --bootstrap-libgcc` option also builds static support
 for the first OS seed. None of these modes builds the POSIX target runtime or
 creates a distribution image.
 
+The explicit [Fortran application mode](fortran.md) adds the same GCC16
+frontend in a new compiler generation. Its compile-only capability receipt
+does not qualify target linking or the Fortran runtime.
+
 The separate [firmware entry point](firmware.md) prepares an explicit
 `arm-none-eabi` C frontend without extending the OS target policy.
 
