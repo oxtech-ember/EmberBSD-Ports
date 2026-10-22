@@ -42,6 +42,11 @@ and focused native Skia memory checks pass. The rebuilt Skia locale contract
 passes in EmberBSD with installed GCC16 runtime nb3. Full dependency composition,
 WebKit packages and GUI execution remain pending.
 
+[libproxy 0.5.12nb5](cross/libproxy.md) passes the required `long` arguments to
+curl's variadic API. The actual GCC16 translation unit rejects the old arguments
+and accepts the fix. A native actual-source PAC downloader passes focused
+ASan/UBSan checks. Full installed target execution remains separate.
+
 [iso-codes 4.20.1](cross/iso-codes-host-python.patch) follows the upstream
 Meson build and uses native Python only for source generation. It retains the
 eight JSON domains, their schemas, seven legacy XML interfaces and obsolete

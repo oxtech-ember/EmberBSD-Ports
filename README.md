@@ -141,6 +141,10 @@ runtime behavior are validated.
   AArch64 packages pass package checks; native upstream tests and installed
   library memory checks pass. Fourteen installed CLI memory/image cases also pass.
   Target execution and TIFF integration remain pending.
+- [Libproxy curl option types](profiles/common-graphics/cross/libproxy.md):
+  the common 0.5.12nb5 recipe preserves its option values and uses the required
+  variadic `long` types. Actual-source GCC16 and focused native sanitizer checks
+  pass; installed target acceptance remains separate.
 - [wxWidgets and WebKit sources](profiles/common-graphics/cross/wxwebkit.md):
   stable wxWidgets 3.2.12 and paired WebKitGTK 2.54.1 recipes retain WebView,
   media and OpenGL. Native generator routing, actual GCC16 target link checks
