@@ -64,12 +64,13 @@ folder outside the sysroot. Run this example from `probes/kicad/nng`.
 The example assumes the packaged GCC16 runtime:
 
 ```sh
-cc=/absolute/toolchain/bin/aarch64--netbsd-gcc
+target=x86_64--netbsd # Use aarch64--netbsd for AArch64 inputs.
+cc=/absolute/toolchain/bin/$target-gcc
 sysroot=/absolute/sysroot
 work=/absolute/new-work
 mkdir -m 700 "$work"
 TMPDIR="$work" "$cc" --sysroot="$sysroot" \
-    -B"$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0/" \
+    -B"$sysroot/usr/pkg/gcc16/lib/gcc/$target/16.2.0/" \
     -std=c99 -O2 -g -Wall -Wextra -Werror \
     -I"$sysroot/usr/pkg/include" tests/ipc-smoke.c \
     -L"$sysroot/usr/pkg/lib" -L"$sysroot/usr/pkg/gcc16/lib" \
@@ -95,6 +96,8 @@ client request. Each successful allocated receive is freed once. Socket I/O
 has explicit deadlines. A ten-second alarm covers execution and finalization.
 It closes both sockets, finalizes NNG and removes its socket directory.
 
+### Recorded AArch64 check
+
 GCC16 AArch64 execution on EmberBSD passes all 25 checks with empty stderr.
 A deliberate wrong-reply expectation fails with status 1 and the expected
 message mismatch. Both production executions verify source/provider hashes
@@ -104,8 +107,8 @@ and complete remote cleanup. The executed library has SHA256
 GCC 16.2.0 `-fanalyzer`, Cppcheck 2.18.0 exhaustive analysis of the actual
 GCC-preprocessed C99 source, and Clang Static Analyzer 21 with the same target
 headers report no findings. Cppcheck emits only its active-checker report.
-No checks or diagnostics are suppressed. The current guest has no Valgrind.
-The selected toolchain and sysroot have no ASan or UBSan shared runtime.
+No checks or diagnostics are suppressed. That AArch64 target had no Valgrind.
+Its selected toolchain and sysroot had no ASan or UBSan shared runtime.
 GCC16 UBSan trap mode works without that runtime. The same consumer passes all
 25 target checks with `-fsanitize=undefined
 -fsanitize-undefined-trap-on-error -fno-sanitize-recover=all`.
@@ -115,6 +118,34 @@ overflow reaches the emitted AArch64 `brk` instruction and exits with status
 This UBSan check covers only the consumer. The shared NNG library is not
 instrumented. Valgrind and ASan were not run for this consumer; the separate
 native NNG lifecycle Memcheck result above does not cover it.
+
+### amd64 check
+
+GCC 16.2.0 cross-builds the same public consumer against the normal NNG 1.12.3
+package in a source-built EmberBSD SDK. Execution uses UID 0 with the existing
+NetBSD 11.0 amd64 `GENERIC_TP` kernel and system ELF loader. The check covers
+compatibility of the transferred user-space closure. EmberBSD kernel boot
+acceptance remains separate.
+The executor checks and stages SDK `libnng.so.1`, `libatomic.so.3`, `libc.so.12`
+and `libpthread.so.1`. It reuses an installed file only when its SHA256 matches.
+All four execution receipts agree with the transport status. Source/provider
+hashes remain unchanged, the infrastructure marker is absent, and independent
+checks confirm removal of each remote directory. No package is installed on
+the execution target.
+
+| Consumer case | Target result |
+| --- | --- |
+| Public REQ0/REP0 consumer | All 25 checks pass; status 0; empty stderr. |
+| Private wrong-reply expectation | Status 1; `receive: message bytes or length differ`. |
+| Public consumer with UBSan trap flags above | All 25 checks pass; status 0; empty stderr. |
+| Deliberate signed-overflow control | Status 132, `128 + SIGILL`; no sanitizer runtime dependency. |
+
+The executed amd64 NNG DSO has SHA256
+`17976637f94b889163f6d38e273a87cc10bb91e1e7a345269c0e2ef5e3d7d10d`.
+UBSan instruments only the consumer. The shared NNG library is not instrumented.
+Valgrind is unavailable on the selected target system/package PATH. The selected
+GCC16 runtime has no sanitizer shared library. Valgrind and ASan were not run
+for this consumer. Root execution does not establish ordinary-user socket permissions.
 
 This check accepts the installed transport provider and binary message flow.
 It does not validate the KiCad request-server class, protobuf/API behavior,

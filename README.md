@@ -176,6 +176,10 @@ runtime behavior are validated.
   Ordinary GCC16 native/AArch64 packages pass static payload checks. Native
   image round trips, focused strict memory checks and all 147 OpenEXR tests
   pass. Target codec/API checks and normal package removal/reinstallation pass.
+- [KiCad IPC transport](probes/kicad/nng/README.md): GCC16 amd64 consumers
+  pass all 25 NNG REQ0/REP0 checks and wrong-reply/UBSan trap controls with
+  source-built SDK DSOs under UID 0 on an existing NetBSD 11 kernel.
+  Library instrumentation, Valgrind and complete KiCad acceptance remain separate.
 - [KiCad protobuf prerequisites](probes/kicad/protobuf/README.md): protobuf
   36.2 and Abseil 20260817.0 build with native GCC16 and shared zlib 1.3.2.
   Four allocation-failure controls reproduce upstream UPB defects and pass
