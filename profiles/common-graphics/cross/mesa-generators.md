@@ -43,6 +43,18 @@ and the real compile/link metadata. Do not fabricate these files.
 The native source must match the original archive. The existing optional
 exact-BVNC patch is the only accepted native source delta.
 
+## Scripted build
+
+`scripts/build-mesa-generators.sh WORK DISTDIR` runs the steps above in order.
+It gets the pinned Mesa archive and LLVM SDK, and it checks their SHA256.
+It checks out the pinned SPIRV revisions from `build-deps.sh`.
+It then calls `prepare-llvm-macos.py`, `build-deps.sh`, `configure-host.sh`
+and `seal-mesa-generators.rb`. It does not change these scripts.
+Set `EMBERBSD_SDK_SOURCE` and `HOST_PREFIX`. `HOST_PYTHON`, `HOST_RUBY`,
+`JOBS` and `MESA_GENERATOR_PROFILE` are optional. The default profile is
+`powervr`. The sealed tools are in `WORK/sealed`. A completed step is not
+done again when you run the script again with the same `WORK`.
+
 ## Seal and select capabilities
 
 ```sh
