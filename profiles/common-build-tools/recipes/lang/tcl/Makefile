@@ -2,7 +2,7 @@
 
 DISTNAME=	tcl${TCL_VERSION}-src
 PKGNAME=	tcl-${TCL_VERSION}
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	lang
 MASTER_SITES=	${MASTER_SITE_SOURCEFORGE:=tcl/}
 
@@ -119,10 +119,12 @@ post-build:
 	      tdbc${TDBC_VERSION}/libtcl9tdbc${TDBC_VERSION}.dylib \
 	      tdbcmysql${TDBC_VERSION}/libtcl9tdbcmysql${TDBC_VERSION}.dylib \
 	      tdbcodbc${TDBC_VERSION}/libtcl9tdbcodbc${TDBC_VERSION}.dylib \
-	      tdbcpostgres${TDBC_VERSION}/libtcl9tdbcpostgres${TDBC_VERSION}.dylib \
-	      thread${THREAD_VERSION}/libtcl9thread${THREAD_VERSION}.dylib
+	      tdbcpostgres${TDBC_VERSION}/libtcl9tdbcpostgres${TDBC_VERSION}.dylib
 	install_name_tool -id ${TCL_PREFIX}/lib/${lib} ${WRKSRC}/unix/pkgs/${lib}
 .  endfor
+# Thread appends its ZipFS payload after linking. Verify its link-time identity.
+	identity=$$(otool -D ${WRKSRC}/unix/pkgs/thread${THREAD_VERSION}/libtcl9thread${THREAD_VERSION}.dylib) && \
+	    printf '%s\n' "$$identity" | ${GREP} -Fx '${TCL_PREFIX}/lib/thread${THREAD_VERSION}/libtcl9thread${THREAD_VERSION}.dylib'
 .endif
 
 post-install:

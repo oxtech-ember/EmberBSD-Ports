@@ -80,8 +80,8 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
             [ -s "$source/$name" ] || { echo "Incomplete Tcl/Tk recipe: $recipe/$name" >&2; exit 2; }
         done
         if [ "$recipe" = lang/tcl ]; then
-            approved='patch-doc_Encoding.3 patch-sqlite-system-extern patch-target-platform'
-            patch_count=3
+            approved='patch-doc_Encoding.3 patch-itcl-configured-ldflags patch-sqlite-system-extern patch-target-platform patch-thread-darwin-install-name'
+            patch_count=5
         else
             approved='patch-target-platform'
             patch_count=1

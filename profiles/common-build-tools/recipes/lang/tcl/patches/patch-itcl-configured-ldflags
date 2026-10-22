@@ -1,0 +1,19 @@
+$NetBSD$
+
+Keep Itcl's configured linker flags, including Darwin install-name padding.
+
+Origin: EmberBSD (AI-assisted), against Tcl 9.1.0 / Itcl 4.3.8.
+The other bundled TEA extensions already retain this substitution.
+Original source copyright and license.terms remain unchanged.
+Not submitted upstream.
+
+--- pkgs/itcl4.3.8/Makefile.in.orig
++++ pkgs/itcl4.3.8/Makefile.in
+@@ -104,6 +104,7 @@
+ CFLAGS_DEFAULT	= @CFLAGS_DEFAULT@
+ CFLAGS_WARNING	= @CFLAGS_WARNING@
+ EXEEXT		= @EXEEXT@
++LDFLAGS		= @LDFLAGS@
+ LDFLAGS_DEFAULT	= @LDFLAGS_DEFAULT@
+ MAKE_LIB	= @MAKE_LIB@
+ MAKE_SHARED_LIB	= @MAKE_SHARED_LIB@

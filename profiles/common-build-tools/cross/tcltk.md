@@ -85,6 +85,31 @@ Install the accepted native package with normal pkgtools before target builds.
 Use the [common GCC16 cross profile](README.md) for `lang/tcl` and `x11/tk`.
 Target installation and execution remain separate acceptance gates.
 
+## Darwin native linking
+
+Revision 2 retains Itcl's configured `LDFLAGS`. This includes the Darwin
+header padding needed to set its installed Mach-O identity. Thread sets
+its final install name during linking, before it appends the ZipFS archive.
+The recipe verifies that identity without editing the appended archive.
+Other platform linker selections remain unchanged.
+
+The complete Darwin arm64 package passes ordinary package checks and the
+installed host contract before and after removal and reinstallation.
+The check loads Itcl, runs an object method, and joins a Thread worker.
+It also verifies ZipFS Unicode data, system SQLite and TDBC SQLite.
+The upstream Itcl suite reports 727 passed, 66 skipped and zero failed tests.
+The native compiler is Apple Clang 21.0.0. Target configuration uses GCC16;
+all eight target extension configurations retain NetBSD linker selection.
+This does not establish a new target package or complete Tcl test result.
+
+The [Mach-O regression](../tests/tcl-darwin-install-names.py) takes the
+failing Itcl library, the failing Thread library, the accepted staged prefix,
+the final installed prefix and a new output directory, in that order.
+It reproduces both editing failures, checks all seven library identities,
+changes Itcl to a longer install name, and compares Thread's embedded script.
+The eighth extension remains the TDBC SQLite Tcl module. Native memory
+acceptance retains the limitations below; no memory check is claimed here.
+
 ## Focused checks and limits
 
 The source regression uses Python 3.15 and its standard library:

@@ -1,0 +1,31 @@
+$NetBSD$
+
+Set the Thread install name before its ZipFS archive is appended on Darwin.
+
+Origin: EmberBSD (AI-assisted), against Tcl 9.1.0 / Thread 3.0.7.
+Mach-O editing tools reject the appended ZIP data. Keep the embedded scripts.
+Original source copyright and license.terms remain unchanged.
+Not submitted upstream.
+
+--- pkgs/thread3.0.7/configure.orig
++++ pkgs/thread3.0.7/configure
+@@ -8045,7 +8045,7 @@
+ esac
+ fi
+ 	    # TEA specific: use LDFLAGS_DEFAULT instead of LDFLAGS
+-	    SHLIB_LD='${CC} -dynamiclib ${CFLAGS} ${LDFLAGS_DEFAULT}'
++	    SHLIB_LD='${CC} -dynamiclib ${CFLAGS} ${LDFLAGS_DEFAULT} -Wl,-install_name,${pkglibdir}/${PKG_LIB_FILE}'
+ 	    # TEA specific: link shlib with current and compatibility version flags
+ 	    vers=`echo ${PACKAGE_VERSION} | sed -e 's/^\([0-9]\{1,5\}\)\(\(\.[0-9]\{1,3\}\)\{0,2\}\).*$/\1\2/p' -e d`
+ 	    SHLIB_LD="${SHLIB_LD} -current_version ${vers:-0} -compatibility_version ${vers:-0}"
+--- pkgs/thread3.0.7/tclconfig/tcl.m4.orig
++++ pkgs/thread3.0.7/tclconfig/tcl.m4
+@@ -1688,7 +1688,7 @@
+ 		    fat_32_64=yes])
+ 	    ])
+ 	    # TEA specific: use LDFLAGS_DEFAULT instead of LDFLAGS
+-	    SHLIB_LD='${CC} -dynamiclib ${CFLAGS} ${LDFLAGS_DEFAULT}'
++	    SHLIB_LD='${CC} -dynamiclib ${CFLAGS} ${LDFLAGS_DEFAULT} -Wl,-install_name,${pkglibdir}/${PKG_LIB_FILE}'
+ 	    # TEA specific: link shlib with current and compatibility version flags
+ 	    vers=`echo ${PACKAGE_VERSION} | sed -e 's/^\([[0-9]]\{1,5\}\)\(\(\.[[0-9]]\{1,3\}\)\{0,2\}\).*$/\1\2/p' -e d`
+ 	    SHLIB_LD="${SHLIB_LD} -current_version ${vers:-0} -compatibility_version ${vers:-0}"
