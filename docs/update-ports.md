@@ -112,6 +112,20 @@ for unchanged dependencies and reusable artifacts.
 
 ## Checks and limits
 
+The libzip consumer `textproc/ebook-tools` uses CMake on the build host.
+Its common-profile recipe removes a redundant target CMake buildlink.
+The source only links libzip and libxml2; `devel/cmake/build.mk` still owns
+the native generator. Check this boundary against an unchanged pkgsrc export:
+
+```sh
+python3 profiles/common-build-tools/tests/ebook-tools-cmake.py \
+  --pkgsrc /absolute/baseline-pkgsrc --makeconf /absolute/cross.mk.conf \
+  --bmake /absolute/host/bin/bmake --work /absolute/new-check-directory
+```
+
+This check evaluates real dependencies before and after the recipe patch.
+It does not compile ebook-tools or establish target execution.
+
 ```sh
 EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK \
   python3 scripts/tests/test_export_build_graph.py

@@ -1,0 +1,22 @@
+# Origin: EmberBSD (AI-assisted), verified against ebook-tools 0.2.2.
+# CMake generates the build on the host. libepub only links libzip and libxml2.
+# Keep build.mk's native tool selection; do not request target CMake headers.
+
+--- a/textproc/ebook-tools/Makefile
++++ b/textproc/ebook-tools/Makefile
+@@ -2,7 +2,7 @@
+ 
+ # also update lit2epub if you update this package.
+ DISTNAME=	ebook-tools-0.2.2
+-PKGREVISION=	29
++PKGREVISION=	30
+ CATEGORIES=	textproc
+ MASTER_SITES=	${MASTER_SITE_SOURCEFORGE:=ebook-tools/}
+ 
+@@ -15,6 +15,5 @@
+ 
+ .include "../../devel/cmake/build.mk"
+ .include "../../archivers/libzip/buildlink3.mk"
+-.include "../../devel/cmake/buildlink3.mk"
+ .include "../../textproc/libxml2/buildlink3.mk"
+ .include "../../mk/bsd.pkg.mk"
