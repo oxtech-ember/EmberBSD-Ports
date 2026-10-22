@@ -137,20 +137,34 @@ output, status = Open3.capture2e(env, ruby, helper, '--execute', work + '/build/
 File.write(work + '/execute-args.log', output)
 abort 'execute argv did not reach bounded transport' unless !status.success? && output.include?('allocate failed (74)') && File.read(marker) == "reached\n"
 # Waf runs `getconf LFS_CFLAGS` through the executor. Only the sysroot's
-# getconf may run, and only in execute mode.
+# getconf may run, and only in execute mode. Rejected execute names leave the marker.
 File.unlink(marker)
-reject.call('missing-command', /target command missing from sysroot: getconf/, '--execute', 'getconf', 'LFS_CFLAGS')
+reject_command = lambda do |name, pattern, *args|
+  failure = work + '/build/' + name + '-failure'
+  output, status = Open3.capture2e(env.merge('EMBERBSD_GI_FAILURE_MARKER' => failure), ruby, helper, *args)
+  File.write(work + '/' + name + '.log', output)
+  abort "#{name} did not fail at expected boundary: #{output}" if status.success? || !output.match?(pattern) || File.exist?(marker)
+  abort "#{name} left no failure marker" unless File.file?(failure)
+end
+reject_command.call('missing-command', /target command missing from sysroot: getconf/, '--execute', 'getconf', 'LFS_CFLAGS')
 FileUtils.mkdir_p(work + '/sysroot/usr/bin')
+FileUtils.mkdir_p(work + '/sysroot/bin')
+FileUtils.cp(work + '/build/query', work + '/sysroot/bin/sh')
+File.symlink('../../bin/sh', work + '/sysroot/usr/bin/getconf')
+reject_command.call('symlinked-command', /not a sysroot regular file: getconf/, '--execute', 'getconf', 'LFS_CFLAGS')
+File.unlink(work + '/sysroot/usr/bin/getconf')
 FileUtils.cp(work + '/build/query', work + '/sysroot/usr/bin/getconf')
 reject.call('command-without-execute', /unsupported target command: getconf/, 'getconf')
-reject.call('unlisted-command', /unsupported target command: sh/, '--execute', 'sh', '-c', 'true')
+reject_command.call('unlisted-command', /unsupported target command: sh/, '--execute', 'sh', '-c', 'true')
 before = Dir.glob(work + '/cache/gi-query-*')
 output, status = Open3.capture2e(env, ruby, helper, '--execute', 'getconf', 'LFS_CFLAGS')
 File.write(work + '/execute-getconf.log', output)
 abort 'sysroot getconf did not reach bounded transport' unless !status.success? && output.include?('allocate failed (74)') && File.read(marker) == "reached\n"
 created = Dir.glob(work + '/cache/gi-query-*') - before
 abort 'missing getconf receipt' unless created.size == 1
-abort 'getconf receipt names another program' unless File.read(created.first + '/sources.sha256').include?(work + '/sysroot/usr/bin/getconf')
+getconf = work + '/sysroot/usr/bin/getconf'
+receipt = "#{Digest::SHA256.file(getconf).hexdigest}  #{getconf}\n"
+abort 'getconf receipt names another program' unless File.readlines(created.first + '/sources.sha256').include?(receipt)
 puts 'PASS: execute mode runs only the sysroot getconf for target commands'
 # Execute only the production identity shell body, with explicit host fixtures.
 # No VM, SSH target or target executable is run by this regression.

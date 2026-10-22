@@ -67,19 +67,19 @@ if execute && ENV.key?('EMBERBSD_GI_FAILURE_MARKER')
     end
   end
 end
-name = ARGV.shift || abort('binary required')
+program = ARGV.shift || abort('binary required')
 # Waf's CHECK_COMMAND runs selected base utilities on the target, for example
-# `getconf LFS_CFLAGS`. Execute mode runs the sysroot's own program with its
-# sysroot providers. It never runs a program from the target's PATH.
+# `getconf LFS_CFLAGS`. Execute mode runs the sysroot's own regular file.
+# It never runs a program from the target's PATH. The target program runs as
+# `query`, so do not add utilities that select behavior from argv[0].
 target_commands = {'getconf' => '/usr/bin/getconf'}
-if !name.include?('/')
-  abort "unsupported target command: #{name}" unless execute && target_commands.key?(name)
-  command = sysroot + target_commands.fetch(name)
-  abort "target command missing from sysroot: #{name}" unless File.file?(command)
-  exe = File.realpath(command)
-  abort 'target command outside sysroot' unless inside.call(exe, sysroot)
+if !program.include?('/')
+  abort "unsupported target command: #{program}" unless execute && target_commands.key?(program)
+  exe = sysroot + target_commands.fetch(program)
+  abort "target command missing from sysroot: #{program}" unless File.file?(exe)
+  abort "target command is not a sysroot regular file: #{program}" if File.symlink?(exe) || File.realpath(exe) != exe
 else
-  exe = File.realpath(name)
+  exe = File.realpath(program)
   abort 'binary outside build root' unless inside.call(exe, base)
 end
 args = ARGV.dup
