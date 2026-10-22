@@ -62,9 +62,10 @@ def lto_binutils(args):
 
 
 def plugin_needed_warnings(args):
-    require(len(args) == 3, 'Usage: plugin-needed-warnings.py PREFIX SYSROOT NEW_WORK --sdk-source SOURCE')
+    target, _, args = parse(args)
+    require(len(args) == 3, 'Usage: plugin-needed-warnings.py [--target TARGET] PREFIX SYSROOT NEW_WORK --sdk-source SOURCE')
     prefix, sysroot, work = build_path(args[0]), build_path(args[1]), new_path(args[2])
-    tools = check_compilers(prefix, 'aarch64')
+    tools = check_compilers(prefix, target)
     sections = capture([tools['readelf'], '-S', '-W', sysroot / 'usr/lib/libc.so'])
     require('.gnu.warning.gets' in sections, 'Sysroot libc has no link-time warning sections')
     work.mkdir()

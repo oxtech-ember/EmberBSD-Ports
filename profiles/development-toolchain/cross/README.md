@@ -227,12 +227,15 @@ plus the selected Ports `as` and `ld`. `readelf` must report AArch64 ELF
 executables. This check proves cross compile and link only. It does not prove
 target runtime without an accepted sysroot and target runner.
 
-`tests/plugin-needed-warnings.py CROSS_PREFIX SYSROOT NEW_WORK` checks the
-Binutils `ldelf.c` patch. It links a shared object that uses only libm, with
+`tests/plugin-needed-warnings.py [--target TARGET] CROSS_PREFIX SYSROOT NEW_WORK`
+checks the Binutils `ldelf.c` patch. It selects the matching compiler triplet
+and checks its ABI. The default target is `aarch64`; `--target amd64` selects
+`x86_64--netbsd`. It links a shared object that uses only libm, with
 the GCC LTO plugin and `--fatal-warnings`, with and without
 `--copy-dt-needed-entries`. The libc warning sections that libm brings in
 through `DT_NEEDED` must not give warnings. A direct `gets` reference to
-libc must still stop the link. This check also needs an accepted sysroot.
+libc must still stop the link. This check needs an accepted sysroot for the
+selected target. It checks cross links only; it does not execute target code.
 
 ## Kernel frontends without a sysroot
 
@@ -358,7 +361,8 @@ python3 -B profiles/development-toolchain/tests/python/environment-test.py
 python3 -B profiles/development-toolchain/cross/tests/lto-binutils.py \
     /absolute/gcc-cross/toolchain /absolute/new-lto-check
 python3 -B profiles/development-toolchain/cross/tests/plugin-needed-warnings.py \
-    /absolute/gcc-cross/toolchain /absolute/sysroot /absolute/new-plugin-check
+    --target amd64 /absolute/gcc-cross-amd64/toolchain /absolute/sysroot-amd64 \
+    /absolute/new-plugin-check --sdk-source /absolute/EmberBSD-SDK
 sh profiles/development-toolchain/tests/prepare.sh /absolute/new-pkgsrc-test
 ```
 
