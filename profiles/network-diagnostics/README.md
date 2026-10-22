@@ -10,10 +10,10 @@ base (registry item R10).
 
 - `mk.conf` — package options for the profile. Include it after the
   common build-tools cross profile and the private host bootstrap
-  MAKECONF. Wireshark is reduced to the CLI kit: HTTP/2 dissection is
-  kept; the Qt GUI, Lua, HTTP/3, iLBC, spandsp and documentation are
-  disabled. pkgsrc options are additive, so each suggested option is
-  negated explicitly to keep Qt and X11 out of the dependency closure.
+  MAKECONF. Wireshark and lldpd use the pkgsrc suggested options:
+  the Qt GUI, Lua and the lldpd SNMP subagent are on. For a light
+  build, set `PKG_OPTIONS.wireshark=-qt6 -lua` and
+  `PKG_OPTIONS.lldpd=-snmp`.
   The file also applies the common CMake cross settings to CMake
   consumers, pins `NATIVE_CC` for libgpg-error/libgcrypt build-time
   generators, and routes script interpreter/awk substitution to target
@@ -41,8 +41,8 @@ Built from the prepared pkgsrc export through the common cross profile:
 | libpcap | 1.10.7 | BPF capture library |
 | tcpdump | 4.99.6 | capture and offline analysis |
 | iperf3 | 3.21 | TCP/UDP load, throughput, loss and jitter |
-| wireshark (CLI: dumpcap, tshark, capinfos, editcap, mergecap) | 4.6.8nb1 | PCAPNG recording, dissection and trace processing |
-| lldpd | 1.0.21nb1 | LLDP chassis advertisement and neighbor discovery (no SNMP subagent) |
+| wireshark (Qt GUI and CLI: dumpcap, tshark, capinfos, editcap, mergecap) | 4.6.8nb1 | PCAPNG recording, dissection and trace processing |
+| lldpd | 1.0.21nb1 | LLDP chassis advertisement and neighbor discovery, SNMP subagent |
 | arp-scan | 1.9nb7 | ARP host discovery on the local network |
 | mtr | 0.96nb1 | combined traceroute/latency reports |
 | fping | 5.5 | parallel availability probing |
