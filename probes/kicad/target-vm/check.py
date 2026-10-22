@@ -84,8 +84,8 @@ def main():
  test "$HOME" = /home/ember
  test "$USER" = ember
  test ! -w /etc/master.passwd
- test "$(stat -f '%Lp' /tmp)" = 1777
- test "$(stat -f '%Lp' /var/shm)" = 1777
+ test "$(stat -f '%Op' /tmp)" = 41777
+ test "$(stat -f '%Op' /var/shm)" = 41777
  probe=$(mktemp /tmp/e14-user.XXXXXXXX)
  trap 'rm -f "$probe"' EXIT HUP INT TERM
  printf '%s\\n' USER_OK > "$probe"
