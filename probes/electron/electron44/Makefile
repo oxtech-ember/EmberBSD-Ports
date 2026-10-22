@@ -15,7 +15,7 @@ SITES.node-v${NODE_VERSION}.tar.xz=	https://nodejs.org/dist/v${NODE_VERSION}/
 MAINTAINER=	oxtech-ember@users.noreply.github.com
 HOMEPAGE=	https://www.electronjs.org/
 COMMENT=	Build cross-platform desktop apps with JavaScript, HTML, and CSS
-LICENSE=	mit AND mpl-2.0 AND BSD-3-clause
+LICENSE=	mit AND mpl-2.0 AND modified-bsd
 
 # Owner decision 2026-10-16: cross build with the shared GCC16 toolchain
 # and the shared EmberBSD sysroot, like every other EmberBSD profile.
