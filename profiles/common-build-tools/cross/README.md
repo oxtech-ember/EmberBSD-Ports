@@ -54,14 +54,13 @@ Prepare these separate directories, outside Git:
   updates. Its package database describes host executables only.
   The bootstrap must also own native `libtool-base-2.6.2` and `m4-1.4.21`
   built from the same export (`bmake -C export/devel/libtool-base MAKECONF=`
-  *host*`/etc/mk.conf package`, then `pkg_add` both). Recipes that run
-  `autoreconf` — `devel/libusb1`, `pkgsrc/local-phone/gaster` — resolve
-  `libtoolize` through the bootstrap prefix: invoke cross builds with the
-  bootstrap `bin` on `PATH` and point `TOOLS_PLATFORM.gm4` at its own
-  `bin/gm4` instead of an external package manager. `tests/host-libtool.sh`
-  (in the parent profile) gates this: registered packages, real files rather
-  than symlinks outside the prefix, a shared-library consumer built through
-  `autoreconf -fi`, and a stripped `PATH` that still fails at `libtoolize`.
+  *host*`/etc/mk.conf package`, then `pkg_add` both). Modern build-only
+  `autoreconf` with `USE_LIBTOOL` declares native `libtool-base` and creates
+  `libtoolize` in the normal private pkgsrc tools directory. Source generation
+  uses this host tool. Target linkage retains the cross Libtool provider.
+  Existing native predicates do not remove the required native version floor.
+  `tests/host-libtool.sh` (in the parent profile) checks the registered native
+  packages, regular provider files and a native shared-library consumer.
 - A target sysroot with headers, complete base libraries and development
   files (including `libintl`), the complete accepted
   GCC16 development files, a coherent runtime provider and target package database.
@@ -300,21 +299,31 @@ Remove earlier `TOOLS_PATH`/`TOOLS_DEPENDS` overrides and put this setting in
 the host MAKECONF too. Use a normally configured installation; relocation
 environment variables that point at another Autoconf release must be removed.
 
-Run the regression with an export that does not yet contain this patch:
+Run the regression with a prepared export:
 
 ```sh
-BMAKE=/absolute/host/bin/bmake ruby profiles/common-build-tools/tests/host-autoconf.rb \
+BMAKE=/absolute/host/bin/bmake python3.15 profiles/common-build-tools/tests/host-autoconf.py \
     /absolute/prepared-pkgsrc /absolute/native.mk.conf /absolute/cross.mk.conf \
-    /absolute/autoconf-2.73/bin/autoconf /absolute/new-autoconf-results
+    /absolute/autoconf-2.73/bin/autoconf /absolute/new-autoconf-results \
+    --unpatched-autoconf /absolute/pinned-pkgsrc/mk/tools/autoconf.mk
 ```
 
-The test copies the real pkgsrc tool rules and consumer recipe. It checks
-native and cross metadata, creates seven actual wrappers in private work
-directories, and regenerates and executes a small configure/header contract.
-Default, legacy, runtime and test routes remain unchanged. Invalid paths,
-failed version commands, old versions, required-version floors and missing
-or mismatched companions are rejected. This checks host generators, not an
-installed target package or a complete `autoreconf`/Automake workflow.
+The optional original Autoconf rules file must come from the same pinned
+pkgsrc revision. Use it when the prepared input already carries this patch.
+The test copies the real tool rules and consumer recipe. It checks native and
+cross metadata, creates actual wrappers in private work directories, and
+regenerates and executes a small configure/header contract. Bare `autoreconf`
+with a restricted `PATH` fails at Libtoolize before the fix. It generates real
+configure, Makefile and Libtool inputs after the fix. A missing-wrapper control
+restores the failure. Exact native provider predicates are not duplicated.
+Weak and strong existing predicates retain the required floor, including a
+custom `LIBTOOL_REQD`. A prefix-only guard reproduces the lost floor. Target
+compiler flags and target Libtool paths stay unchanged.
+
+Default, legacy, runtime, test, no-autoreconf and no-Libtool routes retain their
+metadata. Invalid paths, failed version commands, old versions, required-version
+floors and missing or mismatched companions are rejected. These checks accept
+host source generation. Target package and runtime acceptance remain separate.
 
 The [Python recipe](../python.md) validates the matching host interpreter and
 keeps installed extension metadata on the target side. SQLite and zstd

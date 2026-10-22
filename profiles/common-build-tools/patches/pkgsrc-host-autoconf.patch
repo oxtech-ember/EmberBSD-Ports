@@ -3,7 +3,7 @@
 
 --- a/mk/tools/autoconf.mk
 +++ b/mk/tools/autoconf.mk
-@@ -103,31 +103,44 @@
+@@ -103,31 +103,56 @@
  .    else
  _TOOLS_DEPMETHOD.autoconf=	TOOL_DEPENDS
  .    endif
@@ -52,6 +52,18 @@
  _TOOLS_AC_TYPE.ifnames=		TOOLS_CREATE
 -TOOLS_PATH.ifnames=		${TOOLBASE}/bin/ifnames
 +TOOLS_PATH.ifnames=		${_EMBERBSD_AUTOCONF_BINDIR}/ifnames
++
++# Source regeneration always runs on the build host.
++.    if ${_TOOLS_DEPMETHOD.autoconf} == "TOOL_DEPENDS" && \
++        defined(USE_LIBTOOL) && !empty(USE_TOOLS:Mautoreconf) && \
++        empty(USE_TOOLS:C/:.*//:Mautoconf213) && empty(USE_TOOLS:C/:.*//:Mautoconf269)
++_TOOLS_AUTORECONF_LIBTOOL_DEPEND= libtool-base>=${_OPSYS_LIBTOOL_REQD:U${LIBTOOL_REQD}}:../../devel/libtool-base
++.      if empty(TOOL_DEPENDS:M${_TOOLS_AUTORECONF_LIBTOOL_DEPEND})
++TOOL_DEPENDS+= ${_TOOLS_AUTORECONF_LIBTOOL_DEPEND}
++.      endif
++TOOLS_CREATE+= libtoolize
++TOOLS_PATH.libtoolize= ${TOOLBASE}/bin/libtoolize
++.    endif
  .  endif
  .endif
  
