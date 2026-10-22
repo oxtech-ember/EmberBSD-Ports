@@ -349,6 +349,83 @@ def main():
     reject('overlapping-roots', r'build/sysroot overlap', '--check', work / 'build',
            work / 'build', readelf)
     write_config(config)
+    # Execute data never shares the query/lib/types/manifest namespace. Use the
+    # same real ELF fixtures, but refuse malformed data before the first SSH.
+    resource = work / 'sysroot/STEP'
+    resource.write_bytes(b'upstream resource fixture\n')
+    resource_hash = sdk.sha256_file(str(resource))
+    artifact = {'source': str(resource), 'path': 'data/occt/XSTEPResource/STEP',
+                'sha256': resource_hash}
+    data_config = dict(config, execute_inputs=[artifact], execute_environment={
+        'CSF_LANGUAGE': {'literal': 'us'},
+        'CSF_STEPDefaults': {'stage_path': 'data/occt/XSTEPResource'},
+    })
+
+    def reject_data(name, pattern, *, entries=None, values=None, execute=True):
+        selected = dict(data_config)
+        if entries is not None:
+            selected['execute_inputs'] = entries
+        if values is not None:
+            selected['execute_environment'] = values
+        write_config(selected)
+        args = ['--execute'] if execute else []
+        reject('data-' + name, pattern, *args, work / 'build/query')
+
+    reject_data('gi-mode', 'data inputs require --execute', execute=False)
+    for name, path in (('query', 'query'), ('library', 'lib/file'),
+                       ('types', 'types.txt'), ('manifest', 'files.sha256'),
+                       ('absolute', '/data/file'), ('traversal', 'data/../file'),
+                       ('empty-component', 'data//file')):
+        reject_data(name, 'unsafe data destination', entries=[dict(artifact, path=path)])
+    reject_data('duplicate', 'colliding data destination', entries=[artifact, artifact])
+    reject_data('prefix', 'colliding data destination', entries=[
+        dict(artifact, path='data/occt'), artifact])
+    outside_data = work / 'outside/resource'
+    outside_data.write_bytes(resource.read_bytes())
+    reject_data('outside', 'data source outside target/build roots',
+                entries=[dict(artifact, source=str(outside_data))])
+    resource_alias = work / 'sysroot/STEP-alias'
+    resource_alias.symlink_to(resource)
+    reject_data('symlink', 'canonical real ancestors',
+                entries=[dict(artifact, source=str(resource_alias))])
+    reject_data('directory', 'expected a regular file',
+                entries=[dict(artifact, source=str(resource.parent))])
+    reject_data('hash', 'data input SHA256 differs',
+                entries=[dict(artifact, sha256='0' * 64)])
+    reject_data('hash-format', 'invalid data SHA256',
+                entries=[dict(artifact, sha256='F' * 64)])
+    large_data = work / 'sysroot/large-data'
+    with large_data.open('wb') as output:
+        output.truncate(16 * 1024 * 1024 + 1)
+    reject_data('large', 'data file exceeds 16 MiB',
+                entries=[dict(artifact, source=str(large_data))])
+    reject_data('count', 'bounded array', entries=[artifact] * 1025)
+    for name in ('PATH', 'LD_PRELOAD', 'LD_LIBRARY_PATH', 'CSF_' + 'x' * 61):
+        reject_data('env-' + name, 'bounded CSF resource environment names',
+                    values={name: {'stage_path': 'data/occt'}})
+    reject_data('undeclared-path', 'path has no declared data',
+                values={'CSF_STEPDefaults': {'stage_path': 'data/undeclared'}})
+    reject_data('literal-path', 'path has no declared data',
+                values={'CSF_STEPDefaults': {'literal': '/usr/share/occt'}})
+    reject_data('language', 'invalid CSF language literal',
+                values={'CSF_LANGUAGE': {'literal': 'us; touch invalid'}})
+    # Change an already opened source after its stable snapshot. The SDK's
+    # regular-file primitive is the only injected boundary; ELF inspection and
+    # the production bounded read remain real. Neither case reaches SSH.
+    mutator = work / 'data-copy-mutation.py'
+    mutator.write_text(DATA_COPY_MUTATION, encoding='utf-8')
+    write_config(data_config)
+    for mode in ('grow', 'shrink'):
+        resource.write_bytes(b'upstream resource fixture\n')
+        result = capture(python, '-E', '-S', mutator, helper, sdk.root,
+                         resource, mode, work / 'build/query', env=environment)
+        output = record('data-copy-' + mode, result)
+        require(result.returncode != 0 and 'data source size changed while copying' in output
+                and not marker.exists(), f'data {mode} did not refuse its bounded copy: {output}')
+    resource.write_bytes(b'upstream resource fixture\n')
+    write_config(config)
+    print('PASS: execute data namespaces, source identities, hashes, size/count bounds, '
+          'CSF-only environment and growing/shrinking input refusals before SSH')
     # The real cross-linked fixture resolves only through the directory alias.
     result = capture(python, '-E', '-S', helper, work / 'build/query', env=environment)
     output = record('valid-alias', result)
@@ -573,12 +650,102 @@ def main():
             ['allocate', 'reuse', 'transfer', 'query', 'cleanup'],
             'truncated failed probe did not clean its remote work')
     print('PASS: query/status/cleanup failures cannot become silent negative configure results')
+    # Run the actual production manifest loops and CSF exports in a host shell.
+    # Only timeout is adapted: it checks staged data instead of running a target
+    # ELF. This is transport acceptance, not a target OCCT or loader test.
+    write_config(dict(data_config, library_dirs=[str(installed.parent)]))
+    data_mock = work / 'data-remote'
+    for mode, error in (('data-pass', None), ('data-child', None),
+                        ('data-corrupt', 'execution-status failed'),
+                        ('data-source', 'source providers changed'),
+                        ('data-metadata', 'file changed during inspection'),
+                        ('data-root', 'data root identity changed')):
+        resource.write_bytes(b'upstream resource fixture\n')
+        resource.chmod(0o644)
+        trace = work / (mode + '-phases')
+        failure = work / 'build' / (mode + '-failure')
+        saved_tar = work / (mode + '-input.tar.gz')
+        saved_script = work / (mode + '-query.sh')
+        selected_env = dict(environment, GI_TEST_MODE=mode, GI_TEST_PHASES=str(trace),
+                            GI_TEST_DATA_MOCK=str(data_mock),
+                            GI_TEST_DATA_SOURCE=str(resource),
+                            GI_TEST_DATA_BUILD=str(work / 'build'),
+                            GI_TEST_DATA_TAR=str(saved_tar), GI_TEST_DATA_SCRIPT=str(saved_script),
+                            GI_TEST_DATA_SHA=resource_hash,
+                            EMBERBSD_GI_FAILURE_MARKER=str(failure))
+        before = set((work / 'cache').glob('gi-query-*'))
+        result = capture(python, '-E', '-S', helper, '--execute', work / 'build/query',
+                         env=selected_env)
+        output = record(mode, result)
+        if mode == 'data-root':
+            replacement = work / 'build'
+            replacement.rename(work / 'build-replacement-observed')
+            (work / 'build-original').rename(replacement)
+            # The failure marker belongs to the replacement root that the
+            # helper actually observed, not the restored fixture root.
+            failure = work / 'build-replacement-observed' / failure.name
+        require(trace.read_text(encoding='utf-8').splitlines() ==
+                ['allocate', 'reuse', 'transfer', 'query', 'status', 'cleanup'],
+                f'{mode}: data transport skipped cleanup')
+        require(not data_mock.exists(), f'{mode}: data remote was not removed')
+        if error is None:
+            require(result.returncode == 0 and result.stdout == b'probe stdout\n'
+                    and result.stderr == b'probe stderr\n' and not failure.exists(),
+                    f'{mode}: real manifest/export shell failed: {output}')
+        else:
+            require(result.returncode != 0 and error in output and failure.is_file(),
+                    f'{mode}: wrong resource refusal boundary: {output}')
+        created = set((work / 'cache').glob('gi-query-*')) - before
+        require(len(created) == 1, f'{mode}: missing data provenance receipt')
+        from emberbsd_sdk.jsonio import read_json
+        receipt = read_json(str(created.pop() / 'data-inputs.json'))
+        require(receipt['files'][0]['sha256'] == resource_hash and
+                receipt['files'][0]['path'] == artifact['path'] and
+                receipt['environment'] == data_config['execute_environment'],
+                f'{mode}: data identity/environment receipt changed')
+        require(saved_tar.is_file() and saved_script.is_file(),
+                f'{mode}: missing exact transport inputs')
+    write_config(config)
+    print('PASS: production execute shell verifies real data hashes and CSF paths; '
+          'unrelated root children pass; data corruption, source metadata/bytes '
+          'and root replacement fail with remote cleanup')
     return 0
+
+
+DATA_COPY_MUTATION = r'''import importlib.util
+import os
+from pathlib import Path
+import sys
+
+sys.dont_write_bytecode = True
+helper, sdk, source, mode, executable = sys.argv[1:]
+sys.path.insert(0, str(Path(helper).parent))
+sys.path.insert(0, str(Path(sdk) / 'src'))
+import emberbsd_sdk.paths as paths
+from emberbsd_sdk import inventory  # Keep real stable hashes outside this injection.
+original_open = paths.open_regular
+def mutate(path):
+    handle, info = original_open(path)
+    if os.fspath(path) == source:
+        with open(source, 'ab' if mode == 'grow' else 'wb') as output:
+            if mode == 'grow':
+                output.write(b'x')
+    return handle, info
+paths.open_regular = mutate
+spec = importlib.util.spec_from_file_location('selected_target_query', helper)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+raise SystemExit(module.main(['--sdk-source', sdk, '--execute', executable]))
+'''
 
 
 FAKE_SSH = r'''import json
 import os
 import shlex
+import shutil
+import subprocess
+import tarfile
+import io
 from pathlib import Path
 import sys
 
@@ -607,6 +774,50 @@ if phase in ('transfer', 'query', 'reuse'):
     script = sys.stdin.buffer.read()
 if mode == phase:
     raise SystemExit(74)
+if mode.startswith('data-'):
+    mock = Path(os.environ['GI_TEST_DATA_MOCK'])
+    if phase == 'allocate':
+        mock.mkdir(mode=0o700)
+        print('/tmp/ember-gir.AbCd1234')
+    elif phase == 'transfer':
+        Path(os.environ['GI_TEST_DATA_TAR']).write_bytes(script)
+        with tarfile.open(fileobj=io.BytesIO(script), mode='r:gz') as archive:
+            archive.extractall(mock, filter='data')
+    elif phase == 'query':
+        Path(os.environ['GI_TEST_DATA_SCRIPT']).write_bytes(script)
+        body = script.decode('utf-8').replace('/tmp/ember-gir.AbCd1234', str(mock))
+        glue = ("sha256() { test \"$1\" = -q || return 2; shift; "
+                "/usr/bin/shasum -a 256 \"$1\" | cut -d ' ' -f 1; }\n"
+                "timeout() {\n"
+                "  test \"$CSF_LANGUAGE\" = us || return 84\n"
+                "  test \"$CSF_STEPDefaults\" = \"$GI_TEST_DATA_MOCK/data/occt/XSTEPResource\" || return 85\n"
+                "  test \"$(sha256 -q \"$CSF_STEPDefaults/STEP\")\" = \"$GI_TEST_DATA_SHA\" || return 86\n"
+                "  if test \"$GI_TEST_MODE\" = data-corrupt; then printf corrupted >> \"$CSF_STEPDefaults/STEP\"; fi\n"
+                "  printf 'probe stdout\\n'\n  printf 'probe stderr\\n' >&2\n}\n")
+        result = subprocess.run(['sh', '-s'], input=(glue + body).encode('utf-8'),
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+        if mode == 'data-source':
+            Path(os.environ['GI_TEST_DATA_SOURCE']).write_bytes(b'changed resource\n')
+        if mode == 'data-metadata':
+            Path(os.environ['GI_TEST_DATA_SOURCE']).chmod(0o600)
+        if mode == 'data-child':
+            (Path(os.environ['GI_TEST_DATA_BUILD']) / 'unrelated-child').write_bytes(b'allowed\n')
+        if mode == 'data-root':
+            build = Path(os.environ['GI_TEST_DATA_BUILD'])
+            original = build.with_name('build-original')
+            build.rename(original)
+            shutil.copytree(original, build, symlinks=True, copy_function=shutil.copy2)
+        sys.stdout.buffer.write(result.stdout)
+        sys.stderr.buffer.write(result.stderr)
+        raise SystemExit(result.returncode)
+    elif phase == 'status':
+        status = mock / 'execution.status'
+        if not status.is_file():
+            raise SystemExit(74)
+        sys.stdout.buffer.write(status.read_bytes())
+    elif phase == 'cleanup':
+        shutil.rmtree(mock)
+    raise SystemExit(0)
 if phase == 'allocate':
     print('/tmp/ember-gir.AbCd1234')
 elif phase == 'reuse':

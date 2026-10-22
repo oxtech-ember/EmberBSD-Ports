@@ -56,8 +56,9 @@ def query(arguments):
     from emberbsd_sdk.elf import read_elf_dynamic
     from emberbsd_sdk.errors import CommandError, ProcessOwnershipError, SDKError
     from emberbsd_sdk.inventory import sha256_file
-    from emberbsd_sdk.jsonio import read_json
-    from emberbsd_sdk.paths import canonical_existing, real_directory, regular_file, relative_inside
+    from emberbsd_sdk.jsonio import read_json, write_json
+    from emberbsd_sdk.paths import (canonical_existing, real_directory, regular_file, relative_inside,
+                                   open_regular, stable_identity, verify_stable)
     from emberbsd_sdk import stream
 
     require(getattr(stream, 'PRODUCER_STREAM_API', None) == 1,
@@ -115,6 +116,57 @@ def query(arguments):
     execute = bool(arguments and arguments[0] == '--execute')
     if execute:
         arguments = arguments[1:]
+    inputs = config.get('execute_inputs', [])
+    resource_env = config.get('execute_environment', {})
+    require(isinstance(inputs, list) and len(inputs) <= 1024, 'execute_inputs must be a bounded array')
+    require(isinstance(resource_env, dict) and len(resource_env) <= 32, 'execute_environment must be a bounded object')
+    require(execute or not (inputs or resource_env), 'data inputs require --execute')
+    artifacts, destinations, data_paths, data_bytes = [], set(), set(), 0
+    data_roots = {root: real_directory(root) for root in roots} if inputs else {}
+
+    def verify_data_roots():
+        for root, info in data_roots.items():
+            require(canonical_existing(root) == root and
+                    stable_identity(real_directory(root))[:3] == stable_identity(info)[:3],
+                    'data root identity changed')
+
+    def data_path(value):
+        require(isinstance(value, str) and len(value.encode('utf-8')) <= 512 and
+                re.fullmatch(r'data(?:/[A-Za-z0-9_+.-]+)+', value) and
+                all(part not in ('.', '..') for part in value.split('/')), 'unsafe data destination')
+        return value
+
+    for item in inputs:
+        require(isinstance(item, dict) and set(item) == {'source', 'path', 'sha256'}, 'invalid data input entry')
+        path = data_path(item['path'])
+        require(not any(path == other or path.startswith(other + '/') or other.startswith(path + '/')
+                        for other in destinations), 'colliding data destination')
+        destinations.add(path)
+        source, expected = item['source'], item['sha256']
+        require(isinstance(source, str) and source.startswith('/') and canonical_existing(source) == source,
+                'data source requires canonical real ancestors')
+        require(any(within(source, root) for root in roots), 'data source outside target/build roots')
+        info = regular_file(source)
+        require(isinstance(expected, str) and re.fullmatch(r'[0-9a-f]{64}', expected), 'invalid data SHA256')
+        require(info.st_size <= 16 * 1024 * 1024, 'data file exceeds 16 MiB')
+        data_bytes += info.st_size
+        require(data_bytes <= 64 * 1024 * 1024, 'data inputs exceed 64 MiB')
+        require(sha256_file(source) == expected, 'data input SHA256 differs')
+        verify_stable(source, info)
+        artifacts.append((source, path, expected, info))
+        current = Path(path)
+        data_paths.add(path)
+        data_paths.update(parent.as_posix() for parent in current.parents if parent.as_posix() != '.')
+    for name, value in resource_env.items():
+        require(isinstance(name, str) and re.fullmatch(r'CSF_[A-Za-z][A-Za-z0-9_]{0,59}', name),
+                'only bounded CSF resource environment names are supported')
+        require(isinstance(value, dict) and len(value) == 1, 'invalid resource environment value')
+        if name == 'CSF_LANGUAGE':
+            require(set(value) == {'literal'} and isinstance(value['literal'], str) and
+                    re.fullmatch(r'[A-Za-z0-9_+.-]{1,32}', value['literal']), 'invalid CSF language literal')
+        else:
+            require(set(value) == {'stage_path'} and isinstance(value['stage_path'], str) and
+                    value['stage_path'] in data_paths, 'resource environment path has no declared data')
     marker = None
     if execute and 'EMBERBSD_GI_FAILURE_MARKER' in os.environ:
         marker = os.environ['EMBERBSD_GI_FAILURE_MARKER']
@@ -221,6 +273,28 @@ def query(arguments):
             shutil.copy(path, stage / 'lib' / name)
         if in_path:
             shutil.copy(in_path, stage / 'types.txt')
+        for source, path, expected, info in artifacts:
+            require(canonical_existing(source) == source, 'data source ancestors changed')
+            handle, opened = open_regular(source)
+            with handle:
+                require(stable_identity(opened) == stable_identity(info), 'data source identity changed')
+                payload = handle.read(info.st_size + 1)
+                require(len(payload) == info.st_size, 'data source size changed while copying')
+                require(stable_identity(os.fstat(handle.fileno())) == stable_identity(info),
+                        'data source changed while copying')
+                destination = stage / path
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                with destination.open('xb') as output:
+                    output.write(payload)
+            verify_stable(source, info)
+            require(sha256_file(destination) == expected, 'staged data SHA256 differs')
+            sources[source] = expected
+        verify_data_roots()
+        if artifacts or resource_env:
+            write_json(work / 'data-inputs.json', dict(
+                roots={root: stable_identity(info)[:3] for root, info in data_roots.items()},
+                files=[dict(source=source, path=path, sha256=expected, identity=stable_identity(info))
+                       for source, path, expected, info in artifacts], environment=resource_env))
         manifest = ''.join(f'{sha256_file(path)}  {path.relative_to(stage).as_posix()}\n'
                            for path in sorted(stage.rglob('*')) if path.is_file())
         (stage / 'files.sha256').write_text(manifest, encoding='utf-8')
@@ -259,6 +333,9 @@ def query(arguments):
                 invocation.extend(args)
             if out_path:
                 invocation.append(f'--introspect-dump={remote}/types.txt,{remote}/dump.xml')
+            exports = ''.join('export ' + name + '=' + shlex.quote(
+                value['literal'] if 'literal' in value else remote + '/' + value['stage_path']) + '\n'
+                for name, value in sorted(resource_env.items()))
             script = f'''set -eu
 cd {shlex.quote(remote)}
 while read hash name; do
@@ -268,7 +345,7 @@ ulimit -c 0
 ulimit -f 16384
 export LD_LIBRARY_PATH={shlex.quote(remote + '/lib')}
 unset LD_PRELOAD
-set +e
+{exports}set +e
 timeout -k 5 60 {shlex.join(invocation)} > stdout.log 2> stderr.log
 result=$?
 set -e
@@ -330,6 +407,10 @@ exit "$result"
         except (OSError, SDKError):
             unchanged = False
         require(unchanged, 'source providers changed during query')
+        for source, unused_path, unused_hash, info in artifacts:
+            require(canonical_existing(source) == source, 'data source ancestors changed during query')
+            verify_stable(source, info)
+        verify_data_roots()
         if out_path:
             fd = os.open(out_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             with os.fdopen(fd, 'wb') as output:

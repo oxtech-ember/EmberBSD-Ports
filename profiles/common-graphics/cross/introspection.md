@@ -213,6 +213,46 @@ The runner verifies that receipt against the SSH status before accepting a
 negative feature result. TDB's Waf cross executor uses this mode while all
 compilation stays on the development host.
 
+Execute callers can declare read-only resource files with two optional JSON
+fields. Omit both fields for the ordinary GI contract. For example:
+
+```json
+{
+  "execute_inputs": [
+    {
+      "source": "/absolute/sysroot/usr/pkg/share/opencascade/resources/XSTEPResource/STEP",
+      "path": "data/occt/XSTEPResource/STEP",
+      "sha256": "<exact lowercase SHA256>"
+    }
+  ],
+  "execute_environment": {
+    "CSF_LANGUAGE": {"literal": "us"},
+    "CSF_STEPDefaults": {"stage_path": "data/occt/XSTEPResource"}
+  }
+}
+```
+
+Each source must be a canonical regular file inside the selected build root or
+sysroot. Symlink aliases and escaped ancestors fail. The runner checks the
+source identity and SHA256 before transfer and after execution. Each bounded
+copy reads at most the snapshot size plus one byte. A file can contain at most
+16 MiB; the complete list can contain at most 64 MiB and 1024 files. The runner
+records the source identity, digest and declared environment in
+`data-inputs.json`. Both target manifest passes cover the transferred data.
+Destinations must be unique safe paths below `data/`. A file destination cannot
+be a parent of another file. The query, libraries, type list and manifests keep
+their existing namespaces.
+
+The environment accepts at most 32 names that start with `CSF_`. Only
+`CSF_LANGUAGE` accepts a bounded language literal. Other values must select a
+file or directory in the declared data tree with `stage_path`. The runner
+resolves that path below its private target directory. Callers cannot replace
+`PATH`, loader controls or controller settings. These fields require
+`--execute`; they do not change the GI invocation. Data files receive the same
+transfer, status and cleanup checks as the ELF closure. Shared root identity
+checks compare device, inode and mode; unrelated child creation is allowed.
+Per-file identity checks retain size and timestamps.
+
 Waf's `CHECK_COMMAND` also runs `getconf LFS_CFLAGS` on the target.
 For this bare command name, execute mode runs the sysroot's `/usr/bin/getconf`.
 It must be a regular file, not a symbolic link. Its NEEDED providers resolve
@@ -239,7 +279,10 @@ cleanup. `NEW_WORK` must be inside the configured build root. The existing
 and rejects invalid host-key aliases and extra arguments outside execute mode.
 It also checks the sysroot `getconf` selection, a symbolic link in its place,
 and other bare commands. Each rejected execute command leaves the
-failure marker.
+failure marker. Execute-data controls run the actual manifest shell with a
+host-only `timeout` adapter. They verify resource exports, staged hash checks,
+source byte/metadata changes and root replacement. No target ELF runs in those
+controlled transport checks. Actual OCCT runtime acceptance is separate.
 
 ## Acceptance and limits
 
