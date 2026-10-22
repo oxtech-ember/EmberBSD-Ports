@@ -72,8 +72,9 @@ The earlier restored native core used GCC 14.2.0. New builds require GCC16.
 The [canonical common provider](../../../profiles/common-graphics/cross/occt.md)
 retains the normal `cad/occt` package and the full default Draw/X11 features.
 Its complete GCC16 AArch64 stage and ordinary package checks pass with 7,906
-payload entries and 68 shared libraries. Installed STEP geometry and Draw
-display execution retain separate acceptance boundaries.
+payload entries and 68 shared libraries. The selected installed STEP box
+contract passes. Complete STEP assembly checks and Draw display execution
+retain separate acceptance boundaries.
 
 ## Checks
 
@@ -97,7 +98,8 @@ On 2026-10-19, the core consumer passed its `C` locale case against the
 installed OCCT runtime in a clean NetBSD 11.0 AArch64 VM as an ordinary user.
 The stack-trace consumer passed `unterminated`, `capacity`, `overflow`, `skip-overflow`,
 `exhausted`, and `valid` modes in the same VM. This is focused runtime evidence;
-the complete OCCT package and installed STEP geometry checks remain pending.
+these cases do not accept the complete KiCad application. The separate
+[STEP contract](tests/step.md) records its installed-package geometry results.
 
 The causal stack-trace test compiles the actual upstream C++ module twice:
 
@@ -118,9 +120,10 @@ It replaces 12 deprecated `GetMessageString()` calls with `what()`.
 KiCad 10.0.7 contains no `Standard_Failure::Raise` call to replace.
 The core consumer uses OCCT8's ordinary C++ `throw` and `what()` API.
 
-KiCad target compilation, installed STEP geometry, and its interface remain acceptance work.
-The fixture's independent STEP reader checks solid and shell closure, volume, bounds, and meshing.
-Its successful source review is not a runtime result.
+KiCad target compilation and its interface remain acceptance work.
+The application's fixture has an independent STEP reader for solid and shell
+closure, volume, bounds and meshing. Its source review does not accept those
+application operations. The selected box contract below has a smaller scope.
 
 The additional actual-source tests use GCC16 and the installed native helper library:
 
@@ -140,6 +143,12 @@ It also checks the recipe's empty third-party root on first and repeated configu
 The default upstream configuration must expose its first-configure source path.
 See the [canonical package audit](pkgsrc-audit.md) for retained and retired
 pkgsrc fixes, dependency requirements and the static packing-list boundary.
+
+The separate [installed STEP geometry contract](tests/step.md) compares a
+1 by 2 by 3 box with an independent STEP readback. Its CMake option requires
+the real OCCT8 `TKDESTEP` target. Its successful readback, wrong-volume,
+malformed and missing-input controls pass in an AArch64 EmberBSD guest.
+Its evidence covers the selected box and consumer UBSan instrumentation.
 
 ## Tcl/Tk 9.1 source compatibility
 

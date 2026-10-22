@@ -36,8 +36,10 @@ check imports all 68 library targets and headers from two different prefixes.
 
 The 292 Draw-only packing-list entries follow actual source ownership and the
 complete stage. Draw resources remain unconditional, as in upstream CMake.
-Separate Draw-off and native packages remain unaccepted. Installed STEP
-geometry, Draw display behavior and a separate remove/reinstall lifecycle
-remain acceptance work.
+Separate Draw-off and native packages remain unaccepted. The selected
+[installed STEP box contract](../../../probes/kicad/occt/tests/step.md) passes
+its independent volume and bounds checks and three negative controls in an
+AArch64 EmberBSD guest. Complete STEP assembly checks, Draw display behavior
+and a separate remove/reinstall lifecycle remain acceptance work.
 Focused source and runtime checks retain their separate boundaries in
 [the analysis](../../../probes/kicad/occt/analysis.md).
