@@ -64,9 +64,10 @@ def main():
         shutil.copyfile(p, bundle / (p.name if p.suffix == '.sh' else 'source/' + p.name))
     gcc_prefix = prefix / 'gcc16/lib/gcc' / triplet / '16.2.0'
     flags = ['--sysroot=' + str(arg.sysroot), '-B' + str(gcc_prefix) + '/',
+             '-B' + str(prefix / 'gcc16/lib') + '/',
              '-O2', '-g', '-Wall', '-Wextra', '-Werror', '-I' + str(prefix / 'include'),
              '-fsanitize=undefined', '-fsanitize-undefined-trap-on-error', '-fno-sanitize-recover=all']
-    link = ['-L' + str(prefix / 'lib'), '-Wl,-rpath,/usr/pkg/lib', '-Wl,-rpath,/usr/pkg/gcc16/lib',
+    link = ['-L' + str(prefix / 'lib'), '-L' + str(prefix / 'gcc16/lib'), '-Wl,-rpath,/usr/pkg/lib', '-Wl,-rpath,/usr/pkg/gcc16/lib',
             '-Wl,-rpath-link,' + str(prefix / 'lib'), '-Wl,-rpath-link,' + str(prefix / 'gcc16/lib')]
     commands = []
     for name, source, extra in [('client', 'client.c', ['-lgssapi_krb5', '-lkrb5', '-lk5crypto', '-lcom_err', '-pthread']),
