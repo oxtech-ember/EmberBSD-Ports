@@ -170,6 +170,8 @@ for version in ("before", "after"):
     (tree / PKG).write_text(pkg_text)
     (tree / RUST).write_text(rust_text)
     if version == "after":
+        checked = run("patch-format", ["git", "apply", "--check", PATCH], tree, env)
+        assert checked.returncode == 0, (checked.stdout, checked.stderr)
         applied = run("patch", ["patch", "-p1", "-F0", "-i", PATCH], tree, env)
         assert applied.returncode == 0, (applied.stdout, applied.stderr)
         assert pkg_after in (tree / PKG).read_text()

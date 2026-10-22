@@ -6,7 +6,7 @@ Origin: EmberBSD (AI-assisted), Chromium commit dd78960ccd8a03a2fe1f629543d27783
 
 --- a/build/config/linux/pkg_config.gni
 +++ b/build/config/linux/pkg_config.gni
-@@ -64,7 +64,7 @@
+@@ -64,8 +64,8 @@
  _pkg_config_sysroot = sysroot
  _pkg_config_system_libdir = system_libdir
 -_emberbsd_cross_pkg_config =
@@ -20,7 +20,7 @@ Origin: EmberBSD (AI-assisted), Chromium commit dd78960ccd8a03a2fe1f629543d27783
    _pkg_config_system_libdir = "pkg/lib"
 --- a/build/rust/rust_bindgen_generator.gni
 +++ b/build/rust/rust_bindgen_generator.gni
-@@ -250,6 +250,8 @@
+@@ -250,5 +250,7 @@
        args += [ "-isystem${emberbsd_target_sysroot}/usr/include" ]
        if (current_os == "netbsd" && current_cpu == "arm64") {
          args += [ "--target=aarch64-unknown-netbsd" ]
