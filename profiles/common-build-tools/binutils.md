@@ -1,6 +1,6 @@
 # Binutils 2.47
 
-The common profile replaces the canonical `devel/binutils` recipe with 2.47nb1.
+The common profile replaces the canonical `devel/binutils` recipe with 2.47nb2.
 It supplies GNU assembler, linker, archive and ELF inspection tools for
 EmberBSD applications. The source archive comes from upstream; its SHA256
 and original URL are in [sources.tsv](sources.tsv). The downloaded release
@@ -21,6 +21,14 @@ AI-assisted and have not been submitted or accepted upstream.
   GCC's `-gdwarf64` can emit a 64-bit CU with a 32-bit line table; upstream
   BFD incorrectly used the CU width and failed source lookup. Indexed
   strings continue to use their CU's string-offset table format.
+- Load a `DT_NEEDED` shared object only once when the LTO plugin is active.
+  Upstream ld (PR ld/28849, since 2.39) loads these objects before the
+  plugin reads all symbols and again after it opens all inputs. The second
+  copy makes each definition of the first copy a reference. With
+  `--copy-dt-needed-entries`, each `.gnu.warning.SYMBOL` of an indirect
+  library, such as libc through libm, gives a warning, and
+  `--fatal-warnings` stops the link. ld now uses the first object again.
+  The same failure occurs with upstream master.
 - Remove gold options and four gold patches because this upstream release
   no longer includes gold. BFD ld remains the selected GNU linker.
 - Drop the obsolete `bfd/cache.c` SunOS include-only patch; the current

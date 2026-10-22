@@ -14,3 +14,4 @@ SHA1 (patch-ld_emulparams_armelf__nbsd__eabi.sh) = 464b0957f95a1a8ba6a92ee0091b9
 SHA1 (patch-ld_emulparams_armelf__nbsd__eabihf.sh) = 972678f6bab6e910fe7ac29c6c06f1a438d308a0
 SHA1 (patch-ld_emulparams_armelfb__nbsd__eabi.sh) = 67a519cac8986ab2520861bbd1100782295637d2
 SHA1 (patch-ld_emulparams_armelfb__nbsd__eabihf.sh) = 6f58d6aa6d601544d9ad00a9ac4fdc704390a42c
+SHA1 (patch-ld_ldelf.c) = ecc80aeb75c2f7cfb5c01303aa682482e2de5f6a
