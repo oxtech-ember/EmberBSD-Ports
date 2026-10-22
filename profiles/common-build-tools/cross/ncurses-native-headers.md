@@ -1,6 +1,6 @@
 # Native headers for ncurses cross generators
 
-The common ncurses 6.6nb1 recipe configures host generators separately.
+The common ncurses 6.6nb2 recipe configures host generators separately.
 The library still uses target GCC16 and target configure results.
 The build-role revision does not change the public ABI or dependency bounds.
 An accepted native ncurses 6.6 tool still meets the existing tool predicate.
@@ -27,6 +27,16 @@ compares complete active macro sets to verify this boundary. It does not
 infer correctness from include filenames alone. A missing private header
 fails compilation instead of falling back to target configuration.
 
+The cross configure environment selects the native `TIC` by its absolute
+path. Upstream substitutes `TIC` into the lowercase `tic_path` default in
+`run_tic.sh`; uppercase `TIC_PATH` does not select that install-time tool.
+This keeps the system tic and target executables out of database generation.
+A strict cross-only substitution gives the installed `ncurses6-config` helper
+its target `/bin/sh` interpreter. Build-time `CONFIG_SHELL` stays native.
+The cross-only upstream `--disable-pkg-ldflags` option omits build-only link
+paths from the helper and all five pkg-config files. It does not change
+library build flags, compiler feature defines or native configuration.
+
 ## Reproduce the bounded checks
 
 Use a prepared common profile, its make configuration and a configured
@@ -41,6 +51,12 @@ BMAKE=/absolute/host/bin/bmake python3 \
     /absolute/new-header-check
 python3 profiles/common-build-tools/tests/ncurses-export-guard.py \
     /absolute/new-export-preflight-check
+python3 profiles/common-build-tools/tests/ncurses-install-tic.py \
+    /absolute/before/misc/run_tic.sh /absolute/after/misc/run_tic.sh \
+    /absolute/native-prefix /absolute/new-install-tool-check \
+    --target-config /absolute/stage/bin/ncurses6-config \
+    --target-metadata-dir /absolute/stage/lib/pkgconfig \
+    --producer-path /absolute/build-sysroot
 ```
 
 The Darwin header test executes the canonical recursive hook. It poisons
@@ -56,6 +72,28 @@ sets, absent-private-header refusal and unchanged target input hashes are
 also checked. Missing `CONFIGURE_ENV` must fail. The export test runs the
 actual common-tools preflight block and removes the required delta in its
 private fixture. It does not claim a complete new export.
+
+The install-tool test takes actual configured scripts before and after the
+recipe change. Only the native tic default may differ. A hostile PATH tool
+must expose the old selection and must stay unused after the fix. The real
+native provider compiles its extended `scrt` entry; native `infocmp` must
+read back identical capabilities. The actual target helper passes version,
+prefix, ABI, no-argument and unknown-option calls under POSIX sh. All three
+upstream shell references use the target interpreter.
+
+Select the five actual staged pkg-config files with `--target-metadata-dir`.
+Pass each physical producer prefix with `--producer-path`. The helper body,
+consumer flags and pkg-config files must omit these paths. The native prefix is
+also forbidden when it differs from the logical target prefix. Do not select
+the logical target prefix as a producer path.
+The helper must retain its target feature defines, include paths and library.
+The test preserves hashes of the selected native tools and helper. An actual
+old metadata stage must fail this producer-path guard.
+
+The normal configure producer comparison separately verifies that the option
+changes only exported link flags. Build `LDFLAGS`, `EXTRA_LDFLAGS`, compiler
+feature flags and native configuration remain unchanged. These are host
+metadata checks. They do not establish target runtime acceptance.
 
 ## Analysis and acceptance boundary
 
