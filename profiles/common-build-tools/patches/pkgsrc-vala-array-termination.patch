@@ -1,0 +1,67 @@
+Origin: EmberBSD contributors (AI-assisted).
+Fix nullable value array copies in GNOME Vala 0.56.19.
+The upstream LGPL-2.1-or-later license and authorship are unchanged.
+Not submitted upstream.
+
+--- a/lang/vala/Makefile
++++ b/lang/vala/Makefile
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.111 2026/09/02 19:03:14 wiz Exp $
+ 
+ DISTNAME=	vala-0.56.19
+-PKGREVISION=	1
++PKGREVISION=	2
+ CATEGORIES=	lang gnome
+ MASTER_SITES=	${MASTER_SITE_GNOME:=sources/vala/${PKGVERSION_NOREV:R}/}
+ EXTRACT_SUFX=	.tar.xz
+--- a/lang/vala/distinfo
++++ b/lang/vala/distinfo
+@@ -4,3 +4,5 @@
+ SHA512 (vala-0.56.19.tar.xz) = 68e87db80362243a071b33dd33b35e0b788e6f16fa993bcf1bbf3ccc65fb704fd3be50d41a8d50530328061c55edbe53a4fd094745435b858fd07851e963ef36
+ Size (vala-0.56.19.tar.xz) = 4007612 bytes
+ SHA1 (patch-build-aux_testrunner.sh) = d30ce05459b398a18e9dbd4420f28d8bfdf7323a
++SHA1 (patch-codegen_valaccodearraymodule.c) = 42e8b1a9538a0e6c606754a432299414fba917cc
++SHA1 (patch-codegen_valaccodearraymodule.vala) = fccfc9b6876880e755af170b6f3db849537ad968
+--- /dev/null
++++ b/lang/vala/patches/patch-codegen_valaccodearraymodule.c
+@@ -0,0 +1,18 @@
++$NetBSD$
++
++Preserve the NULL terminator when copying arrays of nullable value types.
++Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
++The upstream LGPL-2.1-or-later license and authorship are unchanged.
++Keep the shipped bootstrap C equivalent to the Vala predicate.
++
++--- codegen/valaccodearraymodule.c.orig
+++++ codegen/valaccodearraymodule.c
++@@ -3187,7 +3187,7 @@
++ 		} else {
++ 			_tmp58_ = FALSE;
++ 		}
++-		if (_tmp58_) {
+++		if (_tmp58_ || vala_data_type_get_nullable (vala_array_type_get_element_type (array_type))) {
++ 			ValaCCodeExpression* _tmp67_;
++ 			ValaCCodeConstant* _tmp68_;
++ 			ValaCCodeConstant* _tmp69_;
+--- /dev/null
++++ b/lang/vala/patches/patch-codegen_valaccodearraymodule.vala
+@@ -0,0 +1,19 @@
++$NetBSD$
++
++Preserve the NULL terminator when copying arrays of nullable value types.
++Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
++The upstream LGPL-2.1-or-later license and authorship are unchanged.
++
++--- codegen/valaccodearraymodule.vala.orig
+++++ codegen/valaccodearraymodule.vala
++@@ -582,8 +582,8 @@
++ 
++ 			CCodeExpression length_expr = new CCodeIdentifier ("length");
++ 			CCodeBinaryOperator length_check_op;
++-			// add extra item to have array NULL-terminated for all reference types
++-			if (array_type.element_type.type_symbol != null && array_type.element_type.type_symbol.is_reference_type ()) {
+++			// Add a NULL terminator for reference and nullable value types.
+++			if ((array_type.element_type.type_symbol != null && array_type.element_type.type_symbol.is_reference_type ()) || array_type.element_type.nullable) {
++ 				length_expr = new CCodeBinaryExpression (CCodeBinaryOperator.PLUS, length_expr, new CCodeConstant ("1"));
++ 				length_check_op = CCodeBinaryOperator.GREATER_THAN_OR_EQUAL;
++ 			} else {

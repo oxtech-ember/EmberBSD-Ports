@@ -243,6 +243,11 @@ packages. Missing BSD make fails this gate.
 Use the separate native fixture after installing the documented prerequisites;
 it exercises real target compilation and removes only its own test package.
 
+The [Vala array copy contract](cross/vala.md) repairs a missing NULL slot
+for copied nullable value arrays. Paired host GCC16 generators and the
+unchanged upstream regression pass ASan/UBSan after the repair. Cross package
+and target acceptance remain separate.
+
 ## Patch decisions
 
 Original pkgsrc identifiers, ownership and upstream licenses are preserved.
