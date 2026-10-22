@@ -19,6 +19,12 @@ runtime behavior are validated.
 
 ## Current contents
 
+- [Codex-operated Ports update plans](docs/update-ports.md): native pkgsrc
+  metadata exports host and target dependency roles to the shared Python SDK.
+  Input locks, impacted consumers, ordering, and evidence checks support existing
+  producers. Subprocess contracts and a real native graph pass; complete cross
+  graph and package-build acceptance remain separate.
+
 - [Flex epsilon-closure repair](probes/flex-nfa/README.md): a bounded
   worklist replaces recursive generator traversal. The ordinary native
   GCC16 package, all 114 upstream tests and installed scanner consumers pass.
