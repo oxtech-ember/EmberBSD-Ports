@@ -2,7 +2,7 @@
 
 DISTNAME=	qtquick3d-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qtquick3d-${QTVERSION}
-PKGREVISION=	1
+PKGREVISION=	2
 COMMENT=	3d engine for Qt6 quick
 CATEGORIES=	graphics
 LICENSE=	gnu-gpl-v3
@@ -31,6 +31,6 @@ PLIST_SRC=	PLIST PLIST.embree PLIST.openxr
 .include "../../graphics/qt6-qtquicktimeline/buildlink3.mk"
 .include "../../graphics/qt6-qtshadertools/buildlink3.mk"
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"
-.include "../../multimedia/assimp/buildlink3.mk"
+.include "options.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

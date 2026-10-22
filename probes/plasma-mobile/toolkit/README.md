@@ -58,6 +58,11 @@ reject older command-line versions and unprepared Qt/Frameworks recipe paths.
 Buildlink requirements select the new versions, including transitive consumers.
 Qt's common build and consumer files require GCC 16.2.
 
+The [optional QtQuick3D importer](tests/qtquick3d-importer.md) retains Assimp
+by default. An explicit `-assimp` package omits model import while keeping
+the core modules. Its native amd64 package checks pass; scene, model-loader
+and spatial-audio runtime acceptance remain separate.
+
 [Qt TextToSpeech](tests/qt-speech/README.md) and [KCMUtils](cross/kcmutils.md)
 now have complete cross packages and bounded CM5 acceptance.
 [libplasma and PlasmaActivities](cross/libplasma.md) also have complete packages;
