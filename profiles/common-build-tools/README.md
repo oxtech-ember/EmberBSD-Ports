@@ -78,6 +78,11 @@ zlib package in common profiles. Its ordinary native GCC16 package and strict
 gzip archive roundtrip pass. Outside the opt-in, bootstrap metadata stays intact.
 Cross metadata passes; target execution remains separate.
 
+The [ncurses generator header contract](cross/ncurses-native-headers.md)
+separates ordinary native configure results from target library headers.
+Real Darwin generators pass causal, macro and table-output checks.
+Full target packaging and runtime remain separate.
+
 Ordinary [FFTW and Readline packages](cross/README.md#installed-fftw-readline-and-ncurses)
 also pass GCC16 AArch64 VM numerical, terminal input/history and package
 removal/reinstallation checks. FFTW covers both precisions with pthread

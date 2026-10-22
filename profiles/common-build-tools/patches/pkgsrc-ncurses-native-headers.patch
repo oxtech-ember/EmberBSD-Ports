@@ -1,0 +1,100 @@
+Origin: EmberBSD (AI-assisted). Configure build-machine generator headers separately.
+Use normal native pkgsrc compiler policy and a clean environment.
+Target configure answers and library headers remain separate.
+
+--- a/devel/ncurses/Makefile
++++ b/devel/ncurses/Makefile
+@@ -1,6 +1,7 @@
+ # $NetBSD: Makefile,v 1.124 2026/01/20 10:07:04 wiz Exp $
+ 
+ DISTNAME=	ncurses-6.6
++PKGREVISION=	1
+ CATEGORIES=	devel
+ MASTER_SITES=	${MASTER_SITE_GNU:=ncurses/}
+ 
+@@ -69,6 +70,34 @@
+ CONFIGURE_ENV+=		BUILD_CC=${NATIVE_CC:Q}
+ CONFIGURE_ENV+=		ac_cv_path_TIC_PATH=${TOOLBASE:Q}/bin/tic
+ ALL_ENV+=		TIC_PATH=${TOOLBASE:Q}/bin/tic
++
++# Build generators need headers from the build machine. Use the ordinary
++# native configure path with a separate cache and object directory.
++_EMBER_NCURSES_HOST_OBJ= ${WRKDIR}/native-config
++_EMBER_NCURSES_HOST_SRC= ${_EMBER_NCURSES_HOST_OBJ}/devel/ncurses/work/${DISTNAME}
++_EMBER_NCURSES_HOST_MAKE= ${_EMBER_NCURSES_HOST_SRC}/ncurses/Makefile
++CONFIGURE_ENV+= BUILD_CPPFLAGS="-DNCURSES_BUILD_HEADERS -I${_EMBER_NCURSES_HOST_SRC}/include $$(${SED} -n 's/^CPPFLAGS[[:blank:]]*=[[:blank:]]*//p' ${_EMBER_NCURSES_HOST_MAKE})"
++CONFIGURE_ENV+= BUILD_CFLAGS="$$(${SED} -n 's/^CFLAGS[[:blank:]]*=[[:blank:]]*//p' ${_EMBER_NCURSES_HOST_MAKE})"
++CONFIGURE_ENV+= BUILD_LDFLAGS="$$(${SED} -n 's/^LDFLAGS[[:blank:]]*=[[:blank:]]*//p' ${_EMBER_NCURSES_HOST_MAKE})"
++CONFIGURE_ENV+= BUILD_LIBS="$$(${SED} -n 's/^LIBS[[:blank:]]*=[[:blank:]]*//p' ${_EMBER_NCURSES_HOST_MAKE})"
++
++pre-configure:
++	${RUN}${MKDIR} ${_EMBER_NCURSES_HOST_OBJ}/tmp
++	${RUN}cd ${PKGDIR} && ${SETENV} -i \
++		PATH=${TOOLBASE:Q}/bin:${TOOLBASE:Q}/sbin:${_PATH_ORIG:Q} \
++		HOME=${WRKDIR:Q}/.home LC_ALL=C \
++		TMPDIR=${_EMBER_NCURSES_HOST_OBJ:Q}/tmp \
++		TMP=${_EMBER_NCURSES_HOST_OBJ:Q}/tmp \
++		TEMP=${_EMBER_NCURSES_HOST_OBJ:Q}/tmp \
++		CONFIG_SITE=/dev/null ${MAKE} MAKECONF=${MAKECONF:Q} \
++		USE_CROSS_COMPILE=no WRKOBJDIR=${_EMBER_NCURSES_HOST_OBJ:Q} \
++		WRKDIR_BASENAME=work CC=${NATIVE_CC:Q} CXX=${NATIVE_CXX:Q} \
++		MAKE_JOBS=${MAKE_JOBS:U1} configure
++	${RUN}${MAKE_PROGRAM} -C ${_EMBER_NCURSES_HOST_SRC:Q}/include all
++.for _ember_header in ncurses_dll.h:dll ncurses_cfg.h:cfg curses.h:curses
++	${RUN}${CP} ${_EMBER_NCURSES_HOST_SRC:Q}/include/${_ember_header:C/:.*//} \
++		${_EMBER_NCURSES_HOST_SRC:Q}/include/ncurses-build-${_ember_header:C/.*://}.h
++.endfor
+ .endif
+ 
+ # If there's no native tbl(1) then the tools infrastructure would pull in
+--- a/devel/ncurses/distinfo
++++ b/devel/ncurses/distinfo
+@@ -7,3 +7,4 @@
+ SHA1 (patch-ncurses_base_lib_initscr.c) = 3f47c8ce9b98a82aa8db6b6da55810727559d30c
+ SHA1 (patch-ncurses_tinfo_lib_raw.c) = 1adea51819538433b681c209f9754a18d0e37ebb
+ SHA1 (patch-test_demo__new__pair.c) = a80a9f0b296b566c32ccaec549678c8b5aa76c63
++SHA1 (patch-ncurses_build.priv.h) = 17ae8e7619ec477f3087b6af227da597857213e2
+--- /dev/null
++++ b/devel/ncurses/patches/patch-ncurses_build.priv.h
+@@ -0,0 +1,41 @@
++Origin: EmberBSD (AI-assisted), not submitted upstream.
++Use configured build-machine headers for cross generators.
++Keep ordinary native builds and target library headers unchanged.
++
++--- ncurses/build.priv.h.orig
+++++ ncurses/build.priv.h
++@@ -44,13 +44,21 @@
++ #ifndef CURSES_PRIV_H
++ #define CURSES_PRIV_H 1
++ 
+++#if defined(USE_BUILD_CC) && defined(NCURSES_BUILD_HEADERS)
+++#include <ncurses-build-dll.h>
+++#else
++ #include <ncurses_dll.h>
+++#endif
++ 
++ #ifdef __cplusplus
++ extern "C" {
++ #endif
++ 
+++#if defined(USE_BUILD_CC) && defined(NCURSES_BUILD_HEADERS)
+++#include <ncurses-build-cfg.h>
+++#else
++ #include <ncurses_cfg.h>
+++#endif
++ 
++ #if USE_RCS_IDS
++ #define MODULE_ID(id) static const char Ident[] = id;
++@@ -67,7 +75,11 @@
++ 
++ #include <errno.h>
++ 
++-#include <curses.h>		/* we'll use -Ipath directive to get the right one! */
+++#if defined(USE_BUILD_CC) && defined(NCURSES_BUILD_HEADERS)
+++#include <ncurses-build-curses.h>
+++#else
+++#include <curses.h>
+++#endif		/* we'll use -Ipath directive to get the right one! */
++ 
++ /* usually in <unistd.h> */
++ #ifndef EXIT_SUCCESS
