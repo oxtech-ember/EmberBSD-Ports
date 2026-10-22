@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 static void
 check(int condition, const char *message)
@@ -15,6 +16,40 @@ check(int condition, const char *message)
 		fprintf(stderr, "FAIL: %s\n", message);
 		exit(1);
 	}
+}
+
+static void
+check_client_keytab_default(void)
+{
+	krb5_context context = NULL;
+	krb5_keytab keytab = NULL;
+	const char *statedir = getenv("KRB5_TEST_CLIENT_KT_STATEDIR");
+	char expected[4096];
+	char actual[4096];
+	int length;
+
+	check(getenv("KRB5_CONFIG") != NULL, "bundled KRB5_CONFIG is set");
+	check(getenv("KRB5_CLIENT_KTNAME") == NULL,
+	    "KRB5_CLIENT_KTNAME is unset for default lookup");
+	if (statedir == NULL || statedir[0] != '/') {
+		check(0, "target client keytab statedir is absolute");
+		return;
+	}
+	length = snprintf(expected, sizeof(expected),
+	    "FILE:%s/krb5/user/%lu/client.keytab", statedir,
+	    (unsigned long)geteuid());
+	check(length >= 0 && (size_t)length < sizeof(expected),
+	    "target client keytab expectation fits");
+	check(krb5_init_context(&context) == 0,
+	    "initialize context for client keytab default");
+	check(krb5_kt_client_default(context, &keytab) == 0,
+	    "resolve default client keytab");
+	check(krb5_kt_get_name(context, keytab, actual, sizeof(actual)) == 0 &&
+	    strcmp(actual, expected) == 0,
+	    "default client keytab uses the target statedir");
+	check(krb5_kt_close(context, keytab) == 0,
+	    "close resolved default client keytab");
+	krb5_free_context(context);
 }
 
 static void *
@@ -86,6 +121,7 @@ main(void)
 	int present = 0;
 	size_t i;
 
+	check_client_keytab_default();
 	check(krb5_is_thread_safe() != 0, "installed MIT client is thread safe");
 	for (i = 0; i < 4; i++)
 		check(pthread_create(&threads[i], NULL, worker, NULL) == 0, "pthread_create");
@@ -104,6 +140,7 @@ main(void)
 	    "display GSS service name");
 	check(gss_release_buffer(&minor, &output) == GSS_S_COMPLETE, "release GSS name buffer");
 	check(gss_release_name(&minor, &name) == GSS_S_COMPLETE, "release GSS name");
-	puts("PASS: thread-safe MIT Kerberos and GSS APIs; four concurrent memory-cache/AES lifecycles");
+	puts("PASS: target client keytab default; thread-safe MIT Kerberos/GSS "
+	    "APIs and concurrent cache/AES lifecycles");
 	return 0;
 }

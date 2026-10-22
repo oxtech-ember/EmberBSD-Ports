@@ -24,6 +24,19 @@ These host checks use CPython 3.15 and an explicit SDK source. They require
 SDK API 1. The metadata check also requires producer stream and inspection
 API 1. No pip packages are required.
 
+## Installed target API consumer
+
+`prepare-client.py` defaults to `--target aarch64` and accepts `--target amd64`.
+It requires the exact GCC16.2 dumpmachine for the selected triplet. SDK ELF
+inspection checks ELF64 little-endian files with the matching AArch64 or x86_64
+machine. Pass `--target-statedir` from `bmake -v MIT_KRB5_STATEDIR` when the
+target does not use `/var`.
+
+The client uses the bundled `KRB5_CONFIG` and checks the installed default
+client keytab through the public MIT keytab API. The test requires
+`KRB5_CLIENT_KTNAME` to be unset. It resolves and names the keytab handle but
+does not open a keytab, read credentials, or contact a KDC.
+
 ## Installed metadata generation
 
 Run `rpath-contract.py` with common GCC16 native and cross compilers. Select
