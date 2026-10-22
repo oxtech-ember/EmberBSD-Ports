@@ -5,24 +5,35 @@ the EmberBSD LLVM package. The existing native generator build's `llvm-config`
 describes that host and must not be used as target metadata. The target
 executable cannot run directly on macOS or Linux.
 
-`build-llvm-config.rb` compiles the pinned upstream LLVM 23.1.3
+`build-llvm-config.py` compiles the pinned upstream LLVM 23.1.3
 `tools/llvm-config/llvm-config.cpp`. It reuses the existing native Support,
-TargetParser and Demangle archives; it does not build LLVM libraries. Ruby,
-the original native C++ compiler and shasum are host dependencies. This is a
+TargetParser and Demangle archives; it does not build LLVM libraries. Python 3.15,
+the explicit SDK host API1 source, the original native C++ compiler and shasum
+are host dependencies. This is a
 private build tool, never a target package or a second installed LLVM provider.
 
 ```sh
-ruby build-llvm-config.rb /absolute/llvm-source \
+export EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK
+python3.15 build-llvm-config.py /absolute/llvm-source \
     /absolute/target-cmake-build /absolute/native-generator-build \
     /absolute/target-sysroot /absolute/target-stage/usr/pkg /absolute/new-work
-ruby test-llvm-config.rb /absolute/new-work
+python3.15 test-llvm-config.py /absolute/new-work /absolute/new-test-work
 /absolute/new-work/bin/llvm-config --version --host-target --has-rtti
 /absolute/new-work/bin/llvm-config --link-shared --shared-mode core orcjit native
 ```
 
 `scripts/build-llvm-config.sh` runs the build, the acceptance test and the
 seal in order with the same five inputs and a new `WORK`. It records the
-SHA256 of `inputs.sha256` in `WORK/manifest.sha256` directly after the build.
+SHA256 of `inputs.sha256` in `WORK/manifest.json` directly after the build.
+Set `PYTHON` to the Python 3.15 executable for this shell entry point.
+Each producer holds the SDK context lock and owns its child session.
+Preflight compiler reads and metadata queries also use owned sessions.
+They refuse output above 16 MiB on stdout or 1 MiB on stderr, and stop
+a query after 120 seconds. Truncated diagnostics never count as success.
+Completed directories use atomic no-replace publication. Existing output
+entries are refused, including partial work and symlinks. A failed build keeps
+its uniquely named partial directory and logs for inspection; retries never
+remove an earlier environment. Use another absent output path after failure.
 The sealed tool is `WORK/sealed/bin/llvm-config`. Run the seal regression
 below separately with a fresh target reference.
 
@@ -82,7 +93,8 @@ must match the target configuration.
 
 `receipt.json`, `compile.command` and `compile.log` record the inputs and build.
 `inputs.sha256` covers the source, original generated metadata/configuration,
-compiler, native archives, actual header dependencies and resulting
+compiler, native archives, actual header dependencies, Python/SDK mechanism
+sources, the clean SDK source revision and resulting
 tool. Input changes during compilation fail. The `bin/llvm-config` launcher
 checks the receipt before every invocation,
 then executes the real compiled program; it does not parse query options or
@@ -95,7 +107,7 @@ LLVM source/build. Headers and loaded libraries inside the target trees fail.
 The Linux dependency scan retains GCC's include-search header names. This
 supports native UAPI header symlinks without admitting their entire destination
 directory. A header that resolves inside a target tree still fails.
-The focused `tests/llvm-native-headers.rb` regression uses real GCC16 UAPI
+The focused `tests/llvm-native-headers.py` regression uses real GCC16 UAPI
 dependencies and a work-directory link to an actual target SDK header.
 The native Support/TargetParser/Demangle archives remain static. `readelf` and
 `ldd` inspect the real compiled helper and its complete ELF dependency graph;
@@ -114,16 +126,23 @@ inputs and the unstripped target library on every query. Removing a completed
 build therefore invalidates that launcher even when its executable and the
 installed LLVM package remain unchanged. Do not remove entries from its receipt.
 
-After accepting the tool, use `seal-llvm-config.rb` with the original manifest
+After accepting the tool, use `seal-llvm-config.py` with the original manifest
 SHA256 from the preserved build/acceptance evidence:
 
 ```sh
-ruby seal-llvm-config.rb /absolute/accepted-helper ORIGINAL_MANIFEST_SHA256 \
+python3.15 seal-llvm-config.py /absolute/accepted-helper ORIGINAL_MANIFEST_SHA256 \
     /absolute/new-sealed-helper
-ruby ../tests/llvm-config-seal.rb /absolute/accepted-helper \
+python3.15 ../tests/llvm-config-seal.py /absolute/accepted-helper \
     ORIGINAL_MANIFEST_SHA256 /absolute/new-sealed-helper \
     /absolute/fresh-target-reference /absolute/new-seal-test-work
 ```
+
+
+The migration can compare all 16 query groups with an actual accepted host
+helper by replacing `TARGET_REFERENCE` with `--host-baseline BASELINE_HELPER`
+in the seal regression. This checks migration equivalence. It does not capture
+or execute a target program. A fresh amd64 target capture, Linux native
+runtime execution and the full Mesa consumer remain separate acceptance gates.
 
 The mandatory external hash authenticates the unchanged original manifest.
 The sealer requires the exact recorded local executable, generated report data,
@@ -147,14 +166,15 @@ original system/compiler library paths and inspection tools become historical
 inputs; the sealed manifest checks their retained copies. The target package's
 installed headers and LLVM DSO remain live inputs. This permits later removal
 of native compiler/build directories without falling back to another host GCC
-runtime. Darwin retains its existing system-library inspection and launcher.
+runtime. Darwin checks the native Mach-O architecture and permits only system DSOs.
+Its launcher executes that same checked native binary.
 
 The bounded Linux runtime contract needs no LLVM source or fabricated target
 metadata:
 
 ```sh
 HOST_CXX=/absolute/native-gcc16/bin/g++ \
-    ruby ../tests/llvm-native-runtime.rb /absolute/new-native-test-work
+    python3.15 ../tests/llvm-native-runtime.py /absolute/new-native-test-work
 ```
 
 It compiles and executes a real C++ threads/containers/exceptions program,
@@ -164,9 +184,11 @@ and repeats execution. Negative cases cover changed, missing or symlinked
 runtime files, directory escapes, foreign ELF machines and unsupported native
 triples. A real ELF also retains its interpreter as a direct dependency and
 passes closure copying and execution. On 2026-10-18 this contract passed 23
-checks on Linux amd64 with GCC16.2.0. It covers native runtime retention.
+checks on Linux amd64 with GCC16.2.0 in the former Ruby implementation.
+That result covers the recorded native runtime retention, not this Python
+migration. Repeat the migrated contract on Linux before Linux acceptance.
 
-The real Linux LLVM23 helper also passes 15 staged query/refusal checks.
+The recorded Ruby Linux LLVM23 helper passed 15 staged query/refusal checks.
 Two AArch64 EmberBSD VM captures of the exact SDK executable agree on all
 16 query groups before and after sealing. The seal contract passes 32
 integrity checks. Strict Memcheck covers all 16 metadata query kinds with
@@ -218,7 +240,7 @@ or constitute the required real target capture.
 Transfer the reference directory back with a verified archive hash. On the build host:
 
 ```sh
-ruby compare-llvm-config.rb /absolute/new-work /absolute/reference
+python3.15 compare-llvm-config.py /absolute/new-work /absolute/reference
 ```
 
 The comparison requires the helper to use a staged prefix, not a development

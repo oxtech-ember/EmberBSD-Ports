@@ -338,6 +338,11 @@ runtime behavior are validated.
   [Mesa26 package](profiles/common-graphics/cross/mesa-linux-aarch64.md) passes
   installed llvmpipe rendering, all 39 target invocations and package
   removal/reinstallation on this Linux/E34 stack.
+- [LLVM metadata host tools](profiles/common-graphics/cross/llvm-config.md):
+  Python 3.15 and explicit SDK API1 replace the Ruby build/test/seal chain.
+  Darwin builds retain the identical upstream executable and all 16 query groups.
+  Owned preflight sessions, integrity refusals and atomic publication pass.
+  New amd64 target captures, Linux execution and Mesa acceptance remain separate.
 - [Common graphics source packages](profiles/common-graphics/README.md):
   [libudev-bsd render-node discovery](profiles/common-graphics/cross/libudev-render-nodes.md)
   repairs DRM classification for KWin 6.8 with a real-source regression.

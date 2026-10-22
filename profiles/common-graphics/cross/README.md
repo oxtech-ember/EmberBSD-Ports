@@ -27,7 +27,7 @@ keeps Iris, VirGL, softpipe, llvmpipe and Zink, with the Intel libdrm module.
 Its LLVM metadata must bind `x86_64-unknown-netbsd`, native component `x86`
 and ELF machine 62 together. AArch64 keeps its V3D selection and native
 `aarch64` component. Both reject foreign or mixed target metadata.
-The host tests `tests/amd64-targets.rb` and `tests/llvm-targets.rb` cover these
+The host tests `tests/amd64-targets.rb` and `tests/llvm-targets.py` cover these
 selection guards. They do not establish an amd64 package build or GPU support.
 The older diagnostic and device-specific runners below retain their recorded
 AArch64 scope; this recipe extension does not qualify those runners on amd64.
