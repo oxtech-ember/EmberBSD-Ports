@@ -24,6 +24,12 @@ runtime behavior are validated.
   GCC16 package, all 114 upstream tests and installed scanner consumers pass.
   Instrumented memory execution and cross-package checks remain unverified.
 
+- [Electron GN cross inputs](probes/electron/README.md#gn-target-inputs):
+  production GN regressions preserve explicit NetBSD target readelf selection
+  and target pkgsrc metadata. Target and host assembler flags stay separate;
+  unset flags and ordinary metadata arguments remain unchanged.
+  Complete Electron builds and installed application acceptance remain pending.
+
 - [libxslt RVT ownership candidate](profiles/development-toolchain/libxslt-security.md):
   isolated GCC16 builds preserve public symbols and pass 747 upstream tests
   plus twelve API cases, eleven ownership/header checks and fourteen fresh-document

@@ -1,0 +1,24 @@
+$NetBSD$
+
+Forward assembler flags to the selected target and host GCC toolchains.
+Keep the two flag sets independent and preserve unset defaults.
+Origin: EmberBSD (AI-assisted), Chromium 152.0.7977.167; not submitted upstream.
+
+--- build/toolchain/linux/unbundle/BUILD.gn.orig
++++ build/toolchain/linux/unbundle/BUILD.gn
+@@ -18,6 +18,7 @@
+   ld = cxx
+ 
+   extra_cflags = getenv("CFLAGS")
++  extra_asmflags = getenv("ASFLAGS")
+   extra_cppflags = getenv("CPPFLAGS")
+   extra_cxxflags = getenv("CXXFLAGS")
+   extra_ldflags = getenv("LDFLAGS")
+@@ -36,6 +37,7 @@
+   ld = cxx
+ 
+   extra_cflags = getenv("BUILD_CFLAGS")
++  extra_asmflags = getenv("BUILD_ASFLAGS")
+   extra_cppflags = getenv("BUILD_CPPFLAGS")
+   extra_cxxflags = getenv("BUILD_CXXFLAGS")
+   extra_ldflags = getenv("BUILD_LDFLAGS")

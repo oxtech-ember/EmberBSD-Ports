@@ -44,9 +44,9 @@ not match Electron's pinned revision.
   1,641 patches. Five patch hunks need adaptation and fourteen targets are
   absent from the Electron tree. A dry run does not establish patch ordering or
   build correctness.
-- The NetBSD GCC16 toolchain and cross sysroot are available. Chromium's GN
-  target dispatch and the remaining NetBSD source adaptations still need a
-  successful generation and build.
+- The NetBSD GCC16 toolchain and cross sysroot are available. Focused production
+  GN checks retain explicit target ELF tools and target pkgsrc metadata.
+  Complete target compilation and linking remain separate acceptance gates.
 - No complete Chromium link, Electron runtime package, Blanc package, or target
   application acceptance run exists yet. Do not treat partial object builds as
   completion.
@@ -59,6 +59,66 @@ not match Electron's pinned revision.
   verifies source dispatch and locks. It does not verify native Electron
   startup or NetBSD media capture. Changes to these generic files require
   impact review for Windows and NetBSD.
+
+## GN target inputs
+
+The three source patches retain the exact Chromium pin above. Apply them after
+its NetBSD GN adaptations, from the Chromium source root:
+
+```sh
+patch -p0 -F 0 < /absolute/Ports/probes/electron/patches/gn-pkgconfig-libdir.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-readelf.patch
+patch -p0 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-asmflags.patch
+```
+
+The pkg-config patch keeps the effective `pkg/lib` value in the common cross
+arguments. The legacy target block cannot append a later `lib` value.
+Ordinary Linux, native, host wrapper and cached-result arguments stay unchanged.
+The unbundle patch requires `READELF` for a NetBSD cross toolchain. It forwards
+that value to the production shared-library wrapper. Native NetBSD, Linux and
+host toolchains retain their existing `readelf` fallback. It does not enable
+stripping or change the compiler selection. The assembler patch forwards
+`ASFLAGS` and `BUILD_ASFLAGS` to their respective toolchains. Select the target
+sysroot and other assembler flags through `ASFLAGS`. Unset values stay empty.
+
+Run the regressions with host CPython 3.15 and its standard library. Select an
+SDK API 1 source with `--sdk-source`. Each test checks the API and module origin.
+Commands, stable SHA256 hashes and JSON receipts use that SDK. Select the
+host GN and pkgconf explicitly. The sysroot must contain the real
+`gio-unix-2.0` and GTK3 metadata and their dependency closure. POSIX `patch`
+must be available on `PATH`. Each output path must be new and outside the
+selected source and sysroot.
+
+```sh
+python3.15 -E -S probes/electron/tests/gn-pkgconfig.py \
+  --sdk-source /absolute/EmberBSD-SDK \
+  --source /absolute/chromium/src --sysroot /absolute/target-sysroot \
+  --gn /absolute/host-gn --pkg-config /absolute/host-pkgconf \
+  /absolute/NEW_PKGCONFIG_WORK
+python3.15 -E -S probes/electron/tests/gn-readelf.py \
+  --sdk-source /absolute/EmberBSD-SDK \
+  --source /absolute/chromium/src --gn /absolute/host-gn \
+  --readelf /absolute/target-readelf --rustc /absolute/host-rustc \
+  /absolute/NEW_READELF_WORK
+```
+
+Both tests accept the original or already fixed source. They apply the carried
+patch in an isolated fixture and preserve source hashes and command receipts.
+The pkg-config test covers sixteen before/after cases. Real pkgconf queries
+resolve target gio/GTK paths; the existing cache case must make no pkgconf
+calls. The readelf test covers ten cases with production `gcc_toolchain.gni`
+and generated `solink` and assembly commands. It preserves host and native
+fallback and rejects a missing cross tool. A real `.S` graph input checks that
+target and host assembler markers stay separate. Unset assembler commands
+remain byte-identical. The selected host Rust compiler supplies only
+its `-V` result for an unrelated production GN version probe.
+
+These tests pass on macOS. The fixture supplies the E12 macOS cross profile
+explicitly; it does not depend on the machine that runs GN. Linux and native
+NetBSD values are controlled GN fixture inputs. They do not establish
+execution on those hosts. No target
+compilation, linking, Electron startup, package or media acceptance is claimed.
+The changes are AI-assisted EmberBSD patches and are not submitted upstream.
 
 ## Acceptance
 

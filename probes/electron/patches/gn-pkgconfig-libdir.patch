@@ -1,0 +1,21 @@
+$NetBSD$
+
+Keep one owner of the EmberBSD pkgsrc libdir argument.
+Preserve ordinary target, host wrapper and cached-result argument paths.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- build/config/linux/pkg_config.gni.orig
++++ build/config/linux/pkg_config.gni
+@@ -125,8 +125,10 @@
+   ]
+ }
+ 
+-# Only use the custom libdir when building with the target sysroot.
+-if (target_sysroot != "" && sysroot == target_sysroot) {
++# EmberBSD's common args already select its effective pkgsrc libdir.
++# Keep the ordinary target arguments and their cache keys unchanged.
++if (!_emberbsd_cross_pkg_config && target_sysroot != "" &&
++    sysroot == target_sysroot) {
+   pkg_config_args += [
+     "--system_libdir",
+     system_libdir,

@@ -1,0 +1,20 @@
+$NetBSD$
+
+Select the explicit target readelf for NetBSD cross toolchains.
+Keep native NetBSD, Linux and host toolchain defaults unchanged.
+Origin: EmberBSD (AI-assisted), Chromium 152.0.7977.167; not submitted upstream.
+
+diff --git a/build/toolchain/linux/unbundle/BUILD.gn b/build/toolchain/linux/unbundle/BUILD.gn
+--- a/build/toolchain/linux/unbundle/BUILD.gn
++++ b/build/toolchain/linux/unbundle/BUILD.gn
+@@ -9,4 +9,10 @@ gcc_toolchain("default") {
+   cxx = getenv("CXX")
+   ar = getenv("AR")
+   nm = getenv("NM")
++  # Do not use a host PATH executable to inspect cross-built NetBSD ELF files.
++  if (current_os == "netbsd" && host_os != "netbsd") {
++    readelf = getenv("READELF")
++    assert(readelf != "",
++           "cross-building for NetBSD requires READELF for the target toolchain")
++  }
+   ld = cxx
