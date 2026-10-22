@@ -49,6 +49,10 @@ AUTORECONF=/absolute/native-autoreconf GMAKE=/absolute/native-gmake \
 ```
 
 Set `EMBERBSD_ESPEAK_HOST=NEW_WORK/build/src/espeak-ng` in the cross MAKECONF.
+eSpeak NG depends on MBROLA 3.3, which uses the `gnu-agpl-v3` licence.
+pkgsrc builds it only after `ACCEPTABLE_LICENSES+= gnu-agpl-v3` in the
+MAKECONF. Without that line, the MBROLA, eSpeak NG, speech-dispatcher and
+Qt TextToSpeech builds stop at the licence check.
 The accepted generator host is macOS/arm64; generated integer tables require
 an explicit ABI check before accepting a different host. This limitation
 belongs to this data-generator recipe, not the general EmberBSD build system.
