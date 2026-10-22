@@ -132,7 +132,7 @@ static int test_function_copy_move_swap(const Functor& functor, int expected) {
   std::function<int()> copied = first;
   CHECK(copied() == expected);
   std::function<int()> moved = std::move(copied);
-  CHECK(!copied);
+  // The moved-from function has a valid but unspecified state.
   CHECK(moved() == expected);
   first.swap(moved);
   CHECK(first() == expected);
