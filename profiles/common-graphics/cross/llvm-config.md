@@ -20,6 +20,12 @@ ruby test-llvm-config.rb /absolute/new-work
 /absolute/new-work/bin/llvm-config --link-shared --shared-mode core orcjit native
 ```
 
+`scripts/build-llvm-config.sh` runs the build, the acceptance test and the
+seal in order with the same five inputs and a new `WORK`. It records the
+SHA256 of `inputs.sha256` in `WORK/manifest.sha256` directly after the build.
+The sealed tool is `WORK/sealed/bin/llvm-config`. Run the seal regression
+below separately with a fresh target reference.
+
 The source is the `llvm` subdirectory, not the llvm-project root. The two build
 directories must have matching LLVM 23.1.3 sources and completed generated
 metadata. Keep the input trees unchanged through building, acceptance and
