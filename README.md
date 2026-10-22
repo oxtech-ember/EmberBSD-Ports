@@ -147,6 +147,10 @@ runtime behavior are validated.
   AArch64 packages pass package checks; native upstream tests and installed
   library memory checks pass. Fourteen installed CLI memory/image cases also pass.
   Target execution and TIFF integration remain pending.
+- [Current spellchecking sources](profiles/common-graphics/cross/hunspell.md):
+  shared Hunspell 1.7.5 and the 2026.02.25 US dictionary retain their upstream
+  data interface and notices. Source checks pass; target package and runtime
+  acceptance remain separate.
 - [Libproxy curl option types](profiles/common-graphics/cross/libproxy.md):
   the common 0.5.12nb5 recipe preserves its option values and uses the required
   variadic `long` types. Actual-source GCC16 and focused native sanitizer checks

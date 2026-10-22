@@ -47,6 +47,11 @@ curl's variadic API. The actual GCC16 translation unit rejects the old arguments
 and accepts the fix. A native actual-source PAC downloader passes focused
 ASan/UBSan checks. Full installed target execution remains separate.
 
+[Current spellchecking sources](cross/hunspell.md) provide Hunspell 1.7.5 and
+the standard 2026.02.25 US dictionary for native and cross builds. Source archive,
+portability patch and dictionary inventory checks pass. Package and runtime
+acceptance remain separate for each target architecture.
+
 [iso-codes 4.20.1](cross/iso-codes-host-python.patch) follows the upstream
 Meson build and uses native Python only for source generation. It retains the
 eight JSON domains, their schemas, seven legacy XML interfaces and obsolete

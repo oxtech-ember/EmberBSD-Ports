@@ -1,0 +1,133 @@
+# Origin: NetBSD pkgsrc commit 1bedf455e3e247da842df45adc0f3e8c61f95be4.
+# EmberBSD AI-assisted adaptation uses official release assets and a current
+# upstream US English dictionary. Keep all upstream copyright notices.
+
+--- a/textproc/hunspell/Makefile
++++ b/textproc/hunspell/Makefile
+@@ -1,23 +1,24 @@
+-# $NetBSD: Makefile,v 1.46 2026/05/07 16:34:35 adam Exp $
++# $NetBSD: Makefile,v 1.49 2026/10/05 08:18:37 wiz Exp $
+ 
+-DISTNAME=	hunspell-1.7.3
++DISTNAME=	hunspell-1.7.5
+ CATEGORIES=	textproc
+ MASTER_SITES=	${MASTER_SITE_GITHUB:=hunspell/}
+-GITHUB_TAG=	v${PKGVERSION_NOREV}
++GITHUB_RELEASE=	v${PKGVERSION_NOREV}
+ 
+ MAINTAINER=	pkgsrc-users@NetBSD.org
+ HOMEPAGE=	https://hunspell.github.io/
+ COMMENT=	Improved spellchecker
+ LICENSE=	mpl-1.1 OR gnu-lgpl-v2.1 OR gnu-gpl-v2
+ 
+-USE_CXX_FEATURES=	c++11
+ USE_LIBTOOL=		yes
+-USE_TOOLS+=		pkg-config perl:run autoreconf autoconf automake autopoint
++USE_TOOLS+=		pkg-config perl:run autoreconf autoconf automake autopoint bash:test
+ USE_PKGLOCALEDIR=	yes
+ USE_LANGUAGES=		c c++
++USE_CXX_FEATURES=	c++14
+ GNU_CONFIGURE=		yes
+ CONFIGURE_ARGS+=	--with-ui
+ PKGCONFIG_OVERRIDE+=	hunspell.pc.in
++TEST_TARGET=		check
+ 
+ GCC_REQD+=		7
+ FAKE_NCURSES=		yes
+@@ -35,7 +36,8 @@
+ PLIST_SRC=		PLIST
+ PLIST_SUBST+=		DISTNAME=${DISTNAME}
+ 
+-REPLACE_PERL=	src/tools/ispellaff2myspell
++REPLACE_PERL+=	src/tools/ispellaff2myspell
++REPLACE_BASH+=	tests/test.sh
+ 
+ post-patch:
+ 	cd ${WRKSRC} && ${TOOLS_PATH.autoreconf} -v -i --force
+--- a/textproc/hunspell/PLIST
++++ b/textproc/hunspell/PLIST
+@@ -1,4 +1,4 @@
+-@comment $NetBSD: PLIST,v 1.9 2018/11/16 13:02:20 bsiegert Exp $
++@comment $NetBSD: PLIST,v 1.10 2026/09/30 09:10:08 adam Exp $
+ bin/affixcompress
+ bin/chmorph
+ bin/hunspell
+@@ -14,6 +14,7 @@
+ include/hunspell/atypes.hxx
+ include/hunspell/hunspell.h
+ include/hunspell/hunspell.hxx
++include/hunspell/hunversion.h
+ include/hunspell/hunvisapi.h
+ include/hunspell/w_char.hxx
+ lib/libhunspell-1.7.la
+--- a/textproc/hunspell/distinfo
++++ b/textproc/hunspell/distinfo
+@@ -1,11 +1,11 @@
+-$NetBSD: distinfo,v 1.19 2026/05/07 16:34:35 adam Exp $
++$NetBSD: distinfo,v 1.21 2026/10/05 08:06:11 wiz Exp $
+ 
+-BLAKE2s (hunspell-1.7.3.tar.gz) = b83173b9ea6ab62c11e4da75bce7ec2ef9e65d3f849d0b50e1504ef725e0e55a
+-SHA512 (hunspell-1.7.3.tar.gz) = f279ae2c7cd71edc2a1a5977e27426205d58f6520011dfdce702073e4ca6ab439b4618dde4482cdb5b8176650d7b97c1275038b6c749134251094a59ef5a919a
+-Size (hunspell-1.7.3.tar.gz) = 1036511 bytes
++BLAKE2s (hunspell-1.7.5.tar.gz) = b9df39369acc2fa59b21c444a422c5e061aaba1d8d8a17ad3330e3cdce93d553
++SHA512 (hunspell-1.7.5.tar.gz) = 17b83746fdca051579c3d4799cdcf19876d461ad29b9731904440c9e62ebc962978a9ccd388c460175aa9f15dc53d222c45a9cb390d96b1691a9c59f338f60ed
++Size (hunspell-1.7.5.tar.gz) = 1160183 bytes
++SHA1 (patch-configure.ac) = 9916f560fe6b3be4b999c9ba0a7639c84d3b6fcb
+ SHA1 (patch-aa) = 75bc2e099acf2bf3b1caba75b616ef38ee851b70
+ SHA1 (patch-ab) = 489e8e4f978ff531322a445612f836c2d90e4e64
+-SHA1 (patch-ac) = 869175eceeaba245ddda65ce6043eb243c6dd039
+-SHA1 (patch-configure.ac) = 9916f560fe6b3be4b999c9ba0a7639c84d3b6fcb
++SHA1 (patch-ac) = 9775f9f944ec533b91b4a4856e1ece7877ec7f7b
+ SHA1 (patch-src_parsers_latexparser.cxx) = 0107d2b015cb85de3d535524be4429f68692dc20
+ SHA1 (patch-src_tools_Makefile.am) = 4781ab63ffdd92236145918bb8800711a12b6dd0
+--- a/textproc/hunspell/patches/patch-ac
++++ b/textproc/hunspell/patches/patch-ac
+@@ -1,6 +1,6 @@
+-$NetBSD: patch-ac,v 1.3 2023/01/19 00:53:42 wiz Exp $
++$NetBSD: patch-src_hunspell_replist.cxx,v 1.1 2026/09/30 09:10:08 adam Exp $
+ 
+---- src/hunspell/replist.cxx.orig	2022-12-29 20:10:49.000000000 +0000
++--- src/hunspell/replist.cxx.orig	2026-09-27 15:18:58.000000000 +0000
+ +++ src/hunspell/replist.cxx
+ @@ -76,6 +76,15 @@
+  #include "replist.hxx"
+@@ -17,4 +17,4 @@
+ +
+  RepList::RepList(int n) {
+    dat.reserve(std::min(n, 16384));
+- }
++   can_use_trie = true;
+--- a/textproc/hunspell-en_US/Makefile
++++ b/textproc/hunspell-en_US/Makefile
+@@ -1,15 +1,15 @@
+ # $NetBSD: Makefile,v 1.5 2026/06/13 14:39:46 wiz Exp $
+ #
+ 
+-VERSION=	20060207
+-DISTNAME=	en_US
+-PKGNAME=	hunspell-en_US-${VERSION}
++VERSION=	2026.02.25
++DISTNAME=	hunspell-en_US-${VERSION}
++PKGNAME=	hunspell-en_US-${VERSION:S/.//g}
+ CATEGORIES=	textproc
+-MASTER_SITES=	http://ftp.services.openoffice.org/pub/OpenOffice.org/contrib/dictionaries/
++MASTER_SITES=	https://github.com/en-wl/wordlist/releases/download/rel-${VERSION}/
+ EXTRACT_SUFX=	.zip
+ 
+ MAINTAINER=	pkgsrc-users@NetBSD.org
+-HOMEPAGE=	https://wiki.services.openoffice.org/wiki/Dictionaries
++HOMEPAGE=	https://wordlist.aspell.net/dicts/
+ COMMENT=	US American English dictionaries for hunspell
+ 
+ DIST_SUBDIR=	hunspell-dictionaries/en_US-${VERSION}
+--- a/textproc/hunspell-en_US/distinfo
++++ b/textproc/hunspell-en_US/distinfo
+@@ -1,5 +1,5 @@
+ $NetBSD: distinfo,v 1.4 2021/10/26 11:22:06 nia Exp $
+ 
+-BLAKE2s (hunspell-dictionaries/en_US-20060207/en_US.zip) = c8353d1e20cecac891a1a6e506a2c392fd3a563ce3fa4c1da054c5bf7bf49be4
+-SHA512 (hunspell-dictionaries/en_US-20060207/en_US.zip) = 96297b103f581e479916e7b2183ec71dd390e01b6d5a9474f1a97bd4930610400d567ddc0610446ee1f4d90d1960362640e86fc3cdac20c718aa19c97d8e381b
+-Size (hunspell-dictionaries/en_US-20060207/en_US.zip) = 248417 bytes
++BLAKE2s (hunspell-dictionaries/en_US-2026.02.25/hunspell-en_US-2026.02.25.zip) = 9f63d216a0d74450289d0c09de118db33d032c5c09de062538502858d53dca13
++SHA512 (hunspell-dictionaries/en_US-2026.02.25/hunspell-en_US-2026.02.25.zip) = 59d1ced389f6f5db98a84c1d486a79bef07cc4323654bb6cee219d620c17bbb653b60ad9aefeeeaa158b600b00be11404c7ade244eef46b263d8a23c61ea06b7
++Size (hunspell-dictionaries/en_US-2026.02.25/hunspell-en_US-2026.02.25.zip) = 187271 bytes
