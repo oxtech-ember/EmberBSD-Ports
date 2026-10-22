@@ -42,8 +42,12 @@ metadata = {}
   query = lambda do |name|
     run.call(package + '-' + name, make + ['show-var', "VARNAME=#{name}"]).strip
   end
-  values = %w[PKGNAME PKG_FAIL_REASON WRKDIR WRKSRC ERROR_DIR CONFIGURE_ARGS CONFIGURE_ENV DEPENDS PATCHDIR DISTINFO_FILE].to_h { |name| [name, query.call(name)] }
+  values = %w[PKGNAME PKG_FAIL_REASON WRKDIR WRKSRC ERROR_DIR CONFIGURE_ARGS CONFIGURE_ENV DEPENDS PATCHDIR DISTINFO_FILE MAKE_FLAGS OPSYS USE_CROSS_COMPILE].to_h { |name| [name, query.call(name)] }
   abort 'Package metadata failed.' unless values['PKG_FAIL_REASON'].empty? && values['PKGNAME'] == package + '-47nb1'
+  if values['USE_CROSS_COMPILE'] == 'yes'
+    target_system_flag = 'uname=' + values['OPSYS']
+    abort 'XSPICE does not receive the target OS.' unless Shellwords.split(values['MAKE_FLAGS']).include?(target_system_flag)
+  end
   %w[WRKDIR WRKSRC ERROR_DIR].each do |name|
     path = File.expand_path(values[name])
     abort "Non-private #{name}" unless path.start_with?(work + '/')

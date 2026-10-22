@@ -30,6 +30,9 @@ PKGCONFIG_OVERRIDE+=	ngspice.pc.in
 
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:U:tl} == "yes"
+# XSPICE selects module linker flags from uname; pass the target through
+# recursive gmake calls so a Darwin host does not select Darwin flags.
+MAKE_FLAGS+=	uname=${OPSYS}
 # Preserve the complete native command, including its host-binutils prefix.
 CONFIGURE_ENV+=	CC_FOR_BUILD=${NATIVE_CC:Q}
 CONFIGURE_ENV+=	CFLAGS_FOR_BUILD=${NATIVE_CFLAGS:U-O2:Q}
