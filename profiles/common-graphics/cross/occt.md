@@ -39,7 +39,13 @@ complete stage. Draw resources remain unconditional, as in upstream CMake.
 Separate Draw-off and native packages remain unaccepted. The selected
 [installed STEP box contract](../../../probes/kicad/occt/tests/step.md) passes
 its independent volume and bounds checks and three negative controls in an
-AArch64 EmberBSD guest. Complete STEP assembly checks, Draw display behavior
-and a separate remove/reinstall lifecycle remain acceptance work.
+AArch64 EmberBSD guest. Normal package removal and reinstallation also pass.
+The reinstalled archive SHA256 is
+`93fe46c5b6935c65a5b9d446688f69db912a76747289c893ba43f1ec8ffb90dc`;
+its size is 56,093,486 bytes. All 7,906 installed payload entries match its
+bytes, modes and links. The package contents, build information and recipe
+version registration also match. Its payload is identical to the archive used
+for the four STEP cases. Complete STEP assembly checks and Draw display
+behavior remain acceptance work.
 Focused source and runtime checks retain their separate boundaries in
 [the analysis](../../../probes/kicad/occt/analysis.md).
