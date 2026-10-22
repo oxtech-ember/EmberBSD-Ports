@@ -1,11 +1,12 @@
 #!/usr/bin/env python3.15
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted), NSS 3.129 host-tool cross-link regression.
-"""Reproduce and check the NSS nsinstall host-link failure on macOS."""
+"""Check NSS cross target routing and the native nsinstall host helper."""
 import argparse
 import hashlib
 from pathlib import Path
 import shutil
+import stat
 import sys
 sys.dont_write_bytecode = True
 
@@ -79,7 +80,7 @@ def main():
         'source_root': str(source),
         'target': {'os': 'NetBSD', 'release': args.target_release,
                    'machine_arch': args.target_arch, 'cpu_arch': target_cpu},
-        'scope': 'Host nsinstall link routing only. No NSS target library, package, shlibsign, or FIPS acceptance.',
+        'scope': 'NetBSD target OS_ARCH routing, the upstream Darwin-only link guard, and native nsinstall helper only. No target NSS library/package, shlibsign, or FIPS acceptance.',
         'commands': commands,
         'status': 'running',
     }
@@ -121,6 +122,8 @@ def main():
             pkg / 'patches/patch-nss_coreconf_nsinstall_Makefile',
             source_coreconf / 'nsinstall/Makefile', source_coreconf / 'rules.mk',
             source / 'nss/cmd/shlibsign/Makefile',
+            source / 'nss/lib/freebl/config.mk',
+            source / 'nss/coreconf/arch.mk',
         ]
         input_hashes = {str(path): inventory.sha256_file(path) for path in initial_inputs}
         compiler_version = run('host-compiler-version', [host_cc, '--version'], cwd=work, expect='success')[1].decode('utf-8', 'replace')
@@ -143,7 +146,7 @@ def main():
             cwd=package_copy, input_data=recipe_delta, expect='success')
         modified_pkg = package_copy / 'devel/nss'
         recipe = (modified_pkg / 'Makefile').read_text(encoding='utf-8')
-        for required in ('PKGREVISION=\t\t1', 'OS_TARGET=${OPSYS:Q}',
+        for required in ('PKGREVISION=\t\t2', 'OS_TARGET=${OPSYS:Q}',
                          'OS_TARGET_RELEASE=${OS_VERSION:Q}', 'OS_TEST=${NSS_CPU_ARCH:Q}',
                          'NATIVE_FLAGS=${NATIVE_CFLAGS:Q}'):
             if required not in recipe:
@@ -187,7 +190,7 @@ def main():
                 [bmake, '-f', fixture, '-v', 'MAKE_FLAGS'], cwd=work, expect='success')[1].decode('utf-8').split()
             values = dict(token.split('=', 1) for token in expanded)
             for key, value in {'CROSS_COMPILE': '1', 'OS_TARGET': 'NetBSD',
-                               'OS_TARGET_RELEASE': args.target_release, 'OS_TEST': cpu,
+                               'OS_ARCH': 'NetBSD', 'OS_TARGET_RELEASE': args.target_release, 'OS_TEST': cpu,
                                'CPU_ARCH': cpu}.items():
                 if values.get(key) != value:
                     raise RuntimeError(f'Production cross recipe maps {arch} {key} to {values.get(key)!r}, expected {value!r}.')
@@ -202,6 +205,62 @@ def main():
             raise RuntimeError('The production cross stanza changed native MAKE_FLAGS.')
         receipt['recipe_target_metadata'] = target_metadata
         receipt['recipe_native_make_flags'] = native_flags
+
+        freebl_config_path = source / 'nss/lib/freebl/config.mk'
+        freebl_config = freebl_config_path.read_text(encoding='utf-8')
+        arch_path = source / 'nss/coreconf/arch.mk'
+        arch_lines = arch_path.read_text(encoding='utf-8').splitlines()
+        arch_assignments = [line for line in arch_lines if line.startswith('OS_ARCH :=')]
+        if len(arch_assignments) != 1 or 'uname -s' not in arch_assignments[0]:
+            raise RuntimeError('Cannot identify the upstream host OS_ARCH assignment in coreconf/arch.mk.')
+        host_arch_assignment = arch_assignments[0]
+        guard_start = freebl_config.find('ifeq ($(OS_ARCH), Darwin)\n')
+        guard_end = freebl_config.find('\nendif', guard_start)
+        if guard_start < 0 or guard_end < 0:
+            raise RuntimeError('Cannot find the upstream Darwin OS_ARCH guard in freebl/config.mk.')
+        darwin_guard = freebl_config[guard_start:guard_end + len('\nendif')] + '\n'
+        if '-dylib_file @executable_path/libplc4.dylib' not in darwin_guard or '-dylib_file @executable_path/libplds4.dylib' not in darwin_guard:
+            raise RuntimeError('The upstream Darwin guard does not contain the expected libfreebl linker flags.')
+        arch_values = target_metadata['amd64']
+        guard_cases = (
+            ('before-cross-netbsd', 'NetBSD', None, True),
+            ('after-cross-netbsd', 'NetBSD', arch_values['OS_ARCH'], False),
+            ('native-darwin', 'Darwin', None, True),
+        )
+        guard_results = {}
+        for label, os_target, os_arch_override, expect_darwin_flags in guard_cases:
+            fixture = work / ('freebl-' + label + '.mk')
+            fixture.write_text(
+                f'OS_TARGET={os_target}\nDIST=/target/dist\nEXTRA_SHARED_LIBS=\n'
+                + host_arch_assignment + '\n'
+                + darwin_guard
+                + '\n.PHONY: print-flags\nprint-flags:\n'
+                  '\t@printf \'%s|%s\\n\' "$(OS_ARCH)" "$(EXTRA_SHARED_LIBS)"\n',
+                encoding='utf-8')
+            make_argv = [gmake, '--no-print-directory', '-s', '-f', fixture, 'print-flags']
+            if os_arch_override is not None:
+                make_argv.append('OS_ARCH=' + os_arch_override)
+            output = run('freebl-' + label, make_argv, cwd=work,
+                         expect='success')[1].decode('utf-8', 'replace').strip()
+            output_arch, link_flags = output.split('|', 1)
+            has_darwin_flags = '-dylib_file' in link_flags
+            if has_darwin_flags != expect_darwin_flags:
+                raise RuntimeError(f'{label} produced unexpected Darwin linker flags: {link_flags!r}')
+            guard_results[label] = {
+                'OS_ARCH': output_arch,
+                'OS_TARGET': os_target,
+                'OS_ARCH_override_from_recipe': os_arch_override,
+                'darwin_dylib_flags': has_darwin_flags,
+                'link_flags': link_flags,
+            }
+        receipt['freebl_darwin_guard'] = {
+            'source': str(freebl_config_path),
+            'source_sha256': inventory.sha256_file(freebl_config_path),
+            'host_arch_source': str(arch_path),
+            'host_arch_source_sha256': inventory.sha256_file(arch_path),
+            'cases': guard_results,
+            'scope': 'Evaluates the exact upstream OS_ARCH guard. This does not build or accept target NSS libraries.',
+        }
 
         state_probe = work / 'pkgsrc-state-probe'
         (state_probe / 'nss').mkdir(parents=True)
@@ -271,6 +330,41 @@ def main():
                     raise RuntimeError('The selected native build helper is not a host Mach-O executable: ' + file_result)
                 results[variant]['file'] = file_result
                 run('host-binary-execution', [binary], cwd=work, expect=2)
+                if variant == 'after':
+                    copy_root = work / 'functional-copy'
+                    source_dir = copy_root / 'source'
+                    destination_dir = copy_root / 'destination'
+                    source_dir.mkdir(parents=True)
+                    destination_dir.mkdir()
+                    payload = b'nsinstall binary copy regression\x00\xff\r\n'
+                    source_file = source_dir / 'payload.bin'
+                    source_file.write_bytes(payload)
+                    source_file.chmod(0o600)
+                    run('functional-copy',
+                        [binary, '-m', '0640', source_file, destination_dir],
+                        cwd=work, expect='success')
+                    destination_file = destination_dir / source_file.name
+                    destination_stat = destination_file.lstat()
+                    copied_bytes = destination_file.read_bytes()
+                    copied_mode = stat.S_IMODE(destination_stat.st_mode)
+                    if not stat.S_ISREG(destination_stat.st_mode) or destination_file.is_symlink():
+                        raise RuntimeError('nsinstall output is not a regular, non-symlink file.')
+                    if copied_bytes != payload:
+                        raise RuntimeError('nsinstall copied bytes do not match the independent binary payload.')
+                    if copied_mode != 0o640:
+                        raise RuntimeError(f'nsinstall copied mode {copied_mode:o}, expected 640.')
+                    if source_file.read_bytes() != payload or stat.S_IMODE(source_file.stat().st_mode) != 0o600:
+                        raise RuntimeError('nsinstall changed the source payload or mode.')
+                    results[variant]['functional_copy'] = {
+                        'argv': [str(binary), '-m', '0640', str(source_file), str(destination_dir)],
+                        'source_sha256': inventory.sha256_file(source_file),
+                        'destination_sha256': inventory.sha256_file(destination_file),
+                        'payload_length': len(payload),
+                        'source_mode': format(stat.S_IMODE(source_file.stat().st_mode), '04o'),
+                        'destination_mode': format(copied_mode, '04o'),
+                        'regular_file': True,
+                        'symlink': False,
+                    }
         receipt['builds'] = results
 
         # The rules.mk condition must leave ordinary/native program links on the
@@ -299,7 +393,7 @@ def main():
         jsonio.write_json(work / 'receipt.json', receipt, exclusive=False)
         raise
     jsonio.write_json(work / 'receipt.json', receipt, exclusive=False)
-    print('PASS: pkgsrc delta, target flag failure, host nsinstall link, native-rule control; cross signing remains unverified')
+    print('PASS: target OS routing, Darwin link guard, native nsinstall copy/link, native-rule control; cross signing remains unverified')
     return 0
 
 

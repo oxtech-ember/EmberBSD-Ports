@@ -138,13 +138,15 @@ hardcoded base-tool paths remains pending.
 OpenSSL cross builds select complete upstream BSD targets instead of the
 build host's uname; the [cross checks](cross/README.md) keep package and runtime acceptance separate.
 
-The NSS 3.129 cross recipe selects the NetBSD target OS, release and CPU while
-building nsinstall with the native compiler. Its narrow link branch removes target
+The NSS 3.129 cross recipe selects the NetBSD target OS, architecture, release and
+CPU. It builds nsinstall with the native compiler. Its narrow link branch removes target
 linker flags and libraries only for that host helper. The
 [host-tool regression](tests/nss-cross-host-tools.py) checks both target CPU mappings,
-the native recipe path and a real Darwin link before and after the patch. It does not
-build or accept target NSS libraries. The upstream cross .chk skip remains; this
-does not establish shlibsign or FIPS acceptance.
+the native recipe path and a real Darwin link before and after the patch. It evaluates
+the upstream `freebl/config.mk` Darwin guard with native and cross OS settings. It also
+copies a binary payload with `nsinstall` and checks its bytes, hash, file type and mode.
+It does not build or accept target NSS libraries. The upstream cross .chk skip remains;
+this does not establish shlibsign or FIPS acceptance.
 
 
 The [cross Libtool path check](cross/libtool-runtime-paths.md) repairs an SDK
