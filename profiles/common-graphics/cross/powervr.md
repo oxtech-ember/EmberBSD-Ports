@@ -5,6 +5,8 @@ ICD. MesaLib 26.2.4nb5 added it. From nb10, it is not a package option.
 MesaLib 26.2.5 contains the upstream PCO fix for the workgroup barrier
 race when a loop uses the barrier again. The BVNC and IDFWDF patches
 apply to 26.2.5 without changes.
+From 26.2.5nb1, the same package also contains the V3D Vulkan ICD
+(`lib/libvulkan_broadcom.so` and `share/vulkan/icd.d/broadcom_icd.json`).
 The package retains V3D, VirGL, softpipe, llvmpipe,
 X11, Wayland, EGL, GBM and the shared LLVM 23.1.3 provider.
 The installed Vulkan loader now enumerates the physical GPU on Zero 3W.

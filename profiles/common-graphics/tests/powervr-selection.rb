@@ -29,7 +29,7 @@ run = lambda do |name, *args, valid: true|
     out
 end
 check = lambda { |condition, message| abort "FAIL: #{message}" unless condition; puts "PASS: #{message}" }
-vars = %w[PKG_FAIL_REASON PKGNAME PKG_OPTIONS PKG_SUPPORTED_OPTIONS MESON_ARGS MESON_NATIVE_ARGS _EMBERBSD_MESA_NATIVE PLIST.powervr DEPENDS]
+vars = %w[PKG_FAIL_REASON PKGNAME PKG_OPTIONS PKG_SUPPORTED_OPTIONS MESON_ARGS MESON_NATIVE_ARGS _EMBERBSD_MESA_NATIVE PLIST.powervr PLIST.v3d DEPENDS]
 query = lambda do |name, options, *overrides|
     text = run.call(name, 'show-vars', 'VARNAMES=' + vars.join(' '), 'PKG_OPTIONS.MesaLib=' + options, *overrides)
     lines = text.lines.map(&:chomp)
@@ -37,9 +37,9 @@ query = lambda do |name, options, *overrides|
     vars.zip(lines).to_h
 end
 pvr = query.call('default', 'llvm x11 wayland')
-check.call(pvr.fetch('PKG_FAIL_REASON').empty? && pvr.fetch('PKGNAME') == 'MesaLib-26.2.5', 'the default AArch64 package selects PowerVR')
+check.call(pvr.fetch('PKG_FAIL_REASON').empty? && pvr.fetch('PKGNAME') == 'MesaLib-26.2.5nb1', 'the default AArch64 package selects PowerVR')
 check.call(!pvr.fetch('PKG_SUPPORTED_OPTIONS').split.include?('powervr'), 'PowerVR is not a package option')
-%w[-Dgallium-drivers=v3d,virgl,softpipe,llvmpipe,zink -Dplatforms=x11,wayland -Dllvm=enabled -Dshared-llvm=enabled -Dvulkan-drivers=imagination -Dmesa-clc=system -Dprecomp-compiler=system -Dimagination-srv=false].each do |option|
+%w[-Dgallium-drivers=v3d,virgl,softpipe,llvmpipe,zink -Dplatforms=x11,wayland -Dllvm=enabled -Dshared-llvm=enabled -Dvulkan-drivers=imagination,broadcom -Dmesa-clc=system -Dprecomp-compiler=system -Dimagination-srv=false].each do |option|
     check.call(pvr.fetch('MESON_ARGS').split.include?(option), "keeps #{option}")
 end
 loader = 'vulkan-loader>=1.4.357.0:../../graphics/vulkan-loader'
@@ -57,6 +57,9 @@ plist = File.readlines(tree + '/graphics/MesaLib/PLIST', chomp: true)
 check.call(%w[lib/dri/zink_dri.so share/drirc.d/00-zink-defaults.conf].all? { |path| plist.include?(path) }, 'Zink DRI module and defaults have unconditional package ownership')
 complete = lambda { |lines| payload.all? { |path| lines.include?('${PLIST.powervr}' + path) && !lines.include?(path) } }
 check.call(complete.call(plist), 'all three PowerVR files have AArch64 package ownership')
+check.call(pvr.fetch('PLIST.v3d') == 'yes', 'the AArch64 package owns the V3D payload')
+v3dv = %w[lib/libvulkan_broadcom.so share/vulkan/icd.d/broadcom_icd.json]
+check.call(v3dv.all? { |path| plist.include?('${PLIST.v3d}' + path) && !plist.include?(path) }, 'both V3D Vulkan files have AArch64 package ownership')
 missing_defaults = plist.reject { |line| line == '${PLIST.powervr}share/drirc.d/00-pvr-defaults.conf' }
 check.call(!complete.call(missing_defaults), 'causal missing driver defaults fails the payload oracle')
 native = pvr.fetch('_EMBERBSD_MESA_NATIVE')
@@ -71,7 +74,7 @@ check.call(invalid.fetch('PKG_FAIL_REASON').include?('sealed EMBERBSD_MESA_GENER
 # A causal prior recipe without the PowerVR ICD cannot satisfy this oracle.
 recipe = File.read(tree + '/graphics/MesaLib/Makefile')
 old = work + '/Makefile-old'
-File.write(old, recipe.sub('-Dvulkan-drivers=imagination', '-Dvulkan-drivers='))
+File.write(old, recipe.sub('-Dvulkan-drivers=imagination,broadcom', '-Dvulkan-drivers='))
 text = run.call('disabled-icd-control', '-f', old, 'show-var', 'VARNAME=MESON_ARGS', 'PKG_OPTIONS.MesaLib=llvm x11 wayland')
-check.call(!text.split.include?('-Dvulkan-drivers=imagination'), 'causal disabled-ICD control fails the feature oracle')
+check.call(!text.split.include?('-Dvulkan-drivers=imagination,broadcom'), 'causal disabled-ICD control fails the feature oracle')
 puts 'PASS: real pkgsrc default selection, native file, production receipt check and causal disabled-ICD control'

@@ -2,6 +2,7 @@
 # Origin: EmberBSD; AI-assisted bounded NetBSD 11/AArch64 and amd64 candidate.
 DISTNAME=	mesa-26.2.5
 PKGNAME=	${DISTNAME:S/mesa/MesaLib/}
+PKGREVISION=	1
 CATEGORIES=	graphics
 MASTER_SITES=	https://archive.mesa3d.org/
 EXTRACT_SUFX=	.tar.xz
@@ -31,8 +32,8 @@ TOOLS_PLATFORM.flex=	${TOOLBASE}/bin/flex
 .if !defined(EMBERBSD_COMMON_GRAPHICS)
 PKG_FAIL_REASON+= "Mesa requires the prepared common graphics profile"
 .endif
-.if ${DISTNAME} != "mesa-26.2.5" || ${PKGREVISION:U0} != "0"
-PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.5"
+.if ${DISTNAME} != "mesa-26.2.5" || ${PKGREVISION} != "1"
+PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.5nb1"
 .endif
 TOOL_DEPENDS+=	${PYPKGPREFIX}-mako>=1.4.3:../../devel/py-mako
 TOOL_DEPENDS+=	${PYPKGPREFIX}-packaging-[0-9]*:../../devel/py-packaging
@@ -53,8 +54,8 @@ _EMBERBSD_MESA_LLVM_TRIPLE=	x86_64-unknown-netbsd
 BUILDLINK_API_DEPENDS.libdrm+=	libdrm>=2.4.134nb3
 .else
 MESON_ARGS+=	-Dgallium-drivers=v3d,virgl,softpipe,llvmpipe,zink
-# One AArch64 package serves all boards. It always contains the PowerVR ICD.
-MESON_ARGS+=	-Dvulkan-drivers=imagination -Dimagination-srv=false
+# One AArch64 package serves all boards. It contains the PowerVR and V3D ICDs.
+MESON_ARGS+=	-Dvulkan-drivers=imagination,broadcom -Dimagination-srv=false
 MESON_ARGS+=	-Dimagination-uscgen-devices= -Dvulkan-manifest-per-architecture=false
 PLIST.v3d=	yes
 PLIST.powervr=	yes
