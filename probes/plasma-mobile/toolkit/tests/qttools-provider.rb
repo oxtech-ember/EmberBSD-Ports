@@ -18,6 +18,7 @@ end
 args, ok = run.call('recipe', ENV.fetch('BMAKE', 'bmake'), '-C', "#{tree}/devel/qt6-qttools",
   "MAKECONF=#{conf}", '-V', '${CMAKE_CONFIGURE_ARGS}')
 abort 'recipe does not require the common HTML provider' unless ok && Shellwords.split(args).include?('-DQLITEHTML_USE_SYSTEM_LITEHTML=ON')
+abort 'recipe does not disable target QDoc and libclang' unless (%w[-DFEATURE_clang=OFF -DFEATURE_qdoc=OFF] - Shellwords.split(args)).empty?
 input = "#{source}/src/assistant/qlitehtml/src/CMakeLists.txt"
 body = File.read(input)[/^option\(QLITEHTML_USE_SYSTEM_LITEHTML.*?^endif\(\)/m]
 abort 'upstream provider selection changed' unless body && body.include?('find_package(litehtml REQUIRED CONFIG)')
@@ -43,8 +44,8 @@ assistant = "#{sysroot}/usr/pkg/qt6/bin/assistant"
 qdoc = "#{sysroot}/usr/pkg/qt6/bin/qdoc"
 headers, ok = run.call('assistant-elf', readelf, '-h', '-d', assistant)
 abort 'Assistant is not AArch64 with the common shared litehtml' unless ok && headers.include?('AArch64') && headers.match?(/NEEDED.*\[liblitehtml\.so\.0\]/)
-headers, ok = run.call('qdoc-elf', readelf, '-h', '-d', qdoc)
-abort 'full target QDoc/libclang missing' unless ok && headers.include?('AArch64') && headers.match?(/NEEDED.*\[libclang\.so/)
-inputs = [__FILE__, input, assistant, qdoc, "#{tree}/devel/qt6-qttools/Makefile"]
+abort 'Assistant requires Clang or LLVM' if headers.match?(/NEEDED.*\[lib(clang|LLVM)/)
+abort 'target QDoc is installed' if File.exist?(qdoc) || File.symlink?(qdoc)
+inputs = [__FILE__, input, assistant, "#{tree}/devel/qt6-qttools/Makefile"]
 File.write("#{work}/inputs.sha256", inputs.map { |p| "#{Digest::SHA256.file(p).hexdigest}  #{p}\n" }.join)
-puts 'PASS: installed target Assistant uses shared litehtml; Clang-backed target QDoc is present; target runtime is separate'
+puts 'PASS: installed target Assistant uses shared litehtml; target QDoc and libclang are absent; target runtime is separate'

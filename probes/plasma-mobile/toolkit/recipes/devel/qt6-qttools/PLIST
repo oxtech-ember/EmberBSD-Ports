@@ -18,7 +18,6 @@ qt6/bin/pixeltool
 ${PLIST.qt6dbus}qt6/bin/qdbus
 ${PLIST.qt6dbus}qt6/bin/qdbusviewer
 qt6/bin/qdistancefieldgenerator
-qt6/bin/qdoc
 qt6/bin/qtdiag
 qt6/bin/qtdiag6
 qt6/bin/qtplugininfo

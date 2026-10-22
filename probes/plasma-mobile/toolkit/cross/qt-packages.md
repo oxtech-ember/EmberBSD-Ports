@@ -99,14 +99,22 @@ frames, end of media, restart and rejected invalid input with FFmpeg 9.0.2.
 Quick3D passes host OBJ import and generated QML bytecode; target Quick3D scenes
 and spatial audio remain unaccepted.
 
-QtTools retains Designer, Assistant, Help, UiTools, Linguist and Clang-backed
-QDoc. Assistant requires the common shared litehtml provider. The
+QtTools `6.12.0nb3` retains Designer, Assistant, Help, UiTools and Linguist.
+It does not build target QDoc. QDoc was the only libclang consumer. Thus the
+runtime package has no Clang dependency and does not pull the LLVM SDK into
+desktop closures. Lupdate keeps its built-in C++ parser. The package also
+depends directly on zstd, because Designer resource compression uses libzstd.
+Assistant requires the common shared litehtml provider. The
 [provider regression](../tests/qttools-provider.rb) rejects silent bundled
-fallback and checks installed ELF dependencies. The unchanged
-[QDoc consumer](../tests/qdoc/run.sh) generates C++ class and member HTML,
-checks index content and rejects missing configuration on EmberBSD. This does
-not accept Assistant or Designer windows. Native QDoc uses the same LLVM/Clang
-23.1.3 release and passes host documentation generation.
+fallback and checks installed ELF dependencies. This does not accept Assistant
+or Designer windows.
+
+The earlier `6.12.0nb2` package above contained Clang-backed target QDoc. The
+unchanged [QDoc consumer](../tests/qdoc/run.sh) passed with that package on
+EmberBSD. It generates C++ class and member HTML, checks index content and
+rejects missing configuration. Target QDoc is not available from `nb3`. Native
+QDoc uses the same LLVM/Clang 23.1.3 release and passes host documentation
+generation.
 
 ## Analysis and dependency limits
 

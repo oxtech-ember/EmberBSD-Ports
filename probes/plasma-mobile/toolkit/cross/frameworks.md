@@ -31,7 +31,7 @@ KWidgetsAddons additionally needs the complete target QtTools package for its
 Designer plugin; Linguist alone is insufficient. Its full package and
 [54 installed widget API cases](models-and-jobs.md#widget-apis-and-the-designer-plugin)
 now pass. Native builds use their normal QtTools build dependency. This does
-not replace the full QtTools target package or its QDoc/Clang acceptance.
+not replace the full QtTools target package acceptance.
 
 ```sh
 BMAKE=/absolute/native/bmake MAKECONF=/absolute/cross-mk.conf \
