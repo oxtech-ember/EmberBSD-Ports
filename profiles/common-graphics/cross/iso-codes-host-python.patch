@@ -1,8 +1,384 @@
+# Origin: EmberBSD (AI-assisted). Use current iso-codes with build-host generators.
+# Follow upstream Meson and preserve locale, JSON, XML and obsolete-name interfaces.
+
 --- a/textproc/iso-codes/Makefile
 +++ b/textproc/iso-codes/Makefile
-@@ -26,1 +26,1 @@
+@@ -1,6 +1,6 @@
+ # $NetBSD: Makefile,v 1.68 2024/02/23 13:31:47 nros Exp $
+ 
+-DISTNAME=	iso-codes-v4.16.0
++DISTNAME=	iso-codes-v4.20.1
+ PKGNAME=	${DISTNAME:S/v//}
+ CATEGORIES=	textproc
+ MASTER_SITES=	https://salsa.debian.org/iso-codes-team/iso-codes/-/archive/v${PKGVERSION_NOREV}/
+@@ -11,33 +11,14 @@
+ COMMENT=	List of country, language and currency names
+ LICENSE=	gnu-lgpl-v2.1
+ 
++# Source generators execute only on the build host.
+ USE_LANGUAGES=		# empty
+ USE_PKGLOCALEDIR=	yes
+-USE_TOOLS+=		gmake msgfmt
+-GNU_CONFIGURE=		yes
+-PKGCONFIG_OVERRIDE=	iso-codes.pc.in
++USE_TOOLS+=		msgfmt msgmerge xgettext
++PYTHON_FOR_BUILD_ONLY=	tool
++REPLACE_TOOL_PYTHON+=	scripts/check_valid_utf8.py
++REPLACE_TOOL_PYTHON+=	scripts/xml_from_json.py
+ 
+-REPLACE_PYTHON+=	bin/check_valid_utf8.py
+-REPLACE_PYTHON+=	bin/pot_from_json.py
+-REPLACE_PYTHON+=	bin/validate_json_data.py
+-REPLACE_PYTHON+=	bin/xml_from_json.py
+-
+-SUBST_CLASSES+=		python3
 -SUBST_SED.python3+=	-e "s,python3,${PYTHONBIN},"
-+SUBST_SED.python3+=	-e "s,python3,${TOOL_PYTHONBIN},"
-@@ -39,1 +39,1 @@
+-SUBST_FILES.python3+=	common.mk
+-SUBST_FILES.python3+=	iso_15924/Makefile.in
+-SUBST_FILES.python3+=	iso_3166-1/Makefile.in
+-SUBST_FILES.python3+=	iso_3166-2/Makefile.in
+-SUBST_FILES.python3+=	iso_3166-3/Makefile.in
+-SUBST_FILES.python3+=	iso_4217/Makefile.in
+-SUBST_FILES.python3+=	iso_639-2/Makefile.in
+-SUBST_FILES.python3+=	iso_639-3/Makefile.in
+-SUBST_FILES.python3+=	iso_639-5/Makefile.in
+-SUBST_STAGE.python3=	pre-configure
+-SUBST_MESSAGE.python3=	Fixing path to python binary.
+-
 -PYTHON_FOR_BUILD_ONLY=		yes
-+PYTHON_FOR_BUILD_ONLY=		tool
+-
+-.include "../../lang/python/batteries-included.mk"
+ .include "../../lang/python/application.mk"
++.include "../../devel/meson/build.mk"
+ .include "../../mk/bsd.pkg.mk"
+--- a/textproc/iso-codes/PLIST
++++ b/textproc/iso-codes/PLIST
+@@ -79,8 +79,19 @@
+ share/locale/az/LC_MESSAGES/iso_639-3.mo
+ share/locale/az/LC_MESSAGES/iso_639.mo
+ share/locale/az/LC_MESSAGES/iso_639_3.mo
++share/locale/ba/LC_MESSAGES/iso_15924.mo
+ share/locale/ba/LC_MESSAGES/iso_3166-1.mo
++share/locale/ba/LC_MESSAGES/iso_3166-2.mo
++share/locale/ba/LC_MESSAGES/iso_3166-3.mo
+ share/locale/ba/LC_MESSAGES/iso_3166.mo
++share/locale/ba/LC_MESSAGES/iso_3166_2.mo
++share/locale/ba/LC_MESSAGES/iso_4217.mo
++share/locale/ba/LC_MESSAGES/iso_639-2.mo
++share/locale/ba/LC_MESSAGES/iso_639-3.mo
++share/locale/ba/LC_MESSAGES/iso_639-5.mo
++share/locale/ba/LC_MESSAGES/iso_639.mo
++share/locale/ba/LC_MESSAGES/iso_639_3.mo
++share/locale/ba/LC_MESSAGES/iso_639_5.mo
+ share/locale/bar/LC_MESSAGES/iso_3166-1.mo
+ share/locale/bar/LC_MESSAGES/iso_3166.mo
+ share/locale/be/LC_MESSAGES/iso_15924.mo
+@@ -130,8 +141,10 @@
+ share/locale/bn_IN/LC_MESSAGES/iso_3166.mo
+ share/locale/br/LC_MESSAGES/iso_15924.mo
+ share/locale/br/LC_MESSAGES/iso_3166-1.mo
++share/locale/br/LC_MESSAGES/iso_3166-2.mo
+ share/locale/br/LC_MESSAGES/iso_3166-3.mo
+ share/locale/br/LC_MESSAGES/iso_3166.mo
++share/locale/br/LC_MESSAGES/iso_3166_2.mo
+ share/locale/br/LC_MESSAGES/iso_4217.mo
+ share/locale/br/LC_MESSAGES/iso_639-2.mo
+ share/locale/br/LC_MESSAGES/iso_639-3.mo
+@@ -170,8 +183,11 @@
+ share/locale/ch/LC_MESSAGES/iso_3166.mo
+ share/locale/chr/LC_MESSAGES/iso_3166-1.mo
+ share/locale/chr/LC_MESSAGES/iso_3166.mo
++share/locale/ckb/LC_MESSAGES/iso_15924.mo
+ share/locale/ckb/LC_MESSAGES/iso_3166-1.mo
+ share/locale/ckb/LC_MESSAGES/iso_3166.mo
++share/locale/ckb/LC_MESSAGES/iso_639-3.mo
++share/locale/ckb/LC_MESSAGES/iso_639_3.mo
+ share/locale/crh/LC_MESSAGES/iso_3166-1.mo
+ share/locale/crh/LC_MESSAGES/iso_3166-2.mo
+ share/locale/crh/LC_MESSAGES/iso_3166-3.mo
+@@ -417,9 +433,13 @@
+ share/locale/he/LC_MESSAGES/iso_639-3.mo
+ share/locale/he/LC_MESSAGES/iso_639.mo
+ share/locale/he/LC_MESSAGES/iso_639_3.mo
++share/locale/hi/LC_MESSAGES/iso_15924.mo
+ share/locale/hi/LC_MESSAGES/iso_3166-1.mo
++share/locale/hi/LC_MESSAGES/iso_3166-2.mo
+ share/locale/hi/LC_MESSAGES/iso_3166-3.mo
+ share/locale/hi/LC_MESSAGES/iso_3166.mo
++share/locale/hi/LC_MESSAGES/iso_3166_2.mo
++share/locale/hi/LC_MESSAGES/iso_4217.mo
+ share/locale/hi/LC_MESSAGES/iso_639-2.mo
+ share/locale/hi/LC_MESSAGES/iso_639-3.mo
+ share/locale/hi/LC_MESSAGES/iso_639-5.mo
+@@ -535,6 +555,7 @@
+ share/locale/kab/LC_MESSAGES/iso_15924.mo
+ share/locale/kab/LC_MESSAGES/iso_3166-1.mo
+ share/locale/kab/LC_MESSAGES/iso_3166-2.mo
++share/locale/kab/LC_MESSAGES/iso_3166-3.mo
+ share/locale/kab/LC_MESSAGES/iso_3166.mo
+ share/locale/kab/LC_MESSAGES/iso_3166_2.mo
+ share/locale/kab/LC_MESSAGES/iso_4217.mo
+@@ -746,6 +767,19 @@
+ share/locale/or/LC_MESSAGES/iso_639-3.mo
+ share/locale/or/LC_MESSAGES/iso_639.mo
+ share/locale/or/LC_MESSAGES/iso_639_3.mo
++share/locale/ota/LC_MESSAGES/iso_15924.mo
++share/locale/ota/LC_MESSAGES/iso_3166-1.mo
++share/locale/ota/LC_MESSAGES/iso_3166-2.mo
++share/locale/ota/LC_MESSAGES/iso_3166-3.mo
++share/locale/ota/LC_MESSAGES/iso_3166.mo
++share/locale/ota/LC_MESSAGES/iso_3166_2.mo
++share/locale/ota/LC_MESSAGES/iso_4217.mo
++share/locale/ota/LC_MESSAGES/iso_639-2.mo
++share/locale/ota/LC_MESSAGES/iso_639-3.mo
++share/locale/ota/LC_MESSAGES/iso_639-5.mo
++share/locale/ota/LC_MESSAGES/iso_639.mo
++share/locale/ota/LC_MESSAGES/iso_639_3.mo
++share/locale/ota/LC_MESSAGES/iso_639_5.mo
+ share/locale/pa/LC_MESSAGES/iso_3166-1.mo
+ share/locale/pa/LC_MESSAGES/iso_3166-3.mo
+ share/locale/pa/LC_MESSAGES/iso_3166.mo
+@@ -785,8 +819,10 @@
+ share/locale/ps/LC_MESSAGES/iso_639_3.mo
+ share/locale/pt/LC_MESSAGES/iso_15924.mo
+ share/locale/pt/LC_MESSAGES/iso_3166-1.mo
++share/locale/pt/LC_MESSAGES/iso_3166-2.mo
+ share/locale/pt/LC_MESSAGES/iso_3166-3.mo
+ share/locale/pt/LC_MESSAGES/iso_3166.mo
++share/locale/pt/LC_MESSAGES/iso_3166_2.mo
+ share/locale/pt/LC_MESSAGES/iso_4217.mo
+ share/locale/pt/LC_MESSAGES/iso_639-2.mo
+ share/locale/pt/LC_MESSAGES/iso_639-3.mo
+@@ -871,8 +907,10 @@
+ share/locale/sk/LC_MESSAGES/iso_4217.mo
+ share/locale/sk/LC_MESSAGES/iso_639-2.mo
+ share/locale/sk/LC_MESSAGES/iso_639-3.mo
++share/locale/sk/LC_MESSAGES/iso_639-5.mo
+ share/locale/sk/LC_MESSAGES/iso_639.mo
+ share/locale/sk/LC_MESSAGES/iso_639_3.mo
++share/locale/sk/LC_MESSAGES/iso_639_5.mo
+ share/locale/sl/LC_MESSAGES/iso_15924.mo
+ share/locale/sl/LC_MESSAGES/iso_3166-1.mo
+ share/locale/sl/LC_MESSAGES/iso_3166-2.mo
+@@ -1036,9 +1074,19 @@
+ share/locale/tzm/LC_MESSAGES/iso_4217.mo
+ share/locale/tzm/LC_MESSAGES/iso_639-2.mo
+ share/locale/tzm/LC_MESSAGES/iso_639.mo
++share/locale/ug/LC_MESSAGES/iso_15924.mo
+ share/locale/ug/LC_MESSAGES/iso_3166-1.mo
++share/locale/ug/LC_MESSAGES/iso_3166-2.mo
+ share/locale/ug/LC_MESSAGES/iso_3166-3.mo
+ share/locale/ug/LC_MESSAGES/iso_3166.mo
++share/locale/ug/LC_MESSAGES/iso_3166_2.mo
++share/locale/ug/LC_MESSAGES/iso_4217.mo
++share/locale/ug/LC_MESSAGES/iso_639-2.mo
++share/locale/ug/LC_MESSAGES/iso_639-3.mo
++share/locale/ug/LC_MESSAGES/iso_639-5.mo
++share/locale/ug/LC_MESSAGES/iso_639.mo
++share/locale/ug/LC_MESSAGES/iso_639_3.mo
++share/locale/ug/LC_MESSAGES/iso_639_5.mo
+ share/locale/uk/LC_MESSAGES/iso_15924.mo
+ share/locale/uk/LC_MESSAGES/iso_3166-1.mo
+ share/locale/uk/LC_MESSAGES/iso_3166-2.mo
+@@ -1109,8 +1157,10 @@
+ share/locale/zh_CN/LC_MESSAGES/iso_4217.mo
+ share/locale/zh_CN/LC_MESSAGES/iso_639-2.mo
+ share/locale/zh_CN/LC_MESSAGES/iso_639-3.mo
++share/locale/zh_CN/LC_MESSAGES/iso_639-5.mo
+ share/locale/zh_CN/LC_MESSAGES/iso_639.mo
+ share/locale/zh_CN/LC_MESSAGES/iso_639_3.mo
++share/locale/zh_CN/LC_MESSAGES/iso_639_5.mo
+ share/locale/zh_HK/LC_MESSAGES/iso_15924.mo
+ share/locale/zh_HK/LC_MESSAGES/iso_3166-1.mo
+ share/locale/zh_HK/LC_MESSAGES/iso_3166-3.mo
+@@ -1118,10 +1168,6 @@
+ share/locale/zh_HK/LC_MESSAGES/iso_4217.mo
+ share/locale/zh_HK/LC_MESSAGES/iso_639-2.mo
+ share/locale/zh_HK/LC_MESSAGES/iso_639.mo
+-share/locale/zh_Hans/LC_MESSAGES/iso_639-5.mo
+-share/locale/zh_Hans/LC_MESSAGES/iso_639_5.mo
+-share/locale/zh_Hant/LC_MESSAGES/iso_639-5.mo
+-share/locale/zh_Hant/LC_MESSAGES/iso_639_5.mo
+ share/locale/zh_TW/LC_MESSAGES/iso_15924.mo
+ share/locale/zh_TW/LC_MESSAGES/iso_3166-1.mo
+ share/locale/zh_TW/LC_MESSAGES/iso_3166-2.mo
+@@ -1131,8 +1177,10 @@
+ share/locale/zh_TW/LC_MESSAGES/iso_4217.mo
+ share/locale/zh_TW/LC_MESSAGES/iso_639-2.mo
+ share/locale/zh_TW/LC_MESSAGES/iso_639-3.mo
++share/locale/zh_TW/LC_MESSAGES/iso_639-5.mo
+ share/locale/zh_TW/LC_MESSAGES/iso_639.mo
+ share/locale/zh_TW/LC_MESSAGES/iso_639_3.mo
++share/locale/zh_TW/LC_MESSAGES/iso_639_5.mo
+ share/locale/zu/LC_MESSAGES/iso_3166-1.mo
+ share/locale/zu/LC_MESSAGES/iso_3166-3.mo
+ share/locale/zu/LC_MESSAGES/iso_3166.mo
+@@ -1144,7 +1192,6 @@
+ share/xml/iso-codes/iso_15924.xml
+ share/xml/iso-codes/iso_3166-1.xml
+ share/xml/iso-codes/iso_3166-2.xml
+-share/xml/iso-codes/iso_3166-3.xml
+ share/xml/iso-codes/iso_3166.xml
+ share/xml/iso-codes/iso_3166_2.xml
+ share/xml/iso-codes/iso_4217.xml
+--- a/textproc/iso-codes/distinfo
++++ b/textproc/iso-codes/distinfo
+@@ -1,6 +1,7 @@
+ $NetBSD: distinfo,v 1.53 2024/02/23 13:31:47 nros Exp $
+ 
+-BLAKE2s (iso-codes-v4.16.0.tar.bz2) = 61b5d057f22c3d75d48bbccf1fb52c6e995210e52f311bc40762a4b1c22d84c0
+-SHA512 (iso-codes-v4.16.0.tar.bz2) = 9d8b9243f13886809f0bbbde47a568f00e14c82ce8f0c79fdf656cdfbd45afa67aca23d501fa79a982d535b97bb32c6ad3d3e44343c13aae61c4917144690cb5
+-Size (iso-codes-v4.16.0.tar.bz2) = 9262670 bytes
+-SHA1 (patch-bin_xml__from__json.py) = 39fc944725377362faa3b39d03e164c7d57f1497
++BLAKE2s (iso-codes-v4.20.1.tar.bz2) = 7157c93a149bc59cbfcd0ded468a4d38bf7a45fc8cb1b247c0cd243d0f71896f
++SHA512 (iso-codes-v4.20.1.tar.bz2) = 39a7333c820070ac4b29be24a0300c65b376729dd8ac6a2446c5283280e1f4dcd6f952ae2282abdc0b708ec71527890723eb98db77e208ba671d721259fd16c4
++Size (iso-codes-v4.20.1.tar.bz2) = 9982538 bytes
++SHA1 (patch-meson.build) = dd78495557710936f0e97a6b45708f4c9084cf64
++SHA1 (patch-scripts_xml__from__json.py) = 2cfade84bf8080b20d719da5b442edc702c4620f
+--- a/textproc/iso-codes/patches/patch-bin_xml__from__json.py
++++ /dev/null
+@@ -1,25 +0,0 @@
+-$NetBSD: patch-bin_xml__from__json.py,v 1.1 2016/07/26 13:37:28 richard Exp $
+-
+-Allow support for python2.7 by enforcing unicode literals and importing
+-from io a compatible version of open().
+-
+---- bin/xml_from_json.py.orig	2016-05-02 07:00:45.000000000 +0000
+-+++ bin/xml_from_json.py
+-@@ -1,4 +1,5 @@
+- #!/usr/bin/env python3
+-+# -*- coding: utf-8 -*-
+- #
+- # Create deprecated iso-codes XML from JSON
+- #
+-@@ -18,8 +19,11 @@
+- # License along with this program; if not, write to the Free Software
+- # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+- 
+-+from __future__ import unicode_literals
+- import json
+- import sys
+-+if sys.version_info[0:2] == (2, 7):
+-+    from io import open
+- 
+- # Get the current ISO code domain, the path to the JSON data dir, and the XML output file
+- if len(sys.argv) != 4:
+--- /dev/null
++++ b/textproc/iso-codes/patches/patch-meson.build
+@@ -0,0 +1,19 @@
++$NetBSD$
++
++Do not install an empty historic-country XML file.
++The existing generator includes these records in iso_3166-1.xml.
++Origin: EmberBSD (AI-assisted), upstream iso-codes 4.20.1.
++
++--- meson.build.orig
+++++ meson.build
++@@ -76,6 +76,10 @@
++ 
++ # Custom targets to create deprecated .xml files from JSON data files
++ foreach domain : domains
+++    # Historic countries are included in iso_3166-1.xml.
+++    if domain == 'iso_3166-3'
+++        continue
+++    endif
++     mytarget = custom_target(
++         domain + '-xml',
++         output: domain + '.xml',
+--- /dev/null
++++ b/textproc/iso-codes/patches/patch-scripts_xml__from__json.py
+@@ -0,0 +1,94 @@
++$NetBSD$
++
++Escape XML attribute values and write the final subdivision group.
++The original country writer is reused for every completed group.
++Origin: EmberBSD (AI-assisted), upstream iso-codes 4.20.1.
++
++--- scripts/xml_from_json.py.orig
+++++ scripts/xml_from_json.py
++@@ -9,6 +9,7 @@
++ """
++ 
++ import json
+++from xml.sax.saxutils import escape
++ import sys
++ 
++ # Get the current ISO code domain, the path to the JSON data dir, and the XML output file
++@@ -382,10 +383,40 @@
++ }
++ 
++ 
+++def write_country(outfile, country_code, subsets):
+++    """Write each complete group, including the final country."""
+++    if not subsets:
+++        return
+++    outfile.write(
+++        '<iso_3166_country code="' + country_code + '">\n'
+++    )
+++    for subset in sorted(subsets):
+++        outfile.write('<iso_3166_subset type="' + subset + '">\n')
+++        for item in subsets[subset]:
+++            outfile.write("\t<iso_3166_2_entry\n")
+++            outfile.write(
+++                '\t\tcode="'
+++                + item["code"]
+++                + '"\tname="'
+++                + item["name"]
+++                + '"'
+++            )
+++            if "parent" in item:
+++                outfile.write('\tparent="' + item["parent"] + '"')
+++            outfile.write(" />\n")
+++        outfile.write("</iso_3166_subset>\n")
+++    outfile.write("</iso_3166_country>\n")
+++
+++
++ def get_iso_entries(standard):
++     """Return all entries from the given standard"""
++     with open(datapath + "/iso_" + standard + ".json", encoding="utf-8") as input_file:
++         iso = json.load(input_file)
+++        for entry in iso[standard]:
+++            for key, value in entry.items():
+++                if isinstance(value, str):
+++                    entry[key] = escape(value, {'"': "&quot;", "\n": "&#10;",
+++                                              "\r": "&#13;", "\t": "&#9;"})
++         return iso[standard]
++ 
++ 
++@@ -501,27 +532,7 @@
++             country_code = entry["code"].split("-")[0]
++             # Initialize for every new country
++             if last_country_code != country_code:
++-                # Write out if subsets are filled
++-                if len(subsets) > 0:
++-                    outfile.write(
++-                        '<iso_3166_country code="' + last_country_code + '">\n'
++-                    )
++-                    for subset in sorted(subsets):
++-                        outfile.write('<iso_3166_subset type="' + subset + '">\n')
++-                        for item in subsets[subset]:
++-                            outfile.write("\t<iso_3166_2_entry\n")
++-                            outfile.write(
++-                                '\t\tcode="'
++-                                + item["code"]
++-                                + '"\tname="'
++-                                + item["name"]
++-                                + '"'
++-                            )
++-                            if "parent" in item:
++-                                outfile.write('\tparent="' + item["parent"] + '"')
++-                            outfile.write(" />\n")
++-                        outfile.write("</iso_3166_subset>\n")
++-                    outfile.write("</iso_3166_country>\n")
+++                write_country(outfile, last_country_code, subsets)
++                 last_country_code = country_code
++                 subsets = {}
++             # Group by subset types
++@@ -529,6 +540,7 @@
++                 subsets[entry["type"]] = [entry]
++             else:
++                 subsets[entry["type"]].append(entry)
+++        write_country(outfile, last_country_code, subsets)
++         outfile.write("</iso_3166_2_entries>\n")
++     #
++     # Handle ISO 15924

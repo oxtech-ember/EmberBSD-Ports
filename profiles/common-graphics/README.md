@@ -42,6 +42,18 @@ and focused native Skia memory checks pass. The rebuilt Skia locale contract
 passes in EmberBSD with installed GCC16 runtime nb3. Full dependency composition,
 WebKit packages and GUI execution remain pending.
 
+[iso-codes 4.20.1](cross/iso-codes-host-python.patch) follows the upstream
+Meson build and uses native Python only for source generation. It retains the
+eight JSON domains, their schemas, seven legacy XML interfaces and obsolete
+locale/XML aliases. An inherited empty `iso_3166-3.xml` is omitted. Historic
+country records remain in `iso_3166-1.xml`. XML attributes are escaped, and the
+final subdivision group is written. The
+[installed-data check](tests/iso-codes.py) checks source identity, XML syntax,
+historic records, all subdivision codes/names, every declared UTF-8 source/gettext
+catalog, relative aliases
+and pkg-config.
+JSON Schema validation and GUI execution remain separate checks.
+
 [libsecret 0.20.5nb4](cross/libsecret.md) adds the KiCad credential-store
 runtime to the AArch64 sysroot. Its GCC16 package and a separate pkg-config
 consumer link pass; cross packaging omits optional docs, Vala bindings and
