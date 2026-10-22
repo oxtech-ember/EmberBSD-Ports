@@ -88,6 +88,11 @@ Codex runs the existing producers for ready nodes and checks their real exit
 status, logs, packages, and required regressions. The plan's waves express
 ordering; they do not allocate build resources or grant installation permission.
 
+The separate `scripts/cross-bulk.sh` helper has a different resume contract.
+Its `done` records compare package names and output hashes, without binding build
+inputs. Those records cannot qualify reuse under an update plan. Use the SDK
+receipts for this workflow; do not import bulk `done` entries as success evidence.
+
 ```sh
 python3 /absolute/EmberBSD-SDK/scripts/ports-plan.py record plan.json target:www/curl \
   --outcome failure --log /absolute/logs/curl.log --output curl-failed.json
