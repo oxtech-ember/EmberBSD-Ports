@@ -12,7 +12,7 @@ default outside this opt-in. No builtin-package metadata is fabricated.
 
 The [infrastructure patch](../patches/pkgsrc-bsdtar-common-zlib.patch) applies
 through the exporter and has a missing-patch preflight control.
-The [metadata check](../tests/bsdtar-common-zlib.rb) verifies the bootstrap,
+The [metadata check](../tests/bsdtar-common-zlib.py) verifies the bootstrap,
 explicit native opt-in, common default, target and recursive host selections.
 
 The ordinary native GCC16 package passes its existing package checks.

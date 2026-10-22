@@ -30,7 +30,7 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 # Common-tools pkgsrc infrastructure patches, in application order.
 # The preflight and the export use this one list. The Boost patch is applied
 # separately, after the toolkit recipes.
-common_tools_deltas="python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch pkgsrc-gts-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-curl-security.patch pkgsrc-openssl-security.patch pkgsrc-cross-packages.patch pkgsrc-pkg-admin-destdir.patch pkgsrc-gettext-go-detection.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch pkgsrc-wrkref-append-stream.patch pkgsrc-ncurses-terminfo-aliases.patch pkgsrc-ncurses-native-headers.patch pkgsrc-host-autoconf.patch pkgsrc-cwrappers-unwrap-boundary.patch pkgsrc-cross-passthrough-rpath.patch pkgsrc-bsdtar-common-zlib.patch pkgsrc-font-runtime-roles.patch pkgsrc-stale-metadata.patch pkgsrc-vala-valadoc-option.patch pkgsrc-vala-array-termination.patch pkgsrc-vala-dbus-fd-exhaustion.patch"
+common_tools_deltas="python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch pkgsrc-gts-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-curl-security.patch pkgsrc-openssl-security.patch pkgsrc-cross-packages.patch pkgsrc-pkg-admin-destdir.patch pkgsrc-gettext-go-detection.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch pkgsrc-wrkref-append-stream.patch pkgsrc-ncurses-terminfo-aliases.patch pkgsrc-ncurses-native-headers.patch pkgsrc-host-autoconf.patch pkgsrc-cwrappers-unwrap-boundary.patch pkgsrc-cross-passthrough-rpath.patch pkgsrc-libarchive-3.8.10-import.patch pkgsrc-libarchive-3.8.10.patch pkgsrc-libarchive-bmake.patch pkgsrc-libarchive-consumers.patch pkgsrc-bsdtar-common-zlib.patch pkgsrc-font-runtime-roles.patch pkgsrc-stale-metadata.patch pkgsrc-vala-valadoc-option.patch pkgsrc-vala-array-termination.patch pkgsrc-vala-dbus-fd-exhaustion.patch"
 if [ "$firmware_toolchain" = yes ]; then
     [ -n "$profile" ] || {
         echo 'The firmware toolchain requires a development or common profile.' >&2; exit 2;
@@ -704,8 +704,23 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$root/profiles/common-build-tools/patches/current-python-selection.patch"
     for delta in $common_tools_deltas; do
-        patch -f -N -d "$destination" -p1 -F 0 < \
-            "$root/profiles/common-build-tools/patches/$delta"
+        case "$delta" in
+        pkgsrc-libarchive-3.8.10-import.patch|pkgsrc-libarchive-3.8.10.patch|pkgsrc-libarchive-bmake.patch)
+            # The unmodified NetBSD source import includes binary manuals.
+            source_patch=$root/profiles/common-build-tools/patches/$delta
+            source_hash=$(awk -F '\t' -v name="$delta" '$1 == name { print $2 }' \
+                "$root/profiles/common-build-tools/sources.tsv")
+            [ "$(shasum -a 256 "$source_patch" | awk '{ print $1 }')" = "$source_hash" ] || {
+                echo 'The pinned NetBSD libarchive source patch differs.' >&2; exit 2;
+            }
+            git -C "$destination" apply --check "$source_patch"
+            git -C "$destination" apply "$source_patch"
+            ;;
+        *)
+            patch -f -N -d "$destination" -p1 -F 0 < \
+                "$root/profiles/common-build-tools/patches/$delta"
+            ;;
+        esac
     done
     cp "$root/profiles/common-build-tools/cross/check-files-case.sh" \
         "$destination/mk/check/ember-case-files.sh"

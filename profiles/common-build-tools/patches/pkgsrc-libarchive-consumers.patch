@@ -1,0 +1,55 @@
+# Origin: EmberBSD (AI-assisted), generated-file companion to NetBSD
+# 318cf4509f47ad80519d1905ac7673a3c516bb31 by dholland@pkgsrc.org.
+# Preserve the bmake fix when --disable-maintainer-mode uses Makefile.in.
+
+--- a/archivers/libarchive/files/Makefile.in
++++ b/archivers/libarchive/files/Makefile.in
+@@ -20855,7 +20855,7 @@
+ # above.
+ libarchive/test/list.h: $(libarchive_test_SOURCES)
+ 	@$(MKDIR_P) libarchive/test
+-	$(AM_V_GEN)grep -h '^DEFINE_TEST(' $^ | LC_COLLATE=C sort > $@
++	$(AM_V_GEN)grep -h '^DEFINE_TEST(' $(libarchive_test_SOURCES) | LC_COLLATE=C sort > $@
+ 
+ # Embed an application manifest marking bsdtar as long-path aware.
+ @INC_WINDOWS_FILES_TRUE@tar/bsdtar_rc.$(OBJEXT): $(top_srcdir)/tar/bsdtar.rc $(top_srcdir)/tar/bsdtar.exe.manifest
+@@ -20863,15 +20863,15 @@
+ 
+ tar/test/list.h: $(bsdtar_test_SOURCES)
+ 	@$(MKDIR_P) tar/test
+-	$(AM_V_GEN)grep -h '^DEFINE_TEST(' $^ | LC_COLLATE=C sort > $@
++	$(AM_V_GEN)grep -h '^DEFINE_TEST(' $(bsdtar_test_SOURCES) | LC_COLLATE=C sort > $@
+ 
+ cpio/test/list.h: $(bsdcpio_test_SOURCES)
+ 	@$(MKDIR_P) cpio/test
+-	$(AM_V_GEN)grep -h '^DEFINE_TEST(' $^ | LC_COLLATE=C sort > $@
++	$(AM_V_GEN)grep -h '^DEFINE_TEST(' $(bsdcpio_test_SOURCES) | LC_COLLATE=C sort > $@
+ 
+ cat/test/list.h: $(bsdcat_test_SOURCES)
+ 	@$(MKDIR_P) cat/test
+-	$(AM_V_GEN)grep -h '^DEFINE_TEST(' $^ | LC_COLLATE=C sort > $@
++	$(AM_V_GEN)grep -h '^DEFINE_TEST(' $(bsdcat_test_SOURCES) | LC_COLLATE=C sort > $@
+ 
+ # Embed an application manifest marking bsdunzip as long-path aware.
+ @INC_WINDOWS_FILES_TRUE@unzip/bsdunzip_rc.$(OBJEXT): $(top_srcdir)/unzip/bsdunzip.rc $(top_srcdir)/unzip/bsdunzip.exe.manifest
+@@ -20879,7 +20879,7 @@
+ 
+ unzip/test/list.h: $(bsdunzip_test_SOURCES)
+ 	@$(MKDIR_P) unzip/test
+-	$(AM_V_GEN)grep -h '^DEFINE_TEST(' $^ | LC_COLLATE=C sort > $@
++	$(AM_V_GEN)grep -h '^DEFINE_TEST(' $(bsdunzip_test_SOURCES) | LC_COLLATE=C sort > $@
+ 
+ # Tell versions [3.59,3.63) of GNU make to not export all variables.
+ # Otherwise a system limit (for SysV at least) may be exceeded.
+
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -7,7 +7,7 @@
+ # change in the pkg_* tools that pkgsrc relies on for proper operation.
+ 
+ PKGNAME=		pkg_install-${VERSION}
+-PKGREVISION=		3
++PKGREVISION=		4
+ CATEGORIES=		pkgtools
+ 
+ MAINTAINER=		agc@NetBSD.org

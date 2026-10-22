@@ -1,5 +1,10 @@
 # Current common build tools
 
+The [shared libarchive source update](cross/libarchive.md) selects 3.8.10 for
+libarchive, bsdtar and the package-tools vendor route. Original NetBSD source
+imports preserve the complete upstream tests and the existing common-zlib delta.
+Package builds and installed consumer acceptance remain separate.
+
 The [Flex epsilon-closure repair](../../probes/flex-nfa/README.md) replaces
 recursive graph traversal with a bounded worklist. Native GCC16 packaging,
 all 114 upstream tests and installed scanner consumers pass. Instrumented
