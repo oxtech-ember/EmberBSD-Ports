@@ -839,6 +839,9 @@ under `pkgsrc/` use ordinary `Makefile`, `distinfo`, `DESCR`, and `PLIST` files.
 `scripts/prepare-pkgsrc.sh` exports that pinned base and adds the local recipes
 to an independent working tree. A local recipe can replace an upstream
 recipe only if `pkgsrc/replaces` names its path, one path on each line.
+`pkgsrc/defaults.mk.conf` holds package defaults for every build. The export
+copies it to `EMBERBSD-DEFAULTS-MK.CONF`; the common tools `mk.conf` files
+include it.
 Experimental probes remain under `probes/`
 until their package integration and runtime are validated. No signed binary
 package repository is provided yet.

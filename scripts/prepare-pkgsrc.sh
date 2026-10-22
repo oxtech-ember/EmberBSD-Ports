@@ -653,6 +653,7 @@ for delta in $overlay_deltas; do
     patch -f -E -d "$destination" -p1 -F 0 < \
         "$root/profiles/common-build-tools/patches/$delta"
 done
+cp "$root/pkgsrc/defaults.mk.conf" "$destination/EMBERBSD-DEFAULTS-MK.CONF"
 if [ "$profile" = electron ]; then
     # Export the Electron source probes only for the explicit electron profile.
     # Their pkgsrc paths define the dependency relationship used by Blanc.
