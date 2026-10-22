@@ -12,9 +12,10 @@ pkgsrc mirror supplies bytes matching the pinned upstream release SHA512.
 ## Configuration and dependencies
 
 The [ordinary recipe overlay](recipes/shells/dash/Makefile) keeps libedit
-support enabled and selects GCC 16.2. It uses current
-[libedit 20260512-3.1](https://thrysoee.dk/editline/) and ncurses 6.6.
-Its dependency recipe replaces the pinned 20250104 libedit release.
+support enabled and selects GCC 16.2. The package export uses libedit
+from the NetBSD base system and ncurses 6.6. The control build below uses
+[libedit 20260512-3.1](https://thrysoee.dk/editline/) from the
+[profile recipe](recipes/devel/editline).
 The library preserves wide-character and readline interfaces and the four
 existing pkgsrc portability patches. Its configure check also recognizes
 ncurses' current wide-library name, `libncursesw`.

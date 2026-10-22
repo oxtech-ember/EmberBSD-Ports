@@ -15,8 +15,6 @@ GNU_CONFIGURE=		yes
 CONFIGURE_ARGS+=	--with-libedit
 PKG_SHELL=		bin/dash
 GCC_REQD+=		16.2
-BUILDLINK_API_DEPENDS.editline+=	editline>=3.1.20260512
-PREFER.editline=		pkgsrc
 
 # Needed after patching configure.ac.
 pre-configure:

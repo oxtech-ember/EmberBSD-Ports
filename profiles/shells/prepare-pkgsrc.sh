@@ -6,7 +6,7 @@ set -eu
 destination=$1
 profile=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 root=$(CDPATH= cd -- "$profile/../.." && pwd)
-for recipe in devel/editline devel/automake lang/perl5 shells/dash shells/mksh; do
+for recipe in devel/automake lang/perl5 shells/dash shells/mksh; do
     source=$profile/recipes/$recipe
     case "$recipe" in
         shells/mksh) source=$root/pkgsrc/local-shells/mksh ;;
@@ -34,10 +34,6 @@ for recipe in devel/editline devel/automake lang/perl5 shells/dash shells/mksh; 
 done
 sh "$root/scripts/prepare-pkgsrc.sh" "$destination" development-toolchain
 patch -p1 -F0 -d "$destination" < "$root/profiles/common-build-tools/patches/current-libtool.patch"
-for recipe in devel/editline; do
-    rm -rf "$destination/$recipe"
-    cp -R "$profile/recipes/$recipe" "$destination/$recipe"
-done
 rm -rf "$destination/lang/perl5"
 cp -R "$root/profiles/common-build-tools/recipes/lang/perl5" "$destination/lang/perl5"
 cp -R "$profile/recipes/shells/dash/." "$destination/shells/dash/"
@@ -48,9 +44,7 @@ cat > "$destination/EMBERBSD-SHELLS-MK.CONF" <<'EOF'
 .if defined(BSD_PKG_MK)
 GCC_REQD+= 16.2
 PERL5_REQD+= 5.44.0
-PREFER.editline= pkgsrc
 PREFER.ncurses= pkgsrc
-BUILDLINK_API_DEPENDS.editline+= editline>=3.1.20260512
 BUILDLINK_API_DEPENDS.ncurses+= ncurses>=6.6
 .endif
 EOF
