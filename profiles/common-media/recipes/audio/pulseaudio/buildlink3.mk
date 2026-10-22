@@ -16,6 +16,12 @@ BUILDLINK_PKGSRCDIR.pulseaudio?=	../../audio/pulseaudio
 .include "../../devel/libatomic_ops/buildlink3.mk"
 .endif
 
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# libpulse needs libpulsecommon from lib/pulseaudio through its RPATH.
+# The cross GNU ld has no sysroot, so it finds it only through rpath-link.
+LDFLAGS+=	-Wl,-rpath-link,${CROSS_DESTDIR}${LOCALBASE}/lib/pulseaudio
+.endif
+
 BUILDLINK_LIBDIRS.pulseaudio+=		lib/pulseaudio
 BUILDLINK_RPATHDIRS.pulseaudio+=	lib/pulseaudio
 

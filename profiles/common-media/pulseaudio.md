@@ -19,8 +19,11 @@ The recipe separates host Bash for `git-version-gen` from target Bash for
 installed helpers and completions. It checks atomic-header availability in the
 target sysroot. Its `buildlink3.mk` uses the same check, so consumers do not
 require `libatomic_ops` because the build host lacks `sys/atomic.h`.
-`tests/pulseaudio-atomic.sh PKGSRC NEW_WORK` checks the real recipe and the
-Qt Multimedia consumer with the cross MAKECONF. Normal installation uses pkgsrc's existing service-account
+`libpulse` needs `libpulsecommon` from `lib/pulseaudio` through its RPATH.
+The cross GNU linker has no sysroot, so cross consumers add a matching
+`-rpath-link` directory. `tests/pulseaudio-atomic.sh PKGSRC NEW_WORK` checks
+the real recipe and the Qt Multimedia consumer with the cross MAKECONF.
+It also links a real `libpulse` client with the consumer's linker flags. Normal installation uses pkgsrc's existing service-account
 hooks; installing files into a sysroot does not create accounts on the host.
 
 Two defects were reproduced on CM5 before source changes:
