@@ -48,13 +48,13 @@ SUBST_SED.docbook+=	-e 's,http://docbook.sourceforge.net/release/xsl/current,${P
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # Waf runs on the host; its compiled feature probes run on the EmberBSD
 # target through the shared executor (same flow as databases/tdb).
-.for _input in EMBERBSD_GI_RUBY EMBERBSD_GI_QUERY_CONFIG
+.for _input in EMBERBSD_GI_PYTHON EMBERBSD_GI_QUERY_CONFIG
 .if empty(${_input}:M/*) || !empty(${_input}:C/[A-Za-z0-9_.\/-]//g) || !exists(${${_input}})
 PKG_FAIL_REASON+= "${_input} must name an existing absolute file without shell metacharacters"
 .endif
 .endfor
-EMBERBSD_TALLOC_QUERY= ${.CURDIR}/../../devel/gobject-introspection/files/target-query.rb
-EMBERBSD_TALLOC_EXECUTOR= ${EMBERBSD_GI_RUBY} ${EMBERBSD_TALLOC_QUERY} --execute
+EMBERBSD_TALLOC_QUERY= ${.CURDIR}/../../devel/gobject-introspection/files/target-query.py
+EMBERBSD_TALLOC_EXECUTOR= ${EMBERBSD_GI_PYTHON} ${EMBERBSD_TALLOC_QUERY} --execute
 CONFIGURE_ARGS+= --cross-compile --cross-execute=${EMBERBSD_TALLOC_EXECUTOR:Q}
 # Parallel configure mutates provider files while a query walks them.
 CONFIGURE_ARGS+= --jobs=1
@@ -70,7 +70,7 @@ CONFIGURE_ENV+= PYTHON_CONFIG=${TOOL_PYTHONBIN:Q}\ ${CROSS_DESTDIR}${PYTHONBIN}-
 pre-configure: emberbsd-talloc-query
 .PHONY: emberbsd-talloc-query
 emberbsd-talloc-query:
-	${RUN}${SETENV} EMBERBSD_GI_TARGET=${MACHINE_ARCH:S/x86_64/amd64/:Q} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} ${EMBERBSD_GI_RUBY} ${EMBERBSD_TALLOC_QUERY} --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${MACHINE_ARCH}--netbsd-readelf ${MACHINE_ARCH:S/x86_64/amd64/:Q}
+	${RUN}${SETENV} EMBERBSD_GI_TARGET=${MACHINE_ARCH:S/x86_64/amd64/:Q} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} ${EMBERBSD_GI_PYTHON} ${EMBERBSD_TALLOC_QUERY} --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${MACHINE_ARCH}--netbsd-readelf ${MACHINE_ARCH:S/x86_64/amd64/:Q}
 	${RUN}${RM} -f ${WRKDIR}/.talloc-query-failure
 post-configure: emberbsd-talloc-query-result
 .PHONY: emberbsd-talloc-query-result

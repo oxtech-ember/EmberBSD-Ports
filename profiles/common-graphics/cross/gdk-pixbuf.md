@@ -124,8 +124,8 @@ ruby tests/gdk-pixbuf-guards.rb /path/to/BUILT_SOURCE \
 ruby tests/gdk-pixbuf-prepare.rb /path/to/cross-tools /path/to/sysroot \
   /path/to/BUILT_SOURCE /path/to/gdk-pixbuf2-2.44.8nb2.tgz \
   /path/to/shared-mime-info-2.5.1.tgz /path/to/work/new-consumer
-EMBERBSD_GI_QUERY_CONFIG=/path/to/private/query.json ruby \
-  recipes/devel/gobject-introspection/files/target-query.rb \
+EMBERBSD_GI_QUERY_CONFIG=/path/to/private/query.json python3.15 \
+  recipes/devel/gobject-introspection/files/target-query.py \
   /path/to/work/new-consumer/gdk-pixbuf-consumer
 ```
 

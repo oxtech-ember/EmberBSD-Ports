@@ -50,11 +50,11 @@ def check_metadata(recipe, mode, values, plist):
             require(values["MESON_BINARY.glib-mkenums"] == values["TOOLBASE"] + "/bin/glib-mkenums",
                     "GSettings did not select native glib-mkenums")
             require(values["MESON_CROSS.emberbsd_gi_cross"] == "true", "Missing GI cross property")
-            require("target-query.rb" in environment.get("GI_CROSS_LAUNCHER", ""),
+            require("target-query.py" in environment.get("GI_CROSS_LAUNCHER", ""),
                     "Missing real target query launcher")
             require("gobject-introspection>=" in values["TOOL_DEPENDS"], "Missing native GI tool")
             allowed = {name + " must name an existing absolute file without shell metacharacters"
-                       for name in ("EMBERBSD_GI_RUBY", "EMBERBSD_GI_QUERY_CONFIG", "EMBERBSD_CROSS_BUILD_CC")}
+                       for name in ("EMBERBSD_GI_PYTHON", "EMBERBSD_GI_QUERY_CONFIG", "EMBERBSD_CROSS_BUILD_CC")}
             require(set(errors) <= allowed, "Unexpected GI prerequisite failure: " + repr(errors))
         else:
             require("GI_CROSS_LAUNCHER" not in environment and not errors,
@@ -77,11 +77,11 @@ def check_metadata(recipe, mode, values, plist):
                     "Libproxy optional PLIST differs: " + name)
         if cross:
             require(values["MESON_CROSS.emberbsd_gi_cross"] == "true", "Missing libproxy GI cross property")
-            require("target-query.rb" in environment.get("GI_CROSS_LAUNCHER", ""),
+            require("target-query.py" in environment.get("GI_CROSS_LAUNCHER", ""),
                     "Missing libproxy target query launcher")
             require("gobject-introspection>=" in values["TOOL_DEPENDS"], "Missing libproxy native GI tool")
             allowed = {name + " must name an existing absolute file without shell metacharacters"
-                       for name in ("EMBERBSD_GI_RUBY", "EMBERBSD_GI_QUERY_CONFIG", "EMBERBSD_CROSS_BUILD_CC")}
+                       for name in ("EMBERBSD_GI_PYTHON", "EMBERBSD_GI_QUERY_CONFIG", "EMBERBSD_CROSS_BUILD_CC")}
             require(set(errors) <= allowed, "Unexpected libproxy prerequisite failure: " + repr(errors))
         else:
             require("GI_CROSS_LAUNCHER" not in environment and not errors,

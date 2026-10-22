@@ -26,8 +26,8 @@ command[-1] = work + '/missing-mime'
 out, status = Open3.capture2e(*command)
 File.write(work + '/compile.log', out)
 abort out unless status.success?
-runner = File.expand_path('../recipes/devel/gobject-introspection/files/target-query.rb', __dir__)
-out, status = Open3.capture2e(RbConfig.ruby, runner, command[-1])
+runner = File.expand_path('../recipes/devel/gobject-introspection/files/target-query.py', __dir__)
+out, status = Open3.capture2e(ENV.fetch('EMBERBSD_GI_PYTHON', 'python3.15'), runner, command[-1])
 File.write(work + '/target.log', out)
 receipt = out[/target query failed \(1\), (\/[^\n]+)\n/, 1]
 abort "wrong failure: #{out}" unless status.exitstatus == 1 && receipt &&

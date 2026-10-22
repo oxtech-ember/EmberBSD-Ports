@@ -419,7 +419,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             graphics/librsvg) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk available.mk options.mk tool.mk cargo-depends.mk cross.mk' ;;
             devel/xxhash) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk files/Makefile' ;;
             textproc/fmtlib) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk' ;;
-            devel/gobject-introspection) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk cross.mk files/target-query.rb files/elf-needed.sh files/target-pkg-config.sh files/target-gir-scanner.sh' ;;
+            devel/gobject-introspection) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk cross.mk files/target-query.py files/elf-needed.sh files/target-pkg-config.sh files/target-gir-scanner.sh' ;;
             devel/gdbus-codegen) recipe_files='Makefile DESCR PLIST distinfo' ;;
             sysutils/dbus) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk INSTALL options.mk hacks.mk files/dbus.sh files/smf/manifest.xml files/smf/dbus.sh' ;;
         esac

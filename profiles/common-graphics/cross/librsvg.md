@@ -186,8 +186,8 @@ ruby profiles/common-graphics/tests/prepare-librsvg-package.rb \
   /absolute/packages/librsvg-2.63.2.tgz \
   /absolute/packages/shared-mime-info-2.5.1.tgz /absolute/original-librsvg-source \
   /absolute/build-root/new-consumer
-env EMBERBSD_GI_QUERY_CONFIG=/absolute/query.json ruby \
-  profiles/common-graphics/recipes/devel/gobject-introspection/files/target-query.rb \
+env EMBERBSD_GI_QUERY_CONFIG=/absolute/query.json python3.15 \
+  profiles/common-graphics/recipes/devel/gobject-introspection/files/target-query.py \
   /absolute/build-root/new-consumer/librsvg-package
 ```
 

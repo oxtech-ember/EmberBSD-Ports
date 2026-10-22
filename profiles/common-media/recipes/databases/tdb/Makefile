@@ -45,13 +45,13 @@ SUBST_SED.docbook+=	-e 's,http://docbook.sourceforge.net/release/xsl/current,${T
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # Waf runs on the host; its compiled feature probes run on the EmberBSD target.
-.for _input in EMBERBSD_GI_RUBY EMBERBSD_GI_QUERY_CONFIG
+.for _input in EMBERBSD_GI_PYTHON EMBERBSD_GI_QUERY_CONFIG
 .if empty(${_input}:M/*) || !empty(${_input}:C/[A-Za-z0-9_.\/-]//g) || !exists(${${_input}})
 PKG_FAIL_REASON+= "${_input} must name an existing absolute file without shell metacharacters"
 .endif
 .endfor
-EMBERBSD_TDB_QUERY= ${.CURDIR}/../../devel/gobject-introspection/files/target-query.rb
-EMBERBSD_TDB_EXECUTOR= ${EMBERBSD_GI_RUBY} ${EMBERBSD_TDB_QUERY} --execute
+EMBERBSD_TDB_QUERY= ${.CURDIR}/../../devel/gobject-introspection/files/target-query.py
+EMBERBSD_TDB_EXECUTOR= ${EMBERBSD_GI_PYTHON} ${EMBERBSD_TDB_QUERY} --execute
 CONFIGURE_ARGS+= --cross-compile --cross-execute=${EMBERBSD_TDB_EXECUTOR:Q}
 CONFIGURE_ENV+= EMBERBSD_GI_TARGET=${MACHINE_ARCH:S/x86_64/amd64/}
 CONFIGURE_ENV+= EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q}
@@ -64,7 +64,7 @@ CONFIGURE_ENV+= PYTHON_CONFIG=${TOOL_PYTHONBIN:Q}\ ${CROSS_DESTDIR}${PYTHONBIN}-
 pre-configure: emberbsd-tdb-query
 .PHONY: emberbsd-tdb-query
 emberbsd-tdb-query:
-	${RUN}${SETENV} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} ${EMBERBSD_GI_RUBY} ${EMBERBSD_TDB_QUERY} --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-readelf ${MACHINE_ARCH:S/x86_64/amd64/:Q}
+	${RUN}${SETENV} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} ${EMBERBSD_GI_PYTHON} ${EMBERBSD_TDB_QUERY} --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-readelf ${MACHINE_ARCH:S/x86_64/amd64/:Q}
 	${RUN}${RM} -f ${WRKDIR}/.tdb-query-failure
 post-configure: emberbsd-tdb-query-result
 .PHONY: emberbsd-tdb-query-result

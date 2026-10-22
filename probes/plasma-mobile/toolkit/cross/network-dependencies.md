@@ -73,7 +73,7 @@ default options and with both optional data sets disabled. The existing libnotif
 defaults remain unchanged.
 
 Execute the resulting ELF files with the existing
-[GI target query runner](../../../../profiles/common-graphics/recipes/devel/gobject-introspection/files/target-query.rb)
+[GI target query runner](../../../../profiles/common-graphics/recipes/devel/gobject-introspection/files/target-query.py)
 and its configured build root/sysroot/SSH destination. Both executables run
 without arguments. The runner records the exact selected ELF dependency
 hashes, bounds execution, verifies unchanged inputs and removes remote files.

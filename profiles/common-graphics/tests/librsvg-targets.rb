@@ -24,7 +24,7 @@ base = [ENV.fetch('BMAKE', 'bmake'), '-C', recipe, 'USE_CROSS_COMPILE=yes',
   'OPSYS=NetBSD', 'CROSS_OPSYS=NetBSD', 'CROSS_OS_VERSION=11.0',
   'TOOLBASE=' + host, 'TOOLDIR=' + tools, 'CROSS_DESTDIR=' + work + '/sysroot',
   'WRAPPER_BINDIR=' + work + '/wrappers', 'PREFIX=/usr/pkg', 'BUILDLINK_DIR=' + work + '/buildlink',
-  'EMBERBSD_GI_RUBY=' + RbConfig.ruby, 'EMBERBSD_GI_QUERY_CONFIG=' + work + '/query.json',
+  'EMBERBSD_GI_PYTHON=' + ENV.fetch('EMBERBSD_GI_PYTHON', host + '/bin/python3.15'), 'EMBERBSD_GI_QUERY_CONFIG=' + work + '/query.json',
   'EMBERBSD_CROSS_BUILD_CC=/usr/bin/cc', 'EMBERBSD_CROSS_BUILD_CXX=/usr/bin/c++',
   'GREP=/usr/bin/grep', 'TEST=/bin/test', 'FIND=/usr/bin/find', 'PRINTF=printf']
 run = lambda do |name, *args|
