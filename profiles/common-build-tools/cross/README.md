@@ -487,6 +487,25 @@ The regression uses real pkgsrc make fragments. It reproduces the original
 failure, accepts a valid payload and rejects five invalid payloads.
 It also checks all four direct writer targets and preserves the build cookie.
 
+## Stale package records
+
+A reused work directory can keep the PLIST and `+BUILD_INFO` of an earlier version.
+The cross ELF check also resolved a missing object through the sysroot.
+Then the new package kept `PROVIDES` entries for libraries it did not install.
+The common export generates the PLIST and package metadata again for each install.
+Each listed object must exist in `DESTDIR`.
+Each `PROVIDES` entry must be in the PLIST and must exist in `DESTDIR`.
+
+Run this check from the repository root:
+
+```sh
+BMAKE=/absolute/bmake sh profiles/common-build-tools/tests/stale-metadata.sh \
+    /absolute/unpatched-pkgsrc /absolute/new-results
+```
+
+The regression uses real pkgsrc make fragments. It reproduces the sysroot fallback,
+checks the install target order and checks four `PROVIDES` cases.
+
 The ncurses 6.6 export inventories both regular terminfo files and symbolic
 aliases. A native `tic` can use relative symbolic links during a cross install.
 The original recipe lists only regular files, so normal `check-files` rejects

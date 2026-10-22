@@ -1,0 +1,78 @@
+# Origin: EmberBSD (AI-assisted), reject stale package records.
+# A reused work directory kept the PLIST and +BUILD_INFO of an earlier
+# version. The cross ELF check took a missing object from the sysroot.
+# Regenerate both records for each install, require each listed object
+# in DESTDIR, and check each PROVIDES entry against the PLIST and DESTDIR.
+
+--- a/mk/check/check-shlibs-elf.awk
++++ b/mk/check/check-shlibs-elf.awk
+@@ -149,6 +149,13 @@
+ 	# Native checks retain their historical handling of non-ELF input.
+ 	# Metadata must distinguish scripts from broken ELF or a failed tool.
+ 	if (requires_file != "") {
++		# The package must install each listed object itself. The sysroot
++		# resolves only links and directories, never the object.
++		if (destdir != "" && index(DSO, destdir "/") == 1 &&
++		    system("test -e " shquote(DSO) " || test -L " shquote(DSO)) != 0) {
++			print DSO ": not installed in DESTDIR"
++			return
++		}
+ 		file = target_path(DSO)
+ 		if (file == "") {
+ 			print DSO ": cannot resolve target path"
+--- a/mk/install/install.mk
++++ b/mk/install/install.mk
+@@ -170,6 +170,10 @@
+ ### some sanity checks.
+ ###
+ _INSTALL_ALL_TARGETS+=		install-check-umask
++# EmberBSD: a reused work directory can hold the PLIST and package metadata
++# of an earlier version. Generate both again for each install.
++_INSTALL_ALL_TARGETS+=		plist-clean
++_INSTALL_ALL_TARGETS+=		_pkgformat-clean-metadata
+ .if empty(CHECK_FILES:M[nN][oO]) && !empty(CHECK_FILES_SUPPORTED:M[Yy][Ee][Ss])
+ _INSTALL_ALL_TARGETS+=		check-files-pre
+ .endif
+--- /dev/null
++++ b/mk/pkgformat/pkg/check-provides.sh
+@@ -0,0 +1,28 @@
++#!/bin/sh
++# SPDX-License-Identifier: BSD-2-Clause
++# Origin: EmberBSD contributors (AI-assisted).
++# Check that each PROVIDES entry names a file of this package.
++# The file must be in the PLIST and must exist in the stage directory.
++set -eu
++[ "$#" = 4 ] || { echo 'Usage: check-provides.sh DESTDIR PREFIX PLIST BUILD_INFO' >&2; exit 2; }
++destdir=$1 prefix=$2 plist=$3 build_info=$4
++awk=${AWK:-awk}
++status=0
++while IFS= read -r line; do
++    case "$line" in
++        PROVIDES=*) provided=${line#PROVIDES=} ;;
++        *) continue ;;
++    esac
++    case "$provided" in
++        "$prefix"/*) relative=${provided#"$prefix"/} ;;
++        *) echo "$provided: PROVIDES entry is outside $prefix" >&2; status=1; continue ;;
++    esac
++    if ! "$awk" -v path="$relative" '$0 == path { found = 1 } END { exit !found }' "$plist"; then
++        echo "$provided: PROVIDES entry is not in the PLIST" >&2
++        status=1
++    elif [ ! -e "$destdir$provided" ] && [ ! -L "$destdir$provided" ]; then
++        echo "$provided: PROVIDES entry is not installed in DESTDIR" >&2
++        status=1
++    fi
++done < "$build_info"
++exit "$status"
+--- a/mk/pkgformat/pkg/metadata.mk
++++ b/mk/pkgformat/pkg/metadata.mk
+@@ -170,6 +170,9 @@
+ 	${RUN}								\
+ 	sort ${.TARGET}.tmp > ${.TARGET};				\
+ 	rm -f ${.TARGET}.tmp
++	${RUN}${PKGSRC_SETENV} AWK=${AWK:Q} ${SH} ${PKGSRCDIR}/mk/pkgformat/pkg/check-provides.sh \
++	    ${DESTDIR:U:Q}"" ${PREFIX:Q} ${_PLIST_NOKEYWORDS:Q} ${.TARGET:Q} || \
++	    { rm -f ${.TARGET}; exit 1; }
+ 
+ ######################################################################
+ ###
