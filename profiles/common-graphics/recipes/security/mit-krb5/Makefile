@@ -5,7 +5,7 @@ EMBERBSD_MIT_KRB5_PKGDIR:= ${.PARSEDIR:tA}
 BRANCHNAME=	1.22
 DISTNAME=	krb5-${BRANCHNAME}.2
 PKGNAME=	mit-${DISTNAME}
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	security
 # It is not clear how stable this URL scheme is.
 MASTER_SITES=	http://web.mit.edu/kerberos/dist/krb5/${BRANCHNAME}/
@@ -57,6 +57,12 @@ BUILD_DEFS+=		VARBASE
 # Keep the upstream thread-safe client library for GUI consumers.
 CONFIGURE_ARGS+=	--enable-thread-support
 
+# Resolve compiler flags before Autoconf creates installed metadata.
+SUBST_CLASSES+=		krb5-rpath
+SUBST_STAGE.krb5-rpath=	pre-configure
+SUBST_FILES.krb5-rpath=	config/shlib.conf
+SUBST_VARS.krb5-rpath=	COMPILER_RPATH_FLAG
+
 CONFIGURE_ARGS+=	--localstatedir=${MIT_KRB5_STATEDIR}
 CONFIGURE_ARGS+=	--sysconfdir=${PKG_SYSCONFDIR}
 CONFIGURE_ARGS+=	--disable-aesni
@@ -90,7 +96,7 @@ PATCHDIR= ${EMBERBSD_MIT_KRB5_PKGDIR}/patches
 FILESDIR= ${EMBERBSD_MIT_KRB5_PKGDIR}/files
 RCD_SCRIPTS=
 OWN_DIRS_PERMS=
-DEPENDS+= mit-krb5-${BRANCHNAME}.2nb2:../../security/mit-krb5
+DEPENDS+= mit-krb5>=${BRANCHNAME}.2nb2:../../security/mit-krb5
 CONFLICTS+= mit-krb5<${BRANCHNAME}.2nb2
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes" || ${OPSYS} != "NetBSD"
 PKG_FAIL_REASON+= "The MIT Kerberos SDK requires a NetBSD cross build; native builds keep the full package"

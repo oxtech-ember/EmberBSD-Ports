@@ -1,8 +1,8 @@
 # MIT Kerberos for GUI clients
 
-MIT Kerberos 1.22.2nb2 provides the common thread-safe GSS client API for GUI
-printing dependencies. Normal GCC16 packages pass on Linux amd64 and for the
-EmberBSD AArch64 sysroot. Installed target API and loader checks pass in the
+MIT Kerberos 1.22.2 provides the common thread-safe GSS client API for GUI
+printing dependencies. Normal GCC16 1.22.2nb2 packages pass on Linux amd64 and
+for the EmberBSD AArch64 sysroot. Installed target API and loader checks pass in the
 acceptance VM. Realm authentication and CUPS printing remain separate checks.
 See the [measured receipt](mit-krb5-linux-aarch64.json).
 
@@ -68,6 +68,13 @@ Strict native Memcheck reports no invalid access or lost blocks. It exits 99
 because 4,648 bytes in 37 process-global blocks remain reachable under the
 upstream `LIB_UNLOAD_PREVENTED` policy. There are no suppressions. This is not
 a clean whole-library memory result. Target Valgrind was not run.
+
+Recipe revision nb3 resolves its compiler RPATH marker before Autoconf generates
+`krb5-config`. The [metadata contract](../tests/mit-krb5/README.md#installed-metadata-generation)
+uses real pkgsrc substitution and MIT library macros. It rejects the original
+literal variable, verifies native Darwin output equality, and links the repaired
+AArch64 GSS consumer. This accepts metadata generation and linking; it does not
+claim an installed nb3 package or a new target runtime check.
 
 The reproducible contracts are in [tests/mit-krb5](../tests/mit-krb5).
 Pass `--sdk-source /absolute/SDK` to each Python command. `configure-contract.py`
