@@ -250,6 +250,33 @@ cp "$profile/sources.tsv" "$work/ngspice-sources"
 sed '/^cad\/ng-spice[[:space:]]/d' "$work/ngspice-sources" > "$profile/sources.tsv"
 negative omitted-ngspice-source-pin
 cp "$work/ngspice-sources" "$profile/sources.tsv"
+occt=$profile/recipes/cad/occt
+mv "$occt/PLIST" "$work/occt-PLIST"
+negative missing-occt-inventory
+mv "$work/occt-PLIST" "$occt/PLIST"
+delta=$occt/patches/patch-rwstl-alignment
+mv "$delta" "$work/occt-patch-link"
+negative missing-occt-stl-patch
+ln -s "$root/probes/kicad/occt/patches/rwstl-alignment.patch" "$delta"
+negative unexpected-occt-patch-origin
+rm "$delta"
+mv "$work/occt-patch-link" "$delta"
+ln -s "$root/probes/kicad/occt/README.md" "$occt/unexpected-link"
+negative unexpected-occt-extra-link
+rm "$occt/unexpected-link"
+cp "$occt/distinfo" "$work/occt-distinfo"
+mv "$delta" "$work/occt-patch-link"
+sed '/SHA1 (patch-rwstl-alignment)/d' "$work/occt-distinfo" > "$occt/distinfo"
+negative omitted-occt-stl-patch-and-checksum
+mv "$work/occt-patch-link" "$delta"
+cp "$work/occt-distinfo" "$occt/distinfo"
+cp "$profile/sources.tsv" "$work/occt-sources"
+sed '/^cad\/occt[[:space:]]/d' "$work/occt-sources" > "$profile/sources.tsv"
+negative omitted-occt-source-pin
+cp "$work/occt-sources" "$profile/sources.tsv"
+sed 's/6297cc55a1720523a437c54d07dc16b9da8c5f5ab5800da3c6ebded568d53c18/6297cc55a1720523a437c54d07dc16b9da8c5f5ab5800da3c6ebded568d53c19/' "$work/occt-sources" > "$profile/sources.tsv"
+negative altered-occt-source-pin
+cp "$work/occt-sources" "$profile/sources.tsv"
 if sh "$script" "$work/unknown" unknown > "$work/unknown.log" 2>&1; then exit 1; fi
 [ ! -e "$work/unknown" ]
 kicad=$profile/recipes/cad/kicad10
@@ -322,7 +349,7 @@ for mode in default development-toolchain common-build-tools common-graphics com
             grep -Fqx "SHA1 (patch-config-scripts_cups-gssapi-target) = $(sed '/[$]NetBSD.*/d' "$cups_gss_patch" | shasum -a 1 | awk '{ print $1 }')" "$tree/print/cups-base/distinfo"
             grep -Fqx "SHA1 (patch-src_main.c) = $(sed '/[$]NetBSD.*/d' "$flex_patch" | shasum -a 1 | awk '{ print $1 }')" "$tree/devel/flex/distinfo"
             grep -Fqx 'PKGREVISION=	1' "$tree/devel/flex/Makefile"
-            for recipe in net/nng graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc wayland/sway wayland/swaylock devel/libevdev-chunk textproc/json-c x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 textproc/fmtlib graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson cad/ng-spice cad/ng-spice-shared cad/kicad10; do diff -qr "$profile/recipes/$recipe" "$tree/$recipe"; done
+            for recipe in net/nng graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc wayland/sway wayland/swaylock devel/libevdev-chunk textproc/json-c x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 textproc/fmtlib graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson cad/ng-spice cad/ng-spice-shared cad/kicad10 cad/occt; do diff -qr "$profile/recipes/$recipe" "$tree/$recipe"; done
             diff -qr "$profile/recipes/devel/wayland-devel" "$tree/devel/wayland-devel"
             cmp "$profile/mk.conf" "$tree/EMBERBSD-COMMON-GRAPHICS-MK.CONF"
             cmp "$profile/sources.tsv" "$tree/EMBERBSD-COMMON-GRAPHICS-SOURCES" ;;

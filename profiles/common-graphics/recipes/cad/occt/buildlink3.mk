@@ -12,6 +12,8 @@ pkgbase := occt
 .if !empty(PKG_BUILD_OPTIONS.occt:Mx11)
 .include "../../graphics/MesaLib/buildlink3.mk"
 .include "../../x11/libX11/buildlink3.mk"
+.elif ${OPSYS} != "Darwin"
+.include "../../graphics/MesaLib/buildlink3.mk"
 .endif
 .if !empty(PKG_BUILD_OPTIONS.occt:Mocct-draw)
 .include "../../lang/tcl/buildlink3.mk"

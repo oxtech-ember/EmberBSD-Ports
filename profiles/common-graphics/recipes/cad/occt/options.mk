@@ -6,16 +6,21 @@ PKG_SUGGESTED_OPTIONS=	occt-draw
 PKG_SUGGESTED_OPTIONS+=	x11
 .endif
 .include "../../mk/bsd.options.mk"
+PLIST_VARS+= draw
 
 .if !empty(PKG_OPTIONS:Mx11)
 .include "../../graphics/MesaLib/buildlink3.mk"
 .include "../../x11/libX11/buildlink3.mk"
 CMAKE_CONFIGURE_ARGS+=	-DUSE_XLIB=ON
 .else
+.if ${OPSYS} != "Darwin"
+.include "../../graphics/MesaLib/buildlink3.mk"
+.endif
 CMAKE_CONFIGURE_ARGS+=	-DUSE_XLIB=OFF
 .endif
 
 .if !empty(PKG_OPTIONS:Mocct-draw)
+PLIST.draw= yes
 BUILDLINK_API_DEPENDS.tcl+=	tcl>=9.1.0nb1
 .include "../../lang/tcl/buildlink3.mk"
 BUILDLINK_API_DEPENDS.tk+=	tk>=9.1.0

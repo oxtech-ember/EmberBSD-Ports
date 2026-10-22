@@ -30,12 +30,15 @@ It does not claim a SunOS port.
 | `patch-src_StdPrs_StdPrs__BRepFont.cxx` | Upstream uses `const auto*` for FreeType outline tags. The old cast is unnecessary. |
 | `patch-src_ViewerTest_ViewerTest__CmdParser.cxx` | The old compiler workaround is unnecessary with GCC16 and the upstream C++17 implementation. |
 
-The `check-install.rb` contract executes the actual upstream CMake fragments
+The `check-install.py` contract executes the actual upstream CMake fragments
 and configuration macro. It reproduces an omitted `custom.sh` when an existing
 prefix already contains the matching call. The repaired source installs it
 without changing that prefix. The same test checks the compile-definitions
 file under exactly one `DESTDIR` prefix. Adding `DESTDIR` again to `file(INSTALL)`
 was rejected by an independent CMake 4.4.4 regression before publication.
+The same Python contract checks first and repeated configuration. The explicit
+empty `3RDPARTY_DIR:PATH` recipe argument prevents an upstream first-configure
+source path from entering `env.sh`. It does not change the selected providers.
 
 ## Normal package boundary
 
@@ -55,12 +58,13 @@ library integration require their own checks. Tcl/Tk 9.1.0 is the current
 stable release. The 8.6.18 maintenance page says development ends in 2026;
 it is not described here as LTS.
 
-The full package's static `PLIST` must come from the actual complete installed
-stage and then pass ordinary pkgsrc checks. The old 7.8 header inventory is
-not an 8.0.1 inventory. Source preparation and a private recipe draft do not
-establish an accepted common package. The [source recipe candidate](recipe/README.md)
-uses ordinary `patch-*` names and current Tcl/Tk 9.1 discovery, but intentionally
-has no packing list or common-export registration until that stage exists.
+The [common provider](../../../profiles/common-graphics/cross/occt.md) has a
+static `PLIST` from the complete GCC16 AArch64 stage. Its 7,906 entries pass
+ordinary package checks and archive-to-stage verification. The default package
+contains 68 shared libraries and Draw. Its 292 Draw-only entries are classified
+from the owning source and actual stage. A separate Draw-off package is not
+accepted by that classification. Native packaging and installed STEP execution
+remain separate checks. The source-only candidate recipe has been replaced.
 
 After installation, the independent Examples STEP reader must verify component
 and assembly solids, closed shells, volume, bounds and mesh triangles through

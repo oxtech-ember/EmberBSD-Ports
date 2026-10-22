@@ -103,12 +103,12 @@ runtime behavior are validated.
   API library and version-message consumer pass native memory checks and
   AArch64 execution. Full KiCad configuration, package and CAD workflows
   remain pending.
-- [KiCad OCCT source](probes/kicad/occt/README.md): OCCT 8.0.1 retains
-  NetBSD locale, path and exception support. GCC16 target compilation and
-  focused native regressions cover the source repairs; core and six
-  stack-trace consumer modes pass against the installed runtime in a clean
-  NetBSD 11.0 AArch64 VM. KiCad uses the current exception API. The complete
-  OCCT package and installed STEP geometry checks remain pending.
+- [Common OCCT 8.0.1](profiles/common-graphics/cross/occt.md): the complete
+  GCC16 AArch64 package passes normal checks and exact readback of all 7,906
+  installed payload entries. All 68 libraries retain the full default modules,
+  Draw and Tcl/Tk. Shell and CMake metadata retain no producer paths. Earlier
+  focused core and stack-trace VM checks keep their separate scope. Installed
+  STEP geometry, Draw display and full KiCad acceptance remain pending.
 - [Common Eigen 5.0.1](profiles/common-graphics/cross/eigen.md): the existing
   provider retains its CMake/header interfaces and full companion libraries.
   GCC16 AArch64 packaging verifies all 613 entries; four selected native

@@ -69,10 +69,11 @@ Both native modes omit the final toolchain argument.
 The prefix remains an explicit argument in every mode.
 The earlier restored native core used GCC 14.2.0. New builds require GCC16.
 
-The [canonical recipe candidate](recipe/README.md) retains the normal `cad/occt`
-provider and full default Draw/X11 features. It is a source checkpoint without
-a packing list or common-export registration. Complete installed-stage inventory,
-ordinary package checks and target STEP acceptance are still required.
+The [canonical common provider](../../../profiles/common-graphics/cross/occt.md)
+retains the normal `cad/occt` package and the full default Draw/X11 features.
+Its complete GCC16 AArch64 stage and ordinary package checks pass with 7,906
+payload entries and 68 shared libraries. Installed STEP geometry and Draw
+display execution retain separate acceptance boundaries.
 
 ## Checks
 
@@ -117,7 +118,7 @@ It replaces 12 deprecated `GetMessageString()` calls with `what()`.
 KiCad 10.0.7 contains no `Standard_Failure::Raise` call to replace.
 The core consumer uses OCCT8's ordinary C++ `throw` and `what()` API.
 
-Full target compilation, installed STEP geometry, and the KiCad interface remain acceptance work.
+KiCad target compilation, installed STEP geometry, and its interface remain acceptance work.
 The fixture's independent STEP reader checks solid and shell closure, volume, bounds, and meshing.
 Its successful source review is not a runtime result.
 
@@ -127,13 +128,16 @@ The additional actual-source tests use GCC16 and the installed native helper lib
 ruby probes/kicad/occt/tests/check-failure-stack.rb \
     /absolute/original-source /absolute/patched-source \
     /absolute/generated-headers /absolute/native-prefix /absolute/new-check
-ruby probes/kicad/occt/tests/check-install.rb \
-    /absolute/original-source /absolute/patched-source /absolute/new-install-check
+python3.15 probes/kicad/occt/tests/check-install.py \
+    /absolute/original-source /absolute/patched-source /absolute/new-install-check \
+    --recipe /absolute/Ports/profiles/common-graphics/recipes/cad/occt/Makefile
 ```
 
 The exception test rebuilds the actual `Standard_Failure` module. It records
 its helper DSO hash and does not claim that the helper library was rebuilt.
-The installation test executes actual upstream CMake fragments and macros.
+The Python installation test executes actual upstream CMake fragments and macros.
+It also checks the recipe's empty third-party root on first and repeated configure.
+The default upstream configuration must expose its first-configure source path.
 See the [canonical package audit](pkgsrc-audit.md) for retained and retired
 pkgsrc fixes, dependency requirements and the static packing-list boundary.
 
