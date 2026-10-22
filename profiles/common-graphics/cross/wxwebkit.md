@@ -72,9 +72,13 @@ LLInt settings and offset extractors describe target layouts. Upstream Ruby
 reads their ELF bytes; it does not execute them. Introspection uses the common
 native scanner/compiler, ELF dependency helper and real target-query launcher.
 Cross configuration rejects a missing dependency helper or launcher.
-The canonical query preflight also requires the actual native GI provider and
-query configuration. Those prerequisites are not yet available in this build.
-No GType values, target offsets or configure answers are invented.
+The configure and build environments select the common Python query launcher.
+`tests/webkit-gi-launcher.py` checks actual pkgsrc metadata for both APIs, the
+release FindGI module, the launcher configuration check, native behavior and
+the missing-launcher refusal. This check does not use SSH or run target code.
+A complete configure still requires the native prerequisite packages and a
+real target query configuration. No GType values, target offsets or configure
+answers are invented.
 
 The recipe removes the separate older `devel/libatomic` runtime dependency.
 Its cross preflight verifies the actual GCC16 driver, literal target triplet,
