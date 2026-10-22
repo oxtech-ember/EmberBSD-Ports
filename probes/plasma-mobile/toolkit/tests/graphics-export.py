@@ -62,7 +62,7 @@ def check_metadata(recipe, mode, values, plist):
                     "Native GSettings selected the cross runner or failed prerequisites")
     else:
         require(recipe == "www/libproxy", "Unknown recipe")
-        require(values["PKGNAME"] == "libproxy-0.5.12nb6", "Wrong libproxy identity")
+        require(values["PKGNAME"] == "libproxy-0.5.12nb7", "Wrong libproxy identity")
         require(not introspection, "The complete toolkit changed libproxy GI defaults")
         for name in ("lib/girepository-1.0/Libproxy-1.0.typelib", "share/gir-1.0/Libproxy-1.0.gir"):
             require(name in plist.splitlines(), "Missing unconditional binding: " + name)

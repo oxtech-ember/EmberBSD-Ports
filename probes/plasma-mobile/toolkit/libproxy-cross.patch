@@ -17,8 +17,8 @@ Keep the complete toolkit output and its GIR query path unchanged.
 -.include "../../mk/bsd.prefs.mk"
  
  DISTNAME=	libproxy-0.5.12
--PKGREVISION=	4
-+PKGREVISION=	6
+-PKGREVISION=	5
++PKGREVISION=	7
  CATEGORIES=	www gnome
  MASTER_SITES=	${MASTER_SITE_GITHUB:=libproxy/}
  GITHUB_TAG=	${PKGVERSION_NOREV}
@@ -218,9 +218,10 @@ Keep the complete toolkit output and its GIR query path unchanged.
 +${PLIST.vala}share/vala/vapi/libproxy-1.0.vapi
 --- a/www/libproxy/distinfo
 +++ b/www/libproxy/distinfo
-@@ -4,3 +4,4 @@
+@@ -4,4 +4,5 @@
  SHA512 (libproxy-0.5.12.tar.gz) = 19ffd1755e9ebfc645555e248020f9025ae81e93e73cbbb2583bff4495f7794b02ab1ef8ce944fa28e7604f5abf3e7e327c4966d21789648bd38f3d1c2cccecd
  Size (libproxy-0.5.12.tar.gz) = 60529 bytes
+ SHA1 (patch-src_backend_px-manager.c) = ca6e904ee454873973a3dec17bf2e06789cc1f93
  SHA1 (patch-src_libproxy_meson.build) = 6d5ddacc59db7f770002bc304404c6582865cbf8
 +SHA1 (patch-src_libproxy_meson.build-cross) = bfc3272431f4684fc4d28d4c44bad76ff4bf4a39
 --- a/www/libproxy/options.mk
