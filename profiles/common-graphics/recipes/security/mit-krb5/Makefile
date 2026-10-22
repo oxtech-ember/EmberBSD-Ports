@@ -5,7 +5,7 @@ EMBERBSD_MIT_KRB5_PKGDIR:= ${.PARSEDIR:tA}
 BRANCHNAME=	1.22
 DISTNAME=	krb5-${BRANCHNAME}.2
 PKGNAME=	mit-${DISTNAME}
-PKGREVISION=	3
+PKGREVISION=	4
 CATEGORIES=	security
 # It is not clear how stable this URL scheme is.
 MASTER_SITES=	http://web.mit.edu/kerberos/dist/krb5/${BRANCHNAME}/
@@ -79,6 +79,10 @@ MAKE_FLAGS+=		INSTALL_AWK=/usr/bin/awk INSTALL_SED=/usr/bin/sed
 .endif
 MAKE_ENV+=		ROOT_USER=${ROOT_USER}
 MAKE_ENV+=		YFLAGS="-Wnone"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "no" && ${OPSYS} == "Darwin" && !empty(OSX_SDK_PATH)
+# Darwin MIG reads SDKROOT when it selects its preprocessor headers.
+MAKE_ENV+=		SDKROOT=${OSX_SDK_PATH:Q}
+.endif
 LIBS.SunOS=		-lrt
 
 OWN_DIRS_PERMS=		${MIT_KRB5_STATEDIR}/krb5kdc			\
