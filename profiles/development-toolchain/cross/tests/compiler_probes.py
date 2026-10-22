@@ -66,6 +66,11 @@ def plugin_needed_warnings(args):
     require(len(args) == 3, 'Usage: plugin-needed-warnings.py [--target TARGET] PREFIX SYSROOT NEW_WORK --sdk-source SOURCE')
     prefix, sysroot, work = build_path(args[0]), build_path(args[1]), new_path(args[2])
     tools = check_compilers(prefix, target)
+    triplet = TARGETS[target][0]
+    runtime = sysroot / 'usr/pkg/gcc16'
+    crt = runtime / 'lib/gcc' / triplet / VERSION
+    for path in (crt / 'crtbeginS.o', crt / 'crtendS.o', crt / 'libgcc.a', runtime / 'lib/libgcc_s.so.1'):
+        require(path.is_file() and paths.inside(path.resolve(strict=True), runtime), 'Selected target GCC16 CRT/runtime missing or outside sysroot: ' + str(path))
     sections = capture([tools['readelf'], '-S', '-W', sysroot / 'usr/lib/libc.so'])
     require('.gnu.warning.gets' in sections, 'Sysroot libc has no link-time warning sections')
     work.mkdir()
@@ -76,9 +81,10 @@ def plugin_needed_warnings(args):
     cases = [('indirect', indirect, [], '-lm', True),
              ('indirect-copy', indirect, ['-Wl,--copy-dt-needed-entries'], '-lm', True),
              ('direct', direct, [], '-lc', False)]
+    common = ['--sysroot=' + str(sysroot), '-B' + str(crt) + '/', '-L' + str(runtime / 'lib'), '-Wl,-rpath,/usr/pkg/gcc16/lib', '-Wl,-rpath-link,' + str(sysroot / 'usr/lib')]
     for name, source, flags, library, valid in cases:
         (work / (name + '.c')).write_text(source)
-        argv = [str(tools['gcc']), '-v', '--sysroot=' + str(sysroot), '-O2', '-fPIC', '-shared', '-Wl,--fatal-warnings', '-Wl,--as-needed'] + flags + [str(work / (name + '.c')), '-o', str(work / (name + '.so')), library]
+        argv = [str(tools['gcc']), '-v'] + common + ['-O2', '-fPIC', '-shared', '-Wl,--fatal-warnings', '-Wl,--as-needed'] + flags + [str(work / (name + '.c')), '-o', str(work / (name + '.so')), library]
         result = subprocess.run(argv, env=environment(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         output = result.stdout.decode('utf-8', 'replace')
         (work / (name + '.log')).write_text(output)

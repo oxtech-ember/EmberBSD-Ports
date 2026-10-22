@@ -235,7 +235,9 @@ the GCC LTO plugin and `--fatal-warnings`, with and without
 `--copy-dt-needed-entries`. The libc warning sections that libm brings in
 through `DT_NEEDED` must not give warnings. A direct `gets` reference to
 libc must still stop the link. This check needs an accepted sysroot for the
-selected target. It checks cross links only; it does not execute target code.
+selected target, including its GCC16 CRT and `libgcc` files under
+`usr/pkg/gcc16`. It selects these startup objects and libraries explicitly.
+It checks cross links only; it does not execute target code.
 
 ## Kernel frontends without a sysroot
 
