@@ -10,6 +10,7 @@ for recipe in devel/editline devel/automake lang/perl5 shells/dash shells/mksh; 
     source=$profile/recipes/$recipe
     case "$recipe" in
         shells/mksh) source=$root/pkgsrc/local-shells/mksh ;;
+        devel/automake) source=$root/pkgsrc/devel/automake ;;
         lang/perl5) source=$root/profiles/common-build-tools/recipes/lang/perl5 ;;
     esac
     for name in Makefile distinfo; do
@@ -33,8 +34,7 @@ for recipe in devel/editline devel/automake lang/perl5 shells/dash shells/mksh; 
 done
 sh "$root/scripts/prepare-pkgsrc.sh" "$destination" development-toolchain
 patch -p1 -F0 -d "$destination" < "$root/profiles/common-build-tools/patches/current-libtool.patch"
-patch -p1 -F0 -d "$destination" < "$profile/patches/current-automake-tools.patch"
-for recipe in devel/editline devel/automake; do
+for recipe in devel/editline; do
     rm -rf "$destination/$recipe"
     cp -R "$profile/recipes/$recipe" "$destination/$recipe"
 done

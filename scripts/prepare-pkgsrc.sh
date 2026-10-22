@@ -30,6 +30,9 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 # Common-tools pkgsrc infrastructure patches, in application order.
 # The preflight and the export use this one list. The Boost patch is applied
 # separately, after the toolkit recipes.
+# Infrastructure patches that shared overlay recipes need. Every export
+# applies them after the overlay.
+overlay_deltas="current-automake-tools.patch"
 common_tools_deltas="python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch pkgsrc-gts-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-curl-security.patch pkgsrc-openssl-security.patch pkgsrc-cross-packages.patch pkgsrc-pkg-admin-destdir.patch pkgsrc-gettext-go-detection.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch pkgsrc-wrkref-append-stream.patch pkgsrc-ncurses-terminfo-aliases.patch pkgsrc-ncurses-native-headers.patch pkgsrc-host-autoconf.patch pkgsrc-cwrappers-unwrap-boundary.patch pkgsrc-cross-passthrough-rpath.patch pkgsrc-libarchive-3.8.10-import.patch pkgsrc-libarchive-3.8.10.patch pkgsrc-libarchive-bmake.patch pkgsrc-libarchive-consumers.patch pkgsrc-bsdtar-common-zlib.patch pkgsrc-ebook-tools-host-cmake.patch pkgsrc-font-runtime-roles.patch pkgsrc-stale-metadata.patch pkgsrc-vala-valadoc-option.patch pkgsrc-vala-array-termination.patch pkgsrc-vala-dbus-fd-exhaustion.patch pkgsrc-nss-cross-host-tools.patch"
 if [ "$firmware_toolchain" = yes ]; then
     [ -n "$profile" ] || {
@@ -68,6 +71,11 @@ if [ "$firmware_toolchain" = yes ]; then
         echo 'The firmware compiler must use the common GCC16 line.' >&2; exit 2;
     }
 fi
+for delta in $overlay_deltas; do
+    [ -s "$root/profiles/common-build-tools/patches/$delta" ] || {
+        echo "Missing overlay infrastructure patch: $delta" >&2; exit 2;
+    }
+done
 expected=$(git -C "$root" ls-files --stage -- upstream/pkgsrc | awk '$1 == "160000" { print $2 }')
 actual=$(git -C "$root/upstream/pkgsrc" rev-parse HEAD)
 [ -n "$expected" ] && [ "$actual" = "$expected" ] || {
@@ -640,6 +648,10 @@ for category in "$root"/pkgsrc/*; do
         fi
         cp -RL "$package" "$destination/$name/${package##*/}"
     done
+done
+for delta in $overlay_deltas; do
+    patch -f -E -d "$destination" -p1 -F 0 < \
+        "$root/profiles/common-build-tools/patches/$delta"
 done
 if [ "$profile" = electron ]; then
     # Export the Electron source probes only for the explicit electron profile.

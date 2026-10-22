@@ -1,3 +1,5 @@
+Origin: EmberBSD, AI-assisted. Adds the automake 1.19 tool names that
+pkgsrc/devel/automake installs. Not submitted upstream.
 --- a/mk/tools/automake.mk
 +++ b/mk/tools/automake.mk
 @@ -89,7 +89,8 @@
