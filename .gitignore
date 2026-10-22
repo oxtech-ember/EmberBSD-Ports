@@ -14,3 +14,5 @@ work.*/
 # Source patches must remain visible when user ignores match upstream filenames.
 !**/patches/patch-*
 !/probes/electron/*/Makefile
+# Keep canonical recipe make fragments visible with host ignore rules.
+!/pkgsrc/**/*.mk

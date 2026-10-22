@@ -1,0 +1,121 @@
+# $NetBSD: builtin.mk,v 1.28.2.1 2026/10/01 18:53:09 bsiegert Exp $
+
+BUILTIN_PKG:=	expat
+
+BUILTIN_FIND_HEADERS_VAR:=	H_EXPAT
+BUILTIN_FIND_HEADERS.H_EXPAT=	expat.h expat_config.h
+
+.include "../../mk/buildlink3/bsd.builtin.mk"
+
+###
+### Determine if there is a built-in implementation of the package and
+### set IS_BUILTIN.<pkg> appropriately ("yes" or "no").
+###
+.if !defined(IS_BUILTIN.expat)
+.  if empty(H_EXPAT:M__nonexistent__)
+IS_BUILTIN.expat=	yes
+.  else
+IS_BUILTIN.expat=	no
+.  endif
+.endif
+MAKEVARS+=		IS_BUILTIN.expat
+
+###
+### If there is a built-in implementation, then set BUILTIN_PKG.<pkg> to
+### a package name to represent the built-in package.
+###
+.if !defined(BUILTIN_PKG.expat) && \
+    ${IS_BUILTIN.expat:tl} == yes && \
+    empty(H_EXPAT:M__nonexistent__)
+BUILTIN_VERSION.expat!=							\
+	${AWK} '/\#define[ 	]*XML_MAJOR_VERSION/ { M = $$3 } \
+		/\# [ ]*define[ 	]*XML_MAJOR_VERSION/ { M = $$4 } \
+		/\#define[ 	]*XML_MINOR_VERSION/ { m = "."$$3 } \
+		/\# [ ]*define[ 	]*XML_MINOR_VERSION/ { m = "."$$4 } \
+		/\#define[ 	]*XML_MICRO_VERSION/ { u = "."$$3 } \
+		/\# [ ]*define[ 	]*XML_MICRO_VERSION/ { u = "."$$4 } \
+		END { printf "%s%s%s\n", M, m, u }'			\
+		${_CROSS_DESTDIR:U:Q}${H_EXPAT:Q}
+BUILTIN_PKG.expat=	expat-${BUILTIN_VERSION.expat}
+.endif
+MAKEVARS+=		BUILTIN_PKG.expat
+
+###
+### Determine whether we should use the built-in implementation if it
+### exists, and set USE_BUILTIN.<pkg> appropriate ("yes" or "no").
+###
+.if !defined(USE_BUILTIN.expat)
+.  if ${PREFER.expat} == "pkgsrc"
+USE_BUILTIN.expat=	no
+.  else
+USE_BUILTIN.expat=	${IS_BUILTIN.expat}
+.    if defined(BUILTIN_PKG.expat) && \
+        ${IS_BUILTIN.expat:tl} == yes
+USE_BUILTIN.expat=	yes
+.      for _dep_ in ${BUILDLINK_API_DEPENDS.expat}
+.        if ${USE_BUILTIN.expat:tl} == yes
+USE_BUILTIN.expat!=							\
+	if ${PKG_ADMIN} pmatch ${_dep_:Q} ${BUILTIN_PKG.expat}; then	\
+		${ECHO} yes;						\
+	else								\
+		${ECHO} no;						\
+	fi
+.        endif
+.      endfor
+.    endif
+.  endif  # PREFER.expat
+.endif
+MAKEVARS+=		USE_BUILTIN.expat
+
+###
+### The section below only applies if we are not including this file
+### solely to determine whether a built-in implementation exists.
+###
+CHECK_BUILTIN.expat?=	no
+.if ${CHECK_BUILTIN.expat:tl} == no
+
+.  if ${USE_BUILTIN.expat:tl} == no
+BUILDLINK_API_DEPENDS.expat+=	expat>=1.95.4
+.  else
+.    if !empty(H_EXPAT:M${X11BASE}/*)
+.      include "../../mk/x11.builtin.mk"
+.    elif !empty(H_EXPAT:M/usr/*)
+BUILDLINK_PREFIX.expat=	/usr
+.    elif !empty(H_EXPAT:M/boot/common/*)
+BUILDLINK_PREFIX.expat=	/boot/common
+.    endif
+.  endif
+
+.endif	# CHECK_BUILTIN.expat
+
+# Fake pkg-config for builtin expat on NetBSD
+
+.if ${USE_BUILTIN.expat:tl} == yes
+.  if !empty(USE_TOOLS:C/:[A-z]*//:Mpkg-config)
+pre-configure: override-expat-pkgconfig
+
+BLKDIR_PKGCFG=	${BUILDLINK_DIR}/lib/pkgconfig
+EXPAT_PKGCFGF=	expat.pc
+
+.PHONY: override-expat-pkgconfig override-message-expat-pkgconfig override-expat-pkgconfig
+override-expat-pkgconfig: override-message-expat-pkgconfig
+override-message-expat-pkgconfig:
+	@${STEP_MSG} "Generating pkg-config file for builtin expat package."
+
+override-expat-pkgconfig:
+	${RUN}						\
+	${MKDIR} ${BLKDIR_PKGCFG};			\
+	{						\
+	${ECHO} "prefix=${BUILDLINK_PREFIX.expat}";	\
+	${ECHO} "exec_prefix=\$${prefix}";		\
+	${ECHO} "libdir=\$${exec_prefix}/lib";		\
+	${ECHO} "includedir=\$${prefix}/include";	\
+	${ECHO} "";					\
+	${ECHO} "Name: expat";				\
+	${ECHO} "Description: expat XML parser";	\
+	${ECHO} "Version: ${BUILTIN_VERSION.expat}";	\
+	${ECHO} "Libs: ${COMPILER_RPATH_FLAG}\$${libdir} -L\$${libdir} -lexpat";	\
+	${ECHO} "Cflags: -I\$${includedir}";		\
+	} >> ${BLKDIR_PKGCFG}/${EXPAT_PKGCFGF}
+.  endif
+.endif
