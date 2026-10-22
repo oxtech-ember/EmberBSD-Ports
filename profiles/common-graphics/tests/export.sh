@@ -252,6 +252,18 @@ negative omitted-ngspice-source-pin
 cp "$work/ngspice-sources" "$profile/sources.tsv"
 if sh "$script" "$work/unknown" unknown > "$work/unknown.log" 2>&1; then exit 1; fi
 [ ! -e "$work/unknown" ]
+kicad=$profile/recipes/cad/kicad10
+kinng=$kicad/patches/patch-libs_kinng_src_kinng.cpp
+mv "$kinng" "$work/kinng-patch"
+negative missing-kinng-patch
+cp "$kicad/distinfo" "$work/kicad-distinfo"
+sed '/SHA1 (patch-libs_kinng_src_kinng.cpp)/d' "$work/kicad-distinfo" > "$kicad/distinfo"
+negative omitted-kinng-patch-and-checksum
+cp "$work/kicad-distinfo" "$kicad/distinfo"
+cp "$work/kinng-patch" "$kinng"
+printf '\nchanged\n' >> "$kinng"
+negative changed-kinng-patch
+mv "$work/kinng-patch" "$kinng"
 nng=$profile/recipes/net/nng
 for name in options.mk patches/patch-drain-before-free patches/patch-docs-required; do
     mv "$nng/$name" "$work/nng-input"

@@ -26,7 +26,7 @@ read -r name expected url < "$here/sources.tsv"
 # Extract the complete, pinned archive. Keep demos and QA input data.
 mkdir "$source"
 tar -xjf "$archive" --strip-components=1 -C "$source"
-for delta in netbsd-platform.patch dxf-major-name.patch occt8-api.patch netbsd-proto-macros.patch; do
+for delta in netbsd-platform.patch dxf-major-name.patch occt8-api.patch netbsd-proto-macros.patch kinng-lifecycle.patch; do
     patch -f -F 0 -p1 -d "$source" -i "$here/patches/$delta"
 done
 for input in CMakeLists.txt qa/CMakeLists.txt demos/CMakeLists.txt api/CMakeLists.txt pcbnew/python/swig/pcbnew.i; do

@@ -19,3 +19,4 @@ SHA1 (patch-plugins_3d_idf_CMakeLists.txt) = 9061c5c5eac3311625ba93e541d557007c8
 SHA1 (patch-plugins_3d_vrml_CMakeLists.txt) = ea6942a953432c5c0124c57e9afb01f8a5c5325d
 SHA1 (patch-thirdparty_libcontext_libcontext.h) = cde252b7ee114f88527d953aa0c3ebcdd905c4a9
 SHA1 (patch-emberbsd-netbsd-proto-macros) = d4222cd674659ec6036798922ab384138b5b1bc5
+SHA1 (patch-libs_kinng_src_kinng.cpp) = 889a2a1b94ca920830fb232f309f4a23dfba3a95

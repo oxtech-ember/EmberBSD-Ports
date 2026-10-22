@@ -22,6 +22,11 @@ dates 10.0.7 to 2026-10-07. It is the latest stable release listed by the
   NetBSD system headers define device macros with the same names. The
   `kiapi` target and its consumers receive a scoped compatibility header.
   Schemas and generated source bytes remain unchanged.
+- `kinng-lifecycle.patch` frees each received IPC buffer, closes failed
+  listeners and wakes reply waiters during shutdown. The ordinary recipe
+  carries the same source bytes as `patch-libs_kinng_src_kinng.cpp` in revision 2.
+  The [actual-class regression](tests/kinng/README.md) checks real IPC ownership
+  and shutdown, including negative cases, with GCC16 target execution.
 
 The platform changes adapt pkgsrc `cad/kicad` patches at commit
 `fff4deb639a1a640476203c80f752fb77b6cb14b`.
@@ -41,7 +46,7 @@ Download the archive named in `sources.tsv`. Pass absolute paths:
 
 The script verifies SHA256 before creating the source directory.
 It refuses an existing output path, including a dangling symlink.
-It extracts the full archive and applies all four patches with zero fuzz.
+It extracts the full archive and applies all five patches with zero fuzz.
 It retains QA data, demos and all application components.
 A failed extraction or patch leaves its partial output for inspection.
 Use a new output path for another attempt.
