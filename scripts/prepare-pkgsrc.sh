@@ -600,14 +600,28 @@ trap 'exit 143' HUP TERM
 git -C "$root/upstream/pkgsrc" archive --format=tar --output="$export_archive" "$expected"
 mkdir "$destination"
 tar -xf "$export_archive" -C "$destination"
+# The shared overlay is in every export. A new category is copied as a
+# whole. In an upstream category, the overlay can only add packages.
 for category in "$root"/pkgsrc/*; do
     [ -d "$category" ] || continue
     name=${category##*/}
-    [ ! -e "$destination/$name" ] && [ ! -L "$destination/$name" ] || {
+    if [ ! -e "$destination/$name" ] && [ ! -L "$destination/$name" ]; then
+        cp -R "$category" "$destination/$name"
+        continue
+    fi
+    [ -d "$destination/$name" ] && [ -f "$destination/$name/Makefile" ] &&
+        [ ! -f "$category/Makefile" ] || {
         echo "Upstream already has $name; review the overlay." >&2
         exit 2
     }
-    cp -R "$category" "$destination/$name"
+    for package in "$category"/*; do
+        [ -d "$package" ] || { echo "Unexpected overlay file: pkgsrc/$name/${package##*/}" >&2; exit 2; }
+        [ ! -e "$destination/$name/${package##*/}" ] && [ ! -L "$destination/$name/${package##*/}" ] || {
+            echo "Upstream already has $name/${package##*/}; review the overlay." >&2
+            exit 2
+        }
+        cp -R "$package" "$destination/$name/${package##*/}"
+    done
 done
 if [ "$profile" = electron ]; then
     # Export the Electron source probes only for the explicit electron profile.
