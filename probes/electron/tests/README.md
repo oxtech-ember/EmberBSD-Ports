@@ -121,14 +121,31 @@ GCC16 target probe retains its object, depfile, and `.dwo`. A native Mac probe i
 unchanged, and an intentional GCC warning still fails under `-Werror`. The test
 does not evaluate the complete Apple template or compile Chromium source files.
 
-The PartitionAlloc test checks seven outcomes with GCC16 for NetBSD/aarch64.
+The PartitionAlloc runner maps the exact GCC target triplet to its ELF class,
+byte order, relocatable-file type, and machine. Its `--target-map-self-test`
+mode checks NetBSD/aarch64 and NetBSD/amd64 mappings and rejects unsupported
+triplets without compiling. Run it with the selected host CPython and SDK:
+
+```sh
+python3.15 -B -I -S probes/electron/tests/partition-alloc-netbsd-gcc16.py \
+  --sdk-source /absolute/SDK --target-map-self-test
+```
+
+The full PartitionAlloc regression checks seven outcomes with GCC16 for either
+NetBSD/aarch64 or NetBSD/amd64, selected by the compiler's exact `-dumpmachine`
+output. It maps `aarch64--netbsd` to ELF machine 183 and `x86_64--netbsd` to
+ELF machine 62. Both require ELF64 little-endian relocatable objects. The
+retained complete production-TU compile receipt covers AArch64. The seven
+isolated regression outcomes pass with both GCC16 target compilers and their
+matching sysroots; full amd64 allocator compilation remains unverified.
 It copies two production files, proves forward/reverse patch application, and
 extracts the exact metadata assertion into a small compile fixture. The original
 assertion fails on signedness; the fixed assertion passes. An out-of-range shift
 fails its intended assertion before a shift is evaluated. The real target malloc
-header rejects the original shim and accepts the patched shim as an AArch64 ELF
-object. Mocked non-NetBSD headers retain the original pointer signature. These
-isolated probes do not compile the complete allocator or execute its runtime.
+header rejects the original shim and accepts the patched shim as the ELF object
+selected for that target. Mocked non-NetBSD headers retain the original pointer
+signature. These isolated probes do not compile the complete allocator or
+execute its runtime.
 
 Target analyzer coverage is partial. Cppcheck 2.18 stops at an unchanged
 `time.h` AST error in both revisions. Apple Clang 21 analyzes the metadata TU

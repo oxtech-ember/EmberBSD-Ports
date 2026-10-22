@@ -28,13 +28,26 @@ MACRO_ANCHOR = "// Check that the GetInSlotMetadataIndexMultiplierShift() calcul
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sdk-source", required=True)
-    parser.add_argument("--source-root", required=True)
-    parser.add_argument("--patch", required=True)
-    parser.add_argument("--ports-root", required=True)
-    parser.add_argument("--cxx", required=True)
-    parser.add_argument("--sysroot", required=True)
-    parser.add_argument("--workdir", required=True)
-    return parser.parse_args()
+    parser.add_argument("--source-root")
+    parser.add_argument("--patch")
+    parser.add_argument("--ports-root")
+    parser.add_argument("--cxx")
+    parser.add_argument("--sysroot")
+    parser.add_argument("--workdir")
+    parser.add_argument(
+        "--target-map-self-test",
+        action="store_true",
+        help="test the supported NetBSD GCC target-to-ELF mapping without compiling",
+    )
+    args = parser.parse_args()
+    if not args.target_map_self_test:
+        required = (
+            "source_root", "patch", "ports_root", "cxx", "sysroot", "workdir"
+        )
+        missing = [name.replace("_", "-") for name in required if not getattr(args, name)]
+        if missing:
+            parser.error("full regression requires: " + ", ".join("--" + name for name in missing))
+    return args
 
 
 ARGS = parse_args()
@@ -53,6 +66,46 @@ for module in (emberbsd_sdk, errors, inventory, jsonio, paths, process):
     module_path = pathlib.Path(module.__file__).resolve(strict=True)
     if module_path.parent != SDK_ROOT / "src" / "emberbsd_sdk":
         raise SystemExit(f"SDK module loaded from an unexpected source: {module_path}")
+
+
+TARGET_ELF_BY_GCC_TRIPLET = {
+    "aarch64--netbsd": (2, "little", 1, 183),
+    "x86_64--netbsd": (2, "little", 1, 62),
+}
+
+
+def target_elf_identity(gcc_triplet):
+    try:
+        return TARGET_ELF_BY_GCC_TRIPLET[gcc_triplet]
+    except KeyError as error:
+        raise ValueError(f"unsupported NetBSD GCC target: {gcc_triplet!r}") from error
+
+
+def target_map_self_test():
+    expected = {
+        "aarch64--netbsd": (2, "little", 1, 183),
+        "x86_64--netbsd": (2, "little", 1, 62),
+    }
+    results = []
+    for gcc_triplet, expected_identity in expected.items():
+        actual_identity = target_elf_identity(gcc_triplet)
+        results.append({
+            "gcc_triplet": gcc_triplet,
+            "expected_elf_identity": list(expected_identity),
+            "actual_elf_identity": list(actual_identity),
+            "pass": actual_identity == expected_identity,
+        })
+    for gcc_triplet in ("amd64--netbsd", "x86_64--linux-gnu", "i686--netbsd"):
+        try:
+            target_elf_identity(gcc_triplet)
+        except ValueError:
+            rejected = True
+        else:
+            rejected = False
+        results.append({"gcc_triplet": gcc_triplet, "unsupported_target_rejected": rejected, "pass": rejected})
+    summary = {"tests": results, "passed": sum(result["pass"] for result in results), "total": len(results)}
+    print(jsonio.json_bytes(summary).decode("utf-8"), end="")
+    return 0 if summary["passed"] == summary["total"] else 1
 
 
 def write_bytes(path, data, mode=0o644):
@@ -278,12 +331,16 @@ def main():
     compiler_machine = capture([compiler, "-dumpmachine"], fixture_root, "compiler-machine")
     require(compiler_machine, "compiler target query")
     compiler_machine_text = compiler_machine["stdout"].decode("ascii", "strict").strip()
+    try:
+        expected_elf_identity = target_elf_identity(compiler_machine_text)
+    except ValueError as error:
+        raise RuntimeError(str(error)) from error
     compiler_banner = capture([compiler, "--version"], fixture_root, "compiler-banner")
     require(compiler_banner, "compiler identity query")
     compiler_banner_text = compiler_banner["stdout"].decode("utf-8", "replace")
-    if not compiler_version_text.startswith("16.") or compiler_machine_text != "aarch64--netbsd" or "GCC" not in compiler_banner_text:
+    if not compiler_version_text.startswith("16.") or "GCC" not in compiler_banner_text:
         raise RuntimeError(
-            "selected compiler must be GCC 16 for aarch64--netbsd; got "
+            "selected compiler must be GCC 16 for a supported NetBSD target; got "
             f"version={compiler_version_text!r}, machine={compiler_machine_text!r}"
         )
 
@@ -437,7 +494,12 @@ size_t ShimGetSizeEstimate(const void*, void*);
     results.append({
         "test": "NetBSD production shim compiles after patch with GCC16",
         "pass": after_shim["returncode"] == 0 and after_object.is_file()
-                and elf_facts == {"class": 2, "byte_order": "little", "type": 1, "machine": 183},
+                and elf_facts == {
+                    "class": expected_elf_identity[0],
+                    "byte_order": expected_elf_identity[1],
+                    "type": expected_elf_identity[2],
+                    "machine": expected_elf_identity[3],
+                },
         "returncode": after_shim["returncode"],
         "diagnostic": after_diagnostic,
         "object_path": str(after_object),
@@ -512,7 +574,12 @@ size_t ShimGetSizeEstimate(const void*, void*);
         "sdk_modules": {module.__name__: str(pathlib.Path(module.__file__).resolve()) for module in (emberbsd_sdk, errors, inventory, jsonio, paths, process)},
         "python": {"executable": str(pathlib.Path(sys.executable).resolve()), "version": list(sys.version_info[:3]), "sha256": inventory.sha256_file(str(pathlib.Path(sys.executable).resolve()))},
         "compiler": {"path": str(compiler), "sha256": inventory.sha256_file(str(compiler)), "sysroot": str(sysroot)},
-        "compiler_target": {"dumpfullversion": compiler_version_text, "dumpmachine": compiler_machine_text, "banner": compiler_banner_text},
+        "compiler_target": {
+            "dumpfullversion": compiler_version_text,
+            "dumpmachine": compiler_machine_text,
+            "expected_elf_identity": list(expected_elf_identity),
+            "banner": compiler_banner_text,
+        },
         "workdir": str(workdir),
         "invocation": [str(pathlib.Path(sys.executable).resolve()), "-B", "-I", "-S", str(pathlib.Path(__file__).resolve()), *sys.argv[1:]],
         "production_condition_before": before_call["condition"],
@@ -529,4 +596,4 @@ size_t ShimGetSizeEstimate(const void*, void*);
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(target_map_self_test() if ARGS.target_map_self_test else main())
