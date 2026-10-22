@@ -28,6 +28,23 @@ Cppcheck 2.22 stops at the real Linux `types.h` signed-128-bit declaration.
 Its experimental Clang import also fails on a real AST location.
 These parser failures do not establish completed Cppcheck coverage.
 
-This checkpoint establishes source and focused native behavior.
-The ordinary package with its default documentation, target cross package,
-installed EmberBSD IPC tests and complete KiCad application remain pending.
+The ordinary [common NNG package](../../../profiles/common-graphics/cross/nng.md)
+now uses this exact reviewed source patch. Its GCC16 AArch64 package retains
+all 325 manual pages and 325 HTML pages with the default documentation option.
+Native ordinary packaging, installed EmberBSD IPC tests and the complete
+KiCad application remain pending.
+
+The ordinary AArch64 build also supplies the real preprocessing flags and
+EmberBSD headers for four patched runtime units: `aio.c`, `init.c`, `reap.c`
+and `taskq.c`. GCC 16.2.0 `-fanalyzer` reports no diagnostics before or after
+the lifecycle patch. Cppcheck 2.18.0 parses the GCC-preprocessed C units with
+`--language=c --std=c99 --platform=unix64 --check-level=exhaustive`.
+It reports no errors, warnings or parser failures before or after the patch.
+It reports 62 style diagnostics before and 63 after, plus four checker reports
+in each set. The difference removes one `variableScope` diagnostic and adds
+one `staticFunction` and one `redundantContinue` diagnostic. These are style
+findings in the private upstream lifecycle implementation. They are not
+confirmed runtime defects. No diagnostics are suppressed.
+This check covers the selected NetBSD/AArch64 feature configuration and four
+runtime units. It does not establish whole-library or Windows coverage.
+The earlier Linux Cppcheck parser limitation remains a separate boundary.

@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: MIT
+# Origin: EmberBSD (AI-assisted), required documentation must not disappear.
+# Keep upstream NNG_ENABLE_DOC=OFF behavior. Fail if requested docs lack a tool.
+
+--- a/docs/man/CMakeLists.txt
++++ b/docs/man/CMakeLists.txt
+@@ -14,8 +14,7 @@
+ if (NNG_ENABLE_DOC)
+     find_program(ASCIIDOCTOR asciidoctor)
+     if (NOT ASCIIDOCTOR)
+-        message(WARNING "Could not find asciidoctor: skipping docs")
+-        set(NNG_ENABLE_DOC OFF)
++        message(FATAL_ERROR "NNG_ENABLE_DOC requires asciidoctor")
+     else ()
+         message(STATUS "Using asciidoctor at ${ASCIIDOCTOR}")
+     endif ()

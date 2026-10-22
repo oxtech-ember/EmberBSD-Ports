@@ -1,0 +1,7 @@
+$NetBSD$
+
+BLAKE2s (nng-1.12.3.tar.gz) = dc7b4e9ea0de026c43b8d0ccc0d608467ba0f9b59476a4ef3983f6ae003d1c3e
+SHA512 (nng-1.12.3.tar.gz) = 61650b22ca55122c382b44e8f979401cfb09b59ca9e1d2bb73dd8881fd92dd337617b7d9b3cce983dda9a6347647bd9c2447608a7524eafd7de96a697b62e054
+Size (nng-1.12.3.tar.gz) = 771524 bytes
+SHA1 (patch-docs-required) = 19ec1bdddec961f3602d8ec59c9067692f55ebb6
+SHA1 (patch-drain-before-free) = 6708639316ff5af70d651e50ccd1bb6c93113992

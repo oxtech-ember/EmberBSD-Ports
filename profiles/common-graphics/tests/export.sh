@@ -252,6 +252,25 @@ negative omitted-ngspice-source-pin
 cp "$work/ngspice-sources" "$profile/sources.tsv"
 if sh "$script" "$work/unknown" unknown > "$work/unknown.log" 2>&1; then exit 1; fi
 [ ! -e "$work/unknown" ]
+nng=$profile/recipes/net/nng
+for name in options.mk patches/patch-drain-before-free patches/patch-docs-required; do
+    mv "$nng/$name" "$work/nng-input"
+    negative "missing-nng-${name##*/}"
+    mv "$work/nng-input" "$nng/$name"
+done
+delta=$nng/patches/patch-drain-before-free
+mv "$delta" "$work/nng-patch-link"
+ln -s "$root/probes/kicad/nng/patches/drain-before-free.patch" "$delta"
+negative unexpected-nng-patch-origin
+rm "$delta"
+mv "$work/nng-patch-link" "$delta"
+ln -s "$root/probes/kicad/nng/README.md" "$nng/unexpected-link"
+negative unexpected-nng-extra-link
+rm "$nng/unexpected-link"
+cp "$profile/sources.tsv" "$work/nng-sources"
+sed '/^net\/nng[[:space:]]/d' "$work/nng-sources" > "$profile/sources.tsv"
+negative omitted-nng-source-pin
+cp "$work/nng-sources" "$profile/sources.tsv"
 negative_count=$((negative_count + 1))
 printf 'PASS: preflight refusal unknown-mode\n'
 if [ "$preflight_only" = yes ]; then
@@ -282,6 +301,7 @@ for mode in default development-toolchain common-build-tools common-graphics com
     case "$mode" in
         common-graphics|common-media|plasma-mobile)
             grep -Fqx 'CMAKE_CONFIGURE_ARGS+=	-DNNG_TOOLS:BOOL=ON' "$tree/net/nng/Makefile"
+            [ "$(find "$tree/net/nng" -type l | wc -l | tr -d ' ')" = 0 ]
             diff -qr "$profile/recipes/x11/libspnav" "$tree/x11/libspnav"
             cmp "$profile/recipes/devel/flex/patches/patch-src_main.c" "$tree/devel/flex/patches/patch-src_main.c"
             grep -Fqx 'CUPS_VERS=	2.4.20' "$tree/print/cups/Makefile.common"
@@ -290,7 +310,7 @@ for mode in default development-toolchain common-build-tools common-graphics com
             grep -Fqx "SHA1 (patch-config-scripts_cups-gssapi-target) = $(sed '/[$]NetBSD.*/d' "$cups_gss_patch" | shasum -a 1 | awk '{ print $1 }')" "$tree/print/cups-base/distinfo"
             grep -Fqx "SHA1 (patch-src_main.c) = $(sed '/[$]NetBSD.*/d' "$flex_patch" | shasum -a 1 | awk '{ print $1 }')" "$tree/devel/flex/distinfo"
             grep -Fqx 'PKGREVISION=	1' "$tree/devel/flex/Makefile"
-            for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc wayland/sway wayland/swaylock devel/libevdev-chunk textproc/json-c x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 textproc/fmtlib graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson cad/ng-spice cad/ng-spice-shared cad/kicad10; do diff -qr "$profile/recipes/$recipe" "$tree/$recipe"; done
+            for recipe in net/nng graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc wayland/sway wayland/swaylock devel/libevdev-chunk textproc/json-c x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 textproc/fmtlib graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson cad/ng-spice cad/ng-spice-shared cad/kicad10; do diff -qr "$profile/recipes/$recipe" "$tree/$recipe"; done
             diff -qr "$profile/recipes/devel/wayland-devel" "$tree/devel/wayland-devel"
             cmp "$profile/mk.conf" "$tree/EMBERBSD-COMMON-GRAPHICS-MK.CONF"
             cmp "$profile/sources.tsv" "$tree/EMBERBSD-COMMON-GRAPHICS-SOURCES" ;;
@@ -300,7 +320,7 @@ for mode in default development-toolchain common-build-tools common-graphics com
             [ ! -e "$tree/x11/libspnav" ]
             [ ! -L "$tree/x11/libspnav" ]
             # END libspnav-absence-guard
-            for recipe in graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi textproc/fmtlib graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson cad/ng-spice cad/ng-spice-shared; do diff -qr "$root/upstream/pkgsrc/$recipe" "$tree/$recipe"; done
+            for recipe in net/nng graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi textproc/fmtlib graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson cad/ng-spice cad/ng-spice-shared; do diff -qr "$root/upstream/pkgsrc/$recipe" "$tree/$recipe"; done
             [ ! -e "$tree/cad/kicad10" ]
             [ ! -e "$tree/devel/wayland-devel" ]
             [ ! -e "$tree/EMBERBSD-COMMON-GRAPHICS-MK.CONF" ] ;;
