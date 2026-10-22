@@ -109,6 +109,11 @@ runtime behavior are validated.
   API library and version-message consumer pass native memory checks and
   AArch64 execution. Full KiCad configuration, package and CAD workflows
   remain pending.
+- [Common ncurses 6.6nb3](profiles/common-build-tools/cross/ncurses-native-headers.md):
+  native generators retain native headers and produce the target terminfo
+  layout. Full GCC16 AArch64 packaging, installed readback and `infocmp`
+  acceptance pass. Numeric boundary probes and paired UBSan trap checks
+  validate the reader repair. GUI, leak and complete KiCad checks remain separate.
 - [Common OCCT 8.0.1](profiles/common-graphics/cross/occt.md): the complete
   GCC16 AArch64 package passes normal checks and exact readback of all 7,906
   installed payload entries. All 68 libraries retain the full default modules,

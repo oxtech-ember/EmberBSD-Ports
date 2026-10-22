@@ -83,10 +83,13 @@ zlib package in common profiles. Its ordinary native GCC16 package and strict
 gzip archive roundtrip pass. Outside the opt-in, bootstrap metadata stays intact.
 Cross metadata passes; target execution remains separate.
 
-The [ncurses generator header contract](cross/ncurses-native-headers.md)
-separates ordinary native configure results from target library headers.
-Real Darwin generators pass causal, macro and table-output checks.
-Full target packaging and runtime remain separate.
+The [ncurses 6.6nb3 cross roles](cross/ncurses-native-headers.md) separate
+native generator headers and produce the target terminfo filename layout.
+Full GCC16 AArch64 packaging and exact installed SDK readback pass.
+Target `infocmp` reads the original database leaf and refuses damaged data.
+All 15 numeric boundary values pass; paired target UBSan trap checks reject
+the upstream reader and accept the repair. GUI and complete KiCad acceptance
+remain separate.
 
 Ordinary [FFTW and Readline packages](cross/README.md#installed-fftw-readline-and-ncurses)
 also pass GCC16 AArch64 VM numerical, terminal input/history and package

@@ -1,4 +1,4 @@
-# Native headers for ncurses cross generators
+# Native generators and terminfo for ncurses
 
 The common ncurses 6.6nb3 recipe configures host generators separately.
 The library still uses target GCC16 and target configure results.
@@ -51,9 +51,9 @@ native compiler and linker wrappers for both private build commands.
 The upstream `progs/tic` target builds the private library it needs. Its real
 upper- and lower-case alias probe must produce the target directory layout.
 Only then does an explicit strict SUBST class retarget the configured
-`run_tic.sh` to that absolute private provider. The earlier native generator
-headers keep their separate configuration. The target reader and its normal
-layout stay unchanged. No target executable generates the database.
+`run_tic.sh` to that absolute private provider. The native generator headers
+keep their separate configuration. The target library keeps its normal
+filename layout. No target executable generates the database.
 This follows the incompatible-layout warning in upstream `INSTALL`, in its
 cross-compilation section.
 A strict cross-only substitution gives the installed `ncurses6-config` helper
@@ -142,8 +142,10 @@ sentinels remain unchanged. The patch applies to native and target readers.
 `tests/ncurses-read-numbers.c` includes the selected complete `read_entry.c`.
 Define `EMBERBSD_NCURSES_READ_ENTRY_SOURCE` to its quoted absolute filename.
 Use the configured native extended-number headers, actual compile flags and
-library. Build with `-fsanitize=address,undefined` and run with failure-on-error
-options. Run against the exact upstream source and the patched source.
+library. Use `-ffunction-sections -fdata-sections` and discard unused sections:
+Darwin uses `-Wl,-dead_strip`; NetBSD uses `-Wl,--gc-sections`.
+Build native tests with `-fsanitize=address,undefined` and run with
+failure-on-error options. Use the exact upstream source and the patched source.
 Six 16-bit and nine 32-bit values cover zero, signed limits, wider positive
 values and both sentinels. The upstream input must fail UBSan; all 15 patched
 values must match. Keep the selected source, compiler, flags and library hashes.
@@ -152,6 +154,12 @@ Both actual native layouts also compile the real `scrt` entry. The exact
 compiled bytes that failed before must decode after the repair. Recompiling
 the entry must preserve its bytes and capabilities. These checks do not use
 an alternative numeric decoder or disable sanitizer checks.
+
+The target probe uses the actual target headers and flags with GCC16.
+Its separate trap build adds `-fsanitize=undefined -fsanitize-trap=undefined`
+and `-fno-sanitize-recover=all`. It needs no sanitizer runtime. The upstream
+probe must trap; all 15 repaired values must pass. These test executables
+do not instrument the installed ncurses library.
 
 ## Analysis and acceptance boundary
 
@@ -177,24 +185,48 @@ exit on this Darwin 27 AArch64 host, including an empty program. The
 successful ASan/UBSan runs explicitly use `detect_leaks=0`. Valgrind does
 not support this host. These runs do not establish leak acceptance.
 
-The later numeric reader change has a separate executed scope. The complete
+The numeric reader regression has a separate executed scope. The complete
 instrumented native library, `tic` and `infocmp` preserve both native layouts.
 The same real entry fails UBSan before the repair and decodes after it.
 The numeric source test also fails before and passes all 15 values after it.
-ASan/UBSan remains enabled. The earlier leak-checking limitation still applies.
+ASan/UBSan remains enabled. The leak-checking limitation still applies.
+
+Cppcheck 2.22.0 also checks the complete reader and numeric test with actual
+NetBSD AArch64 GCC16 preprocessing. Before and after retain the same two
+`constStatement` warnings, plus inherited style and portability diagnostics.
+Neither input has an error-severity finding. The numeric test adds three
+style diagnostics. GCC16 `-fanalyzer` and Clang Static Analyzer report no
+reader or numeric-test findings with those target headers and flags.
+Clang analyzes the GCC-preprocessed target input; it builds no target objects.
 
 Cppcheck 2.22.0 rejects the valid macOS SDK `errno_t` typedef, including a
-two-line control. Its whole-unit result remains unqualified. Existing
+two-line control. Its native whole-unit result remains unqualified. Existing
 Cppcheck 2.18.0 supplies additional reader/writer coverage with inherited
 style, portability and null-check warnings retained. The Clang-preprocessed
 `tic` unit also uses unsupported Apple block syntax; its additional 2.18.0
 run uses the real native GCC16 preprocessor and SDK explicitly. These inputs
-have different compiler builtins. They do not establish a clean current-tool
-result. GCC16 and Clang analysis of the changed reader retain their actual
-configured headers and flags. Unrelated `tic` allocation-failure findings and
+have different compiler builtins. They do not establish a clean native
+current-tool result. Unrelated `tic` allocation-failure findings and
 whole-program memory acceptance remain separate work.
 
 Upstream cross-run fallbacks for C++ `override` and parameter initialization
 remain unchanged. The `unsigned char` Boolean representation follows the
 existing compile-proven `sizeof(bool)=1` result. No new cache answer is added.
-Full target packaging, ncurses runtime and consumer acceptance are separate.
+
+## Installed target acceptance
+
+The complete GCC16 AArch64 package passes archive, provenance and staged
+byte, mode and link checks. A normal SDK `pkg_add -U` upgrade verifies all
+3,894 installed payload entries and three metadata records. All 2,899 old-only
+paths disappear, including the obsolete hexadecimal `scrt` leaf.
+
+On a full EmberBSD AArch64 guest, the installed `infocmp` uses the exact
+installed library closure and the original `share/terminfo/s/scrt` bytes.
+It reads that leaf without remapping. Native quickdump of the same bytes
+returns identical capabilities. A damaged entry at the same leaf is refused.
+The plain numeric probe passes all 15 values. The paired target UBSan trap
+probe rejects the upstream reader and passes all 15 repaired values. All five
+cases run as an ordinary user and verify temporary-directory cleanup.
+
+These checks do not establish GUI, complete KiCad, leak or whole-program
+memory-safety acceptance. The installed target library is not instrumented.
