@@ -80,7 +80,7 @@ assert 'install-info:run not supported in cross-compilation' in run(
 # gzip is an actual pkgsrc consumer of INFO_FILES. Keep the index and route
 # its package lifecycle command to the selected target provider.
 info_variables = (
-    'VARNAMES=PKG_FAIL_REASON INFO_FILES GNU_CONFIGURE_INFODIR INSTALL_INFO '
+    'VARNAMES=PKG_FAIL_REASON INFO_FILES GNU_CONFIGURE_INFODIR PKGINFODIR INSTALL_INFO '
     'TOOLS_SCRIPT.install-info TOOLS_PATH.install-info DEPENDS'
 )
 info_result = run('info-files-enabled', [bmake, '-C', pkgsrc + '/archivers/gzip',
@@ -88,16 +88,15 @@ info_result = run('info-files-enabled', [bmake, '-C', pkgsrc + '/archivers/gzip'
 assert 'install-info:run not supported in cross-compilation' not in info_result[0], info_result
 if (source_sysroot / 'usr/bin/install-info').is_file():
     expected_info_tool = '/usr/bin/install-info'
-    assert not any('pkg_install-info-' in line for line in info_result[6:]), info_result
+    assert not any('pkg_install-info-' in line for line in info_result[7:]), info_result
 elif (source_sysroot / 'usr/pkg/bin/pkg_install-info').is_file():
     expected_info_tool = '/usr/pkg/bin/pkg_install-info'
     assert any('pkg_install-info-' in line and ':../../pkgtools/pkg_install-info' in line
-               for line in info_result[6:]), info_result
+               for line in info_result[7:]), info_result
 else:
     raise SystemExit('The target sysroot has no accepted install-info provider')
-assert info_result[1:6] == [
-    'yes', '/usr/pkg/info', expected_info_tool, 'exit 0', expected_info_tool,
-], info_result
+assert info_result[1] == 'yes' and info_result[2] == '/usr/pkg/' + info_result[3], info_result
+assert info_result[4:7] == [expected_info_tool, 'exit 0', expected_info_tool], info_result
 assert 'gm4:run not supported in cross-compilation' in run('other-runtime-tool', base + ['USE_TOOLS=sh pwd gm4:run', '-v', 'PKG_FAIL_REASON'])
 gts_base = [bmake, '-C', pkgsrc + '/graphics/gts', 'MAKECONF=' + makeconf]
 gts_result = run('gts-libtool-tag', gts_base + [query, 'VARNAMES=PKG_FAIL_REASON PKGREVISION']).splitlines()
