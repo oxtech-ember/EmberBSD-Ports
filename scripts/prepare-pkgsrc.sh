@@ -387,19 +387,6 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
         esac
         [ "$archive:$sha:$url" = "$pin" ] || { echo "Incorrect common graphics source pin: $recipe" >&2; exit 2; }
     done < "$graphics/sources.tsv"
-    flex_patch=$graphics/recipes/devel/flex/patches/patch-src_main.c
-    [ -s "$flex_patch" ] || { echo 'Incomplete native Flex patch.' >&2; exit 2; }
-    flex_revision_patch=$graphics/cross/flex-pkgsrc-revision.patch
-    [ -s "$flex_revision_patch" ] || { echo 'Missing native Flex package revision patch.' >&2; exit 2; }
-    [ -s "$root/upstream/pkgsrc/devel/flex/Makefile" ] || {
-        echo 'Pinned pkgsrc devel/flex recipe is missing.' >&2; exit 2;
-    }
-    ! grep -q '^PKGREVISION=' "$root/upstream/pkgsrc/devel/flex/Makefile" || {
-        echo 'Pinned pkgsrc Flex recipe already has a package revision; review the overlay.' >&2; exit 2;
-    }
-    [ ! -e "$root/upstream/pkgsrc/devel/flex/patches/patch-src_main.c" ] || {
-        echo 'Unexpected pkgsrc Flex patch collision.' >&2; exit 2;
-    }
     for recipe in net/nng graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc wayland/sway wayland/swaylock devel/libevdev-chunk textproc/json-c x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 textproc/fmtlib x11/pixman graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/lerc graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freeimage graphics/freeimageplus graphics/libraw graphics/freetype2 archivers/lzo x11/libXt x11/libspnav devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info x11/gtk3 x11/wxGTK32 www/webkit-gtk41 www/webkit-gtk60 devel/at-spi2-core math/eigen3 textproc/rapidjson cad/ng-spice cad/ng-spice-shared cad/kicad10 cad/occt security/libsecret security/mit-krb5 security/mit-krb5-devel; do
         source=$graphics/recipes/$recipe
         recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk'
@@ -755,8 +742,6 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
         "$graphics/cross/libsoup3-cross-disable-tls-probe.patch"
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$graphics/cross/check-interpreter-base-cross.patch"
-    patch -f -N -d "$destination" -p1 -F 0 < \
-        "$graphics/cross/flex-pkgsrc-revision.patch"
     glib_networking=$destination/net/glib-networking
     glib_networking_patch=patch-emberbsd_meson.build
     [ ! -e "$glib_networking/patches/$glib_networking_patch" ] || {
@@ -768,15 +753,6 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
         "$glib_networking/patches/$glib_networking_patch" | shasum -a 1 | awk '{ print $1 }')
     printf 'SHA1 (%s) = %s\n' "$glib_networking_patch" "$glib_networking_patch_sha" \
         >> "$glib_networking/distinfo"
-    flex=$destination/devel/flex
-    flex_patch=patch-src_main.c
-    [ ! -e "$flex/patches/$flex_patch" ] || {
-        echo 'Unexpected exported pkgsrc Flex patch collision.' >&2; exit 2;
-    }
-    mkdir -p "$flex/patches"
-    cp "$graphics/recipes/devel/flex/patches/$flex_patch" "$flex/patches/$flex_patch"
-    flex_patch_sha=$(sed '/[$]NetBSD.*/d' "$flex/patches/$flex_patch" | shasum -a 1 | awk '{ print $1 }')
-    printf 'SHA1 (%s) = %s\n' "$flex_patch" "$flex_patch_sha" >> "$flex/distinfo"
     # Select GLEW's platform from the target, not the build host's uname.
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$graphics/cross/glew-target-system.patch"

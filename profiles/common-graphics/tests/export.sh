@@ -72,18 +72,10 @@ for name in cross.mk files/target-query.py files/sdk_source.py files/elf-needed.
     negative "missing-gi-${name##*/}"
     mv "$work/gi-helper" "$helper"
 done
-flex_patch=$profile/recipes/devel/flex/patches/patch-src_main.c
-mv "$flex_patch" "$work/flex-patch"
-negative missing-native-flex-patch
-mv "$work/flex-patch" "$flex_patch"
 cups_delta=$profile/cross/current-cups.patch
 mv "$cups_delta" "$work/cups-delta"
 negative missing-common-cups-delta
 mv "$work/cups-delta" "$cups_delta"
-flex_revision_patch=$profile/cross/flex-pkgsrc-revision.patch
-mv "$flex_revision_patch" "$work/flex-revision-patch"
-negative missing-native-flex-revision-patch
-mv "$work/flex-revision-patch" "$flex_revision_patch"
 gi=$profile/recipes/devel/gobject-introspection
 cp "$gi/distinfo" "$work/gi-distinfo"
 mv "$gi/patches/patch-girepository_gthash-memory" "$work/gi-gthash-patch"
@@ -342,13 +334,11 @@ for mode in default development-toolchain common-build-tools common-graphics com
             grep -Fqx 'CMAKE_CONFIGURE_ARGS+=	-DNNG_TOOLS:BOOL=ON' "$tree/net/nng/Makefile"
             [ "$(find "$tree/net/nng" -type l | wc -l | tr -d ' ')" = 0 ]
             diff -qr "$profile/recipes/x11/libspnav" "$tree/x11/libspnav"
-            cmp "$profile/recipes/devel/flex/patches/patch-src_main.c" "$tree/devel/flex/patches/patch-src_main.c"
             grep -Fqx 'CUPS_VERS=	2.4.20' "$tree/print/cups/Makefile.common"
             grep -Fqx 'CONFIGURE_ENV+=	KRB5CONFIG=${KRB5_CONFIG:Q}' "$tree/print/libcups/options.mk"
             cups_gss_patch=$tree/print/cups-base/patches/patch-config-scripts_cups-gssapi-target
             grep -Fqx "SHA1 (patch-config-scripts_cups-gssapi-target) = $(sed '/[$]NetBSD.*/d' "$cups_gss_patch" | shasum -a 1 | awk '{ print $1 }')" "$tree/print/cups-base/distinfo"
-            grep -Fqx "SHA1 (patch-src_main.c) = $(sed '/[$]NetBSD.*/d' "$flex_patch" | shasum -a 1 | awk '{ print $1 }')" "$tree/devel/flex/distinfo"
-            grep -Fqx 'PKGREVISION=	1' "$tree/devel/flex/Makefile"
+            diff -qr "$root/profiles/common-build-tools/recipes/devel/flex" "$tree/devel/flex"
             for recipe in net/nng graphics/MesaLib x11/libdrm devel/wayland devel/wayland-protocols x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc wayland/sway wayland/swaylock devel/libevdev-chunk textproc/json-c x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 textproc/fmtlib graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection devel/glib2-tools devel/glib2-introspection devel/gdbus-codegen graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson cad/ng-spice cad/ng-spice-shared cad/kicad10 cad/occt; do diff -qr "$profile/recipes/$recipe" "$tree/$recipe"; done
             diff -qr "$profile/recipes/devel/wayland-devel" "$tree/devel/wayland-devel"
             cmp "$profile/mk.conf" "$tree/EMBERBSD-COMMON-GRAPHICS-MK.CONF"
