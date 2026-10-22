@@ -1,0 +1,64 @@
+$NetBSD$
+
+Declare the Node executable used by GN actions from the build host, while
+retaining Linux Node for remote execution workers.
+Origin: EmberBSD (AI-assisted), Chromium 152.0.7977.167; not submitted upstream.
+
+diff --git a/third_party/protobuf/proto_library.gni b/third_party/protobuf/proto_library.gni
+--- a/third_party/protobuf/proto_library.gni
++++ b/third_party/protobuf/proto_library.gni
+@@ -267,28 +267,29 @@
+   "//third_party/node/node_modules/ts-proto/protoc-gen-ts_proto",
+ ]
+ 
+-# When use_remoteexec=true, node actions may run on remote
+-# Linux worker. So it should include linux node binary in inputs.
+-if (is_openbsd) {
++# The TypeScript protoc plugin runs on the build host. Remote actions may also
++# run on Linux workers, so include the Linux Node binary when remote execution
++# is enabled.
++if (host_os == "openbsd") {
+   _protoc_gen_ts_runtime_deps +=
+       [ "//third_party/node/openbsd/node-openbsd/bin/node" ]
+ }
+-if (is_freebsd) {
++if (host_os == "freebsd") {
+   _protoc_gen_ts_runtime_deps +=
+       [ "//third_party/node/freebsd/node-freebsd/bin/node" ]
+ }
+-if (is_netbsd) {
++if (host_os == "netbsd") {
+   _protoc_gen_ts_runtime_deps +=
+       [ "//third_party/node/netbsd/node-netbsd/bin/node" ]
+ }
+-if (!is_bsd && (is_linux || is_chromeos || use_remoteexec)) {
++if (host_os == "linux" || use_remoteexec) {
+   _protoc_gen_ts_runtime_deps +=
+       [ "//third_party/node/linux/node-linux-x64/bin/node" ]
+ }
+-if (is_win && host_os == "win") {
++if (host_os == "win") {
+   _protoc_gen_ts_runtime_deps += [ "//third_party/node/win/node.exe" ]
+ }
+-if (is_mac && host_os == "mac") {
++if (host_os == "mac") {
+   if (host_cpu == "arm64") {
+     _protoc_gen_ts_runtime_deps +=
+         [ "//third_party/node/mac_arm64/node-darwin-arm64/bin/node" ]
+diff --git a/third_party/node/node.gni b/third_party/node/node.gni
+--- a/third_party/node/node.gni
++++ b/third_party/node/node.gni
+@@ -26,10 +26,10 @@
+-    if ((is_linux || is_chromeos || use_remoteexec) && !is_bsd) {
++    if (host_os == "linux" || use_remoteexec) {
+       inputs += [ "//third_party/node/linux/node-linux-x64/bin/node" ]
+     }
+-    if (is_win && host_os == "win") {
++    if (host_os == "win") {
+       inputs += [ "//third_party/node/win/node.exe" ]
+     }
+-    if (is_mac && host_os == "mac") {
++    if (host_os == "mac") {
+       if (host_cpu == "arm64") {
+         inputs += [ "//third_party/node/mac_arm64/node-darwin-arm64/bin/node" ]
+       } else {

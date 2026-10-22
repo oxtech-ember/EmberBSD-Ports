@@ -9,7 +9,8 @@ engine abstraction, so this port needs the native Electron runtime.
 |---|---|---|
 | Electron | 44.9.3 (`c542df1ecbc2c2978e8f53f8c7baf602404d166f`) | GitHub tag `v44.9.3` |
 | Chromium | 152.0.7977.167 (`dd78960ccd8a03a2fe1f629543d27783885b78e9`) | Electron `DEPS` |
-| Node.js | 24.22.0 | Electron `DEPS` |
+| Embedded Node.js | 24.22.0 | Electron `DEPS` |
+| Chromium host Node.js | 24.12.0 | `third_party/node/update_node_binaries` |
 | Blanc | 1.25.0 (`ff55d5948f5c71e802ba2ac464659ef96e055ca9`) | GitHub tag `v1.25.0` |
 
 Electron's `DEPS` graph is the Chromium source of record. Do not substitute the
@@ -116,6 +117,7 @@ patch -p0 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-asmflags.pa
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-bindgen-host-tools.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-clang-resource-version.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-bindgen-gcc-warnings.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-host-node-inputs.patch
 ```
 
 The pkg-config patch keeps the effective `pkg/lib` value in the common cross
@@ -138,6 +140,8 @@ The target C/C++ compiler remains GCC16.
 The parser patch removes three GCC-only diagnostic switches and `--param=`
 optimizer settings only from libclang's inputs. Target compiler arguments,
 `-Werror`, target triple, and sysroot remain unchanged.
+The host-Node patch selects local executables by `host_os` for generic Node
+and TypeScript protoc actions. It retains Linux Node for remote workers.
 
 Run the regressions with host CPython 3.15 and its standard library. Select an
 SDK API 1 source with `--sdk-source`. Each test checks the API and module origin.
@@ -176,6 +180,9 @@ python3.15 -E -S probes/electron/tests/gn-bindgen-gcc-args.py \
   --out /absolute/EXISTING_NETBSD_GN_OUT \
   --patch /absolute/Ports/probes/electron/patches/gn-bindgen-gcc-warnings.patch \
   /absolute/NEW_BINDGEN_ARGS_WORK
+python3.15 -E -S probes/electron/tests/gn-host-node-inputs.py \
+  --sdk-source /absolute/EmberBSD-SDK --source /absolute/chromium/src \
+  --gn /absolute/host-gn /absolute/NEW_HOST_NODE_WORK
 ```
 
 The tests accept the original or already fixed source. They apply the carried
@@ -208,6 +215,11 @@ before and after the parser patch. It requires the macOS ARM64 host graph
 and NetBSD ARM64 unbundle target. The host argument projection stays unchanged.
 An unmapped warning option and an intentional header warning still fail with
 `-Werror`. The tested allocator header has no system header dependencies.
+
+The host-Node test covers fifteen GN cases, including actual Mac/NetBSD and
+simulated BSD/Linux/Windows selectors. It checks the bundled Mac Node against
+Chromium's pin. Remoteexec uses a fixture config marker for GN planning only;
+no remote action runs. Embedded Electron and ASAR host Node keep separate pins.
 
 These tests pass on macOS. The fixture supplies the E12 macOS cross profile
 explicitly; it does not depend on the machine that runs GN. Linux and native
