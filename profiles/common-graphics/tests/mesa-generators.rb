@@ -14,7 +14,7 @@ verify = File.expand_path('../recipes/graphics/MesaLib/verify-mesa-generators.sh
 # also verified against the exact recipe interface without running any tool.
 source = work + '/source'
 FileUtils.mkdir_p(source)
-File.write(source + '/VERSION', "26.2.4\n")
+File.write(source + '/VERSION', "26.2.5\n")
 require 'json'
 origin = JSON.parse(File.read(sealed + '/receipt.json')).fetch('source')
 File.readlines(sealed + '/interface.sha256').each do |line|

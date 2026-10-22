@@ -17,7 +17,7 @@ target Mesa sources unchanged. Use the current common host tools from
 
 | Input | Pin |
 | --- | --- |
-| Mesa archive | 26.2.4, SHA256 `bce5f7fbebb934373b86c999a064d52fb5065878dc57f287f95346648ec832e9` |
+| Mesa archive | 26.2.5, SHA256 `794b3d1729075dae7ebd47c7283b7ca0cdb5dec668f7f11cc0a5d82f6138a0a5` |
 | Native LLVM SDK | 23.1.3, archive SHA256 `3dcfd88aec10be204a24037bcb0dc0ad777882e9dbe8ac60e2639060d8a794b1` |
 | SPIRV-LLVM-Translator | [v23.1.2](https://github.com/KhronosGroup/SPIRV-LLVM-Translator/tree/e65dde28ce8f12ef7245914fa2850260328669e4), commit `e65dde28ce8f12ef7245914fa2850260328669e4` |
 | SPIRV-Tools | [v2026.4](https://github.com/KhronosGroup/SPIRV-Tools/tree/ef96ed763b43b59b33b31b362f09a02b729fa1c9), commit `ef96ed763b43b59b33b31b362f09a02b729fa1c9` |

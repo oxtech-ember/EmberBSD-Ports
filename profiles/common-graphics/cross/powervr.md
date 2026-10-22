@@ -2,6 +2,9 @@
 
 The AArch64 MesaLib package always contains the upstream Imagination Vulkan
 ICD. MesaLib 26.2.4nb5 added it. From nb10, it is not a package option.
+MesaLib 26.2.5 contains the upstream PCO fix for the workgroup barrier
+race when a loop uses the barrier again. The BVNC and IDFWDF patches
+apply to 26.2.5 without changes.
 The package retains V3D, VirGL, softpipe, llvmpipe,
 X11, Wayland, EGL, GBM and the shared LLVM 23.1.3 provider.
 The installed Vulkan loader now enumerates the physical GPU on Zero 3W.
@@ -16,7 +19,7 @@ Graphics, PRIME presentation and Plasma require separate acceptance.
 ## Native build tools
 
 Use the [upstream Mesa host-tool build](../../../probes/a733-accelerators/host-tools/README.md)
-with the pinned Mesa 26.2.4 archive, LLVM 23.1.3 and current SPIR-V dependencies.
+with the pinned Mesa 26.2.5 archive, LLVM 23.1.3 and current SPIR-V dependencies.
 Apply its maintained SPIRV-Tools function-order fix. Relink `mesa_clc` after
 that static dependency changes. An older installed `mesa_clc` can differ from
 the corrected executable in the actual build directory.
@@ -25,7 +28,7 @@ Seal the three executables from that real build:
 
 ```sh
 TMPDIR=/absolute/external/tmp ruby seal-mesa-generators.rb \
-    /absolute/mesa-26.2.4.tar.xz /absolute/native-mesa-source \
+    /absolute/mesa-26.2.5.tar.xz /absolute/native-mesa-source \
     /absolute/native-mesa-build /absolute/spirv-val /absolute/new-generators
 ```
 

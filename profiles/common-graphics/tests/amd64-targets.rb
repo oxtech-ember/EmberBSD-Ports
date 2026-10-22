@@ -46,7 +46,7 @@ Dir.mktmpdir('ember-graphics-amd64-') do |work|
     USE_PKGSRC_GCC_RUNTIME=no
     PKGPATH?=graphics/MesaLib
     PKG_OPTIONS=llvm x11 wayland
-    DISTNAME=mesa-26.2.4
+    DISTNAME=mesa-26.2.5
     EMBERBSD_GRAPHICS_LLVM_CONFIG=#{work}/helper/bin/llvm-config
     EMBERBSD_WAYLAND_SCANNER=#{work}/scanner
     .include "#{work}/profile.mk"

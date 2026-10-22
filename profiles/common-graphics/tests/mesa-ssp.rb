@@ -7,7 +7,7 @@ require 'json'
 require 'open3'
 require 'shellwords'
 
-abort 'usage: mesa-ssp.rb MESA_26_2_4_ARCHIVE PKGSRC_MESA_BUILD NEW_WORK' unless ARGV.length == 3
+abort 'usage: mesa-ssp.rb MESA_26_2_5_ARCHIVE PKGSRC_MESA_BUILD NEW_WORK' unless ARGV.length == 3
 archive, build = ARGV.first(2).map { |path| File.realpath(path) }
 work = File.expand_path(ARGV.last)
 abort 'NEW_WORK must be new and absolute' unless ARGV.last.start_with?('/') && !File.exist?(work)
@@ -18,7 +18,7 @@ commands = "#{build}/compile_commands.json"
 entry = JSON.parse(File.read(commands)).find { |item| item['file'].end_with?(relative) }
 abort 'missing real Mesa compile command' unless entry
 source = File.expand_path(entry['file'], entry['directory'])
-original, status = Open3.capture2('tar', '-xOf', archive, "mesa-26.2.4/#{relative}")
+original, status = Open3.capture2('tar', '-xOf', archive, "mesa-26.2.5/#{relative}")
 abort 'archive member extraction failed' unless status.success?
 File.write("#{work}/original.c", original)
 FileUtils.mkdir_p(File.dirname("#{work}/patched/#{relative}"))

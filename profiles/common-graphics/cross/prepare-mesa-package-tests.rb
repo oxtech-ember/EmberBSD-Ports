@@ -40,7 +40,7 @@ end
 abort 'unexpected cross compiler target' unless query(cc, '-dumpmachine') == "#{arch}--netbsd"
 info = "#{build}/meson-info"
 project = JSON.parse(File.read("#{info}/intro-projectinfo.json"))
-abort 'require Mesa 26.2.4 build metadata' unless project.fetch('version') == '26.2.4' && File.read("#{source}/VERSION").strip == '26.2.4'
+abort 'require Mesa 26.2.5 build metadata' unless project.fetch('version') == '26.2.5' && File.read("#{source}/VERSION").strip == '26.2.5'
 options = JSON.parse(File.read("#{info}/intro-buildoptions.json")).to_h { |o| [o.fetch('name'), o.fetch('value')] }
 {'prefix' => '/usr/pkg', 'llvm' => 'enabled', 'shared-llvm' => 'enabled', 'build-tests' => true,
  'egl' => 'enabled', 'gles2' => 'enabled', 'glx' => 'dri'}.each do |name, value|

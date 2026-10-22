@@ -337,7 +337,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             devel/at-spi2-core) pin='at-spi2-core-2.62.1.tar.xz:cca6b6a86e4389d89b370288761ce2385ddeceb10c4412da78689bc30c88af2d:https://download.gnome.org/sources/at-spi2-core/2.62/at-spi2-core-2.62.1.tar.xz' ;;
             security/mit-krb5) pin='krb5-1.22.2.tar.gz:3243ffbc8ea4d4ac22ddc7dd2a1dc54c57874c40648b60ff97009763554eaf13:https://web.mit.edu/kerberos/dist/krb5/1.22/krb5-1.22.2.tar.gz' ;;
             security/libsecret) pin='libsecret-0.20.5.tar.xz:3fb3ce340fcd7db54d87c893e69bfc2b1f6e4d4b279065ffe66dac9f0fd12b4d:https://download.gnome.org/sources/libsecret/0.20/libsecret-0.20.5.tar.xz' ;;
-            graphics/MesaLib) pin='mesa-26.2.4.tar.xz:bce5f7fbebb934373b86c999a064d52fb5065878dc57f287f95346648ec832e9:https://archive.mesa3d.org/mesa-26.2.4.tar.xz' ;;
+            graphics/MesaLib) pin='mesa-26.2.5.tar.xz:794b3d1729075dae7ebd47c7283b7ca0cdb5dec668f7f11cc0a5d82f6138a0a5:https://archive.mesa3d.org/mesa-26.2.5.tar.xz' ;;
             x11/libdrm) pin='libdrm-2.4.134.tar.xz:ac5e74d157830eb8bee44c6a6bf3ad49774ef0dd2a72bdad74a8f20308b52a95:https://dri.freedesktop.org/libdrm/libdrm-2.4.134.tar.xz' ;;
             devel/wayland) pin='wayland-1.26.0.tar.xz:64176eaa46e4969903e286f8e5ef8331affc17fdf03ac9b58381d2b23162b7a3:https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.26.0/downloads/wayland-1.26.0.tar.xz' ;;
             devel/wayland-protocols) pin='wayland-protocols-1.49.tar.xz:ec4c8f74942d6dff7ace8b4ce4764f0ef9ff618a935d974ea77edee2ad240b14:https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.49/downloads/wayland-protocols-1.49.tar.xz' ;;

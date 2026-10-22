@@ -1,8 +1,8 @@
 $NetBSD: distinfo,v 1.168 2025/03/07 07:00:33 wiz Exp $
 
-BLAKE2s (mesa-26.2.4.tar.xz) = d4ee07855d4eb0e76f2c743ca65bc8d0c879b3b5fb9ea3fe5e4f54005958642b
-SHA512 (mesa-26.2.4.tar.xz) = 42e793561661a567e72c7324d071ab9f82d3a9f1e000827ed989b8d5fcc2cd16e50c02808d43465b3135c25a3cad77649ba0bf9e35d95b848f8fc8d8b9ce327c
-Size (mesa-26.2.4.tar.xz) = 68613948 bytes
+BLAKE2s (mesa-26.2.5.tar.xz) = 01566edda2a76587ed39c654fe2b194d85b8e1a61e358c622c217c93bc23d242
+SHA512 (mesa-26.2.5.tar.xz) = 08c7d7ea426ddfb0f7bc51b06e18c363a4d31cf1a8b203828bb455eda0189e41d2215eb9f627585ed11e0d0f231a6a8c9f0c7176238760cd76b62e20c35ccd6a
+Size (mesa-26.2.5.tar.xz) = 68652756 bytes
 SHA1 (patch-bin_symbols-check.py) = 6ee3bfe5ab0a032fddd8970fb8eace06d9caae8c
 SHA1 (patch-dso-lifetime) = ceb138b96c98132d520c9618db5ac195404c6375
 SHA1 (patch-meson-python-selection) = d78cce68cb46b4f8c6d8800847dd5a2c59917273

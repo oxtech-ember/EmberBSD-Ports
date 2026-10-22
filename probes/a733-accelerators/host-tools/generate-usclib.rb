@@ -9,7 +9,7 @@ require_relative '../idfwdf/layout'
 abort 'usage: generate-usclib.rb MESA_SOURCE MESA_BUILD SPIRV_DIS SPIRV_VAL NEW_OUT' unless ARGV.size == 5
 mesa, build, dis, validator, out = ARGV.map { |p| File.expand_path(p) }
 abort 'output already exists' if File.exist?(out)
-abort 'Mesa version mismatch' unless File.read(mesa + '/VERSION').strip == '26.2.4'
+abort 'Mesa version mismatch' unless File.read(mesa + '/VERSION').strip == '26.2.5'
 upstream_environment = File.read(mesa + '/src/imagination/pco/uscgen/meson.build')
 abort 'upstream common shader mode changed' unless upstream_environment.include?("env: ['PCO_DEBUG=no_pred_cf']")
 header = Idfwdf.patched_header(mesa + '/src/imagination/common/pvr_iface.h')
@@ -57,7 +57,7 @@ files = {
   'sync_source' => mesa + '/src/imagination/pco/usclib/sync.cl',
   'tex_source' => mesa + '/src/imagination/pco/usclib/tex.cl'
 }
-receipt = { 'schema' => 'ember-pco-usclib-v1', 'mesa_version' => '26.2.4',
+receipt = { 'schema' => 'ember-pco-usclib-v1', 'mesa_version' => '26.2.5',
   'idfwdf' => Idfwdf.check_spirv(File.read(out + '/pco_usclib.spvasm')),
   'probe' => Idfwdf.check_probe(File.read(out + '/pco_usclib.spvasm')),
   'files' => files.transform_values { |p| Idfwdf.file_record(p) },

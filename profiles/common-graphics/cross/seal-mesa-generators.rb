@@ -27,14 +27,14 @@ owner = File.dirname(File.realpath(__FILE__))
 ports = File.expand_path('../../..', owner)
 recipe = owner + '/../recipes/graphics/MesaLib'
 sha = ->(p) { Digest::SHA256.file(p).hexdigest }
-pin = 'bce5f7fbebb934373b86c999a064d52fb5065878dc57f287f95346648ec832e9'
+pin = '794b3d1729075dae7ebd47c7283b7ca0cdb5dec668f7f11cc0a5d82f6138a0a5'
 abort 'Wrong Mesa source archive' unless sha.call(archive) == pin
-abort 'Wrong Mesa source version' unless File.read(source + '/VERSION').strip == '26.2.4'
+abort 'Wrong Mesa source version' unless File.read(source + '/VERSION').strip == '26.2.5'
 metadata = build + '/meson-info'
 info = JSON.parse(File.read(metadata + '/meson-info.json'))
 abort 'Native build uses another source tree' unless File.realpath(info.fetch('directories').fetch('source')) == source
 project = JSON.parse(File.read(metadata + '/intro-projectinfo.json'))
-abort 'Wrong Mesa build version' unless project.fetch('version') == '26.2.4'
+abort 'Wrong Mesa build version' unless project.fetch('version') == '26.2.5'
 options = JSON.parse(File.read(metadata + '/intro-buildoptions.json')).to_h { |o| [o.fetch('name'), o.fetch('value')] }
 abort 'Native tools must retain assertions' unless options.fetch('b_ndebug') == 'false'
 abort 'Native tools must use LLVM23' unless File.read(build + '/build.ninja').include?('23.1.3')
@@ -175,7 +175,7 @@ scope = 'Pinned native source and real compiled tools. Upstream common OpenCL to
 scope += ' PowerVR PCO generation is checked.' if profiles.include?('powervr')
 scope += ' Intel shader interfaces are bound; full Intel shader generation is a separate target build gate.' if profiles.include?('intel')
 scope += ' No target execution.'
-receipt = {'schema' => 'ember-mesa-generators-1', 'mesa' => '26.2.4', 'llvm' => '23.1.3', 'source' => source, 'build' => build,
+receipt = {'schema' => 'ember-mesa-generators-1', 'mesa' => '26.2.5', 'llvm' => '23.1.3', 'source' => source, 'build' => build,
            'archive_sha256' => pin, 'profiles' => profiles, 'commands' => commands, 'inputs' => input_hashes, 'virtual_headers' => virtual_headers,
            'scope' => scope}
 File.write(work + '/receipt.json', JSON.pretty_generate(receipt) + "\n")
@@ -185,4 +185,4 @@ File.write(work + '/PROFILES', profiles.join(',') + "\n")
 FileUtils.rm_r(work + '/reference')
 files = Dir.glob(work + '/**/*').select { |p| File.file?(p) }.sort
 File.write(work + '/installed.sha256', files.map { |p| "#{sha.call(p)}  #{p.delete_prefix(work + '/')}\n" }.join)
-puts "PASS: sealed native Mesa 26.2.4 generators: #{work}"
+puts "PASS: sealed native Mesa 26.2.5 generators: #{work}"

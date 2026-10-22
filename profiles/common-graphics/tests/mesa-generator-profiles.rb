@@ -12,7 +12,7 @@ checks = 0
 Dir.mktmpdir('mesa-generator-profiles-', '/tmp') do |d|
   tools = d + '/tools'; source = d + '/source'
   FileUtils.mkdir_p([tools + '/bin', source + '/src/compiler/nir'])
-  File.write(source + '/VERSION', "26.2.4\n")
+  File.write(source + '/VERSION', "26.2.5\n")
   File.write(source + '/src/compiler/nir/nir.h', 'interface fixture')
   File.write(tools + '/FORMAT', "ember-mesa-generators-1\n")
   File.write(tools + '/PROFILES', "intel\n")

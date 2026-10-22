@@ -7,7 +7,7 @@ digest=$1 tools=$2 source=$3 requested=${4-powervr}
 fail() { echo "Mesa generator receipt: $*" >&2; exit 1; }
 [ -x "$digest" ] && [ -d "$tools" ] && [ -d "$source" ] || fail 'missing input'
 [ "$(cat "$tools/FORMAT")" = ember-mesa-generators-1 ] || fail 'wrong format'
-[ "$(cat "$source/VERSION")" = 26.2.4 ] || fail 'wrong source version'
+[ "$(cat "$source/VERSION")" = 26.2.5 ] || fail 'wrong source version'
 case "$requested" in intel|powervr|intel,powervr) ;; *) fail 'unsupported generator profile';; esac
 profiles=powervr
 if [ -f "$tools/PROFILES" ]; then profiles=$(cat "$tools/PROFILES"); fi
@@ -48,4 +48,4 @@ for name in $required; do
     [ -x "$tools/bin/$name" ] || fail "not executable: $name"
 done
 verify "$source" "$tools/interface.sha256"
-echo 'PASS: Mesa 26.2.4 native generator bytes and target interfaces'
+echo 'PASS: Mesa 26.2.5 native generator bytes and target interfaces'

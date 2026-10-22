@@ -19,7 +19,7 @@ for dir in "$work" "$mesa" "$llvm" "$host" "$deps"; do
 done
 [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ]
 [ "$("$llvm/bin/llvm-config" --version)" = 23.1.3 ]
-[ "$(cat "$mesa/VERSION")" = 26.2.4 ]
+[ "$(cat "$mesa/VERSION")" = 26.2.5 ]
 macsdk=$(xcrun --sdk macosx --show-sdk-path)
 mkdir -p "$work/tmp" "$work/cache/lto" "$work/logs"
 export TMPDIR="$work/tmp"
