@@ -1,0 +1,2 @@
+The pci.ids database maps PCI vendor, device, subsystem and class identifiers
+to human-readable names. This package installs the current upstream snapshot.

@@ -36,3 +36,4 @@ pkgsrc-libarchive-bmake.patch	a1d68e4f0ca19c7f744512cf846efc40853a192535700a8d33
 sqlite-autoconf-3540100.tar.gz	926ef8d3eab93fbf6e06011901273eec076b25594a4e1cdadd50c987f4f6d64e	https://sqlite.org/2026/sqlite-autoconf-3540100.tar.gz
 sqlite-src-3540100.zip	387e7f6cad4797b17848c07d453dc6606917bb356a6cfe5a3abafd38c240c71b	https://sqlite.org/2026/sqlite-src-3540100.zip
 sqlite-doc-3540100.zip	e9f634ac28a4c7b48f5c389e4b08c039654ec1487512092b330ccfcfdc0816e0	https://sqlite.org/2026/sqlite-doc-3540100.zip
+pci.ids-86e7077e4b7947be28d4de891c69f7ae64da0286.tar.gz	0935bb070fcb0a199e0a918e977e233e57a463f0e518733f3377bee8ab120f72	https://github.com/pciutils/pciids/archive/86e7077e4b7947be28d4de891c69f7ae64da0286.tar.gz
