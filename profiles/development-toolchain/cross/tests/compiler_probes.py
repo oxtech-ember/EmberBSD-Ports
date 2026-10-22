@@ -3,6 +3,7 @@
 from pathlib import Path
 import os
 import re
+import subprocess
 from emberbsd_sdk import elf
 from host import *
 from target_options import parse
@@ -58,3 +59,32 @@ def lto_binutils(args):
         require(elf.read_elf_header(image, machine=183, required_type=2) is not None, 'LTO output is not AArch64 ELF executable')
         (Path(str(image) + '.header')).write_text(capture([tools['readelf'], '-h', image]))
     print('PASS: C/C++ LTO uses collect2, GCC plugin and default Binutils2.47; both outputs are AArch64 ELF executables')
+
+
+def plugin_needed_warnings(args):
+    require(len(args) == 3, 'Usage: plugin-needed-warnings.py PREFIX SYSROOT NEW_WORK --sdk-source SOURCE')
+    prefix, sysroot, work = build_path(args[0]), build_path(args[1]), new_path(args[2])
+    tools = check_compilers(prefix, 'aarch64')
+    sections = capture([tools['readelf'], '-S', '-W', sysroot / 'usr/lib/libc.so'])
+    require('.gnu.warning.gets' in sections, 'Sysroot libc has no link-time warning sections')
+    work.mkdir()
+    # libm needs libc through DT_NEEDED. Only a direct reference may warn.
+    # NetBSD's base ld copies DT_NEEDED entries by default; test both modes.
+    indirect = '#include <math.h>\ndouble g(double x){return sin(x);}\n'
+    direct = 'extern char *gets(char *);\nchar *h(char *s){return gets(s);}\n'
+    cases = [('indirect', indirect, [], '-lm', True),
+             ('indirect-copy', indirect, ['-Wl,--copy-dt-needed-entries'], '-lm', True),
+             ('direct', direct, [], '-lc', False)]
+    for name, source, flags, library, valid in cases:
+        (work / (name + '.c')).write_text(source)
+        argv = [str(tools['gcc']), '-v', '--sysroot=' + str(sysroot), '-O2', '-fPIC', '-shared', '-Wl,--fatal-warnings', '-Wl,--as-needed'] + flags + [str(work / (name + '.c')), '-o', str(work / (name + '.so')), library]
+        result = subprocess.run(argv, env=environment(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        output = result.stdout.decode('utf-8', 'replace')
+        (work / (name + '.log')).write_text(output)
+        require('liblto_plugin' in output, 'The link did not load the GCC LTO plugin: ' + name)
+        warnings = [line for line in output.splitlines() if 'warning:' in line]
+        if valid:
+            require(result.returncode == 0 and not warnings, '%s: libc through DT_NEEDED produced %d link warnings' % (name, len(warnings)))
+        else:
+            require(result.returncode != 0 and any('gets' in line for line in warnings), 'Direct gets reference did not produce a fatal link warning')
+    print('PASS: plugin links warn only for direct references, not for libc loaded through DT_NEEDED')

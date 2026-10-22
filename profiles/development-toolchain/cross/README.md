@@ -221,6 +221,13 @@ plus the selected Ports `as` and `ld`. `readelf` must report AArch64 ELF
 executables. This check proves cross compile and link only. It does not prove
 target runtime without an accepted sysroot and target runner.
 
+`tests/plugin-needed-warnings.py CROSS_PREFIX SYSROOT NEW_WORK` checks the
+Binutils `ldelf.c` patch. It links a shared object that uses only libm, with
+the GCC LTO plugin and `--fatal-warnings`, with and without
+`--copy-dt-needed-entries`. The libc warning sections that libm brings in
+through `DT_NEEDED` must not give warnings. A direct `gets` reference to
+libc must still stop the link. This check also needs an accepted sysroot.
+
 ## Kernel frontends without a sysroot
 
 Use the same prepared pkgsrc export, pinned GCC archive, fork-built host
@@ -344,6 +351,8 @@ python3 -B profiles/development-toolchain/tests/python/controllers-test.py
 python3 -B profiles/development-toolchain/tests/python/environment-test.py
 python3 -B profiles/development-toolchain/cross/tests/lto-binutils.py \
     /absolute/gcc-cross/toolchain /absolute/new-lto-check
+python3 -B profiles/development-toolchain/cross/tests/plugin-needed-warnings.py \
+    /absolute/gcc-cross/toolchain /absolute/sysroot /absolute/new-plugin-check
 sh profiles/development-toolchain/tests/prepare.sh /absolute/new-pkgsrc-test
 ```
 
