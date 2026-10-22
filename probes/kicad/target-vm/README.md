@@ -1,4 +1,4 @@
-# EmberBSD AArch64 query guest
+# EmberBSD AArch64 target guest
 
 This recipe runs installed-library and GI queries in a real EmberBSD guest.
 It uses an accepted fork kernel and base. It installs no compiler in the guest.
@@ -11,8 +11,8 @@ Use native CPython 3.15, OpenSSH, QEMU AArch64, and fork-built NetBSD host tools
 Select a clean SDK source with host API 1 and `PROCESS_IDENTITY_API = 1` through
 `--sdk-source`. The controllers use Python's standard library and the selected
 SDK. They do not require Ruby, pip, a virtual environment or GNU timeout.
-Darwin execution passed the checks below. The Linux backend remains implemented;
-a native Linux run of this Python chain is a separate qualification gate.
+The query profile passed the execution checks on Darwin. The Linux backend
+remains implemented; a native Linux run is a separate qualification gate.
 
 The NetBSD tool directory must contain `nbmakefs`, `nbmtree`, `nbpwd_mkdb`,
 `nbmkubootimage`, `aarch64--netbsd-objcopy` and `aarch64--netbsd-readelf`.
@@ -58,10 +58,54 @@ the recorded values. Older manifests keep the original RAM/CPU defaults.
 `nbmakefs -Z` creates a sparse image. The inode value is the additional reserve.
 Run `python3.15 check-resources.py` for default, boundary and invalid-input checks.
 
+## Full base staging
+
+The default `query` profile selects a small runtime from a verified extraction.
+Use `--base-profile full --base-sha256 SHA256` with the matching base set archive
+for complete base userland. The archive must come from the same fork revision
+as `EMBERBSD_BASE_REVISION` and the accepted kernel. The builder verifies the
+archive SHA256. It does not establish the archive's build provenance for you.
+Do not supply a compiler set or a package tree as the base input.
+
+```sh
+python3.15 build.py --sdk-source /absolute/SDK \
+  --base-profile full --base-sha256 BASE_ARCHIVE_SHA256 --stage-only \
+  /absolute/base.tar.xz /absolute/kernel.gz /absolute/os-source \
+  /absolute/host-tools /absolute/new-private-staging
+```
+
+`--stage-only` prepares files and `artifacts/staging.json`. It does not create an
+image or a runnable manifest. Use a different new work directory and omit this
+flag to build an image. Resource settings remain the same for both profiles.
+For a large runtime acceptance image, select 16384 MiB disk, 8192 MiB RAM,
+four CPUs and 100000 additional free inodes before building.
+
+Full mode exports a bounded set of make and configuration sources from the
+selected Git revision. It invokes the source `distrib-dirs` and
+`install-etc-files` targets with private object and temporary directories.
+It requires `nbmake`, `nbawk`, `nbcat`, `nbsed` and `aarch64--netbsd-install`
+in addition to the tools above. It builds no target program. It preserves all
+base files, target ownership, set-ID modes and hardlinks. The host staging tree
+has no target set-ID bits; mtree supplies those bits to the image.
+
+The image keeps source-owned boot scripts, accounts and PAM configuration.
+It adds key-only user `ember` with UID/GID 1000 and SSH alias `ember-e14-runtime`.
+The existing root alias stays available for package installation and checks.
+Both SSH aliases require the pinned host key. SSH disables password authentication
+and PAM, as in the query profile. The full profile mounts ptyfs and mode-1777
+tmpfs instances at `/tmp` and `/var/shm`. It enables no display manager.
+
+Run `python3.15 check-full-base.py /absolute/new-fixture` for archive, ownership,
+hardlink and account guards. The existing runtime `check.py` uses the recorded
+full-base archive and payload hashes for full mode. Offline staging and metadata
+checks do not establish a successful boot, normal-user login or GUI operation.
+Add runtime packages and test those operations separately. Do not install guest
+compilers or development toolchains for acceptance.
+
 ## Image and metadata
 
-The builder hardlinks immutable base files into a private staging tree. Do not
-edit those files or change their permissions. It includes base Citrus modules,
+The query profile hardlinks immutable base files into a private staging tree.
+Do not edit those files or change their permissions. It includes base Citrus modules,
 encoding data and locales without static archives. The FFS image is a separate
 writable file. The source sysroot stays unchanged.
 

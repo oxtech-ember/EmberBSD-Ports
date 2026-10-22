@@ -15,6 +15,9 @@ def main():
     inventory, jsonio, paths, process, identity_api = sdk(args.sdk_source)
     work, launcher, readelf = map(canonical, [args.work, args.target_query_py, args.readelf])
     source = jsonio.read_json(str(work / 'artifacts/input.json'))
+    if source.get('base_profile', 'query') == 'full':
+        from full_base import runtime_inputs
+        source = runtime_inputs(source, work)
     ssh = [work / 'bin/ssh', 'ember-e14-query']
     receipts = []
     logs = Path(tempfile.mkdtemp(prefix='acceptance-', dir=work / 'logs'))
@@ -74,6 +77,23 @@ def main():
 ''')
     if b'/dev/pts/' not in run('pty', 0, work / 'bin/ssh', '-tt', 'ember-e14-query', 'test -t 0 && tty && stty -a'):
         raise ValueError('real target PTY missing')
+    if source.get('base_profile', 'query') == 'full':
+        run('ordinary-user', 0, work / 'bin/ssh', 'ember-e14-runtime', """set -eu
+ test "$(id -u)" = 1000
+ test "$(id -g)" = 1000
+ test "$HOME" = /home/ember
+ test "$USER" = ember
+ test ! -w /etc/master.passwd
+ test "$(stat -f '%Lp' /tmp)" = 1777
+ test "$(stat -f '%Lp' /var/shm)" = 1777
+ probe=$(mktemp /tmp/e14-user.XXXXXXXX)
+ trap 'rm -f "$probe"' EXIT HUP INT TERM
+ printf '%s\\n' USER_OK > "$probe"
+ test "$(cat "$probe")" = USER_OK
+""")
+        if b'/dev/pts/' not in run('ordinary-pty', 0, work / 'bin/ssh', '-tt',
+                                   'ember-e14-runtime', 'test -t 0 && tty && stty -a'):
+            raise ValueError('Unprivileged target PTY missing.')
     run('status37', 37, *ssh, 'exit 37')
     if b'UNREACHED' in run('set-e-failure', 1, *ssh, "sh -c 'set -e; false; echo UNREACHED'"):
         raise ValueError('shell failure was hidden')
