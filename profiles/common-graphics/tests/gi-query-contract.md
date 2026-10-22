@@ -55,3 +55,8 @@ selected SDK. They must ignore pkgsrc's target `PYTHONPATH` and its
 as a negative control. It then uses the recipe's isolated launcher for
 preflight and a bounded transport probe. The target `LD_LIBRARY_PATH` and
 literal target arguments remain available to the helper.
+
+The thumbnailer generator retains `--runner PYTHON SCRIPT`. It inserts
+`-E -S` into its helper subprocess argv. Two generator controls use literal
+paths with spaces, a target `sitecustomize.py`, and printer statuses 0 and 7.
+Only status 0 may publish thumbnailer metadata.

@@ -15,12 +15,13 @@ Origin: EmberBSD (AI-assisted); not submitted upstream.
  args = argparser.parse_args()
  
  newenv = os.environ.copy()
-@@ -27,9 +29,12 @@
+@@ -27,9 +29,13 @@
      gdk_pixbuf_dll_buildpath = os.path.dirname(args.pixdata)
      newenv['PATH'] = gdk_pixbuf_dll_buildpath + os.pathsep + newenv['PATH']
  
 -cmd = args.printer
-+cmd = args.runner + ['--mime', args.printer, args.loaders] if args.runner else args.printer
++cmd = ([args.runner[0], '-E', '-S', args.runner[1], '--mime',
++        args.printer, args.loaders] if args.runner else args.printer)
  
 -mimetypes_out = subprocess.Popen(cmd, env=newenv, stdout=subprocess.PIPE).communicate()[0]
 +process = subprocess.Popen(cmd, env=newenv, stdout=subprocess.PIPE)

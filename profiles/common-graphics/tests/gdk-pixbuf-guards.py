@@ -289,11 +289,53 @@ elif phase=='query':
     success = capture('printer-success', command)
     require(success.returncode == 0 and (work / 'thumbnailer.out').read_text() ==
             'Exec=/usr/pkg/bin/gdk-pixbuf-thumbnailer\nMimeType=image/png;\n', 'ordinary printer output changed')
+    # Keep --runner as two literal paths. The generator isolates its own
+    # SDK helper child even when pkgsrc changes the generator's sys.platform.
+    runner_python = work / 'host python with spaces'
+    runner_python.symlink_to(python)
+    runner_helper = work / "runner helper 'literal$;.py"
+    runner_helper.write_text("""import json, os, sys
+with open(os.environ['RUNNER_PROBE_RECEIPT'], 'w') as output:
+    json.dump(dict(argv=sys.argv[1:], platform=sys.platform,
+                   ignore_environment=sys.flags.ignore_environment,
+                   no_site=sys.flags.no_site,
+                   library_path=os.environ.get('LD_LIBRARY_PATH'),
+                   loaders=os.environ.get('GDK_PIXBUF_MODULE_FILE')), output)
+print('image/png;', end='')
+sys.exit(int(os.environ['RUNNER_PROBE_STATUS']))
+""")
+    pysite = work / 'runner target pysite'
+    pysite.mkdir()
+    (pysite / 'sitecustomize.py').write_text('import sys\nsys.platform = "netbsd11"\n')
+    literal_printer = work / "target printer 'literal$;"
+    literal_cache = work / "target cache 'literal$;"
+    runner_output = work / 'runner thumbnailer.out'
+    for label, status in [('success', 0), ('failure', 7)]:
+        runner_output.unlink(missing_ok=True)
+        probe = work / ('runner-' + label + '.json')
+        result = capture('runner-' + label, [python, generator, '--runner',
+            runner_python, runner_helper, '--printer', literal_printer, '--pixdata', query,
+            '--loaders', literal_cache, '--bindir', '/usr/pkg/bin', template, runner_output],
+            changes={'PYTHONPATH': str(pysite), 'RUNNER_PROBE_RECEIPT': str(probe),
+                     'RUNNER_PROBE_STATUS': str(status), 'LD_LIBRARY_PATH': 'literal target library path'})
+        require(result.returncode == status and not result.stdout,
+                'thumbnailer runner status changed: ' + label)
+        observed = json.loads(probe.read_text())
+        require(observed == dict(argv=['--mime', str(literal_printer), str(literal_cache)],
+            platform=sys.platform, ignore_environment=1, no_site=1,
+            library_path='literal target library path', loaders=str(literal_cache)),
+            'thumbnailer runner flags, literal paths or target environment changed: ' + label)
+        if status:
+            require(not runner_output.exists(), 'failed runner published thumbnailer metadata')
+        else:
+            require(runner_output.read_text() ==
+                'Exec=/usr/pkg/bin/gdk-pixbuf-thumbnailer\nMimeType=image/png;\n',
+                'isolated runner thumbnailer metadata changed')
     inputs = {str(path):digest(path) for path in [helper, generator, readelf, cc, python]}
     (work / 'result.json').write_text(json.dumps(dict(result='PASS', inputs_sha256=inputs, commands=receipts,
-        local_refusals=23, mocked_transport_cases=len(transport), upstream_printer_cases=2, production_shell_hash_cases=3,
+        local_refusals=23, mocked_transport_cases=len(transport), upstream_printer_cases=2, upstream_runner_cases=2, production_shell_hash_cases=3,
         scope='Real GCC16 ELF headers/providers, SDK JSON/hash checks and mocked SSH. No target execution or installed package acceptance.'),indent=2)+'\n')
-    print('PASS: 23 local refusals, 12 loader/MIME transport contracts, 3 production shell hash controls and 2 upstream printer controls')
+    print('PASS: 23 local refusals, 12 loader/MIME transport contracts, 3 production shell hash controls and 2 upstream printer plus 2 isolated runner controls')
 
 
 if __name__ == '__main__':

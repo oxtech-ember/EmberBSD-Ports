@@ -3,10 +3,10 @@ $NetBSD: distinfo,v 1.62 2026/08/18 12:55:46 adam Exp $
 BLAKE2s (gdk-pixbuf-2.44.8.tar.xz) = 363f7e9d263168cb0c9fe71b233314025b09dcd5ce4d7c23917c7f8c4c1911c9
 SHA512 (gdk-pixbuf-2.44.8.tar.xz) = 5fa8066abbfc29d7d9f07d95af2cfa2668e90381ecf1055ea449d35661b997d55e84e64ae1dedc14cf13d66912d05b1398075c560ce1aeeea7ae60a7d73c873a
 Size (gdk-pixbuf-2.44.8.tar.xz) = 6037756 bytes
-SHA1 (patch-emberbsd_build-aux_gen-thumbnailer.py) = ff34bf93d69c01cfa28df2f389c042468dc6d1f8
+SHA1 (patch-emberbsd_build-aux_gen-thumbnailer.py) = 54761c78a3573417baa83e70a83d8e86ca4a7e52
 SHA1 (patch-emberbsd_gdk-pixbuf_meson.build) = 58f53226b8725ea10a4318054f96c2bebd9eb0f7
 SHA1 (patch-emberbsd_meson.build) = 2798a1c4590e367e497b40c7d4fd471c512b4f8b
-SHA1 (patch-emberbsd_thumbnailer_meson.build) = 651a0d7defaa8e2280cce1d1d9e016a390a0f5fb
+SHA1 (patch-emberbsd_thumbnailer_meson.build) = 21d1fe4cbba99dd51e41523ee2aec09f9fea1393
 SHA1 (patch-gdk-pixbuf_gdk-pixbuf-scaled-anim.c) = a9d2436711b1a1c3bb58beef0df5e485ad6cbe7d
 SHA1 (patch-gdk-pixbuf_meson.build) = 8aef6ea62bd11dec169cea1d1b4c0e327d68ddf0
 SHA1 (patch-tests_meson.build) = 7d60098d957e4b0677aad6452de651189fc06b2d

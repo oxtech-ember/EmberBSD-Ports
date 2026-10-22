@@ -12,7 +12,7 @@ Origin: EmberBSD (AI-assisted); not submitted upstream.
  
 +thumbnailer_runner_args = []
 +if emberbsd_gi_cross
-+  thumbnailer_runner_args = ['--runner'] + pixbuf_target_runner
++  thumbnailer_runner_args = ['--runner', pixbuf_target_runner[0], pixbuf_target_runner[-1]]
 +endif
 +
  custom_target('thumbnailer',
