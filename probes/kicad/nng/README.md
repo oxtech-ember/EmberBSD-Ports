@@ -31,8 +31,8 @@ These parser failures do not establish completed Cppcheck coverage.
 The ordinary [common NNG package](../../../profiles/common-graphics/cross/nng.md)
 now uses this exact reviewed source patch. Its GCC16 AArch64 package retains
 all 325 manual pages and 325 HTML pages with the default documentation option.
-Native ordinary packaging, installed EmberBSD IPC tests and the complete
-KiCad application remain pending.
+The installed provider passes the bounded EmberBSD IPC check below.
+Native ordinary packaging and the complete KiCad application remain pending.
 
 The ordinary AArch64 build also supplies the real preprocessing flags and
 EmberBSD headers for four patched runtime units: `aio.c`, `init.c`, `reap.c`
@@ -48,3 +48,74 @@ confirmed runtime defects. No diagnostics are suppressed.
 This check covers the selected NetBSD/AArch64 feature configuration and four
 runtime units. It does not establish whole-library or Windows coverage.
 The earlier Linux Cppcheck parser limitation remains a separate boundary.
+
+## Installed IPC transport check
+
+[tests/ipc-smoke.c](tests/ipc-smoke.c) checks the installed NNG 1.12.3 provider.
+KiCad 10.0.7 uses REP0 and filesystem `ipc://` sockets in
+`libs/kinng/src/kinng.cpp` and `common/api/api_server.cpp`.
+The check follows the public REQ0/REP0 flow shown by the pinned upstream
+[request/reply example](https://github.com/nanomsg/nng/blob/v1.12.3/demo/reqrep/reqrep.c).
+This independently written check uses BSD-2-Clause; see [LICENSE](LICENSE).
+It does not copy the KiCad wrapper or serialize KiCad protobuf messages.
+
+Use the common GCC16 compiler, a coherent EmberBSD sysroot and a new work
+folder outside the sysroot. Run this example from `probes/kicad/nng`.
+The example assumes the packaged GCC16 runtime:
+
+```sh
+cc=/absolute/toolchain/bin/aarch64--netbsd-gcc
+sysroot=/absolute/sysroot
+work=/absolute/new-work
+mkdir -m 700 "$work"
+TMPDIR="$work" "$cc" --sysroot="$sysroot" \
+    -B"$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0/" \
+    -std=c99 -O2 -g -Wall -Wextra -Werror \
+    -I"$sysroot/usr/pkg/include" tests/ipc-smoke.c \
+    -L"$sysroot/usr/pkg/lib" -L"$sysroot/usr/pkg/gcc16/lib" \
+    -Wl,-rpath,/usr/pkg/lib:/usr/pkg/gcc16/lib \
+    -Wl,-rpath-link,"$sysroot/usr/lib" \
+    -Wl,-rpath-link,"$sysroot/lib" \
+    -Wl,-rpath-link,"$sysroot/usr/pkg/gcc16/lib" \
+    -lnng -o "$work/ipc-smoke"
+```
+
+Configure the [production target executor](../../../profiles/common-graphics/cross/introspection.md#compiled-configure-probes)
+with this work folder as `build_root`. Run the resulting executable through
+its `--execute` mode. The executor transfers and verifies the complete ELF
+provider closure. It runs from a short private target directory and removes
+that directory after execution. Direct execution also needs a short private
+working directory. The check creates only its own `nng-ipc.XXXXXX` directory.
+An abnormal hard-timeout exit relies on the enclosing executor for cleanup.
+
+The check completes two exact binary request/reply exchanges. Each message
+contains embedded NUL and non-ASCII bytes. It requires `NNG_ESTATE` when REP0
+sends before a request, and `NNG_ETIMEDOUT` for an idle server and an unanswered
+client request. Each successful allocated receive is freed once. Socket I/O
+has explicit deadlines. A ten-second alarm covers execution and finalization.
+It closes both sockets, finalizes NNG and removes its socket directory.
+
+GCC16 AArch64 execution on EmberBSD passes all 25 checks with empty stderr.
+A deliberate wrong-reply expectation fails with status 1 and the expected
+message mismatch. Both production executions verify source/provider hashes
+and complete remote cleanup. The executed library has SHA256
+`37546affe7a66f39aaa2f6c49a88bd9b79afe6058dfad0d31fc4aac4fb3af042`.
+
+GCC 16.2.0 `-fanalyzer`, Cppcheck 2.18.0 exhaustive analysis of the actual
+GCC-preprocessed C99 source, and Clang Static Analyzer 21 with the same target
+headers report no findings. Cppcheck emits only its active-checker report.
+No checks or diagnostics are suppressed. The current guest has no Valgrind.
+The selected toolchain and sysroot have no ASan or UBSan shared runtime.
+GCC16 UBSan trap mode works without that runtime. The same consumer passes all
+25 target checks with `-fsanitize=undefined
+-fsanitize-undefined-trap-on-error -fno-sanitize-recover=all`.
+The resulting ELF adds no sanitizer runtime dependency. A deliberate signed
+overflow reaches the emitted AArch64 `brk` instruction and exits with status
+133 (`128 + SIGTRAP`). Both executions complete remote cleanup.
+This UBSan check covers only the consumer. The shared NNG library is not
+instrumented. Valgrind and ASan were not run for this consumer; the separate
+native NNG lifecycle Memcheck result above does not cover it.
+
+This check accepts the installed transport provider and binary message flow.
+It does not validate the KiCad request-server class, protobuf/API behavior,
+package removal/reinstallation or a complete KiCad GUI session.

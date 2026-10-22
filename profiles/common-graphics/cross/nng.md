@@ -68,6 +68,8 @@ The host volume permission check reports its existing group-writable ancestor;
 all package permission checks report zero errors.
 
 The [source checkpoint](../../../probes/kicad/nng/README.md) records native tests
-and analysis limits separately. This package has not yet been installed or run
-on EmberBSD. Normal package removal/reinstallation and target IPC workflows
-remain pending. Native ordinary packaging and KiCad execution are separate gates.
+and analysis limits separately. The installed AArch64 library passes the bounded
+REQ0/REP0 filesystem-IPC check documented there, including exact binary messages,
+expected errors and provider hashes. Normal package removal/reinstallation and
+KiCad request-server/API workflows remain pending. Native ordinary packaging
+and full KiCad execution are separate gates.
