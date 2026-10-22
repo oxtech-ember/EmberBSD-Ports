@@ -66,7 +66,7 @@ compiles only where port metadata exists (on NetBSD NO_PORT_METADATA is
 set, so `sp_list_ports` works without libusb). The `sp-list` helper in
 `src/` enumerates ports through the public API.
 
-`pkgsrc/devel/libsigrok` (shared overlay) and `recipes/misc/sigrok-cli` are the first
+`pkgsrc/devel/libsigrok` and `pkgsrc/misc/sigrok-cli` (shared overlay) are the first
 pkgsrc recipes for the sigrok acquisition stack; the board kit builds
 only the demo driver (no instrument hardware attached yet), with glib2
 and the [common libzip recipe](../common-build-tools/recipes/archivers/libzip).
