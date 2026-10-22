@@ -10,6 +10,14 @@ The test creates real target ELF fixtures with `-nostdlib`. It checks provider
 and transport guards. Injected SSH outcomes do not qualify target execution.
 Use the real EmberBSD query guest for that separate acceptance boundary.
 
+The contract checks the omitted, explicit `flat` and `prefix-bin` executable
+layouts. Unknown values and non-string values fail before SSH. Transfer
+archives retain the same ELF bytes and mode at `query` or `bin/query`, with
+the same provider hashes in `lib`. Controlled statuses 0 and 7 preserve
+separate streams, literal arguments, execution receipts and cleanup.
+The production manifest/resource shell also runs with `prefix-bin`. These
+controls do not execute target ELF or qualify LLVM metadata queries.
+
 The production launcher reads target ELF headers and dynamic entries through the
 SDK. The `readelf` configuration field remains required for recipe identity
 compatibility. It must name a regular executable file. Both contracts reject

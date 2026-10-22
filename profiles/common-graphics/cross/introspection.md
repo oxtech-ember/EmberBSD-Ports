@@ -202,6 +202,15 @@ copies and archives. Failed cleanup is an error and reports the exact directory.
 XML is published to the scanner only after successful cleanup and unchanged
 local source hashes. The scanner still performs its ordinary XML parsing.
 
+The optional `executable_layout` JSON field accepts only `flat` and
+`prefix-bin`. The default `flat` layout runs the verified ELF as `ROOT/query`.
+`prefix-bin` runs the same bytes as `ROOT/bin/query`. Both layouts keep
+libraries in `ROOT/lib`. The private `ROOT` remains the only transfer and
+cleanup directory. Use `prefix-bin` for a program that derives its prefix
+from its executable location. No arbitrary executable path is accepted.
+The layout does not add library aliases or change resource declarations,
+arguments, manifests, loader settings or execution checks.
+
 ## Compiled configure probes
 
 The same runner accepts `--execute BINARY [ARG...]` for configure probes.

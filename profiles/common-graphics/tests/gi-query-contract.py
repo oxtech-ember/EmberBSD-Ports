@@ -13,6 +13,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import tarfile
 from types import SimpleNamespace
 
 sys.dont_write_bytecode = True
@@ -186,6 +187,18 @@ def main():
 
     run('check', python, '-E', '-S', helper, '--check', work / 'build', work / 'sysroot',
         readelf, target, env=environment)
+    for number, value in enumerate((None, True, 1, [], {}, '', 'other',
+                                    '../query', '/bin/query', 'bin/query')):
+        write_config(dict(config, executable_layout=value))
+        reject('invalid-layout-check-' + str(number), 'unsupported executable layout',
+               '--check', work / 'build', work / 'sysroot', readelf, target)
+        reject('invalid-layout-execute-' + str(number), 'unsupported executable layout',
+               '--execute', work / 'build/query')
+    for layout in ('flat', 'prefix-bin'):
+        write_config(dict(config, executable_layout=layout))
+        run('layout-check-' + layout, python, '-E', '-S', helper, '--check',
+            work / 'build', work / 'sysroot', readelf, target, env=environment)
+    write_config(config)
     # X_OK on a directory must not authenticate an executable readelf file.
     readelf_directory = work / 'readelf-directory'
     readelf_directory.mkdir(mode=0o755)
@@ -605,30 +618,59 @@ def main():
           'missing/changed files and rejects copy corruption')
     print('PASS: real ELF and alias resolution; refusals before SSH; SONAME checks; '
           'transport failures, installed-provider reuse and successful publication')
-    # Configure probes preserve stdout, stderr and a legitimate negative result.
-    for mode in ('execute-pass', 'execute-fail', 'execute-literal'):
-        phase_file = work / (mode + '-phases')
-        execute_args = (['two words', "single'quote", '', '--sdk-source', '/literal/source']
-                        if mode == 'execute-literal' else [])
-        selected_env = dict(environment, GI_TEST_MODE=mode, GI_TEST_PHASES=str(phase_file))
-        if mode == 'execute-literal':
-            selected_env['GI_TEST_ARGV'] = json.dumps(execute_args)
-            selected_env['GI_TEST_ARGV_RECEIPT'] = str(work / 'execute-literal-argv.json')
-        result = capture(python, '-E', '-S', helper, '--execute', work / 'build/query',
-                         *execute_args, env=selected_env)
-        expected_status = 7 if mode == 'execute-fail' else 0
-        require(result.stdout == b'probe stdout\n' and result.stderr == b'probe stderr\n'
-                and result.returncode == expected_status,
-                f'{mode}: lost probe streams/status')
-        require(phase_file.read_text(encoding='utf-8').splitlines() ==
-                ['allocate', 'reuse', 'transfer', 'query', 'status', 'cleanup'],
-                f'{mode}: missing cleanup')
-        if mode == 'execute-literal':
+    # Both fixed executable layouts preserve the original streams and status.
+    for label, layout in (('omitted', None), ('flat', 'flat'), ('prefix-bin', 'prefix-bin')):
+        selected = dict(config, library_dirs=[str(installed.parent)])
+        if layout is not None:
+            selected['executable_layout'] = layout
+        write_config(selected)
+        relative = 'bin/query' if layout == 'prefix-bin' else 'query'
+        for mode in ('execute-pass', 'execute-fail', 'execute-literal'):
+            name = label + '-' + mode
+            phase_file = work / (name + '-phases')
+            archive_file = work / (name + '-input.tar.gz')
+            execute_args = (['two words', "single'quote", '', '--sdk-source', '/literal/source']
+                            if mode == 'execute-literal' else [])
+            selected_env = dict(environment, GI_TEST_MODE=mode, GI_TEST_PHASES=str(phase_file),
+                                GI_TEST_EXECUTABLE=relative, GI_TEST_ARCHIVE=str(archive_file),
+                                GI_TEST_ARGV=json.dumps(execute_args),
+                                GI_TEST_ARGV_RECEIPT=str(work / (name + '-argv.json')))
+            before = set((work / 'cache').glob('gi-query-*'))
+            result = capture(python, '-E', '-S', helper, '--execute', work / 'build/query',
+                             *execute_args, env=selected_env)
+            record(name, result)
+            expected_status = 7 if mode == 'execute-fail' else 0
+            require(result.stdout == b'probe stdout\n' and result.stderr == b'probe stderr\n'
+                    and result.returncode == expected_status,
+                    f'{name}: lost probe streams/status')
+            require(phase_file.read_text(encoding='utf-8').splitlines() ==
+                    ['allocate', 'reuse', 'transfer', 'query', 'status', 'cleanup'],
+                    f'{name}: missing cleanup')
             from emberbsd_sdk.jsonio import read_json
-            require(read_json(str(work / 'execute-literal-argv.json')) == execute_args,
-                    'execute mode consumed literal SDK selection arguments')
-    print('PASS: execute mode preserves separate streams and negative exit status, '
-          'cleans both outcomes and accepts literal arguments')
+            require(read_json(str(work / (name + '-argv.json'))) == execute_args,
+                    f'{name}: changed literal execute arguments')
+            with tarfile.open(archive_file, 'r:gz') as archive:
+                expected = './' + relative
+                other = './query' if relative != 'query' else './bin/query'
+                require(expected in archive.getnames() and other not in archive.getnames(),
+                        f'{name}: wrong executable archive path')
+                member = archive.getmember(expected)
+                require(member.isfile() and member.mode & 0o777 == 0o755 and
+                        archive.extractfile(member).read() == (work / 'build/query').read_bytes(),
+                        f'{name}: executable bytes/mode changed')
+                manifest = archive.extractfile('./files.sha256').read().decode('ascii').splitlines()
+                require(sdk.sha256_file(str(work / 'build/query')) + '  ' + relative in manifest and
+                        sdk.sha256_file(str(installed)) + '  lib/libgi-probe.so.1' in manifest,
+                        f'{name}: manifest lost executable/provider identity')
+            created = set((work / 'cache').glob('gi-query-*')) - before
+            require(len(created) == 1, f'{name}: missing query receipt')
+            receipt = created.pop()
+            require((receipt / 'cleanup.log').read_bytes().startswith(b'0\n') and
+                    not (receipt / 'stage').exists() and not (receipt / 'input.tar.gz').exists(),
+                    f'{name}: temporary stage survived cleanup')
+    write_config(dict(config, library_dirs=[str(installed.parent)]))
+    print('PASS: omitted/flat/prefix-bin layouts preserve ELF bytes, mode, manifests, '
+          'literal arguments, separate streams, status0/7 and cleanup')
     for mode in ('query', 'status', 'cleanup'):
         failure = work / 'build' / (mode + '-failure')
         result = capture(python, '-E', '-S', helper, '--execute', work / 'build/query', env=dict(
@@ -659,7 +701,11 @@ def main():
                         ('data-corrupt', 'execution-status failed'),
                         ('data-source', 'source providers changed'),
                         ('data-metadata', 'file changed during inspection'),
-                        ('data-root', 'data root identity changed')):
+                        ('data-root', 'data root identity changed'),
+                        ('data-prefix', None)):
+        relative = 'bin/query' if mode == 'data-prefix' else 'query'
+        write_config(dict(data_config, library_dirs=[str(installed.parent)],
+                          executable_layout='prefix-bin' if mode == 'data-prefix' else 'flat'))
         resource.write_bytes(b'upstream resource fixture\n')
         resource.chmod(0o644)
         trace = work / (mode + '-phases')
@@ -671,7 +717,7 @@ def main():
                             GI_TEST_DATA_SOURCE=str(resource),
                             GI_TEST_DATA_BUILD=str(work / 'build'),
                             GI_TEST_DATA_TAR=str(saved_tar), GI_TEST_DATA_SCRIPT=str(saved_script),
-                            GI_TEST_DATA_SHA=resource_hash,
+                            GI_TEST_DATA_SHA=resource_hash, GI_TEST_EXECUTABLE=relative,
                             EMBERBSD_GI_FAILURE_MARKER=str(failure))
         before = set((work / 'cache').glob('gi-query-*'))
         result = capture(python, '-E', '-S', helper, '--execute', work / 'build/query',
@@ -774,6 +820,8 @@ if phase in ('transfer', 'query', 'reuse'):
     script = sys.stdin.buffer.read()
 if mode == phase:
     raise SystemExit(74)
+if phase == 'transfer' and 'GI_TEST_ARCHIVE' in os.environ:
+    Path(os.environ['GI_TEST_ARCHIVE']).write_bytes(script)
 if mode.startswith('data-'):
     mock = Path(os.environ['GI_TEST_DATA_MOCK'])
     if phase == 'allocate':
@@ -789,6 +837,7 @@ if mode.startswith('data-'):
         glue = ("sha256() { test \"$1\" = -q || return 2; shift; "
                 "/usr/bin/shasum -a 256 \"$1\" | cut -d ' ' -f 1; }\n"
                 "timeout() {\n"
+                "  test \"$4\" = \"$GI_TEST_DATA_MOCK/$GI_TEST_EXECUTABLE\" && test -x \"$4\" || return 83\n"
                 "  test \"$CSF_LANGUAGE\" = us || return 84\n"
                 "  test \"$CSF_STEPDefaults\" = \"$GI_TEST_DATA_MOCK/data/occt/XSTEPResource\" || return 85\n"
                 "  test \"$(sha256 -q \"$CSF_STEPDefaults/STEP\")\" = \"$GI_TEST_DATA_SHA\" || return 86\n"
@@ -829,13 +878,14 @@ elif phase == 'reuse':
         print('libgi-probe.so.1')
 elif phase == 'query':
     if mode.startswith('execute-'):
-        if mode == 'execute-literal':
+        if mode in ('execute-pass', 'execute-fail', 'execute-literal'):
             invocations = [line for line in script.decode('utf-8').splitlines()
                            if line.startswith('timeout ')]
             if len(invocations) != 1:
                 raise SystemExit('production query has no unique invocation')
             invocation = shlex.split(invocations[0])
-            expected = ['timeout', '-k', '5', '60', '/tmp/ember-gir.AbCd1234/query']
+            expected = ['timeout', '-k', '5', '60',
+                        '/tmp/ember-gir.AbCd1234/' + os.environ['GI_TEST_EXECUTABLE']]
             arguments = json.loads(os.environ['GI_TEST_ARGV'])
             if invocation != expected + arguments + ['>', 'stdout.log', '2>', 'stderr.log']:
                 raise SystemExit('production query lost literal execute arguments')

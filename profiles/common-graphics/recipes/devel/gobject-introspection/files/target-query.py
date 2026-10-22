@@ -72,6 +72,10 @@ def query(arguments):
     target = config.get('target', 'aarch64')
     require(isinstance(target, str) and target in TARGETS, 'unsupported GI target')
     processor, machine = TARGETS[target]
+    layout = config.get('executable_layout', 'flat')
+    require(isinstance(layout, str) and layout in ('flat', 'prefix-bin'),
+            'unsupported executable layout')
+    query_relative = 'query' if layout == 'flat' else 'bin/query'
     require('EMBERBSD_GI_TARGET' not in os.environ or os.environ['EMBERBSD_GI_TARGET'] == target,
             'configuration differs from recipe target')
 
@@ -267,8 +271,10 @@ def query(arguments):
                     pending.append(candidate)
 
         sources = {path: sha256_file(path) for path in sorted({exe, *files.values(), *([in_path] if in_path else [])})}
-        shutil.copy(exe, stage / 'query')
-        (stage / 'query').chmod(0o755)
+        query_path = stage / query_relative
+        query_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(exe, query_path)
+        query_path.chmod(0o755)
         for name, path in files.items():
             shutil.copy(path, stage / 'lib' / name)
         if in_path:
@@ -328,7 +334,7 @@ def query(arguments):
             (work / 'tar.log').write_bytes(b'')
             (work / 'transfer-size.txt').write_text(f'{archive.stat().st_size}\n', encoding='ascii')
             run('transfer', ssh + [f'tar -xzf - -C {shlex.quote(remote)}'], archive.read_bytes())
-            invocation = [remote + '/query']
+            invocation = [remote + '/' + query_relative]
             if execute:
                 invocation.extend(args)
             if out_path:
