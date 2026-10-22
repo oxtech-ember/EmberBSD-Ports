@@ -138,6 +138,15 @@ hardcoded base-tool paths remains pending.
 OpenSSL cross builds select complete upstream BSD targets instead of the
 build host's uname; the [cross checks](cross/README.md) keep package and runtime acceptance separate.
 
+The NSS 3.129 cross recipe selects the NetBSD target OS, release and CPU while
+building nsinstall with the native compiler. Its narrow link branch removes target
+linker flags and libraries only for that host helper. The
+[host-tool regression](tests/nss-cross-host-tools.py) checks both target CPU mappings,
+the native recipe path and a real Darwin link before and after the patch. It does not
+build or accept target NSS libraries. The upstream cross .chk skip remains; this
+does not establish shlibsign or FIPS acceptance.
+
+
 The [cross Libtool path check](cross/libtool-runtime-paths.md) repairs an SDK
 runtime path leak through pkgsrc passthrough directories. A genuine GCC16 C++
 shared-library consumer verifies target RPATH and installed Libtool metadata.

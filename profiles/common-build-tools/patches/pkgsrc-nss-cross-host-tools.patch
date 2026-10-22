@@ -1,0 +1,97 @@
+Origin: EmberBSD contributors (AI-assisted).
+Base: pkgsrc fff4deb639a1a640476203c80f752fb77b6cb14b, devel/nss 3.129.
+NSS source files keep their upstream MPL-2.0 license and authorship.
+
+diff --git a/devel/nss/Makefile b/devel/nss/Makefile
+--- a/devel/nss/Makefile
++++ b/devel/nss/Makefile
+@@ -4,6 +4,7 @@
+ # https://firefox-source-docs.mozilla.org/security/nss/releases/index.html
+ 
+ DISTNAME=		nss-3.129
++PKGREVISION=		1
+ CATEGORIES=		devel security
+ MASTER_SITES=		${MASTER_SITE_MOZILLA_ALL:=security/nss/releases/NSS_${PKGVERSION_NOREV:S/./_/g}_RTM/src/}
+ 
+@@ -33,8 +34,12 @@
+ .if ${USE_CROSS_COMPILE:U:tl} == yes
+ 
+ MAKE_FLAGS+=		CROSS_COMPILE=1
++MAKE_FLAGS+=		OS_TARGET=${OPSYS:Q}
++MAKE_FLAGS+=		OS_TARGET_RELEASE=${OS_VERSION:Q}
++MAKE_FLAGS+=		OS_TEST=${NSS_CPU_ARCH:Q}
+ MAKE_FLAGS+=		NATIVE_CC=${NATIVE_CC:Q}
+ MAKE_FLAGS+=		NATIVE_CFLAGS=
++MAKE_FLAGS+=		NATIVE_FLAGS=${NATIVE_CFLAGS:Q}
+ MAKE_FLAGS+=		NATIVE_LDFLAGS=
+ MAKE_FLAGS+=		NATIVE_EXTRA_SHARED_LIBS=
+ 
+diff --git a/devel/nss/distinfo b/devel/nss/distinfo
+--- a/devel/nss/distinfo
++++ b/devel/nss/distinfo
+@@ -12,4 +12,6 @@
+ SHA1 (patch-nss_coreconf_OpenBSD.mk) = 944f71fcaaa7d5b2b3ed008341b1392a65480f2b
+ SHA1 (patch-nss_coreconf_command.mk) = a7b682d367825b48f8802fa30cee83f10680bb74
+ SHA1 (patch-nss_coreconf_nsinstall_Makefile) = 69981ba7355a4413111754859ef08cbd5e1bf4f4
++SHA1 (patch-nss_coreconf_nsinstall_zz_emberbsd_native_tools) = d047de13eed6dc1fd97b8456ee4c0ab388f55d37
++SHA1 (patch-nss_coreconf_rules_mk_zz_emberbsd_native_program) = dea52892c8560146485f3279c54dc1d1c8461c52
+ SHA1 (patch-nss_lib_freebl_verified_internal_Hacl__Bignum__Base.h) = 52565ef5bab1f37154d4266544144d56a5b95699
+diff --git a/devel/nss/patches/patch-nss_coreconf_nsinstall_zz_emberbsd_native_tools b/devel/nss/patches/patch-nss_coreconf_nsinstall_zz_emberbsd_native_tools
+new file mode 100644
+--- /dev/null
++++ b/devel/nss/patches/patch-nss_coreconf_nsinstall_zz_emberbsd_native_tools
+@@ -0,0 +1,31 @@
++$NetBSD$
++
++Select the native link rule for nsinstall only and use explicitly empty native tool flags during cross builds.
++
++--- nss/coreconf/nsinstall/Makefile
+++++ nss/coreconf/nsinstall/Makefile
++@@ -30,11 +30,11 @@
++ CC=$(NATIVE_CC)
++ endif
++ 
++-ifdef NATIVE_FLAGS
+++ifneq ($(origin NATIVE_FLAGS),undefined)
++ OS_CFLAGS=$(NATIVE_FLAGS)
++ endif
++ 
++-ifdef NATIVE_LDFLAGS
+++ifneq ($(origin NATIVE_LDFLAGS),undefined)
++ LDFLAGS=$(NATIVE_LDFLAGS)
++ endif
++ 
++@@ -48,6 +48,10 @@
++ EXTRA_SHARED_LIBS=$(NATIVE_EXTRA_SHARED_LIBS)
++ endif
++ 
+++ifneq ($(origin NATIVE_CC),undefined)
+++NATIVE_PROGRAM=$(PROGRAM)
+++endif
+++
++ include $(DEPTH)/coreconf/rules.mk
++ 
++ # Redefine MAKE_OBJDIR for just this directory
+diff --git a/devel/nss/patches/patch-nss_coreconf_rules_mk_zz_emberbsd_native_program b/devel/nss/patches/patch-nss_coreconf_rules_mk_zz_emberbsd_native_program
+new file mode 100644
+--- /dev/null
++++ b/devel/nss/patches/patch-nss_coreconf_rules_mk_zz_emberbsd_native_program
+@@ -0,0 +1,18 @@
++$NetBSD$
++
++Link only the selected native program with native inputs; keep all other program links on the upstream target rule.
++
++--- nss/coreconf/rules.mk
+++++ nss/coreconf/rules.mk
++@@ -156,7 +156,11 @@
++ 	fi
++ endif	# MSVC with manifest tool
++ else
+++ifeq ($$(NATIVE_PROGRAM),$(1))
+++	$$(NATIVE_CC) -o $$@ $$($(1)_OBJS) $$(NATIVE_LDFLAGS) $$(NATIVE_EXTRA_SHARED_LIBS)
+++else
++ 	$$(MKPROG) -o $$@ $$(CFLAGS) $$($(1)_OBJS) $$(LDFLAGS) $$(EXTRA_LIBS) $$(EXTRA_SHARED_LIBS) $$(OS_LIBS)
+++endif
++ endif
++ endef # PROGRAM_template
++ 
