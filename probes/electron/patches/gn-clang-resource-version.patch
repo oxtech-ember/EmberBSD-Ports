@@ -1,0 +1,20 @@
+$NetBSD$
+
+Use the resource version from Chromium's pinned Clang on Apple hosts.
+Origin: EmberBSD (AI-assisted), Chromium 152.0.7977.167; not submitted upstream.
+
+--- a/build/toolchain/toolchain.gni
++++ b/build/toolchain/toolchain.gni
+@@ -44,12 +44,7 @@ declare_args() {
+   if (llvm_force_head_revision) {
+     clang_version = "24"
+-  } else if (is_apple && host_os == "mac") {
+-    # EmberBSD cross profile (E12): the macOS host toolchain uses the
+-    # system Xcode clang, whose resource directory carries its own
+-    # version (for example clang/21), not the pinned Chromium LLVM.
+-    clang_version = "21"
+   } else {
+     # TODO(crbug.com/534655507): Remove in the next Clang roll.
+     clang_version = "23"
+   }
+ }

@@ -98,13 +98,15 @@ restrictions for unchanged upstream artwork and marks.
 The host checks passed 11 package-controller tests and 22 focused Node tests.
 The produced ASAR contains 1,674 entries. The production-only registry audit
 reported no advisories for the 32 installed runtime packages. This does not
-clear the separate upstream development dependency audit. Real pkgsrc package
+clear the separate upstream development dependency audit. Direct pkgsrc
+extraction, patch, build, test, and staged install passed. The ASAR and SBOM
+match the independent allowlist build byte-for-byte. The full pkgsrc dependency
 lifecycle, target startup, and kernel sandbox acceptance remain unverified.
 The application package cannot be installed until the target runtime is built.
 
 ## GN target inputs
 
-The four source patches retain the exact Chromium pin above. Apply them after
+The five source patches retain the exact Chromium pin above. Apply them after
 its NetBSD GN adaptations, from the Chromium source root:
 
 ```sh
@@ -112,6 +114,7 @@ patch -p0 -F 0 < /absolute/Ports/probes/electron/patches/gn-pkgconfig-libdir.pat
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-readelf.patch
 patch -p0 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-asmflags.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-bindgen-host-tools.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-clang-resource-version.patch
 ```
 
 The pkg-config patch keeps the effective `pkg/lib` value in the common cross
@@ -127,6 +130,10 @@ The Rust patch restores the pinned `bindgen`, `rustfmt`, and libclang paths
 from `rust_bindgen_root`. It adds EmberBSD parser headers only to a NetBSD
 target toolchain whose OS or CPU differs from the build host. Host actions,
 native NetBSD, and unrelated target platforms do not receive those headers.
+The resource-version patch restores the upstream Clang version selection.
+The Apple host tools use the pinned compiler below `clang_base_path`, so their
+headers and compiler runtime must use that compiler's resource version.
+The target C/C++ compiler remains GCC16.
 
 Run the regressions with host CPython 3.15 and its standard library. Select an
 SDK API 1 source with `--sdk-source`. Each test checks the API and module origin.
@@ -155,6 +162,11 @@ python3.15 -E -S probes/electron/tests/gn-rust-bindgen.py \
   --sysroot /absolute/target-sysroot \
   --patch /absolute/Ports/probes/electron/patches/gn-rust-bindgen-host-tools.patch \
   /absolute/NEW_BINDGEN_WORK
+python3.15 -E -S probes/electron/tests/gn-clang-resource-version.py \
+  --sdk-source /absolute/EmberBSD-SDK \
+  --source /absolute/chromium/src --gn /absolute/host-gn \
+  --patch /absolute/Ports/probes/electron/patches/gn-clang-resource-version.patch \
+  /absolute/NEW_CLANG_RESOURCE_WORK
 ```
 
 The tests accept the original or already fixed source. They apply the carried
@@ -175,6 +187,12 @@ pinned Rust toolchain. The smoke headers do not include system headers or
 exercise the full allocator action. The smoke does not project GCC-only
 `--param` or `-B` flags. Its shared library check currently requires a macOS
 host toolchain with `libclang.dylib`.
+
+The resource-version test runs six minimal GN evaluations. The Apple host
+selects the pinned compiler's resource version, the NetBSD target retains
+version 23, and the forced head revision retains version 24. The test checks
+the actual host compiler's `-print-resource-dir` result, a resource header,
+and the Darwin compiler runtime archive. It does not compile target objects.
 
 These tests pass on macOS. The fixture supplies the E12 macOS cross profile
 explicitly; it does not depend on the machine that runs GN. Linux and native
