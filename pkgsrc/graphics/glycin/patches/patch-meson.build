@@ -1,0 +1,16 @@
+$NetBSD$
+
+Cross builds: cargo builds all Rust code; do not ask meson to
+sanity-check a Rust compiler for the target.
+
+--- meson.build.orig
++++ meson.build
+@@ -1,6 +1,7 @@
+ project(
+   'glycin',
+-  'rust',
++  # Cargo custom targets build the Rust code. The meson Rust sanity
++  # check cannot link a program for the target in a cross build.
+   'c',
+   # This is a global version that's used for libglycin, glycin-loaders, and glycin-thumbnailers.
+   # It is however not used for Rust crates released on crates.io.
