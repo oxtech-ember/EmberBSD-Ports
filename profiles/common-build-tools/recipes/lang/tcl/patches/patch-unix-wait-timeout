@@ -1,0 +1,29 @@
+$NetBSD$
+
+Keep an indefinite wait active after poll is interrupted.
+Convert finite milliseconds to microseconds without int overflow.
+
+Origin: EmberBSD (AI-assisted), against Tcl 9.1.0.
+Original source copyright and license.terms remain unchanged.
+Not submitted upstream.
+
+--- unix/tclUnixNotfy.c.orig
++++ unix/tclUnixNotfy.c
+@@ -569,7 +569,7 @@
+ 
+     if (timeout > 0) {
+ 	now = Tcl_GetDayTime();
+-	abortTime = now + timeout * 1000;
++	abortTime = now + (long long) timeout * 1000;
+ 	timeoutPtr = &blockTime;
+     } else if (timeout == 0) {
+ 	timeoutPtr = &blockTime;
+@@ -652,7 +652,7 @@
+ 	 */
+ 
+ 	now = Tcl_GetDayTime();
+-    } while (abortTime > now);
++    } while (timeout < 0 || abortTime > now);
+     return result;
+ }
+ #endif /* !HAVE_COREFOUNDATION */

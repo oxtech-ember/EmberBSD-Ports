@@ -110,6 +110,28 @@ changes Itcl to a longer install name, and compares Thread's embedded script.
 The eighth extension remains the TDBC SQLite Tcl module. Native memory
 acceptance retains the limitations below; no memory check is claimed here.
 
+## Unix poll timeouts
+
+Revision 3 retries an indefinite `TclUnixWaitForFile` wait after `poll`
+returns without readiness. It does not read the finite deadline clock in
+that branch. Finite timeout conversion uses wide multiplication, including
+intervals above 2147483 milliseconds. The CoreFoundation branch is unchanged.
+
+The [function regression](../tests/tcl-wait-poll.py) takes the original and
+patched `unix/tclUnixNotfy.c`, upstream `generic` headers, a new output
+directory, and `--cc` with a native GCC16 path. Use repeated `--cflag` options
+for host SDK flags. It extracts the actual function without changing its
+body. Controlled poll and clock fixtures cover 11 cases. The check reproduces
+both baseline defects and tests the repair with ordinary GCC16 and ASan/UBSan.
+A separate zero-initialization build makes the baseline early return repeatable.
+This is a host function test, not target-kernel or CoreFoundation acceptance.
+
+Full target kqueue translation-unit analysis uses the actual aarch64 flags.
+GCC16 reports the uninitialized read before the patch and no findings after it.
+Cppcheck 2.18 retains seven inherited style findings and misidentifies the
+negative-timeout loop condition as false. The negative-timeout tests exercise
+that condition after `continue`. No diagnostics are suppressed.
+
 ## Focused checks and limits
 
 The source regression uses Python 3.15 and its standard library:

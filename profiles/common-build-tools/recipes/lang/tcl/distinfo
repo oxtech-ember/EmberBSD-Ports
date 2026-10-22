@@ -8,3 +8,4 @@ SHA1 (patch-doc_Encoding.3) = e4dd8fca29469e3d4931dd7eee6142a38ce063f6
 SHA1 (patch-sqlite-system-extern) = 1fe525cc983ae11dd075117e88d42af55e8a7291
 SHA1 (patch-itcl-configured-ldflags) = 846a109c3b5405a0d95c9e80255ad8f8c30af1ad
 SHA1 (patch-thread-darwin-install-name) = 7be74ab29666c0f835b88f695d005fe7cd75d3ed
+SHA1 (patch-unix-wait-timeout) = 1fdf1f45e30e041d3ad639305084d021433ad912
