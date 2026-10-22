@@ -35,6 +35,18 @@ BMAKE=/absolute/native-bmake MAKECONF=/absolute/cross-mk.conf \
 
 This checks actual native tool selection, native-mode selection, all 20
 GIR/typelib pairs and every unconditional file in the two package lists.
+The file check uses pkgsrc's manual-page rules with the selected `PKGMANDIR`
+and `_MANZ`. It retains every source-list entry. Check the metadata oracle with
+both manual directories, gzip settings and missing-file controls:
+
+```sh
+BMAKE=/absolute/native-bmake /absolute/selected/python3.15 \
+  profiles/common-media/tests/gstreamer-plugins-plist.py \
+  PREPARED_PKGSRC NEW_WORK
+```
+
+These fixtures do not build GStreamer or execute media.
+
 Compile `tests/gstreamer-plugins-gi.c` with the target compiler against the
 sysroot's `gobject-introspection-1.0` and `gstreamer-1.0` pkg-config entries.
 Use the normal `/usr/pkg/lib` target RPATH. Run it on the installed board via:

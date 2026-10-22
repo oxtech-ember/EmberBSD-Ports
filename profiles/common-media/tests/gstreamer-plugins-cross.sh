@@ -7,6 +7,7 @@ set -eu
 tree=$(CDPATH= cd -- "$1" && pwd)
 mkdir "$2"
 work=$(CDPATH= cd -- "$2" && pwd)
+printf '{ print }\n' > "$work/print-man-paths.awk"
 for family in base bad; do
     recipe=$tree/multimedia/gst-plugins1-$family
     get() { "$BMAKE" -C "$recipe" -V "\${$1}"; }
@@ -28,7 +29,17 @@ for family in base bad; do
         grep -q '<enumeration\|<class\|<record' "$stage/share/gir-1.0/$namespace.gir"
     done < "$work/$family-typelibs.txt"
     # Every unconditional file from the source-controlled package list survives.
-    awk '/^[a-z]/ && !/\$/ {print}' "$recipe/PLIST" > "$work/$family-files.txt"
-    while read -r file; do [ -e "$stage/$file" ]; done < "$work/$family-files.txt"
+    awk '/^[a-z]/ && !/\$/ {print}' "$recipe/PLIST" > "$work/$family-files.raw"
+    # Use pkgsrc's manual-directory and compression rules. Keep every input.
+    PKGMANDIR="$(get PKGMANDIR)" MANZ="$(get _MANZ)" \
+        MANINSTALL="$(get _PLIST_MANINSTALL)" IMAKE_MANINSTALL="$(get _IMAKE_MANINSTALL)" \
+        CATMAN_SECTION_SUFFIX="$(get CATMAN_SECTION_SUFFIX)" \
+        awk -f "$tree/mk/plist/plist-functions.awk" \
+            -f "$tree/mk/plist/plist-man.awk" -f "$work/print-man-paths.awk" \
+            "$work/$family-files.raw" > "$work/$family-files.txt"
+    [ "$(wc -l < "$work/$family-files.raw")" = "$(wc -l < "$work/$family-files.txt")" ]
+    while read -r file; do
+        [ -e "$stage/$file" ] || { echo "Missing package file: $file" >&2; exit 1; }
+    done < "$work/$family-files.txt"
     echo "PASS: $family host generators, native selection, $count GIR/typelibs and full package files"
 done
