@@ -84,7 +84,7 @@ packages only. Chain state after this pass:
 `gvdb` turned out to ship in the mutter tarball (no wrap download);
 `glycin-2` is now fully ported:
 
-- **glycin 2.0.8** (new recipe, `probes/pantheon/glycin/`): libglycin only
+- **glycin 2.0.8** (new recipe, now in the shared overlay `pkgsrc/graphics/glycin/`): libglycin only
   (`-Dglycin-loaders=false -Dglycin-thumbnailer=false -Dlibglycin-gtk4=false
   -Dintrospection=false`), cross cargo via the packaged rust-bin 1.99 +
   rust-std-aarch64-netbsd (`RUST_TYPE=native`, target linker = wrapper cc).
