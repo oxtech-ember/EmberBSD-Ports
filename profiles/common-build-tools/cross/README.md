@@ -353,7 +353,11 @@ pkgsrc adds `pkgtools/pkg_install-info` as a target runtime dependency and
 records `/usr/pkg/bin/pkg_install-info` for the target. The build wrapper is a
 no-op in both cases. A Perl runtime tool is allowed only when the target Perl
 package is staged at `/usr/pkg/bin/perl`. Pkgsrc retains Perl as a target
-runtime dependency and writes the target path into Perl script shebangs. Other
+runtime dependency and writes the target path into Perl script shebangs.
+Bash runtime scripts likewise require the staged target `/usr/pkg/bin/bash`.
+The target Bash package remains a runtime dependency even when the host
+platform supplies Bash. Build generators and tool wrappers retain host Bash;
+`REPLACE_BASH` records the target interpreter for installed scripts. Other
 unsupported `:run` tools still fail explicitly. Libtool declares GNU M4 as a
 target package dependency.
 
@@ -366,6 +370,12 @@ missing host tools, target Info utility routing and the pkgsrc runtime
 dependency. It does not execute target binaries on the host.
 `tests/cross-runtime-perl.py` checks staged target Perl dependency and shebang
 selection, refusal when Perl is absent, and unchanged native behavior.
+`tests/cross-runtime-bash.py` uses the real OCCT recipe. It reproduces the
+unpatched refusal, checks target runtime and host generator dependencies,
+executes a host generator, and runs the real interpreter replacement target.
+It also checks unchanged native selection and the missing-target refusal
+when a host platform Bash is available. These checks do not run target Bash;
+installed target execution and package lifecycle acceptance remain separate.
 `python3 -B tests/prepare-tools-target.py --sdk-source SDK NEW_WORK` runs the real
 helper with fake amd64 tools. It needs no compiler or pkgsrc export. It checks the
 imports, every composed link, a wrong compiler and existing output.

@@ -442,7 +442,7 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  _TOOLS_USE_PKGSRC.msgfmt?=	no
 --- a/mk/tools/replace.mk
 +++ b/mk/tools/replace.mk
-@@ -140,10 +140,50 @@
+@@ -140,10 +140,57 @@
  _TOOLS_DEPMETHOD.${_t_:C/:.*//}=	TOOL_DEPENDS
  .endfor
  .for _t_ in ${USE_TOOLS:M*\:run}
@@ -475,6 +475,12 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
 +        !empty(_TOOLS_USE_PKGSRC.install-info:M[yY][eE][sS])
 +EMBER_CROSS_RUN_OK=	yes
 +.    endif
++# The target Bash runtime is distinct from the Bash used by host generators.
++.    if ${_t_} == "bash:run" && ${OPSYS} == "NetBSD" && \
++        exists(${CROSS_DESTDIR}${CROSS_LOCALBASE}/bin/bash)
++EMBER_CROSS_RUN_OK=	yes
++DEPENDS+=		bash-[0-9]*:../../shells/bash
++.    endif
 +# The staged target Perl package supports scripts with a Perl runtime.
 +.    if ${_t_} == "perl:run" && ${OPSYS} == "NetBSD" && \
 +        exists(${CROSS_DESTDIR}/usr/pkg/bin/perl)
@@ -482,19 +488,20 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
 +.    endif
 +.    if ${EMBER_CROSS_RUN_OK:tl} != "yes"
  PKG_FAIL_REASON+=	"USE_TOOLS+=${_t_} not supported in cross-compilation"
+-.  endif
 +.    endif
- .  endif
--_TOOLS_DEPMETHOD.${_t_:C/:.*//}=	DEPENDS
-+.  if ${_t_} == "flex:run" && ${USE_CROSS_COMPILE:tl} == "yes" && \
-+      ${OPSYS} != ${NATIVE_OPSYS}
-+_TOOLS_DEPMETHOD.flex=	TOOL_DEPENDS
++.  endif
++.  if (${_t_} == "flex:run" || ${_t_} == "bash:run") && \
++      ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} != ${NATIVE_OPSYS}
++# The build wrapper must execute a host tool, including for runtime scripts.
++_TOOLS_DEPMETHOD.${_t_:C/:.*//}=	TOOL_DEPENDS
 +.  else
-+_TOOLS_DEPMETHOD.${_t_:C/:.*//}=	DEPENDS
+ _TOOLS_DEPMETHOD.${_t_:C/:.*//}=	DEPENDS
 +.  endif
  .endfor
  .for _t_ in ${USE_TOOLS:M*\:test}
  _TOOLS_DEPMETHOD.${_t_:C/:.*//}=	TEST_DEPENDS
-@@ -535,6 +560,12 @@
+@@ -535,6 +582,12 @@
  TOOLS_DEPENDS.install-info?=	pkg_install-info-[0-9]*:../../pkgtools/pkg_install-info
  TOOLS_CREATE+=			install-info
  TOOLS_PATH.install-info=	${TOOLBASE}/bin/pkg_install-info
@@ -507,7 +514,7 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  .  endif
  .endif
  #
-@@ -978,6 +1009,11 @@
+@@ -978,6 +1031,11 @@
  TOOLS_DEPENDS.${_t_}?=		perl>=${PERL5_REQD}:../../lang/perl5
  TOOLS_CREATE+=			${_t_}
  TOOLS_PATH.${_t_}=		${TOOLBASE}/bin/${_t_}
@@ -873,3 +880,17 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
 +.endif
 +
  .include "../../mk/bsd.pkg.mk"
+--- a/mk/configure/replace-interpreter.mk
++++ b/mk/configure/replace-interpreter.mk
+@@ -63,6 +63,11 @@
+ REPLACE_INTERPRETER+=	sys-bash
+ REPLACE.sys-bash.old=	.*sh
+ REPLACE.sys-bash.new=	${BASH}
++.  if ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++      ${OPSYS} != ${NATIVE_OPSYS} && !empty(USE_TOOLS:Mbash\:run)
++# Installed scripts need the target interpreter; BASH remains a host tool.
++REPLACE.sys-bash.new=	${CROSS_LOCALBASE}/bin/bash
++.  endif
+ REPLACE_FILES.sys-bash=	${REPLACE_BASH}
+ .endif
+ 
