@@ -30,7 +30,7 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 # Common-tools pkgsrc infrastructure patches, in application order.
 # The preflight and the export use this one list. The Boost patch is applied
 # separately, after the toolkit recipes.
-common_tools_deltas="python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch pkgsrc-gts-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-curl-security.patch pkgsrc-openssl-security.patch pkgsrc-cross-packages.patch pkgsrc-pkg-admin-destdir.patch pkgsrc-gettext-go-detection.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch pkgsrc-ncurses-terminfo-aliases.patch pkgsrc-ncurses-native-headers.patch pkgsrc-host-autoconf.patch pkgsrc-cwrappers-unwrap-boundary.patch pkgsrc-cross-passthrough-rpath.patch pkgsrc-bsdtar-common-zlib.patch pkgsrc-font-runtime-roles.patch pkgsrc-stale-metadata.patch"
+common_tools_deltas="python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch pkgsrc-gts-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-curl-security.patch pkgsrc-openssl-security.patch pkgsrc-cross-packages.patch pkgsrc-pkg-admin-destdir.patch pkgsrc-gettext-go-detection.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch pkgsrc-ncurses-terminfo-aliases.patch pkgsrc-ncurses-native-headers.patch pkgsrc-host-autoconf.patch pkgsrc-cwrappers-unwrap-boundary.patch pkgsrc-cross-passthrough-rpath.patch pkgsrc-bsdtar-common-zlib.patch pkgsrc-font-runtime-roles.patch pkgsrc-stale-metadata.patch pkgsrc-vala-valadoc-option.patch"
 if [ "$firmware_toolchain" = yes ]; then
     [ -n "$profile" ] || {
         echo 'The firmware toolchain requires a development or common profile.' >&2; exit 2;
@@ -393,7 +393,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
         case "$recipe" in
             net/nng) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk options.mk' ;;
             security/mit-krb5-devel) recipe_files='Makefile DESCR PLIST buildlink3.mk' ;;
-            security/libsecret) recipe_files='Makefile DESCR PLIST PLIST.cross distinfo buildlink3.mk' ;;
+            security/libsecret) recipe_files='Makefile DESCR PLIST PLIST.cross distinfo buildlink3.mk options.mk' ;;
             security/mit-krb5) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk builtin.mk options.mk files/kdc.sh files/kadmind.sh files/krb5-config-wrapper.sh' ;;
             x11/pixman) recipe_files='Makefile DESCR PLIST distinfo buildlink3.mk builtin.mk hacks.mk' ;;
             graphics/freeimage) recipe_files='Makefile Makefile.common DESCR PLIST distinfo buildlink3.mk' ;;

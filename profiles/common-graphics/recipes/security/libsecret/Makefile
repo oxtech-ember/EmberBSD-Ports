@@ -39,11 +39,10 @@ SUBST_SED.python=	-e 's,python3,${PYTHONBIN},'
 
 BUILDLINK_API_DEPENDS.glib2+=	glib2>=2.44.0
 
+.include "options.mk"
+
 .include "../../devel/glib2/buildlink3.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-# The reference site is not needed by consumers and would require running
-# target-side Graphviz through gi-docgen during the cross package build.
-MESON_ARGS+=	-Dgtk_doc=false
 MESON_ARGS+=	-Dvapi=false
 MESON_ARGS+=	-Dintrospection=false
 MESON_BINARIES+=	gdbus-codegen
@@ -52,7 +51,6 @@ MESON_BINARIES+=	glib-mkenums
 MESON_BINARY.glib-mkenums=	${TOOLBASE}/bin/glib-mkenums
 PLIST_SRC=	${.CURDIR}/PLIST.cross
 .else
-.include "../../devel/py-gi-docgen/buildlink3.mk"
 .include "../../lang/vala/buildlink3.mk"
 BUILDLINK_DEPMETHOD.gobject-introspection=	build
 .include "../../devel/gobject-introspection/buildlink3.mk"

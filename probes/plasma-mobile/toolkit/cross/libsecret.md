@@ -7,12 +7,17 @@ It retains Secret GIR/typelib, Vala bindings, translated messages, `secret-tool`
 manual pages and reference documentation. Both real library and mock-service
 GType queries execute on the target through the common verified transport.
 
+The `doc` package option enables the API reference site by default.
+Set `PKG_OPTIONS.libsecret=-doc` to omit that site and its gi-docgen dependency.
+The library, GIR/typelib, Vala bindings, `secret-tool`, manual and upstream tests
+remain enabled. The option applies to native and cross builds.
+
 ## Native generators
 
-Use native Vala 0.56.19 (`valac`, `vapigen`) and gi-docgen 2026.1. They generate
-C, VAPI and documentation on the build host; target libraries and GLib metadata
-come from the common EmberBSD sysroot. Native package builds retain the usual
-pkgsrc tool dependencies. Missing selected native prefixes fail configuration.
+Use native Vala 0.56.19 (`valac`, `vapigen`). The `doc` option also needs gi-docgen 2026.1.
+They generate C, VAPI and documentation on the build host. Target libraries and GLib metadata
+come from the common EmberBSD sysroot. Native builds retain selected pkgsrc
+tool dependencies. Missing selected native prefixes fail configuration.
 
 The optional helper builds the original [gi-docgen archive](https://pypi.org/project/gi-docgen/2026.1/)
 with the existing host Python. Upstream gi-docgen requires Python; the helper
@@ -32,12 +37,14 @@ installed entry point with its private module path. This private build helper
 is not a second target runtime provider. Set these private MAKECONF inputs:
 
 ```make
-EMBERBSD_GI_DOCGEN_HOST=/absolute/new-work/prefix
 EMBERBSD_VALA_HOST=/absolute/native-vala-prefix
+# Only with the doc option:
+EMBERBSD_GI_DOCGEN_HOST=/absolute/new-work/prefix
 ```
 
 The common GI transport inputs are also required. `libsecret-tools.sh` queries
-the actual native/cross recipes and checks absent-generator refusals:
+the native/cross recipes with default and disabled documentation. It checks
+the retained runtime inventory and absent-generator refusals:
 
 ```sh
 BMAKE=/absolute/bmake sh ../tests/libsecret-tools.sh \

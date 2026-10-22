@@ -1,0 +1,152 @@
+--- a/lang/vala/Makefile
++++ b/lang/vala/Makefile
+@@ -25,5 +25,5 @@
+ .include "../../devel/glib2/buildlink3.mk"
+ .include "../../devel/gobject-introspection/buildlink3.mk"
+ .include "../../devel/libltdl/buildlink3.mk"
+-.include "../../graphics/graphviz/buildlink3.mk"
++.include "options.mk"
+ .include "../../mk/bsd.pkg.mk"
+--- a/lang/vala/PLIST
++++ b/lang/vala/PLIST
+@@ -5,30 +5,30 @@
+ bin/vala-gen-introspect-0.56
+ bin/valac
+ bin/valac-0.56
+-bin/valadoc
+-bin/valadoc-0.56
++${PLIST.valadoc}bin/valadoc
++${PLIST.valadoc}bin/valadoc-0.56
+ bin/vapigen
+ bin/vapigen-0.56
+ include/vala-0.56/vala.h
+ include/vala-0.56/valagee.h
+-include/valadoc-0.56/valadoc.h
++${PLIST.valadoc}include/valadoc-0.56/valadoc.h
+ lib/libvala-0.56.la
+-lib/libvaladoc-0.56.la
++${PLIST.valadoc}lib/libvaladoc-0.56.la
+ lib/pkgconfig/libvala-0.56.pc
+-lib/pkgconfig/valadoc-0.56.pc
++${PLIST.valadoc}lib/pkgconfig/valadoc-0.56.pc
+ lib/pkgconfig/vapigen-0.56.pc
+ lib/pkgconfig/vapigen.pc
+ lib/vala-0.56/gen-introspect-0.56
+ lib/vala-0.56/libvalaccodegen.la
+-lib/valadoc-0.56/doclets/devhelp/libdoclet.la
+-lib/valadoc-0.56/doclets/gtkdoc/libdoclet.la
+-lib/valadoc-0.56/doclets/html/libdoclet.la
++${PLIST.valadoc}lib/valadoc-0.56/doclets/devhelp/libdoclet.la
++${PLIST.valadoc}lib/valadoc-0.56/doclets/gtkdoc/libdoclet.la
++${PLIST.valadoc}lib/valadoc-0.56/doclets/html/libdoclet.la
+ man/man1/vala-gen-introspect-0.56.1
+ man/man1/vala-gen-introspect.1
+ man/man1/valac-0.56.1
+ man/man1/valac.1
+-man/man1/valadoc-0.56.1
+-man/man1/valadoc.1
++${PLIST.valadoc}man/man1/valadoc-0.56.1
++${PLIST.valadoc}man/man1/valadoc.1
+ man/man1/vapigen-0.56.1
+ man/man1/vapigen.1
+ share/aclocal/vala.m4
+@@ -377,36 +377,36 @@
+ share/vala-0.56/vapi/zlib.vapi
+ share/vala/Makefile.vapigen
+ share/vala/vapi/libvala-0.56.vapi
+-share/vala/vapi/valadoc-0.56.deps
+-share/vala/vapi/valadoc-0.56.vapi
+-share/valadoc-0.56/icons/abstractclass.svg
+-share/valadoc-0.56/icons/abstractmethod.svg
+-share/valadoc-0.56/icons/abstractproperty.svg
+-share/valadoc-0.56/icons/class.svg
+-share/valadoc-0.56/icons/coll_close.svg
+-share/valadoc-0.56/icons/coll_open.svg
+-share/valadoc-0.56/icons/constant.svg
+-share/valadoc-0.56/icons/constructor.svg
+-share/valadoc-0.56/icons/delegate.svg
+-share/valadoc-0.56/icons/devhelpstyle.css
+-share/valadoc-0.56/icons/enum.svg
+-share/valadoc-0.56/icons/enumvalue.svg
+-share/valadoc-0.56/icons/errorcode.svg
+-share/valadoc-0.56/icons/errordomain.svg
+-share/valadoc-0.56/icons/field.svg
+-share/valadoc-0.56/icons/interface.svg
+-share/valadoc-0.56/icons/method.svg
+-share/valadoc-0.56/icons/namespace.svg
+-share/valadoc-0.56/icons/package.svg
+-share/valadoc-0.56/icons/packages.svg
+-share/valadoc-0.56/icons/property.svg
+-share/valadoc-0.56/icons/scripts.js
+-share/valadoc-0.56/icons/signal.svg
+-share/valadoc-0.56/icons/staticmethod.svg
+-share/valadoc-0.56/icons/struct.svg
+-share/valadoc-0.56/icons/style.css
+-share/valadoc-0.56/icons/tip.svg
+-share/valadoc-0.56/icons/virtualmethod.svg
+-share/valadoc-0.56/icons/virtualproperty.svg
+-share/valadoc-0.56/icons/warning.svg
+-share/valadoc-0.56/icons/wikistyle.css
++${PLIST.valadoc}share/vala/vapi/valadoc-0.56.deps
++${PLIST.valadoc}share/vala/vapi/valadoc-0.56.vapi
++${PLIST.valadoc}share/valadoc-0.56/icons/abstractclass.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/abstractmethod.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/abstractproperty.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/class.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/coll_close.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/coll_open.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/constant.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/constructor.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/delegate.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/devhelpstyle.css
++${PLIST.valadoc}share/valadoc-0.56/icons/enum.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/enumvalue.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/errorcode.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/errordomain.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/field.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/interface.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/method.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/namespace.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/package.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/packages.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/property.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/scripts.js
++${PLIST.valadoc}share/valadoc-0.56/icons/signal.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/staticmethod.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/struct.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/style.css
++${PLIST.valadoc}share/valadoc-0.56/icons/tip.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/virtualmethod.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/virtualproperty.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/warning.svg
++${PLIST.valadoc}share/valadoc-0.56/icons/wikistyle.css
+--- /dev/null
++++ b/lang/vala/options.mk
+@@ -0,0 +1,17 @@
++# SPDX-License-Identifier: BSD-2-Clause
++# Origin: EmberBSD contributors (AI-assisted).
++
++PKG_OPTIONS_VAR=		PKG_OPTIONS.vala
++PKG_SUPPORTED_OPTIONS=	valadoc
++PKG_SUGGESTED_OPTIONS=	valadoc
++
++.include "../../mk/bsd.options.mk"
++
++PLIST_VARS+=	valadoc
++.if !empty(PKG_OPTIONS:Mvaladoc)
++PLIST.valadoc=	yes
++CONFIGURE_ARGS+=	--enable-valadoc
++.include "../../graphics/graphviz/buildlink3.mk"
++.else
++CONFIGURE_ARGS+=	--disable-valadoc
++.endif
+--- a/mk/defaults/options.description
++++ b/mk/defaults/options.description
+@@ -1031,6 +1031,7 @@
+ uulib			Enable support for uulib.
+ v4l2			Enable V4L2 (Video4Linux2) support.
+ vaapi			Enable support for VAAPI.
++valadoc			Build the Vala documentation generator.
+ valgrind		Enable Valgrind debugging and profiling support.
+ vapi			Build Vala API bindings.
+ vbr			Enable Vouch By Reference support.

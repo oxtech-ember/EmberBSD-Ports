@@ -34,6 +34,7 @@ SUBST_SED.python=	-e 's,python3,${PYTHONBIN},'
 
 BUILDLINK_API_DEPENDS.glib2+=	glib2>=2.44.0
 
+.include "options.mk"
 .include "cross-tools.mk"
 
 .include "../../devel/glib2/buildlink3.mk"
