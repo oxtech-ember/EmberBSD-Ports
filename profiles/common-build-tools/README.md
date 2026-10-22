@@ -147,6 +147,10 @@ the upstream `freebl/config.mk` Darwin guard with native and cross OS settings. 
 copies a binary payload with `nsinstall` and checks its bytes, hash, file type and mode.
 It does not build or accept target NSS libraries. The upstream cross .chk skip remains;
 this does not establish shlibsign or FIPS acceptance.
+The [NSS runtime consumer](tests/nss-runtime/README.md) adds a bounded no-database
+API check. Ordinary amd64 packaging and a staged physical NetBSD 11 run pass,
+including checked module loading and consumer-only UBSan. Target package
+installation, TLS, FIPS and a complete library memory check remain separate.
 
 
 The [cross Libtool path check](cross/libtool-runtime-paths.md) repairs an SDK
