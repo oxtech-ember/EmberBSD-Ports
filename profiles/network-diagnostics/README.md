@@ -23,9 +23,9 @@ base (registry item R10).
   Wireshark opens as "Bluetooth HCI H4". It has no Linux BlueZ
   dependency: packet direction comes from the `SCM_HCI_DIRECTION`
   control message and timestamps from `SO_TIMESTAMP`.
-- `recipes/security/mozilla-rootcerts` — the upstream recipe plus an
-  EmberBSD SUBST that keeps `/bin/sh` and `/usr/bin/awk` in the shipped
-  target script instead of build-host interpreter paths.
+- `security/mozilla-rootcerts` comes from the common cross change
+  (`profiles/common-build-tools/patches/mozilla-rootcerts-cross-tools.patch`).
+  The shipped target script uses `/bin/sh` and `/usr/bin/awk`.
 - `recipes/net/wireshark` — the upstream recipe plus EmberBSD cross
   additions: the lemon parser generator is taken from the host bootstrap
   prefix instead of being cross-compiled, and the libssh-based extcaps
