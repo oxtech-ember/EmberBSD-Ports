@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.48 2026/09/02 19:00:42 wiz Exp $
 
-PKGREVISION= 2
+PKGREVISION= 3
 .include "../../meta-pkgs/lxqt/Makefile.common"
 
 DISTNAME=	lxqt-archiver-1.4.0
@@ -11,7 +11,16 @@ HOMEPAGE=	https://github.com/lxqt/lxqt-archiver/
 COMMENT=	Simple and lightweight Qt file archiver
 LICENSE=	gnu-gpl-v2
 
-USE_TOOLS+=	pkg-config perl bsdtar:run gzip:run 7za:run gtar:run bzip2:run unzip:run zip:run xz:run
+USE_TOOLS+=	pkg-config perl
+
+DEPENDS+=	7-zip>=26.03:../../archivers/7-zip
+DEPENDS+=	bsdtar-[0-9]*:../../archivers/bsdtar
+DEPENDS+=	bzip2>=1.0.8:../../archivers/bzip2
+DEPENDS+=	gtar-base>=1.35:../../archivers/gtar-base
+DEPENDS+=	gzip>=1.14:../../archivers/gzip
+DEPENDS+=	unzip-[0-9]*:../../archivers/unzip
+DEPENDS+=	zip-[0-9]*:../../archivers/zip
+DEPENDS+=	xz>=5.8.4:../../archivers/xz
 
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_PREFIX=${PREFIX}
 
