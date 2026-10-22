@@ -214,6 +214,51 @@ OpenMP parallel-work and atomic-operation consumers with its selected library
 hashes. Repeat relevant Plasma acceptance.
 No compiler or target-side build is required for these runtime checks.
 
+## amd64 installed acceptance
+
+GCC 16.2.0 on macOS arm64 cross-built the application compiler and the
+`gcc16-runtime-16.2.0nb6` package for `x86_64--netbsd`. The compiler reports
+POSIX threads and passes its compiler and split-DWARF checks. Native host
+`pkg_create` 20260227 created the package. The runtime packager verified its
+contents. Its SHA256 is
+`acf40d44bc48682ba9844f4d04265900f44d1feac28252d3d3ea8c0aaf22c9d1`.
+The package contains `libgcc`, `libstdc++`, `libgomp`, `libatomic` and their
+licenses. The stage passes ELF architecture, SONAME, dependency, inventory,
+RELRO and POSIX `std::call_once` TLS-export checks.
+
+An existing EmberBSD 11.0 amd64 system passes the normal target package
+lifecycle with native pkgtools 20260227. The package database was backed up
+before installation. The GCC16 prefix was initially absent. Installation
+and `pkg_admin check` verify nine files from one package. Removal restores
+the exact initial package list and removes the prefix. Reinstallation,
+package integrity and the same runtime checks pass again. Only the runtime
+package is installed; compilation stays on the macOS host.
+
+The prebuilt C11/C++20 consumers pass atomics, threads, TLS, DSO exception
+unwinding and object exchange. Loaded-library checks require exactly one
+`libstdc++.so.7` and one `libgcc_s.so.1` from `/usr/pkg/gcc16/lib`, with hashes
+that match the host build receipt. No loader override is used.
+
+The [OpenMP contract](../tests/libgomp.md) passes in plain and LTO builds:
+four workers, 10,000 reductions, 256 locked tasks and distinct worker TLS.
+Both OpenMP negative controls return the expected status 1 and diagnostics.
+The generic atomic contract also passes in plain and LTO builds: 256-byte
+load/store/exchange/compare-exchange and 2,000 concurrent updates.
+
+Actual loaded providers match the verified stage hashes:
+
+| Provider under `/usr/pkg/gcc16/lib` | SHA256 |
+| --- | --- |
+| `libgcc_s.so.1` | `391d86844090f5d2913b25acad079a7cfc4c7679f8531e57b3bbc2e97e29c485` |
+| `libstdc++.so.7` | `642902ec0cc7251070c8f6bea80b1bbecce8fcd9050ff445767bfcaf92c7eb6a` |
+| `libgomp.so.1` | `77e40715ac748f6064e06f2e2e13976a115bebf759909193770ac9e1095adfed` |
+| `libatomic.so.3` | `6f6dd1166eb5eed993efa31d24522a6d531cbb0404eb6dd9e540b3b8d2039805` |
+
+The target checks ran as root on the existing base system. They do not
+qualify an ordinary-user desktop, a VM image or a new source-built base.
+The full upstream compiler/runtime suite and target Valgrind were not run.
+Plasma, GPU acceleration and full-image acceptance remain separate gates.
+
 ## AArch64 installed acceptance
 
 The accepted AArch64 package is `gcc16-runtime-16.2.0nb3`, prepared with the

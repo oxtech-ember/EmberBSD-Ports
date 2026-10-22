@@ -229,8 +229,11 @@ runtime behavior are validated.
   selects `arm-none-eabi` C frontends for Cortex-M4 Thumb objects without a
   runtime or sysroot. Host orchestration checks pass; real toolchain and
   firmware execution acceptance remain separate.
-  The explicit amd64 target selects x86_64 tools and runtime paths; host
-  target-selection regressions pass. The runtime bootstrap and
+  The explicit amd64 target builds the POSIX application compiler on macOS
+  arm64. Its [runtime-only nb6 package](profiles/development-toolchain/runtime/README.md#amd64-installed-acceptance)
+  passes installation, removal/reinstallation and C11/C++20, TLS, DSO,
+  OpenMP and generic atomic contracts on EmberBSD 11.0 amd64.
+  The runtime bootstrap and
   [runtime-only package](profiles/development-toolchain/runtime/README.md)
   keep compilers out of application images. Host package creation and isolated
   installation pass for synthetic amd64 and AArch64 runtime fixtures with
@@ -251,7 +254,7 @@ runtime behavior are validated.
   The [NetBSD C++ locale repair](profiles/development-toolchain/locale.md)
   preserves configured numeric conversion behavior without changing the process
   locale. Installed plain/LTO locale workers and the rebuilt Skia contract pass.
-  Desktop and amd64 runtime execution, common Qt rebuilding and full-image
+  Desktop acceptance, common Qt rebuilding and full-image
   integration remain separate checks.
   [GDB 18.1nb1](profiles/development-toolchain/gdb/README.md) is cross-built and
   installed in the AArch64 VM, with split/supplementary DWARF, Unicode and

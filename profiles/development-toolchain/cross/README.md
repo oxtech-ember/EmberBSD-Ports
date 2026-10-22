@@ -20,12 +20,18 @@ Unknown, empty and repeated target options fail before output creation.
 | Target | GNU triplet | Validation |
 | --- | --- | --- |
 | `aarch64` | `aarch64--netbsd` | GCC16 cross C/C++ LTO links with Ports Binutils 2.47; target checks remain separate |
-| `amd64` | `x86_64--netbsd` | Host orchestration fixtures only; real build and runtime checks pending |
+| `amd64` | `x86_64--netbsd` | Real macOS arm64 application build, POSIX threads, split DWARF and installed EmberBSD 11.0 runtime contracts pass |
 
 The triplets follow the fork's [machine selection](https://github.com/oxtech-ember/EmberBSD/blob/main/build.sh)
 and [GNU platform definitions](https://github.com/oxtech-ember/EmberBSD/blob/main/share/mk/bsd.own.mk).
 The same selected triplet controls binutils, compiler configuration, startup
 objects and target C++ headers. It is recorded in `inputs.txt`.
+
+The [amd64 runtime acceptance](../runtime/README.md#amd64-installed-acceptance)
+covers the nb6 package lifecycle and prebuilt C11/C++20, TLS, DSO, OpenMP
+and generic atomic consumers. Only runtime libraries are installed on the
+target. The target retains its existing base. A new source-built sysroot,
+VM/image integration and Plasma retain separate acceptance boundaries.
 
 The recipe uses GCC 16 host compilers by default: `gcc-16` and `g++-16`.
 Both must report GCC major version 16. Clang cannot build this cross toolchain.

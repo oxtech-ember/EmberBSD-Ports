@@ -33,8 +33,13 @@ Its `--kernel` mode prepares the same patched compiler frontends without a
 userland sysroot. Application mode retains the target GCC16 headers/runtime
 requirement; kernel compilation and boot need their own OS acceptance.
 The cross entry points also accept `--target amd64` (`x86_64--netbsd`).
-Real amd64 kernel-compiler and runtime-stage builds pass their checks.
-Installed amd64 runtime package acceptance remains pending.
+The real amd64 application compiler builds on macOS arm64 with POSIX threads
+and passes compiler and split-DWARF checks. The runtime-only nb6 package passes
+EmberBSD 11.0 amd64 installation, removal, exact package-list restoration
+and reinstallation. Installed C11/C++20, TLS, DSO, OpenMP and generic atomic
+contracts pass; see the [runtime acceptance](runtime/README.md#amd64-installed-acceptance).
+The target retains its existing base. A new source-built base, a complete
+image and Plasma remain separate acceptance gates.
 
 The separate [firmware frontend](cross/firmware.md) requires
 `--target arm-none-eabi`. It builds only the C frontend and Binutils for
