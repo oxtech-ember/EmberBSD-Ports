@@ -4,12 +4,12 @@ set -eu
 umask 022
 
 [ "$#" -ge 1 ] && [ "$#" -le 2 ] || {
-    echo 'Usage: sh scripts/prepare-pkgsrc.sh ABSOLUTE_NEW_DIRECTORY [development-toolchain|common-build-tools|common-graphics|common-media|plasma-mobile]' >&2
+    echo 'Usage: sh scripts/prepare-pkgsrc.sh ABSOLUTE_NEW_DIRECTORY [development-toolchain|common-build-tools|common-graphics|common-media|plasma-mobile|electron]' >&2
     exit 2
 }
 profile=${2:-}
 case "$profile" in
-    ''|development-toolchain|common-build-tools|common-graphics|common-media|plasma-mobile) ;;
+    ''|development-toolchain|common-build-tools|common-graphics|common-media|plasma-mobile|electron) ;;
     *) echo 'Unknown profile.' >&2; exit 2 ;;
 esac
 firmware_toolchain=${EMBERBSD_FIRMWARE_TOOLCHAIN:-no}
@@ -618,6 +618,31 @@ for category in "$root"/pkgsrc/*; do
     }
     cp -R "$category" "$destination/$name"
 done
+if [ "$profile" = electron ]; then
+    # Export the Electron source probes only for the explicit electron profile.
+    # Their pkgsrc paths define the dependency relationship used by Blanc.
+    for pair in devel/electron44:electron44 www/blanc:blanc; do
+        recipe=${pair%%:*}
+        source_name=${pair#*:}
+        source=$root/probes/electron/$source_name
+        [ -s "$source/Makefile" ] || {
+            echo "Incomplete Electron probe recipe: $source_name/Makefile" >&2; exit 2;
+        }
+        [ ! -e "$destination/$recipe" ] && [ ! -L "$destination/$recipe" ] || {
+            echo "Upstream already owns $recipe; review the Electron probe overlay." >&2
+            exit 2;
+        }
+        mkdir -p "$(dirname "$destination/$recipe")"
+        cp -R "$source" "$destination/$recipe"
+    done
+    grep -F 'CATEGORIES=	www' "$destination/www/blanc/Makefile" >/dev/null || {
+        echo 'Exported Blanc recipe is not in www.' >&2; exit 2;
+    }
+    grep -F 'BLANC_ELECTRON_PKGDIR=	../../devel/electron44' \
+        "$destination/www/blanc/Makefile" >/dev/null || {
+        echo 'Exported Blanc recipe does not depend on devel/electron44.' >&2; exit 2;
+    }
+fi
 if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ] || \
     [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$profile" = plasma-mobile ]; then
     for delta in pkgsrc-gcc16.2.patch strict-tests.patch current-prerequisites.patch texinfo-gettext-order.patch gsed-mbstate-zero.patch libxslt-rvt-security.patch stable-expect.patch gcc-tsvc-netbsd.patch gcc-modules-fallocate.patch gcc-netbsd-locale.patch gcc-netbsd-math.patch gcc-package-requires.patch gcc-netbsd-tls.patch gcc-cross-native.patch; do

@@ -1,0 +1,8 @@
+bin/blanc
+lib/blanc/app.asar
+share/applications/blanc.desktop
+share/doc/blanc/ASSET-LICENSE.md
+share/doc/blanc/LICENSE
+share/doc/blanc/SBOM.json
+share/doc/blanc/THIRD-PARTY-NOTICES.md
+share/doc/blanc/blueoak-1.0.0.txt

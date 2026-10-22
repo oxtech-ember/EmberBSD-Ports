@@ -20,7 +20,7 @@ not match Electron's pinned revision.
 |---|---:|---|
 | `v44.9.3.tar.gz` | 20,838,185 | `e4e84b70a501c7dffec78bf037309bfe336daee6886289f94f9ac035ec54d80f` |
 | `node-v24.22.0.tar.xz` | 57,606,320 | `41f97cff2c666f1f8293dc5f85c65e8dd605c16b43fd9febd49ede32ee1e0329` |
-| `blanc-1.25.0.tar.gz` | 155,108,408 | `b241d6b135b0fab5839f5dea6f64fafbdefa4f213b46ffa4a2f78820cb880971` |
+| `v1.25.0.tar.gz` | 155,108,408 | `b241d6b135b0fab5839f5dea6f64fafbdefa4f213b46ffa4a2f78820cb880971` |
 
 ## Target contract
 
@@ -51,6 +51,11 @@ not match Electron's pinned revision.
   application acceptance run exists yet. Do not treat partial object builds as
   completion.
 - Full runtime and application package lifecycle checks remain pending.
+- The Blanc application recipe creates an ASAR from an explicit source
+  allowlist and 32 lockfile-pinned runtime packages. Eight separate packages
+  provide the upstream ASAR build tool. The host controller uses CPython 3.15
+  and SDK API 1. Host Node.js 24.22.0 runs required upstream JavaScript tools.
+  This application archive does not contain an Electron executable.
 - The Blanc source patches select an explicit NetBSD capture descriptor. It
   uses the existing generic Electron/DOM/WebRTC broker, preload and helper.
   All nine runtime and fourteen shared permission hashes remain unchanged.
@@ -59,6 +64,43 @@ not match Electron's pinned revision.
   verifies source dispatch and locks. It does not verify native Electron
   startup or NetBSD media capture. Changes to these generic files require
   impact review for Windows and NetBSD.
+
+## Blanc application package
+
+Export the recipes with the explicit profile:
+
+```sh
+sh scripts/prepare-pkgsrc.sh /absolute/NEW_PKGSRC electron
+```
+
+The profile adds `www/blanc` and `devel/electron44`. It refuses an existing
+destination or an upstream recipe collision. Select the common GCC16 cross
+configuration for the target runtime. Set `EMBERBSD_HOST_NODE` to the absolute
+host Node.js 24.22.0 executable. Set `EMBERBSD_CROSS_BUILD_PYTHON` to the
+selected host CPython 3.15 executable. Set `EMBERBSD_SDK_SOURCE` to an absolute
+SDK API 1 source directory. The controller checks the SDK API and module origin.
+
+The recipe fetches the source and 40 NPM archives through pkgsrc distfiles.
+The build uses verified local archives and runs no NPM installation or network
+fetch. It extracts only allowlisted source files. It keeps tests, build tools,
+the lockfile, and environment files out of the installed ASAR. The installed
+SBOM records the external Electron 44.9.3 package separately from upstream's
+development lock on Electron 44.5.1. A different runtime declaration is refused.
+
+The wrapper selects Electron's packaged application policy. It leaves sandbox
+flags unchanged. NetBSD self-updates are disabled because pkgsrc owns updates.
+The upstream license notices and the dependency license texts remain installed.
+The Blue Oak license text is in `blanc/files/blueoak-1.0.0.txt`; the pinned
+pkgsrc catalog does not include its token. Review that text before adding
+`blueoak-1.0.0` to `ACCEPTABLE_LICENSES`. Keep the recipe's redistribution
+restrictions for unchanged upstream artwork and marks.
+
+The host checks passed 11 package-controller tests and 22 focused Node tests.
+The produced ASAR contains 1,674 entries. The production-only registry audit
+reported no advisories for the 32 installed runtime packages. This does not
+clear the separate upstream development dependency audit. Real pkgsrc package
+lifecycle, target startup, and kernel sandbox acceptance remain unverified.
+The application package cannot be installed until the target runtime is built.
 
 ## GN target inputs
 

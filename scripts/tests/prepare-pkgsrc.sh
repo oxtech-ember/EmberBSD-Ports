@@ -36,9 +36,17 @@ FAKE_MATCH=1 FAKE_ARCHIVE="$work/upstream" PATH="$work/bin:$PATH" \
     sh "$root/scripts/prepare-pkgsrc.sh" "$work/combined"
 [ -f "$work/combined/local-ai/llama-cpp/Makefile" ]
 [ -f "$work/combined/local-robotics/zenoh-pico/Makefile" ]
+mkdir -p "$work/upstream/devel" "$work/upstream/www"
+FAKE_MATCH=1 FAKE_ARCHIVE="$work/upstream" PATH="$work/bin:$PATH" \
+    sh "$root/scripts/prepare-pkgsrc.sh" "$work/electron" electron
+[ -f "$work/electron/devel/electron44/Makefile" ]
+[ -f "$work/electron/www/blanc/Makefile" ]
+grep -F 'CATEGORIES=	www' "$work/electron/www/blanc/Makefile" >/dev/null
+grep -F 'BLANC_ELECTRON_PKGDIR=	../../devel/electron44' \
+    "$work/electron/www/blanc/Makefile" >/dev/null
 mkdir "$work/upstream/local-robotics"
 printf upstream > "$work/upstream/local-robotics/sentinel"
 if FAKE_MATCH=1 FAKE_ARCHIVE="$work/upstream" PATH="$work/bin:$PATH" \
     sh "$root/scripts/prepare-pkgsrc.sh" "$work/collision"; then exit 1; fi
 [ "$(cat "$work/collision/local-robotics/sentinel")" = upstream ]
-echo 'PASS: path/revision rejection, both overlays, upstream collision preserved'
+echo 'PASS: path/revision rejection, overlays, Electron export paths, upstream collision preserved'
