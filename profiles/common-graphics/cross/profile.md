@@ -120,8 +120,8 @@ installed graphics consumers against the same canonical provider. Inspect
 loaded plugins as well as direct ELF dependencies. Do not substitute SONAME
 links for rebuilding consumers of base GL3/EGL0/DRM3 or old libglapi.
 
-The default Mesa options disable Vulkan. The optional [PowerVR ICD](powervr.md)
-adds a real Vulkan provider through this same package. It requires sealed native
+The AArch64 Mesa package always contains the [PowerVR ICD](powervr.md),
+a real Vulkan provider. The amd64 package has no Vulkan ICD. AArch64 requires sealed native
 Mesa generators and separate loader/ICD runtime acceptance. Existing llvmpipe
 acceptance does not establish Vulkan or hardware acceleration.
 

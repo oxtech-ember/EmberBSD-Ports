@@ -132,7 +132,7 @@ The full login session and physical HDMI presentation remain separate checks.
 The nb6 recipe also includes Zink and its Vulkan loader dependency.
 Hardware Zink execution remains unaccepted; see [the package boundary](cross/zink.md).
 
-The optional [PowerVR ICD](cross/powervr.md) uses the same Mesa recipe.
+The AArch64 Mesa package always contains the [PowerVR ICD](cross/powervr.md).
 Its native generators run the full upstream common-shader pipeline. The nb5
 package passes four native Vulkan enumeration lifecycles on Zero 3W, plus
 four llvmpipe EGL/pixel cycles and all 38 target invocations. One internal

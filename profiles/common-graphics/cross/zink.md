@@ -3,8 +3,8 @@
 MesaLib 26.2.4nb6 adds Zink to the existing V3D, VirGL, softpipe and
 llvmpipe drivers. Zink translates OpenGL and OpenGL ES calls to Vulkan.
 It uses the common Vulkan loader. A working Vulkan ICD remains a separate
-requirement. The optional `powervr` package option and its experimental
-hardware gate remain unchanged.
+requirement. The AArch64 package also contains the PowerVR ICD. Its experimental
+hardware gate remains unchanged.
 
 ## Package contract
 

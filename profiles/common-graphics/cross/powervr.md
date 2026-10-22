@@ -1,7 +1,8 @@
 # PowerVR Vulkan ICD through the common Mesa package
 
-The optional `powervr` pkgsrc option adds the upstream Imagination Vulkan
-ICD to MesaLib 26.2.4nb5. It retains V3D, VirGL, softpipe, llvmpipe,
+The AArch64 MesaLib package always contains the upstream Imagination Vulkan
+ICD. MesaLib 26.2.4nb5 added it. From nb10, it is not a package option.
+The package retains V3D, VirGL, softpipe, llvmpipe,
 X11, Wayland, EGL, GBM and the shared LLVM 23.1.3 provider.
 The installed Vulkan loader now enumerates the physical GPU on Zero 3W.
 The normal package and bounded enumeration checks pass. Native compute also passes
@@ -60,7 +61,6 @@ Prepare a fresh `common-graphics` export and use the existing
 private MAKECONF after its common profile:
 
 ```make
-PKG_OPTIONS.MesaLib+= powervr
 EMBERBSD_MESA_GENERATORS=/absolute/new-generators
 ```
 
@@ -68,7 +68,7 @@ Run the ordinary pkgsrc `package` target in `graphics/MesaLib`. Use a fresh
 WRKOBJDIR and a separate package output directory. Do not overwrite another
 build's work tree or install into a shared sysroot during the candidate build.
 The package must pass normal staging, PLIST, ELF ABI and work-reference checks.
-The option adds these installed files:
+The AArch64 package installs these PowerVR files:
 
 - `/usr/pkg/lib/libvulkan_powervr_mesa.so`
 - `/usr/pkg/share/drirc.d/00-pvr-defaults.conf`
@@ -206,7 +206,7 @@ SANITIZERS=yes sh ../tests/powervr-enumeration.sh \
     /absolute/vulkan-header-prefix /absolute/new-consumer-tests
 ```
 
-Test actual pkgsrc option selection with the same recorded host inputs:
+Test actual pkgsrc selection with the same recorded host inputs:
 
 ```sh
 BMAKE=/absolute/bmake DIGEST=/absolute/digest \
@@ -217,7 +217,8 @@ BMAKE=/absolute/bmake DIGEST=/absolute/digest \
 ```
 
 This parses the real recipe, writes its native Meson file and runs its
-production receipt check. It verifies that the default GL option is unchanged.
+production receipt check. It verifies that the default AArch64 selection
+contains PowerVR and that `powervr` is not a package option.
 The WSI regression extracts both clock conversions and the presentation
 admission expression. It runs with and without the RAW clock feature.
 The UAPI check compares target structure layouts, flags and ioctl encodings

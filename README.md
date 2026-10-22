@@ -339,8 +339,8 @@ runtime behavior are validated.
   The persistent standard session also passes physical CM5 HDMI and automatic startup as described below. Graphical login and hotplug remain unaccepted.
   Adapted libdrm 2.4.134nb2, Wayland 1.26.0nb1 and wayland-protocols 1.49
   compose the common GCC16/Python315/Meson112/shared LLVM23 profile for EmberBSD/AArch64.
-  An optional [PowerVR ICD](profiles/common-graphics/cross/powervr.md) retains
-  these providers and adds receipt-checked native Mesa generators. On Zero 3W,
+  The AArch64 Mesa package always contains the [PowerVR ICD](profiles/common-graphics/cross/powervr.md).
+  It uses these providers and receipt-checked native Mesa generators. On Zero 3W,
   the installed nb5 package passes four native Vulkan enumeration lifecycles,
   four llvmpipe EGL/pixel cycles and 38 upstream invocations. The same nb5
   package passes three native compute cycles on the accepted Zero 3W kernel.

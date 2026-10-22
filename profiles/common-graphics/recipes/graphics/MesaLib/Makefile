@@ -2,13 +2,13 @@
 # Origin: EmberBSD; AI-assisted bounded NetBSD 11/AArch64 and amd64 candidate.
 DISTNAME=	mesa-26.2.4
 PKGNAME=	${DISTNAME:S/mesa/MesaLib/}
-PKGREVISION=	9
+PKGREVISION=	10
 CATEGORIES=	graphics
 MASTER_SITES=	https://archive.mesa3d.org/
 EXTRACT_SUFX=	.tar.xz
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://www.mesa3d.org/
-COMMENT=	Open source OpenGL with V3D, VirGL, Zink and software rendering
+COMMENT=	OpenGL and Vulkan with V3D, PowerVR, VirGL, Zink and software rendering
 LICENSE=	mit
 CONFLICTS+=	libglapi-[0-9]* libglvnd-[0-9]*
 ONLY_FOR_PLATFORM=	NetBSD-11.*-aarch64 NetBSD-11.*-x86_64
@@ -32,8 +32,8 @@ TOOLS_PLATFORM.flex=	${TOOLBASE}/bin/flex
 .if !defined(EMBERBSD_COMMON_GRAPHICS)
 PKG_FAIL_REASON+= "Mesa requires the prepared common graphics profile"
 .endif
-.if ${DISTNAME} != "mesa-26.2.4" || ${PKGREVISION} != "9"
-PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.4nb9"
+.if ${DISTNAME} != "mesa-26.2.4" || ${PKGREVISION} != "10"
+PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.4nb10"
 .endif
 TOOL_DEPENDS+=	${PYPKGPREFIX}-mako>=1.4.3:../../devel/py-mako
 TOOL_DEPENDS+=	${PYPKGPREFIX}-packaging-[0-9]*:../../devel/py-packaging
@@ -44,16 +44,22 @@ SUBST_FILES.python=	meson.build
 SUBST_SED.python=	-e 's|@PYTHONBIN@|${TOOL_PYTHONBIN}|g'
 # Zink loads the common Vulkan loader at runtime. An ICD stays optional.
 DEPENDS+=	vulkan-loader>=1.4.357.0:../../graphics/vulkan-loader
-PLIST_VARS+= intel v3d
+PLIST_VARS+= intel v3d powervr
 .if ${MACHINE_ARCH} == "x86_64"
 MESON_ARGS+=	-Dgallium-drivers=iris,virgl,softpipe,llvmpipe,zink
+MESON_ARGS+=	-Dvulkan-drivers=
 PLIST.intel=	yes
 _EMBERBSD_MESA_GENERATOR_PROFILES+= intel
 _EMBERBSD_MESA_LLVM_TRIPLE=	x86_64-unknown-netbsd
 BUILDLINK_API_DEPENDS.libdrm+=	libdrm>=2.4.134nb3
 .else
 MESON_ARGS+=	-Dgallium-drivers=v3d,virgl,softpipe,llvmpipe,zink
+# One AArch64 package serves all boards. It always contains the PowerVR ICD.
+MESON_ARGS+=	-Dvulkan-drivers=imagination -Dimagination-srv=false
+MESON_ARGS+=	-Dimagination-uscgen-devices= -Dvulkan-manifest-per-architecture=false
 PLIST.v3d=	yes
+PLIST.powervr=	yes
+_EMBERBSD_MESA_GENERATOR_PROFILES+= powervr
 _EMBERBSD_MESA_LLVM_TRIPLE=	aarch64-unknown-netbsd
 .endif
 MESON_ARGS+=	-Dplatforms=x11,wayland -Dglx=dri
@@ -61,13 +67,6 @@ MESON_ARGS+=	-Degl=enabled -Dgbm=enabled -Dglvnd=disabled
 MESON_ARGS+=	-Dgles1=enabled -Dgles2=enabled -Dopengl=true
 MESON_ARGS+=	-Dllvm=enabled -Dshared-llvm=enabled -Dllvm-orcjit=true
 MESON_ARGS+=	-Dvulkan-layers= -Dtools=
-.if !empty(PKG_OPTIONS:Mpowervr)
-MESON_ARGS+=	-Dvulkan-drivers=imagination -Dimagination-srv=false
-_EMBERBSD_MESA_GENERATOR_PROFILES+= powervr
-MESON_ARGS+=	-Dimagination-uscgen-devices= -Dvulkan-manifest-per-architecture=false
-.else
-MESON_ARGS+=	-Dvulkan-drivers=
-.endif
 .if !empty(_EMBERBSD_MESA_GENERATOR_PROFILES)
 # Iris and PowerVR compile shaders on the build host with the same sealed tools.
 MESON_ARGS+= -Dmesa-clc=system -Dprecomp-compiler=system
