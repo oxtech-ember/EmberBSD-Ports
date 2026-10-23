@@ -25,6 +25,8 @@ post-install:
 	${INSTALL_DATA} ${FILESDIR}/SOURCE ${DESTDIR}${PREFIX}/share/licenses/ompl/SOURCE
 
 .include "../../devel/cmake/build.mk"
-.include "../../local-robotics/eigen3/buildlink3.mk"
+# Installed CMake and pkg-config files require the Eigen headers.
+BUILDLINK_DEPMETHOD.eigen3=	full
+.include "../../math/eigen3/buildlink3.mk"
 .include "../../local-robotics/boost-libs/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

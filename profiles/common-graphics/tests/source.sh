@@ -22,9 +22,7 @@ verify_archive() {
 }
 while IFS="$(printf '\t')" read -r recipe archive sha url; do
     case "$recipe" in ''|'#'*) continue ;; esac
-    # math/eigen3 stays in this profile; all other recipes are in pkgsrc/.
-    pkg=$profile/recipes/$recipe
-    [ -d "$pkg" ] || pkg=$profile/../../pkgsrc/$recipe
+    pkg=$profile/../../pkgsrc/$recipe
     verify_archive "$distfiles/$archive"
     # A headers-only package and its runtime may share one upstream archive.
     # Each recipe still needs its own independently patched source view.

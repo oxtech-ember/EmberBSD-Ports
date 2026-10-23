@@ -7,7 +7,6 @@ work.*/
 !/pkgsrc/**/Makefile
 !/probes/firmware-toolchain/recipes/**/Makefile
 !/profiles/common-build-tools/recipes/lang/python314/Makefile
-!/profiles/common-graphics/recipes/math/eigen3/Makefile
 # Source patches must remain visible when user ignores match upstream filenames.
 !**/patches/patch-*
 !/probes/electron/*/Makefile

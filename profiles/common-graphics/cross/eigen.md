@@ -1,8 +1,11 @@
 # Common Eigen 5 provider
 
-The common graphics profile updates the existing `math/eigen3` package to
-[Eigen 5.0.1](https://gitlab.com/libeigen/eigen/-/releases/5.0.1).
-It keeps `include/eigen3`, `Eigen3::Eigen` and `eigen3.pc` for KiCad and OCCT.
+The canonical [math/eigen3 recipe](../../../pkgsrc/math/eigen3/) updates the
+existing package to [Eigen 5.0.1](https://gitlab.com/libeigen/eigen/-/releases/5.0.1).
+It is the only Eigen package. KiCad, OCCT and the robotics recipes in
+`pkgsrc/local-robotics` use it. It keeps `include/eigen3`, `Eigen3::Eigen` and
+`eigen3.pc`. Since `eigen3-5.0.1nb1`, the CMake files are in the upstream
+location `share/eigen3/cmake` and `eigen3.pc` is in `share/pkgconfig`.
 The GCC16 AArch64 package contains all 613 declared payload entries.
 Installed target numerical and package lifecycle checks remain pending.
 
@@ -30,6 +33,8 @@ requires no compatibility alias or falsified version metadata.
 
 The complete upstream header and unsupported-header installation is retained.
 Upstream's BLAS, LAPACK, demos and testing options remain enabled.
+Whether the common package keeps the BLAS and LAPACK libraries is an open
+decision.
 The package includes `libeigen_blas.so`, `libeigen_lapack.so` and their two
 static companion archives. The tested environment has no Fortran compiler;
 upstream builds its normal C++ LAPACK subset. Fortran extensions and their
@@ -39,8 +44,10 @@ default; no target library or numerical feature is switched off by the recipe.
 ## Build and numerical checks
 
 On 2026-10-18, native GCC 16.2.0 built the unchanged upstream defaults.
+The results in this section apply to `eigen3-5.0.1`, which had the CMake
+files in `lib/cmake/eigen3` and `eigen3.pc` in `lib/pkgconfig`.
 The native staged installation contains exactly 613 entries from the static
-[package list](../recipes/math/eigen3/PLIST): 600 header/signature files,
+[package list](../../../pkgsrc/math/eigen3/PLIST): 600 header/signature files,
 four CMake/pkg-config files, four libraries and five license texts.
 `eigen3.pc` reports 5.0.1 and the correct header directory, with no link flags
 for the template interface. Exact and range-based CMake discovery pass;
@@ -79,7 +86,7 @@ To repeat the native checks with a real installed provider:
 ```sh
 cmake -S profiles/common-graphics/tests/eigen-upstream -B /absolute/new-build \
   -DEIGEN_UPSTREAM=/absolute/verified-eigen-5.0.1 \
-  -DEigen3_DIR=/absolute/prefix/lib/cmake/eigen3 \
+  -DEigen3_DIR=/absolute/prefix/share/eigen3/cmake \
   -DCMAKE_CXX_COMPILER=/absolute/native-g++
 cmake --build /absolute/new-build --parallel 1
 ctest --test-dir /absolute/new-build --output-on-failure

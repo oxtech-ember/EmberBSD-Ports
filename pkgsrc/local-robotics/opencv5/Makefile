@@ -35,7 +35,9 @@ post-install:
 
 .include "../../devel/cmake/build.mk"
 .include "../../lang/python/tool.mk"
-.include "../../local-robotics/eigen3/buildlink3.mk"
+# Installed CMake and pkg-config files require the Eigen headers.
+BUILDLINK_DEPMETHOD.eigen3=	full
+.include "../../math/eigen3/buildlink3.mk"
 .include "../../graphics/libjpeg-turbo/buildlink3.mk"
 .include "../../graphics/png/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"

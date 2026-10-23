@@ -10,7 +10,7 @@ Archives are downloaded from their original upstream providers.
 | [FLANN 1.9.2](https://github.com/flann-lib/flann/tree/1.9.2) | `c50f296b0b27e14667d272b37acc63f949b305c4` | BSD-3-Clause; Marius Muja, David G. Lowe and contributors |
 | [LZ4 1.10.0](https://github.com/lz4/lz4/releases/tag/v1.10.0) | `ebb370ca83af193212df4dcbadcc5d87bc0de2f0` | BSD-2-Clause library; GPL-2.0-or-later CLI; Yann Collet and contributors |
 | [Boost 1.92.0](https://github.com/boostorg/boost/releases/tag/boost-1.92.0) | Official `boost-1.92.0-cmake.tar.xz` release archive | Boost Software License 1.0; individual library authors |
-| [Eigen 5.0.1](../../pkgsrc/local-robotics/eigen3/files/SOURCE) | `bc3b39870ecb690a623a3f49149a358b95c5781d` | MPL-2.0 with upstream per-file notices |
+| [Eigen 5.0.1](../../profiles/common-graphics/cross/eigen.md) | `bc3b39870ecb690a623a3f49149a358b95c5781d` | MPL-2.0 with upstream per-file notices |
 | [GCC 16.2.0](../../pkgsrc/local-robotics/gcc16-libatomic/files/SOURCE) | Official `gcc-16.2.0.tar.xz`; atomic runtime component | GPL-3.0-or-later with GCC Runtime Library Exception 3.1 |
 | [GoogleTest 1.18.0](https://github.com/google/googletest/releases/tag/v1.18.0) | `063de7e9578f82b369302001269680b4b1553359` | BSD-3-Clause; Google and contributors; test-only source |
 

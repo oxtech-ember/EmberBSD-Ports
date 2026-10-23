@@ -3,7 +3,6 @@ COMMENT=	Local EmberBSD robotics packages
 SUBDIR+=	boost-headers
 SUBDIR+=	boost-iostreams
 SUBDIR+=	boost-libs
-SUBDIR+=	eigen3
 SUBDIR+=	flann
 SUBDIR+=	gcc16-libatomic
 SUBDIR+=	gtsam

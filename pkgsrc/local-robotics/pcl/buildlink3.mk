@@ -7,7 +7,7 @@ BUILDLINK_ABI_DEPENDS.pcl+=	pcl-1.15.1nb*
 BUILDLINK_PKGSRCDIR.pcl?=	../../local-robotics/pcl
 USE_CXX_FEATURES+=	c++17
 GCC_REQD+=		16.2
-.include "../../local-robotics/eigen3/buildlink3.mk"
+.include "../../math/eigen3/buildlink3.mk"
 .include "../../local-robotics/boost-iostreams/buildlink3.mk"
 .include "../../local-robotics/boost-libs/buildlink3.mk"
 .include "../../local-robotics/flann/buildlink3.mk"

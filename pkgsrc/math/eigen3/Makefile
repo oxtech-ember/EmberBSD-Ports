@@ -3,6 +3,7 @@
 
 DISTNAME=	eigen-5.0.1
 PKGNAME=	${DISTNAME:S/eigen/eigen3/}
+PKGREVISION=	1
 CATEGORIES=	math
 MASTER_SITES=	${MASTER_SITE_GITLAB:=libeigen/eigen/-/archive/${PKGVERSION_NOREV}/}
 
@@ -14,10 +15,12 @@ LICENSE=	mpl-2.0
 USE_LANGUAGES=	c c++
 USE_CXX_FEATURES=	c++14
 
-CMAKE_CONFIGURE_ARGS+=	-DCMAKEPACKAGE_INSTALL_DIR=${PREFIX}/lib/cmake/eigen3
+# Use the upstream CMake and pkg-config locations: share/eigen3/cmake and
+# share/pkgconfig. Whether the package keeps the BLAS and LAPACK libraries
+# is an open decision; this recipe keeps the upstream default.
+
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_EXPORT_PACKAGE_REGISTRY=OFF
 CMAKE_CONFIGURE_ARGS+=	-DEIGEN_BUILD_PKGCONFIG=ON
-CMAKE_CONFIGURE_ARGS+=	-DPKGCONFIG_INSTALL_DIR=${PREFIX}/lib/pkgconfig
 # The release archive's Eigen/Version has an empty prerelease identifier.
 # Upstream CMake otherwise supplies "dev" instead of reading that identifier.
 CMAKE_CONFIGURE_ARGS+=	-DEIGEN_PRERELEASE_VERSION=

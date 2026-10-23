@@ -18,7 +18,7 @@ headers, libc and compiler runtime together. The acceptance package set is:
 
 | Package | Role |
 |---|---|
-| [eigen3 5.0.1](../../pkgsrc/local-robotics/eigen3) | Common Eigen headers and CMake interface |
+| [eigen3 5.0.1](../../pkgsrc/math/eigen3) | Common Eigen headers and CMake interface |
 | [boost-headers 1.92.0](../../pkgsrc/local-robotics/boost-headers) | One common Boost header namespace |
 | [boost-libs 1.92.0](../../pkgsrc/local-robotics/boost-libs) | Existing compiled components, including Serialization |
 | [boost-iostreams 1.92.0](../../pkgsrc/local-robotics/boost-iostreams) | Iostreams, required Random library and their export closure |

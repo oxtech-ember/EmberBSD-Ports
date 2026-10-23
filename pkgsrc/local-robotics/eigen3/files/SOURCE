@@ -1,8 +1,0 @@
-Eigen 5.0.1
-Upstream: https://gitlab.com/libeigen/eigen
-Tag: 5.0.1
-Commit: bc3b39870ecb690a623a3f49149a358b95c5781d
-Archive: https://gitlab.com/libeigen/eigen/-/archive/5.0.1/eigen-5.0.1.tar.gz
-SHA256: e9c326dc8c05cd1e044c71f30f1b2e34a6161a3b6ecf445d56b53ff1669e3dec
-License: MPL-2.0; preserve upstream COPYING files for optional code.
-Adaptation: EmberBSD Ports, AI-assisted GCC16 cross packaging. No source patch.

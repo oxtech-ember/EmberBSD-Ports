@@ -15,8 +15,7 @@ trap 'exit 130' INT
 trap 'exit 143' HUP TERM
 # Sparse profiles outside the export have a different ownership contract.
 git -C "$root" -c core.quotePath=false ls-files -- \
-    pkgsrc profiles/common-build-tools/recipes \
-    profiles/common-graphics/recipes > "$work/tracked"
+    pkgsrc profiles/common-build-tools/recipes > "$work/tracked"
 : > "$work/references"
 count=0
 while IFS= read -r path; do
