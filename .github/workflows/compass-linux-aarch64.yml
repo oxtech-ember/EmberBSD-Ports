@@ -1,0 +1,48 @@
+# Origin: EmberBSD, AI-assisted by OpenAI Codex (GPT-6).
+name: Compass Linux AArch64 diagnostic
+
+'on':
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/compass-linux-aarch64.yml'
+      - 'probes/compass-umd/linux-candidate.py'
+      - 'probes/compass-umd/tests/linux-no-device.cpp'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    container:
+      image: gcc@sha256:b89e1771f0ac16e3769dd351ea8e07a6676aa690a76339c16e36c761eaaaf0f9
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Prepare diagnostic tools
+        run: |
+          test "$(gcc -dumpfullversion)" = 16.2.0
+          test "$(uname -m)" = aarch64
+          apt-get update
+          apt-get install -y --no-install-recommends python3 ca-certificates cppcheck valgrind libc6-dbg
+      - name: Build the pinned hardware UMD and check no-device APIs
+        run: |
+          python3 probes/compass-umd/linux-candidate.py \
+            --work "$RUNNER_TEMP/compass-linux" \
+            --output "$GITHUB_WORKSPACE/compass-linux-artifact"
+      - name: Upload diagnostics and verified source provenance
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: compass-linux-aarch64-${{ github.sha }}
+          path: |
+            compass-linux-artifact/
+            ${{ runner.temp }}/compass-linux/logs/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
