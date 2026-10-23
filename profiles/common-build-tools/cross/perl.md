@@ -4,7 +4,7 @@
 as checked on 2026-10-12. Its [release announcement](https://www.nntp.perl.org/group/perl.perl5.porters/2026/07/msg271063.html)
 publishes the matching source SHA256.
 
-The complete `lang/perl5` recipe supplies Perl 5.44.0nb4, its shared library,
+The complete `lang/perl5` recipe supplies Perl 5.44.0nb5, its shared library,
 threaded interpreter, XS modules, development headers and manuals. Clang's
 installed scan-build programs depend on this target package. The build uses
 macOS for compilation and an EmberBSD/AArch64 device for Configure probes.
@@ -44,6 +44,9 @@ connection timeout and a sixty-second deadline for each copy or run operation.
 It uses legacy SCP protocol and rejects lexical path escapes. Create a fresh
 private target directory and verify its parents are not symbolic links. The
 transport does not provide remote filesystem isolation.
+Use relative local SCP paths. They must not contain `:` or start with `-`,
+including after path normalization. Ordinary `./try` and `fromtry.out` paths
+remain valid. The transport rejects unsafe operands before it starts SCP.
 A failed copy prevents execution of the probe. A transport failure leaves
 `Cross/transport-failed`; later transport calls and the pkgsrc post-configure
 check reject that run. Inspect the Configure log and correct the failure before

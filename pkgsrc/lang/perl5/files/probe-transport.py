@@ -61,8 +61,9 @@ def execute(args):
     def transfer(value, receive=False):
         path = scoped(root, value)
         local = Path(value)
-        if local.is_absolute() or '..' in local.parts:
-            raise TransportError('local probe paths must be relative')
+        if (local.is_absolute() or '..' in local.parts or
+                ':' in str(local) or str(local).startswith('-')):
+            raise TransportError('local probe paths must be relative SCP file names')
         if receive:
             if local.is_symlink() or (local.exists() and not local.is_file()):
                 raise TransportError('probe output must be a regular file')

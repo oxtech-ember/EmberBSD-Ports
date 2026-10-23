@@ -80,10 +80,21 @@ class TransportTests(unittest.TestCase):
 
     def test_receive_probe_outputs(self):
         self.args.operation = 'from'
-        self.args.values = ['try.out', 'try.ret']
-        with self.mock_run([0, 0]) as call:
+        self.args.values = ['try.out', 'try.ret', './fromtry.out']
+        with self.mock_run([0, 0, 0]) as call:
             self.assertEqual(TRANSPORT.execute(self.args), 0)
-        self.assertEqual(call.call_count, 2)
+        self.assertEqual(call.call_count, 3)
+        self.assertEqual(call.call_args.args[0][-1], 'fromtry.out')
+
+    def test_receive_rejects_remote_or_option_local_operands(self):
+        self.args.operation = 'from'
+        for value in ('unintended.invalid:probe.out', '-probe.out', './-probe.out'):
+            with self.subTest(value=value):
+                self.args.values = [value]
+                with self.mock_run([0]) as call:
+                    with self.assertRaises(TRANSPORT.TransportError):
+                        TRANSPORT.execute(self.args)
+                    call.assert_not_called()
 
     def test_cli_failure_is_sticky(self):
         argv = ['transport', '--host', self.args.host, '--user', self.args.user,
