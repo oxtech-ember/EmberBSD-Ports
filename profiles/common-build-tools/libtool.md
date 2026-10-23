@@ -35,6 +35,34 @@ manual series with zero fuzz, rejects repeated patch application and compares
 regenerated configure/ltmain output byte for byte. This gate passed on macOS;
 it does not substitute for installed target execution.
 
+## Native Fortran SDK selection
+
+For native GCC16 on macOS, use the existing `GCCBASE`,
+`GCC_VERSION_SUFFIX=-16`, `USE_NATIVE_GCC=yes` and `USE_PKGSRC_GCC=no`
+contracts. Select an installed SDK with `MACOSX_DEPLOYMENT_TARGET`.
+The Darwin platform passes its selected `OSX_SDK_PATH` to both the `f77`
+cwrapper and the legacy `FC` wrapper. C and C++ keep their existing flags.
+Target NetBSD wrappers do not receive a macOS SDK.
+
+Run the bounded platform regression from a pinned prepared pkgsrc source.
+It applies the patch with zero fuzz, rejects a repeat, and compares real BSD
+make results for native Darwin and both target architectures.
+
+```sh
+python3.15 -B profiles/common-build-tools/tests/darwin-fortran-sdk.py \
+    --ports-source /absolute/EmberBSD-Ports --sdk-source /absolute/EmberBSD-SDK \
+    --bmake /absolute/host/bin/bmake --pkgsrc-source /absolute/prepared-pkgsrc \
+    /absolute/new-platform-check
+```
+
+A separate native GCC16.2 control compiles and links
+[`native-sdk.f90`](../../probes/gcc16-fortran/native-sdk.f90).
+On a host with a missing configured SDK, the original Fortran flags fail to
+find `System`. The same command with `-isysroot` and the actual `xcrun` SDK
+links an arm64 Mach-O executable. That executable was not run. This is a
+native SDK transport check. Native Libtool package and tag acceptance remain
+separate. No target SDK, compiler or runtime is changed by this check.
+
 ## Host and target scripts
 
 The host `cross-libtool-base` dispatcher uses its configured cross prefix.

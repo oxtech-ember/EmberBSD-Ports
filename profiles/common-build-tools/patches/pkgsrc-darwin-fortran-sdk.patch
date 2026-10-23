@@ -1,0 +1,15 @@
+# Origin: EmberBSD (AI-assisted); retain the selected SDK for native Fortran.
+# Keep the same Darwin SDK policy for cwrappers and the legacy FC wrapper.
+--- a/mk/platform/Darwin.mk
++++ b/mk/platform/Darwin.mk
+@@ -121,8 +121,10 @@
+ _OPSYS_INCLUDE_DIRS?=	${OSX_SDK_PATH}/usr/include
+ CWRAPPERS_APPEND.cc+=	-isysroot ${OSX_SDK_PATH}
+ CWRAPPERS_APPEND.cxx+=	-isysroot ${OSX_SDK_PATH}
++CWRAPPERS_APPEND.f77+=	-isysroot ${OSX_SDK_PATH}
+ _WRAP_EXTRA_ARGS.CC+=	-isysroot ${OSX_SDK_PATH}
+ _WRAP_EXTRA_ARGS.CXX+=	-isysroot ${OSX_SDK_PATH}
++_WRAP_EXTRA_ARGS.FC+=	-isysroot ${OSX_SDK_PATH}
+ .elif exists(/usr/include/stdio.h)
+ _OPSYS_INCLUDE_DIRS?=	/usr/include
+ .elif exists(/usr/bin/xcrun)
