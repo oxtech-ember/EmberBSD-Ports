@@ -33,6 +33,24 @@ inspected for this change do not supply this repair.
 
 ## D-Bus descriptor exhaustion
 
+The recipe declares `dbus>=1.16.2` in `TEST_DEPENDS`. The normal `test`
+phase checks this prerequisite before the upstream `check` target. It does
+not add D-Bus to ordinary build or runtime dependencies. Native tests use
+the package-owned `dbus-run-session` and `dbus-daemon` from the native prefix.
+Cross tests retain the standard target test-dependency role.
+
+Run the focused dependency regression with BSD make and an existing export:
+
+```sh
+python3.15 -B profiles/common-build-tools/tests/vala-test-depends.py \
+  /absolute/pkgsrc /absolute/new-work --bmake /absolute/bmake
+```
+
+The check applies the real Makefile delta to private copies. It evaluates
+native and cross roles with the export's dependency and test rules. It
+checks test-only selection and rejects missing or tool-scoped declarations.
+It does not query a package database, build Vala or execute its tests.
+
 The separate test-only `pkgsrc-vala-dbus-fd-exhaustion.patch` disables
 `exit_on_close` on the server's shared session-bus connection. Exhausting
 all descriptors can make the transport close before the generated method

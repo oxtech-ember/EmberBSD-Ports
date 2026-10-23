@@ -1,8 +1,20 @@
 Origin: EmberBSD contributors (AI-assisted).
 Preserve the D-Bus fd-exhaustion test across transport failure behavior.
+Declare its private session bus as a standard test dependency.
 The upstream LGPL-2.1-or-later license and authorship are unchanged.
 Not submitted upstream.
 
+--- a/lang/vala/Makefile
++++ b/lang/vala/Makefile
+@@ -14,6 +14,8 @@
+ TOOL_DEPENDS+=	libxslt-[0-9]*:../../textproc/libxslt
+ TOOL_DEPENDS+=	docbook-xml-[0-9]*:../../textproc/docbook-xml
+ 
++TEST_DEPENDS+=	dbus>=1.16.2:../../sysutils/dbus
++
+ USE_LIBTOOL=		yes
+ USE_TOOLS+=		bison flex gmake pkg-config
+ GNU_CONFIGURE=		yes
 --- a/lang/vala/distinfo
 +++ b/lang/vala/distinfo
 @@ -6,4 +6,5 @@
