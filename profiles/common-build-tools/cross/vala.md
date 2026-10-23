@@ -12,6 +12,9 @@ array of nullable structures through a property. The copy helper allocated
 only `length` pointer slots. It omitted the final NULL slot. A subsequent
 length scan read outside the allocation and could free an invalid pointer.
 
+The array-copy C golden files cover both object-property arrays and generic
+arrays. The runtime assertions remain unchanged.
+
 `pkgsrc-vala-array-termination.patch` adds the extra zeroed slot for nullable
 value elements in `generate_array_dup_wrapper`. Reference elements retain
 their existing behavior. Non-null value elements retain their length-based
