@@ -866,8 +866,9 @@ creates the destination, it checks each recipe: the `Makefile` exists, each
 patch matches its `distinfo` checksum, there are no undeclared patches, and
 each link stays in the repository. A path that upstream already has must be in
 `pkgsrc/replaces`, and each `pkgsrc/replaces` path must exist in both trees.
-Put `WRKOBJDIR` on a case-sensitive file system. The ncurses build refuses a
-case-insensitive one, and most packages depend on ncurses.
+Builds must work on case-insensitive file systems, such as the default macOS
+file system. Put `WRKOBJDIR` on any local file system. A package that fails
+only on a case-insensitive file system has a defect in its recipe.
 `sh scripts/tests/prepare-pkgsrc.sh NEW_WORK` tests these checks on a fixture.
 `sh scripts/tests/export-composition.sh NEW_WORK` exports the real tree and
 compares each recipe with its source.

@@ -2,14 +2,50 @@
 # A native tic can install relative symbolic links during a cross install.
 # Inventory these entries like the normal pkgsrc file checks do. Do not
 # follow links or change the terminal database or its installation policy.
+#
+# Three aliases differ from another alias of the same entry only in letter
+# case. In the hexadecimal layout (--disable-mixed-case, the Darwin default)
+# each pair shares one leaf directory. On a case-insensitive file system tic
+# removes the first spelling when it links the second. The old Darwin rule
+# then removed the remaining upper-case file, so both spellings were lost.
+# Keep the lower-case spelling as a link to the entry and drop the
+# upper-case one. The result no longer depends on the build file system.
 
 --- a/devel/ncurses/Makefile
 +++ b/devel/ncurses/Makefile
-@@ -119,7 +119,7 @@ post-install:
- 	${RM} -f ${DESTDIR}${PREFIX}/${TERMINFODIR}/68/hp2621A
- 	${RM} -f ${DESTDIR}${PREFIX}/${TERMINFODIR}/68/hp70092A
- .endif
+@@ -112,14 +112,29 @@
+ 		mv -f $${f} `${BASENAME} $${f} .3x`.3; 	\
+ 	done
+ 
++# These aliases differ only in letter case. In the hexadecimal layout each
++# pair shares one leaf directory. On a case-insensitive file system tic
++# removes the first spelling when it links the second, so the result depends
++# on the build file system. Keep the lower-case spelling and drop the other.
++# Each item is UPPER:LOWER:ENTRY; both spellings name ENTRY.
++TERMINFO_CASE_ALIASES=	32/2621A:32/2621a:68/hp2621
++TERMINFO_CASE_ALIASES+=	68/hp2621A:68/hp2621a:68/hp2621
++TERMINFO_CASE_ALIASES+=	68/hp70092A:68/hp70092a:68/hp70092
++
+ post-install:
+-.if ${OPSYS} == "Darwin"
+-	# Clashes with "a" versions on case-insensitive file systems
+-	${RM} -f ${DESTDIR}${PREFIX}/${TERMINFODIR}/32/2621A
+-	${RM} -f ${DESTDIR}${PREFIX}/${TERMINFODIR}/68/hp2621A
+-	${RM} -f ${DESTDIR}${PREFIX}/${TERMINFODIR}/68/hp70092A
+-.endif
 -	${FIND} ${DESTDIR}${PREFIX}/${TERMINFODIR} -type f -print | ${SORT} | \
++	${RUN}set -e;							\
++	if ! ${GREP} -q '^#define MIXEDCASE_FILENAMES 1$$'		\
++	    ${WRKSRC}/include/ncurses_cfg.h; then			\
++		cd ${DESTDIR}${PREFIX}/${TERMINFODIR};			\
++		for item in ${TERMINFO_CASE_ALIASES}; do		\
++			upper=$${item%%:*}; rest=$${item#*:};		\
++			lower=$${rest%%:*}; entry=$${rest#*:};		\
++			${TEST} -f $$entry;				\
++			${RM} -f $$upper $$lower;			\
++			${LN} $$entry $$lower;				\
++		done;							\
++	fi
 +	${FIND} ${DESTDIR}${PREFIX}/${TERMINFODIR} \( -type f -o -type l \) -print | ${SORT} | \
  		${SED} -e "s,^${DESTDIR}${PREFIX}/,," >${WRKDIR}/PLIST.terminfo
  	${RM} -f ${DESTDIR}${PREFIX}/lib/terminfo

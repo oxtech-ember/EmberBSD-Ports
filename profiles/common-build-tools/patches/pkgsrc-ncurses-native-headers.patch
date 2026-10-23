@@ -9,11 +9,11 @@ Use a private native tic with the actual target database layout.
  # $NetBSD: Makefile,v 1.124 2026/01/20 10:07:04 wiz Exp $
  
  DISTNAME=	ncurses-6.6
-+PKGREVISION=	3
++PKGREVISION=	4
  CATEGORIES=	devel
  MASTER_SITES=	${MASTER_SITE_GNU:=ncurses/}
  
-@@ -64,11 +65,83 @@
+@@ -64,11 +65,88 @@
  
  .include "../../mk/bsd.prefs.mk"
  
@@ -44,6 +44,11 @@ Use a private native tic with the actual target database layout.
  CONFIGURE_ENV+=		BUILD_CC=${NATIVE_CC:Q}
  CONFIGURE_ENV+=		ac_cv_path_TIC_PATH=${TOOLBASE:Q}/bin/tic
 +CONFIGURE_ENV+=		TIC=${TOOLBASE:Q}/bin/tic
++# The target database uses the hexadecimal leaf directories of the upstream
++# --disable-mixed-case option. Every build file system can stage it, so the
++# package does not depend on the build file system.
++CONFIGURE_ARGS:=	${CONFIGURE_ARGS:N--enable-mixed-case*:N--disable-mixed-case*}
++CONFIGURE_ARGS+=	--disable-mixed-case
 +# Keep build-only link paths out of installed consumer metadata.
 +CONFIGURE_ARGS+=	--disable-pkg-ldflags
  ALL_ENV+=		TIC_PATH=${TOOLBASE:Q}/bin/tic
@@ -97,7 +102,7 @@ Use a private native tic with the actual target database layout.
  .endif
  
  # If there's no native tbl(1) then the tools infrastructure would pull in
-@@ -104,6 +177,42 @@
+@@ -104,6 +182,38 @@
  CHECK_WRKREF_SKIP+=	man/man?/*
  
  post-configure:
@@ -107,12 +112,8 @@ Use a private native tic with the actual target database layout.
 +	${RUN}${PKGSRC_SETENV} ${MAKE_ENV} ${CPP} -dM -I${WRKSRC:Q}/include -include ${WRKSRC:Q}/include/ncurses_cfg.h - < /dev/null > ${WRKDIR:Q}/tic-layout.macros
 +	${RUN}set -eu; \
 +	layout=$$(${AWK} 'BEGIN { layout="hex" } $$2 == "MIXEDCASE_FILENAMES" { if (NF != 3 || ($$3 != "0" && $$3 != "1")) exit 1; layout=($$3 == "1" ? "character" : "hex"); count++ } END { if (count != 1) exit 1; print layout }' ${WRKDIR:Q}/tic-layout.macros); \
-+	if test "$$layout" = character; then \
-+		: > ${_EMBER_NCURSES_TIC_OBJ:Q}/tmp/case-sensitive-a; \
-+		if test -e ${_EMBER_NCURSES_TIC_OBJ:Q}/tmp/case-sensitive-A; then \
-+			${ECHO} 'Character terminfo layout requires a case-sensitive build filesystem.' >&2; exit 1; \
-+		fi; \
-+		${RM} -f ${_EMBER_NCURSES_TIC_OBJ:Q}/tmp/case-sensitive-a; \
++	if test "$$layout" != hex; then \
++		${ECHO} 'The cross target terminfo database must use the hexadecimal layout.' >&2; exit 1; \
 +	fi; \
 +	cd ${PKGDIR:Q} && ${SETENV} -i ${_EMBER_NCURSES_TIC_ENV} \
 +		${MAKE} MAKECONF=${MAKECONF:Q} USE_CROSS_COMPILE=no \

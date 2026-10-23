@@ -35,13 +35,30 @@ Darwin's ordinary native provider writes hexadecimal leaf directories.
 A target with `MIXEDCASE_FILENAMES=1` reads single-character directories.
 The same compiled entry can be valid while its installed path is unreadable.
 
+A cross build always configures the target with the upstream
+`--disable-mixed-case` option. The target database then uses hexadecimal
+leaf directories, as on Darwin. Without this option, configure selects
+single-character directories for a NetBSD target. That layout puts `e` and
+`E` entries into different directories, which a case-insensitive file system
+cannot stage. After configure, the recipe stops if the target layout is not
+hexadecimal. Builds must work on case-insensitive file systems.
+
+In the hexadecimal layout, three aliases of `terminfo.src` share a file name
+with another alias of the same entry except for letter case:
+`2621a`/`2621A`, `hp2621a`/`hp2621A` (entry `hp2621`) and
+`hp70092a`/`hp70092A` (entry `hp70092`). On a case-insensitive file system,
+`tic` removes the first spelling when it links the second. `post-install`
+removes both spellings and links the lower-case spelling to its entry, so the
+package has the same files on every build file system. `TERMINFO_CASE_ALIASES`
+lists the three pairs.
+
 After target configure, the recipe preprocesses the actual target header.
 A second private native object directory builds `tic` from the same source.
 Its explicit internal `EMBERBSD_NCURSES_TIC_LAYOUT=character|hex` role changes
 only the documented mixed-case configure switch. Other native pkgsrc policy
 stays active. Ordinary native builds keep their platform default. The role
-refuses invalid modes and cross compilation. Character mode requires a
-case-sensitive build filesystem. No dependency may be installed implicitly.
+refuses invalid modes and cross compilation. Cross builds select the hex
+mode. No dependency may be installed implicitly.
 
 The recursive make names `configure` explicitly before its private build
 target. The pkgsrc barrier can then forward the fresh configure phase.
@@ -76,6 +93,10 @@ BMAKE=/absolute/host/bin/bmake python3 \
     /absolute/new-header-check
 python3 profiles/common-build-tools/tests/ncurses-export-guard.py \
     /absolute/new-export-preflight-check
+BMAKE=/absolute/host/bin/bmake python3 \
+    profiles/common-build-tools/tests/ncurses-case-aliases.py \
+    /absolute/export /absolute/mk.conf /absolute/distfiles/ncurses-6.6.tar.gz \
+    /absolute/new-case-alias-check
 python3 profiles/common-build-tools/tests/ncurses-install-tic.py \
     /absolute/before/misc/run_tic.sh /absolute/after/misc/run_tic.sh \
     /absolute/native-prefix /absolute/new-install-tool-check \
@@ -85,6 +106,13 @@ python3 profiles/common-build-tools/tests/ncurses-install-tic.py \
     --target-metadata-dir /absolute/stage/lib/pkgconfig \
     --producer-path /absolute/build-sysroot
 ```
+
+The case-alias test computes the case-only aliases from `terminfo.src` in the
+distfile and compares them with `TERMINFO_CASE_ALIASES`. It then runs
+`post-install` on two small stages: one as `tic` writes it on a
+case-sensitive file system and one as on a case-insensitive file system.
+Both stages must give the same files. A stage with the character layout
+must stay unchanged.
 
 The Darwin header test executes the canonical recursive hook. It poisons
 outer make variables, compiler selection, configure site and cache values.

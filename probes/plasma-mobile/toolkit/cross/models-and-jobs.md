@@ -28,7 +28,8 @@ The check also compares each PLIST with its upstream pkgsrc PLIST. pkgsrc
 generates those files on case-sensitive systems. An entry that differs from
 an upstream entry only in case fails. KDecoration 6.8.0nb1, LibKScreen
 6.8.0nb1, LibPlasma 6.8.0nb2 and Plasma5Support 6.8.0nb1 correct such entries.
-Build a package on a case-sensitive stage to confirm its complete file list.
+Builds must work on case-insensitive stages. On such a stage,
+`check-files-case.sh` and this check together confirm the file list.
 
 KWindowSystem and KGuiAddons buildlinks now follow Qt 6.12's move of
 WaylandClient into Qtbase. The real KCrash/KColorScheme dependency graph

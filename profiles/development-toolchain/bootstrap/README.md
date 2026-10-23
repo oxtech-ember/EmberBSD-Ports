@@ -57,7 +57,7 @@ Use a clean Ports revision and absolute paths without whitespace:
 5. Host static GMP 6.3.0, MPFR 4.2.2 and MPC 1.4.1 under one prefix. The
    existing `../cross/host-math.py` prepares them. The builder also executes
    that workflow's GMP long-loop and periodic-signal contracts.
-6. A new work directory on a case-sensitive volume, host C/C++ compilers,
+6. A new work directory (builds must work on case-insensitive volumes), host C/C++ compilers,
    GNU make, tar, patch and Python3.15 with the explicit SDK API1 source. Set `CROSS_JOBS` explicitly.
 
 The seed checks reject the wrong ELF architecture, missing base inputs and
