@@ -122,7 +122,8 @@ def build(arguments, sdk_root):
             argv = list(map(str, argv))
             write_json(work / 'commands' / (name + '.json'), dict(argv=argv, cwd=str(work)))
             try:
-                run_logged(argv, work / 'logs' / (name + '.log'), cwd=str(work), env=environment)
+                run_logged(argv, work / 'logs' / (name + '.log'), cwd=str(work), env=environment,
+                           empty_snapshot_timeout=120)
             except ProcessOwnershipError as error:
                 write_json(work / sdk_source.PRODUCER_QUARANTINE,
                            dict(step=name, session_id=error.sid, error=str(error)))

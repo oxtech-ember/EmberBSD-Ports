@@ -148,6 +148,7 @@ class BuilderTests(unittest.TestCase):
         self.assertEqual(inputs['python']['sha256'], sha256_file(Path(sys.executable).resolve()))
         self.assertIn('not sealed', inputs['boundary'])
         self.assertTrue(all(call[2]['cwd'] == str(self.work) for call in self.calls))
+        self.assertTrue(all(call[2]['empty_snapshot_timeout'] == 120 for call in self.calls))
 
     def test_wrong_pin_does_not_create_work_or_run(self):
         with (self.dist / 'karchive-6.31.0.tar.xz').open('ab') as stream:
