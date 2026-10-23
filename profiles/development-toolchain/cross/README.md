@@ -283,6 +283,27 @@ EmberBSD source commit with the fork's native host tools. Use a separate
 libraries. Preserve the installed relative `usr/include/machine` link.
 Do not copy headers from an upstream NetBSD sysroot.
 
+On a host without an EmberBSD toolchain, build these host tools with the
+fork's in-tree defaults. Do not set `TOOLCHAIN_MISSING=yes` for this
+`TOOLDIR`: `build.sh` then requires an existing `EXTERNAL_TOOLCHAIN`.
+The same `TOOLDIR` supplies `nbgmake` to this recipe and to `host-math.py`.
+Use a separate object directory:
+
+```sh
+cd /absolute/EmberBSD
+sh build.sh -U -u -j4 -m evbarm -a aarch64 -O /absolute/os-build/objects \
+    -T /absolute/os-build/tools -D /absolute/header-sysroot \
+    -V MAKECONF=/dev/null -V HOST_CC=cc -V HOST_CXX=c++ \
+    -V BUILDINFO=EmberBSD:FULL_40_CHARACTER_EMBERBSD_SOURCE_COMMIT tools
+make=/absolute/os-build/tools/bin/nbmake-evbarm
+"$make" DESTDIR=/absolute/header-sysroot obj
+"$make" DESTDIR=/absolute/header-sysroot do-distrib-dirs
+"$make" DESTDIR=/absolute/header-sysroot includes
+```
+
+On 2026-10-23, these commands produced the AArch64 header sysroot on macOS
+arm64. The `--bootstrap-libgcc` build below accepted it.
+
 Supply this header sysroot immediately after the GCC archive. Set
 `EMBERBSD_SYSROOT_SOURCE` to its verified full EmberBSD source commit.
 `EMBERBSD_SYSROOT_PROVENANCE` can name a file with the source revision,
