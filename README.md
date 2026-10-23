@@ -875,6 +875,30 @@ compares each recipe with its source.
 /absolute/new-pkgsrc` checks that the export keeps each input of the pkgsrc
 bootstrap: the copied `files/` source trees and the bootstrap packages, with
 `BOOTSTRAP_PKG` set and no distfiles.
+
+Before a bulk build, check that the export satisfies its own dependencies:
+
+```sh
+python3 scripts/check-export-depends.py --pkgsrc /absolute/new-pkgsrc \
+    --makeconf /absolute/private-mk.conf --bmake /absolute/host/bin/bmake \
+    --pkg-admin /absolute/host/sbin/pkg_admin --work /absolute/new-check
+```
+
+The check reads the `DEPENDS`, `BUILD_DEPENDS`, `TEST_DEPENDS`, `TOOL_DEPENDS`
+and `BOOTSTRAP_DEPENDS` entries of each package, including the buildlink API
+patterns. Each pattern must match the `PKGNAME` of its provider in the export.
+The check uses an empty package database, so installed packages cannot hide a
+gap. It follows the pkgsrc rules for host tools: a cross package passes its
+target settings to the native tool build, and a multi-version provider gets
+the requested pattern in `PKGNAME_REQD`. Like a pkgsrc dependency build,
+each query reuses the build-host facts (`OSX_*` and `NATIVE_*`) from
+`MAKEFLAGS`, so the host probes run once. It checks every package by default;
+`--root PKGPATH` checks one package and its dependency closure. It writes
+`findings.tsv` and `rejected.tsv` (packages with `PKG_FAIL_REASON` or
+`PKG_SKIP_REASON`) into the new work directory. An unsatisfied pattern, a
+missing provider or a failed query makes it exit 1.
+`python3 scripts/tests/test_check_export_depends.py` tests it on a fixture.
+
 Experimental probes remain under `probes/`
 until their package integration and runtime are validated. No signed binary
 package repository is provided yet.
