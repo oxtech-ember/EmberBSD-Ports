@@ -1,9 +1,18 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD; source-only command-contract controls, no compiler execution.
 from pathlib import Path
+import argparse
+import hashlib
 import importlib.util
+import json
 import shlex
+import subprocess
+import sys
 import unittest
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--gcc-source', type=Path, help='Audited unpacked GCC16 source for the real configure fragment')
+options, remaining = parser.parse_known_args()
 
 path = Path(__file__).resolve().parents[4] / 'profiles/development-toolchain/bootstrap/fortran_commands.py'
 spec = importlib.util.spec_from_file_location('fortran_commands', path)
@@ -34,6 +43,7 @@ class Commands(unittest.TestCase):
             with self.subTest(target=target):
                 for row in self.plan(target):
                     self.assertEqual(row['env']['FC'], row['env']['F77'])
+                    self.assertEqual(row['env']['GFORTRAN'], row['env']['FC'])
                     self.assertEqual(shlex.split(row['env']['CC'])[0], '/new/compiler/bin/' + triplet + '-gcc')
                     self.assertEqual(shlex.split(row['env']['FC'])[0], '/new/compiler/bin/' + triplet + '-gfortran')
                     self.assertIn('--sysroot=/accepted/sysroot', shlex.split(row['env']['FC']))
@@ -61,6 +71,40 @@ class Commands(unittest.TestCase):
         self.assertIn('--sysroot=/accepted sysroot', shlex.split(row['env']['FC']))
         self.assertEqual(shlex.split(row['env']['CC_FOR_BUILD']), ['/native compiler/gcc-16'])
 
+    @unittest.skipUnless(options.gcc_source, 'Set --gcc-source for the real upstream fragment')
+    def test_actual_upstream_fc_assignment(self):
+        # Run only the exact upstream assignment. No compiler or configure runs.
+        root = options.gcc_source.resolve(strict=True)
+        for name in ('configure.ac', 'configure'):
+            source = root / 'libgfortran' / name
+            content = source.read_bytes()
+            matches = [line for line in content.splitlines() if line == b'FC="$GFORTRAN"']
+            self.assertEqual(len(matches), 1)
+            fragment = matches[0]
+            print('upstream-fragment ' + str(source) + ' sha256=' + hashlib.sha256(content).hexdigest())
+            for target in module.TARGETS:
+                for compiler, sysroot in (('/new/compiler', '/accepted/sysroot'),
+                                          ('/new compiler', '/accepted sysroot')):
+                    values = self.plan(target, compiler=compiler, sysroot=sysroot)[5]['env']
+                    script = fragment.decode() + '\nprintf "%s\n" "$FC"\n'
+                    base = {'PATH': '/usr/bin:/bin', 'FC': values['FC'], 'F77': values['F77']}
+                    before = subprocess.run(['/bin/sh', '-c', script], env=base,
+                                            capture_output=True, check=True, timeout=5)
+                    after = subprocess.run(['/bin/sh', '-c', script],
+                                           env=dict(base, GFORTRAN=values['GFORTRAN']),
+                                           capture_output=True, check=True, timeout=5)
+                    self.assertEqual((before.stdout, before.stderr), (b'\n', b''))
+                    self.assertEqual((after.stdout, after.stderr), (values['FC'].encode() + b'\n', b''))
+                    triplet = module.TARGETS[target][0]
+                    expected = [compiler + '/bin/' + triplet + '-gfortran', '--sysroot=' + sysroot,
+                                '-B' + sysroot + '/usr/pkg/gcc16/lib/gcc/' + triplet + '/16.2.0/',
+                                '-B' + sysroot + '/usr/pkg/gcc16/lib/']
+                    self.assertEqual(shlex.split(after.stdout.decode()), expected)
+                    print(json.dumps({"source": str(source), "target": target,
+                        "before_status": before.returncode, "before_stdout": before.stdout.decode(),
+                        "after_status": after.returncode, "after_stdout": after.stdout.decode(),
+                        "expected_argv": expected, "stderr_empty": not (before.stderr or after.stderr)}))
+
     def test_invalid_plan_refuses(self):
         for changes in ({'target': 'riscv64'}, {'jobs': 0}, {'jobs': -1}, {'jobs': '12'}, {'jobs': True},
                         {'source': 'relative'}, {'work': '/new/../old'},
@@ -70,4 +114,4 @@ class Commands(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(verbosity=2)
+    unittest.main(argv=[sys.argv[0]] + remaining, verbosity=2)

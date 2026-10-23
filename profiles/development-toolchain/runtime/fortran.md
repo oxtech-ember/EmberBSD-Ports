@@ -12,6 +12,8 @@ The CLI uses Python 3.15 stdlib and explicit SDK API1 sources. The SDK must
 provide `ContextLocks(shared=True)` and owned producer stream/input API1.
 Set an audited PATH with GNU make, M4, awk, sed, shell, Texinfo and install.
 The producer hashes the selected executables and records every component argv.
+It sets `GFORTRAN`, `FC` and `F77` to the same target command. Upstream
+`libgfortran` resets `FC` from `GFORTRAN` before its compiler checks.
 No target executable runs on the host. The three upstream component rules do
 not compile a native helper with `CC_FOR_BUILD`. Libquadmath only forwards
 that variable in recursive make flags. This is not native host-link acceptance.
@@ -74,7 +76,8 @@ Run the bounded source controls with explicit SDK and prepared pkgsrc sources.
 Create the result parent first. Each framework result path must be new.
 
 ```sh
-python3.15 -B profiles/development-toolchain/runtime/tests/fortran-commands-test.py
+python3.15 -B profiles/development-toolchain/runtime/tests/fortran-commands-test.py \
+    --gcc-source /absolute/audited-gcc-source
 python3.15 -B profiles/development-toolchain/runtime/tests/fortran-stage-test.py \
     --ports-source /absolute/EmberBSD-Ports --sdk-source /absolute/EmberBSD-SDK
 python3.15 -B profiles/development-toolchain/runtime/tests/fortran-producer-test.py \
@@ -83,6 +86,11 @@ python3.15 -B profiles/development-toolchain/runtime/tests/fortran-framework-tes
     --sdk-source /absolute/EmberBSD-SDK --bmake /absolute/host/bin/bmake \
     --pkgsrc-source /absolute/prepared-pkgsrc /absolute/new-framework-result
 ```
+
+The command controls run the exact `FC="$GFORTRAN"` assignment from the
+audited upstream `configure.ac` and generated `configure`. They demonstrate
+the lost command without `GFORTRAN` and exact target argv with it. They do
+not run configure or a compiler.
 
 The ELF fixtures validate the new stage parser and role guards. Their base
 runtime validator is mocked in receipt mutation controls. The producer controls

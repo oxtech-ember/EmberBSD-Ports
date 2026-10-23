@@ -39,7 +39,8 @@ def component_plan(target, build_triplet, source, work, compiler, sysroot,
     def command(name):
         return shlex.join([str(compiler / 'bin' / (triplet + '-' + name))] + common)
     env = {'CC': command('gcc'), 'FC': command('gfortran'),
-           'F77': command('gfortran'), 'CC_FOR_BUILD': shlex.quote(str(native_cc)),
+           'F77': command('gfortran'), 'GFORTRAN': command('gfortran'),
+           'CC_FOR_BUILD': shlex.quote(str(native_cc)),
            'CFLAGS': flags + ' -fPIC', 'FCFLAGS': flags + ' -fPIC',
            'FFLAGS': flags + ' -fPIC',
            'CPPFLAGS': shlex.quote('-I' + str(gcc / 'include/c++' / triplet / 'bits')),
