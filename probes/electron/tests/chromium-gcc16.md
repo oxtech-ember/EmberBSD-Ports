@@ -205,3 +205,41 @@ stdio-helper findings and two existing forwarding-reference findings in
 Abseil and base headers for the main unit. No entrypoint findings appear.
 GCC16 preprocessing completes both units. Cppcheck 2.18 stops at dependency
 syntax errors in both preprocessed inputs; it does not complete this analysis.
+
+## WebRTC, geometry, and Skia GCC16 checks
+
+The WebRTC follow-up retains fatal invalid-enum paths after exhaustive switches.
+Its Clang diagnostic scopes remain Clang-only. GCC receives no replacement
+suppression. The valid constexpr mappings, TLS/DTLS version defaults, packet
+validation, callback results, and codec selection remain unchanged.
+
+The cipher-group value parameter cannot alias its vector. `emplace` constructs
+it in place after the existing deduplication. A private STUN helper retains the
+fresh integrity attribute's concrete hierarchy during virtual owner assignment.
+The public `AddAttribute` entry point, validation order, ownership callbacks,
+message length accounting, object layout, and virtual interfaces stay unchanged.
+Tests cover empty and repeated cipher groups, erased derived attributes,
+remove/re-add callbacks, clear, and virtual destruction. Existing RFC5769
+integrity and XOR-address ownership tests remain in place.
+
+The H264 formatter validates its level against the existing declared-level
+table before conversion to one byte. Invalid levels return `std::nullopt`.
+The regression includes negative, undefined, and oversized levels. H265 uses
+a 64-bit unsigned shift operand for counts from 1 through 32. Geometry retains
+bitwise SIMD-mask operations with explicit comparison parentheses. Skia retains
+`clang::reinitializes` when the compiler supports that attribute.
+
+All 42 observed failing production commands compile with GCC16 after these
+patches. The three changed upstream test translation units also compile with
+the production target flags and real GoogleTest/GoogleMock include roots.
+This does not establish test execution or complete Electron linking.
+
+Paired analysis covers 26 production translation units. Apple Clang 21 Static
+Analyzer retains the same 23 inherited diagnostic instances in each state.
+It introduces no finding. Clang emits no target object. Cppcheck 2.18 consumes
+GCC-preprocessed target inputs. Fifty of 52 cases stop at dependency parser
+errors. The remaining pair retains the same warnings and branch limit notice.
+Expanded-header locations in that pair do not map to valid statistics-header
+lines. No Cppcheck pass or confirmed statistics-structure defect is claimed.
+The checks retain real target defines, include paths, and the NetBSD x86_64
+model without fake builtins or new warning suppressions.

@@ -1,0 +1,338 @@
+--- a/third_party/webrtc/api/audio/audio_processing_statistics.cc
++++ b/third_party/webrtc/api/audio/audio_processing_statistics.cc
+@@ -16,11 +16,15 @@
+ 
+ // TODO: https://issues.webrtc.org/42221314 - remove pragma when deprecated
+ // field `voice_detected` is removed.
++#if defined(__clang__)
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wdeprecated-declarations"
++#endif
+ AudioProcessingStats::AudioProcessingStats(const AudioProcessingStats& other) =
+     default;
++#if defined(__clang__)
+ #pragma clang diagnostic pop
++#endif
+ 
+ AudioProcessingStats::~AudioProcessingStats() = default;
+ 
+--- a/third_party/webrtc/api/audio/audio_processing_statistics.h
++++ b/third_party/webrtc/api/audio/audio_processing_statistics.h
+@@ -20,8 +20,10 @@
+ namespace webrtc {
+ // This version of the stats uses Optionals, it will replace the regular
+ // AudioProcessingStatistics struct.
++#if defined(__clang__)
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wdeprecated-declarations"
++#endif
+ struct RTC_EXPORT AudioProcessingStats {
+   AudioProcessingStats();
+   AudioProcessingStats(const AudioProcessingStats& other);
+@@ -64,7 +66,9 @@
+   // call to `GetStatistics()`.
+   std::optional<int32_t> delay_ms;
+ };
++#if defined(__clang__)
+ #pragma clang diagnostic pop
++#endif
+ 
+ }  // namespace webrtc
+ 
+--- a/third_party/webrtc/api/audio_codecs/audio_encoder.cc
++++ b/third_party/webrtc/api/audio_codecs/audio_encoder.cc
+@@ -108,10 +108,14 @@
+     std::optional<int64_t> /* bwe_period_ms */) {}
+ 
+ void AudioEncoder::OnReceivedUplinkAllocation(BitrateAllocationUpdate update) {
++#if defined(__clang__)
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wdeprecated-declarations"
++#endif
+   OnReceivedUplinkBandwidth(update.target_bitrate.bps(), std::nullopt);
++#if defined(__clang__)
+ #pragma clang diagnostic pop
++#endif
+ }
+ 
+ void AudioEncoder::OnReceivedRtt(int /* rtt_ms */) {}
+--- a/third_party/webrtc/api/candidate.cc
++++ b/third_party/webrtc/api/candidate.cc
+@@ -356,6 +356,7 @@
+     case IceCandidateType::kRelay:
+       return kCandidateRelay;
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ 
+ std::optional<IceCandidateType> StringToIceCandidateType(
+--- a/third_party/webrtc/api/data_channel_interface.h
++++ b/third_party/webrtc/api/data_channel_interface.h
+@@ -32,8 +32,10 @@
+ 
+ // C++ version of: https://www.w3.org/TR/webrtc/#idl-def-rtcdatachannelinit
+ // TODO(deadbeef): Use std::optional for the "-1 if unset" things.
++#if defined(__clang__)
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wdeprecated-declarations"
++#endif
+ struct DataChannelInit {
+   // Deprecated. Reliability is assumed, and channel will be unreliable if
+   // maxRetransmitTime or MaxRetransmits is set.
+@@ -71,7 +73,9 @@
+   // https://w3c.github.io/webrtc-priority/#new-rtcdatachannelinit-member
+   std::optional<PriorityValue> priority;
+ };
++#if defined(__clang__)
+ #pragma clang diagnostic pop
++#endif
+ 
+ // At the JavaScript level, data can be passed in as a string or a blob, so
+ // this structure's `binary` flag tells whether the data should be interpreted
+--- a/third_party/webrtc/api/video/video_frame_buffer.cc
++++ b/third_party/webrtc/api/video/video_frame_buffer.cc
+@@ -123,7 +123,7 @@
+     case VideoFrameBuffer::Type::kNV12:
+       return "kNV12";
+     default:
+-      RTC_DCHECK_NOTREACHED();
++      RTC_CHECK_NOTREACHED();
+   }
+ }
+ 
+--- a/third_party/webrtc/api/video_codecs/h265_profile_tier_level.cc
++++ b/third_party/webrtc/api/video_codecs/h265_profile_tier_level.cc
+@@ -15,6 +15,7 @@
+ 
+ #include "api/rtp_parameters.h"
+ #include "api/video/resolution.h"
++#include "rtc_base/checks.h"
+ #include "rtc_base/string_to_number.h"
+ 
+ namespace webrtc {
+@@ -217,6 +218,7 @@
+     case H265Profile::kProfileHighThroughputScreenContentCoding:
+       return "11";
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ 
+ std::string H265TierToString(H265Tier tier) {
+@@ -226,6 +228,7 @@
+     case H265Tier::kTier1:
+       return "1";
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ 
+ std::string H265LevelToString(H265Level level) {
+@@ -257,6 +260,7 @@
+     case H265Level::kLevel6_2:
+       return "186";
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ 
+ std::optional<H265ProfileTierLevel> ParseSdpForH265ProfileTierLevel(
+--- a/third_party/webrtc/media/base/codec_comparators.cc
++++ b/third_party/webrtc/media/base/codec_comparators.cc
+@@ -321,6 +321,7 @@
+         return IsSameCodecSpecific(left_codec.name, left_codec.params,
+                                    right_codec.name, right_codec.params);
+     }
++    RTC_CHECK_NOTREACHED();
+   };
+ 
+   return matches_id && matches_type_specific();
+--- a/third_party/webrtc/modules/rtp_rtcp/source/rtp_format.cc
++++ b/third_party/webrtc/modules/rtp_rtcp/source/rtp_format.cc
+@@ -78,6 +78,7 @@
+                                                     rtp_video_header);
+     }
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ 
+ std::vector<int> RtpPacketizer::SplitAboutEqually(
+--- a/third_party/webrtc/modules/rtp_rtcp/source/rtp_sender_video.cc
++++ b/third_party/webrtc/modules/rtp_rtcp/source/rtp_sender_video.cc
+@@ -178,6 +178,7 @@
+     case kVideoCodecGeneric:
+       return PacketizationFormat::kGeneric;
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ 
+ }  // namespace
+--- a/third_party/webrtc/net/dcsctp/packet/parameter/reconfiguration_response_parameter.cc
++++ b/third_party/webrtc/net/dcsctp/packet/parameter/reconfiguration_response_parameter.cc
+@@ -21,6 +21,7 @@
+ #include "net/dcsctp/common/internal_types.h"
+ #include "net/dcsctp/packet/bounded_byte_reader.h"
+ #include "net/dcsctp/packet/bounded_byte_writer.h"
++#include "rtc_base/checks.h"
+ #include "rtc_base/logging.h"
+ #include "rtc_base/strings/string_builder.h"
+ 
+@@ -60,6 +61,7 @@
+     case ReconfigurationResponseParameter::Result::kInProgress:
+       return "In progress";
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ 
+ std::optional<ReconfigurationResponseParameter>
+--- a/third_party/webrtc/net/dcsctp/public/dcsctp_handover_state.cc
++++ b/third_party/webrtc/net/dcsctp/public/dcsctp_handover_state.cc
+@@ -13,6 +13,7 @@
+ #include <string>
+ 
+ #include "absl/strings/string_view.h"
++#include "rtc_base/checks.h"
+ 
+ namespace dcsctp {
+ namespace {
+@@ -44,6 +45,7 @@
+     case HandoverUnreadinessReason::kPendingStreamResetRequest:
+       return "PENDING_STREAM_RESET_REQUEST";
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ }  // namespace
+ 
+--- a/third_party/webrtc/net/dcsctp/rx/data_tracker.cc
++++ b/third_party/webrtc/net/dcsctp/rx/data_tracker.cc
+@@ -357,6 +357,7 @@
+     case AckState::kImmediate:
+       return "IMMEDIATE";
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ 
+ HandoverReadinessStatus DataTracker::GetHandoverReadiness() const {
+--- a/third_party/webrtc/net/dcsctp/socket/dcsctp_socket.cc
++++ b/third_party/webrtc/net/dcsctp/socket/dcsctp_socket.cc
+@@ -252,6 +252,7 @@
+       return (tcb_ != nullptr && !t1_init_->is_running() &&
+               !t1_cookie_->is_running() && t2_shutdown_->is_running());
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ 
+ constexpr absl::string_view DcSctpSocket::ToString(DcSctpSocket::State state) {
+@@ -273,6 +274,7 @@
+     case DcSctpSocket::State::kShutdownAckSent:
+       return "SHUTDOWN_ACK_SENT";
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ 
+ void DcSctpSocket::SetState(State state, absl::string_view reason) {
+@@ -655,6 +657,7 @@
+     case State::kShutdownAckSent:
+       return SocketState::kShuttingDown;
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ 
+ void DcSctpSocket::SetMaxMessageSize(size_t max_message_size) {
+--- a/third_party/webrtc/net/dcsctp/socket/packet_sender.cc
++++ b/third_party/webrtc/net/dcsctp/socket/packet_sender.cc
+@@ -17,6 +17,7 @@
+ 
+ #include "net/dcsctp/packet/sctp_packet.h"
+ #include "net/dcsctp/public/dcsctp_socket.h"
++#include "rtc_base/checks.h"
+ 
+ namespace dcsctp {
+ 
+@@ -48,5 +49,6 @@
+       return false;
+     }
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ }  // namespace dcsctp
+--- a/third_party/webrtc/net/dcsctp/timer/timer.cc
++++ b/third_party/webrtc/net/dcsctp/timer/timer.cc
+@@ -51,6 +51,7 @@
+       return TimeDelta(std::min(duration, Timer::kMaxTimerDuration));
+     }
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ }  // namespace
+ 
+--- a/third_party/webrtc/p2p/base/port_interface.h
++++ b/third_party/webrtc/p2p/base/port_interface.h
+@@ -100,10 +100,14 @@
+     // which should be easy to detect.
+     // TODO: bugs.webrtc.org/42225170 - make pure virtual when the function
+     // below has been removed.
++#if defined(__clang__)
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wdeprecated-declarations"
++#endif
+     return SendTo(data.data(), data.size(), addr, options, payload);
++#if defined(__clang__)
+ #pragma clang diagnostic pop
++#endif
+   }
+ 
+   // This function is not marked ABSL_DEPRECATE_AND_INLINE() because
+--- a/third_party/webrtc/rtc_base/net_helper.cc
++++ b/third_party/webrtc/rtc_base/net_helper.cc
+@@ -14,6 +14,7 @@
+ 
+ #include "absl/strings/match.h"
+ #include "absl/strings/string_view.h"
++#include "rtc_base/checks.h"
+ 
+ namespace webrtc {
+ 
+@@ -48,6 +49,7 @@
+     case PROTO_TLS:
+       return TLS_PROTOCOL_NAME;
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ 
+ std::optional<ProtocolType> StringToProto(absl::string_view proto_name) {
+--- a/third_party/webrtc/rtc_base/network_constants.cc
++++ b/third_party/webrtc/rtc_base/network_constants.cc
+@@ -54,6 +54,7 @@
+     case NetworkSlice::UNIFIED_COMMUNICATIONS:
+       return "UNIFIED_COMMUNICATIONS";
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ 
+ }  // namespace webrtc
+--- a/third_party/webrtc/rtc_base/network_monitor.cc
++++ b/third_party/webrtc/rtc_base/network_monitor.cc
+@@ -11,6 +11,7 @@
+ #include "rtc_base/network_monitor.h"
+ 
+ #include "absl/strings/string_view.h"
++#include "rtc_base/checks.h"
+ 
+ namespace webrtc {
+ 
+@@ -21,6 +22,7 @@
+     case NetworkPreference::NOT_PREFERRED:
+       return "NOT_PREFERRED";
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ 
+ NetworkMonitorInterface::NetworkMonitorInterface() {}
+--- a/third_party/webrtc/rtc_base/openssl_stream_adapter.cc
++++ b/third_party/webrtc/rtc_base/openssl_stream_adapter.cc
+@@ -143,6 +143,7 @@
+ #endif
+       }
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ 
+ #ifdef OPENSSL_IS_BORINGSSL

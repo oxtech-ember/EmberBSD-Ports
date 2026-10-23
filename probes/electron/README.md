@@ -147,6 +147,11 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-in
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-proc-clang-cfi-attribute.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/pffft-simd-debug-validation-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/opus-bsd-alloca-header.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-gcc16-enum-pragmas.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-typed-stun-owner-and-crypto-emplace-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gfx-vector-mask-parentheses-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-codec-level-bounds-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/skia-reinitializes-attribute-gcc16.patch
 ```
 
 The pkg-config patch keeps the effective `pkg/lib` value in the common cross

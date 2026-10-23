@@ -1,0 +1,152 @@
+Preserve typed STUN owner dispatch and construct a cipher group in place.
+
+Keep the existing public AddAttribute entry point, validation order and virtual
+owner callbacks. A private implementation retains the fresh integrity
+attribute's concrete hierarchy instead of widening it before owner dispatch.
+The cipher group value parameter cannot alias its vector. In-place construction
+avoids the libc++ lvalue insertion alias-adjustment path.
+
+Origin: EmberBSD (AI-assisted), WebRTC e525d5d1f169e33f625961e9d5f5a15ec119face;
+not submitted upstream. Apply with -p1 from the Chromium source root.
+
+--- a/third_party/webrtc/api/crypto/crypto_options.cc
++++ b/third_party/webrtc/api/crypto/crypto_options.cc
+@@ -134,7 +134,7 @@
+ 
+ void CryptoOptions::EphemeralKeyExchangeCipherGroups::AddFirst(uint16_t group) {
+   std::erase(enabled_, group);
+-  enabled_.insert(enabled_.begin(), group);
++  enabled_.emplace(enabled_.begin(), group);
+ }
+ 
+ void CryptoOptions::EphemeralKeyExchangeCipherGroups::Update(
+--- a/third_party/webrtc/api/crypto/crypto_options_unittest.cc
++++ b/third_party/webrtc/api/crypto/crypto_options_unittest.cc
+@@ -111,6 +111,23 @@
+   EXPECT_EQ(groups.GetEnabled(), expected);
+ }
+ 
++TEST(EphemeralKeyExchangeCipherGroupsTest, AddFirstHandlesEmptyAndDuplicates) {
++  using Groups = CryptoOptions::EphemeralKeyExchangeCipherGroups;
++  Groups groups;
++  groups.SetEnabled({});
++  groups.AddFirst(Groups::kX25519);
++  EXPECT_EQ(groups.GetEnabled(), (std::vector<uint16_t>{Groups::kX25519}));
++
++  groups.SetEnabled({Groups::kSECP256R1, Groups::kX25519, Groups::kSECP384R1,
++                     Groups::kX25519});
++  groups.AddFirst(Groups::kX25519);
++  const std::vector<uint16_t> expected = {
++      Groups::kX25519, Groups::kSECP256R1, Groups::kSECP384R1};
++  EXPECT_EQ(groups.GetEnabled(), expected);
++  groups.AddFirst(Groups::kX25519);
++  EXPECT_EQ(groups.GetEnabled(), expected);
++}
++
+ TEST(EphemeralKeyExchangeCipherGroupsTest, Update) {
+   std::vector<uint16_t> expected = {
+ #ifdef SSL_GROUP_X25519_MLKEM768
+--- a/third_party/webrtc/api/transport/stun.cc
++++ b/third_party/webrtc/api/transport/stun.cc
+@@ -140,7 +140,8 @@
+          (attr_type >= 0xC000 && attr_type <= 0xFFFF);
+ }
+ 
+-void StunMessage::AddAttribute(std::unique_ptr<StunAttribute> attr) {
++template <typename Attribute>
++void StunMessage::AddAttributeInternal(std::unique_ptr<Attribute> attr) {
+   // Once a message is signed, adding attributes is a programming error.
+   // Exceptions are the Integrity attributes and Fingerprint.
+   if (attr->type() != STUN_ATTR_MESSAGE_INTEGRITY &&
+@@ -165,6 +166,10 @@
+   length_ += static_cast<uint16_t>(attr_length + 4);
+ 
+   attrs_.push_back(std::move(attr));
++}
++
++void StunMessage::AddAttribute(std::unique_ptr<StunAttribute> attr) {
++  AddAttributeInternal(std::move(attr));
+ }
+ 
+ std::unique_ptr<StunAttribute> StunMessage::RemoveAttribute(int type) {
+@@ -487,7 +492,7 @@
+   auto msg_integrity_attr_ptr = std::make_unique<StunByteStringAttribute>(
+       attr_type, std::string(attr_size, '0'));
+   auto* msg_integrity_attr = msg_integrity_attr_ptr.get();
+-  AddAttribute(std::move(msg_integrity_attr_ptr));
++  AddAttributeInternal(std::move(msg_integrity_attr_ptr));
+ 
+   // Calculate the HMAC for the message.
+   ByteBufferWriter buf;
+--- a/third_party/webrtc/api/transport/stun.h
++++ b/third_party/webrtc/api/transport/stun.h
+@@ -304,6 +304,10 @@
+   std::vector<std::unique_ptr<StunAttribute>> attrs_;
+ 
+  private:
++  // Retain the concrete attribute hierarchy during virtual owner assignment.
++  template <typename Attribute>
++  void AddAttributeInternal(std::unique_ptr<Attribute> attr);
++
+   StunAttribute* CreateAttribute(int type, size_t length) /* const*/;
+   const StunAttribute* GetAttribute(int type) const;
+   static bool IsValidTransactionId(absl::string_view transaction_id);
+--- a/third_party/webrtc/api/transport/stun_unittest.cc
++++ b/third_party/webrtc/api/transport/stun_unittest.cc
+@@ -38,6 +38,23 @@
+ 
+ using ::testing::ElementsAreArray;
+ using ::testing::NotNull;
++
++class OwnerTrackingByteStringAttribute : public StunByteStringAttribute {
++ public:
++  OwnerTrackingByteStringAttribute(std::vector<StunMessage*>& owners,
++                                  int& destructions)
++      : StunByteStringAttribute(STUN_ATTR_USERNAME, "name"),
++        owners_(owners),
++        destructions_(destructions) {}
++
++  ~OwnerTrackingByteStringAttribute() override { ++destructions_; }
++
++  void SetOwner(StunMessage* owner) override { owners_.push_back(owner); }
++
++ private:
++  std::vector<StunMessage*>& owners_;
++  int& destructions_;
++};
+ 
+ // Sample STUN packets with various attributes
+ // Gathered by wiresharking pjproject's pjnath test programs
+@@ -764,6 +781,32 @@
+                             test_address);
+ }
+ 
++TEST_F(StunTest, AddAttributeRetainsDerivedOwnerAndLifetime) {
++  std::vector<StunMessage*> owners;
++  int destructions = 0;
++  StunMessage msg(STUN_BINDING_REQUEST, "ABCDABCDABCD");
++  auto attr =
++      std::make_unique<OwnerTrackingByteStringAttribute>(owners, destructions);
++  StunAttribute* original = attr.get();
++  std::unique_ptr<StunAttribute> erased = std::move(attr);
++  msg.AddAttribute(std::move(erased));
++  EXPECT_EQ(owners, (std::vector<StunMessage*>{&msg}));
++  EXPECT_EQ(8U, msg.length());
++  EXPECT_EQ(0, destructions);
++
++  auto removed = msg.RemoveAttribute(STUN_ATTR_USERNAME);
++  EXPECT_EQ(original, removed.get());
++  EXPECT_EQ(owners, (std::vector<StunMessage*>{&msg, nullptr}));
++  EXPECT_EQ(0U, msg.length());
++  EXPECT_EQ(0, destructions);
++
++  msg.AddAttribute(std::move(removed));
++  msg.ClearAttributes();
++  EXPECT_EQ(owners, (std::vector<StunMessage*>{&msg, nullptr, &msg, nullptr}));
++  EXPECT_EQ(0U, msg.length());
++  EXPECT_EQ(1, destructions);
++}
++
+ TEST_F(StunTest, SetIPv6XorAddressAttributeOwner) {
+   StunMessage msg;
+   size_t size = ReadStunMessage(&msg, kStunMessageWithIPv6XorMappedAddress);

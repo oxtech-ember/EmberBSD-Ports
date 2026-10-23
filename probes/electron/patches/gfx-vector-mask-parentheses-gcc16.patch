@@ -1,0 +1,15 @@
+--- a/ui/gfx/geometry/transform.cc
++++ b/ui/gfx/geometry/transform.cc
+@@ -112,9 +112,9 @@
+ // static
+ 
+ Transform Transform::ColMajorF(base::span<const float, 16> a) {
+-  if (AllTrue(Float4{a[1], a[2], a[3], a[4]} == Float4{0, 0, 0, 0} &
+-              Float4{a[6], a[7], a[8], a[9]} == Float4{0, 0, 0, 0} &
+-              Float4{a[10], a[11], a[14], a[15]} == Float4{1, 0, 0, 1})) {
++  if (AllTrue((Float4{a[1], a[2], a[3], a[4]} == Float4{0, 0, 0, 0}) &
++              (Float4{a[6], a[7], a[8], a[9]} == Float4{0, 0, 0, 0}) &
++              (Float4{a[10], a[11], a[14], a[15]} == Float4{1, 0, 0, 1}))) {
+     return Transform(a[0], a[5], a[12], a[13]);
+   }
+   return Transform(a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9],
