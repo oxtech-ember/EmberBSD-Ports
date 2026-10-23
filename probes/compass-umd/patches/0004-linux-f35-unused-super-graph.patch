@@ -1,0 +1,10 @@
+--- a/Linux/driver/umd/src/common/context.cpp
++++ b/Linux/driver/umd/src/common/context.cpp
+@@ -37,7 +37,6 @@
+ #include "job_base.h"
+ #include "memory_base.h"
+ #include "parser_base.h"
+-#include "super_graph.h"
+ 
+ volatile int32_t UMD_LOG_LEVEL = LOG_WARN;
+ volatile char UMD_LOG_TIMESTAMP = 'n';

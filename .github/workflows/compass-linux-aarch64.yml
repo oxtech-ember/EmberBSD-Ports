@@ -8,6 +8,7 @@ name: Compass Linux AArch64 diagnostic
       - '.github/workflows/compass-linux-aarch64.yml'
       - 'probes/compass-umd/linux-candidate.py'
       - 'probes/compass-umd/tests/linux-no-device.cpp'
+      - 'probes/compass-umd/patches/0004-linux-f35-unused-super-graph.patch'
   workflow_dispatch:
 
 permissions:
@@ -29,7 +30,7 @@ jobs:
           test "$(gcc -dumpfullversion)" = 16.2.0
           test "$(uname -m)" = aarch64
           apt-get update
-          apt-get install -y --no-install-recommends python3 ca-certificates cppcheck valgrind libc6-dbg
+          apt-get install -y --no-install-recommends python3 ca-certificates patch cppcheck valgrind libc6-dbg
       - name: Build the pinned hardware UMD and check no-device APIs
         run: |
           python3 probes/compass-umd/linux-candidate.py \

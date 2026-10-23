@@ -144,6 +144,28 @@ def build(work, output):
                        f'exec {shlex.quote(str(compiler))} -MD -static-libstdc++ -static-libgcc '
                        '-Wl,-z,defs -Wl,--exclude-libs,ALL -Wl,-t "$@"\n')
     wrapper.chmod(0o755)
+    context = umd / 'src/common/context.cpp'
+    pristine_context = context.read_bytes()
+    if digest(context) != 'ba6236e185ab0d33bf7407f7f03d73aa78f1273ee91504f99902422905b25ab9':
+        raise RuntimeError('unexpected original context source')
+    syntax_command = [str(compiler), '-std=c++14', '-Wall', '-Werror', '-O2',
+                      '-DZHOUYI_V12', '-DZHOUYI_V3', '-DRTDEBUG=0',
+                      '-DMACRO_UMD_VERSION="6.0.0"',
+                      '-Iinclude', '-Isrc', '-Isrc/common', '-I3rdparty',
+                      '-fsyntax-only', 'src/common/context.cpp']
+    original = subprocess.run(syntax_command, cwd=umd, stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, timeout=60, check=False)
+    (logs / 'context-pristine-red.log').write_bytes(original.stdout)
+    if original.returncode == 0 or b'overloaded-virtual' not in original.stdout:
+        raise RuntimeError('original context did not reproduce the expected GCC16 diagnostic')
+    patch = OWNER / 'patches/0004-linux-f35-unused-super-graph.patch'
+    patch_output = run(logs / 'patch.log', ['patch', '-f', '-N', '-F0', '-p1', '-i', patch], cwd=source)
+    if re.search(r'offset|fuzz|FAILED|Reversed', patch_output, re.I):
+        raise RuntimeError('patch did not apply exactly')
+    if digest(context) != '52be95aa56bd7f2403123509dbc82f5ed401bd98cf45ddaca95c92a7635b6276':
+        raise RuntimeError('unexpected patched context source')
+    run(logs / 'context-patched-green.log', syntax_command, cwd=umd)
+    patched_context = context.read_bytes()
     arguments = [
         'BUILD_TARGET_PLATFORM=hw', 'BUILD_AIPU_VERSION=aipu_v3',
         'BUILD_UMD_API_TYPE=standard_api', 'BUILD_DEBUG_FLAG=release', 'BUILD_ANDROID_NDK=',
@@ -186,9 +208,22 @@ def build(work, output):
         raise RuntimeError('missing real compile commands')
     database = work / 'compile_commands.json'
     write_json(database, commands)
-    # No source adaptation: these findings belong to the pinned upstream and are retained.
-    run(logs / 'cppcheck.log', ['cppcheck', '--project=' + str(database), '--enable=warning,performance,portability',
-                              '--platform=unix64', '--check-level=normal', '--template=gcc'], timeout=600)
+    analyze = ['cppcheck', '--project=' + str(database), '--enable=warning,performance,portability',
+               '--platform=unix64', '--check-level=normal', '--template=gcc']
+    try:
+        context.write_bytes(pristine_context)
+        before_analysis = run(logs / 'cppcheck-pristine.log', analyze, timeout=600)
+    finally:
+        context.write_bytes(patched_context)
+    after_analysis = run(logs / 'cppcheck-patched.log', analyze, timeout=600)
+    def findings(text):
+        return {re.sub(r':\d+(?::\d+)?:', ':LINE:', line) for line in text.splitlines()
+                if ': warning:' in line or ': error:' in line}
+    introduced = sorted(findings(after_analysis) - findings(before_analysis))
+    write_json(logs / 'cppcheck-comparison.json', dict(
+        inherited=sorted(findings(after_analysis) & findings(before_analysis)), introduced=introduced))
+    if introduced:
+        raise RuntimeError('patch introduced new Cppcheck diagnostics')
     consumer = output / 'bin/compass-linux-no-device'
     shutil.copy2(OWNER / 'tests/linux-no-device.cpp', output / 'source')
     run(logs / 'consumer-build.log', [wrapper, '-std=c++14', '-Wall', '-Wextra', '-Werror', '-O2',
@@ -236,6 +271,9 @@ def build(work, output):
     write_json(output / 'receipt.json', dict(
         source_url=SOURCE_URL, source_revision=REVISION, source_sha256=SOURCE_SHA,
         uapi_sha256=digest(header), umd_version='6.0.0', build='hardware standard_api aipu_v3',
+        patches=[dict(name=patch.name, sha256=digest(patch),
+                      context_pristine_sha256=hashlib.sha256(pristine_context).hexdigest(),
+                      context_patched_sha256=hashlib.sha256(patched_context).hexdigest())],
         compiler='GCC 16.2.0', gcc_image=GCC_IMAGE, target=target, units=len(objfiles), elf=elf,
         gcc_source_url='https://gcc.gnu.org/pub/gcc/releases/gcc-16.2.0/gcc-16.2.0.tar.xz',
         analysis='Cppcheck of actual commands, GCC include paths and selected target builtins; not all compiler intrinsics are modeled. Unchanged upstream findings retained.',
@@ -243,9 +281,10 @@ def build(work, output):
     ))
     shutil.copytree(logs, output / 'logs')
     shutil.copy2(OWNER / 'linux-candidate.py', output / 'source')
+    shutil.copy2(patch, output / 'source')
     shutil.copy2(OWNER / 'linux-diagnostic.md', output / 'source')
     free_before = shutil.disk_usage(work.parent).free
-    # The source is pristine and its checked original archive is retained above.
+    # The checked original archive and exact adaptation patch are retained above.
     # All logs, unique consumer source and build-input receipts are already copied.
     shutil.rmtree(work)
     write_json(output / 'cleanup.json', dict(removed=[str(work)],

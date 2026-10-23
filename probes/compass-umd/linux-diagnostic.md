@@ -25,6 +25,14 @@ The original warning policy remains enabled. The recipe creates build
 directories before parallel compilation because the upstream make graph
 does not order those dependencies.
 
+The Linux-only `0004` patch removes the unused `super_graph.h` include from
+`context.cpp`. GCC16 rejects that unfinished upstream class for hidden
+virtual overloads. The recipe requires the original context to reproduce
+that diagnostic, then requires the patched context to pass the same syntax
+check. Both source hashes are checked. No graph implementation or UAPI is
+changed. Cppcheck compares the pristine and patched include paths and
+rejects introduced diagnostics.
+
 The DSO uses `-static-libstdc++ -static-libgcc`, `-z defs`, and hidden static
 archive symbols. ELF checks reject shared GCC runtime dependencies,
 GLIBCXX/CXXABI/GCC symbol version requirements and RPATH/RUNPATH. They record
