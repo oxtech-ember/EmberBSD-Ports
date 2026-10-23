@@ -32,6 +32,10 @@ The [cwrappers archive repair](cross/cwrappers-unwrap.md) preserves sibling
 directory paths in installed Libtool metadata. Actual native GCC16 wrapper
 checks and bounded module memory checks pass; package integration is separate.
 
+The [explicit Mach-O RPATH contract](cross/cwrappers-macho-rpath.md) keeps
+only explicitly mapped loader tokens. Paired real wrapper controls preserve
+ordinary path filtering. D-Bus package tests remain a separate gate.
+
 The [pkg-config sysroot contract](cross/pkgconfig.md) maps target dependency
 headers and link paths to the SDK. Actual GCC16/CMake imported-target checks
 preserve target runtime paths and unchanged native provider selection. Explicit

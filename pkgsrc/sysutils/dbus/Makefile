@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.146 2026/09/02 19:04:25 wiz Exp $
 
 DISTNAME=	dbus-1.16.2
-PKGREVISION=	6
+PKGREVISION=	7
 CATEGORIES=	sysutils
 MASTER_SITES=	https://dbus.freedesktop.org/releases/dbus/
 EXTRACT_SUFX=	.tar.xz
@@ -33,6 +33,12 @@ SMF_NAME=	dbus
 CHECK_PORTABILITY_SKIP+=	tools/cmake-format
 
 .include "../../mk/bsd.prefs.mk"
+
+# Keep Meson's build-tree DSO path for uninstalled Darwin tests.
+# Origin: EmberBSD (AI-assisted); use the pkgsrc buildlink passthrough API.
+.if ${OPSYS} == "Darwin"
+BUILDLINK_PASSTHRU_RPATHDIRS+=	@loader_path/../dbus
+.endif
 
 # Select the existing build-host XSLT processor and its installed XML catalog.
 # A host platform fallback may disable docs that the package PLIST requires.

@@ -1,0 +1,262 @@
+# Origin: EmberBSD (AI-assisted), explicit Mach-O runtime path rules.
+# Keep the NetBSD copyright and license in each source file.
+
+--- a/pkgtools/cwrappers/Makefile
++++ b/pkgtools/cwrappers/Makefile
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.29 2026/01/22 15:28:28 jperkin Exp $
+ 
+ PKGNAME=		cwrappers-20220403
+-PKGREVISION=		1
++PKGREVISION=		2
+ CATEGORIES=		pkgtools sysutils
+ 
+ MAINTAINER=		pkgsrc-users@NetBSD.org
+--- a/mk/cwrappers.mk
++++ b/mk/cwrappers.mk
+@@ -5,7 +5,7 @@
+ .include "../../mk/wrapper/wrapper-defs.mk"
+ .include "../../mk/buildlink3/bsd.buildlink3.mk"
+ 
+-TOOL_DEPENDS+=		cwrappers>=20220403nb1:../../pkgtools/cwrappers
++TOOL_DEPENDS+=		cwrappers>=20220403nb2:../../pkgtools/cwrappers
+ 
+ CWRAPPERS_SRC_DIR=	${TOOLBASE}/libexec/cwrappers
+ CWRAPPERS_CONFIG_DIR=	${WRKDIR}/.cwrapper/config
+--- a/pkgtools/cwrappers/files/bin/common.h
++++ b/pkgtools/cwrappers/files/bin/common.h
+@@ -101,7 +101,8 @@
+ 
+ void	operation_mode_cc(struct arglist *);
+ void	normalise_cc(struct arglist *);
+-void	cleanup_cc(struct arglist *args);
++void	cleanup_cc(struct arglist *args, int);
++int	macho_rpath_allowed(const char *, int);
+ void	transform_cc(struct arglist *args);
+ 
+ void	register_reorder(const char *);
+--- a/pkgtools/cwrappers/files/bin/base-wrapper.c
++++ b/pkgtools/cwrappers/files/bin/base-wrapper.c
+@@ -162,7 +162,7 @@
+ #else
+ 	normalise_cc(&args);
+ #endif
+-	cleanup_cc(&args);
++	cleanup_cc(&args, 0);
+ #if defined(WRAPPER_LD)
+ 	generic_transform_ld(&args);
+ #else
+@@ -172,7 +172,7 @@
+ #if defined(WRAPPER_CC) || defined(WRAPPER_CXX)
+ 	transform_cc(&args);
+ #endif
+-	cleanup_cc(&args);
++	cleanup_cc(&args, 1);
+ 
+ #if defined(WRAPPER_LIBTOOL) || defined(WRAPPER_SHLIBTOOL)
+ skip_transforms:
+--- a/pkgtools/cwrappers/files/bin/cleanup-cc.c
++++ b/pkgtools/cwrappers/files/bin/cleanup-cc.c
+@@ -39,7 +39,7 @@
+ #define CLEANUP_HASH	256
+ 
+ void
+-cleanup_cc(struct arglist *args)
++cleanup_cc(struct arglist *args, int transformed)
+ {
+ 	struct argument *arg, *arg2, *arg3;
+ 	struct arglist hashtab[CLEANUP_HASH];
+@@ -52,7 +52,8 @@
+ 		if (arg->val[0] != '-')
+ 			continue;
+ 		if (strncmp(arg->val, "-Wl,-rpath,", 11) == 0) {
+-			if (isabs(arg->val[11]))
++			if (isabs(arg->val[11]) ||
++			    macho_rpath_allowed(arg->val + 11, transformed))
+ 				continue;
+ 			argument_unlink(args, &arg);
+ 			continue;
+--- a/pkgtools/cwrappers/files/bin/generic-transform-cc.c
++++ b/pkgtools/cwrappers/files/bin/generic-transform-cc.c
+@@ -310,6 +310,57 @@
+ }
+ #endif
+ 
++/* A runtime token is not a build-host relative directory. */
++static int
++macho_rpath(const char *path)
++{
++
++	return ((strncmp(path, "@loader_path", 12) == 0 &&
++	    (path[12] == '\0' || path[12] == '/')) ||
++	    (strncmp(path, "@executable_path", 16) == 0 &&
++	    (path[16] == '\0' || path[16] == '/')));
++}
++
++/* Both cleanup passes use the same explicit RPATH rule contract. */
++int
++macho_rpath_allowed(const char *path, int transformed)
++{
++	struct transform_rule *rule;
++	const char *name;
++	size_t len, n;
++
++	if (!macho_rpath(path))
++		return 0;
++	len = strlen(path);
++	while (len > 1 && isabs(path[len - 1]))
++		--len;
++	TAILQ_FOREACH(rule, &rpath_rules, link) {
++		name = transformed ? rule->dst : rule->src;
++		if (name == NULL)
++			continue;
++		n = strlen(name);
++		if (n == 0)
++			continue;
++		if (transformed) {
++			/* The destination is a literal prefix, not a source pattern. */
++			if (strncmp(path, name, n) == 0 &&
++			    (path[n] == '\0' || isabs(path[n])))
++				return 1;
++			continue;
++		}
++		if (isabs(name[n - 1])) {
++			if (n - 1 != len || memcmp(path, name, len) != 0)
++				continue;
++		} else {
++			if (n > len || (path[n] != '\0' && !isabs(path[n])) ||
++			    strncmp(path, name, n) != 0)
++				continue;
++		}
++		return transformed || rule->dst != NULL;
++	}
++	return 0;
++}
++
+ void
+ generic_transform_cc(struct arglist *args)
+ {
+@@ -320,7 +371,7 @@
+ 	const char *path, *prefix;
+ 	char *transformed;
+ 	int rpath_mode;
+-	size_t i, len;
++	size_t i, len, consumed;
+ 
+ 	TAILQ_FOREACH_SAFE(arg, args, link, arg2) {
+ 		len = strlen(arg->val);
+@@ -395,7 +446,7 @@
+ 			path = arg->val + 15;
+ 			ruleset = &rpath_rules;
+ 			opt_arg = NULL;
+-			rpath_mode = 1;
++			rpath_mode = 2;
+ 		}
+ #else
+ 		else if (strcmp(arg->val, "-rpath") == 0 ||
+@@ -411,7 +462,7 @@
+ 			len = strlen(arg->val);
+ 			prefix = "";
+ 			path = arg->val;
+-			rpath_mode = 1;
++			rpath_mode = strcmp(opt_arg->val, "-rpath") == 0 ? 1 : 2;
+ 		}
+ #endif
+ 		else if (strncmp(arg->val, "-l", 2) == 0) {
+@@ -435,7 +486,7 @@
+ 		} else
+ 			continue;
+ 
+-		if (!isabs(*path))
++		if (!isabs(*path) && !(rpath_mode == 1 && macho_rpath(path)))
+ 			continue;
+ 
+ 		while (len > 1 && isabs(path[len - 1]))
+@@ -458,7 +509,7 @@
+ 				break;
+ 		}
+ 		if (rule == NULL || rule->dst == NULL) {
+-			if (rpath_mode) {
++			if (rpath_mode && isabs(*path)) {
+ 				if (len >= 6 &&
+ 				    strcmp(path + len - 6, "/.libs") == 0)
+ 					continue;
+@@ -468,8 +519,19 @@
+ 			argument_unlink(args, &arg);
+ 			continue;
+ 		}
++		if (rpath_mode == 1 && macho_rpath(path) &&
++		    !isabs(*rule->dst) && !macho_rpath(rule->dst)) {
++			if (opt_arg)
++				argument_unlink(args, &opt_arg);
++			argument_unlink(args, &arg);
++			continue;
++		}
++		consumed = rule->src_len;
++		if (rpath_mode == 1 && macho_rpath(path) &&
++		    consumed > strlen(path))
++			consumed = strlen(path);
+ 		transformed = xasprintf("%s%s%s", prefix, rule->dst,
+-		    path + rule->src_len);
++		    path + consumed);
+ 		argument_update(arg, transformed);
+ 	}
+ }
+--- a/pkgtools/cwrappers/files/bin/normalise-cc.c
++++ b/pkgtools/cwrappers/files/bin/normalise-cc.c
+@@ -36,6 +36,21 @@
+ #include <string.h>
+ #include "common.h"
+ 
++/* Keep only explicitly mapped runtime tokens during RPATH normalization. */
++static int
++normalise_rpath_allowed(const char *val, size_t len)
++{
++	char *path;
++	int allowed;
++
++	if (isabs(val[0]))
++		return 1;
++	path = xstrndup(val, len);
++	allowed = macho_rpath_allowed(path, 0);
++	free(path);
++	return allowed;
++}
++
+ static void
+ normalise_path_list(struct arglist *args, struct argument *arg,
+     const char *prefix, const char *sysroot_prefix, const char *val,
+@@ -45,14 +60,15 @@
+ 	struct argument *arg2;
+ 
+ 	while ((sep = strchr(val, ':')) != NULL) {
+-		if (sep == val || (strip_relative && !isabs(val[0]))) {
++		if (sep == val || (strip_relative &&
++		    !normalise_rpath_allowed(val, sep - val))) {
+ 			val = sep + 1;
+ 			continue;
+ 		}
+ 		arg2 = argument_new(concat2(prefix, val, sep - val));
+ 		TAILQ_INSERT_AFTER(args, arg, arg2, link);
+ 		arg = arg2;
+-		if (sysroot_prefix && sysroot) {
++		if (sysroot_prefix && sysroot && isabs(val[0])) {
+ 			char *sysroot_val = concat2(sysroot, val, sep - val);
+ 			arg2 = argument_new(concat(sysroot_prefix,
+ 				sysroot_val));
+@@ -62,12 +78,13 @@
+ 		}
+ 		val = sep + 1;
+ 	}
+-	if (val[0] == '\0' || (strip_relative && !isabs(val[0])))
++	if (val[0] == '\0' || (strip_relative &&
++	    !normalise_rpath_allowed(val, strlen(val))))
+ 		return;
+ 	arg2 = argument_new(concat(prefix, val));
+ 	TAILQ_INSERT_AFTER(args, arg, arg2, link);
+ 	arg = arg2;
+-	if (sysroot_prefix && sysroot) {
++	if (sysroot_prefix && sysroot && isabs(val[0])) {
+ 		char *sysroot_val = concat(sysroot, val);
+ 		arg2 = argument_new(concat(sysroot_prefix, sysroot_val));
+ 		free(sysroot_val);
