@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.9 2026/10/07 05:16:47 adam Exp $
+
+BLAKE2s (iniconfig-2.3.1.tar.gz) = 4507bc85411f04694080871e010110b15d918f4e598a468093ccafa3f9dbdcdb
+SHA512 (iniconfig-2.3.1.tar.gz) = dd23431d81a695f42bea309e9b1eb19bde0333e242e1eb1b4e9f92b51cb304b06b589fa7aba09a86ffc0eba74ae00e98a4f101b95b278ff3777260d98f9e3c76
+Size (iniconfig-2.3.1.tar.gz) = 21209 bytes

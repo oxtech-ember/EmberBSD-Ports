@@ -30,6 +30,7 @@ devel/lemon
 devel/lld
 devel/meson
 devel/protobuf
+devel/py-iniconfig
 devel/py-mako
 devel/swig4
 devel/zlib
