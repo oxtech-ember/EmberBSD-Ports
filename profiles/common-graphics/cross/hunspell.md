@@ -22,6 +22,24 @@ The package version is `20260225`, so it sorts above the previous `20060207`.
 The data interface retains `en_US.aff`, `en_US.dic` and `README_en_US.txt` at their
 existing installed paths. The dictionary contains 47,551 UTF-8 entries.
 
+Hunspell 1.7.5nb3 includes all 78 upstream message catalogs. The PLIST lists
+the languages from the release's `po/LINGUAS`. `USE_PKGLOCALEDIR=yes` retains
+the normal pkgsrc locale path conversion. Native and cross builds retain NLS.
+The AI-assisted packaging repair does not change the library ABI or C++ source.
+
+Check the exported PLIST against the official source archive:
+
+```sh
+python3 profiles/common-graphics/tests/hunspell-plist.py \
+  --source /absolute/path/hunspell-1.7.5.tar.gz \
+  --plist /absolute/path/pkgsrc/textproc/hunspell/PLIST
+```
+
+The source check rejects the former PLIST with all catalogs missing. It also
+rejects a missing catalog, an extra language and a duplicate entry. It reads
+the archive without extraction. A new ordinary package and installed runtime
+remain separate checks.
+
 The original README contains the Kevin Atkinson SCOWLv2 permission notice and
 the Geoff Kuenning affix-file notice. The latter requires modified source and
 binary distributions to be marked. All three files remain unmodified.
