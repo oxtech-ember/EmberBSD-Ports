@@ -63,6 +63,61 @@ assert reuse.snapshot(value) == before
 checks.append('valid CMake install preserves original source and objects')
 assert (dest / 'usr/pkg/include/llvm/IR/Empty.h').read_bytes() == b''
 checks.append('valid empty installed file')
+# Normal pkgsrc install-makedirs creates this prefix before do-install.
+# The real CMake producer must still pass the complete accepted-stage gate.
+pkgsrc = work / 'pkgsrc-prefix'
+(pkgsrc / 'usr/pkg').mkdir(parents=True)
+for path in (pkgsrc / 'usr', pkgsrc / 'usr/pkg'):
+    path.chmod(0o755)
+reuse.install(str(config), str(receipt), receipt_hash, str(pkgsrc))
+assert reuse.tree(pkgsrc / 'usr/pkg') == reuse.tree(dest / 'usr/pkg')
+checks.append('normal pkgsrc empty prefix skeleton permits exact real CMake installation')
+
+
+def skeleton(name):
+    path = work / name
+    (path / 'usr/pkg').mkdir(parents=True)
+    for parent in (path / 'usr', path / 'usr/pkg'):
+        parent.chmod(0o755)
+    return path
+
+
+strict = skeleton('record-prefix-skeleton')
+invocations = (work / 'install-invocations.log').read_bytes()
+refused('record still requires a completely empty reference', 'DESTDIR must be empty', reuse.record,
+        str(config), str(strict), str(work / 'invalid-prefix-receipt.json'))
+assert not (work / 'invalid-prefix-receipt.json').exists()
+assert (work / 'install-invocations.log').read_bytes() == invocations
+for variant in ('root-file', 'prefix-file', 'nested-directory', 'wrong-prefix', 'usr-link',
+                'prefix-link', 'usr-file', 'prefix-regular-file', 'usr-mode', 'prefix-mode'):
+    path = skeleton('invalid-prefix-' + variant)
+    if variant == 'root-file':
+        (path / 'foreign').write_text('labelled unqualified input')
+    elif variant == 'prefix-file':
+        (path / 'usr/pkg/foreign').write_text('labelled unqualified input')
+    elif variant == 'nested-directory':
+        (path / 'usr/pkg/share').mkdir()
+    elif variant == 'wrong-prefix':
+        (path / 'usr/pkg').rename(path / 'usr/local')
+    elif variant in ('usr-link', 'usr-file'):
+        (path / 'usr/pkg').rmdir()
+        (path / 'usr').rmdir()
+        if variant == 'usr-link':
+            (path / 'usr').symlink_to(pkgsrc / 'usr', target_is_directory=True)
+        else:
+            (path / 'usr').write_text('labelled regular file')
+    elif variant in ('prefix-link', 'prefix-regular-file'):
+        (path / 'usr/pkg').rmdir()
+        if variant == 'prefix-link':
+            (path / 'usr/pkg').symlink_to(pkgsrc / 'usr/pkg', target_is_directory=True)
+        else:
+            (path / 'usr/pkg').write_text('labelled regular file')
+    else:
+        (path / ('usr' if variant == 'usr-mode' else 'usr/pkg')).chmod(0o700)
+    invocations = (work / 'install-invocations.log').read_bytes()
+    refused(variant + ' prefix skeleton', 'canonical empty /usr/pkg skeleton', reuse.install,
+            str(config), str(receipt), receipt_hash, str(path))
+    assert (work / 'install-invocations.log').read_bytes() == invocations
 for kind in ('recipe', 'sdk_recipe'):
     destination = Path(value[kind]) / 'private-stage'
     destination.mkdir()

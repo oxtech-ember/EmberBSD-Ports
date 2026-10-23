@@ -6,6 +6,7 @@ import importlib.util
 import os
 from pathlib import Path
 import re
+import stat
 import sys
 sys.dont_write_bytecode = True
 from sdk_source import load_sdk
@@ -196,14 +197,28 @@ def guarded_install(value, command, log, env):
         clear()
 
 
-def install_full(value, destdir):
+def empty_destination(destdir, pkgsrc_skeleton):
+    entries = os.listdir(destdir)
+    if not entries:
+        return
+    check(pkgsrc_skeleton, 'SDK DESTDIR must be empty')
+    message = 'SDK DESTDIR must be empty or contain only the canonical empty /usr/pkg skeleton'
+    check(set(entries) == {'usr'}, message)
+    parent = Path(destdir) / 'usr'
+    for path, expected in ((parent, {'pkg'}), (parent / 'pkg', set())):
+        info = path.lstat()
+        check(stat.S_ISDIR(info.st_mode) and stat.S_IMODE(info.st_mode) == 0o755, message)
+        check(set(os.listdir(path)) == expected, message)
+
+
+def install_full(value, destdir, *, pkgsrc_skeleton=False):
     from emberbsd_sdk.paths import real_directory
     check(value['schema'] == 2, 'Legacy LLVM receipts support verification only; record current Python inputs before install')
     check(os.path.isabs(destdir) and destdir != '/', 'Existing private DESTDIR required')
     reject_quarantine(value)
     real_directory(destdir)
     reject_overlaps(destdir, input_roots(value), 'SDK DESTDIR overlaps LLVM inputs')
-    check(not os.listdir(destdir), 'SDK DESTDIR must be empty')
+    empty_destination(destdir, pkgsrc_skeleton)
     command = [value['cmake'], '--install', value['build'], '--prefix', '/usr/pkg']
     if value['install_strip']:
         command.append('--strip')
@@ -249,7 +264,7 @@ def verify(config, receipt_path, expected_hash):
 
 def install(config, receipt_path, expected_hash, destdir):
     receipt = verify(config, receipt_path, expected_hash)
-    stage = install_full(receipt['context'], destdir)
+    stage = install_full(receipt['context'], destdir, pkgsrc_skeleton=True)
     check(tree(stage) == receipt['stage'], 'Installed LLVM stage differs from the accepted full stage')
     verify(config, receipt_path, expected_hash)
     print('PASS: accepted LLVM objects produced an exact SDK input stage; package checks remain required.')

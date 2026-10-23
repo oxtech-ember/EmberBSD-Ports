@@ -87,6 +87,11 @@ prove that the producer session has stopped. Check the source and object hashes.
 Preserve the marker and install log as evidence before controlled marker removal.
 Do not relocate the source tree to avoid the quarantine check.
 
+For normal `install`, DESTDIR may contain only pkgsrc's empty `usr` and
+`usr/pkg` directories. Both must be real directories with mode `0755`.
+Files, links, other entries and other modes cause refusal before CMake starts.
+`record` still requires a completely empty reference DESTDIR.
+
 The private full stage must match the reference bytes, modes and symlinks before
 partition selection. This check also rejects an input that changes temporarily
 during installation and then returns to its recorded state. Run the ordinary
