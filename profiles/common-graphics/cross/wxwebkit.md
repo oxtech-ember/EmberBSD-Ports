@@ -83,6 +83,10 @@ LLInt settings and offset extractors describe target layouts. Upstream Ruby
 reads their ELF bytes; it does not execute them. Introspection uses the common
 native scanner/compiler, ELF dependency helper and real target-query launcher.
 Cross configuration rejects a missing dependency helper or launcher.
+It also requires the target prefix's `share/gir-1.0` directory. Both the native
+scanner and typelib compiler receive this explicit target include directory.
+The compiler keeps its build directory first for generated WebKit GIR files.
+Native configuration does not receive this cross-only include path.
 The configure and build environments select the common Python query launcher.
 `tests/webkit-gi-launcher.py` checks actual pkgsrc metadata for both APIs, the
 release FindGI module, the launcher configuration check, native behavior and

@@ -3,7 +3,7 @@
 # used by www/webkit-gtk60/Makefile
 
 DISTNAME=	webkitgtk-2.54.1
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	www
 MASTER_SITES=	https://www.webkitgtk.org/releases/
 EXTRACT_SUFX=	.tar.xz

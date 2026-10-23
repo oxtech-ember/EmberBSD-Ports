@@ -30,5 +30,5 @@ SHA1 (patch-Source_WebKit_UIProcess_gtk_AcceleratedBackingStore.cpp) = e2022bdff
 SHA1 (patch-Source_WebKit_UIProcess_gtk_DisplayX11.cpp) = 627a532dd871a194360e964fedab5cc00347db88
 SHA1 (patch-Source_WebKit_WebProcess_WebPage_CoordinatedGraphics_ThreadedCompositor.cpp) = e694951b46fab7bf527dea8a7d08f7175a0bf60c
 SHA1 (patch-Source_cmake_FindFlite.cmake) = 83925123ffbac5620865df0fcf2f8e8dfbd3aa57
-SHA1 (patch-Source_cmake_FindGI.cmake) = 89f544ce7454e1ade712dc87ea1763001de75b11
+SHA1 (patch-Source_cmake_FindGI.cmake) = 6991d925036563a31a0f120c48a2ac0071038aa5
 SHA1 (patch-Source_cmake_WebKitFeatures.cmake) = 97e11af82964688b28d3ea9b565e822d588d5d34

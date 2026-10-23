@@ -13,6 +13,58 @@ import subprocess
 import tarfile
 
 
+
+def check_gir_commands(run, cmake, module, work, tools, target_gir, wrapper, env):
+    """Inspect real CMake commands. The imported library is never built or run."""
+    work.mkdir()
+    project = work / "project"
+    project.mkdir()
+    header = project / "include-probe.h"
+    header.write_text("typedef unsigned IncludeProbeToken;\n")
+    (project / "CMakeLists.txt").write_text(
+        'cmake_minimum_required(VERSION 3.20)\nproject(GIRIncludeCommands NONE)\n'
+        'set(ENABLE_INTROSPECTION ON)\ninclude("' + str(module) + '")\n'
+        'add_library(IncludeProbe SHARED IMPORTED)\n'
+        'set_target_properties(IncludeProbe PROPERTIES IMPORTED_LOCATION '
+        '"${CMAKE_BINARY_DIR}/libIncludeProbe.so")\n'
+        'GI_INTROSPECT(IncludeProbe 1.0 include-probe.h NO_IMPLICIT_SOURCES '
+        'SOURCES "' + str(header) + '" DEPENDENCIES Gtk-3.0:gtk+-3.0)\n')
+    common = [cmake, "-G", "Ninja", "-S", project,
+              "-DCMAKE_MAKE_PROGRAM=" + str(tools / "bin/ninja"),
+              "-DPKG_CONFIG_EXECUTABLE=" + str(tools / "bin/pkg-config"),
+              "-DGI_SCANNER_EXE=" + str(tools / "bin/g-ir-scanner"),
+              "-DGI_COMPILER_EXE=" + str(tools / "bin/g-ir-compiler")]
+    for mode in ("cross", "native"):
+        build = work / mode
+        argv = [*common, "-B", build]
+        if mode == "cross":
+            argv += ["-DCMAKE_SYSTEM_NAME=NetBSD", "-DGI_LDD_WRAPPER=" + str(wrapper),
+                     "-DGI_TARGET_GIR_DIR=" + str(target_gir)]
+        result = run("gir-commands-" + mode, argv, env)
+        assert result.returncode == 0, result.stderr
+        ninja = (build / "build.ninja").read_text()
+        scanner = next(line for line in ninja.splitlines()
+                       if "COMMAND =" in line and "--namespace=IncludeProbe" in line)
+        compiler = next(line for line in ninja.splitlines()
+                        if "COMMAND =" in line and "--output=" in line
+                        and "g-ir-compiler" in line)
+        assert "--warn-all --warn-error" in scanner
+        if mode == "cross":
+            assert "--add-include-path=" + str(target_gir) in scanner
+            target_flag = "--includedir=" + str(target_gir)
+            local_flag = "--includedir=" + str(build)
+            assert target_flag in compiler and compiler.index(local_flag) < compiler.index(target_flag)
+        else:
+            assert "--add-include-path=" not in scanner
+            assert str(target_gir) not in compiler
+    for name, value in (("missing", ""), ("relative", "share/gir-1.0"),
+                        ("absent", str(work / "absent-gir"))):
+        rejected = run("gir-directory-" + name, [*common, "-B", work / name,
+            "-DCMAKE_SYSTEM_NAME=NetBSD", "-DGI_LDD_WRAPPER=" + str(wrapper),
+            "-DGI_TARGET_GIR_DIR=" + value], env)
+        assert rejected.returncode != 0 and "GI_TARGET_GIR_DIR" in rejected.stderr
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ["pkgsrc", "makeconf", "bmake", "cmake", "archive", "python", "work"]:
@@ -50,7 +102,8 @@ def main():
     (args.work / "patch.log").write_text(applied.stdout + applied.stderr)
     assert applied.returncode == 0, "Release FindGI patch failed"
     keys = ["CONFIGURE_ENV", "MAKE_ENV", "TOOLBASE", "CROSS_DESTDIR", "TOOLDIR",
-            "MACHINE_GNU_PLATFORM", "_WEBKIT_BUILD_RUBY", "PKG_FAIL_REASON"]
+            "MACHINE_GNU_PLATFORM", "_WEBKIT_BUILD_RUBY", "PKG_FAIL_REASON", "CROSS_LOCALBASE",
+            "CMAKE_CONFIGURE_ARGS"]
     results = {}
     for api in ["41", "60"]:
         config = args.work / ("query-" + api + ".json")
@@ -91,17 +144,27 @@ def main():
             "-DGI_LDD_WRAPPER=" + str(args.pkgsrc / "devel/gobject-introspection/files/elf-needed.sh"),
             "-DPKG_CONFIG_EXECUTABLE=" + values["TOOLBASE"] + "/bin/pkg-config",
             "-DGI_SCANNER_EXE=" + values["TOOLBASE"] + "/bin/g-ir-scanner",
-            "-DGI_COMPILER_EXE=" + values["TOOLBASE"] + "/bin/g-ir-compiler"]
+            "-DGI_COMPILER_EXE=" + values["TOOLBASE"] + "/bin/g-ir-compiler",
+            "-DGI_TARGET_GIR_DIR=" + values["CROSS_DESTDIR"] + values["CROSS_LOCALBASE"] + "/share/gir-1.0"]
         checked = run("configure-" + api, command, environment)
         assert checked.returncode == 0, "Actual FindGI/configure launcher failed; see configure log"
         assert "PASS: GI query configuration matches" in checked.stdout
+        target_gir = Path(values["CROSS_DESTDIR"] + values["CROSS_LOCALBASE"]) / "share/gir-1.0"
+        assert "-DGI_TARGET_GIR_DIR:PATH=" + str(target_gir) in values["CMAKE_CONFIGURE_ARGS"]
+        if api == "41":
+            check_gir_commands(run, args.cmake, source, args.work / "gir-commands",
+                               Path(values["TOOLBASE"]), target_gir,
+                               args.pkgsrc / "devel/gobject-introspection/files/elf-needed.sh",
+                               environment)
         launcher = shlex.split(environment["GI_CROSS_LAUNCHER"])
         assert len(launcher) == 4 and Path(launcher[0]).resolve() == args.python
         assert launcher[1:3] == ["-E", "-S"]
         assert launcher[3].endswith("/target-query.py") and Path(launcher[3]).is_file()
         assert "target-query.rb" not in values["CONFIGURE_ENV"] + values["MAKE_ENV"]
-        native = run("native-" + api, [*base, "USE_CROSS_COMPILE=no", "-v", "CONFIGURE_ENV"])
+        native = run("native-" + api, [*base, "USE_CROSS_COMPILE=no", "-v", "CONFIGURE_ENV",
+                                              "-v", "CMAKE_CONFIGURE_ARGS"])
         assert native.returncode == 0 and "GI_CROSS_LAUNCHER=" not in native.stdout
+        assert "GI_TARGET_GIR_DIR" not in native.stdout
         negative = list(command)
         negative[4] = args.work / ("missing-" + api)
         refused = run("missing-launcher-" + api, negative,
