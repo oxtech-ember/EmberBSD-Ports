@@ -15,7 +15,7 @@
 
 static int
 write_seed(const char *directory, const char *name, unsigned int mode,
-           unsigned int declared_size, unsigned int expanded_size)
+           unsigned int expected_size, unsigned int expanded_size)
 {
     unsigned char source[EXPANDED_SIZE];
     unsigned char compressed[OUTPUT_SIZE];
@@ -24,6 +24,10 @@ write_seed(const char *directory, const char *name, unsigned int mode,
     char path[1024];
     FILE *output;
     int status;
+
+    if (expected_size == 0 || expected_size > 65536 ||
+        expanded_size == 0 || expanded_size > sizeof(source))
+        return 1;
 
     memset(source, 'A', expanded_size);
     work = malloc(LZO2A_999_MEM_COMPRESS);
@@ -48,10 +52,12 @@ write_seed(const char *directory, const char *name, unsigned int mode,
     {
         unsigned char header[4];
 
-        header[0] = (unsigned char) (declared_size >> 24);
-        header[1] = (unsigned char) (declared_size >> 16);
-        header[2] = (unsigned char) (declared_size >> 8);
-        header[3] = (unsigned char) declared_size;
+        /* The harness adds one to the encoded value to exclude zero. */
+        expected_size--;
+        header[0] = (unsigned char) (expected_size >> 24);
+        header[1] = (unsigned char) (expected_size >> 16);
+        header[2] = (unsigned char) (expected_size >> 8);
+        header[3] = (unsigned char) expected_size;
         if (fwrite(header, 1, sizeof(header), output) != sizeof(header) ||
             fwrite(compressed, 1, compressed_size, output) != compressed_size) {
             fclose(output);
@@ -88,5 +94,7 @@ main(int argc, char **argv)
                        cases[i].declared_size, EXPANDED_SIZE) != 0)
             return 1;
     }
+    if (write_seed(argv[1], "font-size-mismatch", 2, 33, 32) != 0)
+        return 1;
     return 0;
 }

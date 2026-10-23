@@ -49,6 +49,7 @@ def main():
     args.replay = work / 'bin/cairo-lzo-replay-gcc16'
     args.memcheck = work / 'bin/cairo-lzo-replay-gcc16-memcheck'
     args.lsan_probe = work / 'bin/cairo-lzo-lsan-probe'
+    args.lsan_replay = work / 'bin/cairo-lzo-replay-lsan'
     args.corpus = ports / 'profiles/common-graphics/tests/cairo-lzo-corpus'
     args.logs = work / 'results/accepted'
     if args.memcheck.is_file() != args.memcheck_build.is_dir():
@@ -176,7 +177,7 @@ def main():
                                    '-fsanitize=fuzzer,address,undefined', '-fno-omit-frame-pointer']),
             ('gcc', args.gcc, ['-O1', '-g', '-fsanitize=address,undefined',
                                '-fno-omit-frame-pointer']),
-            ('clang_lsan', args.clang, ['-O1', '-g', '-fsanitize=address',
+            ('clang_lsan', args.clang, ['-O1', '-g', '-fsanitize=address,undefined',
                                         '-fno-omit-frame-pointer'])]
     if args.memcheck.is_file():
         tool_specs.append(('gcc_memcheck', args.gcc,
@@ -216,7 +217,7 @@ def main():
 
     binaries = {}
     binary_inputs = [('fuzzer', args.fuzzer), ('replay', args.replay),
-                     ('lsan_probe', args.lsan_probe)]
+                     ('lsan_probe', args.lsan_probe), ('lsan_replay', args.lsan_replay)]
     if args.memcheck.is_file():
         binary_inputs.append(('memcheck', args.memcheck))
     for name, path in binary_inputs:

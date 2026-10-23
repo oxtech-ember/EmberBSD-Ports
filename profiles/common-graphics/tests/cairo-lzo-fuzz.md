@@ -10,7 +10,8 @@ The three modes cover the direct one-pixel ARGB32 image path, the A8 image
 file fallback, and the embedded Type42 font source. Their decoded-size field is
 bounded to 1 through 65536 bytes. The seed generator uses LZO2A compression to
 create one matching-size and one deliberately undersized declaration for each
-mode. The six seed files are tracked in `cairo-lzo-corpus/`.
+mode. A seventh seed declares one byte more than the font payload expands to.
+The seven seeds are tracked in `cairo-lzo-corpus/`.
 
 `cairo-lzo-fuzz.c` builds as a Clang libFuzzer target with ASan and UBSan. The
 Cairo and LZO static archives must carry the same sanitizer instrumentation.
@@ -52,15 +53,16 @@ python3 /absolute/EmberBSD-SDK/scripts/fuzz-check.py verify \
 
 The SDK runner hashes its initial inputs, applies a finite libFuzzer budget,
 records the generated corpus, then replays every initial and generated file
-once with the GCC16 binary. The manifest adapter requires a clean Ports
-checkout and rejects archives that differ from the repository's pinned hashes.
-Keep the evidence directory outside Git.
+once with the GCC16 binary and once with the separate LSan binary when enabled.
+The manifest adapter requires a clean Ports checkout and rejects archives that
+differ from the repository's pinned hashes. Keep the evidence directory outside
+Git.
 
 ## Leak and Memcheck binaries
 
 Build the positive control with the diagnostic host Clang. It deliberately
 leaves one allocation live so the SDK runner can confirm LeakSanitizer is
-active before accepting the Cairo process result:
+active before replaying Cairo inputs:
 
 ```sh
 "$CLANG" -O1 -g -fsanitize=address -fno-omit-frame-pointer \
@@ -68,9 +70,21 @@ active before accepting the Cairo process result:
   -o /absolute/cairo-lzo-work/bin/cairo-lzo-lsan-probe
 ```
 
-The adapter uses `abort_on_error=1:detect_leaks=1`. The LSan probe's expected
-nonzero exit is accepted only when its captured report names the intentional
-direct leak. A normal fuzz or replay leak remains a failure.
+The SDK runner first checks `lsan_probe`; its expected nonzero exit is accepted
+only when its report names the intentional direct leak. The RSS-limited
+libFuzzer and GCC16 replay use `detect_leaks=0` because libFuzzer's process-life
+RSS monitor has process-exit allocations on this host. The runner replays every
+initial and generated corpus file with `lsan_replay` under
+`ASAN_OPTIONS=abort_on_error=1:detect_leaks=1`. A Cairo leak fails that replay.
+Unretained mutations are not covered by the separate LSan replay.
+
+Build `lsan_replay` from `cairo-lzo-fuzz.c` and the Clang-instrumented Cairo and
+LZO archives. Use the GCC16 replay link line as the source of include and
+library arguments. Add `-DCAIRO_LZO_FUZZ_REPLAY`, retain the sanitizers used by
+those archives (`-fsanitize=address,undefined` in this build) and
+`-fno-omit-frame-pointer`, and remove `-fsanitize=fuzzer`. This executable has
+the one-input replay `main`; it must not link libFuzzer. Keep the full command
+and output in the accepted build logs.
 
 On a supported Valgrind host, prepare a separate `gcc16-memcheck` Cairo/LZO
 build with the same source revisions, patches, Meson feature settings and
@@ -103,8 +117,10 @@ threshold.
 The negative control builds the same harness against Cairo 1.18.6 with the
 LZO repair patches omitted. The `direct-oversized` seed produced an ASan
 heap-buffer-overflow in the old `lzo2a_decompress` path. The patched fuzzer
-must process all six seeds without an ASan or UBSan finding. A negative-control
-finding is expected evidence; it is not a failure of the patched build.
+must process all seven seeds without an ASan or UBSan finding. LSan replay must
+also pass the `font-size-mismatch` seed, which regresses the previously leaked
+source reference and FreeType face-data allocation. A negative-control finding
+is expected evidence; it is not a failure of the patched build.
 
 The LZO Ports patches express byte alignment for optimized unaligned-access
 aliases in both the library and bundled minilzo. They also reject dictionary
