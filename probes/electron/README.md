@@ -118,6 +118,7 @@ patch -p0 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-asmflags.pa
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-bindgen-host-tools.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-netbsd-x64-targets.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-version-netbsd.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-netbsd-execinfo.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-clang-resource-version.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-bindgen-gcc-warnings.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-host-node-inputs.patch

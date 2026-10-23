@@ -1,0 +1,10 @@
+--- a/build/rust/std/BUILD.gn
++++ b/build/rust/std/BUILD.gn
+@@ -146,6 +146,7 @@
+       # evaluates this file while target_os is netbsd; link the BSD libs
+       # only in the matching toolchain context.
+       libs = [
++        "execinfo",
+         "rt",
+         "pthread",
+       ]

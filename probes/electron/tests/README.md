@@ -121,6 +121,12 @@ execution on those hosts. Header-free target smoke compilation does not
 establish Electron linking, startup, package, or media acceptance.
 The changes are AI-assisted EmberBSD patches and are not submitted upstream.
 
+The [Rust standard-library link regression](gn-rust-netbsd-execinfo.md) checks
+NetBSD execinfo propagation through the production GN library list. A real
+GCC16 amd64 C++ link fails without that dependency and succeeds with it.
+The bounded fixture also passes Cppcheck and analysis-only Clang checks.
+Rust standard-library compilation and full Electron linking remain separate.
+
 The Electron main selector test evaluates the exact production source block
 in ten GN planning cases. Linux source order, Windows, and macOS stay fixed.
 NetBSD selects the POSIX main and stdio helper without the glibc environment
