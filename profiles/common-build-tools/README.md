@@ -193,7 +193,10 @@ and target sysroot are separate from this native pkgsrc selection policy.
 The common CMake provider uses stable 4.4.4 from [NetBSD pkgsrc commit
 `5cd745c4794fcf99c8a789dfc750df5b89be35c8`](https://github.com/NetBSD/pkgsrc/commit/5cd745c4794fcf99c8a789dfc750df5b89be35c8).
 The release, checksums and module file list apply to native and cross builds.
-Existing source patches and verified host-CMake selection remain unchanged.
+The uniform nb1 revision repairs GCC16 compilation of the Mach-O architecture
+reader. Header and API selection use the same macOS deployment-target guard.
+The [module regression](tests/cmake-macho/README.md) checks both deployment
+branches and independent Mach-O fixtures. Full packaging remains a separate gate.
 
 ## Prepare and select
 
