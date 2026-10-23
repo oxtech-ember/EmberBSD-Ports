@@ -61,3 +61,7 @@ x11/tk	tk9.1.0-src.tar.gz	772ce7a97c07c2db4c957c93af7ab4dff4bd3037772836b6afbcd0
 security/mit-krb5	krb5-1.22.2.tar.gz	3243ffbc8ea4d4ac22ddc7dd2a1dc54c57874c40648b60ff97009763554eaf13	https://web.mit.edu/kerberos/dist/krb5/1.22/krb5-1.22.2.tar.gz
 net/nng	nng-1.12.3.tar.gz	036a925790034efdeef8a6803f3e4402c3ab509383326f8bc2f15ecee75a2fa2	https://github.com/nanomsg/nng/archive/refs/tags/v1.12.3.tar.gz
 cad/occt	OCCT-8.0.1.tar.gz	6297cc55a1720523a437c54d07dc16b9da8c5f5ab5800da3c6ebded568d53c18	https://github.com/Open-Cascade-SAS/OCCT/archive/refs/tags/V8.0.1.tar.gz
+cad/kicad-footprints	kicad-footprints-10.0.7.tar.bz2	a6f873e91fd3a2200e737821bdb30cecfd48b4dccfc1f41145d5cd8127996193	https://gitlab.com/kicad/libraries/kicad-footprints/-/archive/10.0.7/kicad-footprints-10.0.7.tar.bz2
+cad/kicad-packages3d	kicad-packages3D-10.0.7.tar.bz2	4edc10394c3a9ab98a82f8be78c4d8f8f1126e49bad99f9682a79cdb47957d2e	https://gitlab.com/kicad/libraries/kicad-packages3D/-/archive/10.0.7/kicad-packages3D-10.0.7.tar.bz2
+cad/kicad-symbols	kicad-symbols-10.0.7.tar.bz2	34a27dadbbc6cf74f7b795198273a77a409db8dd5afd865b06bff05237a1be83	https://gitlab.com/kicad/libraries/kicad-symbols/-/archive/10.0.7/kicad-symbols-10.0.7.tar.bz2
+cad/kicad-templates	kicad-templates-10.0.7.tar.bz2	672c2c5cc7917d3107e7c4167e7892afcfcf2d9dd0e7f4e86193828867df87ce	https://gitlab.com/kicad/libraries/kicad-templates/-/archive/10.0.7/kicad-templates-10.0.7.tar.bz2

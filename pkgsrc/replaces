@@ -278,3 +278,7 @@ x11/qt6-qtserialport
 x11/qt6-qttranslations
 x11/xcb-imdkit
 x11/xdg-user-dirs
+cad/kicad-symbols
+cad/kicad-footprints
+cad/kicad-templates
+cad/kicad-packages3d
