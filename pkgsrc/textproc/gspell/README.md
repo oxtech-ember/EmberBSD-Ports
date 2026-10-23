@@ -17,6 +17,12 @@ native `vapigen-0.56` program and the portable VAPI data for GTK and GLib.
 file API. No target Vala compiler or libvala buildlink is needed.
 The Vala provider retains its own options, tests and runtime requirements.
 
+VAPI generation also reads GIR includes such as `Gtk-3.0.gir`.
+Cross builds pass the target GIR directory through `gspell_gir_dirs` in the
+Meson machine file. The upstream `gir_dirs` argument forwards it to `vapigen`.
+The directory uses the target sysroot and `CROSS_LOCALBASE`. Native builds
+retain the default GIR search path. No target Vala compiler is introduced.
+
 Cross builds use the common GObject Introspection `cross.mk` contract.
 Use an export with the common graphics infrastructure. The native scanner
 and compiler retain real target GType queries. gspell has no GI-specific
@@ -32,3 +38,26 @@ building the tests. No test, GIR or VAPI feature is disabled for cross builds.
 Source review does not establish package, target runtime or memory acceptance.
 Fresh native tool and target library predicates, the generated GIR and VAPI,
 normal package payloads and target execution remain separate checks.
+
+## VAPI path regression
+
+The regression uses the production `GNOME.generate_vapi()` call and a real
+generated `Gspell-1.gir`. It runs host Meson, Ninja and Vala. Its fixture has
+no source language, so it compiles no C and executes no target program.
+The old call must fail to find Gtk GIR data. The corrected cross call must
+generate the VAPI. An empty GIR directory must still fail. The native call
+retains its default search path. Isolated make queries also check native
+and two cross architecture selectors, including a synthetic path with spaces.
+These queries do not establish AArch64 package acceptance.
+
+```sh
+python3 profiles/common-graphics/tests/gspell-vapi.py \
+  --sdk-source "$sdk" --source-tree "$gspell_source" \
+  --recipe "$ports/pkgsrc/textproc/gspell/Makefile" \
+  --gir "$gspell_build/gspell/Gspell-1.gir" \
+  --target-sysroot "$sysroot" \
+  --target-gir-dir "$sysroot/usr/pkg/share/gir-1.0" \
+  --bmake "$tools/bin/bmake" --meson "$tools/bin/meson" \
+  --ninja "$tools/bin/ninja" --vapigen "$tools/bin/vapigen-0.56" \
+  --work "$work"
+```

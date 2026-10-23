@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.62 2026/09/30 09:10:50 adam Exp $
 
 DISTNAME=	gspell-1.14.5
+PKGREVISION=	1
 CATEGORIES=	textproc gnome
 MASTER_SITES=	${MASTER_SITE_GNOME:=sources/gspell/${PKGVERSION_NOREV:R}/}
 EXTRACT_SUFX=	.tar.xz
@@ -31,6 +32,9 @@ PKGCONFIG_OVERRIDE_STAGE=	post-configure
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # Keep target GIR and VAPI. Share the existing native GI tools and target queries.
 EMBERBSD_GI_MESON_OPTIONS=	no
+# The native generator must read GIR dependencies from the target prefix.
+MESON_CROSS_VARS+=	gspell_gir_dirs
+MESON_CROSS.gspell_gir_dirs= ['${_CROSS_DESTDIR}${CROSS_LOCALBASE}/share/gir-1.0']
 .include "../../devel/gobject-introspection/cross.mk"
 .endif
 

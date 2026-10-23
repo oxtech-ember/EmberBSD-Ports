@@ -1,0 +1,14 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Keep target GIR inputs for the host VAPI tool.
+
+--- gspell/meson.build.orig
++++ gspell/meson.build
+@@ -161,6 +161,7 @@
+       sources: gspell_gir[0],
+       install: true,
+       packages: ['gtk+-3.0'],
++      gir_dirs: meson.get_external_property('gspell_gir_dirs', []),
+     )
+   endif
+ endif
