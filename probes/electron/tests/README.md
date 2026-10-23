@@ -273,11 +273,14 @@ python3.15 -E -S probes/electron/tests/electron-linux-suid-selection.py \
   --work-dir "$work"
 ```
 
-The test applies the patch with zero fuzz to copies of two pinned GN files.
+The test applies the patch with zero fuzz to copies of three pinned GN files.
 It executes the production GN conditions and OS definitions for 13 platforms
-with official builds enabled and disabled (52 successful GN runs).
+with official builds enabled and disabled (52 successful matrix cases).
+A separate successful GN case reconstructs the former two-file patch.
+It must fail because the root `gn_all` group retains the Linux helper.
+The complete regression makes 53 successful GN runs.
 Independent expectations reject the baseline BSD helper selection and verify
-the corrected selection, unchanged non-BSD behavior, generic ELF strip targets,
+the corrected root and Electron selections, unchanged non-BSD behavior, ELF strip targets,
 and the existing NetBSD policy sources. The work directory retains hashes,
 commands, JSON observations, and bounded fixture sources. It does not build
 Electron or validate NetBSD OS isolation or installed sandbox behavior.

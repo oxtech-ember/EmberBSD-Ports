@@ -214,7 +214,9 @@ It selects the upstream POSIX main and stdio helper for NetBSD. Its glibc
 environment shim stays in the unchanged Linux branch.
 The BSD helper patch follows the existing `compile_suid_client` boundary.
 It omits the Linux namespace/SUID executable and its distribution-only strip
-target on BSD. Generic ELF stripping and the existing NetBSD policy remain.
+target on BSD. The root aggregate also omits that unsupported helper.
+Its other network and sandbox test dependencies remain. Generic ELF stripping
+and the existing NetBSD policy remain.
 No runtime sandbox flag changes. The current NetBSD policy does not establish
 file, process, or network isolation; that OS acceptance gate remains open.
 The distribution patch uses the explicit target OS argument for archive

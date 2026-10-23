@@ -52,6 +52,8 @@ PINNED_BASE = {
         "02f65f6a70687f659e7445160ecfdf0ea9d33e207e6ac913a9cd857e663fc4e6",
     "sandbox/linux/BUILD.gn":
         "c04c3323768e561475bac677a3c4d6d8d9d07a29f18c3328e182a5a34899a559",
+    "BUILD.gn":
+        "55fa99f95e99fb6a9c8d9d7fff18b733f13614cec838883aadaaa812964a24a8",
 }
 CONTEXT = ("build/config/BUILDCONFIG.gn", "sandbox/policy/BUILD.gn")
 OS_NAMES = ("linux", "chromeos", "netbsd", "freebsd", "openbsd", "mac",
@@ -63,6 +65,8 @@ BASE_DATA = [":electron_app", ":electron_version_file", ":licenses"]
 STRIPPED_DATA = [":strip_chrome_crashpad_handler", ":strip_chrome_sandbox",
                  ":strip_electron_binary", ":strip_libffmpeg_shlib",
                  ":strip_libvk_swiftshader_shlib"]
+ROOT_DEPS = ["//net:disk_cache_memory_test", "//net:quic_client",
+             "//net:quic_server", HELPER, "//sandbox/linux:sandbox_linux_unittests"]
 GENERIC_STRIPS = {
     "strip_electron_binary": [":electron_app"],
     "strip_chrome_crashpad_handler":
@@ -132,7 +136,7 @@ def apply_patch(tree, reverse=False):
     return command([*argv, "-i", PATCH], tree)
 
 
-def fragments(electron, sandbox, policy):
+def fragments(electron, sandbox, policy, root):
     app = bounded(electron, '    if (is_linux) {\n      ldflags = [',
                   '\n  }\n\n  if (is_official_build)')
     dist = bounded(electron, 'dist_zip("electron_dist_zip") {\n',
@@ -153,9 +157,15 @@ def fragments(electron, sandbox, policy):
     if len(assignments) != 1:
         raise AssertionError("expected one production SUID-client assignment")
     netbsd_policy = bounded(policy, '  if (is_netbsd) {', '  if (is_freebsd) {')
+    root_entry = bounded(root, '  if (is_cronet_build) {',
+                         '    deps = [\n      "//base:base_perftests",')
+    root_helper = bounded(
+        root, '    if (is_linux || is_chromeos) {\n      # The following are definitely linux-only.',
+        '\n      # TODO(crbug.com/359926651)') + '\n    }\n'
     return {"app": app, "dist": dist, "strips": strips,
             "provider": provider, "client": assignments[0],
-            "netbsd_policy": netbsd_policy}
+            "netbsd_policy": netbsd_policy,
+            "root": root_entry + root_helper + '  }\n'}
 
 
 def fixture_text(parts):
@@ -175,16 +185,19 @@ electron_project_name = "electron"
 is_component_build = false
 is_component_ffmpeg = true
 electron_use_resource_allowlist = true
+is_cronet_build = false
 '''
     return (prefix + parts["client"] + '\nprovider = false\n'
             + parts["provider"]
             + 'app_selection = {\n  deps = []\n  configs = []\n  ldflags = []\n'
             + parts["app"] + '\n}\ndist_selection = {\n' + parts["dist"]
             + '\n}\npolicy_selection = {\n  sources = []\n  deps = []\n  libs = []\n'
-            + parts["netbsd_policy"] + '\n}\n' + parts["strips"] + '''result = {
+            + parts["netbsd_policy"] + '\n}\nroot_selection = {\n  deps = []\n'
+            + parts["root"] + '\n}\n' + parts["strips"] + '''result = {
   app = app_selection
   dist = dist_selection
   policy = policy_selection
+  root = root_selection
   provider = provider
   compile_suid_client = compile_suid_client
   fixture_context = [electron_project_name, is_component_build,
@@ -192,6 +205,40 @@ electron_use_resource_allowlist = true
 }
 write_file("$root_build_dir/selection.json", result, "json")
 ''')
+
+
+def make_fixture(name, parts, platforms):
+    root = WORK / "gn-fixture" / name
+    root.mkdir(parents=True, exist_ok=False)
+    (root / ".gn").write_text('buildconfig = "//BUILDCONFIG.gn"\n')
+    (root / "BUILDCONFIG.gn").write_text('''declare_args() {
+  test_os = "linux"
+  is_official_build = false
+}
+current_os = test_os
+''' + platforms + 'set_default_toolchain("//:default")\n')
+    (root / "BUILD.gn").write_text(fixture_text(parts))
+    report.setdefault("fixture_sha256", {})[name] = {
+        path.name: inventory.sha256_file(path) for path in root.iterdir()}
+    return root
+
+
+def observe(root, os_name, official):
+    key = os_name + "-" + str(official).lower()
+    out = root / ("out-" + key)
+    # A GN failure is always fatal, never an expected rejection.
+    command([GN, "gen", out, "--root=" + str(root),
+             "--args=test_os=" + json.dumps(os_name)
+             + " is_official_build=" + str(official).lower()], root)
+    entry = json.loads((out / "selection.json").read_text())
+    entry["helper_strip"] = (out / "strip_chrome_sandbox.json").exists()
+    entry["generic_strips"] = sorted(
+        name for name in GENERIC_STRIPS if (out / (name + ".json")).exists())
+    strip_records = {name: json.loads((out / (name + ".json")).read_text())
+                     for name in entry["generic_strips"]}
+    report.setdefault("output_json_sha256", {}).setdefault(root.name, {})[key] = {
+        path.name: inventory.sha256_file(path) for path in out.glob("*.json")}
+    return entry, strip_records, out
 
 
 class HelperSelectionError(AssertionError):
@@ -210,6 +257,7 @@ def require_bsd_helper_absent(entry):
     require(":strip_chrome_sandbox" in entry["dist"]["data_deps"], False,
             "BSD dist helper strip dependency")
     require(entry["helper_strip"], False, "BSD helper strip target")
+    require(HELPER in entry["root"]["deps"], False, "BSD gn_all helper dependency")
 
 
 def check_selection(entry, stage, os_name, official):
@@ -237,6 +285,10 @@ def check_selection(entry, stage, os_name, official):
     require(entry["compile_suid_client"], os_name in ("linux", "chromeos"),
             "existing SUID client selection")
     require(entry["helper_strip"], helper_selected and official, "helper strip")
+    root_deps = ROOT_DEPS if elf_family or os_name == "chromeos" else []
+    if stage == "after" and bsd:
+        root_deps = [name for name in root_deps if name != HELPER]
+    require(entry["root"]["deps"], root_deps, "root gn_all deps")
     require(entry["generic_strips"],
             sorted(GENERIC_STRIPS) if elf_family and official else [],
             "generic ELF strip targets")
@@ -250,13 +302,13 @@ def check_selection(entry, stage, os_name, official):
 def main():
     originals = {name: (SOURCE / name).read_bytes() for name in (*PINNED_BASE, *CONTEXT)}
     input_hashes = {name: digest(data) for name, data in originals.items()}
-    # The exact two unified-diff paths are the only permitted patch outputs.
+    # The exact three unified-diff paths are the only permitted patch outputs.
     headers = [line for line in PATCH.read_text().splitlines()
                if line.startswith(("--- ", "+++ "))]
     expected_headers = [item for name in PINNED_BASE
                         for item in ("--- a/" + name, "+++ b/" + name)]
     if headers != expected_headers:
-        raise AssertionError("patch must contain only the two pinned GN file diffs")
+        raise AssertionError("patch must contain only the three pinned GN file diffs")
     report.update({"python": sys.version.split()[0], "sdk_api_version": 1,
                    "sdk_module_origins": {module.__name__: str(Path(module.__file__).resolve())
                                           for module in SDK_MODULES},
@@ -285,37 +337,18 @@ def main():
     (WORK / "platform-assignments.gni").write_text(platforms)
     report["platform_assignments_sha256"] = digest(platforms.encode())
     report["gn_version"] = command([GN, "--version"], WORK)["stdout"].strip()
+    stage_parts = {}
     for stage, contents in (("before", before), ("after", after)):
         parts = fragments(contents["electron/BUILD.gn"].decode(),
                           contents["sandbox/linux/BUILD.gn"].decode(),
-                          originals[CONTEXT[1]].decode())
-        root = WORK / "gn-fixture" / stage
-        root.mkdir(parents=True, exist_ok=False)
-        (root / ".gn").write_text('buildconfig = "//BUILDCONFIG.gn"\n')
-        (root / "BUILDCONFIG.gn").write_text('''declare_args() {
-  test_os = "linux"
-  is_official_build = false
-}
-current_os = test_os
-''' + platforms + 'set_default_toolchain("//:default")\n')
-        (root / "BUILD.gn").write_text(fixture_text(parts))
-        report.setdefault("fixture_sha256", {})[stage] = {
-            path.name: inventory.sha256_file(path) for path in root.iterdir()}
+                          originals[CONTEXT[1]].decode(), contents["BUILD.gn"].decode())
+        stage_parts[stage] = parts
+        root = make_fixture(stage, parts, platforms)
         report["selections"][stage] = {}
         for os_name in OS_NAMES:
             for official in (False, True):
                 key = os_name + "-" + str(official).lower()
-                out = root / ("out-" + key)
-                # A GN failure is always fatal, never an expected rejection.
-                command([GN, "gen", out, "--root=" + str(root),
-                         "--args=test_os=" + json.dumps(os_name)
-                         + " is_official_build=" + str(official).lower()], root)
-                entry = json.loads((out / "selection.json").read_text())
-                entry["helper_strip"] = (out / "strip_chrome_sandbox.json").exists()
-                entry["generic_strips"] = sorted(
-                    name for name in GENERIC_STRIPS if (out / (name + ".json")).exists())
-                strip_records = {name: json.loads((out / (name + ".json")).read_text())
-                                 for name in entry["generic_strips"]}
+                entry, strip_records, out = observe(root, os_name, official)
                 for name, record in strip_records.items():
                     require(record["deps"], GENERIC_STRIPS[name], name + " deps")
                     require(record["compressed"], True, name + " compressed debug sections")
@@ -333,7 +366,7 @@ current_os = test_os
                         require_bsd_helper_absent(entry)
                 if stage == "after" and os_name not in BSD_NAMES:
                     baseline = report["selections"]["before"][key]
-                    for member in ("app", "policy", "provider", "compile_suid_client",
+                    for member in ("app", "policy", "root", "provider", "compile_suid_client",
                                    "helper_strip", "generic_strips"):
                         require(entry[member], baseline[member], "unchanged non-BSD " + member)
                     require(entry["dist"]["data_deps"], baseline["dist"]["data_deps"],
@@ -343,22 +376,42 @@ current_os = test_os
                             "unchanged generic ELF strip inputs and outputs")
                 report["selections"][stage][key] = entry
                 report.setdefault("strip_records", {}).setdefault(stage, {})[key] = strip_records
-                report.setdefault("output_json_sha256", {}).setdefault(stage, {})[key] = {
-                    path.name: inventory.sha256_file(path) for path in out.glob("*.json")}
                 # The JSON receipts retain the observations; generated GN outputs are temporary.
                 shutil.rmtree(out)
                 save()
+    # Reproduce the published two-file patch: its root consumer still selects
+    # a provider that the patched NetBSD graph no longer defines.
+    mutant_parts = dict(stage_parts["after"], root=stage_parts["before"]["root"])
+    mutant_root = make_fixture("published-root-consumer", mutant_parts, platforms)
+    mutant, _, mutant_out = observe(mutant_root, "netbsd", False)
+    for member in ("app", "dist", "policy", "provider", "compile_suid_client",
+                   "helper_strip", "generic_strips"):
+        require(mutant[member], report["selections"]["after"]["netbsd-false"][member],
+                "published defect preserves corrected " + member)
+    require(mutant["root"], report["selections"]["before"]["netbsd-false"]["root"],
+            "published defect retains the original root consumer")
+    try:
+        require_bsd_helper_absent(mutant)
+    except HelperSelectionError as error:
+        report["published_root_consumer_rejection"] = {
+            "reason": str(error), "gn_returncode": 0, "selection": mutant}
+    else:
+        raise AssertionError("the published root consumer defect passed the BSD contract")
+    shutil.rmtree(mutant_out)
     for name, expected in input_hashes.items():
         if inventory.sha256_file(SOURCE / name) != expected:
             raise AssertionError("source changed during this check: " + name)
     count = sum(len(cases) for cases in report["selections"].values())
     require(count, 52, "successful GN observations")
     require(len(report["expected_baseline_rejections"]), 6, "causal BSD rejections")
-    report.update({"status": "PASS", "gn_invocations": count, "source_inputs_unchanged": True,
+    gn_count = sum(len(run["argv"]) > 1 and run["argv"][1] == "gen" for run in report["runs"])
+    require(gn_count, 53, "successful GN invocations")
+    report.update({"status": "PASS", "gn_invocations": gn_count, "matrix_cases": count,
+                   "source_inputs_unchanged": True,
                    "scope": "Bounded production GN expressions only. No build actions run. "
                             "NetBSD OS isolation and installed sandbox behavior are not tested."})
     save()
-    print(json.dumps({"status": report["status"], "gn_invocations": count,
+    print(json.dumps({"status": report["status"], "gn_invocations": gn_count,
                       "source_state": report["source_state"], "summary": str(WORK / "summary.json")}))
 
 
