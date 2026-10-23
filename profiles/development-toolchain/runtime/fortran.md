@@ -5,7 +5,20 @@ This source checkpoint adds target Fortran libraries to the accepted
 compiler generation. Use the same GCC16.2 archive and full prepared GCC recipe.
 Use a new compiler generation with a completed real Fortran capability receipt.
 The producer configures only the upstream PIC `libbacktrace` convenience
-library, `libquadmath`, and `libgfortran`. It uses their real make/install rules.
+library and `libgfortran`. On amd64 it also builds required `libquadmath`.
+It uses their real make/install rules.
+The shared `fortran_target.py` contract selects the component plan, stage
+payload and cross SDK alias checks. GCC16.2 AArch64 uses IEEE binary128
+`long double` and does not register `__float128`. Upstream libquadmath requires
+that distinct type. AArch64 therefore has no libquadmath component or payload.
+This decision does not depend on file absence. amd64 still requires both libraries.
+Unknown targets fail. Neither target disables upstream Fortran math support.
+This AI-assisted target contract follows the upstream [floating type contract](https://gcc.gnu.org/onlinedocs/gcc/Floating-Types.html)
+and the architecture selection in [OpenBSD GCC16](https://github.com/openbsd/ports/blob/master/lang/gcc/16/Makefile).
+GCC16.2 `libquadmath/configure.ac` tests `__float128`.
+`libgfortran/acinclude.m4` uses quadmath only with usable `_Float128` and `__float128`.
+The Fortran type mapper can use binary128 `long double` without libquadmath.
+
 It does not run the top-level compiler or C/C++ runtime targets.
 
 The CLI uses Python 3.15 stdlib and explicit SDK API1 sources. The SDK must
@@ -14,7 +27,7 @@ Set an audited PATH with GNU make, M4, awk, sed, shell, Texinfo and install.
 The producer hashes the selected executables and records every component argv.
 It sets `GFORTRAN`, `FC` and `F77` to the same target command. Upstream
 `libgfortran` resets `FC` from `GFORTRAN` before its compiler checks.
-No target executable runs on the host. The three upstream component rules do
+No target executable runs on the host. The selected upstream component rules do
 not compile a native helper with `CC_FOR_BUILD`. Libquadmath only forwards
 that variable in recursive make flags. This is not native host-link acceptance.
 If a future upstream rule uses it, verify its real host SDK before that link.
@@ -74,7 +87,9 @@ A fresh inventory does not establish historical source provenance.
 their aliases and original component licenses. It depends exactly on nb6.
 `lang/gcc16-fortran-devel` owns the upstream headers, intrinsic modules,
 specs, static support and unversioned aliases. The verifier requires all three
-IEEE modules, both quadmath headers and upstream single-image coarray support. It depends exactly on both
+IEEE modules and upstream single-image coarray support. amd64 also requires
+both quadmath headers, its static library and matching shared alias. AArch64
+rejects quadmath payloads and DSO dependencies. It depends exactly on both
 runtime providers. Install the latter normally into the development sysroot.
 Do not copy files into the compiler prefix. Do not transfer SDK data to a
 runtime-only device. No SDK transfer schema fields are added.
@@ -94,7 +109,8 @@ Create the result parent first. Each framework result path must be new.
 
 ```sh
 python3.15 -B profiles/development-toolchain/runtime/tests/fortran-commands-test.py \
-    --gcc-source /absolute/audited-gcc-source
+    --gcc-source /absolute/audited-gcc-source \
+    --bmake /absolute/host/bin/bmake --sdk-source /absolute/EmberBSD-SDK
 python3.15 -B profiles/development-toolchain/runtime/tests/fortran-stage-test.py \
     --ports-source /absolute/EmberBSD-Ports --sdk-source /absolute/EmberBSD-SDK
 python3.15 -B profiles/development-toolchain/runtime/tests/fortran-producer-test.py \
@@ -112,6 +128,10 @@ audited upstream `configure.ac` and generated `configure`. They demonstrate
 the lost command without `GFORTRAN` and exact target argv with it. They do
 not run configure or a compiler.
 
+The architecture controls retain required quadmath on amd64. They accept
+AArch64 gfortran-only stage data and reject quadmath payloads, dependencies
+and link metadata there. Isolated BSD make fragments use the same target
+contract to require the correct SDK aliases. They do not bootstrap pkgsrc.
 The ELF fixtures validate the new stage parser and role guards. Their base
 runtime validator is mocked in receipt mutation controls. The producer controls
 inject failures before any real preflight, compiler or extractor call. They

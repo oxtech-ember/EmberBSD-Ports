@@ -19,6 +19,7 @@ from fortran_support import inspect, quarantine_work, source_state, lease_hold a
 from fortran_commands import component_plan
 sys.path.insert(0, str(PROFILE.parents[1] / 'pkgsrc/lang/gcc16-fortran-runtime/files'))
 import fortran_stage
+import fortran_target
 
 
 class FortranRuntime:
@@ -194,7 +195,7 @@ class FortranRuntime:
             require(found is not None, 'Required native tool missing: ' + name)
             self.host_tools[variable] = str(self.record(Path(found).resolve(strict=True)))
         for path in policy_sources() + [Path(__file__), Path(fortran_stage.__file__), Path(inspect.__code__.co_filename),
-                                         Path(component_plan.__code__.co_filename)]:
+                                         Path(component_plan.__code__.co_filename), Path(fortran_target.__file__)]:
             self.record(path)
         self.plan = component_plan(self.target, self.build_triplet, self.work / 'src', self.work,
                                    self.compiler, self.sysroot, self.make, self.count, self.native_cc)

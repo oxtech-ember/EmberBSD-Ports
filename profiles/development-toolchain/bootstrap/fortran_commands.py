@@ -4,6 +4,11 @@
 from pathlib import Path
 import re
 import shlex
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] /
+                       'pkgsrc/lang/gcc16-fortran-runtime/files'))
+from fortran_target import components
 
 VERSION = '16.2.0'
 TARGETS = {'amd64': ('x86_64--netbsd', '-O2 -march=nocona -mtune=nocona -mfpmath=sse'),
@@ -56,7 +61,7 @@ def component_plan(target, build_triplet, source, work, compiler, sysroot,
     result = []
     # GCC Makefile.def configures libgfortran after these real target libraries.
     # libbacktrace stays a PIC convenience archive and has no install action.
-    for name in ('libbacktrace', 'libquadmath', 'libgfortran'):
+    for name in components(target):
         args = shared + (['--enable-host-shared'] if name == 'libbacktrace' else package)
         directory = work / 'build' / triplet / name
         result.append({'component': name, 'phase': 'configure', 'cwd': str(directory),

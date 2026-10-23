@@ -14,6 +14,7 @@ import unittest
 parser = argparse.ArgumentParser()
 parser.add_argument('--ports-source', required=True, type=Path)
 parser.add_argument('--sdk-source', required=True)
+parser.add_argument('--baseline-stage', type=Path, help='Saved previous stage verifier for a causal noquad witness')
 opts, rest = parser.parse_known_args()
 base = opts.ports_source / 'profiles/development-toolchain/runtime'
 sys.path.insert(0, str(base / 'recipe/files'))
@@ -27,6 +28,7 @@ fixtures = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fixtures)
 sys.argv = saved
 candidate = Path(__file__).resolve().parents[4] / 'pkgsrc/lang/gcc16-fortran-runtime/files/fortran_stage.py'
+sys.path.insert(0, str(candidate.parent))
 spec = importlib.util.spec_from_file_location('fortran_stage', candidate)
 stage = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(stage)
@@ -55,7 +57,7 @@ class Payload(unittest.TestCase):
         triplet, machine = {'amd64': ('x86_64--netbsd', 62), 'aarch64': ('aarch64--netbsd', 183)}[target]
         self.lib = self.root / 'usr/pkg/gcc16/lib'
         self.lib.mkdir(parents=True)
-        for name in ('libgfortran.so.5', 'libquadmath.so.0'):
+        for name in (('libgfortran.so.5', 'libquadmath.so.0') if target == 'amd64' else ('libgfortran.so.5',)):
             path = self.lib / (name + '.0')
             path.write_bytes(fixtures.elf(name, machine, needed=('libgcc_s.so.1', 'libm.so.0', 'libc.so.12')))
             path.chmod(0o755)
@@ -66,7 +68,8 @@ class Payload(unittest.TestCase):
         (self.lib / 'libgfortran.spec').write_text('fixture specs\n')
         self.includes = self.lib / 'gcc' / triplet / '16.2.0/include'
         self.includes.mkdir(parents=True)
-        for name in ('ISO_Fortran_binding.h', 'quadmath.h', 'quadmath_weak.h'):
+        for name in (('ISO_Fortran_binding.h', 'quadmath.h', 'quadmath_weak.h')
+                     if target == 'amd64' else ('ISO_Fortran_binding.h',)):
             (self.includes / name).write_text('fixture header\n')
         versioned = self.includes.parent
         (versioned / 'finclude').mkdir()
@@ -84,10 +87,88 @@ class Payload(unittest.TestCase):
             with self.subTest(target=target):
                 self.configure(target)
                 value = self.inspect()
-                self.assertEqual(len(value['runtime']), 4)
-                self.assertEqual(len(value['devel']), 13)
+                self.assertEqual(len(value['runtime']), 4 if target == 'amd64' else 2)
+                self.assertEqual(len(value['devel']), 13 if target == 'amd64' else 9)
                 self.assertFalse(set(value['runtime']) & set(value['devel']))
-                self.assertEqual({r['soname'] for r in value['elf'].values()}, {'libgfortran.so.5', 'libquadmath.so.0'})
+                expected = {'libgfortran.so.5', 'libquadmath.so.0'} if target == 'amd64' else {'libgfortran.so.5'}
+                self.assertEqual({r['soname'] for r in value['elf'].values()}, expected)
+
+    def test_aarch64_rejects_unselected_quadmath_payload(self):
+        for relative, data in (('lib/libquadmath.so.0', fixtures.elf('libquadmath.so.0', 183)),
+                               ('lib/libquadmath.a', archive(183)),
+                               ('lib/gcc/aarch64--netbsd/16.2.0/include/quadmath.h', b'foreign header'),
+                               ('share/info/libquadmath.info', b'foreign documentation')):
+            with self.subTest(relative=relative):
+                self.configure('aarch64')
+                path = self.root / 'usr/pkg/gcc16' / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(data)
+                with self.assertRaises(SDKError): self.inspect()
+
+    def test_aarch64_rejects_quadmath_dependency(self):
+        self.configure('aarch64')
+        (self.lib / 'libgfortran.so.5.0').write_bytes(
+            fixtures.elf('libgfortran.so.5', 183, needed=('libquadmath.so.0',)))
+        with self.assertRaisesRegex(SDKError, 'Foreign Fortran runtime dependency'): self.inspect()
+
+    def test_aarch64_rejects_quadmath_link_metadata(self):
+        for name, text in (('libgfortran.la', "dependency_libs=' -lquadmath -lm'"),
+                           ('libgfortran.la', "dependency_libs='/usr/pkg/gcc16/lib/libquadmath.la'"),
+                           ('libgfortran.spec', '*lib: -lquadmath')):
+            with self.subTest(name=name, text=text):
+                self.configure('aarch64')
+                path = self.lib / name
+                path.write_text(text)
+                path.chmod(0o755 if name.endswith('.la') else 0o644)
+                with self.assertRaisesRegex(SDKError, 'Unselected quadmath link metadata'): self.inspect()
+
+    def test_amd64_requires_all_quadmath_sdk_inputs(self):
+        for name in ('libquadmath.so', 'libquadmath.a',
+                     'gcc/x86_64--netbsd/16.2.0/include/quadmath.h',
+                     'gcc/x86_64--netbsd/16.2.0/include/quadmath_weak.h'):
+            with self.subTest(name=name):
+                self.configure('amd64')
+                (self.lib / name).unlink()
+                with self.assertRaises(SDKError): self.inspect()
+
+    @unittest.skipUnless(opts.baseline_stage, 'Set --baseline-stage for the previous verifier witness')
+    def test_aarch64_previous_verifier_refusal(self):
+        spec = importlib.util.spec_from_file_location('previous_fortran_stage', opts.baseline_stage)
+        previous = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(previous)
+        self.configure('amd64')
+        self.assertEqual(previous.inspect_stage(self.root, 'amd64'), self.inspect())
+        self.configure('aarch64')
+        with self.assertRaisesRegex(SDKError, 'Incomplete Fortran runtime families'):
+            previous.inspect_stage(self.root, 'aarch64')
+        self.assertEqual(len(self.inspect()['runtime']), 2)
+
+    def test_core_inputs_remain_required_on_both_targets(self):
+        for target, triplet in (('amd64', 'x86_64--netbsd'), ('aarch64', 'aarch64--netbsd')):
+            for name in ('libgfortran.spec', 'libgfortran.so', 'libgfortran.a',
+                         'gcc/' + triplet + '/16.2.0/include/ISO_Fortran_binding.h',
+                         'gcc/' + triplet + '/16.2.0/finclude/ieee_arithmetic.mod',
+                         'gcc/' + triplet + '/16.2.0/finclude/ieee_exceptions.mod',
+                         'gcc/' + triplet + '/16.2.0/finclude/ieee_features.mod',
+                         'gcc/' + triplet + '/16.2.0/libcaf_single.a',
+                         'gcc/' + triplet + '/16.2.0/libcaf_single.la'):
+                with self.subTest(target=target, name=name):
+                    self.configure(target)
+                    (self.lib / name).unlink()
+                    with self.assertRaises(SDKError): self.inspect()
+
+    def test_aarch64_receipt_role_payloads(self):
+        self.configure('aarch64')
+        obj, value, parent, receipt = self.receipt()
+        with patch.object(stage, 'SOURCE_SHA256', value['source_archive_sha256']), \
+             patch.object(stage.BaseStage, 'verify', return_value=parent):
+            runtime_result, runtime_files = obj.payload('runtime')
+            devel_result, devel_files = obj.payload('devel')
+            self.assertEqual(runtime_result, devel_result)
+            self.assertEqual(len(runtime_result['runtime']), 2)
+            self.assertEqual(len(devel_files), 9)
+            self.assertTrue(all('/libquadmath' not in name for name in runtime_result['runtime'] + devel_files))
+            self.assertFalse(set(runtime_files) & set(devel_files))
 
     def test_wrong_or_mixed_architecture(self):
         for machine in (183, 3):
@@ -213,11 +294,12 @@ class Payload(unittest.TestCase):
             path = self.root / name
             path.write_bytes(b'synthetic host tool')
             tools[name] = {'path': str(path), 'sha256': stage.digest(path)}
+        triplet = {'amd64': 'x86_64--netbsd', 'aarch64': 'aarch64--netbsd'}[self.target]
         cap = {'format': 'emberbsd-gcc16-fortran-capability', 'version': 1,
                'status': 'PASS', 'target': self.target, 'archive_sha256': stage.digest(source_archive),
                'sources': {'recipe': stage.inventory.snapshot_tree(pkgsrc / 'lang/gcc16')},
                'compiler': {'tools': tools, 'version': '16.2.0',
-                            'triplet': 'x86_64--netbsd', 'threads': 'posix'}}
+                            'triplet': triplet, 'threads': 'posix'}}
         capability = self.root / 'capability.json'
         capability.write_text(json.dumps(cap))
         commands = work / 'commands.json'
@@ -225,7 +307,7 @@ class Payload(unittest.TestCase):
         inputs = {str(path): stage.digest(path) for path in (capability, commands)}
         inputs.update({row['path']: row['sha256'] for row in tools.values()})
         value = {'format': 'emberbsd-gcc16-fortran-stage', 'version': 1,
-            'status': 'BUILT_AND_INSPECTED', 'target': self.target, 'triplet': 'x86_64--netbsd',
+            'status': 'BUILT_AND_INSPECTED', 'target': self.target, 'triplet': triplet,
             'source_archive_sha256': stage.digest(source_archive), 'base_runtime_name': stage.BASE,
             'inputs': inputs, 'commands_sha256': stage.digest(commands),
             'compiler_capability': str(capability), 'base_runtime_work': str(parent_work),

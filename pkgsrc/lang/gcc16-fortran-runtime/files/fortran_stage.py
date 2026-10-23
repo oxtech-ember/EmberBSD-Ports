@@ -13,11 +13,11 @@ import tarfile
 from emberbsd_sdk import elf, inventory, jsonio, paths
 from emberbsd_sdk.errors import SDKError
 from runtime import Stage as BaseStage, SOURCE_SHA256, TARGETS, VERSION
+from fortran_target import quadmath, sonames
 
 NAMES = {'runtime': 'gcc16-fortran-runtime-16.2.0',
          'devel': 'gcc16-fortran-devel-16.2.0'}
 BASE = 'gcc16-runtime-16.2.0nb6'
-SONAMES = ('libgfortran.so.5', 'libquadmath.so.0')
 LICENSES = {'COPYING3': 'COPYING3', 'COPYING.RUNTIME': 'COPYING.RUNTIME',
             'libquadmath/COPYING.LIB': 'libquadmath-COPYING.LIB',
             'libbacktrace/backtrace.h': 'libbacktrace-notice.h'}
@@ -35,17 +35,20 @@ def digest(path):
 def inspect_stage(stage, target):
     require(target in TARGETS, 'Unsupported Fortran target')
     architecture = TARGETS[target]
+    runtime_sonames = sonames(target)
+    families = 'gfortran|quadmath' if quadmath(target) else 'gfortran'
+    headers = 'ISO_Fortran_binding|quadmath|quadmath_weak' if quadmath(target) else 'ISO_Fortran_binding'
     stage = Path(paths.canonical_existing(stage))
     tree = inventory.snapshot_tree(stage, machine=architecture['elf_machine'])
     runtime, development, records, generated = [], [], {}, []
     prefix = 'usr/pkg/gcc16/'
     triplet = re.escape(architecture['triplet'])
     development_pattern = re.compile(
-        r'lib/lib(?:gfortran|quadmath)[.](?:a|la|so)$|lib/libgfortran[.]spec$|'
+        r'lib/lib(?:' + families + r')[.](?:a|la|so)$|lib/libgfortran[.]spec$|'
         r'lib/gcc/' + triplet + r'/16[.]2[.]0/(?:'
-        r'include/(?:ISO_Fortran_binding|quadmath|quadmath_weak)[.]h|'
+        r'include/(?:' + headers + r')[.]h|'
         r'finclude/ieee_(?:arithmetic|exceptions|features)[.]mod|libcaf_[A-Za-z0-9_]+[.](?:a|la))$|'
-        r'share/info/(?:libquadmath[.]info(?:-[0-9]+)?|dir)$')
+        + (r'share/info/libquadmath[.]info(?:-[0-9]+)?$' if quadmath(target) else r'(?!)'))
     for name, row in tree.items():
         if row['kind'] == 'directory':
             require(name in ('usr', 'usr/pkg') or name == prefix.rstrip('/') or name.startswith(prefix),
@@ -57,14 +60,14 @@ def inspect_stage(stage, target):
             require(row['kind'] == 'file', 'Info index must be a regular generated file')
             generated.append(name)
             continue
-        family = next((soname for soname in SONAMES
+        family = next((soname for soname in runtime_sonames
                        if re.fullmatch('lib/' + re.escape(soname) + r'(?:[.][0-9]+)*', relative)), None)
         if family:
             actual = (stage / name).resolve(strict=True)
             record = elf.read_elf_dynamic(actual, machine=architecture['elf_machine'])
             require(record['type'] == 3 and record['relro'], 'Fortran runtime needs a target RELRO DSO')
             require(record['soname'] == family, 'Fortran runtime SONAME mismatch')
-            require(set(record['needed']) <= set(SONAMES) | {
+            require(set(record['needed']) <= set(runtime_sonames) | {
                 'libgcc_s.so.1', 'libatomic.so.3', 'libc.so.12', 'libm.so.0', 'libpthread.so.1'},
                 'Foreign Fortran runtime dependency')
             for key in ('rpath', 'runpath'):
@@ -102,6 +105,8 @@ def inspect_stage(stage, target):
                                 'Invalid Libtool metadata assignment')
                         values.append(fields[0].partition('=')[2])
                     text = '\n'.join(values)
+                require(quadmath(target) or re.search(r'libquadmath[.]|-lquadmath\b', text) is None,
+                        'Unselected quadmath link metadata')
                 for absolute in re.findall(r'/[A-Za-z0-9_+./-]+', text):
                     require('..' not in absolute.split('/') and any(absolute == allowed or absolute.startswith(allowed + '/')
                             for allowed in ('/usr/pkg/gcc16', '/usr/lib', '/lib')),
@@ -109,7 +114,7 @@ def inspect_stage(stage, target):
             if relative.endswith('.a'):
                 require(row['kind'] == 'file' and row['archive']['elf_members'] > 0, 'Empty SDK static archive')
             development.append(name)
-    require(all(prefix + 'lib/' + soname in runtime for soname in SONAMES),
+    require(all(prefix + 'lib/' + soname in runtime for soname in runtime_sonames),
             'Incomplete Fortran runtime families')
     require(not (set(runtime) & set(development)), 'Runtime and SDK payloads overlap')
     for name in runtime:
@@ -120,11 +125,12 @@ def inspect_stage(stage, target):
             require(str(source.resolve(strict=True).relative_to(stage)) in runtime,
                     'Fortran runtime alias escaped its role')
     mandatory = [prefix + 'lib/libgfortran.spec', prefix + 'lib/libgfortran.so',
-                 prefix + 'lib/libquadmath.so', prefix + 'lib/libgfortran.a',
-                 prefix + 'lib/libquadmath.a', prefix + 'lib/gcc/' + architecture['triplet'] +
+                 prefix + 'lib/libgfortran.a', prefix + 'lib/gcc/' + architecture['triplet'] +
                  '/16.2.0/include/ISO_Fortran_binding.h']
     versioned = prefix + 'lib/gcc/' + architecture['triplet'] + '/16.2.0/'
-    mandatory += [versioned + 'include/' + name for name in ('quadmath.h', 'quadmath_weak.h')]
+    if quadmath(target):
+        mandatory += [prefix + 'lib/libquadmath.so', prefix + 'lib/libquadmath.a']
+        mandatory += [versioned + 'include/' + name for name in ('quadmath.h', 'quadmath_weak.h')]
     mandatory += [versioned + 'finclude/' + name for name in ('ieee_arithmetic.mod', 'ieee_exceptions.mod', 'ieee_features.mod')]
     mandatory += [versioned + name for name in ('libcaf_single.a', 'libcaf_single.la')]
     require(set(mandatory) <= set(development), 'Fortran SDK data is incomplete')
@@ -181,7 +187,7 @@ class Stage:
         require(cap['compiler']['version'] == VERSION and cap['compiler']['triplet'] == value['triplet']
                 and cap['compiler']['threads'] == 'posix', 'Frontend identity differs')
         result = inspect_stage(self.stage, target)
-        allowed = set(parent['metadata']['GCC_RUNTIME_SONAMES'].split(',')) | set(SONAMES) | {
+        allowed = set(parent['metadata']['GCC_RUNTIME_SONAMES'].split(',')) | set(sonames(target)) | {
             'libc.so.12', 'libm.so.0', 'libpthread.so.1'}
         require(all(set(row['needed']) <= allowed for row in result['elf'].values()),
                 'Fortran needs an unselected base runtime component')
