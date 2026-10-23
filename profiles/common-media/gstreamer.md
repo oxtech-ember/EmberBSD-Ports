@@ -1,6 +1,6 @@
 # Shared GStreamer 1.28.8 source family
 
-The common-media and plasma-mobile exports select GStreamer 1.28.8.
+The export selects GStreamer 1.28.8.
 This is the [upstream stable bug-fix release](https://gstreamer.freedesktop.org/releases/1.28/#1.28.8)
 from 2026-10-08. The [manifest](sources.tsv) records the original HTTPS
 archives and SHA256, checked against upstream `.sha256sum` files.

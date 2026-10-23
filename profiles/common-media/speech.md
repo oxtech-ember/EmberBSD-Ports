@@ -56,7 +56,7 @@ Qt TextToSpeech builds stop at the licence check.
 The accepted generator host is macOS/arm64; generated integer tables require
 an explicit ABI check before accepting a different host. This limitation
 belongs to this data-generator recipe, not the general EmberBSD build system.
-Build the normal four packages from a common-media or plasma-mobile export.
+Build the normal four packages from a normal export.
 No old parallel library or reduced target package is introduced.
 
 ## Reproduce the runtime checks

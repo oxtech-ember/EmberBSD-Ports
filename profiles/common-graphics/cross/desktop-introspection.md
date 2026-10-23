@@ -36,7 +36,9 @@ missing headers, copy installed files into the source, or disable introspection.
 
 ## Reproduce
 
-Prepare a fresh `plasma-mobile` export and the common cross MAKECONF. Configure
+Prepare a fresh export with the
+[Plasma toolkit recipes](../../../probes/plasma-mobile/toolkit/README.md) and the
+common cross MAKECONF. Configure
 all required real target-query inputs as described in the introspection guide.
 Build/install HarfBuzz, Pango and AT-SPI before GTK using ordinary `bmake package`
 and package installation. The exporter checks original source and patch hashes.

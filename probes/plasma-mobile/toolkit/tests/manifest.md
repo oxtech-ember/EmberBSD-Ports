@@ -1,6 +1,6 @@
 # Toolkit source and export checks
 
-The exporter discovers every directory below `recipes/category/package`.
+The validator discovers every directory below `recipes/category/package`.
 The default contract is a complete package with its own `distinfo` and one source archive.
 [sources.tsv](../sources.tsv) records each original archive URL and SHA256.
 [source-owners.tsv](../source-owners.tsv) records only exceptions.
@@ -10,8 +10,8 @@ Use tabs between fields. Use `-` when the owner's selection is sufficient.
 
 - `package` requires a Makefile and PLIST. A shared consumer must include its owner's `Makefile.common` directly and unconditionally.
 - `meta` requires `META_PACKAGE=yes`. It can own shared source metadata without a fake PLIST.
-- `overlay` contains only changed files. The exporter preserves the pinned base recipe and copies those files over it.
-- `local` is limited to the explicit self-owned `sysutils/ember-plasma-session` recipe. It has empty `DISTFILES`, `NO_BUILD=yes`, no archive metadata and only the two exact relative links to regular canonical service files inside the toolkit. The exporter materializes those files into the standalone recipe. It does not exempt upstream recipes from source checks.
+- `overlay` contains only changed files. They apply over the pinned base recipe.
+- `local` is limited to the explicit self-owned `sysutils/ember-plasma-session` recipe. It has empty `DISTFILES`, `NO_BUILD=yes`, no archive metadata and only the two exact relative links to regular canonical service files inside the toolkit. Copy the recipe with `cp -RL` to make a standalone recipe. It does not exempt upstream recipes from source checks.
 - Multiple archives require an explicit primary archive. Source patches apply only to that archive. Supplemental dictionaries and test data still require checksums.
 
 A source owner must have one complete `distinfo`. It must list every archive and patch exactly once.
@@ -54,8 +54,6 @@ It does not build packages or establish compiler/toolkit feature support.
 `selection.sh` checks only recipes that use the Qt, Frameworks or Plasma version selectors.
 Independent dependencies keep their own versions.
 
-The full source profile also checks every exported recipe, shared version file and provenance manifest.
-An overlay check compares its changed files and the unchanged pinned Makefile.
 These checks do not establish package builds, target execution or desktop acceptance.
 They preserve the recorded recipe versions and do not claim that every provider is the newest release.
 
@@ -70,10 +68,10 @@ sh scripts/tests/published-patches.sh /absolute/new-publication-results
 
 The publication check reads tracked `distinfo` files from the working tree.
 Every declared patch must exist and appear in the Git index.
-It covers the complete recipe layers in the standard exporter: the shared overlay,
-common-build-tools, common-graphics, common-media and this toolkit.
-Sparse profiles outside that exporter have a separate ownership contract.
-This check does not replace archive hashes, patch digests, zero-fuzz application or clean-commit export checks.
+It covers the complete recipe layers in the export: `pkgsrc/`,
+common-build-tools, common-graphics and common-media. It also covers this toolkit.
+Sparse profiles outside the export have a separate ownership contract.
+This check does not replace archive hashes, patch digests or zero-fuzz application.
 
 The regression creates a private Git fixture with global `*.build` and `Makefile` ignore patterns.
 It verifies that an untracked source patch fails the publication check.

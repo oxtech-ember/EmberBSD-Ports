@@ -24,7 +24,7 @@ The [complete speech packages](speech.md) also provide tested Sonic, eSpeak NG,
 Flite and speech-dispatcher for Qt/KDE on CM5.
 
 The profile pins the complete [GStreamer 1.28.8 source family](gstreamer.md)
-for common-media and plasma-mobile exports. Its core cross-build corrections preserve introspection.
+for the export. Its core cross-build corrections preserve introspection.
 Complete [base/bad plugin packages](gstreamer-plugins.md) now pass bounded
 CM5 introspection, conversion and parser checks; other plugin packages remain separate.
 The complete [LAME 4.0 MP3 dependency](lame.md) cross-builds with GCC 16;
@@ -57,9 +57,7 @@ consumer before retiring the recovery stack; never alias old SONAMEs.
 ## Prepare
 
 ```sh
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc plasma-mobile
-# Or prepare tools, graphics and media without the Qt/KF recipe layer:
-sh scripts/prepare-pkgsrc.sh /absolute/another-new-pkgsrc common-media
+sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
 ```
 
 Use this order in the staging build's private MAKECONF:
@@ -68,12 +66,9 @@ Use this order in the staging build's private MAKECONF:
 .include "/absolute/prepared-pkgsrc/EMBERBSD-COMMON-TOOLS-MK.CONF"
 .include "/absolute/prepared-pkgsrc/EMBERBSD-COMMON-GRAPHICS-MK.CONF"
 .include "/absolute/prepared-pkgsrc/EMBERBSD-COMMON-MEDIA-MK.CONF"
-# For the plasma-mobile export:
-.include "/absolute/prepared-pkgsrc/EMBERBSD-PLASMA-TOOLKIT-MK.CONF"
 ```
 
-The existing default, development-toolchain, common-build-tools and
-common-graphics exports retain their previous FFmpeg recipes. Preparation
+The export replaces the upstream FFmpeg recipe. Preparation
 changes only the new export. Native package builds inherit GCC16 and the
 platform, prefix, Python and graphics requirements of the common profiles.
 The media profile rejects old recipes, another source version, dependency
@@ -124,8 +119,7 @@ of hardware decoding on EmberBSD.
 OPENSSL=/path/to/openssl sh profiles/common-media/tests/source.sh DISTFILES NEW_WORK
 BMAKE=/path/to/bmake sh profiles/common-media/tests/selection.sh EXPORTED_PKGSRC NEW_WORK
 BMAKE=/path/to/bmake sh probes/plasma-mobile/toolkit/tests/dependencies.sh NEW_WORK
-sh profiles/common-media/tests/export-inputs.sh NEW_WORK
-sh profiles/common-graphics/tests/export.sh NEW_WORK
+sh scripts/tests/export-composition.sh NEW_WORK
 # On NetBSD, with already patched original FFmpeg sources:
 sh profiles/common-media/tests/native-audio.sh PATCHED_FFMPEG_SOURCE NEW_WORK
 ```

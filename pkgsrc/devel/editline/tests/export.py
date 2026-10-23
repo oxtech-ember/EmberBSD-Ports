@@ -26,6 +26,9 @@ with tempfile.TemporaryDirectory(prefix='editline-export-', dir=a.work_parent) a
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ports / relative, target)
     (fixture / 'pkgsrc/replaces').write_text('devel/editline\n')
+    (fixture / 'pkgsrc/export.conf').write_text(
+        'patch\tprofiles/common-build-tools/patches/current-automake-tools.patch\n'
+        'file\tpkgsrc/defaults.mk.conf\tEMBERBSD-DEFAULTS-MK.CONF\n')
     for relative in ('devel/Makefile', 'devel/editline/Makefile', 'mk/tools/automake.mk'):
         target = upstream / relative
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -60,5 +63,5 @@ esac
     assert (destination / 'EMBERBSD-DEFAULTS-MK.CONF').read_bytes() == (ports / 'pkgsrc/defaults.mk.conf').read_bytes()
     assert 'devel/editline' in (ports / 'pkgsrc/replaces').read_text().splitlines()
     assert not (ports / 'profiles/shells/recipes/devel/editline').exists()
-    assert '.include "${.PARSEDIR}/EMBERBSD-DEFAULTS-MK.CONF"' in (ports / 'profiles/shells/prepare-pkgsrc.sh').read_text()
+    assert '.include "${.PARSEDIR}/EMBERBSD-DEFAULTS-MK.CONF"' in (ports / 'profiles/shells/mk.conf').read_text()
 print('PASS: common export replaces the old provider and preserves every canonical recipe byte')

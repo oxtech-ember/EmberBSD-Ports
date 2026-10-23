@@ -127,13 +127,12 @@ recipe keeps every vectorization assertion and the strict test exit status.
 
 ```sh
 git submodule update --init --depth 1 upstream/pkgsrc
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc development-toolchain
+sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
 ```
 
 The destination must be new. Existing exports are never changed in place.
-The [common build tools](../common-build-tools/README.md) preparation mode
-composes this export with current Python/Meson recipes; its native package
-acceptance is separate. Its MAKECONF selects the prepared GCC16 package
+The same export has the [common build tools](../common-build-tools/README.md)
+Python/Meson recipes; their native package acceptance is separate. Their MAKECONF selects the prepared GCC16 package
 for new consumers; keep it out of this native-GCC bootstrap closure.
 The exported `EMBERBSD-DEVELOPMENT-MK.CONF` selects C/C++ only, external
 GMP/MPFR/MPC, one worker, `-O2` without debug information, and the compiler's

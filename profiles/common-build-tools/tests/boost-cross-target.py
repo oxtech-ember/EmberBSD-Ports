@@ -77,8 +77,9 @@ def main():
         shared = baseline / "devel/boost-libs" / name
         toolkit = root / "probes/plasma-mobile/toolkit/recipes/devel/boost-libs" / name
         assert shared.read_bytes() == toolkit.read_bytes(), name
-    exporter = (root / "scripts/prepare-pkgsrc.sh").read_text(encoding="utf-8")
-    assert exporter.rindex('"$root/profiles/common-build-tools/patches/pkgsrc-boost-cross-target.patch"') > exporter.index('cp -R "$toolkit/recipes/$recipe" "$destination/$recipe"')
+    # The export installs every recipe before it applies the patches.
+    export = (root / "pkgsrc/export.conf").read_text(encoding="utf-8")
+    assert export.count("patch\tprofiles/common-build-tools/patches/pkgsrc-boost-cross-target.patch\n") == 1
     metadata = {}
     for variant in ("before", "after"):
         tree = work / variant

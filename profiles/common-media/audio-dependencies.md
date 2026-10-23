@@ -28,7 +28,7 @@ or acceptance is claimed.
 ## Reproduce
 
 Build the normal `databases/tdb` and `devel/libdaemon` packages in an exported
-common-media or plasma-mobile tree. Supply the shared executor configuration
+tree. Supply the shared executor configuration
 and matching host Ruby as documented in the introspection guide.
 
 ```sh

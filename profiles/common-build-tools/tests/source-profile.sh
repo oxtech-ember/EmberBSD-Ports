@@ -112,7 +112,7 @@ if [ "$scope" = all ]; then
     tar -xf "$distfiles/meson-1.12.1.tar.gz" --strip-components=1 -C "$work/meson-pristine"
     cmp "$work/meson-pristine/mesonbuild/scripts/depfixer.py" "$work/meson-patched/mesonbuild/scripts/depfixer.py"
 fi
-sh "$root/scripts/prepare-pkgsrc.sh" "$work/pkgsrc" common-build-tools > "$work/export.log"
+sh "$root/scripts/prepare-pkgsrc.sh" "$work/pkgsrc" > "$work/export.log"
 for recipe in lang/python314 devel/meson; do
     [ "$scope" != python-source ] || [ "$recipe" = lang/python314 ] || continue
     diff -r "$profile/recipes/$recipe" "$work/pkgsrc/$recipe"
@@ -126,7 +126,7 @@ if [ "$scope" = python-source ]; then
     exit 0
 fi
 # Existing GCC recipes must remain byte-for-byte identical to the established
-# development profile composition. This checks the newly added export mode.
+# development profile recipes.
 mkdir "$work/gcc-reference"
 git -C "$root/upstream/pkgsrc" archive HEAD lang/gcc16 lang/gcc16-libs lang/gcc16-libjit \
     math/mpfr math/mpcomplex devel/gtexinfo lang/tcl-expect | tar -xf - -C "$work/gcc-reference"
@@ -138,22 +138,26 @@ for recipe in lang/gcc16 lang/gcc16-libs lang/gcc16-libjit math/mpfr math/mpcomp
     diff -r "$work/gcc-reference/$recipe" "$work/pkgsrc/$recipe"
 done
 cmp "$root/profiles/development-toolchain/mk.conf" "$work/pkgsrc/EMBERBSD-DEVELOPMENT-MK.CONF"
-if sh "$root/scripts/prepare-pkgsrc.sh" "$work/pkgsrc" common-build-tools > "$work/existing.log" 2>&1; then exit 1; fi
+if sh "$root/scripts/prepare-pkgsrc.sh" "$work/pkgsrc" > "$work/existing.log" 2>&1; then exit 1; fi
 if sh "$root/scripts/prepare-pkgsrc.sh" "$work/unknown" invalid > "$work/unknown.log" 2>&1; then exit 1; fi
 [ ! -e "$work/unknown" ]
 # A private exporter fixture removes one required patch, never the real recipe.
-mkdir -p "$work/missing-fixture/scripts" "$work/missing-fixture/upstream" \
-    "$work/missing-fixture/profiles/common-build-tools"
-cp "$root/scripts/prepare-pkgsrc.sh" "$work/missing-fixture/scripts/"
-cp -R "$profile/recipes" "$work/missing-fixture/profiles/common-build-tools/"
-ln -s "$root/upstream/pkgsrc" "$work/missing-fixture/upstream/pkgsrc"
-git -C "$work/missing-fixture" init -q
+fixture=$work/missing-fixture
+mkdir -p "$fixture/scripts" "$fixture/upstream" "$fixture/profiles"
+cp "$root/scripts/prepare-pkgsrc.sh" "$fixture/scripts/"
+for item in pkgsrc probes; do ln -s "$root/$item" "$fixture/$item"; done
+for item in "$root"/profiles/*; do
+    [ "${item##*/}" = common-build-tools ] || ln -s "$item" "$fixture/profiles/${item##*/}"
+done
+cp -R "$profile" "$fixture/profiles/common-build-tools"
+ln -s "$root/upstream/pkgsrc" "$fixture/upstream/pkgsrc"
+git -C "$fixture" init -q
 pin=$(git -C "$root/upstream/pkgsrc" rev-parse HEAD)
-git -C "$work/missing-fixture" update-index --add --cacheinfo "160000,$pin,upstream/pkgsrc"
-rm "$work/missing-fixture/profiles/common-build-tools/recipes/lang/python314/patches/patch-configure"
-if sh "$work/missing-fixture/scripts/prepare-pkgsrc.sh" "$work/missing-export" \
-    common-build-tools > "$work/missing-export.log" 2>&1; then exit 1; fi
-grep -q 'Missing required patch: lang/python314/patch-configure' "$work/missing-export.log"
+git -C "$fixture" update-index --add --cacheinfo "160000,$pin,upstream/pkgsrc"
+missing=$(cd "$fixture/profiles/common-build-tools/recipes/devel/meson/patches" && ls patch-* | head -n 1)
+rm "$fixture/profiles/common-build-tools/recipes/devel/meson/patches/$missing"
+if sh "$fixture/scripts/prepare-pkgsrc.sh" "$work/missing-export" > "$work/missing-export.log" 2>&1; then exit 1; fi
+grep -qF "Missing patch: profiles/common-build-tools/recipes/devel/meson/patches/$missing" "$work/missing-export.log"
 [ ! -e "$work/missing-export" ]
 sh "$profile/tests/faulthandler-macro.sh" "$work/python-patched" "$work/python-pristine" "$work/macro"
 sh "$profile/tests/meson-selection.sh" "$work/meson-patched" "$work/meson-cli"

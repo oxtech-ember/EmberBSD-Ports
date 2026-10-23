@@ -28,7 +28,7 @@ compiler prefix, and a coherent EmberBSD SDK. The compiler must report 16.2.0
 and the selected canonical target. The helper never executes target programs.
 
 ```sh
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc development-toolchain
+sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
 EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK GNU_MAKE=/absolute/gmake \
 python3 -B profiles/development-toolchain/tests/cross-math/check.py \
     aarch64 /absolute/new-pkgsrc /absolute/gcc-16.2.0.tar.xz \

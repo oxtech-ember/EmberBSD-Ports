@@ -312,9 +312,7 @@ Live delivery and physical HDMI hotplug remain unverified.
 ## Prepare and select
 
 ```sh
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc common-graphics
-# Plasma also replaces the current Qt/KF toolkit recipes:
-sh scripts/prepare-pkgsrc.sh /absolute/another-new-pkgsrc plasma-mobile
+sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
 ```
 
 Include the exported files in a private native MAKECONF, in this order:
@@ -322,18 +320,17 @@ Include the exported files in a private native MAKECONF, in this order:
 ```make
 .include "/absolute/prepared-pkgsrc/EMBERBSD-COMMON-TOOLS-MK.CONF"
 .include "/absolute/prepared-pkgsrc/EMBERBSD-COMMON-GRAPHICS-MK.CONF"
-# For Plasma, include media before the toolkit:
+# For media consumers:
 .include "/absolute/prepared-pkgsrc/EMBERBSD-COMMON-MEDIA-MK.CONF"
-.include "/absolute/prepared-pkgsrc/EMBERBSD-PLASMA-TOOLKIT-MK.CONF"
 ```
 
-The exporter validates all six source pins, complete recipe trees and exact
-RCS-filtered patch hashes before creating its destination. It replaces
+The export checks the complete recipe trees and the exact RCS-filtered patch
+hashes before it creates its destination. It replaces
 `graphics/MesaLib`, `x11/libdrm`, `devel/wayland` and
 `devel/wayland-protocols`, `x11/xorgproto` and `devel/libudev-bsd`
 inside the new pinned pkgsrc export.
-`EMBERBSD-COMMON-GRAPHICS-SOURCES` records their provenance. Unknown modes,
-existing destinations and category collisions remain errors. No system
+`EMBERBSD-COMMON-GRAPHICS-SOURCES` records their provenance. Extra arguments,
+existing destinations and category collisions are errors. No system
 configuration or installed package is changed by preparation.
 
 The [Wayland cross instructions](cross/wayland.md) build the matching host
@@ -437,7 +434,7 @@ OpenSSL with BLAKE2s, shasum, tar and patch:
 
 ```sh
 sh profiles/common-graphics/tests/source.sh VERIFIED_DISTFILES NEW_WORK
-sh profiles/common-graphics/tests/export.sh NEW_WORK
+sh scripts/tests/export-composition.sh NEW_WORK
 sh profiles/common-graphics/tests/mesa-bundle-integrity.sh NEW_WORK
 BMAKE=/absolute/bmake sh profiles/common-graphics/tests/profile.sh EXPORTED_PKGSRC NEW_WORK
 BMAKE=/absolute/bmake sh profiles/common-graphics/tests/qtbase-egl.sh QTBASE_MAKEFILE NEW_WORK

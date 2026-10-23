@@ -119,7 +119,7 @@ volume. Use a bounded `MAKE_JOBS`, such as 2. Coordinate target access before
 the build reaches GIR generation.
 
 ```sh
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc common-graphics
+sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
 cd /absolute/new-pkgsrc/graphics/librsvg
 env TMPDIR=/absolute/build-tmp MAKECONF=/absolute/cross.mk.conf bmake package
 env TMPDIR=/absolute/build-tmp MAKECONF=/absolute/cross.mk.conf bmake install

@@ -22,14 +22,14 @@ bytes and is not substituted for the release distfile.
 
 ## Prepare packages
 
-Initialize the pinned pkgsrc submodule, then export the reviewed overlays:
+Initialize the pinned pkgsrc submodule, then prepare the standard export:
 
 ```sh
 git submodule update --init upstream/pkgsrc
-sh profiles/shells/prepare-pkgsrc.sh /absolute/new-pkgsrc
+sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
 ```
 
-The export includes the shared GCC 16.2 selection, current Libtool 2.6.2 and
+The export has `EMBERBSD-SHELLS-MK.CONF` from [mk.conf](mk.conf). It includes the shared GCC 16.2 selection, current Libtool 2.6.2 and
 Automake 1.19, dash patches, and libedit 20260512-3.1 with ncurses 6.6.
 It replaces the pinned mksh R59b recipe with the current R59c recipe and
 source repairs. mksh tests use current Perl 5.44.0 and GNU ed 1.22.6.

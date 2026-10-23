@@ -142,10 +142,8 @@ A revision change may leave existing
 pkgsrc completion cookies satisfied; use normal `bmake clean` for this package
 before a corrected build. Preserve the original failure and package first.
 
-For export validation under a limited disk budget,
-`../tests/export.sh --preflight-only NEW_WORK` runs only refusal checks before
-destination creation. Its output states that full composition was not run.
-The default invocation still tests all six export modes and cleanup.
+`scripts/tests/prepare-pkgsrc.sh NEW_WORK` tests the export refusals on a
+small fixture. It does not need disk space for a full export.
 
 ## Compile and run the real API consumer
 

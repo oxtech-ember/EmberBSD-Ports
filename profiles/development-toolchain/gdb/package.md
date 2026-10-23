@@ -15,7 +15,7 @@ with the accepted GCC16 compiler, complete NetBSD 11/AArch64 sysroot and
 matching installed target dependencies.
 
 ```sh
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc common-build-tools
+sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
 bmake -C /absolute/new-pkgsrc/devel/gdb \
     MAKECONF=/absolute/cross-mk.conf BATCH=yes package
 ```

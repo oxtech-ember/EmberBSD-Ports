@@ -190,11 +190,11 @@ and target sysroot are separate from this native pkgsrc selection policy.
 
 ```sh
 git submodule update --init --depth 1 upstream/pkgsrc
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc common-build-tools
+sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
 ```
 
-The destination must be new. The exporter rejects missing required patches
-before creating it. Original archive URLs and SHA256 are in
+The destination must be new. The export rejects missing or changed patches
+before it creates the destination. Original archive URLs and SHA256 are in
 [sources.tsv](sources.tsv); recipes record BLAKE2s, SHA512, size and pkgsrc's
 RCS-filtered patch SHA1. Meson uses its release asset, not GitHub's generated
 source tarball. No archives, build outputs or local machine settings belong

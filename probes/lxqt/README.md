@@ -21,9 +21,10 @@ Prepare a fresh common profile with the tracked LXQt overlay:
 python3 probes/lxqt/prepare-pkgsrc.py /absolute/new-pkgsrc-export
 ```
 
-The exporter checks that every overlay file is tracked by Git. It uses the
-standard `plasma-mobile` exporter and records the applied recipe inventory.
-Include the common cross, graphics, media and toolkit profiles in that order.
+The script checks that every overlay file is tracked by Git. It runs the
+standard export, copies the overlay files and records the applied recipe
+inventory. The standard export does not include the Plasma toolkit probe.
+Include the common cross, graphics and media configuration in that order.
 Use the shared EmberBSD sysroot and GCC16 toolchain.
 Build ordinary packages with `bmake package`.
 Install dependencies with ordinary package tools before building consumers.

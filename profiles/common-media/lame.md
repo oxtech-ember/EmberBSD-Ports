@@ -28,7 +28,7 @@ pkgsrc's real patch application. The source gate uses that same order.
 
 ## Reproduce the bounded runtime check
 
-Prepare the `common-media` or `plasma-mobile` export with the usual
+Prepare the export with the usual
 [profile instructions](README.md). Cross-build full `audio/lame` and its
 `audio/mpg123` dependency against a verified EmberBSD sysroot. Install both
 packages on the target; the build host does not execute target programs.

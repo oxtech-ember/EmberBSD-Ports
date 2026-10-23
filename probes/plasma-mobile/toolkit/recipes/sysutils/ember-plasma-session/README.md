@@ -4,11 +4,14 @@ This no-build package installs the canonical toolkit service. It belongs to
 the optional `plasma-mobile` toolkit profile. It does not add a desktop to the
 base system or the embedded dependency profiles.
 
-Prepare the normal standalone source export and use the current common cross
+The normal export does not include this probe recipe. Copy it, with its
+links resolved, into a new export and use the current common cross
 configuration. Build dependencies on the development host.
 
 ```sh
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc plasma-mobile
+sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
+cp -RL probes/plasma-mobile/toolkit/recipes/sysutils/ember-plasma-session \
+    /absolute/new-pkgsrc/sysutils/
 cd /absolute/new-pkgsrc/sysutils/ember-plasma-session
 bmake MAKECONF=/absolute/common-cross.mk.conf package
 ```

@@ -41,10 +41,10 @@ For pkgsrc cross builds, set `ONNXRUNTIME_NATIVE_PROTOC` to a matching native
 
 ## Native package and installed consumers
 
-Export the pinned pkgsrc base with the common GCC16 development profile:
+Export the pinned pkgsrc base with the EmberBSD recipes:
 
 ```sh
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc development-toolchain
+sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
 ```
 
 The [toolchain profile](../../profiles/development-toolchain/README.md)

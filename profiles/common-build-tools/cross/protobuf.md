@@ -21,8 +21,9 @@ The source partition checks are separate from ordinary package acceptance.
 Four reviewed [source repairs](../../../probes/kicad/protobuf/README.md) release
 the CLI descriptor registry after it exits and propagate UPB allocation failure
 for the message, repeated field and scalar string clone paths. The recipe reuses
-those public patch files through checked relative links. The exporter verifies
-their origins and checksums before materializing normal pkgsrc patches.
+those public patch files through relative links. The export checks that each
+link stays in the repository and that each patch matches its distinfo
+checksum. Then it copies the links as normal pkgsrc patches.
 It also keeps the two canonical pkgsrc portability patches.
 
 Abseil keeps the five canonical pkgsrc C++ patches. Its additional CMake repair
@@ -85,7 +86,6 @@ contract. This source inspection does not establish a complete KiCad configure.
 Run these checks with the current native Ruby, CMake and GCC16 tools:
 
 ```sh
-ruby profiles/common-build-tools/tests/protobuf-export.rb NEW_PREFLIGHT_WORK
 BMAKE=/absolute/bmake ruby profiles/common-build-tools/tests/protobuf-source.rb \
     EXPORTED_PKGSRC MAKECONF DISTFILES HOST_PROTOC NEW_SOURCE_WORK
 BMAKE=/absolute/bmake ruby profiles/common-build-tools/tests/cmake-cross.rb \

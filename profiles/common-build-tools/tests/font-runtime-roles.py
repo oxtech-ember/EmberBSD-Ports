@@ -4,7 +4,6 @@
 """Check shared native/cross font dependencies without compiling or installing."""
 import argparse
 import os
-import re
 from pathlib import Path
 import shlex
 import shutil
@@ -149,13 +148,11 @@ def main():
         assert "mkfontdir:run not supported in cross-compilation" in reason
     for name in ("mk/tools/replace.mk", "mk/pkginstall/fonts"):
         assert (trees["before"] / name).read_bytes() == (trees["after"] / name).read_bytes()
-    exporter = (root / "scripts/prepare-pkgsrc.sh").read_text()
-    assert "font-cross.patch" not in exporter
+    export = (root / "pkgsrc/export.conf").read_text()
+    assert "font-cross.patch" not in export
     assert not (root / "probes/plasma-mobile/toolkit/font-cross.patch").exists()
-    assert exporter.count("pkgsrc-font-runtime-roles.patch") == 1
-    deltas = re.search(r'^common_tools_deltas="([^"\n]+)"$', exporter, re.M)
-    assert deltas and "pkgsrc-font-runtime-roles.patch" in deltas.group(1).split()
-    assert exporter.count("for delta in $common_tools_deltas") == 2
+    assert export.count("pkgsrc-font-runtime-roles.patch") == 1
+    assert "patch\tprofiles/common-build-tools/patches/pkgsrc-font-runtime-roles.patch\n" in export
     sdk_commit = run("sdk-commit", ["git", "-C", sdk, "rev-parse", "HEAD"]).strip()
     jsonio.write_json(work / "result.json", dict(status="PASS", sdk_api=1, sdk_commit=sdk_commit,
         scope="32 actual recipe/framework/native/cross metadata cases and two strict refusal controls. No package or target execution.",

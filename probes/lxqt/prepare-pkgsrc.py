@@ -23,7 +23,7 @@ def main():
     if any(p.relative_to(root).as_posix() not in tracked for p in files):
         parser.error("Commit every LXQt recipe file before export")
     subprocess.run(["sh", str(root / "scripts/prepare-pkgsrc.sh"),
-                    str(args.destination), "plasma-mobile"], check=True)
+                    str(args.destination)], check=True)
     for path in files:
         target = args.destination / path.relative_to(source)
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -31,7 +31,6 @@ def main():
     receipt = {
         "ports": subprocess.check_output(
             ["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip(),
-        "base_profile": "plasma-mobile",
         "overlay": [p.relative_to(source).as_posix() for p in files],
     }
     (args.destination / "EMBERBSD-LXQT-RECIPES.json").write_text(

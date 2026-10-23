@@ -47,7 +47,7 @@ Our changes add the EmberBSD/NetBSD ABI branch, not a different codec.
 
 ## Reproduce
 
-Prepare the common-media or plasma-mobile profile as described in
+Prepare the export as described in
 [README](README.md), then cross-build `multimedia/libaom`, `multimedia/libvpx`
 and `multimedia/ffmpeg9` through the selected shared sysroot. Install the
 resulting packages with their complete dependencies on the acceptance board.

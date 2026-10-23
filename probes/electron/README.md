@@ -69,14 +69,17 @@ not match Electron's pinned revision.
 
 ## Blanc application package
 
-Export the recipes with the explicit profile:
+`scripts/prepare-pkgsrc.sh` does not export this probe. Copy the two recipes
+into a new export:
 
 ```sh
-sh scripts/prepare-pkgsrc.sh /absolute/NEW_PKGSRC electron
+sh scripts/prepare-pkgsrc.sh /absolute/NEW_PKGSRC
+cp -RL probes/electron/blanc /absolute/NEW_PKGSRC/www/blanc
+cp -RL probes/electron/electron44 /absolute/NEW_PKGSRC/devel/electron44
 ```
 
-The profile adds `www/blanc` and `devel/electron44`. It refuses an existing
-destination or an upstream recipe collision. Select the common GCC16 cross
+When the recipes are complete, move them to `pkgsrc/www/blanc` and
+`pkgsrc/devel/electron44`. Then the normal export includes them. Select the common GCC16 cross
 configuration for the target runtime. Set `EMBERBSD_HOST_NODE` to the absolute
 host Node.js 24.22.0 executable. Set `EMBERBSD_CROSS_BUILD_PYTHON` to the
 selected host CPython 3.15 executable. Set `EMBERBSD_SDK_SOURCE` to an absolute

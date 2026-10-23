@@ -5,7 +5,7 @@ set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd -P)
 [ "$#" -eq 1 ] || { echo 'Usage: prepare.sh ABSOLUTE_NEW_PKGSRC' >&2; exit 2; }
 destination=$1
-sh "$root/scripts/prepare-pkgsrc.sh" "$destination" development-toolchain
+sh "$root/scripts/prepare-pkgsrc.sh" "$destination"
 expected=$(git -C "$root" ls-files --stage -- upstream/pkgsrc | awk '$1 == "160000" {print $2}')
 [ "$(cat "$destination/EMBERBSD-PKGSRC-REVISION")" = "$expected" ]
 grep -q '^PKGREVISION=[[:space:]]*4$' "$destination/lang/gcc16/Makefile"

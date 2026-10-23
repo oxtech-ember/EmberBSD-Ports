@@ -842,6 +842,33 @@ recipe only if `pkgsrc/replaces` names its path, one path on each line.
 `pkgsrc/defaults.mk.conf` holds package defaults for every build. The export
 copies it to `EMBERBSD-DEFAULTS-MK.CONF`; the common tools `mk.conf` files
 include it.
+
+`pkgsrc/export.conf` lists the other export inputs, one on each line, with
+tabs between the fields. The export uses them in the order of the file:
+
+- `recipe SOURCE PKGPATH` copies a complete recipe from a profile.
+- `patch FILE` applies an infrastructure patch with zero fuzz.
+- `git-apply FILE MANIFEST` applies a binary patch after it checks the
+  SHA256 in `MANIFEST`.
+- `recipe-patch FILE PKGPATH NAME` adds a patch to a recipe and its
+  `distinfo`.
+- `file SOURCE DEST` copies a configuration file or helper into the export.
+
+```sh
+git submodule update --init upstream/pkgsrc
+sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
+```
+
+The destination must be new. The export takes no profile argument. Before it
+creates the destination, it checks each recipe: the `Makefile` exists, each
+patch matches its `distinfo` checksum, there are no undeclared patches, and
+each link stays in the repository. A path that upstream already has must be in
+`pkgsrc/replaces`, and each `pkgsrc/replaces` path must exist in both trees.
+Put `WRKOBJDIR` on a case-sensitive file system. The ncurses build refuses a
+case-insensitive one, and most packages depend on ncurses.
+`sh scripts/tests/prepare-pkgsrc.sh NEW_WORK` tests these checks on a fixture.
+`sh scripts/tests/export-composition.sh NEW_WORK` exports the real tree and
+compares each recipe with its source.
 Experimental probes remain under `probes/`
 until their package integration and runtime are validated. No signed binary
 package repository is provided yet.

@@ -112,7 +112,6 @@ GMAKE=/path/to/host/bin/gmake ruby tests/fribidi-cross.rb \
   /path/to/built/fribidi-1.0.17 /path/to/new-fribidi-check
 HOST_CC=/path/to/native/clang ruby tests/lzo-overread.rb \
   /path/to/lzo-2.10.tar.gz /path/to/new-lzo-check
-sh tests/export.sh --preflight-only /path/to/new-export-preflight
 BMAKE=/path/to/host/bin/bmake ruby tests/libxt-cross.rb \
   /path/to/pkgsrc /path/to/cross.mk /path/to/original-libXt-source \
   /path/to/built-libXt-source /path/to/new-libxt-check

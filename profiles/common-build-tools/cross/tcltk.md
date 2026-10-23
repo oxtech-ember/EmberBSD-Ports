@@ -70,7 +70,7 @@ The Tcl stub archive is installed with data-file permissions.
 Prepare sources through the supported exporter:
 
 ```sh
-sh scripts/prepare-pkgsrc.sh /absolute/new/pkgsrc common-graphics
+sh scripts/prepare-pkgsrc.sh /absolute/new/pkgsrc
 ```
 
 Use a native GCC16 MAKECONF with private work and package output directories.

@@ -128,6 +128,9 @@ def make_fixture(root, ports, upstream, bin_dir, replace):
     shutil.copy2(ports / 'profiles/common-build-tools/patches/current-automake-tools.patch',
                  root / 'profiles/common-build-tools/patches/current-automake-tools.patch')
     shutil.copytree(ports / 'pkgsrc/misc/pciids', root / 'pkgsrc/misc/pciids')
+    (root / 'pkgsrc/export.conf').write_text(
+        'patch\tprofiles/common-build-tools/patches/current-automake-tools.patch\n'
+        'file\tpkgsrc/defaults.mk.conf\tEMBERBSD-DEFAULTS-MK.CONF\n')
     replacement_text = 'misc/pciids\n' if replace else ''
     (root / 'pkgsrc/replaces').write_text(replacement_text)
     git = bin_dir / 'git'

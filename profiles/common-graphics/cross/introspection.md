@@ -343,9 +343,8 @@ The contract also checks provider aliases, SONAME inspection and input refusals
 before SSH. Injected transfer, query, readback, invalid-output, cleanup and
 input-change failures prove that failed runs publish no XML. A successful
 transport fixture publishes it only at the end. These transport fixtures are
-separate from the actual CM5 execution. `tests/export.sh NEW_WORK` checks all
-six profile compositions and the required recipe, helper and patch inputs.
-The final export passed all six compositions and 75 preflight refusals.
+separate from the actual target execution. `scripts/tests/export-composition.sh
+NEW_WORK` exports the tree and compares each exported recipe with its source.
 
 ## GLib 2.90.1 metadata package
 

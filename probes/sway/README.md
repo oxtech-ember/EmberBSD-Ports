@@ -74,12 +74,12 @@ configuration. Subproject fallback downloads are disabled. The `startsway`
 session helper runs `dbus-run-session`; the package declares the current D-Bus
 runtime provider separately from Basu's tray backend.
 
-The standard common-graphics exporter includes Sway, JSON-C and the BSD
-libevdev provider, validates their source pins and patch hashes, and records
-their inventory. Prepare a fresh export and use its matching cross MAKECONF:
+The standard export includes Sway, JSON-C and the BSD libevdev provider and
+checks their patch hashes. Prepare a fresh export and use its matching cross
+MAKECONF:
 
 ```sh
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc common-graphics
+sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
 env TMPDIR=/absolute/build-tmp bmake -C /absolute/new-pkgsrc/wayland/sway \
   MAKECONF=/absolute/cross.mk.conf MAKE_JOBS=1 package
 ```

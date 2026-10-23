@@ -7,7 +7,6 @@ import json
 import os
 from pathlib import Path
 import resource
-import re
 import shutil
 import subprocess
 import sys
@@ -142,17 +141,6 @@ def main():
 
     repo = Path(__file__).resolve().parents[3]
     script = repo / "profiles/common-build-tools/recipes/lang/rust-bin/files/darwin-llvm.py"
-    exporter = (repo / "scripts/prepare-pkgsrc.sh").read_text()
-    guard = re.search(r'        if \[ "\$recipe" = lang/rust-bin \]; then\n.*?\n        fi\n', exporter, re.S)
-    assert guard and "files/darwin-llvm.py" in guard.group()
-    fixture = work / "export-recipe"
-    (fixture / "files").mkdir(parents=True)
-    (fixture / "files/darwin-llvm.py").write_text("required helper\n")
-    argv = ["/bin/sh", "-c", 'set -eu; recipe=lang/rust-bin; source=$1;\n' + guard.group(), "preflight", str(fixture)]
-    run("export-helper-present", argv)
-    (fixture / "files/darwin-llvm.py").unlink()
-    result = run("export-helper-missing", argv, success=False)
-    assert result.returncode == 2 and b"Missing Darwin Rust LLVM helper." in result.stderr
     spec = importlib.util.spec_from_file_location("rust_darwin_llvm", script)
     helper = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(helper)
