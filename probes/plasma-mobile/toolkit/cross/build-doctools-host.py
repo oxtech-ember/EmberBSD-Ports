@@ -65,7 +65,7 @@ def build(arguments, sdk_root):
     require(INSTALLED_TREE_INVENTORY_API == 1, 'SDK installed inventory API 1 is required')
     jobs = int(os.environ.get('JOBS', '2'))
     require(1 <= jobs <= 256, 'JOBS must be in the range 1..256')
-    selected = {name: os.environ.get(name, '') for name in ('CMAKE', 'NINJA', 'HOST_CC', 'HOST_CXX')}
+    selected = {name: os.environ.get(name, '') for name in ('CMAKE', 'NINJA', 'HOST_CC', 'HOST_CXX', 'HOST_PERL')}
     for value in [*vars(args).values(), *selected.values()]:
         require(re.fullmatch(r'/[a-zA-Z0-9_./+-]+', value),
                 'Use absolute paths without shell/CMake metacharacters')
@@ -148,7 +148,8 @@ def build(arguments, sdk_root):
                          '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_INSTALL_PREFIX=' + str(work / 'prefix'),
                          '-DBUILD_TESTING=OFF']
             if component == 'kdoctools':
-                configure += ['-DCMAKE_DISABLE_FIND_PACKAGE_KF6I18n=ON', '-DINSTALL_INTERNAL_TOOLS=ON',
+                configure += ['-DPERL_EXECUTABLE=' + str(tools['HOST_PERL']),
+                              '-DCMAKE_DISABLE_FIND_PACKAGE_KF6I18n=ON', '-DINSTALL_INTERNAL_TOOLS=ON',
                               '-DLIBXML2_XMLLINT_EXECUTABLE=' + str(native / 'bin/xmllint'),
                               '-DDocBookXML4_DTD_DIR=' + str(native / 'share/xml/docbook/4.5'),
                               '-DDOCBOOKXSL_DIR=' + str(native / 'share/xsl/docbook')]

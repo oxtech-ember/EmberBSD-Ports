@@ -47,7 +47,7 @@ class BuilderTests(unittest.TestCase):
             directory.mkdir(parents=True)
         self.environment = dict(os.environ)
         self.environment.update(JOBS='3', PERL5LIB='/explicit/perl/modules')
-        for name in ('CMAKE', 'NINJA', 'HOST_CC', 'HOST_CXX'):
+        for name in ('CMAKE', 'NINJA', 'HOST_CC', 'HOST_CXX', 'HOST_PERL'):
             path = self.root / 'tools' / name.lower()
             path.write_text('#!/bin/sh\nexit 0\n')
             path.chmod(0o755)
@@ -129,6 +129,8 @@ class BuilderTests(unittest.TestCase):
             self.assertIn('-DCMAKE_C_COMPILER=' + self.environment['HOST_CC'], commands[step])
             self.assertIn('-DCMAKE_CXX_COMPILER=' + self.environment['HOST_CXX'], commands[step])
         self.assertNotIn('-DCMAKE_DISABLE_FIND_PACKAGE_KF6I18n=ON', commands['archive-configure'])
+        self.assertNotIn('-DPERL_EXECUTABLE=' + self.environment['HOST_PERL'], commands['archive-configure'])
+        self.assertIn('-DPERL_EXECUTABLE=' + self.environment['HOST_PERL'], commands['doctools-configure'])
         for flag in ('-DCMAKE_DISABLE_FIND_PACKAGE_KF6I18n=ON', '-DINSTALL_INTERNAL_TOOLS=ON',
                      '-DDocBookXML4_DTD_DIR=' + str(self.native / 'share/xml/docbook/4.5'),
                      '-DDOCBOOKXSL_DIR=' + str(self.native / 'share/xsl/docbook')):
@@ -319,7 +321,7 @@ elif '--install' in args and args[-1].endswith('/doctools'):
         path.chmod(0o755)
 """
         for path in [*(Path(value) for value in (self.environment[name] for name in
-                                                ('CMAKE', 'NINJA', 'HOST_CC', 'HOST_CXX'))),
+                                                ('CMAKE', 'NINJA', 'HOST_CC', 'HOST_CXX', 'HOST_PERL'))),
                      self.qt / 'bin/qmake']:
             path.write_text('#!' + sys.executable + '\n' + driver)
         self.retain = True

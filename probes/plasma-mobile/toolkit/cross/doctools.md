@@ -10,12 +10,16 @@ and target KDocTools data. Native package builds retain their normal dependency.
 Use the verified Frameworks 6.31.0 archives in [sources.tsv](../sources.tsv),
 matching native Qt 6.12 tools, Extra CMake Modules 6.31 and a native prefix
 with libxml2, libxslt, DocBook XML 4.5, DocBook XSL, zlib, bzip2, XZ and Zstd.
-The native Perl interpreter must provide `URI::Escape` from `www/p5-URI`.
-Set `PERL5LIB` if these modules use a separate native installation prefix.
+Set `HOST_PERL` to a native Perl interpreter that provides `URI::Escape` from
+`www/p5-URI`. The builder passes it to CMake as `PERL_EXECUTABLE`. Set
+`PERL5LIB` if these modules use a separate native installation prefix.
+On macOS, GCC16 can use a native Qt built against libc++ when `CXXFLAGS` puts
+compatible libc++ headers before the SDK C headers and `LDFLAGS` selects the
+matching libc++ runtime. Keep these host flags out of the target sysroot.
 The builder requires Python 3.15 with its standard library and SDK API 1.
 Select the SDK with `--sdk-source` or `EMBERBSD_SDK_SOURCE`.
-The five positional arguments and the compiler/CMake environment inputs are
-unchanged. `PERL5LIB`, pkg-config paths, compiler flags and the macOS SDK
+The five positional arguments and the explicit native tool inputs are
+required. `PERL5LIB`, pkg-config paths, compiler flags and the macOS SDK
 selection are explicit recorded inputs. Other ambient build variables are not
 forwarded. Use clean Ports and SDK source checkouts.
 
@@ -46,7 +50,7 @@ version gate. The command never overwrites work.
 
 ```sh
 CMAKE=/absolute/cmake NINJA=/absolute/ninja \
-HOST_CC=/absolute/cc HOST_CXX=/absolute/c++ JOBS=3 \
+HOST_CC=/absolute/cc HOST_CXX=/absolute/c++ HOST_PERL=/absolute/perl JOBS=3 \
     python3.15 build-doctools-host.py --sdk-source /absolute/EmberBSD-SDK \
     /absolute/distfiles /absolute/native-qt \
     /absolute/native-prefix /absolute/native-ecm/cmake /absolute/new-work
