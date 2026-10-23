@@ -60,4 +60,5 @@ esac
     assert (destination / 'EMBERBSD-DEFAULTS-MK.CONF').read_bytes() == (ports / 'pkgsrc/defaults.mk.conf').read_bytes()
     assert 'devel/editline' in (ports / 'pkgsrc/replaces').read_text().splitlines()
     assert not (ports / 'profiles/shells/recipes/devel/editline').exists()
+    assert '.include "${.PARSEDIR}/EMBERBSD-DEFAULTS-MK.CONF"' in (ports / 'profiles/shells/prepare-pkgsrc.sh').read_text()
 print('PASS: common export replaces the old provider and preserves every canonical recipe byte')

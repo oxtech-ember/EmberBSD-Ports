@@ -41,6 +41,7 @@ rm -rf "$destination/shells/mksh"
 cp -R "$root/pkgsrc/local-shells/mksh" "$destination/shells/mksh"
 cat > "$destination/EMBERBSD-SHELLS-MK.CONF" <<'EOF'
 .include "${.PARSEDIR}/EMBERBSD-DEVELOPMENT-MK.CONF"
+.include "${.PARSEDIR}/EMBERBSD-DEFAULTS-MK.CONF"
 .if defined(BSD_PKG_MK)
 GCC_REQD+= 16.2
 PERL5_REQD+= 5.44.0
