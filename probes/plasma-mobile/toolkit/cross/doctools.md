@@ -12,12 +12,41 @@ matching native Qt 6.12 tools, Extra CMake Modules 6.31 and a native prefix
 with libxml2, libxslt, DocBook XML 4.5, DocBook XSL, zlib, bzip2, XZ and Zstd.
 The native Perl interpreter must provide `URI::Escape` from `www/p5-URI`.
 Set `PERL5LIB` if these modules use a separate native installation prefix.
-The script verifies source hashes before extraction. It records generator hashes.
+The builder requires Python 3.15 with its standard library and SDK API 1.
+Select the SDK with `--sdk-source` or `EMBERBSD_SDK_SOURCE`.
+The five positional arguments and the compiler/CMake environment inputs are
+unchanged. `PERL5LIB`, pkg-config paths, compiler flags and the macOS SDK
+selection are explicit recorded inputs. Other ambient build variables are not
+forwarded. Use clean Ports and SDK source checkouts.
+
+The builder verifies both source hashes before it creates the work directory.
+It uses the SDK process controller and an exclusive lock on the canonical
+work path. Shared locks cover the Qt, native and ECM input directories.
+All cooperating writers must use the same canonical paths and the work
+parent as their lock root. These locks do not freeze uncoordinated installers.
+The builder writes only the new work directory and lock files in its parent.
+It does not download dependencies or install target packages.
+
+`inputs.json` records sources, tool and archive hashes, Python, selected paths
+and the effective environment. `commands/` and `logs/` record each native
+command. `outputs.json` binds those records to installed file/link inventories
+and the generated version header. `outputs.sha256` retains the three generator
+hashes. The receipt does not seal transitive native dependency trees or qualify
+a binary cache. Preserve the dependency owners' receipts separately.
+
+A failed build retains its incomplete work. An unproven process shutdown also
+writes `.producer-ownership-unproven.json`. Do not reuse that work or delete it
+before its processes have been inspected. Successful completion requires
+`outputs.json`, the version marker and no `incomplete.json`. The builder
+publishes the version marker last, after input rechecks and output inventories.
+A failed final check cannot admit the prefix through the existing consumer
+version gate. The command never overwrites work.
 
 ```sh
 CMAKE=/absolute/cmake NINJA=/absolute/ninja \
 HOST_CC=/absolute/cc HOST_CXX=/absolute/c++ JOBS=3 \
-    sh build-doctools-host.sh /absolute/distfiles /absolute/native-qt \
+    python3.15 build-doctools-host.py --sdk-source /absolute/EmberBSD-SDK \
+    /absolute/distfiles /absolute/native-qt \
     /absolute/native-prefix /absolute/native-ecm/cmake /absolute/new-work
 ```
 
@@ -73,6 +102,22 @@ tree and the DocBook XSL tree into the consumer's buildlink directory.
 The consumer gets DocBook XSL as a build dependency only.
 
 ## Reproduce the checks
+
+Run the builder contract tests with an explicit SDK source:
+
+```sh
+python3.15 ../tests/doctools-builder.py --sdk-source /absolute/EmberBSD-SDK
+```
+
+These tests use small archive and command fixtures. They check preserved
+CMake arguments, source/version rejection, busy locks, failure handling and
+receipts. They do not build KArchive, KDocTools or prerequisite packages.
+Set `DOCTOOLS_NATIVE_PROCESS_TEST=1` to also run the actual SDK process
+controller with harmless fixture executables. This does not run a compiler.
+Set `DOCTOOLS_TEST_RECEIPTS` to an existing evidence directory to retain the
+fixture inputs and outputs. A failed native fixture retains its temporary
+directory for inspection. No process inspection failure is converted to a pass.
+The native generator and installed consumer checks below remain required.
 
 
 ```sh
