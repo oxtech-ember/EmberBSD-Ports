@@ -1,0 +1,100 @@
+--- a/src/ipcz/api_object.h
++++ b/src/ipcz/api_object.h
+@@ -76,6 +76,13 @@
+  public:
+   constexpr APIObjectImpl() : APIObject(kType) {}
+ 
++  // Retain this concrete API object hierarchy when releasing a typed reference.
++  void ReleaseRef() {
++    if (ReleaseImpl()) {
++      delete this;
++    }
++  }
++
+   static T* FromObject(APIObject* object) {
+     if (object && object->object_type() == kType) {
+       return static_cast<T*>(object);
+--- a/src/BUILD.gn
++++ b/src/BUILD.gn
+@@ -285,6 +285,7 @@
+     "api_test.cc",
+     "box_test.cc",
+     "connect_test.cc",
++    "ipcz/api_object_test.cc",
+     "ipcz/block_allocator_test.cc",
+     "ipcz/buffer_pool_test.cc",
+     "ipcz/driver_memory_test.cc",
+--- /dev/null
++++ b/src/ipcz/api_object_test.cc
+@@ -0,0 +1,71 @@
++// Copyright 2026 EmberBSD contributors.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "ipcz/api_object.h"
++
++#include "testing/gtest/include/gtest/gtest.h"
++#include "util/ref_counted.h"
++
++namespace ipcz {
++namespace {
++
++class TestAPIObject : public APIObjectImpl<TestAPIObject, APIObject::kBox> {
++ public:
++  explicit TestAPIObject(int& destructions) : destructions_(destructions) {}
++
++  IpczResult Close() override { return IPCZ_RESULT_OK; }
++
++ protected:
++  ~TestAPIObject() override { ++destructions_; }
++
++ private:
++  int& destructions_;
++};
++
++// Deleting through APIObjectImpl must retain virtual dispatch, including when
++// the complete object's destructor is private.
++class DerivedTestAPIObject : public TestAPIObject {
++ public:
++  DerivedTestAPIObject(int& base_destructions, int& derived_destructions)
++      : TestAPIObject(base_destructions),
++        derived_destructions_(derived_destructions) {}
++
++ private:
++  ~DerivedTestAPIObject() override { ++derived_destructions_; }
++
++  int& derived_destructions_;
++};
++
++TEST(APIObjectTest, FinalTypedReferenceRetainsVirtualDestruction) {
++  int base_destructions = 0;
++  int derived_destructions = 0;
++  auto typed = MakeRefCounted<DerivedTestAPIObject>(base_destructions,
++                                                  derived_destructions);
++  Ref<APIObject> erased = typed;
++  erased.reset();
++  EXPECT_EQ(0, base_destructions);
++  EXPECT_EQ(0, derived_destructions);
++
++  typed.reset();
++  EXPECT_EQ(1, base_destructions);
++  EXPECT_EQ(1, derived_destructions);
++}
++
++TEST(APIObjectTest, FinalUntypedReferenceRetainsVirtualDestruction) {
++  int base_destructions = 0;
++  int derived_destructions = 0;
++  auto typed = MakeRefCounted<DerivedTestAPIObject>(base_destructions,
++                                                  derived_destructions);
++  Ref<APIObject> erased = typed;
++  typed.reset();
++  EXPECT_EQ(0, base_destructions);
++  EXPECT_EQ(0, derived_destructions);
++
++  erased.reset();
++  EXPECT_EQ(1, base_destructions);
++  EXPECT_EQ(1, derived_destructions);
++}
++
++}  // namespace
++}  // namespace ipcz

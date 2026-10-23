@@ -1,0 +1,25 @@
+--- a/components/performance_manager/scenario_api/performance_scenario_memory.h
++++ b/components/performance_manager/scenario_api/performance_scenario_memory.h
+@@ -16,13 +16,22 @@
+ namespace performance_scenarios {
+ 
+ // The full scenario state to copy over shared memory.
++#if defined(__clang__)
+ #pragma clang diagnostic push
+ #pragma clang diagnostic error "-Wpadded"
++#elif defined(__GNUC__)
++#pragma GCC diagnostic push
++#pragma GCC diagnostic error "-Wpadded"
++#endif
+ struct COMPONENT_EXPORT(SCENARIO_API) ScenarioState {
+   base::subtle::SharedAtomic<LoadingScenario> loading;
+   base::subtle::SharedAtomic<InputScenario> input;
+ };
++#if defined(__clang__)
+ #pragma clang diagnostic pop
++#elif defined(__GNUC__)
++#pragma GCC diagnostic pop
++#endif
+ 
+ // A scoped object that maps shared memory for the scenario state into the
+ // current process as long as it exists.

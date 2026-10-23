@@ -1,0 +1,57 @@
+--- a/absl/container/internal/btree.h
++++ b/absl/container/internal/btree.h
+@@ -939,6 +939,7 @@
+                                allocator_type *alloc);
+ 
+   // Splits a node, moving a portion of the node's values to its right sibling.
++  template <bool IsLeaf>
+   void split(int insert_position, btree_node *dest, allocator_type *alloc);
+ 
+   // Merges a node with its right sibling, moving all of the values and the
+@@ -1959,8 +1960,11 @@
+ }
+ 
+ template <typename P>
++template <bool IsLeaf>
+ void btree_node<P>::split(const int insert_position, btree_node *dest,
+                           allocator_type *alloc) {
++  assert(is_leaf() == IsLeaf);
++  assert(dest->is_leaf() == IsLeaf);
+   assert(dest->count() == 0);
+   assert(max_count() == kNodeSlots);
+   assert(position() + 1 == dest->position());
+@@ -1989,7 +1993,7 @@
+   value_destroy(finish(), alloc);
+   parent()->set_child_noupdate_position(position() + 1, dest);
+ 
+-  if (is_internal()) {
++  if constexpr (!IsLeaf) {
+     for (field_type i = dest->start(), j = finish() + 1; i <= dest->finish();
+          ++i, ++j) {
+       assert(child(j) != nullptr);
+@@ -2808,11 +2812,13 @@
+   node_type *split_node;
+   if (node->is_leaf()) {
+     split_node = new_leaf_node(node->position() + 1, parent);
+-    node->split(insert_position, split_node, mutable_allocator());
++    node->template split</*IsLeaf=*/true>(insert_position, split_node,
++                                          mutable_allocator());
+     if (rightmost() == node) mutable_rightmost() = split_node;
+   } else {
+     split_node = new_internal_node(node->position() + 1, parent);
+-    node->split(insert_position, split_node, mutable_allocator());
++    node->template split</*IsLeaf=*/false>(insert_position, split_node,
++                                           mutable_allocator());
+   }
+ 
+   if (insert_position > node->finish()) {
+--- a/absl/container/btree_test.cc
++++ b/absl/container/btree_test.cc
+@@ -713,6 +713,7 @@
+ TEST(Btree, set_string) { SetTest<std::string>(); }
+ TEST(Btree, set_cord) { SetTest<absl::Cord>(); }
+ TEST(Btree, map_int32) { MapTest<int32_t>(); }
++TEST(Btree, map_uint64) { MapTest<uint64_t>(); }
+ TEST(Btree, map_string) { MapTest<std::string>(); }
+ TEST(Btree, map_cord) { MapTest<absl::Cord>(); }
+ 

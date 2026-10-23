@@ -58,3 +58,45 @@ ninja -C /absolute/output obj/base/base_unittests/string_util_unittest.o
 Execute the corresponding upstream tests on an ABI-matching target after its
 runtime is available. Complete Electron linking, upstream test execution,
 ASan/UBSan or Valgrind execution, and application acceptance remain pending.
+
+## Network and generated code checks
+
+The network follow-ups retain fatal enum paths in DNS, ipcz, and WebRTC.
+ScenarioState retains fatal padding diagnostics with both supported compilers.
+QUICHE checks the zlib output-size and received-handshake prerequisites before
+use. Its Settings handling uses the existing frame visitor. The selected
+WebTransport subprotocol is converted only after the negative-index check.
+
+Abseil splits leaf and internal B-tree nodes through separate template
+instantiations. Both kinds use the existing allocation sizes. The added
+`Btree.map_uint64` case uses the existing MapTest differential checks against
+`std::map` and exercises deep splits. All five affected production units compile
+with their original GCC16 flags. Runtime execution of this test remains pending.
+
+The ipcz checked-cast patch rejects signed underflow and negative-to-unsigned
+conversions that the original upper-bound comparison accepted. Constant-expression
+boundary checks pass in C++20 and C++23. Invalid lower and upper boundaries are
+rejected. The upstream runtime and death-test source compiles with GCC16.
+Typed API object release preserves the same reference counter and virtual
+destruction. Size/alignment probes for APIObject, its typed implementation,
+DriverTransport, and Node match before and after. Two upstream ownership tests
+compile for typed and erased final references, including a private derived
+destructor. Runtime execution remains pending.
+
+The Dawn patch changes the generator template. Regenerate `proc` outputs with
+the pinned dawn_json_generator.py and dependencies. The baseline output matches
+the production generated file. GCC16 rejects its unsupported CFI selector before
+the patch and compiles the regenerated output after it. Clang retains the CFI
+exclusion. Generic sanitizer annotations remain available to other compilers.
+
+All 35 previously failed production commands compile with GCC16 after these
+follow-ups. Apple Clang 21 analysis completes on the patched translation units.
+Completed baseline comparisons introduce no findings. The baseline
+host_resolver_system.cc analysis crashes the Clang frontend, so that pair is
+not a complete comparison. Existing dead-store, forwarding-reference, and ipcz
+callback diagnostics remain visible. The callback is moved only on a path with
+a nonempty local broker vector; that path returns before its direct invocation.
+The pinned Chromium Clang does not provide the static analyzer backend.
+Cppcheck still cannot complete these modern dependency inputs. GCC-preprocessed
+ipcz and Dawn variants reach the same dependency syntax errors before and after;
+these checks do not establish a clean Cppcheck result.

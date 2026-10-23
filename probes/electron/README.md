@@ -141,6 +141,10 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-mkdir-bool-conditi
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-glib-watch-lifetime.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-string-placeholder-emplace-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-string-writeinto-bounded-copy-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-network-enum-noreturn-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-padding-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-invariants.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-proc-clang-cfi-attribute.patch
 ```
 
 The pkg-config patch keeps the effective `pkg/lib` value in the common cross
@@ -180,6 +184,13 @@ The Glib patch preserves controller lifetime checks during nested dispatch.
 The placeholder patch constructs offsets in place and preserves stable ordering.
 The WriteInto test patch preserves bounded copying and zero padding without
 intentional `strncpy` truncation. It keeps all size and content assertions.
+The network enum patch preserves fatal invalid-value paths in DNS, ipcz, and
+WebRTC. The scenario patch keeps the shared-memory padding diagnostic fatal on
+both Clang and GCC. The QUICHE patch checks allocation and handshake invariants,
+compares the selected subprotocol without signed conversion errors, and obtains
+Settings frames through the existing typed visitor. The Dawn template selects
+Clang-only CFI exclusions only on Clang. Generic sanitizer annotations remain
+available to other supported compilers.
 The parser patch removes three GCC-only diagnostic switches and `--param=`
 optimizer settings only from libclang's inputs. Target compiler arguments,
 `-Werror`, target triple, and sysroot remain unchanged.
@@ -223,6 +234,25 @@ The pair patch evaluates assignment constraints lazily. It avoids an unnecessary
 trait check on an incomplete second element when the first is not assignable.
 The allocation patch rejects byte counts above the implementation object-size
 limit before multiplication and allocation.
+
+Apply the Abseil and ipcz follow-ups from their separate DEPS source roots:
+
+```sh
+cd /absolute/chromium/src/third_party/abseil-cpp
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/abseil-btree-node-kind-gcc16.patch
+cd /absolute/chromium/src/third_party/ipcz
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ipcz-checked-cast-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ipcz-typed-release-gcc16.patch
+```
+
+The B-tree split uses the leaf/internal choice already made by its caller.
+Leaf splits do not instantiate child-pointer operations. The ipcz cast checks
+both integer bounds with the existing hardening policy. Typed reference release
+retains the concrete API object hierarchy and virtual destruction. Node layout,
+reference-count storage, ordering, and the public handle ABI stay unchanged.
+The carried upstream tests cover B-tree splitting, integer boundaries, and
+mixed typed/untyped reference ownership. Test compilation does not establish
+runtime execution.
 
 The pinned Perfetto checkout has a separate GCC16 warning patch. Apply it from
 the Chromium source root after the NetBSD adaptations:

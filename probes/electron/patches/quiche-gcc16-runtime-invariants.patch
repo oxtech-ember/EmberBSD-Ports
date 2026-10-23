@@ -1,0 +1,98 @@
+--- a/net/third_party/quiche/src/quiche/quic/core/crypto/cert_compressor.cc
++++ b/net/third_party/quiche/src/quiche/quic/core/crypto/cert_compressor.cc
+@@ -504,6 +504,7 @@
+     return "";
+   }
+ 
++  QUICHE_CHECK_LE(z.avail_out, result.size());
+   result.resize(result.size() - z.avail_out);
+   return result;
+ }
+--- a/net/third_party/quiche/src/quiche/http2/adapter/oghttp2_session.cc
++++ b/net/third_party/quiche/src/quiche/http2/adapter/oghttp2_session.cc
+@@ -90,6 +90,7 @@
+     error_code_ = rst_stream.error_code();
+   }
+   void VisitSettings(const spdy::SpdySettingsIR& settings) override {
++    settings_ = &settings;
+     frame_type_ = static_cast<uint8_t>(settings.frame_type());
+     frame_type_ = 4;
+     flags_ = (settings.is_ack() ? ACK_FLAG : 0);
+@@ -136,12 +137,14 @@
+   uint32_t error_code() { return error_code_; }
+   uint8_t frame_type() { return frame_type_; }
+   uint8_t flags() { return flags_; }
++  const SpdySettingsIR* settings() { return settings_; }
+ 
+  private:
+   uint32_t stream_id_ = 0;
+   uint32_t error_code_ = 0;
+   uint8_t frame_type_ = 0;
+   uint8_t flags_ = 0;
++  const SpdySettingsIR* settings_ = nullptr;
+ };
+ 
+ absl::string_view TracePerspectiveAsString(Perspective p) {
+@@ -204,9 +207,19 @@
+   return status.size() == 3 && status[0] == '1';
+ }
+ 
++const SpdySettingsIR* GetSettingsFrame(const spdy::SpdyFrameIR& frame) {
++  if (frame.frame_type() != spdy::SpdyFrameType::SETTINGS) {
++    return nullptr;
++  }
++  FrameAttributeCollector attributes;
++  frame.Visit(&attributes);
++  QUICHE_CHECK(attributes.settings() != nullptr);
++  return attributes.settings();
++}
++
+ bool IsNonAckSettings(const spdy::SpdyFrameIR& frame) {
+-  return frame.frame_type() == spdy::SpdyFrameType::SETTINGS &&
+-         !reinterpret_cast<const SpdySettingsIR&>(frame).is_ack();
++  const SpdySettingsIR* settings = GetSettingsFrame(frame);
++  return settings != nullptr && !settings->is_ack();
+ }
+ 
+ spdy::SpdyFramer::CompressionOption TranslateCompressionOption(
+@@ -601,7 +614,8 @@
+     return;
+   }
+ 
+-  const bool is_non_ack_settings = IsNonAckSettings(*frame);
++  const SpdySettingsIR* settings = GetSettingsFrame(*frame);
++  const bool is_non_ack_settings = settings != nullptr && !settings->is_ack();
+   MaybeSetupPreface(is_non_ack_settings);
+ 
+   if (frame->frame_type() == spdy::SpdyFrameType::GOAWAY) {
+@@ -624,8 +638,7 @@
+         frame->stream_id(),
+         reinterpret_cast<spdy::SpdyWindowUpdateIR&>(*frame).delta());
+   } else if (is_non_ack_settings) {
+-    HandleOutboundSettings(
+-        *reinterpret_cast<spdy::SpdySettingsIR*>(frame.get()));
++    HandleOutboundSettings(*settings);
+   }
+   if (frame->stream_id() != 0) {
+     auto result = queued_frames_.insert({frame->stream_id(), 1});
+--- a/net/third_party/quiche/src/quiche/quic/core/quic_crypto_client_handshaker.cc
++++ b/net/third_party/quiche/src/quiche/quic/core/quic_crypto_client_handshaker.cc
+@@ -429,6 +429,7 @@
+ void QuicCryptoClientHandshaker::DoReceiveREJ(
+     const CryptoHandshakeMessage* in,
+     QuicCryptoClientConfig::CachedState* cached) {
++  QUICHE_CHECK(in != nullptr);
+   // We sent a dummy CHLO because we didn't have enough information to
+   // perform a handshake, or we sent a full hello that the server
+   // rejected. Here we hope to have a REJ that contains the information
+--- a/net/third_party/quiche/src/quiche/quic/core/http/web_transport_only_server_session.cc
++++ b/net/third_party/quiche/src/quiche/quic/core/http/web_transport_only_server_session.cc
+@@ -140,7 +140,7 @@
+ 
+   int selected = static_cast<WebTransportOnlyServerSession*>(session())
+                      ->subprotocol_callback_(subprotocol_views);
+-  if (selected < 0 || selected >= subprotocol_views.size()) {
++  if (selected < 0 || static_cast<size_t>(selected) >= subprotocol_views.size()) {
+     return "";
+   }
+ 

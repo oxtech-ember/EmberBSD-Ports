@@ -1,0 +1,364 @@
+--- a/components/sqlite_vfs/metrics_util.cc
++++ b/components/sqlite_vfs/metrics_util.cc
+@@ -44,6 +44,7 @@
+     case Client::kTest:
+       return ".Test";
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace
+--- a/components/sqlite_vfs/shared_locks.cc
++++ b/components/sqlite_vfs/shared_locks.cc
+@@ -324,6 +324,7 @@
+       release_locks(num_locks);
+       return SQLITE_OK;
+   }
++  NOTREACHED();
+ }
+ 
+ void SharedLocks::ShmBarrier() {
+--- a/components/unexportable_keys/service_error.cc
++++ b/components/unexportable_keys/service_error.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "components/unexportable_keys/service_error.h"
++
++#include "base/notreached.h"
+ 
+ namespace unexportable_keys {
+ 
+@@ -20,6 +22,7 @@
+     case ServiceError::kOperationCancelled:
+       return false;
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace unexportable_keys
+--- a/components/unexportable_keys/unexportable_key_task_manager.cc
++++ b/components/unexportable_keys/unexportable_key_task_manager.cc
+@@ -14,6 +14,7 @@
+ #include "base/memory/scoped_refptr.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/no_destructor.h"
++#include "base/notreached.h"
+ #include "base/strings/strcat.h"
+ #include "base/task/single_thread_task_runner_thread_mode.h"
+ #include "base/task/task_traits.h"
+@@ -55,6 +56,7 @@
+       return ".OrphanedKeyGarbageCollection";
+   }
+   // LINT.ThenChange(//tools/metrics/histograms/metadata/net/histograms.xml:UnexportableKeysBackgroundTaskOrigin)
++  NOTREACHED();
+ }
+ 
+ template <class CallbackReturnType>
+--- a/net/base/ip_address.cc
++++ b/net/base/ip_address.cc
+@@ -623,6 +623,7 @@
+     case Dns64PrefixLength::kInvalid:
+       return ipv4_address;
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace net
+--- a/net/dns/dns_query.cc
++++ b/net/dns/dns_query.cc
+@@ -14,6 +14,7 @@
+ #include "base/feature_list.h"
+ #include "base/logging.h"
+ #include "base/memory/ptr_util.h"
++#include "base/notreached.h"
+ #include "base/numerics/byte_conversions.h"
+ #include "base/numerics/safe_conversions.h"
+ #include "base/strings/string_view_util.h"
+@@ -64,6 +65,7 @@
+       DCHECK_EQ((unpadded_size + padding_size) % 128, 0u);
+       return padding_size;
+   }
++  NOTREACHED();
+ }
+ 
+ // Builds OPT record rdata for the query by cloning `opt_rdata` (if any),
+--- a/net/dns/dns_util.cc
++++ b/net/dns/dns_util.cc
+@@ -17,6 +17,7 @@
+ #include "base/check_op.h"
+ #include "base/feature_list.h"
+ #include "base/metrics/field_trial.h"
++#include "base/notreached.h"
+ #include "base/numerics/byte_conversions.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_split.h"
+@@ -139,6 +140,7 @@
+     case DnsQueryType::HTTPS:
+       return dns_protocol::kTypeHttps;
+   }
++  NOTREACHED();
+ }
+ 
+ DnsQueryType AddressFamilyToDnsQueryType(AddressFamily address_family) {
+@@ -208,6 +210,7 @@
+     case SecureDnsMode::kSecure:
+       return "Secure";
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace net
+--- a/net/dns/dns_response_result_extractor.cc
++++ b/net/dns/dns_response_result_extractor.cc
+@@ -664,6 +664,7 @@
+       return ExtractHttpsResults(*response_, original_domain_name, request_port,
+                                  clock_->Now(), tick_clock_->NowTicks());
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace net
+--- a/net/dns/host_resolver_internal_result.cc
++++ b/net/dns/host_resolver_internal_result.cc
+@@ -16,6 +16,7 @@
+ #include "base/check_op.h"
+ #include "base/json/values_util.h"
+ #include "base/memory/ptr_util.h"
++#include "base/notreached.h"
+ #include "base/time/time.h"
+ #include "base/values.h"
+ #include "net/base/connection_endpoint_metadata.h"
+@@ -119,6 +120,7 @@
+     case HostResolverInternalResult::Type::kAlias:
+       return base::Value("alias");
+   }
++  NOTREACHED();
+ }
+ 
+ std::optional<HostResolverInternalResult::Type> TypeFromValue(
+@@ -149,6 +151,7 @@
+     case HostResolverInternalResult::Source::kUnknown:
+       return base::Value("unknown");
+   }
++  NOTREACHED();
+ }
+ 
+ std::optional<HostResolverInternalResult::Source> SourceFromValue(
+@@ -194,6 +197,7 @@
+     case Type::kAlias:
+       return HostResolverInternalAliasResult::FromValue(value);
+   }
++  NOTREACHED();
+ }
+ 
+ const HostResolverInternalDataResult& HostResolverInternalResult::AsData()
+--- a/net/dns/host_resolver_mdns_listener_impl.cc
++++ b/net/dns/host_resolver_mdns_listener_impl.cc
+@@ -29,6 +29,7 @@
+     case net::MDnsListener::RECORD_REMOVED:
+       return MdnsListenerUpdateType::kRemoved;
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace
+--- a/net/dns/host_resolver_mdns_task.cc
++++ b/net/dns/host_resolver_mdns_task.cc
+@@ -297,6 +297,7 @@
+                                  parsed->rdata<SrvRecordRdata>()->target(),
+                                  parsed->rdata<SrvRecordRdata>()->port());
+   }
++  NOTREACHED();
+ }
+ 
+ void HostResolverMdnsTask::CheckCompletion(bool post_needed) {
+--- a/net/dns/host_resolver_system_task.cc
++++ b/net/dns/host_resolver_system_task.cc
+@@ -546,6 +546,7 @@
+     case ADDRESS_FAMILY_UNSPECIFIED:
+       return AF_UNSPEC;
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace
+--- a/net/dns/mapped_host_resolver.cc
++++ b/net/dns/mapped_host_resolver.cc
+@@ -8,6 +8,7 @@
+ #include <string>
+ #include <utility>
+ 
++#include "base/notreached.h"
+ #include "base/strings/string_util.h"
+ #include "base/values.h"
+ #include "net/base/host_port_pair.h"
+@@ -59,6 +60,7 @@
+           std::move(target_network), std::move(source_net_log),
+           std::move(optional_parameters));
+   }
++  NOTREACHED();
+ }
+ 
+ std::unique_ptr<HostResolver::ResolveHostRequest>
+@@ -120,6 +122,7 @@
+         Host(std::move(rewritten)), std::move(network_anonymization_key),
+         std::move(target_network), std::move(net_log), std::move(parameters));
+   }
++  NOTREACHED();
+ }
+ 
+ std::unique_ptr<HostResolver::ProbeRequest>
+--- a/net/dns/resolve_context.cc
++++ b/net/dns/resolve_context.cc
+@@ -18,6 +18,7 @@
+ #include "base/metrics/histogram_functions.h"
+ #include "base/metrics/sample_vector.h"
+ #include "base/no_destructor.h"
++#include "base/notreached.h"
+ #include "base/numerics/safe_conversions.h"
+ #include "base/observer_list.h"
+ #include "base/strings/string_util.h"
+@@ -588,6 +589,7 @@
+       CHECK_EQ(server_index, 0u);
+       return &platform_server_stats_;
+   }
++  NOTREACHED();
+ }
+ 
+ base::TimeDelta ResolveContext::NextFallbackPeriodHelper(
+@@ -693,6 +695,7 @@
+       }
+       return "SecureNotValidated";
+   }
++  NOTREACHED();
+ }
+ 
+ std::string ResolveContext::GetDohProviderIdForUma(
+@@ -711,6 +714,7 @@
+     case DnsTransactionFactory::AttemptMode::kPlatform:
+       return "Other";
+   }
++  NOTREACHED();
+ }
+ 
+ void ResolveContext::NotifyDohStatusObserversOfSessionChanged() {
+--- a/net/dns/host_resolver_manager_job.cc
++++ b/net/dns/host_resolver_manager_job.cc
+@@ -19,6 +19,7 @@
+ #include "base/memory/weak_ptr.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/metrics/histogram_macros.h"
++#include "base/notreached.h"
+ #include "base/strings/strcat.h"
+ #include "base/task/sequenced_task_runner.h"
+ #include "base/time/time.h"
+@@ -97,6 +98,7 @@
+     case DnsTransactionFactory::AttemptMode::kPlatform:
+       return false;
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace
+@@ -296,6 +298,7 @@
+     case DnsTransactionFactory::AttemptMode::kPlatform:
+       return HostResolverManager::TaskType::DNS_PLATFORM;
+   }
++  NOTREACHED();
+ }
+ 
+ void HostResolverManager::Job::Schedule(bool at_head) {
+@@ -1269,6 +1272,7 @@
+         // ResolveLocally() prior to Job creation.
+         NOTREACHED() << "type=" << static_cast<int>(type);
+     }
++    NOTREACHED();
+   };
+ 
+   if (task_type) {
+--- a/net/dns/host_resolver_dns_task.h
++++ b/net/dns/host_resolver_dns_task.h
+@@ -17,6 +17,7 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/safe_ref.h"
+ #include "base/memory/weak_ptr.h"
++#include "base/notreached.h"
+ #include "base/numerics/safe_conversions.h"
+ #include "base/time/time.h"
+ #include "base/timer/timer.h"
+@@ -127,6 +128,7 @@
+       case DnsTransactionFactory::AttemptMode::kPlatform:
+         return false;
+     }
++    NOTREACHED();
+   }
+ 
+   bool https_disabled() const { return https_disabled_; }
+--- a/net/dns/public/secure_dns_policy.cc
++++ b/net/dns/public/secure_dns_policy.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "net/dns/public/secure_dns_policy.h"
++
++#include "base/notreached.h"
+ 
+ namespace net {
+ 
+@@ -15,6 +17,7 @@
+     case SecureDnsPolicy::kBootstrap:
+       return "bootstrap";
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace net
+--- a/third_party/ipcz/src/ipcz/link_type.cc
++++ b/third_party/ipcz/src/ipcz/link_type.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "ipcz/link_type.h"
++
++#include <cstdlib>
+ 
+ namespace ipcz {
+ 
+@@ -29,6 +31,7 @@
+     case Value::kBridge:
+       return "bridge";
+   }
++  std::abort();
+ }
+ 
+ }  // namespace ipcz
+--- a/third_party/ipcz/src/ipcz/local_router_link.cc
++++ b/third_party/ipcz/src/ipcz/local_router_link.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "ipcz/local_router_link.h"
++
++#include <cstdlib>
+ 
+ #include <sstream>
+ #include <utility>
+@@ -50,6 +52,7 @@
+       case LinkSide::kB:
+         return router_b_;
+     }
++    std::abort();
+   }
+ 
+   void Deactivate(LinkSide side) {
+--- a/third_party/webrtc/modules/rtp_rtcp/source/rtcp_packet/congestion_control_feedback.cc
++++ b/third_party/webrtc/modules/rtp_rtcp/source/rtcp_packet/congestion_control_feedback.cc
+@@ -113,6 +113,7 @@
+     case EcnMarking::kCe:
+       return kEcnCe << 13;
+   }
++  RTC_CHECK_NOTREACHED();
+ }
+ 
+ EcnMarking ToEcnMarking(uint16_t receive_info) {
