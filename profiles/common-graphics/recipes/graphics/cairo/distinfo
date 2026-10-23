@@ -9,3 +9,5 @@ SHA1 (patch-src_cairo-colr-glyph-render.c) = 5c1fe5c53c9bc844fbca76c996644f132a5
 SHA1 (patch-src_cairo-image-surface.c) = b6d8068996b4732c4ef414bab91cded1586b03cf
 SHA1 (patch-test_pdf-structure.c) = 12d25873451fa1a9633717d82996981f12f33557
 SHA1 (patch-util_cairo-missing_getline.c) = fe19374602a314616922acd0725eeda64a46a2f1
+SHA1 (patch-util_cairo-script_cairo-script-file.c) = 349765449584c4c78553815130ebf43ce60e4fa3
+SHA1 (patch-util_cairo-script_cairo-script-operators.c) = bcba09a6046168e064b5e91ca8e6d7b0572d546a

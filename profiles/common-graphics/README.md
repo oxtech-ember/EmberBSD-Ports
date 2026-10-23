@@ -1,5 +1,10 @@
 # Common graphics source packages
 
+[Cairo script LZO bounds](cross/cairo-lzo.md) keep LZO enabled with bounded
+decoding, exact output lengths and checked allocation sizes. Paired GCC16
+source-function regressions pass after the fix; target package execution
+remains a separate check.
+
 The [common CUPS 2.4.20 provider](cross/current-cups.patch) retains the original
 release archive, pkgsrc portability patches and selected Kerberos provider.
 GSS headers follow the target OS, so Darwin host frameworks do not enter a
