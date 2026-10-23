@@ -2,7 +2,7 @@
 
 This helper builds the existing common providers for the RTAB-Map CPU profile:
 
-- PNG 1.6.59 from `profiles/common-graphics/recipes/graphics/png`;
+- PNG 1.6.59 from `pkgsrc/graphics/png`;
 - libjpeg-turbo 3.2.0nb2 from the pinned pkgsrc `graphics/libjpeg-turbo` recipe.
 
 It does not add another provider recipe. It checks the original archive pins

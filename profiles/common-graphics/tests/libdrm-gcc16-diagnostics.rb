@@ -11,7 +11,7 @@ work = File.expand_path(ARGV.last)
 abort 'new absolute output required' unless ARGV.last.start_with?('/') && !File.exist?(work)
 Dir.mkdir(work)
 profile = File.expand_path('..', __dir__)
-recipe = profile + '/recipes/x11/libdrm'
+recipe = profile + '/../../pkgsrc/x11/libdrm'
 FileUtils.mkdir_p(work + '/pkgsrc/x11')
 Dir.children(tree).each { |p| File.symlink(tree + '/' + p, work + '/pkgsrc/' + p) unless p == 'x11' }
 Dir.children(tree + '/x11').each { |p| File.symlink(tree + '/x11/' + p, work + '/pkgsrc/x11/' + p) unless p == 'libdrm' }

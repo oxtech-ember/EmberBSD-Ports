@@ -13,7 +13,7 @@ done
 [ ! -e "$out" ] && [ ! -L "$out" ] || { echo 'Work path already exists.' >&2; exit 2; }
 recipe=$(CDPATH= cd "$(dirname "$0")" && pwd -P)
 ports=$(CDPATH= cd "$recipe/../../.." && pwd -P)
-png_recipe=$ports/profiles/common-graphics/recipes/graphics/png
+png_recipe=$ports/pkgsrc/graphics/png
 jobs=${CODECS_JOBS:-2}
 case "$jobs" in 1|2) ;; *) echo 'Use one or two jobs.' >&2; exit 2;; esac
 for tool in ruby patch tar make cmake ninja sha256sum; do command -v "$tool" >/dev/null; done

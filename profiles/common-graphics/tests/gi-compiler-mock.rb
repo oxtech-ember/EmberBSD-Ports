@@ -15,7 +15,7 @@ results = File.realpath(results)
 abort 'wrong GNOME archive' unless Digest::SHA256.file(archive).hexdigest ==
   '920d1a3fcedeadc32acff95c2e203b319039dd4b4a08dd1a2dfd283d19c0b9ae'
 abort 'missing configured scanner extension' if Dir[build + '/giscanner/_giscanner*.so'].empty?
-patch = File.expand_path('../recipes/devel/gobject-introspection/patches/patch-tests_scanner_test_ccompiler.py', __dir__)
+patch = File.expand_path('../../../pkgsrc/devel/gobject-introspection/patches/patch-tests_scanner_test_ccompiler.py', __dir__)
 relative = 'tests/scanner/test_ccompiler.py'
 commands = []
 run = lambda do |name, argv, cwd, env = {}|

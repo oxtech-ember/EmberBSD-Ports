@@ -13,7 +13,7 @@ for path in "$@"; do
 done
 [ ! -e "$work" ] && [ ! -L "$work" ] || { echo 'Work already exists' >&2; exit 2; }
 profile=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
-recipe=$profile/recipes/x11/libdrm
+recipe=$profile/../../pkgsrc/x11/libdrm
 python=${PYTHON:-python3.15}
 cc=$prefix/bin/aarch64--netbsd-gcc
 unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH

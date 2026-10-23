@@ -21,7 +21,7 @@ Dir.mktmpdir('ember-graphics-amd64-') do |work|
   %w[inputs.sha256 receipt.json].each { |name| FileUtils.cp("#{work}/#{name}", "#{work}/helper/#{name}") }
   recipes = {'mesa' => 'graphics/MesaLib', 'drm' => 'x11/libdrm'}
   recipes.each do |name, path|
-    text = File.readlines("#{root}/recipes/#{path}/Makefile").reject { |line| line.start_with?('.include') }.join
+    text = File.readlines("#{root}/../../pkgsrc/#{path}/Makefile").reject { |line| line.start_with?('.include') }.join
     File.write("#{work}/#{name}.mk", text)
   end
   vars = %w[PKG_FAIL_REASON ONLY_FOR_PLATFORM MESON_ARGS PLIST.intel PLIST.v3d _EMBERBSD_MESA_LLVM_TRIPLE EMBERBSD_COMMON_GRAPHICS OPSYS]
@@ -78,7 +78,7 @@ Dir.mktmpdir('ember-graphics-amd64-') do |work|
   drm_amd = query.call('MACHINE_ARCH=x86_64', 'PKGPATH=x11/libdrm', 'RECIPE=drm', 'DISTNAME=libdrm-2.4.134', 'PKGREVISION=4')
   check('AArch64 libdrm keeps Intel disabled') { drm_arm['PKG_FAIL_REASON'].empty? && drm_arm['MESON_ARGS'].include?('-Dintel=disabled') && drm_arm['PLIST.intel'].empty? }
   check('amd64 libdrm selects its own Intel module and payload') { drm_amd['PKG_FAIL_REASON'].empty? && drm_amd['MESON_ARGS'].include?('-Dintel=enabled') && drm_amd['PLIST.intel'] == 'yes' }
-  mesa_plist = File.readlines("#{root}/recipes/graphics/MesaLib/PLIST", chomp: true)
+  mesa_plist = File.readlines("#{root}/../../pkgsrc/graphics/MesaLib/PLIST", chomp: true)
   check('architecture-specific Mesa driver defaults follow their DRI payload') do
     %w[lib/dri/iris_dri.so share/drirc.d/00-iris-defaults.conf].all? { |name| mesa_plist.include?('${PLIST.intel}' + name) && !mesa_plist.include?(name) } &&
       %w[lib/dri/v3d_dri.so share/drirc.d/00-v3d-defaults.conf].all? { |name| mesa_plist.include?('${PLIST.v3d}' + name) && !mesa_plist.include?(name) }

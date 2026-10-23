@@ -78,7 +78,7 @@ pins = {}
     pins[archive] = {'recipe' => recipe, 'sha256' => sha256, 'url' => url, 'manifest' => manifest}
   end
 end
-ffi_recipe = File.join(graphics, 'recipes/devel/libffi')
+ffi_recipe = File.join(pkgsrc, 'devel/libffi')
 ffi_hash = File.read(ffi_recipe + '/distinfo')[/^SHA512 \(libffi-3\.8\.0\.tar\.gz\) = ([0-9a-f]{128})$/, 1]
 abort 'Unexpected pinned libffi source' unless ffi_hash
 pins['libffi-3.8.0.tar.gz'] = {'sha512' => ffi_hash, 'recipe' => 'devel/libffi',
@@ -403,8 +403,8 @@ end
 
 components = [
  ['libffi', 'libffi-3.8.0.tar.gz', ffi_recipe, :configure, ['--disable-multi-os-directory', '--includedir=' + prefix + '/include', '--disable-static']],
- ['pcre2', 'pcre2-10.49.tar.gz', graphics + '/recipes/devel/pcre2', :configure, ['--enable-pcre2-16', '--enable-pcre2-32', '--disable-jit', '--disable-static', '--enable-pcre2grep-libz', '--enable-pcre2grep-libbz2']],
- ['glib', 'glib-2.90.1.tar.xz', graphics + '/recipes/devel/glib2', :meson, ['-Dtests=false', '-Dinstalled_tests=false', '-Dintrospection=disabled', '-Ddtrace=disabled', '-Dglib_debug=disabled', '-Dlibmount=disabled', '-Dsysprof=disabled', '-Dselinux=disabled', '-Dlibelf=disabled', '-Ddocumentation=false', '-Dman-pages=disabled', '-Dnls=enabled', '-Dlocalstatedir=/var', '-Druntime_dir=/var/run']],
+ ['pcre2', 'pcre2-10.49.tar.gz', pkgsrc + '/devel/pcre2', :configure, ['--enable-pcre2-16', '--enable-pcre2-32', '--disable-jit', '--disable-static', '--enable-pcre2grep-libz', '--enable-pcre2grep-libbz2']],
+ ['glib', 'glib-2.90.1.tar.xz', pkgsrc + '/devel/glib2', :meson, ['-Dtests=false', '-Dinstalled_tests=false', '-Dintrospection=disabled', '-Ddtrace=disabled', '-Dglib_debug=disabled', '-Dlibmount=disabled', '-Dsysprof=disabled', '-Dselinux=disabled', '-Dlibelf=disabled', '-Ddocumentation=false', '-Dman-pages=disabled', '-Dnls=enabled', '-Dlocalstatedir=/var', '-Druntime_dir=/var/run']],
  ['gstreamer', 'gstreamer-1.28.8.tar.xz', pkgsrc + '/multimedia/gstreamer1', :meson, ['-Dtools=enabled', '-Dcheck=enabled', '-Dtests=disabled', '-Dexamples=disabled', '-Dbenchmarks=disabled', '-Dintrospection=disabled', '-Dptp-helper=disabled', '-Dcoretracers=enabled', '-Dnls=enabled']],
  ['gst-base', 'gst-plugins-base-1.28.8.tar.xz', pkgsrc + '/multimedia/gst-plugins1-base', :meson, ['-Dapp=enabled', '-Dvideoconvertscale=enabled', '-Dvideotestsrc=enabled', '-Dtypefind=enabled', '-Drawparse=enabled', '-Dgio=enabled', '-Dgio-typefinder=enabled', '-Dintrospection=disabled', '-Dorc=disabled', '-Dtools=enabled']],
  ['gst-good', 'gst-plugins-good-1.28.8.tar.xz', pkgsrc + '/multimedia/gst-plugins1-good', :meson, ['-Drtp=enabled', '-Drtpmanager=enabled', '-Dudp=enabled']],

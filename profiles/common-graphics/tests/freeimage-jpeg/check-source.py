@@ -65,7 +65,7 @@ for name in ("libjpeg.so", "libturbojpeg.so"):
         raise SystemExit("The native provider lacks GCC16 provenance: " + name)
     inputs.append(library)
 fixture = Path(__file__).with_name("contract.cpp").resolve()
-patches = Path(__file__).resolve().parents[2] / "recipes/graphics/freeimage/patches"
+patches = Path(__file__).resolve().parents[2] / "../../pkgsrc/graphics/freeimage/patches"
 patch = patches / "patch-Source_FreeImageToolkit_JPEGTransform.cpp"
 inputs += [fixture, patch, patches / "patch-CMakeLists.txt"]
 members = ["Source/FreeImage.h", "Source/Utilities.h", "Source/FreeImageIO.h",

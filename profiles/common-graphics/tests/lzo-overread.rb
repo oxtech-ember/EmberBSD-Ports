@@ -13,7 +13,7 @@ abort 'wrong upstream archive' unless Digest::SHA256.file(archive).hexdigest ==
 work = File.expand_path(ARGV[1])
 abort 'NEW_WORK must be new and absolute' unless ARGV[1].start_with?('/') && !File.exist?(work)
 cc = File.realpath(ENV.fetch('HOST_CC', '/usr/bin/clang'))
-patches = File.expand_path('../recipes/archivers/lzo/patches', __dir__)
+patches = File.expand_path('../../../pkgsrc/archivers/lzo/patches', __dir__)
 FileUtils.mkdir_p(work)
 File.write("#{work}/case.c", <<~'C')
   #include <lzo/lzo1f.h>

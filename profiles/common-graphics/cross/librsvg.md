@@ -189,7 +189,7 @@ ruby profiles/common-graphics/tests/prepare-librsvg-package.rb \
   /absolute/build-root/new-consumer
 env EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK \
   EMBERBSD_GI_QUERY_CONFIG=/absolute/query.json /absolute/native/python3.15 \
-  profiles/common-graphics/recipes/devel/gobject-introspection/files/target-query.py \
+  pkgsrc/devel/gobject-introspection/files/target-query.py \
   /absolute/build-root/new-consumer/librsvg-package
 ```
 

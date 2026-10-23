@@ -3,7 +3,7 @@
 The common tools and language packages own the compiler, sysroot and build
 tools. This graphics-specific step consumes them without rebuilding LLVM,
 Python or Meson. It builds the complete core-only libdrm 2.4.134nb1 payload
-selected by the [canonical recipe](../recipes/x11/libdrm/Makefile).
+selected by the [canonical recipe](../../../pkgsrc/x11/libdrm/Makefile).
 Package creation/registration and the common Mesa/consumer transition remain
 separate acceptance steps.
 

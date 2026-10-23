@@ -78,9 +78,9 @@ selected.each do |component|
            when 'qtbase' then toolkit + '/recipes/x11/qt6-qtbase'
            when 'qtmultimedia' then toolkit + '/recipes/multimedia/qt6-qtmultimedia'
            when 'qtshadertools' then toolkit + '/recipes/graphics/qt6-qtshadertools'
-           when 'png' then ports + '/profiles/common-graphics/recipes/graphics/png'
-           when 'freetype' then ports + '/profiles/common-graphics/recipes/graphics/freetype2'
-           when 'harfbuzz' then ports + '/profiles/common-graphics/recipes/fonts/harfbuzz'
+           when 'png' then ports + '/pkgsrc/graphics/png'
+           when 'freetype' then ports + '/pkgsrc/graphics/freetype2'
+           when 'harfbuzz' then ports + '/pkgsrc/fonts/harfbuzz'
            when 'sndfile' then nil
            else ports + '/pkgsrc/audio/pulseaudio'
            end

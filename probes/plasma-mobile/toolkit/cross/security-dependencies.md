@@ -24,7 +24,7 @@ The amd64 result is a build check only; runtime evidence remains AArch64.
 
 polkit uses native GLib generators, g-ir-scanner and g-ir-compiler. Its GIR
 queries are cross-compiled and executed on the board through the existing
-[common introspection workflow](../../../../profiles/common-graphics/recipes/devel/gobject-introspection/cross.mk).
+[common introspection workflow](../../../../pkgsrc/devel/gobject-introspection/cross.mk).
 The query receives only its selected libraries in an isolated directory.
 ELF inspection replaces build-host `ldd`; the agent query links both in-tree
 polkit libraries. Daemon, PAM helper, tools, GIR and typelibs remain enabled.

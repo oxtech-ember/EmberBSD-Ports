@@ -45,7 +45,7 @@ def main():
     parser.add_argument('--sdk-source', default=os.environ.get('EMBERBSD_SDK_SOURCE'))
     parser.add_argument('--source', default=str(tests / 'librsvg-package.c'))
     parser.add_argument('--helper', default=str(tests.parent /
-                        'recipes/devel/gobject-introspection/files/target-query.py'))
+                        '../../pkgsrc/devel/gobject-introspection/files/target-query.py'))
     parser.add_argument('prepared_consumer', metavar='PREPARED_CONSUMER')
     parser.add_argument('new_work', metavar='NEW_WORK')
     options = parser.parse_args()

@@ -10,7 +10,7 @@ abort "Usage: #{$PROGRAM_NAME} MESA_ARCHIVE NEW_OUTPUT" unless ARGV.size==2
 archive,work=ARGV.map{|p|File.expand_path(p)}
 abort 'Output exists' if File.exist?(work)
 FileUtils.mkdir_p(work)
-recipe=File.expand_path('../../recipes/graphics/MesaLib',__dir__)
+recipe=File.expand_path('../../../../pkgsrc/graphics/MesaLib',__dir__)
 distinfo=File.read(recipe+'/distinfo')
 expected=distinfo[/^SHA512 \(mesa-26\.2\.4\.tar\.xz\) = (\h+)$/,1]
 abort 'Archive hash mismatch' unless expected && Digest::SHA512.file(archive).hexdigest==expected

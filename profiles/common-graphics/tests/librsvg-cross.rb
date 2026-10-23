@@ -57,7 +57,7 @@ MESON
   message('scanner arguments: ' + ' '.join(gir_args))
   message('module install path: ' + pixbuf_module_dir)
 MESON
-needed = File.expand_path('../recipes/devel/gobject-introspection/files/elf-needed.sh', __dir__)
+needed = File.expand_path('../../../pkgsrc/devel/gobject-introspection/files/elf-needed.sh', __dir__)
 native = "[binaries]\nc = '/usr/bin/cc'\npkg-config = '#{host}/bin/pkg-config'\ng-ir-scanner = '#{host}/bin/g-ir-scanner'\ng-ir-compiler = '#{host}/bin/g-ir-compiler'\n"
 module_dir = '/usr/pkg/lib/gdk-pixbuf-2.0/2.10.0/loaders'
 properties = "[properties]\nemberbsd_gi_cross = true\nemberbsd_gi_ldd_wrapper = '#{needed}'\nemberbsd_pixbuf_module_dir = '#{module_dir}'\n"

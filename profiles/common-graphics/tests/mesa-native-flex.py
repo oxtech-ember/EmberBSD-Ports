@@ -26,7 +26,7 @@ def main():
         raise SystemExit("Use a new absolute work directory")
     work.mkdir(parents=True)
     profile = Path(__file__).resolve().parent.parent
-    recipe = profile / "recipes/graphics/MesaLib"
+    recipe = profile / "../../pkgsrc/graphics/MesaLib"
     bmake = shutil.which(os.environ.get("BMAKE", "bmake"))
     if bmake is None:
         raise SystemExit("Actual bmake is required")

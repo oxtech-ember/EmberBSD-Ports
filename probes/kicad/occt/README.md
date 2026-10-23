@@ -133,7 +133,7 @@ ruby probes/kicad/occt/tests/check-failure-stack.rb \
     /absolute/generated-headers /absolute/native-prefix /absolute/new-check
 python3.15 probes/kicad/occt/tests/check-install.py \
     /absolute/original-source /absolute/patched-source /absolute/new-install-check \
-    --recipe /absolute/Ports/profiles/common-graphics/recipes/cad/occt/Makefile
+    --recipe /absolute/Ports/pkgsrc/cad/occt/Makefile
 ```
 
 The exception test rebuilds the actual `Standard_Failure` module. It records

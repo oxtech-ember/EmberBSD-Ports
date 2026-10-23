@@ -9,7 +9,7 @@ The file path also releases its slab object if string allocation fails.
 
 The two local patches use the upstream LZO 2.10 safe API. They were prepared
 with AI assistance and independently reviewed. They are not upstream commits.
-The source archive and patch hashes are in the [recipe distinfo](../recipes/graphics/cairo/distinfo).
+The source archive and patch hashes are in the [recipe distinfo](../../../pkgsrc/graphics/cairo/distinfo).
 Upstream sources: [Cairo releases](https://cairographics.org/releases/) and
 [LZO](https://www.oberhumer.com/opensource/lzo/).
 

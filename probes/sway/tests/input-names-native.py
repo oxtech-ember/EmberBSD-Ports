@@ -41,7 +41,7 @@ environment = {**os.environ, "ASAN_OPTIONS": f"detect_leaks={int(leaks)}:halt_on
 baseline = subprocess.run(command, capture_output=True)
 (args.work / "baseline.stderr").write_bytes(baseline.stderr)
 assert baseline.returncode != 0, "The original source lacks the added name APIs"
-patches = Path(__file__).resolve().parents[3] / "profiles/common-graphics/recipes/devel/libevdev-chunk/patches"
+patches = Path(__file__).resolve().parents[3] / "pkgsrc/devel/libevdev-chunk/patches"
 for patch in sorted(patches.glob("patch-*")):
     subprocess.run(["patch", "-p0", "-F", "0", "-i", str(patch)], cwd=tree, check=True)
 subprocess.run(command, check=True)

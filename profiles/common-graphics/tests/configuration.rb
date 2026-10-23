@@ -24,7 +24,7 @@ abort 'Missing production Python block' unless block && block.include?("python_e
 FileUtils.mkdir_p("#{work}/project")
 FileUtils.cp("#{source}/meson.options", "#{work}/project/meson.options")
 File.write("#{work}/project/meson.build", "project('mesa-package-source-check', version: '26.2.4')\n"+block.gsub('@PYTHONBIN@',python)+"\nmessage('SELECTED_PYTHON=' + prog_python.full_path())\n")
-recipe=File.read("#{profile}/recipes/graphics/MesaLib/Makefile")
+recipe=File.read("#{profile}/../../pkgsrc/graphics/MesaLib/Makefile")
 # Only actual recipe option assignments, not wrapper/compiler flags.
 args=recipe.lines.grep(/^MESON_ARGS\+=/).flat_map { |l| l.split[1..] }
 # pkgsrc's Meson integration supplies --buildtype=plain itself. Supplying the

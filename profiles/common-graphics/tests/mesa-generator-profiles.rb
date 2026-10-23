@@ -7,7 +7,7 @@ require 'digest'
 require 'open3'
 require 'json'
 root = File.expand_path('..', __dir__)
-verifier = root + '/recipes/graphics/MesaLib/verify-mesa-generators.sh'
+verifier = root + '/../../pkgsrc/graphics/MesaLib/verify-mesa-generators.sh'
 checks = 0
 Dir.mktmpdir('mesa-generator-profiles-', '/tmp') do |d|
   tools = d + '/tools'; source = d + '/source'
@@ -48,10 +48,10 @@ Dir.mktmpdir('mesa-generator-profiles-', '/tmp') do |d|
       EMBERBSD_MESA_GENERATORS=#{tools}
       _EMBERBSD_MESA_GENERATOR_PROFILES=intel
       _EMBERBSD_MESA_GENERATOR_NAMES=mesa_clc vtn_bindgen2
-      .include "#{root}/recipes/graphics/MesaLib/mesa-generators.mk"
+      .include "#{root}/../../pkgsrc/graphics/MesaLib/mesa-generators.mk"
     MAKE
     native = d + '/.meson-generators-native'
-    out, status = Open3.capture2e(ENV['BMAKE'], '-r', '-m', '/', '-C', root + '/recipes/graphics/MesaLib', '-f', mk, native, 'emberbsd-mesa-generators-check')
+    out, status = Open3.capture2e(ENV['BMAKE'], '-r', '-m', '/', '-C', root + '/../../pkgsrc/graphics/MesaLib', '-f', mk, native, 'emberbsd-mesa-generators-check')
     abort "FAIL production native-file target: #{out}" unless status.success?
     text = File.read(native)
     abort 'Intel native file requires PCO' if text.include?('pco_clc')

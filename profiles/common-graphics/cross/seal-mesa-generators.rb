@@ -25,7 +25,7 @@ abort 'Use new absolute paths without whitespace or shell metacharacters' unless
 abort 'This native generator recipe requires macOS ARM64' unless RUBY_PLATFORM.include?('darwin') && `uname -m`.strip == 'arm64'
 owner = File.dirname(File.realpath(__FILE__))
 ports = File.expand_path('../../..', owner)
-recipe = owner + '/../recipes/graphics/MesaLib'
+recipe = owner + '/../../../pkgsrc/graphics/MesaLib'
 sha = ->(p) { Digest::SHA256.file(p).hexdigest }
 pin = '794b3d1729075dae7ebd47c7283b7ca0cdb5dec668f7f11cc0a5d82f6138a0a5'
 abort 'Wrong Mesa source archive' unless sha.call(archive) == pin

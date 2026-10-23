@@ -27,7 +27,7 @@ raise 'Actual AArch64 GCC16 is required.' unless run.call('target', [target_cxx,
 raise 'GCC16.2 is required.' unless run.call('target-version', [target_cxx, '-dumpfullversion']).strip == '16.2.0' && run.call('native-version', native + ['-dumpfullversion']).strip == '16.2.0'
 run.call('extract-skia', ['tar', '-xJf', archive, '-C', output, 'webkitgtk-2.54.1/Source/ThirdParty/skia'])
 source = output + '/webkitgtk-2.54.1'
-patches = Dir[root + '/profiles/common-graphics/recipes/www/webkit-gtk41/patches/patch-Source_ThirdParty_skia*'].sort
+patches = Dir[root + '/pkgsrc/www/webkit-gtk41/patches/patch-Source_ThirdParty_skia*'].sort
 raise 'Expected the complete three-patch Skia set.' unless patches.size == 3
 patches.each { |path| run.call(File.basename(path), ['patch', '-f', '-p0', '-F', '0', '-d', source], input: File.read(path)) }
 source += '/Source/ThirdParty/skia'

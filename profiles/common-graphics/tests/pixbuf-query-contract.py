@@ -53,7 +53,7 @@ def main():
     parser.add_argument('--target', choices=TARGETS, default='aarch64')
     parser.add_argument('--sdk-source', default=os.environ.get('EMBERBSD_SDK_SOURCE'))
     parser.add_argument('--helper', default=str(Path(__file__).resolve().parent.parent /
-                        'recipes/graphics/gdk-pixbuf2/files/target-tools.py'))
+                        '../../pkgsrc/graphics/gdk-pixbuf2/files/target-tools.py'))
     parser.add_argument('cross_tools', metavar='CROSS_TOOLS')
     parser.add_argument('new_work', metavar='NEW_WORK')
     options = parser.parse_args()

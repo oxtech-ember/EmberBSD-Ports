@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Included only for cross builds, after
-# the librsvg cross recipe in profiles/common-graphics.
+# the librsvg cross recipe in graphics/librsvg.
 RUST_TYPE= native
 TOOL_DEPENDS+= rust-bin-1.99.1{,nb[0-9]*}:../../lang/rust-bin
 TOOL_DEPENDS+= rust-std-aarch64-netbsd-1.99.1{,nb[0-9]*}:../../lang/rust-std-aarch64-netbsd

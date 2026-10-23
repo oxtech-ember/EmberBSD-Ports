@@ -12,7 +12,7 @@ abort 'wrong upstream archive' unless Digest::SHA256.file(archive).hexdigest == 
 FileUtils.mkdir_p(work)
 abort 'extract failed' unless system('tar', '-xJf', archive, '-C', work)
 source = work + '/gdk-pixbuf-2.44.8'
-recipe = File.expand_path('../recipes/graphics/gdk-pixbuf2', __dir__)
+recipe = File.expand_path('../../../pkgsrc/graphics/gdk-pixbuf2', __dir__)
 distinfo = File.read(recipe + '/distinfo')
 changed = []
 Dir.glob(recipe + '/patches/patch-*').sort.each do |patch|

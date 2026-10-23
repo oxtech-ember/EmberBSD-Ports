@@ -11,7 +11,7 @@ tree, conf = ARGV.first(2).map { |path| File.realpath(path) }
 work = File.expand_path(ARGV.last)
 abort 'NEW_WORK must be new and absolute' unless ARGV.last.start_with?('/') && !File.exist?(work)
 abort 'the causal control requires a Darwin host with Carbon.framework' unless File.directory?('/System/Library/Frameworks/Carbon.framework')
-source = File.expand_path('../recipes/graphics/freetype2', __dir__)
+source = File.expand_path('../../../pkgsrc/graphics/freetype2', __dir__)
 options = File.read("#{source}/Makefile")
 condition = '.if ${OPSYS} == "Darwin" && exists(/System/Library/Frameworks/Carbon.framework)'
 abort 'target-aware FreeType condition is missing' unless options.scan(condition).length == 1

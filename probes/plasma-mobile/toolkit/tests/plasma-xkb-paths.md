@@ -8,7 +8,7 @@ It uses real CMake `FindPkgConfig` and pkgconf. It also generates the actual
 The pinned xkeyboard-config 2.48 `meson.build` declares `xkb_root` as its
 canonical data directory. It retains `xkb_base` as the legacy X11 path and
 installs that path as an absolute compatibility symlink. See the
-[provider recipe](../../../../profiles/common-graphics/recipes/x11/xkeyboard-config/).
+[provider recipe](../../../../pkgsrc/x11/xkeyboard-config/).
 That absolute alias resolves inside the target system, but not on the host.
 Plasma now prefers `xkb_root`. It falls back to `xkb_base` only when the
 canonical variable is absent or empty. An invalid declared root remains an error.

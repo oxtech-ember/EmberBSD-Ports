@@ -10,7 +10,7 @@ is still NULL. The seat destroy listener previously read
 `config->handler_context.seat` in that state. A missing directory in
 `SWAYSOCK` therefore caused SIGSEGV after the expected IPC bind error.
 
-The [seat patch](../../profiles/common-graphics/recipes/wayland/sway/patches/patch-sway_input_seat.c)
+The [seat patch](../../pkgsrc/wayland/sway/patches/patch-sway_input_seat.c)
 checks `config` before updating its handler context. The rest of seat cleanup
 still destroys devices, focus nodes, input methods, the cursor, listeners,
 deferred bindings, the scene tree and the seat itself. It does not skip teardown

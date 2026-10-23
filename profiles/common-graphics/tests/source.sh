@@ -22,7 +22,9 @@ verify_archive() {
 }
 while IFS="$(printf '\t')" read -r recipe archive sha url; do
     case "$recipe" in ''|'#'*) continue ;; esac
+    # math/eigen3 stays in this profile; all other recipes are in pkgsrc/.
     pkg=$profile/recipes/$recipe
+    [ -d "$pkg" ] || pkg=$profile/../../pkgsrc/$recipe
     verify_archive "$distfiles/$archive"
     # A headers-only package and its runtime may share one upstream archive.
     # Each recipe still needs its own independently patched source view.
@@ -40,20 +42,20 @@ done < "$profile/sources.tsv"
 # Mutate only the small libdrm archive and execute the exact positive verifier.
 awk -F '\t' '$1=="x11/libdrm"' "$profile/sources.tsv" > "$work/negative-source.tsv"
 IFS="$(printf '\t')" read -r recipe archive sha url < "$work/negative-source.tsv"
-pkg=$profile/recipes/$recipe
+pkg=$profile/../../pkgsrc/$recipe
 cp "$distfiles/$archive" "$work/altered-$archive"
 printf x >> "$work/altered-$archive"
 if verify_archive "$work/altered-$archive" > "$work/archive-negative.log" 2>&1; then exit 1; fi
 # Failed extraction must retain failure.
 printf 'not an xz archive\n' > "$work/corrupt.tar.xz"
 if tar -xf "$work/corrupt.tar.xz" -C "$work" > "$work/extraction-negative.log" 2>&1; then exit 1; fi
-if patch -f -N -F 0 -p0 -d "$work/mesa-26.2.4" < "$profile/recipes/graphics/MesaLib/patches/patch-meson-python-selection" > "$work/repeated.log" 2>&1; then exit 1; fi
+if patch -f -N -F 0 -p0 -d "$work/mesa-26.2.4" < "$profile/../../pkgsrc/graphics/MesaLib/patches/patch-meson-python-selection" > "$work/repeated.log" 2>&1; then exit 1; fi
 # Accepted probe source deltas remain byte-identical; do not repeat their contracts.
 root=$(CDPATH= cd -- "$profile/../.." && pwd)
 for name in patch-dso-lifetime patch-src_util_half__float.c patch-bin_symbols-check.py patch-include_c99__alloca.h; do
-    cmp "$root/probes/wayland-utm/patches/mesa/$name" "$profile/recipes/graphics/MesaLib/patches/$name"
+    cmp "$root/probes/wayland-utm/patches/mesa/$name" "$profile/../../pkgsrc/graphics/MesaLib/patches/$name"
 done
 for file in "$root"/probes/wayland-utm/patches/libdrm/patch-*; do
-    cmp "$file" "$profile/recipes/x11/libdrm/patches/${file##*/}"
+    cmp "$file" "$profile/../../pkgsrc/x11/libdrm/patches/${file##*/}"
 done
 echo 'PASS: original archives, filtered package hashes, once-only zero-fuzz patching, extraction failure and exact accepted patch identity'

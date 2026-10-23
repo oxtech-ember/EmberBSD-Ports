@@ -10,7 +10,7 @@ tree, conf = ARGV.first(2).map { |path| File.realpath(path) }
 work = File.expand_path(ARGV.last)
 abort 'NEW_WORK must be new and absolute' unless ARGV.last.start_with?('/') && !File.exist?(work)
 abort 'the causal control requires a Darwin host with Quartz.framework' unless File.directory?('/System/Library/Frameworks/Quartz.framework')
-source = File.expand_path('../recipes/graphics/cairo', __dir__)
+source = File.expand_path('../../../pkgsrc/graphics/cairo', __dir__)
 options = File.read("#{source}/options.mk")
 condition = '.if ${OPSYS} == "Darwin" && exists(/System/Library/Frameworks/Quartz.framework)'
 abort 'target-aware Cairo condition is missing' unless options.scan(condition).length == 1

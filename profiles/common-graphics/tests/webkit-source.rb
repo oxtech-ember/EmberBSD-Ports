@@ -13,7 +13,7 @@ abort 'DIGEST must name one executable.' unless ENV.fetch('DIGEST').match?(%r{\A
 abort 'Output must be new.' if File.exist?(output) || File.symlink?(output)
 root = File.expand_path('../../..', __dir__)
 abort 'Repository path must not contain CMake metacharacters.' unless root.match?(%r{\A[-+A-Za-z0-9_./]+\z})
-recipe = root + '/profiles/common-graphics/recipes/www/webkit-gtk41'
+recipe = root + '/pkgsrc/www/webkit-gtk41'
 expected = 'ea0bbb02dbdbc596874a4e7ad35b66645b3e0a232bd0e4081de5ed92eb0a397d'
 abort 'Wrong official WebKitGTK2.54.1 archive.' unless Digest::SHA256.file(archive).hexdigest == expected
 Dir.mkdir(output)
@@ -71,7 +71,7 @@ log = run.call('gi-missing-elf-reader', gi_base + ['-B', output + '/gi-missing-r
                success: false, environment: {'GI_CROSS_LAUNCHER' => nil})
 raise 'Wrong GI reader refusal.' unless log.include?('Cross introspection requires an absolute GI_LDD_WRAPPER')
 log = run.call('gi-missing-launcher', gi_base + ['-B', output + '/gi-missing-launcher',
-               '-DGI_LDD_WRAPPER=' + root + '/profiles/common-graphics/recipes/devel/gobject-introspection/files/elf-needed.sh'],
+               '-DGI_LDD_WRAPPER=' + root + '/pkgsrc/devel/gobject-introspection/files/elf-needed.sh'],
                success: false, environment: {'GI_CROSS_LAUNCHER' => nil})
 raise 'Wrong GI launcher refusal.' unless log.include?('Cross introspection requires a real GI_CROSS_LAUNCHER')
 {'original' => original_arm, 'patched' => File.read(source + '/' + arm)}.each do |mode, text|

@@ -14,7 +14,7 @@ abort 'New absolute output required.' unless ARGV.last.start_with?('/') && !File
 abort 'Wrong original archive.' unless Digest::SHA256.file(archive).hexdigest == '920d1a3fcedeadc32acff95c2e203b319039dd4b4a08dd1a2dfd283d19c0b9ae'
 source = File.dirname(build)
 abort 'Expected a configured upstream native output directory.' unless File.basename(build) == 'output' && File.basename(source) == 'gobject-introspection-1.86.0'
-patch = File.expand_path('../recipes/devel/gobject-introspection/patches/patch-girepository_gthash-memory', __dir__)
+patch = File.expand_path('../../../pkgsrc/devel/gobject-introspection/patches/patch-girepository_gthash-memory', __dir__)
 database = JSON.parse(File.read(build + '/compile_commands.json'))
 log = File.dirname(source) + '/.work.log'
 actual = File.readlines(log).grep(/^<\.> /).map { |line| Shellwords.split(line.delete_prefix('<.> ')) }

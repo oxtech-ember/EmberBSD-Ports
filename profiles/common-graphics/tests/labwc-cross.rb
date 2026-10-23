@@ -13,7 +13,7 @@ FileUtils.mkdir_p([work, work + '/empty', work + '/bin'])
 abort 'extract failed' unless system('tar', '-xzf', archive, '-C', work)
 source = work + '/labwc-0.20.2'
 original = File.readlines(source + '/meson.build').find { |l| l.start_with?('svg = dependency(') } or abort 'missing upstream selection'
-recipe = File.expand_path('../recipes/wayland/labwc', __dir__)
+recipe = File.expand_path('../../../pkgsrc/wayland/labwc', __dir__)
 distinfo = File.read(recipe + '/distinfo')
 Dir.glob(recipe + '/patches/*').sort.each do |p|
   hash = Digest::SHA1.hexdigest(File.read(p).lines.reject { |l| l.include?('$NetBSD') }.join)

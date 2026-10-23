@@ -21,7 +21,7 @@
   "provider": {
     "name": "PCRE2",
     "version": "10.49",
-    "profile": "profiles/common-graphics/recipes/devel/pcre2",
+    "profile": "pkgsrc/devel/pcre2",
     "target_library": "libpcre2-8.so.0"
   },
   "patches": [

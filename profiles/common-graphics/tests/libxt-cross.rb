@@ -11,7 +11,7 @@ tree, conf, red, green = ARGV.first(4).map { |path| File.realpath(path) }
 work = File.expand_path(ARGV.last)
 abort 'NEW_WORK must be new and absolute' unless ARGV.last.start_with?('/') && !File.exist?(work)
 abort 'the real ELF refusal control requires macOS' unless RUBY_PLATFORM.include?('darwin')
-recipe = File.expand_path('../recipes/x11/libXt', __dir__)
+recipe = File.expand_path('../../../pkgsrc/x11/libXt', __dir__)
 stock = File.expand_path('../../../upstream/pkgsrc/x11/libXt', __dir__)
 FileUtils.mkdir_p(work)
 make = ENV.fetch('BMAKE', 'bmake')

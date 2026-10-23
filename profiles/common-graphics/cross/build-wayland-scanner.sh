@@ -4,7 +4,7 @@
 set -eu
 [ "$#" = 2 ] || { echo "Usage: $0 WAYLAND_ARCHIVE NEW_ABSOLUTE_WORK" >&2; exit 2; }
 archive=$1 work=$2
-recipe=$(CDPATH= cd -- "$(dirname -- "$0")/../recipes/devel/wayland" && pwd)
+recipe=$(CDPATH= cd -- "$(dirname -- "$0")/../../../pkgsrc/devel/wayland" && pwd)
 : "${HOST_PYTHON:?Set the current build-host Python executable}"
 : "${MESON:?Set the current upstream meson.py}"
 : "${NINJA:?Set the build-host Ninja executable}"

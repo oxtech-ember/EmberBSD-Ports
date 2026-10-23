@@ -47,7 +47,7 @@ checks it with the runner before configuration. Missing inputs, relative paths
 and a foreign SDK API fail before any SSH request. Revision 3 records this host
 recipe contract. The intended target payload and ABI stay unchanged.
 
-The scoped [target tool runner](../recipes/graphics/gdk-pixbuf2/files/target-tools.py)
+The scoped [target tool runner](../../../pkgsrc/graphics/gdk-pixbuf2/files/target-tools.py)
 executes the target loader and MIME queries with the target modules. It checks
 ELF architecture and provider roots, resolves the runtime closure, verifies
 hashes before and after each query and removes its private remote directory.
@@ -156,7 +156,7 @@ ruby tests/gdk-pixbuf-prepare.rb /path/to/cross-tools /path/to/sysroot \
   /path/to/shared-mime-info-2.5.1.tgz /path/to/work/new-consumer
 EMBERBSD_SDK_SOURCE=/path/to/EmberBSD-SDK \
 EMBERBSD_GI_QUERY_CONFIG=/path/to/private/query.json /path/to/native/python3.15 \
-  recipes/devel/gobject-introspection/files/target-query.py \
+  ../../pkgsrc/devel/gobject-introspection/files/target-query.py \
   /path/to/work/new-consumer/gdk-pixbuf-consumer
 ```
 

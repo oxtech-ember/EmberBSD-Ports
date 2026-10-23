@@ -70,8 +70,8 @@ def main():
         directory.mkdir(parents=True)
     (work / 'pkgsrc/mk/bsd.prefs.mk').write_text('', encoding='utf-8')
     (recipe / 'Makefile').write_text('.include "cross.mk"\n', encoding='utf-8')
-    shutil.copyfile(profile / 'recipes/graphics/librsvg/cross.mk', recipe / 'cross.mk')
-    shutil.copyfile(profile / 'recipes/devel/gobject-introspection/cross.mk', gi / 'cross.mk')
+    shutil.copyfile(profile / '../../pkgsrc/graphics/librsvg/cross.mk', recipe / 'cross.mk')
+    shutil.copyfile(profile / '../../pkgsrc/devel/gobject-introspection/cross.mk', gi / 'cross.mk')
     # Existence only. This regression never invokes the GI target launcher.
     sdk.write_json(str(work / 'query.json'), {})
     for name, driver in (('cc', 'gcc'), ('c++', 'g++')):

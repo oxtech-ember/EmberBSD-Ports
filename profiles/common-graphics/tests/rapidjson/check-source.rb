@@ -35,7 +35,7 @@ patched = work + '/patched'
                            ['tar', '-xzf', archive, '--strip-components=1', '-C', destination])
   abort err unless result.success?
 end
-recipe = File.expand_path('../../recipes/textproc/rapidjson', __dir__)
+recipe = File.expand_path('../../../../pkgsrc/textproc/rapidjson', __dir__)
 patches = Dir.glob(recipe + '/patches/patch-*').sort
 patches.each do |patch|
   _, err, result = run.call(File.basename(patch),

@@ -5,7 +5,7 @@ require 'digest'
 
 abort 'Usage: librsvg-inputs.rb ORIGINAL_SOURCE PATCHED_SOURCE DISTDIR' unless ARGV.size == 3
 original, patched, distdir = ARGV.map { |p| File.realpath(p) }
-recipe = File.expand_path('../recipes/graphics/librsvg', __dir__)
+recipe = File.expand_path('../../../pkgsrc/graphics/librsvg', __dir__)
 lock = File.binread(original + '/Cargo.lock')
 abort 'Cargo.lock changed during packaging' unless lock == File.binread(patched + '/Cargo.lock')
 expected = lock.split(/^\[\[package\]\]\n/).drop(1).map do |block|

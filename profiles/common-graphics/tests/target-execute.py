@@ -45,7 +45,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--sdk-source', default=os.environ.get('EMBERBSD_SDK_SOURCE'))
     parser.add_argument('--helper', default=str(Path(__file__).resolve().parent.parent /
-                        'recipes/devel/gobject-introspection/files/target-query.py'))
+                        '../../pkgsrc/devel/gobject-introspection/files/target-query.py'))
     parser.add_argument('cc', metavar='CC')
     parser.add_argument('sysroot', metavar='SYSROOT')
     parser.add_argument('query_config', metavar='QUERY_CONFIG')

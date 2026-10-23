@@ -20,7 +20,7 @@ assert all(x.is_absolute() for x in [a.source, a.cc, a.sysroot, a.native_cc, a.w
 assert not a.work.exists()
 a.work.mkdir(parents=True)
 tests = Path(__file__).resolve().parent
-patch = tests.parents[2] / 'profiles/common-graphics/recipes/wayland/sway/patches/patch-include_ipc.h'
+patch = tests.parents[2] / 'pkgsrc/wayland/sway/patches/patch-include_ipc.h'
 records = []
 
 def run(label, command, env=None):

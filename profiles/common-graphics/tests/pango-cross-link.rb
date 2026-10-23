@@ -12,7 +12,7 @@ work = File.expand_path(ARGV.last)
 abort 'NEW_WORK must be new and absolute' unless ARGV.last.start_with?('/') && !File.exist?(work)
 make = ENV.fetch('BMAKE', 'bmake')
 readelf = ENV.fetch('READELF', 'readelf')
-recipe = File.expand_path('../recipes/devel/pango', __dir__)
+recipe = File.expand_path('../../../pkgsrc/devel/pango', __dir__)
 stock = File.expand_path('../../../upstream/pkgsrc/devel/pango', __dir__)
 FileUtils.mkdir_p(work)
 flag = "-Wl,-rpath-link,#{source}/output/pango"

@@ -14,7 +14,7 @@ case "$TMPDIR" in /*) ;; *) echo 'TMPDIR must be absolute.' >&2; exit 2;; esac
 case "$TMPDIR" in *[!A-Za-z0-9_./-]*) echo 'Use a simple TMPDIR path.' >&2; exit 2;; esac
 [ ! -e "$out" ] && [ ! -L "$out" ] || { echo 'Output path already exists.' >&2; exit 2; }
 ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
-recipe=$ports/profiles/common-graphics/recipes/textproc/fmtlib
+recipe=$ports/pkgsrc/textproc/fmtlib
 manifest=$ports/profiles/common-graphics/sources.tsv
 expected_archive=$(awk -F '\t' '$1 == "textproc/fmtlib" {print $2}' "$manifest")
 expected_sha=$(awk -F '\t' '$1 == "textproc/fmtlib" {print $3}' "$manifest")

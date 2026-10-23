@@ -46,7 +46,7 @@ run = lambda do |label, argv, expected = true|
   output
 end
 %w[wayland wayland-devel].each do |name|
-  run.call('copy-' + name, ['cp', '-RL', profile + '/recipes/devel/' + name, tree + '/devel/' + name])
+  run.call('copy-' + name, ['cp', '-RL', profile + '/../../pkgsrc/devel/' + name, tree + '/devel/' + name])
 end
 bmake = ENV.fetch('BMAKE', 'bmake')
 common = [bmake, 'MAKECONF=' + makeconf, 'WRKOBJDIR=' + work + '/objects',
@@ -184,7 +184,7 @@ end
 File.write(work + '/result.json', JSON.pretty_generate({
   scope: 'Actual pkgsrc metadata and copied completed package stage; no new package compilation, installation or target execution.',
   source_stage: complete, complete_inventory: before,
-  recipe_sha256: Dir.glob(profile + '/recipes/devel/wayland{,-devel}/**/*').select { |p| File.file?(p) }.sort.to_h { |p| [p, Digest::SHA256.file(p).hexdigest] },
+  recipe_sha256: Dir.glob(profile + '/../../pkgsrc/devel/wayland{,-devel}/**/*').select { |p| File.file?(p) }.sort.to_h { |p| [p, Digest::SHA256.file(p).hexdigest] },
   runtime_entries: runtime.size, sdk_entries: sdk.size, native_entries: native.size,
   exhaustive_disjoint: true, native_full_preserved: true, role_negatives: negatives.map(&:first),
   unsafe_destdir_negatives: ['', '/'],

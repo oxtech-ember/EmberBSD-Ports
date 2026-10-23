@@ -137,7 +137,7 @@ login. It mounts real ptyfs and uses the canonical `ptmx` device.
 ```sh
 /absolute/work/bin/ssh ember-e14-query 'uname -a; df -ki /'
 python3.15 check.py --sdk-source /absolute/SDK /absolute/work \
-  /absolute/Ports/profiles/common-graphics/recipes/devel/gobject-introspection/files/target-query.py \
+  /absolute/Ports/pkgsrc/devel/gobject-introspection/files/target-query.py \
   /absolute/host-tools/aarch64--netbsd-readelf
 python3.15 check-stop-identity.py --sdk-source /absolute/SDK /absolute/work
 ```

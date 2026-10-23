@@ -54,7 +54,7 @@ def main():
     for directory in ['build/provider', 'build/other', 'cache', 'bin', 'outside', 'tmp']:
         (work / directory).mkdir(mode=0o700, parents=True, exist_ok=True)
     helper = (args.helper or Path(__file__).resolve().parent.parent /
-              'recipes/graphics/gdk-pixbuf2/files/target-tools.py').resolve(strict=True)
+              '../../pkgsrc/graphics/gdk-pixbuf2/files/target-tools.py').resolve(strict=True)
     cc = readelf.with_name(readelf.name.removesuffix('readelf') + 'gcc')
     require(cc.is_file(), 'matching cross GCC driver missing')
     env = dict(os.environ, EMBERBSD_SDK_SOURCE=str(sdk), EMBERBSD_GI_TARGET=target,

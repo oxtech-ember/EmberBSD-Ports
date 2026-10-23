@@ -44,7 +44,7 @@ def meson_string(value):
 
 
 def main():
-    recipe = Path(__file__).resolve().parent.parent / 'recipes'
+    recipe = Path(__file__).resolve().parent.parent / '../../pkgsrc'
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--sdk-source', default=os.environ.get('EMBERBSD_SDK_SOURCE'))
     parser.add_argument('--helper', default=str(recipe / 'graphics/gdk-pixbuf2/files/target-tools.py'))

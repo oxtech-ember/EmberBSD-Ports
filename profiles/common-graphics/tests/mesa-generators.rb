@@ -9,7 +9,7 @@ digest, sealed = ARGV.first(2).map { |p| File.realpath(p) }
 work = File.expand_path(ARGV.last)
 abort 'Use a new absolute work directory' unless ARGV.last.start_with?('/') && !File.exist?(work)
 FileUtils.mkdir_p(work)
-verify = File.expand_path('../recipes/graphics/MesaLib/verify-mesa-generators.sh', __dir__)
+verify = File.expand_path('../../../pkgsrc/graphics/MesaLib/verify-mesa-generators.sh', __dir__)
 # Small model files exercise parsing and binding; the actual sealed tools are
 # also verified against the exact recipe interface without running any tool.
 source = work + '/source'
@@ -22,7 +22,7 @@ File.readlines(sealed + '/interface.sha256').each do |line|
     FileUtils.mkdir_p(File.dirname(source + '/' + path))
     FileUtils.cp(origin + '/' + path, source + '/' + path)
 end
-patch = File.expand_path('../recipes/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h', __dir__)
+patch = File.expand_path('../../../pkgsrc/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h', __dir__)
 out, status = Open3.capture2e('patch', '-f', '-N', '-F', '0', '-p0', '-d', source, '-i', patch)
 abort out unless status.success?
 checks = 0

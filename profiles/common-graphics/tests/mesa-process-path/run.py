@@ -26,7 +26,7 @@ def main():
         raise SystemExit("Use a new absolute work directory")
     work.mkdir(parents=True)
     here = Path(__file__).resolve().parent
-    recipe = here.parent.parent / "recipes/graphics/MesaLib"
+    recipe = here.parent.parent / "../../pkgsrc/graphics/MesaLib"
     commands = []
 
     def run(label, argv, expected=0, cwd=None):

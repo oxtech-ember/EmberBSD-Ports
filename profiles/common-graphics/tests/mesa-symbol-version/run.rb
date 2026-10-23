@@ -4,7 +4,7 @@ require 'digest'; require 'fileutils'; require 'json'; require 'open3'; require 
 abort "Usage: #{$PROGRAM_NAME} MESA_ARCHIVE GCC_TOOLS SYSROOT LLD_SPECS MESON NINJA NEW_OUTPUT" unless ARGV.size == 7
 archive, tools, sysroot, specs, meson, ninja, work = ARGV.map { |p| File.expand_path(p) }
 abort 'Output exists' if File.exist?(work)
-recipe = File.expand_path('../../recipes/graphics/MesaLib', __dir__)
+recipe = File.expand_path('../../../../pkgsrc/graphics/MesaLib', __dir__)
 distinfo = File.read(recipe + '/distinfo')
 expected = distinfo[/^SHA512 \(mesa-26\.2\.4\.tar\.xz\) = (\h+)$/, 1]
 abort 'Source archive mismatch' unless expected && Digest::SHA512.file(archive).hexdigest == expected

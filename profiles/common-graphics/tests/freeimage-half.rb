@@ -28,7 +28,7 @@ version = run.call('compiler', compiler + ['--version'])
 abort 'Native GCC16 is required.' unless version.match?(/\b16\.\d+\.\d+/)
 run.call('extract', ['tar', '-xzf', archive, '-C', work])
 source = work + '/FreeImage-3.19.25'
-recipe = File.expand_path('../recipes/graphics/freeimage', __dir__)
+recipe = File.expand_path('../../../pkgsrc/graphics/freeimage', __dir__)
 original = File.binread(source + '/Source/FreeImage/PluginTIFF.cpp')
 File.write(source + '/Source/FreeImage/PluginTIFF.cpp', original.delete("\r"))
 # Keep the baseline in the same directory so its relative header lookup is real.

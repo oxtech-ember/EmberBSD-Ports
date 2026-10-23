@@ -63,7 +63,7 @@ def main():
     reject_overlap(Path(__file__).resolve().parents[4], a.work)
     require(sha256_file(a.archive) == ARCHIVE_SHA256, 'MIT archive SHA256 differs')
     here = Path(__file__).resolve().parent
-    recipe = here.parents[1] / 'recipes/security/mit-krb5'
+    recipe = here.parents[1] / '../../pkgsrc/security/mit-krb5'
     a.work.mkdir(mode=0o700)
     (a.work / 'incomplete').write_text('Metadata/link qualification is incomplete.\n')
     tempfile.tempdir = str(a.work)

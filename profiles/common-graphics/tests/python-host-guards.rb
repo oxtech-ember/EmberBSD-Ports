@@ -14,7 +14,7 @@ end
 root = File.expand_path('..', __dir__)
 failures = []
 {'libdrm' => 'x11/libdrm', 'MesaLib' => 'graphics/MesaLib'}.each do |name, recipe|
-  text = File.read(root + '/recipes/' + recipe + '/Makefile')
+  text = File.read(root + '/../../pkgsrc/' + recipe + '/Makefile')
   abort 'Recipe does not select Python315: ' + name unless text.match?(/^PYTHON_VERSION_REQD=\s*315$/)
   commands = text.scan(/^\t\$\{TOOL_PYTHONBIN\} -c '([^']+)'$/).flatten
   abort 'Expected exactly one production guard: ' + name unless commands.length == 1

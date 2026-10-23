@@ -8,7 +8,7 @@ work.*/
 !/probes/firmware-toolchain/recipes/**/Makefile
 !/profiles/common-build-tools/recipes/**/Makefile
 !/probes/plasma-mobile/toolkit/recipes/**/Makefile
-!/profiles/common-graphics/recipes/**/Makefile
+!/profiles/common-graphics/recipes/math/eigen3/Makefile
 # Source patches must remain visible when user ignores match upstream filenames.
 !**/patches/patch-*
 !/probes/electron/*/Makefile

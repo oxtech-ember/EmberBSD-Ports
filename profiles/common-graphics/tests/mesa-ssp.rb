@@ -23,7 +23,7 @@ abort 'archive member extraction failed' unless status.success?
 File.write("#{work}/original.c", original)
 FileUtils.mkdir_p(File.dirname("#{work}/patched/#{relative}"))
 File.write("#{work}/patched/#{relative}", original)
-patch = File.expand_path('../recipes/graphics/MesaLib/patches/patch-src_gallium_auxiliary_vl_vl__csc.c', __dir__)
+patch = File.expand_path('../../../pkgsrc/graphics/MesaLib/patches/patch-src_gallium_auxiliary_vl_vl__csc.c', __dir__)
 out, status = Open3.capture2e('patch', '-f', '-N', '-F', '0', '-p0', '-d', "#{work}/patched", stdin_data: File.read(patch))
 File.write("#{work}/patch.log", out)
 abort 'patch did not apply exactly' unless status.success? && !out.match?(/offset|fuzz/i)

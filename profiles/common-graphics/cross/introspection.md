@@ -14,7 +14,7 @@ Its current 2.90.1nb1 cross package and target metadata checks are described bel
 
 The original [GNOME archive](https://download.gnome.org/sources/gobject-introspection/1.86/gobject-introspection-1.86.0.tar.xz)
 has SHA256 `920d1a3fcedeadc32acff95c2e203b319039dd4b4a08dd1a2dfd283d19c0b9ae`.
-The [recipe](../recipes/devel/gobject-introspection/Makefile) preserves the
+The [recipe](../../../pkgsrc/devel/gobject-introspection/Makefile) preserves the
 pinned pkgsrc import and attribution. EmberBSD's patches are not submitted
 upstream. They separate native generators from target libraries and retain
 installed test source data that upstream omits during cross builds.
@@ -88,7 +88,7 @@ GLib `pkg-config` provider.
 Current setuptools executes compiler commands through `Compiler.call`.
 The upstream argument tests previously mocked only `Compiler.spawn`, so
 their dummy command names escaped the mock. The
-[test patch](../recipes/devel/gobject-introspection/patches/patch-tests_scanner_test_ccompiler.py)
+[test patch](../../../pkgsrc/devel/gobject-introspection/patches/patch-tests_scanner_test_ccompiler.py)
 selects `call` when present and retains `spawn` for older distutils interfaces.
 It preserves every argument assertion and all upstream skips and expected
 failures. It changes only the uninstalled `tests/scanner/test_ccompiler.py`.
@@ -385,7 +385,7 @@ ruby tests/prepare-glib-typelib.rb /path/to/cross-tools /path/to/sysroot \
   /path/to/glib2-introspection-2.90.1nb1.tgz /path/to/work/new-typelib-check
 EMBERBSD_SDK_SOURCE=/path/to/EmberBSD-SDK \
 EMBERBSD_GI_QUERY_CONFIG=/path/to/private/query.json /path/to/native/python3.15 \
-  recipes/devel/gobject-introspection/files/target-query.py \
+  ../../pkgsrc/devel/gobject-introspection/files/target-query.py \
   /path/to/work/new-typelib-check/glib-typelib
 ```
 

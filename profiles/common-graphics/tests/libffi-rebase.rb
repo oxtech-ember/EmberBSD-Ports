@@ -11,7 +11,7 @@ profile = File.expand_path('..', __dir__)
 ports = File.expand_path('../..', profile)
 archives, work = ARGV.take(2).map { |path| File.expand_path(path) }
 pkgsrc = File.expand_path(ARGV[2] || ports + '/upstream/pkgsrc')
-recipe = profile + '/recipes/devel/libffi'
+recipe = profile + '/../../pkgsrc/devel/libffi'
 original_recipe = pkgsrc + '/devel/libffi'
 archive = archives + '/libffi-3.8.0.tar.gz'
 pin = File.readlines(profile + '/sources.tsv').map { |line| line.split("\t") }.find { |fields| fields.first == 'devel/libffi' }

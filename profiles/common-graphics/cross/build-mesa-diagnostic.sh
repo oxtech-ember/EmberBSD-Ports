@@ -13,7 +13,7 @@ for path in "$@"; do
 done
 [ ! -e "$work" ] && [ ! -L "$work" ] || { echo 'Work already exists' >&2; exit 2; }
 profile=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
-recipe=$profile/recipes/graphics/MesaLib
+recipe=$profile/../../pkgsrc/graphics/MesaLib
 python=$(command -v "${PYTHON:-python3.15}")
 pkg_config=$(command -v "${PKG_CONFIG:-pkg-config}")
 ninja=$(command -v "${NINJA:-ninja}")

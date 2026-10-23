@@ -13,7 +13,7 @@ source, config = ARGV.first(2).map { |p| File.realpath(p) }
 work = File.expand_path(ARGV.last)
 abort 'New absolute output required' unless ARGV.last.start_with?('/') && !File.exist?(work) && !File.symlink?(work)
 profile = File.expand_path('..', __dir__)
-recipe = profile + '/recipes/devel/gobject-introspection'
+recipe = profile + '/../../pkgsrc/devel/gobject-introspection'
 bmake = ENV.fetch('BMAKE', 'bmake')
 Dir.mkdir(work)
 commands = []

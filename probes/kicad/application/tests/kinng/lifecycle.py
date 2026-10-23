@@ -133,7 +133,7 @@ def main():
         shutil.copytree(work / 'upstream', work / 'recipe')
         command('source-patch', ['patch', '-f', '-F', '0', '-p1', '-d', str(work / 'candidate'),
             '-i', str(here.parents[1] / 'patches/kinng-lifecycle.patch')])
-        recipe_patch = ports / 'profiles/common-graphics/recipes/cad/kicad10/patches/patch-libs_kinng_src_kinng.cpp'
+        recipe_patch = ports / 'pkgsrc/cad/kicad10/patches/patch-libs_kinng_src_kinng.cpp'
         command('recipe-patch', ['patch', '-f', '-F', '0', '-p0', '-d', str(work / 'recipe'),
                                 '-i', str(recipe_patch)])
         require(sdk.sha256(str(work / 'candidate' / CPP)) == CANDIDATE_SHA256 and
@@ -175,7 +175,7 @@ def main():
             require(work.is_relative_to(Path(sdk.existing(config['build_root']))),
                     'work is outside the configured query build root')
             cache = Path(sdk.existing(config['cache']))
-            helper = ports / 'profiles/common-graphics/recipes/devel/gobject-introspection/files/target-query.py'
+            helper = ports / 'pkgsrc/devel/gobject-introspection/files/target-query.py'
             sys.path.insert(0, str(helper.parent))
             spec = importlib.util.spec_from_file_location('kinng_production_query', helper)
             query = importlib.util.module_from_spec(spec)

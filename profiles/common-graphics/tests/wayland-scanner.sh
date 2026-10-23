@@ -9,7 +9,7 @@ make=$(command -v "${BMAKE:-bmake}")
 case "$scanner:$work:$make" in /*:/*:/*) ;; *) exit 2;; esac
 [ "$("$scanner" --version 2>&1)" = 'wayland-scanner 1.26.0' ]
 mkdir "$work"
-printf '.include "%s/recipes/devel/wayland/cross-scanner.mk"\n' "$root" > "$work/check.mk"
+printf '.include "%s/../../pkgsrc/devel/wayland/cross-scanner.mk"\n' "$root" > "$work/check.mk"
 check() {
     name=$1 tool=$2 expected=$3
     "$make" -f "$work/check.mk" "EMBERBSD_WAYLAND_SCANNER=$tool" \
@@ -44,6 +44,6 @@ check extra "$work/extra" fail
 cp "$work/old" "$work/nonexecutable"
 chmod -x "$work/nonexecutable"
 check nonexecutable "$work/nonexecutable" fail
-shasum -a 256 "$0" "$root/recipes/devel/wayland/cross-scanner.mk" \
+shasum -a 256 "$0" "$root/../../pkgsrc/devel/wayland/cross-scanner.mk" \
     "$scanner" "$make" > "$work/inputs.sha256"
 echo 'PASS: real matching scanner accepted; six invalid selections rejected'

@@ -15,7 +15,7 @@ done
     d51b80979f547198359da7c4129e53d36e8688afc58a957bffe3ea94bc777596 ]
 [ "$(shasum -a 256 "$source/tests/sanity-test.c" | awk '{print $1}')" = \
     0dd7aeead199b750ca89595f51eeecb03fb97b9ebbda2166ce349ec8eaa514d6 ]
-patchfile=$root/recipes/devel/wayland/patches/patch-tests_test-helpers.c
+patchfile=$root/../../pkgsrc/devel/wayland/patches/patch-tests_test-helpers.c
 mkdir "$work"
 mkdir -p "$work/baseline/tests" "$work/fixed/tests"
 cp "$source/COPYING" "$work/COPYING"

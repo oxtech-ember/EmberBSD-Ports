@@ -14,7 +14,7 @@ abort 'output exists' if File.exist?(work)
 }.each { |path, sum| abort "archive mismatch: #{path}" unless Digest::SHA256.file(path).hexdigest == sum }
 FileUtils.mkdir_p(work)
 tests = File.realpath(__dir__)
-recipe = File.expand_path('../recipes/devel/libudev-bsd', tests)
+recipe = File.expand_path('../../../pkgsrc/devel/libudev-bsd', tests)
 patches = Dir[recipe + '/patches/patch-*'].sort
 patches.each do |path|
   name = File.basename(path)

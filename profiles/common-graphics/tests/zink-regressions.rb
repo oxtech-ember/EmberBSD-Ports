@@ -11,7 +11,7 @@ abort 'usage: zink-regressions.rb UPSTREAM_MESA_SOURCE HOST_CLANG NEW_WORK' unle
 source, clang = ARGV.first(2).map { |p| File.realpath(p) }
 work = File.expand_path(ARGV.last)
 abort 'Use a new absolute work directory' unless ARGV.last.start_with?('/') && !File.exist?(work)
-owner = File.expand_path('../recipes/graphics/MesaLib', __dir__)
+owner = File.expand_path('../../../pkgsrc/graphics/MesaLib', __dir__)
 FileUtils.mkdir_p(work)
 records = []
 run = lambda do |name, argv, cwd: work, env: {}|

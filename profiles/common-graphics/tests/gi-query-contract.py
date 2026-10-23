@@ -55,7 +55,7 @@ def load_sdk(source):
 
 
 def arguments():
-    recipe = (Path(__file__).resolve().parent.parent / 'recipes' / 'devel' /
+    recipe = (Path(__file__).resolve().parent.parent / '../../pkgsrc' / 'devel' /
               'gobject-introspection')
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--target', choices=TARGETS, default='aarch64')

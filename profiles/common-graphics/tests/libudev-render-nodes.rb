@@ -13,7 +13,7 @@ expected = 'c4a8c30781438a76720f77876ca362b7a5ecd41d15cd603d52097c2cb10425f0'
 abort 'libudev-bsd 0.7.0.1 archive SHA256 mismatch' unless Digest::SHA256.file(archive).hexdigest == expected
 FileUtils.mkdir_p(work)
 tests = File.realpath(__dir__)
-recipe = File.expand_path('../recipes/devel/libudev-bsd', tests)
+recipe = File.expand_path('../../../pkgsrc/devel/libudev-bsd', tests)
 patches = %w[patch-evdev-sysctl patch-render-nodes patch-udev-drm-change].map do |name|
   path = File.join(recipe, 'patches', name)
   patch_sum = File.read(File.join(recipe, 'distinfo'))[/^SHA1 \(#{Regexp.escape(name)}\) = ([a-f0-9]{40})$/, 1]

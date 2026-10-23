@@ -24,7 +24,7 @@ Dir.children(tree).each { |name| File.symlink(tree + '/' + name, export + '/' + 
     next if name == recipe
     File.symlink(tree + '/' + category + '/' + name, export + '/' + category + '/' + name)
   end
-  FileUtils.cp_r(ports + '/common-graphics/recipes/' + category + '/' + recipe, export + '/' + category + '/' + recipe)
+  FileUtils.cp_r(ports + '/../pkgsrc/' + category + '/' + recipe, export + '/' + category + '/' + recipe)
 end
 text = File.read(conf)
 {'EMBERBSD-CROSS-MK.CONF' => ports + '/common-build-tools/cross/mk.conf',

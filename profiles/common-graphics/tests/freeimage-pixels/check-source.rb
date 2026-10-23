@@ -24,7 +24,7 @@ end
 abort 'Native GCC16 is required.' unless run.call('compiler', [compiler, '-dumpfullversion']).start_with?('16.')
 triplet = run.call('triplet', [compiler, '-dumpmachine'])
 abort 'Use a native compiler.' if triplet.include?('netbsd')
-patch = File.expand_path('../../recipes/graphics/freeimage/patches/patch-Source_Utilities.h', __dir__)
+patch = File.expand_path('../../../../pkgsrc/graphics/freeimage/patches/patch-Source_Utilities.h', __dir__)
 fixture = File.join(__dir__, 'pixels.cpp')
 sources = {}
 %w[before after].each do |variant|

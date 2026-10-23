@@ -33,7 +33,7 @@ MESON
   message('selected compiler: ' + selected.full_path())
   message('cross arguments: ' + ' '.join(gir_args))
 MESON
-needed = File.expand_path('../recipes/devel/gobject-introspection/files/elf-needed.sh', __dir__)
+needed = File.expand_path('../../../pkgsrc/devel/gobject-introspection/files/elf-needed.sh', __dir__)
 properties = "emberbsd_gi_cross = true\nemberbsd_gi_compiler = '#{native}'\nemberbsd_gi_ldd_wrapper = '#{needed}'\n"
 binaries = "[binaries]\nc = '#{cc}'\npkg-config = '#{host}/bin/pkg-config'\n"
 machine = "[host_machine]\nsystem = 'netbsd'\ncpu_family = 'aarch64'\ncpu = 'aarch64'\nendian = 'little'\n"
