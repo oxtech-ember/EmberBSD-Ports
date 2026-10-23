@@ -74,6 +74,7 @@ class Payload(unittest.TestCase):
             (versioned / 'finclude' / name).write_bytes(b'synthetic module fixture')
         (versioned / 'libcaf_single.a').write_bytes(archive(machine))
         (versioned / 'libcaf_single.la').write_text("libdir='/usr/pkg/gcc16/lib/gcc/" + triplet + "/16.2.0'\n")
+        (versioned / 'libcaf_single.la').chmod(0o755)
 
     def inspect(self):
         return stage.inspect_stage(self.root, self.target)
@@ -148,6 +149,45 @@ class Payload(unittest.TestCase):
                 self.configure()
                 (self.lib / name).chmod(mode)
                 with self.assertRaises(SDKError): self.inspect()
+
+    def test_libtool_metadata_has_program_install_mode(self):
+        metadata = [self.lib / 'libgfortran.la', self.lib / 'libquadmath.la',
+                    self.includes.parent / 'libcaf_single.la']
+        for path in metadata:
+            path.write_text("libdir='/usr/pkg/gcc16/lib'\n")
+            path.chmod(0o755)
+        self.inspect()
+        for path in metadata:
+            for mode in (0o644, 0o775, 0o777, 0o4755):
+                with self.subTest(path=path.name, mode=oct(mode)):
+                    path.chmod(mode)
+                    with self.assertRaisesRegex(SDKError, 'Unexpected SDK data mode'): self.inspect()
+                    path.chmod(0o755)
+        self.inspect()
+
+    def test_literal_libtool_values_and_comments(self):
+        path = self.lib / 'libgfortran.la'
+        path.write_text("# Files to dlopen/dlpreopen\n"
+                        "dependency_libs=' '/usr/pkg/gcc16/lib'/libquadmath.la -lm'\n")
+        path.chmod(0o755)
+        self.inspect()
+        for text in ("dependency_libs=' '/build-host'/work/lib'", "libdir='/usr/pkg/gcc16/'../outside",
+                     "libdir='unclosed", "libdir=/usr/pkg/gcc16/lib injected=1",
+                     "dependency_libs='$(id)'", "dependency_libs='`id`'", "touch /tmp/leak"):
+            with self.subTest(text=text):
+                path.write_text(text)
+                with self.assertRaises(SDKError): self.inspect()
+
+    def test_libtool_shell_operators_are_not_literal_assignments(self):
+        path = self.lib / 'libgfortran.la'
+        path.write_text('')
+        path.chmod(0o755)
+        for suffix in (';id', '&&id', '||id', '|id', '>file', '<file', '&id', '(id)', '\nid'):
+            with self.subTest(suffix=suffix):
+                path.write_text('libdir=/usr/pkg/gcc16/lib' + suffix)
+                with self.assertRaisesRegex(SDKError, 'Invalid Libtool metadata assignment'): self.inspect()
+        path.write_text("dependency_libs=' -lm;literal&&value|text>(here)'\n")
+        self.inspect()  # Quoted punctuation is literal data. No shell runs.
 
     def test_foreign_empty_directory(self):
         (self.root / 'usr/pkg/gcc16-foreign').mkdir()
@@ -265,6 +305,7 @@ class Payload(unittest.TestCase):
                      'libdir=/usr/pkg/gcc16/../../outside'):
             with self.subTest(text=text):
                 (self.lib / 'libgfortran.la').write_text(text)
+                (self.lib / 'libgfortran.la').chmod(0o755)
                 with self.assertRaisesRegex(SDKError, 'Build-host path'): self.inspect()
         (self.lib / 'libgfortran.la').write_text("libdir='/usr/pkg/gcc16/lib'\n")
         self.inspect()

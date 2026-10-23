@@ -24,6 +24,12 @@ It verifies the POSIX rule and equal raw sources in both accepted builds.
 Installed C++ thread headers have upstream namespace transformations.
 They are not substituted for the raw C provider.
 The producer does not create a replacement header or rebuild target libgcc.
+The stage requires upstream Libtool's `0755` mode for regular `.la` metadata.
+Libtool uses `INSTALL` for those files. Other SDK data retains mode `0644`.
+The verifier does not change installed modes.
+It reads literal `.la` assignments with shell quoting but does not execute them.
+It ignores full comment lines. It rejects substitutions, unquoted shell operators
+and malformed assignments. Quoted punctuation remains literal data.
 The new work maps its upstream `build/gcc` include role to the accepted
 frontend generation. Its target `libgcc` include role maps to the accepted
 base runtime build. Both providers stay shared-locked. The producer checks

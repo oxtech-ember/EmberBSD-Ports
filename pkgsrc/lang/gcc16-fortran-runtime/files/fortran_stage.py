@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import shutil
 import tarfile
 
@@ -74,7 +75,9 @@ def inspect_stage(stage, target):
             records[name] = record
         else:
             require(development_pattern.fullmatch(relative), 'Unexpected Fortran stage payload: ' + name)
-            require(row['kind'] == 'link' or row['mode'] == 0o644, 'Unexpected SDK data mode')
+            # Upstream Libtool uses INSTALL, not INSTALL_DATA, for .la metadata.
+            expected_mode = 0o755 if relative.endswith('.la') else 0o644
+            require(row['kind'] == 'link' or row['mode'] == expected_mode, 'Unexpected SDK data mode')
             if row['kind'] == 'link' or relative in ('lib/libgfortran.so', 'lib/libquadmath.so'):
                 family_name = {'lib/libgfortran.so': 'libgfortran.so.5', 'lib/libquadmath.so': 'libquadmath.so.0'}.get(relative)
                 require(row['kind'] == 'link' and family_name is not None and (stage / name).resolve(strict=True) ==
@@ -83,6 +86,22 @@ def inspect_stage(stage, target):
             if relative.endswith(('.la', '.spec')):
                 require(row['kind'] == 'file', 'Link metadata must be regular')
                 text = (stage / name).read_text(encoding='utf-8')
+                if relative.endswith('.la'):
+                    values = []
+                    for line in text.splitlines():
+                        if not line.strip() or line.lstrip().startswith('#'): continue
+                        require('$' not in line and '`' not in line, 'Nonliteral Libtool metadata')
+                        try:
+                            lexer = shlex.shlex(line, posix=True, punctuation_chars=';&|<>()')
+                            lexer.whitespace_split = True
+                            lexer.commenters = ''
+                            fields = list(lexer)
+                        except ValueError as error:
+                            raise SDKError('Invalid Libtool metadata quoting') from error
+                        require(len(fields) == 1 and re.fullmatch(r'[A-Za-z_][A-Za-z_0-9]*=.*', fields[0]),
+                                'Invalid Libtool metadata assignment')
+                        values.append(fields[0].partition('=')[2])
+                    text = '\n'.join(values)
                 for absolute in re.findall(r'/[A-Za-z0-9_+./-]+', text):
                     require('..' not in absolute.split('/') and any(absolute == allowed or absolute.startswith(allowed + '/')
                             for allowed in ('/usr/pkg/gcc16', '/usr/lib', '/lib')),
