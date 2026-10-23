@@ -1,0 +1,20 @@
+Origin: EmberBSD (AI-assisted). Retain wrappers for native compiler names.
+Keep selected SDK transport and compiler-owned linker search paths.
+
+--- a/mk/cwrappers.mk
++++ b/mk/cwrappers.mk
+@@ -40,6 +40,14 @@
+ CWRAPPERS_ALIASES.cc+=		${CC:T}
+ CWRAPPERS_ALIASES.cxx+=		${CXX:T}
+ CWRAPPERS_ALIASES.ld+=		${LD:T}
++.else
++# Native versioned compiler names must enter the same wrappers.
++.  if empty(CWRAPPERS_ALIASES.cc:M${CC:[1]:T})
++CWRAPPERS_ALIASES.cc+=		${CC:[1]:T}
++.  endif
++.  if empty(CWRAPPERS_ALIASES.cxx:M${CXX:[1]:T})
++CWRAPPERS_ALIASES.cxx+=		${CXX:[1]:T}
++.  endif
+ .endif
+ 
+ CWRAPPERS_WRAPPEE.as=		${AS:Ufalse}
