@@ -103,6 +103,7 @@ python3.15 -B profiles/development-toolchain/runtime/tests/fortran-producer-test
     --gnu-make /absolute/host/bin/gmake
 python3.15 -B profiles/development-toolchain/runtime/tests/fortran-framework-test.py \
     --sdk-source /absolute/EmberBSD-SDK --bmake /absolute/host/bin/bmake \
+    --pkg-admin /absolute/host/sbin/pkg_admin \
     --pkgsrc-source /absolute/prepared-pkgsrc /absolute/new-framework-result
 ```
 
@@ -119,7 +120,8 @@ header providers test the new-work role links and refusal guards. The optional
 configured Makefile control runs its exact include flag fragment with GNU make.
 It keeps every flag and resolves the two missing directories after binding. The framework controls
 apply the real patch with zero fuzz and run BSD make on isolated source
-fragments. Their native compiler paths are fixtures. These checks do not start
+fragments. The package-pattern controls use the real `pkg_admin pmatch` command
+without a package database. They reject adjacent ABI revisions. Their native compiler paths are fixtures. These checks do not start
 normal pkgsrc metadata, dependency installation or actual compiler queries.
 The separate real-function HOLD control injects diagnostic failure only after
 leases are open. It checks normal stderr, closed fd2 and EIO. The protected

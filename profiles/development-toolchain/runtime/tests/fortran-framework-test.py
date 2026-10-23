@@ -12,6 +12,7 @@ sys.dont_write_bytecode = True
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--sdk-source', required=True, type=Path)
 parser.add_argument('--bmake', required=True, type=Path)
+parser.add_argument('--pkg-admin', required=True, type=Path)
 parser.add_argument('--pkgsrc-source', required=True, type=Path)
 parser.add_argument('new_result', type=Path)
 a = parser.parse_args()
@@ -21,7 +22,7 @@ sys.path.insert(0, str(a.sdk_source / 'src'))
 from emberbsd_sdk import API_VERSION, inventory, jsonio, paths
 from emberbsd_sdk.process import sanitized_environment
 from emberbsd_sdk.stream import capture_streamed
-from emberbsd_sdk.errors import SDKError
+from emberbsd_sdk.errors import CommandError, SDKError
 if type(API_VERSION) is not int or API_VERSION != 1: raise SDKError('SDK API1 required')
 if paths.entry(a.new_result) is not None: raise SDKError('Result already exists')
 a.new_result.mkdir()
@@ -34,16 +35,22 @@ for name in ('mk/bsd.pkg.use.mk', 'mk/compiler.mk'):
 patch = root / 'profiles/common-build-tools/patches/pkgsrc-cross-fortran.patch'
 commands = []
 
-def run(argv, cwd=result, env=None, input=None):
+def run(argv, cwd=result, env=None, input=None, status=0):
     environment = sanitized_environment()
     environment.update(env or {})
-    value = capture_streamed(list(map(str, argv)), cwd=cwd, env=environment, input=input,
-                             stdout_limit=1024*1024, stderr_limit=1024*1024, timeout=30)
-    if value.stderr_truncated: raise SDKError('Truncated metadata stderr')
-    commands.append({'argv': list(map(str, argv)), 'status': 0,
-                     'stdout': value.value.decode(), 'stderr': value.stderr.decode(),
+    try:
+        value = capture_streamed(list(map(str, argv)), cwd=cwd, env=environment, input=input,
+                                 stdout_limit=1024*1024, stderr_limit=1024*1024, timeout=30)
+        if value.stderr_truncated: raise SDKError('Truncated metadata stderr')
+        stdout, stderr, code = value.value, value.stderr, 0
+    except CommandError as error:
+        if error.stdout_truncated or error.stderr_truncated: raise SDKError('Truncated matcher output')
+        stdout, stderr, code = error.stdout, error.stderr, error.returncode
+    if code != status: raise SDKError('Unexpected command status: ' + str(code))
+    commands.append({'argv': list(map(str, argv)), 'status': code,
+                     'stdout': stdout.decode(), 'stderr': stderr.decode(),
                      'selected_environment':env or {}, 'input':input.decode() if input is not None else None})
-    return value.value.decode()
+    return stdout.decode()
 
 run(['/usr/bin/patch', '-f', '-F', '0', '-p1', '-i', patch])
 patched = (result / 'mk/bsd.pkg.use.mk').read_text()
@@ -54,6 +61,43 @@ old = (source / 'mk/bsd.pkg.use.mk').read_text()
 old = old[old.index('.if defined(USE_LANGUAGES) && !empty(USE_LANGUAGES:Mfortran)'):]
 old = old[:old.index('# PKGSRC_USE_MKTOOLS.')]
 records = []
+
+# pkg_match treats a literal package name as an exact version pin. A single
+# equals sign is not a Dewey operator and cannot match the installed name.
+role_pins = (
+    ('gcc16-runtime', '16.2.0nb6', '16.2.0nb5', '16.2.0nb7'),
+    ('gcc16-fortran-runtime', '16.2.0', '16.1.0', '16.2.0nb1'),
+    ('gcc16-fortran-devel', '16.2.0', '16.1.0', '16.2.0nb1'),
+)
+pin_sources = (
+    ('pkgsrc/lang/gcc16-fortran-runtime/Makefile',
+     ('gcc16-runtime-16.2.0nb6:', 'gcc16-fortran-runtime-16.2.0:')),
+    ('pkgsrc/lang/gcc16-fortran-runtime/buildlink3.mk',
+     ('gcc16-fortran-runtime-16.2.0',)),
+    ('pkgsrc/lang/gcc16-fortran-devel/buildlink3.mk',
+     ('gcc16-fortran-devel-16.2.0',)),
+    ('profiles/common-build-tools/cross/fortran.mk',
+     ('gcc16-fortran-runtime-16.2.0:', 'gcc16-fortran-devel-16.2.0:')),
+)
+for relative, pins in pin_sources:
+    text = (root / relative).read_text()
+    for pin in pins:
+        if pin not in text: raise SDKError('Missing exact package pin in ' + relative)
+    if re.search(r'gcc16(?:-fortran)?-(?:runtime|devel)=[0-9]', text):
+        raise SDKError('Invalid equals package pattern in ' + relative)
+for name, version, older, newer in role_pins:
+    pin = name + '-' + version
+    old_pin = name + '=' + version
+    candidates = (pin, name+'-'+older, name+'-'+newer,
+                  name+'-16.2.1', 'other-'+version)
+    for package in candidates:
+        old_output = run([a.pkg_admin, 'pmatch', old_pin, package], status=1)
+        code = 0 if package == pin else 1
+        output = run([a.pkg_admin, 'pmatch', pin, package], status=code)
+        if old_output or output: raise SDKError('Package matcher emitted unexpected stdout')
+        records.append({'real_pkg_match':{'old_pattern':old_pin,'pattern':pin,
+                        'package':package,'old_status':1,'status':code},
+                        'package_database_accessed':False})
 
 def make(text, fields):
     path = result / 'fixture.mk'
@@ -119,7 +163,7 @@ for target, triplet in (('amd64','x86_64--netbsd'),('aarch64','aarch64--netbsd')
             if after[0] != '/fixture-missing-compiler/bin/'+triplet+'-gfortran': raise SDKError('Late hook did not select FC')
             if 'Fortran frontend' not in after[4] or 'SDK roles' not in after[4]: raise SDKError('Late missing-input guards did not run')
             if cross == 'yes':
-                if 'gcc16-fortran-runtime=16.2.0:' not in after[1] or 'gcc16-fortran-devel=16.2.0:' not in after[2]: raise SDKError('Late target package dependencies absent')
+                if 'gcc16-fortran-runtime-16.2.0:' not in after[1] or 'gcc16-fortran-devel-16.2.0:' not in after[2]: raise SDKError('Late target package dependencies absent')
             elif after[1] or after[2]: raise SDKError('Fake-cross host package acquired target DB dependencies')
         elif after != before or any(after): raise SDKError('Native/non-Fortran metadata changed')
         records.append({'late_language':lang,'target':target,'cross':cross,'tools_cross':tools_cross,
