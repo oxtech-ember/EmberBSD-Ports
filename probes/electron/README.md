@@ -163,7 +163,9 @@ The PartitionAlloc patch matches NetBSD's const-qualified `malloc_usable_size`
 declaration. It also uses a width-checked unsigned shift for the existing slot
 metadata invariant. It keeps other libc signatures and allocator policy.
 
-Commands, coverage, and limitations are in [the GN regression guide](tests/README.md).
+GN and allocator checks are in the [GN regression guide](tests/README.md).
+Focused C++ checks are documented in the [libc++](tests/libcxx-gcc16.md) and
+[Perfetto](tests/perfetto-gcc16.md) regression guides.
 
 Apply the carried libc++ fix from its separate source root after its exact
 DEPS revision and Electron patches are present:
@@ -171,13 +173,32 @@ DEPS revision and Electron patches are present:
 ```sh
 cd /absolute/chromium/src/third_party/libc++/src
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/libcxx-gcc16-maxsize-function-sbo.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/libcxx-gcc16-recursive-function.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/libcxx-gcc16-recursive-clone.patch
 ```
 
 The fix bounds string allocation arithmetic and preserves the allocator-free
 short buffer. The legacy function implementation uses one size, alignment,
 and copy predicate for inline construction, cloning, and destruction. Its
 storage layout and virtual interface stay unchanged. GCC diagnostics remain
-enabled. Focused regressions do not establish a complete runtime build.
+enabled. The recursive-function patch removes the GCC fallback `always_inline`
+from `std::function::operator()`. The clone patch preserves hidden visibility
+without forcing recursive `__clone()` inlining. Focused regressions do not
+establish a complete runtime build.
+
+The pinned Perfetto checkout has a separate GCC16 warning patch. Apply it from
+the Chromium source root after the NetBSD adaptations:
+
+```sh
+cd /absolute/chromium/src/third_party/perfetto
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/perfetto-gcc16-warning-cleanups.patch
+```
+
+The bounded MurmurHash tail loop preserves little-endian hash semantics and
+avoids out-of-range switch reads. Console formatting now caps the track title
+at its 15-byte buffer limit and passes a non-null pointer for an absent
+annotation name. Focused GCC16 production-translation-unit checks and golden
+vectors cover these changes; they do not establish a complete runtime build.
 
 ## Acceptance
 

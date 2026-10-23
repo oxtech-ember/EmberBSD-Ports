@@ -22,8 +22,10 @@ for name in ("sdk-source", "ports-root", "source-root", "patch", "cxx", "sysroot
 parser.add_argument("--work-dir", required=True, type=Path)
 parser.add_argument("--recursive-patch", type=Path,
                      help="optional follow-up GCC16 recursion fix, applied after --patch")
+parser.add_argument("--clone-recursive-patch", type=Path,
+                     help="optional __clone recursion fix, applied after --recursive-patch")
 parser.add_argument("--workspace", type=Path,
-                     help="canonical SDK workspace; required with --recursive-patch")
+                     help="canonical SDK workspace; required with follow-up patches")
 args = parser.parse_args()
 
 if not args.work_dir.is_absolute():
@@ -35,10 +37,16 @@ SDK_SOURCE, PORTS, SOURCE, PATCH, CXX, SYSROOT = (
 )
 RECURSIVE_PATCH = (args.recursive_patch.resolve(strict=True)
                    if args.recursive_patch else None)
+CLONE_RECURSIVE_PATCH = (args.clone_recursive_patch.resolve(strict=True)
+                         if args.clone_recursive_patch else None)
 WORKSPACE = args.workspace.resolve(strict=True) if args.workspace else None
 WORK = args.work_dir.resolve()
 if RECURSIVE_PATCH is not None and WORKSPACE is None:
     parser.error("--workspace is required with --recursive-patch")
+if CLONE_RECURSIVE_PATCH is not None and RECURSIVE_PATCH is None:
+    parser.error("--clone-recursive-patch requires --recursive-patch")
+if CLONE_RECURSIVE_PATCH is not None and WORKSPACE is None:
+    parser.error("--workspace is required with --clone-recursive-patch")
 if WORKSPACE is not None:
     if not WORKSPACE.is_dir():
         parser.error("--workspace must name an existing SDK workspace")
@@ -92,6 +100,10 @@ PATCHED_HEADERS = {
     "include/string": "b3fb1fc528c748dce31239daee767eef56f4d78f3273381eb2cbb0273f7e7a35",
     "include/__functional/function.h": "b5110bdc2bac02b2540d9155d32bb877ee79b9316ea228e097e802d87eaf4514",
 }
+OPERATOR_PATCHED_HEADERS = {
+    "include/string": PATCHED_HEADERS["include/string"],
+    "include/__functional/function.h": "082ccbfbd834d7e96a95fd7c07da8eafba32efe62b8192c183dfa5910bc71e05",
+}
 
 for path in (LIBCXX, LIBCXX_INCLUDE, LIBCXXABI_INCLUDE, CONFIG_INCLUDE,
              SOURCE / "buildtools/third_party/libc++/__config_site"):
@@ -113,6 +125,8 @@ FIXTURES = {
 }
 if RECURSIVE_PATCH is not None:
     FIXTURES["recursive-function"] = FIXTURE_DIR / "libcxx-function-recursive.cpp"
+if CLONE_RECURSIVE_PATCH is not None:
+    FIXTURES["recursive-function-clone"] = FIXTURE_DIR / "libcxx-function-clone-recursive.cpp"
 for path in FIXTURES.values():
     if not path.is_file():
         parser.error("missing regression fixture: " + str(path))
@@ -134,6 +148,8 @@ source_paths = [
 ]
 if RECURSIVE_PATCH is not None:
     source_paths.append(RECURSIVE_PATCH)
+if CLONE_RECURSIVE_PATCH is not None:
+    source_paths.append(CLONE_RECURSIVE_PATCH)
 source_hashes_before = {str(path): sha256_file(path) for path in source_paths}
 source_header_hashes = {
     relative: sha256_file(LIBCXX / relative)
@@ -143,8 +159,10 @@ if source_header_hashes == PINNED_HEADERS:
     SOURCE_HEADER_STATE = "pinned-baseline"
 elif source_header_hashes == PATCHED_HEADERS:
     SOURCE_HEADER_STATE = "exact-carried-patch"
+elif source_header_hashes == OPERATOR_PATCHED_HEADERS:
+    SOURCE_HEADER_STATE = "exact-carried-operator-patch"
 else:
-    parser.error("source headers must match either the pinned baseline or exact carried patch")
+    parser.error("source headers must match a pinned baseline or a supported carried patch state")
 WORK.mkdir(parents=True, exist_ok=False)
 LOGS = WORK / "logs"
 LOGS.mkdir()
@@ -265,6 +283,18 @@ if RECURSIVE_PATCH is not None:
     RECURSIVE_FUNCTION_HEADER = "082ccbfbd834d7e96a95fd7c07da8eafba32efe62b8192c183dfa5910bc71e05"
     if sha256_file(AFTER_RECURSIVE / "include/__functional/function.h") != RECURSIVE_FUNCTION_HEADER:
         raise AssertionError("follow-up recursive function header hash mismatch")
+AFTER_CLONE_RECURSIVE = None
+CLONE_RECURSIVE_FUNCTION_HEADER = None
+if CLONE_RECURSIVE_PATCH is not None:
+    if sha256_file(CLONE_RECURSIVE_PATCH) != "59ecebdfdb37ae60ada7be1b1b5525832e76e08a8f3c1cb3027a796e2a0ad848":
+        raise AssertionError("__clone follow-up patch hash does not match this regression pin")
+    AFTER_CLONE_RECURSIVE = WORK / "after-clone-recursive"
+    shutil.copytree(AFTER_RECURSIVE, AFTER_CLONE_RECURSIVE)
+    apply_patch(AFTER_CLONE_RECURSIVE, CLONE_RECURSIVE_PATCH,
+                name="clone-recursive-patch-apply")
+    CLONE_RECURSIVE_FUNCTION_HEADER = "9a68c1616a67f676387c0ae95a7c3d9b52ef0b2214f802c7e6023963d067ca2d"
+    if sha256_file(AFTER_CLONE_RECURSIVE / "include/__functional/function.h") != CLONE_RECURSIVE_FUNCTION_HEADER:
+        raise AssertionError("__clone recursive function header hash mismatch")
 
 COMMON = [
     CXX,
@@ -320,11 +350,26 @@ def compile_regressions():
     # run a NetBSD target binary on the host.
     compile_case("patched-memory-semantics", AFTER, FIXTURES["memory-semantics"], "gnu++14", exceptions=True)
     if AFTER_RECURSIVE is not None:
-        # This recursive std::function fixture is a compile/API control only.
-        # It is not the causal reproducer; the actual Perfetto host_impl.cc TU
-        # supplies the before/after GCC16 diagnostic evidence.
+        # Keep the original recursive callback control as a compile/API check.
         compile_case("recursive-function-before-follow-up", AFTER, FIXTURES["recursive-function"], "gnu++14")
         compile_case("recursive-function-after-follow-up", AFTER_RECURSIVE, FIXTURES["recursive-function"], "gnu++14")
+    if AFTER_CLONE_RECURSIVE is not None:
+        # Mirror TrackEventDataSource::OnStop: the new closure captures an
+        # existing std::function by value, so copying its type reaches __clone
+        # while __clone is being inlined. Require this exact pre-fix failure.
+        _, diagnostic = compile_case(
+            "recursive-clone-before-follow-up", AFTER_RECURSIVE,
+            FIXTURES["recursive-function-clone"], "gnu++23", expected=1)
+        if ("__clone" not in diagnostic or "always_inline" not in diagnostic or
+                diagnostic.count("__clone") < 2 or
+                not ("recursive inlining" in diagnostic or
+                     "max-inline-insns-single limit reached" in diagnostic)):
+            raise AssertionError("clone baseline did not fail in the recursive __clone inline chain")
+        if (WORK / "recursive-clone-before-follow-up.o").exists():
+            raise AssertionError("failed clone baseline unexpectedly created an object file")
+        compile_case(
+            "recursive-clone-after-follow-up", AFTER_CLONE_RECURSIVE,
+            FIXTURES["recursive-function-clone"], "gnu++23")
 
 if WORKSPACE is None:
     compile_regressions()
@@ -352,6 +397,8 @@ receipt = {
     "patch_sha256": sha256_file(PATCH),
     "recursive_patch_sha256": sha256_file(RECURSIVE_PATCH) if RECURSIVE_PATCH else None,
     "recursive_patched_function_header_sha256": RECURSIVE_FUNCTION_HEADER,
+    "clone_recursive_patch_sha256": sha256_file(CLONE_RECURSIVE_PATCH) if CLONE_RECURSIVE_PATCH else None,
+    "clone_recursive_patched_function_header_sha256": CLONE_RECURSIVE_FUNCTION_HEADER,
     "baseline_header_sha256": PINNED_HEADERS,
     "patched_header_sha256": PATCHED_HEADERS,
     "source_input_sha256_before": source_hashes_before,

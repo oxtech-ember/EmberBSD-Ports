@@ -36,10 +36,12 @@ runtime behavior are validated.
   and runtime checks after the repair. A separate D-Bus test change preserves descriptor
   exhaustion and both assertions. Target package acceptance remains pending.
 
-- [Electron GN cross inputs](probes/electron/README.md#gn-target-inputs):
+- [Electron GN cross inputs](probes/electron/README.md#gn-and-c-target-inputs):
   production GN regressions preserve explicit NetBSD target readelf selection
   and target pkgsrc metadata. Target and host assembler flags stay separate;
-  unset flags and ordinary metadata arguments remain unchanged.
+  unset flags and ordinary metadata arguments remain unchanged. Focused GCC16
+  production checks cover the pinned libc++ recursion and Perfetto warning
+  fixes with diagnostics enabled.
   Complete Electron builds and installed application acceptance remain pending.
 
 - [libxslt RVT ownership candidate](profiles/development-toolchain/libxslt-security.md):

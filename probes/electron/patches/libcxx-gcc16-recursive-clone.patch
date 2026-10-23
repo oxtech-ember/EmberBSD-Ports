@@ -1,0 +1,20 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted E12 GCC16 portability fix).
+Upstream: llvm-libc++ b16984ce99c702355a5b2b4c52574e82cec41fb9.
+Status: local GCC16 follow-up; not submitted upstream.
+
+Keep hidden visibility without forcing recursive std::function clone inlining.
+
+--- a/include/__functional/function.h
++++ b/include/__functional/function.h
+@@ -172,1 +172,8 @@
+-  _LIBCPP_HIDE_FROM_ABI_VIRTUAL __base<_Rp(_ArgTypes...)>* __clone() const override { return new __func(__func_); }
++#if defined(_LIBCPP_COMPILER_GCC) && !__has_attribute(exclude_from_explicit_instantiation)
++  // Copying a captured std::function can call this virtual clone again.
++  // GCC's fallback always_inline attribute cannot support that recursion.
++  _LIBCPP_HIDDEN
++#else
++  _LIBCPP_HIDE_FROM_ABI_VIRTUAL
++#endif
++  __base<_Rp(_ArgTypes...)>* __clone() const override { return new __func(__func_); }

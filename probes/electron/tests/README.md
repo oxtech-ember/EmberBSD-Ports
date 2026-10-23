@@ -174,56 +174,6 @@ with the same three dead-store warnings, but rejects unchanged NetBSD libc
 `__THROW`/`noexcept` declarations in the shim TU. These are analyzer limits;
 they do not establish a clean analysis of the complete allocator.
 
-The libc++ GCC 16 regression compares the exact pinned libc++ header blobs
-with the carried max-size and `std::function` small-buffer patch. It checks
-string allocator, difference-type, SSO, and character-width bounds at compile
-time. A public-API `std::function` fixture compiles copy, move, swap,
-over-aligned, throwing-copy, and `std::bind` paths against both the pinned
-baseline and patched headers in C++11 and C++14. That fixture checks source and
-public API compatibility; it is not a causal reproduction of the GCC array-bounds
-diagnostic. A separate executable fixture covers bounded string allocation
-and function copy, move, swap, over-alignment, and throwing-copy behavior. The
-runner compiles that fixture for exact GCC16 targets `aarch64--netbsd` and
-`x86_64--netbsd` with exceptions enabled. It checks every successful object for
-ELFCLASS64, little-endian encoding, ET_REL type, and the target machine ID. It
-does not execute target objects or claim runtime acceptance.
-
-Run it with the selected host CPython 3.15 and an explicit SDK API 1 source:
-
-```sh
-python3.15 -E -S probes/electron/tests/libcxx-gcc16-regression.py \
-  --sdk-source /absolute/EmberBSD-SDK \
-  --ports-root /absolute/Ports \
-  --source-root /absolute/chromium/src \
-  --patch /absolute/Ports/probes/electron/patches/libcxx-gcc16-maxsize-function-sbo.patch \
-  --cxx /absolute/GCC16-aarch64--netbsd-g++ \
-  --sysroot /absolute/target-sysroot \
-  --work-dir /absolute/NEW_LIBCXX_WORK
-```
-
-The runner requires the pinned libc++ revision to be an ancestor of the checkout
-and requires both live headers to match either the exact pinned baseline or the
-exact carried patch. It rejects unrelated dirty header edits. It obtains the
-baseline header bytes only with `git show <pin>:<path>`, builds before/after
-overlays, and records the actual checkout head and header hashes. Use a new work
-directory outside Ports, Chromium source, the SDK, and sysroot. The string baseline must
-fail its max-size contract checks; both baseline and patched function fixtures
-must compile. The memory fixture uses exceptions for its behavioral code,
-while Chromium production objects still use the existing `-fno-exceptions`
-configuration. This regression does not compile or link the complete libc++ runtime. Target
-execution remains deferred until an ABI-matching NetBSD libc++ runtime is
-available; this runner does not claim Valgrind, ASan, or UBSan runtime coverage.
-
-The causal GCC array-bounds check uses the exact production Perfetto translation
-units `unix_task_runner.cc` and `weak_runner.cc`; both fail before the header
-change and compile after it with their full GN flags. `cpu_info.cc` provides
-the corresponding allocation-size diagnostic check. Those production receipts
-cover AArch64. Cppcheck 2.18 cannot parse the unchanged pinned libc++ input in
-either variant, so no clean Cppcheck result is claimed. Apple Clang 21 static
-analysis of the function and exception-enabled memory fixtures finds no issues
-in either variant. Static analysis does not establish runtime memory safety.
-
-
 The Rust-version test covers the production `build/config/rust.gni` default.
 The supplemental `gn-rust-version-netbsd.patch` skips the default `rustc -V`
 probe only for a cross build from a non-NetBSD host to NetBSD. A custom Rust
@@ -250,52 +200,5 @@ that only the intended native/unrelated cases invoke `rustc -V`. The test does
 not run a real Rust compiler, build Rust targets, or generate the complete
 Chromium graph.
 
-The libc++ recursive-call patch is a separate follow-up to the existing
-max-size/SBO patch. The extended regression applies it after the existing patch
-and compiles a small recursive `std::function` control against both resulting
-headers. The control is not a causal failure reproducer; the production
-Perfetto `host_impl.cc` translation unit supplies that GCC16 before/after
-check. Keep the target sysroot under a shared SDK context lease:
 
-```sh
-python3.15 -E -S probes/electron/tests/libcxx-gcc16-regression.py \
-  --sdk-source /absolute/EmberBSD-SDK \
-  --ports-root /absolute/Ports \
-  --source-root /absolute/chromium/src \
-  --patch /absolute/Ports/probes/electron/patches/libcxx-gcc16-maxsize-function-sbo.patch \
-  --recursive-patch /absolute/Ports/probes/electron/patches/libcxx-gcc16-recursive-function.patch \
-  --cxx /absolute/GCC16-target-g++ --sysroot /absolute/target-sysroot \
-  --workspace /absolute/SDK-workspace \
-  --work-dir /absolute/NEW_LIBCXX_WORK
-```
-
-The follow-up patch changes only the GCC fallback annotation on the recursive
-`std::function` virtual call. It keeps the hidden visibility annotation. The
-regression compiles the follow-up fixture but does not link DSOs or execute a
-target binary.
-
-The typed-proto regression compiles the production
-`third_party/perfetto/src/trace_processor/importers/proto/typed_proto_field.h`
-with a supported enum and an unsupported enum mode. The supported case must
-compile. The unsupported case must still fail with the intended static
-assertion; only the unrelated tautological-comparison warning must disappear.
-The test checks the generated Perfetto build-flag header from the selected GN
-output and writes every object and dependency file under its new work path:
-Its overlay-normalization check exercises both exact baseline input and
-already-patched input, and verifies that each produces a baseline `before`
-overlay and a patched `after` overlay without changing Chromium source.
-
-```sh
-python3.15 -E -S probes/electron/tests/perfetto-typed-proto-gcc16.py \
-  --sdk-source /absolute/EmberBSD-SDK \
-  --ports-root /absolute/Ports --source-root /absolute/chromium/src \
-  --gn-out /absolute/chromium/out/Default \
-  --patch /absolute/Ports/probes/electron/patches/perfetto-typed-proto-gcc16-dependent-false.patch \
-  --cxx /absolute/GCC16-target-g++ --workspace /absolute/SDK-workspace \
-  /absolute/NEW_PERFETTO_WORK
-```
-
-The production `trace_processor_context.cc` GCC16 translation unit is the
-causal before/after regression. The bounded typed-proto fixture checks the
-production header's accepted-type result and preserves rejection of an
-unsupported schema type. Neither test builds Electron or executes target code.
+See the [libc++ GCC16 regression guide](libcxx-gcc16.md) and the [Perfetto GCC16 regression guide](perfetto-gcc16.md) for production C++ checks.

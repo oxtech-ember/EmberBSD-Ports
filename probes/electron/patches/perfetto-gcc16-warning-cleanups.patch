@@ -1,0 +1,75 @@
+$NetBSD$
+
+Origin: EmberBSD E12 GCC16 portability fix.
+Chromium source: 0f678fa0d9c6e21f26b16c3a6c43aebefc86caaa.
+Perfetto checkout: 2b7d39719d3d4b5ff45bcf5c451706e48d26f965.
+Status: local portability patch; not submitted upstream.
+
+Keep MurmurHash tail reads bounded and make console formatting limits explicit.
+
+--- a/include/perfetto/ext/base/murmur_hash.h
++++ b/include/perfetto/ext/base/murmur_hash.h
+@@ -127,30 +127,16 @@
+     h *= kMulConstant;
+   }
+ 
+-  // Process the remaining 1 to 7 bytes
+-  // The 'byte_ptr' now points to the beginning of the tail.
+-  switch (len & 7) {
+-    case 7:
+-      h ^= static_cast<uint64_t>(data[6]) << 48;
+-      [[fallthrough]];
+-    case 6:
+-      h ^= static_cast<uint64_t>(data[5]) << 40;
+-      [[fallthrough]];
+-    case 5:
+-      h ^= static_cast<uint64_t>(data[4]) << 32;
+-      [[fallthrough]];
+-    case 4:
+-      h ^= static_cast<uint64_t>(data[3]) << 24;
+-      [[fallthrough]];
+-    case 3:
+-      h ^= static_cast<uint64_t>(data[2]) << 16;
+-      [[fallthrough]];
+-    case 2:
+-      h ^= static_cast<uint64_t>(data[1]) << 8;
+-      [[fallthrough]];
+-    case 1:
+-      h ^= static_cast<uint64_t>(data[0]);
+-      h *= kMulConstant;
++  // Process the remaining 1 to 7 bytes. Build the little-endian tail with a
++  // bounded loop so compilers can prove that each byte read is in range.
++  const size_t tail_size = len & 7;
++  uint64_t tail = 0;
++  for (size_t i = 0; i < tail_size; ++i) {
++    tail |= static_cast<uint64_t>(data[i]) << (i * 8);
++  }
++  if (tail_size != 0) {
++    h ^= tail;
++    h *= kMulConstant;
+   }
+ 
+   // Final mixing stage
+--- a/src/tracing/console_interceptor.cc
++++ b/src/tracing/console_interceptor.cc
+@@ -165,7 +165,8 @@
+   auto track_color = HueToRGB(CounterToHue(track.index));
+   std::array<char, 16> title;
+   if (!track.name.empty()) {
+-    snprintf(title.data(), title.size(), "%s", track.name.c_str());
++    snprintf(title.data(), title.size(), "%.*s",
++             static_cast<int>(title.size() - 1), track.name.c_str());
+   } else if (track.pid && track.tid) {
+     snprintf(title.data(), title.size(), "%u:%u",
+              static_cast<uint32_t>(track.pid),
+@@ -412,7 +413,9 @@
+     name.data = annotation.name().data;
+     name.size = annotation.name().size;
+   }
+-  Printf(context, "%.*s", static_cast<int>(name.size), name.data);
++  const char* name_data = name.data ? name.data : "";
++  const int name_size = name.data ? static_cast<int>(name.size) : 0;
++  Printf(context, "%.*s", name_size, name_data);
+ }
+ 
+ // static
