@@ -20,6 +20,13 @@ settings, optional ICU, readline selection, native build-tool routing and
 Darwin configure patch. The existing EmberBSD cross target arguments now
 belong to the recipe rather than a second infrastructure patch.
 
+The `readline` option is on by default, except on a Darwin build host.
+There, `editline/builtin.mk` does not accept the system library, so the
+option would build the editline package. Its autotools chain needs Python,
+and Python needs SQLite. Without the option, configure receives
+`--disable-readline` and the CLI has no line editing. Target packages keep
+the option and the base libedit, so their content does not change.
+
 `features.mk` is the common package and source-probe feature contract.
 It retains serialized threads, FTS3/4/5, JSON, RTree, Geopoly, column metadata,
 DBSTAT, math, sessions, loadable extensions, statement-vtab and unlock-notify.

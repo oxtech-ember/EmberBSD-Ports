@@ -30,7 +30,8 @@ variables = ('PKGNAME', 'DISTNAME', 'DISTINFO_FILE', 'CONFIGURE_ARGS',
              'CPPFLAGS', 'PKG_FAIL_REASON', 'PKG_SKIP_REASON',
              'SQLITE3_VERSION', 'TCL_SQLITE3_VERSION', 'PLIST_SUBST',
              'CONFIGURE_ENV', 'TOOLS_SCRIPT.native-cc',
-             'NATIVE_MACHINE_GNU_PLATFORM', 'MACHINE_GNU_PLATFORM')
+             'NATIVE_MACHINE_GNU_PLATFORM', 'MACHINE_GNU_PLATFORM',
+             'OPSYS', 'PKG_OPTIONS', 'DEPENDS')
 family = {'databases/sqlite3': ('sqlite3', 'sqlite-autoconf-3540100.tar.gz'),
           'databases/sqlite3-tcl': ('sqlite3-tcl', 'sqlite-autoconf-3540100.tar.gz'),
           'databases/sqlite3-diff': ('sqlite3-diff', 'sqlite-src-3540100.zip'),
@@ -95,6 +96,15 @@ try:
             '--geopoly', '--column-metadata', '--dbstat', '--session',
             '--enable-math', '--enable-threadsafe', '--enable-load-extension')),
             'A shared SQLite feature is missing')
+    sqlite = rows['databases/sqlite3']
+    readline = 'readline' in sqlite['PKG_OPTIONS'].split()
+    if sqlite['OPSYS'] == 'Darwin':
+        require(not readline and '--disable-readline' in features and
+                'editline' not in sqlite['DEPENDS'],
+                'Darwin host SQLite would select a readline package')
+    else:
+        require(readline and '--disable-readline' not in features,
+                'Target SQLite lost its readline selection')
     require('--with-system-sqlite' in rows['databases/sqlite3-tcl']['CONFIGURE_ARGS'],
             'Tcl extension would build a second SQLite library')
     tcl = query('lang/tcl')

@@ -261,6 +261,10 @@ Python → xz → gettext-tools → Python bootstrap cycle without disabling NLS
 or changing the selected libintl. Without this opt-in, pkgsrc's original
 msgfmt dependency choice is retained. Put the setting in the host bootstrap
 MAKECONF too, so recursively built host packages see it.
+The SQLite `readline` option is off by default on a Darwin build host.
+This breaks the native Python → SQLite → editline → automake → help2man →
+gettext-tools → Python bootstrap cycle. Target and native EmberBSD packages
+keep the option on and use the base libedit.
 `EMBERBSD_BUILD_CMAKE` similarly selects an installed CMake 4.4.4+ and matching
 CPack alongside it. Use the native `devel/cmake` package from the host
 bootstrap; the registered package alone satisfies the tool dependencies.

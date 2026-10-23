@@ -523,7 +523,6 @@ post-install:
 
 .include "../../mk/dlopen.buildlink3.mk"
 .include "../../mk/pthread.buildlink3.mk"
-.include "../../mk/readline.buildlink3.mk"
 post-install: sqlite-install-licenses
 .PHONY: sqlite-install-licenses
 sqlite-install-licenses:
