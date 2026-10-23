@@ -32,8 +32,34 @@ for plist in sorted(root.glob('**/recipes/*/*/PLIST')):
         for name in names:
             if name.endswith('.h') and name == name.lower():
                 failures.append('%s: %s/%s' % (plist.relative_to(root), directory, name))
+# pkgsrc generates upstream PLIST files on case-sensitive file systems.
+# An entry that differs from the matching upstream entry only in case has
+# the merged directory spelling of a case-insensitive staging host.
+upstream = root / 'upstream/pkgsrc'
+compared = 0
+for plist in sorted(root.glob('**/recipes/*/*/PLIST')):
+    if 'upstream' in plist.relative_to(root).parts:
+        continue
+    original = upstream / plist.relative_to(plist.parents[2])
+    if not original.is_file():
+        continue
+    compared += 1
+    def entries(path):
+        result = set()
+        for line in path.read_text(errors='replace').splitlines():
+            entry = re.sub(r'^\$\{PLIST\.[^}]+\}', '', line.strip())
+            if entry and not entry.startswith('@'):
+                result.add(entry)
+        return result
+    theirs = entries(original)
+    folded = {entry.lower(): entry for entry in theirs}
+    for entry in sorted(entries(plist)):
+        if entry not in theirs and entry.lower() in folded:
+            failures.append('%s: %s differs only in case from upstream %s' % (plist.relative_to(root), entry, folded[entry.lower()]))
+if compared < 100:
+    failures.append('expected at least 100 PLIST files with upstream counterparts, found %d' % compared)
 if checked < 100:
     failures.append('expected at least 100 recipe PLIST files, found %d' % checked)
 if failures:
-    sys.exit('Lowercase headers in CamelCase directories:\n' + '\n'.join(failures))
-print('PASS: %d recipe PLIST files keep lowercase headers in lowercase directories' % checked)
+    sys.exit('PLIST header case errors:\n' + '\n'.join(failures))
+print('PASS: %d recipe PLIST files keep header directory case; %d match upstream case' % (checked, compared))

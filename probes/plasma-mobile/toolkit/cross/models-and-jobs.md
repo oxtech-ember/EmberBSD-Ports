@@ -24,6 +24,10 @@ in the wrong directory on the target. `tests/plist-header-case.py` checks
 all recipe PLIST files. ECM installs lowercase `.h` headers in the lowercase
 directory. The check rejects such a header in a CamelCase directory that has
 a lowercase sibling. KIO 6.31.0nb1 corrects `kio/renamefilewarningdialog.h`.
+The check also compares each PLIST with its upstream pkgsrc PLIST. pkgsrc
+generates those files on case-sensitive systems. An entry that differs from
+an upstream entry only in case fails. KDecoration 6.8.0nb1, LibKScreen
+6.8.0nb1, LibPlasma 6.8.0nb2 and Plasma5Support 6.8.0nb1 correct such entries.
 Build a package on a case-sensitive stage to confirm its complete file list.
 
 KWindowSystem and KGuiAddons buildlinks now follow Qt 6.12's move of

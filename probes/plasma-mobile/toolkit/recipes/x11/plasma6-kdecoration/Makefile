@@ -3,6 +3,7 @@
 PLASMAVER=	6.8.0
 
 DISTNAME=	kdecoration-${PLASMAVER}
+PKGREVISION=	1
 CATEGORIES=	x11
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
