@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.16 2026/09/21 18:55:36 adam Exp $
+
+BLAKE2s (libidn2-2.3.8.tar.gz) = 30d5603927b9fc432680ccba8733fd88a9c9c4b4862484ec727302c28cd89eb1
+SHA512 (libidn2-2.3.8.tar.gz) = 4d8427c0f115268132f7544e80a808c883ab1406338f6c529b1a586b016d57aedb0857f66166eb8d9f37d70efc9dccf907b673b43b17bcf258c8797db1e829ce
+Size (libidn2-2.3.8.tar.gz) = 2234804 bytes

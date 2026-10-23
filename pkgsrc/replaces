@@ -5,3 +5,4 @@ devel/automake
 misc/pciids
 archivers/libmspack
 textproc/expat
+devel/libidn2
