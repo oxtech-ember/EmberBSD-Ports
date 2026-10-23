@@ -18,6 +18,8 @@ PROFILE = Path(__file__).resolve().parent
 VERSION = '16.2.0'
 TARGETS = {'aarch64': ('aarch64--netbsd', 183, '__aarch64__', '-O2'), 'amd64': ('x86_64--netbsd', 62, '__x86_64__', '-O2 -march=nocona -mtune=nocona -mfpmath=sse')}
 TOOLS = 'ar as ld nm objcopy objdump ranlib readelf strip'.split()
+# share/mk/bsd.own.mk selects these when EXTERNAL_TOOLCHAIN is set.
+# The kernel link runs size. addr2line and c++filt are not in that list.
 BINUTILS = 'ar as elfedit ld nm objcopy objdump ranlib readelf size strings strip'.split()
 CACHE = {'ac_cv_func_clock_gettime': 'yes', 'ac_cv_func_gethostbyname_r': 'no', 'ac_cv_func_freelocale': 'no', 'ac_cv_func_newlocale': 'no', 'ac_cv_func_uselocale': 'no'}
 sha = inventory.sha256_file
@@ -192,6 +194,20 @@ def host_compilers(native_clang=False):
         else:
             require(capture([compiler, '-dumpfullversion']).startswith('16.'), 'GCC 16 host compiler required: ' + compiler)
     return cc, cxx
+
+
+def missing_tools(prefix, triplet, names):
+    root = Path(prefix) / 'bin'
+    return [name for name in names if not os.access(root / (triplet + '-' + name), os.X_OK)]
+
+
+def tools_message(missing, required):
+    return 'Missing required external toolchain tools: ' + ', '.join(missing) + '. Required: ' + ', '.join(required)
+
+
+def require_tools(prefix, triplet, names):
+    missing = missing_tools(prefix, triplet, names)
+    require(not missing, tools_message(missing, names))
 
 
 def check_compilers(prefix, target):

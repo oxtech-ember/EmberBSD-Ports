@@ -270,7 +270,13 @@ build isolated prerequisites, or set `EMBER_HOST_MATH_PREFIX`. Kernel mode uses
 Ports Binutils 2.47, native-only RPATH patch exclusion, and the installed
 split-DWARF and LTO contracts. Select its `NEW_WORK/toolchain` through the fork's
 `EMBER_EXTERNAL_TOOLCHAIN`; inspect the owning OS wrapper for host-tool selection
-and kernel inputs. Compiler preparation alone does not establish kernel build
+and kernel inputs. That prefix's `bin` keeps the Binutils programs
+`share/mk/bsd.own.mk` assigns for `EXTERNAL_TOOLCHAIN`: `ar`, `as`, `elfedit`,
+`ld`, `nm`, `objcopy`, `objdump`, `ranlib`, `readelf`, `size`, `strings`, and
+`strip`. The kernel link runs `${SIZE}` after it links. The build checks this
+set again after `install-gcc` and stops if any tool is missing, naming the
+missing tools and the required list. `addr2line` and `c++filt` are not part of
+that contract. Compiler preparation alone does not establish kernel build
 or boot acceptance.
 
 ### Static support for the first OS seed

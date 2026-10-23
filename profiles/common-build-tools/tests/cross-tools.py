@@ -30,7 +30,8 @@ assert run('triplet', [work / 'tools/bin/aarch64--netbsd-gcc', '-dumpmachine']).
 assert run('version', [work / 'tools/bin/aarch64--netbsd-gcc', '-dumpfullversion']).strip() == '16.2.0'
 assert 'Output already exists' in run('existing', command, False)
 (work / 'missing-os-tools').mkdir()
-assert 'Missing cross tool or NetBSD host install' in run('missing', [sys.executable, '-B', helper, '--sdk-source', sdk, compiler, work / 'missing-os-tools', work / 'rejected'], False)
+missing = run('missing', [sys.executable, '-B', helper, '--sdk-source', sdk, compiler, work / 'missing-os-tools', work / 'rejected'], False)
+assert 'Missing required external toolchain tools:' in missing and 'install' in missing and 'Required:' in missing, missing
 assert not (work / 'rejected').exists()
 base = [bmake, '-C', pkgsrc + '/devel/m4', 'MAKECONF=' + makeconf]
 source_sysroot = Path(run('target-sysroot', base + ['show-vars', 'VARNAMES=CROSS_DESTDIR']).strip())
