@@ -74,7 +74,21 @@ expected_runtime = %w[client cursor server].flat_map { |name|
 } + %w[lib/libwayland-egl.so lib/libwayland-egl.so.1 lib/libwayland-egl.so.1.26.0] + licenses
 abort 'Wrong runtime ownership.' unless runtime.sort == expected_runtime.sort
 abort 'Partitions overlap or omit full entries.' unless (runtime & sdk).empty? && (runtime + sdk).sort == full.sort
-abort 'Native full manifest changed.' unless native.size == 35 && (native + licenses).sort == full.sort
+native_fields = query.call('native-meson', 'wayland', ['USE_CROSS_COMPILE=no', '-V', '${OPSYS}', '-V', '${MESON_ARGS}', '-V', '${BUILD_DEPENDS} ${DEPENDS}']).lines.map(&:strip)
+cross_meson = query.call('cross-meson', 'wayland', cross + ['-V', '${MESON_ARGS}']).split
+abort 'Target build lost libraries or tests.' unless cross_meson.include?('-Dtests=true') && !cross_meson.include?('-Dlibraries=false')
+scanner_only = %w[bin/wayland-scanner lib/pkgconfig/wayland-scanner.pc share/aclocal/wayland-scanner.m4
+                  share/wayland/wayland-scanner.mk share/wayland/wayland.dtd share/wayland/wayland.xml]
+native_meson = native_fields[1].split
+if native_fields[0] == 'Darwin'
+  # The macOS build host installs only the scanner, from the same recipe.
+  abort 'Darwin host scanner manifest changed.' unless native.sort == scanner_only.sort && (scanner_only - full).empty?
+  abort 'Darwin host must build only the scanner.' unless native_meson.include?('-Dlibraries=false') && native_meson.include?('-Dtests=false') && !native_meson.include?('-Dtests=true')
+  abort 'Darwin host scanner requests library dependencies.' if native_fields[2] =~ /libepoll-shim|libffi/
+else
+  abort 'Native full manifest changed.' unless native.size == 35 && (native + licenses).sort == full.sort
+  abort 'Native build lost libraries or tests.' unless native_meson.include?('-Dtests=true') && !native_meson.include?('-Dlibraries=false')
+end
 %w[bin/wayland-scanner include/wayland-client.h include/wayland-server.h lib/pkgconfig/wayland-client.pc lib/pkgconfig/wayland-scanner.pc share/wayland/wayland.xml].each do |path|
   abort 'SDK lost required interface: ' + path unless sdk.include?(path)
 end
@@ -186,7 +200,7 @@ File.write(work + '/result.json', JSON.pretty_generate({
   source_stage: complete, complete_inventory: before,
   recipe_sha256: Dir.glob(profile + '/../../pkgsrc/devel/wayland{,-devel}/**/*').select { |p| File.file?(p) }.sort.to_h { |p| [p, Digest::SHA256.file(p).hexdigest] },
   runtime_entries: runtime.size, sdk_entries: sdk.size, native_entries: native.size,
-  exhaustive_disjoint: true, native_full_preserved: true, role_negatives: negatives.map(&:first),
+  exhaustive_disjoint: true, native_host_opsys: native_fields[0], role_negatives: negatives.map(&:first),
   unsafe_destdir_negatives: ['', '/'],
   payload_negatives: %w[missing unknown overlap union selected symlink-parent escaping-link runtime-sdk-link part],
   licenses: %w[COPYING].to_h { |p| [p, Digest::SHA256.file(pristine + '/' + p).hexdigest] }

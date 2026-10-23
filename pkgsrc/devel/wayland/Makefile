@@ -23,19 +23,29 @@ USE_TOOLS+=	pkg-config
 USE_LANGUAGES=	c c++
 
 MESON_ARGS+=	-Ddocumentation=false
-MESON_ARGS+=	-Dtests=true
 
 CFLAGS.NetBSD+=	-D_NETBSD_SOURCE
 
 PKGCONFIG_OVERRIDE_STAGE=	pre-install
+PKGCONFIG_OVERRIDE+=		output/meson-private/wayland-scanner.pc
+
+.include "../../mk/bsd.prefs.mk"
+
+# EmberBSD: the macOS build host needs only the native wayland-scanner.
+# The upstream libraries and tests do not support Darwin. Target and native
+# EmberBSD builds keep the complete package with all tests.
+.if ${OPSYS} == "Darwin"
+MESON_ARGS+=	-Dlibraries=false
+MESON_ARGS+=	-Dtests=false
+PLIST_SRC=	${EMBERBSD_WAYLAND_PKGDIR}/PLIST.scanner
+.else
+MESON_ARGS+=	-Dtests=true
 PKGCONFIG_OVERRIDE+=		output/meson-private/wayland-client.pc
 PKGCONFIG_OVERRIDE+=		output/meson-private/wayland-cursor.pc
 PKGCONFIG_OVERRIDE+=		output/meson-private/wayland-egl-backend.pc
 PKGCONFIG_OVERRIDE+=		output/meson-private/wayland-egl.pc
-PKGCONFIG_OVERRIDE+=		output/meson-private/wayland-scanner.pc
 PKGCONFIG_OVERRIDE+=		output/meson-private/wayland-server.pc
-
-.include "../../mk/bsd.prefs.mk"
+.endif
 
 .if defined(EMBERBSD_WAYLAND_DEVEL)
 .if ${EMBERBSD_WAYLAND_DEVEL} != "yes" || ${PKGPATH} != "devel/wayland-devel"
@@ -98,11 +108,13 @@ MESON_ARGS+=	-Dcross_scanner=${TOOLBASE:Q}/bin/wayland-scanner
 
 .include "platform.mk"
 .include "../../devel/meson/build.mk"
+.if ${OPSYS} != "Darwin"
 .if ${OPSYS} != "Linux"
 .  include "../../devel/libepoll-shim/buildlink3.mk"
 CPPFLAGS+=	-I${BUILDLINK_PREFIX.libepoll-shim}/include/libepoll-shim
 .endif
 .include "../../devel/libffi/buildlink3.mk"
+.endif
 .include "../../textproc/expat/buildlink3.mk"
 .include "../../textproc/libxml2/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

@@ -50,9 +50,17 @@ Both ordinary recipes retain the complete Meson build, scanner and tests.
 After installation, the selector first validates the complete staged inventory
 and all symlink targets. Only then does it remove the other partition.
 New, missing, unsafe or overlapping entries fail the package.
-Normal package checks remain enabled. Native builds retain the full
+Normal package checks remain enabled. Native EmberBSD builds retain the full
 35-entry package at the same revision, `wayland-1.26.0nb2`. This native
 package satisfies the `wayland>=1.26.0nb2` tool dependencies of cross packages.
+
+The upstream libraries and tests do not support Darwin. On a macOS build
+host the same recipe therefore builds only the scanner
+(`-Dlibraries=false -Dtests=false`). `PLIST.scanner` lists its six entries:
+the executable, `wayland-scanner.pc`, the Autoconf and Make fragments, and
+the protocol XML and DTD. This host package keeps the name
+`wayland-1.26.0nb2` and satisfies the same tool dependencies. It does not
+use epoll-shim or libffi. Target and native EmberBSD packages do not change.
 
 The cross buildlink requires `wayland-devel` only during target compilation.
 Application runtime dependencies retain `wayland`. The build-host scanner
