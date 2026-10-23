@@ -3,6 +3,7 @@
 # Origin: EmberBSD; AI-assisted adapter regressions.
 """Subprocess checks for the native pkgsrc metadata adapter."""
 import json
+import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -101,10 +102,13 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         self.pkg_admin.chmod(0o755)
         self.counter = 0
 
-    def run_export(self, *extra, success=True):
+    def run_export(self, *extra, success=True, inventory=True):
         (self.pkgsrc / 'metadata.json').write_text(json.dumps(self.packages))
         self.counter += 1
         output = self.path / ('graph-' + str(self.counter) + '.json')
+        requirements = self.path / ('test-requirements-' + str(self.counter) + '.json')
+        if '--dependency-phase' in extra and 'build' in extra and inventory:
+            extra += ('--test-requirements-output', str(requirements))
         command = [sys.executable, str(SCRIPT), '--sdk-source', self.sdk_source, '--pkgsrc', str(self.pkgsrc),
                    '--makeconf', str(self.config), '--bmake', str(self.bmake),
                    '--pkg-admin', str(self.pkg_admin), '--target', 'aarch64',
@@ -114,9 +118,13 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         result = subprocess.run(command, capture_output=True, text=True)
         if success:
             self.assertEqual(result.returncode, 0, result.stderr)
+            self.last_inventory = json.loads(requirements.read_text()) if requirements.exists() else None
+            if self.last_inventory:
+                self.assertEqual(self.last_inventory['graph_sha256'], hashlib.sha256(output.read_bytes()).hexdigest())
             return json.loads(output.read_text())
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(output.exists())
+        self.assertFalse(requirements.exists())
         return result.stderr
 
     def nodes(self, graph):
@@ -283,6 +291,56 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
     def test_cycle_is_rejected_by_sdk(self):
         self.packages['devel/library']['DEPENDS'] = 'app>=1:../../devel/app'
         self.assertIn('cycle', self.run_export(success=False))
+
+    def test_build_phase_separates_perl_gmake_test_cycle(self):
+        # Actual pkgsrc relationship: Perl builds with GNU make; GNU make
+        # tests with Perl. The test dependency is not a build prerequisite.
+        for package in ('lang/perl5', 'devel/gmake'):
+            directory = self.pkgsrc / package
+            directory.mkdir(parents=True)
+            (directory / 'Makefile').write_text('# pkgsrc phase fixture\n')
+        self.packages['devel/app']['TOOL_DEPENDS'] = 'perl5>=1:../../lang/perl5'
+        self.packages['lang/perl5'] = {'TOOL_DEPENDS': 'gmake>=1:../../devel/gmake'}
+        self.packages['devel/gmake'] = {'TEST_DEPENDS': 'perl5>=1:../../lang/perl5'}
+        self.assertIn('cycle', self.run_export(success=False))
+        nodes = self.nodes(self.run_export('--dependency-phase', 'build'))
+        self.assertIn({'id': 'target:devel/runtime', 'kind': 'runtime'},
+                      nodes['target:devel/app']['dependencies'])
+        self.assertIn('host:devel/gmake', nodes)
+        self.assertTrue(any(key.startswith('host:lang/perl5@') for key in nodes))
+        self.assertFalse(any(edge['kind'] == 'test' for node in nodes.values()
+                             for edge in node['dependencies']))
+        self.assertIn({'owner': 'host:devel/gmake', 'role': 'host',
+                       'package_path': 'lang/perl5', 'pattern': 'perl5>=1'},
+                      self.last_inventory['requirements'])
+        self.assertIn({'owner': 'target:devel/app', 'role': 'target',
+                       'package_path': 'devel/tests', 'pattern': 'tests>=1'},
+                      self.last_inventory['requirements'])
+        self.assertEqual(self.last_inventory['status'], 'test-depends-and-tests-pending')
+
+    def test_build_phase_retains_real_build_cycle_guard(self):
+        self.packages['devel/library']['DEPENDS'] = 'app>=1:../../devel/app'
+        self.assertIn('cycle', self.run_export('--dependency-phase', 'build', success=False))
+
+    def test_dependency_phase_is_a_shared_input(self):
+        self.packages['devel/app']['TEST_DEPENDS'] = ''
+        all_graph = self.run_export()
+        build_graph = self.run_export('--dependency-phase', 'build')
+        self.assertEqual(all_graph['nodes'], build_graph['nodes'])
+        self.assertNotEqual(all_graph['context']['shared_inputs']['dependency-phase'],
+                            build_graph['context']['shared_inputs']['dependency-phase'])
+        self.assertIn('build', build_graph['provenance']['source'])
+
+    def test_build_phase_requires_separate_pending_test_inventory(self):
+        self.assertIn('requires --test-requirements-output', self.run_export(
+            '--dependency-phase', 'build', inventory=False, success=False))
+
+    def test_existing_inventory_is_not_overwritten(self):
+        inventory = self.path / 'existing.json'
+        inventory.write_text('preserve')
+        self.assertIn('must not exist', self.run_export('--dependency-phase', 'build',
+            '--test-requirements-output', str(inventory), inventory=False, success=False))
+        self.assertEqual(inventory.read_text(), 'preserve')
 
     def test_recursive_environment_changes_child_inputs(self):
         self.packages['devel/app']['PKGSRC_MAKE_ENV'] = 'CFLAGS=-O0'

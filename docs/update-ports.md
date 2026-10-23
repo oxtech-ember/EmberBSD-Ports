@@ -63,7 +63,29 @@ Inventory failures omit the debug dump because it can contain private values.
 It passes `PKGNAME_REQD` during dependency evaluation and uses native
 `pkg_admin pmatch` to check each selected package. It does not parse Makefiles
 or implement a package version solver. All configured dependency kinds are
-included, including test dependencies and indirect dependencies.
+included by default, including test dependencies and indirect dependencies.
+
+pkgsrc installs `TEST_DEPENDS` through its separate `test-depends` stage.
+This can create a cycle if all stages share one graph: Perl builds with GNU
+make, while GNU make tests with Perl. For a build plan, explicitly select
+`--dependency-phase build --test-requirements-output pending-tests.json`.
+Build, bootstrap, tool, runtime and indirect dependencies remain in the graph.
+Real build cycles still fail. The phase is part of provenance and shared input
+keys, so a build-phase receipt cannot qualify an all-phase plan.
+
+The mandatory `ports-test-requirements-v1` inventory records the graph file's
+SHA256 and each pending test dependency's owner, host/target role, package path
+and native pattern. It is an inventory, not a resolved test closure or a test
+result. Test-only package constraints are not evaluated by the build graph.
+Export their separate build closures in the recorded roles with the same
+configuration. Then run native pkgsrc `test-depends` to validate and install
+those dependencies before the selected upstream tests. Cross tests still need
+their documented target runner. Keep the inventory pending until those tests
+have real evidence. A successful build does not accept them.
+
+Both output paths must be new and distinct. Publication uses two exclusive
+writes, not a multi-file transaction. A failed second write can leave an orphan
+inventory; use it only with the graph whose hash it records.
 
 Cross routing follows `mk/pkgformat/pkg/depends.mk`: bootstrap and tool edges
 select native packages and receive the parent's `CROSSTARGETSETTINGS`. Build,

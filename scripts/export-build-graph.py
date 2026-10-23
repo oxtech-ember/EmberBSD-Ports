@@ -72,6 +72,7 @@ class Exporter:
         self.contexts = {}
         self.patterns = {}
         self.pending = []
+        self.test_requirements = []
 
     def run(self, command, **kwargs):
         completed = subprocess.run(command, text=True, capture_output=True,
@@ -248,6 +249,11 @@ class Exporter:
                     if not sep or not pattern or not path:
                         raise ExportError('invalid native dependency entry')
                     child = self.package_path(path, self.root / package)
+                    if kind == 'test' and self.args.dependency_phase == 'build':
+                        self.test_requirements.append({
+                            'owner': identity, 'role': 'target' if cross == 'yes' else 'host',
+                            'package_path': child, 'pattern': pattern})
+                        continue
                     child_cross = 'no' if kind == 'tool' else cross
                     # Follow pkgformat/pkg/depends.mk, including TEST_DEPENDS.
                     child_settings = assignments(metadata['CROSSTARGETSETTINGS']) if kind == 'tool' and cross == 'yes' else {}
@@ -263,6 +269,7 @@ class Exporter:
                 'required_patterns': sorted(self.patterns[identity])}))
         shared = {'makeconf': self.sha256_file(self.makeconf), 'bmake': self.sha256_file(self.bmake),
                   'pkg_admin': self.sha256_file(self.pkg_admin),
+                  'dependency-phase': digest(self.args.dependency_phase.encode()),
                   'environment': digest(canonical(self.environment)),
                   'exporter': self.sha256_file(Path(__file__))}
         for item in self.args.shared_input:
@@ -275,7 +282,8 @@ class Exporter:
                             'toolchain_sha256': self.sha256_file(self.args.toolchain_input),
                             'base_sha256': self.sha256_file(self.args.base_input),
                             'shared_inputs': shared},
-                'provenance': {'source': 'pkgsrc native metadata (' + self.args.mode + ')',
+                'provenance': {'source': 'pkgsrc native metadata (' + self.args.mode +
+                               '; dependency phase ' + self.args.dependency_phase + ')',
                                'revision': self.args.revision},
                 'nodes': [self.nodes[key] for key in sorted(self.nodes)]}
 
@@ -287,6 +295,10 @@ def main():
     for name in ('target', 'triplet', 'revision'):
         parser.add_argument('--' + name, required=True)
     parser.add_argument('--mode', choices=('cross', 'native'), default='cross')
+    parser.add_argument('--dependency-phase', choices=('all', 'build'), default='all',
+                        help='build excludes test-stage edges and requires a separate inventory')
+    parser.add_argument('--test-requirements-output', type=Path,
+                        help='mandatory pending TEST_DEPENDS inventory for the build phase')
     parser.add_argument('--root', action='append', required=True, help='category/package; repeat for each root')
     parser.add_argument('--shared-input', action='append', default=[], metavar='NAME=FILE')
     parser.add_argument('--max-nodes', type=int, default=1000)
@@ -296,6 +308,13 @@ def main():
     try:
         if args.max_nodes < 1 or args.timeout < 1:
             raise ExportError('limits must be positive')
+        if (args.dependency_phase == 'build') != bool(args.test_requirements_output):
+            raise ExportError('build phase requires --test-requirements-output; all phase forbids it')
+        outputs = [args.output] + ([args.test_requirements_output] if args.test_requirements_output else [])
+        if len({path.resolve() for path in outputs}) != len(outputs):
+            raise ExportError('output paths must be distinct')
+        if any(path.exists() or path.is_symlink() for path in outputs):
+            raise ExportError('output paths must not exist')
         sdk_source = args.sdk_source.resolve(strict=True) / 'src'
         if not (sdk_source / 'emberbsd_sdk' / 'ports_plan.py').is_file():
             raise ExportError('--sdk-source must contain the SDK Ports planner')
@@ -307,10 +326,20 @@ def main():
         if getattr(sdk, 'PORTS_PLAN_API', None) != 1:
             raise ExportError('unsupported SDK PORTS_PLAN_API; expected 1')
         try:
-            graph = Exporter(args, sha256_file).export()
+            exporter = Exporter(args, sha256_file)
+            graph = exporter.export()
             sdk.lock_graph(graph)
             if len(json_bytes(graph)) > sdk.PORTS_JSON_LIMIT:
                 raise ExportError('graph exceeds the SDK JSON size limit')
+            if args.test_requirements_output:
+                inventory = {'schema': 'ports-test-requirements-v1', 'phase': 'build',
+                             'graph_sha256': digest(json_bytes(graph)),
+                             'status': 'test-depends-and-tests-pending',
+                             'requirements': sorted(exporter.test_requirements,
+                                 key=lambda row: (row['owner'], row['package_path'], row['pattern']))}
+                if len(json_bytes(inventory)) > sdk.PORTS_JSON_LIMIT:
+                    raise ExportError('test requirements exceed the SDK JSON size limit')
+                write_json(str(args.test_requirements_output), inventory, exclusive=True)
             write_json(str(args.output), graph, exclusive=True)
         except SDKError as error:
             raise ExportError(str(error)) from error
