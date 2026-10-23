@@ -13,3 +13,5 @@ Native and cross packages use the same version and dependency floors.
 The test target runs upstream test.py and the release's schema fixtures.
 This also exercises the shared rply parser. Mesa uses these modules through
 lxml's RNC interface; schema validation remains enabled.
+
+The wheel installs the upstream `AUTHORS` and `LICENSE` files.

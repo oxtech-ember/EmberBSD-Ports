@@ -2,6 +2,7 @@
 # Origin: EmberBSD contributors (AI-assisted). Shared upstream Python dependency.
 
 DISTNAME=	rnc2rng-2.7.0
+PKGREVISION=	1
 PKGNAME=	${PYPKGPREFIX}-${DISTNAME}
 CATEGORIES=	textproc python
 MASTER_SITES=	${MASTER_SITE_PYPI:=r/rnc2rng/}
