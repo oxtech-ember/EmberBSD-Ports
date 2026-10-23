@@ -68,28 +68,11 @@ The full original update is preserved in `patches/pkgsrc-gcc16.2.patch`.
 Original archive and patch URLs/SHA256 are in `sources.tsv`; GCC's SHA512
 and BLAKE2s remain in the resulting pkgsrc `distinfo`.
 
-Standard development and common exports retain the complete pinned `devel/gmake`
-and `sysutils/dtc` providers. The retained `recipes/devel/gmake` copy is identical
-to that pkgsrc revision, including its options, manual, translations and six
-source patches. It preserves the original NetBSD authorship and package policy.
-
-The separate board-firmware source checkpoint requires an explicit
-`EMBERBSD_FIRMWARE_TOOLCHAIN=yes` when running `scripts/prepare-pkgsrc.sh`.
-Its GCC16 and Binutils 2.47 recipe Makefiles are missing. The dtc Makefile
-is also missing, and the GCC PLIST still describes the old package.
-The exporter rejects this incomplete checkpoint before creating a destination.
-It does not select the pinned GCC8.2 firmware compiler as a fallback.
-Complete recipe publication and cross-package validation remain required for
-this build-host toolchain. Standard GCC16 development and GUI exports do not
-require it. `EMBERBSD-PKGSRC-CONFIG` records the profile and firmware option;
-the default is `firmware_toolchain=no`.
-Firmware export callers must request this option explicitly after the checkpoint
-is complete. Ordinary development and GUI callers do not need the option.
-
-Run `sh scripts/tests/firmware-selection.sh /absolute/new-results` from the
-repository root. This source check exports the complete common-media profile,
-compares canonical gmake/dtc providers, verifies GCC16 metadata and rejects
-invalid or incomplete firmware selections before output creation.
+Exports use the pinned upstream `devel/gmake` and `sysutils/dtc` recipes.
+The board-firmware toolchain (dtc, `aarch64-none-elf-binutils` and
+`aarch64-none-elf-gcc` with GCC16 and Binutils 2.47) is an incomplete
+[probe](../../probes/firmware-toolchain/README.md). The export does not
+include it.
 
 The [bootstrap prerequisite delta](prerequisites.md) prepares MPFR 4.2.2,
 MPC 1.4.1 and Texinfo 7.3, with verified archives and portability patches.

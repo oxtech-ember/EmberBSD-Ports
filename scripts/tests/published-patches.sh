@@ -22,12 +22,12 @@ if sh "$root/scripts/check-published-patches.sh" "$fixture" > "$work/untracked.l
 grep -F 'Declared patch is not tracked by Git:' "$work/untracked.log" >/dev/null
 cp "$root/.gitignore" "$fixture/.gitignore"
 if git -C "$fixture" check-ignore "$recipe/patches/patch-meson.build"; then exit 1; fi
-firmware_recipe=profiles/development-toolchain/recipes/devel/gmake
-mkdir -p "$fixture/$firmware_recipe"
-printf 'DISTNAME=make-4.4.1\n' > "$fixture/$firmware_recipe/Makefile"
-if git -C "$fixture" check-ignore "$firmware_recipe/Makefile"; then exit 1; fi
+overlay_recipe=pkgsrc/devel/example
+mkdir -p "$fixture/$overlay_recipe"
+printf 'DISTNAME=make-4.4.1\n' > "$fixture/$overlay_recipe/Makefile"
+if git -C "$fixture" check-ignore "$overlay_recipe/Makefile"; then exit 1; fi
 # Normal add must work. A forced add would hide a broken repository ignore policy.
-git -C "$fixture" add .gitignore "$recipe/patches/patch-meson.build" "$firmware_recipe/Makefile"
+git -C "$fixture" add .gitignore "$recipe/patches/patch-meson.build" "$overlay_recipe/Makefile"
 sh "$root/scripts/check-published-patches.sh" "$fixture"
 printf 'ordinary build output\n' > "$fixture/output.build"
 mkdir -p "$fixture/work/patches"
@@ -40,7 +40,7 @@ git -C "$fixture" archive --format=tar --output="$work/published.tar" "$tree"
 mkdir "$work/published"
 tar -xf "$work/published.tar" -C "$work/published"
 cmp "$fixture/$recipe/patches/patch-meson.build" "$work/published/$recipe/patches/patch-meson.build"
-cmp "$fixture/$firmware_recipe/Makefile" "$work/published/$firmware_recipe/Makefile"
+cmp "$fixture/$overlay_recipe/Makefile" "$work/published/$overlay_recipe/Makefile"
 rm "$fixture/$recipe/patches/patch-meson.build"
 if sh "$root/scripts/check-published-patches.sh" "$fixture" > "$work/missing.log" 2>&1; then exit 1; fi
 grep -F 'Missing declared patch:' "$work/missing.log" >/dev/null

@@ -12,11 +12,6 @@ case "$profile" in
     ''|development-toolchain|common-build-tools|common-graphics|common-media|plasma-mobile|electron) ;;
     *) echo 'Unknown profile.' >&2; exit 2 ;;
 esac
-firmware_toolchain=${EMBERBSD_FIRMWARE_TOOLCHAIN:-no}
-case "$firmware_toolchain" in
-    yes|no) ;;
-    *) echo 'EMBERBSD_FIRMWARE_TOOLCHAIN must be yes or no.' >&2; exit 2 ;;
-esac
 destination=$1
 case "$destination" in
     /*) ;;
@@ -34,43 +29,6 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 # applies them after the overlay.
 overlay_deltas="current-automake-tools.patch"
 common_tools_deltas="python315-current-selection.patch current-libtool.patch libiconv-libtool-tag.patch pkgsrc-gts-libtool-tag.patch mozilla-rootcerts-cross-tools.patch pkgsrc-curl-security.patch pkgsrc-openssl-security.patch pkgsrc-cross-packages.patch pkgsrc-cross-fortran.patch pkgsrc-darwin-fortran-sdk.patch pkgsrc-native-compiler-aliases.patch pkgsrc-pkg-admin-destdir.patch pkgsrc-gettext-go-detection.patch pkgsrc-macho-load-commands.patch pkgsrc-cross-case-files.patch pkgsrc-check-error-dir.patch pkgsrc-wrkref-append-stream.patch pkgsrc-ncurses-terminfo-aliases.patch pkgsrc-ncurses-native-headers.patch pkgsrc-host-autoconf.patch pkgsrc-cwrappers-unwrap-boundary.patch pkgsrc-cross-passthrough-rpath.patch pkgsrc-libarchive-3.8.10-import.patch pkgsrc-libarchive-3.8.10.patch pkgsrc-libarchive-bmake.patch pkgsrc-libarchive-consumers.patch pkgsrc-bsdtar-common-zlib.patch pkgsrc-ebook-tools-host-cmake.patch pkgsrc-font-runtime-roles.patch pkgsrc-stale-metadata.patch pkgsrc-vala-valadoc-option.patch pkgsrc-vala-array-termination.patch pkgsrc-vala-dbus-fd-exhaustion.patch pkgsrc-nss-cross-host-tools.patch"
-if [ "$firmware_toolchain" = yes ]; then
-    [ -n "$profile" ] || {
-        echo 'The firmware toolchain requires a development or common profile.' >&2; exit 2;
-    }
-    # This separate build-host checkpoint must be complete before it can
-    # replace any pinned provider. Standard profiles do not select it.
-    for recipe in devel/gmake sysutils/dtc cross/aarch64-none-elf-binutils cross/aarch64-none-elf-gcc; do
-        source=$root/profiles/development-toolchain/recipes/$recipe
-        for name in Makefile DESCR PLIST distinfo; do
-            [ -s "$source/$name" ] || {
-                echo "Incomplete GCC16 firmware toolchain: $recipe/$name. Complete the source checkpoint or use EMBERBSD_FIRMWARE_TOOLCHAIN=no." >&2
-                exit 2
-            }
-        done
-        [ "$(find "$source" -type l | wc -l | tr -d ' ')" = 0 ] || {
-            echo "Unexpected firmware recipe link: $recipe" >&2; exit 2;
-        }
-        required=$(awk '/^SHA1 \(patch-/ { gsub(/[()]/, "", $2); print $2 }' "$source/distinfo")
-        for name in $required; do
-            [ -f "$source/patches/$name" ] || {
-                echo "Missing firmware patch: $recipe/$name" >&2; exit 2;
-            }
-            recorded=$(awk -v name="($name)" '$1 == "SHA1" && $2 == name { print $4 }' "$source/distinfo")
-            computed=$(sed '/[$]NetBSD.*/d' "$source/patches/$name" | shasum -a 1 | awk '{ print $1 }')
-            [ "$recorded" = "$computed" ] || {
-                echo "Firmware patch checksum differs: $recipe/$name" >&2; exit 2;
-            }
-        done
-    done
-    [ -s "$root/profiles/development-toolchain/recipes/devel/gmake/options.mk" ] || {
-        echo 'Incomplete firmware gmake recipe: options.mk' >&2; exit 2;
-    }
-    grep -Eq '^DISTNAME=[[:space:]]*gcc-16[.]' \
-        "$root/profiles/development-toolchain/recipes/cross/aarch64-none-elf-gcc/Makefile" || {
-        echo 'The firmware compiler must use the common GCC16 line.' >&2; exit 2;
-    }
-fi
 for delta in $overlay_deltas; do
     [ -s "$root/profiles/common-build-tools/patches/$delta" ] || {
         echo "Missing overlay infrastructure patch: $delta" >&2; exit 2;
@@ -685,12 +643,6 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
         patch -f -E -d "$destination" -p1 -F 0 < \
             "$root/profiles/development-toolchain/patches/$delta"
     done
-    if [ "$firmware_toolchain" = yes ]; then
-        for recipe in devel/gmake sysutils/dtc cross/aarch64-none-elf-binutils cross/aarch64-none-elf-gcc; do
-            rm -rf "$destination/$recipe"
-            cp -R "$root/profiles/development-toolchain/recipes/$recipe" "$destination/$recipe"
-        done
-    fi
     cp "$root/profiles/development-toolchain/mk.conf" \
         "$destination/EMBERBSD-DEVELOPMENT-MK.CONF"
     # Package audited external target runtimes without installing a compiler.
@@ -864,6 +816,5 @@ if [ "$profile" = development-toolchain ] || [ "$profile" = common-build-tools ]
         "$root/profiles/common-build-tools/patches/pkgsrc-boost-cross-target.patch"
 fi
 printf '%s\n' "$expected" > "$destination/EMBERBSD-PKGSRC-REVISION"
-printf 'profile=%s\nfirmware_toolchain=%s\n' "$profile" "$firmware_toolchain" > \
-    "$destination/EMBERBSD-PKGSRC-CONFIG"
+printf 'profile=%s\n' "$profile" > "$destination/EMBERBSD-PKGSRC-CONFIG"
 printf 'Prepared %s with pkgsrc %s\n' "$destination" "$expected"

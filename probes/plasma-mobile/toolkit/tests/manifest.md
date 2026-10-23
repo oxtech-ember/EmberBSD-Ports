@@ -66,12 +66,11 @@ Before publication, stage the complete recipe changes and run these checks from 
 ```sh
 sh scripts/check-published-patches.sh
 sh scripts/tests/published-patches.sh /absolute/new-publication-results
-sh scripts/tests/firmware-selection.sh /absolute/new-firmware-selection-results
 ```
 
 The publication check reads tracked `distinfo` files from the working tree.
 Every declared patch must exist and appear in the Git index.
-It covers the complete recipe layers in the standard exporter: development-toolchain,
+It covers the complete recipe layers in the standard exporter: the shared overlay,
 common-build-tools, common-graphics, common-media and this toolkit.
 Sparse profiles outside that exporter have a separate ownership contract.
 This check does not replace archive hashes, patch digests, zero-fuzz application or clean-commit export checks.
