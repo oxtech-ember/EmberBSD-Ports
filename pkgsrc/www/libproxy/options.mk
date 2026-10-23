@@ -20,6 +20,8 @@ pre-configure: emberbsd-proxy-docgen-check
 emberbsd-proxy-docgen-check:
 	${RUN}${TEST} "$$(${TOOLS_PATH.gi-docgen} --version)" = '2026.1'
 .else
+# The Python tool selection sets PYPKGPREFIX for the gi-docgen pattern.
+.include "../../lang/python/tool.mk"
 TOOL_DEPENDS+= ${PYPKGPREFIX}-gi-docgen>=2026.1:../../devel/py-gi-docgen
 TOOLS_PATH.gi-docgen= ${TOOLBASE}/bin/gi-docgen
 .endif
