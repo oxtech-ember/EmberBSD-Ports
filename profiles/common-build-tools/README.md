@@ -28,6 +28,18 @@ recipe uses the LaunchServices header without unrelated Apple Blocks headers.
 Paired full-module compilation and its API reference pass. Full package and
 generator acceptance remain separate.
 
+On native Darwin, the CMake recipe also binds each selected pkgsrc libarchive,
+libuv and curl header/library pair to its buildlink prefix. SDK or unrelated
+framework discovery cannot replace half of a selected provider. Built-in
+providers, cross builds and other hosts keep their existing search policy.
+The repair is AI-assisted EmberBSD work, not submitted upstream.
+The focused [provider check](tests/cmake-darwin-providers.py) replays the six
+fields from a real failed cache, then applies the extracted recipe policy.
+Use its `--help` for explicit CMake, GCC16, source, prefix and SDK inputs.
+It checks native/built-in/cross policy, real Find modules, the missing-symbol
+link failure and coherent header/runtime versions. A cache replay is not an
+independent discovery baseline. No full-package or memory-safety claim follows.
+
 The paired [Tcl/Tk 9.1 recipes](cross/tcltk.md) retain bundled extensions,
 system SQLite and ZipFS. Tcl's ordinary native GCC16 package and host
 generator contract pass. Platform branches, metadata and SQLite symbol

@@ -10,9 +10,34 @@
  
  .include "Makefile.common"
 +
-+PKGREVISION=	2
++PKGREVISION=	3
  
  COMMENT=	Cross platform make
+ 
+@@ -87,6 +89,24 @@
+ .include "../../misc/rhash/buildlink3.mk"
+ .include "../../textproc/expat/buildlink3.mk"
+ .include "../../www/curl/buildlink3.mk"
++
++# Origin: EmberBSD (AI-assisted). Keep each selected pkgsrc provider coherent.
++# Darwin SDK and framework searches can otherwise override its headers or DSO.
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++CONFIGURE_ARGS+=	--
++.  if ${USE_BUILTIN.libarchive:U:tl} != "yes"
++CONFIGURE_ARGS+=	-DLibArchive_INCLUDE_DIR:PATH=${BUILDLINK_PREFIX.libarchive}/include
++CONFIGURE_ARGS+=	-DLibArchive_LIBRARY:FILEPATH=${BUILDLINK_PREFIX.libarchive}/lib${LIBABISUFFIX}/libarchive.dylib
++.  endif
++.  if ${USE_BUILTIN.libuv:U:tl} != "yes"
++CONFIGURE_ARGS+=	-DLibUV_INCLUDE_DIR:PATH=${BUILDLINK_PREFIX.libuv}/include
++CONFIGURE_ARGS+=	-DLibUV_LIBRARY:FILEPATH=${BUILDLINK_PREFIX.libuv}/lib${LIBABISUFFIX}/libuv.dylib
++.  endif
++.  if ${USE_BUILTIN.curl:U:tl} != "yes"
++CONFIGURE_ARGS+=	-DCURL_INCLUDE_DIR:PATH=${BUILDLINK_PREFIX.curl}/include
++CONFIGURE_ARGS+=	-DCURL_LIBRARY_RELEASE:FILEPATH=${BUILDLINK_PREFIX.curl}/lib${LIBABISUFFIX}/libcurl.dylib
++.  endif
++.endif
+ .include "../../mk/atomic64.mk"
+ .include "../../mk/curses.buildlink3.mk"
  
 --- a/devel/cmake/version.mk
 +++ b/devel/cmake/version.mk
