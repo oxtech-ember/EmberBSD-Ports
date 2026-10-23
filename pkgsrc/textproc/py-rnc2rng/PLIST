@@ -1,0 +1,23 @@
+@comment $NetBSD$
+bin/rnc2rng-${PYVERSSUFFIX}
+${PYSITELIB}/${WHEEL_INFODIR}/METADATA
+${PYSITELIB}/${WHEEL_INFODIR}/RECORD
+${PYSITELIB}/${WHEEL_INFODIR}/WHEEL
+${PYSITELIB}/${WHEEL_INFODIR}/entry_points.txt
+${PYSITELIB}/${WHEEL_INFODIR}/licenses/LICENSE
+${PYSITELIB}/${WHEEL_INFODIR}/top_level.txt
+${PYSITELIB}/rnc2rng/__init__.py
+${PYSITELIB}/rnc2rng/__init__.pyc
+${PYSITELIB}/rnc2rng/__init__.pyo
+${PYSITELIB}/rnc2rng/__main__.py
+${PYSITELIB}/rnc2rng/__main__.pyc
+${PYSITELIB}/rnc2rng/__main__.pyo
+${PYSITELIB}/rnc2rng/parser.py
+${PYSITELIB}/rnc2rng/parser.pyc
+${PYSITELIB}/rnc2rng/parser.pyo
+${PYSITELIB}/rnc2rng/rnctree.py
+${PYSITELIB}/rnc2rng/rnctree.pyc
+${PYSITELIB}/rnc2rng/rnctree.pyo
+${PYSITELIB}/rnc2rng/serializer.py
+${PYSITELIB}/rnc2rng/serializer.pyc
+${PYSITELIB}/rnc2rng/serializer.pyo

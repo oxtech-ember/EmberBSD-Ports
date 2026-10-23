@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (rnc2rng-2.7.0.tar.gz) = 9f578f051633c79ef125bea41e905d1195cfd1c5d740973f36b08ddd1a0fb4b9
+SHA512 (rnc2rng-2.7.0.tar.gz) = 29507e49d29f7da23dcf24fd1328dd4ee0aa37192817d6d2c9ec76ede56a1c6b041ffdb6b755e2e9b0c155f4f68616cb7f9a49e711e4e389097c97840b5e3e66
+Size (rnc2rng-2.7.0.tar.gz) = 19000 bytes
