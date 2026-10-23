@@ -48,7 +48,7 @@ Prepare these separate directories, outside Git:
 - Host tools from the EmberBSD source tree, built on the Mac, including
   the corresponding target `install` utility.
 - A pkgsrc unprivileged macOS bootstrap with BSD make, the patched package tools,
-  mksh and digest. Use the exported `pkg_install-20260227nb3` recipe: it fixes
+  mksh and digest. Use the exported `pkg_install-20260227nb4` recipe: it fixes
   alternate-root replacement, successful dry runs and DESTDIR-aware pkg_admin
   add/rebuild operations. It suppresses target deinstall scripts during cross
   updates. Its package database describes host executables only.
@@ -61,6 +61,12 @@ Prepare these separate directories, outside Git:
   Existing native predicates do not remove the required native version floor.
   `tests/host-libtool.sh` (in the parent profile) checks the registered native
   packages, regular provider files and a native shared-library consumer.
+  The bootstrap must also own native `cmake-4.4.4nb1` built from the same export
+  (`bmake -C export/devel/cmake MAKECONF=`*host*`/etc/mk.conf package-install`).
+  Ports recipes set `CMAKE_REQD` to 4.4.4, and the native Mesa generator build
+  requires this package. The registered native package then satisfies the
+  `cmake>=4.4.4` tool dependencies of cross packages. Do not use a CMake from
+  another package manager.
 - A target sysroot with headers, complete base libraries and development
   files (including `libintl`), the complete accepted
   GCC16 development files, a coherent runtime provider and target package database.
@@ -143,7 +149,7 @@ MAKE_JOBS=4
 # Optional when these host tools are already installed:
 TOOLS_PLATFORM.makeinfo=/absolute/host-texinfo/bin/makeinfo
 EMBERBSD_BUILD_MSGFMT=/absolute/host-gettext/bin/msgfmt
-EMBERBSD_BUILD_CMAKE=/absolute/host-cmake/bin/cmake
+EMBERBSD_BUILD_CMAKE=/absolute/host-bootstrap/bin/cmake
 EMBERBSD_BUILD_AUTOCONF=/absolute/host-autoconf/bin/autoconf
 # Optional matching host interpreter for the Python target package:
 EMBERBSD_CROSS_BUILD_PYTHON=/absolute/python3.15
@@ -255,9 +261,11 @@ Python → xz → gettext-tools → Python bootstrap cycle without disabling NLS
 or changing the selected libintl. Without this opt-in, pkgsrc's original
 msgfmt dependency choice is retained. Put the setting in the host bootstrap
 MAKECONF too, so recursively built host packages see it.
-`EMBERBSD_BUILD_CMAKE` similarly selects an existing CMake 4.4.4+ and matching
-CPack alongside it. Both version commands must succeed, and all package
-`CMAKE_REQD` floors still apply. The tools framework exposes the selected
+`EMBERBSD_BUILD_CMAKE` similarly selects an installed CMake 4.4.4+ and matching
+CPack alongside it. Use the native `devel/cmake` package from the host
+bootstrap; the registered package alone satisfies the tool dependencies.
+Both version commands must succeed, and all package `CMAKE_REQD` floors
+still apply. The tools framework exposes the selected
 pair through its normal wrappers. Keep this setting in the host MAKECONF
 too. Clean a package's work directory after changing cached tool choices.
 
