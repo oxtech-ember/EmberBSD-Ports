@@ -1,0 +1,6 @@
+/* libmspack 0.11alpha test/test_files/kwajd/f00.kwj. */
+/* Original fixture license: COPYING.LIB. */
+static const unsigned char kwaj_blank[14] = { 0 };
+static const unsigned char kwaj_f00[15] = {
+	0x4b, 0x57, 0x41, 0x4a, 0x88, 0xf0, 0x27, 0xd1, 0x00, 0x00, 0x0e, 0x00, 0x00, 0x00, 0xff
+};
