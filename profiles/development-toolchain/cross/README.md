@@ -363,6 +363,43 @@ commit, build commands and file hashes. Do not select
 accepted POSIX runtime. The kernel compiler's own prefix supplies its static
 libgcc and GCC CRT. The OS supplies `crt0.o`, `crti.o` and `crtn.o`.
 
+Use the existing host `TOOLDIR` and a new object directory. Set
+`TOOLCHAIN_MISSING=yes` and point `EXTERNAL_TOOLCHAIN` at the kernel compiler
+prefix. Disable C++, compatibility libraries and optional components. Use
+`build.sh` only to create a make wrapper. Then install the headers and build
+the five seed directories in sequence:
+
+```sh
+cd /absolute/EmberBSD
+set --
+for v in TOOLCHAIN_MISSING=yes \
+    EXTERNAL_TOOLCHAIN=/absolute/new-gcc-seed/toolchain \
+    MKGCCCMDS=no MKCOMPAT=no MKCXX=no MKDEBUG=no MKDEBUGLIB=no MKX11=no \
+    MKLLVM=no MKLLVMRT=no MKLIBCXX=no MKKMOD=no MKGDB=no MKBINUTILS=no \
+    MKATF=no MKKYUA=no MKMAN=no MKDOC=no MKINFO=no MKHTML=no MKLINT=no \
+    MKPROFILE=no MKCVS=no MKGROFF=no MKRUMP=no MAKECONF=/dev/null \
+    HOST_CC=cc HOST_CXX=c++ \
+    BUILDINFO=EmberBSD:FULL_40_CHARACTER_EMBERBSD_SOURCE_COMMIT; do
+    set -- "$@" -V "$v"
+done
+sh build.sh -U -u -j4 -m evbarm -a aarch64 -O /absolute/seed-objects \
+    -T /absolute/os-build/tools -D /absolute/new-seed \
+    -w /absolute/seed-make "$@" makewrapper
+make=/absolute/seed-make
+"$make" obj
+"$make" do-distrib-dirs
+"$make" includes
+for d in lib/csu lib/libc lib/libm lib/libpthread libexec/ld.elf_so; do
+    "$make" -C "/absolute/EmberBSD/$d" -j4 dependall
+    "$make" -C "/absolute/EmberBSD/$d" install
+done
+```
+
+The seed then contains the OS CRT objects, `libc`, `libm`, `libpthread`,
+`/libexec/ld.elf_so` and the relative `usr/libexec/ld.elf_so` link. On
+2026-10-23, these commands produced the AArch64 seed on macOS arm64. The
+runtime bootstrap below accepted it.
+
 Next run the normal [runtime bootstrap](../bootstrap/README.md) against that
 seed. Build the application compiler against a separate union of the seed
 and accepted POSIX runtime. Rebuild the final SDK sysroot with that
