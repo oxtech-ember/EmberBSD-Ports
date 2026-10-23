@@ -9,6 +9,6 @@ COMMENT=	OpenType text shaping engine
 MESON_ARGS+=	-Ddocs=disabled
 # Use external icu support.
 MESON_ARGS+=	-Dicu=disabled
-MESON_ARGS+=	-Dtests=disabled
+MESON_ARGS+=	-Dtests=enabled
 
 .include "../../mk/bsd.pkg.mk"

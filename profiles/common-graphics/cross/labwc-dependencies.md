@@ -14,7 +14,7 @@ The accepted wlroots renderer and DRM scenarios remain documented in
 ## Sources and composition
 
 The profile exports current upstream recipes for GLib 2.90.1, PCRE2 10.49,
-FriBidi 1.0.17, libpng 1.6.59, FreeType 2.14.3, HarfBuzz 14.6.0, Cairo 1.18.6
+FriBidi 1.0.17, libpng 1.6.59, FreeType 2.14.3, HarfBuzz 15.0.0, Cairo 1.18.6
 and LZO 2.10. Exact archive URLs and SHA256 hashes are in
 [`sources.tsv`](../sources.tsv); pkgsrc checks the archives and patches again.
 GLib's tools, D-Bus code generator and introspection recipe share its version.
@@ -32,7 +32,7 @@ Release checks use the upstream
 [FriBidi release](https://github.com/fribidi/fribidi/releases/tag/v1.0.17),
 [libpng announcement](https://libpng.org/pub/png/libpng.html),
 [FreeType news](https://freetype.org/index.html),
-[HarfBuzz release](https://github.com/harfbuzz/harfbuzz/releases/tag/14.6.0),
+[HarfBuzz release](https://github.com/harfbuzz/harfbuzz/releases/tag/15.0.0),
 [Cairo releases](https://cairographics.org/releases/), and
 [LZO's current release and published fix](https://www.oberhumer.com/opensource/lzo/).
 The APNG option retains its matching 1.6.59 upstream patch and checksums.

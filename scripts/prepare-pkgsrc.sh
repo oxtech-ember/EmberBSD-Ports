@@ -371,7 +371,7 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
             textproc/fmtlib) pin='fmt-12.2.0.tar.gz:8b852bb5aa6e7d8564f9e81394055395dd1d1936d38dfd3a17792a02bebd7af0:https://github.com/fmtlib/fmt/archive/refs/tags/12.2.0.tar.gz' ;;
             x11/pixman) pin='pixman-0.46.4.tar.xz:a098c33924754ad43f981b740f6d576c70f9ed1006e12221b1845431ebce1239:https://xorg.freedesktop.org/archive/individual/lib/pixman-0.46.4.tar.xz' ;;
             graphics/cairo) pin='cairo-1.18.6.tar.xz:1c767308174337a74694da0f3ec069c271452163a1ef4540964c50c301f157d4:https://cairographics.org/releases/cairo-1.18.6.tar.xz' ;;
-            fonts/harfbuzz) pin='harfbuzz-14.6.0.tar.xz:d07a007327277708a2a73ae437887cdbaf282937f6d03ca5467723e9099af586:https://github.com/harfbuzz/harfbuzz/releases/download/14.6.0/harfbuzz-14.6.0.tar.xz' ;;
+            fonts/harfbuzz) pin='harfbuzz-15.0.0.tar.xz:968536e9abd782f07f7954044c0c4020199fcdd39b41d221ec42d2a3be4a44df:https://github.com/harfbuzz/harfbuzz/releases/download/15.0.0/harfbuzz-15.0.0.tar.xz' ;;
             converters/fribidi) pin='fribidi-1.0.17.tar.xz:6949dcde27d41cebad1fd741fcafc36d55a1020d2d872d4a6eb3914caabbada2:https://github.com/fribidi/fribidi/releases/download/v1.0.17/fribidi-1.0.17.tar.xz' ;;
             graphics/freeimage|graphics/freeimageplus) pin='FreeImage-3.19.25-linux-source.tar.gz:dab013044c3d9122b0a93cee7b53a656426bccc571d3d46880dd8d90a10d1968:https://github.com/danoli3/FreeImage/releases/download/3.19.25/FreeImage-3.19.25-linux-source.tar.gz' ;;
             graphics/openexr) pin='openexr-3.5.2.tar.gz:85a291b9b8563fabef1aa3f6e912d744ce1d4b9fd5a8f978eda194cd51b15ae9:https://github.com/AcademySoftwareFoundation/openexr/archive/refs/tags/v3.5.2.tar.gz' ;;
@@ -779,6 +779,8 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
     done
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$graphics/cross/current-cups.patch"
+    patch -f -N -d "$destination" -p1 -F 0 < \
+        "$graphics/cross/current-harfbuzz-icu.patch"
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$graphics/cross/git-base-cross-tools.patch"
     patch -f -N -d "$destination" -p1 -F 0 < \
