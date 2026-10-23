@@ -1,6 +1,6 @@
 # Soup 3 introspection during cross builds
 
-The shared libsoup 3.6.6nb4 recipe retains `Soup-3.0.gir` and
+The shared libsoup 3.8.0 recipe retains `Soup-3.0.gir` and
 `Soup-3.0.typelib` for native and cross packages. Native GI tools inspect the
 target library through the [common GI query contract](introspection.md).
 The cross package requires target GLib metadata. Its scanner reads the target
@@ -10,8 +10,10 @@ The native build keeps its upstream generator selection.
 The [source patch](libsoup3-gir-cross.patch) changes only Meson generation.
 It is an EmberBSD AI-assisted adaptation of the existing Pango and libsecret
 cross pattern. It is not submitted upstream. The source owner remains
-[GNOME libsoup 3.6.6](https://download.gnome.org/sources/libsoup/3.6/libsoup-3.6.6.tar.xz).
+[GNOME libsoup 3.8.0](https://download.gnome.org/sources/libsoup/3.8/libsoup-3.8.0.tar.xz).
 The inherited pkgsrc recipe and upstream LGPL notices remain unchanged.
+The release adds Zstandard decoding and compression dictionary request headers.
+The recipe declares Zstandard and the upstream GLib 2.70 minimum.
 
 The native and cross recipes explicitly set `docs=disabled`. The pinned pkgsrc
 package does not list the optional API HTML, declares no gi-docgen tool and

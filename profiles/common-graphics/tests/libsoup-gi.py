@@ -25,7 +25,7 @@ def check_commands(run, meson, module, work, native_file, cross_file, env, nativ
     project.mkdir()
     (project / 'probe.c').write_text('int soup_command_probe;\n')
     (project / 'meson.build').write_text(
-        "project('libsoup', 'c', version: '3.6.6')\n"
+        "project('libsoup', 'c', version: '3.8.0')\n"
         "gnome = import('gnome')\n"
         "gir = find_program('g-ir-scanner')\n"
         "enable_introspection = true\nenable_vapi = false\n"
@@ -73,7 +73,7 @@ def check_docs_commands(run, meson, root, work, native_file, cross_file, env):
         (docs / source.name).write_bytes(source.read_bytes())
     (project / 'Soup-3.0.gir').write_text('<repository/>\n')
     (project / 'meson.build').write_text(
-        "project('libsoup', version: '3.6.6')\n"
+        "project('libsoup', version: '3.8.0')\n"
         "enable_introspection = true\napiversion = '3.0'\n"
         "soup_gir_gen_sources = files('Soup-3.0.gir')\n"
         "subdir('docs/reference')\n"

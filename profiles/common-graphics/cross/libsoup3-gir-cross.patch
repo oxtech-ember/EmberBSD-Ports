@@ -5,7 +5,7 @@ tools and real target GType queries. Native generation remains unchanged.
 
 --- libsoup/meson.build.orig
 +++ libsoup/meson.build
-@@ -261,6 +261,11 @@
+@@ -270,6 +270,11 @@
  if enable_introspection or enable_vapi
    soup_ns = 'Soup'
  
@@ -17,7 +17,7 @@ tools and real target GType queries. Native generation remains unchanged.
     libsoup_gir_extra_args = [
       libsoup_c_args,
       '--warn-all',
-@@ -271,6 +276,10 @@
+@@ -280,6 +285,10 @@
         '--doc-format=gi-docgen',
       ]
     endif
@@ -28,7 +28,7 @@ tools and real target GType queries. Native generation remains unchanged.
  
    soup_gir_gen_sources = gnome.generate_gir(libsoup,
      sources : [
-@@ -286,6 +295,7 @@
+@@ -295,6 +304,7 @@
      identifier_prefix : soup_ns,
      export_packages : libsoup_api_name,
      extra_args : libsoup_gir_extra_args,
