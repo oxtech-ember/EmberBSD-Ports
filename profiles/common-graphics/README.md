@@ -1,5 +1,9 @@
 # Common graphics source packages
 
+[Soup 3 cross introspection](cross/libsoup3.md) preserves target GIR and typelib
+outputs through the shared native-generator and target-query contract. Native
+selection stays unchanged; TLS runtime and package acceptance remain separate.
+
 [Cairo script LZO bounds](cross/cairo-lzo.md) keep LZO enabled with bounded
 decoding, exact output lengths and checked allocation sizes. Paired GCC16
 source-function regressions pass after the fix; target package execution

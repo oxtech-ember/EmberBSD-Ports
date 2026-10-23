@@ -1,0 +1,38 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Generate target Soup metadata with native GI
+tools and real target GType queries. Native generation remains unchanged.
+
+--- libsoup/meson.build.orig
++++ libsoup/meson.build
+@@ -261,6 +261,11 @@
+ if enable_introspection or enable_vapi
+   soup_ns = 'Soup'
+ 
++  emberbsd_gir_env = environment()
++  if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++    emberbsd_gir_env.set('LD_LIBRARY_PATH', meson.current_build_dir())
++  endif
++
+    libsoup_gir_extra_args = [
+      libsoup_c_args,
+      '--warn-all',
+@@ -271,6 +276,10 @@
+        '--doc-format=gi-docgen',
+      ]
+    endif
++
++  if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++    libsoup_gir_extra_args += ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++  endif
+ 
+   soup_gir_gen_sources = gnome.generate_gir(libsoup,
+     sources : [
+@@ -286,6 +295,7 @@
+     identifier_prefix : soup_ns,
+     export_packages : libsoup_api_name,
+     extra_args : libsoup_gir_extra_args,
++    env : emberbsd_gir_env,
+     includes : 'Gio-2.0',
+     install : true,
+     header: join_paths(meson.project_name(), 'soup.h'),
