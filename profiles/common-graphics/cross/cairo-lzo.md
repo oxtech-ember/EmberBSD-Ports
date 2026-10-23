@@ -52,9 +52,43 @@ short output. The patched functions reject both and retain valid contents.
 GCC `-fanalyzer` reports no findings in this focused harness. This does not
 establish clean analysis of all Cairo sources. Clang Static Analyzer 23.1.4
 reports one inherited slab leak before the fix and none after it. The
-allocation-failure regression confirms the repair. Cppcheck 2.22.0 cannot
-complete the configured analysis because its LZO/macOS header parser fails.
-This is a missing analyzer result, not a clean pass.
+allocation-failure regression confirms the repair.
+
+## Cppcheck with the compiler context
+
+Use the same source and GCC16 dependency inputs as the focused build:
+
+```sh
+python3 profiles/common-graphics/tests/cairo-lzo-bounds.py \
+  --source /absolute/cairo-source --output /absolute/cppcheck-output \
+  --cc /absolute/gcc-16 --cppcheck /absolute/cppcheck
+```
+
+This mode does not build or run an executable. GCC preprocesses the complete
+fixture and the three unchanged production functions with the real headers.
+The runner records the macro dump, header search, commands and preprocessed
+SHA256. It derives the Cppcheck platform from GCC type-size macros and verifies
+every size and plain-char signedness with GCC static assertions. This also
+works with explicit cross-compiler and target pkg-config inputs.
+
+Cppcheck 2.22.0's standard model defines `errno_t` as the macro `int`.
+That substitution corrupts a real `typedef int errno_t;` declaration.
+`-Uerrno_t` prevents this substitution only when analyzing the already
+preprocessed file. No header, production declaration or diagnostic is removed.
+GCC preprocessing also resolves LZO's compiler and limits macros directly.
+
+The paired macOS ARM64/GCC 16.2.0 analysis completes with zero errors,
+zero warnings and the same eight style findings on both versions. Three
+findings concern system-header functions. The others concern constness,
+an identity bit-order adapter in the fixture and a fixture buffer assignment.
+The informational checker report is also retained. Exhaustive branch checking
+is enabled. No parser failure or branch-limit notice remains.
+
+`cppcheck.xml`, `cppcheck.stdout` and `cppcheck-result.json` retain all findings.
+The process returns Cppcheck's status unchanged: it returns 1 for the retained
+style findings because `--error-exitcode=1` is enabled. This result establishes
+completed analysis and no new findings in the focused scope. It does not claim
+an entirely clean report or analysis of every Cairo translation unit.
 
 Valgrind is unavailable on this macOS host. ASan/UBSan and allocation guards
 provide separate memory checks. LeakSanitizer exit handling is unavailable on
