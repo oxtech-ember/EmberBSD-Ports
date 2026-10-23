@@ -1,2 +1,0 @@
-@comment $NetBSD: PLIST.Linux,v 1.1 2020/06/06 06:00:13 maya Exp $
-lib/nss/libnsssysinit.so

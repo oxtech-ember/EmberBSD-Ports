@@ -15,7 +15,7 @@ abort 'new absolute work directory required' unless ARGV.last.start_with?('/') &
 FileUtils.mkdir_p(work)
 tree = work + '/pkgsrc'
 Dir.mkdir(tree)
-toolkit = File.expand_path('..', __dir__)
+recipes = File.expand_path('../../../../pkgsrc', __dir__)
 # Other recipes and the actual pkgsrc framework remain read-only. Only these
 # two recipes can write local files; WRKDIR and the package database are private.
 Dir.children(source).reject { |name| name.start_with?('.') }.each do |name|
@@ -25,7 +25,7 @@ Dir.children(source).reject { |name| name.start_with?('.') }.each do |name|
       next if name == 'x11' && %w[qt6-qtbase qt6-qtbase-devel].include?(package)
       if name == 'meta-pkgs' && package == 'qt6'
         FileUtils.cp_r(source + '/meta-pkgs/qt6', tree + '/meta-pkgs/qt6')
-        FileUtils.cp(toolkit + '/shared/meta-pkgs/qt6/Makefile.common', tree + '/meta-pkgs/qt6/Makefile.common')
+        FileUtils.cp(recipes + '/meta-pkgs/qt6/Makefile.common', tree + '/meta-pkgs/qt6/Makefile.common')
       else
         File.symlink(source + '/' + name + '/' + package, tree + '/' + name + '/' + package)
       end
@@ -35,7 +35,7 @@ Dir.children(source).reject { |name| name.start_with?('.') }.each do |name|
   end
 end
 %w[qt6-qtbase qt6-qtbase-devel].each do |name|
-  recipe = toolkit + '/recipes/x11/' + name
+  recipe = recipes + '/x11/' + name
   FileUtils.cp_r(recipe, tree + '/x11/' + name) if File.directory?(recipe)
 end
 File.write(work + '/mk.conf', <<~MAKE)

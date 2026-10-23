@@ -1,0 +1,32 @@
+# $NetBSD: Makefile.common,v 1.12 2025/01/23 23:27:29 riastradh Exp $
+#
+# used by meta-pkgs/kde/applications.mk
+# used by meta-pkgs/kde/kf5.mk
+# used by meta-pkgs/kde/kf6.mk
+# used by meta-pkgs/kde/plasma5.mk
+# used by meta-pkgs/kde/plasma6.mk
+
+MAINTAINER?=	markd@NetBSD.org
+
+.include "../../devel/extra-cmake-modules/buildlink3.mk"
+BUILDLINK_API_DEPENDS.extra-cmake-modules+=	extra-cmake-modules>=5.19.0
+
+USE_LANGUAGES+=	c c++
+CMAKE_BUILD_DIR=	_KDE_build
+.include "../../devel/cmake/build.mk"
+
+CMAKE_CONFIGURE_ARGS+=	-DKDE_INSTALL_USE_QT_SYS_PATHS=ON
+CMAKE_CONFIGURE_ARGS+=	-DKDE_INSTALL_LIBEXECDIR=libexec
+CMAKE_CONFIGURE_ARGS+=	-DKDE_INSTALL_SYSCONFDIR=${PKG_SYSCONFDIR:Q}
+
+CMAKE_CONFIGURE_ARGS+=	-DKDE_INSTALL_XDG_EX_DIR=${PREFIX}/share/examples/kde-xdg
+CMAKE_CONFIGURE_ARGS+=	-DKDE_INSTALL_AUTOSTARTEXDIR=${PREFIX}/share/examples/kde-xdg/autostart
+
+.include "../../mk/bsd.fast.prefs.mk"
+.if ${OPSYS} == "NetBSD"
+# Work-around bad use-warning check in GNU ld 2.26
+# /usr/lib/librpcsvc.so.1: warning: warning: this program uses xdr_peername(), which is deprecated and buggy.
+# is triggered, even though the current linker output contains
+# no references to it.
+BUILDLINK_TRANSFORM+=	rm:-Wl,--fatal-warnings
+.endif

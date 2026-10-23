@@ -10,7 +10,7 @@ archives, work, qt = ARGV.map { |path| File.expand_path(path) }
 abort 'Output exists' if File.exist?(work)
 FileUtils.mkdir_p(work)
 source = File.realpath(__dir__)
-recipes = File.expand_path('../../recipes', source)
+recipes = File.expand_path('../../../../../pkgsrc', source)
 def run(command, log, expected = 0, **options)
   stdout, stderr, status = Open3.capture3({'ASAN_OPTIONS' => 'halt_on_error=1', 'UBSAN_OPTIONS' => 'halt_on_error=1'}, *command, **options)
   File.write(log, command.shelljoin + "\n" + stdout + stderr + "\nexit=#{status.exitstatus}\n")

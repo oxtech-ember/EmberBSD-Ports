@@ -883,9 +883,9 @@ The export uses the pinned upstream gmake and dtc recipes. The
 [board-firmware toolchain](probes/firmware-toolchain/README.md) is an
 incomplete probe and is not exported.
 
-The [toolkit export checks](probes/plasma-mobile/toolkit/tests/manifest.md) cover
-all recipe directories, shared source owners, supplemental archives and patch publication.
-A clean export preserves 150 complete toolkit recipes and the Boost toolset overlay.
+The Qt, Frameworks and Plasma toolkit recipes are canonical recipes in `pkgsrc/`.
+The [toolkit source checks](probes/plasma-mobile/toolkit/tests/manifest.md) cover
+the 160 selected recipes, shared source owners, supplemental archives and patch publication.
 This verifies reproducible source inputs, not a complete desktop session.
 
 ## Contributions and provenance

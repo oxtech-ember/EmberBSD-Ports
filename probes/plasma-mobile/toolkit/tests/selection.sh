@@ -4,6 +4,7 @@
 set -eu
 [ "$#" -eq 2 ] || { echo "Usage: $0 TOOLKIT_DIRECTORY NEW_WORK" >&2; exit 2; }
 toolkit=$(CDPATH= cd -- "$1" && pwd)
+recipes=$(CDPATH= cd -- "$toolkit/../../../pkgsrc" && pwd)
 mkdir "$2"
 work=$(CDPATH= cd -- "$2" && pwd)
 make=${BMAKE:-bmake}
@@ -12,9 +13,9 @@ command -v "$make" >/dev/null 2>&1 || {
 }
 # Test the production selection blocks. External pkgsrc includes are omitted:
 # these cases check version/recipe selection, not full native recipe parsing.
-sed '/^\.include /d' "$toolkit/shared/meta-pkgs/qt6/Makefile.common" > "$work/qt.mk"
-sed '/^\.include /d' "$toolkit/shared/meta-pkgs/kde/kf6.mk" > "$work/kf.mk"
-sed '/^\.include /d' "$toolkit/shared/meta-pkgs/kde/plasma6.mk" > "$work/plasma.mk"
+sed '/^\.include /d' "$recipes/meta-pkgs/qt6/Makefile.common" > "$work/qt.mk"
+sed '/^\.include /d' "$recipes/meta-pkgs/kde/kf6.mk" > "$work/kf.mk"
+sed '/^\.include /d' "$recipes/meta-pkgs/kde/plasma6.mk" > "$work/plasma.mk"
 cat > "$work/Makefile" <<'MAKE'
 .include "${FAMILY}.mk"
 all:
@@ -26,17 +27,16 @@ all:
 MAKE
 # Only the version families use these three shared selectors. Dependencies
 # such as PipeWire, KDE applications and Boost retain their own recipe versions.
-for makefile in "$toolkit"/recipes/*/*/Makefile; do
-    recipe=${makefile#"$toolkit/recipes/"}
-    recipe=${recipe%/Makefile}
+sh "$toolkit/validate.sh" --recipes "$toolkit" "$recipes" > "$work/recipes.txt"
+while IFS= read -r recipe; do
     case "$recipe" in
         */qt6-*) family=qt ;;
         */plasma6-*) family=plasma ;;
         */kf6-*|graphics/breeze-icons) family=kf ;;
         *) continue ;;
     esac
-    (cd "$work" && "$make" -r -m / FAMILY="$family" PKGPATH="$recipe")
-done
+    (cd "$work" && "$make" -r -m / FAMILY="$family" PKGPATH="$recipe") < /dev/null
+done < "$work/recipes.txt"
 for recipe in www/qt6-qtwebengine graphics/qt6-qt3d databases/qt6-psql; do
     if (cd "$work" && "$make" -r -m / FAMILY=qt PKGPATH="$recipe") > "$work/unprepared-${recipe##*/}.log" 2>&1; then
         echo "Unprepared recipe accepted: $recipe" >&2; exit 1

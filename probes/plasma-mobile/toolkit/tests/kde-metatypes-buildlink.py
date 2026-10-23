@@ -8,8 +8,8 @@ import re
 import sys
 
 toolkit = pathlib.Path(__file__).resolve().parents[1]
-recipes = toolkit / 'recipes'
-shared = toolkit / 'shared/meta-pkgs/kde'
+recipes = toolkit.parents[2] / 'pkgsrc'
+shared = recipes / 'meta-pkgs/kde'
 failures = []
 for name in ('kf6.mk', 'plasma6.mk', 'applications.mk'):
     text = (shared / name).read_text()

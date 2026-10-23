@@ -6,7 +6,7 @@ BUILDLINK_TREE+=	libsecret
 LIBSECRET_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.libsecret+=	libsecret>=0.12
-BUILDLINK_ABI_DEPENDS.libsecret+=	libsecret>=0.20.5nb4
+BUILDLINK_ABI_DEPENDS.libsecret+=	libsecret>=0.21.8.2
 BUILDLINK_PKGSRCDIR.libsecret?=		../../security/libsecret
 
 .include "../../devel/glib2/buildlink3.mk"

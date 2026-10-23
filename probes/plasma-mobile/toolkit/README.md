@@ -34,18 +34,20 @@ against the complete native library. Its target-package acceptance remains pendi
 
 ## Prepare the source tree
 
-`scripts/prepare-pkgsrc.sh` does not export this probe. Some toolkit recipes
-contain only the changed files of an upstream recipe. To complete a recipe,
-make it a full pkgsrc recipe, move it to `pkgsrc/` and add its path to
-`pkgsrc/replaces` if it replaces an upstream recipe. Then the normal export
-includes it:
+The toolkit recipes are canonical recipes in `pkgsrc/`. `pkgsrc/replaces`
+lists the recipes that replace upstream recipes. `pkgsrc/export.conf` applies
+the toolkit changes to upstream recipes and exports this directory's `mk.conf`
+and source manifests. `sources.tsv` and `source-owners.tsv` select the toolkit
+recipes and pin their archives. The normal export includes the toolkit:
 
 ```sh
 git submodule update --init upstream/pkgsrc
 sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
+sh probes/plasma-mobile/toolkit/validate.sh probes/plasma-mobile/toolkit
 ```
 
-The toolkit also carries iso-codes 4.20.1, the libinotify cross adaptation,
+The common graphics profile supplies iso-codes, Hunspell and the US English
+dictionary. The toolkit supplies the libinotify cross adaptation
 and [tested litehtml 0.10nb1 / gumbo 0.14.1 packages](cross/html.md) for QtTools.
 
 [attr 2.6.0](tests/attr/README.md) also passes normal cross packaging, ELF ABI,
@@ -129,7 +131,7 @@ Original pkgsrc RCS identifiers, recipe ownership, upstream licences and
 patch explanations are retained. The manifest and adaptations are
 AI-assisted EmberBSD work; these changes have not been submitted or accepted
 upstream. [sources.tsv](sources.tsv) records original archive URLs and SHA256,
-plus the fixed [derived CSS vendor source](recipes/devel/cxx-rust-cssparser/README.md#reproduce-the-derived-vendor-source).
+plus the fixed [derived CSS vendor source](../../../pkgsrc/devel/cxx-rust-cssparser/README.md#reproduce-the-derived-vendor-source).
 Qt hashes were compared with the official `.sha256` responses. Frameworks 6.31 archive
 hashes are checked against the release server's `.sha256` files; this is not a claim
 of release-signature verification. The recipes also record BLAKE2s, SHA512,

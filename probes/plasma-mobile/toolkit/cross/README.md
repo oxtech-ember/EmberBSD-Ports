@@ -167,7 +167,7 @@ installation; a target Quick3D rendering result is still separate.
 
 ## Target package build
 
-Prepare a new `plasma-mobile` pkgsrc export. Use the existing
+Prepare a new pkgsrc export with `scripts/prepare-pkgsrc.sh`. Use the existing
 [common cross configuration](../../../../profiles/common-build-tools/cross/README.md)
 and the fork's verified sysroot. Include the exported common graphics,
 common media and Plasma toolkit settings after the cross profile.

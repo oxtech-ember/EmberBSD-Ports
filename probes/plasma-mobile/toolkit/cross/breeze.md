@@ -33,7 +33,7 @@ its large Qt resources need that setting; the cross recipe preserves it.
 
 ## Two upstream generator errors
 
-The [source patch](../recipes/graphics/breeze-icons/patches/patch-tools_generate-symbolic-dark.cpp)
+The [source patch](../../../../pkgsrc/graphics/breeze-icons/patches/patch-tools_generate-symbolic-dark.cpp)
 fixes two independently reproduced errors:
 
 - The generator assumed an input directory named `icons`. With another name,

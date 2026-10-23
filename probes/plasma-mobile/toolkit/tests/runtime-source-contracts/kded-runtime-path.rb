@@ -10,7 +10,7 @@ abort "Usage: #{$PROGRAM_NAME} DISTFILES NEW_OUTPUT" unless ARGV.size == 2
 distfiles, output = ARGV.map { |path| File.expand_path(path) }
 abort 'Output exists' if File.exist?(output)
 FileUtils.mkdir_p(output)
-recipe = File.expand_path('../../recipes/x11/kf6-kded', __dir__)
+recipe = File.expand_path('../../../../../pkgsrc/x11/kf6-kded', __dir__)
 archive = File.join(distfiles, 'kded-6.31.0.tar.xz')
 distinfo = File.read(File.join(recipe, 'distinfo'))
 expected = distinfo[/^SHA512 \(kded-6\.31\.0\.tar\.xz\) = (\h+)$/, 1]

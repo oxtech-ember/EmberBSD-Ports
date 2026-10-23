@@ -24,7 +24,7 @@ output = File.expand_path(ARGV[1])
 qt = File.realpath(ARGV[2])
 ecm = File.realpath(options[:ecm])
 abort 'Output must be a new directory' if File.exist?(output) || File.symlink?(output)
-recipe = File.expand_path('../../recipes/devel/kf6-kcoreaddons', __dir__)
+recipe = File.expand_path('../../../../../pkgsrc/devel/kf6-kcoreaddons', __dir__)
 distinfo = File.read(recipe + '/distinfo')
 expected = distinfo[/^SHA512 \(kcoreaddons-6.31.0.tar.xz\) = (\h+)$/, 1]
 abort 'Archive checksum mismatch' unless expected && Digest::SHA512.file(archive).hexdigest == expected

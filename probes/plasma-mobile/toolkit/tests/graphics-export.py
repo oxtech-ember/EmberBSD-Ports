@@ -142,7 +142,7 @@ def main():
     try:
         archive = work / "recipes.tar"
         archive.write_bytes(run(["git", "-C", str(ports / "upstream/pkgsrc"), "archive", "HEAD",
-                                 *RECIPES, "devel/libidn2", "www/curl"]))
+                                 *RECIPES, "www/curl"]))
         run(["tar", "-xf", str(archive), "-C", str(fixture)])
         receipt["canonical_recipes"]["sysutils/libnotify"] = copy_canonical_recipe(
             ports, fixture, "sysutils/libnotify", hash_file)

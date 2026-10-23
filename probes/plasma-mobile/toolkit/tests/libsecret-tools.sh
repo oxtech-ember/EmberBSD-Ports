@@ -13,7 +13,6 @@ query() {
 name=$(query USE_CROSS_COMPILE=no -V '${PKGNAME}')
 case "$name" in
     libsecret-0.21.8.2) complete_cross=yes; series=0.21 ;;
-    libsecret-0.20.5nb4) complete_cross=no; series=0.20 ;;
     *) echo "Unexpected libsecret package: $name" >&2; exit 1 ;;
 esac
 for mode in yes no; do
@@ -61,10 +60,6 @@ for mode in yes no; do
             else
                 grep -q vala "$prefix-BUILDLINK_API_DEPENDS.vala.txt"
             fi
-        elif [ "$mode" = yes ]; then
-            grep -q -- '-Dintrospection=false' "$prefix-MESON_ARGS.txt"
-            grep -q -- '-Dvapi=false' "$prefix-MESON_ARGS.txt"
-            grep -q '/PLIST.cross' "$prefix-PLIST_SRC.txt"
         fi
     done
 done

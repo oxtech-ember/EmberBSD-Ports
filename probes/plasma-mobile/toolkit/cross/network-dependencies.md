@@ -5,11 +5,12 @@ GSettings desktop schemas 51.0 and libproxy 0.5.12. Their build and test
 executables are cross-compiled on macOS with GCC 16.2. The CM5 only runs
 those executables. This acceptance does not establish a Qt or Plasma session.
 
-The [network delta](../current-network-deps.patch) records the original GNU
-and GNOME archives and SHA256. The [libproxy delta](../libproxy-cross.patch)
+The canonical [libidn2 recipe](../../../../pkgsrc/devel/libidn2/) selects 2.3.8.
+The [network delta](../current-network-deps.patch) records the original GNOME
+archive and SHA256. The [libproxy delta](../libproxy-cross.patch)
 retains the pinned upstream release and records its original archive and hash.
 Both use pkgsrc `fff4deb639a1a640476203c80f752fb77b6cb14b`.
-Apply each toolkit delta after its common graphics delta.
+`pkgsrc/export.conf` applies each toolkit delta after its common graphics delta.
 Changes are AI-assisted EmberBSD work, not accepted upstream patches.
 
 ## Cross-build repairs
@@ -45,7 +46,7 @@ build in the desktop's dependency path.
 
 ## Reproduce the focused checks
 
-From the Ports root, after preparing the `plasma-mobile` export:
+From the Ports root, after preparing a new pkgsrc export:
 
 ```sh
 python3 probes/plasma-mobile/toolkit/tests/graphics-export.py \

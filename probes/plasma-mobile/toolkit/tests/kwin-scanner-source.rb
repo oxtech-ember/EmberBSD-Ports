@@ -8,17 +8,19 @@ require 'digest'
 abort 'Usage: kwin-scanner-source.rb VERIFIED_DISTFILES HOST_QT' unless ARGV.length == 2
 toolkit = File.expand_path('..', __dir__)
 distfiles, qt = ARGV.map { |path| File.expand_path(path) }
-version_file = 'shared/meta-pkgs/kde/plasma6.mk'
-version = File.read(toolkit + '/' + version_file)[/^PLASMAVER\?=\s+(\S+)/, 1]
+version_file = 'pkgsrc/meta-pkgs/kde/plasma6.mk'
+ports = File.expand_path('../../..', toolkit)
+version = File.read(ports + '/' + version_file)[/^PLASMAVER\?=\s+(\S+)/, 1]
 row = File.readlines(toolkit + '/sources.tsv').map { |line| line.chomp.split("\t") }.select { |a| a[0] == 'x11/plasma6-kwin' }
 abort 'FAIL: canonical KWin manifest mismatch' unless row.length == 1 && row[0][1] == "kwin-#{version}.tar.xz"
 archive, checksum = row.first.values_at(1, 2)
 abort 'FAIL: actual upstream archive is unavailable or corrupt' unless File.file?(distfiles + '/' + archive) && Digest::SHA256.file(distfiles + '/' + archive).hexdigest == checksum
 Dir.mktmpdir('ember-kwin-scanner-', '/tmp') do |work|
-  fixture = work + '/toolkit'
-  FileUtils.mkdir_p([fixture + '/cross', fixture + '/shared/meta-pkgs/kde', work + '/distfiles'])
+  # The fixture keeps the repository layout of the toolkit and pkgsrc/.
+  fixture = work + '/probes/plasma-mobile/toolkit'
+  FileUtils.mkdir_p([fixture + '/cross', work + '/pkgsrc/meta-pkgs/kde', work + '/distfiles'])
   FileUtils.cp(toolkit + '/cross/build-kwin-scanner.sh', fixture + '/cross/')
-  FileUtils.cp(toolkit + '/' + version_file, fixture + '/' + version_file)
+  FileUtils.cp(ports + '/' + version_file, work + '/' + version_file)
   FileUtils.cp(toolkit + '/sources.tsv', fixture + '/sources.tsv')
   FileUtils.cp(distfiles + '/' + archive, work + '/distfiles/')
   cmake = work + '/cmake'
@@ -44,7 +46,7 @@ Dir.mktmpdir('ember-kwin-scanner-', '/tmp') do |work|
   status, output, text = invoke.call('duplicate')
   abort 'FAIL: duplicate source owner accepted' if status.success? || File.exist?(boundary) || File.exist?(output) || !text.include?('Exactly one canonical KWin source')
   FileUtils.cp(toolkit + '/sources.tsv', fixture + '/sources.tsv')
-  File.write(fixture + '/' + version_file, File.read(toolkit + '/' + version_file).sub(/^PLASMAVER\?=.*$/, 'PLASMAVER?= 0.0.0'))
+  File.write(work + '/' + version_file, File.read(ports + '/' + version_file).sub(/^PLASMAVER\?=.*$/, 'PLASMAVER?= 0.0.0'))
   status, output, text = invoke.call('mixed-version')
   abort 'FAIL: shared Plasma/manifest mismatch accepted' if status.success? || File.exist?(boundary) || File.exist?(output) || !text.include?('manifest differs from the shared Plasma version')
 end

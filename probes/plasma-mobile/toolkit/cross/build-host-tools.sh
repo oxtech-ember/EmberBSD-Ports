@@ -5,7 +5,7 @@ set -eu
 [ "$#" = 2 ] || { echo "Usage: $0 DISTFILES NEW_ABSOLUTE_WORK" >&2; exit 2; }
 distfiles=$1 work=$2
 toolkit=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-scanner_patch=$toolkit/recipes/x11/qt6-qtbase/patches/patch-src_tools_qtwaylandscanner_qtwaylandscanner.cpp
+scanner_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_tools_qtwaylandscanner_qtwaylandscanner.cpp
 RESUME=${RESUME:-0}
 : "${CMAKE:?Set an absolute native CMake executable}"
 : "${NINJA:?Set an absolute native Ninja executable}"

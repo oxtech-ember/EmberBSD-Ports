@@ -6,6 +6,7 @@ require 'fileutils'
 require 'open3'
 abort 'usage: designer-options.rb DISTFILES NEW_WORK' unless ARGV.length == 2
 root = File.expand_path('..', __dir__)
+pkgsrc = File.expand_path('../../../pkgsrc', root)
 distfiles = File.realpath(ARGV[0])
 work = File.expand_path(ARGV[1])
 abort 'NEW_WORK must be absent and absolute' unless ARGV[1].start_with?('/') && !File.exist?(work)
@@ -13,9 +14,9 @@ FileUtils.mkdir_p(work)
 cmake = ENV.fetch('CMAKE', 'cmake')
 manifest = File.readlines("#{root}/sources.tsv").reject { |l| l.start_with?('#') }.map { |l| l.strip.split("\t") }.to_h { |a| [a[0], a[1..]] }
 count = 0
-Dir.glob("#{root}/recipes/*/kf6-*/PLIST").sort.each do |plist|
-  next unless File.read(plist).include?('qt6/plugins/designer/')
-  recipe = File.dirname(plist).delete_prefix("#{root}/recipes/")
+Dir.glob("#{pkgsrc}/*/kf6-*/PLIST").sort.each do |plist|
+  recipe = File.dirname(plist).delete_prefix("#{pkgsrc}/")
+  next unless manifest.key?(recipe) && File.read(plist).include?('qt6/plugins/designer/')
   archive, hash, = manifest.fetch(recipe)
   input = "#{distfiles}/#{archive}"
   abort "archive mismatch: #{archive}" unless Digest::SHA256.file(input).hexdigest == hash
@@ -27,7 +28,7 @@ Dir.glob("#{root}/recipes/*/kf6-*/PLIST").sort.each do |plist|
   File.write("#{dir}/CMakeLists.txt", source)
   old = source.lines.map(&:strip).find { |l| l.match?(/^(?:cmake_dependent_option|option)\(BUILD_DESIGNERPLUGIN /) }
   abort "missing upstream option: #{recipe}" unless old
-  patch = "#{root}/recipes/#{recipe}/patches/patch-CMakeLists.txt"
+  patch = "#{pkgsrc}/#{recipe}/patches/patch-CMakeLists.txt"
   if File.exist?(patch)
     output, status = Open3.capture2e('patch', '-f', '-N', '-F', '0', '-p0', '-d', dir, '-i', patch)
     File.write("#{dir}/patch.log", output)

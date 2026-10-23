@@ -1,7 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: BSD-2-Clause
-# Check publication inputs for the complete recipe layers in pkgsrc/export.conf
-# and for the Plasma toolkit probe.
+# Check publication inputs for the complete recipe layers in pkgsrc/ and
+# pkgsrc/export.conf.
 set -eu
 [ "$#" -le 1 ] || { echo "Usage: $0 [PORTS_REPOSITORY]" >&2; exit 2; }
 root=${1:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}
@@ -16,8 +16,7 @@ trap 'exit 143' HUP TERM
 # Sparse profiles outside the export have a different ownership contract.
 git -C "$root" -c core.quotePath=false ls-files -- \
     pkgsrc profiles/common-build-tools/recipes \
-    profiles/common-graphics/recipes \
-    probes/plasma-mobile/toolkit/recipes > "$work/tracked"
+    profiles/common-graphics/recipes > "$work/tracked"
 : > "$work/references"
 count=0
 while IFS= read -r path; do

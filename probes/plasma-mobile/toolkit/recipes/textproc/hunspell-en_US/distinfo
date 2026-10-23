@@ -1,5 +1,0 @@
-$NetBSD: distinfo,v 1.4 2021/10/26 11:22:06 nia Exp $
-
-BLAKE2s (hunspell-en_US-2026.02.25.zip) = 9f63d216a0d74450289d0c09de118db33d032c5c09de062538502858d53dca13
-SHA512 (hunspell-en_US-2026.02.25.zip) = 59d1ced389f6f5db98a84c1d486a79bef07cc4323654bb6cee219d620c17bbb653b60ad9aefeeeaa158b600b00be11404c7ade244eef46b263d8a23c61ea06b7
-Size (hunspell-en_US-2026.02.25.zip) = 187271 bytes

@@ -14,7 +14,7 @@ The separate upstream Cairo/GDK image comparison suite is not included here.
 Cppcheck. It covers all decoration and emphasis-position keywords, including
 zero-valued `none` and `over`, and combinations of nonzero flags. The installed
 unpatched 0.10 library fails both tests on CM5; 0.10nb1 passes the same binary.
-The [Ports patch](../../recipes/www/litehtml/patches/patch-src_style.cpp)
+The [Ports patch](../../../../../pkgsrc/www/litehtml/patches/patch-src_style.cpp)
 leaves those zero-valued keywords out of the bit-shift operation.
 
 Build on the development host with GCC16, the common sysroot, installed

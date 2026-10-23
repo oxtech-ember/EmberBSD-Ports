@@ -11,7 +11,7 @@ for path in "$dist" "$qt" "$ecm" "$work" "$CMAKE" "$NINJA" "$HOST_CXX"; do
 done
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 version=$(awk '$1 == "PLASMAVER?=" { if (NF != 2) exit 2; value=$2; count++ }
-    END { if (count != 1) exit 2; print value }' "$root/shared/meta-pkgs/kde/plasma6.mk")
+    END { if (count != 1) exit 2; print value }' "$root/../../../pkgsrc/meta-pkgs/kde/plasma6.mk")
 printf '%s\n' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'
 selection=$(awk -F '\t' '$1 == "x11/plasma6-kwin" { archive=$2; hash=$3; count++ }
     END { if (count != 1) exit 2; print archive " " hash }' "$root/sources.tsv") || {

@@ -8,7 +8,7 @@ require 'open3'
 require 'shellwords'
 abort 'Usage: source-contract.rb QTBASE_ARCHIVE NEW_OUTPUT' unless ARGV.length == 2
 archive, output = ARGV.map { |path| File.expand_path(path) }
-recipe = File.expand_path('../../recipes/x11/qt6-qtbase', __dir__)
+recipe = File.expand_path('../../../../../pkgsrc/x11/qt6-qtbase', __dir__)
 distinfo = File.read(File.join(recipe, 'distinfo'))
 patches = %w[patch-src_corelib_thread_qmutex__p.h patch-src_corelib_thread_qmutex__unix.cpp]
 patches.each do |name|

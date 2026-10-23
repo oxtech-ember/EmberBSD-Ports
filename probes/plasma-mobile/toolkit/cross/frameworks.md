@@ -24,7 +24,7 @@ directory. `python3 -B tests/kde-metatypes-buildlink.py` checks every toolkit
 KDE recipe that installs metatypes.
 
 KCoreAddons, KConfig, KCodecs, KDBusAddons and KArchive use QtTools only for translation
-generators. Their [Linguist helper](../recipes/devel/qt6-qttools/linguist.mk)
+generators. Their [Linguist helper](../../../../pkgsrc/devel/qt6-qttools/linguist.mk)
 imports the matching native component without adding host library search
 prefixes. KCoreAddons and KConfig explicitly depend on target Declarative.
 KWidgetsAddons additionally needs the complete target QtTools package for its
@@ -124,19 +124,18 @@ its installed CMake export; normal package checks pass.
 
 ## KI18n locale data
 
-The `iso-codes` recipe selects current stable 4.20.1 and upstream Meson.
-Its complete JSON, XML and translated data are packaged; upstream's Python
-scripts are native build tools, not a new target runtime dependency.
-All eight upstream UTF-8 checks pass on the host.
+The common graphics [iso-codes delta](../../../../profiles/common-graphics/cross/iso-codes-host-python.patch)
+selects current stable 4.20.1 and upstream Meson. Its JSON, XML and translated
+data are packaged; upstream's Python scripts are native build tools, not a new
+target runtime dependency.
 
 KI18n now declares `pkg-config` explicitly. Without its wrapper the build can
 succeed with an empty `ISO_CODES_PREFIX`, leaving runtime country data absent.
 The accepted configure defines `/usr/pkg` for locale and iso-codes prefixes;
 the package records `iso-codes>=4.20.1` as a runtime dependency.
 
-The original Debian archive SHA256 matches the official `.dsc` record.
-This is checksum comparison, not signature verification. Provenance is in
-[sources.tsv](../sources.tsv), with pkgsrc digests in the recipe.
+The common recipe uses the original Salsa release archive. Its pkgsrc digests
+are in the common graphics delta.
 
 ## libinotify target measurements
 
@@ -246,5 +245,4 @@ remaining Frameworks runtimes, full QtTools and Plasma are still separate gates.
 
 Sources: [Frameworks 6.31](https://kde.org/announcements/frameworks/6/6.31.0/),
 [iso-codes tags](https://salsa.debian.org/iso-codes-team/iso-codes/-/tags),
-[Debian source record](https://deb.debian.org/debian/pool/main/i/iso-codes/iso-codes_4.20.1-1.dsc),
 [libinotify release](https://github.com/libinotify-kqueue/libinotify-kqueue/releases/tag/20240724).

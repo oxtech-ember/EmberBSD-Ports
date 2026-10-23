@@ -22,8 +22,8 @@ permissions, create accounts, start ConsoleKit, select a seat implementation,
 or force a graphics driver. It does not replace a display manager or qualify
 physical HDMI, input, locking, or seat ownership.
 
-Use the optional [service package](../recipes/sysutils/ember-plasma-session/README.md)
-from the current toolkit export. It installs these exact sources and requires
+Use the optional [service package](../../../../pkgsrc/sysutils/ember-plasma-session/README.md)
+from the current pkgsrc export. It installs these exact sources and requires
 the corrected common Qt runtime. Install its audited dependency closure with
 normal package scripts:
 
@@ -85,6 +85,8 @@ ownership handshake and a 30-second parent acknowledgement deadline.
 
 ## Host contract
 
+The [package recipe](../../../../pkgsrc/sysutils/ember-plasma-session/files/)
+holds the canonical supervisor and rc.d script. The tests read them there.
 Run the focused test with Ruby 4 and a new work directory under an existing
 parent. Supply an actual EmberBSD `etc/rc.subr`. Use `--rc-shell PATH` if
 the host's `/bin/sh` cannot parse that file. An existing POSIX shell such as

@@ -7,7 +7,7 @@ toolkit=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 mkdir "$1"
 work=$(CDPATH= cd -- "$1" && pwd)
 fixture=$work/good
-mkdir -p "$fixture/recipes" "$work/distfiles" "$work/archive/package" "$work/archive/dictionary" "$work/base/devel/overlay"
+mkdir -p "$fixture/recipes" "$work/distfiles" "$work/archive/package" "$work/archive/dictionary"
 printf 'before\n' > "$work/archive/package/value.txt"
 printf 'dictionary payload\n' > "$work/archive/dictionary/words.txt"
 tar -czf "$work/distfiles/code-1.tar.gz" -C "$work/archive" package
@@ -55,13 +55,9 @@ for recipe in first second; do
     printf '.include "../../meta-pkgs/shared/Makefile.common"\n' > "$fixture/recipes/devel/$recipe/Makefile"
     rm "$fixture/recipes/devel/$recipe/distinfo"
 done
-mkdir -p "$fixture/recipes/devel/overlay"
-printf 'overlay toolset\n' > "$fixture/recipes/devel/overlay/toolset.mk"
-printf '.include "../../meta-pkgs/shared/Makefile.common"\n' > "$work/base/devel/overlay/Makefile"
 cat > "$fixture/source-owners.tsv" <<'OWNERS'
 devel/first	meta-pkgs/shared	package	-
 devel/second	meta-pkgs/shared	package	-
-devel/overlay	meta-pkgs/shared	overlay	-
 meta-pkgs/shared	meta-pkgs/shared	meta	-
 devel/multi	devel/multi	package	code-1.tar.gz
 OWNERS
@@ -77,16 +73,15 @@ $NetBSD$
 PATCH
 patch_sha=$(sed '/[$]NetBSD.*/d' "$fixture/recipes/devel/multi/patches/patch-value" | shasum -a 1 | awk '{print $1}')
 printf 'SHA1 (patch-value) = %s\n' "$patch_sha" >> "$fixture/recipes/devel/multi/distinfo"
-export PKGSRC_BASE=$work/base
-sh "$toolkit/validate.sh" --inventory "$fixture" > "$work/inventory.tsv"
-[ "$(wc -l < "$work/inventory.tsv" | tr -d ' ')" = 7 ]
-sh "$toolkit/validate.sh" --sources "$fixture" > "$work/source-plan.tsv"
+sh "$toolkit/validate.sh" --inventory "$fixture" "$fixture/recipes" > "$work/inventory.tsv"
+[ "$(wc -l < "$work/inventory.tsv" | tr -d ' ')" = 6 ]
+sh "$toolkit/validate.sh" --sources "$fixture" "$fixture/recipes" > "$work/source-plan.tsv"
 awk -F '\t' '$2=="data-1.tar.gz" {found=($5=="auxiliary")} END {exit !found}' "$work/source-plan.tsv"
-sh "$toolkit/tests/verify-sources.sh" "$fixture" "$work/distfiles" "$work/verified" > "$work/verified.log" 2>&1
+sh "$toolkit/tests/verify-sources.sh" "$fixture" "$work/distfiles" "$work/verified" "$fixture/recipes" > "$work/verified.log" 2>&1
 [ "$(cat "$work/verified/source/code-1/value.txt")" = after ]
 [ ! -e "$work/verified/source/data-1" ]
 [ "$(wc -l < "$work/verified/verified.tsv" | tr -d ' ')" = 5 ]
-printf 'PASS: normal, multiarchive, shared-source, metadata-only and overlay contracts\n'
+printf 'PASS: normal, multiarchive, shared-source and metadata-only contracts\n'
 new_case() {
     name=$1
     candidate=$work/$name
@@ -94,7 +89,7 @@ new_case() {
 }
 expect_failure() {
     expected=$1
-    if sh "$toolkit/validate.sh" "$candidate" > "$work/$name.log" 2>&1; then
+    if sh "$toolkit/validate.sh" "$candidate" "$candidate/recipes" > "$work/$name.log" 2>&1; then
         echo "Invalid fixture accepted: $name" >&2; exit 1
     fi
     grep -F "$expected" "$work/$name.log" >/dev/null || { cat "$work/$name.log" >&2; exit 1; }
@@ -167,22 +162,34 @@ new_case shared-local-patches
 mkdir "$candidate/recipes/devel/first/patches"
 printf 'Unlisted patch\n' > "$candidate/recipes/devel/first/patches/patch-unchecked"
 expect_failure 'Shared consumer has local source metadata'
-new_case overlay-metadata-override
-printf 'PATCHDIR=/other/patches\n' >> "$candidate/recipes/devel/overlay/toolset.mk"
-expect_failure 'Shared consumer overrides source metadata'
 new_case missing-shared-include
 rm "$candidate/recipes/meta-pkgs/shared/Makefile.common"
 expect_failure 'Missing shared source include'
 new_case unknown-owner
 printf 'devel/absent\tmeta-pkgs/shared\tpackage\t-\n' >> "$candidate/source-owners.tsv"
+expect_failure 'Missing toolkit recipe: devel/absent'
+new_case unknown-shared-owner
+printf 'devel/first\tmeta-pkgs/absent\tpackage\t-\n' > "$candidate/source-owners.new"
+grep -v '^devel/first' "$candidate/source-owners.tsv" >> "$candidate/source-owners.new"
+mv "$candidate/source-owners.new" "$candidate/source-owners.tsv"
 expect_failure 'Unknown source-owner recipe'
 new_case owner-chain
 sed '1s|meta-pkgs/shared|devel/second|' "$candidate/source-owners.tsv" > "$candidate/owners.new"
 mv "$candidate/owners.new" "$candidate/source-owners.tsv"
 expect_failure 'Source-owner chains are not supported'
-new_case orphan-recipe
+new_case unlisted-shared-consumer
+mkdir -p "$candidate/recipes/devel/unlisted"
+printf '.include "../../meta-pkgs/shared/Makefile.common"\n' > "$candidate/recipes/devel/unlisted/Makefile"
+expect_failure 'Toolkit recipe has no manifest row: devel/unlisted'
+new_case unlisted-version-selector
+mkdir -p "$candidate/recipes/devel/kf6-unlisted"
+printf '.include "../../meta-pkgs/kde/kf6.mk"\n' > "$candidate/recipes/devel/kf6-unlisted/Makefile"
+expect_failure 'Toolkit recipe has no manifest row: devel/kf6-unlisted'
+new_case recipe-without-archive
 mkdir -p "$candidate/recipes/devel/orphan"
 printf 'DISTNAME=orphan\n' > "$candidate/recipes/devel/orphan/Makefile"
+printf 'share/orphan\n' > "$candidate/recipes/devel/orphan/PLIST"
+printf 'devel/orphan\tdevel/orphan\tpackage\t-\n' >> "$candidate/source-owners.tsv"
 expect_failure 'Missing toolkit source owner'
 new_case malformed-sha256
 sed '1s/[0-9a-f]\{64\}/bad/' "$candidate/sources.tsv" > "$candidate/sources.new"
@@ -216,22 +223,18 @@ expect_failure 'Patch manifest differs'
 new_case invalid-path
 sed '1s|devel/SDL3|devel/../SDL3|' "$candidate/sources.tsv" > "$candidate/sources.new"
 mv "$candidate/sources.new" "$candidate/sources.tsv"
-expect_failure 'Invalid toolkit source entry'
+expect_failure 'Invalid toolkit recipe path'
 new_case invalid-url
 sed '1s|https://|file:///|' "$candidate/sources.tsv" > "$candidate/sources.new"
 mv "$candidate/sources.new" "$candidate/sources.tsv"
 expect_failure 'Invalid toolkit source entry'
-new_case overlay-makefile
-printf 'DISTNAME=unexpected\n' > "$candidate/recipes/devel/overlay/Makefile"
-expect_failure 'An overlay must not replace its base Makefile'
-new_case missing-overlay-base
-if PKGSRC_BASE="$work/absent-base" sh "$toolkit/validate.sh" "$candidate" > "$work/$name.log" 2>&1; then exit 1; fi
-grep -F 'Missing pinned overlay base' "$work/$name.log" >/dev/null
-printf 'PASS: rejects missing-overlay-base\n'
+new_case invalid-recipe-path
+printf 'devel/../escape\tmeta-pkgs/shared\tpackage\t-\n' >> "$candidate/source-owners.tsv"
+expect_failure 'Invalid toolkit recipe path'
 # The archive-verification entry point must enforce the same shared-owner gate.
 for name in commented-shared-owner overridden-shared-metadata; do
     candidate=$work/$name
-    if sh "$toolkit/tests/verify-sources.sh" "$candidate" "$work/distfiles" "$work/source-check-$name" > "$work/source-check-$name.log" 2>&1; then exit 1; fi
+    if sh "$toolkit/tests/verify-sources.sh" "$candidate" "$work/distfiles" "$work/source-check-$name" "$candidate/recipes" > "$work/source-check-$name.log" 2>&1; then exit 1; fi
     case "$name" in
         commented-shared-owner) expected='Shared source owner is not referenced by an unconditional include' ;;
         overridden-shared-metadata) expected='Shared consumer has local source metadata' ;;
@@ -243,6 +246,6 @@ done
 new_case wrong-source-hash
 sed '1s/[0-9a-f]\{64\}/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/' "$candidate/sources.tsv" > "$candidate/sources.new"
 mv "$candidate/sources.new" "$candidate/sources.tsv"
-if sh "$toolkit/tests/verify-sources.sh" "$candidate" "$work/distfiles" "$work/wrong-source-verification" > "$work/$name.log" 2>&1; then exit 1; fi
+if sh "$toolkit/tests/verify-sources.sh" "$candidate" "$work/distfiles" "$work/wrong-source-verification" "$candidate/recipes" > "$work/$name.log" 2>&1; then exit 1; fi
 printf 'PASS: rejects wrong-source-hash during actual archive verification\n'
 echo 'PASS: toolkit manifest regression complete'

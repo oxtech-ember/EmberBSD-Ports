@@ -46,7 +46,7 @@ configurations. It found two negative shifts in litehtml's CSS keyword parser.
 `1 << (index - 1)`. On CM5 the unpatched library returned `-2147483648`
 instead of zero, and corrupted combinations such as `over right`.
 
-The [0.10nb1 patch](../recipes/www/litehtml/patches/patch-src_style.cpp)
+The [0.10nb1 patch](../../../../pkgsrc/www/litehtml/patches/patch-src_style.cpp)
 only shifts positive indexes. Both regressions fail before the patch and pass
 after package replacement. Rechecking the changed source reports neither
 negative-shift error. The new regression source also passes GCC16's analyzer.

@@ -18,7 +18,7 @@ expected=$(awk -F '\t' -v name="$archive" '$2 == name { print $3 }' "$root/sourc
 mkdir "$work"
 mkdir "$work/source" "$work/prefix" "$work/prefix/bin" "$work/prefix/share"
 tar -xf "$distfiles/$archive" -C "$work/source"
-recipe=$root/recipes/graphics/breeze-icons
+recipe=$root/../../../pkgsrc/graphics/breeze-icons
 for patch_name in $(awk '/^SHA1 \(patch-/ { gsub(/[()]/,"",$2); print $2 }' "$recipe/distinfo"); do
     expected=$(awk -v name="($patch_name)" '$1 == "SHA1" && $2 == name { print $4 }' "$recipe/distinfo")
     [ "$(shasum -a 1 "$recipe/patches/$patch_name" | awk '{print $1}')" = "$expected" ]

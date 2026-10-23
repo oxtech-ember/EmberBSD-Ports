@@ -16,7 +16,9 @@ abort 'ConsoleKit archive SHA256 mismatch' unless Digest::SHA256.file(archive).h
 tests = File.expand_path(__dir__)
 toolkit = File.expand_path('../..', tests)
 root = File.expand_path('../../..', toolkit)
-recipe_relative = 'probes/plasma-mobile/toolkit/recipes/sysutils/consolekit'
+recipe_relative = 'pkgsrc/sysutils/consolekit'
+# The baseline commit predates the move into pkgsrc/.
+baseline_recipe_relative = 'probes/plasma-mobile/toolkit/recipes/sysutils/consolekit'
 recipe = File.join(root, recipe_relative)
 baseline = '74f04e0105d96e5ae370db0b524b5a9f4e3c9be6'
 verifier = File.join(root, 'upstream/pkgsrc/mk/checksum/checksum.awk')
@@ -43,10 +45,10 @@ libs = Shellwords.split(run!([ENV['PKG_CONFIG'], '--libs', 'gobject-2.0'], File.
 Dir.mktmpdir('consolekit-vt-') do |work|
   previous = File.join(work, 'previous-recipe')
   FileUtils.mkdir_p(File.join(previous, 'patches'))
-  old_info = run!(['git', '-C', root, 'show', "#{baseline}:#{recipe_relative}/distinfo"], File.join(receipt, 'baseline-distinfo.log'))
+  old_info = run!(['git', '-C', root, 'show', "#{baseline}:#{baseline_recipe_relative}/distinfo"], File.join(receipt, 'baseline-distinfo.log'))
   File.write(File.join(previous, 'distinfo'), old_info)
   old_info.scan(/^SHA1 \((patch-[^)]+)\)/).flatten.each do |name|
-    text = run!(['git', '-C', root, 'show', "#{baseline}:#{recipe_relative}/patches/#{name}"], File.join(receipt, "baseline-input-#{name}.log"))
+    text = run!(['git', '-C', root, 'show', "#{baseline}:#{baseline_recipe_relative}/patches/#{name}"], File.join(receipt, "baseline-input-#{name}.log"))
     File.write(File.join(previous, 'patches', name), text)
   end
   findings_by_mode = {}

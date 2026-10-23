@@ -54,9 +54,9 @@ Keep the following material in one transfer directory:
 - [The installer](install-package-set.md) and its instructions.
 - The complete [Plasma Desktop test directory](../tests/plasma-desktop/README.md).
 - The adjacent [full-session test directory](../tests/plasma-session/README.md).
-- The [Configtool runtime check](../recipes/inputmethod/fcitx5-configtool/tests/runtime.md).
-- The prepared [libei test bundle](../recipes/x11/libei/tests/README.md).
-- The prepared [basu local-test bundle](../recipes/devel/basu/tests/target-README.md).
+- The [Configtool runtime check](../../../../pkgsrc/inputmethod/fcitx5-configtool/tests/runtime.md).
+- The prepared [libei test bundle](../../../../pkgsrc/x11/libei/tests/README.md).
+- The prepared [basu local-test bundle](../../../../pkgsrc/devel/basu/tests/target-README.md).
 - The [cross-built Qt D-Bus marshalling consumer](../tests/kwin-inputdevice-xml.md#prepare-the-target-consumer).
 
 Copy the full Desktop and session test directories together. Their relative

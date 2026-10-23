@@ -2,9 +2,11 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Verify every archive. Apply source patches only to the declared primary archive.
 set -eu
-[ "$#" -eq 3 ] || { echo "Usage: $0 TOOLKIT VERIFIED_DISTFILES NEW_WORK" >&2; exit 2; }
+[ "$#" -eq 3 ] || [ "$#" -eq 4 ] ||
+    { echo "Usage: $0 TOOLKIT VERIFIED_DISTFILES NEW_WORK [RECIPES]" >&2; exit 2; }
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 toolkit=$(CDPATH= cd -- "$1" && pwd)
+recipes=$(CDPATH= cd -- "${4:-$root/pkgsrc}" && pwd)
 distfiles=$(CDPATH= cd -- "$2" && pwd)
 mkdir "$3"
 work=$(CDPATH= cd -- "$3" && pwd)
@@ -32,10 +34,10 @@ chmod +x "$work/digest"
 export DIGEST=$work/digest
 verifier=${PKGSRC_CHECKSUM_AWK:-$root/upstream/pkgsrc/mk/checksum/checksum.awk}
 mkdir "$work/source"
-sh "$toolkit/validate.sh" --sources "$toolkit" > "$work/source-plan.tsv"
+sh "$toolkit/validate.sh" --sources "$toolkit" "$recipes" > "$work/source-plan.tsv"
 while IFS="$(printf '\t')" read -r recipe archive sha url role; do
     case "$recipe" in ''|'#'*) continue ;; esac
-    pkg=$toolkit/recipes/$recipe
+    pkg=$recipes/$recipe
     [ "$(shasum -a 256 "$distfiles/$archive" | awk '{ print $1 }')" = "$sha" ]
     (cd "$distfiles" && awk -f "$verifier" -- "$pkg/distinfo" "$archive")
     recorded=$(awk -v name="($archive)" '$1 == "Size" && $2 == name { print $4 }' "$pkg/distinfo")

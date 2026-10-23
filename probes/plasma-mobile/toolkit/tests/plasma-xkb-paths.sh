@@ -16,7 +16,7 @@ cp "$source/ConfigureChecks.cmake" "$work/original/ConfigureChecks.cmake"
 cp "$source/ConfigureChecks.cmake" "$work/patched/ConfigureChecks.cmake"
 cp "$source/config-workspace.h.cmake" "$work/config-workspace.h.cmake"
 patch -d "$work/patched" -p0 < \
-    "$tests/../recipes/x11/plasma6-plasma-desktop/patches/patch-ConfigureChecks.cmake" \
+    "$tests/../../../../pkgsrc/x11/plasma6-plasma-desktop/patches/patch-ConfigureChecks.cmake" \
     > "$work/patch.log"
 # Execute the complete production lookup. Exclude the unrelated compiler probes.
 for tree in original patched; do

@@ -1,6 +1,9 @@
 # Toolkit source and export checks
 
-The validator discovers every directory below `recipes/category/package`.
+The toolkit recipes are canonical recipes in `pkgsrc/category/package`.
+The two manifests select them: every recipe in a manifest row is a toolkit recipe.
+The validator reads them from `pkgsrc/`, or from an optional second argument.
+A recipe that includes a toolkit version selector or a shared source owner must have a row.
 The default contract is a complete package with its own `distinfo` and one source archive.
 [sources.tsv](../sources.tsv) records each original archive URL and SHA256.
 [source-owners.tsv](../source-owners.tsv) records only exceptions.
@@ -10,12 +13,11 @@ Use tabs between fields. Use `-` when the owner's selection is sufficient.
 
 - `package` requires a Makefile and PLIST. A shared consumer must include its owner's `Makefile.common` directly and unconditionally.
 - `meta` requires `META_PACKAGE=yes`. It can own shared source metadata without a fake PLIST.
-- `overlay` contains only changed files. They apply over the pinned base recipe.
-- `local` is limited to the explicit self-owned `sysutils/ember-plasma-session` recipe. It has empty `DISTFILES`, `NO_BUILD=yes`, no archive metadata and only the two exact relative links to regular canonical service files inside the toolkit. Copy the recipe with `cp -RL` to make a standalone recipe. It does not exempt upstream recipes from source checks.
+- `local` is limited to the explicit self-owned `sysutils/ember-plasma-session` recipe. It has empty `DISTFILES`, `NO_BUILD=yes` and no archive metadata. Its `files/` directory holds only the two canonical service files, as regular files. It does not exempt upstream recipes from source checks.
 - Multiple archives require an explicit primary archive. Source patches apply only to that archive. Supplemental dictionaries and test data still require checksums.
 
 A source owner must have one complete `distinfo`. It must list every archive and patch exactly once.
-Shared consumers cannot carry local `distinfo` or `patches`, or override `DISTINFO_FILE` and `PATCHDIR` in their make fragments. The same restriction applies to overlay files and their pinned base. This static contract does not evaluate arbitrary bmake expressions. Owners cannot form chains. Shared-source packages must use the canonical owner instead of duplicate archive rows.
+Shared consumers cannot carry local `distinfo` or `patches`, or override `DISTINFO_FILE` and `PATCHDIR` in their make fragments. This static contract does not evaluate arbitrary bmake expressions. Owners cannot form chains. Shared-source packages must use the canonical owner instead of duplicate archive rows.
 The validator rejects missing recipes, source rows, digests, patch files and invalid exceptions before export.
 The source check then verifies the actual archives and applies patches with zero fuzz.
 
@@ -24,7 +26,7 @@ One fixed derived auxiliary source is permitted: the CSS parser owner uses
 `derived:cssparser-vendor-r1` and the pinned two-generation SHA256. Its original
 GitHub archive hash and primary selection remain fixed. This is not a generic
 derived-source or plain TAR exception. Normal BLAKE2s, SHA512, size and patch
-checks still apply. The [recipe receipt](../recipes/devel/cxx-rust-cssparser/files/vendor-r1.json)
+checks still apply. The [recipe receipt](../../../../pkgsrc/devel/cxx-rust-cssparser/files/vendor-r1.json)
 records the actual host derivation.
 
 Run from the repository root. Each result directory must be new.
@@ -40,13 +42,13 @@ sh probes/plasma-mobile/toolkit/tests/source-profile.sh /absolute/verified-distf
 ```
 
 `manifest.sh` uses small real archives. It covers normal packages, shared sources,
-metadata-only recipes, partial overlays, `.tar.zst`, `.zip` and multiple archives.
+metadata-only recipes, `.tar.zst`, `.zip` and multiple archives.
 Its auxiliary archive appears first and cannot take the primary source patch.
 Negative cases cover incomplete metadata, wrong digests and invalid ownership.
 `cssparser-vendor.sh` uses the real pinned original and derived CSS archives.
 It checks the exact provenance tuple, rejects foreign bindings and changed
 bytes, and exercises the ordinary checksums and primary-only zero-fuzz patches.
-Set `CSSPARSER_EXPORTED_PKGSRC` to a fresh normal toolkit export, `BMAKE` to
+Set `CSSPARSER_EXPORTED_PKGSRC` to a fresh normal export, `BMAKE` to
 native bmake, and `MAKECONF` to its native host configuration to also run the
 actual recipe `pre-fetch` and `checksum-phase`. This source-only check uses
 empty cached Qt/GCC package-option facts to avoid unrelated native recursion.
@@ -69,7 +71,7 @@ sh scripts/tests/published-patches.sh /absolute/new-publication-results
 The publication check reads tracked `distinfo` files from the working tree.
 Every declared patch must exist and appear in the Git index.
 It covers the complete recipe layers in the export: `pkgsrc/`,
-common-build-tools and common-graphics. It also covers this toolkit.
+common-build-tools and common-graphics. The toolkit recipes are in `pkgsrc/`.
 Sparse profiles outside the export have a separate ownership contract.
 This check does not replace archive hashes, patch digests or zero-fuzz application.
 
@@ -81,10 +83,11 @@ The firmware selection check exports the complete common-media profile with
 canonical gmake/dtc providers and GCC16. Invalid flags and incomplete firmware
 opt-ins must fail before creating the destination.
 
-A clean checkout of `c26300d` passes the complete export comparison:
-150 full toolkit recipes, one Boost overlay with its pinned Makefile,
-shared Qt/KF/Plasma selectors and both source manifests match.
-The publication check covers 221 complete recipe `distinfo` files.
-The manifest regression includes 38 rejected variants, including conditional
-shared-owner references and local metadata overrides. These are source/export
-checks; they do not rebuild every package or establish a working desktop.
+The normal export contains the 160 toolkit recipes and the complete
+`meta-pkgs/kde` and `meta-pkgs/qt6` selectors from `pkgsrc/`. Boost headers,
+Boost libraries, Phonon and Kirigami Addons use the identical pinned upstream
+recipes. Compared with the former profile export, only the common iso-codes,
+Hunspell, US English dictionary, NSS and ebook-tools recipes differ. They come
+from upstream with the common patches. The manifest regression includes 41 rejected variants.
+These are source/export checks; they do not rebuild every package or establish
+a working desktop.

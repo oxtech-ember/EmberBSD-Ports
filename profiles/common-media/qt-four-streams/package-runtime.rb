@@ -19,7 +19,7 @@ abort 'Output already exists' if File.exist?(output) || File.symlink?(output)
 abort 'Unsafe metadata path' if ARGV.any? { |path| path.match?(/[\r\n]/) }
 ports = File.expand_path('../../..', __dir__)
 graphics = ports + '/pkgsrc/'
-toolkit = ports + '/probes/plasma-mobile/toolkit/recipes/'
+toolkit = ports + '/pkgsrc/'
 config = {
   'png' => ['png-cpu-runtime-1.6.59', 'libpng-1.6.59', graphics + 'graphics/png', 'png-[0-9]*'],
   'freetype' => ['freetype2-cpu-runtime-2.14.3nb1', 'freetype-2.14.3', graphics + 'graphics/freetype2', 'freetype2-[0-9]*'],

@@ -17,7 +17,7 @@ end
 run!('tar', '-xJf', archive, '-C', work, 'plasma-pa-6.8.0/src/speakertest.cpp')
 source = "#{work}/plasma-pa-6.8.0/src/speakertest.cpp"
 original = File.read(source)
-patch = "#{toolkit}/recipes/audio/plasma6-plasma-pa/patches/patch-src_speakertest.cpp"
+patch = File.expand_path("../../../pkgsrc/audio/plasma6-plasma-pa/patches/patch-src_speakertest.cpp", toolkit)
 Dir.chdir("#{work}/plasma-pa-6.8.0") { run!('patch', '-p0', '-i', patch) }
 fixed = File.read(source)
 %w[baseline fixed].each do |variant|

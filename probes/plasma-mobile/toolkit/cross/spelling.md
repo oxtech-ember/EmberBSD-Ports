@@ -14,6 +14,8 @@ Inherited pkgsrc authorship, licenses and platform patches are preserved.
 
 ## Repairs
 
+The common graphics [Hunspell delta](../../../../profiles/common-graphics/cross/current-hunspell.patch)
+selects Hunspell 1.7.5nb2 and the current US English dictionary.
 Both dictionary recipes used `perl:run`, which pkgsrc rejects in cross builds.
 The native interpreter now performs build operations; installed scripts retain
 `/usr/pkg/bin/perl` and depend on the current target Perl package. Native recipe

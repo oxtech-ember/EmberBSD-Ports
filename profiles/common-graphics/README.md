@@ -69,10 +69,9 @@ catalog, relative aliases
 and pkg-config.
 JSON Schema validation and GUI execution remain separate checks.
 
-[libsecret 0.20.5nb4](cross/libsecret.md) adds the KiCad credential-store
-runtime to the AArch64 sysroot. Its GCC16 package and a separate pkg-config
-consumer link pass; cross packaging omits optional docs, Vala bindings and
-GObject introspection data while retaining the C API. D-Bus service runtime
+[libsecret 0.21.8.2](cross/libsecret.md) provides the KiCad credential store.
+The canonical recipe is shared with the Plasma toolkit. Its cross build keeps
+GObject introspection, Vala bindings and the C API. D-Bus service runtime
 acceptance remains pending.
 
 [libgit2 1.9.7nb1 and git-base 2.55.0nb1](cross/libgit2.md) provide KiCad's

@@ -30,7 +30,7 @@ Run the recipe regression with native pkgsrc tools:
 BMAKE=/absolute/bmake PKG_ADMIN=/absolute/pkg_admin \
   ruby tests/kwin-runtime-dependencies.rb \
   /absolute/prepared-pkgsrc /absolute/mk.conf \
-  /absolute/toolkit/recipes/x11/plasma6-kwin/Makefile /absolute/new-results
+  /absolute/ports/pkgsrc/x11/plasma6-kwin/Makefile /absolute/new-results
 ```
 
 It queries the real native and cross recipes. It requires a runtime dependency,

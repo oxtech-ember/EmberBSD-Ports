@@ -8,7 +8,7 @@ require 'shellwords'
 abort 'Usage: activitymanager-version.rb UPSTREAM_SOURCE CONFIGURED_BUILD NEW_OUTPUT' unless ARGV.length == 3
 source, build, output = ARGV.map { |path| File.expand_path(path) }
 abort 'Output already exists' if File.exist?(output)
-recipe = File.expand_path('../recipes/x11/plasma6-kactivitymanagerd', __dir__)
+recipe = File.expand_path('../../../../pkgsrc/x11/plasma6-kactivitymanagerd', __dir__)
 entry = JSON.parse(File.read(File.join(build, 'compile_commands.json'))).find do |item|
   item.fetch('file').end_with?('/src/service/Application.cpp')
 end

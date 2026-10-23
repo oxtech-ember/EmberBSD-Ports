@@ -25,7 +25,7 @@ ninja=$(command -v "${NINJA:-ninja}")
 cc=$(command -v "${HOST_CC:-cc}")
 cxx=$(command -v "${HOST_CXX:-c++}")
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-scanner_patch=$root/recipes/x11/qt6-qtbase/patches/patch-src_tools_qtwaylandscanner_qtwaylandscanner.cpp
+scanner_patch=$root/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_tools_qtwaylandscanner_qtwaylandscanner.cpp
 archive=qtbase-everywhere-src-6.12.0.tar.xz
 expected=$(awk -F '\t' -v name="$archive" '$2 == name { print $3 }' "$root/sources.tsv")
 [ -n "$expected" ] || { echo "Missing Qt archive hash in sources.tsv." >&2; exit 2; }

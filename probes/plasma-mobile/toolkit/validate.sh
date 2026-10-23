@@ -1,12 +1,17 @@
 #!/bin/sh
 # SPDX-License-Identifier: BSD-2-Clause
-# Validate the complete recipe set and canonical source ownership before export.
+# Validate the toolkit recipe selection and canonical source ownership.
+# The manifests select the recipes. RECIPES defaults to the pkgsrc/ overlay.
 set -eu
 mode=check
 case "${1:-}" in --recipes|--sources|--inventory) mode=${1#--}; shift ;; esac
-[ "$#" -eq 1 ] || { echo "Usage: $0 [--recipes|--sources|--inventory] TOOLKIT" >&2; exit 2; }
+[ "$#" -eq 1 ] || [ "$#" -eq 2 ] ||
+    { echo "Usage: $0 [--recipes|--sources|--inventory] TOOLKIT [RECIPES]" >&2; exit 2; }
 toolkit=$(CDPATH= cd -- "$1" && pwd)
 fail() { echo "$*" >&2; exit 2; }
+recipes=${2:-$toolkit/../../../pkgsrc}
+[ -d "$recipes" ] || fail "Missing recipe directory: $recipes"
+recipes=$(CDPATH= cd -- "$recipes" && pwd)
 for file in sources.tsv source-owners.tsv; do
     [ -f "$toolkit/$file" ] || fail "Missing toolkit manifest: $file"
 done
@@ -15,11 +20,32 @@ trap 'rm -rf "$work"' EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 : > "$work/recipes"
-for pkg in "$toolkit"/recipes/*/*; do
-    [ -d "$pkg" ] || continue
-    printf '%s\n' "${pkg#"$toolkit/recipes/"}" >> "$work/recipes"
+awk -F '\t' '/^#/ || /^$/ { next } { print $1 }' "$toolkit/source-owners.tsv" "$toolkit/sources.tsv" |
+    LC_ALL=C sort -u > "$work/recipes"
+while IFS= read -r recipe; do
+    case "$recipe" in
+        */*/*|.*|*/.*|*[!a-zA-Z0-9_+./-]*) fail "Invalid toolkit recipe path: $recipe" ;;
+    esac
+    [ -d "$recipes/$recipe" ] && [ ! -L "$recipes/$recipe" ] || fail "Missing toolkit recipe: $recipe"
+done < "$work/recipes"
+# A recipe that uses a toolkit version selector or a shared source owner is a
+# toolkit recipe. It must have a manifest row, or the checks below skip it.
+{
+    printf '%s\n' '"../../meta-pkgs/qt6/Makefile.common"' '"../../meta-pkgs/kde/kf6.mk"' \
+        '"../../meta-pkgs/kde/plasma6.mk"' '"../../meta-pkgs/kde/applications.mk"'
+    awk -F '\t' '!/^#/ && $3 == "meta" { print "\"../../" $2 "/Makefile.common\"" }' "$toolkit/source-owners.tsv"
+} > "$work/selectors"
+for makefile in "$recipes"/*/*/Makefile; do
+    [ -f "$makefile" ] || continue
+    recipe=${makefile#"$recipes/"}
+    recipe=${recipe%/Makefile}
+    grep -Eq '^[[:space:]]*\.[[:space:]]*include[[:space:]]' "$makefile" || continue
+    sed -n 's/^[[:space:]]*\.[[:space:]]*include[[:space:]]*//p' "$makefile" |
+        sed 's/[[:space:]]*$//' | grep -qxFf "$work/selectors" || continue
+    grep -qxF "$recipe" "$work/recipes" || fail "Toolkit recipe has no manifest row: $recipe"
 done
-LC_ALL=C sort "$work/recipes" -o "$work/recipes"
+[ ! -d "$recipes/sysutils/ember-plasma-session" ] || grep -qxF sysutils/ember-plasma-session "$work/recipes" ||
+    fail "Toolkit recipe has no manifest row: sysutils/ember-plasma-session"
 awk -F '\t' -v inventory="$work/inventory" -v plan="$work/sources" '
     function fail(message) { print message > "/dev/stderr"; bad=1; exit 2 }
     function recipe(name) { return name ~ /^[a-z0-9][a-z0-9-]*\/[a-zA-Z0-9][a-zA-Z0-9_+.-]*$/ }
@@ -30,7 +56,7 @@ awk -F '\t' -v inventory="$work/inventory" -v plan="$work/sources" '
     }
     /^#/ || /^$/ { next }
     FILENAME == ARGV[1] {
-        if (NF != 4 || !recipe($1) || !recipe($2) || ($3 != "package" && $3 != "meta" && $3 != "overlay" && $3 != "local") ||
+        if (NF != 4 || !recipe($1) || !recipe($2) || ($3 != "package" && $3 != "meta" && $3 != "local") ||
             ($4 != "-" && !archive($4)) || mapped[$1]++) fail("Invalid source-owner entry: " $0)
         if ($3 == "local" && ($1 != "sysutils/ember-plasma-session" || $2 != $1 || $4 != "-"))
             fail("Invalid local source-owner binding: " $1)
@@ -124,18 +150,7 @@ check_shared_metadata() {
     done < "$work/shared-makefiles"
 }
 while IFS="$(printf '\t')" read -r recipe owner kind; do
-    pkg=$toolkit/recipes/$recipe
-    if [ "$kind" = overlay ]; then
-        [ ! -e "$pkg/Makefile" ] || fail "An overlay must not replace its base Makefile: $recipe"
-        base=${PKGSRC_BASE:-$toolkit/../../../upstream/pkgsrc}
-        [ -f "$base/$recipe/Makefile" ] || fail "Missing pinned overlay base: $recipe"
-        [ -n "$(find "$pkg" -type f -print)" ] || fail "Empty toolkit overlay: $recipe"
-        check_shared_reference "$base/$recipe/Makefile"
-        check_shared_metadata "$base/$recipe"
-        check_shared_metadata "$pkg"
-        [ -f "$toolkit/recipes/$owner/Makefile.common" ] || fail "Missing shared source include: $owner/Makefile.common"
-        continue
-    fi
+    pkg=$recipes/$recipe
     [ -f "$pkg/Makefile" ] || fail "Incomplete toolkit recipe: $recipe/Makefile"
     if [ "$kind" = meta ]; then
         grep -Eq '^META_PACKAGE[[:space:]]*=[[:space:]]*yes([[:space:]]*(#.*)?)?$' "$pkg/Makefile" ||
@@ -144,31 +159,31 @@ while IFS="$(printf '\t')" read -r recipe owner kind; do
         [ -f "$pkg/PLIST" ] || fail "Incomplete toolkit recipe: $recipe/PLIST"
     fi
     if [ "$kind" = local ]; then
-        [ ! -L "$toolkit/recipes" ] && [ ! -L "$toolkit/recipes/sysutils" ] &&
-        [ ! -L "$pkg" ] && [ ! -L "$pkg/files" ] && [ ! -L "$toolkit/service" ] || fail "External local source directory: $recipe"
+        [ ! -L "$recipes/${recipe%%/*}" ] && [ ! -L "$pkg" ] && [ ! -L "$pkg/files" ] ||
+            fail "External local source directory: $recipe"
         for path in "$pkg/distinfo" "$pkg/patches"; do
             [ ! -e "$path" ] && [ ! -L "$path" ] || fail "Local recipe has archive metadata: $recipe"
         done
         grep -Eq '^DISTFILES[[:space:]]*=[[:space:]]*(#.*)?$' "$pkg/Makefile" &&
             grep -Eq '^NO_BUILD[[:space:]]*=[[:space:]]*yes([[:space:]]*(#.*)?)?$' "$pkg/Makefile" ||
             fail "Local recipe must use empty DISTFILES and NO_BUILD=yes: $recipe"
-        [ "$(find "$pkg" -type l | wc -l | tr -d ' ')" = 2 ] &&
-            [ "$(find "$pkg/files" -type f | wc -l | tr -d ' ')" = 0 ] || fail "Unexpected local source files: $recipe"
+        # The recipe owns the canonical service files. No link may replace them.
+        [ "$(find "$pkg" -type l | wc -l | tr -d ' ')" = 0 ] ||
+            fail "Missing or external canonical local source: $recipe"
         for name in plasma-service.pl ember_plasma.rc; do
-            [ -L "$pkg/files/$name" ] && [ "$(readlink "$pkg/files/$name")" = "../../../../service/$name" ] &&
-                [ -f "$toolkit/service/$name" ] && [ ! -L "$toolkit/service/$name" ] ||
-                fail "Missing or external canonical local source: $recipe/$name"
+            [ -f "$pkg/files/$name" ] || fail "Missing or external canonical local source: $recipe/$name"
         done
+        [ "$(find "$pkg/files" ! -type d | wc -l | tr -d ' ')" = 2 ] || fail "Unexpected local source files: $recipe"
     fi
     if [ "$recipe" != "$owner" ]; then
         check_shared_reference "$pkg/Makefile"
         check_shared_metadata "$pkg"
-        [ -f "$toolkit/recipes/$owner/Makefile.common" ] || fail "Missing shared source include: $owner/Makefile.common"
+        [ -f "$recipes/$owner/Makefile.common" ] || fail "Missing shared source include: $owner/Makefile.common"
     fi
 done < "$work/inventory"
 awk -F '\t' '!seen[$1]++ {print $1}' "$work/sources" > "$work/owners"
 while IFS= read -r owner; do
-    pkg=$toolkit/recipes/$owner
+    pkg=$recipes/$owner
     [ -f "$pkg/distinfo" ] || fail "Missing toolkit source metadata: $owner/distinfo"
     awk -v owner="$owner" '
         function fail(message) { print message > "/dev/stderr"; bad=1; exit 2 }

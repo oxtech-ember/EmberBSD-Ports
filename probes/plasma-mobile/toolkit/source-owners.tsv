@@ -1,8 +1,6 @@
 # Exceptions to the default: a package owns its distinfo and one primary archive.
 # recipe	source_owner	kind	primary_archive ("-" inherits a single archive or the owner selection)
-devel/boost-build	meta-pkgs/boost	overlay	-
-devel/boost-headers	meta-pkgs/boost	package	-
-devel/boost-libs	meta-pkgs/boost	package	-
+devel/boost-build	meta-pkgs/boost	package	-
 meta-pkgs/boost	meta-pkgs/boost	meta	-
 inputmethod/fcitx5	inputmethod/fcitx5	package	fcitx5-5.1.23.tar.zst
 textproc/nlohmann-json	textproc/nlohmann-json	package	nlohmann-json-3.12.0.tar.gz

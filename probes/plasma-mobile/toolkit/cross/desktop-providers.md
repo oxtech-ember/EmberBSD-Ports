@@ -64,7 +64,7 @@ was unavailable in the isolated candidate build.
 
 The recipes select Fcitx5 5.1.23, Fcitx5 Qt 5.1.16 and Configtool 5.1.16.
 They retain Wayland, the Qt6 input module and the Frameworks 6 settings module.
-See [sources, retained features and checks](../recipes/inputmethod/fcitx5/README.md).
+See [sources, retained features and checks](../../../../pkgsrc/inputmethod/fcitx5/README.md).
 Native/cross metadata and archive/patch checks pass. The transitive Frameworks
 chain uses the core libcanberra package and contains no mandatory GTK.
 
@@ -75,18 +75,18 @@ executables are not part of the Fcitx-selected package payload.
 The added CMake option retains the alternative IBus backend for other profiles.
 
 The core nb5 package cross-builds with all normal checks and passes all 51
-[installed core tests on CM5](../recipes/inputmethod/fcitx5/tests/runtime/README.md).
+[installed core tests on CM5](../../../../pkgsrc/inputmethod/fcitx5/tests/runtime/README.md).
 Source regressions repair missing-signature parsing and dropped XKB models/options.
 Relocatable CMake exports also restore actual Qt6 consumer configuration.
 The Qt6 adapter also cross-packages; 48 files and
-[five installed plugin/metadata checks](../recipes/inputmethod/fcitx5-qt/tests/runtime.md) pass on CM5.
+[five installed plugin/metadata checks](../../../../pkgsrc/inputmethod/fcitx5-qt/tests/runtime.md) pass on CM5.
 Configtool also passes normal cross-package checks with common GCC16 and LLD23.
-Its [installed-program checks](../recipes/inputmethod/fcitx5-configtool/tests/runtime.md), input-method activation
+Its [installed-program checks](../../../../pkgsrc/inputmethod/fcitx5-configtool/tests/runtime.md), input-method activation
 and typed input remain part of the [CM5 desktop acceptance](cm5-kwin.md).
 
 The X11 input adapter uses xcb-imdkit 1.0.9 and the common uthash 2.4.0.
 The recipe rejects fallback to its bundled uthash 1.8.
-A [real-source regression](../recipes/devel/uthash/tests/README.md) reproduces
+A [real-source regression](../../../../pkgsrc/devel/uthash/tests/README.md) reproduces
 a null-member access in `HASH_SELECT`; the repaired header passes all 101
 upstream tests with ASan/UBSan on macOS arm64. Cppcheck reports 39 findings
 before and after, with no new finding. GCC and Clang path analysis retain
@@ -118,7 +118,7 @@ The recipe keeps manual pages and selects the native helper directory through
 pkgsrc's tool symlink. No obsolete Groff compiler mode is selected.
 
 Enchant 2.8.21nb1 preserves its Hunspell provider and generated HTML manuals.
-The [target test runner](../recipes/textproc/enchant2/README.md) reproduces the
+The [target test runner](../../../../pkgsrc/textproc/enchant2/README.md) reproduces the
 upstream test-library layout. It uses byte-identical production libraries.
 On CM5, the clean `7b73f5a` source and `06ec401` runner pass all 434 main tests
 in 52.10 seconds and all 25 Hunspell tests in 0.37 seconds.

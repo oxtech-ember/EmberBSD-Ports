@@ -12,7 +12,7 @@ archive, receipt = ARGV.map { |p| File.expand_path(p) }
 abort 'Receipt path already exists' if File.exist?(receipt)
 tests = File.expand_path(__dir__)
 toolkit = File.expand_path('../..', tests)
-recipe = File.join(toolkit, 'recipes/sysutils/consolekit')
+recipe = File.expand_path('../../../pkgsrc/sysutils/consolekit', toolkit)
 root = File.expand_path('../../..', toolkit)
 expected = 'f3f4a424f2a4fbb67696b4011caf2fd4c02e5e67c24ef1c86cecb2301bccdba4'
 abort 'ConsoleKit archive SHA256 mismatch' unless Digest::SHA256.file(archive).hexdigest == expected

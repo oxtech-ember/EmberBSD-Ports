@@ -23,12 +23,15 @@ abort 'Select a new work directory with an existing parent' unless ARGV.empty? &
 abort 'Provide the actual EmberBSD rc.subr with --rc-subr PATH' unless options[:rc_subr] && File.file?(options[:rc_subr])
 work = options[:work]
 Dir.mkdir(work, 0700)
-source = File.realpath(__dir__)
-ports = File.expand_path('../../../..', source)
+service = File.realpath(__dir__)
+ports = File.expand_path('../../../..', service)
+# The package recipe owns the canonical service files.
+source = File.join(ports, 'pkgsrc/sysutils/ember-plasma-session/files')
 production = File.read(source + '/plasma-service.pl')
-pins = %w[plasma-service.pl ember_plasma.rc host-test.rb].to_h do |name|
+pins = %w[plasma-service.pl ember_plasma.rc].to_h do |name|
   [name, Digest::SHA256.file(source + '/' + name).hexdigest]
 end
+pins['host-test.rb'] = Digest::SHA256.file(service + '/host-test.rb').hexdigest
 rows = []
 models = []
 check = ->(value, reason) { raise reason unless value }
@@ -304,7 +307,7 @@ begin
   check.call(!rc.include?('command_background') && !production.include?('KWIN_DRM_DEVICES') &&
     !production.include?('KDE_FULL_SESSION') && !production.include?('--virtual'), 'Backend, theme or seat workaround added')
   original, err, status = capture.call(['git','-C',ports,'show','f9737bd0:probes/plasma-mobile/toolkit/tests/plasma-session/guard.pl'])
-  check.call(status.success? && original == File.binread(source + '/../tests/plasma-session/guard.pl'), 'Bounded test guard changed: ' + err)
+  check.call(status.success? && original == File.binread(service + '/../tests/plasma-session/guard.pl'), 'Bounded test guard changed: ' + err)
 rescue Exception => error
   failure = error.message
   raise

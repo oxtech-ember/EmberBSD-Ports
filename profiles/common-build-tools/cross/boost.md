@@ -21,8 +21,9 @@ Native builds and recursive native tool dependencies keep their original
 properties. Every library selected by the existing package stays selected.
 The library package is `boost-libs-1.92.0nb1`.
 
-The exporter applies the repair after complete toolkit recipes. This keeps
-the same library revision and cross roles in each composed common profile.
+The export installs every recipe first, including the canonical Boost recipes
+in `pkgsrc/`, and then applies the repair. Every consumer gets the same library
+revision and cross roles.
 The patch does not add an application-specific Boost provider.
 
 ## Reproduce the native engine

@@ -59,6 +59,5 @@ textproc/rapidjson	rapidjson-1.1.0.20250205-24b5e7a8b27f42fa16b96fc70aade9106cf7
 x11/pixman	pixman-0.46.4.tar.xz	a098c33924754ad43f981b740f6d576c70f9ed1006e12221b1845431ebce1239	https://xorg.freedesktop.org/archive/individual/lib/pixman-0.46.4.tar.xz
 x11/tk	tk9.1.0-src.tar.gz	772ce7a97c07c2db4c957c93af7ab4dff4bd3037772836b6afbcd0974023b3d6	https://downloads.sourceforge.net/project/tcl/Tcl/9.1.0/tk9.1.0-src.tar.gz
 security/mit-krb5	krb5-1.22.2.tar.gz	3243ffbc8ea4d4ac22ddc7dd2a1dc54c57874c40648b60ff97009763554eaf13	https://web.mit.edu/kerberos/dist/krb5/1.22/krb5-1.22.2.tar.gz
-security/libsecret	libsecret-0.20.5.tar.xz	3fb3ce340fcd7db54d87c893e69bfc2b1f6e4d4b279065ffe66dac9f0fd12b4d	https://download.gnome.org/sources/libsecret/0.20/libsecret-0.20.5.tar.xz
 net/nng	nng-1.12.3.tar.gz	036a925790034efdeef8a6803f3e4402c3ab509383326f8bc2f15ecee75a2fa2	https://github.com/nanomsg/nng/archive/refs/tags/v1.12.3.tar.gz
 cad/occt	OCCT-8.0.1.tar.gz	6297cc55a1720523a437c54d07dc16b9da8c5f5ab5800da3c6ebded568d53c18	https://github.com/Open-Cascade-SAS/OCCT/archive/refs/tags/V8.0.1.tar.gz

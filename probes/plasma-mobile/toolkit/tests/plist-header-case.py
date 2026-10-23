@@ -15,7 +15,8 @@ import sys
 root = pathlib.Path(__file__).resolve().parents[4]
 failures = []
 checked = 0
-for plist in sorted(root.glob('**/recipes/*/*/PLIST')):
+plists = sorted(set(root.glob('pkgsrc/*/*/PLIST')) | set(root.glob('**/recipes/*/*/PLIST')))
+for plist in plists:
     if 'upstream' in plist.relative_to(root).parts:
         continue
     checked += 1
@@ -46,7 +47,7 @@ for plist in sorted(root.glob('**/recipes/*/*/PLIST')):
 # the merged directory spelling of a case-insensitive staging host.
 upstream = root / 'upstream/pkgsrc'
 compared = 0
-for plist in sorted(root.glob('**/recipes/*/*/PLIST')):
+for plist in plists:
     if 'upstream' in plist.relative_to(root).parts:
         continue
     original = upstream / plist.relative_to(plist.parents[2])

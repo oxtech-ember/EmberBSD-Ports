@@ -24,7 +24,7 @@ for component in kcoreaddons ki18n kpackage; do
     if [ "$component" = kpackage ]; then
         # Same reviewed fixture corrections as the target recipe.
         patch -f -N -F 0 -p0 -d "$work/source/kpackage-6.31.0" < \
-            "$root/recipes/devel/kf6-kpackage/patches/patch-autotests_appstream-fixtures"
+            "$root/../../../pkgsrc/devel/kf6-kpackage/patches/patch-autotests_appstream-fixtures"
     fi
     # These private host libraries serve the CLI metadata generator. QML and
     # scripted translations are not used by that CLI; target packages stay full.
@@ -54,7 +54,7 @@ if(NOT TARGET KF6::kpackagetool6)
 endif()
 CMAKE
 shasum -a 256 "$program" "$0" "$root/tests/kpackage-metadata.sh" \
-    "$root/recipes/devel/kf6-kpackage/patches/patch-autotests_appstream-fixtures" > "$work/outputs.sha256"
+    "$root/../../../pkgsrc/devel/kf6-kpackage/patches/patch-autotests_appstream-fixtures" > "$work/outputs.sha256"
 "$CMAKE" --version > "$work/tool-versions.txt"
 "$HOST_CXX" --version >> "$work/tool-versions.txt"
 printf 'Built native KPackage tooling: %s\n' "$work/tooling"

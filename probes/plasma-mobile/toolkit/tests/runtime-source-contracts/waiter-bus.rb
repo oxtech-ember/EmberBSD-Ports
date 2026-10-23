@@ -9,7 +9,7 @@ abort "Usage: #{$PROGRAM_NAME} DISTFILES NEW_OUTPUT QT_PREFIX" unless ARGV.size 
 archives, work, qt = ARGV.map { |path| File.expand_path(path) }
 abort 'Output exists' if File.exist?(work)
 FileUtils.mkdir_p(work)
-recipe = File.expand_path('../../recipes/x11/plasma6-plasma-workspace', __dir__)
+recipe = File.expand_path('../../../../../pkgsrc/x11/plasma6-plasma-workspace', __dir__)
 archive = File.join(archives, 'plasma-workspace-6.8.0.tar.xz')
 expected = File.read(recipe+'/distinfo')[/^SHA512 \(plasma-workspace-6\.8\.0\.tar\.xz\) = (\h+)$/, 1]
 abort 'Archive hash mismatch' unless expected && Digest::SHA512.file(archive).hexdigest == expected

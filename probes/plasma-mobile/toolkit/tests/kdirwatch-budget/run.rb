@@ -4,7 +4,7 @@ require 'digest';require 'fileutils';require 'json';require 'open3';require 'she
 abort "Usage: #{$PROGRAM_NAME} KCOREADDONS_ARCHIVE NEW_OUTPUT QT_PREFIX" unless ARGV.size==3
 archive,work,qt=ARGV.map{|p|File.expand_path(p)}
 abort 'Output exists' if File.exist?(work)
-recipe=File.expand_path('../../recipes/devel/kf6-kcoreaddons',__dir__)
+recipe=File.expand_path('../../../../../pkgsrc/devel/kf6-kcoreaddons',__dir__)
 distinfo=File.read(recipe+'/distinfo')
 expected=distinfo[/^SHA512 \(kcoreaddons-6.31.0.tar.xz\) = (\h+)$/,1]
 abort 'Archive hash mismatch' unless expected && Digest::SHA512.file(archive).hexdigest==expected

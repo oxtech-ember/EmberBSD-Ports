@@ -4,6 +4,7 @@
 set -eu
 [ "$#" -eq 2 ] || { echo "Usage: $0 VERIFIED_DISTFILES NEW_WORK" >&2; exit 2; }
 toolkit=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
+recipes=$(CDPATH= cd -- "$toolkit/../../../pkgsrc" && pwd -P)
 distfiles=$(CDPATH= cd -- "$1" && pwd -P)
 mkdir "$2"
 work=$(CDPATH= cd -- "$2" && pwd -P)
@@ -16,12 +17,12 @@ vendor_sha=d2e42517a49923fcd79fb7f05b650a4821c218c4d04d9c9691c7fdef55e74a2a
 [ "$(shasum -a 256 "$distfiles/$original" | awk '{print $1}')" = "$source_sha" ]
 [ "$(shasum -a 256 "$distfiles/$vendor" | awk '{print $1}')" = "$vendor_sha" ]
 mkdir -p "$fixture/recipes/devel"
-cp -R "$toolkit/recipes/$owner" "$fixture/recipes/$owner"
+cp -R "$recipes/$owner" "$fixture/recipes/$owner"
 cp "$toolkit/validate.sh" "$fixture/validate.sh"
 printf '%s\t%s\tpackage\t%s\n' "$owner" "$owner" "$original" > "$fixture/source-owners.tsv"
 printf '%s\t%s\t%s\thttps://github.com/KDE/cxx-rust-cssparser/archive/refs/tags/v1.1.0.tar.gz\n' "$owner" "$original" "$source_sha" > "$fixture/sources.tsv"
 printf '%s\t%s\t%s\tderived:cssparser-vendor-r1\n' "$owner" "$vendor" "$vendor_sha" >> "$fixture/sources.tsv"
-awk '/^SHA1 /' "$toolkit/recipes/$owner/distinfo" > "$fixture/recipes/$owner/distinfo"
+awk '/^SHA1 /' "$recipes/$owner/distinfo" > "$fixture/recipes/$owner/distinfo"
 for archive in "$original" "$vendor"; do
     file=$distfiles/$archive
     printf 'BLAKE2s (%s) = %s\nSHA512 (%s) = %s\nSize (%s) = %s bytes\n' \
@@ -29,8 +30,8 @@ for archive in "$original" "$vendor"; do
         "$archive" "$(shasum -a 512 "$file" | awk '{print $1}')" \
         "$archive" "$(wc -c < "$file" | tr -d ' ')" >> "$fixture/recipes/$owner/distinfo"
 done
-sh "$toolkit/validate.sh" "$fixture"
-sh "$toolkit/tests/verify-sources.sh" "$fixture" "$distfiles" "$work/verified"
+sh "$toolkit/validate.sh" "$fixture" "$fixture/recipes"
+sh "$toolkit/tests/verify-sources.sh" "$fixture" "$distfiles" "$work/verified" "$fixture/recipes"
 grep -F "${vendor}$(printf '\t')${vendor_sha}$(printf '\t')derived:cssparser-vendor-r1$(printf '\t')auxiliary" "$work/verified/source-plan.tsv" >/dev/null
 reject() {
     name=$1 pattern=$2 replacement=$3 file=$4
@@ -38,7 +39,7 @@ reject() {
     cp -R "$fixture" "$candidate"
     sed "s|$pattern|$replacement|g" "$candidate/$file" > "$candidate/new"
     mv "$candidate/new" "$candidate/$file"
-    if sh "$toolkit/validate.sh" "$candidate" > "$work/$name.log" 2>&1; then
+    if sh "$toolkit/validate.sh" "$candidate" "$candidate/recipes" > "$work/$name.log" 2>&1; then
         echo "FAIL: accepted $name" >&2; exit 1
     fi
     printf 'PASS: rejects %s\n' "$name"
@@ -55,7 +56,7 @@ candidate=$work/wrong-normal-digest
 cp -R "$fixture" "$candidate"
 sed '/^BLAKE2s (cxx-rust-cssparser-vendor-/s/= .*/= aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/' "$candidate/recipes/$owner/distinfo" > "$candidate/digest.new"
 mv "$candidate/digest.new" "$candidate/recipes/$owner/distinfo"
-if sh "$toolkit/tests/verify-sources.sh" "$candidate" "$distfiles" "$work/wrong-normal-digest-check" > "$work/wrong-normal-digest.log" 2>&1; then
+if sh "$toolkit/tests/verify-sources.sh" "$candidate" "$distfiles" "$work/wrong-normal-digest-check" "$candidate/recipes" > "$work/wrong-normal-digest.log" 2>&1; then
     echo 'FAIL: accepted wrong normal BLAKE2s digest' >&2; exit 1
 fi
 grep -F BLAKE2s "$work/wrong-normal-digest.log" >/dev/null
@@ -63,7 +64,7 @@ mkdir "$work/changed-distfiles"
 ln -s "$distfiles/$original" "$work/changed-distfiles/$original"
 cp "$distfiles/$vendor" "$work/changed-distfiles/$vendor"
 printf x >> "$work/changed-distfiles/$vendor"
-if sh "$toolkit/tests/verify-sources.sh" "$fixture" "$work/changed-distfiles" "$work/changed-byte-check" > "$work/changed-byte.log" 2>&1; then
+if sh "$toolkit/tests/verify-sources.sh" "$fixture" "$work/changed-distfiles" "$work/changed-byte-check" "$fixture/recipes" > "$work/changed-byte.log" 2>&1; then
     echo 'FAIL: accepted changed derived archive bytes' >&2; exit 1
 fi
 if [ -n "${CSSPARSER_EXPORTED_PKGSRC:-}" ]; then

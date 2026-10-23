@@ -1,7 +1,0 @@
-$NetBSD$
-
-BLAKE2s (libsecret-0.21.8.2.tar.xz) = 1bcb40481622eb88ab57ebc0797bde64510f8bb9e39af261547abafd5fddde97
-SHA512 (libsecret-0.21.8.2.tar.xz) = 0a2ae5d86dc635df0a126f1483d917c8fd41cc0c534869ae0612291394b76fb1b2ab6ba27d2f020e123de979338a970d6653fa574d000826b4792be4c1075150
-Size (libsecret-0.21.8.2.tar.xz) = 213280 bytes
-SHA1 (patch-libsecret_meson.build) = a0a0c37a799884ee40f6cbe5b6b9815d6387c436
-SHA1 (patch-egg_egg-unix-credentials.c) = 11a9613c508473e62680485f226b1f8f1864bc66

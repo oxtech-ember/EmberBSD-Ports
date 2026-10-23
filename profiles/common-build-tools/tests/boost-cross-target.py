@@ -71,12 +71,13 @@ def main():
     if any(inventory.sha256_file(baseline / name) != digest for name, digest in original.items()):
         run("reverse-current-recipe", ["patch", "-R", "-f", "--fuzz=0", "-p1", "-d", baseline], data=delta)
     assert all(inventory.sha256_file(baseline / name) == digest for name, digest in original.items())
-    # The complete Plasma overlay must use this same repair. It must not
-    # retain a second compiler configuration or a hardcoded ARM target.
+    # The export must apply this repair to the pinned upstream recipe. No
+    # second recipe may retain another compiler configuration or ARM target.
+    assert not (root / "pkgsrc/devel/boost-libs").exists()
     for name in ("Makefile", "buildlink3.mk"):
-        shared = baseline / "devel/boost-libs" / name
-        toolkit = root / "probes/plasma-mobile/toolkit/recipes/devel/boost-libs" / name
-        assert shared.read_bytes() == toolkit.read_bytes(), name
+        exported = baseline / "devel/boost-libs" / name
+        pinned = root / "upstream/pkgsrc/devel/boost-libs" / name
+        assert exported.read_bytes() == pinned.read_bytes(), name
     # The export installs every recipe before it applies the patches.
     export = (root / "pkgsrc/export.conf").read_text(encoding="utf-8")
     assert export.count("patch\tprofiles/common-build-tools/patches/pkgsrc-boost-cross-target.patch\n") == 1

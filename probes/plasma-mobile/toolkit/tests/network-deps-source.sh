@@ -11,8 +11,11 @@ mkdir "$3"
 work=$(CDPATH= cd -- "$3" && pwd)
 mkdir "$work/pkgsrc" "$work/source"
 git -C "$root/upstream/pkgsrc" archive --format=tar HEAD \
-    devel/libidn2 sysutils/gsettings-desktop-schemas www/libproxy www/curl > "$work/recipes.tar"
+    sysutils/gsettings-desktop-schemas www/libproxy www/curl > "$work/recipes.tar"
 tar -xf "$work/recipes.tar" -C "$work/pkgsrc"
+# The current libidn2 recipe is a canonical pkgsrc/ recipe.
+mkdir "$work/pkgsrc/devel"
+cp -R "$root/pkgsrc/devel/libidn2" "$work/pkgsrc/devel/libidn2"
 patch -f -N -F 0 -p1 -d "$work/pkgsrc" < \
     "$root/profiles/common-build-tools/patches/pkgsrc-curl-security.patch"
 patch -f -N -F 0 -p1 -d "$work/pkgsrc" < \

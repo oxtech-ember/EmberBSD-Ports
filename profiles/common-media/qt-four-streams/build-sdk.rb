@@ -75,9 +75,9 @@ selected.each do |component|
   abort 'Archive digest mismatch' unless File.file?(archive) && Digest::SHA256.file(archive).hexdigest == row[2]
   src = work + '/source/' + File.basename(archive).sub(/\.tar\.(xz|gz)\z/, '')
   recipe = case component
-           when 'qtbase' then toolkit + '/recipes/x11/qt6-qtbase'
-           when 'qtmultimedia' then toolkit + '/recipes/multimedia/qt6-qtmultimedia'
-           when 'qtshadertools' then toolkit + '/recipes/graphics/qt6-qtshadertools'
+           when 'qtbase' then ports + '/pkgsrc/x11/qt6-qtbase'
+           when 'qtmultimedia' then ports + '/pkgsrc/multimedia/qt6-qtmultimedia'
+           when 'qtshadertools' then ports + '/pkgsrc/graphics/qt6-qtshadertools'
            when 'png' then ports + '/pkgsrc/graphics/png'
            when 'freetype' then ports + '/pkgsrc/graphics/freetype2'
            when 'harfbuzz' then ports + '/pkgsrc/fonts/harfbuzz'

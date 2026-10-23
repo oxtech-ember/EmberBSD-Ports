@@ -108,9 +108,9 @@ This is a bounded virtual-output Desktop result. Full login, HDMI and the other 
 The shell API, default layout and output name were rechecked against the
 unpacked upstream Workspace, Desktop and KWin 6.8.0 sources.
 The common recipe fixes the source archive and checksum:
-[Desktop](../../recipes/x11/plasma6-plasma-desktop/Makefile),
-[Workspace](../../recipes/x11/plasma6-plasma-workspace/Makefile), and
-[KWin](../../recipes/x11/plasma6-kwin/Makefile).
+[Desktop](../../../../../pkgsrc/x11/plasma6-plasma-desktop/Makefile),
+[Workspace](../../../../../pkgsrc/x11/plasma6-plasma-workspace/Makefile), and
+[KWin](../../../../../pkgsrc/x11/plasma6-kwin/Makefile).
 
 - Workspace `shell/main.cpp` defines `--no-respawn` and `--shell-plugin`.
   It handles SIGTERM with `QApplication::quit()`.

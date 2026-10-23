@@ -41,7 +41,7 @@ work = File.expand_path(ARGV.fetch(1))
 raise 'new evidence directory required' if File.exist?(work)
 FileUtils.mkdir_p(work)
 ports = File.realpath(File.expand_path('../../../../..', __dir__))
-recipe = ports + '/probes/plasma-mobile/toolkit/recipes/x11/qt6-qtbase'
+recipe = ports + '/pkgsrc/x11/qt6-qtbase'
 patch = recipe + '/patches/patch-src_gui_kernel_qguiapplication.cpp-theme-init'
 paths = %w[src/gui/kernel/qguiapplication.cpp src/gui/kernel/qstylehints.cpp src/gui/platform/unix/qkdetheme.cpp]
 pins = paths.map { |p| [p, Digest::SHA256.file(source + '/' + p).hexdigest] }.to_h

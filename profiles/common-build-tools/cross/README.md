@@ -171,7 +171,7 @@ BMAKE=/absolute/host/bin/bmake ruby ../tests/cross-rcd-path.rb \
   /absolute/pkgsrc/sysutils/dbus /absolute/cross.mk.conf /absolute/new-checks
 ```
 pkgsrc defaults `PKG_RCD_SCRIPTS` to `NO`; installation does not start services.
-See the [Xwayland lifecycle](../../../probes/plasma-mobile/toolkit/recipes/wayland/xwayland/README.md#shared-socket-directories).
+See the [Xwayland lifecycle](../../../pkgsrc/wayland/xwayland/README.md#shared-socket-directories).
 
 Package scripts substitute target `/usr/bin/sort` through `_CROSS_FILES_SUBST`.
 The host wrapper path must never enter the installed scripts.
