@@ -95,6 +95,8 @@ FILES = (
     Path("src/sandbox/tagged-payload.h"),
     Path("src/common/globals.h"),
     Path("src/bigint/mul-karatsuba.cc"),
+    Path("src/heap/heap.h"),
+    Path("src/execution/simulator.h"),
 )
 WORK.mkdir(parents=True, exist_ok=False)
 OVERLAYS = {name: WORK / name / "third_party/v8" for name in ("before", "after")}
@@ -140,6 +142,14 @@ TARGETS = {
     "karatsuba": (
         "obj/v8/v8_bigint/mul-karatsuba.o",
         V8 / "src/bigint/mul-karatsuba.cc",
+    ),
+    "heap-growing-mode": (
+        "obj/v8/torque_generated_definitions/js-number-format-tq.o",
+        OUT / "gen/v8/torque-generated/src/objects/js-number-format-tq.cc",
+    ),
+    "nodebug-attribute": (
+        "obj/v8/v8_base_without_compiler/api-natives.o",
+        V8 / "src/api/api-natives.cc",
     ),
 }
 COMMANDS = {name: production_command(target, source)
@@ -191,6 +201,12 @@ with process.ContextLocks([str(OUT), str(SYSROOT)], str(WORKSPACE / "obj"), shar
         compile_production("tagged-payload", "after", 0),
         compile_production("karatsuba", "before", 1, ("-Werror=sign-compare",)),
         compile_production("karatsuba", "after", 0),
+        compile_production("heap-growing-mode", "before", 1,
+                           ("-Werror=changes-meaning",)),
+        compile_production("heap-growing-mode", "after", 0),
+        compile_production("nodebug-attribute", "before", 1,
+                           ("nodebug", "-Werror=attributes")),
+        compile_production("nodebug-attribute", "after", 0),
     ]
 
 receipt = {

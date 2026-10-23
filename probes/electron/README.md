@@ -203,9 +203,10 @@ vectors cover these changes; they do not establish a complete runtime build.
 The V8 patch keeps `TaggedPayload` trivially copyable and permits GCC's generic
 atomic-load result storage, marks the Linux-oriented address-space label as
 unused on targets without naming support, and makes the Karatsuba threshold
-comparison unsigned. Its regression replays two production GCC16 compile
-commands before and after the patch. It does not disable warnings or change the
-pointer-table layout.
+comparison unsigned. It also qualifies the `HeapGrowingMode` enum alias and
+uses Clang's `nodebug` attribute only when the compiler supports it. Its
+regression replays four production GCC16 compile commands before and after the
+patch. It does not disable warnings or change the pointer-table layout.
 
 Apply the V8-specific patch from the pinned V8 source root after the Chromium
 NetBSD adaptations:

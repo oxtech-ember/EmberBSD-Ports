@@ -25,6 +25,48 @@ index 1e033da2..72d0def9 100644
  
  //
  // JavaScript Dispatch Table
+diff --git a/src/execution/simulator.h b/src/execution/simulator.h
+index fddf7915..6747817a 100644
+--- a/src/execution/simulator.h
++++ b/src/execution/simulator.h
+@@ -179,7 +179,10 @@ class GeneratedCode {
+   }
+ #else
+ 
+-  __attribute__((nodebug)) DISABLE_CFI_ICALL Return Call(Args... args) {
++#if __has_attribute(nodebug)
++  __attribute__((nodebug))
++#endif
++  DISABLE_CFI_ICALL Return Call(Args... args) {
+     // When running without a simulator we call the entry directly.
+ // Starboard is a platform abstraction interface that also include Windows
+ // platforms like UWP.
+@@ -223,8 +226,10 @@ class GeneratedCode {
+   }
+ #endif  // USE_SIMULATOR
+ 
+-  __attribute__((nodebug)) DISABLE_CFI_ICALL Return
+-  CallSandboxed(Args... args) {
++#if __has_attribute(nodebug)
++  __attribute__((nodebug))
++#endif
++  DISABLE_CFI_ICALL Return CallSandboxed(Args... args) {
+     EnterSandboxScope sandboxed;
+     return Call(args...);
+   }
+diff --git a/src/heap/heap.h b/src/heap/heap.h
+index 676319f2..e35aba3c 100644
+--- a/src/heap/heap.h
++++ b/src/heap/heap.h
+@@ -277,7 +277,7 @@ static constexpr v8::base::TimeDelta kMaxSynchronuousGCOperation =
+ 
+ class Heap final {
+  public:
+-  using HeapGrowingMode = HeapGrowingMode;
++  using HeapGrowingMode = ::v8::internal::HeapGrowingMode;
+ 
+   enum HeapState {
+     NOT_IN_GC,
 diff --git a/src/sandbox/tagged-payload.h b/src/sandbox/tagged-payload.h
 index ac0d39c1..4f2d7dd2 100644
 --- a/src/sandbox/tagged-payload.h
