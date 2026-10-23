@@ -200,6 +200,24 @@ at its 15-byte buffer limit and passes a non-null pointer for an absent
 annotation name. Focused GCC16 production-translation-unit checks and golden
 vectors cover these changes; they do not establish a complete runtime build.
 
+The V8 patch keeps `TaggedPayload` trivially copyable and permits GCC's generic
+atomic-load result storage, marks the Linux-oriented address-space label as
+unused on targets without naming support, and makes the Karatsuba threshold
+comparison unsigned. Its regression replays two production GCC16 compile
+commands before and after the patch. It does not disable warnings or change the
+pointer-table layout.
+
+Apply the V8-specific patch from the pinned V8 source root after the Chromium
+NetBSD adaptations:
+
+```sh
+cd /absolute/chromium/src/v8
+patch -p1 -F0 < /absolute/Ports/probes/electron/patches/v8-gcc16-netbsd.patch
+```
+
+Use the [V8 GCC16 regression guide](tests/v8-gcc16-netbsd.md) to replay the
+production target commands.
+
 ## Acceptance
 
 Run the installed package in the selected EmberBSD target. Check HTTPS navigation, tabs,

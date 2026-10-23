@@ -201,4 +201,27 @@ not run a real Rust compiler, build Rust targets, or generate the complete
 Chromium graph.
 
 
+The V8 GCC16 test reads the pinned V8 revision from the Chromium checkout and
+replays the generated Torque object and Karatsuba production compile commands.
+Both baseline commands must fail on the captured GCC16 diagnostics; both
+patched commands must succeed. It creates source overlays and writes objects,
+depfiles, logs, and a receipt under a new work directory without changing V8,
+the GN output, or the sysroot. The SDK lock is shared for the read-only GN and
+sysroot inputs.
+
+```sh
+/absolute/EmberBSD/host-tools/python315/bin/python3.15 -B -I -S \
+  probes/electron/tests/v8-gcc16-netbsd.py \
+  --sdk-source /absolute/EmberBSD-SDK --ports-root /absolute/Ports \
+  --source-root /absolute/chromium/src --gn-out /absolute/chromium/out/Default \
+  --cxx /absolute/GCC16-target-g++ --sysroot /absolute/target-sysroot \
+  --workspace /absolute/SDK-workspace --ninja /absolute/host-ninja \
+  --patch /absolute/Ports/probes/electron/patches/v8-gcc16-netbsd.patch \
+  /absolute/NEW_V8_WORK
+```
+
+The compiler command database must select NetBSD x64, GCC16, the matching
+sysroot, and `-Werror`. This verifies the targeted source portability fixes;
+it does not build or link V8 or Electron. See the [V8 regression guide](v8-gcc16-netbsd.md).
+
 See the [libc++ GCC16 regression guide](libcxx-gcc16.md) and the [Perfetto GCC16 regression guide](perfetto-gcc16.md) for production C++ checks.
