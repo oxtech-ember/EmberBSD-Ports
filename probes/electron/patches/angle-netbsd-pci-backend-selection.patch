@@ -1,0 +1,13 @@
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -32,8 +32,9 @@
+ 
+ declare_args() {
+   # Use the PCI lib to collect GPU information on Linux.
++  # NetBSD collects GPU information through Mesa and does not use this backend.
+   use_libpci =
+-      (is_linux || is_chromeos) &&
++      (is_linux || is_chromeos) && current_os != "netbsd" &&
+       (angle_use_x11 || angle_use_wayland || use_ozone) && angle_has_build
+ 
+   # Enable using Vulkan to collect system info as a fallback.

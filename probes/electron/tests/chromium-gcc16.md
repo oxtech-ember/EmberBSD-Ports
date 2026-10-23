@@ -160,3 +160,26 @@ Clang Static Analyzer 21 completes both ANGLE variants without findings.
 Cppcheck 2.18 stops at the same inherited `angleutils.h` syntax error in the
 GCC-preprocessed variants. That parser limit prevents a complete comparison;
 no clean Cppcheck result is claimed. Target objects use GCC16 throughout.
+
+## BSD platform inputs
+
+The Opus GN patch retains `USE_ALLOCA`. BSD builds select the existing
+`stdlib.h` fallback instead of the unavailable `alloca.h` header. The first
+failed production command reproduces the missing-header error before the
+change. It compiles after removing only the incorrect feature define. The
+real target headers provide the `alloca` declaration. GCC16 `-fanalyzer` and
+Cppcheck 2.18 complete that corrected C translation unit without code findings.
+
+A full production GN generation retains stack allocation and removes
+`HAVE_ALLOCA_H` for NetBSD. All 42 affected C commands compile with GCC16 after
+their defines are checked against the regenerated Ninja files.
+
+The ANGLE PCI patch changes the default selection only for NetBSD. Its existing
+Mesa/GLX path does not call the Linux pciutils implementation. That implementation
+requires a different PCI API and Linux sysfs; a header from another PCI library
+cannot satisfy it. The corrected graph retains the Linux, X11, and Vulkan system
+information sources and excludes only `SystemInfo_libpci.cpp` on NetBSD.
+All four retained production translation units compile with GCC16. The
+preprocessed NetBSD `GetSystemInfo` body is unchanged. A GN evaluation of 160
+platform/graphics combinations leaves all other operating systems unchanged.
+These source and graph checks do not establish target GPU runtime acceptance.

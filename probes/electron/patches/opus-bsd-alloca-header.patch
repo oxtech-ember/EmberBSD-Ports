@@ -1,0 +1,17 @@
+--- a/third_party/opus/BUILD.gn
++++ b/third_party/opus/BUILD.gn
+@@ -23,8 +23,12 @@
+     # Prefer alloca() over variable length arrays which are often inefficient;
+     # the opus code will automatically handle this correctly per-platform.
+     "USE_ALLOCA",
+-    "HAVE_ALLOCA_H",
+-  ]
++  ]
++
++  # BSD systems declare alloca() in stdlib.h. Keep the upstream fallback.
++  if (!is_bsd) {
++    defines += [ "HAVE_ALLOCA_H" ]
++  }
+ 
+   include_dirs = [
+     "src",

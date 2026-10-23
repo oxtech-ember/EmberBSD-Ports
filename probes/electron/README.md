@@ -146,6 +146,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-pa
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-invariants.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-proc-clang-cfi-attribute.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/pffft-simd-debug-validation-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/opus-bsd-alloca-header.patch
 ```
 
 The pkg-config patch keeps the effective `pkg/lib` value in the common cross
@@ -194,6 +195,8 @@ Clang-only CFI exclusions only on Clang. Generic sanitizer annotations remain
 available to other supported compilers.
 The PFFFT patch limits assert-only SIMD validation to assertion-enabled builds.
 It retains the public validation symbol and every debug assertion.
+The Opus patch retains stack allocation and selects its existing `stdlib.h`
+fallback on BSD systems. Other platforms retain their header selection.
 The parser patch removes three GCC-only diagnostic switches and `--param=`
 optimizer settings only from libclang's inputs. Target compiler arguments,
 `-Werror`, target triple, and sysroot remain unchanged.
@@ -263,11 +266,14 @@ DEPS source root:
 ```sh
 cd /absolute/chromium/src/third_party/angle
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/angle-scratch-move-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/angle-netbsd-pci-backend-selection.patch
 ```
 
 The ScratchBuffer move constructor initializes its empty destination before
 swap-based assignment. Its carried tests cover data ownership, countdown
 preservation, moved-from reuse, and an empty buffer with an eternal lifetime.
+The PCI selection patch excludes the unused Linux libpci backend on NetBSD.
+NetBSD retains its existing Mesa/GLX GPU information path and graphics backends.
 See the [Chromium GCC16 checks](tests/chromium-gcc16.md) for validation limits.
 
 The pinned Perfetto checkout has a separate GCC16 warning patch. Apply it from
