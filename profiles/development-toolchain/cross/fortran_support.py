@@ -191,3 +191,21 @@ def qualify(prefix, target, output, sources, pkgsrc, archive, *, quarantine):
             jsonio.write_json(marker, {'state': 'producer-ownership-unproven', 'work': str(quarantine),
                                       'phase': 'fortran-capability', 'error': str(error)}, exclusive=True)
         raise
+
+
+def lease_hold(error):
+    """Do not release caller leases after unproven Fortran query drainage."""
+    import signal
+    import sys
+    import time
+    for number in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        signal.signal(number, signal.SIG_IGN)
+    try:
+        print('Fortran ownership HOLD: ' + str(error), file=sys.stderr, flush=True)
+    except BaseException:
+        pass
+    while True:
+        try:
+            time.sleep(30)
+        except BaseException:
+            pass

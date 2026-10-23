@@ -1,0 +1,2 @@
+GCC16 Fortran shared target runtime libraries with exact compatible GCC16
+support. Compiler tools and development data remain on the build host.

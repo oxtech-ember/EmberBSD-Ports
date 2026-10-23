@@ -1,0 +1,3 @@
+@comment Origin: EmberBSD; separate host Fortran dispatchers
+cross-${MACHINE_PLATFORM}/bin/libtool-fortran
+cross-${MACHINE_PLATFORM}/bin/shlibtool-fortran

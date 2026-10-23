@@ -1,0 +1,3 @@
+Libtool FC and F77 target dispatchers execute on the development host.
+They use the selected target Fortran wrapper and retain the normal pkgsrc
+Libtool platform patches. They do not install a compiler on the target.

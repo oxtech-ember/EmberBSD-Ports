@@ -1,0 +1,58 @@
+Origin: EmberBSD (AI-assisted). Implement real cross FC/F77 provider routing.
+Retains pkgsrc native policy and the actual f77 wrapper.
+
+--- a/mk/bsd.pkg.use.mk
++++ b/mk/bsd.pkg.use.mk
+@@ -78,16 +78,18 @@
+ #
+ .if defined(USE_LANGUAGES) && !empty(USE_LANGUAGES:Mfortran) || \
+     defined(USE_LANGUAGES) && !empty(USE_LANGUAGES:Mfortran77)
+-.  if !empty(USE_CROSS_COMPILE:M[yY][eE][sS]) # XXX
+-PKG_FAIL_REASON+=	"Cross-compiling Fortran with libtool NYI."
+-.  endif
+-
+-PKG_LIBTOOL?=		${TOOLBASE}/bin/libtool-fortran
+-PKG_SHLIBTOOL?=		${TOOLBASE}/bin/shlibtool-fortran
+-
+-.  if defined(USE_LIBTOOL)
+-# XXX This really needs cross-libtool-fortran like cross-libtool-base.
+-TOOL_DEPENDS+=		libtool-fortran>=${_OPSYS_LIBTOOL_REQD:U${LIBTOOL_REQD}}:../../devel/libtool-fortran
++.  if !empty(USE_CROSS_COMPILE:M[yY][eE][sS])
++PKG_LIBTOOL?= ${TOOLBASE}/cross-${TARGET_MACHINE_PLATFORM:U${MACHINE_PLATFORM}}/bin/libtool-fortran
++PKG_SHLIBTOOL?= ${TOOLBASE}/cross-${TARGET_MACHINE_PLATFORM:U${MACHINE_PLATFORM}}/bin/shlibtool-fortran
++.    if defined(USE_LIBTOOL)
++TOOL_DEPENDS+= cross-libtool-fortran-${TARGET_MACHINE_PLATFORM:U${MACHINE_PLATFORM}}>=${_OPSYS_LIBTOOL_REQD:U${LIBTOOL_REQD}}:../../cross/cross-libtool-fortran
++.    endif
++.  else
++PKG_LIBTOOL?= ${TOOLBASE}/bin/libtool-fortran
++PKG_SHLIBTOOL?= ${TOOLBASE}/bin/shlibtool-fortran
++.    if defined(USE_LIBTOOL)
++TOOL_DEPENDS+= libtool-fortran>=${_OPSYS_LIBTOOL_REQD:U${LIBTOOL_REQD}}:../../devel/libtool-fortran
++.    endif
+ .  endif
+ .else
+ .  if !empty(USE_CROSS_COMPILE:M[yY][eE][sS])
+--- a/mk/compiler.mk
++++ b/mk/compiler.mk
+@@ -216,6 +216,12 @@
+ .endfor
+ _PKGSRC_COMPILER:=	${_COMPILER} ${_PKGSRC_COMPILER}
+ 
++# Optional compiler policy runs after package options set USE_LANGUAGES.
++# Keep compiler selection and wrapper creation in this framework.
++.if defined(PKGSRC_COMPILER_PRE_CONFIG_MK)
++.include "${PKGSRC_COMPILER_PRE_CONFIG_MK}"
++.endif
++
+ _COMPILER_STRIP_VARS=	# empty
+ 
+ .for _compiler_ in ${_PKGSRC_COMPILER}
+@@ -340,7 +346,7 @@
+ CWRAPPERS_PREPEND.cc+=	--sysroot=${TOOLS_CROSS_DESTDIR:Q}
+ CWRAPPERS_PREPEND.cxx+=	--sysroot=${TOOLS_CROSS_DESTDIR:Q}
+ CWRAPPERS_PREPEND.ld+=	--sysroot=${TOOLS_CROSS_DESTDIR:Q}
+-# XXX cross fortran
++CWRAPPERS_PREPEND.f77+=	--sysroot=${TOOLS_CROSS_DESTDIR:Q}
+ .endif
+ 
+ # If the languages are not requested, force them not to be available

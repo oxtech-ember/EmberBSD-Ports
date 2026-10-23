@@ -1,0 +1,2 @@
+GCC16 Fortran headers, intrinsic modules, specifications and development
+libraries for the build-host sysroot. No compiler is installed on the target.
