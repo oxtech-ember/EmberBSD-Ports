@@ -11,13 +11,13 @@ done
 [ ! -e "$work" ] && [ ! -L "$work" ] || exit 2
 [ "$(autoconf --version | sed -n '1s/.* //p')" = 2.73 ]
 [ "$(automake --version | sed -n '1s/.* //p')" = 1.18.1 ]
-archive=$distfiles/libtool-2.6.2.tar.xz
-[ "$(shasum -a 256 "$archive" | awk '{print $1}')" = 2ef1067c16c97db930fd740cc9bc3d3ba9a583804ae5ac42cc3e8719e49e191e ]
+archive=$distfiles/libtool-2.6.2.tar.gz
+[ "$(shasum -a 256 "$archive" | awk '{print $1}')" = 24adb3aa9ae035c70faba344af57d73215eb89281045af6c7ccd307751f8b0bf ]
 mkdir -p "$work/packaged" "$work/maintained"
 recipe=$pkgsrc/devel/libtool
 : "${DIGEST:?Set DIGEST to pkgsrc host digest}"
 export DIGEST
-(cd "$distfiles" && awk -f "$pkgsrc/mk/checksum/checksum.awk" -- "$recipe/distinfo" libtool-2.6.2.tar.xz)
+(cd "$distfiles" && awk -f "$pkgsrc/mk/checksum/checksum.awk" -- "$recipe/distinfo" libtool-2.6.2.tar.gz)
 awk -f "$pkgsrc/mk/checksum/checksum.awk" -- -p "$recipe/distinfo" "$recipe"/patches/patch-*
 for dir in packaged maintained; do
     tar -xf "$archive" --strip-components=1 -C "$work/$dir"

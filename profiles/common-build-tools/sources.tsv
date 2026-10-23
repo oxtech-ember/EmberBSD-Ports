@@ -8,7 +8,7 @@ meson-1.12.1.tar.gz	ab0a6ca09f8ef70c564c8241fb5a23957886a0b53fb58412b5e07eaf07db
 ninja-build/ninja-1.13.2.tar.gz	974d6b2f4eeefa25625d34da3cb36bdcebe7fbce40f4c16ac0835fd1c0cbae17	https://github.com/ninja-build/ninja/archive/v1.13.2.tar.gz
 llvm-project-23.1.2.src.tar.xz	c98bbef08a2b4c2613cd50e9aa9ae7b69b1fe6c16b2c40373bc0ab6116fdf78a	https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.2/llvm-project-23.1.2.src.tar.xz
 pkgconf-3.0.7.tar.xz	028889796fd6d556e019d35b8e8d68d321cbb5cf9827d3ea7653625629641345	https://distfiles.dereferenced.org/pkgconf/pkgconf-3.0.7.tar.xz
-libtool-2.6.2.tar.xz	2ef1067c16c97db930fd740cc9bc3d3ba9a583804ae5ac42cc3e8719e49e191e	https://ftp.gnu.org/gnu/libtool/libtool-2.6.2.tar.xz
+libtool-2.6.2.tar.gz	24adb3aa9ae035c70faba344af57d73215eb89281045af6c7ccd307751f8b0bf	https://ftp.gnu.org/gnu/libtool/libtool-2.6.2.tar.gz
 m4-1.4.21.tar.gz	38ae59f7a30bf9c108193cc5c25fbb06014f21e230c7ede2eff614f7b7c37ed8	https://ftp.gnu.org/gnu/m4/m4-1.4.21.tar.gz
 binutils-2.47.tar.xz	154ab23b60070e8f27013c22977f1129425d67d1e8acd6e13010e617811e4cff	https://sourceware.org/pub/binutils/releases/binutils-2.47.tar.xz
 mako-1.4.3.tar.gz	cd6537fe88d5fec315c55c2f8529bc4ce7a9a352ad7db3eeaa6a66e2dd4ec37a	https://files.pythonhosted.org/packages/5a/09/e07c4b5579a79f4b16f8d4f29f6c54514ac787c4ad506b8c4f28a0e6b0bf/mako-1.4.3.tar.gz

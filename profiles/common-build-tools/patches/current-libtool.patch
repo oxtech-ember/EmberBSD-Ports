@@ -1,16 +1,17 @@
 Origin: EmberBSD, AI-assisted refresh of the pinned NetBSD pkgsrc Libtool recipe.
 Preserves pkgsrc patch provenance; source macro changes generate configure/ltmain.
 Not submitted upstream. See ../libtool.md for regeneration and validation.
+The recipe keeps the upstream .tar.gz archive. An xz archive makes the
+native libtool-base build depend on archivers/xz, which uses Libtool.
 
 --- a/devel/libtool/Makefile.common
 +++ b/devel/libtool/Makefile.common
-@@ -32,7 +32,8 @@
+@@ -32,7 +32,7 @@
  ###########################################################################
  ###########################################################################
  
 -DISTNAME=	libtool-2.4.7
 +DISTNAME=	libtool-2.6.2
-+EXTRACT_SUFX=	.tar.xz
  DISTFILES=	${DISTNAME}${EXTRACT_SUFX}
  CATEGORIES=	devel pkgtools
  MASTER_SITES=	${MASTER_SITE_GNU:=libtool/}
@@ -27,9 +28,9 @@ Not submitted upstream. See ../libtool.md for regeneration and validation.
 -SHA1 (patch-build-aux_ltmain.sh) = ecb677b383caaaf8efb75a01cc17d49e5599c53c
 -SHA1 (patch-configure) = 5c2718a6ca14a1f99e1f965d0636d86eb74ec017
 -SHA1 (patch-libltdl_configure) = 58211bf63b3f3ed5ebac583c179af7f69d955fba
-+BLAKE2s (libtool-2.6.2.tar.xz) = 3e06bf6e3c561cecd64d40b6570445f941737d36fe8ae8fa47f9ac645810d3fa
-+SHA512 (libtool-2.6.2.tar.xz) = 7517648aaa704a87a35ce23c47dd6415c1ac81056aadb076960cd93c0ee31c431ab95aa85a4cc1eaaee1dcf860a90898fb6514f0bb4aa70b940757c8301260cf
-+Size (libtool-2.6.2.tar.xz) = 1093564 bytes
++BLAKE2s (libtool-2.6.2.tar.gz) = d6bf5f08bb15d512f165145183bc20c6b3b61240e9d24be5ef12de87153906e7
++SHA512 (libtool-2.6.2.tar.gz) = e4e4df9f191152241c813e3f79f6afdc4b8a0a6d9e94d76f2b9fbea6ab98a9f5280376ec34325b5a08bc93e5b702fb2e7183488294457ee8bed33e1ec8aa4a35
++Size (libtool-2.6.2.tar.gz) = 2125092 bytes
 +SHA1 (patch-Makefile.in) = 1987244cc7c161abaddc3c2753f77ac56a6f2b3d
 +SHA1 (patch-build-aux_depcomp) = 640b6490deb920e2651d93403aab03447f6cf983
 +SHA1 (patch-build-aux_ltmain.sh) = f6f5c3500235703da070da7c26ade1b4fe72d0e8
