@@ -1,0 +1,19 @@
+$NetBSD$
+
+Do not initialize an Apple SDK for an explicit non-Apple cross target.
+Keep native builds and CMake's documented Apple target names unchanged.
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -9,7 +9,9 @@
+ cmake_minimum_required(VERSION 3.20)
+ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Source/cmake")
+ 
+-if (CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
++if (CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin" AND
++        (NOT CMAKE_SYSTEM_NAME OR
++         CMAKE_SYSTEM_NAME MATCHES "^(Darwin|iOS|tvOS|visionOS|watchOS)$"))
+     # Resolve the SDK and pin tools before the call to project().
+     include(WebKitXcodeSDK)
+ endif ()

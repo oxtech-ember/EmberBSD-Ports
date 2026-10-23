@@ -56,6 +56,17 @@ source files.
 
 ## Native generators and target queries
 
+The shared WebKit source skips Apple SDK initialization for an explicit
+non-Apple target, including GTK and WPE cross builds.
+The release otherwise selects that initialization from the Darwin build host
+before `project()` can load the target platform. A Darwin-to-NetBSD GTK
+configuration then fails despite an explicit `PORT=GTK`.
+The AI-assisted repair retains native initialization and all five Apple
+system names documented by CMake. It does not infer a target from the host.
+Run `tests/webkit-port-sdk.py --help` from the common graphics profile for
+the source-prefix regression. It executes the real SDK module before and
+after the repair. Full configuration and packaging remain separate checks.
+
 Build scripts use native `TOOL_PYTHONBIN`, the selected `${RUBY_NAME}` below
 `TOOLBASE`, and native gperf. Both current and legacy CMake Python variables
 receive the native interpreter. Ruby uses CMake's `Ruby_EXECUTABLE` spelling.
