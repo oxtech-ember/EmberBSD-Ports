@@ -243,3 +243,24 @@ Expanded-header locations in that pair do not map to valid statistics-header
 lines. No Cppcheck pass or confirmed statistics-structure defect is claimed.
 The checks retain real target defines, include paths, and the NetBSD x86_64
 model without fake builtins or new warning suppressions.
+
+## WebRTC media return paths
+
+The AI-assisted `webrtc-media-enum-paths-gcc16.patch` preserves valid enum
+branches and adds `RTC_CHECK_NOTREACHED()` at 21 non-void exits. It keeps
+Clang deprecation scopes unchanged and excludes those pragmas from GCC.
+The two changed public headers export `rtc_base:checks` through `public_deps`.
+Their GN declarations retain the embedder's common public dependencies.
+
+All 22 observed failing production commands fail before the source changes
+and compile afterward with GCC16 and the original diagnostics. Both variants
+use the same completed generated headers and target sysroot. Clang Static
+Analyzer completes all 44 cases with the same 47 inherited findings per
+variant. Cppcheck stops at dependency parser errors in all 44 cases. This
+comparison does not establish a clean Cppcheck result.
+
+A bounded GN fixture uses the pinned `rtc_library` template and its defaults.
+The public dependency passes header checking for standalone, Chromium static,
+and Chromium component modes. Missing and private dependency controls fail
+header checking in each mode. This is nine GN contract cases; it does not
+replace full-project generation or target runtime execution.

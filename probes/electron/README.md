@@ -151,6 +151,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-gcc16-enum-pragm
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-typed-stun-owner-and-crypto-emplace-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gfx-vector-mask-parentheses-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-codec-level-bounds-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-media-enum-paths-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/skia-reinitializes-attribute-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-bsd-linux-suid-helper.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-dist-target-os.patch
@@ -204,6 +205,9 @@ The PFFFT patch limits assert-only SIMD validation to assertion-enabled builds.
 It retains the public validation symbol and every debug assertion.
 The Opus patch retains stack allocation and selects its existing `stdlib.h`
 fallback on BSD systems. Other platforms retain their header selection.
+The WebRTC media follow-up adds fatal exits after exhaustive codec, transport,
+audio, sampling, and task-priority switches. It keeps Clang deprecation pragmas
+Clang-only. Both public headers export the checks library through GN.
 The parser patch removes three GCC-only diagnostic switches and `--param=`
 optimizer settings only from libclang's inputs. Target compiler arguments,
 `-Werror`, target triple, and sysroot remain unchanged.
