@@ -1,0 +1,47 @@
+$NetBSD: patch-CMakeLists.txt,v 1.10 2024/08/31 08:39:32 adam Exp $
+
+Do not make application bundle on Darwin.
+
+editcap needs -lm, like tfshark:
+editcap.c:(.text.startup+0x5b8): undefined reference to `modf'
+
+--- CMakeLists.txt.orig	2024-08-28 18:51:12.000000000 +0000
++++ CMakeLists.txt
+@@ -1605,7 +1605,7 @@ if(WIN32)
+ 	set(WIN_WS2_32_LIBRARY   ws2_32.lib)
+ endif()
+ 
+-if(APPLE)
++if(APPLE AND ENABLE_APPLICATION_BUNDLE)
+ 	#
+ 	# We assume that APPLE means macOS so that we have the macOS
+ 	# frameworks.
+@@ -1669,7 +1669,7 @@ else()
+ 	endif()
+ endif()
+ 
+-if(APPLE)
++if(FALSE)
+ 	#
+ 	# As https://developer.apple.com/library/archive/technotes/tn2206/_index.html
+ 	# says,
+@@ -2846,7 +2846,11 @@ if(BUILD_wireshark AND QT_FOUND)
+ 		${MINIZIPNG_LIBRARIES}
+ 	)
+ 
++	if(ENABLE_APPLICATION_BUNDLE)
+ 	add_executable(wireshark WIN32 MACOSX_BUNDLE ${wireshark_FILES} ${EXTRA_WIRESHARK_BUNDLE_FILES})
++	else()
++	add_executable(wireshark WIN32 ${wireshark_FILES} ${EXTRA_WIRESHARK_BUNDLE_FILES})
++	endif()
+ 	if(MSVC)
+ 		set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT wireshark)
+ 	endif()
+@@ -3352,6 +3356,7 @@ endif()
+ 
+ if(BUILD_editcap)
+ 	set(editcap_LIBS
++		m
+ 		ui
+ 		wiretap
+ 		${ZLIB_LIBRARIES}

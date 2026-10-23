@@ -26,7 +26,7 @@ base (registry item R10).
 - `security/mozilla-rootcerts` comes from the common cross change
   (`profiles/common-build-tools/patches/mozilla-rootcerts-cross-tools.patch`).
   The shipped target script uses `/bin/sh` and `/usr/bin/awk`.
-- `recipes/net/wireshark` — the upstream recipe plus EmberBSD cross
+- `pkgsrc/net/wireshark` (shared overlay) — the upstream recipe plus EmberBSD cross
   additions: the lemon parser generator is taken from the host bootstrap
   prefix instead of being cross-compiled, and the libssh-based extcaps
   (sshdump, ciscodump, wifidump) are disabled until their cross link
@@ -47,7 +47,7 @@ Built from the prepared pkgsrc export through the common cross profile:
 | mtr | 0.96nb1 | combined traceroute/latency reports |
 | fping | 5.5 | parallel availability probing |
 
-`recipes/net/arp-scan` additionally carries portability patches: the
+`pkgsrc/net/arp-scan` (shared overlay) additionally carries portability patches: the
 bundled gnulib getopt header is dropped in favor of the NetBSD system
 header, `getopt_long_only` (a glibc extension) is replaced with
 `getopt_long`, the configure probe checks the function the tool now

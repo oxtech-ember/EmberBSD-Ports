@@ -13,3 +13,6 @@ devel/editline
 textproc/docbook-xsl-ns
 devel/jq
 devel/git-base
+net/arp-scan
+net/tcpreplay
+net/wireshark
