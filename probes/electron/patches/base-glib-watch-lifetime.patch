@@ -1,0 +1,241 @@
+diff --git a/base/message_loop/message_pump_glib.cc b/base/message_loop/message_pump_glib.cc
+index 21e0547858..95b66ef55e 100644
+--- a/base/message_loop/message_pump_glib.cc
++++ b/base/message_loop/message_pump_glib.cc
+@@ -529,10 +529,6 @@ MessagePumpGlib::FdWatchController::~FdWatchController() {
+   if (IsInitialized()) {
+     CHECK(StopWatchingFileDescriptor());
+   }
+-  if (was_destroyed_) {
+-    DCHECK(!*was_destroyed_);
+-    *was_destroyed_ = true;
+-  }
+ }
+ 
+ bool MessagePumpGlib::FdWatchController::StopWatchingFileDescriptor() {
+@@ -873,16 +869,13 @@ bool MessagePumpGlib::HandleFdWatchDispatch(FdWatchController* controller) {
+   MessagePumpWakeupCounter::GetForCurrentThread().RecordWakeup();
+ 
+   if (can_read && can_write) {
+-    // In case both callbacks can be called, it's necessary to check that
+-    // |controller| is not destroyed.
+-    bool controller_was_destroyed = false;
+-    controller->was_destroyed_ = &controller_was_destroyed;
++    // The write callback can destroy the controller. A weak pointer also
++    // preserves the destruction check across nested dispatch.
++    WeakPtr<FdWatchController> weak_controller =
++        controller->weak_factory_.GetWeakPtr();
+     controller->NotifyCanWrite();
+-    if (!controller_was_destroyed) {
+-      controller->NotifyCanRead();
+-    }
+-    if (!controller_was_destroyed) {
+-      controller->was_destroyed_ = nullptr;
++    if (weak_controller) {
++      weak_controller->NotifyCanRead();
+     }
+   } else if (can_write) {
+     controller->NotifyCanWrite();
+diff --git a/base/message_loop/message_pump_glib.h b/base/message_loop/message_pump_glib.h
+index 2e5376a5a8..1381eb9146 100644
+--- a/base/message_loop/message_pump_glib.h
++++ b/base/message_loop/message_pump_glib.h
+@@ -11,6 +11,7 @@
+ 
+ #include "base/base_export.h"
+ #include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
+ #include "base/message_loop/message_pump.h"
+ #include "base/message_loop/watchable_io_message_pump_posix.h"
+ #include "base/threading/thread_checker.h"
+@@ -66,10 +67,10 @@ class BASE_EXPORT MessagePumpGlib : public MessagePump,
+     raw_ptr<FdWatcher> watcher_ = nullptr;
+     raw_ptr<GSource> source_ = nullptr;
+     std::unique_ptr<GPollFD> poll_fd_;
+-    // If this pointer is non-null, the pointee is set to true in the
+-    // destructor.
+-    raw_ptr<bool> was_destroyed_ = nullptr;
+     bool is_persistent_ = false;  // false if this event is one-shot.
++
++    // A callback can destroy this controller, including during nested dispatch.
++    WeakPtrFactory<FdWatchController> weak_factory_{this};
+   };
+ 
+   MessagePumpGlib();
+diff --git a/base/message_loop/message_pump_glib_unittest.cc b/base/message_loop/message_pump_glib_unittest.cc
+index ccae109fc5..cd43978b7d 100644
+--- a/base/message_loop/message_pump_glib_unittest.cc
++++ b/base/message_loop/message_pump_glib_unittest.cc
+@@ -9,6 +9,7 @@
+ 
+ #include <algorithm>
+ #include <memory>
++#include <new>
+ #include <string_view>
+ #include <vector>
+ 
+@@ -28,6 +29,7 @@
+ #include "base/task/current_thread.h"
+ #include "base/task/single_thread_task_executor.h"
+ #include "base/task/single_thread_task_runner.h"
++#include "base/test/bind.h"
+ #include "base/test/task_environment.h"
+ #include "base/test/tracing/trace_event_analyzer.h"
+ #include "base/test/tracing/trace_test_utils.h"
+@@ -685,6 +687,21 @@ class BaseWatcher : public MessagePumpGlib::FdWatcher {
+   raw_ptr<MessagePumpGlib::FdWatchController> controller_;
+ };
+ 
++// Callbacks can delete or replace a controller without leaving a raw pointer
++// in the watcher itself.
++class FdCallbackWatcher : public MessagePumpGlib::FdWatcher {
++ public:
++  FdCallbackWatcher(RepeatingClosure on_read, RepeatingClosure on_write)
++      : on_read_(std::move(on_read)), on_write_(std::move(on_write)) {}
++
++  void OnFileCanReadWithoutBlocking(int /* fd */) override { on_read_.Run(); }
++  void OnFileCanWriteWithoutBlocking(int /* fd */) override { on_write_.Run(); }
++
++ private:
++  RepeatingClosure on_read_;
++  RepeatingClosure on_write_;
++};
++
+ class DeleteWatcher : public BaseWatcher {
+  public:
+   explicit DeleteWatcher(
+@@ -806,6 +823,134 @@ TEST_F(MessagePumpGLibFdWatchTest, StopWatcher) {
+   SimulateEvent(pump.get(), &controller);
+ }
+ 
++// A persistent watch must deliver both callbacks without invalidating the
++// controller's weak pointers after each dispatch.
++TEST_F(MessagePumpGLibFdWatchTest, PersistentReadWrite) {
++  auto pump = std::make_unique<MessagePumpGlib>();
++  auto controller =
++      std::make_unique<MessagePumpGlib::FdWatchController>(FROM_HERE);
++  int reads = 0;
++  int writes = 0;
++  FdCallbackWatcher watcher(BindLambdaForTesting([&] { ++reads; }),
++                            BindLambdaForTesting([&] { ++writes; }));
++  ASSERT_TRUE(pump->WatchFileDescriptor(
++      pipefds_[1], true, MessagePumpGlib::WATCH_READ_WRITE, controller.get(),
++      &watcher));
++
++  SimulateEvent(pump.get(), controller.get());
++  EXPECT_EQ(reads, 1);
++  EXPECT_EQ(writes, 1);
++  SimulateEvent(pump.get(), controller.get());
++  EXPECT_EQ(reads, 2);
++  EXPECT_EQ(writes, 2);
++}
++
++// Unlike a one-shot watch, a persistent READ_WRITE watch enters the branch
++// that must check for destruction between the two callbacks.
++TEST_F(MessagePumpGLibFdWatchTest, PersistentDeleteControllerOnWrite) {
++  auto pump = std::make_unique<MessagePumpGlib>();
++  auto controller =
++      std::make_unique<MessagePumpGlib::FdWatchController>(FROM_HERE);
++  int reads = 0;
++  int writes = 0;
++  FdCallbackWatcher watcher(BindLambdaForTesting([&] { ++reads; }),
++                            BindLambdaForTesting([&] {
++                              ++writes;
++                              controller.reset();
++                            }));
++  ASSERT_TRUE(pump->WatchFileDescriptor(
++      pipefds_[1], true, MessagePumpGlib::WATCH_READ_WRITE, controller.get(),
++      &watcher));
++
++  SimulateEvent(pump.get(), controller.get());
++  EXPECT_FALSE(controller);
++  EXPECT_EQ(reads, 0);
++  EXPECT_EQ(writes, 1);
++}
++
++TEST_F(MessagePumpGLibFdWatchTest, PersistentDeleteControllerOnRead) {
++  auto pump = std::make_unique<MessagePumpGlib>();
++  auto controller =
++      std::make_unique<MessagePumpGlib::FdWatchController>(FROM_HERE);
++  int reads = 0;
++  int writes = 0;
++  FdCallbackWatcher watcher(BindLambdaForTesting([&] {
++                              ++reads;
++                              controller.reset();
++                            }),
++                            BindLambdaForTesting([&] { ++writes; }));
++  ASSERT_TRUE(pump->WatchFileDescriptor(
++      pipefds_[1], true, MessagePumpGlib::WATCH_READ_WRITE, controller.get(),
++      &watcher));
++
++  SimulateEvent(pump.get(), controller.get());
++  EXPECT_FALSE(controller);
++  EXPECT_EQ(reads, 1);
++  EXPECT_EQ(writes, 1);
++}
++
++// The nested dispatch must not remove the outer dispatch's destruction check.
++// ASan detects the old implementation's use of the controller after reset().
++TEST_F(MessagePumpGLibFdWatchTest, PersistentNestedDispatchDeletesController) {
++  auto pump = std::make_unique<MessagePumpGlib>();
++  auto controller =
++      std::make_unique<MessagePumpGlib::FdWatchController>(FROM_HERE);
++  int reads = 0;
++  int writes = 0;
++  FdCallbackWatcher watcher(BindLambdaForTesting([&] { ++reads; }),
++                            BindLambdaForTesting([&] {
++                              if (++writes == 1) {
++                                SimulateEvent(pump.get(), controller.get());
++                                controller.reset();
++                              }
++                            }));
++  ASSERT_TRUE(pump->WatchFileDescriptor(
++      pipefds_[1], true, MessagePumpGlib::WATCH_READ_WRITE, controller.get(),
++      &watcher));
++
++  SimulateEvent(pump.get(), controller.get());
++  EXPECT_FALSE(controller);
++  EXPECT_EQ(reads, 1);
++  EXPECT_EQ(writes, 2);
++}
++
++// Reuse the same storage to detect a stale notification without depending on
++// an allocator's reuse policy. The outer event belongs to the old controller.
++TEST_F(MessagePumpGLibFdWatchTest, PersistentNestedDispatchReplacesController) {
++  using Controller = MessagePumpGlib::FdWatchController;
++  auto pump = std::make_unique<MessagePumpGlib>();
++  alignas(Controller) unsigned char storage[sizeof(Controller)];
++  auto destroy_in_place = [](Controller* value) { std::destroy_at(value); };
++  std::unique_ptr<Controller, decltype(destroy_in_place)> controller(
++      new (storage) Controller(FROM_HERE), destroy_in_place);
++  int reads = 0;
++  int writes = 0;
++  FdCallbackWatcher watcher(BindLambdaForTesting([&] { ++reads; }),
++                            BindLambdaForTesting([&] {
++                              if (++writes == 1) {
++                                SimulateEvent(pump.get(), controller.get());
++                                controller.reset();
++                                controller.reset(
++                                    new (storage) Controller(FROM_HERE));
++                                ASSERT_TRUE(pump->WatchFileDescriptor(
++                                    pipefds_[1], true,
++                                    MessagePumpGlib::WATCH_READ_WRITE,
++                                    controller.get(), &watcher));
++                              }
++                            }));
++  ASSERT_TRUE(pump->WatchFileDescriptor(
++      pipefds_[1], true, MessagePumpGlib::WATCH_READ_WRITE, controller.get(),
++      &watcher));
++
++  SimulateEvent(pump.get(), controller.get());
++  EXPECT_EQ(reads, 1);
++  EXPECT_EQ(writes, 2);
++
++  SimulateEvent(pump.get(), controller.get());
++  EXPECT_EQ(reads, 2);
++  EXPECT_EQ(writes, 3);
++}
++
+ // Tests that FdWatcher works properly with nested loops.
+ TEST_F(MessagePumpGLibFdWatchTest, NestedPumpWatcher) {
+   test::SingleThreadTaskEnvironment task_environment(

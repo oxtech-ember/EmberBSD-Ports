@@ -1,0 +1,63 @@
+diff --git a/include/__utility/pair.h b/include/__utility/pair.h
+index 7cc8a4e..2c0398a 100644
+--- a/include/__utility/pair.h
++++ b/include/__utility/pair.h
+@@ -23,6 +23,7 @@
+ #include <__type_traits/common_reference.h>
+ #include <__type_traits/common_type.h>
+ #include <__type_traits/conditional.h>
++#include <__type_traits/conjunction.h>
+ #include <__type_traits/enable_if.h>
+ #include <__type_traits/integral_constant.h>
+ #include <__type_traits/is_assignable.h>
+@@ -217,7 +218,7 @@ struct pair
+       : pair(__pc, __first_args, __second_args, __index_sequence_for<_Args1...>(), __index_sequence_for<_Args2...>()) {}
+ 
+   _LIBCPP_CONSTEXPR_SINCE_CXX20 pair&
+-  operator=(__conditional_t<is_copy_assignable<first_type>::value && is_copy_assignable<second_type>::value,
++  operator=(__conditional_t<_And<is_copy_assignable<first_type>, is_copy_assignable<second_type>>::value,
+                             pair,
+                             __nat> const& __p) noexcept(is_nothrow_copy_assignable<first_type>::value &&
+                                                         is_nothrow_copy_assignable<second_type>::value) {
+@@ -227,7 +228,7 @@ struct pair
+   }
+ 
+   _LIBCPP_CONSTEXPR_SINCE_CXX20 pair& operator=(
+-      __conditional_t<is_move_assignable<first_type>::value && is_move_assignable<second_type>::value, pair, __nat>&&
++      __conditional_t<_And<is_move_assignable<first_type>, is_move_assignable<second_type>>::value, pair, __nat>&&
+           __p) noexcept(is_nothrow_move_assignable<first_type>::value &&
+                         is_nothrow_move_assignable<second_type>::value) {
+     first  = std::forward<first_type>(__p.first);
+--- /dev/null
++++ b/test/libcxx/utilities/utility/pairs/pairs.pair/incomplete_assignment.compile.pass.cpp
+@@ -0,0 +1,30 @@
++// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
++// See https://llvm.org/LICENSE.txt for license information.
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++
++// UNSUPPORTED: c++03, c++11, c++14
++// A non-assignable first element must not instantiate assignment traits on an
++// incomplete second element. Ordinary pairs retain their assignment operations.
++
++#include <string>
++#include <type_traits>
++#include <utility>
++struct Value;
++struct Proxy { std::pair<const std::string&, Value&> ref; };
++struct Value {
++  Value& operator=(const Value&) = delete;
++  Value& operator=(Value&&) = default;
++};
++using ReferencePair = decltype(Proxy::ref);
++static_assert(!std::is_copy_assignable<ReferencePair>::value);
++static_assert(!std::is_move_assignable<ReferencePair>::value);
++static_assert(std::is_copy_assignable_v<std::pair<int, int>>);
++static_assert(std::is_move_assignable_v<std::pair<int, int>>);
++static_assert(!std::is_copy_assignable_v<std::pair<const int, int>>);
++static_assert(!std::is_move_assignable_v<std::pair<const int, int>>);
++int assign_pair() {
++  std::pair<int, int> first{1, 2}, second{3, 4};
++  first = second;
++  second = std::pair<int, int>{5, 6};
++  return first.first + first.second + second.first + second.second;
++}

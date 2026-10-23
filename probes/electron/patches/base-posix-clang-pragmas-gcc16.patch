@@ -1,0 +1,54 @@
+diff --git a/base/files/file_posix.cc b/base/files/file_posix.cc
+index 3bc18cc1ba..f5b1dea25e 100644
+--- a/base/files/file_posix.cc
++++ b/base/files/file_posix.cc
+@@ -109,11 +109,15 @@ int CallFutimes(PlatformFile file, const std::array<struct timeval, 2> times) {
+ 
+   return futimens(file, ts_times.data());
+ #else
++#if defined(__clang__)
+ #pragma clang diagnostic push  // Can be removed once Cronet's min-sdk is >= 26.
+ #pragma clang diagnostic ignored "-Wunguarded-availability"
++#endif
+   return futimes(file, times.data());
++#if defined(__clang__)
+ #pragma clang diagnostic pop
+ #endif
++#endif
+ }
+ 
+ #if !BUILDFLAG(IS_FUCHSIA)
+diff --git a/base/synchronization/lock_impl_posix.cc b/base/synchronization/lock_impl_posix.cc
+index a28d3d418a..ac5dcd5b8b 100644
+--- a/base/synchronization/lock_impl_posix.cc
++++ b/base/synchronization/lock_impl_posix.cc
+@@ -47,10 +47,14 @@ std::atomic<int> g_spin_count{0};
+ #if BUILDFLAG(ENABLE_MUTEX_PRIORITY_INHERITANCE) && BUILDFLAG(IS_ANDROID)
+ bool IsMutexPriorityInheritanceEnabled() {
+   return
++#if defined(__clang__)
+ #pragma clang diagnostic push  // Can be removed once our min-sdk is >= 28.
+ #pragma clang diagnostic ignored "-Wunguarded-availability"
++#endif
+       (pthread_mutexattr_setprotocol != nullptr) &&
++#if defined(__clang__)
+ #pragma clang diagnostic pop
++#endif
+       base::android::BackgroundThreadPoolFieldTrial::
+           ShouldUsePriorityInheritanceLocks();
+ }
+@@ -110,10 +114,14 @@ LockImpl::LockImpl() {
+   DCHECK_EQ(rv, 0) << ". " << SystemErrorCodeToString(rv);
+ #if PRIORITY_INHERITANCE_LOCKS_POSSIBLE()
+   if (PriorityInheritanceAvailable()) {
++#if defined(__clang__)
+ #pragma clang diagnostic push  // Can be removed once our min-sdk is >= 28.
+ #pragma clang diagnostic ignored "-Wunguarded-availability"
++#endif
+     rv = pthread_mutexattr_setprotocol(&mta, PTHREAD_PRIO_INHERIT);
++#if defined(__clang__)
+ #pragma clang diagnostic pop
++#endif
+     DCHECK_EQ(rv, 0) << ". " << SystemErrorCodeToString(rv);
+   }
+ #endif

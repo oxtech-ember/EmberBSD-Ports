@@ -1,0 +1,11 @@
+--- a/third_party/ffmpeg/chromium/scripts/copy_config.sh
++++ b/third_party/ffmpeg/chromium/scripts/copy_config.sh
+@@ -5,7 +5,7 @@
+ # found in the LICENSE file.
+ 
+ # Use this to copy all config files into the tree.
+-for os in android linux linux-noasm mac win; do
++for os in android linux linux-noasm mac netbsd win; do
+   for target in Chromium Chrome ChromeOS; do
+     # Copy config files for various architectures:
+     #   - ia32/x64 have config.asm, config.h

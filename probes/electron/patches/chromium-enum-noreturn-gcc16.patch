@@ -1,0 +1,328 @@
+diff --git a/base/allocator/partition_alloc_support.cc b/base/allocator/partition_alloc_support.cc
+index 7efd597b6a..29fef53b36 100644
+--- a/base/allocator/partition_alloc_support.cc
++++ b/base/allocator/partition_alloc_support.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "base/allocator/partition_alloc_support.h"
++#include "base/notreached.h"
+ 
+ #include <algorithm>
+ #include <array>
+@@ -421,6 +422,7 @@ bool ShouldEnableFeatureOnProcess(
+     case features::internal::PAFeatureEnabledProcesses::kAllProcesses:
+       return true;
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace
+diff --git a/base/i18n/break_iterator.cc b/base/i18n/break_iterator.cc
+index 21e569ebec..a109e0ab5b 100644
+--- a/base/i18n/break_iterator.cc
++++ b/base/i18n/break_iterator.cc
+@@ -116,6 +116,7 @@ UBreakIteratorType ToUBreakIteratorType(BreakIterator::BreakType break_type) {
+     case BreakIterator::RULE_BASED:
+       NOTREACHED();
+   }
++  NOTREACHED();
+ }
+ 
+ UBreakIteratorPtr OpenBreakIterator(BreakIterator::BreakType break_type,
+@@ -151,6 +152,7 @@ UBreakIteratorPtr OpenBreakIterator(BreakIterator::BreakType break_type,
+       return iter;
+     }
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace
+@@ -264,6 +266,7 @@ bool BreakIterator::Advance() {
+       }
+       return true;
+   }
++  NOTREACHED();
+ }
+ 
+ bool BreakIterator::SetText(std::u16string_view text) {
+diff --git a/base/message_loop/message_pump.cc b/base/message_loop/message_pump.cc
+index bfb28d5af9..21c4d099ab 100644
+--- a/base/message_loop/message_pump.cc
++++ b/base/message_loop/message_pump.cc
+@@ -206,6 +206,7 @@ std::unique_ptr<MessagePump> MessagePump::Create(MessagePumpType type) {
+       return std::make_unique<MessagePumpDefault>();
+ #endif
+   }
++  NOTREACHED();
+ }
+ 
+ // static
+diff --git a/base/metrics/histogram.cc b/base/metrics/histogram.cc
+index a51ed73ca4..3de6a1dc0a 100644
+--- a/base/metrics/histogram.cc
++++ b/base/metrics/histogram.cc
+@@ -66,6 +66,7 @@ const char* HistogramValidityToString(
+     case Histogram::kBucketsInvalidMax:
+       return "BucketsInvalidMax";
+   }
++  NOTREACHED();
+ }
+ 
+ bool ReadHistogramArguments(PickleIterator* iter,
+diff --git a/base/process/current_process.cc b/base/process/current_process.cc
+index 9b2ab05118..041d60797e 100644
+--- a/base/process/current_process.cc
++++ b/base/process/current_process.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "base/process/current_process.h"
++#include "base/notreached.h"
+ 
+ namespace base {
+ 
+@@ -97,6 +98,7 @@ const char* GetNameForProcessType(CurrentProcessType process_type) {
+     case CurrentProcessType::PROCESS_RENDERER_TOP_WEBUI:
+       return "WebUI Top Renderer";
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace
+@@ -162,6 +164,7 @@ ShortProcessType CurrentProcess::GetShortType(TypeKey key) {
+     case CurrentProcessType::PROCESS_SERVICE_SHAPEDETECTION:
+       return ShortProcessType::kService;
+   }
++  NOTREACHED();
+ }
+ 
+ // static
+diff --git a/base/task/common/operations_controller.cc b/base/task/common/operations_controller.cc
+index 89a6b3b575..c17ace9d2d 100644
+--- a/base/task/common/operations_controller.cc
++++ b/base/task/common/operations_controller.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "base/task/common/operations_controller.h"
++#include "base/notreached.h"
+ 
+ #include <ostream>
+ 
+@@ -56,6 +57,7 @@ OperationsController::OperationToken OperationsController::TryBeginOperation() {
+       DecrementBy(1);
+       return OperationToken(nullptr);
+   }
++  NOTREACHED();
+ }
+ 
+ void OperationsController::ShutdownAndWaitForZeroOperations() {
+diff --git a/base/task/common/task_annotator.cc b/base/task/common/task_annotator.cc
+index 413564ceb2..2206de2f46 100644
+--- a/base/task/common/task_annotator.cc
++++ b/base/task/common/task_annotator.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "base/task/common/task_annotator.h"
++#include "base/notreached.h"
+ 
+ #include <stdint.h>
+ 
+@@ -85,6 +86,7 @@ perfetto::protos::pbzero::ChromeTaskAnnotator::DelayPolicy ToProtoEnum(
+     case subtle::DelayPolicy::kPrecise:
+       return ProtoType::PRECISE;
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace
+diff --git a/base/task/sequence_manager/thread_controller.cc b/base/task/sequence_manager/thread_controller.cc
+index 816c9a83b8..e64c1a4aa2 100644
+--- a/base/task/sequence_manager/thread_controller.cc
++++ b/base/task/sequence_manager/thread_controller.cc
+@@ -623,6 +623,7 @@ bool ThreadController::RunLevelTracker::TimeKeeper::ShouldRecordNow(
+       return histogram_ && !last_phase_end_.is_null() &&
+              outer_->run_levels_.size() <= 2;
+   }
++  NOTREACHED();
+ }
+ 
+ void ThreadController::RunLevelTracker::TimeKeeper::RecordTimeInPhase(
+@@ -683,6 +684,7 @@ const char* ThreadController::RunLevelTracker::TimeKeeper::PhaseToEventName(
+       // kApplicationTask before this point.
+       NOTREACHED();
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace base::sequence_manager::internal
+diff --git a/base/task/task_traits.cc b/base/task/task_traits.cc
+index 331d4dc999..4e0d565dc1 100644
+--- a/base/task/task_traits.cc
++++ b/base/task/task_traits.cc
+@@ -59,6 +59,7 @@ ThreadType TaskPriorityToThreadType(TaskPriority priority) {
+     case TaskPriority::USER_BLOCKING:
+       return ThreadType::kDefault;
+   }
++  NOTREACHED();
+ }
+ 
+ ThreadType EffectiveThreadType(const TaskTraits& traits,
+diff --git a/base/task/thread_pool/task_tracker.cc b/base/task/thread_pool/task_tracker.cc
+index 70fb09ebc4..b5a52682da 100644
+--- a/base/task/thread_pool/task_tracker.cc
++++ b/base/task/thread_pool/task_tracker.cc
+@@ -67,6 +67,7 @@ ChromeThreadPoolTask::Priority TaskPriorityToProto(TaskPriority priority) {
+     case TaskPriority::USER_BLOCKING:
+       return ChromeThreadPoolTask::PRIORITY_USER_BLOCKING;
+   }
++  NOTREACHED();
+ }
+ 
+ ChromeThreadPoolTask::ExecutionMode ExecutionModeToProto(
+@@ -81,6 +82,7 @@ ChromeThreadPoolTask::ExecutionMode ExecutionModeToProto(
+     case TaskSourceExecutionMode::kJob:
+       return ChromeThreadPoolTask::EXECUTION_MODE_JOB;
+   }
++  NOTREACHED();
+ }
+ 
+ ChromeThreadPoolTask::ShutdownBehavior ShutdownBehaviorToProto(
+@@ -93,6 +95,7 @@ ChromeThreadPoolTask::ShutdownBehavior ShutdownBehaviorToProto(
+     case TaskShutdownBehavior::BLOCK_SHUTDOWN:
+       return ChromeThreadPoolTask::SHUTDOWN_BEHAVIOR_BLOCK_SHUTDOWN;
+   }
++  NOTREACHED();
+ }
+ 
+ // If this is greater than 0 on a given thread, it will ignore the DCHECK which
+diff --git a/base/threading/hang_watcher.cc b/base/threading/hang_watcher.cc
+index fb1b3f7a00..f632b561fa 100644
+--- a/base/threading/hang_watcher.cc
++++ b/base/threading/hang_watcher.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "base/threading/hang_watcher.h"
++#include "base/notreached.h"
+ 
+ #include <algorithm>
+ #include <atomic>
+@@ -232,6 +233,7 @@ bool ThreadTypeLoggingLevelGreaterOrEqual(HangWatcher::ThreadType thread_type,
+       return g_compositor_thread_log_level.load(std::memory_order_relaxed) >=
+              logging_level;
+   }
++  NOTREACHED();
+ }
+ 
+ constexpr base::FeatureState HangWatcherFeatureDefault() {
+diff --git a/base/trace_event/memory_pressure_level_proto.cc b/base/trace_event/memory_pressure_level_proto.cc
+index 3b88727c3b..529a7e0397 100644
+--- a/base/trace_event/memory_pressure_level_proto.cc
++++ b/base/trace_event/memory_pressure_level_proto.cc
+@@ -8,6 +8,7 @@
+ // modules will implement their own policy).
+ 
+ #include "base/trace_event/memory_pressure_level_proto.h"
++#include "base/notreached.h"
+ 
+ #include "base/tracing/protos/chrome_track_event.pbzero.h"  // nogncheck
+ 
+@@ -24,6 +25,7 @@ perfetto::protos::pbzero::MemoryPressureLevel MemoryPressureLevelToTraceEnum(
+     case MEMORY_PRESSURE_LEVEL_CRITICAL:
+       return ProtoLevel::MEMORY_PRESSURE_LEVEL_CRITICAL;
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace base::trace_event
+diff --git a/components/cbor/writer.cc b/components/cbor/writer.cc
+index 8b020116c0..d273e65ebb 100644
+--- a/components/cbor/writer.cc
++++ b/components/cbor/writer.cc
+@@ -180,6 +180,7 @@ bool Writer::EncodeCBOR(const Value& node,
+       }
+     }
+   }
++  NOTREACHED();
+ }
+ 
+ void Writer::StartItem(Value::Type type, uint64_t size) {
+diff --git a/crypto/aead.cc b/crypto/aead.cc
+index e41850ff97..95142a4174 100644
+--- a/crypto/aead.cc
++++ b/crypto/aead.cc
+@@ -10,6 +10,7 @@
+ #include <string>
+ 
+ #include "base/check.h"
++#include "base/notreached.h"
+ #include "base/check_op.h"
+ #include "base/containers/span.h"
+ #include "base/numerics/checked_math.h"
+@@ -33,6 +34,7 @@ const EVP_AEAD* AeadForAlgorithm(Aead::AeadAlgorithm algorithm) {
+     case aead::CHACHA20_POLY1305:
+       return EVP_aead_chacha20_poly1305();
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace
+diff --git a/crypto/sign.cc b/crypto/sign.cc
+index 8b912fbea2..70a407a379 100644
+--- a/crypto/sign.cc
++++ b/crypto/sign.cc
+@@ -5,6 +5,7 @@
+ #include "crypto/sign.h"
+ 
+ #include "base/check.h"
++#include "base/notreached.h"
+ #include "base/check_op.h"
+ #include "crypto/openssl_util.h"
+ #include "third_party/boringssl/src/include/openssl/evp.h"
+@@ -71,6 +72,7 @@ const EVP_MD* DigestForSignatureKind(SignatureKind kind) {
+     case MLDSA_44:
+       return nullptr;
+   }
++  NOTREACHED();
+ }
+ 
+ void ConfigurePkeyCtx(EVP_PKEY_CTX* pkctx, SignatureKind kind) {
+diff --git a/crypto/unexportable_key_metrics.cc b/crypto/unexportable_key_metrics.cc
+index 53421c75ce..e81cfa64ba 100644
+--- a/crypto/unexportable_key_metrics.cc
++++ b/crypto/unexportable_key_metrics.cc
+@@ -7,6 +7,7 @@
+ #include <memory>
+ 
+ #include "base/feature_list.h"
++#include "base/notreached.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/task/task_traits.h"
+ #include "base/task/thread_pool.h"
+@@ -37,6 +38,7 @@ std::string GetHistogramPrefixForKeyType(KeyType type) {
+     case KeyType::kVirtualizedKey:
+       return "Virtual.";
+   }
++  NOTREACHED();
+ }
+ 
+ std::string GetHistogramSuffixForAlgo(internal::TPMSupport algo) {
+@@ -335,6 +337,7 @@ std::string OperationToString(TPMOperation operation) {
+     case TPMOperation::kWrappedAttestationKeyExport:
+       return "WrappedAttestationKeyExport";
+   }
++  NOTREACHED();
+ }
+ 
+ std::string AlgorithmToString(SignatureVerifier::SignatureAlgorithm algorithm) {
+@@ -346,6 +349,7 @@ std::string AlgorithmToString(SignatureVerifier::SignatureAlgorithm algorithm) {
+     case SignatureVerifier::SignatureAlgorithm::ECDSA_SHA256:
+       return "ECDSA";
+   }
++  NOTREACHED();
+ }
+ 
+ void MaybeMeasureTpmOperations(UnexportableKeyProvider::Config config) {

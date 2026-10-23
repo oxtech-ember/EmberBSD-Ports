@@ -1,0 +1,44 @@
+--- a/base/strings/string_util_unittest.cc
++++ b/base/strings/string_util_unittest.cc
+@@ -8,6 +8,7 @@
+ #include <stdarg.h>
+ #include <stddef.h>
+ #include <stdint.h>
++#include <string.h>
+ 
+ #include <algorithm>
+ #include <array>
+@@ -1959,8 +1960,10 @@
+   static void WritesCorrectly(size_t num_chars) {
+     std::string buffer;
+     char kOriginal[] = "supercali";
+-    UNSAFE_TODO(
+-        strncpy(WriteInto(&buffer, num_chars + 1), kOriginal, num_chars));
++    char* destination = WriteInto(&buffer, num_chars + 1);
++    const size_t copied = std::min(num_chars, std::size(kOriginal) - 1);
++    UNSAFE_TODO(memcpy(destination, kOriginal, copied));
++    UNSAFE_TODO(memset(destination + copied, 0, num_chars - copied));
+     // Using std::string(buffer.c_str()) instead of |buffer| truncates the
+     // string at the first \0.
+     EXPECT_EQ(
+@@ -1979,8 +1982,9 @@
+ 
+   // Validate that WriteInto handles 0-length strings
+   std::string empty;
+-  const char kOriginal[] = "original";
+-  UNSAFE_TODO(strncpy(WriteInto(&empty, 1), kOriginal, 0));
++  char* empty_buffer = WriteInto(&empty, 1);
++  EXPECT_EQ(empty.data(), empty_buffer);
++  EXPECT_EQ('\0', *empty_buffer);
+   EXPECT_STREQ("", empty.c_str());
+   EXPECT_EQ(0u, empty.size());
+ 
+@@ -1990,7 +1994,7 @@
+   const char kDead[] = "dead";
+   const std::string live = kLive;
+   std::string dead = live;
+-  UNSAFE_TODO(strncpy(WriteInto(&dead, 5), kDead, 4));
++  UNSAFE_TODO(memcpy(WriteInto(&dead, 5), kDead, 4));
+   EXPECT_EQ(kDead, dead);
+   EXPECT_EQ(4u, dead.size());
+   EXPECT_EQ(kLive, live);

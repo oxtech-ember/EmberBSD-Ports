@@ -1,0 +1,59 @@
+diff --git a/base/debug/asan_invalid_access.cc b/base/debug/asan_invalid_access.cc
+index 6b036e1e0e..9d58f57b43 100644
+--- a/base/debug/asan_invalid_access.cc
++++ b/base/debug/asan_invalid_access.cc
+@@ -5,8 +5,10 @@
+ #include "base/debug/asan_invalid_access.h"
+ 
+ #include <stddef.h>
++#include <stdint.h>
+ 
+ #include "base/check.h"
++#include "base/compiler_specific.h"
+ #include "base/containers/heap_array.h"
+ #include "base/debug/alias.h"
+ #include "base/immediate_crash.h"
+@@ -21,6 +23,10 @@ namespace base::debug {
+ 
+ namespace {
+ 
++NOINLINE int ReadIntFromAddress(volatile int* address) {
++  return *address;
++}
++
+ #if BUILDFLAG(IS_WIN) && defined(ADDRESS_SANITIZER)
+ // Corrupt a memory block and make sure that the corruption gets detected either
+ // when we free it or when another crash happens (if |induce_crash| is set to
+@@ -73,8 +79,12 @@ void AsanHeapOverflow() {
+ 
+   // Declares the array as volatile to make sure it doesn't get optimized away.
+   auto array = base::HeapArray<volatile int>::Uninit(kArraySize);
+-  // SAFETY: required for test.
+-  int dummy = UNSAFE_BUFFERS(array.data()[kArraySize]);
++  // Keep the invalid read in a noinline helper. GCC can otherwise prove that
++  // the address is outside this allocation and reject the intentional test.
++  const uintptr_t overflow_address =
++      reinterpret_cast<uintptr_t>(array.data()) + kArraySize * sizeof(int);
++  int dummy =
++      ReadIntFromAddress(reinterpret_cast<volatile int*>(overflow_address));
+   base::debug::Alias(&dummy);
+ 
+   MaybeImmediateCrash();
+@@ -86,11 +96,12 @@ void AsanHeapUnderflow() {
+ 
+   // Declares the array as volatile to make sure it doesn't get optimized away.
+   auto array = base::HeapArray<volatile int>::Uninit(kArraySize);
+-  // We need to store the underflow address in a temporary variable as trying to
+-  // access array[-1] will trigger a warning C4245: "conversion from 'int' to
+-  // 'size_t', signed/unsigned mismatch".
+-  volatile int* underflow_address = UNSAFE_TODO(&array[0] - 1);
+-  int dummy = *underflow_address;
++  // Form the deliberately invalid address as an integer so GCC does not
++  // diagnose the pointer arithmetic before the noinline access helper.
++  const uintptr_t underflow_address =
++      reinterpret_cast<uintptr_t>(array.data()) - sizeof(int);
++  int dummy =
++      ReadIntFromAddress(reinterpret_cast<volatile int*>(underflow_address));
+   base::debug::Alias(&dummy);
+ 
+   MaybeImmediateCrash();

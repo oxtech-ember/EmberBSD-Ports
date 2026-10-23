@@ -1,0 +1,55 @@
+diff --git a/base/strings/string_util_impl_helpers.h b/base/strings/string_util_impl_helpers.h
+index 9b284611d1..168f81d790 100644
+--- a/base/strings/string_util_impl_helpers.h
++++ b/base/strings/string_util_impl_helpers.h
+@@ -619,9 +619,9 @@ std::optional<std::basic_string<CharT>> DoReplaceStringPlaceholders(
+           const size_t index = static_cast<size_t>(*i - '1');
+           if (offsets) {
+             ReplacementOffset r_offset(index, formatted.size());
+-            r_offsets.insert(std::ranges::upper_bound(r_offsets, r_offset,
+-                                                      &CompareParameter),
+-                             r_offset);
++            r_offsets.emplace(std::ranges::upper_bound(r_offsets, r_offset,
++                                                       &CompareParameter),
++                              index, formatted.size());
+           }
+           if (index < substitutions) {
+             formatted.append(subst.at(index));
+diff --git a/base/strings/string_util_unittest.cc b/base/strings/string_util_unittest.cc
+index 72f995ee03..efd647b043 100644
+--- a/base/strings/string_util_unittest.cc
++++ b/base/strings/string_util_unittest.cc
+@@ -1313,6 +1313,16 @@ TEST(StringUtilTest, GetStringFWithOffsets) {
+   offsets.clear();
+ }
+ 
++TEST(StringUtilTest, ReplaceStringPlaceholdersReorderedStableOffsets) {
++  const auto subst = std::to_array<std::u16string>({u"A", u"BB", u"CCC"});
++  std::vector<size_t> offsets;
++
++  EXPECT_EQ(u"CCC|A|CCC|BB|A",
++            ReplaceStringPlaceholders(u"$3|$1|$3|$2|$1", subst, &offsets));
++  const std::vector<size_t> expected_offsets = {4, 13, 10, 0, 6};
++  EXPECT_EQ(expected_offsets, offsets);
++}
++
+ TEST(StringUtilTest, ReplaceStringPlaceholdersTooFew) {
+   // Test whether replacestringplaceholders works as expected when there
+   // are fewer inputs than outputs.
+@@ -1532,6 +1542,16 @@ TEST(StringUtilTest, StdStringReplaceStringPlaceholdersMultipleMatches) {
+   EXPECT_EQ(expected_offsets, offsets);
+ }
+ 
++TEST(StringUtilTest, StdStringReplaceStringPlaceholdersReorderedStableOffsets) {
++  const auto subst = std::to_array<std::string>({"A", "BB", "CCC"});
++  std::vector<size_t> offsets;
++
++  EXPECT_EQ("CCC|A|CCC|BB|A",
++            ReplaceStringPlaceholders("$3|$1|$3|$2|$1", subst, &offsets));
++  const std::vector<size_t> expected_offsets = {4, 13, 10, 0, 6};
++  EXPECT_EQ(expected_offsets, offsets);
++}
++
+ TEST(StringUtilTest, StdStringReplaceStringPlaceholdersArray) {
+   const auto subst = std::to_array<std::string>({"world", "hello"});
+ 

@@ -1,0 +1,36 @@
+diff --git a/media/ffmpeg/scripts/build_ffmpeg.py b/media/ffmpeg/scripts/build_ffmpeg.py
+index d79d3310be..f26d9ed478 100755
+--- a/media/ffmpeg/scripts/build_ffmpeg.py
++++ b/media/ffmpeg/scripts/build_ffmpeg.py
+@@ -739,16 +739,26 @@ def ConfigureAndBuild(target_arch, target_os, host_os, host_arch,
+                 configure_flags['Common'].extend([
+                     '--enable-lto',
+                     '--arch=x86_64',
+-                    '--target-os=linux',
+                 ])
+ 
+-                if host_arch != 'x64':
++                # EmberBSD provides a GCC cross-toolchain for the requested
++                # target. Do not append Linux Clang target flags to that toolchain.
++                ember_cross = os.environ.get('EMBER_FFMPEG_CROSS_PREFIX', '')
++                if ember_cross:
+                     configure_flags['Common'].extend([
+                         '--enable-cross-compile',
+-                        '--cross-prefix=/usr/bin/x86_64-linux-gnu-',
+-                        '--extra-cflags=--target=x86_64-linux-gnu',
+-                        '--extra-ldflags=--target=x86_64-linux-gnu',
++                        '--cross-prefix=' + ember_cross,
++                        '--target-os=' + target_os,
+                     ])
++                else:
++                    configure_flags['Common'].append('--target-os=linux')
++                    if host_arch != 'x64':
++                        configure_flags['Common'].extend([
++                            '--enable-cross-compile',
++                            '--cross-prefix=/usr/bin/x86_64-linux-gnu-',
++                            '--extra-cflags=--target=x86_64-linux-gnu',
++                            '--extra-ldflags=--target=x86_64-linux-gnu',
++                        ])
+         elif target_arch == 'ia32':
+             configure_flags['Common'].extend([
+                 '--arch=i686',

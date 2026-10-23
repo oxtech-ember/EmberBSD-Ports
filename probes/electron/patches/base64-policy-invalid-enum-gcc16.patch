@@ -1,0 +1,13 @@
+diff --git a/base/base64.cc b/base/base64.cc
+index 6260074c6f..3b47f258fd 100644
+--- a/base/base64.cc
++++ b/base/base64.cc
+@@ -29,6 +29,8 @@ ModpDecodePolicy GetModpPolicy(Base64DecodePolicy policy) {
+     case Base64DecodePolicy::kForgiving:
+       return ModpDecodePolicy::kForgiving;
+   }
++  CHECK(false);
++  return ModpDecodePolicy::kStrict;
+ }
+ 
+ void Base64EncodeAppendModpB64(span<const uint8_t> input, std::string* output) {

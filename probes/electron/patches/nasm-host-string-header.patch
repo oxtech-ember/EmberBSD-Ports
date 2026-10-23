@@ -1,0 +1,23 @@
+--- a/third_party/nasm/BUILD.gn
++++ b/third_party/nasm/BUILD.gn
+@@ -64,11 +64,15 @@
+ 
+   defines = [ "HAVE_CONFIG_H" ]
+ 
+-  _string_h_lines =
+-        read_file("/usr/include/string.h", "list lines")
+-  _mempcpy = filter_include(_string_h_lines, [ "*mempcpy*" ])
+-  if (_mempcpy != []) {
+-    defines += [ "HAVE_MEMPCPY=1" ]
++  # NASM only probes glibc's mempcpy in a Linux host toolchain. macOS
++  # exposes headers through its SDK and has no /usr/include/string.h.
++  if (is_linux) {
++    _string_h_lines =
++          read_file("/usr/include/string.h", "list lines")
++    _mempcpy = filter_include(_string_h_lines, [ "*mempcpy*" ])
++    if (_mempcpy != []) {
++      defines += [ "HAVE_MEMPCPY=1" ]
++    }
+   }
+ 
+   if (is_clang) {

@@ -1,0 +1,21 @@
+diff --git a/base/feature.h b/base/feature.h
+index be01a04d8d..5d3080e08e 100644
+--- a/base/feature.h
++++ b/base/feature.h
+@@ -10,6 +10,7 @@
+ #include <string_view>
+ 
+ #include "base/base_export.h"
++#include "base/check.h"
+ #include "base/compiler_specific.h"
+ #include "base/containers/span.h"
+ #include "base/feature_buildflags.h"
+@@ -193,6 +194,8 @@ constexpr bool IsCountrySpecificFeatureState(FeatureState state) {
+     case FEATURE_ENABLED_FOR_COUNTRIES:
+       return true;
+   }
++  CHECK(false) << "Invalid FeatureState";
++  return false;
+ }
+ 
+ // The Feature struct is used to define the default state for a feature. There

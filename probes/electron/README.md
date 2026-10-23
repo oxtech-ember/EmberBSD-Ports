@@ -128,6 +128,19 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-host-node-inputs.pat
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-netbsd-main.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-mac-host-debug-fission.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/partition-alloc-netbsd-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/nasm-host-string-header.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ffmpeg-gcc16-netbsd-x64-cross-prefix.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ffmpeg-copy-config-netbsd.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base64-policy-invalid-enum-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/asan-invalid-access-gcc16-bounds.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gcc16-base-gsl-blob-alias.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/feature-state-invalid-enum-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-enum-noreturn-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-posix-clang-pragmas-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-mkdir-bool-condition-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-glib-watch-lifetime.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-string-placeholder-emplace-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-string-writeinto-bounded-copy-gcc16.patch
 ```
 
 The pkg-config patch keeps the effective `pkg/lib` value in the common cross
@@ -150,6 +163,23 @@ The resource-version patch restores the upstream Clang version selection.
 The Apple host tools use the pinned compiler below `clang_base_path`, so their
 headers and compiler runtime must use that compiler's resource version.
 The target C/C++ compiler remains GCC16.
+The NASM patch restricts the `/usr/include/string.h` probe to Linux host builds. macOS provides this header through its selected SDK. Linux host detection and target GCC16 compilation stay unchanged.
+The FFmpeg patch uses the configured cross prefix and requested target OS for x64 when `EMBER_FFMPEG_CROSS_PREFIX` is set. This prevents the host-arm64 path from passing Linux Clang `--target` flags to the NetBSD GCC toolchain. The default Linux build path stays unchanged.
+The FFmpeg config-copy patch adds NetBSD to the generated configuration export list. It keeps the existing per-architecture and per-branding copy behavior.
+The Base64 patch keeps invalid enum values fatal and gives GCC an explicit return
+after the exhaustive switch. The ASan patch keeps intentional overflow and
+underflow reads visible to runtime sanitizers while routing them through a
+noinline address reader. This prevents GCC from rejecting the diagnostic test.
+The GSL patch enables Clang-only lifetime annotations only on Clang. The Value
+alias names its enclosing namespace explicitly for GCC. The FeatureState patch
+keeps invalid values fatal and gives GCC an explicit constexpr return path.
+The enum patch makes invalid enum values fatal after exhaustive switches.
+The POSIX pragma patch selects Clang availability pragmas only on Clang.
+The mkdir patch uses a boolean fallback for its boolean condition.
+The Glib patch preserves controller lifetime checks during nested dispatch.
+The placeholder patch constructs offsets in place and preserves stable ordering.
+The WriteInto test patch preserves bounded copying and zero padding without
+intentional `strncpy` truncation. It keeps all size and content assertions.
 The parser patch removes three GCC-only diagnostic switches and `--param=`
 optimizer settings only from libclang's inputs. Target compiler arguments,
 `-Werror`, target triple, and sysroot remain unchanged.
@@ -165,7 +195,8 @@ metadata invariant. It keeps other libc signatures and allocator policy.
 
 GN and allocator checks are in the [GN regression guide](tests/README.md).
 Focused C++ checks are documented in the [libc++](tests/libcxx-gcc16.md) and
-[Perfetto](tests/perfetto-gcc16.md) regression guides.
+[Perfetto](tests/perfetto-gcc16.md) regression guides. See the
+[Chromium GCC16 checks](tests/chromium-gcc16.md) for base and allocator coverage.
 
 Apply the carried libc++ fix from its separate source root after its exact
 DEPS revision and Electron patches are present:
@@ -175,6 +206,8 @@ cd /absolute/chromium/src/third_party/libc++/src
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/libcxx-gcc16-maxsize-function-sbo.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/libcxx-gcc16-recursive-function.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/libcxx-gcc16-recursive-clone.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/libcxx-gcc16-pair-lazy-assign.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/libcxx-gcc16-allocation-object-limit.patch
 ```
 
 The fix bounds string allocation arithmetic and preserves the allocator-free
@@ -185,6 +218,11 @@ enabled. The recursive-function patch removes the GCC fallback `always_inline`
 from `std::function::operator()`. The clone patch preserves hidden visibility
 without forcing recursive `__clone()` inlining. Focused regressions do not
 establish a complete runtime build.
+
+The pair patch evaluates assignment constraints lazily. It avoids an unnecessary
+trait check on an incomplete second element when the first is not assignable.
+The allocation patch rejects byte counts above the implementation object-size
+limit before multiplication and allocation.
 
 The pinned Perfetto checkout has a separate GCC16 warning patch. Apply it from
 the Chromium source root after the NetBSD adaptations:

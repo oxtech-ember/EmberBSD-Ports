@@ -1,0 +1,47 @@
+diff --git a/base/compiler_specific.h b/base/compiler_specific.h
+index 0687e15317..e5bf709916 100644
+--- a/base/compiler_specific.h
++++ b/base/compiler_specific.h
+@@ -649,7 +649,7 @@ inline constexpr bool AnalyzerAssumeTrue(bool arg) {
+ //   // types annotated as `GSL_POINTER`.
+ //   struct GSL_OWNER S;
+ // ```
+-#if __has_cpp_attribute(gsl::Owner)
++#if defined(__clang__) && __has_cpp_attribute(gsl::Owner)
+ #define GSL_OWNER [[gsl::Owner]]
+ #else
+ #define GSL_OWNER
+diff --git a/base/types/expected.h b/base/types/expected.h
+index 540821a5b0..96b4d3f65c 100644
+--- a/base/types/expected.h
++++ b/base/types/expected.h
+@@ -12,6 +12,7 @@
+ #include <variant>
+ 
+ #include "base/check.h"
++#include "base/compiler_specific.h"
+ #include "base/strings/strcat.h"
+ #include "base/strings/to_string.h"
+ #include "base/types/expected_internal.h"  // IWYU pragma: export
+@@ -267,7 +268,7 @@ unexpected(E) -> unexpected<E>;
+ // [expected.expected], class template expected
+ // https://eel.is/c++draft/expected#expected
+ template <typename T, typename E>
+-class [[nodiscard, gsl::Owner]] expected final {
++class [[nodiscard]] GSL_OWNER expected final {
+   // Note: A partial specialization for void value types follows below.
+   static_assert(!std::is_void_v<T>, "Error: T must not be void");
+ 
+diff --git a/base/values.h b/base/values.h
+index 6b43dc0d21..79c2784cac 100644
+--- a/base/values.h
++++ b/base/values.h
+@@ -689,7 +689,7 @@ class BASE_EXPORT GSL_OWNER DictValue {
+ //       list.
+ class BASE_EXPORT GSL_OWNER Value {
+  public:
+-  using BlobStorage = BlobStorage;
++  using BlobStorage = ::base::BlobStorage;
+ 
+   enum class Type : unsigned char {
+     NONE = 0,

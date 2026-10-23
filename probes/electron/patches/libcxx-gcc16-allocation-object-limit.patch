@@ -1,0 +1,98 @@
+diff --git a/include/__memory/allocator.h b/include/__memory/allocator.h
+index 609b305..bb3d467 100644
+--- a/include/__memory/allocator.h
++++ b/include/__memory/allocator.h
+@@ -23,6 +23,7 @@
+ #include <__type_traits/is_void.h>
+ #include <__type_traits/is_volatile.h>
+ #include <__utility/forward.h>
++#include <limits>
+ 
+ #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+ #  pragma GCC system_header
+@@ -84,7 +85,8 @@ public:
+ 
+   [[__nodiscard__]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX20 _Tp* allocate(size_t __n) {
+     static_assert(sizeof(_Tp) >= 0, "cannot allocate memory for an incomplete type");
+-    if (__n > allocator_traits<allocator>::max_size(*this))
++    if (__n > allocator_traits<allocator>::max_size(*this) ||
++        __n > static_cast<size_t>((numeric_limits<ptrdiff_t>::max)()) / sizeof(_Tp))
+       std::__throw_bad_array_new_length();
+     if (__libcpp_is_constant_evaluated()) {
+       return static_cast<_Tp*>(::operator new(__n * sizeof(_Tp)));
+--- a/test/std/utilities/memory/default.allocator/allocator.members/allocate.size.pass.cpp
++++ b/test/std/utilities/memory/default.allocator/allocator.members/allocate.size.pass.cpp
+@@ -15,8 +15,10 @@
+ #include <memory>
+ #include <cassert>
+ #include <cstddef>
++#include <limits>
+ #include <new>
+ 
++#include "count_new.h"
+ #include "test_macros.h"
+ 
+ template <typename T>
+@@ -43,9 +45,30 @@
+     test_max<T> ((std::size_t) -1);                     // way too large
+ }
+ 
++// Object byte sizes above PTRDIFF_MAX are not supported, even when the
++// element count does not overflow size_t. Reject them before operator new.
++template <typename T>
++void test_object_size()
++{
++    const std::size_t max_object_count =
++        static_cast<std::size_t>(std::numeric_limits<std::ptrdiff_t>::max()) / sizeof(T);
++    volatile std::size_t just_too_large = max_object_count + 1;
++    volatile std::size_t largest_count = static_cast<std::size_t>(-1) / sizeof(T);
++    DisableAllocationGuard guard;
++    test_max<T>(just_too_large);
++    test_max<T>(largest_count);
++}
++
++struct TEST_ALIGNAS(64) OverAligned {
++    char data[64];
++};
++
+ int main(int, char**)
+ {
+     test<double>();
++    test_object_size<char>();
++    test_object_size<double>();
++    test_object_size<OverAligned>();
+ 
+   return 0;
+ }
+--- /dev/null
++++ b/test/libcxx/memory/allocator_max_macro.compile.pass.cpp
+@@ -0,0 +1,29 @@
++//===----------------------------------------------------------------------===//
++//
++// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
++// See https://llvm.org/LICENSE.txt for license information.
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++//
++//===----------------------------------------------------------------------===//
++
++// UNSUPPORTED: c++03
++
++// The allocator header must be parsed while a caller's max macro is active.
++// <limits> preserves the macro. It must not include the allocator header first.
++#include <limits>
++
++#ifdef _LIBCPP___MEMORY_ALLOCATOR_H
++#  error "allocator.h must be included for the first time below"
++#endif
++
++#define max(a, b) allocator_must_preserve_max_macro
++#include <__memory/allocator.h>
++
++#ifndef max
++#  error "allocator.h must preserve the caller's max macro"
++#endif
++#undef max
++
++int* allocate_one() {
++  return std::allocator<int>().allocate(1);
++}

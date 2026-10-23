@@ -1,0 +1,13 @@
+diff --git a/base/files/file_util_posix.cc b/base/files/file_util_posix.cc
+index af25c5feef..251dfcb72d 100644
+--- a/base/files/file_util_posix.cc
++++ b/base/files/file_util_posix.cc
+@@ -1016,7 +1016,7 @@ bool CreateDirectoryAndGetError(const FilePath& full_path, File::Error* error) {
+ #endif  // BUILDFLAG(IS_CHROMEOS)
+ 
+     if ((mkdir(subpath.value().c_str(), mode) == -1) &&
+-        ((full_path != subpath) ? (errno != ENOENT) : (-1))) {
++        ((full_path != subpath) ? (errno != ENOENT) : true)) {
+       int saved_errno = errno;
+       if (error)
+         *error = File::OSErrorToFileError(saved_errno);
