@@ -97,14 +97,12 @@ fix-libtool:
 		${MV} -f $$f.new $$f;					\
 	done
 
-post-build: fix-libtool
 # Refuse a nominal provider which silently omits either real Fortran tag.
-post-build:
+post-build: fix-libtool
 	${RUN}${GREP} -q '^# ### BEGIN LIBTOOL TAG CONFIG: FC$$' ${WRKSRC}/libtool
 	${RUN}${GREP} -q '^# ### BEGIN LIBTOOL TAG CONFIG: F77$$' ${WRKSRC}/libtool
 
-# The host dispatcher must use the Libtool configured for the target.
-post-build:
+	# The host dispatcher must use the Libtool configured for the target.
 	@${SED}	-e "s|@PREFIX@|"${GNU_CONFIGURE_PREFIX:Q}"|g"				\
 		-e "s|@SH@|"${SH:Q}"|g"					\
 		${FILESDIR}/shlibtool-fortran.in > ${WRKSRC}/shlibtool-fortran

@@ -19,7 +19,23 @@ already contain the normally installed Fortran runtime and development roles.
 A missing provider must fail before dependency auto-installation.
 
 Build `cross/cross-libtool-fortran` with the same fake-cross target metadata
-as `cross-libtool-base`. Inspect the actual generated FC and F77 tag blocks.
+as `cross-libtool-base`. Pass its `TARGET_*` inputs as bmake command arguments.
+The first `bsd.prefs.mk` include derives target values before it loads `mk.conf`.
+Keep `USE_CROSS_COMPILE=no` and verify `TOOLS_USE_CROSS_COMPILE=yes`.
+Do not set the derived `TARGET_MACHINE_GNU_ARCH` or GNU platform by hand.
+For an amd64 NetBSD target, use these arguments with the common configuration:
+
+```sh
+bmake USE_CROSS_COMPILE=no \
+    TARGET_MACHINE_ARCH=x86_64 TARGET_OPSYS=NetBSD \
+    TARGET_OS_VERSION=11.0 TARGET_OPSYS_VERSION=110000 \
+    TARGET_LOWER_OPSYS=netbsd TARGET_LOWER_OPSYS_VERSUFFIX= \
+    TARGET_LOWER_OS_VARIANT= TARGET_OS_VARIANT= \
+    TARGET_LOWER_VARIANT_VERSION= TARGET_LOWER_VENDOR= TARGET_OBJECT_FMT=ELF \
+    package
+```
+
+Inspect the actual generated FC and F77 tag blocks.
 The host package owns only the two distinct Fortran dispatcher scripts.
 It does not own target runtime libraries or the C/C++ Libtool payload.
 Do not suppress a failed native Fortran dependency by installing an old GCC.
@@ -47,3 +63,17 @@ FFTW consumers. These real tests remain separate from the synthetic controls.
 Run Cppcheck and path analysis with actual target flags for the C consumer and
 selected runtime units. Use a supported memory checker for runtime consumers.
 No completed link, runtime, FFTW, Valgrind or full KiCad result is claimed here.
+
+The hook regression runs the actual `fix-libtool` and `post-build` recipe text:
+
+```sh
+python3 -B profiles/development-toolchain/cross/tests/libtool-fortran-post-build.py \
+    --sdk-source /absolute/EmberBSD-SDK --pkgsrc /absolute/prepared-pkgsrc \
+    --recipe /absolute/EmberBSD-Ports/pkgsrc/cross/cross-libtool-fortran/Makefile \
+    --bmake /absolute/native-prefix/bin/bmake --lock-root /absolute/common-objects \
+    /absolute/new-hook-check
+```
+
+Use `--baseline-recipe /absolute/original-Makefile` to retain the original
+duplicate-hook witness. The check requires both tag guards and the dispatcher.
+It checks text fixtures. It does not configure Libtool or qualify target code.
