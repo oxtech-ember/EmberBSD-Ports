@@ -1,0 +1,100 @@
+# $NetBSD: Makefile,v 1.62 2026/09/02 19:04:19 wiz Exp $
+
+DISTNAME=	polkit-127
+PKGREVISION=	4
+CATEGORIES=	security
+MASTER_SITES=	${MASTER_SITE_GITHUB:=polkit-org/}
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://github.com/polkit-org/polkit
+COMMENT=	Authorization Manager
+LICENSE=	gnu-lgpl-v2
+
+TOOL_DEPENDS+=	docbook-xsl-[0-9]*:../../textproc/docbook-xsl
+TOOL_DEPENDS+=	gettext-m4-[0-9]*:../../devel/gettext-m4
+TOOL_DEPENDS+=	gettext-tools-[0-9]*:../../devel/gettext-tools
+TOOL_DEPENDS+=	glib2-introspection-[0-9]*:../../devel/glib2-introspection
+TOOL_DEPENDS+=	libxslt-[0-9]*:../../textproc/libxslt
+
+NOT_PAX_MPROTECT_SAFE=	lib/polkit-1/polkitd
+
+USE_CXX_FEATURES=	c++17
+USE_LANGUAGES=		c c++
+USE_TOOLS+=		msgfmt msgmerge pkg-config perl xgettext
+
+MESON_ARGS+=	-Dman=true
+MESON_ARGS+=	-Dpam_prefix=${PKG_SYSCONFDIR}/pam.d
+MESON_ARGS+=	-Dsession_tracking=ConsoleKit
+
+PKGCONFIG_OVERRIDE+=	data/polkit-gobject-1.pc.in
+PKGCONFIG_OVERRIDE+=	data/polkit-agent-1.pc.in
+
+BUILDLINK_TRANSFORM.SunOS+=	rm:-Wl,--as-needed
+CPPFLAGS.SunOS+=		-D_POSIX_PTHREAD_SEMANTICS -D__EXTENSIONS__
+LDFLAGS.SunOS+=			-lsocket
+
+.include "../../mk/bsd.prefs.mk"
+
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# Native generators use host metadata; introspection queries execute on the target.
+EMBERBSD_GI_MESON_OPTIONS= no
+.include "../../devel/gobject-introspection/cross.mk"
+MESON_BINARIES+= glib-mkenums glib-genmarshal gdbus-codegen g-ir-scanner g-ir-compiler
+MESON_BINARY.glib-mkenums= ${TOOLBASE}/bin/glib-mkenums
+MESON_BINARY.glib-genmarshal= ${TOOLBASE}/bin/glib-genmarshal
+MESON_BINARY.gdbus-codegen= ${TOOLBASE}/bin/gdbus-codegen
+MESON_BINARY.g-ir-scanner= ${TOOLBASE}/bin/g-ir-scanner
+MESON_BINARY.g-ir-compiler= ${TOOLBASE}/bin/g-ir-compiler
+MESON_CROSS_VARS+= emberbsd_gi_cross emberbsd_gi_ldd_wrapper
+MESON_CROSS.emberbsd_gi_cross= true
+MESON_CROSS.emberbsd_gi_ldd_wrapper= '${EMBERBSD_GI_FILESDIR}/elf-needed.sh'
+.endif
+
+POLKITD_USER?=			polkitd
+POLKITD_GROUP?=			polkitd
+PKG_GROUPS+=			${POLKITD_GROUP}
+PKG_USERS+=			${POLKITD_USER}:${POLKITD_GROUP}
+PKG_GECOS.${POLKITD_USER}=	Polkit Daemon User
+PKG_HOME.${POLKITD_USER}=	${VARBASE}
+PKG_GROUPS_VARS+=		POLKITD_GROUP
+PKG_USERS_VARS+=		POLKITD_USER
+
+BUILD_DEFS+=		VARBASE
+
+REPLACE_PERL+=		src/polkitbackend/toarray.pl
+
+INSTALLATION_DIRS+=	share/examples/polkit/polkit-1/rules.d
+
+OWN_DIRS_PERMS+=	${PKG_SYSCONFDIR}/polkit-1/rules.d \
+			${POLKITD_USER} ${POLKITD_GROUP} 700
+OWN_DIRS_PERMS+=	${PREFIX}/share/polkit-1/rules.d \
+			${POLKITD_USER} ${POLKITD_GROUP} 700
+MAKE_DIRS+=		${PKG_SYSCONFDIR}/dbus-1/system.d
+SPECIAL_PERMS+=		lib/polkit-1/polkit-agent-helper-1 ${SETUID_ROOT_PERMS}
+SPECIAL_PERMS+=		bin/pkexec ${SETUID_ROOT_PERMS}
+
+#CONF_FILES+=	${PREFIX}/share/examples/polkit/polkit-1/rules.d/50-default.rules \
+#		${PKG_SYSCONFDIR}/polkit-1/rules.d/50-default.rules
+
+.include "options.mk"
+
+SUBST_CLASSES+=		paths
+SUBST_STAGE.paths=	pre-configure
+SUBST_FILES.paths+=	docs/man/pkexec.xml
+SUBST_FILES.paths+=	src/examples/org.freedesktop.policykit.examples.pkexec.policy.in
+SUBST_SED.paths+=	-e 's,/usr/bin/,${PREFIX}/bin/,g'
+
+#post-install:
+#	${MV} ${DESTDIR}${PKG_SYSCONFDIR}/polkit-1/rules.d/50-default.rules \
+#		${DESTDIR}${PREFIX}/share/examples/polkit/polkit-1/rules.d/50-default.rules
+
+.include "../../devel/meson/build.mk"
+.include "../../lang/libduktape/buildlink3.mk"
+.include "../../devel/gettext-lib/buildlink3.mk"
+.include "../../devel/gettext-tools/msgfmt-desktop.mk"
+BUILDLINK_API_DEPENDS.glib2+=	glib2>=2.32
+.include "../../devel/glib2/buildlink3.mk"
+BUILDLINK_DEPMETHOD.gobject-introspection+=	build
+.include "../../devel/gobject-introspection/buildlink3.mk"
+.include "../../textproc/expat/buildlink3.mk"
+.include "../../mk/bsd.pkg.mk"

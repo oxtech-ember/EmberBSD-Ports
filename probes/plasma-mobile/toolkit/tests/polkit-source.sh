@@ -10,14 +10,12 @@ prepared=$(CDPATH= cd -- "$2" && pwd)
 mkdir "$3"
 work=$(CDPATH= cd -- "$3" && pwd)
 mkdir "$work/pkgsrc" "$work/source"
-git -C "$root/upstream/pkgsrc" archive --format=tar HEAD security/polkit security/polkit-qt6 > "$work/recipes.tar"
-tar -xf "$work/recipes.tar" -C "$work/pkgsrc"
-patch -f -N -F 0 -p1 -d "$work/pkgsrc" < "$root/probes/plasma-mobile/toolkit/current-polkit.patch"
-for file in Makefile distinfo patches/patch-meson-cross.build; do
-    cmp "$work/pkgsrc/security/polkit/$file" "$prepared/security/polkit/$file"
-done
-for file in Makefile distinfo buildlink3.mk PLIST; do
-    cmp "$work/pkgsrc/security/polkit-qt6/$file" "$prepared/security/polkit-qt6/$file"
+# The polkit recipes are canonical pkgsrc/ recipes.
+mkdir "$work/pkgsrc/security"
+for recipe in security/polkit security/polkit-qt6; do
+    [ "$(grep -cxF "$recipe" "$root/pkgsrc/replaces")" = 1 ]
+    cp -R "$root/pkgsrc/$recipe" "$work/pkgsrc/$recipe"
+    diff -r "$work/pkgsrc/$recipe" "$prepared/$recipe"
 done
 verifier=$root/upstream/pkgsrc/mk/checksum/checksum.awk
 export DIGEST
@@ -28,7 +26,6 @@ for patch_name in $(awk '/^SHA1 \(patch-/ { gsub(/[()]/,"",$2); print $2 }' "$wo
     awk -f "$verifier" -- -p "$work/pkgsrc/security/polkit/distinfo" "$work/pkgsrc/security/polkit/patches/$patch_name"
     patch -f -N -F 0 -p0 -d "$work/source" < "$work/pkgsrc/security/polkit/patches/$patch_name"
 done
-if patch -f -N -F 0 -p1 -d "$work/pkgsrc" < "$root/probes/plasma-mobile/toolkit/current-polkit.patch" > "$work/repeated.log" 2>&1; then exit 1; fi
 recipe=$prepared/security/polkit
 "$BMAKE" -C "$recipe" -V '${MESON_BINARIES}' > "$work/cross-tools.txt"
 for tool in glib-mkenums glib-genmarshal gdbus-codegen g-ir-scanner g-ir-compiler; do
@@ -39,5 +36,4 @@ done
 [ -z "$("$BMAKE" -C "$recipe" USE_CROSS_COMPILE=no -V '${MESON_BINARIES}')" ]
 "$BMAKE" -C "$recipe" -V '${MESON_ARGS}' > "$work/options.txt"
 ! grep -Eq 'introspection=(false|disabled)|libs-only=true' "$work/options.txt"
-rm "$work/recipes.tar"
-echo 'PASS: full polkit source patches, native generators, unchanged native selection and retained introspection/daemon'
+echo 'PASS: exact canonical recipes, full polkit source patches, native generators, unchanged native selection and retained introspection/daemon'

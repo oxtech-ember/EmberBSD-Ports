@@ -49,7 +49,7 @@ locations. Target libraries, headers, customization data and translations
 remain in the common sysroot. `RELOCATABLE_DOCBOOK_FILES` retains target paths
 in installed data instead of recording the build host's data directories.
 
-The [DocBook recipe correction](../docbook-cross.patch) retains the installed
+The canonical [DocBook XSL recipe](../../../../pkgsrc/textproc/docbook-xsl/) retains the installed
 `pdf2index` Perl interpreter and its target package dependency. It does not
 execute target Perl during packaging. Native builds retain `perl:run`.
 DocBook XSL 1.79.2 remains the latest stable release in the

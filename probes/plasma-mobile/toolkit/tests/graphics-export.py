@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
-"""Check graphics patch composition and native/cross metadata without a build."""
+"""Check the graphics recipe export and native/cross metadata without a build."""
 import sys
 sys.dont_write_bytecode = True
 import argparse
@@ -99,7 +99,7 @@ def copy_canonical_recipe(ports, fixture, recipe, hash_file):
     owner = ports / "pkgsrc" / recipe
     require((owner / "Makefile").is_file(), "Missing canonical recipe: " + recipe)
     names = tuple(sorted(str(p.relative_to(owner)) for p in owner.rglob("*") if p.is_file()))
-    require({"Makefile", "PLIST", "distinfo", "buildlink3.mk", "options.mk"} <= set(names),
+    require({"Makefile", "PLIST", "distinfo"} <= set(names),
             "Incomplete canonical recipe: " + recipe)
     shutil.rmtree(fixture / recipe)
     shutil.copytree(owner, fixture / recipe)
@@ -144,30 +144,20 @@ def main():
         archive.write_bytes(run(["git", "-C", str(ports / "upstream/pkgsrc"), "archive", "HEAD",
                                  *RECIPES, "www/curl"]))
         run(["tar", "-xf", str(archive), "-C", str(fixture)])
-        receipt["canonical_recipes"]["sysutils/libnotify"] = copy_canonical_recipe(
-            ports, fixture, "sysutils/libnotify", hash_file)
-        for relative in ("profiles/common-build-tools/patches/pkgsrc-curl-security.patch",
-                         "profiles/common-graphics/cross/gsettings-desktop-schemas-cross-gir.patch",
-                         "profiles/common-graphics/cross/libproxy-cross-disable-introspection.patch",
-                         "probes/plasma-mobile/toolkit/libproxy-cross.patch",
-                         "probes/plasma-mobile/toolkit/current-network-deps.patch"):
+        for recipe in RECIPES:
+            receipt["canonical_recipes"][recipe] = copy_canonical_recipe(ports, fixture, recipe, hash_file)
+        for relative in ("profiles/common-build-tools/patches/pkgsrc-curl-security.patch",):
             patch = ports / relative
             receipt["patches"][relative] = hash_file(patch)
             run(["patch", "-f", "-N", "-F", "0", "-p1", "-d", str(fixture)], input=patch.read_bytes())
         for recipe in RECIPES:
-            names = ("Makefile", "PLIST")
-            if recipe == "sysutils/libnotify":
-                names = tuple(receipt["canonical_recipes"][recipe])
-                prepared_names = tuple(sorted(str(p.relative_to(prepared / recipe))
-                                              for p in (prepared / recipe).rglob("*") if p.is_file()))
-                require(prepared_names == names, "Prepared canonical recipe inventory differs: " + recipe)
-            if recipe == "www/libproxy":
-                names = tuple(sorted(str(p.relative_to(fixture / recipe))
-                                     for p in (fixture / recipe).rglob("*")
-                                     if p.is_file() and not p.name.endswith((".orig", ".rej"))))
+            names = tuple(receipt["canonical_recipes"][recipe])
+            prepared_names = tuple(sorted(str(p.relative_to(prepared / recipe))
+                                          for p in (prepared / recipe).rglob("*") if p.is_file()))
+            require(prepared_names == names, "Prepared canonical recipe inventory differs: " + recipe)
             for name in names:
                 require((fixture / recipe / name).read_bytes() == (prepared / recipe / name).read_bytes(),
-                        "Prepared recipe differs from patch composition: " + recipe + "/" + name)
+                        "Prepared recipe differs from the canonical recipe: " + recipe + "/" + name)
             modes = (("yes", None), ("no", None))
             if recipe == "www/libproxy":
                 modes += (("yes", "-doc -vala"), ("no", "-doc -vala"))

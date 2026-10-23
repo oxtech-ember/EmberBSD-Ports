@@ -282,3 +282,15 @@ cad/kicad-symbols
 cad/kicad-footprints
 cad/kicad-templates
 cad/kicad-packages3d
+
+# Plasma toolkit dependencies with cross build and version changes.
+fonts/noto-cjk-fonts
+fonts/noto-fonts
+security/gnupg2
+security/libassuan2
+security/libgpg-error
+security/polkit
+security/polkit-qt6
+sysutils/gsettings-desktop-schemas
+textproc/docbook-xsl
+www/libproxy

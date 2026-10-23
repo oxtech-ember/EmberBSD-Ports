@@ -12,11 +12,12 @@ work=$(CDPATH= cd -- "$4" && pwd)
 : "${BMAKE:?Set the native bmake executable}"
 : "${DIGEST:?Set the native digest executable}"
 mkdir "$work/pkgsrc" "$work/source"
-git -C "$root/upstream/pkgsrc" archive --format=tar HEAD security/gnupg2 security/libassuan2 security/libgpg-error > "$work/recipes.tar"
-tar -xf "$work/recipes.tar" -C "$work/pkgsrc"
-patch -f -N -F 0 -p1 -d "$work/pkgsrc" < "$root/probes/plasma-mobile/toolkit/current-crypto-deps.patch"
-for file in security/gnupg2/Makefile security/gnupg2/distinfo security/gnupg2/patches/patch-g13_Makefile.in security/libassuan2/Makefile security/libgpg-error/buildlink3.mk; do
-    cmp "$work/pkgsrc/$file" "$prepared/$file"
+# The GPG recipes are canonical pkgsrc/ recipes.
+mkdir "$work/pkgsrc/security"
+for recipe in security/gnupg2 security/libassuan2 security/libgpg-error; do
+    [ "$(grep -cxF "$recipe" "$root/pkgsrc/replaces")" = 1 ]
+    cp -R "$root/pkgsrc/$recipe" "$work/pkgsrc/$recipe"
+    diff -r "$work/pkgsrc/$recipe" "$prepared/$recipe"
 done
 export DIGEST
 verifier=$root/upstream/pkgsrc/mk/checksum/checksum.awk
@@ -43,6 +44,4 @@ grep -q -- "-I$prefix/include" "$work/target-metadata.txt"
 arch=$("$BMAKE" -C "$prepared/security/libassuan2" "MAKECONF=$conf" -V '${MACHINE_GNU_ARCH}')
 [ -n "$arch" ]
 grep -Eq "^$arch-.*netbsd" "$work/target-metadata.txt"
-if patch -f -N -F 0 -p1 -d "$work/pkgsrc" < "$root/probes/plasma-mobile/toolkit/current-crypto-deps.patch" > "$work/repeated.log" 2>&1; then exit 1; fi
-rm "$work/recipes.tar"
-echo 'PASS: current GnuPG archive, zero-fuzz source patch, exact export, target GPG metadata and unchanged native selection'
+echo 'PASS: current GnuPG archive, zero-fuzz source patch, exact canonical recipes, target GPG metadata and unchanged native selection'

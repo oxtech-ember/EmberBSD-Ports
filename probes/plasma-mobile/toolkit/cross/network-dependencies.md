@@ -6,11 +6,12 @@ executables are cross-compiled on macOS with GCC 16.2. The CM5 only runs
 those executables. This acceptance does not establish a Qt or Plasma session.
 
 The canonical [libidn2 recipe](../../../../pkgsrc/devel/libidn2/) selects 2.3.8.
-The [network delta](../current-network-deps.patch) records the original GNOME
-archive and SHA256. The [libproxy delta](../libproxy-cross.patch)
-retains the pinned upstream release and records its original archive and hash.
-Both use pkgsrc `fff4deb639a1a640476203c80f752fb77b6cb14b`.
-`pkgsrc/export.conf` applies each toolkit delta after its common graphics delta.
+The canonical [GSettings schema recipe](../../../../pkgsrc/sysutils/gsettings-desktop-schemas/)
+records the original GNOME archive and SHA256. The canonical
+[libproxy recipe](../../../../pkgsrc/www/libproxy/) retains the pinned upstream
+release and records its original archive and hash. Both started from pkgsrc
+`fff4deb639a1a640476203c80f752fb77b6cb14b` and contain the common graphics
+cross changes.
 Changes are AI-assisted EmberBSD work, not accepted upstream patches.
 
 ## Cross-build repairs
@@ -25,10 +26,8 @@ replacement source safely.
 Libproxy and GSettings use the common native introspection generators and
 real target GType query runner. The complete toolkit export keeps both
 `GDesktopEnums-3.0.gir` and `GDesktopEnums-3.0.typelib` in native and cross
-packages. Apply its schema delta after the common graphics delta. The common
-runtime profile alone does not require these optional bindings.
-The toolkit libproxy delta also restores the complete profile after the
-common runtime delta. It keeps GIR and typelib data in native and cross builds.
+packages. The libproxy recipe also keeps GIR and typelib data in native and
+cross builds.
 
 The temporary libproxy query links and loads
 both in-tree libraries, including its private backend. This fixes the failed
@@ -66,7 +65,7 @@ sh probes/plasma-mobile/toolkit/tests/libproxy-cross-consumer.sh \
     /absolute/new-libproxy-consumer
 ```
 
-The export check applies the common and toolkit patches with zero fuzz.
+The export check compares the canonical recipes with the prepared export.
 It checks native and cross package metadata without building a package.
 It reports missing GI query inputs separately. It does not supply a target
 runner or establish target execution. The check also covers libproxy with

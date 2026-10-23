@@ -1,0 +1,30 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Use native GIR generators during cross builds.
+Runtime queries reuse the common verified EmberBSD target runner.
+
+--- headers/meson.build.orig
++++ headers/meson.build
+@@ -30,14 +30,19 @@
+                               gir_sources,
+                               install: false)
+ 
++  gir_args = ['--header-only']
++  if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++    meson.override_find_program('g-ir-scanner', find_program('g-ir-scanner', native: true))
++    meson.override_find_program('g-ir-compiler', find_program('g-ir-compiler', native: true))
++    gir_args += ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++  endif
++
+   gnome.generate_gir(noinst_lib,
+     sources: headers,
+     namespace: 'GDesktopEnums',
+     identifier_prefix: 'GDesktop',
+     nsversion : '3.0',
+     install: true,
+-    extra_args: [
+-      '--header-only',
+-    ]
++    extra_args: gir_args
+   )
+ endif

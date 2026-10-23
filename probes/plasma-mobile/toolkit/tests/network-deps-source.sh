@@ -1,30 +1,24 @@
 #!/bin/sh
 # SPDX-License-Identifier: BSD-2-Clause
-# Origin: EmberBSD (AI-assisted). Reproduce the security and network recipe deltas.
+# Origin: EmberBSD (AI-assisted). Check the security and network recipes.
 set -eu
 [ "$#" = 3 ] || { echo "Usage: $0 DISTFILES PREPARED_PKGSRC NEW_WORK" >&2; exit 2; }
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
-toolkit=$root/probes/plasma-mobile/toolkit
 distfiles=$(CDPATH= cd -- "$1" && pwd)
 prepared=$(CDPATH= cd -- "$2" && pwd)
 mkdir "$3"
 work=$(CDPATH= cd -- "$3" && pwd)
 mkdir "$work/pkgsrc" "$work/source"
-git -C "$root/upstream/pkgsrc" archive --format=tar HEAD \
-    sysutils/gsettings-desktop-schemas www/libproxy www/curl > "$work/recipes.tar"
+git -C "$root/upstream/pkgsrc" archive --format=tar HEAD www/curl > "$work/recipes.tar"
 tar -xf "$work/recipes.tar" -C "$work/pkgsrc"
-# The current libidn2 recipe is a canonical pkgsrc/ recipe.
-mkdir "$work/pkgsrc/devel"
-cp -R "$root/pkgsrc/devel/libidn2" "$work/pkgsrc/devel/libidn2"
+# The libidn2, GSettings schema and libproxy recipes are canonical pkgsrc/ recipes.
+mkdir "$work/pkgsrc/devel" "$work/pkgsrc/sysutils"
+for recipe in devel/libidn2 sysutils/gsettings-desktop-schemas www/libproxy; do
+    [ "$(grep -cxF "$recipe" "$root/pkgsrc/replaces")" = 1 ]
+    cp -R "$root/pkgsrc/$recipe" "$work/pkgsrc/$recipe"
+done
 patch -f -N -F 0 -p1 -d "$work/pkgsrc" < \
     "$root/profiles/common-build-tools/patches/pkgsrc-curl-security.patch"
-patch -f -N -F 0 -p1 -d "$work/pkgsrc" < \
-    "$root/profiles/common-graphics/cross/gsettings-desktop-schemas-cross-gir.patch"
-patch -f -N -d "$work/pkgsrc" -p1 -F 0 < \
-    "$root/profiles/common-graphics/cross/libproxy-cross-disable-introspection.patch"
-for delta in libproxy-cross current-network-deps; do
-    patch -f -N -F 0 -p1 -d "$work/pkgsrc" < "$toolkit/$delta.patch"
-done
 # The curl cross Makefile delta is owned by the common profile.
 cross_patch=$root/profiles/common-build-tools/patches/pkgsrc-cross-packages.patch
 awk '/^--- a\/www\/curl\/Makefile$/ { copying=1 } \
@@ -62,4 +56,4 @@ if patch -f -N -F 0 -p0 -d "$work/source/libproxy" \
     < "$work/pkgsrc/www/libproxy/patches/patch-src_libproxy_meson.build-cross" \
     > "$work/repeated.log" 2>&1; then exit 1; fi
 rm "$work/recipes.tar"
-echo 'PASS: curl security and network recipe deltas, exact prepared files, archive/patch hashes and zero-fuzz source patches'
+echo 'PASS: curl security delta, canonical network recipes, exact prepared files, archive/patch hashes and zero-fuzz source patches'

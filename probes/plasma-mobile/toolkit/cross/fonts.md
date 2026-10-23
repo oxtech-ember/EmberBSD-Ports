@@ -5,7 +5,8 @@ The common desktop uses Noto's `2026.10.01` monthly release and the Noto CJK
 The latter provides the current Sans, Mono and Serif variable collections.
 They replace FrameworkIntegration's obsolete `noto-ttf-20230927` aggregate,
 retaining CJK coverage. Archive URLs, SHA256 and recipe checksums live in
-[the source delta](../current-fonts.patch). Upstream licenses are preserved.
+the canonical [Noto](../../../../pkgsrc/fonts/noto-fonts/) and
+[Noto CJK](../../../../pkgsrc/fonts/noto-cjk-fonts/) recipes. Upstream licenses are preserved.
 
 Noto's package includes all 2,171 hinted TTF files from that monthly archive;
 the CJK package adds three collections. The explicit PLIST is derived from

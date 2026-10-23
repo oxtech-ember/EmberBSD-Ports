@@ -8,13 +8,9 @@ prepared=$1 package=$2
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 mkdir "$3"
 work=$(CDPATH= cd -- "$3" && pwd)
-mkdir "$work/pkgsrc"
-git -C "$root/upstream/pkgsrc" archive HEAD textproc/docbook-xsl > "$work/recipe.tar"
-tar -xf "$work/recipe.tar" -C "$work/pkgsrc"
-patch -f -N -F 0 -p1 -d "$work/pkgsrc" < "$root/probes/plasma-mobile/toolkit/docbook-cross.patch" > "$work/patch.log"
-cmp "$work/pkgsrc/textproc/docbook-xsl/Makefile" "$prepared/textproc/docbook-xsl/Makefile"
-cmp "$work/pkgsrc/textproc/docbook-xsl/buildlink3.mk" "$prepared/textproc/docbook-xsl/buildlink3.mk"
-if patch -f -N -F 0 -p1 -d "$work/pkgsrc" < "$root/probes/plasma-mobile/toolkit/docbook-cross.patch" > "$work/repeated.log" 2>&1; then exit 1; fi
+# The DocBook XSL recipe is a canonical pkgsrc/ recipe.
+[ "$(grep -cxF textproc/docbook-xsl "$root/pkgsrc/replaces")" = 1 ]
+diff -r "$root/pkgsrc/textproc/docbook-xsl" "$prepared/textproc/docbook-xsl"
 recipe=$prepared/textproc/docbook-xsl
 "$BMAKE" -C "$recipe" -V '${PKG_FAIL_REASON}' > "$work/reasons.txt"
 [ -z "$(cat "$work/reasons.txt")" ]
@@ -27,4 +23,4 @@ head -1 "$work/pdf2index" | grep -E '^#!/usr/pkg/bin/perl([[:space:]]|$)'
 tar -xOf "$package" +CONTENTS > "$work/contents.txt"
 grep -q '@pkgdep perl>=5.44.0' "$work/contents.txt"
 shasum -a 256 "$package" > "$work/package.sha256"
-echo 'PASS: zero-fuzz recipe, repeated patch rejection, native Perl preserved, target dependency and installed shebang'
+echo 'PASS: exact canonical recipe, native Perl preserved, target dependency and installed shebang'

@@ -1,0 +1,36 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Reuse the common target GType query path.
+Native generators inspect cross-built libraries on the real target.
+Link and load both in-tree libraries for the temporary GIR executable.
+
+--- src/libproxy/meson.build.orig
++++ src/libproxy/meson.build
+@@ -85,6 +85,12 @@
+     '--quiet',
+   ]
+ 
++  if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++    meson.override_find_program('g-ir-scanner', find_program('g-ir-scanner', native: true))
++    meson.override_find_program('g-ir-compiler', find_program('g-ir-compiler', native: true))
++    libproxy_gir_extra_args += ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++  endif
++
+   libproxy_gir = gnome.generate_gir(
+     libproxy,
+     sources: libproxy_headers + libproxy_sources,
+@@ -93,12 +99,13 @@
+     export_packages: package_api_name,
+     symbol_prefix: 'px',
+     identifier_prefix: 'px',
+-    link_with: libproxy,
++    link_with: [libproxy, px_backend],
+     includes: [ 'Gio-2.0' ],
+     install: true,
+     install_dir_gir: girdir,
+     install_dir_typelib: typelibdir,
+     env: {
++      'LD_LIBRARY_PATH': meson.project_build_root() + '/src/libproxy:' + meson.project_build_root() + '/src/backend',
+       'DYLD_LIBRARY_PATH': meson.project_build_root() + '/src/libproxy'
+     },
+     extra_args: libproxy_gir_extra_args,

@@ -1,0 +1,48 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Preserve full GIR/typelib cross builds.
+Use the shared target-query launcher and inspect target ELF dependencies.
+Link the agent query to both in-tree libraries.
+
+--- meson.build.orig
++++ meson.build
+@@ -41,6 +41,14 @@
+ libversion = '@0@.@1@.@2@'.format(soversion, current, revision)
+ 
+ gnome = import('gnome')
++
++# Native GI tools execute only the temporary GType query on the target.
++emberbsd_gir_args = []
++emberbsd_gir_env = environment()
++if meson.is_cross_build() and meson.get_external_property('emberbsd_gi_cross', false)
++  emberbsd_gir_args += ['--use-ldd-wrapper=' + meson.get_external_property('emberbsd_gi_ldd_wrapper')]
++  emberbsd_gir_env.set('LD_LIBRARY_PATH', meson.project_build_root() / 'src/polkit' + ':' + meson.project_build_root() / 'src/polkitagent')
++endif
+ i18n = import('i18n')
+ pkg = import('pkgconfig')
+ 
+--- src/polkit/meson.build.orig
++++ src/polkit/meson.build
+@@ -124,7 +124,8 @@
+   libpolkit_gobject_gir = gnome.generate_gir(
+     libpolkit_gobject,
+     sources: sources + headers,
+-    extra_args: c_flags,
++    extra_args: [c_flags] + emberbsd_gir_args,
++    env: emberbsd_gir_env,
+     nsversion: pk_gir_version,
+     namespace: pk_gir_ns,
+     export_packages: name,
+--- src/polkitagent/meson.build.orig
++++ src/polkitagent/meson.build
+@@ -91,7 +91,9 @@
+     libpolkit_agent,
+     sources: sources + headers,
+     includes: incs,
+-    extra_args: c_flags,
++    link_with: [libpolkit_agent, libpolkit_gobject],
++    extra_args: c_flags + emberbsd_gir_args,
++    env: emberbsd_gir_env,
+     nsversion: pk_gir_version,
+     namespace: 'PolkitAgent',
+     export_packages: name,

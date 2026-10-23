@@ -1,0 +1,18 @@
+$NetBSD$
+
+Link the g13 tests with libintl. libcommon calls gettext, and the common
+tests already link $(LIBINTL). GNU ld does not add the indirect libintl
+dependency of libgpg-error to the link.
+Origin: EmberBSD (AI-assisted); not yet submitted upstream.
+
+--- g13/Makefile.in.orig
++++ g13/Makefile.in
+@@ -528,7 +528,7 @@
+ 
+ module_tests = t-g13tuple
+ t_common_ldadd = $(libcommon) $(LIBGCRYPT_LIBS) \
+-	         $(LIBASSUAN_LIBS) $(GPG_ERROR_LIBS) $(LIBICONV)
++	         $(LIBASSUAN_LIBS) $(GPG_ERROR_LIBS) $(LIBINTL) $(LIBICONV)
+ 
+ t_g13tuple_SOURCES = t-g13tuple.c g13tuple.c
+ t_g13tuple_LDADD = $(t_common_ldadd)

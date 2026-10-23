@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.3 2024/06/07 19:57:36 ryoon Exp $
+
+BLAKE2s (notofonts.github.io-noto-monthly-release-2026.10.01.tar.gz) = 6aa45e1e5bc999fe1374ef3d03381695a489d841a4fb102d5b1eb2dce3efc194
+SHA512 (notofonts.github.io-noto-monthly-release-2026.10.01.tar.gz) = 15cd0e825744315f86c25f5ceb0b280bec8524ba5384f483be5c664df6fb595df9c3cac6d9fdd52f9a018196ca7269b1bf705ce933a0c64f38d13c5ac4e9d54c
+Size (notofonts.github.io-noto-monthly-release-2026.10.01.tar.gz) = 1098876847 bytes

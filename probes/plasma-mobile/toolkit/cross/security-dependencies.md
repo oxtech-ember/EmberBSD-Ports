@@ -1,12 +1,13 @@
 # Current security dependencies for Plasma
 
 Ports owns the GnuPG and polkit prerequisites for the common Qt 6.12 /
-Frameworks 6.31 stack. The [crypto delta](../current-crypto-deps.patch) selects
+Frameworks 6.31 stack. The canonical [GnuPG recipe](../../../../pkgsrc/security/gnupg2/) selects
 [GnuPG 2.5.24](https://gnupg.org/download/index.html), the current stable release
-checked on 2026-10-12. The [polkit delta](../current-polkit.patch) retains
+checked on 2026-10-12. The canonical [polkit recipe](../../../../pkgsrc/security/polkit/) retains
 [polkit 127](https://github.com/polkit-org/polkit/releases/tag/127) and updates
-[polkit-qt to 0.201.1](https://download.kde.org/stable/polkit-qt-1/).
-Original archives, SHA256 and pkgsrc digests are recorded in the deltas.
+[polkit-qt to 0.201.1](https://download.kde.org/stable/polkit-qt-1/) in the
+canonical [polkit-qt6 recipe](../../../../pkgsrc/security/polkit-qt6/).
+Original archives, SHA256 and pkgsrc digests are recorded in the recipes.
 These are checksum-verified sources, not a claim of release-signature verification.
 
 ## Cross-build corrections
