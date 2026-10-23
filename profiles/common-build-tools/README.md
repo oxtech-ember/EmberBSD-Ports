@@ -22,6 +22,12 @@ ICU build integration, causal source graphs and three assembly objects. The
 installed [API consumer](cross/boost-api/README.md) retains a separate target
 execution gate.
 
+The [CMake Xcode header check](tests/cmake-xcode/README.md) keeps the complete
+Xcode generator and project-opening API available to native GCC16. The common
+recipe uses the LaunchServices header without unrelated Apple Blocks headers.
+Paired full-module compilation and its API reference pass. Full package and
+generator acceptance remain separate.
+
 The paired [Tcl/Tk 9.1 recipes](cross/tcltk.md) retain bundled extensions,
 system SQLite and ZipFS. Tcl's ordinary native GCC16 package and host
 generator contract pass. Platform branches, metadata and SQLite symbol

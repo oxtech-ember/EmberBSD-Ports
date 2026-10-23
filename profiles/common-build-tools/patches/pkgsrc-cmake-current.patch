@@ -1,7 +1,7 @@
 # Origin: NetBSD pkgsrc commit 5cd745c4794fcf99c8a789dfc750df5b89be35c8.
 # Adaptation: EmberBSD (AI-assisted). Keep the pinned recipe and shared host-tool policy.
 # CMake 4.4.4 is the current stable release. Native and cross builds share it.
-# The GCC16 Mach-O portability fix is local and is not submitted upstream.
+# The GCC16 Mach-O and Xcode header fixes are local and not submitted upstream.
 
 --- a/devel/cmake/Makefile
 +++ b/devel/cmake/Makefile
@@ -10,7 +10,7 @@
  
  .include "Makefile.common"
 +
-+PKGREVISION=	1
++PKGREVISION=	2
  
  COMMENT=	Cross platform make
  
@@ -37,10 +37,11 @@
  SHA1 (patch-Auxiliary_CMakeLists.txt) = 98a11bd91a09b344ccef2a7c6e883731ab345778
  SHA1 (patch-Modules_Compiler_GNU.cmake) = 745b3a5cd44b4a6eb2dc9452f78f9de3976f37b1
  SHA1 (patch-Modules_FindCurses.cmake) = 98cac805a6abafcfb8b61e441b50a1d6aec27ad0
-@@ -20,6 +20,7 @@
+@@ -20,6 +20,8 @@
  SHA1 (patch-Source_Checks_cm__cxx17__check.cpp) = d5e2708df6fcda078b1b5ea59264c663d2633ced
  SHA1 (patch-Source_Modules_CMakeBuildUtilities.cmake) = e4f2ad39f0899074c2b66d97ef12d03c48e82950
  SHA1 (patch-Source_QtDialog_CMakeLists.txt) = 9c70da287a97cf291bce52ff632256ae6221804f
++SHA1 (patch-Source_cmGlobalXCodeGenerator.cxx) = 190e236f931b5bfdbae6c297aab7784214b45e40
 +SHA1 (patch-Source_cmMachO.cxx) = 8a3014ec87ef4c83dd7405d61ecad93b6378f4d1
  SHA1 (patch-Tests_CMakeLists.txt) = 555e0be38ef92530c7315a87db65dd3004d7744c
  SHA1 (patch-Utilities_KWIML_CMakeLists.txt) = e4bdf9fc58757e87bf7e3e3e195839eededbc796
@@ -112,3 +113,23 @@
 +       archs.push_back(archName);
 +     }
 +   }
+--- /dev/null
++++ b/devel/cmake/patches/patch-Source_cmGlobalXCodeGenerator.cxx
+@@ -0,0 +1,17 @@
++$NetBSD$
++
++Origin: EmberBSD (AI-assisted), not submitted upstream.
++Include only the LaunchServices API used to open an Xcode project.
++The ApplicationServices umbrella imports unrelated Apple Blocks declarations.
++
++--- Source/cmGlobalXCodeGenerator.cxx.orig
+++++ Source/cmGlobalXCodeGenerator.cxx
++@@ -68,7 +68,7 @@
++ #  include <CoreFoundation/CFUUID.h>
++ #  if !TARGET_OS_IPHONE
++ #    define HAVE_APPLICATION_SERVICES
++-#    include <ApplicationServices/ApplicationServices.h>
+++#    include <CoreServices/../Frameworks/LaunchServices.framework/Headers/LSOpen.h>
++ #  endif
++ #endif
++ 
