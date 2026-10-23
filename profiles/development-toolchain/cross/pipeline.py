@@ -123,8 +123,7 @@ def _build_binutils(target, new_work, make_override=None):
     logged(configure, work / 'configure.log', env, build)
     logged([make, '-j' + count], work / 'build.log', env, build)
     logged([make, 'install'], work / 'install.log', env, build)
-    for name in BINUTILS:
-        require(os.access(prefix / 'bin' / (triplet + '-' + name), os.X_OK), 'Installed Binutils tool missing: ' + name)
+    require_tools(prefix, triplet, BINUTILS)
     for name in ('as', 'ld', 'readelf'):
         require(' 2.47' in capture([prefix / 'bin' / (triplet + '-' + name), '--version']).splitlines()[0], 'Unexpected GNU tool version')
     require(any(path.is_file() for path in (prefix / triplet / 'lib/ldscripts').iterdir()), 'Installed Binutils linker scripts missing')
@@ -236,6 +235,8 @@ def _build_compiler(target, mode, args, *, owned=None):
     logged([make, '-j' + count, 'all-gcc'], work / 'build.log', env, work / 'build')
     logged([make, 'install-gcc'], work / 'install.log', env, work / 'build')
     check_compilers(prefix, target)
+    # install-gcc shares this prefix. The kernel still needs size afterwards.
+    require_tools(prefix, triplet, BINUTILS)
     import contextlib
     import importlib.util
     spec = importlib.util.spec_from_file_location('gcc16_compiler_probes', HERE / 'tests/compiler_probes.py')

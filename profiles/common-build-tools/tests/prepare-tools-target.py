@@ -27,7 +27,7 @@ def quarantine(path):
 # host.py resolves sdk_source to the LLVM module here; both copies must agree.
 assert quarantine(ports / 'pkgsrc/lang/llvm/files/sdk_source.py') == \
     quarantine(ports / 'profiles/development-toolchain/runtime/recipe/files/sdk_source.py')
-names = ('gcc', 'g++', 'cpp', 'gcc-ar', 'gcc-nm', 'gcc-ranlib', 'ar', 'as', 'ld', 'nm', 'objcopy', 'objdump', 'ranlib', 'readelf', 'strip')
+names = ('gcc', 'g++', 'cpp', 'gcc-ar', 'gcc-nm', 'gcc-ranlib', 'ar', 'as', 'elfedit', 'ld', 'nm', 'objcopy', 'objdump', 'ranlib', 'readelf', 'size', 'strings', 'strip')
 
 
 def fake_prefix(path, triplet, machine):
@@ -58,6 +58,20 @@ for name in names:
     link = work / 'tools/bin' / ('x86_64--netbsd-' + name)
     assert link.is_symlink() and link.resolve() == (work / 'gcc-amd64/bin' / ('x86_64--netbsd-' + name)).resolve(), name
 assert (work / 'tools/bin/x86_64--netbsd-install').resolve() == install.resolve()
+for name in ('elfedit', 'size', 'strings'):
+    link = work / 'tools/bin' / ('x86_64--netbsd-' + name)
+    assert link.is_symlink() and link.resolve() == (work / 'gcc-amd64/bin' / ('x86_64--netbsd-' + name)).resolve(), name
+# The kernel link runs ${SIZE}. A prefix that omits it must fail before output exists.
+missing_size = work / 'gcc-missing-size'
+fake_prefix(missing_size, 'x86_64--netbsd', 'x86_64--netbsd')
+(missing_size / 'bin/x86_64--netbsd-size').unlink()
+# The preflight must name size before it tries to run the compiler.
+(missing_size / 'bin/x86_64--netbsd-gcc').write_text('#!/bin/sh\nexit 99\n')
+(missing_size / 'bin/x86_64--netbsd-gcc').chmod(0o755)
+missing = run('missing-size', '--target', 'amd64', missing_size, work / 'os-tools', work / 'rejected-size', accept=False)
+assert 'Missing required external toolchain tools: size' in missing, missing
+assert 'Required:' in missing and 'elfedit' in missing and 'strings' in missing, missing
+assert not (work / 'rejected-size').exists()
 assert 'Matching GCC16.2.0 target compiler required' in run('wrong-compiler', '--target', 'amd64', work / 'gcc-wrong', work / 'os-tools', work / 'rejected', accept=False)
 assert not (work / 'rejected').exists()
 assert 'Output already exists' in run('existing', '--target', 'amd64', work / 'gcc-amd64', work / 'os-tools', work / 'tools', accept=False)

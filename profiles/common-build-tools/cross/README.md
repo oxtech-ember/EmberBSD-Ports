@@ -101,6 +101,13 @@ python3 -B profiles/common-build-tools/cross/prepare-tools.py \
     /absolute/gcc16-prefix /absolute/netbsd-tools /absolute/new-cross-tools
 ```
 
+Each composed name is a symlink to an installed tool. The compiler names are
+the GCC drivers plus the Binutils programs EmberBSD selects for
+`EXTERNAL_TOOLCHAIN`, including `elfedit`, `size`, and `strings`. `install`
+comes from the NetBSD host tool directory. A missing executable fails before
+the output directory is created. The message names every missing tool and the
+required list. `addr2line` and `c++filt` are not part of that contract.
+
 The default remains AArch64. For amd64, pass `--target amd64` before paths.
 Also set `EMBERBSD_CROSS_TARGET=amd64` in the cross MAKECONF. This selects
 `MACHINE_ARCH=x86_64` and the `x86_64--netbsd` compiler and CRT paths.

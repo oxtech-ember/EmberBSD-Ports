@@ -12,7 +12,8 @@ def prepare(args):
     profile = Path(__file__).resolve().parents[2] / 'development-toolchain'
     sys.path[:0] = [str(profile), str(profile / 'cross')]
     from target_options import parse
-    from host import TARGETS
+    from host import BINUTILS, TARGETS, tools_message, missing_tools
+    drivers = ('gcc', 'g++', 'cpp', 'gcc-ar', 'gcc-nm', 'gcc-ranlib')
     target, mode, args = parse(args)
     if len(args) != 3:
         raise ValueError('Use [--target aarch64|amd64] GCC16_PREFIX NETBSD_TOOLDIR NEW_TOOLDIR')
@@ -21,13 +22,18 @@ def prepare(args):
     if os.path.lexists(output):
         raise ValueError('Output already exists')
     triplet = TARGETS[target][0]
+    compiler_names = drivers + tuple(BINUTILS)
+    install_name = os_tools + '/bin/' + triplet + '-install'
+    missing = missing_tools(compiler, triplet, compiler_names)
+    if not os.access(install_name, os.X_OK):
+        missing.append('install')
+    if missing:
+        raise ValueError(tools_message(missing, list(compiler_names) + ['install']))
     gcc = compiler + '/bin/' + triplet + '-gcc'
     if query([gcc, '-dumpmachine']) != triplet or query([gcc, '-dumpfullversion']) != '16.2.0':
         raise ValueError('Matching GCC16.2.0 target compiler required')
-    tools = {name: compiler + '/bin/' + triplet + '-' + name for name in ('gcc', 'g++', 'cpp', 'gcc-ar', 'gcc-nm', 'gcc-ranlib', 'ar', 'as', 'ld', 'nm', 'objcopy', 'objdump', 'ranlib', 'readelf', 'strip')}
-    tools['install'] = os_tools + '/bin/' + triplet + '-install'
-    if not all(os.access(path, os.X_OK) for path in tools.values()):
-        raise ValueError('Missing cross tool or NetBSD host install utility')
+    tools = {name: compiler + '/bin/' + triplet + '-' + name for name in compiler_names}
+    tools['install'] = install_name
     Path(output, 'bin').mkdir(parents=True)
     for name, path in tools.items():
         Path(output, 'bin', triplet + '-' + name).symlink_to(path)

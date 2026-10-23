@@ -15,7 +15,7 @@ bmake = args[0]
 root = Path(__file__).resolve().parents[3]
 with tempfile.TemporaryDirectory(prefix='ember-cross-targets-') as temporary:
     work = Path(temporary)
-    tools = 'gcc g++ cpp gcc-ar gcc-nm gcc-ranlib ar as ld nm objcopy objdump ranlib readelf strip'.split()
+    tools = 'gcc g++ cpp gcc-ar gcc-nm gcc-ranlib ar as elfedit ld nm objcopy objdump ranlib readelf size strings strip'.split()
     for p in ('compiler/bin', 'os/bin', 'sysroot/usr/pkg/gcc16/lib'):
         (work / p).mkdir(parents=True)
     for triple in ('aarch64--netbsd', 'x86_64--netbsd'):
