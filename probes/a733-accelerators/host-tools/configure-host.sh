@@ -25,6 +25,13 @@ mkdir -p "$work/tmp" "$work/cache/lto" "$work/logs"
 export TMPDIR="$work/tmp"
 python=${HOST_PYTHON:-$host/bin/python3.15}
 [ -x "$python" ] || { echo 'Missing native Python 3.15' >&2; exit 2; }
+llvm_include_overlay=$work/llvm-include-overlay
+"$python" -B "$(dirname -- "$0")/prepare-llvm-include-overlay.py" \
+    "$host/include" "$llvm/include" "$llvm_include_overlay"
+llvm_include_wrapper=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/llvm-include-wrapper.sh
+for tool in "$llvm/bin/clang" "$llvm/bin/clang++"; do
+    [ -x "$tool" ] || { echo "Missing pinned LLVM host compiler: $tool" >&2; exit 1; }
+done
 export PATH="$host/bin:$llvm/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 export PKG_CONFIG_PATH="$deps/lib/pkgconfig:$host/lib/pkgconfig:/opt/homebrew/lib/pkgconfig"
 # Use the current macOS C++ runtime explicitly. LLVM's -L path also contains
@@ -33,9 +40,9 @@ clink="-isysroot $macsdk -fuse-ld=lld -Wl,--lto-O1,--lto-CGO1"
 cpplink="$clink -nostdlib++ $macsdk/usr/lib/libc++.tbd -Wl,-cache_path_lto,$work/cache/lto"
 cat > "$work/native.ini" <<EOF
 [binaries]
-c = '$llvm/bin/clang'
-cpp = '$llvm/bin/clang++'
-objc = '$llvm/bin/clang'
+c = ['/bin/sh', '$llvm_include_wrapper', '$llvm/bin/clang', '$host/include', '$llvm_include_overlay']
+cpp = ['/bin/sh', '$llvm_include_wrapper', '$llvm/bin/clang++', '$host/include', '$llvm_include_overlay']
+objc = ['/bin/sh', '$llvm_include_wrapper', '$llvm/bin/clang', '$host/include', '$llvm_include_overlay']
 ar = '$llvm/bin/llvm-ar'
 llvm-config = '$llvm/bin/llvm-config'
 pkg-config = '$host/bin/pkg-config'

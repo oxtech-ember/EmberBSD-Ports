@@ -41,6 +41,16 @@ def profiles_for(profile):
     return ['intel', 'powervr'] if profile == 'all' else [profile]
 
 
+def input_records(inputs):
+    directories = sorted({str(path) for path in inputs if path.is_dir()})
+    files = [path for path in inputs if not path.is_dir()]
+    for directory in directories:
+        manifest = Path(directory) / '.emberbsd-include-overlay.tsv'
+        if manifest.is_file():
+            files.append(manifest)
+    return {str(path): sha(path) for path in files}, directories
+
+
 def shader_dependencies(path, build, virtual_headers):
     text = path.read_text().replace('\\\n', ' ')
     require(':' in text, 'Malformed common shader depfile')
@@ -135,7 +145,7 @@ def seal(arguments):
                 inputs.extend(Path(p) for key in ('compiler', 'linker') for p in group.get(key, []))
                 inputs.extend((build / arg).resolve(strict=True) for arg in group.get('parameters', []) if arg.endswith(('.a', '.tbd')))
         inputs.extend(metadata.glob('*.json'))
-        input_hashes = {str(path): sha(path) for path in inputs}
+        input_hashes, directory_inputs = input_records(inputs)
         reference = work / 'reference'
         reference.mkdir()
         run(['tar', '-xf', archive, '--strip-components=1', '-C', reference], 'extract')
@@ -221,7 +231,8 @@ def seal(arguments):
         scope += ' No target execution.'
         write_json(work / 'receipt.json', dict(schema='ember-mesa-generators-1', mesa='26.2.5', llvm='23.1.3',
                    source=str(source), build=str(build), archive_sha256=MESA_SHA256, profiles=profiles,
-                   commands=commands, inputs=input_hashes, virtual_headers=virtual_headers, scope=scope))
+                   commands=commands, inputs=input_hashes, directory_inputs=directory_inputs,
+                   virtual_headers=virtual_headers, scope=scope))
         (work / 'FORMAT').write_text('ember-mesa-generators-1\n')
         (work / 'PROFILES').write_text(','.join(profiles) + '\n')
         shutil.rmtree(reference)

@@ -62,6 +62,10 @@ Install missing dependencies through their normal pkgsrc recipes.
 
 The selected native LLVM/Clang SDK builds host-only compiler tools.
 The target Mesa objects still use the common GCC16 cross toolchain.
+The native compiler wrapper replaces the shared host include directory with
+a symlink view. That view retains other host headers and selects `llvm` and
+`llvm-c` from this LLVM SDK. Host package LLVM headers cannot override that
+selection through the shared include argument.
 The command calls the existing native configuration and real shader checks.
 The sealed result is in WORK/sealed.
 
@@ -109,6 +113,17 @@ feature checks. Real Meson must reject the old auto/disabled combination
 and configure successfully with the native generator selection.
 It creates no Mesa compiler objects and runs no target code.
 
-The implementation changes Ruby, shell and make orchestration only.
+The native sealer records compiler argument directory paths separately from
+regular file hashes. It hashes the include view's deterministic symlink
+manifest. A directory path is not a recursive proof of every child file.
+The include regression checks selection, exact argv, refusals and this record:
+
+```sh
+python3.15 ../../../probes/a733-accelerators/host-tools/tests/llvm-include-isolation.py \
+    --sdk-source /absolute/EmberBSD-SDK --compiler /absolute/gcc-16 \
+    /absolute/new-include-check
+```
+
+The implementation changes Python, shell and make orchestration only.
 It changes no upstream C/C++ translation unit. Full native tool rebuild,
 sealing and target Mesa package checks remain separate acceptance steps.
