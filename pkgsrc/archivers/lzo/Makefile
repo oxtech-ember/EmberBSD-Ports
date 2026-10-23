@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.19 2020/01/26 17:30:40 rillig Exp $
 
 DISTNAME=	lzo-2.10
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	archivers
 MASTER_SITES=	https://www.oberhumer.com/opensource/lzo/download/
 

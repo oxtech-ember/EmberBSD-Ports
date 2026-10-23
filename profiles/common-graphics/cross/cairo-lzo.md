@@ -90,6 +90,16 @@ style findings because `--error-exitcode=1` is enabled. This result establishes
 completed analysis and no new findings in the focused scope. It does not claim
 an entirely clean report or analysis of every Cairo translation unit.
 
+## Diagnostic fuzz campaign
+
+A Clang 23.1.4/libFuzzer host target enters the real Cairo Script Interpreter
+through a bounded script template and covers all three repaired LZO paths.
+The SDK v1 runner completed 10,000 ASan/UBSan runs. GCC 16.2.0 replayed every
+initial and final-corpus file. The upstream negative control reproduced the
+oversized-output failure. See the [fuzz harness, unified runner command and
+scope limits](../tests/cairo-lzo-fuzz.md). These are host diagnostics, not
+target package or EmberBSD device acceptance.
+
 Valgrind is unavailable on this macOS host. ASan/UBSan and allocation guards
 provide separate memory checks. LeakSanitizer exit handling is unavailable on
 this host; the check uses `ASAN_OPTIONS=detect_leaks=0:halt_on_error=1` and makes
