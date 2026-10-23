@@ -12,7 +12,7 @@ It declares only this build-tree path through the existing pkgsrc API:
 BUILDLINK_PASSTHRU_RPATHDIRS+= @loader_path/../dbus
 ```
 
-cwrappers 20220403nb2 recognizes the complete `@loader_path` and
+cwrappers 20220403nb3 recognizes the complete `@loader_path` and
 `@executable_path` root tokens only in runtime RPATH processing. Each path
 must match an explicit `R:` source rule at a directory boundary. The first
 matching rule still controls mapping or denial. The second cleanup pass
@@ -25,6 +25,7 @@ The existing LD plain-relative pass-through policy also stays unchanged.
 
 The separate framework patch follows the Libtool unwrap-boundary repair.
 It raises the tool predicate to nb2 for both native and cross builds.
+The following bundled-hash repair raises both the package and tool floor to nb3.
 The D-Bus recipe selects nb7 on both routes and adds the exact whitelist
 only on Darwin. Target D-Bus retains its normal platform selection.
 
@@ -49,9 +50,22 @@ must use the actual compiler flags and configured headers; parser refusals
 must not be reported as clean analysis.
 
 Native GCC16 ASan and UBSan support controls detect the injected faults.
-Full instrumented upstream and patched wrappers both stop in the unchanged
-`mi_vector_hash.c:178` tail read before RPATH processing. Full wrapper memory
-acceptance remains open. No sanitizer exclusions are used.
+The bundled hash keeps its aligned 12-byte loop and uses the existing bytewise
+tail for both alignments. No read crosses the supplied key length. The 16,832
+paired vectors retain all three hash words for lengths 0 through 255 and seven
+larger boundaries, offsets 0 through 15 and four seeds. The old exact-allocation
+case triggers ASan; the repaired case passes combined ASan/UBSan.
+
+All 38 argument cases also pass with instrumented real CC and LD wrappers.
+Both compared wrapper sets contain the hash repair; only their RPATH policy
+differs. The private libnbcompat archive is not instrumented. Big-endian
+execution and complete D-Bus package tests remain separate checks.
+No sanitizer exclusions are used.
+
+Build the hash regression with the actual wrapper headers and GCC16 flags.
+Link `tests/cwrappers-vector-hash.c` to each version of `mi_vector_hash.c`.
+Compare `--vectors` output byte for byte. Use ASan/UBSan for `--exact`.
+The unaligned path is the reference for every alignment in each binary.
 
 The primary contracts are [NetBSD cwrappers](https://github.com/NetBSD/pkgsrc/tree/trunk/pkgtools/cwrappers/files/bin)
 and [Apple dyld runtime paths](https://github.com/apple-oss-distributions/dyld/blob/main/doc/man/man1/dyld.1).

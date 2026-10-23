@@ -1,0 +1,159 @@
+# Origin: EmberBSD (AI-assisted), bounded bundled hash tail reads.
+# Reuse the original NetBSD bytewise tail and retain its license.
+
+--- a/pkgtools/cwrappers/Makefile
++++ b/pkgtools/cwrappers/Makefile
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.29 2026/01/22 15:28:28 jperkin Exp $
+ 
+ PKGNAME=		cwrappers-20220403
+-PKGREVISION=		2
++PKGREVISION=		3
+ CATEGORIES=		pkgtools sysutils
+ 
+ MAINTAINER=		pkgsrc-users@NetBSD.org
+--- a/mk/cwrappers.mk
++++ b/mk/cwrappers.mk
+@@ -5,7 +5,7 @@
+ .include "../../mk/wrapper/wrapper-defs.mk"
+ .include "../../mk/buildlink3/bsd.buildlink3.mk"
+ 
+-TOOL_DEPENDS+=		cwrappers>=20220403nb2:../../pkgtools/cwrappers
++TOOL_DEPENDS+=		cwrappers>=20220403nb3:../../pkgtools/cwrappers
+ 
+ CWRAPPERS_SRC_DIR=	${TOOLBASE}/libexec/cwrappers
+ CWRAPPERS_CONFIG_DIR=	${WRKDIR}/.cwrapper/config
+--- a/pkgtools/cwrappers/files/bin/mi_vector_hash.c
++++ b/pkgtools/cwrappers/files/bin/mi_vector_hash.c
+@@ -89,9 +89,6 @@
+ void
+ mi_vector_hash(const void *key, size_t len, uint32_t seed, uint32_t hashes[3])
+ {
+-	static const uint32_t mask[4] = {
+-		0x000000ff, 0x0000ffff, 0x00ffffff, 0xffffffff
+-	};
+ 	uint32_t orig_len, a, b, c;
+ 	const uint8_t *k;
+ 
+@@ -110,54 +107,6 @@
+ 			k += 12;
+ 			len -= 12;
+ 		}
+-		c += orig_len;
+-
+-		if (len > 8) {
+-			switch (len) {
+-			case 11:
+-				c += (uint32_t)k[10] << 24;
+-				/* FALLTHROUGH */
+-			case 10:
+-				c += (uint32_t)k[9] << 16;
+-				/* FALLTHROUGH */
+-			case 9:
+-				c += (uint32_t)k[8] << 8;
+-				/* FALLTHROUGH */
+-			}
+-			b += my_le32dec(k + 4);
+-			a += my_le32dec(k);
+-		} else if (len > 4) {
+-			switch (len) {
+-			case 8:
+-				b += (uint32_t)k[7] << 24;
+-				/* FALLTHROUGH */
+-			case 7:
+-				b += (uint32_t)k[6] << 16;
+-				/* FALLTHROUGH */
+-			case 6:
+-				b += (uint32_t)k[5] << 8;
+-				/* FALLTHROUGH */
+-			case 5:
+-				b += k[4];
+-				/* FALLTHROUGH */
+-			}
+-			a += my_le32dec(k);
+-		} else if (len) {
+-			switch (len) {
+-			case 4:
+-				a += (uint32_t)k[3] << 24;
+-				/* FALLTHROUGH */
+-			case 3:
+-				a += (uint32_t)k[2] << 16;
+-				/* FALLTHROUGH */
+-			case 2:
+-				a += (uint32_t)k[1] << 8;
+-				/* FALLTHROUGH */
+-			case 1:
+-				a += k[0];
+-				/* FALLTHROUGH */
+-			}
+-		}
+ 	} else {
+ 		const uint32_t *key32 = key;
+ 		while (len >= 12) {
+@@ -168,17 +117,56 @@
+ 			key32 += 3;
+ 			len -= 12;
+ 		}
+-		c += orig_len;
++		k = (const uint8_t *)key32;
++	}
+ 
+-		if (len > 8) {
+-			c += (my_le32toh(key32[2]) & mask[len - 9]) << 8;
+-			b += my_le32toh(key32[1]);
+-			a += my_le32toh(key32[0]);
+-		} else if (len > 4) {
+-			b += my_le32toh(key32[1]) & mask[len - 5];
+-			a += my_le32toh(key32[0]);
+-		} else if (len)
+-			a += my_le32toh(key32[0]) & mask[len - 1];
++	c += orig_len;
++
++	if (len > 8) {
++		switch (len) {
++		case 11:
++			c += (uint32_t)k[10] << 24;
++			/* FALLTHROUGH */
++		case 10:
++			c += (uint32_t)k[9] << 16;
++			/* FALLTHROUGH */
++		case 9:
++			c += (uint32_t)k[8] << 8;
++			/* FALLTHROUGH */
++		}
++		b += my_le32dec(k + 4);
++		a += my_le32dec(k);
++	} else if (len > 4) {
++		switch (len) {
++		case 8:
++			b += (uint32_t)k[7] << 24;
++			/* FALLTHROUGH */
++		case 7:
++			b += (uint32_t)k[6] << 16;
++			/* FALLTHROUGH */
++		case 6:
++			b += (uint32_t)k[5] << 8;
++			/* FALLTHROUGH */
++		case 5:
++			b += k[4];
++			/* FALLTHROUGH */
++		}
++		a += my_le32dec(k);
++	} else if (len) {
++		switch (len) {
++		case 4:
++			a += (uint32_t)k[3] << 24;
++			/* FALLTHROUGH */
++		case 3:
++			a += (uint32_t)k[2] << 16;
++			/* FALLTHROUGH */
++		case 2:
++			a += (uint32_t)k[1] << 8;
++			/* FALLTHROUGH */
++		case 1:
++			a += k[0];
++			/* FALLTHROUGH */
++		}
+ 	}
+ 	mix(a, b, c);
+ 	hashes[0] = a;
