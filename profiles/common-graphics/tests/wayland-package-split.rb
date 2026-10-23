@@ -82,7 +82,7 @@ end
   identity = query.call(name + '-identity', name, cross + ['-V', '${PKGNAME}', '-V', '${PKG_FAIL_REASON}']).lines
   abort 'Wrong package identity or failure reason.' unless identity[0].strip == name + '-1.26.0nb2' && identity.drop(1).join.strip.empty?
 end
-abort 'Native identity changed.' unless query.call('native-name', 'wayland', ['USE_CROSS_COMPILE=no', '-V', '${PKGNAME}']).strip == 'wayland-1.26.0nb1'
+abort 'Native identity changed.' unless query.call('native-name', 'wayland', ['USE_CROSS_COMPILE=no', '-V', '${PKGNAME}']).strip == 'wayland-1.26.0nb2'
 sdk_fields = query.call('sdk-metadata', 'wayland-devel', cross + ['-V', '${DEPENDS}', '-V', '${DISTINFO_FILE}', '-V', '${PATCHDIR}', '-V', '${FILESDIR}'])
 abort 'SDK lost exact runtime or source owner.' unless sdk_fields.include?('wayland-1.26.0nb2:../../devel/wayland') && %w[distinfo patches files].all? { |p| sdk_fields.include?(owner + '/' + p) }
 FileUtils.mkdir_p(tree + '/devel/wayland-split-consumer')

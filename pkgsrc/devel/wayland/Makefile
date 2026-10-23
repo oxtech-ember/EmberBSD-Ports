@@ -4,7 +4,9 @@
 EMBERBSD_WAYLAND_PKGDIR:= ${.PARSEDIR:tA}
 WAYLAND_VERSION=	1.26.0
 DISTNAME=	wayland-${WAYLAND_VERSION}
-PKGREVISION=	1
+# Native and cross packages use one revision. Cross tool dependencies
+# then accept the native build-host package.
+PKGREVISION=	2
 CATEGORIES=	devel
 MASTER_SITES=	https://gitlab.freedesktop.org/wayland/wayland/-/releases/${PKGVERSION_NOREV}/downloads/
 EXTRACT_SUFX=	.tar.xz
@@ -54,7 +56,6 @@ PLIST_VARS+=	runtime_split
 .if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
 PKG_FAIL_REASON+= "The wayland runtime/SDK split requires the common aarch64 or amd64 cross target"
 .endif
-PKGREVISION=	2
 .if ${PKGREVISION} != 2
 PKG_FAIL_REASON+= "The wayland runtime/SDK split requires package revision 2"
 .endif

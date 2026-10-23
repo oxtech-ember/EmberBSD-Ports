@@ -69,9 +69,8 @@ unset LD_LIBRARY_PATH LD_PRELOAD DYLD_LIBRARY_PATH
 unset WAYLAND_TEST_NO_LEAK_CHECK WAYLAND_TEST_NO_TIMEOUTS
 ulimit -c 0
 uname -a > "$result/platform.txt"
-package=wayland-1.26.0nb1
+package=wayland-1.26.0nb2
 if [ "$suite" = runtime ]; then
-  package=wayland-1.26.0nb2
   check_runtime_sdk_absent /usr/pkg/bin/wayland-scanner /usr/sbin/pkg_info "$result"
 fi
 /usr/sbin/pkg_info -e "$package" > "$result/package.txt"

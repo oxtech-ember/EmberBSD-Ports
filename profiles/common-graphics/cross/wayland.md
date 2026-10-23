@@ -51,7 +51,8 @@ After installation, the selector first validates the complete staged inventory
 and all symlink targets. Only then does it remove the other partition.
 New, missing, unsafe or overlapping entries fail the package.
 Normal package checks remain enabled. Native builds retain the full
-35-entry `wayland-1.26.0nb1` package.
+35-entry package at the same revision, `wayland-1.26.0nb2`. This native
+package satisfies the `wayland>=1.26.0nb2` tool dependencies of cross packages.
 
 The cross buildlink requires `wayland-devel` only during target compilation.
 Application runtime dependencies retain `wayland`. The build-host scanner

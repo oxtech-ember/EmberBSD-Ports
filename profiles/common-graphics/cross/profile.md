@@ -108,7 +108,7 @@ The cross-file binary entry alone does not provide that metadata.
 ## Prerequisites and remaining acceptance
 
 The sysroot needs the selected target libdrm, zstd/zlib, expat, libudev-bsd,
-Wayland 1.26.0nb1, protocols 1.49 and modular X11 dependencies. The matching host
+Wayland 1.26.0nb2, protocols 1.49 and modular X11 dependencies. The matching host
 scanner is a build tool. It does not install a second target Wayland provider.
 
 The [Linux/GCC16 receipt](mesa-linux-aarch64.md) passes full Mesa packaging,
