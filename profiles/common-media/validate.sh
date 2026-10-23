@@ -3,7 +3,8 @@
 # Validate source metadata before creating a pkgsrc export.
 set -eu
 profile=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-pkg=$profile/recipes/multimedia/ffmpeg9
+recipes=$(CDPATH= cd -- "$profile/../../pkgsrc" && pwd -P)
+pkg=$recipes/multimedia/ffmpeg9
 expected='multimedia/ffmpeg9 ffmpeg-9.0.2.tar.xz 8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz'
 actual=$(awk '$1=="multimedia/ffmpeg9" { if (NF != 4) exit 1; print $1, $2, $3, $4 }' "$profile/sources.tsv")
 [ "$actual" = "$expected" ] || { echo 'Incorrect common media source pin.' >&2; exit 2; }
@@ -27,7 +28,7 @@ done
 expected='audio/lame lame-4.0.tar.gz 3df5124d5ad3a98312ffd7ba6a9b36230e4f8a3e66d3ce0f425e336c32d216eb https://downloads.sourceforge.net/project/lame/lame/4.0/lame-4.0.tar.gz'
 actual=$(awk '$1=="audio/lame" { if (NF != 4) exit 1; print $1, $2, $3, $4 }' "$profile/sources.tsv")
 [ "$actual" = "$expected" ] || { echo 'Incorrect LAME source pin.' >&2; exit 2; }
-pkg=$profile/recipes/audio/lame
+pkg=$recipes/audio/lame
 for file in Makefile DESCR PLIST distinfo options.mk buildlink3.mk patches/patch-zz-frontend-encoding; do
     [ -f "$pkg/$file" ] || { echo "Incomplete LAME recipe: $file" >&2; exit 2; }
 done
@@ -41,7 +42,7 @@ done
 expected='multimedia/x265 x265_4.2.tar.gz 40b1ea0453e0309f0eba934e0ddf533f8f6295966679e8894e8f1c1c8d5e1210 https://bitbucket.org/multicoreware/x265_git/downloads/x265_4.2.tar.gz'
 actual=$(awk '$1=="multimedia/x265" { if (NF != 4) exit 1; print $1, $2, $3, $4 }' "$profile/sources.tsv")
 [ "$actual" = "$expected" ] || { echo 'Incorrect x265 source pin.' >&2; exit 2; }
-pkg=$profile/recipes/multimedia/x265
+pkg=$recipes/multimedia/x265
 for file in Makefile DESCR PLIST distinfo options.mk buildlink3.mk; do
     [ -f "$pkg/$file" ] || { echo "Incomplete x265 recipe: $file" >&2; exit 2; }
 done
@@ -76,12 +77,12 @@ actual=$(awk '$1=="databases/tdb" { if (NF != 4) exit 1; print $1, $2, $3, $4 }'
 awk -F '\t' '!/^#/ && NF { if (NF != 4 || $1 !~ /^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9+-]*$/ || $2 !~ /^[a-zA-Z0-9][a-zA-Z0-9._+-]*\.tar\.(xz|gz)$/ || $4 !~ /^https:\/\// || seen[$1]++ || length($3) != 64 || $3 !~ /^[0-9a-f]+$/) exit 1; count++ } END { if (count != 22) exit 1 }' "$profile/sources.tsv"
 while IFS="$(printf '\t')" read -r recipe archive sha url; do
     case "$recipe" in ''|'#'*) continue ;; esac
-    pkg=$profile/recipes/$recipe
+    pkg=$recipes/$recipe
     case "$recipe" in
         multimedia/ffmpeg9|audio/lame|multimedia/x265|multimedia/libaom|audio/pulseaudio|multimedia/libvpx|devel/libdaemon|databases/tdb|audio/sonic|audio/espeak-ng|audio/speech-dispatcher|audio/flite|textproc/libxml2) ;;
         *)
             case "$archive" in *-1.28.8.tar.xz) ;; *) echo "Wrong GStreamer family version: $recipe" >&2; exit 2 ;; esac
-            [ "$(awk '$1 == "GST_VERSION=" {print $2}' "$profile/recipes/multimedia/gstreamer1/version.mk")" = 1.28.8 ] || exit 2
+            [ "$(awk '$1 == "GST_VERSION=" {print $2}' "$recipes/multimedia/gstreamer1/version.mk")" = 1.28.8 ] || exit 2
             ;;
     esac
     for algorithm in BLAKE2s SHA512 Size; do

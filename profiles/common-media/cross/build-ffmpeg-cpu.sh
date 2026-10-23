@@ -29,7 +29,8 @@ jobs=${CROSS_JOBS:-4}
 case "$jobs" in ''|0|*[!0-9]*) echo 'CROSS_JOBS must be positive.' >&2; exit 2;; esac
 [ "$jobs" -gt 0 ] 2>/dev/null
 profile=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
-recipe=$profile/recipes/multimedia/ffmpeg9
+recipes=$(CDPATH= cd -- "$profile/../../pkgsrc" && pwd -P)
+recipe=$recipes/multimedia/ffmpeg9
 for compiler in gcc g++; do
     [ "$("$prefix/bin/$target-$compiler" -dumpfullversion)" = 16.2.0 ]
     [ "$("$prefix/bin/$target-$compiler" -dumpmachine)" = $target ]

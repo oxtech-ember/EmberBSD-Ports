@@ -69,7 +69,7 @@ sh scripts/tests/published-patches.sh /absolute/new-publication-results
 The publication check reads tracked `distinfo` files from the working tree.
 Every declared patch must exist and appear in the Git index.
 It covers the complete recipe layers in the export: `pkgsrc/`,
-common-build-tools, common-graphics and common-media. It also covers this toolkit.
+common-build-tools and common-graphics. It also covers this toolkit.
 Sparse profiles outside the export have a separate ownership contract.
 This check does not replace archive hashes, patch digests or zero-fuzz application.
 

@@ -51,7 +51,7 @@ headers, exports and license notices. The native Autotools payload keeps its
 normal legacy/zlib/HTTP-compatibility options and PLIST. They are different
 build selections of the current provider, not interchangeable file inventories.
 
-The [2.15.4nb1 recipe](../recipes/textproc/libxml2) fixes a signed schema-option
+The [2.15.4nb1 recipe](../../../pkgsrc/textproc/libxml2) fixes a signed schema-option
 shift. GCC16 UBSan reproduces the original failure for options value zero.
 The patched regression accepts supported flags and rejects unsupported bits.
 Two unchanged test drivers omitted from the release archive are restored from

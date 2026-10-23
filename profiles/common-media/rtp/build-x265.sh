@@ -14,7 +14,8 @@ done
 jobs=${JOBS:-2}
 case "$jobs" in ''|0|*[!0-9]*) exit 2;; esac
 profile=$(CDPATH= cd "$(dirname "$0")/.." && pwd -P)
-recipe=$profile/recipes/multimedia/x265
+recipes=$(CDPATH= cd -- "$profile/../../pkgsrc" && pwd -P)
+recipe=$recipes/multimedia/x265
 archive=$archives/x265_4.2.tar.gz
 hash=$(awk '$1=="multimedia/x265"{print $3}' "$profile/sources.tsv")
 [ "${#hash}" = 64 ]

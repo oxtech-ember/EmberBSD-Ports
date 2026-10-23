@@ -11,7 +11,7 @@ mkdir "$fixture"
 git init -q "$fixture"
 printf '*.build\nMakefile\n' > "$work/global-excludes"
 git -C "$fixture" config core.excludesFile "$work/global-excludes"
-recipe=profiles/common-media/recipes/audio/example
+recipe=pkgsrc/audio/example
 mkdir -p "$fixture/$recipe/patches"
 printf 'retained patch payload\n' > "$fixture/$recipe/patches/patch-meson.build"
 sha=$(shasum -a 1 "$fixture/$recipe/patches/patch-meson.build" | awk '{print $1}')

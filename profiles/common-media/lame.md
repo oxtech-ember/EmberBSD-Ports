@@ -9,7 +9,7 @@ The original archive is pinned in [sources.tsv](sources.tsv).
 ## Portability changes
 
 `4.0nb3` retains pkgsrc's recipe, three patches, RCS identifiers and upstream
-licences. The additional [encoding patch](recipes/audio/lame/patches/patch-zz-frontend-encoding)
+licences. The additional [encoding patch](../../pkgsrc/audio/lame/patches/patch-zz-frontend-encoding)
 is AI-assisted EmberBSD work; it has not been submitted or accepted upstream.
 
 - The internal ID3 dispatcher accepts an encoding-discriminated payload.

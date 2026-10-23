@@ -17,7 +17,7 @@ for path do
 done
 [ ! -e "$out" ] && [ ! -L "$out" ] || { echo 'Output path already exists.' >&2; exit 2; }
 cross=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
-recipe=$cross/../recipes/textproc/libxml2
+recipe=$cross/../../../pkgsrc/textproc/libxml2
 for compiler in gcc g++; do
     [ "$("$prefix/bin/$target-$compiler" -dumpfullversion)" = 16.2.0 ]
     [ "$("$prefix/bin/$target-$compiler" -dumpmachine)" = "$target" ]

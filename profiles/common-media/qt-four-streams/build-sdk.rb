@@ -82,7 +82,7 @@ selected.each do |component|
            when 'freetype' then ports + '/profiles/common-graphics/recipes/graphics/freetype2'
            when 'harfbuzz' then ports + '/profiles/common-graphics/recipes/fonts/harfbuzz'
            when 'sndfile' then nil
-           else ports + '/profiles/common-media/recipes/audio/pulseaudio'
+           else ports + '/pkgsrc/audio/pulseaudio'
            end
   patches = recipe ? Dir.glob(recipe + '/patches/*').sort : []
   fingerprint = { archive_sha256: row[2], patches: patches.to_h { |p| [File.basename(p), Digest::SHA256.file(p).hexdigest] } }

@@ -4,6 +4,7 @@
 set -eu
 [ "$#" -eq 2 ] || { echo "Usage: $0 VERIFIED_DISTFILES NEW_WORK" >&2; exit 2; }
 profile=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+recipes=$(CDPATH= cd -- "$profile/../../pkgsrc" && pwd -P)
 sh "$profile/validate.sh"
 distfiles=$(CDPATH= cd -- "$1" && pwd)
 mkdir "$2"
@@ -23,7 +24,7 @@ verify_archive() {
 }
 while IFS="$(printf '\t')" read -r recipe archive sha url; do
     case "$recipe" in ''|'#'*) continue ;; esac
-    pkg=$profile/recipes/$recipe
+    pkg=$recipes/$recipe
     verify_archive "$distfiles/$archive"
     tree=$work/${archive%.tar.*}
     mkdir "$tree"
@@ -39,7 +40,7 @@ while IFS="$(printf '\t')" read -r recipe archive sha url; do
 done < "$profile/sources.tsv"
 awk '!/^#/ && NF' "$profile/sources.tsv" > "$work/source.tsv"
 IFS="$(printf '\t')" read -r recipe archive sha url < "$work/source.tsv"
-pkg=$profile/recipes/$recipe
+pkg=$recipes/$recipe
 tree=$work/${archive%.tar.*}
 # Exercise the same verifier with altered source data.
 cp "$distfiles/$archive" "$work/altered-$archive"

@@ -42,7 +42,7 @@ while read -r name expected; do
     [ "$(sha "$recipe/$name")" = "$expected" ] || fail "Patch checksum mismatch: $name"
     patch -f -F0 -p0 -d "$work/src/libxml2-2.15.4" < "$recipe/$name" > "$work/logs/schema-patch.log" 2>&1
 done < "$recipe/patches.tsv"
-support=$recipe/../../profiles/common-media/recipes/textproc/libxml2/files
+support=$recipe/../../pkgsrc/textproc/libxml2/files
 while read -r expected name; do
     [ "$(sha "$support/$name")" = "$expected" ] || fail "Test driver checksum mismatch: $name"
     cp "$support/$name" "$work/src/libxml2-2.15.4/$name"
