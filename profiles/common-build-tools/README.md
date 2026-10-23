@@ -190,6 +190,11 @@ on macOS, use the [cross-package configuration](cross/README.md) with the
 [GCC16 cross recipe](../development-toolchain/cross/README.md). Its host tools
 and target sysroot are separate from this native pkgsrc selection policy.
 
+The common CMake provider uses stable 4.4.4 from [NetBSD pkgsrc commit
+`5cd745c4794fcf99c8a789dfc750df5b89be35c8`](https://github.com/NetBSD/pkgsrc/commit/5cd745c4794fcf99c8a789dfc750df5b89be35c8).
+The release, checksums and module file list apply to native and cross builds.
+Existing source patches and verified host-CMake selection remain unchanged.
+
 ## Prepare and select
 
 ```sh
