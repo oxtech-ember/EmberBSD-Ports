@@ -54,6 +54,73 @@ class FortranRuntime:
         return ['--sysroot=' + str(self.sysroot), '-B' + str(prefix / 'lib/gcc' / self.triplet / VERSION) + '/',
                 '-B' + str(prefix / 'lib') + '/']
 
+    def inspect_build_context(self):
+        """Inspect real generated header providers without hashing GCC objects."""
+        providers = {'gcc': (self.compiler.parent / 'build/gcc', self.compiler.parent,
+                             ('auto-host.h', 'config.h', 'tconfig.h', 'tm.h', 'version.h')),
+                     'libgcc': (self.base / 'build' / self.triplet / 'libgcc', self.base,
+                                ('auto-target.h', 'gthr-default.h'))}
+        result = {}
+        for role, (directory, owner, required) in providers.items():
+            paths.real_directory(directory)
+            require(paths.canonical_existing(directory) == str(directory), 'Generated provider is not canonical')
+            source_version, makefile = owner / 'src/gcc/BASE-VER', directory / 'Makefile'
+            selected = [source_version, makefile] + sorted(p for p in directory.iterdir()
+                if p.suffix in ('.h', '.def', '.inc'))
+            require(all((directory / name) in selected for name in required), 'Required generated header missing')
+            files = {}
+            for path in selected:
+                actual = Path(paths.canonical_existing(path))
+                require(paths.inside(actual, owner), 'Generated provider header escapes its owner')
+                paths.regular_file(actual)
+                files[str(path)] = {'path': str(actual), 'sha256': sha(actual)}
+            require(source_version.read_text().strip() == VERSION, 'Generated provider GCC source version differs')
+            field = 'target' if role == 'gcc' else 'target_noncanonical'
+            require(re.findall(r'^' + field + r'[ \t]*=[ \t]*(\S+)[ \t]*$', makefile.read_text(), re.M)
+                    == [self.triplet], 'Generated provider target differs')
+            if role == 'gcc':
+                require(re.findall(r'^#define version_string "([^"]+)"$',
+                                   (directory / 'version.h').read_text(), re.M) == [VERSION],
+                        'Generated compiler header version differs')
+            else:
+                require(re.findall(r'^thread_header[ \t]*=[ \t]*(\S+)[ \t]*$', makefile.read_text(), re.M)
+                        == ['gthr-posix.h'], 'Generated runtime did not select the POSIX thread header')
+                expected = self.base / 'src/libgcc/gthr-posix.h'
+                peer = self.compiler.parent / 'src/libgcc/gthr-posix.h'
+                for path, root in ((expected, self.base), (peer, self.compiler.parent)):
+                    require(paths.canonical_existing(path) == str(path) and paths.inside(path, root),
+                            'Raw thread source escapes its owner')
+                    paths.regular_file(path)
+                    files[str(path)] = {'path': str(path), 'sha256': sha(path)}
+                require(paths.canonical_existing(directory / 'gthr-default.h') == str(expected) and
+                        sha(expected) == sha(peer), 'Generated raw thread header differs from the matching frontend source')
+            result[role] = {'path': str(directory), 'owner': str(owner), 'files': files}
+        return result
+
+    def bind_build_context(self):
+        """Restore only two upstream build-directory roles in this new work."""
+        require(self.inspect_build_context() == self.context, 'Generated provider changed before binding')
+        aliases = {self.work / 'build/gcc': Path(self.context['gcc']['path']),
+                   self.work / 'build' / self.triplet / 'libgcc': Path(self.context['libgcc']['path'])}
+        for link in aliases:
+            require(paths.entry(link) is None and paths.canonical_new(link) == str(link),
+                    'Build context path exists or escapes the new work')
+        for link, provider in aliases.items():
+            link.parent.mkdir(parents=True, exist_ok=True)
+            paths.real_directory(link.parent)
+            require(paths.canonical_existing(link.parent) == str(link.parent), 'Build context parent is not canonical')
+            link.symlink_to(provider, target_is_directory=True)
+        self.verify_build_context()
+        jsonio.write_json(self.work / 'build-context.json', self.context, exclusive=True)
+        self.record(self.work / 'build-context.json')
+
+    def verify_build_context(self):
+        require(self.inspect_build_context() == self.context, 'Generated provider headers changed')
+        for role, relative in (('gcc', 'build/gcc'), ('libgcc', 'build/' + self.triplet + '/libgcc')):
+            link, provider = self.work / relative, self.context[role]['path']
+            require(link.is_symlink() and os.readlink(link) == provider and
+                    paths.canonical_existing(link) == provider, 'Build context link changed')
+
     def preflight(self):
         self.sources = source_state(self.pkgsrc, self.archive)
         self.parent = fortran_stage.BaseStage(self.base, self.pkgsrc, self.archive).verify()
@@ -74,10 +141,13 @@ class FortranRuntime:
             require(paths.inside(path, self.compiler), 'Compiler frontend escaped its generation')
             self.record(path)
         self.record(self.compiler.parent / 'inputs.txt')
+        self.context = self.inspect_build_context()
+        for provider in self.context.values():
+            for row in provider['files'].values(): self.record(row['path'])
         self.record(self.archive)
         self.record(self.sysroot / '.prebuild-sdk-build.json')
-        # libgfortran includes libgcc/gthr.h, which needs the normal target
-        # SDK gthr-default.h. No target libgcc configure/build is required.
+        # Keep the authenticated SDK thread header inputs. The upstream build
+        # include order selects the raw C form from the real libgcc provider.
         for name in ('gthr.h', 'gthr-default.h', 'gthr-posix.h', 'gthr-single.h'):
             relative = Path('include/c++') / self.triplet / 'bits' / name
             actual = self.sysroot / 'usr/pkg/gcc16' / relative
@@ -166,6 +236,7 @@ class FortranRuntime:
     def build_owned(self):
         with (self.work / 'patch.log').open('xb') as output:
             prepare_source(self.pkgsrc, self.archive, self.work / 'src', runtime=False, output=output)
+        self.bind_build_context()
         self.prepared = {name: inventory.snapshot_tree(self.work / 'src' / name)
                          for name in ('libbacktrace', 'libquadmath', 'libgfortran')}
         jsonio.write_json(self.work / 'source-inventory.json', self.prepared, exclusive=True)
@@ -186,6 +257,7 @@ class FortranRuntime:
                 'Compiler or clean producer source changed')
         require(fortran_stage.BaseStage(self.base, self.pkgsrc, self.archive).verify() == self.parent,
                 'Compatible base runtime changed during the build')
+        self.verify_build_context()
         self.unchanged_inputs()
         result = fortran_stage.inspect_stage(self.work / 'stage', self.target)
         receipt = self.work / 'fortran-stage.json'

@@ -18,9 +18,20 @@ No target executable runs on the host. The three upstream component rules do
 not compile a native helper with `CC_FOR_BUILD`. Libquadmath only forwards
 that variable in recursive make flags. This is not native host-link acceptance.
 If a future upstream rule uses it, verify its real host SDK before that link.
-The normal nb6 SDK target `gthr` headers supply libgfortran's thread interface.
-The producer compares their bytes with the authenticated base runtime stage.
-It does not create a replacement header or rebuild target libgcc.
+The producer retains the authenticated nb6 SDK thread header inputs.
+The raw C thread interface comes from the accepted libgcc build provider.
+It verifies the POSIX rule and equal raw sources in both accepted builds.
+Installed C++ thread headers have upstream namespace transformations.
+They are not substituted for the raw C provider.
+The producer does not create a replacement header or rebuild target libgcc.
+The new work maps its upstream `build/gcc` include role to the accepted
+frontend generation. Its target `libgcc` include role maps to the accepted
+base runtime build. Both providers stay shared-locked. The producer checks
+their source version, target, required generated headers and bounded header
+hashes before and after use. Existing capability and base checks require the
+same GCC16.2 archive and full prepared recipe. It creates only these new-work
+directory links.
+It does not create empty include directories or change warning policy.
 
 ```sh
 HOST_CC=gcc-16 CROSS_JOBS=12 GNU_MAKE=/absolute/host/bin/gmake \
@@ -81,7 +92,9 @@ python3.15 -B profiles/development-toolchain/runtime/tests/fortran-commands-test
 python3.15 -B profiles/development-toolchain/runtime/tests/fortran-stage-test.py \
     --ports-source /absolute/EmberBSD-Ports --sdk-source /absolute/EmberBSD-SDK
 python3.15 -B profiles/development-toolchain/runtime/tests/fortran-producer-test.py \
-    --ports-source /absolute/EmberBSD-Ports --sdk-source /absolute/EmberBSD-SDK
+    --ports-source /absolute/EmberBSD-Ports --sdk-source /absolute/EmberBSD-SDK \
+    --configured-libgfortran /absolute/retained-libgfortran-build \
+    --gnu-make /absolute/host/bin/gmake
 python3.15 -B profiles/development-toolchain/runtime/tests/fortran-framework-test.py \
     --sdk-source /absolute/EmberBSD-SDK --bmake /absolute/host/bin/bmake \
     --pkgsrc-source /absolute/prepared-pkgsrc /absolute/new-framework-result
@@ -95,7 +108,10 @@ not run configure or a compiler.
 The ELF fixtures validate the new stage parser and role guards. Their base
 runtime validator is mocked in receipt mutation controls. The producer controls
 inject failures before any real preflight, compiler or extractor call. They
-exercise real lease conflicts and owned-work quarantine. The framework controls
+exercise real lease conflicts and owned-work quarantine. Synthetic generated
+header providers test the new-work role links and refusal guards. The optional
+configured Makefile control runs its exact include flag fragment with GNU make.
+It keeps every flag and resolves the two missing directories after binding. The framework controls
 apply the real patch with zero fuzz and run BSD make on isolated source
 fragments. Their native compiler paths are fixtures. These checks do not start
 normal pkgsrc metadata, dependency installation or actual compiler queries.
