@@ -98,6 +98,11 @@ PKG_FAIL_REASON=
             item.unlink()
             run('missing-' + missing + '-' + suffix, generic=generic, overrides='READLINE_DEFAULT=editline\n', expected='no', fail=True)
             item.write_bytes(saved)
+    (tree / 'EMBERBSD-PKGSRC-REVISION').write_text('fixture\n')
+    for generic in (False, True):
+        run('exported-unmarked', generic=generic, marker_state='missing', expected='no', fail=True)
+        run('exported-qualified', generic=generic)
+    (tree / 'EMBERBSD-PKGSRC-REVISION').unlink()
     headers = sysroot / 'usr/include/editline/readline.h'
     headers.parent.mkdir(parents=True)
     headers.write_text('/* NetBSD compatibility header */\n')

@@ -29,9 +29,13 @@ The base retains its OS ABI and SONAME. It is not replaced by the portable packa
 The common EmberBSD defaults identify NetBSD-ABI package builds with
 `EMBERBSD_PORTS=yes`. A stale or unmarked base in that context stops the build.
 Rebuild the base from the current recipe before building its consumers.
-A marker also identifies an EmberBSD target without that profile setting.
+The exported tree marker `EMBERBSD-PKGSRC-REVISION` also identifies a NetBSD-ABI
+EmberBSD build without that profile setting. An installed source marker identifies
+the target when the recipe is used outside the exported tree.
 `PREFER.editline=pkgsrc` is rejected for an EmberBSD target because it would
 install a second provider. Other systems can build the portable package.
+Direct builds of this portable package also stop for an EmberBSD target.
+Use the SDK source preparation and native base build instead.
 The marker records source identity; release checks must also verify installed
 library bytes and the consumers' loaded library.
 
@@ -40,6 +44,13 @@ generated completion strings when result allocation fails. The former also
 handles failure to allocate the common prefix. The allocation-failure check
 links the real static library with allocator wrappers. It rejects both
 unpatched implementations, then tests five injected failures and normal completion.
+
+The history parser repair in `patch-src_readline.c` preserves buffer ownership
+when allocation fails or substitution syntax is incomplete. It reserves space
+for the search-pattern terminator. `files/history-allocation.c` includes the
+actual configured `readline.c` translation unit. Its allocator always moves
+resized buffers and checks ownership on every exit. Run it with `ownership`
+or `boundaries` to isolate failure paths and exact allocation boundaries.
 
 The local `patch-src_el.c` keeps the `secure_getenv` fallback private.
 This preserves the base library ABI when the target libc lacks that function.
@@ -113,6 +124,9 @@ They do not install a package or change the base system.
 
 ```sh
 python3 pkgsrc/devel/editline/tests/builtin.py \
+  --bmake /absolute/bmake --pkg-admin /absolute/pkg_admin \
+  --pkgsrc /absolute/pinned-pkgsrc --work-parent /absolute/temporary
+python3 pkgsrc/devel/editline/tests/recipe.py \
   --bmake /absolute/bmake --pkg-admin /absolute/pkg_admin \
   --pkgsrc /absolute/pinned-pkgsrc --work-parent /absolute/temporary
 python3 pkgsrc/devel/editline/tests/export.py \

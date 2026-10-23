@@ -147,6 +147,15 @@ valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all \
     --errors-for-leak-kinds=definite,indirect,possible --track-origins=yes \
     --error-exitcode=97 --log-file="$work/logs/completion-oom-memcheck.log" \
     "$work/completion-oom" > "$work/logs/completion-oom.log" 2>&1
+"$cc" -DHAVE_CONFIG_H -g -I"$src" -I"$src/src" \
+    -I"$ncurses/include" -I"$ncurses/include/ncursesw" \
+    "$root/pkgsrc/devel/editline/files/history-allocation.c" \
+    "$prefix/lib/libedit.a" -L"$ncurses/lib" -Wl,-rpath,"$ncurses/lib" \
+    -lncursesw -o "$work/history-allocation"
+valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all \
+    --errors-for-leak-kinds=definite,indirect,possible --track-origins=yes \
+    --error-exitcode=97 --log-file="$work/logs/history-allocation-memcheck.log" \
+    "$work/history-allocation" > "$work/logs/history-allocation.log" 2>&1
 make uninstall > "$work/logs/uninstall.log" 2>&1
 rm "$prefix/include/editline/history.h"
 test ! -e "$prefix/include/histedit.h"
@@ -155,7 +164,7 @@ make install > "$work/logs/reinstall.log" 2>&1
 ln -s readline.h "$prefix/include/editline/history.h"
 TERM=dumb "$work/consumer" > "$work/logs/reinstalled-consumer.log" 2>&1
 "$cc" --version > "$work/logs/compiler.txt"
-sha256sum "$(readlink -f "$prefix/lib/libedit.so")" "$work/consumer" "$work/completion-oom" \
+sha256sum "$(readlink -f "$prefix/lib/libedit.so")" "$work/consumer" "$work/completion-oom" "$work/history-allocation" \
     > "$work/logs/outputs.sha256"
 perl -MJSON::PP -e '
     my @records;

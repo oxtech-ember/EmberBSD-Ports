@@ -25,6 +25,14 @@ post-install:
 
 .include "../../mk/bsd.prefs.mk"
 
+# EmberBSD deploys this source through the native base library.
+# Direct package builds must not install a second portable provider.
+.if (${OPSYS} == "NetBSD" && (${EMBERBSD_PORTS:Uno:tl} == "yes" || \
+    exists(${.PARSEDIR}/../../EMBERBSD-PKGSRC-REVISION))) || \
+    exists(${TOOLS_CROSS_DESTDIR}/usr/share/emberbsd/ports/editline.distinfo)
+PKG_FAIL_REASON+= "EmberBSD base provides libedit. Rebuild the base through the SDK instead of installing this package."
+.endif
+
 pre-configure:
 .if ${OPSYS} == "SunOS" && !exists(/usr/include/err.h)
 	${CP} ${FILESDIR}/err.h ${BUILDLINK_DIR}/include

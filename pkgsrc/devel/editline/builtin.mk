@@ -56,9 +56,10 @@ USE_BUILTIN.editline= ${_EDITLINE_API_OK}
 PKG_FAIL_REASON+= "The selected base libedit does not satisfy the requested API dependency."
 .endif
 
-# A marked target or an EmberBSD profile must use its qualified base library.
+# A marked target, exported tree, or EmberBSD profile must use the base library.
 # Other systems retain the portable package fallback.
-.if (${EMBERBSD_PORTS:Uno:tl} == "yes" && ${OPSYS:U} == "NetBSD") || \
+.if (${OPSYS:U} == "NetBSD" && (${EMBERBSD_PORTS:Uno:tl} == "yes" || \
+    exists(${_EDITLINE_RECIPE_DIR}/../../EMBERBSD-PKGSRC-REVISION))) || \
     ${F_EDITLINE_DISTINFO:U} != "__nonexistent__"
 .  if ${IS_BUILTIN.editline} != "yes"
 PKG_FAIL_REASON+= "Rebuild EmberBSD base libedit from the current Ports recipe before building consumers."

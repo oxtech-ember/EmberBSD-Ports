@@ -10,6 +10,22 @@ source checkout with `PORTS_PLAN_API = 1`. The first compatible SDK revision is
 `3d27627020c9070415d5232c7f72130c3d2ba90f`. The SDK owns graph validation,
 input keys, plans, evidence receipts, hashing, and JSON file writes.
 
+## Shared base dependencies
+
+Keep one canonical Ports recipe for each third-party library shared with the OS
+base. The recipe owns the source pin, archive hashes and complete patch set.
+Base build rules consume those prepared sources and retain the native OS ABI,
+header installation and build integration. SDK tools own host preparation.
+
+Do not add separate source copies or patch subsets for a base library, profile,
+board or application. Update the canonical recipe and rebuild affected consumers.
+A builtin provider must prove that its installed source identity matches the
+recipe. A matching version string alone does not prove that patches are present.
+Keep one installed provider on EmberBSD. Reject a stale base and rebuild it;
+do not silently add a portable package beside it. Other systems can retain the
+recipe's documented portable fallback. The [libedit contract](../pkgsrc/devel/editline/README.md)
+provides the current source, builtin and regression interfaces.
+
 ## Export the selected closure
 
 Prepare pkgsrc with the existing [Ports exporter](../README.md#package-integration).

@@ -9,5 +9,5 @@ SHA1 (patch-src_sys.h) = dacabbcf6347dfae5f9deabe9c7288e4aeb620b5
 SHA1 (patch-src_terminal.c) = 6e572ea7aa291e29c3546b542f592aa7adc07c4a
 SHA1 (patch-src_terminal.h) = 5d658f7b7c3b88c0c3122a1be740f3a72d7d2370
 SHA1 (patch-src_filecomplete.c) = 6c82173022705145dffeff160324238e3d7e430a
-SHA1 (patch-src_readline.c) = 815a9bfce66990c4b187289fa76cc91e7090418d
+SHA1 (patch-src_readline.c) = d7ccec801610ef03efa61088407da0cbbaae53a2
 SHA1 (patch-src_el.c) = bd279defc2b6371d9125a50f1fe78fa138451ced
