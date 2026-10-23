@@ -87,7 +87,7 @@ Provide these absolute paths without whitespace:
    headers/runtime. Preserve relative symlinks. Resolve links escaping the
    sysroot when creating the snapshot; never resolve them against the host.
 4. A host `TOOLDIR` produced by the fork's
-   [cross-build path](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/cross-build.md).
+   [cross-build path](https://github.com/oxtech-ember/EmberBSD/blob/main/tools/docs/cross-build.md).
    Its host GNU make builds GCC. The recipe builds target Binutils 2.47 from
    the pinned Ports source and patches.
 5. A new work directory with room for sources, objects and the compiler.
@@ -441,7 +441,7 @@ and periodic-signal contracts also passed. This validates host prerequisites;
 it does not establish target application runtime or Linux kernel acceptance.
 Separately, this compiler's `--kernel` mode built the full EmberBSD kernel,
 four matched modules, and three DTBs on that Linux host. Portable contracts
-and all nine artifact hashes passed; see the [OS-owned evidence](https://github.com/oxtech-ember/EmberBSD/blob/main/ember/boot/cross-build.md#linux-gcc16).
+and all nine artifact hashes passed; see the [OS-owned evidence](https://github.com/oxtech-ember/EmberBSD/blob/main/tools/docs/cross-build.md#linux-gcc16).
 Native contracts, boot, and hardware acceptance remain separate.
 
 On 2026-10-07, the rebuilt GCC 16.2.0 passed host compilation and target
