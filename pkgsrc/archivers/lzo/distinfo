@@ -5,5 +5,5 @@ SHA512 (lzo-2.10.tar.gz) = a3dae5e4a6b93b1f5bf7435e8ab114a9be57252e9efc5dd444947
 Size (lzo-2.10.tar.gz) = 600622 bytes
 SHA1 (patch-aa) = 8e86b2eca83d5b45e37646deb25517dbedbe6e97
 SHA1 (patch-src_lzo1f__d.ch) = 819ce070c8de4674162c5f30a32d50adf987c910
-SHA1 (patch-src_lzo_dict.h) = d15626ef8e5a7e6c1d04408987f9076126f7da35
-SHA1 (patch-src_lzo_func.h) = d835aaca27464e1c77a275089a786a37af8f133e
+SHA1 (patch-src_lzo_dict.h) = 5ee7cef77321465fd44e77c275d2a3bd28a70f54
+SHA1 (patch-src_lzo_func.h) = 76309e7f4ebfc15c95b0c7f0c7ee7f038d91cfe1
