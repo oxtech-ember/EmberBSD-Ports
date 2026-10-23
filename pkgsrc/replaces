@@ -11,3 +11,5 @@ sysutils/libnotify
 textproc/gspell
 devel/editline
 textproc/docbook-xsl-ns
+devel/jq
+devel/git-base

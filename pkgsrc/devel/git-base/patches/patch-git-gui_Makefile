@@ -1,0 +1,36 @@
+$NetBSD: patch-git-gui_Makefile,v 1.5 2025/08/18 19:36:35 adam Exp $
+
+Fix installation.
+
+--- git-gui/Makefile.orig	2025-08-18 00:35:38.000000000 +0000
++++ git-gui/Makefile
+@@ -47,11 +47,11 @@ endif
+ RM_RF     ?= rm -rf
+ RMDIR     ?= rmdir
+ 
+-INSTALL_D0 = $(INSTALL) -d -m 755 # space is required here
++INSTALL_D0 = $(BSD_INSTALL_DATA_DIR) # space is required here
+ INSTALL_D1 =
+-INSTALL_R0 = $(INSTALL) -m 644 # space is required here
++INSTALL_R0 = $(BSD_INSTALL_DATA)  # space is required here
+ INSTALL_R1 =
+-INSTALL_X0 = $(INSTALL) -m 755 # space is required here
++INSTALL_X0 = $(BSD_INSTALL_SCRIPT) # space is required here
+ INSTALL_X1 =
+ INSTALL_L0 = rm -f # space is required here
+ INSTALL_L1 = && ln # space is required here
+@@ -72,11 +72,11 @@ ifndef V
+ 	QUIET_MSGFMT1  = 2>&1` && echo "$$v" | sed -e 's/fuzzy translations/fuzzy/' | sed -e 's/ messages*//g'
+ 
+ 	INSTALL_D0 = dir=
+-	INSTALL_D1 = && echo ' ' DEST $$dir && $(INSTALL) -d -m 755 "$$dir"
++	INSTALL_D1 = && echo ' ' DEST $$dir && $(BSD_INSTALL_DATA_DIR) -d -m 755 "$$dir"
+ 	INSTALL_R0 = src=
+-	INSTALL_R1 = && echo '   ' INSTALL 644 `basename $$src` && $(INSTALL) -m 644 $$src
++	INSTALL_R1 = && echo '   ' INSTALL 644 `basename $$src` && $(BSD_INSTALL_DATA_DIR) -m 644 $$src
+ 	INSTALL_X0 = src=
+-	INSTALL_X1 = && echo '   ' INSTALL 755 `basename $$src` && $(INSTALL) -m 755 $$src
++	INSTALL_X1 = && echo '   ' INSTALL 755 `basename $$src` && $(BSD_INSTALL_DATA_DIR) -m 755 $$src
+ 
+ 	INSTALL_L0 = dst=
+ 	INSTALL_L1 = && src=
