@@ -191,6 +191,20 @@ class BuilderTests(unittest.TestCase):
         self.assertEqual(list((self.work / 'source').iterdir()), [])
         self.assertFalse((self.work / 'outputs.json').exists())
 
+    def test_qt_locale_warning_preserves_exact_version_check(self):
+        self.qt_version = ('Detected locale "C" with character encoding "US-ASCII", which is not UTF-8.\n'
+                           'Qt depends on a UTF-8 locale, and has switched to "UTF-8" instead.\n'
+                           'If this causes problems, reconfigure your locale. See the locale(1) manual\n'
+                           'for more information.\n6.12.0')
+        self.build()
+        self.assertTrue((self.work / 'outputs.json').exists())
+
+    def test_duplicate_qt_version_lines_rejected(self):
+        self.qt_version = '6.12.0\n6.12.0'
+        with self.assertRaisesRegex(ValueError, 'Qt 6.12.0'):
+            self.build()
+        self.assertEqual([call[0] for call in self.calls], ['qt-version'])
+
     def test_producer_failure_stops_and_retains_incomplete(self):
         from emberbsd_sdk.errors import CommandError
         self.fail_step = 'archive-build'

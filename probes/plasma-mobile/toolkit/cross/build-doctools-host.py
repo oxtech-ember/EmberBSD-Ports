@@ -129,8 +129,10 @@ def build(arguments, sdk_root):
                 raise
             return work / 'logs' / (name + '.log')
 
-        require(run([tools['qmake'], '-query', 'QT_VERSION'], 'qt-version').read_text(encoding='utf-8').strip() == '6.12.0',
-                'Native Qt 6.12.0 is required')
+        qt_query = run([tools['qmake'], '-query', 'QT_VERSION'], 'qt-version')
+        qt_versions = [line.strip() for line in qt_query.read_text(encoding='utf-8').splitlines()
+                       if re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', line.strip())]
+        require(qt_versions == ['6.12.0'], 'Native Qt 6.12.0 is required')
         for name in selected:
             run([tools[name], '--version'], name.lower() + '-version')
         for component, record in archives.items():

@@ -20,6 +20,8 @@ selection are explicit recorded inputs. Other ambient build variables are not
 forwarded. Use clean Ports and SDK source checkouts.
 
 The builder verifies both source hashes before it creates the work directory.
+Qt may print a locale warning under the builder's `LC_ALL=C` environment.
+The builder requires exactly one `6.12.0` version line in the recorded output.
 It uses the SDK process controller and an exclusive lock on the canonical
 work path. Shared locks cover the Qt, native and ECM input directories.
 All cooperating writers must use the same canonical paths and the work
