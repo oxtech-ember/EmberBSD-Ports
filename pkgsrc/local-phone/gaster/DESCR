@@ -1,11 +1,13 @@
-Gaster enters PwnedDFU mode on Apple devices with A5-A11 SoCs using
-the checkm8 boot ROM exploit. In PwnedDFU the boot ROM accepts unsigned
-images, which is the entry point for booting alternative operating
-systems from a host over USB.
+Gaster switches Apple devices with A5-A11 SoCs into the extended DFU
+access mode through the checkm8 boot ROM mechanism. In this mode the
+boot ROM accepts unsigned images, which is the entry point for booting
+alternative operating systems from a host over USB.
 
 The phone rescue kit uses it to give unsupported Apple phones a second
-life with EmberBSD. Exploitation runs entirely in RAM: gaster never
-writes to device storage.
+life with EmberBSD. The whole sequence runs in RAM: gaster never writes
+to device storage.
 
-This package builds the portable libusb backend with the pre-generated
-boot ROM payload headers from files/.
+This package builds the native NetBSD backend on the ugen interface,
+with the pre-generated boot ROM payload headers from files/. The
+leakprobe and portreset host tools from the same kit help with the
+extended DFU access diagnostics.

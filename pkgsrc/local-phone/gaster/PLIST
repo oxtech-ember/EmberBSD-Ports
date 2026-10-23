@@ -1,2 +1,4 @@
 @comment $EmberBSD$
 bin/gaster
+bin/leakprobe
+bin/portreset
