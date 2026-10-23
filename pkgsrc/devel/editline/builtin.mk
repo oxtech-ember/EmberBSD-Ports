@@ -84,8 +84,8 @@ BUILDLINK_TARGETS+=	ensure-libedit-pc
 .PHONY: ensure-libedit-pc
 ensure-libedit-pc:
 	${RUN}								\
-	dst=${BUILDLINK_DIR}/lib/pkgconfig/libedit.pc;			\
-	src=${TOOLS_CROSS_DESTDIR}${BUILDLINK_PREFIX.editline}/lib${LIBABISUFFIX}/pkgconfig/libedit.pc; \
+	dst="${BUILDLINK_DIR}/lib/pkgconfig/libedit.pc";			\
+	src="${TOOLS_CROSS_DESTDIR}${BUILDLINK_PREFIX.editline}/lib${LIBABISUFFIX}/pkgconfig/libedit.pc"; \
 	if [ ! -f "$${dst}" ]; then					\
 		${MKDIR} "${BUILDLINK_DIR}/lib/pkgconfig";		\
 		if [ -f "$${src}" ]; then					\
@@ -119,7 +119,7 @@ BUILDLINK_TARGETS+=	buildlink-readline-history-h
 buildlink-readline-readline-h:
 	${RUN}								\
 	src=${TOOLS_CROSS_DESTDIR:Q}${H_EDITLINE:Q};						\
-	dest=${BUILDLINK_DIR}"/include/readline/readline.h";		\
+	dest="${BUILDLINK_DIR}/include/readline/readline.h";		\
 	if ${TEST} ! -f "$$dest" -a -f "$$src"; then			\
 		fname=`${BASENAME} "$$src"`;				\
 		${ECHO_BUILDLINK_MSG} "Linking $$fname -> readline.h.";	\
@@ -133,7 +133,7 @@ buildlink-readline-readline-h:
 buildlink-readline-history-h:
 	${RUN}								\
 	src=${TOOLS_CROSS_DESTDIR:Q}${H_EDITLINE:Q};						\
-	dest=${BUILDLINK_DIR}"/include/readline/history.h";		\
+	dest="${BUILDLINK_DIR}/include/readline/history.h";		\
 	if ${TEST} ! -f "$$dest" -a -f "$$src"; then			\
 		fname=`${BASENAME} "$$src"`;				\
 		${ECHO_BUILDLINK_MSG} "Linking $$fname -> history.h.";	\

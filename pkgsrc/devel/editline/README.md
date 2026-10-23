@@ -41,6 +41,12 @@ handles failure to allocate the common prefix. The allocation-failure check
 links the real static library with allocator wrappers. It rejects both
 unpatched implementations, then tests five injected failures and normal completion.
 
+The local `patch-src_el.c` keeps the `secure_getenv` fallback private.
+This preserves the base library ABI when the target libc lacks that function.
+Run `tests/private-symbols.py --nm /absolute/nm /absolute/libedit.so.3`
+against the actual built library. The check also accepts the real `el.o`.
+The unpatched fallback must fail the check when it is compiled on that target.
+
 The local patches and control checks were prepared with AI assistance.
 They have not been submitted upstream.
 
