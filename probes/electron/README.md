@@ -145,6 +145,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-network-enum-n
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/unique-identifier-name-linkage-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-net-ui-enum-noreturn-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-http-enum-noreturn-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-graphics-enum-noreturn-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/x509-presented-name-pop-back-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-padding-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-invariants.patch
@@ -203,6 +204,8 @@ WebRTC. The identifier patch uses one inline class-name entity across translatio
 units. It retains nested declarations, constexpr values, and PassKey access.
 The Net/UI and HTTP follow-ups add fatal exits after exhaustive switches. They
 retain parsing fallbacks, cookie policy, priority sentinels, and valid results.
+The graphics enum patch preserves format, paint, shadow, and color-space
+selection. Invalid terminal paths use the existing fatal mechanism.
 The X509 patch removes a trailing dot with the shrink-only `pop_back()` operation.
 Its hostname matching rules remain unchanged.
 The scenario patch keeps the shared-memory padding diagnostic fatal on

@@ -292,3 +292,21 @@ unit fails with the original GCC16 object-size diagnostic and compiles after
 the change. Paired identifier and X509 analysis completes with the same three
 inherited findings. All four Cppcheck cases stop at the same dependency parser
 error. Full browser linking and runtime acceptance remain separate checks.
+
+## Graphics enum exits
+
+The AI-assisted graphics patch adds 28 fatal exits after exhaustive switches
+in ten source files. It keeps plane formats, byte and channel counts, alpha
+policy, Skia type selection, default/gainmap dispatch, filter thresholds,
+shadow styles, and paint operation dispatch unchanged. Valid unknown-format
+branches and existing sentinel failures remain.
+
+All ten observed production inputs fail before the patch and compile after
+it with their GCC16 flags. Paired Clang Static Analyzer checks complete all
+20 cases with the same 20 messages per variant. Source review of the three
+inherited pointer/lifetime paths finds incompatible path assumptions: a null
+flags pointer derived from a live operation, and a sole Skia reference while
+a converting temporary still owns a second reference. These traces do not
+justify source changes. This review is not GPU or sanitizer execution.
+Cppcheck stops at unchanged dependency parser errors in all 20 cases. Full
+browser execution and graphics acceptance remain separate checks.

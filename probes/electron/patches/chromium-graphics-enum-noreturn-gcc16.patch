@@ -1,0 +1,276 @@
+--- a/components/viz/common/resources/shared_image_format.cc
++++ b/components/viz/common/resources/shared_image_format.cc
+@@ -71,6 +71,7 @@
+     case SharedImageFormat::PlaneConfig::kY_U_V_A:
+       return "Y_U_V_A";
+   }
++  NOTREACHED();
+ }
+ 
+ const char* SubsamplingToString(SharedImageFormat::Subsampling subsampling) {
+@@ -82,6 +83,7 @@
+     case SharedImageFormat::Subsampling::k444:
+       return "444";
+   }
++  NOTREACHED();
+ }
+ 
+ const char* ChannelFormatToString(SharedImageFormat::ChannelFormat channel) {
+@@ -95,6 +97,7 @@
+     case SharedImageFormat::ChannelFormat::k16F:
+       return "16float";
+   }
++  NOTREACHED();
+ }
+ 
+ const char* PrefersExternalSamplerToString(SharedImageFormat format) {
+@@ -117,6 +120,7 @@
+     case PlaneConfig::kY_U_V_A:
+       return plane == 1 || plane == 2;
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace
+@@ -145,6 +149,7 @@
+     case PlaneConfig::kY_U_V_A:
+       return 4;
+   }
++  NOTREACHED();
+ }
+ 
+ bool SharedImageFormat::IsValidPlaneIndex(int plane_index) const {
+@@ -295,6 +300,7 @@
+     case ChannelFormat::k16F:
+       return 2;
+   }
++  NOTREACHED();
+ }
+ 
+ // For multiplanar formats.
+@@ -324,6 +330,7 @@
+                                 ChannelFormatToString(channel_format()),
+                                 PrefersExternalSamplerToString(*this));
+   }
++  NOTREACHED();
+ }
+ 
+ std::string SharedImageFormat::ToTestParamString() const {
+@@ -339,6 +346,7 @@
+                                 ChannelFormatToString(channel_format()),
+                                 PrefersExternalSamplerToString(*this));
+   }
++  NOTREACHED();
+ }
+ 
+ bool SharedImageFormat::HasAlpha() const {
+@@ -365,6 +373,7 @@
+     case PlaneConfig::kY_U_V_A:
+       return true;
+   }
++  NOTREACHED();
+ }
+ 
+ bool SharedImageFormat::IsCompressed() const {
+@@ -427,6 +436,7 @@
+     case PlaneType::kMultiPlane:
+       return multiplanar_format() == o.multiplanar_format();
+   }
++  NOTREACHED();
+ }
+ 
+ std::weak_ordering SharedImageFormat::operator<=>(
+@@ -443,6 +453,7 @@
+     case PlaneType::kMultiPlane:
+       return multiplanar_format() <=> o.multiplanar_format();
+   }
++  NOTREACHED();
+ }
+ 
+ bool SharedImageFormat::SharedImageFormatUnion::MultiplanarFormat::operator==(
+--- a/components/viz/common/resources/shared_image_format_utils.cc
++++ b/components/viz/common/resources/shared_image_format_utils.cc
+@@ -133,6 +133,7 @@
+   } else {
+     return SharedImageFormatUMA::kOther;
+   }
++  NOTREACHED();
+ }
+ 
+ SkColorType ToClosestSkColorType(SharedImageFormat format) {
+@@ -199,6 +200,7 @@
+       return num_channels == 1 ? kA16_float_SkColorType
+                                : kR16G16_float_SkColorType;
+   }
++  NOTREACHED();
+ }
+ 
+ SharedImageFormat SkColorTypeToSinglePlaneSharedImageFormat(
+--- a/ui/gfx/display_color_spaces.cc
++++ b/ui/gfx/display_color_spaces.cc
+@@ -8,6 +8,7 @@
+ #include <cmath>
+ 
+ #include "base/compiler_specific.h"
++#include "base/notreached.h"
+ #include "base/trace_event/traced_value.h"
+ #include "build/build_config.h"
+ #include "skia/ext/skcolorspace_primaries.h"
+@@ -44,6 +45,7 @@
+     case ContentColorUsage::kHDR:
+       return 4 + needs_alpha;
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace
+--- a/cc/paint/filter_operations.cc
++++ b/cc/paint/filter_operations.cc
+@@ -12,6 +12,7 @@
+ #include <utility>
+ 
+ #include "base/feature_list.h"
++#include "base/notreached.h"
+ #include "base/trace_event/traced_value.h"
+ #include "base/values.h"
+ #include "cc/base/features.h"
+@@ -245,6 +246,7 @@
+     case FilterOperation::OFFSET:
+       return false;
+   }
++  NOTREACHED();
+ }
+ 
+ void FilterOperations::AsValueInto(
+--- a/cc/paint/paint_flags.cc
++++ b/cc/paint/paint_flags.cc
+@@ -204,6 +204,7 @@
+     case PaintFlags::FilterQuality::kNone:
+       return SkSamplingOptions(SkFilterMode::kNearest, SkMipmapMode::kNone);
+   }
++  NOTREACHED();
+ }
+ 
+ bool CorePaintFlags::IsValid() const {
+--- a/cc/paint/paint_image.cc
++++ b/cc/paint/paint_image.cc
+@@ -11,6 +11,7 @@
+ #include "base/atomic_sequence_num.h"
+ #include "base/hash/hash.h"
+ #include "base/logging.h"
++#include "base/notreached.h"
+ #include "base/types/optional_util.h"
+ #include "cc/paint/paint_image_builder.h"
+ #include "cc/paint/paint_image_generator.h"
+@@ -196,6 +197,7 @@
+       DCHECK(gainmap_paint_image_generator_);
+       return gainmap_paint_image_generator_->GetSkImageInfo();
+   }
++  NOTREACHED();
+ }
+ 
+ gpu::Mailbox PaintImage::GetMailbox() const {
+@@ -268,6 +270,7 @@
+       // Note that this is different from the default image behavior.
+       return SkISize(0, 0);
+   }
++  NOTREACHED();
+ }
+ 
+ bool PaintImage::Decode(SkPixmap pixmap,
+@@ -299,6 +302,7 @@
+       return gainmap_paint_image_generator_->GetPixels(pixmap, frame_index,
+                                                        client_id, stable_id());
+   }
++  NOTREACHED();
+ }
+ 
+ bool PaintImage::DecodeYuv(const SkYUVAPixmaps& pixmaps,
+@@ -319,6 +323,7 @@
+       return gainmap_paint_image_generator_->GetYUVAPlanes(
+           pixmaps, frame_index, lazy_pixel_ref, client_id);
+   }
++  NOTREACHED();
+ }
+ 
+ bool PaintImage::DecodeFromSkImage(SkPixmap pixmap,
+@@ -422,6 +427,7 @@
+              gainmap_paint_image_generator_->QueryYUVA(supported_data_types,
+                                                        info);
+   }
++  NOTREACHED();
+ }
+ 
+ bool PaintImage::NeedsLayer() const {
+--- a/cc/paint/image_transfer_cache_entry.cc
++++ b/cc/paint/image_transfer_cache_entry.cc
+@@ -457,6 +457,7 @@
+     case YUVDecodeFormat::kUnknown:
+       return 0u;
+   }
++  NOTREACHED();
+ }
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+--- a/cc/paint/paint_shader.cc
++++ b/cc/paint/paint_shader.cc
+@@ -348,6 +348,7 @@
+     case Type::kShaderCount:
+       NOTREACHED();
+   }
++  NOTREACHED();
+ }
+ 
+ bool PaintShader::GetClampedRasterizationTileRect(const SkMatrix& ctm,
+--- a/cc/paint/paint_op.cc
++++ b/cc/paint/paint_op.cc
+@@ -402,6 +402,7 @@
+     TYPES(M)
+ #undef M
+   }
++  NOTREACHED();
+ }
+ 
+ bool OpHasDrawTextOpsImpl(const PaintOp& op) {
+@@ -413,6 +414,7 @@
+     TYPES(M)
+ #undef M
+   }
++  NOTREACHED();
+ }
+ 
+ size_t OpAdditionalOpCountImpl(const PaintOp& op) {
+@@ -424,6 +426,7 @@
+     TYPES(M)
+ #undef M
+   }
++  NOTREACHED();
+ }
+ 
+ #undef TYPES
+--- a/ui/gfx/shadow_util.cc
++++ b/ui/gfx/shadow_util.cc
+@@ -9,6 +9,7 @@
+ 
+ #include "base/lazy_instance.h"
+ #include "base/memory/ptr_util.h"
++#include "base/notreached.h"
+ #include "third_party/skia/include/core/SkRRect.h"
+ #include "ui/gfx/canvas.h"
+ #include "ui/gfx/geometry/insets.h"
+@@ -114,6 +115,7 @@
+                  ShadowValue::MakeChromeOSSystemUIShadowValues(elevation));
+ #endif
+   }
++  NOTREACHED();
+ }
+ 
+ const ShadowDetails& ShadowDetails::Get(int elevation,
+@@ -131,6 +133,7 @@
+                              elevation, key_color, ambient_color));
+ #endif
+   }
++  NOTREACHED();
+ }
+ 
+ const ShadowDetails& ShadowDetails::Get(int radius,
