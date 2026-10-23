@@ -1,0 +1,76 @@
+--- a/src/common/MemoryBuffer.cpp
++++ b/src/common/MemoryBuffer.cpp
+@@ -121,7 +121,7 @@
+ 
+ ScratchBuffer::~ScratchBuffer() {}
+ 
+-ScratchBuffer::ScratchBuffer(ScratchBuffer &&other)
++ScratchBuffer::ScratchBuffer(ScratchBuffer &&other) : ScratchBuffer()
+ {
+     *this = std::move(other);
+ }
+--- a/src/common/MemoryBuffer_unittest.cpp
++++ b/src/common/MemoryBuffer_unittest.cpp
+@@ -9,6 +9,7 @@
+ #include "common/MemoryBuffer.h"
+ 
+ #include <array>
++#include <utility>
+ 
+ #include "common/span.h"
+ #include "gmock/gmock.h"
+@@ -301,6 +302,54 @@
+     out->assertDataBufferFreed();
+ }
+ 
++// Moving must preserve allocated data and the remaining release countdown.
++TEST(ScratchBuffer, MoveConstructionPreservesBufferAndCountdown)
++{
++    ScratchBuffer source(3);
++    MemoryBuffer *buffer = nullptr;
++    ASSERT_TRUE(source.getInitialized(16u, &buffer, 0x5au));
++    uint8_t *data = buffer->data();
++    source.tick();
++
++    ScratchBuffer moved(std::move(source));
++    EXPECT_TRUE(source.getMemoryBuffer()->empty());
++    EXPECT_EQ(0u, source.getMemoryBuffer()->capacity());
++    EXPECT_EQ(data, moved.getMemoryBuffer()->data());
++    EXPECT_EQ(16u, moved.getMemoryBuffer()->size());
++    for (size_t i = 0; i < moved.getMemoryBuffer()->size(); ++i)
++    {
++        EXPECT_EQ(0x5au, (*moved.getMemoryBuffer())[i]);
++    }
++
++    moved.tick();
++    EXPECT_EQ(data, moved.getMemoryBuffer()->data());
++    moved.tick();
++    EXPECT_TRUE(moved.getMemoryBuffer()->empty());
++    EXPECT_EQ(0u, moved.getMemoryBuffer()->capacity());
++
++    ASSERT_TRUE(source.getInitialized(4u, &buffer, 0x7bu));
++    EXPECT_EQ(4u, buffer->size());
++    EXPECT_EQ(0x7bu, (*buffer)[0]);
++}
++
++TEST(ScratchBuffer, MoveConstructionOfEmptyEternalBuffer)
++{
++    ScratchBuffer source(0);
++    ScratchBuffer moved(std::move(source));
++    EXPECT_TRUE(moved.getMemoryBuffer()->empty());
++
++    MemoryBuffer *buffer = nullptr;
++    ASSERT_TRUE(moved.getInitialized(8u, &buffer, 0x3cu));
++    uint8_t *data = buffer->data();
++    for (size_t i = 0; i < 8; ++i)
++    {
++        moved.tick();
++    }
++    EXPECT_EQ(data, buffer->data());
++    EXPECT_EQ(8u, buffer->size());
++    EXPECT_EQ(0x3cu, (*buffer)[0]);
++}
++
+ // Test that an initial lifetime of zero means it never expires.
+ TEST(ScratchBuffer, EternalLifetime)
+ {

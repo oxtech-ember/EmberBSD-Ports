@@ -145,6 +145,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-network-enum-n
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-padding-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-invariants.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-proc-clang-cfi-attribute.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/pffft-simd-debug-validation-gcc16.patch
 ```
 
 The pkg-config patch keeps the effective `pkg/lib` value in the common cross
@@ -191,6 +192,8 @@ compares the selected subprotocol without signed conversion errors, and obtains
 Settings frames through the existing typed visitor. The Dawn template selects
 Clang-only CFI exclusions only on Clang. Generic sanitizer annotations remain
 available to other supported compilers.
+The PFFFT patch limits assert-only SIMD validation to assertion-enabled builds.
+It retains the public validation symbol and every debug assertion.
 The parser patch removes three GCC-only diagnostic switches and `--param=`
 optimizer settings only from libclang's inputs. Target compiler arguments,
 `-Werror`, target triple, and sysroot remain unchanged.
@@ -253,6 +256,19 @@ reference-count storage, ordering, and the public handle ABI stay unchanged.
 The carried upstream tests cover B-tree splitting, integer boundaries, and
 mixed typed/untyped reference ownership. Test compilation does not establish
 runtime execution.
+
+Apply the ANGLE follow-up with `-p1` from the separate `third_party/angle`
+DEPS source root:
+
+```sh
+cd /absolute/chromium/src/third_party/angle
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/angle-scratch-move-gcc16.patch
+```
+
+The ScratchBuffer move constructor initializes its empty destination before
+swap-based assignment. Its carried tests cover data ownership, countdown
+preservation, moved-from reuse, and an empty buffer with an eternal lifetime.
+See the [Chromium GCC16 checks](tests/chromium-gcc16.md) for validation limits.
 
 The pinned Perfetto checkout has a separate GCC16 warning patch. Apply it from
 the Chromium source root after the NetBSD adaptations:

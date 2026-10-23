@@ -100,3 +100,63 @@ The pinned Chromium Clang does not provide the static analyzer backend.
 Cppcheck still cannot complete these modern dependency inputs. GCC-preprocessed
 ipcz and Dawn variants reach the same dependency syntax errors before and after;
 these checks do not establish a clean Cppcheck result.
+
+## SIMD validation and scratch-buffer moves
+
+`pffft-simd-debug-validation-gcc16.patch` applies with `-p1 -F 0` from the
+Chromium source root. It retains `validate_pffft_simd()` in release builds and
+compiles its assert-only calculations when assertions are enabled. The release
+production unit fails before the patch and compiles after it with GCC 16.2.
+Both assertion-enabled variants compile. Preprocessing retains all 14 SIMD
+assertions. GCC16 `-fanalyzer` completes both assertion-enabled variants without
+findings.
+
+The standalone [PFFFT fixture](pffft-correctness.c) calls SIMD validation and
+compares real FFT sizes 32/96/160 and complex sizes 16/48/80 against an independent
+double-precision DFT. It also checks the inverse scale and rejects NaN/Inf.
+Use the common GCC16 amd64 cross driver and an EmberBSD sysroot:
+
+```sh
+GCC=/absolute/cross-tools/bin/x86_64--netbsd-gcc
+SYSROOT=/absolute/emberbsd-amd64-sysroot
+CHROMIUM=/absolute/chromium/src
+PORTS=/absolute/Ports
+OUTPUT=/absolute/new-check-output
+mkdir -p "$OUTPUT"
+"$GCC" --sysroot="$SYSROOT" \
+  -B"$SYSROOT/usr/pkg/gcc16/lib/gcc/x86_64--netbsd/16.2.0/" \
+  -B"$SYSROOT/usr/pkg/gcc16/lib/" \
+  -std=gnu11 -O2 -msse3 -fno-strict-aliasing -Wall -Werror -UNDEBUG \
+  -I"$CHROMIUM/third_party/pffft/src" \
+  "$PORTS/probes/electron/tests/pffft-correctness.c" \
+  "$CHROMIUM/third_party/pffft/src/pffft.c" -lm \
+  -o "$OUTPUT/pffft-correctness"
+```
+
+Run the resulting ELF on an ABI-matching target. The cross-built fixture passed
+on an amd64 target with the NetBSD 11 ABI and reported `SIMD=4`. This verifies
+six forward DFT/inverse cases and enabled SIMD assertions. It does not verify
+all FFT sizes, architectures, or browser media paths. The tested fixture source
+SHA256 is `18dba92738f1292c600e00d6cdb30a4531453ea0075f7a1a5d849aca3bd643e8`.
+
+Cppcheck 2.18 analyzes PFFFT with the production defines, target headers, and
+Unix64 data model. Both variants retain 14 inherited allocation-failure
+warnings in `pffft_new_setup`, 15 style findings, and the normal-check branch
+limit notice. No new findings appear. Clang Static Analyzer 21 retains the same
+single dead-store finding in `pffft_transform_internal`. These are comparisons,
+not clean analysis results.
+
+`angle-scratch-move-gcc16.patch` applies with `-p1 -F 0` from
+`third_party/angle`, at DEPS revision
+`54ebf19ed818ac14bd3daee1f5ceb0644f6b64d6`. The delegating constructor initializes
+lifetime, countdown, and empty storage before move assignment swaps them.
+The production unit fails with an uninitialized-value diagnostic before the
+patch and compiles after it. The changed upstream test translation unit also
+compiles with GCC16. Run ANGLE's `angle_unittests` with
+`--gtest_filter=ScratchBuffer.MoveConstruction*` on the target; these two tests
+have not been executed yet.
+
+Clang Static Analyzer 21 completes both ANGLE variants without findings.
+Cppcheck 2.18 stops at the same inherited `angleutils.h` syntax error in the
+GCC-preprocessed variants. That parser limit prevents a complete comparison;
+no clean Cppcheck result is claimed. Target objects use GCC16 throughout.

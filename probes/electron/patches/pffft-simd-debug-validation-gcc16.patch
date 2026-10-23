@@ -1,0 +1,18 @@
+--- a/third_party/pffft/src/pffft.c
++++ b/third_party/pffft/src/pffft.c
+@@ -214,6 +214,7 @@
+ 
+ /* detect bugs with the vector support macros */
+ void validate_pffft_simd() {
++#ifndef NDEBUG
+   float f[16] = { 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 };
+   v4sf_union a0, a1, a2, a3, t, u; 
+   memcpy(a0.f, f, 4*sizeof(float));
+@@ -241,6 +242,7 @@
+   assertv4(t, 8, 9, 6, 7);
+   VTRANSPOSE4(a0.v, a1.v, a2.v, a3.v);
+   assertv4(a0, 0, 4, 8, 12); assertv4(a1, 1, 5, 9, 13); assertv4(a2, 2, 6, 10, 14); assertv4(a3, 3, 7, 11, 15);
++#endif
+ }
+ #endif //!PFFFT_SIMD_DISABLE
+ 
