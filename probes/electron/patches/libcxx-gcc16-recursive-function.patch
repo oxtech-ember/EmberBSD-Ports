@@ -1,0 +1,26 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted E12 portability fix).
+Upstream: llvm-libc++ b16984ce99c702355a5b2b4c52574e82cec41fb9.
+Status: local GCC16 fix; not submitted upstream.
+
+Preserve hidden visibility without forcing recursive virtual dispatch inline.
+
+--- a/include/__functional/function.h
++++ b/include/__functional/function.h
+@@ -189,7 +189,14 @@
+     }
+   }
+   _LIBCPP_HIDE_FROM_ABI_VIRTUAL void destroy_deallocate() _NOEXCEPT override { delete this; }
+-  _LIBCPP_HIDE_FROM_ABI_VIRTUAL _Rp operator()(_ArgTypes&&... __arg) override {
++#if defined(_LIBCPP_COMPILER_GCC) && !__has_attribute(exclude_from_explicit_instantiation)
++  // This call can recurse through std::function. GCC's fallback attribute
++  // forces an impossible always_inline expansion for that call chain.
++  _LIBCPP_HIDDEN
++#else
++  _LIBCPP_HIDE_FROM_ABI_VIRTUAL
++#endif
++  _Rp operator()(_ArgTypes&&... __arg) override {
+     return std::__invoke_r<_Rp>(__func_, std::forward<_ArgTypes>(__arg)...);
+   }
+ #  if _LIBCPP_HAS_RTTI

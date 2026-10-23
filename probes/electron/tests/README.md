@@ -249,3 +249,53 @@ the bundled toolchain, native NetBSD, and an unrelated Linux target. It verifies
 that only the intended native/unrelated cases invoke `rustc -V`. The test does
 not run a real Rust compiler, build Rust targets, or generate the complete
 Chromium graph.
+
+The libc++ recursive-call patch is a separate follow-up to the existing
+max-size/SBO patch. The extended regression applies it after the existing patch
+and compiles a small recursive `std::function` control against both resulting
+headers. The control is not a causal failure reproducer; the production
+Perfetto `host_impl.cc` translation unit supplies that GCC16 before/after
+check. Keep the target sysroot under a shared SDK context lease:
+
+```sh
+python3.15 -E -S probes/electron/tests/libcxx-gcc16-regression.py \
+  --sdk-source /absolute/EmberBSD-SDK \
+  --ports-root /absolute/Ports \
+  --source-root /absolute/chromium/src \
+  --patch /absolute/Ports/probes/electron/patches/libcxx-gcc16-maxsize-function-sbo.patch \
+  --recursive-patch /absolute/Ports/probes/electron/patches/libcxx-gcc16-recursive-function.patch \
+  --cxx /absolute/GCC16-target-g++ --sysroot /absolute/target-sysroot \
+  --workspace /absolute/SDK-workspace \
+  --work-dir /absolute/NEW_LIBCXX_WORK
+```
+
+The follow-up patch changes only the GCC fallback annotation on the recursive
+`std::function` virtual call. It keeps the hidden visibility annotation. The
+regression compiles the follow-up fixture but does not link DSOs or execute a
+target binary.
+
+The typed-proto regression compiles the production
+`third_party/perfetto/src/trace_processor/importers/proto/typed_proto_field.h`
+with a supported enum and an unsupported enum mode. The supported case must
+compile. The unsupported case must still fail with the intended static
+assertion; only the unrelated tautological-comparison warning must disappear.
+The test checks the generated Perfetto build-flag header from the selected GN
+output and writes every object and dependency file under its new work path:
+Its overlay-normalization check exercises both exact baseline input and
+already-patched input, and verifies that each produces a baseline `before`
+overlay and a patched `after` overlay without changing Chromium source.
+
+```sh
+python3.15 -E -S probes/electron/tests/perfetto-typed-proto-gcc16.py \
+  --sdk-source /absolute/EmberBSD-SDK \
+  --ports-root /absolute/Ports --source-root /absolute/chromium/src \
+  --gn-out /absolute/chromium/out/Default \
+  --patch /absolute/Ports/probes/electron/patches/perfetto-typed-proto-gcc16-dependent-false.patch \
+  --cxx /absolute/GCC16-target-g++ --workspace /absolute/SDK-workspace \
+  /absolute/NEW_PERFETTO_WORK
+```
+
+The production `trace_processor_context.cc` GCC16 translation unit is the
+causal before/after regression. The bounded typed-proto fixture checks the
+production header's accepted-type result and preserves rejection of an
+unsupported schema type. Neither test builds Electron or executes target code.

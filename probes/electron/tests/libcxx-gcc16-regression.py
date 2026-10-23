@@ -20,6 +20,10 @@ parser = argparse.ArgumentParser(description=__doc__)
 for name in ("sdk-source", "ports-root", "source-root", "patch", "cxx", "sysroot"):
     parser.add_argument("--" + name, required=True, type=Path)
 parser.add_argument("--work-dir", required=True, type=Path)
+parser.add_argument("--recursive-patch", type=Path,
+                     help="optional follow-up GCC16 recursion fix, applied after --patch")
+parser.add_argument("--workspace", type=Path,
+                     help="canonical SDK workspace; required with --recursive-patch")
 args = parser.parse_args()
 
 if not args.work_dir.is_absolute():
@@ -29,9 +33,27 @@ SDK_SOURCE, PORTS, SOURCE, PATCH, CXX, SYSROOT = (
     (args.sdk_source, args.ports_root, args.source_root, args.patch,
      args.cxx, args.sysroot)
 )
+RECURSIVE_PATCH = (args.recursive_patch.resolve(strict=True)
+                   if args.recursive_patch else None)
+WORKSPACE = args.workspace.resolve(strict=True) if args.workspace else None
 WORK = args.work_dir.resolve()
-for label, root in (("Ports root", PORTS), ("Chromium source", SOURCE),
-                    ("SDK source", SDK_SOURCE), ("target sysroot", SYSROOT)):
+if RECURSIVE_PATCH is not None and WORKSPACE is None:
+    parser.error("--workspace is required with --recursive-patch")
+if WORKSPACE is not None:
+    if not WORKSPACE.is_dir():
+        parser.error("--workspace must name an existing SDK workspace")
+    if SYSROOT != WORKSPACE / "sysroot":
+        parser.error("--sysroot must be the canonical --workspace/sysroot")
+    LOCK_ROOT = WORKSPACE / "obj"
+    if not LOCK_ROOT.is_dir():
+        parser.error("SDK lock root must be the canonical --workspace/obj")
+else:
+    LOCK_ROOT = None
+SEPARATE_ROOTS = [("Ports root", PORTS), ("Chromium source", SOURCE),
+                  ("SDK source", SDK_SOURCE), ("target sysroot", SYSROOT)]
+if WORKSPACE is not None:
+    SEPARATE_ROOTS.append(("SDK workspace", WORKSPACE))
+for label, root in SEPARATE_ROOTS:
     if WORK.is_relative_to(root) or root.is_relative_to(WORK):
         parser.error("--work-dir must be separate from " + label)
 if WORK.exists():
@@ -89,6 +111,8 @@ FIXTURES = {
     "function-sbo": FIXTURE_DIR / "libcxx-function-sbo.cpp",
     "memory-semantics": FIXTURE_DIR / "libcxx-memory-semantics.cpp",
 }
+if RECURSIVE_PATCH is not None:
+    FIXTURES["recursive-function"] = FIXTURE_DIR / "libcxx-function-recursive.cpp"
 for path in FIXTURES.values():
     if not path.is_file():
         parser.error("missing regression fixture: " + str(path))
@@ -108,6 +132,8 @@ source_paths = [
     SOURCE / "buildtools/third_party/libc++/__config_site",
     *FIXTURES.values(), PATCH,
 ]
+if RECURSIVE_PATCH is not None:
+    source_paths.append(RECURSIVE_PATCH)
 source_hashes_before = {str(path): sha256_file(path) for path in source_paths}
 source_header_hashes = {
     relative: sha256_file(LIBCXX / relative)
@@ -165,8 +191,8 @@ def write_overlay(tree, headers):
         output.write_bytes(data)
 
 
-def apply_patch(tree):
-    run("patch-apply", [PATCH_TOOL, "-p1", "-F", "0", "-i", PATCH], cwd=tree, expected=0)
+def apply_patch(tree, patch_path=PATCH, *, name="patch-apply"):
+    run(name, [PATCH_TOOL, "-p1", "-F", "0", "-i", patch_path], cwd=tree, expected=0)
 
 
 EXPECTED_ELF_MACHINES = {
@@ -228,6 +254,17 @@ apply_patch(AFTER)
 for relative, expected in PATCHED_HEADERS.items():
     if sha256_file(AFTER / relative) != expected:
         raise AssertionError("patched header hash mismatch for " + relative)
+AFTER_RECURSIVE = None
+RECURSIVE_FUNCTION_HEADER = None
+if RECURSIVE_PATCH is not None:
+    if sha256_file(RECURSIVE_PATCH) != "e9fd9113e4c3c227c5691d65b60f3d5d7a490cb74b0575b0daacd4bf8ea26998":
+        raise AssertionError("follow-up recursive patch hash does not match this regression pin")
+    AFTER_RECURSIVE = WORK / "after-recursive"
+    shutil.copytree(AFTER, AFTER_RECURSIVE)
+    apply_patch(AFTER_RECURSIVE, RECURSIVE_PATCH, name="recursive-patch-apply")
+    RECURSIVE_FUNCTION_HEADER = "082ccbfbd834d7e96a95fd7c07da8eafba32efe62b8192c183dfa5910bc71e05"
+    if sha256_file(AFTER_RECURSIVE / "include/__functional/function.h") != RECURSIVE_FUNCTION_HEADER:
+        raise AssertionError("follow-up recursive function header hash mismatch")
 
 COMMON = [
     CXX,
@@ -266,21 +303,36 @@ def compile_case(name, overlay, fixture, standard, *, exceptions=False, expected
     return status, (stdout + stderr).decode("utf-8", "replace")
 
 
-# The string baseline fails its compile-time contract checks. The function
-# fixture uses only public std::function operations and must compile against
-# both versions; causal GCC array-bounds evidence comes from the production
-# unix_task_runner and weak_runner translation units recorded separately.
-status, diagnostic = compile_case("baseline-string", BEFORE, FIXTURES["string-max-size"], "gnu++23", expected=1)
-if "max_size" not in diagnostic and "static assertion failed" not in diagnostic:
-    raise AssertionError("baseline string failure did not match the max_size regression")
-status, diagnostic = compile_case("patched-string", AFTER, FIXTURES["string-max-size"], "gnu++23")
-compile_case("baseline-function-gnu++11", BEFORE, FIXTURES["function-sbo"], "gnu++11")
-compile_case("baseline-function-gnu++14", BEFORE, FIXTURES["function-sbo"], "gnu++14")
-for standard in ("gnu++11", "gnu++14"):
-    compile_case("patched-function-" + standard, AFTER, FIXTURES["function-sbo"], standard)
-# Compile the executable behavior fixture with exceptions enabled, but do not
-# run a NetBSD target binary on the host.
-compile_case("patched-memory-semantics", AFTER, FIXTURES["memory-semantics"], "gnu++14", exceptions=True)
+def compile_regressions():
+    # The string baseline fails its compile-time contract checks. The function
+    # fixture uses only public std::function operations and must compile against
+    # both versions; causal GCC array-bounds evidence comes from the production
+    # unix_task_runner and weak_runner translation units recorded separately.
+    status, diagnostic = compile_case("baseline-string", BEFORE, FIXTURES["string-max-size"], "gnu++23", expected=1)
+    if "max_size" not in diagnostic and "static assertion failed" not in diagnostic:
+        raise AssertionError("baseline string failure did not match the max_size regression")
+    status, diagnostic = compile_case("patched-string", AFTER, FIXTURES["string-max-size"], "gnu++23")
+    compile_case("baseline-function-gnu++11", BEFORE, FIXTURES["function-sbo"], "gnu++11")
+    compile_case("baseline-function-gnu++14", BEFORE, FIXTURES["function-sbo"], "gnu++14")
+    for standard in ("gnu++11", "gnu++14"):
+        compile_case("patched-function-" + standard, AFTER, FIXTURES["function-sbo"], standard)
+    # Compile the executable behavior fixture with exceptions enabled, but do not
+    # run a NetBSD target binary on the host.
+    compile_case("patched-memory-semantics", AFTER, FIXTURES["memory-semantics"], "gnu++14", exceptions=True)
+    if AFTER_RECURSIVE is not None:
+        # This recursive std::function fixture is a compile/API control only.
+        # It is not the causal reproducer; the actual Perfetto host_impl.cc TU
+        # supplies the before/after GCC16 diagnostic evidence.
+        compile_case("recursive-function-before-follow-up", AFTER, FIXTURES["recursive-function"], "gnu++14")
+        compile_case("recursive-function-after-follow-up", AFTER_RECURSIVE, FIXTURES["recursive-function"], "gnu++14")
+
+if WORKSPACE is None:
+    compile_regressions()
+else:
+    # Target compiler invocations read the selected shared sysroot under an SDK
+    # shared context lease. This is required for the optional follow-up patch.
+    with process.ContextLocks([str(SYSROOT)], str(LOCK_ROOT), shared=True):
+        compile_regressions()
 
 source_hashes_after = {str(path): sha256_file(path) for path in source_paths}
 if source_hashes_after != source_hashes_before:
@@ -298,6 +350,8 @@ receipt = {
     "target_sysroot": str(SYSROOT),
     "compiler": COMPILER,
     "patch_sha256": sha256_file(PATCH),
+    "recursive_patch_sha256": sha256_file(RECURSIVE_PATCH) if RECURSIVE_PATCH else None,
+    "recursive_patched_function_header_sha256": RECURSIVE_FUNCTION_HEADER,
     "baseline_header_sha256": PINNED_HEADERS,
     "patched_header_sha256": PATCHED_HEADERS,
     "source_input_sha256_before": source_hashes_before,
