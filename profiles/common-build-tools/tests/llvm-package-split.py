@@ -30,7 +30,7 @@ for name in os.listdir(source):
     else:
         (tree / name).symlink_to(Path(source, name))
 for name in ('llvm', 'llvm-devel'):
-    shutil.copytree(profile / 'recipes/lang' / name, tree / 'lang' / name)
+    shutil.copytree(profile / '../../pkgsrc/lang' / name, tree / 'lang' / name)
 (work / 'mk.conf').write_text(f'.include "{host}/etc/mk.conf"\nWRKOBJDIR= {work}/objects\nPACKAGES= {work}/packages\nPKG_DBDIR= {work}/pkgdb\nCXXFLAGS= -O2\n')
 bmake = os.environ.get('BMAKE', host + '/bin/bmake')
 common = [bmake, 'MAKECONF=' + str(work / 'mk.conf'), 'AWK=' + host + '/bin/nawk', 'CAT=/bin/cat', 'SED=/usr/bin/sed', 'TEST=/bin/test', 'MKDIR=/bin/mkdir -p',

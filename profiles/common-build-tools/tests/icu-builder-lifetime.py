@@ -33,7 +33,7 @@ def main():
     if emberbsd_sdk.API_VERSION != 1:
         parser.error("SDK library API 1 is required")
     root = Path(__file__).resolve().parents[1]
-    recipe = root / "recipes/textproc/icu"
+    recipe = root / "../../pkgsrc/textproc/icu"
     archive = Path(paths.canonical_existing(args.archive))
     native = Path(paths.canonical_existing(args.native_prefix))
     tools = Path(paths.canonical_existing(args.cross_tools))

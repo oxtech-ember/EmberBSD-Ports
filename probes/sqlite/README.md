@@ -1,7 +1,7 @@
 # Shared SQLite and installed consumers
 
 The common SQLite target is **3.54.1**, released on 2026-10-16. The
-[package recipe](../../profiles/common-build-tools/recipes/databases/sqlite3) is exported as `databases/sqlite3` and replaces the older pkgsrc
+[package recipe](../../pkgsrc/databases/sqlite3) is exported as `databases/sqlite3` and replaces the older pkgsrc
 SQLite provider at the same prefix. It introduces no parallel SQLite ABI.
 [Provenance](PROVENANCE.md) records the original archive and official checksum.
 The [validation boundary](VALIDATION.md) separates completed controls from limits.

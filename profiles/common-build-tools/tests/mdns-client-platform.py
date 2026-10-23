@@ -30,7 +30,7 @@ def main():
         assert p.returncode == 0, (label, p.stdout, p.stderr)
         return p.stdout
 
-    recipe = Path(__file__).resolve().parents[1] / 'recipes/net/mDNSResponder'
+    recipe = Path(__file__).resolve().parents[1] / '../../pkgsrc/net/mDNSResponder'
     with tarfile.open(a.archive) as tf:
         tf.extractall(a.work / 'source', filter='data')
     source = a.work / 'source/mDNSResponder-mDNSResponder-2881.120.11'

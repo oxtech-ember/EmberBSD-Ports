@@ -30,7 +30,7 @@ def main():
     with tarfile.open(args.archive) as archive:
         archive.extractall(args.work, filter="data")
     source = args.work / "groff-1.24.2"
-    patches = Path(__file__).resolve().parents[2] / "profiles/common-build-tools/recipes/textproc/groff/patches"
+    patches = Path(__file__).resolve().parents[2] / "pkgsrc/textproc/groff/patches"
     for patch in sorted(patches.glob("patch-*")):
         with patch.open() as data, (args.work / (patch.name + ".log")).open("w") as log:
             subprocess.run(["patch", "-f", "-F0", "-p0"], cwd=source,

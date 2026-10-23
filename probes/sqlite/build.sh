@@ -25,7 +25,7 @@ jobs=${JOBS:-1}
 case "$jobs" in ''|*[!0-9]*) jobs=0;; esac
 [ "$jobs" -gt 0 ] 2>/dev/null || { echo 'JOBS must be positive.' >&2; exit 2; }
 probe=$(CDPATH= cd "$(dirname "$0")" && pwd -P)
-recipe=$probe/../../profiles/common-build-tools/recipes/databases/sqlite3
+recipe=$probe/../../pkgsrc/databases/sqlite3
 expected=$(awk '$1=="sqlite-autoconf-3540100.tar.gz" {print $2}' "$probe/sources.tsv")
 [ "${#expected}" = 64 ]
 printf '%s  %s\n' "$expected" "$archive" | sha256sum -c -

@@ -68,7 +68,7 @@ def main():
     ports = Path(__file__).resolve().parents[3]
     specs = [
         ('tcl', args.tcl_archive, '536c45543f64d6eb11832d97ba3494aacff046fbc5040273bd55258d0e448ff1',
-         ports / 'profiles/common-build-tools/recipes/lang/tcl', 19, 9),
+         ports / 'pkgsrc/lang/tcl', 19, 9),
         ('tk', args.tk_archive, '772ce7a97c07c2db4c957c93af7ab4dff4bd3037772836b6afbcd0974023b3d6',
          ports / 'pkgsrc/x11/tk', 3, 1),
     ]

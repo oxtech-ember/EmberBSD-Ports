@@ -9,7 +9,7 @@ FIXTURE_ARCH=$arch; export FIXTURE_ARCH
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 mkdir "$1"
 work=$(CDPATH= cd -- "$1" && pwd)
-helper=$root/recipes/lang/clang/files/cross-gcc-config.sh
+helper=$root/../../pkgsrc/lang/clang/files/cross-gcc-config.sh
 prefix=$work/sysroot/usr/pkg/gcc16
 private=$prefix/lib/gcc/${FIXTURE_ARCH}--netbsd/16.2.0
 mkdir -p "$private" "$prefix/lib" "$prefix/bin" \

@@ -33,7 +33,7 @@ PLIST comes from the complete official documentation archive. Tcl's bundled
 extension source directory still has the version supplied by Tcl itself;
 its `--with-system-sqlite` setting selects this shared provider.
 
-The [SQLite probes](../../../../../probes/sqlite/README.md) consume this
+The [SQLite probes](../../../probes/sqlite/README.md) consume this
 recipe's flags and patch. Their earlier 3.54.0 results remain historical
 evidence. A recipe update does not qualify new target packages, upstream
 execution tests, installed consumers, or device behavior by itself.

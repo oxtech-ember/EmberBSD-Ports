@@ -13,7 +13,7 @@ and shared successors preserve their existing behavior. The worklist uses
 one additional `int[current_mns]` allocation and constant C stack space.
 The production allocator checks size overflow and fails explicitly.
 
-The [recipe](../../profiles/common-build-tools/recipes/devel/flex) retains
+The [recipe](../../pkgsrc/devel/flex) retains
 the original archive, dependencies and package payload. Its patch checksum
 uses pkgsrc's standard removal of NetBSD RCS identifier lines. The recipe
 does not disable vulnerability checks or change a vulnerability feed.

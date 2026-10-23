@@ -65,7 +65,7 @@ def main():
     run("bmake-version", [bmake, "-r", "-f", "/dev/null", "-V", "MAKE_VERSION"])
     run("gmake-version", [gmake, "--version"])
     sdk_commit = run("sdk-commit", ["git", "-C", sdk, "rev-parse", "HEAD"]).strip()
-    current = root / "profiles/common-build-tools/recipes/net/mDNSResponder"
+    current = root / "pkgsrc/net/mDNSResponder"
     baseline = work / "baseline/net/mDNSResponder"
     baseline.mkdir(parents=True)
     source_recipe = pkgsrc / "net/mDNSResponder"

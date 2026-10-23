@@ -84,7 +84,7 @@ python3 -B profiles/common-build-tools/tests/llvm-package-split.py \
 python3 -B profiles/common-build-tools/tests/llvm-package-lifecycle.py \
     /absolute/native-prefix /absolute/new-split-check /absolute/new-lifecycle
 python3 -B profiles/common-build-tools/tests/llvm-stage-links.py \
-    profiles/common-build-tools/recipes/lang/llvm/files/select-package-stage.py \
+    pkgsrc/lang/llvm/files/select-package-stage.py \
     /absolute/new-link-check
 EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK \
 BSDTAR=/absolute/bsdtar python3 -B probes/plasma-mobile/toolkit/tests/package-set-llvm.py \

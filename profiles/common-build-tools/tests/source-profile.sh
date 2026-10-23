@@ -14,6 +14,10 @@ mkdir "$2"
 work=$(CDPATH= cd -- "$2" && pwd)
 case "$work:$distfiles" in *[!a-zA-Z0-9_./:-]*) echo 'Use paths without shell metacharacters.' >&2; exit 2 ;; esac
 profile=$root/profiles/common-build-tools
+# lang/python314 is not exported; all other recipes here are in pkgsrc/.
+recipe_dir() {
+    if [ "$1" = lang/python314 ]; then echo "$profile/recipes/$1"; else echo "$root/pkgsrc/$1"; fi
+}
 cat > "$work/digest" <<'DIGEST'
 #!/bin/sh
 algorithm=$1
@@ -43,7 +47,7 @@ done < "$profile/sources.tsv"
 for pair in 'lang/python314 Python-3.14.8.tar.xz' 'devel/meson meson-1.12.1.tar.gz'; do
     set -- $pair
     [ "$scope" != python-source ] || [ "$1" = lang/python314 ] || continue
-    recipe=$profile/recipes/$1 archive=$2
+    recipe=$(recipe_dir "$1") archive=$2
     awk '/^SHA1 \(patch-/ { gsub(/[()]/, "", $2); print $2 }' "$recipe/distinfo" > "$work/required-patches"
     while read -r required; do [ -f "$recipe/patches/$required" ]; done < "$work/required-patches"
     (cd "$distfiles" && awk -f "$verifier" -- "$recipe/distinfo" "$archive")
@@ -57,7 +61,7 @@ if [ "$scope" = python-source ]; then corrupt=Python-3.14.8.tar.xz; recipe=lang/
 fi
 cp "$distfiles/$corrupt" "$work/$corrupt"
 printf x >> "$work/$corrupt"
-if (cd "$work" && awk -f "$verifier" -- "$profile/recipes/$recipe/distinfo" \
+if (cd "$work" && awk -f "$verifier" -- "$(recipe_dir "$recipe")/distinfo" \
     "$corrupt") > "$work/corrupt.log" 2>&1; then exit 1; fi
 raw=$(shasum -a 1 "$profile/recipes/lang/python314/patches/patch-configure" | awk '{print $1}')
 sed "s/^SHA1 (patch-configure) = .*/SHA1 (patch-configure) = $raw/" \
@@ -76,7 +80,7 @@ fi
 for pair in 'lang/python314 python-patched' 'devel/meson meson-patched'; do
     set -- $pair
     [ "$scope" != python-source ] || [ "$1" = lang/python314 ] || continue
-    recipe=$profile/recipes/$1 tree=$work/$2
+    recipe=$(recipe_dir "$1") tree=$work/$2
     for delta in "$recipe"/patches/patch-*; do
         patch -f -N -F 0 -p0 -d "$tree" < "$delta"
     done
@@ -105,7 +109,7 @@ sh "$profile/tests/python-cross-configure.sh" "$work/python-pristine" \
 cmp "$work/python-pristine/Modules/faulthandler.c" "$work/python-patched/Modules/faulthandler.c"
 cmp "$work/python-pristine/Python/dynload_shlib.c" "$work/python-patched/Python/dynload_shlib.c"
 if [ "$scope" = all ]; then
-    cmp "$root/upstream/pkgsrc/devel/meson/PLIST" "$profile/recipes/devel/meson/PLIST"
+    cmp "$root/upstream/pkgsrc/devel/meson/PLIST" "$root/pkgsrc/devel/meson/PLIST"
     # The dropped ELF depfixer patch must leave this upstream implementation exact.
     # The pristine archive copy is small; inspect it without modifying saved sources.
     mkdir "$work/meson-pristine"
@@ -115,7 +119,7 @@ fi
 sh "$root/scripts/prepare-pkgsrc.sh" "$work/pkgsrc" > "$work/export.log"
 for recipe in lang/python314 devel/meson; do
     [ "$scope" != python-source ] || [ "$recipe" = lang/python314 ] || continue
-    diff -r "$profile/recipes/$recipe" "$work/pkgsrc/$recipe"
+    diff -r "$(recipe_dir "$recipe")" "$work/pkgsrc/$recipe"
 done
 if [ "$scope" = python-source ]; then
     [ ! -e "$work/pkgsrc/lang/python314/patches/patch-Modules_faulthandler.c" ]
@@ -143,21 +147,19 @@ if sh "$root/scripts/prepare-pkgsrc.sh" "$work/unknown" invalid > "$work/unknown
 [ ! -e "$work/unknown" ]
 # A private exporter fixture removes one required patch, never the real recipe.
 fixture=$work/missing-fixture
-mkdir -p "$fixture/scripts" "$fixture/upstream" "$fixture/profiles"
+mkdir -p "$fixture/scripts" "$fixture/upstream"
 cp "$root/scripts/prepare-pkgsrc.sh" "$fixture/scripts/"
-for item in pkgsrc probes; do ln -s "$root/$item" "$fixture/$item"; done
-for item in "$root"/profiles/*; do
-    [ "${item##*/}" = common-build-tools ] || ln -s "$item" "$fixture/profiles/${item##*/}"
-done
-cp -R "$profile" "$fixture/profiles/common-build-tools"
+for item in profiles probes; do ln -s "$root/$item" "$fixture/$item"; done
+# The export rejects links in pkgsrc/, so the fixture gets a private copy.
+cp -R "$root/pkgsrc" "$fixture/pkgsrc"
 ln -s "$root/upstream/pkgsrc" "$fixture/upstream/pkgsrc"
 git -C "$fixture" init -q
 pin=$(git -C "$root/upstream/pkgsrc" rev-parse HEAD)
 git -C "$fixture" update-index --add --cacheinfo "160000,$pin,upstream/pkgsrc"
-missing=$(cd "$fixture/profiles/common-build-tools/recipes/devel/meson/patches" && ls patch-* | head -n 1)
-rm "$fixture/profiles/common-build-tools/recipes/devel/meson/patches/$missing"
+missing=$(cd "$fixture/pkgsrc/devel/meson/patches" && ls patch-* | head -n 1)
+rm "$fixture/pkgsrc/devel/meson/patches/$missing"
 if sh "$fixture/scripts/prepare-pkgsrc.sh" "$work/missing-export" > "$work/missing-export.log" 2>&1; then exit 1; fi
-grep -qF "Missing patch: profiles/common-build-tools/recipes/devel/meson/patches/$missing" "$work/missing-export.log"
+grep -qF "Missing patch: pkgsrc/devel/meson/patches/$missing" "$work/missing-export.log"
 [ ! -e "$work/missing-export" ]
 sh "$profile/tests/faulthandler-macro.sh" "$work/python-patched" "$work/python-pristine" "$work/macro"
 sh "$profile/tests/meson-selection.sh" "$work/meson-patched" "$work/meson-cli"

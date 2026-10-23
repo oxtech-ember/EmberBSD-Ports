@@ -69,7 +69,7 @@ set, so `sp_list_ports` works without libusb). The `sp-list` helper in
 `pkgsrc/devel/libsigrok` and `pkgsrc/misc/sigrok-cli` (shared overlay) are the first
 pkgsrc recipes for the sigrok acquisition stack; the board kit builds
 only the demo driver (no instrument hardware attached yet), with glib2
-and the [common libzip recipe](../common-build-tools/recipes/archivers/libzip).
+and the [common libzip recipe](../../pkgsrc/archivers/libzip).
 The common profile exports this one recipe. It keeps the upstream regression
 tests and their test dependencies. The former profile-only recipe is removed.
 

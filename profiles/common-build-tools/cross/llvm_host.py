@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import sys
 import tarfile
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'recipes/lang/llvm/files'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / '../../pkgsrc/lang/llvm/files'))
 from sdk_source import load_sdk
 
 SOURCE = 'llvm-project-23.1.3.src'
@@ -71,7 +71,7 @@ def native(kind, arguments):
     import emberbsd_sdk
     api = Path(emberbsd_sdk.__file__).resolve().parent
     entrypoint = Path(__file__).with_name('build-' + kind + '-native.py')
-    loader = Path(__file__).resolve().parents[1] / 'recipes/lang/llvm/files/sdk_source.py'
+    loader = Path(__file__).resolve().parents[1] / '../../pkgsrc/lang/llvm/files/sdk_source.py'
     inputs = [archive, __file__, str(entrypoint), str(loader), *tools,
               *[str(p) for p in sorted(api.rglob('*.py'))]]
     if llvm:

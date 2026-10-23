@@ -45,7 +45,7 @@ run = lambda do |label, argv, expected = true|
   output
 end
 %w[protobuf protobuf-devel].each do |name|
-  run.call('copy-' + name, ['cp', '-RL', profile + '/recipes/devel/' + name, tree + '/devel/' + name])
+  run.call('copy-' + name, ['cp', '-RL', profile + '/../../pkgsrc/devel/' + name, tree + '/devel/' + name])
 end
 bmake = ENV.fetch('BMAKE', 'bmake')
 common = [bmake, 'MAKECONF=' + makeconf, 'WRKOBJDIR=' + work + '/objects',

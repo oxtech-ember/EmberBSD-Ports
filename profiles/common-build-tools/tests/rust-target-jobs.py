@@ -19,7 +19,7 @@ with Path("calls.jsonl").open("a") as out:
     out.write(json.dumps(sys.argv[1:]) + "\\n")
 print("Building stage0 library artifacts")
 ''')
-helper = Path(__file__).resolve().parents[1] / "recipes/lang/rust-std-aarch64-netbsd/files/target-std.sh"
+helper = Path(__file__).resolve().parents[1] / "../../pkgsrc/lang/rust-std-aarch64-netbsd/files/target-std.sh"
 command = ["sh", str(helper), "build", *map(str, [work / item for item in
            ("source", "work", "host", "tools", "sysroot")]), sys.executable]
 for jobs in ("1", "3"):

@@ -15,7 +15,7 @@ make = ENV.fetch('BMAKE', 'bmake')
 FileUtils.mkdir_p(work + '/pkgsrc/lang')
 Dir.children(tree).each { |p| File.symlink(tree + '/' + p, work + '/pkgsrc/' + p) unless p == 'lang' }
 Dir.children(tree + '/lang').each { |p| File.symlink(tree + '/lang/' + p, work + '/pkgsrc/lang/' + p) unless p == 'python315' }
-recipe = File.expand_path('../recipes/lang/python315', __dir__)
+recipe = File.expand_path('../../../pkgsrc/lang/python315', __dir__)
 FileUtils.cp_r(recipe, work + '/pkgsrc/lang/python315')
 vars = %w[MAKE_ENV OPSYS OS_VERSION MACHINE_ARCH CROSS_MACHINE_ARCH PKG_FAIL_REASON]
 command = [make, '-C', work + '/pkgsrc/lang/python315', 'MAKECONF=' + config, 'WRKOBJDIR=' + work + '/objects', *vars.flat_map { |v| ['-V', '${' + v + '}'] }]

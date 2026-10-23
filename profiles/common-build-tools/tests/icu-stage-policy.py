@@ -24,7 +24,7 @@ def main():
     if emberbsd_sdk.API_VERSION != 1 or stage.STAGE_PARTITION_API != 1:
         parser.error("SDK API 1 with STAGE_PARTITION_API 1 is required")
     root = Path(__file__).resolve().parents[1]
-    recipe = root / "recipes/textproc/icu"
+    recipe = root / "../../pkgsrc/textproc/icu"
     source = Path(paths.canonical_existing(args.full_stage))
     work = Path(paths.canonical_new(args.work))
     for item in (sdk, source, root):

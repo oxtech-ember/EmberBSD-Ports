@@ -5,7 +5,7 @@ set -eu
 [ "$#" = 2 ] || { echo "Usage: $0 VERIFIED_LLVM_ARCHIVE NEW_WORK" >&2; exit 2; }
 archive=$1 work=$2
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd)
-recipe=$root/profiles/common-build-tools/recipes/lang/llvm
+recipe=$root/pkgsrc/lang/llvm
 patch=$recipe/patches/patch-lib_DWP_DWP.cpp
 mkdir "$work"
 work=$(CDPATH= cd -- "$work" && pwd)

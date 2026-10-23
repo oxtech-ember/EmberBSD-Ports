@@ -7,7 +7,7 @@ source=$1 work=$2
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cmake=${CMAKE:-cmake}
 mkdir "$work"
-recipe=$root/recipes/lang/llvm
+recipe=$root/../../pkgsrc/lang/llvm
 delta=$recipe/patches/patch-tools_llvm-config_CMakeLists.txt
 # pkgsrc removes RCS ID lines before it verifies a patch checksum.
 expected=$(awk '/^SHA1 \(patch-tools_llvm-config_CMakeLists.txt\)/ {print $4}' "$recipe/distinfo")
@@ -19,7 +19,7 @@ reported='-L/usr/pkg/gcc16/lib -Wl,-rpath,/usr/pkg/gcc16/lib -Wl,-rpath-link,/pr
 input=$source/llvm/tools/llvm-config/CMakeLists.txt
 cp "$input" "$work/fixed/tools/llvm-config/"
 patch -f -N -F 0 -p0 -d "$work/fixed" < \
-    "$root/recipes/lang/llvm/patches/patch-tools_llvm-config_CMakeLists.txt" > "$work/patch.log"
+    "$root/../../pkgsrc/lang/llvm/patches/patch-tools_llvm-config_CMakeLists.txt" > "$work/patch.log"
 if grep -Ei 'offset|fuzz|FAILED' "$work/patch.log"; then exit 1; fi
 for variant in baseline fixed; do
     file=$input

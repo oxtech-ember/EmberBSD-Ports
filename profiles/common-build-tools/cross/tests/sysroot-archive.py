@@ -10,7 +10,7 @@ import tarfile
 import tempfile
 sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parents[1]
-sys.path[:0] = [str(HERE), str(HERE.parent / 'recipes/lang/llvm/files')]
+sys.path[:0] = [str(HERE), str(HERE.parent / '../../pkgsrc/lang/llvm/files')]
 from sdk_source import load_sdk
 sdk, args = load_sdk()
 from sysroot_archive import extract

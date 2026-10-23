@@ -2,7 +2,7 @@
 
 The selected recipe is now 3.54.1. The results below apply to 3.54.0 only.
 They do not establish acceptance of the new package or rebuilt consumers.
-See the [current recipe](../../profiles/common-build-tools/recipes/databases/sqlite3/README.md)
+See the [current recipe](../../pkgsrc/databases/sqlite3/README.md)
 for the migration checks and remaining target work.
 
 ## Historical 3.54.0 checks

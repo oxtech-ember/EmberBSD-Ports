@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import sys
 sys.dont_write_bytecode = True
-FILES = Path(__file__).resolve().parents[1] / 'recipes/lang/llvm/files'
+FILES = Path(__file__).resolve().parents[1] / '../../pkgsrc/lang/llvm/files'
 sys.path.insert(0, str(FILES))
 from sdk_source import load_sdk
 

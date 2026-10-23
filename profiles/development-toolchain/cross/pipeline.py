@@ -86,7 +86,7 @@ def _build_binutils(target, new_work, make_override=None):
     make = str(make_override) if make_override else os.environ.get('GMAKE', 'gmake')
     require(shutil.which(make), 'GNU make missing')
     cc, cxx = host_compilers()
-    recipe = PORTS / 'profiles/common-build-tools/recipes/devel/binutils'
+    recipe = PORTS / 'pkgsrc/devel/binutils'
     archive_name = 'binutils-2.47.tar.xz'
     records = [line.split('\t') for line in (PORTS / 'profiles/common-build-tools/sources.tsv').read_text().splitlines() if line.startswith(archive_name + '\t')]
     require(len(records) == 1, 'Pinned Binutils source missing')

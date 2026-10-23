@@ -25,7 +25,7 @@ def quarantine(path):
 
 
 # host.py resolves sdk_source to the LLVM module here; both copies must agree.
-assert quarantine(ports / 'profiles/common-build-tools/recipes/lang/llvm/files/sdk_source.py') == \
+assert quarantine(ports / 'pkgsrc/lang/llvm/files/sdk_source.py') == \
     quarantine(ports / 'profiles/development-toolchain/runtime/recipe/files/sdk_source.py')
 names = ('gcc', 'g++', 'cpp', 'gcc-ar', 'gcc-nm', 'gcc-ranlib', 'ar', 'as', 'ld', 'nm', 'objcopy', 'objdump', 'ranlib', 'readelf', 'strip')
 

@@ -12,7 +12,7 @@ work = File.expand_path(ARGV[3])
 abort 'Output exists.' if File.exist?(work) || File.symlink?(work)
 abort 'Wrong Abseil archive.' unless Digest::SHA256.file(archive).hexdigest == 'f7e05179df39c45434cad433f5783840bb3788ef322976f9138bc6b72b3a107d'
 root = File.expand_path('../../..', __dir__)
-recipe = root + '/profiles/common-build-tools/recipes/devel/abseil'
+recipe = root + '/pkgsrc/devel/abseil'
 patches = Dir.glob(recipe + '/patches/patch-*').sort
 fix = recipe + '/patches/patch-absl_debugging_CMakeLists.txt'
 abort 'Expected seven source patches.' unless patches.size == 7 && patches.include?(fix)

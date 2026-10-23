@@ -28,7 +28,7 @@ for name in os.listdir(pkgsrc + '/lang'):
     if name not in ('llvm', 'llvm-devel'):
         (tree / 'lang' / name).symlink_to(Path(pkgsrc) / 'lang' / name)
 for name in ('llvm', 'llvm-devel'):
-    shutil.copytree(profile / 'recipes/lang' / name, tree / 'lang' / name)
+    shutil.copytree(profile / '../../pkgsrc/lang' / name, tree / 'lang' / name)
 common = work / 'common'
 source = common / 'llvm-project-23.1.3.src/llvm'
 build = source / 'cmake-pkgsrc-build'

@@ -111,7 +111,7 @@ Two unchanged upstream JSON iterator/access cases pass 295 assertions there.
 The JSON binary uses the installed common header package and GCC16 runtime.
 These runs are not the full JSON corpus or a memory-analysis result.
 
-[Groff 1.24.2](../../../../profiles/common-build-tools/recipes/textproc/groff/README.md)
+[Groff 1.24.2](../../../../pkgsrc/textproc/groff/README.md)
 provides native HTML manual generation for Enchant cross builds.
 Its C23 prototype repair preserves the System V math-error contract.
 The recipe keeps manual pages and selects the native helper directory through

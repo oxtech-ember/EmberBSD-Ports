@@ -19,7 +19,7 @@
 - Packaging, builders and C/CMake contracts are EmberBSD contributions,
   AI-assisted and MIT licensed. No upstream acceptance is claimed.
 
-The [common package recipe](../../profiles/common-build-tools/recipes/databases/sqlite3) owns the current
+The [common package recipe](../../pkgsrc/databases/sqlite3) owns the current
 library. It retains the useful common pkgsrc feature policy and replaces the
 older provider at the same prefix. The standalone helper reads its features
 from the canonical recipe. The native private prefix exists for checks with

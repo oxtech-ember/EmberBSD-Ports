@@ -35,7 +35,7 @@ File.write(File.join(host, 'bin/rustc'), <<~SH)
   exit 1
 SH
 File.chmod(0755, File.join(host, 'bin/rustc'))
-helper = File.expand_path('../recipes/lang/rust-std-x86_64-netbsd/files/check.sh', __dir__)
+helper = File.expand_path('../../../pkgsrc/lang/rust-std-x86_64-netbsd/files/check.sh', __dir__)
 count = 0
 check = lambda do |name, expected = nil, extra = {}|
   output_dir = File.join(work, name)

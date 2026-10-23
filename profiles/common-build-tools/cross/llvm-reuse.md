@@ -1,6 +1,6 @@
 # LLVM full-stage reuse validator
 
-`recipes/lang/llvm/files/reuse-package-stage.py` validates a repeat installation
+`pkgsrc/lang/llvm/files/reuse-package-stage.py` validates a repeat installation
 from one accepted LLVM 23.1.3 cross build. It does not build LLVM, install a
 package into a sysroot, or create a package identity. The opt-in pkgsrc adapter retains ordinary SDK package checks.
 Acceptance of an actual runtime/SDK pair remains a separate build result.

@@ -5,7 +5,7 @@ set -eu
 [ "$#" = 4 ] || { echo "Usage: $0 SOURCE SYSROOT HOST_PERL NEW_WORK" >&2; exit 2; }
 source=$1 sysroot=$2 perl=$3 work=$4
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-helper=$root/recipes/lang/perl5/files/target-config.pl
+helper=$root/../../pkgsrc/lang/perl5/files/target-config.pl
 mkdir "$work"
 shasum -a 256 "$source/config.sh" "$source/config.h" \
     "$source/lib/Config.pm" "$source/lib/Config_heavy.pl" > "$work/before.sha256"

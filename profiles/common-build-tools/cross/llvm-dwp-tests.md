@@ -5,7 +5,7 @@ library, static `LLVMDWP` archive and ordinary `llvm-dwp` tool use the same
 source. There is no separate GDB packager dependency. These local fixes and
 fixtures are AI-assisted EmberBSD work, not submitted or accepted upstream.
 
-The [canonical patch](../recipes/lang/llvm/patches/patch-lib_DWP_DWP.cpp)
+The [canonical patch](../../../pkgsrc/lang/llvm/patches/patch-lib_DWP_DWP.cpp)
 uses each unit's offset width for headers, string offsets and index lengths.
 It also reads DWARF4 type-unit headers at their actual width. DWARF5 string
 contributions carry individual headers; DWARF4 package contributions obtain

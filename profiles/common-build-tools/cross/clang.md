@@ -48,7 +48,7 @@ Do not bypass that runtime dependency to accept the final package.
 
 ## Native compiler defaults
 
-The [cross metadata helper](../recipes/lang/clang/files/cross-gcc-config.sh)
+The [cross metadata helper](../../../pkgsrc/lang/clang/files/cross-gcc-config.sh)
 queries the real cross GCC16 and target LLVM metadata. It verifies target ABI,
 all selected CRT/runtime files and three distinct C++ include directories.
 Paths must resolve within the installed target GCC16 prefix. It removes the

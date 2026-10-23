@@ -25,7 +25,7 @@ for name in os.listdir(pkgsrc + '/lang'):
     if name not in ('llvm', 'llvm-devel'):
         (tree / 'lang' / name).symlink_to(Path(pkgsrc) / 'lang' / name)
 for name in ('llvm', 'llvm-devel'):
-    shutil.copytree(profile / 'recipes/lang' / name, tree / 'lang' / name)
+    shutil.copytree(profile / '../../pkgsrc/lang' / name, tree / 'lang' / name)
 variables = 'PKGNAME WRKDIR CFLAGS CXXFLAGS CPPFLAGS LDFLAGS CMAKE_CONFIGURE_ARGS CONFIGURE_ENV PYTHON_FOR_BUILD_ONLY PYTHONBIN REPLACE_PYTHON DEPENDS BUILD_DEPENDS TOOL_DEPENDS BUILDLINK_DEPMETHOD.py-llvm-lit'.split()
 rows = []
 for package, cross in [('llvm', 'yes'), ('llvm-devel', 'yes'), ('llvm', 'no')]:

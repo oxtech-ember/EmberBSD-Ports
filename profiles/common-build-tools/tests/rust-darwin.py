@@ -33,7 +33,7 @@ def mixed_preflight(original_arg, work_arg):
         commands.append(dict(argv=argv, exit=process.returncode, stderr=process.stderr))
         if process.returncode:
             raise RuntimeError(process.stderr)
-    source = Path(__file__).resolve().parents[3] / "profiles/common-build-tools/recipes/lang/rust-bin/files/darwin-llvm.py"
+    source = Path(__file__).resolve().parents[3] / "pkgsrc/lang/rust-bin/files/darwin-llvm.py"
     spec = importlib.util.spec_from_file_location("rust_darwin_preflight", source)
     helper = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(helper)
@@ -140,7 +140,7 @@ def main():
         return process
 
     repo = Path(__file__).resolve().parents[3]
-    script = repo / "profiles/common-build-tools/recipes/lang/rust-bin/files/darwin-llvm.py"
+    script = repo / "pkgsrc/lang/rust-bin/files/darwin-llvm.py"
     spec = importlib.util.spec_from_file_location("rust_darwin_llvm", script)
     helper = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(helper)

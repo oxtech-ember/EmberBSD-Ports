@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import sys
 sys.dont_write_bytecode = True
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'recipes/lang/llvm/files'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / '../../pkgsrc/lang/llvm/files'))
 from sdk_source import load_sdk
 from sysroot_archive import extract
 

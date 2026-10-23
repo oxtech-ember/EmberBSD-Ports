@@ -76,7 +76,7 @@ upstream Python 3.15 example and closed-stderr compiler regression pass.
 Strict memory checks retain upstream allocation findings; target packaging
 and complete KiCad bindings remain pending.
 
-The shared [zlib 1.3.2nb2 recipe](recipes/devel/zlib/README.md) replaces the
+The shared [zlib 1.3.2nb2 recipe](../../pkgsrc/devel/zlib/README.md) replaces the
 vendored 1.3.1 sources with the verified current release. It preserves pkgsrc
 Libtool naming and the complete gzip API. Two writer-seek repairs pass native
 GCC16 regression and strict Memcheck checks. The ordinary AArch64 cross package
@@ -115,7 +115,7 @@ A bounded AArch64
 source-probe regression verifies Abseil's NetBSD stack-trace repair: the same
 consumer changes from zero frames to three non-null frames.
 
-[Groff 1.24.2](recipes/textproc/groff/README.md) includes a C23 function-prototype repair.
+[Groff 1.24.2](../../pkgsrc/textproc/groff/README.md) includes a C23 function-prototype repair.
 Its native macOS build renders the three Enchant manual pages as HTML.
 The focused source check passes ASan/UBSan and preserves all errno cases.
 The complete target package and graphical HTML pipeline remain unaccepted.
@@ -418,7 +418,7 @@ WRKREF, RPATH, checksum, dependency or upstream test failures.
 Native libpython and all C++ consumers must use the selected common runtimes.
 Source/host checks do not establish those package, ELF or Mesa gates.
 
-The [common SQLite 3.54.1 recipe](recipes/databases/sqlite3/README.md)
+The [common SQLite 3.54.1 recipe](../../pkgsrc/databases/sqlite3/README.md)
 replaces both the older pkgsrc provider and the former robotics-only recipe.
 All consumers use `databases/sqlite3`; release selection and source-family
 checksums move together. See its checks for the current acceptance boundary.

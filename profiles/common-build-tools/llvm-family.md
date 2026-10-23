@@ -168,7 +168,7 @@ The generated-header gate is independently usable with the verified pristine tre
 ```sh
 sh profiles/common-build-tools/tests/llvm-generated-headers.sh \
     /absolute/llvm-project-23.1.3.src \
-    profiles/common-build-tools/recipes /absolute/new-header-check
+    pkgsrc /absolute/new-header-check
 ```
 
 It reads actual Config configure outputs, Analysis tablegen, Extension generation,
@@ -199,7 +199,7 @@ This does not establish target wheel installation or the full LLVM test suite.
 ```sh
 python3 -B profiles/common-build-tools/tests/llvm-lit-selection.py \
     /absolute/normal-export \
-    /absolute/source/profiles/common-build-tools/recipes/devel/py-llvm-lit/Makefile \
+    /absolute/source/pkgsrc/devel/py-llvm-lit/Makefile \
     /absolute/bmake /absolute/native.mk.conf /absolute/cross.mk.conf \
     /absolute/new-selection-output
 ```

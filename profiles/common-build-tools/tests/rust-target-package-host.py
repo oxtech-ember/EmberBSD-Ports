@@ -112,7 +112,7 @@ class PackageConsumers(unittest.TestCase):
             for path in component.iterdir():
                 path.unlink()
             owned = [str(license_path)]
-        recipe = ROOT / "profiles/common-build-tools/recipes/lang" / ("rust-std-" + arch + "-netbsd/Makefile")
+        recipe = ROOT / "pkgsrc/lang" / ("rust-std-" + arch + "-netbsd/Makefile")
         package = re.search(r"^PKGNAME=\s*(\S+)", recipe.read_text(), re.MULTILINE).group(1)
         config = dict(arch=arch, package=package, reply=reply if reply is not None else package + suffix,
                       files=owned, host=str(host),

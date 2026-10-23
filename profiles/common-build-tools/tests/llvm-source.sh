@@ -9,6 +9,10 @@ mkdir "$2"
 work=$(CDPATH= cd -- "$2" && pwd)
 case "$work:$distfiles" in *[!a-zA-Z0-9_./:-]*) echo 'Use safe absolute paths.' >&2; exit 2 ;; esac
 profile=$root/profiles/common-build-tools
+# lang/python314 is not exported; all other recipes here are in pkgsrc/.
+recipe_dir() {
+    if [ "$1" = lang/python314 ]; then echo "$profile/recipes/$1"; else echo "$root/pkgsrc/$1"; fi
+}
 archive=llvm-project-23.1.3.src.tar.xz
 source=llvm-project-23.1.3.src
 verifier=$root/upstream/pkgsrc/mk/checksum/checksum.awk
@@ -33,7 +37,7 @@ DIGEST
 chmod +x "$work/digest"
 export DIGEST=$work/digest
 for recipe in lang/llvm lang/clang devel/lld devel/py-llvm-lit; do
-    dir=$profile/recipes/$recipe
+    dir=$root/pkgsrc/$recipe
     (cd "$distfiles" && awk -f "$verifier" -- "$dir/distinfo" "$archive")
     [ "$(wc -c < "$distfiles/$archive" | tr -d ' ')" = \
         "$(awk '$1 == "Size" {print $4}' "$dir/distinfo")" ]
@@ -44,20 +48,20 @@ for recipe in lang/llvm lang/clang devel/lld devel/py-llvm-lit; do
 done
 cp "$distfiles/$archive" "$work/$archive"
 printf x >> "$work/$archive"
-if (cd "$work" && awk -f "$verifier" -- "$profile/recipes/lang/llvm/distinfo" "$archive") \
+if (cd "$work" && awk -f "$verifier" -- "$root/pkgsrc/lang/llvm/distinfo" "$archive") \
     > "$work/corrupt.log" 2>&1; then exit 1; fi
 rm "$work/$archive"
-delta=$profile/recipes/lang/llvm/patches/patch-cmake_config-ix.cmake
+delta=$root/pkgsrc/lang/llvm/patches/patch-cmake_config-ix.cmake
 raw=$(shasum -a 1 "$delta" | awk '{print $1}')
 sed "s/^SHA1 (patch-cmake_config-ix.cmake) = .*/SHA1 (patch-cmake_config-ix.cmake) = $raw/" \
-    "$profile/recipes/lang/llvm/distinfo" > "$work/raw-distinfo"
+    "$root/pkgsrc/lang/llvm/distinfo" > "$work/raw-distinfo"
 if awk -f "$verifier" -- -p "$work/raw-distinfo" "$delta" > "$work/raw.log" 2>&1; then exit 1; fi
-if awk -f "$verifier" -- -p "$profile/recipes/lang/llvm/distinfo" \
+if awk -f "$verifier" -- -p "$root/pkgsrc/lang/llvm/distinfo" \
     "$work/patch-cmake_config-ix.cmake" > "$work/missing.log" 2>&1; then exit 1; fi
 # Extract actual targets from the verified archive, not another full monorepo.
 mkdir "$work/source"
 for project in llvm clang; do
-    for delta in "$profile/recipes/lang/$project"/patches/patch-*; do
+    for delta in "$root/pkgsrc/lang/$project"/patches/patch-*; do
         target=$(awk '/^\+\+\+/ {print $2; exit}' "$delta")
         printf '%s\n' "$source/$project/$target" >> "$work/extract-list"
     done
@@ -72,13 +76,13 @@ done
 # All payloads have safe pkgsrc patch paths; decompress the archive once.
 tar -xf "$distfiles/$archive" -C "$work/source" -T "$work/extract-list"
 for project in llvm clang; do
-    for delta in "$profile/recipes/lang/$project"/patches/patch-*; do
+    for delta in "$root/pkgsrc/lang/$project"/patches/patch-*; do
         patch -f -N -F 0 -p0 -d "$work/source/$source/$project" < "$delta"
     done
 done
 if patch -f -N -F 0 -p0 -d "$work/source/$source/llvm" < "$delta" \
     > "$work/wrong-project.log" 2>&1; then exit 1; fi
-delta=$profile/recipes/lang/llvm/patches/patch-cmake_config-ix.cmake
+delta=$root/pkgsrc/lang/llvm/patches/patch-cmake_config-ix.cmake
 if patch -f -N -F 0 -p0 -d "$work/source/$source/llvm" < "$delta" \
     > "$work/repeat.log" 2>&1; then exit 1; fi
 # Explicitly reversed patch payload against pristine must not be accepted.
@@ -91,16 +95,17 @@ if patch -f -N -F 0 -p0 -d "$work/pristine/$source/llvm" < "$work/reversed.patch
     > "$work/reversed-input.log" 2>&1; then exit 1; fi
 sh "$root/scripts/prepare-pkgsrc.sh" "$work/pkgsrc" > "$work/export.log"
 for recipe in lang/python314 devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit; do
-    diff -r "$profile/recipes/$recipe" "$work/pkgsrc/$recipe"
+    diff -r "$(recipe_dir "$recipe")" "$work/pkgsrc/$recipe"
 done
 # Accepted Python/Meson recipe bytes and established GCC recipe composition
 # are compared without rerunning their native or consumer suites.
 mkdir "$work/reference"
 git -C "$root" archive HEAD \
-    profiles/common-build-tools/recipes/lang/python314 profiles/common-build-tools/recipes/devel/meson \
+    profiles/common-build-tools/recipes/lang/python314 pkgsrc/devel/meson \
     scripts/prepare-pkgsrc.sh | tar -xf - -C "$work/reference"
 for recipe in lang/python314 devel/meson; do
-    diff -r "$work/reference/profiles/common-build-tools/recipes/$recipe" "$work/pkgsrc/$recipe"
+    reference=$(recipe_dir "$recipe")
+    diff -r "$work/reference/${reference#"$root"/}" "$work/pkgsrc/$recipe"
 done
 git -C "$root/upstream/pkgsrc" archive HEAD lang/gcc16 lang/gcc16-libs lang/gcc16-libjit \
     math/mpfr math/mpcomplex devel/gtexinfo lang/tcl-expect mk/pkgformat/pkg/metadata.mk | tar -xf - -C "$work/reference"
@@ -116,21 +121,19 @@ if sh "$root/scripts/prepare-pkgsrc.sh" "$work/pkgsrc" > "$work/existing.log" 2>
 if sh "$root/scripts/prepare-pkgsrc.sh" "$work/unknown" bad > "$work/unknown.log" 2>&1; then exit 1; fi
 [ ! -e "$work/unknown" ]
 fixture=$work/fixture
-mkdir -p "$fixture/scripts" "$fixture/upstream" "$fixture/profiles"
+mkdir -p "$fixture/scripts" "$fixture/upstream"
 cp "$root/scripts/prepare-pkgsrc.sh" "$fixture/scripts/"
-for item in pkgsrc probes; do ln -s "$root/$item" "$fixture/$item"; done
-for item in "$root"/profiles/*; do
-    [ "${item##*/}" = common-build-tools ] || ln -s "$item" "$fixture/profiles/${item##*/}"
-done
-cp -R "$profile" "$fixture/profiles/common-build-tools"
+for item in profiles probes; do ln -s "$root/$item" "$fixture/$item"; done
+# The export rejects links in pkgsrc/, so the fixture gets a private copy.
+cp -R "$root/pkgsrc" "$fixture/pkgsrc"
 ln -s "$root/upstream/pkgsrc" "$fixture/upstream/pkgsrc"
 git -C "$fixture" init -q
 pin=$(git -C "$root/upstream/pkgsrc" rev-parse HEAD)
 git -C "$fixture" update-index --add --cacheinfo "160000,$pin,upstream/pkgsrc"
-rm "$fixture/profiles/common-build-tools/recipes/lang/llvm/patches/patch-cmake_config-ix.cmake"
+rm "$fixture/pkgsrc/lang/llvm/patches/patch-cmake_config-ix.cmake"
 if sh "$fixture/scripts/prepare-pkgsrc.sh" "$work/missing-export" \
     > "$work/missing-export.log" 2>&1; then exit 1; fi
-grep -qF 'Missing patch: profiles/common-build-tools/recipes/lang/llvm/patches/patch-cmake_config-ix.cmake' "$work/missing-export.log"
+grep -qF 'Missing patch: pkgsrc/lang/llvm/patches/patch-cmake_config-ix.cmake' "$work/missing-export.log"
 [ ! -e "$work/missing-export" ]
 # These are source/recipe shape contracts, not CMake configure or native tests.
 grep -q 'PKG_FAIL_REASON.*not prepared' "$work/pkgsrc/lang/llvm/version.mk"
@@ -158,6 +161,6 @@ sh "$profile/tests/llvm-generated-headers.sh" "$work/source/$source" \
     "$work/pkgsrc" "$work/generated-headers"
 echo 'PASS: recipe shape/static payload declarations; native staging/check-files pending'
 sh "$profile/tests/llvm-selection.sh" "$work/pkgsrc" "$work/selection"
-sh "$profile/tests/clang-config.sh" "$profile/recipes/lang/clang/files/native-gcc-config.sh" "$work/config"
+sh "$profile/tests/clang-config.sh" "$root/pkgsrc/lang/clang/files/native-gcc-config.sh" "$work/config"
 sh "$profile/tests/llvm-lit.sh" "$distfiles/$archive" "$work/lit"
 echo 'PASS: LLVM family source/checksum/negative/export contracts; native packages/LLVM23 driver/ELF pending'
