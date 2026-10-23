@@ -9,6 +9,12 @@ The package ABI floor is 0.8.9 for native and cross consumers.
 The release retains SONAME `libnotify.so.4` and the Notify-0.7 GIR namespace.
 GLib 2.62 or later is required.
 
+The default man-page build uses DocBook 5 input with the
+`http://docbook.org/ns/docbook` namespace. Its native `docbook-xsl-ns`
+tool dependency supplies the matching namespaced stylesheets and XML
+catalog. The `xsltproc --nonet` stylesheet lookup must succeed locally.
+This dependency is separate from the optional `doc` selection.
+
 The optional `doc` and `tests` selections remain disabled by default.
 Native builds retain GIR. Cross builds retain the existing C API and
 `notify-send` payload without GIR. Native API documents require GIR;
