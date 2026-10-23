@@ -99,3 +99,21 @@ arithmetic and style findings. Native i386 also exposes the upstream
 memtester, are outside this bounds repair, and do not establish physical-mode
 acceptance. No finding category is suppressed. Valgrind was unavailable on
 the test host; the executed substitute is UBSan in trap mode, not Memcheck.
+
+## Linux AArch64 diagnostic artifact
+
+The [native CI workflow](../../.github/workflows/memtester-linux-aarch64.yml)
+uses the GitHub `ubuntu-24.04-arm` runner and the official GCC 16.2.0 ARM64
+container pinned by digest. It runs the same source regression, causal
+mutations and UBSan trap pair. Strict Valgrind Memcheck checks the real
+generator/comparator regression. A separate static Linux
+binary runs the complete one-loop, 1 MiB smoke check. The container permits
+that memory to be locked without reducing the requested test size.
+
+The artifact contains the static ELF64 AArch64 executable, SHA256SUMS,
+GPL license, original source archive, common Ports patch, test logs and a
+receipt. The receipt records the exact commit, commands, compiler image,
+tool versions, input hashes and ELF machine 183. It rejects dynamic-loader
+or dynamic-segment requirements. This is a Linux diagnostic candidate.
+It does not accept EmberBSD ABI compatibility, package lifecycle or a
+physical board. The workflow retains its downloadable artifact for 14 days.
