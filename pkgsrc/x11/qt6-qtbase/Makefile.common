@@ -56,9 +56,7 @@ USE_TOOLS+=		cmake gmake perl:build pkg-config
 .include "../../devel/wayland/platform.mk"
 # Origin: EmberBSD (AI-assisted). Generators run on the development host.
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-.if empty(EMBERBSD_QT_HOST_PATH:M/*) || !exists(${EMBERBSD_QT_HOST_PATH}/libexec/moc)
-PKG_FAIL_REASON+= "EMBERBSD_QT_HOST_PATH must select the matching native Qt generator build"
-.endif
+.include "host-tools.mk"
 CMAKE_CONFIGURE_ARGS+= -DQT_HOST_PATH:PATH=${EMBERBSD_QT_HOST_PATH}
 CMAKE_CONFIGURE_ARGS+= -DQT_FORCE_BUILD_TOOLS:BOOL=ON
 .if !empty(PLATFORM_SUPPORTS_WAYLAND:Myes)

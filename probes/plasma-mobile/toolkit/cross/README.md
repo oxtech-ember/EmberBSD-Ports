@@ -87,6 +87,26 @@ rendering result or a working Plasma session.
 ## Reuse an installed native Qt
 
 An installed Qt 6.12.0 can supply Core, BuildInternals and the usual host tools.
+Set `EMBERBSD_QT_HOST_PATH` to its CMake package prefix. Set
+`EMBERBSD_QT_HOST_LIBEXECS` to the directory reported by that Qt's
+`qtpaths --query QT_INSTALL_LIBEXECS`. The default remains `libexec` below the
+host prefix for a Qt build tree. Both native `moc` and the `Qt6CoreTools`
+CMake export must exist. Qt's imported targets select the actual tools during
+configuration; the target sysroot does not supply them.
+
+Check both a split installation and the default build-tree layout:
+
+```sh
+python3 probes/plasma-mobile/toolkit/tests/host-qt-layout.py \
+    --bmake /absolute/native/bmake --cmake /absolute/native/cmake \
+    --qtpaths /absolute/native/qtpaths --cc /absolute/native/cc \
+    --work /absolute/new-host-layout-check
+```
+
+The check evaluates the recipe guard, rejects missing tools and metadata,
+resolves `Qt6::moc` through installed CMake exports, and executes native `moc`.
+It does not compile target code.
+
 If it lacks `Qt6WaylandScannerTools`, build only the missing native scanner:
 
 ```sh
