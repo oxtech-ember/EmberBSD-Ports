@@ -6,7 +6,7 @@ set -eu
 toolkit=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 mkdir "$1"
 work=$(CDPATH= cd -- "$1" && pwd)
-cp "$toolkit/mk.conf" "$work/toolkit.mk"
+cp "$toolkit/../../../pkgsrc/plasma-toolkit.mk.conf" "$work/toolkit.mk"
 cp "$toolkit/../../../profiles/common-graphics/mk.conf" "$work/graphics.mk"
 cp "$toolkit/../../../profiles/common-graphics/sources.tsv" "$work/EMBERBSD-COMMON-GRAPHICS-SOURCES"
 cp "$toolkit/../../../profiles/common-media/mk.conf" "$work/media.mk"

@@ -35,9 +35,9 @@ against the complete native library. Its target-package acceptance remains pendi
 ## Prepare the source tree
 
 The toolkit recipes are canonical recipes in `pkgsrc/`. `pkgsrc/replaces`
-lists the recipes that replace upstream recipes. `pkgsrc/export.conf` applies
-the toolkit changes to upstream recipes and exports this directory's `mk.conf`
-and source manifests. `sources.tsv` and `source-owners.tsv` select the toolkit
+lists the recipes that replace upstream recipes. `pkgsrc/export.conf` exports
+[pkgsrc/plasma-toolkit.mk.conf](../../../pkgsrc/plasma-toolkit.mk.conf) and the
+source manifests of this directory. `sources.tsv` and `source-owners.tsv` select the toolkit
 recipes and pin their archives. The normal export includes the toolkit:
 
 ```sh

@@ -239,7 +239,7 @@ recursion receives no target Qt host setting.
 ```sh
 BMAKE=/absolute/native/bmake sh \
     probes/plasma-mobile/toolkit/tests/consumer-host-tools.sh \
-    /absolute/toolkit/mk.conf /absolute/new-consumer-host-test
+    /absolute/ports/pkgsrc/plasma-toolkit.mk.conf /absolute/new-consumer-host-test
 ```
 
 The regression covers assignments before/after inclusion, spaces in paths,
