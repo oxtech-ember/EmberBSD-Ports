@@ -32,16 +32,34 @@ PTY.spawn({'ENV' => '/dev/null', 'PS1' => 'dash-test> ', 'TERM' => 'xterm'},
     output = read_prompt.call
     abort "History substitution failed: #{output.inspect}" unless output.match?(/\r?\nHISTORY_OK\r?\n/)
     writer.write("exit 0\n")
-    _, status = Process.wait2(pid)
+    status = Timeout.timeout(10) do
+      # Drain terminal output before wait: terminal close can wait for its reader.
+      begin
+        loop { transcript << reader.readpartial(4096) }
+      rescue EOFError, Errno::EIO
+        # The terminal closed after the shell flushed its output.
+      end
+      Process.wait2(pid).last
+    end
     abort 'Interactive dash failed' unless status.success?
     puts 'PASS: dash interactive libedit word editing and history in a PTY.'
   rescue Timeout::Error, EOFError, Errno::EIO => error
     warn transcript
     abort "Interactive check failed: #{error}"
   ensure
+    reader.close unless reader.closed?
+    writer.close unless writer.closed?
     begin
       Process.kill('TERM', pid)
-      Process.wait(pid)
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 2
+      until Process.waitpid(pid, Process::WNOHANG)
+        if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+          Process.kill('KILL', pid)
+          Process.wait(pid)
+          break
+        end
+        sleep 0.05
+      end
     rescue Errno::ESRCH, Errno::ECHILD
       # Child already reaped above.
     end
