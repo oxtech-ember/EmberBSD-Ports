@@ -1,13 +1,13 @@
 # Current editline dependency
 
-This ordinary pkgsrc recipe replaces `devel/editline` in the exported tree.
+This canonical recipe supplies the OS base library and replaces `devel/editline` in the exported tree.
 It selects libedit 20260512-3.1, released on 2026-05-12.
 The upstream download page lists it as current on 2026-10-14:
 <https://thrysoee.dk/editline/>.
 
-The archive SHA256 is
-`432d5e7ea8b0116dd39f2eca7bc11d0eed77faa6b77ea526ace89907c23ea4a0`.
-`distinfo` records the package hashes. The license remains modified BSD.
+`Makefile` selects the archive. `distinfo` records its hashes and every patch.
+The SDK source preparer verifies both inputs and applies all recipe patches.
+The license remains modified BSD.
 
 The recipe comes from pkgsrc `fff4deb639a1a640476203c80f752fb77b6cb14b`.
 All four inherited patches apply without fuzz to this current release:
@@ -21,7 +21,19 @@ The local `patch-configure.ac` adds detection of the upstream `libncursesw` name
 The existing library fallbacks remain available. Current pkgsrc names its
 wide ncurses library `libncurses`; its normal buildlink transform handles both names.
 The recipe requires ncurses 6.6 and GCC 16.2. Autoreconf regenerates configure.
-Select `PREFER.editline=pkgsrc` to avoid the older built-in library.
+An EmberBSD base built from these sources installs the exact recipe `distinfo`
+at `/usr/share/emberbsd/ports/editline.distinfo`. Consumers use that base library
+only when the marker matches this recipe and the base headers and library exist.
+The base retains its OS ABI and SONAME. It is not replaced by the portable package.
+
+The common EmberBSD defaults identify NetBSD-ABI package builds with
+`EMBERBSD_PORTS=yes`. A stale or unmarked base in that context stops the build.
+Rebuild the base from the current recipe before building its consumers.
+A marker also identifies an EmberBSD target without that profile setting.
+`PREFER.editline=pkgsrc` is rejected for an EmberBSD target because it would
+install a second provider. Other systems can build the portable package.
+The marker records source identity; release checks must also verify installed
+library bytes and the consumers' loaded library.
 
 The local `patch-src_filecomplete.c` and `patch-src_readline.c` release
 generated completion strings when result allocation fails. The former also
@@ -35,7 +47,8 @@ They have not been submitted upstream.
 Run the installed consumer and staged lifecycle check from the profile:
 
 ```sh
-sh profiles/shells/editline-control.sh /absolute/work /absolute/current-ncurses-prefix
+EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK \
+  sh profiles/shells/editline-control.sh /absolute/work /absolute/current-ncurses-prefix /absolute/libedit.tar.gz
 sh profiles/shells/analyze.sh /absolute/work editline
 ```
 
@@ -85,3 +98,21 @@ Remaining readline error-path and upstream-example findings need separate
 triage and regressions. In particular, example directory-open and multibyte
 conversion failure paths are outside the installed-consumer checks above.
 This control does not claim a clean analysis of the complete upstream library.
+
+## Provider and export regressions
+
+Run the actual BSD make fragments with the pinned pkgsrc framework and real
+`pkg_admin` matcher. The tests create and remove only their own temporary trees.
+They do not install a package or change the base system.
+
+```sh
+python3 pkgsrc/devel/editline/tests/builtin.py \
+  --bmake /absolute/bmake --pkg-admin /absolute/pkg_admin \
+  --pkgsrc /absolute/pinned-pkgsrc --work-parent /absolute/temporary
+python3 pkgsrc/devel/editline/tests/export.py \
+  --pkgsrc /absolute/pinned-pkgsrc --work-parent /absolute/temporary
+```
+
+The portable source control requires a clean Ports checkout and the SDK source
+preparation command. It keeps the verified source tree immutable and uses a
+separate mutable copy for Autoconf and compilation.

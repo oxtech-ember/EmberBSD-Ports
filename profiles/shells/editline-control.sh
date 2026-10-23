@@ -3,11 +3,12 @@
 # Prepared with AI assistance.
 set -eu
 
-if [ "$#" -ne 2 ]; then
-    echo "Usage: $0 EMPTY_WORK CURRENT_NCURSES_PREFIX" >&2
+if [ "$#" -ne 3 ]; then
+    echo "Usage: $0 EMPTY_WORK CURRENT_NCURSES_PREFIX LIBEDIT_ARCHIVE" >&2
     exit 2
 fi
 profile=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+root=$(CDPATH= cd -- "$profile/../.." && pwd)
 mkdir -p "$1"
 work=$(CDPATH= cd -- "$1" && pwd)
 if [ -n "$(find "$work" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
@@ -16,8 +17,11 @@ if [ -n "$(find "$work" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
 fi
 ncurses=$(CDPATH= cd -- "$2" && pwd)
 prefix=$work/prefix
-src=$work/libedit-20260512-3.1
-archive=$work/libedit-20260512-3.1.tar.gz
+prepared=$work/source
+src=$work/build-source
+archive=$(CDPATH= cd -- "$(dirname -- "$3")" && pwd)/$(basename -- "$3")
+: "${EMBERBSD_SDK_SOURCE:?Set EMBERBSD_SDK_SOURCE to the SDK checkout}"
+test -f "$EMBERBSD_SDK_SOURCE/scripts/prepare-libedit.py"
 cc=${CC:-gcc}
 case "$($cc -dumpfullversion)" in 16.*) ;; *) echo 'GCC 16 is required.' >&2; exit 2 ;; esac
 test ! -e "$src" || { echo "Source directory already exists: $src" >&2; exit 2; }
@@ -26,15 +30,13 @@ case "$("$ncurses/bin/ncursesw6-config" --version)" in
     6.6|6.6.*) ;;
     *) echo 'ncurses 6.6 is required.' >&2; exit 2 ;;
 esac
-for tool in curl sha256sum autoreconf make perl valgrind; do command -v "$tool" >/dev/null; done
+for tool in python3 sha256sum autoreconf make perl valgrind; do command -v "$tool" >/dev/null; done
 mkdir -p "$work/records/editline" "$work/logs" "$work/stage"
-curl -fL --retry 2 https://thrysoee.dk/editline/libedit-20260512-3.1.tar.gz -o "$archive"
-printf '%s  %s\n' 432d5e7ea8b0116dd39f2eca7bc11d0eed77faa6b77ea526ace89907c23ea4a0 "$archive" | sha256sum -c -
-tar -xzf "$archive" -C "$work"
+python3 "$EMBERBSD_SDK_SOURCE/scripts/prepare-libedit.py" \
+    --ports "$root" --archive "$archive" --output "$prepared" \
+    > "$work/logs/source.json"
+cp -R "$prepared" "$src"
 cd "$src"
-for patchfile in "$profile"/recipes/devel/editline/patches/*; do
-    patch --fuzz=0 -p0 < "$patchfile"
-done
 autoreconf -fi > "$work/logs/autoreconf.log" 2>&1
 export SHELL_REAL_CC SHELL_CC_RECORDS
 SHELL_REAL_CC=$(command -v "$cc")
@@ -137,7 +139,7 @@ TERM=dumb valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all \
     --errors-for-leak-kinds=definite,indirect,possible --track-origins=yes \
     --error-exitcode=97 --log-file="$work/logs/memcheck.log" "$work/consumer"
 "$cc" -std=c11 -Wall -Wextra -Werror -g -I"$prefix/include" \
-    "$profile/recipes/devel/editline/files/completion-oom.c" \
+    "$root/pkgsrc/devel/editline/files/completion-oom.c" \
     "$prefix/lib/libedit.a" -L"$ncurses/lib" -Wl,-rpath,"$ncurses/lib" \
     -lncursesw -Wl,--wrap=realloc,--wrap=calloc,--wrap=free \
     -o "$work/completion-oom"
@@ -153,7 +155,7 @@ make install > "$work/logs/reinstall.log" 2>&1
 ln -s readline.h "$prefix/include/editline/history.h"
 TERM=dumb "$work/consumer" > "$work/logs/reinstalled-consumer.log" 2>&1
 "$cc" --version > "$work/logs/compiler.txt"
-sha256sum "$prefix/lib/libedit.so.0.0.78" "$work/consumer" "$work/completion-oom" \
+sha256sum "$(readlink -f "$prefix/lib/libedit.so")" "$work/consumer" "$work/completion-oom" \
     > "$work/logs/outputs.sha256"
 perl -MJSON::PP -e '
     my @records;
@@ -165,5 +167,7 @@ perl -MJSON::PP -e '
     }
     print JSON::PP->new->canonical->pretty->encode(\@records);
 ' "$work" > "$work/compile_commands.json"
+python3 "$EMBERBSD_SDK_SOURCE/scripts/prepare-libedit.py" \
+    --ports "$root" --validate "$prepared" > "$work/logs/source-validated.json"
 echo "PASS: editline staging, installed consumer, Memcheck, removal and reinstallation"
 echo "Installed prefix: $prefix"

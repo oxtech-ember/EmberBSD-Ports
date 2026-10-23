@@ -13,9 +13,10 @@ pkgsrc mirror supplies bytes matching the pinned upstream release SHA512.
 
 The [ordinary recipe overlay](recipes/shells/dash/Makefile) keeps libedit
 support enabled and selects GCC 16.2. The package export uses libedit
-from the NetBSD base system and ncurses 6.6. The control build below uses
+from the qualified EmberBSD base and its native terminfo provider.
+An outdated base stops consumer builds. The portable control below uses
 [libedit 20260512-3.1](https://thrysoee.dk/editline/) from the
-[profile recipe](recipes/devel/editline).
+[canonical recipe](../../pkgsrc/devel/editline).
 The library preserves wide-character and readline interfaces and the four
 existing pkgsrc portability patches. Its configure check also recognizes
 ncurses' current wide-library name, `libncursesw`.
@@ -57,7 +58,8 @@ contain a GCC16-built ncurses 6.6 with wide-character support.
 
 ```sh
 export CC=/absolute/gcc16/bin/gcc
-sh profiles/shells/editline-control.sh /absolute/new-editline /absolute/ncurses
+EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK \
+  sh profiles/shells/editline-control.sh /absolute/new-editline /absolute/ncurses /absolute/libedit.tar.gz
 NCURSES_PREFIX=/absolute/ncurses \
   sh profiles/shells/dash-control.sh /absolute/new-dash /absolute/new-editline/prefix
 sh profiles/shells/dash-traps.sh /absolute/new-dash/prefix/bin/dash /absolute/new-trap-check
