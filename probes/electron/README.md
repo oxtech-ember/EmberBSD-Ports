@@ -152,6 +152,8 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-typed-stun-owner
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gfx-vector-mask-parentheses-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-codec-level-bounds-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/skia-reinitializes-attribute-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-bsd-linux-suid-helper.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-dist-target-os.patch
 ```
 
 The pkg-config patch keeps the effective `pkg/lib` value in the common cross
@@ -210,6 +212,14 @@ and TypeScript protoc actions. It retains Linux Node for remote workers.
 The Electron main patch checks NetBSD before the Linux platform alias.
 It selects the upstream POSIX main and stdio helper for NetBSD. Its glibc
 environment shim stays in the unchanged Linux branch.
+The BSD helper patch follows the existing `compile_suid_client` boundary.
+It omits the Linux namespace/SUID executable and its distribution-only strip
+target on BSD. Generic ELF stripping and the existing NetBSD policy remain.
+No runtime sandbox flag changes. The current NetBSD policy does not establish
+file, process, or network isolation; that OS acceptance gate remains open.
+The distribution patch uses the explicit target OS argument for archive
+selection. BSD archives prefer stripped ELF companions under canonical names.
+Native Linux, macOS bundle, and Windows archive behavior remain unchanged.
 The Mac patch keeps ordinary DWARF in host objects during cross-builds. Target
 GCC16 still emits split DWARF. Native Mac toolchain arguments stay unchanged.
 The PartitionAlloc patch matches NetBSD's const-qualified `malloc_usable_size`

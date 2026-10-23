@@ -1,0 +1,39 @@
+--- a/electron/build/zip.py
++++ b/electron/build/zip.py
+@@ -89,20 +89,21 @@
+     raise e
+ 
+ def main(argv):
+-  dist_zip, runtime_deps, target_cpu, _, flatten_val, flatten_relative_to = argv
++  dist_zip, runtime_deps, target_cpu, target_os, flatten_val, flatten_relative_to = argv
+   should_flatten = flatten_val == "true"
++  use_stripped = target_os in ("linux", "freebsd", "openbsd", "netbsd")
+   dist_files = set()
+   with open(runtime_deps) as f:
+     for dep in f.readlines():
+       dep = dep.strip()
+       if not skip_path(dep, dist_zip, target_cpu):
+         dist_files.add(dep)
+-  # On Linux, filter out any files which have a .stripped companion
+-  if sys.platform == 'linux':
++  # On Linux and BSD targets, prefer available .stripped companions.
++  if use_stripped:
+     dist_files = {
+       dep for dep in dist_files if f"{dep.removeprefix('./')}.stripped" not in dist_files
+     }
+-  if sys.platform == 'darwin' and not should_flatten:
++  if target_os == 'mac' and not should_flatten:
+     execute(['zip', '-r', '-y', dist_zip] + list(dist_files))
+   else:
+     with zipfile.ZipFile(
+@@ -123,8 +124,8 @@
+             else dep
+           )
+           name_to_write = arcname
+-          # On Linux, strip the .stripped suffix from the name before zipping
+-          if sys.platform == 'linux':
++          # Remove the target build suffix before zipping.
++          if use_stripped:
+             name_to_write = name_to_write.removesuffix('.stripped')
+           if should_flatten:
+             if flatten_relative_to:

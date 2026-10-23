@@ -235,3 +235,49 @@ sysroot, and `-Werror`. This verifies the targeted source portability fixes;
 it does not build or link V8 or Electron. See the [V8 regression guide](v8-gcc16-netbsd.md).
 
 See the [libc++ GCC16 regression guide](libcxx-gcc16.md) and the [Perfetto GCC16 regression guide](perfetto-gcc16.md) for production C++ checks.
+
+The Electron distribution test checks target-based archive policy with host
+CPython 3.15, its standard library and an explicit SDK API 1 source. It accepts
+the pinned original `build/zip.py` or the exact patched file. Reverse and
+forward `patch -p1 -F0` checks recover the pinned baseline and patched bytes.
+Use a new work directory outside the selected sources and test directory.
+
+```sh
+python3.15 -B -I -S probes/electron/tests/electron-dist-target-os.py \
+  --sdk-source /absolute/EmberBSD-SDK \
+  --electron-source /absolute/chromium/src/electron \
+  --patch /absolute/Ports/probes/electron/patches/electron-dist-target-os.patch \
+  --work-dir /absolute/NEW_ELECTRON_DIST_WORK
+```
+
+Fourteen cases execute the actual before/after writer. The original
+Darwin-to-NetBSD case must fail the explicit ELF archive requirement. NetBSD
+from simulated Darwin, Linux and Windows hosts uses stripped files and canonical
+names. FreeBSD and OpenBSD retain that ELF policy. Native Linux, macOS, Windows
+and flattened macOS results stay equal. SDK `run_logged` preserves command logs
+and SHA256 receipts. Temporary archive fixtures are removed. The macOS external
+`zip` command is captured, not executed. These synthetic payloads do not qualify
+a release ZIP, ELF binaries, a runtime package, sandboxing or target startup.
+
+## Linux SUID-helper selection
+
+Use CPython 3.15, an SDK source that provides Python API 1, host GN, and the
+pinned Chromium source with the Electron main-entrypoint patch applied.
+The source can contain the Linux SUID-helper patch already.
+Choose a new absolute work directory outside the source and SDK trees.
+
+```sh
+python3.15 -E -S probes/electron/tests/electron-linux-suid-selection.py \
+  --sdk-source "$sdk" --chromium-source "$chromium" --gn "$gn" \
+  --patch "$ports/probes/electron/patches/electron-bsd-linux-suid-helper.patch" \
+  --work-dir "$work"
+```
+
+The test applies the patch with zero fuzz to copies of two pinned GN files.
+It executes the production GN conditions and OS definitions for 13 platforms
+with official builds enabled and disabled (52 successful GN runs).
+Independent expectations reject the baseline BSD helper selection and verify
+the corrected selection, unchanged non-BSD behavior, generic ELF strip targets,
+and the existing NetBSD policy sources. The work directory retains hashes,
+commands, JSON observations, and bounded fixture sources. It does not build
+Electron or validate NetBSD OS isolation or installed sandbox behavior.

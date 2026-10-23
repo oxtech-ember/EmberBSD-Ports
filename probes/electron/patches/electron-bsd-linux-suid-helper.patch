@@ -1,0 +1,59 @@
+--- a/electron/BUILD.gn
++++ b/electron/BUILD.gn
+@@ -1776,7 +1776,7 @@
+         configs += [ "//build/config/gcc:rpath_for_built_shared_libraries" ]
+       }
+ 
+-      if (is_linux) {
++      if (!is_bsd) {
+         deps += [ "//sandbox/linux:chrome_sandbox" ]
+       }
+     }
+@@ -1878,9 +1878,14 @@
+         ":strip_libffmpeg_shlib",
+         ":strip_libvk_swiftshader_shlib",
+       ]
+-    }
+-
+-    data_deps += [ "//sandbox/linux:chrome_sandbox" ]
++      if (is_bsd) {
++        data_deps -= [ ":strip_chrome_sandbox" ]
++      }
++    }
++
++    if (!is_bsd) {
++      data_deps += [ "//sandbox/linux:chrome_sandbox" ]
++    }
+   }
+   deps = data_deps
+   if (electron_use_resource_allowlist) {
+@@ -2127,11 +2132,13 @@
+     deps = [ "//components/crash/core/app:chrome_crashpad_handler" ]
+   }
+ 
+-  strip_binary("strip_chrome_sandbox") {
+-    binary_input = "$root_out_dir/chrome_sandbox"
+-    symbol_output = "$root_out_dir/debug/chrome-sandbox.debug"
+-    compress_debug_sections = true
+-    deps = [ "//sandbox/linux:chrome_sandbox" ]
++  if (!is_bsd) {
++    strip_binary("strip_chrome_sandbox") {
++      binary_input = "$root_out_dir/chrome_sandbox"
++      symbol_output = "$root_out_dir/debug/chrome-sandbox.debug"
++      compress_debug_sections = true
++      deps = [ "//sandbox/linux:chrome_sandbox" ]
++    }
+   }
+ 
+   strip_binary("strip_electron_xcache_binary") {
+--- a/sandbox/linux/BUILD.gn
++++ b/sandbox/linux/BUILD.gn
+@@ -288,7 +288,7 @@
+   }
+ }
+ 
+-if (is_linux || is_chromeos) {
++if ((is_linux || is_chromeos) && !is_bsd) {
+   # The setuid sandbox for Linux.
+   executable("chrome_sandbox") {
+     sources = [
