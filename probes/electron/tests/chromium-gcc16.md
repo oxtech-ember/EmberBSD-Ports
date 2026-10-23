@@ -264,3 +264,31 @@ The public dependency passes header checking for standalone, Chromium static,
 and Chromium component modes. Missing and private dependency controls fail
 header checking in each mode. This is nine GN contract cases; it does not
 replace full-project generation or target runtime execution.
+
+## UI identifiers, network enums, and X509 names
+
+The AI-assisted identifier patch gives each type's class-name string one inline
+static storage entity. Namespace and nested-class declarations keep the same
+pointer layout, constexpr operations, strong types, and PassKey access. The
+[identifier fixture](identifier-linkage/README.md) compiles and links two
+translation units. Its address, name, and access checks pass on physical NetBSD
+amd64. The baseline namespace declaration fails `-Werror=subobject-linkage`;
+the patched forbidden-access control still fails its PassKey constraint.
+The upstream identifier and X509 unit-test translation units also compile.
+
+The Net/UI and HTTP enum patches preserve valid branches and add 36 fatal
+terminals. All 25 affected production translation units compile with GCC16
+after these patches. The interaction-sequence check also uses the identifier
+patch above. Clang Static Analyzer completes all 50 before/after enum cases
+with unchanged diagnostic signatures. Cppcheck reaches the same dependency
+parser limits in every pair. These results do not establish a clean Cppcheck
+result or target execution of the upstream unit tests.
+
+The X509 change replaces trailing-dot `resize(length() - 1)` with `pop_back()`
+after the existing nonempty check. It keeps hostname canonicalization, wildcard
+rules, and matching behavior. Five test inputs cover uppercase absolute names,
+dot-only names, two trailing dots, and a single-label mismatch. The production
+unit fails with the original GCC16 object-size diagnostic and compiles after
+the change. Paired identifier and X509 analysis completes with the same three
+inherited findings. All four Cppcheck cases stop at the same dependency parser
+error. Full browser linking and runtime acceptance remain separate checks.

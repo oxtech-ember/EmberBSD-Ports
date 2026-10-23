@@ -142,6 +142,10 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-glib-watch-lifetim
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-string-placeholder-emplace-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-string-writeinto-bounded-copy-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-network-enum-noreturn-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/unique-identifier-name-linkage-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-net-ui-enum-noreturn-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-http-enum-noreturn-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/x509-presented-name-pop-back-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-padding-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-invariants.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-proc-clang-cfi-attribute.patch
@@ -195,7 +199,13 @@ The placeholder patch constructs offsets in place and preserves stable ordering.
 The WriteInto test patch preserves bounded copying and zero padding without
 intentional `strncpy` truncation. It keeps all size and content assertions.
 The network enum patch preserves fatal invalid-value paths in DNS, ipcz, and
-WebRTC. The scenario patch keeps the shared-memory padding diagnostic fatal on
+WebRTC. The identifier patch uses one inline class-name entity across translation
+units. It retains nested declarations, constexpr values, and PassKey access.
+The Net/UI and HTTP follow-ups add fatal exits after exhaustive switches. They
+retain parsing fallbacks, cookie policy, priority sentinels, and valid results.
+The X509 patch removes a trailing dot with the shrink-only `pop_back()` operation.
+Its hostname matching rules remain unchanged.
+The scenario patch keeps the shared-memory padding diagnostic fatal on
 both Clang and GCC. The QUICHE patch checks allocation and handshake invariants,
 compares the selected subprotocol without signed conversion errors, and obtains
 Settings frames through the existing typed visitor. The Dawn template selects

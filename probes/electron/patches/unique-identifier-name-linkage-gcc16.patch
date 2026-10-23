@@ -1,0 +1,18 @@
+--- a/ui/base/identifier/unique_identifier.h
++++ b/ui/base/identifier/unique_identifier.h
+@@ -219,10 +219,13 @@
+ // args are the classes (if any) which can access PassKey-protected members of
+ // UniqueIdentifierImpl.
+ #define DECLARE_UNIQUE_IDENTIFIER_TYPE(IdentifierType, ...)                \
+-  static constexpr char k##IdentifierType##ClassName[] = #IdentifierType;  \
++  struct IdentifierType##ClassNameProvider {                               \
++    static constexpr char kName[] = #IdentifierType;                        \
++  };                                                                       \
+   class IdentifierType final                                               \
+       : public ::ui::internal::UniqueIdentifierImpl<                       \
+-            IdentifierType, k##IdentifierType##ClassName, ##__VA_ARGS__> { \
++            IdentifierType, IdentifierType##ClassNameProvider::kName,      \
++            ##__VA_ARGS__> {                                                \
+    public:                                                                 \
+     constexpr IdentifierType() = default;                                  \
+     explicit constexpr IdentifierType(                                     \

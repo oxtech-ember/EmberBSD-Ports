@@ -1,0 +1,25 @@
+--- a/net/cert/x509_certificate.cc
++++ b/net/cert/x509_certificate.cc
+@@ -536,7 +536,7 @@
+ 
+     // Remove trailing dot, if any.
+     if (*presented_name.rbegin() == '.')
+-      presented_name.resize(presented_name.length() - 1);
++      presented_name.pop_back();
+ 
+     // The hostname must be at least as long as the cert name it is matching,
+     // as we require the wildcard (if present) to match at least one character.
+--- a/net/cert/x509_certificate_unittest.cc
++++ b/net/cert/x509_certificate_unittest.cc
+@@ -1280,6 +1280,11 @@
+     {true, "www-3.bar.foo.com", "*.bar.foo.com."},
+     {true, "www-3.bar.foo.com.", "*.bar.foo.com"},
+     {true, "www-3.bar.foo.com.", "*.bar.foo.com."},
++    {true, "foo.com", "FOO.COM."},
++    {false, "foo.com", "."},
++    {false, "foo.com", ".."},
++    {false, "foo.com", "foo.com.."},
++    {false, "f", "."},
+     {false, ".", "."},
+     {false, "example.com", "*.com."},
+     {false, "example.com.", "*.com"},
