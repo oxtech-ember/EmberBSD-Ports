@@ -66,12 +66,21 @@ for recipe in graphics/MesaLib x11/libdrm devel/libffi graphics/glu graphics/lib
     run "$recipe" show-depends > "$work/${recipe##*/}-depends.txt" 2>&1
     if grep -E 'libLLVM|MesaLib>=21|libdrm>=2.4.15:' "$work/${recipe##*/}-depends.txt"; then exit 1; fi
 done
-run graphics/MesaLib show-var VARNAME=PKGNAME | grep -x 'MesaLib-26.2.4nb9'
+# Take the expected versions from the canonical recipes, not from this test.
+recipe_version() {
+    distname=$(run "$1" show-var VARNAME=DISTNAME)
+    revision=$(run "$1" show-var VARNAME=PKGREVISION)
+    printf '%s%s\n' "${distname##*-}" "${revision:+nb$revision}"
+}
+mesa=$(recipe_version graphics/MesaLib)
+drm=$(recipe_version x11/libdrm)
+ffi=$(recipe_version devel/libffi)
+run graphics/MesaLib show-var VARNAME=PKGNAME | grep -x "MesaLib-$mesa"
 run graphics/MesaLib show-var VARNAME=DEPENDS | grep 'vulkan-loader>=1.4.357.0:../../graphics/vulkan-loader' > /dev/null
-run x11/libdrm show-var VARNAME=PKGNAME | grep -x 'libdrm-2.4.134nb2'
-run devel/libffi show-var VARNAME=PKGNAME | grep -x 'libffi-3.8.0nb1'
-run devel/libffi show-var VARNAME=PKG_FAIL_REASON PKGREVISION=0 | grep 'requires rebased libffi 3.8.0nb1'
-run devel/libffi show-var VARNAME=PKG_FAIL_REASON DISTNAME=libffi-3.7.0 | grep 'requires rebased libffi 3.8.0nb1'
+run x11/libdrm show-var VARNAME=PKGNAME | grep -x "libdrm-$drm"
+run devel/libffi show-var VARNAME=PKGNAME | grep -x "libffi-$ffi"
+run devel/libffi show-var VARNAME=PKG_FAIL_REASON PKGREVISION=0 | grep "requires rebased libffi $ffi"
+run devel/libffi show-var VARNAME=PKG_FAIL_REASON DISTNAME=libffi-3.7.0 | grep "requires rebased libffi $ffi"
 run devel/libffi show-var VARNAME=PKG_FAIL_REASON BUILDLINK_PKGSRCDIR.libffi=../../devel/old-libffi | grep 'rejects unprepared libffi'
 run devel/libffi show-var VARNAME=PKG_FAIL_REASON 'BUILDLINK_API_DEPENDS.libffi=libffi>=1.20' | grep 'overridden libffi dependency requirements'
 run x11/libdrm show-var VARNAME=PKG_SKIP_REASON > "$work/drm-skip.txt"
@@ -97,8 +106,8 @@ grep 'requires the wayland Mesa option' "$work/negative-PKG_OPTIONS.MesaLib--way
 grep 'Meson configuration overrides' "$work/negative-MESON_ARGS--Dllvm-disabled.log"
 grep 'unprepared MesaLib' "$work/negative-BUILDLINK_PKGSRCDIR.MesaLib-..-..-graphics-old.log"
 grep 'one final /usr/pkg prefix' "$work/negative-PREFIX--opt-mesa.log"
-run x11/libdrm show-var VARNAME=PKG_FAIL_REASON PKGREVISION=0 | grep 'adapted libdrm 2.4.134nb2'
-run graphics/MesaLib show-var VARNAME=PKG_FAIL_REASON PKGREVISION=0 | grep 'adapted MesaLib 26.2.4nb9'
+run x11/libdrm show-var VARNAME=PKG_FAIL_REASON PKGREVISION=0 | grep "adapted libdrm $drm"
+run graphics/MesaLib show-var VARNAME=PKG_FAIL_REASON PKGREVISION=0 | grep "adapted MesaLib $mesa"
 run graphics/MesaLib show-var VARNAME=MESON_ARGS > "$work/mesa-options.txt"
 for option in '-Dgallium-drivers=v3d,virgl,softpipe,llvmpipe,zink' '-Dllvm-orcjit=true' '-Dshared-llvm=enabled' '-Dbuild-tests=true'; do grep -- "$option" "$work/mesa-options.txt" > /dev/null; done
 echo 'PASS: full recipes, actual dependency/builtin selection and negative profile overrides (host metadata boundary only)'

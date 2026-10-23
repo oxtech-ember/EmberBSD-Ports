@@ -65,7 +65,14 @@ for recipe in multimedia/ffmpeg9 multimedia/ffplay9 multimedia/qt6-qtmultimedia 
     done
     if grep -E 'ffmpeg[0-8][>:]|media dependency|FFmpeg 9 package integration is pending|common media profile|common FFmpeg 9 media profile' "$work/${recipe##*/}"-*.txt; then exit 1; fi
 done
-grep -x 'ffmpeg9-9.0.2' "$work/ffmpeg9-PKGNAME.txt"
+# Take the expected versions from the canonical recipes, not from this test.
+recipe_version() {
+    distname=$(run "$1" show-var VARNAME=DISTNAME)
+    revision=$(run "$1" show-var VARNAME=PKGREVISION)
+    printf '%s%s\n' "${distname##*-}" "${revision:+nb$revision}"
+}
+ffmpeg=$(recipe_version multimedia/ffmpeg9)
+grep -x "ffmpeg9-$ffmpeg" "$work/ffmpeg9-PKGNAME.txt"
 grep -F -- '--enable-sdl2' "$work/ffplay9-CONFIGURE_ARGS.txt" >/dev/null
 grep -F -- '--enable-ffplay' "$work/ffplay9-CONFIGURE_ARGS.txt" >/dev/null
 for recipe in ffplay9 qt6-qtmultimedia kf6-kfilemetadata; do
@@ -81,7 +88,7 @@ if grep -E -- '--disable-(everything|network|protocols|decoders|encoders|demuxer
 for pair in 'DISTNAME=ffmpeg-9.0.1' 'BUILDLINK_PKGSRCDIR.ffmpeg9=../../multimedia/ffmpeg8' 'BUILDLINK_API_DEPENDS.ffmpeg9=ffmpeg9>=9.0.0' 'CONFIGURE_ARGS=--disable-everything'; do
     run multimedia/ffmpeg9 show-var VARNAME=PKG_FAIL_REASON "$pair" > "$work/override-$(printf '%s' "$pair" | tr '/=' '--').log"
 done
-grep 'requires the FFmpeg 9.0.2 recipe' "$work/override-DISTNAME-ffmpeg-9.0.1.log"
+grep "requires the FFmpeg ${ffmpeg%nb*} recipe" "$work/override-DISTNAME-ffmpeg-9.0.1.log"
 grep 'unprepared FFmpeg provider' "$work/override-BUILDLINK_PKGSRCDIR.ffmpeg9-..-..-multimedia-ffmpeg8.log"
 grep 'overridden FFmpeg requirements' "$work/override-BUILDLINK_API_DEPENDS.ffmpeg9-ffmpeg9>-9.0.0.log"
 grep 'Select FFmpeg features through package options' "$work/override-CONFIGURE_ARGS---disable-everything.log"
