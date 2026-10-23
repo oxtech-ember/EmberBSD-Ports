@@ -11,7 +11,7 @@ HOMEPAGE=	https://gitlab.gnome.org/GNOME/libnotify
 COMMENT=	Desktop notification framework
 LICENSE=	gnu-lgpl-v2.1
 
-TOOL_DEPENDS+=	docbook-xsl-ns-[0-9]*:../../textproc/docbook-xsl-ns
+TOOL_DEPENDS+=	docbook-xsl-ns>=1.79.2nb1:../../textproc/docbook-xsl-ns
 PLIST_VARS+=	introspection
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 TOOL_DEPENDS+=	glib2-introspection-[0-9]*:../../devel/glib2-introspection

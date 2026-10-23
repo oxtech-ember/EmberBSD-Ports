@@ -10,3 +10,4 @@ textproc/hyphen
 sysutils/libnotify
 textproc/gspell
 devel/editline
+textproc/docbook-xsl-ns

@@ -11,8 +11,8 @@ GLib 2.62 or later is required.
 
 The default man-page build uses DocBook 5 input with the
 `http://docbook.org/ns/docbook` namespace. Its native `docbook-xsl-ns`
-tool dependency supplies the matching namespaced stylesheets and XML
-catalog. The `xsltproc --nonet` stylesheet lookup must succeed locally.
+tool dependency requires `docbook-xsl-ns>=1.79.2nb1` for the matching
+namespaced stylesheets and corrected XML catalog. The `xsltproc --nonet` stylesheet lookup must succeed locally.
 This dependency is separate from the optional `doc` selection.
 
 The optional `doc` and `tests` selections remain disabled by default.
