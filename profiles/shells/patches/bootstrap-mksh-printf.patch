@@ -1,0 +1,16 @@
+Origin: EmberBSD, AI-assisted bootstrap change for the R59c mksh source copy.
+The R59c archive does not contain pkgsrc's separate printf.c, so the first
+shell uses the external printf, like the shells/mksh package. Not submitted
+upstream. See ../mksh.md.
+
+--- a/bootstrap/bootstrap
++++ b/bootstrap/bootstrap
+@@ -1248,7 +1248,7 @@
+ case "$need_mksh" in
+ yes)	echo_msg "Bootstrapping mksh"
+ 	copy_src $pkgsrcdir/shells/mksh/files mksh
+-	run_cmd "(cd $wrkdir/mksh && env $BSTRAP_ENV CC=\"${CC}\" USE_PRINTF_BUILTIN=1 $shprog Build.sh -r)"
++	run_cmd "(cd $wrkdir/mksh && env $BSTRAP_ENV CC=\"${CC}\" $shprog Build.sh -r)"
+ 	run_cmd "$install_sh -c -o $user -g $group -m 755 $wrkdir/mksh/mksh $wrkdir/bin/mksh"
+ 	echo "TOOLS_PLATFORM.sh?=		$prefix/bin/mksh" >> ${TARGET_MKCONF}
+ 	echo "TOOLS_PLATFORM.sh?=		$wrkdir/bin/mksh" >> ${BOOTSTRAP_MKCONF}

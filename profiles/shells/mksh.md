@@ -9,16 +9,29 @@ No newer release appears in either available source.
 
 The original `mksh-R59c.tgz` SHA256 is
 `77ae1665a337f1c48c61d6b961db3e52119b38e58884d1c89684af31f87bc506`.
-Its SHA512 also matches the local recipe's existing distinfo.
+Its SHA512 is
+`f56b6956f9e1dd88ddce2294301a5eb698050d9d4f49286fdcd8f9df8554eabbcc71d37e2bf3eb7234e3968a17231cc6de8aa7efbf17768834a90b14e8cdf340`.
 The Miros license and upstream attribution remain intact.
 
 ## Recipe and dependencies
 
 The [ordinary recipe](../../pkgsrc/shells/mksh/Makefile) uses GCC 16.2.
 The shell export replaces pinned pkgsrc's R59b source-copy recipe with R59c.
-The archive suffix is `.tgz`. The recipe no longer requests the separate
-pkgsrc printf implementation, which is absent from the upstream archive.
-External `printf` remains available through the base utilities.
+The pkgsrc bootstrap copies `shells/mksh/files` to build its first shell, and
+it installs this package without a fetch step. Thus the recipe keeps the same
+form as pinned pkgsrc: `files/` holds the text files of the original archive
+and `BOOTSTRAP_PKG` is set. The binary OS/2 icon `mksh.ico` is not copied;
+no build uses it. Compare the copy with the original archive:
+
+```sh
+sh profiles/shells/mksh-source.sh /absolute/mksh-R59c.tgz
+```
+
+The recipe no longer requests the separate pkgsrc printf implementation,
+which is absent from the upstream archive. External `printf` remains
+available through the base utilities. The
+[bootstrap patch](patches/bootstrap-mksh-printf.patch) builds the first
+shell in the same way.
 
 The runtime requires the system C library. Its editor is built into mksh;
 libedit and ncurses are not additional dependencies. Tests use current Perl

@@ -1,20 +1,25 @@
 # MirBSD Korn Shell at the current upstream R59c release.
-# The pinned quarterly pkgsrc still carries R59b with a locally maintained
-# source copy; this recipe tracks the upstream distribution tarball instead.
+# The pkgsrc bootstrap builds this package and copies files/ to make its
+# first shell, so the recipe keeps a source copy, as pinned pkgsrc does.
+# files/ holds the text files of the original mksh-R59c.tgz (SHA256
+# 77ae1665a337f1c48c61d6b961db3e52119b38e58884d1c89684af31f87bc506).
+# The binary OS/2 icon mksh.ico is not copied; no build uses it.
+# profiles/shells/mksh-source.sh compares files/ with the archive.
 DISTNAME=	mksh-R59c
 PKGNAME=	mksh-59c
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	shells
-MASTER_SITES=	https://www.mirbsd.org/MirOS/dist/mir/mksh/
-MASTER_SITES+=	https://mbsd.evolvis.org/MirOS/dist/mir/mksh/
-EXTRACT_SUFX=	.tgz
+MASTER_SITES=	# maintained locally
+DISTFILES=	# empty
 
 HOMEPAGE=	http://mirbsd.de/mksh
 COMMENT=	MirBSD Korn Shell
 LICENSE=	miros
 
+POLICY_UPDATE_LIMITED=	bootstrap
+BOOTSTRAP_PKG=		yes
+
 WRKSRC=		${WRKDIR}/mksh
-PKG_SHELL=	bin/mksh
 USE_TOOLS+=	perl:test
 PERL5_REQD+=	5.44.0
 TEST_DEPENDS+=	ed>=1.22.6:../../editors/ed
@@ -25,8 +30,20 @@ GCC_REQD+=	16.2
 
 INSTALLATION_DIRS=	bin ${PKGMANDIR}/man1 share/examples/mksh
 
+.include "../../mk/bsd.prefs.mk"
+
+# The bootstrap shell must not register itself as a login shell: its
+# +INSTALL script would need that same shell. This matches both bootstrap
+# prefixes, as in pinned pkgsrc.
+.if ${TOOLS_PLATFORM.sh:N?*/bin/mksh}
+PKG_SHELL=	bin/mksh
+.endif
+
 # For check-portability's double brackets check.
 CHECK_PORTABILITY_SKIP+=	Build.sh
+
+do-extract:
+	${CP} -R ${FILESDIR} ${WRKSRC}
 
 do-build:
 	cd ${WRKSRC} && ${SETENV} ${MAKE_ENV} LIBS=${LIBS:Q} \

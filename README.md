@@ -871,6 +871,10 @@ case-insensitive one, and most packages depend on ncurses.
 `sh scripts/tests/prepare-pkgsrc.sh NEW_WORK` tests these checks on a fixture.
 `sh scripts/tests/export-composition.sh NEW_WORK` exports the real tree and
 compares each recipe with its source.
+`BMAKE=/absolute/host/bin/bmake sh scripts/tests/bootstrap-inputs.sh
+/absolute/new-pkgsrc` checks that the export keeps each input of the pkgsrc
+bootstrap: the copied `files/` source trees and the bootstrap packages, with
+`BOOTSTRAP_PKG` set and no distfiles.
 Experimental probes remain under `probes/`
 until their package integration and runtime are validated. No signed binary
 package repository is provided yet.
