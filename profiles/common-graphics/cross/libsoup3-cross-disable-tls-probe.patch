@@ -7,7 +7,7 @@
  DISTNAME=	libsoup-3.6.6
  PKGNAME=	${DISTNAME:S/soup/soup3/}
 -PKGREVISION=	2
-+PKGREVISION=	3
++PKGREVISION=	4
  CATEGORIES=	net gnome
  MASTER_SITES=	${MASTER_SITE_GNOME:=sources/libsoup/${PKGVERSION_NOREV:R}/}
  EXTRACT_SUFX=	.tar.xz
@@ -21,11 +21,10 @@
  DEPENDS+=	glib-networking-[0-9]*:../../net/glib-networking
  # not found by meson
  #TOOL_DEPENDS+=	${PYPKGPREFIX}-gi-docgen-[0-9]*:../../devel/py-gi-docgen
-@@ -22,6 +25,25 @@
- USE_CC_FEATURES=	c99
+@@ -23,8 +26,30 @@
  USE_LANGUAGES=		c
  USE_TOOLS+=		msgfmt pkg-config
-+
+ 
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 +# Native generators inspect the target ABI through the shared GI query path.
 +DEPENDS+= glib2-introspection>=2.90.1nb1:../../devel/glib2-introspection
@@ -44,6 +43,12 @@
 +MESON_CROSS.emberbsd_gi_cross= true
 +MESON_CROSS.emberbsd_gi_ldd_wrapper= '${EMBERBSD_GI_FILESDIR}/elf-needed.sh'
 +.endif
- 
++
  PKGCONFIG_OVERRIDE+=		output/meson-private/libsoup-3.0.pc
  PKGCONFIG_OVERRIDE_STAGE=	pre-install
++
++# The package does not ship the optional generated API reference.
++MESON_ARGS+= -Ddocs=disabled
+ 
+ # disable vala detection
+ MESON_ARGS+=	-Dvapi=disabled

@@ -60,6 +60,38 @@ def check_commands(run, meson, module, work, native_file, cross_file, env, nativ
     return commands
 
 
+def check_docs_commands(run, meson, root, work, native_file, cross_file, env):
+    """Evaluate the complete release docs module without generating HTML."""
+    work.mkdir()
+    project = work / 'project'
+    docs = project / 'docs/reference'
+    docs.mkdir(parents=True)
+    (project / 'meson_options.txt').write_bytes((root / 'meson_options.txt').read_bytes())
+    for source in [root / 'docs/reference/meson.build',
+                   root / 'docs/reference/libsoup.toml.in',
+                   *sorted((root / 'docs/reference').glob('*.md'))]:
+        (docs / source.name).write_bytes(source.read_bytes())
+    (project / 'Soup-3.0.gir').write_text('<repository/>\n')
+    (project / 'meson.build').write_text(
+        "project('libsoup', version: '3.6.6')\n"
+        "enable_introspection = true\napiversion = '3.0'\n"
+        "soup_gir_gen_sources = files('Soup-3.0.gir')\n"
+        "subdir('docs/reference')\n"
+        "message('Soup reference enabled: ' + have_docs.to_string())\n")
+    for mode in ('native', 'cross'):
+        for option in ('auto', 'disabled'):
+            build = work / (mode + '-' + option)
+            argv = [str(meson), 'setup', str(build), str(project),
+                    '--native-file', str(native_file), '--wrap-mode=nodownload',
+                    '-Ddocs=' + option]
+            if mode == 'cross':
+                argv += ['--cross-file', str(cross_file)]
+            run('docs-' + mode + '-' + option, argv, env)
+            ninja = (build / 'build.ninja').read_text()
+            assert ('gi-docgen generate' in ninja) == (option == 'auto')
+            assert ('docs/reference/libsoup-3.0' in ninja) == (option == 'auto')
+
+
 def ownership_hold(error, output):
     # An unknown session may still write the private output. Retain all leases.
     while True:
@@ -89,7 +121,11 @@ def main():
     cli.add_argument('--read-root', type=Path, action='append', required=True)
     a = cli.parse_args()
     assert not os.path.lexists(a.output)
-    inputs = [Path(__file__).resolve(), a.module, a.native_file, a.cross_file]
+    root = a.module.parent.parent
+    inputs = [Path(__file__).resolve(), a.module, a.native_file, a.cross_file,
+              root / 'meson_options.txt', root / 'docs/reference/meson.build',
+              root / 'docs/reference/libsoup.toml.in',
+              *sorted((root / 'docs/reference').glob('*.md'))]
     for p in [*inputs, a.sdk_source, a.meson, *a.read_root, *a.lock_root]:
         assert p.is_absolute() and p.exists(), str(p)
     sys.path.insert(0, str(a.sdk_source / 'src'))
@@ -133,6 +169,8 @@ def main():
 
         emitted = check_commands(run, a.meson, a.module, a.output / 'commands',
                                  a.native_file, a.cross_file, env)
+        check_docs_commands(run, a.meson, root, a.output / 'docs-commands',
+                            a.native_file, a.cross_file, env)
         assert all(hashlib.sha256(Path(p).read_bytes()).hexdigest() == h for p, h in pins.items())
         (a.output / 'result.json').write_text(json.dumps(dict(status='PASS',
             source_sha256=pins, commands=commands, emitted=emitted,
