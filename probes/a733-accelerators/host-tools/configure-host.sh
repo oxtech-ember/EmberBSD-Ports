@@ -23,7 +23,9 @@ done
 macsdk=$(xcrun --sdk macosx --show-sdk-path)
 mkdir -p "$work/tmp" "$work/cache/lto" "$work/logs"
 export TMPDIR="$work/tmp"
-export PATH="$work/venv/bin:$llvm/bin:$host/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+python=${HOST_PYTHON:-$host/bin/python3.15}
+[ -x "$python" ] || { echo 'Missing native Python 3.15' >&2; exit 2; }
+export PATH="$host/bin:$llvm/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 export PKG_CONFIG_PATH="$deps/lib/pkgconfig:$host/lib/pkgconfig:/opt/homebrew/lib/pkgconfig"
 # Use the current macOS C++ runtime explicitly. LLVM's -L path also contains
 # a private libc++; it must not silently change the host runtime selection.
@@ -51,7 +53,7 @@ else
 fi
 # Set link options explicitly. Reconfigure preserves options already cached
 # in coredata even if the native file has changed.
-"$host/bin/meson" setup "$@" "$work/mesa" "$mesa" \
+"$python" -B -m mesonbuild.mesonmain setup "$@" "$work/mesa" "$mesa" \
     --native-file "$work/native.ini" --prefix "$work/prefix" \
     -Dc_link_args="$clink" -Dcpp_link_args="$cpplink" \
     -Dobjc_link_args="$clink" --buildtype debugoptimized \
@@ -64,4 +66,5 @@ fi
     -Dllvm=enabled -Dshared-llvm=disabled -Ddraw-use-llvm=false \
     -Damd-use-llvm=false -Dspirv-tools=enabled -Dbuild-tests=true
 "$host/bin/ninja" -C "$work/mesa" -j "${JOBS:-4}"
-"$host/bin/meson" install -C "$work/mesa" --no-rebuild
+"$python" -B -m mesonbuild.mesonmain test -C "$work/mesa" --print-errorlogs
+"$python" -B -m mesonbuild.mesonmain install -C "$work/mesa" --no-rebuild

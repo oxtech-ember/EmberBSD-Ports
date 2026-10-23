@@ -29,7 +29,7 @@ the corrected executable in the actual build directory.
 Seal the three executables from that real build:
 
 ```sh
-TMPDIR=/absolute/external/tmp ruby seal-mesa-generators.rb \
+TMPDIR=/absolute/external/tmp python3.15 seal-mesa-generators.py --sdk-source "$SDK_SOURCE" \
     /absolute/mesa-26.2.5.tar.xz /absolute/native-mesa-source \
     /absolute/native-mesa-build /absolute/spirv-val /absolute/new-generators
 ```
@@ -205,7 +205,7 @@ It also checks the final manifest row when that row has no trailing newline.
 Run it with the real sealed native tools:
 
 ```sh
-ruby ../tests/mesa-generators.rb /absolute/digest \
+python3.15 ../tests/mesa-generators.py --sdk-source "$SDK_SOURCE" /absolute/digest \
     /absolute/sealed-generators /absolute/new-receipt-tests
 SANITIZERS=yes sh ../tests/powervr-enumeration.sh \
     /absolute/vulkan-header-prefix /absolute/new-consumer-tests

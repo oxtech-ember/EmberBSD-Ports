@@ -37,11 +37,11 @@ It does not change function names, call targets, or linkage resolution.
 This AI-assisted downstream patch retains the upstream Apache-2.0 license.
 It has not been submitted to or accepted by SPIRV-Tools upstream.
 
-The builder runs the [real-tool regression](check-spirv-link-order.rb) before
+The builder runs the [real-tool regression](check-spirv-link-order.py) before
 installing SPIRV-Tools. Run it separately with:
 
 ```sh
-ruby check-spirv-link-order.rb "$TOOLS_BIN" "$NEW_TEST_OUTPUT"
+python3.15 check-spirv-link-order.py --sdk-source "$SDK_SOURCE" "$TOOLS_BIN" "$NEW_TEST_OUTPUT"
 ```
 
 The five cases cover both module orders, an import-only module, resolved
@@ -52,11 +52,13 @@ record the three causal validator failures. Rebuild Mesa's `mesa_clc`
 after replacing its static SPIRV-Tools libraries. Previously generated
 SPIR-V and compiler binaries do not acquire this fix automatically.
 
-Mesa uses upstream Python generators. The checked host uses Python 3.14.8,
-Meson 1.12.1, Ninja 1.13.2, CMake 4.4.4, lxml 6.1.3, and rnc2rng 2.7.0.
-The dependency builder accepts `HOST_PYTHON` and `HOST_RUBY` to select installed
-native interpreters explicitly. Install missing generator modules in a local virtual environment. Do not omit
-XML schema validation. These helpers add no new Python implementation.
+Mesa uses upstream Python generators with the shared native Python 3.15.
+Use Meson, Ninja, CMake, Mako, packaging, PyYAML, lxml and rnc2rng from
+normal pkgsrc packages. The rnc2rng recipe supplies its shared rply dependency.
+Do not omit XML schema validation. No pip or virtual environment is required.
+The dependency builder accepts HOST_PYTHON and an explicit
+EMBERBSD_SDK_SOURCE. The top-level Python builder checks package predicates,
+module origins and the libyaml extension before it starts a build.
 
 The native SDK contains LLVM bitcode archives. Linking them performs LTO.
 The wrapper uses LLVM LLD with optimization level 1. Assertions remain on.
@@ -73,7 +75,7 @@ use ten dwords. Old generated IDFWDF programs are not valid with that layout.
 
 `configure-host.sh WORK MESA_SOURCE LLVM_SDK HOST_PREFIX DEP_PREFIX` configures
 and builds the native tools. Use absolute paths without whitespace or quotes.
-The local virtual environment, if needed, belongs at `WORK/venv`.
+Use HOST_PREFIX/bin/python3.15 and its installed generator modules.
 `JOBS` controls build concurrency and defaults to four.
 
 The build contains `src/compiler/clc/mesa_clc` and

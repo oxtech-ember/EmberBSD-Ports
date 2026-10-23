@@ -1,6 +1,6 @@
 # Native shader generators for Iris and PowerVR
 
-Mesa 26.2.4 uses CLC for Iris shaders even when Rusticl is disabled.
+Mesa 26.2.5 uses CLC for Iris shaders even when Rusticl is disabled.
 The default `mesa-clc=auto` selects the target CLC dependency closure.
 It conflicts with the common recipe's disabled target SPIRV-Tools option.
 Iris therefore uses `mesa-clc=system` and `precomp-compiler=system`.
@@ -16,13 +16,13 @@ No shader path or driver feature is disabled to avoid the host dependency.
 
 Use the original [Mesa host-tool inputs](../../../probes/a733-accelerators/host-tools/README.md#inputs):
 
-- Mesa 26.2.4, SHA256 `bce5f7fbebb934373b86c999a064d52fb5065878dc57f287f95346648ec832e9`.
+- Mesa 26.2.5, SHA256 `794b3d1729075dae7ebd47c7283b7ca0cdb5dec668f7f11cc0a5d82f6138a0a5`.
 - Full LLVM 23.1.3 macOS ARM64 SDK, SHA256 `3dcfd88aec10be204a24037bcb0dc0ad777882e9dbe8ac60e2639060d8a794b1`.
 - SPIRV-LLVM-Translator 23.1.2, commit `e65dde28ce8f12ef7245914fa2850260328669e4`.
 - SPIRV-Tools 2026.4, commit `ef96ed763b43b59b33b31b362f09a02b729fa1c9`.
 - SPIRV-Headers, commit `496543121ce6419f23d6fa5d7194ba66c36212d2`.
 
-Use the existing `build-deps.sh` and its SPIRV-Tools function-order fix.
+Use the existing `build-deps.py` and its SPIRV-Tools function-order fix.
 Keep the same Headers source for Translator and Tools. Build static libraries
 and retain the actual `spirv-val` executable and its source receipt.
 The LLVM SDK must supply Clang CLC libraries and headers, static LLVM support,
@@ -31,8 +31,9 @@ selection and assertions from the existing host-tool configuration.
 A separate target LLVM metadata helper cannot replace this native SDK.
 
 Build tools include Meson 1.12.1, Ninja 1.13.2, CMake 4.4.4, pkg-config,
-the macOS SDK and `otool`. Upstream Mesa generators use Python 3.14 with
-Mako, packaging, PyYAML, lxml 6.1.3 and rnc2rng 2.7.0.
+the macOS SDK and `otool`. Use the shared native Python 3.15 with
+Mako, packaging, PyYAML, lxml and rnc2rng from their normal pkgsrc packages.
+The rnc2rng package uses the shared rply and appdirs dependencies.
 They are native build dependencies. They are not installed in the target VM.
 
 Use a fresh source copy and the existing `configure-host.sh` configuration.
@@ -45,21 +46,30 @@ exact-BVNC patch is the only accepted native source delta.
 
 ## Scripted build
 
-`scripts/build-mesa-generators.sh WORK DISTDIR` runs the steps above in order.
-It gets the pinned Mesa archive and LLVM SDK, and it checks their SHA256.
-It checks out the pinned SPIRV revisions from `build-deps.sh`.
-It then calls `prepare-llvm-macos.py`, `build-deps.sh`, `configure-host.sh`
-and `seal-mesa-generators.rb`. It does not change these scripts.
-Set `EMBERBSD_SDK_SOURCE` and `HOST_PREFIX`. `HOST_PYTHON`, `HOST_RUBY`,
-`JOBS` and `MESA_GENERATOR_PROFILE` are optional. The default profile is
-`powervr`. The sealed tools are in `WORK/sealed`. A completed step is not
-done again when you run the script again with the same `WORK`.
+The Python standard-library orchestrator uses SDK host API1:
+
+~~~sh
+"$HOST_PREFIX/bin/python3.15" -B scripts/build-mesa-generators.py \
+    --sdk-source "$SDK_SOURCE" --host-prefix "$HOST_PREFIX" \
+    --profile intel --jobs 10 /absolute/new-work /absolute/distdir
+~~~
+
+The work directory must be absent. A failed build retains its partial work.
+Use a new directory for a new attempt. The command checks the pinned archives,
+Khronos revisions, native package predicates and Python module origins.
+It does not create a virtual environment or install Python modules.
+Install missing dependencies through their normal pkgsrc recipes.
+
+The selected native LLVM/Clang SDK builds host-only compiler tools.
+The target Mesa objects still use the common GCC16 cross toolchain.
+The command calls the existing native configuration and real shader checks.
+The sealed result is in WORK/sealed.
 
 ## Seal and select capabilities
 
 ```sh
-ruby seal-mesa-generators.rb --profile intel \
-    /absolute/mesa-26.2.4.tar.xz /absolute/native-mesa-source \
+python3.15 seal-mesa-generators.py --sdk-source "$SDK_SOURCE" --profile intel \
+    /absolute/mesa-26.2.5.tar.xz /absolute/native-mesa-source \
     /absolute/native-mesa-build /absolute/spirv-val /absolute/new-intel-tools
 ```
 
@@ -87,8 +97,8 @@ this path. Keep the selected target LLVM runtime for llvmpipe and ORC.
 ```sh
 BMAKE=/absolute/native/bmake ruby ../tests/mesa-generator-profiles.rb
 BMAKE=/absolute/native/bmake ruby ../tests/amd64-targets.rb
-ruby ../tests/iris-clc-configure.rb /absolute/native/python3.14 \
-    /absolute/meson-1.12.1/meson.py /absolute/mesa-26.2.4
+ruby ../tests/iris-clc-configure.rb /absolute/native/python3.15 \
+    /absolute/meson-1.12.1/meson.py /absolute/mesa-26.2.5
 ```
 
 The profile fixture runs the production shell verifier and native-file target.
