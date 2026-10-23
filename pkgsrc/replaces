@@ -6,3 +6,5 @@ misc/pciids
 archivers/libmspack
 textproc/expat
 devel/libidn2
+textproc/hyphen
+sysutils/libnotify

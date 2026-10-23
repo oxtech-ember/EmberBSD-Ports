@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import shlex
+import shutil
 
 KEYS = """PKGNAME PKG_FAIL_REASON MESON_ARGS PLIST.introspection TOOLBASE
 TOOL_DEPENDS MESON_BINARY.glib-mkenums MESON_BINARY.glib-genmarshal
@@ -29,6 +30,7 @@ def check_metadata(recipe, mode, values, plist):
     errors = shlex.split(values["PKG_FAIL_REASON"])
     environment = dict(v.split("=", 1) for v in shlex.split(values["MAKE_ENV"]))
     if recipe.endswith("libnotify"):
+        require(values["PKGNAME"] == "libnotify-0.8.9", "Wrong libnotify release")
         expected = "disabled" if cross else "enabled"
         require(introspection == ["-Dintrospection=" + expected], "libnotify GI selection changed")
         require(bindings != cross, "libnotify PLIST selection changed")
@@ -91,6 +93,19 @@ def check_metadata(recipe, mode, values, plist):
     return errors
 
 
+def copy_canonical_recipe(ports, fixture, recipe, hash_file):
+    rows = (ports / "pkgsrc/replaces").read_text().splitlines()
+    require(rows.count(recipe) == 1, "Expected one canonical replacement: " + recipe)
+    owner = ports / "pkgsrc" / recipe
+    require((owner / "Makefile").is_file(), "Missing canonical recipe: " + recipe)
+    names = tuple(sorted(str(p.relative_to(owner)) for p in owner.rglob("*") if p.is_file()))
+    require({"Makefile", "PLIST", "distinfo", "buildlink3.mk", "options.mk"} <= set(names),
+            "Incomplete canonical recipe: " + recipe)
+    shutil.rmtree(fixture / recipe)
+    shutil.copytree(owner, fixture / recipe)
+    return {name: hash_file(owner / name) for name in names}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pkgsrc", type=Path, required=True)
@@ -115,7 +130,8 @@ def main():
     fixture = work / "pkgsrc"
     fixture.mkdir()
     receipt = {"scope": "source-composition-and-metadata-only", "commands": [], "queries": [],
-               "patches": {}, "makeconf_sha256": hash_file(makeconf), "status": "running"}
+               "patches": {}, "canonical_recipes": {},
+               "makeconf_sha256": hash_file(makeconf), "status": "running"}
 
     def run(argv, **kwargs):
         receipt["commands"].append(argv)
@@ -128,8 +144,9 @@ def main():
         archive.write_bytes(run(["git", "-C", str(ports / "upstream/pkgsrc"), "archive", "HEAD",
                                  *RECIPES, "devel/libidn2", "www/curl"]))
         run(["tar", "-xf", str(archive), "-C", str(fixture)])
+        receipt["canonical_recipes"]["sysutils/libnotify"] = copy_canonical_recipe(
+            ports, fixture, "sysutils/libnotify", hash_file)
         for relative in ("profiles/common-build-tools/patches/pkgsrc-curl-security.patch",
-                         "profiles/common-graphics/cross/libnotify-cross-tools.patch",
                          "profiles/common-graphics/cross/gsettings-desktop-schemas-cross-gir.patch",
                          "profiles/common-graphics/cross/libproxy-cross-disable-introspection.patch",
                          "probes/plasma-mobile/toolkit/libproxy-cross.patch",
@@ -139,6 +156,11 @@ def main():
             run(["patch", "-f", "-N", "-F", "0", "-p1", "-d", str(fixture)], input=patch.read_bytes())
         for recipe in RECIPES:
             names = ("Makefile", "PLIST")
+            if recipe == "sysutils/libnotify":
+                names = tuple(receipt["canonical_recipes"][recipe])
+                prepared_names = tuple(sorted(str(p.relative_to(prepared / recipe))
+                                              for p in (prepared / recipe).rglob("*") if p.is_file()))
+                require(prepared_names == names, "Prepared canonical recipe inventory differs: " + recipe)
             if recipe == "www/libproxy":
                 names = tuple(sorted(str(p.relative_to(fixture / recipe))
                                      for p in (fixture / recipe).rglob("*")

@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.20 2025/03/12 14:15:20 wiz Exp $
+
+BLAKE2s (libnotify-0.8.9.tar.xz) = d4929724a4b41e6911f1180123bdb84c7179d682e6c07078dc0da830136c7dfa
+SHA512 (libnotify-0.8.9.tar.xz) = c418ff854751c9fe3390948fcd09a2ab93183cf42dd067b8e190cd0ef72e0785d65861ed3d3e58ff9347b07eb69718c818b2c986f8c622a7cf065a1d6aab1ff6
+Size (libnotify-0.8.9.tar.xz) = 116628 bytes

@@ -790,10 +790,6 @@ if [ "$profile" = common-graphics ] || [ "$profile" = common-media ] || [ "$prof
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$graphics/cross/current-hunspell.patch"
     patch -f -N -d "$destination" -p1 -F 0 < \
-        "$graphics/cross/hyphen-cross-no-perl-helper.patch"
-    patch -f -N -d "$destination" -p1 -F 0 < \
-        "$graphics/cross/libnotify-cross-tools.patch"
-    patch -f -N -d "$destination" -p1 -F 0 < \
         "$graphics/cross/gsettings-desktop-schemas-cross-gir.patch"
     patch -f -N -d "$destination" -p1 -F 0 < \
         "$graphics/cross/netpbm-native-build-tools.patch"
