@@ -202,8 +202,9 @@ optimizer settings only from libclang's inputs. Target compiler arguments,
 `-Werror`, target triple, and sysroot remain unchanged.
 The host-Node patch selects local executables by `host_os` for generic Node
 and TypeScript protoc actions. It retains Linux Node for remote workers.
-The Electron main patch selects the upstream POSIX main and stdio helper for
-NetBSD. Its glibc environment shim stays in the unchanged Linux branch.
+The Electron main patch checks NetBSD before the Linux platform alias.
+It selects the upstream POSIX main and stdio helper for NetBSD. Its glibc
+environment shim stays in the unchanged Linux branch.
 The Mac patch keeps ordinary DWARF in host objects during cross-builds. Target
 GCC16 still emits split DWARF. Native Mac toolchain arguments stay unchanged.
 The PartitionAlloc patch matches NetBSD's const-qualified `malloc_usable_size`

@@ -18,23 +18,28 @@ import re
 import shutil
 
 parser = argparse.ArgumentParser(description=__doc__)
-for name in ("sdk-source", "ports-root", "electron-source", "patch", "gn"):
+for name in ("sdk-source", "ports-root", "chromium-source", "electron-source",
+             "patch", "gn"):
     parser.add_argument("--" + name, required=True, type=Path)
 parser.add_argument("--work-dir", required=True, type=Path)
 options = parser.parse_args()
 
 if not options.work_dir.is_absolute():
     parser.error("--work-dir must be an absolute path")
-SDK_SOURCE, PORTS, ELECTRON, PATCH, GN = (
+SDK_SOURCE, PORTS, CHROMIUM, ELECTRON, PATCH, GN = (
     path.resolve(strict=True) for path in
-    (options.sdk_source, options.ports_root, options.electron_source,
-     options.patch, options.gn)
+    (options.sdk_source, options.ports_root, options.chromium_source,
+     options.electron_source, options.patch, options.gn)
 )
 WORK = options.work_dir.resolve()
 SOURCE_BUILD = ELECTRON / "BUILD.gn"
+SOURCE_CONFIG = CHROMIUM / "build/config/BUILDCONFIG.gn"
 if not SOURCE_BUILD.is_file():
     parser.error("--electron-source must contain BUILD.gn")
+if not SOURCE_CONFIG.is_file():
+    parser.error("--chromium-source must contain build/config/BUILDCONFIG.gn")
 for root_name, root in (("Electron source", ELECTRON),
+                        ("Chromium source", CHROMIUM),
                         ("Ports root", PORTS), ("SDK source", SDK_SOURCE)):
     if WORK.is_relative_to(root) or root.is_relative_to(WORK):
         parser.error("--work-dir must be separate from " + root_name)
@@ -77,6 +82,9 @@ EXPECTED_NETBSD = [
     "shell/app/uv_stdio_fix.cc",
     "shell/app/uv_stdio_fix.h",
 ]
+OS_NAMES = ("linux", "chromeos", "netbsd", "freebsd", "openbsd", "mac",
+            "win", "winuwp", "android", "fuchsia", "ios", "watchos",
+            "emscripten")
 
 PATCH_TOOL = shutil.which("patch")
 if PATCH_TOOL is None:
@@ -105,62 +113,46 @@ def mac_sources(text):
     return re.findall(r'^\s*"([^"\n]+)"\s*,?$', text[start:end], re.MULTILINE)
 
 
-def selected_sources(selector_text, os_name):
-    lines = selector_text.splitlines()
-    active = False
-    selected = []
-    # Keep this parser deliberately narrow. The selector must contain literal
-    # shell/app paths and a single current_os NetBSD branch.
-    branch = re.compile(r'^\s*} else if \(current_os == "([^"]+)"\) {\s*$')
-    current = "win" if lines and lines[0].strip() == "if (is_win) {" else None
-    for line in lines:
-        stripped = line.strip()
-        if stripped == "if (is_win) {":
-            current = "win"
-            active = os_name == "win"
-            continue
-        if stripped == "} else if (is_linux) {":
-            current = "linux"
-            active = os_name == "linux"
-            continue
-        match = branch.match(line)
-        if match:
-            current = match.group(1)
-            active = os_name == current
-            continue
-        if stripped == "}":
-            # Closing a sources list does not close the branch; the branch
-            # closes when the next selector branch or the full selector ends.
-            continue
-        if active:
-            selected.extend(re.findall(r'"(shell/app/[^"\n]+)"', line))
-    if os_name == "netbsd" and selector_text.count('current_os == "netbsd"') > 1:
-        raise AssertionError("expected at most one NetBSD app source branch")
-    return selected
+def platform_assignments(text):
+    # Copy this bounded production block. Only GN evaluates its expressions.
+    first = 'is_android = current_os == "android"\n'
+    last = 'is_posix = !is_win && !is_fuchsia\n'
+    if text.count(first) != 1 or text.count(last) != 1:
+        raise AssertionError("cannot locate the production OS definitions")
+    start = text.index(first)
+    end = text.index(last, start) + len(last)
+    return text[start:end]
 
 
-def fixture_build(selector_text, mac_list, expected):
+def late_netbsd_selector(before_selector, after_selector):
+    # Reproduce the former faulty placement without evaluating the selector.
+    branch = re.findall(
+        r'    } else if \(current_os == "netbsd"\) {\n'
+        r'      sources = \[\n(?:        "[^"\n]+",\n)+      \]\n',
+        after_selector + "\n")
+    closing = "\n    }"
+    if len(branch) != 1 or not before_selector.endswith(closing):
+        raise AssertionError("cannot construct the former late NetBSD branch")
+    return before_selector[:-len(closing)] + "\n" + branch[0].rstrip() + closing
+
+
+def fixture_build(selector_text, mac_list):
     selector_lines = "\n".join(
         "    " + line if line else "" for line in selector_text.splitlines())
     mac_values = ",\n".join(f'      "{name}"' for name in mac_list)
-    expected_values = ",\n".join(f'      "{name}"' for name in expected)
     return f'''toolchain("default") {{}}
 if (is_mac) {{
   group("electron_app") {{
     sources = [
 {mac_values}
     ]
-    assert(sources == [
-{mac_values}
-    ], "macOS bundle source selection changed")
+    write_file("$root_build_dir/sources.json", sources, "json")
   }}
 }} else {{
   group("electron_app") {{
     sources = []
 {selector_lines}
-    assert(sources == [
-{expected_values}
-    ], "unexpected electron_app sources for " + current_os)
+    write_file("$root_build_dir/sources.json", sources, "json")
   }}
 }}
 '''
@@ -182,7 +174,7 @@ def command(argv, cwd, *, expected=0):
 
 
 def apply_patch(tree, reverse=False):
-    argv = [str(PATCH_TOOL), "-p1", "-F", "0"]
+    argv = [str(PATCH_TOOL), "-f", "-p1", "-F", "0"]
     if reverse:
         argv.append("-R")
     argv.extend(["-i", str(PATCH)])
@@ -197,32 +189,60 @@ def make_tree(name, build_bytes):
     return tree, target
 
 
-def run_gn(root, stage, os_name, selected):
+def run_gn(root, stage, os_name):
     out = root / ("out-" + stage + "-" + os_name)
     argv = [str(GN), "gen", str(out), "--root=" + str(root),
             "--args=test_os=" + json.dumps(os_name)]
-    result = command(argv, root)
+    result = command(argv, root, expected=None)
     result["stage"] = stage
     result["os"] = os_name
-    result["expected_sources"] = selected
-    write_json(root / (stage + "-" + os_name + ".json"), result)
+    receipt = root / (stage + "-" + os_name + ".json")
+    write_json(receipt, result)
+    if result["returncode"] != 0:
+        raise AssertionError("GN must succeed before checking sources: "
+                             + str(receipt))
+    actual_file = out / "sources.json"
+    actual = json.loads(actual_file.read_text())
+    if (not isinstance(actual, list)
+            or any(type(item) is not str for item in actual)):
+        raise AssertionError("GN did not emit a source list")
+    result["actual_sources"] = actual
+    result["sources_json_sha256"] = sha256_file(actual_file)
+    write_json(receipt, result, exclusive=False)
     return result
+
+
+class SourceSelectionError(AssertionError):
+    pass
+
+
+def require_sources(actual, expected):
+    if actual != expected:
+        raise SourceSelectionError(f"expected {expected!r}, got {actual!r}")
+
+
+def reject_netbsd_sources(actual):
+    # Catch only a source-list mismatch. A GN error never reaches this check.
+    try:
+        require_sources(actual, EXPECTED_NETBSD)
+    except SourceSelectionError as error:
+        return {"status": "expected-rejection", "reason": str(error)}
+    raise AssertionError("the faulty selector passed the NetBSD POSIX requirement")
 
 
 def main():
     source_hash_before = sha256_file(SOURCE_BUILD)
+    config_hash_before = sha256_file(SOURCE_CONFIG)
+    platforms = platform_assignments(SOURCE_CONFIG.read_text())
+    (WORK / "platform-assignments.gni").write_text(platforms)
     # An already-patched source is accepted only when reversing this exact
     # patch recovers the pinned baseline file byte for byte.
     source_bytes = SOURCE_BUILD.read_bytes()
     source_text = source_bytes.decode("utf-8")
-    current_selector = selector(source_text)
     current_mac = mac_sources(source_text)
-    if selected_sources(current_selector, "linux") != EXPECTED_LINUX:
-        raise AssertionError("pinned Linux app source order changed")
-    if selected_sources(current_selector, "win") != EXPECTED_WIN:
-        raise AssertionError("pinned Windows app source selection changed")
 
     already_patched = source_hash_before != PINNED_BASE_BUILD_SHA256
+    reverse_result = None
     if not already_patched:
         before_bytes = source_bytes
         after_tree, after_build = make_tree("source-after", before_bytes)
@@ -250,55 +270,62 @@ def main():
         raise AssertionError("patch changed the separate macOS bundle target")
     if before_selector == after_selector:
         raise AssertionError("patch did not change the generic executable selector")
-    if selected_sources(before_selector, "linux") != EXPECTED_LINUX:
-        raise AssertionError("Linux sources or order changed before the patch")
-    if selected_sources(after_selector, "linux") != EXPECTED_LINUX:
-        raise AssertionError("Linux sources or order changed after the patch")
-    if selected_sources(before_selector, "win") != EXPECTED_WIN:
-        raise AssertionError("Windows source selection changed before the patch")
-    if selected_sources(after_selector, "win") != EXPECTED_WIN:
-        raise AssertionError("Windows source selection changed after the patch")
-    if selected_sources(before_selector, "netbsd"):
-        raise AssertionError("NetBSD unexpectedly had app sources before the patch")
-    if selected_sources(after_selector, "netbsd") != EXPECTED_NETBSD:
-        raise AssertionError("NetBSD app source selection is not the reviewed POSIX set")
-    for os_name in ("mac", "freebsd"):
-        if selected_sources(before_selector, os_name) != selected_sources(after_selector, os_name):
-            raise AssertionError(os_name + " generic source selection changed")
+    late_selector = late_netbsd_selector(before_selector, after_selector)
 
     gn_version = command([GN, "--version"], WORK)
     fixture = WORK / "gn-fixture"
-    before_root, after_root = fixture / "before", fixture / "after"
-    for root in (before_root, after_root):
+    stages = (("before", before_selector), ("after", after_selector),
+              ("late-branch", late_selector))
+    for stage, selected_text in stages:
+        root = fixture / stage
         root.mkdir(parents=True, exist_ok=False)
         (root / ".gn").write_text('buildconfig = "//BUILDCONFIG.gn"\n')
         (root / "BUILDCONFIG.gn").write_text('''declare_args() {
   test_os = "linux"
 }
 current_os = test_os
-is_linux = current_os == "linux"
-is_win = current_os == "win"
-is_mac = current_os == "mac"
-set_default_toolchain("//:default")
-''')
+''' + platforms + 'set_default_toolchain("//:default")\n')
+        (root / "BUILD.gn").write_text(fixture_build(selected_text, before_mac))
 
     results = []
-    for stage, root, selected_text in (
-            ("before", before_root, before_selector),
-            ("after", after_root, after_selector)):
-        for os_name in ("linux", "win", "mac", "netbsd", "freebsd"):
-            selected = (before_mac if os_name == "mac" else
-                        selected_sources(selected_text, os_name))
-            expected = (before_mac if os_name == "mac" else
-                        selected_sources(before_selector if stage == "before"
-                                         else after_selector, os_name))
-            (root / "BUILD.gn").write_text(
-                fixture_build(selected_text, before_mac, expected))
-            results.append(run_gn(root, stage, os_name, selected))
+    selections = {}
+    rejections = {}
+    expected_common = {
+        "linux": EXPECTED_LINUX, "freebsd": EXPECTED_LINUX,
+        "openbsd": EXPECTED_LINUX, "win": EXPECTED_WIN,
+        "winuwp": EXPECTED_WIN, "mac": before_mac,
+        "chromeos": [], "android": [], "fuchsia": [], "ios": [],
+        "watchos": [], "emscripten": [],
+    }
+    for stage, _ in stages:
+        root = fixture / stage
+        selections[stage] = {}
+        for os_name in (("netbsd",) if stage == "late-branch" else OS_NAMES):
+            result = run_gn(root, stage, os_name)
+            actual = result["actual_sources"]
+            if os_name == "netbsd":
+                expected = EXPECTED_NETBSD if stage == "after" else EXPECTED_LINUX
+            else:
+                expected = expected_common[os_name]
+            result["expected_sources"] = expected
+            write_json(root / (stage + "-" + os_name + ".json"), result,
+                       exclusive=False)
+            require_sources(actual, expected)
+            selections[stage][os_name] = actual
+            results.append(result)
+            if os_name == "netbsd" and stage != "after":
+                rejections[stage] = reject_netbsd_sources(actual)
+    for os_name in OS_NAMES:
+        if os_name != "netbsd":
+            require_sources(selections["after"][os_name],
+                            selections["before"][os_name])
 
     source_hash_after = sha256_file(SOURCE_BUILD)
     if source_hash_after != source_hash_before:
         raise AssertionError("Electron source BUILD.gn changed during this test")
+    config_hash_after = sha256_file(SOURCE_CONFIG)
+    if config_hash_after != config_hash_before:
+        raise AssertionError("Chromium BUILDCONFIG.gn changed during this test")
     summary = {
         "status": "PASS",
         "python": sys.version.split()[0],
@@ -307,6 +334,10 @@ set_default_toolchain("//:default")
                                for module in SDK_MODULES},
         "electron_source_build_gn_sha256_before": source_hash_before,
         "electron_source_build_gn_sha256_after": source_hash_after,
+        "chromium_buildconfig_gn": str(SOURCE_CONFIG),
+        "chromium_buildconfig_gn_sha256_before": config_hash_before,
+        "chromium_buildconfig_gn_sha256_after": config_hash_after,
+        "platform_assignments_sha256": sha256_file(WORK / "platform-assignments.gni"),
         "source_state": "already-patched" if already_patched else "baseline",
         "pinned_baseline_build_gn_sha256": PINNED_BASE_BUILD_SHA256,
         "patch_sha256": hashlib.sha256(PATCH.read_bytes()).hexdigest(),
@@ -315,12 +346,18 @@ set_default_toolchain("//:default")
         "baseline_build_gn_sha256": hashlib.sha256(before_bytes).hexdigest(),
         "patched_fixture_build_gn_sha256": hashlib.sha256(after_bytes).hexdigest(),
         "patch_application_output": apply_result["stdout"],
+        "patch_application": apply_result,
+        "patch_reverse": reverse_result,
         "mac_bundle_sources": before_mac,
         "linux_sources_before_and_after": EXPECTED_LINUX,
         "windows_sources_before_and_after": EXPECTED_WIN,
-        "netbsd_sources_before": [],
+        "netbsd_sources_before": EXPECTED_LINUX,
         "netbsd_sources_after": EXPECTED_NETBSD,
-        "freebsd_sources_before_and_after": [],
+        "freebsd_sources_before_and_after": EXPECTED_LINUX,
+        "openbsd_sources_before_and_after": EXPECTED_LINUX,
+        "winuwp_sources_before_and_after": EXPECTED_WIN,
+        "netbsd_posix_rejections": rejections,
+        "selections": selections,
         "gn_fixture_count": len(results),
     }
     write_json(WORK / "summary.json", summary)

@@ -7,16 +7,16 @@ c542df1ecbc2c2978e8f53f8c7baf602404d166f; not submitted upstream.
 
 --- a/electron/BUILD.gn
 +++ b/electron/BUILD.gn
-@@ -1679,6 +1679,12 @@
-         "shell/app/uv_stdio_fix.cc",
-         "shell/app/uv_stdio_fix.h",
-       ]
+@@ -1672,6 +1672,12 @@
+ 
+     if (is_win) {
+       sources = [ "shell/app/electron_main_win.cc" ]
 +    } else if (current_os == "netbsd") {
 +      sources = [
 +        "shell/app/electron_main_linux.cc",
 +        "shell/app/uv_stdio_fix.cc",
 +        "shell/app/uv_stdio_fix.h",
 +      ]
-     }
-     include_dirs = [ "." ]
-     deps = electron_app_link_deps + [ ":packed_resources" ]
+     } else if (is_linux) {
+       sources = [
+         "shell/app/electron_main_linux.cc",

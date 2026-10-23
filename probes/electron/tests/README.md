@@ -51,6 +51,7 @@ python3.15 -E -S probes/electron/tests/gn-host-node-inputs.py \
   --gn /absolute/host-gn /absolute/NEW_HOST_NODE_WORK
 python3.15 -E -S probes/electron/tests/electron-main-selection.py \
   --sdk-source /absolute/EmberBSD-SDK --ports-root /absolute/Ports \
+  --chromium-source /absolute/chromium/src \
   --electron-source /absolute/chromium/src/electron \
   --patch /absolute/Ports/probes/electron/patches/electron-netbsd-main.patch \
   --gn /absolute/host-gn --work-dir /absolute/NEW_ELECTRON_MAIN_WORK
@@ -127,11 +128,20 @@ GCC16 amd64 C++ link fails without that dependency and succeeds with it.
 The bounded fixture also passes Cppcheck and analysis-only Clang checks.
 Rust standard-library compilation and full Electron linking remain separate.
 
-The Electron main selector test evaluates the exact production source block
-in ten GN planning cases. Linux source order, Windows, and macOS stay fixed.
-NetBSD selects the POSIX main and stdio helper without the glibc environment
-shim. The test accepts baseline or already patched Electron source. It does
-not compile those C++ files or establish runtime startup.
+The Electron main selector test requires `--chromium-source`. It copies the
+OS definitions from that checkout's `build/config/BUILDCONFIG.gn` and lets GN
+evaluate the exact Electron selector. It does not evaluate GN expressions in
+Python. Thirteen OS values run before and after the patch. Explicit expected
+lists check Linux, Windows, and NetBSD. The platform definitions include the
+BSD aliases and `winuwp`. FreeBSD, OpenBSD, Windows, and the separate macOS
+branch retain their selected sources. The original NetBSD
+selector and a former late NetBSD branch both select the glibc shim and must
+fail the POSIX source-list requirement. Every GN command must succeed before
+that rejection check. The corrected NetBSD selector keeps the POSIX main and
+stdio helper without the glibc shim. These checks make 27 GN planning cases.
+The test accepts the pinned baseline or the exact patched Electron source.
+It checks zero-fuzz patch application and preserves source hashes and command
+receipts. It does not compile those C++ files or establish runtime startup.
 
 The Mac debug-fission test copies the production `mac/BUILD.gn` without changes.
 It supplies a minimal Apple-template mock that forwards the production toolchain

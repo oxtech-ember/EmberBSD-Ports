@@ -183,3 +183,25 @@ All four retained production translation units compile with GCC16. The
 preprocessed NetBSD `GetSystemInfo` body is unchanged. A GN evaluation of 160
 platform/graphics combinations leaves all other operating systems unchanged.
 These source and graph checks do not establish target GPU runtime acceptance.
+
+
+## Electron entrypoint selection
+
+NetBSD must select its entrypoint before the GN Linux alias, which includes
+BSD targets. The main-selector regression now executes the real Chromium
+platform definitions and Electron condition chain with host GN. Independent
+source-list expectations reject the original glibc selection and the former
+late NetBSD branch. The corrected selector retains the POSIX main and stdio
+helper. Linux, Windows, macOS, and other platform source lists stay unchanged.
+See the [test commands and scope](README.md) for the 27 planning cases.
+The POSIX main and stdio helper compile with the production GCC16 target flags.
+The main uses headers produced by the unchanged upstream fuse and buildflag
+generators. Complete linking and runtime startup remain separate checks.
+
+
+The selected C++ source files are unchanged by the GN patch. Their target
+hashes match the compiler pilot. Apple Clang Static Analyzer 21 reports no
+stdio-helper findings and two existing forwarding-reference findings in
+Abseil and base headers for the main unit. No entrypoint findings appear.
+GCC16 preprocessing completes both units. Cppcheck 2.18 stops at dependency
+syntax errors in both preprocessed inputs; it does not complete this analysis.
