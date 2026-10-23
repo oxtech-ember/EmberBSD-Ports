@@ -4,7 +4,7 @@
 as checked on 2026-10-12. Its [release announcement](https://www.nntp.perl.org/group/perl.perl5.porters/2026/07/msg271063.html)
 publishes the matching source SHA256.
 
-The complete `lang/perl5` recipe supplies Perl 5.44.0nb3, its shared library,
+The complete `lang/perl5` recipe supplies Perl 5.44.0nb4, its shared library,
 threaded interpreter, XS modules, development headers and manuals. Clang's
 installed scan-build programs depend on this target package. The build uses
 macOS for compilation and an EmberBSD/AArch64 device for Configure probes.
@@ -27,20 +27,34 @@ A full host Perl 5.44 is also needed for build scripts. Add to private MAKECONF:
 EMBERBSD_PERL_HOST_MINIPERL=/absolute/host-perl-source/miniperl
 EMBERBSD_PERL_HOST_GENERATE=/absolute/host-perl-source/generate_uudmap
 EMBERBSD_CROSS_BUILD_PERL=/absolute/host/bin/perl
+EMBERBSD_PERL_HOST_PYTHON=/absolute/native/python3
 EMBERBSD_PERL_TARGET_HOST=private-ssh-alias
 EMBERBSD_PERL_TARGET_USER=build-user
 EMBERBSD_PERL_TARGET_DIR=/absolute/private-probe-directory
 ```
 
-Use a connected target, an existing SSH account and a new writable probe
-location. Configure runs small executables and transfers them through the
-upstream SSH/SCP runner. Keep SSH credentials and connection configuration
-outside Git. Use legacy SCP protocol where the target lacks an SFTP service.
-A stable connection matters: a failed transport must not be interpreted as an
-absent operating-system feature. Record SSH/SCP transport failures separately
-and reject that Configure run; a successful package build alone is insufficient.
-The accepted build recorded no transport failures and subsequently exercised
-installed modules on the same board.
+Use a connected target, an existing SSH account and a new private probe
+location. Configure compiles each probe with the target compiler on the host.
+Its runner copies executables, dynamic libraries and text fixtures to that
+location. It runs small shell fixtures there, but no compiler on the target.
+Keep SSH credentials and connection configuration outside Git.
+
+The recipe's Python standard-library transport uses SSH BatchMode, a ten-second
+connection timeout and a sixty-second deadline for each copy or run operation.
+It uses legacy SCP protocol and rejects lexical path escapes. Create a fresh
+private target directory and verify its parents are not symbolic links. The
+transport does not provide remote filesystem isolation.
+A failed copy prevents execution of the probe. A transport failure leaves
+`Cross/transport-failed`; later transport calls and the pkgsrc post-configure
+check reject that run. Inspect the Configure log and correct the failure before
+starting a fresh configure. An ordinary probe's nonzero exit status remains a
+feature result. SSH status 255 and timeouts conservatively invalidate the run.
+A client timeout does not certify that a remote process has exited. Inspect any
+remaining probes before reusing the target directory.
+
+The nonblocking-I/O shell fixture uses target-relative executable paths and
+copies its output files back before Configure reads them. It does not embed
+the build-host runner path in a script executed on the target.
 
 Run ordinary `bmake package` in the exported `lang/perl5` directory with the
 private MAKECONF. Keep host and target package databases separate. Do not run
@@ -79,6 +93,19 @@ The original build Config files remain untouched; the header keeps its
 cross-build provenance. The converter rejects unknown remaining host paths.
 
 ## Checks
+
+The transport regression uses fake process results and makes no SSH connection:
+
+```sh
+python3 profiles/common-build-tools/tests/perl-probe-transport.py \
+    --configure /absolute/patched-perl/Configure -v
+```
+
+It checks failed-copy admission, SSH failure, timeout, sticky failure state,
+path scope, fixture transfer and preservation of a genuine probe failure.
+It also executes the actual generated wrappers and both native/cross branches
+of the patched nonblocking-I/O shell fixture.
+
 
 The [metadata regression](../tests/perl-target-config.sh) uses the real configured
 source and upstream `configpm`. It checks the installed Config API, ABI macros,

@@ -21,6 +21,13 @@ PKG_FAIL_REASON+= "${_perl_interpreter} must execute on the host and report Perl
 PKG_FAIL_REASON+= "Set ${_perl_remote} for the existing upstream SSH probe runner"
 .endif
 .endfor
+EMBERBSD_PERL_HOST_PYTHON?= ${EMBERBSD_CROSS_BUILD_PYTHON:U}
+.if empty(EMBERBSD_PERL_HOST_PYTHON:M/*) || !exists(${EMBERBSD_PERL_HOST_PYTHON})
+PKG_FAIL_REASON+= "Set EMBERBSD_PERL_HOST_PYTHON to the native Python 3 interpreter"
+.endif
+CONFIGURE_ENV+= EMBERBSD_PERL_PROBE_PYTHON=${EMBERBSD_PERL_HOST_PYTHON:Q}
+CONFIGURE_ENV+= EMBERBSD_PERL_PROBE_TRANSPORT=${FILESDIR}/probe-transport.py
+
 USE_TOOLS+= perl gmake
 TOOLS_IGNORE.perl=
 TOOLS_PATH.perl= ${EMBERBSD_CROSS_BUILD_PERL}
@@ -40,6 +47,14 @@ CONFIGURE_ARGS+= -Dar=${TOOLDIR:Q}/bin/${MACHINE_ARCH}--netbsd-ar
 CONFIGURE_ARGS+= -Dnm=${TOOLDIR:Q}/bin/${MACHINE_ARCH}--netbsd-nm
 CONFIGURE_ARGS+= -Dranlib=${TOOLDIR:Q}/bin/${MACHINE_ARCH}--netbsd-ranlib
 PERLLINK_SH= /bin/sh
+
+# Configure may interpret a failed probe as an absent feature. Transport
+# failures must invalidate the whole configure result before compilation.
+post-configure: ember-perl-probe-transport-check
+.PHONY: ember-perl-probe-transport-check
+ember-perl-probe-transport-check:
+	${RUN} if ${TEST} -e ${WRKSRC}/Cross/transport-failed; then \
+	    ${CAT} ${WRKSRC}/Cross/transport-failed >&2; exit 1; fi
 
 post-install: ember-perl-target-config
 .PHONY: ember-perl-target-config
