@@ -45,6 +45,9 @@ DEPENDS+=	xdg-user-dirs-[0-9]*:../../x11/xdg-user-dirs
 .include "../../x11/kf6-kwindowsystem/buildlink3.mk"
 .include "../../x11/libX11/buildlink3.mk"
 .include "../../x11/liblxqt/buildlink3.mk"
+# patches/patch-layershell-target uses the LayerShellQt::Interface target
+# and sets SHELLQT_MINIMUM_VERSION to 6.8.0.
+BUILDLINK_API_DEPENDS.plasma6-layer-shell-qt+=	plasma6-layer-shell-qt>=6.8.0
 .include "../../x11/plasma6-layer-shell-qt/buildlink3.mk"
 .include "../../devel/cmake/build.mk"
 .include "../../mk/bsd.pkg.mk"
