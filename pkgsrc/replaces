@@ -296,3 +296,4 @@ textproc/docbook-xsl
 www/libproxy
 devel/gtexinfo
 pkgtools/pkg_install-info
+devel/gettext-lib
