@@ -154,7 +154,10 @@ mv "$consumer" "$work/scanner-consumer.mk"
 negative missing-scanner-consumer
 mv "$work/scanner-consumer.mk" "$consumer"
 cp "$profile/sources.tsv" "$work/saved-manifest"
-sed 's/bce5f7fb/00000000/' "$work/saved-manifest" > "$profile/sources.tsv"
+awk -F '\t' 'BEGIN { OFS="\t" }
+    $1 == "fonts/harfbuzz" { $3="0000000000000000000000000000000000000000000000000000000000000000"; count++ }
+    { print }
+    END { if (count != 1) exit 1 }' "$work/saved-manifest" > "$profile/sources.tsv"
 negative altered-manifest
 cp "$work/saved-manifest" "$profile/sources.tsv"
 for dependency in www/webkit-gtk41 www/webkit-gtk60 math/eigen3 textproc/rapidjson x11/xorgproto devel/libudev-bsd wayland/wlroots wayland/labwc wayland/sway wayland/swaylock devel/libevdev-chunk textproc/json-c x11/xkeyboard-config devel/input-headers x11/libxkbcommon sysutils/hwdata sysutils/seatd x11/libdisplay-info graphics/libliftoff devel/libopeninput devel/glib2 devel/libffi devel/pcre2 textproc/fmtlib x11/pixman graphics/cairo fonts/harfbuzz converters/fribidi graphics/png graphics/lerc graphics/openexr graphics/OpenJPH graphics/jbigkit graphics/freetype2 archivers/lzo x11/libXt x11/libspnav devel/pango devel/libsfdo sysutils/dbus devel/gobject-introspection graphics/librsvg multimedia/dav1d devel/xxhash graphics/gdk-pixbuf2 databases/shared-mime-info; do
