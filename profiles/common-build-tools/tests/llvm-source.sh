@@ -113,6 +113,8 @@ for patch in pkgsrc-gcc16.2.patch strict-tests.patch current-prerequisites.patch
     patch -f -N -E -F 0 -p1 -d "$work/reference" < \
         "$root/profiles/development-toolchain/patches/$patch" >> "$work/gcc-reference.log"
 done
+rm -rf "$work/reference/devel/gtexinfo"
+cp -R "$root/pkgsrc/devel/gtexinfo" "$work/reference/devel/gtexinfo"
 for recipe in lang/gcc16 lang/gcc16-libs lang/gcc16-libjit math/mpfr math/mpcomplex devel/gtexinfo lang/tcl-expect; do
     diff -r "$work/reference/$recipe" "$work/pkgsrc/$recipe"
 done

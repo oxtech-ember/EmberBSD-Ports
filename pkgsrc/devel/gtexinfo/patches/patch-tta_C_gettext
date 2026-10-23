@@ -1,0 +1,57 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Let gnulib gettext.h include libintl.h with its compatibility guard defined.
+Including NetBSD libintl.h first exposes *_expr macros which expand the
+following gnulib function definitions. This preserves NLS and context lookup.
+GNU recommends using gettext.h instead of including libintl.h directly:
+https://www.gnu.org/software/gettext/manual/html_node/lib_002fgettext_002eh.html
+
+--- tta/C/texi2any.c.orig
++++ tta/C/texi2any.c
+@@ -34,9 +34,6 @@
+ #include <langinfo.h>
+ #endif
+ #include <locale.h>
+-#ifdef ENABLE_NLS
+-#include <libintl.h>
+-#endif
+ /* for pgettext and to have a definition of gettext in case ENABLE_NLS
+    is not set */
+ #include "gettext.h"
+--- tta/C/convert/texinfo.c.orig
++++ tta/C/convert/texinfo.c
+@@ -28,9 +28,6 @@
+ #include <stdio.h>
+ #include <sys/stat.h>
+ #include <errno.h>
+-#ifdef ENABLE_NLS
+-#include <libintl.h>
+-#endif
+ /* to have a definition of gettext in case ENABLE_NLS
+    is not set */
+ #include "gettext.h"
+--- tta/C/main/txi_config.c.orig
++++ tta/C/main/txi_config.c
+@@ -28,9 +28,6 @@
+ #include <stddef.h>
+ #include <stdarg.h>
+ #include <locale.h>
+-#ifdef ENABLE_NLS
+-#include <libintl.h>
+-#endif
+ /* for pgettext and to have a definition of gettext in case ENABLE_NLS
+    is not set */
+ #include "gettext.h"
+--- tta/C/main/translations.c.orig
++++ tta/C/main/translations.c
+@@ -25,9 +25,6 @@
+ #include <stddef.h>
+ #include <stdint.h>
+ 
+-#ifdef ENABLE_NLS
+-#include <libintl.h>
+-#endif
+ /* also to have a definition of gettext in case ENABLE_NLS is not set */
+ #include "gettext.h"
+ 

@@ -1,7 +1,9 @@
 # Current compiler prerequisites
 
-The GCC profile updates MPFR/MPC/Texinfo recipes using
-`patches/current-prerequisites.patch` and the test harness using
+The GCC profile updates MPFR/MPC recipes using
+`patches/current-prerequisites.patch`. The shared Texinfo recipes and patches
+are in [`pkgsrc/devel/gtexinfo`](../../pkgsrc/devel/gtexinfo/README.md).
+The profile updates the test harness using
 `patches/stable-expect.patch`. These are AI-assisted EmberBSD deltas,
 not submitted upstream. Versions are selected from upstream releases, not
 from the age of the pkgsrc recipe. Full archive SHA256 values are in
@@ -86,7 +88,7 @@ Three obsolete patches are removed with these concrete reasons:
 - Upstream removed texi2dvi's historical ksh re-exec branch, so the patch
   disabling it is obsolete.
 
-The additional `patches/texinfo-gettext-order.patch` removes direct
+The additional `../../pkgsrc/devel/gtexinfo/patches/patch-tta_C_gettext` removes direct
 `libintl.h` inclusions before gnulib's `gettext.h` in four C translation
 units. Native NetBSD libintl defines context-expression macros unless
 gettext's compatibility guard is already active; including it first breaks

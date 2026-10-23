@@ -294,3 +294,5 @@ security/polkit-qt6
 sysutils/gsettings-desktop-schemas
 textproc/docbook-xsl
 www/libproxy
+devel/gtexinfo
+pkgtools/pkg_install-info

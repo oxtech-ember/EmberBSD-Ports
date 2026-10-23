@@ -138,6 +138,8 @@ for delta in pkgsrc-gcc16.2.patch strict-tests.patch current-prerequisites.patch
     patch -f -E -F 0 -p1 -d "$work/gcc-reference" < \
         "$root/profiles/development-toolchain/patches/$delta" >> "$work/gcc-export.log"
 done
+rm -rf "$work/gcc-reference/devel/gtexinfo"
+cp -R "$root/pkgsrc/devel/gtexinfo" "$work/gcc-reference/devel/gtexinfo"
 for recipe in lang/gcc16 lang/gcc16-libs lang/gcc16-libjit math/mpfr math/mpcomplex devel/gtexinfo lang/tcl-expect; do
     diff -r "$work/gcc-reference/$recipe" "$work/pkgsrc/$recipe"
 done

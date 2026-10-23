@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: BSD-2-Clause
+# Origin: EmberBSD (AI-assisted), one GNU Texinfo source for both packages.
+TEXINFO_VERSION=	7.3
+DISTNAME=	texinfo-${TEXINFO_VERSION}
+MASTER_SITES=	${MASTER_SITE_GNU:=texinfo/}
+EXTRACT_SUFX=	.tar.xz
+TEXINFO_PKGDIR:=	${.PARSEDIR:tA}
+DISTINFO_FILE=	${TEXINFO_PKGDIR}/distinfo
+PATCHDIR=	${TEXINFO_PKGDIR}/patches
