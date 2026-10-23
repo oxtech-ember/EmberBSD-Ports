@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Copyright (c) 2026 EmberBSD contributors.
 # Origin: EmberBSD; AI-assisted diagnostic fuzz evidence adapter.
-"""Build a v1 SDK manifest for the Cairo Script Interpreter fuzz pilot."""
+"""Build an SDK manifest for Cairo fuzzing and memory-check evidence."""
 
 import argparse
 import hashlib
@@ -41,13 +41,18 @@ def main():
     args.meson_archive = distfiles / 'meson-1.12.1.tar.gz'
     args.clang_build = work / 'meson-builds/clang2'
     args.gcc_build = work / 'meson-builds/gcc16'
+    args.memcheck_build = work / 'meson-builds/gcc16-memcheck'
     args.baseline_build = work / 'meson-builds/before-lzo'
     args.lzo_clang_prefix = work / 'prefix/clang-lzo'
     args.lzo_gcc_prefix = work / 'prefix/gcc-lzo'
     args.fuzzer = work / 'bin/cairo-lzo-fuzzer-patched'
     args.replay = work / 'bin/cairo-lzo-replay-gcc16'
+    args.memcheck = work / 'bin/cairo-lzo-replay-gcc16-memcheck'
+    args.lsan_probe = work / 'bin/cairo-lzo-lsan-probe'
     args.corpus = ports / 'profiles/common-graphics/tests/cairo-lzo-corpus'
     args.logs = work / 'results/accepted'
+    if args.memcheck.is_file() != args.memcheck_build.is_dir():
+        parser.error('Memcheck binary and its separate Meson build must be present together')
 
     sdk_root = args.sdk_root.resolve(strict=True)
     sys.path.insert(0, str(sdk_root / 'src'))
@@ -144,7 +149,7 @@ def main():
     test_root = ports / 'profiles/common-graphics/tests'
     for name in ('cairo-lzo-fuzz.c', 'cairo-lzo-seedgen.c',
                  'cairo-lzo-evidence.py', 'cairo-lzo-bounds.py',
-                 'cairo-lzo-bounds.c'):
+                 'cairo-lzo-bounds.c', 'cairo-lzo-lsan-probe.c'):
         add_file(name, 'Ports main ' + ports_revision, test_root / name)
     add_tree('initial-corpus-source', 'Ports main ' + ports_revision,
              args.corpus)
@@ -166,11 +171,17 @@ def main():
              work / 'results/lzo-gcc16-macros.txt')
 
     tools = {}
-    for name, compiler, flags in (
+    tool_specs = [
             ('clang', args.clang, ['-O1', '-g', '-fsanitize=fuzzer-no-link,address,undefined',
                                    '-fsanitize=fuzzer,address,undefined', '-fno-omit-frame-pointer']),
             ('gcc', args.gcc, ['-O1', '-g', '-fsanitize=address,undefined',
-                               '-fno-omit-frame-pointer'])):
+                               '-fno-omit-frame-pointer']),
+            ('clang_lsan', args.clang, ['-O1', '-g', '-fsanitize=address',
+                                        '-fno-omit-frame-pointer'])]
+    if args.memcheck.is_file():
+        tool_specs.append(('gcc_memcheck', args.gcc,
+                           ['-O1', '-g', '-fno-omit-frame-pointer']))
+    for name, compiler, flags in tool_specs:
         compiler = compiler.resolve(strict=True)
         tools[name] = {'path': str(compiler), 'sha256': file_sha256(compiler),
                        'version': subprocess.check_output(
@@ -182,9 +193,12 @@ def main():
         executable = path.resolve(strict=True)
         add_file(name, 'resolved build tool executable bytes', executable)
 
-    for label, root in (('clang-build', args.clang_build),
-                        ('gcc16-build', args.gcc_build),
-                        ('upstream-control-build', args.baseline_build)):
+    build_roots = [('clang-build', args.clang_build),
+                   ('gcc16-build', args.gcc_build),
+                   ('upstream-control-build', args.baseline_build)]
+    if args.memcheck_build.is_dir():
+        build_roots.append(('memcheck-build', args.memcheck_build))
+    for label, root in build_roots:
         root = Path(root).resolve(strict=True)
         for relative in ('build.ninja', 'compile_commands.json', 'config.h',
                          'meson-private/cmd_line.txt',
@@ -201,7 +215,11 @@ def main():
                          'Meson generated feature header', path)
 
     binaries = {}
-    for name, path in (('fuzzer', args.fuzzer), ('replay', args.replay)):
+    binary_inputs = [('fuzzer', args.fuzzer), ('replay', args.replay),
+                     ('lsan_probe', args.lsan_probe)]
+    if args.memcheck.is_file():
+        binary_inputs.append(('memcheck', args.memcheck))
+    for name, path in binary_inputs:
         path = Path(path).resolve(strict=True)
         binaries[name] = {'path': str(path), 'sha256': file_sha256(path)}
 
@@ -228,15 +246,15 @@ def main():
         'corpus': {'path': str(corpus_root), 'files': corpus_files},
         'build_logs': build_logs,
         'limitations': [
-            'This macOS arm64 host run is not a target EmberBSD ABI or device result.',
+            'This ' + platform.system() + '/' + platform.machine() + ' host run is not a target EmberBSD ABI or device result.',
             'Pixman and FreeType are host shared libraries and were not instrumented in this build.',
-            'LeakSanitizer is disabled on this host; no complete leak check is claimed.',
+            'Valgrind Memcheck is optional and only passes when it runs successfully on a supported host; unsupported or unavailable status is not a pass.',
             'The LZO Ports patch expresses supported byte alignment for GCC/Clang unaligned-access aliases in the library and bundled minilzo. GCC16 ASan/UBSan make check and make test pass with the patch. Clang ASan/UBSan fail-fast make check still reports pointer-overflow in upstream LZO1B compression at src/lzo1b_sm.ch:45; broader LZO1B/1A/1F checks need separate repair before claiming suite-wide sanitizer compatibility.',
             'This finite campaign has no coverage acceptance threshold and is not formal verification or certification.',
             'The manifest is unsigned and cannot establish source origin or compiler identity independently.'
         ],
         'sanitizer_options': {
-            'ASAN_OPTIONS': 'abort_on_error=1:detect_leaks=0',
+            'ASAN_OPTIONS': 'abort_on_error=1:detect_leaks=1',
             'UBSAN_OPTIONS': 'halt_on_error=1:print_stacktrace=1'
         }
     }

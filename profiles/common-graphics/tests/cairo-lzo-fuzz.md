@@ -43,7 +43,8 @@ python3 /absolute/EmberBSD-SDK/scripts/fuzz-check.py run \
   --manifest /absolute/cairo-lzo-work/results/build.json \
   --output /absolute/cairo-lzo-evidence \
   --runs 10000 --seed 1 --max-len 65536 \
-  --timeout 300 --input-timeout 10 --rss-limit-mb 2048
+  --timeout 300 --input-timeout 10 --rss-limit-mb 2048 \
+  --memcheck optional
 python3 /absolute/EmberBSD-SDK/scripts/fuzz-check.py verify \
   --evidence /absolute/cairo-lzo-evidence \
   --manifest /absolute/cairo-lzo-work/results/build.json
@@ -54,6 +55,37 @@ records the generated corpus, then replays every initial and generated file
 once with the GCC16 binary. The manifest adapter requires a clean Ports
 checkout and rejects archives that differ from the repository's pinned hashes.
 Keep the evidence directory outside Git.
+
+## Leak and Memcheck binaries
+
+Build the positive control with the diagnostic host Clang. It deliberately
+leaves one allocation live so the SDK runner can confirm LeakSanitizer is
+active before accepting the Cairo process result:
+
+```sh
+"$CLANG" -O1 -g -fsanitize=address -fno-omit-frame-pointer \
+  profiles/common-graphics/tests/cairo-lzo-lsan-probe.c \
+  -o /absolute/cairo-lzo-work/bin/cairo-lzo-lsan-probe
+```
+
+The adapter uses `abort_on_error=1:detect_leaks=1`. The LSan probe's expected
+nonzero exit is accepted only when its captured report names the intentional
+direct leak. A normal fuzz or replay leak remains a failure.
+
+On a supported Valgrind host, prepare a separate `gcc16-memcheck` Cairo/LZO
+build with the same source revisions, patches, Meson feature settings and
+headers as the GCC16 replay build. Remove every ASan/UBSan flag from the
+compile and link commands. Build `cairo-lzo-fuzz.c` with
+`-DCAIRO_LZO_FUZZ_REPLAY`, `-O1`, `-g` and `-fno-omit-frame-pointer`, and link it
+against those uninstrumented Cairo and LZO archives as
+`bin/cairo-lzo-replay-gcc16-memcheck`. Keep its Meson command line, compile
+database, link command and logs in the manifest. The SDK refuses to use the
+sanitized GCC replay as the Memcheck executable.
+
+Valgrind shows all leak classes, tracks origins and fails on definite,
+indirect or possible leaks and memory errors. It reports still-reachable blocks
+without counting them as lost. The SDK runner handles every initial and
+generated corpus file and saves Valgrind's XML report for each replay.
 
 ## Recorded campaign
 
@@ -103,11 +135,14 @@ the bundled `minilzo.c`, not every LZO translation unit.
 This pilot covers the three LZO decoder call sites through the real Cairo
 Script Interpreter on macOS arm64. The finite run does not cover arbitrary
 Cairo scripts, the full Cairo test suite, EmberBSD ABI execution, a device, or
-all dynamic dependencies. Host Pixman and FreeType are not instrumented here.
-LeakSanitizer is disabled on this host. Valgrind is unavailable on this host.
-The SDK's portable evidence is unsigned and confirms internal consistency
-only; it does not attest source origin or compiler identity and is not a
-certificate.
+all dynamic dependencies. Host Pixman and FreeType are not ASan/UBSan
+instrumented. Existing schema 1 campaign evidence was produced with leak
+detection disabled; a new run must use the LSan positive control above before
+claiming a LeakSanitizer result. Valgrind's current platform matrix does not
+support macOS arm64, so an optional Memcheck result on this host is
+`unsupported`, not a pass. Run Memcheck on a supported Linux or FreeBSD host.
+The SDK's portable evidence is unsigned and confirms internal consistency only;
+it does not attest source origin or compiler identity and is not a certificate.
 
 An independent certification effort would need an authority-specific test
 profile, a complete dependency and toolchain closure, signed and independently

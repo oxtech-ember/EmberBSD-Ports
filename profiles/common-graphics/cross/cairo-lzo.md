@@ -100,8 +100,10 @@ oversized-output failure. See the [fuzz harness, unified runner command and
 scope limits](../tests/cairo-lzo-fuzz.md). These are host diagnostics, not
 target package or EmberBSD device acceptance.
 
-Valgrind is unavailable on this macOS host. ASan/UBSan and allocation guards
-provide separate memory checks. LeakSanitizer exit handling is unavailable on
-this host; the check uses `ASAN_OPTIONS=detect_leaks=0:halt_on_error=1` and makes
-no complete leak-detection claim. Target package build, installation and full
-Cairo script interpreter execution remain unverified by this check.
+The recorded fuzz campaign predates the SDK's LeakSanitizer positive-control
+check and used `detect_leaks=0`; it is not a LeakSanitizer result. The current
+adapter enables `detect_leaks=1` and requires a deliberate-leak probe before a
+new campaign can pass. Valgrind's current platform matrix does not support
+macOS arm64, so this host cannot produce a Memcheck pass. Run the optional SDK
+check on a supported Linux or FreeBSD host. Target package build, installation
+and full Cairo script interpreter execution remain unverified by this check.
