@@ -16,3 +16,5 @@ devel/git-base
 net/arp-scan
 net/tcpreplay
 net/wireshark
+shells/dash
+shells/mksh

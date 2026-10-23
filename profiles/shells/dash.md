@@ -11,7 +11,7 @@ pkgsrc mirror supplies bytes matching the pinned upstream release SHA512.
 
 ## Configuration and dependencies
 
-The [ordinary recipe overlay](recipes/shells/dash/Makefile) keeps libedit
+The [ordinary recipe overlay](../../pkgsrc/shells/dash/Makefile) keeps libedit
 support enabled and selects GCC 16.2. The package export uses libedit
 from the qualified EmberBSD base and its native terminfo provider.
 An outdated base stops consumer builds. The portable control below uses
@@ -40,7 +40,7 @@ is not the acceptance configuration.
   Evaluation still copies it into owned stack storage. No const-removing
   cast or warning suppression is used.
 
-The [patches](recipes/shells/dash/patches) are local, not accepted upstream.
+The [patches](../../pkgsrc/shells/dash/patches) are local, not accepted upstream.
 They preserve licenses and identify their provenance.
 
 The current libedit dependency also receives two ownership repairs:

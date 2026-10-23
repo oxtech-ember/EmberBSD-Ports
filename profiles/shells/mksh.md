@@ -14,7 +14,7 @@ The Miros license and upstream attribution remain intact.
 
 ## Recipe and dependencies
 
-The [ordinary recipe](../../pkgsrc/local-shells/mksh/Makefile) uses GCC 16.2.
+The [ordinary recipe](../../pkgsrc/shells/mksh/Makefile) uses GCC 16.2.
 The shell export replaces pinned pkgsrc's R59b source-copy recipe with R59c.
 The archive suffix is `.tgz`. The recipe no longer requests the separate
 pkgsrc printf implementation, which is absent from the upstream archive.

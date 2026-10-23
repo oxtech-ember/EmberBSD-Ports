@@ -37,7 +37,7 @@ for name in patch-configure.ac patch-src_histedit.c; do
 done
 if [ "$variant" = patched ]; then
     for name in patch-src_parser.c patch-src_trap.c patch-eval-const; do
-        patch -p0 -F0 -d "$src" < "$profile/recipes/shells/dash/patches/$name" >> "$work/logs/patches.log"
+        patch -p0 -F0 -d "$src" < "$ports/pkgsrc/shells/dash/patches/$name" >> "$work/logs/patches.log"
     done
 fi
 export SHELL_REAL_CC="$CC" SHELL_CC_RECORDS="$work/records/dash"

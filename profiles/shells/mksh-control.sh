@@ -79,7 +79,7 @@ printf '%s  %s\n' "$digest" "$work/downloads/$archive" | sha256sum -c -
 tar -xzf "$work/downloads/$archive" -C "$work/src"
 src=$work/src/mksh
 if [ "$variant" = patched ]; then
-    for patchfile in "$ports"/pkgsrc/local-shells/mksh/patches/*; do
+    for patchfile in "$ports"/pkgsrc/shells/mksh/patches/*; do
         patch -p0 -F0 -d "$src" < "$patchfile" >> "$work/logs/patches.log"
     done
 fi
@@ -96,7 +96,7 @@ install_payload() {
 }
 install_payload "$stage"
 (cd "$stage" && find . -type f | sed 's|^./||' | LC_ALL=C sort) > "$work/logs/stage-files.txt"
-sed '/^@comment /d; /^$/d' "$ports/pkgsrc/local-shells/mksh/PLIST" | LC_ALL=C sort > "$work/logs/plist-files.txt"
+sed '/^@comment /d; /^$/d' "$ports/pkgsrc/shells/mksh/PLIST" | LC_ALL=C sort > "$work/logs/plist-files.txt"
 cmp "$work/logs/plist-files.txt" "$work/logs/stage-files.txt"
 install_payload "$prefix"
 for file in bin/mksh man/man1/mksh.1 share/examples/mksh/dot.mkshrc; do

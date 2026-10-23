@@ -1,0 +1,47 @@
+$NetBSD$
+
+Accept immutable libedit history strings without dropping const qualifiers.
+Evaluation already copies its input; name and free that owned copy explicitly.
+Origin: EmberBSD, AI-assisted; not submitted upstream.
+
+--- src/eval.c.orig
++++ src/eval.c
+@@ -173,14 +173,15 @@
+  */
+ 
+ int
+-evalstring(char *s, int flags)
++evalstring(const char *s, int flags)
+ {
+ 	union node *n;
+ 	struct stackmark smark;
++	char *copy;
+ 	int status;
+ 
+-	s = sstrdup(s);
+-	setinputstring(s);
++	copy = sstrdup(s);
++	setinputstring(copy);
+ 	setstackmark(&smark);
+ 
+ 	status = 0;
+@@ -196,7 +197,7 @@
+ 	}
+ 	popstackmark(&smark);
+ 	popfile();
+-	stunalloc(s);
++	stunalloc(copy);
+ 
+ 	return status;
+ }
+--- src/eval.h.orig
++++ src/eval.h
+@@ -51,7 +51,7 @@
+ #define EV_EXIT 01		/* exit after evaluating tree */
+ #define EV_TESTED 02		/* exit status is checked; ignore -e flag */
+ 
+-int evalstring(char *, int);
++int evalstring(const char *, int);
+ union node;	/* BLETCH for ansi C */
+ int evaltree(union node *, int);
+ void evalbackcmd(union node *, struct backcmd *);
