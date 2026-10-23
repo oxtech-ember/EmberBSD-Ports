@@ -5,8 +5,9 @@
 # PLIST entry with the wrong directory spelling, and the package then installs
 # the header in the wrong directory on a case-sensitive target. ECM installs
 # lowercase .h headers in the lowercase directory and CamelCase forwarding
-# headers in the CamelCase directory, so a lowercase .h file in a CamelCase
-# directory with a lowercase sibling is an error.
+# headers in the CamelCase directory. A lowercase .h file in a CamelCase
+# directory with a lowercase sibling is an error, and so is a CamelCase
+# forwarding header in a lowercase directory with a CamelCase sibling.
 import pathlib
 import re
 import sys
@@ -27,10 +28,18 @@ for plist in sorted(root.glob('**/recipes/*/*/PLIST')):
         directories.setdefault(directory, []).append(name)
     for directory, names in directories.items():
         parent, _, leaf = directory.rpartition('/')
-        if leaf == leaf.lower() or parent + '/' + leaf.lower() not in directories:
+        if leaf != leaf.lower():
+            if parent + '/' + leaf.lower() not in directories:
+                continue
+            for name in names:
+                if name.endswith('.h') and name == name.lower():
+                    failures.append('%s: %s/%s' % (plist.relative_to(root), directory, name))
+            continue
+        # ECM forwarding headers have CamelCase names without an extension.
+        if not [d for d in directories if d != directory and d.rpartition('/')[0] == parent and d.rpartition('/')[2].lower() == leaf]:
             continue
         for name in names:
-            if name.endswith('.h') and name == name.lower():
+            if '.' not in name and name[:1].isupper():
                 failures.append('%s: %s/%s' % (plist.relative_to(root), directory, name))
 # pkgsrc generates upstream PLIST files on case-sensitive file systems.
 # An entry that differs from the matching upstream entry only in case has

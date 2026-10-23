@@ -353,7 +353,7 @@ include/PlasmaQuick/PlasmaQuick/ConfigModel
 include/PlasmaQuick/PlasmaQuick/ConfigView
 include/PlasmaQuick/PlasmaQuick/ContainmentView
 include/PlasmaQuick/PlasmaQuick/Dialog
-include/PlasmaQuick/plasmaquick/PlasmaQuick
+include/PlasmaQuick/PlasmaQuick/PlasmaQuick
 include/PlasmaQuick/PlasmaQuick/PlasmaShellWaylandIntegration
 include/PlasmaQuick/PlasmaQuick/PlasmaWindow
 include/PlasmaQuick/PlasmaQuick/PopupPlasmaWindow
