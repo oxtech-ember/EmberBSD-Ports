@@ -2,7 +2,7 @@
 
 V=		10.0.7
 DISTNAME=	kicad-${V}
-PKGREVISION=	4
+PKGREVISION=	5
 CATEGORIES=	cad
 MASTER_SITES=	${MASTER_SITE_GITLAB:=kicad/code/}
 GITLAB_PROJECT=	kicad
@@ -55,6 +55,8 @@ NOT_FOR_PLATFORM+=	Darwin-*-*
 
 .include "options.mk"
 
+# AI-assisted audit: KiCad 10.0.7 requires ZSTD in CMakeLists.txt.
+.include "../../archivers/zstd/buildlink3.mk"
 .include "../../cad/occt/buildlink3.mk"
 .include "../../databases/unixodbc/buildlink3.mk"
 .include "../../devel/boost-libs/buildlink3.mk"

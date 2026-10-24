@@ -53,6 +53,12 @@ Use a new output path for another attempt.
 
 ## Cross configuration
 
+The canonical `cad/kicad10` recipe declares the common Zstd provider for
+native and cross builds. KiCad 10.0.7 requires `ZSTD`; its
+`cmake/FindZSTD.cmake` module searches for `zstd.h` and `libzstd`.
+The direct buildlink exposes these interfaces and records their package
+dependency. This recipe correction was written with AI assistance.
+
 Prepare a coherent EmberBSD sysroot and its common GCC16 toolchain first.
 The toolchain file must select NetBSD/AArch64 and that same sysroot.
 Its program search mode must be `NEVER`; library, include and package
