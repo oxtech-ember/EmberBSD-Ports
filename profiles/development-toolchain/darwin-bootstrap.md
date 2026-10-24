@@ -123,6 +123,16 @@ from the selected `EMBERBSD_GCC16_*` commands and selects
 unstripped installs. The utility PATH does not supply them.
 A tool without standard arguments maps to its exact path, with no trailing
 space: pkgsrc scripts run some of them quoted, such as `"${AWK}"`.
+The `[`, `echo`, `false`, `test` and `true` maps invoke that shell
+explicitly with fixed literal `-c` commands. They forward the original arguments
+through `"$@"`. This preserves the selected shell's options, escapes and statuses.
+Compatibility-mode bmake can otherwise bypass the shell for a simple recipe
+and try to execute an absent external builtin name.
+The finite [echo fixture](tests/darwin-bootstrap-echo.mk) compares this route
+with the same builtin forced through the selected shell. It covers empty,
+nonempty, option-leading and backslash values, plus recursive `show-var`.
+Its [capture oracles](tests/darwin-bootstrap-source.py) also check the direct
+named `-V` expression values. They execute no tool or captured output.
 
 The initial conservative parse-time roster is `awk basename cat cut date
 dirname env expr grep head id pwd sed sort tail tr uname uniq wc`.
@@ -139,8 +149,8 @@ The source controls check the early guard, native-tool branch, compiler tail
 placement and preservation of ordinary source branches. They execute no make,
 compiler, linker or selected input binary. They do not evaluate a pkgsrc DAG.
 
-The next gate runs `show-vars` and `show-depends` for `lang/gcc16` with the
-accepted SDK command, complete make tree and this exact profile. Capture all
+The next gate runs the SDK's fixed variable and dependency queries for `lang/gcc16`.
+Use the accepted command, complete make tree and this exact profile. Capture all
 children, consumed includes, package database reads and resulting dependencies.
 Check that stale host-detection values do not change the accepted facts.
 Check refusals for an absent fact, utility, MAKECONF, source provider and jobs

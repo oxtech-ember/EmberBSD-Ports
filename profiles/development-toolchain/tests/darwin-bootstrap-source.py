@@ -15,6 +15,46 @@ def require(value, message):
         raise AssertionError(message)
 
 
+def check_builtin_cases(rows):
+    """Check captured (exit, bytes) pairs from the finite native make fixture."""
+    names = {'old-empty', 'reference-empty', 'new-empty', 'reference-word', 'new-word',
+             'reference-option', 'new-option', 'reference-backslash', 'new-backslash',
+             'nested-empty', 'new-true', 'new-false',
+             'new-test', 'new-test-false', 'new-bracket'}
+    require(set(rows) == {(mode, name) for mode in ('compat', 'jobs1') for name in names},
+            'The finite builtin capture is incomplete')
+    for mode in ('compat', 'jobs1'):
+        cases = {name: item for (kind, name), item in rows.items() if kind == mode}
+        for name, program in [('old-empty', b'echo')]:
+            code, data = cases[name]
+            require((code != 0 and b'exec(' + program + b') failed' in data)
+                    if mode == 'compat' else code == 0, 'The old route lost its causal failure')
+        for name, (code, data) in cases.items():
+            if name.startswith('old-'):
+                continue
+            if name in ('new-false', 'new-test-false'):
+                require(code != 0 and b'Error code 1' in data and b'exec(' not in data,
+                        'A selected builtin did not preserve its failure')
+            else:
+                require(code == 0, 'A selected builtin failed')
+        for name in ('empty', 'word', 'option', 'backslash'):
+            require(cases['new-' + name][1] == cases['reference-' + name][1],
+                    'The route changed the selected shell builtin semantics')
+        require(cases['new-empty'][1] == cases['nested-empty'][1] ==
+                (b'\n' if mode == 'compat' else b''), 'Empty output or recursion changed')
+        require(cases['new-word'][1] == b'plain value\n', 'A nonempty value changed')
+    return True
+
+
+def check_variable_cases(outputs):
+    """Check the seven fixed named -V expressions without shell interpretation."""
+    expected = (b'QUERY_UNDEFINED=\nQUERY_EMPTY=\nQUERY_WORD=plain\nQUERY_SPACE=space value\n'
+                b'QUERY_BACKSLASH=first\\nsecond\nQUERY_QUOTE=double"quote\'single\nQUERY_OPTION=-n\n')
+    require(set(outputs) == {'compat', 'jobs1'} and all(data == expected for data in outputs.values()),
+            'A direct named expression lost an empty or literal value')
+    return True
+
+
 def branch(text, opening):
     """Return this one literal conditional's two bodies; retain nested syntax."""
     lines = text.splitlines(keepends=True)
@@ -56,6 +96,10 @@ def check(before, after, policy, recipe):
             'Native utility arguments are not applied, or a tool gains a trailing space')
     require('TOOLS_PLATFORM.printf=' not in selected,
             'printf is treated as a shell builtin')
+    require('.for _ember_builtin in [ echo false test true\n' in selected and
+            'TOOLS_PLATFORM.${_ember_builtin}= ${EMBERBSD_DARWIN_BUILTIN_SHELL} -c \'${_ember_builtin} "$$@"\' --' in selected and
+            'EMBERBSD_DARWIN_BUILTIN_SHELL= ${EMBERBSD_DARWIN_SH}' in policy,
+            'A simple builtin recipe can bypass its selected shell')
 
     prefs = after['mk/bsd.prefs.mk']
     include = prefs.index('.include "${MAKECONF}"')
@@ -130,8 +174,12 @@ def main():
     changed[n] = changed[n].replace('_EMBERBSD_DARWIN_TOOL_ARGS.mkdir= -p\n', '', 1)
     mutants.append(('mkdir-without-p', changed, policy, recipe))
     changed = dict(after)
-    changed[n] = changed[n].replace('TOOLS_PLATFORM.echo= echo\n', 'TOOLS_PLATFORM.echo= echo\nTOOLS_PLATFORM.printf= printf\n', 1)
+    changed[n] = changed[n].replace('TOOLS_PLATFORM.sh=', 'TOOLS_PLATFORM.printf= printf\nTOOLS_PLATFORM.sh=', 1)
     mutants.append(('printf-builtin', changed, policy, recipe))
+    changed = dict(after)
+    changed[n] = changed[n].replace('TOOLS_PLATFORM.${_ember_builtin}= ${EMBERBSD_DARWIN_BUILTIN_SHELL} -c \'${_ember_builtin} "$$@"\' --',
+                                  'TOOLS_PLATFORM.${_ember_builtin}= ${_ember_builtin}', 1)
+    mutants.append(('unbound-builtins', changed, policy, recipe))
     changed = dict(after)
     n = 'mk/bsd.prefs.mk'
     changed[n] = changed[n].replace('.include "${MAKECONF}"', '# stale host query runs first', 1)
