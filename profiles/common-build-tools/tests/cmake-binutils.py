@@ -103,11 +103,14 @@ def main():
         path = tools / name
         path.write_text('#!/bin/sh\nexit 97\n')
         path.chmod(0o755)
+    sysroot = work / 'MacOSX.sdk'
+    sysroot.mkdir()
     conf = work / 'mk.conf'
     conf.write_text('.include "' + str(args.makeconf.resolve()) + '"\n' +
         '\n'.join(name + '= ' + str(tools / name.lower()) for name in PAIRS.values()) + '\n' +
         'EMBERBSD_DARWIN_INSTALL_NAME_TOOL= ' + str(tools / 'install_name_tool') + '\n' +
-        'EMBERBSD_DARWIN_TAPI= ' + str(tools / 'tapi') + '\nEMBERBSD_DARWIN_TAPI_KIND= apple\n')
+        'EMBERBSD_DARWIN_TAPI= ' + str(tools / 'tapi') + '\nEMBERBSD_DARWIN_TAPI_KIND= apple\n' +
+        'OSX_SDK_PATH= ' + str(sysroot) + '\n')
     for kind in ('modern', 'legacy'):
         recipe = tree / 'devel' / ('cmake-tools-' + kind)
         recipe.mkdir()
@@ -178,6 +181,7 @@ def main():
                 '\n'.join('PKG_' + name + '= ' + str(tools / name.lower()) for name in PAIRS.values()) +
                 '\nEMBERBSD_DARWIN_INSTALL_NAME_TOOL= ' + str(tools / 'install_name_tool') +
                 '\nEMBERBSD_DARWIN_TAPI= ' + str(tools / 'tapi') + '\nEMBERBSD_DARWIN_TAPI_KIND= apple' +
+                '\nOSX_SDK_PATH= ' + str(sysroot) +
                 '\n.include "' + str(tree / 'mk/configure/ember-cmake-binutils.mk') + '"\n' + guard)
             values = shlex.split(run('guard-' + host + '-' + cross,
                 [args.bmake, '-f', fragment, '-v', 'CONFIGURE_ARGS']))
@@ -185,7 +189,7 @@ def main():
                 assert values == ['--existing-bootstrap-option'], values
             else:
                 assert values.count('--') == 1, values
-                assert len([value for value in values if value.startswith('-DCMAKE_')]) == (8 if host == 'Darwin' else 6), values
+                assert len([value for value in values if value.startswith('-DCMAKE_')]) == (9 if host == 'Darwin' else 6), values
     print('PASS: pinned CMake source accepts all five cache names and forwards bootstrap argv')
     print('PASS: all affected infrastructure hunks replay in export order with zero fuzz')
     print('PASS: Darwin/Linux/NetBSD native option guards add one separator; cross guards add no flags')

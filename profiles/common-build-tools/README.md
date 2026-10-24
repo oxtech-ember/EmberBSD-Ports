@@ -54,6 +54,15 @@ The AI-assisted [metadata check](tests/cmake-binutils.py) covers modern and
 legacy CMake routes, both wrapper implementations, invalid inputs, export
 patch order and bootstrap argument forwarding. It runs no compiler or CMake
 configure command. Full builds and archive execution remain separate checks.
+Native Darwin maps the selected `OSX_SDK_PATH` to `CMAKE_OSX_SYSROOT:PATH`.
+The input must be an existing absolute directory. The SDK producer must set
+the admitted path before pkgsrc reads metadata. Earlier raw pkgsrc SDK
+discovery remains outside this binding. This keeps the final CMake
+bootstrap configuration and ordinary consumers on the same selected SDK.
+Upstream forwards that value to nested `try_compile` calls. Linux, NetBSD and
+cross builds keep their current sysroot routing. Deployment flags stay under
+the existing producer policy.
+
 Native Darwin also requires `EMBERBSD_DARWIN_INSTALL_NAME_TOOL` and
 `EMBERBSD_DARWIN_TAPI` to select existing absolute executable files.
 `EMBERBSD_DARWIN_TAPI_KIND` must be `apple` or `llvm-readtapi`. The SDK producer

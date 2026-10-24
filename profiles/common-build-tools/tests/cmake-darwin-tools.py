@@ -37,11 +37,14 @@ def main():
         selected[key] = path
     nonexec = tools / 'nonexec'
     nonexec.write_text('Labelled non-executable metadata fixture.\n')
+    sdk = work / "selected SDK's"
+    sdk.mkdir()
     commands = []
     def query(label, host='Darwin', cross='no', overrides=None, wrappers='yes'):
         values = {'PKG_' + key: str(selected[key]) for key in ('AR', 'RANLIB', 'NM', 'STRIP', 'LD')}
         values.update({value: str(selected[key]) for key, value in ROLES.items()})
         values['EMBERBSD_DARWIN_TAPI_KIND'] = 'apple'
+        values['OSX_SDK_PATH'] = str(sdk)
         values.update(overrides or {})
         fragment = work / (label + '.mk')
         fragment.write_text('OPSYS= ' + host + '\nUSE_CROSS_COMPILE= ' + cross +
@@ -64,17 +67,27 @@ def main():
     assert '-DEMBERBSD_DARWIN_TAPI_KIND:STRING=apple' in values, values
     assert '-DEMBERBSD_CMAKE_NATIVE_TOOLS:BOOL=ON' in values, values
     assert '-DCMAKE_POLICY_DEFAULT_CMP0137:STRING=NEW' in values, values
+    assert values.count('-DCMAKE_OSX_SYSROOT:PATH=' + str(sdk)) == 1, values
+    assert not any(value.startswith('-DCMAKE_OSX_DEPLOYMENT_TARGET:') for value in values), values
     for key, selector in ROLES.items():
         for label, value in [('missing', ''), ('relative', key.lower()), ('absent', str(tools / 'absent')),
                              ('nonexec', str(nonexec)), ('directory', str(tools))]:
             values, reason = query(key + '-' + label, overrides={selector: value})
             assert selector in reason and 'CMake' in reason, reason
             assert not any(value.startswith('-DCMAKE_' + key + ':FILEPATH=') for value in values), values
+    for label, value in [('missing', ''), ('relative', 'MacOSX.sdk'),
+                         ('absent', str(work / 'absent-sdk')), ('file', str(selected['LD']))]:
+        values, reason = query('sysroot-' + label, overrides={'OSX_SDK_PATH': value})
+        assert 'OSX_SDK_PATH' in reason and 'CMake' in reason, reason
+        assert not any(value.startswith('-DCMAKE_OSX_SYSROOT:') for value in values), values
     for host, cross in [('Linux', 'no'), ('NetBSD', 'no'), ('Darwin', 'yes')]:
-        values, reason = query(host + '-' + cross, host, cross, {value: '' for value in ROLES.values()})
+        absent = {value: '' for value in ROLES.values()}
+        absent['OSX_SDK_PATH'] = ''
+        values, reason = query(host + '-' + cross, host, cross, absent)
         assert not reason.strip(), reason
         assert not any(value.startswith('-DCMAKE_' + key + ':') for value in values for key in ROLES), values
         assert not any(value.startswith('-DEMBERBSD_DARWIN_TAPI_KIND:') for value in values), values
+        assert not any(value.startswith('-DCMAKE_OSX_SYSROOT:') for value in values), values
         assert ('-DEMBERBSD_CMAKE_NATIVE_TOOLS:BOOL=ON' in values) == (cross == 'no'), values
         assert ('-DCMAKE_POLICY_DEFAULT_CMP0137:STRING=NEW' in values) == (cross == 'no'), values
     for kind in ('apple', 'llvm-readtapi'):
@@ -139,6 +152,15 @@ def main():
     assert 'arguments.CMakeFlags.emplace_back(std::move(flag))' in forwarding
     assert 'if(APPLE AND "TAPI" IN_LIST _CMAKE_TOOL_VARS AND NOT CMAKE_TAPI)' in finder
     assert 'find_program(CMAKE_INSTALL_NAME_TOOL NAMES ' in finder
+    initialize = (args.cmake_source / 'Modules/Platform/Darwin-Initialize.cmake').read_text()
+    assert 'if(CMAKE_OSX_SYSROOT)' in initialize
+    assert 'set(_CMAKE_OSX_SYSROOT_DEFAULT "${CMAKE_OSX_SYSROOT}")' in initialize
+    assert 'if(NOT IS_DIRECTORY "${CMAKE_OSX_SYSROOT}")' in initialize
+    assert 'if(NOT CMAKE_OSX_SYSROOT)' in initialize
+    assert 'COMMAND xcrun ${_sdk_macosx} --show-sdk-path' in initialize
+    assert 'vars.insert(kCMAKE_OSX_SYSROOT)' in forwarding
+    bootstrap = (args.cmake_source / 'bootstrap').read_text()
+    assert re.search(r'"\$\{cmake_bootstrap_dir\}/cmake"[^\n]+InitialCacheFlags\.cmake[^\n]+"\$@"', bootstrap)
     options = args.llvm_tapi_options.read_text()
     assert 'Flag<["-", "--"], name>' in options and 'def stubify: FF<"stubify"' in options
     assert 'defm output: JS<"o"' in options and 'isysroot' not in options
@@ -147,6 +169,8 @@ def main():
     print('PASS: source/project try_compile uses the appended roster and retains package variables')
     print('PASS: deep propagation includes the roster, marker, policy default and selected tools')
     print('PASS: finite rules preserve Apple argv and use supported llvm-readtapi options')
+    print('PASS: explicit Darwin SDK path forwards once and refuses four invalid inputs')
+    print('PASS: pinned initialization/bootstrap/try_compile preserve the selected sysroot')
     print('PASS: native Darwin forwards both quoted explicit tools and refuses ten invalid inputs')
     print('PASS: finite TAPI kind accepts apple/llvm-readtapi and refuses four invalid inputs')
     print('PASS: Linux, NetBSD and cross metadata add no Darwin tool requirement')
