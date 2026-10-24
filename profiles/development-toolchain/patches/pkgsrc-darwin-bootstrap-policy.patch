@@ -1,0 +1,171 @@
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+Bind scoped Darwin bootstrap inputs before pkgsrc host and tool discovery.
+Keep ordinary Darwin defaults. Use the standard compiler wrappers.
+
+--- a/mk/bsd.prefs.mk
++++ b/mk/bsd.prefs.mk
+@@ -46,6 +46,21 @@
+ # Let mk.conf know that this is pkgsrc.
+ BSD_PKG_MK=1
+ __PREFIX_SET__:=${PREFIX}
++
++# A scoped Darwin producer loads accepted inputs before host discovery.
++# The SDK pins MAKECONF and validates its facts, tools and source profile.
++.if defined(EMBERBSD_DARWIN_BOOTSTRAP)
++.  if ${EMBERBSD_DARWIN_BOOTSTRAP} != "yes"
++.error "EMBERBSD_DARWIN_BOOTSTRAP must be yes when defined"
++.  endif
++.  if !defined(MAKECONF) || empty(MAKECONF:M/*) || !exists(${MAKECONF})
++.error "Darwin bootstrap requires an explicit existing absolute MAKECONF"
++.  endif
++.include "${MAKECONF}"
++.  if ${_EMBERBSD_DARWIN_BOOTSTRAP_POLICY:U0} != "1"
++.error "MAKECONF must include the Ports Darwin bootstrap policy"
++.  endif
++.endif
+ 
+ # Set PATH if not already set
+ .if !defined(PATH)
+@@ -77,6 +92,9 @@
+ # the call "bmake clean depends" equivalent to "bmake clean && bmake depends".
+ _CLEANING:=	${"${.TARGETS:C,( [[:alnum:]-]*clean[[:alnum:]-]*)+$,,W:M*clean*}":?yes:}
+ 
++.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++UNAME= ${EMBERBSD_DARWIN_TOOL.uname}
++.else
+ .if exists(/usr/bin/uname)
+ UNAME=/usr/bin/uname
+ .elif exists(/bin/uname)
+@@ -85,6 +103,7 @@
+ UNAME=/run/current-system/sw/bin/uname
+ .else
+ UNAME=echo Unknown
++.endif
+ .endif
+ 
+ .if !defined(NATIVE_OPSYS)
+--- a/mk/tools/tools.Darwin.mk
++++ b/mk/tools/tools.Darwin.mk
+@@ -2,6 +2,20 @@
+ #
+ # System-supplied tools for the Darwin (Mac OS X) operating system.
+ 
++.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++# Every native tool is supplied by the accepted SDK plan.
++.for _ember_tool in ${EMBERBSD_DARWIN_NATIVE_TOOLS}
++TOOLS_PLATFORM.${_ember_tool}= ${EMBERBSD_DARWIN_TOOL.${_ember_tool}}
++.endfor
++TOOLS_PLATFORM.[= [
++TOOLS_PLATFORM.echo= echo
++TOOLS_PLATFORM.false= false
++TOOLS_PLATFORM.printf= printf
++TOOLS_PLATFORM.test= test
++TOOLS_PLATFORM.true= true
++TOOLS_PLATFORM.sh= ${EMBERBSD_DARWIN_SH}
++TOOLS_PLATFORM.gmake= ${EMBERBSD_DARWIN_GMAKE}
++.else
+ OSX_XCRUN=			${SETENV} PATH= /usr/bin/xcrun --no-cache
+ 
+ TOOLS_PLATFORM.[?=		[			# shell builtin
+@@ -178,3 +192,4 @@
+ .else
+ OSX_TOOLS_FORCE_NOOP+=		yacc
+ .endif
++.endif # EMBERBSD_DARWIN_BOOTSTRAP
+--- a/mk/platform/Darwin.mk
++++ b/mk/platform/Darwin.mk
+@@ -61,7 +61,11 @@
+ 
+ .if !defined(PKGSRC_COMPILER) || !empty(PKGSRC_COMPILER:Mgcc)
+ # don't look in "/usr/local/include" before "/usr/include".
++.  if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++CPP_PRECOMP_FLAGS= # The SDK supplies the explicit native ABI.
++.  else
+ CPP_PRECOMP_FLAGS?=	-isystem /usr/include
++.  endif
+ # don't symlink to /usr/bin/gcc since the latter is a wrapper that tries
+ # evoke the real (architecture-dependent) gcc binary in the same place
+ # which fails when called via a symlink from a different directory
+@@ -119,12 +123,16 @@
+ ALL_ENV+=		MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET}
+ MAKEFLAGS+=		OSX_SDK_PATH=${OSX_SDK_PATH:Q}
+ _OPSYS_INCLUDE_DIRS?=	${OSX_SDK_PATH}/usr/include
++.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++# The accepted compiler commands already contain their native ABI arguments.
++.else
+ CWRAPPERS_APPEND.cc+=	-isysroot ${OSX_SDK_PATH}
+ CWRAPPERS_APPEND.cxx+=	-isysroot ${OSX_SDK_PATH}
+ CWRAPPERS_APPEND.f77+=	-isysroot ${OSX_SDK_PATH}
+ _WRAP_EXTRA_ARGS.CC+=	-isysroot ${OSX_SDK_PATH}
+ _WRAP_EXTRA_ARGS.CXX+=	-isysroot ${OSX_SDK_PATH}
+ _WRAP_EXTRA_ARGS.FC+=	-isysroot ${OSX_SDK_PATH}
++.endif
+ .elif exists(/usr/include/stdio.h)
+ _OPSYS_INCLUDE_DIRS?=	/usr/include
+ .elif exists(/usr/bin/xcrun)
+--- a/mk/tools/replace.mk
++++ b/mk/tools/replace.mk
+@@ -117,6 +117,15 @@
+ .  endif
+ .endif
+ MAKEVARS+=	_USE_TOOLS
++
++.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++.for _ember_tool in ${_USE_TOOLS}
++.  if empty(TOOLS_PLATFORM.${_ember_tool}) && \
++      empty(EMBERBSD_DARWIN_SOURCE_TOOLS:M${_ember_tool})
++.error "Select a native or shared Ports source provider for ${_ember_tool}"
++.  endif
++.endfor
++.endif
+ 
+ # Catch conflicting tools.
+ .if !empty(_USE_TOOLS:Mbison) && !empty(_USE_TOOLS:Mbyacc)
+--- a/mk/compiler/gcc.mk
++++ b/mk/compiler/gcc.mk
+@@ -390,6 +390,11 @@
+ .  endif
+ .endif
+ 
++_GCC_QUERY_CC= ${_CC}
++.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++_GCC_QUERY_CC= ${EMBERBSD_GCC16_SEED_CC}
++.endif
++
+ .if !defined(_GCC_VERSION)
+ #
+ # FIXME: Ideally we'd use PKGSRC_SETENV here, but not enough of the tools
+@@ -398,13 +403,13 @@
+ # is not defined at this stage.
+ #
+ _GCC_VERSION_STRING!=	\
+-	( env LC_ALL=C ${_CC} -v 2>&1 | ${GREP} 'gcc version') 2>/dev/null || ${ECHO} 0
++	( env LC_ALL=C ${_GCC_QUERY_CC} -v 2>&1 | ${GREP} 'gcc version') 2>/dev/null || ${ECHO} 0
+ .  if !empty(_GCC_VERSION_STRING:Megcs*)
+ _GCC_VERSION=	2.8.1		# egcs is considered to be gcc-2.8.1.
+ .  elif !empty(DRAGONFLY_CCVER) && ${OPSYS} == "DragonFly"
+ _GCC_VERSION!= env CCVER=${DRAGONFLY_CCVER} ${_CC} -dumpversion
+ .  elif !empty(_GCC_VERSION_STRING:Mgcc*)
+-_GCC_VERSION!=	${_CC} -dumpversion
++_GCC_VERSION!=	${_GCC_QUERY_CC} -dumpversion
+ .  else
+ _GCC_VERSION=	0
+ .  endif
+@@ -1288,6 +1293,17 @@
+ .endif
+ _COMPILER_STRIP_VARS+=	${_GCC_VARS}
+ 
++.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++# exec= in cwrappers is a path, not a shell command. Add each tail once.
++# Keep both standard wrapper implementations for their existing users.
++.for _ember_var _ember_wrap in CC cc CXX cxx CPP cpp
++${_ember_var}= ${EMBERBSD_GCC16_SEED_${_ember_var}:[1]}
++PKG_${_ember_var}= ${EMBERBSD_GCC16_SEED_${_ember_var}:[1]}
++CWRAPPERS_PREPEND.${_ember_wrap}+= ${EMBERBSD_GCC16_SEED_${_ember_var}:[2..-1]}
++_WRAP_EXTRA_ARGS.${_ember_var}+= ${EMBERBSD_GCC16_SEED_${_ember_var}:[2..-1]}
++.endfor
++.endif
++
+ # Pass the required flags to imake to tell it we're using gcc on Solaris.
+ .if ${OPSYS} == "SunOS"
+ IMAKEOPTS+=	-DHasGcc2=YES -DHasGcc2ForCplusplus=YES
