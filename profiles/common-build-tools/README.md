@@ -74,7 +74,7 @@ provides a pinned-manifest importer for OS-owned AArch64 `base` and `comp`
 releases. It verifies provenance and hashes before isolated extraction.
 The GCC16 compiler and target package remain separate inputs.
 
-This profile prepares one common Python 3.15.0, Meson 1.12.1 and matching
+This profile prepares one common Python 3.15.1, Meson 1.12.1 and matching
 LLVM/Clang/LLD 23.1.4 with upstream lit and [Perl 5.44](cross/perl.md) for the
 GCC 16 / LLVM 23 / Mesa 26 dependency closure. The [Python package](python.md)
 cross-builds on macOS. The earlier Python 3.14.8 package passed installed AArch64
@@ -401,9 +401,11 @@ Clang command traces and upstream lit, while comparing unchanged common
 recipes. Its source/native boundaries are documented in [llvm-family.md](llvm-family.md).
 
 The named `python-source` third argument limits a follow-up to Python archive,
-eight-patch series, negative checksum/application cases, source invariants and
-exact exported recipe. It explicitly excludes unchanged Meson/GCC/native
-contracts from its result; omitted tests are not counted as passed.
+canonical patch series, negative checksum/application cases, target metadata and
+exact exported recipe. Set `PYTHON` to the selected SDK Python (3.12 or newer).
+It explicitly excludes unchanged Meson/GCC/native contracts from its result;
+omitted tests are not counted as passed. The default `all` path calls the same
+current Python gate with its normal common pkgsrc export.
 
 Actual Meson CLI fixtures exercise C++20 through a compiler proxy and ten
 LLVM selection cases. Fake LLVM metadata proves tool choice/error handling;
@@ -413,7 +415,7 @@ pkgsrc patch accepts a missing path using `llvm-config-64`; the new patch
 refuses it. The fixture preserves the actual configure statuses.
 
 `tests/python-selection.sh EXPORTED_PKGSRC NEW_WORK` parses the actual
-pkgsrc selection block with BSD make. It checks default 314, rejected old
+pkgsrc selection block with BSD make. It checks default 315, rejected old
 CLI selection and unsupported/incompatible consumers. If BSD make is absent,
 the source check prints an explicit SKIP. Native NetBSD BSD make has passed
 the five selection cases; full package parsing/builds remain required.

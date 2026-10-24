@@ -11,7 +11,7 @@ done
 [ ! -e "$work" ] && [ ! -L "$work" ] || { echo 'Output already exists.' >&2; exit 2; }
 [ "$("$prefix/bin/x86_64--netbsd-gcc" -dumpmachine)" = x86_64--netbsd ]
 [ "$("$prefix/bin/x86_64--netbsd-gcc" -dumpfullversion)" = 16.2.0 ]
-[ "$("$python" --version)" = 'Python 3.15.0' ]
+[ "$("$python" -c 'import sys; print("%d.%d" % sys.version_info[:2])')" = 3.15 ]
 [ -f "$sysroot/usr/include/stddef.h" ]
 [ -f "$sysroot/usr/pkg/gcc16/lib/gcc/x86_64--netbsd/16.2.0/crtbegin.o" ]
 mkdir "$work"

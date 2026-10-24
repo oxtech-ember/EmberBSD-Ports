@@ -1,9 +1,17 @@
 # Python cross packages
 
-The current profile selects Python 3.15.0. Its NetBSD cross-host cases accept
+The current profile selects Python 3.15.1. Its NetBSD cross-host cases accept
 AArch64 and amd64, including the empty-vendor `x86_64--netbsd` triplet.
 Unknown hosts and unsupported NetBSD architectures still fail.
 Both maintained `configure.ac` cases match the shipped `configure` cases.
+
+The shared recipe follows the [3.15.1 maintenance release](https://www.python.org/downloads/release/python-3151/).
+Its archive SHA256 and byte size match `distinfo` and `sources.tsv`.
+The 13-patch series retains the NetBSD cross metadata and GCC16 adaptations.
+Upstream now selects the correct static-library directory for shared and
+static-only builds. The build-details patch leaves that upstream logic intact.
+Version 3.15.1 resets the package revision. Earlier package results below
+apply only to their recorded source versions.
 
 The nb3 header keeps the C11 build assertion an integer constant expression.
 The earlier comma expression rejects a file-scope array in `Objects/typeobject.c`
@@ -148,10 +156,17 @@ adaptations; native builds keep the original choices.
 
 ## Verification
 
-`tests/source-profile.sh DISTFILES NEW_WORK python-source` verifies original
-archive and patch hashes, zero-fuzz application, source export, repeated or
-missing patches and both actual configure cross cases. Existing Linux and
-unknown-host controls accompany the NetBSD regression.
+`PYTHON=/absolute/sdk/python3 tests/source-profile.sh DISTFILES NEW_WORK python-source`
+uses Python 3.12 or newer and its standard library. It verifies archive and
+patch hashes, byte size, installed test/ensurepip source entries, zero-fuzz
+application, repeated patch refusal and
+normal export. Missing, duplicate, old or foreign source rows, wrong sizes
+and changed archive bytes must fail. Existing Linux and unknown-host controls
+accompany the NetBSD AArch64 and amd64 configure cases.
+The actual build-details generator receives explicit metadata fixtures.
+It checks target source version, loader suffixes, shared/static library paths
+and unchanged native version selection. These checks build no interpreter
+and do not accept a host or target runtime.
 
 `tests/python-cross-tools.sh PKGSRC CROSS_MAKECONF NATIVE_MAKECONF
 PYTHON_SOURCE NEW_WORK` checks invalid host interpreter paths, upstream

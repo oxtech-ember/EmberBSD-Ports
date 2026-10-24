@@ -3,14 +3,14 @@ $NetBSD$
 Describe the NetBSD target loader, platform, version and ABI during a cross
 build. Do not derive target facts from a different host Python 3.14 build.
 The caller declares the runtime platform; source headers supply the version.
-Use the installed configuration directory for the POSIX static library.
+The upstream 3.15.1 code owns shared and static-only library paths.
 
 Origin: EmberBSD (AI-assisted), macOS-to-NetBSD package metadata.
 Not submitted or accepted upstream.
 
 --- Tools/build/generate-build-details.py.orig
 +++ Tools/build/generate-build-details.py
-@@ -63,11 +63,42 @@
+@@ -65,11 +65,42 @@
  
      data['abi']['flags'] = list(sys.abiflags)
  
@@ -53,8 +53,8 @@ Not submitted or accepted upstream.
 +    data['suffixes']['extensions'] = extension_suffixes
  
      LIBDIR = sysconfig.get_config_var('LIBDIR')
-     LDLIBRARY = sysconfig.get_config_var('LDLIBRARY')
-@@ -105,7 +136,7 @@
+     LIBPL = sysconfig.get_config_var('LIBPL')
+@@ -116,7 +147,7 @@
  
          # EXTENSION_SUFFIXES has been constant for a long time, and currently we
          # don't have a better information source to find the stable ABI suffix.
@@ -63,13 +63,3 @@ Not submitted or accepted upstream.
              if suffix.startswith('.abi'):
                  data['abi']['stable_abi_suffix'] = suffix
                  break
-@@ -121,7 +152,8 @@
-         data['libpython']['link_extensions'] = bool(LIBPYTHON)
- 
-     if has_static_library:
--        data['libpython']['static'] = os.path.join(LIBDIR, LIBRARY)
-+        static_dir = sysconfig.get_config_var('LIBPL') if os.name == 'posix' else LIBDIR
-+        data['libpython']['static'] = os.path.join(static_dir, LIBRARY)
- 
-     data['c_api']['headers'] = INCLUDEPY
-     if LIBPC:

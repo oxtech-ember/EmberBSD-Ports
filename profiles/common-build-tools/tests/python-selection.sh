@@ -12,6 +12,12 @@ awk '/^PYTHON_VERSION_DEFAULT\?=/ { take=1 } take { print } \
     /^# Additional CONFLICTS/ { exit }' "$source/lang/python/pyversion.mk" > "$work/selection.mk"
 cat > "$work/Makefile" <<EOF_MAKE
 BSD_PKG_MK= yes
+OPSYS= NetBSD
+OS_VERSION= 11.0
+MACHINE_ARCH= aarch64
+PREFIX= /usr/pkg
+LOCALBASE= /usr/pkg
+USE_PKGSRC_GCC_RUNTIME= no
 .include "$source/EMBERBSD-COMMON-TOOLS-MK.CONF"
 .include "$work/selection.mk"
 all:
