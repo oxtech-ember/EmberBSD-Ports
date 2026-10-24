@@ -94,7 +94,12 @@ Choose the permanent common SDK prefix before building GCC.
 Do not move this prefix or replace its tools with initial binary inputs.
 
 The scoped Darwin bootstrap profile links initial C++ providers with
-`-static-libstdc++ -static-libgcc`. These are producer link options, not ABI flags.
+`-static-libstdc++ -static-libgcc -nodefaultrpaths`.
+These are producer link options, not ABI flags.
+The last option suppresses GCC's default compiler-library runpaths.
+The GCC recipe preserves this option only for the scoped bootstrap profile.
+Other Darwin callers retain the existing wrapper removal rule.
+Explicit package runtime search paths remain unchanged.
 This policy still needs native C++ exception and final runtime-closure acceptance.
 The compiler's ordinary user-link defaults remain unchanged.
 

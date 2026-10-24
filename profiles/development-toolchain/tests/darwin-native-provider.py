@@ -27,6 +27,8 @@ def check_recipe(text):
     assert '+CONFIGURE_ARGS+= --with-darwin-sdk-version=${EMBERBSD_GCC16_DARWIN_SDK_VERSION:Q}\n' in text
     assert '.if ${OPSYS} == "Darwin"\n' in text
     assert '--disable-bootstrap' not in ''.join(line for line in text.split('\n') if line.startswith('+'))
+    assert ('+.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} != "yes"\n'
+            '+BUILDLINK_TRANSFORM+=\trm:-nodefaultrpaths\n+.endif\n') in text
 
 
 def check_cmake(fragment, patch):
@@ -58,6 +60,16 @@ def check_specs(root):
     assert 'ld_file_name == 0 && access (DEFAULT_LINKER, X_OK) == 0' in collect
     assert 'ld_file_name = DEFAULT_LINKER;' in collect
     assert 'DARWIN_PLATFORM_ID' in darwin[darwin.index('#define LINK_COMMAND_SPEC'):]
+    options = (root / 'gcc/config/darwin.opt').read_text()
+    check_runpaths(darwin, options)
+
+
+def check_runpaths(darwin, options):
+    assert 'nodefaultrpaths\nDriver RejectNegative\n' in options
+    for name in ('DARWIN_RPATH_LINK', 'DARWIN_EXTRA_RPATH'):
+        body = darwin.split('# define ' + name, 1)[1].split('#else', 1)[0]
+        assert '%{!nodefaultrpaths:' in body, name
+    assert '%<nodefaultrpaths' in darwin
 
 
 class ProviderSourceTests(unittest.TestCase):
@@ -66,7 +78,10 @@ class ProviderSourceTests(unittest.TestCase):
         check_recipe(text)
         for mutant in (text.replace('+DEPENDS+= lld>=23.1.4:../../devel/lld\n', ''),
                        text.replace('--with-ld=${LOCALBASE:Q}/bin/ld64.lld', '--with-ld=${EMBERBSD_GCC16_LD64_LLD:Q}'),
-                       text.replace('+CXX= ${EMBERBSD_GCC16_SEED_CXX}', '+CXX= /usr/bin/clang++')):
+                       text.replace('+CXX= ${EMBERBSD_GCC16_SEED_CXX}', '+CXX= /usr/bin/clang++'),
+                       text.replace('+.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} != "yes"',
+                                    '+.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"'),
+                       text.replace('+BUILDLINK_TRANSFORM+=\trm:-nodefaultrpaths\n', '')):
             with self.assertRaises(AssertionError):
                 check_recipe(mutant)
 
@@ -105,11 +120,23 @@ class ProviderSourceTests(unittest.TestCase):
 
     def test_runtime_policy_is_link_only_in_the_native_producer_profile(self):
         text = (PROFILE / 'darwin-bootstrap.mk.conf').read_text()
-        self.assertIn('LDFLAGS+= -static-libstdc++ -static-libgcc\n', text)
+        self.assertIn('LDFLAGS+= -static-libstdc++ -static-libgcc -nodefaultrpaths\n', text)
         for name in ('CC', 'CXX', 'CPP'):
             self.assertIn(name + '= ${EMBERBSD_GCC16_SEED_' + name + '}\n', text)
         self.assertNotRegex(text, r'(?:CFLAGS|CXXFLAGS)\s*[+:?]?=.*-static-lib')
         self.assertIn('Parallel CMake bootstrap requires the accepted SDK link launcher list', text)
+
+    def test_default_runpath_guards_are_required(self):
+        options = 'nodefaultrpaths\nDriver RejectNegative\n'
+        specs = ('# define DARWIN_RPATH_LINK "%{!nodefaultrpaths:paths}"\n#else\n'
+                 '# define DARWIN_EXTRA_RPATH "%{!nodefaultrpaths:extra}"\n#else\n'
+                 'spec "%<nodefaultrpaths"\n')
+        check_runpaths(specs, options)
+        for mutated, declaration in ((specs.replace('%{!nodefaultrpaths:', '%{rpaths:', 1), options),
+                                     (specs.replace('%<nodefaultrpaths', ''), options),
+                                     (specs, options.replace('Driver RejectNegative', 'Target'))):
+            with self.assertRaises(AssertionError):
+                check_runpaths(mutated, declaration)
 
     def test_actual_configured_driver_specs_need_no_external_override(self):
         if GCC_SOURCE is None:
