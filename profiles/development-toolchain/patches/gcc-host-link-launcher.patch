@@ -1,0 +1,32 @@
+$NetBSD$
+
+Allow an explicit SDK resource launcher on native GCC final-link drivers.
+Keep compilation and the selected bootstrap-stage compiler unchanged.
+An absent or empty launcher preserves the original command text.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+The GCC GPLv3-or-later licence and upstream authorship are unchanged.
+
+--- gcc/Makefile.in.orig
++++ gcc/Makefile.in
+@@ -286,10 +286,10 @@
+ # library is not introduced.  If HOST_LIBS is not set, link with
+ # $(CXX) to pick up -lstdc++.
+ ifeq ($(HOST_LIBS),)
+-LINKER = $(CXX)
++LINKER = $(if $(GCC_HOST_LINKER_LAUNCHER),$(GCC_HOST_LINKER_LAUNCHER) )$(CXX)
+ LINKER_FLAGS = $(CXXFLAGS)
+ else
+-LINKER = $(CC)
++LINKER = $(if $(GCC_HOST_LINKER_LAUNCHER),$(GCC_HOST_LINKER_LAUNCHER) )$(CC)
+ LINKER_FLAGS = $(CFLAGS)
+ endif
+ 
+@@ -867,7 +867,7 @@
+ BUILD_COMPILERFLAGS = $(BUILD_CXXFLAGS)
+ 
+ # Native linker that we use.
+-LINKER_FOR_BUILD = $(CXX_FOR_BUILD)
++LINKER_FOR_BUILD = $(if $(GCC_HOST_LINKER_LAUNCHER),$(GCC_HOST_LINKER_LAUNCHER) )$(CXX_FOR_BUILD)
+ BUILD_LINKERFLAGS = $(BUILD_CXXFLAGS)
+ 
+ # Native linker and preprocessor flags.  For x-fragment overrides.

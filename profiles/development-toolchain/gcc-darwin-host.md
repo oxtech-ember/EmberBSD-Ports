@@ -93,6 +93,60 @@ when a seed make has external makefile or shell defaults. It retains the
 complete upstream rules and binds an explicit shell before metadata reads.
 It does not qualify an initial make binary as an ordinary native tool.
 
+## Shared link resource
+
+[gcc-host-link-launcher.patch](patches/gcc-host-link-launcher.patch) adds
+an optional `GCC_HOST_LINKER_LAUNCHER` prefix to GCC's `LINKER` and
+`LINKER_FOR_BUILD` assignments. An absent or empty prefix preserves their
+original command text. The patch does not change `CC`, `CXX`, `COMPILER`,
+compiler flags or archive commands. It retains each bootstrap stage's
+selected compiler and the existing `HOST_LIBS` branch.
+
+The Darwin recipe exports the accepted `EMBERBSD_GCC16_LINKER_LAUNCHER`
+as `GCC_HOST_LINKER_LAUNCHER` in the make environment. GNU make retains this
+environment input through recursive bootstrap stages. The SDK constructs
+the complete prefix from its pinned control-plane Python, its existing
+`scripts/link-launcher.py`, and the common lock root and resource context.
+The command ends with `--`. It does not introduce a compiler wrapper or
+a new native Python provider.
+
+`LLINKER` inherits `LINKER`. This route covers the C, C++, Objective-C,
+Objective-C++, Fortran and LTO frontend links, GCC drivers and tools,
+native build generators, and `libgdiagnostics`. Keep GCC's optional local
+frontend mutex unchanged. The SDK launcher owns the common heavy-link
+resource for each foreground link. The outer parallel build must retain
+its source/input and work leases without holding this same exclusive
+resource. Otherwise the nested launcher cannot proceed.
+
+Target runtime libraries, including `libgcc` and `libstdc++`, use separate
+make or libtool link rules. This hook does not serialize those smaller
+links. The SDK must retain its accepted worker budget and memory-pressure
+control. This source route does not establish their runtime memory use.
+
+Use [the finite route check](tests/gcc-native-link-route.py) with the exact
+patched GCC Makefile before and after this patch. It checks the three
+driver assignments, exact empty-prefix behavior and unchanged compilation.
+It can prepare make fixtures with surrogate Python work commands for a
+separate accepted native make/launcher test. That test must show parallel
+compile work and serialized link work. A source-only pass does not prove
+the full GCC build graph, bootstrap comparison or a native SDK result.
+
+```sh
+python3 profiles/development-toolchain/tests/gcc-native-link-route.py \
+  source BEFORE_MAKEFILE AFTER_MAKEFILE \
+  --new-fixtures /absolute/new-fixtures
+```
+
+Run the prepared fixtures only through the accepted SDK execution context.
+Bind `CC`, `CXX` and `CXX_FOR_BUILD` to the same SDK control-plane Python,
+this test script and its `record` subcommand. Bind `EVENTS` to a new owned
+event file. Use the accepted GNU make command with four workers and its
+selected shell. Set `GCC_HOST_LINKER_LAUNCHER` to the SDK's exact resource
+prefix. The `after.mk` events must pass this script's `verify` subcommand.
+The `before.mk` control must fail verification because its links overlap.
+Use a separate new work directory for each case. The surrogate commands
+do not compile sources or qualify a native tool provider.
+
 ## Fixed bootstrap binding
 
 An existing seed can have Apple assembler arguments in its built-in specs.

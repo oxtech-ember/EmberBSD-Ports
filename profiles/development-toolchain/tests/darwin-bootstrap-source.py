@@ -91,9 +91,16 @@ def check(before, after, policy, recipe):
             'Compiler metadata lost its accepted binding')
     require('+CONFIGURE_ENV+= CC=${EMBERBSD_GCC16_SEED_CC:Q} CXX=${EMBERBSD_GCC16_SEED_CXX:Q} CPP=${EMBERBSD_GCC16_SEED_CPP:Q}' in recipe,
             'GCC self-bootstrap lost its direct accepted compiler tuple')
-    require('empty(EMBERBSD_DARWIN_JOBS:M[1-4])' in policy and
+    require('.for _ember_jobs in EMBERBSD_DARWIN_JOBS EMBERBSD_DARWIN_CPU_BUDGET' in policy and
+            'empty(${_ember_jobs}:M[1-9]*)' in policy and
+            '!empty(${_ember_jobs}:C/[0-9]//g)' in policy and
+            '.if ${EMBERBSD_DARWIN_JOBS} > ${EMBERBSD_DARWIN_CPU_BUDGET}' in policy and
             policy.index('MAKE_JOBS= ${EMBERBSD_DARWIN_JOBS}') > policy.index('.include '),
-            'The jobs cap is absent or overwritten by the shared profile')
+            'The accepted jobs budget is absent or overwritten by the shared profile')
+    require('.if ${EMBERBSD_DARWIN_JOBS} > 1' in policy and
+            '.error "Parallel GCC bootstrap requires the accepted SDK link launcher"' in policy and
+            '+MAKE_ENV+= GCC_HOST_LINKER_LAUNCHER=${EMBERBSD_GCC16_LINKER_LAUNCHER:Q}' in recipe,
+            'Parallel native GCC can bypass the accepted link launcher')
     return True
 
 
@@ -126,7 +133,8 @@ def main():
     line = 'CWRAPPERS_PREPEND.${_ember_wrap}+= ${EMBERBSD_GCC16_SEED_${_ember_var}:[2..-1]}'
     changed[n] = changed[n].replace(line, line + '\n' + line, 1)
     mutants.append(('duplicate-specs-prefix', changed, policy, recipe))
-    mutants.append(('uncapped-jobs', after, policy.replace('empty(EMBERBSD_DARWIN_JOBS:M[1-4])', 'empty(EMBERBSD_DARWIN_JOBS)'), recipe))
+    mutants.append(('unbudgeted-jobs', after, policy.replace('.if ${EMBERBSD_DARWIN_JOBS} > ${EMBERBSD_DARWIN_CPU_BUDGET}', '.if 0'), recipe))
+    mutants.append(('parallel-link-bypass', after, policy.replace('.error "Parallel GCC bootstrap requires the accepted SDK link launcher"', '# no link resource refusal'), recipe))
     rejected = []
     for name, source, conf, gcc_recipe in mutants:
         try:

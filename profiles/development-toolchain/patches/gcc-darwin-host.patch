@@ -7,7 +7,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 
 --- a/lang/gcc16/Makefile.common
 +++ b/lang/gcc16/Makefile.common
-@@ -57,6 +57,53 @@
+@@ -57,6 +57,57 @@
  .if ${OPSYS} == "Darwin"
  BUILDLINK_TRANSFORM+=	rm:-nodefaultrpaths
  CONFIGURE_ARGS+=	--disable-darwin-at-rpath
@@ -40,6 +40,10 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 +CONFIGURE_ENV+= AR_FOR_TARGET=${AR:Q} RANLIB_FOR_TARGET=${RANLIB:Q}
 +CONFIGURE_ENV+= NM_FOR_TARGET=${NM:Q} STRIP_FOR_TARGET=${STRIP:Q}
 +CONFIGURE_ENV+= DSYMUTIL_FOR_TARGET=${EMBERBSD_GCC16_DSYMUTIL:Q}
++# The SDK validates this optional control-plane resource command.
++.if defined(EMBERBSD_GCC16_LINKER_LAUNCHER) && !empty(EMBERBSD_GCC16_LINKER_LAUNCHER)
++MAKE_ENV+= GCC_HOST_LINKER_LAUNCHER=${EMBERBSD_GCC16_LINKER_LAUNCHER:Q}
++.endif
 +CONFIGURE_ARGS+= --without-gnu-as --without-gnu-ld
 +CONFIGURE_ARGS+= --with-as=${EMBERBSD_GCC16_LLVM_MC:Q}
 +CONFIGURE_ARGS+= --with-ld=${EMBERBSD_GCC16_LD64_LLD:Q}
@@ -61,7 +65,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
  .endif
  
  ## For graphite support.
-@@ -89,8 +136,10 @@
+@@ -89,8 +140,10 @@
  MAKE_ENV.NetBSD+=	ac_cv_func_uselocale=no
  MAKE_ENV.SunOS+=	ac_cv_func_mkostemp=no
  

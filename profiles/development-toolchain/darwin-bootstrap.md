@@ -56,7 +56,8 @@ It is not a second descriptor, receipt or qualification format.
 | `EMBERBSD_GCC16_AR`, `EMBERBSD_GCC16_RANLIB`, `EMBERBSD_GCC16_NM`, `EMBERBSD_GCC16_STRIP` | Selected archive and symbol tool paths |
 | `OSX_SDK_PATH`, `EMBERBSD_GCC16_DARWIN_SDK_VERSION` | Accepted native ABI root and its metadata version |
 | `MACOSX_DEPLOYMENT_TARGET` | Deployment from the accepted fixed GCC binding |
-| `EMBERBSD_DARWIN_JOBS` | Coordinator's concurrent jobs, one integer from 1 through 4 |
+| `EMBERBSD_DARWIN_JOBS`, `EMBERBSD_DARWIN_CPU_BUDGET` | Positive decimal jobs and the accepted coordinator budget; jobs must not exceed the budget |
+| `EMBERBSD_GCC16_LINKER_LAUNCHER` | SDK control-plane link launcher command; required for parallel GCC bootstrap |
 | `WRKOBJDIR`, `DISTDIR`, `PACKAGES`, `LOCALBASE`, `PKG_DBDIR` | Explicit shared work/cache roots and the isolated producer output/package database |
 | `EMBERBSD_DARWIN_UTILITY_BIN` | Inventoried directory with only accepted utility invocation paths |
 | `EMBERBSD_DARWIN_NATIVE_TOOLS` | Exact names of accepted native utility roles |
@@ -70,6 +71,14 @@ A compiler target tuple does not establish the running host's identity.
 All paths in this bounded interface must exclude whitespace and make syntax.
 The SDK must verify every command word, inventory member and path boundary.
 The make policy only checks the structure needed to refuse an absent input.
+
+The SDK bounds the CPU budget against the current host before execution.
+Its saved plan retains that accepted budget. The make policy does not query
+the host or invent a processor count. See the
+[native GCC link route](gcc-darwin-host.md#shared-link-resource) for the
+launcher scope. The SDK constructs this command from its own pinned Python
+control plane, SDK script and resource paths. This Python service is not a
+native compiler or generator provider.
 
 The GCC compiler command keeps the fixed `-B`, pinned `-specs` and deployment
 arguments in their accepted order. See [the GCC binding](gcc-darwin-host.md).
@@ -123,7 +132,8 @@ accepted SDK command, complete make tree and this exact profile. Capture all
 children, consumed includes, package database reads and resulting dependencies.
 Check that stale host-detection values do not change the accepted facts.
 Check refusals for an absent fact, utility, MAKECONF, source provider and jobs
-outside 1 through 4. Check that no child uses the original installed prefix,
+outside the accepted budget, and parallel jobs without the link launcher.
+Check that no child uses the original installed prefix,
 CLT discovery, an unselected system utility or an uncontrolled PATH.
 Then replay the wrapper routes and the GCC stage-1 configure command.
 A source-only pass cannot replace these gates or the full GCC bootstrap.
