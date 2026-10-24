@@ -117,6 +117,35 @@ the GCC assembler command. `collect2` still controls the final link.
 The binding preserves the library, start-file, constructor and LTO specs.
 It does not prove that the emitted assembly or GCC LTO objects work with MC.
 
+## Mach-O LLD platform binding
+
+The initial v1 template above preserves the seed's legacy platform option.
+LLVM 23 Mach-O LLD recognizes that option, but derives its target only from
+`-platform_version`. Use the fixed v2 template
+[darwin-llvm-mc-lld-seed.specs.in](bootstrap/darwin-llvm-mc-lld-seed.specs.in)
+for this linker. The selector is `ports-gcc16-darwin-llvm-mc-seed-v2`.
+Keep the v1 file for existing pinned inputs.
+
+The only v2 substitutions are `@DEPLOYMENT@` and `@SDK_VERSION@`.
+The initial values are `26.0` and `26.5`. Bind the SDK version to the exact
+accepted ABI metadata, such as its inventoried `SDKSettings.json` Version.
+Do not query Xcode tools or infer a version from a directory name.
+Pin the template and instantiated hashes in the accepted SDK plan.
+Keep the four-argument driver prefix shown above.
+
+V2 appends `-platform_version macos MIN SDK` to the inherited `link` spec.
+It keeps the complete upstream `link_command`, `collect2`, library, start-file,
+constructor, LTO and dsymutil selection. The inherited legacy platform option
+has the same deployment value. LLD parses it without deriving a platform.
+No linker diagnostics or verification options are disabled.
+
+Driver `-###` controls compare C and C++ executable, static, shared, relocatable,
+no-standard-library, no-default-library, LTO and debug plans. Removing the one
+modern platform tuple must restore the previous `collect2` argv exactly.
+Deployment, explicit linker selection and unsupported CPU requests must fail.
+These are metadata checks. They do not establish a successful link or runtime.
+Real static and relocatable Mach-O support remain separate checks.
+
 ## Linker identity and feature probes
 
 In this GCC16 Darwin port, `collect2 -fuse-ld=lld` selects `ld64.lld`.
