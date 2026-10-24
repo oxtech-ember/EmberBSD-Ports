@@ -1,0 +1,244 @@
+--- a/third_party/dawn/tools/generate-sources-gn.py
++++ b/third_party/dawn/tools/generate-sources-gn.py
+@@ -26,6 +26,7 @@
+ # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ 
++import argparse
+ import os
+ import subprocess
+ import sys
+@@ -40,9 +41,19 @@
+ 
+ 
+ def main() -> int:
+-    go_binary = "@GOBIN@"
+-    if sys.platform == 'win32':
+-        go_binary += '.exe'
++    parser = argparse.ArgumentParser(description='Generate Tint sources for GN.')
++    parser.add_argument('output_dir')
++    parser.add_argument('--go-binary', help='Path to the host Go executable.')
++    args = parser.parse_args()
++
++    go_binary = args.go_binary
++    if go_binary is None:
++        go_binary = os.path.join(DAWN_ROOT, 'tools', 'golang',
++                                 cipd_deps.get_cipd_platform(), 'bin', 'go')
++        if sys.platform == 'win32':
++            go_binary += '.exe'
++    elif not go_binary:
++        parser.error('--go-binary must not be empty')
+ 
+     tool_dir = os.path.relpath(os.path.join(CMD_DIR, 'gen', 'sources'),
+                                DAWN_ROOT)
+@@ -57,7 +68,7 @@
+         go_binary,
+         'run',
+         tool_dir,
+-        os.path.join(os.getcwd(), sys.argv[1]),
++        os.path.join(os.getcwd(), args.output_dir),
+     ]
+ 
+     # Force Go modules to be ON so package imports within the dawn module
+--- a/third_party/dawn/tools/python/cipd_deps.py
++++ b/third_party/dawn/tools/python/cipd_deps.py
+@@ -49,7 +49,7 @@
+     The returned string is compatible with CIPD's package naming scheme.
+     """
+     current_platform = sys.platform
+-    if syscurrent_platform.startswith(('linux', 'cygwin', 'openbsd', 'freebsd', 'netbsd')):
++    if current_platform.startswith(('linux', 'cygwin', 'openbsd', 'freebsd', 'netbsd')):
+         return 'linux'
+     if current_platform == 'win32':
+         return 'windows'
+--- a/third_party/dawn/scripts/dawn_features.gni
++++ b/third_party/dawn/scripts/dawn_features.gni
+@@ -28,6 +28,12 @@
+ import("//build/config/clang/clang.gni")
+ import("//build_overrides/build.gni")
+ import("dawn_overrides_with_defaults.gni")
++
++declare_args() {
++  # Absolute path to the Go executable for the build host. An empty value uses
++  # the host Go package selected by DEPS, including during cross-compilation.
++  dawn_host_go_path = ""
++}
+ 
+ declare_args() {
+   # Sets defaults for other features so that we build as much as possible on the
+--- a/third_party/dawn/src/tint/BUILD.gn
++++ b/third_party/dawn/src/tint/BUILD.gn
+@@ -223,6 +223,12 @@
+   inputs = tint_generation_dependencies
+   outputs = tint_generated_sources
+   args = [ rebase_path(root_gen_dir, root_build_dir) ]
++  if (dawn_host_go_path != "") {
++    args += [
++      "--go-binary",
++      dawn_host_go_path,
++    ]
++  }
+ }
+ 
+ if (tint_build_benchmarks) {
+--- a/third_party/dawn/docs/building.md
++++ b/third_party/dawn/docs/building.md
+@@ -18,7 +18,7 @@
+     * `CMake` 3.16 or later
+  * Ninja 1.12 (or another build tool supported by CMake)
+  * Python 3, for fetching dependencies
+- * Go 1.23 or later: https://go.dev/
++ * A supported Go release that satisfies `go.mod`: https://go.dev/
+  * A C++20 compiler
+     * When using GN, the default compiler will be provided automatically.
+     * Otherwise, check the platform details below.
+@@ -142,6 +142,13 @@
+ autoninja -C out/Debug
+ ```
+ 
++GN source generation uses the host Go package selected by `DEPS` by default.
++To use another host Go executable, set `dawn_host_go_path` to its absolute path
++in the GN arguments. The Go version must satisfy `go.mod`. This selects a tool
++for the build host during cross-compilation. On Windows, include `.exe` in an
++explicit executable path. The source generator keeps Go modules enabled and
++CGO disabled.
++
+ The most common GN build option is `is_debug=true/false`; otherwise
+ `gn args out/Debug --list` shows all the possible options.
+ 
+--- /dev/null
++++ b/third_party/dawn/tools/python/generate_sources_gn_test.py
+@@ -0,0 +1,133 @@
++# Copyright 2026 The Dawn & Tint Authors
++#
++# Redistribution and use in source and binary forms, with or without
++# modification, are permitted provided that the following conditions are met:
++#
++# 1. Redistributions of source code must retain the above copyright notice, this
++#    list of conditions and the following disclaimer.
++#
++# 2. Redistributions in binary form must reproduce the above copyright notice,
++#    this list of conditions and the following disclaimer in the documentation
++#    and/or other materials provided with the distribution.
++#
++# 3. Neither the name of the copyright holder nor the names of its
++#    contributors may be used to endorse or promote products derived from
++#    this software without specific prior written permission.
++#
++# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
++# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
++# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
++# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
++# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++"""Host Go selection and source-generator invocation contracts."""
++
++import importlib.util
++import os
++from pathlib import Path
++import sys
++from types import SimpleNamespace
++import unittest
++from unittest.mock import patch
++
++
++DAWN_ROOT = Path(__file__).resolve().parents[2]
++spec = importlib.util.spec_from_file_location(
++    'generate_sources_gn', DAWN_ROOT / 'tools/generate-sources-gn.py')
++generator = importlib.util.module_from_spec(spec)
++spec.loader.exec_module(generator)
++cipd_deps = generator.cipd_deps
++
++
++class GenerateSourcesGnTests(unittest.TestCase):
++    def setUp(self):
++        self.clear_platform_cache()
++        self.addCleanup(self.clear_platform_cache)
++
++    def clear_platform_cache(self):
++        for function in (cipd_deps.get_cipd_platform,
++                         cipd_deps.get_cipd_compatible_current_os,
++                         cipd_deps.get_cipd_compatible_current_arch):
++            function.cache_clear()
++
++    def invoke(self, arguments, *, host='darwin', machine='arm64', status=0):
++        observed = {}
++
++        def run(command, **options):
++            observed.update(command=command, options=options,
++                            modules=os.environ['GO111MODULE'],
++                            cgo=os.environ['CGO_ENABLED'])
++            return SimpleNamespace(returncode=status)
++
++        with patch.object(sys, 'argv', ['generate-sources-gn.py', *arguments]), \
++                patch.object(sys, 'platform', host), \
++                patch.object(cipd_deps.platform, 'machine', return_value=machine), \
++                patch.object(cipd_deps.platform, 'processor', return_value=''), \
++                patch.object(generator.os, 'getcwd', return_value='/build dir'), \
++                patch.dict(os.environ, GO111MODULE='off', CGO_ENABLED='1'), \
++                patch.object(generator.subprocess, 'run', side_effect=run):
++            result = generator.main()
++        return result, observed
++
++    def test_default_uses_the_current_host_cipd_package(self):
++        for host, machine, package, executable in (
++                ('darwin', 'arm64', 'mac-arm64', 'go'),
++                ('linux', 'x86_64', 'linux-amd64', 'go'),
++                ('win32', 'AMD64', 'windows-amd64', 'go.exe')):
++            with self.subTest(host=host):
++                self.clear_platform_cache()
++                result, observed = self.invoke(['gen'], host=host, machine=machine)
++                self.assertEqual(result, 0)
++                self.assertEqual(observed['command'][0], os.path.join(
++                    str(DAWN_ROOT), 'tools', 'golang', package, 'bin', executable))
++
++    def test_bsd_and_cygwin_cipd_platform_mapping_is_preserved(self):
++        for host, machine, package in (
++                ('linux2', 'x86_64', 'linux-amd64'),
++                ('cygwin', 'x86_64', 'linux-amd64'),
++                ('openbsd7', 'amd64', 'linux-amd64'),
++                ('freebsd14', 'aarch64', 'linux-arm64'),
++                ('netbsd11', 'evbarm', 'linux-arm64')):
++            with self.subTest(host=host), \
++                    patch.object(sys, 'platform', host), \
++                    patch.object(cipd_deps.platform, 'machine', return_value=machine), \
++                    patch.object(cipd_deps.platform, 'processor', return_value=''):
++                self.clear_platform_cache()
++                self.assertEqual(cipd_deps.get_cipd_platform(), package)
++
++    def test_explicit_windows_executable_keeps_its_suffix(self):
++        executable = r'C:\host tools\go.exe'
++        _, observed = self.invoke(['gen', '--go-binary', executable], host='win32')
++        self.assertEqual(observed['command'][0], executable)
++
++    def test_explicit_host_tool_preserves_module_and_output_contract(self):
++        _, observed = self.invoke(['clang_arm64/gen', '--go-binary', '/host tools/go'])
++        self.assertEqual(observed['command'], [
++            '/host tools/go', 'run', './tools/src/cmd/gen/sources',
++            '/build dir/clang_arm64/gen'])
++        self.assertEqual(observed['options'], {'check': False, 'cwd': str(DAWN_ROOT)})
++        self.assertEqual((observed['modules'], observed['cgo']), ('on', '0'))
++
++    def test_generator_exit_status_is_retained(self):
++        result, _ = self.invoke(['gen', '--go-binary', '/host/go'], status=7)
++        self.assertEqual(result, 7)
++
++    def test_empty_explicit_path_is_refused_before_go_start(self):
++        with patch.object(sys, 'argv', ['generate-sources-gn.py', 'gen', '--go-binary', '']), \
++                patch.object(generator.subprocess, 'run') as run:
++            with self.assertRaises(SystemExit) as error:
++                generator.main()
++        self.assertEqual(error.exception.code, 2)
++        run.assert_not_called()
++
++    def test_unknown_default_host_is_refused(self):
++        with self.assertRaisesRegex(ValueError, 'Unknown platform'):
++            self.invoke(['gen'], host='unknown-os')
++
++
++if __name__ == '__main__':
++    unittest.main()

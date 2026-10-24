@@ -156,6 +156,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dbus-bounded-map-signat
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-padding-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-invariants.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-proc-clang-cfi-attribute.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-explicit-host-go.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/pffft-simd-debug-validation-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/opus-bsd-alloca-header.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-gcc16-enum-pragmas.patch
@@ -167,6 +168,16 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/skia-reinitializes-attr
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-bsd-linux-suid-helper.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-dist-target-os.patch
 ```
+
+Set `dawn_host_go_path` to the absolute path of a supported host Go executable
+that satisfies Dawn's `go.mod`. Both toolchains forward this value to the same
+source generator. Without an explicit path, the wrapper retains the upstream
+DEPS-selected CIPD package. BSD hosts need an explicit native Go path; the
+inherited CIPD platform mapping does not establish native BSD Go execution.
+The patch replaces the unresolved pkgsrc `@GOBIN@` token in direct GN builds.
+It keeps module mode, disabled CGO, output paths, and generator exit status.
+The carried [source tests](tests/dawn-host-go.md) distinguish host selection
+from target compilation.
 
 Set `use_system_libffi=true` for the common NetBSD target profile. Its libffi
 package provides the shared `-lffi` contract and does not provide `libffi_pic.a`.
