@@ -33,6 +33,27 @@ The NetBSD cross recipe uses the standard custom interpreter replacement for
 these installed POSIX scripts. It keeps `/bin/sh` in the target package and
 leaves the native build shell unchanged.
 
+CMake consumers of the NetBSD cross Autoconf package use the real installed
+POSIX configuration script in the target sysroot. Its absolute `libexec`
+symlink is not executable from the build host. The common buildlink recipe
+passes the regular script path through `wxWidgets_CONFIG_EXECUTABLE`. It sets
+`--prefix` and `--exec-prefix` to the consumer's buildlink directory. This keeps
+header and library lookup within the selected target dependencies. Native
+builds and the optional CMake package configuration keep their existing paths.
+
+The unchanged KiCad 10.0.7 `FindwxWidgets.cmake` rejects the previous provider
+lookup and accepts this provider at version 3.2.12. A GCC 16.2.0 header consumer
+produces an amd64 target object with the actual staged flags. The reusable
+[configure fixture](../tests/wxwidgets-cmake/CMakeLists.txt) and
+[header consumer](../tests/wxwidgets-cmake/headers.cpp) preserve these inputs.
+These are bounded configure and header checks. Complete KiCad packaging and
+installed application execution remain separate checks.
+
+Copy the configure fixture and KiCad's unmodified `cmake/FindwxWidgets.cmake`
+to an empty temporary directory. Configure that directory with the same cross
+toolchain arguments and the two provider settings above. Compile `headers.cpp`
+with target GCC and the staged `wx-config --cxxflags` output.
+
 Actual native Linux and AArch64 cross `bmake show-vars` select version 3.2.12,
 Autoconf and the same feature flags and dependency families. The graphics
 exporter's complete source and patch preflight passes. These are source and

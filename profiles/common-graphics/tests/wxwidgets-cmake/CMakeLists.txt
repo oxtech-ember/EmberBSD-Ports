@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.20)
+project(WxCrossProvider LANGUAGES C CXX)
+list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
+set(wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} --toolkit=gtk3 --static=no)
+find_package(wxWidgets 3.2.0 COMPONENTS gl aui adv html core net base propgrid xml stc richtext webview REQUIRED)
+file(WRITE "${CMAKE_BINARY_DIR}/selected.txt" "${wxWidgets_VERSION_STRING}\n${wxWidgets_INCLUDE_DIRS}\n${wxWidgets_LIBRARIES}\n${wxWidgets_CONFIG_EXECUTABLE}\n")
