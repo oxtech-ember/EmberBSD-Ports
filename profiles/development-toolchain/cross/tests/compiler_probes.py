@@ -50,12 +50,22 @@ def armv7_abi(args):
     header = elf.read_elf_header(obj, machine=metadata['machine'], required_type=1)
     require(header is not None and header['class'] == 32,
             'ARMv7 kernel compiler did not emit a 32-bit ARM relocatable object')
-    detail = capture([tools['readelf'], '-h', obj], env)
+    detail = capture([tools['readelf'], '-h', '-A', obj], env)
     flags = re.search(r'^\s*Flags:\s*(.+)$', detail, re.M)
+    abi_attribute = re.search(r'^\s*Tag_ABI_VFP_args:\s*(.+)$', detail, re.M)
     require(flags is not None and 'Version5 EABI' in flags.group(1) and
-            'hard-float ABI' in flags.group(1),
-            'ARMv7 kernel object does not advertise the hard-float EABI')
+            abi_attribute is not None and abi_attribute.group(1).strip() == 'VFP registers',
+            'ARMv7 kernel object does not advertise the hard-float AAPCS')
+    linked = work / 'abi.elf'
+    logged([tools['ld'], '-e', 'armv7_abi_probe', '-o', linked, obj],
+           work / 'link.log', env)
+    linked_detail = capture([tools['readelf'], '-h', linked], env)
+    linked_flags = re.search(r'^\s*Flags:\s*(.+)$', linked_detail, re.M)
+    require(linked_flags is not None and 'Version5 EABI' in linked_flags.group(1) and
+            'hard-float ABI' in linked_flags.group(1),
+            'ARMv7 linked object does not advertise the hard-float EABI')
     (work / 'header.txt').write_text(detail)
+    (work / 'linked-header.txt').write_text(linked_detail)
     (work / 'inputs.txt').write_text(
         'format=earmv7hf-kernel-abi\n' +
         'target=' + target + '\n' +
@@ -63,9 +73,11 @@ def armv7_abi(args):
         'elf_class=' + str(header['class']) + '\n' +
         'elf_machine=' + str(header['machine']) + '\n' +
         'abi_flags=' + flags.group(1).strip() + '\n' +
+        'abi_attribute=' + abi_attribute.group(1).strip() + '\n' +
+        'linked_abi_flags=' + linked_flags.group(1).strip() + '\n' +
         'required_macros=' + ','.join(metadata['required_macros']) + '\n' +
-        digest_rows([source, obj, tools['gcc'], tools['readelf']]))
-    print('PASS: GCC emits ELF32 ARMv7 hard-float EABI objects without libc headers')
+        digest_rows([source, obj, linked, tools['gcc'], tools['ld'], tools['readelf']]))
+    print('PASS: GCC emits ELF32 ARMv7 hard-float EABI objects and linked images without libc')
 
 
 def lto_binutils(args):

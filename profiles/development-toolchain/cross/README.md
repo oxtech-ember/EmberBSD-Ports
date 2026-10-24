@@ -73,7 +73,10 @@ its compiler with `build.py --target earmv7hf --kernel`; this keeps
 `earmv7hf` out of the application `TARGETS` table and does not qualify an
 application sysroot or runtime. The build verifies the compiler's EABI
 hard-float macros, compiles a freestanding floating-point object, checks for
-ELF32 machine 40, and requires the ARM hard-float EABI flag from readelf.
+ELF32 machine 40, EABI5, and the VFP-register calling-convention attribute.
+It then links that object without libc and verifies the hard-float EABI flag
+on the linked ELF; ARM relocatable objects carry the calling convention in
+`.ARM.attributes` instead of the linked-image flag.
 The GCC16 package patch limits the inherited `-matpcs` assembler option to an
 explicit APCS/ATPCS ABI selection. The default AAPCS hard-float path otherwise
 crashes GAS 2.42 and 2.47 on ARM ELF; the compiler build's split-DWARF and ABI
