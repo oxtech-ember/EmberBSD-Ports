@@ -1,0 +1,15 @@
+$NetBSD$
+
+Use the POSIX test(1) string comparison.
+
+--- configure.ac.orig
++++ configure.ac
+@@ -269,7 +269,7 @@
+ 			    [Disable POSIX timer support and use interval timers even if POSIX timers supported by the OS])
+ 	    )
+ 
+-AS_IF([test "x$enable_posix_timers" == "xno"], [
++AS_IF([test "x$enable_posix_timers" = "xno"], [
+ posix_timers=false
+ ])
+ 

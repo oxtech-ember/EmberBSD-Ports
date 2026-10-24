@@ -1,0 +1,4 @@
+PTPd implements the Precision Time Protocol (PTP) of IEEE 1588-2008.
+It can run as a master or slave clock, with software timestamps, over
+UDP/IPv4 or Ethernet, and can synchronise GigE Vision cameras to the
+host clock.

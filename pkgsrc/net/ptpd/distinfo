@@ -1,0 +1,7 @@
+$NetBSD$
+
+BLAKE2s (ptpd-2.3.1-d27a6e0.tar.gz) = c6dc744d6d6a16e469c3d7b7d7c05694fe26182be5e9add0cb921e8abfa0cea9
+SHA512 (ptpd-2.3.1-d27a6e0.tar.gz) = c812305695978ae3625ebb950343d403624f31a8c8cdf626e70a4e3f14ac43809e65e803845fde4e6f7091d01d2bb6eaea88ce352c6bd1fb42d339be6bf753f1
+Size (ptpd-2.3.1-d27a6e0.tar.gz) = 930788 bytes
+SHA1 (patch-configure.ac) = 25b9a9e7b56ca24b62d17cc99366af52263fc223
+SHA1 (patch-src_dep_iniparser_iniparser.c) = f428c7fccba97d70d955e53ed99a8e4ac7ee2741
