@@ -47,10 +47,13 @@ def armv7_abi(args):
     logged([tools['gcc'], '-O2', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
             '-ffreestanding', '-fno-builtin', '-fno-stack-protector',
             '-c', source, '-o', obj], work / 'compile.log', env)
-    header = elf.read_elf_header(obj, machine=metadata['machine'], required_type=1)
-    require(header is not None and header['class'] == 32,
-            'ARMv7 kernel compiler did not emit a 32-bit ARM relocatable object')
     detail = capture([tools['readelf'], '-h', '-A', obj], env)
+    require(re.search(r'^\s*Class:\s*ELF32\s*$', detail, re.M) and
+            re.search(r'^\s*Data:.*little endian\s*$', detail, re.M) and
+            re.search(r'^\s*Type:\s*REL\b', detail, re.M) and
+            re.search(r'^\s*Machine:\s*ARM\b', detail, re.M),
+            'ARMv7 kernel compiler did not emit a little-endian ELF32 ARM relocatable object')
+    header = {'class': 32, 'machine': metadata['machine']}
     flags = re.search(r'^\s*Flags:\s*(.+)$', detail, re.M)
     abi_attribute = re.search(r'^\s*Tag_ABI_VFP_args:\s*(.+)$', detail, re.M)
     require(flags is not None and 'Version5 EABI' in flags.group(1) and

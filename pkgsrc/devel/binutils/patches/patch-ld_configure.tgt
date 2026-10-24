@@ -1,8 +1,8 @@
 $NetBSD: patch-ld_configure.tgt,v 1.10 2023/07/31 14:08:34 fcambus Exp $
 
-NetBSD/aarch64 support patches for ld from src.
+NetBSD/AArch64 and ARMv7 support patches for ld from src.
 
-Origin: EmberBSD (AI-assisted), refresh the inherited pkgsrc patch for 2.47.
+Origin: EmberBSD; add the kernel-only ARMv7 hard-float target to Binutils 2.47.
 
 --- ld/configure.tgt.orig
 +++ ld/configure.tgt
@@ -18,4 +18,14 @@ Origin: EmberBSD (AI-assisted), refresh the inherited pkgsrc patch for 2.47.
 +			;;
  aarch64-*-nto*)		targ_emul=aarch64nto
  			targ_extra_emuls="aarch64elf aarch64elf32 aarch64elf32b aarch64elfb armelf armelfb"
+ 			;;
+@@ -191,6 +197,9 @@
+ armeb-*-netbsd*)	targ_emul=armelfb_nbsd;
+ 			targ_extra_emuls="armelf_nbsd armelf"
+ 			;;
++armv7-*-netbsdelf-eabihf*)	targ_emul=armelf_nbsd_eabihf
++			targ_extra_emuls="armelf_nbsd_eabi armelfb_nbsd_eabihf armelfb_nbsd_eabi armelf_nbsd armelfb_nbsd armelf armelfb"
++			;;
+ arm-*-netbsd*)	targ_emul=armelf_nbsd;
+ 			targ_extra_emuls="armelfb_nbsd armelf"
  			;;
