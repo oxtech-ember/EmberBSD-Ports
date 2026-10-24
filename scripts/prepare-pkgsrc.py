@@ -27,8 +27,100 @@ def require(value, message):
 
 
 def joined(root, relative):
-    # Shell "$root/$relative" does not discard root for a leading slash.
-    return Path(str(root) + '/' + relative)
+    """Join an untrusted POSIX-relative path without accepting traversal."""
+    parts = relative_parts(relative, 'export path')
+    return Path(root).joinpath(*parts)
+
+
+def relative_parts(value, label):
+    require(isinstance(value, str) and value and not value.startswith('/') and
+            '\\' not in value and not any(ord(char) < 32 or ord(char) == 127 for char in value),
+            f'{label} must be a safe relative path.')
+    parts = value.split('/')
+    require(all(part not in ('', '.', '..') for part in parts),
+            f'{label} must not contain empty, dot, or parent components.')
+    return parts
+
+
+def package_path(value, label):
+    parts = relative_parts(value, label)
+    require(len(parts) == 2, f'{label} must be a pkgsrc category/package path.')
+    return '/'.join(parts)
+
+
+def source_path(root, relative, label):
+    """Resolve one source selector and keep symlink targets inside Ports."""
+    path = joined(root, relative)
+    base = Path(root).resolve(strict=True)
+    try:
+        resolved = path.resolve(strict=True)
+    except (OSError, RuntimeError) as error:
+        raise ExportError(f'{label} does not resolve inside the Ports source: {relative}') from error
+    require(resolved.is_relative_to(base),
+            f'{label} resolves outside the Ports source: {relative}')
+    return path
+
+
+def destination_parent(root, relative):
+    """Check each existing parent without following an export-tree symlink."""
+    parts = relative_parts(relative, 'export destination')
+    base = Path(root).resolve(strict=True)
+    current = base
+    for part in parts[:-1]:
+        current = current / part
+        if not os.path.lexists(current):
+            break
+        info = current.lstat()
+        require(stat.S_ISDIR(info.st_mode),
+                f'export destination has a non-directory or symlink parent: {current}')
+        require(current.resolve(strict=True).is_relative_to(base),
+                f'export destination escapes its root: {relative}')
+    return base.joinpath(*parts)
+
+
+def ensure_destination_directory(root, relative):
+    """Create an export directory one checked component at a time."""
+    parts = relative_parts(relative, 'export destination')
+    base = Path(root).resolve(strict=True)
+    current = base
+    for part in parts:
+        current = current / part
+        if os.path.lexists(current):
+            info = current.lstat()
+            require(stat.S_ISDIR(info.st_mode),
+                    f'export destination has a non-directory or symlink parent: {current}')
+        else:
+            current.mkdir()
+        require(current.resolve(strict=True).is_relative_to(base),
+                f'export destination escapes its root: {relative}')
+    return current
+
+
+def check_tree_links(root, source, label):
+    """Reject copied-source links that leave Ports or resolve to directories."""
+    root = Path(root).resolve(strict=True)
+    source = Path(source)
+    try:
+        resolved_source = source.resolve(strict=True)
+    except (OSError, RuntimeError) as error:
+        raise ExportError(f'Incomplete source tree: {label}') from error
+    require(resolved_source.is_relative_to(root),
+            f'Source tree leaves the repository: {label}')
+    for directory, dirs, files in os.walk(source, followlinks=False):
+        for name in dirs + files:
+            path = Path(directory) / name
+            if not path.is_symlink():
+                continue
+            target = os.readlink(path)
+            require(not os.path.isabs(target), f'Link leaves the repository: {path}')
+            lexical = Path(os.path.abspath(path.parent / target))
+            require(lexical.is_relative_to(root), f'Link leaves the repository: {path}')
+            try:
+                resolved = path.resolve(strict=True)
+            except (OSError, RuntimeError) as error:
+                raise ExportError(f'Broken link: {path}') from error
+            require(resolved.is_relative_to(root), f'Link leaves the repository: {path}')
+            require(resolved.is_file(), f'Link is not a regular file: {path}')
 
 
 def destination_path(value):
@@ -50,6 +142,10 @@ def patch_sha1(path):
 
 
 def check_recipe(source, label, root):
+    root = Path(root).resolve(strict=True)
+    source = Path(source).resolve(strict=True)
+    require(source.is_relative_to(root), f'Recipe source leaves the repository: {label}')
+    check_tree_links(root, source, label)
     require((source / 'Makefile').is_file(), f'Incomplete recipe: {label} has no Makefile.')
     declared = {}
     if (source / 'distinfo').is_file():
@@ -64,24 +160,11 @@ def check_recipe(source, label, root):
                 declared[name] = True
     for path in (source / 'patches').glob('patch-*'):
         require(path.name in declared, f'Undeclared patch: {label}/patches/{path.name}')
-    for directory, dirs, files in os.walk(source, followlinks=False):
-        for name in dirs + files:
-            path = Path(directory) / name
-            if not path.is_symlink():
-                continue
-            target = os.readlink(path)
-            require(not os.path.isabs(target), f'Link leaves the repository: {path}')
-            lexical = Path(os.path.abspath(path.parent / target))
-            require(lexical.is_relative_to(root), f'Link leaves the repository: {path}')
-            try:
-                resolved = path.resolve(strict=True)
-            except (OSError, RuntimeError) as error:
-                raise ExportError(f'Broken link: {path}') from error
-            require(resolved.is_relative_to(root), f'Link leaves the repository: {path}')
-            require(resolved.is_file(), f'Broken link: {path}')
 
 
 def configuration(root):
+    root = Path(root).resolve(strict=True)
+    source_path(root, 'pkgsrc/export.conf', 'export configuration')
     config = root / 'pkgsrc/export.conf'
     require(config.is_file(), 'Missing pkgsrc/export.conf.')
     recipes, patches, files = [], [], []
@@ -94,9 +177,10 @@ def configuration(root):
             continue
         require(len(fields) <= 4, f'pkgsrc/export.conf: too many fields for {method}.')
         first, second, third = (fields[1:] + ['', '', ''])[:3]
-        source = joined(root, first)
+        source = source_path(root, first, 'export source')
         if method == 'recipe':
             require(second and not third, 'pkgsrc/export.conf: use recipe SOURCE PKGPATH.')
+            second = package_path(second, 'PKGPATH')
             check_recipe(source, first, root)
             recipes.append((second, source))
         elif method == 'patch':
@@ -105,26 +189,42 @@ def configuration(root):
             patches.append((method, source, '', ''))
         elif method == 'git-apply':
             require(second and not third, 'pkgsrc/export.conf: use git-apply FILE MANIFEST.')
+            second = source_path(root, second, 'patch manifest')
             require(source.is_file() and source.stat().st_size, f'Missing infrastructure patch: {first}')
-            recorded = [line.split('\t')[1] for line in joined(root, second).read_bytes().decode('utf-8').split('\n')
+            recorded = [line.split('\t')[1] for line in second.read_bytes().decode('utf-8').split('\n')
                         if line.split('\t')[0] == source.name and len(line.split('\t')) > 1]
             require(recorded == [hashlib.sha256(source.read_bytes()).hexdigest()],
                     f'Infrastructure patch differs from {second}: {first}')
             patches.append((method, source, '', ''))
         elif method == 'recipe-patch':
             require(third, 'pkgsrc/export.conf: use recipe-patch FILE PKGPATH NAME.')
+            second = package_path(second, 'PKGPATH')
+            third = relative_parts(third, 'recipe patch name')
+            require(len(third) == 1, 'recipe patch name must be one path component.')
+            third = third[0]
             require(source.is_file() and source.stat().st_size, f'Missing recipe patch: {first}')
             require(third.startswith('patch-'), f'Recipe patch names start with patch-: {third}')
             patches.append((method, source, second, third))
         elif method == 'file':
             require(second and not third, 'pkgsrc/export.conf: use file SOURCE DESTINATION.')
+            second = '/'.join(relative_parts(second, 'file destination'))
             require(source.is_file(), f'Missing exported file: {first}')
             files.append((source, second))
         else:
             raise ExportError(f'pkgsrc/export.conf: unknown method {method}.')
-    categories = sorted(path for path in (root / 'pkgsrc').iterdir()
-                        if path.is_dir() and not path.name.startswith('.'))
+    source_path(root, 'pkgsrc', 'pkgsrc source directory')
+    categories = []
+    for path in (root / 'pkgsrc').iterdir():
+        if path.name.startswith('.'):
+            continue
+        info = path.lstat()
+        require(not stat.S_ISLNK(info.st_mode),
+                f'pkgsrc category must not be a symlink: {path.name}')
+        if stat.S_ISDIR(info.st_mode):
+            categories.append(path)
+    categories.sort()
     for category in categories:
+        check_tree_links(root, category, 'pkgsrc/' + category.name)
         for package in sorted(path for path in category.iterdir()
                               if path.is_dir() and not path.name.startswith('.')):
             name = category.name + '/' + package.name
@@ -221,37 +321,47 @@ def export_pkgsrc(root, destination, *, selection, runner, scratch):
     destination.mkdir()
     extract_archive(archive, destination)
     replaces_file = root / 'pkgsrc/replaces'
-    replaces = ([line.strip(' \t') for line in replaces_file.read_bytes().decode('utf-8').split('\n')
-                 if line and not line.startswith('#')] if replaces_file.is_file() else [])
+    if os.path.lexists(replaces_file):
+        source_path(root, 'pkgsrc/replaces', 'pkgsrc replacements list')
+    replaces = ([package_path(line.strip(' \t'), 'pkgsrc/replaces entry')
+                 for line in replaces_file.read_bytes().decode('utf-8').split('\n')
+                 if line.strip(' \t') and not line.startswith('#')] if replaces_file.is_file() else [])
     names = {name for name, source in recipes}
     for name in replaces:
-        require(name in names and joined(destination, name + '/Makefile').is_file(),
+        upstream_makefile = destination_parent(destination, name + '/Makefile')
+        require(name in names and upstream_makefile.is_file(),
                 f'pkgsrc/replaces names {name}, but no EmberBSD recipe or no upstream recipe has it.')
     for name, source in recipes:
-        require(not os.path.lexists(joined(destination, name)) or name in replaces,
+        upstream_recipe = destination_parent(destination, name)
+        require(not os.path.lexists(upstream_recipe) or name in replaces,
                 f'Upstream already has {name}; add it to pkgsrc/replaces or remove it.')
     new_categories = set()
     for category in categories:
-        target = destination / category.name
-        if not target.exists():
+        target = destination_parent(destination, category.name)
+        if not os.path.lexists(target):
             shutil.copytree(category, target, copy_function=copy_file)
             new_categories.add(category.name)
-        elif (category / 'Makefile').is_file():
-            raise ExportError(f'Upstream already has {category.name}; review the overlay.')
         else:
-            for path in category.iterdir():
-                if path.name.startswith('.'):
-                    continue
-                require(path.is_dir(), f'Unexpected overlay file: pkgsrc/{category.name}/{path.name}')
+            require(stat.S_ISDIR(target.lstat().st_mode),
+                    f'Export category is not a real directory: {category.name}')
+            if (category / 'Makefile').is_file():
+                raise ExportError(f'Upstream already has {category.name}; review the overlay.')
+            else:
+                for path in category.iterdir():
+                    if path.name.startswith('.'):
+                        continue
+                    require(path.is_dir(), f'Unexpected overlay file: pkgsrc/{category.name}/{path.name}')
     for name, source in recipes:
         if source.is_relative_to(root / 'pkgsrc') and name.split('/')[0] in new_categories:
             continue
-        target = joined(destination, name)
-        if target.is_symlink() or target.is_file():
+        target = destination_parent(destination, name)
+        if os.path.lexists(target) and (target.is_symlink() or target.is_file()):
             target.unlink()
-        elif target.exists():
+        elif os.path.lexists(target):
+            require(stat.S_ISDIR(target.lstat().st_mode),
+                    f'Unsupported existing export object: {name}')
             shutil.rmtree(target)
-        target.parent.mkdir(parents=True, exist_ok=True)
+        ensure_destination_directory(destination, name.rpartition('/')[0])
         shutil.copytree(source, target, copy_function=copy_file)
     for method, source, recipe, name in patches:
         if method == 'patch':
@@ -265,18 +375,27 @@ def export_pkgsrc(root, destination, *, selection, runner, scratch):
             invoke('git', '-C', destination, 'apply', '--check', source)
             invoke('git', '-C', destination, 'apply', source)
         else:
-            directory = joined(destination, recipe) / 'patches'
-            directory.mkdir(exist_ok=True)
+            directory = ensure_destination_directory(destination, recipe + '/patches')
             target = directory / name
-            require(not target.exists(), f'Recipe patch collision: {recipe}/patches/{name}')
+            require(not os.path.lexists(target), f'Recipe patch collision: {recipe}/patches/{name}')
             copy_file(source, target)
-            with joined(destination, recipe + '/distinfo').open('a') as output:
+            distinfo = destination_parent(destination, recipe + '/distinfo')
+            require(os.path.lexists(distinfo) and stat.S_ISREG(distinfo.lstat().st_mode),
+                    f'Recipe distinfo is not a regular file: {recipe}/distinfo')
+            fd = os.open(distinfo, os.O_WRONLY | os.O_APPEND | getattr(os, 'O_NOFOLLOW', 0))
+            with os.fdopen(fd, 'a', encoding='utf-8') as output:
                 output.write(f'SHA1 ({name}) = {patch_sha1(source)}\n')
     for source, name in files:
-        target = joined(destination, name)
-        require(not target.exists(), f'Exported file collision: {name}')
+        target = destination_parent(destination, name)
+        require(not os.path.lexists(target), f'Exported file collision: {name}')
+        parent = target.parent.relative_to(destination).as_posix()
+        if parent != '.':
+            ensure_destination_directory(destination, parent)
         copy_file(source, target)
-    (destination / 'EMBERBSD-PKGSRC-REVISION').write_text(revision + '\n')
+    revision_file = destination_parent(destination, 'EMBERBSD-PKGSRC-REVISION')
+    require(not os.path.lexists(revision_file), 'Exported revision file already exists.')
+    with revision_file.open('x', encoding='ascii') as output:
+        output.write(revision + '\n')
     return revision
 
 
