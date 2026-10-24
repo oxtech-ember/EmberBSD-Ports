@@ -326,3 +326,26 @@ The valid executable passes on physical NetBSD amd64 with the common GCC16
 runtime selected. Cppcheck and Clang Static Analyzer complete both small
 header-fixture variants without findings. This bounded result does not establish
 clean analysis of full generated consumers or a working browser.
+
+## Net and Mojo preconditions
+
+The AI-assisted Net/Mojo patch makes the existing group-controller prerequisite
+fatal in release builds when associated endpoints need serialization. Empty
+messages and messages with only ordinary handles retain their early returns.
+The socket helper requires a socket handle after its preconnect early return.
+The patch also adds braces around conditional SPDY checks, preserves the
+availability-state enum results, and reads cache transaction pointers by
+reference.
+
+All five observed production inputs fail before and compile after the patch
+with their GCC16 flags. Clang Static Analyzer completes all ten cases; its
+36 baseline findings become 34, removing the two null-pointer paths without
+adding findings. Cppcheck stops at dependency parser errors in all ten cases.
+
+The changed Mojo and socket test translation units compile in both official
+and streaming-release profiles. Test expectations use unsigned socket counts,
+and the test helper keeps fatal invalid-enum handling. New death tests require
+CHECK text so an earlier null dereference cannot pass the regex. The Mojo
+death test also requires disabled DCHECK because the baseline debug assertion
+would otherwise pass the same check. Other profiles explicitly skip these
+death cases. Execution of these upstream tests remains pending.

@@ -1,0 +1,346 @@
+--- a/mojo/public/cpp/bindings/lib/message.cc
++++ b/mojo/public/cpp/bindings/lib/message.cc
+@@ -543,7 +543,7 @@
+                      payload(), payload_size));
+   *this = std::move(new_message);
+ 
+-  DCHECK(group_controller);
++  CHECK(group_controller);
+   DCHECK_GE(version(), 2u);
+   DCHECK(header_v2()->payload_interface_ids.is_null());
+   DCHECK(payload_buffer_.is_valid());
+--- a/mojo/public/cpp/bindings/tests/message_unittest.cc
++++ b/mojo/public/cpp/bindings/tests/message_unittest.cc
+@@ -8,9 +8,13 @@
+ 
+ #include <algorithm>
+ #include <tuple>
++#include <utility>
+ #include <vector>
+ 
+ #include "base/compiler_specific.h"
++#include "base/dcheck_is_on.h"
++#include "base/test/gtest_util.h"
++#include "mojo/public/cpp/bindings/scoped_interface_endpoint_handle.h"
+ #include "mojo/public/cpp/system/message_pipe.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+ 
+@@ -38,6 +42,35 @@
+   handles->resize(2);
+   handles->at(0) = ScopedHandle(std::move(pipe.handle0));
+   handles->at(1) = ScopedHandle(std::move(pipe.handle1));
++}
++
++TEST(BindingsMessageTest, SerializeEmptyWithoutGroupController) {
++  Message message(kTestMessageName, kTestMessageFlags, 0, 0, nullptr);
++  message.SerializeHandles(nullptr);
++  EXPECT_TRUE(message.mutable_handles()->empty());
++  EXPECT_TRUE(message.mutable_associated_endpoint_handles()->empty());
++}
++
++TEST(BindingsMessageTest, SerializeHandlesWithoutGroupController) {
++  Message message(kTestMessageName, kTestMessageFlags, 0, 0, nullptr);
++  MessagePipe pipe;
++  message.mutable_handles()->push_back(ScopedHandle(std::move(pipe.handle1)));
++  message.SerializeHandles(nullptr);
++  EXPECT_TRUE(message.mutable_handles()->empty());
++}
++
++TEST(BindingsMessageTest, AssociatedHandlesRequireGroupController) {
++#if CHECK_WILL_STREAM() && !DCHECK_IS_ON()
++  Message message(kTestMessageName, kTestMessageFlags, 0, 0, nullptr);
++  ScopedInterfaceEndpointHandle local;
++  ScopedInterfaceEndpointHandle remote;
++  ScopedInterfaceEndpointHandle::CreatePairPendingAssociation(&local, &remote);
++  message.mutable_associated_endpoint_handles()->push_back(std::move(local));
++  EXPECT_CHECK_DEATH_WITH(message.SerializeHandles(nullptr), "group_controller");
++#else
++  GTEST_SKIP() << "Requires streaming CHECK and disabled DCHECK to distinguish "
++                  "the CHECK from the previous null dereference.";
++#endif
+ }
+ 
+ TEST(BindingsMessageTest, ConstructFromPayload) {
+--- a/net/http/http_cache.cc
++++ b/net/http/http_cache.cc
+@@ -88,7 +88,7 @@
+ template <typename T>
+ RequestPriority GetHighestPriority(const T& transactions) {
+   RequestPriority highest = RequestPriority::IDLE;
+-  for (const auto tx : transactions) {
++  for (const auto& tx : transactions) {
+     highest = std::max(highest, tx->priority());
+   }
+   return highest;
+--- a/net/socket/client_socket_pool_manager.cc
++++ b/net/socket/client_socket_pool_manager.cc
+@@ -126,6 +126,7 @@
+                                 std::move(preconnect_callback), net_log);
+   }
+ 
++  CHECK(socket_handle);
+   return socket_handle->Init(connection_group, std::move(socket_params),
+                              proxy_annotation, request_priority, socket_tag,
+                              respect_limits, std::move(callback),
+--- a/net/socket/transport_client_socket_pool_unittest.cc
++++ b/net/socket/transport_client_socket_pool_unittest.cc
+@@ -14,8 +14,10 @@
+ #include "base/functional/callback_helpers.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/ref_counted.h"
++#include "base/notreached.h"
+ #include "base/run_loop.h"
+ #include "base/test/bind.h"
++#include "base/test/gtest_util.h"
+ #include "base/test/scoped_feature_list.h"
+ #include "base/test/test_future.h"
+ #include "base/threading/platform_thread.h"
+@@ -44,6 +46,7 @@
+ #include "net/log/test_net_log.h"
+ #include "net/proxy_resolution/configured_proxy_resolution_service.h"
+ #include "net/socket/client_socket_handle.h"
++#include "net/socket/client_socket_pool_manager.h"
+ #include "net/socket/connect_job.h"
+ #include "net/socket/socket_pool_additional_capacity.h"
+ #include "net/socket/socket_tag.h"
+@@ -244,6 +247,25 @@
+ };
+ 
+ INSTANTIATE_TEST_SUITE_P(, TransportClientSocketPoolTest, testing::Bool());
++
++TEST_P(TransportClientSocketPoolTest, PreconnectRequiresPositiveStreamCount) {
++#if CHECK_WILL_STREAM()
++  ProxyInfo proxy_info;
++  proxy_info.UseDirect();
++  EXPECT_CHECK_DEATH_WITH(
++      PreconnectSocketsForHttpRequest(
++          url::SchemeHostPort(url::kHttpScheme, "example.test", 80), 0, LOW,
++          http_network_session_.get(), proxy_info, {},
++          PrivacyMode::PRIVACY_MODE_DISABLED, NetworkAnonymizationKey(),
++          SecureDnsPolicy::kAllow, handles::kInvalidNetworkHandle,
++          NetLogWithSource(), 0,
++          ClientSocketPool::PreconnectCompletionCallback()),
++      "socket_handle");
++#else
++  GTEST_SKIP() << "Requires CHECK diagnostic text to distinguish the CHECK "
++                  "from a null dereference.";
++#endif
++}
+ 
+ TEST_P(TransportClientSocketPoolTest, Basic) {
+   TestCompletionCallback callback;
+@@ -1017,14 +1039,14 @@
+   base::RunLoop().RunUntilIdle();
+ 
+   // Now we should have 1 idle socket.
+-  EXPECT_EQ(1, pool_->IdleSocketCount());
++  EXPECT_EQ(1u, pool_->IdleSocketCount());
+ 
+   rv = handle.Init(group_id_, params_, std::nullopt /* proxy_annotation_tag */,
+                    LOW, SocketTag(), ClientSocketPool::RespectLimits::ENABLED,
+                    callback.callback(), ClientSocketPool::ProxyAuthCallback(),
+                    pool_.get(), NetLogWithSource());
+   EXPECT_THAT(rv, IsOk());
+-  EXPECT_EQ(0, pool_->IdleSocketCount());
++  EXPECT_EQ(0u, pool_->IdleSocketCount());
+   TestLoadTimingInfoConnectedReused(handle);
+ }
+ 
+@@ -1050,13 +1072,13 @@
+   base::RunLoop().RunUntilIdle();
+ 
+   // Now we should have 1 idle socket.
+-  EXPECT_EQ(1, pool_->IdleSocketCount());
++  EXPECT_EQ(1u, pool_->IdleSocketCount());
+ 
+   // After an IP address change, we should have 0 idle sockets.
+   NetworkChangeNotifier::NotifyObserversOfIPAddressChangeForTests();
+   base::RunLoop().RunUntilIdle();  // Notification happens async.
+ 
+-  EXPECT_EQ(0, pool_->IdleSocketCount());
++  EXPECT_EQ(0u, pool_->IdleSocketCount());
+ }
+ 
+ TEST(TransportClientSocketPoolStandaloneTest, DontCleanupOnIPAddressChange) {
+@@ -1108,13 +1130,13 @@
+   // Need to run all pending to release the socket back to the pool.
+   base::RunLoop().RunUntilIdle();
+   // Now we should have 1 idle socket.
+-  EXPECT_EQ(1, pool->IdleSocketCount());
++  EXPECT_EQ(1u, pool->IdleSocketCount());
+ 
+   // Since we set cleanup_on_ip_address_change = false, we should still have 1
+   // idle socket after an IP address change.
+   NetworkChangeNotifier::NotifyObserversOfIPAddressChangeForTests();
+   base::RunLoop().RunUntilIdle();  // Notification happens async.
+-  EXPECT_EQ(1, pool->IdleSocketCount());
++  EXPECT_EQ(1u, pool->IdleSocketCount());
+ }
+ 
+ TEST_P(TransportClientSocketPoolTest, SSLCertError) {
+@@ -1298,6 +1320,7 @@
+       case SSLClientContext::SSLConfigChangeType::kCertVerifierChanged:
+         return TransportClientSocketPool::kCertVerifierChanged;
+     }
++    NOTREACHED();
+   }
+ };
+ }  // namespace
+@@ -1321,7 +1344,7 @@
+     EXPECT_TRUE(handle1.is_initialized());
+     EXPECT_TRUE(handle1.socket());
+     EXPECT_EQ(0, handle1.group_generation());
+-    EXPECT_EQ(0, pool_->IdleSocketCount());
++    EXPECT_EQ(0u, pool_->IdleSocketCount());
+ 
+     handle1.Reset();
+   }
+@@ -1330,7 +1353,7 @@
+   base::RunLoop().RunUntilIdle();
+ 
+   // Now we should have 1 idle socket.
+-  EXPECT_EQ(1, pool_->IdleSocketCount());
++  EXPECT_EQ(1u, pool_->IdleSocketCount());
+ 
+   // Create another request and finish connection of the socket, but hold on to
+   // the handle until later in the test.
+@@ -1359,7 +1382,7 @@
+ 
+   // Still only have 1 idle socket since handle2 is still alive.
+   base::RunLoop().RunUntilIdle();
+-  EXPECT_EQ(1, pool_->IdleSocketCount());
++  EXPECT_EQ(1u, pool_->IdleSocketCount());
+ 
+   // Create a pending request but don't finish connection.
+   ClientSocketPool::GroupId group_id3(
+@@ -1387,7 +1410,7 @@
+   // After a configuration change, we should have 0 idle sockets. The first
+   // idle socket should have been closed, and handle2 and handle3 are still
+   // alive.
+-  EXPECT_EQ(0, pool_->IdleSocketCount());
++  EXPECT_EQ(0u, pool_->IdleSocketCount());
+ 
+   // Verify the netlog messages recorded the correct reason for closing the
+   // idle sockets.
+@@ -1409,13 +1432,13 @@
+   // part of the first generation.
+   handle2.Reset();
+   base::RunLoop().RunUntilIdle();
+-  EXPECT_EQ(0, pool_->IdleSocketCount());
++  EXPECT_EQ(0u, pool_->IdleSocketCount());
+ 
+   // After releasing handle3, there is now one idle socket, since that socket
+   // was connected during the new generation.
+   handle3.Reset();
+   base::RunLoop().RunUntilIdle();
+-  EXPECT_EQ(1, pool_->IdleSocketCount());
++  EXPECT_EQ(1u, pool_->IdleSocketCount());
+ }
+ 
+ INSTANTIATE_TEST_SUITE_P(
+@@ -1455,7 +1478,7 @@
+   for (auto rules : cases) {
+     client_socket_factory_.SetRules(rules);
+ 
+-    EXPECT_EQ(0, pool_->IdleSocketCount());
++    EXPECT_EQ(0u, pool_->IdleSocketCount());
+ 
+     TestCompletionCallback callback;
+     ClientSocketHandle handle;
+@@ -1483,7 +1506,7 @@
+     EXPECT_TRUE(handle.socket());
+ 
+     // One socket is stalled, the other is active.
+-    EXPECT_EQ(0, pool_->IdleSocketCount());
++    EXPECT_EQ(0u, pool_->IdleSocketCount());
+     handle.Reset();
+ 
+     // Close all pending connect jobs and existing sockets.
+@@ -1500,7 +1523,7 @@
+   enum { CANCEL_BEFORE_WAIT, CANCEL_AFTER_WAIT };
+ 
+   for (int index = CANCEL_BEFORE_WAIT; index < CANCEL_AFTER_WAIT; ++index) {
+-    EXPECT_EQ(0, pool_->IdleSocketCount());
++    EXPECT_EQ(0u, pool_->IdleSocketCount());
+ 
+     TestCompletionCallback callback;
+     ClientSocketHandle handle;
+@@ -1532,7 +1555,7 @@
+     EXPECT_FALSE(handle.socket());
+ 
+     // One socket is stalled, the other is active.
+-    EXPECT_EQ(0, pool_->IdleSocketCount());
++    EXPECT_EQ(0u, pool_->IdleSocketCount());
+   }
+ }
+ 
+@@ -1551,7 +1574,7 @@
+ 
+   client_socket_factory_.SetRules(rules);
+ 
+-  EXPECT_EQ(0, pool_->IdleSocketCount());
++  EXPECT_EQ(0u, pool_->IdleSocketCount());
+ 
+   TestCompletionCallback callback;
+   ClientSocketHandle handle;
+@@ -1584,7 +1607,7 @@
+   ASSERT_EQ(1u, handle.connection_attempts().size());
+   EXPECT_THAT(handle.connection_attempts()[0].result,
+               IsError(ERR_CONNECTION_FAILED));
+-  EXPECT_EQ(0, pool_->IdleSocketCount());
++  EXPECT_EQ(0u, pool_->IdleSocketCount());
+   handle.Reset();
+ }
+ 
+@@ -1604,7 +1627,7 @@
+   client_socket_factory_.SetRules(rules);
+   client_socket_factory_.set_delay(base::Seconds(5));
+ 
+-  EXPECT_EQ(0, pool_->IdleSocketCount());
++  EXPECT_EQ(0u, pool_->IdleSocketCount());
+ 
+   TestCompletionCallback callback;
+   ClientSocketHandle handle;
+@@ -2366,7 +2389,7 @@
+   // HasActiveSocket returns true for the idle socket.
+   EXPECT_TRUE(pool_->HasActiveSocket(group_id1));
+   // Now we should have 1 idle socket.
+-  EXPECT_EQ(1, pool_->IdleSocketCount());
++  EXPECT_EQ(1u, pool_->IdleSocketCount());
+ 
+   // HasActiveSocket() for group_id2 must still return false.
+   EXPECT_FALSE(pool_->HasActiveSocket(group_id2));
+--- a/net/spdy/spdy_http_stream.cc
++++ b/net/spdy/spdy_http_stream.cc
+@@ -110,8 +110,9 @@
+ int SpdyHttpStream::ReadResponseBody(IOBuffer* buf,
+                                      int buf_len,
+                                      CompletionOnceCallback callback) {
+-  if (stream_)
++  if (stream_) {
+     CHECK(!stream_->IsIdle());
++  }
+ 
+   CHECK(buf);
+   CHECK(buf_len);
+--- a/net/spdy/spdy_session.cc
++++ b/net/spdy/spdy_session.cc
+@@ -1642,6 +1642,7 @@
+     case STATE_DRAINING:
+       return "Draining";
+   }
++  NOTREACHED();
+ }
+ 
+ void SpdySession::InitializeInternal(SpdySessionPool* pool) {
+@@ -2157,8 +2158,9 @@
+       return ERR_IO_PENDING;
+     }
+ 
+-    if (stream.get())
++    if (stream.get()) {
+       CHECK(!stream->IsClosed());
++    }
+ 
+     // Activate the stream only when sending the HEADERS frame to
+     // guarantee monotonically-increasing stream IDs.
