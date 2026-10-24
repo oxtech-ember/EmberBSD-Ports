@@ -83,6 +83,16 @@ target runtime package execution remains a separate acceptance step.
 The default `compiler` provider preserves existing full-package workflows.
 The providers conflict; do not register both or fabricate full-package metadata.
 
+The `pkg_alternatives` recipe keeps native shell and `id` discovery unchanged.
+For NetBSD cross packages, its installed POSIX script and generated wrappers
+use the target `/bin/sh` and `/usr/bin/id`. This matches pkgsrc's cross package
+script contract. The build shell and interpreter checks stay enabled.
+The repair is AI-assisted EmberBSD work based on NetBSD's recipe and templates.
+The [focused substitution check](../tests/pkg-alternatives-runtime.py) compares
+native bytes and cross runtime paths with the actual recipe substitutions.
+It creates only private host fixtures. Package and target runtime acceptance
+remain separate.
+
 Do not substitute a host package database for the target database. The
 selected target GCC runtime needs its CRT files and `libstdc++.so.7`; a
 compiler executable alone does not satisfy these prerequisites. This profile
