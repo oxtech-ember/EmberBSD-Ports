@@ -130,6 +130,10 @@ This preserves the selected shell's options, escapes and statuses.
 The command has no quoted words: pkgsrc passes tools such as `TEST` to
 scripts like `mk/extract/extract` in the environment, and they run `${TEST}`
 unquoted. A quoted `-c` command would split into broken words there.
+pkgsrc also reduces `TOOLS_ECHO`, `TOOLS_TEST`, `TOOLS_TRUE` and
+`TOOLS_FALSE` to the first word of the map, the shell alone. The policy sets
+them to the full command, and `tests/darwin-bootstrap-builtin-env.py` runs
+each value the way these scripts do.
 Compatibility-mode bmake can otherwise bypass the shell for a simple recipe
 and try to execute an absent external builtin name.
 The finite [echo fixture](tests/darwin-bootstrap-echo.mk) compares this route

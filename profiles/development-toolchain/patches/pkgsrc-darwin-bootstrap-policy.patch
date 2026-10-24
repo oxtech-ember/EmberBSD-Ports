@@ -144,6 +144,25 @@ Keep ordinary Darwin defaults. Use the standard compiler wrappers.
  
  # Catch conflicting tools.
  .if !empty(_USE_TOOLS:Mbison) && !empty(_USE_TOOLS:Mbyacc)
+@@ -1456,6 +1465,18 @@
+ .  endif
+ .endfor
+ 
++# The builtin maps are selected-shell commands, not paths. pkgsrc passes
++# TOOLS_ECHO and TOOLS_TEST to scripts in the environment, and the scripts
++# run them unquoted, so they need the full command.
++.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++.  for _ember_builtin in echo false test true
++.    if defined(_TOOLS_VARNAME.${_ember_builtin}) && \
++        defined(TOOLS_CMDLINE.${_ember_builtin})
++TOOLS_${_TOOLS_VARNAME.${_ember_builtin}}=	${TOOLS_CMDLINE.${_ember_builtin}}
++.    endif
++.  endfor
++.endif
++
+ .if !empty(_tmiss_)
+ PKG_FAIL_REASON+=	"${X11BASE}: X11_TYPE=native but xbase set is not installed (missing: ${_tmiss_}).  Either set X11_TYPE to modular or install xbase."
+ .endif
 --- a/mk/compiler/gcc.mk
 +++ b/mk/compiler/gcc.mk
 @@ -390,6 +390,11 @@

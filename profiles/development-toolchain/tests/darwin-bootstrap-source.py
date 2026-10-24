@@ -55,12 +55,12 @@ def check_variable_cases(outputs):
     return True
 
 
-def branch(text, opening):
-    """Return this one literal conditional's two bodies; retain nested syntax."""
+def branch(text, opening, count=1, which=0):
+    """Return one literal conditional's two bodies; retain nested syntax."""
     lines = text.splitlines(keepends=True)
     hits = [i for i, line in enumerate(lines) if line.rstrip() == opening]
-    require(len(hits) == 1, 'Expected one exact source guard')
-    start = hits[0]
+    require(len(hits) == count, f'Expected {count} exact source guards')
+    start = hits[which]
     depth = 1
     split = None
     for i in range(start + 1, len(lines)):
@@ -124,10 +124,16 @@ def check(before, after, policy, recipe):
             'An inherited compiler cache can replace the selected query')
 
     replacement = after['mk/tools/replace.mk']
-    selected, ordinary = branch(replacement, OPT)
+    selected, ordinary = branch(replacement, OPT, 2, 0)
     require(not ordinary and 'empty(EMBERBSD_DARWIN_SOURCE_TOOLS:M${_ember_tool})' in selected
             and '.error "Select a native or shared Ports source provider' in selected,
             'An unknown requested utility can silently use a provider')
+    selected, ordinary = branch(replacement, OPT, 2, 1)
+    require(not ordinary and '.  for _ember_builtin in echo false test true\n' in selected
+            and 'TOOLS_${_TOOLS_VARNAME.${_ember_builtin}}=\t${TOOLS_CMDLINE.${_ember_builtin}}\n' in selected
+            # after the loop that sets TOOLS_<VAR> to the first word
+            and replacement.rindex(OPT) > replacement.index('TOOLS_CMDLINE_${_TOOLS_VARNAME.${_t_}}='),
+            'pkgsrc scripts get only the shell of a builtin command map')
     require('Select accepted parse-time utility ${_ember_tool}' in policy,
             'The early utility admission gate was lost')
 
