@@ -1,6 +1,6 @@
 $NetBSD$
 diff --git gaster.c gaster.c
-index b52b08d..93d37d7 100644
+index b52b08d..cd03b40 100644
 --- gaster.c
 +++ gaster.c
 @@ -1,4 +1,5 @@
@@ -771,10 +771,10 @@ index b52b08d..93d37d7 100644
 +		}
 +		fprintf(stderr, "[pwn2] prelude: 4 reads, last ret=%d errno=%d\n", (int)probe.ret, gaster_dbg_sync_errno);
 +#ifdef GASTER_NETBSD_NATIVE
-+		if(getenv("GASTER_ASYNC_PRIMER") == NULL) {
-+			/* Reference large-leak primer.  It silenced the ROM
-+			 * before the baseline was aligned; with the four
-+			 * prelude reads it should now hold like upstream. */
++		if(getenv("GASTER_SYNC_PRIMER") != NULL) {
++			/* Reference large-leak primer.  It silences this
++			 * device's leak path even on the aligned baseline
++			 * (attempt 2026-10-24); kept for comparison. */
 +			send_usb_control_request_no_data(handle, 2, 3, 0, 0x80, 0, &probe);
 +			fprintf(stderr, "[pwn2] initial stall (2,3,0x80): ret=%d errno=%d\n", (int)probe.ret, gaster_dbg_sync_errno);
 +		} else {
