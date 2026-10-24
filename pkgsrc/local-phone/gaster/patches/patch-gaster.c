@@ -1,6 +1,6 @@
 $NetBSD$
 diff --git gaster.c gaster.c
-index b52b08d..3222fad 100644
+index b52b08d..cf3f3c9 100644
 --- gaster.c
 +++ gaster.c
 @@ -1,4 +1,5 @@
@@ -634,7 +634,7 @@ index b52b08d..3222fad 100644
  	}
  	return true;
  }
-@@ -1208,18 +1702,56 @@ checkm8_stage_patch(const usb_handle_t *handle) {
+@@ -1208,18 +1702,62 @@ checkm8_stage_patch(const usb_handle_t *handle) {
  				overwrite = &checkm8_overwrite_armv7;
  				overwrite_sz = sizeof(checkm8_overwrite_armv7);
  			}
@@ -652,7 +652,13 @@ index b52b08d..3222fad 100644
 +				(void)ioctl(handle->fd, USB_SET_TIMEOUT, &t50);
 +#endif
 +				fprintf(stderr, "[patch] fork: overwrite %zu bytes\n", overwrite_sz);
-+				(void)send_usb_control_request(handle, 0, 0, 0, 0, overwrite, overwrite_sz, &transfer_ret);
++				/* The (0,0) carrier never lands on this device
++				 * (lab 2026-10-24); the DFU write path parks
++				 * and lands reliably, and after the 0x580
++				 * staging its cursor is at the overwrite
++				 * offset. */
++				(void)send_usb_control_request(handle, 0x21, DFU_DNLOAD, 0, 0, overwrite, overwrite_sz, &transfer_ret);
++				fprintf(stderr, "[patch] fork: overwrite ret=%d sz=%u errno=%d\n", (int)transfer_ret.ret, transfer_ret.sz, gaster_dbg_sync_errno);
 +				fprintf(stderr, "[patch] fork: payload %zu bytes\n", data_sz);
 +				for(i = 0; i < data_sz; i += packet_sz) {
 +					packet_sz = MIN(data_sz - i, DFU_MAX_TRANSFER_SZ);
@@ -695,7 +701,7 @@ index b52b08d..3222fad 100644
  				}
  			}
  			free(data);
-@@ -1228,20 +1760,214 @@ checkm8_stage_patch(const usb_handle_t *handle) {
+@@ -1228,20 +1766,214 @@ checkm8_stage_patch(const usb_handle_t *handle) {
  	return ret;
  }
  
@@ -917,7 +923,7 @@ index b52b08d..3222fad 100644
  			if(stage == STAGE_RESET) {
  				puts("Stage: RESET");
  				ret = checkm8_stage_reset(handle);
-@@ -1265,7 +1991,7 @@ gaster_checkm8(usb_handle_t *handle) {
+@@ -1265,7 +1997,7 @@ gaster_checkm8(usb_handle_t *handle) {
  				puts("ret: false");
  				stage = STAGE_RESET;
  			}
@@ -926,7 +932,7 @@ index b52b08d..3222fad 100644
  		} else {
  			stage = STAGE_PWNED;
  			puts("Now you can boot untrusted images.");
-@@ -1412,7 +2138,7 @@ img4_init(const uint8_t *src, size_t src_len, img4_t *img4) {
+@@ -1412,7 +2144,7 @@ img4_init(const uint8_t *src, size_t src_len, img4_t *img4) {
  
  static bool
  aes_256_cbc_decrypt(const uint8_t *key, const uint8_t *iv, const uint8_t *data_src, uint8_t *data_dst, size_t data_sz) {
@@ -935,7 +941,7 @@ index b52b08d..3222fad 100644
  	EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
  	bool ret = false;
  	int out_sz;
-@@ -1628,10 +2354,20 @@ main(int argc, char **argv) {
+@@ -1628,10 +2360,20 @@ main(int argc, char **argv) {
  	int ret = EXIT_FAILURE;
  	usb_handle_t handle;
  
@@ -956,7 +962,7 @@ index b52b08d..3222fad 100644
  	if(env_usb_abort_timeout_min == NULL || sscanf(env_usb_abort_timeout_min, "%u", &usb_abort_timeout_min) != 1 || usb_abort_timeout_min > usb_timeout) {
  		usb_abort_timeout_min = 0;
  	}
-@@ -1640,6 +2376,10 @@ main(int argc, char **argv) {
+@@ -1640,6 +2382,10 @@ main(int argc, char **argv) {
  		if(gaster_reset(&handle)) {
  			ret = 0;
  		}
@@ -967,7 +973,7 @@ index b52b08d..3222fad 100644
  	} else if(argc == 2 && strcmp(argv[1], "pwn") == 0) {
  		if(gaster_checkm8(&handle)) {
  			ret = 0;
-@@ -1657,6 +2397,10 @@ main(int argc, char **argv) {
+@@ -1657,6 +2403,10 @@ main(int argc, char **argv) {
  		puts("env:");
  		puts("USB_TIMEOUT - USB timeout in ms");
  		puts("USB_ABORT_TIMEOUT_MIN - USB abort timeout minimum in ms");
