@@ -102,12 +102,30 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 +++ b/lang/gcc16/Makefile
 @@ -7,1 +7,1 @@
 -PKGREVISION=	5
-+PKGREVISION=	7
++PKGREVISION=	8
+@@ -20,3 +20,12 @@
+ ## The Library rpath to use in end programs.
+ LDFLAGS_FOR_TARGET=	${LDFLAGS:M${COMPILER_RPATH_FLAG}*:N*/usr/lib*} ${LDFLAGS:M-Wl,-z*}
++.if ${OPSYS} == "Darwin"
++# COMPILER_RPATH_FLAG is -L on Darwin, so the filter above keeps the
++# -L${LOCALBASE}/lib search path. BOOT_LDFLAGS keeps it for the compilers.
++# libstdc++ selected a GNU libiconv found there for the target libraries.
++# The Darwin target libraries use the system libraries only.
++GCC16_TARGET_LDFLAGS=	${LDFLAGS:M-Wl,-z*}
++.else
++GCC16_TARGET_LDFLAGS=	${LDFLAGS_FOR_TARGET}
++.endif
+ 
+@@ -55,3 +64,3 @@
+ ## For target librarys and libjava programs.
+-CONFIGURE_ENV+=		LDFLAGS_FOR_TARGET=${LDFLAGS_FOR_TARGET:Q}
++CONFIGURE_ENV+=		LDFLAGS_FOR_TARGET=${GCC16_TARGET_LDFLAGS:Q}
+ 
 --- a/lang/gcc16-libs/Makefile
 +++ b/lang/gcc16-libs/Makefile
 @@ -12,1 +12,1 @@
 -PKGREVISION=	6
-+PKGREVISION=	8
++PKGREVISION=	9
 --- a/lang/gcc16-libjit/Makefile
 +++ b/lang/gcc16-libjit/Makefile
 @@ -5,2 +5,3 @@

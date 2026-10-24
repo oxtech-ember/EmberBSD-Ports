@@ -1,0 +1,23 @@
+$NetBSD$
+
+Darwin: the static libstdc++ format.o needs the system iconv library.
+iconv is not part of libSystem, so -static-libstdc++ links failed with
+undefined iconv symbols. Record -liconv in the object (LC_LINKER_OPTION);
+ld64 and ld64.lld load it only when format.o is linked.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+The GCC GPLv3-or-later licence and upstream authorship are unchanged.
+
+--- libstdc++-v3/src/c++20/format.cc.orig
++++ libstdc++-v3/src/c++20/format.cc
+@@ -34,6 +34,11 @@
+ # ifdef _GLIBCXX_HAVE_ICONV
+ #  include <iconv.h>
+ #  include <errno.h>
++#  ifdef __APPLE__
++// iconv is not in libSystem.  Record the system library in this object
++// (LC_LINKER_OPTION), so -static-libstdc++ links need no extra option.
++__asm__ (".linker_option \"-liconv\"");
++#  endif
+ # endif
+ #endif
+ 

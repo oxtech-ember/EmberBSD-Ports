@@ -46,6 +46,18 @@ selection remains conditional on Darwin:
   that includes `<xpc/xpc.h>` failed, for example Python's `_scproxy`.
   The patch carries `fixincl.x` regenerated with AutoGen 5.18.16 and a
   `make check` baseline.
+- Darwin target libraries use the macOS iconv, not a GNU libiconv in
+  `${LOCALBASE}`. `COMPILER_RPATH_FLAG` is `-L` on Darwin, so the common
+  `LDFLAGS_FOR_TARGET` filter passed `-L${LOCALBASE}/lib` to the target
+  libraries. libstdc++ configure then selected GNU libiconv and its
+  `libiconv_open` names. The Darwin recipe passes only `-Wl,-z` options to
+  the target libraries. `BOOT_LDFLAGS` for the stage 2 and 3 compilers is
+  unchanged.
+  iconv is not part of libSystem.
+  [gcc-darwin-libstdcxx-iconv.patch](patches/gcc-darwin-libstdcxx-iconv.patch)
+  records `-liconv` in the libstdc++ `format.o` object (`LC_LINKER_OPTION`).
+  A `-static-libstdc++` link that uses `std::format` locale conversion then
+  needs no extra library option.
 
 NetBSD and cross builds also apply the pinned source diff: the common LLVM-MC
 patch references Darwin files absent from the release archive. The Python
@@ -111,6 +123,11 @@ It does not wrap compilation or archive creation.
 
 Run `tests/darwin-native-provider.py --gcc-source /absolute/patched-gcc-source`
 with Python for the finite source checks. This does not compile or qualify GCC.
+Run `tests/darwin-libstdcxx-iconv.py --cxx /absolute/gcc16/bin/g++
+--objdump /absolute/bin/llvm-objdump --work /absolute/new-dir` against an
+installed GCC. It links a `std::format` program with `-static-libstdc++` and no
+iconv option, runs it, and checks that it loads only system libraries.
+GCC built by the previous recipe fails with undefined `libiconv_*` symbols.
 It must provide the other configure and build tools from its accepted closure.
 
 Use the [initial make binding](../common-build-tools/bootstrap/README.md)
