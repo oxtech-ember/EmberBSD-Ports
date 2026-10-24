@@ -74,6 +74,10 @@ its compiler with `build.py --target earmv7hf --kernel`; this keeps
 application sysroot or runtime. The build verifies the compiler's EABI
 hard-float macros, compiles a freestanding floating-point object, checks for
 ELF32 machine 40, and requires the ARM hard-float EABI flag from readelf.
+The GCC16 package patch limits the inherited `-matpcs` assembler option to an
+explicit APCS/ATPCS ABI selection. The default AAPCS hard-float path otherwise
+crashes GAS 2.42 and 2.47 on ARM ELF; the compiler build's split-DWARF and ABI
+object probes exercise the corrected path.
 When `--bootstrap-libgcc` is selected, its header input must come from the
 `earmv7hf` build and expose the `evbarm` machine headers plus `arm/ansi.h`.
 

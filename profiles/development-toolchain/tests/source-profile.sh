@@ -3,6 +3,11 @@
 set -eu
 [ "$#" -le 1 ] || { echo "Usage: $0 [MPFR_4_2_2_ARCHIVE]" >&2; exit 2; }
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd)
+expected_arm_asm_patch=$(printf 'recipe-patch\tprofiles/development-toolchain/patches/gcc-netbsd-aapcs-assembler.patch\tlang/gcc16\tpatch-gcc_config_arm_netbsd-eabi_aapcs')
+grep -Fqx "$expected_arm_asm_patch" "$root/pkgsrc/export.conf" || {
+    echo 'Missing GCC16 NetBSD AAPCS assembler patch export.' >&2
+    exit 1
+}
 work=$(mktemp -d "${TMPDIR:-/tmp}/ember-gcc-profile.XXXXXXXX")
 trap 'rm -rf "$work"' EXIT
 trap 'exit 130' INT
@@ -15,6 +20,15 @@ tar -xf "$work/base.tar" -C "$work"
 for delta in pkgsrc-gcc16.2.patch strict-tests.patch current-prerequisites.patch gsed-mbstate-zero.patch libxslt-rvt-security.patch stable-expect.patch gcc-tsvc-netbsd.patch gcc-modules-fallocate.patch gcc-netbsd-locale.patch gcc-netbsd-math.patch gcc-package-requires.patch gcc-netbsd-tls.patch gcc-cross-native.patch; do
     patch -f -E -d "$work" -p1 -F 0 < "$root/profiles/development-toolchain/patches/$delta"
 done
+patch_name=patch-gcc_config_arm_netbsd-eabi_aapcs
+cp "$root/profiles/development-toolchain/patches/gcc-netbsd-aapcs-assembler.patch" \
+    "$work/lang/gcc16/patches/$patch_name"
+patch_sha=$(sed '/[$]NetBSD.*/d' "$work/lang/gcc16/patches/$patch_name" | \
+    shasum -a 1 | awk '{ print $1 }')
+printf 'SHA1 (%s) = %s\n' "$patch_name" "$patch_sha" >> "$work/lang/gcc16/distinfo"
+grep -Fqx "$expected_arm_asm_patch" "$root/pkgsrc/export.conf"
+grep -Fq '%{mabi=apcs-gnu|mabi=atpcs:-matpcs -meabi=gnu}' \
+    "$work/lang/gcc16/patches/$patch_name"
 rm -rf "$work/devel/gtexinfo"
 cp -R "$root/pkgsrc/devel/gtexinfo" "$work/devel/gtexinfo"
 python3 "$root/profiles/development-toolchain/tests/libxslt-source.py" "$work"

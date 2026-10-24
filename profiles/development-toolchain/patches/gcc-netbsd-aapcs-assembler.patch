@@ -1,0 +1,19 @@
+$NetBSD$
+
+Avoid the pkgsrc NetBSD EABI patch's unconditional APCS assembler option for
+AAPCS builds. GAS 2.42 and 2.47 both crash on ARM ELF when given -matpcs.
+Keep the option for explicitly selected APCS/ATPCS ABIs.
+Origin: EmberBSD (AI-assisted); local, not submitted upstream.
+Preserve GCC GPLv3+ and the GCC Runtime Library Exception.
+
+--- gcc/config/arm/netbsd-eabi.h.orig
++++ gcc/config/arm/netbsd-eabi.h
+@@ -81,7 +81,7 @@
+ 
+ #undef SUBTARGET_EXTRA_ASM_SPEC
+ #define SUBTARGET_EXTRA_ASM_SPEC		\
+-  "-matpcs %{mabi=apcs-gnu|mabi=atpcs:-meabi=gnu} "	\
++  "%{mabi=apcs-gnu|mabi=atpcs:-matpcs -meabi=gnu} "	\
+   "%{fpic|fpie:-k} "				\
+   "%{fPIC|fPIE:-k}"
+ 
