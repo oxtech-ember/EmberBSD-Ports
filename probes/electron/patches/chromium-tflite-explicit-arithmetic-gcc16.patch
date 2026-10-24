@@ -1,0 +1,35 @@
+--- a/third_party/tflite/src/tensorflow/lite/kernels/strided_slice.cc
++++ b/third_party/tflite/src/tensorflow/lite/kernels/strided_slice.cc
+@@ -215,7 +215,7 @@
+     }
+     // Ensure we can do an integer division (rounding up) even when dealing with
+     // negative numbers.
+-    if (dim_shape < 0 != stride < 0) {
++    if ((dim_shape < 0) != (stride < 0)) {
+       dim_shape = 0;
+     } else {
+       if (stride < 0) {
+--- a/third_party/tflite/src/tensorflow/lite/kernels/stablehlo_scatter.cc
++++ b/third_party/tflite/src/tensorflow/lite/kernels/stablehlo_scatter.cc
+@@ -179,7 +179,7 @@
+   } else if (computation_type == ComputationType::kAdd) {
+     result = input_value + update_value;
+   } else if (computation_type == ComputationType::kMultiply) {
+-    result = input_value * update_value;
++    result = static_cast<DataType>(input_value * update_value);
+   } else if (computation_type == ComputationType::kMaximum) {
+     result = std::max(input_value, update_value);
+   } else if (computation_type == ComputationType::kMinimum) {
+--- a/third_party/tflite/src/tensorflow/lite/kernels/reduce.cc
++++ b/third_party/tflite/src/tensorflow/lite/kernels/reduce.cc
+@@ -811,7 +811,9 @@
+         break;
+       case kProd:
+         init_value = static_cast<T>(1);
+-        reducer = [](const T current, const T in) -> T { return in * current; };
++        reducer = [](const T current, const T in) -> T {
++          return static_cast<T>(in * current);
++        };
+         break;
+       case kMax:
+         init_value = std::numeric_limits<T>::lowest();

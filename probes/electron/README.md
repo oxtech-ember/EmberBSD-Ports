@@ -155,6 +155,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ui-accessibility-displa
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dbus-bounded-map-signature-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/netbsd-evdev-keycode-api.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-wayland-enum-terminal-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-tflite-explicit-arithmetic-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-padding-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-invariants.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-proc-clang-cfi-attribute.patch
@@ -261,6 +262,9 @@ The Wayland patch adds fatal exits after exhaustive internal enum switches.
 It keeps valid protocol mappings and unknown-wire rejection. It also declares
 the complete display-delegate type and the shared header's public dependency.
 See the [Wayland checks](tests/wayland-gcc16.md) for the scope and limits.
+The TFLite arithmetic patch makes existing comparison grouping and product
+conversions explicit. It preserves arithmetic operations and supported types.
+See the [TFLite checks](tests/tflite-gcc16.md) for the verification scope.
 The scenario patch keeps the shared-memory padding diagnostic fatal on
 both Clang and GCC. The QUICHE patch checks allocation and handshake invariants,
 compares the selected subprotocol without signed conversion errors, and obtains
