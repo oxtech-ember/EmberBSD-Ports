@@ -7,7 +7,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 
 --- a/lang/gcc16/Makefile.common
 +++ b/lang/gcc16/Makefile.common
-@@ -57,6 +57,58 @@
+@@ -57,6 +57,61 @@
  .if ${OPSYS} == "Darwin"
  BUILDLINK_TRANSFORM+=	rm:-nodefaultrpaths
  CONFIGURE_ARGS+=	--disable-darwin-at-rpath
@@ -24,6 +24,9 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 +.if !defined(EMBERBSD_GCC16_DARWIN_SDK_VERSION) || empty(EMBERBSD_GCC16_DARWIN_SDK_VERSION)
 +PKG_FAIL_REASON+= "Set EMBERBSD_GCC16_DARWIN_SDK_VERSION from the accepted SDK ABI metadata."
 +.endif
++# The seed compiler keeps its own accepted build-tool routes.
++# Installed GCC needs the common source-built Mach-O tools at runtime.
++DEPENDS+= lld>=23.1.4:../../devel/lld
 +USE_NATIVE_GCC= yes
 +USE_PKGSRC_GCC= no
 +CC= ${EMBERBSD_GCC16_SEED_CC}
@@ -35,19 +38,19 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 +STRIP= ${EMBERBSD_GCC16_STRIP}
 +CONFIGURE_ENV+= CC=${EMBERBSD_GCC16_SEED_CC:Q} CXX=${EMBERBSD_GCC16_SEED_CXX:Q} CPP=${EMBERBSD_GCC16_SEED_CPP:Q}
 +CONFIGURE_ENV+= AR=${AR:Q} RANLIB=${RANLIB:Q} NM=${NM:Q} STRIP=${STRIP:Q}
-+CONFIGURE_ENV+= AS_FOR_TARGET=${EMBERBSD_GCC16_LLVM_MC:Q}
-+CONFIGURE_ENV+= LD_FOR_TARGET=${EMBERBSD_GCC16_LD64_LLD:Q}
++CONFIGURE_ENV+= AS_FOR_TARGET=${LOCALBASE:Q}/bin/llvm-mc
++CONFIGURE_ENV+= LD_FOR_TARGET=${LOCALBASE:Q}/bin/ld64.lld
 +CONFIGURE_ENV+= AR_FOR_TARGET=${AR:Q} RANLIB_FOR_TARGET=${RANLIB:Q}
 +CONFIGURE_ENV+= NM_FOR_TARGET=${NM:Q} STRIP_FOR_TARGET=${STRIP:Q}
-+CONFIGURE_ENV+= DSYMUTIL_FOR_TARGET=${EMBERBSD_GCC16_DSYMUTIL:Q}
++CONFIGURE_ENV+= DSYMUTIL_FOR_TARGET=${LOCALBASE:Q}/bin/dsymutil
 +# The SDK validates this optional control-plane resource command.
 +.if defined(EMBERBSD_GCC16_LINKER_LAUNCHER) && !empty(EMBERBSD_GCC16_LINKER_LAUNCHER)
 +MAKE_ENV+= GCC_HOST_LINKER_LAUNCHER=${EMBERBSD_GCC16_LINKER_LAUNCHER:Q}
 +.endif
 +CONFIGURE_ARGS+= --without-gnu-as --without-gnu-ld
-+CONFIGURE_ARGS+= --with-as=${EMBERBSD_GCC16_LLVM_MC:Q}
-+CONFIGURE_ARGS+= --with-ld=${EMBERBSD_GCC16_LD64_LLD:Q}
-+CONFIGURE_ARGS+= --with-dsymutil=${EMBERBSD_GCC16_DSYMUTIL:Q}
++CONFIGURE_ARGS+= --with-as=${LOCALBASE:Q}/bin/llvm-mc
++CONFIGURE_ARGS+= --with-ld=${LOCALBASE:Q}/bin/ld64.lld
++CONFIGURE_ARGS+= --with-dsymutil=${LOCALBASE:Q}/bin/dsymutil
 +CONFIGURE_ARGS+= --with-darwin-assembler=llvm-mc
 +CONFIGURE_ARGS+= --with-darwin-sdk-version=${EMBERBSD_GCC16_DARWIN_SDK_VERSION:Q}
 +.endif
@@ -67,7 +70,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 -.endif
  
  ## For graphite support.
-@@ -89,8 +141,10 @@
+@@ -89,8 +144,10 @@
  MAKE_ENV.NetBSD+=	ac_cv_func_uselocale=no
  MAKE_ENV.SunOS+=	ac_cv_func_mkostemp=no
  
@@ -94,17 +97,17 @@ See profiles/development-toolchain/gcc-darwin-host.md.
  SHA1 (patch-gcc_Makefile.in) = abc7d605ef21c213c5b71ef37d1ce790097f7660
 --- a/lang/gcc16/Makefile
 +++ b/lang/gcc16/Makefile
-@@ -7 +7 @@
+@@ -7,1 +7,1 @@
 -PKGREVISION=	5
-+PKGREVISION=	6
++PKGREVISION=	7
 --- a/lang/gcc16-libs/Makefile
 +++ b/lang/gcc16-libs/Makefile
-@@ -12 +12 @@
+@@ -12,1 +12,1 @@
 -PKGREVISION=	6
-+PKGREVISION=	7
++PKGREVISION=	8
 --- a/lang/gcc16-libjit/Makefile
 +++ b/lang/gcc16-libjit/Makefile
 @@ -5,2 +5,3 @@
  PKGNAME=	${GCC_PKGNAME}-libjit-${GCC16_DIST_VERSION}
-+PKGREVISION=	1
++PKGREVISION=	2
  COMMENT=	GNU Compiler Collection 16 (gcclibjit library)

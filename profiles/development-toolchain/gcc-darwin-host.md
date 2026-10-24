@@ -87,7 +87,25 @@ This does not require a user `-fuse-ld` option. Cctools mode stays unchanged.
 The generic configure default `0.0` means an unknown SDK version. It is not
 a claim about the SDK. A producer with known metadata must pass its real version.
 It does not require an external specs override for ordinary use.
-The producer must keep the embedded tools available in the final bundle.
+The recipe now depends on common `devel/lld`, which depends on matching `lang/llvm`.
+It embeds `${LOCALBASE}/bin/llvm-mc`, `ld64.lld` and `dsymutil` from those packages.
+Seed compiler commands retain their separate accepted bootstrap routes.
+Choose the permanent common SDK prefix before building GCC.
+Do not move this prefix or replace its tools with initial binary inputs.
+
+The scoped Darwin bootstrap profile links initial C++ providers with
+`-static-libstdc++ -static-libgcc`. These are producer link options, not ABI flags.
+This policy still needs native C++ exception and final runtime-closure acceptance.
+The compiler's ordinary user-link defaults remain unchanged.
+
+CMake uses the existing common binutils fragment for its own bootstrap and consumers.
+The SDK selects native `libtool_darwin`, `install_name_tool` and `llvm_readtapi` roles.
+The last role fixes `EMBERBSD_DARWIN_TAPI_KIND=llvm-readtapi`.
+The same pinned resource launcher runs C/C++ final links and reaches `try_compile` children.
+It does not wrap compilation or archive creation.
+
+Run `tests/darwin-native-provider.py --gcc-source /absolute/patched-gcc-source`
+with Python for the finite source checks. This does not compile or qualify GCC.
 It must provide the other configure and build tools from its accepted closure.
 
 Use the [initial make binding](../common-build-tools/bootstrap/README.md)

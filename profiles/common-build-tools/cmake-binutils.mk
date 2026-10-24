@@ -20,6 +20,17 @@ _EMBERBSD_CMAKE_BINUTILS_ARGS+= -DCMAKE_OSX_SYSROOT:PATH=${OSX_SDK_PATH:Q}
 .endif
 .endif
 _EMBERBSD_CMAKE_TOOL_PAIRS+= INSTALL_NAME_TOOL EMBERBSD_DARWIN_INSTALL_NAME_TOOL TAPI EMBERBSD_DARWIN_TAPI
+# Source-owned bootstrap inputs also cover CMake's own bootstrap cache.
+.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
+_EMBERBSD_CMAKE_TOOL_PAIRS+= LIBTOOL EMBERBSD_DARWIN_LIBTOOL
+.if defined(EMBERBSD_DARWIN_CMAKE_LINKER_LAUNCHER) && !empty(EMBERBSD_DARWIN_CMAKE_LINKER_LAUNCHER)
+.for _ember_cmake_language in C CXX
+_EMBERBSD_CMAKE_BINUTILS_ARGS+= -DCMAKE_${_ember_cmake_language}_LINKER_LAUNCHER:STRING=${EMBERBSD_DARWIN_CMAKE_LINKER_LAUNCHER:Q}
+.endfor
+.elif ${EMBERBSD_DARWIN_JOBS:U1} > 1
+PKG_FAIL_REASON+= "Parallel CMake bootstrap requires the accepted SDK link launcher list"
+.endif
+.endif
 .if ${EMBERBSD_DARWIN_TAPI_KIND:U:[#]} != 1 || \
     (empty(EMBERBSD_DARWIN_TAPI_KIND:Mapple) && empty(EMBERBSD_DARWIN_TAPI_KIND:Mllvm-readtapi))
 PKG_FAIL_REASON+= "CMake requires EMBERBSD_DARWIN_TAPI_KIND to be apple or llvm-readtapi"
