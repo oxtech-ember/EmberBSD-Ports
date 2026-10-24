@@ -49,9 +49,31 @@ The AI-assisted [metadata check](tests/cmake-binutils.py) covers modern and
 legacy CMake routes, both wrapper implementations, invalid inputs, export
 patch order and bootstrap argument forwarding. It runs no compiler or CMake
 configure command. Full builds and archive execution remain separate checks.
-This check does not qualify every CMake tool. Darwin install-name and TAPI
-discovery, other binary utilities and compiler-specific IPO archivers retain
-their existing selection paths and need separate qualification.
+Native Darwin also requires `EMBERBSD_DARWIN_INSTALL_NAME_TOOL` and
+`EMBERBSD_DARWIN_TAPI` to select existing absolute executable files.
+`EMBERBSD_DARWIN_TAPI_KIND` must be `apple` or `llvm-readtapi`. The SDK producer
+selects and qualifies these tools. Recipes do not duplicate its provenance
+or acceptance policy. An initial scoped bootstrap can select copied Apple
+tools. The final SDK can select its own `llvm-install-name-tool` and
+`llvm-readtapi` from the common LLVM recipe.
+
+CMake 4.4.4nb4 retains its text-stub feature. The common Darwin rule uses
+fixed Apple or LLVM arguments. Apple TAPI receives `stubify -isysroot`;
+`llvm-readtapi` receives `--stubify`. Both receive the explicit output and
+input paths. The selected cache entries prevent implicit TAPI or install-name
+program discovery. No arbitrary command string is accepted.
+Native policy appends the selected tools and TAPI kind to
+`CMAKE_TRY_COMPILE_PLATFORM_VARIABLES`. It preserves package-added entries
+and forwards the list itself for deeper children. `CMP0137` defaults to `NEW`
+so project signatures also receive these values. A preset
+`CMAKE_TRY_COMPILE_NO_PLATFORM_VARIABLES` causes an explicit error. Packages
+that later set `CMP0137` to `OLD` or disable platform forwarding are outside
+this contract and need separate repair.
+The [Darwin tool check](tests/cmake-darwin-tools.py) covers quoted paths,
+missing and invalid files, finite kinds, native/cross guards and source patch
+replay. It does not execute either stub generator. Actual dylib and framework
+checks remain required after LLVM builds. Other binary utilities and
+compiler-specific IPO archivers need separate qualification.
 
 The paired [Tcl/Tk 9.1 recipes](cross/tcltk.md) retain bundled extensions,
 system SQLite and ZipFS. Tcl's ordinary native GCC16 package and host

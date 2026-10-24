@@ -24,6 +24,7 @@ def main():
     cli = argparse.ArgumentParser(description=__doc__)
     for name in ('pkgsrc', 'makeconf', 'bmake', 'patch', 'cmake-source', 'work'):
         cli.add_argument('--' + name, type=Path, required=True)
+    cli.add_argument('--source-only', action='store_true', help='Check source/export order without prefix metadata queries')
     args = cli.parse_args(arguments)
     work = args.work.absolute()
     work.mkdir()
@@ -87,6 +88,9 @@ def main():
                         tree / 'mk/configure/ember-cmake-binutils.mk')
     for target in targets:
         assert (replay / target).read_bytes() == (tree / target).read_bytes(), target
+    if args.source_only:
+        print('PASS: pinned source and export-order replay with zero fuzz')
+        return
     tools = work / "selected'tools"
     tools.mkdir()
     for name in PAIRS.values():
@@ -95,9 +99,15 @@ def main():
         path.chmod(0o755)
     nonexec = tools / 'nonexec'
     nonexec.write_text('Labelled non-executable metadata fixture.\n')
+    for name in ('install_name_tool', 'tapi'):
+        path = tools / name
+        path.write_text('#!/bin/sh\nexit 97\n')
+        path.chmod(0o755)
     conf = work / 'mk.conf'
     conf.write_text('.include "' + str(args.makeconf.resolve()) + '"\n' +
-        '\n'.join(name + '= ' + str(tools / name.lower()) for name in PAIRS.values()) + '\n')
+        '\n'.join(name + '= ' + str(tools / name.lower()) for name in PAIRS.values()) + '\n' +
+        'EMBERBSD_DARWIN_INSTALL_NAME_TOOL= ' + str(tools / 'install_name_tool') + '\n' +
+        'EMBERBSD_DARWIN_TAPI= ' + str(tools / 'tapi') + '\nEMBERBSD_DARWIN_TAPI_KIND= apple\n')
     for kind in ('modern', 'legacy'):
         recipe = tree / 'devel' / ('cmake-tools-' + kind)
         recipe.mkdir()
@@ -166,6 +176,8 @@ def main():
                 '\n_USE_CWRAPPERS= yes\nWRAPPER_BINDIR= ' + str(work / 'generated-wrappers') +
                 '\nCONFIGURE_ARGS= --existing-bootstrap-option\n' +
                 '\n'.join('PKG_' + name + '= ' + str(tools / name.lower()) for name in PAIRS.values()) +
+                '\nEMBERBSD_DARWIN_INSTALL_NAME_TOOL= ' + str(tools / 'install_name_tool') +
+                '\nEMBERBSD_DARWIN_TAPI= ' + str(tools / 'tapi') + '\nEMBERBSD_DARWIN_TAPI_KIND= apple' +
                 '\n.include "' + str(tree / 'mk/configure/ember-cmake-binutils.mk') + '"\n' + guard)
             values = shlex.split(run('guard-' + host + '-' + cross,
                 [args.bmake, '-f', fragment, '-v', 'CONFIGURE_ARGS']))
@@ -173,7 +185,7 @@ def main():
                 assert values == ['--existing-bootstrap-option'], values
             else:
                 assert values.count('--') == 1, values
-                assert len([value for value in values if value.startswith('-DCMAKE_')]) == 5, values
+                assert len([value for value in values if value.startswith('-DCMAKE_')]) == (8 if host == 'Darwin' else 6), values
     print('PASS: pinned CMake source accepts all five cache names and forwards bootstrap argv')
     print('PASS: all affected infrastructure hunks replay in export order with zero fuzz')
     print('PASS: Darwin/Linux/NetBSD native option guards add one separator; cross guards add no flags')

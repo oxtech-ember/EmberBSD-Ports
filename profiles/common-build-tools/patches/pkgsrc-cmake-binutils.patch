@@ -60,6 +60,15 @@
  
 --- a/devel/cmake/Makefile
 +++ b/devel/cmake/Makefile
+@@ -2,7 +2,7 @@
+ 
+ .include "Makefile.common"
+ 
+-PKGREVISION=	3
++PKGREVISION=	4
+ 
+ COMMENT=	Cross platform make
+ 
 @@ -90,10 +90,14 @@
  .include "../../textproc/expat/buildlink3.mk"
  .include "../../www/curl/buildlink3.mk"

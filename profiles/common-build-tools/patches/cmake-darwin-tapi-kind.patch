@@ -1,0 +1,47 @@
+# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+# Keep selected tools in nested CMake and use fixed TAPI provider arguments.
+--- Modules/Platform/Darwin.cmake.orig
++++ Modules/Platform/Darwin.cmake
+@@ -99,7 +99,17 @@
+ endforeach()
+ 
+ # To generate text-based stubs
+-set(CMAKE_CREATE_TEXT_STUBS "<CMAKE_TAPI> stubify -isysroot <CMAKE_OSX_SYSROOT> -o <TARGET_IMPLIB> <TARGET>")
++if(DEFINED EMBERBSD_DARWIN_TAPI_KIND)
++  if(EMBERBSD_DARWIN_TAPI_KIND STREQUAL "llvm-readtapi")
++    set(CMAKE_CREATE_TEXT_STUBS "<CMAKE_TAPI> --stubify -o <TARGET_IMPLIB> <TARGET>")
++  elseif(EMBERBSD_DARWIN_TAPI_KIND STREQUAL "apple")
++    set(CMAKE_CREATE_TEXT_STUBS "<CMAKE_TAPI> stubify -isysroot <CMAKE_OSX_SYSROOT> -o <TARGET_IMPLIB> <TARGET>")
++  else()
++    message(FATAL_ERROR "EMBERBSD_DARWIN_TAPI_KIND must be apple or llvm-readtapi")
++  endif()
++else()
++  set(CMAKE_CREATE_TEXT_STUBS "<CMAKE_TAPI> stubify -isysroot <CMAKE_OSX_SYSROOT> -o <TARGET_IMPLIB> <TARGET>")
++endif()
+ 
+ # Defines LINK_LIBRARY features for frameworks
+ set(CMAKE_LINK_LIBRARY_USING_FRAMEWORK "LINKER:-framework,<LIBRARY>")
+--- Modules/CMakeFindBinUtils.cmake.orig
++++ Modules/CMakeFindBinUtils.cmake
+@@ -19,6 +19,21 @@
+ #   CMAKE_STRIP
+ #   CMAKE_INSTALL_NAME_TOOL
+ 
++# Keep explicit native tools in source-file and project try_compile children.
++if(EMBERBSD_CMAKE_NATIVE_TOOLS)
++  if(CMAKE_TRY_COMPILE_NO_PLATFORM_VARIABLES)
++    message(FATAL_ERROR "Explicit native tools require try_compile platform variables")
++  endif()
++  list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES
++    CMAKE_TRY_COMPILE_PLATFORM_VARIABLES
++    EMBERBSD_CMAKE_NATIVE_TOOLS
++    CMAKE_POLICY_DEFAULT_CMP0137
++    CMAKE_AR CMAKE_RANLIB CMAKE_NM CMAKE_STRIP CMAKE_LINKER
++    CMAKE_INSTALL_NAME_TOOL CMAKE_TAPI EMBERBSD_DARWIN_TAPI_KIND
++  )
++  list(REMOVE_DUPLICATES CMAKE_TRY_COMPILE_PLATFORM_VARIABLES)
++endif()
++
+ # on UNIX, cygwin and mingw
+ 
+ # Resolve full path of CMAKE_TOOL from user-defined name and SEARCH_PATH.
