@@ -1,5 +1,10 @@
 # Current common build tools
 
+The [shared bmake source update](bmake.md) selects stable 20260912 in the
+existing vendor owner. Bootstrap and the ordinary package retain one payload,
+all upstream tests and the existing pkgsrc mode override. Source checks pass;
+builds and installed tool acceptance remain separate.
+
 The [shared libarchive source update](cross/libarchive.md) selects 3.8.10 for
 libarchive, bsdtar and the package-tools vendor route. Original NetBSD source
 imports preserve the complete upstream tests and the existing common-zlib delta.
