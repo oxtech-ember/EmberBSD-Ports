@@ -1,0 +1,126 @@
+--- a/ui/events/keycodes/dom/keycode_converter.h
++++ b/ui/events/keycodes/dom/keycode_converter.h
+@@ -73,7 +73,8 @@
+   static uint32_t DomCodeToXkbKeycode(DomCode code);
+ #endif
+ 
+-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD) || \
++    BUILDFLAG(IS_NETBSD)
+   // Convert an evdev code into DomCode.
+   static DomCode EvdevCodeToDomCode(int evdev_code);
+ 
+--- a/ui/events/keycodes/dom/keycode_converter.cc
++++ b/ui/events/keycodes/dom/keycode_converter.cc
+@@ -15,7 +15,8 @@
+ #include "ui/events/keycodes/dom/dom_code.h"
+ #include "ui/events/keycodes/dom/dom_key.h"
+ 
+-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD) || \
++    BUILDFLAG(IS_NETBSD)
+ #include <linux/input.h>
+ #endif
+ 
+@@ -67,7 +68,8 @@
+ #undef DOM_KEY_UNI
+ #undef DOM_KEY_MAP_DECLARATION_END
+ 
+-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD) || \
++    BUILDFLAG(IS_NETBSD)
+ 
+ // The offset between XKB Keycode and evdev code.
+ constexpr int kXkbKeycodeOffset = 8;
+@@ -105,7 +107,7 @@
+   return static_cast<uint32_t>(evdev_code + kXkbKeycodeOffset);
+ }
+ 
+-#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
++#endif  // Linux, ChromeOS, FreeBSD, or NetBSD.
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+ 
+@@ -204,7 +206,8 @@
+ }
+ #endif
+ 
+-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD) || \
++    BUILDFLAG(IS_NETBSD)
+ // static
+ DomCode KeycodeConverter::EvdevCodeToDomCode(int evdev_code) {
+   // Currently XKB keycode is the native keycode.
+@@ -218,7 +221,7 @@
+   // TODO(crbug.com/40151699): Replace with evdev.
+   return XkbKeycodeToEvdevCode(DomCodeToXkbKeycode(code));
+ }
+-#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
++#endif  // Linux, ChromeOS, FreeBSD, or NetBSD.
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+ // static
+--- a/ui/events/keycodes/dom/keycode_converter_unittest.cc
++++ b/ui/events/keycodes/dom/keycode_converter_unittest.cc
+@@ -9,6 +9,7 @@
+ 
+ #include <array>
+ #include <iomanip>
++#include <limits>
+ #include <map>
+ #include <set>
+ 
+@@ -110,6 +111,53 @@
+     }
+   }
+ }
++
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD) || \
++    BUILDFLAG(IS_NETBSD)
++TEST(KeycodeConverter, EvdevAndXkbCodes) {
++  struct Expected {
++    int evdev;
++    uint32_t xkb;
++    ui::DomCode dom;
++  };
++  constexpr Expected cases[] = {
++      {30, 38, ui::DomCode::US_A},
++      {28, 36, ui::DomCode::ENTER},
++      {29, 37, ui::DomCode::CONTROL_LEFT},
++      {119, 127, ui::DomCode::PAUSE},
++      {164, 172, ui::DomCode::MEDIA_PLAY_PAUSE},
++      {207, 215, ui::DomCode::MEDIA_PLAY},
++  };
++  for (const auto& expected : cases) {
++    EXPECT_EQ(expected.dom, KeycodeConverter::EvdevCodeToDomCode(expected.evdev));
++    EXPECT_EQ(expected.evdev, KeycodeConverter::DomCodeToEvdevCode(expected.dom));
++    EXPECT_EQ(expected.dom, KeycodeConverter::XkbKeycodeToDomCode(expected.xkb));
++    EXPECT_EQ(expected.xkb, KeycodeConverter::DomCodeToXkbKeycode(expected.dom));
++  }
++  EXPECT_EQ(38, KeycodeConverter::DomCodeToNativeKeycode(ui::DomCode::US_A));
++  EXPECT_EQ(ui::DomCode::US_A, KeycodeConverter::NativeKeycodeToDomCode(38));
++}
++
++TEST(KeycodeConverter, InvalidEvdevCodes) {
++  for (int code : {std::numeric_limits<int>::min(), -1, 0, 0x2ff, 0x300,
++                   std::numeric_limits<int>::max()}) {
++    EXPECT_EQ(ui::DomCode::NONE, KeycodeConverter::EvdevCodeToDomCode(code));
++  }
++  EXPECT_EQ(ui::DomCode::NONE, KeycodeConverter::XkbKeycodeToDomCode(7u));
++  EXPECT_EQ(ui::DomCode::NONE, KeycodeConverter::XkbKeycodeToDomCode(8u));
++  EXPECT_EQ(ui::DomCode::NONE, KeycodeConverter::XkbKeycodeToDomCode(
++                                  std::numeric_limits<uint32_t>::max()));
++  EXPECT_EQ(0, KeycodeConverter::DomCodeToEvdevCode(ui::DomCode::NONE));
++  EXPECT_EQ(0, KeycodeConverter::DomCodeToEvdevCode(
++                   static_cast<ui::DomCode>(0xffffff)));
++}
++
++TEST(KeycodeConverter, PlayCdUsesCanonicalPlayCode) {
++  EXPECT_EQ(ui::DomCode::MEDIA_PLAY, KeycodeConverter::EvdevCodeToDomCode(200));
++  EXPECT_EQ(ui::DomCode::MEDIA_PLAY, KeycodeConverter::EvdevCodeToDomCode(207));
++  EXPECT_EQ(207, KeycodeConverter::DomCodeToEvdevCode(ui::DomCode::MEDIA_PLAY));
++}
++#endif  // Linux, ChromeOS, FreeBSD, or NetBSD.
+ 
+ TEST(UsbKeycodeMap, Basic) {
+   // Verify that the first element in the table is the "invalid" code.

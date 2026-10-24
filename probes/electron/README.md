@@ -153,6 +153,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/net-gcc16-speculative-d
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-net-enum-exits-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ui-accessibility-display-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dbus-bounded-map-signature-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/netbsd-evdev-keycode-api.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-padding-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-invariants.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-proc-clang-cfi-attribute.patch
@@ -251,6 +252,10 @@ entries by reference, and makes invalid accessibility enum exits fatal.
 The D-Bus map patch builds its element signature with the constexpr array
 length. It removes the array marker and final NUL without an implicit suffix
 `strlen`. Map iteration, dictionary entries, and wire signatures stay unchanged.
+The NetBSD keycode patch selects the existing evdev conversion API on NetBSD.
+It keeps the native XKB table, offset, bounds, and media-key normalization.
+Use the common `input-headers` package for the Linux input protocol constants.
+The [runtime fixture](tests/keycode-runtime.cc) checks the actual converter.
 The scenario patch keeps the shared-memory padding diagnostic fatal on
 both Clang and GCC. The QUICHE patch checks allocation and handshake invariants,
 compares the selected subprotocol without signed conversion errors, and obtains

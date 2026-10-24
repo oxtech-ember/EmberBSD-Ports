@@ -433,3 +433,35 @@ production/test cases with four inherited messages per production variant and
 two per test variant. No message is added or removed. Cppcheck reaches the same
 dependency parser limit in all eight cases. Full D-Bus or browser acceptance is
 not established by these compile and analysis checks.
+
+## NetBSD evdev keycode API
+
+The AI-assisted patch includes NetBSD in four existing evdev API guards.
+It does not change the conversion bodies or the native BSD XKB column.
+The common `input-headers` package supplies the Linux input protocol constants.
+Wayland keyboard modifier handling keeps its existing default false branch.
+
+Replay the production `keycode_converter.cc` and `wayland_keyboard.cc` GCC16
+commands with their complete flags and generated inputs. The converter compiles
+on both sides. The keyboard fails on the missing API before the patch and
+compiles after it. The added upstream test cases and the
+[40-check executable](keycode-runtime.cc) fail to compile against the original
+NetBSD header and compile after the patch. The executable uses independent
+evdev, XKB and DOM values, invalid boundaries, and PLAYCD normalization.
+
+Compile the fixture with the converter's target configuration. Link it with the
+complete production converter object and `-Wl,--gc-sections`; retain the normal
+function/data sections and target runtime libraries. Do not replace converter
+functions with test implementations. Run the executable on the selected target
+with the common GCC16 runtime. The expected exit status is zero.
+Two independent converter controls change the XKB offset from 8 to 9 and remove
+PLAYCD normalization. Their expected exit statuses are 1 and 48 respectively.
+The real GCC16 AMD64 converter passed all 40 checks on physical NetBSD 11.
+Both fault controls returned their expected failures.
+
+Paired Clang Static Analyzer checks of the converter retain one inherited
+Abseil finding. The baseline keyboard cannot be analyzed past its missing API;
+the patched keyboard retains two findings in unchanged Abseil and bind headers.
+All four Cppcheck inputs stop at the same dependency parser error. These limits
+do not establish clean analysis, a complete Electron link, GUI input, or browser
+acceptance.
