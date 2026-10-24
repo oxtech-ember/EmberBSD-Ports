@@ -87,6 +87,11 @@ It also requires the target prefix's `share/gir-1.0` directory. Both the native
 scanner and typelib compiler receive this explicit target include directory.
 The compiler keeps its build directory first for generated WebKit GIR files.
 Native configuration does not receive this cross-only include path.
+The cross build also sets `GI_GIR_PATH` to the target GIR directory.
+The native gi-docgen 2026.1 reader uses this upstream environment selector
+for dependency lists and API reference generation. Generated build-tree GIR
+files keep their explicit first search path. Native documentation is unchanged.
+This AI-assisted recipe binding changes no target code or ABI.
 The configure and build environments select the common Python query launcher.
 `tests/webkit-gi-launcher.py` checks actual pkgsrc metadata for both APIs, the
 release FindGI module, the launcher configuration check, native behavior and
