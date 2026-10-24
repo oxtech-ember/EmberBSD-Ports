@@ -10,6 +10,8 @@ bmake evaluates the exported mk/tools/tools.Darwin.mk in bootstrap mode.
 The selected shell then runs each tool command with a PATH whose only entry
 is a decoy directory: a bare command name would resolve to the decoy, the
 same way a pkgsrc tool wrapper finds itself again in .tools/bin.
+The shell builtins run the way pkgsrc passes them to scripts such as
+mk/extract/extract: as an environment value expanded unquoted, as ${TEST}.
 """
 import json
 import os
@@ -19,6 +21,8 @@ from pathlib import Path
 
 TOOLS = {'mkdir': '/bin/mkdir', 'gzip': '/usr/bin/gzip', 'gunzip': '/usr/bin/gunzip',
          'printf': '/usr/bin/printf'}
+BUILTINS = {'[': ('-n value ]', 0, ''), 'echo': ('plain  value', 0, 'plain value\n'),
+            'false': ('', 1, ''), 'test': ('-n ""', 1, ''), 'true': ('', 0, '')}
 
 
 def require(value, message):
@@ -26,9 +30,9 @@ def require(value, message):
         raise AssertionError(message)
 
 
-def evaluate(exported, bmake, work, names):
+def evaluate(exported, bmake, shell, work, names):
     work.mkdir(parents=True)
-    lines = ['EMBERBSD_DARWIN_BOOTSTRAP= yes',
+    lines = ['EMBERBSD_DARWIN_BOOTSTRAP= yes', f'EMBERBSD_DARWIN_BUILTIN_SHELL= {shell}',
              'EMBERBSD_DARWIN_NATIVE_TOOLS= ' + ' '.join(sorted(TOOLS))]
     lines += [f'EMBERBSD_DARWIN_TOOL.{name}= {path}' for name, path in sorted(TOOLS.items())]
     lines += [f'.include "{exported}/mk/tools/tools.Darwin.mk"', 'all:']
@@ -45,8 +49,8 @@ def main():
         raise SystemExit(__doc__)
     exported, bmake, shell, work = sys.argv[1], sys.argv[2], sys.argv[3], Path(sys.argv[4])
     require(not work.exists(), 'NEW_WORK must not exist')
-    names = ['mkdir', 'gzip', 'gunzip', 'printf']
-    tools = evaluate(exported, bmake, work / 'eval', names)
+    names = ['mkdir', 'gzip', 'gunzip', 'printf'] + sorted(BUILTINS)
+    tools = evaluate(exported, bmake, shell, work / 'eval', names)
     decoy = work / 'decoy'
     decoy.mkdir()
     for name in names:
@@ -66,6 +70,13 @@ def main():
     result = run(f'"{tools["printf"]}" %s ok')
     require(result.returncode == 0 and result.stdout == 'ok',
             f'printf does not run without a shell builtin: {tools["printf"]!r} {result.stderr.strip()}')
+    for name, (args, status, output) in BUILTINS.items():
+        # mk/extract/extract.mk passes TEST=${TOOLS_TEST:Q}; the script runs ${TEST}.
+        result = subprocess.run([shell, '-c', f'${{TOOL}} {args}'], env=dict(env, TOOL=tools[name]),
+                                cwd=work, capture_output=True, text=True)
+        require((result.returncode, result.stdout, result.stderr) == (status, output, ''),
+                f'{name} does not run from an unquoted environment value: {tools[name]!r} '
+                f'{result.returncode} {result.stdout!r} {result.stderr.strip()!r}')
     data = work / 'data'
     data.write_text('payload\n')
     result = run(f'{tools["gzip"]} {data} && {tools["gzip"]} -dc {data}.gz && '

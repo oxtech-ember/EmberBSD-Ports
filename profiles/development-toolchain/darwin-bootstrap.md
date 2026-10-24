@@ -124,8 +124,12 @@ unstripped installs. The utility PATH does not supply them.
 A tool without standard arguments maps to its exact path, with no trailing
 space: pkgsrc scripts run some of them quoted, such as `"${AWK}"`.
 The `[`, `echo`, `false`, `test` and `true` maps invoke that shell
-explicitly with fixed literal `-c` commands. They forward the original arguments
-through `"$@"`. This preserves the selected shell's options, escapes and statuses.
+explicitly with the exported helper `mk/tools/emberbsd-darwin-builtin.sh` and
+the builtin name. The helper forwards the original arguments through `"$@"`.
+This preserves the selected shell's options, escapes and statuses.
+The command has no quoted words: pkgsrc passes tools such as `TEST` to
+scripts like `mk/extract/extract` in the environment, and they run `${TEST}`
+unquoted. A quoted `-c` command would split into broken words there.
 Compatibility-mode bmake can otherwise bypass the shell for a simple recipe
 and try to execute an absent external builtin name.
 The finite [echo fixture](tests/darwin-bootstrap-echo.mk) compares this route

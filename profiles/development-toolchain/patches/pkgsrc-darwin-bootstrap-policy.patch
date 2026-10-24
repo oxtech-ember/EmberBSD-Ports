@@ -44,9 +44,27 @@ Keep ordinary Darwin defaults. Use the standard compiler wrappers.
  .endif
  
  .if !defined(NATIVE_OPSYS)
+--- /dev/null
++++ b/mk/tools/emberbsd-darwin-builtin.sh
+@@ -0,0 +1,15 @@
++# Run one builtin of the shell that executes this file.
++# usage: SHELL emberbsd-darwin-builtin.sh NAME [ARGUMENT ...]
++# The calling command has no quoted words, so pkgsrc can pass it in the
++# environment and scripts can run it unquoted, as they run ${TEST}.
++_ember_builtin=$1
++shift
++case $_ember_builtin in
++echo)	echo "$@" ;;
++false)	false ;;
++test)	test "$@" ;;
++\[)	[ "$@" ;;
++true)	true ;;
++*)	echo "emberbsd-darwin-builtin.sh: unsupported builtin $_ember_builtin" >&2
++	exit 2 ;;
++esac
 --- a/mk/tools/tools.Darwin.mk
 +++ b/mk/tools/tools.Darwin.mk
-@@ -2,6 +2,22 @@
+@@ -2,6 +2,25 @@
  #
  # System-supplied tools for the Darwin (Mac OS X) operating system.
  
@@ -60,8 +78,11 @@ Keep ordinary Darwin defaults. Use the standard compiler wrappers.
 +TOOLS_PLATFORM.${_ember_tool}= ${EMBERBSD_DARWIN_TOOL.${_ember_tool}}${_EMBERBSD_DARWIN_TOOL_ARGS.${_ember_tool}:D ${_EMBERBSD_DARWIN_TOOL_ARGS.${_ember_tool}}}
 +.endfor
 +# printf is not a builtin in every POSIX shell; it needs a native path.
++# The helper runs each builtin in the selected shell. The command has no
++# quoted words: pkgsrc passes tools such as TEST in the environment.
++_EMBERBSD_DARWIN_BUILTIN_HELPER:= ${.PARSEDIR}/emberbsd-darwin-builtin.sh
 +.for _ember_builtin in [ echo false test true
-+TOOLS_PLATFORM.${_ember_builtin}= ${EMBERBSD_DARWIN_BUILTIN_SHELL} -c '${_ember_builtin} "$$@"' --
++TOOLS_PLATFORM.${_ember_builtin}= ${EMBERBSD_DARWIN_BUILTIN_SHELL} ${_EMBERBSD_DARWIN_BUILTIN_HELPER} ${_ember_builtin}
 +.endfor
 +TOOLS_PLATFORM.sh= ${EMBERBSD_DARWIN_SH}
 +TOOLS_PLATFORM.gmake= ${EMBERBSD_DARWIN_GMAKE}
@@ -69,7 +90,7 @@ Keep ordinary Darwin defaults. Use the standard compiler wrappers.
  OSX_XCRUN=			${SETENV} PATH= /usr/bin/xcrun --no-cache
  
  TOOLS_PLATFORM.[?=		[			# shell builtin
-@@ -178,3 +194,4 @@
+@@ -178,3 +197,4 @@
  .else
  OSX_TOOLS_FORCE_NOOP+=		yacc
  .endif
