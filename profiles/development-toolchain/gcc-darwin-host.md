@@ -133,8 +133,11 @@ for this linker. The selector is `ports-gcc16-darwin-llvm-mc-seed-v2`.
 Keep the v1 file for existing pinned inputs.
 
 The only v2 substitutions are `@DEPLOYMENT@` and `@SDK_VERSION@`.
-The initial values are `26.0` and `26.5`. Bind the SDK version to the exact
-accepted ABI metadata, such as its inventoried `SDKSettings.json` Version.
+The deployment is `26.0`. The SDK version is the installed macOS SDK, which
+is currently `27.0`. The SDK accepts only versions that it records with an
+exact instantiation hash, currently `27.0` and `26.5`; see its
+`docs/bootstrap-seed.md`. Bind the SDK version to the exact accepted ABI
+metadata, such as its inventoried `SDKSettings.json` Version.
 Do not query Xcode tools or infer a version from a directory name.
 Pin the template and instantiated hashes in the accepted SDK plan.
 Keep the four-argument driver prefix shown above.
