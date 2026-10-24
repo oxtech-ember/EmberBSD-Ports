@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.16 2021/10/26 10:59:36 nia Exp $
+
+BLAKE2s (vttest-20251205.tgz) = 426026b021fa2a5f6f1ee144004f344825cc10c0da8cbcbec2bce0291a802807
+SHA512 (vttest-20251205.tgz) = d216d34b3e63cdc52e01ee79cffc90cc33501df8c64c073c42993650d1daa4ad7c11629c3b9c440aa54b220dffa6ba78c39fd6c12cf03e948d7ff732cad22c08
+Size (vttest-20251205.tgz) = 243249 bytes
