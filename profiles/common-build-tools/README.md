@@ -222,6 +222,17 @@ reader. Header and API selection use the same macOS deployment-target guard.
 The [module regression](tests/cmake-macho/README.md) checks both deployment
 branches and independent Mach-O fixtures. Full packaging remains a separate gate.
 
+Native Darwin defaults use the common Mach-O load-command checker for package
+requirements. It resolves each image's own runpaths to concrete providers.
+This records concrete GCC16 runtime paths for ordinary `pkg_add` checks.
+Unresolved inherited runpaths remain errors. Other host and cross defaults
+retain their existing selection. The selected tools must provide `file`,
+`lipo` and `otool`.
+
+`tests/macho-native-metadata.py` checks the actual default selection with
+BSD make. Its optional package-stage check verifies real `REQUIRES` values
+without installing a package. It does not qualify a native toolset.
+
 ## Prepare and select
 
 ```sh
