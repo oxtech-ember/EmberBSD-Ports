@@ -40,6 +40,19 @@ It checks native/built-in/cross policy, real Find modules, the missing-symbol
 link failure and coherent header/runtime versions. A cache replay is not an
 independent discovery baseline. No full-package or memory-safety claim follows.
 
+Native CMake consumers and the CMake bootstrap use the selected pkgsrc
+AR, RANLIB, NM, STRIP and LD roles. The common policy requires each real
+input to be an existing absolute executable. It preserves compiler and
+archive wrappers; their generated paths reach the corresponding CMake cache
+entries. Cross builds retain their existing toolchain routing.
+The AI-assisted [metadata check](tests/cmake-binutils.py) covers modern and
+legacy CMake routes, both wrapper implementations, invalid inputs, export
+patch order and bootstrap argument forwarding. It runs no compiler or CMake
+configure command. Full builds and archive execution remain separate checks.
+This check does not qualify every CMake tool. Darwin install-name and TAPI
+discovery, other binary utilities and compiler-specific IPO archivers retain
+their existing selection paths and need separate qualification.
+
 The paired [Tcl/Tk 9.1 recipes](cross/tcltk.md) retain bundled extensions,
 system SQLite and ZipFS. Tcl's ordinary native GCC16 package and host
 generator contract pass. Platform branches, metadata and SQLite symbol

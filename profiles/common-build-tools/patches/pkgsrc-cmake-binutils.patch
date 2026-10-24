@@ -1,0 +1,84 @@
+# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+# Keep selected native pkgsrc binutils and wrappers in every CMake route.
+# Cross configuration retains its existing toolchain policy.
+--- a/devel/cmake/configure-settings.mk
++++ b/devel/cmake/configure-settings.mk
+@@ -53,6 +53,9 @@
+ 
+ CMAKE_USE_GNU_INSTALL_DIRS?=	yes
+ 
++.include "../../mk/configure/ember-cmake-binutils.mk"
++CMAKE_CONFIGURE_ARGS+= ${_EMBERBSD_CMAKE_BINUTILS_ARGS}
++
+ CMAKE_INSTALL_PREFIX?=		${PREFIX}
+ CMAKE_INSTALL_NAME_DIR?=	${PREFIX}/lib
+ 
+--- a/mk/configure/cmake.mk
++++ b/mk/configure/cmake.mk
+@@ -55,6 +55,9 @@
+ .endif
+ 
+ CMAKE_USE_GNU_INSTALL_DIRS?=	yes
++
++.include "../../mk/configure/ember-cmake-binutils.mk"
++CMAKE_CONFIGURE_ARGS+= ${_EMBERBSD_CMAKE_BINUTILS_ARGS}
+ 
+ CMAKE_INSTALL_PREFIX?=	${PREFIX}
+ CMAKE_INSTALL_NAME_DIR?=${PREFIX}/lib
+--- a/mk/compiler.mk
++++ b/mk/compiler.mk
+@@ -242,6 +242,16 @@
+ .  endif
+ .endif
+ 
++# Preserve selected native binutils before compiler and wrapper path changes.
++# CMake validates these files and uses generated wrappers where required.
++.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++.for _tool_ in AR RANLIB NM STRIP LD
++.  if !defined(PKG_${_tool_})
++PKG_${_tool_}:= ${${_tool_}}
++.  endif
++.endfor
++.endif
++
+ # Strip the leading paths from the toolchain variables since we manipulate
+ # the PATH to use the correct executable.
+ #
+--- a/mk/cwrappers.mk
++++ b/mk/cwrappers.mk
+@@ -56,7 +56,11 @@
+ CWRAPPERS_WRAPPEE.cpp=		${PKG_CPP:Ufalse}
+ CWRAPPERS_WRAPPEE.f77=		${PKG_FC:Ufalse}
+ CWRAPPERS_WRAPPEE.imake=	${TOOLS_PATH.imake:Ufalse}
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+ CWRAPPERS_WRAPPEE.ld=		${LD:Ufalse}
++.else
++CWRAPPERS_WRAPPEE.ld=		${PKG_LD:U${LD:Ufalse}}
++.endif
+ CWRAPPERS_WRAPPEE.libtool=	${PKG_LIBTOOL:Ufalse}
+ CWRAPPERS_WRAPPEE.shlibtool=	${PKG_SHLIBTOOL:Ufalse}
+ 
+--- a/devel/cmake/Makefile
++++ b/devel/cmake/Makefile
+@@ -90,10 +90,14 @@
+ .include "../../textproc/expat/buildlink3.mk"
+ .include "../../www/curl/buildlink3.mk"
+ 
++# Bootstrap forwards cache definitions after one option separator.
++.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++CONFIGURE_ARGS+= -- ${_EMBERBSD_CMAKE_BINUTILS_ARGS}
++.endif
++
+ # Origin: EmberBSD (AI-assisted). Keep each selected pkgsrc provider coherent.
+ # Darwin SDK and framework searches can otherwise override its headers or DSO.
+ .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+-CONFIGURE_ARGS+=	--
+ .  if ${USE_BUILTIN.libarchive:U:tl} != "yes"
+ CONFIGURE_ARGS+=	-DLibArchive_INCLUDE_DIR:PATH=${BUILDLINK_PREFIX.libarchive}/include
+ CONFIGURE_ARGS+=	-DLibArchive_LIBRARY:FILEPATH=${BUILDLINK_PREFIX.libarchive}/lib${LIBABISUFFIX}/libarchive.dylib
+@@ -118,3 +122,5 @@
+ 
+ .include "../../mk/pthread.buildlink3.mk"
+ .include "../../mk/bsd.pkg.mk"
++
++.include "../../mk/configure/ember-cmake-binutils.mk"
