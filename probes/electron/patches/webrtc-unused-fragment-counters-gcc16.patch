@@ -1,0 +1,42 @@
+diff --git a/third_party/webrtc/modules/audio_processing/aec3/matched_filter.cc b/third_party/webrtc/modules/audio_processing/aec3/matched_filter.cc
+--- a/third_party/webrtc/modules/audio_processing/aec3/matched_filter.cc
++++ b/third_party/webrtc/modules/audio_processing/aec3/matched_filter.cc
+@@ -518,7 +518,7 @@
+         x2_sum += x[x_index] * x[x_index];
+         s += h[k] * x[x_index];
+         x_index = x_index < (x.size() - 1) ? x_index + 1 : 0;
+-        if ((k + 1 & 0b11) == 0) {
++        if (((k + 1) & 0b11) == 0) {
+           int idx = k >> 2;
+           accumulated_error[idx] += (y[i] - s) * (y[i] - s);
+         }
+diff --git a/third_party/webrtc/modules/video_coding/codecs/h264/h264_encoder_impl.cc b/third_party/webrtc/modules/video_coding/codecs/h264/h264_encoder_impl.cc
+--- a/third_party/webrtc/modules/video_coding/codecs/h264/h264_encoder_impl.cc
++++ b/third_party/webrtc/modules/video_coding/codecs/h264/h264_encoder_impl.cc
+@@ -174,10 +174,9 @@
+ static void RtpFragmentize(EncodedImage* encoded_image, SFrameBSInfo* info) {
+   // Calculate minimum buffer size required to hold encoded data.
+   size_t required_capacity = 0;
+-  size_t fragments_count = 0;
+   for (int layer = 0; layer < info->iLayerNum; ++layer) {
+     const SLayerBSInfo& layerInfo = info->sLayerInfo[layer];
+-    for (int nal = 0; nal < layerInfo.iNalCount; ++nal, ++fragments_count) {
++    for (int nal = 0; nal < layerInfo.iNalCount; ++nal) {
+       RTC_CHECK_GE(layerInfo.pNalLengthInByte[nal], 0);
+       // Ensure `required_capacity` will not overflow.
+       RTC_CHECK_LE(layerInfo.pNalLengthInByte[nal],
+@@ -191,13 +190,12 @@
+   // Iterate layers and NAL units, note each NAL unit as a fragment and copy
+   // the data to `encoded_image->_buffer`.
+   const uint8_t start_code[4] = {0, 0, 0, 1};
+-  size_t frag = 0;
+   encoded_image->set_size(0);
+   for (int layer = 0; layer < info->iLayerNum; ++layer) {
+     const SLayerBSInfo& layerInfo = info->sLayerInfo[layer];
+     // Iterate NAL units making up this layer, noting fragments.
+     size_t layer_len = 0;
+-    for (int nal = 0; nal < layerInfo.iNalCount; ++nal, ++frag) {
++    for (int nal = 0; nal < layerInfo.iNalCount; ++nal) {
+       // Because the sum of all layer lengths, `required_capacity`, fits in a
+       // `size_t`, we know that any indices in-between will not overflow.
+       RTC_DCHECK_GE(layerInfo.pNalLengthInByte[nal], 4);

@@ -186,6 +186,10 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-wire-and-single-wo
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gles2-scalar-cache-bounds-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/media-status-enum-noreturn-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/liburlpattern-enum-stream-endpaths-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-unused-fragment-counters-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/vector-insert-batch-construction-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-shared-image-complete-type-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-metrics-tracing-enum-gcc16.patch
 ```
 
 Set `dawn_host_go_path` to the absolute path of a supported host Go executable
@@ -351,6 +355,13 @@ metadata invariant. It keeps other libc signatures and allocator policy.
 The reader, wire and media follow-ups preserve closed-enum validation and
 array-query sizes. The [GCC16 checks](tests/gcc16-reader-wire-media.md) describe
 production compiler results, target fixtures and analyzer limits.
+
+The context, vector and enum follow-ups preserve null initialization, saved
+block fields, URL adjustment order and unknown Perfetto wire values. The
+[focused checks](tests/gcc16-context-vector-enums.md) describe production
+GCC16 comparisons, staged shared-image checks, the 18-case target enum
+fixture and analyzer limits. WebRTC checks retain NAL validation and copy
+behavior. Complete Electron and Blanc acceptance remain pending.
 
 GN and allocator checks are in the [GN regression guide](tests/README.md).
 Focused C++ checks are documented in the [libc++](tests/libcxx-gcc16.md) and

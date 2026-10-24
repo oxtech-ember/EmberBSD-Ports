@@ -1,0 +1,30 @@
+--- a/gpu/command_buffer/service/shared_image/shared_image_backing.h
++++ b/gpu/command_buffer/service/shared_image/shared_image_backing.h
+@@ -90,7 +90,7 @@
+   AccessParams& operator=(const AccessParams&);
+   ~AccessParams();
+ 
+-  scoped_refptr<SharedContextState> context_state = nullptr;
++  scoped_refptr<SharedContextState> context_state;
+   wgpu::Device wgpu_device = nullptr;
+   // Other context types can be added here in the future.
+ };
+--- a/gpu/command_buffer/service/shared_image/shared_image_backing.cc
++++ b/gpu/command_buffer/service/shared_image/shared_image_backing.cc
+@@ -214,6 +214,7 @@
+       // NOTE: Do not add a default case to force any new types to be
+       // handled here on addition.
+   }
++  NOTREACHED();
+ }
+ 
+ std::unique_ptr<SkiaGaneshImageRepresentation>
+@@ -484,7 +485,7 @@
+   return false;
+ }
+ 
+-AccessParams::AccessParams() = default;
++AccessParams::AccessParams() : context_state(nullptr) {}
+ AccessParams::AccessParams(const AccessParams&) = default;
+ AccessParams& AccessParams::operator=(const AccessParams&) = default;
+ AccessParams::~AccessParams() = default;

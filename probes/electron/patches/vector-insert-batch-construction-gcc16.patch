@@ -1,0 +1,25 @@
+--- a/gpu/command_buffer/client/fenced_allocator.cc
++++ b/gpu/command_buffer/client/fenced_allocator.cc
+@@ -251,7 +251,8 @@
+   block.state = IN_USE;
+   block.size = size;
+   // this is the last thing being done because it may invalidate block;
+-  blocks_.insert(blocks_.begin() + index + 1, newblock);
++  blocks_.emplace(blocks_.begin() + index + 1, newblock.state,
++                  newblock.offset, newblock.size, newblock.token);
+   return offset;
+ }
+ 
+--- a/components/url_formatter/url_formatter.cc
++++ b/components/url_formatter/url_formatter.cc
+@@ -118,8 +118,8 @@
+     if (component_text.length() ==
+         stripped_component_text.length() + kMobilePrefixLength + kWwwLength) {
+       // Add www. and m. offsets.
+-      offset_adjustments.emplace_back(0, kWwwLength, 0);
+-      offset_adjustments.emplace_back(0, kMobilePrefixLength, 0);
++      offset_adjustments = {{0, kWwwLength, 0},
++                            {0, kMobilePrefixLength, 0}};
+     } else if (component_text.length() ==
+                stripped_component_text.length() + kWwwLength) {
+       // Add www. offset.
