@@ -25,8 +25,13 @@ KERNEL_TARGETS = {
         'machine': 40,
         'arch_macro': '__arm__',
         'pointer_size': 4,
-        'header_directory': 'evbarm',
-        'required_headers': ('arm/ansi.h',),
+        'header_directory': 'arm',
+        'required_headers': (
+            'arm/ansi.h',
+            'evbarm/disklabel.h',
+            'evbarm/intr.h',
+            'evbarm/sljit_machdep.h',
+        ),
         'required_macros': ('__ARM_EABI__ 1', '__ARM_PCS_VFP 1', '__ARM_ARCH 7'),
     },
 }

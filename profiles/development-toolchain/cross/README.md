@@ -82,7 +82,9 @@ explicit APCS/ATPCS ABI selection. The default AAPCS hard-float path otherwise
 crashes GAS 2.42 and 2.47 on ARM ELF; the compiler build's split-DWARF and ABI
 object probes exercise the corrected path.
 When `--bootstrap-libgcc` is selected, its header input must come from the
-`earmv7hf` build and expose the `evbarm` machine headers plus `arm/ansi.h`.
+`earmv7hf` build. The `machine` include link must resolve to `arm`, and the
+sysroot must include `arm/ansi.h` plus the public `evbarm` headers
+`disklabel.h`, `intr.h`, and `sljit_machdep.h`.
 
 The explicit [Fortran application mode](fortran.md) adds the same GCC16
 frontend in a new compiler generation. Its compile-only capability receipt

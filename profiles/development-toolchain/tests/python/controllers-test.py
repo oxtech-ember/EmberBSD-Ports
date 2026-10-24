@@ -224,13 +224,18 @@ class ControllerTest(unittest.TestCase):
     def header_seed(self, target):
         root = self.root / ('headers-' + target)
         include = root / 'usr/include'
-        machine_dir = 'evbarm' if target == 'earmv7hf' else target
+        machine_dir = 'arm' if target == 'earmv7hf' else target
         for directory in ('sys', machine_dir):
             (include / directory).mkdir(parents=True)
         for name in ('stddef.h', 'stdio.h', 'sys/types.h', 'sys/cdefs.h', 'sys/common_ansi.h', machine_dir + '/ansi.h'):
             (include / name).write_text('source header fixture\n')
         (include / 'machine').symlink_to(machine_dir)
-        if target in ('aarch64', 'earmv7hf'):
+        if target == 'earmv7hf':
+            evbarm = include / 'evbarm'
+            evbarm.mkdir()
+            for name in ('disklabel.h', 'intr.h', 'sljit_machdep.h'):
+                (evbarm / name).write_text('evbarm header fixture\n')
+        if target == 'aarch64':
             (include / 'arm').mkdir()
             (include / 'arm/ansi.h').write_text('arm ABI header fixture\n')
         return root
@@ -242,8 +247,10 @@ class ControllerTest(unittest.TestCase):
         root = self.header_seed('earmv7hf')
         record = support.headers(root, 'earmv7hf')
         self.assertEqual(record['target'], 'earmv7hf')
-        self.assertEqual(record['inventory']['usr/include/machine']['target'], 'evbarm')
+        self.assertEqual(record['inventory']['usr/include/machine']['target'], 'arm')
         self.assertIn('usr/include/arm/ansi.h', record['inventory'])
+        for name in ('disklabel.h', 'intr.h', 'sljit_machdep.h'):
+            self.assertIn('usr/include/evbarm/' + name, record['inventory'])
 
     def test_earmv7hf_static_bootstrap_accepts_arm_elf32(self):
         spec_ = importlib.util.spec_from_file_location('bootstrap_libgcc', PROFILE / 'cross/bootstrap_libgcc.py')
@@ -318,10 +325,12 @@ class ControllerTest(unittest.TestCase):
         spec_.loader.exec_module(probes)
         triplet = host.target_triplet('earmv7hf')
         compiler = self.root / 'arm-gcc'
+        linker = self.root / 'arm-ld'
         readelf = self.root / 'arm-readelf'
         compiler.write_text('fixture GCC 16.2.0\n')
+        linker.write_text('fixture GNU ld 2.47\n')
         readelf.write_text('fixture GNU readelf 2.47\n')
-        tools = {'gcc': compiler, 'readelf': readelf}
+        tools = {'gcc': compiler, 'ld': linker, 'readelf': readelf}
         work = self.root / 'armv7-abi'
         flags = ['Version5 EABI, hard-float ABI']
         observed = []
@@ -329,10 +338,15 @@ class ControllerTest(unittest.TestCase):
             observed.extend(str(value) for value in argv)
             data = bytearray(b'\x7fELF\x01\x01\x01' + b'\0' * 9)
             data.extend(struct.pack('<HHIIIIIHHHHHH', 1, 40, 1, 0, 0, 0, 0x400, 52, 32, 0, 40, 0, 0))
-            Path(argv[-1]).write_bytes(data)
+            Path(argv[argv.index('-o') + 1]).write_bytes(data)
         def capture(argv, env=None):
             self.assertEqual(str(argv[0]), str(readelf))
-            return 'Flags: 0x5000400, ' + flags[0] + '\n'
+            return ("Class: ELF32\n"
+                    "Data: 2's complement, little endian\n"
+                    "Type: REL (Relocatable file)\n"
+                    "Machine: ARM\n"
+                    'Flags: 0x5000400, ' + flags[0] + '\n'
+                    'Tag_ABI_VFP_args: VFP registers\n')
         def run(output):
             with patch.object(probes, 'check_compilers', return_value=tools), \
                  patch.object(probes, 'logged', side_effect=logged), \
