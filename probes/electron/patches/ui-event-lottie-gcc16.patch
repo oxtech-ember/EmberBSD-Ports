@@ -1,0 +1,47 @@
+--- a/ui/events/event.cc
++++ b/ui/events/event.cc
+@@ -68,6 +68,7 @@
+     case EventMomentumPhase::BLOCKED:
+       return "BLOCKED";
+   }
++  NOTREACHED();
+ }
+ 
+ std::string ScrollEventPhaseToString(ScrollEventPhase phase) {
+@@ -81,6 +82,7 @@
+     case ScrollEventPhase::kEnd:
+       return "kEnd";
+   }
++  NOTREACHED();
+ }
+ 
+ std::vector<std::string_view> EventResultsNames(int event_results) {
+--- a/ui/events/event_target.cc
++++ b/ui/events/event_target.cc
+@@ -42,7 +42,7 @@
+   if (priority == Priority::kDefault)
+     pre_target_list_.push_back(prioritized);
+   else
+-    pre_target_list_.insert(pre_target_list_.begin(), prioritized);
++    pre_target_list_.emplace(pre_target_list_.begin(), prioritized);
+ }
+ 
+ void EventTarget::RemovePreTargetHandler(EventHandler* handler) {
+--- a/ui/lottie/animation.cc
++++ b/ui/lottie/animation.cc
+@@ -10,6 +10,7 @@
+ 
+ #include "base/check.h"
+ #include "base/functional/bind.h"
++#include "base/notreached.h"
+ #include "base/numerics/safe_conversions.h"
+ #include "base/observer_list.h"
+ #include "base/trace_event/trace_event.h"
+@@ -291,6 +292,7 @@
+         return std::nullopt;
+       }
+   }
++  NOTREACHED();
+ }
+ 
+ std::optional<int> Animation::GetNumCompletedCycles() const {

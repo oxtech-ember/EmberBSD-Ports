@@ -158,6 +158,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-wayland-enum-t
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-tflite-explicit-arithmetic-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gbm-elf-weak-symbol-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-network-policy-traits-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ui-event-lottie-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-padding-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-invariants.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-proc-clang-cfi-attribute.patch
@@ -274,6 +275,9 @@ The network policy/traits patch makes exhaustive enum exits explicit and
 rejects unknown device-session union tags without changing the output. Closed
 DNS enum validation remains before native conversion. See the
 [network policy checks](tests/network-policy-traits-gcc16.md).
+The event/Lottie patch makes internal enum exits fatal and inserts a copied
+local handler value through emplace. It preserves handler priorities and
+animation progress. See the [event checks](tests/ui-event-lottie-gcc16.md).
 The scenario patch keeps the shared-memory padding diagnostic fatal on
 both Clang and GCC. The QUICHE patch checks allocation and handshake invariants,
 compares the selected subprotocol without signed conversion errors, and obtains
