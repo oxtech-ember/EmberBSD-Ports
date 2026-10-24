@@ -24,8 +24,8 @@ SHA256; the recipe `distinfo` pins BLAKE2s, SHA512 and the size.
 
 ## Recipe change
 
-[gcc-darwin-host.patch](patches/gcc-darwin-host.patch) changes only Darwin
-native builds of `lang/gcc16`:
+[gcc-darwin-host.patch](patches/gcc-darwin-host.patch) prepares the shared source for `lang/gcc16`. Native tool and bootstrap
+selection remains conditional on Darwin:
 
 - `PATCHFILES` applies the diff with `-p1` before the pkgsrc patches.
   The diff also adds Darwin COBOL support in `libgcobol/configure.tgt`. That
@@ -47,7 +47,9 @@ native builds of `lang/gcc16`:
   The patch carries `fixincl.x` regenerated with AutoGen 5.18.16 and a
   `make check` baseline.
 
-NetBSD and cross builds have `OPSYS=NetBSD` and keep their current recipes.
+NetBSD and cross builds also apply the pinned source diff: the common LLVM-MC
+patch references Darwin files absent from the release archive. The Python
+source preparer uses the same prerequisite and COBOL exclusion.
 The new assembler mode is opt-in and accepts only AArch64 Darwin targets.
 The current source draft is a default-CPU pilot. It does not establish a
 qualified native toolset or an accepted Darwin GCC package.
@@ -254,7 +256,8 @@ The command mapping follows primary sources:
 
 The metadata regression needs no build. It checks the Darwin diff, its
 checksums, the COBOL filter, the GCC-only seed gate and the explicit tool
-selection. It checks that the cross recipe does not get the Darwin diff:
+selection. It checks that the cross recipe receives the same prerequisite diff without
+the native Darwin command selection:
 
 ```sh
 BMAKE=/absolute/bmake sh profiles/development-toolchain/tests/darwin-host.sh \
@@ -295,3 +298,22 @@ They do not establish an accepted seed, package or native toolset.
 
 The five linked LLVM MC and Mach-O interface files are byte-identical in
 23.1.3 and 23.1.4. This source comparison does not qualify new native tools.
+
+### Shared source prerequisite check
+
+The common source change advances `gcc16` to nb6, `gcc16-libs` to nb7,
+and `gcc16-libjit` to nb1. The separate C/C++ runtime advances to nb7;
+Fortran runtime/devel advance to nb1 with matching exact dependency pins.
+Previous installed-package results remain historical.
+The source preparation check applies the complete recipe series and rejects
+a corrupt prerequisite. It also races four first writers against a read-only
+archive directory. Downloads use the writable output workspace and publish
+only complete, hash-checked files. Existing archive-side inputs are read only.
+
+```sh
+python3 profiles/development-toolchain/tests/gcc-source-prerequisite.py \
+  /absolute/prepared-pkgsrc /absolute/gcc-16.2.0.tar.xz \
+  --sdk-source /absolute/EmberBSD-SDK
+```
+
+This check does not qualify a native compiler package or SDK toolset.

@@ -8,6 +8,7 @@ import re
 import shutil
 import sys
 import tempfile
+import urllib.request
 
 from emberbsd_sdk import inventory, jsonio, paths, process
 from emberbsd_sdk.errors import SDKError, CommandError, ProcessOwnershipError
@@ -181,13 +182,60 @@ def audit_source(pkgsrc, archive, runtime=True):
     return expected, patches
 
 
+def source_prerequisite(archive, patches, cache):
+    if 'patch-gcc_darwin_llvm_mc' not in patches:
+        return None
+    row = source_row('gcc-darwin-host', VERSION)
+    # A read-only distfile directory remains a valid input. Only the output
+    # workspace must be writable; existing pinned inputs can be reused.
+    name = Path(row[2]).name
+    existing = Path(archive).parent / name
+    delta = existing if existing.exists() else Path(cache) / name
+    if not delta.exists():
+        with urllib.request.urlopen(row[2]) as response:
+            data = response.read()
+        require(hashlib.sha256(data).hexdigest() == row[3], 'Darwin source diff SHA256 mismatch')
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(prefix='.' + name + '-', dir=cache, delete=False) as stream:
+                temporary = Path(stream.name)
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
+            try:
+                # Publish only a complete file. Preserve a competing writer.
+                os.link(temporary, delta)
+            except FileExistsError:
+                pass
+        finally:
+            if temporary is not None:
+                temporary.unlink()
+    require(sha(delta) == row[3], 'Darwin source diff SHA256 mismatch')
+    return delta
+
+
 def prepare_source(pkgsrc, archive, source, runtime=True, quarantine=None, output=None):
     source = new_path(source)
     _, patches = audit_source(pkgsrc, archive, runtime)
+    delta = source_prerequisite(archive, patches, source.parent)
     source.mkdir()
     extract_log = source.parent / (source.name + '-extract.log')
     require(paths.entry(extract_log) is None, 'Source extraction log already exists')
     logged(['tar', '-xpf', archive, '--strip-components=1', '-C', source], extract_log, quarantine=quarantine)
+    # The common LLVM-MC patch includes Darwin-port files absent from the
+    # release archive. Apply the same pinned prerequisite as the recipe,
+    # including its exclusion of the conflicting COBOL configure section.
+    if delta is not None:
+        filtered = source.parent / (source.name + '-darwin.diff')
+        skip = False
+        with filtered.open('xb') as stream:
+            for line in delta.read_bytes().splitlines(keepends=True):
+                if line.startswith(b'diff --git '):
+                    skip = line.split()[2] == b'a/libgcobol/configure.tgt'
+                if not skip:
+                    stream.write(line)
+        logged(['patch', '-f', '-N', '-F', '0', '-p1', '-d', source, '-i', filtered],
+               source.parent / (source.name + '-darwin.log'), quarantine=quarantine)
     for name in patches:
         if name != 'patch-gcc_Makefile.in':
             patch_log = source.parent / (source.name + '-' + name + '.log')

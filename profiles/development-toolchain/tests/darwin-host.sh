@@ -64,8 +64,8 @@ filter=$(query "$native" -V '${PATCH_DIST_CAT.gcc-16.2.0.diff}')
 grep -qx '+keep-1' "$work/filtered.diff"
 grep -qx '+keep-2' "$work/filtered.diff"
 if grep -q -e libgcobol -e '^+drop' "$work/filtered.diff"; then exit 1; fi
-# Target packages do not get the Darwin diff.
+# Target packages share the prerequisite source diff, but not native tool selection.
 [ "$(query "$cross" -V '${OPSYS}')" = NetBSD ]
-[ -z "$(query "$cross" -V '${PATCHFILES}')" ]
+[ "$(query "$cross" -V '${PATCHFILES}')" = gcc-16.2.0.diff ]
 query "$cross" -V '${CONFIGURE_ARGS}' | tr ' ' '\n' | grep -qx -- --disable-bootstrap
 echo 'darwin-host: OK'

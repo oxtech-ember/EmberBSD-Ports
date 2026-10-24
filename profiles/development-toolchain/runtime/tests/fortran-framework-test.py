@@ -65,19 +65,19 @@ records = []
 # pkg_match treats a literal package name as an exact version pin. A single
 # equals sign is not a Dewey operator and cannot match the installed name.
 role_pins = (
-    ('gcc16-runtime', '16.2.0nb6', '16.2.0nb5', '16.2.0nb7'),
-    ('gcc16-fortran-runtime', '16.2.0', '16.1.0', '16.2.0nb1'),
-    ('gcc16-fortran-devel', '16.2.0', '16.1.0', '16.2.0nb1'),
+    ('gcc16-runtime', '16.2.0nb7', '16.2.0nb6', '16.2.0nb8'),
+    ('gcc16-fortran-runtime', '16.2.0nb1', '16.2.0', '16.2.0nb2'),
+    ('gcc16-fortran-devel', '16.2.0nb1', '16.2.0', '16.2.0nb2'),
 )
 pin_sources = (
     ('pkgsrc/lang/gcc16-fortran-runtime/Makefile',
-     ('gcc16-runtime-16.2.0nb6:', 'gcc16-fortran-runtime-16.2.0:')),
+     ('gcc16-runtime-16.2.0nb7:', 'gcc16-fortran-runtime-16.2.0nb1:')),
     ('pkgsrc/lang/gcc16-fortran-runtime/buildlink3.mk',
-     ('gcc16-fortran-runtime-16.2.0',)),
+     ('gcc16-fortran-runtime-16.2.0nb1',)),
     ('pkgsrc/lang/gcc16-fortran-devel/buildlink3.mk',
-     ('gcc16-fortran-devel-16.2.0',)),
+     ('gcc16-fortran-devel-16.2.0nb1',)),
     ('profiles/common-build-tools/cross/fortran.mk',
-     ('gcc16-fortran-runtime-16.2.0:', 'gcc16-fortran-devel-16.2.0:')),
+     ('gcc16-fortran-runtime-16.2.0nb1:', 'gcc16-fortran-devel-16.2.0nb1:')),
 )
 for relative, pins in pin_sources:
     text = (root / relative).read_text()
@@ -163,7 +163,7 @@ for target, triplet in (('amd64','x86_64--netbsd'),('aarch64','aarch64--netbsd')
             if after[0] != '/fixture-missing-compiler/bin/'+triplet+'-gfortran': raise SDKError('Late hook did not select FC')
             if 'Fortran frontend' not in after[4] or 'SDK roles' not in after[4]: raise SDKError('Late missing-input guards did not run')
             if cross == 'yes':
-                if 'gcc16-fortran-runtime-16.2.0:' not in after[1] or 'gcc16-fortran-devel-16.2.0:' not in after[2]: raise SDKError('Late target package dependencies absent')
+                if 'gcc16-fortran-runtime-16.2.0nb1:' not in after[1] or 'gcc16-fortran-devel-16.2.0nb1:' not in after[2]: raise SDKError('Late target package dependencies absent')
             elif after[1] or after[2]: raise SDKError('Fake-cross host package acquired target DB dependencies')
         elif after != before or any(after): raise SDKError('Native/non-Fortran metadata changed')
         records.append({'late_language':lang,'target':target,'cross':cross,'tools_cross':tools_cross,

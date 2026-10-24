@@ -16,7 +16,7 @@ query -V 'name=${PKGNAME}' -V 'platform=${MACHINE_GNU_PLATFORM}' \
     -V 'tools=${TOOLDIR}' -V 'sysroot=${CROSS_DESTDIR}' -V 'fail=${PKG_FAIL_REASON}' \
     -V 'deps=${DEPENDS}' > "$work/cross.txt"
 value() { sed -n "s/^$1=//p" "$work/cross.txt"; }
-[ "$(value name)" = gcc16-16.2.0nb5 ]
+[ "$(value name)" = gcc16-16.2.0nb6 ]
 platform=$(value platform) tools=$(value tools) sysroot=$(value sysroot)
 case "$platform" in aarch64--netbsd|x86_64--netbsd) ;; *) exit 1 ;; esac
 [ -z "$(value fail)" ] || { value fail >&2; exit 1; }

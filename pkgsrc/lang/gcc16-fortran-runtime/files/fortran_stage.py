@@ -15,9 +15,9 @@ from emberbsd_sdk.errors import SDKError
 from runtime import Stage as BaseStage, SOURCE_SHA256, TARGETS, VERSION
 from fortran_target import quadmath, sonames
 
-NAMES = {'runtime': 'gcc16-fortran-runtime-16.2.0',
-         'devel': 'gcc16-fortran-devel-16.2.0'}
-BASE = 'gcc16-runtime-16.2.0nb6'
+NAMES = {'runtime': 'gcc16-fortran-runtime-16.2.0nb1',
+         'devel': 'gcc16-fortran-devel-16.2.0nb1'}
+BASE = 'gcc16-runtime-16.2.0nb7'
 LICENSES = {'COPYING3': 'COPYING3', 'COPYING.RUNTIME': 'COPYING.RUNTIME',
             'libquadmath/COPYING.LIB': 'libquadmath-COPYING.LIB',
             'libbacktrace/backtrace.h': 'libbacktrace-notice.h'}

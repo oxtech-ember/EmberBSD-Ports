@@ -9,6 +9,7 @@ DISTNAME=	gcc16-fortran-runtime-16.2.0
 _GCC16_FORTRAN_ROLE=	runtime
 COMMENT=	GCC16 Fortran target libraries without compiler tools
 .endif
+PKGREVISION=	1
 CATEGORIES=	lang
 MASTER_SITES=	# none
 DISTFILES=	# none
@@ -23,9 +24,9 @@ NO_BUILD=	yes
 LIBTOOLIZE_PLIST= no
 # A complete compiler owns these files until it adopts this runtime split.
 CONFLICTS+=	gcc16-[0-9]* gcc16-libs-[0-9]*
-DEPENDS+=	gcc16-runtime-16.2.0nb6:../../lang/gcc16-runtime
+DEPENDS+=	gcc16-runtime-16.2.0nb7:../../lang/gcc16-runtime
 .if ${_GCC16_FORTRAN_ROLE} == "devel"
-DEPENDS+=	gcc16-fortran-runtime-16.2.0:../../lang/gcc16-fortran-runtime
+DEPENDS+=	gcc16-fortran-runtime-16.2.0nb1:../../lang/gcc16-fortran-runtime
 INFO_FILES=	yes
 INFO_DIR=	gcc16/share/info
 .endif

@@ -8,8 +8,8 @@ FC=${TOOLDIR}/bin/${_EMBER_CROSS_TRIPLET}-gfortran
 PKG_FAIL_REASON+="The selected GCC16 compiler generation has no Fortran frontend"
 .endif
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-DEPENDS+=gcc16-fortran-runtime-16.2.0:../../lang/gcc16-fortran-runtime
-BUILD_DEPENDS+=gcc16-fortran-devel-16.2.0:../../lang/gcc16-fortran-devel
+DEPENDS+=gcc16-fortran-runtime-16.2.0nb1:../../lang/gcc16-fortran-runtime
+BUILD_DEPENDS+=gcc16-fortran-devel-16.2.0nb1:../../lang/gcc16-fortran-devel
 .endif
 # Fake-cross Libtool is a native host script. Its target runtime dependencies
 # are checked in the SDK, never registered in the native package database.
