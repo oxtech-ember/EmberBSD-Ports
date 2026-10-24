@@ -9,6 +9,8 @@ from pathlib import Path
 import subprocess
 import sys
 from types import SimpleNamespace
+# Build-host programs use the native GCC16 drivers; there is no /usr/bin/cc default.
+HOST_CC, HOST_CXX = (os.environ.get(n) or sys.exit(n + ' must name the native GCC16 driver') for n in ('HOST_CC', 'HOST_CXX'))
 
 sys.dont_write_bytecode = True
 
@@ -102,7 +104,7 @@ message('scanner arguments: ' + ' '.join(gir_args))
     (work / 'cross.ini').write_text(binaries + machine, encoding='utf-8')
     (work / 'enabled.ini').write_text(binaries + machine + '[properties]\n' + properties, encoding='utf-8')
     (work / 'native.ini').write_text(
-        "[binaries]\nc = '/usr/bin/cc'\ng-ir-scanner = " + meson_string(host + '/bin/g-ir-scanner') +
+        "[binaries]\nc = " + meson_string(HOST_CC) + "\ng-ir-scanner = " + meson_string(host + '/bin/g-ir-scanner') +
         '\ng-ir-compiler = ' + meson_string(host + '/bin/g-ir-compiler') +
         '\n[properties]\n' + properties, encoding='utf-8')
     environment = dict(os.environ, PATH=host + '/bin:/usr/bin:/bin', EMBERBSD_SDK_SOURCE=sdk.root,

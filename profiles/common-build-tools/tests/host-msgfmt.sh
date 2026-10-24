@@ -85,7 +85,9 @@ msgstr[1] "Translated files"
 PO
 mkdir -p "$work/locale/zz/LC_MESSAGES"
 "$msgfmt" -o "$work/locale/zz/LC_MESSAGES/ember.mo" "$work/catalog.po"
-"${HOST_CC:-/usr/bin/cc}" -Wall -Wextra -Werror -I"$prefix/include/gettext" \
+. "$(CDPATH= cd -- "$(dirname -- "$0")/../cross" && pwd)/host-gcc16.sh"
+ember_require_host_gcc16 HOST_CC c
+"$HOST_CC" -Wall -Wextra -Werror -I"$prefix/include/gettext" \
     "$work/consumer.c" -L"$prefix/lib" -Wl,-rpath,"$prefix/lib" -lintl -o "$work/consumer"
 "$work/consumer" "$work/locale"
 echo 'PASS: default dependency, native/cross host override, invalid tools and libintl plural/context consumer'

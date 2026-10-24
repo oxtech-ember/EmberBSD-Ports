@@ -8,6 +8,8 @@ import re
 import shutil
 import subprocess
 import sys
+# Build-host programs use the native GCC16 drivers; there is no /usr/bin/cc default.
+HOST_CC, HOST_CXX = (os.environ.get(n) or sys.exit(n + ' must name the native GCC16 driver') for n in ('HOST_CC', 'HOST_CXX'))
 sys.dont_write_bytecode = True
 from llvm_fixture import load_sdk
 sdk_source, args = load_sdk()
@@ -88,7 +90,7 @@ full = [s for s in (full_dir / '.PLIST_nokeywords').read_text().splitlines() if 
 assert sorted(runtime + sdk) == sorted(full)
 helper = owner / 'files/select-package-stage.py'
 assert helper.is_file()
-native_args = ['USE_CROSS_COMPILE=no', 'PKGSRC_COMPILER=clang', 'CC=/usr/bin/clang', 'CXX=/usr/bin/clang++', 'CLANGBASE=/usr', 'USE_NATIVE_GCC=no', 'USE_PKGSRC_GCC=no']
+native_args = ['USE_CROSS_COMPILE=no', 'PKGSRC_COMPILER=gcc', 'CC=' + HOST_CC, 'CXX=' + HOST_CXX, 'USE_NATIVE_GCC=yes', 'USE_PKGSRC_GCC=no']
 native = plist('native', 'llvm', *native_args)
 assert 'bin/llvm-config' in native and 'include/llvm/IR/Module.h' in native
 reasons = run('devel-metadata', 'llvm-devel', *cross, '-v', 'PKG_FAIL_REASON', '-v', 'DEPENDS', '-v', 'DISTINFO_FILE', '-v', 'PATCHDIR')

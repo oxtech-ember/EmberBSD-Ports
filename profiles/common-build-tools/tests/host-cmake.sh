@@ -5,6 +5,9 @@ set -eu
 [ "$#" = 5 ] || { echo "Usage: $0 PKGSRC CROSS_MAKECONF NATIVE_MAKECONF HOST_CMAKE NEW_WORK" >&2; exit 2; }
 pkgsrc=$1 crossconf=$2 nativeconf=$3 cmake=$4 work=$5
 bmake=${BMAKE:-bmake}
+. "$(CDPATH= cd -- "$(dirname -- "$0")/../cross" && pwd)/host-gcc16.sh"
+ember_require_host_gcc16 HOST_CC c
+ember_require_host_gcc16 HOST_CXX c++
 mkdir "$work"
 for mode in native cross; do
     case "$mode" in native) conf=$nativeconf;; cross) conf=$crossconf;; esac
@@ -91,8 +94,8 @@ extern "C" int value(void);
 int main() { return value() != 42; }
 CXX
 "$cmake" -S "$work/source" -B "$work/build" -G 'Unix Makefiles' \
-    -DCMAKE_C_COMPILER="${HOST_CC:-/usr/bin/cc}" \
-    -DCMAKE_CXX_COMPILER="${HOST_CXX:-/usr/bin/c++}" \
+    -DCMAKE_C_COMPILER="$HOST_CC" \
+    -DCMAKE_CXX_COMPILER="$HOST_CXX" \
     -DCMAKE_INSTALL_PREFIX="$work/prefix"
 "$cmake" --build "$work/build" -j2
 "$cmake" --build "$work/build" --target test

@@ -15,6 +15,8 @@ import subprocess
 import sys
 import tarfile
 from types import SimpleNamespace
+# Build-host programs use the native GCC16 drivers; there is no /usr/bin/cc default.
+HOST_CC, HOST_CXX = (os.environ.get(n) or sys.exit(n + ' must name the native GCC16 driver') for n in ('HOST_CC', 'HOST_CXX'))
 
 sys.dont_write_bytecode = True
 
@@ -224,7 +226,7 @@ def main():
         'EMBERBSD_SDK_SOURCE=' + sdk.root,
         'EMBERBSD_GI_QUERY_CONFIG=' + str(config_path),
         'EMBERBSD_GI_FILESDIR=' + str(Path(helper).parent),
-        'EMBERBSD_CROSS_BUILD_CC=/usr/bin/cc', 'TOOLDIR=' + str(tools),
+        'EMBERBSD_CROSS_BUILD_CC=' + HOST_CC, 'TOOLDIR=' + str(tools),
     ]
     for selected, (arch, gnu, _) in reversed(tuple(TARGETS.items())):
         args = ['MACHINE_ARCH=' + arch, 'CROSS_MACHINE_ARCH=' + arch,

@@ -3,6 +3,7 @@
 # Origin: EmberBSD (AI-assisted). Check the actual WebKit GI consumer.
 """Check pkgsrc configure environments and the release FindGI module without SSH."""
 import argparse
+import sys
 import hashlib
 import json
 import os
@@ -11,6 +12,8 @@ import re
 import shlex
 import subprocess
 import tarfile
+# Build-host programs use the native GCC16 drivers; there is no /usr/bin/cc default.
+HOST_CC, HOST_CXX = (os.environ.get(n) or sys.exit(n + ' must name the native GCC16 driver') for n in ('HOST_CC', 'HOST_CXX'))
 
 
 
@@ -112,7 +115,7 @@ def main():
                 "MAKECONF=" + str(args.makeconf), "WRKOBJDIR=" + str(args.work / "objects"),
                 "EMBERBSD_CROSS_BUILD_PYTHON=" + str(args.python),
                 "EMBERBSD_GI_PYTHON=" + str(args.python), "EMBERBSD_GI_QUERY_CONFIG=" + str(config),
-                "EMBERBSD_CROSS_BUILD_CC=/usr/bin/cc"]
+                "EMBERBSD_CROSS_BUILD_CC=" + HOST_CC]
         query = run("metadata-" + api, [*base, *[v for key in keys for v in ["-v", key]]])
         assert query.returncode == 0, query.stderr
         values = dict(zip(keys, query.stdout.splitlines(), strict=True))

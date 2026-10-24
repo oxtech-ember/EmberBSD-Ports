@@ -12,6 +12,8 @@ import shutil
 import subprocess
 import sys
 from types import SimpleNamespace
+# Build-host programs use the native GCC16 drivers; there is no /usr/bin/cc default.
+HOST_CC, HOST_CXX = (os.environ.get(n) or sys.exit(n + ' must name the native GCC16 driver') for n in ('HOST_CC', 'HOST_CXX'))
 
 sys.dont_write_bytecode = True
 
@@ -84,7 +86,7 @@ def main():
             'BUILDLINK_DIR=' + str(work / 'buildlink'),
             'EMBERBSD_CROSS_BUILD_PYTHON=' + python, 'EMBERBSD_SDK_SOURCE=' + sdk.root,
             'EMBERBSD_GI_QUERY_CONFIG=' + str(work / 'query.json'),
-            'EMBERBSD_CROSS_BUILD_CC=/usr/bin/cc', 'EMBERBSD_CROSS_BUILD_CXX=/usr/bin/c++',
+            'EMBERBSD_CROSS_BUILD_CC=' + HOST_CC, 'EMBERBSD_CROSS_BUILD_CXX=' + HOST_CXX,
             'GREP=/usr/bin/grep', 'TEST=/bin/test', 'FIND=/usr/bin/find', 'PRINTF=printf']
 
     def capture(command):
@@ -126,7 +128,7 @@ def main():
                          triplet + '-strip', triplet + '-ar',
                          'CARGO_TARGET_' + key + '_LINKER=', 'CC_' + cc_key + '=',
                          'CXX_' + cc_key + '=', 'AR_' + cc_key + '=',
-                         'CARGO_TARGET_' + native_host.upper().replace('-', '_') + '_LINKER=/usr/bin/cc',
+                         'CARGO_TARGET_' + native_host.upper().replace('-', '_') + '_LINKER=' + HOST_CC,
                          'EMBERBSD_SDK_SOURCE=' + sdk.root, python):
             require(expected in settings, 'wrong target/native provider setting: ' + expected)
         other_std = 'rust-std-aarch64-netbsd' if target == 'amd64' else 'rust-std-x86_64-netbsd'
