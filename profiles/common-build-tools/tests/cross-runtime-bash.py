@@ -15,9 +15,9 @@ VARIABLES = (
 )
 
 
-def query(args, pkgsrc, sysroot, mode, *extra):
+def query(args, pkgsrc, sysroot, mode, *extra, pkgpath="cad/occt"):
     argv = [
-        args.bmake, "-C", str(pkgsrc / "cad/occt"),
+        args.bmake, "-C", str(pkgsrc / pkgpath),
         "MAKECONF=" + str(args.makeconf), "USE_CROSS_COMPILE=" + mode,
         "EMBERBSD_CROSS_SYSROOT=" + str(sysroot), *extra,
     ]
@@ -28,6 +28,23 @@ def query(args, pkgsrc, sysroot, mode, *extra):
     if len(values) != len(VARIABLES):
         raise RuntimeError("Unexpected bmake response: " + repr(result.stdout))
     return dict(zip(VARIABLES, values))
+
+
+def unstaged_view(sysroot, view):
+    """Mirror the sysroot with symbolic links, without the target Bash."""
+    parts = ("usr", "pkg", "bin")
+    source, target = sysroot, view
+    target.mkdir()
+    for depth in range(len(parts) + 1):
+        for entry in sorted(source.iterdir()):
+            if depth < len(parts) and entry.name == parts[depth]:
+                continue
+            if depth == len(parts) and entry.name == "bash":
+                continue
+            (target / entry.name).symlink_to(entry)
+        if depth < len(parts):
+            source, target = source / parts[depth], target / parts[depth]
+            target.mkdir()
 
 
 def save(work, name, values):
@@ -54,7 +71,12 @@ def main():
         parser.error("Sysroot must contain the target Bash package")
     work.mkdir(parents=True)
 
-    baseline = query(args, args.baseline_pkgsrc, args.sysroot, "yes")
+    # Upstream pkgsrc and older EmberBSD revisions refuse OCCT when the target
+    # Bash is not staged yet. That refusal hid the run dependency from bulk
+    # dependency ordering.
+    unstaged = work / "unstaged-sysroot"
+    unstaged_view(args.sysroot, unstaged)
+    baseline = query(args, args.baseline_pkgsrc, unstaged, "yes")
     save(work, "baseline.log", baseline)
     refusal = "bash:run not supported in cross-compilation"
     if refusal not in baseline["PKG_FAIL_REASON"]:
@@ -85,13 +107,35 @@ def main():
         raise RuntimeError("The selected Bash cannot run a host generator")
     (work / "host-generator.log").write_text(result.stdout)
 
-    empty_sysroot = work / "empty-sysroot"
-    empty_sysroot.mkdir()
-    missing = query(args, args.pkgsrc, empty_sysroot, "yes",
+    # An unstaged target Bash is a run dependency, not a refusal. Otherwise
+    # a bulk build cannot order shells/bash before its consumers.
+    missing = query(args, args.pkgsrc, unstaged, "yes",
                     "TOOLS_PLATFORM.bash=" + host_bash[0])
     save(work, "missing-target-bash.log", missing)
-    if refusal not in missing["PKG_FAIL_REASON"]:
-        raise RuntimeError("A host Bash bypassed the missing-target refusal")
+    if missing["PKG_FAIL_REASON"]:
+        raise RuntimeError("An unstaged target Bash was refused: " + missing["PKG_FAIL_REASON"])
+    if "bash-[0-9]*:../../shells/bash" not in missing["DEPENDS"].split():
+        raise RuntimeError("An unstaged target Bash is not a run dependency")
+    if missing["REPLACE.sys-bash.new"] != "/usr/pkg/bin/bash":
+        raise RuntimeError("An unstaged target Bash changed the installed shebang")
+
+    # REPLACE_BASH without bash:run also installs target Bash scripts.
+    for root, name in ((args.baseline_pkgsrc, "replace-only-baseline.log"),
+                       (args.pkgsrc, "replace-only.log")):
+        values = query(args, root, unstaged, "yes", pkgpath="textproc/cwdiff")
+        save(work, name, values)
+        if root == args.baseline_pkgsrc:
+            replace_only_baseline = values
+    replace_only = values
+    if replace_only["PKG_FAIL_REASON"] or not replace_only["REPLACE_BASH"]:
+        raise RuntimeError("Update the regression for the cwdiff script contract")
+    if replace_only["REPLACE.sys-bash.new"] != "/usr/pkg/bin/bash":
+        raise RuntimeError("A REPLACE_BASH script retained a host shebang")
+    if "bash-[0-9]*:../../shells/bash" not in replace_only["DEPENDS"].split():
+        raise RuntimeError("A REPLACE_BASH package has no target Bash run dependency")
+    if replace_only_baseline["REPLACE.sys-bash.new"] == "/usr/pkg/bin/bash" and \
+            "bash-[0-9]*:../../shells/bash" in replace_only_baseline["DEPENDS"].split():
+        raise RuntimeError("The baseline cwdiff consumer did not reproduce the defect")
     platform = query(args, args.pkgsrc, args.sysroot, "yes",
                      "TOOLS_PLATFORM.bash=" + host_bash[0])
     save(work, "host-platform-bash.log", platform)
@@ -107,10 +151,10 @@ def main():
 
     # Exercise pkgsrc's real replacement target with OCCT's declared script.
     scripts = cross["REPLACE_BASH"].split()
-    if scripts != ["adm/templates/draw.sh"]:
+    if "adm/templates/draw.sh" not in scripts:
         raise RuntimeError("Update the regression for the OCCT script contract")
     source = work / "source"
-    script = source / scripts[0]
+    script = source / "adm/templates/draw.sh"
     script.parent.mkdir(parents=True)
     script.write_text("#!/usr/bin/env bash\nvalues=(target runtime)\n")
     script.chmod(0o755)
@@ -124,7 +168,7 @@ def main():
         raise RuntimeError("OCCT's installed script retained a host shebang")
     if script.stat().st_mode & 0o111 != 0o111:
         raise RuntimeError("Interpreter replacement changed executable permissions")
-    print("PASS: OCCT keeps a host Bash generator and target Bash runtime; native behavior and missing-target refusal pass")
+    print("PASS: OCCT keeps a host Bash generator and target Bash runtime; native behavior, unstaged target Bash and REPLACE_BASH dependencies pass")
 
 
 if __name__ == "__main__":

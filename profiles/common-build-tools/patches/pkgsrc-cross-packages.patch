@@ -430,7 +430,7 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  _TOOLS_USE_PKGSRC.msgfmt?=	no
 --- a/mk/tools/replace.mk
 +++ b/mk/tools/replace.mk
-@@ -140,10 +140,57 @@
+@@ -140,10 +140,58 @@
  _TOOLS_DEPMETHOD.${_t_:C/:.*//}=	TOOL_DEPENDS
  .endfor
  .for _t_ in ${USE_TOOLS:M*\:run}
@@ -464,8 +464,9 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
 +EMBER_CROSS_RUN_OK=	yes
 +.    endif
 +# The target Bash runtime is distinct from the Bash used by host generators.
-+.    if ${_t_} == "bash:run" && ${OPSYS} == "NetBSD" && \
-+        exists(${CROSS_DESTDIR}${CROSS_LOCALBASE}/bin/bash)
++# The run dependency installs the target Bash package before the build, and
++# bulk builds order the shells/bash package first.
++.    if ${_t_} == "bash:run" && ${OPSYS} == "NetBSD"
 +EMBER_CROSS_RUN_OK=	yes
 +DEPENDS+=		bash-[0-9]*:../../shells/bash
 +.    endif
@@ -489,7 +490,7 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  .endfor
  .for _t_ in ${USE_TOOLS:M*\:test}
  _TOOLS_DEPMETHOD.${_t_:C/:.*//}=	TEST_DEPENDS
-@@ -535,6 +582,12 @@
+@@ -535,6 +583,12 @@
  TOOLS_DEPENDS.install-info?=	pkg_install-info-[0-9]*:../../pkgtools/pkg_install-info
  TOOLS_CREATE+=			install-info
  TOOLS_PATH.install-info=	${TOOLBASE}/bin/pkg_install-info
@@ -881,14 +882,18 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  .include "../../mk/bsd.pkg.mk"
 --- a/mk/configure/replace-interpreter.mk
 +++ b/mk/configure/replace-interpreter.mk
-@@ -63,6 +63,11 @@
+@@ -63,6 +63,15 @@
  REPLACE_INTERPRETER+=	sys-bash
  REPLACE.sys-bash.old=	.*sh
  REPLACE.sys-bash.new=	${BASH}
 +.  if ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} == "NetBSD" && \
-+      ${OPSYS} != ${NATIVE_OPSYS} && !empty(USE_TOOLS:Mbash\:run)
++      ${OPSYS} != ${NATIVE_OPSYS}
 +# Installed scripts need the target interpreter; BASH remains a host tool.
++# The scripts run on the target, so the package needs the target Bash.
 +REPLACE.sys-bash.new=	${CROSS_LOCALBASE}/bin/bash
++.    if empty(USE_TOOLS:Mbash\:run)
++DEPENDS+=		bash-[0-9]*:../../shells/bash
++.    endif
 +.  endif
  REPLACE_FILES.sys-bash=	${REPLACE_BASH}
  .endif
