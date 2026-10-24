@@ -133,6 +133,13 @@ with the same builtin forced through the selected shell. It covers empty,
 nonempty, option-leading and backslash values, plus recursive `show-var`.
 Its [capture oracles](tests/darwin-bootstrap-source.py) also check the direct
 named `-V` expression values. They execute no tool or captured output.
+`ld64.lld -v` reports "compatible with GNU linkers". libtool's linker probe
+therefore classifies it as GNU ld, and configure scripts such as libffi's
+add ELF-only options like `--version-script`. The policy supplies
+`lt_cv_prog_gnu_ld=no` and `lt_cv_prog_gnu_ldcxx=no` in `CONFIGURE_ENV`.
+`tests/darwin-bootstrap-libtool-linker.py` checks this with an accepted MAKECONF.
+ELF inspection tools such as `readelf` have no Darwin base provider. Select
+them as native utilities from the accepted seed LLVM tools.
 
 The initial conservative parse-time roster is `awk basename cat cut date
 dirname env expr grep head id pwd sed sort tail tr uname uniq wc`.
