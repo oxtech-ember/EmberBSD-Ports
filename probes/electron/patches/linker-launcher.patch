@@ -1,0 +1,172 @@
+--- a/build/toolchain/linux/unbundle/BUILD.gn
++++ b/build/toolchain/linux/unbundle/BUILD.gn
+@@ -3,6 +3,12 @@
+ # found in the LICENSE file.
+ 
+ import("//build/toolchain/gcc_toolchain.gni")
++
++declare_args() {
++  # Optional command prefix for links in the target unbundled toolchain family.
++  # The separate host toolchain does not use this prefix.
++  unbundle_linker_launcher = ""
++}
+ 
+ gcc_toolchain("default") {
+   cc = getenv("CC")
+@@ -16,6 +22,7 @@
+            "cross-building for NetBSD requires READELF for the target toolchain")
+   }
+   ld = cxx
++  linker_launcher = unbundle_linker_launcher
+ 
+   extra_cflags = getenv("CFLAGS")
+   extra_asmflags = getenv("ASFLAGS")
+--- a/build/toolchain/gcc_toolchain.gni
++++ b/build/toolchain/gcc_toolchain.gni
+@@ -78,6 +78,10 @@
+ #      Extra flags to be appended when compiling assembly.
+ #  - extra_ldflags
+ #      Extra flags to be appended when linking
++#
++#  - linker_launcher
++#      Optional command prefix for C/C++ links and final native Rust links.
++#      It does not prefix C/C++ compilation, static archives, or Rust rlibs.
+ #
+ #  - link_outputs
+ #      The content of this array, if specified, will be added to the list of
+@@ -265,7 +269,11 @@
+     # assembler runs.
+     asm = invoker.cc
+     ar = invoker.ar
+-    ld = invoker.ld
++    linker_prefix = ""
++    if (defined(invoker.linker_launcher) && invoker.linker_launcher != "") {
++      linker_prefix = invoker.linker_launcher + " "
++    }
++    ld = linker_prefix + invoker.ld
+     if (defined(invoker.readelf)) {
+       readelf = invoker.readelf
+     } else {
+@@ -830,7 +838,7 @@
+ 
+         rspfile_content =
+             "$rustc_common_args {{rustdeps}} {{externs}} SOURCES {{sources}}"
+-        command = "$rustc_wrapper --depfile=$depfile --emit=dep-info=$depfile,link -o $exename -- -Clinker=\"${invoker.cxx}\" {{source}} LDFLAGS {{ldflags}} ${extra_ldflags} RUSTENV {{rustenv}}"
++        command = "$linker_prefix$rustc_wrapper --depfile=$depfile --emit=dep-info=$depfile,link -o $exename -- -Clinker=\"${invoker.cxx}\" {{source}} LDFLAGS {{ldflags}} ${extra_ldflags} RUSTENV {{rustenv}}"
+         rust_sysroot = rust_sysroot_relative
+         inputs = rustc_wrapper_inputs
+       }
+@@ -853,7 +861,7 @@
+ 
+         rspfile_content =
+             "$rustc_common_args {{rustdeps}} {{externs}} SOURCES {{sources}}"
+-        command = "$rustc_wrapper --depfile=$depfile --emit=dep-info=$depfile,link -o $dllname -- -Clinker=\"${invoker.cxx}\" {{source}} LDFLAGS {{ldflags}} ${extra_ldflags} RUSTENV {{rustenv}}"
++        command = "$linker_prefix$rustc_wrapper --depfile=$depfile --emit=dep-info=$depfile,link -o $dllname -- -Clinker=\"${invoker.cxx}\" {{source}} LDFLAGS {{ldflags}} ${extra_ldflags} RUSTENV {{rustenv}}"
+         rust_sysroot = rust_sysroot_relative
+         inputs = rustc_wrapper_inputs
+       }
+@@ -878,7 +886,7 @@
+ 
+         rspfile_content =
+             "$rustc_common_args {{rustdeps}} {{externs}} SOURCES {{sources}}"
+-        command = "$rustc_wrapper --depfile=$depfile --emit=dep-info=$depfile,link,metadata=$rmetaname -o $dllname -- -Clinker=\"${invoker.cxx}\" {{source}} LDFLAGS {{ldflags}} ${extra_ldflags} RUSTENV {{rustenv}}"
++        command = "$linker_prefix$rustc_wrapper --depfile=$depfile --emit=dep-info=$depfile,link,metadata=$rmetaname -o $dllname -- -Clinker=\"${invoker.cxx}\" {{source}} LDFLAGS {{ldflags}} ${extra_ldflags} RUSTENV {{rustenv}}"
+         rust_sysroot = rust_sysroot_relative
+         inputs = rustc_wrapper_inputs
+       }
+@@ -901,7 +909,7 @@
+ 
+         rspfile_content =
+             "$rustc_common_args {{rustdeps}} {{externs}} SOURCES {{sources}}"
+-        command = "$rustc_wrapper --depfile=$depfile --emit=dep-info=$depfile,link -o $dllname -- -Clinker=\"${invoker.cxx}\" {{source}} LDFLAGS {{ldflags}} ${extra_ldflags} RUSTENV {{rustenv}}"
++        command = "$linker_prefix$rustc_wrapper --depfile=$depfile --emit=dep-info=$depfile,link -o $dllname -- -Clinker=\"${invoker.cxx}\" {{source}} LDFLAGS {{ldflags}} ${extra_ldflags} RUSTENV {{rustenv}}"
+         rust_sysroot = rust_sysroot_relative
+         inputs = rustc_wrapper_inputs
+       }
+--- a/build/toolchain/apple/toolchain.gni
++++ b/build/toolchain/apple/toolchain.gni
+@@ -29,6 +29,9 @@
+ assert((target_os == "ios" && host_os == "mac") || host_os != "win")
+ 
+ declare_args() {
++  # Optional command prefix for C/C++ links and final native Rust links.
++  apple_linker_launcher = ""
++
+   # This controls whether whole module optimization is enabled when building
+   # Swift modules. If enabled, the compiler will compile the module as one
+   # unit, generating just one single object file. Otherwise, it will generate
+@@ -185,6 +188,11 @@
+     cxx = compiler_prefix + _cxx
+     ld = _cxx
+ 
++    linker_prefix = ""
++    if (apple_linker_launcher != "") {
++      linker_prefix = apple_linker_launcher + " "
++    }
++
+     # Set the explicit search path for clang++ so it uses the right linker
+     # binary.
+     bin_flag = ""
+@@ -392,7 +400,7 @@
+ 
+         rspfile_content =
+             "$rustc_common_args {{rustdeps}} {{externs}} SOURCES {{sources}}"
+-        command = "$linker_driver_env $rustc_wrapper --depfile=$depfile --emit=dep-info=$depfile,link -o $exename -- -Clinker=\"$linker_driver\" {{source}} LDFLAGS $linker_driver_args $bin_flag {{ldflags}} RUSTENV {{rustenv}}"
++        command = "$linker_driver_env $linker_prefix$rustc_wrapper --depfile=$depfile --emit=dep-info=$depfile,link -o $exename -- -Clinker=\"$linker_driver\" {{source}} LDFLAGS $linker_driver_args $bin_flag {{ldflags}} RUSTENV {{rustenv}}"
+         rust_sysroot = rust_sysroot_relative
+         inputs = rustc_wrapper_inputs
+       }
+@@ -427,7 +435,7 @@
+ 
+         rspfile_content =
+             "$rustc_common_args {{rustdeps}} {{externs}} SOURCES {{sources}}"
+-        command = "$linker_driver_env $rustc_wrapper --depfile=$depfile --emit=dep-info=$depfile,link -o $dllname -- -Clinker=\"$linker_driver\" {{source}} LDFLAGS $linker_driver_args $bin_flag {{ldflags}} RUSTENV {{rustenv}}"
++        command = "$linker_driver_env $linker_prefix$rustc_wrapper --depfile=$depfile --emit=dep-info=$depfile,link -o $dllname -- -Clinker=\"$linker_driver\" {{source}} LDFLAGS $linker_driver_args $bin_flag {{ldflags}} RUSTENV {{rustenv}}"
+         rust_sysroot = rust_sysroot_relative
+         inputs = rustc_wrapper_inputs
+       }
+@@ -464,7 +472,7 @@
+ 
+         rspfile_content =
+             "$rustc_common_args {{rustdeps}} {{externs}} SOURCES {{sources}}"
+-        command = "$linker_driver_env $rustc_wrapper --depfile=$depfile --emit=dep-info=$depfile,link,metadata=$rmetaname -o $dllname -- -Clinker=\"$linker_driver\" {{source}} LDFLAGS $linker_driver_args {{ldflags}} RUSTENV {{rustenv}}"
++        command = "$linker_driver_env $linker_prefix$rustc_wrapper --depfile=$depfile --emit=dep-info=$depfile,link,metadata=$rmetaname -o $dllname -- -Clinker=\"$linker_driver\" {{source}} LDFLAGS $linker_driver_args {{ldflags}} RUSTENV {{rustenv}}"
+         rust_sysroot = rust_sysroot_relative
+         inputs = rustc_wrapper_inputs
+       }
+@@ -499,7 +507,7 @@
+ 
+         rspfile_content =
+             "$rustc_common_args {{rustdeps}} {{externs}} SOURCES {{sources}}"
+-        command = "$rustc_wrapper --depfile=$depfile --emit=dep-info=$depfile,link -o $dllname -- -Clinker=\"${_cxx}\" {{source}} LDFLAGS $bin_flag {{ldflags}} RUSTENV {{rustenv}}"
++        command = "$linker_prefix$rustc_wrapper --depfile=$depfile --emit=dep-info=$depfile,link -o $dllname -- -Clinker=\"${_cxx}\" {{source}} LDFLAGS $bin_flag {{ldflags}} RUSTENV {{rustenv}}"
+         rust_sysroot = rust_sysroot_relative
+         inputs = rustc_wrapper_inputs
+       }
+@@ -617,7 +625,7 @@
+       nm = "${prefix}llvm-nm"
+       otool = "${prefix}llvm-otool"
+ 
+-      link_command = "$linker_driver_env $linker_driver"
++      link_command = "$linker_driver_env $linker_prefix$linker_driver"
+       link_command += " -Wcrl,otoolpath,$otool -Wcrl,nmpath,$nm"
+       link_command += " -Wcrl,tocname,\"$tocname\""
+       link_command += " $linker_driver_args -shared "
+@@ -671,7 +679,7 @@
+       rspfile = sofile + ".rsp"
+       pool = "//build/toolchain:link_pool($default_toolchain)"
+ 
+-      link_command = "$linker_driver_env $linker_driver $linker_driver_args -bundle $bin_flag {{ldflags}} -o \"$sofile\" \"@$rspfile\" {{rlibs}}"
++      link_command = "$linker_driver_env $linker_prefix$linker_driver $linker_driver_args -bundle $bin_flag {{ldflags}} -o \"$sofile\" \"@$rspfile\" {{rlibs}}"
+       link_command += dsym_switch
+       command = link_command
+ 
+@@ -701,7 +709,7 @@
+       rspfile = "$outfile.rsp"
+       pool = "//build/toolchain:link_pool($default_toolchain)"
+ 
+-      command = "$linker_driver_env $linker_driver $linker_driver_args $bin_flag $dsym_switch {{ldflags}} -o \"$outfile\" \"@$rspfile\" {{rlibs}}"
++      command = "$linker_driver_env $linker_prefix$linker_driver $linker_driver_args $bin_flag $dsym_switch {{ldflags}} -o \"$outfile\" \"@$rspfile\" {{rlibs}}"
+       description = "LINK $outfile"
+       rspfile_content =
+           "{{inputs}} {{frameworks}} {{swiftmodules}} {{solibs}} {{libs}}"

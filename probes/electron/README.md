@@ -190,6 +190,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-unused-fragment-
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/vector-insert-batch-construction-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-shared-image-complete-type-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-metrics-tracing-enum-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/linker-launcher.patch
 ```
 
 Set `dawn_host_go_path` to the absolute path of a supported host Go executable
@@ -362,6 +363,11 @@ block fields, URL adjustment order and unknown Perfetto wire values. The
 GCC16 comparisons, staged shared-image checks, the 18-case target enum
 fixture and analyzer limits. WebRTC checks retain NAL validation and copy
 behavior. Complete Electron and Blanc acceptance remain pending.
+
+The [optional link launcher](tests/linker-launcher.md) coordinates native links
+across participating builds. It covers target and Mac host C/C++ and final
+Rust links. Empty settings preserve existing commands. The reusable rule
+checker verifies captured production commands before the production build starts.
 
 GN and allocator checks are in the [GN regression guide](tests/README.md).
 Focused C++ checks are documented in the [libc++](tests/libcxx-gcc16.md) and
