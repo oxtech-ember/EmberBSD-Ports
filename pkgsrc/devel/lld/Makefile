@@ -6,7 +6,7 @@
 EXTRACT_ELEMENTS+= ${DISTNAME}/libunwind/include
 
 PKGNAME=	lld-${LLVM_VERSION}
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	devel
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -28,7 +28,7 @@ PYTHON_FOR_BUILD_ONLY=	tool
 INSTALLATION_DIRS+=	libexec/lld
 
 post-install:
-	${LN} -sf ${PREFIX}/bin/lld ${DESTDIR}${PREFIX}/libexec/lld/ld
+	${LN} -sf ../../bin/lld ${DESTDIR}${PREFIX}/libexec/lld/ld
 
 .include "options.mk"
 .include "../../devel/cmake/build.mk"

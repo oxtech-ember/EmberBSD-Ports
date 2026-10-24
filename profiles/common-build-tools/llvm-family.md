@@ -116,6 +116,11 @@ SDK qualification or the initial scoped seed belongs to the producer.
 Other native hosts and cross builds do not consume this selector.
 The [metadata regression](tests/llvm-darwin-libtool.py) covers selection and refusals without compilation.
 
+LLD installs `libexec/lld/ld` as a relative link to `../../bin/lld`.
+An absolute link would escape a staged or relocated prefix, and the SDK
+inventory refuses it. The [link regression](tests/lld-relative-libexec-link.py)
+runs the real `post-install` target for a staged and a direct prefix.
+
 NetBSD's normal libstdc++ search uses base headers/CRT paths; selecting only
 the stdlib name is insufficient. The package generates a supported effective
 native-triple config from actual common GCC16 metadata. No generic Driver patch
