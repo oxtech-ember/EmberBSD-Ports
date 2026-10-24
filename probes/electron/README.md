@@ -152,6 +152,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-net-mojo-check
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/net-gcc16-speculative-devirt-bounds.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-net-enum-exits-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ui-accessibility-display-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dbus-bounded-map-signature-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-padding-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-invariants.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-proc-clang-cfi-attribute.patch
@@ -236,6 +237,9 @@ decoding, session policies, and closed-protobuf presence checks. Its 30 fatal
 terminals apply only after the existing exhaustive switches.
 The accessibility/display patch preserves XOR check grouping, reads attribute
 entries by reference, and makes invalid accessibility enum exits fatal.
+The D-Bus map patch builds its element signature with the constexpr array
+length. It removes the array marker and final NUL without an implicit suffix
+`strlen`. Map iteration, dictionary entries, and wire signatures stay unchanged.
 The scenario patch keeps the shared-memory padding diagnostic fatal on
 both Clang and GCC. The QUICHE patch checks allocation and handshake invariants,
 compares the selected subprotocol without signed conversion errors, and obtains

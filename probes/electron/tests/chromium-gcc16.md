@@ -414,3 +414,22 @@ before the patch and compile after it. Clang Static Analyzer completes all eight
 cases. AXNode retains six inherited messages; the other three pairs have none.
 Cppcheck stops at the same dependency parser limit in all eight cases. These
 checks do not establish target execution or clean Cppcheck analysis.
+
+## Bounded D-Bus map signatures
+
+The AI-assisted map writer uses the constexpr signature array by reference and
+constructs its element string with `size() - 2`. It removes exactly the array
+marker and trailing NUL. The existing buffer annotation covers the checked
+one-byte offset. It retains one string allocation, dictionary entries, values,
+and nested-map behavior.
+
+Three observed production inputs fail the original GCC16 suffix `strlen`
+diagnostic and compile after the patch. A header fixture checks independent
+`a{sv}` and `a{sa{sv}}` bytes. The upstream read/write test translation unit
+also fails before and compiles after the change. New tests check these exact
+wire signatures and empty, nonempty, and nested Variant-map round trips. Their
+runtime execution remains pending. Clang Static Analyzer completes all eight
+production/test cases with four inherited messages per production variant and
+two per test variant. No message is added or removed. Cppcheck reaches the same
+dependency parser limit in all eight cases. Full D-Bus or browser acceptance is
+not established by these compile and analysis checks.

@@ -1,0 +1,69 @@
+--- a/components/dbus/utils/write_value.h
++++ b/components/dbus/utils/write_value.h
+@@ -5,6 +5,7 @@
+ #ifndef COMPONENTS_DBUS_UTILS_WRITE_VALUE_H_
+ #define COMPONENTS_DBUS_UTILS_WRITE_VALUE_H_
+ 
++#include <string>
+ #include <utility>
+ 
+ #include "base/component_export.h"
+@@ -40,8 +41,10 @@
+   requires IsSupportedMap<T>::value
+ void WriteMap(dbus::MessageWriter& writer, const T& map_container) {
+   dbus::MessageWriter array_writer(nullptr);
+-  writer.OpenArray(UNSAFE_BUFFERS(GetDBusTypeSignature<T>() + 1),
+-                   &array_writer);
++  const auto& signature = DBusSignature<T>::kValue;
++  writer.OpenArray(
++      UNSAFE_BUFFERS(std::string(signature.data() + 1, signature.size() - 2)),
++      &array_writer);
+ 
+   for (const auto& pair : map_container) {
+     dbus::MessageWriter dict_entry_writer(nullptr);
+--- a/components/dbus/utils/read_write_value_unittest.cc
++++ b/components/dbus/utils/read_write_value_unittest.cc
+@@ -16,6 +16,7 @@
+ #include "components/dbus/utils/read_value.h"
+ #include "components/dbus/utils/signature.h"
+ #include "components/dbus/utils/types.h"
++#include "components/dbus/utils/variant.h"
+ #include "components/dbus/utils/write_value.h"
+ #include "dbus/message.h"
+ #include "dbus/object_path.h"
+@@ -36,10 +37,14 @@
+ // Writes the given value to a D-Bus message, then reads it back
+ // and checks for equality.
+ template <typename T>
+-void TestRoundTrip(const T& original_value) {
++void TestRoundTrip(const T& original_value,
++                   const char* expected_signature = nullptr) {
+   std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
+   dbus::MessageWriter writer(response.get());
+   WriteValue(writer, original_value);
++  if (expected_signature) {
++    EXPECT_EQ(expected_signature, response->GetSignature());
++  }
+ 
+   dbus::MessageReader reader(response.get());
+   auto value_read_back = ReadValue<T>(reader);
+@@ -139,6 +144,19 @@
+ TEST(DBusTypesTest, RoundTripMapStringInt) {
+   TestRoundTrip<std::map<std::string, int32_t>>(
+       {{"one", 1}, {"two", 2}, {"three", 3}});
++}
++
++TEST(DBusTypesTest, RoundTripMapStringVariant) {
++  using Dictionary = std::map<std::string, Variant>;
++  Dictionary values;
++  values.emplace("enabled", Variant::Wrap<"b">(true));
++  values.emplace("paths", Variant::Wrap<"as">({"first", "second"}));
++  TestRoundTrip(values, "a{sv}");
++  TestRoundTrip(Dictionary{}, "a{sv}");
++
++  std::map<std::string, Dictionary> nested;
++  nested.emplace("options", std::move(values));
++  TestRoundTrip(nested, "a{sa{sv}}");
+ }
+ 
+ TEST(DBusTypesTest, RoundTripEmptyMap) {
