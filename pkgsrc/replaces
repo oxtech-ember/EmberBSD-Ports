@@ -309,3 +309,4 @@ net/prettyping
 misc/vttest
 net/beanstalkd
 security/wolfssl
+devel/byacc
