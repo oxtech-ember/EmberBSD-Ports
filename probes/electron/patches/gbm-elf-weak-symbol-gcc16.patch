@@ -1,0 +1,21 @@
+--- a/ui/gfx/linux/gbm_wrapper.cc
++++ b/ui/gfx/linux/gbm_wrapper.cc
+@@ -36,7 +36,7 @@
+ 
+ extern "C" {
+ int gbm_bo_get_fd_for_plane(struct gbm_bo* bo, int plane)
+-    __attribute__((weak_import));
++    __attribute__((weak));
+ }
+ 
+ namespace ui {
+--- a/ui/gfx/linux/gbm_util.cc
++++ b/ui/gfx/linux/gbm_util.cc
+@@ -43,6 +43,7 @@
+       return GBM_BO_USE_SCANOUT | GBM_BO_USE_TEXTURING |
+              GBM_BO_USE_FRONT_RENDERING;
+   }
++  NOTREACHED();
+ }
+ 
+ uint32_t NativePixmapUsageToGbmFlags(NativePixmapUsageSet usage) {
