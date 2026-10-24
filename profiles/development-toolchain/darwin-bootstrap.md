@@ -146,6 +146,12 @@ therefore classifies it as GNU ld, and configure scripts such as libffi's
 add ELF-only options like `--version-script`. The policy supplies
 `lt_cv_prog_gnu_ld=no` and `lt_cv_prog_gnu_ldcxx=no` in `CONFIGURE_ENV`.
 `tests/darwin-bootstrap-libtool-linker.py` checks this with an accepted MAKECONF.
+
+Some Darwin build systems run Apple `ranlib -c`; OpenSSL's `darwin-common`
+target does. `llvm-ranlib` rejects `-c` and already puts common symbols in
+the archive index, so the policy passes the selected ranlib as `RANLIB` in
+`CONFIGURE_ENV`. `tests/darwin-bootstrap-ranlib.py` checks the evaluated value
+for `security/openssl` and runs it on an archive with a common symbol.
 ELF inspection tools such as `readelf` have no Darwin base provider. Select
 them as native utilities from the accepted seed LLVM tools.
 
