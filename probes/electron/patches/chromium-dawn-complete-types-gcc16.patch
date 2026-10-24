@@ -1,0 +1,56 @@
+--- a/third_party/dawn/src/dawn/native/Texture.h
++++ b/third_party/dawn/src/dawn/native/Texture.h
+@@ -320,21 +320,6 @@
+     uint64_t mOwnerGUIDForMemoryDump = 0u;
+ };
+ 
+-template <typename CreateFn>
+-ResultOrError<Ref<TextureViewBase>> TextureBase::GetOrCreateViewFromCache(
+-    const UnpackedPtr<TextureViewDescriptor>& desc,
+-    CreateFn createFn) {
+-    TextureViewQuery query(desc);
+-
+-    // Skip the cache when not present, but also for Vulkan YCbCr textures that don't have all their
+-    // info unpacked in the TextureViewQuery.
+-    if (!mTextureViewCache || desc.Has<YCbCrVkDescriptor>()) {
+-        return createFn(query);
+-    }
+-
+-    return mTextureViewCache->GetOrCreate(query, createFn);
+-}
+-
+ class TextureViewBase : public ApiObjectBase {
+   public:
+     TextureViewBase(TextureBase* texture, const UnpackedPtr<TextureViewDescriptor>& descriptor);
+@@ -397,6 +382,21 @@
+     bool mHasYCbCrDescriptor = false;
+ };
+ 
++template <typename CreateFn>
++ResultOrError<Ref<TextureViewBase>> TextureBase::GetOrCreateViewFromCache(
++    const UnpackedPtr<TextureViewDescriptor>& desc,
++    CreateFn createFn) {
++    TextureViewQuery query(desc);
++
++    // Skip the cache when not present, but also for Vulkan YCbCr textures that don't have all their
++    // info unpacked in the TextureViewQuery.
++    if (!mTextureViewCache || desc.Has<YCbCrVkDescriptor>()) {
++        return createFn(query);
++    }
++
++    return mTextureViewCache->GetOrCreate(query, createFn);
++}
++
+ }  // namespace dawn::native
+ 
+ #endif  // SRC_DAWN_NATIVE_TEXTURE_H_
+--- a/third_party/dawn/src/dawn/native/utils/WGPUHelpers.h
++++ b/third_party/dawn/src/dawn/native/utils/WGPUHelpers.h
+@@ -34,6 +34,7 @@
+ #include <vector>
+ 
+ #include "src/dawn/common/Ref.h"
++#include "src/dawn/native/Buffer.h"
+ #include "src/dawn/native/Error.h"
+ #include "src/dawn/native/UsageValidationMode.h"
+ #include "src/dawn/native/dawn_platform.h"

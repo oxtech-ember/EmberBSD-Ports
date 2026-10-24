@@ -1,0 +1,128 @@
+--- a/third_party/dawn/src/dawn/native/vulkan/TextureVk.cpp
++++ b/third_party/dawn/src/dawn/native/vulkan/TextureVk.cpp
+@@ -732,21 +732,21 @@
+         allowedUsage = usage;
+     }
+ 
+-    // Note some of these cases have one bit, others have multiple bits.
+-#if DAWN_COMPILER_IS(CLANG)
+-#pragma clang diagnostic push
+-#pragma clang diagnostic ignored "-Wswitch"
+-#endif
+-    switch (usage) {
+-        case wgpu::TextureUsage::None:
++    // The usages include internal flags and combinations of flags.
++    // Accept TextureUsage so bitmask proxies use their enum conversion.
++    constexpr auto usageBits = [](wgpu::TextureUsage value) {
++        return static_cast<uint64_t>(value);
++    };
++    switch (usageBits(usage)) {
++        case usageBits(wgpu::TextureUsage::None):
+             return VK_IMAGE_LAYOUT_UNDEFINED;
+ 
+-        case wgpu::TextureUsage::CopyDst:
++        case usageBits(wgpu::TextureUsage::CopyDst):
+             return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+ 
+             // The layout returned here is the one that will be used at bindgroup creation time.
+-        case wgpu::TextureUsage::TextureBinding:
+-        case kResolveAttachmentLoadingUsage:
++        case usageBits(wgpu::TextureUsage::TextureBinding):
++        case usageBits(kResolveAttachmentLoadingUsage):
+             // The sampled image can be used as a readonly depth/stencil attachment at the same
+             // time if it is a depth/stencil renderable format, so the image layout need to be
+             // VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL.
+@@ -768,54 +768,51 @@
+             // GENERAL.
+             // TODO(crbug.com/dawn/851): We no longer need to transition resources all at
+             // once and can instead track subresources so we should lift this limitation.
+-        case wgpu::TextureUsage::CopySrc:
++        case usageBits(wgpu::TextureUsage::CopySrc):
+             // Read-only and write-only storage textures must use general layout because load
+             // and store operations on storage images can only be done on the images in
+             // VK_IMAGE_LAYOUT_GENERAL layout.
+-        case wgpu::TextureUsage::StorageBinding:
+-        case kReadOnlyStorageTexture:
+-        case kReadOnlyStorageTexture | wgpu::TextureUsage::TextureBinding:
+-        case kWriteOnlyStorageTexture:
++        case usageBits(wgpu::TextureUsage::StorageBinding):
++        case usageBits(kReadOnlyStorageTexture):
++        case usageBits(kReadOnlyStorageTexture | wgpu::TextureUsage::TextureBinding):
++        case usageBits(kWriteOnlyStorageTexture):
+             return VK_IMAGE_LAYOUT_GENERAL;
+ 
+-        case wgpu::TextureUsage::RenderAttachment:
++        case usageBits(wgpu::TextureUsage::RenderAttachment):
+             if (format.HasDepthOrStencil()) {
+                 return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+             } else {
+                 return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+             }
+ 
+-        case kDepthReadOnlyStencilWritableAttachment:
+-        case kDepthReadOnlyStencilWritableAttachment | wgpu::TextureUsage::TextureBinding:
++        case usageBits(kDepthReadOnlyStencilWritableAttachment):
++        case usageBits(kDepthReadOnlyStencilWritableAttachment | wgpu::TextureUsage::TextureBinding):
+             return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
+-        case kDepthWritableStencilReadOnlyAttachment:
+-        case kDepthWritableStencilReadOnlyAttachment | wgpu::TextureUsage::TextureBinding:
++        case usageBits(kDepthWritableStencilReadOnlyAttachment):
++        case usageBits(kDepthWritableStencilReadOnlyAttachment | wgpu::TextureUsage::TextureBinding):
+             return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
+-        case kReadOnlyRenderAttachment:
+-        case kReadOnlyRenderAttachment | wgpu::TextureUsage::TextureBinding:
++        case usageBits(kReadOnlyRenderAttachment):
++        case usageBits(kReadOnlyRenderAttachment | wgpu::TextureUsage::TextureBinding):
+             return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+ 
+-        case kPresentReleaseTextureUsage:
++        case usageBits(kPresentReleaseTextureUsage):
+             return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+-        case kPresentAcquireTextureUsage:
++        case usageBits(kPresentAcquireTextureUsage):
+             // We always consider images being acquired from the swapchain as uninitialized,
+             // so we can use the UNDEFINED Vulkan image layout.
+             return VK_IMAGE_LAYOUT_UNDEFINED;
+ 
+-        case wgpu::TextureUsage::TransientAttachment:
++        case usageBits(wgpu::TextureUsage::TransientAttachment):
+             // Will be covered by RenderAttachment above, as specification of
+             // TransientAttachment requires that RenderAttachment also be
+             // specified.
+             DAWN_UNREACHABLE();
+             break;
+ 
+-        case wgpu::TextureUsage::StorageAttachment:
++        case usageBits(wgpu::TextureUsage::StorageAttachment):
+             // TODO(dawn:1704): Support PLS on Vulkan.
+             DAWN_UNREACHABLE();
+     }
+-#if DAWN_COMPILER_IS(CLANG)
+-#pragma clang diagnostic pop
+-#endif
+     DAWN_UNREACHABLE();
+ }
+ 
+--- a/third_party/dawn/src/dawn/native/TintUtils.h
++++ b/third_party/dawn/src/dawn/native/TintUtils.h
+@@ -120,14 +120,18 @@
+                 [&](const BufferBindingInfo& bindingInfo) {
+                     tint::BindingPoint dstBindingPoint =
+                         BindingPointFor(group, bgl->AsBindingIndex(apiBindingIndex));
++                    // These types are internal sentinels, not public WebGPU enumerators.
++                    if (bindingInfo.type == kInternalStorageBufferBinding ||
++                        bindingInfo.type == kInternalReadOnlyStorageBufferBinding) {
++                        bindings.storage.emplace(srcBindingPoint, dstBindingPoint);
++                        return;
++                    }
+                     switch (bindingInfo.type) {
+                         case wgpu::BufferBindingType::Uniform:
+                             bindings.uniform.emplace(srcBindingPoint, dstBindingPoint);
+                             break;
+-                        case kInternalStorageBufferBinding:
+                         case wgpu::BufferBindingType::Storage:
+                         case wgpu::BufferBindingType::ReadOnlyStorage:
+-                        case kInternalReadOnlyStorageBufferBinding:
+                             bindings.storage.emplace(srcBindingPoint, dstBindingPoint);
+                             break;
+                         case wgpu::BufferBindingType::BindingNotUsed:

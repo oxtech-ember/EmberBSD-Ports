@@ -168,6 +168,8 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-pa
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-invariants.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-proc-clang-cfi-attribute.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-explicit-host-go.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-dawn-complete-types-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-dawn-internal-enum-dispatch-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/pffft-simd-debug-validation-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/opus-bsd-alloca-header.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-gcc16-enum-pragmas.patch
@@ -303,6 +305,9 @@ compares the selected subprotocol without signed conversion errors, and obtains
 Settings frames through the existing typed visitor. The Dawn template selects
 Clang-only CFI exclusions only on Clang. Generic sanitizer annotations remain
 available to other supported compilers.
+The Dawn type and dispatch patches preserve Result alignment checks and the
+full-width flag conversions. See the [GCC16 checks](tests/dawn-gcc16.md) for
+production regressions, negative controls and analysis limits.
 The PFFFT patch limits assert-only SIMD validation to assertion-enabled builds.
 It retains the public validation symbol and every debug assertion.
 The Opus patch retains stack allocation and selects its existing `stdlib.h`
