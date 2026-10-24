@@ -121,11 +121,11 @@ def main():
     cli.add_argument('--read-root', type=Path, action='append', required=True)
     a = cli.parse_args()
     assert not os.path.lexists(a.output)
-    root = a.module.parent.parent
+    source_root = a.module.parent.parent
     inputs = [Path(__file__).resolve(), a.module, a.native_file, a.cross_file,
-              root / 'meson_options.txt', root / 'docs/reference/meson.build',
-              root / 'docs/reference/libsoup.toml.in',
-              *sorted((root / 'docs/reference').glob('*.md'))]
+              source_root / 'meson_options.txt', source_root / 'docs/reference/meson.build',
+              source_root / 'docs/reference/libsoup.toml.in',
+              *sorted((source_root / 'docs/reference').glob('*.md'))]
     for p in [*inputs, a.sdk_source, a.meson, *a.read_root, *a.lock_root]:
         assert p.is_absolute() and p.exists(), str(p)
     sys.path.insert(0, str(a.sdk_source / 'src'))
@@ -139,9 +139,9 @@ def main():
         signal.signal(number, lambda n, f: sys.exit(128 + n))
     with ExitStack() as stack:
         stack.enter_context(ContextLocks([str(a.output)], str(a.lock_root[0])))
-        for root in a.lock_root:
+        for lock_root in a.lock_root:
             stack.enter_context(ContextLocks([str(p) for p in [a.sdk_source, *a.read_root]],
-                                            str(root), shared=True))
+                                            str(lock_root), shared=True))
         a.output.mkdir()
         (a.output / 'tmp').mkdir()
         env = dict(os.environ, TMPDIR=str(a.output / 'tmp'), TMP=str(a.output / 'tmp'),
@@ -169,7 +169,7 @@ def main():
 
         emitted = check_commands(run, a.meson, a.module, a.output / 'commands',
                                  a.native_file, a.cross_file, env)
-        check_docs_commands(run, a.meson, root, a.output / 'docs-commands',
+        check_docs_commands(run, a.meson, source_root, a.output / 'docs-commands',
                             a.native_file, a.cross_file, env)
         assert all(hashlib.sha256(Path(p).read_bytes()).hexdigest() == h for p, h in pins.items())
         (a.output / 'result.json').write_text(json.dumps(dict(status='PASS',
