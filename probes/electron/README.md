@@ -147,6 +147,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-net-ui-enum-no
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-http-enum-noreturn-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-graphics-enum-noreturn-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/x509-presented-name-pop-back-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/mojo-enum-validator-explicit-bool-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-padding-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-invariants.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-proc-clang-cfi-attribute.patch
@@ -208,6 +209,8 @@ The graphics enum patch preserves format, paint, shadow, and color-space
 selection. Invalid terminal paths use the existing fatal mechanism.
 The X509 patch removes a trailing dot with the shrink-only `pop_back()` operation.
 Its hostname matching rules remain unchanged.
+The Mojo validator patch uses an explicit boolean static-assert predicate.
+It preserves compile-time rejection of null enum validators.
 The scenario patch keeps the shared-memory padding diagnostic fatal on
 both Clang and GCC. The QUICHE patch checks allocation and handshake invariants,
 compares the selected subprotocol without signed conversion errors, and obtains

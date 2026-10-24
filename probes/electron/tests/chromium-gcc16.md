@@ -310,3 +310,19 @@ a converting temporary still owns a second reference. These traces do not
 justify source changes. This review is not GPU or sanitizer execution.
 Cppcheck stops at unchanged dependency parser errors in all 20 cases. Full
 browser execution and graphics acceptance remain separate checks.
+
+## Mojo enum validator predicates
+
+The AI-assisted validator patch explicitly converts function-pointer template
+arguments to bool in both static assertions. Null pointers still fail; holder
+fields, storage identity, callbacks, and wire validation remain unchanged.
+This fixes the repeated GCC16 address diagnostic in generated consumers without
+changing generated files or compiler warning flags.
+
+The [three regression inputs](mojo-enum-validator/README.md) use the actual
+production header. The valid input fails on the baseline address warning and
+compiles after the change. Both null-validator inputs remain compile failures.
+The valid executable passes on physical NetBSD amd64 with the common GCC16
+runtime selected. Cppcheck and Clang Static Analyzer complete both small
+header-fixture variants without findings. This bounded result does not establish
+clean analysis of full generated consumers or a working browser.
