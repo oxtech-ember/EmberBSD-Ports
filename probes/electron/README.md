@@ -160,6 +160,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gbm-elf-weak-symbol-gcc
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-network-policy-traits-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ui-event-lottie-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/angle-ast-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-tflite-svdf-null-gemm-scratch-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-padding-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-invariants.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-proc-clang-cfi-attribute.patch
@@ -283,6 +284,10 @@ The ANGLE AST patch gives checked allocation its explicit size type, inserts
 a local pointer through emplace, and checks unary diagnostic descriptors. A
 GCC16-only scope covers the proven saved-stack false positive. See the
 [ANGLE AST checks](tests/angle-ast-gcc16.md).
+The SVDF patch passes null for unused integer GEMM scratch in its existing
+null-context call. It preserves the floating result buffer and restrict
+contract. The [TFLite checks](tests/tflite-gcc16.md) include real numerical
+and UBSan execution on NetBSD AMD64.
 The scenario patch keeps the shared-memory padding diagnostic fatal on
 both Clang and GCC. The QUICHE patch checks allocation and handshake invariants,
 compares the selected subprotocol without signed conversion errors, and obtains

@@ -1,0 +1,16 @@
+--- a/third_party/tflite/src/tensorflow/lite/kernels/internal/reference/svdf.h
++++ b/third_party/tflite/src/tensorflow/lite/kernels/internal/reference/svdf.h
+@@ -222,11 +222,12 @@
+     }
+ 
+     // Compute conv1d(inputs, weights_feature).
++    // No integer GEMM scratch is used without a CPU backend context.
+     tensor_utils::MatrixBatchVectorMultiplyAccumulate(
+         weights_feature_data, num_filters, input_size, quantized_input,
+         scaling_factors, batch_size, scratch,
+         /*per_channel_scale=*/nullptr, zero_points,
+-        reinterpret_cast<int32_t*>(scratch), row_sums, compute_row_sums,
++        /*scratch=*/nullptr, row_sums, compute_row_sums,
+         /*context=*/nullptr);
+   }
+   // Copy the latest activation from scratch into activation_state:
