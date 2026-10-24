@@ -349,3 +349,33 @@ CHECK text so an earlier null dereference cannot pass the regex. The Mojo
 death test also requires disabled DCHECK because the baseline debug assertion
 would otherwise pass the same check. Other profiles explicitly skip these
 death cases. Execution of these upstream tests remains pending.
+
+## GCC16 speculative devirtualization bounds
+
+The AI-assisted Net patch addresses two impossible speculative virtual paths
+in GCC16. The HTTP buffer allocation has dynamic type `IOBufferWithSize` and
+target size 48. GCC diagnoses its speculative `SeekableIOBuffer` deleting
+destructor, whose target size is 72. The proxy allocation has dynamic type
+`CreateResolverJob` and size 56. GCC diagnoses the size-280 `GetProxyForURLJob`
+destructor and its boolean-load override. IPA dumps and optimized virtual guards
+confirm the wrong-type branches. Existing virtual deletion and reference
+counting remain correct.
+
+The compiler records this defect as [PR122197](https://gcc.gnu.org/pipermail/gcc-bugs/2026-July/967908.html).
+Its [GCC16 library repair](https://gcc.gnu.org/pipermail/gcc-bugs/2026-July/968315.html)
+uses local diagnostic scopes and is already present in the selected compiler.
+The carried scopes cover only these Chromium destructors and one boolean load.
+They apply only to GCC major version 16, excluding Clang. No production flag,
+object layout, virtual function, allocation, or lifetime rule changes. The load
+still occurs once and the following conditional remains outside the scope.
+Retire these scopes after a compiler repair passes both production replays
+and their real-bounds controls.
+
+Both original GCC16 production inputs fail. Diagnostic-only
+`-fno-devirtualize-speculatively` controls pass; this flag is absent from the
+production profile. Both final patched inputs compile with unchanged flags.
+Deliberate `values[2]` reads from `const int[1]` after the scopes still fail
+with the intended bounds diagnostic in both inputs. Paired Clang Static
+Analyzer checks complete all four cases with the same seven inherited findings.
+Cppcheck stops at dependency parser limits in all four cases. No clean full
+analysis, target execution, or complete browser link is claimed.

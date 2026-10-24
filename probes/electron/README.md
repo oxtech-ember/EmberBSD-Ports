@@ -149,6 +149,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-graphics-enum-
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/x509-presented-name-pop-back-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/mojo-enum-validator-explicit-bool-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-net-mojo-checks-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/net-gcc16-speculative-devirt-bounds.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-padding-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-invariants.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-proc-clang-cfi-attribute.patch
@@ -216,6 +217,11 @@ The Net/Mojo check patch enforces existing pointer prerequisites in release
 builds. It keeps empty and non-associated-handle message paths valid. SPDY
 checks stay inside their existing conditions; the cache loop reads pointers
 by reference.
+The Net devirtualization patch limits GCC16 PR122197 diagnostic scopes to two
+derived destructors and one boolean load on proven impossible speculative paths.
+Virtual ownership and production compiler flags stay unchanged. Real bounds
+errors outside those locations remain fatal. Retire the scopes after a compiler
+repair passes the two production inputs and their bounds controls.
 The scenario patch keeps the shared-memory padding diagnostic fatal on
 both Clang and GCC. The QUICHE patch checks allocation and handshake invariants,
 compares the selected subprotocol without signed conversion errors, and obtains

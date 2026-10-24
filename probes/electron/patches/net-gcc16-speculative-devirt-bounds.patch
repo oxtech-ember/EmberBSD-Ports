@@ -1,0 +1,57 @@
+--- a/net/http/http_stream_parser.cc
++++ b/net/http/http_stream_parser.cc
+@@ -173,7 +173,16 @@
+  private:
+   // No need to do anything here. The IOBufferWithSize parent class owned the
+   // underlying buffer, and takes care of freeing it.
++  // GCC 16 can inline this destructor on an impossible speculative virtual
++  // call path for a smaller object. See GCC PR tree-optimization/122197.
++#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ == 16
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Warray-bounds"
++#endif
+   ~SeekableIOBuffer() override = default;
++#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ == 16
++#pragma GCC diagnostic pop
++#endif
+ 
+   const base::raw_span<uint8_t> full_span_;
+   int bytes_written_ = 0;
+--- a/net/proxy_resolution/multi_threaded_proxy_resolver.cc
++++ b/net/proxy_resolution/multi_threaded_proxy_resolver.cc
+@@ -301,7 +301,17 @@
+   void FinishedWaitingForThread() override {
+     DCHECK(executor());
+ 
+-    if (was_waiting_for_thread_) {
++    // GCC 16 can speculate this override for CreateResolverJob. Restrict the
++    // PR122197 diagnostic workaround to the load on that impossible path.
++#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ == 16
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Warray-bounds"
++#endif
++    const bool was_waiting_for_thread = was_waiting_for_thread_;
++#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ == 16
++#pragma GCC diagnostic pop
++#endif
++    if (was_waiting_for_thread) {
+       net_log_.EndEvent(NetLogEventType::WAITING_FOR_PROXY_RESOLVER_THREAD);
+     }
+ 
+@@ -333,7 +343,16 @@
+   }
+ 
+  protected:
++  // GCC 16 can inline this destructor on an impossible speculative virtual
++  // call path for a smaller object. See GCC PR tree-optimization/122197.
++#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ == 16
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Warray-bounds"
++#endif
+   ~GetProxyForURLJob() override = default;
++#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ == 16
++#pragma GCC diagnostic pop
++#endif
+ 
+  private:
+   // Runs the completion callback on the origin thread.
