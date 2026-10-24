@@ -125,6 +125,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-netbsd-execinfo
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-clang-resource-version.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-bindgen-gcc-warnings.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-host-node-inputs.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/grit-locale-platform-exclusivity.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-netbsd-main.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-mac-host-debug-fission.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/partition-alloc-netbsd-gcc16.patch
@@ -308,6 +309,9 @@ Clang-only. Both public headers export the checks library through GN.
 The parser patch removes three GCC-only diagnostic switches and `--param=`
 optimizer settings only from libclang's inputs. Target compiler arguments,
 `-Werror`, target triple, and sysroot remain unchanged.
+The locale patch restores exclusive font conditions for Mac host resource builds.
+It keeps the existing Linux/BSD font selection. See the
+[production GRIT gather checks](tests/grit-locale-platforms.md).
 The host-Node patch selects local executables by `host_os` for generic Node
 and TypeScript protoc actions. It retains Linux Node for remote workers.
 The Electron main patch checks NetBSD before the Linux platform alias.
