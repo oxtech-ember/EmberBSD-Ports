@@ -1,0 +1,188 @@
+{
+  "format": "emberbsd-native-bootstrap-program",
+  "version": 1,
+  "origin": "EmberBSD AI-assisted initial source-build contract. GNU release sources keep their original copyright and GPLv3-or-later license.",
+  "compiler": {
+    "family": "gcc",
+    "major": 16,
+    "abi": "native"
+  },
+  "build_system": "gnu-configure",
+  "configure_args": [
+    "--disable-nls"
+  ],
+  "initial_only": true,
+  "name": "diffutils",
+  "canonical_host_recipe": "pkgsrc/devel/diffutils/Makefile",
+  "source_makefile": "src/Makefile.in",
+  "required_tool_roles": [
+    "cc",
+    "cxx",
+    "cpp",
+    "as",
+    "ld",
+    "ar",
+    "ranlib",
+    "nm",
+    "strip",
+    "sh",
+    "gmake",
+    "awk",
+    "basename",
+    "cat",
+    "chmod",
+    "cmp",
+    "cp",
+    "cut",
+    "date",
+    "dirname",
+    "env",
+    "expr",
+    "grep",
+    "head",
+    "hostname",
+    "id",
+    "ln",
+    "ls",
+    "mkdir",
+    "mv",
+    "printf",
+    "pwd",
+    "rm",
+    "rmdir",
+    "sed",
+    "sleep",
+    "sort",
+    "tail",
+    "touch",
+    "tr",
+    "uname",
+    "uniq",
+    "wc"
+  ],
+  "make_targets": [
+    {
+      "directory": "lib",
+      "targets": [
+        "all"
+      ]
+    },
+    {
+      "directory": "src",
+      "targets": [
+        "paths.h",
+        "version.c",
+        "version.h"
+      ]
+    },
+    {
+      "directory": "src",
+      "targets": [
+        "diff"
+      ]
+    }
+  ],
+  "output_programs": {
+    "diff": "src/diff"
+  },
+  "invocations": [
+    "diff"
+  ],
+  "files": {
+    "left.txt": "alpha\nbeta\n",
+    "same.txt": "alpha\nbeta\n",
+    "right.txt": "alpha\ngamma\n",
+    "empty.txt": ""
+  },
+  "runtime_cases": [
+    {
+      "name": "equal",
+      "invocation": "diff",
+      "args": [
+        "left.txt",
+        "same.txt"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "changed",
+      "invocation": "diff",
+      "args": [
+        "left.txt",
+        "right.txt"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "2c2\n< beta\n---\n> gamma\n",
+      "stderr": ""
+    },
+    {
+      "name": "unified",
+      "invocation": "diff",
+      "args": [
+        "-u",
+        "--label",
+        "left",
+        "--label",
+        "right",
+        "left.txt",
+        "right.txt"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "--- left\n+++ right\n@@ -1,2 +1,2 @@\n alpha\n-beta\n+gamma\n",
+      "stderr": ""
+    },
+    {
+      "name": "brief",
+      "invocation": "diff",
+      "args": [
+        "-q",
+        "left.txt",
+        "right.txt"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "Files left.txt and right.txt differ\n",
+      "stderr": ""
+    },
+    {
+      "name": "empty-left",
+      "invocation": "diff",
+      "args": [
+        "empty.txt",
+        "left.txt"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "0a1,2\n> alpha\n> beta\n",
+      "stderr": ""
+    },
+    {
+      "name": "missing-file",
+      "invocation": "diff",
+      "args": [
+        "missing.txt",
+        "left.txt"
+      ],
+      "stdin": "",
+      "exit": 2,
+      "stdout": "",
+      "stderr_nonempty": true
+    },
+    {
+      "name": "invalid-option",
+      "invocation": "diff",
+      "args": [
+        "--not-a-diff-option"
+      ],
+      "stdin": "",
+      "exit": 2,
+      "stdout": "",
+      "stderr_nonempty": true
+    }
+  ]
+}

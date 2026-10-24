@@ -310,3 +310,7 @@ misc/vttest
 net/beanstalkd
 security/wolfssl
 devel/byacc
+
+# Current GNU comparison and search utilities.
+devel/diffutils
+sysutils/findutils

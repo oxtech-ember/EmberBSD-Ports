@@ -1,0 +1,17 @@
+$NetBSD$
+
+Retain the NetBSD locate database path from patch-aa revision 1.10.
+Refresh the exact context for GNU findutils 4.11.0.
+The upstream copyright and license remain unchanged.
+
+--- locate/Makefile.in.orig
++++ locate/Makefile.in
+@@ -2587,7 +2587,7 @@
+ top_srcdir = @top_srcdir@
+ AUTOMAKE_OPTIONS = std-options
+ AM_CFLAGS = $(WARN_CFLAGS)
+-LOCATE_DB = $(localstatedir)/locatedb
++LOCATE_DB = /var/db/locate.database
+ AM_INSTALLCHECK_STD_OPTIONS_EXEMPT = frcode$(EXEEXT)
+ bin_SCRIPTS = updatedb
+ man_MANS = locate.1 updatedb.1 locatedb.5

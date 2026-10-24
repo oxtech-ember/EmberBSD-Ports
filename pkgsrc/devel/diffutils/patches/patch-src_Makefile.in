@@ -1,0 +1,16 @@
+$NetBSD$
+
+Retain NetBSD PR 39941: bind diff3 and sdiff to the installed GNU diff.
+This preserves patch-src_Makefile.in revision 1.2 with GNU 3.12 context.
+
+--- src/Makefile.in.orig
++++ src/Makefile.in
+@@ -2403,7 +2403,7 @@
+ 
+ noinst_HEADERS = diff.h system.h
+ MOSTLYCLEANFILES = paths.h paths.ht
+-gdiff = `echo diff|sed '$(transform)'`
++gdiff = "%DEFAULT_DIFF_PROGRAM%"
+ BUILT_SOURCES = paths.h version.c version.h
+ noinst_LIBRARIES = libver.a
+ nodist_libver_a_SOURCES = version.c version.h

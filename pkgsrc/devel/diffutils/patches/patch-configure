@@ -1,0 +1,77 @@
+$NetBSD$
+
+Use cmp for the six file-equality tests in GNU diffutils 3.12.
+The tests consume only exit status. Preserve each redirection and branch.
+This lets a checked cmp bootstrap diff without an existing diff program.
+Keep the grep and sed capability tests; do not preseed their cache results.
+
+Guard the optional Automake xargs test when the tool is absent.
+Keep its complete original capability test when xargs is present.
+Use the upstream no branch for absence; do not run a missing program.
+Local AI-assisted EmberBSD change. Not submitted upstream.
+
+--- configure.orig
++++ configure
+@@ -6126,7 +6126,7 @@
+ then :
+   printf %s "(cached) " >&6
+ else case e in #(
+-  e) if test "`echo 1 2 3 | xargs -n2 echo`" = "1 2
++  e) if command -v xargs >/dev/null 2>&1 && test "`echo 1 2 3 | xargs -n2 echo`" = "1 2
+ 3"
+ then :
+   am_cv_xargs_n_works=yes
+@@ -8264,7 +8264,7 @@
+     cp "conftest.in" "conftest.nl"
+     printf '%s\n' 'EGREP_TRADITIONAL' >> "conftest.nl"
+     "$ac_path_EGREP_TRADITIONAL" -E 'EGR(EP|AC)_TRADITIONAL$' < "conftest.nl" >"conftest.out" 2>/dev/null || break
+-    diff "conftest.out" "conftest.nl" >/dev/null 2>&1 || break
++    cmp -s "conftest.out" "conftest.nl" >/dev/null 2>&1 || break
+     as_fn_arith $ac_count + 1 && ac_count=$as_val
+     if test $ac_count -gt ${ac_path_EGREP_TRADITIONAL_max-0}; then
+       # Best one so far, save it but keep looking for a better one
+@@ -8326,7 +8326,7 @@
+     cp "conftest.in" "conftest.nl"
+     printf '%s\n' 'EGREP_TRADITIONAL' >> "conftest.nl"
+     "$ac_path_EGREP_TRADITIONAL" 'EGR(EP|AC)_TRADITIONAL$' < "conftest.nl" >"conftest.out" 2>/dev/null || break
+-    diff "conftest.out" "conftest.nl" >/dev/null 2>&1 || break
++    cmp -s "conftest.out" "conftest.nl" >/dev/null 2>&1 || break
+     as_fn_arith $ac_count + 1 && ac_count=$as_val
+     if test $ac_count -gt ${ac_path_EGREP_TRADITIONAL_max-0}; then
+       # Best one so far, save it but keep looking for a better one
+@@ -23647,7 +23647,7 @@
+     cp "conftest.in" "conftest.nl"
+     printf '%s\n' '' >> "conftest.nl"
+     "$ac_path_SED" -f conftest.sed < "conftest.nl" >"conftest.out" 2>/dev/null || break
+-    diff "conftest.out" "conftest.nl" >/dev/null 2>&1 || break
++    cmp -s "conftest.out" "conftest.nl" >/dev/null 2>&1 || break
+     as_fn_arith $ac_count + 1 && ac_count=$as_val
+     if test $ac_count -gt ${ac_path_SED_max-0}; then
+       # Best one so far, save it but keep looking for a better one
+@@ -23718,7 +23718,7 @@
+     cp "conftest.in" "conftest.nl"
+     printf '%s\n' 'GREP' >> "conftest.nl"
+     "$ac_path_GREP" -e 'GREP$' -e '-(cannot match)-' < "conftest.nl" >"conftest.out" 2>/dev/null || break
+-    diff "conftest.out" "conftest.nl" >/dev/null 2>&1 || break
++    cmp -s "conftest.out" "conftest.nl" >/dev/null 2>&1 || break
+     as_fn_arith $ac_count + 1 && ac_count=$as_val
+     if test $ac_count -gt ${ac_path_GREP_max-0}; then
+       # Best one so far, save it but keep looking for a better one
+@@ -61907,7 +61907,7 @@
+      t end
+      s/^\([^=]*\)=\(.*\)$/\1=${\1=\2}/
+      :end' >>confcache
+-if diff "$cache_file" confcache >/dev/null 2>&1; then :; else
++if cmp -s "$cache_file" confcache >/dev/null 2>&1; then :; else
+   if test -w "$cache_file"; then
+     if test "x$cache_file" != "x/dev/null"; then
+       { printf '%s\n' "$as_me:${as_lineno-$LINENO}: updating cache $cache_file" >&5
+@@ -63227,7 +63227,7 @@
+       && eval '$AWK -f "$ac_tmp/defines.awk"' "$ac_file_inputs"
+     } >"$ac_tmp/config.h" \
+       || as_fn_error $? "could not create $ac_file" "$LINENO" 5
+-    if diff "$ac_file" "$ac_tmp/config.h" >/dev/null 2>&1; then
++    if cmp -s "$ac_file" "$ac_tmp/config.h" >/dev/null 2>&1; then
+       { printf '%s\n' "$as_me:${as_lineno-$LINENO}: $ac_file is unchanged" >&5
+ printf '%s\n' "$as_me: $ac_file is unchanged" >&6;}
+     else

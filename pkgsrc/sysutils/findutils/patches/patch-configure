@@ -1,0 +1,18 @@
+$NetBSD$
+
+Guard the optional Automake xargs test when the tool is absent.
+Keep its complete original capability test when xargs is present.
+Use the upstream no branch for absence; do not run a missing program.
+Local AI-assisted EmberBSD change. Not submitted upstream.
+
+--- configure.orig
++++ configure
+@@ -6240,7 +6240,7 @@
+ then :
+   printf %s "(cached) " >&6
+ else case e in #(
+-  e) if test "`echo 1 2 3 | xargs -n2 echo`" = "1 2
++  e) if command -v xargs >/dev/null 2>&1 && test "`echo 1 2 3 | xargs -n2 echo`" = "1 2
+ 3"
+ then :
+   am_cv_xargs_n_works=yes

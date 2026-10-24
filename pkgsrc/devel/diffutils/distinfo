@@ -1,0 +1,9 @@
+$NetBSD$
+
+BLAKE2s (diffutils-3.12.tar.xz) = a1bf68f104b0d91afac1e78cce5344a8f960f2a0fd2e19cfff6a15f9c88d670d
+SHA512 (diffutils-3.12.tar.xz) = 10b17cf1dcdfa9ca0e5db91d62c4a079ebe9fd7eafa3aaebd4eb7e6206e4d753f348496622aa281e1bd7f7fcde65ce4a886dcc4acbb59332ef980f224197b4e4
+SHA256 (diffutils-3.12.tar.xz) = 7c8b7f9fc8609141fdea9cece85249d308624391ff61dedaf528fcb337727dfd
+Size (diffutils-3.12.tar.xz) = 1938800 bytes
+SHA1 (patch-configure) = 9f447f6345268f50af5679290baf476b76308b42
+SHA1 (patch-po_Makefile.in.in) = f62ebd9311710b8142535d025baa8f54ebc120c5
+SHA1 (patch-src_Makefile.in) = 14f0010d97d96b210055b325e89e2235bc4a18d3

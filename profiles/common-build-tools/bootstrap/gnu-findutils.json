@@ -1,0 +1,339 @@
+{
+  "format": "emberbsd-native-bootstrap-program",
+  "version": 1,
+  "origin": "EmberBSD AI-assisted initial source-build contract. GNU release sources keep their original copyright and GPLv3-or-later license.",
+  "compiler": {
+    "family": "gcc",
+    "major": 16,
+    "abi": "native"
+  },
+  "build_system": "gnu-configure",
+  "configure_args": [
+    "--disable-nls"
+  ],
+  "initial_only": true,
+  "name": "findutils",
+  "canonical_host_recipe": "pkgsrc/sysutils/findutils/Makefile",
+  "source_makefile": "Makefile.in",
+  "required_tool_roles": [
+    "cc",
+    "cxx",
+    "cpp",
+    "as",
+    "ld",
+    "ar",
+    "ranlib",
+    "nm",
+    "strip",
+    "sh",
+    "gmake",
+    "awk",
+    "basename",
+    "cat",
+    "chmod",
+    "cmp",
+    "cp",
+    "cut",
+    "date",
+    "dirname",
+    "env",
+    "expr",
+    "grep",
+    "head",
+    "hostname",
+    "id",
+    "ln",
+    "ls",
+    "mkdir",
+    "mv",
+    "printf",
+    "pwd",
+    "rm",
+    "rmdir",
+    "sed",
+    "sleep",
+    "sort",
+    "tail",
+    "touch",
+    "tr",
+    "uname",
+    "uniq",
+    "wc",
+    "diff"
+  ],
+  "make_targets": [
+    {
+      "directory": "gl/lib",
+      "targets": [
+        "all"
+      ]
+    },
+    {
+      "directory": "lib",
+      "targets": [
+        "libfind.a"
+      ]
+    },
+    {
+      "directory": "find",
+      "targets": [
+        "find"
+      ]
+    },
+    {
+      "directory": "xargs",
+      "targets": [
+        "xargs"
+      ]
+    }
+  ],
+  "output_programs": {
+    "find": "find/find",
+    "xargs": "xargs/xargs"
+  },
+  "invocations": [
+    "find",
+    "xargs"
+  ],
+  "files": {
+    "tree/a.txt": "alpha\n",
+    "tree/sub/b.txt": "beta\n",
+    "tree/space name.txt": "gamma\n"
+  },
+  "runtime_cases": [
+    {
+      "name": "name",
+      "invocation": "find",
+      "args": [
+        "tree",
+        "-name",
+        "a.txt",
+        "-type",
+        "f",
+        "-print"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "tree/a.txt\n",
+      "stderr": ""
+    },
+    {
+      "name": "directory",
+      "invocation": "find",
+      "args": [
+        "tree/sub",
+        "-type",
+        "d",
+        "-print"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "tree/sub\n",
+      "stderr": ""
+    },
+    {
+      "name": "depth-zero",
+      "invocation": "find",
+      "args": [
+        "tree",
+        "-maxdepth",
+        "0",
+        "-print"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "tree\n",
+      "stderr": ""
+    },
+    {
+      "name": "prune",
+      "invocation": "find",
+      "args": [
+        "tree",
+        "-name",
+        "sub",
+        "-prune",
+        "-print"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "tree/sub\n",
+      "stderr": ""
+    },
+    {
+      "name": "selected-child",
+      "invocation": "find",
+      "args": [
+        "tree/a.txt",
+        "-exec"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "tree/a.txt\n",
+      "stderr": "",
+      "command_role": "sh",
+      "command_args": [
+        "-c",
+        "printf '%s\\n' \"$1\"",
+        "sh",
+        "{}",
+        ";"
+      ]
+    },
+    {
+      "name": "missing-root",
+      "invocation": "find",
+      "args": [
+        "missing.txt",
+        "-print"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr_nonempty": true
+    },
+    {
+      "name": "invalid-predicate",
+      "invocation": "find",
+      "args": [
+        "tree",
+        "-not-a-find-predicate"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr_nonempty": true
+    },
+    {
+      "name": "xargs-groups",
+      "invocation": "xargs",
+      "args": [
+        "-n",
+        "1"
+      ],
+      "stdin": "alpha beta\n",
+      "exit": 0,
+      "stdout": "<alpha>\n<beta>\n",
+      "stderr": "",
+      "command_role": "sh",
+      "command_args": [
+        "-c",
+        "printf '<%s>\\n' \"$@\"",
+        "sh"
+      ]
+    },
+    {
+      "name": "xargs-quoted",
+      "invocation": "xargs",
+      "args": [],
+      "stdin": "a\\ b 'c d'\n",
+      "exit": 0,
+      "stdout": "<a b>\n<c d>\n",
+      "stderr": "",
+      "command_role": "sh",
+      "command_args": [
+        "-c",
+        "printf '<%s>\\n' \"$@\"",
+        "sh"
+      ]
+    },
+    {
+      "name": "xargs-empty",
+      "invocation": "xargs",
+      "args": [
+        "-r"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "",
+      "stderr": "",
+      "command_role": "sh",
+      "command_args": [
+        "-c",
+        "printf '<%s>\\n' \"$@\"",
+        "sh"
+      ]
+    },
+    {
+      "name": "xargs-replace",
+      "invocation": "xargs",
+      "args": [
+        "-I",
+        "{}"
+      ],
+      "stdin": "alpha\nbeta\n",
+      "exit": 0,
+      "stdout": "<alpha>\n<beta>\n",
+      "stderr": "",
+      "command_role": "sh",
+      "command_args": [
+        "-c",
+        "printf '<%s>\\n' \"$1\"",
+        "sh",
+        "{}"
+      ]
+    },
+    {
+      "name": "xargs-child-failure",
+      "invocation": "xargs",
+      "args": [],
+      "stdin": "alpha\n",
+      "exit": 123,
+      "stdout": "",
+      "stderr": "",
+      "command_role": "sh",
+      "command_args": [
+        "-c",
+        "exit 7",
+        "sh"
+      ]
+    },
+    {
+      "name": "xargs-child-255",
+      "invocation": "xargs",
+      "args": [],
+      "stdin": "alpha\n",
+      "exit": 124,
+      "stdout": "",
+      "stderr_nonempty": true,
+      "command_role": "sh",
+      "command_args": [
+        "-c",
+        "exit 255",
+        "sh"
+      ]
+    },
+    {
+      "name": "xargs-unmatched-quote",
+      "invocation": "xargs",
+      "args": [],
+      "stdin": "'unterminated\n",
+      "exit": 1,
+      "stdout": "",
+      "stderr_nonempty": true,
+      "command_role": "sh",
+      "command_args": [
+        "-c",
+        "printf '<%s>\\n' \"$@\"",
+        "sh"
+      ]
+    },
+    {
+      "name": "xargs-invalid-option",
+      "invocation": "xargs",
+      "args": [
+        "--not-an-xargs-option"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr_nonempty": true,
+      "command_role": "sh",
+      "command_args": [
+        "-c",
+        "printf '<%s>\\n' \"$@\"",
+        "sh"
+      ]
+    }
+  ]
+}

@@ -1,5 +1,10 @@
 # Current common build tools
 
+The [common GNU utility sources](gnu-utilities.md) select diffutils 3.12 and
+findutils 4.11.0 with ordinary NLS preserved. Finite initial source specifications
+build only the tools needed before full package installation. Source and runtime
+acceptance remain separate.
+
 The [shared bmake source update](bmake.md) selects stable 20260912 in the
 existing vendor owner. Bootstrap and the ordinary package retain one payload,
 all upstream tests and the existing pkgsrc mode override. Source checks pass;
