@@ -1,0 +1,8 @@
+$NetBSD: distinfo,v 1.4 2022/04/19 07:13:19 nia Exp $
+
+BLAKE2s (beanstalkd-1.13.tar.gz) = 49a4a4c906f318fc00697fe22e609635a4002f223a14cbead0fafb2590d0b0c8
+SHA512 (beanstalkd-1.13.tar.gz) = 7b5d1a185765a6abe4f1fb8ff2ce7ab0d00b9b2d87ed78ee6349895cdab43e7eac9bb9da5aa1e7b378038e69ac20113e7a663529b0fd77b697257bc384b7deda
+Size (beanstalkd-1.13.tar.gz) = 81234 bytes
+SHA1 (patch-Makefile) = 1d7a121ed22cd3b91e22bd218fc97cc241c7323a
+SHA1 (patch-main.c) = 2361f2eb73b2c0d070f86bc701913fe03ce09bd8
+SHA1 (patch-tube.c) = bad3456fcf5507297a468d52d075cab51a141bf5
