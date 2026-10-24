@@ -124,3 +124,26 @@ SDK utility-relocation stage for two complete runs. Keep its original hashes,
 actual derivation and derived package history separate from the first profile.
 Compare the checked library with an already accepted library at the same final
 prefix. Do not replace that library or expand an earlier result's member list.
+
+[darwin-installed-build-utilities-v1.json](darwin-installed-build-utilities-v1.json)
+is a separate fixed profile for initial package build and installation tools.
+It selects these sixteen executable roles and the same libintl library:
+
+- `coreutils-9.11`: `chgrp`, `chmod`, `chown`, `cp`, `install`, `ln`, `ls`,
+  `mkdir`, `mv`, `rm`, `rmdir`, `touch`, and `sleep`.
+- `pkg_install-20260227nb3`: `pkg_add` and `pkg_create`.
+- `pkg_install-info-4.5nb3`: `install-info`.
+
+Coreutils members retain their `g`-prefixed regular basenames and select
+relative aliases. Package installers retain `sbin/pkg_add` and
+`sbin/pkg_create`. The `install-info` role selects the real
+`bin/pkg_install-info` member. It does not rename that executable or select an
+unrelated `bin/install-info` file.
+
+Use the same SDK stage for 34 operations: seventeen members in each of two
+complete runs. Change libintl loads only for the thirteen coreutils members.
+Keep each original package history separate, including its recorded compiler
+and unresolved historical inputs. Require its own completed derivation.
+Keep the earlier utility and printf profiles and results unchanged.
+Compare libintl with an existing accepted library before provisioning new
+members. This source profile does not prove utility behavior or admit a build.

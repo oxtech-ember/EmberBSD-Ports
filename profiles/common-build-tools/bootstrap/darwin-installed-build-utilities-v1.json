@@ -1,0 +1,377 @@
+{
+  "format": "emberbsd-darwin-installed-utilities",
+  "version": 1,
+  "scope": "initial-bootstrap-only",
+  "origin": "EmberBSD (AI-assisted). Fixed source-owned transformation inputs.",
+  "parameters": [
+    "original_prefix",
+    "final_prefix"
+  ],
+  "tool": {
+    "project": "LLVM",
+    "version": "23.1.3",
+    "source_commit": "0d261d1ca552c95a8f007e061c787ac7132fbcbc",
+    "release_tag": "llvmorg-23.1.3",
+    "archive_name": "LLVM-23.1.3-macOS-ARM64.tar.xz",
+    "archive_sha256": "3dcfd88aec10be204a24037bcb0dc0ad777882e9dbe8ac60e2639060d8a794b1",
+    "member_relative_to_distribution_root": "bin/llvm-objcopy",
+    "payload_sha256": "e214791cb58fc07c3998ab9704a75a70a0ed42b111e1a37c0e72823573c72a97",
+    "invocation": "llvm-install-name-tool",
+    "mode": "upstream-argv0-dispatch"
+  },
+  "policy": {
+    "native_format": "thin-arm64-macho",
+    "existing_code_signature_required": true,
+    "remove_all_rpaths": true,
+    "signature": "upstream-adhoc-regeneration",
+    "additional_operations": false,
+    "preserve_original_metadata_and_hashes": true,
+    "transformed_hash_and_actual_operation_receipt_required": true,
+    "ordinary_provider_admission": false
+  },
+  "library": {
+    "package": "gettext-lib-1.0nb1",
+    "pkgpath": "devel/gettext-lib",
+    "original_member": "lib/libintl.8.dylib",
+    "final_regular": "lib/libintl.8.dylib",
+    "install_id": "final_prefix/lib/libintl.8.dylib",
+    "nonplatform_dependencies": []
+  },
+  "executables": [
+    {
+      "role": "chgrp",
+      "package": "coreutils-9.11",
+      "pkgpath": "sysutils/coreutils",
+      "original_member": "bin/gchgrp",
+      "original_invocation": "gnu/bin/chgrp",
+      "original_chain": [
+        {
+          "path": "gnu/bin/chgrp",
+          "target_base": "original-prefix",
+          "target_relative": "bin/gchgrp"
+        }
+      ],
+      "final_regular": "bin/gchgrp",
+      "selected_invocation": "bin/chgrp",
+      "aliases": [
+        {
+          "path": "bin/chgrp",
+          "target": "gchgrp"
+        }
+      ],
+      "requires_libintl_change": true
+    },
+    {
+      "role": "chmod",
+      "package": "coreutils-9.11",
+      "pkgpath": "sysutils/coreutils",
+      "original_member": "bin/gchmod",
+      "original_invocation": "gnu/bin/chmod",
+      "original_chain": [
+        {
+          "path": "gnu/bin/chmod",
+          "target_base": "original-prefix",
+          "target_relative": "bin/gchmod"
+        }
+      ],
+      "final_regular": "bin/gchmod",
+      "selected_invocation": "bin/chmod",
+      "aliases": [
+        {
+          "path": "bin/chmod",
+          "target": "gchmod"
+        }
+      ],
+      "requires_libintl_change": true
+    },
+    {
+      "role": "chown",
+      "package": "coreutils-9.11",
+      "pkgpath": "sysutils/coreutils",
+      "original_member": "bin/gchown",
+      "original_invocation": "gnu/bin/chown",
+      "original_chain": [
+        {
+          "path": "gnu/bin/chown",
+          "target_base": "original-prefix",
+          "target_relative": "bin/gchown"
+        }
+      ],
+      "final_regular": "bin/gchown",
+      "selected_invocation": "bin/chown",
+      "aliases": [
+        {
+          "path": "bin/chown",
+          "target": "gchown"
+        }
+      ],
+      "requires_libintl_change": true
+    },
+    {
+      "role": "cp",
+      "package": "coreutils-9.11",
+      "pkgpath": "sysutils/coreutils",
+      "original_member": "bin/gcp",
+      "original_invocation": "gnu/bin/cp",
+      "original_chain": [
+        {
+          "path": "gnu/bin/cp",
+          "target_base": "original-prefix",
+          "target_relative": "bin/gcp"
+        }
+      ],
+      "final_regular": "bin/gcp",
+      "selected_invocation": "bin/cp",
+      "aliases": [
+        {
+          "path": "bin/cp",
+          "target": "gcp"
+        }
+      ],
+      "requires_libintl_change": true
+    },
+    {
+      "role": "install",
+      "package": "coreutils-9.11",
+      "pkgpath": "sysutils/coreutils",
+      "original_member": "bin/ginstall",
+      "original_invocation": "gnu/bin/install",
+      "original_chain": [
+        {
+          "path": "gnu/bin/install",
+          "target_base": "original-prefix",
+          "target_relative": "bin/ginstall"
+        }
+      ],
+      "final_regular": "bin/ginstall",
+      "selected_invocation": "bin/install",
+      "aliases": [
+        {
+          "path": "bin/install",
+          "target": "ginstall"
+        }
+      ],
+      "requires_libintl_change": true
+    },
+    {
+      "role": "ln",
+      "package": "coreutils-9.11",
+      "pkgpath": "sysutils/coreutils",
+      "original_member": "bin/gln",
+      "original_invocation": "gnu/bin/ln",
+      "original_chain": [
+        {
+          "path": "gnu/bin/ln",
+          "target_base": "original-prefix",
+          "target_relative": "bin/gln"
+        }
+      ],
+      "final_regular": "bin/gln",
+      "selected_invocation": "bin/ln",
+      "aliases": [
+        {
+          "path": "bin/ln",
+          "target": "gln"
+        }
+      ],
+      "requires_libintl_change": true
+    },
+    {
+      "role": "ls",
+      "package": "coreutils-9.11",
+      "pkgpath": "sysutils/coreutils",
+      "original_member": "bin/gls",
+      "original_invocation": "gnu/bin/ls",
+      "original_chain": [
+        {
+          "path": "gnu/bin/ls",
+          "target_base": "original-prefix",
+          "target_relative": "bin/gls"
+        }
+      ],
+      "final_regular": "bin/gls",
+      "selected_invocation": "bin/ls",
+      "aliases": [
+        {
+          "path": "bin/ls",
+          "target": "gls"
+        }
+      ],
+      "requires_libintl_change": true
+    },
+    {
+      "role": "mkdir",
+      "package": "coreutils-9.11",
+      "pkgpath": "sysutils/coreutils",
+      "original_member": "bin/gmkdir",
+      "original_invocation": "gnu/bin/mkdir",
+      "original_chain": [
+        {
+          "path": "gnu/bin/mkdir",
+          "target_base": "original-prefix",
+          "target_relative": "bin/gmkdir"
+        }
+      ],
+      "final_regular": "bin/gmkdir",
+      "selected_invocation": "bin/mkdir",
+      "aliases": [
+        {
+          "path": "bin/mkdir",
+          "target": "gmkdir"
+        }
+      ],
+      "requires_libintl_change": true
+    },
+    {
+      "role": "mv",
+      "package": "coreutils-9.11",
+      "pkgpath": "sysutils/coreutils",
+      "original_member": "bin/gmv",
+      "original_invocation": "gnu/bin/mv",
+      "original_chain": [
+        {
+          "path": "gnu/bin/mv",
+          "target_base": "original-prefix",
+          "target_relative": "bin/gmv"
+        }
+      ],
+      "final_regular": "bin/gmv",
+      "selected_invocation": "bin/mv",
+      "aliases": [
+        {
+          "path": "bin/mv",
+          "target": "gmv"
+        }
+      ],
+      "requires_libintl_change": true
+    },
+    {
+      "role": "rm",
+      "package": "coreutils-9.11",
+      "pkgpath": "sysutils/coreutils",
+      "original_member": "bin/grm",
+      "original_invocation": "gnu/bin/rm",
+      "original_chain": [
+        {
+          "path": "gnu/bin/rm",
+          "target_base": "original-prefix",
+          "target_relative": "bin/grm"
+        }
+      ],
+      "final_regular": "bin/grm",
+      "selected_invocation": "bin/rm",
+      "aliases": [
+        {
+          "path": "bin/rm",
+          "target": "grm"
+        }
+      ],
+      "requires_libintl_change": true
+    },
+    {
+      "role": "rmdir",
+      "package": "coreutils-9.11",
+      "pkgpath": "sysutils/coreutils",
+      "original_member": "bin/grmdir",
+      "original_invocation": "gnu/bin/rmdir",
+      "original_chain": [
+        {
+          "path": "gnu/bin/rmdir",
+          "target_base": "original-prefix",
+          "target_relative": "bin/grmdir"
+        }
+      ],
+      "final_regular": "bin/grmdir",
+      "selected_invocation": "bin/rmdir",
+      "aliases": [
+        {
+          "path": "bin/rmdir",
+          "target": "grmdir"
+        }
+      ],
+      "requires_libintl_change": true
+    },
+    {
+      "role": "touch",
+      "package": "coreutils-9.11",
+      "pkgpath": "sysutils/coreutils",
+      "original_member": "bin/gtouch",
+      "original_invocation": "gnu/bin/touch",
+      "original_chain": [
+        {
+          "path": "gnu/bin/touch",
+          "target_base": "original-prefix",
+          "target_relative": "bin/gtouch"
+        }
+      ],
+      "final_regular": "bin/gtouch",
+      "selected_invocation": "bin/touch",
+      "aliases": [
+        {
+          "path": "bin/touch",
+          "target": "gtouch"
+        }
+      ],
+      "requires_libintl_change": true
+    },
+    {
+      "role": "sleep",
+      "package": "coreutils-9.11",
+      "pkgpath": "sysutils/coreutils",
+      "original_member": "bin/gsleep",
+      "original_invocation": "gnu/bin/sleep",
+      "original_chain": [
+        {
+          "path": "gnu/bin/sleep",
+          "target_base": "original-prefix",
+          "target_relative": "bin/gsleep"
+        }
+      ],
+      "final_regular": "bin/gsleep",
+      "selected_invocation": "bin/sleep",
+      "aliases": [
+        {
+          "path": "bin/sleep",
+          "target": "gsleep"
+        }
+      ],
+      "requires_libintl_change": true
+    },
+    {
+      "role": "pkg_add",
+      "package": "pkg_install-20260227nb3",
+      "pkgpath": "pkgtools/pkg_install",
+      "original_member": "sbin/pkg_add",
+      "original_invocation": "sbin/pkg_add",
+      "original_chain": [],
+      "final_regular": "sbin/pkg_add",
+      "selected_invocation": "sbin/pkg_add",
+      "aliases": [],
+      "requires_libintl_change": false
+    },
+    {
+      "role": "pkg_create",
+      "package": "pkg_install-20260227nb3",
+      "pkgpath": "pkgtools/pkg_install",
+      "original_member": "sbin/pkg_create",
+      "original_invocation": "sbin/pkg_create",
+      "original_chain": [],
+      "final_regular": "sbin/pkg_create",
+      "selected_invocation": "sbin/pkg_create",
+      "aliases": [],
+      "requires_libintl_change": false
+    },
+    {
+      "role": "install-info",
+      "package": "pkg_install-info-4.5nb3",
+      "pkgpath": "pkgtools/pkg_install-info",
+      "original_member": "bin/pkg_install-info",
+      "original_invocation": "bin/pkg_install-info",
+      "original_chain": [],
+      "final_regular": "bin/pkg_install-info",
+      "selected_invocation": "bin/pkg_install-info",
+      "aliases": [],
+      "requires_libintl_change": false
+    }
+  ]
+}
