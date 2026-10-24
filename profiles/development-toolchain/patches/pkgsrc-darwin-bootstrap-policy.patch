@@ -46,19 +46,23 @@ Keep ordinary Darwin defaults. Use the standard compiler wrappers.
  .if !defined(NATIVE_OPSYS)
 --- a/mk/tools/tools.Darwin.mk
 +++ b/mk/tools/tools.Darwin.mk
-@@ -2,6 +2,20 @@
+@@ -2,6 +2,24 @@
  #
  # System-supplied tools for the Darwin (Mac OS X) operating system.
  
 +.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
 +# Every native tool is supplied by the accepted SDK plan.
++# The plan selects paths; keep the arguments pkgsrc expects with them.
++_EMBERBSD_DARWIN_TOOL_ARGS.gunzip= -f
++_EMBERBSD_DARWIN_TOOL_ARGS.gzip= -nf ${GZIP}
++_EMBERBSD_DARWIN_TOOL_ARGS.mkdir= -p
 +.for _ember_tool in ${EMBERBSD_DARWIN_NATIVE_TOOLS}
-+TOOLS_PLATFORM.${_ember_tool}= ${EMBERBSD_DARWIN_TOOL.${_ember_tool}}
++TOOLS_PLATFORM.${_ember_tool}= ${EMBERBSD_DARWIN_TOOL.${_ember_tool}} ${_EMBERBSD_DARWIN_TOOL_ARGS.${_ember_tool}}
 +.endfor
++# printf is not a builtin in every POSIX shell; it needs a native path.
 +TOOLS_PLATFORM.[= [
 +TOOLS_PLATFORM.echo= echo
 +TOOLS_PLATFORM.false= false
-+TOOLS_PLATFORM.printf= printf
 +TOOLS_PLATFORM.test= test
 +TOOLS_PLATFORM.true= true
 +TOOLS_PLATFORM.sh= ${EMBERBSD_DARWIN_SH}
@@ -67,7 +71,7 @@ Keep ordinary Darwin defaults. Use the standard compiler wrappers.
  OSX_XCRUN=			${SETENV} PATH= /usr/bin/xcrun --no-cache
  
  TOOLS_PLATFORM.[?=		[			# shell builtin
-@@ -178,3 +192,4 @@
+@@ -178,3 +196,4 @@
  .else
  OSX_TOOLS_FORCE_NOOP+=		yacc
  .endif

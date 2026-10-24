@@ -111,6 +111,11 @@ A requested tool needs an accepted native path or an explicit shared source
 provider. An unknown tool produces a parse error. Source-provider selection
 adds the normal recipe dependency; it does not supply a runnable input yet.
 The selected shell supplies only the named standard builtins in that map.
+`printf` is not one of them: some POSIX shells, such as mksh, have no
+`printf` builtin, and a bare name makes the pkgsrc tool wrapper run itself
+until the process limit is reached. Select `printf` as a native path.
+The map keeps the standard pkgsrc arguments for `gunzip`, `gzip` and `mkdir`;
+without `mkdir -p` the first work directory cannot be created.
 
 The initial conservative parse-time roster is `awk basename cat cut date
 dirname env expr grep head id pwd sed sort tail tr uname uniq wc`.
