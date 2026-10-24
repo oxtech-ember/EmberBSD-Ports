@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted), GNU Texinfo standalone Info registrar.
 .include "../../devel/gtexinfo/Makefile.common"
+# Use the gzip archive of the same release: xz needs libtool, m4 and gmake,
+# which need this package to install their Info files.
+EXTRACT_SUFX=	.tar.gz
 
 PKGNAME= pkg_install-info-${TEXINFO_VERSION}
 CATEGORIES= pkgtools
@@ -10,7 +13,6 @@ COMMENT= Standalone GNU info file installation utility
 LICENSE= gnu-gpl-v3
 
 USE_LANGUAGES= c
-USE_TOOLS+= gmake perl:build
 GNU_CONFIGURE= yes
 # Build only the registrar and its upstream portability library.
 BUILD_DIRS= gnulib/lib install-info
@@ -18,6 +20,9 @@ INSTALL_DIRS= install-info
 INSTALL_TARGET= install-exec
 CONFIGURE_ARGS+= --program-transform-name=s/install-info/pkg_install-info/
 CONFIGURE_ARGS+= --disable-nls --disable-perl-xs
+# Only install-info is built. It does not run Perl, but configure checks for
+# it; a Perl dependency would close the gmake and Info file cycle again.
+CONFIGURE_ARGS+= PERL=/usr/bin/true
 TEST_DIRS= install-info
 TEST_TARGET= check
 
