@@ -1,0 +1,35 @@
+# Bundled One True Awk source
+
+Origin: NetBSD pkgsrc, with EmberBSD adaptations (AI-assisted).
+
+../SOURCE.json pins the official tagged snapshot and its archive bytes.
+Upstream does not normally make formal releases. The selected tag is 20260426.
+The upstream copyright, LICENSE, FIXES and FIXES.1e remain in this bundle.
+README.md is named README. awk.1 is named nawk.1 and uses the installed command.
+The book title and upstream language names remain unchanged.
+
+The lib.c byte classification casts retain the NetBSD repair from commit
+7099c72bfddcbf9671d3a3478636cf05e73bbfaa (Roland Illig, 2025-07-26).
+They also cover the new hexadecimal check and existing variable-name checks.
+Two new format-width byte checks in run.c use the same unsigned-char rule.
+Wide-character classification keeps its upstream behavior.
+
+The bootstrap script copies lang/nawk/files. The ordinary recipe extracts the
+same files. The Makefile uses the bundled parser and procedure table, without
+running a host generator during either build. CC, CFLAGS and LDFLAGS remain
+explicit producer selections. No old parser output can enter a new bundle.
+
+Upstream defaults to Bison. The BSD bundled integration uses a selected,
+pinned byacc to prepare awkgram.tab.c and awkgram.tab.h. The selected GCC16
+builds upstream maketab.c to prepare proctab.c. Both are source preparation,
+not target programs. See ../regenerate.py. Its private record captures tool
+hashes and exact argv. Generated files and their source hashes must pass the
+source gate before publication. Runtime and compiler acceptance are separate.
+
+The complete testdir and bugs-fixed cases remain upstream inputs. The testdir
+harness requires explicit CC, awk and oldawk selections and honors compiler
+and linker flags for its echo helper. It does not select a host cc or awk.
+
+CC names one selected compiler executable. Pass arguments separately through
+CPPFLAGS, CFLAGS and LDFLAGS. Do not place compiler flags or a command tuple
+in CC. The derived Makefile retains the full upstream Lucent license notice.

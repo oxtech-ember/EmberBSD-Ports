@@ -314,3 +314,4 @@ devel/byacc
 # Current GNU comparison and search utilities.
 devel/diffutils
 sysutils/findutils
+lang/nawk

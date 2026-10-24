@@ -1,0 +1,6 @@
+The One True Awk implementation of the AWK pattern-directed scanning and
+processing language, by one of its creators, Brian Kernighan.
+This source matches The AWK Programming Language, Second Edition, by
+Al Aho, Brian Kernighan and Peter Weinberger (Addison-Wesley, 2024,
+ISBN 978-0138269722). It supports UTF-8 strings and CSV input.
+The package installs the command as nawk.
