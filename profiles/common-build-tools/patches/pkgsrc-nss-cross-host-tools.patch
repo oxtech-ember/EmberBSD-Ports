@@ -1,19 +1,21 @@
 Origin: EmberBSD contributors (AI-assisted).
 Base: pkgsrc fff4deb639a1a640476203c80f752fb77b6cb14b, devel/nss 3.129.
+Update: NSS 3.132 from the official NSS_3_132_RTM release.
 NSS source files keep their upstream MPL-2.0 license and authorship.
 
 diff --git a/devel/nss/Makefile b/devel/nss/Makefile
 --- a/devel/nss/Makefile
 +++ b/devel/nss/Makefile
-@@ -4,6 +4,7 @@
+@@ -3,7 +3,7 @@
+ # Release Notes
  # https://firefox-source-docs.mozilla.org/security/nss/releases/index.html
  
- DISTNAME=		nss-3.129
-+PKGREVISION=		2
+-DISTNAME=		nss-3.129
++DISTNAME=		nss-3.132
  CATEGORIES=		devel security
  MASTER_SITES=		${MASTER_SITE_MOZILLA_ALL:=security/nss/releases/NSS_${PKGVERSION_NOREV:S/./_/g}_RTM/src/}
  
-@@ -33,8 +34,13 @@
+@@ -33,8 +33,13 @@
  .if ${USE_CROSS_COMPILE:U:tl} == yes
  
  MAKE_FLAGS+=		CROSS_COMPILE=1
@@ -30,6 +32,18 @@ diff --git a/devel/nss/Makefile b/devel/nss/Makefile
 diff --git a/devel/nss/distinfo b/devel/nss/distinfo
 --- a/devel/nss/distinfo
 +++ b/devel/nss/distinfo
+@@ -1,8 +1,8 @@
+ $NetBSD: distinfo,v 1.218 2026/09/10 10:02:09 wiz Exp $
+ 
+-BLAKE2s (nss-3.129.tar.gz) = bda9dba110d063efae30987f5065e88071752716bace7b8c5482f542119d82cd
+-SHA512 (nss-3.129.tar.gz) = ffad7bd7dbbd388c88072b21553f533ed721575b1a4dabbbd65a5f62c2f9e4b0e33e45c02d5f3a68b19b364e73f4880ab82924a673bdc2d1754237cde47b6b37
+-Size (nss-3.129.tar.gz) = 87255363 bytes
++BLAKE2s (nss-3.132.tar.gz) = ae8e9e60b37651da28dab314167e2a9fa4f143d8ad1dfc43a8ea928d63bb079a
++SHA512 (nss-3.132.tar.gz) = 9e0936f1b3f1480351895b371e6571440ff0bfcd0c069f0d558006e07ce870b6bebb440bc96e3e1d45fdd3c288da11c7380f3f69646ab1e3c79311f648ce12f9
++Size (nss-3.132.tar.gz) = 87788090 bytes
+ SHA1 (patch-md) = ebc903bb19456bfa111fad3c101e3f18168b43b3
+ SHA1 (patch-me) = 30aa8b8e22bb687b9c71da40ea9e76b56885d1f8
+ SHA1 (patch-mf) = 40e58385fb6f944f463bf00b9aad72bc4ea229d0
 @@ -12,4 +12,6 @@
  SHA1 (patch-nss_coreconf_OpenBSD.mk) = 944f71fcaaa7d5b2b3ed008341b1392a65480f2b
  SHA1 (patch-nss_coreconf_command.mk) = a7b682d367825b48f8802fa30cee83f10680bb74

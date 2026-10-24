@@ -44,14 +44,14 @@ run_lifecycle(unsigned int cycle)
 	int failures = 0;
 	unsigned int byte_index;
 
-	if (NSS_VersionCheck("3.129") != PR_TRUE)
-		return fail(cycle, "NSS_VersionCheck rejected 3.129");
-	if (NSS_VersionCheck("3.130") != PR_FALSE)
-		return fail(cycle, "NSS_VersionCheck accepted future version 3.130");
+	if (NSS_VersionCheck("3.132") != PR_TRUE)
+		return fail(cycle, "NSS_VersionCheck rejected 3.132");
+	if (NSS_VersionCheck("3.133") != PR_FALSE)
+		return fail(cycle, "NSS_VersionCheck accepted future version 3.133");
 
 	runtime_version = NSS_GetVersion();
-	if (runtime_version == NULL || strcmp(runtime_version, "3.129") != 0)
-		return fail(cycle, "NSS_GetVersion did not report 3.129");
+	if (runtime_version == NULL || strcmp(runtime_version, "3.132") != 0)
+		return fail(cycle, "NSS_GetVersion did not report 3.132");
 
 	if (NSS_NoDB_Init(NULL) != SECSuccess)
 		return fail(cycle, "NSS_NoDB_Init(NULL) failed");
@@ -113,7 +113,7 @@ main(void)
 			return 1;
 	}
 
-	printf("PASS: %u NSS 3.129 no-database lifecycles; SHA-256, "
+	printf("PASS: %u NSS 3.132 no-database lifecycles; SHA-256, "
 	    "invalid length, and RNG bounds checks\n", LIFECYCLES);
 	return 0;
 }

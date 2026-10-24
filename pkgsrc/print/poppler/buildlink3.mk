@@ -6,12 +6,15 @@ BUILDLINK_TREE+=	poppler
 POPPLER_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.poppler+=	poppler>=0.5.1
-BUILDLINK_ABI_DEPENDS.poppler+=	poppler>=26.06.0nb3
+BUILDLINK_ABI_DEPENDS.poppler+=	poppler>=26.10.0
 BUILDLINK_PKGSRCDIR.poppler?=	../../print/poppler
 
-USE_CXX_FEATURES+=	c++20
+USE_CXX_FEATURES+=	c++23
 
+BUILDLINK_API_DEPENDS.brotli+=	brotli>=1.1
+.include "../../archivers/brotli/buildlink3.mk"
 .include "../../devel/nss/buildlink3.mk"
+.include "../../fonts/harfbuzz/buildlink3.mk"
 .include "../../graphics/cairo/buildlink3.mk"
 .include "../../graphics/lcms2/buildlink3.mk"
 BUILDLINK_API_DEPENDS.fontconfig+=	fontconfig>=2.15

@@ -164,7 +164,8 @@ hardcoded base-tool paths remains pending.
 OpenSSL cross builds select complete upstream BSD targets instead of the
 build host's uname; the [cross checks](cross/README.md) keep package and runtime acceptance separate.
 
-The NSS 3.129 cross recipe selects the NetBSD target OS, architecture, release and
+The NSS 3.132 and NSPR 4.40 source pins use the common providers. The NSS
+cross recipe selects the NetBSD target OS, architecture, release and
 CPU. It builds nsinstall with the native compiler. Its narrow link branch removes target
 linker flags and libraries only for that host helper. The
 [host-tool regression](tests/nss-cross-host-tools.py) checks both target CPU mappings,
@@ -174,9 +175,10 @@ copies a binary payload with `nsinstall` and checks its bytes, hash, file type a
 It does not build or accept target NSS libraries. The upstream cross .chk skip remains;
 this does not establish shlibsign or FIPS acceptance.
 The [NSS runtime consumer](tests/nss-runtime/README.md) adds a bounded no-database
-API check. Ordinary amd64 packaging and a staged physical NetBSD 11 run pass,
+API check. Earlier NSS 3.129nb2 amd64 packaging and a staged physical NetBSD 11 run pass,
 including checked module loading and consumer-only UBSan. Target package
 installation, TLS, FIPS and a complete library memory check remain separate.
+Current NSS 3.132 and NSPR 4.40 package and target acceptance remain pending.
 
 
 The [cross Libtool path check](cross/libtool-runtime-paths.md) repairs an SDK

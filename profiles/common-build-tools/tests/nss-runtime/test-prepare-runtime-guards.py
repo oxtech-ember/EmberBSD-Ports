@@ -37,32 +37,34 @@ def main():
     pinned_patch = (
         '--- a/devel/nss/Makefile\n'
         '+++ b/devel/nss/Makefile\n'
-        '@@ -4,6 +4,7 @@\n'
+        '@@ -4,6 +4,6 @@\n'
         ' \n'
-        ' DISTNAME=\t\tnss-3.129\n'
-        '+PKGREVISION=\t\t2\n'
+        '-DISTNAME=\t\tnss-3.129\n'
+        '+DISTNAME=\t\tnss-3.132\n'
     )
     accepted('valid recipe patch', lambda: verify_recipe(pinned_patch))
-    refused('added DISTNAME line', lambda: verify_recipe(
-        pinned_patch.replace(' DISTNAME=', '+DISTNAME=', 1)))
-    refused('wrong package revision', lambda: verify_recipe(
-        pinned_patch.replace('+PKGREVISION=\t\t2', '+PKGREVISION=\t\t3', 1)))
+    refused('unchanged DISTNAME line', lambda: verify_recipe(
+        pinned_patch.replace('+DISTNAME=', ' DISTNAME=', 1)))
+    refused('wrong package version', lambda: verify_recipe(
+        pinned_patch.replace('+DISTNAME=\t\tnss-3.132', '+DISTNAME=\t\tnss-3.133', 1)))
+    refused('unexpected package revision', lambda: verify_recipe(
+        pinned_patch + '+PKGREVISION=\t\t1\n'))
     refused('duplicate recipe pin', lambda: verify_recipe(pinned_patch + pinned_patch))
 
     accepted('NSS package record', lambda: verify_identity(
-        '@cwd /usr/pkg\n@name nss-3.129nb2\n', 'nss-3.129nb2'))
+        '@cwd /usr/pkg\n@name nss-3.132\n', 'nss-3.132'))
     accepted('NSPR record after cwd', lambda: verify_identity(
-        '@cwd /usr/pkg\n@name nspr-4.39\n@comment package metadata\n', 'nspr-4.39'))
+        '@cwd /usr/pkg\n@name nspr-4.40\n@comment package metadata\n', 'nspr-4.40'))
     refused('wrong NSPR version', lambda: verify_identity(
-        '@cwd /usr/pkg\n@name nspr-4.390\n', 'nspr-4.39'))
+        '@cwd /usr/pkg\n@name nspr-4.400\n', 'nspr-4.40'))
     refused('missing package identity', lambda: verify_identity(
-        '@cwd /usr/pkg\n@comment no identity\n', 'nspr-4.39'))
+        '@cwd /usr/pkg\n@comment no identity\n', 'nspr-4.40'))
     refused('duplicate package identity', lambda: verify_identity(
-        '@cwd /usr/pkg\n@name nspr-4.39\n@name nspr-4.39\n', 'nspr-4.39'))
+        '@cwd /usr/pkg\n@name nspr-4.40\n@name nspr-4.40\n', 'nspr-4.40'))
 
     if args.recipe_patch is not None:
         verify_recipe(args.recipe_patch.read_text(encoding='utf-8'))
-        verify_identity(args.nspr_contents.read_text(encoding='utf-8'), 'nspr-4.39')
+        verify_identity(args.nspr_contents.read_text(encoding='utf-8'), 'nspr-4.40')
 
     print('PASS: recipe pin and package identity accept/refusal cases; no compiler invoked')
 

@@ -1,6 +1,6 @@
 # NSS runtime smoke test
 
-This public C consumer targets NSS 3.129 and NSPR 4.39. The Python runner
+This public C consumer targets NSS 3.132 and NSPR 4.40. The Python runner
 cross-builds it with GCC 16.2.0 and the explicit SDK API 1. Run the resulting
 binary on an EmberBSD target after the ordinary NSS and NSPR runtime packages
 are installed.
@@ -9,8 +9,8 @@ The build uses C11 and treats format warnings as errors. The lifecycle count is
 unsigned to match the `%u` format in the success message.
 
 The test performs 100 complete `NSS_NoDB_Init(NULL)` / `NSS_Shutdown()`
-lifecycles. Each cycle checks the exact runtime version, accepts NSS 3.129 and
-rejects the future version 3.130, requests the internal PKCS #11 slot, hashes
+lifecycles. Each cycle checks the exact runtime version, accepts NSS 3.132 and
+rejects the future version 3.133, requests the internal PKCS #11 slot, hashes
 `abc` with SHA-256 against the independent expected bytes embedded in this
 test, checks that a negative digest length is rejected as
 `SEC_ERROR_INVALID_ARGS` without changing the output buffer, and requests 32
@@ -28,9 +28,9 @@ installed, `run.sh` clears the environment and uses the target runtime paths.
 
 The required runtime payload for this test is:
 
-- NSS 3.129: `lib/nss/libnss3.so`, `lib/nss/libnssutil3.so`,
+- NSS 3.132: `lib/nss/libnss3.so`, `lib/nss/libnssutil3.so`,
   `lib/nss/libsoftokn3.so`, and `lib/nss/libfreebl3.so`.
-- NSPR 4.39: `lib/nspr/libnspr4.so`, `lib/nspr/libplc4.so`, and
+- NSPR 4.40: `lib/nspr/libnspr4.so`, `lib/nspr/libplc4.so`, and
   `lib/nspr/libplds4.so`.
 - GCC 16 target runtime: `libgcc_s.so.1` from the matching GCC16 runtime
   package if the linked ELF lists it in `DT_NEEDED`.
@@ -40,8 +40,8 @@ exercised by this test. The runner checks the installed package manifests and
 the seven required ELF files for the expected target machine, ELF64 little
 endian format, and SONAMEs. The target shell script checks the direct NSS and
 NSPR loader paths with an empty environment before running the lifecycle test.
-The 100 successful cycles exercise the runtime-loaded softoken and FreeBL
-files. The target build and runtime execution remain separate acceptance gates.
+The lifecycle check exercises the runtime-loaded softoken and FreeBL files.
+The target build and runtime execution remain separate acceptance gates.
 
 Prepare the consumer on the development host. Use absolute paths for all
 inputs and a new output directory. The selected sysroot must remain unchanged
@@ -61,7 +61,7 @@ directory after installing the matching runtime packages through the ordinary
 package path. The runner records input hashes, compiler identity and binary
 hash in `receipt.json`; it does not install packages or execute target code.
 
-Ordinary GCC16 amd64 packaging of NSS 3.129nb2 and its common host sysroot
+Earlier ordinary GCC16 amd64 packaging of NSS 3.129nb2 and its common host sysroot
 installation pass. The archive matches the staged payload. This C consumer
 also passes 100 normal and 100 UBSan-trap lifecycles on physical NetBSD 11 amd64.
 That execution uses a temporary, hash-verified dependency closure and an explicit
@@ -87,12 +87,12 @@ around `NSS_NoDB_Init`. This smoke test does not prove that behavior absent or
 acceptable. A supported Valgrind run remains a separate memory check; the 100
 lifecycles are not a leak check.
 
-The source review used pkgsrc pin
-`fff4deb639a1a640476203c80f752fb77b6cb14b`, NSS 3.129, and the archive hashes
-recorded in pkgsrc `devel/nss/distinfo`:
-BLAKE2s `bda9dba110d063efae30987f5065e88071752716bace7b8c5482f542119d82cd`
-and SHA-512
-`ffad7bd7dbbd388c88072b21553f533ed721575b1a4dabbbd65a5f62c2f9e4b0e33e45c02d5f3a68b19b364e73f4880ab82924a673bdc2d1754237cde47b6b37`.
+NSS 3.132 and NSPR 4.40 package and target execution remain pending.
+The common recipe patch records the current source hashes. The official
+NSS 3.132 source archive has SHA256
+`ee9cf4837ba801141a804321c4462ad8f452ff4314275c6d5108a6b05af227ff`.
+The upstream release is
+[NSS_3_132_RTM](https://firefox-source-docs.mozilla.org/security/nss/releases/nss_3_132.html).
 The API expectations map to `lib/nss/nss.h`, `lib/nss/nssinit.c`,
 `lib/pk11wrap/pk11cxt.c`, `lib/pk11wrap/pk11slot.c`,
 `lib/pk11wrap/pk11load.c`, `lib/freebl/loader.c`,

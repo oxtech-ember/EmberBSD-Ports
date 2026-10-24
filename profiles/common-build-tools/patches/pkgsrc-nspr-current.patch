@@ -1,0 +1,348 @@
+Origin: EmberBSD contributors (AI-assisted).
+Base: pkgsrc fff4deb639a1a640476203c80f752fb77b6cb14b, devel/nspr 4.39.
+Update the common NSPR provider to the official 4.40 release.
+NSPR source files keep their upstream MPL-2.0 license and authorship.
+
+diff --git a/devel/nspr/Makefile b/devel/nspr/Makefile
+--- a/devel/nspr/Makefile
++++ b/devel/nspr/Makefile
+@@ -1,6 +1,6 @@
+ # $NetBSD: Makefile,v 1.129 2026/05/05 14:00:36 wiz Exp $
+ 
+-DISTNAME=	nspr-4.39
++DISTNAME=	nspr-4.40
+ CATEGORIES=	devel
+ MASTER_SITES=	${MASTER_SITE_MOZILLA_ALL:=nspr/releases/v${PKGVERSION_NOREV}/src/}
+ 
+diff --git a/devel/nspr/distinfo b/devel/nspr/distinfo
+--- a/devel/nspr/distinfo
++++ b/devel/nspr/distinfo
+@@ -1,12 +1,12 @@
+ $NetBSD: distinfo,v 1.77 2026/05/19 08:48:15 jperkin Exp $
+ 
+-BLAKE2s (nspr-4.39.tar.gz) = 8a12f678b99c6ccac44194b4ce50a0537dbcf276fc9a15dd0410080e5451ace4
+-SHA512 (nspr-4.39.tar.gz) = 201627666814552e3c98f66a0bdb18194670dcbdbc8cf3241079d918891d46aef1b10e9339beb84802d1de4189993340febab27344e97f8de21ceb1f43c77bda
+-Size (nspr-4.39.tar.gz) = 1014093 bytes
+-SHA1 (patch-ab) = 008f5b84994ad20e3b1a0de1e0f7a028932d03d2
++BLAKE2s (nspr-4.40.tar.gz) = 0dc003e1f6c994db2c193178ff6ed8a665968ccb2d04ae08addaa9e6898c5374
++SHA512 (nspr-4.40.tar.gz) = 7b1256da87e85287f4e2dab1ea735459044c258831f186bc662640c11ab0d96c8e28cd618ea6cb5178cf185e928c2dd967131154327a3bcb0d2ebdb7d560dff2
++Size (nspr-4.40.tar.gz) = 1008989 bytes
++SHA1 (patch-ab) = a01d0b574a4337e276d66089195a59b160874cca
+ SHA1 (patch-ac) = 6562282cc3d846a114f53ca53b9287fa64d69052
+-SHA1 (patch-ba) = 5fe843946d301405e6a4550d14553cf8506ad269
++SHA1 (patch-ba) = 882198e57a460578a354960c59f32dab9bfe3723
+ SHA1 (patch-nspr_pr_include_md___netbsd.cfg) = a3aba89d02cd61f748862ebb3b76050873ccdd69
+-SHA1 (patch-nspr_pr_src_pthreads_ptio.c) = 06f920cea9e28e279af48d083177ed767d41cadf
+-SHA1 (patch-nspr_pr_src_pthreads_ptsynch.c) = 2aaa26d4b99978557523a4ead45e944684d1611a
+-SHA1 (patch-nspr_pr_src_pthreads_ptthread.c) = 9a0cdd10ed1aad54a0bfb1d575fa47113b1a521b
++SHA1 (patch-nspr_pr_src_pthreads_ptio.c) = 43faf712e4c1a65c04ae37a58c096523ce4b0304
++SHA1 (patch-nspr_pr_src_pthreads_ptsynch.c) = 6ab8f7b570e1a1405944c0aaa4bc5578011e2d7c
++SHA1 (patch-nspr_pr_src_pthreads_ptthread.c) = b044f7af1bca54109947ba1ba92ac5a881812bb7
+diff --git a/devel/nspr/patches/patch-ab b/devel/nspr/patches/patch-ab
+--- a/devel/nspr/patches/patch-ab
++++ b/devel/nspr/patches/patch-ab
+@@ -6,8 +6,8 @@
+ --- nspr/pr/include/md/_netbsd.h.orig	2018-03-05 15:50:28.000000000 +0000
+ +++ nspr/pr/include/md/_netbsd.h
+ @@ -30,6 +30,8 @@
+- #elif defined(__arm32__) || defined(__arm__) || defined(__armel__) \
+-     || defined(__armeb__)
++ #elif defined(__arm32__) || defined(__arm__) || defined(__armel__) || \
++     defined(__armeb__)
+  #define _PR_SI_ARCHITECTURE "arm"
+ +#elif defined(__aarch64__)
+ +#define _PR_SI_ARCHITECTURE "aarch64"
+diff --git a/devel/nspr/patches/patch-ba b/devel/nspr/patches/patch-ba
+--- a/devel/nspr/patches/patch-ba
++++ b/devel/nspr/patches/patch-ba
+@@ -3,23 +3,23 @@
+ pthread_t may be 64-bit, avoid casting it.
+ https://bugzilla.mozilla.org/show_bug.cgi?id=1718835
+ 
+---- nspr/pr/include/private/pprthred.h.orig	2024-10-21 11:31:57.000000000 +0000
++--- nspr/pr/include/private/pprthred.h.orig
+ +++ nspr/pr/include/private/pprthred.h
+-@@ -12,6 +12,8 @@
++@@ -10,6 +10,8 @@
++ ** developers only.
+  */
+  #include "nspr.h"
+++
+++#include <pthread.h>
+  
+-+#include <pthread.h>
+-+
+  PR_BEGIN_EXTERN_C
+  
+- /*---------------------------------------------------------------------------
+-@@ -52,7 +54,7 @@ NSPR_API(void) PR_DetachThread(void);
++@@ -52,7 +54,7 @@
+  ** Get the id of the named thread. Each thread is assigned a unique id
+  ** when it is created or attached.
+  */
+--NSPR_API(PRUint32) PR_GetThreadID(PRThread *thread);
+-+NSPR_API(pthread_t) PR_GetThreadID(PRThread *thread);
++-NSPR_API(PRUint32)
+++NSPR_API(pthread_t)
++ PR_GetThreadID(PRThread* thread);
+  
+  /*
+- ** Set the procedure that is called when a thread is dumped. The procedure
+diff --git a/devel/nspr/patches/patch-nspr_pr_src_pthreads_ptio.c b/devel/nspr/patches/patch-nspr_pr_src_pthreads_ptio.c
+--- a/devel/nspr/patches/patch-nspr_pr_src_pthreads_ptio.c
++++ b/devel/nspr/patches/patch-nspr_pr_src_pthreads_ptio.c
+@@ -2,23 +2,23 @@
+ 
+ Fix for modern C.
+ 
+---- nspr/pr/src/pthreads/ptio.c.orig	2026-05-19 08:43:03.954529380 +0000
++--- nspr/pr/src/pthreads/ptio.c.orig
+ +++ nspr/pr/src/pthreads/ptio.c
+-@@ -72,7 +72,7 @@ typedef struct sendfilevec {
++@@ -71,7 +71,7 @@
+  /*
+   * extern ssize_t sendfilev(int, const struct sendfilevec *, int, size_t *);
+   */
+ -static ssize_t (*pt_solaris_sendfilev_fptr)() = NULL;
+ +static ssize_t (*pt_solaris_sendfilev_fptr)(int, const struct sendfilevec *, int, size_t *) = NULL;
+  
+- #      define SOLARIS_SENDFILEV(a, b, c, d) \
+-         (*pt_solaris_sendfilev_fptr)((a), (b), (c), (d))
+-@@ -2368,7 +2368,7 @@ static void pt_solaris_sendfilev_init_ro
+-     PR_LOG(_pr_io_lm, PR_LOG_DEBUG, ("dlopen(0) returns %p", handle));
+-     close_it = PR_TRUE;
+-   }
+--  pt_solaris_sendfilev_fptr = (ssize_t(*)())dlsym(handle, "sendfilev");
+-+  pt_solaris_sendfilev_fptr = (ssize_t(*)(int, const struct sendfilevec *, int, size_t *))dlsym(handle, "sendfilev");
+-   PR_LOG(_pr_io_lm, PR_LOG_DEBUG,
+-          ("dlsym(sendfilev) returns %p", pt_solaris_sendfilev_fptr));
++ #define SOLARIS_SENDFILEV(a, b, c, d) \
++     (*pt_solaris_sendfilev_fptr)((a), (b), (c), (d))
++@@ -2484,7 +2484,7 @@
++         PR_LOG(_pr_io_lm, PR_LOG_DEBUG, ("dlopen(0) returns %p", handle));
++         close_it = PR_TRUE;
++     }
++-    pt_solaris_sendfilev_fptr = (ssize_t (*)())dlsym(handle, "sendfilev");
+++    pt_solaris_sendfilev_fptr = (ssize_t (*)(int, const struct sendfilevec *, int, size_t *))dlsym(handle, "sendfilev");
++     PR_LOG(_pr_io_lm, PR_LOG_DEBUG,
++            ("dlsym(sendfilev) returns %p", pt_solaris_sendfilev_fptr));
+  
+diff --git a/devel/nspr/patches/patch-nspr_pr_src_pthreads_ptsynch.c b/devel/nspr/patches/patch-nspr_pr_src_pthreads_ptsynch.c
+--- a/devel/nspr/patches/patch-nspr_pr_src_pthreads_ptsynch.c
++++ b/devel/nspr/patches/patch-nspr_pr_src_pthreads_ptsynch.c
+@@ -6,105 +6,106 @@
+ 
+ https://bugzilla.mozilla.org/show_bug.cgi?id=1718838
+ 
+---- nspr/pr/src/pthreads/ptsynch.c.orig	2024-10-21 11:31:57.000000000 +0000
++--- nspr/pr/src/pthreads/ptsynch.c.orig
+ +++ nspr/pr/src/pthreads/ptsynch.c
+-@@ -25,6 +25,13 @@ static pthread_condattr_t _pt_cvar_attr;
++@@ -23,6 +23,13 @@
++ #if defined(DEBUG)
+  extern PTDebug pt_debug; /* this is shared between several modules */
+- #  endif                 /* defined(DEBUG) */
+- 
++ #endif                   /* defined(DEBUG) */
+++
+ +/* XXX, pthread_equal() is misused to compare non-valid thread pointers */
+ +static int
+ +pt_pthread_equal(pthread_t t1, pthread_t t2)
+ +{
+ +	return t1 == t2;
+ +}
++ 
++ #if defined(FREEBSD)
++ /*
++@@ -194,9 +201,9 @@
++     PR_ASSERT(lock != NULL);
++     PR_ASSERT(_PT_PTHREAD_MUTEX_IS_LOCKED(lock->mutex));
++     PR_ASSERT(PR_TRUE == lock->locked);
++-    PR_ASSERT(pthread_equal(lock->owner, self));
++-
++-    if (!lock->locked || !pthread_equal(lock->owner, self)) {
+++    PR_ASSERT(pt_pthread_equal(lock->owner, self));
+ +
+- #  if defined(FREEBSD)
+- /*
+-  * On older versions of FreeBSD, pthread_mutex_trylock returns EDEADLK.
+-@@ -181,9 +188,9 @@ PR_IMPLEMENT(PRStatus) PR_Unlock(PRLock*
+-   PR_ASSERT(lock != NULL);
+-   PR_ASSERT(_PT_PTHREAD_MUTEX_IS_LOCKED(lock->mutex));
+-   PR_ASSERT(PR_TRUE == lock->locked);
+--  PR_ASSERT(pthread_equal(lock->owner, self));
+-+  PR_ASSERT(pt_pthread_equal(lock->owner, self));
+++    if (!lock->locked || !pt_pthread_equal(lock->owner, self)) {
++         return PR_FAILURE;
++     }
+  
+--  if (!lock->locked || !pthread_equal(lock->owner, self)) {
+-+  if (!lock->locked || !pt_pthread_equal(lock->owner, self)) {
+-     return PR_FAILURE;
+-   }
+- 
+-@@ -207,7 +214,7 @@ PR_IMPLEMENT(void) PR_AssertCurrentThrea
+-    * to the correctness of PR_AssertCurrentThreadOwnsLock(), but
+-    * this particular order makes the assertion more likely to
+-    * catch errors. */
+--  PR_ASSERT(lock->locked && pthread_equal(lock->owner, pthread_self()));
+-+  PR_ASSERT(lock->locked && pt_pthread_equal(lock->owner, pthread_self()));
++@@ -222,7 +229,7 @@
++      * to the correctness of PR_AssertCurrentThreadOwnsLock(), but
++      * this particular order makes the assertion more likely to
++      * catch errors. */
++-    PR_ASSERT(lock->locked && pthread_equal(lock->owner, pthread_self()));
+++    PR_ASSERT(lock->locked && pt_pthread_equal(lock->owner, pthread_self()));
+  }
+  
+  /**************************************************************/
+-@@ -260,7 +267,7 @@ static void pt_PostNotifyToCvar(PRCondVa
+-   _PT_Notified* notified = &cvar->lock->notified;
++@@ -279,7 +286,7 @@
++     _PT_Notified* notified = &cvar->lock->notified;
+  
+-   PR_ASSERT(PR_TRUE == cvar->lock->locked);
+--  PR_ASSERT(pthread_equal(cvar->lock->owner, pthread_self()));
+-+  PR_ASSERT(pt_pthread_equal(cvar->lock->owner, pthread_self()));
+-   PR_ASSERT(_PT_PTHREAD_MUTEX_IS_LOCKED(cvar->lock->mutex));
++     PR_ASSERT(PR_TRUE == cvar->lock->locked);
++-    PR_ASSERT(pthread_equal(cvar->lock->owner, pthread_self()));
+++    PR_ASSERT(pt_pthread_equal(cvar->lock->owner, pthread_self()));
++     PR_ASSERT(_PT_PTHREAD_MUTEX_IS_LOCKED(cvar->lock->mutex));
+  
+-   while (1) {
+-@@ -336,7 +343,7 @@ PR_IMPLEMENT(PRStatus) PR_WaitCondVar(PR
+-   PR_ASSERT(_PT_PTHREAD_MUTEX_IS_LOCKED(cvar->lock->mutex));
+-   PR_ASSERT(PR_TRUE == cvar->lock->locked);
+-   /* and it better be by us */
+--  PR_ASSERT(pthread_equal(cvar->lock->owner, pthread_self()));
+-+  PR_ASSERT(pt_pthread_equal(cvar->lock->owner, pthread_self()));
++     while (1) {
++@@ -361,7 +368,7 @@
++     PR_ASSERT(_PT_PTHREAD_MUTEX_IS_LOCKED(cvar->lock->mutex));
++     PR_ASSERT(PR_TRUE == cvar->lock->locked);
++     /* and it better be by us */
++-    PR_ASSERT(pthread_equal(cvar->lock->owner, pthread_self()));
+++    PR_ASSERT(pt_pthread_equal(cvar->lock->owner, pthread_self()));
+  
+-   if (_PT_THREAD_INTERRUPTED(thred)) {
+-     goto aborted;
+-@@ -535,7 +542,7 @@ PR_IMPLEMENT(PRIntn) PR_GetMonitorEntryC
++     if (_PT_THREAD_INTERRUPTED(thred)) {
++         goto aborted;
++@@ -576,7 +583,7 @@
+  
+-   rv = pthread_mutex_lock(&mon->lock);
+-   PR_ASSERT(0 == rv);
+--  if (pthread_equal(mon->owner, self)) {
+-+  if (pt_pthread_equal(mon->owner, self)) {
+-     count = mon->entryCount;
+-   }
+-   rv = pthread_mutex_unlock(&mon->lock);
+-@@ -549,7 +556,7 @@ PR_IMPLEMENT(void) PR_AssertCurrentThrea
+- 
+-   rv = pthread_mutex_lock(&mon->lock);
+-   PR_ASSERT(0 == rv);
+--  PR_ASSERT(mon->entryCount != 0 && pthread_equal(mon->owner, pthread_self()));
+-+  PR_ASSERT(mon->entryCount != 0 && pt_pthread_equal(mon->owner, pthread_self()));
+-   rv = pthread_mutex_unlock(&mon->lock);
+-   PR_ASSERT(0 == rv);
+- #  endif
+-@@ -563,7 +570,7 @@ PR_IMPLEMENT(void) PR_EnterMonitor(PRMon
+-   rv = pthread_mutex_lock(&mon->lock);
+-   PR_ASSERT(0 == rv);
+-   if (mon->entryCount != 0) {
++     rv = pthread_mutex_lock(&mon->lock);
++     PR_ASSERT(0 == rv);
+ -    if (pthread_equal(mon->owner, self)) {
+ +    if (pt_pthread_equal(mon->owner, self)) {
+-       goto done;
++         count = mon->entryCount;
+      }
+-     while (mon->entryCount != 0) {
+-@@ -593,8 +600,8 @@ PR_IMPLEMENT(PRStatus) PR_ExitMonitor(PR
+-   PR_ASSERT(0 == rv);
+-   /* the entries should be > 0 and we'd better be the owner */
+-   PR_ASSERT(mon->entryCount > 0);
+--  PR_ASSERT(pthread_equal(mon->owner, self));
+--  if (mon->entryCount == 0 || !pthread_equal(mon->owner, self)) {
+-+  PR_ASSERT(pt_pthread_equal(mon->owner, self));
+-+  if (mon->entryCount == 0 || !pt_pthread_equal(mon->owner, self)) {
++     rv = pthread_mutex_unlock(&mon->lock);
++@@ -592,7 +599,7 @@
++ 
++     rv = pthread_mutex_lock(&mon->lock);
++     PR_ASSERT(0 == rv);
++-    PR_ASSERT(mon->entryCount != 0 && pthread_equal(mon->owner, pthread_self()));
+++    PR_ASSERT(mon->entryCount != 0 && pt_pthread_equal(mon->owner, pthread_self()));
+      rv = pthread_mutex_unlock(&mon->lock);
+      PR_ASSERT(0 == rv);
+-     return PR_FAILURE;
+-@@ -638,7 +645,7 @@ PR_IMPLEMENT(PRStatus) PR_Wait(PRMonitor
+-   /* the entries better be positive */
+-   PR_ASSERT(mon->entryCount > 0);
+-   /* and it better be owned by us */
+--  PR_ASSERT(pthread_equal(mon->owner, pthread_self()));
+-+  PR_ASSERT(pt_pthread_equal(mon->owner, pthread_self()));
++ #endif
++@@ -608,7 +615,7 @@
++     rv = pthread_mutex_lock(&mon->lock);
++     PR_ASSERT(0 == rv);
++     if (mon->entryCount != 0) {
++-        if (pthread_equal(mon->owner, self)) {
+++        if (pt_pthread_equal(mon->owner, self)) {
++             goto done;
++         }
++         while (mon->entryCount != 0) {
++@@ -640,8 +647,8 @@
++     PR_ASSERT(0 == rv);
++     /* the entries should be > 0 and we'd better be the owner */
++     PR_ASSERT(mon->entryCount > 0);
++-    PR_ASSERT(pthread_equal(mon->owner, self));
++-    if (mon->entryCount == 0 || !pthread_equal(mon->owner, self)) {
+++    PR_ASSERT(pt_pthread_equal(mon->owner, self));
+++    if (mon->entryCount == 0 || !pt_pthread_equal(mon->owner, self)) {
++         rv = pthread_mutex_unlock(&mon->lock);
++         PR_ASSERT(0 == rv);
++         return PR_FAILURE;
++@@ -687,7 +694,7 @@
++     /* the entries better be positive */
++     PR_ASSERT(mon->entryCount > 0);
++     /* and it better be owned by us */
++-    PR_ASSERT(pthread_equal(mon->owner, pthread_self()));
+++    PR_ASSERT(pt_pthread_equal(mon->owner, pthread_self()));
+  
+-   /* tuck these away 'till later */
+-   saved_entries = mon->entryCount;
++     /* tuck these away 'till later */
++     saved_entries = mon->entryCount;
+diff --git a/devel/nspr/patches/patch-nspr_pr_src_pthreads_ptthread.c b/devel/nspr/patches/patch-nspr_pr_src_pthreads_ptthread.c
+--- a/devel/nspr/patches/patch-nspr_pr_src_pthreads_ptthread.c
++++ b/devel/nspr/patches/patch-nspr_pr_src_pthreads_ptthread.c
+@@ -3,16 +3,18 @@
+ pthread_t may be 64-bit, avoid casting it.
+ https://bugzilla.mozilla.org/show_bug.cgi?id=1718835
+ 
+---- nspr/pr/src/pthreads/ptthread.c.orig	2024-10-21 11:31:57.000000000 +0000
++--- nspr/pr/src/pthreads/ptthread.c.orig
+ +++ nspr/pr/src/pthreads/ptthread.c
+-@@ -1088,8 +1088,8 @@ PR_IMPLEMENT(PRStatus) PR_Cleanup(void) 
++@@ -1106,10 +1106,10 @@
++ PR_IMPLEMENT(void)
++ PR_ProcessExit(PRIntn status) { _exit(status); }
+  
+- PR_IMPLEMENT(void) PR_ProcessExit(PRIntn status) { _exit(status); }
+- 
+--PR_IMPLEMENT(PRUint32) PR_GetThreadID(PRThread* thred) {
+--  return (PRUint32)thred->id; /* and I don't know what they will do with it */
+-+PR_IMPLEMENT(pthread_t) PR_GetThreadID(PRThread* thred) {
+-+  return (pthread_t)thred->id; /* and I don't know what they will do with it */
++-PR_IMPLEMENT(PRUint32)
+++PR_IMPLEMENT(pthread_t)
++ PR_GetThreadID(PRThread* thred)
++ {
++-    return (PRUint32)thred->id; /* and I don't know what they will do with it */
+++    return (pthread_t)thred->id; /* and I don't know what they will do with it */
+  }
+  
+  /*

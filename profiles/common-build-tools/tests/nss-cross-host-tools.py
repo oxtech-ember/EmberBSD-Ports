@@ -1,6 +1,6 @@
 #!/usr/bin/env python3.15
 # SPDX-License-Identifier: BSD-2-Clause
-# Origin: EmberBSD contributors (AI-assisted), NSS 3.129 host-tool cross-link regression.
+# Origin: EmberBSD contributors (AI-assisted), NSS host-tool cross-link regression.
 """Check NSS cross target routing and the native nsinstall host helper."""
 import argparse
 import hashlib
@@ -146,7 +146,7 @@ def main():
             cwd=package_copy, input_data=recipe_delta, expect='success')
         modified_pkg = package_copy / 'devel/nss'
         recipe = (modified_pkg / 'Makefile').read_text(encoding='utf-8')
-        for required in ('PKGREVISION=\t\t2', 'OS_TARGET=${OPSYS:Q}',
+        for required in ('DISTNAME=\t\tnss-3.132', 'OS_TARGET=${OPSYS:Q}',
                          'OS_TARGET_RELEASE=${OS_VERSION:Q}', 'OS_TEST=${NSS_CPU_ARCH:Q}',
                          'NATIVE_FLAGS=${NATIVE_CFLAGS:Q}'):
             if required not in recipe:
@@ -276,7 +276,7 @@ def main():
                 [args.patch_tool, '--dry-run', '-f', '-F', '0', '-p0'],
                 cwd=state_probe, input_data=baseline_patch_data)
             if forward_status != 0:
-                raise RuntimeError('Source must be either raw NSS 3.129 or patched by the base pkgsrc nsinstall patch.')
+                raise RuntimeError('Source must be either raw NSS 3.132 or patched by the base pkgsrc nsinstall patch.')
             source_state = 'raw-source'
         receipt['source_state'] = source_state
 

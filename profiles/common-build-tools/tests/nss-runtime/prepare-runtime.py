@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.15
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
-"""Cross-build the bounded NSS 3.129 target runtime smoke test with GCC16."""
+"""Cross-build the bounded NSS 3.132 target runtime smoke test with GCC16."""
 import argparse
 from pathlib import Path
 import os
@@ -13,15 +13,15 @@ sys.dont_write_bytecode = True
 def verify_nss_recipe_pin(recipe_text):
     lines = recipe_text.splitlines()
     expected = (
-        ' DISTNAME=\t\tnss-3.129',
-        '+PKGREVISION=\t\t2',
+        '-DISTNAME=\t\tnss-3.129',
+        '+DISTNAME=\t\tnss-3.132',
     )
     matches = sum(
         1 for index in range(len(lines) - 1)
         if (lines[index], lines[index + 1]) == expected
     )
-    if matches != 1:
-        raise ValueError('The selected Ports patch does not pin NSS 3.129nb2 exactly once.')
+    if matches != 1 or any(line.startswith('+PKGREVISION=') for line in lines):
+        raise ValueError('The selected Ports patch does not pin NSS 3.132 exactly once.')
 
 
 def verify_package_identity(contents, expected_name):
@@ -82,12 +82,12 @@ def main():
 
     prefix = sysroot / 'usr/pkg'
     pkgdb = prefix / 'pkgdb'
-    nss_package = pkgdb / 'nss-3.129nb2' / '+CONTENTS'
-    nspr_packages = sorted(pkgdb.glob('nspr-4.39*/+CONTENTS'))
+    nss_package = pkgdb / 'nss-3.132' / '+CONTENTS'
+    nspr_packages = sorted(pkgdb.glob('nspr-4.40*/+CONTENTS'))
     if not nss_package.is_file():
-        parser.error('Install the matching nss-3.129nb2 runtime package first.')
+        parser.error('Install the matching nss-3.132 runtime package first.')
     if len(nspr_packages) != 1:
-        parser.error('Install exactly one NSPR 4.39 runtime package first.')
+        parser.error('Install exactly one NSPR 4.40 runtime package first.')
     nspr_package = nspr_packages[0]
 
     nss_plist = ports_root / 'upstream/pkgsrc/devel/nss/PLIST'
@@ -115,8 +115,8 @@ def main():
         parser.error('The pinned NSPR PLIST is missing required runtime payload.')
     try:
         verify_nss_recipe_pin(recipe_patch.read_text(encoding='utf-8'))
-        verify_package_identity(nss_package.read_text(encoding='utf-8'), 'nss-3.129nb2')
-        verify_package_identity(nspr_package.read_text(encoding='utf-8'), 'nspr-4.39')
+        verify_package_identity(nss_package.read_text(encoding='utf-8'), 'nss-3.132')
+        verify_package_identity(nspr_package.read_text(encoding='utf-8'), 'nspr-4.40')
     except ValueError as error:
         parser.error(str(error))
 
@@ -253,7 +253,7 @@ def main():
     jsonio.write_json(work / 'receipt.json', {
         'test': 'nss-runtime-smoke',
         'target': {'architecture': args.target, 'triplet': triplet, 'elf_machine': machine},
-        'nss_version': '3.129',
+        'nss_version': '3.132',
         'sdk': {'root': str(sdk_root), 'api_version': 1},
         'compiler': {'path': str(cc), 'version': compiler_version, 'target': compiler_target},
         'input_sha256': {**source_hashes, **input_hashes},
@@ -264,7 +264,7 @@ def main():
         },
         'binary_sha256': inventory.sha256_file(binary),
         'commands': commands,
-        'scope': 'NSS 3.129 no-database C API lifecycle, SHA-256 known-answer, invalid digest length, internal token, and random-output smoke; no TLS, FIPS, database, network, or secret acceptance.',
+        'scope': 'NSS 3.132 no-database C API lifecycle, SHA-256 known-answer, invalid digest length, internal token, and random-output smoke; no TLS, FIPS, database, network, or secret acceptance.',
         'status': 'built; target execution pending',
     }, exclusive=True)
     print('Built target NSS runtime smoke test: ' + str(binary))
