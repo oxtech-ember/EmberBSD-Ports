@@ -116,6 +116,9 @@ The selected shell supplies only the named standard builtins in that map.
 until the process limit is reached. Select `printf` as a native path.
 The map keeps the standard pkgsrc arguments for `gunzip`, `gzip` and `mkdir`;
 without `mkdir -p` the first work directory cannot be created.
+Configure scripts and Makefiles also run bare `ar`, `nm`, `ranlib` and
+`strip`. The policy creates them in the pkgsrc tools directory from the
+selected `EMBERBSD_GCC16_*` commands; the utility PATH does not supply them.
 
 The initial conservative parse-time roster is `awk basename cat cut date
 dirname env expr grep head id pwd sed sort tail tr uname uniq wc`.
