@@ -1,0 +1,135 @@
+--- a/third_party/angle/src/compiler/translator/IntermNode.cpp
++++ b/third_party/angle/src/compiler/translator/IntermNode.cpp
+@@ -880,7 +880,8 @@
+         // http://crbug.com/498400132
+         angle::base::CheckedNumeric<size_t> checkedArraySize = elementSize;
+         checkedArraySize *= getOutermostArraySize();
+-        constArray = new TConstantUnion[checkedArraySize.ValueOrDie()];
++        const size_t arraySize = checkedArraySize.ValueOrDie();
++        constArray = new TConstantUnion[arraySize];
+ 
+         size_t elementOffset = 0u;
+         for (TIntermNode *constructorArg : mArguments)
+@@ -1049,7 +1050,7 @@
+ void TIntermBlock::insertStatement(size_t insertPosition, TIntermNode *statement)
+ {
+     ASSERT(statement != nullptr);
+-    mStatements.insert(mStatements.begin() + insertPosition, statement);
++    mStatements.emplace(mStatements.begin() + insertPosition, statement);
+ }
+ 
+ void TIntermDeclaration::appendDeclarator(TIntermTyped *declarator)
+--- a/third_party/angle/src/compiler/translator/ParseContext.cpp
++++ b/third_party/angle/src/compiler/translator/ParseContext.cpp
+@@ -8969,7 +8969,7 @@
+     if (child->getMemoryQualifier().writeonly)
+     {
+         const char *opStr =
+-            BuiltInGroup::IsBuiltIn(op) ? func->name().data() : GetOperatorString(op);
++            func != nullptr ? func->name().data() : GetOperatorString(op);
+         unaryOpError(loc, opStr, child->getType());
+         return nullptr;
+     }
+--- a/third_party/angle/src/compiler/translator/IntermRebuild.cpp
++++ b/third_party/angle/src/compiler/translator/IntermRebuild.cpp
+@@ -304,11 +304,20 @@
+ {
+     ConsList<TIntermNode *> oldNodeStack;
+     ConsList<TIntermNode *> &nodeStack;
++#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ == 16
++#    pragma GCC diagnostic push
++// The destructor restores the list before oldNodeStack leaves scope (GCC PR105867).
++// https://gcc.gnu.org/pipermail/gcc-bugs/2022-June/789493.html
++#    pragma GCC diagnostic ignored "-Wdangling-pointer"
++#endif
+     NodeStackGuard(ConsList<TIntermNode *> &nodeStack, TIntermNode *node)
+         : oldNodeStack(nodeStack), nodeStack(nodeStack)
+     {
+         nodeStack = {node, &oldNodeStack};
+     }
++#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ == 16
++#    pragma GCC diagnostic pop
++#endif
+     ~NodeStackGuard() { nodeStack = oldNodeStack; }
+ };
+ 
+--- a/third_party/angle/src/tests/compiler_tests/IntermNode_test.cpp
++++ b/third_party/angle/src/tests/compiler_tests/IntermNode_test.cpp
+@@ -259,3 +259,56 @@
+     checkSymbolCopy(original->getTrueExpression(), copy->getTrueExpression());
+     checkSymbolCopy(original->getFalseExpression(), copy->getFalseExpression());
+ }
++
++// Constant array constructors retain each element after checked size conversion.
++TEST_F(IntermNodeTest, ConstantArrayConstructorValues)
++{
++    TType scalarType(EbtInt, EbpHigh, EvqConst);
++    TType arrayType(scalarType);
++    arrayType.makeArray(2);
++
++    TConstantUnion *first = new TConstantUnion[1];
++    first[0].setIConst(11);
++    TConstantUnion *second = new TConstantUnion[1];
++    second[0].setIConst(19);
++    TIntermAggregate *constructor = TIntermAggregate::CreateConstructor(
++        arrayType, {new TIntermConstantUnion(first, scalarType),
++                    new TIntermConstantUnion(second, scalarType)});
++
++    ASSERT_TRUE(constructor->hasConstantValue());
++    const TConstantUnion *values = constructor->getConstantValue();
++    ASSERT_NE(nullptr, values);
++    EXPECT_EQ(11, values[0].getIConst());
++    EXPECT_EQ(19, values[1].getIConst());
++}
++
++// Insertions keep statement order with and without an existing spare slot.
++TEST_F(IntermNodeTest, InsertStatementsAtEveryPosition)
++{
++    for (bool spareCapacity : {false, true})
++    {
++        TIntermBlock block;
++        if (spareCapacity)
++        {
++            block.getSequence()->reserve(8);
++        }
++        TIntermNode *first = createTestSymbol();
++        TIntermNode *middle = createTestSymbol();
++        TIntermNode *last = createTestSymbol();
++        TIntermNode *before = createTestSymbol();
++        TIntermNode *after = createTestSymbol();
++        block.appendStatement(first);
++        block.appendStatement(last);
++        block.insertStatement(1, middle);
++        block.insertStatement(0, before);
++        block.insertStatement(block.getSequence()->size(), after);
++
++        const TIntermSequence &statements = *block.getSequence();
++        ASSERT_EQ(5u, statements.size());
++        EXPECT_EQ(before, statements[0]);
++        EXPECT_EQ(first, statements[1]);
++        EXPECT_EQ(middle, statements[2]);
++        EXPECT_EQ(last, statements[3]);
++        EXPECT_EQ(after, statements[4]);
++    }
++}
+--- a/third_party/angle/src/tests/compiler_tests/Parse_test.cpp
++++ b/third_party/angle/src/tests/compiler_tests/Parse_test.cpp
+@@ -232,6 +232,18 @@
+         "'radians' : wrong operand type - no operation 'radians' exists that"));
+ }
+ 
++// An ordinary unary operator has no built-in function descriptor.
++TEST_F(ParseTest, WriteOnlyUnaryOperatorNoCrash)
++{
++    mShaderSpec = SH_GLES3_2_SPEC;
++    const char kShader[] = R"(#version 320 es
++precision mediump float;
++vec4 s() { writeonly vec4 color; return -color; })";
++    EXPECT_FALSE(compile(kShader));
++    EXPECT_TRUE(foundErrorInIntermediateTree());
++    EXPECT_TRUE(foundInIntermediateTree("no operation '-' exists"));
++}
++
+ TEST_F(ParseTest, CoherentCoherentNoCrash)
+ {
+     mShaderSpec          = SH_GLES3_1_SPEC;
