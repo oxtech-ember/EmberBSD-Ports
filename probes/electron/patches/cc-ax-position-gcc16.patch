@@ -1,0 +1,275 @@
+--- a/cc/tiles/picture_layer_tiling.h
++++ b/cc/tiles/picture_layer_tiling.h
+@@ -72,7 +72,7 @@
+ 
+ class CC_EXPORT PictureLayerTiling {
+  public:
+-  using Tile = Tile;
++  using Tile = cc::Tile;
+   using CoverageIterator = PictureLayerTilingCoverageIterator;
+ 
+   static const int kBorderTexels = 1;
+--- a/ui/accessibility/ax_position.h
++++ b/ui/accessibility/ax_position.h
+@@ -642,6 +642,7 @@
+           return AsLeafTreePosition()->IsIgnored();
+         return false;
+     }
++    NOTREACHED();
+   }
+ 
+   bool IsNullPosition() const {
+@@ -713,6 +714,7 @@
+         return text_offset_ == 0 ||
+                (text_offset_ > 0 && text_offset_ <= MaxTextOffset());
+     }
++    return false;
+   }
+ 
+   bool AtStartOfAnchor() const {
+@@ -728,6 +730,7 @@
+       case AXPositionKind::TEXT_POSITION:
+         return text_offset_ == 0;
+     }
++    NOTREACHED();
+   }
+ 
+   bool AtEndOfAnchor() const {
+@@ -744,6 +747,7 @@
+       case AXPositionKind::TEXT_POSITION:
+         return text_offset_ == MaxTextOffset();
+     }
++    NOTREACHED();
+   }
+ 
+   bool AtStartOfWord() const {
+@@ -771,6 +775,7 @@
+                                      int32_t{text_position->text_offset_});
+       }
+     }
++    NOTREACHED();
+   }
+ 
+   bool AtEndOfWord() const {
+@@ -798,6 +803,7 @@
+                                      int32_t{text_position->text_offset_});
+       }
+     }
++    NOTREACHED();
+   }
+ 
+   bool AtStartOfLine() const {
+@@ -847,6 +853,7 @@
+                text_position->AtStartOfAnchor() &&
+                !text_position->GetAnchor()->IsIgnored();
+     }
++    NOTREACHED();
+   }
+ 
+   bool AtEndOfLine() const {
+@@ -912,6 +919,7 @@
+         return text_position->AtEndOfAnchor() &&
+                text_position->CreateNextLeafTextPosition()->AtEndOfLine();
+     }
++    NOTREACHED();
+   }
+ 
+   AXBoundaryType GetFormatStartBoundaryType() const {
+@@ -977,6 +985,7 @@
+         return true;
+       }
+     }
++    NOTREACHED();
+   }
+ 
+   AXBoundaryType GetFormatEndBoundaryType() const {
+@@ -1041,6 +1050,7 @@
+         return true;
+       }
+     }
++    NOTREACHED();
+   }
+ 
+   bool AtStartOfSentence() const {
+@@ -1069,6 +1079,7 @@
+                                      int32_t{text_position->text_offset_});
+       }
+     }
++    NOTREACHED();
+   }
+ 
+   bool AtEndOfSentence() const {
+@@ -1097,6 +1108,7 @@
+                                      int32_t{text_position->text_offset_});
+       }
+     }
++    NOTREACHED();
+   }
+ 
+   // `AtStartOfParagraph` is asymmetric from `AtEndOfParagraph` because line
+@@ -1172,6 +1184,7 @@
+             ->IsNullPosition();
+       }
+     }
++    NOTREACHED();
+   }
+ 
+   // `AtEndOfParagraph` is asymmetric from `AtStartOfParagraph` because line
+@@ -1247,6 +1260,7 @@
+             ->IsNullPosition();
+       }
+     }
++    NOTREACHED();
+   }
+ 
+   // Returns true if this position is at the start or right before content that
+@@ -1292,6 +1306,7 @@
+         return false;
+       }
+     }
++    NOTREACHED();
+   }
+ 
+   // Page boundaries are only supported in certain content types, e.g. PDF
+@@ -1319,6 +1334,7 @@
+         return previous_text_position->IsNullPosition();
+       }
+     }
++    NOTREACHED();
+   }
+ 
+   // Page boundaries are only supported in certain content types, e.g. PDF
+@@ -1346,6 +1362,7 @@
+         return next_text_position->IsNullPosition();
+       }
+     }
++    NOTREACHED();
+   }
+ 
+   // Returns true if this position is at the start of the current accessibility
+@@ -2129,6 +2146,7 @@
+         return AXRangeType(std::move(left_position), std::move(right_position));
+       }
+     }
++    NOTREACHED();
+   }
+ 
+   // Starting from this position, moves in the given direction until it finds
+@@ -2462,6 +2480,7 @@
+         return CreateTextPosition(*anchor, 0 /* text_offset */,
+                                   ax::mojom::TextAffinity::kDownstream);
+     }
++    NOTREACHED();
+   }
+ 
+   AXPositionInstance CreatePositionAtEndOfAnchor() const {
+@@ -2478,6 +2497,7 @@
+         return CreateTextPosition(*anchor, MaxTextOffset(),
+                                   ax::mojom::TextAffinity::kDownstream);
+     }
++    NOTREACHED();
+   }
+ 
+   // Creates a position at the start of this position's accessibility tree, e.g.
+@@ -2833,6 +2853,7 @@
+         return parent_position;
+       }
+     }
++    NOTREACHED();
+   }
+ 
+   // Creates the next tree position that is anchored at a leaf node of the
+@@ -4783,6 +4804,7 @@
+         // the node, which is what GetTextContentUTF16() returns.
+         return GetAnchor()->GetTextContentUTF16();
+     }
++    NOTREACHED();
+   }
+ 
+   // Determines if this position is pointing to text inside a node that causes a
+@@ -4908,6 +4930,7 @@
+         // text content.
+         return GetAnchor()->GetTextContentLengthUTF16();
+     }
++    NOTREACHED();
+   }
+ 
+   // Returns the accessibility role of this position's anchor node. If this is a
+@@ -5189,6 +5212,7 @@
+         return !IsNullPosition() && !GetAnchor()->IsIgnored() &&
+                GetAnchor()->IsLeaf() && IsInUnignoredEmptyObject();
+     }
++    NOTREACHED();
+   }
+ 
+   // Determines if the anchor containing this position produces a hard line
+@@ -6288,6 +6312,7 @@
+         // because that would mean exiting and/or entering a page break.
+         return move_from_break && move_to_break;
+     }
++    NOTREACHED();
+   }
+ 
+   // AbortMovePredicate function used to detect crossing through the boundaries
+@@ -6334,6 +6359,7 @@
+         return IsRootLike(move_from_role) && IsRootLike(move_to_role) &&
+                !move_from.IsIgnored() && !move_to.IsIgnored();
+     }
++    NOTREACHED();
+   }
+ 
+   static bool AbortMoveAtStartOfInlineBlock(const AXPosition& move_from,
+@@ -6569,6 +6595,7 @@
+         }
+         break;
+     }
++    NOTREACHED();
+   }
+ 
+   // Returns the next unignored leaf text position in the specified direction,
+--- a/ui/accessibility/ax_node_position_unittest.cc
++++ b/ui/accessibility/ax_node_position_unittest.cc
+@@ -829,6 +829,25 @@
+   EXPECT_EQ(0, copy_position->text_offset());
+   EXPECT_EQ(ax::mojom::TextAffinity::kDownstream, copy_position->affinity());
+   EXPECT_EQ(AXNodePosition::INVALID_INDEX, copy_position->child_index());
++}
++
++TEST_F(AXPositionTest, UnserializeUnknownPositionKind) {
++  TestPositionType position = CreateTreePosition(root_, 1 /* child_index */);
++  ASSERT_NE(nullptr, position);
++  ASSERT_TRUE(position->IsValid());
++
++  for (int kind : {-1, 3}) {
++    auto serialization = position->Serialize();
++    serialization.kind = static_cast<AXPositionKind>(kind);
++    TestPositionType restored = AXNodePosition::Unserialize(serialization);
++    ASSERT_NE(nullptr, restored);
++    EXPECT_TRUE(restored->IsNullPosition());
++    EXPECT_TRUE(restored->IsValid());
++    EXPECT_EQ(AXPositionKind::NULL_POSITION, restored->kind());
++    EXPECT_EQ(kInvalidAXNodeID, restored->anchor_id());
++    EXPECT_EQ(AXNodePosition::INVALID_INDEX, restored->child_index());
++    EXPECT_EQ(AXNodePosition::INVALID_OFFSET, restored->text_offset());
++  }
+ }
+ 
+ TEST_F(AXPositionTest, ToString) {
+--- a/ui/accessibility/ax_selection.cc
++++ b/ui/accessibility/ax_selection.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "ui/accessibility/ax_selection.h"
+ 
++#include "base/notreached.h"
+ #include "ui/accessibility/ax_node_position.h"
+ 
+ namespace ui {
+@@ -61,6 +62,7 @@
+       affinity = position->affinity();
+       return true;
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace

@@ -455,3 +455,11 @@ its filter lists.
 
 Owner: Ports (recipe) and OS (kernel/libc gaps).
 Task: E12 in the private debt registry.
+
+## Tiling and accessibility positions with GCC 16
+
+[The tiling and AX patch](patches/cc-ax-position-gcc16.patch) preserves the
+public tile alias and existing position cases. Its [verification scope](tests/cc-ax-position-gcc16.md)
+records five passing production consumers, unchanged analyzer findings and
+explicit Cppcheck parsing limits. The upstream AX unit object remains blocked
+by four inherited parameterized GTest linkage errors; target execution is pending.
