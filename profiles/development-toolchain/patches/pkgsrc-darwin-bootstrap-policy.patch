@@ -57,7 +57,7 @@ Keep ordinary Darwin defaults. Use the standard compiler wrappers.
 +_EMBERBSD_DARWIN_TOOL_ARGS.gzip= -nf ${GZIP}
 +_EMBERBSD_DARWIN_TOOL_ARGS.mkdir= -p
 +.for _ember_tool in ${EMBERBSD_DARWIN_NATIVE_TOOLS}
-+TOOLS_PLATFORM.${_ember_tool}= ${EMBERBSD_DARWIN_TOOL.${_ember_tool}} ${_EMBERBSD_DARWIN_TOOL_ARGS.${_ember_tool}}
++TOOLS_PLATFORM.${_ember_tool}= ${EMBERBSD_DARWIN_TOOL.${_ember_tool}}${_EMBERBSD_DARWIN_TOOL_ARGS.${_ember_tool}:D ${_EMBERBSD_DARWIN_TOOL_ARGS.${_ember_tool}}}
 +.endfor
 +# printf is not a builtin in every POSIX shell; it needs a native path.
 +TOOLS_PLATFORM.[= [

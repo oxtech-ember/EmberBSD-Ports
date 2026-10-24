@@ -27,7 +27,7 @@ def main():
     if len(sys.argv) != 4:
         raise SystemExit(__doc__)
     exported, bmake, makeconf = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
-    names = ['TOOLS_CREATE'] + [f'TOOLS_PATH.{t}' for t in TOOLS] + \
+    names = ['TOOLS_CREATE', 'TOOLS_NOOP'] + [f'TOOLS_PATH.{t}' for t in TOOLS] + \
         [f'EMBERBSD_GCC16_{t.upper()}' for t in TOOLS]
     out = subprocess.run([bmake, '-C', str(exported / 'pkgtools/digest'), 'EMBERBSD_DARWIN_BOOTSTRAP=yes',
                           f'MAKECONF={makeconf}', 'show-vars', f'VARNAMES={" ".join(names)}'],
@@ -38,7 +38,8 @@ def main():
     result = {}
     for tool in TOOLS:
         path = values[f'TOOLS_PATH.{tool}']
-        require(tool in created, f'{tool} is not created in the tools directory')
+        require(created.count(tool) == 1, f'{tool} is not created exactly once in the tools directory')
+        require(tool not in values['TOOLS_NOOP'].split(), f'{tool} is also a no-op tool')
         require(path == values[f'EMBERBSD_GCC16_{tool.upper()}'] and path.startswith('/'),
                 f'{tool} does not use the selected command: {path!r}')
         run = subprocess.run([path, '--version'], capture_output=True, text=True, env={'PATH': ''})

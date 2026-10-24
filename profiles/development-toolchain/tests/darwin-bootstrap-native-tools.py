@@ -60,7 +60,10 @@ def main():
     result = run(f'{tools["mkdir"]} {nested} && {tools["mkdir"]} {nested}')
     require(result.returncode == 0 and nested.is_dir(),
             f'mkdir is not idempotent and recursive: {tools["mkdir"]!r} {result.stderr.strip()}')
-    result = run(f'{tools["printf"]} %s ok')
+    require(tools['printf'] == TOOLS['printf'],
+            f'A tool without standard arguments is not its exact path: {tools["printf"]!r}')
+    # pkgsrc scripts run some tools quoted, for example "${AWK}".
+    result = run(f'"{tools["printf"]}" %s ok')
     require(result.returncode == 0 and result.stdout == 'ok',
             f'printf does not run without a shell builtin: {tools["printf"]!r} {result.stderr.strip()}')
     data = work / 'data'

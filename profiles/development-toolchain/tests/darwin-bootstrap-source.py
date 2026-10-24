@@ -52,8 +52,8 @@ def check(before, after, policy, recipe):
     for tool, args in [('gunzip', '-f'), ('gzip', '-nf ${GZIP}'), ('mkdir', '-p')]:
         require(f'_EMBERBSD_DARWIN_TOOL_ARGS.{tool}= {args}\n' in selected,
                 f'Selected {tool} lost its standard pkgsrc arguments')
-    require('${EMBERBSD_DARWIN_TOOL.${_ember_tool}} ${_EMBERBSD_DARWIN_TOOL_ARGS.${_ember_tool}}' in selected,
-            'Native utility arguments are not applied')
+    require('${EMBERBSD_DARWIN_TOOL.${_ember_tool}}${_EMBERBSD_DARWIN_TOOL_ARGS.${_ember_tool}:D ${_EMBERBSD_DARWIN_TOOL_ARGS.${_ember_tool}}}' in selected,
+            'Native utility arguments are not applied, or a tool gains a trailing space')
     require('TOOLS_PLATFORM.printf=' not in selected,
             'printf is treated as a shell builtin')
 
