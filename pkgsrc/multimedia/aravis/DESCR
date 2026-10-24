@@ -1,0 +1,4 @@
+Aravis is a glib/gobject based library for video acquisition from
+GenICam cameras. It implements the GigE Vision and USB3 Vision
+protocols and provides arv-tool, a command line camera control tool,
+and arv-fake-gv-camera, a simulated GigE Vision camera for tests.
