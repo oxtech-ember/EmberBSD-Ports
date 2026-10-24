@@ -154,6 +154,8 @@ A private MAKECONF includes the host bootstrap configuration first:
 ```make
 .include "/absolute/host/etc/mk.conf"
 .if defined(BSD_PKG_MK)
+# Bind the eight native-toolset inputs documented in native-toolset.md.
+.include "/absolute/qualified-native-inputs.mk"
 EMBERBSD_CROSS_TOOLS=/absolute/new-cross-tools
 EMBERBSD_CROSS_SYSROOT=/absolute/target-sysroot
 EMBERBSD_CROSS_HOST_PREFIX=/absolute/host
@@ -166,10 +168,7 @@ MAKE_JOBS=4
 # Optional when these host tools are already installed:
 TOOLS_PLATFORM.makeinfo=/absolute/host-texinfo/bin/makeinfo
 EMBERBSD_BUILD_MSGFMT=/absolute/host-gettext/bin/msgfmt
-EMBERBSD_BUILD_CMAKE=/absolute/host-bootstrap/bin/cmake
 EMBERBSD_BUILD_AUTOCONF=/absolute/host-autoconf/bin/autoconf
-# Optional matching host interpreter for the Python target package:
-EMBERBSD_CROSS_BUILD_PYTHON=/absolute/python3.15
 .include "/absolute/EmberBSD-Ports/profiles/common-build-tools/cross/mk.conf"
 .endif
 ```
@@ -230,20 +229,21 @@ configuration. The EmberBSD target prefix remains `/usr/pkg`. Cross `install` po
 the private sysroot with package scripts disabled; actual `pkg_add` on the
 target runs installation scripts, including Info registration.
 
-Build-time C/C++ generators use `/usr/bin/cc` and `/usr/bin/c++` on macOS.
-Override `EMBERBSD_CROSS_BUILD_CC` and `EMBERBSD_CROSS_BUILD_CXX` with absolute
-host compiler paths when necessary. They reach upstream configure as
-`CC_FOR_BUILD` and `CXX_FOR_BUILD`; target wrappers still compile the package.
-The raw provider inputs remain absolute executable paths. Pkgsrc's `NATIVE_CC`
-and `NATIVE_CXX` are compiler commands. On Darwin and Linux, they append `-B/usr/bin/`
-so compiler subprocesses select the native assembler and linker despite the
-cross wrapper PATH. Recipes must preserve the complete command, including its
-arguments. Bash, libX11, libXt and FreeType receive this same native command.
-Conflicting command-line overrides fail. Target compiler flags, wrappers and
-sysroot selection remain unchanged. Native dependency recursion does not acquire
-these cross-only command settings.
+Build-time C/C++ generators require a qualified SDK native toolset.
+Prepare its [pinned native include](native-toolset.md) before package metadata
+or configuration. Missing selections and conflicting overrides stop the profile.
+`NATIVE_CC` and `NATIVE_CXX` retain the selected native ABI arguments.
+`CC_FOR_BUILD` and `CXX_FOR_BUILD` pass these commands to configure.
+`HOST_CC` and `HOST_CXX` retain the selected executable paths with separate flags.
+Target compiler flags, wrappers and sysroot settings remain separate.
+The source fixtures do not establish an available native SDK bundle or package acceptance.
 
-`tests/cross-native-routing.rb` takes a prepared pkgsrc tree, cross MAKECONF,
+`python3 -B tests/cross-native-compilers.py --sdk-source SDK` takes a prepared pkgsrc tree,
+cross MAKECONF and a new work path. Set `BMAKE` to the selected SDK `bmake`.
+It checks every Bash `CC_FOR_BUILD` assignment and rejects all nine native
+compiler/binutils aliases when they are replaced on the make command line.
+
+`python3 -B tests/cross-native-routing.py --sdk-source SDK` takes a prepared pkgsrc tree, cross MAKECONF,
 failed libX11 work directory, FreeType source directory and a new work path.
 This Darwin/amd64 regression copies the actual cwrapper configuration into its private fixture and records
 commands and results. It links and runs native C/C++, the upstream makekeys
@@ -251,17 +251,19 @@ source, and FreeType's unchanged native suffix probe under the polluted PATH.
 It also checks libXt's final configure command and a target ELF link.
 These checks do not establish full package or target runtime acceptance.
 
-`tests/cross-ncurses-native.rb` checks the Linux counterpart with native GCC16.
-Pass the exported pkgsrc, cross MAKECONF, existing ncurses 6.6 work directory,
-historical profile, current profile and a new output directory, in that order.
-Set `BMAKE` to the native pkgsrc make executable. The work directory supplies
-the real cwrappers, upstream configure check and recorded `confdefs.h`.
-The test copies wrapper configuration and redirects logs into its own output.
-It reproduces the target linker's `elf_x86_64` refusal before the fix, then
-compiles and executes the unchanged upstream native-compiler check afterward.
-It checks the complete ncurses `BUILD_CC` assignment, both native GCC16 command
-versions, and the unchanged AArch64 target ELF route. The x86-64 Linux-host
-check passed on 2026-10-18; this is not a complete ncurses package or VM test.
+`python3 -B tests/cross-ncurses-native.py --sdk-source SDK` takes a prepared
+pkgsrc tree, cross MAKECONF, ncurses work, the new profile and a new work path.
+It rejects incomplete and system-tool selections before compiler probes.
+The qualified Linux command must pass the unchanged upstream compile/run
+probe under the recorded wrapper PATH and retain the AArch64 target link.
+The ncurses work supplies the real cwrappers, configure probe and `confdefs.h`.
+The old system compiler's target-linker failure is historical evidence.
+A qualified driver can select its own absolute assembler and linker, so this
+test does not require that old failure to recur.
+All three runners require the selected SDK Python and `bmake`.
+They use bounded SDK producer capture and retain typed failure results.
+Their actual metadata, configure and compiler runs remain pending until a
+qualified native bundle is available. Source fixtures alone do not establish them.
 
 The mDNSResponder version probe reads the target sysroot header during cross
 builds and the host header during native dependency recursion.
@@ -428,8 +430,14 @@ helper with fake amd64 tools. It needs no compiler or pkgsrc export. It checks t
 imports, every composed link, a wrong compiler and existing output.
 In this helper, the GCC16 `host.py` resolves `sdk_source` to the LLVM module.
 That module therefore defines the same `PRODUCER_QUARANTINE`; the test compares both values.
-`python3 -B tests/cross-targets.py BMAKE` checks both target tool compositions,
+`python3 -B tests/cross-targets.py --sdk-source SDK BMAKE NATIVE_INPUTS_MK`
+checks both target tool compositions,
 real make variable expansion, runtime-provider selection and mixed-target rejection.
+`NATIVE_INPUTS_MK` must bind the eight qualified SDK inputs documented in
+[native-toolset.md](native-toolset.md). It must not replace the synthetic target
+compiler or sysroot inputs. The test retains the target/TLS checks and rejects
+native role aliases, reserved variables and ABI flag overrides.
+This real make check is pending until a qualified native bundle is available.
 `tests/cross-libc.rb BMAKE NEW_WORK` exercises the actual pre-extract guard:
 canonical aliases pass; four missing and four divergent libc paths fail.
 That guard detects inconsistent copies, not the origin of an otherwise

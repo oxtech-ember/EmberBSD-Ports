@@ -10,6 +10,7 @@ from pathlib import Path
 import struct
 import sys
 import tarfile
+import types
 sys.dont_write_bytecode = True
 from llvm_fixture import load_sdk
 sdk, args = load_sdk()
@@ -56,7 +57,27 @@ for name in sys.argv[sys.argv.index('-j')+2:]:
 (root/'lib/cmake/llvm/LLVMConfig.cmake').write_text('fixture')
 ''')
 os.environ['HOST_PYTHON'] = sys.executable
-os.environ['HOST_CC'] = os.environ['HOST_CXX'] = '/usr/bin/true'
+native_tools = {'cmake': cmake, 'ninja': ninja, 'python': sys.executable}
+for role in ('cc', 'cxx', 'cpp', 'as', 'ld', 'ar', 'ranlib', 'nm', 'strip',
+             'pkg-config', 'sh'):
+    native_tools[role] = executable(work / ('native-' + role), "print('SDK tool double')\n")
+os.environ['HOST_CC'] = native_tools['cc']
+os.environ['HOST_CXX'] = native_tools['cxx']
+# This is an API double, not a descriptor, producer receipt or tool admission.
+native_selection = types.SimpleNamespace(
+    tool=lambda role: native_tools[role],
+    abi_flags={key: () for key in ('cppflags', 'cflags', 'cxxflags', 'ldflags')},
+    as_dict=lambda: {'format': 'emberbsd-native-toolset-selection', 'version': 1,
+                     'api': 1, 'tools': dict(native_tools)})
+native_api = types.ModuleType('emberbsd_sdk.native_toolset')
+native_api.NATIVE_TOOLSET_API = 1
+native_api.load_native_toolset = lambda *args, **kwargs: native_selection
+sys.modules['emberbsd_sdk.native_toolset'] = native_api
+for key, value in {'DESCRIPTOR': str(work / 'descriptor-double'),
+                   'DESCRIPTOR_SHA256': 'a' * 64,
+                   'PRODUCER_RECEIPT': str(work / 'receipt-double'),
+                   'PRODUCER_RECEIPT_SHA256': 'b' * 64}.items():
+    os.environ['EMBERBSD_NATIVE_TOOLSET_' + key] = value
 os.environ['JOBS'] = '1'
 refused(llvm_host.native, 'llvm', [str(archive), str(work / 'wrong-pin'), cmake, ninja])
 assert not (work / 'wrong-pin').exists()
@@ -72,6 +93,8 @@ assert str(cross / 'build-llvm-native.py') in inputs, 'entrypoint is missing fro
 assert any(p.endswith('/emberbsd_sdk/process.py') for p in inputs), 'SDK API is missing from native provenance'
 # The real config has a bare version output, unlike the other generator tools.
 executable(work / 'llvm/native/bin/llvm-config', "print('23.1.3')\n")
+native_tools['llvm-config'] = str(work / 'llvm/native/bin/llvm-config')
+native_tools['llvm-tblgen'] = str(work / 'llvm/native/bin/llvm-tblgen')
 llvm_host.native('clang', [str(archive), str(work / 'llvm/native'), str(work / 'clang'), cmake, ninja])
 flags = json.loads((work / 'clang/native/cmake-argv.json').read_text())
 assert '-DLLVM_TABLEGEN=' + str(work / 'llvm/native/bin/llvm-tblgen') in flags and '-DCLANG_INCLUDE_TESTS=OFF' in flags

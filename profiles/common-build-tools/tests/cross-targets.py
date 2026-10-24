@@ -6,15 +6,37 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import shlex
+import shutil
 sys.dont_write_bytecode = True
 from llvm_fixture import load_sdk
 sdk, args = load_sdk()
-if len(args) != 1:
-    sys.exit('Use BMAKE')
-bmake = args[0]
+if len(args) != 2:
+    sys.exit('Use BMAKE NATIVE_INPUTS_MK; the include must bind a qualified SDK toolset')
+bmake = Path(args[0]).resolve(strict=True)
+native_inputs = Path(args[1]).resolve(strict=True)
+if not Path(args[0]).is_absolute() or not Path(args[1]).is_absolute():
+    sys.exit('Use absolute BMAKE and NATIVE_INPUTS_MK paths')
 root = Path(__file__).resolve().parents[3]
+
+
+def prepare_profile(source, destination):
+    destination.mkdir()
+    cross = source / 'profiles/common-build-tools/cross'
+    for name in ('mk.conf', 'prepare-native-tools.py', 'fortran.mk',
+                 'sort-c.sh', 'gcc16-external-runtime.sh'):
+        shutil.copy2(cross / name, destination / name)
+    shutil.copy2(source / 'pkgsrc/defaults.mk.conf',
+                 destination / 'EMBERBSD-DEFAULTS-MK.CONF')
+    loader = destination / 'lang/llvm/files/sdk_source.py'
+    loader.parent.mkdir(parents=True)
+    shutil.copy2(source / 'pkgsrc/lang/llvm/files/sdk_source.py', loader)
+    return destination / 'mk.conf'
+
+
 with tempfile.TemporaryDirectory(prefix='ember-cross-targets-') as temporary:
     work = Path(temporary)
+    cross_profile = prepare_profile(root, work / 'profile')
     tools = 'gcc g++ cpp gcc-ar gcc-nm gcc-ranlib ar as elfedit ld nm objcopy objdump ranlib readelf size strings strip'.split()
     for p in ('compiler/bin', 'os/bin', 'sysroot/usr/pkg/gcc16/lib'):
         (work / p).mkdir(parents=True)
@@ -35,12 +57,15 @@ with tempfile.TemporaryDirectory(prefix='ember-cross-targets-') as temporary:
         result = subprocess.run([sys.executable, '-B', str(root / 'profiles/common-build-tools/cross/prepare-tools.py'), '--sdk-source', sdk, '--target', target, str(work / 'compiler'), str(work / 'os'), str(work / ('tools-' + target))], capture_output=True, text=True)
         assert result.returncode == 0, result.stdout + result.stderr
         assert (work / ('tools-' + target) / 'bin' / (triple + '-gcc')).is_symlink()
-    (work / 'Makefile').write_text(f'BSD_PKG_MK=yes\nPKGPATH=devel/ember-target-fixture\nEMBERBSD_CROSS_TOOLS={work}/compiler\nEMBERBSD_CROSS_SYSROOT={work}/sysroot\nEMBERBSD_CROSS_HOST_PREFIX={work}/os\n.include "{root}/profiles/common-build-tools/cross/mk.conf"\n')
+    (work / 'Makefile').write_text(f'BSD_PKG_MK=yes\n.include "{native_inputs}"\nPKGPATH=devel/ember-target-fixture\nEMBERBSD_CROSS_TOOLS={work}/compiler\nEMBERBSD_CROSS_SYSROOT={work}/sysroot\nEMBERBSD_CROSS_HOST_PREFIX={work}/os\n.include "{cross_profile}"\n')
 
     def read(*arguments):
-        result = subprocess.run([bmake, '-f', str(work / 'Makefile'), *arguments], capture_output=True, text=True)
+        result = subprocess.run([str(bmake), '-f', str(work / 'Makefile'), *arguments], capture_output=True, text=True)
         assert result.returncode == 0, result.stdout + result.stderr
         return result.stdout.strip()
+
+    assert Path(read('-v', 'EMBERBSD_NATIVE_BMAKE')).resolve(strict=True) == bmake
+    assert Path(read('-v', 'EMBERBSD_CROSS_BUILD_PYTHON')).resolve(strict=True) == Path(sys.executable).resolve(strict=True)
 
     assert read('-v', 'CROSS_MACHINE_ARCH') == 'aarch64'
     assert read('EMBERBSD_CROSS_TARGET=amd64', '-v', 'CROSS_MACHINE_ARCH') == 'x86_64'
@@ -85,12 +110,45 @@ with tempfile.TemporaryDirectory(prefix='ember-cross-targets-') as temporary:
     crt = str(work / 'sysroot/usr/pkg/gcc16/lib/gcc/x86_64--netbsd/16.2.0') + '/'
     assert read(*layered, '-v', 'GCC16_CROSS_TARGET_FLAGS') == '-B' + crt
     assert read(*layered, '-v', 'LIBTOOLIZE_PLIST') == 'no' and read(*compiler, '-v', 'LIBTOOLIZE_PLIST') != 'no'
-    assert read(*layered, '-v', '_EMBER_GCC16_LAYER') == str(root / 'profiles/common-build-tools/cross/gcc16-external-runtime.sh')
+    assert read(*layered, '-v', '_EMBER_GCC16_LAYER') == str(cross_profile.parent / 'gcc16-external-runtime.sh')
     assert 'emberbsd-gcc16-external-runtime' not in read('EMBERBSD_CROSS_TARGET=amd64', 'EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime', '-V', '${.ALLTARGETS}').split()
     assert 'emberbsd-gcc16-external-runtime' in read(*layered, '-V', '${.ALLTARGETS}').split()
     # GCC builds its build-host libiberty with host archive tools.
-    assert read('-v', 'NATIVE_AR') == '/usr/bin/ar' and read('-v', 'NATIVE_RANLIB') == '/usr/bin/ranlib'
-    assert 'EMBERBSD_CROSS_BUILD_AR must name an existing absolute host tool' in read('EMBERBSD_CROSS_BUILD_AR=ar', '-v', 'PKG_FAIL_REASON')
+    for role in ('AR', 'RANLIB'):
+        assert read('-v', 'NATIVE_' + role) == read('-v', 'EMBERBSD_CROSS_BUILD_' + role)
+    for language, flags in (('CC', 'CFLAGS'), ('CXX', 'CXXFLAGS')):
+        expected = [read('-v', 'EMBERBSD_CROSS_BUILD_' + language)]
+        expected += shlex.split(read('-v', 'NATIVE_CPPFLAGS'))
+        expected += shlex.split(read('-v', 'NATIVE_' + flags))
+        expected += shlex.split(read('-v', 'NATIVE_LDFLAGS'))
+        assert shlex.split(read('-v', 'NATIVE_' + language)) == expected
+    refused = subprocess.run([str(bmake), '-f', str(work / 'Makefile'),
+                              'EMBERBSD_CROSS_BUILD_AR=ar', '-v', 'PKG_FAIL_REASON'],
+                             capture_output=True, text=True)
+    assert refused.returncode != 0 and 'EMBERBSD_CROSS_BUILD_AR differs from the qualified SDK tool' in refused.stderr
+    # bmake command-line assignments take precedence over profile assignments.
+    # Every alias used by configure must reject that bypass too.
+    for role in ('CC', 'CXX', 'CPP', 'AS', 'LD', 'AR', 'RANLIB', 'NM', 'STRIP'):
+        reason = read('NATIVE_' + role + '=/bin/false', '-v', 'PKG_FAIL_REASON')
+        expected = ('Cross generators require the selected native build compilers'
+                    if role in ('CC', 'CXX', 'CPP') else
+                    'NATIVE_' + role + ' differs from the qualified SDK tool')
+        assert expected in reason, (role, reason)
+    for variable, value in (
+            ('_EMBER_SDK_AR', '/usr/bin/ar'),
+            ('_EMBER_NATIVE_CC_COMMAND', '/usr/bin/cc'),
+            ('_EMBER_NATIVE_TOOLSET_CHECK', 'VERIFIED')):
+        refused = subprocess.run([str(bmake), '-f', str(work / 'Makefile'),
+                                  variable + '=' + value, '-v', 'PKG_FAIL_REASON'],
+                                 capture_output=True, text=True)
+        assert refused.returncode != 0 and 'Do not override reserved SDK native selection variables' in refused.stderr
+    for prefix in ('NATIVE_', 'HOST_'):
+        for flags in ('CPPFLAGS', 'CFLAGS', 'CXXFLAGS', 'LDFLAGS'):
+            variable = prefix + flags
+            refused = subprocess.run([str(bmake), '-f', str(work / 'Makefile'),
+                                      variable + '=-I/target-only', '-v', 'PKG_FAIL_REASON'],
+                                     capture_output=True, text=True)
+            assert refused.returncode != 0 and variable + ' differs from the qualified native ABI flags' in refused.stderr
     (work / 'sysroot/usr/pkg/gcc16/lib/gcc/x86_64--netbsd/16.2.0/crtbeginS.o').unlink()
     assert 'GCC16 CRT and runtime' in read('EMBERBSD_CROSS_TARGET=amd64', '-v', 'PKG_FAIL_REASON')
 print('PASS: explicit ARM/amd64 target fixtures, unsupported and mixed target refusals; no compiler build')

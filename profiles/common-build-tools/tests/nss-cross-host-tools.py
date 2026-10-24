@@ -148,7 +148,8 @@ def main():
         recipe = (modified_pkg / 'Makefile').read_text(encoding='utf-8')
         for required in ('DISTNAME=\t\tnss-3.132', 'OS_TARGET=${OPSYS:Q}',
                          'OS_TARGET_RELEASE=${OS_VERSION:Q}', 'OS_TEST=${NSS_CPU_ARCH:Q}',
-                         'NATIVE_FLAGS=${NATIVE_CFLAGS:Q}'):
+                         'NATIVE_FLAGS=${NATIVE_CPPFLAGS:Q}\\ ${NATIVE_CFLAGS:Q}',
+                         'NATIVE_LDFLAGS=${NATIVE_LDFLAGS:Q}'):
             if required not in recipe:
                 raise RuntimeError('The exported NSS recipe is missing: ' + required)
         if (pkg / 'PLIST').read_bytes() != (modified_pkg / 'PLIST').read_bytes():
