@@ -34,7 +34,9 @@ selection remains conditional on Darwin:
 - Darwin requires an accepted SDK GCC16 bootstrap seed. The recipe rejects
   `PKGSRC_COMPILER=clang` and missing seed inputs. GCC builds stage 1,
   rebuilds itself, and compares stages 2 and 3.
-- The recipe selects explicit LLVM MC, Mach-O LLD and dsymutil paths.
+- The recipe selects explicit LLVM MC, Mach-O LLD, dsymutil and
+  `llvm-lipo` paths. libgcc creates `libgcc_s` with `LIPO_FOR_TARGET`; its
+  default is a bare `lipo`, which no Ports package provides.
   [gcc-darwin-llvm-mc.patch](patches/gcc-darwin-llvm-mc.patch) adds
   `--with-darwin-assembler=llvm-mc` to GCC. It changes the driver assembler
   arguments and the configure assembler probes together.

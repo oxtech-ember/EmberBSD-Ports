@@ -23,6 +23,8 @@ def check_recipe(text):
         assert '+CONFIGURE_ARGS+= --with-' + name + '=${LOCALBASE:Q}/bin/' + tool + '\n' in text
         key = {'as': 'AS', 'ld': 'LD', 'dsymutil': 'DSYMUTIL'}[name]
         assert '+CONFIGURE_ENV+= ' + key + '_FOR_TARGET=${LOCALBASE:Q}/bin/' + tool + '\n' in text
+    # libgcc creates libgcc_s with LIPO_FOR_TARGET; the default bare lipo is not a Ports tool.
+    assert '+CONFIGURE_ENV+= LIPO_FOR_TARGET=${LOCALBASE:Q}/bin/llvm-lipo\n' in text
     assert '+CONFIGURE_ARGS+= --with-darwin-assembler=llvm-mc\n' in text
     assert '+CONFIGURE_ARGS+= --with-darwin-sdk-version=${EMBERBSD_GCC16_DARWIN_SDK_VERSION:Q}\n' in text
     assert '.if ${OPSYS} == "Darwin"\n' in text
