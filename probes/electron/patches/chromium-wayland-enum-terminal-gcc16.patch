@@ -1,0 +1,242 @@
+--- a/ui/base/wayland/wayland_client_input_types.cc
++++ b/ui/base/wayland/wayland_client_input_types.cc
+@@ -5,6 +5,7 @@
+ #include "ui/base/wayland/wayland_client_input_types.h"
+ 
+ #include "base/check_op.h"
++#include "base/notreached.h"
+ #include "ui/base/wayland/wayland_input_types_impl.h"
+ 
+ namespace ui::wayland {
+@@ -19,6 +20,7 @@
+     MAP_TYPES(MAP_ENTRY)
+ #undef MAP_ENTRY
+   }
++  NOTREACHED();
+ }
+ 
+ zcr_extended_text_input_v1_input_mode ConvertFromTextInputMode(
+@@ -31,6 +33,7 @@
+     MAP_MODES(MAP_ENTRY)
+ #undef MAP_ENTRY
+   }
++  NOTREACHED();
+ }
+ 
+ uint32_t ConvertFromTextInputFlags(uint32_t text_input_flags) {
+--- a/ui/ozone/platform/wayland/common/wayland_util.cc
++++ b/ui/ozone/platform/wayland/common/wayland_util.cc
+@@ -393,6 +393,7 @@
+   };
+ 
+   auto get_compositor = [&]() {
++#if !BUILDFLAG(IS_BSD)
+     struct {
+       const char* name;
+       WaylandCompositor compositor;
+@@ -417,7 +418,6 @@
+         {"weston", WaylandCompositor::kWeston},
+     };
+ 
+-#if !BUILDFLAG(IS_BSD)
+     const int fd = wl_display_get_fd(display);
+     if (fd == -1) {
+       return WaylandCompositor::kUnknown;
+--- a/ui/ozone/platform/wayland/host/wayland_cursor_shape.cc
++++ b/ui/ozone/platform/wayland/host/wayland_cursor_shape.cc
+@@ -11,6 +11,7 @@
+ 
+ #include "base/check.h"
+ #include "base/logging.h"
++#include "base/notreached.h"
+ #include "ui/base/cursor/mojom/cursor_type.mojom-shared.h"
+ #include "ui/ozone/platform/wayland/host/wayland_connection.h"
+ #include "ui/ozone/platform/wayland/host/wayland_pointer.h"
+@@ -173,6 +174,7 @@
+       // "Custom" means a bitmap cursor, which cannot use the shape API.
+       return std::nullopt;
+   }
++  NOTREACHED();
+ }
+ 
+ void WaylandCursorShape::SetCursorShape(uint32_t shape) {
+--- a/ui/ozone/platform/wayland/host/wayland_wp_image_description.cc
++++ b/ui/ozone/platform/wayland/host/wayland_wp_image_description.cc
+@@ -7,6 +7,7 @@
+ #include "base/logging.h"
+ #include "base/memory/scoped_refptr.h"
+ #include "base/notimplemented.h"
++#include "base/notreached.h"
+ #include "third_party/skia/include/core/SkColorSpace.h"
+ #include "ui/gfx/display_color_spaces.h"
+ #include "ui/ozone/platform/wayland/host/wayland_connection.h"
+@@ -118,6 +119,7 @@
+     case gfx::ColorSpace::TransferID::CUSTOM_HDR:
+       return false;
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace
+--- a/ui/ozone/platform/wayland/host/wayland_wp_color_manager.cc
++++ b/ui/ozone/platform/wayland/host/wayland_wp_color_manager.cc
+@@ -8,6 +8,7 @@
+ 
+ #include "base/feature_list.h"
+ #include "base/logging.h"
++#include "base/notreached.h"
+ #include "ui/ozone/platform/wayland/host/wayland_connection.h"
+ #include "ui/ozone/platform/wayland/host/wayland_output_manager.h"
+ 
+@@ -52,6 +53,7 @@
+       // These do not have a direct mapping in the Wayland protocol.
+       return std::nullopt;
+   }
++  NOTREACHED();
+ }
+ 
+ std::optional<wp_color_manager_v1_transfer_function>
+@@ -98,6 +100,7 @@
+       // These do not have a direct mapping in the Wayland protocol.
+       return std::nullopt;
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace
+--- a/ui/ozone/platform/wayland/host/xdg_popup.cc
++++ b/ui/ozone/platform/wayland/host/xdg_popup.cc
+@@ -13,6 +13,7 @@
+ #include "base/logging.h"
+ #include "base/nix/xdg_util.h"
+ #include "base/notimplemented.h"
++#include "base/notreached.h"
+ #include "ui/base/ui_base_types.h"
+ #include "ui/gfx/geometry/rect.h"
+ #include "ui/ozone/platform/wayland/common/wayland_util.h"
+@@ -50,6 +51,7 @@
+     case OwnedWindowAnchorPosition::kBottomRight:
+       return XDG_POSITIONER_ANCHOR_BOTTOM_RIGHT;
+   }
++  NOTREACHED();
+ }
+ 
+ uint32_t TranslateGravity(OwnedWindowAnchorGravity gravity) {
+@@ -73,6 +75,7 @@
+     case OwnedWindowAnchorGravity::kBottomRight:
+       return XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT;
+   }
++  NOTREACHED();
+ }
+ 
+ uint32_t TranslateConstraintAdjustment(
+--- a/ui/ozone/platform/wayland/host/zwp_text_input_v3.cc
++++ b/ui/ozone/platform/wayland/host/zwp_text_input_v3.cc
+@@ -10,6 +10,7 @@
+ #include "base/logging.h"
+ #include "base/memory/ptr_util.h"
+ #include "base/notimplemented.h"
++#include "base/notreached.h"
+ #include "base/numerics/safe_conversions.h"
+ #include "ui/base/wayland/wayland_client_input_types.h"
+ #include "ui/gfx/range/range.h"
+@@ -65,6 +66,7 @@
+     case TEXT_INPUT_TYPE_NULL:
+       return ZWP_TEXT_INPUT_V3_CONTENT_PURPOSE_NORMAL;
+   }
++  NOTREACHED();
+ }
+ 
+ // Converts Chrome's TextInputType into wayland's content_hint.
+--- a/ui/ozone/platform/wayland/host/zwp_text_input_v1.cc
++++ b/ui/ozone/platform/wayland/host/zwp_text_input_v1.cc
+@@ -15,6 +15,7 @@
+ #include "base/location.h"
+ #include "base/logging.h"
+ #include "base/notimplemented.h"
++#include "base/notreached.h"
+ #include "base/strings/strcat.h"
+ #include "base/strings/string_split.h"
+ #include "base/time/time.h"
+@@ -69,6 +70,7 @@
+     case TEXT_INPUT_TYPE_NULL:
+       return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_NORMAL;
+   }
++  NOTREACHED();
+ }
+ 
+ // Converts Chrome's TextInputType into wayland's content_hint.
+--- a/ui/ozone/platform/wayland/ozone_platform_wayland.cc
++++ b/ui/ozone/platform/wayland/ozone_platform_wayland.cc
+@@ -16,6 +16,7 @@
+ #include "base/memory/ptr_util.h"
+ #include "base/message_loop/message_pump_type.h"
+ #include "base/no_destructor.h"
++#include "base/notreached.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "build/build_config.h"
+ #include "mojo/public/cpp/bindings/binder_map.h"
+@@ -26,6 +27,7 @@
+ #include "ui/base/ime/linux/linux_input_method_context_factory.h"
+ #include "ui/base/ui_base_features.h"
+ #include "ui/display/display_switches.h"
++#include "ui/display/types/native_display_delegate.h"
+ #include "ui/events/devices/device_data_manager.h"
+ #include "ui/events/event.h"
+ #include "ui/events/ozone/layout/keyboard_layout_engine_manager.h"
+@@ -517,6 +519,7 @@
+       case PlatformKeyboardHookTypes::kMedia:
+         return nullptr;
+     }
++    NOTREACHED();
+   }
+ 
+   PlatformSessionManager* GetSessionManager() override {
+--- a/ui/ozone/platform/wayland/mojom/wayland_overlay_config_mojom_traits.cc
++++ b/ui/ozone/platform/wayland/mojom/wayland_overlay_config_mojom_traits.cc
+@@ -7,6 +7,7 @@
+ #include <string_view>
+ #include <variant>
+ 
++#include "base/notreached.h"
+ #include "components/crash/core/common/crash_key.h"
+ 
+ namespace mojo {
+@@ -53,6 +54,7 @@
+       *out = matrix_transform;
+       return true;
+   }
++  NOTREACHED();
+ }
+ 
+ // static
+--- a/ui/base/wayland/wayland_input_types_impl.h
++++ b/ui/base/wayland/wayland_input_types_impl.h
+@@ -8,6 +8,8 @@
+ 
+ #ifndef UI_BASE_WAYLAND_WAYLAND_INPUT_TYPES_IMPL_H_
+ #define UI_BASE_WAYLAND_WAYLAND_INPUT_TYPES_IMPL_H_
++
++#include "base/notreached.h"
+ 
+ // List all TextInputType here.
+ // This is used to create a mapping between TextInputType and Wayland's
+@@ -48,6 +50,7 @@
+     MAP_FLAGS(MAP_ENTRY)
+ #undef MAP_ENTRY
+   }
++  NOTREACHED();
+ }
+ 
+ static inline constexpr ui::TextInputFlags kAllTextInputFlags[] = {
+--- a/ui/base/wayland/BUILD.gn
++++ b/ui/base/wayland/BUILD.gn
+@@ -10,6 +10,8 @@
+ 
+ source_set("wayland_input_types_impl") {
+   sources = [ "wayland_input_types_impl.h" ]
++
++  public_deps = [ "//base" ]
+ 
+   visibility = [
+     ":wayland_client_input_types",

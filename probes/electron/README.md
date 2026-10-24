@@ -154,6 +154,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-net-enum-exits
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ui-accessibility-display-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dbus-bounded-map-signature-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/netbsd-evdev-keycode-api.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-wayland-enum-terminal-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-padding-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-invariants.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-proc-clang-cfi-attribute.patch
@@ -256,6 +257,10 @@ The NetBSD keycode patch selects the existing evdev conversion API on NetBSD.
 It keeps the native XKB table, offset, bounds, and media-key normalization.
 Use the common `input-headers` package for the Linux input protocol constants.
 The [runtime fixture](tests/keycode-runtime.cc) checks the actual converter.
+The Wayland patch adds fatal exits after exhaustive internal enum switches.
+It keeps valid protocol mappings and unknown-wire rejection. It also declares
+the complete display-delegate type and the shared header's public dependency.
+See the [Wayland checks](tests/wayland-gcc16.md) for the scope and limits.
 The scenario patch keeps the shared-memory padding diagnostic fatal on
 both Clang and GCC. The QUICHE patch checks allocation and handshake invariants,
 compares the selected subprotocol without signed conversion errors, and obtains
