@@ -74,6 +74,11 @@ It does not require an external specs override for ordinary use.
 The producer must keep the embedded tools available in the final bundle.
 It must provide the other configure and build tools from its accepted closure.
 
+Use the [initial make binding](../common-build-tools/bootstrap/README.md)
+when a seed make has external makefile or shell defaults. It retains the
+complete upstream rules and binds an explicit shell before metadata reads.
+It does not qualify an initial make binary as an ordinary native tool.
+
 ## Fixed bootstrap binding
 
 An existing seed can have Apple assembler arguments in its built-in specs.

@@ -1,0 +1,7 @@
+.SHELL: name=sh path=@QUALIFIED_SH@
+# SPDX-License-Identifier: BSD-2-Clause
+# Copyright (c) 2026 EmberBSD contributors.
+# Origin: EmberBSD (AI-assisted). This is a bounded bootstrap input.
+# Keep every upstream rule in sys-upstream.mk unchanged.
+SHELL= @QUALIFIED_SH@
+.include "${.PARSEDIR}/sys-upstream.mk"
