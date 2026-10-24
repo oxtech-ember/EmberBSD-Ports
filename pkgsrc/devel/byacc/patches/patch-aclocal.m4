@@ -1,0 +1,64 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+Keep manual-install temporaries under TMPDIR and preserve failures during cleanup.
+Install the transformed temporary and retain manual basenames for directory operands.
+Keep the macro and its generated configure output in sync.
+
+--- aclocal.m4.orig
++++ aclocal.m4
+@@ -1096,13 +1096,15 @@
+ leading_cap=`echo "$actual_name" | sed -e 's%^\(.\).*$%\1%' | tr a-z A-Z``echo "$actual_name" | sed -e 's%^.%%'`
+ capitalized=`echo "$actual_name" | tr a-z A-Z`
+ 
+-cf_tmpdir=`mktemp -d`
+-trap 'rm -rf "$cf_tmpdir"; exit 1' 1 2 3 15
+-trap 'rm -rf "$cf_tmpdir"; exit 0' 0
++cf_tmpdir=`mktemp -d "${TMPDIR:-/tmp}/install-man.XXXXXXXXXX"` || exit [$]?
++test -n "$cf_tmpdir" && test -d "$cf_tmpdir" ||
++	failed "cannot create temporary directory"
++trap 'exit 1' 1 2 3 15
++trap 'cf_status=[$]?; trap - 0; rm -rf "$cf_tmpdir"; exit "$cf_status"' 0
+ 
+ if test -n "$source" ; then
+ 	suffix=
+-	test -n "@cf_manpage_so_strip" && suffix=".@cf_manpage_so_strip@"
++	test -n "@cf_manpage_so_strip@" && suffix=".@cf_manpage_so_strip@"
+ 	if test "x$OPTS" = xlink ; then
+ 		source_dir=`echo "$source" | sed -e "s%/[[^/]]*$%%"`
+ 		target_dir=`echo "$target" | sed -e "s%/[[^/]]*$%%"`
+@@ -1122,28 +1124,29 @@
+ 		target="$targetlink"
+ 	else
+ 		echo "** installing $source to $target"
+-		interim="$cf_tmpdir"/"`basename $source`"
++		interim="$cf_tmpdir"/"`basename "$source"`"
+ 		if test "x$origin_name" != "x$actual_name" ; then
+ 			sed \
+ 				-e "/^.ds N/s%N.*%N $leading_cap%" \
+ 				-e "/^.ds n/s%n.*%n $actual_name%" \
+ 				-e "/^\.TH/s%[[ ]][[ ]]*[[^ ]][[^ ]]*% $capitalized%" \
+ 				-e "/^\.SH[[ ]][[ ]]*NAME/,/[[ ]]\\\\-[[ ]]/s%^\\\\\\*[[Nn]]%$actual_name%" \
+-				"$source" >"$interim" || exit 1
++				"$source" >"$interim" || exit [$]?
+ 			diff -c "$source" "$interim"
+ 		else
+-			cp "$source" "$interim" || exit 1
++			cp "$source" "$interim" || exit [$]?
+ 		fi
++		source="$interim"
+ 		if test -n "@cf_manpage_compress@" ; then
+ 			@cf_manpage_compress@ @cf_manpage_coptions@ "$interim"
+ 			source="${interim}${suffix}"
+ 		fi
+ 		if test -d "$target" ; then
+-			target="$target"/"$source"
++			target="$target"/"`basename "$source"`"
+ 		else
+ 			test -n "@cf_manpage_compress@" && target="${target}.@cf_manpage_so_strip@"
+ 		fi
+-		$INSTALL_DATA "$source" "$target" || exit 1
++		$INSTALL_DATA "$source" "$target" || exit [$]?
+ 	fi
+ 	echo "...installed $target"
+ else
