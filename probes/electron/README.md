@@ -161,6 +161,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gbm-elf-weak-symbol-gcc
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-network-policy-traits-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ui-event-lottie-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/angle-ast-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/blink-string-vector-declarations-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-tflite-svdf-null-gemm-scratch-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ime-network-endpaths-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-padding-gcc16.patch
@@ -286,6 +287,9 @@ The ANGLE AST patch gives checked allocation its explicit size type, inserts
 a local pointer through emplace, and checks unary diagnostic descriptors. A
 GCC16-only scope covers the proven saved-stack false positive. See the
 [ANGLE AST checks](tests/angle-ast-gcc16.md).
+The Blink declaration patch uses injected constructor names and qualifies the
+vector construction-traits alias. It preserves the constructor bodies and
+allocator behavior. See the [Blink declaration checks](tests/blink-string-vector-declarations-gcc16.md).
 The SVDF patch passes null for unused integer GEMM scratch in its existing
 null-context call. It preserves the floating result buffer and restrict
 contract. The [TFLite checks](tests/tflite-gcc16.md) include real numerical

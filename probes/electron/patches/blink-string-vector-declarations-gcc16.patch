@@ -1,0 +1,76 @@
+--- a/third_party/blink/renderer/platform/wtf/text/string_concatenate.h
++++ b/third_party/blink/renderer/platform/wtf/text/string_concatenate.h
+@@ -45,7 +45,7 @@
+   DISALLOW_NEW();
+ 
+  public:
+-  explicit StringTypeAdapter<char>(char buffer) : buffer_(buffer) {}
++  explicit StringTypeAdapter(char buffer) : buffer_(buffer) {}
+ 
+   size_t length() const { return 1; }
+   bool Is8Bit() const { return true; }
+@@ -64,7 +64,7 @@
+ template <>
+ class StringTypeAdapter<LChar> : public StringTypeAdapter<char> {
+  public:
+-  explicit StringTypeAdapter<LChar>(LChar buffer)
++  explicit StringTypeAdapter(LChar buffer)
+       : StringTypeAdapter<char>(buffer) {}
+ };
+ 
+@@ -73,7 +73,7 @@
+   DISALLOW_NEW();
+ 
+  public:
+-  explicit StringTypeAdapter<UChar>(UChar buffer) : buffer_(buffer) {}
++  explicit StringTypeAdapter(UChar buffer) : buffer_(buffer) {}
+ 
+   size_t length() const { return 1; }
+   bool Is8Bit() const { return buffer_ <= 0xff; }
+@@ -96,7 +96,7 @@
+   DISALLOW_NEW();
+ 
+  public:
+-  explicit StringTypeAdapter<const char*>(const char* buffer)
++  explicit StringTypeAdapter(const char* buffer)
+       : buffer_(base::as_byte_span(std::string_view(buffer))) {}
+ 
+   size_t length() const { return buffer_.size(); }
+@@ -113,7 +113,7 @@
+ class WTF_EXPORT StringTypeAdapter<const LChar*>
+     : StringTypeAdapter<const char*> {
+  public:
+-  explicit StringTypeAdapter<const LChar*>(const LChar* buffer)
++  explicit StringTypeAdapter(const LChar* buffer)
+       : StringTypeAdapter<const char*>(reinterpret_cast<const char*>(buffer)) {}
+ };
+ 
+@@ -121,7 +121,7 @@
+ class WTF_EXPORT StringTypeAdapter<char*>
+     : public StringTypeAdapter<const char*> {
+  public:
+-  explicit StringTypeAdapter<char*>(char* buffer)
++  explicit StringTypeAdapter(char* buffer)
+       : StringTypeAdapter<const char*>(buffer) {}
+ };
+ 
+@@ -129,7 +129,7 @@
+ class WTF_EXPORT StringTypeAdapter<LChar*>
+     : public StringTypeAdapter<const LChar*> {
+  public:
+-  explicit StringTypeAdapter<LChar*>(LChar* buffer)
++  explicit StringTypeAdapter(LChar* buffer)
+       : StringTypeAdapter<const LChar*>(buffer) {}
+ };
+ 
+--- a/third_party/blink/renderer/platform/wtf/vector.h
++++ b/third_party/blink/renderer/platform/wtf/vector.h
+@@ -184,7 +184,7 @@
+ struct VectorTypeOperations {
+   STATIC_ONLY(VectorTypeOperations);
+ 
+-  using ConstructTraits = ConstructTraits<T, VectorTraits<T>, Allocator>;
++  using ConstructTraits = ::blink::ConstructTraits<T, VectorTraits<T>, Allocator>;
+ 
+   ALWAYS_INLINE static void Destruct(T* begin, T* end) {
+     if constexpr (!VectorTraits<T>::kNeedsDestruction) {
