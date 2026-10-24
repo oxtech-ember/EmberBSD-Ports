@@ -38,6 +38,14 @@ native builds of `lang/gcc16`:
   [gcc-darwin-llvm-mc.patch](patches/gcc-darwin-llvm-mc.patch) adds
   `--with-darwin-assembler=llvm-mc` to GCC. It changes the driver assembler
   arguments and the configure assembler probes together.
+- [gcc-darwin-xpc-choose.patch](patches/gcc-darwin-xpc-choose.patch) adds
+  the `darwin_xpc_choose` fixincludes hack. macOS `<xpc/base.h>` pastes the
+  value of `__has_attribute` onto `_XPC_CHOOSE_` and defines only the 0 and
+  1 cases. GCC reports standard versions for `deprecated` and `noreturn`
+  (202311 in C, 200809 and 201309 in C++), so every GCC translation unit
+  that includes `<xpc/xpc.h>` failed, for example Python's `_scproxy`.
+  The patch carries `fixincl.x` regenerated with AutoGen 5.18.16 and a
+  `make check` baseline.
 
 NetBSD and cross builds have `OPSYS=NetBSD` and keep their current recipes.
 The new assembler mode is opt-in and accepts only AArch64 Darwin targets.
@@ -198,6 +206,17 @@ selection. It checks that the cross recipe does not get the Darwin diff:
 BMAKE=/absolute/bmake sh profiles/development-toolchain/tests/darwin-host.sh \
     /absolute/prepared-pkgsrc /absolute/darwin-mk.conf \
     /absolute/cross-mk.conf /absolute/new-work
+```
+
+The `<xpc/base.h>` regression builds `fixincl` from the patched source tree
+with GCC 16, fixes the SDK header and compiles `<xpc/xpc.h>` as C (with
+`-fanalyzer`) and C++ under `-Wall -Wextra -Werror`. The unfixed header must
+fail. With AutoGen installed it also runs the fixincludes `make check`:
+
+```sh
+GCC_CC=/absolute/gcc GCC_CXX=/absolute/g++ OSX_SDK_PATH=/absolute/MacOSX.sdk \
+    sh profiles/development-toolchain/tests/darwin-xpc-fixincludes.sh \
+    /absolute/patched-gcc-16.2.0 /absolute/new-work
 ```
 
 The build checks:
