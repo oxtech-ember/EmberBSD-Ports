@@ -152,6 +152,11 @@ target does. `llvm-ranlib` rejects `-c` and already puts common symbols in
 the archive index, so the policy passes the selected ranlib as `RANLIB` in
 `CONFIGURE_ENV`. `tests/darwin-bootstrap-ranlib.py` checks the evaluated value
 for `security/openssl` and runs it on an archive with a common symbol.
+Packages such as `archivers/zstd` request GNU grep as `ggrep`. As on
+ordinary Darwin, the policy gives `ggrep` the selected `grep` unless the plan
+selects a native `ggrep`. Ports grep needs bash, bison, flex and help2man,
+and help2man reaches zstd again through gettext-tools and python.
+`tests/darwin-bootstrap-ggrep.py` checks both cases for `archivers/zstd`.
 ELF inspection tools such as `readelf` have no Darwin base provider. Select
 them as native utilities from the accepted seed LLVM tools.
 

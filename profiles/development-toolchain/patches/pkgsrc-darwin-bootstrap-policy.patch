@@ -64,7 +64,7 @@ Keep ordinary Darwin defaults. Use the standard compiler wrappers.
 +esac
 --- a/mk/tools/tools.Darwin.mk
 +++ b/mk/tools/tools.Darwin.mk
-@@ -2,6 +2,25 @@
+@@ -2,6 +2,28 @@
  #
  # System-supplied tools for the Darwin (Mac OS X) operating system.
  
@@ -86,6 +86,9 @@ Keep ordinary Darwin defaults. Use the standard compiler wrappers.
 +.endfor
 +TOOLS_PLATFORM.sh= ${EMBERBSD_DARWIN_SH}
 +TOOLS_PLATFORM.gmake= ${EMBERBSD_DARWIN_GMAKE}
++# GNU grep requests use the selected grep, as on ordinary Darwin. A Ports
++# grep would need bash, bison, flex and help2man, and zstd needs it back.
++TOOLS_PLATFORM.ggrep?= ${TOOLS_PLATFORM.grep}
 +.else
  OSX_XCRUN=			${SETENV} PATH= /usr/bin/xcrun --no-cache
  

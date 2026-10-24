@@ -87,6 +87,8 @@ def check(before, after, policy, recipe):
             'Selected native-tool branch contains host discovery')
     require('TOOLS_PLATFORM.gmake= ${EMBERBSD_DARWIN_GMAKE}' in selected,
             'Selected GNU make command was lost')
+    require('TOOLS_PLATFORM.ggrep?= ${TOOLS_PLATFORM.grep}\n' in selected,
+            'GNU grep requests lost the selected grep; a Ports grep forms a cycle')
     require('TOOLS_PLATFORM.${_ember_tool}= ${EMBERBSD_DARWIN_TOOL.${_ember_tool}}' in selected,
             'Native utility mapping was lost')
     for tool, args in [('gunzip', '-f'), ('gzip', '-nf ${GZIP}'), ('mkdir', '-p')]:
@@ -186,6 +188,9 @@ def main():
     changed[n] = changed[n].replace('TOOLS_PLATFORM.${_ember_builtin}= ${EMBERBSD_DARWIN_BUILTIN_SHELL} ${_EMBERBSD_DARWIN_BUILTIN_HELPER} ${_ember_builtin}',
                                   'TOOLS_PLATFORM.${_ember_builtin}= ${_ember_builtin}', 1)
     mutants.append(('unbound-builtins', changed, policy, recipe))
+    changed = dict(after)
+    changed[n] = changed[n].replace('TOOLS_PLATFORM.ggrep?= ${TOOLS_PLATFORM.grep}\n', '', 1)
+    mutants.append(('ports-ggrep', changed, policy, recipe))
     changed = dict(after)
     n = 'mk/bsd.prefs.mk'
     changed[n] = changed[n].replace('.include "${MAKECONF}"', '# stale host query runs first', 1)
