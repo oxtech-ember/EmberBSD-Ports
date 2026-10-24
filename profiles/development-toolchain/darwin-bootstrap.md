@@ -42,6 +42,12 @@ Keep that include and all consumed configuration files in the accepted inventory
 This is a make-variable adapter for the SDK's existing accepted selection.
 It is not a second descriptor, receipt or qualification format.
 
+The profile sets `UNPRIVILEGED=yes` for the SDK's owned output prefix and
+package database. The common pkgsrc `mk/unprivileged.mk` selects the current
+user and groups through the accepted `id` tool. It keeps the selected shell
+as the install command and does not request `sudo` or modify system users or
+`/etc/shells`. The profile does not replace `SU_CMD` or package checks.
+
 | Make input | SDK source |
 | --- | --- |
 | `EMBERBSD_DARWIN_HOST_OS` | Actual host OS, `Darwin` |

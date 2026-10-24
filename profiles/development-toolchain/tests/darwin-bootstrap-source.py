@@ -15,6 +15,19 @@ def require(value, message):
         raise AssertionError(message)
 
 
+def check_unprivileged_policy(policy):
+    """Select the common current-user install policy before pkgsrc discovery."""
+    lines = [line.strip() for line in policy.splitlines() if not line.lstrip().startswith('#')]
+    require(lines.count('UNPRIVILEGED= yes') == 1,
+            'The SDK prefix lost the explicit unprivileged pkgsrc policy')
+    require(policy.index('UNPRIVILEGED= yes') <
+            policy.index('.include "${.PARSEDIR}/EMBERBSD-DEVELOPMENT-MK.CONF"'),
+            'The unprivileged policy follows shared pkgsrc configuration')
+    require(not any(line.startswith(('SU_CMD', 'PKG_INSTALL_AS_ROOT')) for line in lines),
+            'The profile replaces the common pkgsrc privilege mechanism')
+    return True
+
+
 def check_builtin_cases(rows):
     """Check captured (exit, bytes) pairs from the finite native make fixture."""
     names = {'old-empty', 'reference-empty', 'new-empty', 'reference-word', 'new-word',
@@ -78,6 +91,7 @@ def branch(text, opening, count=1, which=0):
 
 
 def check(before, after, policy, recipe):
+    check_unprivileged_policy(policy)
     # The full ordinary native-tool body, including its xcrun behavior, is exact.
     name = 'mk/tools/tools.Darwin.mk'
     selected, ordinary = branch(after[name], OPT)
@@ -207,6 +221,8 @@ def main():
     mutants.append(('duplicate-specs-prefix', changed, policy, recipe))
     mutants.append(('unbudgeted-jobs', after, policy.replace('.if ${EMBERBSD_DARWIN_JOBS} > ${EMBERBSD_DARWIN_CPU_BUDGET}', '.if 0'), recipe))
     mutants.append(('parallel-link-bypass', after, policy.replace('.error "Parallel GCC bootstrap requires the accepted SDK link launcher"', '# no link resource refusal'), recipe))
+    mutants.append(('privileged-install', after, policy.replace('UNPRIVILEGED= yes\n', ''), recipe))
+    mutants.append(('empty-su-bypass', after, policy + '\nSU_CMD=\n', recipe))
     rejected = []
     for name, source, conf, gcc_recipe in mutants:
         try:
