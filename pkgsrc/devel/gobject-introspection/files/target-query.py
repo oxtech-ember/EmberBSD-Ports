@@ -32,6 +32,13 @@ def require(condition, message):
         raise QueryError(message)
 
 
+def transfer_timeout(config):
+    value = config.get('transfer_timeout_seconds', 180)
+    require(type(value) is int and 0 < value <= 3600,
+            'transfer_timeout_seconds must be an integer from 1 to 3600')
+    return value
+
+
 class FailureMarker:
     """Keep the first incomplete execute query visible to configure."""
 
@@ -70,6 +77,7 @@ def query(arguments):
             'selected SDK lacks producer inspection API 1')
     config = read_json(os.environ['EMBERBSD_GI_QUERY_CONFIG'])
     require(isinstance(config, dict), 'GI query configuration must be an object')
+    transfer_timeout_seconds = transfer_timeout(config)
     target = config.get('target', 'aarch64')
     require(isinstance(target, str) and target in TARGETS, 'unsupported GI target')
     processor, machine = TARGETS[target]
@@ -224,10 +232,10 @@ def query(arguments):
         (stage / 'lib').mkdir(parents=True)
         environment = dict(os.environ)
 
-        def completed(command, data=None):
+        def completed(command, data=None, *, timeout=180):
             try:
                 result = stream.capture_streamed(command, env=environment, input=data,
-                                                timeout=180, stdout_limit=16 * 1024 * 1024,
+                                                timeout=timeout, stdout_limit=16 * 1024 * 1024,
                                                 empty_snapshot_timeout=30)
                 require(not result.stderr_truncated, 'host command stderr exceeds capture limit')
                 return subprocess.CompletedProcess(command, 0, result.value, result.stderr)
@@ -236,8 +244,16 @@ def query(arguments):
                         'host command output exceeds capture limit')
                 return subprocess.CompletedProcess(command, error.returncode, error.stdout, error.stderr)
 
-        def run(name, command, data=None):
-            result = completed(command, data)
+        def run(name, command, data=None, *, timeout=180):
+            try:
+                result = completed(command, data, timeout=timeout)
+            except ProcessOwnershipError:
+                raise
+            except SDKError as error:
+                (work / (name + '.log')).write_text(
+                    f'refused: {error}\ntimeout_seconds={timeout}\n'
+                    f'input_bytes={0 if data is None else len(data)}\n', encoding='utf-8')
+                raise
             output = result.stdout + result.stderr
             (work / (name + '.log')).write_bytes(output)
             require(result.returncode == 0, f'{name} failed ({result.returncode}); see {work}')
@@ -414,7 +430,8 @@ def query(arguments):
             (work / 'tar.log').write_bytes(b'')
             (work / 'transfer-size.txt').write_text(f'{archive.stat().st_size}\n', encoding='ascii')
             verify_library_inputs()
-            run('transfer', ssh + [f'tar -xzf - -C {shlex.quote(remote)}'], archive.read_bytes())
+            run('transfer', ssh + [f'tar -xzf - -C {shlex.quote(remote)}'], archive.read_bytes(),
+                timeout=transfer_timeout_seconds)
             invocation = [remote + '/' + query_relative]
             if execute:
                 invocation.extend(args)

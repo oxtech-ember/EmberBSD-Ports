@@ -176,6 +176,12 @@ For amd64, set `target` to `amd64` and select the matching
 target metadata fails. The same configuration serves `glib2-introspection`
 and the other consumers of GI's shared cross fragment.
 
+The optional `transfer_timeout_seconds` field sets the input archive transfer
+deadline. It accepts an integer from 1 to 3600. The default is 180 seconds.
+Select a bounded value that allows the archive to cross the selected link.
+This field does not extend allocation, execution, XML readback or cleanup.
+The target program still has its separate 60-second execution deadline.
+
 Add these private MAKECONF settings:
 
 ```make

@@ -43,7 +43,7 @@ Python version or implementation before configuration or transport.
 These are host contracts. Real target loading and the complete upstream
 scanner and Pixbuf suites remain separate checks.
 
-Each production SSH command has a 180-second output timeout. This includes
+Each production SSH command has a default 180-second output timeout. This includes
 allocation, transfer, query, status readback, XML readback and cleanup. The SDK
 owns and drains the host process session. Each empty-session proof has a
 separate 30-second inspection budget. Unknown rows still prevent proof and
@@ -53,6 +53,19 @@ it cannot become a legitimate negative configure result. GI XML overflow and
 stderr truncation retain a transfer receipt and do not publish the dump.
 The remote target query keeps its separate 60-second timeout and 5-second
 termination grace period.
+
+Only the GI input archive transfer accepts `transfer_timeout_seconds` in the
+query JSON. It must be an integer from 1 to 3600. Other phases keep 180 seconds.
+An SDK failure records its phase, deadline and input byte count. An ownership
+error remains a distinct exception. Run the focused host-only routing check:
+
+```sh
+python3.15 gi-transfer-timeout.py /absolute/new-results
+```
+
+This check parses the actual helper, checks the configuration bounds and
+injects SDK outcomes into its unchanged command boundary. It makes no SSH
+connection and does not execute a target program.
 
 The GI bmake fixture checks the published `EMBERBSD_GI_PYTHON` alias and the
 common `EMBERBSD_CROSS_BUILD_PYTHON` selector. Equal providers are accepted.
