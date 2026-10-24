@@ -7,7 +7,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 
 --- a/lang/gcc16/Makefile.common
 +++ b/lang/gcc16/Makefile.common
-@@ -57,6 +57,49 @@
+@@ -57,6 +57,53 @@
  .if ${OPSYS} == "Darwin"
  BUILDLINK_TRANSFORM+=	rm:-nodefaultrpaths
  CONFIGURE_ARGS+=	--disable-darwin-at-rpath
@@ -21,6 +21,9 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 +PKG_FAIL_REASON+= "Set ${_ember_gcc16_input} from the accepted SDK bootstrap producer plan."
 +.  endif
 +.endfor
++.if !defined(EMBERBSD_GCC16_DARWIN_SDK_VERSION) || empty(EMBERBSD_GCC16_DARWIN_SDK_VERSION)
++PKG_FAIL_REASON+= "Set EMBERBSD_GCC16_DARWIN_SDK_VERSION from the accepted SDK ABI metadata."
++.endif
 +USE_NATIVE_GCC= yes
 +USE_PKGSRC_GCC= no
 +CC= ${EMBERBSD_GCC16_SEED_CC}
@@ -42,6 +45,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 +CONFIGURE_ARGS+= --with-ld=${EMBERBSD_GCC16_LD64_LLD:Q}
 +CONFIGURE_ARGS+= --with-dsymutil=${EMBERBSD_GCC16_DSYMUTIL:Q}
 +CONFIGURE_ARGS+= --with-darwin-assembler=llvm-mc
++CONFIGURE_ARGS+= --with-darwin-sdk-version=${EMBERBSD_GCC16_DARWIN_SDK_VERSION:Q}
 +# Upstream GCC does not support aarch64-apple-darwin. This diff is
 +# Iain Sandoe's Darwin branch (https://github.com/iains/gcc-16-branch)
 +# against the release, as published by homebrew-core commit
@@ -57,7 +61,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
  .endif
  
  ## For graphite support.
-@@ -89,8 +132,10 @@
+@@ -89,8 +136,10 @@
  MAKE_ENV.NetBSD+=	ac_cv_func_uselocale=no
  MAKE_ENV.SunOS+=	ac_cv_func_mkostemp=no
  

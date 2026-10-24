@@ -62,6 +62,7 @@ It must bind these make variables in the initial producer environment:
 | `EMBERBSD_GCC16_AR`, `EMBERBSD_GCC16_RANLIB` | Qualified archive tool paths |
 | `EMBERBSD_GCC16_NM`, `EMBERBSD_GCC16_STRIP` | Qualified symbol tool paths |
 | `OSX_SDK_PATH` | Explicit accepted native ABI sysroot path |
+| `EMBERBSD_GCC16_DARWIN_SDK_VERSION` | SDK version from that accepted native ABI metadata |
 
 The producer also sets `PKGSRC_COMPILER=gcc` before pkgsrc reads the recipe.
 These values are inputs to an accepted SDK plan. A make variable name or a
@@ -70,6 +71,11 @@ another descriptor format. It does not search `PATH` for a missing compiler.
 
 The recipe passes `--with-as`, `--with-ld` and `--with-dsymutil` to GCC.
 Fresh GCC embeds these exact paths. It uses its source-owned MC mode.
+The recipe also sets `--with-darwin-sdk-version` from the accepted ABI metadata.
+In MC mode, the default linker receives `-platform_version macos MIN SDK`.
+This does not require a user `-fuse-ld` option. Cctools mode stays unchanged.
+The generic configure default `0.0` means an unknown SDK version. It is not
+a claim about the SDK. A producer with known metadata must pass its real version.
 It does not require an external specs override for ordinary use.
 The producer must keep the embedded tools available in the final bundle.
 It must provide the other configure and build tools from its accepted closure.

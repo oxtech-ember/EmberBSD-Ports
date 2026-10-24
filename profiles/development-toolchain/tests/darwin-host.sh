@@ -32,6 +32,11 @@ if query "$native" PKGSRC_COMPILER=gcc -V '${CONFIGURE_ARGS}' |
     tr ' ' '\n' | grep -qx -- --disable-bootstrap; then exit 1; fi
 args=$(query "$native" PKGSRC_COMPILER=gcc -V '${CONFIGURE_ARGS}')
 printf '%s\n' "$args" | tr ' ' '\n' | grep -qx -- --with-darwin-assembler=llvm-mc
+sdk_version=$(query "$native" PKGSRC_COMPILER=gcc -V '${EMBERBSD_GCC16_DARWIN_SDK_VERSION}')
+[ -n "$sdk_version" ]
+printf '%s\n' "$args" | tr ' ' '\n' | grep -Fx -- "--with-darwin-sdk-version=$sdk_version" > /dev/null
+query "$native" EMBERBSD_GCC16_DARWIN_SDK_VERSION= -V '${PKG_FAIL_REASON}' |
+    grep -q 'Set EMBERBSD_GCC16_DARWIN_SDK_VERSION from the accepted SDK ABI metadata'
 for pair in 'as EMBERBSD_GCC16_LLVM_MC' 'ld EMBERBSD_GCC16_LD64_LLD' 'dsymutil EMBERBSD_GCC16_DSYMUTIL'; do
     set -- $pair
     selected=$(query "$native" PKGSRC_COMPILER=gcc -V "\${$2}")

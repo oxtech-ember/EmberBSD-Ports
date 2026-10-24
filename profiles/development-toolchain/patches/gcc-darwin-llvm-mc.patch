@@ -1,13 +1,13 @@
 Origin: EmberBSD (AI-assisted); not submitted upstream.
 GCC 16.2.0 with Iain Sandoe's Darwin port and the pkgsrc patches.
-Add an explicit AArch64 Darwin LLVM MC command language. Keep collect2,
-LTO, libraries, start files and constructors. This is a default-CPU pilot.
-Other assembler modes and targets keep their current defaults.
+Add an explicit AArch64 Darwin LLVM MC command language and Mach-O LLD
+platform record. Keep collect2, LTO, libraries, start files and constructors.
+This is a default-CPU pilot. Other assembler modes keep their defaults.
 GCC source retains its GPLv3+ licence and upstream copyright notices.
 
 --- gcc/configure.ac.orig
 +++ gcc/configure.ac
-@@ -443,6 +443,32 @@
+@@ -443,6 +443,43 @@
  else
    AC_MSG_RESULT(no)
  fi
@@ -17,6 +17,10 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
 +[AS_HELP_STRING([--with-darwin-assembler=cctools|llvm-mc],
 +                [select the Darwin assembler command language])],,
 +[with_darwin_assembler=cctools])
++AC_ARG_WITH(darwin-sdk-version,
++[AS_HELP_STRING([--with-darwin-sdk-version=VERSION],
++                [set the Darwin LLVM linker SDK version; 0.0 means unknown])],,
++[with_darwin_sdk_version=0.0])
 +gcc_darwin_mc_flags=
 +case "$with_darwin_assembler" in
 +  cctools) ;;
@@ -31,6 +35,13 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
 +    if test x"$gas_flag" = xyes; then
 +      AC_MSG_ERROR([llvm-mc mode cannot use --with-gnu-as])
 +    fi
++    case "$with_darwin_sdk_version" in
++      ''|*[[!0-9.]]*|.*|*.|*..*|*.*.*.*)
++        AC_MSG_ERROR([invalid Darwin SDK version]) ;;
++    esac
++    AC_DEFINE_UNQUOTED(DARWIN_LLVM_SDK_VERSION,
++      ["$with_darwin_sdk_version"],
++      [Define the SDK version used by the Darwin LLVM linker.])
 +    gcc_darwin_mc_flags="--filetype=obj --triple=arm64-apple-macosx --mcpu=apple-m1"
 +    AC_DEFINE(DARWIN_LLVM_MC, 1,
 +      [Define to use the LLVM MC command language on AArch64 Darwin.])
@@ -40,7 +51,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
  
  # --------------------
  # Find default windres
-@@ -3271,7 +3297,7 @@
+@@ -3271,7 +3308,7 @@
      if test x"$gcc_cv_as" != x \
         && test x"$gcc_cv_ld" != x \
         && test x"$gcc_cv_readelf" != x \
@@ -49,7 +60,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
         && $gcc_cv_ld -o conftest conftest.o > /dev/null 2>&1 \
         && $gcc_cv_readelf --relocs --wide conftest \
  	  | grep R_RISCV_IRELATIVE > /dev/null 2>&1; then
-@@ -3430,9 +3456,9 @@
+@@ -3430,9 +3467,9 @@
    echo '.byte 1' >> conftest2.s
    echo '.section myfoosect, "a"' > conftest3.s
    echo '.byte 0' >> conftest3.s
@@ -62,7 +73,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
      # Note the Wild linker has --gc-sections on by default.
      if $gcc_cv_ld -shared -o conftest1.so conftest1.o \
            conftest2.o conftest3.o --no-gc-sections > /dev/null 2>&1 \
-@@ -3521,7 +3547,7 @@
+@@ -3521,7 +3558,7 @@
  
  # Determine if an .eh_frame section is read-only.
  gcc_fn_eh_frame_ro () {
@@ -71,7 +82,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
      $gcc_cv_objdump -h conftest.o 2>/dev/null | \
      sed -e '/.eh_frame/!d' -e N | grep READONLY > /dev/null
  }
-@@ -3700,7 +3726,7 @@
+@@ -3700,7 +3737,7 @@
      || diff -b conftest.big conftest.got > /dev/null 2>&1; }
    then
      gcc_cv_as_eh_frame=yes
@@ -80,7 +91,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
      gcc_cv_as_eh_frame=buggy
    else
      # Uh oh, what do we do now?
-@@ -4327,7 +4353,7 @@
+@@ -4327,7 +4364,7 @@
  	echo 'foo: nop'      >> conftest.s
  	echo '.data'         >> conftest.s
  	echo '.secrel32 foo' >> conftest.s
@@ -89,7 +100,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
  	  if $gcc_cv_objdump -h conftest.exe | grep '\.reloc\>' > /dev/null; then
  	    AC_MSG_ERROR([ld has broken secrel32 relocations, configure without --enable-tls or with --disable-tls to remove this error. See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80881 for more information.])
  	  fi
-@@ -4519,15 +4545,22 @@
+@@ -4519,15 +4556,22 @@
  
  case "$target_os" in
    darwin*)
@@ -114,7 +125,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
             [ .build_version macos, 10, 14 sdk_version 10, 14],,
        [AC_DEFINE(HAVE_AS_MACOS_BUILD_VERSION, 1,
  	[Define if your macOS assembler supports .build_version directives])])
-@@ -5373,7 +5406,7 @@
+@@ -5373,7 +5417,7 @@
          echo '	.reloc	1f,R_MIPS_JALR,x' >> conftest.s
          echo '1:	jalr $25' >> conftest.s
          echo '	.end x' >> conftest.s
@@ -123,7 +134,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
             && $gcc_cv_ld -shared -o conftest.so conftest.o >/dev/null 2>&AS_MESSAGE_LOG_FD; then
  	  if $gcc_cv_objdump -d conftest.so | grep jalr >/dev/null 2>&1 \
  	     && $gcc_cv_objdump -d conftest.so | grep "bal.*<x>" >/dev/null 2>&1; then
-@@ -5974,16 +6007,16 @@
+@@ -5974,16 +6018,16 @@
    gcc_cv_as_compress_debug,,,
    [# gas compiled without zlib cannot compress debug sections and warns
     # about it, but still exits successfully.  So check for this, too.
@@ -143,7 +154,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
       then
         gcc_cv_as_compress_debug=2
       fi
-@@ -6058,7 +6091,7 @@
+@@ -6058,7 +6102,7 @@
   [gcc_cv_as_line_zero=no
    if test "x$gcc_cv_as" != x; then
      { echo '# 1 "test.s" 1'; echo '# 0 "" 2'; } > conftest.s
@@ -152,7 +163,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
         test "x`cat conftest.out`" = x
      then
        gcc_cv_as_line_zero=yes
-@@ -6175,9 +6208,9 @@
+@@ -6175,9 +6219,9 @@
  ptr:
  	.quad	a_glob
  EOF
@@ -164,7 +175,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
           && $gcc_cv_ld -pie $ld_64_opt -o conftest conftest2.o conftest1.so > /dev/null 2>&1; then
          gcc_cv_ld_pie_copyreloc=yes
        fi
-@@ -6217,7 +6250,7 @@
+@@ -6217,7 +6261,7 @@
  	.section	.eh_frame,"a",@progbits
  	.long .L0
  EOF
@@ -173,7 +184,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
      if $gcc_cv_ld -o conftest conftest.o --entry=_start --gc-sections 2>&1 \
  	 | grep "gc-sections option ignored" > /dev/null; then
        gcc_cv_ld_eh_gc_sections=no
-@@ -6245,7 +6278,7 @@
+@@ -6245,7 +6289,7 @@
  	.section	.eh_frame,"a",@progbits
  	.long .L0
  EOF
@@ -182,7 +193,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
  	  if $gcc_cv_ld -o conftest conftest.o --entry=_start --gc-sections 2>&1 \
  	       | grep "gc-sections option ignored" > /dev/null; then
  	    gcc_cv_ld_eh_gc_sections=no
-@@ -6299,7 +6332,7 @@
+@@ -6299,7 +6343,7 @@
  	.section	.eh_frame,"a",@progbits
  	.long .L0
  EOF
@@ -231,24 +242,27 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
      dnl Solaris with the native assembler uses -m32/-m64 consistently.
 --- gcc/configure.orig
 +++ gcc/configure
-@@ -979,6 +979,7 @@
+@@ -979,6 +979,8 @@
  with_dsymutil
  with_gnu_as
  with_as
 +with_darwin_assembler
++with_darwin_sdk_version
  with_windres
  enable_largefile
  enable_build_format_warnings
-@@ -1879,6 +1880,8 @@
+@@ -1879,6 +1881,10 @@
                            pathname)
    --with-gnu-as           arrange to work with GNU as
    --with-as               arrange to use the specified as (full pathname)
 +  --with-darwin-assembler=cctools|llvm-mc
 +                          select the Darwin assembler command language
++  --with-darwin-sdk-version=VERSION
++                          set the Darwin LLVM linker SDK version; 0.0 means unknown
    --with-windres          arrange to use the specified windres (full pathname)
    --with-stack-clash-protection-guard-size=size
                            Set the default stack clash protection guard size
-@@ -4081,6 +4084,30 @@
+@@ -4081,6 +4087,40 @@
    { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
  $as_echo "no" >&6; }
  fi
@@ -256,6 +270,9 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
 +# Select a command language, independently of tool path selection.
 +if test "${with_darwin_assembler+set}" != set; then
 +  with_darwin_assembler=cctools
++fi
++if test "${with_darwin_sdk_version+set}" != set; then
++  with_darwin_sdk_version=0.0
 +fi
 +gcc_darwin_mc_flags=
 +case "$with_darwin_assembler" in
@@ -271,6 +288,13 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
 +    if test x"$gas_flag" = xyes; then
 +      as_fn_error $? "llvm-mc mode cannot use --with-gnu-as" "$LINENO" 5
 +    fi
++    case "$with_darwin_sdk_version" in
++      ''|*[!0-9.]*|.*|*.|*..*|*.*.*.*)
++        as_fn_error $? "invalid Darwin SDK version" "$LINENO" 5 ;;
++    esac
++    cat >>confdefs.h <<_ACEOF
++#define DARWIN_LLVM_SDK_VERSION "$with_darwin_sdk_version"
++_ACEOF
 +    gcc_darwin_mc_flags="--filetype=obj --triple=arm64-apple-macosx --mcpu=apple-m1"
 +    $as_echo "#define DARWIN_LLVM_MC 1" >>confdefs.h
 +    ;;
@@ -279,7 +303,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
  
  # --------------------
  # Find default windres
-@@ -26228,6 +26255,9 @@
+@@ -26228,6 +26268,9 @@
  else
     case "$target:$gas" in
    *-*-darwin*:*)
@@ -289,7 +313,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
                          case "$target" in
        i?86-*-*)
  	gcc_cv_as_flags="-arch i386"
-@@ -26248,6 +26278,7 @@
+@@ -26248,6 +26291,7 @@
  	as_64_opt="-arch x86_64"
  	;;
      esac
@@ -297,7 +321,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
      ;;
    *-*-solaris2*:no)
          case "$target" in
-@@ -26682,7 +26713,7 @@
+@@ -26682,7 +26726,7 @@
      if test x"$gcc_cv_as" != x \
         && test x"$gcc_cv_ld" != x \
         && test x"$gcc_cv_readelf" != x \
@@ -306,7 +330,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
         && $gcc_cv_ld -o conftest conftest.o > /dev/null 2>&1 \
         && $gcc_cv_readelf --relocs --wide conftest \
  	  | grep R_RISCV_IRELATIVE > /dev/null 2>&1; then
-@@ -26850,9 +26881,9 @@
+@@ -26850,9 +26894,9 @@
    echo '.byte 1' >> conftest2.s
    echo '.section myfoosect, "a"' > conftest3.s
    echo '.byte 0' >> conftest3.s
@@ -319,7 +343,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
      # Note the Wild linker has --gc-sections on by default.
      if $gcc_cv_ld -shared -o conftest1.so conftest1.o \
            conftest2.o conftest3.o --no-gc-sections > /dev/null 2>&1 \
-@@ -26976,7 +27007,7 @@
+@@ -26976,7 +27020,7 @@
  .globl _start
  _start:
  EOF
@@ -328,7 +352,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
  	         && $gcc_cv_ld -o conftest conftest.o > /dev/null 2>&1 \
  	         && $gcc_cv_objdump -s -j .init_array conftest \
  		    | grep HHHHFFFFDDDDBBBB > /dev/null 2>&1 \
-@@ -27010,7 +27041,7 @@
+@@ -27010,7 +27054,7 @@
  .globl _start
  _start:
  EOF
@@ -337,7 +361,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
  	         && $gcc_cv_ld -o conftest conftest.o > /dev/null 2>&1 \
  	         && $gcc_cv_objdump -s -j .init_array conftest \
  		    | grep HHHHHHHHDDDDDDDD > /dev/null 2>&1 \
-@@ -27227,7 +27258,7 @@
+@@ -27227,7 +27271,7 @@
  
  # Determine if an .eh_frame section is read-only.
  gcc_fn_eh_frame_ro () {
@@ -346,7 +370,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
      $gcc_cv_objdump -h conftest.o 2>/dev/null | \
      sed -e '/.eh_frame/!d' -e N | grep READONLY > /dev/null
  }
-@@ -27519,7 +27550,7 @@
+@@ -27519,7 +27563,7 @@
      || diff -b conftest.big conftest.got > /dev/null 2>&1; }
    then
      gcc_cv_as_eh_frame=yes
@@ -355,7 +379,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
    { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
    (eval $ac_try) 2>&5
    ac_status=$?
-@@ -28463,7 +28494,7 @@
+@@ -28463,7 +28507,7 @@
  	echo 'foo: nop'      >> conftest.s
  	echo '.data'         >> conftest.s
  	echo '.secrel32 foo' >> conftest.s
@@ -364,7 +388,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
  	  if $gcc_cv_objdump -h conftest.exe | grep '\.reloc\>' > /dev/null; then
  	    as_fn_error $? "ld has broken secrel32 relocations, configure without --enable-tls or with --disable-tls to remove this error. See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80881 for more information." "$LINENO" 5
  	  fi
-@@ -28675,6 +28706,7 @@
+@@ -28675,6 +28719,7 @@
  
  case "$target_os" in
    darwin*)
@@ -372,7 +396,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
      { $as_echo "$as_me:${as_lineno-$LINENO}: checking assembler for -mmacosx-version-min option" >&5
  $as_echo_n "checking assembler for -mmacosx-version-min option... " >&6; }
  if ${gcc_cv_as_mmacosx_version_min+:} false; then :
-@@ -28706,7 +28738,13 @@
+@@ -28706,7 +28751,13 @@
  
  fi
  
@@ -387,7 +411,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
         { $as_echo "$as_me:${as_lineno-$LINENO}: checking assembler for .build_version" >&5
  $as_echo_n "checking assembler for .build_version... " >&6; }
  if ${gcc_cv_as_darwin_build_version+:} false; then :
-@@ -28715,7 +28753,7 @@
+@@ -28715,7 +28766,7 @@
    gcc_cv_as_darwin_build_version=no
    if test x"$gcc_cv_as" != x; then
      $as_echo ' .build_version macos, 10, 14 sdk_version 10, 14' > conftest.s
@@ -396,7 +420,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
    { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
    (eval $ac_try) 2>&5
    ac_status=$?
-@@ -31021,7 +31059,7 @@
+@@ -31021,7 +31072,7 @@
          echo '	.reloc	1f,R_MIPS_JALR,x' >> conftest.s
          echo '1:	jalr $25' >> conftest.s
          echo '	.end x' >> conftest.s
@@ -405,7 +429,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
             && $gcc_cv_ld -shared -o conftest.so conftest.o >/dev/null 2>&5; then
  	  if $gcc_cv_objdump -d conftest.so | grep jalr >/dev/null 2>&1 \
  	     && $gcc_cv_objdump -d conftest.so | grep "bal.*<x>" >/dev/null 2>&1; then
-@@ -32487,16 +32525,16 @@
+@@ -32487,16 +32538,16 @@
      then
  	# gas compiled without zlib cannot compress debug sections and warns
     # about it, but still exits successfully.  So check for this, too.
@@ -425,7 +449,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
       then
         gcc_cv_as_compress_debug=2
       fi
-@@ -32670,7 +32708,7 @@
+@@ -32670,7 +32721,7 @@
    gcc_cv_as_line_zero=no
    if test "x$gcc_cv_as" != x; then
      { echo '# 1 "test.s" 1'; echo '# 0 "" 2'; } > conftest.s
@@ -434,7 +458,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
    { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
    (eval $ac_try) 2>&5
    ac_status=$?
-@@ -32805,9 +32843,9 @@
+@@ -32805,9 +32856,9 @@
  ptr:
  	.quad	a_glob
  EOF
@@ -446,7 +470,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
           && $gcc_cv_ld -pie $ld_64_opt -o conftest conftest2.o conftest1.so > /dev/null 2>&1; then
          gcc_cv_ld_pie_copyreloc=yes
        fi
-@@ -32851,7 +32889,7 @@
+@@ -32851,7 +32902,7 @@
  	.section	.eh_frame,"a",@progbits
  	.long .L0
  EOF
@@ -455,7 +479,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
      if $gcc_cv_ld -o conftest conftest.o --entry=_start --gc-sections 2>&1 \
  	 | grep "gc-sections option ignored" > /dev/null; then
        gcc_cv_ld_eh_gc_sections=no
-@@ -32879,7 +32917,7 @@
+@@ -32879,7 +32930,7 @@
  	.section	.eh_frame,"a",@progbits
  	.long .L0
  EOF
@@ -464,7 +488,7 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
  	  if $gcc_cv_ld -o conftest conftest.o --entry=_start --gc-sections 2>&1 \
  	       | grep "gc-sections option ignored" > /dev/null; then
  	    gcc_cv_ld_eh_gc_sections=no
-@@ -32935,7 +32973,7 @@
+@@ -32935,7 +32986,7 @@
  	.section	.eh_frame,"a",@progbits
  	.long .L0
  EOF
@@ -475,13 +499,16 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
        :
 --- gcc/config.in.orig
 +++ gcc/config.in
-@@ -65,6 +65,9 @@
+@@ -65,6 +65,12 @@
  /* Define to enable the use of a default assembler. */
  #ifndef USED_FOR_TARGET
  #undef DEFAULT_ASSEMBLER
 +
 +/* Define to use the LLVM MC command language on AArch64 Darwin. */
 +#undef DARWIN_LLVM_MC
++
++/* Define the SDK version used by the Darwin LLVM linker. */
++#undef DARWIN_LLVM_SDK_VERSION
  #endif
  
  
@@ -552,3 +579,27 @@ GCC source retains its GPLv3+ licence and upstream copyright notices.
  	case OPT_mmacosx_version_min_:
  	  seen_version_min = true;
  	  vers_string =
+--- gcc/config/darwin.h.orig
++++ gcc/config/darwin.h
+@@ -301,6 +301,13 @@
+ #define DARWIN_LD_NO_DEDUPLICATE ""
+ #endif
+ 
++#ifdef DARWIN_LLVM_MC
++/* This configured mode selects Mach-O LLD, including the default link.
++   Keep 0.0 as the upstream representation when the SDK version is unknown.  */
++# define DARWIN_PLATFORM_ID \
++  "%{mmacosx-version-min=*:-platform_version macos %* " \
++  DARWIN_LLVM_SDK_VERSION "} "
++#else
+ #if LD64_HAS_MACOS_VERSION_MIN
+ # define DARWIN_PLATFORM_ID \
+   "%{mmacosx-version-min=*:-macos_version_min %*} "
+@@ -313,6 +320,7 @@
+   "%{mmacosx-version-min=*:-macosx_version_min %*} "
+ # endif
+ #endif
++#endif /* DARWIN_LLVM_MC */
+ 
+ /* Code built with mdynamic-no-pic does not support PIE/PIC, so  we disallow
+    these combinations; we also ensure that the no_pie option is passed to
