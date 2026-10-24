@@ -1,0 +1,392 @@
+--- a/net/shared_dictionary/shared_dictionary_header_checker_source_stream.cc
++++ b/net/shared_dictionary/shared_dictionary_header_checker_source_stream.cc
+@@ -7,6 +7,7 @@
+ #include "base/check_op.h"
+ #include "base/containers/span.h"
+ #include "base/functional/callback_helpers.h"
++#include "base/notreached.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "net/base/hash_value.h"
+ #include "net/base/io_buffer.h"
+@@ -41,6 +42,7 @@
+         kDictionaryCompressedZstd:
+       return kCompressionTypeZstdSignatureSize;
+   }
++  NOTREACHED();
+ }
+ 
+ size_t GetHeaderSize(SharedDictionaryHeaderCheckerSourceStream::Type type) {
+@@ -52,6 +54,7 @@
+         kDictionaryCompressedZstd:
+       return kCompressionTypeZstdHeaderSize;
+   }
++  NOTREACHED();
+ }
+ 
+ base::span<const unsigned char> GetExpectedSignature(
+@@ -64,6 +67,7 @@
+         kDictionaryCompressedZstd:
+       return kCompressionTypeZstdSignature;
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace
+--- a/net/shared_dictionary/shared_dictionary_network_transaction.cc
++++ b/net/shared_dictionary/shared_dictionary_network_transaction.cc
+@@ -433,6 +433,7 @@
+     case DictionaryStatus::kFailed:
+       return ERR_DICTIONARY_LOAD_FAILED;
+   }
++  NOTREACHED();
+ }
+ 
+ void SharedDictionaryNetworkTransaction::StopCaching() {
+--- a/net/quic/web_transport_client.cc
++++ b/net/quic/web_transport_client.cc
+@@ -7,6 +7,7 @@
+ #include <string_view>
+ 
+ #include "base/memory/raw_ptr.h"
++#include "base/notreached.h"
+ #include "net/quic/dedicated_web_transport_http3_client.h"
+ 
+ namespace net {
+@@ -58,6 +59,7 @@
+     case WebTransportState::NUM_STATES:
+       return "UNKNOWN";
+   }
++  NOTREACHED();
+ }
+ 
+ WebTransportCloseInfo::WebTransportCloseInfo() = default;
+--- a/net/quic/quic_session_pool.cc
++++ b/net/quic/quic_session_pool.cc
+@@ -23,6 +23,7 @@
+ #include "base/metrics/histogram_functions.h"
+ #include "base/metrics/histogram_macros.h"
+ #include "base/no_destructor.h"
++#include "base/notreached.h"
+ #include "base/numerics/safe_conversions.h"
+ #include "base/strings/escape.h"
+ #include "base/strings/strcat.h"
+@@ -208,6 +209,7 @@
+     case kCertVerifierChanged:
+       return "CertVerifierChanged";
+   }
++  NOTREACHED();
+ }
+ 
+ void HistogramCreateSessionFailure(enum CreateSessionFailure error) {
+--- a/net/socket/client_socket_pool.cc
++++ b/net/socket/client_socket_pool.cc
+@@ -12,6 +12,7 @@
+ #include "base/check_op.h"
+ #include "base/feature_list.h"
+ #include "base/functional/bind.h"
++#include "base/notreached.h"
+ #include "base/strings/strcat.h"
+ #include "net/base/features.h"
+ #include "net/base/host_port_pair.h"
+@@ -101,6 +102,7 @@
+     case PrivacyMode::PRIVACY_MODE_ENABLED_PARTITIONED_STATE_ALLOWED:
+       return "pmpsa/";
+   }
++  NOTREACHED();
+ }
+ 
+ // static
+@@ -114,6 +116,7 @@
+     case SecureDnsPolicy::kBootstrap:
+       return "dns_bootstrap/";
+   }
++  NOTREACHED();
+ }
+ 
+ ClientSocketPool::GroupId::GroupId()
+--- a/net/socket/next_proto.cc
++++ b/net/socket/next_proto.cc
+@@ -5,6 +5,8 @@
+ #include "net/socket/next_proto.h"
+ 
+ #include <string_view>
++
++#include "base/notreached.h"
+ 
+ namespace net {
+ 
+@@ -48,6 +50,7 @@
+     case NextProto::kProtoUnknown:
+       return "Unknown";
+   }
++  NOTREACHED();
+ }
+ 
+ const std::string_view NegotiatedProtocolToHistogramSuffixCoalesced(
+@@ -61,6 +64,7 @@
+     case NextProto::kProtoQUIC:
+       return "H3";
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace net
+--- a/net/socket/stream_socket_close_reason.cc
++++ b/net/socket/stream_socket_close_reason.cc
+@@ -5,6 +5,8 @@
+ #include "net/socket/stream_socket_close_reason.h"
+ 
+ #include <string_view>
++
++#include "base/notreached.h"
+ 
+ namespace net {
+ 
+@@ -34,6 +36,7 @@
+     case StreamSocketCloseReason::kAttemptManagerDraining:
+       return "AttemptManagerDraining";
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace net
+--- a/net/socket/tcp_stream_attempt.cc
++++ b/net/socket/tcp_stream_attempt.cc
+@@ -7,6 +7,7 @@
+ #include <memory>
+ #include <string_view>
+ 
++#include "base/notreached.h"
+ #include "base/time/time.h"
+ #include "base/timer/timer.h"
+ #include "base/trace_event/trace_event.h"
+@@ -28,6 +29,7 @@
+     case State::kConnecting:
+       return "Connecting";
+   }
++  NOTREACHED();
+ }
+ 
+ TcpStreamAttempt::TcpStreamAttempt(const StreamAttemptParams* params,
+@@ -54,6 +56,7 @@
+     case State::kConnecting:
+       return LOAD_STATE_CONNECTING;
+   }
++  NOTREACHED();
+ }
+ 
+ base::DictValue TcpStreamAttempt::GetInfoAsValue() const {
+--- a/net/socket/tls_stream_attempt.cc
++++ b/net/socket/tls_stream_attempt.cc
+@@ -10,6 +10,7 @@
+ 
+ #include "base/check.h"
+ #include "base/memory/scoped_refptr.h"
++#include "base/notreached.h"
+ #include "base/trace_event/trace_event.h"
+ #include "base/values.h"
+ #include "net/base/completion_once_callback.h"
+@@ -39,6 +40,7 @@
+     case State::kTlsAttemptComplete:
+       return "TlsAttemptComplete";
+   }
++  NOTREACHED();
+ }
+ 
+ TlsStreamAttempt::TlsStreamAttempt(const StreamAttemptParams* params,
+@@ -78,6 +80,7 @@
+     case State::kTlsAttemptComplete:
+       return LOAD_STATE_SSL_HANDSHAKE;
+   }
++  NOTREACHED();
+ }
+ 
+ base::DictValue TlsStreamAttempt::GetInfoAsValue() const {
+--- a/net/socket/transport_connect_job.cc
++++ b/net/socket/transport_connect_job.cc
+@@ -193,6 +193,7 @@
+     case STATE_NONE:
+       return LOAD_STATE_IDLE;
+   }
++  NOTREACHED();
+ }
+ 
+ bool TransportConnectJob::HasEstablishedConnection() const {
+--- a/net/device_bound_sessions/session_binding_utils.cc
++++ b/net/device_bound_sessions/session_binding_utils.cc
+@@ -11,6 +11,7 @@
+ #include "base/containers/span.h"
+ #include "base/json/json_writer.h"
+ #include "base/logging.h"
++#include "base/notreached.h"
+ #include "base/strings/strcat.h"
+ #include "base/strings/string_view_util.h"
+ #include "base/time/time.h"
+@@ -43,6 +44,7 @@
+     case crypto::SignatureVerifier::RSA_PKCS1_SHA1:
+       return "RS1";
+   }
++  NOTREACHED();
+ }
+ 
+ std::string Base64UrlEncode(std::string_view data) {
+--- a/net/device_bound_sessions/cookie_craving.cc
++++ b/net/device_bound_sessions/cookie_craving.cc
+@@ -10,6 +10,7 @@
+ #include "base/containers/fixed_flat_set.h"
+ #include "base/debug/crash_logging.h"
+ #include "base/debug/dump_without_crashing.h"
++#include "base/notreached.h"
+ #include "base/strings/strcat.h"
+ #include "net/base/url_util.h"
+ #include "net/cookies/canonical_cookie.h"
+@@ -44,6 +45,7 @@
+     case CookieSameSite::STRICT_MODE:
+       return proto::CookieSameSite::STRICT_MODE;
+   }
++  NOTREACHED();
+ }
+ 
+ CookieSameSite CookieSameSiteFromProtoEnum(proto::CookieSameSite proto) {
+@@ -57,6 +59,7 @@
+     case proto::CookieSameSite::STRICT_MODE:
+       return CookieSameSite::STRICT_MODE;
+   }
++  NOTREACHED();
+ }
+ 
+ proto::CookieSourceScheme ProtoEnumFromCookieSourceScheme(
+@@ -69,6 +72,7 @@
+     case CookieSourceScheme::kSecure:
+       return proto::CookieSourceScheme::SECURE;
+   }
++  NOTREACHED();
+ }
+ 
+ CookieSourceScheme CookieSourceSchemeFromProtoEnum(
+@@ -81,6 +85,7 @@
+     case proto::CookieSourceScheme::SECURE:
+       return CookieSourceScheme::kSecure;
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace
+--- a/net/device_bound_sessions/session_error.cc
++++ b/net/device_bound_sessions/session_error.cc
+@@ -102,6 +102,7 @@
+     case kPreProvisionedKeyNotFound:
+       NOTREACHED();
+   }
++  NOTREACHED();
+ }
+ 
+ bool SessionError::IsServerError() const {
+@@ -185,6 +186,7 @@
+     case kPreProvisionedKeyNotFound:
+       NOTREACHED();
+   }
++  NOTREACHED();
+ }
+ 
+ std::optional<RefreshResult> SessionError::GetRefreshResult() const {
+@@ -280,6 +282,7 @@
+     case kPreProvisionedKeyNotFound:
+       NOTREACHED();
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace net::device_bound_sessions
+--- a/net/device_bound_sessions/session_inclusion_rules.cc
++++ b/net/device_bound_sessions/session_inclusion_rules.cc
+@@ -10,6 +10,7 @@
+ #include "base/containers/adapters.h"
+ #include "base/logging.h"
+ #include "base/memory/ptr_util.h"
++#include "base/notreached.h"
+ #include "base/strings/strcat.h"
+ #include "base/strings/string_util.h"
+ #include "net/base/registry_controlled_domains/registry_controlled_domain.h"
+@@ -56,6 +57,7 @@
+     case InclusionResult::kInclude:
+       return "include";
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace
+--- a/net/url_request/url_request_http_job.cc
++++ b/net/url_request/url_request_http_job.cc
+@@ -278,6 +278,7 @@
+     case SourceStreamType::kNone:
+       return ContentEncodingType::kUnknown;
+   }
++  NOTREACHED();
+ }
+ 
+ 
+--- a/net/http/http_auth_gssapi_posix.cc
++++ b/net/http/http_auth_gssapi_posix.cc
+@@ -14,6 +14,7 @@
+ #include "base/format_macros.h"
+ #include "base/logging.h"
+ #include "base/memory/raw_ptr.h"
++#include "base/notreached.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_util.h"
+ #include "base/strings/stringprintf.h"
+@@ -53,6 +54,7 @@
+     case DelegationType::kUnconstrained:
+       return GSS_C_DELEG_FLAG;
+   }
++  NOTREACHED();
+ }
+ 
+ // ScopedBuffer releases a gss_buffer_t when it goes out of scope.
+--- a/net/cert/nss_cert_database.cc
++++ b/net/cert/nss_cert_database.cc
+@@ -19,6 +19,7 @@
+ #include "base/functional/callback.h"
+ #include "base/logging.h"
+ #include "base/memory/raw_ptr.h"
++#include "base/notreached.h"
+ #include "base/observer_list_threadsafe.h"
+ #include "base/task/thread_pool.h"
+ #include "base/threading/scoped_blocking_call.h"
+@@ -349,6 +350,7 @@
+     case DeleteCertAndKeyResult::ERROR:
+       return false;
+   }
++  NOTREACHED();
+ }
+ 
+ void NSSCertDatabase::DeleteCertAndKeyAsync(ScopedCERTCertificate cert,
+--- a/net/websockets/websocket_stream.cc
++++ b/net/websockets/websocket_stream.cc
+@@ -71,6 +71,7 @@
+     case WebSocketPriorityHint::kMaximum:
+       return MAXIMUM_PRIORITY;
+   }
++  NOTREACHED();
+ }
+ 
+ void RecordWebSocketErrorCodes(const URLRequest& request,
+--- a/net/disk_cache/sql/sql_backend_impl.cc
++++ b/net/disk_cache/sql/sql_backend_impl.cc
+@@ -24,6 +24,7 @@
+ #include "base/metrics/field_trial.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/notimplemented.h"
++#include "base/notreached.h"
+ #include "base/numerics/safe_conversions.h"
+ #include "base/strings/strcat.h"
+ #include "base/strings/string_number_conversions.h"
+@@ -134,6 +135,7 @@
+     case SqlPersistentStore::EvictionUrgency::kNeeded:
+       return true;
+   }
++  NOTREACHED();
+ }
+ 
+ // Wraps a OnceCallback. If the returned callback is destroyed without being

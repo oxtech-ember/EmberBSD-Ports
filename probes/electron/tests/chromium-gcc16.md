@@ -379,3 +379,24 @@ with the intended bounds diagnostic in both inputs. Paired Clang Static
 Analyzer checks complete all four cases with the same seven inherited findings.
 Cppcheck stops at dependency parser limits in all four cases. No clean full
 analysis, target execution, or complete browser link is claimed.
+
+## Net protocol, socket, and session enum exits
+
+The AI-assisted Net enum-exit patch adds 30 fatal terminals in 19 production
+files. Valid dictionary signatures and lengths, decoder failures, protocol
+strings, socket load states, GSS delegation, certificate notifications, cache
+eviction, session results, and native/protobuf enum mappings remain unchanged.
+Existing unknown sentinels and optional fallbacks remain. Cookie-craving fields
+use closed proto2 enums. Both fast and mini parsers validate values before
+setting presence or storing the field. The unchanged presence guard rejects
+missing and unknown-only fields before conversion. This parser result is source
+review; parser runtime execution is not claimed.
+
+All 19 observed GCC16 production inputs fail before and compile after the patch
+with unchanged flags. Their baseline has 30 return-type diagnostics. All 38
+Clang Static Analyzer runs complete with unchanged paired signatures. Cppcheck
+reaches dependency parser limits in 37 of 38 runs. The remaining baseline
+input reports two missing-return and 65 inherited-member warnings under a branch
+limit. Its after input stops in the newly required check header. Those findings
+remain recorded; their elimination is not claimed. These checks do not establish
+a clean Cppcheck result, upstream runtime execution, or full browser acceptance.
