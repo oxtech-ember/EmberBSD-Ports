@@ -3,6 +3,7 @@
 .include "dist.mk"
 
 PKGNAME=	python315-${PY_DISTVERSION}
+PKGREVISION=	1
 CATEGORIES=	lang python
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -110,6 +111,20 @@ PY_VER_SUFFIX=		3.15
 
 .include "platname.mk"
 PLIST_SUBST+=	PY_PLATNAME=${PY_PLATNAME:Q}
+
+# Origin: EmberBSD (AI-assisted), retain the selected Darwin ABI and libffi.
+.if ${OPSYS} == "Darwin"
+.  if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+.    if empty(OSX_SDK_PATH:M/*) || !exists(${OSX_SDK_PATH:U:Q}/.)
+PKG_FAIL_REASON+= "Python315 native Darwin requires OSX_SDK_PATH to name an existing absolute ABI directory"
+.    endif
+.  endif
+CONFIGURE_ENV+=		SDKROOT=${OSX_SDK_PATH:Q}
+_PY_LIBFFI_CFLAGS=	-I${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.libffi}/include
+_PY_LIBFFI_LIBS=		-L${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.libffi}/lib -lffi
+CONFIGURE_ENV+=		LIBFFI_CFLAGS=${_PY_LIBFFI_CFLAGS:Q}
+CONFIGURE_ENV+=		LIBFFI_LIBS=${_PY_LIBFFI_LIBS:Q}
+.endif
 
 # For Xcode 5 and up, we need to search the SDK path for headers, otherwise
 # certain modules will not be built.

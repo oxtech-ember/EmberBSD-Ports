@@ -7,11 +7,51 @@ Both maintained `configure.ac` cases match the shipped `configure` cases.
 
 The shared recipe follows the [3.15.1 maintenance release](https://www.python.org/downloads/release/python-3151/).
 Its archive SHA256 and byte size match `distinfo` and `sources.tsv`.
-The 13-patch series retains the NetBSD cross metadata and GCC16 adaptations.
+The patch series retains the NetBSD cross metadata and GCC16 adaptations.
 Upstream now selects the correct static-library directory for shared and
 static-only builds. The build-details patch leaves that upstream logic intact.
-Version 3.15.1 resets the package revision. Earlier package results below
+Version 3.15.1 reset the package revision. Earlier package results below
 apply only to their recorded source versions.
+
+The 3.15.1nb1 Darwin recipe passes the selected `OSX_SDK_PATH` as upstream
+`SDKROOT`. Native Darwin fails before configure when that path is missing,
+empty, relative or does not name an existing directory. This guard does not
+apply to cross builds, Linux or NetBSD. The recipe supplies libffi flags
+through the documented `LIBFFI_CFLAGS` and `LIBFFI_LIBS` variables.
+The paired `configure.ac` and shipped `configure` guards honor either explicit
+variable before the Apple SDK libffi probe. Unset selectors retain upstream
+SDK discovery. Linux and NetBSD keep their existing recipe selection.
+
+The preceding Darwin build mixed Apple SDK ffi headers and
+`USING_APPLE_OS_LIBFFI` with the selected Ports libffi runtime.
+Its `_ctypes.so` load command already named the Ports library.
+The fix removes that header/runtime mismatch. It does not establish that the
+preceding build loaded an Apple libffi DSO.
+Both buildlink and ordinary tool dependencies require Python 3.15.1nb1.
+A stronger consumer requirement remains effective.
+
+The source and metadata regression uses the real generated configure blocks,
+paired maintained guards, native pkgsrc metadata and pkgsrc version matching:
+
+```sh
+python3 -B profiles/common-build-tools/tests/python-darwin-ffi.py \
+    --source /absolute/patched-python --recipe /absolute/Ports/pkgsrc/lang/python315 \
+    --pkgsrc /absolute/prepared-pkgsrc --makeconf /absolute/native.mk.conf \
+    --bmake /absolute/sdk/bin/bmake --shell /absolute/sdk/bin/mksh \
+    --pkg-config /absolute/sdk/bin/pkg-config --pkg-admin /absolute/sdk/sbin/pkg_admin \
+    --ffi-prefix /absolute/selected-prefix --sandbox-profile /absolute/containment.sb \
+    --work /absolute/new-check
+```
+
+Cached provider availability isolates selector precedence without compiling.
+Controls cover both explicit variables, each variable alone, unchanged Darwin
+fallback, explicit SDKROOT without xcrun, Linux selection, the rejected old
+provider and a stronger caller floor. Native SDK metadata controls reject missing,
+empty, relative, absent and regular-file paths. Cross, Linux and NetBSD
+controls keep that failure outside their scope. Add `--sdk-only` to run only
+these SDK metadata controls. This check does not accept a new package
+or runtime. A clean Darwin rebuild must verify the actual compiler inputs and
+`_ctypes.so` load commands before SDK acceptance.
 
 The nb3 header keeps the C11 build assertion an integer constant expression.
 The earlier comma expression rejects a file-scope array in `Objects/typeobject.c`

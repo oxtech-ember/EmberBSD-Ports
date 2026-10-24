@@ -7,6 +7,9 @@ recipe continues using the shipped configure and inherited pkgsrc adaptations.
 Origin: EmberBSD (AI-assisted), common macOS-to-EmberBSD Python build.
 Not submitted or accepted upstream.
 
+Honor explicit LIBFFI_CFLAGS and LIBFFI_LIBS before the Darwin SDK probe.
+The documented selectors keep the selected Ports provider.
+
 --- configure.ac.orig
 +++ configure.ac
 @@ -318,6 +318,9 @@
@@ -29,3 +32,12 @@ Not submitted or accepted upstream.
  	*-*-linux*)
  		case "$host_cpu" in
  		arm*)
+@@ -4279,7 +4285,7 @@
+ 
+ dnl detect libffi
+ have_libffi=missing
+-AS_VAR_IF([ac_sys_system], [Darwin], [
++AS_IF([test "x$ac_sys_system" = xDarwin && test -z "$LIBFFI_CFLAGS" && test -z "$LIBFFI_LIBS"], [
+   WITH_SAVE_ENV([
+     CFLAGS="-I${SDKROOT}/usr/include/ffi $CFLAGS"
+     AC_CHECK_HEADER([ffi.h], [

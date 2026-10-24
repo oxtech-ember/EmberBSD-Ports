@@ -9,6 +9,9 @@ Chunk 4: Do not set duplicated HAVE_UUID_H. This is a hack only for pkgsrc.
          For upstream, detection of uuig_create and uuid_enc_be should be
          improved.
 
+Honor explicit LIBFFI_CFLAGS and LIBFFI_LIBS before the Darwin SDK probe.
+The documented selectors keep the selected Ports provider.
+
 --- configure.orig
 +++ configure
 @@ -3796,7 +3796,7 @@
@@ -64,6 +67,15 @@ Chunk 4: Do not set duplicated HAVE_UUID_H. This is a hack only for pkgsrc.
  
  if test "x$have_uuid" = xmissing
  then :
+@@ -15870,7 +15868,7 @@
+ 
+ 
+ have_libffi=missing
+-if test "x$ac_sys_system" = xDarwin
++if test "x$ac_sys_system" = xDarwin && test -z "$LIBFFI_CFLAGS" && test -z "$LIBFFI_LIBS"
+ then :
+ 
+   save_CFLAGS=$CFLAGS
 @@ -27621,7 +27619,7 @@
  fi
  
