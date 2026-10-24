@@ -88,3 +88,30 @@ Ordinary native-toolset admission requires its own completed producer,
 compiler/linker execution closure and runtime evidence.
 The source entry and byte-preserving tree preparation alone do not prove
 that a real package's metadata or native build passed.
+
+## Initial Darwin utilities
+
+[darwin-installed-utilities-v1.json](darwin-installed-utilities-v1.json) is a
+fixed source-owned input and operation profile for a bounded initial SDK seed.
+It names twenty installed executable members and one `gettext-lib` library.
+The SDK owns original package admission, inventories, leases and execution.
+The profile does not qualify installed binaries by package name or version.
+
+Pin the exact profile and original/final prefixes in the accepted producer plan.
+The initial output prefix is fixed. This profile does not promise relocation.
+Preserve the original metadata and raw member hashes. Record transformed hashes
+and actual operations separately. Existing installed-package byte equality
+must not be used to admit modified outputs without an explicit derivation.
+
+The selected official LLVM 23.1.3 `llvm-objcopy` provides its documented
+`llvm-install-name-tool` invocation mode. It replaces the seventeen named
+libintl dependencies and the library ID with the fixed final absolute path.
+It removes RPATHs and regenerates existing ad hoc signatures.
+No Apple tool discovery, compiler wrapper or system-tool fallback is allowed.
+An absent original signature or unsupported input must fail.
+
+Regular-file basenames stay unchanged. Aliases are explicit relative links.
+The `awk` role selects `bin/nawk`; it does not silently create `bin/awk`.
+A raw `awk` caller needs its own explicit route. The profile does not add grep.
+Runtime paths, signatures, deterministic output and utility behavior still need
+actual bounded checks. Ordinary source-built tools have a separate producer.
