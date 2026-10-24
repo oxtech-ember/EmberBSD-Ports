@@ -15,7 +15,12 @@ The normal Bash provider supplies the target launcher. Native Bash remains
 a separate build tool. Target scripts use `/usr/pkg/bin/bash`.
 
 Cross builds use the common GCC16 profile. Native generators stay on the
-build host. CMake 3.10 is the upstream compatibility floor. The qualified
+build host. The common buildlink gives cross consumers the host-visible
+`${BUILDLINK_DIR}/include/opencascade` path for `OCC_INCLUDE_DIR`. CMake
+reads `Standard_Version.hxx` there to select the current TKDE libraries.
+The native branch keeps its installed provider prefix. This integration
+fix was written with AI assistance. It changes no OCCT library or API.
+CMake 3.10 is the upstream compatibility floor. The qualified
 build uses current CMake through the shared `EMBERBSD_BUILD_CMAKE` contract.
 This compatibility floor does not require installation of an old CMake.
 

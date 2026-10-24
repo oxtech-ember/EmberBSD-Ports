@@ -6,7 +6,12 @@ BUILDLINK_API_DEPENDS.occt+=	occt>=8.0.1
 BUILDLINK_ABI_DEPENDS.occt?=	occt>=8.0.1
 BUILDLINK_PKGSRCDIR.occt?=	../../cad/occt
 BUILDLINK_INCDIRS.occt+=		include/opencascade
+# AI-assisted cross fix: CMake must read the staged target header on the host.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+CMAKE_CONFIGURE_ARGS+=	-DOCC_INCLUDE_DIR=${BUILDLINK_DIR}/include/opencascade
+.else
 CMAKE_CONFIGURE_ARGS+=	-DOCC_INCLUDE_DIR=${BUILDLINK_PREFIX.occt}/include/opencascade
+.endif
 pkgbase := occt
 .include "../../mk/pkg-build-options.mk"
 .if !empty(PKG_BUILD_OPTIONS.occt:Mx11)
