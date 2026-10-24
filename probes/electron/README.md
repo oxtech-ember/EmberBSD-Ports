@@ -161,6 +161,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-network-policy
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ui-event-lottie-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/angle-ast-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-tflite-svdf-null-gemm-scratch-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ime-network-endpaths-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-padding-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-invariants.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-proc-clang-cfi-attribute.patch
@@ -288,6 +289,9 @@ The SVDF patch passes null for unused integer GEMM scratch in its existing
 null-context call. It preserves the floating result buffer and restrict
 contract. The [TFLite checks](tests/tflite-gcc16.md) include real numerical
 and UBSan execution on NetBSD AMD64.
+The IME/network follow-up adds explicit terminals to eight exhaustive-switch
+consumers. It preserves closed TextInputMode validation and the existing
+32-bit allocation branch. See the [end-path checks](tests/ime-network-endpaths-gcc16.md).
 The scenario patch keeps the shared-memory padding diagnostic fatal on
 both Clang and GCC. The QUICHE patch checks allocation and handshake invariants,
 compares the selected subprotocol without signed conversion errors, and obtains
