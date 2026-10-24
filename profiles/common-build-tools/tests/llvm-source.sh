@@ -9,33 +9,17 @@ mkdir "$2"
 work=$(CDPATH= cd -- "$2" && pwd)
 case "$work:$distfiles" in *[!a-zA-Z0-9_./:-]*) echo 'Use safe absolute paths.' >&2; exit 2 ;; esac
 profile=$root/profiles/common-build-tools
-# lang/python314 is not exported; all other recipes here are in pkgsrc/.
-recipe_dir() {
-    if [ "$1" = lang/python314 ]; then echo "$profile/recipes/$1"; else echo "$root/pkgsrc/$1"; fi
-}
-archive=llvm-project-23.1.3.src.tar.xz
-source=llvm-project-23.1.3.src
+recipe_dir() { echo "$root/pkgsrc/$1"; }
+archive=llvm-project-23.1.4.src.tar.xz
+source=llvm-project-23.1.4.src
 verifier=$root/upstream/pkgsrc/mk/checksum/checksum.awk
 [ "$(shasum -a 256 "$distfiles/$archive" | awk '{print $1}')" = \
-    c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34 ]
-cat > "$work/digest" <<'DIGEST'
-#!/bin/sh
-algorithm=$1; shift
-if [ "$#" = 0 ]; then
-    [ "$algorithm" = SHA1 ] || exit 2
-    shasum -a 1 | awk '{print $1}'; exit
-fi
-for file do
-    case "$algorithm" in
-        SHA512) hash=$(shasum -a 512 "$file" | awk '{print $1}') ;;
-        BLAKE2s) hash=$("${OPENSSL:-openssl}" dgst -blake2s256 "$file" | awk '{print $NF}') ;;
-        *) exit 2 ;;
-    esac
-    printf '%s (%s) = %s\n' "$algorithm" "$file" "$hash"
-done
-DIGEST
-chmod +x "$work/digest"
-export DIGEST=$work/digest
+    819ecf7351f1a66f76b2d701d8942faaf5faeb324cb90c9d5b090de142434bb2 ]
+# Use the selected SDK checksum producer. Do not replace it with host OpenSSL.
+: "${DIGEST:?Set the selected SDK digest executable}"
+case "$DIGEST" in /*) ;; *) echo 'DIGEST must be absolute.' >&2; exit 2 ;; esac
+[ -x "$DIGEST" ] || { echo 'DIGEST must be executable.' >&2; exit 2; }
+export DIGEST
 for recipe in lang/llvm lang/clang devel/lld devel/py-llvm-lit; do
     dir=$root/pkgsrc/$recipe
     (cd "$distfiles" && awk -f "$verifier" -- "$dir/distinfo" "$archive")
@@ -94,29 +78,24 @@ diff -u --label cmake/config-ix.cmake.orig --label cmake/config-ix.cmake \
 if patch -f -N -F 0 -p0 -d "$work/pristine/$source/llvm" < "$work/reversed.patch" \
     > "$work/reversed-input.log" 2>&1; then exit 1; fi
 sh "$root/scripts/prepare-pkgsrc.sh" "$work/pkgsrc" > "$work/export.log"
-for recipe in lang/python314 devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit; do
+for recipe in lang/python315 devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit; do
     diff -r "$(recipe_dir "$recipe")" "$work/pkgsrc/$recipe"
 done
 # Accepted Python/Meson recipe bytes and established GCC recipe composition
 # are compared without rerunning their native or consumer suites.
-mkdir "$work/reference"
-git -C "$root" archive HEAD \
-    profiles/common-build-tools/recipes/lang/python314 pkgsrc/devel/meson \
-    scripts/prepare-pkgsrc.sh | tar -xf - -C "$work/reference"
-for recipe in lang/python314 devel/meson; do
-    reference=$(recipe_dir "$recipe")
-    diff -r "$work/reference/${reference#"$root"/}" "$work/pkgsrc/$recipe"
-done
-git -C "$root/upstream/pkgsrc" archive HEAD lang/gcc16 lang/gcc16-libs lang/gcc16-libjit \
-    math/mpfr math/mpcomplex devel/gtexinfo lang/tcl-expect mk/pkgformat/pkg/metadata.mk | tar -xf - -C "$work/reference"
-for patch in pkgsrc-gcc16.2.patch strict-tests.patch current-prerequisites.patch stable-expect.patch gcc-tsvc-netbsd.patch gcc-modules-fallocate.patch gcc-package-requires.patch; do
-    patch -f -N -E -F 0 -p1 -d "$work/reference" < \
-        "$root/profiles/development-toolchain/patches/$patch" >> "$work/gcc-reference.log"
-done
-rm -rf "$work/reference/devel/gtexinfo"
-cp -R "$root/pkgsrc/devel/gtexinfo" "$work/reference/devel/gtexinfo"
-for recipe in lang/gcc16 lang/gcc16-libs lang/gcc16-libjit math/mpfr math/mpcomplex devel/gtexinfo lang/tcl-expect; do
-    diff -r "$work/reference/$recipe" "$work/pkgsrc/$recipe"
+# Reuse the production export graph from HEAD. A private patch-name list
+# becomes stale when the common GCC provider gains a required patch.
+mkdir "$work/reference-ports"
+git -C "$root" archive HEAD pkgsrc profiles probes scripts | tar -xf - -C "$work/reference-ports"
+mkdir -p "$work/reference-ports/upstream"
+ln -s "$root/upstream/pkgsrc" "$work/reference-ports/upstream/pkgsrc"
+git -C "$work/reference-ports" init -q
+pin=$(git -C "$root/upstream/pkgsrc" rev-parse HEAD)
+git -C "$work/reference-ports" update-index --add --cacheinfo "160000,$pin,upstream/pkgsrc"
+sh "$work/reference-ports/scripts/prepare-pkgsrc.sh" "$work/reference-pkgsrc" > "$work/reference-export.log"
+for recipe in lang/python315 devel/meson lang/gcc16 lang/gcc16-libs lang/gcc16-libjit \
+    math/mpfr math/mpcomplex devel/gtexinfo lang/tcl-expect; do
+    diff -r "$work/reference-pkgsrc/$recipe" "$work/pkgsrc/$recipe"
 done
 cmp "$root/profiles/development-toolchain/mk.conf" "$work/pkgsrc/EMBERBSD-DEVELOPMENT-MK.CONF"
 if sh "$root/scripts/prepare-pkgsrc.sh" "$work/pkgsrc" > "$work/existing.log" 2>&1; then exit 1; fi

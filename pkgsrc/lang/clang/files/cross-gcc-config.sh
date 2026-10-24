@@ -19,7 +19,7 @@ prefix=$(realpath "$sysroot$target_prefix")
 [ "$prefix" = "$sysroot$target_prefix" ] || fail 'GCC prefix escapes sysroot'
 [ -f "$prefix/bin/gcc" ] || fail 'missing installed target GCC'
 [ "$("$gcc" -dumpfullversion)" = 16.2.0 ] || fail 'expected GCC 16.2.0'
-[ "$("$llvm" --version)" = 23.1.3 ] || fail 'expected LLVM 23.1.3'
+[ "$("$llvm" --version)" = 23.1.4 ] || fail 'expected LLVM 23.1.4'
 gcc_target=$("$gcc" -dumpmachine)
 triple=$("$llvm" --host-target)
 # GCC's empty vendor is LLVM's "unknown" vendor; OS version suffixes do

@@ -41,7 +41,7 @@ GCC
 cat > "$work/llvm-config" <<'LLVM'
 #!/bin/sh
 case "$1" in
-    --version) echo "${FIXTURE_LLVM_VERSION:-23.1.3}" ;;
+    --version) echo "${FIXTURE_LLVM_VERSION:-23.1.4}" ;;
     --host-target) echo "${FIXTURE_LLVM_TARGET:-${FIXTURE_ARCH}-unknown-netbsd}" ;;
     *) exit 1 ;;
 esac
@@ -56,6 +56,7 @@ grep -Fxq -- "-B/usr/pkg/gcc16/lib/gcc/${FIXTURE_ARCH}--netbsd/16.2.0/" "$cfg"
 if run accepted > "$work/existing.log" 2>&1; then exit 1; fi
 if (export FIXTURE_GCC_VERSION=12.5.0; run old-gcc) > "$work/old-gcc.log" 2>&1; then exit 1; fi
 if (export FIXTURE_LLVM_VERSION=22.1.0; run old-llvm) > "$work/old-llvm.log" 2>&1; then exit 1; fi
+if (export FIXTURE_LLVM_VERSION=23.1.3; run previous-llvm) > "$work/previous-llvm.log" 2>&1; then exit 1; fi
 case "$arch" in aarch64) other=x86_64;; x86_64) other=aarch64;; esac
 if (export FIXTURE_LLVM_TARGET=$other-unknown-netbsd; run other-arch) > "$work/other-arch.log" 2>&1; then exit 1; fi
 grep -q 'target ABI mismatch' "$work/other-arch.log"
@@ -67,12 +68,13 @@ ln -s "$work/foreign-libstdc++.so" "$prefix/lib/libstdc++.so"
 if run escape > "$work/escape.log" 2>&1; then exit 1; fi
 rm "$prefix/lib/libstdc++.so"
 if run missing > "$work/missing.log" 2>&1; then exit 1; fi
-for name in old-gcc old-llvm linux abi duplicate escape missing; do
+for name in old-gcc old-llvm previous-llvm linux abi duplicate escape missing; do
     [ ! -e "$work/$name" ]
     grep -q '^Invalid cross GCC metadata:' "$work/$name.log"
 done
 grep -q 'expected GCC 16.2.0' "$work/old-gcc.log"
-grep -q 'expected LLVM 23.1.3' "$work/old-llvm.log"
+grep -q 'expected LLVM 23.1.4' "$work/old-llvm.log"
+grep -q 'expected LLVM 23.1.4' "$work/previous-llvm.log"
 grep -q 'unsupported LLVM target' "$work/linux.log"
 grep -q 'target ABI mismatch' "$work/abi.log"
 grep -q 'duplicate C++ include directory' "$work/duplicate.log"

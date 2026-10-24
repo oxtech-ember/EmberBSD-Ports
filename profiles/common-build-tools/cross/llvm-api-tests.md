@@ -4,7 +4,7 @@ These consumers test the installed common LLVM package on EmberBSD/AArch64
 or amd64. The builder selects the exact CPU from the checked metadata,
 records it in the hashed bundle and uses the selected GCC16 startup objects.
 The runner rejects a different target CPU.
-Current probes select 23.1.3; the earlier 23.1.2 runtime receipt remains historical.
+Current probes select 23.1.4; the earlier runtime receipts remain historical.
 They do not install another runtime or build LLVM. Cross compilation requires
 the accepted GCC16 cross tools, the target sysroot with LLVM's dependencies,
 and the [host metadata tool](../../common-graphics/cross/llvm-config.md)

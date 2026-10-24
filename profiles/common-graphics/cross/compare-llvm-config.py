@@ -29,8 +29,8 @@ def compare(args):
     if not sdk.safe_absolute(target_prefix):
         raise ValueError('invalid reference prefix')
     target_api.for_triple(r['target_triple'])
-    if (reference / 'version').read_text().strip() != '23.1.3' or (reference / 'host-target').read_text().strip() != r['target_triple']:
-        raise ValueError('reference must match the selected LLVM 23.1.3 NetBSD target exactly')
+    if (reference / 'version').read_text().strip() != '23.1.4' or (reference / 'host-target').read_text().strip() != r['target_triple']:
+        raise ValueError('reference must match the selected LLVM 23.1.4 NetBSD target exactly')
     failed = []
     for option in OPTIONS:
         actual = shlex.split(sdk.capture(str(work / 'bin/llvm-config'), *arguments(option)))

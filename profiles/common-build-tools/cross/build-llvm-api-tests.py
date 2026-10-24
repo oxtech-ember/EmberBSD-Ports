@@ -31,8 +31,8 @@ def build(args):
         raise ValueError('Require validated staged target prefix and matching sysroot')
     triple = query([config, '--host-target'])
     match = re.fullmatch(r'(aarch64|x86_64)-(?:unknown)?-netbsd(?:[0-9]+(?:\.[0-9]+)*)?', triple)
-    if query([config, '--version']) != '23.1.3' or not match:
-        raise ValueError('Require staged LLVM23.1.3 for supported NetBSD CPU')
+    if query([config, '--version']) != '23.1.4' or not match:
+        raise ValueError('Require staged LLVM23.1.4 for supported NetBSD CPU')
     arch = match[1]
     machine = {'aarch64': 183, 'x86_64': 62}[arch]
     if query([config, '--has-rtti']) != 'YES' or query([config, '--link-shared', '--shared-mode', 'core', 'bitreader', 'bitwriter', 'orcjit', 'native']) != 'shared':

@@ -27,7 +27,7 @@ def run(expected, command):
 (work / 'comment').write_text('LLVM Python ownership fixture')
 (work / 'description').write_text('Test data; this package is not a compiler.')
 (work / 'build-info').write_text('OPSYS=NetBSD\nOS_VERSION=11.0\nMACHINE_ARCH=aarch64\nOBJECT_FMT=ELF\n')
-old, new = 'py314-llvm-lit-23.1.3', 'py315-llvm-lit-23.1.3nb1'
+old, new = 'py314-llvm-lit-23.1.4', 'py315-llvm-lit-23.1.4nb1'
 consumer, replacement = 'llvm-python-consumer-1.0', 'llvm-python-consumer-1.0nb1'
 packages = {}
 for name, dependency, conflict in [(old, None, False), (new, None, True), (consumer, old, False), (replacement, new, False)]:

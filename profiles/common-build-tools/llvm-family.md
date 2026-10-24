@@ -1,44 +1,49 @@
 # LLVM 23 common family
 
-This profile prepares matching LLVM 23.1.3, Clang, LLD and upstream
-Python315 lit for the common Mesa26/TinyGo dependency closure. It extends
-[the common profile](README.md), based on pkgsrc
-`fff4deb639a1a640476203c80f752fb77b6cb14b`. The previously accepted LLVM 23.1.2 core package
-cross-builds on macOS and passes installed C API and ORC JITLink acceptance
-on Zero 3W. [Mesa consumers](../common-graphics/cross/mesa-package.md) also pass
-installed runtime checks. Clang 23.1.2 cross-packaging also passes; installed Clang/LLD and TinyGo remain separate gates;
-core acceptance does not establish an installed compiler family.
-The `llvm-23.1.2nb1` revision also carries the shared
-[DWARF32/64 DWP package-index repair](cross/llvm-dwp-tests.md), with mixed-width,
-type-unit, live-debugger and malformed-input checks in the AArch64 VM.
-Its installed 104-case matrix and the existing C API/ORC consumers pass
-without loader overrides; package integrity covers all 2,789 payload entries.
+This profile prepares matching LLVM 23.1.4, Clang, LLD and upstream
+Python315 lit for the common Mesa26/TinyGo dependency closure.
+It extends [the common profile](README.md), based on pkgsrc
+`fff4deb639a1a640476203c80f752fb77b6cb14b`.
+The [Python migration](cross/llvm-python315.md) keeps separate interpreter and compiler evidence.
 
-The [Python 3.15 package migration](cross/llvm-python315.md) preserves the
-compiler payload and distinguishes metadata repair from a new compiler build.
+## Current 23.1.4 source update
 
-## Current 23.1.3 migration
+The [official stable 23.1.4 release](https://github.com/llvm/llvm-project/releases/tag/llvmorg-23.1.4)
+was published on 2026-10-20. All five package roles share its source version.
+The four distinfo records use the verified 179,272,572-byte monorepo archive.
+Its SHA256 is `819ecf7351f1a66f76b2d701d8942faaf5faeb324cb90c9d5b090de142434bb2`.
+The existing seven LLVM patches and one Clang patch apply with zero fuzz.
+The DWP repair remains applied once. All normal and experimental backends,
+platform rules, options and runtime/SDK partitions remain unchanged.
 
-The [official stable 23.1.3 archive](https://github.com/llvm/llvm-project/releases/tag/llvmorg-23.1.3) was published on 2026-10-06. All four
-recipes now share its version and digests. Zero-fuzz patches, generated-header
-contracts, negative-input checks and the exported version selection pass.
-The DWP repair remains applied once. Matching native generators execute on
-macOS; the actual host metadata helper reports target AArch64, shared LLVM
-and RTTI. QDoc also passes a C++ documentation consumer with the official
-native LLVM/Clang SDK. The full LLVM 23.1.3 core passes installed C API and
-ORC JITLink checks on CM5. The current
-[runtime/SDK split](cross/llvm-linux-aarch64.md) also passes both independent
-Linux/GCC16 builds, exact installed payload checks and API/JIT package lifecycle
-acceptance in E34 VM. Its sealed metadata helper agrees with all 16 actual
-target query groups. Complete Clang and [LLD](cross/lld.md) cross packages pass
-normal package checks and sysroot installation; their installed execution
-remains separate. The [Linux/E34 Mesa consumer](../common-graphics/cross/mesa-linux-aarch64.md)
-passes installed llvmpipe rendering and all 39 target invocations. Renewed Qt
-acceptance remains separate. Dated 23.1.2 receipts retain their original scope.
+Active Clang, lit, Mesa, metadata helpers and native generator consumers select
+23.1.4. Upstream lit reports `23.1.4dev`; its wheel name is `lit-23.1.4.dev0`.
+The pinned llvm-config source and the five Darwin MC/Mach-O interface sources
+are unchanged from 23.1.3. This is source compatibility evidence.
+It does not establish native tool execution or a new GCC16 producer.
+The historical macOS binary pin remains in `sources.tsv`; the new pin is separate.
+No 23.1.4 binary archive was downloaded for this source update.
+
+The current source gate requires an explicit SDK `DIGEST` executable.
+It compares unaffected Python, Meson and GCC exports through the production
+export graph from HEAD. It does not maintain a second GCC patch list.
+LLVM 23.1.4 full builds, package checks, installed runtime and downstream
+consumer acceptance remain pending. The receipts below retain their original versions.
+
+## Previous runtime acceptance
+
+The [Linux/GCC16 runtime and SDK receipt](cross/llvm-linux-aarch64.md)
+records full LLVM 23.1.3 builds, installed C API/ORC checks and package lifecycle
+acceptance. Its [Mesa consumer](../common-graphics/cross/mesa-linux-aarch64.md)
+passes installed llvmpipe rendering and all 39 target invocations.
+Earlier [CM5 and Zero 3W API checks](cross/llvm-api-tests.md) and the
+[DWP matrix](cross/llvm-dwp-tests.md) retain their recorded versions and scope.
+Full Clang/LLD staging passed; installed Clang/LLD, TinyGo and renewed Qt
+acceptance remain separate. These results do not accept LLVM 23.1.4.
 
 ## One family and development payload
 
-All four recipes use the official monorepo archive and matching distinfo.
+All five package roles use the official monorepo archive and matching distinfo.
 [sources.tsv](sources.tsv) records its URL and SHA256. Shared version selection
 rejects unprepared recipes: compiler-rt, libc++, libc++abi, libunwind, MLIR,
 Flang, OpenMP, extra tools and wasi runtimes cannot silently combine an LLVM21
@@ -71,8 +76,8 @@ are removed. C/C++ builds use pkgsrc wrappers with GCC_REQD16.2 and common Pytho
 Native cache, RTTI, dependency and ELF evidence remains required.
 
 NetBSD cross builds now use the [runtime/SDK package split](cross/llvm-runtime.md).
-The execution-only image receives `llvm-23.1.3nb1`; the build-host target sysroot
-also needs `llvm-devel-23.1.3nb2`. Native LLVM remains a full package.
+The execution-only image receives `llvm-23.1.4nb1`; the build-host target sysroot
+also needs `llvm-devel-23.1.4nb2`. Native LLVM remains a full package.
 The [Linux/GCC16 split-package acceptance](cross/llvm-linux-aarch64.md) passes
 both full builds and installed C API/ORC package lifecycle checks in E34 VM.
 Its sealed native metadata helper passes all 16 target query groups and Mesa's
@@ -146,12 +151,12 @@ disable native defaults. Projects retain -nostdinc++, -nostdlib, -nodefaultlibs,
 The new py-llvm-lit recipe uses upstream lit's module/setup.py and lit.py launcher,
 common Python315 and ordinary wheel machinery. LLVM no longer installs a
 source/build-tree-dependent stub. Build-tree lit remains for upstream tests.
-Upstream reports 23.1.3dev; expected wheel metadata is 23.1.3.dev0, not silently
-relabeled. No project Python helper is added. Wheel payload/shebang/PLIST checks
-await native staging.
+Upstream reports 23.1.4dev; expected wheel metadata is 23.1.4.dev0, not silently
+relabeled. Wheel payload, shebang and PLIST checks await native staging.
 
 ```sh
 export EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK
+export DIGEST=/absolute/sdk/bin/digest
 sh profiles/common-build-tools/tests/source-profile.sh \
     /absolute/verified-distfiles /absolute/new-work llvm-source
 ```
@@ -161,13 +166,12 @@ pkgsrc checksum.awk, full zero-fuzz forward series, corrupt/raw-RCS/missing/
 reversed/repeated failures, exact exports and refused existing/unknown/missing-patch
 exports. Accepted Python/Meson/GCC recipe bytes are compared without rerunning
 unrelated suites. Target/PLIST declarations are source contracts, not builds.
-The default source gate includes LLVM; python-source preserves its narrow scope.
 
 The generated-header gate is independently usable with the verified pristine tree:
 
 ```sh
 sh profiles/common-build-tools/tests/llvm-generated-headers.sh \
-    /absolute/llvm-project-23.1.3.src \
+    /absolute/llvm-project-23.1.4.src \
     pkgsrc /absolute/new-header-check
 ```
 
@@ -178,20 +182,17 @@ by upstream; Basic JSON outputs do not match its *.inc install rule. This named
 source contract does not execute CMake/TableGen or replace package-file checks.
 
 llvm-selection.sh parses the real exported version block with BSD make:
-four allowed paths and thirteen rejected consumers. Missing BSD make prints SKIP;
-all 17 cases now pass with native BSD make. A bounded native metadata check also
-generates the config with actual GCC16 and existing Clang21.1.8; it does not prove
-LLVM23 driver/link behavior. See [native evidence](native-evidence.md).
-Full native recipe parsing is separate. clang-config.sh uses fixture metadata and
-a real available Clang driver's traces, including causal no-config RED, C/C++, CRT
-search order, cross/SDK optout, static and no-default-library modes. Dummy CRT
-files are never linked. AppleClang21 is comparative evidence, not native LLVM23.
+five allowed paths and thirteen rejected consumers. Missing BSD make prints SKIP.
+Full native recipe parsing remains separate. clang-config.sh uses fixture metadata
+and real available Clang driver traces. Dummy CRT files are never linked.
+See [native evidence](native-evidence.md) for its original tool versions and scope.
 llvm-lit.sh stages actual upstream modules in a private Python315 environment,
 renames the source tree away and runs upstream shell-format PASS/XFAIL/FAIL without
 PYTHONPATH. FAIL must return 1. A missing or older interpreter is an error.
-LLVM 23.1.3 requires Python >=3.8 for its tests. Its lit package metadata has
+LLVM 23.1.4 requires Python >=3.8 for its tests. Its lit package metadata has
 no upper Python bound, and its resource-limit fixture handles Python 3.15.
-The pinned source passes this bounded launcher contract on host Python 3.15.0.
+The earlier source passed this bounded launcher contract on host Python 3.15.0.
+The 23.1.4 launcher check requires the matching common Python315 producer.
 This does not establish target wheel installation or the full LLVM test suite.
 
 `llvm-lit-selection.py` queries the complete recipe with real BSD make:
@@ -209,12 +210,6 @@ Requests for Python314 and unsupported Python316 must fail. The candidate
 Makefile is parsed over the normal export; no package phase or database
 mutation runs. Verify the shared archive through normal pkgsrc `checksum.awk`
 and the unchanged recipe `distinfo` before the launcher test.
-
-The earlier installed
-`py314-llvm-lit-23.1.2` package passed wheel metadata, launcher/module and
-upstream shell-format PASS/XFAIL/FAIL checks in AArch64 UTM. The
-[installed runner](cross/run-llvm-lit-tests.sh) requires the failure exit code;
-it uses the shared Python3.14 provider, without PYTHONPATH overrides.
 
 ## Cross-build and accepted core
 
@@ -236,27 +231,12 @@ Its stage proof reproduces CMake's exact target strip operation and requires
 byte-identical output; normal install-strip remains enabled. All 16 query
 groups agree with llvm-config executed on the actual target.
 
-On 2026-10-08 the complete LLVM23.1.2 package passed ordinary pkgsrc file,
-dependency, interpreter, PIE, RELRO, RPATH and work-directory checks. Two
-inherited opt-viewer permission warnings remain; there were no check errors.
-The package retains all selected normal/experimental backends, RTTI, the
-shared library, static archives and test-development support.
-
-Installed normally on Orange Pi Zero 3W (A733), it passed
-[C API/bitcode and four default ORC JITLink lifecycles](cross/llvm-api-tests.md).
-The tests verify shared-library RTTI, real generated-function results,
-resource removal and typed missing-symbol errors. They use ordinary target
-loader paths without global PaX changes or a private LLVM runtime. This is
-focused AArch64 execution evidence, not the full LLVM upstream suite or
-acceptance of other backends, concurrent JIT or arbitrary external relocations.
-
-The [Clang cross workflow](cross/clang.md) provides matching host generators,
-target-only installed paths and checked GCC16 metadata. Its preparation checks
-pass. Full LLVM, Clang and LLD 23.1.3 packages now pass ordinary cross-package
-checks and installation into the build sysroot. On 2026-10-12, installed
-LLVM 23.1.3 also passes the same C API/bitcode and four ORC lifecycles on CM5,
-16 actual target metadata queries and 21 sealed-tool integrity checks.
-Installed Clang/LLD and renewed downstream consumer acceptance remain separate.
+Use the [Clang cross workflow](cross/clang.md) for matching host generators,
+target-only installed paths and checked GCC16 metadata.
+The earlier runtime receipts cover focused AArch64 execution, shared-library
+RTTI, resource removal and missing-symbol errors with normal loader paths.
+They do not cover the full upstream suite, all backends, concurrent JIT or
+arbitrary relocations. Two inherited opt-viewer permission warnings remain.
 
 ## Remaining native gates
 

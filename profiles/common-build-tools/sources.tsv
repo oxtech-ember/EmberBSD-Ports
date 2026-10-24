@@ -37,3 +37,5 @@ sqlite-autoconf-3540100.tar.gz	926ef8d3eab93fbf6e06011901273eec076b25594a4e1cdad
 sqlite-src-3540100.zip	387e7f6cad4797b17848c07d453dc6606917bb356a6cfe5a3abafd38c240c71b	https://sqlite.org/2026/sqlite-src-3540100.zip
 sqlite-doc-3540100.zip	e9f634ac28a4c7b48f5c389e4b08c039654ec1487512092b330ccfcfdc0816e0	https://sqlite.org/2026/sqlite-doc-3540100.zip
 pci.ids-86e7077e4b7947be28d4de891c69f7ae64da0286.tar.gz	0935bb070fcb0a199e0a918e977e233e57a463f0e518733f3377bee8ab120f72	https://github.com/pciutils/pciids/archive/86e7077e4b7947be28d4de891c69f7ae64da0286.tar.gz
+llvm-project-23.1.4.src.tar.xz	819ecf7351f1a66f76b2d701d8942faaf5faeb324cb90c9d5b090de142434bb2	https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.4/llvm-project-23.1.4.src.tar.xz
+LLVM-23.1.4-macOS-ARM64.tar.xz	5d3179db39adeca5b17a34d82708fe976bc60e055b05fe557878fb3fb64d39ef	https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.4/LLVM-23.1.4-macOS-ARM64.tar.xz

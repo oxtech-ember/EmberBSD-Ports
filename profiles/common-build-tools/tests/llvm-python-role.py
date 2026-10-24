@@ -39,10 +39,10 @@ for package, cross in [('llvm', 'yes'), ('llvm-devel', 'yes'), ('llvm', 'no')]:
 runtime, sdk, native = rows
 for field in ('CFLAGS', 'CXXFLAGS', 'CPPFLAGS', 'LDFLAGS', 'CMAKE_CONFIGURE_ARGS', 'CONFIGURE_ENV'):
     assert runtime[field] == sdk[field], 'Cross inputs differ: ' + field
-assert [r['PKGNAME'] for r in rows] == ['llvm-23.1.3nb1', 'llvm-devel-23.1.3nb2', 'llvm-23.1.3']
+assert [r['PKGNAME'] for r in rows] == ['llvm-23.1.4nb1', 'llvm-devel-23.1.4nb2', 'llvm-23.1.4']
 assert all(r['PYTHON_FOR_BUILD_ONLY'] == 'tool' and re.search(r'python[0-9]+>=', r['TOOL_DEPENDS']) and r['BUILDLINK_DEPMETHOD.py-llvm-lit'] == 'build' for r in (runtime, sdk))
 assert not re.search(r'python[0-9]+|llvm-lit', runtime['DEPENDS'])
-assert re.search(r'python[0-9]+>=', sdk['DEPENDS']) and 'llvm-lit-23.1.3' in sdk['DEPENDS']
+assert re.search(r'python[0-9]+>=', sdk['DEPENDS']) and 'llvm-lit-23.1.4' in sdk['DEPENDS']
 assert runtime['PYTHONBIN'] == sdk['PYTHONBIN'] and sdk['PYTHONBIN'].startswith('/usr/pkg/bin/python') and runtime['REPLACE_PYTHON'] == sdk['REPLACE_PYTHON']
-assert native['PYTHON_FOR_BUILD_ONLY'] == 'no' and re.search(r'/include/python[0-9.]+', native['CFLAGS']) and 'llvm-lit-23.1.3' in native['DEPENDS']
+assert native['PYTHON_FOR_BUILD_ONLY'] == 'no' and re.search(r'/include/python[0-9.]+', native['CFLAGS']) and 'llvm-lit-23.1.4' in native['DEPENDS']
 print('PASS: exact common-root post-barrier compile inputs, Python/lit roles, native behavior and target shebangs; metadata only')

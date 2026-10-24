@@ -86,14 +86,14 @@ finally:
         lists[kind] = str(path)
     package = work / 'archive-input'
     package.mkdir()
-    contents = '@cwd /usr/pkg\n@name llvm-23.1.3nb1\n'
+    contents = '@cwd /usr/pkg\n@name llvm-23.1.4nb1\n'
     for name, path in zip(runtime, [source / 'runtime.dat', source / 'license']):
         contents += name + '\n@comment MD5:' + hashlib.md5(path.read_bytes()).hexdigest() + '\n'
     (package / '+CONTENTS').write_text(contents)
     (package / '+BUILD_INFO').write_text('OPSYS=NetBSD\nOS_VERSION=11.0\nMACHINE_ARCH=aarch64\nOBJECT_FMT=ELF\n')
-    archive = work / 'llvm-23.1.3nb1.tgz'
+    archive = work / 'llvm-23.1.4nb1.tgz'
     subprocess.run(['/usr/bin/tar', '-czf', str(archive), '-C', str(package), '+CONTENTS', '+BUILD_INFO'], check=True)
-    value = dict(schema=2, version='23.1.3', target=dict(opsys='NetBSD', version='11.0', arch='aarch64', triple='aarch64--netbsd'),
+    value = dict(schema=2, version='23.1.4', target=dict(opsys='NetBSD', version='11.0', arch='aarch64', triple='aarch64--netbsd'),
         source=str(source), build=str(build), recipe=str(recipe), sdk_recipe=str(sdk_recipe), install_strip=True,
         flags={'CXXFLAGS': '-O2', 'CMAKE_CONFIGURE_ARGS': '-DCMAKE_SYSTEM_NAME=NetBSD'}, cmake=selected_cmake,
         python=os.path.realpath(sys.executable), sdk_source=sdk_source, tar='/usr/bin/tar', manifests=lists,

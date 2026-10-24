@@ -4,8 +4,8 @@ NetBSD cross builds for AArch64 and amd64 produce two ordinary source packages:
 
 | Package | Payload |
 | --- | --- |
-| `llvm-23.1.3nb1` | Shared libLLVM, libLTO and libRemarks, their aliases and the upstream license notice. |
-| `llvm-devel-23.1.3nb2` | Target tools, headers, static archives, CMake exports and test support. Requires the exact runtime package. |
+| `llvm-23.1.4nb1` | Shared libLLVM, libLTO and libRemarks, their aliases and the upstream license notice. |
+| `llvm-devel-23.1.4nb2` | Target tools, headers, static archives, CMake exports and test support. Requires the exact runtime package. |
 
 The runtime keeps the original name for dependency and vulnerability matching.
 Runtime revision `nb1` distinguishes it from the earlier complete package.
@@ -16,7 +16,7 @@ The SDK retains explicit Python/lit runtime dependencies and conflicts with
 that earlier package. Native LLVM keeps its complete manifest
 and package identity. The separate SDK requires a NetBSD cross build.
 
-Both recipes use the same LLVM 23.1.3 archive, patches and source component.
+Both recipes use the same LLVM 23.1.4 archive, patches and source component.
 Each performs an independent full build and installation into its own stage.
 This costs two builds. It avoids a shared build-output handoff. All normal and
 experimental backend defaults, RTTI, shared LLVM and installed gtest support

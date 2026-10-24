@@ -51,8 +51,8 @@ def build(arguments):
                        PKG_CONFIG_PATH=str(root / 'prefix/lib/pkgconfig'))
     def query(argv):
         return capture(list(map(str, argv)), env=environment).stdout.decode('utf-8').strip()
-    if query([sdk / 'bin/llvm-config', '--version']) != '23.1.3':
-        raise ValueError('Matching native LLVM 23.1.3 is required')
+    if query([sdk / 'bin/llvm-config', '--version']) != '23.1.4':
+        raise ValueError('Matching native LLVM 23.1.4 is required')
     for name, revision in SOURCE_PINS.items():
         source = root / 'src' / name
         if query(['git', '-C', source, 'rev-parse', 'HEAD']) != revision or query(['git', '-C', source, 'status', '--porcelain']):

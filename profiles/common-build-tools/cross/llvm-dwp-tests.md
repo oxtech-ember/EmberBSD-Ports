@@ -69,10 +69,10 @@ zero-fuzz application, rejection of repeated application and recipe ownership:
 
 ```sh
 sh profiles/common-build-tools/tests/llvm-dwp-source.sh \
-    /absolute/llvm-project-23.1.3.src.tar.xz /absolute/new-source-check
+    /absolute/llvm-project-23.1.4.src.tar.xz /absolute/new-source-check
 ```
 
-The source gate also passes on 23.1.3. The runtime matrix below records the
+The source gate also passes on 23.1.4. The runtime matrix below records the
 previous accepted package; it must be repeated for the replacement library.
 
 ## Matrix and evidence

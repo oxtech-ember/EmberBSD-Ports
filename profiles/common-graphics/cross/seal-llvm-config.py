@@ -56,7 +56,7 @@ def seal_locked(old, expected, destination):
     runtime = r['native_runtime'] if native_platform == 'linux-gnu' else None
     require(native_platform != 'linux-gnu' or isinstance(runtime, dict), 'missing native Linux runtime receipt')
     source, target, native, prefix = [r[k] for k in ('source', 'target_build', 'native_build', 'target_prefix')]
-    require(r.get('version') == '23.1.3' and prefix == r['sysroot'] + '/usr/pkg', 'requires an accepted installed LLVM 23.1.3 helper')
+    require(r.get('version') == '23.1.4' and prefix == r['sysroot'] + '/usr/pkg', 'requires an accepted installed LLVM 23.1.4 helper')
     spec = target_api.for_triple(r['target_triple'])
     proof = r['library_proof']
     require(proof['method'] in ('identical', 'cmake-install-strip') and proof['built_library'] == target + '/lib/libLLVM.so' and proof['staged_library'] == prefix + '/lib/libLLVM-23.so' and proof['staged_sha256'] == r['staged_library_sha256'] and proof['built_sha256' if proof['method'] == 'identical' else 'reproduced_sha256'] == proof['staged_sha256'], 'unsupported historical library proof')

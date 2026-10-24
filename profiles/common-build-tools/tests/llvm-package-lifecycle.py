@@ -29,7 +29,7 @@ assert re.fullmatch('[0-9]{8}', version)
 (work / 'BUILD_INFO').write_text('OPSYS=NetBSD\nOS_VERSION=11.0\nMACHINE_ARCH=x86_64\nOBJECT_FMT=ELF\nLICENSE=2-clause-bsd\nPKGTOOLS_VERSION=' + version + '\nEMBERBSD_TEST_FIXTURE=yes\n')
 (work / 'COMMENT').write_text('Labelled LLVM package partition fixture')
 (work / 'DESCR').write_text('Synthetic text payloads. This is not a LLVM binary package.\n')
-old, runtime, sdk = 'llvm-23.1.3', 'llvm-23.1.3nb1', 'llvm-devel-23.1.3nb2'
+old, runtime, sdk = 'llvm-23.1.4', 'llvm-23.1.4nb1', 'llvm-devel-23.1.4nb2'
 packages = {}
 for name, stage, manifest, dependency in [(old, 'full-stage', 'full', None), (runtime, 'runtime-stage', 'runtime', None), (sdk, 'devel-stage', 'devel', runtime)]:
     prefix = Path(fixture, stage, 'usr/pkg')
@@ -37,7 +37,7 @@ for name, stage, manifest, dependency in [(old, 'full-stage', 'full', None), (ru
     files = Path(fixture, manifest, '.PLIST_nokeywords').read_text()
     text = '@name ' + name + '\n@cwd /usr/pkg\n'
     if dependency:
-        text += '@pkgdep ' + dependency + '\n@pkgcfl llvm<23.1.3nb1\n'
+        text += '@pkgdep ' + dependency + '\n@pkgcfl llvm<23.1.4nb1\n'
     plist = work / (name + '.plist')
     plist.write_text(text + files)
     packages[name] = work / (name + '.tgz')

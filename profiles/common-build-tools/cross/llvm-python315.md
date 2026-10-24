@@ -1,6 +1,6 @@
 # LLVM family Python 3.15 migration
 
-Clang 23.1.3 installs Python tools for scan-build, scan-view, header maps and
+Clang 23.1.4 installs Python tools for scan-build, scan-view, header maps and
 formatting. They require the target Python interpreter. The compiler ELF files
 have no libpython dependency. Upstream lit remains a runtime package dependency
 of LLVM, Clang and LLD in this profile. LLD has no installed Python scripts.
@@ -8,7 +8,7 @@ The recipes select Python 3.15. The lit recipe rejects another ABI provider,
 because `bin/lit` and `bin/llvm-lit` have no ABI suffix.
 
 Normal new builds use the common current Python and LLVM packages. Existing
-23.1.3 packages can use the bounded
+23.1.4 packages can use the bounded
 [package preparation tool](prepare-llvm-python315.py). Supply the accepted
 NetBSD/aarch64 Clang, LLD and Python315-lit archives, the matching upstream
 Clang source, host Python 3.15, host CMake, target readelf and host pkg_create.

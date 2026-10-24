@@ -89,7 +89,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-selection-') as temporary:
              mock.patch.object(llvm_host.sys, 'executable', controller_python if wrong_python else selection.tool('python')), \
              mock.patch.object(llvm_host, 'SOURCE_SHA', hashlib.sha256(archive.read_bytes()).hexdigest()), \
              mock.patch.object(llvm_host, 'extract_source'), \
-             mock.patch.object(llvm_host, 'query', return_value='LLVM version 23.1.3') as query, \
+             mock.patch.object(llvm_host, 'query', return_value='LLVM version 23.1.4') as query, \
              mock.patch.object(llvm_host, 'log_run') as producer:
             error = None
             try:
@@ -147,7 +147,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-selection-') as temporary:
              mock.patch.object(llvm_host.sys, 'executable', selection.tool('python')), \
              mock.patch.object(llvm_host, 'SOURCE_SHA', hashlib.sha256(archive.read_bytes()).hexdigest()), \
              mock.patch.object(llvm_host, 'extract_source'), \
-             mock.patch.object(llvm_host, 'query', return_value='LLVM version 23.1.3'), \
+             mock.patch.object(llvm_host, 'query', return_value='LLVM version 23.1.4'), \
              mock.patch.object(llvm_host, 'log_run', side_effect=producer):
             llvm_host.native('llvm', command(work))
         call = api.load_native_toolset.call_args

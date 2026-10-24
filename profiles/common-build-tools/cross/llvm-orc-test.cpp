@@ -136,6 +136,6 @@ int main(int argc, char **argv) {
     outs() << "PASS: JITLink/RTTI cycle " << cycle + 1
            << " create, reject, execute, remove, dispose\n";
   }
-  outs() << "PASS: LLVM 23.1.3 ORC LLJIT, four native NetBSD JITLink lifecycles\n";
+  outs() << "PASS: LLVM 23.1.4 ORC LLJIT, four native NetBSD JITLink lifecycles\n";
   return 0;
 }

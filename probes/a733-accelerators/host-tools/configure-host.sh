@@ -18,7 +18,7 @@ for dir in "$work" "$mesa" "$llvm" "$host" "$deps"; do
     case "$dir" in /*) ;; *) echo "Not an absolute path: $dir" >&2; exit 2 ;; esac
 done
 [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ]
-[ "$("$llvm/bin/llvm-config" --version)" = 23.1.3 ]
+[ "$("$llvm/bin/llvm-config" --version)" = 23.1.4 ]
 [ "$(cat "$mesa/VERSION")" = 26.2.5 ]
 macsdk=$(xcrun --sdk macosx --show-sdk-path)
 mkdir -p "$work/tmp" "$work/cache/lto" "$work/logs"

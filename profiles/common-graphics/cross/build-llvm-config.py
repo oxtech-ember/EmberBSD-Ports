@@ -14,7 +14,7 @@ import llvm_target as target_api
 import llvm_native as native_api
 
 UPSTREAM_SHA256 = '7c54727d9deda1689a7e6c9096f6627d73659da04a6ac88c3e0a0595f26e74bb'
-VERSION = '23.1.3'
+VERSION = '23.1.4'
 LOCAL = ['metadata/BuildVariables.inc', 'metadata/LibraryDependencies.inc', 'metadata/ExtensionDependencies.inc',
          'llvm-config.cpp', 'build-llvm-config.py', 'llvm_target.py', 'llvm_native.py', 'llvm_sdk.py',
          'llvm-config.d', 'dependencies.command', 'compile.command', 'receipt.json', 'bin/llvm-config.real', 'bin/llvm-config']
@@ -66,7 +66,7 @@ def build_locked(source, target, native, sysroot, prefix, destination):
     sdk_inputs[str(Path(sys.executable).resolve())] = sdk.digest(sys.executable)
     producer_inputs = {name: sdk.digest(Path(__file__).parent / name) for name in ('build-llvm-config.py', 'llvm_target.py', 'llvm_native.py', 'llvm_sdk.py')}
     cpp = source + '/tools/llvm-config/llvm-config.cpp'
-    require(Path(cpp).is_file() and sdk.digest(cpp) == UPSTREAM_SHA256, 'upstream llvm-config.cpp differs from LLVM 23.1.3')
+    require(Path(cpp).is_file() and sdk.digest(cpp) == UPSTREAM_SHA256, 'upstream llvm-config.cpp differs from LLVM 23.1.4')
     required = [cpp]
     for root in (target, native):
         required += [root + '/' + p for p in ('CMakeCache.txt', 'include/llvm/Config/llvm-config.h', 'include/llvm/Config/config.h', 'include/llvm/Config/abi-breaking.h')]
@@ -80,7 +80,7 @@ def build_locked(source, target, native, sysroot, prefix, destination):
     variables = definitions(target + '/tools/llvm-config/BuildVariables.inc')
     require(tc.get('CMAKE_SYSTEM_NAME') == 'NetBSD' and tc.get('CMAKE_SYSTEM_PROCESSOR') in ('aarch64', 'x86_64'), 'target must be configured for NetBSD/aarch64 or NetBSD/x86_64')
     require(tc.get('CMAKE_SYSROOT') and sdk.existing_directory(tc['CMAKE_SYSROOT']) == sysroot, 'supplied sysroot differs from the target configuration')
-    require(all(string(d, 'LLVM_VERSION_STRING') == VERSION for d in (td, nd)), 'target and native LLVM versions must both be 23.1.3')
+    require(all(string(d, 'LLVM_VERSION_STRING') == VERSION for d in (td, nd)), 'target and native LLVM versions must both be 23.1.4')
     require(string(config, 'PACKAGE_VERSION') == string(td, 'LLVM_VERSION_STRING'), 'target PACKAGE_VERSION disagrees with LLVM_VERSION_STRING')
     require(sdk.existing_directory(nc['CMAKE_HOME_DIRECTORY']) == source, 'native source does not match the supplied source tree')
     require(string(variables, 'LLVM_OBJ_ROOT') == target, 'target object root does not match TARGET_BUILD')

@@ -9,8 +9,8 @@ import tarfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / '../../pkgsrc/lang/llvm/files'))
 from sdk_source import load_sdk
 
-SOURCE = 'llvm-project-23.1.3.src'
-SOURCE_SHA = 'c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34'
+SOURCE = 'llvm-project-23.1.4.src'
+SOURCE_SHA = '819ecf7351f1a66f76b2d701d8942faaf5faeb324cb90c9d5b090de142434bb2'
 
 
 def checked_paths(values):
@@ -92,7 +92,7 @@ def native(kind, arguments):
         raise SDKError('Executable native tools required')
     if sha256_file(archive) != SOURCE_SHA:
         raise SDKError('Pinned LLVM source archive SHA256 differs')
-    if llvm and (not Path(llvm, 'lib/cmake/llvm/LLVMConfig.cmake').is_file() or query([llvm + '/bin/llvm-config', '--version']) != '23.1.3'):
+    if llvm and (not Path(llvm, 'lib/cmake/llvm/LLVMConfig.cmake').is_file() or query([llvm + '/bin/llvm-config', '--version']) != '23.1.4'):
         raise SDKError('Matching native LLVM build required')
     os.mkdir(work)
     os.mkdir(work + '/source')
@@ -142,7 +142,7 @@ def native(kind, arguments):
     for tool in outputs:
         path = work + '/native/bin/' + tool
         version = query([path, '--version'])
-        if '23.1.3' not in version:
+        if '23.1.4' not in version:
             raise SDKError('Unexpected native generator version: ' + tool)
         result[tool] = dict(sha256=sha256_file(path), version=version)
     if hashes != {p: sha256_file(os.path.realpath(p)) for p in inputs}:

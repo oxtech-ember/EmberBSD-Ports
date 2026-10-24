@@ -48,7 +48,7 @@ def context(path):
     target, arch = value['target'], value['target']['arch']
     triple = {'aarch64': 'aarch64--netbsd', 'x86_64': 'x86_64--netbsd'}.get(arch)
     check(triple and target == dict(opsys='NetBSD', version='11.0', arch=arch, triple=triple), 'Unsupported LLVM target ABI')
-    check(value['version'] == '23.1.3', 'Unsupported LLVM source version')
+    check(value['version'] == '23.1.4', 'Unsupported LLVM source version')
     check(type(value['install_strip']) is bool, 'Explicit CMake install strip mode required')
     check(isinstance(value['flags'], dict) and value['flags'], 'Missing compile contract')
     for key in ('source', 'build', 'recipe', 'sdk_recipe'):
@@ -103,7 +103,7 @@ def validate_full_stage(value, stage):
     contents = capture([value['tar'], '-xOf', archive, '+CONTENTS']).stdout.decode().splitlines()
     cwd = [line for line in contents if line.startswith('@cwd ')]
     check(cwd and all(line == '@cwd /usr/pkg' for line in cwd), 'Runtime package prefix mismatch')
-    check([line for line in contents if line.startswith('@name ')] == ['@name llvm-23.1.3nb1'], 'Runtime package identity mismatch')
+    check([line for line in contents if line.startswith('@name ')] == ['@name llvm-23.1.4nb1'], 'Runtime package identity mismatch')
     expected = [s for s in Path(lists['runtime']).read_text().splitlines() if s and not s.startswith('@comment ')]
     actual = []
     for i, name in enumerate(contents):

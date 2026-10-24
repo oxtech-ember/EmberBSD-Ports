@@ -11,8 +11,8 @@ command -v "$python" >/dev/null 2>&1 || { echo 'Python 3.15 is required.' >&2; e
 "$python" --version | grep -q '^Python 3\.15\.'
 "$python" --version
 mkdir "$work/source"
-tar -xf "$archive" -C "$work/source" llvm-project-23.1.3.src/llvm/utils/lit
-source=$work/source/llvm-project-23.1.3.src/llvm/utils/lit
+tar -xf "$archive" -C "$work/source" llvm-project-23.1.4.src/llvm/utils/lit
+source=$work/source/llvm-project-23.1.4.src/llvm/utils/lit
 "$python" -m venv "$work/venv"
 # Stage the actual upstream module for the named import/launcher contract.
 # This is not a wheel build/install or PLIST acceptance.
@@ -28,7 +28,7 @@ printf '# XFAIL: *\n# RUN: false\n' > "$work/suite/expected.txt"
 mv "$work/source" "$work/source-unavailable"
 unset PYTHONPATH
 "$work/venv/bin/python" "$work/venv/bin/llvm-lit" --version | tee "$work/version.log"
-grep -q '23.1.3dev' "$work/version.log"
+grep -q '23.1.4dev' "$work/version.log"
 "$work/venv/bin/python" "$work/venv/bin/llvm-lit" -v "$work/suite/pass.txt" "$work/suite/expected.txt" > "$work/pass.log" 2>&1
 grep -q 'PASS:' "$work/pass.log"
 grep -q 'XFAIL:' "$work/pass.log"

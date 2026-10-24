@@ -1,7 +1,7 @@
 # LLVM full-stage reuse validator
 
 `pkgsrc/lang/llvm/files/reuse-package-stage.py` validates a repeat installation
-from one accepted LLVM 23.1.3 cross build. It does not build LLVM, install a
+from one accepted LLVM 23.1.4 cross build. It does not build LLVM, install a
 package into a sysroot, or create a package identity. The opt-in pkgsrc adapter retains ordinary SDK package checks.
 Acceptance of an actual runtime/SDK pair remains a separate build result.
 
@@ -19,7 +19,7 @@ or dependency-closure auditor.
 
 The input JSON uses schema `2` and these fields:
 
-- `version`: `23.1.3`.
+- `version`: `23.1.4`.
 - `target`: `opsys`, `version`, `arch`, and `triple`. Supported pairs are
   NetBSD 11.0 with `aarch64`/`aarch64--netbsd` or
   `x86_64`/`x86_64--netbsd`.

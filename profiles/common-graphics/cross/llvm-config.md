@@ -5,7 +5,7 @@ the EmberBSD LLVM package. The existing native generator build's `llvm-config`
 describes that host and must not be used as target metadata. The target
 executable cannot run directly on macOS or Linux.
 
-`build-llvm-config.py` compiles the pinned upstream LLVM 23.1.3
+`build-llvm-config.py` compiles the pinned upstream LLVM 23.1.4
 `tools/llvm-config/llvm-config.cpp`. It reuses the existing native Support,
 TargetParser and Demangle archives; it does not build LLVM libraries. Python 3.15,
 the explicit SDK host API1 source, the original native C++ compiler and shasum
@@ -38,7 +38,7 @@ The sealed tool is `WORK/sealed/bin/llvm-config`. Run the seal regression
 below separately with a fresh target reference.
 
 The source is the `llvm` subdirectory, not the llvm-project root. The two build
-directories must have matching LLVM 23.1.3 sources and completed generated
+directories must have matching LLVM 23.1.4 sources and completed generated
 metadata. Keep the input trees unchanged through building, acceptance and
 sealing. The sealed tool then permits build-tree cleanup while checking the
 installed package on every query. Use a fresh output directory.
@@ -218,7 +218,7 @@ sh record-llvm-config.sh --target amd64 /absolute/target-prefix/bin/llvm-config 
 ```
 
 The default remains `--target aarch64`. The capture requires the selected
-NetBSD `uname -p`, a matching little-endian ELF64 executable, LLVM 23.1.3 and
+NetBSD `uname -p`, a matching little-endian ELF64 executable, LLVM 23.1.4 and
 the matching NetBSD 11 target triple before it creates the output directory.
 Both GNU and `unknown` vendor spellings are accepted. Use the installed base
 `readelf`, or set `READELF` to an explicit target-native diagnostic executable.

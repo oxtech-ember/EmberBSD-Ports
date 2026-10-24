@@ -58,7 +58,7 @@ def llvm_runtime_payload(name, paths):
     expected = b'''lib/libLLVM.so.23.1 lib/libLLVM-23.so lib/libLLVM.so
         lib/libLTO.so.23.1 lib/libLTO.so lib/libRemarks.so.23.1 lib/libRemarks.so
         include/llvm/Support/LICENSE.TXT'''.split()
-    check(name == 'llvm-23.1.3nb1' and set(paths) == {b'/usr/pkg/' + p for p in expected},
+    check(name == 'llvm-23.1.4nb1' and set(paths) == {b'/usr/pkg/' + p for p in expected},
           f'LLVM runtime package has an unprepared identity or SDK/missing payload: {name}')
 
 

@@ -167,7 +167,7 @@ print(json.dumps({name:str(pathlib.Path(module.__file__).resolve()) for name,mod
             return destination.resolve(strict=True)
 
         mesa_archive = fetch('mesa-26.2.5.tar.xz', graphics / 'sources.tsv')
-        llvm_archive = fetch('LLVM-23.1.3-macOS-ARM64.tar.xz', PORTS / 'profiles/common-build-tools/sources.tsv')
+        llvm_archive = fetch('LLVM-23.1.4-macOS-ARM64.tar.xz', PORTS / 'profiles/common-build-tools/sources.tsv')
         # Import this producer into the current controller. Do not nest an owned
         # controller around its owned version/dependency commands.
         sys.path.insert(0, str(cross))
@@ -180,7 +180,7 @@ print(json.dumps({name:str(pathlib.Path(module.__file__).resolve()) for name,mod
         finally:
             os.environ.clear()
             os.environ.update(previous_environment)
-        sdk = work / 'llvm-sdk/LLVM-23.1.3-macOS-ARM64'
+        sdk = work / 'llvm-sdk/LLVM-23.1.4-macOS-ARM64'
         for name, revision in khronos_pins(helpers).items():
             source = work / 'deps/src' / name
             source.mkdir(parents=True)

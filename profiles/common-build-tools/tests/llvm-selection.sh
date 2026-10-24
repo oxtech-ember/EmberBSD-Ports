@@ -18,10 +18,10 @@ cat > "$work/Makefile" <<'MAKE'
 all:
 	@if test -n '${PKG_FAIL_REASON:U}'; then \
 	    printf '%s\n' '${PKG_FAIL_REASON:U}'; exit 1; fi
-	@test '${LLVM_VERSION}' = 23.1.3
-	@test '${DISTNAME}' = llvm-project-23.1.3.src
+	@test '${LLVM_VERSION}' = 23.1.4
+	@test '${DISTNAME}' = llvm-project-23.1.4.src
 MAKE
-for path in lang/llvm lang/clang devel/lld devel/py-llvm-lit; do
+for path in lang/llvm lang/llvm-devel lang/clang devel/lld devel/py-llvm-lit; do
     (cd "$work" && "$make" PKGPATH="$path")
     echo "PASS: selected $path"
 done

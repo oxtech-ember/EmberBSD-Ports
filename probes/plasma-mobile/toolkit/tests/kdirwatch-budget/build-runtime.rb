@@ -22,7 +22,7 @@ end
 abort 'wrong target' unless query(cc, '-dumpmachine') == 'aarch64--netbsd'
 abort 'require GCC16.2' unless query(cc, '-dumpfullversion') == '16.2.0'
 linker_version = query(linker, '--version')
-abort 'require current LLD23.1.3' unless linker_version.start_with?('LLD 23.1.3 ')
+abort 'require current LLD23.1.4' unless linker_version.start_with?('LLD 23.1.4 ')
 source = __dir__ + '/runtime.cpp'
 runtime = __dir__ + '/runtime.sh'
 prefix = sysroot + '/usr/pkg'
@@ -52,7 +52,7 @@ abort 'not AArch64 ELF64' unless header.byteslice(0, 6) == "\x7fELF\x02\x01" && 
 program = query(readelf, '-l', binary)
 abort 'wrong interpreter' unless program.include?('Requesting program interpreter: /libexec/ld.elf_so')
 comment = query(readelf, '-p', '.comment', binary)
-abort 'missing actual LLD evidence' unless comment.include?('Linker: LLD 23.1.3')
+abort 'missing actual LLD evidence' unless comment.include?('Linker: LLD 23.1.4')
 File.write(output + '/elf.txt', program + "\n" + query(readelf, '-d', binary) + "\n" + comment)
 abort 'inputs changed' unless hashes.all? { |path, hash| Digest::SHA256.file(path).hexdigest == hash }
 FileUtils.cp(runtime, output + '/runtime.sh')

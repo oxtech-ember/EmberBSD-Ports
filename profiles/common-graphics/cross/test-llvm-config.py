@@ -35,7 +35,7 @@ def test(args):
         check(name, status != 0 and message in err and (output == work or not output.exists()))
 
     out, _, status = sdk.query(tool, '--version', '--host-target', '--has-rtti', '--assertion-mode')
-    check('actual upstream tool reports target version/triple/RTTI/assertions', status == 0 and out == f"23.1.3\n{r['target_triple']}\nYES\n{r.get('target_assertions', 'OFF')}\n")
+    check('actual upstream tool reports target version/triple/RTTI/assertions', status == 0 and out == f"23.1.4\n{r['target_triple']}\nYES\n{r.get('target_assertions', 'OFF')}\n")
     out, _, status = sdk.query(tool, '--components')
     required = ['aarch64', 'amdgpu', 'riscv', 'x86', 'xtensa', 'orcjit', 'jitlink', 'native'] if spec['processor'] == 'aarch64' else ['x86', 'orcjit', 'jitlink', 'native']
     check('target component graph includes the selected backend and ORC', status == 0 and set(required) <= set(out.split()))
@@ -72,7 +72,7 @@ def test(args):
     changed_source = tmp / 'source'
     (changed_source / 'tools/llvm-config').mkdir(parents=True)
     (changed_source / 'tools/llvm-config/llvm-config.cpp').write_text(Path(r['source'] + '/tools/llvm-config/llvm-config.cpp').read_text() + '\n// changed upstream input\n')
-    refusal('rejects changed upstream llvm-config source', [str(changed_source), *inputs[1:]], tmp / 'wrong-source', 'differs from LLVM 23.1.3')
+    refusal('rejects changed upstream llvm-config source', [str(changed_source), *inputs[1:]], tmp / 'wrong-source', 'differs from LLVM 23.1.4')
     changed = tmp / 'leaked-target'
     names = ['CMakeCache.txt', 'include/llvm/Config/llvm-config.h', 'include/llvm/Config/config.h', 'include/llvm/Config/abi-breaking.h', 'tools/llvm-config/BuildVariables.inc', 'tools/llvm-config/LibraryDependencies.inc', 'tools/llvm-config/ExtensionDependencies.inc']
     for name in names:

@@ -10,8 +10,8 @@ RESUME=${RESUME:-0}
 : "${CMAKE:?Set an absolute native CMake executable}"
 : "${NINJA:?Set an absolute native Ninja executable}"
 : "${WAYLAND_SCANNER:?Set the matching native Wayland scanner}"
-: "${HOST_LLVM_BUILD:?Set the completed native LLVM 23.1.3 build}"
-: "${HOST_CLANG_BUILD:?Set the completed native Clang 23.1.3 build}"
+: "${HOST_LLVM_BUILD:?Set the completed native LLVM 23.1.4 build}"
+: "${HOST_CLANG_BUILD:?Set the completed native Clang 23.1.4 build}"
 : "${HOST_DBUS_PREFIX:?Set the native D-Bus prefix with headers, library and DBus1 CMake exports}"
 HOST_CC=${HOST_CC:-/usr/bin/cc}
 HOST_CXX=${HOST_CXX:-/usr/bin/c++}
@@ -40,7 +40,7 @@ if ! (cd "$zstd_probe" && "$CMAKE" -E tar cf probe.tar.zst --zstd empty) > "$zst
     exit 2
 fi
 rm -rf "$zstd_probe"
-[ "$("$HOST_LLVM_BUILD/bin/llvm-config" --version)" = 23.1.3 ]
+[ "$("$HOST_LLVM_BUILD/bin/llvm-config" --version)" = 23.1.4 ]
 [ -s "$HOST_CLANG_BUILD/lib/libclang.dylib" ]
 [ -s "$HOST_CLANG_BUILD/lib/libclangHandleCXX.a" ]
 [ -f "$HOST_CLANG_BUILD/lib/cmake/clang/ClangConfig.cmake" ]

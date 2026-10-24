@@ -1,6 +1,6 @@
 # Cross-build the complete LLD package
 
-LLD 23.1.3 uses the same verified monorepo archive and installed LLVM
+LLD 23.1.4 uses the same verified monorepo archive and installed LLVM
 provider as [the compiler family](../llvm-family.md). The build keeps
 COFF, Common, ELF, MachO, MinGW and Wasm development archives, all linker
 entry points, public headers and CMake exports. Upstream tests stay enabled.

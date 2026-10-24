@@ -12,7 +12,7 @@ cd "$work"
 sysctl kern.boottime > boot.before
 pkg_info -e clang > package.txt
 clang --version > version.txt
-grep -q 'version 23.1.3' version.txt
+grep -q 'version 23.1.4' version.txt
 clang -std=c11 -Wall -Wextra -Werror "$source/c-api.c" -I/usr/pkg/include \
     -L/usr/pkg/lib -Wl,-rpath,/usr/pkg/lib -lclang -o c-api > c-build.log 2>&1
 clang++ -std=c++20 -Wall -Wextra -Werror -pthread "$source/runtime.cc" -o runtime \

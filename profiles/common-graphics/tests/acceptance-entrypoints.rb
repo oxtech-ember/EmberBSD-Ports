@@ -34,7 +34,7 @@ Dir.mktmpdir('ember-acceptance-targets-', '/tmp') do |work|
   # A controlled query script stands in for target llvm-config. The diagnostic
   # boundary reads its companion real ELF header with the selected readelf.
   script(bin + '/readelf', 'exec "$FIXTURE_READELF" "$1" "$2.elf"' + "\n")
-  script(work + '/llvm-config', 'case "$1" in --host-target) echo "$FIXTURE_LLVM_TRIPLE";; --version) echo 23.1.3;; *) echo fixture;; esac' + "\n")
+  script(work + '/llvm-config', 'case "$1" in --host-target) echo "$FIXTURE_LLVM_TRIPLE";; --version) echo 23.1.4;; *) echo fixture;; esac' + "\n")
   env = {'PATH' => bin + ':' + ENV.fetch('PATH'), 'CMAKE' => bin + '/cmake', 'NINJA' => '/usr/bin/true', 'PKG_CONFIG' => '/usr/bin/true', 'FIXTURE_READELF' => readelf, 'READELF' => bin + '/readelf', 'FIXTURE_TRACE' => work + '/cmake.args'}
   %w[aarch64 amd64].each do |target|
     cpu, triplet = target == 'amd64' ? ['x86_64', 'x86_64--netbsd'] : ['aarch64', 'aarch64--netbsd']

@@ -22,7 +22,7 @@ export CLANG
 for tool in curl sha256sum tar patch make install valgrind cppcheck perl timeout; do command -v "$tool" >/dev/null; done
 [ "$(cppcheck --version)" = 'Cppcheck 2.22.0' ]
 [ "$(valgrind --version)" = 'valgrind-3.27.1' ]
-case "$("$CLANG" --version)" in *'clang version 23.1.3'*) ;; *) echo 'Clang 23.1.3 is required.' >&2; exit 2 ;; esac
+case "$("$CLANG" --version)" in *'clang version 23.1.4'*) ;; *) echo 'Clang 23.1.4 is required.' >&2; exit 2 ;; esac
 export LC_ALL=C
 mkdir -p "$work/downloads" "$work/tmp"
 export TMPDIR="$work/tmp"

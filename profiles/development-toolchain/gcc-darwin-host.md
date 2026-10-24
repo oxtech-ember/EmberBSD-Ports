@@ -173,11 +173,11 @@ Autoconf version remains a source-consistency check before package acceptance.
 The command mapping follows primary sources:
 
 - [GCC16 Darwin port](https://github.com/iains/gcc-16-branch).
-- [LLVM MC 23.1.3 command source](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.3/llvm/tools/llvm-mc/llvm-mc.cpp).
-- [LLVM MC command flags](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.3/llvm/lib/MC/MCTargetOptionsCommandFlags.cpp).
-- [Darwin assembly parser](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.3/llvm/lib/MC/MCParser/DarwinAsmParser.cpp).
-- [Mach-O LLD options](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.3/lld/MachO/Options.td)
-  and [LLD invocation dispatch](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.3/lld/Common/DriverDispatcher.cpp).
+- [LLVM MC 23.1.4 command source](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.4/llvm/tools/llvm-mc/llvm-mc.cpp).
+- [LLVM MC command flags](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.4/llvm/lib/MC/MCTargetOptionsCommandFlags.cpp).
+- [Darwin assembly parser](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.4/llvm/lib/MC/MCParser/DarwinAsmParser.cpp).
+- [Mach-O LLD options](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.4/lld/MachO/Options.td)
+  and [LLD invocation dispatch](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.4/lld/Common/DriverDispatcher.cpp).
 
 ## Verification
 
@@ -210,3 +210,6 @@ The build checks:
 Current checks cover driver `-###` plans and exact source-patch application.
 They do not execute a frontend, assembler, linker or generated program.
 They do not establish an accepted seed, package or native toolset.
+
+The five linked LLVM MC and Mach-O interface files are byte-identical in
+23.1.3 and 23.1.4. This source comparison does not qualify new native tools.

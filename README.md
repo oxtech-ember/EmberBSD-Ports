@@ -324,8 +324,9 @@ runtime behavior are validated.
   on the AArch64 VM. Meson 1.12.1 and Ninja 1.13.2 cross packages pass
   installed C/C++ builds, Python embedding, incremental/error handling and
   install-RPATH checks with explicit current GNU as/ld. The profile provides
-  matching LLVM/Clang/LLD 23.1.3 source
-  recipes with upstream lit, scoped native Clang/GCC16 defaults, strict
+  matching LLVM/Clang/LLD 23.1.4 source
+  recipes with upstream lit. Full 23.1.4 package and runtime acceptance remain pending.
+  They retain scoped native Clang/GCC16 defaults, strict
   common selection and host source contracts. Cross LLVM configuration pins
   both host and default-target triples to the selected NetBSD GNU triplet;
   `llvm-cross.sh` checks the target arguments and native generator dependency.

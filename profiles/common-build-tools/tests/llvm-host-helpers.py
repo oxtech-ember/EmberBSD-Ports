@@ -52,7 +52,7 @@ ninja = executable(work / 'ninja', f'''import pathlib,sys
 if '--version' in sys.argv: print('ninja fixture'); sys.exit(0)
 root=pathlib.Path(sys.argv[sys.argv.index('-C')+1]); (root/'bin').mkdir()
 for name in sys.argv[sys.argv.index('-j')+2:]:
-    p=root/'bin'/name; p.write_text('#!{sys.executable}\\nprint("LLVM version 23.1.3")\\n'); p.chmod(0o755)
+    p=root/'bin'/name; p.write_text('#!{sys.executable}\\nprint("LLVM version 23.1.4")\\n'); p.chmod(0o755)
 (root/'lib/cmake/llvm').mkdir(parents=True)
 (root/'lib/cmake/llvm/LLVMConfig.cmake').write_text('fixture')
 ''')
@@ -92,7 +92,7 @@ inputs = json.loads((work / 'llvm/inputs.json').read_text())['sha256']
 assert str(cross / 'build-llvm-native.py') in inputs, 'entrypoint is missing from native provenance'
 assert any(p.endswith('/emberbsd_sdk/process.py') for p in inputs), 'SDK API is missing from native provenance'
 # The real config has a bare version output, unlike the other generator tools.
-executable(work / 'llvm/native/bin/llvm-config', "print('23.1.3')\n")
+executable(work / 'llvm/native/bin/llvm-config', "print('23.1.4')\n")
 native_tools['llvm-config'] = str(work / 'llvm/native/bin/llvm-config')
 native_tools['llvm-tblgen'] = str(work / 'llvm/native/bin/llvm-tblgen')
 llvm_host.native('clang', [str(archive), str(work / 'llvm/native'), str(work / 'clang'), cmake, ninja])

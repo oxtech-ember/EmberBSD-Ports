@@ -37,7 +37,7 @@ Dir.mktmpdir('ember-plasma-host-', '/tmp') do |temp|
       fixture.sub('Compositing is active', 'Compositing is inactive'),
       fixture.sub("Compositing Type: #{api}", 'Compositing Type: QPainter'),
       fixture.sub("Compositing Type: #{api}", 'Compositing Type: OpenGL ES invalid'),
-      fixture.sub('V3D 7.1.10.2', 'llvmpipe (LLVM 23.1.3, 128 bits)'),
+      fixture.sub('V3D 7.1.10.2', 'llvmpipe (LLVM 23.1.4, 128 bits)'),
       fixture.sub('V3D 7.1.10.2', 'softpipe')
     ]
     invalid.each do |bad_support|

@@ -10,12 +10,12 @@ patch=$recipe/patches/patch-lib_DWP_DWP.cpp
 mkdir "$work"
 work=$(CDPATH= cd -- "$work" && pwd)
 [ "$(shasum -a 256 "$archive" | awk '{print $1}')" = \
-    c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34 ]
+    819ecf7351f1a66f76b2d701d8942faaf5faeb324cb90c9d5b090de142434bb2 ]
 expected=$(awk '/^SHA1 \(patch-lib_DWP_DWP.cpp\)/ { print $4 }' "$recipe/distinfo")
 actual=$(sed '/[$]NetBSD.*/d' "$patch" | shasum -a 1 | awk '{print $1}')
 [ "$expected" = "$actual" ]
-tar -xf "$archive" -C "$work" llvm-project-23.1.3.src/llvm/lib/DWP/DWP.cpp
-tree=$work/llvm-project-23.1.3.src/llvm
+tar -xf "$archive" -C "$work" llvm-project-23.1.4.src/llvm/lib/DWP/DWP.cpp
+tree=$work/llvm-project-23.1.4.src/llvm
 cp "$tree/lib/DWP/DWP.cpp" "$work/DWP.cpp.orig"
 patch -f -N -F 0 -p0 -d "$tree" < "$patch" > "$work/forward.log"
 if patch -f -N -F 0 -p0 -d "$tree" < "$patch" > "$work/repeated.log" 2>&1; then
@@ -24,5 +24,5 @@ if patch -f -N -F 0 -p0 -d "$tree" < "$patch" > "$work/repeated.log" 2>&1; then
 fi
 [ ! -e "$root/profiles/development-toolchain/gdb/dwarf-variants-llvm-dwp.patch" ]
 [ ! -e "$root/profiles/development-toolchain/gdb/dwarf-variants-dwp-build.sh" ]
-grep -q '^LLVM_VERSION=.*23\.1\.3$' "$recipe/version.mk"
+grep -q '^LLVM_VERSION=.*23\.1\.4$' "$recipe/version.mk"
 echo 'PASS: pinned source, patch hash, zero-fuzz application, repeated rejection and single recipe ownership'

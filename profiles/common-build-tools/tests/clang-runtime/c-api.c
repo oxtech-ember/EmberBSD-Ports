@@ -54,7 +54,7 @@ main(void)
 {
 	CXString version = clang_getClangVersion();
 	const char *text = clang_getCString(version);
-	int correct = text != NULL && strstr(text, "23.1.3") != NULL;
+	int correct = text != NULL && strstr(text, "23.1.4") != NULL;
 	CXIndex index;
 	int result;
 

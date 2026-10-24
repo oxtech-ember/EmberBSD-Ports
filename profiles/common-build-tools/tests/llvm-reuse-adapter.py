@@ -30,7 +30,7 @@ for name in os.listdir(pkgsrc + '/lang'):
 for name in ('llvm', 'llvm-devel'):
     shutil.copytree(profile / '../../pkgsrc/lang' / name, tree / 'lang' / name)
 common = work / 'common'
-source = common / 'llvm-project-23.1.3.src/llvm'
+source = common / 'llvm-project-23.1.4.src/llvm'
 build = source / 'cmake-pkgsrc-build'
 build.mkdir(parents=True)
 (common / '.build_makevars.mk').write_text('_MAKEVARS_MK= defined\nCFLAGS+= -DSTALE_CACHE=1\n')

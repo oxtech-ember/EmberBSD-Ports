@@ -26,9 +26,9 @@ for package in ('lang/clang', 'devel/lld', 'devel/py-llvm-lit'):
     assert result.returncode == 0 and len(lines) == len(values) and not lines[-1], result.stdout + result.stderr
     assert lines[1] == '/usr/pkg/bin/python3.15' and not re.search(r'python314|py314-', lines[2])
     if package == 'devel/py-llvm-lit':
-        assert lines[0] == 'py315-llvm-lit-23.1.3nb1' and 'py[0-9]*-llvm-lit-[0-9]*' in lines[3].split()
+        assert lines[0] == 'py315-llvm-lit-23.1.4nb1' and 'py[0-9]*-llvm-lit-[0-9]*' in lines[3].split()
     else:
-        assert 'py315-llvm-lit>=23.1.3nb1:' in lines[2]
+        assert 'py315-llvm-lit>=23.1.4nb1:' in lines[2]
         if package == 'lang/clang':
             assert re.search(r'python315>=3\.15[^:]*:', lines[2])
     rejected = subprocess.run([make, '-C', str(tree / package), '-v', 'PKG_FAIL_REASON', *base, 'PYTHON_VERSION_REQD=314'], capture_output=True, text=True)

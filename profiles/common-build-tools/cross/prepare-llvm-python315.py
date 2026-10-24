@@ -54,7 +54,7 @@ def prepare(args):
                     raise ValueError('Invalid archive path')
             package.extractall(stage, filter='data')
         contents = (stage / '+CONTENTS').read_text()
-        name = 'py315-llvm-lit-23.1.3' if kind == 'lit' else kind + '-23.1.3'
+        name = 'py315-llvm-lit-23.1.4' if kind == 'lit' else kind + '-23.1.4'
         if '@name ' + name + '\n' not in contents or '@cwd /usr/pkg\n' not in contents:
             raise ValueError('Wrong package or prefix')
         build = (stage / '+BUILD_INFO').read_text()
@@ -143,7 +143,7 @@ def prepare(args):
         build += 'EMBERBSD_REPACKAGE_KIND=python315-runtime-metadata\nEMBERBSD_REPACKAGE_INPUT_SHA256=' + initial_archive_hash + '\nEMBERBSD_REPACKAGE_SOURCE=' + source_commit + '\n'
         (stage / '+BUILD_INFO').write_text(build)
         plist = prepare_packlist(contents).replace('@name ' + name + '\n', '@name ' + name + 'nb1\n', 1)
-        plist = re.sub(r'^@pkgdep py314-llvm-lit[^\n]*$', '@pkgdep py315-llvm-lit>=23.1.3nb1', plist, flags=re.M)
+        plist = re.sub(r'^@pkgdep py314-llvm-lit[^\n]*$', '@pkgdep py315-llvm-lit>=23.1.4nb1', plist, flags=re.M)
         if kind in ('clang', 'lit'):
             extra = '@pkgdep python315>=3.15.0' if kind == 'clang' else '@pkgcfl py[0-9]*-llvm-lit-[0-9]*'
             plist = plist.replace('@name ' + name + 'nb1\n', '@name ' + name + 'nb1\n' + extra + '\n', 1)

@@ -18,18 +18,18 @@ def prepare(args):
     checked_paths(args)
     if platform.system() != 'Darwin' or platform.machine() != 'arm64':
         raise ValueError('This native SDK requires Darwin arm64')
-    if sha256_file(archive) != '3dcfd88aec10be204a24037bcb0dc0ad777882e9dbe8ac60e2639060d8a794b1':
+    if sha256_file(archive) != '5d3179db39adeca5b17a34d82708fe976bc60e055b05fe557878fb3fb64d39ef':
         raise ValueError('Pinned native SDK SHA256 differs')
     os.mkdir(work)
     write_json(work + '/inputs.json', {p: sha256_file(p) for p in (archive, __file__)})
     extract_source(archive, work)
-    prefix = work + '/LLVM-23.1.3-macOS-ARM64'
-    if query([prefix + '/bin/llvm-config', '--version']) != '23.1.3':
+    prefix = work + '/LLVM-23.1.4-macOS-ARM64'
+    if query([prefix + '/bin/llvm-config', '--version']) != '23.1.4':
         raise ValueError('Unexpected LLVM version')
     outputs = {}
     for tool in ('llvm-tblgen', 'clang-tblgen'):
         version = query([prefix + '/bin/' + tool, '--version'])
-        if 'LLVM version 23.1.3' not in version:
+        if 'LLVM version 23.1.4' not in version:
             raise ValueError('Unexpected generator version')
         outputs['bin/' + tool] = dict(version=version, sha256=sha256_file(prefix + '/bin/' + tool))
     for name in ('lib/libclang.dylib', 'lib/libclangHandleCXX.a', 'lib/libLTO.dylib', 'lib/cmake/llvm/LLVMConfig.cmake', 'lib/cmake/clang/ClangConfig.cmake'):

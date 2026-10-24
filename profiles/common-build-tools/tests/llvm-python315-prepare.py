@@ -39,8 +39,8 @@ for kind in ('clang', 'lld', 'lit'):
             output.write_text('#!/usr/pkg/bin/python3.15\nprint("fixture")\n')
         else:
             output.write_text('labelled fixture\n')
-    name = 'py315-llvm-lit-23.1.3' if kind == 'lit' else kind + '-23.1.3'
-    dependency = '@pkgdep py314-llvm-lit>=23.1.3\n' if kind != 'lit' else '@pkgdep python315>=3.15.0\n'
+    name = 'py315-llvm-lit-23.1.4' if kind == 'lit' else kind + '-23.1.4'
+    dependency = '@pkgdep py314-llvm-lit>=23.1.4\n' if kind != 'lit' else '@pkgdep python315>=3.15.0\n'
     plist = work / (kind + '.plist')
     plist.write_text('@cwd /usr/pkg\n@name ' + name + '\n' + dependency + '\n'.join(names) + '\n')
     for control, text in {'comment': 'Labelled fixture', 'desc': 'No compiler payload or target execution.', 'build': 'OPSYS=NetBSD\nMACHINE_ARCH=aarch64\n'}.items():

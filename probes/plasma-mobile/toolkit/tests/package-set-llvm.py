@@ -12,16 +12,16 @@ def main():
     runtime='''lib/libLLVM.so.23.1 lib/libLLVM-23.so lib/libLLVM.so lib/libLTO.so.23.1
         lib/libLTO.so lib/libRemarks.so.23.1 lib/libRemarks.so include/llvm/Support/LICENSE.TXT'''.split()
     cases=[
-        ('runtime-amd64','llvm-23.1.3nb1',runtime,'amd64',None,False),
-        ('runtime-aarch64','llvm-23.1.3nb1',runtime,'aarch64',None,False),
-        ('old-monolith','llvm-23.1.3',runtime+['bin/llvm-config'],'amd64','LLVM runtime',False),
-        ('dependency-sdk','llvm-devel-23.1.3nb1',['bin/llvm-config'],'amd64','LLVM SDK',True),
-        ('dependency-runtime','llvm-23.1.3nb1',runtime,'amd64',None,True),
-        ('sdk','llvm-devel-23.1.3nb1',['bin/llvm-config'],'amd64','LLVM SDK',False),
-        ('revised-monolith','llvm-23.1.3nb1',runtime+['bin/llvm-config'],'amd64','LLVM runtime',False),
-        ('header-leak','llvm-23.1.3nb1',runtime+['include/llvm/IR/Module.h'],'amd64','LLVM runtime',False),
-        ('missing-dso','llvm-23.1.3nb1',[p for p in runtime if p!='lib/libLTO.so.23.1'],'amd64','LLVM runtime',False),
-        ('missing-license','llvm-23.1.3nb1',[p for p in runtime if p!='include/llvm/Support/LICENSE.TXT'],'amd64','LLVM runtime',False),
+        ('runtime-amd64','llvm-23.1.4nb1',runtime,'amd64',None,False),
+        ('runtime-aarch64','llvm-23.1.4nb1',runtime,'aarch64',None,False),
+        ('old-monolith','llvm-23.1.4',runtime+['bin/llvm-config'],'amd64','LLVM runtime',False),
+        ('dependency-sdk','llvm-devel-23.1.4nb1',['bin/llvm-config'],'amd64','LLVM SDK',True),
+        ('dependency-runtime','llvm-23.1.4nb1',runtime,'amd64',None,True),
+        ('sdk','llvm-devel-23.1.4nb1',['bin/llvm-config'],'amd64','LLVM SDK',False),
+        ('revised-monolith','llvm-23.1.4nb1',runtime+['bin/llvm-config'],'amd64','LLVM runtime',False),
+        ('header-leak','llvm-23.1.4nb1',runtime+['include/llvm/IR/Module.h'],'amd64','LLVM runtime',False),
+        ('missing-dso','llvm-23.1.4nb1',[p for p in runtime if p!='lib/libLTO.so.23.1'],'amd64','LLVM runtime',False),
+        ('missing-license','llvm-23.1.4nb1',[p for p in runtime if p!='include/llvm/Support/LICENSE.TXT'],'amd64','LLVM runtime',False),
         ('legacy-provider','libLLVM-13.0.1nb4',['lib/libLLVM/libLLVM.so.13'],'amd64','LLVM legacy',False),
         ('unrelated','llvm-helper-1.0',['share/fixture'],'amd64',None,False)]
     for label,package,files,target,rejected,dependency in cases:

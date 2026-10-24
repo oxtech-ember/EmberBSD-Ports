@@ -32,7 +32,7 @@ def run(name, config, extra=(), reject=False):
     if reject:
         assert data['PKG_FAIL_REASON'], 'unsupported Python accepted'
     else:
-        assert data['PKGNAME'] == 'py315-llvm-lit-23.1.3nb1' and data['_PYTHON_VERSION'] == '315' and data['PYTHONBIN'].endswith('/bin/python3.15') and not data['PKG_FAIL_REASON'], str(data)
+        assert data['PKGNAME'] == 'py315-llvm-lit-23.1.4nb1' and data['_PYTHON_VERSION'] == '315' and data['PYTHONBIN'].endswith('/bin/python3.15') and not data['PKG_FAIL_REASON'], str(data)
     return data
 
 

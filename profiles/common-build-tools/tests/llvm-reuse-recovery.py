@@ -21,7 +21,7 @@ for name in ('source/build', 'recipe', 'sdk-recipe', 'stage-reference'):
     (work / name).mkdir(parents=True)
 for name in ('source/source.dat', 'source/build/object.dat', 'recipe/patch', 'sdk-recipe/PLIST', 'abi.h', 'archive', 'full', 'runtime', 'devel'):
     (work / name).write_text('Typed fixture: ' + name)
-value = dict(schema=2, version='23.1.3', target=dict(opsys='NetBSD', version='11.0', arch='aarch64', triple='aarch64--netbsd'),
+value = dict(schema=2, version='23.1.4', target=dict(opsys='NetBSD', version='11.0', arch='aarch64', triple='aarch64--netbsd'),
     source=str(work / 'source'), build=str(work / 'source/build'), recipe=str(work / 'recipe'), sdk_recipe=str(work / 'sdk-recipe'),
     install_strip=True, flags={'CXXFLAGS': '-O2'}, cmake='/usr/bin/true', tar='/usr/bin/true', python=os.path.realpath(sys.executable),
     sdk_source=sdk, files=dict(compiler=[str(work / 'abi.h')], native_tools=['/usr/bin/true', os.path.realpath(sys.executable)],

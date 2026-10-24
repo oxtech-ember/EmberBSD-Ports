@@ -34,7 +34,7 @@ printf '%s\n' "$header" | grep -Eq 'Type:[[:space:]]+(EXEC|DYN)' &&
 }
 version=$("$llvm_config" --version)
 host_target=$("$llvm_config" --host-target)
-[ "$version" = 23.1.3 ] && printf '%s\n' "$host_target" | grep -Eq "^$processor-(unknown)?-netbsd(11(\.[0-9]+)*)?$" || {
+[ "$version" = 23.1.4 ] && printf '%s\n' "$host_target" | grep -Eq "^$processor-(unknown)?-netbsd(11(\.[0-9]+)*)?$" || {
     echo 'llvm-config version/NetBSD target triple mismatch' >&2; exit 1;
 }
 mkdir "$output"
