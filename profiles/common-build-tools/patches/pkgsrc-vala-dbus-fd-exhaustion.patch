@@ -17,12 +17,13 @@ Not submitted upstream.
  GNU_CONFIGURE=		yes
 --- a/lang/vala/distinfo
 +++ b/lang/vala/distinfo
-@@ -6,4 +6,5 @@
+@@ -6,5 +6,6 @@
  SHA1 (patch-build-aux_testrunner.sh) = d30ce05459b398a18e9dbd4420f28d8bfdf7323a
  SHA1 (patch-codegen_valaccodearraymodule.c) = 42e8b1a9538a0e6c606754a432299414fba917cc
  SHA1 (patch-codegen_valaccodearraymodule.vala) = fccfc9b6876880e755af170b6f3db849537ad968
 +SHA1 (patch-tests_dbus_filedescriptor-errors.test) = 141dcfbce89d244899efe53c880e36a91130ba97
  SHA1 (patch-tests_objects_property-array.c-expected) = bdb2b117c0e2ca973f29f442f4352dce9b53b343
+ SHA1 (patch-tests_generics_arrays.c-expected) = e5faf542e07fd5786c6dd3f1622816f0857427e4
 --- /dev/null
 +++ b/lang/vala/patches/patch-tests_dbus_filedescriptor-errors.test
 @@ -0,0 +1,156 @@

@@ -69,6 +69,86 @@ class ExportTests(unittest.TestCase):
         self.assertEqual(exporter.patch_sha1(path),
                          hashlib.sha1(b'first\r\n\xff\rbare\nlast').hexdigest())
 
+    def test_vala_infrastructure_patches_compose_without_fuzz(self):
+        owner = HERE.parents[1]
+        names = ['valadoc-option', 'array-termination', 'dbus-fd-exhaustion']
+        paths = [owner / ('profiles/common-build-tools/patches/pkgsrc-vala-' + name + '.patch')
+                 for name in names]
+        configured = [line.split('\t')[1] for line in
+                      (owner / 'pkgsrc/export.conf').read_text().splitlines()
+                      if line.startswith('patch\t') and 'pkgsrc-vala-' in line]
+        self.assertEqual(configured, [str(path.relative_to(owner)) for path in paths])
+        tree = self.work / 'vala-composition'
+        recipe = tree / 'lang/vala'
+        recipe.parent.mkdir(parents=True)
+        shutil.copytree(owner / 'upstream/pkgsrc/lang/vala', recipe)
+        (tree / 'mk/defaults').mkdir(parents=True)
+        shutil.copyfile(owner / 'upstream/pkgsrc/mk/defaults/options.description',
+                        tree / 'mk/defaults/options.description')
+
+        def apply(target, data):
+            return self.runner(self.selected.command('patch') +
+                ('-f', '-E', '-d', str(target), '-p1', '-F', '0'), input=data)
+
+        for path in paths[:2]:
+            self.assertNotIn(b'fuzz', apply(tree, path.read_bytes()))
+        before = (recipe / 'distinfo').read_bytes()
+        fixed = paths[2].read_bytes()
+        context = b' SHA1 (patch-tests_generics_arrays.c-expected) = e5faf542e07fd5786c6dd3f1622816f0857427e4\n'
+        self.assertEqual(fixed.count(context), 1)
+        old = fixed.replace(b'@@ -6,5 +6,6 @@\n', b'@@ -6,4 +6,5 @@\n').replace(context, b'')
+        start = old.index(b'--- a/lang/vala/distinfo\n')
+        end = old.index(b'--- /dev/null\n', start)
+        negative = self.work / 'vala-old-eof'
+        (negative / 'lang/vala').mkdir(parents=True)
+        (negative / 'lang/vala/distinfo').write_bytes(before)
+        with self.assertRaises(subprocess.CalledProcessError):
+            apply(negative, old[start:end])
+        self.assertEqual((negative / 'lang/vala/distinfo').read_bytes(), before)
+        self.assertTrue((negative / 'lang/vala/distinfo.rej').is_file())
+        output = apply(tree, fixed)
+        self.assertNotIn(b'fuzz', output)
+        self.assertNotIn(b'offset', output)
+        exporter.check_recipe(recipe, 'lang/vala', tree)
+        added = b'SHA1 (patch-tests_dbus_filedescriptor-errors.test) = 141dcfbce89d244899efe53c880e36a91130ba97\n'
+        self.assertEqual((recipe / 'distinfo').read_bytes().replace(added, b''), before)
+        self.assertEqual((recipe / 'Makefile').read_bytes().count(
+            b'TEST_DEPENDS+=\tdbus>=1.16.2:../../sysutils/dbus\n'), 1)
+
+    def test_nss_infrastructure_hunk_retains_three_line_context(self):
+        owner = HERE.parents[1]
+        path = owner / 'profiles/common-build-tools/patches/pkgsrc-nss-cross-host-tools.patch'
+        fixed = path.read_bytes()
+        start = fixed.index(b'@@ -33,9 +33,14 @@\n')
+        end = fixed.index(b'diff --git ', start)
+        hunk = fixed[start:end]
+        context = b' NSS_CPU_ARCH.aarch64eb=\t\taarch64\n'
+        self.assertTrue(hunk.endswith(context))
+        old = hunk.replace(b'@@ -33,9 +33,14 @@\n', b'@@ -33,8 +33,13 @@\n').removesuffix(context)
+        header = b'--- a/devel/nss/Makefile\n+++ b/devel/nss/Makefile\n'
+        before = (owner / 'upstream/pkgsrc/devel/nss/Makefile').read_bytes()
+        old_lines = b''.join(line[1:] for line in hunk.splitlines(keepends=True)[1:]
+                             if line.startswith((b' ', b'-')))
+        new_lines = b''.join(line[1:] for line in hunk.splitlines(keepends=True)[1:]
+                             if line.startswith((b' ', b'+')))
+        self.assertEqual(before.count(old_lines), 1)
+        for name, data in [('old', old), ('fixed', hunk)]:
+            tree = self.work / ('nss-context-' + name)
+            directory = tree / 'devel/nss'
+            directory.mkdir(parents=True)
+            target = directory / 'Makefile'
+            target.write_bytes(before)
+            argv = self.selected.command('patch') + ('-f', '-E', '-d', str(tree), '-p1', '-F', '0')
+            if name == 'old':
+                with self.assertRaises(subprocess.CalledProcessError):
+                    self.runner(argv, input=header + data)
+                self.assertEqual(target.read_bytes(), before)
+            else:
+                output = self.runner(argv, input=header + data)
+                self.assertNotIn(b'fuzz', output)
+                self.assertNotIn(b'offset', output)
+                self.assertEqual(target.read_bytes(), before.replace(old_lines, new_lines))
+
     def test_intermediate_relative_link_cannot_resolve_outside_repository(self):
         recipe = self.root / 'pkgsrc/devel/link-control'
         recipe.mkdir(parents=True)
