@@ -443,6 +443,19 @@ includes the patched production pymacro header, covers optional SIGBUS/SIGILL
 combinations with both actual HAVE_SIGACTION layouts, and requires pointer
 misuse to fail compilation. The signal typedefs are extracted from upstream;
 only the declaration-only visibility macro for unrelated prototypes is supplied.
+
+The Darwin os_log gate checks the CPython 3.15 Apple system log guard:
+
+```sh
+GCC_CC=/absolute/gcc16 sh profiles/common-build-tools/tests/python-darwin-os-log.sh \
+    /absolute/fully-patched-python /absolute/pristine-python /absolute/new-os-log-check
+```
+
+`os/log.h` uses the Clang-only `__builtin_os_log_format`. The recipe patch
+disables the Apple system log when the compiler lacks that builtin. The gate
+extracts the actual guard and builds the upstream call shape with GCC,
+`-Werror` and `-fanalyzer`. It requires the pristine guard to fail. It prints
+SKIP on hosts other than Darwin.
 Host builds select the NetBSD
 macro branch after their system headers; they are not NetBSD execution proof.
 The sole suppressed warning covers intentionally omitted trailing record
