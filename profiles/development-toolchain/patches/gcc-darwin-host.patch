@@ -1,0 +1,53 @@
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+Build the native GCC16 on macOS AArch64. Upstream GCC 16.2.0 has no
+aarch64-apple-darwin port. Apply Iain Sandoe's Darwin branch diff as a
+pkgsrc patch distfile and run the full bootstrap on Darwin, also when Clang
+builds stage 1. Other systems and cross builds are unchanged.
+See profiles/development-toolchain/gcc-darwin-host.md.
+
+--- a/lang/gcc16/Makefile.common
++++ b/lang/gcc16/Makefile.common
+@@ -57,6 +57,18 @@
+ .if ${OPSYS} == "Darwin"
+ BUILDLINK_TRANSFORM+=	rm:-nodefaultrpaths
+ CONFIGURE_ARGS+=	--disable-darwin-at-rpath
++# Upstream GCC does not support aarch64-apple-darwin. This diff is
++# Iain Sandoe's Darwin branch (https://github.com/iains/gcc-16-branch)
++# against the release, as published by homebrew-core commit
++# 4a334d2f90f786c3fc86cbc9cf72b2f13961b078 ("gcc 16.2.0").
++# SHA256 578a78ae0bc62a02f260b6a20c7f23e71deee16ed644e9cb5619247be4df5a71.
++# It is GCC source under the GCC license (GPLv3+ with the GCC Runtime
++# Library Exception). It also adds libgcobol support for Darwin, which
++# conflicts with patch-libgcobol_configure.tgt and is not used here.
++PATCHFILES+=		gcc-16.2.0.diff
++PATCH_SITES=		https://raw.githubusercontent.com/Homebrew/homebrew-core/4a334d2f90f786c3fc86cbc9cf72b2f13961b078/Patches/gcc/
++PATCH_DIST_STRIP=	-p1
++PATCH_DIST_CAT.gcc-16.2.0.diff=	${AWK} '/^diff --git / { skip = ($$3 == "a/libgcobol/configure.tgt") } !skip' gcc-16.2.0.diff
+ .endif
+ 
+ ## For graphite support.
+@@ -89,8 +101,10 @@
+ MAKE_ENV.NetBSD+=	ac_cv_func_uselocale=no
+ MAKE_ENV.SunOS+=	ac_cv_func_mkostemp=no
+ 
+-.if !empty(PKGSRC_COMPILER:Mclang) || ${OPSYS} == "DragonFly" \
+-    || ${OPSYS} == "NetBSD"
++# On Darwin, Clang only builds stage 1. The bootstrap rebuilds GCC with
++# itself and compares stages 2 and 3.
++.if (!empty(PKGSRC_COMPILER:Mclang) && ${OPSYS} != "Darwin") \
++    || ${OPSYS} == "DragonFly" || ${OPSYS} == "NetBSD"
+ # GCC 16.1.0's stage2/stage3 bootstrap comparison currently fails on
+ # NetBSD/x86_64, so disable it. Revisit on updates.
+ # https://gcc.gnu.org/pipermail/gcc-help/2026-August/145120.html
+--- a/lang/gcc16/distinfo
++++ b/lang/gcc16/distinfo
+@@ -13,6 +13,9 @@
+ BLAKE2s (isl-0.24.tar.xz) = a3013b0d39b7fe68a1b3e15dc7e925b347d555348ee946a80f5319a76973cd61
+ SHA512 (isl-0.24.tar.xz) = ff6bdcff839e1cd473f2a0c1e4dd4a3612ec6fee4544ccbc62b530a7248db2cf93b4b99bf493a86ddf2aba00e768927265d5d411f92061ea85fd7929073428e8
+ Size (isl-0.24.tar.xz) = 1930956 bytes
++BLAKE2s (gcc-16.2.0.diff) = 951d82d8a87897309996bd351c62d898818e1d111e11b8ba726fc66d3e2fa477
++SHA512 (gcc-16.2.0.diff) = a8ab81008f5281302b7e5d680f3519b69fac5bdcf0a90c5a523643a65ca3223b83d929e156f086283d3256860f8f2728a1436f334e9866652b8835db85b0ed1d
++Size (gcc-16.2.0.diff) = 205825 bytes
+ SHA1 (patch-configure) = 21d5a86e097a6c355ae41203f223f2930d33a392
+ SHA1 (patch-configure.ac) = b72e07578678926dca9ce5b008bacbfcecb68cbb
+ SHA1 (patch-gcc_Makefile.in) = abc7d605ef21c213c5b71ef37d1ce790097f7660

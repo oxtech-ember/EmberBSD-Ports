@@ -1,0 +1,49 @@
+#!/bin/sh
+# SPDX-License-Identifier: BSD-2-Clause
+# Origin: EmberBSD (AI-assisted). Real pkgsrc metadata of the native GCC16
+# recipe on macOS and of the cross recipe. No build runs.
+set -eu
+[ "$#" = 4 ] || { echo 'Usage: darwin-host.sh PREPARED_PKGSRC DARWIN_MAKECONF CROSS_MAKECONF NEW_WORK' >&2; exit 2; }
+: "${BMAKE:?Set the native bmake executable}"
+prepared=$(CDPATH= cd -- "$1" && pwd)
+native=$2 cross=$3
+mkdir "$4"
+work=$(CDPATH= cd -- "$4" && pwd)
+query() {
+    conf=$1; shift
+    "$BMAKE" -C "$prepared/lang/gcc16" "MAKECONF=$conf" "$@"
+}
+commit=4a334d2f90f786c3fc86cbc9cf72b2f13961b078
+[ "$(query "$native" -V '${OPSYS}')" = Darwin ]
+[ "$(query "$native" -V '${PATCHFILES}')" = gcc-16.2.0.diff ]
+[ "$(query "$native" -V '${PATCH_SITES}')" = \
+    "https://raw.githubusercontent.com/Homebrew/homebrew-core/$commit/Patches/gcc/" ]
+[ "$(query "$native" -V '${PATCH_DIST_STRIP}')" = -p1 ]
+grep -q '^SHA512 (gcc-16.2.0.diff) = a8ab81008f5281302b7e5d680f3519b69fac5bdcf0a90c5a523643a65ca3223b83d929e156f086283d3256860f8f2728a1436f334e9866652b8835db85b0ed1d$' \
+    "$prepared/lang/gcc16/distinfo"
+grep -q '^Size (gcc-16.2.0.diff) = 205825 bytes$' "$prepared/lang/gcc16/distinfo"
+# Clang builds only stage 1; the full bootstrap stays enabled on Darwin.
+for compiler in clang gcc; do
+    if query "$native" PKGSRC_COMPILER=$compiler -V '${CONFIGURE_ARGS}' |
+        tr ' ' '\n' | grep -qx -- --disable-bootstrap; then exit 1; fi
+done
+# The filter drops only the libgcobol/configure.tgt section.
+cat > "$work/gcc-16.2.0.diff" <<'DIFF'
+diff --git a/gcc/config.host b/gcc/config.host
++keep-1
+diff --git a/libgcobol/configure.tgt b/libgcobol/configure.tgt
++drop
+diff --git a/libgcc/config.host b/libgcc/config.host
++keep-2
+DIFF
+filter=$(query "$native" -V '${PATCH_DIST_CAT.gcc-16.2.0.diff}')
+(cd "$work" && sh -c "$filter") > "$work/filtered.diff"
+[ "$(grep -c '^diff --git' "$work/filtered.diff")" = 2 ]
+grep -qx '+keep-1' "$work/filtered.diff"
+grep -qx '+keep-2' "$work/filtered.diff"
+if grep -q -e libgcobol -e '^+drop' "$work/filtered.diff"; then exit 1; fi
+# Target packages do not get the Darwin diff.
+[ "$(query "$cross" -V '${OPSYS}')" = NetBSD ]
+[ -z "$(query "$cross" -V '${PATCHFILES}')" ]
+query "$cross" -V '${CONFIGURE_ARGS}' | tr ' ' '\n' | grep -qx -- --disable-bootstrap
+echo 'darwin-host: OK'
