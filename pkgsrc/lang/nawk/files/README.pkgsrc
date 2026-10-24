@@ -33,3 +33,7 @@ and linker flags for its echo helper. It does not select a host cc or awk.
 CC names one selected compiler executable. Pass arguments separately through
 CPPFLAGS, CFLAGS and LDFLAGS. Do not place compiler flags or a command tuple
 in CC. The derived Makefile retains the full upstream Lucent license notice.
+
+The split() memory adaptation reuses checked tostring() for source/separator
+copies. The CSV scratch buffer includes a NUL byte and checks allocation
+failure with FATAL. The source gate verifies this exact upstream adaptation.

@@ -31,6 +31,12 @@ The bundled `lib.c` preserves the [NetBSD ctype repair](https://github.com/NetBS
 Byte arguments use unsigned-char casts before classification or conversion.
 The adaptation also covers new hexadecimal and format-width checks.
 Wide-character operations keep their upstream behavior.
+
+The local `split()` memory fix uses the existing checked `tostring()` helper
+for source and separator copies. The CSV scratch allocation includes the NUL
+byte and reports allocation failure through `FATAL`. The source gate binds
+these exact changes to the pinned upstream bytes. Source checks do not
+establish allocator-failure, sanitizer or package runtime acceptance.
 Upstream source, licenses, FIXES, FIXES.1e and all test cases remain in the bundle.
 The testdir harness requires explicit `CC`, `awk` and `oldawk` selections.
 It honors `CPPFLAGS`, `CFLAGS` and `LDFLAGS` for its native echo helper.

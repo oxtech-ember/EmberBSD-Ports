@@ -27,6 +27,18 @@ def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def split_memory_adaptation(raw):
+    # Bind the reviewed memory changes to the exact pinned upstream.
+    for before, after in (
+        (b'origs = s = strdup(getsval(y));', b'origs = s = tostring(getsval(y));'),
+        (b'fs = origfs = strdup(getsval(x));', b'fs = origfs = tostring(getsval(x));'),
+        (b'char *newt = (char *) malloc(strlen(s)); /* for building new string; reuse for each field */', b'char *newt = (char *) malloc(strlen(s) + 1); /* for building new string; reuse for each field */\n\t\tif (newt == NULL)\n\t\t\tFATAL("out of space in split");'),
+    ):
+        require(raw.count(before) == 1, "pinned split memory input changed")
+        raw = raw.replace(before, after, 1)
+    return raw
+
+
 def verify(recipe, archive, source_only):
     makefile = (recipe / 'Makefile').read_text()
     require(re.search(r'^DISTNAME=\s*nawk-' + TAG + r'$', makefile, re.M), 'old bundled nawk snapshot')
@@ -54,7 +66,9 @@ def verify(recipe, archive, source_only):
             selected = (recipe / 'files' / target).read_bytes()
             raw = upstream.extractfile(prefix + original).read()
             if target in ('lib.c', 'run.c'):
-                # The only C adaptations are byte-valued ctype casts. Strip
+                if target == 'run.c':
+                    raw = split_memory_adaptation(raw)
+                # Other C adaptations are byte-valued ctype casts. Strip
                 # these casts to compare all remaining source bytes exactly.
                 normalized = lambda content: re.sub(rb'\((?:uschar|int)\)\s*', b'', content)
                 require(normalized(raw) == normalized(selected), 'unexpected C change: ' + target)
@@ -127,6 +141,9 @@ def main():
     shutil.copytree(args.recipe, fixture)
     for relative, before, after in (
         ('files/lib.c', b'isspace((uschar) *s)', b'isspace((int) *s)'),
+        ('files/run.c', b'origs = s = tostring(getsval(y));', b'origs = s = strdup(getsval(y));'),
+        ('files/run.c', b'malloc(strlen(s) + 1)', b'malloc(strlen(s))'),
+        ('files/run.c', b'if (newt == NULL)', b'if (0)'),
         ('files/LICENSE', b'Lucent Technologies', b'Changed copyright'),
         ('files/Makefile', b'Lucent Technologies', b'Changed copyright'),
         ('SOURCE.json', b'5739fd79bcfc75ba7526773d0cf634521f8aca3c', b'0' * 40),

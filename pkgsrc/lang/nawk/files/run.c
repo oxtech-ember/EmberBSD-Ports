@@ -1674,14 +1674,14 @@ Cell *split(Node **a, int nnn)	/* split(a[0], a[1], a[2]); a[3] is type */
 	double result;
 
 	y = execute(a[0]);	/* source string */
-	origs = s = strdup(getsval(y));
+	origs = s = tostring(getsval(y));
 	tempfree(y);
 	arg3type = ptoi(a[3]);
 	if (a[2] == NULL) {		/* BUG: CSV should override implicit fs but not explicit */
 		fs = getsval(fsloc);
 	} else if (arg3type == STRING) {	/* split(str,arr,"string") */
 		x = execute(a[2]);
-		fs = origfs = strdup(getsval(x));
+		fs = origfs = tostring(getsval(x));
 		tempfree(x);
 	} else if (arg3type == REGEXPR) {
 		fs = "(regexpr)";	/* split(str,arr,/regexpr/) */
@@ -1746,7 +1746,9 @@ Cell *split(Node **a, int nnn)	/* split(a[0], a[1], a[2]); a[3] is type */
 		pfa = NULL;
 
 	} else if (a[2] == NULL && CSV) {	/* CSV only if no explicit separator */
-		char *newt = (char *) malloc(strlen(s)); /* for building new string; reuse for each field */
+		char *newt = (char *) malloc(strlen(s) + 1); /* for building new string; reuse for each field */
+		if (newt == NULL)
+			FATAL("out of space in split");
 		for (;;) {
 			char *fr = newt;
 			n++;
