@@ -108,6 +108,9 @@ build()
         fi
         log=$state/logs/$(echo "$path" | tr / _).log
         echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name" >> "$state/progress"
+        # Go module caches are read-only; make an old WRKDIR removable first.
+        wrkdir=$("$BMAKE" -C "$PKGSRCDIR/$path" show-var VARNAME=WRKDIR < /dev/null 2>/dev/null) || wrkdir=
+        case "$wrkdir" in /*) [ ! -d "$wrkdir" ] || chmod -R u+w "$wrkdir" ;; esac
         if "$BMAKE" -C "$PKGSRCDIR/$path" clean < /dev/null > "$log" 2>&1 &&
             "$BMAKE" -C "$PKGSRCDIR/$path" package-install < /dev/null >> "$log" 2>&1; then
             echo "$path $name $(shasum -a 256 "$file" | cut -d ' ' -f 1)" >> "$state/done"
