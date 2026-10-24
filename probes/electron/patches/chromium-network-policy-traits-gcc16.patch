@@ -1,0 +1,414 @@
+--- a/services/network/public/cpp/client_hints.cc
++++ b/services/network/public/cpp/client_hints.cc
+@@ -11,6 +11,7 @@
+ 
+ #include "base/metrics/histogram_functions.h"
+ #include "base/no_destructor.h"
++#include "base/notreached.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_split.h"
+ #include "base/strings/string_tokenizer.h"
+@@ -198,6 +199,7 @@
+       return result;
+     }
+   }
++  NOTREACHED();
+ }
+ 
+ // static
+--- a/services/network/public/cpp/content_security_policy/content_security_policy.cc
++++ b/services/network/public/cpp/content_security_policy/content_security_policy.cc
+@@ -12,6 +12,7 @@
+ #include "base/base64url.h"
+ #include "base/containers/flat_set.h"
+ #include "base/feature_list.h"
++#include "base/notreached.h"
+ #include "base/strings/strcat.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_split.h"
+@@ -209,6 +210,7 @@
+     case CSPDirectiveName::WorkerSrc:
+       return true;
+   };
++  NOTREACHED();
+ }
+ 
+ bool SupportedInMeta(CSPDirectiveName directive) {
+@@ -247,6 +249,7 @@
+     case CSPDirectiveName::WorkerSrc:
+       return true;
+   };
++  NOTREACHED();
+ }
+ 
+ // Return the error message specific to one CSP |directive|.
+@@ -1351,6 +1354,7 @@
+     case CSPDirectiveName::Unknown:
+       NOTREACHED();
+   }
++  NOTREACHED();
+ }
+ 
+ void AddContentSecurityPolicyFromHeaders(
+--- a/services/network/public/cpp/cookie_manager_mojom_traits.cc
++++ b/services/network/public/cpp/cookie_manager_mojom_traits.cc
+@@ -32,6 +32,7 @@
+     case net::CookieSourceType::kOther:
+       return network::mojom::CookieSourceType::kOther;
+   }
++  NOTREACHED();
+ }
+ 
+ net::CookieSourceType
+@@ -223,6 +224,7 @@
+     case net::CookieScopeSemantics::LEGACY:
+       return network::mojom::CookieScopeSemantics::LEGACY;
+   }
++  NOTREACHED();
+ }
+ 
+ net::CookieScopeSemantics
+@@ -305,6 +307,7 @@
+       return network::mojom::CookieSameSiteContextMetadataDowngradeType::
+           kLaxToCross;
+   }
++  NOTREACHED();
+ }
+ 
+ net::CookieOptions::SameSiteCookieContext::ContextMetadata::ContextDowngradeType
+@@ -359,6 +362,7 @@
+       return network::mojom::ContextRedirectTypeBug1221316::
+           kAllSameSiteRedirect;
+   }
++  NOTREACHED();
+ }
+ 
+ net::CookieOptions::SameSiteCookieContext::ContextMetadata::
+@@ -429,6 +433,7 @@
+         HttpMethod::kPatch:
+       return network::mojom::HttpMethod::kPatch;
+   }
++  NOTREACHED();
+ }
+ 
+ net::CookieOptions::SameSiteCookieContext::ContextMetadata::HttpMethod
+--- a/services/network/public/cpp/cors/cors.cc
++++ b/services/network/public/cpp/cors/cors.cc
+@@ -13,6 +13,7 @@
+ #include "base/containers/fixed_flat_set.h"
+ #include "base/feature_list.h"
+ #include "base/metrics/histogram_functions.h"
++#include "base/notreached.h"
+ #include "base/strings/string_util.h"
+ #include "net/base/mime_util.h"
+ #include "net/http/http_byte_range.h"
+@@ -496,6 +497,7 @@
+     case mojom::FetchResponseType::kOpaqueRedirect:
+       return false;
+   }
++  NOTREACHED();
+ }
+ 
+ bool IsCorsCrossOriginResponseType(mojom::FetchResponseType type) {
+@@ -509,6 +511,7 @@
+     case mojom::FetchResponseType::kOpaqueRedirect:
+       return true;
+   }
++  NOTREACHED();
+ }
+ 
+ bool CalculateCredentialsFlag(mojom::CredentialsMode credentials_mode,
+@@ -527,6 +530,7 @@
+     case mojom::CredentialsMode::kInclude:
+       return true;
+   }
++  NOTREACHED();
+ }
+ 
+ mojom::FetchResponseType CalculateResponseType(
+--- a/services/network/public/cpp/cross_origin_embedder_policy.cc
++++ b/services/network/public/cpp/cross_origin_embedder_policy.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "services/network/public/cpp/cross_origin_embedder_policy.h"
+ 
++#include "base/notreached.h"
+ 
+ namespace network {
+ 
+@@ -46,6 +47,7 @@
+     case mojom::CrossOriginEmbedderPolicyValue::kRequireCorp:
+       return true;
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace network
+--- a/services/network/public/cpp/cross_origin_opener_policy.cc
++++ b/services/network/public/cpp/cross_origin_opener_policy.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "services/network/public/cpp/cross_origin_opener_policy.h"
++
++#include "base/notreached.h"
+ #include "services/network/public/cpp/cross_origin_embedder_policy.h"
+ 
+ namespace network {
+@@ -39,6 +41,7 @@
+     case mojom::CoopAccessReportType::kAccessToCoopPageFromOther:
+       return false;
+   }
++  NOTREACHED();
+ }
+ 
+ const char* CoopAccessReportTypeToString(mojom::CoopAccessReportType type) {
+@@ -56,6 +59,7 @@
+     case network::mojom::CoopAccessReportType::kAccessToCoopPageFromOther:
+       return "access-to-coop-page-from-other";
+   }
++  NOTREACHED();
+ }
+ 
+ // [spec]: https://html.spec.whatwg.org/C/#obtain-coop
+--- a/services/network/public/cpp/device_bound_sessions_mojom_traits.cc
++++ b/services/network/public/cpp/device_bound_sessions_mojom_traits.cc
+@@ -212,6 +212,7 @@
+     case net::device_bound_sessions::InclusionResult::kInclude:
+       return network::mojom::DeviceBoundSessionInclusionResult::kInclude;
+   }
++  NOTREACHED();
+ }
+ 
+ // static
+@@ -556,6 +557,7 @@
+       return true;
+     }
+   }
++  return false;
+ }
+ 
+ // static
+--- a/services/network/public/cpp/device_bound_sessions_mojom_traits.h
++++ b/services/network/public/cpp/device_bound_sessions_mojom_traits.h
+@@ -5,6 +5,7 @@
+ #ifndef SERVICES_NETWORK_PUBLIC_CPP_DEVICE_BOUND_SESSIONS_MOJOM_TRAITS_H_
+ #define SERVICES_NETWORK_PUBLIC_CPP_DEVICE_BOUND_SESSIONS_MOJOM_TRAITS_H_
+ 
++#include "base/notreached.h"
+ #include "base/time/time.h"
+ #include "net/device_bound_sessions/cookie_craving_display.h"
+ #include "net/device_bound_sessions/deletion_reason.h"
+@@ -138,6 +139,7 @@
+       case kDevTools:
+         return network::mojom::DeviceBoundSessionDeletionReason::kDevTools;
+     }
++    NOTREACHED();
+   }
+ 
+   static net::device_bound_sessions::DeletionReason FromMojom(
+@@ -187,6 +189,7 @@
+         return network::mojom::DeviceBoundSessionScopeSpecificationType::
+             kInclude;
+     }
++    NOTREACHED();
+   }
+ 
+   static net::device_bound_sessions::SessionParams::Scope::Specification::Type
+--- a/services/network/public/cpp/device_bound_sessions_mojom_traits_unittest.cc
++++ b/services/network/public/cpp/device_bound_sessions_mojom_traits_unittest.cc
+@@ -3,6 +3,10 @@
+ // found in the LICENSE file.
+ 
+ #include "services/network/public/cpp/device_bound_sessions_mojom_traits.h"
++
++#include <cstdint>
++#include <limits>
++#include <variant>
+ 
+ #include "mojo/public/cpp/test_support/test_utils.h"
+ #include "services/network/public/mojom/device_bound_sessions.mojom.h"
+@@ -48,5 +52,27 @@
+             output.allowed_refresh_initiators);
+ }
+ 
++TEST(DeviceBoundSessionsMojomTraitsTest, RejectsUnknownEventTypeTag) {
++  using Details = net::device_bound_sessions::SessionEventTypeDetails;
++  using Challenge = net::device_bound_sessions::ChallengeEventDetails;
++  using Data = network::mojom::internal::DeviceBoundSessionEventTypeDetails_Data;
++  using DataView = network::mojom::DeviceBoundSessionEventTypeDetailsDataView;
++
++  for (uint32_t tag : {4u, std::numeric_limits<uint32_t>::max()}) {
++    Data input;
++    input.size = sizeof(input);
++    input.tag = static_cast<Data::DeviceBoundSessionEventTypeDetails_Tag>(tag);
++    DataView view(&input, nullptr);
++    Details output = Challenge(net::device_bound_sessions::ChallengeResult::kSuccess,
++                               "unchanged");
++
++    EXPECT_FALSE((UnionTraits<DataView, Details>::Read(view, &output)));
++    ASSERT_TRUE(std::holds_alternative<Challenge>(output));
++    EXPECT_EQ(std::get<Challenge>(output).challenge, "unchanged");
++    EXPECT_EQ(std::get<Challenge>(output).challenge_result,
++              net::device_bound_sessions::ChallengeResult::kSuccess);
++  }
++}
++
+ }  // namespace
+ }  // namespace mojo
+--- a/services/network/public/cpp/document_isolation_policy.cc
++++ b/services/network/public/cpp/document_isolation_policy.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "services/network/public/cpp/document_isolation_policy.h"
++
++#include "base/notreached.h"
+ 
+ namespace network {
+ 
+@@ -36,6 +38,7 @@
+     case mojom::DocumentIsolationPolicyValue::kIsolateAndRequireCorp:
+       return true;
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace network
+--- a/services/network/public/cpp/host_resolver_mojom_traits.cc
++++ b/services/network/public/cpp/host_resolver_mojom_traits.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "services/network/public/cpp/host_resolver_mojom_traits.h"
++
++#include "base/notreached.h"
+ 
+ #include "base/values.h"
+ #include "mojo/public/cpp/base/time_mojom_traits.h"
+@@ -48,6 +50,7 @@
+     case Tristate::TRISTATE_FALSE:
+       return false;
+   }
++  NOTREACHED();
+ }
+ 
+ OptionalSecureDnsMode ToOptionalSecureDnsMode(
+@@ -63,6 +66,7 @@
+     case net::SecureDnsMode::kSecure:
+       return OptionalSecureDnsMode::SECURE;
+   }
++  NOTREACHED();
+ }
+ 
+ std::optional<net::SecureDnsMode> FromOptionalSecureDnsMode(
+@@ -77,6 +81,7 @@
+     case OptionalSecureDnsMode::SECURE:
+       return net::SecureDnsMode::kSecure;
+   }
++  NOTREACHED();
+ }
+ 
+ }  // namespace
+@@ -222,6 +227,7 @@
+     case net::DnsQueryType::HTTPS:
+       return DnsQueryType::HTTPS;
+   }
++  NOTREACHED();
+ }
+ 
+ // static
+@@ -262,6 +268,7 @@
+     case net::HostResolverSource::LOCAL_ONLY:
+       return HostResolverSource::LOCAL_ONLY;
+   }
++  NOTREACHED();
+ }
+ 
+ // static
+@@ -295,6 +302,7 @@
+     case net::MdnsListenerUpdateType::kRemoved:
+       return MdnsListenerUpdateType::REMOVED;
+   }
++  NOTREACHED();
+ }
+ 
+ // static
+@@ -324,6 +332,7 @@
+     case net::SecureDnsMode::kSecure:
+       return network::mojom::SecureDnsMode::SECURE;
+   }
++  NOTREACHED();
+ }
+ 
+ // static
+@@ -354,6 +363,7 @@
+       NOTREACHED();  // The bootstrap policy is only for use within the net
+                      // component.
+   }
++  NOTREACHED();
+ }
+ 
+ // static
+--- a/services/network/public/cpp/host_resolver_mojom_traits_unittest.cc
++++ b/services/network/public/cpp/host_resolver_mojom_traits_unittest.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "services/network/public/cpp/host_resolver_mojom_traits.h"
++
++#include <cstdint>
+ 
+ #include "mojo/public/cpp/base/time_mojom_traits.h"
+ #include "mojo/public/cpp/test_support/test_utils.h"
+@@ -67,6 +69,32 @@
+       mojom::DnsConfigOverrides::Deserialize(serialized, &deserialized));
+ }
+ 
++TEST(HostResolverMojomTraitsTest, DnsConfigOverrides_UnknownTristate) {
++  for (int32_t value : {-1, 3}) {
++    auto overrides = mojom::DnsConfigOverrides::New();
++    overrides->rotate = static_cast<mojom::DnsConfigOverrides_Tristate>(value);
++    std::vector<uint8_t> serialized =
++        mojom::DnsConfigOverrides::Serialize(&overrides);
++
++    net::DnsConfigOverrides deserialized;
++    EXPECT_FALSE(
++        mojom::DnsConfigOverrides::Deserialize(serialized, &deserialized));
++  }
++}
++
++TEST(HostResolverMojomTraitsTest, DnsConfigOverrides_UnknownSecureDnsMode) {
++  for (int32_t value : {-1, 4}) {
++    auto overrides = mojom::DnsConfigOverrides::New();
++    overrides->secure_dns_mode = static_cast<mojom::OptionalSecureDnsMode>(value);
++    std::vector<uint8_t> serialized =
++        mojom::DnsConfigOverrides::Serialize(&overrides);
++
++    net::DnsConfigOverrides deserialized;
++    EXPECT_FALSE(
++        mojom::DnsConfigOverrides::Deserialize(serialized, &deserialized));
++  }
++}
++
+ TEST(HostResolverMojomTraitsTest, DnsConfigOverrides_OnlyDnsOverHttpsServers) {
+   net::DnsConfigOverrides original;
+   original.dns_over_https_config =
+--- a/services/network/public/cpp/permissions_policy/permissions_policy.cc
++++ b/services/network/public/cpp/permissions_policy/permissions_policy.cc
+@@ -9,6 +9,7 @@
+ #include "base/containers/map_util.h"
+ #include "base/memory/ptr_util.h"
+ #include "base/no_destructor.h"
++#include "base/notreached.h"
+ #include "services/network/public/cpp/features.h"
+ #include "services/network/public/cpp/permissions_policy/client_hints_permissions_policy_mapping.h"
+ #include "services/network/public/cpp/permissions_policy/fenced_frame_permissions_policies.h"
+@@ -301,6 +302,7 @@
+       // 9.8.5 Return "Disabled".
+       return false;
+   }
++  NOTREACHED();
+ }
+ 
+ const PermissionsPolicy::Allowlist PermissionsPolicy::GetAllowlistForDevTools(
