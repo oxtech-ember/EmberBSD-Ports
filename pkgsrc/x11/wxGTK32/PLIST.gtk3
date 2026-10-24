@@ -95,5 +95,5 @@ include/wx-3.2/wx/unix/stdpaths.h
 include/wx-3.2/wx/unix/taskbarx11.h
 include/wx-3.2/wx/unix/utilsx11.h
 lib/wx/3.2/web-extensions/webkit2_extu-3.2.so
-lib/wx/config/gtk3-unicode-3.2
-lib/wx/include/gtk3-unicode-3.2/wx/setup.h
+lib/wx/config/${WX_HOST_PREFIX}gtk3-unicode-3.2
+lib/wx/include/${WX_HOST_PREFIX}gtk3-unicode-3.2/wx/setup.h

@@ -1,0 +1,16 @@
+$NetBSD$
+
+Allow a target package prefix to select native library link names.
+AI-assisted adaptation. Keep cross detection, tool prefixes and default names.
+
+--- configure.in.orig
++++ configure.in
+@@ -28,7 +28,7 @@
+ dnl configure will exit with error in AC_PROG_CC so don't test for = "yes" here
+ if test "$cross_compiling" != "no"; then
+     HOST_PREFIX="${host_alias}-"
+-    HOST_SUFFIX="-$host_alias"
++    HOST_SUFFIX="${HOST_SUFFIX--$host_alias}"
+ else
+     HOST_PREFIX=
+     HOST_SUFFIX=

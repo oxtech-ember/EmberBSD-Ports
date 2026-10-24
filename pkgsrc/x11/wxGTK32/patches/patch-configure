@@ -2,8 +2,20 @@ $NetBSD: patch-configure,v 1.7 2026/03/27 09:10:59 adam Exp $
 
 Use standard sonames on SunOS.
 
---- configure.orig	2026-02-28 12:50:12.000000000 +0000
+AI-assisted adaptation: permit an explicit library suffix for a target prefix.
+Keep cross detection, tool prefixes and the upstream default suffix.
+
+--- configure.orig
 +++ configure
+@@ -3870,7 +3870,7 @@
+ 
+ if test "$cross_compiling" != "no"; then
+     HOST_PREFIX="${host_alias}-"
+-    HOST_SUFFIX="-$host_alias"
++    HOST_SUFFIX="${HOST_SUFFIX--$host_alias}"
+ else
+     HOST_PREFIX=
+     HOST_SUFFIX=
 @@ -44587,7 +44587,8 @@ fi
        *-*-solaris2* )
          SONAME_FLAG="-h "

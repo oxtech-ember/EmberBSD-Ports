@@ -23,6 +23,16 @@ The GNU configure framework supplies the selected `--build` and `--host`
 tuples. Upstream then selects the NetBSD GTK toolkit and cross compiler mode.
 Native Autoconf builds retain their existing host autodetection.
 
+The target prefix contains no host libraries. The cross recipe selects an empty
+`HOST_SUFFIX` for native library link names. The AI-assisted source patches keep
+the upstream suffix when no value is set. They make `wx-config --libs` and
+`--linkdeps` use the same configured suffix. `HOST_PREFIX`, cross detection and
+the toolchain tuple stay unchanged. The PLIST uses the selected tuple prefix for
+the target configuration and setup header. Native package names stay unchanged.
+The NetBSD cross recipe uses the standard custom interpreter replacement for
+these installed POSIX scripts. It keeps `/bin/sh` in the target package and
+leaves the native build shell unchanged.
+
 Actual native Linux and AArch64 cross `bmake show-vars` select version 3.2.12,
 Autoconf and the same feature flags and dependency families. The graphics
 exporter's complete source and patch preflight passes. These are source and

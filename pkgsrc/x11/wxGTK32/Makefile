@@ -18,6 +18,8 @@ USE_LANGUAGES=		c c++
 USE_TOOLS+=		pkg-config msgfmt
 
 PLIST_SRC+=		${PLIST_SRC_DFLT}
+_WX_HOST_PREFIX=
+PLIST_SUBST+=		WX_HOST_PREFIX=${_WX_HOST_PREFIX}
 
 DOCDIR=			share/wx-3.2/doc/wxWidgets
 
@@ -28,6 +30,15 @@ INSTALLATION_DIRS+=	share/wx-3.2/aclocal
 REPLACE_SH=		wx-config.in wx-config-inplace.in
 
 .include "../../mk/bsd.prefs.mk"
+
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
+# These installed POSIX scripts use the target shell. SH stays a build tool.
+REPLACE_SH=
+REPLACE_INTERPRETER+=	wx-target-sh
+REPLACE.wx-target-sh.old=	[^[:space:]]*sh
+REPLACE.wx-target-sh.new=	/bin/sh
+REPLACE_FILES.wx-target-sh=	wx-config.in wx-config-inplace.in
+.endif
 
 # Keep the canonical Autoconf default. The optional CMake build installs
 # unused headers that the configure build system doesn't.
@@ -77,6 +88,9 @@ PLIST_SRC+=		PLIST.configure
 # Use pkgsrc build/host tuples for cross builds. Keep native autodetection.
 .  if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 USE_GNU_CONFIGURE_HOST=	yes
+# This prefix contains target libraries only. Keep compiler/config tuples.
+CONFIGURE_ENV+=		HOST_SUFFIX=
+_WX_HOST_PREFIX=	${MACHINE_GNU_PLATFORM}-
 .  else
 USE_GNU_CONFIGURE_HOST=	no
 .  endif

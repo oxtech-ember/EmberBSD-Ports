@@ -1,0 +1,25 @@
+$NetBSD$
+
+Use the configured library suffix in both wx-config library queries.
+AI-assisted adaptation for target packages. Keep the upstream default suffix.
+
+--- wx-config.in.orig
++++ wx-config.in
+@@ -1080,7 +1080,7 @@
+     _all_libs=''
+     _wxlibs=''
+ 
+-    is_cross && _target="-${target}"
++    _target="@HOST_SUFFIX@"
+ 
+     for lib do
+ 
+@@ -1160,7 +1160,7 @@
+ {
+     _wxlibs=''
+ 
+-    is_cross && _target="-${target}"
++    _target="@HOST_SUFFIX@"
+ 
+     for lib do
+         if match_field "$lib" @STD_BASE_LIBS@ ; then
