@@ -1,14 +1,14 @@
 Origin: EmberBSD (AI-assisted); not submitted upstream.
 Build native GCC16 on macOS AArch64 from the common lang/gcc16 recipe.
 Apply Iain Sandoe's Darwin port. Require an accepted SDK GCC16 seed and
-explicit LLVM MC, Mach-O LLD, dsymutil, lipo and archive tools. Keep the
-full GCC bootstrap. Clang cannot build stage 1. All producers share the
-source diff.
+explicit LLVM MC, Mach-O LLD, dsymutil, lipo, c++filt and archive tools.
+Keep the full GCC bootstrap. Clang cannot build stage 1. All producers
+share the source diff.
 See profiles/development-toolchain/gcc-darwin-host.md.
 
 --- a/lang/gcc16/Makefile.common
 +++ b/lang/gcc16/Makefile.common
-@@ -57,6 +57,64 @@
+@@ -57,6 +57,67 @@
  .if ${OPSYS} == "Darwin"
 -BUILDLINK_TRANSFORM+=	rm:-nodefaultrpaths
 +.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} != "yes"
@@ -48,6 +48,9 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 +CONFIGURE_ENV+= NM_FOR_TARGET=${NM:Q} STRIP_FOR_TARGET=${STRIP:Q}
 +CONFIGURE_ENV+= DSYMUTIL_FOR_TARGET=${LOCALBASE:Q}/bin/dsymutil
 +CONFIGURE_ENV+= LIPO_FOR_TARGET=${LOCALBASE:Q}/bin/llvm-lipo
++# libstdc++ scripts/make_exports.pl runs a bare "c++filt -_" on Darwin.
++TOOLS_CREATE+= c++filt
++TOOLS_PATH.c++filt= ${LOCALBASE}/bin/llvm-cxxfilt
 +# The SDK validates this optional control-plane resource command.
 +.if defined(EMBERBSD_GCC16_LINKER_LAUNCHER) && !empty(EMBERBSD_GCC16_LINKER_LAUNCHER)
 +MAKE_ENV+= GCC_HOST_LINKER_LAUNCHER=${EMBERBSD_GCC16_LINKER_LAUNCHER:Q}
@@ -75,7 +78,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 -.endif
  
  ## For graphite support.
-@@ -89,8 +147,10 @@
+@@ -89,8 +150,10 @@
  MAKE_ENV.NetBSD+=	ac_cv_func_uselocale=no
  MAKE_ENV.SunOS+=	ac_cv_func_mkostemp=no
  

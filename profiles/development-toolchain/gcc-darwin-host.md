@@ -37,6 +37,8 @@ selection remains conditional on Darwin:
 - The recipe selects explicit LLVM MC, Mach-O LLD, dsymutil and
   `llvm-lipo` paths. libgcc creates `libgcc_s` with `LIPO_FOR_TARGET`; its
   default is a bare `lipo`, which no Ports package provides.
+  libstdc++ `scripts/make_exports.pl` runs a bare `c++filt -_`, so the recipe
+  creates the `c++filt` tool from `llvm-cxxfilt`.
   [gcc-darwin-llvm-mc.patch](patches/gcc-darwin-llvm-mc.patch) adds
   `--with-darwin-assembler=llvm-mc` to GCC. It changes the driver assembler
   arguments and the configure assembler probes together.
