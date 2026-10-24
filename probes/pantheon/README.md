@@ -40,7 +40,7 @@ policy.
   `libinput` pkg-config module (soname-compatible libinput port), and
   `devel/libgudev` is 238, so `g_udev_device_get_current_tags` is
   available without the fallback patch FreeBSD needs.
-- pkgsrc tree prepared with `scripts/prepare-pkgsrc.sh`
+- pkgsrc tree prepared with `scripts/prepare-pkgsrc.py`
   on the project storage volume; probe recipes live here and graduate to
   a profile after the first successful build.
 

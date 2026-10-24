@@ -152,7 +152,7 @@ done
 if grep -qx 'share/texinfo/htmlxref.cnf' "$work/devel/gtexinfo/PLIST"; then exit 1; fi
 [ ! -e "$work/lang/gcc16/patches/patch-isl_configure" ]
 if grep '^TEST_TARGET=' "$work/lang/gcc16/Makefile" | grep -q '||'; then exit 1; fi
-if sh "$root/scripts/prepare-pkgsrc.sh" "$work/unknown" unknown; then exit 1; fi
+if "$PY" -B "$root/scripts/prepare-pkgsrc.py" "$work/unknown" unknown; then exit 1; fi
 [ ! -e "$work/unknown" ]
 # A second application must fail instead of interactively reversing a patch.
 if patch -f -E -d "$work" -p1 -F 0 < \

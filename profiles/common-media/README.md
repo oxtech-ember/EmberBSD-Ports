@@ -57,7 +57,7 @@ consumer before retiring the recovery stack; never alias old SONAMEs.
 ## Prepare
 
 ```sh
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
+# Provide a verified source-data export at /absolute/new-pkgsrc. See the root README.
 ```
 
 Use this order in the staging build's private MAKECONF:

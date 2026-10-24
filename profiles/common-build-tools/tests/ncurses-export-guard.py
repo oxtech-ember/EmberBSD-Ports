@@ -22,7 +22,7 @@ patches = fixture / "profiles/common-build-tools/patches"
 patches.mkdir(parents=True)
 (fixture / "scripts").mkdir()
 (fixture / "pkgsrc").mkdir()
-shutil.copy2(root / "scripts/prepare-pkgsrc.sh", fixture / "scripts/prepare-pkgsrc.sh")
+shutil.copy2(root / "scripts/prepare-pkgsrc.py", fixture / "scripts/prepare-pkgsrc.py")
 (fixture / "pkgsrc/export.conf").write_text(line)
 (patches / name).symlink_to(root / "profiles/common-build-tools/patches" / name)
 commands = []
@@ -30,7 +30,7 @@ for label, message in [("present", "Initialize the pinned submodule"),
                        ("missing", "Missing infrastructure patch: profiles/common-build-tools/patches/" + name)]:
     if label == "missing":
         (patches / name).unlink()
-    argv = ["sh", str(fixture / "scripts/prepare-pkgsrc.sh"), str(work / label)]
+    argv = [sys.executable, "-B", str(root / "scripts/tests/export-fixture.py"), str(fixture), str(work / label)]
     result = subprocess.run(argv, capture_output=True, text=True)
     commands.append(dict(case=label, argv=argv, exit=result.returncode, stdout=result.stdout, stderr=result.stderr))
     # The fixture has no pinned upstream tree, so the present case stops

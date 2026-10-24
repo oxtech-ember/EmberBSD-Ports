@@ -315,7 +315,7 @@ Live delivery and physical HDMI hotplug remain unverified.
 ## Prepare and select
 
 ```sh
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
+# Provide a verified source-data export at /absolute/new-pkgsrc. See the root README.
 ```
 
 Include the exported files in a private native MAKECONF, in this order:

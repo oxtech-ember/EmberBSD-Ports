@@ -8,7 +8,7 @@ toolchain:
 - `recipes/cross/aarch64-none-elf-gcc`: GCC16 for bare-metal AArch64.
 
 The recipe Makefiles are missing. The GCC PLIST still describes the old
-package. `scripts/prepare-pkgsrc.sh` does not export these recipes, and the
+package. `scripts/prepare-pkgsrc.py` does not export these recipes, and the
 export uses the pinned upstream `sysutils/dtc` recipe. The pinned GCC8.2
 firmware compiler is not a fallback.
 

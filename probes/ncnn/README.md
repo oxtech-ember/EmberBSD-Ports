@@ -52,7 +52,7 @@ Use `native /absolute/native-gcc16-prefix` as the first two arguments for
 the Linux control. Its installed prefix is `NEW_OUTPUT/install`.
 
 For ordinary native pkgsrc builds, export the pinned tree with
-`scripts/prepare-pkgsrc.sh` and build `local-ai/ncnn` with the GCC16 profile.
+`scripts/prepare-pkgsrc.py` and build `local-ai/ncnn` with the GCC16 profile.
 The recorded cloud acceptance creates a real package from the cross stage.
 It does not establish a complete native pkgsrc bootstrap.
 

@@ -42,7 +42,7 @@ recipes and pin their archives. The normal export includes the toolkit:
 
 ```sh
 git submodule update --init upstream/pkgsrc
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
+# Provide a verified source-data export at /absolute/new-pkgsrc. See the root README.
 sh probes/plasma-mobile/toolkit/validate.sh probes/plasma-mobile/toolkit
 ```
 

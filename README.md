@@ -839,7 +839,7 @@ This repository does not implement another package manager.
 
 `upstream/pkgsrc` pins the pkgsrc-2026Q3 base as a Git submodule. Local recipes
 under `pkgsrc/` use ordinary `Makefile`, `distinfo`, `DESCR`, and `PLIST` files.
-`scripts/prepare-pkgsrc.sh` exports that pinned base and adds the local recipes
+`scripts/prepare-pkgsrc.py` exports that pinned base and adds the local recipes
 to an independent working tree. A local recipe can replace an upstream
 recipe only if `pkgsrc/replaces` names its path, one path on each line.
 `pkgsrc/defaults.mk.conf` holds package defaults for every build. The export
@@ -857,10 +857,39 @@ tabs between the fields. The export uses them in the order of the file:
   `distinfo`.
 - `file SOURCE DEST` copies a configuration file or helper into the export.
 
+The standalone Python, compatibility shell and LXQt entries refuse execution.
+The SDK has no exact source-export controller yet. A grep, metadata or relocation
+acceptance must not authorize an unrelated export.
+
+A developer can prepare and verify **source data** with explicit host regression
+tools. This operation does not admit these tools into SDK builds:
+
 ```sh
-git submodule update --init upstream/pkgsrc
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
+/absolute/git submodule update --init upstream/pkgsrc
+export PY=/absolute/python
+export EXPORT_TEST_GIT=/absolute/git
+export EXPORT_TEST_PATCH=/absolute/patch
+/bin/sh scripts/tests/export-composition.sh /absolute/new-source-work
 ```
+
+The verified data is `/absolute/new-source-work/export`. Other profile examples
+require that verified data at the named pkgsrc path. They do not invoke an
+unsupported SDK export stage. Python uses its standard library for archives,
+hashes and copies. Git and patch remain explicit upstream tools.
+
+The future exact SDK controller calls the sole implementation as
+`export_pkgsrc(root, destination, selection=selection, runner=runner, scratch=scratch)`.
+It loads the existing immutable SDK API1 selection once. It pins the source and
+holds source/tool shared leases and the work exclusive lease through child
+drainage. The runner takes argv and optional `cwd` and bytes `input`; it returns
+captured bytes and preserves child failures. The callable returns the pkgsrc
+revision. It does not accept a second tool map.
+
+`scratch` must name a new absolute child of caller-owned work. The exporter
+never removes it. The caller cleans it only after it proves child drainage.
+On SDK `ProcessOwnershipError`, the caller must retain the scratch archive and
+work leases for HOLD. The shell entry only delegates to the Python refusal.
+It has no export logic and requires explicit `PY`.
 
 The destination must be new. The export takes no profile argument. Before it
 creates the destination, it checks each recipe: the `Makefile` exists, each
@@ -870,7 +899,15 @@ each link stays in the repository. A path that upstream already has must be in
 Builds must work on case-insensitive file systems, such as the default macOS
 file system. Put `WRKOBJDIR` on any local file system. A package that fails
 only on a case-insensitive file system has a defect in its recipe.
-`sh scripts/tests/prepare-pkgsrc.sh NEW_WORK` tests these checks on a fixture.
+Set `EXPORT_TEST_GIT` and `EXPORT_TEST_PATCH` to absolute host regression tools.
+These test tools are not admitted seed providers.
+`sh scripts/tests/prepare-pkgsrc.sh` tests the finite fixture checks.
+Set `EMBERBSD_SDK_SOURCE` to the explicit SDK API1 source for the typed
+`ProcessOwnershipError` control. `"$PY" -B scripts/tests/test_prepare_pkgsrc.py`
+tests real Git binary patches,
+zero fuzz, empty-file removal, archive links, modes, statuses, CLI refusal,
+and caller-owned scratch retention. The ownership error is injected; no real
+unproven child runs in that control.
 `sh scripts/tests/export-composition.sh NEW_WORK` exports the real tree and
 compares each recipe with its source.
 `BMAKE=/absolute/host/bin/bmake sh scripts/tests/bootstrap-inputs.sh

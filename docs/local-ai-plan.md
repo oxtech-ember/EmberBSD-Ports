@@ -34,7 +34,7 @@ assets and offline smoke scenarios.
 ### 1. Native package recipes
 
 Files: `upstream/pkgsrc`, `.gitmodules`, `pkgsrc/local-ai/`,
-`scripts/prepare-pkgsrc.sh`, `profiles/ai-cpu/README.md`.
+`scripts/prepare-pkgsrc.py`, `profiles/ai-cpu/README.md`.
 
 - [x] Pin pkgsrc and verify whether upstream already provides either engine.
 - [x] Add ordinary Makefile, distinfo, DESCR, and PLIST recipes with exact source

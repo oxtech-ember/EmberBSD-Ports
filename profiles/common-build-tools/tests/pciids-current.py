@@ -103,11 +103,14 @@ def run_export(root, destination, archive_root, path):
         'PATH': str(path) + os.pathsep + os.defpath,
         'FAKE_ARCHIVE': str(archive_root),
         'FAKE_PIN': 'fff4deb639a1a640476203c80f752fb77b6cb14b',
+        'FAKE_MATCH': '1',
+        'EXPORT_TEST_GIT': os.environ['EXPORT_TEST_GIT'],
+        'EXPORT_TEST_PATCH': os.environ['EXPORT_TEST_PATCH'],
         'LC_ALL': 'C',
         'GIT_OPTIONAL_LOCKS': '0',
         'GIT_NO_LAZY_FETCH': '1',
     }
-    argv = [shutil.which('sh'), str(root / 'scripts/prepare-pkgsrc.sh'), str(destination)]
+    argv = [sys.executable, '-B', str(Path(__file__).resolve().parents[3] / 'scripts/tests/export-fixture.py'), str(root), str(destination)]
     try:
         result = process.capture(argv, cwd=str(root), env=env)
         return dict(status=result.returncode, stdout=result.stdout.decode('utf-8', 'replace'),
@@ -124,7 +127,7 @@ def make_fixture(root, ports, upstream, bin_dir, replace):
     (root / 'profiles/common-build-tools/patches').mkdir(parents=True)
     (root / 'upstream/pkgsrc').mkdir(parents=True)
     shutil.copy2(ports / 'pkgsrc/defaults.mk.conf', root / 'pkgsrc/defaults.mk.conf')
-    shutil.copy2(ports / 'scripts/prepare-pkgsrc.sh', root / 'scripts/prepare-pkgsrc.sh')
+    shutil.copy2(ports / 'scripts/prepare-pkgsrc.py', root / 'scripts/prepare-pkgsrc.py')
     shutil.copy2(ports / 'profiles/common-build-tools/patches/current-automake-tools.patch',
                  root / 'profiles/common-build-tools/patches/current-automake-tools.patch')
     shutil.copytree(ports / 'pkgsrc/misc/pciids', root / 'pkgsrc/misc/pciids')
@@ -133,19 +136,6 @@ def make_fixture(root, ports, upstream, bin_dir, replace):
         'file\tpkgsrc/defaults.mk.conf\tEMBERBSD-DEFAULTS-MK.CONF\n')
     replacement_text = 'misc/pciids\n' if replace else ''
     (root / 'pkgsrc/replaces').write_text(replacement_text)
-    git = bin_dir / 'git'
-    git.write_text('''#!/bin/sh
-set -eu
-case "$*" in
-    *ls-files*) printf '160000 fff4deb639a1a640476203c80f752fb77b6cb14b 0\\tupstream/pkgsrc\\n' ;;
-    *rev-parse*) printf '%s\\n' "$FAKE_PIN" ;;
-    *archive*)
-        for arg do case "$arg" in --output=*) output=${arg#--output=} ;; esac; done
-        tar -cf "$output" -C "$FAKE_ARCHIVE" . ;;
-    *) exit 91 ;;
-esac
-''')
-    git.chmod(0o755)
 
 
 def main():
@@ -244,7 +234,7 @@ def main():
         archive_sha256=ARCHIVE_SHA256, pci_ids_sha256=digest(file_data, 'sha256'),
         pci_ids_version=VERSION, pci_ids_lines=len(text.splitlines()),
         current_id_checks=len(EXPECTED), package=PKGNAME,
-        exporter='scripts/prepare-pkgsrc.sh, synthetic pinned pkgsrc archive',
+        exporter='scripts/prepare-pkgsrc.py, synthetic pinned pkgsrc archive',
         tests=dict(source_pin=True, pkgsrc_hashes=True, license=True,
                    source_notice=True, version_header=True,
                    known_current_ids=sorted(f'{vendor}:{device}' for vendor, device in EXPECTED),

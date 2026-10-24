@@ -20,7 +20,7 @@ ROS upstream build tooling uses Python; no project-owned Python is introduced.
 ## Tasks
 
 1. Native package: add pkgsrc/local-robotics/zenoh-pico with immutable source,
-   distinfo, licenses and development files. Generalize prepare-pkgsrc.sh to
+   distinfo, licenses and development files. Generalize prepare-pkgsrc.py to
    overlay each local category; extend its fixture test to cover both categories
    and collision rejection. Build, run upstream tests, package and install.
 2. Device example: add robotics/zenoh-ros2 in Examples. Write failing C tests

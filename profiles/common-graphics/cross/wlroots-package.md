@@ -142,7 +142,7 @@ A revision change may leave existing
 pkgsrc completion cookies satisfied; use normal `bmake clean` for this package
 before a corrected build. Preserve the original failure and package first.
 
-`scripts/tests/prepare-pkgsrc.sh NEW_WORK` tests the export refusals on a
+`scripts/tests/prepare-pkgsrc.sh` tests the export refusals on a
 small fixture. It does not need disk space for a full export.
 
 ## Compile and run the real API consumer

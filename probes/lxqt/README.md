@@ -15,15 +15,13 @@ It retains the target plugin paths and fixes the backlight helper defects
 described below.
 It is AI-assisted EmberBSD work and has not been submitted upstream.
 
-Prepare a fresh common profile with the tracked LXQt overlay:
-
-```sh
-python3 probes/lxqt/prepare-pkgsrc.py /absolute/new-pkgsrc-export
-```
-
-The script checks that every overlay file is tracked by Git. It runs the
-standard export, copies the overlay files and records the applied recipe
-inventory. The standard export does not include the Plasma toolkit probe.
+The SDK controller for the tracked LXQt source export is pending. The standalone
+entry refuses execution. `export_lxqt(root, destination, selection=selection,
+runner=runner, scratch=scratch)` reuses the canonical callable inside an exact
+controller. It checks that every overlay file is tracked by the selected Git.
+It copies the overlay and records the source inventory. The caller owns work,
+child drainage and scratch cleanup. A verified common source-data composition
+alone does not include this tracked overlay or the Plasma toolkit probe.
 Include the common cross, graphics and media configuration in that order.
 Use the shared EmberBSD sysroot and GCC16 toolchain.
 Build ordinary packages with `bmake package`.

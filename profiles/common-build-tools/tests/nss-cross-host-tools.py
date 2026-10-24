@@ -64,8 +64,8 @@ def main():
         parser.error('The output directory must be new.')
     for item in (ports, source, sdk_root, host_cc, bmake, gmake):
         paths.reject_overlap(str(work), str(item))
-    if not (ports / 'scripts/prepare-pkgsrc.sh').is_file():
-        parser.error('The selected Ports root is missing scripts/prepare-pkgsrc.sh.')
+    if not (ports / 'scripts/prepare-pkgsrc.py').is_file():
+        parser.error('The selected Ports root is missing scripts/prepare-pkgsrc.py.')
 
     work.mkdir(mode=0o700)
     temp = work / 'tmp'
@@ -117,7 +117,7 @@ def main():
         if not delta.is_file():
             raise RuntimeError('Missing pkgsrc-nss-cross-host-tools.patch in the selected Ports source.')
         initial_inputs = [
-            ports / 'scripts/prepare-pkgsrc.sh', delta,
+            ports / 'scripts/prepare-pkgsrc.py', delta,
             pkg / 'Makefile', pkg / 'PLIST', pkg / 'distinfo',
             pkg / 'patches/patch-nss_coreconf_nsinstall_Makefile',
             source_coreconf / 'nsinstall/Makefile', source_coreconf / 'rules.mk',

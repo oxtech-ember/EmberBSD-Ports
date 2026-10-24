@@ -79,7 +79,7 @@ checks their patch hashes. Prepare a fresh export and use its matching cross
 MAKECONF:
 
 ```sh
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
+# Provide a verified source-data export at /absolute/new-pkgsrc. See the root README.
 env TMPDIR=/absolute/build-tmp bmake -C /absolute/new-pkgsrc/wayland/sway \
   MAKECONF=/absolute/cross.mk.conf MAKE_JOBS=1 package
 ```

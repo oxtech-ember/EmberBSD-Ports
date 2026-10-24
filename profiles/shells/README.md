@@ -26,7 +26,7 @@ Initialize the pinned pkgsrc submodule, then prepare the standard export:
 
 ```sh
 git submodule update --init upstream/pkgsrc
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
+# Provide a verified source-data export at /absolute/new-pkgsrc. See the root README.
 ```
 
 The export has `EMBERBSD-SHELLS-MK.CONF` from [mk.conf](mk.conf). It includes the shared GCC 16.2 selection, current Libtool 2.6.2 and

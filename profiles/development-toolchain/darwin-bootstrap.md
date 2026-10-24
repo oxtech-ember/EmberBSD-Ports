@@ -11,16 +11,16 @@ Ports owns the shared recipes and the pkgsrc command mapping.
 Use the repository's canonical export interface:
 
 ```text
-/absolute/accepted/sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
+# Provide a verified source-data export at /absolute/new-pkgsrc. See the root README.
 ```
 
 Initialize `upstream/pkgsrc` at the repository's recorded gitlink first.
 The export checks that revision. It applies `pkgsrc/export.conf` in order.
 Do not copy a second GCC recipe into the SDK.
-The export currently needs the external programs named in that script.
-Its shell implementation has not been converted to the SDK Python service.
-Pin and accept that tool closure before running it. A system PATH is not
-an implicit provider. Git archive and patch operations remain real tool inputs.
+The Python callable uses explicit Git and patch commands.
+The exact SDK source-export controller is not implemented.
+Use the root [source-data composition procedure](../../README.md#package-integration)
+for source editing. That operation does not admit its host tools into SDK builds.
 
 The export installs [darwin-bootstrap.mk.conf](darwin-bootstrap.mk.conf) as
 `EMBERBSD-DARWIN-BOOTSTRAP-MK.CONF` beside the other exported profiles.

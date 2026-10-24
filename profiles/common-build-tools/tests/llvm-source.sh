@@ -77,7 +77,7 @@ diff -u --label cmake/config-ix.cmake.orig --label cmake/config-ix.cmake \
     "$work/pristine/$source/llvm/cmake/config-ix.cmake" > "$work/reversed.patch" || [ "$?" = 1 ]
 if patch -f -N -F 0 -p0 -d "$work/pristine/$source/llvm" < "$work/reversed.patch" \
     > "$work/reversed-input.log" 2>&1; then exit 1; fi
-sh "$root/scripts/prepare-pkgsrc.sh" "$work/pkgsrc" > "$work/export.log"
+"$PY" -B "$root/scripts/tests/export-fixture.py" "$root" "$work/pkgsrc" > "$work/export.log"
 for recipe in lang/python315 devel/meson lang/llvm lang/clang devel/lld devel/py-llvm-lit; do
     diff -r "$(recipe_dir "$recipe")" "$work/pkgsrc/$recipe"
 done
@@ -92,27 +92,27 @@ ln -s "$root/upstream/pkgsrc" "$work/reference-ports/upstream/pkgsrc"
 git -C "$work/reference-ports" init -q
 pin=$(git -C "$root/upstream/pkgsrc" rev-parse HEAD)
 git -C "$work/reference-ports" update-index --add --cacheinfo "160000,$pin,upstream/pkgsrc"
-sh "$work/reference-ports/scripts/prepare-pkgsrc.sh" "$work/reference-pkgsrc" > "$work/reference-export.log"
+"$PY" -B "$root/scripts/tests/export-fixture.py" "$work/reference-ports" "$work/reference-pkgsrc" > "$work/reference-export.log"
 for recipe in lang/python315 devel/meson lang/gcc16 lang/gcc16-libs lang/gcc16-libjit \
     math/mpfr math/mpcomplex devel/gtexinfo lang/tcl-expect; do
     diff -r "$work/reference-pkgsrc/$recipe" "$work/pkgsrc/$recipe"
 done
 cmp "$root/profiles/development-toolchain/mk.conf" "$work/pkgsrc/EMBERBSD-DEVELOPMENT-MK.CONF"
-if sh "$root/scripts/prepare-pkgsrc.sh" "$work/pkgsrc" > "$work/existing.log" 2>&1; then exit 1; fi
-if sh "$root/scripts/prepare-pkgsrc.sh" "$work/unknown" bad > "$work/unknown.log" 2>&1; then exit 1; fi
+if "$PY" -B "$root/scripts/tests/export-fixture.py" "$root" "$work/pkgsrc" > "$work/existing.log" 2>&1; then exit 1; fi
+if "$PY" -B "$root/scripts/tests/export-fixture.py" "$root" "$work/unknown" bad > "$work/unknown.log" 2>&1; then exit 1; fi
 [ ! -e "$work/unknown" ]
 fixture=$work/fixture
 mkdir -p "$fixture/scripts" "$fixture/upstream"
-cp "$root/scripts/prepare-pkgsrc.sh" "$fixture/scripts/"
-for item in profiles probes; do ln -s "$root/$item" "$fixture/$item"; done
-# The export rejects links in pkgsrc/, so the fixture gets a private copy.
+cp "$root/scripts/prepare-pkgsrc.sh" "$root/scripts/prepare-pkgsrc.py" "$fixture/scripts/"
+for item in profiles probes; do cp -R "$root/$item" "$fixture/$item"; done
+# Keep recipe links and their shared patch targets inside the fixture.
 cp -R "$root/pkgsrc" "$fixture/pkgsrc"
 ln -s "$root/upstream/pkgsrc" "$fixture/upstream/pkgsrc"
 git -C "$fixture" init -q
 pin=$(git -C "$root/upstream/pkgsrc" rev-parse HEAD)
 git -C "$fixture" update-index --add --cacheinfo "160000,$pin,upstream/pkgsrc"
 rm "$fixture/pkgsrc/lang/llvm/patches/patch-cmake_config-ix.cmake"
-if sh "$fixture/scripts/prepare-pkgsrc.sh" "$work/missing-export" \
+if "$PY" -B "$root/scripts/tests/export-fixture.py" "$fixture" "$work/missing-export" \
     > "$work/missing-export.log" 2>&1; then exit 1; fi
 grep -qF 'Missing patch: pkgsrc/lang/llvm/patches/patch-cmake_config-ix.cmake' "$work/missing-export.log"
 [ ! -e "$work/missing-export" ]

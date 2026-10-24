@@ -52,7 +52,7 @@ git clone --recurse-submodules --shallow-submodules \
 cd EmberBSD-Ports
 work=/var/tmp/ember-robotics-build
 mkdir "$work"
-sh scripts/prepare-pkgsrc.sh "$work/pkgsrc"
+# Provide a verified source-data export at "$work/pkgsrc". See the root README.
 mkdir "$work/work" "$work/distfiles" "$work/packages"
 cat > "$work/mk.conf" <<CONF
 .if defined(BSD_PKG_MK)

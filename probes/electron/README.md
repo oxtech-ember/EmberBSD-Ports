@@ -69,11 +69,11 @@ not match Electron's pinned revision.
 
 ## Blanc application package
 
-`scripts/prepare-pkgsrc.sh` does not export this probe. Copy the two recipes
+`scripts/prepare-pkgsrc.py` does not export this probe. Copy the two recipes
 into a new export:
 
 ```sh
-sh scripts/prepare-pkgsrc.sh /absolute/NEW_PKGSRC
+# Provide a verified source-data export at /absolute/NEW_PKGSRC. See the root README.
 cp -RL probes/electron/blanc /absolute/NEW_PKGSRC/www/blanc
 cp -RL probes/electron/electron44 /absolute/NEW_PKGSRC/devel/electron44
 ```

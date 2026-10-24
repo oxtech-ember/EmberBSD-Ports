@@ -198,7 +198,7 @@ def main():
     build_details(patched, args.work)
     exported = args.pkgsrc or args.work / 'pkgsrc'
     if not args.pkgsrc:
-        run(['sh', str(ROOT / 'scripts/prepare-pkgsrc.sh'), str(exported.resolve())], args.work / 'export.log')
+        run([sys.executable, '-B', str(ROOT / 'scripts/tests/export-fixture.py'), str(ROOT), str(exported.resolve())], args.work / 'export.log')
     for original in RECIPE.rglob('*'):
         if original.is_file():
             require(original.read_bytes() == (exported / 'lang/python315' / original.relative_to(RECIPE)).read_bytes(), 'exported recipe differs')

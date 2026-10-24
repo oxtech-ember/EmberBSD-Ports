@@ -44,7 +44,7 @@ For pkgsrc cross builds, set `ONNXRUNTIME_NATIVE_PROTOC` to a matching native
 Export the pinned pkgsrc base with the EmberBSD recipes:
 
 ```sh
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
+# Provide a verified source-data export at /absolute/new-pkgsrc. See the root README.
 ```
 
 The [toolchain profile](../../profiles/development-toolchain/README.md)

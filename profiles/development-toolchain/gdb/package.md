@@ -15,7 +15,7 @@ with the accepted GCC16 compiler, complete NetBSD 11/AArch64 sysroot and
 matching installed target dependencies.
 
 ```sh
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
+# Provide a verified source-data export at /absolute/new-pkgsrc. See the root README.
 bmake -C /absolute/new-pkgsrc/devel/gdb \
     MAKECONF=/absolute/cross-mk.conf BATCH=yes package
 ```

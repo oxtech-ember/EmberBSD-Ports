@@ -250,7 +250,7 @@ without installing a package. It does not qualify a native toolset.
 
 ```sh
 git submodule update --init --depth 1 upstream/pkgsrc
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
+# Provide a verified source-data export at /absolute/new-pkgsrc. See the root README.
 ```
 
 The destination must be new. The export rejects missing or changed patches

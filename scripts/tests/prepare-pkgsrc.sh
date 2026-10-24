@@ -7,7 +7,9 @@ trap 'rm -rf "$work"' EXIT
 trap 'exit 130' INT
 trap 'exit 143' HUP TERM
 tab=$(printf '\t')
-real_git=$(command -v git)
+: "${PY:?Set an explicit Python}"
+: "${EXPORT_TEST_GIT:?Set an explicit regression Git}"
+: "${EXPORT_TEST_PATCH:?Set an explicit regression patch}"
 
 mkdir "$work/existing" "$work/bin"
 printf preserve > "$work/existing/sentinel"
@@ -16,27 +18,6 @@ if sh "$root/scripts/prepare-pkgsrc.sh" "$work/existing" 2>/dev/null; then exit 
 if sh "$root/scripts/prepare-pkgsrc.sh" relative-path 2>/dev/null; then exit 1; fi
 if sh "$root/scripts/prepare-pkgsrc.sh" "$work/profile" development-toolchain 2>/dev/null; then exit 1; fi
 [ ! -e "$work/profile" ]
-
-cat > "$work/bin/git" <<STUB
-#!/bin/sh
-case "\$*" in
-    *ls-files*) printf '160000 1111111111111111111111111111111111111111 0\tupstream/pkgsrc\n' ;;
-    *rev-parse*)
-        if [ "\${FAKE_MATCH:-0}" = 1 ]; then
-            printf '1111111111111111111111111111111111111111\n'
-        else
-            printf '2222222222222222222222222222222222222222\n'
-        fi ;;
-    *archive*)
-        for arg do
-            case "\$arg" in --output=*) output=\${arg#--output=} ;; esac
-        done
-        tar -cf "\$output" -C "\$FAKE_ARCHIVE" . ;;
-    *' apply '*) exec "$real_git" "\$@" ;;
-    *) exit 99 ;;
-esac
-STUB
-chmod +x "$work/bin/git"
 
 # The fixture upstream tree.
 upstream=$work/upstream
@@ -52,7 +33,7 @@ fixture=$work/fixture
 mkdir -p "$fixture/scripts" "$fixture/pkgsrc/devel/alpha" "$fixture/pkgsrc/devel/gamma" \
     "$fixture/pkgsrc/local-test/delta" "$fixture/profiles/test/recipes/devel/epsilon/patches" \
     "$fixture/profiles/test/patches" "$fixture/shared"
-cp "$root/scripts/prepare-pkgsrc.sh" "$fixture/scripts/"
+cp "$root/scripts/prepare-pkgsrc.sh" "$root/scripts/prepare-pkgsrc.py" "$fixture/scripts/"
 printf 'PKGNAME=alpha-2\n' > "$fixture/pkgsrc/devel/alpha/Makefile"
 printf 'PKGNAME=gamma-1\n' > "$fixture/pkgsrc/devel/gamma/Makefile"
 printf 'SUBDIR+=delta\n' > "$fixture/pkgsrc/local-test/Makefile"
@@ -93,8 +74,8 @@ CONF
 cp -R "$fixture" "$work/clean"
 
 run() {
-    FAKE_MATCH=1 FAKE_ARCHIVE="$upstream" PATH="$work/bin:$PATH" \
-        sh "$fixture/scripts/prepare-pkgsrc.sh" "$1"
+    FAKE_MATCH=1 FAKE_ARCHIVE="$upstream" \
+        "$PY" -B "$root/scripts/tests/export-fixture.py" "$fixture" "$1"
 }
 reject() {
     if run "$work/$1" > "$work/$1.log" 2>&1; then
@@ -107,7 +88,7 @@ restore() {
     cp -R "$work/clean" "$fixture"
 }
 
-if PATH="$work/bin:$PATH" sh "$fixture/scripts/prepare-pkgsrc.sh" "$work/mismatch" 2>/dev/null; then exit 1; fi
+if FAKE_ARCHIVE="$upstream" "$PY" -B "$root/scripts/tests/export-fixture.py" "$fixture" "$work/mismatch" 2>/dev/null; then exit 1; fi
 [ ! -e "$work/mismatch" ]
 
 run "$work/export" > "$work/export.log"

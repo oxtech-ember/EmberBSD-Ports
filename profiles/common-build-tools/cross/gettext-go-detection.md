@@ -14,7 +14,7 @@ No compiler language, test or diagnostic is disabled.
 The patch changes `gnulib-m4/gocomp.m4` and the corresponding generated
 `configure` code. The latter uses Autoconf 2.72. It does not change C/C++
 sources, installed ABIs or the normal pkgsrc package split.
-`prepare-pkgsrc.sh` applies the patch after the common cross-package delta.
+`prepare-pkgsrc.py` applies the patch after the common cross-package delta.
 
 ## Discovery regression
 

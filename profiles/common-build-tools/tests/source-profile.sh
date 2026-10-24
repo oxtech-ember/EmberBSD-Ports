@@ -72,7 +72,7 @@ fi
 cmp "$root/upstream/pkgsrc/devel/meson/PLIST" "$recipe/PLIST"
 # The dropped ELF depfixer patch must leave this upstream implementation exact.
 cmp "$work/meson-pristine/mesonbuild/scripts/depfixer.py" "$work/meson-patched/mesonbuild/scripts/depfixer.py"
-sh "$root/scripts/prepare-pkgsrc.sh" "$work/pkgsrc" > "$work/export.log"
+"$PY" -B "$root/scripts/tests/export-fixture.py" "$root" "$work/pkgsrc" > "$work/export.log"
 diff -r "$recipe" "$work/pkgsrc/devel/meson"
 # Both entry points use the current canonical Python recipe and the normal export.
 "${PYTHON:-python3}" -B "$profile/tests/python-source.py" "$distfiles" "$work/python" --pkgsrc "$work/pkgsrc"
@@ -91,15 +91,15 @@ for recipe in lang/gcc16 lang/gcc16-libs lang/gcc16-libjit math/mpfr math/mpcomp
     diff -r "$work/gcc-reference/$recipe" "$work/pkgsrc/$recipe"
 done
 cmp "$root/profiles/development-toolchain/mk.conf" "$work/pkgsrc/EMBERBSD-DEVELOPMENT-MK.CONF"
-if sh "$root/scripts/prepare-pkgsrc.sh" "$work/pkgsrc" > "$work/existing.log" 2>&1; then exit 1; fi
-if sh "$root/scripts/prepare-pkgsrc.sh" "$work/unknown" invalid > "$work/unknown.log" 2>&1; then exit 1; fi
+if "$PY" -B "$root/scripts/tests/export-fixture.py" "$root" "$work/pkgsrc" > "$work/existing.log" 2>&1; then exit 1; fi
+if "$PY" -B "$root/scripts/tests/export-fixture.py" "$root" "$work/unknown" invalid > "$work/unknown.log" 2>&1; then exit 1; fi
 [ ! -e "$work/unknown" ]
 # A private exporter fixture removes one required patch, never the real recipe.
 fixture=$work/missing-fixture
 mkdir -p "$fixture/scripts" "$fixture/upstream"
-cp "$root/scripts/prepare-pkgsrc.sh" "$fixture/scripts/"
-for item in profiles probes; do ln -s "$root/$item" "$fixture/$item"; done
-# The export rejects links in pkgsrc/, so the fixture gets a private copy.
+cp "$root/scripts/prepare-pkgsrc.sh" "$root/scripts/prepare-pkgsrc.py" "$fixture/scripts/"
+for item in profiles probes; do cp -R "$root/$item" "$fixture/$item"; done
+# Keep recipe links and their shared patch targets inside the fixture.
 cp -R "$root/pkgsrc" "$fixture/pkgsrc"
 ln -s "$root/upstream/pkgsrc" "$fixture/upstream/pkgsrc"
 git -C "$fixture" init -q
@@ -107,7 +107,7 @@ pin=$(git -C "$root/upstream/pkgsrc" rev-parse HEAD)
 git -C "$fixture" update-index --add --cacheinfo "160000,$pin,upstream/pkgsrc"
 missing=$(cd "$fixture/pkgsrc/devel/meson/patches" && ls patch-* | head -n 1)
 rm "$fixture/pkgsrc/devel/meson/patches/$missing"
-if sh "$fixture/scripts/prepare-pkgsrc.sh" "$work/missing-export" > "$work/missing-export.log" 2>&1; then exit 1; fi
+if "$PY" -B "$root/scripts/tests/export-fixture.py" "$fixture" "$work/missing-export" > "$work/missing-export.log" 2>&1; then exit 1; fi
 grep -qF "Missing patch: pkgsrc/devel/meson/patches/$missing" "$work/missing-export.log"
 [ ! -e "$work/missing-export" ]
 sh "$profile/tests/meson-selection.sh" "$work/meson-patched" "$work/meson-cli"

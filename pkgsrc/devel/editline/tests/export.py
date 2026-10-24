@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import sys
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--pkgsrc', required=True, type=Path)
@@ -20,7 +21,7 @@ with tempfile.TemporaryDirectory(prefix='editline-export-', dir=a.work_parent) a
     fixture = root / 'ports'
     upstream = fixture / 'upstream/pkgsrc'
     shutil.copytree(recipe, fixture / 'pkgsrc/devel/editline')
-    for relative in ('scripts/prepare-pkgsrc.sh', 'pkgsrc/defaults.mk.conf',
+    for relative in ('scripts/prepare-pkgsrc.py', 'pkgsrc/defaults.mk.conf',
                      'profiles/common-build-tools/patches/current-automake-tools.patch'):
         target = fixture / relative
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -35,24 +36,9 @@ with tempfile.TemporaryDirectory(prefix='editline-export-', dir=a.work_parent) a
         shutil.copyfile(a.pkgsrc / relative, target)
     old = upstream / 'devel/editline/old-provider'
     old.write_text('remove the old provider completely\n')
-    binary = root / 'bin'
-    binary.mkdir()
-    git = binary / 'git'
-    git.write_text("""#!/bin/sh
-case "$*" in
-  *ls-files*) printf '160000 1111111111111111111111111111111111111111 0\tupstream/pkgsrc\n' ;;
-  *rev-parse*) printf '1111111111111111111111111111111111111111\n' ;;
-  *archive*)
-    for arg do case "$arg" in --output=*) output=${arg#--output=} ;; esac; done
-    tar -cf "$output" -C "$FAKE_ARCHIVE" . ;;
-  *) exit 99 ;;
-esac
-""")
-    git.chmod(0o755)
-    environment = dict(os.environ, PATH=str(binary) + os.pathsep + os.environ['PATH'],
-                       FAKE_ARCHIVE=str(upstream), TMPDIR=str(root))
+    environment = dict(os.environ, FAKE_ARCHIVE=str(upstream), FAKE_MATCH='1', TMPDIR=str(root))
     destination = root / 'export'
-    done = subprocess.run(['sh', str(fixture / 'scripts/prepare-pkgsrc.sh'), str(destination)],
+    done = subprocess.run([sys.executable, '-B', str(ports / 'scripts/tests/export-fixture.py'), str(fixture), str(destination)],
                           text=True, capture_output=True, env=environment, timeout=60)
     assert done.returncode == 0, done.stderr + done.stdout
     exported = destination / 'devel/editline'

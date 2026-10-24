@@ -67,7 +67,7 @@
 - Modify: `profiles/common-build-tools/cross/mk.conf`
 - Modify: `profiles/common-build-tools/cross/README.md`
 - Modify: `profiles/common-build-tools/libtool.md`
-- Modify: `scripts/prepare-pkgsrc.sh`
+- Modify: `scripts/prepare-pkgsrc.py`
 - Modify: `scripts/check-published-patches.sh`
 - Create: `profiles/common-build-tools/patches/pkgsrc-cross-fortran.patch`
 - Create: `profiles/common-build-tools/tests/cross-fortran.py`

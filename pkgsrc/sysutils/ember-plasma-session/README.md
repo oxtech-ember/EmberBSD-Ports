@@ -8,7 +8,7 @@ The normal pkgsrc export includes the recipe. Use the current common cross
 configuration. Build dependencies on the development host.
 
 ```sh
-sh scripts/prepare-pkgsrc.sh /absolute/new-pkgsrc
+# Provide a verified source-data export at /absolute/new-pkgsrc. See the root README.
 cd /absolute/new-pkgsrc/sysutils/ember-plasma-session
 bmake MAKECONF=/absolute/common-cross.mk.conf package
 ```
