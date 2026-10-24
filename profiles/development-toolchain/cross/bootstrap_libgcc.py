@@ -8,7 +8,7 @@ import re
 import shlex
 
 from emberbsd_sdk import elf, inventory, jsonio, paths
-from host import TARGETS, VERSION, build_path, capture, environment, logged, process, require, sha, target_tools
+from host import VERSION, build_path, capture, environment, logged, process, require, sha, target_metadata, target_tools
 
 
 def setting(path, name, value):
@@ -29,23 +29,25 @@ def headers(root, target):
         provenance = build_path(provenance)
         paths.regular_file(provenance)
         provenance = dict(path=str(provenance), sha256=sha(provenance))
-    rows = inventory.snapshot_tree(root, machine=TARGETS[target][1])
+    metadata = target_metadata(target)
+    rows = inventory.snapshot_tree(root, machine=metadata['machine'])
     require(not any('elf' in row or 'archive' in row for row in rows.values()),
             'Bootstrap header sysroot must not contain compiled target libraries or objects')
     for name in ('stddef.h', 'stdio.h', 'sys/types.h', 'sys/cdefs.h', 'sys/common_ansi.h', 'machine/ansi.h'):
         inventory.required_file(root, 'usr/include/' + name)
     machine = Path(inventory.required_file(root, 'usr/include/machine/ansi.h'))
-    require(machine == root / 'usr/include' / target / 'ansi.h',
+    require(machine == root / 'usr/include' / metadata['header_directory'] / 'ansi.h',
             'Bootstrap headers do not select the requested machine ABI')
-    if target == 'aarch64':
-        inventory.required_file(root, 'usr/include/arm/ansi.h')
+    for relative in metadata['required_headers']:
+        inventory.required_file(root, 'usr/include/' + relative)
     return dict(format='emberbsd-bootstrap-header-inputs', version=1, root=str(root),
                 target=target, source_commit=source, provenance=provenance or None,
                 source_qualification='caller-verified-EmberBSD-commit', inventory=rows)
 
 
 def build(work, prefix, target, make, count, env):
-    triplet, machine, _, _ = TARGETS[target]
+    metadata = target_metadata(target)
+    triplet, machine = metadata['triplet'], metadata['machine']
     frontend = work / 'build/gcc/Makefile'
     require(setting(frontend, 'inhibit_libc', 'true'),
             'Static bootstrap requires inhibit_libc=true in the kernel frontend')

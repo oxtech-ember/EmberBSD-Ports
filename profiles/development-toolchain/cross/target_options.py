@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD; target and build mode policy for Python host controllers.
-from host import TARGETS, require
+from host import KERNEL_TARGETS, TARGETS, require
 
 
-def parse(args, kernel_allowed=False, bootstrap_allowed=False, fortran_allowed=False):
+def parse(args, kernel_allowed=False, bootstrap_allowed=False, fortran_allowed=False,
+          kernel_target_allowed=False):
     args = list(args)
     target, mode, seen = 'aarch64', 'applications', False
     bootstrap = False
@@ -23,7 +24,10 @@ def parse(args, kernel_allowed=False, bootstrap_allowed=False, fortran_allowed=F
             bootstrap = True
         else:
             require(False, 'Unknown build mode: ' + option)
-    require(target in TARGETS, 'Unsupported target: ' + target)
+    supported = target in TARGETS or (
+        target in KERNEL_TARGETS and
+        (kernel_target_allowed or (kernel_allowed and mode == 'kernel')))
+    require(supported, 'Unsupported target: ' + target)
     require(not bootstrap or mode == 'kernel', '--bootstrap-libgcc requires --kernel')
     if bootstrap:
         mode = 'kernel-bootstrap'

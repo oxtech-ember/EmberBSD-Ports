@@ -10,10 +10,10 @@ from target_options import parse
 
 
 def split_dwarf(args):
-    target, _, args = parse(args)
+    target, _, args = parse(args, kernel_target_allowed=True)
     require(len(args) == 2, 'Usage: split-dwarf.py [--target TARGET] PREFIX NEW_WORK --sdk-source SOURCE')
     prefix, work = build_path(args[0]), new_path(args[1])
-    triplet = TARGETS[target][0]
+    triplet = target_triplet(target)
     work.mkdir()
     (work / 'test.c').write_text('struct split_record { long value; }; struct split_record split_data;\n')
     env = {'PATH': '/usr/bin:/bin'}
@@ -27,6 +27,45 @@ def split_dwarf(args):
     (work / 'strings.txt').write_text(strings)
     require('split_record' in strings, 'Missing indexed DWARF5 type string')
     print('PASS: installed GCC creates and follows split DWARF without tool-path overrides')
+
+
+def armv7_abi(args):
+    target, _, args = parse(args, kernel_target_allowed=True)
+    require(target in KERNEL_TARGETS, 'The ARMv7 ABI probe requires a kernel-only target')
+    require(len(args) == 2, 'Usage: armv7-abi.py --target earmv7hf PREFIX NEW_WORK --sdk-source SOURCE')
+    prefix, work = build_path(args[0]), new_path(args[1])
+    triplet = target_triplet(target)
+    metadata = target_metadata(target)
+    tools = check_compilers(prefix, target)
+    work.mkdir()
+    source = work / 'abi.c'
+    source.write_text('__attribute__((noinline, used)) double\n'
+                      'armv7_abi_probe(double left, float right)\n'
+                      '{\n    return left + (double)right;\n}\n')
+    env = {'PATH': '/usr/bin:/bin'}
+    obj = work / 'abi.o'
+    logged([tools['gcc'], '-O2', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
+            '-ffreestanding', '-fno-builtin', '-fno-stack-protector',
+            '-c', source, '-o', obj], work / 'compile.log', env)
+    header = elf.read_elf_header(obj, machine=metadata['machine'], required_type=1)
+    require(header is not None and header['class'] == 32,
+            'ARMv7 kernel compiler did not emit a 32-bit ARM relocatable object')
+    detail = capture([tools['readelf'], '-h', obj], env)
+    flags = re.search(r'^\s*Flags:\s*(.+)$', detail, re.M)
+    require(flags is not None and 'Version5 EABI' in flags.group(1) and
+            'hard-float ABI' in flags.group(1),
+            'ARMv7 kernel object does not advertise the hard-float EABI')
+    (work / 'header.txt').write_text(detail)
+    (work / 'inputs.txt').write_text(
+        'format=earmv7hf-kernel-abi\n' +
+        'target=' + target + '\n' +
+        'triplet=' + triplet + '\n' +
+        'elf_class=' + str(header['class']) + '\n' +
+        'elf_machine=' + str(header['machine']) + '\n' +
+        'abi_flags=' + flags.group(1).strip() + '\n' +
+        'required_macros=' + ','.join(metadata['required_macros']) + '\n' +
+        digest_rows([source, obj, tools['gcc'], tools['readelf']]))
+    print('PASS: GCC emits ELF32 ARMv7 hard-float EABI objects without libc headers')
 
 
 def lto_binutils(args):

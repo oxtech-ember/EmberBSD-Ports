@@ -74,14 +74,15 @@ def host_math_main(args):
 
 
 def binutils_main(args, make_override=None):
-    target, _, args = parse(args)
+    target, _, args = parse(args, kernel_target_allowed=True)
     require(len(args) == 1, 'Usage: build-binutils.py [--target TARGET] NEW_WORK --sdk-source SOURCE')
     return _build_binutils(target, args[0], make_override)
 
 
 def _build_binutils(target, new_work, make_override=None):
-    require(target in TARGETS or target in FIRMWARE_TARGETS, 'Unsupported Binutils target: ' + target)
-    triplet = TARGETS[target][0] if target in TARGETS else FIRMWARE_TARGETS[target]
+    require(target in TARGETS or target in KERNEL_TARGETS or target in FIRMWARE_TARGETS,
+            'Unsupported Binutils target: ' + target)
+    triplet = target_triplet(target) if target in TARGETS or target in KERNEL_TARGETS else FIRMWARE_TARGETS[target]
     work, count = new_path(new_work), jobs()
     make = str(make_override) if make_override else os.environ.get('GMAKE', 'gmake')
     require(shutil.which(make), 'GNU make missing')
@@ -174,7 +175,7 @@ def _build_compiler(target, mode, args, *, owned=None):
     tools, *remaining = values[offset:]
     math = remaining[0] if len(remaining) == 2 else os.environ.get('EMBER_HOST_MATH_PREFIX')
     work = new_path(values[-1])
-    triplet = TARGETS[target][0]
+    triplet = target_triplet(target)
     header_inputs = bootstrap_headers(sysroot, target) if bootstrap_libgcc else None
     if bootstrap_libgcc:
         paths.reject_overlap(sysroot, work)
@@ -244,6 +245,12 @@ def _build_compiler(target, mode, args, *, owned=None):
     spec.loader.exec_module(probes)
     with (work / 'split-dwarf.log').open('x') as output, contextlib.redirect_stdout(output):
         probes.split_dwarf(['--target', target, str(prefix), str(work / 'split-dwarf')])
+    if target in KERNEL_TARGETS:
+        arm_probe = work / 'armv7-abi'
+        with (work / 'armv7-abi.log').open('x') as output, contextlib.redirect_stdout(output):
+            probes.armv7_abi(['--target', target, str(prefix), str(arm_probe)])
+        with (work / 'inputs.txt').open('a') as output:
+            output.write((arm_probe / 'inputs.txt').read_text())
     if target == 'aarch64':
         with (work / 'lto-binutils.log').open('x') as output, contextlib.redirect_stdout(output):
             probes.lto_binutils([prefix, work / 'lto-binutils'])

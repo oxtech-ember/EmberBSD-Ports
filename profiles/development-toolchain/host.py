@@ -17,6 +17,18 @@ from sdk_source import PRODUCER_QUARANTINE
 PROFILE = Path(__file__).resolve().parent
 VERSION = '16.2.0'
 TARGETS = {'aarch64': ('aarch64--netbsd', 183, '__aarch64__', '-O2'), 'amd64': ('x86_64--netbsd', 62, '__x86_64__', '-O2 -march=nocona -mtune=nocona -mfpmath=sse')}
+# Kernel-only targets do not imply a supported application or runtime sysroot.
+KERNEL_TARGETS = {
+    'earmv7hf': {
+        'triplet': 'armv7--netbsdelf-eabihf',
+        'machine': 40,
+        'arch_macro': '__arm__',
+        'pointer_size': 4,
+        'header_directory': 'evbarm',
+        'required_headers': ('arm/ansi.h',),
+        'required_macros': ('__ARM_EABI__ 1', '__ARM_PCS_VFP 1', '__ARM_ARCH 7'),
+    },
+}
 TOOLS = 'ar as ld nm objcopy objdump ranlib readelf strip'.split()
 # share/mk/bsd.own.mk selects these when EXTERNAL_TOOLCHAIN is set.
 # The kernel link runs size. addr2line and c++filt are not in that list.
@@ -29,6 +41,25 @@ QUARANTINE = PRODUCER_QUARANTINE
 def require(condition, message):
     if not condition:
         raise SDKError(message)
+
+
+def target_metadata(target):
+    if target in TARGETS:
+        triplet, machine, arch_macro, _ = TARGETS[target]
+        return dict(triplet=triplet, machine=machine, arch_macro=arch_macro,
+                    pointer_size=8, header_directory=target,
+                    required_headers=('arm/ansi.h',) if target == 'aarch64' else (),
+                    required_macros=())
+    require(target in KERNEL_TARGETS, 'Unsupported target: ' + target)
+    return KERNEL_TARGETS[target]
+
+
+def target_triplet(target):
+    return target_metadata(target)['triplet']
+
+
+def target_machine(target):
+    return target_metadata(target)['machine']
 
 
 def build_path(value):
@@ -211,7 +242,8 @@ def require_tools(prefix, triplet, names):
 
 
 def check_compilers(prefix, target):
-    triplet, _, arch, _ = TARGETS[target]
+    metadata = target_metadata(target)
+    triplet = metadata['triplet']
     tools = {name: Path(prefix) / 'bin' / (triplet + '-' + name) for name in ['gcc', 'g++'] + TOOLS}
     for name, path in tools.items():
         require(os.access(path, os.X_OK), 'Missing host cross tool: ' + name)
@@ -219,12 +251,15 @@ def check_compilers(prefix, target):
         require(capture([tools[name], '-dumpmachine']).strip() == triplet, 'Compiler target mismatch')
         require(capture([tools[name], '-dumpfullversion']).strip() == VERSION, 'GCC 16.2.0 is required')
     macros = capture([tools['gcc'], '-dM', '-E', '-x', 'c', '-'], input=b'\n').splitlines()
-    require(all('#define ' + value in macros for value in ['__GNUC__ 16', '__NetBSD__ 1', '__SIZEOF_POINTER__ 8', arch + ' 1']), 'Compiler target ABI mismatch')
+    required = ['__GNUC__ 16', '__NetBSD__ 1',
+                '__SIZEOF_POINTER__ ' + str(metadata['pointer_size']),
+                metadata['arch_macro'] + ' 1'] + list(metadata['required_macros'])
+    require(all('#define ' + value in macros for value in required), 'Compiler target ABI mismatch')
     return tools
 
 
 def target_tools(prefix, target):
-    triplet = TARGETS[target][0]
+    triplet = target_triplet(target)
     env = {'PATH': str(prefix) + '/bin:' + os.environ.get('PATH', '')}
     for name in TOOLS:
         executable = Path(prefix) / 'bin' / (triplet + '-' + name)

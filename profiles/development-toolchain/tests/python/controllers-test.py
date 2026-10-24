@@ -182,6 +182,19 @@ class ControllerTest(unittest.TestCase):
     def test_target_options_and_worker_refusals(self):
         self.assertEqual(parse([]),('aarch64','applications',[]))
         self.assertEqual(parse(['--target','amd64','--kernel','a'],True),('amd64','kernel',['a']))
+        self.assertEqual(parse(['--kernel','--target','earmv7hf'],True),('earmv7hf','kernel',[]))
+        self.assertRaises(SDKError,parse,['--target','earmv7hf'])
+        self.assertEqual(parse(['--target','earmv7hf'], kernel_target_allowed=True),('earmv7hf','applications',[]))
+        self.assertNotIn('earmv7hf', host.TARGETS)
+        self.assertEqual(host.target_triplet('earmv7hf'), 'armv7--netbsdelf-eabihf')
+        self.assertEqual(host.target_machine('earmv7hf'), 40)
+        pipeline_spec = importlib.util.spec_from_file_location('cross_pipeline', PROFILE / 'cross/pipeline.py')
+        pipeline = importlib.util.module_from_spec(pipeline_spec)
+        pipeline_spec.loader.exec_module(pipeline)
+        with patch.object(pipeline, '_build_binutils', return_value='binutils fixture') as build_binutils:
+            self.assertEqual(pipeline.binutils_main(['--target', 'earmv7hf', str(self.root / 'binutils')]),
+                             'binutils fixture')
+            build_binutils.assert_called_once_with('earmv7hf', str(self.root / 'binutils'), None)
         for args in (['--target'],['--target','amd64','--target','amd64'],['--target','riscv64'],['--kernel'],['--unknown']):
             self.assertRaises(SDKError,parse,args)
         for value in ('0','00','-1','no',''):
@@ -211,15 +224,128 @@ class ControllerTest(unittest.TestCase):
     def header_seed(self, target):
         root = self.root / ('headers-' + target)
         include = root / 'usr/include'
-        for directory in ('sys', target):
+        machine_dir = 'evbarm' if target == 'earmv7hf' else target
+        for directory in ('sys', machine_dir):
             (include / directory).mkdir(parents=True)
-        for name in ('stddef.h', 'stdio.h', 'sys/types.h', 'sys/cdefs.h', 'sys/common_ansi.h', target + '/ansi.h'):
+        for name in ('stddef.h', 'stdio.h', 'sys/types.h', 'sys/cdefs.h', 'sys/common_ansi.h', machine_dir + '/ansi.h'):
             (include / name).write_text('source header fixture\n')
-        (include / 'machine').symlink_to(target)
-        if target == 'aarch64':
+        (include / 'machine').symlink_to(machine_dir)
+        if target in ('aarch64', 'earmv7hf'):
             (include / 'arm').mkdir()
             (include / 'arm/ansi.h').write_text('arm ABI header fixture\n')
         return root
+
+    def test_earmv7hf_bootstrap_header_mapping(self):
+        spec_ = importlib.util.spec_from_file_location('bootstrap_libgcc', PROFILE / 'cross/bootstrap_libgcc.py')
+        support = importlib.util.module_from_spec(spec_)
+        spec_.loader.exec_module(support)
+        root = self.header_seed('earmv7hf')
+        record = support.headers(root, 'earmv7hf')
+        self.assertEqual(record['target'], 'earmv7hf')
+        self.assertEqual(record['inventory']['usr/include/machine']['target'], 'evbarm')
+        self.assertIn('usr/include/arm/ansi.h', record['inventory'])
+
+    def test_earmv7hf_static_bootstrap_accepts_arm_elf32(self):
+        spec_ = importlib.util.spec_from_file_location('bootstrap_libgcc', PROFILE / 'cross/bootstrap_libgcc.py')
+        support = importlib.util.module_from_spec(spec_)
+        spec_.loader.exec_module(support)
+        work = self.root / 'arm-bootstrap'
+        prefix = work / 'toolchain'
+        triplet = host.target_triplet('earmv7hf')
+        crt = prefix / 'lib/gcc' / triplet / host.VERSION
+        crt.mkdir(parents=True)
+        frontend = work / 'build/gcc/Makefile'
+        frontend.parent.mkdir(parents=True)
+        frontend.write_text('inhibit_libc = true\n')
+        library = work / 'build' / triplet / 'libgcc/Makefile'
+        library.parent.mkdir(parents=True)
+        library.write_text('enable_shared = no\n')
+        (work / 'inputs.txt').write_text('mode=kernel\nbootstrap_libgcc=yes\n')
+        headers = self.header_seed('earmv7hf')
+        jsonio.write_json(work / 'bootstrap-headers.json', support.headers(headers, 'earmv7hf'))
+        object_ = bytearray(b'\x7fELF\x01\x01\x01' + b'\0' * 9)
+        object_.extend(struct.pack('<HHIIIIIHHHHHH', 1, 40, 1, 0, 0, 0, 0x400, 52, 32, 0, 40, 0, 0))
+        object_ = bytes(object_)
+        member = (b'arm.o/'.ljust(16) + b'0'.ljust(12) + b'0'.ljust(6) + b'0'.ljust(6) +
+                  b'100644'.ljust(8) + str(len(object_)).encode().ljust(10) + b'`\n' + object_)
+        (crt / 'libgcc.a').write_bytes(b'!<arch>\n' + member)
+        for name in ('crtbegin.o', 'crtbeginS.o', 'crtend.o', 'crtendS.o'):
+            (crt / name).write_bytes(object_)
+        def logged(argv, log, env, cwd, **kwargs):
+            self.assertEqual(kwargs.get('quarantine'), work)
+            self.assertEqual(cwd, work / 'build')
+        def capture(argv, **kwargs):
+            self.assertEqual(str(argv[0]), str(prefix / 'bin' / (triplet + '-gcc')))
+            if argv[1] == '-print-sysroot':
+                return str(headers) + '\n'
+            return str(crt / str(argv[1]).removeprefix('-print-file-name=')) + '\n'
+        configured = ('Configured with: /source/configure --without-headers --disable-shared --disable-threads --with-sysroot=' + str(headers) + '\n').encode()
+        banner = SimpleNamespace(stdout=b'', stderr=configured + b'Thread model: single\n')
+        with patch.object(support, 'logged', side_effect=logged), \
+             patch.object(support, 'capture', side_effect=capture), \
+             patch.object(support, 'target_tools', return_value={'AR_FOR_TARGET': 'audited-ar'}), \
+             patch.object(support.process, 'capture', return_value=banner):
+            support.build(work, prefix, 'earmv7hf', self.make, '2', {})
+        record = jsonio.read_json(work / 'bootstrap-libgcc.json')
+        self.assertEqual(record['target'], 'earmv7hf')
+        self.assertEqual(record['archive'], {'elf_members': 1, 'machine': 40})
+        self.assertEqual(record['scope'], 'static-libgcc-bootstrap-only')
+
+    def test_earmv7hf_compiler_metadata_enforces_hard_float_macros(self):
+        triplet = host.target_triplet('earmv7hf')
+        prefix = self.root / 'earmv7hf-toolchain'
+        (prefix / 'bin').mkdir(parents=True)
+        macros = ['__GNUC__ 16', '__NetBSD__ 1', '__SIZEOF_POINTER__ 4',
+                  '__arm__ 1', '__ARM_EABI__ 1', '__ARM_PCS_VFP 1', '__ARM_ARCH 7']
+        def compiler_script(definitions):
+            return ("case \"$1\" in\n"
+                    "-dumpmachine) echo '" + triplet + "';;\n"
+                    "-dumpfullversion) echo '16.2.0';;\n"
+                    "-dM) cat >/dev/null; printf '%s\\n' " + ' '.join("'#define " + value + "'" for value in definitions) + ";;\n"
+                    "*) exit 1;; esac\n")
+        for name in ('gcc', 'g++'):
+            self.executable(prefix / 'bin' / (triplet + '-' + name), compiler_script(macros))
+        for name in host.TOOLS:
+            self.executable(prefix / 'bin' / (triplet + '-' + name), 'exit 0\n')
+        host.check_compilers(prefix, 'earmv7hf')
+        self.executable(prefix / 'bin' / (triplet + '-gcc'),
+                        compiler_script([value for value in macros if value != '__ARM_PCS_VFP 1']))
+        self.assertRaisesRegex(SDKError, 'target ABI mismatch', host.check_compilers, prefix, 'earmv7hf')
+
+    def test_earmv7hf_compiler_probe_requires_elf32_hard_float(self):
+        spec_ = importlib.util.spec_from_file_location('compiler_probes', PROFILE / 'cross/tests/compiler_probes.py')
+        probes = importlib.util.module_from_spec(spec_)
+        spec_.loader.exec_module(probes)
+        triplet = host.target_triplet('earmv7hf')
+        compiler = self.root / 'arm-gcc'
+        readelf = self.root / 'arm-readelf'
+        compiler.write_text('fixture GCC 16.2.0\n')
+        readelf.write_text('fixture GNU readelf 2.47\n')
+        tools = {'gcc': compiler, 'readelf': readelf}
+        work = self.root / 'armv7-abi'
+        flags = ['Version5 EABI, hard-float ABI']
+        observed = []
+        def logged(argv, log, env):
+            observed.extend(str(value) for value in argv)
+            data = bytearray(b'\x7fELF\x01\x01\x01' + b'\0' * 9)
+            data.extend(struct.pack('<HHIIIIIHHHHHH', 1, 40, 1, 0, 0, 0, 0x400, 52, 32, 0, 40, 0, 0))
+            Path(argv[-1]).write_bytes(data)
+        def capture(argv, env=None):
+            self.assertEqual(str(argv[0]), str(readelf))
+            return 'Flags: 0x5000400, ' + flags[0] + '\n'
+        def run(output):
+            with patch.object(probes, 'check_compilers', return_value=tools), \
+                 patch.object(probes, 'logged', side_effect=logged), \
+                 patch.object(probes, 'capture', side_effect=capture):
+                probes.armv7_abi(['--target', 'earmv7hf', str(self.root / 'prefix'), str(output)])
+        run(work)
+        self.assertIn(str(compiler), observed)
+        self.assertIn('-ffreestanding', observed)
+        self.assertIn('-c', observed)
+        self.assertIn('triplet=' + triplet, (work / 'inputs.txt').read_text())
+        self.assertIn('target=earmv7hf', (work / 'inputs.txt').read_text())
+        flags[0] = 'Version5 EABI, soft-float ABI'
+        self.assertRaisesRegex(SDKError, 'hard-float EABI', run, self.root / 'armv7-soft-float')
 
     def test_bootstrap_headers_require_source_and_contained_target_inventory(self):
         spec_ = importlib.util.spec_from_file_location('bootstrap_libgcc', PROFILE / 'cross/bootstrap_libgcc.py')
@@ -523,7 +649,7 @@ exit 1
         self.executable(tools/'bin/nbgmake',"echo 'fixture GNU make'\n")
         observed=[]
         def binutils(args,make_override=None):
-            target=args[1];work=Path(args[2]);triplet=host.TARGETS[target][0]
+            target=args[1];work=Path(args[2]);triplet=host.target_triplet(target)
             self.assertEqual(make_override,tools/'bin/nbgmake')
             observed.append((target,str(work)))
             (work/'prefix/bin').mkdir(parents=True)
@@ -556,7 +682,18 @@ exit 1
                     self.assertEqual(os.readlink(output/'toolchain'/triplet/'bin/objcopy'),'../../bin/'+triplet+'-objcopy')
                     self.assertEqual((output/'src/fixture').read_text(),'after\n')
                     self.assertEqual('bootstrap_libgcc=yes\n' in (output/'inputs.txt').read_text(),mode=='kernel-bootstrap')
-            self.assertEqual(len(observed),6)
+            target = 'earmv7hf'
+            triplet = host.target_triplet(target)
+            output = self.root / 'earmv7hf-kernel'
+            args = ['--target', target, '--kernel', str(self.pkgsrc), str(self.archive),
+                    str(tools), str(self.math), str(output)]
+            with self.assertRaises(SDKError) as raised:
+                cross.build_main(args)
+            self.assertEqual(getattr(raised.exception, 'returncode', None), 97)
+            self.assertIn('--target=' + triplet, config.read_text().splitlines())
+            self.assertIn('--without-headers', config.read_text().splitlines())
+            self.assertEqual((output / 'inputs.txt').read_text().splitlines()[1], 'mode=kernel')
+            self.assertEqual(len(observed), 7)
             # Complete the dispatch fixture. A bootstrap receipt must hash the
             # final inputs after the AArch64 installed-compiler probe appends.
             source.joinpath('configure').write_text(source.joinpath('configure').read_text().replace('exit 97\n', ''))
@@ -576,11 +713,16 @@ exit 1
                 # Only target compilation and ELF inspection use fixtures.
                 with patch.object(real_probes, 'logged', side_effect=compile_split), patch.object(real_probes, 'capture', side_effect=inspect_split):
                     real_probes.split_dwarf(args)
+            def armv7_abi(args):
+                events.append('armv7-abi')
+                output = Path(args[-1]); output.mkdir()
+                (output / 'inputs.txt').write_text('armv7-abi=passed\n')
             class Probes:
                 def create_module(self, spec):
                     return None
                 def exec_module(self, module):
                     module.split_dwarf = split
+                    module.armv7_abi = armv7_abi
                     def lto(args):
                         events.append('lto')
                         args[1].mkdir()
@@ -603,6 +745,12 @@ exit 1
                     self.assertEqual(len(events), 3 if mode == 'kernel-bootstrap' else 2)
                     if mode == 'kernel-bootstrap':
                         self.assertEqual(events[2], ('bootstrap', inventory.sha256_file(output / 'inputs.txt')))
+                events.clear()
+                output = self.root / 'complete-earmv7hf-kernel'
+                cross.build_main(['--target', 'earmv7hf', '--kernel', str(self.pkgsrc),
+                                  str(self.archive), str(tools), str(self.math), str(output)])
+                self.assertEqual(events, ['split-dwarf', 'armv7-abi'])
+                self.assertIn('armv7-abi=passed', (output / 'inputs.txt').read_text())
 
     @unittest.skipUnless(os.name == 'posix', 'Owned producer groups require POSIX')
     def test_actual_cli_term_and_hup_drain_descendants(self):

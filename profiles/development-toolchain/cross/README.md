@@ -14,13 +14,17 @@ check in the compiler build or compile-only acceptance scripts. The separate
 target runner requires the selected EmberBSD/NetBSD architecture because it
 executes target ELF files. VM and boards run acceptance tests only.
 
-Target-dependent entry points accept `--target aarch64|amd64`. The default is `aarch64`.
-Unknown, empty and repeated target options fail before output creation.
+Application and runtime entry points accept `--target aarch64|amd64`. The default is `aarch64`.
+Unknown, empty and repeated target options fail before output creation. The
+kernel compiler, Binutils builder and compiler probes additionally accept the
+kernel-only `earmv7hf` target; the ordinary compiler and runtime interfaces
+continue to reject it.
 
 | Target | GNU triplet | Validation |
 | --- | --- | --- |
 | `aarch64` | `aarch64--netbsd` | GCC16 cross C/C++ LTO links with Ports Binutils 2.47; target checks remain separate |
 | `amd64` | `x86_64--netbsd` | Real macOS arm64 application build, POSIX threads, split DWARF and installed EmberBSD 11.0 runtime contracts pass |
+| `earmv7hf` | `armv7--netbsdelf-eabihf` | Kernel-only; verifies GCC hard-float macros and a freestanding ELF32 ARM relocatable object |
 
 The triplets follow the fork's [machine selection](https://github.com/oxtech-ember/EmberBSD/blob/main/build.sh)
 and [GNU platform definitions](https://github.com/oxtech-ember/EmberBSD/blob/main/share/mk/bsd.own.mk).
@@ -63,6 +67,15 @@ shared libraries or target threads. Both modes normally install only the compile
 The explicit `--kernel --bootstrap-libgcc` option also builds static support
 for the first OS seed. None of these modes builds the POSIX target runtime or
 creates a distribution image.
+
+The ARMv7 target is available only through kernel-oriented entry points. Build
+its compiler with `build.py --target earmv7hf --kernel`; this keeps
+`earmv7hf` out of the application `TARGETS` table and does not qualify an
+application sysroot or runtime. The build verifies the compiler's EABI
+hard-float macros, compiles a freestanding floating-point object, checks for
+ELF32 machine 40, and requires the ARM hard-float EABI flag from readelf.
+When `--bootstrap-libgcc` is selected, its header input must come from the
+`earmv7hf` build and expose the `evbarm` machine headers plus `arm/ansi.h`.
 
 The explicit [Fortran application mode](fortran.md) adds the same GCC16
 frontend in a new compiler generation. Its compile-only capability receipt
