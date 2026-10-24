@@ -22,11 +22,25 @@ commit=4a334d2f90f786c3fc86cbc9cf72b2f13961b078
 grep -q '^SHA512 (gcc-16.2.0.diff) = a8ab81008f5281302b7e5d680f3519b69fac5bdcf0a90c5a523643a65ca3223b83d929e156f086283d3256860f8f2728a1436f334e9866652b8835db85b0ed1d$' \
     "$prepared/lang/gcc16/distinfo"
 grep -q '^Size (gcc-16.2.0.diff) = 205825 bytes$' "$prepared/lang/gcc16/distinfo"
-# Clang builds only stage 1; the full bootstrap stays enabled on Darwin.
-for compiler in clang gcc; do
-    if query "$native" PKGSRC_COMPILER=$compiler -V '${CONFIGURE_ARGS}' |
-        tr ' ' '\n' | grep -qx -- --disable-bootstrap; then exit 1; fi
+# The seed is GCC16. Clang cannot build stage 1.
+[ -z "$(query "$native" PKGSRC_COMPILER=gcc -V '${PKG_FAIL_REASON}')" ]
+query "$native" PKGSRC_COMPILER=clang -V '${PKG_FAIL_REASON}' |
+    grep -q 'Darwin GCC16 bootstrap requires PKGSRC_COMPILER=gcc'
+query "$native" EMBERBSD_GCC16_SEED_CC= -V '${PKG_FAIL_REASON}' |
+    grep -q 'Set EMBERBSD_GCC16_SEED_CC from the accepted SDK bootstrap producer plan'
+if query "$native" PKGSRC_COMPILER=gcc -V '${CONFIGURE_ARGS}' |
+    tr ' ' '\n' | grep -qx -- --disable-bootstrap; then exit 1; fi
+args=$(query "$native" PKGSRC_COMPILER=gcc -V '${CONFIGURE_ARGS}')
+printf '%s\n' "$args" | tr ' ' '\n' | grep -qx -- --with-darwin-assembler=llvm-mc
+for pair in 'as EMBERBSD_GCC16_LLVM_MC' 'ld EMBERBSD_GCC16_LD64_LLD' 'dsymutil EMBERBSD_GCC16_DSYMUTIL'; do
+    set -- $pair
+    selected=$(query "$native" PKGSRC_COMPILER=gcc -V "\${$2}")
+    [ -n "$selected" ]
+    printf '%s\n' "$args" | tr ' ' '\n' | grep -Fx -- "--with-$1=$selected" > /dev/null
 done
+[ -f "$prepared/lang/gcc16/patches/patch-gcc_darwin_llvm_mc" ]
+grep -q 'with-darwin-assembler=cctools|llvm-mc' \
+    "$prepared/lang/gcc16/patches/patch-gcc_darwin_llvm_mc"
 # The filter drops only the libgcobol/configure.tgt section.
 cat > "$work/gcc-16.2.0.diff" <<'DIFF'
 diff --git a/gcc/config.host b/gcc/config.host

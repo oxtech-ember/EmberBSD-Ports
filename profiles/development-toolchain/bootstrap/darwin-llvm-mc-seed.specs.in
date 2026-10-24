@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: GPL-3.0-or-later WITH GCC-exception-3.1
+# Derived from GCC 16.2.0 and Iain Sandoe's Darwin driver specifications.
+# Copyright (C) 1989-2026 Free Software Foundation, Inc.
+# Contributed by Apple Computer Inc.
+# Copyright The GNU Toolchain Authors. Contributed by Iain Sandoe.
+# Copyright (C) 2026 EmberBSD contributors.
+# Origin: EmberBSD; AI-assisted bounded bootstrap binding, not upstream.
+# This template is bootstrap input. It is not an ordinary compiler override.
+# Instantiate only @DEPLOYMENT@ from the accepted seed plan. Pin the result.
+# The SDK must also pin -B, the seed, the LLVM tools and native ABI inputs.
+
+*self_spec:
++ %{fuse-ld=*:%eThis seed binding owns the Mach-O LLD selector} -fuse-ld=lld %{mmacosx-version-min=*:%{!mmacosx-version-min=@DEPLOYMENT@:%eThis seed binding requires its pinned deployment version}} %{mcpu=*:%{!mcpu=apple-m1:%eThis draft has no LLVM MC mapping for the selected CPU}} %{march=*:%eThis draft has no LLVM MC mapping for explicit architecture extensions} %{mtune=*:%eThis draft has no LLVM MC mapping for explicit tuning options}
+
+*asm:
+--filetype=obj --triple=arm64-apple-macosx@DEPLOYMENT@ --mcpu=apple-m1 %{!static:--position-independent} %{w:-W} %{I*} %<asm_macosx_version_min=*

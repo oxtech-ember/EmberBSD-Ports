@@ -1,0 +1,554 @@
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+GCC 16.2.0 with Iain Sandoe's Darwin port and the pkgsrc patches.
+Add an explicit AArch64 Darwin LLVM MC command language. Keep collect2,
+LTO, libraries, start files and constructors. This is a default-CPU pilot.
+Other assembler modes and targets keep their current defaults.
+GCC source retains its GPLv3+ licence and upstream copyright notices.
+
+--- gcc/configure.ac.orig
++++ gcc/configure.ac
+@@ -443,6 +443,32 @@
+ else
+   AC_MSG_RESULT(no)
+ fi
++
++# Select a command language, independently of tool path selection.
++AC_ARG_WITH(darwin-assembler,
++[AS_HELP_STRING([--with-darwin-assembler=cctools|llvm-mc],
++                [select the Darwin assembler command language])],,
++[with_darwin_assembler=cctools])
++gcc_darwin_mc_flags=
++case "$with_darwin_assembler" in
++  cctools) ;;
++  llvm-mc)
++    case "$target" in
++      aarch64-*-darwin*) ;;
++      *) AC_MSG_ERROR([llvm-mc mode requires an AArch64 Darwin target]) ;;
++    esac
++    if test -z "$with_as" || test -z "$with_ld" || test -z "$with_dsymutil"; then
++      AC_MSG_ERROR([llvm-mc mode requires explicit --with-as, --with-ld and --with-dsymutil])
++    fi
++    if test x"$gas_flag" = xyes; then
++      AC_MSG_ERROR([llvm-mc mode cannot use --with-gnu-as])
++    fi
++    gcc_darwin_mc_flags="--filetype=obj --triple=arm64-apple-macosx --mcpu=apple-m1"
++    AC_DEFINE(DARWIN_LLVM_MC, 1,
++      [Define to use the LLVM MC command language on AArch64 Darwin.])
++    ;;
++  *) AC_MSG_ERROR([unknown --with-darwin-assembler value]) ;;
++esac
+ 
+ # --------------------
+ # Find default windres
+@@ -3271,7 +3297,7 @@
+     if test x"$gcc_cv_as" != x \
+        && test x"$gcc_cv_ld" != x \
+        && test x"$gcc_cv_readelf" != x \
+-       && $gcc_cv_as -o conftest.o conftest.s > /dev/null 2>&1 \
++       && $gcc_cv_as $gcc_darwin_mc_flags -o conftest.o conftest.s > /dev/null 2>&1 \
+        && $gcc_cv_ld -o conftest conftest.o > /dev/null 2>&1 \
+        && $gcc_cv_readelf --relocs --wide conftest \
+ 	  | grep R_RISCV_IRELATIVE > /dev/null 2>&1; then
+@@ -3430,9 +3456,9 @@
+   echo '.byte 1' >> conftest2.s
+   echo '.section myfoosect, "a"' > conftest3.s
+   echo '.byte 0' >> conftest3.s
+-  if $gcc_cv_as -o conftest1.o conftest1.s > /dev/null 2>&1 \
+-     && $gcc_cv_as -o conftest2.o conftest2.s > /dev/null 2>&1 \
+-     && $gcc_cv_as -o conftest3.o conftest3.s > /dev/null 2>&1; then
++  if $gcc_cv_as $gcc_darwin_mc_flags -o conftest1.o conftest1.s > /dev/null 2>&1 \
++     && $gcc_cv_as $gcc_darwin_mc_flags -o conftest2.o conftest2.s > /dev/null 2>&1 \
++     && $gcc_cv_as $gcc_darwin_mc_flags -o conftest3.o conftest3.s > /dev/null 2>&1; then
+     # Note the Wild linker has --gc-sections on by default.
+     if $gcc_cv_ld -shared -o conftest1.so conftest1.o \
+           conftest2.o conftest3.o --no-gc-sections > /dev/null 2>&1 \
+@@ -3521,7 +3547,7 @@
+ 
+ # Determine if an .eh_frame section is read-only.
+ gcc_fn_eh_frame_ro () {
+-  $gcc_cv_as $1 -o conftest.o conftest.s > /dev/null 2>&1 && \
++  $gcc_cv_as $gcc_darwin_mc_flags $1 -o conftest.o conftest.s > /dev/null 2>&1 && \
+     $gcc_cv_objdump -h conftest.o 2>/dev/null | \
+     sed -e '/.eh_frame/!d' -e N | grep READONLY > /dev/null
+ }
+@@ -3700,7 +3726,7 @@
+     || diff -b conftest.big conftest.got > /dev/null 2>&1; }
+   then
+     gcc_cv_as_eh_frame=yes
+-  elif AC_TRY_COMMAND($gcc_cv_as -o conftest.o --traditional-format /dev/null); then
++  elif AC_TRY_COMMAND($gcc_cv_as $gcc_darwin_mc_flags -o conftest.o --traditional-format /dev/null); then
+     gcc_cv_as_eh_frame=buggy
+   else
+     # Uh oh, what do we do now?
+@@ -4327,7 +4353,7 @@
+ 	echo 'foo: nop'      >> conftest.s
+ 	echo '.data'         >> conftest.s
+ 	echo '.secrel32 foo' >> conftest.s
+-	if $gcc_cv_as -o conftest.o conftest.s > /dev/null 2>&1 && $gcc_cv_ld -o conftest.exe conftest.o > /dev/null; then
++	if $gcc_cv_as $gcc_darwin_mc_flags -o conftest.o conftest.s > /dev/null 2>&1 && $gcc_cv_ld -o conftest.exe conftest.o > /dev/null; then
+ 	  if $gcc_cv_objdump -h conftest.exe | grep '\.reloc\>' > /dev/null; then
+ 	    AC_MSG_ERROR([ld has broken secrel32 relocations, configure without --enable-tls or with --disable-tls to remove this error. See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80881 for more information.])
+ 	  fi
+@@ -4519,15 +4545,22 @@
+ 
+ case "$target_os" in
+   darwin*)
++    if test x"$with_darwin_assembler" != xllvm-mc; then
+     gcc_GAS_CHECK_FEATURE([-mmacosx-version-min option],
+       gcc_cv_as_mmacosx_version_min,
+       [-mmacosx-version-min=10.1], [.text],,
+       [AC_DEFINE(HAVE_AS_MMACOSX_VERSION_MIN_OPTION, 1,
+ 	[Define if your macOS assembler supports the -mmacos-version-min option.])])
+-    if test x$gcc_cv_as_mmacosx_version_min = "xyes"; then
++    fi
++    darwin_build_version_flags=-mmacosx-version-min=10.14
++    if test x"$with_darwin_assembler" = xllvm-mc; then
++      darwin_build_version_flags=
++    fi
++    if test x"$with_darwin_assembler" = xllvm-mc \
++       || test x$gcc_cv_as_mmacosx_version_min = "xyes"; then
+        gcc_GAS_CHECK_FEATURE([.build_version],
+            gcc_cv_as_darwin_build_version,
+-           [-mmacosx-version-min=10.14],
++           [$darwin_build_version_flags],
+            [ .build_version macos, 10, 14 sdk_version 10, 14],,
+       [AC_DEFINE(HAVE_AS_MACOS_BUILD_VERSION, 1,
+ 	[Define if your macOS assembler supports .build_version directives])])
+@@ -5373,7 +5406,7 @@
+         echo '	.reloc	1f,R_MIPS_JALR,x' >> conftest.s
+         echo '1:	jalr $25' >> conftest.s
+         echo '	.end x' >> conftest.s
+-        if $gcc_cv_as -o conftest.o conftest.s >/dev/null 2>&AS_MESSAGE_LOG_FD \
++        if $gcc_cv_as $gcc_darwin_mc_flags -o conftest.o conftest.s >/dev/null 2>&AS_MESSAGE_LOG_FD \
+            && $gcc_cv_ld -shared -o conftest.so conftest.o >/dev/null 2>&AS_MESSAGE_LOG_FD; then
+ 	  if $gcc_cv_objdump -d conftest.so | grep jalr >/dev/null 2>&1 \
+ 	     && $gcc_cv_objdump -d conftest.so | grep "bal.*<x>" >/dev/null 2>&1; then
+@@ -5974,16 +6007,16 @@
+   gcc_cv_as_compress_debug,,,
+   [# gas compiled without zlib cannot compress debug sections and warns
+    # about it, but still exits successfully.  So check for this, too.
+-   if $gcc_cv_as --compress-debug-sections -o conftest.o conftest.s 2>&1 | grep -i warning > /dev/null
++   if $gcc_cv_as $gcc_darwin_mc_flags --compress-debug-sections -o conftest.o conftest.s 2>&1 | grep -i warning > /dev/null
+    then
+      gcc_cv_as_compress_debug=0
+-   elif $gcc_cv_as --compress-debug-sections=zlib -o conftest.o conftest.s > /dev/null 2>&1
++   elif $gcc_cv_as $gcc_darwin_mc_flags --compress-debug-sections=zlib -o conftest.o conftest.s > /dev/null 2>&1
+    then
+      gcc_cv_as_compress_debug=1
+      gcc_cv_as_compress_debug_option="--compress-debug-sections"
+      gcc_cv_as_no_compress_debug_option="--nocompress-debug-sections"
+      # Since binutils 2.40, gas supports --compress-debug-sections=zstd.
+-     if $gcc_cv_as --compress-debug-sections=zstd -o conftest.o conftest.s > /dev/null 2>&1
++     if $gcc_cv_as $gcc_darwin_mc_flags --compress-debug-sections=zstd -o conftest.o conftest.s > /dev/null 2>&1
+      then
+        gcc_cv_as_compress_debug=2
+      fi
+@@ -6058,7 +6091,7 @@
+  [gcc_cv_as_line_zero=no
+   if test "x$gcc_cv_as" != x; then
+     { echo '# 1 "test.s" 1'; echo '# 0 "" 2'; } > conftest.s
+-    if AC_TRY_COMMAND([$gcc_cv_as -o conftest.o conftest.s >&AS_MESSAGE_LOG_FD 2>conftest.out]) &&
++    if AC_TRY_COMMAND([$gcc_cv_as $gcc_darwin_mc_flags -o conftest.o conftest.s >&AS_MESSAGE_LOG_FD 2>conftest.out]) &&
+        test "x`cat conftest.out`" = x
+     then
+       gcc_cv_as_line_zero=yes
+@@ -6175,9 +6208,9 @@
+ ptr:
+ 	.quad	a_glob
+ EOF
+-      if $gcc_cv_as $as_64_opt -o conftest1.o conftest1.s > /dev/null 2>&1 \
++      if $gcc_cv_as $gcc_darwin_mc_flags $as_64_opt -o conftest1.o conftest1.s > /dev/null 2>&1 \
+          && $gcc_cv_ld -shared $ld_64_opt -o conftest1.so conftest1.o > /dev/null 2>&1 \
+-         && $gcc_cv_as $as_64_opt -o conftest2.o conftest2.s > /dev/null 2>&1 \
++         && $gcc_cv_as $gcc_darwin_mc_flags $as_64_opt -o conftest2.o conftest2.s > /dev/null 2>&1 \
+          && $gcc_cv_ld -pie $ld_64_opt -o conftest conftest2.o conftest1.so > /dev/null 2>&1; then
+         gcc_cv_ld_pie_copyreloc=yes
+       fi
+@@ -6217,7 +6250,7 @@
+ 	.section	.eh_frame,"a",@progbits
+ 	.long .L0
+ EOF
+-  if $gcc_cv_as -o conftest.o conftest.s > /dev/null 2>&1; then
++  if $gcc_cv_as $gcc_darwin_mc_flags -o conftest.o conftest.s > /dev/null 2>&1; then
+     if $gcc_cv_ld -o conftest conftest.o --entry=_start --gc-sections 2>&1 \
+ 	 | grep "gc-sections option ignored" > /dev/null; then
+       gcc_cv_ld_eh_gc_sections=no
+@@ -6245,7 +6278,7 @@
+ 	.section	.eh_frame,"a",@progbits
+ 	.long .L0
+ EOF
+-	if $gcc_cv_as -o conftest.o conftest.s > /dev/null 2>&1; then
++	if $gcc_cv_as $gcc_darwin_mc_flags -o conftest.o conftest.s > /dev/null 2>&1; then
+ 	  if $gcc_cv_ld -o conftest conftest.o --entry=_start --gc-sections 2>&1 \
+ 	       | grep "gc-sections option ignored" > /dev/null; then
+ 	    gcc_cv_ld_eh_gc_sections=no
+@@ -6299,7 +6332,7 @@
+ 	.section	.eh_frame,"a",@progbits
+ 	.long .L0
+ EOF
+-  if $gcc_cv_as -o conftest.o conftest.s > /dev/null 2>&1; then
++  if $gcc_cv_as $gcc_darwin_mc_flags -o conftest.o conftest.s > /dev/null 2>&1; then
+     if $gcc_cv_ld -o conftest conftest.o --entry=_start --gc-sections 2>&1 \
+ 	 | grep "gc-sections option ignored" > /dev/null; then
+       :
+--- gcc/acinclude.m4.orig
++++ gcc/acinclude.m4
+@@ -354,7 +354,7 @@
+ .globl _start
+ _start:
+ EOF
+-	      if $gcc_cv_as -o conftest.o conftest.s > /dev/null 2>&1 \
++	      if $gcc_cv_as $gcc_darwin_mc_flags -o conftest.o conftest.s > /dev/null 2>&1 \
+ 	         && $gcc_cv_ld -o conftest conftest.o > /dev/null 2>&1 \
+ 	         && $gcc_cv_objdump -s -j .init_array conftest \
+ 		    | grep HHHHFFFFDDDDBBBB > /dev/null 2>&1 \
+@@ -388,7 +388,7 @@
+ .globl _start
+ _start:
+ EOF
+-	      if $gcc_cv_as -o conftest.o conftest.s > /dev/null 2>&1 \
++	      if $gcc_cv_as $gcc_darwin_mc_flags -o conftest.o conftest.s > /dev/null 2>&1 \
+ 	         && $gcc_cv_ld -o conftest conftest.o > /dev/null 2>&1 \
+ 	         && $gcc_cv_objdump -s -j .init_array conftest \
+ 		    | grep HHHHHHHHDDDDDDDD > /dev/null 2>&1 \
+@@ -466,6 +466,9 @@
+ [AC_CACHE_CHECK([assembler flags], gcc_cv_as_flags,
+ [ case "$target:$gas" in
+   *-*-darwin*:*)
++    if test x"$with_darwin_assembler" = xllvm-mc; then
++      gcc_cv_as_flags="$gcc_darwin_mc_flags"
++    else
+     dnl Darwin with the native assembler uses -arch i386/x86_64/ppc/ppc64.
+     dnl
+     dnl Old cctools versions of the Darwin assembler identify as "GNU
+@@ -491,6 +494,7 @@
+ 	as_64_opt="-arch x86_64"
+ 	;;
+     esac
++    fi
+     ;;
+   *-*-solaris2*:no)
+     dnl Solaris with the native assembler uses -m32/-m64 consistently.
+--- gcc/configure.orig
++++ gcc/configure
+@@ -979,6 +979,7 @@
+ with_dsymutil
+ with_gnu_as
+ with_as
++with_darwin_assembler
+ with_windres
+ enable_largefile
+ enable_build_format_warnings
+@@ -1879,6 +1880,8 @@
+                           pathname)
+   --with-gnu-as           arrange to work with GNU as
+   --with-as               arrange to use the specified as (full pathname)
++  --with-darwin-assembler=cctools|llvm-mc
++                          select the Darwin assembler command language
+   --with-windres          arrange to use the specified windres (full pathname)
+   --with-stack-clash-protection-guard-size=size
+                           Set the default stack clash protection guard size
+@@ -4081,6 +4084,30 @@
+   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+ $as_echo "no" >&6; }
+ fi
++
++# Select a command language, independently of tool path selection.
++if test "${with_darwin_assembler+set}" != set; then
++  with_darwin_assembler=cctools
++fi
++gcc_darwin_mc_flags=
++case "$with_darwin_assembler" in
++  cctools) ;;
++  llvm-mc)
++    case "$target" in
++      aarch64-*-darwin*) ;;
++      *) as_fn_error $? "llvm-mc mode requires an AArch64 Darwin target" "$LINENO" 5 ;;
++    esac
++    if test -z "$with_as" || test -z "$with_ld" || test -z "$with_dsymutil"; then
++      as_fn_error $? "llvm-mc mode requires explicit --with-as, --with-ld and --with-dsymutil" "$LINENO" 5
++    fi
++    if test x"$gas_flag" = xyes; then
++      as_fn_error $? "llvm-mc mode cannot use --with-gnu-as" "$LINENO" 5
++    fi
++    gcc_darwin_mc_flags="--filetype=obj --triple=arm64-apple-macosx --mcpu=apple-m1"
++    $as_echo "#define DARWIN_LLVM_MC 1" >>confdefs.h
++    ;;
++  *) as_fn_error $? "unknown --with-darwin-assembler value" "$LINENO" 5 ;;
++esac
+ 
+ # --------------------
+ # Find default windres
+@@ -26228,6 +26255,9 @@
+ else
+    case "$target:$gas" in
+   *-*-darwin*:*)
++    if test x"$with_darwin_assembler" = xllvm-mc; then
++      gcc_cv_as_flags="$gcc_darwin_mc_flags"
++    else
+                         case "$target" in
+       i?86-*-*)
+ 	gcc_cv_as_flags="-arch i386"
+@@ -26248,6 +26278,7 @@
+ 	as_64_opt="-arch x86_64"
+ 	;;
+     esac
++    fi
+     ;;
+   *-*-solaris2*:no)
+         case "$target" in
+@@ -26682,7 +26713,7 @@
+     if test x"$gcc_cv_as" != x \
+        && test x"$gcc_cv_ld" != x \
+        && test x"$gcc_cv_readelf" != x \
+-       && $gcc_cv_as -o conftest.o conftest.s > /dev/null 2>&1 \
++       && $gcc_cv_as $gcc_darwin_mc_flags -o conftest.o conftest.s > /dev/null 2>&1 \
+        && $gcc_cv_ld -o conftest conftest.o > /dev/null 2>&1 \
+        && $gcc_cv_readelf --relocs --wide conftest \
+ 	  | grep R_RISCV_IRELATIVE > /dev/null 2>&1; then
+@@ -26850,9 +26881,9 @@
+   echo '.byte 1' >> conftest2.s
+   echo '.section myfoosect, "a"' > conftest3.s
+   echo '.byte 0' >> conftest3.s
+-  if $gcc_cv_as -o conftest1.o conftest1.s > /dev/null 2>&1 \
+-     && $gcc_cv_as -o conftest2.o conftest2.s > /dev/null 2>&1 \
+-     && $gcc_cv_as -o conftest3.o conftest3.s > /dev/null 2>&1; then
++  if $gcc_cv_as $gcc_darwin_mc_flags -o conftest1.o conftest1.s > /dev/null 2>&1 \
++     && $gcc_cv_as $gcc_darwin_mc_flags -o conftest2.o conftest2.s > /dev/null 2>&1 \
++     && $gcc_cv_as $gcc_darwin_mc_flags -o conftest3.o conftest3.s > /dev/null 2>&1; then
+     # Note the Wild linker has --gc-sections on by default.
+     if $gcc_cv_ld -shared -o conftest1.so conftest1.o \
+           conftest2.o conftest3.o --no-gc-sections > /dev/null 2>&1 \
+@@ -26976,7 +27007,7 @@
+ .globl _start
+ _start:
+ EOF
+-	      if $gcc_cv_as -o conftest.o conftest.s > /dev/null 2>&1 \
++	      if $gcc_cv_as $gcc_darwin_mc_flags -o conftest.o conftest.s > /dev/null 2>&1 \
+ 	         && $gcc_cv_ld -o conftest conftest.o > /dev/null 2>&1 \
+ 	         && $gcc_cv_objdump -s -j .init_array conftest \
+ 		    | grep HHHHFFFFDDDDBBBB > /dev/null 2>&1 \
+@@ -27010,7 +27041,7 @@
+ .globl _start
+ _start:
+ EOF
+-	      if $gcc_cv_as -o conftest.o conftest.s > /dev/null 2>&1 \
++	      if $gcc_cv_as $gcc_darwin_mc_flags -o conftest.o conftest.s > /dev/null 2>&1 \
+ 	         && $gcc_cv_ld -o conftest conftest.o > /dev/null 2>&1 \
+ 	         && $gcc_cv_objdump -s -j .init_array conftest \
+ 		    | grep HHHHHHHHDDDDDDDD > /dev/null 2>&1 \
+@@ -27227,7 +27258,7 @@
+ 
+ # Determine if an .eh_frame section is read-only.
+ gcc_fn_eh_frame_ro () {
+-  $gcc_cv_as $1 -o conftest.o conftest.s > /dev/null 2>&1 && \
++  $gcc_cv_as $gcc_darwin_mc_flags $1 -o conftest.o conftest.s > /dev/null 2>&1 && \
+     $gcc_cv_objdump -h conftest.o 2>/dev/null | \
+     sed -e '/.eh_frame/!d' -e N | grep READONLY > /dev/null
+ }
+@@ -27519,7 +27550,7 @@
+     || diff -b conftest.big conftest.got > /dev/null 2>&1; }
+   then
+     gcc_cv_as_eh_frame=yes
+-  elif { ac_try='$gcc_cv_as -o conftest.o --traditional-format /dev/null'
++  elif { ac_try='$gcc_cv_as $gcc_darwin_mc_flags -o conftest.o --traditional-format /dev/null'
+   { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
+   (eval $ac_try) 2>&5
+   ac_status=$?
+@@ -28463,7 +28494,7 @@
+ 	echo 'foo: nop'      >> conftest.s
+ 	echo '.data'         >> conftest.s
+ 	echo '.secrel32 foo' >> conftest.s
+-	if $gcc_cv_as -o conftest.o conftest.s > /dev/null 2>&1 && $gcc_cv_ld -o conftest.exe conftest.o > /dev/null; then
++	if $gcc_cv_as $gcc_darwin_mc_flags -o conftest.o conftest.s > /dev/null 2>&1 && $gcc_cv_ld -o conftest.exe conftest.o > /dev/null; then
+ 	  if $gcc_cv_objdump -h conftest.exe | grep '\.reloc\>' > /dev/null; then
+ 	    as_fn_error $? "ld has broken secrel32 relocations, configure without --enable-tls or with --disable-tls to remove this error. See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80881 for more information." "$LINENO" 5
+ 	  fi
+@@ -28675,6 +28706,7 @@
+ 
+ case "$target_os" in
+   darwin*)
++    if test x"$with_darwin_assembler" != xllvm-mc; then
+     { $as_echo "$as_me:${as_lineno-$LINENO}: checking assembler for -mmacosx-version-min option" >&5
+ $as_echo_n "checking assembler for -mmacosx-version-min option... " >&6; }
+ if ${gcc_cv_as_mmacosx_version_min+:} false; then :
+@@ -28706,7 +28738,13 @@
+ 
+ fi
+ 
+-    if test x$gcc_cv_as_mmacosx_version_min = "xyes"; then
++    fi
++    darwin_build_version_flags=-mmacosx-version-min=10.14
++    if test x"$with_darwin_assembler" = xllvm-mc; then
++      darwin_build_version_flags=
++    fi
++    if test x"$with_darwin_assembler" = xllvm-mc \
++       || test x$gcc_cv_as_mmacosx_version_min = "xyes"; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: checking assembler for .build_version" >&5
+ $as_echo_n "checking assembler for .build_version... " >&6; }
+ if ${gcc_cv_as_darwin_build_version+:} false; then :
+@@ -28715,7 +28753,7 @@
+   gcc_cv_as_darwin_build_version=no
+   if test x"$gcc_cv_as" != x; then
+     $as_echo ' .build_version macos, 10, 14 sdk_version 10, 14' > conftest.s
+-    if { ac_try='$gcc_cv_as $gcc_cv_as_flags -mmacosx-version-min=10.14 -o conftest.o conftest.s >&5'
++    if { ac_try='$gcc_cv_as $gcc_cv_as_flags $darwin_build_version_flags -o conftest.o conftest.s >&5'
+   { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
+   (eval $ac_try) 2>&5
+   ac_status=$?
+@@ -31021,7 +31059,7 @@
+         echo '	.reloc	1f,R_MIPS_JALR,x' >> conftest.s
+         echo '1:	jalr $25' >> conftest.s
+         echo '	.end x' >> conftest.s
+-        if $gcc_cv_as -o conftest.o conftest.s >/dev/null 2>&5 \
++        if $gcc_cv_as $gcc_darwin_mc_flags -o conftest.o conftest.s >/dev/null 2>&5 \
+            && $gcc_cv_ld -shared -o conftest.so conftest.o >/dev/null 2>&5; then
+ 	  if $gcc_cv_objdump -d conftest.so | grep jalr >/dev/null 2>&1 \
+ 	     && $gcc_cv_objdump -d conftest.so | grep "bal.*<x>" >/dev/null 2>&1; then
+@@ -32487,16 +32525,16 @@
+     then
+ 	# gas compiled without zlib cannot compress debug sections and warns
+    # about it, but still exits successfully.  So check for this, too.
+-   if $gcc_cv_as --compress-debug-sections -o conftest.o conftest.s 2>&1 | grep -i warning > /dev/null
++   if $gcc_cv_as $gcc_darwin_mc_flags --compress-debug-sections -o conftest.o conftest.s 2>&1 | grep -i warning > /dev/null
+    then
+      gcc_cv_as_compress_debug=0
+-   elif $gcc_cv_as --compress-debug-sections=zlib -o conftest.o conftest.s > /dev/null 2>&1
++   elif $gcc_cv_as $gcc_darwin_mc_flags --compress-debug-sections=zlib -o conftest.o conftest.s > /dev/null 2>&1
+    then
+      gcc_cv_as_compress_debug=1
+      gcc_cv_as_compress_debug_option="--compress-debug-sections"
+      gcc_cv_as_no_compress_debug_option="--nocompress-debug-sections"
+      # Since binutils 2.40, gas supports --compress-debug-sections=zstd.
+-     if $gcc_cv_as --compress-debug-sections=zstd -o conftest.o conftest.s > /dev/null 2>&1
++     if $gcc_cv_as $gcc_darwin_mc_flags --compress-debug-sections=zstd -o conftest.o conftest.s > /dev/null 2>&1
+      then
+        gcc_cv_as_compress_debug=2
+      fi
+@@ -32670,7 +32708,7 @@
+   gcc_cv_as_line_zero=no
+   if test "x$gcc_cv_as" != x; then
+     { echo '# 1 "test.s" 1'; echo '# 0 "" 2'; } > conftest.s
+-    if { ac_try='$gcc_cv_as -o conftest.o conftest.s >&5 2>conftest.out'
++    if { ac_try='$gcc_cv_as $gcc_darwin_mc_flags -o conftest.o conftest.s >&5 2>conftest.out'
+   { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
+   (eval $ac_try) 2>&5
+   ac_status=$?
+@@ -32805,9 +32843,9 @@
+ ptr:
+ 	.quad	a_glob
+ EOF
+-      if $gcc_cv_as $as_64_opt -o conftest1.o conftest1.s > /dev/null 2>&1 \
++      if $gcc_cv_as $gcc_darwin_mc_flags $as_64_opt -o conftest1.o conftest1.s > /dev/null 2>&1 \
+          && $gcc_cv_ld -shared $ld_64_opt -o conftest1.so conftest1.o > /dev/null 2>&1 \
+-         && $gcc_cv_as $as_64_opt -o conftest2.o conftest2.s > /dev/null 2>&1 \
++         && $gcc_cv_as $gcc_darwin_mc_flags $as_64_opt -o conftest2.o conftest2.s > /dev/null 2>&1 \
+          && $gcc_cv_ld -pie $ld_64_opt -o conftest conftest2.o conftest1.so > /dev/null 2>&1; then
+         gcc_cv_ld_pie_copyreloc=yes
+       fi
+@@ -32851,7 +32889,7 @@
+ 	.section	.eh_frame,"a",@progbits
+ 	.long .L0
+ EOF
+-  if $gcc_cv_as -o conftest.o conftest.s > /dev/null 2>&1; then
++  if $gcc_cv_as $gcc_darwin_mc_flags -o conftest.o conftest.s > /dev/null 2>&1; then
+     if $gcc_cv_ld -o conftest conftest.o --entry=_start --gc-sections 2>&1 \
+ 	 | grep "gc-sections option ignored" > /dev/null; then
+       gcc_cv_ld_eh_gc_sections=no
+@@ -32879,7 +32917,7 @@
+ 	.section	.eh_frame,"a",@progbits
+ 	.long .L0
+ EOF
+-	if $gcc_cv_as -o conftest.o conftest.s > /dev/null 2>&1; then
++	if $gcc_cv_as $gcc_darwin_mc_flags -o conftest.o conftest.s > /dev/null 2>&1; then
+ 	  if $gcc_cv_ld -o conftest conftest.o --entry=_start --gc-sections 2>&1 \
+ 	       | grep "gc-sections option ignored" > /dev/null; then
+ 	    gcc_cv_ld_eh_gc_sections=no
+@@ -32935,7 +32973,7 @@
+ 	.section	.eh_frame,"a",@progbits
+ 	.long .L0
+ EOF
+-  if $gcc_cv_as -o conftest.o conftest.s > /dev/null 2>&1; then
++  if $gcc_cv_as $gcc_darwin_mc_flags -o conftest.o conftest.s > /dev/null 2>&1; then
+     if $gcc_cv_ld -o conftest conftest.o --entry=_start --gc-sections 2>&1 \
+ 	 | grep "gc-sections option ignored" > /dev/null; then
+       :
+--- gcc/config.in.orig
++++ gcc/config.in
+@@ -65,6 +65,9 @@
+ /* Define to enable the use of a default assembler. */
+ #ifndef USED_FOR_TARGET
+ #undef DEFAULT_ASSEMBLER
++
++/* Define to use the LLVM MC command language on AArch64 Darwin. */
++#undef DARWIN_LLVM_MC
+ #endif
+ 
+ 
+--- gcc/config/aarch64/darwin.h.orig
++++ gcc/config/aarch64/darwin.h
+@@ -70,6 +70,19 @@
+ /* Force the default endianness and ABI flags onto the command line
+    in order to make the other specs easier to write.  Match clang in
+    silently ignoring mdynamic-no-pic */
++/* The first MC pilot accepts the default CPU only.  Do not silently
++   discard architecture extensions that need an MC feature mapping.  */
++#ifdef DARWIN_LLVM_MC
++#define DARWIN_LLVM_MC_SELF_SPECS \
++"%{fuse-ld=*:%{!fuse-ld=lld:%eLLVM MC mode requires Mach-O LLD}} " \
++"%{!fuse-ld=*:-fuse-ld=lld} " \
++"%{mcpu=*:%{!mcpu=apple-m1:%eNo LLVM MC mapping for this CPU}} " \
++"%{march=*:%eNo LLVM MC mapping for explicit architecture extensions} " \
++"%{mtune=*:%eNo LLVM MC mapping for explicit tuning options} "
++#else
++#define DARWIN_LLVM_MC_SELF_SPECS ""
++#endif
++
+ #undef DRIVER_SELF_SPECS
+ #define DRIVER_SELF_SPECS \
+ "%{mbig-endian:%eDarwin platforms do not support big-endian arm64}" \
+@@ -78,6 +91,7 @@
+ "%{!mabi=*:-mabi=lp64} " \
+ " %<mdynamic-no-pic* " \
+   MCPU_MTUNE_NATIVE_SPECS \
++  DARWIN_LLVM_MC_SELF_SPECS \
+   SUBTARGET_DRIVER_SELF_SPECS
+ 
+ /* We want -fPIC by default, unless we're using -static to compile for
+@@ -88,8 +102,17 @@
+ "%{!mkernel:%{!static:-fPIC}} " DARWIN_CC1_SPEC
+ 
+ #undef ASM_SPEC
++#ifdef DARWIN_LLVM_MC
++#define ASM_SPEC \
++  "--filetype=obj " \
++  "%{mmacosx-version-min=*:--triple=arm64-apple-macosx%*;" \
++  ":%eLLVM MC requires a deployment version} " \
++  "--mcpu=apple-m1 %{!static:--position-independent} %{w:-W} %{I*} " \
++  "%<asm_macosx_version_min=* "
++#else
+ #define ASM_SPEC "-arch %(darwin_arch) %{march*} %{mtune*} "\
+   ASM_OPTIONS " %{static} " ASM_MMACOSX_VERSION_MIN_SPEC
++#endif
+ 
+ #undef ENDFILE_SPEC
+ #define ENDFILE_SPEC \
+--- gcc/config/darwin-driver.cc.orig
++++ gcc/config/darwin-driver.cc
+@@ -331,6 +331,16 @@
+ 	  break;
+ #endif
+ 
++#ifdef DARWIN_LLVM_MC
++	case OPT_fuse_ld_bfd:
++	case OPT_fuse_ld_gold:
++	case OPT_fuse_ld_mold:
++	case OPT_fuse_ld_wild:
++	  /* Check each occurrence.  A later option must not hide a conflict.  */
++	  error ("LLVM MC mode requires %<-fuse-ld=lld%>");
++	  break;
++#endif
++
+ 	case OPT_mmacosx_version_min_:
+ 	  seen_version_min = true;
+ 	  vers_string =
