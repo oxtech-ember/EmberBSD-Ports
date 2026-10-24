@@ -3,3 +3,4 @@ $NetBSD$
 BLAKE2s (aravis-0.8.36.tar.xz) = 4f14d84a4f8c7f034e9e1656d0f5c0d94275b0726c1ff6326b3b3f88e97ed55c
 SHA512 (aravis-0.8.36.tar.xz) = 65e848efb81615f1eb687ccaa7e1ce6311924cfb4c6aee6722a572ef34e1704c5bda2a2da0d09571d8ccdefc36f57b91fbb7e98d620821048f23cd89d37e3830
 Size (aravis-0.8.36.tar.xz) = 870056 bytes
+SHA1 (patch-src_arvgvinterface.c) = c14ed58dd855e4587cabb0e6dce49de17621827d

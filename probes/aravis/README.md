@@ -17,18 +17,30 @@ the development host: `make package` and `make test`.
 
 | Result | Value |
 | --- | --- |
-| Package | `aravis-0.8.36.tgz`, 94 entries, SHA256 `52402da35a9ba35c09ec9be073c57724b0f0b90001373892080bf1067c0f1fd2` |
+| Package | `aravis-0.8.36nb1.tgz`, 94 entries, SHA256 `a202c154478b6beb42374d12c8c5b5fc3c0185a66c46680a1ce71b18fcb86168` |
 | Declared dependencies | `gcc16`, `glib2>=2.90.1`, `libusb1`, `libxml2`, `zlib` |
-| Upstream tests | 7: evaluator, buffer, misc, dom, genicam and fake pass; `fakegv` fails |
+| Upstream tests | 7 of 7 pass, including `fakegv` |
 
-`fakegv` starts a simulated camera on 127.0.0.1 and discovers it by
-broadcast. The simulated camera binds its global discovery socket to
-255.255.255.255, which BSD sockets reject (`Can't assign requested
-address`), and the loopback interface has no broadcast. Control by address
-works: `arv-tool -a 127.0.0.1 control Width Height` reads the simulated
-camera, and `arv_camera_new` accepts an address. Discovery of real cameras
-on an Ethernet segment is not exercised by this test. A BSD-compatible
-discovery socket for the simulator and the test remain open.
+## Discovery on an interface without broadcast
+
+`fakegv` starts a simulated camera on 127.0.0.1 and finds it by discovery.
+Aravis sends discovery to the limited broadcast 255.255.255.255 and uses
+the interface broadcast address only when that send fails. The BSD
+loopback has no broadcast: Aravis records its own address as broadcast
+address, the send succeeds, and the packet never reaches the simulator.
+`patch-src_arvgvinterface.c` sends discovery for such an interface to that
+recorded address. Interfaces with a broadcast address keep the upstream
+limited broadcast.
+
+In an EmberBSD 1.0 amd64 `c5d396f` guest, `arv-tool` found a simulated
+camera as follows (the simulator's 255.255.255.255 socket fails to bind on
+BSD in both cases; its unicast GVCP socket on an Ethernet interface still
+receives the broadcast):
+
+| Package | Camera on `lo0` | Camera on `wm0` |
+| --- | --- | --- |
+| `aravis-0.8.36` | not found | found |
+| `aravis-0.8.36nb1` | found | found |
 
 ## Stream reception
 
@@ -54,4 +66,4 @@ An application linked in the package root also needs `gettext-lib`:
 
 - AArch64 package: the common cross profile and a qualified SDK toolset.
 - Daheng ME2P-1230 on the board for 30 minutes without lost frames.
-- The simulator discovery on BSD and the `fakegv` test.
+- Offering the discovery patch upstream.
