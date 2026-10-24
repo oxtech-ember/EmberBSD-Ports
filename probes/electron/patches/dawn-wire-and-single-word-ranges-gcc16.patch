@@ -1,0 +1,35 @@
+--- a/third_party/dawn/generator/templates/dawn/wire/WireCmd.cpp
++++ b/third_party/dawn/generator/templates/dawn/wire/WireCmd.cpp
+@@ -84,6 +84,10 @@
+         WIRE_TRY({{as_cType(type.name)}}Serialize({{in}}, &{{out}}, buffer{{Provider}}));
+     {%- elif not is_wire_serializable(type) -%}
+         if ({{in}} != nullptr) return WireResult::FatalError;
++    {%- elif type.dict_name == "ObjectHandle" -%}
++        //* Write both fields without discarding a volatile assignment reference.
++        {{out}}.id = {{in}}.id;
++        {{out}}.generation = {{in}}.generation;
+     {%- else -%}
+         {{out}} = {{in}};
+     {%- endif -%}
+--- a/third_party/dawn/src/dawn/common/BitSetRangeIterator.h
++++ b/third_party/dawn/src/dawn/common/BitSetRangeIterator.h
+@@ -132,6 +132,19 @@
+         return;
+     }
+ 
++    if constexpr (N <= kBitsPerWord) {
++        // The complete set fits in one word. Scan and shift that word directly.
++        uint64_t bits = mBits.to_ullong();
++        size_t nextBit = static_cast<size_t>(std::countr_zero(bits));
++        mOffset += nextBit;
++        bits >>= nextBit;
++        DAWN_RELEASE_ASSUME(!std::bitset<N>(bits).all());
++        nextBit = static_cast<size_t>(std::countr_one(bits));
++        mSize = nextBit;
++        mBits = std::bitset<N>(bits >> nextBit);
++        return;
++    }
++
+     // Look for the next 1, shifting mBits as we go and accounting for it in mOffset.
+     // The loop jumps in blocks of 64bit while the rest of the code does the last sub-64bit count.
+     {

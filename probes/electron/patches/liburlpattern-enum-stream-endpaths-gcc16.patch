@@ -1,0 +1,18 @@
+--- a/third_party/liburlpattern/part.cc
++++ b/third_party/liburlpattern/part.cc
+@@ -31,6 +31,7 @@
+     case PartType::kFixed:
+       return o << "kFixed";
+   }
++  return o << "Unknown PartType(" << static_cast<int>(type) << ")";
+ }
+ 
+ std::ostream& operator<<(std::ostream& o, Modifier modifier) {
+@@ -44,6 +45,7 @@
+     case Modifier::kNone:
+       return o << "kNone";
+   }
++  return o << "Unknown Modifier(" << static_cast<int>(modifier) << ")";
+ }
+ 
+ Part::Part(PartType t, std::string v, Modifier m)

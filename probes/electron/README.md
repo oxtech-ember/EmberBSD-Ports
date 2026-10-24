@@ -180,6 +180,12 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-media-enum-paths
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/skia-reinitializes-attribute-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-bsd-linux-suid-helper.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-dist-target-os.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/cc-ax-position-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/blink-ascii-codepoint-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-wire-and-single-word-ranges-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gles2-scalar-cache-bounds-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/media-status-enum-noreturn-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/liburlpattern-enum-stream-endpaths-gcc16.patch
 ```
 
 Set `dawn_host_go_path` to the absolute path of a supported host Go executable
@@ -341,6 +347,10 @@ GCC16 still emits split DWARF. Native Mac toolchain arguments stay unchanged.
 The PartitionAlloc patch matches NetBSD's const-qualified `malloc_usable_size`
 declaration. It also uses a width-checked unsigned shift for the existing slot
 metadata invariant. It keeps other libc signatures and allocator policy.
+
+The reader, wire and media follow-ups preserve closed-enum validation and
+array-query sizes. The [GCC16 checks](tests/gcc16-reader-wire-media.md) describe
+production compiler results, target fixtures and analyzer limits.
 
 GN and allocator checks are in the [GN regression guide](tests/README.md).
 Focused C++ checks are documented in the [libc++](tests/libcxx-gcc16.md) and

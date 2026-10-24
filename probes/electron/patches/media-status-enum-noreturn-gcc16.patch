@@ -1,0 +1,116 @@
+diff --git a/media/base/media_serializers.h b/media/base/media_serializers.h
+--- a/media/base/media_serializers.h
++++ b/media/base/media_serializers.h
+@@ -10,6 +10,7 @@
+ #include <vector>
+ 
+ #include "base/location.h"
++#include "base/notreached.h"
+ #include "media/base/audio_decoder_config.h"
+ #include "media/base/buffering_state.h"
+ #include "media/base/cdm_config.h"
+@@ -410,6 +411,7 @@
+       case BUFFERING_CHANGE_REASON_UNKNOWN:
+         return base::Value("BUFFERING_CHANGE_REASON_UNKNOWN");
+     }
++    NOTREACHED();
+   }
+ };
+ 
+@@ -530,6 +532,7 @@
+       ENUM_CLASS_CASE_TO_STRING(VideoColorSpace::PrimaryID, SMPTEST432_1);
+       ENUM_CLASS_CASE_TO_STRING(VideoColorSpace::PrimaryID, EBU_3213_E);
+     }
++    NOTREACHED();
+   }
+ };
+ 
+@@ -557,6 +560,7 @@
+       ENUM_CLASS_CASE_TO_STRING(VideoColorSpace::TransferID, SMPTEST428_1);
+       ENUM_CLASS_CASE_TO_STRING(VideoColorSpace::TransferID, ARIB_STD_B67);
+     }
++    NOTREACHED();
+   }
+ };
+ 
+@@ -578,6 +582,7 @@
+       ENUM_CLASS_CASE_TO_STRING(VideoColorSpace::MatrixID, YDZDX);
+       ENUM_CLASS_CASE_TO_STRING(VideoColorSpace::MatrixID, INVALID);
+     }
++    NOTREACHED();
+   }
+ };
+ 
+@@ -591,6 +596,7 @@
+       ENUM_CLASS_CASE_TO_STRING(gfx::ColorSpace::RangeID, FULL);
+       ENUM_CLASS_CASE_TO_STRING(gfx::ColorSpace::RangeID, DERIVED);
+     }
++    NOTREACHED();
+   }
+ };
+ 
+diff --git a/media/formats/hls/parse_status.h b/media/formats/hls/parse_status.h
+--- a/media/formats/hls/parse_status.h
++++ b/media/formats/hls/parse_status.h
+@@ -7,6 +7,7 @@
+ 
+ #include <string_view>
+ 
++#include "base/notreached.h"
+ #include "media/base/media_export.h"
+ #include "media/base/status.h"
+ 
+@@ -202,6 +203,7 @@
+       STRINGIFY_CODE(kConflictingKeyTagAttributes);
+       STRINGIFY_CODE(kConflictingMediaAttributes);
+     }
++    NOTREACHED();
+   }
+ };
+ 
+diff --git a/media/mojo/mojom/video_aspect_ratio_mojom_traits.h b/media/mojo/mojom/video_aspect_ratio_mojom_traits.h
+--- a/media/mojo/mojom/video_aspect_ratio_mojom_traits.h
++++ b/media/mojo/mojom/video_aspect_ratio_mojom_traits.h
+@@ -5,6 +5,7 @@
+ #ifndef MEDIA_MOJO_MOJOM_VIDEO_ASPECT_RATIO_MOJOM_TRAITS_H_
+ #define MEDIA_MOJO_MOJOM_VIDEO_ASPECT_RATIO_MOJOM_TRAITS_H_
+ 
++#include "base/notreached.h"
+ #include "media/base/video_aspect_ratio.h"
+ #include "media/mojo/mojom/media_types.mojom.h"
+ 
+@@ -21,6 +22,7 @@
+       case media::VideoAspectRatio::Type::kPixel:
+         return media::mojom::VideoAspectRatio_Type::kPixel;
+     }
++    NOTREACHED();
+   }
+ 
+   static double value(const media::VideoAspectRatio& input) {
+diff --git a/media/filters/hls_demuxer_status.h b/media/filters/hls_demuxer_status.h
+--- a/media/filters/hls_demuxer_status.h
++++ b/media/filters/hls_demuxer_status.h
+@@ -6,6 +6,7 @@
+ #define MEDIA_FILTERS_HLS_DEMUXER_STATUS_H_
+ 
+ #include "base/functional/callback.h"
++#include "base/notreached.h"
+ #include "media/base/status.h"
+ 
+ namespace media {
+@@ -123,6 +124,7 @@
+       case Codes::kNoDataEverAppended:
+         return "Segment queue never had any data";
+     }
++    NOTREACHED();
+   }
+ 
+   static TypedStatus<HlsDemuxerStatusTraits> FromReadStatus(
+@@ -135,6 +137,7 @@
+       case HlsDataSourceProvider::ReadStatus::Codes::kStopped:
+         return {Codes::kNetworkReadStopped, std::move(s)};
+     }
++    NOTREACHED();
+   }
+ };
+ 

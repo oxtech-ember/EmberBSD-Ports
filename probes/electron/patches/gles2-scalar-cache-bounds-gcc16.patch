@@ -1,0 +1,55 @@
+--- a/gpu/command_buffer/client/gles2_implementation.cc
++++ b/gpu/command_buffer/client/gles2_implementation.cc
+@@ -917,7 +917,9 @@
+   return state;
+ }
+ 
+-bool GLES2Implementation::GetHelper(GLenum pname, GLint* params) {
++bool GLES2Implementation::GetHelper(GLenum pname,
++                                    GLint* params,
++                                    bool allow_multiple_values) {
+   // TODO(zmo): For all the BINDING points, there is a possibility where
+   // resources are shared among multiple contexts, that the cached points
+   // are invalid. It is not a problem for now, but once we allow resource
+@@ -969,6 +971,9 @@
+       *params = gl_capabilities_.max_vertex_uniform_vectors;
+       return true;
+     case GL_MAX_VIEWPORT_DIMS:
++      if (!allow_multiple_values) {
++        return false;
++      }
+       if (gl_capabilities_.max_viewport_width > 0 &&
+           gl_capabilities_.max_viewport_height > 0) {
+         params[0] = gl_capabilities_.max_viewport_width;
+@@ -1027,6 +1032,9 @@
+       *params = unpack_alignment_;
+       return true;
+     case GL_VIEWPORT:
++      if (!allow_multiple_values) {
++        return false;
++      }
+       if (state_.viewport_width > 0 && state_.viewport_height > 0 &&
+           gl_capabilities_.max_viewport_width > 0 &&
+           gl_capabilities_.max_viewport_height > 0) {
+@@ -1363,7 +1371,7 @@
+ }
+ 
+ bool GLES2Implementation::GetIntegervHelper(GLenum pname, GLint* params) {
+-  return GetHelper(pname, params);
++  return GetHelper(pname, params, true);
+ }
+ 
+ bool GLES2Implementation::GetIntegeri_vHelper(GLenum pname,
+--- a/gpu/command_buffer/client/gles2_implementation.h
++++ b/gpu/command_buffer/client/gles2_implementation.h
+@@ -582,7 +582,9 @@
+                          uint32_t buffer_padded_row_size);
+ 
+   // Helpers for query functions.
+-  bool GetHelper(GLenum pname, GLint* params);
++  bool GetHelper(GLenum pname,
++                 GLint* params,
++                 bool allow_multiple_values = false);
+   GLuint GetBoundBufferHelper(GLenum target);
+   bool GetBooleanvHelper(GLenum pname, GLboolean* params);
+   bool GetBooleani_vHelper(GLenum pname, GLuint index, GLboolean* data);

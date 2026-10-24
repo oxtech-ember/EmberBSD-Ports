@@ -1,0 +1,57 @@
+--- a/third_party/blink/renderer/platform/wtf/text/ascii_lower_hash_reader.h
++++ b/third_party/blink/renderer/platform/wtf/text/ascii_lower_hash_reader.h
+@@ -29,7 +29,7 @@
+ #if defined(__SSE2__) || defined(__ARM_NEON__)
+     CharType b __attribute__((vector_size(8)));
+     memcpy(&b, p, sizeof(b));
+-    b |= (b >= 'A' & b <= 'Z') & 0x20;
++    b |= ((b >= 'A') & (b <= 'Z')) & 0x20;
+     uint64_t ret;
+     memcpy(&ret, &b, sizeof(b));
+     return ret;
+@@ -52,7 +52,7 @@
+ #if defined(__SSE2__) || defined(__ARM_NEON__)
+     CharType b __attribute__((vector_size(4)));
+     memcpy(&b, p, sizeof(b));
+-    b |= (b >= 'A' & b <= 'Z') & 0x20;
++    b |= ((b >= 'A') & (b <= 'Z')) & 0x20;
+     uint32_t ret;
+     memcpy(&ret, &b, sizeof(b));
+     return ret;
+--- a/third_party/blink/renderer/platform/wtf/text/string_view.h
++++ b/third_party/blink/renderer/platform/wtf/text/string_view.h
+@@ -16,6 +16,7 @@
+ #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
+ #include "third_party/blink/renderer/platform/wtf/forward.h"
+ #include "third_party/blink/renderer/platform/wtf/get_ptr.h"
++#include "third_party/blink/renderer/platform/wtf/text/code_point_iterator.h"
+ #include "third_party/blink/renderer/platform/wtf/text/string_impl.h"
+ 
+ #if DCHECK_IS_ON()
+@@ -23,8 +24,6 @@
+ #endif
+ 
+ namespace blink {
+-
+-class CodePointIterator;
+ 
+ enum class Utf8ConversionMode : uint8_t {
+   // Unpaired surrogates are encoded using the standard UTF-8 encoding scheme,
+--- a/third_party/blink/renderer/platform/wtf/text/atomic_string_table.cc
++++ b/third_party/blink/renderer/platform/wtf/text/atomic_string_table.cc
+@@ -221,6 +221,7 @@
+         return StringHasher::ComputeHashAndMaskTop8Bits(bytes.data(),
+                                                         bytes.size());
+     }
++    NOTREACHED();
+   }
+ 
+   ALWAYS_INLINE UCharBuffer(base::span<const UChar> chars,
+@@ -258,6 +259,7 @@
+       case AtomicStringUCharEncoding::kIs16Bit:
+         return StringImpl::Create(characters_);
+     }
++    NOTREACHED();
+   }
+ 
+  private:
