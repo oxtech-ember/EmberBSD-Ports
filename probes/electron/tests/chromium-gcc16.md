@@ -400,3 +400,17 @@ input reports two missing-return and 65 inherited-member warnings under a branch
 limit. Its after input stops in the newly required check header. Those findings
 remain recorded; their elimination is not claimed. These checks do not establish
 a clean Cppcheck result, upstream runtime execution, or full browser acceptance.
+
+## Accessibility and display checks
+
+The AI-assisted patch adds parentheses around both display-ID comparisons in
+the existing XOR check. It reads integer and floating accessibility attributes
+by const reference. Five fatal terminals cover invalid attribute, alignment,
+highlight, popup, and tree-ID enums. Existing valid strings, values, and empty
+fallbacks in other conversion functions remain unchanged.
+
+All four production translation units fail with the observed GCC16 diagnostics
+before the patch and compile after it. Clang Static Analyzer completes all eight
+cases. AXNode retains six inherited messages; the other three pairs have none.
+Cppcheck stops at the same dependency parser limit in all eight cases. These
+checks do not establish target execution or clean Cppcheck analysis.

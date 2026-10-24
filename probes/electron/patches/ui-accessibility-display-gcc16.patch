@@ -1,0 +1,85 @@
+--- a/ui/display/screen.cc
++++ b/ui/display/screen.cc
+@@ -177,8 +177,8 @@
+   if (display_id == scoped_display_id_for_new_windows_)
+     return;
+   // Only allow set and clear, not switch.
+-  DCHECK(display_id == kInvalidDisplayId ^
+-         scoped_display_id_for_new_windows_ == kInvalidDisplayId)
++  DCHECK((display_id == kInvalidDisplayId) ^
++         (scoped_display_id_for_new_windows_ == kInvalidDisplayId))
+       << "display_id=" << display_id << ", scoped_display_id_for_new_windows_="
+       << scoped_display_id_for_new_windows_;
+   scoped_display_id_for_new_windows_ = display_id;
+--- a/ui/accessibility/ax_node_data.cc
++++ b/ui/accessibility/ax_node_data.cc
+@@ -219,6 +219,7 @@
+     case ax::mojom::IntListAttribute::kAriaNotificationPriorityProperties:
+       return false;
+   }
++  NOTREACHED();
+ }
+ 
+ AXNodeData::AXNodeData() : role(ax::mojom::Role::kUnknown) {}
+@@ -990,7 +991,7 @@
+ 
+   base::StrAppend(&result, {" ", relative_bounds.ToString()});
+ 
+-  for (const auto [attribute, int_value] : int_attributes) {
++  for (const auto& [attribute, int_value] : int_attributes) {
+     std::string value = base::NumberToString(int_value);
+     switch (attribute) {
+       case ax::mojom::IntAttribute::kDefaultActionVerb:
+@@ -1539,7 +1540,7 @@
+     }
+   }
+ 
+-  for (const auto [attribute, float_value] : float_attributes) {
++  for (const auto& [attribute, float_value] : float_attributes) {
+     std::string value = base::NumberToString(float_value);
+     switch (attribute) {
+       case ax::mojom::FloatAttribute::kValueForRange:
+--- a/ui/accessibility/ax_enum_util.cc
++++ b/ui/accessibility/ax_enum_util.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "ui/accessibility/ax_enum_util.h"
+ 
++#include "base/notreached.h"
+ #include "ui/accessibility/ax_enums.mojom.h"
+ 
+ namespace ui {
+@@ -1210,6 +1211,7 @@
+     case ax::mojom::ScrollAlignment::kScrollAlignmentClosestEdge:
+       return "scrollAlignmentClosestEdge";
+   }
++  NOTREACHED();
+ }
+ 
+ const char* ToString(ax::mojom::DefaultActionVerb default_action_verb) {
+@@ -2026,6 +2028,7 @@
+     case ax::mojom::HighlightType::kGrammarError:
+       return "grammar-error";
+   }
++  NOTREACHED();
+ }
+ 
+ const char* ToString(ax::mojom::MoveDirection move_direction) {
+@@ -2354,6 +2357,7 @@
+     case ax::mojom::IsPopup::kManual:
+       return "manual";
+   }
++  NOTREACHED();
+ }
+ 
+ const char* ToString(ax::mojom::InvalidState invalid_state) {
+--- a/ui/accessibility/ax_tree_id.cc
++++ b/ui/accessibility/ax_tree_id.cc
+@@ -63,6 +63,7 @@
+     case ax::mojom::AXTreeIDType::kToken:
+       return base::UnguessableTokenToValue(*token_).GetString();
+   }
++  NOTREACHED();
+ }
+ 
+ void swap(AXTreeID& first, AXTreeID& second) {

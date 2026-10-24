@@ -151,6 +151,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/mojo-enum-validator-exp
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-net-mojo-checks-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/net-gcc16-speculative-devirt-bounds.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-net-enum-exits-gcc16.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ui-accessibility-display-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-padding-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-invariants.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-proc-clang-cfi-attribute.patch
@@ -233,6 +234,8 @@ repair passes the two production inputs and their bounds controls.
 The Net enum-exit follow-up preserves socket states, protocol names, dictionary
 decoding, session policies, and closed-protobuf presence checks. Its 30 fatal
 terminals apply only after the existing exhaustive switches.
+The accessibility/display patch preserves XOR check grouping, reads attribute
+entries by reference, and makes invalid accessibility enum exits fatal.
 The scenario patch keeps the shared-memory padding diagnostic fatal on
 both Clang and GCC. The QUICHE patch checks allocation and handshake invariants,
 compares the selected subprotocol without signed conversion errors, and obtains
