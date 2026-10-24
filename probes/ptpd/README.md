@@ -27,7 +27,7 @@ the development host.
 
 | Result | Value |
 | --- | --- |
-| Package | `ptpd-2.3.1.tgz`, 8 files, SHA256 `78054315bdc8d3997e27aebb52485f645ff3ad917810c279bb4e9347f817e2cc` |
+| Package | `ptpd-2.3.1nb1.tgz`, 9 files, SHA256 `706f046e9555e282bb10535812b6b86c07d7ab1110bad24e7af5f8d8c7b29fea` |
 | Run-time requirements | base `libc`, `libm` and `libpcap`; declared `gcc16` |
 | Compiler diagnostics | 36 inherited GCC16 warnings, including one `-Warray-bounds` (subscript 2 of `uint32_t[1]`) to review |
 | Upstream tests | none in the release |
@@ -37,6 +37,20 @@ master-only configuration with timing ACLs, `clock:no_adjust` and log and
 statistics files. Started on `lo0`, it entered the listening state and
 then master after the announce timeout, and shut down on SIGTERM. No slave
 was synchronised; this is not a timing measurement.
+
+## Service
+
+The package installs `share/examples/rc.d/ptpd2`. It reads
+`ptpd2_config` from `/etc/rc.conf` (default `${PKG_SYSCONFDIR}/ptpd2.conf`)
+and uses the default lock file `/var/run/ptpd2.lock` as its PID file, so the
+configuration must not set `global:lock_file` or `global:auto_lockfile`.
+In the same guest with `ptpd2=YES`, the script:
+
+- refused to start without the configuration file;
+- started the daemon and reported its PID with `status`;
+- refused a second start while it ran;
+- stopped it and removed the lock file;
+- started it at boot after `NETWORKING`, and it entered `PTP_MASTER`.
 
 ## Remaining
 

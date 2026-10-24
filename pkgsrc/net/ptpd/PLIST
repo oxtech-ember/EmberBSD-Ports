@@ -2,6 +2,7 @@
 man/man5/ptpd2.conf.5
 man/man8/ptpd2.8
 sbin/ptpd2
+share/examples/rc.d/ptpd2
 share/ptpd/PTPBASE-MIB.txt
 share/ptpd/leap-seconds.list
 share/ptpd/ptpd2.conf.default-full

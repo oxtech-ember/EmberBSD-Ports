@@ -1,6 +1,7 @@
 # $NetBSD$
 
 DISTNAME=	ptpd-2.3.1
+PKGREVISION=	1
 CATEGORIES=	net time
 MASTER_SITES=	${MASTER_SITE_GITHUB:=ptpd/}
 # The 2.3.1 branch head, with the hash recorded by FreeBSD net/ptpd2.
@@ -19,6 +20,8 @@ USE_LANGUAGES=	c
 
 # Net-SNMP is a separate integration; the daemon keeps its own statistics.
 CONFIGURE_ARGS+=	--disable-snmp
+
+RCD_SCRIPTS=		ptpd2
 
 pre-configure:
 	cd ${WRKSRC} && autoreconf -fi
