@@ -165,6 +165,13 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-bsd-linux-suid
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-dist-target-os.patch
 ```
 
+Set `use_system_libffi=true` for the common NetBSD target profile. Its libffi
+package provides the shared `-lffi` contract and does not provide `libffi_pic.a`.
+The pinned GN configuration selects `-lffi_pic` by default on NetBSD. The explicit
+system setting selects target pkg-config metadata and `-lffi` instead. A bounded
+fixture checks both NetBSD settings and the unchanged Linux default. This profile
+selection does not establish the complete SwiftShader or Electron link.
+
 The pkg-config patch keeps the effective `pkg/lib` value in the common cross
 arguments. The legacy target block cannot append a later `lib` value.
 Ordinary Linux, native, host wrapper and cached-result arguments stay unchanged.
