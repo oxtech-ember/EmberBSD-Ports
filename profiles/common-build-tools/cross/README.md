@@ -52,7 +52,7 @@ Prepare these separate directories, outside Git:
   alternate-root replacement, successful dry runs and DESTDIR-aware pkg_admin
   add/rebuild operations. It suppresses target deinstall scripts during cross
   updates. Its package database describes host executables only.
-  The bootstrap must also own native `libtool-base-2.6.2` and `m4-1.4.21`
+  The bootstrap must also own native `libtool-base-2.6.2nb1` and `m4-1.4.21`
   built from the same export (`bmake -C export/devel/libtool-base MAKECONF=`
   *host*`/etc/mk.conf package`, then `pkg_add` both). Modern build-only
   `autoreconf` with `USE_LIBTOOL` declares native `libtool-base` and creates

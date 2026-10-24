@@ -38,6 +38,7 @@ LIBTOOL_CROSS_COMPILE=	yes
 # XXX Tweaked for cross-compilation.
 #PKGNAME=	${DISTNAME:S/-/-base-/}
 PKGNAME=	${DISTNAME:S/^libtool-/cross-libtool-fortran-${MACHINE_PLATFORM}-/}
+PKGREVISION=	1
 
 COMMENT=	Target Libtool Fortran dispatchers for cross builds
 

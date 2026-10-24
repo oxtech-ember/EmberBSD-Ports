@@ -21,8 +21,8 @@ mkdir "$work"
 # The bootstrap package database registers what the prefix really owns.
 : "${PKG_DBDIR:=$prefix/pkgdb}"
 export PKG_DBDIR
-[ -f "$PKG_DBDIR/libtool-base-2.6.2/+CONTENTS" ] || {
-    echo 'libtool-base-2.6.2 is not installed in the host bootstrap.' >&2; exit 2;
+[ -f "$PKG_DBDIR/libtool-base-2.6.2nb1/+CONTENTS" ] || {
+    echo 'libtool-base-2.6.2nb1 is not installed in the host bootstrap.' >&2; exit 2;
 }
 [ -f "$PKG_DBDIR/m4-1.4.21/+CONTENTS" ] || {
     echo 'm4-1.4.21 is not installed in the host bootstrap.' >&2; exit 2;
@@ -32,7 +32,7 @@ for tool in libtoolize libtool shlibtool gm4 autoreconf; do
         echo "host $tool is missing, or a symlink outside the bootstrap: $prefix/bin/$tool" >&2
         exit 2
     }
-    grep -qx "bin/$tool" "$PKG_DBDIR/libtool-base-2.6.2/+CONTENTS" 2>/dev/null \
+    grep -qx "bin/$tool" "$PKG_DBDIR/libtool-base-2.6.2nb1/+CONTENTS" 2>/dev/null \
         || grep -qx "bin/$tool" "$PKG_DBDIR/m4-1.4.21/+CONTENTS" 2>/dev/null \
         || grep -qx "bin/$tool" "$PKG_DBDIR"/autoconf-*/+CONTENTS 2>/dev/null \
         || {

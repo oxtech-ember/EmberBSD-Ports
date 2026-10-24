@@ -33,20 +33,12 @@ native libtool-base build depend on archivers/xz, which uses Libtool.
 +Size (libtool-2.6.2.tar.gz) = 2125092 bytes
 +SHA1 (patch-Makefile.in) = 1987244cc7c161abaddc3c2753f77ac56a6f2b3d
 +SHA1 (patch-build-aux_depcomp) = 640b6490deb920e2651d93403aab03447f6cf983
-+SHA1 (patch-build-aux_ltmain.sh) = f6f5c3500235703da070da7c26ade1b4fe72d0e8
++SHA1 (patch-build-aux_ltmain.sh) = 579caf40dd8577c1865f4bb0746b35dbd33deb22
 +SHA1 (patch-configure) = 9aabf81753454954f47ca853784141da2b4df352
 +SHA1 (patch-libltdl_configure) = dbc043fb2b6d8119aa367ddaf3227b53751595f0
 --- a/devel/libtool-base/Makefile
 +++ b/devel/libtool-base/Makefile
-@@ -31,7 +31,6 @@
- .include "../../devel/libtool/Makefile.common"
- 
- PKGNAME=	${DISTNAME:S/-/-base-/}
--PKGREVISION=	1
- 
- COMMENT=	Generic shared library support script (the script itself)
- 
-@@ -60,6 +59,8 @@
+@@ -60,6 +60,8 @@
  CONFIGURE_ARGS+=	--disable-ltdl-install
  CONFIGURE_ARGS+=	F77=no FC=no
  
@@ -55,7 +47,7 @@ native libtool-base build depend on archivers/xz, which uses Libtool.
  USE_TOOLS+=		echo
  
  REPLACE_SH+=	libtoolize.in
-@@ -81,8 +82,26 @@
+@@ -81,8 +83,26 @@
  		-e "s|@SH@|"${SH:Q}"|g"					\
  		${FILESDIR}/shlibtool.in > ${WRKSRC}/shlibtool
  
@@ -95,16 +87,6 @@ native libtool-base build depend on archivers/xz, which uses Libtool.
  man/man1/libtoolize.1
  share/aclocal/libtool.m4
  share/aclocal/ltargz.m4
---- a/devel/libtool-fortran/Makefile
-+++ b/devel/libtool-fortran/Makefile
-@@ -33,7 +33,6 @@
- FILESDIR=	${.CURDIR}/../libtool-base/files
- 
- PKGNAME=	${DISTNAME:S/-/-fortran-/}
--PKGREVISION=	1
- 
- COMMENT=	Generic shared library support script (the script itself, incl. Fortran)
- 
 --- a/cross/cross-libtool-base/Makefile
 +++ b/cross/cross-libtool-base/Makefile
 @@ -38,7 +38,7 @@
@@ -112,7 +94,7 @@ native libtool-base build depend on archivers/xz, which uses Libtool.
  #PKGNAME=	${DISTNAME:S/-/-base-/}
  PKGNAME=	${DISTNAME:S/^libtool-/cross-libtool-base-${MACHINE_PLATFORM}-/}
 -PKGREVISION=	8
-+PKGREVISION=	1
++PKGREVISION=	2
  
  COMMENT=	Generic shared library support script (the script itself)
  
@@ -569,9 +551,12 @@ native libtool-base build depend on archivers/xz, which uses Libtool.
     openbsd*)
 --- a/devel/libtool/patches/manual-ltmain.in
 +++ b/devel/libtool/patches/manual-ltmain.in
-@@ -2,9 +2,11 @@
+@@ -1,10 +1,60 @@
+ $NetBSD: manual-ltmain.in,v 1.3 2022/08/03 13:06:32 jperkin Exp $
  
  Avoid empty relink_command.
++Preserve joined and separate GCC driver prefixes in shared links.
++Keep reserved -B flags and non-GCC routing unchanged.
  
 ---- build-aux/ltmain.in.orig	2022-03-17 02:43:39.000000000 +0000
 +Adapted for Libtool 2.6.2 by EmberBSD (AI-assisted; not submitted upstream).
@@ -579,11 +564,57 @@ native libtool-base build depend on archivers/xz, which uses Libtool.
 +--- build-aux/ltmain.in.orig
  +++ build-aux/ltmain.in
 -@@ -6478,7 +6478,11 @@ func_mode_link ()
-+@@ -6814,7 +6814,11 @@
++@@ -5219,6 +5219,15 @@
++ 	  func_append finalize_command " $qarg"
++ 	  continue
++ 	  ;;
+++	driver_prefix)
+++	  func_quote_arg pretty "$arg"
+++	  qarg=$func_quote_arg_result
+++	  func_append compiler_flags " $qarg"
+++	  func_append compile_command " $qarg"
+++	  func_append finalize_command " $qarg"
+++	  prev=
+++	  continue
+++	  ;;
++ 	xcompiler)
++ 	  func_append compiler_flags " $qarg"
++ 	  prev=
++@@ -5424,6 +5433,29 @@
++       -module)
++ 	module=yes
++ 	continue
+++	;;
+++
+++      # GCC's driver search prefix also applies to shared-library links.
+++      # Keep Libtool's reserved -B flags on their existing paths.
+++      -B*)
+++	case $arg in
+++	-Bstatic | -Bdynamic | -Bsymbolic) ;;
+++	*)
+++	  if test yes = "$with_gcc"; then
+++	    func_quote_arg pretty "$arg"
+++	    arg=$func_quote_arg_result
+++	    func_append compiler_flags " $arg"
+++	    func_append compile_command " $arg"
+++	    func_append finalize_command " $arg"
+++	    if test -B = "$arg"; then
+++	      prev=driver_prefix
+++	    fi
+++	    continue
+++	  fi
+++	  ;;
+++	esac
+++	func_quote_arg pretty "$arg"
+++	arg=$func_quote_arg_result
++ 	;;
++ 
++       # Tru64 UNIX uses -model [arg] to determine the layout of C++
++@@ -6814,7 +6846,11 @@
   	    # Finalize command for both is simple: just hardcode it.
   	    if test yes = "$hardcode_direct" &&
   	       test no = "$hardcode_direct_absolute"; then
-@@ -15,9 +17,9 @@
+@@ -15,9 +65,9 @@
  +		add="$libdir/$linklib"
  +	      fi
   	    elif test yes = "$hardcode_minus_L"; then
@@ -591,7 +622,7 @@ native libtool-base build depend on archivers/xz, which uses Libtool.
 + 	      add_dir=-L$lt_sysroot$libdir
   	      add=-l$name
 -@@ -9051,7 +9055,7 @@ dlpreopen='$dlprefiles'
-+@@ -9304,7 +9308,7 @@
++@@ -9304,7 +9340,7 @@
   
   # Directory that this library needs to be installed in:
   libdir='$install_libdir'"
@@ -668,13 +699,57 @@ native libtool-base build depend on archivers/xz, which uses Libtool.
   # uses them if a suitable command of that name is not already available
   # in the command search PATH.
   
-@@ -15,16 +18,7 @@
+@@ -15,16 +18,53 @@
   : ${CP="cp -f"}
   : ${ECHO="printf %s\n"}
   : ${EGREP="$GREP -E"}
 -@@ -2311,7 +2314,7 @@ include the following information:
 -        autoconf:       `($AUTOCONF --version) 2>/dev/null |$SED 1q`
-- 
++@@ -7369,6 +7372,15 @@
++ 	  func_append finalize_command " $qarg"
++ 	  continue
++ 	  ;;
+++	driver_prefix)
+++	  func_quote_arg pretty "$arg"
+++	  qarg=$func_quote_arg_result
+++	  func_append compiler_flags " $qarg"
+++	  func_append compile_command " $qarg"
+++	  func_append finalize_command " $qarg"
+++	  prev=
+++	  continue
+++	  ;;
++ 	xcompiler)
++ 	  func_append compiler_flags " $qarg"
++ 	  prev=
++@@ -7574,6 +7586,29 @@
++       -module)
++ 	module=yes
++ 	continue
+++	;;
+++
+++      # GCC's driver search prefix also applies to shared-library links.
+++      # Keep Libtool's reserved -B flags on their existing paths.
+++      -B*)
+++	case $arg in
+++	-Bstatic | -Bdynamic | -Bsymbolic) ;;
+++	*)
+++	  if test yes = "$with_gcc"; then
+++	    func_quote_arg pretty "$arg"
+++	    arg=$func_quote_arg_result
+++	    func_append compiler_flags " $arg"
+++	    func_append compile_command " $arg"
+++	    func_append finalize_command " $arg"
+++	    if test -B = "$arg"; then
+++	      prev=driver_prefix
+++	    fi
+++	    continue
+++	  fi
+++	  ;;
+++	esac
+++	func_quote_arg pretty "$arg"
+++	arg=$func_quote_arg_result
++ 	;;
+  
 - Report bugs to <bug-libtool@gnu.org>.
 --GNU libtool home page: <http://www.gnu.org/software/libtool/>.
 -+GNU libtool home page: <http://www.gnu.org/s/libtool/>.
@@ -682,11 +757,12 @@ native libtool-base build depend on archivers/xz, which uses Libtool.
 -     exit 0
 - }
 -@@ -8628,7 +8631,11 @@ func_mode_link ()
-+@@ -8964,7 +8967,11 @@
++       # Tru64 UNIX uses -model [arg] to determine the layout of C++
++@@ -8964,7 +8999,11 @@
   	    # Finalize command for both is simple: just hardcode it.
   	    if test yes = "$hardcode_direct" &&
   	       test no = "$hardcode_direct_absolute"; then
-@@ -35,9 +29,9 @@
+@@ -35,9 +75,9 @@
  +		add="$libdir/$linklib"
  +	      fi
   	    elif test yes = "$hardcode_minus_L"; then
@@ -694,7 +770,7 @@ native libtool-base build depend on archivers/xz, which uses Libtool.
 + 	      add_dir=-L$lt_sysroot$libdir
   	      add=-l$name
 -@@ -11201,7 +11208,7 @@ dlpreopen='$dlprefiles'
-+@@ -11454,7 +11461,7 @@
++@@ -11454,7 +11493,7 @@
   
   # Directory that this library needs to be installed in:
   libdir='$install_libdir'"

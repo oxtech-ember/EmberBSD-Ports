@@ -9,7 +9,7 @@ case "$1" in *[!a-zA-Z0-9_./-]*) exit 2 ;; esac
 [ ! -e "$1" ] && [ ! -L "$1" ] || exit 2
 export PATH=/usr/pkg/gcc16/bin:/usr/pkg/bin:/usr/pkg/sbin:/bin:/usr/bin:/sbin:/usr/sbin
 unset LD_LIBRARY_PATH LD_PRELOAD LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH
-pkg_info -e libtool-base-2.6.2
+pkg_info -e libtool-base-2.6.2nb1
 pkg_info -e 'gcc16>=16.2.0nb1'
 mkdir -p "$1"
 cd "$1"

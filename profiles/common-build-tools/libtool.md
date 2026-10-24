@@ -35,6 +35,62 @@ manual series with zero fuzz, rejects repeated patch application and compares
 regenerated configure/ltmain output byte for byte. This gate passed on macOS;
 it does not substitute for installed target execution.
 
+## GCC driver-prefix transport
+
+The shared parser preserves GCC's joined `-Bprefix` and separate `-B prefix`
+forms in shared-library commands. The separate form retains argument quoting.
+The existing `-Bstatic`, `-Bdynamic` and `-Bsymbolic` paths stay unchanged.
+Non-GCC configurations retain their earlier argument routing.
+
+Before this fix, Libtool kept the prefix in compile and executable commands,
+but omitted it from shared `compiler_flags`. GCC could then find the system
+`ld` shim through PATH, despite an explicit configured `LD`. On Darwin, that
+shim attempted an external xcrun cache write. Both links could still return
+zero. Check the selected command and diagnostics as well as the exit status.
+
+One maintained `manual-ltmain.in` patch supplies the fix. Its generated
+`patch-build-aux_ltmain.sh` comes from the upstream shell-only
+`build-aux/ltmain.sh` make target. No M4 input changes for this repair.
+The packaged script must match that generated output exactly.
+The native base, native Fortran and cross Fortran script revisions become
+`2.6.2nb1`; cross base becomes `2.6.2nb2`. Rebuild the script providers and
+consumers that used earlier configure results. Earlier package acceptance
+records below apply only to their recorded inputs.
+
+The common pkgsrc dependency rules require these revisions as additional
+provider predicates. They preserve caller and platform requirements,
+including a higher caller request with a lower platform floor. Cross
+`autoreconf` also requires the repaired native Libtoolize provider.
+The [provider metadata regression](tests/libtool-provider-floor.py) checks real
+libiconv/libunistring queries against a registered old-provider fixture.
+It also checks C/Fortran native/cross roles with BSD make and pkgtools.
+No package is installed or replaced by this check.
+
+Pkgsrc's post-configure `libtool-override` hook redirects project scripts to
+the common installed provider. Its default depth covers libiconv, nested
+libcharset and libunistring. `LIBTOOL_OVERRIDE` can name explicit project paths.
+The packaged `share/libtool/build-aux/ltmain.sh` also supplies the same fix to
+new projects through `libtoolize`. Do not add copies of the patch to consumers.
+
+Use matching native configurations for the baseline and candidate scripts:
+
+```sh
+python3 -B profiles/common-build-tools/tests/libtool-driver-prefix.py \
+    --baseline /absolute/baseline/bin/libtool \
+    --candidate /absolute/candidate/bin/libtool \
+    --cc /absolute/gcc16/bin/gcc --driver-prefix /absolute/native/bin \
+    --host-abi /absolute/native-sdk --sandbox-profile /absolute/contained.sb \
+    --pkgsrc /absolute/prepared-pkgsrc --bmake /absolute/native/bin/bmake \
+    --shell /absolute/native/bin/mksh --work /absolute/new-results
+```
+
+The native Darwin regression builds and runs small GCC16 shared consumers.
+Joined and separate prefixes must survive without external cache diagnostics.
+Dry runs check C/C++, quoted paths, unchanged special flags and non-GCC routes.
+A missing separate prefix must fail. The real pkgsrc override target also
+checks the three project layouts against one common candidate provider.
+This does not qualify a complete Libtool package, target runtime or SDK.
+
 ## Native Fortran SDK selection
 
 For native GCC16 on macOS, use the existing `GCCBASE`,

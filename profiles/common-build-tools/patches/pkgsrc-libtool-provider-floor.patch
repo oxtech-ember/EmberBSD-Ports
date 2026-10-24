@@ -1,0 +1,79 @@
+Origin: EmberBSD (AI-assisted), require the shared GCC driver-prefix repair.
+Keep all caller/platform constraints and select the native/cross provider floor.
+Apply after the shared Fortran and host Autoconf routing patches.
+
+--- a/mk/bsd.pkg.use.mk
++++ b/mk/bsd.pkg.use.mk
+@@ -76,6 +76,12 @@
+ # LIBTOOL is the publicly-readable variable that should be used by
+ #	Makefiles to invoke the proper (wrapped) libtool.
+ #
++# The driver-prefix repair is required by every selected script provider.
++# Keep caller/platform predicates as well; do not replace stronger requests.
++_LIBTOOL_DRIVER_PREFIX_REQD= 2.6.2nb1
++_LIBTOOL_DRIVER_PREFIX_CROSS_REQD= 2.6.2nb2
++_LIBTOOL_PROVIDER_FLOORS=
++
+ .if defined(USE_LANGUAGES) && !empty(USE_LANGUAGES:Mfortran) || \
+     defined(USE_LANGUAGES) && !empty(USE_LANGUAGES:Mfortran77)
+ .  if !empty(USE_CROSS_COMPILE:M[yY][eE][sS])
+@@ -83,12 +89,16 @@
+ PKG_SHLIBTOOL?= ${TOOLBASE}/cross-${TARGET_MACHINE_PLATFORM:U${MACHINE_PLATFORM}}/bin/shlibtool-fortran
+ .    if defined(USE_LIBTOOL)
+ TOOL_DEPENDS+= cross-libtool-fortran-${TARGET_MACHINE_PLATFORM:U${MACHINE_PLATFORM}}>=${_OPSYS_LIBTOOL_REQD:U${LIBTOOL_REQD}}:../../cross/cross-libtool-fortran
++_LIBTOOL_PROVIDER_FLOORS+= cross-libtool-fortran-${TARGET_MACHINE_PLATFORM:U${MACHINE_PLATFORM}}>=${LIBTOOL_REQD}:../../cross/cross-libtool-fortran \
++	cross-libtool-fortran-${TARGET_MACHINE_PLATFORM:U${MACHINE_PLATFORM}}>=${_LIBTOOL_DRIVER_PREFIX_REQD}:../../cross/cross-libtool-fortran
+ .    endif
+ .  else
+ PKG_LIBTOOL?= ${TOOLBASE}/bin/libtool-fortran
+ PKG_SHLIBTOOL?= ${TOOLBASE}/bin/shlibtool-fortran
+ .    if defined(USE_LIBTOOL)
+ TOOL_DEPENDS+= libtool-fortran>=${_OPSYS_LIBTOOL_REQD:U${LIBTOOL_REQD}}:../../devel/libtool-fortran
++_LIBTOOL_PROVIDER_FLOORS+= libtool-fortran>=${LIBTOOL_REQD}:../../devel/libtool-fortran \
++	libtool-fortran>=${_LIBTOOL_DRIVER_PREFIX_REQD}:../../devel/libtool-fortran
+ .    endif
+ .  endif
+ .else
+@@ -103,12 +113,21 @@
+ LIBTOOL?=		${WRAPPER_BINDIR}/libtool
+ SHLIBTOOL?=		${WRAPPER_BINDIR}/shlibtool
+ .if defined(USE_LIBTOOL)
+-LIBTOOL_REQD?=		2.4.2nb9
++LIBTOOL_REQD?=		${_LIBTOOL_DRIVER_PREFIX_REQD}
+ .if !empty(USE_CROSS_COMPILE:M[yY][eE][sS])
+ TOOL_DEPENDS+=		cross-libtool-base-${MACHINE_PLATFORM}>=${_OPSYS_LIBTOOL_REQD:U${LIBTOOL_REQD}}:../../cross/cross-libtool-base
++_LIBTOOL_PROVIDER_FLOORS+= cross-libtool-base-${MACHINE_PLATFORM}>=${LIBTOOL_REQD}:../../cross/cross-libtool-base \
++	cross-libtool-base-${MACHINE_PLATFORM}>=${_LIBTOOL_DRIVER_PREFIX_CROSS_REQD}:../../cross/cross-libtool-base
+ .else
+ TOOL_DEPENDS+=		libtool-base>=${_OPSYS_LIBTOOL_REQD:U${LIBTOOL_REQD}}:../../devel/libtool-base
++_LIBTOOL_PROVIDER_FLOORS+= libtool-base>=${LIBTOOL_REQD}:../../devel/libtool-base \
++	libtool-base>=${_LIBTOOL_DRIVER_PREFIX_REQD}:../../devel/libtool-base
+ .endif
++.for _libtool_floor_dep in ${_LIBTOOL_PROVIDER_FLOORS}
++.  if empty(TOOL_DEPENDS:M${_libtool_floor_dep})
++TOOL_DEPENDS+= ${_libtool_floor_dep}
++.  endif
++.endfor
+ CONFIGURE_ENV+=		LIBTOOL="${LIBTOOL} ${LIBTOOL_FLAGS}"
+ MAKE_ENV+=		LIBTOOL="${LIBTOOL} ${LIBTOOL_FLAGS}"
+ .endif
+--- a/mk/tools/autoconf.mk
++++ b/mk/tools/autoconf.mk
+@@ -146,10 +146,14 @@
+ .    if ${_TOOLS_DEPMETHOD.autoconf} == "TOOL_DEPENDS" && \
+         defined(USE_LIBTOOL) && !empty(USE_TOOLS:Mautoreconf) && \
+         empty(USE_TOOLS:C/:.*//:Mautoconf213) && empty(USE_TOOLS:C/:.*//:Mautoconf269)
+-_TOOLS_AUTORECONF_LIBTOOL_DEPEND= libtool-base>=${_OPSYS_LIBTOOL_REQD:U${LIBTOOL_REQD}}:../../devel/libtool-base
+-.      if empty(TOOL_DEPENDS:M${_TOOLS_AUTORECONF_LIBTOOL_DEPEND})
++.      for _TOOLS_AUTORECONF_LIBTOOL_DEPEND in \
++        libtool-base>=${_OPSYS_LIBTOOL_REQD:U${LIBTOOL_REQD}}:../../devel/libtool-base \
++        libtool-base>=${LIBTOOL_REQD}:../../devel/libtool-base \
++        libtool-base>=${_LIBTOOL_DRIVER_PREFIX_REQD}:../../devel/libtool-base
++.        if empty(TOOL_DEPENDS:M${_TOOLS_AUTORECONF_LIBTOOL_DEPEND})
+ TOOL_DEPENDS+= ${_TOOLS_AUTORECONF_LIBTOOL_DEPEND}
+-.      endif
++.        endif
++.      endfor
+ TOOLS_CREATE+= libtoolize
+ TOOLS_PATH.libtoolize= ${TOOLBASE}/bin/libtoolize
+ .    endif
