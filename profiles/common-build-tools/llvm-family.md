@@ -4,8 +4,6 @@ This profile prepares matching LLVM 23.1.4, Clang, LLD and upstream
 Python315 lit for the common Mesa26/TinyGo dependency closure.
 It extends [the common profile](README.md), based on pkgsrc
 `fff4deb639a1a640476203c80f752fb77b6cb14b`.
-The [Python migration](cross/llvm-python315.md) keeps separate interpreter and compiler evidence.
-
 ## Current 23.1.4 source update
 
 The [official stable 23.1.4 release](https://github.com/llvm/llvm-project/releases/tag/llvmorg-23.1.4)
@@ -78,12 +76,6 @@ Native cache, RTTI, dependency and ELF evidence remains required.
 NetBSD cross builds now use the [runtime/SDK package split](cross/llvm-runtime.md).
 The execution-only image receives `llvm-23.1.4nb1`; the build-host target sysroot
 also needs `llvm-devel-23.1.4nb2`. Native LLVM remains a full package.
-The [Linux/GCC16 split-package acceptance](cross/llvm-linux-aarch64.md) passes
-both full builds and installed C API/ORC package lifecycle checks in E34 VM.
-Its sealed native metadata helper passes all 16 target query groups and Mesa's
-production LLVM guards. The linked Linux/E34 Mesa receipt covers installed
-CPU rendering and normal package removal/reinstallation on that stack.
-
 ## Inherited patch decisions
 
 NetBSD RCS identifiers, authorship and licenses are preserved. These recipes,
@@ -115,6 +107,14 @@ silently promising a hardware fix. GCC can emit it for an explicit erratum
 scenario; that scenario remains unsupported. Real upstream 843419 stays intact.
 
 ## Native Clang defaults
+
+Native Darwin LLVM and Clang require `EMBERBSD_DARWIN_LIBTOOL`.
+Select an existing absolute executable with the Darwin archive interface.
+The shared [selector](../../pkgsrc/lang/llvm/darwin.mk) forwards `CMAKE_LIBTOOL` without PATH lookup.
+LLVM probes `-V`, then uses `-static ... -o TARGET` for archive creation.
+SDK qualification or the initial scoped seed belongs to the producer.
+Other native hosts and cross builds do not consume this selector.
+The [metadata regression](tests/llvm-darwin-libtool.py) covers selection and refusals without compilation.
 
 NetBSD's normal libstdc++ search uses base headers/CRT paths; selecting only
 the stdlib name is insufficient. The package generates a supported effective

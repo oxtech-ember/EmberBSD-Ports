@@ -49,7 +49,7 @@ CMAKE_CONFIGURE_ARGS+=	-DLLVM_INSTALL_TOOLCHAIN_ONLY=OFF
 
 .include "../../mk/compiler.mk"
 
-CMAKE_CONFIGURE_ARGS.Darwin+=	-DCMAKE_LIBTOOL=/usr/bin/libtool
+.include "../../lang/llvm/darwin.mk"
 .if defined(OSX_SDK_PATH)
 CMAKE_CONFIGURE_ARGS.Darwin+=	-DDEFAULT_SYSROOT=${OSX_SDK_PATH:Q}
 .endif
