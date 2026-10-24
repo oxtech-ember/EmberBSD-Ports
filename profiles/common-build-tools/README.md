@@ -54,6 +54,10 @@ The [explicit Mach-O RPATH contract](cross/cwrappers-macho-rpath.md) keeps
 only explicitly mapped loader tokens. Paired real wrapper controls preserve
 ordinary path filtering. D-Bus package tests remain a separate gate.
 
+The [RELRO link rule](cross/cwrappers-relro.md) adds the selected RELRO
+flags to every wrapped executable and shared link. Recipes that ignore
+`LDFLAGS` pass `check-relro` without recipe changes.
+
 The [pkg-config sysroot contract](cross/pkgconfig.md) maps target dependency
 headers and link paths to the SDK. Actual GCC16/CMake imported-target checks
 preserve target runtime paths and unchanged native provider selection. Explicit

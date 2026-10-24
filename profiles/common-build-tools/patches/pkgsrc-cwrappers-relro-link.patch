@@ -1,0 +1,21 @@
+# Origin: EmberBSD (AI-assisted), RELRO on every wrapped C, C++ and
+# Fortran link. Some recipes link without LDFLAGS. The wrapper adds the
+# selected RELRO flags to executable and shared links, like MKPIE does.
+
+--- a/mk/cwrappers.mk
++++ b/mk/cwrappers.mk
+@@ -116,6 +116,14 @@
+ .    endfor
+ .  endif
+ . endif
++. if (${_PKGSRC_USE_RELRO} == "partial" || ${_PKGSRC_USE_RELRO} == "full") && \
++    !empty(_RELRO_LDFLAGS) && \
++    (${wrappee} == "cc" || ${wrappee} == "cxx" || ${wrappee} == "f77")
++.  for arg in ${_RELRO_LDFLAGS}
++	${RUN}echo append_executable=${arg} >> ${CWRAPPERS_CONFIG_DIR}/${CWRAPPERS_CONFIG.${wrappee}}
++	${RUN}echo append_shared=${arg} >> ${CWRAPPERS_CONFIG_DIR}/${CWRAPPERS_CONFIG.${wrappee}}
++.  endfor
++. endif
+ .endfor
+ 
+ PREPEND_PATH+=		${WRAPPER_BINDIR}
