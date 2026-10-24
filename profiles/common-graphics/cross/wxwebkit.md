@@ -18,6 +18,11 @@ build uses Autoconf; the existing CMake option remains available. System codecs,
 OpenGL, GTK3 WebView and media control remain enabled. The recipe keeps its
 WebKitGTK 4.1, GStreamer core/base/bad, GTK3, Mesa and GLU dependencies.
 
+The AI-assisted cross recipe enables pkgsrc `USE_GNU_CONFIGURE_HOST`.
+The GNU configure framework supplies the selected `--build` and `--host`
+tuples. Upstream then selects the NetBSD GTK toolkit and cross compiler mode.
+Native Autoconf builds retain their existing host autodetection.
+
 Actual native Linux and AArch64 cross `bmake show-vars` select version 3.2.12,
 Autoconf and the same feature flags and dependency families. The graphics
 exporter's complete source and patch preflight passes. These are source and

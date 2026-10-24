@@ -74,7 +74,12 @@ SUBST_SED.unwrap+=	-e 's,echo.*/${CXX} -o",echo "${CXX} -o",'
 GNU_CONFIGURE=		yes
 PLIST_SRC+=		PLIST.configure
 
+# Use pkgsrc build/host tuples for cross builds. Keep native autodetection.
+.  if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+USE_GNU_CONFIGURE_HOST=	yes
+.  else
 USE_GNU_CONFIGURE_HOST=	no
+.  endif
 CONFIGURE_ARGS+=	--with-libpng=sys
 CONFIGURE_ARGS+=	--with-libjpeg=sys
 CONFIGURE_ARGS+=	--with-libtiff=sys
