@@ -421,18 +421,47 @@ class ExportTests(unittest.TestCase):
             [git, '-C', str(self.work / 'real'), 'apply', str(self.root / 'binary.patch')]])
 
     def test_patch_empty_file_removal_is_causal(self):
-        patch = b'--- a/plain\n+++ b/plain\n@@ -1,3 +0,0 @@\n-one\n-two\n-three\n'
+        patch = (b'--- a/plain\n+++ b/plain\n@@ -1,3 +0,0 @@\n-one\n-two\n-three\n'
+                 b'--- a/keep\n+++ b/keep\n@@ -1 +1 @@\n-before\n+after\n')
+        (self.upstream / 'keep').write_bytes(b'before\n')
         (self.root / 'remove.patch').write_bytes(patch)
         (self.root / 'pkgsrc/export.conf').write_text('patch\tremove.patch\n')
         self.fake_export()
         self.assertFalse((self.work / 'export/plain').exists())
-        self.assertIn(['-f', '-E', '-d', str(self.work / 'export'), '-p1', '-F', '0'],
+        self.assertFalse((self.work / 'export/plain.orig').exists())
+        self.assertEqual((self.work / 'export/keep').read_bytes(), b'after\n')
+        self.assertFalse((self.work / 'export/keep.orig').exists())
+        self.assertIn(['-f', '-E', '-d', str(self.work / 'export'), '-p1', '-F', '0',
+                       '-V', 'none'],
                       [argv[1:] for argv, options in self.commands if argv[0] == self.selected.command('patch')[0]])
         control = self.work / 'without-E'
         control.mkdir()
         (control / 'plain').write_bytes(b'one\ntwo\nthree\n')
+        (control / 'keep').write_bytes(b'before\n')
         self.runner([self.selected.command('patch')[0], '-f', '-d', str(control), '-p1', '-F', '0'], input=patch)
         self.assertEqual((control / 'plain').read_bytes(), b'')
+
+    def test_export_patch_disables_platform_default_backups(self):
+        owner = HERE.parents[1]
+        relative = Path('lang/gcc16/Makefile')
+        (self.upstream / relative).parent.mkdir(parents=True)
+        shutil.copyfile(owner / 'upstream/pkgsrc' / relative,
+                        self.upstream / relative)
+        relative_patch = Path('lang/gcc16/patches/patch-isl_configure')
+        (self.upstream / relative_patch).parent.mkdir(parents=True)
+        shutil.copyfile(owner / 'upstream/pkgsrc' / relative_patch,
+                        self.upstream / relative_patch)
+        patch = owner / 'profiles/development-toolchain/patches/strict-tests.patch'
+        (self.root / 'strict-tests.patch').write_bytes(patch.read_bytes())
+        (self.root / 'pkgsrc/export.conf').write_text('patch\tstrict-tests.patch\n')
+
+        self.fake_export()
+
+        self.assertFalse((self.work / 'export/lang/gcc16/Makefile.orig').exists())
+        self.assertFalse((self.work / 'export/lang/gcc16/patches/patch-isl_configure.orig').exists())
+        self.assertIn(['-f', '-E', '-d', str(self.work / 'export'), '-p1', '-F', '0',
+                       '-V', 'none'],
+                      [argv[1:] for argv, options in self.commands if argv[0] == self.selected.command('patch')[0]])
 
     def test_zero_fuzz_rejects_context_that_fuzz_one_accepts(self):
         patch = b'--- a/plain\n+++ b/plain\n@@ -1,3 +1,3 @@\n wrong\n-two\n+changed\n three\n'

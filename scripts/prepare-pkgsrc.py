@@ -366,7 +366,8 @@ def export_pkgsrc(root, destination, *, selection, runner, scratch):
     for method, source, recipe, name in patches:
         if method == 'patch':
             try:
-                invoke('patch', '-f', '-E', '-d', destination, '-p1', '-F', '0', input=source.read_bytes())
+                invoke('patch', '-f', '-E', '-d', destination, '-p1', '-F', '0', '-V', 'none',
+                       input=source.read_bytes())
             except Exception as error:
                 if not hasattr(error, 'returncode'):
                     raise
