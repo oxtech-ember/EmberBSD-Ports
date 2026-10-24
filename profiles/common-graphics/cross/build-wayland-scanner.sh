@@ -9,7 +9,8 @@ recipe=$(CDPATH= cd -- "$(dirname -- "$0")/../../../pkgsrc/devel/wayland" && pwd
 : "${MESON:?Set the current upstream meson.py}"
 : "${NINJA:?Set the build-host Ninja executable}"
 : "${PKG_CONFIG:?Set the build-host pkgconf executable}"
-HOST_CC=${HOST_CC:-/usr/bin/cc}
+. "$(CDPATH= cd -- "$(dirname -- "$0")/../../common-build-tools/cross" && pwd)/host-gcc16.sh"
+ember_require_host_gcc16 HOST_CC c
 for path in "$archive" "$work" "$HOST_PYTHON" "$MESON" "$NINJA" "$PKG_CONFIG" "$HOST_CC"; do
     case "$path" in /*) ;; *) echo 'Absolute paths required' >&2; exit 2;; esac
     case "$path" in *[!a-zA-Z0-9_./-]*) echo 'Use paths without whitespace or shell metacharacters' >&2; exit 2;; esac

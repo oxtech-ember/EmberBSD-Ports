@@ -56,7 +56,10 @@ unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCL
 export CC="$cross-gcc --sysroot=$sysroot -B$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0/"
 export CXX="$cross-g++ --sysroot=$sysroot -B$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0/"
 export AR=$cross-ar RANLIB=$cross-ranlib STRIP=$cross-strip
-export CC_FOR_BUILD=${HOST_CC:-/usr/bin/cc} CXX_FOR_BUILD=${HOST_CXX:-/usr/bin/c++}
+. "$here/../../common-build-tools/cross/host-gcc16.sh"
+ember_require_host_gcc16 HOST_CC c
+ember_require_host_gcc16 HOST_CXX c++
+export CC_FOR_BUILD=$HOST_CC CXX_FOR_BUILD=$HOST_CXX
 # Upstream's ptrace configure probe uses C's pre-C23 non-prototype semantics.
 # C17 keeps that test valid while retaining the current GCC and DWARF5.
 export CFLAGS='-O2 -g -std=gnu17' CXXFLAGS='-O2 -g'

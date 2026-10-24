@@ -12,11 +12,15 @@ do not install another LLVM, Python or Wayland runtime on the build host.
 Build the same scanner version as the target libraries:
 
 ```sh
+HOST_CC=/absolute/native-gcc16/bin/gcc \
 HOST_PYTHON=/absolute/python3.15 \
 MESON=/absolute/meson-1.12.1/meson.py \
 NINJA=/absolute/ninja PKG_CONFIG=/absolute/host/pkg-config \
 sh build-wayland-scanner.sh /absolute/wayland-1.26.0.tar.xz /absolute/new-work
 ```
+
+`HOST_CC` must name the [native GCC16](../../common-build-tools/cross/host-gcc16.md).
+The script refuses a missing selection, system compilers, and Clang.
 
 The scanner needs host Expat and libxml2 development metadata. `PKG_CONFIG`
 must resolve those actual host providers. The helper verifies archive and

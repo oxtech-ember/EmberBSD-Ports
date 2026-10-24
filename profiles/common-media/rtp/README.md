@@ -64,6 +64,8 @@ build-gstreamer.sh cross ARCHIVES WORK STAGE SYSROOT TARGET GCC_PREFIX
 requires `GCC_PREFIX`, `SYSROOT` and `TARGET`; set `PREFIX` to `/usr/pkg`.
 It stages the shared provider and CLI under `NEW_OUTPUT/stage/usr/pkg`.
 Native mode also promotes its stage into the selected native prefix.
+Native mode requires `HOST_CC` and `HOST_CXX`: absolute
+[native GCC16](../../common-build-tools/cross/host-gcc16.md) drivers.
 
 ```sh
 GCC_PREFIX="$GCC_PREFIX" SYSROOT="$SYSROOT" TARGET=aarch64--netbsd JOBS=2 \

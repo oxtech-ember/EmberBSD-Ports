@@ -23,8 +23,8 @@ Dir.mktmpdir('ember-cssparser-targets-') do |work|
     MACHINE_GNU_PLATFORM?=aarch64--netbsd
     WRKDIR=#{work}/work
     EMBERBSD_CROSS_HOST_PREFIX=#{work}/host
-    EMBERBSD_CROSS_BUILD_CC=/usr/bin/cc
-    EMBERBSD_CROSS_BUILD_CXX=/usr/bin/c++
+    EMBERBSD_CROSS_BUILD_CC=#{ENV.fetch('HOST_CC') { abort 'HOST_CC must name the native GCC16 driver' }}
+    EMBERBSD_CROSS_BUILD_CXX=#{ENV.fetch('HOST_CXX') { abort 'HOST_CXX must name the native GCC16 driver' }}
     AR=/absolute/cross-ar
     FILESDIR=#{root}
     .include "#{root}/cross.mk"

@@ -23,8 +23,9 @@ TOOL_DEPENDS+= rust-bin-1.99.1{,nb[0-9]*}:../../lang/rust-bin
 .if defined(_EMBER_CSS_STD_PACKAGE)
 TOOL_DEPENDS+= ${_EMBER_CSS_STD_PACKAGE}-1.99.1{,nb[0-9]*}:../../lang/${_EMBER_CSS_STD_PACKAGE}
 .endif
-_EMBER_CSS_HOST_CC= ${EMBERBSD_CROSS_BUILD_CC:U/usr/bin/cc}
-_EMBER_CSS_HOST_CXX= ${EMBERBSD_CROSS_BUILD_CXX:U/usr/bin/c++}
+# The cross profile selects and checks the native GCC16 drivers.
+_EMBER_CSS_HOST_CC= ${EMBERBSD_CROSS_BUILD_CC:U}
+_EMBER_CSS_HOST_CXX= ${EMBERBSD_CROSS_BUILD_CXX:U}
 .for host_driver in _EMBER_CSS_HOST_CC _EMBER_CSS_HOST_CXX
 .if empty(${host_driver}:M/*) || !exists(${${host_driver}})
 PKG_FAIL_REASON+= "cxx-rust-cssparser requires absolute native build compilers"

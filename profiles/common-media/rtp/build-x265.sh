@@ -64,9 +64,12 @@ EOF
             -DENABLE_SVE=OFF -DENABLE_SVE2=OFF -DENABLE_SVE2_BITPERM=OFF
     fi
 else
-    [ "$(gcc -dumpfullversion)" = 16.2.0 ]
-    [ "$(g++ -dumpfullversion)" = 16.2.0 ]
-    set -- -DCMAKE_C_COMPILER="$(command -v gcc)" -DCMAKE_CXX_COMPILER="$(command -v g++)" \
+    . "$profile/../common-build-tools/cross/host-gcc16.sh"
+    ember_require_host_gcc16 HOST_CC c
+    ember_require_host_gcc16 HOST_CXX c++
+    [ "$("$HOST_CC" -dumpfullversion)" = 16.2.0 ]
+    [ "$("$HOST_CXX" -dumpfullversion)" = 16.2.0 ]
+    set -- -DCMAKE_C_COMPILER="$HOST_CC" -DCMAKE_CXX_COMPILER="$HOST_CXX" \
         "-DCMAKE_INSTALL_RPATH=$prefix/lib;/usr/local/lib64" -DENABLE_ASSEMBLY=OFF
 fi
 cmake -S "$out/source/source" -B "$out/build" -G Ninja "$@" \

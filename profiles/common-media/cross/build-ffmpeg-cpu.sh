@@ -35,8 +35,10 @@ for compiler in gcc g++; do
     [ "$("$prefix/bin/$target-$compiler" -dumpfullversion)" = 16.2.0 ]
     [ "$("$prefix/bin/$target-$compiler" -dumpmachine)" = $target ]
 done
-host_cc=$(command -v "${HOST_CC:-gcc}")
-host_cxx=$(command -v "${HOST_CXX:-g++}")
+. "$profile/../common-build-tools/cross/host-gcc16.sh"
+ember_require_host_gcc16 HOST_CC c
+ember_require_host_gcc16 HOST_CXX c++
+host_cc=$HOST_CC host_cxx=$HOST_CXX
 make_tool=$(command -v "${GMAKE:-make}")
 patch_tool=$(command -v "${PATCH:-patch}")
 pkgconf=$(command -v "${PKG_CONFIG:-pkg-config}")
