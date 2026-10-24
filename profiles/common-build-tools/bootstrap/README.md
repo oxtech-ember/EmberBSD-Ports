@@ -115,3 +115,12 @@ The `awk` role selects `bin/nawk`; it does not silently create `bin/awk`.
 A raw `awk` caller needs its own explicit route. The profile does not add grep.
 Runtime paths, signatures, deterministic output and utility behavior still need
 actual bounded checks. Ordinary source-built tools have a separate producer.
+
+[darwin-installed-printf-v1.json](darwin-installed-printf-v1.json) is a separate
+fixed subset for the `printf` role. It names only `coreutils-9.11` member
+`bin/gprintf` and the same libintl library. It preserves the original GNU
+invocation and selects the final relative `bin/printf` alias. Use the existing
+SDK utility-relocation stage for two complete runs. Keep its original hashes,
+actual derivation and derived package history separate from the first profile.
+Compare the checked library with an already accepted library at the same final
+prefix. Do not replace that library or expand an earlier result's member list.
