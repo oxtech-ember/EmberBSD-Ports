@@ -54,6 +54,8 @@ The selected EmberBSD libc provides `newlocale()`, `duplocale()` and
 A complete port needs the per-thread locale selector in the operating
 system, including its query operation, previous-locale return value,
 `LC_GLOBAL_LOCALE` selection, and the locale lifetime rules.
+The [thread-locale probe and acceptance contract](LOCALE.md) check these
+operations independently of CJS, including rejection of a no-op selector.
 These operations follow the [POSIX interface](https://pubs.opengroup.org/onlinepubs/9799919799/functions/uselocale.html).
 Returning `LC_GLOBAL_LOCALE` without selecting the requested locale does
 not implement this interface. The full CJS and Cinnamon session remain
