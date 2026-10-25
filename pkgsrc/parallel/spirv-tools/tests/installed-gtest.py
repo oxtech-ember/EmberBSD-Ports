@@ -6,6 +6,7 @@ import argparse
 import hashlib
 from pathlib import Path
 import re
+import runpy
 import shutil
 import subprocess
 import tarfile
@@ -34,7 +35,8 @@ def main():
         expected = re.search(r'^' + label + r' \(SPIRV-Tools-2026\.4.tar.gz\) = ([0-9a-f]+)$', distinfo, re.M)
         require(expected and hashlib.new(algorithm, data).hexdigest() == expected[1], 'Archive hash mismatch')
     patch = RECIPE / 'patches/patch-installed-gtest'
-    require(hashlib.sha1(patch.read_bytes()).hexdigest() == re.search(
+    patch_sha1 = runpy.run_path(str(RECIPE.parents[2] / 'scripts/prepare-pkgsrc.py'))['patch_sha1']
+    require(patch_sha1(patch) == re.search(
         r'^SHA1 \(patch-installed-gtest\) = ([0-9a-f]+)$', distinfo, re.M)[1], 'Patch hash mismatch')
     print(subprocess.check_output(['df', '-k', str(args.work_parent)], text=True), end='')
     work = Path(tempfile.mkdtemp(prefix='spirv-installed-gtest-', dir=args.work_parent))

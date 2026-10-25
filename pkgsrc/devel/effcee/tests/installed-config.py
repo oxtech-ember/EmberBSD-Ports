@@ -6,6 +6,7 @@ import argparse
 import hashlib
 from pathlib import Path
 import re
+import runpy
 import shutil
 import subprocess
 import tarfile
@@ -29,7 +30,8 @@ def main():
         expected = re.search(r'^' + label + r' \(effcee-1\.2026\.0.tar.gz\) = (\w+)$', distinfo, re.M)[1]
         require(hashlib.new(algorithm, args.archive.read_bytes()).hexdigest() == expected, 'Archive hash mismatch')
     patch = recipe / 'patches/patch-installed-dependencies'
-    require(hashlib.sha1(patch.read_bytes()).hexdigest() == re.search(
+    patch_sha1 = runpy.run_path(str(recipe.parents[2] / 'scripts/prepare-pkgsrc.py'))['patch_sha1']
+    require(patch_sha1(patch) == re.search(
         r'^SHA1 \(patch-installed-dependencies\) = (\w+)$', distinfo, re.M)[1], 'Patch hash mismatch')
     print(subprocess.check_output(['df', '-k', str(args.work_parent)], text=True), end='')
     work = Path(tempfile.mkdtemp(prefix='effcee-installed-config-', dir=args.work_parent))
