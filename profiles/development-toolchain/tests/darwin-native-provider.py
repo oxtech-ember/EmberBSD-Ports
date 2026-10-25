@@ -5,6 +5,10 @@
 """Finite provider source controls. Do not execute make, CMake or a compiler."""
 
 import argparse
+import importlib.util
+import json
+import os
+import sys
 from pathlib import Path
 import re
 import unittest
@@ -12,6 +16,8 @@ import unittest
 PROFILE = Path(__file__).resolve().parents[1]
 ROOT = PROFILE.parents[1]
 GCC_SOURCE = None
+RECIPE_COMPOSITION_WORK = None
+sys.dont_write_bytecode = True
 
 
 def check_recipe(text):
@@ -78,7 +84,82 @@ def check_runpaths(darwin, options):
     assert '%<nodefaultrpaths' in darwin
 
 
+def compose_recipe(work):
+    """Apply the real GCC recipe series with the existing source-test adapter."""
+    assert work.is_absolute() and not work.exists() and not work.is_symlink()
+    assert not work.is_relative_to(ROOT) and not ROOT.is_relative_to(work)
+    assert not os.environ.get('FAKE_ARCHIVE'), 'Use the actual pinned pkgsrc source'
+    work.mkdir()
+    adapter_path = ROOT / 'scripts/tests/export-fixture.py'
+    spec = importlib.util.spec_from_file_location('ports_source_test_adapter', adapter_path)
+    adapter = importlib.util.module_from_spec(spec)
+    exec(compile(adapter_path.read_bytes(), str(adapter_path), 'exec'), adapter.__dict__)
+    selection, run = adapter.TestSelection(), adapter.test_runner
+    exporter = adapter.load_exporter(ROOT)
+    recipes, series, _, _ = exporter.configuration(ROOT)
+    selected = {'lang/gcc16', 'lang/gcc16-libs', 'lang/gcc16-libjit'}
+    assert not selected & {name for name, source in recipes}, 'Review new GCC recipe overlays'
+    rows = run([*selection.command('git'), '-C', str(ROOT), 'ls-files', '--stage', '--', 'upstream/pkgsrc']).splitlines()
+    assert len(rows) == 1 and rows[0].startswith(b'160000 ')
+    pin = rows[0].split()[1].decode('ascii')
+    actual = run([*selection.command('git'), '-C', str(ROOT / 'upstream/pkgsrc'), 'rev-parse', 'HEAD'])
+    assert actual.strip().decode('ascii') == pin, 'Initialize the exact pinned pkgsrc submodule'
+    archive, tree = work / 'base.tar', work / 'recipe'
+    run([*selection.command('git'), '-C', str(ROOT / 'upstream/pkgsrc'), 'archive', '--format=tar',
+         '--output=' + str(archive), pin, *sorted(selected)])
+    tree.mkdir()
+    exporter.extract_archive(archive, tree)
+    applied = []
+    darwin = PROFILE / 'patches/gcc-darwin-host.patch'
+    for method, path, recipe, name in series:
+        assert method == 'patch', 'Review a new non-patch operation before the Darwin recipe'
+        chunks = []
+        for section in re.split(r'(?m)(?=^--- )', path.read_text()):
+            if not section.startswith('--- '):
+                continue
+            lines = section.splitlines()
+            assert len(lines) > 1 and lines[1].startswith('+++ '), str(path)
+            names = [line.split()[1] for line in lines[:2] if line.split()[1] != '/dev/null']
+            names = [name[2:] for name in names]
+            hits = [name.split('/')[:2] for name in names]
+            relevant = ['/'.join(parts) in selected for parts in hits]
+            assert not any(relevant) or all(relevant), 'A patch moves a file outside the finite recipe set'
+            if relevant and all(relevant):
+                chunks.append(section)
+        if chunks:
+            delta = ''.join(chunks).encode()
+            args = [*selection.command('patch'), '-f', '-E', '-d', str(tree), '-p1', '-F', '0', '-V', 'none']
+            try:
+                output = run(args, input=delta)
+            except Exception as error:
+                (work / 'patch-failure.stdout').write_bytes(getattr(error, 'stdout', b'') or b'')
+                (work / 'patch-failure.stderr').write_bytes(getattr(error, 'stderr', b'') or b'')
+                raise
+            (work / (str(len(applied)).zfill(2) + '-' + path.stem + '.stdout')).write_bytes(output)
+            assert b'fuzz' not in output.lower(), 'Source composition used fuzz'
+            applied.append(str(path.relative_to(ROOT)))
+        if path == darwin:
+            break
+    assert applied and applied[-1] == str(darwin.relative_to(ROOT))
+    assert not list(tree.rglob('*.rej'))
+    makefile = (tree / 'lang/gcc16/Makefile').read_text()
+    common = (tree / 'lang/gcc16/Makefile.common').read_text()
+    assert 'GCC16_TARGET_LDFLAGS=\t${LDFLAGS:M-Wl,-z*}\n' in makefile
+    assert 'LDFLAGS_FOR_TARGET=${GCC16_TARGET_LDFLAGS:Q}' in makefile
+    assert r'CFLAGS_FOR_TARGET=-g\ ' in makefile and r'CXXFLAGS_FOR_TARGET=-g\ ' in makefile
+    assert 'MAKE_ENV+= lt_cv_apple_cc_single_mod=yes\n' in common
+    (work / 'composition.json').write_text(json.dumps(dict(pkgsrc_revision=pin, patches=applied,
+        recipes=sorted(selected), patch_options=['-f', '-E', '-p1', '-F', '0', '-V', 'none'],
+        scope='Actual ordered GCC recipe source composition only; no compiler or provider qualification'),
+        indent=2, sort_keys=True) + '\n')
+
+
 class ProviderSourceTests(unittest.TestCase):
+    def test_actual_ordered_recipe_composition(self):
+        if RECIPE_COMPOSITION_WORK is None:
+            self.skipTest('Pass --recipe-composition-work for real pinned source composition')
+        compose_recipe(RECIPE_COMPOSITION_WORK)
+
     def test_gcc_final_tools_and_seed_compilers_are_separate(self):
         text = (PROFILE / 'patches/gcc-darwin-host.patch').read_text()
         check_recipe(text)
@@ -153,6 +234,9 @@ class ProviderSourceTests(unittest.TestCase):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--gcc-source', type=Path)
+    parser.add_argument('--recipe-composition-work', type=Path,
+                        help='new absolute source-test directory; requires EXPORT_TEST_GIT and EXPORT_TEST_PATCH')
     args, extra = parser.parse_known_args()
     GCC_SOURCE = args.gcc_source
+    RECIPE_COMPOSITION_WORK = args.recipe_composition_work
     unittest.main(argv=[__file__, *extra])

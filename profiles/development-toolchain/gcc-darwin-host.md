@@ -303,6 +303,17 @@ The command mapping follows primary sources:
 
 ## Verification
 
+The ordered recipe regression uses the pinned pkgsrc Git tree and the existing
+source-test adapter. It applies the canonical GCC recipe patch sections through
+`gcc-darwin-host.patch` with GNU patch and zero fuzz. The test requires a new
+absolute workspace. It checks source composition only.
+
+```sh
+EXPORT_TEST_GIT=/absolute/git EXPORT_TEST_PATCH=/absolute/GNU/gpatch \
+    python3 -B profiles/development-toolchain/tests/darwin-native-provider.py \
+    --recipe-composition-work /absolute/new-work -v
+```
+
 The metadata regression needs no build. It checks the Darwin diff, its
 checksums, the COBOL filter, the GCC-only seed gate and the explicit tool
 selection. It checks that the cross recipe receives the same prerequisite diff without
