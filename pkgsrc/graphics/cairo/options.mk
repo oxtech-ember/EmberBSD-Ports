@@ -5,8 +5,11 @@
 PKG_OPTIONS_VAR=	PKG_OPTIONS.cairo
 PKG_SUPPORTED_OPTIONS=	lzo x11
 .if ${OPSYS} == "Darwin" && exists(/System/Library/Frameworks/Quartz.framework)
+# The Quartz framework headers use Apple blocks, which GCC cannot parse.
+.  if ${PKGSRC_COMPILER:[-1]} != "gcc"
 PKG_SUPPORTED_OPTIONS+=	quartz
 PKG_SUGGESTED_OPTIONS+=	quartz
+.  endif
 .else
 PKG_SUGGESTED_OPTIONS=	x11
 .endif
