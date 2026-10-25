@@ -49,7 +49,7 @@ def test_runner(argv, *, cwd=None, input=None):
     result = subprocess.run(argv, cwd=cwd, input=input, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, check=True,
                             env={**os.environ, 'LC_ALL': 'C', 'GIT_OPTIONAL_LOCKS': '0',
-                                 'GIT_NO_LAZY_FETCH': '1'})
+                                 'GIT_NO_LAZY_FETCH': '1', 'PATCH_VERSION_CONTROL': 'none'})
     return result.stdout
 
 
