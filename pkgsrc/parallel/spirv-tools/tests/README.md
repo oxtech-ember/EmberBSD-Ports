@@ -14,13 +14,6 @@ checks both module orders, an import-only module, resolved imports and plain
 definitions. Run it with newly built tools. Source patch checks do not replace
 linker and validator execution.
 
-`patch-test_binary_parse_test.cpp` gives the two signed low-bit hex literals
-in `MaybeFlipWordsTest` unsigned types. The other direct word comparisons
-already have unsigned types, and hex values used only to initialize
-`uint32_t` vectors need no change. This keeps GCC16's sign-compare diagnostic
-enabled with GoogleTest 1.18. The patch changes build-time tests only; the
-installed payload does not change.
-
 `patch-installed-gtest` adds `SPIRV_USE_INSTALLED_GTEST`, default OFF.
 The recipe enables it, keeps `SPIRV_SKIP_TESTS=OFF`, and selects the common
 GoogleTest 1.18.0 provider as a build dependency. Root-scope discovery and
@@ -28,6 +21,12 @@ compatibility aliases make all four GoogleTest/Mock targets visible to sibling
 test directories. Missing providers or targets are fatal. The installed mode
 does not add vendored targets or assign IDE-folder properties to aliases.
 The default preserves the upstream vendored path.
+
+Compiler wrappers can add a package include directory during compiler
+detection. CMake then treats a matching imported SYSTEM include as implicit
+and omits its flag. The patch restores `-isystem` only on matching GoogleTest
+imported targets for GNU and Clang-family compilers. The metadata check tests
+both matching and non-matching directories; the matching path contains spaces.
 
 The same patch adds the independent `SPIRV_USE_INSTALLED_EFFCEE` option,
 default OFF. The recipe enables it and selects common Effcee 1.2026.0 and
@@ -44,7 +43,9 @@ python3 -B tests/installed-gtest.py --cmake /absolute/cmake \
 
 The finite check verifies archive and patch hashes and applies the actual
 patch with zero fuzz. It configures the patched selection, upstream vendor
-branch and sibling test guard with real CMake and `LANGUAGES NONE`.
+branch and sibling test guard with real CMake and `LANGUAGES NONE`. Twelve
+configure checks include the SYSTEM-include collision and its non-collision
+control.
 GoogleTest, Effcee and RE2 package and vendor fixtures provide only target metadata. They
 contain no implementation. The check covers successful installed selection,
 missing providers/targets, rejected test skipping, the unchanged default,

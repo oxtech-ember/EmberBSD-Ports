@@ -65,8 +65,20 @@ def main():
                 '  if(NOT TARGET ${component})\n' \
                 '    message(FATAL_ERROR "sibling test cannot see ${component}")\n' \
                 '  endif()\nendforeach()\nfile(WRITE "${CMAKE_BINARY_DIR}/unit-metadata" "present")\n'
+        test += 'if(SPIRV_USE_INSTALLED_GTEST)\n' \
+                '  set(_expected_gtest_system_option "SHELL:-isystem \\\"${_test_gtest_include_dir}\\\"")\n' \
+                '  foreach(component gtest gtest_main gmock gmock_main)\n' \
+                '    get_target_property(_gtest_options GTest::${component} INTERFACE_COMPILE_OPTIONS)\n' \
+                '    if(_test_expect_gtest_system_option AND NOT _expected_gtest_system_option IN_LIST _gtest_options)\n' \
+                '      message(FATAL_ERROR "${component} lost the imported SYSTEM include")\n' \
+                '    elseif(NOT _test_expect_gtest_system_option AND _expected_gtest_system_option IN_LIST _gtest_options)\n' \
+                '      message(FATAL_ERROR "${component} received an unnecessary SYSTEM include")\n' \
+                '    endif()\n' \
+                '  endforeach()\nendif()\n'
         prefix = work / 'isolated/lib/cmake/GTest'
         prefix.mkdir(parents=True)
+        include_dir = work / 'isolated include'
+        include_dir.mkdir()
         (prefix / 'GTestConfigVersion.cmake').write_text(
             'set(PACKAGE_VERSION 1.18.0)\nset(PACKAGE_VERSION_COMPATIBLE TRUE)\n')
         effcee_prefix, re2_prefix = [work / ('isolated/lib/cmake/' + name) for name in ('effcee', 're2')]
@@ -80,12 +92,21 @@ def main():
             (fixture / 'external/googletest').mkdir(parents=True)
             (fixture / 'test').mkdir()
             (prefix / 'GTestConfig.cmake').write_text(''.join(
-                'add_library(GTest::' + component + ' INTERFACE IMPORTED)\n' for component in components))
+                'add_library(GTest::' + component + ' INTERFACE IMPORTED)\n'
+                'set_target_properties(GTest::' + component + ' PROPERTIES\n'
+                '  INTERFACE_INCLUDE_DIRECTORIES "${_test_gtest_include_dir}"\n'
+                '  INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_test_gtest_include_dir}")\n'
+                for component in components))
             (re2_prefix / 're2Config.cmake').write_text('add_library(re2::re2 INTERFACE IMPORTED)\n')
             (effcee_prefix / 'effceeConfig.cmake').write_text(
                 '' if fault == 'missing-effcee-target' else 'add_library(effcee::effcee INTERFACE IMPORTED)\n')
             body = 'cmake_minimum_required(VERSION 3.22.1)\nproject(selection LANGUAGES NONE)\n' \
-                   'option(SPIRV_SKIP_TESTS "test input" OFF)\nset(BUILD_SHARED_LIBS OFF)\n'
+                   'option(SPIRV_SKIP_TESTS "test input" OFF)\nset(BUILD_SHARED_LIBS OFF)\n' \
+                   'set(_test_gtest_include_dir [==[' + str(include_dir) + ']==])\n' \
+                   'set(CMAKE_CXX_COMPILER_ID GNU)\n' \
+                   'set(_test_expect_gtest_system_option ' + ('OFF' if fault == 'implicit-mismatch' else 'ON') + ')\n' \
+                   'set(CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES [==[' + \
+                   str(include_dir / 'different' if fault == 'implicit-mismatch' else include_dir) + ']==])\n'
             child = external
             if fault == 'child-scope':
                 child = fragment + child
@@ -137,6 +158,7 @@ def main():
             print('PASS: ' + name)
 
         configure('installed-root-scope', True)
+        configure('system-include-causal', True, fault='implicit-mismatch')
         configure('missing-provider', True, fault='missing-provider', valid=False, error='GTest')
         configure('missing-gmock', True, components=('gtest', 'gtest_main', 'gmock_main'),
                   valid=False, error='Installed GoogleTest lacks GTest::gmock')
@@ -150,7 +172,7 @@ def main():
         configure('missing-re2-provider', True, fault='missing-re2-provider', valid=False, error='re2')
         configure('effcee-skip-refusal', True, fault='effcee-only', skip=True, valid=False,
                   error='SPIRV_USE_INSTALLED_EFFCEE requires SPIRV_SKIP_TESTS=OFF')
-        print('PASS: eleven actual-fragment configure checks; no compiler or build invocation')
+        print('PASS: twelve actual-fragment configure checks; no compiler or build invocation')
     finally:
         print(subprocess.check_output(['df', '-k', str(work)], text=True), end='')
         shutil.rmtree(work); require(not work.exists(), 'Own CMake fixture remains')
