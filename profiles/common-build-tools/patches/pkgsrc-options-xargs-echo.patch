@@ -1,0 +1,27 @@
+Origin: EmberBSD (AI-assisted), preserve the selected options-output command.
+NetBSD bsd.options.mk uses xargs without a command at two output sites.
+That default executes an external echo, which is absent from a narrow
+bootstrap PATH. Pass the existing ECHO command, including its arguments.
+Keep options selection, wrapping and empty-input behavior unchanged.
+Not submitted upstream.
+
+--- a/mk/bsd.options.mk
++++ b/mk/bsd.options.mk
+@@ -371,7 +371,7 @@
+ .endfor
+ 
+ _PKG_OPTIONS_WORDWRAP_FILTER=						\
+-	${XARGS} -n 1 |							\
++	${XARGS} -n 1 ${ECHO} |							\
+ 	${AWK} '							\
+ 		BEGIN { printwidth = 40; line = "" }			\
+ 		{							\
+@@ -441,7 +441,7 @@
+ 	@${ECHO} ""
+ 	@${ECHO} "The currently selected options are:"
+ 	@${ECHO} ""
+-	@${ECHO} ${PKG_OPTIONS:O:Q} | ${XARGS} -n 1 | ${_PKG_OPTIONS_WORDWRAP_FILTER}
++	@${ECHO} ${PKG_OPTIONS:O:Q} | ${XARGS} -n 1 ${ECHO} | ${_PKG_OPTIONS_WORDWRAP_FILTER}
+ .    endif
+ 	@${ECHO} ""
+ 	@${ECHO} "You can select which build options to use by setting PKG_DEFAULT_OPTIONS"
