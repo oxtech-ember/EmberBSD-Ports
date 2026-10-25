@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
-"""Query the common selector only. No package target or selected tool is run."""
+"""Run explicit source metadata queries without a package target."""
 import argparse
 import copy
 import hashlib
