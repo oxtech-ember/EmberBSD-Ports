@@ -32,6 +32,8 @@ PROFILE = Path(__file__).resolve().parents[1]
 RECIPE = PROFILE / 'patches/gcc-darwin-host.patch'
 PROBE = 'int f (void) { return 0; }\n'
 MESSAGE = 'selected Darwin bootstrap-debug comparison failed'
+CONFIGURE_FILES = tuple((PROFILE / 'patches/gcc-sdk-configure-diagnostics.files').read_text().splitlines())
+DIAGNOSTIC_HELPER = 'config/emberbsd-sdk-diagnostics.sh'
 
 # configure and compare-debug use these bare names. Each must resolve to its
 # admitted role in one explicit SDK directory. Compiler and LLVM paths are direct.
@@ -92,17 +94,24 @@ def selected_inputs(args):
 
 
 def check_configure_source(source):
-    """Refuse GCC's legacy unconditional host diagnostics before compilation."""
+    """Check every canonical generated configure before any compiler child."""
     from emberbsd_sdk.errors import SDKError
-    text = (source / 'configure').read_text()
-    if 'emberbsd_host_diagnostic ()' not in text or 'GCC_CONFIGURE_UNAME' not in text:
-        raise SDKError('Use the common Ports SDK configure diagnostics patch')
-    for program in ('/usr/bin/uname', '/bin/uname', '/bin/arch', '/usr/bin/arch',
-                    '/usr/convex/getsysinfo', '/usr/bin/hostinfo', '/bin/machine',
-                    '/usr/bin/oslevel', '/bin/universe'):
-        if '`(' + program in text:
-            raise SDKError('GCC configure still executes an unselected diagnostic tool: ' + program +
-                           '; use the common patched Ports source')
+    try:
+        helper = (source / DIAGNOSTIC_HELPER).read_text()
+        if 'emberbsd_host_diagnostic ()' not in helper or 'GCC_CONFIGURE_UNAME' not in helper:
+            raise SDKError('Use the common Ports SDK configure diagnostic helper')
+        for name in CONFIGURE_FILES:
+            text = (source / name).read_text()
+            for program in ('/usr/bin/uname', '/bin/uname', '/bin/arch', '/usr/bin/arch',
+                            '/usr/convex/getsysinfo', '/usr/bin/hostinfo', '/bin/machine',
+                            '/usr/bin/oslevel', '/bin/universe'):
+                if '`(' + program in text:
+                    raise SDKError(name + ' still executes an unselected diagnostic tool: ' + program)
+            relative = '../' * (len(Path(name).parts) - 1) + DIAGNOSTIC_HELPER
+            if ('. "${srcdir}/' + relative + '" || exit 1') not in text:
+                raise SDKError(name + ' lacks the common selected SDK diagnostic entry')
+    except OSError as error:
+        raise SDKError('Incomplete common GCC configure source: ' + str(error)) from error
 
 
 def run(command, cwd, env, check=True):

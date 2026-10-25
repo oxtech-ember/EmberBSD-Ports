@@ -1,52 +1,1442 @@
-GCC: keep configure diagnostics inside the selected SDK.
+GCC: keep all generated configure diagnostics inside the selected SDK.
 
 Origin: EmberBSD (AI-assisted), not submitted upstream.
 The upstream GCC GPLv3-or-later source and copyright notices remain unchanged.
+The canonical .files roster covers all 34 release configure scripts with this
+legacy diagnostic block. They source one shared helper in explicit SDK mode.
 GCC_CONFIGURE_SDK=yes requires an explicit executable GCC_CONFIGURE_UNAME.
-Use that tool for supported uname queries. Report unavailable legacy platform
-queries as unavailable in the selected profile; do not invent measurements.
-The unset route retains all upstream diagnostic commands and arguments.
+Keep selected uname queries and label unsupported legacy operations unavailable.
+The unset route retains the original commands without requiring the helper.
 
---- configure.orig
-+++ configure
-@@ -558,6 +558,36 @@
- exec 6>&1
- 
- # Name of the host.
-+# EmberBSD: explicit SDK diagnostics do not execute absolute host tools.
-+# Origin: EmberBSD (AI-assisted). Keep the upstream unset behavior.
-+if test "${GCC_CONFIGURE_SDK+set}" = set; then
-+  if test "$GCC_CONFIGURE_SDK" != yes; then
-+    echo 'configure: GCC_CONFIGURE_SDK must be yes when selected' >&2
-+    exit 1
-+  fi
-+  case ${GCC_CONFIGURE_UNAME-} in
-+    /*) if test ! -f "$GCC_CONFIGURE_UNAME" || test ! -x "$GCC_CONFIGURE_UNAME"; then
-+          echo 'configure: selected SDK uname must be executable' >&2
-+          exit 1
-+        fi ;;
-+    *) echo 'configure: select an absolute GCC_CONFIGURE_UNAME' >&2
-+       exit 1 ;;
-+  esac
+--- config/emberbsd-sdk-diagnostics.sh.orig
++++ config/emberbsd-sdk-diagnostics.sh
+@@ -0,0 +1,24 @@
++# SPDX-License-Identifier: GPL-3.0-or-later
++# Copyright (c) 2026 EmberBSD contributors.
++# Origin: EmberBSD (AI-assisted). Sourced only by the explicit SDK profile.
++if test "$GCC_CONFIGURE_SDK" != yes; then
++  echo 'configure: GCC_CONFIGURE_SDK must be yes when selected' >&2
++  exit 1
 +fi
++case ${GCC_CONFIGURE_UNAME-} in
++  /*) if test ! -f "$GCC_CONFIGURE_UNAME" || test ! -x "$GCC_CONFIGURE_UNAME"; then
++        echo 'configure: selected SDK uname must be executable' >&2
++        exit 1
++      fi ;;
++  *) echo 'configure: select an absolute GCC_CONFIGURE_UNAME' >&2
++     exit 1 ;;
++esac
 +emberbsd_host_diagnostic ()
 +{
-+  if test "${GCC_CONFIGURE_SDK-}" = yes; then
-+    case $1 in
-+      /usr/bin/uname | /bin/uname)
-+        shift
-+        "$GCC_CONFIGURE_UNAME" "$@" ;;
-+      *) echo 'unavailable (selected SDK profile)' ;;
-+    esac
-+  else
-+    "$@"
-+  fi
++  case $1 in
++    /usr/bin/uname | /bin/uname)
++      shift
++      "$GCC_CONFIGURE_UNAME" "$@" ;;
++    *) echo 'unavailable (selected SDK profile)' ;;
++  esac
 +}
+--- c++tools/configure.orig
++++ c++tools/configure
+@@ -1679,6 +1679,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -1690,16 +1696,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
 +
- # hostname on some systems (SVR3.2, old GNU/Linux) returns a bogus exit status,
- # so uname gets run too.
- ac_hostname=`(hostname || uname -n) 2>/dev/null | sed 1q`
-@@ -2068,16 +2098,16 @@
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- configure.orig
++++ configure
+@@ -2057,6 +2057,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2068,16 +2074,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- fixincludes/configure.orig
++++ fixincludes/configure
+@@ -1832,6 +1832,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -1843,16 +1849,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- gcc/configure.orig
++++ gcc/configure
+@@ -3062,6 +3062,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -3073,16 +3079,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- gcc/m2/configure.orig
++++ gcc/m2/configure
+@@ -1752,6 +1752,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -1763,16 +1769,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- gnattools/configure.orig
++++ gnattools/configure
+@@ -1427,6 +1427,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -1438,16 +1444,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- gotools/configure.orig
++++ gotools/configure
+@@ -1592,6 +1592,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -1603,16 +1609,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libada/configure.orig
++++ libada/configure
+@@ -1683,6 +1683,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -1694,16 +1700,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libatomic/configure.orig
++++ libatomic/configure
+@@ -2175,6 +2175,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2186,16 +2192,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libbacktrace/configure.orig
++++ libbacktrace/configure
+@@ -2214,6 +2214,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2225,16 +2231,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libcc1/configure.orig
++++ libcc1/configure
+@@ -2078,6 +2078,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2089,16 +2095,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libcody/configure.orig
++++ libcody/configure
+@@ -1482,6 +1482,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -1493,16 +1499,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libcpp/configure.orig
++++ libcpp/configure
+@@ -2327,6 +2327,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2338,16 +2344,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libdecnumber/configure.orig
++++ libdecnumber/configure
+@@ -1967,6 +1967,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -1978,16 +1984,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libffi/configure.orig
++++ libffi/configure
+@@ -2313,6 +2313,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2324,16 +2330,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libga68/configure.orig
++++ libga68/configure
+@@ -1946,6 +1946,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -1957,16 +1963,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libgcc/configure.orig
++++ libgcc/configure
+@@ -1819,6 +1819,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -1830,16 +1836,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libgcobol/configure.orig
++++ libgcobol/configure
+@@ -2582,6 +2582,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2593,16 +2599,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libgfortran/configure.orig
++++ libgfortran/configure
+@@ -2337,6 +2337,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2348,16 +2354,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libgm2/configure.orig
++++ libgm2/configure
+@@ -2385,6 +2385,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2396,16 +2402,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libgo/configure.orig
++++ libgo/configure
+@@ -2265,6 +2265,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2276,16 +2282,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libgomp/configure.orig
++++ libgomp/configure
+@@ -2279,6 +2279,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2290,16 +2296,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libgrust/configure.orig
++++ libgrust/configure
+@@ -2043,6 +2043,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2054,16 +2060,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libiberty/configure.orig
++++ libiberty/configure
+@@ -2123,6 +2123,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2134,16 +2140,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libitm/configure.orig
++++ libitm/configure
+@@ -2350,6 +2350,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2361,16 +2367,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libobjc/configure.orig
++++ libobjc/configure
+@@ -1881,6 +1881,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -1892,16 +1898,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libphobos/configure.orig
++++ libphobos/configure
+@@ -2124,6 +2124,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2135,16 +2141,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libquadmath/configure.orig
++++ libquadmath/configure
+@@ -1918,6 +1918,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -1929,16 +1935,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libsanitizer/configure.orig
++++ libsanitizer/configure
+@@ -2356,6 +2356,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2367,16 +2373,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libssp/configure.orig
++++ libssp/configure
+@@ -1944,6 +1944,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -1955,16 +1961,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libstdc++-v3/configure.orig
++++ libstdc++-v3/configure
+@@ -2746,6 +2746,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2757,16 +2763,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- libvtv/configure.orig
++++ libvtv/configure
+@@ -2042,6 +2042,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2053,16 +2059,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- lto-plugin/configure.orig
++++ lto-plugin/configure
+@@ -2033,6 +2033,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -2044,16 +2050,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- zlib/configure.orig
++++ zlib/configure
+@@ -1898,6 +1898,12 @@
+ _ACEOF
+ exec 5>>config.log
+ {
++# EmberBSD: selected SDK diagnostic entry.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/../config/emberbsd-sdk-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ cat <<_ASUNAME
+ ## --------- ##
+ ## Platform. ##
+@@ -1909,16 +1915,16 @@
  uname -s = `(uname -s) 2>/dev/null || echo unknown`
  uname -v = `(uname -v) 2>/dev/null || echo unknown`
  

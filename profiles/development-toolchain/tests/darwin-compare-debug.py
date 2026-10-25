@@ -24,7 +24,7 @@ TEST_WORK = None
 
 
 def apply_source(original, patch):
-    """Apply the three finite source files at exact hunk positions."""
+    """Apply the selected finite source files at exact hunk positions."""
     lines, result, i = patch.splitlines(keepends=True), {}, 0
     while i < len(lines):
         if not lines[i].startswith('--- '):
@@ -37,7 +37,7 @@ def apply_source(original, patch):
         while i < len(lines) and lines[i].startswith('@@ '):
             match = re.fullmatch(r'@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@\n', lines[i])
             assert match
-            start, old_count, new_count = int(match[1]) - 1, int(match[2] or 1), int(match[4] or 1)
+            start, old_count, new_count = max(0, int(match[1]) - 1), int(match[2] or 1), int(match[4] or 1)
             assert start >= cursor
             output.extend(before[cursor:start])
             old, new = [], []

@@ -5,6 +5,8 @@
 """Check the common SDK diagnostic patch against an explicit GCC source."""
 import argparse
 import importlib.util
+import hashlib
+import tarfile
 from pathlib import Path
 import sys
 import unittest
@@ -16,7 +18,9 @@ sys.path.insert(0, str(PROFILE / 'runtime/recipe/files'))
 import sdk_source
 arguments = sdk_source.arguments(sys.argv[1:])
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--gcc-source', type=Path, required=True)
+inputs = parser.add_mutually_exclusive_group(required=True)
+inputs.add_argument('--gcc-source', type=Path)
+inputs.add_argument('--gcc-archive', type=Path)
 options, remaining = parser.parse_known_args(arguments)
 from emberbsd_sdk.errors import SDKError
 
@@ -32,8 +36,27 @@ def module(name):
 compare = module('darwin-compare-debug')
 probe = module('darwin-build-config')
 PATCH = PROFILE / 'patches/gcc-sdk-configure-diagnostics.patch'
-ORIGINAL = (options.gcc_source / 'configure').read_text()
-FIXED = compare.apply_source({'configure': ORIGINAL}, PATCH.read_text())['configure']
+ROSTER = (PROFILE / 'patches/gcc-sdk-configure-diagnostics.files').read_text().splitlines()
+HELPER = 'config/emberbsd-sdk-diagnostics.sh'
+assert ROSTER == sorted(set(ROSTER)) and len(ROSTER) == 34
+if options.gcc_archive:
+    expected = next(row.split('\t')[3] for row in (PROFILE / 'sources.tsv').read_text().splitlines()
+                    if row.startswith('gcc\t16.2.0\t'))
+    with options.gcc_archive.open('rb') as stream:
+        assert hashlib.file_digest(stream, 'sha256').hexdigest() == expected
+    ORIGINAL = {}
+    with tarfile.open(options.gcc_archive) as archive:
+        for member in archive:
+            if member.isfile() and member.name.endswith('/configure'):
+                raw = archive.extractfile(member).read().decode()
+                if '`(/usr/bin/uname' in raw:
+                    ORIGINAL[member.name.split('/', 1)[1]] = raw
+else:
+    ORIGINAL = {str(p.relative_to(options.gcc_source)): p.read_text()
+                for p in options.gcc_source.rglob('configure') if p.is_file()}
+    ORIGINAL = {p: s for p, s in ORIGINAL.items() if '`(/usr/bin/uname' in s}
+assert set(ORIGINAL) == set(ROSTER), 'Canonical configure roster differs from the complete source'
+FIXED = compare.apply_source({**ORIGINAL, HELPER: ''}, PATCH.read_text())
 PATHS = ('/usr/bin/uname', '/bin/uname', '/bin/arch', '/usr/bin/arch',
          '/usr/convex/getsysinfo', '/usr/bin/hostinfo', '/bin/machine',
          '/usr/bin/oslevel', '/bin/universe')
@@ -50,45 +73,64 @@ def recipe(text):
 
 
 class Diagnostics(unittest.TestCase):
-    def check_source(self, text):
-        with patch.object(Path, 'read_text', return_value=text):
-            probe.check_configure_source(options.gcc_source)
+    def check_source(self, contents):
+        root = Path('/nonexecuted/source-fixture')
+        def read(path, *args, **kwargs):
+            if path.name == 'gcc-sdk-configure-diagnostics.files':
+                return '\n'.join(ROSTER) + '\n'
+            relative = str(path.relative_to(root))
+            if relative not in contents:
+                raise FileNotFoundError(relative)
+            return contents[relative]
+        with patch.object(Path, 'read_text', read):
+            probe.check_configure_source(root)
 
     def test_exact_patch_preserves_all_other_configure_bytes(self):
-        start = FIXED.index('# EmberBSD: explicit SDK diagnostics')
-        end = FIXED.index('# hostname on some systems', start)
-        restored = FIXED[:start] + FIXED[end:]
-        for path in PATHS:
-            call = '`(emberbsd_host_diagnostic ' + path
-            self.assertEqual(restored.count(call), 1)
-            restored = restored.replace(call, '`(' + path)
-        self.assertEqual(restored, ORIGINAL)
+        for name in ROSTER:
+            text = FIXED[name]
+            start = text.index('# EmberBSD: selected SDK diagnostic entry.')
+            end = text.index('cat <<_ASUNAME', start)
+            restored = text[:start] + text[end:]
+            for path in PATHS:
+                call = '`(emberbsd_host_diagnostic ' + path
+                self.assertEqual(restored.count(call), 1, name)
+                restored = restored.replace(call, '`(' + path)
+            self.assertEqual(restored, ORIGINAL[name], name)
+        self.assertEqual(set(FIXED), set(ROSTER) | {HELPER})
         self.assertNotIn('bootstrap-debug', PATCH.read_text())
 
-    def test_required_selector_guard_and_unset_route(self):
-        body = FIXED[FIXED.index('# EmberBSD: explicit SDK diagnostics'):FIXED.index('# hostname on some systems')]
-        self.assertIn('if test "${GCC_CONFIGURE_SDK+set}" = set; then', body)
-        self.assertIn('if test "$GCC_CONFIGURE_SDK" != yes; then', body)
-        self.assertIn('case ${GCC_CONFIGURE_UNAME-} in', body)
-        self.assertIn('test ! -f "$GCC_CONFIGURE_UNAME" || test ! -x "$GCC_CONFIGURE_UNAME"', body)
-        self.assertEqual(body.count('exit 1'), 3)
-        function = body[body.index('emberbsd_host_diagnostic ()'):]
-        self.assertIn('if test "${GCC_CONFIGURE_SDK-}" = yes; then', function)
-        self.assertIn('/usr/bin/uname | /bin/uname)', function)
-        self.assertIn('shift\n        "$GCC_CONFIGURE_UNAME" "$@"', function)
-        self.assertIn("*) echo 'unavailable (selected SDK profile)' ;;", function)
-        self.assertIn('else\n    "$@"\n  fi', function)
+    def test_one_shared_helper_and_correct_nested_source_paths(self):
+        self.assertEqual(tuple(ROSTER), probe.CONFIGURE_FILES)
+        helper = FIXED[HELPER]
+        self.assertIn('if test "$GCC_CONFIGURE_SDK" != yes; then', helper)
+        self.assertIn('case ${GCC_CONFIGURE_UNAME-} in', helper)
+        self.assertIn('test ! -f "$GCC_CONFIGURE_UNAME" || test ! -x "$GCC_CONFIGURE_UNAME"', helper)
+        self.assertEqual(helper.count('exit 1'), 3)
+        self.assertIn('/usr/bin/uname | /bin/uname)', helper)
+        self.assertIn('shift\n      "$GCC_CONFIGURE_UNAME" "$@"', helper)
+        self.assertIn("*) echo 'unavailable (selected SDK profile)' ;;", helper)
+        for name in ROSTER:
+            relative = '../' * (len(Path(name).parts) - 1) + HELPER
+            hook = FIXED[name].split('# EmberBSD: selected SDK diagnostic entry.\n', 1)[1].split('cat <<_ASUNAME', 1)[0]
+            self.assertIn('if test "${GCC_CONFIGURE_SDK+set}" = set; then', hook)
+            self.assertIn('. "${srcdir}/' + relative + '" || exit 1', hook)
+            self.assertIn('emberbsd_host_diagnostic () { "$@"; }', hook)
+            self.assertNotIn('case $1', hook)
 
-    def test_preflight_accepts_common_patch_and_refuses_legacy_mutations(self):
+    def test_preflight_refuses_unpatched_nested_source_and_bad_helper(self):
         self.check_source(FIXED)
-        with self.assertRaises(SDKError):
-            self.check_source(ORIGINAL)
+        for name in ROSTER:
+            with self.subTest(source=name), self.assertRaises(SDKError):
+                self.check_source({**FIXED, name: ORIGINAL[name]})
+            with self.subTest(missing=name), self.assertRaises(SDKError):
+                self.check_source({p: value for p, value in FIXED.items() if p != name})
         for path in PATHS:
-            mutant = FIXED.replace('`(emberbsd_host_diagnostic ' + path, '`(' + path)
+            mutant = dict(FIXED)
+            mutant['gcc/configure'] = mutant['gcc/configure'].replace('`(emberbsd_host_diagnostic ' + path, '`(' + path)
             with self.assertRaisesRegex(SDKError, 'unselected diagnostic'):
                 self.check_source(mutant)
         with self.assertRaises(SDKError):
-            self.check_source(FIXED.replace('emberbsd_host_diagnostic ()', 'unbound_function ()'))
+            self.check_source({**FIXED, HELPER: 'not the diagnostic helper'})
 
     def test_common_recipe_and_missing_selector_controls(self):
         text = (PROFILE / 'patches/gcc-darwin-host.patch').read_text()

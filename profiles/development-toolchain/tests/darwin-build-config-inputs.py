@@ -168,6 +168,9 @@ class Inputs(unittest.TestCase):
         paths = ('/usr/bin/uname', '/bin/uname', '/bin/arch', '/usr/bin/arch',
                  '/usr/convex/getsysinfo', '/usr/bin/hostinfo', '/bin/machine',
                  '/usr/bin/oslevel', '/bin/universe')
+        helper = self.args.gcc_source / subject.DIAGNOSTIC_HELPER
+        helper.parent.mkdir()
+        helper.write_text('emberbsd_host_diagnostic ()\nGCC_CONFIGURE_UNAME\n')
         argv = ['--gcc-source', str(self.args.gcc_source), '--tools-bin', str(self.bin),
                 '--math-prefix', str(self.args.math_prefix), '--work', str(self.args.work),
                 '--descriptor', self.args.descriptor, '--descriptor-sha256', self.args.descriptor_sha256,
@@ -176,6 +179,7 @@ class Inputs(unittest.TestCase):
         for path in paths:
             configure.write_text('emberbsd_host_diagnostic ()\nGCC_CONFIGURE_UNAME\ndiagnostic = `(' + path + ' -p) 2>/dev/null || echo unknown`\n')
             with patch.object(subject, 'selected_inputs', return_value=(self.selection, {})), \
+                 patch.object(subject, 'CONFIGURE_FILES', ('configure',)), \
                  patch.object(subject, 'mach_o_probe') as probe, \
                  patch.object(subject.subprocess, 'run') as child, self.assertRaisesRegex(SDKError, 'unselected diagnostic'):
                 subject.main(argv)

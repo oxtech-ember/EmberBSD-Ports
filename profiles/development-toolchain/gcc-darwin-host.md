@@ -95,15 +95,25 @@ selection remains conditional on Darwin:
   selected SDK Python and `--sdk-source SOURCE`. Its source and synthetic argv
   checks do not rerun the Mach-O experiment or qualify a native toolset.
   [gcc-sdk-configure-diagnostics.patch](patches/gcc-sdk-configure-diagnostics.patch)
-  is part of the shared GCC source for all consumers. Its explicit
+  is part of the shared GCC source for all consumers. The canonical
+  [configure roster](patches/gcc-sdk-configure-diagnostics.files) includes all
+  34 generated configure scripts in GCC 16.2.0, including `gcc/m2/configure`.
+  Each selected entry sources one `config/emberbsd-sdk-diagnostics.sh` helper
+  relative to its source directory before writing host diagnostics.
+  The unset route needs no new helper and keeps the upstream commands.
+  Its explicit
   `GCC_CONFIGURE_SDK=yes` mode requires an executable absolute
   `GCC_CONFIGURE_UNAME`. The two uname diagnostics use that selected tool.
-  Other legacy platform-specific queries report `unavailable (selected SDK profile)` without executing
-  absolute host commands. The unset upstream route remains unchanged.
+  Other legacy platform-specific queries report `unavailable (selected SDK profile)`.
+  They do not execute absolute host commands.
   The Darwin recipe requires `EMBERBSD_GCC16_UNAME` from the accepted SDK plan
   and retains it in configure and make environments.
   The direct regression uses its admitted uname
-  role and refuses a source tree without this patch before compiler children.
+  role and checks every canonical configure plus the helper before compiler children.
+  [The source regression](tests/gcc-sdk-configure-diagnostics.py) compares this
+  roster with the complete pinned GCC archive through `--gcc-archive ARCHIVE`.
+  It rejects missing or unpatched nested entries and restores every original
+  configure byte outside the diagnostic changes. It runs no configure script.
   [gcc-darwin-llvm-mc.patch](patches/gcc-darwin-llvm-mc.patch) adds
   `--with-darwin-assembler=llvm-mc` to GCC. It changes the driver assembler
   arguments and the configure assembler probes together.
