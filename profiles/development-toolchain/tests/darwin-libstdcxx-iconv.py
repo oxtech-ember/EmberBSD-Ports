@@ -36,9 +36,15 @@ def check_sources(root):
     recipe = (root / 'profiles/development-toolchain/patches/gcc-darwin-host.patch').read_text()
     # The Darwin target libraries must not search ${LOCALBASE}/lib.
     blocks = re.findall(r'\n\+\.if \$\{OPSYS\} == "Darwin"\n((?:\+[^\n]*\n)+)', recipe)
-    assert any('+GCC16_TARGET_LDFLAGS=\t${LDFLAGS:M-Wl,-z*}\n+.else\n'
-               '+GCC16_TARGET_LDFLAGS=\t${LDFLAGS_FOR_TARGET}\n+.endif\n' in block for block in blocks), \
+    assert any('+GCC16_TARGET_LDFLAGS=\t${LDFLAGS:M-Wl,-z*}\n' in block and
+               '+.else\n+GCC16_TARGET_LDFLAGS=\t${LDFLAGS_FOR_TARGET}\n+.endif\n' in block
+               for block in blocks), \
         'Darwin target LDFLAGS override is missing'
+    # GNU iconv.h in ${LOCALBASE}/include renames iconv_open to libiconv_open.
+    for name in ('CFLAGS', 'CXXFLAGS'):
+        line = ('+CONFIGURE_ENV+=\t' + name + '_FOR_TARGET=-g\\ ${' + name +
+                ':N-I${LOCALBASE}*:N-I${BUILDLINK_DIR}*:Q}\n')
+        assert any(line in block for block in blocks), 'Darwin target ' + name + ' keep ${LOCALBASE}/include'
     assert ('-CONFIGURE_ENV+=\t\tLDFLAGS_FOR_TARGET=${LDFLAGS_FOR_TARGET:Q}\n'
             '+CONFIGURE_ENV+=\t\tLDFLAGS_FOR_TARGET=${GCC16_TARGET_LDFLAGS:Q}\n') in recipe, \
         'configure does not receive the Darwin target LDFLAGS'

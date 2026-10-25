@@ -39,6 +39,9 @@ selection remains conditional on Darwin:
   default is a bare `lipo`, which no Ports package provides.
   libstdc++ `scripts/make_exports.pl` runs a bare `c++filt -_`, so the recipe
   creates the `c++filt` tool from `llvm-cxxfilt`.
+  ld64.lld warns that `-single_module` is obsolete, so the libtool probe
+  rejects it and links a `-r` master object, which ld64.lld does not
+  implement. The recipe presets `lt_cv_apple_cc_single_mod=yes`.
   [gcc-darwin-llvm-mc.patch](patches/gcc-darwin-llvm-mc.patch) adds
   `--with-darwin-assembler=llvm-mc` to GCC. It changes the driver assembler
   arguments and the configure assembler probes together.
@@ -57,6 +60,8 @@ selection remains conditional on Darwin:
   `libiconv_open` names. The Darwin recipe passes only `-Wl,-z` options to
   the target libraries. `BOOT_LDFLAGS` for the stage 2 and 3 compilers is
   unchanged.
+  The target C and C++ flags also drop `-I${LOCALBASE}` and buildlink
+  include paths, because the GNU `iconv.h` there renames `iconv_open`.
   iconv is not part of libSystem.
   [gcc-darwin-libstdcxx-iconv.patch](patches/gcc-darwin-libstdcxx-iconv.patch)
   records `-liconv` in the libstdc++ `format.o` object (`LC_LINKER_OPTION`).

@@ -195,6 +195,55 @@ class ExportTests(unittest.TestCase):
         with self.assertRaisesRegex(exporter.ExportError, 'Link leaves the repository'):
             exporter.check_recipe(recipe, 'pkgsrc/devel/link-control', self.root)
 
+    def test_selected_recipe_does_not_read_external_symlink_files(self):
+        outside = self.work / 'outside-input'
+        outside.write_bytes(b'external bytes')
+        recipes = self.root / 'profiles/selected'
+        (recipes / 'distinfo-case').mkdir(parents=True)
+        (recipes / 'distinfo-case/Makefile').write_text('PKGNAME=fixture-1\n')
+        (recipes / 'distinfo-case/distinfo').symlink_to(outside)
+        (recipes / 'patch-case/patches').mkdir(parents=True)
+        (recipes / 'patch-case/Makefile').write_text('PKGNAME=fixture-1\n')
+        (recipes / 'patch-case/distinfo').write_text(
+            'SHA1 (patch-external) = ' + '0' * 40 + '\n')
+        (recipes / 'patch-case/patches/patch-external').symlink_to(outside)
+        config = self.root / 'pkgsrc/export.conf'
+        config.write_text(
+            'recipe\tprofiles/selected/distinfo-case\tdevel/distinfo-case\n'
+            'recipe\tprofiles/selected/patch-case\tdevel/patch-case\n')
+        read_bytes = Path.read_bytes
+
+        def reject_external_read(path):
+            if path.resolve() == outside.resolve():
+                raise AssertionError('read an external recipe input before link validation')
+            return read_bytes(path)
+
+        with mock.patch.object(Path, 'read_bytes', reject_external_read):
+            with self.assertRaisesRegex(exporter.ExportError, 'Link leaves the repository'):
+                exporter.configuration(self.root)
+
+    def test_selected_recipe_does_not_read_external_patch_symlink(self):
+        outside = self.work / 'outside-patch'
+        outside.write_bytes(b'external patch bytes')
+        recipe = self.root / 'profiles/selected-patch'
+        (recipe / 'patches').mkdir(parents=True)
+        (recipe / 'Makefile').write_text('PKGNAME=fixture-1\n')
+        (recipe / 'distinfo').write_text(
+            'SHA1 (patch-external) = ' + '0' * 40 + '\n')
+        (recipe / 'patches/patch-external').symlink_to(outside)
+        (self.root / 'pkgsrc/export.conf').write_text(
+            'recipe\tprofiles/selected-patch\tdevel/selected-patch\n')
+        read_bytes = Path.read_bytes
+
+        def reject_external_read(path):
+            if path.resolve() == outside.resolve():
+                raise AssertionError('read an external patch before link validation')
+            return read_bytes(path)
+
+        with mock.patch.object(Path, 'read_bytes', reject_external_read):
+            with self.assertRaisesRegex(exporter.ExportError, 'Link leaves the repository'):
+                exporter.configuration(self.root)
+
     def test_contained_profile_copies_preserve_missing_patch_refusals(self):
         owner = self.work / 'source-owner'
         cases = [('profiles', 'devel/meson'), ('probes', 'lang/llvm')]
@@ -233,8 +282,80 @@ class ExportTests(unittest.TestCase):
         self.fake_export()
         self.assertEqual((self.work / 'export/COPIED').read_bytes(), b'copied')
         config.write_bytes(b'file\tinput\tCOPIED\r\n')
-        recipes, patches, files, categories = exporter.configuration(self.root)
-        self.assertEqual(files[0][1], 'COPIED\r')
+        with self.assertRaisesRegex(exporter.ExportError, 'relative|path'):
+            exporter.configuration(self.root)
+
+    def test_export_configuration_rejects_parent_destination_before_writing(self):
+        (self.root / 'input').write_bytes(b'outside export')
+        (self.root / 'pkgsrc/export.conf').write_text('file\tinput\t../escaped.txt\n')
+        escaped = self.work / 'escaped.txt'
+        with self.assertRaisesRegex(exporter.ExportError, 'relative|escape|destination'):
+            self.fake_export()
+        self.assertFalse(escaped.exists())
+        self.assertFalse((self.work / 'export').exists())
+
+    def test_export_configuration_rejects_parent_source_and_package_paths(self):
+        (self.root / 'input').write_bytes(b'input')
+        (self.work / 'input').write_bytes(b'outside input')
+        outside_recipe = self.work / 'recipe'
+        outside_recipe.mkdir()
+        (outside_recipe / 'Makefile').write_text('PKGNAME=outside-1\n')
+        (self.root / 'profiles/fixture').mkdir(parents=True)
+        (self.root / 'profiles/fixture/Makefile').write_text('PKGNAME=fixture-1\n')
+        (self.root / 'patch').write_text('patch fixture\n')
+        (self.work / 'patch').write_text('outside patch\n')
+        cases = [
+            'file\t../input\tCOPIED\n',
+            'file\tinput\t../COPIED\n',
+            'recipe\t../recipe\tdevel/fixture\n',
+            'recipe\tprofiles/fixture\t../outside\n',
+            'patch\t../patch\n',
+            'git-apply\tpatch\t../manifest\n',
+            'recipe-patch\tpatch\tdevel/fixture\t../patch-name\n',
+        ]
+        for record in cases:
+            with self.subTest(record=record):
+                (self.root / 'pkgsrc/export.conf').write_text(record)
+                with self.assertRaisesRegex(exporter.ExportError,
+                        'relative|escape|path|destination|PKGPATH|source|name'):
+                    exporter.configuration(self.root)
+
+    def test_export_configuration_rejects_symlinked_source_escape(self):
+        outside = self.work / 'outside-source'
+        outside.mkdir()
+        (outside / 'payload').write_bytes(b'outside')
+        (self.root / 'bridge').symlink_to(outside)
+        (self.root / 'pkgsrc/export.conf').write_text('file\tbridge/payload\tCOPIED\n')
+        with self.assertRaisesRegex(exporter.ExportError, 'source|repository|escape|path'):
+            exporter.configuration(self.root)
+
+    def test_overlay_write_refuses_symlinked_destination_parent(self):
+        (self.root / 'input').write_bytes(b'overlay')
+        (self.root / 'pkgsrc/export.conf').write_text('file\tinput\tlink/escaped.txt\n')
+        outside = self.work / 'outside-destination'
+        outside.mkdir()
+        (self.upstream / 'link').symlink_to(outside)
+        with self.assertRaisesRegex(exporter.ExportError, 'destination|symlink|escape|path'):
+            self.fake_export()
+        self.assertFalse((outside / 'escaped.txt').exists())
+
+    def test_new_category_copy_rejects_external_symlinks_and_symlinked_category(self):
+        outside = self.work / 'outside-category'
+        outside.mkdir()
+        (outside / 'payload').write_bytes(b'external category data')
+        category = self.root / 'pkgsrc/newcategory'
+        category.mkdir()
+        (category / 'README').symlink_to(outside / 'payload')
+        with self.assertRaisesRegex(exporter.ExportError, 'symlink|repository|escape|outside'):
+            self.fake_export()
+        self.assertFalse((self.work / 'export').exists())
+
+        (category / 'README').unlink()
+        category.rmdir()
+        category.symlink_to(outside, target_is_directory=True)
+        with self.assertRaisesRegex(exporter.ExportError, 'symlink|category|repository|escape'):
+            self.fake_export()
+        self.assertFalse((self.work / 'export').exists())
 
     def test_shell_globs_skip_hidden_recipes_but_copy_new_category_data(self):
         (self.root / 'pkgsrc/.ignored').mkdir()
@@ -327,18 +448,47 @@ class ExportTests(unittest.TestCase):
             [git, '-C', str(self.work / 'real'), 'apply', str(self.root / 'binary.patch')]])
 
     def test_patch_empty_file_removal_is_causal(self):
-        patch = b'--- a/plain\n+++ b/plain\n@@ -1,3 +0,0 @@\n-one\n-two\n-three\n'
+        patch = (b'--- a/plain\n+++ b/plain\n@@ -1,3 +0,0 @@\n-one\n-two\n-three\n'
+                 b'--- a/keep\n+++ b/keep\n@@ -1 +1 @@\n-before\n+after\n')
+        (self.upstream / 'keep').write_bytes(b'before\n')
         (self.root / 'remove.patch').write_bytes(patch)
         (self.root / 'pkgsrc/export.conf').write_text('patch\tremove.patch\n')
         self.fake_export()
         self.assertFalse((self.work / 'export/plain').exists())
-        self.assertIn(['-f', '-E', '-d', str(self.work / 'export'), '-p1', '-F', '0'],
+        self.assertFalse((self.work / 'export/plain.orig').exists())
+        self.assertEqual((self.work / 'export/keep').read_bytes(), b'after\n')
+        self.assertFalse((self.work / 'export/keep.orig').exists())
+        self.assertIn(['-f', '-E', '-d', str(self.work / 'export'), '-p1', '-F', '0',
+                       '-V', 'none'],
                       [argv[1:] for argv, options in self.commands if argv[0] == self.selected.command('patch')[0]])
         control = self.work / 'without-E'
         control.mkdir()
         (control / 'plain').write_bytes(b'one\ntwo\nthree\n')
+        (control / 'keep').write_bytes(b'before\n')
         self.runner([self.selected.command('patch')[0], '-f', '-d', str(control), '-p1', '-F', '0'], input=patch)
         self.assertEqual((control / 'plain').read_bytes(), b'')
+
+    def test_export_patch_disables_platform_default_backups(self):
+        owner = HERE.parents[1]
+        relative = Path('lang/gcc16/Makefile')
+        (self.upstream / relative).parent.mkdir(parents=True)
+        shutil.copyfile(owner / 'upstream/pkgsrc' / relative,
+                        self.upstream / relative)
+        relative_patch = Path('lang/gcc16/patches/patch-isl_configure')
+        (self.upstream / relative_patch).parent.mkdir(parents=True)
+        shutil.copyfile(owner / 'upstream/pkgsrc' / relative_patch,
+                        self.upstream / relative_patch)
+        patch = owner / 'profiles/development-toolchain/patches/strict-tests.patch'
+        (self.root / 'strict-tests.patch').write_bytes(patch.read_bytes())
+        (self.root / 'pkgsrc/export.conf').write_text('patch\tstrict-tests.patch\n')
+
+        self.fake_export()
+
+        self.assertFalse((self.work / 'export/lang/gcc16/Makefile.orig').exists())
+        self.assertFalse((self.work / 'export/lang/gcc16/patches/patch-isl_configure.orig').exists())
+        self.assertIn(['-f', '-E', '-d', str(self.work / 'export'), '-p1', '-F', '0',
+                       '-V', 'none'],
+                      [argv[1:] for argv, options in self.commands if argv[0] == self.selected.command('patch')[0]])
 
     def test_zero_fuzz_rejects_context_that_fuzz_one_accepts(self):
         patch = b'--- a/plain\n+++ b/plain\n@@ -1,3 +1,3 @@\n wrong\n-two\n+changed\n three\n'

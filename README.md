@@ -850,7 +850,8 @@ include it.
 tabs between the fields. The export uses them in the order of the file:
 
 - `recipe SOURCE PKGPATH` copies a complete recipe from a profile.
-- `patch FILE` applies an infrastructure patch with zero fuzz.
+- `patch FILE` applies an infrastructure patch with zero fuzz and disables
+  patch backups (`-F 0 -V none`).
 - `git-apply FILE MANIFEST` applies a binary patch after it checks the
   SHA256 in `MANIFEST`.
 - `recipe-patch FILE PKGPATH NAME` adds a patch to a recipe and its
