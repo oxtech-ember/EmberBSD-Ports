@@ -1,0 +1,36 @@
+Origin: EmberBSD, AI-assisted for the native Darwin bootstrap.
+bsd.lib.mk builds static libraries with
+"${AR} -c -q lib.a `NM=${NM} ${LORDER} objects | ${TSORT}`". The native
+Darwin bootstrap keeps lorder(1) off the tool PATH, so the command
+substitution was empty, the archive had no members, and pkg_install
+failed to link against libfetch.a. llvm-ranlib writes the archive symbol
+index, so member order does not matter. With EMBERBSD_DARWIN_BOOTSTRAP,
+the installed sys.mk defaults to LORDER=echo and TSORT=cat.
+Not submitted upstream.
+
+--- a/pkgtools/bootstrap-mk-files/Makefile
++++ b/pkgtools/bootstrap-mk-files/Makefile
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.62 2025/06/01 19:07:23 triaxx Exp $
+ 
+ PKGNAME=	bootstrap-mk-files-20250601
+-PKGREVISION=	2
++PKGREVISION=	3
+ CATEGORIES=	pkgtools
+ 
+ CONFLICTS+=	mk-files-[0-9]*
+@@ -49,6 +49,14 @@
+ 		-e 's|@ROOT_USER@|'${REAL_ROOT_USER}'|g'			\
+ 		-e 's|@SYSCONFDIR@|'${PKG_SYSCONFDIR}'|g'		\
+ 		$$own_mk > bsd.own.mk
++.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++# The native Darwin bootstrap has no lorder(1) on the tool PATH.
++# llvm-ranlib writes the archive symbol index, so the linker finds every
++# member regardless of order: list the objects as they are.
++	cd ${WRKSRC} && ${SED} -e 's|^LORDER?=.*|LORDER?=	echo|'	\
++		-e 's|^TSORT?=.*|TSORT?= 	cat|' sys.mk > sys.mk.ember &&	\
++		${MV} sys.mk.ember sys.mk
++.endif
+ 
+ do-install:
+ 	cd ${WRKSRC} && for file in bsd.* sys.mk; do			\

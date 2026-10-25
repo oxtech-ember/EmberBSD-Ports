@@ -79,3 +79,24 @@ python3 profiles/common-build-tools/tests/bootstrap-mk-files-darwin-objects.py \
 
 The test builds a one-object static library with the exported mk files.
 It fails with the unpatched rules.
+
+The library rules also order members with
+`` `NM=${NM} ${LORDER} objects | ${TSORT}` ``. The native Darwin bootstrap keeps
+`lorder` and `tsort` off the tool PATH, so that list was empty and
+`pkgtools/pkg_install` linked against an empty `libfetch.a`.
+[A second export patch](patches/pkgsrc-bootstrap-mk-files-darwin-archive.patch)
+makes the configured `sys.mk` default to `LORDER?= echo` and `TSORT?= cat`
+when `EMBERBSD_DARWIN_BOOTSTRAP` is `yes`. llvm-ranlib writes the archive
+symbol index, so the linker finds each member in any order.
+
+```sh
+python3 profiles/common-build-tools/tests/bootstrap-mk-files-darwin-archive.py \
+    --pkgsrc /absolute/exported-pkgsrc --bmake /absolute/bin/bmake \
+    --makeconf /absolute/MAKECONF --cc /absolute/bin/gcc \
+    --ar /absolute/bin/llvm-ar --ranlib /absolute/bin/llvm-ranlib \
+    --nm /absolute/bin/llvm-nm --work-parent /absolute/work
+```
+
+The test configures the recipe, builds a two-object library without
+`lorder` on PATH, then links and runs a program that needs both members.
+It fails on an export without the patch.
