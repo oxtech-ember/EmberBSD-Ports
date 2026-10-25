@@ -379,7 +379,7 @@
       "args": [
         "-U",
         "-a",
-        "printf 'hook:%s\\n'",
+        "print -rn -- hook:; print -r --",
         "input.txt",
         "after.txt"
       ],

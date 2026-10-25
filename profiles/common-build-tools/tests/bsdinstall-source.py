@@ -5,9 +5,12 @@
 """Check the fixed BSD install source contract without executing native tools."""
 
 import json
+import os
 from pathlib import Path
 import re
+import subprocess
 import sys
+import tempfile
 import unittest
 
 sys.dont_write_bytecode = True
@@ -66,6 +69,33 @@ def replay(originals, patch):
     if set(result) != set(originals):
         raise ValueError('Incomplete source patch')
     return result
+
+
+class ProfileShellTests(unittest.TestCase):
+    def test_after_hook_uses_only_selected_shell_builtins(self):
+        profile = json.loads(PROFILE.read_text())
+        case = next(row for row in profile['runtime_cases'] if row['name'] == 'after-hook')
+        self.assertEqual(case['args'], ['-U', '-a', 'print -rn -- hook:; print -r --',
+                                       'input.txt', 'after.txt'])
+        self.assertEqual(case['stdout'], 'hook:after.txt\n')
+        self.assertEqual(profile['required_tool_roles'], ['cc', 'sh', 'strip'])
+
+    def test_actual_selected_mksh_hook_needs_no_external_printf(self):
+        selected = os.environ.get('EMBERBSD_TEST_MKSH')
+        if selected is None:
+            self.skipTest('set EMBERBSD_TEST_MKSH to the explicitly selected native mksh')
+        self.assertTrue(Path(selected).is_absolute() and Path(selected).is_file())
+        profile = json.loads(PROFILE.read_text())
+        case = next(row for row in profile['runtime_cases'] if row['name'] == 'after-hook')
+        # The canonical afterinstall function appends one space and to_name.
+        command = case['args'][2] + ' ' + case['args'][-1]
+        with tempfile.TemporaryDirectory() as work:
+            result = subprocess.run([selected, '-c', command], cwd=work,
+                env=dict(PATH='', LC_ALL='C', TZ='UTC', TMPDIR=work),
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
+        self.assertEqual(result.returncode, case['exit'], result.stderr)
+        self.assertEqual(result.stdout, case['stdout'].encode())
+        self.assertEqual(result.stderr, b'')
 
 
 class SourceTests(unittest.TestCase):

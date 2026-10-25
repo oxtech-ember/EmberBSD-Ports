@@ -170,6 +170,8 @@ The patch keeps the upstream implementation and its BSD notices.
 It adds the opt-in `EMBERBSD_BSDINSTALL_SHELL` compile-time definition.
 The ordinary default remains `_PATH_BSHELL`.
 Both `-S` and `-a` use the selected shell in the initial build.
+The finite after-install case requires the selected mksh `print` builtin.
+It preserves the exact `hook:after.txt` line without an external `printf`.
 The existing `TARGET_STRIP` definition selects the native strip executable.
 Require one absolute selected invocation for both roles.
 Do not pass an argv tail through either C string definition.
