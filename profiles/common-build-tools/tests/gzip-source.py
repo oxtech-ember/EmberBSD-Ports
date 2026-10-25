@@ -17,7 +17,7 @@ import tarfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[3]
-RECIPE = ROOT / 'pkgsrc/archivers/gzip'
+RECIPE = None
 XZ_SHA256 = '9aa0cc780dec156b8282844833b342ab7cb08c25d2cd9a1869cdd0df31deff48'
 TAR_SHA256 = 'db2d827bc811f348a11da04484bd2c5971ff729a83c5d9f7a3ad6df206b94e92'
 ARGS = None
@@ -42,6 +42,8 @@ def metadata_inputs(value, pkgsrc):
                 (result.is_dir() if directory else result.is_file()), 'Metadata input is absent or indirect.')
         require(not executable or os.access(result, os.X_OK), 'Metadata tool is not executable.')
         return result
+    require(pkgsrc.is_absolute() and pkgsrc.resolve(strict=True) == pkgsrc,
+            'Metadata needs an absolute prepared export path.')
     require(isinstance(value, dict) and set(value) == {'make', 'work', 'environment', 'record'},
             'Metadata selection needs the complete make tuple, private work, environment and record.')
     make = value['make']
@@ -100,6 +102,9 @@ def native_metadata(value, pkgsrc):
     with record.open('x') as output:
         json.dump(dict(scope='source-metadata-fixture', ordinary_provider_qualified=False,
             argv=argv, environment=env, cwd=str(work), returncode=result.returncode,
+            inputs=[dict(path=str(path), sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+                    for path in (Path(make[0]), Path(shell), Path(mk) / 'sys.mk',
+                                 Path(env['MAKECONF']), fixture)],
             stdout=result.stdout, stderr=result.stderr), output, indent=2)
         output.write('\n')
     return result
@@ -111,9 +116,11 @@ class GzipSourceTests(unittest.TestCase):
         self.assertRegex(recipe, r'(?m)^DISTNAME=\s*gzip-1\.15$')
         self.assertNotRegex(recipe, r'(?m)^PKGREVISION=')
         replaces = (ROOT / 'pkgsrc/replaces').read_text().splitlines()
-        self.assertEqual(replaces.count('archivers/gzip'), 1)
-        self.assertNotIn('pkgsrc-gzip-zless-runtime.patch', (ROOT / 'pkgsrc/export.conf').read_text())
-        self.assertFalse((ROOT / 'profiles/common-build-tools/patches/pkgsrc-gzip-zless-runtime.patch').exists())
+        self.assertNotIn('archivers/gzip', replaces)
+        self.assertFalse((ROOT / 'pkgsrc/archivers/gzip').exists())
+        export = (ROOT / 'pkgsrc/export.conf').read_text().splitlines()
+        self.assertEqual(sum('pkgsrc-gzip-1.15.patch' in row for row in export), 1)
+        self.assertEqual(sum('pkgsrc-gzip-zless-runtime.patch' in row for row in export), 1)
 
     def test_existing_interfaces_and_bootstrap_archive_are_preserved(self):
         recipe = (RECIPE / 'Makefile').read_text()
@@ -154,11 +161,13 @@ class GzipSourceTests(unittest.TestCase):
             self.assertIn('Noteworthy changes in release 1.15 (2026-09-20) [stable]', source('NEWS'))
 
     def test_complete_export_keeps_the_common_recipe(self):
-        if ARGS.pkgsrc is None:
-            self.skipTest('Pass --pkgsrc for the full source export check.')
-        for path in RECIPE.rglob('*'):
-            if path.is_file():
-                self.assertEqual(path.read_bytes(), (ARGS.pkgsrc / 'archivers/gzip' / path.relative_to(RECIPE)).read_bytes())
+        manifest = (ROOT / 'profiles/common-build-tools/sources.tsv').read_text().splitlines()
+        rows = [row.split('\t') for row in manifest if row.startswith('pkgsrc-gzip-1.15.patch\t')]
+        self.assertEqual(len(rows), 1)
+        name, digest, url = rows[0]
+        patch = ROOT / 'profiles/common-build-tools/patches' / name
+        self.assertEqual(hashlib.sha256(patch.read_bytes()).hexdigest(), digest)
+        self.assertEqual(url, 'https://github.com/NetBSD/pkgsrc/commit/171d7b4ad9cf6d880db6340df4e239157725afd9.patch')
         self.assertFalse((ARGS.pkgsrc / 'archivers/gzip/patches').exists())
 
     def test_real_native_package_metadata(self):
@@ -181,8 +190,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--archive', type=Path, required=True, help='Official gzip-1.15.tar.xz')
     parser.add_argument('--tar', type=Path, required=True, help='Uncompressed archive used by pkgsrc')
-    parser.add_argument('--pkgsrc', type=Path, help='Complete prepared export')
+    parser.add_argument('--pkgsrc', type=Path, required=True, help='Complete prepared export')
     parser.add_argument('--metadata-selection', type=Path,
                         help='Explicit complete SDK make tuple, private work, environment and new record')
     ARGS, remainder = parser.parse_known_args()
+    if ARGS.metadata_selection is not None and not ARGS.metadata_selection.is_absolute():
+        parser.error('--metadata-selection must be absolute')
+    RECIPE = ARGS.pkgsrc / 'archivers/gzip'
     unittest.main(argv=[__file__, *remainder])

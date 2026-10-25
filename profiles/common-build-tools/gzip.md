@@ -2,10 +2,10 @@
 
 Origin: pkgsrc, maintained by EmberBSD (AI-assisted).
 
-This recipe replaces the inherited `archivers/gzip` recipe for every export.
+The recorded pkgsrc import updates the inherited `archivers/gzip` recipe in every export.
 It keeps all fourteen commands, manual pages, Info documentation and conflicts.
-The existing `LESS=less` selection keeps zless as a runtime pager frontend.
-It does not require less on the build host. The old export patch is retired.
+The existing `LESS=less` export patch keeps zless as a runtime pager frontend.
+It does not require less on the build host. No second recipe is maintained.
 
 GNU published the stable release on 2026-09-20.
 The [announcement](https://lists.gnu.org/archive/html/info-gnu/2026-09/msg00006.html)

@@ -1,5 +1,0 @@
-$NetBSD$
-
-BLAKE2s (gzip-1.15.tar) = 34ee8ab2c669b4d47bd125ee411b0d160fc25ccf5460cf0100a3ad3a2248bc90
-SHA512 (gzip-1.15.tar) = 5f87b39f9bb10637b373e72be94005fb8ea525896e71f24c95d2bceef5c6fc5fc233d8cf36cd1c0662eeef4f843a2ebd969c22c72f1487baa8086326347d0feb
-Size (gzip-1.15.tar) = 5396480 bytes

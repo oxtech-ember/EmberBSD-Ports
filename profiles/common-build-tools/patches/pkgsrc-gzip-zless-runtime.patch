@@ -1,0 +1,11 @@
+--- a/archivers/gzip/Makefile
++++ b/archivers/gzip/Makefile
+@@ -15,6 +15,8 @@
+ CONFLICTS+=		gzip-base-[0-9]* gzip-info-[0-9]* zutils-[0-9]*
+ 
+ GNU_CONFIGURE=	yes
++# zless is a runtime frontend. Do not require a pager on the build host.
++CONFIGURE_ENV+=	LESS=less
+ MAKE_FLAGS+=	manlinks=so
+ INFO_FILES=	yes
+ CHECK_PERMS=	no	# can't depend on checkperms; its distfile is gzipped
