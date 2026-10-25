@@ -77,3 +77,18 @@ guard. The cross guard is selected after platform discovery; this does not
 qualify the full cross dependency graph. A causal case restores the previous
 undefined-variable expression and must fail. External dependency includes are
 outside this check. It does not build or execute target programs.
+
+The upstream copyright test walks the source tree. pkgsrc places generated
+Khronos headers under `cmake-pkgsrc-build`, which is not matched by the
+upstream `build*` exclusion. The local patch excludes that exact directory.
+The source-only regression applies the patch to the verified source archive.
+It checks the upstream failure and patched pass for generated headers, then
+confirms that source files and similarly named directories remain checked.
+
+```sh
+python3 -B tests/copyright-build-dir.py \
+    --archive /absolute/SPIRV-Tools-2026.4.tar.gz \
+    --patch /absolute/patch-check-copyright-cmake-pkgsrc-build \
+    --patch-tool /absolute/patch \
+    --work-parent /absolute/private-test-parent
+```
