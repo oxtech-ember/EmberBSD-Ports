@@ -203,3 +203,24 @@ retain the actual package build and graduation evidence, and pass the BSD
 installer semantic cases. GNU `ginstall` can remain a distinct utility. It cannot
 satisfy the BSD `-U` installation contract. The NativeToolset mapping pins the
 selected `install` path; it does not infer installer semantics from a role name.
+
+## First ordinary foundation
+
+The Darwin bootstrap profile adds the common make, utility, package-tool and
+Meson providers only at the `lang/gcc16` root. Standard dependency edges supply
+`bootstrap-mk-files` for bmake and Ninja for Meson. Named metadata observations
+must establish the complete acyclic production graph before execution.
+Do not infer a fixed graph size from the root list.
+
+The accepted initial shell is mksh. The existing bmake, gmake and Ninja recipes
+select the final `${PREFIX}/bin/mksh` for their installed default shell.
+Bmake also selects `${PREFIX}/share/mk`. Keep the initial build shell separate
+from these final paths. Verify the actual configure arguments and output routes.
+Run `profiles/development-toolchain/tests/darwin-bootstrap-foundation.py` for
+finite source controls. These controls do not execute make or qualify outputs.
+
+Only completed providers in the accepted full plan can use its graduation.
+Keep initial tools in their original scope. Select `bin/bsdinstall` for ordinary
+`install`, even when coreutils also installs `bin/ginstall`. The remaining OS
+hostname program can be rebuilt with qualified GCC after foundation admission.
+It does not require another GCC bootstrap.

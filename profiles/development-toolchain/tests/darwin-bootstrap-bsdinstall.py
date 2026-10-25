@@ -76,6 +76,10 @@ def graph(policy):
               'sysutils/bsdinstall': ['pkgtools/libnbcompat'],
               'lang/llvm': ['pkgtools/libnbcompat'], 'shells/mksh': ['pkgtools/libnbcompat'],
               'pkgtools/libnbcompat': []}
+    roots = dependencies(apply_policy(policy, dict(EMBERBSD_DARWIN_BOOTSTRAP='yes',
+        BSD_PKG_MK='1', PKGPATH='lang/gcc16', LOCALBASE='/final/prefix')))
+    for name in roots:
+        result.setdefault(name, [])
     for name in result:
         result[name] += dependencies(apply_policy(policy, dict(EMBERBSD_DARWIN_BOOTSTRAP='yes',
             BSD_PKG_MK='1', PKGPATH=name, LOCALBASE='/final/prefix')))
@@ -107,7 +111,7 @@ class InstallerPolicyTests(unittest.TestCase):
         self.assertEqual(apply_policy(self.text, state), self.state)
         state['PKGPATH'] = 'lang/gcc16'
         apply_policy(self.text, state)
-        self.assertEqual(dependencies(state), ['sysutils/bsdinstall'])
+        self.assertIn('sysutils/bsdinstall', dependencies(state))
         previous = dict(state)
         self.assertEqual(apply_policy(self.text, state), previous)
         depth = 0
