@@ -288,6 +288,10 @@ retain their existing selection. The selected tools must provide `file`,
 BSD make. Its optional package-stage check verifies real `REQUIRES` values
 without installing a package. It does not qualify a native toolset.
 
+The [shared bundled nawk](nawk.md) keeps one tagged source and one parser
+payload for bootstrap and ordinary packages. Its source and metadata gates
+remain separate from compiler and runtime acceptance.
+
 ## Prepare and select
 
 ```sh

@@ -1,0 +1,14 @@
+Origin: EmberBSD (AI-assisted), select the current shared bundled awk snapshot.
+Retain stronger caller requirements and the existing bootstrap self guard.
+
+--- a/mk/tools/replace.mk
++++ b/mk/tools/replace.mk
+@@ -237,7 +237,7 @@
+ .  if ${PKGPATH} == lang/nawk
+ MAKEFLAGS+=			TOOLS_IGNORE.awk=
+ .  elif !empty(_TOOLS_USE_PKGSRC.awk:M[yY][eE][sS])
+-TOOLS_DEPENDS.awk?=		nawk>=20040207:../../lang/nawk
++TOOLS_DEPENDS.awk?=		nawk>=20260426:../../lang/nawk
+ TOOLS_CREATE+=			awk
+ TOOLS_PATH.awk=			${TOOLBASE}/bin/nawk
+ .  endif

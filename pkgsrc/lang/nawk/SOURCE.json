@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "upstream": {
+    "project": "https://github.com/onetrueawk/awk",
+    "tag": "20260426",
+    "commit": "5739fd79bcfc75ba7526773d0cf634521f8aca3c",
+    "archive": {
+      "file": "nawk-20260426.tar.gz",
+      "url": "https://codeload.github.com/onetrueawk/awk/tar.gz/refs/tags/20260426",
+      "sha256": "7ae5b9fc6a8149bc45ea0ba3ba434a69a16d1460d19f6d01b6f04cc885b8e02b",
+      "size": 1846240
+    }
+  },
+  "files": {
+    "awk.h": "awk.h",
+    "b.c": "b.c",
+    "parse.c": "parse.c",
+    "maketab.c": "maketab.c",
+    "main.c": "main.c",
+    "run.c": "run.c",
+    "awkgram.y": "awkgram.y",
+    "lex.c": "lex.c",
+    "LICENSE": "LICENSE",
+    "tran.c": "tran.c",
+    "proto.h": "proto.h",
+    "lib.c": "lib.c",
+    "FIXES": "FIXES",
+    "FIXES.1e": "FIXES.1e",
+    "REGRESS": "REGRESS",
+    "README.md": "README",
+    "awk.1": "nawk.1"
+  },
+  "adapted": [
+    "lib.c",
+    "run.c",
+    "nawk.1",
+    "testdir/REGRESS"
+  ],
+  "generated": [
+    "awkgram.tab.c",
+    "awkgram.tab.h",
+    "proctab.c"
+  ],
+  "bsd_ctype_commit": "https://github.com/NetBSD/pkgsrc/commit/7099c72bfddcbf9671d3a3478636cf05e73bbfaa",
+  "test_directories": [
+    "testdir",
+    "bugs-fixed"
+  ]
+}

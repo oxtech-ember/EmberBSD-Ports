@@ -1,0 +1,23 @@
+{
+  "inputs": {
+    "awkgram.y": "452c57bb2c797ab4acb6972048e883db47e9c52268dc17c984374823ed73e079",
+    "awk.h": "f86da3c2f83adf8632629db3a3a84e2c2ec37bc1ad72951128e3f2c09d8e3aef",
+    "proto.h": "4906218fb7061ab7baf98bf17ea3b70938e3471f1af886cc9cf9530d08400937",
+    "maketab.c": "f74dada43c14a559ade42374438fc4512f831d23266c4da01ac2a78fc18748e9"
+  },
+  "outputs": {
+    "awkgram.tab.c": "e594b1f47e3e0c535fcb04ed5b399e122a1bf3d2d8d0f1fc8ad3f53af720a63e",
+    "awkgram.tab.h": "91fe25299a6052c4a39bf0776d528a2a832baf5ca5461c4340ba042034558cc1",
+    "proctab.c": "44d355245ce41731f7ba6d25b4eaefdbcbe414bc7bac6801d046ddfb5aa8e5d7"
+  },
+  "tools": {
+    "byacc": {
+      "sha256": "04557dd5f6941b21f198684618ab518375a8c6aed3e8bd61bd89824b9ca0c5d8",
+      "version": "yacc - 2.0 20260126"
+    },
+    "cc": {
+      "sha256": "cb38756ab2e057de9cc032059843377d9e1203cf64c67fa552df1ed96752752e",
+      "version": "gcc (GCC) 16.2.0"
+    }
+  }
+}
