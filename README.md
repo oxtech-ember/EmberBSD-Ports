@@ -851,7 +851,8 @@ tabs between the fields. The export uses them in the order of the file:
 
 - `recipe SOURCE PKGPATH` copies a complete recipe from a profile.
 - `patch FILE` applies an infrastructure patch with zero fuzz and disables
-  patch backups (`-F 0 -V none`).
+  patch backups (`-F 0 -V none`). The SDK worker sets `PATCH_VERSION_CONTROL=none`.
+  Do not pass `--posix`; it changes file-name selection and blocks `/dev/null` additions.
 - `git-apply FILE MANIFEST` applies a binary patch after it checks the
   SHA256 in `MANIFEST`.
 - `recipe-patch FILE PKGPATH NAME` adds a patch to a recipe and its
@@ -859,8 +860,8 @@ tabs between the fields. The export uses them in the order of the file:
 - `file SOURCE DEST` copies a configuration file or helper into the export.
 
 The standalone Python, compatibility shell and LXQt entries refuse execution.
-The SDK has no exact source-export controller yet. A grep, metadata or relocation
-acceptance must not authorize an unrelated export.
+The SDK source-export controller pins the current Ports tree and selected tools.
+A grep, metadata or relocation acceptance cannot authorize another export.
 
 A developer can prepare and verify **source data** with explicit host regression
 tools. This operation does not admit these tools into SDK builds:

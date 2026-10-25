@@ -123,14 +123,15 @@ class ExportTests(unittest.TestCase):
         fixed = paths[2].read_bytes()
         context = b' SHA1 (patch-tests_generics_arrays.c-expected) = e5faf542e07fd5786c6dd3f1622816f0857427e4\n'
         self.assertEqual(fixed.count(context), 1)
-        old = fixed.replace(b'@@ -6,5 +6,6 @@\n', b'@@ -6,4 +6,5 @@\n').replace(context, b'')
-        start = old.index(b'--- a/lang/vala/distinfo\n')
-        end = old.index(b'--- /dev/null\n', start)
-        negative = self.work / 'vala-old-eof'
+        wrong = fixed.replace(context,
+            b' SHA1 (patch-tests_generics_arrays.c-expected) = ' + b'0' * 40 + b'\n')
+        start = wrong.index(b'--- a/lang/vala/distinfo\n')
+        end = wrong.index(b'--- /dev/null\n', start)
+        negative = self.work / 'vala-wrong-context'
         (negative / 'lang/vala').mkdir(parents=True)
         (negative / 'lang/vala/distinfo').write_bytes(before)
         with self.assertRaises(subprocess.CalledProcessError):
-            apply(negative, old[start:end])
+            apply(negative, wrong[start:end])
         self.assertEqual((negative / 'lang/vala/distinfo').read_bytes(), before)
         self.assertTrue((negative / 'lang/vala/distinfo.rej').is_file())
         output = apply(tree, fixed)
@@ -149,9 +150,12 @@ class ExportTests(unittest.TestCase):
         start = fixed.index(b'@@ -33,9 +33,14 @@\n')
         end = fixed.index(b'diff --git ', start)
         hunk = fixed[start:end]
-        context = b' NSS_CPU_ARCH.aarch64eb=\t\taarch64\n'
+        context = (b' MAKE_FLAGS+=\t\tNATIVE_EXTRA_SHARED_LIBS=\n'
+                   b' \n'
+                   b' NSS_CPU_ARCH.aarch64eb=\t\taarch64\n')
         self.assertTrue(hunk.endswith(context))
-        old = hunk.replace(b'@@ -33,9 +33,14 @@\n', b'@@ -33,8 +33,13 @@\n').removesuffix(context)
+        wrong = hunk.replace(b' NSS_CPU_ARCH.aarch64eb=\t\taarch64\n',
+                             b' NSS_CPU_ARCH.aarch64eb=\t\tnot-aarch64\n')
         header = b'--- a/devel/nss/Makefile\n+++ b/devel/nss/Makefile\n'
         before = (owner / 'upstream/pkgsrc/devel/nss/Makefile').read_bytes()
         old_lines = b''.join(line[1:] for line in hunk.splitlines(keepends=True)[1:]
@@ -159,14 +163,14 @@ class ExportTests(unittest.TestCase):
         new_lines = b''.join(line[1:] for line in hunk.splitlines(keepends=True)[1:]
                              if line.startswith((b' ', b'+')))
         self.assertEqual(before.count(old_lines), 1)
-        for name, data in [('old', old), ('fixed', hunk)]:
+        for name, data in [('wrong', wrong), ('fixed', hunk)]:
             tree = self.work / ('nss-context-' + name)
             directory = tree / 'devel/nss'
             directory.mkdir(parents=True)
             target = directory / 'Makefile'
             target.write_bytes(before)
             argv = self.selected.command('patch') + ('-f', '-E', '-d', str(tree), '-p1', '-F', '0')
-            if name == 'old':
+            if name == 'wrong':
                 with self.assertRaises(subprocess.CalledProcessError):
                     self.runner(argv, input=header + data)
                 self.assertEqual(target.read_bytes(), before)
@@ -467,6 +471,26 @@ class ExportTests(unittest.TestCase):
         (control / 'keep').write_bytes(b'before\n')
         self.runner([self.selected.command('patch')[0], '-f', '-d', str(control), '-p1', '-F', '0'], input=patch)
         self.assertEqual((control / 'plain').read_bytes(), b'')
+
+    def test_nbpatch_uses_supported_no_backup_mode(self):
+        if Path(self.selected.command('patch')[0]).name != 'nbpatch':
+            self.skipTest('Set EXPORT_TEST_PATCH to the SDK nbpatch executable.')
+        patch = (b'--- a/plain\n+++ b/plain\n@@ -1,3 +1,3 @@\n one\n-two\n+changed\n three\n'
+                 b'--- /dev/null\n+++ b/added\n@@ -0,0 +1 @@\n+new file\n')
+        (self.root / 'change.patch').write_bytes(patch)
+        (self.root / 'pkgsrc/export.conf').write_text('patch\tchange.patch\n')
+
+        self.fake_export('nbpatch-export')
+
+        self.assertEqual((self.work / 'nbpatch-export/plain').read_bytes(), b'one\nchanged\nthree\n')
+        self.assertEqual((self.work / 'nbpatch-export/added').read_bytes(), b'new file\n')
+        self.assertFalse((self.work / 'nbpatch-export/plain.orig').exists())
+        self.assertFalse((self.work / 'nbpatch-export/added.orig').exists())
+        command = next(argv for argv, options in self.commands
+                       if argv[0] == self.selected.command('patch')[0])
+        self.assertEqual(command[1:], ['-f', '-E', '-d', str(self.work / 'nbpatch-export'),
+                                       '-p1', '-F', '0', '-V', 'none'])
+        self.assertNotIn('--posix', command)
 
     def test_export_patch_disables_platform_default_backups(self):
         owner = HERE.parents[1]
