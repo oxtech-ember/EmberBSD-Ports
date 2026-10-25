@@ -215,8 +215,8 @@ selected `install` path; it does not infer installer semantics from a role name.
 
 ## First ordinary foundation
 
-The Darwin bootstrap profile adds the common make, utility, package-tool and
-Meson providers only at the `lang/gcc16` root. Standard dependency edges supply
+The Darwin bootstrap profile adds the common utility, package-tool and Meson
+providers only at the `lang/gcc16` root. Standard dependency edges supply
 `bootstrap-mk-files` for bmake and Ninja for Meson. Named metadata observations
 must establish the complete acyclic production graph before execution.
 Do not infer a fixed graph size from the root list.
@@ -228,8 +228,28 @@ from these final paths. Verify the actual configure arguments and output routes.
 Run `profiles/development-toolchain/tests/darwin-bootstrap-foundation.py` for
 finite source controls. These controls do not execute make or qualify outputs.
 
+## Make handoff
+
+The make is the only provider that changes during the plan. The profile lists
+the dependency closure of `devel/bmake` in `EMBERBSD_DARWIN_SEED_MAKE_RECIPES`.
+Only these recipes use the initial make and its bound mk files. Every other
+recipe gets a `BOOTSTRAP_DEPENDS` edge on `devel/bmake` and sets `MAKE` to
+`${LOCALBASE}/bin/bmake`. This includes `pkgtools/pkg_install`. That bmake reads
+`${LOCALBASE}/share/mk` from the Ports `bootstrap-mk-files`. The SDK keeps no
+recipe list. It starts a recipe with the Ports bmake when the recipe has a direct
+`devel/bmake` edge. bmake passes `-m` to child makes through `MAKEFLAGS`, so the
+initial command must not start these recipes.
+
+```sh
+python3 profiles/development-toolchain/tests/darwin-bootstrap-make-handoff.py \
+    /absolute/exported-pkgsrc /absolute/bmake /absolute/MAKECONF
+```
+
+The test checks that the list is the closure of `devel/bmake`. It also checks
+that later recipes such as `pkgtools/pkg_install` select the Ports bmake.
+
 Only completed providers in the accepted full plan can use its graduation.
-Keep initial tools in their original scope. Select `bin/bsdinstall` for ordinary
+Keep other initial tools in their original scope. Select `bin/bsdinstall` for ordinary
 `install`, even when coreutils also installs `bin/ginstall`. The remaining OS
 hostname program can be rebuilt with qualified GCC after foundation admission.
 It does not require another GCC bootstrap.

@@ -132,10 +132,12 @@ class FoundationTests(unittest.TestCase):
         self.assertNotIn('bin/ginstall', PROVIDERS['sysutils/coreutils'][1])
 
     def test_native_and_nonroot_policy_stays_unchanged(self):
+        seeds = model.seed_make_recipes(self.policy)
         for name in ('pkgtools/libnbcompat', 'devel/bmake', 'pkgtools/bootstrap-mk-files',
                      'devel/meson', 'devel/ninja-build', 'lang/llvm'):
-            state = dict(self.state, PKGPATH=name)
-            self.assertEqual(model.apply_policy(self.policy, dict(state)), state)
+            state = model.apply_policy(self.policy, dict(self.state, PKGPATH=name))
+            roots = [] if name in seeds else ['devel/bmake']
+            self.assertEqual(model.dependencies(state), roots, name)
         for changes in (dict(EMBERBSD_DARWIN_BOOTSTRAP='no', PKGPATH='lang/gcc16'),
                         dict(PKGPATH='lang/gcc16')):
             state = dict(self.state, **changes)

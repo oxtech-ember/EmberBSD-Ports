@@ -28,6 +28,12 @@ def apply_policy(text, state):
                 if bool(match[1]) == value:
                     return False
                 continue
+            match = re.fullmatch(r'(!?)empty\(([^:)]+):M\$\{([^}]+)\}\)', term)
+            if match:
+                member = state[match[3]] in state.get(match[2], '').split()
+                if bool(match[1]) != member:
+                    return False
+                continue
             match = re.fullmatch(r'\$\{([^}:]+)(?::U([^}]+))?\} (==|!=) "([^"]*)"', term)
             if not match:
                 raise AssertionError('Unexpected policy predicate: ' + term)
@@ -64,6 +70,12 @@ def apply_policy(text, state):
         state[key] = ((state.get(key, '') + ' ').lstrip() if op == '+=' else '') + value
     assert not stack
     return state
+
+
+def seed_make_recipes(policy):
+    state = apply_policy(policy, dict(EMBERBSD_DARWIN_BOOTSTRAP='yes', BSD_PKG_MK='1',
+                                      PKGPATH='devel/bmake', LOCALBASE='/final/prefix'))
+    return state['EMBERBSD_DARWIN_SEED_MAKE_RECIPES'].split()
 
 
 def dependencies(state):
@@ -124,20 +136,22 @@ class InstallerPolicyTests(unittest.TestCase):
         self.assertEqual(depth, 0, 'The deferred block is inside the early one-time guard')
 
     def test_ordinary_and_unrelated_contexts_are_unchanged(self):
-        for changes in (dict(EMBERBSD_DARWIN_BOOTSTRAP='no', PKGPATH='lang/gcc16'),
-                        dict(PKGPATH='lang/python315'), dict(PKGPATH='pkgtools/libnbcompat')):
-            state = dict(self.state, **changes)
-            before = dict(state)
-            self.assertEqual(apply_policy(self.text, state), before)
+        state = dict(self.state, EMBERBSD_DARWIN_BOOTSTRAP='no', PKGPATH='lang/gcc16')
+        before = dict(state)
+        self.assertEqual(apply_policy(self.text, state), before)
+        for name in ('lang/python315', 'pkgtools/libnbcompat'):
+            state = apply_policy(self.text, dict(self.state, PKGPATH=name))
+            self.assertNotIn('sysutils/bsdinstall', dependencies(state))
+            self.assertNotIn('EMBERBSD_BSDINSTALL_SHELL', state)
         state = dict(self.state, PKGPATH='lang/gcc16')
         del state['BSD_PKG_MK']
         self.assertEqual(apply_policy(self.text, dict(state)), state)
 
     def test_provider_children_use_final_bundle_paths(self):
         state = apply_policy(self.text, dict(self.state, PKGPATH='sysutils/bsdinstall'))
-        self.assertEqual(set(dependencies(state)), {'shells/mksh', 'lang/llvm'})
+        self.assertEqual(set(dependencies(state)), {'shells/mksh', 'lang/llvm', 'devel/bmake'})
         self.assertEqual(len(state['DEPENDS'].split()), 2)
-        self.assertNotIn('BOOTSTRAP_DEPENDS', state)
+        self.assertEqual(state['BOOTSTRAP_DEPENDS'].split(':../../')[1], 'devel/bmake')
         self.assertEqual(state['EMBERBSD_BSDINSTALL_SHELL'], '/final/prefix/bin/mksh')
         self.assertEqual(state['TOOLS_PLATFORM.strip'], '/final/prefix/bin/llvm-strip')
         for original, seed in (('${LOCALBASE}/bin/mksh', '${EMBERBSD_DARWIN_SH}'),
