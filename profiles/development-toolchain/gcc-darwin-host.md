@@ -94,6 +94,17 @@ selection remains conditional on Darwin:
   missing, outside and unqualified inputs before compiler children. Run it with
   selected SDK Python and `--sdk-source SOURCE`. Its source and synthetic argv
   checks do not rerun the Mach-O experiment or qualify a native toolset.
+  The stage 1 compiler keeps full checking, so its garbage collector defaults
+  (`ggc-min-expand=30`, `ggc-min-heapsize=4096`) differ from the release
+  defaults of the stage 2 compiler. Variable-location DWARF depends on when
+  collection runs, so 102 stage 2/3 objects differed in `__debug_loc`,
+  `__debug_info` or `__debug_line` while their code matched. The recipe passes
+  `BOOT_CFLAGS` with `-g -O2` and the same two `--param` values to stage 2 and
+  stage 3. [darwin-bootstrap-gc.py](tests/darwin-bootstrap-gc.py) checks the
+  recipe and compiles `libcody/buffer.cc` with both default sets. Without
+  the parameters only DWARF differs; with them the objects are identical. Its
+  Mach-O check takes the darwin-build-config.py selectors; `--recipe-only`
+  needs no compiler.
   [gcc-sdk-configure-diagnostics.patch](patches/gcc-sdk-configure-diagnostics.patch)
   is part of the shared GCC source for all consumers. The canonical
   [configure roster](patches/gcc-sdk-configure-diagnostics.files) includes all

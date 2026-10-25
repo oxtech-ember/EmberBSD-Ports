@@ -9,7 +9,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 
 --- a/lang/gcc16/Makefile.common
 +++ b/lang/gcc16/Makefile.common
-@@ -57,6 +57,84 @@
+@@ -57,6 +57,90 @@
  .if ${OPSYS} == "Darwin"
 -BUILDLINK_TRANSFORM+=	rm:-nodefaultrpaths
 +.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} != "yes"
@@ -79,6 +79,12 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 +# keeps Mach-O section addresses, so __eh_frame moves, and no LLVM tool can
 +# repack a Mach-O object. Keep the default stage 2/3 comparison instead.
 +CONFIGURE_ARGS+= --without-build-config
++# GCC records variable locations differently when garbage collection runs
++# at other points. The checking stage 1 compiler uses other collection
++# defaults than the stage 2 compiler, so stage 2/3 DWARF differs. Use the
++# same collection parameters for both stages; code is not affected.
++GCC16_DARWIN_BOOT_CFLAGS= -g -O2 --param ggc-min-expand=100 --param ggc-min-heapsize=131072
++MAKE_FLAGS+= BOOT_CFLAGS=${GCC16_DARWIN_BOOT_CFLAGS:Q}
 +.endif
 +# The common LLVM-MC source patch requires the Darwin port on all hosts.
 +# Upstream GCC does not support aarch64-apple-darwin. This diff is
@@ -96,7 +102,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 -.endif
  
  ## For graphite support.
-@@ -89,8 +163,10 @@
+@@ -89,8 +169,10 @@
  MAKE_ENV.NetBSD+=	ac_cv_func_uselocale=no
  MAKE_ENV.SunOS+=	ac_cv_func_mkostemp=no
  
@@ -109,7 +115,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
  # GCC 16.1.0's stage2/stage3 bootstrap comparison currently fails on
  # NetBSD/x86_64, so disable it. Revisit on updates.
  # https://gcc.gnu.org/pipermail/gcc-help/2026-August/145120.html
-@@ -157,6 +233,15 @@
+@@ -157,6 +239,15 @@
  GCC_TARGET_MACHINE?=	${MACHINE_GNU_PLATFORM}
  BUILD_DEFS+=		GCC_TARGET_MACHINE
  
@@ -141,7 +147,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 +++ b/lang/gcc16/Makefile
 @@ -7,1 +7,1 @@
 -PKGREVISION=	5
-+PKGREVISION=	9
++PKGREVISION=	10
 @@ -19,6 +19,19 @@
  
  ## The Library rpath to use in end programs.

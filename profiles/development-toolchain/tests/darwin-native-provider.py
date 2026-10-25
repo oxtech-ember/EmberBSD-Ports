@@ -39,6 +39,9 @@ def check_recipe(text):
     # Selected LLVM strip keeps Mach-O section addresses; bootstrap-debug cannot pass.
     assert '+CONFIGURE_ARGS+= --without-build-config\n' in text
     assert '--with-build-config' not in ''.join(line for line in text.split('\n') if line.startswith('+'))
+    # Stage 1 has checking GC defaults; GC timing changes stage 2/3 DWARF.
+    assert '+GCC16_DARWIN_BOOT_CFLAGS= -g -O2 --param ggc-min-expand=100 --param ggc-min-heapsize=131072\n' in text
+    assert '+MAKE_FLAGS+= BOOT_CFLAGS=${GCC16_DARWIN_BOOT_CFLAGS:Q}\n' in text
     # Keep the selected strip through configure and every recursive build.
     assert '+CONFIGURE_ENV+= GCC_COMPARE_DEBUG_STRIP=${STRIP:Q}\n' in text
     assert '+MAKE_ENV+= GCC_COMPARE_DEBUG_STRIP=${STRIP:Q}\n' in text
@@ -188,6 +191,7 @@ class ProviderSourceTests(unittest.TestCase):
                        text.replace('+MAKE_ENV+= GCC_COMPARE_DEBUG_STRIP=${STRIP:Q}\n', ''),
                        text.replace('+CONFIGURE_ENV+= GCC_COMPARE_DEBUG_STRIP=${STRIP:Q}\n', ''),
                        text + '+CONFIGURE_ARGS+= --enable-stage1-checking=release\n',
+                       text.replace('+MAKE_FLAGS+= BOOT_CFLAGS=${GCC16_DARWIN_BOOT_CFLAGS:Q}\n', ''),
                        text.replace("+SUBST_SED.vars+= -e '/-DLINK_LIBGCC_SPEC=/d'\n", ''),
                        text.replace('+SUBST_SED.vars+=', '+SUBST_CLASSES+= darwin-libgcc\n+SUBST_SED.darwin-libgcc+='),
                        text.replace("-e '/-DLINK_LIBGCC_SPEC=/d'", "-e '/-DLINK_LIBGCC_SPEC=/p'"),
