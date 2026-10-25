@@ -123,10 +123,12 @@ and installed EmberBSD numerical checks pass, including normal package
 removal and reinstallation. Companion BLAS/LAPACK runtime coverage remains pending.
 
 This opt-in source profile prepares canonical MesaLib 26.2.5nb6, adapted
-libdrm 2.4.134nb6, Wayland 1.26.0 (native nb1/cross nb2) and
+libdrm 2.4.134nb7, Wayland 1.26.0 (native nb1/cross nb2) and
 wayland-protocols 1.49 for EmberBSD/AArch64 and amd64, retaining the NetBSD 11 ABI.
 The amd64 profile includes RadeonSI. Mesa keeps its upstream DRM 3.54 minimum
 on other systems and uses the legacy reset path on NetBSD DRM 3.36.
+The libdrm skip-list test keeps its upstream benchmark sizes and moves its key
+array to the heap to fit the standard process stack.
 Native builds and the explicit
 [macOS/Linux cross composition](cross/profile.md) consume the existing
 [common build tools](../common-build-tools/README.md): GCC16, Python3.15,

@@ -55,3 +55,49 @@ Run GCC's `-fanalyzer` and Cppcheck separately on the full upstream and patched
 translation unit with the package's generated configuration and include paths.
 Those results are distinct from this focused parser execution and from the
 normal native or cross package build.
+
+# Skip-list allocation regression
+
+`skiplist-oom.py` compiles the supplied, patched `xf86drmSL.c` with an actual
+C fixture. The fixture forces list, head, random-state, and node allocation
+failures. It checks the API return values, head cleanup, insertion recovery,
+duplicate return value `1`, and the final allocation/free counts. It does not
+open a DRM device or submit GPU work.
+
+Pass the patched source from the prepared libdrm 2.4.134 source tree, its
+generated `config.h`, GCC16 for NetBSD, and a new diagnostic output directory.
+The compiler command and runtime command, source hashes, toolchain identity,
+and output streams are written into that directory.
+
+```sh
+python3 -B tests/skiplist-oom.py \
+    --source /absolute/libdrm-2.4.134/xf86drmSL.c \
+    --compiler /absolute/path/to/netbsd-gcc16 \
+    --config-header /absolute/libdrm-build/config.h \
+    --include-dir /absolute/libdrm-2.4.134 \
+    --include-dir /absolute/libdrm-2.4.134/include/drm \
+    --output /absolute/private/diagnostics/libdrm-skiplist
+```
+
+The output directory must not exist. Its parent directory must exist. Without
+a runner, execute only on a NetBSD host whose architecture matches GCC16's
+target. For cross compilation, repeat `--runner-arg` for each token in the
+target runner command. The script appends the built binary path as the final
+argument. The runner must be able to access that output path or stage the
+binary before execution.
+
+```sh
+python3 -B tests/skiplist-oom.py \
+    --source /absolute/libdrm-2.4.134/xf86drmSL.c \
+    --compiler /absolute/path/to/netbsd-cross-gcc16 \
+    --config-header /absolute/libdrm-build/config.h \
+    --include-dir /absolute/libdrm-2.4.134 \
+    --include-dir /absolute/libdrm-2.4.134/include/drm \
+    --output /absolute/private/diagnostics/libdrm-skiplist-cross \
+    --runner-arg /absolute/path/to/target-runner \
+    --runner-arg=--target-option
+```
+
+The selected compiler must report GCC 16 and a NetBSD target. The script does
+not select a compiler from `PATH`. Use the runner's documented argument
+syntax. Pass each option as a separate `--runner-arg` value.

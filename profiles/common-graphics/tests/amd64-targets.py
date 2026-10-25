@@ -138,7 +138,7 @@ def static_profile_checks():
         'MACHINE_ARCH} == "x86_64"' in mesa_makefile
         and "-Dgallium-drivers=iris,radeonsi,virgl,softpipe,llvmpipe,zink" in mesa_makefile
         and "PLIST.radeonsi=\tyes" in mesa_makefile
-        and "BUILDLINK_API_DEPENDS.libdrm+=\tlibdrm>=2.4.134nb6" in mesa_makefile,
+        and "BUILDLINK_API_DEPENDS.libdrm+=\tlibdrm>=2.4.134nb7" in mesa_makefile,
     )
     check(
         "libdrm amd64 profile enables its module and other targets keep it disabled",
@@ -148,8 +148,8 @@ def static_profile_checks():
         and "-Damdgpu=disabled" in drm_makefile,
     )
     check(
-        "common profile enforces libdrm 2.4.134nb6",
-        "libdrm>=2.4.134nb6" in profile and 'PKGREVISION:U} != "6"' in profile,
+        "common profile enforces libdrm 2.4.134nb7",
+        "libdrm>=2.4.134nb7" in profile and 'PKGREVISION:U} != "7"' in profile,
     )
     check(
         "common profile enforces MesaLib 26.2.5nb6",
@@ -232,11 +232,11 @@ def profile_checks():
 
         drm_arm = query(
             "MACHINE_ARCH=aarch64", "PKGPATH=x11/libdrm", "RECIPE=drm",
-            "DISTNAME=libdrm-2.4.134", "PKGREVISION=6"
+            "DISTNAME=libdrm-2.4.134", "PKGREVISION=7"
         )
         drm_amd = query(
             "MACHINE_ARCH=x86_64", "PKGPATH=x11/libdrm", "RECIPE=drm",
-            "DISTNAME=libdrm-2.4.134", "PKGREVISION=6"
+            "DISTNAME=libdrm-2.4.134", "PKGREVISION=7"
         )
         check(
             "AArch64 libdrm disables Intel and AMDGPU modules",
