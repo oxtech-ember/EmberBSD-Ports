@@ -72,6 +72,9 @@ cat > "$work/host-make" <<MAKE
         _MAKE="$work/host-make" "\$@"
 MAKE
 chmod +x "$work/host-make"
+mkdir -p "$work/toolbase/gcc16/bin"
+: > "$work/toolbase/gcc16/bin/cc"
+chmod +x "$work/toolbase/gcc16/bin/cc"
 run() {
     recipe=$1 conf=$2; shift 2
     MAKECONF="$work/$conf.conf" "$work/host-make" -C "$tree/$recipe" \
@@ -81,7 +84,7 @@ run() {
         -V 'deps=${DEPENDS} ${BUILD_DEPENDS} ${TOOL_DEPENDS}' \
         -V 'ldflags=${_GCC_LDFLAGS}' -V 'wrapcc=${_WRAP_EXTRA_ARGS.CC}' \
         -V 'wrapcxx=${_WRAP_EXTRA_ARGS.CXX}' -V 'wrappers=${WRAPPER_TARGETS}' \
-        -V 'gccdeps=${BUILDLINK_API_DEPENDS.gcc16}' \
+        -V 'gccdeps=${BUILDLINK_API_DEPENDS.gcc16}' -V 'floor=${_GCC_REQD}' \
         -V 'python=${_PYTHON_VERSION}' -V 'platforms=${ONLY_FOR_PLATFORM}' \
         -V 'v3d=${PLIST.v3d:Uno}' -V 'meson=${MESON_ARGS}' -V 'fail=${PKG_FAIL_REASON}' "$@"
 }
@@ -131,13 +134,19 @@ selected cxx textproc/icu tools
 selected python lang/python315 tools
 selected llvm lang/llvm tools
 selected clang lang/clang tools
+run devel/zlib tools \
+    "GCCBASE=$work/toolbase/gcc16" "TOOLBASE=$work/toolbase" _GCC_VERSION=16.2.0 \
+    > "$work/exact-version-floor.log" 2>&1
+diagnostics "$work/exact-version-floor.log"
+grep -qx 'floor=16.2' "$work/exact-version-floor.log"
+echo 'PASS: package GCC 16.2.0 contributes the supported 16.2 compiler floor'
 selected graphics graphics/MesaLib graphics
 selected libdrm x11/libdrm graphics
 grep "^platforms=.*NetBSD-11.\*-$arch" "$work/graphics.log" >/dev/null
 grep "^platforms=.*NetBSD-11.\*-$arch" "$work/libdrm.log" >/dev/null
 case "$arch" in
     aarch64) drivers=v3d,virgl,softpipe,llvmpipe,zink; v3d=yes ;;
-    x86_64) drivers=iris,virgl,softpipe,llvmpipe,zink; v3d=no ;;
+    x86_64) drivers=iris,radeonsi,virgl,softpipe,llvmpipe,zink; v3d=no ;;
 esac
 grep "^meson=.*-Dgallium-drivers=$drivers " "$work/graphics.log" >/dev/null
 grep -qx "v3d=$v3d" "$work/graphics.log"

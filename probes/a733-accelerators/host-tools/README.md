@@ -21,14 +21,15 @@ target Mesa sources unchanged. Use the current common host tools from
 | Native LLVM SDK | 23.1.3, archive SHA256 `3dcfd88aec10be204a24037bcb0dc0ad777882e9dbe8ac60e2639060d8a794b1` |
 | SPIRV-LLVM-Translator | [v23.1.2](https://github.com/KhronosGroup/SPIRV-LLVM-Translator/tree/e65dde28ce8f12ef7245914fa2850260328669e4), commit `e65dde28ce8f12ef7245914fa2850260328669e4` |
 | SPIRV-Tools | [v2026.4](https://github.com/KhronosGroup/SPIRV-Tools/tree/ef96ed763b43b59b33b31b362f09a02b729fa1c9), commit `ef96ed763b43b59b33b31b362f09a02b729fa1c9` |
-| SPIRV-Headers | Tools v2026.4 DEPS pin [`496543121ce6419f23d6fa5d7194ba66c36212d2`](https://github.com/KhronosGroup/SPIRV-Headers/tree/496543121ce6419f23d6fa5d7194ba66c36212d2) |
+| SPIRV-Headers | [vulkan-sdk-1.4.363.0](https://github.com/KhronosGroup/SPIRV-Headers/tree/496543121ce6419f23d6fa5d7194ba66c36212d2), Tools v2026.4 DEPS pin `496543121ce6419f23d6fa5d7194ba66c36212d2` |
 
 Translator 23 matches LLVM 23. The translator main branch targets LLVM 24.
 Use the same Headers checkout for Tools and Translator. Build their static
 libraries and command-line tools into one isolated dependency prefix.
 Keep Translator assertions and SPIRV-Tools warnings enabled.
 
-The dependency builder applies [the linker fix](spirv-tools-2026.4-function-order.patch)
+The dependency builder applies the shared recipe's
+[linker fix](../../../pkgsrc/parallel/spirv-tools/patches/patch-source_link_linker.cpp)
 to this exact SPIRV-Tools revision. It verifies the source hash and rejects
 unrelated source changes. The original linker puts declarations from later
 modules after earlier definitions. Such partial libraries fail `spirv-val`.
@@ -36,6 +37,15 @@ The fix preserves declaration and definition order within their groups.
 It does not change function names, call targets, or linkage resolution.
 This AI-assisted downstream patch retains the upstream Apache-2.0 license.
 It has not been submitted to or accepted by SPIRV-Tools upstream.
+The recipe owns the patch. The host helper consumes both canonical source
+patches with `git apply -p0`; it does not maintain another implementation.
+The installed GoogleTest and Effcee options stay OFF in this existing host
+workflow. The shared native recipe enables both options and uses the common
+GoogleTest, Effcee and RE2 providers for its full unit suite.
+The helper verifies all expected patched files and the exact Git status.
+It can resume a known subset after interruption and rejects other edits.
+Recipe integration is checked at the source level. New native package builds
+and their consumer checks remain separate acceptance steps.
 
 The builder runs the [real-tool regression](check-spirv-link-order.py) before
 installing SPIRV-Tools. Run it separately with:

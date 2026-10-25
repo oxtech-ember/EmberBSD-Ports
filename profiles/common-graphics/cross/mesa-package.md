@@ -1,5 +1,10 @@
 # Accept the installed common Mesa package
 
+The 26.2.5nb3 recipe includes the [POSIX PRIME import repair and source controls](../../../pkgsrc/graphics/MesaLib/tests/README.md)
+retain Linux UDMABUF allocation separately. Native exporter mmap, a complete
+package build and compositor acceptance remain required for this new delta.
+The older package receipts below keep their original scope.
+
 The [Linux/GCC16 nb9 receipt](mesa-linux-aarch64.md) passes installed llvmpipe
 rendering, all 39 upstream invocations, exact payload/library checks and
 normal removal/reinstallation in the E34 AArch64 VM. Its default package

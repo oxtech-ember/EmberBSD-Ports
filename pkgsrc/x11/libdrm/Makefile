@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.126 2026/05/29 09:02:25 wiz Exp $
 # Origin: EmberBSD; AI-assisted matched native-identity source candidate.
 DISTNAME=	libdrm-2.4.134
-PKGREVISION=	4
+PKGREVISION=	5
 CATEGORIES=	x11 graphics
 MASTER_SITES=	https://dri.freedesktop.org/libdrm/
 EXTRACT_SUFX=	.tar.xz
@@ -25,8 +25,8 @@ CFLAGS+=	-Werror -Wno-error=cpp
 .if !defined(EMBERBSD_COMMON_GRAPHICS)
 PKG_FAIL_REASON+= "libdrm requires the prepared common graphics profile"
 .endif
-.if ${DISTNAME} != "libdrm-2.4.134" || ${PKGREVISION} != "4"
-PKG_FAIL_REASON+= "The common graphics profile requires adapted libdrm 2.4.134nb4"
+.if ${DISTNAME} != "libdrm-2.4.134" || ${PKGREVISION} != "5"
+PKG_FAIL_REASON+= "The common graphics profile requires adapted libdrm 2.4.134nb5"
 .endif
 SUBST_CLASSES+=	atomic
 SUBST_FILES.atomic=	xf86drm.h
@@ -39,15 +39,18 @@ ATOMIC_OPS_CHECK=	1
 .else
 .include "../../devel/libatomic_ops/buildlink3.mk"
 .endif
-PLIST_VARS+= intel
+PLIST_VARS+= intel amdgpu
 .if ${MACHINE_ARCH} == "x86_64"
 MESON_ARGS+=	-Dintel=enabled
+MESON_ARGS+=	-Damdgpu=enabled
 PLIST.intel=	yes
+PLIST.amdgpu=	yes
 .include "../../sysutils/libpciaccess/buildlink3.mk"
 .else
 MESON_ARGS+=	-Dintel=disabled
+MESON_ARGS+=	-Damdgpu=disabled
 .endif
-.for module in radeon amdgpu nouveau vmwgfx omap exynos freedreno tegra vc4 etnaviv
+.for module in radeon nouveau vmwgfx omap exynos freedreno tegra vc4 etnaviv
 MESON_ARGS+=	-D${module}=disabled
 .endfor
 MESON_ARGS+=	-Dman-pages=disabled -Dcairo-tests=disabled -Dvalgrind=disabled

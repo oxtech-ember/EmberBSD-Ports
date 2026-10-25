@@ -4,11 +4,12 @@ This runner starts the installed Plasma Desktop shell as an ordinary user.
 It uses KWin's virtual Wayland backend and requires the V3D OpenGL renderer.
 It keeps the user's existing desktop configuration separate.
 The shared `check-results.sh` also accepts an explicit third argument,
-`v3d` or `powervr-zink`, for the full [installed session runner](../plasma-session/README.md).
-Two-argument checks keep the V3D default. This desktop-only launcher still
-uses V3D and its existing civil `kern.boottime` comparison. A UTC correction
-can make that comparison fail. This profile update does not qualify a new
-desktop-only run or repair its clock handling.
+`v3d`, `powervr-zink` or `radeonsi`, for the full
+[installed session runner](../plasma-session/README.md). Two-argument checks
+keep the V3D default. This desktop-only launcher still uses V3D and its
+existing civil `kern.boottime` comparison. A UTC correction can make that
+comparison fail. This profile update does not qualify a new desktop-only run
+or repair its clock handling.
 
 ## Requirements and use
 

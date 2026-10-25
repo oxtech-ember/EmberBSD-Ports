@@ -101,7 +101,9 @@ def build(arguments, sdk_root):
                graphics / 'cross/seal-mesa-generators.py', helpers / 'build-deps.py', helpers / 'configure-host.sh',
                helpers / 'prepare-llvm-include-overlay.py', helpers / 'llvm-include-wrapper.sh',
                helpers / 'apply-spirv-tools-patches.py', helpers / 'check-spirv-link-order.py',
-               helpers / 'spirv-tools-2026.4-function-order.patch', helpers / 'mesa-26.2.4-pco-bvnc.patch',
+               PORTS / 'pkgsrc/parallel/spirv-tools/patches/patch-source_link_linker.cpp',
+               PORTS / 'pkgsrc/parallel/spirv-tools/patches/patch-installed-gtest',
+               helpers / 'mesa-26.2.4-pco-bvnc.patch',
                PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h',
                graphics / 'sources.tsv', PORTS / 'profiles/common-build-tools/sources.tsv']
     scripts.append(Path(sdk_source.__file__).resolve())

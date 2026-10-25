@@ -5,10 +5,11 @@ set -eu
 [ "$#" = 2 ] || { echo "Usage: $0 CONFIG_GENERATOR NEW_WORK" >&2; exit 2; }
 generator=$1
 mkdir "$2"
-work=$(CDPATH= cd -- "$2" && pwd)
+work=$(CDPATH= cd -- "$2" && pwd -P)
 prefix=$work/gcc16
 mkdir -p "$prefix/bin" "$prefix/lib/gcc/aarch64--netbsd/16.2.0" \
     "$prefix/lib" "$prefix/include/c++/16.2.0/aarch64--netbsd" "$prefix/include/c++/16.2.0/backward"
+mkdir -p "$work/build/bin" "$work/build/lib"
 private=$prefix/lib/gcc/aarch64--netbsd/16.2.0
 for file in crtbegin.o crtbeginS.o crtend.o crtendS.o libgcc.a; do : > "$private/$file"; done
 for file in libgcc_s.so.1 libstdc++.so; do : > "$prefix/lib/$file"; done
@@ -32,19 +33,29 @@ case "$1" in
     *) exit 2 ;;
 esac
 GCC
-cat > "$work/clang-metadata" <<'CLANG'
+cat > "$work/build/bin/clang-metadata" <<'CLANG'
 #!/bin/sh
+if [ -n "${MOCK_EXPECT_LIBRARY:-}" ]; then
+    case ":${LD_LIBRARY_PATH-}:" in *":$MOCK_EXPECT_LIBRARY:"*) ;; *) exit 9 ;; esac
+fi
+if [ -n "${MOCK_EXPECT_PREVIOUS:-}" ]; then
+    case ":${LD_LIBRARY_PATH-}:" in *":$MOCK_EXPECT_PREVIOUS:"*) ;; *) exit 9 ;; esac
+fi
 case "$*" in *--target=*) echo aarch64-unknown-netbsd; exit ;; esac
 echo "${MOCK_TRIPLE:-aarch64-unknown-netbsd}"
 CLANG
-chmod +x "$prefix/bin/gcc" "$work/clang-metadata"
-sh "$generator" "$prefix/bin/gcc" "$work/clang-metadata" "$prefix" "$work/config"
+chmod +x "$prefix/bin/gcc" "$work/build/bin/clang-metadata"
+sh "$generator" "$prefix/bin/gcc" "$work/build/bin/clang-metadata" "$prefix" "$work/config"
 grep -Fqx -- "-B$private/" "$work/config/aarch64-unknown-netbsd.cfg"
 grep -Fqx -- "\$-Wl,-rpath,$prefix/lib" "$work/config/aarch64-unknown-netbsd.cfg"
 [ "$(grep -c '^-stdlib++-isystem' "$work/config/aarch64-unknown-netbsd.cfg")" = 3 ]
+MOCK_EXPECT_LIBRARY="$work/build/lib" MOCK_EXPECT_PREVIOUS="$work/previous" \
+    LD_LIBRARY_PATH="$work/previous" sh "$generator" "$prefix/bin/gcc" \
+    "$work/build/bin/clang-metadata" "$prefix" "$work/ld-path-config"
+echo 'PASS: native Clang build library precedes existing LD_LIBRARY_PATH'
 reject() {
     name=$1; shift
-    if env "$@" sh "$generator" "$prefix/bin/gcc" "$work/clang-metadata" "$prefix" \
+    if env "$@" sh "$generator" "$prefix/bin/gcc" "$work/build/bin/clang-metadata" "$prefix" \
         "$work/$name" > "$work/$name.log" 2>&1; then echo "FAIL: accepted $name" >&2; exit 1; fi
     [ ! -e "$work/$name" ]
     echo "PASS: rejected $name"
@@ -62,7 +73,7 @@ ln -s "$work/libgcc_s.so.1" "$prefix/lib/libgcc_s.so.1"
 reject escaped-runtime
 rm "$prefix/lib/libgcc_s.so.1"
 mv "$work/libgcc_s.so.1" "$prefix/lib/libgcc_s.so.1"
-if sh "$generator" "$prefix/bin/gcc" "$work/clang-metadata" "$prefix" "$work/config" \
+if sh "$generator" "$prefix/bin/gcc" "$work/build/bin/clang-metadata" "$prefix" "$work/config" \
     > "$work/existing.log" 2>&1; then exit 1; fi
 echo 'PASS: GCC metadata contracts (fixture metadata, not real GCC execution)'
 clang=${CLANG:-clang}

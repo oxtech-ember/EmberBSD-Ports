@@ -23,6 +23,7 @@ include/libsync.h
 ${PLIST.intel}include/libdrm/intel_aub.h
 ${PLIST.intel}include/libdrm/intel_bufmgr.h
 ${PLIST.intel}include/libdrm/intel_debug.h
+${PLIST.amdgpu}include/libdrm/amdgpu.h
 include/xf86drm.h
 include/xf86drmMode.h
 lib/libdrm.so
@@ -31,5 +32,10 @@ lib/libdrm.so.2.134.0
 ${PLIST.intel}lib/libdrm_intel.so
 ${PLIST.intel}lib/libdrm_intel.so.1
 ${PLIST.intel}lib/libdrm_intel.so.1.134.0
+${PLIST.amdgpu}lib/libdrm_amdgpu.so
+${PLIST.amdgpu}lib/libdrm_amdgpu.so.1
+${PLIST.amdgpu}lib/libdrm_amdgpu.so.1.134.0
 ${PLIST.intel}lib/pkgconfig/libdrm_intel.pc
+${PLIST.amdgpu}lib/pkgconfig/libdrm_amdgpu.pc
 lib/pkgconfig/libdrm.pc
+${PLIST.amdgpu}share/libdrm/amdgpu.ids

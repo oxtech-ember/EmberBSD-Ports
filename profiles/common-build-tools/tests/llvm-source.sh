@@ -120,6 +120,8 @@ grep -qF 'Missing patch: pkgsrc/lang/llvm/patches/patch-cmake_config-ix.cmake' "
 grep -q 'PKG_FAIL_REASON.*not prepared' "$work/pkgsrc/lang/llvm/version.mk"
 grep -q -- '-DLLVM_INSTALL_GTEST=ON' "$work/pkgsrc/lang/llvm/options.mk"
 grep -q -- '-DLIBCLANG_BUILD_STATIC=ON' "$work/pkgsrc/lang/clang/Makefile.common"
+grep -Fq '${WRKSRC}/${CMAKE_BUILD_DIR}/bin/clang ${LOCALBASE}/gcc16 ${WRKDIR}/native-config' \
+    "$work/pkgsrc/lang/clang/Makefile.common"
 grep -q -- '-DLLVM_ENABLE_RTTI=ON' "$work/pkgsrc/lang/llvm/Makefile"
 grep -q -- '-DLLVM_LINK_LLVM_DYLIB=ON' "$work/pkgsrc/lang/llvm/Makefile"
 ! grep -q '^LLVM_EXPERIMENTAL_TARGETS=.*SPIRV' "$work/pkgsrc/lang/llvm/options.mk"

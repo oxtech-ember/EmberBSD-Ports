@@ -7,12 +7,25 @@ gcc=$1 clang=$2 prefix=$3 output=$4
 fail() { echo "Invalid common GCC metadata: $*" >&2; exit 1; }
 case "$gcc:$clang:$prefix:$output" in *[!a-zA-Z0-9_./:+-]*) fail 'unsafe path' ;; esac
 [ -x "$gcc" ] && [ -x "$clang" ] || fail 'missing compiler'
+clang_bin=${clang%/*}
+if [ "$clang_bin" = "$clang" ]; then clang_lib=; else clang_lib=${clang_bin%/*}/lib; fi
+run_clang() {
+    if [ -n "$clang_lib" ] && [ -d "$clang_lib" ]; then
+        if [ -n "${LD_LIBRARY_PATH-}" ]; then
+            LD_LIBRARY_PATH="$clang_lib:$LD_LIBRARY_PATH" "$clang" "$@"
+        else
+            LD_LIBRARY_PATH="$clang_lib" "$clang" "$@"
+        fi
+    else
+        "$clang" "$@"
+    fi
+}
 [ ! -e "$output" ] && [ ! -L "$output" ] || fail 'output exists'
 prefix=$(realpath "$prefix")
 [ "$("$gcc" -dumpfullversion)" = 16.2.0 ] || fail 'expected GCC 16.2.0'
 gcc_target=$("$gcc" -dumpmachine)
-triple=$("$clang" --no-default-config -print-target-triple)
-normalized=$("$clang" --no-default-config --target="$gcc_target" -print-target-triple)
+triple=$(run_clang --no-default-config -print-target-triple)
+normalized=$(run_clang --no-default-config --target="$gcc_target" -print-target-triple)
 case "$triple:$normalized" in *[!a-zA-Z0-9_.:+-]*) fail 'invalid target' ;; esac
 case "$triple" in *-netbsd*) ;; *) fail 'native target must be NetBSD' ;; esac
 case "$normalized" in *-netbsd*) ;; *) fail 'GCC target must be NetBSD' ;; esac

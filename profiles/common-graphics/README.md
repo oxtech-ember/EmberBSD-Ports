@@ -122,12 +122,15 @@ ordinary GCC16 AArch64 package passes all 613 payload checks. Four native
 and installed EmberBSD numerical checks pass, including normal package
 removal and reinstallation. Companion BLAS/LAPACK runtime coverage remains pending.
 
-This opt-in source profile prepares canonical MesaLib 26.2.4nb9, adapted
-libdrm 2.4.134nb4, Wayland 1.26.0 (native nb1/cross nb2) and wayland-protocols 1.49
-for EmberBSD/AArch64, retaining the NetBSD 11 ABI. Native builds and the explicit
+This opt-in source profile prepares canonical MesaLib 26.2.5nb5, adapted
+libdrm 2.4.134nb5, Wayland 1.26.0 (native nb1/cross nb2) and
+wayland-protocols 1.49 for EmberBSD/AArch64 and amd64, retaining the NetBSD 11 ABI.
+The amd64 profile includes RadeonSI. Mesa keeps its upstream DRM 3.54 minimum
+on other systems and uses the legacy reset path on NetBSD DRM 3.36.
+Native builds and the explicit
 [macOS/Linux cross composition](cross/profile.md) consume the existing
 [common build tools](../common-build-tools/README.md): GCC16, Python3.15,
-Meson1.12.1 and shared LLVM23.1.3 remain one dependency graph with final
+Meson1.12.1 and shared LLVM23.1.4 remain one dependency graph with final
 `LOCALBASE=PREFIX=/usr/pkg`. Plasma Mobile uses this exact graphics layer.
 The default, development-toolchain and common-build-tools exports keep their
 original graphics recipes. The whole installed graphics stack and a Mobile
@@ -373,15 +376,21 @@ OSMesa, XA and GLVND are outside this candidate. Requests for unsupported
 Mesa options fail; they do not install older providers. Unselected optional
 libelf/Lua/XCB-keysyms are absent from the buildlink sandbox.
 
-libdrm is deliberately core-only. Intel, Radeon, AMDGPU, Nouveau, VMware and
-physical ARM client modules, man pages and test-program installation are
-disabled; upstream tests remain enabled. Unconditional kernel UAPI headers
-remain installed. A consumer requiring `libdrm_amdgpu`, `libdrm_intel` or
-another disabled client module is a migration blocker. Adapted revision
-`nb2` includes PCI and platform metadata discovery and prevents an
-unpatched libdrm2.4.134 package satisfying the native
-identity requirement. The canonical recipe omits pkgsrc's native-X11
+libdrm enables its Intel and AMDGPU client modules on amd64. Radeon, Nouveau,
+VMware and physical ARM client modules, man pages and test-program installation
+remain disabled. Upstream tests remain enabled. Unconditional kernel UAPI
+headers remain installed. The AMDGPU module installs its public header, shared
+library, pkg-config metadata and device ID table. The adapted recipe includes
+PCI and platform metadata discovery and prevents an unpatched package from
+satisfying the native identity requirement. It omits pkgsrc's native-X11
 avoid-duplicate skip, so actual dependency selection still builds libdrm.
+
+The amd64 Mesa selection includes RadeonSI and its `radeonsi_dri.so` DRI
+alias. The NetBSD compatibility patch accepts AMDGPU DRM 3.36 and keeps
+Mesa's legacy reset path. Other systems retain the upstream DRM 3.54 minimum.
+Source selection does not establish package or hardware acceptance. Validate
+the required kernel operations and the hardware renderer on the target.
+Software rendering remains a separate recovery option.
 
 Both Mesa and libdrm PLISTs match their complete cross-staged payloads and
 pass normal package checks. Mesa's installed CPU rendering and upstream

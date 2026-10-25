@@ -1,0 +1,80 @@
+$NetBSD$
+
+Use installed GoogleTest, Effcee and RE2 without dropping unit tests.
+Keep imported targets and compatibility aliases visible to sibling directories.
+Do not set project-folder properties on aliases of installed targets.
+The default remains the upstream vendored GoogleTest path.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+The upstream Apache-2.0 licence and authorship are unchanged.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -317,6 +317,57 @@
+   set(SPIRV_SKIP_TESTS ON)
+ endif()
+ option(SPIRV_SKIP_TESTS "Skip building tests along with the library")
++
++# Imported targets must be created here so sibling test directories can use them.
++option(SPIRV_USE_INSTALLED_GTEST "Use the installed GoogleTest package for tests" OFF)
++if(SPIRV_USE_INSTALLED_GTEST)
++  if(SPIRV_SKIP_TESTS)
++    message(FATAL_ERROR "SPIRV_USE_INSTALLED_GTEST requires SPIRV_SKIP_TESTS=OFF")
++  endif()
++  find_package(GTest 1.18.0 CONFIG REQUIRED)
++  foreach(component gtest gtest_main gmock gmock_main)
++    if(NOT TARGET GTest::${component})
++      message(FATAL_ERROR "Installed GoogleTest lacks GTest::${component}")
++    endif()
++    if(TARGET ${component})
++      message(FATAL_ERROR "Installed GoogleTest cannot replace existing ${component}")
++    endif()
++    add_library(${component} ALIAS GTest::${component})
++  endforeach()
++  # A wrapper may add a package include path during compiler detection.
++  # CMake then marks a matching imported SYSTEM include as implicit and drops
++  # its flag. Restore SYSTEM for that exact directory on each imported target.
++  if(CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang|AppleClang)$")
++    foreach(_gtest_component gtest gtest_main gmock gmock_main)
++      set(_gtest_target GTest::${_gtest_component})
++      get_target_property(_gtest_system_include_dirs ${_gtest_target}
++        INTERFACE_SYSTEM_INCLUDE_DIRECTORIES)
++      foreach(_gtest_include_dir IN LISTS _gtest_system_include_dirs)
++        if(_gtest_include_dir IN_LIST CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES)
++          set_property(TARGET ${_gtest_target} APPEND PROPERTY
++            INTERFACE_COMPILE_OPTIONS "SHELL:-isystem \"${_gtest_include_dir}\"")
++        endif()
++      endforeach()
++    endforeach()
++  endif()
++endif()
++
++option(SPIRV_USE_INSTALLED_EFFCEE "Use installed Effcee and RE2 for tests" OFF)
++if(SPIRV_USE_INSTALLED_EFFCEE)
++  if(SPIRV_SKIP_TESTS)
++    message(FATAL_ERROR "SPIRV_USE_INSTALLED_EFFCEE requires SPIRV_SKIP_TESTS=OFF")
++  endif()
++  find_package(re2 CONFIG REQUIRED)
++  find_package(effcee 1.2026.0 CONFIG REQUIRED)
++  if(NOT TARGET re2::re2 OR NOT TARGET effcee::effcee)
++    message(FATAL_ERROR "Installed test dependencies must provide re2::re2 and effcee::effcee")
++  endif()
++  if(TARGET re2 OR TARGET effcee)
++    message(FATAL_ERROR "Installed test dependencies cannot replace existing re2 or effcee")
++  endif()
++  add_library(re2 ALIAS re2::re2)
++  add_library(effcee ALIAS effcee::effcee)
++endif()
+ 
+ # Defaults to ON.  The checks can be time consuming.
+ # Turn off if they take too long.
+--- external/CMakeLists.txt.orig
++++ external/CMakeLists.txt
+@@ -123,7 +123,7 @@
+       pop_variable(BUILD_SHARED_LIBS)
+     endif()
+   endif()
+-  if (TARGET gmock)
++  if (TARGET gmock AND NOT SPIRV_USE_INSTALLED_GTEST)
+     set(GTEST_TARGETS
+       gtest
+       gtest_main
