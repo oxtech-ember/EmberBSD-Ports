@@ -136,7 +136,7 @@ _EMBERBSD_MESA_LIBELF_ROOT=	/
 PKG_FAIL_REASON+= "Mesa requires an absolute SDK source for base libelf verification"
 .endif
 _EMBERBSD_MESA_LIBELF_RECIPE=	${.CURDIR:H:H}/devel/elftoolchain
-_EMBERBSD_MESA_LIBELF_CHECK=	${TOOL_PYTHONBIN:Q} -E -S ${FILESDIR:Q}/check-base-libelf.py \
+_EMBERBSD_MESA_LIBELF_CHECK=	${TOOL_PYTHONBIN:Q} -B -E -S ${FILESDIR:Q}/check-base-libelf.py \
 	--base-recipe ${_EMBERBSD_MESA_LIBELF_RECIPE:Q} \
 	--sdk-source ${EMBERBSD_SDK_SOURCE:U:Q} \
 	--target-root ${_EMBERBSD_MESA_LIBELF_ROOT:Q} \

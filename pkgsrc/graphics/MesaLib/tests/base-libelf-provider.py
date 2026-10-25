@@ -113,7 +113,7 @@ def fixture(root, sdk_source):
 
 
 def checker_args(case, *, mode='cross', arch='x86_64', sdk=None, target=None):
-    return [sys.executable, '-E', '-S', str(CHECKER),
+    return [sys.executable, '-B', '-E', '-S', str(CHECKER),
             '--base-recipe', str(case['recipe']),
             '--sdk-source', str(sdk or case['sdk_source']),
             '--target-root', str(target or case['target']),
@@ -266,7 +266,7 @@ def check_make_modes(bmake, work):
     require(native['PKGREVISION'] == '6' and native['_EMBERBSD_MESA_LIBELF_MODE'] == 'native' and
             native['_EMBERBSD_MESA_LIBELF_ROOT'] == '/', 'native bmake root selection changed')
     argv = shlex.split(native['_EMBERBSD_MESA_LIBELF_CHECK'])
-    require('--target-root' in argv and argv[argv.index('--target-root') + 1] == '/' and
+    require(argv[1:4] == ['-B', '-E', '-S'] and '--target-root' in argv and argv[argv.index('--target-root') + 1] == '/' and
             argv[argv.index('--mode') + 1] == 'native' and
             argv[argv.index('--base-recipe') + 1] == str(PORTS / 'pkgsrc/devel/elftoolchain') and
             argv[argv.index('--sdk-source') + 1] == str(sdk) and
