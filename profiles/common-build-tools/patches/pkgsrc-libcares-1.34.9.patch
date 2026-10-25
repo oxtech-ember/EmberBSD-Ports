@@ -1,0 +1,128 @@
+From 676776ac665ea86ec6d356c3f661f34b29b9e47b Mon Sep 17 00:00:00 2001
+From: adam <adam@pkgsrc.org>
+Date: Tue, 20 Oct 2026 09:59:32 +0000
+Subject: [PATCH] libcares: updated to 1.34.9
+
+c-ares version 1.34.9 - October 19 2026
+
+This is a security release.
+
+Security:
+* Memory corruption when an application cancels its lookups after a
+  connection failure. Please see
+  https://github.com/c-ares/c-ares/security/advisories/GHSA-wpr3-8q3r-4q8c
+* A DNS reply that arrived from a different server than the one queried could
+  be accepted. Please see
+  https://github.com/c-ares/c-ares/security/advisories/GHSA-fqh5-3x7m-wp44
+* Use-after-free of a lookup after shutting down a failed connection. Please
+  see https://github.com/c-ares/c-ares/security/advisories/GHSA-97vq-4mxv-7vhm
+* Use-after-free when an application cancels lookups from a callback, or shuts
+  a channel down. Please see
+  https://github.com/c-ares/c-ares/security/advisories/GHSA-rf6g-ww74-97qh
+* Use-after-free of a connection after the socket-state callback returns.
+  Please see
+  https://github.com/c-ares/c-ares/security/advisories/GHSA-mw23-pfg6-2x9r
+* Use-after-free when an application cancels lookups from a server-state
+  callback. Please see
+  https://github.com/c-ares/c-ares/security/advisories/GHSA-v33j-65h4-4ch8
+* Use-after-free of a server record when an application changes its DNS
+  servers from a callback. Please see
+  https://github.com/c-ares/c-ares/security/advisories/GHSA-pj7p-v3cw-hq66
+* Use-after-free of a cached DNS answer while the application is still reading
+  it. Please see
+  https://github.com/c-ares/c-ares/security/advisories/GHSA-grv7-fq5q-9vfc
+* Buffer overflow when `ares_dup()` or `ares_save_options()` runs while
+  another thread changes the servers. Please see
+  https://github.com/c-ares/c-ares/security/advisories/GHSA-ph6c-3cvx-mq6v
+* Uninitialized memory returned for a numeric IPv6 name with a prefix length.
+  Please see
+  https://github.com/c-ares/c-ares/security/advisories/GHSA-cfcv-8v2j-qj6r
+* The query cache could return an answer obtained using different EDNS
+  options. Please see
+  https://github.com/c-ares/c-ares/security/advisories/GHSA-wrgc-prmw-27xh
+
+Changes:
+* Answers served from the query cache now report their remaining TTL rather
+  than the TTL originally received.
+* `ares_inet_pton()` rejects a "/bits" prefix length and returns 0, rather
+  than -1, for any input it cannot parse.
+* UDP replies must now come from the server's port as well as its address.
+  Custom `arecvfrom` socket functions (`ares_set_socket_functions_ex()` or
+  `ares_set_socket_functions()`) must fill in the full source address,
+  including the port. For compatibility, a reported port of 0 checks only the
+  address, but such implementations are insecure and should be fixed.
+* Document that socket functions and socket, configure and pending-write
+  callbacks must not call c-ares functions on the same channel.
+
+Bugfixes:
+* `ares_dup()`: don't leave the new channel bound to the source channel.
+* `ares_init_options()`: don't report the default query cache as a caller-set
+  option.
+* Clamp DNS record TTLs to the signed int range used by public APIs.
+* `ares_dns_write()`: reject messages larger than 64KB.
+* `ares_dns_parse()`: accept legacy compressed RDATA names.
+* `ares_parse_a_reply()`/`ares_parse_aaaa_reply()`: ignore a negative
+  `*naddrttls`.
+* select event backend: refuse descriptors >= `FD_SETSIZE` instead of
+  overflowing `fd_set`.
+* Strip inline comments from resolv.conf values.
+* Ignore absurd resolv.conf retry/attempts values.
+* Zero-initialize the server config when parsing nameserver URIs.
+* URI parsing: roll back the ':' probe when it lands past the '@'.
+* Do not assume `gethostname()` NUL-terminates its buffer.
+* Combine the hash table seed with XOR instead of OR.
+* Turn off stdio buffering when loading a file.
+* Guard `pipe2()` on Apple platforms to prevent unguarded availability
+  warnings.
+---
+ net/libcares/Makefile | 4 ++--
+ net/libcares/PLIST    | 4 ++--
+ net/libcares/distinfo | 8 ++++----
+ 3 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/net/libcares/Makefile b/net/libcares/Makefile
+index 7cbabd30a6697..40efed37d4e25 100644
+--- a/net/libcares/Makefile
++++ b/net/libcares/Makefile
+@@ -1,6 +1,6 @@
+-# $NetBSD: Makefile,v 1.57 2026/07/09 12:46:45 adam Exp $
++# $NetBSD: Makefile,v 1.58 2026/10/20 09:59:32 adam Exp $
+ 
+-DISTNAME=	c-ares-1.34.8
++DISTNAME=	c-ares-1.34.9
+ PKGNAME=	${DISTNAME:S/c-/libc/1}
+ CATEGORIES=	net
+ MASTER_SITES=	${MASTER_SITE_GITHUB:=c-ares/}
+diff --git a/net/libcares/PLIST b/net/libcares/PLIST
+index 671e1580b8b3a..0b5ae7f592d4c 100644
+--- a/net/libcares/PLIST
++++ b/net/libcares/PLIST
+@@ -1,4 +1,4 @@
+-@comment $NetBSD: PLIST,v 1.37 2026/07/09 12:46:45 adam Exp $
++@comment $NetBSD: PLIST,v 1.38 2026/10/20 09:59:32 adam Exp $
+ bin/adig
+ bin/ahost
+ include/ares.h
+@@ -14,7 +14,7 @@ lib/cmake/c-ares/c-ares-targets.cmake
+ lib/libcares.a
+ lib/libcares.so
+ lib/libcares.so.2
+-lib/libcares.so.2.19.7
++lib/libcares.so.2.19.8
+ lib/pkgconfig/libcares.pc
+ man/man1/adig.1
+ man/man1/ahost.1
+diff --git a/net/libcares/distinfo b/net/libcares/distinfo
+index 650444956ee86..14081da3fa448 100644
+--- a/net/libcares/distinfo
++++ b/net/libcares/distinfo
+@@ -1,5 +1,5 @@
+-$NetBSD: distinfo,v 1.49 2026/07/09 12:46:45 adam Exp $
++$NetBSD: distinfo,v 1.50 2026/10/20 09:59:32 adam Exp $
+ 
+-BLAKE2s (c-ares-1.34.8.tar.gz) = c75cc23ffb63f5ed023e768b930887943f8841b63ceb5d6b36d931a668b8b6e4
+-SHA512 (c-ares-1.34.8.tar.gz) = d5997a57fda9b3a3385b1685e6b2f9292c3a1d39bd27579acaabf3d2d33aa5e91bfec5d41c5e51ca6b50dbc1f4346d75e9bfbccf44a494fbd4bc7613b167143c
+-Size (c-ares-1.34.8.tar.gz) = 1036098 bytes
++BLAKE2s (c-ares-1.34.9.tar.gz) = 12397a8b7a9751813be0d212b802874e51a2b8d3372c72034fdd380b346abe6a
++SHA512 (c-ares-1.34.9.tar.gz) = f4be5818d14cec48e96cc66d3f7dea3de60e3ae3d990972cf2e055140ad995a3bbf38f2a6ffd5c671f04b5f105f28ef022af721477a2d126be0803355c7c297a
++Size (c-ares-1.34.9.tar.gz) = 1083895 bytes

@@ -1,5 +1,10 @@
 # Current common build tools
 
+The [common Brotli and c-ares sources](brotli-cares.md) select the current
+1.2.1 and 1.34.9 security releases. They keep the inherited recipes and
+CMake policy. Source checks pass; native packaging and consumer checks remain
+separate.
+
 The [common GNU utility sources](gnu-utilities.md) select diffutils 3.12 and
 findutils 4.11.0 with ordinary NLS preserved. Finite initial source specifications
 build only the tools needed before full package installation. Source and runtime
