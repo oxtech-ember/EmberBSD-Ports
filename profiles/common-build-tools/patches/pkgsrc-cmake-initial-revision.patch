@@ -10,3 +10,13 @@
  
  COMMENT=	Cross platform make
  
+--- a/devel/cmake/PLIST
++++ b/devel/cmake/PLIST
+@@ -3444,6 +3444,7 @@
+ share/cmake-${CMAKE_API}/Modules/Platform/Darwin.cmake
+ share/cmake-${CMAKE_API}/Modules/Platform/DragonFly-Initialize.cmake
+ share/cmake-${CMAKE_API}/Modules/Platform/DragonFly.cmake
++share/cmake-${CMAKE_API}/Modules/Platform/EmberBSD-DarwinTools.cmake
+ share/cmake-${CMAKE_API}/Modules/Platform/Emscripten-Clang-C.cmake
+ share/cmake-${CMAKE_API}/Modules/Platform/Emscripten-Clang-CXX.cmake
+ share/cmake-${CMAKE_API}/Modules/Platform/Emscripten-Clang.cmake

@@ -560,7 +560,8 @@ The SDK controller owns the fixed four-target operation and exact LLVM dependenc
 This profile does not qualify the uninstalled LLVM package or future graph nodes.
 
 Run `tests/cmake-initial-source.py` with `--cmake-source` and `--llvm-source`
-pointing to fully patched sources. It executes no CMake or compiler.
+pointing to fully patched sources, and `--pkgsrc` to the same prepared export.
+It checks the installed module's PLIST entry. It executes no CMake or compiler.
 `tests/cmake-initial-metadata.py --help` describes the explicit owned make tuple,
 contained environment, private MAKECONF and exact command-record interface.
 It checks the common helper through standalone BSD make queries.

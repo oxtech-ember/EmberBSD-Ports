@@ -9,6 +9,7 @@ import unittest
 
 CMAKE = None
 LLVM = None
+PKGSRC = None
 
 
 def function(source, name):
@@ -18,6 +19,10 @@ def function(source, name):
 
 
 class InitialSourceTests(unittest.TestCase):
+    def test_installed_new_platform_module_is_in_the_package_list(self):
+        rows = (PKGSRC / 'devel/cmake/PLIST').read_text().splitlines()
+        self.assertIn('share/cmake-${CMAKE_API}/Modules/Platform/EmberBSD-DarwinTools.cmake', rows)
+
     def test_initial_policy_has_finite_native_darwin_boundary(self):
         path = CMAKE / 'Modules/Platform/EmberBSD-DarwinTools.cmake'
         self.assertTrue(path.is_file(), 'Missing explicit optional-operation policy')
@@ -105,6 +110,7 @@ if __name__ == '__main__':
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument('--cmake-source', type=Path, required=True)
     cli.add_argument('--llvm-source', type=Path, required=True)
+    cli.add_argument('--pkgsrc', type=Path, required=True)
     args, remaining = cli.parse_known_args()
-    CMAKE, LLVM = args.cmake_source, args.llvm_source
+    CMAKE, LLVM, PKGSRC = args.cmake_source, args.llvm_source, args.pkgsrc
     unittest.main(argv=[__file__, *remaining])
