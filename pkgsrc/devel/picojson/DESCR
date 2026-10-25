@@ -1,0 +1,2 @@
+PicoJSON parses and serializes JSON through a single C++ header. It provides
+DOM values, streaming parsers and optional signed 64-bit integer support.

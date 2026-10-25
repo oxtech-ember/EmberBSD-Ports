@@ -1,0 +1,2 @@
+SimpleCpp preprocesses C and C++ and retains directives, comments and macro
+usage. The package provides the command, shared library and public header.

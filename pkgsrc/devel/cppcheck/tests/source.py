@@ -41,7 +41,7 @@ recipe, options = (p / 'Makefile').read_text(), (p / 'options.mk').read_text()
 assert re.search(r'^DISTNAME=\s*cppcheck-2\.22\.0$', recipe, re.M)
 for flag in ('BUILD_CLI:BOOL=ON', 'BUILD_TESTING:BOOL=ON', 'HAVE_RULES:BOOL=ON', 'USE_BUNDLED_TINYXML2:BOOL=OFF', 'BUILD_MANPAGE:BOOL=ON', 'DISABLE_DMAKE:BOOL=ON', 'CMAKE_MACOSX_BUNDLE:BOOL=OFF'):
     assert '-D' + flag in recipe, flag
-for field in ('devel/pcre2/buildlink3.mk', 'textproc/tinyxml2/buildlink3.mk', 'devel/boost-headers/buildlink3.mk', 'Python_EXECUTABLE:FILEPATH=${TOOL_PYTHONBIN}', 'PKG_CONFIG_EXECUTABLE:FILEPATH=${TOOLS_CMD.pkg-config}', 'LIBXML2_XMLLINT_EXECUTABLE:FILEPATH=${TOOLBASE}/bin/xmllint', 'XSLTPROC:FILEPATH=${TOOLBASE}/bin/xsltproc', 'DB2MAN:FILEPATH=${TOOLBASE}/share/xsl/docbook/manpages/docbook.xsl'):
+for field in ('devel/pcre2/buildlink3.mk', 'devel/simplecpp/buildlink3.mk', 'devel/picojson/buildlink3.mk', 'textproc/tinyxml2/buildlink3.mk', 'devel/boost-headers/buildlink3.mk', 'Python_EXECUTABLE:FILEPATH=${TOOL_PYTHONBIN}', 'PKG_CONFIG_EXECUTABLE:FILEPATH=${TOOLS_CMD.pkg-config}', 'LIBXML2_XMLLINT_EXECUTABLE:FILEPATH=${TOOLBASE}/bin/xmllint', 'XSLTPROC:FILEPATH=${TOOLBASE}/bin/xsltproc', 'DB2MAN:FILEPATH=${TOOLBASE}/share/xsl/docbook/manpages/docbook.xsl'):
     assert field in recipe, field
 assert 'USE_Z3' not in recipe and 'math/z3' not in recipe
 assert 'qt5:qt6' in options and 'devel/qt6-qttools/buildlink3.mk' in options
@@ -52,6 +52,11 @@ assert '#include "regex.h"' in regex and regex.index('#include "regex.h"') < reg
 for symbol in ('PCRE2_CODE_UNIT_WIDTH 8', 'pcre2_compile', 'pcre2_match_data_create_from_pattern', 'pcre2_match_data_free', 'pcre2_next_match', 'Engine::Pcre'):
     assert symbol in regex, symbol
 assert '#include <pcre.h>' not in regex and '#define PCRE2_STATIC' not in regex
+top = (s / 'CMakeLists.txt').read_text()
+assert 'find_package(simplecpp 1.9.1 EXACT CONFIG REQUIRED)' in top
+assert 'find_package(picojson 1.3.0.20210117 CONFIG REQUIRED)' in top
+assert 'add_subdirectory(externals/simplecpp)' not in top
+assert 'add_subdirectory(externals/picojson)' not in top
 finder = (s / 'cmake/findDependencies.cmake').read_text()
 for field in ('IMPORTED_TARGET libpcre2-8>=10.47', 'PkgConfig::PCRE2', 'find_package(boost_headers CONFIG REQUIRED)', 'Boost::headers', 'boost_headers_FOUND'):
     assert field in finder, field

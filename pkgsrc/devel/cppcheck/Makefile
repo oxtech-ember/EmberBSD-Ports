@@ -1,5 +1,6 @@
 # Origin: EmberBSD contributors (AI-assisted).
 DISTNAME= cppcheck-2.22.0
+PKGREVISION= 1
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=cppcheck-opensource/}
 GITHUB_PROJECT= cppcheck
@@ -52,6 +53,8 @@ man-install:
 
 BUILDLINK_API_DEPENDS.pcre2+= pcre2>=10.47
 .include "../../devel/pcre2/buildlink3.mk"
+.include "../../devel/simplecpp/buildlink3.mk"
+.include "../../devel/picojson/buildlink3.mk"
 .include "../../devel/boost-headers/buildlink3.mk"
 .include "../../textproc/tinyxml2/buildlink3.mk"
 .include "../../lang/python/application.mk"

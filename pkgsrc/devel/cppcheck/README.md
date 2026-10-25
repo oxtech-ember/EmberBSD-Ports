@@ -19,7 +19,10 @@ The recipe does not force `PCRE2_STATIC` on Windows.
 TinyXML2 and Boost headers come from the common Ports owners.
 The finder selects the installed `boost_headers` CMake config directly.
 It needs no Boost libraries package or second copy of Boost headers.
-Cppcheck's upstream SimpleCpp and PicoJSON components remain in its source tree.
+SimpleCpp and PicoJSON come from their common Ports owners.
+Their provider sources match the bundled headers and SimpleCpp implementation byte for byte.
+CMake requires both providers and has no bundled fallback.
+The SimpleCpp 1.9.1 config requires the exact release to avoid unverified C++ ABI changes.
 The package preserves the complete upstream configuration, addon and platform data.
 The GUI also installs its translations, desktop file and icons.
 
@@ -54,6 +57,10 @@ Supply an exported tree, make configuration, selected bmake and complete environ
 Use `--pkgsrc`, `--makeconf`, `--bmake`, `--environment` and a new `--work` directory.
 The check evaluates default, Qt6 and legacy Qt5 options without configuration or compilation.
 It rejects missing generator paths and checks native XML tools under `TOOLBASE`.
+It also checks both provider recipes and the ZoneMinder dependency edge.
+Run `tests/dependencies.py` with `--sdk-source`, `--archives`, `--patch` and a new `--work` directory.
+That gate checks four source archives, all carried patches and exact provider-source identity.
+Its negative control rejects reintroduction of a bundled SimpleCpp CMake target.
 
 The packaging and PCRE2 adaptation are AI-assisted EmberBSD work.
 Source and metadata checks do not qualify an analyzer executable.

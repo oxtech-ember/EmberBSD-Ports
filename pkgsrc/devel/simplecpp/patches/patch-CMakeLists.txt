@@ -1,0 +1,64 @@
+$NetBSD$
+
+Install and use one common dependency provider.
+Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -1,5 +1,5 @@
+ cmake_minimum_required (VERSION 3.10)
+-project (simplecpp LANGUAGES CXX)
++project (simplecpp VERSION 1.9.1 LANGUAGES CXX)
+ 
+ set(CMAKE_CXX_STANDARD 11 CACHE STRING "C++ standard to use")
+ set(CMAKE_CXX_STANDARD_REQUIRED ON)
+@@ -104,10 +104,23 @@
+     endif()
+ endif()
+ 
+-add_library(simplecpp_obj OBJECT simplecpp.cpp)
+-
+-add_executable(simplecpp $<TARGET_OBJECTS:simplecpp_obj> main.cpp)
+-add_executable(testrunner $<TARGET_OBJECTS:simplecpp_obj> test.cpp)
++include(GNUInstallDirs)
++include(CMakePackageConfigHelpers)
++add_library(simplecpp_lib simplecpp.cpp)
++add_library(simplecpp::simplecpp ALIAS simplecpp_lib)
++target_compile_features(simplecpp_lib PUBLIC cxx_std_11)
++set_target_properties(simplecpp_lib PROPERTIES OUTPUT_NAME simplecpp
++    EXPORT_NAME simplecpp VERSION ${PROJECT_VERSION} SOVERSION 1.9)
++target_include_directories(simplecpp_lib PUBLIC
++    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
++    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
++if(BUILD_SHARED_LIBS)
++    target_compile_definitions(simplecpp_lib PRIVATE SIMPLECPP_EXPORT INTERFACE SIMPLECPP_IMPORT)
++endif()
++add_executable(simplecpp main.cpp)
++target_link_libraries(simplecpp PRIVATE simplecpp::simplecpp)
++add_executable(testrunner test.cpp)
++target_link_libraries(testrunner PRIVATE simplecpp::simplecpp)
+ target_compile_definitions(testrunner
+     PRIVATE
+         SIMPLECPP_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+@@ -115,3 +128,21 @@
+ 
+ enable_testing()
+ add_test(NAME testrunner COMMAND testrunner)
++
++install(TARGETS simplecpp RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
++install(TARGETS simplecpp_lib EXPORT simplecpp-targets
++    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
++    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
++    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
++install(FILES simplecpp.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
++install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/simplecpp)
++install(EXPORT simplecpp-targets NAMESPACE simplecpp::
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/simplecpp)
++configure_package_config_file(simplecpp-config.cmake.in
++    ${CMAKE_CURRENT_BINARY_DIR}/simplecpp-config.cmake
++    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/simplecpp)
++write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/simplecpp-config-version.cmake
++    VERSION ${PROJECT_VERSION} COMPATIBILITY ExactVersion)
++install(FILES ${CMAKE_CURRENT_BINARY_DIR}/simplecpp-config.cmake
++    ${CMAKE_CURRENT_BINARY_DIR}/simplecpp-config-version.cmake
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/simplecpp)

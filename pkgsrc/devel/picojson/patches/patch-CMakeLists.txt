@@ -1,0 +1,47 @@
+$NetBSD$
+
+Install and use one common dependency provider.
+Origin: EmberBSD contributors (AI-assisted). Package interfaces follow FreeBSD Ports devel/picojson; upstream tests are retained.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -0,0 +1,39 @@
++cmake_minimum_required(VERSION 3.16)
++project(picojson VERSION 1.3.0.20210117 LANGUAGES CXX)
++include(GNUInstallDirs)
++include(CMakePackageConfigHelpers)
++include(CTest)
++
++add_library(picojson INTERFACE)
++add_library(picojson::picojson ALIAS picojson)
++target_include_directories(picojson INTERFACE
++    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
++    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
++install(FILES picojson.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
++install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/picojson)
++install(DIRECTORY examples/ DESTINATION ${CMAKE_INSTALL_DATADIR}/examples/picojson)
++install(TARGETS picojson EXPORT picojson-targets)
++install(EXPORT picojson-targets NAMESPACE picojson::
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/picojson)
++configure_package_config_file(picojson-config.cmake.in
++    ${CMAKE_CURRENT_BINARY_DIR}/picojson-config.cmake
++    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/picojson)
++write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/picojson-config-version.cmake
++    VERSION ${PROJECT_VERSION} COMPATIBILITY SameMajorVersion ARCH_INDEPENDENT)
++install(FILES ${CMAKE_CURRENT_BINARY_DIR}/picojson-config.cmake
++    ${CMAKE_CURRENT_BINARY_DIR}/picojson-config-version.cmake
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/picojson)
++configure_file(picojson.pc.in picojson.pc @ONLY)
++install(FILES ${CMAKE_CURRENT_BINARY_DIR}/picojson.pc
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
++
++if(BUILD_TESTING)
++    # Upstream compiles its bundled test harness as C++ in both configurations.
++    set_source_files_properties(picotest/picotest.c PROPERTIES LANGUAGE CXX)
++    foreach(name test-core test-core-int64)
++        add_executable(${name} test.cc picotest/picotest.c)
++        target_link_libraries(${name} PRIVATE picojson::picojson)
++        add_test(NAME ${name} COMMAND ${name})
++    endforeach()
++    target_compile_definitions(test-core-int64 PRIVATE PICOJSON_USE_INT64)
++endif()
