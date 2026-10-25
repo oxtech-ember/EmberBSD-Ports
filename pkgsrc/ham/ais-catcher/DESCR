@@ -1,0 +1,4 @@
+AIS-catcher receives and decodes Automatic Identification System messages.
+This package enables RTL-SDR and raw CF32 input. It excludes the embedded
+web viewer, optional database libraries and other SDR device libraries.
+Use explicit input settings and -X off for local-only operation.

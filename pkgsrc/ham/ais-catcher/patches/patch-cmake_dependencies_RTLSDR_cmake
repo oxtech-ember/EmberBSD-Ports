@@ -1,0 +1,25 @@
+$NetBSD$
+
+Reject an enabled RTL backend when its required dependencies are absent.
+Origin: EmberBSD; AI-assisted local patch, not submitted upstream.
+
+--- cmake/dependencies/RTLSDR.cmake.orig
++++ cmake/dependencies/RTLSDR.cmake
+@@ -21,7 +21,7 @@
+         endif()
+ 
+ 
+-        if(RTLSDR_INCLUDE_DIR AND RTLSDR_LIBRARY)
++        if(RTLSDR_INCLUDE_DIR AND RTLSDR_LIBRARY AND LIBUSB_INCLUDE_DIR AND LIBUSB_LIBRARY)
+ 
+             message(STATUS "RTLSDR: found - ${RTLSDR_INCLUDE_DIR}, ${RTLSDR_LIBRARY}")
+             add_definitions(-DHASRTLSDR)
+@@ -53,7 +53,7 @@
+             unset(CMAKE_REQUIRED_LIBRARIES)
+ 
+         else()
+-            Message(STATUS "RTLSDR: not found.")
++            message(FATAL_ERROR "RTLSDR=ON requires RTL-SDR and libusb headers and libraries.")
+         endif()
+ 
+     elseif(MSVC_VCPKG)

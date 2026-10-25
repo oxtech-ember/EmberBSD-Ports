@@ -1,0 +1,3 @@
+@comment $NetBSD$
+bin/AIS-catcher
+share/doc/ais-catcher/LICENSE

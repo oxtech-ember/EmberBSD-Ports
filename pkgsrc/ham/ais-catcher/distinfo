@@ -1,0 +1,11 @@
+$NetBSD$
+
+BLAKE2s (AIS-catcher-0.70.tar.gz) = 1872af2cd3f511a3ae9119c0a4a8b70eac95b7eb5881ec227ea2d06eabc94017
+SHA512 (AIS-catcher-0.70.tar.gz) = 47cbc8cc0ad3485696baefc9a8b4b3a50549de1434bd35059d7e4c31277739edbf62b31e385a848c99b776da9c2ae0f2fd403c38c62cfbf292b8e29256acb27f
+Size (AIS-catcher-0.70.tar.gz) = 1404924 bytes
+SHA1 (patch-CMakeLists_txt) = 78a0a8dbffb57774cfce6552ac6549d831c2bd9b
+SHA1 (patch-cmake_dependencies_RTLSDR_cmake) = 4f68ba56d8d4cdacce87f4dc8f31aec1511fd624
+SHA1 (patch-Source_Marine_Message.h) = b054e8dc101193aca1ad98d1f2429f4dd4eab66c
+SHA1 (patch-Source_JSON_Parser.cpp) = 87231c92b8f28de817181b1d67bb88212c1499b5
+SHA1 (patch-Source_IO_SocketUtil.h) = 6d23ca877b716693f92294205adbea0f894aa203
+SHA1 (patch-Source_IO_Protocol.cpp) = 46ade0db6e5cc9f484bcf1d0925705a4c6d91723
