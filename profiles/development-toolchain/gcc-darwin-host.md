@@ -79,7 +79,19 @@ selection remains conditional on Darwin:
   selected tool can repack the copies. The full stage 2/3 comparison remains.
   [darwin-build-config.py](tests/darwin-build-config.py) compiles the real
   configure probe with a native GCC16 and runs the top-level configure with
-  and without the recipe argument.
+  and without the recipe argument. It requires the explicit SDK source, pinned
+  NativeToolset descriptor and accepted producer receipt. The controller must
+  use the selected SDK Python. GCC16, its checked driver closure, ABI arrays,
+  shell, LLVM normalizers and configure utilities come from that selection.
+  `--tools-bin` supplies the only PATH directory. Each bare utility must have
+  its selected role under the exact command name. No compiler shellwords,
+  system PATH or bootstrap-seed qualification are accepted. Explicit native
+  build/host triplets avoid `config.guess`; `CONFIG_SITE=/dev/null` excludes
+  local site scripts. The script's help lists all required selectors.
+  [darwin-build-config-inputs.py](tests/darwin-build-config-inputs.py) checks
+  missing, outside and unqualified inputs before compiler children. Run it with
+  selected SDK Python and `--sdk-source SOURCE`. Its source and synthetic argv
+  checks do not rerun the Mach-O experiment or qualify a native toolset.
   [gcc-darwin-llvm-mc.patch](patches/gcc-darwin-llvm-mc.patch) adds
   `--with-darwin-assembler=llvm-mc` to GCC. It changes the driver assembler
   arguments and the configure assembler probes together.

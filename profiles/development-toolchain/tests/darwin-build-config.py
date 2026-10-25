@@ -9,8 +9,14 @@ information. The selected llvm-strip -S keeps Mach-O section addresses, so
 __eh_frame moves when GCC emits __debug_frame first. The recipe must pass
 --without-build-config. Run on Darwin with a patched GCC 16.2 source tree:
 
-  python3 -B darwin-build-config.py --gcc-source SRC --cc GCC --cxx G++ \
-      --llvm-bin DIR --math-prefix PREFIX --shell MKSH --work NEW_WORK
+  SDK_PYTHON -B darwin-build-config.py --sdk-source SDK_SOURCE \
+      --descriptor JSON --descriptor-sha256 SHA256 \
+      --producer-receipt JSON --producer-receipt-sha256 SHA256 \
+      --tools-bin SDK_BIN --gcc-source SRC --math-prefix PREFIX --work NEW_WORK
+
+Use an accepted ordinary native toolset. Bootstrap seed evidence is insufficient.
+The descriptor owns GCC16, its driver closure, ABI flags and every utility.
+SDK_BIN must contain the selected utility paths under their exact command names.
 """
 
 import argparse
@@ -26,6 +32,71 @@ PROFILE = Path(__file__).resolve().parents[1]
 RECIPE = PROFILE / 'patches/gcc-darwin-host.patch'
 PROBE = 'int f (void) { return 0; }\n'
 MESSAGE = 'selected Darwin bootstrap-debug comparison failed'
+
+# configure and compare-debug use these bare names. Each must resolve to its
+# admitted role in one explicit SDK directory. Compiler and LLVM paths are direct.
+PATH_ROLES = ('sh', 'make', 'awk', 'basename', 'cat', 'chmod', 'cmp', 'cp', 'cut',
+              'date', 'diff', 'dirname', 'expr', 'grep', 'head', 'hostname', 'install', 'ln', 'ls', 'mkdir',
+              'mktemp', 'mv', 'rm', 'rmdir', 'sed', 'sort', 'tail', 'touch', 'tr', 'uname', 'uniq', 'wc')
+REQUIRED_ROLES = ('cc', 'cxx', 'cpp', 'as', 'ld', 'ar', 'ranlib', 'nm', 'strip',
+                  'objdump', 'objcopy', 'python', *PATH_ROLES)
+
+
+def selected_inputs(args):
+    """Admit pinned SDK bytes before output creation or any compiler child."""
+    from emberbsd_sdk.errors import SDKError
+    from emberbsd_sdk.native_toolset import NATIVE_TOOLSET_API, load_native_toolset
+    selectors = (args.descriptor, args.descriptor_sha256,
+                 args.producer_receipt, args.producer_receipt_sha256)
+    if not all(selectors):
+        raise SDKError('Set the descriptor and producer receipt paths and SHA256 pins')
+    if type(NATIVE_TOOLSET_API) is not int or NATIVE_TOOLSET_API != 1:
+        raise SDKError('SDK native toolset API 1 is required')
+    selected = load_native_toolset(args.descriptor,
+        descriptor_sha256=args.descriptor_sha256,
+        accepted_producer_receipt=dict(path=args.producer_receipt, sha256=args.producer_receipt_sha256),
+        required_roles=REQUIRED_ROLES)
+    if selected.host['os'] != 'Darwin':
+        raise SDKError('This probe requires an accepted native Darwin GCC16 toolset')
+    directory = args.tools_bin
+    if not directory.is_absolute() or not directory.is_dir() or ':' in str(directory):
+        raise SDKError('Use one absolute selected SDK tool directory')
+    for role in REQUIRED_ROLES:
+        if role not in selected.tools:
+            raise SDKError('Missing selected SDK role: ' + role)
+        path = Path(selected.tool(role))
+        if not path.is_absolute() or not path.is_file() or not os.access(path, os.X_OK):
+            raise SDKError('Missing executable SDK role: ' + role)
+        if role in PATH_ROLES and path != directory / role:
+            raise SDKError('SDK PATH role differs from the selected directory: ' + role)
+    if Path(sys.executable).resolve(strict=True) != Path(selected.tool('python')).resolve(strict=True):
+        raise SDKError('The controller must use the selected SDK Python')
+    flags = selected.abi_flags
+    env = dict(PATH=str(directory), HOME=str(args.work), TMPDIR=str(args.work), LC_ALL='C', TZ='UTC',
+               SHELL=selected.tool('sh'), CONFIG_SHELL=selected.tool('sh'), CONFIG_SITE='/dev/null')
+    for key, role in (('CC', 'cc'), ('CXX', 'cxx'), ('CPP', 'cpp'), ('AS', 'as'), ('LD', 'ld'),
+                      ('AR', 'ar'), ('RANLIB', 'ranlib'), ('NM', 'nm'), ('STRIP', 'strip'),
+                      ('OBJDUMP', 'objdump'), ('OBJCOPY', 'objcopy'), ('MAKE', 'make'),
+                      ('AWK', 'awk'), ('SED', 'sed'), ('GREP', 'grep'), ('INSTALL', 'install')):
+        env[key] = shlex.join([selected.tool(role)])
+    env['EGREP'] = shlex.join([selected.tool('grep'), '-E'])
+    env['FGREP'] = shlex.join([selected.tool('grep'), '-F'])
+    for key in ('cppflags', 'cflags', 'cxxflags', 'ldflags'):
+        env[key.upper()] = shlex.join(flags[key])
+    return selected, env
+
+
+
+def check_configure_source(source):
+    """Refuse GCC's legacy unconditional host diagnostics before compilation."""
+    from emberbsd_sdk.errors import SDKError
+    text = (source / 'configure').read_text()
+    for program in ('/usr/bin/uname', '/bin/uname', '/bin/arch', '/usr/bin/arch',
+                    '/usr/convex/getsysinfo', '/usr/bin/hostinfo', '/bin/machine',
+                    '/usr/bin/oslevel', '/bin/universe'):
+        if '`(' + program in text:
+            raise SDKError('GCC configure still executes an unselected diagnostic tool: ' + program +
+                           '; use the common patched Ports source')
 
 
 def run(command, cwd, env, check=True):
@@ -56,11 +127,11 @@ def sections(objdump, path, env):
     return table
 
 
-def mach_o_probe(args, env, work):
+def mach_o_probe(args, selected, env, work):
     """The configure probe fails only because __eh_frame moved."""
-    tools = {name: str(args.llvm_bin / ('llvm-' + name)) for name in ('strip', 'objdump', 'objcopy')}
+    tools = {name: selected.tool(name) for name in ('strip', 'objdump', 'objcopy')}
     (work / 'conftest.c').write_text(PROBE)
-    cc = shlex.split(args.cc)
+    cc = [selected.tool('cc'), *selected.abi_flags['cppflags'], *selected.abi_flags['cflags']]
     for flag, name in (([], 'conftest.o.g0'), (['-g'], 'conftest.o.g')):
         run(cc + flag + ['-c', 'conftest.c', '-o', name], work, env)
     header = (work / 'conftest.o.g').read_bytes()[:4]
@@ -68,7 +139,7 @@ def mach_o_probe(args, env, work):
     probe_env = dict(env, GCC_COMPARE_DEBUG_STRIP=tools['strip'],
                      GCC_COMPARE_DEBUG_OBJDUMP=tools['objdump'],
                      GCC_COMPARE_DEBUG_OBJCOPY=tools['objcopy'])
-    result = run([str(args.shell), str(args.gcc_source / 'contrib/compare-debug'), '-p',
+    result = run([selected.tool('sh'), str(args.gcc_source / 'contrib/compare-debug'), '-p',
                   'conftest.o.g0', 'conftest.o.g'], work, probe_env, check=False)
     print('selected compare-debug status', result.returncode)
     assert result.returncode != 0, 'the selected probe now passes; revisit --without-build-config'
@@ -86,37 +157,42 @@ def mach_o_probe(args, env, work):
     return probe_env
 
 
-def configure(args, env, build, extra):
+def configure(args, selected, env, build, extra):
     build.mkdir()
     math = str(args.math_prefix)
-    command = [str(args.shell), str(args.gcc_source / 'configure'), '--enable-languages=c,c++',
+    command = [selected.tool('sh'), str(args.gcc_source / 'configure'), '--enable-languages=c,c++',
                '--with-gmp=' + math, '--with-mpfr=' + math, '--with-mpc=' + math,
-               '--without-isl', '--disable-multilib'] + extra
+               '--without-isl', '--disable-multilib',
+               '--build=' + selected.compiler['triplet'],
+               '--host=' + selected.compiler['triplet']] + extra
     result = run(command, build, env, check=False)
     print('configure', extra or ['(no build-config argument)'], 'status', result.returncode)
     return result
 
 
-def main():
+def main(argv=None):
+    sys.path.insert(0, str(PROFILE / 'runtime/recipe/files'))
+    import sdk_source
+    arguments = sdk_source.arguments(sys.argv[1:] if argv is None else argv)
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    for name in ('gcc-source', 'llvm-bin', 'math-prefix', 'shell', 'work'):
+    for name in ('gcc-source', 'tools-bin', 'math-prefix', 'work'):
         parser.add_argument('--' + name, type=Path, required=True)
-    parser.add_argument('--cc', required=True, help='native Darwin GCC16 command')
-    parser.add_argument('--cxx', required=True, help='native Darwin G++16 command')
-    args = parser.parse_args()
-    for path in (args.gcc_source, args.llvm_bin, args.math_prefix, args.shell, args.work):
+    for name in ('descriptor', 'descriptor-sha256', 'producer-receipt', 'producer-receipt-sha256'):
+        parser.add_argument('--' + name, required=True)
+    args = parser.parse_args(arguments)
+    selected, env = selected_inputs(args)
+    check_configure_source(args.gcc_source)
+    for path in (args.gcc_source, args.tools_bin, args.math_prefix, args.work):
         assert path.is_absolute(), path
     assert os.uname().sysname == 'Darwin', 'needs real Mach-O objects'
     assert (args.gcc_source / 'contrib/compare-debug').read_text().count('GCC_COMPARE_DEBUG_STRIP') > 0
     args.work.mkdir()
-    env = {'HOME': os.environ.get('HOME', '/'), 'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'}
-    probe_env = mach_o_probe(args, env, args.work)
-    probe_env.update(CC=args.cc, CXX=args.cxx, SHELL=str(args.shell), CONFIG_SHELL=str(args.shell))
-    control = configure(args, probe_env, args.work / 'build-default', [])
+    probe_env = mach_o_probe(args, selected, env, args.work)
+    control = configure(args, selected, probe_env, args.work / 'build-default', [])
     assert control.returncode != 0 and MESSAGE in control.stdout, 'the default route no longer fails'
     extra = recipe_build_config()
     assert extra == ['--without-build-config'], 'recipe build-config arguments: %r' % extra
-    fixed = configure(args, probe_env, args.work / 'build-recipe', extra)
+    fixed = configure(args, selected, probe_env, args.work / 'build-recipe', extra)
     assert fixed.returncode == 0, fixed.stdout[-3000:]
     assert 'checking for default BUILD_CONFIG... \n' in fixed.stdout, 'BUILD_CONFIG is not empty'
     makefile = (args.work / 'build-recipe/Makefile').read_text()
