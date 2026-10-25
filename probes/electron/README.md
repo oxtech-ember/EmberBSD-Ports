@@ -9,8 +9,8 @@ engine abstraction, so this port needs the native Electron runtime.
 |---|---|---|
 | Electron | 44.9.3 (`c542df1ecbc2c2978e8f53f8c7baf602404d166f`) | GitHub tag `v44.9.3` |
 | Chromium | 152.0.7977.167 (`dd78960ccd8a03a2fe1f629543d27783885b78e9`) | Electron `DEPS` |
-| Embedded Node.js | 24.22.0 | Electron `DEPS` |
-| Chromium host Node.js | 24.12.0 | `third_party/node/update_node_binaries` |
+| Embedded Node.js | 24.22.1 | Patched Electron `DEPS` |
+| Chromium host Node.js | 24.22.1 | Common Node24 provider |
 | Blanc | 1.25.0 (`ff55d5948f5c71e802ba2ac464659ef96e055ca9`) | GitHub tag `v1.25.0` |
 
 Electron's `DEPS` graph is the Chromium source of record. Do not substitute the
@@ -20,8 +20,27 @@ not match Electron's pinned revision.
 | Distfile | Size | SHA256 |
 |---|---:|---|
 | `v44.9.3.tar.gz` | 20,838,185 | `e4e84b70a501c7dffec78bf037309bfe336daee6886289f94f9ac035ec54d80f` |
-| `node-v24.22.0.tar.xz` | 57,606,320 | `41f97cff2c666f1f8293dc5f85c65e8dd605c16b43fd9febd49ede32ee1e0329` |
+| `node-v24.22.1.tar.xz` | 57,669,336 | `4f5379796280cdaeb0c2f358fd04b6a16cc4fb7dfa83b5a8c91a9d963b435231` |
 | `v1.25.0.tar.gz` | 155,108,408 | `b241d6b135b0fab5839f5dea6f64fafbdefa4f213b46ffa4a2f78820cb880971` |
+
+The recipe backports the twelve source and build changes from Electron
+[PR 55162](https://github.com/electron/electron/pull/55162), commit
+`7b338a67ff07a12a60fe40059d2e67a39dbb4b3a`. It selects Node.js 24.22.1 and
+keeps the Chromium pin. All 64 Node patches apply with full context to Node
+commit `ce7aaf1cee78b8cf0ce17364260535c418d3ed26`.
+
+The backport omits the upstream change that disables
+`parallel/test-crypto-random-cache-snapshot`. That test uses the standalone Node
+snapshot CLI. Electron creates its embedded Node environment through a different
+path. Retain the test and the cache-reset fix. Entropy separation across Electron
+snapshot restores still requires a runtime check.
+
+Node's GN build selects Chromium's Brotli targets and bundled c-ares 1.34.9.
+Chromium's Brotli source pin `cfa184a997ac19454d5a3ae97f6d600aac2445a6`
+contains upstream fix `0ed4268a4401abcb4472096340477cf4af7d1a2b`. The two
+affected files equal the fixed Node 24.22.1 files. Source checks do not establish
+runtime security acceptance. Verify the actual target dependencies during GN
+and build acceptance.
 
 ## Target contract
 
