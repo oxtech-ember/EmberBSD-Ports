@@ -1,0 +1,21 @@
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+The b2 engine script has no darwin toolset, so GCC on Darwin could not
+build boost-jam. Build the engine with the gcc toolset. The b2 toolset
+that consumers use stays darwin.
+
+--- a/devel/boost-jam/Makefile
++++ b/devel/boost-jam/Makefile
+@@ -23,9 +23,12 @@
+ 
+ USE_LANGUAGES+=		c++11
+ 
++# The engine script has no darwin toolset. Build it with the GCC one.
++BOOST_ENGINE_TOOLSET=	${BOOST_TOOLSET:S/^darwin$/gcc/}
++
+ do-build:
+ 	cd ${WRKSRC}/tools/build/src/engine && \
+-		${SETENV} ${MAKE_ENV} ${SH} ./build.sh ${BOOST_TOOLSET} --cxxflags=${CXXFLAGS:Q}
++		${SETENV} ${MAKE_ENV} ${SH} ./build.sh ${BOOST_ENGINE_TOOLSET} --cxxflags=${CXXFLAGS:Q}
+ 
+ do-install:
+ 	${INSTALL_PROGRAM} ${WRKSRC}/tools/build/src/engine/b2 \

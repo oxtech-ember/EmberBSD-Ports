@@ -42,6 +42,30 @@ and work-reference checks. Its engine reports `B2 5.5.3 (OS=LINUX)`.
 Use `b2 -v` to query the standalone engine. Framework options such as
 `--version` need the matching Boost.Build source files in the search path.
 
+## Build the engine with GCC on Darwin
+
+pkgsrc selects the b2 toolset `darwin` for GCC on Darwin when `GCCBASE` is not
+set. The Ports GCC16 compiler does not set it. The engine script `build.sh` of
+Boost 1.92.0 has no `darwin` toolset, so the boost-jam build stopped with
+`Toolset 'darwin' does not appear to support C++11`. The
+[engine patch](../patches/pkgsrc-boost-jam-darwin-engine.patch) builds the
+engine with the `gcc` toolset in that case. Consumers of `bjam.mk` still pass
+`--toolset=darwin` to b2, which provides `darwin.jam`.
+
+The [toolset regression](../tests/boost-jam-engine-toolset.py) evaluates the
+real `toolset.mk` and the real boost-jam `do-build` target with bmake. It
+fails when the engine script gets a toolset that its usage text does not list.
+`--engine-script` names `tools/build/src/engine/build.sh` from the extracted
+Boost source.
+
+```sh
+python3.15 -B profiles/common-build-tools/tests/boost-jam-engine-toolset.py \
+    --pkgsrc /absolute/export --bmake /absolute/host/bin/bmake \
+    --shell /absolute/host/bin/mksh \
+    --engine-script /absolute/work/boost_1_92_0/tools/build/src/engine/build.sh \
+    --work /absolute/new-work
+```
+
 ## Check the cross graph
 
 Run the [source regression](../tests/boost-cross-target.py) with Python 3.15
