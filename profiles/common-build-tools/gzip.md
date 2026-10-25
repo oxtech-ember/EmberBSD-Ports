@@ -68,3 +68,35 @@ Check `gzip -t`, decompression byte equality, helpers and retained source files.
 Use independent input bytes and `LC_ALL=C` for deterministic diagnostics.
 The release now respects the locale for number formatting and filename quoting.
 Its `gzip -l` empty-file ratio and znew `-P` warning also change as documented upstream.
+
+## Failing decompressor
+
+The pkgsrc extract script pipes `GZCAT`, `BZCAT`, `XZCAT` and the other
+decompressors into tar, cpio or the shell. A pipeline returns the status of
+its last command. Without its decompressor, an archive extracted nothing and
+`extract` still returned 0. A corrupt gzip trailer also passed: gzip writes
+the data, reports the CRC error and exits 1, but tar returns 0.
+
+The common export checks an absolute decompressor path first and fails with
+`extract: decompressor not found: PATH`. Relative upstream defaults such as
+`gzip -cd` are unchanged. Each pipeline then records a failing decompressor
+status in a file under `TMPDIR`, without `pipefail`, so `/bin/sh` and mksh
+behave the same. After the archive program, `extract` fails with
+`extract: decompressor failed with status N: DISTFILE`. Status 141 or 269 is
+SIGPIPE: tar may stop at the end-of-archive blocks before the decompressor
+has written its zero padding, so that status is ignored.
+
+Run this check from the repository root:
+
+```sh
+PATCH=/absolute/patch GZIP=/absolute/gzip TAR=/absolute/tar \
+    EXTRACT_SH=/absolute/sh sh profiles/common-build-tools/tests/extract-decompressor.sh \
+    /absolute/unpatched-pkgsrc /absolute/new-results
+```
+
+The regression uses the real pkgsrc script. The unpatched script must give
+silent success for missing, corrupt and relative missing decompressors. The
+patched script refuses missing, non-executable, shar and bzip2
+decompressors, a corrupt gzip with and without excludes and a missing relative
+decompressor. It still extracts with an absolute or a relative gzip and with
+a padded archive that ends tar early.

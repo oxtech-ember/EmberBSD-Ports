@@ -1,0 +1,102 @@
+# Origin: EmberBSD (AI-assisted), fail extraction when its decompressor fails.
+# The tar, cpio and shar formats read the decompressor through a pipe, so
+# the archive program status hides a missing or failing GZCAT, BZCAT or XZCAT.
+# Check an absolute decompressor path first. Record any later decompressor
+# status in a file, without pipefail, and fail after the archive program.
+
+--- a/mk/extract/extract
++++ b/mk/extract/extract
+@@ -234,6 +234,39 @@
+ 		;;
+ esac
+ 
++# A pipeline returns the status of its last command. An archiver can
++# accept the empty output of a missing decompressor, so check the
++# absolute decompressor path that the tools framework passes.
++case "$format" in
++tar|cpio|shar)
++	decompress_prog="${decompress_cat%% *}"
++	case "$decompress_prog" in
++	/*)	if ${TEST} ! -f "$decompress_prog" || ${TEST} ! -x "$decompress_prog"; then
++			${ECHO} 1>&2 "$self: decompressor not found: $decompress_prog"
++			exit 1
++		fi
++		;;
++	esac
++	;;
++esac
++
++# An archiver can also accept the output of a decompressor that fails
++# later, for example on a corrupt checksum. Record that status in a file
++# and check it after extraction. SIGPIPE (141, or 269 in ksh93) only
++# means that the archiver stopped reading; the pipeline checks its status.
++decompress_status="${TMPDIR}/$self.$$.status"
++${RM} -f "$decompress_status"
++trap "\${RM} -f \"\$decompress_status\"" 0
++decompress() {
++	$decompress_cat "$distfile" || {
++		decompress_rc=$?
++		case "$decompress_rc" in
++		141|269) ;;
++		*)	${ECHO} "$decompress_rc" > "$decompress_status" ;;
++		esac
++	}
++}
++
+ ${TEST} -d "$extract_dir" || ${MKDIR} -p "$extract_dir"
+ cd "$extract_dir"
+ 
+@@ -254,7 +287,7 @@
+ 			set -- dummy `${CAT} "$exclude_file"`; shift
+ 		fi
+ 		${TEST} "$exclude" = no || exclude_flag="-c"
+-		$decompress_cat "$distfile" |
++		decompress |
+ 			$paxprog ${EXTRACT_OPTS_PAX} $exclude_flag -O -r ${1+"$@"}
+ 		;;
+ 	*tar)
+@@ -267,7 +300,7 @@
+ 		if ${TEST} "$exclude" = "yes"; then
+ 			tmpfile="${TMPDIR}/$self.$$"
+ 			${RM} -f "$tmpfile"
+-			trap "\${RM} -f \"\$tmpfile\"" 0
++			trap "\${RM} -f \"\$tmpfile\" \"\$decompress_status\"" 0
+ 			for i in ${1+"$@"}; do
+ 				${ECHO} "$i" >> "$tmpfile"
+ 			done
+@@ -277,7 +310,7 @@
+ 			exclude_flag="-X $exclude_file"
+ 			set -- dummy; shift
+ 		fi
+-		$decompress_cat "$distfile" |
++		decompress |
+ 			$tarprog ${EXTRACT_OPTS_TAR} $exclude_flag -xf - ${1+"$@"}
+ 		;;
+ 	*)
+@@ -293,12 +326,12 @@
+ 		set -- dummy `${CAT} "$exclude_file"`; shift
+ 	fi
+ 	${TEST} "$exclude" = no || exclude_flag="-c"
+-	$decompress_cat "$distfile" |
++	decompress |
+ 		${PAX} ${EXTRACT_OPTS_PAX} $exclude_flag -r ${1+"$@"}
+ 	;;
+ 
+ shar)
+-	$decompress_cat "$distfile" | ${SH}
++	decompress | ${SH}
+ 	;;
+ 
+ zip)
+@@ -363,5 +396,11 @@
+ 	exit 1
+ 	;;
+ esac
++
++if ${TEST} -f "$decompress_status"; then
++	read decompress_rc < "$decompress_status"
++	${ECHO} 1>&2 "$self: decompressor failed with status $decompress_rc: $distfile"
++	exit 1
++fi
+ 
+ exit 0
