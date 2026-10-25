@@ -73,7 +73,8 @@ def selected_inputs(args):
         raise SDKError('The controller must use the selected SDK Python')
     flags = selected.abi_flags
     env = dict(PATH=str(directory), HOME=str(args.work), TMPDIR=str(args.work), LC_ALL='C', TZ='UTC',
-               SHELL=selected.tool('sh'), CONFIG_SHELL=selected.tool('sh'), CONFIG_SITE='/dev/null')
+               SHELL=selected.tool('sh'), CONFIG_SHELL=selected.tool('sh'), CONFIG_SITE='/dev/null',
+               GCC_CONFIGURE_SDK='yes', GCC_CONFIGURE_UNAME=selected.tool('uname'))
     for key, role in (('CC', 'cc'), ('CXX', 'cxx'), ('CPP', 'cpp'), ('AS', 'as'), ('LD', 'ld'),
                       ('AR', 'ar'), ('RANLIB', 'ranlib'), ('NM', 'nm'), ('STRIP', 'strip'),
                       ('OBJDUMP', 'objdump'), ('OBJCOPY', 'objcopy'), ('MAKE', 'make'),
@@ -91,6 +92,8 @@ def check_configure_source(source):
     """Refuse GCC's legacy unconditional host diagnostics before compilation."""
     from emberbsd_sdk.errors import SDKError
     text = (source / 'configure').read_text()
+    if 'emberbsd_host_diagnostic ()' not in text or 'GCC_CONFIGURE_UNAME' not in text:
+        raise SDKError('Use the common Ports SDK configure diagnostics patch')
     for program in ('/usr/bin/uname', '/bin/uname', '/bin/arch', '/usr/bin/arch',
                     '/usr/convex/getsysinfo', '/usr/bin/hostinfo', '/bin/machine',
                     '/usr/bin/oslevel', '/bin/universe'):

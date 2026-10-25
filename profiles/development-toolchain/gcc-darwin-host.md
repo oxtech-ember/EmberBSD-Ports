@@ -92,6 +92,15 @@ selection remains conditional on Darwin:
   missing, outside and unqualified inputs before compiler children. Run it with
   selected SDK Python and `--sdk-source SOURCE`. Its source and synthetic argv
   checks do not rerun the Mach-O experiment or qualify a native toolset.
+  [gcc-sdk-configure-diagnostics.patch](patches/gcc-sdk-configure-diagnostics.patch)
+  is part of the shared GCC source for all consumers. Its explicit
+  `GCC_CONFIGURE_SDK=yes` mode requires an executable absolute
+  `GCC_CONFIGURE_UNAME`. The two uname diagnostics use that selected tool.
+  Other legacy platform-specific queries report `unavailable (selected SDK profile)` without executing
+  absolute host commands. The unset upstream route remains unchanged.
+  The Darwin recipe requires `EMBERBSD_GCC16_UNAME` from the accepted SDK plan
+  and forwards it to configure. The direct regression uses its admitted uname
+  role and refuses a source tree without this patch before compiler children.
   [gcc-darwin-llvm-mc.patch](patches/gcc-darwin-llvm-mc.patch) adds
   `--with-darwin-assembler=llvm-mc` to GCC. It changes the driver assembler
   arguments and the configure assembler probes together.

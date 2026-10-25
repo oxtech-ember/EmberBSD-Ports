@@ -71,6 +71,8 @@ class Inputs(unittest.TestCase):
         self.assertIn(str(self.root / 'abi'), env['CPPFLAGS'])
         self.assertEqual(env['CFLAGS'], '-O2')
         self.assertEqual(env['CONFIG_SITE'], '/dev/null')
+        self.assertEqual(env['GCC_CONFIGURE_SDK'], 'yes')
+        self.assertEqual(env['GCC_CONFIGURE_UNAME'], self.tools['uname'])
         self.assertEqual(env['EGREP'], self.tools['grep'] + ' -E')
         self.assertEqual(env['FGREP'], self.tools['grep'] + ' -F')
         self.assertEqual(env['CONFIG_SHELL'], self.tools['sh'])
@@ -157,7 +159,7 @@ class Inputs(unittest.TestCase):
                 '--producer-receipt', self.args.producer_receipt,
                 '--producer-receipt-sha256', self.args.producer_receipt_sha256]
         for path in paths:
-            configure.write_text('diagnostic = `(' + path + ' -p) 2>/dev/null || echo unknown`\n')
+            configure.write_text('emberbsd_host_diagnostic ()\nGCC_CONFIGURE_UNAME\ndiagnostic = `(' + path + ' -p) 2>/dev/null || echo unknown`\n')
             with patch.object(subject, 'selected_inputs', return_value=(self.selection, {})), \
                  patch.object(subject, 'mach_o_probe') as probe, \
                  patch.object(subject.subprocess, 'run') as child, self.assertRaisesRegex(SDKError, 'unselected diagnostic'):

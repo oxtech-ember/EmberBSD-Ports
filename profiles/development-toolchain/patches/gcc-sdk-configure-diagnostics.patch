@@ -1,0 +1,75 @@
+GCC: keep configure diagnostics inside the selected SDK.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+The upstream GCC GPLv3-or-later source and copyright notices remain unchanged.
+GCC_CONFIGURE_SDK=yes requires an explicit executable GCC_CONFIGURE_UNAME.
+Use that tool for supported uname queries. Report unavailable legacy platform
+queries as unavailable in the selected profile; do not invent measurements.
+The unset route retains all upstream diagnostic commands and arguments.
+
+--- configure.orig
++++ configure
+@@ -558,6 +558,36 @@
+ exec 6>&1
+ 
+ # Name of the host.
++# EmberBSD: explicit SDK diagnostics do not execute absolute host tools.
++# Origin: EmberBSD (AI-assisted). Keep the upstream unset behavior.
++if test "${GCC_CONFIGURE_SDK+set}" = set; then
++  if test "$GCC_CONFIGURE_SDK" != yes; then
++    echo 'configure: GCC_CONFIGURE_SDK must be yes when selected' >&2
++    exit 1
++  fi
++  case ${GCC_CONFIGURE_UNAME-} in
++    /*) if test ! -f "$GCC_CONFIGURE_UNAME" || test ! -x "$GCC_CONFIGURE_UNAME"; then
++          echo 'configure: selected SDK uname must be executable' >&2
++          exit 1
++        fi ;;
++    *) echo 'configure: select an absolute GCC_CONFIGURE_UNAME' >&2
++       exit 1 ;;
++  esac
++fi
++emberbsd_host_diagnostic ()
++{
++  if test "${GCC_CONFIGURE_SDK-}" = yes; then
++    case $1 in
++      /usr/bin/uname | /bin/uname)
++        shift
++        "$GCC_CONFIGURE_UNAME" "$@" ;;
++      *) echo 'unavailable (selected SDK profile)' ;;
++    esac
++  else
++    "$@"
++  fi
++}
++
+ # hostname on some systems (SVR3.2, old GNU/Linux) returns a bogus exit status,
+ # so uname gets run too.
+ ac_hostname=`(hostname || uname -n) 2>/dev/null | sed 1q`
+@@ -2068,16 +2098,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
