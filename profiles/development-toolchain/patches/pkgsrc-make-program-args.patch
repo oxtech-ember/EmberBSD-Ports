@@ -1,0 +1,24 @@
+Origin: EmberBSD, AI-assisted for the native Darwin bootstrap.
+mk/tools/make.mk creates the "make" tool from MAKE_PROGRAM as a symlink.
+The Darwin bootstrap profile selects gmake as a command with arguments,
+for example "gmake SHELL=/prefix/bin/mksh". The symlink then pointed at
+that whole string, and recursive builds that run "make", such as perl's
+cpan/Encode, stopped with "make: not found". Use the first word as the
+tool path and the other words as its arguments, so pkgsrc writes a
+wrapper. A single-word MAKE_PROGRAM still gives the same symlink.
+Not submitted upstream.
+
+--- a/mk/tools/make.mk
++++ b/mk/tools/make.mk
+@@ -49,6 +49,10 @@
+ .endif
+ 
+ TOOLS_CREATE+=		make
+-TOOLS_PATH.make=	${MAKE_PROGRAM}
++# MAKE_PROGRAM can be a command with arguments, such as a gmake tuple
++# with SHELL=. Keep the path and pass the rest as tool arguments.
++# A one-word list needs the test: [2..-1] is then the range 2..1.
++TOOLS_PATH.make=	${MAKE_PROGRAM:[1]}
++TOOLS_ARGS.make=	${${MAKE_PROGRAM:[#]} > 1:?${MAKE_PROGRAM:[2..-1]}:}
+ 
+ CONFIGURE_ENV+=		MAKE=make

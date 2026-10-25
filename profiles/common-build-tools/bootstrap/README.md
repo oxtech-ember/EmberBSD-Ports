@@ -258,6 +258,21 @@ select the Ports bmake and give every shell consumer and the gmake tuple the
 Ports mksh. Use a MAKECONF whose `EMBERBSD_DARWIN_SH` is the initial shell, as
 the SDK writes it.
 
+Because the gmake tuple has arguments, `pkgsrc-make-program-args.patch` splits
+`MAKE_PROGRAM` for the created `make` tool. The first word is the tool path, and
+the other words become `TOOLS_ARGS.make`, so pkgsrc writes a wrapper instead of
+a symlink to the whole tuple. Recursive builds that run `make`, such as the
+`cpan/Encode` build of `lang/perl5`, need this.
+
+```sh
+python3 profiles/development-toolchain/tests/darwin-bootstrap-make-tool.py \
+    /absolute/exported-pkgsrc /absolute/bmake /absolute/MAKECONF /absolute/new-work
+```
+
+The test runs the `tools` phase of `lang/perl5` and `pkgtools/pkg_install` in
+the new work directory. The perl tool must run GNU make, and the bmake tool
+must stay a symlink. Use a MAKECONF whose `LOCALBASE` has their dependencies.
+
 Only completed providers in the accepted full plan can use its graduation.
 Keep other initial tools in their original scope. Select `bin/bsdinstall` for ordinary
 `install`, even when coreutils also installs `bin/ginstall`. The remaining OS
