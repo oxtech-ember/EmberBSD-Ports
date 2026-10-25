@@ -1,0 +1,54 @@
+# Common gzip 1.15
+
+Origin: pkgsrc, maintained by EmberBSD (AI-assisted).
+
+This recipe replaces the inherited `archivers/gzip` recipe for every export.
+It keeps all fourteen commands, manual pages, Info documentation and conflicts.
+The existing `LESS=less` selection keeps zless as a runtime pager frontend.
+It does not require less on the build host. The old export patch is retired.
+
+GNU published the stable release on 2026-09-20.
+The [announcement](https://lists.gnu.org/archive/html/info-gnu/2026-09/msg00006.html)
+binds tag `v1.15` to commit `e6263160768c73f6117f3c1de78291a60f2cb796`.
+The license remains GPL-3.0-or-later. Upstream copyright notices remain intact.
+
+The official [source archive](https://ftp.gnu.org/gnu/gzip/gzip-1.15.tar.xz)
+has 808900 bytes and SHA256
+`9aa0cc780dec156b8282844833b342ab7cb08c25d2cd9a1869cdd0df31deff48`.
+This hash matches the announcement's Base64 checksum.
+Its uncompressed tar has 5396480 bytes and SHA256
+`db2d827bc811f348a11da04484bd2c5971ff729a83c5d9f7a3ad6df206b94e92`.
+The recipe retains the pkgsrc uncompressed mirror archive for bootstrap use.
+`distinfo` also binds its BLAKE2s and SHA512 hashes.
+These agree with the [pkgsrc update](https://mail-index.netbsd.org/pkgsrc-changes/2026/09/24/msg355273.html).
+The detached GNU signature is available. Signature authentication remains a separate check.
+
+Both inherited source patches are already in upstream 1.15.
+`lib/utimens.h` includes `sys/stat.h` for the NetBSD declarations.
+`unlzh.c` clears the shared decoding tables before reuse.
+No source patch is applied a second time. The complete upstream source is retained.
+The release also binds output cleanup to its directory descriptor.
+This repairs the reported wrong-file deletion during an ancestor rename.
+The source check does not reproduce that race or malformed-input defects.
+
+The common pkgsrc gzip, gunzip and gzcat tool routes keep this provider.
+Rust and compiler-cache integration also name `archivers/gzip`.
+The LXQt archiver's `gzip>=1.14` constraint accepts 1.15 without another recipe.
+Rebuild selected tool consumers from a fresh dependency graph.
+
+Run the source check with an explicit SDK Python:
+
+```sh
+/absolute/sdk/python3.15 -B profiles/common-build-tools/tests/gzip-source.py \
+  --archive /absolute/distfiles/gzip-1.15.tar.xz \
+  --tar /absolute/distfiles/gzip-1.15.tar --pkgsrc /absolute/export -v
+```
+
+Source hashes, retired-patch content and export composition are separate from execution.
+Native GCC16 compilation, upstream tests, package lifecycle and consumer runtime remain pending.
+Cppcheck, applicable path analysis and memory checks also remain pending.
+Ordinary round trips should cover empty, text and binary input, stdin and named files.
+Check `gzip -t`, decompression byte equality, helpers and retained source files.
+Use independent input bytes and `LC_ALL=C` for deterministic diagnostics.
+The release now respects the locale for number formatting and filename quoting.
+Its `gzip -l` empty-file ratio and znew `-P` warning also change as documented upstream.

@@ -213,6 +213,8 @@ and [installed AArch64 VM acceptance](cross/validation.md). Cross package
 metadata, alternate-root updates and target script paths have regressions.
 The cross-tools check also queries pkgsrc's `archivers/gzip` recipe to keep
 `INFO_FILES` enabled and select the target `install-info` provider.
+The [common gzip 1.15 recipe](../../pkgsrc/archivers/gzip/README.md) keeps that
+interface and all helpers. Source and export checks do not accept native execution.
 Binutils includes a tested DWARF32/64 line-table repair. Its acceptance
 explicitly selects GNU as/ld; migration of the bootstrap GCC16 package's
 hardcoded base-tool paths remains pending.
