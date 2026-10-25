@@ -2,6 +2,9 @@ $NetBSD: patch-meson.build,v 1.26 2026/05/03 20:57:24 schmonz Exp $
 
 - On Darwin, optionally use Cocoa (needed for X11 users).
 
+- On Darwin, build without the Carbon and Cocoa backends when no
+  Objective-C compiler is available (for example GCC without objc).
+
 - Select pkgsrc's build-host Python explicitly for upstream generators.
   (Requires meson >= 0.50.0)
 
@@ -32,32 +35,42 @@ $NetBSD: patch-meson.build,v 1.26 2026/05/03 20:57:24 schmonz Exp $
    'faccessat',
    'fallocate',
    'fchmod',
-@@ -777,6 +777,10 @@
+@@ -776,6 +776,10 @@
+   'wcsnlen',
    'sysctlbyname',
  ]
- 
++
 +if host_system != 'sunos'
 +  functions += ['epoll_create1']
 +endif
-+
+ 
  # _NSGetEnviron is available on iOS too, but its usage gets apps rejected from
  # the app store since it's considered 'private API'
- if host_system == 'darwin'
-@@ -1007,13 +1011,6 @@
+@@ -1004,16 +1008,15 @@
+ osx_ldflags = []
+ glib_have_carbon = false
+ glib_have_cocoa = false
++glib_have_objc = false
  if host_system == 'darwin' and subsystem == 'macos'
-   add_languages('objc', native: false, required: true)
-   objcc = meson.get_compiler('objc')
+-  add_languages('objc', native: false, required: true)
+-  objcc = meson.get_compiler('objc')
 -  if not objcc.compiles('''#include <AvailabilityMacros.h>
 -                           #if MAC_OS_X_VERSION_MIN_REQUIRED < 101300
 -                           #error message "GLib requires macOS 10.13 or later."
 -                           #endif''',
 -                         name : 'macOS 10.13 or later')
 -    error('GLib requires macOS 10.13 or later.')
--  endif
++  glib_have_objc = add_languages('objc', native: false, required: false)
++  if not glib_have_objc
++    warning('No Objective-C compiler: building without the Carbon and Cocoa backends')
+   endif
++endif
++if glib_have_objc
++  objcc = meson.get_compiler('objc')
  
    # Mac OS X Carbon support
    glib_have_carbon = objcc.compiles('''#include <Carbon/Carbon.h>
-@@ -1030,7 +1027,7 @@
+@@ -1030,7 +1033,7 @@
                                        #error "Detected GNUstep, not Cocoa"
                                        #endif''',
                                     name : 'Mac OS X Cocoa support')
@@ -66,7 +79,7 @@ $NetBSD: patch-meson.build,v 1.26 2026/05/03 20:57:24 schmonz Exp $
    if glib_have_cocoa
      glib_conf.set('HAVE_COCOA', true)
      osx_ldflags += ['-Wl,-framework,Foundation', '-Wl,-framework,AppKit']
-@@ -2403,18 +2400,17 @@
+@@ -2403,18 +2406,17 @@
  
    # try glibc
    if cc.has_function('getxattr') and cc.has_header('sys/xattr.h')
@@ -87,7 +100,7 @@ $NetBSD: patch-meson.build,v 1.26 2026/05/03 20:57:24 schmonz Exp $
    if cc.compiles(glib_conf_prefix + '''
                   #include <stdio.h>
                   #ifdef HAVE_SYS_TYPES_H
-@@ -2515,7 +2511,7 @@
+@@ -2515,7 +2517,7 @@
  
  glib_conf.set('HAVE_PROC_SELF_CMDLINE', have_proc_self_cmdline)
  
@@ -96,7 +109,7 @@ $NetBSD: patch-meson.build,v 1.26 2026/05/03 20:57:24 schmonz Exp $
  
  # Sets the shebang on script files. This has been changed many times including
  # using env, the absolute path to the Python executable, and using both python
-@@ -2554,7 +2550,7 @@
+@@ -2554,7 +2556,7 @@
  
  # Determine which user environment-dependent files that we want to install
  bash = find_program('bash', required : false)
