@@ -1,0 +1,201 @@
+{
+  "format": "emberbsd-native-bootstrap-program",
+  "version": 1,
+  "origin": "EmberBSD AI-assisted initial source-build contract. GNU Make keeps its original copyright and GPLv3-or-later license.",
+  "compiler": {
+    "family": "gcc",
+    "major": 16,
+    "abi": "native"
+  },
+  "build_system": "gnu-configure-bootstrap",
+  "configure_args": [
+    "--disable-nls",
+    "--without-guile"
+  ],
+  "initial_only": true,
+  "name": "gmake",
+  "canonical_host_recipe": "upstream/pkgsrc/devel/gmake/Makefile",
+  "source_makefile": "Makefile.in",
+  "required_tool_roles": [
+    "cc",
+    "cxx",
+    "cpp",
+    "as",
+    "ld",
+    "ar",
+    "ranlib",
+    "nm",
+    "strip",
+    "sh",
+    "awk",
+    "basename",
+    "cat",
+    "chmod",
+    "cmp",
+    "cp",
+    "cut",
+    "date",
+    "dirname",
+    "env",
+    "expr",
+    "grep",
+    "head",
+    "hostname",
+    "id",
+    "ln",
+    "ls",
+    "mkdir",
+    "mv",
+    "printf",
+    "pwd",
+    "rm",
+    "rmdir",
+    "sed",
+    "sleep",
+    "sort",
+    "tail",
+    "touch",
+    "tr",
+    "uname",
+    "uniq",
+    "wc",
+    "diff",
+    "od",
+    "install"
+  ],
+  "make_targets": [],
+  "output_programs": {
+    "gmake": "make"
+  },
+  "invocations": [
+    "gmake"
+  ],
+  "files": {
+    "probe.mk": ".DEFAULT_GOAL := basic\n.PHONY: basic selected-shell variable recursive recursive-child parallel left right question fail\nbasic:\n\t@printf 'GNU Make %s bootstrap\\n' '$(MAKE_VERSION)'\nselected-shell:\n\t@test '$(SHELL)' = \"$$EMBERBSD_BOOTSTRAP_EXPECTED_SHELL\"\n\t@printf 'selected-shell-ok\\n'\nvariable:\n\t@printf '%s\\n' '$(VALUE)'\nrecursive:\n\t+@$(MAKE) --no-print-directory -s -f probe.mk recursive-child\nrecursive-child:\n\t@test '$(MAKELEVEL)' = 1\n\t@printf 'recursive-ok\\n'\nparallel: left right\n\t@test \"$$(cat parallel-left)\" = L && test \"$$(cat parallel-right)\" = R\n\t@printf 'parallel-ok\\n'\nleft:\n\t@printf 'L\\n' > parallel-left\nright:\n\t@printf 'R\\n' > parallel-right\nquestion:\n\t@printf 'question-target-must-not-run\\n'\nfail:\n\t@false\n"
+  },
+  "runtime_cases": [
+    {
+      "name": "basic",
+      "invocation": "gmake",
+      "args": [
+        "--no-print-directory",
+        "-s",
+        "-f",
+        "probe.mk",
+        "basic"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "GNU Make 4.4.1 bootstrap\n",
+      "stderr": ""
+    },
+    {
+      "name": "selected-shell",
+      "invocation": "gmake",
+      "args": [
+        "--no-print-directory",
+        "-s",
+        "-f",
+        "probe.mk",
+        "selected-shell"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "selected-shell-ok\n",
+      "stderr": ""
+    },
+    {
+      "name": "space-variable",
+      "invocation": "gmake",
+      "args": [
+        "--no-print-directory",
+        "-s",
+        "-f",
+        "probe.mk",
+        "variable",
+        "VALUE=space value"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "space value\n",
+      "stderr": ""
+    },
+    {
+      "name": "recursive",
+      "invocation": "gmake",
+      "args": [
+        "--no-print-directory",
+        "-s",
+        "-f",
+        "probe.mk",
+        "recursive"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "recursive-ok\n",
+      "stderr": ""
+    },
+    {
+      "name": "parallel",
+      "invocation": "gmake",
+      "args": [
+        "--no-print-directory",
+        "-s",
+        "-f",
+        "probe.mk",
+        "-j2",
+        "parallel"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "parallel-ok\n",
+      "stderr": ""
+    },
+    {
+      "name": "question",
+      "invocation": "gmake",
+      "args": [
+        "--no-print-directory",
+        "-s",
+        "-f",
+        "probe.mk",
+        "-q",
+        "question"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "recipe-failure",
+      "invocation": "gmake",
+      "args": [
+        "--no-print-directory",
+        "-s",
+        "-f",
+        "probe.mk",
+        "fail"
+      ],
+      "stdin": "",
+      "exit": 2,
+      "stdout": "",
+      "stderr_nonempty": true
+    },
+    {
+      "name": "missing-target",
+      "invocation": "gmake",
+      "args": [
+        "--no-print-directory",
+        "-s",
+        "-f",
+        "probe.mk",
+        "missing-target"
+      ],
+      "stdin": "",
+      "exit": 2,
+      "stdout": "",
+      "stderr_nonempty": true
+    }
+  ]
+}
