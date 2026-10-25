@@ -43,7 +43,11 @@ installed-library consumer before package acceptance. Full SPIRV-Tools unit
 execution is a separate consumer check. Source checks do not establish these
 results.
 
-The native test phase uses pkgsrc's platform `SHLIB_PATH_VAR` to find the
-uninstalled library in the CMake build's `effcee` directory. This environment
+The native test phase sets `LD_LIBRARY_PATH` and `DYLD_LIBRARY_PATH`, as in
+the common RE2 recipe, to find the uninstalled library in the CMake build's
+`effcee` directory. pkgsrc does not define `SHLIB_PATH_VAR`. This environment
 applies only to `make test`. Installed-library acceptance uses the normal
 loader environment. Package RPATH rules are unchanged.
+
+The [shared test-environment check](../../parallel/spirv-tools/tests/README.md)
+uses actual pkgsrc platform discovery and checks this recipe too.

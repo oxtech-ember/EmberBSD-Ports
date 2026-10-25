@@ -49,8 +49,23 @@ Effcee, RE2 and Abseil packages before package acceptance. This configure check
 does not qualify their binaries, the full upstream unit suite, installed
 libraries, or package lifecycle.
 
-The native test phase uses pkgsrc's platform `SHLIB_PATH_VAR` to find
-`libSPIRV-Tools-shared` in the CMake build's `source` directory. The shared
+The native test phase sets `LD_LIBRARY_PATH` and `DYLD_LIBRARY_PATH`, as in
+the common RE2 recipe, to find `libSPIRV-Tools-shared` in the CMake build's
+`source` directory. pkgsrc does not define `SHLIB_PATH_VAR`. The shared
 C-interface unit test needs this library before package installation.
 This environment applies only to `make test`. Installed-library acceptance
 uses the normal loader environment. Package RPATH rules are unchanged.
+
+```sh
+python3 -B tests/native-test-env.py --bmake /absolute/bmake \
+    --pkgsrc-source /absolute/prepared-pkgsrc \
+    --work-parent /absolute/private-test-parent
+```
+
+This metadata check loads the real prepared pkgsrc `bsd.prefs.mk`, including
+its NetBSD platform rules, with explicit native platform facts and an empty
+private `MAKECONF`. It checks both recipes' native environment and cross-mode
+guard. The cross guard is selected after platform discovery; this does not
+qualify the full cross dependency graph. A causal case restores the previous
+undefined-variable expression and must fail. External dependency includes are
+outside this check. It does not build or execute target programs.

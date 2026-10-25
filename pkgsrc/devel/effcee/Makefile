@@ -30,7 +30,8 @@ TEST_TARGET=	test
 
 # Run native tests before the package installs its shared library.
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
-TEST_ENV+= ${SHLIB_PATH_VAR}=${WRKSRC}/${CMAKE_BUILD_DIR}/effcee
+TEST_ENV+= LD_LIBRARY_PATH=${WRKSRC}/${CMAKE_BUILD_DIR}/effcee
+TEST_ENV+= DYLD_LIBRARY_PATH=${WRKSRC}/${CMAKE_BUILD_DIR}/effcee
 .endif
 
 .include "../../lang/python/tool.mk"

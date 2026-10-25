@@ -36,7 +36,8 @@ TEST_TARGET=		test
 
 # The shared C-interface test loads the uninstalled library from source/.
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
-TEST_ENV+= ${SHLIB_PATH_VAR}=${WRKSRC}/${CMAKE_BUILD_DIR}/source
+TEST_ENV+= LD_LIBRARY_PATH=${WRKSRC}/${CMAKE_BUILD_DIR}/source
+TEST_ENV+= DYLD_LIBRARY_PATH=${WRKSRC}/${CMAKE_BUILD_DIR}/source
 .endif
 
 .include "../../lang/python/tool.mk"
