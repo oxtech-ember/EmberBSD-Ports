@@ -489,6 +489,31 @@ selected Python and `--source /absolute/chromium/src/electron`. The probe recipe
 still lacks a complete GN build interface. These instructions do not establish
 generation, packaging, loading, or host-generator acceptance.
 
+The [host PaX patch](patches/v8-host-paxctl.patch) keeps the NetBSD snapshot
+permission step local to a NetBSD build host. Apply it from the V8 source root:
+
+```sh
+cd /absolute/chromium/src/v8
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/v8-host-paxctl.patch
+```
+
+The Mac host does not run NetBSD `paxctl` on its Mach-O snapshot generator.
+For a NetBSD build host, set `v8_host_paxctl` to the absolute executable path
+from an accepted native SDK `paxctl` role. Include `paxctl` in the existing
+`load_native_toolset` call's `required_roles`. Obtain the path with
+`selection.tool("paxctl")`. The path alone does not qualify its provider.
+The setting has no default path or PATH lookup. The action declares that file as an input and keeps `+m` on the
+selected `mksnapshot($v8_snapshot_toolchain)` output. The wrapper refuses an
+empty or relative executable before it starts a child. It preserves the child
+exit status. This selector does not qualify an executable.
+
+The [PaX source checks](tests/v8-host-paxctl.py) use no native commands.
+Run them with the selected Python and `--source /absolute/chromium/src/v8`.
+Actual GN and NetBSD-host permission checks remain required. This change does
+not repair other context/code-cache PaX actions or change target browser PaX
+and sandbox policy. The current Mac cross configuration keeps the context
+optimization off through the separate argument above.
+
 The Apple link driver receives one C++ executable and its separate ordered
 arguments. Rust proc macros receive the same executable and ordered link
 arguments. The existing link launcher, environment order and final-link pool
