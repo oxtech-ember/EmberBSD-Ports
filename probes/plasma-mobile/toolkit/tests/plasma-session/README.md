@@ -33,14 +33,15 @@ No target compilation is required. Select a new absolute output directory:
 sh ./run.sh /tmp/plasma-session-check
 sh ./run.sh --renderer powervr-zink /tmp/plasma-powervr-check
 sh ./run.sh --backend drm --renderer v3d /tmp/plasma-drm-check
-sh ./run.sh --backend drm --renderer radeonsi --output eDP-1 /tmp/plasma-radeonsi-check
+sh ./run.sh --backend drm --renderer radeonsi --output eDP-1 \
+  --refresh-millihz 60002 /tmp/plasma-radeonsi-check
 ```
 
 The backend is `virtual` or `drm`. `virtual` remains the default.
-The renderer and backend options can appear in either order. `--output` applies
-only to the DRM backend. Duplicate, missing and unknown options fail before
-output creation or session launch. No arbitrary dimensions or KWin arguments
-are accepted.
+The renderer, backend, output and refresh options can appear in any order.
+`--output` and `--refresh-millihz` apply only to the DRM backend. Duplicate,
+missing, malformed and unknown options fail before output creation or session
+launch. No arbitrary dimensions or KWin arguments are accepted.
 
 The default renderer profile is `v3d`. Other profiles are `powervr-zink` and
 `radeonsi`. Unknown profiles fail before output creation or session launch.
@@ -82,15 +83,24 @@ force that fallback or qualify it as a working seat. A reachable system bus
 and device access do not establish login, device leasing or input ownership.
 
 `backend.txt` records the requested backend. `output-policy.txt` records the
-checked backend, dimensions and output name. DRM uses `--drm` without
-windowed-size arguments. It requires one enabled output with the expected name
-at 1920x1080, scale 1 and 60000 mHz. The default expected DRM name remains
-`HDMI-A-1`; `--output` changes only the name checked in KWin support
-information. It does not select a connector or DRM device. The virtual policy
-requires `Virtual-0` at 1280x1024 with the same scale and refresh rate. Both
-support snapshots must contain the selected KWin backend and those actual
-output fields. The Plasma layout script checks
-the same geometry, desktop, panel and applet models during readiness.
+checked backend, dimensions, output name and expected refresh rate. DRM uses
+`--drm` without windowed-size arguments. It requires one enabled output with
+the expected name at 1920x1080, scale 1 and the exact expected refresh rate.
+The default expected DRM name remains `HDMI-A-1`, and the default expected
+rate remains 60000 mHz. `--refresh-millihz` accepts a positive decimal integer
+of up to seven digits. `--output` and `--refresh-millihz` change only the
+values checked in KWin support information. They do not select a connector,
+DRM device or display mode, and the checker does not apply a tolerance.
+KWin 6.8 calculates the modeline refresh rate from its clock and timing totals
+in [`CvtModeline::refreshRate()`](https://invent.kde.org/plasma/kwin/-/blob/v6.8.0/src/core/output.cpp).
+For example, a modeline with a 139780 kHz clock, 2080 horizontal total and
+1120 vertical total reports 60002 mHz after that integer calculation; pass
+`--refresh-millihz 60002` to check it. The virtual policy
+requires `Virtual-0` at 1280x1024, scale 1 and 60000 mHz. The refresh option is
+rejected for the virtual backend. Both support snapshots must contain the
+selected KWin backend and those actual output fields. The Plasma layout
+script checks the same geometry, desktop, panel and applet models during
+readiness.
 These are programmatic diagnostics. They do not establish visible pixels,
 physical output pixels, input devices or a complete seat implementation.
 
@@ -245,9 +255,10 @@ These controls execute the actual shell parser, backend and renderer checks,
 layout JavaScript, current-output predicates, and clean
 environment dispatch. They cover all renderer profiles, the legacy two-argument
 checker, mixed renderers, software fallbacks, unrelated text and missing
-installed prerequisites. Output controls retain the HDMI default, check an
-explicit eDP name and reject output arguments for the virtual backend. They
-preserve the guard arguments, return status and controller lifecycle.
+installed prerequisites. Output controls retain the HDMI and 60000 mHz
+defaults, check an explicit eDP name and 60002 mHz, reject mismatched rates,
+malformed rates and refresh arguments for the virtual backend. They preserve
+the guard arguments, return status and controller lifecycle.
 Baseline and mutated predicates demonstrate the
 cause of rejected or falsely accepted evidence. Target paths are explicit
 host doubles. These controls do not execute KDE or establish target Plasma

@@ -189,7 +189,18 @@ def main():
                 directory = work / (profile + '-' + str(status)); directory.mkdir()
                 backend = 'drm' if status == 7 else 'virtual'
                 drm_output = 'eDP-1' if status == 7 else 'HDMI-A-1'
-                body = 'work=' + shlex.quote(str(directory)) + '\ncd "$work"\nbackend=' + backend + '\nprofile=' + profile + '\ndrm_output=' + drm_output + '\naccount=fixture\nlogin_shell=/bin/sh\nicd=' + ICD + '\n'
+                drm_refresh = '60002' if status == 7 else '60000'
+                body = '\n'.join([
+                    'work=' + shlex.quote(str(directory)),
+                    'cd "$work"',
+                    'backend=' + backend,
+                    'profile=' + profile,
+                    'drm_output=' + drm_output,
+                    'drm_refresh=' + drm_refresh,
+                    'account=fixture',
+                    'login_shell=/bin/sh',
+                    'icd=' + ICD,
+                ]) + '\n'
                 body += dispatch.replace('/usr/pkg/bin/perl ./guard.pl', 'TEST_EXIT=' + str(status) + ' ' + shlex.quote(sys.executable) + ' ' + shlex.quote(str(recorder)) + ' ./guard.pl')
                 env = dict(os.environ, LD_LIBRARY_PATH='/untrusted', LD_PRELOAD='/untrusted', VK_ICD_FILENAMES='/untrusted', VK_DRIVER_FILES='/untrusted', GALLIUM_DRIVER='softpipe', KWIN_DRM_DEVICES='/untrusted')
                 script('dispatch-' + profile + '-' + str(status), body, env=env)
@@ -204,6 +215,8 @@ def main():
                 require(row['env']['EMBER_PLASMA_BACKEND'] == backend, 'Backend lost at dispatch')
                 require(row['env']['EMBER_PLASMA_EXPECTED_DRM_OUTPUT'] == drm_output,
                         'Expected DRM output lost at dispatch')
+                require(row['env']['EMBER_PLASMA_EXPECTED_REFRESH_MILLIHZ'] == drm_refresh,
+                        'Expected refresh rate lost at dispatch')
 
         # The controller must pass the selected profile at all three call sites.
         calls = [line for line in controller.splitlines() if line.startswith('/bin/sh ./check-results.sh ')]
@@ -218,7 +231,7 @@ def main():
 
         # The backend enum is independent of renderer selection and option order.
         parser_backend = runner.split('[ "$(id -u)" -ne 0 ]', 1)[0]
-        parser_backend += 'printf "%s %s %s\\n" "$backend" "$profile" "$drm_output"\n'
+        parser_backend += 'printf "%s %s %s %s\\n" "$backend" "$profile" "$drm_output" "$drm_refresh"\n'
         for backend in ['virtual', 'drm']:
             for profile in ['v3d', 'powervr-zink', 'radeonsi']:
                 orders = [['--backend', backend, '--renderer', profile],
@@ -227,12 +240,17 @@ def main():
                     orders.extend([
                         ['--backend', backend, '--renderer', profile, '--output', 'eDP-1'],
                         ['--renderer', profile, '--output', 'eDP-1', '--backend', backend],
+                        ['--backend', backend, '--renderer', profile, '--refresh-millihz', '60002'],
+                        ['--renderer', profile, '--output', 'eDP-1', '--refresh-millihz', '60002', '--backend', backend],
                     ])
                 for order in orders:
                     expected_output = 'eDP-1' if '--output' in order else 'HDMI-A-1'
-                    require(script('backend-parser-' + str(len(results)), parser_backend,
-                                   [*order, str(out)]) == (backend + ' ' + profile + ' ' + expected_output + '\n').encode(),
-                            'Backend/profile parser changed')
+                    expected_refresh = '60002' if '--refresh-millihz' in order else '60000'
+                    actual = script('backend-parser-' + str(len(results)), parser_backend,
+                                    [*order, str(out)])
+                    expected = (backend + ' ' + profile + ' ' + expected_output + ' ' + expected_refresh + '\n').encode()
+                    require(actual == expected,
+                            'Backend/profile parser changed: expected=' + repr(expected) + ' actual=' + repr(actual))
         for argv in [['--backend'], ['--backend', '', str(out)],
                      ['--backend', 'unknown', str(out)], ['--backend', 'drm'],
                      ['--backend', 'drm', '--backend', 'virtual', str(out)],
@@ -240,6 +258,13 @@ def main():
                      ['--output'], ['--output', '', str(out)],
                      ['--output', 'eDP-1', str(out)],
                      ['--backend', 'virtual', '--output', 'eDP-1', str(out)],
+                     ['--refresh-millihz'], ['--refresh-millihz', '', str(out)],
+                     ['--backend', 'virtual', '--refresh-millihz', '60002', str(out)],
+                     ['--backend', 'drm', '--refresh-millihz', '0', str(out)],
+                     ['--backend', 'drm', '--refresh-millihz', '0060000', str(out)],
+                     ['--backend', 'drm', '--refresh-millihz', '60000x', str(out)],
+                     ['--backend', 'drm', '--refresh-millihz', '12345678', str(out)],
+                     ['--backend', 'drm', '--refresh-millihz', '60000', '--refresh-millihz', '60002', str(out)],
                      ['--backend', 'drm', '--output', 'eDP/1', str(out)],
                      ['--backend', 'drm', '--output', 'eDP-1', '--output', 'HDMI-A-1', str(out)],
                      ['--backend', 'drm', '--output', 'A' * 33, str(out)],
@@ -248,6 +273,7 @@ def main():
             require(not out.exists(), 'Rejected backend created output')
         call('full-unknown-backend', ['/bin/sh', str(source / 'run.sh'), '--backend', 'unknown', str(out)], 2)
         call('full-output-on-virtual', ['/bin/sh', str(source / 'run.sh'), '--output', 'eDP-1', str(out)], 2)
+        call('full-refresh-on-virtual', ['/bin/sh', str(source / 'run.sh'), '--refresh-millihz', '60002', str(out)], 2)
 
         # Only target paths are replaced; real character/access/symlink tests run.
         for backend, nodes, expected in [
@@ -304,12 +330,17 @@ console.log('PASS: actual layout geometry');
         wrapper = work / 'wrapper'
         wrapper.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > wrapper-arguments\n')
         wrapper.chmod(0o700)
-        for backend, width, height, name, backend_name, drm_output in [
-                ('virtual', 1280, 1024, 'Virtual-0', 'KWin::VirtualBackend', 'HDMI-A-1'),
-                ('drm', 1920, 1080, 'HDMI-A-1', 'DRM', 'HDMI-A-1'),
-                ('drm', 1920, 1080, 'eDP-1', 'DRM', 'eDP-1')]:
-            env = dict(os.environ, EMBER_PLASMA_BACKEND=backend,
-                       EMBER_PLASMA_EXPECTED_DRM_OUTPUT=drm_output)
+        for backend, width, height, name, backend_name, drm_output, drm_refresh in [
+                ('virtual', 1280, 1024, 'Virtual-0', 'KWin::VirtualBackend', None, None),
+                ('drm', 1920, 1080, 'HDMI-A-1', 'DRM', None, None),
+                ('drm', 1920, 1080, 'eDP-1', 'DRM', 'eDP-1', '60002')]:
+            env = dict(os.environ, EMBER_PLASMA_BACKEND=backend)
+            if drm_output is not None:
+                env['EMBER_PLASMA_EXPECTED_DRM_OUTPUT'] = drm_output
+            if drm_refresh is not None:
+                env['EMBER_PLASMA_EXPECTED_REFRESH_MILLIHZ'] = drm_refresh
+            expected_refresh = drm_refresh or '60000'
+            expected_output = drm_output or name
             directory = work / ('launch-' + backend + '-' + name); directory.mkdir()
             actual_launch = launch.replace('/usr/pkg/bin/kwin_wayland_wrapper', shlex.quote(str(wrapper)))
             script('launch-' + backend, policy + 'cd ' + shlex.quote(str(directory)) + '\n' + actual_launch + 'wait "$!"\n', env=env)
@@ -324,16 +355,18 @@ console.log('PASS: actual layout geometry');
                    env=dict(env, EMBER_PLASMA_OUTPUT=str(policy_dir)))
             require((policy_dir / 'output-policy.txt').read_text() ==
                     backend + ' ' + str(width) + ' ' + str(height) + ' ' +
-                    ('Virtual-0' if backend == 'virtual' else drm_output) + '\n',
+                    expected_output + ' ' + expected_refresh + '\n',
                     'Recorded output policy does not match the checked output')
             payload = work / ('layout-' + backend + '.js')
             (work / 'layout.js').write_text(layout)
             payload.write_bytes(script('layout-payload-' + backend, policy + 'printf "%s\\n" ' + layout_word + '\n', env=env))
             call('layout-' + backend, ['node', str(layout_test), str(payload), str(width), str(height), 'accept'])
             call('layout-wrong-' + backend, ['node', str(layout_test), str(payload), '800', '600', 'reject'])
-            evidence = ('LogicalOutput backend\n==============\nName: ' + backend_name + '\n\nScreens\n=======\n'
-                        'Number of Screens: 1\n\nScreen 0:\n---------\nName: ' + name + '\nEnabled: 1\n'
-                        'Geometry: 0,0,' + str(width) + 'x' + str(height) + '\nScale: 1\nRefresh Rate: 60000\n\nCompositing\n')
+            evidence = (
+                'LogicalOutput backend\n==============\nName: ' + backend_name + '\n\nScreens\n=======\n'
+                'Number of Screens: 1\n\nScreen 0:\n---------\nName: ' + name + '\nEnabled: 1\n'
+                'Geometry: 0,0,' + str(width) + 'x' + str(height) + '\n'
+                'Scale: 1\nRefresh Rate: ' + expected_refresh + '\n\nCompositing\n')
             for phase in ['before', 'after']:
                 f = work / ('backend-' + backend + '-' + phase + '.txt'); f.write_text(evidence)
                 script('backend-' + backend + '-' + name + '-' + phase,
@@ -345,7 +378,8 @@ console.log('PASS: actual layout geometry');
                     ('wrong-size', evidence.replace('Geometry: 0,0,' + str(width), 'Geometry: 0,0,800')),
                     ('disabled', evidence.replace('Enabled: 1', 'Enabled: 0')),
                     ('scaled', evidence.replace('Scale: 1', 'Scale: 2')),
-                    ('wrong-refresh', evidence.replace('Refresh Rate: 60000', 'Refresh Rate: 50000')),
+                    ('wrong-refresh', evidence.replace('Refresh Rate: ' + expected_refresh,
+                                                       'Refresh Rate: ' + ('50000' if expected_refresh == '60000' else '60000'))),
                     ('duplicate', evidence.replace('Name: ' + name, 'Name: ' + name + '\nName: ' + name)),
                     ('two-screens', evidence.replace('Number of Screens: 1', 'Number of Screens: 2')),
                     ('unrelated', evidence.replace('LogicalOutput backend', 'unrelated'))]:
@@ -380,6 +414,13 @@ console.log('PASS: actual layout geometry');
                 row = len(results)
                 call('mutant-drop-layout-size', ['node', str(layout_test), str(mutant_payload), '800', '600', 'reject'], 1)
                 require('FAIL: actual layout geometry outcome' in results[row]['stderr'], 'Unrelated layout mutant failure')
+        for invalid_refresh in ['', '0', '0060000', '60000x', '12345678']:
+            script('controller-invalid-refresh-' + str(len(results)), policy,
+                   env=dict(os.environ, EMBER_PLASMA_BACKEND='drm',
+                            EMBER_PLASMA_EXPECTED_REFRESH_MILLIHZ=invalid_refresh), expected=2)
+        script('controller-refresh-on-virtual', policy,
+               env=dict(os.environ, EMBER_PLASMA_BACKEND='virtual',
+                        EMBER_PLASMA_EXPECTED_REFRESH_MILLIHZ='60002'), expected=2)
         script('controller-unknown-backend', policy, env=dict(os.environ, EMBER_PLASMA_BACKEND='unknown'), expected=2)
         for phase in ['before', 'after']:
             require(controller.count('backend_check support-' + phase + '.txt\n') == 1,
@@ -396,14 +437,29 @@ console.log('PASS: actual layout geometry');
         projected = projected.replace('case "$profile" in v3d|powervr-zink|radeonsi) ;; *) exit 2 ;; esac\n',
                                        'case "$profile" in v3d|powervr-zink) ;; *) exit 2 ;; esac\n')
         projected = projected.replace('expected_drm_output=${EMBER_PLASMA_EXPECTED_DRM_OUTPUT-HDMI-A-1}\n', '')
+        projected = projected.replace('expected_refresh=${EMBER_PLASMA_EXPECTED_REFRESH_MILLIHZ-60000}\n', '')
+        projected = projected.replace(
+            'virtual)\n    [ "$expected_refresh" = 60000 ] || exit 2\n'
+            '    width=1280; height=1024; output_name=Virtual-0\n'
+            '    backend_name=KWin::VirtualBackend; refresh_millihz=60000 ;;',
+            'virtual) width=1280; height=1024; output_name=Virtual-0; backend_name=KWin::VirtualBackend ;;')
         projected = projected.replace(
             'drm)\n    case "$expected_drm_output" in \'\'|*[!A-Za-z0-9_.-]*) exit 2 ;; esac\n'
             '    [ "${#expected_drm_output}" -le 32 ] || exit 2\n'
-            '    width=1920; height=1080; output_name=$expected_drm_output; backend_name=DRM ;;',
+            '    case "$expected_refresh" in \'\'|0*|*[!0-9]*) exit 2 ;; esac\n'
+            '    [ "${#expected_refresh}" -le 7 ] || exit 2\n'
+            '    width=1920; height=1080; output_name=$expected_drm_output\n'
+            '    backend_name=DRM; refresh_millihz=$expected_refresh ;;',
             'drm) width=1920; height=1080; output_name=HDMI-A-1; backend_name=DRM ;;')
         projected = projected.replace(
-            'printf \'%s %s %s %s\\n\' "$backend" "$width" "$height" "$output_name" > output-policy.txt',
+            'printf \'%s %s %s %s %s\\n\' "$backend" "$width" "$height" "$output_name" "$refresh_millihz" > output-policy.txt',
             'printf \'%s %s %s\\n\' "$backend" "$width" "$height" > output-policy.txt')
+        projected = projected.replace(
+            '-v expected_geometry="0,0,${width}x${height}" -v expected_refresh_millihz="$refresh_millihz" \'',
+            '-v expected_geometry="0,0,${width}x${height}" \'')
+        projected = projected.replace(
+            'section == "screens" && /^Refresh Rate: / { refresh++; bad += ($0 != "Refresh Rate: " expected_refresh_millihz) }',
+            'section == "screens" && /^Refresh Rate: / { refresh++; bad += ($0 != "Refresh Rate: 60000") }')
         require(projected == original_controller, 'Controller changed outside profile plumbing')
         require((source / 'guard.pl').read_text() == old('guard.pl'), 'Supervisor changed')
         old_checker = work / 'baseline-checker.sh'
