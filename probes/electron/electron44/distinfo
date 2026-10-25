@@ -1,7 +1,10 @@
 SHA256 (e12-electron/v44.9.3.tar.gz) = e4e84b70a501c7dffec78bf037309bfe336daee6886289f94f9ac035ec54d80f
 Size (e12-electron/v44.9.3.tar.gz) = 20838185 bytes
-SHA256 (e12-electron/node-v24.22.0.tar.xz) = 41f97cff2c666f1f8293dc5f85c65e8dd605c16b43fd9febd49ede32ee1e0329
-Size (e12-electron/node-v24.22.0.tar.xz) = 57606320 bytes
+BLAKE2s (e12-electron/node-v24.22.1.tar.xz) = 18982cf6651aac31eda8dafbf0b74212abcd895b3a0edc2f724035307a8d96e0
+SHA512 (e12-electron/node-v24.22.1.tar.xz) = f60c250adafbddfc45d867bf644150bfbc3350483e788d1b3cff19aa05df7cd88642ae89205ba16ca14b0bb76df7c860aa2b07e61e2ee4de79f2a1b42949988e
+SHA256 (e12-electron/node-v24.22.1.tar.xz) = 4f5379796280cdaeb0c2f358fd04b6a16cc4fb7dfa83b5a8c91a9d963b435231
+Size (e12-electron/node-v24.22.1.tar.xz) = 57669336 bytes
 SHA256 (e12-electron/esbuild-darwin-arm64-0.25.1.tgz) = d5b5109ce4cbdb7057b867b8052f6bf9e51cb65d3e6318a751e35d7d0c4d8326
 Size (e12-electron/esbuild-darwin-arm64-0.25.1.tgz) = 17967547 bytes
 SHA256 (e12-electron/rollup-darwin-arm64-4.60.4.tgz) = 9bac26f54048827b2922bb9496deecd457911b3605a7a998243f7c92f07006f9
+SHA1 (patch-node24_22_1_security_roll) = 27368fa711200c22ebce23c3242aa56e25d0f9ac

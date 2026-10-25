@@ -43,6 +43,29 @@ PROVIDERS = {
 }
 
 
+# Concrete canonical build prerequisites. The real-make handoff check re-queries
+# every dependency kind; this finite source fixture catches reverse gzip edges.
+GZIP_PREREQUISITES = {'archivers/gzip': ('archivers/pax',
+                    'net/fetch',
+                    'pkgtools/cwrappers',
+                    'pkgtools/digest',
+                    'pkgtools/mktools'),
+ 'archivers/pax': ('pkgtools/cwrappers', 'pkgtools/libnbcompat', 'pkgtools/mktools'),
+ 'devel/bmake': ('pkgtools/bootstrap-mk-files',
+                 'pkgtools/cwrappers',
+                 'pkgtools/libnbcompat',
+                 'pkgtools/mktools',
+                 'shells/mksh'),
+ 'devel/nbpatch': ('pkgtools/cwrappers', 'pkgtools/libnbcompat', 'pkgtools/mktools'),
+ 'net/fetch': ('net/libfetch', 'pkgtools/cwrappers', 'pkgtools/libnbcompat', 'pkgtools/mktools'),
+ 'net/libfetch': ('pkgtools/cwrappers', 'pkgtools/libnbcompat', 'pkgtools/mktools'),
+ 'pkgtools/bootstrap-mk-files': ('pkgtools/cwrappers', 'pkgtools/mktools'),
+ 'pkgtools/cwrappers': ('pkgtools/libnbcompat',),
+ 'pkgtools/digest': ('pkgtools/cwrappers', 'pkgtools/mktools'),
+ 'pkgtools/libnbcompat': (),
+ 'pkgtools/mktools': ('pkgtools/cwrappers',),
+ 'shells/mksh': ('devel/nbpatch', 'pkgtools/cwrappers', 'pkgtools/digest', 'pkgtools/mktools')}
+
 def source(relative):
     overlay = SOURCE / 'pkgsrc' / relative
     return (overlay if overlay.is_file() else SOURCE / 'upstream/pkgsrc' / relative).read_text()
@@ -162,6 +185,36 @@ class FoundationTests(unittest.TestCase):
             if changes.get('EMBERBSD_DARWIN_BOOTSTRAP') != 'no':
                 del state['BSD_PKG_MK']
             self.assertEqual(model.apply_policy(self.policy, dict(state)), state)
+
+    def test_exact_seed_is_the_real_make_and_gzip_prerequisite_union(self):
+        def closure(root):
+            visited = set()
+            def visit(name):
+                if name not in visited:
+                    visited.add(name)
+                    for child in GZIP_PREREQUISITES[name]:
+                        visit(child)
+            visit(root)
+            return visited
+        required = closure("devel/bmake") | (closure("archivers/gzip") - {"archivers/gzip"})
+        self.assertEqual(set(model.seed_make_recipes(self.policy)), required)
+        self.assertEqual(len(required), 11)
+        self.assertNotIn("pkgtools/pkg_install-info", required)
+
+    def test_real_gzip_backedges_reject_each_missing_prerequisite(self):
+        def composed(policy):
+            graph = {name: list(edges) for name, edges in GZIP_PREREQUISITES.items()}
+            for name in graph:
+                state = model.apply_policy(policy, dict(self.state, PKGPATH=name))
+                graph[name] += model.dependencies(state)
+            graph["lang/gcc16"] = ["devel/bmake", "archivers/gzip"]
+            return graph
+        model.reachable(composed(self.policy))
+        for recipe in ("archivers/pax", "net/fetch", "net/libfetch"):
+            with self.subTest(recipe=recipe):
+                mutant = self.policy.replace(recipe + " ", "", 1)
+                with self.assertRaisesRegex(ValueError, "dependency cycle"):
+                    model.reachable(composed(mutant))
 
     def test_standard_data_and_ninja_dependencies_are_not_artificial_roots(self):
         self.assertIn('bootstrap-mk-files-[0-9]*:../../pkgtools/bootstrap-mk-files',

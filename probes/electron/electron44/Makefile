@@ -2,13 +2,16 @@
 # Not buildable yet; see ../README.md for the plan and boundaries.
 
 DISTNAME=	electron-44.9.3
+PKGREVISION=	1
 CATEGORIES=	devel
 MASTER_SITES=	https://github.com/electron/electron/archive/refs/tags/
 DISTFILES=	v44.9.3${EXTRACT_SUFX}
 DIST_SUBDIR=	e12-electron
+PATCH_STRIP=	-p1
 
 CHROMIUM_VERSION=	152.0.7977.167
-NODE_VERSION=		24.22.0
+# Backport Electron PR55162 in the recipe-local security patch below.
+NODE_VERSION=		24.22.1
 DISTFILES+=	node-v${NODE_VERSION}.tar.xz
 SITES.node-v${NODE_VERSION}.tar.xz=	https://nodejs.org/dist/v${NODE_VERSION}/
 

@@ -235,9 +235,11 @@ finite source controls. These controls do not execute make or qualify outputs.
 The make, the shell and gzip are the only providers that change during the
 plan. The profile lists the dependency closure of `devel/bmake` and the
 dependencies of `archivers/gzip` in `EMBERBSD_DARWIN_SEED_MAKE_RECIPES`.
-Only these recipes use the initial make, its bound mk files and the initial
-shell. The closure includes `shells/mksh`; `pkgtools/pkg_install-info` is the
-only gzip dependency outside it. Every other recipe gets a
+Only these eleven recipes use the initial make, its bound mk files and the
+initial shell. The bmake closure includes `shells/mksh`. The other prerequisites
+are `archivers/pax`, `net/fetch` and `net/libfetch`.
+`pkgtools/pkg_install-info` is a later gzip consumer, not a gzip prerequisite.
+Every other recipe gets a
 `BOOTSTRAP_DEPENDS` edge on `devel/bmake` and sets `MAKE` to
 `${LOCALBASE}/bin/bmake`. This includes `pkgtools/pkg_install`. That bmake reads
 `${LOCALBASE}/share/mk` from the Ports `bootstrap-mk-files`. The same recipes set
@@ -262,13 +264,17 @@ Ports bmake and mksh, because its `gunzip`, `zcat` and other scripts name
 the build `SHELL`. Every later recipe also gets a `BOOTSTRAP_DEPENDS` edge on
 `archivers/gzip`. Outside metadata mode it sets `EMBERBSD_DARWIN_TOOL.gzip`,
 `.gunzip` and `.gzcat` to `${LOCALBASE}/bin/gzip`, `gunzip` and `zcat`, so
-the native tool map selects them with the standard arguments. The package
-installs no `gzcat`; pkgsrc also runs `zcat` for that tool. The profile adds
-`gzip`, `gunzip` and `gzcat` to `USE_TOOLS`, so the tools directory shadows
-the native commands that the SDK utility PATH still supplies. `extract` gets
-`GZCAT=${LOCALBASE}/bin/zcat` for `.tar.gz` and `.tgz` distfiles. Only the
-seed recipes and `archivers/gzip` keep the native gzip; for example, the
-`shells/mksh` and `pkgtools/pkg_install-info` distfiles are gzip-compressed.
+the scoped tool map selects these declared source providers with the standard
+arguments. The package installs no `gzcat`; pkgsrc uses its `zcat` for that role.
+Declare `gzip`, `gunzip` and `gzcat` in `EMBERBSD_DARWIN_SOURCE_TOOLS` when
+they have no accepted native provider. The profile adds them to `USE_TOOLS`,
+so the tools directory selects the installed Ports programs after the gzip edge.
+Metadata leaves their future paths unselected. The local seed recipes have
+empty distfile lists, and gzip uses an uncompressed `.tar` source. They need
+no initial gzip command. In particular, the local `shells/mksh` input is not a
+gzip archive; `pkgtools/pkg_install-info` uses the built gzip for its texinfo
+archive. Never substitute a host `/usr/bin` compressor.
+
 
 ```sh
 python3 profiles/development-toolchain/tests/darwin-bootstrap-make-handoff.py \
@@ -277,7 +283,7 @@ python3 profiles/development-toolchain/tests/darwin-bootstrap-make-handoff.py \
 
 The test checks that the list is the closure of `devel/bmake` and the
 dependencies of `archivers/gzip`, and contains `shells/mksh`. Seed recipes and
-`archivers/gzip` must have no gzip edge and the native gzip tools; the gzip
+`archivers/gzip` must have no gzip edge and must not select an undeclared initial compressor; the gzip
 package must install `bin/gzip`, `bin/gunzip` and `bin/zcat`. It also checks that later recipes such as `pkgtools/pkg_install`
 select the Ports bmake and give every shell consumer and the gmake tuple the
 Ports mksh, and that they have one `archivers/gzip` edge and run its tools.

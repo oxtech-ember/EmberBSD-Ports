@@ -135,7 +135,8 @@ until the process limit is reached. Select `printf` as a native path.
 The map keeps the standard pkgsrc arguments for `gunzip`, `gzip` and `mkdir`;
 without `mkdir -p` the first work directory cannot be created. During full
 builds, recipes after `archivers/gzip` map `gzip`, `gunzip` and `gzcat` to the
-Ports gzip; see the [make handoff](../common-build-tools/bootstrap/README.md#make-handoff).
+Ports gzip even when these are declared source tools, not initial native roles.
+Metadata declares the roles and leaves their future paths unselected. See the [make handoff](../common-build-tools/bootstrap/README.md#make-handoff).
 Configure scripts and Makefiles also run bare `ar`, `nm`, `ranlib` and
 `strip`. The policy creates the first three in the pkgsrc tools directory
 from the selected `EMBERBSD_GCC16_*` commands and selects
