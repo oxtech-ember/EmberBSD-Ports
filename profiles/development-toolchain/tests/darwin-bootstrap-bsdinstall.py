@@ -89,12 +89,14 @@ def graph(policy):
               'lang/llvm': ['pkgtools/libnbcompat'], 'shells/mksh': ['pkgtools/libnbcompat'],
               'pkgtools/libnbcompat': []}
     roots = dependencies(apply_policy(policy, dict(EMBERBSD_DARWIN_BOOTSTRAP='yes',
-        BSD_PKG_MK='1', PKGPATH='lang/gcc16', LOCALBASE='/final/prefix')))
+        BSD_PKG_MK='1', PKGPATH='lang/gcc16', LOCALBASE='/final/prefix',
+        _EMBERBSD_DARWIN_INITIAL_GMAKE='/initial/gmake SHELL=/initial/sh')))
     for name in roots:
         result.setdefault(name, [])
     for name in result:
         result[name] += dependencies(apply_policy(policy, dict(EMBERBSD_DARWIN_BOOTSTRAP='yes',
-            BSD_PKG_MK='1', PKGPATH=name, LOCALBASE='/final/prefix')))
+            BSD_PKG_MK='1', PKGPATH=name, LOCALBASE='/final/prefix',
+            _EMBERBSD_DARWIN_INITIAL_GMAKE='/initial/gmake SHELL=/initial/sh')))
     return result
 
 
@@ -116,6 +118,7 @@ class InstallerPolicyTests(unittest.TestCase):
         self.text = POLICY.read_text()
         self.state = dict(EMBERBSD_DARWIN_BOOTSTRAP='yes', BSD_PKG_MK='1',
                           LOCALBASE='/final/prefix', EMBERBSD_DARWIN_SH='/initial/sh',
+                          _EMBERBSD_DARWIN_INITIAL_GMAKE='/initial/gmake SHELL=/initial/sh',
                           EMBERBSD_GCC16_STRIP='/initial/strip')
 
     def test_early_read_defers_and_late_read_applies_once(self):
