@@ -315,3 +315,4 @@ devel/byacc
 devel/diffutils
 sysutils/findutils
 lang/nawk
+devel/cppcheck
