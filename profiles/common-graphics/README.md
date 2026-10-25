@@ -122,7 +122,7 @@ ordinary GCC16 AArch64 package passes all 613 payload checks. Four native
 and installed EmberBSD numerical checks pass, including normal package
 removal and reinstallation. Companion BLAS/LAPACK runtime coverage remains pending.
 
-This opt-in source profile prepares canonical MesaLib 26.2.5nb5, adapted
+This opt-in source profile prepares canonical MesaLib 26.2.5nb6, adapted
 libdrm 2.4.134nb6, Wayland 1.26.0 (native nb1/cross nb2) and
 wayland-protocols 1.49 for EmberBSD/AArch64 and amd64, retaining the NetBSD 11 ABI.
 The amd64 profile includes RadeonSI. Mesa keeps its upstream DRM 3.54 minimum
@@ -374,7 +374,12 @@ Mesa enables zlib/zstd and the NetBSD libudev-bsd provider. Display-info,
 libunwind, valgrind, unselected Vulkan drivers, video frontends, Rusticl/OpenCL, other physical GPU drivers,
 OSMesa, XA and GLVND are outside this candidate. Requests for unsupported
 Mesa options fail; they do not install older providers. Unselected optional
-libelf/Lua/XCB-keysyms are absent from the buildlink sandbox.
+Lua and XCB-keysyms are absent from the buildlink sandbox. On amd64, the
+pre-configure guard verifies the installed base libelf against the canonical
+elftoolchain source marker, public headers, ELF machine, shared-library SONAME,
+versioned aliases and static archive. It rejects a libelf package in buildlink
+and requires an explicit target root for cross builds. Mesa does not add a
+second libelf provider.
 
 libdrm enables its Intel and AMDGPU client modules on amd64. Radeon, Nouveau,
 VMware and physical ARM client modules, man pages and test-program installation

@@ -2,7 +2,7 @@
 # Origin: EmberBSD; AI-assisted bounded NetBSD 11/AArch64 and amd64 candidate.
 DISTNAME=	mesa-26.2.5
 PKGNAME=	${DISTNAME:S/mesa/MesaLib/}
-PKGREVISION=	5
+PKGREVISION=	6
 CATEGORIES=	graphics
 MASTER_SITES=	https://archive.mesa3d.org/
 EXTRACT_SUFX=	.tar.xz
@@ -32,8 +32,8 @@ TOOLS_PLATFORM.flex=	${TOOLBASE}/bin/flex
 .if !defined(EMBERBSD_COMMON_GRAPHICS)
 PKG_FAIL_REASON+= "Mesa requires the prepared common graphics profile"
 .endif
-.if ${DISTNAME} != "mesa-26.2.5" || ${PKGREVISION} != "5"
-PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.5nb5"
+.if ${DISTNAME} != "mesa-26.2.5" || ${PKGREVISION} != "6"
+PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.5nb6"
 .endif
 TOOL_DEPENDS+=	${PYPKGPREFIX}-mako>=1.4.3:../../devel/py-mako
 TOOL_DEPENDS+=	${PYPKGPREFIX}-packaging-[0-9]*:../../devel/py-packaging
@@ -120,9 +120,35 @@ MESON_BINARY.nm=	${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-nm
 # The explicit absolute binary prevents Meson's default tool/CMake search.
 MESON_BINARIES+=	llvm-config
 MESON_BINARY.llvm-config=	${LLVM_CONFIG_PATH}
+.if ${MACHINE_ARCH} == "x86_64"
+# RadeonSI requires libelf. Qualify the OS base provider before Meson probes it.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+_EMBERBSD_MESA_LIBELF_MODE=	cross
+_EMBERBSD_MESA_LIBELF_ROOT=	${CROSS_DESTDIR:U}
+.if empty(CROSS_DESTDIR:M/*)
+PKG_FAIL_REASON+= "Cross Mesa requires an absolute CROSS_DESTDIR for base libelf"
+.endif
+.else
+_EMBERBSD_MESA_LIBELF_MODE=	native
+_EMBERBSD_MESA_LIBELF_ROOT=	/
+.endif
+.if empty(EMBERBSD_SDK_SOURCE:M/*)
+PKG_FAIL_REASON+= "Mesa requires an absolute SDK source for base libelf verification"
+.endif
+_EMBERBSD_MESA_LIBELF_RECIPE=	${.CURDIR:H:H}/devel/elftoolchain
+_EMBERBSD_MESA_LIBELF_CHECK=	${TOOL_PYTHONBIN:Q} -E -S ${FILESDIR:Q}/check-base-libelf.py \
+	--base-recipe ${_EMBERBSD_MESA_LIBELF_RECIPE:Q} \
+	--sdk-source ${EMBERBSD_SDK_SOURCE:U:Q} \
+	--target-root ${_EMBERBSD_MESA_LIBELF_ROOT:Q} \
+	--buildlink-dir ${BUILDLINK_DIR:Q} \
+	--mode ${_EMBERBSD_MESA_LIBELF_MODE:Q} --arch ${MACHINE_ARCH:Q}
+.endif
 pre-configure:
 	${TEST} -x ${TOOL_PYTHONBIN:Q}
 	${TOOL_PYTHONBIN} -c 'import sys, mako, packaging, yaml; assert sys.version_info[:2] == tuple(map(int, "${PYVERSSUFFIX}".split(".")))'
+.if ${MACHINE_ARCH} == "x86_64"
+	${_EMBERBSD_MESA_LIBELF_CHECK}
+.endif
 .if ${USE_CROSS_COMPILE:tl} == "yes"
 	${TEST} "$$(${TOOLS_CMD.pkg-config} --modversion wayland-client)" = 1.26.0
 	${TEST} -s ${LLVM_CONFIG_PATH:H:H:Q}/inputs.sha256

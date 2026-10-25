@@ -81,6 +81,7 @@ EMBERBSD_CROSS_SYSROOT={work}
 CROSS_DESTDIR={work}
 EMBERBSD_CROSS_HOST_PREFIX={work}
 CROSS_LOCALBASE=/usr/pkg
+EMBERBSD_SDK_SOURCE={work}/sdk-source
 PKGSRC_COMPILER=gcc
 USE_NATIVE_GCC=yes
 USE_PKGSRC_GCC=no
@@ -89,7 +90,7 @@ _TOOLS_USE_PKGSRC.flex=no
 PKGPATH?=graphics/MesaLib
 PKG_OPTIONS=llvm x11 wayland
 DISTNAME=mesa-26.2.5
-PKGREVISION=5
+PKGREVISION=6
 .if ${{USE_CROSS_COMPILE:Uno:tl}} == "yes"
 EMBERBSD_GRAPHICS_LLVM_CONFIG={work}/helper/bin/llvm-config
 EMBERBSD_WAYLAND_SCANNER={work}/scanner
@@ -151,8 +152,8 @@ def static_profile_checks():
         "libdrm>=2.4.134nb6" in profile and 'PKGREVISION:U} != "6"' in profile,
     )
     check(
-        "common profile enforces MesaLib 26.2.5nb5",
-        "MesaLib>=26.2.5nb5" in profile,
+        "common profile enforces MesaLib 26.2.5nb6",
+        "MesaLib>=26.2.5nb6" in profile,
     )
 
 

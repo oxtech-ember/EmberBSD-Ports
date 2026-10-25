@@ -61,6 +61,31 @@ mapping, GBM/EGL and compositor acceptance remain required. Run Cppcheck,
 applicable GCC analysis and supported memory checks with the selected tools.
 Source preparation alone is not a regression pass.
 
+## Base libelf provider
+
+On amd64, RadeonSI requires libelf. Mesa does not use a libelf package
+buildlink. Its pre-configure guard checks the installed base marker against
+the canonical elftoolchain `distinfo`, checks the installed public headers
+against the base source manifest, and reads the shared library and archive
+through the selected SDK ELF API. Cross mode requires an explicit target root.
+
+Run the actual-source guard fixture and the production native/cross recipe
+queries with the selected Python, SDK source and bmake:
+
+```sh
+"$PYTHON" -B tests/base-libelf-provider.py \
+    --bmake /absolute/host/bmake \
+    --sdk-source /absolute/selected-sdk-source \
+    --work-parent /absolute/private-test-parent
+```
+
+The fixture exercises the checker with synthetic base headers and ELF files.
+It checks distinfo and patch checksums, marker, header, machine, SONAME, alias,
+archive, buildlink and SDK API refusals. Real bmake expands the native `/` root,
+the cross `CROSS_DESTDIR` root and the AArch64 selection. This test does not
+inspect an installed sysroot, configure Meson, build Mesa, or establish AMDGPU
+runtime behavior.
+
 ## Native and cross shader generators
 
 MesaLib 26.2.5nb3 uses upstream in-tree shader generators for native NetBSD
