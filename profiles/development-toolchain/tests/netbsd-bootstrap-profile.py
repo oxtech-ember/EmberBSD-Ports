@@ -11,6 +11,7 @@ import hashlib
 import os
 import shutil
 import shlex
+import stat
 import subprocess
 import tempfile
 from pathlib import Path
@@ -38,6 +39,7 @@ VARS = (*KINDS, 'TEST_DEPENDS', 'MAKE', '_MAKE', 'SHELL', 'SH', 'CONFIG_SHELL', 
         'TOOLS_PLATFORM.cpp', 'TOOLS_PLATFORM.c++', 'TOOLS_PLATFORM.g++', 'TOOLS_PLATFORM.awk', 'TOOLS_PLATFORM.sh',
         'TOOLS_PLATFORM.pkg-config',
         'TOOLS_PLATFORM.bison-yacc',
+        'PLIST.builtin', 'INSTALLATION_DIRS',
         'USE_PKGSRC_GCC', 'USE_PKGSRC_GCC_RUNTIME',
         'TOOLS_PLATFORM.awk', 'TOOLS_PLATFORM.uname', 'TOOLS_PLATFORM.grep', 'TOOLS_PLATFORM.gmake',
         'TOOLS_AWK', 'TOOLS_GREP', 'TOOLS_SED', 'TOOLS_CMDLINE_AWK',
@@ -150,6 +152,69 @@ def repeated_profile_probe(bmake, bootstrap_mk, export, makeconf, work):
                               text=True, stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE)
         return unpack(proc)
+
+
+def builtin_helper_probe(bmake, bootstrap_mk, export, makeconf, work,
+                         *, enabled=True, overrides=()):
+    values = unpack(run_make(bmake, bootstrap_mk, export, export, makeconf,
+                             'pkgtools/bootstrap-mk-files', work,
+                             enabled=enabled, overrides=overrides))
+    require(values['PLIST.builtin'] == 'yes' and
+            'libexec' in words(values['INSTALLATION_DIRS']),
+            'NetBSD bootstrap-mk-files metadata does not install the builtin helper: '
+            + repr({name: values[name] for name in ('PLIST.builtin', 'INSTALLATION_DIRS')}))
+
+    prefix = Path(values['LOCALBASE'])
+    package = export / 'pkgtools/bootstrap-mk-files'
+    with tempfile.TemporaryDirectory(prefix='netbsd-builtin-install-', dir=work) as temp_name:
+        root = Path(temp_name)
+        wrksrc = root / 'wrksrc'
+        destdir = root / 'destdir'
+        wrksrc.mkdir()
+        destdir.mkdir()
+        (wrksrc / 'bsd.README').write_text('fixture makefile\n')
+        (wrksrc / 'sys.mk').write_text('# fixture sys.mk\n')
+        dest_prefix = destdir.joinpath(*prefix.parts[1:])
+        for directory in words(values['INSTALLATION_DIRS']):
+            (dest_prefix / directory).mkdir(parents=True, exist_ok=True)
+        command = [str(bmake), '-r', '-m', str(export / 'mk'),
+                   '-m', str(bootstrap_mk), '-f', str(package / 'Makefile'),
+                   f'PKGSRC={export}', f'PKGSRCDIR={export}',
+                   f'MAKECONF={makeconf}', 'PKGPATH=pkgtools/bootstrap-mk-files',
+                   f'LOCALBASE={prefix}', f'PREFIX={prefix}',
+                   f'WRKSRC={wrksrc}', f'DESTDIR={destdir}', 'do-install']
+        env = {'PATH': '/usr/bin:/bin', 'LC_ALL': 'C', 'TZ': 'UTC',
+               'HOME': str(root), 'EMBERBSD_NETBSD_BOOTSTRAP': 'yes'}
+        installed = subprocess.run(command, cwd=package, env=env, text=True,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        require(installed.returncode == 0,
+                'bootstrap-mk-files do-install failed: ' + installed.stderr)
+        installed_helper = dest_prefix / 'libexec/emberbsd-darwin-builtin.sh'
+        source_helper = export / 'mk/tools/emberbsd-darwin-builtin.sh'
+        require(installed_helper.is_file(),
+                'NetBSD bootstrap-mk-files do-install omitted the builtin helper')
+        require(stat.S_IMODE(installed_helper.stat().st_mode) == 0o755,
+                'bootstrap-mk-files did not install the builtin helper as a script')
+        require(hashlib.sha256(installed_helper.read_bytes()).digest() ==
+                hashlib.sha256(source_helper.read_bytes()).digest(),
+                'installed builtin helper differs from the exported source')
+
+        shell = prefix / 'bin/mksh'
+
+        def dispatch(name, args, expected_status, expected_stdout):
+            result = subprocess.run([str(shell), str(installed_helper), name, *args],
+                                    env=env, text=True, stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
+            require(result.returncode == expected_status and
+                    result.stdout == expected_stdout,
+                    f'builtin {name} dispatch mismatch: status={result.returncode}, '
+                    f'stdout={result.stdout!r}, stderr={result.stderr!r}')
+
+        dispatch('echo', ['NetBSD', 'helper'], 0, 'NetBSD helper\n')
+        dispatch('true', [], 0, '')
+        dispatch('false', [], 1, '')
+        dispatch('test', ['probe', '=', 'probe'], 0, '')
+        dispatch('[', ['probe', '=', 'probe', ']'], 0, '')
 
 
 def edges(values):
@@ -370,6 +435,13 @@ def check(export, source_tree, bmake, makeconf, bootstrap_mk, work,
             '.endif\n'
             + ''.join(name + '= ' + values['EMBERBSD_GCC16_SEED_' + name] + '\n'
                       for name in ('CC', 'CXX', 'CPP')))
+        builtin_helper_probe(bmake, bootstrap_mk, export, makeconf, work)
+        ordinary_mkfiles = unpack(run_make(
+            bmake, bootstrap_mk, export, source_tree, ordinary_conf,
+            'pkgtools/bootstrap-mk-files', work, enabled=False))
+        require(ordinary_mkfiles['PLIST.builtin'] != 'yes' and
+                'libexec' not in words(ordinary_mkfiles['INSTALLATION_DIRS']),
+                'ordinary NetBSD unexpectedly installs the bootstrap builtin helper')
         ordinary = unpack(run_make(bmake, bootstrap_mk, export, source_tree, ordinary_conf,
             'devel/bmake', work, enabled=False))
         require(ordinary['SHELL'] != values['EMBERBSD_NETBSD_SH'],

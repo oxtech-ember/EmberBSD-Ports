@@ -1,5 +1,5 @@
-Origin: EmberBSD, AI-assisted for the native Darwin bootstrap.
-The Darwin profile runs [, echo, false, test and true through the shell
+Origin: EmberBSD, AI-assisted for native Darwin and NetBSD bootstraps.
+The profiles run [, echo, false, test and true through the shell
 helper mk/tools/emberbsd-darwin-builtin.sh. Install that helper, so that
 recipes after the make handoff can use ${LOCALBASE} paths. Their installed
 files then never name the exported pkgsrc tree. Not submitted upstream.
@@ -15,14 +15,15 @@ files then never name the exported pkgsrc tree. Not submitted upstream.
  CATEGORIES=	pkgtools
  
  CONFLICTS+=	mk-files-[0-9]*
-@@ -22,6 +22,15 @@
+@@ -22,6 +22,16 @@
  
  INSTALLATION_DIRS=	share/mk
  
-+# The native Darwin bootstrap runs shell builtins through this helper.
++# Native Darwin and NetBSD bootstraps run shell builtins through this helper.
 +# Recipes after the make handoff use the installed copy, so their
 +# installed files never name the exported pkgsrc tree.
-+.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes" || \
++    ${EMBERBSD_NETBSD_BOOTSTRAP:Uno} == "yes"
 +PLIST_VARS+=		builtin
 +PLIST.builtin=		yes
 +INSTALLATION_DIRS+=	libexec
@@ -31,11 +32,12 @@ files then never name the exported pkgsrc tree. Not submitted upstream.
  do-extract:
  	${RUN} ${CP} -R ${FILESDIR} ${WRKSRC}
  
-@@ -45,5 +54,9 @@
+@@ -45,5 +55,10 @@
  	cd ${WRKSRC} && for file in bsd.* sys.mk; do			\
  		${INSTALL_DATA} $$file ${DESTDIR}${PREFIX}/share/mk/$$file;	\
  	done
-+.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes" || \
++    ${EMBERBSD_NETBSD_BOOTSTRAP:Uno} == "yes"
 +	${INSTALL_SCRIPT} ${PKGSRCDIR}/mk/tools/emberbsd-darwin-builtin.sh \
 +		${DESTDIR}${PREFIX}/libexec/emberbsd-darwin-builtin.sh
 +.endif

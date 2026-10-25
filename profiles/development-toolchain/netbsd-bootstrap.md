@@ -11,11 +11,12 @@ paths, then writes MAKECONF with the exported
 before host/tool discovery. The profile fixes pkgsrc's host architecture to
 `x86_64`, routes make, the actual bmake recipe shell, compilers, binutils and
 parse-time utilities through the accepted input tuple, and rejects cross mode
-and jobs greater than one. The GCC16 package receives source dependencies on
-binutils, bmake, gmake, mksh and Python 3.15. The profile also selects the
-source-built makeinfo and compression tools, plus candidate edges for common
-pkgsrc utilities. Their full transitive dependency and tool closure is not yet
-qualified.
+and jobs greater than one. The bootstrap-mk-files seed installs the shell
+builtin dispatcher used by later package recipes. The GCC16 package receives
+source dependencies on binutils, bmake, gmake, mksh and Python 3.15. The
+profile also selects the source-built makeinfo and compression tools, plus
+candidate edges for common pkgsrc utilities. Their full transitive dependency
+and tool closure is not yet qualified.
 
 For this scoped GCC package, pkgsrc uses the source-built
 `${LOCALBASE}/bin/gas` and `${LOCALBASE}/bin/gld`. The ordinary NetBSD recipe
@@ -30,9 +31,10 @@ tests do not qualify those runtime outputs or an ordinary NativeToolset.
 
 The source regression `tests/netbsd-bootstrap-profile.py` evaluates the real
 pkgsrc profile and GCC16 `Makefile.common` with the accepted bmake. It checks
-the shell actually used by a recipe, profile host/mode guards,
-compiler/binutils routes, direct profile dependency edges and ordinary NetBSD
-behavior. It never starts a package build or compiles C/C++ code. Package
+the shell actually used by a recipe, installation and PLIST registration of
+the builtin dispatcher, its echo/true/false/test/[ behavior, profile host/mode
+guards, compiler/binutils routes, direct profile dependency edges and ordinary
+NetBSD behavior. It never starts a package build or compiles C/C++ code. Package
 metadata may query the selected compiler's identity. The test follows real
 pkgsrc Makefiles through the native source dependency graph, rejects cycles,
 and checks each selected dependency pattern against the provider's evaluated
