@@ -327,7 +327,9 @@ with final `LOCALBASE=PREFIX=/usr/pkg` and one worker. It sets `GCC_REQD+=16.2`,
 the prepared recipe supplies `gcc16-16.2.0nb1`. The standard
 `BUILDLINK_API_DEPENDS.gcc16+=gcc16>=16.2.0nb1` dependency requires the
 [C++ modules allocation repair](../development-toolchain/modules-portability.md). The pinned pkgsrc comparison
-cannot handle `GCC_REQD=16.2.0`; use `16.2`. Compatible command-line floors
+uses the same major.minor format for a detected GCC version. The prepared
+pkgsrc overlay keeps `16.2.0` from becoming an unsupported patch-level floor.
+Request `GCC_REQD=16.2`. Compatible command-line floors
 and `ccache gcc` / `distcc gcc` chains remain supported. Incompatible compiler,
 native-compiler, runtime and dependency-method overrides fail explicitly.
 

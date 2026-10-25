@@ -1,0 +1,10 @@
+Origin: EmberBSD (AI-assisted). Keep pkgsrc's detected compiler floor in major.minor form.
+
+--- a/mk/compiler/gcc.mk
++++ b/mk/compiler/gcc.mk
+@@ -474,3 +474,4 @@
+ _IS_BUILTIN_GCC=	NO
+-GCC_REQD+=		${_GCC_VERSION}
++# GCC_REQD is compared below as a major.minor floor.
++GCC_REQD+=		${_GCC_VERSION:R}
+ .else

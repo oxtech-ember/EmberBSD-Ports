@@ -72,6 +72,9 @@ cat > "$work/host-make" <<MAKE
         _MAKE="$work/host-make" "\$@"
 MAKE
 chmod +x "$work/host-make"
+mkdir -p "$work/toolbase/gcc16/bin"
+: > "$work/toolbase/gcc16/bin/cc"
+chmod +x "$work/toolbase/gcc16/bin/cc"
 run() {
     recipe=$1 conf=$2; shift 2
     MAKECONF="$work/$conf.conf" "$work/host-make" -C "$tree/$recipe" \
@@ -131,6 +134,13 @@ selected cxx textproc/icu tools
 selected python lang/python315 tools
 selected llvm lang/llvm tools
 selected clang lang/clang tools
+run exact-version-floor devel/zlib tools \
+    "GCCBASE=$work/toolbase/gcc16" "TOOLBASE=$work/toolbase" _GCC_VERSION=16.2.0 \
+    > "$work/exact-version-floor.log" 2>&1
+diagnostics "$work/exact-version-floor.log"
+grep -qx 'floor=16.2' "$work/exact-version-floor.log"
+grep -qx 'fail=' "$work/exact-version-floor.log"
+echo 'PASS: package GCC 16.2.0 contributes the supported 16.2 compiler floor'
 selected graphics graphics/MesaLib graphics
 selected libdrm x11/libdrm graphics
 grep "^platforms=.*NetBSD-11.\*-$arch" "$work/graphics.log" >/dev/null
