@@ -217,7 +217,18 @@ Keep ordinary Darwin defaults. Use the standard compiler wrappers.
  .  else
  _GCC_VERSION=	0
  .  endif
-@@ -1288,6 +1293,17 @@
+@@ -470,7 +475,9 @@
+ _CXX_STD_FLAG.${_version_}?=	-std=${_version_}
+ .endfor
+ 
+-.if !empty(_CC:M${TOOLBASE}/*)
++# A Darwin bootstrap selects its GCC16 command as the native compiler, also
++# when that command is installed under TOOLBASE. It is not a lang/gcc* package.
++.if !empty(_CC:M${TOOLBASE}/*) && ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} != "yes"
+ _IS_BUILTIN_GCC=	NO
+ GCC_REQD+=		${_GCC_VERSION}
+ .else
+@@ -1288,6 +1295,17 @@
  .endif
  _COMPILER_STRIP_VARS+=	${_GCC_VARS}
  

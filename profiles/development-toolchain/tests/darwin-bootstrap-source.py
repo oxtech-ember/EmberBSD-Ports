@@ -173,6 +173,9 @@ def check(before, after, policy, recipe):
             'A cwrapper wrappee can contain a shell command')
     require('_GCC_QUERY_CC= ${EMBERBSD_GCC16_SEED_CC}' in gcc,
             'Compiler metadata lost its accepted binding')
+    require('.if !empty(_CC:M${TOOLBASE}/*) && ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} != "yes"\n' in gcc
+            and '.if !empty(_CC:M${TOOLBASE}/*)\n' in before['mk/compiler/gcc.mk'],
+            'A selected GCC16 under TOOLBASE becomes a lang/gcc package dependency')
     require('+CONFIGURE_ENV+= CC=${EMBERBSD_GCC16_SEED_CC:Q} CXX=${EMBERBSD_GCC16_SEED_CXX:Q} CPP=${EMBERBSD_GCC16_SEED_CPP:Q}' in recipe,
             'GCC self-bootstrap lost its direct accepted compiler tuple')
     require('.for _ember_jobs in EMBERBSD_DARWIN_JOBS EMBERBSD_DARWIN_CPU_BUDGET' in policy and
@@ -236,6 +239,9 @@ def main():
     line = 'CWRAPPERS_PREPEND.${_ember_wrap}+= ${EMBERBSD_GCC16_SEED_${_ember_var}:[2..-1]}'
     changed[n] = changed[n].replace(line, line + '\n' + line, 1)
     mutants.append(('duplicate-specs-prefix', changed, policy, recipe))
+    changed = dict(after)
+    changed[n] = changed[n].replace(' && ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} != "yes"', '', 1)
+    mutants.append(('toolbase-gcc-dependency', changed, policy, recipe))
     mutants.append(('unbudgeted-jobs', after, policy.replace('.if ${EMBERBSD_DARWIN_JOBS} > ${EMBERBSD_DARWIN_CPU_BUDGET}', '.if 0'), recipe))
     mutants.append(('parallel-link-bypass', after, policy.replace('.error "Parallel GCC bootstrap requires the accepted SDK link launcher"', '# no link resource refusal'), recipe))
     mutants.append(('privileged-install', after, policy.replace('UNPRIVILEGED= yes\n', ''), recipe))
