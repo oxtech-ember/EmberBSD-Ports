@@ -188,7 +188,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 +++ b/lang/gcc16-libs/Makefile
 @@ -12,1 +12,1 @@
 -PKGREVISION=	6
-+PKGREVISION=	11
++PKGREVISION=	12
 --- a/lang/gcc16-libjit/Makefile
 +++ b/lang/gcc16-libjit/Makefile
 @@ -5,2 +5,3 @@
