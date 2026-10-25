@@ -1,0 +1,15 @@
+$NetBSD$
+
+Export the BSD elf_getversion source API with portable symbol versioning.
+The BSD libelf header declares it and the portable dist Makefile includes it.
+
+--- libelf/Version.map.orig
++++ libelf/Version.map
+@@ -45,6 +45,7 @@
+ 	elf_getshdrstrndx;
+ 	elf_getshnum;
+ 	elf_getshstrndx;
++	elf_getversion;
+ 	elf_hash;
+ 	elf_kind;
+ 	elf_memory;

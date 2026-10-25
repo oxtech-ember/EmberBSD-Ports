@@ -10,6 +10,7 @@ textproc/hyphen
 sysutils/libnotify
 textproc/gspell
 devel/editline
+devel/elftoolchain
 textproc/docbook-xsl-ns
 devel/jq
 devel/git-base
