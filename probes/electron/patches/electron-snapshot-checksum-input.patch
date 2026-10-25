@@ -1,0 +1,39 @@
+Electron: generate the checksum from the selected V8 startup blob.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Apply to the pinned Electron 44.9.3 integration source.
+Keep the existing MIT license and copyright notices.
+Preserve the checksum generator, header format, validator and integrity fuse.
+
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -603,8 +603,7 @@
+     "//v8:v8_libplatform",
+   ]
+ 
+-  if (v8_use_external_startup_data && use_v8_context_snapshot &&
+-      current_toolchain == default_toolchain) {
++  if (v8_use_external_startup_data && current_toolchain == default_toolchain) {
+     deps += [ ":mksnapshot_checksum_gen" ]
+   }
+ 
+@@ -1099,12 +1098,16 @@
+     script = "build/checksum_header.py"
+ 
+     outputs = [ "$target_gen_dir/snapshot_checksum.h" ]
+-    inputs = [ "$root_out_dir/$v8_context_snapshot_filename" ]
++    if (use_v8_context_snapshot) {
++      inputs = [ "$root_out_dir/$v8_context_snapshot_filename" ]
++      deps = [ "//tools/v8_context_snapshot" ]
++    } else {
++      inputs = [ "$root_out_dir/snapshot_blob.bin" ]
++      deps = [ "//v8:run_mksnapshot_default" ]
++    }
+     args = rebase_path(inputs)
+ 
+     args += rebase_path(outputs)
+-
+-    deps = [ "//tools/v8_context_snapshot" ]
+   }
+ }
+ 

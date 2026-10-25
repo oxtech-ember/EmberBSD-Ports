@@ -442,6 +442,7 @@ For a macOS ARM64 host and a NetBSD x64 target, select both families:
 ```gn
 host_toolchain = "//build/toolchain/mac:gcc_arm64"
 v8_snapshot_toolchain = "//build/toolchain/mac:gcc_arm64_v8_x64"
+use_v8_context_snapshot = false
 ```
 
 Both compilers emit native ARM64 Mach-O objects. The snapshot family sets
@@ -463,6 +464,30 @@ This removes the host PartitionAlloc and Apple allocator-shim dependency. It
 does not port other Mac Objective-C++ sources in Chromium base or crypto. Those
 host generator dependencies still need source and build validation. Do not treat
 these source checks as an Objective-C, ARC, or complete Electron acceptance run.
+
+This Mac-to-NetBSD GCC configuration uses V8's ordinary external startup blob.
+Keep `v8_use_external_startup_data=true`. `use_v8_context_snapshot=false` selects
+the existing non-Blink-context path. It keeps V8's snapshot generation and x64
+snapshot layout. The existing cross-OS Node startup and code-cache settings,
+V8 sandbox settings, integrity fuse, and runtime checks stay unchanged.
+
+Apply the [checksum-input patch](patches/electron-snapshot-checksum-input.patch)
+from the Electron source root before this configuration. It generates the same
+checksum header from `snapshot_blob.bin` when the context optimization is off.
+The context-enabled input stays unchanged. This change does not add an
+internal-startup-data Electron configuration. Use a fresh output directory; an
+old checksum header is not an input for the new configuration.
+
+```sh
+cd /absolute/chromium/src/electron
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-snapshot-checksum-input.patch
+```
+
+The [source checker](tests/electron-snapshot-checksum-input.py) verifies both
+input/dependency pairs and the retained external-data/default-toolchain guards. Run it with the
+selected Python and `--source /absolute/chromium/src/electron`. The probe recipe
+still lacks a complete GN build interface. These instructions do not establish
+generation, packaging, loading, or host-generator acceptance.
 
 The Apple link driver receives one C++ executable and its separate ordered
 arguments. Rust proc macros receive the same executable and ordered link
