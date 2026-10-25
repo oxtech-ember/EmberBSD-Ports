@@ -24,6 +24,7 @@ exec(compile(HELPER.read_bytes(), str(HELPER), 'exec'), model.__dict__)
 PROVIDERS = {
     'sysutils/bsdinstall': ('bsdinstall', ('bin/bsdinstall',)),
     'devel/bmake': ('bmake', ('bin/bmake',)),
+    'archivers/gzip': ('gzip', ('bin/gzip', 'bin/gunzip', 'bin/zcat')),
     'devel/gmake': ('gmake', ('bin/gmake',)),
     'sysutils/coreutils': ('coreutils', tuple('bin/g' + name for name in
         'basename cat cut date dirname env expr head id pwd sort tail tr uname uniq wc '
@@ -54,19 +55,20 @@ def match(text, expression):
     return found[1]
 
 
-def bmake_version():
-    # This exact recipe hunk precedes the release source import.
-    patch = (SOURCE / 'profiles/common-build-tools/patches/pkgsrc-bmake-20260912.patch').read_text()
-    section = patch[:patch.index('diff --git a/devel/bmake/files/')]
-    recipe = source('devel/bmake/Makefile')
-    before = match(section, r'^-PKGNAME=\s*(bmake-\S+)')
-    after = match(section, r'^\+PKGNAME=\s*(bmake-\S+)')
-    assert match(recipe, r'^PKGNAME=\s*(\S+)') == before
-    return after.removeprefix('bmake-')
+def patched_version(patch_name, recipe, variable, name):
+    # The recipe Makefile hunk of the recorded update precedes its other files.
+    patch = (SOURCE / 'profiles/common-build-tools/patches' / patch_name).read_text()
+    start = patch.index('diff --git a/' + recipe + '/Makefile ')
+    section = patch[start:patch.index('diff --git a/', start + 1)]
+    before = match(section, r'^-' + variable + r'=\s*(' + name + r'-\S+)')
+    after = match(section, r'^\+' + variable + r'=\s*(' + name + r'-\S+)')
+    assert match(source(recipe + '/Makefile'), r'^' + variable + r'=\s*(\S+)') == before
+    return after.removeprefix(name + '-')
 
 
 def versions():
-    values = {'devel/bmake': bmake_version(),
+    values = {'devel/bmake': patched_version('pkgsrc-bmake-20260912.patch', 'devel/bmake', 'PKGNAME', 'bmake'),
+        'archivers/gzip': patched_version('pkgsrc-gzip-1.15.patch', 'archivers/gzip', 'DISTNAME', 'gzip'),
         'pkgtools/pkg_install': match(source('pkgtools/pkg_install/files/lib/version.h'),
                                      r'^#define PKGTOOLS_VERSION (\d+)'),
         'pkgtools/pkg_install-info': match(source('devel/gtexinfo/Makefile.common'),
@@ -142,11 +144,18 @@ class FoundationTests(unittest.TestCase):
 
     def test_native_and_nonroot_policy_stays_unchanged(self):
         seeds = model.seed_make_recipes(self.policy)
+        final_gzip = {'gzip': '/final/prefix/bin/gzip', 'gunzip': '/final/prefix/bin/gunzip',
+                      'gzcat': '/final/prefix/bin/zcat'}
         for name in ('pkgtools/libnbcompat', 'devel/bmake', 'pkgtools/bootstrap-mk-files',
+                     'pkgtools/pkg_install-info', 'archivers/gzip',
                      'devel/meson', 'devel/ninja-build', 'lang/llvm'):
             state = model.apply_policy(self.policy, dict(self.state, PKGPATH=name))
-            roots = [] if name in seeds else ['devel/bmake']
+            later = name not in seeds and name != 'archivers/gzip'
+            roots = [] if name in seeds else ['devel/bmake'] + (['archivers/gzip'] if later else [])
             self.assertEqual(model.dependencies(state), roots, name)
+            route = {tool: state.get('EMBERBSD_DARWIN_TOOL.' + tool) for tool in final_gzip}
+            self.assertEqual(route, final_gzip if later else dict.fromkeys(final_gzip), name)
+            self.assertEqual(set(final_gzip) <= set(state.get('USE_TOOLS', '').split()), later, name)
         for changes in (dict(EMBERBSD_DARWIN_BOOTSTRAP='no', PKGPATH='lang/gcc16'),
                         dict(PKGPATH='lang/gcc16')):
             state = dict(self.state, **changes)

@@ -42,6 +42,14 @@ def check_recipe(text):
     # Stage 1 has checking GC defaults; GC timing changes stage 2/3 DWARF.
     assert '+GCC16_DARWIN_BOOT_CFLAGS= -g -O2 --param ggc-min-expand=100 --param ggc-min-heapsize=131072\n' in text
     assert '+MAKE_FLAGS+= BOOT_CFLAGS=${GCC16_DARWIN_BOOT_CFLAGS:Q}\n' in text
+    # pkg_add must prefer gcc16-libs for the {gcc16,gcc16-libs} dependency.
+    revisions = {}
+    for section in text.split('\n--- a/')[1:]:
+        name = section.split('\n', 1)[0]
+        for line in section.split('\n'):
+            if line.startswith('+PKGREVISION=\t'):
+                revisions[name] = int(line.split('\t', 1)[1])
+    assert revisions['lang/gcc16-libs/Makefile'] > revisions['lang/gcc16/Makefile'], revisions
     # libSystem has the stack protector; libssp would tie every user to GCC16.
     assert '+.elif ${OPSYS} == "Darwin"\n' in text
     assert '+CONFIGURE_ARGS+=\t--disable-libssp\n .else\n CONFIGURE_ARGS+=\t--enable-libssp\n' in text

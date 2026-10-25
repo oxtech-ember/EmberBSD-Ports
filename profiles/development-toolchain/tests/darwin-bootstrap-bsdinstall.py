@@ -152,9 +152,11 @@ class InstallerPolicyTests(unittest.TestCase):
 
     def test_provider_children_use_final_bundle_paths(self):
         state = apply_policy(self.text, dict(self.state, PKGPATH='sysutils/bsdinstall'))
-        self.assertEqual(set(dependencies(state)), {'shells/mksh', 'lang/llvm', 'devel/bmake'})
+        self.assertEqual(set(dependencies(state)),
+                         {'shells/mksh', 'lang/llvm', 'devel/bmake', 'archivers/gzip'})
         self.assertEqual(len(state['DEPENDS'].split()), 2)
-        self.assertEqual(state['BOOTSTRAP_DEPENDS'].split(':../../')[1], 'devel/bmake')
+        self.assertEqual([word.split(':../../')[1] for word in state['BOOTSTRAP_DEPENDS'].split()],
+                         ['devel/bmake', 'archivers/gzip'])
         self.assertEqual(state['EMBERBSD_BSDINSTALL_SHELL'], '/final/prefix/bin/mksh')
         self.assertEqual(state['TOOLS_PLATFORM.strip'], '/final/prefix/bin/llvm-strip')
         for original, seed in (('${LOCALBASE}/bin/mksh', '${EMBERBSD_DARWIN_SH}'),
