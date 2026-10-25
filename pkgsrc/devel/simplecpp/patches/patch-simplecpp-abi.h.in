@@ -1,0 +1,31 @@
+$NetBSD$
+
+Keep one explicit STL ABI across the library and its consumers.
+Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+
+--- simplecpp-abi.h.in.orig
++++ simplecpp-abi.h.in
+@@ -0,0 +1,23 @@
++// SPDX-License-Identifier: 0BSD
++// Origin: EmberBSD contributors (AI-assisted).
++#ifndef SIMPLECPP_ABI_H
++#define SIMPLECPP_ABI_H
++
++#include <cstddef>
++#cmakedefine01 SIMPLECPP_GLIBCXX_DEBUG
++
++// A late macro definition cannot change containers already included by a caller.
++// Select this ABI in compiler flags through the exported CMake target.
++#if defined(__GLIBCXX__)
++# if SIMPLECPP_GLIBCXX_DEBUG
++#  if !defined(_GLIBCXX_DEBUG)
++#   error "simplecpp: libstdc++ debug ABI mismatch"
++#  endif
++# else
++#  if defined(_GLIBCXX_DEBUG)
++#   error "simplecpp: libstdc++ debug ABI mismatch"
++#  endif
++# endif
++#endif
++
++#endif

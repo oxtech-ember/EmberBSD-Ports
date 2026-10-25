@@ -20,9 +20,12 @@ TinyXML2 and Boost headers come from the common Ports owners.
 The finder selects the installed `boost_headers` CMake config directly.
 It needs no Boost libraries package or second copy of Boost headers.
 SimpleCpp and PicoJSON come from their common Ports owners.
-Their provider sources match the bundled headers and SimpleCpp implementation byte for byte.
+Their implementations match the bundled sources. SimpleCpp adds an installed ABI guard to its header.
 CMake requires both providers and has no bundled fallback.
 The SimpleCpp 1.9.1 config requires the exact release to avoid unverified C++ ABI changes.
+Its public target selects the checked libstdc++ ABI for the library and consumers.
+`cppcheck-core` propagates that target requirement to its own dependents.
+`CPPCHK_GLIBCXX_DEBUG` remains enabled; no Debug diagnostics are disabled.
 The package preserves the complete upstream configuration, addon and platform data.
 The GUI also installs its translations, desktop file and icons.
 

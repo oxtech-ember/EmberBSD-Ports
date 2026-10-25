@@ -1,6 +1,7 @@
 @comment Common SimpleCpp library, CLI and package interfaces
 bin/simplecpp
 include/simplecpp.h
+include/simplecpp-abi.h
 lib/cmake/simplecpp/simplecpp-config-version.cmake
 lib/cmake/simplecpp/simplecpp-config.cmake
 lib/cmake/simplecpp/simplecpp-targets-noconfig.cmake

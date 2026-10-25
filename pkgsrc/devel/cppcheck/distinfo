@@ -10,3 +10,4 @@ SHA1 (patch-man_CMakeLists.txt) = 2ca43101dcfa663c0985aae595041129b81e44e1
 SHA1 (patch-test_testregex.cpp) = 839f8bd9d1c79f697a3fb61c685146d2c371631d
 SHA1 (patch-tools_dmake_dmake.cpp) = 3d4445a16442edbcb14b12f33c2b23934ddbb888
 SHA1 (patch-CMakeLists.txt) = 9055bff21cacca4cf7825bb91310e81812d4b2be
+SHA1 (patch-lib_CMakeLists.txt) = 34d56affce552324b18dd459e0cf5397b3560a18

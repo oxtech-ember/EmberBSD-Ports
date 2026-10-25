@@ -4,6 +4,7 @@
 """Replay provider and consumer sources, then reject bundled dependency regressions."""
 import argparse
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import sys
@@ -74,9 +75,13 @@ simple, pico = sources['devel/simplecpp'], sources['devel/picojson']
 cpp, zone = sources['devel/cppcheck'], sources['security/zoneminder']
 for package, files in before.items():
     for name, data in files.items():
-        assert (sources[package] / name).read_bytes() == data, (package, name)
+        actual = (sources[package] / name).read_bytes()
+        if package == 'devel/simplecpp' and name == 'simplecpp.h':
+            actual = actual.replace(b'#include "simplecpp-abi.h"\n\n', b'')
+        assert actual == data, (package, name)
 for name in ('simplecpp.cpp', 'simplecpp.h'):
-    assert (simple / name).read_bytes() == (cpp / 'externals/simplecpp' / name).read_bytes(), name
+    actual = (simple / name).read_bytes().replace(b'#include "simplecpp-abi.h"\n\n', b'')
+    assert actual == (cpp / 'externals/simplecpp' / name).read_bytes(), name
 assert (pico / 'picojson.h').read_bytes() == (cpp / 'externals/picojson/picojson.h').read_bytes()
 assert (pico / 'picojson.h').read_bytes() == (zone / 'dep/jwt-cpp/include/picojson/picojson.h').read_bytes()
 
@@ -89,6 +94,10 @@ def check_consumers():
         assert f'add_subdirectory(externals/{provider})' not in top
         assert f'add_library({provider} ALIAS {provider}::{provider})' in top
         assert f'devel/{provider}/buildlink3.mk' in (ROOT / 'pkgsrc/devel/cppcheck/Makefile').read_text()
+    core = (cpp / 'lib/CMakeLists.txt').read_text()
+    assert 'target_link_libraries(cppcheck-core PRIVATE tinyxml2 picojson ${PCRE_LIBRARY} PUBLIC simplecpp)' in core
+    assert 'add_definitions(-D_GLIBCXX_DEBUG)' in (cpp / 'cmake/compilerDefinitions.cmake').read_text()
+    assert '-DCPPCHK_GLIBCXX_DEBUG:BOOL=ON' in (ROOT / 'pkgsrc/devel/cppcheck/Makefile').read_text()
     jwt = (zone / 'dep/jwt-cpp/CMakeLists.txt').read_text()
     assert 'find_package(picojson 1.3.0 REQUIRED)' in jwt
     assert 'picojson::picojson>' not in jwt
@@ -118,6 +127,10 @@ for text in ('add_library(simplecpp_lib simplecpp.cpp)', 'EXPORT_NAME simplecpp'
              'target_link_libraries(testrunner PRIVATE simplecpp::simplecpp)',
              'add_test(NAME testrunner COMMAND testrunner)', 'COMPATIBILITY ExactVersion'):
     assert text in simple_cmake, text
+spec = importlib.util.spec_from_file_location('simplecpp_abi_contract', ROOT / 'pkgsrc/devel/simplecpp/tests/abi_contract.py')
+abi_contract = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(abi_contract)
+abi_result = abi_contract.check_source(simple)
 pico_cmake = (pico / 'CMakeLists.txt').read_text()
 for text in ('add_library(picojson INTERFACE)', 'NAMESPACE picojson::',
              'foreach(name test-core test-core-int64)', 'test.cc picotest/picotest.c',
@@ -140,8 +153,9 @@ finally:
     fault_file.write_bytes(original)
 check_consumers()
 (a.work / 'result.json').write_text(json.dumps({
-    'sources': records, 'source_identity': 'provider implementations match both bundled consumers',
+    'sources': records, 'source_identity': 'implementation bytes match; SimpleCpp header adds the installed ABI guard',
     'negative_control': 'reintroduced bundled SimpleCpp rejected',
+    'simplecpp_abi': abi_result,
     'scope': 'source and package interfaces only; no compiler or executable tests'}, indent=2) + '\n')
 print('PASS: four pinned source inputs and zero-fuzz patch replay')
 print('PASS: unchanged provider implementations, shared consumer imports and bundled-provider refusal')
