@@ -1,0 +1,19 @@
+Origin: EmberBSD, AI-assisted for the native Darwin bootstrap.
+On aarch64 and x86_64, lang/ruby40 puts ruby-yjit in a required option
+group with no other member, so it cannot be disabled: "-ruby-yjit" sets
+PKG_FAIL_REASON. YJIT needs lang/rust. Make the group optional. The
+suggested options still select YJIT, and without it options.mk already
+passes --disable-yjit --disable-zjit.
+Not submitted upstream.
+
+--- a/lang/ruby40/options.mk
++++ b/lang/ruby40/options.mk
+@@ -6,7 +6,7 @@
+ 
+ .for a in x86_64 aarch64 aarch64eb arm64
+ .  if ${a} == ${MACHINE_ARCH}
+-PKG_OPTIONS_REQUIRED_GROUPS=	jit
++PKG_OPTIONS_OPTIONAL_GROUPS=	jit
+ PKG_OPTIONS_GROUP.jit=		ruby-yjit # ruby-zjit
+ PKG_SUGGESTED_OPTIONS+=		ruby-yjit
+ .  endif

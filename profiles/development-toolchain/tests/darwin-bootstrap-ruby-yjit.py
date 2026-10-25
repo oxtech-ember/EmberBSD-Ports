@@ -9,6 +9,8 @@ usage: darwin-bootstrap-ruby-yjit.py EXPORTED_PKGSRC BMAKE MAKECONF
 YJIT needs lang/rust, which needs a foreign stage-0 binary and an LLVM
 libunwind that the common profile does not prepare. The native Darwin host
 profile disables it. Builds outside that profile keep the upstream default.
+On aarch64 and x86_64 upstream makes YJIT a required option group;
+pkgsrc-ruby40-optional-jit.patch makes it optional so it can be disabled.
 """
 import json
 import shlex
@@ -23,7 +25,7 @@ def require(value, message):
 
 
 def evaluate(exported, bmake, makeconf, bootstrap):
-    names = ['PKG_OPTIONS', 'CONFIGURE_ARGS', 'BUILD_DEPENDS', 'TOOL_DEPENDS']
+    names = ['PKG_OPTIONS', 'CONFIGURE_ARGS', 'BUILD_DEPENDS', 'TOOL_DEPENDS', 'PKG_FAIL_REASON']
     # Outside the host profile EMBERBSD_DARWIN_BOOTSTRAP stays undefined.
     # Without a package database, answer installed-option queries as empty
     # instead of recursing through the Rust and LLVM recipes.
@@ -40,6 +42,8 @@ def main():
         raise SystemExit(__doc__)
     exported, bmake, makeconf = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
     host = evaluate(exported, bmake, makeconf, True)
+    # show-vars succeeds even when the options make the recipe unbuildable.
+    require(not host['PKG_FAIL_REASON'], f'host profile cannot build Ruby: {host["PKG_FAIL_REASON"]}')
     require('ruby-yjit' not in host['PKG_OPTIONS'], f'host profile selects YJIT: {host["PKG_OPTIONS"]}')
     require('--disable-yjit' in host['CONFIGURE_ARGS'], 'host profile does not pass --disable-yjit')
     rust = [d for d in host['BUILD_DEPENDS'] + host['TOOL_DEPENDS'] if 'lang/rust' in d]
