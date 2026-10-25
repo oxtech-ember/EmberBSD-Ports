@@ -21,7 +21,7 @@ PATCH = Path(__file__).resolve().parents[1] / 'patches/gn-mac-gcc16-host.patch'
 HASHES = {
     'build/toolchain/mac/BUILD.gn': (
         'dd2d421e1ef8b4b3aa97351ccf7e2b0d77e0e79d51933fc9fd5c46d3dd10d5f7',
-        '7f00e26744199f532db050d023e9fc1b7b7e99f9a8e181ee39187d65e9be32b3'),
+        '15e9977abc49f6c7fb6eae9c794ece5a1a53fc72403ac3a076de3442dc138f79'),
     'build/toolchain/apple/toolchain.gni': (
         'e41660cf2c797f8291023ee3956f9e72ffb6ee87d1facdefb8ad0cb2d1e44b05',
         '828b41d6618a70f679d23b141e9d3338d112bb8ba39d5aedd8785f650381cd1e'),
@@ -125,6 +125,71 @@ if states not in ({0}, {1}):
 BEFORE = CURRENT if states == {0} else patch_sources(CURRENT, PATCH.read_text(), reverse=True)
 AFTER = patch_sources(BEFORE, PATCH.read_text())
 
+HOST_ALLOCATOR_ARGS = (
+    'use_partition_alloc',
+    'use_allocator_shim',
+    'use_partition_alloc_as_malloc',
+)
+HOST_ALLOCATOR_DELTA = """\
+      # Host generators use the platform allocator instead of the Apple shim.
+      # The independent NetBSD target keeps its allocator policy.
+      use_partition_alloc = false
+      use_allocator_shim = false
+      use_partition_alloc_as_malloc = false
+"""
+PRIOR_MAC_SHA256 = '7f00e26744199f532db050d023e9fc1b7b7e99f9a8e181ee39187d65e9be32b3'
+
+
+def source_block(text, heading):
+    """Read one brace-delimited source block. Do not evaluate GN."""
+    if text.count(heading) != 1:
+        raise ValueError('select exactly one source block')
+    start = text.index(heading) + len(heading)
+    depth = 1
+    result = []
+    for line in text[start:].splitlines(True):
+        syntax = re.sub(r'"(?:\\.|[^"\\])*"|#.*', '', line)
+        depth += syntax.count('{') - syntax.count('}')
+        if depth == 0:
+            return ''.join(result)
+        result.append(line)
+    raise ValueError('source block did not close')
+
+
+def host_allocator_modes(mac, apple):
+    """Read explicit boolean policy and forwarding. Do not resolve GN defaults."""
+    native = source_block(mac, 'template("mac_gcc_toolchain") {')
+    forwarded = 'forward_variables_from(invoker.toolchain_args, "*")'
+    if forwarded not in native:
+        raise ValueError('native family must forward its toolchain arguments')
+    selected = {}
+    for name in HOST_ALLOCATOR_ARGS:
+        values = re.findall(r'^\s*' + name + r' = (true|false)$',
+                            native, re.MULTILINE)
+        if len(values) != 1:
+            raise ValueError('each native allocator argument must be explicit once')
+        selected[name] = values[0] == 'true'
+    variants = ('', '_for_rust_host_build_tools',
+                '_host_with_system_allocator', '_with_system_allocator')
+    wrapper = source_block(apple, 'template("apple_toolchain") {')
+    for suffix in variants[1:]:
+        if '"${target_name}' + suffix + '"' not in wrapper:
+            raise ValueError('derived native family must remain present')
+    for template in ('apple_rust_host_build_tools_toolchain',
+                     'apple_system_allocator_toolchain'):
+        derived = source_block(apple, 'template("' + template + '") {')
+        if forwarded not in derived:
+            raise ValueError('derived family must forward the native arguments')
+        for name in HOST_ALLOCATOR_ARGS:
+            if re.search(r'^\s*' + name + r'\s*=', derived, re.MULTILINE):
+                raise ValueError('derived family must not replace allocator args')
+    result = {}
+    for family in ('gcc_arm64', 'gcc_arm64_v8_x64'):
+        source_block(mac, 'mac_gcc_toolchain("' + family + '") {')
+        for suffix in variants:
+            result[family + suffix] = dict(selected)
+    return result
+
 
 class RoutingTests(unittest.TestCase):
     def setUp(self):
@@ -181,6 +246,43 @@ class RoutingTests(unittest.TestCase):
         self.assertIn('v8_current_cpu = "x64"', snapshot)
         self.assertIn('if (is_clang && defined(archs_mapping[current_os]))', AFTER['build/config/mac/BUILD.gn'])
         self.assertNotIn('linux/unbundle', '\n'.join(HASHES))
+
+    def test_host_allocator_delta_preserves_all_prior_mac_source(self):
+        mac = AFTER['build/toolchain/mac/BUILD.gn']
+        self.assertEqual(mac.count(HOST_ALLOCATOR_DELTA), 1)
+        prior = mac.replace(HOST_ALLOCATOR_DELTA, '')
+        self.assertEqual(hashlib.sha256(prior.encode()).hexdigest(),
+                         PRIOR_MAC_SHA256)
+        native = source_block(mac, 'template("mac_gcc_toolchain") {')
+        self.assertIn(HOST_ALLOCATOR_DELTA, native)
+
+    def test_both_native_families_and_all_derived_families_use_libc(self):
+        modes = host_allocator_modes(AFTER['build/toolchain/mac/BUILD.gn'],
+                                     self.apple)
+        self.assertEqual(len(modes), 8)
+        for family, selected in modes.items():
+            self.assertEqual(selected, dict.fromkeys(HOST_ALLOCATOR_ARGS, False),
+                             family)
+
+    def test_each_missing_host_allocator_override_is_causal(self):
+        mac = AFTER['build/toolchain/mac/BUILD.gn']
+        for name in HOST_ALLOCATOR_ARGS:
+            with self.subTest(name=name):
+                line = '      ' + name + ' = false\n'
+                self.assertEqual(mac.count(line), 1)
+                mutant = mac.replace(line, '')
+                with self.assertRaisesRegex(ValueError, 'must be explicit'):
+                    host_allocator_modes(mutant, self.apple)
+
+    def test_derived_argument_forwarding_removal_is_causal(self):
+        mac = AFTER['build/toolchain/mac/BUILD.gn']
+        heading = 'template("apple_rust_host_build_tools_toolchain") {'
+        derived = source_block(self.apple, heading)
+        forwarded = 'forward_variables_from(invoker.toolchain_args, "*")'
+        self.assertEqual(derived.count(forwarded), 1)
+        mutant = self.apple.replace(derived, derived.replace(forwarded, ''))
+        with self.assertRaisesRegex(ValueError, 'must forward'):
+            host_allocator_modes(mac, mutant)
 
     def test_existing_native_final_link_commands_remain(self):
         old = BEFORE['build/toolchain/apple/toolchain.gni']

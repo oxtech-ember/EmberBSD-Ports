@@ -50,7 +50,7 @@ This patch does not qualify a compiler or change the NetBSD target ABI.
  
        # The cross target can enable split DWARF, but this macOS host toolchain
        # does not emit .dwo files. Keep it on the Apple default.
-@@ -103,3 +122,39 @@
+@@ -103,3 +122,44 @@
      v8_current_cpu = "arm64"
    }
  }
@@ -69,6 +69,11 @@ This patch does not qualify a compiler or change the NetBSD target ABI.
 +      is_clang = false
 +      use_custom_libcxx = false
 +      use_custom_libcxx_for_host = false
++      # Host generators use the platform allocator instead of the Apple shim.
++      # The independent NetBSD target keeps its allocator policy.
++      use_partition_alloc = false
++      use_allocator_shim = false
++      use_partition_alloc_as_malloc = false
 +      use_reclient = false
 +      cc_wrapper = ""
 +      # The qualified GCC driver selects its configured Mach-O linker.

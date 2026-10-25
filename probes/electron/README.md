@@ -452,6 +452,18 @@ set both custom libc++ flags to false and use the accepted G++ runtime defaults.
 Keep the Mac SDK root and deployment value consistent with the native ABI
 selection. Do not pass the NetBSD sysroot to the native family.
 
+Both native families select the platform allocator. They set
+`use_partition_alloc=false`, `use_allocator_shim=false`, and
+`use_partition_alloc_as_malloc=false` in their toolchain arguments. The derived
+Rust-host and system-allocator families inherit these settings. The independent
+NetBSD target retains its allocator and security settings. V8's snapshot CPU,
+startup-data generation, and snapshot layout flags stay unchanged.
+
+This removes the host PartitionAlloc and Apple allocator-shim dependency. It
+does not port other Mac Objective-C++ sources in Chromium base or crypto. Those
+host generator dependencies still need source and build validation. Do not treat
+these source checks as an Objective-C, ARC, or complete Electron acceptance run.
+
 The Apple link driver receives one C++ executable and its separate ordered
 arguments. Rust proc macros receive the same executable and ordered link
 arguments. The existing link launcher, environment order and final-link pool
