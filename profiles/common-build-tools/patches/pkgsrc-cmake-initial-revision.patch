@@ -1,0 +1,12 @@
+# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+# Rebuild the installed common modules after the initial capability repair.
+--- a/devel/cmake/Makefile
++++ b/devel/cmake/Makefile
+@@ -3,6 +3,6 @@
+ .include "Makefile.common"
+ 
+-PKGREVISION=	4
++PKGREVISION=	5
+ 
+ COMMENT=	Cross platform make
+ 

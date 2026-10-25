@@ -10,3 +10,4 @@ SHA1 (patch-include_llvm-c_DataTypes.h) = ff547cae5bdf90c5a1371b9eb196e7537a03b1
 SHA1 (patch-tools_llvm-shlib_CMakeLists.txt) = 92558f2d7d87b7a26f7f3a2b3b3dc539ae13e672
 SHA1 (patch-tools_llvm-config_CMakeLists.txt) = e32bd08012dbc1beee5b2643e6cad33a271db412
 SHA1 (patch-lib_DWP_DWP.cpp) = 42e355b0986f8c97ba3404d07a06948bf55c52c6
+SHA1 (patch-cmake_modules_UseLibtool.cmake) = 4853c19149f8dff87868e3979009d344d58c1e0c

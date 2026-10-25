@@ -27,6 +27,7 @@ EMBERBSD_LLVM_PKGDIR:= ${.PARSEDIR:tA}
 .include "version.mk"
 
 PKGNAME=	llvm-${LLVM_VERSION}
+PKGREVISION=	1
 CATEGORIES=	lang devel
 
 MAINTAINER=	pkgsrc-users@NetBSD.org

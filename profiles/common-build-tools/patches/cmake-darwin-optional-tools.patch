@@ -1,0 +1,149 @@
+# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+# Refuse unavailable Darwin operations and retain full selected-tool defaults.
+--- /dev/null
++++ Modules/Platform/EmberBSD-DarwinTools.cmake
+@@ -0,0 +1,25 @@
++# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
++# Absence is a capability boundary, never a tool path or discovery request.
++set(_EMBERBSD_DARWIN_INITIAL_TOOLS FALSE)
++if(EMBERBSD_CMAKE_NATIVE_TOOLS AND CMAKE_HOST_APPLE AND
++   CMAKE_SYSTEM_NAME STREQUAL "Darwin")
++  if(NOT DEFINED EMBERBSD_DARWIN_TOOL_PHASE)
++    set(EMBERBSD_DARWIN_TOOL_PHASE "full")
++  endif()
++  if(NOT EMBERBSD_DARWIN_TOOL_PHASE STREQUAL "initial" AND
++     NOT EMBERBSD_DARWIN_TOOL_PHASE STREQUAL "full")
++    message(FATAL_ERROR "EMBERBSD_DARWIN_TOOL_PHASE must be initial or full")
++  endif()
++  if(EMBERBSD_DARWIN_TOOL_PHASE STREQUAL "initial")
++    set(_EMBERBSD_DARWIN_INITIAL_TOOLS TRUE)
++    foreach(_ember_tool CMAKE_INSTALL_NAME_TOOL CMAKE_TAPI CMAKE_LIBTOOL)
++      if(DEFINED ${_ember_tool})
++        if(NOT IS_ABSOLUTE "${${_ember_tool}}" OR
++           IS_DIRECTORY "${${_ember_tool}}" OR
++           NOT IS_EXECUTABLE "${${_ember_tool}}")
++          message(FATAL_ERROR "${_ember_tool} must select an existing absolute executable or be absent")
++        endif()
++      endif()
++    endforeach()
++  endif()
++endif()
+--- Modules/Platform/Darwin.cmake.orig
++++ Modules/Platform/Darwin.cmake
+@@ -62,7 +62,8 @@
+ # (where install_name_tool was hardcoded) and where CMAKE_INSTALL_NAME_TOOL isn't in the cache
+ # and still cmake didn't fail in CMakeFindBinUtils.cmake (because it isn't rerun)
+ # hardcode CMAKE_INSTALL_NAME_TOOL here to install_name_tool, so it behaves as it did before, Alex
+-if(NOT DEFINED CMAKE_INSTALL_NAME_TOOL)
++include(Platform/EmberBSD-DarwinTools)
++if(NOT _EMBERBSD_DARWIN_INITIAL_TOOLS AND NOT DEFINED CMAKE_INSTALL_NAME_TOOL)
+   find_program(CMAKE_INSTALL_NAME_TOOL install_name_tool)
+   mark_as_advanced(CMAKE_INSTALL_NAME_TOOL)
+ endif()
+--- Modules/CMakeFindBinUtils.cmake.orig
++++ Modules/CMakeFindBinUtils.cmake
+@@ -19,6 +19,8 @@
+ #   CMAKE_STRIP
+ #   CMAKE_INSTALL_NAME_TOOL
+ 
++include(Platform/EmberBSD-DarwinTools)
++
+ # Keep explicit native tools in source-file and project try_compile children.
+ if(EMBERBSD_CMAKE_NATIVE_TOOLS)
+   if(CMAKE_TRY_COMPILE_NO_PLATFORM_VARIABLES)
+@@ -27,6 +29,7 @@
+   list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES
+     CMAKE_TRY_COMPILE_PLATFORM_VARIABLES
+     EMBERBSD_CMAKE_NATIVE_TOOLS
++    EMBERBSD_DARWIN_TOOL_PHASE
+     CMAKE_POLICY_DEFAULT_CMP0137
+     CMAKE_AR CMAKE_RANLIB CMAKE_NM CMAKE_STRIP CMAKE_LINKER
+     CMAKE_INSTALL_NAME_TOOL CMAKE_TAPI EMBERBSD_DARWIN_TAPI_KIND CMAKE_LIBTOOL
+@@ -247,6 +250,10 @@
+   list(APPEND _CMAKE_TOOL_VARS AR RANLIB STRIP LINKER NM OBJDUMP OBJCOPY READELF DLLTOOL ADDR2LINE TAPI)
+ endif()
+ 
++if(_EMBERBSD_DARWIN_INITIAL_TOOLS)
++  list(REMOVE_ITEM _CMAKE_TOOL_VARS TAPI)
++endif()
++
+ foreach(_CMAKE_TOOL IN LISTS _CMAKE_TOOL_VARS)
+   # Build the final list of prefixed/suffixed names.
+   set(_CMAKE_${_CMAKE_TOOL}_FIND_NAMES "")
+@@ -268,7 +275,7 @@
+     set(CMAKE_RANLIB : CACHE INTERNAL "noop for ranlib")
+ endif()
+ 
+-if(APPLE AND "TAPI" IN_LIST _CMAKE_TOOL_VARS AND NOT CMAKE_TAPI)
++if(NOT _EMBERBSD_DARWIN_INITIAL_TOOLS AND APPLE AND "TAPI" IN_LIST _CMAKE_TOOL_VARS AND NOT CMAKE_TAPI)
+   # try to pick-up from Apple toolchain
+   execute_process(COMMAND xcrun --find tapi
+     OUTPUT_VARIABLE _xcrun_out
+@@ -283,7 +290,7 @@
+ endif()
+ 
+ 
+-if(CMAKE_PLATFORM_HAS_INSTALLNAME)
++if(CMAKE_PLATFORM_HAS_INSTALLNAME AND NOT _EMBERBSD_DARWIN_INITIAL_TOOLS)
+   find_program(CMAKE_INSTALL_NAME_TOOL NAMES ${_CMAKE_TOOLCHAIN_PREFIX}install_name_tool llvm-install-name-tool HINTS ${_CMAKE_TOOLCHAIN_LOCATION} NO_CMAKE_PATH NO_CMAKE_ENVIRONMENT_PATH)
+   if(NOT CMAKE_INSTALL_NAME_TOOL)
+     message(FATAL_ERROR "Could not find install_name_tool, please check your installation.")
+--- Source/cmInstallTargetGenerator.cxx.orig
++++ Source/cmInstallTargetGenerator.cxx
+@@ -598,10 +598,6 @@
+     this->Target->Target->GetMakefile()->GetSafeDefinition(
+       "CMAKE_INSTALL_NAME_TOOL");
+ 
+-  if (installNameTool.empty()) {
+-    return;
+-  }
+-
+   // Build a map of build-tree install_name to install-tree install_name for
+   // shared libraries linked to this target.
+   std::map<std::string, std::string> install_name_remap;
+@@ -665,6 +661,13 @@
+   // Write a rule to run install_name_tool to set the install-tree
+   // install_name value and references.
+   if (!new_id.empty() || !install_name_remap.empty()) {
++    if (installNameTool.empty() ||
++        !this->Target->Target->GetMakefile()->IsSet("CMAKE_INSTALL_NAME_TOOL")) {
++      this->Target->Target->GetMakefile()->IssueMessage(
++        MessageType::FATAL_ERROR,
++        "Darwin install-name update requires CMAKE_INSTALL_NAME_TOOL.");
++      return;
++    }
+     os << indent << "execute_process(COMMAND \"" << installNameTool;
+     os << "\"";
+     if (!new_id.empty()) {
+@@ -814,6 +817,11 @@
+         ordered.end());
+ 
+       if (!ordered.empty()) {
++        if (installNameTool.empty() || !mf->IsSet("CMAKE_INSTALL_NAME_TOOL")) {
++          mf->IssueMessage(MessageType::FATAL_ERROR,
++                           "Darwin RPATH changes require CMAKE_INSTALL_NAME_TOOL.");
++          return;
++        }
+         os << indent << "execute_process(COMMAND " << installNameTool << "\n";
+         for (std::string const& runpath : ordered) {
+           // Either 'add_rpath' or 'delete_rpath' since we've removed empty
+--- Source/cmGeneratorTarget.cxx.orig
++++ Source/cmGeneratorTarget.cxx
+@@ -5730,6 +5730,17 @@
+     }
+   }
+ 
++  if (this->Makefile->IsOn("EMBERBSD_CMAKE_NATIVE_TOOLS") &&
++      this->Makefile->GetSafeDefinition("EMBERBSD_DARWIN_TOOL_PHASE") ==
++        "initial" &&
++      this->Makefile->IsOn("APPLE") && this->IsSharedLibraryWithExports() &&
++      generate_Stubs && !this->Makefile->IsSet("CMAKE_TAPI")) {
++    this->Makefile->IssueMessage(
++      MessageType::FATAL_ERROR,
++      "Darwin shared ENABLE_EXPORTS requires CMAKE_TAPI in the initial phase.");
++    return false;
++  }
++
+   return (this->IsDLLPlatform() &&
+           (this->GetType() == cmStateEnums::SHARED_LIBRARY ||
+            this->IsExecutableWithExports()) &&

@@ -536,6 +536,40 @@ variants and pointer rejection, allowing removal of the manual count.
 LLVM23 should check the same contract. See [native evidence](native-evidence.md)
 for the bounded result; this is not a native Python package acceptance.
 
+## Initial Darwin archive tools
+
+`EMBERBSD_DARWIN_TOOL_PHASE` defaults to `full` for native Darwin.
+The explicit `initial` phase permits absent Darwin libtool, install-name-tool and TAPI selectors.
+Provided selectors still require existing absolute executable files.
+It preserves the selected five binutils, sysroot and compiler routes.
+Linux, NetBSD and cross routes remain unchanged.
+
+The complete CMake build keeps its normal static-library AR/RANLIB rules.
+Initial mode suppresses discovery of the three future Darwin tool outputs.
+An actual install-name or RPATH update without its selected tool fails during generation.
+Shared-library `ENABLE_EXPORTS` without TAPI also fails, including the global initializer.
+Executable exports keep their upstream behavior.
+The phase and existing package platform variables propagate through both `try_compile` signatures.
+The existing default CMP0137 NEW policy and preset opt-out refusal remain required.
+A later package override to OLD or platform-variable opt-out is outside this acceptance boundary.
+
+LLVM initial mode selects `LLVM_DARWIN_ARCHIVE_TOOL=ar` and static LLVM linkage.
+The upstream libtool route remains the default.
+Backends, options, dependencies and PLIST remain complete.
+The SDK controller owns the fixed four-target operation and exact LLVM dependency closure.
+This profile does not qualify the uninstalled LLVM package or future graph nodes.
+
+Run `tests/cmake-initial-source.py` with `--cmake-source` and `--llvm-source`
+pointing to fully patched sources. It executes no CMake or compiler.
+`tests/cmake-initial-metadata.py --help` describes the explicit owned make tuple,
+contained environment, private MAKECONF and exact command-record interface.
+It checks the common helper through standalone BSD make queries.
+It does not run a package target or qualify the fixture as an ordinary provider.
+`tests/cmake-initial/` retains operation fixtures for the later native configure gate.
+Native CMake, nested configure, installation, LLVM output, analysis and memory gates remain pending.
+
+Origin: EmberBSD contributors. AI assistance was used for this common source change and its checks.
+
 ## Native acceptance still required
 
 Use staged packages and normal pkgsrc checks; do not bypass missing files,
