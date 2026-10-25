@@ -9,7 +9,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 
 --- a/lang/gcc16/Makefile.common
 +++ b/lang/gcc16/Makefile.common
-@@ -57,6 +57,82 @@
+@@ -57,6 +57,84 @@
  .if ${OPSYS} == "Darwin"
 -BUILDLINK_TRANSFORM+=	rm:-nodefaultrpaths
 +.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} != "yes"
@@ -45,6 +45,8 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 +CONFIGURE_ENV+= AR=${AR:Q} RANLIB=${RANLIB:Q} NM=${NM:Q} STRIP=${STRIP:Q}
 +CONFIGURE_ENV+= GCC_CONFIGURE_SDK=yes
 +CONFIGURE_ENV+= GCC_CONFIGURE_UNAME=${EMBERBSD_GCC16_UNAME:Q}
++MAKE_ENV+= GCC_CONFIGURE_SDK=yes
++MAKE_ENV+= GCC_CONFIGURE_UNAME=${EMBERBSD_GCC16_UNAME:Q}
 +CONFIGURE_ENV+= GCC_COMPARE_DEBUG_STRIP=${STRIP:Q}
 +MAKE_ENV+= GCC_COMPARE_DEBUG_STRIP=${STRIP:Q}
 +CONFIGURE_ENV+= GCC_COMPARE_DEBUG_OBJDUMP=${LOCALBASE:Q}/bin/llvm-objdump

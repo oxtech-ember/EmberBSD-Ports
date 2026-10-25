@@ -84,7 +84,9 @@ selection remains conditional on Darwin:
   use the selected SDK Python. GCC16, its checked driver closure, ABI arrays,
   shell, LLVM normalizers and configure utilities come from that selection.
   `--tools-bin` supplies the only PATH directory. Each bare utility must have
-  its selected role under the exact command name. No compiler shellwords,
+  its selected role under the exact command name, including external `printf`.
+  Every additional directory entry must also be an explicitly admitted tool path.
+  Unknown entries and aliases are refused before a child starts. No compiler shellwords,
   system PATH or bootstrap-seed qualification are accepted. Explicit native
   build/host triplets avoid `config.guess`; `CONFIG_SITE=/dev/null` excludes
   local site scripts. The script's help lists all required selectors.
@@ -99,7 +101,8 @@ selection remains conditional on Darwin:
   Other legacy platform-specific queries report `unavailable (selected SDK profile)` without executing
   absolute host commands. The unset upstream route remains unchanged.
   The Darwin recipe requires `EMBERBSD_GCC16_UNAME` from the accepted SDK plan
-  and forwards it to configure. The direct regression uses its admitted uname
+  and retains it in configure and make environments.
+  The direct regression uses its admitted uname
   role and refuses a source tree without this patch before compiler children.
   [gcc-darwin-llvm-mc.patch](patches/gcc-darwin-llvm-mc.patch) adds
   `--with-darwin-assembler=llvm-mc` to GCC. It changes the driver assembler
@@ -151,6 +154,7 @@ It must bind these make variables in the initial producer environment:
 | `EMBERBSD_GCC16_DSYMUTIL` | Qualified `dsymutil` executable path |
 | `EMBERBSD_GCC16_AR`, `EMBERBSD_GCC16_RANLIB` | Qualified archive tool paths |
 | `EMBERBSD_GCC16_NM`, `EMBERBSD_GCC16_STRIP` | Qualified symbol tool paths |
+| `EMBERBSD_GCC16_UNAME` | Selected SDK native `uname` path; no command suffix |
 | `OSX_SDK_PATH` | Explicit accepted native ABI sysroot path |
 | `EMBERBSD_GCC16_DARWIN_SDK_VERSION` | SDK version from that accepted native ABI metadata |
 

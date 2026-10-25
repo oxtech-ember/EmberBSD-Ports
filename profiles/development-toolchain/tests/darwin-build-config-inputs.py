@@ -102,6 +102,21 @@ class Inputs(unittest.TestCase):
                 self.selected()
             self.tools['sed'] = original
 
+    def test_missing_printf_and_unknown_path_alias_refuse_before_children(self):
+        original = self.tools.pop('printf', None)
+        with self.assertRaises(SDKError):
+            self.selected()
+        if original is not None:
+            self.tools['printf'] = original
+        outside = self.bin / 'outside-alias'
+        outside.symlink_to('/usr/bin/true')
+        with self.assertRaises(SDKError):
+            self.selected()
+        outside.unlink()
+        (self.bin / 'unrecorded-tool').write_text('Not an admitted role\n')
+        with self.assertRaises(SDKError):
+            self.selected()
+
     def test_external_python_and_wrong_host_refuse(self):
         with patch.object(native_toolset, 'load_native_toolset', return_value=self.selection), \
              patch.object(subject.subprocess, 'run') as child, self.assertRaises(SDKError):

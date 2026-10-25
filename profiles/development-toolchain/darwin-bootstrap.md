@@ -61,6 +61,7 @@ as the install command and does not request `sudo` or modify system users or
 | `EMBERBSD_GCC16_SEED_CC`, `EMBERBSD_GCC16_SEED_CXX`, `EMBERBSD_GCC16_SEED_CPP` | Shell-quoted selected driver tuple plus the separately accepted language/ABI arguments |
 | `EMBERBSD_GCC16_LLVM_MC`, `EMBERBSD_GCC16_LD64_LLD`, `EMBERBSD_GCC16_DSYMUTIL` | Selected assembler, Mach-O linker and debug tool paths |
 | `EMBERBSD_GCC16_AR`, `EMBERBSD_GCC16_RANLIB`, `EMBERBSD_GCC16_NM`, `EMBERBSD_GCC16_STRIP` | Selected archive and symbol tool paths |
+| `EMBERBSD_GCC16_UNAME` | Exact selected native `uname` path for SDK configure diagnostics |
 | `OSX_SDK_PATH`, `EMBERBSD_GCC16_DARWIN_SDK_VERSION` | Accepted native ABI root and its metadata version |
 | `MACOSX_DEPLOYMENT_TARGET` | Deployment from the accepted fixed GCC binding |
 | `EMBERBSD_DARWIN_JOBS`, `EMBERBSD_DARWIN_CPU_BUDGET` | Positive decimal jobs and the accepted coordinator budget; jobs must not exceed the budget |

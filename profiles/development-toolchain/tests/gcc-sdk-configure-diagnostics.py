@@ -44,6 +44,8 @@ def recipe(text):
     assert 'EMBERBSD_GCC16_UNAME' in required.split()
     assert '+CONFIGURE_ENV+= GCC_CONFIGURE_SDK=yes\n' in text
     assert '+CONFIGURE_ENV+= GCC_CONFIGURE_UNAME=${EMBERBSD_GCC16_UNAME:Q}\n' in text
+    assert '+MAKE_ENV+= GCC_CONFIGURE_SDK=yes\n' in text
+    assert '+MAKE_ENV+= GCC_CONFIGURE_UNAME=${EMBERBSD_GCC16_UNAME:Q}\n' in text
     assert '+CONFIGURE_ARGS+= --without-build-config\n' in text
 
 
@@ -93,6 +95,7 @@ class Diagnostics(unittest.TestCase):
         recipe(text)
         for old, new in [(' EMBERBSD_GCC16_UNAME OSX_SDK_PATH', ' OSX_SDK_PATH'),
                          ('+CONFIGURE_ENV+= GCC_CONFIGURE_SDK=yes\n', ''),
+                         ('+MAKE_ENV+= GCC_CONFIGURE_SDK=yes\n', ''),
                          ('${EMBERBSD_GCC16_UNAME:Q}', '/usr/bin/uname')]:
             self.assertIn(old, text)
             with self.assertRaises(AssertionError):

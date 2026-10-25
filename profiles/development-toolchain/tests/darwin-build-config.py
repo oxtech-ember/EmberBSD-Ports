@@ -37,7 +37,7 @@ MESSAGE = 'selected Darwin bootstrap-debug comparison failed'
 # admitted role in one explicit SDK directory. Compiler and LLVM paths are direct.
 PATH_ROLES = ('sh', 'make', 'awk', 'basename', 'cat', 'chmod', 'cmp', 'cp', 'cut',
               'date', 'diff', 'dirname', 'expr', 'grep', 'head', 'hostname', 'install', 'ln', 'ls', 'mkdir',
-              'mktemp', 'mv', 'rm', 'rmdir', 'sed', 'sort', 'tail', 'touch', 'tr', 'uname', 'uniq', 'wc')
+              'mktemp', 'mv', 'printf', 'rm', 'rmdir', 'sed', 'sort', 'tail', 'touch', 'tr', 'uname', 'uniq', 'wc')
 REQUIRED_ROLES = ('cc', 'cxx', 'cpp', 'as', 'ld', 'ar', 'ranlib', 'nm', 'strip',
                   'objdump', 'objcopy', 'python', *PATH_ROLES)
 
@@ -69,6 +69,9 @@ def selected_inputs(args):
             raise SDKError('Missing executable SDK role: ' + role)
         if role in PATH_ROLES and path != directory / role:
             raise SDKError('SDK PATH role differs from the selected directory: ' + role)
+    admitted = set(selected.tools.values())
+    if any(str(path) not in admitted for path in directory.iterdir()):
+        raise SDKError('Every SDK PATH entry must be an explicitly selected tool')
     if Path(sys.executable).resolve(strict=True) != Path(selected.tool('python')).resolve(strict=True):
         raise SDKError('The controller must use the selected SDK Python')
     flags = selected.abi_flags
