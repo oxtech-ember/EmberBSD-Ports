@@ -42,6 +42,14 @@ selection remains conditional on Darwin:
   ld64.lld warns that `-single_module` is obsolete, so the libtool probe
   rejects it and links a `-r` master object, which ld64.lld does not
   implement. The recipe presets `lt_cv_apple_cc_single_mod=yes`.
+  `contrib/compare-debug` strips Darwin objects with `ld -r`, so configure
+  drops the default `bootstrap-debug` build. Stages 2 and 3 then compare
+  their full objects. A `yes,types` stage 1 compiler emits other DWARF
+  location lists than the release stage 2 and 3 compilers, so the recipe
+  builds stage 1 with `--enable-stage1-checking=release`.
+  Known limitation: no Darwin build runs a full-checking (`yes,types`)
+  stage 1 compiler. Such a build needs a `compare-debug` that strips debug
+  information without `ld -r`.
   [gcc-darwin-llvm-mc.patch](patches/gcc-darwin-llvm-mc.patch) adds
   `--with-darwin-assembler=llvm-mc` to GCC. It changes the driver assembler
   arguments and the configure assembler probes together.

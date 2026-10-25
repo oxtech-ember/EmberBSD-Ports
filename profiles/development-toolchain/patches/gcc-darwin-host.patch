@@ -9,7 +9,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 
 --- a/lang/gcc16/Makefile.common
 +++ b/lang/gcc16/Makefile.common
-@@ -57,6 +57,70 @@
+@@ -57,6 +57,75 @@
  .if ${OPSYS} == "Darwin"
 -BUILDLINK_TRANSFORM+=	rm:-nodefaultrpaths
 +.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} != "yes"
@@ -65,6 +65,11 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 +CONFIGURE_ARGS+= --with-dsymutil=${LOCALBASE:Q}/bin/dsymutil
 +CONFIGURE_ARGS+= --with-darwin-assembler=llvm-mc
 +CONFIGURE_ARGS+= --with-darwin-sdk-version=${EMBERBSD_GCC16_DARWIN_SDK_VERSION:Q}
++# contrib/compare-debug strips Darwin objects with "ld -r", which ld64.lld
++# does not implement, so configure drops the bootstrap-debug compare. The
++# yes,types stage 1 emits other DWARF location lists than release stages 2
++# and 3, and the full-object compare fails. Use release checking in stage 1.
++CONFIGURE_ARGS+= --enable-stage1-checking=release
 +.endif
 +# The common LLVM-MC source patch requires the Darwin port on all hosts.
 +# Upstream GCC does not support aarch64-apple-darwin. This diff is
@@ -82,7 +87,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 -.endif
  
  ## For graphite support.
-@@ -89,8 +153,10 @@
+@@ -89,8 +158,10 @@
  MAKE_ENV.NetBSD+=	ac_cv_func_uselocale=no
  MAKE_ENV.SunOS+=	ac_cv_func_mkostemp=no
  
