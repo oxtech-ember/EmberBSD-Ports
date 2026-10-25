@@ -36,6 +36,13 @@ class InitialSourceTests(unittest.TestCase):
                      'IS_DIRECTORY', 'IS_EXECUTABLE', 'DEFINED'):
             self.assertIn(word, text)
 
+    def test_provided_initial_tapi_requires_its_finite_kind(self):
+        text = (CMAKE / 'Modules/Platform/EmberBSD-DarwinTools.cmake').read_text()
+        for word in ('DEFINED CMAKE_TAPI', 'NOT DEFINED EMBERBSD_DARWIN_TAPI_KIND',
+                     'STREQUAL "apple"', 'STREQUAL "llvm-readtapi"',
+                     'CMAKE_TAPI requires EMBERBSD_DARWIN_TAPI_KIND'):
+            self.assertIn(word, text)
+
     def test_findbinutils_never_discovers_unavailable_initial_tools(self):
         text = (CMAKE / 'Modules/CMakeFindBinUtils.cmake').read_text()
         self.assertIn('include(Platform/EmberBSD-DarwinTools)', text)

@@ -2,7 +2,7 @@
 # Refuse unavailable Darwin operations and retain full selected-tool defaults.
 --- /dev/null
 +++ Modules/Platform/EmberBSD-DarwinTools.cmake
-@@ -0,0 +1,25 @@
+@@ -0,0 +1,33 @@
 +# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
 +# Absence is a capability boundary, never a tool path or discovery request.
 +set(_EMBERBSD_DARWIN_INITIAL_TOOLS FALSE)
@@ -26,6 +26,14 @@
 +        endif()
 +      endif()
 +    endforeach()
++    if(DEFINED CMAKE_TAPI AND
++       (NOT DEFINED EMBERBSD_DARWIN_TAPI_KIND OR
++        (NOT EMBERBSD_DARWIN_TAPI_KIND STREQUAL "apple" AND
++         NOT EMBERBSD_DARWIN_TAPI_KIND STREQUAL "llvm-readtapi")))
++      message(FATAL_ERROR
++        "CMAKE_TAPI requires EMBERBSD_DARWIN_TAPI_KIND apple or llvm-readtapi")
++    endif()
++
 +  endif()
 +endif()
 --- Modules/Platform/Darwin.cmake.orig
