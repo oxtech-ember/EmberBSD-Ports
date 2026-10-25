@@ -58,3 +58,24 @@ It runs no configure command, compiler or newly built bmake.
 Native GCC16 and cross builds, C source analysis, memory checks, upstream unit
 tests, installed consumer behavior and package lifecycle checks remain separate.
 No package or ordinary SDK tool acceptance follows from the source check.
+
+## Darwin library objects
+
+The Darwin `bsd.lib.mk` from `pkgtools/bootstrap-mk-files` compiled each
+library object to a temporary file and relinked that single object with
+`${LD} -r`. Without `-x`, the relink only copies the object. `ld64.lld`, the
+GCC 16 Darwin bootstrap linker, does not implement `-r`. Every BSD-make library
+then failed, starting with libfetch in `pkgtools/pkg_install`.
+[The export patch](patches/pkgsrc-bootstrap-mk-files-darwin-objects.patch)
+renames the temporary object instead. It changes only the Darwin rules.
+
+```sh
+python3 profiles/common-build-tools/tests/bootstrap-mk-files-darwin-objects.py \
+    --pkgsrc /absolute/exported-pkgsrc --bmake /absolute/bin/bmake \
+    --cc /absolute/bin/gcc --ld /absolute/bin/ld64.lld \
+    --ar /absolute/bin/llvm-ar --ranlib /absolute/bin/llvm-ranlib \
+    --nm /absolute/bin/llvm-nm --work-parent /absolute/work
+```
+
+The test builds a one-object static library with the exported mk files.
+It fails with the unpatched rules.

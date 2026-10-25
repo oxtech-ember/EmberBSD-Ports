@@ -1,0 +1,161 @@
+Origin: EmberBSD, AI-assisted build fix for the Darwin bootstrap mk files.
+The Darwin library rules compile each object to a temporary file and then
+run "${LD} -r" on that single object. Without -x, this relink only copies
+the object. ld64.lld, the linker of the GCC 16 Darwin bootstrap, has no -r,
+so every library built by the Ports bmake failed, starting with libfetch in
+pkg_install. Rename the temporary object instead. Not submitted upstream.
+
+--- a/pkgtools/bootstrap-mk-files/Makefile
++++ b/pkgtools/bootstrap-mk-files/Makefile
+@@ -1,6 +1,7 @@
+ # $NetBSD: Makefile,v 1.62 2025/06/01 19:07:23 triaxx Exp $
+ 
+ PKGNAME=	bootstrap-mk-files-20250601
++PKGREVISION=	1
+ CATEGORIES=	pkgtools
+ 
+ CONFLICTS+=	mk-files-[0-9]*
+--- a/pkgtools/bootstrap-mk-files/files/mods/Darwin.bsd.lib.mk
++++ b/pkgtools/bootstrap-mk-files/files/mods/Darwin.bsd.lib.mk
+@@ -165,8 +165,7 @@
+ .else
+ 	@echo ${COMPILE.c:Q} ${.IMPSRC}
+ 	@${COMPILE.c} ${.IMPSRC} -o ${.TARGET}.o
+-	@${LD} -r ${.TARGET}.o -o ${.TARGET}
+-	@rm -f ${.TARGET}.o
++	@mv -f ${.TARGET}.o ${.TARGET}
+ .endif
+ 
+ .c.po:
+@@ -175,8 +174,7 @@
+ .else
+ 	@echo ${COMPILE.c:Q} -pg ${.IMPSRC} -o ${.TARGET}
+ 	@${COMPILE.c} -pg ${.IMPSRC} -o ${.TARGET}.o
+-	@${LD} -r ${.TARGET}.o -o ${.TARGET}
+-	@rm -f ${.TARGET}.o
++	@mv -f ${.TARGET}.o ${.TARGET}
+ .endif
+ 
+ .c.so:
+@@ -185,8 +183,7 @@
+ .else
+ 	@echo ${COMPILE.c:Q} ${CPICFLAGS} ${.IMPSRC} -o ${.TARGET}
+ 	@${COMPILE.c} ${CPICFLAGS} ${.IMPSRC} -o ${.TARGET}.o
+-	@${LD} -r ${.TARGET}.o -o ${.TARGET}
+-	@rm -f ${.TARGET}.o
++	@mv -f ${.TARGET}.o ${.TARGET}
+ .endif
+ 
+ .c.ln:
+@@ -198,8 +195,7 @@
+ .else
+ 	@echo ${COMPILE.cc:Q} ${.IMPSRC}
+ 	@${COMPILE.cc} ${.IMPSRC} -o ${.TARGET}.o
+-	@${LD} -r ${.TARGET}.o -o ${.TARGET}
+-	@rm -f ${.TARGET}.o
++	@mv -f ${.TARGET}.o ${.TARGET}
+ .endif
+ 
+ .cc.po .C.po:
+@@ -208,8 +204,7 @@
+ .else
+ 	@echo ${COMPILE.cc:Q} -pg ${.IMPSRC} -o ${.TARGET}
+ 	@${COMPILE.cc} -pg ${.IMPSRC} -o ${.TARGET}.o
+-	@${LD} -r ${.TARGET}.o -o ${.TARGET}
+-	@rm -f ${.TARGET}.o
++	@mv -f ${.TARGET}.o ${.TARGET}
+ .endif
+ 
+ .cc.so .C.so:
+@@ -218,8 +213,7 @@
+ .else
+ 	@echo ${COMPILE.cc:Q} ${CPICFLAGS} ${.IMPSRC} -o ${.TARGET}
+ 	@${COMPILE.cc} ${CPICFLAGS} ${.IMPSRC} -o ${.TARGET}.o
+-	@${LD} -r ${.TARGET}.o -o ${.TARGET}
+-	@rm -f ${.TARGET}.o
++	@mv -f ${.TARGET}.o ${.TARGET}
+ .endif
+ 
+ .f.o:
+@@ -228,8 +222,7 @@
+ .else
+ 	@echo ${COMPILE.f:Q} ${.IMPSRC}
+ 	@${COMPILE.f} ${.IMPSRC} -o ${.TARGET}.o
+-	@${LD} -r ${.TARGET}.o -o ${.TARGET}
+-	@rm -f ${.TARGET}.o
++	@mv -f ${.TARGET}.o ${.TARGET}
+ .endif
+ 
+ .f.po:
+@@ -238,8 +231,7 @@
+ .else
+ 	@echo ${COMPILE.f:Q} -pg ${.IMPSRC} -o ${.TARGET}
+ 	@${COMPILE.f} -pg ${.IMPSRC} -o ${.TARGET}.o
+-	@${LD} -r ${.TARGET}.o -o ${.TARGET}
+-	@rm -f ${.TARGET}.o
++	@mv -f ${.TARGET}.o ${.TARGET}
+ .endif
+ 
+ .f.so:
+@@ -248,8 +240,7 @@
+ .else
+ 	@echo ${COMPILE.f:Q} ${FPICFLAGS} ${.IMPSRC} -o ${.TARGET}
+ 	@${COMPILE.f} ${FPICFLAGS} ${.IMPSRC} -o ${.TARGET}.o
+-	@${LD} -r ${.TARGET}.o -o ${.TARGET}
+-	@rm -f ${.TARGET}.o
++	@mv -f ${.TARGET}.o ${.TARGET}
+ .endif
+ 
+ .f.ln:
+@@ -261,8 +252,7 @@
+ .else
+ 	@echo ${COMPILE.m:Q} ${.IMPSRC}
+ 	@${COMPILE.m} ${.IMPSRC} -o ${.TARGET}.o
+-	@${LD} -r ${.TARGET}.o -o ${.TARGET}
+-	@rm -f ${.TARGET}.o
++	@mv -f ${.TARGET}.o ${.TARGET}
+ .endif
+ 
+ .m.po:
+@@ -271,8 +261,7 @@
+ .else
+ 	@echo ${COMPILE.m:Q} -pg ${.IMPSRC} -o ${.TARGET}
+ 	@${COMPILE.m} -pg ${.IMPSRC} -o ${.TARGET}.o
+-	@${LD} -r ${.TARGET}.o -o ${.TARGET}
+-	@rm -f ${.TARGET}.o
++	@mv -f ${.TARGET}.o ${.TARGET}
+ .endif
+ 
+ .m.so:
+@@ -281,27 +270,23 @@
+ .else
+ 	@echo ${COMPILE.m:Q} ${CPICFLAGS} ${.IMPSRC} -o ${.TARGET}
+ 	@${COMPILE.m} ${CPICFLAGS} ${.IMPSRC} -o ${.TARGET}.o
+-	@${LD} -r ${.TARGET}.o -o ${.TARGET}
+-	@rm -f ${.TARGET}.o
++	@mv -f ${.TARGET}.o ${.TARGET}
+ .endif
+ 
+ .S.o .s.o:
+ 	@echo ${COMPILE.S:Q} ${CFLAGS:M-[ID]*} ${AINC} ${.IMPSRC}
+ 	@${COMPILE.S} ${CFLAGS:M-[ID]*} ${AINC} ${.IMPSRC} -o ${.TARGET}.o
+-	@${LD} -r ${.TARGET}.o -o ${.TARGET}
+-	@rm -f ${.TARGET}.o
++	@mv -f ${.TARGET}.o ${.TARGET}
+ 
+ .S.po .s.po:
+ 	@echo ${COMPILE.S:Q} -DGPROF -DPROF ${CFLAGS:M-[ID]*} ${AINC} ${.IMPSRC} -o ${.TARGET}
+ 	@${COMPILE.S} -DGPROF -DPROF ${CFLAGS:M-[ID]*} ${AINC} ${.IMPSRC} -o ${.TARGET}.o
+-	@${LD} -r ${.TARGET}.o -o ${.TARGET}
+-	@rm -f ${.TARGET}.o
++	@mv -f ${.TARGET}.o ${.TARGET}
+ 
+ .S.so .s.so:
+ 	@echo ${COMPILE.S:Q} ${CAPICFLAGS} ${CFLAGS:M-[ID]*} ${AINC} ${.IMPSRC} -o ${.TARGET}
+ 	@${COMPILE.S} ${CAPICFLAGS} ${CFLAGS:M-[ID]*} ${AINC} ${.IMPSRC} -o ${.TARGET}.o
+-	@${LD} -r ${.TARGET}.o -o ${.TARGET}
+-	@rm -f ${.TARGET}.o
++	@mv -f ${.TARGET}.o ${.TARGET}
+ 
+ .if ${MKPIC} == "no" || (defined(LDSTATIC) && ${LDSTATIC} != "") \
+ 	|| ${MKLINKLIB} != "no"
