@@ -2,6 +2,10 @@ $NetBSD: patch-util_meson.build,v 1.2 2026/08/03 17:20:06 wiz Exp $
 
 Disable help2man as it makes the build crash.
 
+Require Objective-C++ on Darwin only for the hb-gpu demo, which uses
+demo-metal.mm. The GPU library itself is C++, so GCC builds without
+Objective-C++ can still build it with -Dgpu_demo=disabled.
+
 --- util/meson.build.orig
 +++ util/meson.build
 @@ -29,7 +29,7 @@
@@ -13,3 +17,12 @@ Disable help2man as it makes the build crash.
  else
    help2man = disabler()
  endif
+@@ -223,7 +223,7 @@
+ endif
+ 
+ if not get_option('gpu').disabled()
+-  if host_machine.system() == 'darwin'
++  if host_machine.system() == 'darwin' and not get_option('gpu_demo').disabled()
+     add_languages('objcpp', required: true)
+   endif
+   subdir('gpu')

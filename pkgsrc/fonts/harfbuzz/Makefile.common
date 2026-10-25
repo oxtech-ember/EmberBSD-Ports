@@ -33,6 +33,9 @@ MESON_REQD+=	1.2.0
 # cairo/fontconfig are only needed for command line utilities
 MESON_ARGS+=	-Dcairo=disabled
 MESON_ARGS+=	-Dbenchmark=disabled
+# The hb-gpu demo is not installed. On Darwin it needs Objective-C++,
+# which GCC builds do not have.
+MESON_ARGS+=	-Dgpu_demo=disabled
 
 PLIST_SRC=		PLIST
 
