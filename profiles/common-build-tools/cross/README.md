@@ -48,10 +48,10 @@ Prepare these separate directories, outside Git:
 - Host tools from the EmberBSD source tree, built on the Mac, including
   the corresponding target `install` utility.
 - A pkgsrc unprivileged macOS bootstrap with BSD make, the patched package tools,
-  mksh and digest. Use the exported `pkg_install-20260227nb4` recipe: it fixes
+  mksh and digest. Use the exported `pkg_install-20260227nb5` recipe: it fixes
   alternate-root replacement, successful dry runs and DESTDIR-aware pkg_admin
   add/rebuild operations. It suppresses target deinstall scripts during cross
-  updates. Its package database describes host executables only.
+  updates and uses the shared zlib package. Its database describes host executables only.
   The bootstrap must also own native `libtool-base-2.6.2nb1` and `m4-1.4.21`
   built from the same export (`bmake -C export/devel/libtool-base MAKECONF=`
   *host*`/etc/mk.conf package`, then `pkg_add` both). Modern build-only

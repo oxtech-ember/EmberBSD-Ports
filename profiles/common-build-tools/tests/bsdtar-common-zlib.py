@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted); actual pkgsrc bootstrap dependency metadata.
-"""Check common zlib selection and unchanged native/cross compiler roles."""
+"""Check shared zlib selection for bootstrap consumers and compiler roles."""
 import argparse
 import json
 import os
@@ -19,6 +19,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("pkgsrc", "native_makeconf", "cross_makeconf", "new_work"):
         parser.add_argument(name)
+    parser.add_argument("--native-only", action="store_true", help="Skip cross compiler routing checks.")
     args = parser.parse_args()
     tree = Path(args.pkgsrc).resolve(strict=True)
     configs = {name: Path(getattr(args, name + "_makeconf")).resolve(strict=True)
@@ -32,11 +33,11 @@ def main():
                                  path.read_text(), flags=re.M))
         configs[kind] = config
     keys = ("PKGNAME DEPENDS CPPFLAGS LDFLAGS WRKDIR CC CXX USE_CROSS_COMPILE "
-            "USE_BUILTIN.zlib EMBERBSD_BSDTAR_USE_COMMON_ZLIB").split()
+            "USE_BUILTIN.zlib").split()
     commands = []
 
-    def query(name, config, extra):
-        argv = [os.environ.get("BMAKE", "bmake"), "-C", str(tree / "archivers/bsdtar"),
+    def query(name, config, extra, recipe="archivers/bsdtar"):
+        argv = [os.environ.get("BMAKE", "bmake"), "-C", str(tree / recipe),
                 "MAKECONF=" + str(configs[config]), "WRKOBJDIR=" + str(out / "objects"),
                 "PACKAGES=" + str(out / "packages"), "_PKGSRC_BARRIER=yes", *extra]
         for key in keys:
@@ -54,21 +55,21 @@ def main():
 
     results = {"bootstrap": query("bootstrap", "native", ["EMBERBSD_BSDTAR_USE_COMMON_ZLIB=no"])}
     before = results["bootstrap"]
-    require(before["PKGNAME"] == "bsdtar-3.8.10" and "zlib>=" not in before["DEPENDS"],
-            "Original bootstrap package metadata changed.")
-    # Native hosts may provide a valid built-in zlib. Preserve that choice;
-    # only the no-builtin route must copy and link the bundled source.
-    copies_zlib = before["USE_BUILTIN.zlib"].lower() != "yes"
-    require(all((before["WRKDIR"] + "/zlib" in before[key]) == copies_zlib
-                for key in ("CPPFLAGS", "LDFLAGS")), "Original bootstrap source route changed.")
+    require(before["PKGNAME"] == "bsdtar-3.8.10nb2" and "zlib>=1.3.2nb1" in before["DEPENDS"],
+            "Default bootstrap must use the registered current zlib package.")
+    require(before["USE_BUILTIN.zlib"] == "no", "Bootstrap selected host zlib.")
+    require(not any(before["WRKDIR"] + "/zlib" in before[key]
+                    for key in ("CPPFLAGS", "LDFLAGS")), "Embedded zlib source flags remain.")
     for name, (config, extra) in {
         "native-opt-in": ("native", ["EMBERBSD_BSDTAR_USE_COMMON_ZLIB=yes"]),
         "native-common": ("native", ["EMBERBSD_COMMON_TOOLS=yes"]),
         "target": ("cross", []),
         "host-recursion": ("cross", ["USE_CROSS_COMPILE=no"]),
     }.items():
+        if args.native_only and config == "cross":
+            continue
         row = query(name, config, extra)
-        require(row["PKGNAME"] == "bsdtar-3.8.10nb1" and "zlib>=1.3.2nb1" in row["DEPENDS"]
+        require(row["PKGNAME"] == "bsdtar-3.8.10nb2" and "zlib>=1.3.2nb1" in row["DEPENDS"]
                 and row["USE_BUILTIN.zlib"] == "no", "Current zlib package was not selected: " + name)
         require(not any(row["WRKDIR"] + "/zlib" in row[key] for key in ("CPPFLAGS", "LDFLAGS")),
                 "Copied-source flags remain: " + name)
@@ -76,14 +77,28 @@ def main():
     require(all(results["native-opt-in"][key] == before[key] for key in ("CC", "CXX", "USE_CROSS_COMPILE")),
             "Native compiler routing changed.")
     require(results["native-common"] == results["native-opt-in"], "Common default differs from explicit opt-in.")
-    require(results["target"]["USE_CROSS_COMPILE"].lower() == "yes" and
-            "aarch64--netbsd-gcc" in results["target"]["CC"], "Target compiler was lost.")
-    require(results["host-recursion"]["USE_CROSS_COMPILE"].lower() == "no" and
-            "aarch64--netbsd-" not in results["host-recursion"]["CC"], "Host tool was forced cross.")
+    if not args.native_only:
+        require(results["target"]["USE_CROSS_COMPILE"].lower() == "yes" and
+                "aarch64--netbsd-gcc" in results["target"]["CC"], "Target compiler was lost.")
+        require(results["host-recursion"]["USE_CROSS_COMPILE"].lower() == "no" and
+                "aarch64--netbsd-" not in results["host-recursion"]["CC"], "Host tool was forced cross.")
+    for name, extra in (("pkg-install-default", []), ("pkg-install-prefer-host", ["PREFER_PKGSRC=no"])):
+        row = query(name, "native", extra, "pkgtools/pkg_install")
+        require(row["PKGNAME"].endswith("nb5") and "zlib>=1.3.2nb1" in row["DEPENDS"]
+                and row["USE_BUILTIN.zlib"] == "no", "pkg_install lost shared zlib: " + name)
+        require(not any(row["WRKDIR"] + "/zlib" in row[key] for key in ("CPPFLAGS", "LDFLAGS")),
+                "pkg_install kept embedded zlib flags.")
+        results[name] = row
+    for recipe in ("archivers/bsdtar", "pkgtools/pkg_install"):
+        source = (tree / recipe / "Makefile").read_text()
+        require('FILESDIR.zlib' not in source and '${WRKDIR}/zlib' not in source,
+                "Recipe still requires absent embedded zlib sources: " + recipe)
+        require('--without-zlib' not in source, "Recipe disables zlib: " + recipe)
     (out / "result.json").write_text(json.dumps(dict(
         scope="Actual pkgsrc dependency and compiler metadata; no build or target execution.",
-        results=results), indent=2) + "\n")
-    print("PASS: current registered-package dependency, original bootstrap route, native compiler identity and cross host recursion.")
+        cross_checked=not args.native_only, results=results), indent=2) + "\n")
+    print("PASS: current registered-package dependency, default bootstrap, pkg_install and native compiler identity.")
+    print("SKIP: cross compiler routing." if args.native_only else "PASS: cross compiler routing and host recursion.")
 
 
 if __name__ == "__main__":

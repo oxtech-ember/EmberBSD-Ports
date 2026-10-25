@@ -1,19 +1,30 @@
-# bsdtar and the common zlib provider
+# Bootstrap consumers and the common zlib provider
 
-The common profile builds bsdtar 3.8.9nb1 against the normal zlib 1.3.2nb1
-package. It does not copy obsolete zlib sources from `devel/zlib/files`.
-The libarchive source, archive formats and existing bootstrap options stay intact.
+Both bsdtar 3.8.10nb2 and pkg_install 20260227nb5 use the registered zlib package.
+This applies to ordinary bootstrap and common profiles. The common recipe
+provides zlib 1.3.2nb2 with its complete patch set. Its API floor remains nb1.
+Neither consumer copies `devel/zlib/files`, which contains packaging support
+files rather than the distfile release sources. Archive formats remain enabled.
 
-`EMBERBSD_BSDTAR_USE_COMMON_ZLIB` defaults to `EMBERBSD_COMMON_TOOLS`.
-A prepared host bootstrap can select `yes` explicitly before adopting the
-common profile. pkgsrc resolves the real zlib buildlink dependency and records
-its runtime ownership. The original bundled-source bootstrap remains the
-default outside this opt-in. No builtin-package metadata is fabricated.
+The old `EMBERBSD_BSDTAR_USE_COMMON_ZLIB` selector no longer changes the provider.
+The [bsdtar patch](../patches/pkgsrc-bsdtar-common-zlib.patch) and
+[pkg_install patch](../patches/pkgsrc-pkg-install-common-zlib.patch) apply through
+the exporter. Both recipes use the common zlib buildlink dependency.
+The exporter rejects a missing patch before creating its output.
 
-The [infrastructure patch](../patches/pkgsrc-bsdtar-common-zlib.patch) applies
-through the exporter and has a missing-patch preflight control.
-The [metadata check](../tests/bsdtar-common-zlib.py) verifies the bootstrap,
-explicit native opt-in, common default, target and recursive host selections.
+The [metadata check](../tests/bsdtar-common-zlib.py) checks ordinary bootstrap,
+legacy selector values, the common profile and pkg_install dependency ownership.
+It also checks native compiler identity, target selection and recursive host roles.
+Use `--native-only` to report an explicit cross-check omission on an initial host.
+Metadata and source export checks do not accept a compiled package.
+
+The initial pkgtools producer has its own finite source contract in
+[`bootstrap/pkg-install.json`](../bootstrap/pkg-install.json).
+It creates uncompressed packages before ordinary package dependencies are built.
+Its limited compression configuration does not replace the full package recipe.
+
+The following runtime evidence applies to the earlier bsdtar common-profile
+integration. The ordinary bootstrap dependency change requires a separate build.
 
 The ordinary native GCC16 package passes its existing package checks.
 Its staged payload links the registered native zlib provider. Creating and

@@ -1,0 +1,61 @@
+# Origin: EmberBSD contributors (AI-assisted), shared current zlib integration.
+# Use the registered recipe and its complete patch set for bootstrap consumers.
+
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -7,7 +7,7 @@
+ # change in the pkg_* tools that pkgsrc relies on for proper operation.
+ 
+ PKGNAME=		pkg_install-${VERSION}
+-PKGREVISION=		4
++PKGREVISION=		5
+ CATEGORIES=		pkgtools
+ 
+ MAINTAINER=		agc@NetBSD.org
+@@ -111,7 +111,7 @@
+ .include "../../archivers/bzip2/builtin.mk"
+ .include "../../archivers/xz/builtin.mk"
+ .include "../../archivers/libarchive/builtin.mk"
+-.include "../../devel/zlib/builtin.mk"
++.include "../../devel/zlib/buildlink3.mk"
+ .include "../../security/openssl/builtin.mk"
+ 
+ .include "options.mk"
+@@ -123,17 +123,12 @@
+ 
+ FILESDIR.bzip2?=	${.CURDIR}/../../archivers/bzip2/files
+ FILESDIR.libarchive?=	${.CURDIR}/../../archivers/libarchive/files
+-FILESDIR.zlib?=		${.CURDIR}/../../devel/zlib/files
+ FILESDIR.libfetch?=	${.CURDIR}/../../net/libfetch/files
+ FILESDIR.netpgpverify?=	${.CURDIR}/../../security/netpgpverify/files
+ 
+ .if empty(USE_BUILTIN.bzip2:M[yY][eE][sS])
+ CPPFLAGS+=	-I${WRKDIR}/bzip2
+ LDFLAGS+=	-L${WRKDIR}/bzip2
+-.endif
+-.if empty(USE_BUILTIN.zlib:M[yY][eE][sS])
+-CPPFLAGS+=	-I${WRKDIR}/zlib
+-LDFLAGS+=	-L${WRKDIR}/zlib
+ .endif
+ .if empty(USE_BUILTIN.libarchive:M[yY][eE][sS])
+ CPPFLAGS+=	-I${WRKDIR}/libarchive/libarchive
+@@ -189,9 +184,6 @@
+ .if empty(USE_BUILTIN.bzip2:M[yY][eE][sS])
+ 	@${CP} -R ${FILESDIR.bzip2} ${WRKDIR}/bzip2
+ .endif
+-.if empty(USE_BUILTIN.zlib:M[yY][eE][sS])
+-	@${CP} -R ${FILESDIR.zlib} ${WRKDIR}/zlib
+-.endif
+ .if empty(USE_BUILTIN.libarchive:M[yY][eE][sS])
+ 	@${CP} -R ${FILESDIR.libarchive} ${WRKDIR}/libarchive
+ .endif
+@@ -201,9 +193,6 @@
+ pre-configure:
+ .if empty(USE_BUILTIN.bzip2:M[yY][eE][sS])
+ 	cd ${WRKDIR}/bzip2 && ${BUILD_MAKE_CMD} libbz2.a
+-.endif
+-.if empty(USE_BUILTIN.zlib:M[yY][eE][sS])
+-	cd ${WRKDIR}/zlib && ${BUILD_MAKE_CMD} libz.a
+ .endif
+ .if empty(USE_BUILTIN.libarchive:M[yY][eE][sS])
+ 	cd ${WRKDIR}/libarchive && ${SETENV} ${_CONFIGURE_SCRIPT_ENV}	\
