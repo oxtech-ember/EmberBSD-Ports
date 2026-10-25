@@ -1,0 +1,137 @@
+{
+  "format": "emberbsd-native-bootstrap-program",
+  "version": 1,
+  "name": "yacc",
+  "origin": "EmberBSD (AI-assisted); common Ports Byacc bootstrap integration",
+  "initial_only": true,
+  "canonical_host_recipe": "pkgsrc/devel/byacc/Makefile",
+  "source_makefile": "makefile.in",
+  "compiler": {
+    "family": "gcc",
+    "major": 16,
+    "abi": "native"
+  },
+  "sources": [
+    "closure.c",
+    "error.c",
+    "graph.c",
+    "lalr.c",
+    "lr0.c",
+    "main.c",
+    "mkpar.c",
+    "mstring.c",
+    "output.c",
+    "reader.c",
+    "btyaccpar.c",
+    "symtab.c",
+    "verbose.c",
+    "warshall.c"
+  ],
+  "headers": [
+    "defs.h"
+  ],
+  "release": "byacc-20260126",
+  "archive_sha256": "b618c5fb44c2f5f048843db90f7d1b24f78f47b07913c8c7ba8c942d3eb24b00",
+  "patches": [
+    "patch-aclocal.m4",
+    "patch-configure"
+  ],
+  "configuration": {
+    "probe": "bootstrap/capabilities.c",
+    "template": "bootstrap/config.h.in",
+    "header": "config.h"
+  },
+  "grammar": "bootstrap/grammar.y",
+  "generator_args": [
+    "-d",
+    "-b",
+    "parser",
+    "grammar.y"
+  ],
+  "generated": [
+    "parser.tab.c",
+    "parser.tab.h"
+  ],
+  "invocations": [
+    "yacc"
+  ],
+  "files": {},
+  "runtime_cases": [
+    {
+      "name": "precedence",
+      "invocation": "parser",
+      "args": [],
+      "stdin": "2+3*4\n",
+      "exit": 0,
+      "stdout": "14\n",
+      "stderr": ""
+    },
+    {
+      "name": "parentheses",
+      "invocation": "parser",
+      "args": [],
+      "stdin": "(2+3)*4\n",
+      "exit": 0,
+      "stdout": "20\n",
+      "stderr": ""
+    },
+    {
+      "name": "left-associative",
+      "invocation": "parser",
+      "args": [],
+      "stdin": "5-2-1\n",
+      "exit": 0,
+      "stdout": "2\n",
+      "stderr": ""
+    },
+    {
+      "name": "negative",
+      "invocation": "parser",
+      "args": [],
+      "stdin": "2-5\n",
+      "exit": 0,
+      "stdout": "-3\n",
+      "stderr": ""
+    },
+    {
+      "name": "typed-values",
+      "invocation": "parser",
+      "args": [],
+      "stdin": "8*9\n",
+      "exit": 0,
+      "stdout": "72\n",
+      "stderr": ""
+    },
+    {
+      "name": "multiple-lines",
+      "invocation": "parser",
+      "args": [],
+      "stdin": "1+2\n3*4\n",
+      "exit": 0,
+      "stdout": "3\n12\n",
+      "stderr": ""
+    },
+    {
+      "name": "empty-input",
+      "invocation": "parser",
+      "args": [],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "syntax-error",
+      "invocation": "parser",
+      "args": [],
+      "stdin": "2+\n",
+      "exit": 2,
+      "stdout": "",
+      "stderr": "parse error\n"
+    }
+  ],
+  "patched_members": {
+    "aclocal.m4": "e47da6953141b2ae78fd524a61969db8b09c08f76692555762262ff607591468",
+    "configure": "e868ea08a735503081462cde70148f6119896ebed9419d43029a84cc7c14c572"
+  }
+}
