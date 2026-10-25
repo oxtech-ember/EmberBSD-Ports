@@ -104,3 +104,36 @@ Transfer hashes pass before and after execution. The temporary remote prefix
 is removed and its absence is checked. The compiler SDK is unchanged.
 This is script environment-API acceptance on a minimal guest. Default full-base
 command presence and normal package activation/removal remain separate gates.
+
+## Native SDK trust store
+
+The Darwin GCC16 foundation includes the existing
+`security/mozilla-rootcerts-openssl` package. Its dependency uses the same pinned
+Mozilla certificate data as other consumers. OpenSSL comes from Ports, and
+its configuration base is `${LOCALBASE}/etc` in this producer.
+
+The adapter keeps `PREFIX` when its configuration directory is inside that
+prefix. Its packing list then uses relative `etc/openssl/certs` paths. Builtin
+OpenSSL and explicitly external configuration directories keep the earlier
+root-prefix behavior. The adapter still stages all certificate files through
+`DESTDIR`. The existing packing list owns the PEM files, hash links and bundle.
+It does not create, replace or remove `etc/openssl/cert.pem`.
+
+OpenSSL uses the hashed `etc/openssl/certs` directory as its standard `capath`.
+Python can therefore report `cafile=None` and still verify HTTPS correctly.
+Do not copy a host CA file or disable certificate verification to accept this
+package. After normal package installation, run the runtime check with the
+installed SDK Python and no `SSL_CERT_FILE` or `SSL_CERT_DIR` overrides:
+
+```sh
+/absolute/sdk/bin/python3.15 profiles/common-build-tools/tests/rootcerts-prefix-runtime.py \
+    --prefix /absolute/sdk --url https://github.com/
+```
+
+The source regression `tests/rootcerts-prefix.py` preserves the install commands
+and packing-list ownership. Supply `--make-arg` for each SDK make command word
+and `--work` for a new absolute directory to check finite recipe metadata.
+It covers contained, external, neighboring and builtin paths. The previous
+recipe and two mutations prove the prefix and relative-packing-list failures.
+These source and metadata checks do not build or install a package. Installed
+package lifecycle and the verified HTTPS request remain separate acceptance gates.

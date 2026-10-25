@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: BSD-2-Clause
+# Origin: EmberBSD (AI-assisted), preserve the selected CA package prefix.
+--- a/security/mozilla-rootcerts-openssl/Makefile
++++ b/security/mozilla-rootcerts-openssl/Makefile
+@@ -1,6 +1,7 @@
+ # $NetBSD: Makefile,v 1.39 2026/08/03 12:32:12 wiz Exp $
+ 
+ PKGNAME=	mozilla-rootcerts-openssl-2.24
++PKGREVISION=	1
+ CATEGORIES=	security
+ MASTER_SITES=	# empty
+ DISTFILES=	# empty
+@@ -37,10 +38,9 @@
+ CHECK_FILES_SUPPORTED=	no
+ .else
+ PLACE=			${MY_PKG_SYSCONFDIR}
+-# probably SET_PREFIX should not be set
+-SET_PREFIX=		yes
+-PLIST_SUBST+=		MYETCDIR=${MY_PKG_SYSCONFDIR:S/^${PREFIX}//}
+-PRINT_PLIST_AWK+=	{ sub("^${MY_PKG_SYSCONFDIR:S/^${PREFIX}//}/", "$${MYETCDIR}/"); }
++SET_PREFIX=		no
++PLIST_SUBST+=		MYETCDIR=${MY_PKG_SYSCONFDIR:S/^${PREFIX}//:S/^\///}
++PRINT_PLIST_AWK+=	{ sub("^${MY_PKG_SYSCONFDIR:S/^${PREFIX}//:S/^\///}/", "$${MYETCDIR}/"); }
+ .endif
+ 
+ OPENSSLDIR=		${PLACE}/openssl/certs
+@@ -55,6 +55,8 @@
+ 
+ # This must be after bsd.pkg.mk is included to work.
+ MY_PKG_SYSCONFDIR:=	${PKG_SYSCONFDIR}
+-.if ${SET_PREFIX} == "yes"
++# Keep contained packages relative to their selected prefix. Builtin OpenSSL
++# and an explicit external configuration directory retain the root prefix.
++.if ${SET_PREFIX} == "yes" || empty(MY_PKG_SYSCONFDIR:M${PREFIX}/*)
+ PREFIX=			/
+ .endif

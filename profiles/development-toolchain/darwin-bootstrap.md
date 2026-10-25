@@ -94,6 +94,11 @@ Mach-O linker command. Keep native ABI flags separate in the SDK selection.
 Emit them once in each compiler command. Emit accepted link-only flags in
 `LDFLAGS`. Do not append the same ABI flags through another make variable.
 
+The ordinary foundation includes `security/mozilla-rootcerts-openssl` from the
+common Ports recipes. Its OpenSSL dependency and CA directory use the final
+SDK prefix. See the [CA package contract](../common-build-tools/cross/rootcerts.md#native-sdk-trust-store)
+for source checks and the required installed HTTPS acceptance.
+
 ## Compiler and utility routes
 
 Pkgsrc's compiler selection uses `CC:[1]` for executable discovery.
