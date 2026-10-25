@@ -385,13 +385,12 @@ PCI and platform metadata discovery and prevents an unpatched package from
 satisfying the native identity requirement. It omits pkgsrc's native-X11
 avoid-duplicate skip, so actual dependency selection still builds libdrm.
 
-The amd64 Mesa selection now includes RadeonSI and its `radeonsi_dri.so` DRI
-alias. Mesa 26.2.5 requires AMDGPU DRM 3.54 or later in
-`src/amd/common/ac_gpu_info.c`. The current kernel ABI is 3.36, so this
-userspace profile does not establish hardware rendering. The kernel must
-implement and validate the required DRM 3.54 API before RadeonSI can run.
-Keep Mesa's version check intact. Software rendering remains available for a
-recovery session while this hardware path is unavailable.
+The amd64 Mesa selection includes RadeonSI and its `radeonsi_dri.so` DRI
+alias. The NetBSD compatibility patch accepts AMDGPU DRM 3.36 and keeps
+Mesa's legacy reset path. Other systems retain the upstream DRM 3.54 minimum.
+Source selection does not establish package or hardware acceptance. Validate
+the required kernel operations and the hardware renderer on the target.
+Software rendering remains a separate recovery option.
 
 Both Mesa and libdrm PLISTs match their complete cross-staged payloads and
 pass normal package checks. Mesa's installed CPU rendering and upstream

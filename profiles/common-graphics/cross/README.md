@@ -28,11 +28,10 @@ AMDGPU libdrm modules. Its LLVM metadata must bind `x86_64-unknown-netbsd`,
 native component `x86` and ELF machine 62 together. AArch64 keeps its V3D
 selection and native `aarch64` component. Both reject foreign or mixed target
 metadata. The host tests `tests/amd64-targets.py` and `tests/llvm-targets.py`
-cover these selection guards. The AMDGPU source check also verifies that
-Mesa's DRM 3.54 runtime requirement remains in place. These tests do not
-establish an amd64 package build or GPU support. The current kernel DRM ABI is
-3.36; RadeonSI hardware rendering still requires the kernel to implement and
-validate the required DRM 3.54 API.
+cover these selection guards. The AMDGPU source check verifies the NetBSD
+DRM 3.36 compatibility path and the unchanged DRM 3.54 minimum on other systems.
+These tests do not establish an amd64 package build or GPU support. Hardware
+acceptance must verify the required kernel operations and the GPU renderer.
 The older diagnostic and device-specific runners below retain their recorded
 AArch64 scope; this recipe extension does not qualify those runners on amd64.
 The [upstream Iris source](https://gitlab.freedesktop.org/mesa/mesa/-/blob/mesa-26.2.4/src/gallium/drivers/iris/meson.build)
