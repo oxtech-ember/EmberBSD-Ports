@@ -1,0 +1,423 @@
+{
+  "format": "emberbsd-native-bootstrap-program",
+  "version": 1,
+  "name": "pkg-install",
+  "origin": "EmberBSD AI-assisted initial source-build contract. The canonical pkgsrc and libarchive sources keep their copyright and license notices.",
+  "canonical_host_recipe": "pkgtools/pkg_install/Makefile",
+  "bootstrap_script": "bootstrap/bootstrap",
+  "compiler": {
+    "family": "gcc",
+    "major": 16,
+    "abi": "native"
+  },
+  "build_system": "pkgsrc-bootstrap",
+  "initial_only": true,
+  "required_tool_roles": [
+    "cc",
+    "cxx",
+    "cpp",
+    "as",
+    "ld",
+    "ar",
+    "ranlib",
+    "nm",
+    "strip",
+    "sh",
+    "make",
+    "awk",
+    "basename",
+    "cat",
+    "chmod",
+    "cmp",
+    "cp",
+    "cut",
+    "date",
+    "dirname",
+    "env",
+    "expr",
+    "grep",
+    "head",
+    "hostname",
+    "id",
+    "ln",
+    "ls",
+    "mkdir",
+    "mv",
+    "printf",
+    "pwd",
+    "rm",
+    "rmdir",
+    "sed",
+    "sleep",
+    "sort",
+    "tail",
+    "touch",
+    "tr",
+    "uname",
+    "uniq",
+    "wc",
+    "install",
+    "find"
+  ],
+  "components": [
+    {
+      "name": "libarchive",
+      "canonical_host_recipe": "archivers/libarchive/Makefile",
+      "source_directory": "archivers/libarchive/files",
+      "configure_args": [
+        "--enable-static",
+        "--disable-shared",
+        "--disable-bsdcat",
+        "--disable-bsdtar",
+        "--disable-bsdcpio",
+        "--disable-bsdunzip",
+        "--disable-posix-regex-lib",
+        "--disable-xattr",
+        "--disable-maintainer-mode",
+        "--disable-acl",
+        "--without-zlib",
+        "--without-bz2lib",
+        "--without-iconv",
+        "--without-lzma",
+        "--without-lzo2",
+        "--without-lz4",
+        "--without-nettle",
+        "--without-openssl",
+        "--without-xml2",
+        "--without-expat",
+        "--without-zstd",
+        "--without-cng"
+      ],
+      "make_targets": [
+        "all"
+      ]
+    },
+    {
+      "name": "pkg_install",
+      "canonical_host_recipe": "pkgtools/pkg_install/Makefile",
+      "source_directory": "pkgtools/pkg_install/files",
+      "configure_args": [
+        "--enable-bootstrap"
+      ],
+      "make_targets": [
+        "all"
+      ]
+    }
+  ],
+  "compat": {
+    "recipe": "pkgtools/libnbcompat",
+    "include_dir": "include",
+    "static_library": "lib/libnbcompat.a"
+  },
+  "output_programs": {
+    "pkg_add": "pkg_install/add/pkg_add",
+    "pkg_admin": "pkg_install/admin/pkg_admin",
+    "pkg_create": "pkg_install/create/pkg_create",
+    "pkg_info": "pkg_install/info/pkg_info"
+  },
+  "invocations": [
+    "pkg_add",
+    "pkg_admin",
+    "pkg_create",
+    "pkg_info"
+  ],
+  "files": {
+    "payload/share/initial-pkgtools.txt": "initial pkgtools payload\n",
+    "contents": "share/initial-pkgtools.txt\n",
+    "cache-build-info": "OPSYS=Darwin\nOS_VERSION=@HOST_KERNEL_VERSION@\nMACHINE_ARCH=aarch64\nPKGTOOLS_VERSION=20260227\nREQUIRES=/usr/lib/libSystem.B.dylib\n",
+    "missing-build-info": "OPSYS=Darwin\nOS_VERSION=@HOST_KERNEL_VERSION@\nMACHINE_ARCH=aarch64\nPKGTOOLS_VERSION=20260227\nREQUIRES=/usr/lib/__emberbsd_missing_required_library__.dylib\n"
+  },
+  "runtime_cases": [
+    {
+      "name": "version-add",
+      "invocation": "pkg_add",
+      "args": [
+        "-V"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "20260227\n",
+      "stderr": ""
+    },
+    {
+      "name": "version-admin",
+      "invocation": "pkg_admin",
+      "args": [
+        "-V"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "20260227\n",
+      "stderr": ""
+    },
+    {
+      "name": "version-create",
+      "invocation": "pkg_create",
+      "args": [
+        "-V"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "20260227\n",
+      "stderr": ""
+    },
+    {
+      "name": "version-info",
+      "invocation": "pkg_info",
+      "args": [
+        "-V"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "20260227\n",
+      "stderr": ""
+    },
+    {
+      "name": "pattern-match",
+      "invocation": "pkg_admin",
+      "args": [
+        "pmatch",
+        "initial-*[0-9]",
+        "initial-cache-1.0"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "pattern-mismatch",
+      "invocation": "pkg_admin",
+      "args": [
+        "pmatch",
+        "other-[0-9]*",
+        "initial-cache-1.0"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "create-cache",
+      "invocation": "pkg_create",
+      "args": [
+        "-F",
+        "none",
+        "-K",
+        "@WORK@/pkgdb",
+        "-B",
+        "@WORK@/cache-build-info",
+        "-p",
+        "@WORK@/payload",
+        "-I",
+        "@WORK@/installed",
+        "-c",
+        "-Initial pkgtools fixture",
+        "-d",
+        "-Initial native package installation fixture",
+        "-f",
+        "@WORK@/contents",
+        "@WORK@/initial-cache-1.0.tgz"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "",
+      "stderr": "",
+      "checks": [
+        {
+          "path": "initial-cache-1.0.tgz",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "name": "add-cache",
+      "invocation": "pkg_add",
+      "args": [
+        "-K",
+        "@WORK@/pkgdb",
+        "@WORK@/initial-cache-1.0.tgz"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "",
+      "stderr": "",
+      "checks": [
+        {
+          "path": "installed/share/initial-pkgtools.txt",
+          "kind": "file",
+          "content": "initial pkgtools payload\n"
+        },
+        {
+          "path": "pkgdb/initial-cache-1.0/+CONTENTS",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "name": "registered-cache",
+      "invocation": "pkg_info",
+      "args": [
+        "-K",
+        "@WORK@/pkgdb",
+        "-e",
+        "initial-cache-1.0"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "initial-cache-1.0\n",
+      "stderr": ""
+    },
+    {
+      "name": "check-installed-payload",
+      "invocation": "pkg_admin",
+      "args": [
+        "-q",
+        "-K",
+        "@WORK@/pkgdb",
+        "check",
+        "initial-cache-1.0"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "create-missing",
+      "invocation": "pkg_create",
+      "args": [
+        "-F",
+        "none",
+        "-K",
+        "@WORK@/pkgdb",
+        "-B",
+        "@WORK@/missing-build-info",
+        "-p",
+        "@WORK@/payload",
+        "-I",
+        "@WORK@/missing-installed",
+        "-c",
+        "-Initial pkgtools fixture",
+        "-d",
+        "-Initial native package installation fixture",
+        "-f",
+        "@WORK@/contents",
+        "@WORK@/initial-missing-1.0.tgz"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "",
+      "stderr": "",
+      "checks": [
+        {
+          "path": "initial-missing-1.0.tgz",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "name": "missing-requires",
+      "invocation": "pkg_add",
+      "args": [
+        "-K",
+        "@WORK@/pkgdb",
+        "@WORK@/initial-missing-1.0.tgz"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr_nonempty": true,
+      "checks": [
+        {
+          "path": "pkgdb/initial-missing-1.0",
+          "kind": "absent"
+        }
+      ],
+      "stderr_contains": "missing required library: /usr/lib/__emberbsd_missing_required_library__.dylib"
+    },
+    {
+      "name": "missing-not-registered",
+      "invocation": "pkg_info",
+      "args": [
+        "-q",
+        "-K",
+        "@WORK@/pkgdb",
+        "-e",
+        "initial-missing-1.0"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "create-target",
+      "invocation": "pkg_create",
+      "args": [
+        "-F",
+        "none",
+        "-K",
+        "@WORK@/pkgdb",
+        "-B",
+        "@WORK@/cache-build-info",
+        "-p",
+        "@WORK@/payload",
+        "-I",
+        "@WORK@/target-installed",
+        "-c",
+        "-Initial pkgtools fixture",
+        "-d",
+        "-Initial native package installation fixture",
+        "-f",
+        "@WORK@/contents",
+        "@WORK@/initial-target-1.0.tgz"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "",
+      "stderr": "",
+      "checks": [
+        {
+          "path": "initial-target-1.0.tgz",
+          "kind": "file"
+        }
+      ]
+    },
+    {
+      "name": "separate-root-refuses-host-cache",
+      "invocation": "pkg_add",
+      "args": [
+        "-P",
+        "@WORK@/target",
+        "-K",
+        "@WORK@/pkgdb",
+        "@WORK@/initial-target-1.0.tgz"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr_nonempty": true,
+      "stderr_contains": "missing required library: /usr/lib/libSystem.B.dylib"
+    },
+    {
+      "name": "target-not-registered",
+      "invocation": "pkg_info",
+      "args": [
+        "-q",
+        "-K",
+        "@WORK@/pkgdb",
+        "-e",
+        "initial-target-1.0"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "infrastructure_patches": [
+    "profiles/common-build-tools/patches/pkgsrc-pkg-install-dyld-cache.patch"
+  ]
+}

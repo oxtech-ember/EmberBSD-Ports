@@ -1,0 +1,65 @@
+Recognize required macOS libraries in the active dyld shared cache.
+
+The public dyld API tests membership without loading a library. Keep it weak
+and SDK-gated. Do not use the host cache for a separate target root.
+
+API: https://github.com/apple-oss-distributions/dyld/blob/fd8d0c4d52320ebf64db34f3cb280310d905c5ae/include/mach-o/dyld.h
+
+--- a/pkgtools/pkg_install/files/add/perform.c
++++ b/pkgtools/pkg_install/files/add/perform.c
+@@ -55,6 +55,16 @@
+ #include <string.h>
+ #include <unistd.h>
+ 
++#if defined(__APPLE__) && defined(__MACH__)
++#include <mach-o/dyld.h>
++#if defined(__MAC_11_0) && TARGET_OS_OSX
++#define PKG_INSTALL_DYLD_SHARED_CACHE 1
++/* Keep the API optional when this binary runs on an older macOS release. */
++extern bool _dyld_shared_cache_contains_path(const char *)
++    __attribute__((weak_import));
++#endif
++#endif
++
+ #include <archive.h>
+ #include <archive_entry.h>
+ 
+@@ -1136,6 +1146,28 @@
+ 	return status;
+ }
+ 
++/* The active dyld cache describes this root, not a separate target root. */
++static int
++required_library_in_shared_cache(const char *libpath)
++{
++#ifdef PKG_INSTALL_DYLD_SHARED_CACHE
++	if (libpath[0] != '/' ||
++	    (Destdir != NULL && strcmp(Destdir, "/") != 0))
++		return 0;
++#ifdef __clang__
++	if (__builtin_available(macOS 11.0, *)) {
++#endif
++		if (_dyld_shared_cache_contains_path != NULL)
++			return _dyld_shared_cache_contains_path(libpath);
++#ifdef __clang__
++	}
++#endif
++#else
++	(void)libpath;
++#endif
++	return 0;
++}
++
+ /* check if all REQUIRES files (usually libraries) are installed */
+ static int
+ check_requires(struct pkg_task *pkg)
+@@ -1170,6 +1202,9 @@
+ 				free(p);
+ 			}
+ 
++			if (!found && required_library_in_shared_cache(libpath))
++				found = 1;
++
+ 			if (!found) {
+ 				warnx("%s: missing required library: %s", pkg->pkgname, libpath);
+ #ifdef __NetBSD__

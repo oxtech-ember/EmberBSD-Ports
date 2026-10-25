@@ -224,3 +224,52 @@ Keep initial tools in their original scope. Select `bin/bsdinstall` for ordinary
 `install`, even when coreutils also installs `bin/ginstall`. The remaining OS
 hostname program can be rebuilt with qualified GCC after foundation admission.
 It does not require another GCC bootstrap.
+
+## Initial package tools
+
+[pkg-install.json](pkg-install.json) follows `bootstrap/bootstrap` from the
+pinned pkgsrc source. It builds the current common libarchive as a static
+library without compression backends or archive CLI programs. It then uses
+the supported `pkg_install --enable-bootstrap` mode and the accepted
+`pkgtools/libnbcompat` headers and static library. Build the four `pkg_add`,
+`pkg_admin`, `pkg_create` and `pkg_info` programs with selected native GCC16
+and BSD make. Do not run the general bootstrap shell script.
+
+This is an initial-only producer. Bootstrap mode excludes package deletion,
+signature objects and libfetch. It does not remove required-library checks.
+The full common package recipe retains its ordinary dependencies and features.
+The Darwin initial profile selects `PKG_COMPRESSION=none`, as the canonical
+bootstrap does for early binary packages. Package creation passes `-F none`.
+It does not infer a filter from the `.tgz` filename or call an ambient compressor.
+The ordinary configuration retains its existing compression default.
+
+Bind the complete canonical source trees, the bootstrap script, the ordered
+`pkgsrc-pkg-install-dyld-cache.patch` and the source owner evidence before
+execution. Only literal owner files have Ports Git membership. Composed C
+sources have their separate canonical export and content derivation. Keep
+source file modes and mtimes in that proof. No release bytes become Git members
+by copying them. The input libnbcompat component retains its producer, source
+and ABI evidence. It does not imply a successful full SDK build.
+
+The SDK owns exact compiler and ABI arguments, selected tools, work-only
+paths, global link serialization, process drainage and admission. The fixed
+case tokens `@WORK@` and `@HOST_KERNEL_VERSION@` mean the accepted work root
+and actual Darwin kernel version. They are not caller-supplied shell text.
+All generated package databases, source payloads, archives and install roots
+stay under that work root. No case executes an installed historical pkgtool.
+
+The semantic cases check the four versions, package matching, uncompressed
+creation, a real installation and registration, and the installed payload
+checksum. They require the active Darwin cache to satisfy the declared
+`/usr/lib/libSystem.B.dylib` dependency. A missing library must fail. A separate
+`-P` target root must not use the host cache. No force, fake-install, platform
+override, script fixture or ignored error is permitted. Source controls alone
+do not establish compiler, package or runtime acceptance.
+
+For finite C diagnostics, run the explicit SDK control Python on
+`scripts/tests/prepare_cache_fixture.py --source <export>/pkgtools/pkg_install/files/add/perform.c --output <fresh-work>/pkg-install-check-requires.inc`.
+The helper extracts the patched functions. It does not start a build.
+Compile `scripts/tests/pkg_install_cache_fixture.c` with the selected GCC16
+driver and ABI tuple, `-I<fresh-work> -std=gnu99 -Wall -Wextra -Werror`, and
+`-DTEST_DYLD_CACHE=0`, then `-DTEST_DYLD_CACHE=1`. The fixture checks both
+source branches. It does not replace the real package runtime cases above.
