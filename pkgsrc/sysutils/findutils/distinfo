@@ -4,5 +4,5 @@ BLAKE2s (findutils-4.11.0.tar.xz) = d9f2442dda24d91af1a342794169325fda421bc42dc7
 SHA512 (findutils-4.11.0.tar.xz) = 1b667c5363b599135ceabab6b4b5388dbee6de4e7fa301f5dfefc854473e442fbfe7dda93a28a70505c026987acd375d13169f76d18da49d29c1fb2e09c83fef
 SHA256 (findutils-4.11.0.tar.xz) = bfd19cb06cc71f3352d567e90284d8cdac02ac89774bbeadf0b533b0c11432fd
 Size (findutils-4.11.0.tar.xz) = 2451424 bytes
-SHA1 (patch-aa) = bbe1fc4fd02aa5affbf79dd62a6339eb1a124d81
-SHA1 (patch-configure) = b0f14b7ce47ed7970543f22e2071adb07c46c53d
+SHA1 (patch-aa) = 75569f3f5eab008e216cbb2c7309ac13d5a02391
+SHA1 (patch-configure) = 0bbdb06e83b4b248424dca9d971d733e1a84c2f8

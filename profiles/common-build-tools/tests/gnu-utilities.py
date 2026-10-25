@@ -4,6 +4,7 @@
 
 import argparse
 import hashlib
+import importlib.util
 import json
 from pathlib import Path, PurePosixPath
 import re
@@ -11,6 +12,9 @@ import subprocess
 import tarfile
 
 ROOT = Path(__file__).resolve().parents[3]
+_SPEC = importlib.util.spec_from_file_location('ports_exporter', ROOT / 'scripts/prepare-pkgsrc.py')
+EXPORTER = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(EXPORTER)
 RELEASES = (("devel/diffutils", "diffutils-3.12"),
             ("sysutils/findutils", "findutils-4.11.0"))
 GUARD_FROM = 'e) if test "`echo 1 2 3 | xargs -n2 echo`" = "1 2\n3"'
@@ -61,7 +65,7 @@ def run(args):
         for patch in patches:
             expected = re.search(r"^SHA1 \(" + re.escape(patch.name)
                                  + r"\) = ([0-9a-f]+)$", info, re.M)
-            require(expected and hashlib.sha1(patch.read_bytes()).hexdigest()
+            require(expected and EXPORTER.patch_sha1(patch)
                     == expected[1], f"Patch hash differs: {patch.name}")
             old_paths = re.findall(r"^--- (\S+)\.orig$", patch.read_text(), re.M)
             require(len(old_paths) == 1, "Each source patch has one fixed file")

@@ -41,7 +41,7 @@ class ExportTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix='pkgsrc-source-test.')
         self.addCleanup(self.temporary.cleanup)
-        self.work = Path(self.temporary.name)
+        self.work = Path(self.temporary.name).resolve()
         self.root = self.work / 'ports'
         (self.root / 'pkgsrc').mkdir(parents=True)
         (self.root / 'pkgsrc/export.conf').write_bytes(b'')
@@ -68,6 +68,33 @@ class ExportTests(unittest.TestCase):
         path.write_bytes(b'first\r\n$NetBSD: source $\r\n\xff\rbare\nlast')
         self.assertEqual(exporter.patch_sha1(path),
                          hashlib.sha1(b'first\r\n\xff\rbare\nlast').hexdigest())
+
+    def test_gnu_recipes_use_canonical_patch_checksums(self):
+        owner = HERE.parents[1]
+        for name in ('devel/diffutils', 'sysutils/findutils'):
+            source = owner / 'pkgsrc' / name
+            with self.subTest(recipe=name):
+                exporter.check_recipe(source, name, owner)
+
+    def test_recipe_patch_rcs_changes_keep_digest_but_raw_or_changed_body_refuse(self):
+        source = self.root / 'pkgsrc/devel/patch-checksum'
+        (source / 'patches').mkdir(parents=True)
+        (source / 'Makefile').write_text('PKGNAME=patch-checksum-1\n')
+        path, info = source / 'patches/patch-value', source / 'distinfo'
+        body = b'\n--- value.orig\n+++ value\n@@ -1 +1 @@\n-before\n+after\n'
+        path.write_bytes(b'$NetBSD: first RCS record $\n' + body)
+        expected = hashlib.sha1(body).hexdigest()
+        info.write_text('SHA1 (patch-value) = ' + expected + '\n')
+        exporter.check_recipe(source, 'patch-checksum', self.root)
+        info.write_text('SHA1 (patch-value) = ' + hashlib.sha1(path.read_bytes()).hexdigest() + '\n')
+        with self.assertRaisesRegex(exporter.ExportError, 'Patch checksum differs'):
+            exporter.check_recipe(source, 'patch-checksum', self.root)
+        info.write_text('SHA1 (patch-value) = ' + expected + '\n')
+        path.write_bytes(b'$NetBSD: changed RCS record $\n' + body)
+        exporter.check_recipe(source, 'patch-checksum', self.root)
+        path.write_bytes(b'$NetBSD: changed RCS record $\n' + body.replace(b'+after', b'+changed'))
+        with self.assertRaisesRegex(exporter.ExportError, 'Patch checksum differs'):
+            exporter.check_recipe(source, 'patch-checksum', self.root)
 
     def test_vala_infrastructure_patches_compose_without_fuzz(self):
         owner = HERE.parents[1]

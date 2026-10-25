@@ -108,6 +108,8 @@ It retains its finite source work and result for the caller to inspect.
 
 Each canonical distinfo records the archive Size, SHA256, SHA512 and BLAKE2s.
 The expected SHA256 and size match the independent FreeBSD and MacPorts pins.
+Patch SHA1 follows pkgsrc: remove complete LF records that contain `$NetBSD`.
+Patch payloads and their full-file SHA256 references remain unchanged.
 The additional archive hashes are computed from those verified release bytes.
 The recipes keep their inherited NetBSD patch origin. Upstream licenses remain
 in the source archives. Do not substitute an older recipe because it is in pkgsrc.
