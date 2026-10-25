@@ -133,7 +133,9 @@ The selected shell supplies only the named standard builtins in that map.
 `printf` builtin, and a bare name makes the pkgsrc tool wrapper run itself
 until the process limit is reached. Select `printf` as a native path.
 The map keeps the standard pkgsrc arguments for `gunzip`, `gzip` and `mkdir`;
-without `mkdir -p` the first work directory cannot be created.
+without `mkdir -p` the first work directory cannot be created. During full
+builds, recipes after `archivers/gzip` map `gzip`, `gunzip` and `gzcat` to the
+Ports gzip; see the [make handoff](../common-build-tools/bootstrap/README.md#make-handoff).
 Configure scripts and Makefiles also run bare `ar`, `nm`, `ranlib` and
 `strip`. The policy creates the first three in the pkgsrc tools directory
 from the selected `EMBERBSD_GCC16_*` commands and selects
