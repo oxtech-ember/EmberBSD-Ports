@@ -182,3 +182,24 @@ The two-source recipe does not enable `SUPPORT_MTREE`.
 The metalog case must reject `-M`; it must not claim a successful metadata log.
 Do not remove `-U` or filter installer flags to accept GNU install instead.
 Actual GCC16 and semantic execution remain required acceptance steps.
+
+## BSD installer in the completed native bundle
+
+The scoped Darwin profile adds the common `sysutils/bsdinstall` package to the
+GCC16 bootstrap closure. It adds the edge only at the GCC root. Infrastructure
+recipes do not gain a dependency on the installer they must first build.
+The installer package depends on common `shells/mksh` and `lang/llvm`. Its child
+shell and strip paths use their final `LOCALBASE/bin` outputs. They do not retain
+initial seed paths. The build still uses accepted initial compiler and tools.
+
+`MAKECONF` is read before `PKGPATH` exists and again during package preferences.
+The package policy waits for `PKGPATH` outside the early one-time guard. The
+installer recipe reads its optional shell definition after those preferences.
+Ordinary callers retain the upstream defaults.
+
+The initial direct producer remains initial-only. It does not qualify a native
+toolset. A completed bundle must select `bin/bsdinstall` for the `install` role,
+retain the actual package build and graduation evidence, and pass the BSD
+installer semantic cases. GNU `ginstall` can remain a distinct utility. It cannot
+satisfy the BSD `-U` installation contract. The NativeToolset mapping pins the
+selected `install` path; it does not infer installer semantics from a role name.

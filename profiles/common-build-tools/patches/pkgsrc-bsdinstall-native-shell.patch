@@ -7,18 +7,18 @@ for strip arguments and after-install commands. TARGET_STRIP stays canonical.
 
 --- a/sysutils/bsdinstall/Makefile
 +++ b/sysutils/bsdinstall/Makefile
-@@ -26,6 +26,11 @@
- CPPFLAGS+=	-D_PATH_DEVNULL=\"/dev/null\"
- CPPFLAGS+=	-DTARGET_STRIP=\"${TOOLS_PLATFORM.strip:Q}\"
+@@ -29,6 +29,11 @@
+ CPPFLAGS.SunOS+=	-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
  
+ .include "../../mk/bsd.prefs.mk"
++
 +# Bind child shells only for an explicit initial native producer.
 +.if defined(EMBERBSD_BSDINSTALL_SHELL)
 +CPPFLAGS+=	-DEMBERBSD_BSDINSTALL_SHELL=\"${EMBERBSD_BSDINSTALL_SHELL:Q}\"
 +.endif
-+
- CPPFLAGS.SunOS+=	-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
- 
- .include "../../mk/bsd.prefs.mk"
+ .if !empty(MACHINE_PLATFORM:MSunOS-5.11-*)
+ MAKE_ENV+=	NOGCCERROR=yes
+ .endif
 --- a/sysutils/bsdinstall/files/bsdinstall.c
 +++ b/sysutils/bsdinstall/files/bsdinstall.c
 @@ -107,6 +107,10 @@
