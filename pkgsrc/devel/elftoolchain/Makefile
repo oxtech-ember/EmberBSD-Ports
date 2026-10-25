@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.18 2025/11/17 11:00:35 wiz Exp $
 
 DISTNAME=	elftoolchain-0.7.1
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	devel
 MASTER_SITES=	https://downloads.sourceforge.net/project/elftoolchain/Sources/elftoolchain-0.7.1/
 EXTRACT_SUFX=	.tar.bz2

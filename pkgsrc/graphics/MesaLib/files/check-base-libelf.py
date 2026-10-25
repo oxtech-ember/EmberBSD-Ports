@@ -163,10 +163,16 @@ def check_target(root, manifest, distinfo, elf_api, machine):
 
     definitions = rooted_path(root, 'usr/include/sys/elfdefinitions.h', regular=True)
     definition_data = regular_bytes(definitions, 'target ELF definitions')
-    for name, value in (('ELFCLASS32', '1'), ('ELFCLASS64', '2'), ('ELFDATA2LSB', '1')):
-        pattern = (rb'^\s*#\s*define\s+' + name.encode('ascii') +
-                   rb'\s+' + value.encode('ascii') + rb'U?\b')
-        require(re.search(pattern, definition_data, re.M) is not None,
+    for name, value in (('ELFCLASS32', '1'), ('ELFCLASS64', '2'),
+                        ('ELFDATA2LSB', '1'), ('STN_UNDEF', '0')):
+        declarations = re.findall(rb'^[ \t]*#[ \t]*define[ \t]+' +
+                                  name.encode('ascii') + rb'\b[^\n]*',
+                                  definition_data, re.M)
+        pattern = (rb'[ \t]*#[ \t]*define[ \t]+' + name.encode('ascii') +
+                   rb'[ \t]+' + value.encode('ascii') +
+                   rb'U?[ \t]*(?:/\*[^\n]*\*/[ \t]*)?')
+        require(len(declarations) == 1 and
+                re.fullmatch(pattern, declarations[0]) is not None,
                 f'target ELF definitions have the wrong {name}')
 
     shared = rooted_path(root, 'usr/lib/' + SHARED_NAME, regular=True)

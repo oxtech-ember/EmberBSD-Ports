@@ -66,7 +66,8 @@ Source preparation alone is not a regression pass.
 On amd64, RadeonSI requires libelf. Mesa does not use a libelf package
 buildlink. Its pre-configure guard checks the installed base marker against
 the canonical elftoolchain `distinfo`, checks the installed public headers
-against the base source manifest, and reads the shared library and archive
+against the base source manifest, requires `STN_UNDEF` in the generated
+ELF definitions, and reads the shared library and archive
 through the selected SDK ELF API. Cross mode requires an explicit target root.
 
 Run the actual-source guard fixture and the production native/cross recipe
@@ -81,7 +82,8 @@ queries with the selected Python, SDK source and bmake:
 
 The fixture exercises the checker with synthetic base headers and ELF files.
 It checks distinfo and patch checksums, marker, header, machine, SONAME, alias,
-archive, buildlink and SDK API refusals. Real bmake expands the native `/` root,
+archive, buildlink and SDK API refusals. It rejects missing or incorrect
+`STN_UNDEF` values before Mesa configuration. Real bmake expands the native `/` root,
 the cross `CROSS_DESTDIR` root and the AArch64 selection. This test does not
 inspect an installed sysroot, configure Meson, build Mesa, or establish AMDGPU
 runtime behavior.

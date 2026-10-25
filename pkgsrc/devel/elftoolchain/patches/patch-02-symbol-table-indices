@@ -1,0 +1,33 @@
+$NetBSD$
+
+Import the NetBSD r4309 symbol-table index definition required by libelf
+consumers. Keep it in the canonical generated ELF definitions header.
+Upstream: https://github.com/NetBSD/src/commit/c441046e2806d3fa9be50528c9ca08f6a871582d
+
+--- common/sys/elfconstants.m4.orig
++++ common/sys/elfconstants.m4
+@@ -1570,6 +1570,10 @@ define(`DEFINE_SECTION_TYPE_ALIASES',`
+ _(SHT_GNU_versym,	SHT_SUNW_versym)
+ ')
+ 
++define(`DEFINE_SYMBOL_TABLE_INDICES',`dnl
++_(STN_UNDEF,		0, `undefined symbol')
++')
++
+ #
+ # Symbol binding information.
+ #
+--- common/sys/elfdefinitions.m4.orig
++++ common/sys/elfdefinitions.m4
+@@ -191,6 +191,11 @@ DEFINE_SECTION_TYPE_ALIASES()
+ 
+ #define	PN_XNUM			0xFFFFU /* Use extended section numbering. */
+ 
++/*
++ * Special indices into symbol tables.
++ */
++DEFINE_SYMBOL_TABLE_INDICES()
++
+ /*
+  * Symbol binding information.
+  */

@@ -76,11 +76,12 @@ def main():
     parser.add_argument('--git', type=Path, required=True)
     parser.add_argument('--patch-tool', type=Path, required=True)
     parser.add_argument('--bmake', type=Path, required=True)
+    parser.add_argument('--m4', type=Path, required=True)
     parser.add_argument('--work', type=Path, required=True,
                         help='new test directory; only logs and result.json remain')
     args = parser.parse_args()
     recipe = Path(__file__).resolve().parents[1]
-    for name in ('archive', 'os_source', 'git', 'patch_tool', 'bmake', 'work'):
+    for name in ('archive', 'os_source', 'git', 'patch_tool', 'bmake', 'm4', 'work'):
         require(getattr(args, name).is_absolute(), f'--{name.replace("_", "-")} must be absolute')
     require(re.fullmatch('[0-9a-f]{40}', args.os_revision), 'use an exact OS commit')
     require(not os.path.lexists(args.work), 'test work already exists')
@@ -127,8 +128,8 @@ def main():
     inputs = recipe_identity()
     tools = {name: dict(path=str(getattr(args, name)),
                        sha256=digest(getattr(args, name).read_bytes()))
-             for name in ('git', 'patch_tool', 'bmake')}
-    report = dict(scope='source-receiver-and-metadata-only', status='FAIL')
+             for name in ('git', 'patch_tool', 'bmake', 'm4')}
+    report = dict(scope='source-receiver-generated-header-and-metadata-only', status='FAIL')
     try:
         manifest_bytes = (recipe / 'files/base-source.json').read_bytes()
         manifest = json.loads(manifest_bytes)
@@ -204,7 +205,21 @@ def main():
                 packed.extractall(stage, filter='data')
             source = stage / manifest['upstream']['distname']
             refusal('unpatched-source-control', lambda: check_subset(source, expected))
+            m4_baseline = stage / 'm4-baseline/common/sys'
+            m4_sources = ('common/sys/elfconstants.m4', 'common/sys/elfdefinitions.m4')
+            m4_patch_seen = False
             for patch in patches:
+                if patch.name == 'patch-02-symbol-table-indices':
+                    require(not m4_patch_seen, 'duplicate symbol-table-index patch')
+                    m4_baseline.mkdir(parents=True)
+                    for name in m4_sources:
+                        (m4_baseline / Path(name).name).write_bytes((source / name).read_bytes())
+                    m4_patch_seen = True
+                elif m4_patch_seen:
+                    headers = re.findall(rb'^(?:---|\+\+\+) ([^ \t\n]+)', patch.read_bytes(), re.M)
+                    targets = {header.decode().removesuffix('.orig') for header in headers}
+                    require(not targets.intersection(m4_sources),
+                            'a later patch changes the symbol-table-index causal fixture')
                 backup = stage / 'backups' / patch.name
                 backup.mkdir(parents=True)
                 for header in re.findall(rb'^(?:---|\+\+\+) ([^ \t\n]+)', patch.read_bytes(), re.M):
@@ -216,6 +231,18 @@ def main():
                     'patch application left backups or rejects')
             final = check_subset(source, expected)
             checks.append('all-patches-and-complete-prepared-subset')
+            require(m4_patch_seen, 'symbol-table-index patch is missing')
+            def generate_elfdefinitions(sysdir):
+                return run([args.m4, '-I' + str(sysdir), '-D', 'SRCDIR=' + str(sysdir),
+                            'elfdefinitions.m4'], cwd=sysdir)
+            generated_header = generate_elfdefinitions(source / 'common/sys')
+            baseline_header = generate_elfdefinitions(m4_baseline)
+            stn_undef = re.compile(rb'(?m)^#define[ \t]+STN_UNDEF[ \t]+0(?:[ \t]|$)')
+            require(len(stn_undef.findall(generated_header)) == 1,
+                    'patched M4 output does not define STN_UNDEF exactly once')
+            require(not stn_undef.search(baseline_header),
+                    'the no-patch-02 M4 control unexpectedly defines STN_UNDEF')
+            checks.append('generated-symbol-table-index-and-causal-control')
             header = source / 'libelf/libelf.h'
             original = header.read_bytes()
             header.write_bytes(original + b'\n/* Deliberate source mismatch. */\n')
@@ -345,7 +372,7 @@ def main():
         for name, tool in tools.items():
             require(digest(getattr(args, name).read_bytes()) == tool['sha256'],
                     f'tool changed during the check: {name}')
-        report = dict(scope='source-receiver-and-metadata-only', status='PASS',
+        report = dict(scope='source-receiver-generated-header-and-metadata-only', status='PASS',
                       recipe_inputs=inputs, tool_drivers=tools,
                       manifest_sha256=digest(manifest_bytes), upstream_archive=observed,
                       os_revision=args.os_revision, base=manifest['base'],
@@ -354,7 +381,8 @@ def main():
                       exact_code_header_m4_files=sum(p.endswith(('.c', '.h', '.m4')) for p in final),
                       packaging_overrides=manifest['packaging_overrides'], checks=checks,
                       commands=commands,
-                      boundary='No compiler, configure, real package build/install, target ELF execution, '
+                      boundary='M4 only generates the ELF definitions header. No compiler, configure, '
+                               'real package build/install, target ELF execution, '
                                'ABI runtime acceptance or production SDK source receipt. '
                                'The post-install execution copies only data in its isolated test fixture.')
     except Exception as error:

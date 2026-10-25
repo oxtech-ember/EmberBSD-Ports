@@ -101,7 +101,8 @@ def fixture(root, sdk_source):
         write_bytes(target / relative, data)
     write_bytes(target / 'usr/include/sys/elfdefinitions.h',
                 b'/* Copyright \xc2\xa9 EmberBSD contributors. */\n'
-                b'#define ELFCLASS32 1U\n#define ELFCLASS64 2U\n#define ELFDATA2LSB 1U\n')
+                b'#define ELFCLASS32 1U\n#define ELFCLASS64 2U\n#define ELFDATA2LSB 1U\n'
+                b'#define STN_UNDEF 0\n')
     write_bytes(target / 'usr/lib/libelf.so.2.0', make_elf(62, 3, 'libelf.so.2'))
     write_bytes(target / 'usr/lib/libelf.a', make_archive(make_elf(62, 1)))
     (target / 'usr/lib/libelf.so.2').symlink_to('libelf.so.2.0')
@@ -160,6 +161,16 @@ def check_fixture(work, sdk_source):
                 b'#define ELFCLASS32 2U\n#define ELFCLASS64 2U\n#define ELFDATA2LSB 1U\n')
     cases.append(('wrong ELF definitions', case,
                   'target ELF definitions have the wrong ELFCLASS32'))
+
+    for label, definition in (('missing-stn-undef', b''),
+                              ('wrong-stn-undef', b'#define STN_UNDEF 1\n'),
+                              ('conflicting-stn-undef', b'#define STN_UNDEF 0\n#define STN_UNDEF 1\n'),
+                              ('expression-stn-undef', b'#define STN_UNDEF 0+1\n')):
+        case = new_case(label)
+        header = case['target'] / 'usr/include/sys/elfdefinitions.h'
+        header.write_bytes(header.read_bytes().replace(b'#define STN_UNDEF 0\n',
+                                                       definition))
+        cases.append((label, case, 'target ELF definitions have the wrong STN_UNDEF'))
 
     case = new_case('wrong-soname')
     write_bytes(case['target'] / 'usr/lib/libelf.so.2.0', make_elf(62, 3, 'wrong.so'))

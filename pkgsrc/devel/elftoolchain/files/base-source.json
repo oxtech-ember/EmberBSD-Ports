@@ -677,6 +677,20 @@
       "sha256": "fbff8a454d03c04fbddea1d3c2fc93d60514b83da7cada099a272a86539775cc",
       "base_sha256": "3bb746f9e03397f0ff0dec03c9badaa873550ee6fc698e5beb4182f4926f1e9e",
       "reason": "Export the existing BSD elf_getversion API with portable symbol versioning."
+    },
+    "common/sys/elfconstants.m4": {
+      "mode": 420,
+      "size": 103866,
+      "sha256": "8fe4accc51adeedc049ffd818ad34a12779e19c664ec851b3817b13752e58eec",
+      "base_sha256": "0a99f1f81388369f7a0983c90f7634fc1a685c8861d2e8cf65fefbd8dc84a5aa",
+      "reason": "Backport the NetBSD r4309 STN_UNDEF symbol-table index definition to the canonical ELF constant generator."
+    },
+    "common/sys/elfdefinitions.m4": {
+      "mode": 420,
+      "size": 20900,
+      "sha256": "c5570203f5132e6ca98dd57617d96d34d142e69363b2dd3e496560bdce56dc05",
+      "base_sha256": "1e3175d879d34e83fb7e5eaf0fd30b42104c463116e00d57524029a2f64368aa",
+      "reason": "Invoke the NetBSD r4309 symbol-table index definition in the canonical generated ELF header."
     }
   }
 }

@@ -18,22 +18,30 @@ Its size is 5361427 bytes. Its SHA256 is
 It preserves the original licenses, authors, upstream SVN identifiers and
 NetBSD CVS identifiers. Patch assembly and checks are AI-assisted EmberBSD work.
 It does not include the native makefiles outside the OS `dist/` directory.
-No later ELF Tool Chain trunk changes are added.
 The other original pkgsrc patches remain in the same ordered patch set.
+
+`patch-02-symbol-table-indices` backports only the NetBSD r4309 definition of
+`STN_UNDEF` and its generated-header invocation. The source is the upstream
+sync in [NetBSD commit c441046e](https://github.com/NetBSD/src/commit/c441046e2806d3fa9be50528c9ca08f6a871582d).
+The generated ELF definitions header must expose this symbol-table index to
+libelf consumers. No other r4309 changes are included.
 
 `files/base-source.json` records the upstream archive, public OS pin, exact
 `common` and `libelf` Git tree IDs, and every file in that BSD snapshot.
 Its `files` map contains 128 relative paths. Each entry has a byte size, mode
 and SHA256. Source files use the Git regular-file mode 0644.
-`packaging_overrides` replaces two expected entries for the portable package:
+`packaging_overrides` replaces four expected entries in the prepared source:
 
 - `libelf/Makefile` uses major 2 and minor 0.
 - `libelf/Version.map` exports the existing BSD `elf_getversion` function.
+- `common/sys/elfconstants.m4` defines `STN_UNDEF` as symbol index zero.
+- `common/sys/elfdefinitions.m4` emits that definition in the generated header.
 
 Each override binds its original `base_sha256` and its final size, mode and
 SHA256. Merge these overrides over `files` to check the complete prepared
 subset. No extra file or link is allowed under `common/` or `libelf/`.
-All 72 C, header and M4 files remain byte-identical to the OS snapshot.
+The two M4 overrides are the only code-generation source differences from the
+OS snapshot. The other 70 C, header and M4 files remain byte-identical.
 The prepared upstream root is still `elftoolchain-0.7.1`.
 It contains sibling `common/` and `libelf/` directories.
 
@@ -75,7 +83,8 @@ python3.15 -B -I -S tests/source.py \
   --os-source /absolute/EmberBSD \
   --os-revision c5d396f5698b68e956b29ee5b256bc7877e6c517 \
   --git /absolute/git --patch-tool /absolute/nbpatch \
-  --bmake /absolute/bmake --work /absolute/new-source-check
+  --bmake /absolute/bmake --m4 /absolute/m4 \
+  --work /absolute/new-source-check
 ```
 
 The OS revision must be an exact commit with the two recorded Git trees.
@@ -85,6 +94,9 @@ It verifies the full OS subset independently from Git archive bytes.
 It checks the original archive, every pkgsrc patch checksum, real patch
 application, and all prepared subset bytes and paths.
 It rejects unpatched source, an altered header and an obsolete extra file.
+It runs M4 on the prepared source and checks that the generated header defines
+`STN_UNDEF` exactly once. A source copy without `patch-02-symbol-table-indices`
+is the causal control and must not define the symbol.
 
 The check uses NetBSD patch options `-f -E -p0 -F0 -V none` and a separate
 `-B` backup directory for each patch. These scratch backups stay outside the
@@ -98,7 +110,7 @@ refusal when that query fails.
 
 `result.json` and command logs remain in the requested work directory.
 Extracted sources and metadata fixtures are removed after the check.
-This check does not compile C, invoke configure, build or install a real
-package, run target programs, or qualify a complete SDK toolset.
+This check generates a header but does not compile C, invoke configure, build
+or install a real package, run target programs, or qualify a complete SDK toolset.
 The full portable package build, installed ABI/runtime consumers and the
 new OS source integration require their own acceptance.
