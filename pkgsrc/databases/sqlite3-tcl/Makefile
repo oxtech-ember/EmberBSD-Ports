@@ -31,7 +31,7 @@ BUILDLINK_API_DEPENDS.sqlite3+=	sqlite3>=3.54.1
 
 .if ${OPSYS} == "Darwin"
 post-install:
-	install_name_tool -id \
+	''${EMBERBSD_DARWIN_INSTALL_NAME_TOOL:Uinstall_name_tool:Q} -id \
 	    ${PREFIX}/lib/tcl${TCL_BASEVER}/sqlite${PKGVERSION_NOREV}/libtcl9sqlite${PKGVERSION_NOREV}.dylib \
 	    ${DESTDIR}${PREFIX}/lib/tcl${TCL_BASEVER}/sqlite${PKGVERSION_NOREV}/libtcl9sqlite${PKGVERSION_NOREV}.dylib
 .endif

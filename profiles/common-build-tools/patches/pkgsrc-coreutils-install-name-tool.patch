@@ -1,0 +1,14 @@
+# Origin: EmberBSD (AI-assisted).
+# Use the selected Darwin SDK tool. Keep the ordinary unset command.
+
+--- a/sysutils/coreutils/Makefile
++++ b/sysutils/coreutils/Makefile
+@@ -71,7 +71,7 @@
+ 	fi
+ .endfor
+ .if ${OPSYS} == "Darwin"
+-	install_name_tool -id ${PREFIX}/libexec/coreutils/libstdbuf.so \
++	''${EMBERBSD_DARWIN_INSTALL_NAME_TOOL:Uinstall_name_tool:Q} -id ${PREFIX}/libexec/coreutils/libstdbuf.so \
+ 	${DESTDIR}${PREFIX}/libexec/coreutils/libstdbuf.so
+ .endif
+ 

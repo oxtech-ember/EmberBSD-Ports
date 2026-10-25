@@ -45,6 +45,14 @@ recipe's flags and patch. Their earlier 3.54.0 results remain historical
 evidence. A recipe update does not qualify new target packages, upstream
 execution tests, installed consumers, or device behavior by itself.
 
+The Darwin post-install ID command uses `EMBERBSD_DARWIN_INSTALL_NAME_TOOL`
+when the native SDK selects it. This is the same explicit executable variable
+used by the common CMake mapping. An undefined variable keeps the ordinary
+`install_name_tool` command. The path is shell-quoted as one argument. A literal empty quote keeps an
+explicitly empty value from becoming a bmake command-prefix flag.
+The Tcl extension and coreutils post-install command use the same mapping.
+The actual ID update and normal package checks remain required.
+
 ## Source and host checks
 
 Real native and AArch64 cross metadata checks pass for all five packages.

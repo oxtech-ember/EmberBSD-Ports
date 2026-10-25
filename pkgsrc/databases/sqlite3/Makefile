@@ -517,7 +517,7 @@ LDFLAGS.SCO_SV+=	-lpthread
 
 .if ${OPSYS} == "Darwin"
 post-install:
-	install_name_tool -id ${PREFIX}/lib/libsqlite3.dylib \
+	''${EMBERBSD_DARWIN_INSTALL_NAME_TOOL:Uinstall_name_tool:Q} -id ${PREFIX}/lib/libsqlite3.dylib \
 		${DESTDIR}${PREFIX}/lib/libsqlite3.dylib
 .endif
 
