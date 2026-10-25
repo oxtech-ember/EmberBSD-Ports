@@ -1,0 +1,13 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+/* Origin: EmberBSD (AI-assisted). Emit only after capabilities.c passes. */
+#ifndef EMBERBSD_INITIAL_BYACC_CONFIG_H
+#define EMBERBSD_INITIAL_BYACC_CONFIG_H
+#define HAVE_GETOPT 1
+#define HAVE_MKSTEMP 1
+#define HAVE_VSNPRINTF 1
+#define HAVE_STDNORETURN_H 1
+#define GCC_UNUSED __attribute__((unused))
+#define GCC_PRINTFLIKE(fmt,var) __attribute__((format(printf,fmt,var)))
+/* The ordinary upstream default is a choice, not an ABI fact. */
+#define YYBTYACC 1
+#endif
