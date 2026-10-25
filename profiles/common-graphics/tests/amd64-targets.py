@@ -89,7 +89,7 @@ _TOOLS_USE_PKGSRC.flex=no
 PKGPATH?=graphics/MesaLib
 PKG_OPTIONS=llvm x11 wayland
 DISTNAME=mesa-26.2.5
-PKGREVISION=4
+PKGREVISION=5
 EMBERBSD_GRAPHICS_LLVM_CONFIG={work}/helper/bin/llvm-config
 EMBERBSD_WAYLAND_SCANNER={work}/scanner
 .include "{work}/profile.mk"
@@ -149,8 +149,8 @@ def static_profile_checks():
         "libdrm>=2.4.134nb5" in profile and 'PKGREVISION:U} != "5"' in profile,
     )
     check(
-        "common profile enforces MesaLib 26.2.5nb4",
-        "MesaLib>=26.2.5nb4" in profile,
+        "common profile enforces MesaLib 26.2.5nb5",
+        "MesaLib>=26.2.5nb5" in profile,
     )
 
 
@@ -283,6 +283,27 @@ def source_checks(distfiles):
         "Mesa source retains the AMDGPU DRM 3.54 runtime API gate",
         "if (info->drm_minor < 54)" in mesa_amd
         and "only compatible with 3.54.0" in mesa_amd,
+    )
+    patch_path = REPOSITORY / "pkgsrc/graphics/MesaLib/patches/patch-src_amd_common_ac_gpu_info.c"
+    with tempfile.TemporaryDirectory(prefix="ember-mesa-drm-api-") as temp:
+        work = Path(temp).resolve()
+        source_path = work / "src/amd/common/ac_gpu_info.c"
+        source_path.parent.mkdir(parents=True)
+        source_path.write_text(mesa_amd)
+        result = subprocess.run(
+            ["patch", "-p0", "--batch", "--forward", "-i", str(patch_path)],
+            cwd=work,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        check("Mesa NetBSD DRM compatibility patch applies to the pinned source", result.returncode == 0)
+        patched = source_path.read_text()
+    check(
+        "Mesa uses DRM 3.36 only on NetBSD and retains the 3.54 gate elsewhere",
+        "#if defined(__NetBSD__)\n   if (info->drm_minor < 36)" in patched
+        and "#else\n   if (info->drm_minor < 54)" in patched
+        and "#endif\n      return AC_QUERY_GPU_INFO_FAIL;" in patched,
     )
     check(
         "libdrm source installs linked AMDGPU library, header and pkg-config metadata",
