@@ -1,0 +1,15 @@
+Origin: EmberBSD, AI-assisted build fix; not submitted upstream.
+main.c calls Cleanup(), which parser.c defines, without a declaration.
+GCC 14 and later reject implicit function declarations in C99 and later
+dialects. Declare it in parser.h, which main.c includes.
+
+--- bin/mkcmd/parser.h.orig
++++ bin/mkcmd/parser.h
+@@ -3,6 +3,7 @@
+ extern char *AddIncl();
+ extern void Config(/* char *pcFile */);
+ extern void Gen(/* char *pcBaseName, char *pcManPage */);
++extern void Cleanup(void);
+ extern short int fGetenv, fPSawEvery, fPSawEnvInit;
+ 
+ extern char 

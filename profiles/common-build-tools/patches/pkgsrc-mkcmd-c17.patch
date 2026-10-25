@@ -1,0 +1,25 @@
+Origin: EmberBSD, AI-assisted build fix for the last mkcmd release.
+mkcmd 8.14 and its generated parsers use unprototyped () declarations.
+C23, the GCC 16 default, makes () mean (void), so the build fails. Select
+GNU C17 through pkgsrc's FORCE_C_STD. Not submitted upstream.
+
+--- a/devel/mkcmd/Makefile
++++ b/devel/mkcmd/Makefile
+@@ -2,7 +2,7 @@
+ #
+ 
+ DISTNAME=		mkcmd-8.14
+-PKGREVISION=		3
++PKGREVISION=		4
+ CATEGORIES=		devel
+ MASTER_SITES=		ftp://ftp.physics.purdue.edu/pub/pundits/
+ EXTRACT_SUFX=		.tgz
+@@ -11,6 +11,8 @@
+ COMMENT=		Command-line parser and manual page generator
+ 
+ USE_TOOLS+=		m4
++# mkcmd 8.14 uses unprototyped () declarations, which C23 removed.
++FORCE_C_STD=		gnu17
+ 
+ INSTALLATION_DIRS=	bin ${PKGMANDIR}/man1 ${PKGMANDIR}/man5
+ 
