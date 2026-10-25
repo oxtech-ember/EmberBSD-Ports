@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (picojson-111c9be5188f7350c2eac9ddaedd8cca3d7bf394.tar.gz) = b700a173e9aa08e176cf28d56eb3782483bd83803a5631901ca5f4b6fd873df6
+SHA512 (picojson-111c9be5188f7350c2eac9ddaedd8cca3d7bf394.tar.gz) = 79e41880db0cee7719dc1eedaceac6e5cd08eccac15a177d4ce82ad87744b741e7b5b599c39c1453e284c530e450f3f3a725d28f1437f660f1ff7e0eaf778372
+Size (picojson-111c9be5188f7350c2eac9ddaedd8cca3d7bf394.tar.gz) = 16772 bytes
+SHA1 (patch-CMakeLists.txt) = 6e9947dfa1644d0e0ab9a197e51faf2fcd4ac5f8
+SHA1 (patch-picojson-config.cmake.in) = f3a3b4541acacfc17e66fdffff80f2d86c508475
+SHA1 (patch-picojson.pc.in) = cc3574338bacd91c39eb56d67bb6172d3ffcf899

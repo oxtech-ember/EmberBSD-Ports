@@ -1,0 +1,10 @@
+@comment Common PicoJSON header, examples and package interfaces
+include/picojson.h
+lib/cmake/picojson/picojson-config-version.cmake
+lib/cmake/picojson/picojson-config.cmake
+lib/cmake/picojson/picojson-targets.cmake
+lib/pkgconfig/picojson.pc
+share/examples/picojson/github-issues.cc
+share/examples/picojson/iostream.cc
+share/examples/picojson/streaming.cc
+share/licenses/picojson/LICENSE

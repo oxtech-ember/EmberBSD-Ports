@@ -1,0 +1,15 @@
+$NetBSD$
+
+Install and use one common dependency provider.
+Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+
+--- picojson.pc.in.orig
++++ picojson.pc.in
+@@ -0,0 +1,7 @@
++prefix=${pcfiledir}/../..
++includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
++
++Name: picojson
++Description: Header-only C++ JSON parser and serializer
++Version: @PROJECT_VERSION@
++Cflags: -I${includedir}

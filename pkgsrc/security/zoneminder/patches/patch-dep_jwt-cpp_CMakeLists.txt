@@ -1,0 +1,16 @@
+$NetBSD$
+
+Use the common PicoJSON header and fix the external CMake target.
+Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+
+--- dep/jwt-cpp/CMakeLists.txt.orig
++++ dep/jwt-cpp/CMakeLists.txt
+@@ -120,7 +120,7 @@
+ endif()
+ 
+ if(JWT_EXTERNAL_PICOJSON)
+-  target_link_libraries(jwt-cpp INTERFACE picojson::picojson>)
++  target_link_libraries(jwt-cpp INTERFACE picojson::picojson)
+ endif()
+ 
+ # Hunter needs relative paths so the files are placed correctly

@@ -1,0 +1,11 @@
+$NetBSD$
+
+Install and use one common dependency provider.
+Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+
+--- picojson-config.cmake.in.orig
++++ picojson-config.cmake.in
+@@ -0,0 +1,3 @@
++@PACKAGE_INIT@
++include("${CMAKE_CURRENT_LIST_DIR}/picojson-targets.cmake")
++check_required_components(picojson)

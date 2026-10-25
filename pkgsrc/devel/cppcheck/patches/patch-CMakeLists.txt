@@ -1,0 +1,20 @@
+$NetBSD$
+
+Install and use one common dependency provider.
+Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -106,8 +106,10 @@
+     message(STATUS "Using bundled version of tinyxml2")
+     add_subdirectory(externals/tinyxml2)
+ endif()
+-add_subdirectory(externals/simplecpp)
+-add_subdirectory(externals/picojson)
++find_package(simplecpp 1.9.1 EXACT CONFIG REQUIRED)
++find_package(picojson 1.3.0.20210117 CONFIG REQUIRED)
++add_library(simplecpp ALIAS simplecpp::simplecpp)
++add_library(picojson ALIAS picojson::picojson)
+ add_subdirectory(lib)   # CppCheck Library
+ add_subdirectory(frontend)
+ add_subdirectory(cli)   # Client application

@@ -1,0 +1,9 @@
+$NetBSD$
+
+BLAKE2s (simplecpp-1.9.1.tar.gz) = 1d64e6272a42744f43e9aa0d1ef320638b5c1b6ce91aafb3b000790c746e022a
+SHA512 (simplecpp-1.9.1.tar.gz) = 6ac6f714c1dad9ae2a6546cb661139f376b10d6fefc6525d4490f6fea6142d0e92e5f5c924cb966a238a1b7718e1e5b939023abdeb8038eb686589141b15c423
+Size (simplecpp-1.9.1.tar.gz) = 187743 bytes
+SHA1 (patch-CMakeLists.txt) = 78ca7b72a1b77f8e0f8b29a2f23459363ad74df3
+SHA1 (patch-simplecpp-abi.h.in) = 6baa4907839d0f251e8f2e125b548828c5f47201
+SHA1 (patch-simplecpp-config.cmake.in) = f7693abea8b4427d1139598e66dad7a839dcf9a0
+SHA1 (patch-simplecpp.h) = f9f61c67278d56706425b9886b59be7082894296

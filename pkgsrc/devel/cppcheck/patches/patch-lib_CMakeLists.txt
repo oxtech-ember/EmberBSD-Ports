@@ -1,0 +1,16 @@
+$NetBSD$
+
+Propagate the SimpleCpp STL ABI through public Cppcheck core interfaces.
+Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+
+--- lib/CMakeLists.txt.orig
++++ lib/CMakeLists.txt
+@@ -53,7 +53,7 @@
+ target_dll_compile_definitions(cppcheck-core EXPORT CPPCHECKLIB_EXPORT IMPORT CPPCHECKLIB_IMPORT)
+ 
+ target_include_directories(cppcheck-core PUBLIC .)
+-target_link_libraries(cppcheck-core PRIVATE tinyxml2 simplecpp picojson ${PCRE_LIBRARY})
++target_link_libraries(cppcheck-core PRIVATE tinyxml2 picojson ${PCRE_LIBRARY} PUBLIC simplecpp)
+ 
+ if (HAVE_RULES)
+     target_include_directories(cppcheck-core SYSTEM PRIVATE ${PCRE_INCLUDE})

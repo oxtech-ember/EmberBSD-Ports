@@ -1,0 +1,13 @@
+$NetBSD$
+
+BLAKE2s (cppcheck-2.22.0.tar.gz) = 425f4a1a66ccab91dae8ba5538a31937cc1e71e71a90ce7b32be4aec5122b9f3
+SHA512 (cppcheck-2.22.0.tar.gz) = aad4ed7f14b24d60896fe39f39a3b0bce1046a704ee27c914971792393e1bb128c13a1537632d6ae2eadd50fdcbd9396c59bbf5c98209400ae9d2f7d130224f9
+Size (cppcheck-2.22.0.tar.gz) = 4213443 bytes
+SHA1 (patch-Makefile) = 1a4f45bd53fe965e91ae5a1490fb1a1e02339ba5
+SHA1 (patch-cmake_findDependencies.cmake) = 5223f584fc2998175b375aeda43de666c293d9f3
+SHA1 (patch-lib_regex.cpp) = ec534769da874f3619520d02f38a7b7e6a678058
+SHA1 (patch-man_CMakeLists.txt) = 2ca43101dcfa663c0985aae595041129b81e44e1
+SHA1 (patch-test_testregex.cpp) = 839f8bd9d1c79f697a3fb61c685146d2c371631d
+SHA1 (patch-tools_dmake_dmake.cpp) = 3d4445a16442edbcb14b12f33c2b23934ddbb888
+SHA1 (patch-CMakeLists.txt) = 9055bff21cacca4cf7825bb91310e81812d4b2be
+SHA1 (patch-lib_CMakeLists.txt) = 34d56affce552324b18dd459e0cf5397b3560a18
