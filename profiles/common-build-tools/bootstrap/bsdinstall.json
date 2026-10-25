@@ -1,0 +1,451 @@
+{
+  "format": "emberbsd-native-bootstrap-program",
+  "version": 1,
+  "name": "bsdinstall",
+  "origin": "EmberBSD AI-assisted initial source-build contract. The canonical pkgsrc BSD sources retain their original copyright and license notices.",
+  "canonical_host_recipe": "sysutils/bsdinstall/Makefile",
+  "source_makefile": "sysutils/bsdinstall/files/Makefile",
+  "compiler": {
+    "family": "gcc",
+    "major": 16,
+    "abi": "native"
+  },
+  "build_system": "direct",
+  "initial_only": true,
+  "required_tool_roles": [
+    "cc",
+    "sh",
+    "strip"
+  ],
+  "sources": [
+    "sysutils/bsdinstall/files/bsdinstall.c",
+    "sysutils/bsdinstall/files/setmode.c"
+  ],
+  "headers": [],
+  "include_dirs": [],
+  "cppflags": [
+    "-DHAVE_NBCOMPAT_H=1",
+    "-D_PATH_DEVNULL=\"/dev/null\""
+  ],
+  "cflags": [],
+  "link_flags": [],
+  "libraries": [],
+  "selected_defines": {
+    "EMBERBSD_BSDINSTALL_SHELL": "sh",
+    "TARGET_STRIP": "strip"
+  },
+  "compat": {
+    "recipe": "pkgtools/libnbcompat",
+    "include_dir": "include",
+    "static_library": "lib/libnbcompat.a"
+  },
+  "invocations": [
+    "bsdinstall"
+  ],
+  "files": {
+    "input.txt": "payload\n"
+  },
+  "runtime_cases": [
+    {
+      "name": "copy-unprivileged",
+      "invocation": "bsdinstall",
+      "args": [
+        "-U",
+        "-c",
+        "-m",
+        "0640",
+        "input.txt",
+        "copied.txt"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "",
+      "stderr": "",
+      "checks": [
+        {
+          "path": "copied.txt",
+          "kind": "file",
+          "content": "payload\n",
+          "mode": 416
+        }
+      ]
+    },
+    {
+      "name": "copy-default",
+      "invocation": "bsdinstall",
+      "args": [
+        "-c",
+        "-m",
+        "0644",
+        "input.txt",
+        "plain.txt"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "",
+      "stderr": "",
+      "checks": [
+        {
+          "path": "plain.txt",
+          "kind": "file",
+          "content": "payload\n",
+          "mode": 420
+        }
+      ]
+    },
+    {
+      "name": "symbolic-mode",
+      "invocation": "bsdinstall",
+      "args": [
+        "-U",
+        "-m",
+        "u=rw,g=r,o=",
+        "input.txt",
+        "symbolic.txt"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "",
+      "stderr": "",
+      "checks": [
+        {
+          "path": "symbolic.txt",
+          "kind": "file",
+          "content": "payload\n",
+          "mode": 416
+        }
+      ]
+    },
+    {
+      "name": "unprivileged-ownership",
+      "invocation": "bsdinstall",
+      "args": [
+        "-U",
+        "-o",
+        "__emberbsd_missing_user__",
+        "-g",
+        "__emberbsd_missing_group__",
+        "input.txt",
+        "ownership.txt"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "",
+      "stderr": "",
+      "checks": [
+        {
+          "path": "ownership.txt",
+          "kind": "file",
+          "content": "payload\n",
+          "mode": 493
+        }
+      ]
+    },
+    {
+      "name": "unprivileged-setid-mask",
+      "invocation": "bsdinstall",
+      "args": [
+        "-U",
+        "-m",
+        "6755",
+        "input.txt",
+        "masked.txt"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "",
+      "stderr": "",
+      "checks": [
+        {
+          "path": "masked.txt",
+          "kind": "file",
+          "content": "payload\n",
+          "mode": 493
+        }
+      ]
+    },
+    {
+      "name": "directory",
+      "invocation": "bsdinstall",
+      "args": [
+        "-U",
+        "-d",
+        "-m",
+        "0700",
+        "nested/dir"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "",
+      "stderr": "",
+      "checks": [
+        {
+          "path": "nested",
+          "kind": "directory",
+          "mode": 493
+        },
+        {
+          "path": "nested/dir",
+          "kind": "directory",
+          "mode": 493
+        }
+      ]
+    },
+    {
+      "name": "directory-over-file",
+      "invocation": "bsdinstall",
+      "args": [
+        "-U",
+        "-d",
+        "input.txt"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr_nonempty": true,
+      "checks": [
+        {
+          "path": "input.txt",
+          "kind": "file",
+          "content": "payload\n",
+          "mode": 420
+        }
+      ]
+    },
+    {
+      "name": "same-file",
+      "invocation": "bsdinstall",
+      "args": [
+        "-U",
+        "input.txt",
+        "input.txt"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr_nonempty": true,
+      "checks": [
+        {
+          "path": "input.txt",
+          "kind": "file",
+          "content": "payload\n",
+          "mode": 420
+        }
+      ]
+    },
+    {
+      "name": "missing-file",
+      "invocation": "bsdinstall",
+      "args": [
+        "-U",
+        "missing.txt",
+        "missing-copy.txt"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr_nonempty": true,
+      "checks": [
+        {
+          "path": "missing-copy.txt",
+          "kind": "absent"
+        }
+      ]
+    },
+    {
+      "name": "invalid-mode",
+      "invocation": "bsdinstall",
+      "args": [
+        "-U",
+        "-m",
+        "invalid-mode",
+        "input.txt",
+        "bad-mode.txt"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr_nonempty": true,
+      "checks": [
+        {
+          "path": "bad-mode.txt",
+          "kind": "absent"
+        }
+      ]
+    },
+    {
+      "name": "invalid-option",
+      "invocation": "bsdinstall",
+      "args": [
+        "-Z"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr_nonempty": true,
+      "checks": []
+    },
+    {
+      "name": "metalog-unsupported",
+      "invocation": "bsdinstall",
+      "args": [
+        "-U",
+        "-M",
+        "METALOG",
+        "input.txt",
+        "metalog-copy.txt"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr_nonempty": true,
+      "checks": [
+        {
+          "path": "METALOG",
+          "kind": "absent"
+        },
+        {
+          "path": "metalog-copy.txt",
+          "kind": "absent"
+        }
+      ]
+    },
+    {
+      "name": "privileged-unknown-owner",
+      "invocation": "bsdinstall",
+      "args": [
+        "-o",
+        "__emberbsd_missing_user__",
+        "input.txt",
+        "unknown-owner.txt"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr_nonempty": true,
+      "checks": [
+        {
+          "path": "unknown-owner.txt",
+          "kind": "absent"
+        }
+      ]
+    },
+    {
+      "name": "strip-default",
+      "invocation": "bsdinstall",
+      "args": [
+        "-U",
+        "-s",
+        "@PROGRAM@",
+        "stripped-default"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "",
+      "stderr": "",
+      "checks": [
+        {
+          "path": "stripped-default",
+          "kind": "native_image",
+          "mode": 493
+        }
+      ]
+    },
+    {
+      "name": "strip-flags",
+      "invocation": "bsdinstall",
+      "args": [
+        "-U",
+        "-S",
+        "-S",
+        "@PROGRAM@",
+        "stripped-flags"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "",
+      "stderr": "",
+      "checks": [
+        {
+          "path": "stripped-flags",
+          "kind": "native_image",
+          "mode": 493
+        }
+      ]
+    },
+    {
+      "name": "after-hook",
+      "invocation": "bsdinstall",
+      "args": [
+        "-U",
+        "-a",
+        "printf 'hook:%s\\n'",
+        "input.txt",
+        "after.txt"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "hook:after.txt\n",
+      "stderr": "",
+      "checks": [
+        {
+          "path": "after.txt",
+          "kind": "file",
+          "content": "payload\n",
+          "mode": 493
+        }
+      ]
+    },
+    {
+      "name": "failed-after-hook",
+      "invocation": "bsdinstall",
+      "args": [
+        "-U",
+        "-a",
+        "exit 7",
+        "input.txt",
+        "failed-after.txt"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr_nonempty": true,
+      "checks": [
+        {
+          "path": "failed-after.txt",
+          "kind": "absent"
+        }
+      ]
+    },
+    {
+      "name": "directory-strip-refused",
+      "invocation": "bsdinstall",
+      "args": [
+        "-U",
+        "-d",
+        "-s",
+        "bad-directory"
+      ],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr_nonempty": true,
+      "checks": [
+        {
+          "path": "bad-directory",
+          "kind": "absent"
+        }
+      ]
+    },
+    {
+      "name": "missing-operands",
+      "invocation": "bsdinstall",
+      "args": [],
+      "stdin": "",
+      "exit": 1,
+      "stdout": "",
+      "stderr_nonempty": true,
+      "checks": []
+    }
+  ]
+}

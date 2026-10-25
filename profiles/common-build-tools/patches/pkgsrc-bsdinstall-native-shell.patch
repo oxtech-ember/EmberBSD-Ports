@@ -1,0 +1,52 @@
+BSD install: bind an explicit initial native child shell.
+
+Origin: EmberBSD, AI-assisted adaptation of the pinned pkgsrc bootstrap recipe.
+The upstream BSD source and copyright notices remain unchanged.
+The default uses _PATH_BSHELL. An explicit native producer selects its shell
+for strip arguments and after-install commands. TARGET_STRIP stays canonical.
+
+--- a/sysutils/bsdinstall/Makefile
++++ b/sysutils/bsdinstall/Makefile
+@@ -26,6 +26,11 @@
+ CPPFLAGS+=	-D_PATH_DEVNULL=\"/dev/null\"
+ CPPFLAGS+=	-DTARGET_STRIP=\"${TOOLS_PLATFORM.strip:Q}\"
+ 
++# Bind child shells only for an explicit initial native producer.
++.if defined(EMBERBSD_BSDINSTALL_SHELL)
++CPPFLAGS+=	-DEMBERBSD_BSDINSTALL_SHELL=\"${EMBERBSD_BSDINSTALL_SHELL:Q}\"
++.endif
++
+ CPPFLAGS.SunOS+=	-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
+ 
+ .include "../../mk/bsd.prefs.mk"
+--- a/sysutils/bsdinstall/files/bsdinstall.c
++++ b/sysutils/bsdinstall/files/bsdinstall.c
+@@ -107,6 +107,10 @@
+ 
+ #ifdef SUPPORT_MTREE
+ #include "mtree.h"
++#endif
++
++#ifndef EMBERBSD_BSDINSTALL_SHELL
++#define EMBERBSD_BSDINSTALL_SHELL _PATH_BSHELL
+ #endif
+ 
+ #define STRIP_ARGS_MAX 32
+@@ -1046,7 +1050,7 @@
+ 	case 0:
+ 
+ 		if (stripArgs)
+-			execl(_PATH_BSHELL, "sh", "-c", cmd, NULL);
++			execl(EMBERBSD_BSDINSTALL_SHELL, "sh", "-c", cmd, NULL);
+ 		else
+ 			execlp(stripprog, "strip", to_name, NULL);
+ 
+@@ -1097,7 +1101,7 @@
+ 
+ 		sprintf(cmd, "%s %s", command, to_name);
+ 
+-		execl(_PATH_BSHELL, "sh", "-c", cmd, NULL);
++		execl(EMBERBSD_BSDINSTALL_SHELL, "sh", "-c", cmd, NULL);
+ 
+ 		warn("%s: exec of after install command", command);
+ 		_exit(1);

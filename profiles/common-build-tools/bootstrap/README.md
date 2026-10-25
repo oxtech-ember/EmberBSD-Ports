@@ -147,3 +147,38 @@ and unresolved historical inputs. Require its own completed derivation.
 Keep the earlier utility and printf profiles and results unchanged.
 Compare libintl with an existing accepted library before provisioning new
 members. This source profile does not prove utility behavior or admit a build.
+
+## Initial BSD install
+
+[bsdinstall.json](bsdinstall.json) uses the common `sysutils/bsdinstall` recipe.
+The SDK compiles its two canonical C files with selected native GCC16.
+It links the exact accepted `pkgtools/libnbcompat` static library and headers.
+The input library must retain its actual producer, source and ABI evidence.
+This initial program does not qualify an ordinary native toolset.
+
+The ordered export applies `pkgsrc-bsdinstall-native-shell.patch` once.
+The patch keeps the upstream implementation and its BSD notices.
+It adds the opt-in `EMBERBSD_BSDINSTALL_SHELL` compile-time definition.
+The ordinary default remains `_PATH_BSHELL`.
+Both `-S` and `-a` use the selected shell in the initial build.
+The existing `TARGET_STRIP` definition selects the native strip executable.
+Require one absolute selected invocation for both roles.
+Do not pass an argv tail through either C string definition.
+
+The SDK owns leases, source admission, exact driver and ABI arguments, execution
+and separate stdout/stderr checks.
+Owner Git evidence covers this profile, its patch and `pkgsrc/export.conf`.
+The composed pkgsrc C files are derived source bytes.
+They are not literal members of the Ports commit.
+Bind the pinned pkgsrc Git archive and the ordered zero-fuzz patch to the full
+prepared source inventory before execution.
+
+The fixed cases use umask `022` and check file bytes, modes and errors.
+They check `-U`, regular and symbolic modes, directories, same-file refusal,
+missing sources, selected strip execution and both after-install outcomes.
+Canonical `-U -d` keeps the mode from `mkdir` and the umask.
+It does not apply the requested directory mode.
+The two-source recipe does not enable `SUPPORT_MTREE`.
+The metalog case must reject `-M`; it must not claim a successful metadata log.
+Do not remove `-U` or filter installer flags to accept GNU install instead.
+Actual GCC16 and semantic execution remain required acceptance steps.
