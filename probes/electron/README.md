@@ -135,6 +135,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-netbsd-execinfo
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-clang-resource-version.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-bindgen-gcc-warnings.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-host-node-inputs.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-qualified-host-node.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/grit-locale-platform-exclusivity.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-netbsd-main.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-mac-host-debug-fission.patch
@@ -343,8 +344,32 @@ optimizer settings only from libclang's inputs. Target compiler arguments,
 The locale patch restores exclusive font conditions for Mac host resource builds.
 It keeps the existing Linux/BSD font selection. See the
 [production GRIT gather checks](tests/grit-locale-platforms.md).
-The host-Node patch selects local executables by `host_os` for generic Node
+The host-Node input patch selects executables by `host_os` for generic Node
 and TypeScript protoc actions. It retains Linux Node for remote workers.
+The qualified-host patch adds an explicit local `EMBERBSD_HOST_NODE` path.
+Obtain it from the accepted SDK `node` role. Keep the same controlled environment
+for GN generation and every dependent action. An explicit path must name an
+absolute executable file. An empty, relative, missing or nonexecutable selection
+fails. No PATH lookup or bundled fallback follows an explicit failure.
+The selected local route refuses remote execution and declares only the selected
+Node executable in both generic and TypeScript runtime inputs.
+
+The patch restores the production exact version check removed by pkgsrc's
+`www/chromium/patches/patch-third__party_node_check__version.py` (revision1.23).
+An explicit selection uses the source-owned common Node24.22.0 version input.
+The unchanged JavaScript equality check runs before its success marker is written.
+The unset selector keeps the upstream executable and Node24.12.0 version input.
+This path check does not qualify a provider. Native SDK and JavaScript action
+acceptance remain required. Run the pure source controls without Node or GN:
+
+```sh
+python3.15 probes/electron/tests/qualified-host-node.py \
+  --source /absolute/patched/Chromium -v
+```
+
+The existing host-input integration test still checks the unset upstream route.
+Actual GN input graphs and JavaScript/TypeScript actions for an explicit qualified
+provider must also pass before an Electron build.
 The Electron main patch checks NetBSD before the Linux platform alias.
 It selects the upstream POSIX main and stdio helper for NetBSD. Its glibc
 environment shim stays in the unchanged Linux branch.
