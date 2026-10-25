@@ -24,11 +24,14 @@ dependency. It is not part of the installed library interface.
 
 ```sh
 python3 -B tests/installed-config.py --cmake /absolute/cmake \
-    --archive /absolute/effcee-1.2026.0.tar.gz \
+    --archive /absolute/effcee-1.2026.0-f8e8a164822d4f65e757bff66bc00e1567959aa0.tar.gz \
+    --bmake /absolute/bmake --pkgsrc-source /absolute/prepared-pkgsrc \
     --patch /absolute/patch --work-parent /absolute/private-test-parent
 ```
 
-This finite check verifies source hashes and zero-fuzz patch application. It
+This finite check verifies the commit-suffixed `DISTFILES` name with the real
+prepared pkgsrc fetch rules and bmake. It does not override `github.mk` naming.
+It verifies source hashes and zero-fuzz patch application. It
 runs the actual dependency and export/config fragments with real CMake and
 `LANGUAGES NONE`. An INTERFACE target stands in for the C++ library. Package
 fixtures contain only target metadata. The check installs and relocates the

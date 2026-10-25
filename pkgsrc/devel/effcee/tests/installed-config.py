@@ -12,6 +12,8 @@ import subprocess
 import tarfile
 import tempfile
 
+DISTFILE = 'effcee-1.2026.0-f8e8a164822d4f65e757bff66bc00e1567959aa0.tar.gz'
+
 
 def require(value, message):
     if not value:
@@ -20,14 +22,14 @@ def require(value, message):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ('cmake', 'archive', 'patch', 'work-parent'):
+    for name in ('cmake', 'archive', 'patch', 'bmake', 'pkgsrc-source', 'work-parent'):
         parser.add_argument('--' + name, type=Path, required=True)
     args = parser.parse_args()
     require(all(p.is_absolute() for p in vars(args).values()), 'Use absolute paths')
     recipe = Path(__file__).resolve().parents[1]
     distinfo = (recipe / 'distinfo').read_text()
     for label, algorithm in (('BLAKE2s', 'blake2s'), ('SHA512', 'sha512')):
-        expected = re.search(r'^' + label + r' \(effcee-1\.2026\.0.tar.gz\) = (\w+)$', distinfo, re.M)[1]
+        expected = re.search(r'^' + label + r' \(' + re.escape(DISTFILE) + r'\) = (\w+)$', distinfo, re.M)[1]
         require(hashlib.new(algorithm, args.archive.read_bytes()).hexdigest() == expected, 'Archive hash mismatch')
     patch = recipe / 'patches/patch-installed-dependencies'
     patch_sha1 = runpy.run_path(str(recipe.parents[2] / 'scripts/prepare-pkgsrc.py'))['patch_sha1']
@@ -36,6 +38,21 @@ def main():
     print(subprocess.check_output(['df', '-k', str(args.work_parent)], text=True), end='')
     work = Path(tempfile.mkdtemp(prefix='effcee-installed-config-', dir=args.work_parent))
     try:
+        # Run the real fetch rules with recipe variables. External buildlink
+        # includes are outside this finite source-metadata boundary.
+        metadata = work / 'distfiles.mk'
+        body = '\n'.join(line for line in (recipe / 'Makefile').read_text().splitlines()
+                         if not line.startswith('.include '))
+        metadata.write_text('MASTER_SITE_GITHUB=https://github.com/\nEXTRACT_SUFX=.tar.gz\n'
+            'PKGBASE=effcee\nPKGVERSION_NOREV=1.2026.0\nUSE_TMPFILES=no\nFETCH_USING=manual\n' + body + '\n' +
+            '.include "' + str(args.pkgsrc_source / 'mk/fetch/bsd.fetch-vars.mk') + '"\n' +
+            '.include "' + str(args.pkgsrc_source / 'mk/fetch/github.mk') + '"\n' +
+            'show:\n\t@printf \'%s\\n\' ${DISTFILES:Q} ${_GITHUB_DEFAULT_DISTFILES:Q}\n')
+        result = subprocess.run([str(args.bmake), '-r', '-m', '/', '-f', str(metadata), 'show'],
+                                capture_output=True, text=True)
+        require(result.returncode == 0 and result.stdout.splitlines() == [DISTFILE, DISTFILE],
+                'pkgsrc DISTFILES contract differs: ' + result.stdout + result.stderr)
+        print('PASS: real pkgsrc commit-suffixed DISTFILES')
         source = work / 'source'
         with tarfile.open(args.archive) as archive:
             for name in ('CMakeLists.txt', 'effcee/CMakeLists.txt'):
