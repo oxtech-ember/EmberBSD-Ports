@@ -105,6 +105,19 @@ selection remains conditional on Darwin:
   the parameters only DWARF differs; with them the objects are identical. Its
   Mach-O check takes the darwin-build-config.py selectors; `--recipe-only`
   needs no compiler.
+  The common recipe passes `--enable-libssp`, which makes GCC configure skip
+  its libc check and leave `TARGET_LIBC_PROVIDES_SSP` undefined. Every
+  `-fstack-protector` link then added `-lssp` from the GCC16 prefix. mksh
+  was such a link, and `pkg_add -U` of a new GCC16 removed the old library
+  before the package scripts ran with that shell. libSystem provides
+  `__stack_chk_guard` and `__stack_chk_fail`, so Darwin passes
+  `--disable-libssp` like NetBSD and installs no libssp.
+  [darwin-libc-ssp.py](tests/darwin-libc-ssp.py) checks the recipe and links a
+  `-fstack-protector-all` program with an installed GCC16; it must load
+  libSystem only. [darwin-build-tools-isolation.py](tests/darwin-build-tools-isolation.py)
+  follows the dylibs and rpaths of mksh, bmake and the pkg_install tools and
+  fails if any of them reaches the GCC16 prefix. Packages that were linked
+  with libssp must be rebuilt after the GCC16 update.
   [gcc-sdk-configure-diagnostics.patch](patches/gcc-sdk-configure-diagnostics.patch)
   is part of the shared GCC source for all consumers. The canonical
   [configure roster](patches/gcc-sdk-configure-diagnostics.files) includes all
