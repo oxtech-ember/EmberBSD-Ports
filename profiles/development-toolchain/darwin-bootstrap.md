@@ -238,3 +238,12 @@ closure uses the initial tuple. The eleven gzip prerequisites add pax, fetch
 and libfetch. Those three use the Ports bmake and Darwin mk files, with no
 reverse dependency on gzip. This avoids the generic initial relocatable-link
 rule without changing compiler flags or disabling a build check.
+
+The scoped producer runtime options are reapplied after every MAKECONF read.
+The SDK assigns the accepted ABI `LDFLAGS` before each profile include.
+A one-time append loses the static GCC runtime options on later reads.
+The profile keeps each option once and preserves the other ABI flag words.
+The make-handoff phase fixture checks three includes with the real parser.
+An old one-time profile must fail its runtime-link-option check.
+The full build must still verify the resulting Mach-O load and RPATH closure;
+passing a source fixture does not qualify a library or bypass package checks.

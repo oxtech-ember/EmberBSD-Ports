@@ -31,7 +31,7 @@ from pathlib import Path
 
 KINDS = ('BOOTSTRAP_DEPENDS', 'TOOL_DEPENDS', 'BUILD_DEPENDS', 'DEPENDS')
 NAMES = ('EMBERBSD_DARWIN_SEED_MAKE_RECIPES', 'EMBERBSD_DARWIN_SEED_GZIP_RECIPES', 'EMBERBSD_DARWIN_MAKE', 'EMBERBSD_DARWIN_GMAKE',
-         'LOCALBASE', 'MAKE', '_MAKE', *KINDS)
+         'LOCALBASE', 'MAKE', '_MAKE', 'LDFLAGS', *KINDS)
 SHELLS = ('EMBERBSD_DARWIN_SH', 'SHELL', 'SH', 'CONFIG_SHELL', 'TOOLS_SHELL',
           'EMBERBSD_DARWIN_BUILTIN_SHELL', 'TOOLS_PLATFORM.sh')
 BUILTINS = tuple(f'TOOLS_PLATFORM.{name}' for name in ('[', 'echo', 'false', 'test', 'true'))
@@ -52,6 +52,20 @@ LATER = ('pkgtools/pkg_install', 'lang/gcc16', 'devel/meson', 'lang/llvm')
 def require(value, message):
     if not value:
         raise AssertionError(message)
+
+
+RUNTIME_LINK_FLAGS = ('-static-libstdc++', '-static-libgcc', '-nodefaultrpaths')
+
+
+def runtime_link_flags(value, expected_abi=None):
+    """Require one copy of each producer option and preserve the ABI words."""
+    words = shlex.split(value['LDFLAGS'])
+    require(all(words.count(flag) == 1 for flag in RUNTIME_LINK_FLAGS),
+            'The repeated MAKECONF read lost or duplicated a runtime link option')
+    abi = [word for word in words if word not in RUNTIME_LINK_FLAGS]
+    require(expected_abi is None or abi == expected_abi,
+            'The producer runtime policy changed the accepted ABI link flags')
+    return abi
 
 
 def gmake_shells(value):
@@ -97,6 +111,7 @@ def evaluate(exported, bmake, makeconf, recipe):
                          check=True, capture_output=True, text=True,
                          env={'PATH': '/usr/bin:/bin'}).stdout.splitlines()
     values = dict(zip(NAMES, out))
+    runtime_link_flags(values)
     edges = set()
     for kind in KINDS:
         for word in shlex.split(values[kind]):
@@ -156,6 +171,7 @@ def phase_fixture(argv):
         return value
 
     first = query(ROOT, 'yes')
+    initial_abi_ldflags = runtime_link_flags(first)
     seeds = first['EMBERBSD_DARWIN_SEED_MAKE_RECIPES'].split()
     gzip_seeds = first['EMBERBSD_DARWIN_SEED_GZIP_RECIPES'].split()
     initial_shell = first['EMBERBSD_DARWIN_SH']
@@ -168,6 +184,7 @@ def phase_fixture(argv):
         require(modes['no'] == modes['default'], f'{recipe}: omitted flag differs from no')
         require(all(modes['yes'][kind] == modes['no'][kind] for kind in KINDS), f'{recipe}: metadata changes dependency edges')
         for mode, value in modes.items():
+            runtime_link_flags(value, initial_abi_ldflags)
             handoff = mode != 'yes' and recipe not in seeds
             shell = str(prefix / 'bin/mksh') if handoff else initial_shell
             helper = str(prefix / HELPER) if handoff else initial_helper
