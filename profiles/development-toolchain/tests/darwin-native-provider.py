@@ -48,6 +48,12 @@ def check_recipe(text):
     assert '--disable-bootstrap' not in ''.join(line for line in text.split('\n') if line.startswith('+'))
     assert ('+.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} != "yes"\n'
             '+BUILDLINK_TRANSFORM+=\trm:-nodefaultrpaths\n+.endif\n') in text
+    # The pkgsrc LINK_LIBGCC_SPEC passes a missing tooldir -L to every Darwin link.
+    # Drop it in the same vars pass; a separate class can run before vars.
+    libgcc = "+SUBST_SED.vars+= -e '/-DLINK_LIBGCC_SPEC=/d'\n"
+    assert libgcc in text
+    assert 'darwin-libgcc' not in text
+    assert -1 < text.find(' BUILD_DEFS+=\t\tGCC_TARGET_MACHINE\n') < text.index(libgcc)
 
 
 def check_cmake(fragment, patch):
@@ -178,7 +184,11 @@ class ProviderSourceTests(unittest.TestCase):
                        text.replace('+BUILDLINK_TRANSFORM+=\trm:-nodefaultrpaths\n', ''),
                        text.replace('+MAKE_ENV+= GCC_COMPARE_DEBUG_STRIP=${STRIP:Q}\n', ''),
                        text.replace('+CONFIGURE_ENV+= GCC_COMPARE_DEBUG_STRIP=${STRIP:Q}\n', ''),
-                       text + '+CONFIGURE_ARGS+= --enable-stage1-checking=release\n'):
+                       text + '+CONFIGURE_ARGS+= --enable-stage1-checking=release\n',
+                       text.replace("+SUBST_SED.vars+= -e '/-DLINK_LIBGCC_SPEC=/d'\n", ''),
+                       text.replace('+SUBST_SED.vars+=', '+SUBST_CLASSES+= darwin-libgcc\n+SUBST_SED.darwin-libgcc+='),
+                       text.replace("-e '/-DLINK_LIBGCC_SPEC=/d'", "-e '/-DLINK_LIBGCC_SPEC=/p'"),
+                       text.replace(' BUILD_DEFS+=\t\tGCC_TARGET_MACHINE\n', ' BUILD_DEFS+=\t\tGCC_TARGET_MACHINE_X\n')):
             with self.assertRaises(AssertionError):
                 check_recipe(mutant)
 

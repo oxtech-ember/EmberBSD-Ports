@@ -101,6 +101,22 @@ See profiles/development-toolchain/gcc-darwin-host.md.
  # GCC 16.1.0's stage2/stage3 bootstrap comparison currently fails on
  # NetBSD/x86_64, so disable it. Revisit on updates.
  # https://gcc.gnu.org/pipermail/gcc-help/2026-August/145120.html
+@@ -157,6 +229,15 @@
+ GCC_TARGET_MACHINE?=	${MACHINE_GNU_PLATFORM}
+ BUILD_DEFS+=		GCC_TARGET_MACHINE
+ 
++.if ${OPSYS} == "Darwin"
++# The pkgsrc LINK_LIBGCC_SPEC adds LINKER_RPATH_FLAG paths. Darwin uses -L
++# for that flag. A native GCC never installs <prefix>/<target>/lib, so every
++# link warns about a missing directory, and libtool rejects Darwin linker
++# probes that print to stderr. %D already searches the other path, libdir.
++# Keep the GCC default %D. The same vars pass still fails if nothing changed.
++SUBST_SED.vars+= -e '/-DLINK_LIBGCC_SPEC=/d'
++.endif
++
+ pre-configure:
+ 	${RUN} cd ${WRKSRC} && ${MKDIR} ${OBJDIR}
+ 
 --- a/lang/gcc16/distinfo
 +++ b/lang/gcc16/distinfo
 @@ -13,6 +13,9 @@
@@ -117,7 +133,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 +++ b/lang/gcc16/Makefile
 @@ -7,1 +7,1 @@
 -PKGREVISION=	5
-+PKGREVISION=	8
++PKGREVISION=	9
 @@ -19,6 +19,19 @@
  
  ## The Library rpath to use in end programs.
@@ -147,10 +163,10 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 +++ b/lang/gcc16-libs/Makefile
 @@ -12,1 +12,1 @@
 -PKGREVISION=	6
-+PKGREVISION=	9
++PKGREVISION=	10
 --- a/lang/gcc16-libjit/Makefile
 +++ b/lang/gcc16-libjit/Makefile
 @@ -5,2 +5,3 @@
  PKGNAME=	${GCC_PKGNAME}-libjit-${GCC16_DIST_VERSION}
-+PKGREVISION=	2
++PKGREVISION=	3
  COMMENT=	GNU Compiler Collection 16 (gcclibjit library)

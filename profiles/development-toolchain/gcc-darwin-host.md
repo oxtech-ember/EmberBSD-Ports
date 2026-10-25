@@ -42,6 +42,12 @@ selection remains conditional on Darwin:
   ld64.lld warns that `-single_module` is obsolete, so the libtool probe
   rejects it and links a `-r` master object, which ld64.lld does not
   implement. The recipe presets `lt_cv_apple_cc_single_mod=yes`.
+  The pkgsrc `LINK_LIBGCC_SPEC` adds `LINKER_RPATH_FLAG` paths, which are
+  `-L` on Darwin. A native GCC never installs `<prefix>/<target>/lib`, so
+  every link warned about that missing directory, and libtool rejects
+  Darwin linker probes that print to stderr. `%D` already searches the
+  other path, `libdir`. On Darwin the recipe deletes the define in the
+  same `vars` substitution pass and keeps the GCC default `%D`.
   [gcc-darwin-compare-debug.patch](patches/gcc-darwin-compare-debug.patch)
   gives `contrib/compare-debug` the explicit `GCC_COMPARE_DEBUG_STRIP` path.
   The selected LLVM strip uses `-S -o` for both temporary Mach-O copies.
