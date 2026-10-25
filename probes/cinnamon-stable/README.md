@@ -7,13 +7,18 @@ GTK 3 out of buildlink dependencies, generated introspection metadata and
 runtime package requirements. Port components that still require GTK 3 in
 Ports against the current supported stack.
 
-Cinnamon Menus 6.6.0nb3 builds for EmberBSD/AArch64 with GCC 16.2.0,
+The last packaged Cinnamon Menus revision, 6.6.0nb3, built for EmberBSD/AArch64 with GCC 16.2.0,
 GLib 2.90.1, GObject Introspection 1.86.0 and Meson 1.12.1. Its package
 includes the CMenu library, GIR and typelib. The port repairs the CMenu
 launch callback introspection metadata. CJS 140.1 has focused source and
 target-compiler checks, but the full shell and session remain blocked by
 the missing libc `uselocale()` interface. The other stable components
 still need package recipes and target checks.
+
+The [common Cinnamon Menus recipe](../../pkgsrc/x11/cinnamon-menus/README.md)
+is now revision 4. It separates native generators from target GIR data and
+exports the public GLib dependency. Source and finite metadata checks pass;
+the revision-3 package evidence does not accept a new revision-4 package.
 
 The earlier development probe used Cinnamon 6.7 snapshots and GTK 4
 adaptations. It is not the package basis for this stable port.
