@@ -1,0 +1,287 @@
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+Bind a scoped NetBSD 11 amd64 producer before pkgsrc host and tool discovery.
+Ordinary NetBSD and Darwin selections remain unchanged.
+
+--- a/mk/bsd.prefs.mk
++++ b/mk/bsd.prefs.mk
+@@ -60,6 +60,21 @@
+ .  if ${_EMBERBSD_DARWIN_BOOTSTRAP_POLICY:U0} != "1"
+ .error "MAKECONF must include the Ports Darwin bootstrap policy"
+ .  endif
+ .endif
+ 
++# A scoped NetBSD producer loads accepted inputs before host discovery.
++# The SDK pins MAKECONF and validates its facts, tools and source profile.
++.if defined(EMBERBSD_NETBSD_BOOTSTRAP)
++.  if ${EMBERBSD_NETBSD_BOOTSTRAP} != "yes"
++.error "EMBERBSD_NETBSD_BOOTSTRAP must be yes when defined"
++.  endif
++.  if !defined(MAKECONF) || empty(MAKECONF:M/*) || !exists(${MAKECONF})
++.error "NetBSD bootstrap requires an explicit existing absolute MAKECONF"
++.  endif
++.include "${MAKECONF}"
++.  if ${_EMBERBSD_NETBSD_BOOTSTRAP_POLICY:U0} != "1"
++.error "MAKECONF must include the Ports NetBSD bootstrap policy"
++.  endif
++.endif
++
+ # Set PATH if not already set
+@@ -92,7 +107,9 @@
+ # the call "bmake clean depends" equivalent to "bmake clean && bmake depends".
+ _CLEANING:=	${"${.TARGETS:C,( [[:alnum:]-]*clean[[:alnum:]-]*)+$,,W:M*clean*}":?yes:}
+ 
+-.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++.if ${EMBERBSD_NETBSD_BOOTSTRAP:Uno} == "yes"
++UNAME= ${EMBERBSD_NETBSD_TOOL.uname}
++.elif ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
+ UNAME= ${EMBERBSD_DARWIN_TOOL.uname}
+ .else
+ .if exists(/usr/bin/uname)
+--- a/mk/tools/tools.NetBSD.mk
++++ b/mk/tools/tools.NetBSD.mk
+@@ -1,6 +1,52 @@
+ # $NetBSD: tools.NetBSD.mk,v 1.75 2024/04/12 19:53:25 riastradh Exp $
+ #
+ # System-supplied tools for the NetBSD operating system.
++
++.if ${EMBERBSD_NETBSD_BOOTSTRAP:Uno} == "yes"
++# pkgsrc's normal ?= defaults below remain available outside this profile.
++_EMBERBSD_NETBSD_TOOL_ARGS.gunzip= -f
++_EMBERBSD_NETBSD_TOOL_ARGS.gzip= -nf ${GZIP}
++_EMBERBSD_NETBSD_TOOL_ARGS.mkdir= -p
++.for _ember_tool in ${EMBERBSD_NETBSD_NATIVE_TOOLS}
++TOOLS_PLATFORM.${_ember_tool}:= ${EMBERBSD_NETBSD_TOOL.${_ember_tool}}${_EMBERBSD_NETBSD_TOOL_ARGS.${_ember_tool}:D ${_EMBERBSD_NETBSD_TOOL_ARGS.${_ember_tool}}}
++.endfor
++TOOLS_PLATFORM.make:= ${MAKE}
++TOOLS_PLATFORM.bmake:= ${MAKE}
++TOOLS_PLATFORM.gmake:= ${EMBERBSD_NETBSD_GMAKE} SHELL=${EMBERBSD_NETBSD_SH}
++TOOLS_PLATFORM.sh:= ${EMBERBSD_NETBSD_SH}
++TOOLS_PLATFORM.cc:= ${EMBERBSD_GCC16_SEED_CC}
++TOOLS_PLATFORM.c++:= ${EMBERBSD_GCC16_SEED_CXX}
++TOOLS_PLATFORM.gcc:= ${EMBERBSD_GCC16_SEED_CC}
++TOOLS_PLATFORM.g++:= ${EMBERBSD_GCC16_SEED_CXX}
++TOOLS_PLATFORM.cpp:= ${EMBERBSD_GCC16_SEED_CPP}
++TOOLS_PLATFORM.as:= ${EMBERBSD_GCC16_AS}
++TOOLS_PLATFORM.ld:= ${EMBERBSD_GCC16_LD}
++TOOLS_PLATFORM.ar:= ${EMBERBSD_GCC16_AR}
++TOOLS_PLATFORM.ranlib:= ${EMBERBSD_GCC16_RANLIB}
++TOOLS_PLATFORM.nm:= ${EMBERBSD_GCC16_NM}
++TOOLS_PLATFORM.strip:= ${EMBERBSD_GCC16_STRIP}
++TOOLS_PLATFORM.gstrip:= ${EMBERBSD_GCC16_STRIP}
++# pkgsrc passes builtin commands in variables and invokes them unquoted.
++# Reuse the dispatcher shipped by pkgtools/bootstrap-mk-files.
++EMBERBSD_NETBSD_BUILTIN_HELPER?= ${.PARSEDIR}/emberbsd-darwin-builtin.sh
++.for _ember_builtin in [ echo false test true
++TOOLS_PLATFORM.${_ember_builtin}:= ${EMBERBSD_NETBSD_BUILTIN_SHELL} ${EMBERBSD_NETBSD_BUILTIN_HELPER} ${_ember_builtin}
++.endfor
++# Source-built common compression tools replace any host selection only
++# after their actual package edges have been selected by the profile.
++.if !empty(EMBERBSD_NETBSD_SOURCE_TOOLS:Mgzip)
++TOOLS_PLATFORM.gzip:= ${EMBERBSD_NETBSD_TOOL.gzip}${_EMBERBSD_NETBSD_TOOL_ARGS.gzip:D ${_EMBERBSD_NETBSD_TOOL_ARGS.gzip}}
++TOOLS_PLATFORM.gunzip:= ${EMBERBSD_NETBSD_TOOL.gunzip}${_EMBERBSD_NETBSD_TOOL_ARGS.gunzip:D ${_EMBERBSD_NETBSD_TOOL_ARGS.gunzip}}
++TOOLS_PLATFORM.gzcat:= ${EMBERBSD_NETBSD_TOOL.gzcat}
++.endif
++.for _ember_source in ${EMBERBSD_NETBSD_SOURCE_TOOLS:Ngzip:Ngunzip:Ngzcat}
++.  if defined(EMBERBSD_NETBSD_TOOL.${_ember_source}) && !empty(EMBERBSD_NETBSD_TOOL.${_ember_source})
++TOOLS_PLATFORM.${_ember_source}= ${EMBERBSD_NETBSD_TOOL.${_ember_source}}
++.  else
++.error "Select the declared source provider path for ${_ember_source}"
++.  endif
++.endfor
++.else
+ 
+ TOOLS_PLATFORM.[?=		[			# shell builtin
+ TOOLS_PLATFORM.awk?=		/usr/bin/awk
+@@ -151,3 +197,5 @@
+ NATIVE_AR:=	/usr/bin/ar
+ NATIVE_RANLIB:=	/usr/bin/ranlib
+ .endif
++.endif
++
+--- a/mk/tools/replace.mk
++++ b/mk/tools/replace.mk
+@@ -117,6 +117,57 @@
+ .  endif
+ .endif
+ MAKEVARS+=	_USE_TOOLS
++
++# USE_TOOLS may be populated after an early bsd.prefs.mk read in a package
++# Makefile. Select shared source providers here, after pkgsrc has completed
++# its real tool list, before the route guard and dependency metadata below.
++.if ${EMBERBSD_NETBSD_BOOTSTRAP:Uno} == "yes"
++.for _ember_role _ember_pattern _ember_package _ember_executable in \
++    makeinfo gtexinfo>=7.3 devel/gtexinfo makeinfo \
++    perl perl>=5.44.0 lang/perl5 perl \
++    gsed gsed>=4.10 textproc/gsed gsed \
++    pkg-config pkgconf>=3.0.7 devel/pkgconf pkg-config \
++    autoconf autoconf>=2.73 devel/autoconf autoconf \
++    autoheader autoconf>=2.73 devel/autoconf autoheader \
++    autoreconf autoconf>=2.73 devel/autoconf autoreconf \
++    autom4te autoconf>=2.73 devel/autoconf autom4te \
++    automake automake>=1.19 devel/automake automake \
++    aclocal automake>=1.19 devel/automake aclocal \
++    gm4 m4>=1.4.21 devel/m4 gm4 \
++    bison bison>=3.8.2 devel/bison bison \
++    bison-yacc bison>=3.8.2 devel/bison bison \
++    flex flex>=2.6.4 devel/flex flex \
++    lzip lzip>=1.26 archivers/lzip lzip \
++    bash bash>=5.3 shells/bash bash
++.  if !empty(_USE_TOOLS:M${_ember_role}*) && \
++      ${PKGPATH} != "${_ember_package}" && \
++      empty(EMBERBSD_NETBSD_SOURCE_TOOLS:M${_ember_role})
++.if !empty(USE_TOOLS:M${_ember_role}\:test)
++TEST_DEPENDS+= ${_ember_pattern}:../../${_ember_package}
++.elif !empty(USE_TOOLS:M${_ember_role}\:run)
++DEPENDS+= ${_ember_pattern}:../../${_ember_package}
++.else
++BOOTSTRAP_DEPENDS+= ${_ember_pattern}:../../${_ember_package}
++.endif
++EMBERBSD_NETBSD_SOURCE_TOOLS+= ${_ember_role}
++EMBERBSD_NETBSD_TOOL.${_ember_role}= ${LOCALBASE}/bin/${_ember_executable}
++TOOLS_PLATFORM.${_ember_role}:= ${LOCALBASE}/bin/${_ember_executable}
++.  endif
++.endfor
++.if !empty(_USE_TOOLS:Mbison-yacc) && \
++    !empty(EMBERBSD_NETBSD_SOURCE_TOOLS:Mbison-yacc)
++TOOLS_PLATFORM.bison-yacc:= ${LOCALBASE}/bin/bison -y
++.endif
++.endif
++
++.if ${EMBERBSD_NETBSD_BOOTSTRAP:Uno} == "yes"
++.for _ember_tool in ${_USE_TOOLS}
++.  if empty(TOOLS_PLATFORM.${_ember_tool}) && \
++      empty(EMBERBSD_NETBSD_SOURCE_TOOLS:M${_ember_tool})
++.error "Select an accepted native or shared Ports source tool ${_ember_tool}"
++.  endif
++.endfor
++.endif
+ 
+ .if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
+ .for _ember_tool in ${_USE_TOOLS}
+@@ -1477,6 +1486,14 @@
+ .  endfor
+ .endif
+ 
++.if ${EMBERBSD_NETBSD_BOOTSTRAP:Uno} == "yes"
++.  for _ember_builtin in echo false test true
++.    if defined(_TOOLS_VARNAME.${_ember_builtin}) && defined(TOOLS_CMDLINE.${_ember_builtin})
++TOOLS_${_TOOLS_VARNAME.${_ember_builtin}}= ${TOOLS_CMDLINE.${_ember_builtin}}
++.    endif
++.  endfor
++.endif
++
+ .if !empty(_tmiss_)
+ PKG_FAIL_REASON+=	"${X11BASE}: X11_TYPE=native but xbase set is not installed (missing: ${_tmiss_}).  Either set X11_TYPE to modular or install xbase."
+ .endif
+@@ -1539,3 +1556,13 @@
+ .    endfor
+ .  endfor
+ .endif
++
++# Early metadata needs native aliases before tool discovery. After discovery,
++# retain the actual provider selected for each command (including GNU sed).
++.if ${EMBERBSD_NETBSD_BOOTSTRAP:Uno} == "yes"
++.for _ember_var in AWK GREP SED
++.  if defined(TOOLS_CMDLINE_${_ember_var})
++${_ember_var}:= ${TOOLS_CMDLINE_${_ember_var}}
++.  endif
++.endfor
++.endif
+--- a/mk/unprivileged.mk
++++ b/mk/unprivileged.mk
+@@ -206,7 +206,8 @@
+ TOOLS_PLATFORM.chown=	${TRUE} chown
+ # Ownership maps become commands after the tool paths are split.
+ # Keep all command forms complete in the explicit native bootstrap.
+-.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes" || \
++    ${EMBERBSD_NETBSD_BOOTSTRAP:Uno} == "yes"
+ .  for _ember_ownership in chgrp chown
+ TOOLS_PATH.${_ember_ownership}= ${TOOLS_PLATFORM.${_ember_ownership}:[1]}
+ TOOLS_ARGS.${_ember_ownership}= ${TOOLS_PLATFORM.${_ember_ownership}:[2..-1]}
+--- a/mk/compiler/gcc.mk
++++ b/mk/compiler/gcc.mk
+@@ -390,8 +390,23 @@
+ .  endif
+ .endif
+ 
++.if ${EMBERBSD_NETBSD_BOOTSTRAP:Uno} == "yes"
++CC:= ${EMBERBSD_GCC16_SEED_CC}
++CXX:= ${EMBERBSD_GCC16_SEED_CXX}
++CPP:= ${EMBERBSD_GCC16_SEED_CPP}
++AS:= ${EMBERBSD_GCC16_AS}
++LD:= ${EMBERBSD_GCC16_LD}
++AR:= ${EMBERBSD_GCC16_AR}
++RANLIB:= ${EMBERBSD_GCC16_RANLIB}
++NM:= ${EMBERBSD_GCC16_NM}
++STRIP:= ${EMBERBSD_GCC16_STRIP}
++_CC:= ${EMBERBSD_GCC16_SEED_CC:[1]}
++.endif
++
+ _GCC_QUERY_CC= ${_CC}
+ .if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++_GCC_QUERY_CC= ${EMBERBSD_GCC16_SEED_CC}
++.elif ${EMBERBSD_NETBSD_BOOTSTRAP:Uno} == "yes"
+ _GCC_QUERY_CC= ${EMBERBSD_GCC16_SEED_CC}
+ .endif
+ 
+@@ -660,4 +660,8 @@
+ _NEED_GCC16=	yes
+ .  endif
+ .endfor
++.if ${EMBERBSD_NETBSD_BOOTSTRAP:Uno} == "yes"
++USE_PKGSRC_GCC=	no
++USE_PKGSRC_GCC_RUNTIME=	no
++.endif
+ # AUX patterns really don't work starting from gcc10-aux
+
+@@ -1296,14 +1311,17 @@
+ .endif
+ _COMPILER_STRIP_VARS+=	${_GCC_VARS}
+ 
+-.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes" || \
++    ${EMBERBSD_NETBSD_BOOTSTRAP:Uno} == "yes"
+ # exec= in cwrappers is a path, not a shell command. Add each tail once.
+ # Keep both standard wrapper implementations for their existing users.
+ .for _ember_var _ember_wrap in CC cc CXX cxx CPP cpp
+ ${_ember_var}= ${EMBERBSD_GCC16_SEED_${_ember_var}:[1]}
+ PKG_${_ember_var}= ${EMBERBSD_GCC16_SEED_${_ember_var}:[1]}
++.  if ${EMBERBSD_GCC16_SEED_${_ember_var}:[#]} > 1
+ CWRAPPERS_PREPEND.${_ember_wrap}+= ${EMBERBSD_GCC16_SEED_${_ember_var}:[2..-1]}
+ _WRAP_EXTRA_ARGS.${_ember_var}+= ${EMBERBSD_GCC16_SEED_${_ember_var}:[2..-1]}
++.  endif
+ .endfor
+ .endif
+ 
+--- a/lang/gcc16/Makefile.common
++++ b/lang/gcc16/Makefile.common
+@@ -164,8 +164,13 @@
+ .if !empty(OSX_SDK_PATH)
+ CONFIGURE_ARGS.Darwin+=	--with-sysroot=${OSX_SDK_PATH}
+ .endif
++.if ${EMBERBSD_NETBSD_BOOTSTRAP:Uno} == "yes"
++CONFIGURE_ARGS.NetBSD+=	--with-gnu-ld --with-ld=${LOCALBASE}/bin/gld
++CONFIGURE_ARGS.NetBSD+=	--with-gnu-as --with-as=${LOCALBASE}/bin/gas
++.else
+ CONFIGURE_ARGS.NetBSD+=	--with-gnu-ld --with-ld=/usr/bin/ld
+ CONFIGURE_ARGS.NetBSD+=	--with-gnu-as --with-as=/usr/bin/as
++.endif
+ MAKE_ENV.NetBSD+=	ac_cv_func_clock_gettime=yes
+ MAKE_ENV.NetBSD+=	ac_cv_func_gethostbyname_r=no
+ MAKE_ENV.NetBSD+=	ac_cv_func_freelocale=no
+@@ -176,10 +181,10 @@
+ # Darwin uses the accepted GCC16 seed and keeps stage 2/3 comparison.
+ # The explicit Darwin gate above rejects Clang before the build.
+ .if (!empty(PKGSRC_COMPILER:Mclang) && ${OPSYS} != "Darwin") \
+-    || ${OPSYS} == "DragonFly" || ${OPSYS} == "NetBSD"
+-# GCC 16.1.0's stage2/stage3 bootstrap comparison currently fails on
+-# NetBSD/x86_64, so disable it. Revisit on updates.
+-# https://gcc.gnu.org/pipermail/gcc-help/2026-August/145120.html
++    || ${OPSYS} == "DragonFly" || \
++    (${OPSYS} == "NetBSD" && ${EMBERBSD_NETBSD_BOOTSTRAP:Uno} != "yes")
++# The stock NetBSD path keeps the pkgsrc compatibility workaround. The
++# explicit first-native profile retains GCC's real stage2/stage3 comparison.
+ CONFIGURE_ARGS+=	--disable-bootstrap
+ .endif
+ 

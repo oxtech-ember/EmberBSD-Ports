@@ -1,5 +1,10 @@
 # Common development toolchain (candidate)
 
+- [NetBSD first-native bootstrap](netbsd-bootstrap.md): an SDK-bound,
+  serial NetBSD 11 amd64 profile selects source-built binutils and the initial
+  ordinary tool foundation. Metadata and real make-policy checks do not
+  qualify seed-runtime ELF closure or a completed GCC build.
+
 The [GNU sed multibyte repair](gsed.md) clears opaque conversion states in
 four production paths. It fixes sed state handling with GCC15+ on NetBSD without
 forcing C locale behavior or weakening patch checksums. Native GCC16 runtime
