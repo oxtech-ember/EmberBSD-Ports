@@ -104,7 +104,11 @@ this path. Keep the selected target LLVM runtime for llvmpipe and ORC.
 
 ```sh
 BMAKE=/absolute/native/bmake ruby ../tests/mesa-generator-profiles.rb
-BMAKE=/absolute/native/bmake ruby ../tests/amd64-targets.rb
+BMAKE=/absolute/native/bmake python3 ../tests/amd64-targets.py
+BMAKE=/absolute/native/bmake python3 ../tests/amd64-targets.py \
+    --distfiles /absolute/verified/distfiles
+python3 ../tests/amd64-targets.py --skip-bmake \
+    --distfiles /absolute/verified/distfiles
 ruby ../tests/iris-clc-configure.rb /absolute/native/python3.15 \
     /absolute/meson-1.12.1/meson.py /absolute/mesa-26.2.5
 ```

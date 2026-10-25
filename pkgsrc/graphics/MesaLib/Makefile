@@ -2,13 +2,13 @@
 # Origin: EmberBSD; AI-assisted bounded NetBSD 11/AArch64 and amd64 candidate.
 DISTNAME=	mesa-26.2.5
 PKGNAME=	${DISTNAME:S/mesa/MesaLib/}
-PKGREVISION=	3
+PKGREVISION=	4
 CATEGORIES=	graphics
 MASTER_SITES=	https://archive.mesa3d.org/
 EXTRACT_SUFX=	.tar.xz
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://www.mesa3d.org/
-COMMENT=	OpenGL and Vulkan with V3D, PowerVR, VirGL, Zink and software rendering
+COMMENT=	OpenGL and Vulkan with RadeonSI, V3D, PowerVR, VirGL, Zink and software rendering
 LICENSE=	mit
 CONFLICTS+=	libglapi-[0-9]* libglvnd-[0-9]*
 ONLY_FOR_PLATFORM=	NetBSD-11.*-aarch64 NetBSD-11.*-x86_64
@@ -32,8 +32,8 @@ TOOLS_PLATFORM.flex=	${TOOLBASE}/bin/flex
 .if !defined(EMBERBSD_COMMON_GRAPHICS)
 PKG_FAIL_REASON+= "Mesa requires the prepared common graphics profile"
 .endif
-.if ${DISTNAME} != "mesa-26.2.5" || ${PKGREVISION} != "3"
-PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.5nb3"
+.if ${DISTNAME} != "mesa-26.2.5" || ${PKGREVISION} != "4"
+PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.5nb4"
 .endif
 TOOL_DEPENDS+=	${PYPKGPREFIX}-mako>=1.4.3:../../devel/py-mako
 TOOL_DEPENDS+=	${PYPKGPREFIX}-packaging-[0-9]*:../../devel/py-packaging
@@ -44,14 +44,15 @@ SUBST_FILES.python=	meson.build
 SUBST_SED.python=	-e 's|@PYTHONBIN@|${TOOL_PYTHONBIN}|g'
 # Zink loads the common Vulkan loader at runtime. An ICD stays optional.
 DEPENDS+=	vulkan-loader>=1.4.357.0:../../graphics/vulkan-loader
-PLIST_VARS+= intel v3d powervr
+PLIST_VARS+= intel v3d powervr radeonsi
 .if ${MACHINE_ARCH} == "x86_64"
-MESON_ARGS+=	-Dgallium-drivers=iris,virgl,softpipe,llvmpipe,zink
+MESON_ARGS+=	-Dgallium-drivers=iris,radeonsi,virgl,softpipe,llvmpipe,zink
 MESON_ARGS+=	-Dvulkan-drivers=
 PLIST.intel=	yes
+PLIST.radeonsi=	yes
 _EMBERBSD_MESA_GENERATOR_PROFILES+= intel
 _EMBERBSD_MESA_LLVM_TRIPLE=	x86_64-unknown-netbsd
-BUILDLINK_API_DEPENDS.libdrm+=	libdrm>=2.4.134nb3
+BUILDLINK_API_DEPENDS.libdrm+=	libdrm>=2.4.134nb5
 .else
 MESON_ARGS+=	-Dgallium-drivers=v3d,virgl,softpipe,llvmpipe,zink
 # One AArch64 package serves all boards. It contains the PowerVR and V3D ICDs.

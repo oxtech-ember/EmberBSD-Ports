@@ -65,6 +65,7 @@ lib/dri/sun4i-drm_dri.so
 lib/dri/swrast_dri.so
 lib/dri/udl_dri.so
 ${PLIST.intel}lib/dri/iris_dri.so
+${PLIST.radeonsi}lib/dri/radeonsi_dri.so
 ${PLIST.v3d}lib/dri/v3d_dri.so
 lib/dri/virtio_gpu_dri.so
 lib/dri/vkms_dri.so
