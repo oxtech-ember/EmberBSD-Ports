@@ -1,0 +1,156 @@
+From 171d7b4ad9cf6d880db6340df4e239157725afd9 Mon Sep 17 00:00:00 2001
+From: drixter <drixter@pkgsrc.org>
+Date: Thu, 24 Sep 2026 16:28:58 +0000
+Subject: [PATCH] gzip: Update to 1.15
+
+* Noteworthy changes in release 1.15 (2026-09-20) [stable]
+
+** Bug fixes
+
+gzip no longer can mistakenly remove the wrong file if some other
+process simultaneously renames a gzip destination's ancestor.
+[bug present since the beginning]
+
+gzip -d no longer rejects PKZIP signatures, local header, and data
+descriptors.  These can appear in well-formed streamed zip files.
+[bug present since the beginning]
+
+gzip diagnostics now quote file names containing unusual characters.
+[bug present since the beginning]
+
+A use of uninitialized memory on some malformed inputs has been fixed.
+[bug present since the beginning]
+
+A buffer overflow has been fixed when decompressing an .lzh file
+after decompressing a .Z file.
+[bug present since the beginning]
+
+When decompressing an .lzh file, the output is no longer corrupted
+when an internal bit buffer is not properly cleared.
+[bug present since the beginning]
+
+When decompressing an .lzh file after another .lzh file, the output is
+no longer corrupted by the previous file's decoding table.
+[bug present since the beginning]
+
+gzip --synchronous no longer fails to synchronize unreadable parent
+directories on platforms like GNU/Linux that have O_PATH, or to
+synchronize any parent directories on platforms like FreeBSD that
+have O_SEARCH but not O_PATH.
+[bug introduced in gzip-1.7]
+
+On old-fashioned or limited platforms lacking mktemp, gzexe, zdiff
+and znew no longer have a race when creating a temporary file.
+[bug present since the beginning]
+
+** Changes in behavior
+
+gzip no longer insists on the "C" locale; instead, it follows the
+typical practice of using the locale specified by the environment.
+This change, which is needed for file name quoting, can affect the
+format of floating-point numbers output by gzip's -l and -v options.
+Diagnostics are still in English, though.
+
+gzip -l now reports "-Inf%" instead of "0.0%" for the infinite
+compression ratio of an empty file.
+
+znew's -P option is now ignored, with a warning.  It was present
+only to improve performance, and its implementation had too many
+bugs to be worth supporting.
+
+** Platforms no longer supported
+
+The following platforms (or earlier) are no longer supported because
+their old multibyte libraries do not work well enough: FreeBSD 4.11
+(2005), HP-UX 11.00 (1997), Minix 3.1.8 (2010), MS-Windows 8.1
+(2013) via mingw without UCRT.
+---
+ archivers/gzip/Makefile                    |  5 ++---
+ archivers/gzip/distinfo                    | 10 ++++------
+ archivers/gzip/patches/patch-lib_utimens.h | 19 -------------------
+ archivers/gzip/patches/patch-unlzh.c       | 20 --------------------
+ 4 files changed, 6 insertions(+), 48 deletions(-)
+ delete mode 100644 archivers/gzip/patches/patch-lib_utimens.h
+ delete mode 100644 archivers/gzip/patches/patch-unlzh.c
+
+diff --git a/archivers/gzip/Makefile b/archivers/gzip/Makefile
+index e70bf421c6e8f..f67376cc709db 100644
+--- a/archivers/gzip/Makefile
++++ b/archivers/gzip/Makefile
+@@ -1,7 +1,6 @@
+-# $NetBSD: Makefile,v 1.41 2026/08/24 18:35:28 drixter Exp $
++# $NetBSD: Makefile,v 1.42 2026/09/24 16:28:58 drixter Exp $
+ 
+-DISTNAME=	gzip-1.14
+-PKGREVISION=	1
++DISTNAME=	gzip-1.15
+ CATEGORIES=	archivers
+ # does not provide uncompressed tarball, needed due to bootstrapping
+ #MASTER_SITES=	${MASTER_SITE_GNU:=gzip/}
+diff --git a/archivers/gzip/distinfo b/archivers/gzip/distinfo
+index 71ef1d1cc3085..6b5bf476bc5d9 100644
+--- a/archivers/gzip/distinfo
++++ b/archivers/gzip/distinfo
+@@ -1,7 +1,5 @@
+-$NetBSD: distinfo,v 1.14 2026/08/23 18:46:55 wiz Exp $
++$NetBSD: distinfo,v 1.15 2026/09/24 16:28:58 drixter Exp $
+ 
+-BLAKE2s (gzip-1.14.tar) = 85d37d51b9935221ed7121beec44ea6be4ec6b658e11e714c60fe634969514b5
+-SHA512 (gzip-1.14.tar) = a2a18dd06695bfcdfc8a2c229f6a4880a1f1287f98bc381aefd07951f9e8d15ce7608b0e4acaa9748431e1fb12710f4ba8bb719c83fcd8d6e449607bb3c04d6d
+-Size (gzip-1.14.tar) = 6594560 bytes
+-SHA1 (patch-lib_utimens.h) = fba5ec8e9fcb87642247a68ee6a4568a00d4f413
+-SHA1 (patch-unlzh.c) = f9c44260e71e60e439045219500c499cbfbc43b5
++BLAKE2s (gzip-1.15.tar) = 34ee8ab2c669b4d47bd125ee411b0d160fc25ccf5460cf0100a3ad3a2248bc90
++SHA512 (gzip-1.15.tar) = 5f87b39f9bb10637b373e72be94005fb8ea525896e71f24c95d2bceef5c6fc5fc233d8cf36cd1c0662eeef4f843a2ebd969c22c72f1487baa8086326347d0feb
++Size (gzip-1.15.tar) = 5396480 bytes
+diff --git a/archivers/gzip/patches/patch-lib_utimens.h b/archivers/gzip/patches/patch-lib_utimens.h
+deleted file mode 100644
+index b64515ec031bf..0000000000000
+--- a/archivers/gzip/patches/patch-lib_utimens.h
++++ /dev/null
+@@ -1,19 +0,0 @@
+-$NetBSD: patch-lib_utimens.h,v 1.1 2026/08/23 18:46:55 wiz Exp $
+-
+-* lib/utimens.h [HAVE_UTIMENS || HAVE_LUTIMENS]: Include <sys/stat.h>
+-instead of <sys/time.h> for the declarations of these functions on
+-NetBSD.
+-
+-https://debbugs.gnu.org/cgi/bugreport.cgi?bug=81231
+-
+---- lib/utimens.h.orig	2026-06-14 18:08:28.940590875 +0000
+-+++ lib/utimens.h
+-@@ -25,7 +25,7 @@
+- #include <time.h>
+- 
+- #if HAVE_UTIMENS || HAVE_LUTIMENS
+--# include <sys/time.h>
+-+# include <sys/stat.h>
+- #endif
+- 
+- #ifdef __cplusplus
+diff --git a/archivers/gzip/patches/patch-unlzh.c b/archivers/gzip/patches/patch-unlzh.c
+deleted file mode 100644
+index bf61575ff55a9..0000000000000
+--- a/archivers/gzip/patches/patch-unlzh.c
++++ /dev/null
+@@ -1,20 +0,0 @@
+-$NetBSD: patch-unlzh.c,v 1.1 2026/08/23 18:46:55 wiz Exp $
+-
+-CVE-2026-41992 gzip 1.14 out-of-bounds memory buffer access
+-https://www.openwall.com/lists/oss-security/2026/08/23/1
+-
+---- unlzh.c.orig	2024-08-09 22:06:03.000000000 +0000
+-+++ unlzh.c
+-@@ -307,6 +307,12 @@ huf_decode_start ()
+- static void
+- huf_decode_start ()
+- {
+-+    /* Needed in case LEFT and RIGHT are reused from a previous
+-+       LZW decompression.  It may be overkill to clear all of both
+-+       arrays, but nobody has had time to analyze this carefully.  */
+-+    memzero (left, (2 * NC - 1) * sizeof *left);
+-+    memzero (right, (2 * NC - 1) * sizeof *right);
+-+
+-     init_getbits();  blocksize = 0;
+- }
+- 
