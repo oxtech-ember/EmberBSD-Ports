@@ -26,6 +26,7 @@ MAX_MEMBER_BYTES = 128 * 1024 * 1024
 MAX_TOOL_OUTPUT = 8 * 1024 * 1024
 NPM_NAME = re.compile(r'^(?:@[a-z0-9._~-]+/)?[a-z0-9._~-]+$')
 VERSION = re.compile(r'^[0-9]+\.[0-9]+\.[0-9]+$')
+HOST_NODE_VERSION = '24.22.1'
 SOURCE_ARCHIVE_SHA256 = 'b241d6b135b0fab5839f5dea6f64fafbdefa4f213b46ffa4a2f78820cb880971'
 
 
@@ -414,6 +415,11 @@ def next_patch(version):
     return f'{major}.{minor}.{patch + 1}'
 
 
+def validate_host_node_version(output):
+    require(output.decode('ascii').strip() == 'v' + HOST_NODE_VERSION,
+            f'Blanc package tools require the selected host Node.js {HOST_NODE_VERSION}')
+
+
 def validate_runtime_dependency(version, package_path, dependency):
     expected_path = posixpath.normpath(posixpath.join('www/blanc', package_path))
     require(expected_path == 'devel/electron44',
@@ -730,8 +736,7 @@ def main():
     require(os.access(node, os.X_OK), 'selected host Node.js is not executable')
     env = child_environment(node, work)
     node_version = run_host_tool(stream, [str(node), '--version'], cwd=work, env=env, timeout=30)
-    require(node_version.decode('ascii').strip() == 'v24.22.0',
-            'Blanc package tools require the selected host Node.js 24.22.0')
+    validate_host_node_version(node_version)
     manifest_path = Path(__file__).parent / 'npm-mirror-manifest.json'
     source_manifest = check_source_files(
         jsonio, inventory, source_root, source_list_path,
@@ -794,7 +799,7 @@ def main():
     node_sha = digest_file(inventory, node, 'sha256')
     python_sha = digest_file(inventory, Path(sys.executable).resolve(strict=True), 'sha256')
     bom = make_sbom(source_manifest, lock, selected, roles, edges, rows, package_metadata,
-                    asar_path, '24.22.0', args.electron_version, args.electron_package_path,
+                    asar_path, HOST_NODE_VERSION, args.electron_version, args.electron_package_path,
                     args.electron_depends, packages['node_modules/@electron/asar']['version'], node_sha,
                     platform.python_version(), python_sha)
     sbom_path.write_bytes(jsonio.json_bytes(bom))

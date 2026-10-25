@@ -5,7 +5,7 @@ Status: local build-host selection; not submitted upstream.
 Apply after gn-host-node-inputs.patch and the pinned NetBSD source patches.
 Restore the production version check removed by pkgsrc
 www/chromium/patches/patch-third__party_node_check__version.py.
-Keep the upstream default. The explicit common provider must be Node24.22.0.
+Keep the upstream default. The explicit common provider must be Node24.22.1.
 
 --- a/third_party/node/BUILD.gn
 +++ b/third_party/node/BUILD.gn
@@ -43,7 +43,7 @@ Keep the upstream default. The explicit common provider must be Node24.22.0.
 +# Use of this source code is governed by a BSD-style license that can be
 +# found in the LICENSE file.
 +# The explicit common Node24 provider. Keep the production exact version check.
-+NODE_VERSION="v24.22.0"
++NODE_VERSION="v24.22.1"
 --- a/third_party/node/node.gni
 +++ b/third_party/node/node.gni
 @@ -4,6 +4,15 @@

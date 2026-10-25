@@ -58,7 +58,7 @@ not match Electron's pinned revision.
 - The Blanc application recipe creates an ASAR from an explicit source
   allowlist and 32 lockfile-pinned runtime packages. Eight separate packages
   provide the upstream ASAR build tool. The host controller uses CPython 3.15
-  and SDK API 1. Host Node.js 24.22.0 runs required upstream JavaScript tools.
+  and SDK API 1. Host Node.js 24.22.1 runs required upstream JavaScript tools.
   This application archive does not contain an Electron executable.
 - The Blanc source patches select an explicit NetBSD capture descriptor. It
   uses the existing generic Electron/DOM/WebRTC broker, preload and helper.
@@ -91,7 +91,7 @@ cp -RL probes/electron/electron44 /absolute/NEW_PKGSRC/devel/electron44
 When the recipes are complete, move them to `pkgsrc/www/blanc` and
 `pkgsrc/devel/electron44`. Then the normal export includes them. Select the common GCC16 cross
 configuration for the target runtime. Set `EMBERBSD_HOST_NODE` to the absolute
-host Node.js 24.22.0 executable. Set `EMBERBSD_CROSS_BUILD_PYTHON` to the
+host Node.js 24.22.1 executable. Set `EMBERBSD_CROSS_BUILD_PYTHON` to the
 selected host CPython 3.15 executable. Set `EMBERBSD_SDK_SOURCE` to an absolute
 SDK API 1 source directory. The controller checks the SDK API and module origin.
 
@@ -356,7 +356,7 @@ Node executable in both generic and TypeScript runtime inputs.
 
 The patch restores the production exact version check removed by pkgsrc's
 `www/chromium/patches/patch-third__party_node_check__version.py` (revision1.23).
-An explicit selection uses the source-owned common Node24.22.0 version input.
+An explicit selection uses the source-owned common Node24.22.1 version input.
 The unchanged JavaScript equality check runs before its success marker is written.
 The unset selector keeps the upstream executable and Node24.12.0 version input.
 This path check does not qualify a provider. Native SDK and JavaScript action

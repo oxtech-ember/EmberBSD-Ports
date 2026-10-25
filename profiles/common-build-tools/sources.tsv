@@ -44,4 +44,4 @@ bmake-20240909.tar.gz	d4e019e26c64cc8ffcf1cae9bb04fbb13da8fa6f41fb30fd26e221f655
 bmake-20260912.tar.gz	b6bd32964cbe451be2838822c9d200b7c7e76a2a5947c03feb71dc6bd72988bd	https://www.crufty.net/ftp/pub/sjg/bmake-20260912.tar.gz
 pkgsrc-bmake-20260912.patch	fe90dcf2d7ffcbc5f70774a87646bd99b79b34ff90d427e0e9a27f501e4e8fd8	https://github.com/oxtech-ember/EmberBSD-Ports/blob/main/profiles/common-build-tools/patches/pkgsrc-bmake-20260912.patch
 nawk-20260426.tar.gz	7ae5b9fc6a8149bc45ea0ba3ba434a69a16d1460d19f6d01b6f04cc885b8e02b	https://codeload.github.com/onetrueawk/awk/tar.gz/refs/tags/20260426
-node-v24.22.0.tar.xz	41f97cff2c666f1f8293dc5f85c65e8dd605c16b43fd9febd49ede32ee1e0329	https://nodejs.org/dist/v24.22.0/node-v24.22.0.tar.xz
+node-v24.22.1.tar.xz	4f5379796280cdaeb0c2f358fd04b6a16cc4fb7dfa83b5a8c91a9d963b435231	https://nodejs.org/dist/v24.22.1/node-v24.22.1.tar.xz

@@ -91,7 +91,7 @@ class QualifiedNodeTests(unittest.TestCase):
         with self.env(str(self.executable)), patch.object(self.node, 'RunNode') as run:
             self.check.main(self.arguments(output))
         expected = SOURCE / 'third_party/node/emberbsd_host_node_version'
-        self.assertRegex(expected.read_text(), r'(?m)^NODE_VERSION="v24\.22\.0"$')
+        self.assertRegex(expected.read_text(), r'(?m)^NODE_VERSION="v24\.22\.1"$')
         run.assert_called_once_with([str(SOURCE / 'third_party/node/check_version.js'),
                                      '--expected_version_file', str(expected)])
         self.assertEqual(output.read_text(), 'OK')
