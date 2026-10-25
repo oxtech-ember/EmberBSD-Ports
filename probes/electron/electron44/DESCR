@@ -1,5 +1,6 @@
-Electron 44.5.1 runtime for NetBSD/aarch64, built from the Chromium
-152.0.7977.82 official source tree with the Electron patch series.
+Electron 44.9.3 source probe for EmberBSD with the NetBSD ABI.
+Electron DEPS pins Chromium 152.0.7977.167 and embedded Node.js 24.22.0.
 
-Probe status: fetch wiring only; the cross build is not implemented yet.
-Basis for the Blanc browser package (E12).
+The complete source build and ordinary runtime package are not implemented.
+The runtime staging helper does not qualify a build or replace the GN/Ninja
+build. This is the runtime source candidate for the Blanc browser package.

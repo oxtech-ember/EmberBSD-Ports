@@ -69,6 +69,14 @@ not match Electron's pinned revision.
   startup or NetBSD media capture. Changes to these generic files require
   impact review for Windows and NetBSD.
 
+## Electron runtime packaging
+
+The [runtime staging contract](electron44/runtime-packaging.md) describes the
+existing SDK build entrypoints, the remaining ordinary recipe bindings, and the
+bounded ZIP staging helper. The helper does not accept a source build or an
+external binary distribution. Keep this recipe in the probe until its own
+GN/Ninja build and package lifecycle are checked.
+
 ## Blanc application package
 
 `scripts/prepare-pkgsrc.py` does not export this probe. Copy the two recipes
