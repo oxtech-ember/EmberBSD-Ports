@@ -19,7 +19,8 @@ from pathlib import Path
 
 KINDS = ('BOOTSTRAP_DEPENDS', 'TOOL_DEPENDS', 'BUILD_DEPENDS', 'DEPENDS')
 VARS = (*KINDS, 'TEST_DEPENDS', 'MAKE', '_MAKE', 'SHELL', 'SH', 'CONFIG_SHELL', 'TOOLS_SHELL',
-        'PKGNAME',
+        'PKGNAME', 'PATH', 'EMBERBSD_NETBSD_UTILITY_BIN',
+        'WRAPPER_BINDIR', 'BUILDLINK_DIR', 'TOOLS_DIR', '_GCC_DIR',
         'CC', 'CXX', 'CPP', 'PKG_CC', 'PKG_CXX', 'PKG_CPP',
         'CWRAPPERS_PREPEND.cc', 'CWRAPPERS_PREPEND.cxx', 'CWRAPPERS_PREPEND.cpp',
         'AS', 'LD', 'AR', 'RANLIB', 'NM', 'STRIP', '_CC', 'GCCBASE',
@@ -277,6 +278,15 @@ def check(export, source_tree, bmake, makeconf, bootstrap_mk, work,
     actual_shell = shell_probe(bmake, bootstrap_mk, export, makeconf, work)
     require(values['_EMBERBSD_NETBSD_BOOTSTRAP_POLICY'] == '1',
             'the loaded MAKECONF did not set the NetBSD policy marker')
+    # pkgsrc prepends generated wrappers from its owned recipe work tree.
+    wrappers = [values['WRAPPER_BINDIR'],
+                *[values[name] + '/bin' for name in ('BUILDLINK_DIR', 'TOOLS_DIR', '_GCC_DIR')]]
+    require(all(Path(path).is_relative_to(work) for path in wrappers),
+            'generated tool wrappers escape the isolated test work tree')
+    allowed_path = {values['EMBERBSD_NETBSD_UTILITY_BIN'], values['LOCALBASE'] + '/bin', *wrappers}
+    require(set(values['PATH'].split(os.pathsep)) <= allowed_path,
+            'recipe PATH exposes executables outside the accepted utility directory '
+            'and current source output: ' + values['PATH'])
     rebound = repeated_profile_probe(bmake, bootstrap_mk, export, makeconf, work)
     require(rebound['MAKE'] == rebound['_MAKE'] == rebound['LOCALBASE'] + '/bin/bmake' and
             rebound['SHELL'] == rebound['EMBERBSD_NETBSD_SH'] == rebound['LOCALBASE'] + '/bin/mksh' and

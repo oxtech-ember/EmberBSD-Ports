@@ -11,7 +11,10 @@ paths, then writes MAKECONF with the exported
 before host/tool discovery. The profile fixes pkgsrc's host architecture to
 `x86_64`, routes make, the actual bmake recipe shell, compilers, binutils and
 parse-time utilities through the accepted input tuple, and rejects cross mode
-and jobs greater than one. The bootstrap-mk-files seed installs the shell
+and jobs greater than one. The base PATH contains the accepted utility directory
+and the current source output's bin directory. pkgsrc prepends its generated
+recipe wrappers. Absolute seed commands do not expose other input programs.
+The bootstrap-mk-files seed installs the shell
 builtin dispatcher used by later package recipes. The GCC16 package receives
 source dependencies on binutils, bmake, gmake, mksh and Python 3.15. The
 profile also selects the source-built makeinfo and compression tools, plus
