@@ -19,7 +19,7 @@ other recipe depends on devel/bmake, runs ${LOCALBASE}/bin/bmake, gives each
 shell consumer ${LOCALBASE}/bin/mksh and runs the builtins through the
 installed helper. These recipes, except archivers/gzip itself, also depend on
 archivers/gzip and run gzip, gunzip and gzcat from ${LOCALBASE}. The seed
-recipes and archivers/gzip keep the native gzip. No value of a later recipe
+recipes and archivers/gzip require no initial gzip provider. No value of a later recipe
 names the exported pkgsrc tree, so no installed file can name it.
 """
 import argparse
@@ -41,7 +41,8 @@ GZIP_PROVIDER = 'archivers/gzip'
 GZIP_TOOLS = {'gzip': 'bin/gzip', 'gunzip': 'bin/gunzip', 'gzcat': 'bin/zcat'}
 GZIP_NAMES = tuple(f'{kind}.{tool}' for kind in ('EMBERBSD_DARWIN_TOOL', 'TOOLS_PLATFORM')
                    for tool in GZIP_TOOLS)
-NAMES += SHELLS + BUILTINS + ('EMBERBSD_DARWIN_BUILTIN_HELPER', 'USE_TOOLS') + GZIP_NAMES
+NAMES += SHELLS + BUILTINS + ('EMBERBSD_DARWIN_BUILTIN_HELPER', 'USE_TOOLS',
+    'EMBERBSD_DARWIN_NATIVE_TOOLS', 'EMBERBSD_DARWIN_SOURCE_TOOLS', 'DISTFILES', 'PATCHFILES') + GZIP_NAMES
 ROOT = 'devel/bmake'
 SHELL_PROVIDER = 'shells/mksh'
 HELPER_PROVIDER = 'pkgtools/bootstrap-mk-files'
@@ -74,6 +75,21 @@ def gzip_edges(value):
 def gzip_route(value):
     """Return the program of each gzip tool role, without its arguments."""
     return {tool: (shlex.split(value['TOOLS_PLATFORM.' + tool]) or [''])[0] for tool in GZIP_TOOLS}
+
+
+def initial_gzip_routes(value):
+    """Require an explicit native or source role. Never invent a native path."""
+    native = set(value["EMBERBSD_DARWIN_NATIVE_TOOLS"].split())
+    source = set(value["EMBERBSD_DARWIN_SOURCE_TOOLS"].split())
+    routes = gzip_route(value)
+    for tool in GZIP_TOOLS:
+        require((tool in native) != (tool in source), f"{tool}: choose exactly one provider kind")
+        selected = value["EMBERBSD_DARWIN_TOOL." + tool]
+        if tool in native:
+            require(selected.startswith("/") and routes[tool] == selected, f"{tool}: native route differs")
+        else:
+            require(selected == routes[tool] == "", f"{tool}: future tool appeared before handoff")
+    return routes
 
 
 def evaluate(exported, bmake, makeconf, recipe):
@@ -145,8 +161,7 @@ def phase_fixture(argv):
     initial_shell = first['EMBERBSD_DARWIN_SH']
     initial_gmake = shlex.split(first['EMBERBSD_DARWIN_GMAKE'])
     initial_helper = str(args.tools_darwin.with_name('emberbsd-darwin-builtin.sh'))
-    native_gzip = {tool: first['EMBERBSD_DARWIN_TOOL.' + tool] for tool in GZIP_TOOLS}
-    require(all(path.startswith('/') for path in native_gzip.values()), 'Use a MAKECONF that maps the native gzip tools')
+    initial_gzip = initial_gzip_routes(first)
     require(GZIP_PROVIDER not in seeds, f'{GZIP_PROVIDER} is built with the initial make')
     for recipe in sorted(set(seeds) | set(LATER) | {GZIP_PROVIDER}):
         modes = {mode: query(recipe, mode) for mode in ('yes', 'no', 'default')}
@@ -166,7 +181,7 @@ def phase_fixture(argv):
             require(len(words) == (0 if recipe in seeds else 1), f'{recipe}/{mode}: bmake edge changed')
             later = recipe not in seeds and recipe != GZIP_PROVIDER
             require(len(gzip_edges(value)) == (1 if later else 0), f'{recipe}/{mode}: gzip edge changed')
-            route = {tool: str(prefix / path) for tool, path in GZIP_TOOLS.items()} if later and handoff else native_gzip
+            route = {tool: str(prefix / path) for tool, path in GZIP_TOOLS.items()} if later and handoff else initial_gzip
             require(gzip_route(value) == route, f'{recipe}/{mode}: gzip route {gzip_route(value)}')
             require(not later or set(GZIP_TOOLS) <= set(value['USE_TOOLS'].split()), f'{recipe}/{mode}: bare gzip tools are not shadowed')
     require(not os.path.lexists(prefix), 'The data fixture created or executed a future provider')
@@ -202,8 +217,7 @@ def main():
     closure |= gzip_deps
     plist = (exported / GZIP_PROVIDER / 'PLIST').read_text().splitlines()
     require(set(GZIP_TOOLS.values()) <= set(plist), f'{GZIP_PROVIDER} does not install {sorted(GZIP_TOOLS.values())}')
-    native_gzip = {tool: values['EMBERBSD_DARWIN_TOOL.' + tool] for tool in GZIP_TOOLS}
-    require(all(path.startswith('/') for path in native_gzip.values()), 'Use a MAKECONF that maps the native gzip tools')
+    initial_gzip = initial_gzip_routes(values)
     require(SHELL_PROVIDER in closure, f'{SHELL_PROVIDER} is not in the {ROOT} closure')
     require(HELPER_PROVIDER in closure, f'{HELPER_PROVIDER} is not in the {ROOT} closure')
     plist = (exported / HELPER_PROVIDER / 'PLIST').read_text().splitlines()
@@ -212,6 +226,10 @@ def main():
     seed_helper = exported / 'mk/tools/emberbsd-darwin-builtin.sh'
     for recipe in sorted(closure):
         value, edges = facts[recipe]
+        compressed = [name for name in shlex.split(value['DISTFILES'] + ' ' + value['PATCHFILES'])
+                      if name.endswith(('.gz', '.tgz', '.taz'))]
+        require(not compressed or initial_gzip['gzcat'],
+                f'{recipe}: compressed input precedes its gzip provider: {compressed}')
         require(value['MAKE'] == value['_MAKE'] == value['EMBERBSD_DARWIN_MAKE'],
                 f'{recipe} does not use the initial make: {value["MAKE"]}')
         require(recipe == ROOT or ROOT not in edges, f'{recipe} depends on the make it seeds')
@@ -224,7 +242,7 @@ def main():
                 f'{recipe} uses the builtin helper {helper}')
         require(not builtins(value, seed_shell, helper),
                 f'{recipe} runs builtins {builtins(value, seed_shell, helper)}')
-        require(GZIP_PROVIDER not in edges and gzip_route(value) == native_gzip,
+        require(GZIP_PROVIDER not in edges and gzip_route(value) == initial_gzip,
                 f'{recipe} uses gzip {gzip_route(value)} with edges {sorted(edges)}')
     final = values['LOCALBASE'] + '/bin/bmake'
     final_shell = values['LOCALBASE'] + '/bin/mksh'
@@ -232,11 +250,14 @@ def main():
     require(final != values['EMBERBSD_DARWIN_MAKE'], 'the initial make is in the final prefix')
     require(final_shell != seed_shell, 'the initial shell is in the final prefix')
     final_gzip = {tool: values['LOCALBASE'] + '/' + path for tool, path in GZIP_TOOLS.items()}
-    require(not set(final_gzip.values()) & set(native_gzip.values()), 'the native gzip is in the final prefix')
+    require(not set(final_gzip.values()) & set(initial_gzip.values()), 'the native gzip is in the final prefix')
     value = facts[GZIP_PROVIDER][0]
+    compressed = [name for name in shlex.split(value['DISTFILES'] + ' ' + value['PATCHFILES'])
+                  if name.endswith(('.gz', '.tgz', '.taz'))]
+    require(not compressed or initial_gzip['gzcat'], 'gzip cannot decompress its own source')
     require(value['MAKE'] == value['_MAKE'] == final and {value[name] for name in SHELLS} == {final_shell},
             f'{GZIP_PROVIDER} is not built with {final} and {final_shell}: {value["MAKE"]} {value["SHELL"]}')
-    require(not gzip_edges(value) and gzip_route(value) == native_gzip,
+    require(not gzip_edges(value) and gzip_route(value) == initial_gzip,
             f'{GZIP_PROVIDER} uses gzip {gzip_route(value)} with {gzip_edges(value)}')
     for recipe in LATER:
         value, edges = evaluate(exported, bmake, makeconf, recipe)

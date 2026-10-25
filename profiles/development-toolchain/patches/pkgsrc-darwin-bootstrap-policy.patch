@@ -64,7 +64,7 @@ Keep ordinary Darwin defaults. Use the standard compiler wrappers.
 +esac
 --- a/mk/tools/tools.Darwin.mk
 +++ b/mk/tools/tools.Darwin.mk
-@@ -2,6 +2,32 @@
+@@ -2,6 +2,38 @@
  #
  # System-supplied tools for the Darwin (Mac OS X) operating system.
  
@@ -76,6 +76,12 @@ Keep ordinary Darwin defaults. Use the standard compiler wrappers.
 +_EMBERBSD_DARWIN_TOOL_ARGS.mkdir= -p
 +.for _ember_tool in ${EMBERBSD_DARWIN_NATIVE_TOOLS}
 +TOOLS_PLATFORM.${_ember_tool}= ${EMBERBSD_DARWIN_TOOL.${_ember_tool}}${_EMBERBSD_DARWIN_TOOL_ARGS.${_ember_tool}:D ${_EMBERBSD_DARWIN_TOOL_ARGS.${_ember_tool}}}
++.endfor
++# Only the profile gives these declared source tools final paths.
++.for _ember_tool in ${EMBERBSD_DARWIN_SOURCE_TOOLS:Mgzip} ${EMBERBSD_DARWIN_SOURCE_TOOLS:Mgunzip} ${EMBERBSD_DARWIN_SOURCE_TOOLS:Mgzcat}
++.  if defined(EMBERBSD_DARWIN_TOOL.${_ember_tool})
++TOOLS_PLATFORM.${_ember_tool}= ${EMBERBSD_DARWIN_TOOL.${_ember_tool}}${_EMBERBSD_DARWIN_TOOL_ARGS.${_ember_tool}:D ${_EMBERBSD_DARWIN_TOOL_ARGS.${_ember_tool}}}
++.  endif
 +.endfor
 +# printf is not a builtin in every POSIX shell; it needs a native path.
 +# The helper runs each builtin in the selected shell. The command has no
