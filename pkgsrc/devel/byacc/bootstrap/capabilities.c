@@ -33,15 +33,19 @@ main(void)
     char *args[] = {"capability", "-a", NULL};
     int unused __attribute__((unused));
     int fd, result = 0;
+    struct stat info;
 
     if (getopt(2, args, "a") != 'a' || optind != 2 ||
         format(out, sizeof(out), "%s:%d", "v", 7) != 3 ||
-        strcmp(out, "v:7") != 0)
+        strcmp(out, "v:7") != 0 ||
+        format(out, 3, "%s:%d", "v", 7) != 3 ||
+        strcmp(out, "v:") != 0)
         stop();
     fd = mkstemp(name);
     if (fd < 0)
         return 1;
-    if (write(fd, "x", 1) != 1)
+    if (fstat(fd, &info) != 0 || !S_ISREG(info.st_mode) ||
+        (info.st_mode & 0777) != 0600 || write(fd, "x", 1) != 1)
         result = 1;
     if (close(fd) != 0 || unlink(name) != 0)
         result = 1;
