@@ -1,10 +1,12 @@
 # Origin: EmberBSD contributors (AI-assisted).
-DISTNAME= picojson-111c9be5188f7350c2eac9ddaedd8cca3d7bf394
-PKGNAME= picojson-1.3.0.20210117
+DISTNAME= picojson-1.3.0.20210117
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=kazuho/}
 GITHUB_PROJECT= picojson
 GITHUB_TAG= 111c9be5188f7350c2eac9ddaedd8cca3d7bf394
+# github.mk appends a commit tag to the distfile name; the archive directory
+# is named after the commit.
+WRKSRC= ${WRKDIR}/picojson-${GITHUB_TAG}
 
 MAINTAINER= pkgsrc-users@NetBSD.org
 HOMEPAGE= https://github.com/kazuho/picojson

@@ -61,7 +61,7 @@ for name, option in (('default', ''), ('qt6', 'qt6'), ('legacy-qt5', 'qt5')):
     records.append({'name': name, 'argv': argv, 'values': values})
 # Provider and transitive-consumer metadata come from the same exported tree.
 provider_fields = ('PKGNAME', 'CMAKE_CONFIGURE_ARGS', 'BUILD_DEPENDS', 'DEPENDS',
-                   'TEST_TARGET', 'PKG_FAIL_REASON')
+                   'TEST_TARGET', 'PKG_FAIL_REASON', 'DISTFILES', 'WRKSRC')
 for package, expected in (('devel/simplecpp', 'simplecpp-1.9.1nb1'),
                           ('devel/picojson', 'picojson-1.3.0.20210117'),
                           ('security/zoneminder', 'zoneminder-1.38.4nb3')):
@@ -76,6 +76,13 @@ for package, expected in (('devel/simplecpp', 'simplecpp-1.9.1nb1'),
     assert len(lines) == len(provider_fields), (name, lines)
     values = dict(zip(provider_fields, lines))
     assert values['PKGNAME'] == expected, values
+    # Fetch and checksum use the evaluated DISTFILES; each one needs a distinfo record.
+    info = (a.pkgsrc / package / 'distinfo').read_text()
+    for distfile in values['DISTFILES'].split():
+        assert f'Size ({distfile}) = ' in info, (package, distfile)
+    if package == 'devel/picojson':
+        # GitHub names the archive directory after the commit.
+        assert values['WRKSRC'].endswith('/picojson-111c9be5188f7350c2eac9ddaedd8cca3d7bf394'), values
     if package == 'security/zoneminder':
         assert '-DJWT_EXTERNAL_PICOJSON:BOOL=ON' in values['CMAKE_CONFIGURE_ARGS'], values
         assert 'picojson>=1.3.0.20210117' in values['BUILD_DEPENDS'], values
@@ -90,4 +97,4 @@ for package, expected in (('devel/simplecpp', 'simplecpp-1.9.1nb1'),
     records.append({'name': name, 'argv': argv, 'values': values})
 (a.work / 'result.json').write_text(json.dumps({'scope': 'native metadata only; no configure, compiler or target execution', 'records': records}, indent=2) + '\n')
 print('PASS: native default, Qt6 and legacy Qt5 options; shared dependencies and selected host tools')
-print('PASS: SimpleCpp/PicoJSON providers and ZoneMinder external-PicoJSON dependency edge')
+print('PASS: SimpleCpp/PicoJSON providers and ZoneMinder external-PicoJSON dependency edge; distfiles recorded')

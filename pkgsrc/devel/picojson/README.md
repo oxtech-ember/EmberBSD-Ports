@@ -4,6 +4,9 @@ The recipe uses [upstream commit 111c9be5188f](https://github.com/kazuho/picojso
 This is the current upstream default-branch revision checked for this change.
 Archive SHA256: `671f89832a17e9e71398f80c0a326afa2ebe81f4c26d5a9992e1fcd0888ae151`.
 The package version is `1.3.0.20210117`; it denotes a snapshot after release 1.3.0.
+pkgsrc names the commit archive `picojson-1.3.0.20210117-111c9be5188f7350c2eac9ddaedd8cca3d7bf394.tar.gz`.
+Its directory is `picojson-111c9be5188f7350c2eac9ddaedd8cca3d7bf394`.
+`../cppcheck/tests/metadata.py` checks that the evaluated distfile has a distinfo record.
 
 The [last release, 1.3.0](https://github.com/kazuho/picojson/releases/tag/v1.3.0), dates from 2015-02-25.
 The snapshot includes later upstream fixes for parsing depth, input iteration, integer values and compiler compatibility.

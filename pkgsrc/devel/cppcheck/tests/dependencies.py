@@ -25,7 +25,7 @@ a.work.mkdir()
 inputs = (
     ('devel/simplecpp', 'simplecpp-1.9.1.tar.gz', 'simplecpp-1.9.1',
      'd26e36a8a6462d1655e03d67a95f5cd0228bffb1873c9349b971093494a0df59'),
-    ('devel/picojson', 'picojson-111c9be5188f7350c2eac9ddaedd8cca3d7bf394.tar.gz',
+    ('devel/picojson', 'picojson-1.3.0.20210117-111c9be5188f7350c2eac9ddaedd8cca3d7bf394.tar.gz',
      'picojson-111c9be5188f7350c2eac9ddaedd8cca3d7bf394',
      '671f89832a17e9e71398f80c0a326afa2ebe81f4c26d5a9992e1fcd0888ae151'),
     ('devel/cppcheck', 'cppcheck-2.22.0.tar.gz', 'cppcheck-2.22.0',
