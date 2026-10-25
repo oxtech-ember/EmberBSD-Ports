@@ -233,11 +233,14 @@ finite source controls. These controls do not execute make or qualify outputs.
 ## Make handoff
 
 The make, the shell and gzip are the only providers that change during the
-plan. The profile lists the dependency closure of `devel/bmake` and the
-dependencies of `archivers/gzip` in `EMBERBSD_DARWIN_SEED_MAKE_RECIPES`.
-Only these eleven recipes use the initial make, its bound mk files and the
-initial shell. The bmake closure includes `shells/mksh`. The other prerequisites
-are `archivers/pax`, `net/fetch` and `net/libfetch`.
+plan. `EMBERBSD_DARWIN_SEED_MAKE_RECIPES` lists the eight-recipe dependency
+closure of `devel/bmake`. Only these recipes use the initial make, its bound
+mk files and the initial shell. That closure includes `shells/mksh`.
+`EMBERBSD_DARWIN_SEED_GZIP_RECIPES` lists the eleven gzip prerequisites.
+The three additional recipes are `archivers/pax`, `net/fetch` and `net/libfetch`.
+They use the installed Ports bmake, Darwin mk files and mksh. They have no gzip
+edge. Generic initial `bsd.lib.mk` rules perform a relocatable link after
+compilation; the Darwin rules retain the compiler object without that link.
 `pkgtools/pkg_install-info` is a later gzip consumer, not a gzip prerequisite.
 Every other recipe gets a
 `BOOTSTRAP_DEPENDS` edge on `devel/bmake` and sets `MAKE` to
@@ -259,10 +262,10 @@ direct `devel/bmake` edge. bmake passes `-m` to child makes through `MAKEFLAGS`,
 and a `SHELL=` word on the command line overrides the profile, so the initial
 command must not start these recipes.
 
-`archivers/gzip` is the first recipe after the seed set. It is built with the
+`archivers/gzip` follows its eleven prerequisites. It is built with the
 Ports bmake and mksh, because its `gunzip`, `zcat` and other scripts name
-the build `SHELL`. Every later recipe also gets a `BOOTSTRAP_DEPENDS` edge on
-`archivers/gzip`. Outside metadata mode it sets `EMBERBSD_DARWIN_TOOL.gzip`,
+the build `SHELL`. Recipes outside its seed, except gzip itself, get a
+`BOOTSTRAP_DEPENDS` edge on `archivers/gzip`. Outside metadata mode it sets `EMBERBSD_DARWIN_TOOL.gzip`,
 `.gunzip` and `.gzcat` to `${LOCALBASE}/bin/gzip`, `gunzip` and `zcat`, so
 the scoped tool map selects these declared source providers with the standard
 arguments. The package installs no `gzcat`; pkgsrc uses its `zcat` for that role.
@@ -281,9 +284,9 @@ python3 profiles/development-toolchain/tests/darwin-bootstrap-make-handoff.py \
     /absolute/exported-pkgsrc /absolute/bmake /absolute/MAKECONF
 ```
 
-The test checks that the list is the closure of `devel/bmake` and the
-dependencies of `archivers/gzip`, and contains `shells/mksh`. Seed recipes and
-`archivers/gzip` must have no gzip edge and must not select an undeclared initial compressor; the gzip
+The test checks the distinct make closure and gzip prerequisite lists.
+The make closure contains `shells/mksh`. Gzip prerequisites and
+`archivers/gzip` must have no gzip edge or undeclared initial compressor; the gzip
 package must install `bin/gzip`, `bin/gunzip` and `bin/zcat`. It also checks that later recipes such as `pkgtools/pkg_install`
 select the Ports bmake and give every shell consumer and the gmake tuple the
 Ports mksh, and that they have one `archivers/gzip` edge and run its tools.

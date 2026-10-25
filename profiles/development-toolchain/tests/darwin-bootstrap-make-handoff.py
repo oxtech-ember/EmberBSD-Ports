@@ -12,15 +12,14 @@ The phase fixture uses a full-format or phase-neutral MAKECONF. It imports
 the actual profile and tools.Darwin.mk, with declared recipe paths only.
 It queries yes, no and omitted modes without executing future providers.
 
-The initial make builds exactly the dependency closure of devel/bmake and
-the dependencies of archivers/gzip. The bmake closure includes shells/mksh and
-pkgtools/bootstrap-mk-files, which installs the shell builtin helper. Every
-other recipe depends on devel/bmake, runs ${LOCALBASE}/bin/bmake, gives each
-shell consumer ${LOCALBASE}/bin/mksh and runs the builtins through the
-installed helper. These recipes, except archivers/gzip itself, also depend on
-archivers/gzip and run gzip, gunzip and gzcat from ${LOCALBASE}. The seed
-recipes and archivers/gzip require no initial gzip provider. No value of a later recipe
-names the exported pkgsrc tree, so no installed file can name it.
+The initial make builds the eight-recipe dependency closure of devel/bmake.
+That closure includes shells/mksh and pkgtools/bootstrap-mk-files, which
+installs the shell builtin helper. Every other recipe uses the Ports bmake,
+mksh and installed helper. The separate eleven-recipe gzip seed also contains
+pax, fetch and libfetch. They use the Ports make without a gzip edge. Gzip
+itself has no gzip edge. Recipes outside its seed use the installed gzip,
+gunzip and zcat programs after their gzip dependency. No installed file may
+name the exported pkgsrc tree.
 """
 import argparse
 import json
@@ -31,7 +30,7 @@ import sys
 from pathlib import Path
 
 KINDS = ('BOOTSTRAP_DEPENDS', 'TOOL_DEPENDS', 'BUILD_DEPENDS', 'DEPENDS')
-NAMES = ('EMBERBSD_DARWIN_SEED_MAKE_RECIPES', 'EMBERBSD_DARWIN_MAKE', 'EMBERBSD_DARWIN_GMAKE',
+NAMES = ('EMBERBSD_DARWIN_SEED_MAKE_RECIPES', 'EMBERBSD_DARWIN_SEED_GZIP_RECIPES', 'EMBERBSD_DARWIN_MAKE', 'EMBERBSD_DARWIN_GMAKE',
          'LOCALBASE', 'MAKE', '_MAKE', *KINDS)
 SHELLS = ('EMBERBSD_DARWIN_SH', 'SHELL', 'SH', 'CONFIG_SHELL', 'TOOLS_SHELL',
           'EMBERBSD_DARWIN_BUILTIN_SHELL', 'TOOLS_PLATFORM.sh')
@@ -158,12 +157,13 @@ def phase_fixture(argv):
 
     first = query(ROOT, 'yes')
     seeds = first['EMBERBSD_DARWIN_SEED_MAKE_RECIPES'].split()
+    gzip_seeds = first['EMBERBSD_DARWIN_SEED_GZIP_RECIPES'].split()
     initial_shell = first['EMBERBSD_DARWIN_SH']
     initial_gmake = shlex.split(first['EMBERBSD_DARWIN_GMAKE'])
     initial_helper = str(args.tools_darwin.with_name('emberbsd-darwin-builtin.sh'))
     initial_gzip = initial_gzip_routes(first)
-    require(GZIP_PROVIDER not in seeds, f'{GZIP_PROVIDER} is built with the initial make')
-    for recipe in sorted(set(seeds) | set(LATER) | {GZIP_PROVIDER}):
+    require(GZIP_PROVIDER not in seeds, f'{GZIP_PROVIDER} must use the Ports make')
+    for recipe in sorted(set(seeds) | set(gzip_seeds) | set(LATER) | {GZIP_PROVIDER}):
         modes = {mode: query(recipe, mode) for mode in ('yes', 'no', 'default')}
         require(modes['no'] == modes['default'], f'{recipe}: omitted flag differs from no')
         require(all(modes['yes'][kind] == modes['no'][kind] for kind in KINDS), f'{recipe}: metadata changes dependency edges')
@@ -179,7 +179,7 @@ def phase_fixture(argv):
             require(os.path.normpath(value['EMBERBSD_DARWIN_BUILTIN_HELPER']) == helper and not builtins(value, shell, value['EMBERBSD_DARWIN_BUILTIN_HELPER']), f'{recipe}/{mode}: builtin route differs')
             words = [word for word in shlex.split(value['BOOTSTRAP_DEPENDS']) if word.endswith('../../' + ROOT)]
             require(len(words) == (0 if recipe in seeds else 1), f'{recipe}/{mode}: bmake edge changed')
-            later = recipe not in seeds and recipe != GZIP_PROVIDER
+            later = recipe not in gzip_seeds and recipe != GZIP_PROVIDER
             require(len(gzip_edges(value)) == (1 if later else 0), f'{recipe}/{mode}: gzip edge changed')
             route = {tool: str(prefix / path) for tool, path in GZIP_TOOLS.items()} if later and handoff else initial_gzip
             require(gzip_route(value) == route, f'{recipe}/{mode}: gzip route {gzip_route(value)}')
@@ -212,9 +212,10 @@ def main():
             todo += facts[recipe][1] - closure
     gzip_deps = gzip_closure - {GZIP_PROVIDER} - closure
     seeds = set(values['EMBERBSD_DARWIN_SEED_MAKE_RECIPES'].split())
-    require(seeds == closure | gzip_deps,
-            f'seed make recipes {sorted(seeds)} != closure {sorted(closure | gzip_deps)}')
-    closure |= gzip_deps
+    gzip_seeds = set(values['EMBERBSD_DARWIN_SEED_GZIP_RECIPES'].split())
+    require(seeds == closure, f'seed make recipes {sorted(seeds)} != closure {sorted(closure)}')
+    require(gzip_seeds == closure | gzip_deps,
+            f'seed gzip recipes {sorted(gzip_seeds)} != prerequisites {sorted(closure | gzip_deps)}')
     plist = (exported / GZIP_PROVIDER / 'PLIST').read_text().splitlines()
     require(set(GZIP_TOOLS.values()) <= set(plist), f'{GZIP_PROVIDER} does not install {sorted(GZIP_TOOLS.values())}')
     initial_gzip = initial_gzip_routes(values)
@@ -251,6 +252,21 @@ def main():
     require(final_shell != seed_shell, 'the initial shell is in the final prefix')
     final_gzip = {tool: values['LOCALBASE'] + '/' + path for tool, path in GZIP_TOOLS.items()}
     require(not set(final_gzip.values()) & set(initial_gzip.values()), 'the native gzip is in the final prefix')
+    # These gzip prerequisites need the already built Darwin mk files. Their
+    # generic initial rules perform an unsupported relocatable Mach-O link.
+    for recipe in sorted(gzip_deps):
+        value, edges = facts[recipe]
+        require(value['MAKE'] == value['_MAKE'] == final and
+                {value[name] for name in SHELLS} == {final_shell},
+                f'{recipe} does not use the Ports make and shell')
+        require(ROOT in edges and not gzip_edges(value), f'{recipe}: incorrect split handoff edges')
+        require(gzip_route(value) == initial_gzip, f'{recipe}: gzip appeared before its provider')
+        require(Path(os.path.normpath(value['EMBERBSD_DARWIN_BUILTIN_HELPER'])) == Path(final_helper),
+                f'{recipe}: wrong installed builtin helper')
+        require(not builtins(value, final_shell, final_helper), f'{recipe}: wrong builtin route')
+        compressed = [name for name in shlex.split(value['DISTFILES'] + ' ' + value['PATCHFILES'])
+                      if name.endswith(('.gz', '.tgz', '.taz'))]
+        require(not compressed or initial_gzip['gzcat'], f'{recipe}: compressed input precedes gzip')
     value = facts[GZIP_PROVIDER][0]
     compressed = [name for name in shlex.split(value['DISTFILES'] + ' ' + value['PATCHFILES'])
                   if name.endswith(('.gz', '.tgz', '.taz'))]

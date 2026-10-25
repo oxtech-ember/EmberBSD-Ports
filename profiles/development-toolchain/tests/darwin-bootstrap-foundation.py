@@ -167,14 +167,15 @@ class FoundationTests(unittest.TestCase):
 
     def test_native_and_nonroot_policy_stays_unchanged(self):
         seeds = model.seed_make_recipes(self.policy)
+        gzip_seeds = match(self.policy, r'^EMBERBSD_DARWIN_SEED_GZIP_RECIPES= (.+)$').split()
         final_gzip = {'gzip': '/final/prefix/bin/gzip', 'gunzip': '/final/prefix/bin/gunzip',
                       'gzcat': '/final/prefix/bin/zcat'}
         for name in ('pkgtools/libnbcompat', 'devel/bmake', 'pkgtools/bootstrap-mk-files',
                      'pkgtools/pkg_install-info', 'archivers/gzip',
                      'devel/meson', 'devel/ninja-build', 'lang/llvm'):
             state = model.apply_policy(self.policy, dict(self.state, PKGPATH=name))
-            later = name not in seeds and name != 'archivers/gzip'
-            roots = [] if name in seeds else ['devel/bmake'] + (['archivers/gzip'] if later else [])
+            later = name not in gzip_seeds and name != 'archivers/gzip'
+            roots = ([] if name in seeds else ['devel/bmake']) + (['archivers/gzip'] if later else [])
             self.assertEqual(model.dependencies(state), roots, name)
             route = {tool: state.get('EMBERBSD_DARWIN_TOOL.' + tool) for tool in final_gzip}
             self.assertEqual(route, final_gzip if later else dict.fromkeys(final_gzip), name)
@@ -186,7 +187,7 @@ class FoundationTests(unittest.TestCase):
                 del state['BSD_PKG_MK']
             self.assertEqual(model.apply_policy(self.policy, dict(state)), state)
 
-    def test_exact_seed_is_the_real_make_and_gzip_prerequisite_union(self):
+    def test_make_and_gzip_seeds_match_their_distinct_prerequisites(self):
         def closure(root):
             visited = set()
             def visit(name):
@@ -196,10 +197,33 @@ class FoundationTests(unittest.TestCase):
                         visit(child)
             visit(root)
             return visited
-        required = closure("devel/bmake") | (closure("archivers/gzip") - {"archivers/gzip"})
-        self.assertEqual(set(model.seed_make_recipes(self.policy)), required)
-        self.assertEqual(len(required), 11)
-        self.assertNotIn("pkgtools/pkg_install-info", required)
+        make_seed = closure("devel/bmake")
+        gzip_seed = make_seed | (closure("archivers/gzip") - {"archivers/gzip"})
+        self.assertEqual(set(model.seed_make_recipes(self.policy)), make_seed)
+        self.assertEqual(set(match(self.policy, r'^EMBERBSD_DARWIN_SEED_GZIP_RECIPES= (.+)$').split()), gzip_seed)
+        self.assertEqual((len(make_seed), len(gzip_seed)), (8, 11))
+        self.assertEqual(gzip_seed - make_seed, {"archivers/pax", "net/fetch", "net/libfetch"})
+        self.assertNotIn("pkgtools/pkg_install-info", gzip_seed)
+
+    def test_gzip_prerequisites_use_the_built_darwin_make_without_gzip(self):
+        def require_handoff(policy):
+            for name in ("archivers/pax", "net/fetch", "net/libfetch"):
+                state = model.apply_policy(policy, dict(self.state, PKGPATH=name,
+                    EMBERBSD_DARWIN_SH="/initial/sh"))
+                self.assertEqual(model.dependencies(state), ["devel/bmake"], name)
+                self.assertEqual(state["MAKE"], "/final/prefix/bin/bmake", name)
+                self.assertEqual(state["_MAKE"], state["MAKE"], name)
+                self.assertEqual(state["EMBERBSD_DARWIN_SH"], "/final/prefix/bin/mksh", name)
+                self.assertEqual(state["EMBERBSD_DARWIN_BUILTIN_HELPER"],
+                                 "/final/prefix/libexec/emberbsd-darwin-builtin.sh", name)
+                self.assertFalse(any("EMBERBSD_DARWIN_TOOL." + tool in state
+                                     for tool in ("gzip", "gunzip", "gzcat")), name)
+        require_handoff(self.policy)
+        combined = match(self.policy, r'^EMBERBSD_DARWIN_SEED_GZIP_RECIPES= (.+)$')
+        mutant = re.sub(r'(?m)^EMBERBSD_DARWIN_SEED_MAKE_RECIPES= .+$',
+                        "EMBERBSD_DARWIN_SEED_MAKE_RECIPES= " + combined, self.policy)
+        with self.assertRaises(AssertionError):
+            require_handoff(mutant)
 
     def test_real_gzip_backedges_reject_each_missing_prerequisite(self):
         def composed(policy):

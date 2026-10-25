@@ -232,3 +232,9 @@ Check that no child uses the original installed prefix,
 CLT discovery, an unselected system utility or an uncontrolled PATH.
 Then replay the wrapper routes and the GCC stage-1 configure command.
 A source-only pass cannot replace these gates or the full GCC bootstrap.
+
+The make and gzip seed lists have different scopes. The eight-recipe make
+closure uses the initial tuple. The eleven gzip prerequisites add pax, fetch
+and libfetch. Those three use the Ports bmake and Darwin mk files, with no
+reverse dependency on gzip. This avoids the generic initial relocatable-link
+rule without changing compiler flags or disabling a build check.
