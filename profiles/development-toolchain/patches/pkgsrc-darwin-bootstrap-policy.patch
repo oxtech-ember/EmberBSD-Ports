@@ -64,7 +64,7 @@ Keep ordinary Darwin defaults. Use the standard compiler wrappers.
 +esac
 --- a/mk/tools/tools.Darwin.mk
 +++ b/mk/tools/tools.Darwin.mk
-@@ -2,6 +2,28 @@
+@@ -2,6 +2,32 @@
  #
  # System-supplied tools for the Darwin (Mac OS X) operating system.
  
@@ -80,9 +80,13 @@ Keep ordinary Darwin defaults. Use the standard compiler wrappers.
 +# printf is not a builtin in every POSIX shell; it needs a native path.
 +# The helper runs each builtin in the selected shell. The command has no
 +# quoted words: pkgsrc passes tools such as TEST in the environment.
-+_EMBERBSD_DARWIN_BUILTIN_HELPER:= ${.PARSEDIR}/emberbsd-darwin-builtin.sh
++# After the make handoff the profile selects the copy that
++# pkgtools/bootstrap-mk-files installs, so packages never name the export.
++.if !defined(EMBERBSD_DARWIN_BUILTIN_HELPER)
++EMBERBSD_DARWIN_BUILTIN_HELPER:= ${.PARSEDIR}/emberbsd-darwin-builtin.sh
++.endif
 +.for _ember_builtin in [ echo false test true
-+TOOLS_PLATFORM.${_ember_builtin}= ${EMBERBSD_DARWIN_BUILTIN_SHELL} ${_EMBERBSD_DARWIN_BUILTIN_HELPER} ${_ember_builtin}
++TOOLS_PLATFORM.${_ember_builtin}= ${EMBERBSD_DARWIN_BUILTIN_SHELL} ${EMBERBSD_DARWIN_BUILTIN_HELPER} ${_ember_builtin}
 +.endfor
 +TOOLS_PLATFORM.sh= ${EMBERBSD_DARWIN_SH}
 +TOOLS_PLATFORM.gmake= ${EMBERBSD_DARWIN_GMAKE}
@@ -93,7 +97,7 @@ Keep ordinary Darwin defaults. Use the standard compiler wrappers.
  OSX_XCRUN=			${SETENV} PATH= /usr/bin/xcrun --no-cache
  
  TOOLS_PLATFORM.[?=		[			# shell builtin
-@@ -178,3 +197,4 @@
+@@ -178,3 +201,4 @@
  .else
  OSX_TOOLS_FORCE_NOOP+=		yacc
  .endif

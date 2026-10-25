@@ -113,7 +113,7 @@ def check(before, after, policy, recipe):
     require('TOOLS_PLATFORM.printf=' not in selected,
             'printf is treated as a shell builtin')
     require('.for _ember_builtin in [ echo false test true\n' in selected and
-            'TOOLS_PLATFORM.${_ember_builtin}= ${EMBERBSD_DARWIN_BUILTIN_SHELL} ${_EMBERBSD_DARWIN_BUILTIN_HELPER} ${_ember_builtin}' in selected and
+            'TOOLS_PLATFORM.${_ember_builtin}= ${EMBERBSD_DARWIN_BUILTIN_SHELL} ${EMBERBSD_DARWIN_BUILTIN_HELPER} ${_ember_builtin}' in selected and
             'EMBERBSD_DARWIN_BUILTIN_SHELL= ${EMBERBSD_DARWIN_SH}' in policy,
             'A simple builtin recipe can bypass its selected shell')
 
@@ -214,7 +214,7 @@ def main():
     changed[n] = changed[n].replace('TOOLS_PLATFORM.sh=', 'TOOLS_PLATFORM.printf= printf\nTOOLS_PLATFORM.sh=', 1)
     mutants.append(('printf-builtin', changed, policy, recipe))
     changed = dict(after)
-    changed[n] = changed[n].replace('TOOLS_PLATFORM.${_ember_builtin}= ${EMBERBSD_DARWIN_BUILTIN_SHELL} ${_EMBERBSD_DARWIN_BUILTIN_HELPER} ${_ember_builtin}',
+    changed[n] = changed[n].replace('TOOLS_PLATFORM.${_ember_builtin}= ${EMBERBSD_DARWIN_BUILTIN_SHELL} ${EMBERBSD_DARWIN_BUILTIN_HELPER} ${_ember_builtin}',
                                   'TOOLS_PLATFORM.${_ember_builtin}= ${_ember_builtin}', 1)
     mutants.append(('unbound-builtins', changed, policy, recipe))
     changed = dict(after)

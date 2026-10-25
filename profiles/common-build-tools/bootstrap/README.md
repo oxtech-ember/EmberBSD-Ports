@@ -239,7 +239,13 @@ shell. The closure includes `shells/mksh`. Every other recipe gets a
 `${LOCALBASE}/share/mk` from the Ports `bootstrap-mk-files`. The same recipes set
 `EMBERBSD_DARWIN_SH` to `${LOCALBASE}/bin/mksh`. `SHELL`, `SH`, `CONFIG_SHELL`,
 `TOOLS_SHELL`, the builtin shell and `TOOLS_PLATFORM.sh` follow it, so scripts
-installed by these recipes do not name the initial shell. The initial gmake
+installed by these recipes do not name the initial shell. They also set
+`EMBERBSD_DARWIN_BUILTIN_HELPER` to `${LOCALBASE}/libexec/emberbsd-darwin-builtin.sh`.
+`pkgtools/bootstrap-mk-files`, part of the closure, installs that copy of the
+exported helper. Their `[`, `echo`, `false`, `test` and `true` commands then
+name no exported pkgsrc tree, so substituted files such as perl's
+`Config_heavy.pl` do not either. A prefix with an older `bootstrap-mk-files`
+has no helper, and those recipes stop when their makefiles are read. The initial gmake
 stays. The profile appends `SHELL=${LOCALBASE}/bin/mksh` to its tuple, and GNU
 make uses the last `SHELL=` word. The SDK keeps no recipe list. It starts a
 recipe with the Ports bmake and `SHELL=` the Ports mksh when the recipe has a
@@ -255,8 +261,10 @@ python3 profiles/development-toolchain/tests/darwin-bootstrap-make-handoff.py \
 The test checks that the list is the closure of `devel/bmake` and contains
 `shells/mksh`. It also checks that later recipes such as `pkgtools/pkg_install`
 select the Ports bmake and give every shell consumer and the gmake tuple the
-Ports mksh. Use a MAKECONF whose `EMBERBSD_DARWIN_SH` is the initial shell, as
-the SDK writes it.
+Ports mksh. Later recipes must run the builtins through the installed helper,
+and none of their checked values may name the exported tree. Use a MAKECONF
+whose `EMBERBSD_DARWIN_SH` is the initial shell, as the SDK writes it, and a
+`LOCALBASE` that contains the closure.
 
 Because the gmake tuple has arguments, `pkgsrc-make-program-args.patch` splits
 `MAKE_PROGRAM` for the created `make` tool. The first word is the tool path, and

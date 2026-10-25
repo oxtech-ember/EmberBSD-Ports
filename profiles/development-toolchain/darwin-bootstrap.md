@@ -56,7 +56,7 @@ as the install command and does not request `sudo` or modify system users or
 | `EMBERBSD_DARWIN_HOST_PRODUCT_VERSION` | Actual macOS product version |
 | `EMBERBSD_DARWIN_HOST_PKGSRC_OPSYS_VERSION` | Product version encoded as major/minor/patch, two digits per field |
 | `EMBERBSD_DARWIN_MAKE`, `EMBERBSD_DARWIN_GMAKE` | Shell-quoted complete SDK `command('make')` and `command('gmake')` tuples. The initial make builds only `EMBERBSD_DARWIN_SEED_MAKE_RECIPES`; see the [make handoff](../common-build-tools/bootstrap/README.md#make-handoff) |
-| `EMBERBSD_DARWIN_SH` | Selected `command('sh')[0]`. Recipes outside `EMBERBSD_DARWIN_SEED_MAKE_RECIPES` replace it with `${LOCALBASE}/bin/mksh`; see the [make handoff](../common-build-tools/bootstrap/README.md#make-handoff) |
+| `EMBERBSD_DARWIN_SH` | Selected `command('sh')[0]`. Recipes outside `EMBERBSD_DARWIN_SEED_MAKE_RECIPES` replace it with `${LOCALBASE}/bin/mksh` and the builtin helper with `${LOCALBASE}/libexec/emberbsd-darwin-builtin.sh`; see the [make handoff](../common-build-tools/bootstrap/README.md#make-handoff) |
 | `EMBERBSD_GCC16_SEED_CC`, `EMBERBSD_GCC16_SEED_CXX`, `EMBERBSD_GCC16_SEED_CPP` | Shell-quoted selected driver tuple plus the separately accepted language/ABI arguments |
 | `EMBERBSD_GCC16_LLVM_MC`, `EMBERBSD_GCC16_LD64_LLD`, `EMBERBSD_GCC16_DSYMUTIL` | Selected assembler, Mach-O linker and debug tool paths |
 | `EMBERBSD_GCC16_AR`, `EMBERBSD_GCC16_RANLIB`, `EMBERBSD_GCC16_NM`, `EMBERBSD_GCC16_STRIP` | Selected archive and symbol tool paths |
@@ -135,8 +135,10 @@ unstripped installs. The utility PATH does not supply them.
 A tool without standard arguments maps to its exact path, with no trailing
 space: pkgsrc scripts run some of them quoted, such as `"${AWK}"`.
 The `[`, `echo`, `false`, `test` and `true` maps invoke that shell
-explicitly with the exported helper `mk/tools/emberbsd-darwin-builtin.sh` and
-the builtin name. The helper forwards the original arguments through `"$@"`.
+explicitly with the helper `EMBERBSD_DARWIN_BUILTIN_HELPER` and the builtin
+name. The initial make recipes use the exported `mk/tools/emberbsd-darwin-builtin.sh`.
+Later recipes use the copy in `${LOCALBASE}/libexec`; see the
+[make handoff](../common-build-tools/bootstrap/README.md#make-handoff). The helper forwards the original arguments through `"$@"`.
 This preserves the selected shell's options, escapes and statuses.
 The command has no quoted words: pkgsrc passes tools such as `TEST` to
 scripts like `mk/extract/extract` in the environment, and they run `${TEST}`
