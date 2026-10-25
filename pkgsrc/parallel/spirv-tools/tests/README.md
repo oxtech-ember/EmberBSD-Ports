@@ -14,6 +14,13 @@ checks both module orders, an import-only module, resolved imports and plain
 definitions. Run it with newly built tools. Source patch checks do not replace
 linker and validator execution.
 
+`patch-test_binary_parse_test.cpp` gives the two signed low-bit hex literals
+in `MaybeFlipWordsTest` unsigned types. The other direct word comparisons
+already have unsigned types, and hex values used only to initialize
+`uint32_t` vectors need no change. This keeps GCC16's sign-compare diagnostic
+enabled with GoogleTest 1.18. The patch changes build-time tests only; the
+installed payload does not change.
+
 `patch-installed-gtest` adds `SPIRV_USE_INSTALLED_GTEST`, default OFF.
 The recipe enables it, keeps `SPIRV_SKIP_TESTS=OFF`, and selects the common
 GoogleTest 1.18.0 provider as a build dependency. Root-scope discovery and

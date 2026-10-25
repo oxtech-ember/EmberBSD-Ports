@@ -5,3 +5,4 @@ SHA512 (SPIRV-Tools-2026.4.tar.gz) = c9f71c01f382b6a73211241f0f9e48de34e3e3355e1
 Size (SPIRV-Tools-2026.4.tar.gz) = 3554324 bytes
 SHA1 (patch-source_link_linker.cpp) = 5f99c025cd141e481edf8cbe185c6e7e783a91a7
 SHA1 (patch-installed-gtest) = 1bacded17c1f6015ecfd9497e1c6bf5520aa9447
+SHA1 (patch-test_binary_parse_test.cpp) = 4d8084207cedab11f089d5df607e8085789bf897
