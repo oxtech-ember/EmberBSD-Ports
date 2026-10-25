@@ -78,7 +78,8 @@ Its CRC-16/X-25 check value for `123456789` is `0x906e`.
 It does not use recorded radio samples or open a receiver.
 The `181/91` unavailable-position values remain decoder protocol data; consumers must normalize them.
 
-Run `AIS-catcher -L` separately when device enumeration is authorized.
+Run `AIS-catcher -X off -L` to list compiled receiver backends.
+Run `AIS-catcher -X off -l` separately when enumeration of available devices is authorized.
 Select an explicit device for live reception and retain `-X off`.
 Synthetic decoding, enumeration and physical radio reception are distinct checks.
 
