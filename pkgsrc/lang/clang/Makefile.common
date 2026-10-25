@@ -194,7 +194,7 @@ post-build:
 	    ${CROSS_DESTDIR:Q} ${LOCALBASE}/gcc16 ${WRKDIR}/native-config
 .else
 	${SH} ${FILESDIR}/native-gcc-config.sh ${LOCALBASE}/gcc16/bin/gcc \
-	    ${CMAKE_BUILD_DIR}/bin/clang ${LOCALBASE}/gcc16 ${WRKDIR}/native-config
+	    ${WRKSRC}/${CMAKE_BUILD_DIR}/bin/clang ${LOCALBASE}/gcc16 ${WRKDIR}/native-config
 .endif
 
 post-install:
