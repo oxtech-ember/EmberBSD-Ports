@@ -90,8 +90,10 @@ PKGPATH?=graphics/MesaLib
 PKG_OPTIONS=llvm x11 wayland
 DISTNAME=mesa-26.2.5
 PKGREVISION=5
+.if ${{USE_CROSS_COMPILE:Uno:tl}} == "yes"
 EMBERBSD_GRAPHICS_LLVM_CONFIG={work}/helper/bin/llvm-config
 EMBERBSD_WAYLAND_SCANNER={work}/scanner
+.endif
 .include "{work}/profile.mk"
 .include "{work}/${{RECIPE:Umesa}}.mk"
 show:
@@ -193,6 +195,24 @@ def profile_checks():
             and amd["_EMBERBSD_MESA_LLVM_TRIPLE"] == "x86_64-unknown-netbsd"
             and "-Dmesa-clc=system" in amd["MESON_ARGS"]
             and "-Dprecomp-compiler=system" in amd["MESON_ARGS"],
+        )
+        native = query(
+            "MACHINE_ARCH=x86_64", "USE_CROSS_COMPILE=no",
+            "EMBERBSD_COMMON_GRAPHICS_CROSS=no", "USE_NATIVE_GCC=yes",
+            "USE_PKGSRC_GCC=no", "USE_PKGSRC_GCC_RUNTIME=no",
+            "EMBERBSD_COMMON_TOOLS=yes",
+        )
+        check(
+            "amd64 native Mesa keeps RadeonSI and builds its shader generators natively",
+            not native["PKG_FAIL_REASON"]
+            and native["EMBERBSD_COMMON_GRAPHICS"] == "yes"
+            and native["PLIST.radeonsi"] == "yes"
+            and "-Dgallium-drivers=iris,radeonsi,virgl,softpipe,llvmpipe,zink" in native["MESON_ARGS"]
+            and "-Dmesa-clc=enabled" in native["MESON_ARGS"]
+            and "-Dprecomp-compiler=enabled" in native["MESON_ARGS"]
+            and "-Dspirv-tools=enabled" in native["MESON_ARGS"]
+            and "-Dinstall-mesa-clc=false" in native["MESON_ARGS"]
+            and "-Dinstall-precomp-compiler=false" in native["MESON_ARGS"],
         )
         check(
             "Mesa platform selection is exactly the two NetBSD 11 targets",
