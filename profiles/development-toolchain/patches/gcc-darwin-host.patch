@@ -9,7 +9,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 
 --- a/lang/gcc16/Makefile.common
 +++ b/lang/gcc16/Makefile.common
-@@ -57,6 +57,76 @@
+@@ -57,6 +57,80 @@
  .if ${OPSYS} == "Darwin"
 -BUILDLINK_TRANSFORM+=	rm:-nodefaultrpaths
 +.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} != "yes"
@@ -71,6 +71,10 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 +CONFIGURE_ARGS+= --with-dsymutil=${LOCALBASE:Q}/bin/dsymutil
 +CONFIGURE_ARGS+= --with-darwin-assembler=llvm-mc
 +CONFIGURE_ARGS+= --with-darwin-sdk-version=${EMBERBSD_GCC16_DARWIN_SDK_VERSION:Q}
++# bootstrap-debug compares -g0 and -g objects after llvm-strip -S. That strip
++# keeps Mach-O section addresses, so __eh_frame moves, and no LLVM tool can
++# repack a Mach-O object. Keep the default stage 2/3 comparison instead.
++CONFIGURE_ARGS+= --without-build-config
 +.endif
 +# The common LLVM-MC source patch requires the Darwin port on all hosts.
 +# Upstream GCC does not support aarch64-apple-darwin. This diff is
@@ -88,7 +92,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 -.endif
  
  ## For graphite support.
-@@ -89,8 +159,10 @@
+@@ -89,8 +163,10 @@
  MAKE_ENV.NetBSD+=	ac_cv_func_uselocale=no
  MAKE_ENV.SunOS+=	ac_cv_func_mkostemp=no
  
@@ -101,7 +105,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
  # GCC 16.1.0's stage2/stage3 bootstrap comparison currently fails on
  # NetBSD/x86_64, so disable it. Revisit on updates.
  # https://gcc.gnu.org/pipermail/gcc-help/2026-August/145120.html
-@@ -157,6 +229,15 @@
+@@ -157,6 +233,15 @@
  GCC_TARGET_MACHINE?=	${MACHINE_GNU_PLATFORM}
  BUILD_DEFS+=		GCC_TARGET_MACHINE
  

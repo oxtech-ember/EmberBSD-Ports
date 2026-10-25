@@ -70,6 +70,16 @@ selection remains conditional on Darwin:
   trap reads the final status, and every `.gkd` mismatch or read error fails.
   Source checks do not prove object equivalence. Run selected-tool debug-only
   twins, a changed-code control and a strip-failure control before acceptance.
+  The Darwin recipe passes `--without-build-config`, so configure does not
+  select `bootstrap-debug` and does not run this probe. GCC emits
+  `__debug_frame` before `__eh_frame` with `-g`. `llvm-strip -S` removes the
+  DWARF sections but keeps the Mach-O section addresses, so the `-g0` and `-g`
+  copies differ although `__eh_frame` has the same bytes. `ld64.lld -r` is not
+  implemented and `llvm-objcopy` cannot change Mach-O section addresses, so no
+  selected tool can repack the copies. The full stage 2/3 comparison remains.
+  [darwin-build-config.py](tests/darwin-build-config.py) compiles the real
+  configure probe with a native GCC16 and runs the top-level configure with
+  and without the recipe argument.
   [gcc-darwin-llvm-mc.patch](patches/gcc-darwin-llvm-mc.patch) adds
   `--with-darwin-assembler=llvm-mc` to GCC. It changes the driver assembler
   arguments and the configure assembler probes together.

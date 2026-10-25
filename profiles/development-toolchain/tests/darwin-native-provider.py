@@ -36,6 +36,9 @@ def check_recipe(text):
     # ld64.lld does not implement -r, which libtool's master-object route needs.
     assert '+MAKE_ENV+= lt_cv_apple_cc_single_mod=yes\n' in text
     assert '+CONFIGURE_ARGS+= --with-darwin-assembler=llvm-mc\n' in text
+    # Selected LLVM strip keeps Mach-O section addresses; bootstrap-debug cannot pass.
+    assert '+CONFIGURE_ARGS+= --without-build-config\n' in text
+    assert '--with-build-config' not in ''.join(line for line in text.split('\n') if line.startswith('+'))
     # Keep the selected strip through configure and every recursive build.
     assert '+CONFIGURE_ENV+= GCC_COMPARE_DEBUG_STRIP=${STRIP:Q}\n' in text
     assert '+MAKE_ENV+= GCC_COMPARE_DEBUG_STRIP=${STRIP:Q}\n' in text
