@@ -1,0 +1,27 @@
+Origin: EmberBSD; fix ctype input and ASIC-ID path allocation failure.
+
+--- amdgpu/amdgpu_asic_id.c.orig
++++ amdgpu/amdgpu_asic_id.c
+@@ -92,7 +92,7 @@ static int parse_one_line(struct amdgpu_device *dev, const char *line)
+ 		goto out;
+ 
+ 	/* trim leading whitespaces or tabs */
+-	while (isblank(*s_name))
++	while (isblank((unsigned char)*s_name))
+ 		s_name++;
+ 	if (strlen(s_name) == 0)
+ 		goto out;
+@@ -288,7 +288,12 @@ void amdgpu_parse_asic_ids(struct amdgpu_device *dev)
+ #endif
+ 	// if not found, use the default AMDGPU_ASIC_ID_TABLE path
+-	if (!amdgpu_asic_id_table_path)
++	if (!amdgpu_asic_id_table_path) {
+ 		amdgpu_asic_id_table_path = strdup(AMDGPU_ASIC_ID_TABLE);
++		if (!amdgpu_asic_id_table_path) {
++			fprintf(stderr, "Cannot allocate ASIC ID table path\n");
++			goto get_cpu;
++		}
++	}
+ 
+ 	fp = fopen(amdgpu_asic_id_table_path, "r");
+ 	if (!fp) {

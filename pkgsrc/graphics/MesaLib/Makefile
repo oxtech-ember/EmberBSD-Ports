@@ -52,7 +52,7 @@ PLIST.intel=	yes
 PLIST.radeonsi=	yes
 _EMBERBSD_MESA_GENERATOR_PROFILES+= intel
 _EMBERBSD_MESA_LLVM_TRIPLE=	x86_64-unknown-netbsd
-BUILDLINK_API_DEPENDS.libdrm+=	libdrm>=2.4.134nb5
+BUILDLINK_API_DEPENDS.libdrm+=	libdrm>=2.4.134nb6
 .else
 MESON_ARGS+=	-Dgallium-drivers=v3d,virgl,softpipe,llvmpipe,zink
 # One AArch64 package serves all boards. It contains the PowerVR and V3D ICDs.
