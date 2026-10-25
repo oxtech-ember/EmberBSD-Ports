@@ -13,7 +13,7 @@
 #include <string.h>
 #include <unistd.h>
 
-static int format(char *, size_t, const char *, ...)
+static int format(char *out, size_t size, const char *fmt, ...)
     __attribute__((format(printf, 3, 4)));
 static noreturn void stop(void);
 
