@@ -130,7 +130,7 @@ on other systems and uses the legacy reset path on NetBSD DRM 3.36.
 Native builds and the explicit
 [macOS/Linux cross composition](cross/profile.md) consume the existing
 [common build tools](../common-build-tools/README.md): GCC16, Python3.15,
-Meson1.12.1 and shared LLVM23.1.3 remain one dependency graph with final
+Meson1.12.1 and shared LLVM23.1.4 remain one dependency graph with final
 `LOCALBASE=PREFIX=/usr/pkg`. Plasma Mobile uses this exact graphics layer.
 The default, development-toolchain and common-build-tools exports keep their
 original graphics recipes. The whole installed graphics stack and a Mobile
