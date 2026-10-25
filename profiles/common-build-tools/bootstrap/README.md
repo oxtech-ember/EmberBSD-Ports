@@ -148,6 +148,15 @@ Keep the earlier utility and printf profiles and results unchanged.
 Compare libintl with an existing accepted library before provisioning new
 members. This source profile does not prove utility behavior or admit a build.
 
+[darwin-installed-od-v1.json](darwin-installed-od-v1.json) is a separate fixed
+subset for the `od` role. It names `coreutils-9.11` member `bin/god` and the
+same libintl library. It retains the original `gnu/bin/od` invocation and
+selects the relative `bin/od` alias. Use four operations in two complete runs.
+Keep original bytes and historical unknowns separate from the derived member.
+Compare libintl with the accepted library before provisioning. Do not replace
+that library or expand an earlier result. This profile does not qualify an
+ordinary provider.
+
 ## Initial BSD install
 
 [bsdinstall.json](bsdinstall.json) uses the common `sysutils/bsdinstall` recipe.
