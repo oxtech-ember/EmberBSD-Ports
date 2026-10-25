@@ -4,7 +4,7 @@
 set -eu
 [ "$#" -eq 2 ] || [ "$#" -eq 3 ] || exit 2
 profile=${3-v3d}
-case "$profile" in v3d|powervr-zink) ;; *) exit 2 ;; esac
+case "$profile" in v3d|powervr-zink|radeonsi) ;; *) exit 2 ;; esac
 check_renderer()
 {
     # Read renderer values, not environment settings or unrelated log lines.
@@ -34,6 +34,10 @@ check_renderer()
             if (profile == "powervr-zink" &&
                 (lower !~ /(^|[^[:alnum:]_])zink([^[:alnum:]_]|$)/ ||
                  lower !~ /(^|[^[:alnum:]_])powervr([^[:alnum:]_]|$)/))
+                bad = 1
+            if (profile == "radeonsi" &&
+                (lower !~ /(^|[^[:alnum:]_])radeonsi([^[:alnum:]_]|$)/ ||
+                 lower !~ /(^|[^[:alnum:]_])(amd|radeon)([^[:alnum:]_]|$)/))
                 bad = 1
         }
         END { exit (count == 0 || bad) }

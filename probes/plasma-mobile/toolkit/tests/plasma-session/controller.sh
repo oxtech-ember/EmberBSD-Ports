@@ -4,16 +4,20 @@
 set -eu
 : "${EMBER_PLASMA_OUTPUT:?}" "${EMBER_PLASMA_SESSION_MARKER:?}"
 profile=${EMBER_PLASMA_RENDERER_PROFILE-v3d}
-case "$profile" in v3d|powervr-zink) ;; *) exit 2 ;; esac
+case "$profile" in v3d|powervr-zink|radeonsi) ;; *) exit 2 ;; esac
 backend=${EMBER_PLASMA_BACKEND-virtual}
+expected_drm_output=${EMBER_PLASMA_EXPECTED_DRM_OUTPUT-HDMI-A-1}
 # Only this enum selects the launch arguments and layout assertion values.
 case "$backend" in
 virtual) width=1280; height=1024; output_name=Virtual-0; backend_name=KWin::VirtualBackend ;;
-drm) width=1920; height=1080; output_name=HDMI-A-1; backend_name=DRM ;;
+drm)
+    case "$expected_drm_output" in ''|*[!A-Za-z0-9_.-]*) exit 2 ;; esac
+    [ "${#expected_drm_output}" -le 32 ] || exit 2
+    width=1920; height=1080; output_name=$expected_drm_output; backend_name=DRM ;;
 *) exit 2 ;;
 esac
 cd "$EMBER_PLASMA_OUTPUT"
-printf '%s %s %s\n' "$backend" "$width" "$height" > output-policy.txt
+printf '%s %s %s %s\n' "$backend" "$width" "$height" "$output_name" > output-policy.txt
 phase=display-environment
 trap 'result=$?; printf "%s\n" "$result" > controller.status; if [ "$result" -ne 0 ]; then echo "FAIL: controller phase=$phase status=$result" >&2; fi' 0
 stamp()

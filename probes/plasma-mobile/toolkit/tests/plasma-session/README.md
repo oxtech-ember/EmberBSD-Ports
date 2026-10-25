@@ -4,7 +4,8 @@ Origin: EmberBSD, AI-assisted implementation and source audit.
 
 This test starts the installed `startplasma-wayland` classic session as an
 ordinary user. The default backend uses a 1280x1024 virtual output. An explicit
-`--backend drm` selects the current native BCM2712 1920x1080 diagnostic policy.
+`--backend drm` selects a 1920x1080 diagnostic output. The expected DRM output
+defaults to `HDMI-A-1`; pass `--output eDP-1` to check an internal panel.
 The test requires OpenGL
 with the selected hardware renderer, Xwayland, KSMServer, Activities, KDED and Plasma Desktop.
 It verifies readiness for 30 seconds and requests normal logout.
@@ -32,15 +33,17 @@ No target compilation is required. Select a new absolute output directory:
 sh ./run.sh /tmp/plasma-session-check
 sh ./run.sh --renderer powervr-zink /tmp/plasma-powervr-check
 sh ./run.sh --backend drm --renderer v3d /tmp/plasma-drm-check
+sh ./run.sh --backend drm --renderer radeonsi --output eDP-1 /tmp/plasma-radeonsi-check
 ```
 
 The backend is `virtual` or `drm`. `virtual` remains the default.
-The renderer and backend options can appear in either order. Duplicate,
-missing and unknown options fail before output creation or session launch.
-No arbitrary dimensions or KWin arguments are accepted.
+The renderer and backend options can appear in either order. `--output` applies
+only to the DRM backend. Duplicate, missing and unknown options fail before
+output creation or session launch. No arbitrary dimensions or KWin arguments
+are accepted.
 
-The default renderer profile is `v3d`. The only other profile is
-`powervr-zink`. Unknown profiles fail before output creation or session launch.
+The default renderer profile is `v3d`. Other profiles are `powervr-zink` and
+`radeonsi`. Unknown profiles fail before output creation or session launch.
 The runner requires at least one readable and writable `/dev/dri/renderD*`
 character device. It rejects symlink nodes. It does not select a fixed node
 number, create devices or change permissions. Actual renderer evidence
@@ -63,6 +66,10 @@ This profile uses one installed ICD. It does not accept a private library
 prefix, library interposition or an inherited driver list. It records the
 profile, accessible node and ICD hash. The node record proves access only;
 it does not identify the device which KWin selects.
+The `radeonsi` profile does not set a Mesa driver override. It requires both
+KWin's support information and the actual `plasmashell` Qt Quick renderer log
+to identify an AMD/Radeon renderer with the `radeonsi` driver name. It rejects
+software renderer names, including `llvmpipe`, `lavapipe` and `softpipe`.
 For `drm`, an existing ordinary account also needs read and write access to
 at least one nonsymlink `/dev/dri/card*` character device. `primary-node.txt`
 records an accessible candidate; it does not prove which device KWin opens.
@@ -75,17 +82,21 @@ force that fallback or qualify it as a working seat. A reachable system bus
 and device access do not establish login, device leasing or input ownership.
 
 `backend.txt` records the requested backend. `output-policy.txt` records the
-checked backend, width and height. DRM uses `--drm` without windowed-size
-arguments. It requires one enabled `HDMI-A-1` output at 1920x1080, scale 1 and
-60000 mHz. The virtual policy requires `Virtual-0` at 1280x1024 with the same
-scale and refresh rate. Both support snapshots must contain the selected
-KWin backend and those actual output fields. The Plasma layout script checks
+checked backend, dimensions and output name. DRM uses `--drm` without
+windowed-size arguments. It requires one enabled output with the expected name
+at 1920x1080, scale 1 and 60000 mHz. The default expected DRM name remains
+`HDMI-A-1`; `--output` changes only the name checked in KWin support
+information. It does not select a connector or DRM device. The virtual policy
+requires `Virtual-0` at 1280x1024 with the same scale and refresh rate. Both
+support snapshots must contain the selected KWin backend and those actual
+output fields. The Plasma layout script checks
 the same geometry, desktop, panel and applet models during readiness.
 These are programmatic diagnostics. They do not establish visible pixels,
-physical HDMI, input devices or a complete seat implementation.
+physical output pixels, input devices or a complete seat implementation.
 
 The V3D profile keeps its existing clean environment and driver selection.
-No profile starts GPU, display or NPU diagnostic stages.
+The RadeonSI profile also uses ordinary Mesa driver selection. No profile
+starts GPU, display or NPU diagnostic stages.
 
 The path must contain at most 70 characters. The test creates a private HOME,
 XDG directories, temporary directory and D-Bus session. It derives `USER`,
@@ -188,10 +199,11 @@ of KWin. KSMServer's source selects Qt's `xcb` backend before it exposes its
 D-Bus service. The renderer log must contain evidence from the actual
 plasmashell PID, selected through the private bus. V3D values must start
 with `V3D `. PowerVR values must contain both `zink` and `PowerVR` in the
-same renderer field. Values from the vendor, version, environment or another
-log line do not satisfy that check. Every reported renderer value must match.
-The checker rejects llvmpipe, lavapipe, softpipe and QPainter. The existing
-QML error checks remain mandatory.
+same renderer field. RadeonSI values must contain an AMD/Radeon token and the
+`radeonsi` driver token in the same field. Values from the vendor, version,
+environment or another log line do not satisfy that check. Every reported
+renderer value must match. The checker rejects llvmpipe, lavapipe, softpipe and
+QPainter. The existing QML error checks remain mandatory.
 
 The controller rejects the literal Mesa prefix `MESA: error:` in `bus.log`,
 `compositor.log` and `plasma-session.log`. It checks readiness, each liveness
@@ -213,7 +225,7 @@ failure because it cannot prove cleanup of detached processes without a fresh
 inventory. It does not guess their identity or signal an unverified PID.
 
 This test checks only the selected fixed output policy. It does not validate
-physical HDMI, arbitrary display modes, input devices,
+physical output pixels, arbitrary display modes, input devices,
 a display-manager login, screen locking, remote desktop or a long running
 session. Run the separate Desktop capture check for pixel evidence. Keep the
 hardware acceptance record separate.
@@ -231,12 +243,14 @@ python3 -B ./renderer-host.py --sdk-source /absolute/EmberBSD-SDK \
 
 These controls execute the actual shell parser, backend and renderer checks,
 layout JavaScript, current-output predicates, and clean
-environment dispatch. They cover both profiles, the legacy two-argument
+environment dispatch. They cover all renderer profiles, the legacy two-argument
 checker, mixed renderers, software fallbacks, unrelated text and missing
-installed prerequisites. They preserve the guard arguments, return status
-and controller lifecycle. Baseline and mutated predicates demonstrate the
+installed prerequisites. Output controls retain the HDMI default, check an
+explicit eDP name and reject output arguments for the virtual backend. They
+preserve the guard arguments, return status and controller lifecycle.
+Baseline and mutated predicates demonstrate the
 cause of rejected or falsely accepted evidence. Target paths are explicit
-host doubles. These controls do not execute KDE or establish PowerVR Plasma
+host doubles. These controls do not execute KDE or establish target Plasma
 acceptance. No C or C++ source changes in this profile update.
 
 Run the existing host tests with native Perl and Ruby:

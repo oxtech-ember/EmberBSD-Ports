@@ -10,12 +10,12 @@ import json
 import os
 from pathlib import Path
 import shlex
-import re
 
-BASELINE = '8b0508d72da7adf676af5a4ab1b069b2099b2e07'
+BASELINE = 'e441c445281b1b7e80d2951f4883dc5f7beeea0b'
 ICD = '/usr/pkg/share/vulkan/icd.d/powervr_mesa_icd.json'
 POWER = 'zink Vulkan 1.2(PowerVR B-Series BXM-4-64 MC1 (IMAGINATION_OPEN_SOURCE_MESA))'
 V3D = 'V3D 7.1.10.2'
+RADEONSI = 'AMD Radeon(TM) Graphics (radeonsi, raven, ACO, DRM 3.54.0, LLVM 23.1.4)'
 
 
 def section(text, start, end):
@@ -90,7 +90,7 @@ def main():
         for p in inputs[:4]:
             if p.suffix == '.sh':
                 call('syntax-' + p.name, ['/bin/sh', '-n', str(p)])
-        for profile, value in [('v3d', V3D), ('powervr-zink', POWER)]:
+        for profile, value in [('v3d', V3D), ('powervr-zink', POWER), ('radeonsi', RADEONSI)]:
             for mode, render in [('support', support), ('renderer', qt)]:
                 check(profile + '-' + mode, mode, render(value), profile)
                 check(profile + '-repeat-' + mode, mode, render(value) + render(value), profile)
@@ -102,6 +102,7 @@ def main():
         check('default-support', 'support', support(V3D))
         check('default-qt', 'renderer', qt(V3D))
         check('default-no-power', 'support', support(POWER), expected=1)
+        check('default-no-radeonsi', 'support', support(RADEONSI), expected=1)
         check('unknown-profile', 'support', support(V3D), 'unknown', 2)
         check('empty-profile', 'support', support(V3D), '', 2)
         check('opengl-without-es', 'support', support(V3D).replace('OpenGL ES', 'OpenGL'))
@@ -114,8 +115,14 @@ def main():
             ('unrelated', 'debug mentions ' + qt(POWER)),
             ('malformed', qt(POWER) + '[321] qt.rhi.general: OpenGL VENDOR: PowerVR RENDERER: zink\n'),
             ('qml', qt(POWER) + 'Error loading applet\n'),
+            ('radeonsi-vendor-spoof', qt('llvmpipe').replace('VENDOR: Mesa', 'VENDOR: AMD')),
+            ('radeonsi-unrelated-renderer', qt('llvmpipe') + 'AMD Radeon Graphics (radeonsi, raven)\n'),
+            ('radeonsi-without-amd-renderer', qt('radeonsi, raven')),
+            ('radeonsi-without-driver', qt('AMD Radeon Graphics (raven)')),
         ]:
-            check(name, 'renderer', text, 'powervr-zink', 1)
+            check(name, 'renderer', text, 'radeonsi' if name.startswith('radeonsi-') else 'powervr-zink', 1)
+        check('radeonsi-vendor-spoof-support', 'support', support('llvmpipe AMD Radeon radeonsi'), 'radeonsi', 1)
+        check('radeonsi-mixed', 'renderer', qt(RADEONSI) + qt('AMD Radeon (llvmpipe)'), 'radeonsi', 1)
         check('support-unrelated', 'support', support('zink') + 'GPU name: PowerVR\n', 'powervr-zink', 1)
         image = work / 'header.png'
         image.write_bytes(bytes.fromhex('89504e470d0a1a0a0000000d494844520000014000000100'))
@@ -126,7 +133,7 @@ def main():
         out = work / 'never-created'
         parser_ok = prefix + 'printf "%s\\n" "$profile"\n'
         require(script('parser-default', parser_ok, [str(out)]) == b'v3d\n', 'Default profile changed')
-        for profile in ['v3d', 'powervr-zink']:
+        for profile in ['v3d', 'powervr-zink', 'radeonsi']:
             require(script('parser-' + profile, parser_ok, ['--renderer', profile, str(out)]) == (profile + '\n').encode(), 'Explicit profile lost')
         for index, argv in enumerate([[], ['relative'], ['--renderer'], ['--renderer', ''], ['--renderer', 'unknown', str(out)], ['--renderer', '', str(out)], ['--renderer', 'v3d', '--renderer', 'powervr-zink', str(out)], [str(work)], ['--other', 'v3d', str(out)]]):
             script('parser-reject-' + str(index), parser_ok, argv, 2)
@@ -177,11 +184,12 @@ def main():
         recorder = work / 'record.py'
         recorder.write_text('import json,os,sys\nprint(json.dumps(dict(env=dict(os.environ),argv=sys.argv[1:])))\nsys.exit(int(os.environ["TEST_EXIT"]))\n')
         expected_power = dict(KWIN_COMPOSE='O2ES', GALLIUM_DRIVER='zink', MESA_LOADER_DRIVER_OVERRIDE='zink', VK_DRIVER_FILES=ICD, PVR_I_WANT_A_BROKEN_VULKAN_DRIVER='1')
-        for profile in ['v3d', 'powervr-zink']:
+        for profile in ['v3d', 'powervr-zink', 'radeonsi']:
             for status in [0, 7]:
                 directory = work / (profile + '-' + str(status)); directory.mkdir()
                 backend = 'drm' if status == 7 else 'virtual'
-                body = 'work=' + shlex.quote(str(directory)) + '\ncd "$work"\nbackend=' + backend + '\nprofile=' + profile + '\naccount=fixture\nlogin_shell=/bin/sh\nicd=' + ICD + '\n'
+                drm_output = 'eDP-1' if status == 7 else 'HDMI-A-1'
+                body = 'work=' + shlex.quote(str(directory)) + '\ncd "$work"\nbackend=' + backend + '\nprofile=' + profile + '\ndrm_output=' + drm_output + '\naccount=fixture\nlogin_shell=/bin/sh\nicd=' + ICD + '\n'
                 body += dispatch.replace('/usr/pkg/bin/perl ./guard.pl', 'TEST_EXIT=' + str(status) + ' ' + shlex.quote(sys.executable) + ' ' + shlex.quote(str(recorder)) + ' ./guard.pl')
                 env = dict(os.environ, LD_LIBRARY_PATH='/untrusted', LD_PRELOAD='/untrusted', VK_ICD_FILENAMES='/untrusted', VK_DRIVER_FILES='/untrusted', GALLIUM_DRIVER='softpipe', KWIN_DRM_DEVICES='/untrusted')
                 script('dispatch-' + profile + '-' + str(status), body, env=env)
@@ -194,12 +202,14 @@ def main():
                     require(key not in row['env'], 'Inherited private override: ' + key)
                 require(row['env']['EMBER_PLASMA_RENDERER_PROFILE'] == profile, 'Profile lost at dispatch')
                 require(row['env']['EMBER_PLASMA_BACKEND'] == backend, 'Backend lost at dispatch')
+                require(row['env']['EMBER_PLASMA_EXPECTED_DRM_OUTPUT'] == drm_output,
+                        'Expected DRM output lost at dispatch')
 
         # The controller must pass the selected profile at all three call sites.
         calls = [line for line in controller.splitlines() if line.startswith('/bin/sh ./check-results.sh ')]
         require(len(calls) == 3 and all(line.endswith(' "$profile"') for line in calls), 'Controller profile propagation changed')
         require('awk -v prefix="[$shell_pid] "' in controller, 'Actual shell PID filter lost')
-        for profile, value in [('v3d', V3D), ('powervr-zink', POWER)]:
+        for profile, value in [('v3d', V3D), ('powervr-zink', POWER), ('radeonsi', RADEONSI)]:
             for name in ['support-before.txt', 'support-after.txt']:
                 (work / name).write_text(support(value))
             (work / 'shell-renderer.log').write_text(qt(value))
@@ -208,22 +218,36 @@ def main():
 
         # The backend enum is independent of renderer selection and option order.
         parser_backend = runner.split('[ "$(id -u)" -ne 0 ]', 1)[0]
-        parser_backend += 'printf "%s %s\\n" "$backend" "$profile"\n'
+        parser_backend += 'printf "%s %s %s\\n" "$backend" "$profile" "$drm_output"\n'
         for backend in ['virtual', 'drm']:
-            for profile in ['v3d', 'powervr-zink']:
-                for order in [['--backend', backend, '--renderer', profile],
-                              ['--renderer', profile, '--backend', backend]]:
+            for profile in ['v3d', 'powervr-zink', 'radeonsi']:
+                orders = [['--backend', backend, '--renderer', profile],
+                          ['--renderer', profile, '--backend', backend]]
+                if backend == 'drm':
+                    orders.extend([
+                        ['--backend', backend, '--renderer', profile, '--output', 'eDP-1'],
+                        ['--renderer', profile, '--output', 'eDP-1', '--backend', backend],
+                    ])
+                for order in orders:
+                    expected_output = 'eDP-1' if '--output' in order else 'HDMI-A-1'
                     require(script('backend-parser-' + str(len(results)), parser_backend,
-                                   [*order, str(out)]) == (backend + ' ' + profile + '\n').encode(),
+                                   [*order, str(out)]) == (backend + ' ' + profile + ' ' + expected_output + '\n').encode(),
                             'Backend/profile parser changed')
         for argv in [['--backend'], ['--backend', '', str(out)],
                      ['--backend', 'unknown', str(out)], ['--backend', 'drm'],
                      ['--backend', 'drm', '--backend', 'virtual', str(out)],
                      ['--backend', 'drm', str(out), '--renderer', 'v3d'],
+                     ['--output'], ['--output', '', str(out)],
+                     ['--output', 'eDP-1', str(out)],
+                     ['--backend', 'virtual', '--output', 'eDP-1', str(out)],
+                     ['--backend', 'drm', '--output', 'eDP/1', str(out)],
+                     ['--backend', 'drm', '--output', 'eDP-1', '--output', 'HDMI-A-1', str(out)],
+                     ['--backend', 'drm', '--output', 'A' * 33, str(out)],
                      ['--width', '1920', str(out)], ['--drm', str(out)]]:
             script('backend-parser-reject-' + str(len(results)), parser_backend, argv, 2)
             require(not out.exists(), 'Rejected backend created output')
         call('full-unknown-backend', ['/bin/sh', str(source / 'run.sh'), '--backend', 'unknown', str(out)], 2)
+        call('full-output-on-virtual', ['/bin/sh', str(source / 'run.sh'), '--output', 'eDP-1', str(out)], 2)
 
         # Only target paths are replaced; real character/access/symlink tests run.
         for backend, nodes, expected in [
@@ -280,17 +304,28 @@ console.log('PASS: actual layout geometry');
         wrapper = work / 'wrapper'
         wrapper.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > wrapper-arguments\n')
         wrapper.chmod(0o700)
-        for backend, width, height, name, backend_name in [
-                ('virtual', 1280, 1024, 'Virtual-0', 'KWin::VirtualBackend'),
-                ('drm', 1920, 1080, 'HDMI-A-1', 'DRM')]:
-            env = dict(os.environ, EMBER_PLASMA_BACKEND=backend)
-            directory = work / ('launch-' + backend); directory.mkdir()
+        for backend, width, height, name, backend_name, drm_output in [
+                ('virtual', 1280, 1024, 'Virtual-0', 'KWin::VirtualBackend', 'HDMI-A-1'),
+                ('drm', 1920, 1080, 'HDMI-A-1', 'DRM', 'HDMI-A-1'),
+                ('drm', 1920, 1080, 'eDP-1', 'DRM', 'eDP-1')]:
+            env = dict(os.environ, EMBER_PLASMA_BACKEND=backend,
+                       EMBER_PLASMA_EXPECTED_DRM_OUTPUT=drm_output)
+            directory = work / ('launch-' + backend + '-' + name); directory.mkdir()
             actual_launch = launch.replace('/usr/pkg/bin/kwin_wayland_wrapper', shlex.quote(str(wrapper)))
             script('launch-' + backend, policy + 'cd ' + shlex.quote(str(directory)) + '\n' + actual_launch + 'wait "$!"\n', env=env)
             expected = (['--virtual', '--width', '1280', '--height', '1024'] if backend == 'virtual' else ['--drm'])
             expected += ['--xwayland', '--no-lockscreen', '/bin/sh ./environment.sh']
             require((directory / 'wrapper-arguments').read_text().splitlines() == expected,
                     'Actual backend launch arguments changed')
+            output_record = section(controller, 'cd "$EMBER_PLASMA_OUTPUT"\n', 'phase=display-environment\n')
+            policy_dir = work / ('output-policy-' + backend + '-' + name); policy_dir.mkdir()
+            script('output-policy-' + backend + '-' + name,
+                   policy + 'cd "$EMBER_PLASMA_OUTPUT"\n' + output_record,
+                   env=dict(env, EMBER_PLASMA_OUTPUT=str(policy_dir)))
+            require((policy_dir / 'output-policy.txt').read_text() ==
+                    backend + ' ' + str(width) + ' ' + str(height) + ' ' +
+                    ('Virtual-0' if backend == 'virtual' else drm_output) + '\n',
+                    'Recorded output policy does not match the checked output')
             payload = work / ('layout-' + backend + '.js')
             (work / 'layout.js').write_text(layout)
             payload.write_bytes(script('layout-payload-' + backend, policy + 'printf "%s\\n" ' + layout_word + '\n', env=env))
@@ -301,7 +336,8 @@ console.log('PASS: actual layout geometry');
                         'Geometry: 0,0,' + str(width) + 'x' + str(height) + '\nScale: 1\nRefresh Rate: 60000\n\nCompositing\n')
             for phase in ['before', 'after']:
                 f = work / ('backend-' + backend + '-' + phase + '.txt'); f.write_text(evidence)
-                script('backend-' + backend + '-' + phase, policy + predicate + 'backend_check "$1"\n', [str(f)], env=env)
+                script('backend-' + backend + '-' + name + '-' + phase,
+                       policy + predicate + 'backend_check "$1"\n', [str(f)], env=env)
             for label, bad in [
                     ('wrong-backend', evidence.replace('Name: ' + backend_name + '\n', 'Name: wrong-backend\n', 1)),
                     ('wrong-output', evidence.replace('Name: ' + name + '\n', 'Name: Virtual-99\n')),
@@ -313,8 +349,9 @@ console.log('PASS: actual layout geometry');
                     ('duplicate', evidence.replace('Name: ' + name, 'Name: ' + name + '\nName: ' + name)),
                     ('two-screens', evidence.replace('Number of Screens: 1', 'Number of Screens: 2')),
                     ('unrelated', evidence.replace('LogicalOutput backend', 'unrelated'))]:
-                f = work / ('backend-' + backend + '-' + label + '.txt'); f.write_text(bad)
-                script('backend-' + backend + '-' + label, policy + predicate + 'backend_check "$1"\n', [str(f)], 1, env)
+                f = work / ('backend-' + backend + '-' + name + '-' + label + '.txt'); f.write_text(bad)
+                script('backend-' + backend + '-' + name + '-' + label,
+                       policy + predicate + 'backend_check "$1"\n', [str(f)], 1, env)
             if backend == 'drm':
                 wrong_launch = actual_launch.replace('drm) set -- --drm ;;', 'drm) set -- --virtual --width 1280 --height 1024 ;;')
                 script('mutant-virtual-drm-launch', policy + 'cd ' + shlex.quote(str(directory)) + '\n' + wrong_launch + 'wait "$!"\n', env=env)
@@ -351,27 +388,29 @@ console.log('PASS: actual layout geometry');
                 '"$backend" > backend.txt' in runner and '"$primary_node" > primary-node.txt' in runner,
                 'Selected backend/evidence dispatch lost')
 
-        # Compare preserved lifecycle source with the exact upstream baseline.
+        # Compare preserved lifecycle source with the frozen parent revision.
         relative = source.relative_to(ports)
         old = lambda name: capture(['git', '-C', str(ports), 'show', BASELINE + ':' + str(relative / name)]).stdout.decode()
         original_controller = old('controller.sh')
-        projected = controller.replace(policy, '').replace(predicate, '')
-        projected = re.sub(r'^printf .* > output-policy.txt\n', '', projected, flags=re.M)
-        old_launch = re.search(r'^/usr/pkg/bin/kwin_wayland_wrapper .*? &\n',
-                               original_controller, re.M | re.S).group()
-        projected = projected.replace(launch, old_launch)
-        projected = re.sub(r'^backend_check support-(before|after)\.txt\n', '', projected, flags=re.M)
-        projected = projected.replace('var emberExpectedWidth=${width-1280}; var emberExpectedHeight=${height-1024}; ', '')
-        projected = projected.replace('"PASS: default desktop, panel and six applet models on ${width-1280}x${height-1024}"',
-                                      "'PASS: default desktop, panel and six applet models on 1280x1024'")
-        projected = projected.replace('profile=${EMBER_PLASMA_RENDERER_PROFILE-v3d}\ncase "$profile" in v3d|powervr-zink) ;; *) exit 2 ;; esac\n', '')
-        projected = projected.replace(' "$profile"\n', '\n')
+        projected = controller
+        projected = projected.replace('case "$profile" in v3d|powervr-zink|radeonsi) ;; *) exit 2 ;; esac\n',
+                                       'case "$profile" in v3d|powervr-zink) ;; *) exit 2 ;; esac\n')
+        projected = projected.replace('expected_drm_output=${EMBER_PLASMA_EXPECTED_DRM_OUTPUT-HDMI-A-1}\n', '')
+        projected = projected.replace(
+            'drm)\n    case "$expected_drm_output" in \'\'|*[!A-Za-z0-9_.-]*) exit 2 ;; esac\n'
+            '    [ "${#expected_drm_output}" -le 32 ] || exit 2\n'
+            '    width=1920; height=1080; output_name=$expected_drm_output; backend_name=DRM ;;',
+            'drm) width=1920; height=1080; output_name=HDMI-A-1; backend_name=DRM ;;')
+        projected = projected.replace(
+            'printf \'%s %s %s %s\\n\' "$backend" "$width" "$height" "$output_name" > output-policy.txt',
+            'printf \'%s %s %s\\n\' "$backend" "$width" "$height" > output-policy.txt')
         require(projected == original_controller, 'Controller changed outside profile plumbing')
         require((source / 'guard.pl').read_text() == old('guard.pl'), 'Supervisor changed')
         old_checker = work / 'baseline-checker.sh'
         old_checker.write_bytes(capture(['git', '-C', str(ports), 'show', BASELINE + ':' + str(checker.relative_to(ports))]).stdout)
-        check('baseline-powervr-red', 'support', support(POWER), expected=1, selected=old_checker)
+        check('baseline-powervr-green', 'support', support(POWER), 'powervr-zink', selected=old_checker)
         check('baseline-v3d-green', 'renderer', qt(V3D), selected=old_checker)
+        check('baseline-radeonsi-unknown', 'support', support(RADEONSI), 'radeonsi', 2, old_checker)
         for label, before, after in [
             ('allow-software', 'if (lower ~ /llvmpipe|lavapipe|softpipe|qpainter/)', 'if (0)'),
             ('ignore-mixed', 'exit (count == 0 || bad)', 'exit (count == 0)'),
@@ -384,6 +423,14 @@ console.log('PASS: actual layout geometry');
             # These deliberately broken predicates must falsely accept.
             check('mutant-' + label, 'renderer', payload, 'powervr-zink', 0, mutant)
             check('fixed-' + label, 'renderer', payload, 'powervr-zink', 1)
+        for label, before, bad in [
+            ('drop-radeonsi-name', 'lower !~ /(^|[^[:alnum:]_])radeonsi([^[:alnum:]_]|$)/', 'AMD Radeon Graphics (raven)'),
+            ('drop-amd-name', 'lower !~ /(^|[^[:alnum:]_])(amd|radeon)([^[:alnum:]_]|$)/', 'radeonsi, raven'),
+        ]:
+            require(check_text.count(before) == 1, 'Radeon predicate mutation point changed')
+            mutant = work / (label + '.sh'); mutant.write_text(check_text.replace(before, '0'))
+            check('mutant-' + label, 'renderer', qt(bad), 'radeonsi', 0, mutant)
+            check('fixed-' + label, 'renderer', qt(bad), 'radeonsi', 1)
         require(all(hashlib.sha256((ports / name).read_bytes()).hexdigest() == value for name, value in pins.items()), 'Source changed during regression')
         receipt = dict(status='PASS', cases=len(results), source_sha256=pins, baseline=BASELINE, checks=results,
                        scope='Host shell and process-environment controls. Target preflight paths are explicit doubles. No KDE, GPU or target execution.')

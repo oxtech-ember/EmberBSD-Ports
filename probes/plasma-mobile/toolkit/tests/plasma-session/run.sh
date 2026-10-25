@@ -4,13 +4,15 @@
 set -eu
 usage()
 {
-    echo "Usage: $0 [--backend virtual|drm] [--renderer v3d|powervr-zink] ABSOLUTE_NEW_OUTPUT" >&2
+    echo "Usage: $0 [--backend virtual|drm] [--renderer v3d|powervr-zink|radeonsi] [--output DRM_NAME] ABSOLUTE_NEW_OUTPUT" >&2
     exit 2
 }
 profile=v3d
 backend=virtual
 renderer_seen=no
 backend_seen=no
+output_seen=no
+drm_output=HDMI-A-1
 while [ "$#" -gt 1 ]; do
     case "$1" in
     --renderer)
@@ -19,12 +21,18 @@ while [ "$#" -gt 1 ]; do
     --backend)
         [ "$backend_seen" = no ] && [ "$#" -ge 3 ] || usage
         backend=$2; backend_seen=yes; shift 2 ;;
+    --output)
+        [ "$output_seen" = no ] && [ "$#" -ge 3 ] || usage
+        drm_output=$2; output_seen=yes; shift 2 ;;
     *) usage ;;
     esac
 done
 [ "$#" -eq 1 ] || usage
-case "$profile" in v3d|powervr-zink) ;; *) usage ;; esac
+case "$profile" in v3d|powervr-zink|radeonsi) ;; *) usage ;; esac
 case "$backend" in virtual|drm) ;; *) usage ;; esac
+[ "$output_seen" = no ] || [ "$backend" = drm ] || usage
+case "$drm_output" in ''|*[!A-Za-z0-9_.-]*) usage ;; esac
+[ "${#drm_output}" -le 32 ] || usage
 work=$1
 case "$work" in /*) ;; *) echo 'Absolute output path required.' >&2; exit 2 ;; esac
 [ ! -e "$work" ] && [ ! -L "$work" ] || { echo 'Output already exists.' >&2; exit 2; }
@@ -137,6 +145,7 @@ status=0
     XDG_DATA_DIRS=/usr/pkg/share XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=KDE \
     QT_QPA_PLATFORM=wayland QSG_RHI_BACKEND=opengl QSG_INFO=1 \
     EMBER_PLASMA_RENDERER_PROFILE="$profile" EMBER_PLASMA_BACKEND="$backend" \
+    EMBER_PLASMA_EXPECTED_DRM_OUTPUT="$drm_output" \
     QT_MESSAGE_PATTERN='[%{pid}] %{category}: %{message}' EMBER_PLASMA_OUTPUT="$work" \
     /usr/pkg/bin/perl ./guard.pl "$work" 240 -- \
     /usr/pkg/bin/dbus-run-session -- /bin/sh ./controller.sh > bus.log 2>&1 || status=$?
