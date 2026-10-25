@@ -44,6 +44,22 @@ Run the source check with an explicit SDK Python:
   --tar /absolute/distfiles/gzip-1.15.tar --pkgsrc /absolute/export -v
 ```
 
+Native metadata additionally requires `--metadata-selection /absolute/selection.json`.
+Its object has exactly `make`, `work`, `environment` and `record`.
+`make` is the complete SDK tuple: selected bmake, `-m`, owned mk root,
+`SHELL=/selected/mksh` and `MAKECONF=/private/work/mk.conf`.
+All paths are explicit and absolute. The makeconf, home, temporary and cache paths
+stay inside `work`. It must select private `pkgdb`, `objects` and `prefix` directories.
+The environment contains only `HOME`, `TMPDIR`, all three `XDG_*_HOME` paths,
+`PATH`, `LC_ALL=C`, `TZ=UTC` and the same `MAKECONF`.
+It does not inherit `MAKEFLAGS`, shell startup inputs or other ambient variables.
+The new `record` file stays inside the prepared export and retains exact argv and environment.
+The fixture checks `.SHELL`, `.SYSPATH`, `!=` and `:sh` with the selected mksh.
+Parse-time warnings fail even when make returns zero.
+Supply existing pkgsrc cached host facts explicitly to avoid automatic tool discovery.
+Run `profiles/common-build-tools/tests/test_gzip_metadata.py` for refusal controls.
+This fixture does not qualify its configure command tools or an ordinary SDK provider.
+
 Source hashes, retired-patch content and export composition are separate from execution.
 Native GCC16 compilation, upstream tests, package lifecycle and consumer runtime remain pending.
 Cppcheck, applicable path analysis and memory checks also remain pending.

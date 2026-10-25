@@ -6,7 +6,9 @@
 import argparse
 import hashlib
 import io
+import json
 import lzma
+import os
 from pathlib import Path
 import re
 import shlex
@@ -25,6 +27,82 @@ def checked_archive(raw, expected):
     if hashlib.sha256(raw).hexdigest() != expected:
         raise ValueError('The pinned source archive differs.')
     return raw
+
+
+def metadata_inputs(value, pkgsrc):
+    """Check an explicit fixture equivalent of SDK seed_commands()['make']."""
+    def require(condition, message):
+        if not condition:
+            raise ValueError(message)
+    def path(text, *, directory=False, executable=False):
+        require(isinstance(text, str) and Path(text).is_absolute() and
+                re.fullmatch(r'[A-Za-z0-9_./+@%=-]+', text), 'Metadata paths need absolute SDK-safe spelling.')
+        result = Path(text)
+        require(result.exists() and result.resolve() == result and
+                (result.is_dir() if directory else result.is_file()), 'Metadata input is absent or indirect.')
+        require(not executable or os.access(result, os.X_OK), 'Metadata tool is not executable.')
+        return result
+    require(isinstance(value, dict) and set(value) == {'make', 'work', 'environment', 'record'},
+            'Metadata selection needs the complete make tuple, private work, environment and record.')
+    make = value['make']
+    require(isinstance(make, list) and len(make) == 5 and all(isinstance(word, str) for word in make),
+            'Metadata requires the complete five-word SDK make tuple.')
+    require(make[1] == '-m' and make[3].startswith('SHELL=') and make[4].startswith('MAKECONF='),
+            'Metadata make tuple must bind system rules, shell and MAKECONF.')
+    program = path(make[0], executable=True)
+    mk = path(make[2], directory=True)
+    path(str(mk / 'sys.mk'))
+    shell = path(make[3].removeprefix('SHELL='), executable=True)
+    conf = path(make[4].removeprefix('MAKECONF='))
+    work = path(value['work'], directory=True)
+    require(conf.is_relative_to(work), 'Metadata MAKECONF must be in its private work directory.')
+    env = value['environment']
+    private = {'HOME', 'TMPDIR', 'XDG_CACHE_HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME'}
+    require(isinstance(env, dict) and set(env) == private | {'PATH', 'LC_ALL', 'TZ', 'MAKECONF'} and
+            all(isinstance(text, str) for text in env.values()), 'Metadata environment must be complete and finite.')
+    require(env['MAKECONF'] == str(conf) and env['LC_ALL'] == 'C' and env['TZ'] == 'UTC',
+            'Metadata environment differs from its explicit make context.')
+    for name in private:
+        require(path(env[name], directory=True).is_relative_to(work), 'Metadata environment escapes its private work.')
+    directories = [path(name, directory=True) for name in env['PATH'].split(os.pathsep)]
+    require(program.parent in directories and shell.parent in directories, 'Selected metadata tools are absent from PATH.')
+    record = Path(value['record']) if isinstance(value['record'], str) else Path()
+    require(record.is_absolute() and record.parent.resolve(strict=True) == record.parent and
+            record.is_relative_to(pkgsrc.resolve(strict=True)) and not record.exists(),
+            'Metadata record must be new and inside the prepared export.')
+    return list(make), dict(env), work, record
+
+
+def native_metadata(value, pkgsrc):
+    make, env, work, record = metadata_inputs(value, pkgsrc)
+    shell, mk = make[3].removeprefix('SHELL='), make[2]
+    fixture = work / 'metadata.mk'
+    fixture_text = (f'.if "${{.SHELL}}" != "{shell}" || "${{SHELL}}" != "{shell}"\n'
+        '.error metadata shell selection changed\n.endif\n'
+        f'.if "${{.SYSPATH}}" != "{mk}"\n.error metadata system rules changed\n.endif\n'
+        '_GZIP_ASSIGN != print -r -- "$${KSH_VERSION-}"\n'
+        '_GZIP_COMMAND = print -r -- "$${KSH_VERSION-}"\n'
+        '_GZIP_MODIFIER := ${_GZIP_COMMAND:sh}\n'
+        '.if empty(_GZIP_ASSIGN:M*MIRBSD*) || empty(_GZIP_MODIFIER:M*MIRBSD*)\n'
+        '.error metadata parse-time shell changed\n.endif\n'
+        '.include "${.CURDIR}/Makefile"\n'
+        f'.if "${{PKG_DBDIR}}" != "{work}/pkgdb" || "${{WRKOBJDIR}}" != "{work}/objects" || "${{LOCALBASE}}" != "{work}/prefix"\n'
+        '.error metadata package paths escape their fixture\n.endif\n')
+    with fixture.open('x') as output:
+        output.write(fixture_text)
+    package = pkgsrc / 'archivers/gzip'
+    argv = [*make, '-C', str(package), '-f', str(fixture)]
+    for variable in ('PKGNAME', 'INFO_FILES', 'CONFIGURE_ENV', 'PKG_FAIL_REASON',
+                     '.SHELL', '.SYSPATH', '_GZIP_ASSIGN', '_GZIP_MODIFIER'):
+        argv.extend(['-V', '${' + variable + '}'])
+    result = subprocess.run(argv, cwd=work, env=env, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, text=True, timeout=30)
+    with record.open('x') as output:
+        json.dump(dict(scope='source-metadata-fixture', ordinary_provider_qualified=False,
+            argv=argv, environment=env, cwd=str(work), returncode=result.returncode,
+            stdout=result.stdout, stderr=result.stderr), output, indent=2)
+        output.write('\n')
+    return result
 
 
 class GzipSourceTests(unittest.TestCase):
@@ -84,19 +162,19 @@ class GzipSourceTests(unittest.TestCase):
         self.assertFalse((ARGS.pkgsrc / 'archivers/gzip/patches').exists())
 
     def test_real_native_package_metadata(self):
-        if ARGS.bmake is None:
-            self.skipTest('Pass --bmake and --makeconf for isolated native metadata.')
+        if ARGS.metadata_selection is None:
+            self.skipTest('Pass --metadata-selection for isolated native metadata.')
         self.assertIsNotNone(ARGS.pkgsrc)
-        self.assertIsNotNone(ARGS.makeconf)
-        result = subprocess.run([str(ARGS.bmake), '-C', str(ARGS.pkgsrc / 'archivers/gzip'),
-            'MAKECONF=' + str(ARGS.makeconf), '-V', '${PKGNAME}', '-V', '${INFO_FILES}',
-            '-V', '${CONFIGURE_ENV}', '-V', '${PKG_FAIL_REASON}'],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30)
+        value = json.loads(ARGS.metadata_selection.read_bytes())
+        result = native_metadata(value, ARGS.pkgsrc)
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, '', 'Metadata diagnostics must not hide failed parse-time commands.')
         rows = result.stdout.splitlines()
         self.assertEqual(rows[:2], ['gzip-1.15', 'yes'])
         self.assertIn('LESS=less', shlex.split(rows[2]))
-        self.assertEqual(rows[3:], [''])
+        self.assertEqual(rows[3], '')
+        self.assertEqual(rows[4:6], [value['make'][3].removeprefix('SHELL='), value['make'][2]])
+        self.assertTrue(all('MIRBSD' in row for row in rows[6:8]))
 
 
 if __name__ == '__main__':
@@ -104,7 +182,7 @@ if __name__ == '__main__':
     parser.add_argument('--archive', type=Path, required=True, help='Official gzip-1.15.tar.xz')
     parser.add_argument('--tar', type=Path, required=True, help='Uncompressed archive used by pkgsrc')
     parser.add_argument('--pkgsrc', type=Path, help='Complete prepared export')
-    parser.add_argument('--bmake', type=Path, help='Explicit selected native bmake')
-    parser.add_argument('--makeconf', type=Path, help='Native configuration with private metadata work and pkgdb')
+    parser.add_argument('--metadata-selection', type=Path,
+                        help='Explicit complete SDK make tuple, private work, environment and new record')
     ARGS, remainder = parser.parse_known_args()
     unittest.main(argv=[__file__, *remainder])
