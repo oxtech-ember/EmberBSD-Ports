@@ -321,3 +321,29 @@ security repair with a tested release-wrapper correction. The common profile
 requires current libxml2 for paired ID cleanup. Fresh-document registration
 failures release their document and report the operation error. Functional, allocation-error and upstream tests
 pass; normal package and dynamic memory acceptance remain separate.
+
+## Perl DTrace selection
+
+The Darwin bootstrap profile uses Perl as a build interpreter. It selects
+`PKG_OPTIONS.perl+=-dtrace` because DTrace instrumentation is outside that
+foundation contract. It preserves test targets, analyzer flags, and diagnostics.
+The common Perl recipe retains its `dtrace` option and its platform suggestions.
+
+For that option, set `DTRACE` to the absolute executable path from an explicitly
+qualified build-host provider. The recipe passes upstream
+`-Dusedtrace=${DTRACE}`. An unset, empty, relative, or whitespace-containing
+path fails before Configure. Upstream executes this path unquoted, so a path
+with whitespace is not supported. The recipe supplies no system path or PATH
+fallback. The disabled option passes `-Uusedtrace` explicitly. Cross callers
+retain the same explicit provider requirement. No host tool is inferred from
+the target OS.
+
+The ordered export patch applies after `pkgsrc-perl-explicit-shells.patch` and
+sets the effective common package revision to 7. Rebuild ABI-bound Perl modules
+and consumers when replacing an installed Perl package. The existing runtime
+shell fixture expects that same revision. The
+[parser fixture](../common-build-tools/tests/perl-dtrace.py) checks selected
+and refused paths with a complete accepted bmake tuple and an empty PATH.
+Run it through the existing SDK owned-process interface. It does not configure
+Perl, execute DTrace, or qualify a provider. Actual Perl tests and DTrace feature
+checks remain required for a package that enables instrumentation.

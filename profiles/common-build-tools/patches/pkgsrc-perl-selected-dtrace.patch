@@ -1,0 +1,34 @@
+# Select the DTrace provider explicitly for Perl's optional instrumentation.
+# Origin: EmberBSD (AI-assisted). Preserve upstream DTrace probes and failures.
+# Apply after pkgsrc-perl-explicit-shells.patch. Its effective revision is 6.
+
+--- a/lang/perl5/Makefile
++++ b/lang/perl5/Makefile
+@@ -3,7 +3,7 @@
+ .include "license.mk"
+ .include "Makefile.common"
+ 
+-PKGREVISION=	6
++PKGREVISION=	7
+ 
+ COMMENT=	Practical Extraction and Report Language
+ 
+--- a/lang/perl5/options.mk
++++ b/lang/perl5/options.mk
+@@ -68,7 +68,15 @@
+ .endif
+ 
+ .if !empty(PKG_OPTIONS:Mdtrace)
+-CONFIGURE_ARGS+=	-Dusedtrace
++# Configure and Makefile.SH execute $dtrace unquoted. Keep this one path word.
++.  if !defined(DTRACE) || empty(DTRACE) || ${DTRACE:[#]} != 1 || \
++      "${DTRACE:tW:C,^/.*,/,}" != "/"
++PKG_FAIL_REASON+= "Set one absolute DTRACE executable path for the dtrace option."
++.  else
++CONFIGURE_ARGS+=	-Dusedtrace=${DTRACE:Q}
++.  endif
++.else
++CONFIGURE_ARGS+=	-Uusedtrace
+ .endif
+ 
+ .if !empty(PKG_OPTIONS:Mmstats)

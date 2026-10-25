@@ -164,7 +164,7 @@ def main():
                     'The sharp shebang must select the real accepted cat binary')
         else:
             require(not {'PERL_BUILD_SHELL', 'PERL_BUILD_CAT'} & set(bindings), 'Unset/refused Perl pair leaked a selector')
-        require(row['PKGREVISION'] == '6', 'The changed Perl runtime needs PKGREVISION 6')
+        require(row['PKGREVISION'] == '7', 'The selected Perl feature contract needs PKGREVISION 7')
         edges = [word for word in row['DEPENDS'].split() if word.endswith(':../../shells/mksh')]
         require(len(edges) == int(dependency), 'Perl mksh runtime edge is missing or duplicated')
     for mode in ('yes', 'no', 'default'):
