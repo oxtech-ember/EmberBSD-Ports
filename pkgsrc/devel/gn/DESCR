@@ -1,0 +1,3 @@
+GN is a meta-build system that generates Ninja build files. Chromium and
+other projects use GN to describe large builds. This recipe pins the GN
+commit selected by the supported Chromium source.
