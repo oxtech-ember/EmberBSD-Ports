@@ -150,6 +150,17 @@ def check(before, after, policy, recipe):
             # after the loop that sets TOOLS_<VAR> to the first word
             and replacement.rindex(OPT) > replacement.index('TOOLS_CMDLINE_${_TOOLS_VARNAME.${_t_}}='),
             'pkgsrc scripts get only the shell of a builtin command map')
+    unprivileged = after['mk/unprivileged.mk']
+    selected, ordinary = branch(unprivileged, '.if !empty(_UNPRIVILEGED:Munprivileged)')
+    selected, ordinary = branch(selected, OPT)
+    require(not ordinary and '.  for _ember_ownership in chgrp chown\n' in selected and
+            'TOOLS_PATH.${_ember_ownership}= ${TOOLS_PLATFORM.${_ember_ownership}:[1]}\n' in selected and
+            'TOOLS_ARGS.${_ember_ownership}= ${TOOLS_PLATFORM.${_ember_ownership}:[2..-1]}\n' in selected and
+            'TOOLS_CMDLINE.${_ember_ownership}= ${TOOLS_PLATFORM.${_ember_ownership}}\n' in selected and
+            'TOOLS_${_TOOLS_VARNAME.${_ember_ownership}}= ${TOOLS_CMDLINE.${_ember_ownership}}\n' in selected and
+            '${_TOOLS_VARNAME.${_ember_ownership}}= ${TOOLS_CMDLINE.${_ember_ownership}}\n' in selected and
+            unprivileged.index(OPT) > unprivileged.index('TOOLS_PLATFORM.chown='),
+            'Rootless ownership commands lost their complete selected-shell tuple')
     require('Select accepted parse-time utility ${_ember_tool}' in policy,
             'The early utility admission gate was lost')
 
@@ -181,7 +192,8 @@ def main():
     if len(sys.argv) != 3:
         raise SystemExit('usage: darwin-bootstrap-source.py BEFORE_TREE AFTER_TREE')
     root = Path(__file__).resolve().parents[3]
-    names = ['mk/tools/tools.Darwin.mk', 'mk/bsd.prefs.mk', 'mk/tools/replace.mk', 'mk/compiler/gcc.mk']
+    names = ['mk/tools/tools.Darwin.mk', 'mk/bsd.prefs.mk', 'mk/tools/replace.mk',
+             'mk/unprivileged.mk', 'mk/compiler/gcc.mk']
     before = {n: (Path(sys.argv[1]) / n).read_text() for n in names}
     after = {n: (Path(sys.argv[2]) / n).read_text() for n in names}
     policy = (root / 'profiles/development-toolchain/darwin-bootstrap.mk.conf').read_text()
@@ -214,6 +226,11 @@ def main():
     n = 'mk/tools/replace.mk'
     changed[n] = changed[n].replace('.error "Select a native or shared Ports source provider', '# missing refusal "Select a native or shared Ports source provider', 1)
     mutants.append(('unknown-utility', changed, policy, recipe))
+    changed = dict(after)
+    n = 'mk/unprivileged.mk'
+    changed[n] = changed[n].replace('TOOLS_${_TOOLS_VARNAME.${_ember_ownership}}= ${TOOLS_CMDLINE.${_ember_ownership}}',
+                                   'TOOLS_${_TOOLS_VARNAME.${_ember_ownership}}= ${TOOLS_PATH.${_ember_ownership}}', 1)
+    mutants.append(('rootless-ownership-tail', changed, policy, recipe))
     changed = dict(after)
     n = 'mk/compiler/gcc.mk'
     line = 'CWRAPPERS_PREPEND.${_ember_wrap}+= ${EMBERBSD_GCC16_SEED_${_ember_var}:[2..-1]}'

@@ -166,6 +166,27 @@ Keep ordinary Darwin defaults. Use the standard compiler wrappers.
  .if !empty(_tmiss_)
  PKG_FAIL_REASON+=	"${X11BASE}: X11_TYPE=native but xbase set is not installed (missing: ${_tmiss_}).  Either set X11_TYPE to modular or install xbase."
  .endif
+--- a/mk/unprivileged.mk
++++ b/mk/unprivileged.mk
+@@ -204,6 +204,18 @@
+ # Override commands that won't work as a regular user.
+ TOOLS_PLATFORM.chgrp=	${TRUE} chgrp
+ TOOLS_PLATFORM.chown=	${TRUE} chown
++# Ownership maps become commands after the tool paths are split.
++# Keep all command forms complete in the explicit native bootstrap.
++.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++.  for _ember_ownership in chgrp chown
++TOOLS_PATH.${_ember_ownership}= ${TOOLS_PLATFORM.${_ember_ownership}:[1]}
++TOOLS_ARGS.${_ember_ownership}= ${TOOLS_PLATFORM.${_ember_ownership}:[2..-1]}
++TOOLS_CMDLINE.${_ember_ownership}= ${TOOLS_PLATFORM.${_ember_ownership}}
++TOOLS_${_TOOLS_VARNAME.${_ember_ownership}}= ${TOOLS_CMDLINE.${_ember_ownership}}
++${_TOOLS_VARNAME.${_ember_ownership}}= ${TOOLS_CMDLINE.${_ember_ownership}}
++.  endfor
++.endif
++
+ SU_CMD=			${SH} -c
+ 
+ # Do not attempt to modify /etc/shells as a regular user.
 --- a/mk/compiler/gcc.mk
 +++ b/mk/compiler/gcc.mk
 @@ -390,6 +390,11 @@

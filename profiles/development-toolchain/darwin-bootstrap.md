@@ -140,6 +140,26 @@ pkgsrc also reduces `TOOLS_ECHO`, `TOOLS_TEST`, `TOOLS_TRUE` and
 `TOOLS_FALSE` to the first word of the map, the shell alone. The policy sets
 them to the full command, and `tests/darwin-bootstrap-builtin-env.py` runs
 each value the way these scripts do.
+The common unprivileged policy sets `chown` and `chgrp` to `${TRUE}` followed
+by the tool name. Their pkgsrc command values must also keep the complete
+selected-shell command. The native policy restores those two values only
+when the common unprivileged mode is active. pkgsrc splits tool paths before
+this late policy changes the platform maps. Restore the public, `TOOLS_`,
+`TOOLS_CMDLINE` and tools-wrapper path/arguments after that change. This keeps
+the package ownership metadata and the ordinary privileged command paths.
+The finite `tests/darwin-bootstrap-rootless-tools.py` regression composes the
+real pinned infrastructure with the source-test adapter. It queries the real
+tool modules with an explicit make tuple. It checks old failure, complete
+rootless commands, unchanged privileged paths and unchanged fixture files.
+Set `EXPORT_TEST_GIT` and `EXPORT_TEST_PATCH` for the existing source-test
+adapter. Pass each accepted make argument with `--make-arg`, including its
+`-m`, `SHELL` and `MAKECONF` inputs. Pass the selected shell, `chown` and
+`chgrp` paths with `--shell`, `--chown` and `--chgrp`.
+The fixture adds `-r` to query only the real tool modules. This avoids
+unrelated automatic system-makefile discovery in this finite source test.
+It uses synthetic user/group names and changes no ownership. The caller
+must keep source/input shared leases and a new work directory's exclusive
+lease until all child commands drain. The result is not tool qualification.
 Compatibility-mode bmake can otherwise bypass the shell for a simple recipe
 and try to execute an absent external builtin name.
 The finite [echo fixture](tests/darwin-bootstrap-echo.mk) compares this route
