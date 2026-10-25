@@ -66,7 +66,7 @@ show:
 
 def oracle(values, arch, cross, sealed):
     options = set(values['MESON_ARGS'].split())
-    drivers = ('iris,virgl,softpipe,llvmpipe,zink' if arch == 'x86_64'
+    drivers = ('iris,radeonsi,virgl,softpipe,llvmpipe,zink' if arch == 'x86_64'
                else 'v3d,virgl,softpipe,llvmpipe,zink')
     require('-Dgallium-drivers=' + drivers in options and '-Dbuild-tests=true' in options,
             'The drivers or upstream tests were disabled')
