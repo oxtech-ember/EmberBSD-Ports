@@ -72,6 +72,10 @@ MESON_ARGS+=		-Dcoretext=disabled
 # See http://forum.libcinder.org/topic/text-not-working-in-leopard-osx-10-5
 MESON_ARGS+=		-Dcoretext=disabled
 
+.  elif ${PKGSRC_COMPILER:[-1]} == "gcc"
+# The CoreText framework headers use Apple blocks, which GCC cannot parse.
+MESON_ARGS+=		-Dcoretext=disabled
+
 .  else
 MESON_ARGS+=		-Dcoretext=enabled
 PLIST.coretext=		yes

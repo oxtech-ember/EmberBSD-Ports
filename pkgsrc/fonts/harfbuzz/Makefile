@@ -2,7 +2,7 @@
 
 .include "Makefile.common"
 
-PKGREVISION=	1
+PKGREVISION=	2
 
 COMMENT=	OpenType text shaping engine
 
