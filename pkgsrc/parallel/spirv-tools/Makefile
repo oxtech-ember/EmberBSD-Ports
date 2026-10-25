@@ -34,6 +34,11 @@ TEST_TARGET=		test
 
 .include "../../devel/cmake/build.mk"
 
+# The shared C-interface test loads the uninstalled library from source/.
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+TEST_ENV+= ${SHLIB_PATH_VAR}=${WRKSRC}/${CMAKE_BUILD_DIR}/source
+.endif
+
 .include "../../lang/python/tool.mk"
 BUILDLINK_API_DEPENDS.googletest+=	googletest>=1.18.0
 BUILDLINK_DEPMETHOD.googletest=	build

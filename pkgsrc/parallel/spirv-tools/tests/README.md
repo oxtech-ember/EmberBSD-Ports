@@ -48,3 +48,9 @@ Run the full native build and `make test` with the actual common GoogleTest,
 Effcee, RE2 and Abseil packages before package acceptance. This configure check
 does not qualify their binaries, the full upstream unit suite, installed
 libraries, or package lifecycle.
+
+The native test phase uses pkgsrc's platform `SHLIB_PATH_VAR` to find
+`libSPIRV-Tools-shared` in the CMake build's `source` directory. The shared
+C-interface unit test needs this library before package installation.
+This environment applies only to `make test`. Installed-library acceptance
+uses the normal loader environment. Package RPATH rules are unchanged.

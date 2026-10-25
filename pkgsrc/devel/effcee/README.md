@@ -42,3 +42,8 @@ Run the ordinary GCC16 build, upstream tests, staged packing-list check and
 installed-library consumer before package acceptance. Full SPIRV-Tools unit
 execution is a separate consumer check. Source checks do not establish these
 results.
+
+The native test phase uses pkgsrc's platform `SHLIB_PATH_VAR` to find the
+uninstalled library in the CMake build's `effcee` directory. This environment
+applies only to `make test`. Installed-library acceptance uses the normal
+loader environment. Package RPATH rules are unchanged.

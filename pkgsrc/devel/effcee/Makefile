@@ -27,6 +27,12 @@ CMAKE_CONFIGURE_ARGS+= -DPython3_EXECUTABLE=${TOOL_PYTHONBIN:Q}
 TEST_TARGET=	test
 
 .include "../../devel/cmake/build.mk"
+
+# Run native tests before the package installs its shared library.
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+TEST_ENV+= ${SHLIB_PATH_VAR}=${WRKSRC}/${CMAKE_BUILD_DIR}/effcee
+.endif
+
 .include "../../lang/python/tool.mk"
 BUILDLINK_API_DEPENDS.re2+= re2>=20251105nb3
 .include "../../devel/re2/buildlink3.mk"
