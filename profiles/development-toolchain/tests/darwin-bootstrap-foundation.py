@@ -114,7 +114,8 @@ class FoundationTests(unittest.TestCase):
     def setUp(self):
         self.policy = POLICY.read_text()
         self.state = dict(EMBERBSD_DARWIN_BOOTSTRAP='yes', BSD_PKG_MK='1',
-                          LOCALBASE='/final/prefix')
+                          LOCALBASE='/final/prefix',
+                          _EMBERBSD_DARWIN_INITIAL_GMAKE='/initial/gmake SHELL=/initial/sh')
 
     def test_root_edges_wait_for_pkgpath_and_apply_once(self):
         state = model.apply_policy(self.policy, dict(self.state))
@@ -123,6 +124,8 @@ class FoundationTests(unittest.TestCase):
         model.apply_policy(self.policy, state)
         self.assertEqual(set(model.dependencies(state)), set(PROVIDERS))
         self.assertEqual(len(model.dependencies(state)), len(PROVIDERS))
+        self.assertEqual(state['EMBERBSD_DARWIN_GMAKE'],
+                         '/initial/gmake SHELL=/initial/sh SHELL=/final/prefix/bin/mksh')
         self.assertEqual(model.apply_policy(self.policy, dict(state)), state)
 
     def test_dependency_versions_and_payloads_come_from_common_owners(self):
