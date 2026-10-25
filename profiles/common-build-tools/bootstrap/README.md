@@ -230,23 +230,33 @@ finite source controls. These controls do not execute make or qualify outputs.
 
 ## Make handoff
 
-The make is the only provider that changes during the plan. The profile lists
-the dependency closure of `devel/bmake` in `EMBERBSD_DARWIN_SEED_MAKE_RECIPES`.
-Only these recipes use the initial make and its bound mk files. Every other
-recipe gets a `BOOTSTRAP_DEPENDS` edge on `devel/bmake` and sets `MAKE` to
+The make and the shell are the only providers that change during the plan.
+The profile lists the dependency closure of `devel/bmake` in `EMBERBSD_DARWIN_SEED_MAKE_RECIPES`.
+Only these recipes use the initial make, its bound mk files and the initial
+shell. The closure includes `shells/mksh`. Every other recipe gets a
+`BOOTSTRAP_DEPENDS` edge on `devel/bmake` and sets `MAKE` to
 `${LOCALBASE}/bin/bmake`. This includes `pkgtools/pkg_install`. That bmake reads
-`${LOCALBASE}/share/mk` from the Ports `bootstrap-mk-files`. The SDK keeps no
-recipe list. It starts a recipe with the Ports bmake when the recipe has a direct
-`devel/bmake` edge. bmake passes `-m` to child makes through `MAKEFLAGS`, so the
-initial command must not start these recipes.
+`${LOCALBASE}/share/mk` from the Ports `bootstrap-mk-files`. The same recipes set
+`EMBERBSD_DARWIN_SH` to `${LOCALBASE}/bin/mksh`. `SHELL`, `SH`, `CONFIG_SHELL`,
+`TOOLS_SHELL`, the builtin shell and `TOOLS_PLATFORM.sh` follow it, so scripts
+installed by these recipes do not name the initial shell. The initial gmake
+stays. The profile appends `SHELL=${LOCALBASE}/bin/mksh` to its tuple, and GNU
+make uses the last `SHELL=` word. The SDK keeps no recipe list. It starts a
+recipe with the Ports bmake and `SHELL=` the Ports mksh when the recipe has a
+direct `devel/bmake` edge. bmake passes `-m` to child makes through `MAKEFLAGS`,
+and a `SHELL=` word on the command line overrides the profile, so the initial
+command must not start these recipes.
 
 ```sh
 python3 profiles/development-toolchain/tests/darwin-bootstrap-make-handoff.py \
     /absolute/exported-pkgsrc /absolute/bmake /absolute/MAKECONF
 ```
 
-The test checks that the list is the closure of `devel/bmake`. It also checks
-that later recipes such as `pkgtools/pkg_install` select the Ports bmake.
+The test checks that the list is the closure of `devel/bmake` and contains
+`shells/mksh`. It also checks that later recipes such as `pkgtools/pkg_install`
+select the Ports bmake and give every shell consumer and the gmake tuple the
+Ports mksh. Use a MAKECONF whose `EMBERBSD_DARWIN_SH` is the initial shell, as
+the SDK writes it.
 
 Only completed providers in the accepted full plan can use its graduation.
 Keep other initial tools in their original scope. Select `bin/bsdinstall` for ordinary

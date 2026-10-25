@@ -56,7 +56,7 @@ as the install command and does not request `sudo` or modify system users or
 | `EMBERBSD_DARWIN_HOST_PRODUCT_VERSION` | Actual macOS product version |
 | `EMBERBSD_DARWIN_HOST_PKGSRC_OPSYS_VERSION` | Product version encoded as major/minor/patch, two digits per field |
 | `EMBERBSD_DARWIN_MAKE`, `EMBERBSD_DARWIN_GMAKE` | Shell-quoted complete SDK `command('make')` and `command('gmake')` tuples. The initial make builds only `EMBERBSD_DARWIN_SEED_MAKE_RECIPES`; see the [make handoff](../common-build-tools/bootstrap/README.md#make-handoff) |
-| `EMBERBSD_DARWIN_SH` | Selected `command('sh')[0]` |
+| `EMBERBSD_DARWIN_SH` | Selected `command('sh')[0]`. Recipes outside `EMBERBSD_DARWIN_SEED_MAKE_RECIPES` replace it with `${LOCALBASE}/bin/mksh`; see the [make handoff](../common-build-tools/bootstrap/README.md#make-handoff) |
 | `EMBERBSD_GCC16_SEED_CC`, `EMBERBSD_GCC16_SEED_CXX`, `EMBERBSD_GCC16_SEED_CPP` | Shell-quoted selected driver tuple plus the separately accepted language/ABI arguments |
 | `EMBERBSD_GCC16_LLVM_MC`, `EMBERBSD_GCC16_LD64_LLD`, `EMBERBSD_GCC16_DSYMUTIL` | Selected assembler, Mach-O linker and debug tool paths |
 | `EMBERBSD_GCC16_AR`, `EMBERBSD_GCC16_RANLIB`, `EMBERBSD_GCC16_NM`, `EMBERBSD_GCC16_STRIP` | Selected archive and symbol tool paths |
