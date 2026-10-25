@@ -22,6 +22,11 @@ Set `EMBERBSD_BOOTSTRAP_EXPECTED_SHELL` to the same path for the fixed oracle.
 Do not add arbitrary command fields or run an installation target.
 The build output is `make`; the SDK can select it as the `gmake` role.
 
+Pass `--disable-dependency-tracking` to `configure` in this initial mode.
+Otherwise, `config.status` invokes the missing make to prepare dependency files.
+`build.sh` compiles every object directly and does not use those files.
+The ordinary recipe keeps its dependency tracking.
+
 The initial mode disables NLS and Guile. It does not replace the ordinary
 package or claim either optional feature. Eight finite cases check version,
 compiled shell, a spaced variable, recursion through the new make, parallel

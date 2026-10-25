@@ -26,7 +26,7 @@ def validate(value):
         and value['compiler'] == dict(family='gcc', major=16, abi='native')
         and value['initial_only'] is True and value['name'] == 'gmake'
         and value['build_system'] == 'gnu-configure-bootstrap'
-        and value['configure_args'] == ['--disable-nls', '--without-guile']
+        and value['configure_args'] == ['--disable-nls', '--without-guile', '--disable-dependency-tracking']
         and value['canonical_host_recipe'] == 'upstream/pkgsrc/devel/gmake/Makefile'
         and value['source_makefile'] == 'Makefile.in' and value['make_targets'] == []
         and value['output_programs'] == {'gmake': 'make'} and value['invocations'] == ['gmake']
@@ -64,6 +64,28 @@ class SourceTests(unittest.TestCase):
             bad = dict(self.value, **change)
             with self.assertRaises(ValueError):
                 validate(bad)
+
+    def test_make_free_dependency_tracking_boundary(self):
+        for option in (None, '--enable-dependency-tracking'):
+            bad = copy.deepcopy(self.value)
+            bad['configure_args'].remove('--disable-dependency-tracking')
+            if option:
+                bad['configure_args'].append(option)
+            with self.assertRaises(ValueError):
+                validate(bad)
+        data = ARCHIVE.read_bytes()
+        verify_archive(data, (self.recipe / 'distinfo').read_text())
+        with tarfile.open(fileobj=io.BytesIO(data), mode='r:gz') as source:
+            configure = source.extractfile('make-4.4.1/configure').read()
+            bootstrap = source.extractfile('make-4.4.1/build.sh').read()
+        self.assertIn(b"AMDEP_TRUE='#'", configure)
+        self.assertIn(b'"depfiles":C) test x"$AMDEP_TRUE" != x"" || {', configure)
+        self.assertIn(b'| $MAKE -f - am--depfiles', configure)
+        self.assertIn(b'if $CC $cflags $CPPFLAGS $CFLAGS -c', bootstrap)
+        self.assertNotIn(b'am--depfiles', bootstrap)
+        self.assertNotIn(b'depcomp', bootstrap)
+        self.assertNotIn('--disable-dependency-tracking', (self.recipe / 'Makefile').read_text())
+
 
     def test_canonical_recipe_and_nls_policy(self):
         recipe = (self.recipe / 'Makefile').read_text()

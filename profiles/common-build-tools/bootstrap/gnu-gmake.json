@@ -10,7 +10,8 @@
   "build_system": "gnu-configure-bootstrap",
   "configure_args": [
     "--disable-nls",
-    "--without-guile"
+    "--without-guile",
+    "--disable-dependency-tracking"
   ],
   "initial_only": true,
   "name": "gmake",
