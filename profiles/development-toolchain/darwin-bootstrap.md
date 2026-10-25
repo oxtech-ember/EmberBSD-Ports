@@ -247,3 +247,22 @@ The make-handoff phase fixture checks three includes with the real parser.
 An old one-time profile must fail its runtime-link-option check.
 The full build must still verify the resulting Mach-O load and RPATH closure;
 passing a source fixture does not qualify a library or bypass package checks.
+
+GNU M4 has a separate runtime shell for `syscmd` and `esyscmd`.
+`CONFIG_SHELL` does not select this embedded path. The native Darwin profile
+sets `M4_SYSCMD_SHELL` to `${LOCALBASE}/bin/mksh` and records a normal runtime
+dependency on `shells/mksh`. The common recipe passes the explicit absolute
+path through the upstream `--with-syscmd-shell` option. An empty or relative
+override fails. When the override is unset, other platforms and target cross
+builds retain upstream selection. Do not embed an initial build-tool path in
+the installed program. Rebuild M4 and affected consumers after this change.
+
+Perl requires a separate early build shell and embedded target runtime shell.
+The explicit `PERL_BUILD_SHELL` and `PERL_RUNTIME_SHELL` pair selects both.
+The profile follows its accepted phase shell for the build and embeds the
+final mksh path for the runtime. The recipe supplies the upstream `-Dsh` and
+`-Dtargetsh` options after its early environment selection. The real shell
+comment and shebang probes remain enabled. `PERL_BUILD_CAT` receives the real
+`TOOLS_CAT` binary path for that shebang probe, not the `.tools` wrapper.
+Other builds retain upstream behavior when the pair is unset. Cross callers
+must specify both a build-host shell and a target runtime shell explicitly.

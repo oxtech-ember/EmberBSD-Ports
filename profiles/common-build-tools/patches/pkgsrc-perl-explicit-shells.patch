@@ -1,0 +1,294 @@
+# Select separate build and target runtime shells for Perl.
+# Origin: EmberBSD (AI-assisted). Preserve the real early shell and shebang probes.
+
+--- a/lang/perl5/Makefile
++++ b/lang/perl5/Makefile
+@@ -3,7 +3,7 @@
+ .include "license.mk"
+ .include "Makefile.common"
+ 
+-PKGREVISION=	5
++PKGREVISION=	6
+ 
+ COMMENT=	Practical Extraction and Report Language
+ 
+@@ -54,6 +54,25 @@
+ CONFIGURE_SCRIPT=	./Configure
+ CONFIGURE_ARGS+=	-sde
+ CONFIGURE_ARGS+=	-Dldflags=${LDFLAGS:Q}
++
++# Opt in with a build/runtime pair. Never inherit a host path for a cross target.
++# BEGIN explicit native runtime shells
++.if defined(PERL_BUILD_SHELL) || defined(PERL_RUNTIME_SHELL)
++.  if !defined(PERL_BUILD_SHELL) || !defined(PERL_RUNTIME_SHELL) || \
++      empty(PERL_BUILD_SHELL) || empty(PERL_RUNTIME_SHELL) || \
++      "${PERL_BUILD_SHELL:C,^/.*,/,}" != "/" || \
++      "${PERL_RUNTIME_SHELL:tW:C,^/.*,/,}" != "/" || ${PERL_BUILD_SHELL:[#]} != 1
++PKG_FAIL_REASON+= "Set explicit absolute PERL_BUILD_SHELL and PERL_RUNTIME_SHELL paths."
++.  else
++USE_TOOLS+= cat
++CONFIG_SHELL= ${PERL_BUILD_SHELL}
++CONFIGURE_ENV+= PERL_BUILD_SHELL=${PERL_BUILD_SHELL:Q}
++# TOOLS_CAT is TOOLS_PATH.cat, the real binary, not TOOLS_CMD.cat's wrapper.
++CONFIGURE_ENV+= PERL_BUILD_CAT=${TOOLS_CAT:Q}
++CONFIGURE_ARGS+= -Dsh=${PERL_BUILD_SHELL:Q} -Dtargetsh=${PERL_RUNTIME_SHELL:Q}
++.  endif
++.endif
++# END explicit native runtime shells
+ MAKE_ENV+=		LC_ALL="C"
+ LDFLAGS.QNX+=		-lm
+ 
+--- a/lang/perl5/patches/patch-Configure
++++ b/lang/perl5/patches/patch-Configure
+@@ -12,7 +12,50 @@
+ 
+ --- Configure.orig
+ +++ Configure
+-@@ -3243,6 +3243,20 @@
++@@ -1295,6 +1295,17 @@
++ selectminbits=''
++ selecttype=''
++ sh=''
+++# The recipe supplies this only for an explicit build/runtime shell pair.
+++if test "${PERL_BUILD_SHELL+set}" = set; then
+++    case "$PERL_BUILD_SHELL" in
+++    /*) sh=$PERL_BUILD_SHELL ;;
+++    *) echo "Configure: PERL_BUILD_SHELL must be an absolute build shell" >&2; exit 1 ;;
+++    esac
+++    if test ! -x "$sh"; then
+++        echo "Configure: selected build shell is not executable" >&2
+++        exit 1
+++    fi
+++fi
++ targetsh=''
++ sig_count=''
++ sig_name=''
++@@ -1582,6 +1593,16 @@
++ if `$sh -c '#' >/dev/null 2>&1`; then
++ 	shsharp=true
++ 	spitshell=cat
+++	if test "${PERL_BUILD_CAT+set}" = set; then
+++		case "$PERL_BUILD_CAT" in
+++		/*) xcat=$PERL_BUILD_CAT ;;
+++		*) echo "Configure: PERL_BUILD_CAT must be an absolute build cat" >&2; exit 1 ;;
+++		esac
+++		if test ! -x "$xcat"; then
+++			echo "Configure: selected build cat is not executable" >&2
+++			exit 1
+++		fi
+++	else
++ 	xcat=/bin/cat
++ 	test -f $xcat$_exe || xcat=/usr/bin/cat
++ 	if test ! -f $xcat$_exe; then
++@@ -1595,6 +1616,7 @@
++ 			echo "Can't find cat anywhere!"
++ 			exit 1
++ 		fi
+++	fi
++ 	fi
++ 	echo "#!$xcat" >sharp
++ 	$eunicefix sharp
++@@ -3243,6 +3265,20 @@
+  	    exit 1
+  	    ;;
+  	esac
+@@ -33,7 +76,7 @@
+  	if $test ! -f $run; then
+  	    echo "Target 'run' script '$run' not found." >&4
+  	else
+-@@ -3530,7 +3544,8 @@
++@@ -3530,7 +3566,8 @@
+  			osvers=`echo "$4"|sed 's/^v//'`
+  			;;
+  		freebsd) osname=freebsd
+@@ -43,7 +86,7 @@
+  		genix)	osname=genix ;;
+  		gnu)	osname=gnu
+  			osvers="$3" ;;
+-@@ -3552,11 +3567,11 @@
++@@ -3552,11 +3589,11 @@
+  			;;
+  		MiNT)	osname=mint
+  			;;
+@@ -57,7 +100,7 @@
+  			;;
+  		news-os) osvers="$3"
+  			case "$3" in
+-@@ -3566,7 +3581,7 @@
++@@ -3566,7 +3603,7 @@
+  			;;
+  		nonstop-ux) osname=nonstopux ;;
+  		openbsd) osname=openbsd
+@@ -66,7 +109,7 @@
+  			;;
+  		os2)	osname=os2
+  			osvers="$4"
+-@@ -3580,6 +3595,9 @@
++@@ -3580,6 +3617,9 @@
+  			;;
+  		qnx) osname=qnx
+  			osvers="$4"
+@@ -76,7 +119,7 @@
+  			;;
+  		solaris) osname=solaris
+  			case "$3" in
+-@@ -4729,7 +4747,7 @@
++@@ -4729,7 +4769,7 @@
+  EOCP
+  c99_for=no
+  for flag in '' '-std=gnu99' '-std=c99'; do
+@@ -85,7 +128,7 @@
+          c99_for="$flag"
+          break;
+      fi
+-@@ -4958,7 +4976,7 @@
++@@ -4958,7 +4998,7 @@
+  # If using gcc or clang, we can get better values for libpth, incpth
+  # and usrinc directly from the compiler.
+  # Note that ccname for clang is also gcc.
+@@ -94,7 +137,7 @@
+      gcc)
+  	realpath=`which realpath 2>/dev/null | sed 's/no realpath in.*//'`
+  	$echo 'extern int foo;' > try.c
+-@@ -5042,14 +5060,14 @@
++@@ -5042,14 +5082,14 @@
+  esac
+  case "$libpth" in
+  ' ') dlist='';;
+@@ -111,7 +154,7 @@
+  		case " $libpth " in
+  		*" $xxx "*) ;;
+  		*) libpth="$libpth $xxx";;
+-@@ -5165,7 +5183,7 @@
++@@ -5165,7 +5205,7 @@
+  obj_ext=$_o
+  path_sep=$p_
+  
+@@ -120,7 +163,7 @@
+  
+  : Which makefile gets called first.  This is used by make depend.
+  case "$firstmakefile" in
+-@@ -5486,7 +5504,7 @@
++@@ -5486,7 +5526,7 @@
+  	*-fno-stack-protector*)
+  	    echo "Do not add -fstack-protector nor -fstack-protector-strong" 2>&1
+  	    ;;
+@@ -129,7 +172,7 @@
+  	   ?*)	set stack-protector-strong -fstack-protector-strong
+  		eval $checkccflag
+  		case "$dflt" in
+-@@ -6482,6 +6500,15 @@
++@@ -6482,6 +6522,15 @@
+  		;;
+  	esac
+  	;;
+@@ -145,7 +188,7 @@
+  esac
+  
+  : Figure out where the libc is located
+-@@ -7200,7 +7227,11 @@
++@@ -7200,7 +7249,11 @@
+  esac
+  case "$targetarch" in
+  '') ;;
+@@ -158,7 +201,7 @@
+  esac
+  myarchname="$tarch"
+  case "$archname" in
+-@@ -7685,7 +7716,9 @@
++@@ -7685,7 +7738,9 @@
+  . ./getfile
+  prefixvar=sitelib
+  . ./setprefixvar
+@@ -169,7 +212,7 @@
+  
+  : Determine list of previous versions to include in @INC
+  $cat > getverlist <<EOPL
+-@@ -8045,7 +8078,9 @@
++@@ -8045,7 +8100,9 @@
+  	vendorlibexp="$ansexp"
+  	;;
+  esac
+@@ -180,7 +223,7 @@
+  prefixvar=vendorlib
+  . ./installprefix
+  
+-@@ -8545,6 +8580,7 @@
++@@ -8545,6 +8602,7 @@
+  			  esac
+  			  ;;
+  		    *linux*|irix*|gnu*)  dflt="-shared $optimize" ;;
+@@ -188,7 +231,7 @@
+  		    solaris) # See [perl #66604].
+  			    # On Solaris 11, gcc -m64 on amd64
+  			    # appears not to understand -G.  gcc versions at
+-@@ -8584,7 +8620,7 @@
++@@ -8584,7 +8642,7 @@
+  	esac
+  	for thisflag in $ldflags; do
+  	    case "$thisflag" in
+@@ -197,7 +240,7 @@
+  		    case " $dflt " in
+  			*" $thisflag "*) ;;
+  			*) dflt="$dflt $thisflag" ;;
+-@@ -8840,7 +8876,7 @@
++@@ -8840,7 +8898,7 @@
+  	freebsd|minix|mirbsd|netbsd|openbsd|interix|dragonfly|bitrig)
+  		xxx="-Wl,-R$shrpdir"
+  		;;
+@@ -206,7 +249,7 @@
+  		xxx="-Wl,-rpath,$shrpdir"
+  		;;
+  	hpux*)
+-@@ -8849,6 +8885,9 @@
++@@ -8849,6 +8907,9 @@
+  		;;
+  	cygwin)
+  		# cygwin needs only ldlibpth
+@@ -216,7 +259,7 @@
+  		;;
+  	*)
+  		tmp_shrpenv="env LD_RUN_PATH=$shrpdir"
+-@@ -9923,6 +9962,13 @@
++@@ -9923,6 +9984,13 @@
+  
+  : Check if we want perlio
+  useperlio="$define"
+@@ -230,7 +273,7 @@
+  
+  : Set the vendorbin variables
+  case "$vendorprefix" in
+-@@ -13532,10 +13578,16 @@
++@@ -13532,10 +13600,16 @@
+  	set try
+  	if eval $compile_ok; then
+  		echo "$startsh" >mtry
+@@ -249,7 +292,7 @@
+  		0) eagain=`$cat try.out`;;
+  		1) echo "Could not perform non-blocking setting!";;
+  		2) echo "I did a successful read() for something that was not there!";;
+-@@ -16159,7 +16211,7 @@
++@@ -16159,7 +16233,7 @@
+  }
+  EOCP
+  set try
+@@ -258,7 +301,7 @@
+      $echo "lchown() found." >&4
+      val="$define"
+  else
+-@@ -20880,7 +20932,15 @@
++@@ -20880,7 +20954,15 @@
+  ACAT(Cir,cus)
+  EOCP
+  $cppstdin $cppflags $cppminus <cpp_stuff.c >cpp_stuff.out 2>&1
+--- a/lang/perl5/distinfo
++++ b/lang/perl5/distinfo
+@@ -9,7 +9,7 @@
+ BLAKE2s (perl-5.44.0.tar.gz) = 86f9f491bed4ca44cfbb562dc74aeac9cae42568c7c47f3d67e7fd827b13d16b
+ SHA512 (perl-5.44.0.tar.gz) = 99116b2c08186d7d20352473152da9c0a0dc5ba24f1cade9950e9e01694e52809d79c73caa5ae2f2f9087488822c939cff555b5b613e5a2c43fb1dadc1aa860d
+ Size (perl-5.44.0.tar.gz) = 21265451 bytes
+-SHA1 (patch-Configure) = 3c0ad1e6fd1552668340ed82e0391b15cd7c7c51
++SHA1 (patch-Configure) = e504b3c29f9d1dabd3584a2310236fb6f829a424
+ SHA1 (patch-Makefile.SH) = 0ac10d14a36c5f78611776413fed14413f50046e
+ SHA1 (patch-cpan_ExtUtils-MakeMaker_lib_ExtUtils_MM__BeOS.pm) = 79e5aeccfa272ca5ec08bffc616d8053ae90ac51
+ SHA1 (patch-cpan_ExtUtils-MakeMaker_lib_ExtUtils_MM__Unix.pm) = 996556f221eb0c75c316315462bf6cea6746e030
