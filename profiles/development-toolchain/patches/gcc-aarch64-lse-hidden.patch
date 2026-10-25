@@ -1,0 +1,45 @@
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+GCC 16.2.0 with Iain Sandoe's Darwin port and the pkgsrc patches.
+Keep the AArch64 LSE outline-atomic helpers hidden on ELF targets.
+Upstream lse.S defines each helper with STARTFN, which emits HIDDEN.
+The Darwin diff replaces STARTFN with ENTRY, and the Darwin
+aarch64-asm.h ENTRY emits only GLOBAL.  The 125 __aarch64_cas*,
+__aarch64_swp* and __aarch64_ld* helpers in an aarch64--netbsd
+libgcc.a then have default visibility, and every shared library that
+links them, such as libpthread.so, exports them.  Restore HIDDEN for
+ELF only; Mach-O output does not change.
+GCC source retains its GPLv3+ licence, the GCC Runtime Library
+Exception and upstream copyright notices.
+
+--- libgcc/config/aarch64/lse.S.orig
++++ libgcc/config/aarch64/lse.S
+@@ -186,6 +186,9 @@
+ 
+ #ifdef L_cas
+ 
++#ifdef __ELF__
++	HIDDEN (ASMNAME (NAME(cas)))
++#endif
+ ENTRY (ASMNAME (NAME(cas)))
+ 	JUMP_IF_NOT_LSE	8f
+ 
+@@ -249,6 +252,9 @@
+ # define SWP	.inst 0x38208020 + B + N
+ #endif
+ 
++#ifdef __ELF__
++	HIDDEN (ASMNAME (NAME (swp)))
++#endif
+ ENTRY (ASMNAME (NAME (swp)))
+ 	JUMP_IF_NOT_LSE	8f
+ 
+@@ -293,6 +299,9 @@
+ # define LDOP	.inst 0x38200020 + OPN + B + N
+ #endif
+ 
++#ifdef __ELF__
++	HIDDEN (ASMNAME (NAME (LDNM)))
++#endif
+ ENTRY (ASMNAME (NAME (LDNM)))
+ 	JUMP_IF_NOT_LSE	8f
+ 

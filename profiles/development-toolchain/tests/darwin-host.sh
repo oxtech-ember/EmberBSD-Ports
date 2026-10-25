@@ -49,6 +49,9 @@ grep -q 'with-darwin-assembler=cctools|llvm-mc' \
 grep -q 'hackname  = darwin_xpc_choose;' \
     "$prepared/lang/gcc16/patches/patch-fixincludes_darwin_xpc_choose"
 grep -q '^SHA1 (patch-fixincludes_darwin_xpc_choose) = ' "$prepared/lang/gcc16/distinfo"
+grep -q '^+	HIDDEN (ASMNAME (NAME (LDNM)))$' \
+    "$prepared/lang/gcc16/patches/patch-libgcc_config_aarch64_lse.S"
+grep -q '^SHA1 (patch-libgcc_config_aarch64_lse.S) = ' "$prepared/lang/gcc16/distinfo"
 # The filter drops only the libgcobol/configure.tgt section.
 cat > "$work/gcc-16.2.0.diff" <<'DIFF'
 diff --git a/gcc/config.host b/gcc/config.host

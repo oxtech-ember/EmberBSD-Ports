@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD; exercise the production source preparer and pinned diff.
+import importlib
 import shutil
 from concurrent.futures import ThreadPoolExecutor
 import sys
@@ -10,6 +11,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 profile = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(profile / 'runtime/recipe/files'))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import sdk_source
 
 
@@ -19,6 +21,7 @@ def main():
         raise SystemExit('usage: gcc-source-prerequisite.py PKGSRC GCC_ARCHIVE --sdk-source SOURCE')
     sys.path.insert(0, str(profile))
     from host import SDKError, prepare_source, source_prerequisite
+    lse_hidden = importlib.import_module('gcc-aarch64-lse-hidden')
     pkgsrc, archive = (Path(arg).resolve(strict=True) for arg in args)
     patches = ['patch-gcc_darwin_llvm_mc']
     with tempfile.TemporaryDirectory(prefix='ember-gcc-source-') as temporary:
@@ -60,6 +63,7 @@ def main():
         assert (source / 'gcc/config/aarch64/darwin.h').is_file()
         assert 'DARWIN_LLVM_MC' in (source / 'gcc/config/darwin.h').read_text()
         assert not list(source.rglob('*.rej'))
+        lse_hidden.check_source(source)
         diff = (work / 'source-darwin.diff').read_text()
         assert 'diff --git a/libgcobol/configure.tgt' not in diff
         assert 'diff --git a/gcc/config/aarch64/darwin.h' in diff

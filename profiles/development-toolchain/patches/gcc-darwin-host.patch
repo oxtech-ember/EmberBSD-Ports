@@ -147,7 +147,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 +++ b/lang/gcc16/Makefile
 @@ -7,1 +7,1 @@
 -PKGREVISION=	5
-+PKGREVISION=	11
++PKGREVISION=	12
 @@ -19,6 +19,19 @@
  
  ## The Library rpath to use in end programs.
@@ -188,7 +188,7 @@ See profiles/development-toolchain/gcc-darwin-host.md.
 +++ b/lang/gcc16-libs/Makefile
 @@ -12,1 +12,1 @@
 -PKGREVISION=	6
-+PKGREVISION=	12
++PKGREVISION=	13
 --- a/lang/gcc16-libjit/Makefile
 +++ b/lang/gcc16-libjit/Makefile
 @@ -5,2 +5,3 @@

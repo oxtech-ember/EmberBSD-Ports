@@ -149,6 +149,15 @@ selection remains conditional on Darwin:
   that includes `<xpc/xpc.h>` failed, for example Python's `_scproxy`.
   The patch carries `fixincl.x` regenerated with AutoGen 5.18.16 and a
   `make check` baseline.
+- [gcc-aarch64-lse-hidden.patch](patches/gcc-aarch64-lse-hidden.patch)
+  keeps the AArch64 LSE outline-atomic helpers hidden on ELF. Upstream
+  `lse.S` defines them with `STARTFN`, which emits `HIDDEN`. The Darwin diff
+  uses `ENTRY` instead, and its `ENTRY` emits only `GLOBAL`. The 125
+  `__aarch64_cas*`, `__aarch64_swp*` and `__aarch64_ld*` helpers of the cross
+  `libgcc.a` then had default visibility, and NetBSD shared libraries such as
+  `libpthread.so` exported them. The patch adds `HIDDEN` under `__ELF__`, so
+  Mach-O output does not change. `gcc16` advances to nb12 and `gcc16-libs`
+  to nb13.
 - Darwin target libraries use the macOS iconv, not a GNU libiconv in
   `${LOCALBASE}`. `COMPILER_RPATH_FLAG` is `-L` on Darwin, so the common
   `LDFLAGS_FOR_TARGET` filter passed `-L${LOCALBASE}/lib` to the target
@@ -431,6 +440,17 @@ fail. With AutoGen installed it also runs the fixincludes `make check`:
 GCC_CC=/absolute/gcc GCC_CXX=/absolute/g++ OSX_SDK_PATH=/absolute/MacOSX.sdk \
     sh profiles/development-toolchain/tests/darwin-xpc-fixincludes.sh \
     /absolute/patched-gcc-16.2.0 /absolute/new-work
+```
+
+The LSE regression checks the patched source, and the visibility of every
+LSE helper in a built AArch64 ELF `libgcc.a`:
+
+```sh
+python3 -B profiles/development-toolchain/tests/gcc-aarch64-lse-hidden.py \
+    --source /absolute/patched-gcc-16.2.0
+python3 -B profiles/development-toolchain/tests/gcc-aarch64-lse-hidden.py \
+    --libgcc /absolute/aarch64--netbsd/libgcc.a \
+    --readelf /absolute/aarch64--netbsd-readelf
 ```
 
 The build checks:
