@@ -1,0 +1,1136 @@
+--- a/base/BUILD.gn
++++ b/base/BUILD.gn
+@@ -2111,9 +2111,12 @@
+ 
+   # Mac or iOS.
+   if (is_apple) {
++    sources += [ "threading/platform_thread_apple_name.cc" ]
++
+     sources += [
+       "apple/backup_util.h",
+       "apple/backup_util.mm",
++      "apple/base_bundle_id.cc",
+       "apple/bridging.h",
+       "apple/bundle_locations.h",
+       "apple/bundle_locations.mm",
+@@ -2156,10 +2159,12 @@
+       "process/process_metrics_apple.mm",
+       "profiler/module_cache_apple.cc",
+       "strings/sys_string_conversions_apple.mm",
+-      "system/sys_info_apple.mm",
++      "strings/sys_string_conversions_apple_cf.cc",
++      "system/sys_info_apple.cc",
+       "threading/platform_thread_apple.mm",
+       "threading/platform_thread_metrics_apple.mm",
+       "time/time_apple.mm",
++      "time/time_apple_mach.cc",
+     ]
+     frameworks += [
+       "CoreFoundation.framework",
+@@ -2168,6 +2173,8 @@
+       "Foundation.framework",
+       "Security.framework",
+     ]
++
++    sources += [ "threading/platform_thread_apple_yield.cc" ]
+ 
+     if (!is_ios || !use_blink) {
+       sources += [ "synchronization/waitable_event_apple.cc" ]
+--- /dev/null
++++ b/base/apple/base_bundle_id.cc
+@@ -0,0 +1,40 @@
++// Copyright 2012 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "base/apple/foundation_util.h"
++
++#include <optional>
++#include <string>
++#include <string_view>
++
++#include "base/no_destructor.h"
++#include "build/branding_buildflags.h"
++
++namespace base::apple {
++
++namespace {
++std::optional<std::string>& GetBaseBundleIDOverrideValue() {
++  static NoDestructor<std::optional<std::string>> base_bundle_id;
++  return *base_bundle_id;
++}
++}  // namespace
++
++std::string_view BaseBundleID() {
++  std::optional<std::string>& override = GetBaseBundleIDOverrideValue();
++  if (override.has_value()) {
++    return override.value();
++  }
++
++#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
++  return "com.google.Chrome";
++#else
++  return "org.chromium.Chromium";
++#endif
++}
++
++void SetBaseBundleIDOverride(std::string_view new_base_bundle_id) {
++  GetBaseBundleIDOverrideValue() = std::string(new_base_bundle_id);
++}
++
++}  // namespace base::apple
+--- a/base/apple/foundation_util.mm
++++ b/base/apple/foundation_util.mm
+@@ -20,12 +20,10 @@
+ #include "base/containers/adapters.h"
+ #include "base/files/file_path.h"
+ #include "base/logging.h"
+-#include "base/no_destructor.h"
+ #include "base/numerics/checked_math.h"
+ #include "base/numerics/safe_conversions.h"
+ #include "base/strings/string_util.h"
+ #include "base/strings/sys_string_conversions.h"
+-#include "build/branding_buildflags.h"
+ #include "build/build_config.h"
+ 
+ #if !BUILDFLAG(IS_IOS)
+@@ -293,30 +291,6 @@
+ #endif
+ 
+ #undef TYPE_NAME_FOR_CF_TYPE_DEFN
+-
+-namespace {
+-std::optional<std::string>& GetBaseBundleIDOverrideValue() {
+-  static NoDestructor<std::optional<std::string>> base_bundle_id;
+-  return *base_bundle_id;
+-}
+-}  // namespace
+-
+-std::string_view BaseBundleID() {
+-  std::optional<std::string>& override = GetBaseBundleIDOverrideValue();
+-  if (override.has_value()) {
+-    return override.value();
+-  }
+-
+-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+-  return "com.google.Chrome";
+-#else
+-  return "org.chromium.Chromium";
+-#endif
+-}
+-
+-void SetBaseBundleIDOverride(std::string_view new_base_bundle_id) {
+-  GetBaseBundleIDOverrideValue() = std::string(new_base_bundle_id);
+-}
+ 
+ #define CF_CAST_DEFN(TypeCF)                                       \
+   template <>                                                      \
+--- a/base/strings/sys_string_conversions_apple.mm
++++ b/base/strings/sys_string_conversions_apple.mm
+@@ -5,148 +5,13 @@
+ #include "base/strings/sys_string_conversions.h"
+ 
+ #import <Foundation/Foundation.h>
+-#include <stddef.h>
+ 
+ #include <string_view>
+-#include <vector>
+ 
+ #include "base/apple/bridging.h"
+ #include "base/apple/foundation_util.h"
+-#include "base/apple/scoped_cftyperef.h"
+-#include "base/numerics/safe_conversions.h"
+ 
+ namespace base {
+-
+-namespace {
+-
+-// Converts the supplied CFString into the specified encoding, and returns it as
+-// a C++ library string of the template type. Returns an empty string on
+-// failure.
+-//
+-// Do not assert in this function since it is used by the assertion code!
+-template <typename StringType>
+-StringType CFStringToStringWithEncodingT(CFStringRef cfstring,
+-                                         CFStringEncoding encoding) {
+-  CFIndex length = CFStringGetLength(cfstring);
+-  if (length == 0) {
+-    return StringType();
+-  }
+-
+-  CFRange whole_string = CFRangeMake(0, length);
+-  CFIndex out_size;
+-  CFIndex converted = CFStringGetBytes(cfstring, whole_string, encoding,
+-                                       /*lossByte=*/0,
+-                                       /*isExternalRepresentation=*/false,
+-                                       /*buffer=*/nullptr,
+-                                       /*maxBufLen=*/0, &out_size);
+-  if (converted == 0 || out_size <= 0) {
+-    return StringType();
+-  }
+-
+-  // `out_size` is the number of UInt8-sized units needed in the destination.
+-  // A buffer allocated as UInt8 units might not be properly aligned to
+-  // contain elements of StringType::value_type.  Use a container for the
+-  // proper value_type, and convert `out_size` by figuring the number of
+-  // value_type elements per UInt8.  Leave room for a NUL terminator.
+-  size_t elements = static_cast<size_t>(out_size) * sizeof(UInt8) /
+-                        sizeof(typename StringType::value_type) +
+-                    1;
+-
+-  std::vector<typename StringType::value_type> out_buffer(elements);
+-  converted =
+-      CFStringGetBytes(cfstring, whole_string, encoding,
+-                       /*lossByte=*/0,
+-                       /*isExternalRepresentation=*/false,
+-                       reinterpret_cast<UInt8*>(&out_buffer[0]), out_size,
+-                       /*usedBufLen=*/nullptr);
+-  if (converted == 0) {
+-    return StringType();
+-  }
+-
+-  out_buffer[elements - 1] = '\0';
+-  return StringType(&out_buffer[0], elements - 1);
+-}
+-
+-// Given a C++ library string `in` with an encoding specified by `in_encoding`,
+-// converts it to `out_encoding` and returns it as a C++ library string of the
+-// `OutStringType` template type. Returns an empty string on failure.
+-//
+-// Do not assert in this function since it is used by the assertion code!
+-template <typename InStringType, typename OutStringType>
+-OutStringType StringToStringWithEncodingsT(const InStringType& in,
+-                                           CFStringEncoding in_encoding,
+-                                           CFStringEncoding out_encoding) {
+-  typename InStringType::size_type in_length = in.length();
+-  if (in_length == 0) {
+-    return OutStringType();
+-  }
+-
+-  apple::ScopedCFTypeRef<CFStringRef> cfstring(CFStringCreateWithBytesNoCopy(
+-      kCFAllocatorDefault, reinterpret_cast<const UInt8*>(in.data()),
+-      checked_cast<CFIndex>(in_length *
+-                            sizeof(typename InStringType::value_type)),
+-      in_encoding,
+-      /*isExternalRepresentation=*/false, kCFAllocatorNull));
+-  if (!cfstring) {
+-    return OutStringType();
+-  }
+-
+-  return CFStringToStringWithEncodingT<OutStringType>(cfstring.get(),
+-                                                      out_encoding);
+-}
+-
+-// Given a std::string_view `in` with an encoding specified by `in_encoding`,
+-// returns it as a CFStringRef. Returns null on failure.
+-template <typename CharT>
+-apple::ScopedCFTypeRef<CFStringRef> StringPieceToCFStringWithEncodingsT(
+-    std::basic_string_view<CharT> in,
+-    CFStringEncoding in_encoding) {
+-  const auto in_length = in.length();
+-  if (in_length == 0) {
+-    return apple::ScopedCFTypeRef<CFStringRef>(CFSTR(""),
+-                                               base::scoped_policy::RETAIN);
+-  }
+-
+-  return apple::ScopedCFTypeRef<CFStringRef>(CFStringCreateWithBytes(
+-      kCFAllocatorDefault, reinterpret_cast<const UInt8*>(in.data()),
+-      checked_cast<CFIndex>(in_length * sizeof(CharT)), in_encoding, false));
+-}
+-
+-}  // namespace
+-
+-// The CFStringEncodings used below specify the byte ordering explicitly,
+-// otherwise CFString will be confused when strings don't carry BOMs, as they
+-// typically won't.
+-
+-// Do not assert in this function since it is used by the assertion code!
+-std::string SysWideToUTF8(const std::wstring& wide) {
+-  return StringToStringWithEncodingsT<std::wstring, std::string>(
+-      wide, kCFStringEncodingUTF32LE, kCFStringEncodingUTF8);
+-}
+-
+-// Do not assert in this function since it is used by the assertion code!
+-std::wstring SysUTF8ToWide(std::string_view utf8) {
+-  return StringToStringWithEncodingsT<std::string_view, std::wstring>(
+-      utf8, kCFStringEncodingUTF8, kCFStringEncodingUTF32LE);
+-}
+-
+-std::string SysWideToNativeMB(const std::wstring& wide) {
+-  return SysWideToUTF8(wide);
+-}
+-
+-std::wstring SysNativeMBToWide(std::string_view native_mb) {
+-  return SysUTF8ToWide(native_mb);
+-}
+-
+-apple::ScopedCFTypeRef<CFStringRef> SysUTF8ToCFStringRef(
+-    std::string_view utf8) {
+-  return StringPieceToCFStringWithEncodingsT(utf8, kCFStringEncodingUTF8);
+-}
+-
+-apple::ScopedCFTypeRef<CFStringRef> SysUTF16ToCFStringRef(
+-    std::u16string_view utf16) {
+-  return StringPieceToCFStringWithEncodingsT(utf16, kCFStringEncodingUTF16LE);
+-}
+ 
+ NSString* SysUTF8ToNSString(std::string_view utf8) {
+   return base::apple::CFToNSOwnershipCast(SysUTF8ToCFStringRef(utf8).release());
+@@ -155,15 +20,6 @@
+ NSString* SysUTF16ToNSString(std::u16string_view utf16) {
+   return base::apple::CFToNSOwnershipCast(
+       SysUTF16ToCFStringRef(utf16).release());
+-}
+-
+-std::string SysCFStringRefToUTF8(CFStringRef ref) {
+-  return CFStringToStringWithEncodingT<std::string>(ref, kCFStringEncodingUTF8);
+-}
+-
+-std::u16string SysCFStringRefToUTF16(CFStringRef ref) {
+-  return CFStringToStringWithEncodingT<std::u16string>(
+-      ref, kCFStringEncodingUTF16LE);
+ }
+ 
+ std::string SysNSStringToUTF8(NSString* nsstring) {
+--- /dev/null
++++ b/base/strings/sys_string_conversions_apple_cf.cc
+@@ -0,0 +1,158 @@
++// Copyright 2012 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "base/strings/sys_string_conversions.h"
++
++#include <CoreFoundation/CoreFoundation.h>
++#include <stddef.h>
++
++#include <string_view>
++#include <vector>
++
++#include "base/apple/scoped_cftyperef.h"
++#include "base/numerics/safe_conversions.h"
++
++namespace base {
++
++namespace {
++
++// Converts the supplied CFString into the specified encoding, and returns it as
++// a C++ library string of the template type. Returns an empty string on
++// failure.
++//
++// Do not assert in this function since it is used by the assertion code!
++template <typename StringType>
++StringType CFStringToStringWithEncodingT(CFStringRef cfstring,
++                                         CFStringEncoding encoding) {
++  CFIndex length = CFStringGetLength(cfstring);
++  if (length == 0) {
++    return StringType();
++  }
++
++  CFRange whole_string = CFRangeMake(0, length);
++  CFIndex out_size;
++  CFIndex converted = CFStringGetBytes(cfstring, whole_string, encoding,
++                                       /*lossByte=*/0,
++                                       /*isExternalRepresentation=*/false,
++                                       /*buffer=*/nullptr,
++                                       /*maxBufLen=*/0, &out_size);
++  if (converted == 0 || out_size <= 0) {
++    return StringType();
++  }
++
++  // `out_size` is the number of UInt8-sized units needed in the destination.
++  // A buffer allocated as UInt8 units might not be properly aligned to
++  // contain elements of StringType::value_type.  Use a container for the
++  // proper value_type, and convert `out_size` by figuring the number of
++  // value_type elements per UInt8.  Leave room for a NUL terminator.
++  size_t elements = static_cast<size_t>(out_size) * sizeof(UInt8) /
++                        sizeof(typename StringType::value_type) +
++                    1;
++
++  std::vector<typename StringType::value_type> out_buffer(elements);
++  converted =
++      CFStringGetBytes(cfstring, whole_string, encoding,
++                       /*lossByte=*/0,
++                       /*isExternalRepresentation=*/false,
++                       reinterpret_cast<UInt8*>(&out_buffer[0]), out_size,
++                       /*usedBufLen=*/nullptr);
++  if (converted == 0) {
++    return StringType();
++  }
++
++  out_buffer[elements - 1] = '\0';
++  return StringType(&out_buffer[0], elements - 1);
++}
++
++// Given a C++ library string `in` with an encoding specified by `in_encoding`,
++// converts it to `out_encoding` and returns it as a C++ library string of the
++// `OutStringType` template type. Returns an empty string on failure.
++//
++// Do not assert in this function since it is used by the assertion code!
++template <typename InStringType, typename OutStringType>
++OutStringType StringToStringWithEncodingsT(const InStringType& in,
++                                           CFStringEncoding in_encoding,
++                                           CFStringEncoding out_encoding) {
++  typename InStringType::size_type in_length = in.length();
++  if (in_length == 0) {
++    return OutStringType();
++  }
++
++  apple::ScopedCFTypeRef<CFStringRef> cfstring(CFStringCreateWithBytesNoCopy(
++      kCFAllocatorDefault, reinterpret_cast<const UInt8*>(in.data()),
++      checked_cast<CFIndex>(in_length *
++                            sizeof(typename InStringType::value_type)),
++      in_encoding,
++      /*isExternalRepresentation=*/false, kCFAllocatorNull));
++  if (!cfstring) {
++    return OutStringType();
++  }
++
++  return CFStringToStringWithEncodingT<OutStringType>(cfstring.get(),
++                                                      out_encoding);
++}
++
++// Given a std::string_view `in` with an encoding specified by `in_encoding`,
++// returns it as a CFStringRef. Returns null on failure.
++template <typename CharT>
++apple::ScopedCFTypeRef<CFStringRef> StringPieceToCFStringWithEncodingsT(
++    std::basic_string_view<CharT> in,
++    CFStringEncoding in_encoding) {
++  const auto in_length = in.length();
++  if (in_length == 0) {
++    return apple::ScopedCFTypeRef<CFStringRef>(CFSTR(""),
++                                               base::scoped_policy::RETAIN);
++  }
++
++  return apple::ScopedCFTypeRef<CFStringRef>(CFStringCreateWithBytes(
++      kCFAllocatorDefault, reinterpret_cast<const UInt8*>(in.data()),
++      checked_cast<CFIndex>(in_length * sizeof(CharT)), in_encoding, false));
++}
++
++}  // namespace
++
++// The CFStringEncodings used below specify the byte ordering explicitly,
++// otherwise CFString will be confused when strings don't carry BOMs, as they
++// typically won't.
++
++// Do not assert in this function since it is used by the assertion code!
++std::string SysWideToUTF8(const std::wstring& wide) {
++  return StringToStringWithEncodingsT<std::wstring, std::string>(
++      wide, kCFStringEncodingUTF32LE, kCFStringEncodingUTF8);
++}
++
++// Do not assert in this function since it is used by the assertion code!
++std::wstring SysUTF8ToWide(std::string_view utf8) {
++  return StringToStringWithEncodingsT<std::string_view, std::wstring>(
++      utf8, kCFStringEncodingUTF8, kCFStringEncodingUTF32LE);
++}
++
++std::string SysWideToNativeMB(const std::wstring& wide) {
++  return SysWideToUTF8(wide);
++}
++
++std::wstring SysNativeMBToWide(std::string_view native_mb) {
++  return SysUTF8ToWide(native_mb);
++}
++
++apple::ScopedCFTypeRef<CFStringRef> SysUTF8ToCFStringRef(
++    std::string_view utf8) {
++  return StringPieceToCFStringWithEncodingsT(utf8, kCFStringEncodingUTF8);
++}
++
++apple::ScopedCFTypeRef<CFStringRef> SysUTF16ToCFStringRef(
++    std::u16string_view utf16) {
++  return StringPieceToCFStringWithEncodingsT(utf16, kCFStringEncodingUTF16LE);
++}
++
++std::string SysCFStringRefToUTF8(CFStringRef ref) {
++  return CFStringToStringWithEncodingT<std::string>(ref, kCFStringEncodingUTF8);
++}
++
++std::u16string SysCFStringRefToUTF16(CFStringRef ref) {
++  return CFStringToStringWithEncodingT<std::u16string>(
++      ref, kCFStringEncodingUTF16LE);
++}
++
++}  // namespace base
+--- /dev/null
++++ b/base/system/sys_info_apple.cc
+@@ -0,0 +1,83 @@
++// Copyright 2023 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "base/system/sys_info.h"
++
++#include <sys/sysctl.h>
++
++#include "base/apple/scoped_mach_port.h"
++#include "base/strings/stringprintf.h"
++#include "base/system/sys_info_internal.h"
++
++namespace base {
++
++namespace {
++
++// Implementation of AmountOfPhysicalMemoryImpl before https://crrev.com/c/6274964.
++// See Electron patch adding this fallback for more details.
++ByteSize AmountOfPhysicalMemoryFallback() {
++  struct host_basic_info hostinfo;
++  mach_msg_type_number_t count = HOST_BASIC_INFO_COUNT;
++  base::apple::ScopedMachSendRight host(mach_host_self());
++  int result = host_info(host.get(), HOST_BASIC_INFO,
++                         reinterpret_cast<host_info_t>(&hostinfo), &count);
++  if (result != KERN_SUCCESS) {
++    NOTREACHED();
++  }
++  DCHECK_EQ(HOST_BASIC_INFO_COUNT, count);
++  return ByteSize(hostinfo.max_mem);
++}
++
++}
++
++namespace internal {
++
++// Queries sysctlbyname() for the given key and returns the 32 bit integer value
++// from the system or std::nullopt on failure.
++// https://github.com/apple/darwin-xnu/blob/2ff845c2e033bd0ff64b5b6aa6063a1f8f65aa32/bsd/sys/sysctl.h#L1224-L1225
++std::optional<int> GetSysctlIntValue(const char* key_name) {
++  int value;
++  size_t len = sizeof(value);
++  if (sysctlbyname(key_name, &value, &len, nullptr, 0) != 0) {
++    return std::nullopt;
++  }
++  DCHECK_EQ(len, sizeof(value));
++  return value;
++}
++
++}  // namespace internal
++
++// static
++int SysInfo::NumberOfEfficientProcessorsImpl() {
++  int num_perf_levels =
++      internal::GetSysctlIntValue("hw.nperflevels").value_or(1);
++  if (num_perf_levels == 1) {
++    return 0;
++  }
++  DCHECK_GE(num_perf_levels, 2);
++
++  // Lower values of perflevel indicate higher-performance core types. See
++  // https://developer.apple.com/documentation/kernel/1387446-sysctlbyname/determining_system_capabilities?changes=l__5
++  int num_of_efficient_processors =
++      internal::GetSysctlIntValue(
++          StringPrintf("hw.perflevel%d.logicalcpu", num_perf_levels - 1)
++              .c_str())
++          .value_or(0);
++  DCHECK_GE(num_of_efficient_processors, 0);
++
++  return num_of_efficient_processors;
++}
++
++// static
++ByteSize SysInfo::AmountOfTotalPhysicalMemoryImpl() {
++  uint64_t physical_memory;
++  size_t size = sizeof(physical_memory);
++  int rv = sysctlbyname("hw.memsize", &physical_memory, &size, nullptr, 0);
++  // Instead of crashing, fallback to the old implementation.
++  if (rv != 0) {
++    return AmountOfPhysicalMemoryFallback();
++  }
++  return ByteSize(physical_memory);}
++
++}  // namespace base
+--- a/base/system/sys_info_apple.mm
++++ /dev/null
+@@ -1,83 +0,0 @@
+-// Copyright 2023 The Chromium Authors
+-// Use of this source code is governed by a BSD-style license that can be
+-// found in the LICENSE file.
+-
+-#include "base/system/sys_info.h"
+-
+-#include <sys/sysctl.h>
+-
+-#include "base/apple/scoped_mach_port.h"
+-#include "base/strings/stringprintf.h"
+-#include "base/system/sys_info_internal.h"
+-
+-namespace base {
+-
+-namespace {
+-
+-// Implementation of AmountOfPhysicalMemoryImpl before https://crrev.com/c/6274964.
+-// See Electron patch adding this fallback for more details.
+-ByteSize AmountOfPhysicalMemoryFallback() {
+-  struct host_basic_info hostinfo;
+-  mach_msg_type_number_t count = HOST_BASIC_INFO_COUNT;
+-  base::apple::ScopedMachSendRight host(mach_host_self());
+-  int result = host_info(host.get(), HOST_BASIC_INFO,
+-                         reinterpret_cast<host_info_t>(&hostinfo), &count);
+-  if (result != KERN_SUCCESS) {
+-    NOTREACHED();
+-  }
+-  DCHECK_EQ(HOST_BASIC_INFO_COUNT, count);
+-  return ByteSize(hostinfo.max_mem);
+-}
+-
+-}
+-
+-namespace internal {
+-
+-// Queries sysctlbyname() for the given key and returns the 32 bit integer value
+-// from the system or std::nullopt on failure.
+-// https://github.com/apple/darwin-xnu/blob/2ff845c2e033bd0ff64b5b6aa6063a1f8f65aa32/bsd/sys/sysctl.h#L1224-L1225
+-std::optional<int> GetSysctlIntValue(const char* key_name) {
+-  int value;
+-  size_t len = sizeof(value);
+-  if (sysctlbyname(key_name, &value, &len, nullptr, 0) != 0) {
+-    return std::nullopt;
+-  }
+-  DCHECK_EQ(len, sizeof(value));
+-  return value;
+-}
+-
+-}  // namespace internal
+-
+-// static
+-int SysInfo::NumberOfEfficientProcessorsImpl() {
+-  int num_perf_levels =
+-      internal::GetSysctlIntValue("hw.nperflevels").value_or(1);
+-  if (num_perf_levels == 1) {
+-    return 0;
+-  }
+-  DCHECK_GE(num_perf_levels, 2);
+-
+-  // Lower values of perflevel indicate higher-performance core types. See
+-  // https://developer.apple.com/documentation/kernel/1387446-sysctlbyname/determining_system_capabilities?changes=l__5
+-  int num_of_efficient_processors =
+-      internal::GetSysctlIntValue(
+-          StringPrintf("hw.perflevel%d.logicalcpu", num_perf_levels - 1)
+-              .c_str())
+-          .value_or(0);
+-  DCHECK_GE(num_of_efficient_processors, 0);
+-
+-  return num_of_efficient_processors;
+-}
+-
+-// static
+-ByteSize SysInfo::AmountOfTotalPhysicalMemoryImpl() {
+-  uint64_t physical_memory;
+-  size_t size = sizeof(physical_memory);
+-  int rv = sysctlbyname("hw.memsize", &physical_memory, &size, nullptr, 0);
+-  // Instead of crashing, fallback to the old implementation.
+-  if (rv != 0) {
+-    return AmountOfPhysicalMemoryFallback();
+-  }
+-  return ByteSize(physical_memory);}
+-
+-}  // namespace base
+--- a/base/threading/platform_thread_apple.mm
++++ b/base/threading/platform_thread_apple.mm
+@@ -8,7 +8,6 @@
+ #include <mach/mach.h>
+ #include <mach/mach_time.h>
+ #include <mach/thread_policy.h>
+-#include <mach/thread_switch.h>
+ #include <stddef.h>
+ #include <sys/resource.h>
+ 
+@@ -58,29 +57,6 @@
+ 
+ TimeDelta PlatformThreadBase::Delegate::GetRealtimePeriod() {
+   return TimeDelta();
+-}
+-
+-// static
+-void PlatformThreadBase::YieldCurrentThread() {
+-  // Don't use sched_yield(), as it can lead to 10ms delays.
+-  //
+-  // This only depresses the thread priority for 1ms, which is more in line
+-  // with what calling code likely wants. See this bug in webkit for context:
+-  // https://bugs.webkit.org/show_bug.cgi?id=204871
+-  mach_msg_timeout_t timeout_ms = 1;
+-  thread_switch(MACH_PORT_NULL, SWITCH_OPTION_DEPRESS, timeout_ms);
+-}
+-
+-// static
+-void PlatformThreadBase::SetName(const std::string& name) {
+-  SetNameCommon(name);
+-
+-  // macOS does not expose the length limit of the name, so hardcode it.
+-  const int kMaxNameLength = 63;
+-  std::string shortened_name = name.substr(0, kMaxNameLength);
+-  // pthread_setname() fails (harmlessly) in the sandbox, ignore when it does.
+-  // See https://crbug.com/47058
+-  pthread_setname_np(shortened_name.c_str());
+ }
+ 
+ // Whether optimized real-time thread config should be used for audio.
+--- /dev/null
++++ b/base/threading/platform_thread_apple_name.cc
+@@ -0,0 +1,24 @@
++// Copyright 2012 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "base/threading/platform_thread.h"
++
++#include <pthread.h>
++#include <string>
++
++namespace base {
++
++// static
++void PlatformThreadBase::SetName(const std::string& name) {
++  SetNameCommon(name);
++
++  // macOS does not expose the length limit of the name, so hardcode it.
++  const int kMaxNameLength = 63;
++  std::string shortened_name = name.substr(0, kMaxNameLength);
++  // pthread_setname() fails (harmlessly) in the sandbox, ignore when it does.
++  // See https://crbug.com/47058
++  pthread_setname_np(shortened_name.c_str());
++}
++
++}  // namespace base
+--- /dev/null
++++ b/base/threading/platform_thread_apple_yield.cc
+@@ -0,0 +1,23 @@
++// Copyright 2012 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "base/threading/platform_thread.h"
++
++#include <mach/mach.h>
++#include <mach/thread_switch.h>
++
++namespace base {
++
++// static
++void PlatformThreadBase::YieldCurrentThread() {
++  // Don't use sched_yield(), as it can lead to 10ms delays.
++  //
++  // This only depresses the thread priority for 1ms, which is more in line
++  // with what calling code likely wants. See this bug in webkit for context:
++  // https://bugs.webkit.org/show_bug.cgi?id=204871
++  mach_msg_timeout_t timeout_ms = 1;
++  thread_switch(MACH_PORT_NULL, SWITCH_OPTION_DEPRESS, timeout_ms);
++}
++
++}  // namespace base
+--- a/base/time/time_apple.mm
++++ b/base/time/time_apple.mm
+@@ -5,143 +5,10 @@
+ #include "base/time/time.h"
+ 
+ #import <Foundation/Foundation.h>
+-#include <mach/mach.h>
+-#include <mach/mach_time.h>
+-#include <stddef.h>
+-#include <stdint.h>
+-#include <sys/sysctl.h>
+-#include <sys/time.h>
+-#include <sys/types.h>
+-#include <time.h>
+ 
+-#include "base/apple/mach_logging.h"
+-#include "base/apple/scoped_cftyperef.h"
+-#include "base/apple/scoped_mach_port.h"
+ #include "base/logging.h"
+-#include "base/numerics/safe_conversions.h"
+-#include "base/time/time_override.h"
+-#include "build/build_config.h"
+-
+-namespace {
+-
+-// Returns a pointer to the initialized Mach timebase info struct.
+-mach_timebase_info_data_t* MachTimebaseInfo() {
+-  static mach_timebase_info_data_t timebase_info = [] {
+-    mach_timebase_info_data_t info;
+-    kern_return_t kr = mach_timebase_info(&info);
+-    MACH_DCHECK(kr == KERN_SUCCESS, kr) << "mach_timebase_info";
+-    DCHECK(info.numer);
+-    DCHECK(info.denom);
+-    return info;
+-  }();
+-  return &timebase_info;
+-}
+-
+-int64_t MachTimeToMicroseconds(uint64_t mach_time) {
+-  // timebase_info gives us the conversion factor between absolute time tick
+-  // units and nanoseconds.
+-  mach_timebase_info_data_t* timebase_info = MachTimebaseInfo();
+-
+-  // Take the fast path when the conversion is 1:1. The result will for sure fit
+-  // into an int_64 because we're going from nanoseconds to microseconds.
+-  if (timebase_info->numer == timebase_info->denom) {
+-    return static_cast<int64_t>(mach_time /
+-                                base::Time::kNanosecondsPerMicrosecond);
+-  }
+-
+-  uint64_t microseconds = 0;
+-  const uint64_t divisor =
+-      timebase_info->denom * base::Time::kNanosecondsPerMicrosecond;
+-
+-  // Microseconds is mach_time * timebase.numer /
+-  // (timebase.denom * kNanosecondsPerMicrosecond). Divide first to reduce
+-  // the chance of overflow. Also stash the remainder right now, a likely
+-  // byproduct of the division.
+-  microseconds = mach_time / divisor;
+-  const uint64_t mach_time_remainder = mach_time % divisor;
+-
+-  // Now multiply, keeping an eye out for overflow.
+-  CHECK(!__builtin_umulll_overflow(microseconds, timebase_info->numer,
+-                                   &microseconds));
+-
+-  // By dividing first we lose precision. Regain it by adding back the
+-  // microseconds from the remainder, with an eye out for overflow.
+-  uint64_t least_significant_microseconds =
+-      (mach_time_remainder * timebase_info->numer) / divisor;
+-  CHECK(!__builtin_uaddll_overflow(microseconds, least_significant_microseconds,
+-                                   &microseconds));
+-
+-  // Don't bother with the rollover handling that the Windows version does.
+-  // The returned time in microseconds is enough for 292,277 years (starting
+-  // from 2^63 because the returned int64_t is signed,
+-  // 9223372036854775807 / (1e6 * 60 * 60 * 24 * 365.2425) = 292,277).
+-  return base::checked_cast<int64_t>(microseconds);
+-}
+-
+-// Returns monotonically growing number of ticks in microseconds since some
+-// unspecified starting point.
+-int64_t ComputeCurrentTicks() {
+-  // mach_absolute_time is it when it comes to ticks on the Mac.  Other calls
+-  // with less precision (such as TickCount) just call through to
+-  // mach_absolute_time.
+-  return MachTimeToMicroseconds(mach_absolute_time());
+-}
+-
+-int64_t ComputeThreadTicks() {
+-  struct timespec ts = {};
+-  CHECK(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts) == 0);
+-  base::CheckedNumeric<int64_t> absolute_micros(ts.tv_sec);
+-  absolute_micros *= base::Time::kMicrosecondsPerSecond;
+-  absolute_micros += (ts.tv_nsec / base::Time::kNanosecondsPerMicrosecond);
+-  return absolute_micros.ValueOrDie();
+-}
+-
+-}  // namespace
+ 
+ namespace base {
+-
+-// The Time routines in this file use Mach and CoreFoundation APIs, since the
+-// POSIX definition of time_t in macOS wraps around after 2038--and
+-// there are already cookie expiration dates, etc., past that time out in
+-// the field.  Using CFDate prevents that problem, and using mach_absolute_time
+-// for TimeTicks gives us nice high-resolution interval timing.
+-
+-// Time -----------------------------------------------------------------------
+-
+-namespace subtle {
+-Time TimeNowIgnoringOverride() {
+-  return Time::FromCFAbsoluteTime(CFAbsoluteTimeGetCurrent());
+-}
+-
+-Time TimeNowFromSystemTimeIgnoringOverride() {
+-  // Just use TimeNowIgnoringOverride() because it returns the system time.
+-  return TimeNowIgnoringOverride();
+-}
+-}  // namespace subtle
+-
+-// static
+-Time Time::FromCFAbsoluteTime(CFAbsoluteTime t) {
+-  static_assert(std::numeric_limits<CFAbsoluteTime>::has_infinity,
+-                "CFAbsoluteTime must have an infinity value");
+-  if (t == 0) {
+-    return Time();  // Consider 0 as a null Time.
+-  }
+-  return (t == std::numeric_limits<CFAbsoluteTime>::infinity())
+-             ? Max()
+-             : (UnixEpoch() +
+-                Seconds(double{t + kCFAbsoluteTimeIntervalSince1970}));
+-}
+-
+-CFAbsoluteTime Time::ToCFAbsoluteTime() const {
+-  static_assert(std::numeric_limits<CFAbsoluteTime>::has_infinity,
+-                "CFAbsoluteTime must have an infinity value");
+-  if (is_null()) {
+-    return 0;  // Consider 0 as a null Time.
+-  }
+-  return is_max() ? std::numeric_limits<CFAbsoluteTime>::infinity()
+-                  : (CFAbsoluteTime{(*this - UnixEpoch()).InSecondsF()} -
+-                     kCFAbsoluteTimeIntervalSince1970);
+-}
+ 
+ // static
+ Time Time::FromNSDate(NSDate* date) {
+@@ -153,62 +20,4 @@
+   return [NSDate dateWithTimeIntervalSinceReferenceDate:ToCFAbsoluteTime()];
+ }
+ 
+-// TimeDelta ------------------------------------------------------------------
+-
+-// static
+-TimeDelta TimeDelta::FromMachTime(uint64_t mach_time) {
+-  return Microseconds(MachTimeToMicroseconds(mach_time));
+-}
+-
+-// TimeTicks ------------------------------------------------------------------
+-
+-namespace subtle {
+-TimeTicks TimeTicksNowIgnoringOverride() {
+-  return TimeTicks() + Microseconds(ComputeCurrentTicks());
+-}
+-
+-TimeTicks TimeTicksLowResolutionNowIgnoringOverride() {
+-  return TimeTicks() + Microseconds(MachTimeToMicroseconds(
+-                           clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW_APPROX)));
+-}
+-}  // namespace subtle
+-
+-// static
+-bool TimeTicks::IsHighResolution() {
+-  return true;
+-}
+-
+-// static
+-bool TimeTicks::IsConsistentAcrossProcesses() {
+-  return true;
+-}
+-
+-// static
+-TimeTicks TimeTicks::FromMachAbsoluteTime(uint64_t mach_absolute_time) {
+-  return TimeTicks(MachTimeToMicroseconds(mach_absolute_time));
+-}
+-
+-// static
+-mach_timebase_info_data_t TimeTicks::SetMachTimebaseInfoForTesting(
+-    mach_timebase_info_data_t timebase) {
+-  mach_timebase_info_data_t orig_timebase = *MachTimebaseInfo();
+-
+-  *MachTimebaseInfo() = timebase;
+-
+-  return orig_timebase;
+-}
+-
+-// static
+-TimeTicks::Clock TimeTicks::GetClock() {
+-  return Clock::MAC_MACH_ABSOLUTE_TIME;
+-}
+-
+-// ThreadTicks ----------------------------------------------------------------
+-
+-namespace subtle {
+-ThreadTicks ThreadTicksNowIgnoringOverride() {
+-  return ThreadTicks() + Microseconds(ComputeThreadTicks());
+-}
+-}  // namespace subtle
+-
+ }  // namespace base
+--- /dev/null
++++ b/base/time/time_apple_mach.cc
+@@ -0,0 +1,204 @@
++// Copyright 2012 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "base/time/time.h"
++
++#include <CoreFoundation/CoreFoundation.h>
++#include <mach/mach.h>
++#include <mach/mach_time.h>
++#include <stddef.h>
++#include <stdint.h>
++#include <sys/sysctl.h>
++#include <sys/time.h>
++#include <sys/types.h>
++#include <time.h>
++
++#include "base/apple/mach_logging.h"
++#include "base/apple/scoped_cftyperef.h"
++#include "base/apple/scoped_mach_port.h"
++#include "base/logging.h"
++#include "base/numerics/safe_conversions.h"
++#include "base/time/time_override.h"
++#include "build/build_config.h"
++
++namespace {
++
++// Returns a pointer to the initialized Mach timebase info struct.
++mach_timebase_info_data_t* MachTimebaseInfo() {
++  static mach_timebase_info_data_t timebase_info = [] {
++    mach_timebase_info_data_t info;
++    kern_return_t kr = mach_timebase_info(&info);
++    MACH_DCHECK(kr == KERN_SUCCESS, kr) << "mach_timebase_info";
++    DCHECK(info.numer);
++    DCHECK(info.denom);
++    return info;
++  }();
++  return &timebase_info;
++}
++
++int64_t MachTimeToMicroseconds(uint64_t mach_time) {
++  // timebase_info gives us the conversion factor between absolute time tick
++  // units and nanoseconds.
++  mach_timebase_info_data_t* timebase_info = MachTimebaseInfo();
++
++  // Take the fast path when the conversion is 1:1. The result will for sure fit
++  // into an int_64 because we're going from nanoseconds to microseconds.
++  if (timebase_info->numer == timebase_info->denom) {
++    return static_cast<int64_t>(mach_time /
++                                base::Time::kNanosecondsPerMicrosecond);
++  }
++
++  uint64_t microseconds = 0;
++  const uint64_t divisor =
++      timebase_info->denom * base::Time::kNanosecondsPerMicrosecond;
++
++  // Microseconds is mach_time * timebase.numer /
++  // (timebase.denom * kNanosecondsPerMicrosecond). Divide first to reduce
++  // the chance of overflow. Also stash the remainder right now, a likely
++  // byproduct of the division.
++  microseconds = mach_time / divisor;
++  const uint64_t mach_time_remainder = mach_time % divisor;
++
++  // Now multiply, keeping an eye out for overflow.
++  CHECK(!__builtin_umulll_overflow(microseconds, timebase_info->numer,
++                                   &microseconds));
++
++  // By dividing first we lose precision. Regain it by adding back the
++  // microseconds from the remainder, with an eye out for overflow.
++  uint64_t least_significant_microseconds =
++      (mach_time_remainder * timebase_info->numer) / divisor;
++  CHECK(!__builtin_uaddll_overflow(microseconds, least_significant_microseconds,
++                                   &microseconds));
++
++  // Don't bother with the rollover handling that the Windows version does.
++  // The returned time in microseconds is enough for 292,277 years (starting
++  // from 2^63 because the returned int64_t is signed,
++  // 9223372036854775807 / (1e6 * 60 * 60 * 24 * 365.2425) = 292,277).
++  return base::checked_cast<int64_t>(microseconds);
++}
++
++// Returns monotonically growing number of ticks in microseconds since some
++// unspecified starting point.
++int64_t ComputeCurrentTicks() {
++  // mach_absolute_time is it when it comes to ticks on the Mac.  Other calls
++  // with less precision (such as TickCount) just call through to
++  // mach_absolute_time.
++  return MachTimeToMicroseconds(mach_absolute_time());
++}
++
++int64_t ComputeThreadTicks() {
++  struct timespec ts = {};
++  CHECK(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts) == 0);
++  base::CheckedNumeric<int64_t> absolute_micros(ts.tv_sec);
++  absolute_micros *= base::Time::kMicrosecondsPerSecond;
++  absolute_micros += (ts.tv_nsec / base::Time::kNanosecondsPerMicrosecond);
++  return absolute_micros.ValueOrDie();
++}
++
++}  // namespace
++
++namespace base {
++
++// The Time routines in this file use Mach and CoreFoundation APIs, since the
++// POSIX definition of time_t in macOS wraps around after 2038--and
++// there are already cookie expiration dates, etc., past that time out in
++// the field.  Using CFDate prevents that problem, and using mach_absolute_time
++// for TimeTicks gives us nice high-resolution interval timing.
++
++// Time -----------------------------------------------------------------------
++
++namespace subtle {
++Time TimeNowIgnoringOverride() {
++  return Time::FromCFAbsoluteTime(CFAbsoluteTimeGetCurrent());
++}
++
++Time TimeNowFromSystemTimeIgnoringOverride() {
++  // Just use TimeNowIgnoringOverride() because it returns the system time.
++  return TimeNowIgnoringOverride();
++}
++}  // namespace subtle
++
++// static
++Time Time::FromCFAbsoluteTime(CFAbsoluteTime t) {
++  static_assert(std::numeric_limits<CFAbsoluteTime>::has_infinity,
++                "CFAbsoluteTime must have an infinity value");
++  if (t == 0) {
++    return Time();  // Consider 0 as a null Time.
++  }
++  return (t == std::numeric_limits<CFAbsoluteTime>::infinity())
++             ? Max()
++             : (UnixEpoch() +
++                Seconds(double{t + kCFAbsoluteTimeIntervalSince1970}));
++}
++
++CFAbsoluteTime Time::ToCFAbsoluteTime() const {
++  static_assert(std::numeric_limits<CFAbsoluteTime>::has_infinity,
++                "CFAbsoluteTime must have an infinity value");
++  if (is_null()) {
++    return 0;  // Consider 0 as a null Time.
++  }
++  return is_max() ? std::numeric_limits<CFAbsoluteTime>::infinity()
++                  : (CFAbsoluteTime{(*this - UnixEpoch()).InSecondsF()} -
++                     kCFAbsoluteTimeIntervalSince1970);
++}
++
++// TimeDelta ------------------------------------------------------------------
++
++// static
++TimeDelta TimeDelta::FromMachTime(uint64_t mach_time) {
++  return Microseconds(MachTimeToMicroseconds(mach_time));
++}
++
++// TimeTicks ------------------------------------------------------------------
++
++namespace subtle {
++TimeTicks TimeTicksNowIgnoringOverride() {
++  return TimeTicks() + Microseconds(ComputeCurrentTicks());
++}
++
++TimeTicks TimeTicksLowResolutionNowIgnoringOverride() {
++  return TimeTicks() + Microseconds(MachTimeToMicroseconds(
++                           clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW_APPROX)));
++}
++}  // namespace subtle
++
++// static
++bool TimeTicks::IsHighResolution() {
++  return true;
++}
++
++// static
++bool TimeTicks::IsConsistentAcrossProcesses() {
++  return true;
++}
++
++// static
++TimeTicks TimeTicks::FromMachAbsoluteTime(uint64_t mach_absolute_time) {
++  return TimeTicks(MachTimeToMicroseconds(mach_absolute_time));
++}
++
++// static
++mach_timebase_info_data_t TimeTicks::SetMachTimebaseInfoForTesting(
++    mach_timebase_info_data_t timebase) {
++  mach_timebase_info_data_t orig_timebase = *MachTimebaseInfo();
++
++  *MachTimebaseInfo() = timebase;
++
++  return orig_timebase;
++}
++
++// static
++TimeTicks::Clock TimeTicks::GetClock() {
++  return Clock::MAC_MACH_ABSOLUTE_TIME;
++}
++
++// ThreadTicks ----------------------------------------------------------------
++
++namespace subtle {
++ThreadTicks ThreadTicksNowIgnoringOverride() {
++  return ThreadTicks() + Microseconds(ComputeThreadTicks());
++}
++}  // namespace subtle
++
++}  // namespace base

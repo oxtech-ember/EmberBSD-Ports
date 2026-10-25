@@ -222,6 +222,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-shared-image-c
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-metrics-tracing-enum-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/linker-launcher.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-mac-gcc16-host.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-apple-cxx-platform.patch
 ```
 
 Set `dawn_host_go_path` to the absolute path of a supported host Go executable
@@ -513,6 +514,25 @@ Actual GN and NetBSD-host permission checks remain required. This change does
 not repair other context/code-cache PaX actions or change target browser PaX
 and sandbox policy. The current Mac cross configuration keeps the context
 optimization off through the separate argument above.
+
+The [Apple C++ split](patches/base-apple-cxx-platform.patch) moves existing
+CoreFoundation string conversions, Mach/CoreFoundation time code, and the complete
+`BaseBundleID` getter, setter, and shared override state into three C++ files.
+It also moves the complete C++ `SysInfo` Apple implementation to a `.cc` file
+and the exact Mach `YieldCurrentThread` and pthread `SetName` implementations
+to separate C++ files. Thread name registration stays in the common implementation.
+Public headers, lifted function bodies, branding defaults, platform branches,
+and runtime behavior stay unchanged. NSString and NSDate bridges remain in the
+mixed sources. The existing Apple GN branch registers the C++ sources and retains
+the four remaining Objective-C++ files.
+
+The [source checks](tests/base-apple-cxx-platform.py) accept the complete pinned
+Chromium source before or after this patch. Run them with the selected Python
+and `--source /absolute/chromium/src`. They use no GN, compiler, or native tool.
+This split does not provide a complete host-only base target. Other required
+Objective-C++ dependencies remain. GCC16 compile/link checks, static analysis,
+and the applicable upstream runtime tests remain required. These source checks
+do not establish host-generator, ARC, or Electron acceptance.
 
 The Apple link driver receives one C++ executable and its separate ordered
 arguments. Rust proc macros receive the same executable and ordered link
