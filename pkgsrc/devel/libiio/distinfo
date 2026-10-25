@@ -1,0 +1,13 @@
+$NetBSD$
+
+BLAKE2s (libiio-1.0.0.tar.gz) = 3097a94a2f9d024bea4ca96f87a535c81accfb56ee446d76231a3ca7ca2a33ad
+SHA512 (libiio-1.0.0.tar.gz) = 7e475f8d33bd56f29be71120a2ffe87edcf750df4152b3a0e1169e1bc500803590b1b4a14faf036f042bfb0e79f4c7e5c4f9cb43e62ddca33adffec96ae38ec2
+Size (libiio-1.0.0.tar.gz) = 3196859 bytes
+BLAKE2s (libiio-0.26-iio.h) = c70298056cf30f40975d62aa3090c6d25ca97de5eea66a65f08b9d6f3f4d1cbe
+SHA512 (libiio-0.26-iio.h) = c42e6edae3aad79655fbd5994e373ac19568c95a2243e2ea6d39705fa15260c5c922aed1a2bf317ac5075429ef5abde3dc001038a1914df4af19a6be5943441d
+Size (libiio-0.26-iio.h) = 80144 bytes
+SHA1 (patch-block-short-read) = 34dca8ea8cbabad0d556c7365c6243cb1025b8de
+SHA1 (patch-buffer-cancel) = 00370a05ea842cf3281b8812c87e9a4416fdf2ac
+SHA1 (patch-compat-soname) = 699dbd0ff7d28e4c25fb6aa479b9e4399562eeb2
+SHA1 (patch-iiod-emu-loopback) = 53ecd56c9f8570398a1e41ac5430f8ed7d0946dc
+SHA1 (patch-portability) = f9f5465ee19d9dc6cbe5d410e40ecacf66fcb9f1

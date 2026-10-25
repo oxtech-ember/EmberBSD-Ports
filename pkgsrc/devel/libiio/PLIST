@@ -1,0 +1,25 @@
+@comment $NetBSD$
+bin/iio_attr
+bin/iio_event
+bin/iio_genxml
+bin/iio_info
+bin/iio_ping
+bin/iio_reg
+bin/iio_rwdev
+bin/iio_stresstest
+bin/iiod-emu
+include/iio-compat-0/iio.h
+include/iio/iio-backend.h
+include/iio/iio-debug.h
+include/iio/iio-lock.h
+include/iio/iio.h
+include/iio/iiod-client.h
+lib/libiio.so
+lib/libiio.so.0
+lib/libiio.so.1
+lib/libiio.so.1.0.0
+lib/pkgconfig/libiio.pc
+share/doc/libiio/COPYING.txt
+share/doc/libiio/COPYING_GPL.txt
+share/doc/libiio/COPYING_MIT.txt
+share/doc/libiio/iio-config.h

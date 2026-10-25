@@ -1,3 +1,8 @@
+$NetBSD$
+
+Retain the shared SDR portability and loopback test support.
+Origin: EmberBSD probes/sdr, moved without functional change.
+
 --- iiod-emu/network.c
 +++ iiod-emu/network.c
 @@ -192,7 +192,7 @@

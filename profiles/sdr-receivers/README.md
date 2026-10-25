@@ -164,3 +164,47 @@ index must then be empty. Reinstallation must restore exactly the previous
 ownership map, and the genuine duplicate package must still be rejected. Dumps
 before and after recovery are retained. This mode does not qualify the old
 `pkg_delete` or turn its strict failure into a pass.
+
+## Industrial I/O
+
+The optional Pluto receiver role selects common `devel/libiio` 1.0.0,
+`devel/libusb1`, `textproc/libxml2` and `archivers/zstd`.
+It adds no second RTL-SDR stack. The private application is supplied separately.
+
+Prepare both verified archives listed in `pkgsrc/devel/libiio/files/sources.tsv`:
+
+```sh
+PATCH=/absolute/sdk/bin/patch "$PY" cross/prepare-libiio.py \
+    /absolute/archive-cache /absolute/new-source
+```
+
+Run from this profile directory. The preparation helper verifies source and patch
+checksums and applies every patch in the common recipe.
+It keeps the legacy declaration header inside `.ember` until installation.
+
+```sh
+CC=/absolute/gcc16/bin/x86_64--netbsd-gcc \
+CMAKE=/absolute/sdk/bin/cmake NINJA=/absolute/sdk/bin/ninja \
+PKG_CONFIG=/absolute/sdk/bin/pkg-config \
+CMAKE_TOOLCHAIN_FILE=/absolute/netbsd-toolchain.cmake \
+"$PY" cross/build-libiio.py /absolute/new-source /absolute/new-build target
+```
+
+Select target-only pkg-config roots and a toolchain file with the matching
+sysroot, GCC16 CRT, libraries and target discovery roots.
+For `native`, select native GCC16 and `LIBIIO_DEPENDENCY_PREFIX` explicitly.
+On Darwin, select the host ABI SDK with `SDKROOT`.
+These staged outputs are not registered packages or qualified SDK providers.
+The same package-metadata and lifecycle helpers above apply to the staged closure.
+
+Run `tests/libiio/configure.py SOURCE NEW_WORK` with explicit `CC`, `CMAKE`
+and `NINJA` to test missing-USB refusal.
+Run `tests/libiio/run.sh PREFIX NEW_WORK` on the binary's native platform,
+with explicit `CC` and `PY`. Select diagnostic flags through `CFLAGS`/`LDFLAGS`.
+The script uses only loopback synthetic traffic. It does not enumerate USB.
+Run `tests/libiio/elf.py PREFIX READELF` to check target SONAMEs and loader paths.
+
+GCC16 native ASan/UBSan checks cover both official libraries and the ABI fixture.
+Darwin LeakSanitizer and Valgrind coverage are not available in this experiment.
+Cppcheck retains one inherited portability finding in the pthread integer return
+conversion in `lock.c`; the new block/cancellation paths add no such finding.

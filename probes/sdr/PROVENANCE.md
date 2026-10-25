@@ -4,8 +4,8 @@ This profile was prepared with AI assistance on 2026-10-07. Project-owned shell,
 C/C++ tests and synthetic fixtures use the accompanying MIT license. Existing
 source copyright and license notices remain upstream's.
 
-`sources.tsv` pins original upstream archives and one ABI declaration header by
-SHA256. `patches.tsv` pins the adaptations. `patched-files.tsv` records upstream
+`sources.tsv` pins original upstream archives by SHA256; the common libiio
+manifest separately owns its archive and isolated ABI declaration header. `patches.tsv` pins the adaptations. `patched-files.tsv` records upstream
 and resulting file hashes. Source archives, build output and private machine
 addresses are not repository content.
 
@@ -33,7 +33,7 @@ preserves rather than inventing a new upstream ABI version.
 
 ## Local patches, not accepted upstream
 
-- `libiio-portability.patch`: use CMake's platform loader library instead of
+- `pkgsrc/devel/libiio/patches/patch-portability`: use CMake's platform loader library instead of
   hardcoded `dl`; use the actual current library filename for non-framework
   builds. The original Darwin shim tries a framework path even with
   `OSX_FRAMEWORK=OFF` and crashes in its constructor. Host RED/GREEN proves this.
@@ -43,7 +43,7 @@ preserves rather than inventing a new upstream ABI version.
   The prototype is documented by [NetBSD](https://man.netbsd.org/pthread_setname_np.3).
   The exact upstream macro fails a host compile against this prototype; the
   patched macro passes. This is a signature regression, **not a native build**.
-- `iiod-emu-loopback.patch`: add optional `--loopback` binding; keep upstream's
+- `pkgsrc/devel/libiio/patches/patch-iiod-emu-loopback`: add optional `--loopback` binding; keep upstream's
   default unchanged. Tests require the option. An actual socket `getsockname`
   contract verifies `127.0.0.1`. The upstream listener uses `INADDR_ANY`.
 - `pluto-explicit-context.patch`: honor explicit URI/hostname before scanning,
@@ -67,11 +67,11 @@ CMake, Ninja, C/C++ compilers and Zstandard are provided by the build platform.
 The common [libxml2 2.15.4 provider](../libxml2/README.md) is selected by required
 `XML_PREFIX`. Its source inventory and explicit include/library paths are
 checked and recorded. CMake caches/logs retain all dependency identities.
-The source profile has no nested source download. DNS discovery, USB, serial,
+The source profile has no nested source download. USB is enabled through the shared receiver configuration. DNS discovery, serial,
 local IIO, Python and MATLAB bindings, packaging and normal `iiod` are disabled.
 Zstandard must be enabled: libiio1's network client requires it at configure.
 
-Host evidence uses macOS arm64, Apple Clang 21, CMake 4.4.4 and Homebrew
+Historical host evidence used macOS arm64, Apple Clang 21, CMake 4.4.4 and Homebrew
 Zstandard 1.5.7. The recipe builds against the project libxml2 2.15.4;
 all installed RX contracts pass. Loader tracing confirms `XML_PREFIX/lib/libxml2.16.1.4.dylib`.
 Native dependency versions/ELF/base-GCC ABI remain unverified.
@@ -108,3 +108,14 @@ tests for lock contention, stalled input, retry and clean shutdown. Altering
 the shared context timeout does not satisfy those requirements. The existing
 bounded TCP test remains a libiio context-creation test, not proof of a Soapy
 stream deadline. This investigation leaves the runtime behavior unchanged.
+
+The common recipe also rejects incomplete legacy reads before exposing stale IQ.
+It sets the ABI 0 SONAME on NetBSD to keep exact library links relocatable.
+Standalone ABI tests reside in `profiles/sdr-receivers/tests/libiio`.
+
+The GCC16 receiver validation also uses the shared cancellation ordering fix.
+`soapy-darwin-gcc.patch` selects Apple ld syntax for undefined-symbol rejection
+when building with GNU C++ on Darwin; other targets retain the upstream flag.
+The actual GCC16 full-profile link failed before this patch and all existing
+installed RX contracts passed afterward. This is native synthetic evidence,
+not target USB or RF acceptance.

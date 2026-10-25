@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE context [
+<!ELEMENT context (context-attribute|device)*>
+<!ATTLIST context name CDATA #REQUIRED version-major CDATA #IMPLIED version-minor CDATA #IMPLIED version-git CDATA #IMPLIED description CDATA #IMPLIED>
+<!ELEMENT context-attribute EMPTY>
+<!ATTLIST context-attribute name CDATA #REQUIRED value CDATA #REQUIRED>
+<!ELEMENT device (channel|buffer)*>
+<!ATTLIST device id CDATA #REQUIRED name CDATA #IMPLIED>
+<!ELEMENT channel (scan-element|attribute)*>
+<!ATTLIST channel id CDATA #REQUIRED type CDATA #REQUIRED>
+<!ELEMENT scan-element EMPTY>
+<!ATTLIST scan-element index CDATA #REQUIRED format CDATA #REQUIRED>
+<!ELEMENT attribute EMPTY>
+<!ATTLIST attribute name CDATA #REQUIRED value CDATA #IMPLIED>
+<!ELEMENT buffer EMPTY>
+<!ATTLIST buffer index CDATA #REQUIRED direction CDATA #REQUIRED>
+]>
+<!-- SPDX-License-Identifier: MIT; synthetic RX-only test device, not hardware data. -->
+<context name="emu" version-major="1" version-minor="0" version-git="fixture" description="Synthetic Pluto RX contract">
+  <context-attribute name="fixture_id" value="fixture-one"/>
+  <device id="iio:device0" name="ad9361-phy">
+    <channel id="voltage0" type="input">
+      <attribute name="rf_port_select" value="A_BALANCED"/>
+      <attribute name="gain_control_mode" value="manual"/>
+      <attribute name="hardwaregain" value="10"/>
+      <attribute name="sampling_frequency" value="1000000"/>
+    </channel>
+    <channel id="voltage0" type="output">
+      <attribute name="rf_port_select" value="A"/>
+      <attribute name="sampling_frequency" value="1000000"/>
+    </channel>
+    <channel id="altvoltage0" type="output">
+      <attribute name="frequency" value="915000000"/>
+      <attribute name="powerdown" value="1"/>
+    </channel>
+    <channel id="altvoltage1" type="output">
+      <attribute name="frequency" value="915000000"/>
+      <attribute name="powerdown" value="1"/>
+    </channel>
+  </device>
+  <device id="iio:device1" name="cf-ad9361-lpc">
+    <channel id="voltage0" type="input">
+      <scan-element index="0" format="le:S12/16&gt;&gt;0"/>
+      <attribute name="sampling_frequency" value="1000000"/>
+    </channel>
+    <channel id="voltage1" type="input">
+      <scan-element index="1" format="le:S12/16&gt;&gt;0"/>
+      <attribute name="sampling_frequency" value="1000000"/>
+    </channel>
+    <buffer index="0" direction="in"/>
+  </device>
+  <device id="iio:device2" name="cf-ad9361-dds-core-lpc">
+    <channel id="voltage0" type="output"><scan-element index="0" format="le:S12/16&gt;&gt;0"/></channel>
+    <channel id="voltage1" type="output"><scan-element index="1" format="le:S12/16&gt;&gt;0"/></channel>
+    <buffer index="0" direction="out"/>
+  </device>
+</context>

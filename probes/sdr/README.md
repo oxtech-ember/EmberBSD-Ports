@@ -1,5 +1,8 @@
 # Ethernet SDR source and RX software probe
 
+Libiio sources, patches and configuration come from the common
+[`devel/libiio`](../../pkgsrc/devel/libiio) recipe. Set explicit `PY` and `PATCH` tools.
+
 This profile builds SoapySDR 0.8.1, libiio 1.0.0, libad9361-iio v0.3 and
 SoapyPlutoSDR 0.2.2 into one disposable prefix. It prepares the software path
 for a Pluto/AD9361 Ethernet receiver. The current result is **host software
@@ -21,7 +24,8 @@ ordinary link name remain libiio1. Remove this transitional header/shim surface
 when both upstream consumers support the new channel-mask and buffer API.
 
 The profile enables network, XML, emulator, Zstandard and shared libraries.
-It disables local IIO, USB, serial, discovery, ordinary `iiod`, language bindings
+It enables USB through the common libusb provider.
+It disables local IIO, serial, discovery, ordinary `iiod`, language bindings
 and packaging. `iiod-emu` is included solely for software contracts and has a
 new `--loopback` option. The tests always use that option.
 

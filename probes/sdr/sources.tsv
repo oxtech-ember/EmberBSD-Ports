@@ -1,5 +1,3 @@
 SoapySDR-0.8.1.tar.gz a508083875ed75d1090c24f88abef9895ad65f0f1b54e96d74094478f0c400e6 https://codeload.github.com/pothosware/SoapySDR/tar.gz/refs/tags/soapy-sdr-0.8.1
-libiio-1.0.0.tar.gz b4289bf9971f4a193c8c5f7fb40fbd4bd3f33654936b960b9539c7f2b484e44a https://codeload.github.com/analogdevicesinc/libiio/tar.gz/refs/tags/v1.0.0
 libad9361-iio-0.3.tar.gz 1dc35dd997e1938a97489fa1f349ee16889f9de8901a2c7af46184468dc90598 https://codeload.github.com/analogdevicesinc/libad9361-iio/tar.gz/refs/tags/v0.3
 SoapyPlutoSDR-0.2.2.tar.gz d4282a946495aa8a48f9d4ab45b230fccd0e443208b5566f806d2ca892332929 https://codeload.github.com/pothosware/SoapyPlutoSDR/tar.gz/refs/tags/soapy-plutosdr-0.2.2
-libiio-0.26-iio.h 7ca6fd3fcbc354b3fc7463df44d244fe2cb5bf22c68f18388d9b5f372d20e73c https://raw.githubusercontent.com/analogdevicesinc/libiio/a0eca0d2bf10326506fb762f0eec14255b27bef5/iio.h

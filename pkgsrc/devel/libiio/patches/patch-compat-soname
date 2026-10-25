@@ -1,0 +1,17 @@
+$NetBSD$
+
+Keep exact ABI0 links relocatable on NetBSD.
+Origin: EmberBSD; AI-assisted change, not submitted upstream.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -168,6 +168,9 @@
+         if (NOT WIN32)
+             set_target_properties(iio-compat PROPERTIES SUFFIX .so.0)
+         endif ()
++        if (CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
++            target_link_options(iio-compat PRIVATE "LINKER:-soname,libiio.so.0")
++        endif ()
+         if (WITH_GCOV)
+             enable_coverage(iio-compat)
+         endif ()

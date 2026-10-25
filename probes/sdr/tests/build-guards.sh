@@ -28,7 +28,7 @@ grep -q 'Source checksum mismatch' "$root/archive.log"
 cp -R "$recipe" "$root/recipe"
 mkdir -p "$root/libxml2"
 cp "$recipe/../libxml2/sources.tsv" "$root/libxml2/sources.tsv"
-printf '\ncorruption\n' >> "$root/recipe/patches/libiio-portability.patch"
+printf '\ncorruption\n' >> "$root/recipe/patches/pluto-explicit-context.patch"
 expect_failure patch env HOST_CHECK=1 "$root/recipe/build.sh" "$root/patch" "$root/cache"
 grep -q 'Patch checksum mismatch' "$root/patch.log"
 [ ! -e "$root/patch" ] || exit 1

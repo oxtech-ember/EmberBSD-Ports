@@ -1,3 +1,8 @@
+$NetBSD$
+
+Retain the shared SDR portability and loopback test support.
+Origin: EmberBSD probes/sdr, moved without functional change.
+
 --- CMakeLists.txt
 +++ CMakeLists.txt
 @@ -143,12 +143,11 @@

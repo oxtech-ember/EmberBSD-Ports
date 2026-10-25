@@ -1,0 +1,4 @@
+Libiio provides access to local and remote Industrial I/O devices.
+This package enables USB, network, XML and emulation backends. Its official
+compatibility library supports ABI 0 consumers with an isolated legacy header.
+The primary headers and ordinary library link name retain ABI 1.

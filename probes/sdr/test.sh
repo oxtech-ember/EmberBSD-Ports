@@ -14,6 +14,8 @@ xml_prefix=$(cat "$prefix/share/ember-sdr/xml-prefix")
 absolute "$xml_prefix"
 cmp "$recipe/../libxml2/sources.tsv" "$prefix/share/ember-sdr/xml-sources.tsv" >/dev/null || fail 'Recorded XML provider differs.'
 cmp "$prefix/share/ember-sdr/xml-sources.tsv" "$xml_prefix/share/ember-libxml2/sources.tsv" >/dev/null || fail 'XML provider inventory changed.'
+cmp "$recipe/../../pkgsrc/devel/libiio/files/sources.tsv" "$prefix/share/ember-sdr/libiio-sources.tsv" >/dev/null || fail "Common libiio sources differ."
+cmp "$recipe/../../pkgsrc/devel/libiio/distinfo" "$prefix/share/ember-sdr/libiio-distinfo" >/dev/null || fail "Common libiio patch set differs."
 verify_recipe
 jobs=${JOBS:-1}
 positive JOBS "$jobs"

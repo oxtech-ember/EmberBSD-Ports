@@ -33,6 +33,13 @@ while read -r name expected url; do
     printf '%s %s %s\n' "$name" "$expected" "$url" >> "$work/logs/sources.txt"
     case "$name" in *.tar.gz) tar -mxf "$work/archives/$name" -C "$work/src" ;; esac
 done < "$recipe/sources.tsv"
+while read -r name expected url; do
+    if [ "$#" = 2 ]; then cp "$2/$name" "$work/archives/$name";
+    else curl -fLsS --connect-timeout 20 --max-time 900 "$url" -o "$work/archives/$name"; fi
+done < "$recipe/../../pkgsrc/devel/libiio/files/sources.tsv"
+: "${PY:?Select the absolute Python interpreter}"
+: "${PATCH:?Select the absolute patch executable}"
+"$PY" "$recipe/../../profiles/sdr-receivers/cross/prepare-libiio.py" "$work/archives" "$work/src/libiio-1.0.0"
 while read -r source file before after; do
     [ "$(sha "$work/src/$source/$file")" = "$before" ] || fail "Unexpected upstream source: $source/$file"
 done < "$recipe/patched-files.tsv"
@@ -44,7 +51,7 @@ while read -r source file before after; do
 done < "$recipe/patched-files.tsv"
 prefix=$work/install
 mkdir -p "$prefix/include/iio-compat-0"
-cp "$work/archives/libiio-0.26-iio.h" "$prefix/include/iio-compat-0/iio.h"
+cp "$work/src/libiio-1.0.0/.ember/iio.h" "$prefix/include/iio-compat-0/iio.h"
 export CC=${CC:-/usr/bin/cc} CXX=${CXX:-/usr/bin/c++}
 { uname -a; "$CC" --version; "$CXX" --version; "$cmake" --version; ninja --version;
   printf 'JOBS=%s\nBUILD_AS_KIB=%s\n' "$jobs" "${BUILD_AS_KIB:-inherited}";
@@ -63,12 +70,7 @@ zstd_inc=${LIBZSTD_INCLUDE_DIR:-$dep_prefix/include}
 run libiio-configure "$cmake" -S "$work/src/libiio-1.0.0" -B "$work/libiio" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
     -DCMAKE_INSTALL_RPATH="$prefix/lib;$XML_PREFIX/lib;$dep_prefix/lib" -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF \
-    -DBUILD_SHARED_LIBS=ON -DLIBIIO_COMPAT=ON -DOSX_FRAMEWORK=OFF -DOSX_PACKAGE=OFF -DWITH_MODULES=OFF \
-    -DWITH_NETWORK_BACKEND=ON -DWITH_ZSTD=ON -DHAVE_DNS_SD=OFF \
-    -DWITH_XML_BACKEND=ON -DWITH_EMU_BACKEND=ON -DWITH_IIOD_EMU=ON \
-    -DWITH_LOCAL_BACKEND=OFF -DWITH_USB_BACKEND=OFF -DWITH_SERIAL_BACKEND=OFF -DWITH_IIOD=OFF \
-    -DWITH_UTILS=ON -DWITH_EXAMPLES=OFF -DWITH_MAN=OFF -DWITH_TESTS=OFF -DENABLE_PACKAGING=OFF \
-    -DPYTHON_BINDINGS=OFF -DCSHARP_BINDINGS=OFF -DCPP_BINDINGS=OFF \
+    -C "$recipe/../../pkgsrc/devel/libiio/files/receiver.cmake" \
     -DLIBXML2_INCLUDE_DIR="$xml_inc" -DLIBXML2_LIBRARY="$xml_lib" \
     -DLIBZSTD_INCLUDE_DIR="$zstd_inc" -DLIBZSTD_LIBRARIES="$zstd_lib"
 run libiio-build "$cmake" --build "$work/libiio" --parallel "$jobs"
@@ -105,6 +107,8 @@ mkdir -p "$prefix/share/ember-sdr/licenses"
 printf '%s\n' "$XML_PREFIX" > "$prefix/share/ember-sdr/xml-prefix"
 cp "$XML_PREFIX/share/ember-libxml2/sources.tsv" "$prefix/share/ember-sdr/xml-sources.tsv"
 cp "$recipe/sources.tsv" "$recipe/patches.tsv" "$recipe/PROVENANCE.md" "$prefix/share/ember-sdr/"
+cp "$recipe/../../pkgsrc/devel/libiio/files/sources.tsv" "$prefix/share/ember-sdr/libiio-sources.tsv"
+cp "$recipe/../../pkgsrc/devel/libiio/distinfo" "$prefix/share/ember-sdr/libiio-distinfo"
 cp "$work/src/libiio-1.0.0/COPYING.txt" "$prefix/share/ember-sdr/licenses/libiio-LGPL-2.1"
 cp "$work/src/libiio-1.0.0/COPYING_MIT.txt" "$prefix/share/ember-sdr/licenses/libiio-MIT"
 cp "$work/src/libiio-1.0.0/COPYING_GPL.txt" "$prefix/share/ember-sdr/licenses/libiio-GPL"

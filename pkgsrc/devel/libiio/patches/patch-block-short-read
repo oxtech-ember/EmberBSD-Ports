@@ -1,0 +1,17 @@
+$NetBSD$
+
+Reject incomplete legacy backend blocks before consumers can read stale IQ.
+The v1 block API and official compatibility shim expose a fixed block size.
+Origin: EmberBSD; AI-assisted change, not submitted upstream.
+
+--- block.c.orig
++++ block.c
+@@ -127,6 +127,8 @@ static int iio_block_read(struct iio_block *block)
+ 		return -ENOSYS;
+ 
+ 	ret = ops->readbuf(block->buf_stream->pdata, block->data, bytes_used);
++	if (ret >= 0 && (size_t)ret != bytes_used)
++		return -EIO;
+ 	return ret < 0 ? (int)ret : 0;
+ }
+ 
