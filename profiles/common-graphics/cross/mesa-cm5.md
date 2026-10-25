@@ -88,14 +88,39 @@ sh /absolute/bundle/run-mesa-package-tests.sh \
 The optional width/height arguments require the current `mesa-render.c`;
 the original default remains 16x16. Dimensions must be integers in 16..4096.
 The runner checks every installed package file, link and runtime-library hash.
-No private runtime library is bundled. `libdrm-platform-check.c` additionally
-checks driver name, platform compatibility, enumeration folding, node type
-and the exact render pathname. Compile it against installed libdrm via the
-same cross compiler/sysroot, then run it with the render node argument.
-The default profile expects `acpi:BCM2850` and driver `v3d`.
-An optional second argument selects `allwinner,sun60i-a733-gpu` and `powervr`.
-Unknown profiles fail before the device opens. All identity checks remain active.
-This tests libdrm discovery. It does not prove rendering or job submission.
+No private runtime library is bundled. `libdrm-platform-check.c` verifies
+installed libdrm device identity without issuing a modeset or GPU job. Its
+existing platform mode checks the driver, compatible string, render-node type,
+`drmGetDevice2`, `drmGetDevices2`, device equality and exact node names. The
+default profile expects `acpi:BCM2850` and driver `v3d`; the optional compatible
+argument selects `allwinner,sun60i-a733-gpu` and `powervr`.
+
+Compile the checker with the target GCC16 compiler and the target sysroot's
+installed libdrm headers and library, then run it on the installed system. The
+`--amdgpu-pci` mode checks the `amdgpu` driver on a PCI render node. Supply the
+expected 16-bit vendor and device IDs in hexadecimal:
+
+```sh
+/absolute/libdrm-platform-check --amdgpu-pci /dev/dri/renderD128 \
+    VENDOR_ID_HEX DEVICE_ID_HEX
+```
+
+Run once with the expected IDs and repeat with a different valid device ID as
+a negative control. The first run must pass; the second must reject the device.
+The PCI mode opens the node read-only and verifies its type, PCI bus, vendor
+and device IDs, enumeration equality and reported render-node name. This is
+installed discovery evidence only. It does not prove rendering, modesetting,
+command submission or hardware acceptance.
+
+The GCC16 fixture executes the production checker against stub libdrm APIs. It
+covers both existing platform profiles, the PCI positive case, mismatched IDs,
+malformed and out-of-range input, wrong identity fields, cleanup on API errors,
+enumeration failures and read-only access flags:
+
+```sh
+CC=/absolute/selected-gcc16 \
+    sh ../tests/libdrm-amdgpu-pci-check.sh /absolute/libdrm-2.4.134
+```
 
 ## Port repairs and validation
 
