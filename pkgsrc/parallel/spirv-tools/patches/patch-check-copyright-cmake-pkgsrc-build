@@ -1,0 +1,18 @@
+$NetBSD$
+
+Skip the pkgsrc CMake build tree during source copyright checks.
+Keep source directories with similar names in the check.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- utils/check_copyright.py.orig
++++ utils/check_copyright.py
+@@ -100,7 +100,7 @@
+ def filtered_descendants(glob):
+     """Returns glob-matching filenames under the current directory, but skips
+     some irrelevant paths."""
+     return find('.', glob, ['third_party', 'external', 'CompilerIdCXX',
+-        'build*', 'out*'], ['./utils/clang-format-diff.py'])
++        'build*', 'out*', 'cmake-pkgsrc-build'], ['./utils/clang-format-diff.py'])
+ 
+ 
+ def skip(line):
