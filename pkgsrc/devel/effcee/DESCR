@@ -1,0 +1,3 @@
+Effcee is a C++ library for stateful pattern matching of diagnostic text.
+It supports positive and negative checks, ordered lines, labels, captures,
+and regular expressions through the common RE2 provider.

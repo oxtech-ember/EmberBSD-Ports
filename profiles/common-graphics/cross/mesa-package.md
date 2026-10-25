@@ -1,6 +1,6 @@
 # Accept the installed common Mesa package
 
-The current 26.2.5nb2 [POSIX PRIME import repair and source controls](../../../pkgsrc/graphics/MesaLib/tests/README.md)
+The 26.2.5nb3 recipe includes the [POSIX PRIME import repair and source controls](../../../pkgsrc/graphics/MesaLib/tests/README.md)
 retain Linux UDMABUF allocation separately. Native exporter mmap, a complete
 package build and compositor acceptance remain required for this new delta.
 The older package receipts below keep their original scope.

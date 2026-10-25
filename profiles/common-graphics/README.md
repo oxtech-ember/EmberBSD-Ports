@@ -373,15 +373,22 @@ OSMesa, XA and GLVND are outside this candidate. Requests for unsupported
 Mesa options fail; they do not install older providers. Unselected optional
 libelf/Lua/XCB-keysyms are absent from the buildlink sandbox.
 
-libdrm is deliberately core-only. Intel, Radeon, AMDGPU, Nouveau, VMware and
-physical ARM client modules, man pages and test-program installation are
-disabled; upstream tests remain enabled. Unconditional kernel UAPI headers
-remain installed. A consumer requiring `libdrm_amdgpu`, `libdrm_intel` or
-another disabled client module is a migration blocker. Adapted revision
-`nb2` includes PCI and platform metadata discovery and prevents an
-unpatched libdrm2.4.134 package satisfying the native
-identity requirement. The canonical recipe omits pkgsrc's native-X11
+libdrm enables its Intel client module on amd64. Radeon, AMDGPU, Nouveau,
+VMware and physical ARM client modules, man pages and test-program installation
+remain disabled. Upstream tests remain enabled. Unconditional kernel UAPI
+headers remain installed. A consumer requiring `libdrm_amdgpu` or another
+disabled client module is a migration blocker. The adapted recipe includes
+PCI and platform metadata discovery and prevents an unpatched package from
+satisfying the native identity requirement. It omits pkgsrc's native-X11
 avoid-duplicate skip, so actual dependency selection still builds libdrm.
+
+The amd64 Mesa selection does not include RadeonSI. AMDGPU kernel modesetting
+does not establish hardware OpenGL rendering. Mesa 26.2.5 requires AMDGPU DRM
+3.54 or later in `src/amd/common/ac_gpu_info.c`. A kernel with ABI 3.36 needs
+a DRM implementation migration before a hardware renderer can be accepted.
+Do not lower that check or change the reported ABI without implementing its
+contract. Software rendering can support a recovery session while that
+hardware path remains unavailable.
 
 Both Mesa and libdrm PLISTs match their complete cross-staged payloads and
 pass normal package checks. Mesa's installed CPU rendering and upstream

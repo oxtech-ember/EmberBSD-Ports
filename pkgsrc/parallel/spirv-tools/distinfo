@@ -1,0 +1,7 @@
+$NetBSD: distinfo,v 1.8 2026/07/29 13:56:56 kikadf Exp $
+
+BLAKE2s (SPIRV-Tools-2026.4.tar.gz) = 91747861ee56d84d044e7ebaf85463c13d43e0616f52351895e6676ce9e5abf8
+SHA512 (SPIRV-Tools-2026.4.tar.gz) = c9f71c01f382b6a73211241f0f9e48de34e3e3355e1f1ad3cf864ad7b3a76326e88c7fad0d8e509e09592dbc03e678cf0a267cec61cc4b7e33f206de59b2d7f7
+Size (SPIRV-Tools-2026.4.tar.gz) = 3554324 bytes
+SHA1 (patch-source_link_linker.cpp) = 17f554660b272821fcef6c7d1f477859d87f6714
+SHA1 (patch-installed-gtest) = ed762c814606d2c980c928f00e29de5f1ada0d59

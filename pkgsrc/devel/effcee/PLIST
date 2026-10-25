@@ -1,0 +1,9 @@
+@comment $NetBSD$
+include/effcee/effcee.h
+lib/cmake/effcee/effceeConfig.cmake
+lib/cmake/effcee/effceeConfigVersion.cmake
+lib/cmake/effcee/effceeTargets-release.cmake
+lib/cmake/effcee/effceeTargets.cmake
+lib/libeffcee.so
+lib/libeffcee.so.1
+lib/libeffcee.so.1.2026.0

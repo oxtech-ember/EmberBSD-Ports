@@ -2,7 +2,7 @@
 # Origin: EmberBSD; AI-assisted bounded NetBSD 11/AArch64 and amd64 candidate.
 DISTNAME=	mesa-26.2.5
 PKGNAME=	${DISTNAME:S/mesa/MesaLib/}
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	graphics
 MASTER_SITES=	https://archive.mesa3d.org/
 EXTRACT_SUFX=	.tar.xz
@@ -32,8 +32,8 @@ TOOLS_PLATFORM.flex=	${TOOLBASE}/bin/flex
 .if !defined(EMBERBSD_COMMON_GRAPHICS)
 PKG_FAIL_REASON+= "Mesa requires the prepared common graphics profile"
 .endif
-.if ${DISTNAME} != "mesa-26.2.5" || ${PKGREVISION} != "2"
-PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.5nb2"
+.if ${DISTNAME} != "mesa-26.2.5" || ${PKGREVISION} != "3"
+PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.5nb3"
 .endif
 TOOL_DEPENDS+=	${PYPKGPREFIX}-mako>=1.4.3:../../devel/py-mako
 TOOL_DEPENDS+=	${PYPKGPREFIX}-packaging-[0-9]*:../../devel/py-packaging
@@ -68,17 +68,35 @@ MESON_ARGS+=	-Dgles1=enabled -Dgles2=enabled -Dopengl=true
 MESON_ARGS+=	-Dllvm=enabled -Dshared-llvm=enabled -Dllvm-orcjit=true
 MESON_ARGS+=	-Dvulkan-layers= -Dtools=
 .if !empty(_EMBERBSD_MESA_GENERATOR_PROFILES)
-# Iris and PowerVR compile shaders on the build host with the same sealed tools.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# Cross builds run the matching sealed generators on the build host.
 MESON_ARGS+= -Dmesa-clc=system -Dprecomp-compiler=system
+MESON_ARGS+= -Dspirv-tools=disabled
 _EMBERBSD_MESA_GENERATOR_NAMES= mesa_clc vtn_bindgen2
 .if !empty(_EMBERBSD_MESA_GENERATOR_PROFILES:Mpowervr)
 _EMBERBSD_MESA_GENERATOR_NAMES+= pco_clc
 .endif
 .include "mesa-generators.mk"
+.else
+# Native builds compile and run the upstream generators with the selected GCC.
+# These libraries serve build-only tools. Mesa keeps its LLVM runtime link.
+MESON_ARGS+= -Dmesa-clc=enabled -Dprecomp-compiler=enabled
+MESON_ARGS+= -Dspirv-tools=enabled
+MESON_ARGS+= -Dinstall-mesa-clc=false -Dinstall-precomp-compiler=false
+BUILDLINK_DEPMETHOD.clang=	build
+.include "../../lang/clang/buildlink3.mk"
+BUILDLINK_DEPMETHOD.spirv-tools=	build
+BUILDLINK_API_DEPENDS.spirv-tools+= spirv-tools>=2026.4nb1
+.include "../../parallel/spirv-tools/buildlink3.mk"
+# LLVM 23.1 requires Translator from the same major.minor release family.
+BUILDLINK_API_DEPENDS.spirv-llvm-translator+= spirv-llvm-translator>=23.1.2<23.2
+BUILDLINK_DEPMETHOD.spirv-llvm-translator=	build
+.include "../../parallel/spirv-llvm-translator/buildlink3.mk"
+.endif
 .endif
 MESON_ARGS+=	-Dgallium-va=disabled -Dgallium-mediafoundation=disabled
 MESON_ARGS+=	-Dgallium-rusticl=false -Dteflon=false -Dperfetto=false
-MESON_ARGS+=	-Dspirv-tools=disabled -Dmicrosoft-clc=disabled -Dallow-fallback-for=
+MESON_ARGS+=	-Dmicrosoft-clc=disabled -Dallow-fallback-for=
 MESON_ARGS+=	-Dzlib=enabled -Dzstd=enabled -Ddisplay-info=disabled
 MESON_ARGS+=	-Dlibunwind=disabled -Dvalgrind=disabled
 # pkgsrc supplies --buildtype=plain and the selected compiler optimization.

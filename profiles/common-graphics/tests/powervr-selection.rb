@@ -37,7 +37,7 @@ query = lambda do |name, options, *overrides|
     vars.zip(lines).to_h
 end
 pvr = query.call('default', 'llvm x11 wayland')
-check.call(pvr.fetch('PKG_FAIL_REASON').empty? && pvr.fetch('PKGNAME') == 'MesaLib-26.2.5nb2', 'the default AArch64 package selects PowerVR')
+check.call(pvr.fetch('PKG_FAIL_REASON').empty? && pvr.fetch('PKGNAME') == 'MesaLib-26.2.5nb3', 'the default AArch64 package selects PowerVR')
 check.call(!pvr.fetch('PKG_SUPPORTED_OPTIONS').split.include?('powervr'), 'PowerVR is not a package option')
 %w[-Dgallium-drivers=v3d,virgl,softpipe,llvmpipe,zink -Dplatforms=x11,wayland -Dllvm=enabled -Dshared-llvm=enabled -Dvulkan-drivers=imagination,broadcom -Dmesa-clc=system -Dprecomp-compiler=system -Dimagination-srv=false].each do |option|
     check.call(pvr.fetch('MESON_ARGS').split.include?(option), "keeps #{option}")

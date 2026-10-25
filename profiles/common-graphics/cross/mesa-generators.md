@@ -2,10 +2,13 @@
 
 Mesa 26.2.5 uses CLC for Iris shaders even when Rusticl is disabled.
 The default `mesa-clc=auto` selects the target CLC dependency closure.
-It conflicts with the common recipe's disabled target SPIRV-Tools option.
-Iris therefore uses `mesa-clc=system` and `precomp-compiler=system`.
+Cross builds instead use `mesa-clc=system` and `precomp-compiler=system`.
 Mesa runs native `mesa_clc` and `vtn_bindgen2` through its native file.
 The target compiler remains on the development host.
+
+Native NetBSD builds use Mesa's in-tree generators and build-only CLC library
+dependencies. They do not need a sealed macOS generator directory. See the
+[recipe selection and metadata check](../../../pkgsrc/graphics/MesaLib/tests/README.md#native-and-cross-shader-generators).
 
 The [PowerVR workflow](powervr.md#native-build-tools) already prepares these
 two generic tools. `pco_clc` is specific to PowerVR and is optional for an
@@ -20,9 +23,10 @@ Use the original [Mesa host-tool inputs](../../../probes/a733-accelerators/host-
 - Full LLVM 23.1.3 macOS ARM64 SDK, SHA256 `3dcfd88aec10be204a24037bcb0dc0ad777882e9dbe8ac60e2639060d8a794b1`.
 - SPIRV-LLVM-Translator 23.1.2, commit `e65dde28ce8f12ef7245914fa2850260328669e4`.
 - SPIRV-Tools 2026.4, commit `ef96ed763b43b59b33b31b362f09a02b729fa1c9`.
-- SPIRV-Headers, commit `496543121ce6419f23d6fa5d7194ba66c36212d2`.
+- SPIRV-Headers vulkan-sdk-1.4.363.0, commit `496543121ce6419f23d6fa5d7194ba66c36212d2`.
 
-Use the existing `build-deps.py` and its SPIRV-Tools function-order fix.
+Use the existing `build-deps.py` and the shared SPIRV-Tools recipe's
+[function-order fix](../../../pkgsrc/parallel/spirv-tools/patches/patch-source_link_linker.cpp).
 Keep the same Headers source for Translator and Tools. Build static libraries
 and retain the actual `spirv-val` executable and its source receipt.
 The LLVM SDK must supply Clang CLC libraries and headers, static LLVM support,
