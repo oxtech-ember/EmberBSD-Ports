@@ -1,0 +1,63 @@
+$NetBSD$
+
+Bind cleanup to the owning DSO on NetBSD, not the process atexit list.
+The ABI0 shim unloads ABI1 before NetBSD calls its process-wide callback.
+The same lifetime rule applies when applications dlclose the shim itself.
+Origin: EmberBSD; AI-assisted change, not submitted upstream.
+
+--- library.c.orig
++++ library.c
+@@ -18,6 +18,10 @@
+ 	library_startup_time_us = iio_read_counter_us();
+ }
+ 
++#ifdef __NetBSD__
++/* NetBSD atexit handlers outlive dlclose; finalize while this DSO is mapped. */
++__attribute__((destructor))
++#endif
+ static void libiio_exit(void)
+ {
+ 	if (WITH_XML_BACKEND)
+@@ -61,6 +65,7 @@
+ {
+ 	libiio_init();
+ 
++#ifndef __NetBSD__
+ 	/*
+ 	 * When the library loads, register our destructor.
+ 	 * Do it here and not in the context creation function,
+@@ -68,5 +73,6 @@
+ 	 * many times.
+ 	 */
+ 	atexit(libiio_exit);
++#endif
+ }
+ #undef _CONSTRUCTOR
+--- compat.c.orig
++++ compat.c
+@@ -2374,6 +2374,10 @@
+ 	errno = -err;
+ }
+ 
++#ifdef __NetBSD__
++/* NetBSD atexit handlers outlive dlclose; finalize while this DSO is mapped. */
++__attribute__((destructor))
++#endif
+ static void compat_lib_exit(void)
+ {
+ 	iio_dlclose(compat_lib_ptr->lib);
+@@ -2401,6 +2405,7 @@
+ {
+ 	compat_lib_init();
+ 
++#ifndef __NetBSD__
+ 	/*
+ 	 * When the library loads, register our destructor.
+ 	 * Do it here and not in the context creation function,
+@@ -2408,5 +2413,6 @@
+ 	 * many times.
+ 	 */
+ 	atexit(compat_lib_exit);
++#endif
+ }
+ #undef _CONSTRUCTOR

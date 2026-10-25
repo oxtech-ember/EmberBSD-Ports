@@ -11,3 +11,4 @@ SHA1 (patch-buffer-cancel) = 00370a05ea842cf3281b8812c87e9a4416fdf2ac
 SHA1 (patch-compat-soname) = 699dbd0ff7d28e4c25fb6aa479b9e4399562eeb2
 SHA1 (patch-iiod-emu-loopback) = 53ecd56c9f8570398a1e41ac5430f8ed7d0946dc
 SHA1 (patch-portability) = f9f5465ee19d9dc6cbe5d410e40ecacf66fcb9f1
+SHA1 (patch-netbsd-dso-lifetime) = 333006b134f592a4cda0b0587ed941f20307973d

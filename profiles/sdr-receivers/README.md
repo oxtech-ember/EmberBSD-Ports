@@ -208,3 +208,8 @@ GCC16 native ASan/UBSan checks cover both official libraries and the ABI fixture
 Darwin LeakSanitizer and Valgrind coverage are not available in this experiment.
 Cppcheck retains one inherited portability finding in the pthread integer return
 conversion in `lock.c`; the new block/cancellation paths add no such finding.
+
+The libiio contract runner also checks repeated `dlopen`/`dlclose` of both ABI
+libraries and normal process exit. This catches process-lifetime callbacks into
+unloaded DSOs on NetBSD. The fixture resolves `iio_has_backend` without calling
+it, because its signatures differ between ABI 0 and ABI 1; it never scans devices.

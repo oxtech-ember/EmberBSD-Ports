@@ -33,6 +33,12 @@ The shared block guard returns `-EIO` for short data before exposing a stale tai
 It intentionally rejects partial blocks; it does not invent or pad samples.
 Cancellation interrupts the backend before waiting for the worker to stop.
 Otherwise a blocked read waits for its transport timeout before cancellation can run.
+On NetBSD, core and compatibility cleanup use DSO destructors instead of process
+`atexit` handlers. The shim unloads the core; a later process callback would jump
+into the unmapped core. Applications can also unload the shim explicitly.
+Actual NetBSD tests reproduced both failures after four load/unload cycles and
+confirmed normal exit with the DSO lifetime fix. Other platforms retain their
+upstream registration behavior.
 These changes are EmberBSD work with AI assistance and are not submitted upstream.
 
 ## Checks and cross staging
@@ -41,4 +47,6 @@ Use the selected GCC16 tools and the helpers under
 [profiles/sdr-receivers](../../../profiles/sdr-receivers/README.md#industrial-io).
 The standalone legacy peer and C consumer exercise actual installed core and shim:
 attributes, full IQ bytes, incomplete data, I/O errors, blocked cancellation and close.
+The lifetime fixture additionally loads/unloads each actual ABI four times,
+then exits normally; it resolves a symbol without mixing the two API signatures.
 They require no receiver or private sources. Native/target and physical acceptance are separate.
