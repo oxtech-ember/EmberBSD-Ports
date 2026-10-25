@@ -28,8 +28,10 @@ not match Electron's pinned revision.
 - Build on the developer host. Cross-compile all target objects for
   `aarch64--netbsd` or `x86_64--netbsd` with GCC 16.2.0 and the matching
   EmberBSD sysroot. GN names those CPUs `arm64` and `x64` respectively.
-- Keep host tools separate. Xcode Clang may build host-only tools; target
-  compilation must use GCC16.
+- Keep host and target tools separate. Build native C/C++ tools with an
+  accepted GCC16 native SDK. Build target C/C++ objects with the matching
+  GCC16 cross toolchain. Do not select a host compiler through the target
+  `CC` or `CXX`, an ambient PATH, or a Clang fallback.
 - Enable Linux-conditioned Chromium source dependencies only to fetch their
   shared code. Do not use a Linux sysroot or Linux target objects.
 - Adapt the `chromium-nb` and Electron patch sets to the exact Chromium pin.
@@ -191,6 +193,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/vector-insert-batch-con
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-shared-image-complete-type-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-metrics-tracing-enum-gcc16.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/linker-launcher.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-mac-gcc16-host.patch
 ```
 
 Set `dawn_host_go_path` to the absolute path of a supported host Go executable
@@ -226,10 +229,10 @@ native NetBSD, and unrelated target platforms do not receive those headers.
 The x64 supplement extends the existing pkgsrc metadata selection and adds
 `x86_64-unknown-netbsd` to the bindgen parser arguments. It preserves the
 existing ARM64 selector and triple.
-The resource-version patch restores the upstream Clang version selection.
-The Apple host tools use the pinned compiler below `clang_base_path`, so their
-headers and compiler runtime must use that compiler's resource version.
-The target C/C++ compiler remains GCC16.
+The resource-version patch preserves upstream Clang metadata for unchanged
+upstream toolchains. The explicit native GCC16 family uses its accepted C/C++
+drivers and GNU runtime. It does not use Clang's resource directory as a GCC
+sysroot. The target C/C++ compiler remains GCC16.
 The NASM patch restricts the `/usr/include/string.h` probe to Linux host builds. macOS provides this header through its selected SDK. Linux host detection and target GCC16 compilation stay unchanged.
 The FFmpeg patch uses the configured cross prefix and requested target OS for x64 when `EMBER_FFMPEG_CROSS_PREFIX` is set. This prevents the host-arm64 path from passing Linux Clang `--target` flags to the NetBSD GCC toolchain. The default Linux build path stays unchanged.
 The FFmpeg config-copy patch adds NetBSD to the generated configuration export list. It keeps the existing per-architecture and per-branding copy behavior.
@@ -368,6 +371,48 @@ The [optional link launcher](tests/linker-launcher.md) coordinates native links
 across participating builds. It covers target and Mac host C/C++ and final
 Rust links. Empty settings preserve existing commands. The reusable rule
 checker verifies captured production commands before the production build starts.
+
+## Native macOS GCC16 host tools
+
+The [native GCC16 patch](patches/gn-mac-gcc16-host.patch) follows the link-launcher
+patch in the source series. It is pinned to Chromium source
+`88173c9141d8c62936a1796b58d3fe3b9e60a1ab`. The source checks accept the exact
+three files before or after this patch. They do not execute GN or a compiler.
+
+Supply `mac_gcc_cc` and `mac_gcc_cxx` from the raw executable paths in the
+accepted native SDK command tuples. Supply each ordered tuple tail through
+`mac_gcc_cc_args` and `mac_gcc_cxx_args`. Set `mac_gcc_llvm_bin_path` from the
+same accepted auxiliary-tool records. A directory name does not qualify its
+contents. Do not put shell command strings in the executable arguments.
+The patch rejects one-sided bindings and arguments without executable paths.
+For a macOS ARM64 host and a NetBSD x64 target, select both families:
+
+```gn
+host_toolchain = "//build/toolchain/mac:gcc_arm64"
+v8_snapshot_toolchain = "//build/toolchain/mac:gcc_arm64_v8_x64"
+```
+
+Both compilers emit native ARM64 Mach-O objects. The snapshot family sets
+`v8_current_cpu="x64"` for V8 code generation. It does not require an x64
+Darwin compiler. Keep the independent NetBSD target toolchain, target sysroot,
+ABI flags and target custom libc++ selection. The two new native families
+set both custom libc++ flags to false and use the accepted G++ runtime defaults.
+Keep the Mac SDK root and deployment value consistent with the native ABI
+selection. Do not pass the NetBSD sysroot to the native family.
+
+The Apple link driver receives one C++ executable and its separate ordered
+arguments. Rust proc macros receive the same executable and ordered link
+arguments. The existing link launcher, environment order and final-link pool
+stay in place. Clang PCM modules and the Clang coverage wrapper are unsupported
+under the explicit GCC family and must not be replaced by stubs.
+
+After source checks, run finite GN generation cases for default and empty
+bindings, both GCC families, missing bindings, and derived Rust and allocator
+families. Then inspect the complete production graph and every selected
+compiler, action and native-link route. Verify native C/C++ runtime behavior,
+required generators and the x64 snapshot with the accepted SDK. Objective-C
+and ARC capability must follow the actual selected graph. These source-only
+checks do not qualify those capabilities or a complete Electron build.
 
 GN and allocator checks are in the [GN regression guide](tests/README.md).
 Focused C++ checks are documented in the [libc++](tests/libcxx-gcc16.md) and

@@ -1,0 +1,294 @@
+Chromium: add explicit native macOS GCC16 compiler families.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Source: Chromium 88173c9141d8c62936a1796b58d3fe3b9e60a1ab.
+Apply after the carried linker-launcher and host debug-fission patches.
+Keep the upstream BSD-style license and copyright notices.
+The explicit bindings require an accepted native GCC16 SDK.
+This patch does not qualify a compiler or change the NetBSD target ABI.
+
+--- a/build/toolchain/mac/BUILD.gn
++++ b/build/toolchain/mac/BUILD.gn
+@@ -6,6 +6,25 @@
+ import("//build/config/v8_target_cpu.gni")
+ import("//build/toolchain/apple/toolchain.gni")
+ import("//build_overrides/build.gni")
++
++# Explicit paths and ordered compiler arguments from an accepted native SDK.
++# Empty inputs preserve the existing toolchains. They do not qualify a compiler.
++declare_args() {
++  mac_gcc_cc = ""
++  mac_gcc_cxx = ""
++  mac_gcc_cc_args = []
++  mac_gcc_cxx_args = []
++  mac_gcc_llvm_bin_path = ""
++}
++
++assert((mac_gcc_cc == "") == (mac_gcc_cxx == ""),
++       "Native GCC needs both qualified compiler paths")
++assert((mac_gcc_cc == "") == (mac_gcc_llvm_bin_path == ""),
++       "Native GCC needs its qualified LLVM utility directory")
++if (mac_gcc_cc == "") {
++  assert(mac_gcc_cc_args == [] && mac_gcc_cxx_args == [],
++         "Native GCC arguments need explicit compiler paths")
++}
+ 
+ # Specialisation of the apple_toolchain template to declare the toolchain
+ # and its tools to build target for macOS platform.
+@@ -22,10 +41,10 @@
+       forward_variables_from(invoker.toolchain_args, "*")
+       current_os = "mac"
+ 
+-      # EmberBSD cross profile (E12): the target build sets is_clang=false
+-      # globally for its GCC toolchain; the file-scope args override would
+-      # leak into this macOS host toolchain. The host stays Clang.
+-      is_clang = true
++      # Keep compiler selection local to this toolchain.
++      if (!defined(invoker.toolchain_args.is_clang)) {
++        is_clang = true
++      }
+ 
+       # The cross target can enable split DWARF, but this macOS host toolchain
+       # does not emit .dwo files. Keep it on the Apple default.
+@@ -103,3 +122,39 @@
+     v8_current_cpu = "arm64"
+   }
+ }
++
++# Select these labels only after native SDK and driver/runtime acceptance.
++# The target NetBSD toolchain keeps its independent compiler and libc++ policy.
++template("mac_gcc_toolchain") {
++  mac_toolchain(target_name) {
++    cc = mac_gcc_cc
++    cxx = mac_gcc_cxx
++    cc_args = mac_gcc_cc_args
++    cxx_args = mac_gcc_cxx_args
++    llvm_bin_path = mac_gcc_llvm_bin_path
++    toolchain_args = {
++      forward_variables_from(invoker.toolchain_args, "*")
++      is_clang = false
++      use_custom_libcxx = false
++      use_custom_libcxx_for_host = false
++      use_reclient = false
++      cc_wrapper = ""
++      # The qualified GCC driver selects its configured Mach-O linker.
++      use_lld = false
++    }
++  }
++}
++
++if (mac_gcc_cc != "") {
++  mac_gcc_toolchain("gcc_arm64") {
++    toolchain_args = {
++      current_cpu = "arm64"
++    }
++  }
++  mac_gcc_toolchain("gcc_arm64_v8_x64") {
++    toolchain_args = {
++      current_cpu = "arm64"
++      v8_current_cpu = "x64"
++    }
++  }
++}
+--- a/build/toolchain/apple/toolchain.gni
++++ b/build/toolchain/apple/toolchain.gni
+@@ -162,9 +162,41 @@
+       toolchain_is_component_build = is_component_build
+     }
+ 
++    toolchain_is_clang = is_clang
++    if (defined(toolchain_args.is_clang)) {
++      toolchain_is_clang = toolchain_args.is_clang
++    }
++    assert(defined(invoker.cc) == defined(invoker.cxx),
++           "Apple compiler overrides must be paired")
++    explicit_compilers = defined(invoker.cc)
+     prefix = rebase_path("$clang_base_path/bin/", root_build_dir)
+     _cc = "${prefix}clang"
+     _cxx = "${prefix}clang++"
++    cc_driver_args = ""
++    cxx_driver_args = ""
++    rust_macro_driver_args = ""
++    if (explicit_compilers) {
++      assert(invoker.cc != "" && invoker.cxx != "" &&
++                 defined(invoker.llvm_bin_path) && invoker.llvm_bin_path != "",
++             "Explicit native compilers need their qualified LLVM tools")
++      assert(!toolchain_uses_reclient && toolchain_cc_wrapper == "",
++             "Explicit native bindings cannot use a different compiler wrapper")
++      prefix = rebase_path(invoker.llvm_bin_path, root_build_dir) + "/"
++      _cc = invoker.cc
++      _cxx = invoker.cxx
++      if (defined(invoker.cc_args)) {
++        foreach(arg, invoker.cc_args) {
++          cc_driver_args += " '" + string_replace(arg, "'", "'\"'\"'") + "'"
++        }
++      }
++      if (defined(invoker.cxx_args)) {
++        foreach(arg, invoker.cxx_args) {
++          cxx_driver_args += " '" + string_replace(arg, "'", "'\"'\"'") + "'"
++          rust_macro_driver_args +=
++              " '-Clink-arg=" + string_replace(arg, "'", "'\"'\"'") + "'"
++        }
++      }
++    }
+ 
+     swiftmodule_switch = "-Wl,-add_ast_path,"
+ 
+@@ -187,6 +219,10 @@
+     cc = compiler_prefix + _cc
+     cxx = compiler_prefix + _cxx
+     ld = _cxx
++    if (explicit_compilers) {
++      cc = "'" + string_replace(_cc, "'", "'\"'\"'") + "'" + cc_driver_args
++      cxx = "'" + string_replace(_cxx, "'", "'\"'\"'") + "'" + cxx_driver_args
++    }
+ 
+     linker_prefix = ""
+     if (apple_linker_launcher != "") {
+@@ -196,7 +232,7 @@
+     # Set the explicit search path for clang++ so it uses the right linker
+     # binary.
+     bin_flag = ""
+-    if (!toolchain_uses_lld) {
++    if (!toolchain_uses_lld && toolchain_is_clang) {
+       bin_flag = "-B " + invoker.bin_path
+     }
+ 
+@@ -210,6 +246,8 @@
+     }
+     _use_clang_coverage_wrapper =
+         toolchain_coverage_instrumentation_input_file != ""
++    assert(toolchain_is_clang || !_use_clang_coverage_wrapper,
++           "Native GCC does not support the Clang coverage wrapper")
+     if (_use_clang_coverage_wrapper) {
+       _coverage_wrapper =
+           rebase_path("//build/toolchain/clang_code_coverage_wrapper.py",
+@@ -223,6 +261,14 @@
+     linker_driver =
+         rebase_path("//build/toolchain/apple/linker_driver.py", root_build_dir)
+     linker_driver_args = "-Wcrl,driver,$ld"
++    rust_macro_linker = "-Clinker=\"${_cxx}\""
++    if (explicit_compilers) {
++      # The Python link driver accepts one executable, then separate arguments.
++      linker_driver_args = "'-Wcrl,driver," +
++                           string_replace(ld, "'", "'\"'\"'") + "'" + cxx_driver_args
++      rust_macro_linker = "'-Clinker=" +
++                          string_replace(_cxx, "'", "'\"'\"'") + "'" + rust_macro_driver_args
++    }
+ 
+     # Specify an explicit path for the strip binary.
+     _strippath = "${prefix}llvm-strip"
+@@ -243,9 +289,13 @@
+     # If dSYMs are enabled, this flag will be added to the link tools.
+     if (_enable_dsyms) {
+       dsym_switch = " -Wcrl,dsym,{{root_out_dir}} "
+-      dsym_switch += "-Wcrl,dsymutilpath," +
+-                     rebase_path("//tools/clang/dsymutil/bin/dsymutil",
+-                                 root_build_dir) + " "
++      if (explicit_compilers) {
++        dsym_switch += "-Wcrl,dsymutilpath,${prefix}dsymutil "
++      } else {
++        dsym_switch += "-Wcrl,dsymutilpath," +
++                       rebase_path("//tools/clang/dsymutil/bin/dsymutil",
++                                   root_build_dir) + " "
++      }
+ 
+       # All the toolchains are defined in the context of the default toolchain,
+       # this means that the global variable `current_cpu` is not correct, it
+@@ -507,16 +557,21 @@
+ 
+         rspfile_content =
+             "$rustc_common_args {{rustdeps}} {{externs}} SOURCES {{sources}}"
+-        command = "$linker_prefix$rustc_wrapper --depfile=$depfile --emit=dep-info=$depfile,link -o $dllname -- -Clinker=\"${_cxx}\" {{source}} LDFLAGS $bin_flag {{ldflags}} RUSTENV {{rustenv}}"
++        command = "$linker_prefix$rustc_wrapper --depfile=$depfile --emit=dep-info=$depfile,link -o $dllname -- $rust_macro_linker {{source}} LDFLAGS $bin_flag {{ldflags}} RUSTENV {{rustenv}}"
+         rust_sysroot = rust_sysroot_relative
+         inputs = rustc_wrapper_inputs
+       }
++    }
++
++    module_name_flag = ""
++    if (toolchain_is_clang) {
++      module_name_flag = "-fmodule-name=\"{{cc_module_name}}_Private\""
+     }
+ 
+     tool("cc") {
+       depfile = "{{output}}.d"
+       precompiled_header_type = "gcc"
+-      command = "$coverage_wrapper$cc $md -MF $depfile {{defines}} {{include_dirs}} {{cflags}} {{cflags_c}} -fmodule-name=\"{{cc_module_name}}_Private\"  -c {{source}} -o {{output}}"
++      command = "$coverage_wrapper$cc $md -MF $depfile {{defines}} {{include_dirs}} {{cflags}} {{cflags_c}} $module_name_flag  -c {{source}} -o {{output}}"
+       depsformat = "gcc"
+       description = "CC {{output}}"
+       outputs = [ "$object_subdir/{{source_name_part}}.o" ]
+@@ -526,22 +581,25 @@
+       depfile = "{{output}}.d"
+       precompiled_header_type = "gcc"
+ 
+-      command = "$coverage_wrapper$cxx $md -MF $depfile {{defines}} {{include_dirs}} {{cflags}} {{cflags_cc}} {{module_deps}} -fmodule-name=\"{{cc_module_name}}_Private\" -c {{source}} -o {{output}}"
++      command = "$coverage_wrapper$cxx $md -MF $depfile {{defines}} {{include_dirs}} {{cflags}} {{cflags_cc}} {{module_deps}} $module_name_flag -c {{source}} -o {{output}}"
+       depsformat = "gcc"
+       description = "CXX {{output}}"
+       outputs = [ "$object_subdir/{{source_name_part}}.o" ]
+     }
+ 
+-    tool("cxx_module") {
+-      depfile = "{{output}}.d"
+-      precompiled_header_type = "gcc"
+-
+-      # Module file doesn't need coverage instrumentation because module files
+-      # represent interfaces rather than implementations.
+-      command = "$cxx -MD -MF $depfile {{defines}} {{include_dirs}} {{cflags}} {{cflags_cc}} {{module_deps_no_self}} -fmodule-name=\"{{cc_module_name}}\" -c -x c++ -Xclang -emit-module {{source}} -o {{output}}"
+-      depsformat = "gcc"
+-      description = "CXX_MODULE {{output}}"
+-      outputs = [ "$object_subdir/{{source_name_part}}.pcm" ]
++    # A selected Clang PCM module must fail capability checks under GCC.
++    if (toolchain_is_clang) {
++      tool("cxx_module") {
++        depfile = "{{output}}.d"
++        precompiled_header_type = "gcc"
++
++        # Module file doesn't need coverage instrumentation because module files
++        # represent interfaces rather than implementations.
++        command = "$cxx -MD -MF $depfile {{defines}} {{include_dirs}} {{cflags}} {{cflags_cc}} {{module_deps_no_self}} -fmodule-name=\"{{cc_module_name}}\" -c -x c++ -Xclang -emit-module {{source}} -o {{output}}"
++        depsformat = "gcc"
++        description = "CXX_MODULE {{output}}"
++        outputs = [ "$object_subdir/{{source_name_part}}.pcm" ]
++      }
+     }
+ 
+     tool("asm") {
+@@ -575,7 +633,7 @@
+       rspfile = "{{output}}.rsp"
+       rspfile_content = "{{inputs}}"
+ 
+-      if (!toolchain_uses_lld) {
++      if (!toolchain_uses_lld && !explicit_compilers) {
+         script = rebase_path("//build/toolchain/apple/filter_libtool.py",
+                              root_build_dir)
+ 
+@@ -949,11 +1007,10 @@
+       forward_variables_from(invoker.toolchain_args, "*")
+       toolchain_for_rust_host_build_tools = true
+ 
+-      # EmberBSD cross profile (E12): the target build sets is_clang=false
+-      # globally for its GCC toolchain; the file-scope args override would
+-      # leak into this macOS host toolchain and switch its libc++ link
+-      # logic to GCC mode (missing libgcc_s on darwin). Keep it Clang.
+-      is_clang = true
++      # Preserve an explicitly selected native compiler and runtime family.
++      if (!defined(invoker.toolchain_args.is_clang)) {
++        is_clang = true
++      }
+ 
+       # The host build tools are static release builds to make the Chromium
+       # build faster. They do not need PGO etc, so no official builds.
+--- a/build/config/mac/BUILD.gn
++++ b/build/config/mac/BUILD.gn
+@@ -17,7 +17,7 @@
+   common_mac_flags = []
+ 
+   # CPU architecture.
+-  if (defined(archs_mapping[current_os])) {
++  if (is_clang && defined(archs_mapping[current_os])) {
+     _archs_mapping_os = archs_mapping[current_os]
+     if (defined(_archs_mapping_os[current_cpu])) {
+       _archs_mapping_os_cpu = _archs_mapping_os[current_cpu]

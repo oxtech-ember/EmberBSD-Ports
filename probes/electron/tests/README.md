@@ -2,9 +2,9 @@
 
 Run these commands from the Ports repository root.
 
-Run the regressions with host CPython 3.15 and its standard library. Select an
-SDK API 1 source with `--sdk-source`. Each test checks the API and module origin.
-Commands, stable SHA256 hashes and JSON receipts use that SDK. Select the
+Run the regressions with host CPython 3.15 and its standard library. Integration
+tests select an SDK API 1 source with `--sdk-source` and check its module origin.
+Their commands, stable SHA256 hashes and JSON receipts use that SDK. Select the
 host GN and pkgconf explicitly. The full integration test requires a sysroot
 with real `gio-unix-2.0` and GTK3 metadata and their dependency closure. The
 x64 selector test uses an empty synthetic sysroot and mock pkgconf. POSIX
@@ -55,14 +55,6 @@ python3.15 -E -S probes/electron/tests/electron-main-selection.py \
   --electron-source /absolute/chromium/src/electron \
   --patch /absolute/Ports/probes/electron/patches/electron-netbsd-main.patch \
   --gn /absolute/host-gn --work-dir /absolute/NEW_ELECTRON_MAIN_WORK
-python3.15 -E -S probes/electron/tests/gn-mac-host-debug-fission.py \
-  --sdk-source /absolute/EmberBSD-SDK --source /absolute/chromium/src \
-  --gn /absolute/host-gn \
-  --patch /absolute/Ports/probes/electron/patches/gn-mac-host-debug-fission.patch \
-  --clang /absolute/pinned-host-clang++ --host-target arm64-apple-macos \
-  --target-cxx /absolute/GCC16-target-g++ --target-sysroot /absolute/target-sysroot \
-  --target-gcc-lib-version /absolute/GCC16-target-lib-version \
-  --target-gcc-lib /absolute/GCC16-target-lib /absolute/NEW_MAC_DWARF_WORK
 python3.15 -E -S probes/electron/tests/partition-alloc-netbsd-gcc16.py \
   --sdk-source /absolute/EmberBSD-SDK --ports-root /absolute/Ports \
   --source-root /absolute/chromium/src \
@@ -143,14 +135,29 @@ The test accepts the pinned baseline or the exact patched Electron source.
 It checks zero-fuzz patch application and preserves source hashes and command
 receipts. It does not compile those C++ files or establish runtime startup.
 
-The Mac debug-fission test copies the production `mac/BUILD.gn` without changes.
-It supplies a minimal Apple-template mock that forwards the production toolchain
-arguments. Four GN fixtures compare cross-host, NetBSD target, and native Mac
-output declarations. The generated original host command fails on its extra
-`.dwo` output. The fixed command compiles with the pinned Mac Clang. A header-free
-GCC16 target probe retains its object, depfile, and `.dwo`. A native Mac probe is
-unchanged, and an intentional GCC warning still fails under `-Werror`. The test
-does not evaluate the complete Apple template or compile Chromium source files.
+The earlier Mac debug-fission regression remains historical evidence for the
+upstream Apple route. It used a pinned Mac Clang and an independent GCC16 target
+probe. It does not qualify the explicit native GCC16 family. The native EmberBSD
+profile does not run that Clang compile fixture.
+
+The [native macOS GCC16 source test](gn-mac-gcc16-host.py) reads the complete
+three pinned production GN files. It applies and reverses the carried patch in
+memory. It checks ordered C/C++ words, the Apple link-driver executable and tail,
+Rust linker arguments, native/snapshot CPU selection, target scope, and the
+existing seven native final-link commands. Quoted compiler paths and arguments
+include spaces, apostrophes and literal dollar signs. Causal controls reject an
+unquoted compiler, a dropped link tail and a changed source hunk.
+
+```sh
+python3.15 -B probes/electron/tests/gn-mac-gcc16-host.py \
+  --source /absolute/chromium/src
+```
+
+This test uses only Python's standard library and writes no source or output
+files. Its string-expression model is not a GN evaluator. It does not run GN,
+Ninja, a compiler, a linker, or a produced program. Complete the actual finite
+GN/default/failure controls and production graph checks in the
+[native toolchain instructions](../README.md#native-macos-gcc16-host-tools).
 
 The PartitionAlloc runner maps the exact GCC target triplet to its ELF class,
 byte order, relocatable-file type, and machine. Its `--target-map-self-test`
