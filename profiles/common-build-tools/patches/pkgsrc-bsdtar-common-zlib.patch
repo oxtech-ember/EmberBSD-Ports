@@ -1,49 +1,59 @@
-# Origin: EmberBSD (AI-assisted), pkgsrc bootstrap current-zlib integration.
-# Keep the bootstrap source fallback outside the explicit common-tools route.
+# Origin: EmberBSD contributors (AI-assisted), shared current zlib integration.
+# Use the registered recipe and its complete patch set for bootstrap consumers.
 
 --- a/archivers/bsdtar/Makefile
 +++ b/archivers/bsdtar/Makefile
-@@ -22,7 +22,16 @@
+@@ -4,6 +4,7 @@
+ .include "../../mk/bsd.prefs.mk"
+ 
+ PKGNAME=	${DISTNAME:S/libarchive/bsdtar/}
++PKGREVISION=	2
+ COMMENT=	Fast multi-format tape archiver
+ 
+ # Explicitly do not depend on libtool as this can be used
+@@ -22,7 +23,7 @@
  
  .include "../../archivers/bzip2/builtin.mk"
  .include "../../archivers/xz/builtin.mk"
-+# Bootstrap without common tools keeps the original bundled-source route.
-+# The common profile uses the normal maintained package and its ownership.
-+EMBERBSD_BSDTAR_USE_COMMON_ZLIB?= ${EMBERBSD_COMMON_TOOLS:Uno}
-+.if ${EMBERBSD_BSDTAR_USE_COMMON_ZLIB:tl} == "yes"
-+PKGREVISION= 1
-+BUILDLINK_API_DEPENDS.zlib+= zlib>=1.3.2nb1
+-.include "../../devel/zlib/builtin.mk"
 +.include "../../devel/zlib/buildlink3.mk"
-+.else
- .include "../../devel/zlib/builtin.mk"
-+.endif
  CHECK_BUILTIN.openssl:=	yes
  .include "../../security/openssl/builtin.mk"
  CHECK_BUILTIN.openssl:=	no
-@@ -31,7 +40,7 @@
+@@ -30,10 +31,6 @@
+ .if ${USE_BUILTIN.bzip2:tl} != yes
  CPPFLAGS+=		-I${WRKDIR}/bzip2
  LDFLAGS+=		-L${WRKDIR}/bzip2
- .endif
+-.endif
 -.if ${USE_BUILTIN.zlib:tl} != yes
-+.if ${EMBERBSD_BSDTAR_USE_COMMON_ZLIB:tl} != "yes" && ${USE_BUILTIN.zlib:Uno:tl} != yes
- CPPFLAGS+=		-I${WRKDIR}/zlib
- LDFLAGS+=		-L${WRKDIR}/zlib
+-CPPFLAGS+=		-I${WRKDIR}/zlib
+-LDFLAGS+=		-L${WRKDIR}/zlib
  .endif
-@@ -62,7 +71,7 @@
+ .if ${USE_BUILTIN.openssl:tl} != yes
+ CONFIGURE_ARGS+=	--without-openssl
+@@ -46,7 +43,6 @@
+ 
+ FILESDIR.bzip2?=	${.CURDIR}/../../archivers/bzip2/files
+ FILESDIR.libarchive?=	${.CURDIR}/../../archivers/libarchive/files
+-FILESDIR.zlib?=		${.CURDIR}/../../devel/zlib/files
+ 
+ INSTALLATION_DIRS=	bin ${PKGMANDIR}/man1
+ 
+@@ -62,17 +58,11 @@
  .if ${USE_BUILTIN.bzip2:tl} != yes
  	${RUN}${CP} -R ${FILESDIR.bzip2} ${WRKDIR}/bzip2
  .endif
 -.if ${USE_BUILTIN.zlib:tl} != yes
-+.if ${EMBERBSD_BSDTAR_USE_COMMON_ZLIB:tl} != "yes" && ${USE_BUILTIN.zlib:Uno:tl} != yes
- 	${RUN}${CP} -R ${FILESDIR.zlib} ${WRKDIR}/zlib
- .endif
+-	${RUN}${CP} -R ${FILESDIR.zlib} ${WRKDIR}/zlib
+-.endif
  	${RUN}${CP} -R ${FILESDIR.libarchive} ${WRKSRC}
-@@ -71,7 +80,7 @@
+ 
+ pre-configure:
  .if ${USE_BUILTIN.bzip2:tl} != yes
  	cd ${WRKDIR}/bzip2 && ${BUILD_MAKE_CMD} libbz2.a
- .endif
+-.endif
 -.if ${USE_BUILTIN.zlib:tl} != yes
-+.if ${EMBERBSD_BSDTAR_USE_COMMON_ZLIB:tl} != "yes" && ${USE_BUILTIN.zlib:Uno:tl} != yes
- 	cd ${WRKDIR}/zlib && ${BUILD_MAKE_CMD} libz.a
+-	cd ${WRKDIR}/zlib && ${BUILD_MAKE_CMD} libz.a
  .endif
  
+ do-install:

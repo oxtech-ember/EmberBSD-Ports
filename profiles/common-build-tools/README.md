@@ -163,10 +163,11 @@ GCC16 regression and strict Memcheck checks. The ordinary AArch64 cross package
 also passes installed VM compression, gzip, writer-seek, integrity and
 removal/reinstallation checks with the runtime-only GCC16 provider.
 
-The [bsdtar bootstrap integration](cross/bsdtar-zlib.md) uses this registered
-zlib package in common profiles. Its ordinary native GCC16 package and strict
-gzip archive roundtrip pass. Outside the opt-in, bootstrap metadata stays intact.
-Cross metadata passes; target execution remains separate.
+The [bootstrap integration](cross/bsdtar-zlib.md) selects this registered zlib
+package for bsdtar and pkg_install, including ordinary bootstrap. It removes
+the obsolete embedded-source route. Export and native metadata checks pass.
+Earlier bsdtar common-profile runtime evidence does not accept this dependency
+change. Its ordinary bootstrap build and target execution remain separate.
 
 The [ncurses 6.6nb3 cross roles](cross/ncurses-native-headers.md) separate
 native generator headers and produce the target terminfo filename layout.
