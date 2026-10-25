@@ -36,8 +36,13 @@ def check_recipe(text):
     # ld64.lld does not implement -r, which libtool's master-object route needs.
     assert '+MAKE_ENV+= lt_cv_apple_cc_single_mod=yes\n' in text
     assert '+CONFIGURE_ARGS+= --with-darwin-assembler=llvm-mc\n' in text
-    # Without bootstrap-debug, a yes,types stage 1 fails the stage 2/3 DWARF compare.
-    assert '+CONFIGURE_ARGS+= --enable-stage1-checking=release\n' in text
+    # Keep the selected strip through configure and every recursive build.
+    assert '+CONFIGURE_ENV+= GCC_COMPARE_DEBUG_STRIP=${STRIP:Q}\n' in text
+    assert '+MAKE_ENV+= GCC_COMPARE_DEBUG_STRIP=${STRIP:Q}\n' in text
+    for environment in ('CONFIGURE_ENV', 'MAKE_ENV'):
+        for name, tool in [('OBJDUMP', 'objdump'), ('OBJCOPY', 'objcopy')]:
+            assert '+' + environment + '+= GCC_COMPARE_DEBUG_' + name + '=${LOCALBASE:Q}/bin/llvm-' + tool + '\n' in text
+    assert '--enable-stage1-checking=release' not in text
     assert '+CONFIGURE_ARGS+= --with-darwin-sdk-version=${EMBERBSD_GCC16_DARWIN_SDK_VERSION:Q}\n' in text
     assert '.if ${OPSYS} == "Darwin"\n' in text
     assert '--disable-bootstrap' not in ''.join(line for line in text.split('\n') if line.startswith('+'))
@@ -170,7 +175,10 @@ class ProviderSourceTests(unittest.TestCase):
                        text.replace('+CXX= ${EMBERBSD_GCC16_SEED_CXX}', '+CXX= /usr/bin/clang++'),
                        text.replace('+.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} != "yes"',
                                     '+.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"'),
-                       text.replace('+BUILDLINK_TRANSFORM+=\trm:-nodefaultrpaths\n', '')):
+                       text.replace('+BUILDLINK_TRANSFORM+=\trm:-nodefaultrpaths\n', ''),
+                       text.replace('+MAKE_ENV+= GCC_COMPARE_DEBUG_STRIP=${STRIP:Q}\n', ''),
+                       text.replace('+CONFIGURE_ENV+= GCC_COMPARE_DEBUG_STRIP=${STRIP:Q}\n', ''),
+                       text + '+CONFIGURE_ARGS+= --enable-stage1-checking=release\n'):
             with self.assertRaises(AssertionError):
                 check_recipe(mutant)
 
@@ -187,6 +195,7 @@ class ProviderSourceTests(unittest.TestCase):
 
     def test_changed_patch_hunks_have_exact_counts(self):
         paths = [PROFILE / 'patches/gcc-darwin-host.patch',
+                 PROFILE / 'patches/gcc-darwin-compare-debug.patch',
                  ROOT / 'profiles/common-build-tools/patches/cmake-darwin-tapi-kind.patch']
         for path in paths:
             lines = path.read_text().split('\n')

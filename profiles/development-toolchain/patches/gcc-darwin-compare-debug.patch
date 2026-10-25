@@ -1,0 +1,218 @@
+GCC: preserve Darwin bootstrap checking with selected debug tools.
+
+Origin: EmberBSD, AI-assisted portability adaptation.
+The GCC GPLv3-or-later source and copyright notices remain unchanged.
+Use selected LLVM paths for debug normalization and every comparison fallback.
+Probe selected LLVM objcopy capabilities with --help; -v means verbose copying.
+Reject selected objcopy operation errors even if an output was written.
+Keep the ordinary unset linker route. An opted-in Darwin automatic probe must
+succeed. Preserve the real final dump-comparison status in the EXIT trap.
+
+--- contrib/compare-debug.orig
++++ contrib/compare-debug
+@@ -57,12 +57,39 @@
+ 
+ trap 'rm -f "$1.$suf1" "$2.$suf2"' 0 1 2 15
+ 
++objcopy_tool=objcopy
++objcopy_probe=-v
++objdump_tool=objdump
++strip_tool=strip
++selected_darwin_tools=no
++
+ case `uname -s` in
+ Darwin)
+-  # The strip command on darwin does not remove all debug info.
+-  # Fortunately, we can use ld to do it instead.
+-  ld -S -r -no_uuid "$1" -o "$1.$suf1"
+-  ld -S -r -no_uuid "$2" -o "$2.$suf2"
++  if test "${GCC_COMPARE_DEBUG_STRIP+set}" = set; then
++    for normalizer in "$GCC_COMPARE_DEBUG_STRIP" \
++        "${GCC_COMPARE_DEBUG_OBJDUMP-}" "${GCC_COMPARE_DEBUG_OBJCOPY-}"; do
++      case $normalizer in
++      /*) { test -f "$normalizer" && test -x "$normalizer"; } || {
++            echo 'compare-debug requires executable selected normalizers' >&2
++            exit 1
++          } ;;
++      *) echo 'compare-debug requires absolute selected normalizer paths' >&2
++         exit 1 ;;
++      esac
++    done
++    objcopy_tool=$GCC_COMPARE_DEBUG_OBJCOPY
++    objcopy_probe=--help
++    objdump_tool=$GCC_COMPARE_DEBUG_OBJDUMP
++    strip_tool=$GCC_COMPARE_DEBUG_STRIP
++    selected_darwin_tools=yes
++    "$strip_tool" -S -o "$1.$suf1" "$1" || exit 1
++    "$strip_tool" -S -o "$2.$suf2" "$2" || exit 1
++  else
++    # The strip command on darwin does not remove all debug info.
++    # Fortunately, we can use ld to do it instead.
++    ld -S -r -no_uuid "$1" -o "$1.$suf1"
++    ld -S -r -no_uuid "$2" -o "$2.$suf2"
++  fi
+   ;;
+ *)
+   cp "$1" "$1.$suf1"
+@@ -77,14 +104,18 @@
+ {
+   file=$1
+   opts=
+-  for s in `objdump --section-headers "$file" | awk '{ print $2 }'`; do
++  for s in `"$objdump_tool" --section-headers "$file" | awk '{ print $2 }'`; do
+     case "$s" in
+     .comment*)
+       opts="$opts --remove-section $s"
+       ;;
+     esac
+   done
+-  [ -n "$opts" ] && objcopy $opts $file
++  [ -n "$opts" ] && {
++    "$objcopy_tool" $opts "$file" || {
++      test "$selected_darwin_tools" != yes || exit 1
++    }
++  }
+ }
+ 
+ if cmp "$1.$suf1" "$2.$suf2"; then
+@@ -93,8 +124,8 @@
+   status=1
+ 
+   # Remove any .comment sections.
+-  if (objcopy -v) 2>&1 | grep ' --remove-section' > /dev/null \
+-     && (objdump --help) 2>&1 | grep ' --\[*section-\]*headers' > /dev/null; then
++  if ("$objcopy_tool" "$objcopy_probe") 2>&1 | grep ' --remove-section' > /dev/null \
++     && ("$objdump_tool" --help) 2>&1 | grep ' --\[*section-\]*headers' > /dev/null; then
+     remove_comment "$1.$suf1"
+     remove_comment "$2.$suf2"
+     if cmp "$1.$suf1" "$2.$suf2"; then
+@@ -111,14 +142,17 @@
+   cmp1=
+   cmp2=
+ 
+-  for t in objdump readelf eu-readelf; do
+-    if ($t --help) 2>&1 | grep ' --\[*section-\]*headers' > /dev/null; then
++  for t in "$objdump_tool" readelf eu-readelf; do
++    if test "$selected_darwin_tools" = yes && test "$t" != "$objdump_tool"; then
++      break
++    fi
++    if ("$t" --help) 2>&1 | grep ' --\[*section-\]*headers' > /dev/null; then
+       cmd=$t
+ 
+-      $cmd --section-headers "$1.$suf1" | grep '\.eh_frame' > /dev/null
++      "$cmd" --section-headers "$1.$suf1" | grep '\.eh_frame' > /dev/null
+       cmp1=$?
+ 
+-      $cmd --section-headers "$2.$suf2" | grep '\.eh_frame' > /dev/null
++      "$cmd" --section-headers "$2.$suf2" | grep '\.eh_frame' > /dev/null
+       cmp2=$?
+ 
+       break
+@@ -129,8 +163,8 @@
+   # find a command to tell, or if there are LTO sections, try to strip
+   # off the .eh_frame and LTO sections from both.
+   if test "x$cmp1" != "x$cmp2" || test "x$cmd" = "x" ||
+-     $cmd --section-headers "$1.$suf1" | grep '.gnu.lto_' > /dev/null ||
+-     $cmd --section-headers "$2.$suf2" | grep '.gnu.lto_' > /dev/null ; then
++     "$cmd" --section-headers "$1.$suf1" | grep '.gnu.lto_' > /dev/null ||
++     "$cmd" --section-headers "$2.$suf2" | grep '.gnu.lto_' > /dev/null ; then
+     suf3=$suf1.
+     while test -f "$1.$suf3"; do
+       suf3=$suf3.
+@@ -147,23 +181,27 @@
+ 
+     seclist=".eh_frame .rel.eh_frame .rela.eh_frame"
+     if test "x$cmd" != "x"; then
+-      seclist="$seclist "`{ $cmd --section-headers "$1.$suf1"; $cmd --section-headers "$2.$suf2"; } | sed -n 's,.* \(\.gnu\.lto_[^ 	]*\).*,\1,p' | sort -u`
++      seclist="$seclist "`{ "$cmd" --section-headers "$1.$suf1"; "$cmd" --section-headers "$2.$suf2"; } | sed -n 's,.* \(\.gnu\.lto_[^ 	]*\).*,\1,p' | sort -u`
+     fi
+     rsopts=`for sec in $seclist; do echo " --remove-section $sec"; done`
+ 
+-    if (objcopy -v) 2>&1 | grep ' --remove-section' > /dev/null; then
+-      objcopy $rsopts "$1.$suf1" "$1.$suf3"
++    if ("$objcopy_tool" "$objcopy_probe") 2>&1 | grep ' --remove-section' > /dev/null; then
++      "$objcopy_tool" $rsopts "$1.$suf1" "$1.$suf3" || {
++        test "$selected_darwin_tools" != yes || exit 1
++      }
+       mv "$1.$suf3" "$1.$suf1"
+ 
+-      objcopy $rsopts "$2.$suf2" "$2.$suf4"
++      "$objcopy_tool" $rsopts "$2.$suf2" "$2.$suf4" || {
++        test "$selected_darwin_tools" != yes || exit 1
++      }
+       mv "$2.$suf4" "$2.$suf2"
+-    elif (strip --help) 2>&1 | grep ' --remove-section' > /dev/null; then
++    elif ("$strip_tool" --help) 2>&1 | grep ' --remove-section' > /dev/null; then
+       cp "$1.$suf1" "$1.$suf3"
+-      strip $rsopts "$1.$suf3"
++      "$strip_tool" $rsopts "$1.$suf3"
+       mv "$1.$suf3" "$1.$suf1"
+ 
+       cp "$2.$suf2" "$2.$suf4"
+-      strip $rsopts "$2.$suf4"
++      "$strip_tool" $rsopts "$2.$suf4"
+       mv "$2.$suf4" "$2.$suf2"
+     else
+       echo failed to strip off .eh_frame >&2
+@@ -181,7 +219,7 @@
+ 
+ $rm "$1.$suf1" "$2.$suf2"
+ 
+-trap "exit $status; exit" 0 1 2 15
++trap 'exit $status; exit' 0 1 2 15
+ 
+ # Replace the suffix in $1 and $2 with .*.gkd, compare them if a
+ # single file is found by the globbing.
+@@ -207,7 +245,7 @@
+   if cmp "${gkd1-/dev/null}" "${gkd2-/dev/null}"; then
+     :
+   else
+-    status=$?
++    status=1
+   fi
+ fi
+ 
+--- configure.ac.orig
++++ configure.ac
+@@ -3318,9 +3318,18 @@
+        mv conftest.o conftest.o.g0 &&
+        ${CC} -c -g conftest.c &&
+        mv conftest.o conftest.o.g &&
+-       ${srcdir}/contrib/compare-debug conftest.o.g0 conftest.o.g > /dev/null 2>&1; then
++       (if test "${GCC_COMPARE_DEBUG_STRIP+set}" = set; then
++          "$SHELL" "${srcdir}/contrib/compare-debug" conftest.o.g0 conftest.o.g
++        else
++          ${srcdir}/contrib/compare-debug conftest.o.g0 conftest.o.g
++        fi) > /dev/null 2>&1; then
+       :
+     else
++      if test "${GCC_COMPARE_DEBUG_STRIP+set}" = set; then
++        case $build in
++        *-*-darwin*) AC_MSG_ERROR([selected Darwin bootstrap-debug comparison failed]) ;;
++        esac
++      fi
+       BUILD_CONFIG=
+     fi
+     rm -f conftest.c conftest.o conftest.o.g0 conftest.o.g
+--- configure.orig
++++ configure
+@@ -11246,9 +11246,18 @@
+        mv conftest.o conftest.o.g0 &&
+        ${CC} -c -g conftest.c &&
+        mv conftest.o conftest.o.g &&
+-       ${srcdir}/contrib/compare-debug conftest.o.g0 conftest.o.g > /dev/null 2>&1; then
++       (if test "${GCC_COMPARE_DEBUG_STRIP+set}" = set; then
++          "$SHELL" "${srcdir}/contrib/compare-debug" conftest.o.g0 conftest.o.g
++        else
++          ${srcdir}/contrib/compare-debug conftest.o.g0 conftest.o.g
++        fi) > /dev/null 2>&1; then
+       :
+     else
++      if test "${GCC_COMPARE_DEBUG_STRIP+set}" = set; then
++        case $build in
++        *-*-darwin*) as_fn_error $? "selected Darwin bootstrap-debug comparison failed" "$LINENO" 5 ;;
++        esac
++      fi
+       BUILD_CONFIG=
+     fi
+     rm -f conftest.c conftest.o conftest.o.g0 conftest.o.g

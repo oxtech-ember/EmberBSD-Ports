@@ -42,14 +42,28 @@ selection remains conditional on Darwin:
   ld64.lld warns that `-single_module` is obsolete, so the libtool probe
   rejects it and links a `-r` master object, which ld64.lld does not
   implement. The recipe presets `lt_cv_apple_cc_single_mod=yes`.
-  `contrib/compare-debug` strips Darwin objects with `ld -r`, so configure
-  drops the default `bootstrap-debug` build. Stages 2 and 3 then compare
-  their full objects. A `yes,types` stage 1 compiler emits other DWARF
-  location lists than the release stage 2 and 3 compilers, so the recipe
-  builds stage 1 with `--enable-stage1-checking=release`.
-  Known limitation: no Darwin build runs a full-checking (`yes,types`)
-  stage 1 compiler. Such a build needs a `compare-debug` that strips debug
-  information without `ld -r`.
+  [gcc-darwin-compare-debug.patch](patches/gcc-darwin-compare-debug.patch)
+  gives `contrib/compare-debug` the explicit `GCC_COMPARE_DEBUG_STRIP` path.
+  The selected LLVM strip uses `-S -o` for both temporary Mach-O copies.
+  The ordinary unset route stays unchanged. Strip errors exit 1.
+  Configure uses its selected `SHELL` for this opt-in probe. It still compiles
+  both debug variants and decides whether `bootstrap-debug` works.
+  The recipe preserves the upstream stage 1 `yes,types` checks and the full
+  stage 2/3 comparison. The SDK direct comparison must bind the same strip
+  path because it does not pass through pkgsrc `MAKE_ENV`.
+  The same mapping binds `llvm-objdump` and `llvm-objcopy` from the common
+  LLVM dependency's output prefix. All opted-in normalizers must be absolute
+  executable paths. Alternate bare normalizers are not searched.
+  Selected LLVM objcopy capability probes use `--help`. LLVM `-v` requests
+  verbose copying and fails without an input. The ordinary probe keeps `-v`.
+  A selected objcopy operation error exits 1, including an error after an
+  output write. The ordinary operation error handling stays unchanged.
+  An automatic Darwin probe failure is fatal under this opt-in. It does not
+  silently drop `bootstrap-debug`. Explicit `--with-build-config` stays intact.
+  The patch also repairs an inherited late dump-comparison error: its EXIT
+  trap reads the final status, and every `.gkd` mismatch or read error fails.
+  Source checks do not prove object equivalence. Run selected-tool debug-only
+  twins, a changed-code control and a strip-failure control before acceptance.
   [gcc-darwin-llvm-mc.patch](patches/gcc-darwin-llvm-mc.patch) adds
   `--with-darwin-assembler=llvm-mc` to GCC. It changes the driver assembler
   arguments and the configure assembler probes together.
