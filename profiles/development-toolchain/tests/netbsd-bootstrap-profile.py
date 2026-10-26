@@ -20,6 +20,7 @@ from pathlib import Path
 KINDS = ('BOOTSTRAP_DEPENDS', 'TOOL_DEPENDS', 'BUILD_DEPENDS', 'DEPENDS')
 VARS = (*KINDS, 'TEST_DEPENDS', 'MAKE', '_MAKE', 'SHELL', 'SH', 'CONFIG_SHELL', 'TOOLS_SHELL',
         'PKGNAME', 'PATH', 'EMBERBSD_NETBSD_UTILITY_BIN',
+        'NAWK_COMMAND_SHELL', '_EMBERBSD_NETBSD_INITIAL_SH', 'MAKE_FLAGS',
         'EMBERBSD_NETBSD_NATIVE_TOOLS', 'EMBERBSD_NETBSD_TOOL.uniq',
         'WRAPPER_BINDIR', 'BUILDLINK_DIR', 'TOOLS_DIR', '_GCC_DIR',
         'CC', 'CXX', 'CPP', 'PKG_CC', 'PKG_CXX', 'PKG_CPP',
@@ -141,6 +142,7 @@ def repeated_profile_probe(bmake, bootstrap_mk, export, makeconf, work):
             'TOOLS_PLATFORM.cc= /outer/config/cc\n'
             'TOOLS_PLATFORM.awk= /outer/config/awk\n'
             'TOOLS_PLATFORM.pkg-config= /outer/config/pkg-config\n'
+            'NAWK_COMMAND_SHELL= /outer/config/sh\n'
             '.include "${MAKECONF}"\n')
         command = [str(bmake), '-r', '-m', str(export / 'mk'),
                    '-m', str(bootstrap_mk), '-f', str(makefile),
@@ -319,6 +321,7 @@ def check(export, source_tree, bmake, makeconf, bootstrap_mk, work,
             rebound['TOOLS_PLATFORM.gmake'].startswith(rebound['LOCALBASE'] + '/bin/gmake SHELL=') and
             rebound['TOOLS_PLATFORM.cc'] == rebound['EMBERBSD_GCC16_SEED_CC'] and
             rebound['TOOLS_PLATFORM.awk'] == rebound['EMBERBSD_NETBSD_TOOL.awk'] and
+            rebound['NAWK_COMMAND_SHELL'] == rebound['LOCALBASE'] + '/bin/mksh' and
             rebound['TOOLS_PLATFORM.pkg-config'] == rebound['LOCALBASE'] + '/bin/pkg-config',
             'a repeated MAKECONF read failed to restore the source runtime/tool role bindings')
     require('MIRBSD' in actual_shell and 'KSH' in actual_shell,
@@ -400,6 +403,13 @@ def check(export, source_tree, bmake, makeconf, bootstrap_mk, work,
         policy_graph[recipe] = child
         package_names[recipe] = child['PKGNAME']
         pending.extend(sorted(child_edges - policy_graph.keys()))
+    nawk = policy_graph['lang/nawk']
+    require(nawk['NAWK_COMMAND_SHELL'] == nawk['LOCALBASE'] + '/bin/mksh' and
+            'mksh>=59b:../../shells/mksh' in words(nawk['DEPENDS']) and
+            'mksh>=59b:../../shells/mksh' in words(nawk['BOOTSTRAP_DEPENDS']) and
+            any('-DNAWK_COMMAND_SHELL="' + nawk['NAWK_COMMAND_SHELL'] + '"' in field
+                for field in words(nawk['MAKE_FLAGS'])),
+            'the nawk recipe lost its source-built runtime shell or dependency')
     visiting, visited = [], set()
 
     def visit(name):
@@ -481,6 +491,10 @@ def check(export, source_tree, bmake, makeconf, bootstrap_mk, work,
             'devel/bmake', work, enabled=False))
         require(ordinary['SHELL'] != values['EMBERBSD_NETBSD_SH'],
                 'ordinary pkgsrc unexpectedly selected the bootstrap shell')
+        ordinary_nawk = unpack(run_make(bmake, bootstrap_mk, export, source_tree, ordinary_conf,
+            'lang/nawk', work, enabled=False))
+        require(not ordinary_nawk['NAWK_COMMAND_SHELL'],
+                'ordinary nawk unexpectedly selected a bootstrap command shell')
         ordinary_gcc = unpack(run_make(bmake, bootstrap_mk, export, source_tree, ordinary_conf,
             'lang/gcc16', work, enabled=False))
     ordinary_args = words(ordinary_gcc['CONFIGURE_ARGS'])

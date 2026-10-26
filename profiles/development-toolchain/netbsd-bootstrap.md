@@ -14,6 +14,11 @@ parse-time utilities through the accepted input tuple, and rejects cross mode
 and jobs greater than one. The base PATH contains the accepted utility directory
 and the current source output's bin directory. pkgsrc prepends its generated
 recipe wrappers. Absolute seed commands do not expose other input programs.
+The full source graph also rebuilds nawk. Its `NAWK_COMMAND_SHELL` option
+selects `${LOCALBASE}/bin/mksh`, with both bootstrap and runtime dependencies
+on the common mksh package. The parse-time `awk` role remains pinned to the
+accepted utility. The separate initial SDK nawk producer keeps its accepted
+input shell. Ordinary NetBSD and cross recipes do not acquire this scoped setting.
 The bootstrap-mk-files seed installs the shell
 builtin dispatcher used by later package recipes. The GCC16 package receives
 source dependencies on binutils, bmake, gmake, mksh and Python 3.15. The

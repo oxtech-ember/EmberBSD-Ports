@@ -15,6 +15,8 @@ POLICY_UPDATE_LIMITED=	bootstrap
 
 BOOTSTRAP_PKG=	yes
 
+.include "../../mk/bsd.prefs.mk"
+
 .if defined(NAWK_COMMAND_SHELL)
 .if empty(NAWK_COMMAND_SHELL:M/*) || !empty(NAWK_COMMAND_SHELL:tW:C,[[:space:]],?,g:C,[A-Za-z0-9_+./-],,g)
 PKG_FAIL_REASON+= "NAWK_COMMAND_SHELL must be an absolute shell path with only letters, digits, _+./-"
