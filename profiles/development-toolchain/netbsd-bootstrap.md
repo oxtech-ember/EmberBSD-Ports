@@ -46,3 +46,16 @@ That query is metadata-only and does not install packages or write the package
 database. The graph result does not qualify package builds, runtime libraries,
 ELF closure or an ordinary NativeToolset; those remain separate admission
 checks before source builds start.
+
+The shared make recipes also keep their build scripts on the selected host
+shell. GNU make uses pkgsrc `REPLACE_SH` for `build-aux/install-sh` before
+configure. Both bmake configure sources invoke the shebang-less `machine.sh`
+through `$SHELL`. These changes also apply to ordinary and cross builds;
+installed target shell selection remains unchanged.
+
+Run `profiles/common-build-tools/tests/make-build-shells.py --export PATH`
+with the explicit control Python and a prepared pkgsrc export. This source-only
+regression checks all three bmake probes, the pkgsrc replacement hook, export
+order and deliberate route mutations. It preserves GNU make's test-only Perl
+edge. Missing Perl paths and generated failure wrappers do not prove a Perl
+execution. Fresh traced package builds and SDK admission remain required.

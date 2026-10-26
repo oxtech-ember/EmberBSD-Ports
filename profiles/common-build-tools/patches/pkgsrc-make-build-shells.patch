@@ -1,0 +1,61 @@
+# Origin: EmberBSD (AI-assisted); not submitted upstream.
+# Keep build-only scripts on the selected host shell.
+# Use pkgsrc REPLACE_SH for GNU make's installer. Invoke the shebang-less
+# bmake machine probe through Autoconf's selected SHELL in both source files.
+
+--- a/devel/gmake/Makefile
++++ b/devel/gmake/Makefile
+@@ -18,6 +18,9 @@
+ 
+ TEST_TARGET=		check
+ USE_TOOLS+=		perl:test
++
++# This script runs during the build and is not installed.
++REPLACE_SH+=		build-aux/install-sh
+ 
+ CONFIGURE_ARGS+=	--program-prefix=g
+ 
+--- a/devel/bmake/files/configure
++++ b/devel/bmake/files/configure
+@@ -7156,8 +7156,8 @@
+ if test "$default_machine"; then
+ 	eval "$default_machine"
+ fi
+-machine=${machine:-`$srcdir/machine.sh`}
+-machine_arch=${machine_arch:-`$srcdir/machine.sh arch`}
++machine=${machine:-`"$SHELL" "$srcdir/machine.sh"`}
++machine_arch=${machine_arch:-`"$SHELL" "$srcdir/machine.sh" arch`}
+ echo "defaults: MACHINE=$machine, MACHINE_ARCH=$machine_arch" 1>&6
+ 
+ # Check whether --with-machine was given.
+@@ -7166,7 +7166,7 @@
+   withval=$with_machine; case "${withval}" in
+ yes)   as_fn_error $? "bad value ${withval} given for bmake MACHINE" "$LINENO" 5 ;;
+ no)    ;;
+-generic) machine=`$srcdir/machine.sh`;;
++generic) machine=`"$SHELL" "$srcdir/machine.sh"`;;
+ *)     machine=$with_machine;;
+ esac
+ fi
+--- a/devel/bmake/files/configure.in
++++ b/devel/bmake/files/configure.in
+@@ -466,8 +466,8 @@
+ if test "$default_machine"; then
+ 	eval "$default_machine"
+ fi
+-machine=${machine:-`$srcdir/machine.sh`}
+-machine_arch=${machine_arch:-`$srcdir/machine.sh arch`}
++machine=${machine:-`"$SHELL" "$srcdir/machine.sh"`}
++machine_arch=${machine_arch:-`"$SHELL" "$srcdir/machine.sh" arch`}
+ echo "defaults: MACHINE=$machine, MACHINE_ARCH=$machine_arch" 1>&6
+ dnl
+ dnl now allow overrides
+@@ -477,7 +477,7 @@
+ [case "${withval}" in
+ yes)   AC_MSG_ERROR(bad value ${withval} given for bmake MACHINE) ;;
+ no)    ;;
+-generic) machine=`$srcdir/machine.sh`;;
++generic) machine=`"$SHELL" "$srcdir/machine.sh"`;;
+ *)     machine=$with_machine;;
+ esac])
+ force_machine=
