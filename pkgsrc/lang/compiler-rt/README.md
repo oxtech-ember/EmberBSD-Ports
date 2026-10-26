@@ -65,6 +65,36 @@ make configuration, including missing-SDK and missing-version controls. It also
 checks that `PATCH_ARGS` points to the monorepo archive root and applies the
 binary128 patch to the corresponding file from the pinned source archive.
 
+`patch-13-darwin-outline-atomics` makes the shared outline-atomics helper
+files dependencies of one producer target. Both ordinary and kernel-extension
+Darwin builtin libraries honor their declared `DEPS`; arm64, arm64e and
+arm64_32 share that producer. This prevents separate library rules from
+running `create_symlink` concurrently for the same output. The source-file
+compile definitions and native archive rules remain unchanged.
+
+`tests/outline-atomics-parallel.py` executes the actual generation block and
+Darwin library macro with an explicit native CMake/tool selection. It records
+calls to the real `cmake -E create_symlink`, requiring duplicate baseline
+writers and exactly one writer for each of the 125 patched outputs. Two
+small arm64 ASM archives use the real `lse.S`; no-op and missing-output
+rebuilds check incremental behavior. arm64e/arm64_32 checks cover the CMake
+dependency graph only. The native package's `MAKE_JOBS_SAFE=no` remains until
+the corrected package graph has passed a bounded parallel native build.
+
+```sh
+python3 -B pkgsrc/lang/compiler-rt/tests/outline-atomics-parallel.py \
+    --cmake /absolute/native-prefix/bin/cmake \
+    --source /absolute/patched-llvm --baseline-source /absolute/llvm-before-fix \
+    --configure-input /absolute/native-input.json --work /absolute/new-check --jobs 18
+```
+
+The JSON contains `arguments` (explicit CMake generator, compiler, binutils
+and platform options) and `environment` (the selected subprocess environment).
+A diagnostic Python relay counts writers and briefly widens their scheduling
+window, then invokes the selected CMake operation unchanged. Initial bootstrap
+compilers may be used only when already declared for that bootstrap. This
+small regression does not build or install the complete compiler-rt package.
+
 `patch-01-gcda-fdopen` fixes an upstream failure path where an unsuccessful
 `fdopen` led to a null stream access. It closes the descriptor and releases the
 associated lock and filename before returning. `patch-02-libc-gcda-abi` adds the

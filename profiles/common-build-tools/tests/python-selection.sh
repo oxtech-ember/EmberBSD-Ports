@@ -10,6 +10,11 @@ work=$(CDPATH= cd -- "$2" && pwd)
 # supply only inputs and extract the real version-selection/publication block.
 awk '/^PYTHON_VERSION_DEFAULT\?=/ { take=1 } take { print } \
     /^# Additional CONFLICTS/ { exit }' "$source/lang/python/pyversion.mk" > "$work/selection.mk"
+# Isolate the actual interpreter policy; native compiler selection has its own
+# SDK/bmake regression and is not a prerequisite of this source-only check.
+awk '/^EMBERBSD_COMMON_TOOLS=/ { print } /^PYTHON_VERSION_REQD=/ { take=1 }
+    take { print } /^MESON_REQD/ { exit }' \
+    "$source/EMBERBSD-COMMON-TOOLS-MK.CONF" > "$work/python-policy.mk"
 cat > "$work/Makefile" <<EOF_MAKE
 BSD_PKG_MK= yes
 OPSYS= NetBSD
@@ -18,7 +23,7 @@ MACHINE_ARCH= aarch64
 PREFIX= /usr/pkg
 LOCALBASE= /usr/pkg
 USE_PKGSRC_GCC_RUNTIME= no
-.include "$source/EMBERBSD-COMMON-TOOLS-MK.CONF"
+.include "$work/python-policy.mk"
 .include "$work/selection.mk"
 all:
 	@printf '%s\\n' '\${_PYTHON_VERSION}' '\${PKG_FAIL_REASON}'

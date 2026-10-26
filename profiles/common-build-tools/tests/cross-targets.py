@@ -23,7 +23,7 @@ root = Path(__file__).resolve().parents[3]
 def prepare_profile(source, destination):
     destination.mkdir()
     cross = source / 'profiles/common-build-tools/cross'
-    for name in ('mk.conf', 'prepare-native-tools.py', 'fortran.mk',
+    for name in ('mk.conf', 'native-tools.mk', 'prepare-native-tools.py', 'fortran.mk',
                  'sort-c.sh', 'gcc16-external-runtime.sh'):
         shutil.copy2(cross / name, destination / name)
     shutil.copy2(source / 'pkgsrc/defaults.mk.conf',
