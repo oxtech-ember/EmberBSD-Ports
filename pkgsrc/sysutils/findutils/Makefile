@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.41 2022/02/17 15:42:00 wiz Exp $
 
 DISTNAME=	findutils-4.11.0
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	sysutils
 MASTER_SITES=	${MASTER_SITE_GNU:=findutils/}
 EXTRACT_SUFX=	.tar.xz

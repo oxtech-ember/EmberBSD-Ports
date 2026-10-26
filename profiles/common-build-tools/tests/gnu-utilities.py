@@ -43,9 +43,9 @@ def diagnostic_checks(args, work, hook, recipe):
     export = (ROOT / 'pkgsrc/export.conf').read_text()
     require(f'file\t{helper.relative_to(ROOT)}\t{recipe}/files/{helper.name}' in export,
             'Export must stage the single common diagnostic owner')
-    for tool in (args.shell, args.uname):
+    for tool in (args.shell, args.uname, args.rm):
         require(tool.is_absolute() and tool.is_file() and os.access(tool, os.X_OK),
-                'Select executable SDK shell and uname paths')
+                'Select executable SDK shell, uname and rm paths')
     script = 'srcdir=' + shlex.quote(str(work)) + '\n' + hook
     script += 'emberbsd_host_diagnostic "$@"\n'
     env = {'PATH': str(work), 'LC_ALL': 'C',
@@ -161,6 +161,10 @@ def run(args):
             require(b"extern char * getlocalename_l(int, locale_t);"
                     not in original["gnulib-tests/localename.c"],
                     "The removed Solaris patch is still needed")
+            require(expected_configure.count('rm -f core conftest*') == 1,
+                    'Require the original Automake compiler cleanup')
+            expected_configure = expected_configure.replace(
+                'rm -f core conftest*', 'rm -rf core conftest*')
         hook = ('# EmberBSD: use the common selected diagnostic helper in explicit SDK mode.\n'
                 'if test "${EMBERBSD_CONFIGURE_SDK+set}" = set; then\n'
                 '  . "${srcdir}/emberbsd-configure-diagnostics.sh" || exit 1\n'
@@ -192,6 +196,27 @@ def run(args):
                 and mtimes['aclocal.m4'] <= mtimes['Makefile.in'],
                 'Paired source patch must retain the release generator dependency order')
         diagnostic_checks(args, work, hook, recipe)
+        if release.startswith('findutils'):
+            require('m4_defn([_AM_PROG_CC_C_O])' in ac
+                    and '[rm -f core conftest], [rm -rf core conftest]' in ac,
+                    'Regeneration must retain recursive compiler cleanup')
+            cleanup = work / 'cleanup-check'
+            cleanup.mkdir()
+            for command, expected_exit in (('rm -f core conftest*', 1),
+                                           ('rm -rf core conftest*', 0)):
+                (cleanup / 'conftest.dSYM').mkdir(exist_ok=True)
+                (cleanup / 'conftest.dSYM/debug').write_text('owned probe debug data')
+                (cleanup / 'conftest.c').write_text('owned probe source')
+                # The function delegates only to the explicit selected SDK rm.
+                script = 'rm () { ' + shlex.quote(str(args.rm)) + ' "$@"; }; ' + command
+                result = subprocess.run([str(args.shell), '-c', script], cwd=cleanup,
+                                        env={'PATH': str(cleanup), 'LC_ALL': 'C'}, capture_output=True)
+                require(result.returncode == expected_exit, 'Compiler cleanup control differs')
+                require(bool(result.stderr) == bool(expected_exit) and not result.stdout,
+                        'Compiler cleanup diagnostics differ')
+                require((cleanup / 'conftest.dSYM').exists() == bool(expected_exit),
+                        'Compiler cleanup did not remove the debug directory')
+            cleanup.rmdir()
         locales = set(original["po/LINGUAS"].decode().split())
         plist = (path / "PLIST").read_text()
         installed = set(re.findall(r"share/locale/([^/]+)/LC_MESSAGES/", plist))
@@ -243,6 +268,7 @@ if __name__ == "__main__":
     parser.add_argument("--patch", type=Path, required=True)
     parser.add_argument("--shell", type=Path, required=True)
     parser.add_argument("--uname", type=Path, required=True)
+    parser.add_argument("--rm", type=Path, required=True)
     parser.add_argument("--work", type=Path, required=True)
     options = parser.parse_args()
     options.archives = [options.diffutils_archive, options.findutils_archive]

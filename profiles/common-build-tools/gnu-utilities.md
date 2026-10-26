@@ -42,6 +42,11 @@ The paired source patch retains release generator outputs. Before configure,
 the recipes align configure.ac to the unchanged aclocal.m4 release timestamp.
 This prevents a spurious Autoconf regeneration dependency during bootstrap.
 
+Findutils also removes compiler-owned debug directories during Automake cleanup.
+Its original `rm -f core conftest*` leaves Darwin `conftest.dSYM` directories.
+The paired configure.ac override and generated command use `rm -rf` instead.
+The actual C `-c`/`-o` checks and their result remain unchanged.
+
 ## Finite initial source builds
 
 [Diffutils](bootstrap/gnu-diffutils.json) and
@@ -87,14 +92,20 @@ and recognize these exact cases; this is not an arbitrary role or argv interface
 In particular, xargs never uses its implicit `/bin/echo` command in these cases.
 Find's explicit child case also uses the selected shell.
 
-Source checks establish archive/patch identity and finite source transformations.
-Actual configure, native program builds, runtime cases, loaded-library checks,
-upstream suites, ordinary package installation and cross-package acceptance are
-separate work. No compiled or installed utility acceptance is claimed here.
+The initial builds pass on Darwin arm64 with GCC 16.2.0 and the macOS 27 SDK ABI.
+Diff passes seven behavior cases. Find and xargs pass fifteen behavior cases.
+All seven build commands complete without compiler stderr.
+The findutils configure run exposed the debug-directory cleanup issue fixed above.
+The original diagnostic remains in the build log; the corrected cleanup has a direct regression.
+
+These are initial tools with NLS disabled, not complete package results.
+Full gettext integration, upstream suites, installed packages and cross builds remain separate.
+Diffutils reports missing Perl or File::Compare for some upstream tests and source regeneration.
+Cppcheck, path analysis and memory checks for these GNU programs remain pending.
 
 ## Source checks
 
-Use the two verified release archives and explicit SDK patch, shell and uname paths.
+Use the two verified release archives and explicit SDK patch, shell, uname and rm paths.
 Use a new absolute work directory. The check does not run configure or make.
 
 ```sh
@@ -103,6 +114,7 @@ Use a new absolute work directory. The check does not run configure or make.
   --findutils-archive /absolute/distfiles/findutils-4.11.0.tar.xz \
   --patch /absolute/sdk/bin/nbpatch \
   --shell /absolute/sdk/bin/mksh --uname /absolute/sdk/bin/uname \
+  --rm /absolute/sdk/bin/rm \
   --work /absolute/new-source-check
 ```
 
@@ -113,6 +125,8 @@ It runs only the diagnostic hook with the selected SDK shell and uname.
 Missing, relative and system uname selectors must fail before a diagnostic runs.
 All eight unsupported legacy commands must report unavailable without executing.
 The check also preserves the original unset-mode invocation.
+A real cleanup control leaves a compiler-style debug directory with the old
+command, then removes it with the corrected recursive cleanup.
 It retains its finite source work and result for the caller to inspect.
 
 ## Source provenance

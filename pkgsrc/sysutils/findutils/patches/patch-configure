@@ -5,6 +5,8 @@ Keep the configure.ac source and generated configure diagnostic hook together.
 Origin: EmberBSD (AI-assisted), not submitted upstream.
 Keep optional xargs guarded; diff equality checks use cmp to avoid bootstrap cycles.
 
+Remove compiler-owned debug directories during the Automake C -c/-o check.
+
 --- configure.orig
 +++ configure
 @@ -4707,6 +4707,12 @@
@@ -56,3 +58,12 @@ Keep optional xargs guarded; diff equality checks use cmp to avoid bootstrap cyc
  3"
  then :
    am_cv_xargs_n_works=yes
+@@ -7552,7 +7558,7 @@
+       break
+     fi
+   done
+-  rm -f core conftest*
++  rm -rf core conftest*
+   unset am_i ;;
+ esac
+ fi

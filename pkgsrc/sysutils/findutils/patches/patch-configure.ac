@@ -4,9 +4,11 @@ Use the shared selected SDK diagnostic helper. Preserve ordinary diagnostics.
 Keep the configure.ac source and generated configure diagnostic hook together.
 Origin: EmberBSD (AI-assisted), not submitted upstream.
 
+Remove compiler-owned debug directories during the Automake C -c/-o check.
+
 --- configure.ac.orig
 +++ configure.ac
-@@ -22,6 +22,17 @@
+@@ -22,6 +22,21 @@
  # Make inter-release version strings look like, e.g., v4.6-131-gda920ee, which
  # indicates that it is built from the 131st delta (in _some_ repository)
  # following the v4.6 tag, and that da920ee is a prefix of the commit SHA1.
@@ -21,6 +23,10 @@ Origin: EmberBSD (AI-assisted), not submitted upstream.
 +  emberbsd_host_diagnostic () { "$[]@"; }
 +fi
 +])
++dnl Darwin compilers can leave a conftest.dSYM directory after link probes.
++dnl Keep the canonical Automake check and change only its owned-file cleanup.
++m4_define([_AM_PROG_CC_C_O], m4_bpatsubst(m4_defn([_AM_PROG_CC_C_O]),
++  [rm -f core conftest], [rm -rf core conftest]))
  AC_INIT([GNU findutils],
          m4_esyscmd([build-aux/git-version-gen .tarball-version]),
          [bug-findutils@gnu.org])
