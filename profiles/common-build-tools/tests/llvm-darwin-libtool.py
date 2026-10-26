@@ -34,7 +34,7 @@ selected.chmod(0o755)
 nonexec = work / 'non-executable'
 nonexec.write_text('Labelled non-executable selection fixture.\n')
 rows = []
-fields = ('OPSYS', 'USE_CROSS_COMPILE', 'PKG_FAIL_REASON', 'CMAKE_CONFIGURE_ARGS')
+fields = ('OPSYS', 'USE_CROSS_COMPILE', 'PKG_LD', 'PKG_FAIL_REASON', 'CMAKE_CONFIGURE_ARGS')
 
 
 def query(package, name, selectors=()):
@@ -62,6 +62,26 @@ for package in ('llvm', 'clang'):
     options = shlex.split(native['CMAKE_CONFIGURE_ARGS'])
     libtool = [arg.split('=', 1)[1] for arg in options if arg.startswith('-DCMAKE_LIBTOOL')]
     assert libtool and set(libtool) == {str(selected)}, 'Selected Darwin archive tool was not forwarded: ' + str(libtool)
+    ld64 = [arg.split('=', 1)[1] for arg in options if arg.startswith('-DLD64_EXECUTABLE:')]
+    dsymutil = [arg.split('=', 1)[1] for arg in options if arg.startswith('-DCMAKE_DSYMUTIL:')]
+    assert ld64 and set(ld64) == {native['PKG_LD']}, 'Selected PKG_LD was not forwarded: ' + str(ld64)
+    dsym = work / 'llvm-dsymutil'
+    dsym.write_text('#!/bin/sh\n: > ' + shlex.quote(str(work / 'dsymutil-executed')) + '\nexit 99\n')
+    dsym.chmod(0o755)
+    selected_dsym = query(package, 'selected-dsymutil', [
+        'EMBERBSD_DARWIN_LIBTOOL=' + str(selected), 'EMBERBSD_DARWIN_DSYMUTIL=' + str(dsym)])
+    dsym_args = [arg.split('=', 1)[1] for arg in shlex.split(selected_dsym['CMAKE_CONFIGURE_ARGS'])
+                 if arg.startswith('-DCMAKE_DSYMUTIL:')]
+    assert dsym_args and set(dsym_args) == {str(dsym)}, 'Selected dsymutil was not forwarded: ' + str(dsym_args)
+    for phase in ('initial', 'full'):
+        phase_args = ['EMBERBSD_DARWIN_TOOL_PHASE=' + phase,
+                      'EMBERBSD_DARWIN_DSYMUTIL=' + str(dsym)]
+        if phase == 'full':
+            phase_args.append('EMBERBSD_DARWIN_LIBTOOL=' + str(selected))
+        phase_row = query(package, phase, phase_args)
+        phase_options = shlex.split(phase_row['CMAKE_CONFIGURE_ARGS'])
+        assert any(arg.startswith('-DLD64_EXECUTABLE:') for arg in phase_options), phase_row
+        assert any(arg == '-DCMAKE_DSYMUTIL:FILEPATH=' + str(dsym) for arg in phase_options), phase_row
     for name, value in [('missing', ''), ('relative', 'llvm-libtool-darwin'),
                         ('absent', str(work / 'absent')), ('nonexec', str(nonexec)),
                         ('directory', str(work))]:
@@ -69,6 +89,12 @@ for package in ('llvm', 'clang'):
         refused = query(package, name, values)
         assert 'EMBERBSD_DARWIN_LIBTOOL' in refused['PKG_FAIL_REASON'], refused
         assert '-DCMAKE_LIBTOOL' not in refused['CMAKE_CONFIGURE_ARGS'], refused
+    for name, value in [('dsym-missing', ''), ('dsym-relative', 'llvm-dsymutil'),
+                        ('dsym-absent', str(work / 'absent-dsymutil')),
+                        ('dsym-nonexec', str(nonexec)), ('dsym-directory', str(work))]:
+        refused = query(package, name, ['EMBERBSD_DARWIN_DSYMUTIL=' + value])
+        assert 'EMBERBSD_DARWIN_DSYMUTIL' in refused['PKG_FAIL_REASON'], refused
+        assert '-DCMAKE_DSYMUTIL' not in refused['CMAKE_CONFIGURE_ARGS'], refused
     for system in ('Linux', 'NetBSD'):
         context = ['OPSYS=' + system, 'MACHINE_ARCH=aarch64', 'HOST_MACHINE_ARCH=aarch64',
                    'OS_VERSION=' + ('7.0' if system == 'Linux' else '11.0'),
@@ -94,5 +120,6 @@ for system in ('Darwin', 'NetBSD'):
     assert plain.stdout == ignored.stdout == '\n-DKEEP_TARGET=ON\n-DKEEP_DARWIN=ON\n', plain.stdout + ignored.stdout
     (work / ('cross-' + system + '.log')).write_text(plain.stdout + ignored.stdout)
 assert not (work / 'tool-executed').exists(), 'Metadata admission executed the archive tool'
-print('PASS: LLVM/Clang real native Darwin selectors and five refusal cases; Linux/NetBSD recipe metadata and cross fragment unchanged')
+assert not (work / 'dsymutil-executed').exists(), 'Metadata admission executed dsymutil'
+print('PASS: LLVM/Clang native Darwin linker/dsymutil selectors, both phases, invalid-path refusals; Linux/NetBSD metadata unchanged')
 print('SCOPE: recipe metadata only; no compiler, archive tool, package phase or prefix writer ran')
