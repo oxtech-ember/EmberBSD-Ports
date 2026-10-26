@@ -14,7 +14,6 @@ import subprocess
 import sys
 import tempfile
 
-DEPOT_TOOLS_REVISION = "b86fc981b72ab966f8260f73b4eca600b3b12677"
 FILTERS = ("--ignore-dep-type=cipd", "--ignore-dep-type=gcs")
 OUTPUTS = ("sync.json", "declared-dependencies.json", "git-revisions.json", "pending-inputs.json",
            "pending-lfs.json")
@@ -24,6 +23,12 @@ spec = importlib.util.spec_from_file_location(
 source = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(source)
 require = source.require
+
+spec = importlib.util.spec_from_file_location(
+    "shared_depot_tools_source",
+    Path(__file__).resolve().parents[4] / "scripts/source-inputs/depot-tools/source.py")
+depot_source = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(depot_source)
 
 
 def source_environment(git, git_lfs, source_path):
@@ -47,10 +52,7 @@ def source_environment(git, git_lfs, source_path):
 
 
 def verify_inputs(workspace, depot_tools, git):
-    require(source.git_run(git, depot_tools, "rev-parse", "HEAD") == DEPOT_TOOLS_REVISION,
-            "depot_tools HEAD does not match the source acquisition pin")
-    require(not source.git_run(git, depot_tools, "status", "--porcelain", "--untracked-files=all"),
-            "depot_tools source must be clean")
+    depot_source.verify_prepared(depot_tools, git)
     config = (workspace / ".gclient").read_text(encoding="utf-8")
     require(config in (source.gclient_config("arm64"), source.gclient_config("x64")),
             "workspace .gclient differs from the recipe's prepared configuration")

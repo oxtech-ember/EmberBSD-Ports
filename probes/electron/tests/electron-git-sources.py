@@ -148,7 +148,7 @@ class Acquisition(unittest.TestCase):
         self.assertFalse((self.workspace / "source-inputs").exists())
 
     def test_wrong_depot_tools_pin_refused(self):
-        with patch.object(sync, "DEPOT_TOOLS_REVISION", "0" * 40):
+        with patch.object(sync.depot_source, "REVISION", "0" * 40):
             with self.assertRaisesRegex(ValueError, "depot_tools HEAD"):
                 self.run_sync()
 

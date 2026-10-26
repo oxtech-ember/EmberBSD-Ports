@@ -57,17 +57,12 @@ It uses `--nohooks --noprehooks --no-history --no-bootstrap`: no hooks run,
 and Git's optional Google Storage bootstrap is also excluded. It does not
 replace gclient or its DEPS evaluator with a private downloader.
 
-Select depot_tools commit `b86fc981b72ab966f8260f73b4eca600b3b12677` from
-`https://chromium.googlesource.com/chromium/tools/depot_tools.git`. A fresh
-checkout can be obtained with explicit Git:
+Prepare depot_tools with its [shared source-input owner](../../../scripts/source-inputs/depot-tools/README.md).
+That owner defines the upstream pin and ordered portability patches. Pass its
+prepared destination, rather than a raw or privately modified depot_tools
+checkout. The Electron helper verifies the exact shared prepared tree.
 
 ```sh
-/absolute/git init /absolute/depot-tools
-/absolute/git -C /absolute/depot-tools remote add origin \
-    https://chromium.googlesource.com/chromium/tools/depot_tools.git
-/absolute/git -C /absolute/depot-tools fetch --depth 1 origin \
-    b86fc981b72ab966f8260f73b4eca600b3b12677
-/absolute/git -C /absolute/depot-tools checkout --detach FETCH_HEAD
 /absolute/control-python -B \
     probes/electron/electron44/files/sync-git-sources.py \
     --workspace /absolute/NEW_ELECTRON_WORK --depot-tools /absolute/depot-tools \
@@ -83,15 +78,16 @@ pointers and does not fetch their objects. It does not disable Git's required
 LFS filter; the selected Git LFS executable must support `ls-files --json`.
 These are explicit control tools for source acquisition, not build-tool
 substitutes for the native SDK prefix. The helper invokes
-upstream gclient directly with the current control Python and its standard
-library; it does not invoke the auto-updating gclient/vpython shell wrapper.
+the shared prepared upstream gclient directly with the current control Python
+and its standard library; it does not invoke the auto-updating gclient/vpython shell wrapper.
 It disables depot_tools telemetry and automatic updates and clears undeclared
 GCLIENT_FILE and Git-cache overrides. The caller retains its exclusive source
 lock. Failed acquisition retains the Git tree and log for a retry with the same
 inputs; it does not request a force-reset or deletion. If an interrupted
-checkout has no valid HEAD, upstream gclient can move it under `_bad_scm/`
-and fetch that repository again. Preserve this quarantine until its contents
-have been inspected. Valid pinned repositories remain in place on retry.
+checkout has no valid HEAD, the shared gclient can move it under `_bad_scm/`
+and fetch that repository again. The shared patch also checks actual HEAD
+before accepting a matching parent gitlink in a `SYNC` dependency graph.
+Preserve this quarantine until its contents have been inspected. Valid pinned repositories remain in place on retry.
 
 The recipe-owned `source-inputs/` directory contains:
 
@@ -192,7 +188,7 @@ the complete production recipe-local patch set to the real pinned checkout.
 Fixtures are removed after the tests. These checks establish DEPS input
 preparation only; they run no full dependency sync, compiler or target runtime.
 
-The Git-only acquisition regression uses the real pinned upstream gclient and
+The Git-only acquisition regression uses the real shared prepared upstream gclient and
 small local Git repositories. It checks nested deferred assets, exact Git
 commits, retry, invalid inputs, and hook refusal. Fourteen tests also check
 an actual LFS pointer with spaces in its path, include/exclude independence,
