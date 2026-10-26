@@ -2,16 +2,17 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Copyright (c) 2026 EmberBSD contributors.
 # Origin: EmberBSD (AI-assisted). Exercises Perl's actual search-path fragments.
-"""Verify Darwin Perl Configure starts and ends with selected prefix paths.
+"""Verify Darwin Perl Configure and the generated pkgsrc callback search paths.
 
 usage: perl-darwin-search-paths.py CONFIGURE POLICY MAKEFILE SHELL UTILITY_BIN WORK
 
-The test runs the actual Perl Configure include-search fragment and the
-Policy.sh callback fragment. It does not build or qualify Perl.
+The test runs the actual Configure include-search fragment, the complete
+Policy.sh generator, and its generated callback. It does not build Perl.
 """
 import json
 import os
 from pathlib import Path
+import re
 import shlex
 import subprocess
 import sys
@@ -42,44 +43,60 @@ def main():
     for flag in ('-Dlocincpth=${LOCALBASE:Q}/include',
                  '-Dloclibpth=${LOCALBASE:Q}/lib'):
         require(flag in makefile, 'Perl Configure does not receive selected search root: ' + flag)
-
+    require(policy.count('# MakeMaker uses lddlflags to link XS modules') == 1,
+            'The canonical Perl Policy.sh must own exactly one XS cleanup block')
     start = configure.index('case "$mips_type" in\n', configure.index('locincpth='))
     end = configure.index('\ninctest=', start)
     include_fragment = configure[start:end]
-    start = policy.index('# Strip /usr/local/lib... from ldflags\n')
-    end = policy.index('\n# Strip gdbm from libswanted', start)
-    policy_fragment = policy[start:end].replace('\\$', '$').replace('\\`', '`')
-    require('lddlflags' in policy_fragment,
-            'Policy.sh does not clean the Perl module linker flags')
 
     work.mkdir(mode=0o700)
     prefix = work / 'selected-prefix'
     (prefix / 'include').mkdir(parents=True)
     (prefix / 'lib').mkdir()
-    script = work / 'search-paths.sh'
-    script.write_text(
-        'set -e\n'
-        'mips_type=\nlocincpth=' + shlex.quote(str(prefix / 'include')) + '\n'
-        'usrinc=/sdk/usr/include\ndflt=-O2\ntest=/bin/test\n' +
-        include_fragment + '\n'
-        'case "$dflt" in *"/usr/local/include"*) exit 81;; esac\n'
-        'case "$dflt" in *"' + str(prefix / 'include') + '"*) ;; *) exit 82;; esac\n'
-        'ldflags="-L/usr/local/lib -L' + str(prefix / 'lib') + '"\n'
-        'lddlflags="-bundle -L/usr/local/lib -L' + str(prefix / 'lib') + '"\n' +
-        policy_fragment + '\n'
-        'case "$ldflags $lddlflags" in *"/usr/local/lib"*) exit 83;; esac\n'
-        'case "$lddlflags" in *"' + str(prefix / 'lib') + '"*) ;; *) exit 84;; esac\n')
-    result = subprocess.run([str(shell), str(script)], cwd=work,
-                            env={'PATH': str(utility_bin), 'LC_ALL': 'C',
-                                 'TZ': 'UTC', 'TMPDIR': str(work)},
-                            capture_output=True, timeout=60)
-    record = dict(argv=[str(shell), str(script)], exit=result.returncode,
-                  stdout=result.stdout.decode(errors='replace'),
-                  stderr=result.stderr.decode(errors='replace'))
-    (work / 'result.json').write_text(json.dumps(record, indent=2) + '\n')
-    require(result.returncode == 0 and result.stderr == b'',
-            'Actual Configure/Policy fragments retained host-local paths; inspect result.json')
-    print(json.dumps(dict(status='PASS', scope='Actual Configure include search and Policy linker cleanup; no Perl build')))
+    values = dict(MACHINE_ARCH='arm64', LOWER_OPSYS='darwin', OBJECT_FMT='Mach-O',
+                  CFLAGS='-O2', LDFLAGS='-Wl,generation-time-only', LOCALBASE=str(prefix),
+                  TOOLS_SED=str(utility_bin / 'sed'))
+    substituted = re.sub(r'@([A-Z0-9_]+)@', lambda m: values.get(m[1], ''), policy)
+    # Keep the actual here-document untouched. Removing its quoting is the
+    # precise defect this regression must distinguish from callback execution.
+    start = substituted.index('# MakeMaker uses lddlflags to link XS modules')
+    end = substituted.index('\n# Strip gdbm from libswanted', start)
+    block = substituted[start:end]
+    require(block.count('\\`') == 2, 'XS callback substitution must be deferred by Policy.sh')
+    mutated = substituted[:start] + block.replace('\\`', '`') + substituted[end:]
+    results = []
+    for label, source in (('selected', substituted), ('unescaped-backticks', mutated)):
+        case = work / label
+        (case / 'UU').mkdir(parents=True)
+        (case / 'Policy.sh').write_text(source)
+        script = case / 'search-paths.sh'
+        script.write_text(
+            'set -e\ntest=' + shlex.quote(str(utility_bin / 'test')) + '\n'
+            'mips_type=\nlocincpth=' + shlex.quote(str(prefix / 'include')) + '\n'
+            'usrinc=/sdk/usr/include\ndflt=-O2\n' + include_fragment + '\n'
+            'case "$dflt" in *"/usr/local/include"*) exit 81;; esac\n'
+            'case "$dflt" in *"' + str(prefix / 'include') + '"*) ;; *) exit 82;; esac\n'
+            'lddlflags=-Wl,generation-time-only\n. ./Policy.sh\n'
+            '# Configure calls pkgsrc.cbu after hints have supplied these flags.\n'
+            'ldflags="-L/usr/local/lib -L' + str(prefix / 'lib') + '"\n'
+            'lddlflags="-bundle -L/usr/local/lib -L' + str(prefix / 'lib') + '"\n'
+            '. ./UU/pkgsrc.cbu\n'
+            'case "$lddlflags" in *"generation-time-only"*) exit 85;; esac\n'
+            'case "$ldflags $lddlflags" in *"/usr/local/lib"*) exit 83;; esac\n'
+            'case "$lddlflags" in *"' + str(prefix / 'lib') + '"*) ;; *) exit 84;; esac\n')
+        result = subprocess.run([str(shell), str(script)], cwd=case,
+                                env={'PATH': str(utility_bin), 'LC_ALL': 'C',
+                                     'TZ': 'UTC', 'TMPDIR': str(work)},
+                                capture_output=True, timeout=60)
+        record = dict(case=label, argv=[str(shell), str(script)], exit=result.returncode,
+                      stdout=result.stdout.decode(errors='replace'),
+                      stderr=result.stderr.decode(errors='replace'))
+        results.append(record)
+        (work / 'result.json').write_text(json.dumps(results, indent=2) + '\n')
+        expected = 0 if label == 'selected' else 85
+        require(result.returncode == expected and result.stderr == b'',
+                'Policy generation/callback result differs; inspect result.json')
+    print(json.dumps(dict(status='PASS', scope='Actual Configure search, Policy.sh generation and callback; raw-backtick mutation fails; no Perl build')))
 
 
 if __name__ == '__main__':

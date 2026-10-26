@@ -26,20 +26,3 @@
  
  # Opt in with a build/runtime pair. Never inherit a host path for a cross target.
  # BEGIN explicit native runtime shells
---- a/lang/perl5/files/Policy.sh
-+++ b/lang/perl5/files/Policy.sh
-@@ -112,6 +112,14 @@
- 	;;
- esac
- 
-+# MakeMaker uses lddlflags to link XS modules, independently of ldflags.
-+case "\$lddlflags" in */usr/local/lib*)
-+	set `echo "X \$lddlflags " | sed 's, [^ ]*/usr/local/lib[^ ]* , ,g'`
-+	shift
-+	lddlflags="\$*"
-+	;;
-+esac
-+
- # Strip gdbm from libswanted
- case "\$libswanted" in *gdbm*)
- 	set \`echo "X \$libswanted " | sed 's, [^ ]*gdbm[^ ]* , ,g'\`
