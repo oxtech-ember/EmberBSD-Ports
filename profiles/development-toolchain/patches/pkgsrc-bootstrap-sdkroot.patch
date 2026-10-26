@@ -2,6 +2,7 @@ Darwin bootstrap: preserve an explicitly selected native SDK.
 
 Origin: EmberBSD (AI-assisted), based on the pinned pkgsrc bootstrap.
 The deployment target does not select the SDK when SDKROOT is supplied.
+Record it as OSX_SDK_PATH for package builds.
 Reject an invalid explicit input instead of silently discovering another SDK.
 Unspecified SDKROOT keeps upstream discovery behavior.
 
@@ -34,3 +35,15 @@ Unspecified SDKROOT keeps upstream discovery behavior.
  		CFLAGS="-isysroot ${SDK_PATH} ${CFLAGS}"
  		export CFLAGS
  	fi
+@@ -1407,6 +1422,11 @@
+ 	echo "MACOSX_DEPLOYMENT_TARGET=	$MACOSX_DEPLOYMENT_TARGET" >>${TARGET_MKCONF}
+ 	echo "MACOSX_DEPLOYMENT_TARGET=	$MACOSX_DEPLOYMENT_TARGET" >>${BOOTSTRAP_MKCONF}
+ fi
++if test "$opsys" = Darwin && test -n "$SDKROOT"; then
++	# Package builds use the same explicit SDK as the bootstrap compile.
++	echo "OSX_SDK_PATH=		$SDKROOT" >>${TARGET_MKCONF}
++	echo "OSX_SDK_PATH=		$SDKROOT" >>${BOOTSTRAP_MKCONF}
++fi
+ 
+ # opsys specific fiddling
+ opsys_finish

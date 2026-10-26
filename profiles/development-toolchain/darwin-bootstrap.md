@@ -28,11 +28,13 @@ flags out of the invocation. Read the actual bootstrap help before execution.
 
 Set `SDKROOT` to the absolute native SDK directory. The exported bootstrap
 keeps this directory even when the deployment target names a different release.
+It writes the directory as `OSX_SDK_PATH` to the bootstrap and installed
+mk.conf files, so package builds use the same SDK.
 It rejects missing headers or libraries instead of selecting another SDK.
 The path uses bootstrap's supported letters, digits, `-`, `_`, `.`, and `/`.
 Without `SDKROOT`, the upstream SDK discovery behavior remains available.
 `tests/bootstrap-sdkroot.py --bootstrap PATH --shell PATH` executes this
-selection logic without compiling; run it from this profile directory.
+selection and mk.conf logic without compiling; run it from this profile directory.
 
 Build the final Clang, LLVM, LLD, shell, Python, make, and required utilities
 from the exported shared recipes. After the native prefix supplies the needed
