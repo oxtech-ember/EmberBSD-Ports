@@ -47,7 +47,16 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  .include "../../mk/pthread.buildlink3.mk"
 --- a/devel/ninja-build/Makefile
 +++ b/devel/ninja-build/Makefile
-@@ -53,8 +53,21 @@
+@@ -47,6 +47,8 @@
+ 
+ USE_LANGUAGES=	c c++
++# src/inline.sh generates embedded source data during native and cross builds.
++USE_TOOLS+=	od
+ 
+ INSTALLATION_DIRS=	bin
+ INSTALLATION_DIRS+=	share/doc/ninja
+ INSTALLATION_DIRS+=	share/ninja
+@@ -53,8 +55,21 @@
  INSTALLATION_DIRS+=	share/bash-completion/completions
  INSTALLATION_DIRS+=	share/zsh/site-functions
  
