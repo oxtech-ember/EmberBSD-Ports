@@ -3,13 +3,16 @@
 .include "dist.mk"
 
 PKGNAME=	python315-${PY_DISTVERSION}
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	lang python
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://www.python.org/
 COMMENT=	Interpreted, interactive, object-oriented programming language
 LICENSE=	python-software-foundation
+
+# Origin: EmberBSD (AI-assisted). The release uses POSIX PAX long paths.
+EXTRACT_USING=	bsdtar
 
 CONFLICTS+=	python-[0-9]*
 

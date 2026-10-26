@@ -1,5 +1,52 @@
 # Python cross packages
 
+## PAX source extraction
+
+Python 3.15.1nb2 selects `EXTRACT_USING=bsdtar` through the normal pkgsrc
+tools framework. The release uses POSIX PAX `path` records for eight source
+names. The legacy pkgsrc `nbtar` reader does not apply those records and can
+silently extract the 100-byte fallback names. Keep the archive and PLIST intact.
+The selected extractor is a host tool in both native and cross builds.
+
+The common bsdtar recipe uses the existing libarchive 3.8.10 sources and
+registered zlib provider. It does not depend on the Python package. Keep the
+bootstrap default unchanged: making bsdtar the global extraction default would
+give its own zlib dependency an extraction edge back to bsdtar.
+The complete SDK graph must verify this ordering and its explicit native tool
+path. A metadata check of one recipe does not prove the complete graph.
+
+The [metadata regression](tests/python-pax-metadata.py) accepts `--pkgsrc`,
+`--expected-tar`, `--env-json`, `--new-work` and the complete accepted bmake
+tuple as repeated `--make-arg=...` arguments. It checks the real Python
+revision, native tool dependency, provider path and extractor `-t` operand.
+Run it through the SDK owned-process interface. It does not build a package.
+
+The [archive regression](tests/python-pax-extraction.py) creates fifteen finite
+fixtures with `--new-work`. They include the eight exact Python names with
+synthetic payloads, ordinary ustar, GNU long names, PAX path/linkpath/size/time,
+per-file state reset and malformed length records. Add `--tar` and a complete
+`--env-json` to run the selected extractor. Optional `--baseline-tar` must
+reproduce the legacy silent truncation for all eight names. Neither mode
+executes Python from the package under test or edits its release archive.
+
+The existing libarchive reader rejects significant global PAX defaults that
+it does not implement. The regression requires failure for global `path` and
+`size`; it does not describe these attributes as supported. Unknown global
+attributes keep the reader's existing behavior. Malformed archives must return
+nonzero. A failed extraction need not be atomic. No archive parser is replaced
+or modified by this recipe change.
+
+BSD implementations informed this choice: [OpenBSD pax](https://github.com/openbsd/src/blob/master/bin/pax/tar.c)
+has an extended-header reader; [FreeBSD tar](https://cgit.freebsd.org/src/tree/usr.bin/tar/Makefile)
+uses libarchive; [DragonFly tar](https://leaf.dragonflybsd.org/cgi/web-man?command=bsdtar&section=1)
+documents PAX extraction. The [NetBSD pax source](https://github.com/NetBSD/src/blob/trunk/bin/pax/tar.c)
+and the older pkgsrc copy retain a separate reader. Reuse the existing modern
+provider instead of adding a private partial PAX implementation.
+
+Fixture generation and source checks are not native extractor acceptance.
+Actual metadata, archive execution and clean Python package installation remain
+separate checks.
+
 The current profile selects Python 3.15.1. Its NetBSD cross-host cases accept
 AArch64 and amd64, including the empty-vendor `x86_64--netbsd` triplet.
 Unknown hosts and unsupported NetBSD architectures still fail.
