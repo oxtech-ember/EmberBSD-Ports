@@ -51,6 +51,9 @@ class ExportTests(unittest.TestCase):
         (self.upstream / 'plain').write_bytes(b'one\ntwo\nthree\n')
         self.selected = fixture.TestSelection()
         self.commands = []
+        help_result = subprocess.run([*self.selected.command('patch'), '--help'],
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.patch_help = help_result.stdout
 
     def runner(self, argv, **kwargs):
         self.commands.append((argv, kwargs))
@@ -395,6 +398,8 @@ class ExportTests(unittest.TestCase):
         def capture(argv, **kwargs):
             self.assertEqual(kwargs.pop('env')['PATH'], selected.path)
             for name in ('stdout', 'stderr', 'check'): kwargs.pop(name)
+            if argv[-1:] == ['--help']:
+                return types.SimpleNamespace(stdout=self.patch_help)
             return types.SimpleNamespace(stdout=self.runner(argv, **kwargs))
         destination = self.work / 'direct-export'
         sys.path.insert(0, str(HERE.parents[1] / 'pkgsrc/lang/llvm/files'))
@@ -415,6 +420,8 @@ class ExportTests(unittest.TestCase):
         def source_child(argv, **kwargs):
             self.assertIn(argv[0], commands.values())
             for name in ('env', 'stdout', 'stderr', 'check'): kwargs.pop(name)
+            if argv[-1:] == ['--help']:
+                return types.SimpleNamespace(stdout=self.patch_help)
             return types.SimpleNamespace(stdout=self.runner(argv, **kwargs))
         with mock.patch.dict(os.environ, FAKE_ARCHIVE=str(self.upstream), FAKE_MATCH='1'), \
              mock.patch.dict(sys.modules, {'emberbsd_sdk.native_toolset': None}), \
@@ -493,7 +500,7 @@ class ExportTests(unittest.TestCase):
         self.assertEqual((self.work / 'export/keep').read_bytes(), b'after\n')
         self.assertFalse((self.work / 'export/keep.orig').exists())
         self.assertIn(['-f', '-E', '-d', str(self.work / 'export'), '-p1', '-F', '0',
-                       '-V', 'none'],
+                       '-V', 'none', *exporter.patch_safety_options(self.selected, self.runner)],
                       [argv[1:] for argv, options in self.commands if argv[0] == self.selected.command('patch')[0]])
         control = self.work / 'without-E'
         control.mkdir()
@@ -517,9 +524,10 @@ class ExportTests(unittest.TestCase):
         self.assertFalse((self.work / 'nbpatch-export/plain.orig').exists())
         self.assertFalse((self.work / 'nbpatch-export/added.orig').exists())
         command = next(argv for argv, options in self.commands
-                       if argv[0] == self.selected.command('patch')[0])
+                       if argv[0] == self.selected.command('patch')[0] and argv[1:2] == ['-f'])
         self.assertEqual(command[1:], ['-f', '-E', '-d', str(self.work / 'nbpatch-export'),
-                                       '-p1', '-F', '0', '-V', 'none'])
+                                       '-p1', '-F', '0', '-V', 'none',
+                                       *exporter.patch_safety_options(self.selected, self.runner)])
         self.assertNotIn('--posix', command)
 
     def test_export_patch_disables_platform_default_backups(self):
@@ -532,6 +540,8 @@ class ExportTests(unittest.TestCase):
         (self.upstream / relative_patch).parent.mkdir(parents=True)
         shutil.copyfile(owner / 'upstream/pkgsrc' / relative_patch,
                         self.upstream / relative_patch)
+        preexisting_backup = self.upstream / 'lang/gcc16/Makefile.~1~'
+        preexisting_backup.write_text('legitimate upstream file\n')
         patch = owner / 'profiles/development-toolchain/patches/strict-tests.patch'
         (self.root / 'strict-tests.patch').write_bytes(patch.read_bytes())
         (self.root / 'pkgsrc/export.conf').write_text('patch\tstrict-tests.patch\n')
@@ -540,9 +550,27 @@ class ExportTests(unittest.TestCase):
 
         self.assertFalse((self.work / 'export/lang/gcc16/Makefile.orig').exists())
         self.assertFalse((self.work / 'export/lang/gcc16/patches/patch-isl_configure.orig').exists())
+        self.assertEqual((self.work / 'export/lang/gcc16/Makefile.~1~').read_text(),
+                         'legitimate upstream file\n')
+        self.assertEqual(exporter.numbered_backup_paths(self.work / 'export'),
+                         {Path('lang/gcc16/Makefile.~1~')})
         self.assertIn(['-f', '-E', '-d', str(self.work / 'export'), '-p1', '-F', '0',
-                       '-V', 'none'],
+                       '-V', 'none', *exporter.patch_safety_options(self.selected, self.runner)],
                       [argv[1:] for argv, options in self.commands if argv[0] == self.selected.command('patch')[0]])
+
+    def test_export_rejects_patch_created_numbered_backup(self):
+        (self.root / 'change.patch').write_bytes(b'fixture patch')
+        (self.root / 'pkgsrc/export.conf').write_text('patch\tchange.patch\n')
+
+        def creates_backup(argv, **kwargs):
+            if argv[0] == self.selected.command('patch')[0] and argv[1:2] == ['-f']:
+                (self.work / 'export/plain.~1~').write_text('created by patch\n')
+                return b''
+            return self.runner(argv, **kwargs)
+
+        with self.assertRaisesRegex(exporter.ExportError,
+                                    'Patch application created numbered backup artifacts'):
+            self.fake_export(runner=creates_backup)
 
     def test_zero_fuzz_rejects_context_that_fuzz_one_accepts(self):
         patch = b'--- a/plain\n+++ b/plain\n@@ -1,3 +1,3 @@\n wrong\n-two\n+changed\n three\n'
