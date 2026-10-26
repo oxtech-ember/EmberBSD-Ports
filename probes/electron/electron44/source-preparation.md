@@ -48,24 +48,70 @@ creation, partial files remain for diagnosis and `.gclient` is absent. Use a new
 destination for another attempt; do not reset a shared work tree. The caller
 holds its ordinary source lock throughout preparation and subsequent use.
 
-## Next source stage
+## Git-only dependency acquisition
 
-This step does not run `gclient sync`, pre-DEPS hooks, upstream patch hooks,
-dependency downloads, or GN. The next recipe integration must select an
-explicit depot_tools source/revision and its `gclient.py`, control Python and
-Git; it must not resolve gclient or build tools from an undeclared ambient
-PATH. The upstream source acquisition operation is `gclient sync --nohooks
---noprehooks`, invoked with those declared tools in the prepared workspace.
-The flags defer hooks until their native tools and required inputs are bound;
-they do not remove the required upstream patch and generator stages.
-`--nohooks --noprehooks` still downloads CIPD and GCS dependencies, including
-Chromium's own compiler, Node and Linux sysroot archives. Before exposing sync
-as the ordinary recipe path, bind the shared Ports tools and SDK sysroot and
-separate required source assets from those upstream tool binaries. The current
-helper does not establish that mapping.
+`files/sync-git-sources.py` runs the pinned upstream `gclient.py` with its
+supported `--ignore-dep-type=cipd` and `--ignore-dep-type=gcs` filters. It
+obtains the selected Git repositories before a compiler SDK is available.
+It uses `--nohooks --noprehooks --no-history --no-bootstrap`: no hooks run,
+and Git's optional Google Storage bootstrap is also excluded. It does not
+replace gclient or its DEPS evaluator with a private downloader.
 
-After synchronization, verify the actual Chromium and Node commits before
-applying Electron's upstream patch series, then the ordered Ports BSD series.
+Select depot_tools commit `b86fc981b72ab966f8260f73b4eca600b3b12677` from
+`https://chromium.googlesource.com/chromium/tools/depot_tools.git`. A fresh
+checkout can be obtained with explicit Git:
+
+```sh
+/absolute/git init /absolute/depot-tools
+/absolute/git -C /absolute/depot-tools remote add origin \
+    https://chromium.googlesource.com/chromium/tools/depot_tools.git
+/absolute/git -C /absolute/depot-tools fetch --depth 1 origin \
+    b86fc981b72ab966f8260f73b4eca600b3b12677
+/absolute/git -C /absolute/depot-tools checkout --detach FETCH_HEAD
+/absolute/control-python -B \
+    probes/electron/electron44/files/sync-git-sources.py \
+    --workspace /absolute/NEW_ELECTRON_WORK --depot-tools /absolute/depot-tools \
+    --git /absolute/source-tools/bin/git --source-path /absolute/source-tools/bin \
+    --jobs 2
+```
+
+The supplied source PATH must resolve the declared Git. The helper invokes
+upstream gclient directly with the current control Python and its standard
+library; it does not invoke the auto-updating gclient/vpython shell wrapper.
+It disables depot_tools telemetry and automatic updates and clears undeclared
+GCLIENT_FILE and Git-cache overrides. The caller retains its exclusive source
+lock. Failed acquisition retains the Git tree and log for a retry with the same
+inputs; it does not force-reset, delete or replace repositories.
+
+The recipe-owned `source-inputs/` directory contains:
+
+- `acquisition.log`: exact argv and stdout/stderr of the upstream commands.
+- `sync.json`: upstream sync output for the filtered graph.
+- `declared-dependencies.json`: unfiltered upstream `revinfo` declarations.
+- `git-revisions.json`: actual revisions from `revinfo --actual` with the same
+  non-Git filters. Each selected Git dependency must match its full pinned
+  commit, including Electron, Chromium and embedded Node.
+- `pending-inputs.json`: every selected CIPD/GCS declaration omitted from the
+  Git inventory, retaining upstream names, URLs and revisions. CIPD platform
+  placeholders remain unresolved. Original pinned DEPS files retain GCS
+  checksums, sizes and generation metadata.
+
+The inventory does not assert that assets exist, have been downloaded or are
+ready for a build. JSON outputs are published only after the three commands
+and pin comparison succeed; a retry removes the previous inventories first.
+Use ordinary `revinfo` for declarations: `revinfo --actual` without filters can
+query CIPD, and `flatten` can download GCS objects. The helper invokes neither
+of those acquisition paths.
+
+The full source graph still requires the pending assets, upstream patches,
+BSD adaptations and generators. A full sync without the type filters obtains
+CIPD/GCS inputs even with hooks disabled, including upstream tool binaries and
+Linux sysroots. Bind required upstream acquisition tools and normalize their
+Python/library dependencies through Ports; select shared Ports build tools
+and the EmberBSD sysroot before exposing the full recipe build.
+
+After Git synchronization and pending-input preparation, apply Electron's
+upstream patch series, then the ordered Ports BSD series.
 The historical `chromium-nb` dry run still has five drifted hunks and fourteen
 absent targets. This helper neither applies that incomplete overlay nor claims
 that it is ready for the current pins. Those adaptations and the full source
@@ -89,3 +135,15 @@ destination reuse. The optional `--electron-source` case additionally applies
 the complete production recipe-local patch set to the real pinned checkout.
 Fixtures are removed after the tests. These checks establish DEPS input
 preparation only; they run no full dependency sync, compiler or target runtime.
+
+The Git-only acquisition regression uses the real pinned upstream gclient and
+small local Git repositories. It checks nested deferred assets, exact Git
+commits, retry, invalid inputs, and hook refusal. A separate upstream
+`runhooks` control proves that the fixture hook would execute when requested.
+No external repository or asset is downloaded by this test:
+
+```sh
+/absolute/control-python -B probes/electron/tests/electron-git-sources.py \
+    --git /absolute/source-tools/bin/git --source-path /absolute/source-tools/bin \
+    --depot-tools /absolute/depot-tools
+```

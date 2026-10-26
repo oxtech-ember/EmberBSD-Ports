@@ -8,9 +8,13 @@ uses control Python and an explicit Git executable; no installed SDK is needed:
 ```sh
 /absolute/control-python -B probes/electron/tests/electron-source-prepare.py \
   --git /absolute/git --electron-source /absolute/electron-pristine
+/absolute/control-python -B probes/electron/tests/electron-git-sources.py \
+  --git /absolute/source-tools/bin/git --source-path /absolute/source-tools/bin \
+  --depot-tools /absolute/depot-tools
 ```
 
-Run the regressions with host CPython 3.15 and its standard library. Integration
+Run the remaining build regressions with host CPython 3.15 and its standard
+library. Integration
 tests select an SDK API 1 source with `--sdk-source` and check its module origin.
 Their commands, stable SHA256 hashes and JSON receipts use that SDK. Select the
 host GN and pkgconf explicitly. The full integration test requires a sysroot

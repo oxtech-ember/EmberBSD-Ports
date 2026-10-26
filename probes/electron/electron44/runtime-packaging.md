@@ -9,8 +9,9 @@ patch series at its existing owner. Do not add a second fetch-only recipe.
 
 The recipe currently fetches Electron 44.9.3 and Node 24.22.1. The
 [source preparer](source-preparation.md) creates a pinned DEPS input workspace
-and applies the recipe-local security series. It does not yet acquire the
-complete Chromium DEPS tree or run GN and Ninja. Do not use `NO_BUILD`, a
+and applies the recipe-local security series. Its Git-only acquisition stage
+records deferred CIPD/GCS inputs. It does not yet prepare the complete source
+graph or run GN and Ninja. Do not use `NO_BUILD`, a
 downloaded binary ZIP, or an externally supplied ZIP as its ordinary build.
 
 The SDK already supplies the needed mechanisms. Load the native Ports
