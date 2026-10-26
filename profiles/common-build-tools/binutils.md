@@ -1,6 +1,6 @@
 # Binutils 2.47
 
-The common profile replaces the canonical `devel/binutils` recipe with 2.47nb2.
+The common profile replaces the canonical `devel/binutils` recipe with 2.47nb3.
 It supplies GNU assembler, linker, archive and ELF inspection tools for
 EmberBSD applications. The source archive comes from upstream; its SHA256
 and original URL are in [sources.tsv](sources.tsv). The downloaded release
@@ -39,6 +39,9 @@ AI-assisted and have not been submitted or accepted upstream.
   the public API but not the GNU-private `_nl_expand_alias` probe symbol;
   pkgsrc already handles that distinction. Carry its gettext cache results
   into the recursive configure calls that Binutils runs during `make`.
+- Select `--with-system-zlib` and the common `devel/zlib` buildlink dependency.
+  The bundled zlib is excluded. The nb3 ABI dependency floor rebuilds BFD
+  consumers against the package with this shared dependency.
 
 The [cross configuration](cross/README.md) supplies absolute host
 `CC_FOR_BUILD` and `CXX_FOR_BUILD` paths. BFD's `chew` documentation generator
@@ -53,6 +56,13 @@ Missing libraries must fail the package checks; disabling translation
 catalogs does not repair an incomplete sysroot.
 
 ## Validation
+
+`tests/binutils-zlib.py` evaluates the actual common recipe with a selected
+exported pkgsrc framework and complete `--make-arg` tuple. It checks the
+system-zlib configure option, package dependency and nb3 ABI floor using a
+temporary recipe and empty package database. `--environment` selects the
+renderer JSON containing the metadata environment. No package target runs;
+package compilation and installed linkage remain separate checks.
 
 `tests/cross-generators.sh` checks actual pkgsrc native/cross auxiliary
 selection, compiles and executes a host generator, and rejects relative or

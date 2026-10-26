@@ -7,7 +7,7 @@ BINUTILS_BUILDLINK3_MK:=
 
 # Origin: EmberBSD (AI-assisted), select the common current tool release.
 BUILDLINK_API_DEPENDS.binutils+=	binutils>=2.47nb1
-BUILDLINK_ABI_DEPENDS.binutils?=		binutils>=2.47nb1
+BUILDLINK_ABI_DEPENDS.binutils?=		binutils>=2.47nb3
 BUILDLINK_PKGSRCDIR.binutils?=		../../devel/binutils
 BUILDLINK_DEPMETHOD.binutils?=		build
 .endif # BINUTILS_BUILDLINK3_MK
