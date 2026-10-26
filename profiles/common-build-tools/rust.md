@@ -1,6 +1,6 @@
 # Shared Rust 1.99 build-host provider
 
-The common profiles export `lang/rust-bin` 1.99.1nb2 for the build-host compiler
+The common profiles export `lang/rust-bin` 1.99.1nb3 for the build-host compiler
 needed by current cargo-c and librsvg. The archive is the official Rust release;
 this step does not compile another rustc or LLVM. Native and target components
 remain distinct: a macOS compiler needs a compatible NetBSD target std before
@@ -11,9 +11,8 @@ it can build NetBSD Rust consumers.
 The binary recipe is based on pinned pkgsrc
 `fff4deb639a1a640476203c80f752fb77b6cb14b` and
 [pkgsrc-wip rust199-bin at 7d3133f](https://github.com/NetBSD/pkgsrc-wip/tree/7d3133f21d6d918d9f2e62b708f3583c40120343/rust199-bin).
-The upstream installer is unchanged. `distinfo` preserves the published
-BLAKE2s/SHA512 checksums and sizes; the tested Apple Silicon archive has an
-additional official SHA256 pin in [sources.tsv](sources.tsv).
+The upstream installer is unchanged. `distinfo` preserves the published SHA256 checksums and sizes; the Darwin
+arm64 archive also has its official source URL in [sources.tsv](sources.tsv).
 The recipe does not advertise NetBSD i386/mipsel or SunOS, for which this
 import has no active archive selection and matching checksum.
 
@@ -25,6 +24,28 @@ The helper checks all Mach-O slices in `bin`, `lib` and `libexec`. It refuses
 unexpected provider layouts, differing provider bytes, existing private names
 and shared hard links before it writes. Each changed image gets an ad hoc
 signature and a strict signature check. No compiler is rebuilt.
+
+Revision nb3 takes absolute `MACHO_LIPO`, `MACHO_OTOOL` and
+`RUST_DARWIN_INSTALL_NAME_TOOL` selections and an explicit
+`RUST_DARWIN_CODESIGN` macOS verification service. The Darwin SDK supplies the
+first two through the common Mach-O contract and defaults the mutator from
+`EMBERBSD_DARWIN_INSTALL_NAME_TOOL`. It can declare the verification service
+with `--tool codesign=/usr/bin/codesign`; the recipe then reads
+`EMBERBSD_DARWIN_TOOL.codesign`. Other callers set the recipe variables
+explicitly. There is no helper PATH lookup or hard-coded system LLVM tool.
+Source fetch/checksum do not require the signing service.
+
+The pinned images changed by this helper have plain ad-hoc linker signatures:
+flags `0x20002` and zero special slots. Inspect every affected architecture
+before any rename; certificates, entitlements, hardened-runtime flags or other
+signing metadata are unsupported and cause refusal without changing the stage.
+LLVM regenerates these plain signatures while rewriting load commands; the
+explicit codesign service only verifies them. No second signing mutation is
+needed. The former codesign `--preserve-metadata` option was ignored for these
+linker-signed inputs, as documented by codesign(1). Identifiers retain the
+basename behavior of that former stage; this does not preserve arbitrary signed
+application metadata. A future Rust distribution with a different signing
+contract needs an explicit adaptation.
 
 The inherited post-install script expanded `@rpath` into an absolute package
 prefix. This can exceed a prebuilt library's load-command space. Revision nb1
@@ -65,7 +86,7 @@ the native NetBSD compiler-selection profile in this host build.
 ```sh
 MAKECONF=/absolute/native-mk.conf bmake -C /absolute/pkgsrc/lang/rust-bin \
   WRKOBJDIR=/absolute/work DISTDIR=/absolute/distfiles MAKE_JOBS=2 \
-  CHECK_SHLIBS=yes package
+  RUST_DARWIN_CODESIGN=/usr/bin/codesign CHECK_SHLIBS=yes package
 ```
 
 Keep normal pkgsrc checks enabled. For post-install changes, use a clean
@@ -85,6 +106,9 @@ new package's staged prefix before installing it:
 MACHO_OD=/absolute/prefix/bin/god \
 MACHO_LIPO=/absolute/prefix/bin/llvm-lipo \
 MACHO_OTOOL=/absolute/prefix/bin/llvm-otool \
+RUST_DARWIN_INSTALL_NAME_TOOL=/absolute/prefix/bin/llvm-install-name-tool \
+RUST_DARWIN_CODESIGN=/usr/bin/codesign \
+RUST_DARWIN_LINKER=/absolute/selected/native-compiler-wrapper \
 python3 -B tests/rust-darwin.py /absolute/original-rust \
   /absolute/staged-prefix /absolute/pkgsrc /absolute/new-check
 ```
@@ -97,18 +121,19 @@ pass strict signature checks. Each restored generic import must fail against
 a foreign generic LLVM sentinel. Removing either private provider must also
 fail its real consumer. A real unrelated dylib in `DYLD_LIBRARY_PATH` is
 ignored under the generic basename. Under the private basename it must fail
-with a missing LLVM symbol. The check preserves both inputs and reproduces
-the old absolute-name overflow on a disposable library.
+with a missing LLVM symbol. The check preserves both inputs. The old system install_name_tool overflow
+witness is not a requirement of the selected LLVM mutator.
 
 The staged compiler builds and runs the native allocation/thread/TLS/unwind
-consumer. Rust tools and the bundled LLVM assembler, verifier, disassembler
+consumer with the explicitly selected native compiler/linker wrapper. Rust tools and the bundled LLVM assembler, verifier, disassembler
 and linker run from the relocated prefix. The real pkgsrc load-command checker
 must resolve both private providers. Normal runs have no loader override.
 The runtime trees come from upstream component manifests; documentation files
 are neither copied nor scanned as executable inputs. These checks do not
 register a package, establish memory-leak acceptance or execute target code.
 
-Check the fresh-stage refusal separately with a real partial import rewrite:
+Check the fresh-stage refusal separately with a real partial import rewrite,
+using the same explicit inspection/mutator/service environment:
 
 ```sh
 python3 -B tests/rust-darwin.py --mixed-preflight /absolute/original-rust \
@@ -120,6 +145,25 @@ Both original LLVM providers and the mandatory rustc/driver imports remain.
 The helper must refuse the mixed graph before any rename or byte change.
 Removing only the guard must reach the first rename. The witness intercepts
 that boundary before mutation; its graph inspection remains real.
+
+The focused tool/signature regression builds a tiny real Mach-O graph with
+an explicitly selected native compiler command. It runs the production helper
+with an empty ambient tool PATH, verifies every selected tool was used and
+executes its library consumer. Missing selection and verification failure remain
+errors. An entitled hardened-runtime input must retain every byte and filename
+after refusal:
+
+```sh
+python3 -B -I -S tests/rust-darwin-tools.py \
+  --cc '/absolute/native/bin/clang <explicit SDK/deployment/linker arguments>' \
+  --lipo /absolute/native/bin/llvm-lipo \
+  --otool /absolute/native/bin/llvm-otool \
+  --install-name-tool /absolute/native/bin/llvm-install-name-tool \
+  --codesign /usr/bin/codesign --work /absolute/new-rust-tools-check
+```
+
+Revision nb3's package installation remains to be checked in the current native
+Clang prefix; the earlier nb2 package acceptance below does not establish it.
 
 Run the Mach-O regression on macOS with the exported pkgsrc tree:
 
