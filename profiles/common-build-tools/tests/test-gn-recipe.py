@@ -5,6 +5,7 @@
 import argparse
 import ast
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -15,12 +16,16 @@ import tarfile
 import tempfile
 from types import SimpleNamespace
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[3]
 RECIPE = ROOT / 'pkgsrc/devel/gn'
 ARCHIVE = None
 ORIGINAL = None
 PATCHED = None
+NINJA_SOURCE = None
+TEMPLATES = {}
+INITIAL_CXX = None
 
 
 def apply_exact(source, patch):
@@ -73,6 +78,63 @@ def probe(source=None, platform='posix', status=0, output='#define __GNUC__ 16\n
 
 
 class GNRecipeTests(unittest.TestCase):
+    def test_actual_generator_preserves_selected_clang_and_gcc_routes(self):
+        cases = [('darwin', 'clang', None), ('netbsd', 'clang', None), ('darwin', 'gcc', None)]
+        if INITIAL_CXX:
+            cases.append(('darwin', 'clang', INITIAL_CXX))
+        for target, family, initial in cases:
+            with self.subTest(target=target, family=family, actual=bool(initial)), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / 'build').mkdir()
+                (root / 'build/gen.py').write_text(PATCHED)
+                (root / 'build/ninja_file.py').write_text(NINJA_SOURCE)
+                for name, data in TEMPLATES.items():
+                    (root / 'build' / name).write_bytes(data)
+                gen_spec = importlib.util.spec_from_file_location('gn_recipe_generator', root / 'build/gen.py')
+                ninja_spec = importlib.util.spec_from_file_location('ninja_file', root / 'build/ninja_file.py')
+                generator = importlib.util.module_from_spec(gen_spec)
+                ninja = importlib.util.module_from_spec(ninja_spec)
+                cxx = initial or '/selected/' + target + '/' + ('clang++' if family == 'clang' else 'g++')
+                ar = '/selected/' + target + '/ar'
+                env = dict(CXX=cxx, AR=ar, GN_VERSION='2486 (641ace93dd95)',
+                           CXXFLAGS='-DSELECTED_INPUT=1 -mmacosx-version-min=26.0',
+                           LDFLAGS='-mmacosx-version-min=26.0')
+                macros = '#define __GNUC__ 4\n#define __clang__ 1\n' if family == 'clang' else '#define __GNUC__ 16\n'
+                with mock.patch.dict(sys.modules, {'ninja_file': ninja, generator.__name__: generator}):
+                    ninja_spec.loader.exec_module(ninja)
+                    gen_spec.loader.exec_module(generator)
+                    real_run = generator.subprocess.run
+
+                    def macro_probe(*args, **kwargs):
+                        self.assertEqual(args, (shlex.split(cxx) + ['-dM', '-E', '-'],))
+                        self.assertFalse(kwargs['shell'])
+                        if not initial:
+                            return SimpleNamespace(returncode=0, stdout=macros)
+                        result = real_run(*args, **kwargs, timeout=30)
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        self.assertIn('#define __clang__ 1', result.stdout)
+                        return result
+
+                    with mock.patch.dict(os.environ, env, clear=True), \
+                            mock.patch.object(generator.subprocess, 'run', side_effect=macro_probe) as probe_call, \
+                            mock.patch.object(generator.subprocess, 'check_output', side_effect=AssertionError('unexpected Git invocation')):
+                        self.assertEqual(generator.main(['--platform', target, '--host', 'darwin',
+                                                         '--out-path', str(root / 'out')]), 0)
+                        self.assertEqual(probe_call.call_count, 1)
+                        self.assertEqual(probe_call.call_args.args, (shlex.split(cxx) + ['-dM', '-E', '-'],))
+                        self.assertFalse(probe_call.call_args.kwargs['shell'])
+                text = (root / 'out/build.ninja').read_text()
+                self.assertIn('cxx = ' + cxx + '\n', text)
+                self.assertIn('ld = ' + cxx + '\n', text)
+                self.assertIn('ar = ' + ar + '\n', text)
+                self.assertIn('-std=c++23', text)
+                self.assertIn('-Werror', text)
+                self.assertIn('-DSELECTED_INPUT=1', text)
+                self.assertNotIn('-flto', text)
+                self.assertEqual('-Wrange-loop-analysis' in text, family == 'clang')
+                self.assertEqual('-Wno-restrict' in text, family == 'gcc')
+                self.assertNotIn('-mmacosx-version-min=14', text)
+
     def test_complete_archive_checksum_and_patch_pin(self):
         raw = ARCHIVE.read_bytes()
         info = (RECIPE / 'distinfo').read_text()
@@ -165,11 +227,12 @@ class GNRecipeTests(unittest.TestCase):
 
     def test_recipe_keeps_cross_tools_and_diagnostics_separate(self):
         recipe = (RECIPE / 'Makefile').read_text()
-        for exact in ['GCC_REQD+=\t\t16.2', 'ONLY_FOR_COMPILER=\tgcc',
+        for exact in ['USE_CXX_FEATURES=\tc++23', 'ONLY_FOR_COMPILER=\tclang gcc',
                 'PYTHON_FOR_BUILD_ONLY=\ttool', '--platform ${LOWER_OPSYS:Q}',
                 '--host ${NATIVE_LOWER_OPSYS:Q}', '${TOOLBASE}/bin/ninja',
                 '-j ${_MAKE_JOBS_N} gn\n', '-j ${_MAKE_JOBS_N} gn_unittests\n']:
             self.assertIn(exact, recipe)
+        self.assertNotIn('GCC_REQD', recipe)
         self.assertNotIn('--allow-warnings', recipe)
         self.assertNotIn('--use-lto', recipe)
         self.assertNotIn('buildtools/mac/gn', recipe)
@@ -178,12 +241,19 @@ class GNRecipeTests(unittest.TestCase):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--archive', required=True, type=Path)
+    parser.add_argument('--initial-cxx-command', help='explicit initial Clang command for macro inspection only')
     args, remaining = parser.parse_known_args()
     ARCHIVE = args.archive
+    INITIAL_CXX = args.initial_cxx_command
+    if INITIAL_CXX and not Path(shlex.split(INITIAL_CXX)[0]).is_absolute():
+        parser.error('--initial-cxx-command must name an absolute compiler')
     with tarfile.open(ARCHIVE, 'r:*') as archive:
         candidates = [m for m in archive.getmembers() if m.name == 'build/gen.py']
         if len(candidates) != 1 or not candidates[0].isfile():
             raise SystemExit('The pinned archive must contain one regular build/gen.py.')
         ORIGINAL = archive.extractfile(candidates[0]).read().decode()
+        NINJA_SOURCE = archive.extractfile('build/ninja_file.py').read().decode()
+        TEMPLATES = {Path(m.name).name: archive.extractfile(m).read() for m in archive.getmembers()
+                     if m.isfile() and m.name.startswith('build/') and m.name.endswith('.template')}
     PATCHED = apply_exact(ORIGINAL, (RECIPE / 'patches/patch-build_gen.py').read_text())
     unittest.main(argv=[sys.argv[0], *remaining])

@@ -66,7 +66,9 @@ and release operations, including the CoreFoundation specialization.
 
 ## Build and acceptance
 
-Use the native Ports GCC16 prefix for a native GN build.
+Use the native Ports Clang/LLVM prefix for a native GN build. An explicit GCC
+platform profile remains supported. The recipe accepts both families and
+requires C++23; it does not select or retry a compiler family.
 Select it with the SDK `load_host_prefix` API and required roles `cxx`, `ar`,
 `python`, `ninja`, `sh`, `rm` and `make`. No producer receipt is required.
 Use its compiler ABI flags and selected tool paths in the native pkgsrc configuration.
@@ -92,7 +94,7 @@ link lock for each invocation when using the SDK process API directly.
 Do not start the default `all` target beside the test target. Keep the existing
 owned-process deadline, drainage, input leases and MemoryWatch policy.
 The recipe retains upstream warnings as errors. It does not select the
-Clang-specific LTO option. Selected Darwin SDK deployment flags and G++ runtime defaults remain visible
+Clang-specific LTO option. Selected Darwin SDK deployment flags and the selected compiler runtime remain visible
 for the actual ABI and runtime checks.
 
 For cross packages, `--platform` uses `LOWER_OPSYS` and `--host` uses
@@ -120,8 +122,16 @@ python3 profiles/common-build-tools/tests/test-gn-recipe.py \
 
 It checks the archive and patch checksums, exact patch context, POSIX compiler
 argument preservation, the Windows route, compiler macro failures, version
-header identity, malformed version refusal and Darwin SDK minimum preservation. It executes extracted Python
-functions with mocked child calls. It does not run a compiler, GN or Ninja.
+header identity, malformed version refusal and Darwin SDK minimum preservation.
+It also runs the complete patched upstream generator for native Darwin and
+Darwin-to-NetBSD Clang routing, plus explicit GCC routing. Generated Ninja
+commands retain C++23, warnings as errors, the selected C++/archive tools and
+compiler-specific warning flags. Compiler macro responses are mocked; no
+compiler, GN or Ninja binary runs by default. Passing
+`--initial-cxx-command '/absolute/initial/clang++ declared-flags'` adds actual
+Clang macro detection through the same upstream generator. That optional source
+inspection uses the explicitly declared initial compiler only for
+`-dM -E -` on empty input; it does not compile or link GN objects.
 Native build, package lifecycle, upstream test and installed runtime acceptance
 remain pending.
 
@@ -143,7 +153,7 @@ input and existing output preservation. This checks source acquisition only.
 ## Darwin C++ ownership regression
 
 `tests/gn-scoped-typeref.cc` includes the actual GN header and CoreFoundation traits.
-Compile it with the selected native G++ and `-std=c++23 -DNDEBUG -Wall -Wextra
+Compile it with the selected native C++ compiler and `-std=c++23 -DNDEBUG -Wall -Wextra
 -Werror -Wno-unused-parameter`, the GN source include directory, and
 `-framework CoreFoundation`. The repaired include directory must precede
 the original GN source directory for a paired check.
