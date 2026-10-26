@@ -1,13 +1,53 @@
 $NetBSD$
 
-Guard the optional Automake xargs test when the tool is absent.
-Keep its complete original capability test when xargs is present.
-Use the upstream no branch for absence; do not run a missing program.
-Local AI-assisted EmberBSD change. Not submitted upstream.
+Use the shared selected SDK diagnostic helper. Preserve ordinary diagnostics.
+Keep the configure.ac source and generated configure diagnostic hook together.
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Keep optional xargs guarded; diff equality checks use cmp to avoid bootstrap cycles.
 
 --- configure.orig
 +++ configure
-@@ -6240,7 +6240,7 @@
+@@ -4707,6 +4707,12 @@
+ 
+ _ACEOF
+ exec 5>>config.log
++# EmberBSD: use the common selected diagnostic helper in explicit SDK mode.
++if test "${EMBERBSD_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/emberbsd-configure-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ {
+ cat <<_ASUNAME
+ ## --------- ##
+@@ -4719,16 +4725,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+@@ -6240,7 +6246,7 @@
  then :
    printf %s "(cached) " >&6
  else case e in #(

@@ -1,0 +1,26 @@
+$NetBSD$
+
+Use the shared selected SDK diagnostic helper. Preserve ordinary diagnostics.
+Keep the configure.ac source and generated configure diagnostic hook together.
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+--- configure.ac.orig
++++ configure.ac
+@@ -18,6 +18,17 @@
+ 
+ AC_PREREQ([2.64])
+ 
++dnl EmberBSD: preserve the canonical AS_UNAME body and route only its diagnostics.
++m4_define([AS_UNAME], m4_bpatsubst(m4_defn([AS_UNAME]),
++  [(/], [(emberbsd_host_diagnostic /]))
++m4_prepend([AS_UNAME], [
++# EmberBSD: use the common selected diagnostic helper in explicit SDK mode.
++if test "${EMBERBSD_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/emberbsd-configure-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$[]@"; }
++fi
++])
+ AC_INIT([GNU diffutils],
+         m4_esyscmd([build-aux/git-version-gen .tarball-version]),
+         [bug-diffutils@gnu.org],

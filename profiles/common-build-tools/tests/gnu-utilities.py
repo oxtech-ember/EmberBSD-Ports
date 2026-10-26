@@ -6,8 +6,10 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path, PurePosixPath
 import re
+import shlex
 import subprocess
 import tarfile
 
@@ -28,15 +30,65 @@ def require(condition, message):
 
 
 def patch_run(patch_tool, patch, work, *options):
-    command = [str(patch_tool), "--batch", "--fuzz=0",
-               "--no-backup-if-mismatch", "-p0", *options, "-i", str(patch)]
+    command = [str(patch_tool), "-f", "-F", "0", "-V", "none",
+               "-p0", *options, "-i", str(patch)]
     return subprocess.run(command, cwd=work, stdout=subprocess.PIPE,
                           stderr=subprocess.STDOUT, check=False)
 
 
+def diagnostic_checks(args, work, hook, recipe):
+    """Run only the actual diagnostic hook, never configure or a compiler."""
+    helper = ROOT / 'profiles/common-build-tools/files/emberbsd-configure-diagnostics.sh'
+    (work / helper.name).write_bytes(helper.read_bytes())
+    export = (ROOT / 'pkgsrc/export.conf').read_text()
+    require(f'file\t{helper.relative_to(ROOT)}\t{recipe}/files/{helper.name}' in export,
+            'Export must stage the single common diagnostic owner')
+    for tool in (args.shell, args.uname):
+        require(tool.is_absolute() and tool.is_file() and os.access(tool, os.X_OK),
+                'Select executable SDK shell and uname paths')
+    script = 'srcdir=' + shlex.quote(str(work)) + '\n' + hook
+    script += 'emberbsd_host_diagnostic "$@"\n'
+    env = {'PATH': str(work), 'LC_ALL': 'C',
+           'EMBERBSD_CONFIGURE_SDK': 'yes',
+           'EMBERBSD_CONFIGURE_UNAME': str(args.uname)}
+    def invoke(command, selected):
+        return subprocess.run([str(args.shell), '-c', script, 'diagnostic-test', *command],
+                              cwd=work, env=selected, capture_output=True)
+    expected = subprocess.run([str(args.uname), '-p'], env=env,
+                              capture_output=True, check=True)
+    actual = invoke(['/usr/bin/uname', '-p'], env)
+    require(actual.returncode == 0 and actual.stdout == expected.stdout
+            and not actual.stderr, 'Selected uname diagnostic changed')
+    for command in (['/bin/uname', '-X'], ['/bin/arch'], ['/usr/bin/arch', '-k'],
+                    ['/usr/convex/getsysinfo'], ['/usr/bin/hostinfo'],
+                    ['/bin/machine'], ['/usr/bin/oslevel'], ['/bin/universe']):
+        result = invoke(command, env)
+        require(result.returncode == 1
+                and result.stdout == b'unavailable (selected SDK profile)\n'
+                and not result.stderr, 'Legacy diagnostic reached a host command')
+    for value in (None, 'uname', '/usr/bin/uname', '/bin/uname', str(work / 'absent')):
+        bad = dict(env)
+        if value is None:
+            del bad['EMBERBSD_CONFIGURE_UNAME']
+        else:
+            bad['EMBERBSD_CONFIGURE_UNAME'] = value
+        result = invoke(['/usr/bin/uname', '-p'], bad)
+        require(result.returncode != 0 and not result.stdout
+                and b'configure:' in result.stderr,
+                'Missing or outside selected uname must refuse before diagnostics')
+    bad = dict(env, EMBERBSD_CONFIGURE_SDK='no')
+    require(invoke(['/usr/bin/uname', '-p'], bad).returncode != 0,
+            'An invalid explicit SDK mode must refuse')
+    ordinary = {'PATH': str(work), 'LC_ALL': 'C'}
+    result = invoke(['echo', 'ordinary diagnostic'], ordinary)
+    require(result.returncode == 0 and result.stdout == b'ordinary diagnostic\n',
+            'Unset SDK mode must preserve the original diagnostic invocation')
+    (work / helper.name).unlink()
+
+
 def run(args):
     require(args.patch.is_absolute() and args.patch.is_file(),
-            "Pass an explicit host GNU patch for source-data checks")
+            "Pass an explicit selected SDK patch for source-data checks")
     require(args.work.is_absolute() and not args.work.exists(),
             "Use a new absolute caller-owned source work directory")
     args.work.mkdir()
@@ -107,14 +159,39 @@ def run(args):
             require(b"extern char * getlocalename_l(int, locale_t);"
                     not in original["gnulib-tests/localename.c"],
                     "The removed Solaris patch is still needed")
+        hook = ('# EmberBSD: use the common selected diagnostic helper in explicit SDK mode.\n'
+                'if test "${EMBERBSD_CONFIGURE_SDK+set}" = set; then\n'
+                '  . "${srcdir}/emberbsd-configure-diagnostics.sh" || exit 1\n'
+                'else\n'
+                '  emberbsd_host_diagnostic () { "$@"; }\n'
+                'fi\n')
+        expected_configure = expected_configure.replace(
+            'exec 5>>config.log\n', 'exec 5>>config.log\n' + hook, 1)
+        start = expected_configure.index('cat <<_ASUNAME\n')
+        end = expected_configure.index('\n_ASUNAME\n', start)
+        body = expected_configure[start:end]
+        require(body.count('`(/') == 9, 'Require all nine absolute diagnostic probes')
+        expected_configure = (expected_configure[:start]
+                              + body.replace('`(/', '`(emberbsd_host_diagnostic /')
+                              + expected_configure[end:])
         require((work / "configure").read_text() == expected_configure,
                 "Configure patch changes more than the finite source delta")
+        ac = (work / 'configure.ac').read_text()
+        require(hook.replace('$@', '$[]@') in ac
+                and '[(/], [(emberbsd_host_diagnostic /]' in ac,
+                'Regenerated configure must use the same selected diagnostic hook')
+        recipe_text = (path / 'Makefile').read_text()
+        require('EMBERBSD_CONFIGURE_UNAME=${EMBERBSD_GCC16_UNAME:Q}' in recipe_text
+                and 'EMBERBSD_CONFIGURE_SDK=yes' in recipe_text
+                and '${CP} ${FILESDIR}/emberbsd-configure-diagnostics.sh ${WRKSRC}/' in recipe_text,
+                'Ordinary recipe must stage the common helper and bind SDK diagnostics')
+        diagnostic_checks(args, work, hook, recipe)
         locales = set(original["po/LINGUAS"].decode().split())
         plist = (path / "PLIST").read_text()
         installed = set(re.findall(r"share/locale/([^/]+)/LC_MESSAGES/", plist))
         require(locales == installed, "PLIST must keep all release translations")
         for patch in reversed(patches):
-            result = patch_run(args.patch, patch, work, "--reverse")
+            result = patch_run(args.patch, patch, work, "-R")
             require(result.returncode == 0, "Patch reverse failed")
         require(all((work / k).read_bytes() == v for k, v in original.items()),
                 "Source patches do not reverse to the exact release")
@@ -125,7 +202,7 @@ def run(args):
         b'diff "conftest.out" "conftest.nl"',
         b'changed_source "conftest.out" "conftest.nl"', 1))
     patch = ROOT / "pkgsrc/devel/diffutils/patches/patch-configure"
-    refusal = patch_run(args.patch, patch, source, "--dry-run")
+    refusal = patch_run(args.patch, patch, source, "-C")
     require(refusal.returncode != 0, "Changed source was silently accepted")
     require("--disable-nls" not in (ROOT / "pkgsrc/sysutils/findutils/Makefile").read_text(),
             "The ordinary findutils recipe must retain NLS")
@@ -146,9 +223,10 @@ def run(args):
     result = {"status": "SOURCE_CHECKS_PASSED", "patches": reports,
               "changed_source_control": {"exit": refusal.returncode,
                                          "output": refusal.stdout.decode()},
-              "configure_or_compiler_executed": False}
+              "configure_or_compiler_executed": False,
+              "diagnostic_hook_executed": True}
     (args.work / "result.json").write_text(json.dumps(result, indent=2) + "\n")
-    print("PASS: five exact reversible patches, release hashes and locales, "
+    print("PASS: exact reversible patches, release hashes and locales, "
           "six equality checks, two xargs guards, source-change refusal, NLS")
 
 
@@ -157,6 +235,8 @@ if __name__ == "__main__":
     parser.add_argument("--diffutils-archive", type=Path, required=True)
     parser.add_argument("--findutils-archive", type=Path, required=True)
     parser.add_argument("--patch", type=Path, required=True)
+    parser.add_argument("--shell", type=Path, required=True)
+    parser.add_argument("--uname", type=Path, required=True)
     parser.add_argument("--work", type=Path, required=True)
     options = parser.parse_args()
     options.archives = [options.diffutils_archive, options.findutils_archive]

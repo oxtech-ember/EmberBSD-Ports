@@ -30,6 +30,15 @@ Both configure patches first test whether optional `xargs` is available.
 A missing tool takes the upstream no branch. A present tool runs the complete
 original capability test. A failed or missing program is not a successful probe.
 
+Both recipes stage the [common diagnostic helper](files/emberbsd-configure-diagnostics.sh)
+from the export. They do not maintain separate helper implementations.
+When `EMBERBSD_GCC16_UNAME` selects the SDK uname, the recipes pass
+`EMBERBSD_CONFIGURE_SDK=yes` and the exact `EMBERBSD_CONFIGURE_UNAME` path.
+The configure and configure.ac hooks route absolute legacy diagnostic commands
+through that helper. Supported uname queries use the selected program.
+Optional legacy probes report unavailable. They never execute system paths.
+Unset SDK mode preserves upstream diagnostics and all ordinary feature tests.
+
 ## Finite initial source builds
 
 [Diffutils](bootstrap/gnu-diffutils.json) and
@@ -37,8 +46,7 @@ original capability test. A failed or missing program is not a successful probe.
 `emberbsd-native-bootstrap-program` version 1 envelope.
 They name their canonical recipe. They do not repeat an archive URL, checksum,
 or patch recipe. The prepared source must include that recipe's complete patches.
-The fixed SDK consumer must recognize the exact specifications before execution.
-These data files do not authorize a generic configure command or a new executor.
+Use these source-owned target and behavior definitions with the selected SDK tools.
 
 The only initial feature argument is the upstream `--disable-nls` option.
 It limits this initial provider to the selected programs. It does not change the
@@ -48,7 +56,11 @@ is disabled. Do not use this subset as an ordinary package result.
 Build a checked source-native `cmp` and `hostname` first. Build the initial GNU
 `diff` next. Build `find` and `xargs` after it. The selected PATH and role bindings
 must exclude failed or unavailable providers. Every listed utility must come from
-the accepted input selection. Do not add a system PATH fallback.
+the selected SDK. Do not add a system PATH fallback.
+
+Source preparation also stages the exported common diagnostic helper at the
+release root, as the ordinary recipe does. Initial configure sets
+`EMBERBSD_CONFIGURE_SDK=yes` and `EMBERBSD_CONFIGURE_UNAME` to the selected uname.
 
 The SDK must use the exact selected GCC16 command tuples and native ABI flags.
 Use the selected GNU make tuple, including its CLI `SHELL` binding, for every
@@ -79,20 +91,25 @@ separate work. No compiled or installed utility acceptance is claimed here.
 
 ## Source checks
 
-Use the two verified release archives and an explicit host GNU patch as source
-regression infrastructure. This does not admit the patch tool into an SDK build.
+Use the two verified release archives and explicit SDK patch, shell and uname paths.
 Use a new absolute work directory. The check does not run configure or make.
 
 ```sh
 /absolute/python -B profiles/common-build-tools/tests/gnu-utilities.py \
   --diffutils-archive /absolute/distfiles/diffutils-3.12.tar.xz \
   --findutils-archive /absolute/distfiles/findutils-4.11.0.tar.xz \
-  --patch /absolute/gnu-patch --work /absolute/new-source-check
+  --patch /absolute/sdk/bin/nbpatch \
+  --shell /absolute/sdk/bin/mksh --uname /absolute/sdk/bin/uname \
+  --work /absolute/new-source-check
 ```
 
 The check verifies all recipe archive hashes, exact zero-fuzz patch application,
 reverse identity, six equality replacements, two optional-tool guards, complete
 locale rows, and ordinary NLS policy. A changed-source control must fail.
+It runs only the diagnostic hook with the selected SDK shell and uname.
+Missing, relative and system uname selectors must fail before a diagnostic runs.
+All eight unsupported legacy commands must report unavailable without executing.
+The check also preserves the original unset-mode invocation.
 It retains its finite source work and result for the caller to inspect.
 
 ## Source provenance
@@ -109,7 +126,7 @@ It retains its finite source work and result for the caller to inspect.
 Each canonical distinfo records the archive Size, SHA256, SHA512 and BLAKE2s.
 The expected SHA256 and size match the independent FreeBSD and MacPorts pins.
 Patch SHA1 follows pkgsrc: remove complete LF records that contain `$NetBSD`.
-Patch payloads and their full-file SHA256 references remain unchanged.
+Each recipe patch has its current checksum in distinfo.
 The additional archive hashes are computed from those verified release bytes.
 The recipes keep their inherited NetBSD patch origin. Upstream licenses remain
 in the source archives. Do not substitute an older recipe because it is in pkgsrc.

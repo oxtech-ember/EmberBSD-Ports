@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.44 2024/05/26 07:05:45 adam Exp $
 
 DISTNAME=	diffutils-3.12
+PKGREVISION=	1
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GNU:=diffutils/}
 EXTRACT_SUFX=	.tar.xz
@@ -25,6 +26,14 @@ SUBST_SED.diff=		-e 's;%DEFAULT_DIFF_PROGRAM%;${PREFIX}/bin/gdiff;'
 .include "options.mk"
 
 INSTALLATION_DIRS+=	${PKGGNUDIR}bin ${PKGGNUDIR}${PKGMANDIR}/man1
+
+.if defined(EMBERBSD_GCC16_UNAME)
+CONFIGURE_ENV+=		EMBERBSD_CONFIGURE_SDK=yes
+CONFIGURE_ENV+=		EMBERBSD_CONFIGURE_UNAME=${EMBERBSD_GCC16_UNAME:Q}
+.endif
+
+post-extract:
+	${CP} ${FILESDIR}/emberbsd-configure-diagnostics.sh ${WRKSRC}/
 
 post-install:
 .for f in cmp diff diff3 sdiff
