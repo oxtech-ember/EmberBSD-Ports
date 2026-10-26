@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
-"""Check actual Bash generator commands from a qualified native selection."""
+"""Check actual Bash generator commands from the selected host prefix."""
 import json
 import os
 from pathlib import Path

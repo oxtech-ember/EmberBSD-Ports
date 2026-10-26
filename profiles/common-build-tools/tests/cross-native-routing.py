@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted). Port of the native routing regression.
-"""Exercise qualified native generators in the actual cross wrapper PATH."""
+"""Exercise host-prefix native generators in the actual cross wrapper PATH."""
 import hashlib
 import json
 import os

@@ -79,21 +79,21 @@ selection remains conditional on Darwin:
   selected tool can repack the copies. The full stage 2/3 comparison remains.
   [darwin-build-config.py](tests/darwin-build-config.py) compiles the real
   configure probe with a native GCC16 and runs the top-level configure with
-  and without the recipe argument. It requires the explicit SDK source, pinned
-  NativeToolset descriptor and accepted producer receipt. The controller must
-  use the selected SDK Python. GCC16, its checked driver closure, ABI arrays,
-  shell, LLVM normalizers and configure utilities come from that selection.
-  `--tools-bin` supplies the only PATH directory. Each bare utility must have
-  its selected role under the exact command name, including external `printf`.
-  Every additional directory entry must also be an explicitly admitted tool path.
-  Unknown entries and aliases are refused before a child starts. No compiler shellwords,
-  system PATH or bootstrap-seed qualification are accepted. Explicit native
+  and without the recipe argument. It takes the explicit SDK source and
+  `--host-prefix`, the installed Ports prefix such as host-pkg-g16. The SDK
+  `load_host_prefix` selects GCC16, its driver components, the shell, LLVM
+  normalizers and configure utilities inside that prefix. The controller must
+  use the prefix's Python. `--tools-bin` supplies the only PATH directory.
+  Each bare utility must have its selected role under the exact command name,
+  including external `printf`. Every additional directory entry must also be a
+  selected tool path. Unknown entries and aliases are refused before a child
+  starts. No compiler shellwords or system PATH are accepted. Explicit native
   build/host triplets avoid `config.guess`; `CONFIG_SITE=/dev/null` excludes
-  local site scripts. The script's help lists all required selectors.
+  local site scripts.
   [darwin-build-config-inputs.py](tests/darwin-build-config-inputs.py) checks
-  missing, outside and unqualified inputs before compiler children. Run it with
-  selected SDK Python and `--sdk-source SOURCE`. Its source and synthetic argv
-  checks do not rerun the Mach-O experiment or qualify a native toolset.
+  missing, non-native and outside inputs before compiler children. Run it with
+  the prefix's Python and `--sdk-source SOURCE`. Its source and synthetic argv
+  checks do not rerun the Mach-O experiment.
   The stage 1 compiler keeps full checking, so its garbage collector defaults
   (`ggc-min-expand=30`, `ggc-min-heapsize=4096`) differ from the release
   defaults of the stage 2 compiler. Variable-location DWARF depends on when
@@ -184,8 +184,8 @@ NetBSD and cross builds also apply the pinned source diff: the common LLVM-MC
 patch references Darwin files absent from the release archive. The Python
 source preparer uses the same prerequisite and COBOL exclusion.
 The new assembler mode is opt-in and accepts only AArch64 Darwin targets.
-The current source draft is a default-CPU pilot. It does not establish a
-qualified native toolset or an accepted Darwin GCC package.
+The current source draft is a default-CPU pilot. It does not establish an
+accepted Darwin GCC package.
 
 ## Producer inputs
 

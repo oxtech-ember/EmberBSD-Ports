@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Copyright (c) 2026 EmberBSD contributors.
-# Origin: EmberBSD (AI-assisted). Source and nonexecuting admission fixtures.
+# Origin: EmberBSD (AI-assisted). Source and nonexecuting selection fixtures.
 """Check Darwin build-config input refusal without compiler children."""
 import importlib.util
 import contextlib
@@ -30,7 +30,7 @@ class Inputs(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix='darwin-config-inputs-')
         self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
+        self.root = Path(self.temporary.name).resolve()
         self.bin = self.root / 'bin'
         self.bin.mkdir()
         roles = getattr(subject, 'REQUIRED_ROLES', ('cc',))
@@ -46,13 +46,11 @@ class Inputs(unittest.TestCase):
             host={'os': 'Darwin', 'cpu': 'arm64'},
             compiler={'family': 'gcc', 'version': '16.2.0', 'triplet': 'aarch64-apple-darwin25'},
             bundle_root=str(self.root), tool=lambda role: self.tools[role])
-        self.args = types.SimpleNamespace(descriptor=str(self.root / 'descriptor.json'),
-            descriptor_sha256='a' * 64, producer_receipt=str(self.root / 'receipt.json'),
-            producer_receipt_sha256='b' * 64, tools_bin=self.bin, work=self.root / 'work',
+        self.args = types.SimpleNamespace(host_prefix=self.root, tools_bin=self.bin, work=self.root / 'work',
             gcc_source=self.root / 'gcc', math_prefix=self.root / 'math')
 
     def selected(self):
-        with patch.object(native_toolset, 'load_native_toolset', return_value=self.selection) as loader, \
+        with patch.object(native_toolset, 'load_host_prefix', return_value=self.selection) as loader, \
              patch.object(subject.sys, 'executable', self.tools.get('python', sys.executable)), \
              patch.object(subject.subprocess, 'run') as child:
             result = subject.selected_inputs(self.args)
@@ -76,18 +74,16 @@ class Inputs(unittest.TestCase):
         self.assertEqual(env['EGREP'], self.tools['grep'] + ' -E')
         self.assertEqual(env['FGREP'], self.tools['grep'] + ' -F')
         self.assertEqual(env['CONFIG_SHELL'], self.tools['sh'])
+        self.assertEqual(loader.call_args.args, (self.root,))
         self.assertEqual(set(loader.call_args.kwargs['required_roles']), set(subject.REQUIRED_ROLES))
 
-    def test_missing_selectors_refuse_before_admission_or_children(self):
-        for name in ('descriptor', 'descriptor_sha256', 'producer_receipt', 'producer_receipt_sha256'):
-            original = getattr(self.args, name)
-            setattr(self.args, name, None)
-            with patch.object(native_toolset, 'load_native_toolset') as loader, \
-                 patch.object(subject.subprocess, 'run') as child, self.assertRaises(SDKError):
-                subject.selected_inputs(self.args)
-            loader.assert_not_called()
-            child.assert_not_called()
-            setattr(self.args, name, original)
+    def test_missing_prefix_refuses_before_selection_or_children(self):
+        self.args.host_prefix = None
+        with patch.object(native_toolset, 'load_host_prefix') as loader, \
+             patch.object(subject.subprocess, 'run') as child, self.assertRaises(SDKError):
+            subject.selected_inputs(self.args)
+        loader.assert_not_called()
+        child.assert_not_called()
 
     def test_missing_outside_and_wrong_name_roles_refuse(self):
         for change in ('missing', 'outside', 'alias'):
@@ -118,7 +114,7 @@ class Inputs(unittest.TestCase):
             self.selected()
 
     def test_external_python_and_wrong_host_refuse(self):
-        with patch.object(native_toolset, 'load_native_toolset', return_value=self.selection), \
+        with patch.object(native_toolset, 'load_host_prefix', return_value=self.selection), \
              patch.object(subject.subprocess, 'run') as child, self.assertRaises(SDKError):
             subject.selected_inputs(self.args)
         child.assert_not_called()
@@ -126,12 +122,14 @@ class Inputs(unittest.TestCase):
         with self.assertRaises(SDKError):
             self.selected()
 
-    def test_actual_loader_rejects_missing_and_corrupt_descriptor(self):
+    def test_actual_loader_rejects_non_native_and_outside_tools(self):
+        # The fixture tools are text files; the SDK refuses them before any query.
         with patch.object(subject.subprocess, 'run') as child:
-            with self.assertRaises(SDKError):
+            with self.assertRaisesRegex(SDKError, 'expected a native executable'):
                 subject.selected_inputs(self.args)
-            Path(self.args.descriptor).write_text('{}')
-            with self.assertRaises(SDKError):
+            (self.bin / 'ar').unlink()
+            (self.bin / 'ar').symlink_to('/usr/bin/ar')
+            with self.assertRaisesRegex(SDKError, 'escapes host prefix'):
                 subject.selected_inputs(self.args)
         child.assert_not_called()
         self.assertFalse(self.args.work.exists())
@@ -173,9 +171,7 @@ class Inputs(unittest.TestCase):
         helper.write_text(subject.DIAGNOSTIC_SOURCE)
         argv = ['--gcc-source', str(self.args.gcc_source), '--tools-bin', str(self.bin),
                 '--math-prefix', str(self.args.math_prefix), '--work', str(self.args.work),
-                '--descriptor', self.args.descriptor, '--descriptor-sha256', self.args.descriptor_sha256,
-                '--producer-receipt', self.args.producer_receipt,
-                '--producer-receipt-sha256', self.args.producer_receipt_sha256]
+                '--host-prefix', str(self.args.host_prefix)]
         for path in paths:
             configure.write_text('emberbsd_host_diagnostic ()\nGCC_CONFIGURE_UNAME\ndiagnostic = `(' + path + ' -p) 2>/dev/null || echo unknown`\n')
             with patch.object(subject, 'selected_inputs', return_value=(self.selection, {})), \
@@ -187,14 +183,8 @@ class Inputs(unittest.TestCase):
             probe.assert_not_called()
             self.assertFalse(self.args.work.exists())
 
-    def test_wrong_api_and_unqualified_receipt_refuse_before_children(self):
-        with patch.object(native_toolset, 'NATIVE_TOOLSET_API', 2), \
-             patch.object(native_toolset, 'load_native_toolset') as loader, \
-             patch.object(subject.subprocess, 'run') as child, self.assertRaises(SDKError):
-            subject.selected_inputs(self.args)
-        loader.assert_not_called()
-        child.assert_not_called()
-        with patch.object(native_toolset, 'load_native_toolset', side_effect=SDKError('Unqualified producer')), \
+    def test_rejected_prefix_refuses_before_children(self):
+        with patch.object(native_toolset, 'load_host_prefix', side_effect=SDKError('native tool escapes host prefix')), \
              patch.object(subject.subprocess, 'run') as child, self.assertRaises(SDKError):
             subject.selected_inputs(self.args)
         child.assert_not_called()

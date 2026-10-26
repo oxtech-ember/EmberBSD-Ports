@@ -60,12 +60,12 @@ case "$native_depcomp" in
 "$native_base/share/libtool/config/depcomp"|"$native_base/share/libtool/build-aux/depcomp") ;;
 *) echo "Unexpected native depcomp: $native_depcomp" >&2; exit 1;;
 esac
-# The SDK-rendered include pins the native drivers; any override is refused.
+# The generated host-prefix include pins the native drivers; any override is refused.
 for compiler in cc /nonexistent/ember-host-cc /usr/bin/cc; do
     if "$bmake" -C "$pkgsrc/devel/binutils" MAKECONF="$crossconf" \
         EMBERBSD_CROSS_BUILD_CC="$compiler" -v PKG_FAIL_REASON > "$work/invalid-cc.txt" 2>&1; then
         echo "Override $compiler unexpectedly accepted" >&2; exit 1
     fi
-    grep -q 'EMBERBSD_CROSS_BUILD_CC differs from the qualified SDK tool' "$work/invalid-cc.txt"
+    grep -q 'EMBERBSD_CROSS_BUILD_CC differs from the selected Ports tool' "$work/invalid-cc.txt"
 done
 echo 'PASS: cross/native auxiliary selection, real host generator and invalid host compiler guards'

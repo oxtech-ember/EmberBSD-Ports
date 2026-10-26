@@ -260,12 +260,12 @@ The qualified Linux command must pass the unchanged upstream compile/run
 probe under the recorded wrapper PATH and retain the AArch64 target link.
 The ncurses work supplies the real cwrappers, configure probe and `confdefs.h`.
 The old system compiler's target-linker failure is historical evidence.
-A qualified driver can select its own absolute assembler and linker, so this
+A host-prefix driver can select its own absolute assembler and linker, so this
 test does not require that old failure to recur.
 All three runners require the selected SDK Python and `bmake`.
 They use bounded SDK producer capture and retain typed failure results.
-Their actual metadata, configure and compiler runs remain pending until a
-qualified native bundle is available. Source fixtures alone do not establish them.
+Their actual metadata, configure and compiler runs use the
+[host prefix include](native-toolset.md). Source fixtures alone do not establish them.
 
 The mDNSResponder version probe reads the target sysroot header during cross
 builds and the host header during native dependency recursion.

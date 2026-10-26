@@ -19,8 +19,7 @@ both default sets, without and with the recipe parameters. It uses the same
 selected inputs as darwin-build-config.py:
 
   SDK_PYTHON -B darwin-bootstrap-gc.py --sdk-source SDK_SOURCE \\
-      --descriptor JSON --descriptor-sha256 SHA256 \\
-      --producer-receipt JSON --producer-receipt-sha256 SHA256 \\
+      --host-prefix HOST_PREFIX \\
       --tools-bin SDK_BIN --gcc-source SRC --work NEW_WORK
 """
 
@@ -130,8 +129,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     for name in ('gcc-source', 'tools-bin', 'work'):
         parser.add_argument('--' + name, type=Path, required=True)
-    for name in ('descriptor', 'descriptor-sha256', 'producer-receipt', 'producer-receipt-sha256'):
-        parser.add_argument('--' + name, required=True)
+    build_config.add_selection_arguments(parser)
     args = parser.parse_args(arguments)
     params = recipe_boot_cflags()
     selected, env = build_config.selected_inputs(args)

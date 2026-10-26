@@ -11,8 +11,8 @@ The recipe currently fetches Electron 44.9.3 and Node 24.22.0. It does not prepa
 the complete Chromium DEPS tree or run GN and Ninja. Do not use `NO_BUILD`, a
 downloaded binary ZIP, or an externally supplied ZIP as its ordinary build.
 
-The SDK already supplies the needed mechanisms. Load the accepted native
-selection with `native_toolset.load_native_toolset`. Select GN, Ninja and Python
+The SDK already supplies the needed mechanisms. Load the native Ports
+host prefix with `native_toolset.load_host_prefix`. Select GN, Ninja and Python
 from that selection. Use `process.run_logged` for both producers while the
 caller retains its source/input locks and exclusive work context. A separate
 Electron executor or qualification format is not required.

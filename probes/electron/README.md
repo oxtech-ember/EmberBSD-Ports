@@ -500,8 +500,8 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/v8-host-paxctl.patch
 
 The Mac host does not run NetBSD `paxctl` on its Mach-O snapshot generator.
 For a NetBSD build host, set `v8_host_paxctl` to the absolute executable path
-from an accepted native SDK `paxctl` role. Include `paxctl` in the existing
-`load_native_toolset` call's `required_roles`. Obtain the path with
+from the host prefix's `paxctl` role. Include `paxctl` in the existing
+`load_host_prefix` call's `required_roles`. Obtain the path with
 `selection.tool("paxctl")`. The path alone does not qualify its provider.
 The setting has no default path or PATH lookup. The action declares that file as an input and keeps `+m` on the
 selected `mksnapshot($v8_snapshot_toolchain)` output. The wrapper refuses an

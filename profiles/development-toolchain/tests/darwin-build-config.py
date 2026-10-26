@@ -10,12 +10,11 @@ __eh_frame moves when GCC emits __debug_frame first. The recipe must pass
 --without-build-config. Run on Darwin with a patched GCC 16.2 source tree:
 
   SDK_PYTHON -B darwin-build-config.py --sdk-source SDK_SOURCE \
-      --descriptor JSON --descriptor-sha256 SHA256 \
-      --producer-receipt JSON --producer-receipt-sha256 SHA256 \
+      --host-prefix HOST_PREFIX \
       --tools-bin SDK_BIN --gcc-source SRC --math-prefix PREFIX --work NEW_WORK
 
-Use an accepted ordinary native toolset. Bootstrap seed evidence is insufficient.
-The descriptor owns GCC16, its driver closure, ABI flags and every utility.
+HOST_PREFIX is the installed Ports prefix, such as host-pkg-g16. It supplies
+GCC16, its driver components and every utility.
 SDK_BIN must contain the selected utility paths under their exact command names.
 """
 
@@ -46,22 +45,19 @@ REQUIRED_ROLES = ('cc', 'cxx', 'cpp', 'as', 'ld', 'ar', 'ranlib', 'nm', 'strip',
                   'objdump', 'objcopy', 'python', *PATH_ROLES)
 
 
+def add_selection_arguments(parser):
+    parser.add_argument('--host-prefix', type=Path, required=True)
+
+
 def selected_inputs(args):
-    """Admit pinned SDK bytes before output creation or any compiler child."""
+    """Select the host prefix tools before output creation or a compile."""
     from emberbsd_sdk.errors import SDKError
-    from emberbsd_sdk.native_toolset import NATIVE_TOOLSET_API, load_native_toolset
-    selectors = (args.descriptor, args.descriptor_sha256,
-                 args.producer_receipt, args.producer_receipt_sha256)
-    if not all(selectors):
-        raise SDKError('Set the descriptor and producer receipt paths and SHA256 pins')
-    if type(NATIVE_TOOLSET_API) is not int or NATIVE_TOOLSET_API != 1:
-        raise SDKError('SDK native toolset API 1 is required')
-    selected = load_native_toolset(args.descriptor,
-        descriptor_sha256=args.descriptor_sha256,
-        accepted_producer_receipt=dict(path=args.producer_receipt, sha256=args.producer_receipt_sha256),
-        required_roles=REQUIRED_ROLES)
+    from emberbsd_sdk.native_toolset import load_host_prefix
+    if not args.host_prefix:
+        raise SDKError('Set the native Ports host prefix')
+    selected = load_host_prefix(args.host_prefix, required_roles=REQUIRED_ROLES)
     if selected.host['os'] != 'Darwin':
-        raise SDKError('This probe requires an accepted native Darwin GCC16 toolset')
+        raise SDKError('This probe requires a native Darwin GCC16 host prefix')
     directory = args.tools_bin
     if not directory.is_absolute() or not directory.is_dir() or ':' in str(directory):
         raise SDKError('Use one absolute selected SDK tool directory')
@@ -194,8 +190,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     for name in ('gcc-source', 'tools-bin', 'math-prefix', 'work'):
         parser.add_argument('--' + name, type=Path, required=True)
-    for name in ('descriptor', 'descriptor-sha256', 'producer-receipt', 'producer-receipt-sha256'):
-        parser.add_argument('--' + name, required=True)
+    add_selection_arguments(parser)
     args = parser.parse_args(arguments)
     selected, env = selected_inputs(args)
     check_configure_source(args.gcc_source)
