@@ -170,7 +170,7 @@ class Inputs(unittest.TestCase):
                  '/usr/bin/oslevel', '/bin/universe')
         helper = self.args.gcc_source / subject.DIAGNOSTIC_HELPER
         helper.parent.mkdir()
-        helper.write_text('emberbsd_host_diagnostic ()\nGCC_CONFIGURE_UNAME\n')
+        helper.write_text(subject.DIAGNOSTIC_SOURCE)
         argv = ['--gcc-source', str(self.args.gcc_source), '--tools-bin', str(self.bin),
                 '--math-prefix', str(self.args.math_prefix), '--work', str(self.args.work),
                 '--descriptor', self.args.descriptor, '--descriptor-sha256', self.args.descriptor_sha256,

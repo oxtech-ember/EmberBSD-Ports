@@ -163,8 +163,8 @@ selection remains conditional on Darwin:
   `__aarch64_cas*`, `__aarch64_swp*` and `__aarch64_ld*` helpers of the cross
   `libgcc.a` then had default visibility, and NetBSD shared libraries such as
   `libpthread.so` exported them. The patch adds `HIDDEN` under `__ELF__`, so
-  Mach-O output does not change. `gcc16` advances to nb12 and `gcc16-libs`
-  to nb13.
+  Mach-O output does not change. This repair introduced `gcc16` nb12 and
+  `gcc16-libs` nb13. The shared diagnostic update above requires newer revisions.
 - Darwin target libraries use the macOS iconv, not a GNU libiconv in
   `${LOCALBASE}`. `COMPILER_RPATH_FLAG` is `-L` on Darwin, so the common
   `LDFLAGS_FOR_TARGET` filter passed `-L${LOCALBASE}/lib` to the target
