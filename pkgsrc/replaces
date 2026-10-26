@@ -36,6 +36,7 @@ devel/py-mako
 devel/swig4
 devel/zlib
 lang/clang
+lang/compiler-rt
 lang/llvm
 lang/perl5
 lang/rust-bin

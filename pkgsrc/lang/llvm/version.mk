@@ -38,7 +38,7 @@ EXTRACT_ELEMENTS+=	${DISTNAME}/libc
 
 # This exported profile has prepared only these matching family recipes.
 .if ${PKGPATH} != "lang/llvm" && ${PKGPATH} != "lang/llvm-devel" && ${PKGPATH} != "lang/clang" && \
-    ${PKGPATH} != "devel/lld" && ${PKGPATH} != "devel/py-llvm-lit"
+    ${PKGPATH} != "devel/lld" && ${PKGPATH} != "devel/py-llvm-lit" && ${PKGPATH} != "lang/compiler-rt"
 PKG_FAIL_REASON+= "LLVM 23 family consumer ${PKGPATH} is not prepared in the common profile"
 .endif
 
