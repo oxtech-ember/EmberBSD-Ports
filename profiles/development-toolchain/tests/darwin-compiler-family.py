@@ -67,12 +67,15 @@ with tempfile.TemporaryDirectory(prefix='darwin-family-') as temporary:
     for role in ('LLVM_MC', 'LD64_LLD', 'DSYMUTIL', 'AR', 'RANLIB', 'NM', 'STRIP'):
         generic['EMBERBSD_DARWIN_' + role] = str(prefix / 'bin' / role.lower())
     flags = ['-isysroot', str(sdk), '-mmacosx-version-min=26.0']
-    for role, name in (('CC', 'clang'), ('CXX', 'clang++'), ('CPP', 'clang-cpp')):
+    for role, name in (('CC', 'clang'), ('CXX', 'clang++'), ('CPP', 'clang')):
         generic['EMBERBSD_DARWIN_SEED_' + role] = shlex.join([str(prefix / 'bin' / name), *flags])
+    generic['EMBERBSD_DARWIN_SEED_CPP'] += ' -E'
     generic['EMBERBSD_DARWIN_SEED_AS'] = generic['EMBERBSD_DARWIN_SEED_CC'] + ' -c -x assembler'
     query_names = ('PKGSRC_COMPILER', 'CC', 'CXX', 'CPP', 'AS', 'LDFLAGS',
                    'CWRAPPERS_PREPEND.cc', '_WRAP_EXTRA_ARGS.CC',
-                   'PKG_CC', 'BOOTSTRAP_DEPENDS')
+                   'PKG_CC', 'PKG_AS', 'PKG_CPP', 'CWRAPPERS_PREPEND.as',
+                   '_WRAP_EXTRA_ARGS.AS', 'CWRAPPERS_PREPEND.cpp',
+                   '_WRAP_EXTRA_ARGS.CPP', 'BOOTSTRAP_DEPENDS')
 
     def evaluate(values, wrapper=False):
         makefile = work / 'lang/fixture/Makefile'
@@ -91,12 +94,26 @@ with tempfile.TemporaryDirectory(prefix='darwin-family-') as temporary:
     assert result.returncode == 0, result.stderr
     assert values['PKGSRC_COMPILER'] == 'clang'
     assert values['CC'] == values['PKG_CC'] == str(prefix / 'bin/clang')
-    assert shlex.split(values['AS']) == [str(prefix / 'bin/clang'), *flags, '-c', '-x', 'assembler']
+    assert values['AS'] == 'as' and values['CPP'] == 'cpp'
+    assert values['PKG_AS'] == values['PKG_CPP'] == str(prefix / 'bin/clang')
+    for suffix, expected in (('AS', [*flags, '-c', '-x', 'assembler']), ('CPP', [*flags, '-E'])):
+        assert shlex.split(values['CWRAPPERS_PREPEND.' + suffix.lower()]) == expected
+        assert shlex.split(values['_WRAP_EXTRA_ARGS.' + suffix]) == expected
     assert shlex.split(values['CWRAPPERS_PREPEND.cc']) == flags
     assert shlex.split(values['_WRAP_EXTRA_ARGS.CC']) == flags
     assert values['LDFLAGS'] == ''
     assert 'gcc16' not in values['BOOTSTRAP_DEPENDS']
     assert 'bsdinstall' in values['BOOTSTRAP_DEPENDS']
+    no_tail = dict(common, **generic)
+    for role in ('AS', 'CC', 'CPP', 'CXX'):
+        key = 'EMBERBSD_DARWIN_SEED_' + role
+        no_tail[key] = shlex.split(no_tail[key])[0]
+    result, values = evaluate(no_tail, wrapper=True)
+    assert result.returncode == 0, result.stderr
+    for key in ('CWRAPPERS_PREPEND.cc', '_WRAP_EXTRA_ARGS.CC',
+                'CWRAPPERS_PREPEND.as', '_WRAP_EXTRA_ARGS.AS',
+                'CWRAPPERS_PREPEND.cpp', '_WRAP_EXTRA_ARGS.CPP'):
+        assert values[key] == '', (key, values[key])
     for bad_family in ('auto', 'gcc clang', ''):
         result, _ = evaluate(dict(common, **generic, EMBERBSD_COMPILER_FAMILY=bad_family))
         assert result.returncode != 0 and b'compiler_family' not in result.stdout

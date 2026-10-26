@@ -298,18 +298,36 @@ Keep ordinary Darwin defaults. Use the standard compiler wrappers.
  # Xcode 12 (Apple clang-1200.0.32.2) and upstream Clang 16 have a
  # zealous new default that the wide world of random third-party software
  # isn't ready for. Turn it back off by default.
-@@ -114,4 +131,14 @@
+@@ -114,4 +131,21 @@
  _CXX_STD_FLAG.${_version_}?=	-std=${_version_}
  .endfor
  
 +.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
 +# cwrappers exec= takes a path. Keep the selected driver tail exactly once.
-+.for _ember_var _ember_wrap in CC cc CXX cxx CPP cpp
++.for _ember_var _ember_wrap in AS as CC cc CXX cxx CPP cpp
 +${_ember_var}= ${EMBERBSD_DARWIN_SEED_${_ember_var}:[1]}
 +PKG_${_ember_var}= ${EMBERBSD_DARWIN_SEED_${_ember_var}:[1]}
++.  if ${EMBERBSD_DARWIN_SEED_${_ember_var}:[#]} > 1
 +CWRAPPERS_PREPEND.${_ember_wrap}+= ${EMBERBSD_DARWIN_SEED_${_ember_var}:[2..-1]}
 +_WRAP_EXTRA_ARGS.${_ember_var}+= ${EMBERBSD_DARWIN_SEED_${_ember_var}:[2..-1]}
++.  endif
 +.endfor
++# One driver may serve all three roles. The traditional wrapper generator
++# deduplicates basenames, while cwrappers already has separate role names.
++# Keep the executable in PKG_* and expose distinct argument-free aliases.
++AS= as
++CPP= cpp
 +.endif
 +
  .endif	# COMPILER_CLANG_MK
+--- a/mk/cwrappers.mk
++++ b/mk/cwrappers.mk
+@@ -52,7 +52,7 @@
+ .  endif
+ .endif
+ 
+-CWRAPPERS_WRAPPEE.as=		${AS:Ufalse}
++CWRAPPERS_WRAPPEE.as=		${PKG_AS:U${AS:Ufalse}}
+ CWRAPPERS_WRAPPEE.cxx=		${PKG_CXX:Ufalse}
+ CWRAPPERS_WRAPPEE.cc=		${PKG_CC:Ufalse}
+ CWRAPPERS_WRAPPEE.cpp=		${PKG_CPP:Ufalse}

@@ -80,6 +80,9 @@ The initial ordinary bootstrap omits the optional builtin helper from its PLIST.
 the selected make executable, and an ordinary bootstrap MAKECONF.
 
 The compiler wrappers retain each selected command tail once. The Clang route
+uses separate `as` and `cpp` role aliases even when all three commands select
+the same Clang executable. Both wrapper backends keep the absolute driver
+separate from its arguments, including commands without a tail. The Clang route
 does not receive GCC's static libstdc++, libgcc, or default-RPATH flags.
 The explicit GCC route accepts its earlier `EMBERBSD_GCC16_*` input names and
 retains the GCC Darwin recipe's driver routing and runtime options.
@@ -100,6 +103,15 @@ Native adapter checks cover compiler-family forwarding, assembler arguments,
 prefix paths, and stale configuration refusal. The `clang-as` fixture checks
 argument preservation, child exit statuses, and missing-compiler refusal.
 These checks do not claim a completed LLVM package or target runtime.
+
+[`tests/darwin-clang-wrappers.py`](tests/darwin-clang-wrappers.py) generates
+both real wrapper backends from a current Ports export (`--pkgsrc`). Pass
+each member of the complete Darwin bootstrap make command with `--make-arg`,
+the native cwrappers directory with `--cwrappers-dir`, and a new `--work`
+directory. It compiles, assembles, preprocesses, links and runs small native
+C/C++ consumers, checking the executed driver and exact argument tails.
+The test reads the libnbcompat recipe and keeps all output under `--work`;
+it does not build or install packages.
 
 Clang's installed default linker is LLD from the same package prefix.
 Verify actual C and C++ driver commands, installed compile/link/run behavior,
