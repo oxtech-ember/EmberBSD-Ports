@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.114 2024/11/26 14:11:40 bacon Exp $
 
 DISTNAME=	binutils-2.47
-PKGREVISION=	3
+PKGREVISION=	4
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GNU:=binutils/}
 EXTRACT_SUFX=	.tar.xz
