@@ -16,7 +16,7 @@ Set `EMBERBSD_HOST_PREFIX` for the native LLVM generator controllers.
 Run them with Python from that prefix. Explicit `HOST_CC`, `HOST_CXX`,
 `HOST_PYTHON`, CMake and Ninja arguments must match the selected tools.
 Native Clang table generation also selects `llvm-config` and `llvm-tblgen`
-from this prefix. The build environment searches only the prefix.
+from this prefix. Builds and generator version queries search only the prefix.
 
 ## Configure pkgsrc
 

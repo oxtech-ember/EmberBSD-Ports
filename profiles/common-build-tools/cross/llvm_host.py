@@ -22,9 +22,9 @@ def checked_paths(values):
         canonical_new(path)
 
 
-def query(argv):
+def query(argv, *, env=None):
     from emberbsd_sdk.process import capture
-    return capture(argv).stdout.decode().strip()
+    return capture(argv, env=env).stdout.decode().strip()
 
 
 def log_run(path, argv, cwd=None, env=None):
@@ -83,7 +83,17 @@ def native(kind, arguments):
         raise SDKError('Executable native tools required')
     if sha256_file(archive) != SOURCE_SHA:
         raise SDKError('Pinned LLVM source archive SHA256 differs')
-    if llvm and (not Path(llvm, 'lib/cmake/llvm/LLVMConfig.cmake').is_file() or query([llvm + '/bin/llvm-config', '--version']) != '23.1.4'):
+    from emberbsd_sdk.process import sanitized_environment
+    env = sanitized_environment()
+    for key in ('CC', 'CXX', 'CPP', 'AS', 'LD', 'AR', 'RANLIB', 'NM', 'STRIP',
+                'CFLAGS', 'CXXFLAGS', 'CPPFLAGS', 'LDFLAGS', 'CPATH',
+                'C_INCLUDE_PATH', 'CPLUS_INCLUDE_PATH', 'LIBRARY_PATH', 'SDKROOT',
+                'PKG_CONFIG_PATH', 'PKG_CONFIG_LIBDIR', 'PKG_CONFIG_SYSROOT_DIR'):
+        env.pop(key, None)
+    env['PATH'] = toolset.path
+    env['SHELL'] = toolset.tool('sh')
+    env['PKG_CONFIG'] = toolset.tool('pkg-config')
+    if llvm and (not Path(llvm, 'lib/cmake/llvm/LLVMConfig.cmake').is_file() or query([llvm + '/bin/llvm-config', '--version'], env=env) != '23.1.4'):
         raise SDKError('Matching native LLVM build required')
     os.mkdir(work)
     os.mkdir(work + '/source')
@@ -106,22 +116,12 @@ def native(kind, arguments):
     else:
         command += ['-DLLVM_DIR=' + llvm + '/lib/cmake/llvm', '-DLLVM_CMAKE_DIR=' + llvm + '/lib/cmake/llvm', '-DLLVM_CONFIG=' + llvm + '/bin/llvm-config', '-DLLVM_TABLEGEN=' + llvm + '/bin/llvm-tblgen', '-DLLVM_INCLUDE_TESTS=OFF', '-DCLANG_INCLUDE_TESTS=OFF']
         outputs = ['clang-tblgen']
-    from emberbsd_sdk.process import sanitized_environment
-    env = sanitized_environment()
-    for key in ('CC', 'CXX', 'CPP', 'AS', 'LD', 'AR', 'RANLIB', 'NM', 'STRIP',
-                'CFLAGS', 'CXXFLAGS', 'CPPFLAGS', 'LDFLAGS', 'CPATH',
-                'C_INCLUDE_PATH', 'CPLUS_INCLUDE_PATH', 'LIBRARY_PATH', 'SDKROOT',
-                'PKG_CONFIG_PATH', 'PKG_CONFIG_LIBDIR', 'PKG_CONFIG_SYSROOT_DIR'):
-        env.pop(key, None)
-    env['PATH'] = toolset.path
-    env['SHELL'] = toolset.tool('sh')
-    env['PKG_CONFIG'] = toolset.tool('pkg-config')
     log_run(work + '/configure.log', command, env=env)
     log_run(work + '/build.log', [ninja, '-C', work + '/native', '-j', jobs, *outputs], env=env)
     result = {}
     for tool in outputs:
         path = work + '/native/bin/' + tool
-        version = query([path, '--version'])
+        version = query([path, '--version'], env=env)
         if '23.1.4' not in version:
             raise SDKError('Unexpected native generator version: ' + tool)
         result[tool] = dict(path=path, version=version)

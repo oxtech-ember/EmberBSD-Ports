@@ -25,6 +25,14 @@ from emberbsd_sdk import native_toolset as actual_native_api
 
 assert callable(actual_native_api.load_host_prefix)
 
+# Keep the optional environment compatible with other shared query callers.
+with mock.patch('emberbsd_sdk.process.capture',
+                return_value=types.SimpleNamespace(stdout=b'23.1.4\n')) as capture:
+    assert llvm_host.query(['/selected/tool'], env={'PATH': '/selected'}) == '23.1.4'
+    capture.assert_called_once_with(['/selected/tool'], env={'PATH': '/selected'})
+    llvm_host.query(['/other/caller'])
+    capture.assert_called_with(['/other/caller'], env=None)
+
 
 class Selection:
     def __init__(self, root):
@@ -43,6 +51,9 @@ class Selection:
             path = llvm / role
             path.write_text('Nonexecuted SDK generator double\n')
             self.tools[role] = str(path)
+        config = root / 'llvm-native/lib/cmake/llvm'
+        config.mkdir(parents=True)
+        (config / 'LLVMConfig.cmake').write_text('Nonexecuted LLVM CMake double\n')
         self.path = str(root)
         self.abi_flags = {
             'cppflags': ('-isystem', '/declared/native/include'),
@@ -123,7 +134,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-selection-') as temporary:
             else:
                 outputs = work / 'native/bin'
                 outputs.mkdir()
-                for name in ('llvm-tblgen', 'llvm-min-tblgen', 'llvm-config'):
+                for name in argv[argv.index('-j') + 2:]:
                     (outputs / name).write_bytes(b'Nonexecuted generator double\n')
 
         values = dict(environment, CFLAGS='--sysroot=/target-only',
@@ -133,7 +144,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-selection-') as temporary:
              mock.patch.object(llvm_host.sys, 'executable', selection.tool('python')), \
              mock.patch.object(llvm_host, 'SOURCE_SHA', hashlib.sha256(archive.read_bytes()).hexdigest()), \
              mock.patch.object(llvm_host, 'extract_source'), \
-             mock.patch.object(llvm_host, 'query', return_value='LLVM version 23.1.4'), \
+             mock.patch.object(llvm_host, 'query', return_value='23.1.4') as query, \
              mock.patch.object(llvm_host, 'log_run', side_effect=producer):
             llvm_host.native('llvm', command(work))
         call = api.load_host_prefix.call_args
@@ -148,8 +159,36 @@ with tempfile.TemporaryDirectory(prefix='ember-native-selection-') as temporary:
         assert '-DCMAKE_CXX_FLAGS=-isystem /declared/native/include -fPIC -std=c++17' in flags
         assert '-DCMAKE_SHARED_LINKER_FLAGS=-L/declared/native/lib' in flags
         assert not any('/target-only' in flag or '-B/usr/bin' in flag for flag in flags)
+        assert query.call_args_list == [
+            mock.call([str(work / 'native/bin' / name), '--version'], env=runs[0][1])
+            for name in ('llvm-tblgen', 'llvm-min-tblgen', 'llvm-config')]
         for _, env in runs:
             assert env['PATH'] == str(root / 'selected-sdk')
+            assert env['SHELL'] == selection.tool('sh')
+            assert env['PKG_CONFIG'] == selection.tool('pkg-config')
+            assert all(name not in env for name in ('CFLAGS', 'CXXFLAGS', 'PKG_CONFIG_SYSROOT_DIR'))
+
+        work = root / 'accepted-clang-controller-fixture'
+        runs.clear()
+        llvm = str(Path(selection.tool('llvm-config')).parents[1])
+        with mock.patch.dict(os.environ, values, clear=True), \
+             mock.patch.object(llvm_host.sys, 'executable', selection.tool('python')), \
+             mock.patch.object(llvm_host, 'SOURCE_SHA', hashlib.sha256(archive.read_bytes()).hexdigest()), \
+             mock.patch.object(llvm_host, 'extract_source'), \
+             mock.patch.object(llvm_host, 'query', return_value='23.1.4') as query, \
+             mock.patch.object(llvm_host, 'log_run', side_effect=producer):
+            arguments = command(work)
+            arguments.insert(1, llvm)
+            llvm_host.native('clang', arguments)
+        assert set(api.load_host_prefix.call_args.kwargs['required_roles']) == set(selection.tools)
+        assert len(runs) == 2
+        assert '-DLLVM_CONFIG=' + selection.tool('llvm-config') in runs[0][0]
+        assert '-DLLVM_TABLEGEN=' + selection.tool('llvm-tblgen') in runs[0][0]
+        assert query.call_args_list == [
+            mock.call([selection.tool('llvm-config'), '--version'], env=runs[0][1]),
+            mock.call([str(work / 'native/bin/clang-tblgen'), '--version'], env=runs[0][1])]
+        for _, env in runs:
+            assert env['PATH'] == selection.path
             assert env['SHELL'] == selection.tool('sh')
             assert env['PKG_CONFIG'] == selection.tool('pkg-config')
             assert all(name not in env for name in ('CFLAGS', 'CXXFLAGS', 'PKG_CONFIG_SYSROOT_DIR'))
