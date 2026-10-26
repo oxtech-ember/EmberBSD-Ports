@@ -1,5 +1,9 @@
 # Bind the initial make shell
 
+This is the scoped first-compiler bootstrap path. An existing native Ports
+prefix uses [direct host selection](../cross/native-toolset.md). It does not
+need seed admission, qualification reports or a producer receipt.
+
 An initial make binary can have external system-makefile and shell paths
 compiled into it. Copying that binary does not change these paths.
 The fixed selector `ports-bootstrap-make-v1` binds explicit makefiles and a
@@ -84,8 +88,7 @@ accepted inputs or a configuration fallback. Check that a failing shell
 command still fails.
 
 Then build the new make tools with the accepted GCC16 producer.
-Ordinary native-toolset admission requires its own completed producer,
-compiler/linker execution closure and runtime evidence.
+Use the resulting Ports prefix directly once its required tools run on the host.
 The source entry and byte-preserving tree preparation alone do not prove
 that a real package's metadata or native build passed.
 

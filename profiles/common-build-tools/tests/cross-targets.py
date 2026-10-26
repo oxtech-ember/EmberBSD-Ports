@@ -12,7 +12,7 @@ sys.dont_write_bytecode = True
 from llvm_fixture import load_sdk
 sdk, args = load_sdk()
 if len(args) != 2:
-    sys.exit('Use BMAKE NATIVE_INPUTS_MK; the include must bind a qualified SDK toolset')
+    sys.exit('Use BMAKE NATIVE_INPUTS_MK; the include must bind a selected Ports toolset')
 bmake = Path(args[0]).resolve(strict=True)
 native_inputs = Path(args[1]).resolve(strict=True)
 if not Path(args[0]).is_absolute() or not Path(args[1]).is_absolute():
@@ -125,14 +125,14 @@ with tempfile.TemporaryDirectory(prefix='ember-cross-targets-') as temporary:
     refused = subprocess.run([str(bmake), '-f', str(work / 'Makefile'),
                               'EMBERBSD_CROSS_BUILD_AR=ar', '-v', 'PKG_FAIL_REASON'],
                              capture_output=True, text=True)
-    assert refused.returncode != 0 and 'EMBERBSD_CROSS_BUILD_AR differs from the qualified SDK tool' in refused.stderr
+    assert refused.returncode != 0 and 'EMBERBSD_CROSS_BUILD_AR differs from the selected Ports tool' in refused.stderr
     # bmake command-line assignments take precedence over profile assignments.
     # Every alias used by configure must reject that bypass too.
     for role in ('CC', 'CXX', 'CPP', 'AS', 'LD', 'AR', 'RANLIB', 'NM', 'STRIP'):
         reason = read('NATIVE_' + role + '=/bin/false', '-v', 'PKG_FAIL_REASON')
         expected = ('Cross generators require the selected native build compilers'
                     if role in ('CC', 'CXX', 'CPP') else
-                    'NATIVE_' + role + ' differs from the qualified SDK tool')
+                    'NATIVE_' + role + ' differs from the selected Ports tool')
         assert expected in reason, (role, reason)
     for variable, value in (
             ('_EMBER_SDK_AR', '/usr/bin/ar'),
@@ -148,7 +148,7 @@ with tempfile.TemporaryDirectory(prefix='ember-cross-targets-') as temporary:
             refused = subprocess.run([str(bmake), '-f', str(work / 'Makefile'),
                                       variable + '=-I/target-only', '-v', 'PKG_FAIL_REASON'],
                                      capture_output=True, text=True)
-            assert refused.returncode != 0 and variable + ' differs from the qualified native ABI flags' in refused.stderr
+            assert refused.returncode != 0 and variable + ' differs from the selected native ABI flags' in refused.stderr
     (work / 'sysroot/usr/pkg/gcc16/lib/gcc/x86_64--netbsd/16.2.0/crtbeginS.o').unlink()
     assert 'GCC16 CRT and runtime' in read('EMBERBSD_CROSS_TARGET=amd64', '-v', 'PKG_FAIL_REASON')
 print('PASS: explicit ARM/amd64 target fixtures, unsupported and mixed target refusals; no compiler build')

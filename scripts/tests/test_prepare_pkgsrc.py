@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import types
 import unittest
 from unittest import mock
 
@@ -379,21 +380,50 @@ class ExportTests(unittest.TestCase):
     def test_compatibility_launcher_accepts_basename_invocation(self):
         existing = self.work / 'existing'
         existing.mkdir()
-        done = subprocess.run(['/bin/sh', 'prepare-pkgsrc.sh', str(existing)],
+        done = subprocess.run(['/bin/sh', 'prepare-pkgsrc.sh', str(existing),
+            '--sdk-source', sdk_root, '--host-prefix', '/unused-prefix'],
             cwd=HERE.parent, env={**os.environ, 'PY': sys.executable},
             capture_output=True, text=True)
         self.assertEqual(done.returncode, 2)
         self.assertIn('Destination already exists.', done.stderr)
 
-    def test_cli_refuses_without_sdk_loading_or_child_execution(self):
-        with mock.patch.dict(os.environ, {}, clear=True), \
-                mock.patch('sys.stderr', new_callable=io.StringIO) as output, \
-                mock.patch('subprocess.run', side_effect=AssertionError('unexpected child')):
-            self.assertEqual(exporter.main([str(self.work / 'unadmitted'),
-                '--sdk-source', '/not-opened', '--descriptor', '/not-opened',
-                '--bootstrap-plan', '/not-opened']), 2)
-            self.assertIn('SDK source-export controller is not available', output.getvalue())
-        self.assertFalse((self.work / 'unadmitted').exists())
+    def test_cli_exports_with_host_prefix_without_receipts(self):
+        from emberbsd_sdk import native_toolset
+        selected = types.SimpleNamespace(command=self.selected.command,
+            tool=lambda role: sys.executable if role == 'python' else self.selected.command(role)[0],
+            path=str(self.work / 'host-pkg-g16/bin'))
+        def capture(argv, **kwargs):
+            self.assertEqual(kwargs.pop('env')['PATH'], selected.path)
+            for name in ('stdout', 'stderr', 'check'): kwargs.pop(name)
+            return types.SimpleNamespace(stdout=self.runner(argv, **kwargs))
+        destination = self.work / 'direct-export'
+        sys.path.insert(0, str(HERE.parents[1] / 'pkgsrc/lang/llvm/files'))
+        with mock.patch.dict(os.environ, FAKE_ARCHIVE=str(self.upstream), FAKE_MATCH='1'), \
+             mock.patch.object(exporter, '__file__', str(self.root / 'scripts/prepare-pkgsrc.py')), \
+             mock.patch.object(native_toolset, 'load_host_prefix', return_value=selected) as load, \
+             mock.patch.object(exporter.subprocess, 'run', side_effect=capture):
+            self.assertEqual(exporter.main([str(destination), '--sdk-source', sdk_root,
+                             '--host-prefix', str(self.work / 'host-pkg-g16')]), 0)
+        self.assertEqual((destination / 'plain').read_bytes(), b'one\ntwo\nthree\n')
+        self.assertEqual(load.call_args.args, (str(self.work / 'host-pkg-g16'),))
+        self.assertEqual(load.call_args.kwargs, {'required_roles': ('git', 'patch')})
+        self.assertFalse(list(self.work.glob('.pkgsrc-export-*')))
+
+    def test_cli_exports_source_without_sdk_or_compiler(self):
+        destination = self.work / 'acquisition-export'
+        commands = {role: self.selected.command(role)[0] for role in ('git', 'patch')}
+        def source_child(argv, **kwargs):
+            self.assertIn(argv[0], commands.values())
+            for name in ('env', 'stdout', 'stderr', 'check'): kwargs.pop(name)
+            return types.SimpleNamespace(stdout=self.runner(argv, **kwargs))
+        with mock.patch.dict(os.environ, FAKE_ARCHIVE=str(self.upstream), FAKE_MATCH='1'), \
+             mock.patch.dict(sys.modules, {'emberbsd_sdk.native_toolset': None}), \
+             mock.patch.object(exporter, '__file__', str(self.root / 'scripts/prepare-pkgsrc.py')), \
+             mock.patch.object(exporter.subprocess, 'run', side_effect=source_child):
+            self.assertEqual(exporter.main([str(destination), '--git', commands['git'],
+                                          '--patch', commands['patch']]), 0)
+        self.assertEqual((destination / 'plain').read_bytes(), b'one\ntwo\nthree\n')
+        self.assertFalse(list(self.work.glob('.pkgsrc-export-*')))
 
     def test_three_standalone_entries_refuse_unrelated_selectors(self):
         root = HERE.parents[1]
@@ -403,11 +433,11 @@ class ExportTests(unittest.TestCase):
         for number, entry in enumerate(entries):
             destination = self.work / ('refused-' + str(number))
             argv = entry + [str(destination), '--sdk-source', '/not-opened',
-                            '--descriptor', '/not-opened', '--bootstrap-plan', '/not-opened']
+                            '--host-prefix', '/not-opened', '--descriptor', '/not-opened']
             done = subprocess.run(argv, env={**os.environ, 'PY': sys.executable},
                                   capture_output=True, text=True)
             self.assertEqual(done.returncode, 2)
-            self.assertIn('SDK source-export controller is not available', done.stderr)
+            self.assertIn('unrecognized arguments: --descriptor', done.stderr)
             self.assertFalse(destination.exists())
 
     def test_real_git_archive_binary_apply_modes_and_links(self):

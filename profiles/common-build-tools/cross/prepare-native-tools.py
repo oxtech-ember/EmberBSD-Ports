@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
-"""Map one qualified SDK selection to a pinned pkgsrc native include."""
+"""Map a native Ports prefix to pkgsrc host tool variables."""
 import argparse
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -51,7 +50,10 @@ def literal(value):
 
 
 def render(toolset):
-    lines = ['# Generated from a qualified SDK native toolset. Do not edit.']
+    lines = ['# Generated from the selected Ports host prefix. Do not edit.']
+    search = literal(toolset.path)
+    lines += ['PATH:= ' + search, '.if "${PATH}" != "' + search + '"',
+              '.error PATH differs from the selected host prefix', '.endif', '.export PATH']
     for role, variable in ROLE_VARIABLES.items():
         value = literal(toolset.tool(role))
         if "'" in value:
@@ -60,10 +62,10 @@ def render(toolset):
         pinned = '_EMBER_SDK_' + role.upper().replace('-', '_')
         lines += [pinned + ':= ' + value,
                   '.if "${' + pinned + '}" != "' + value + '"',
-                  '.error ' + pinned + ' differs from the qualified SDK tool', '.endif',
+                  '.error ' + pinned + ' differs from the selected Ports tool', '.endif',
                   variable + '?= ${' + pinned + '}',
                   '.if "${' + variable + '}" != "' + value + '"',
-                  '.error ' + variable + ' differs from the qualified SDK tool', '.endif']
+                  '.error ' + variable + ' differs from the selected Ports tool', '.endif']
     flags = toolset.abi_flags
     for role, name, arguments in (
             ('cc', 'CC', flags['cppflags'] + flags['cflags'] + flags['ldflags']),
@@ -73,87 +75,72 @@ def render(toolset):
         value = literal(shlex.join([toolset.tool(role), *arguments]))
         lines += [pinned + ':= ' + value,
                   '.if "${' + pinned + '}" != "' + value + '"',
-                  '.error ' + pinned + ' differs from the qualified native ABI command', '.endif']
+                  '.error ' + pinned + ' differs from the selected native ABI command', '.endif']
     for name in ('cppflags', 'cflags', 'cxxflags', 'ldflags'):
         value = literal(shlex.join(toolset.abi_flags[name]))
         pinned = '_EMBER_SDK_' + name.upper()
         lines += [pinned + ':= ' + value,
                   '.if "${' + pinned + '}" != "' + value + '"',
-                  '.error ' + pinned + ' differs from the qualified native ABI flags', '.endif']
+                  '.error ' + pinned + ' differs from the selected native ABI flags', '.endif']
         for prefix in ('NATIVE_', 'HOST_'):
             variable = prefix + name.upper()
             lines += [variable + '?= ${' + pinned + '}',
                       '.if "${' + variable + '}" != "' + value + '"',
-                      '.error ' + variable + ' differs from the qualified native ABI flags', '.endif']
+                      '.error ' + variable + ' differs from the selected native ABI flags', '.endif']
     for role, variable in (('cc', 'HOST_CC'), ('cxx', 'HOST_CXX'), ('cpp', 'HOST_CPP')):
         pinned = '_EMBER_SDK_' + role.upper()
         value = literal(toolset.tool(role))
         lines += [variable + '?= ${' + pinned + '}',
                   '.if "${' + variable + '}" != "' + value + '"',
-                  '.error ' + variable + ' differs from the qualified SDK compiler', '.endif']
+                  '.error ' + variable + ' differs from the selected Ports compiler', '.endif']
     return ('\n'.join(lines) + '\n').encode()
 
 
 def selection(arguments):
     from emberbsd_sdk.errors import SDKError
-    from emberbsd_sdk.native_toolset import NATIVE_TOOLSET_API, load_native_toolset
-    if type(NATIVE_TOOLSET_API) is not int or NATIVE_TOOLSET_API != 1:
-        raise SDKError('SDK native toolset API 1 is required')
-    toolset = load_native_toolset(
-        arguments.descriptor, descriptor_sha256=arguments.descriptor_sha256,
-        accepted_producer_receipt={'path': arguments.producer_receipt,
-                                   'sha256': arguments.producer_receipt_sha256},
-        required_roles=tuple(ROLE_VARIABLES))
+    from emberbsd_sdk.native_toolset import load_host_prefix
+    toolset = load_host_prefix(arguments.host_prefix,
+                              required_roles=tuple(ROLE_VARIABLES))
     if Path(sys.executable).resolve(strict=True) != Path(toolset.tool('python')).resolve(strict=True):
-        raise SDKError('The adapter interpreter differs from the qualified SDK Python')
+        raise SDKError('The adapter interpreter differs from the selected Ports Python')
     return toolset
 
 
-def publish(toolset, destination):
+def write(toolset, destination):
     from emberbsd_sdk import paths
-    from emberbsd_sdk.publication import (DIRECTORY_PUBLICATION_API,
-                                         publish_directory_noreplace)
     from emberbsd_sdk.errors import SDKError
-    if type(DIRECTORY_PUBLICATION_API) is not int or DIRECTORY_PUBLICATION_API != 1:
-        raise SDKError('SDK directory publication API 1 is required')
     if not Path(destination).is_absolute():
         raise SDKError('Use an absolute native include destination')
     output = Path(paths.canonical_new(destination))
-    if os.path.lexists(output):
-        raise SDKError('The native include destination must be new')
     data = render(toolset)
-    # The staging directory and destination have one owned parent. Native
-    # no-replace publication preserves a concurrent destination entry.
-    with tempfile.TemporaryDirectory(prefix='.native-tools-', dir=output.parent) as temporary:
-        stage = Path(temporary)
-        (stage / 'host-tools.mk').write_bytes(data)
-        (stage / 'selection.json').write_text(json.dumps(toolset.as_dict(), indent=2) + '\n')
-        for path in stage.iterdir():
-            path.chmod(0o444)
-        publish_directory_noreplace(str(stage), str(output))
-    return {'makeconf': str(output / 'host-tools.mk'),
-            'makeconf_sha256': hashlib.sha256(data).hexdigest()}
+    # Replace only the requested configuration file, after a complete write.
+    with tempfile.NamedTemporaryFile(prefix='.native-tools-', dir=output.parent,
+                                     delete=False) as temporary:
+        stage = Path(temporary.name)
+        try:
+            temporary.write(data)
+            temporary.close()
+            os.replace(stage, output)
+        finally:
+            stage.unlink(missing_ok=True)
+    return {'makeconf': str(output)}
 
 
 def main(arguments):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=('publish', 'verify'))
-    parser.add_argument('--descriptor', required=True)
-    parser.add_argument('--descriptor-sha256', required=True)
-    parser.add_argument('--producer-receipt', required=True)
-    parser.add_argument('--producer-receipt-sha256', required=True)
+    parser.add_argument('operation', choices=('write', 'verify'))
+    parser.add_argument('--host-prefix', required=True)
     parser.add_argument('--output')
     parser.add_argument('--makeconf')
-    parser.add_argument('--makeconf-sha256')
     args = parser.parse_args(arguments)
-    if args.operation == 'publish':
-        if not args.output or args.makeconf or args.makeconf_sha256:
-            parser.error('publish requires only --output')
-    elif not args.makeconf or not args.makeconf_sha256 or args.output:
-        parser.error('verify requires only --makeconf and --makeconf-sha256')
+    if args.operation == 'write':
+        if not args.output or args.makeconf:
+            parser.error('write requires only --output')
+    elif not args.makeconf or args.output:
+        parser.error('verify requires only --makeconf')
     toolset = selection(args)
-    if args.operation == 'publish':
-        print(json.dumps(publish(toolset, args.output)))
+    if args.operation == 'write':
+        print(json.dumps(write(toolset, args.output)))
         return
     from emberbsd_sdk import paths
     from emberbsd_sdk.errors import SDKError
@@ -162,8 +149,8 @@ def main(arguments):
     path = Path(paths.canonical_existing(args.makeconf))
     paths.regular_file(str(path))
     data = path.read_bytes()
-    if path.stat().st_mode & 0o222 or hashlib.sha256(data).hexdigest() != args.makeconf_sha256 or data != render(toolset):
-        raise SDKError('The native include differs from the pinned qualified SDK mapping')
+    if data != render(toolset):
+        raise SDKError('Regenerate the native include for the selected host prefix')
     print('VERIFIED')
 
 

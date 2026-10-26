@@ -81,7 +81,7 @@ for role in ('CC', 'CXX', 'CPP', 'AS', 'LD', 'AR', 'RANLIB', 'NM', 'STRIP'):
     assert code == 0, errors
     expected = ('Cross generators require the selected native build compilers'
                 if role in ('CC', 'CXX', 'CPP') else
-                variable + ' differs from the qualified SDK tool')
+                variable + ' differs from the selected Ports tool')
     assert expected in output, (variable, output)
 overrides = [('_EMBER_SDK_AR', '/usr/bin/ar'),
              ('_EMBER_NATIVE_CC_COMMAND', '/usr/bin/cc'),
@@ -97,7 +97,7 @@ for variable, value in overrides:
     assert code != 0, (variable, output)
     expected = ('Do not override reserved SDK native selection variables'
                 if variable.startswith('_EMBER_') else
-                variable + ' differs from the qualified native ABI flags')
+                variable + ' differs from the selected native ABI flags')
     assert expected in errors, (variable, errors)
 (work / 'selection.json').write_text(json.dumps(data, indent=2) + '\n')
 print('PASS: actual Bash generator ABI commands and overridden-compiler refusal; no compiler run')

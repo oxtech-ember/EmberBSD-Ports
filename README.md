@@ -859,39 +859,45 @@ tabs between the fields. The export uses them in the order of the file:
   `distinfo`.
 - `file SOURCE DEST` copies a configuration file or helper into the export.
 
-The standalone Python, compatibility shell and LXQt entries refuse execution.
-The SDK source-export controller pins the current Ports tree and selected tools.
-A grep, metadata or relocation acceptance cannot authorize another export.
-
-A developer can prepare and verify **source data** with explicit host regression
-tools. This operation does not admit these tools into SDK builds:
+Source preparation needs Python, Git and patch. It does not compile code
+or require an existing SDK or host GCC16 installation:
 
 ```sh
-/absolute/git submodule update --init upstream/pkgsrc
-export PY=/absolute/python
-export EXPORT_TEST_GIT=/absolute/git
-export EXPORT_TEST_PATCH=/absolute/patch
-/bin/sh scripts/tests/export-composition.sh /absolute/new-source-work
+git submodule update --init upstream/pkgsrc
+python3 -B scripts/prepare-pkgsrc.py /absolute/new-pkgsrc \
+    --git /absolute/git --patch /absolute/patch
 ```
 
-The verified data is `/absolute/new-source-work/export`. Other profile examples
-require that verified data at the named pkgsrc path. They do not invoke an
-unsupported SDK export stage. Python uses its standard library for archives,
-hashes and copies. Git and patch remain explicit upstream tools.
+Use explicit executable paths for Git and patch. The installed control Python
+is sufficient for this source-data operation. The compiler and package
+builds then use the native Ports prefix, commonly named `host-pkg-g16`.
+Its packages use native Ports GCC16. The cross SDK consumes that same prefix.
+See [native tool selection](profiles/common-build-tools/cross/native-toolset.md).
 
-The future exact SDK controller calls the sole implementation as
+When an installed prefix exists, select only its source preparation tools:
+
+```sh
+python3 -B scripts/prepare-pkgsrc.py /absolute/new-pkgsrc \
+    --sdk-source /absolute/EmberBSD-SDK --host-prefix /absolute/host-pkg-g16
+```
+
+This optional form selects only Git and patch through the shared SDK loader.
+It requires no compiler, producer receipt or prefix Python. Both forms call
+the same exporter. The compatibility shell and LXQt entries forward the same
+arguments. The shell entry also requires explicit `PY`.
+Python uses its standard library for archives, hashes and copies.
+The subprocess PATH contains only the selected source-tool directories.
+
+The callable remains
 `export_pkgsrc(root, destination, selection=selection, runner=runner, scratch=scratch)`.
-It loads the existing immutable SDK API1 selection once. It pins the source and
-holds source/tool shared leases and the work exclusive lease through child
-drainage. The runner takes argv and optional `cwd` and bytes `input`; it returns
+The runner takes argv and optional `cwd` and bytes `input`. It returns
 captured bytes and preserves child failures. The callable returns the pkgsrc
-revision. It does not accept a second tool map.
+revision. The CLI removes its scratch archive after child completion.
+Callers that use the SDK process runner retain scratch on `ProcessOwnershipError`.
 
-`scratch` must name a new absolute child of caller-owned work. The exporter
-never removes it. The caller cleans it only after it proves child drainage.
-On SDK `ProcessOwnershipError`, the caller must retain the scratch archive and
-work leases for HOLD. The shell entry only delegates to the Python refusal.
-It has no export logic and requires explicit `PY`.
+For isolated source-data tests, set `EXPORT_TEST_GIT` and `EXPORT_TEST_PATCH`
+to explicit host tools. `scripts/tests/export-composition.sh` exercises the
+same exporter with these test inputs. It does not build any packages.
 
 The destination must be new. The export takes no profile argument. Before it
 creates the destination, it checks each recipe: the `Makefile` exists, each
@@ -901,13 +907,11 @@ each link stays in the repository. A path that upstream already has must be in
 Builds must work on case-insensitive file systems, such as the default macOS
 file system. Put `WRKOBJDIR` on any local file system. A package that fails
 only on a case-insensitive file system has a defect in its recipe.
-Set `EXPORT_TEST_GIT` and `EXPORT_TEST_PATCH` to absolute host regression tools.
-These test tools are not admitted seed providers.
 `sh scripts/tests/prepare-pkgsrc.sh` tests the finite fixture checks.
 Set `EMBERBSD_SDK_SOURCE` to the explicit SDK API1 source for the typed
 `ProcessOwnershipError` control. `"$PY" -B scripts/tests/test_prepare_pkgsrc.py`
 tests real Git binary patches,
-zero fuzz, empty-file removal, archive links, modes, statuses, CLI refusal,
+zero fuzz, empty-file removal, archive links, modes, statuses, direct CLI selection,
 and caller-owned scratch retention. The ownership error is injected; no real
 unproven child runs in that control.
 `sh scripts/tests/export-composition.sh NEW_WORK` exports the real tree and

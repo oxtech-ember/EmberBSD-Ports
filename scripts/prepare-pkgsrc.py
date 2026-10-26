@@ -11,8 +11,11 @@ from pathlib import Path, PurePosixPath
 import re
 import shutil
 import stat
+import subprocess
 import sys
 import tarfile
+import tempfile
+from types import SimpleNamespace
 
 sys.dont_write_bytecode = True
 
@@ -275,14 +278,13 @@ def extract_archive(archive, destination):
 
 
 def export_pkgsrc(root, destination, *, selection, runner, scratch):
-    """Export once. Return the upstream revision. The caller owns SDK leases.
+    """Export once and return the upstream revision.
 
-    selection is an admitted SDK API1 selection. runner(argv, cwd=None,
+    selection supplies explicit command(role) tuples. runner(argv, cwd=None,
     input=None) returns captured bytes or raises the real child status.
     scratch is a new absolute caller-owned work child. This function never
-    removes it. The caller holds its work lease and cleans only after proven
-    child drainage. Retain scratch and leases on SDK ProcessOwnershipError.
-    This function neither qualifies tools nor searches PATH.
+    removes it. The caller cleans it after child completion and retains it on
+    SDK ProcessOwnershipError. This function never searches the host PATH.
     """
     root = Path(root).resolve(strict=True)
     destination = destination_path(destination)
@@ -401,23 +403,53 @@ def export_pkgsrc(root, destination, *, selection, runner, scratch):
 
 
 def main(argv=None):
-    """Refuse standalone execution until SDK owns the exact export stage."""
+    """Export source data with explicit Git and patch commands."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('destination')
     parser.add_argument('--sdk-source')
-    for name in ('descriptor', 'accepted-seed-receipt', 'bootstrap-plan'):
-        parser.add_argument('--' + name)
-        parser.add_argument('--' + name + '-sha256')
+    parser.add_argument('--host-prefix')
+    parser.add_argument('--git')
+    parser.add_argument('--patch')
     args = parser.parse_args(argv)
     try:
-        destination_path(args.destination)
-        raise ExportError('The SDK source-export controller is not available. '
-                          'Do not reuse a grep, metadata or relocation acceptance. '
-                          'Use the callable only inside its exact SDK controller, '
-                          'or run the documented source-data composition tests.')
-    except ExportError as error:
+        destination = destination_path(args.destination)
+        root = Path(__file__).resolve().parents[1]
+        if args.host_prefix:
+            require(args.sdk_source and not args.git and not args.patch,
+                    '--host-prefix requires --sdk-source instead of --git and --patch.')
+            sys.path.insert(0, str(root / 'pkgsrc/lang/llvm/files'))
+            from sdk_source import load_sdk
+            load_sdk(['--sdk-source', args.sdk_source])
+            from emberbsd_sdk.native_toolset import load_host_prefix
+            selected = load_host_prefix(args.host_prefix, required_roles=('git', 'patch'))
+        else:
+            require(not args.sdk_source, '--sdk-source is used only with --host-prefix.')
+            commands = {'git': args.git, 'patch': args.patch}
+            for role, path in commands.items():
+                require(path and os.path.isabs(path) and os.path.isfile(path)
+                        and os.access(path, os.X_OK),
+                        'Set --' + role + ' to an absolute executable path.')
+            selected = SimpleNamespace(command=lambda role: (commands[role],),
+                path=os.pathsep.join(dict.fromkeys(str(Path(path).parent)
+                                                for path in commands.values())))
+        env = dict(os.environ)
+        env.update(PATH=selected.path, LC_ALL='C', GIT_OPTIONAL_LOCKS='0',
+                   GIT_NO_LAZY_FETCH='1', PATCH_VERSION_CONTROL='none')
+
+        def runner(command, *, cwd=None, input=None):
+            return subprocess.run(command, cwd=cwd, input=input, env=env,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                  check=True).stdout
+
+        with tempfile.TemporaryDirectory(prefix='.pkgsrc-export-', dir=destination.parent) as temporary:
+            revision = export_pkgsrc(root, destination, selection=selected,
+                                     runner=runner, scratch=Path(temporary) / 'source')
+        print('Exported pkgsrc ' + revision + ' to ' + str(destination))
+        return 0
+    except Exception as error:
         print('prepare-pkgsrc: ' + str(error), file=sys.stderr)
-        return 2
+        status = getattr(error, 'returncode', 2)
+        return status if status >= 0 else 128 - status
 
 
 if __name__ == '__main__':

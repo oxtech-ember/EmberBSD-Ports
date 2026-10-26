@@ -90,10 +90,10 @@ base = [str(make), '-C', str(tree / 'devel/ncurses'),
 # Fail at admission, before this test starts a compiler. The old system-tool
 # linker failure is historical evidence, not an expected qualified-SDK failure.
 for name, value, message in (
-        ('EMBERBSD_NATIVE_TOOLSET_PRODUCER_RECEIPT', '',
-         'Set EMBERBSD_NATIVE_TOOLSET_PRODUCER_RECEIPT from one qualified SDK native toolset'),
+        ('EMBERBSD_HOST_PREFIX', '',
+         'Set EMBERBSD_HOST_PREFIX for the selected Ports host prefix'),
         ('EMBERBSD_CROSS_BUILD_CC', '/usr/bin/cc',
-         'EMBERBSD_CROSS_BUILD_CC differs from the qualified SDK tool')):
+         'EMBERBSD_CROSS_BUILD_CC differs from the selected Ports tool')):
     output, errors = run('admission-' + name, [*base, name + '=' + value,
                          '-V', '${PKG_FAIL_REASON}'], expected='failure')
     assert message in errors, (name, output, errors)

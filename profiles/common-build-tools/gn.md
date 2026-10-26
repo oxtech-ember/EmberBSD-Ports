@@ -39,13 +39,10 @@ Their source versions and platform patches are not copied into this recipe.
 
 ## Build and acceptance
 
-Require the accepted SDK native GCC16 toolset before a native GN build.
-The historical Chromium `buildtools/mac/gn` is not that provider. An initial
-bootstrap descriptor is not an ordinary native toolset.
-
-Use the SDK `load_native_toolset` API with the accepted producer receipt and
-required roles `cxx`, `ar`, `python`, `ninja`, `sh`, `rm` and `make`. Use its
-compiler ABI flags and selected tool paths in the native pkgsrc configuration.
+Use the native Ports GCC16 prefix for a native GN build.
+Select it with the SDK `load_host_prefix` API and required roles `cxx`, `ar`,
+`python`, `ninja`, `sh`, `rm` and `make`. No producer receipt is required.
+Use its compiler ABI flags and selected tool paths in the native pkgsrc configuration.
 Keep the native package prefix separate from the EmberBSD target sysroot.
 The Python and Ninja tool dependencies run on the build host. The C++ and
 archive commands compile for the selected package target.
@@ -53,9 +50,9 @@ archive commands compile for the selected package target.
 For native Darwin, the recipe runs these source-owned operations:
 
 1. Selected Python runs `build/gen.py --platform darwin --host darwin`.
-   `CXX` and `AR` select qualified SDK tools. `GN_VERSION` is
+   `CXX` and `AR` select selected Ports tools. `GN_VERSION` is
    `2486 (641ace93dd95)`. The selected C++ flags include the SDK preprocessor
-   and C++ ABI flags. Link flags remain the qualified SDK link flags.
+   and C++ ABI flags. Link flags remain the selected native link flags.
 2. Selected Ninja runs `-C out -j 18 gn` for a jobs-18 build.
 3. The test phase separately builds `-C out -j 18 gn_unittests`, then runs
    `out/gn_unittests`. The Python tool fragment supplies the selected native

@@ -7,7 +7,7 @@ Line Tools, Homebrew or MacPorts compilers for these programs.
 On macOS, build that compiler from the Ports `lang/gcc16` recipe.
 
 The cross profile and the native LLVM controller take their native drivers
-from the qualified SDK toolset. See [native-toolset.md](native-toolset.md).
+from the selected native Ports prefix. See [native-toolset.md](native-toolset.md).
 This file covers only standalone helpers that the SDK toolset does not
 select yet.
 
@@ -26,7 +26,7 @@ These helpers and source checks require `HOST_CC`, and where C++ is used
 Shell helpers source [host-gcc16.sh](host-gcc16.sh). It refuses a missing
 or relative selection, system and package-manager locations, a `__clang__`
 macro set, a version banner naming Clang, LLVM or Apple, and any `__GNUC__`
-other than 16. Use the drivers that the qualified SDK toolset records.
+other than 16. Use the drivers installed in that native Ports prefix.
 
 On Darwin, the native GCC 16 driver uses the host SDK assembler and linker.
 These are not compilers; the selection does not replace them.

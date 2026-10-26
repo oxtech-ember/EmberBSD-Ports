@@ -1,10 +1,11 @@
 # Prepare native Darwin GCC16 package metadata
 
-This policy is for a scoped SDK bootstrap producer on Darwin AArch64.
-It is a source candidate until real package metadata and native builds pass.
-It does not qualify any input binary or ordinary output toolset.
-The SDK owns input admission, host facts, inventories and child execution.
-Ports owns the shared recipes and the pkgsrc command mapping.
+This document describes the older first-compiler bootstrap policy on Darwin AArch64.
+Ordinary native tools are packages in `host-pkg-g16`, built with native Ports GCC16.
+Use that prefix directly for SDK and cross builds, as described in
+[native tool selection](../common-build-tools/cross/native-toolset.md).
+The scoped seed terminology below does not require qualification or receipts
+for an existing native Ports prefix.
 
 ## Source export
 
@@ -18,9 +19,8 @@ Initialize `upstream/pkgsrc` at the repository's recorded gitlink first.
 The export checks that revision. It applies `pkgsrc/export.conf` in order.
 Do not copy a second GCC recipe into the SDK.
 The Python callable uses explicit Git and patch commands.
-The exact SDK source-export controller is not implemented.
-Use the root [source-data composition procedure](../../README.md#package-integration)
-for source editing. That operation does not admit its host tools into SDK builds.
+Use the root [export command](../../README.md#package-integration) with
+`--host-prefix` to select the installed native Ports tools.
 
 The export installs [darwin-bootstrap.mk.conf](darwin-bootstrap.mk.conf) as
 `EMBERBSD-DARWIN-BOOTSTRAP-MK.CONF` beside the other exported profiles.

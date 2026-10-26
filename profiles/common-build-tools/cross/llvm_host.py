@@ -45,24 +45,15 @@ def native(kind, arguments):
     from emberbsd_sdk.inventory import sha256_file
     from emberbsd_sdk.jsonio import write_json
     from emberbsd_sdk.errors import SDKError
-    from emberbsd_sdk.native_toolset import NATIVE_TOOLSET_API, load_native_toolset
-    if type(NATIVE_TOOLSET_API) is not int or NATIVE_TOOLSET_API != 1:
-        raise SDKError('SDK native toolset API 1 is required')
-    bindings = ('DESCRIPTOR', 'DESCRIPTOR_SHA256', 'PRODUCER_RECEIPT',
-                'PRODUCER_RECEIPT_SHA256')
-    selected = {name: os.environ.get('EMBERBSD_NATIVE_TOOLSET_' + name)
-                for name in bindings}
-    if not all(selected.values()):
-        raise SDKError('Set all four EMBERBSD_NATIVE_TOOLSET inputs')
+    from emberbsd_sdk.native_toolset import load_host_prefix
+    prefix = os.environ.get('EMBERBSD_HOST_PREFIX')
+    if not prefix:
+        raise SDKError('Set EMBERBSD_HOST_PREFIX to the native Ports prefix')
     roles = ('cc', 'cxx', 'cpp', 'as', 'ld', 'ar', 'ranlib', 'nm', 'strip',
              'cmake', 'ninja', 'python', 'pkg-config', 'sh')
     if kind == 'clang':
         roles += ('llvm-config', 'llvm-tblgen')
-    toolset = load_native_toolset(
-        selected['DESCRIPTOR'], descriptor_sha256=selected['DESCRIPTOR_SHA256'],
-        accepted_producer_receipt={'path': selected['PRODUCER_RECEIPT'],
-                                   'sha256': selected['PRODUCER_RECEIPT_SHA256']},
-        required_roles=roles)
+    toolset = load_host_prefix(prefix, required_roles=roles)
     if Path(sys.executable).resolve(strict=True) != Path(toolset.tool('python')).resolve(strict=True):
         raise SDKError('The controller interpreter differs from the selected SDK Python')
     expected = 4 if kind == 'llvm' else 5
@@ -97,16 +88,6 @@ def native(kind, arguments):
     os.mkdir(work)
     os.mkdir(work + '/source')
     extract_source(archive, work + '/source', ['llvm', 'cmake', 'third-party', 'libc'] if kind == 'llvm' else ['clang', 'cmake'])
-    import emberbsd_sdk
-    api = Path(emberbsd_sdk.__file__).resolve().parent
-    entrypoint = Path(__file__).with_name('build-' + kind + '-native.py')
-    loader = Path(__file__).resolve().parents[1] / '../../pkgsrc/lang/llvm/files/sdk_source.py'
-    inputs = [archive, __file__, str(entrypoint), str(loader), *tools,
-              *[str(p) for p in sorted(api.rglob('*.py'))]]
-    if llvm:
-        inputs.extend([llvm + '/bin/llvm-config', llvm + '/bin/llvm-tblgen'])
-    hashes = {p: sha256_file(os.path.realpath(p)) for p in inputs}
-    write_json(work + '/inputs.json', dict(sha256=hashes, versions={p: query([p, '--version']) for p in tools}, jobs=int(jobs), native_toolset=toolset.as_dict()))
     command = [cmake, '-S', work + '/source/' + SOURCE + '/' + kind, '-B', work + '/native', '-G', 'Ninja',
         '-DCMAKE_C_COMPILER=' + tools[3], '-DCMAKE_CXX_COMPILER=' + tools[4], '-DCMAKE_BUILD_TYPE=Release',
         '-DCMAKE_MAKE_PROGRAM=' + ninja, '-DPython3_EXECUTABLE=' + host_python]
@@ -132,8 +113,7 @@ def native(kind, arguments):
                 'C_INCLUDE_PATH', 'CPLUS_INCLUDE_PATH', 'LIBRARY_PATH', 'SDKROOT',
                 'PKG_CONFIG_PATH', 'PKG_CONFIG_LIBDIR', 'PKG_CONFIG_SYSROOT_DIR'):
         env.pop(key, None)
-    env['PATH'] = os.pathsep.join(dict.fromkeys(str(Path(toolset.tool(role)).parent)
-                                               for role in roles))
+    env['PATH'] = toolset.path
     env['SHELL'] = toolset.tool('sh')
     env['PKG_CONFIG'] = toolset.tool('pkg-config')
     log_run(work + '/configure.log', command, env=env)
@@ -144,8 +124,6 @@ def native(kind, arguments):
         version = query([path, '--version'])
         if '23.1.4' not in version:
             raise SDKError('Unexpected native generator version: ' + tool)
-        result[tool] = dict(sha256=sha256_file(path), version=version)
-    if hashes != {p: sha256_file(os.path.realpath(p)) for p in inputs}:
-        raise SDKError('Native build input changed')
+        result[tool] = dict(path=path, version=version)
     write_json(work + '/outputs.json', result)
     print('Build-host generators: ' + work + '/native/bin')

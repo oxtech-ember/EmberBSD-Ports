@@ -154,8 +154,10 @@ A private MAKECONF includes the host bootstrap configuration first:
 ```make
 .include "/absolute/host/etc/mk.conf"
 .if defined(BSD_PKG_MK)
-# Bind the eight native-toolset inputs documented in native-toolset.md.
-.include "/absolute/qualified-native-inputs.mk"
+# Select the native Ports prefix and its generated make mapping.
+EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK
+EMBERBSD_HOST_PREFIX=/absolute/host-pkg-g16
+EMBERBSD_NATIVE_TOOLSET_MAKECONF=/absolute/host-tools.mk
 EMBERBSD_CROSS_TOOLS=/absolute/new-cross-tools
 EMBERBSD_CROSS_SYSROOT=/absolute/target-sysroot
 EMBERBSD_CROSS_HOST_PREFIX=/absolute/host
@@ -229,8 +231,8 @@ configuration. The EmberBSD target prefix remains `/usr/pkg`. Cross `install` po
 the private sysroot with package scripts disabled; actual `pkg_add` on the
 target runs installation scripts, including Info registration.
 
-Build-time C/C++ generators require a qualified SDK native toolset.
-Prepare its [pinned native include](native-toolset.md) before package metadata
+Build-time C/C++ generators use the native Ports GCC16 prefix.
+Prepare its [make-variable include](native-toolset.md) before package metadata
 or configuration. Missing selections and conflicting overrides stop the profile.
 `NATIVE_CC` and `NATIVE_CXX` retain the selected native ABI arguments.
 `CC_FOR_BUILD` and `CXX_FOR_BUILD` pass these commands to configure.
@@ -433,11 +435,11 @@ That module therefore defines the same `PRODUCER_QUARANTINE`; the test compares 
 `python3 -B tests/cross-targets.py --sdk-source SDK BMAKE NATIVE_INPUTS_MK`
 checks both target tool compositions,
 real make variable expansion, runtime-provider selection and mixed-target rejection.
-`NATIVE_INPUTS_MK` must bind the eight qualified SDK inputs documented in
+`NATIVE_INPUTS_MK` must set the host prefix and make mapping documented in
 [native-toolset.md](native-toolset.md). It must not replace the synthetic target
 compiler or sysroot inputs. The test retains the target/TLS checks and rejects
 native role aliases, reserved variables and ABI flag overrides.
-This real make check is pending until a qualified native bundle is available.
+Run this real make check with an installed native Ports prefix.
 `tests/cross-libc.rb BMAKE NEW_WORK` exercises the actual pre-extract guard:
 canonical aliases pass; four missing and four divergent libc paths fail.
 That guard detects inconsistent copies, not the origin of an otherwise

@@ -65,19 +65,14 @@ os.environ['HOST_CC'] = native_tools['cc']
 os.environ['HOST_CXX'] = native_tools['cxx']
 # This is an API double, not a descriptor, producer receipt or tool admission.
 native_selection = types.SimpleNamespace(
-    tool=lambda role: native_tools[role],
+    tool=lambda role: native_tools[role], path=str(work),
     abi_flags={key: () for key in ('cppflags', 'cflags', 'cxxflags', 'ldflags')},
     as_dict=lambda: {'format': 'emberbsd-native-toolset-selection', 'version': 1,
                      'api': 1, 'tools': dict(native_tools)})
 native_api = types.ModuleType('emberbsd_sdk.native_toolset')
-native_api.NATIVE_TOOLSET_API = 1
-native_api.load_native_toolset = lambda *args, **kwargs: native_selection
+native_api.load_host_prefix = lambda *args, **kwargs: native_selection
 sys.modules['emberbsd_sdk.native_toolset'] = native_api
-for key, value in {'DESCRIPTOR': str(work / 'descriptor-double'),
-                   'DESCRIPTOR_SHA256': 'a' * 64,
-                   'PRODUCER_RECEIPT': str(work / 'receipt-double'),
-                   'PRODUCER_RECEIPT_SHA256': 'b' * 64}.items():
-    os.environ['EMBERBSD_NATIVE_TOOLSET_' + key] = value
+os.environ['EMBERBSD_HOST_PREFIX'] = str(work)
 os.environ['JOBS'] = '1'
 refused(llvm_host.native, 'llvm', [str(archive), str(work / 'wrong-pin'), cmake, ninja])
 assert not (work / 'wrong-pin').exists()
@@ -88,9 +83,7 @@ flags = json.loads((work / 'llvm/native/cmake-argv.json').read_text())
 assert '-DLLVM_TARGETS_TO_BUILD=Native' in flags and '-DLLVM_INCLUDE_TESTS=OFF' in flags
 assert '-DPython3_EXECUTABLE=' + sys.executable in flags
 assert set(json.loads((work / 'llvm/outputs.json').read_text())) == {'llvm-tblgen', 'llvm-min-tblgen', 'llvm-config'}
-inputs = json.loads((work / 'llvm/inputs.json').read_text())['sha256']
-assert str(cross / 'build-llvm-native.py') in inputs, 'entrypoint is missing from native provenance'
-assert any(p.endswith('/emberbsd_sdk/process.py') for p in inputs), 'SDK API is missing from native provenance'
+assert not (work / 'llvm/inputs.json').exists(), 'Native tools must not require a provenance report'
 # The real config has a bare version output, unlike the other generator tools.
 executable(work / 'llvm/native/bin/llvm-config', "print('23.1.4')\n")
 native_tools['llvm-config'] = str(work / 'llvm/native/bin/llvm-config')

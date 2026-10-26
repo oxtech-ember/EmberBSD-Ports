@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
-"""Check the make adapter with SDK API doubles and real atomic publication."""
+"""Check the make adapter with SDK API doubles and atomic configuration writes."""
 import contextlib
-import hashlib
 import importlib.util
 import io
 import json
@@ -43,36 +42,29 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
     flags = {'cppflags': ('-isystem', '/native/include'), 'cflags': ('-fPIC',),
              'cxxflags': ('-std=c++17',), 'ldflags': ('-L/native/lib',)}
     selected = types.SimpleNamespace(
-        tool=lambda role: tools[role], abi_flags=flags,
+        tool=lambda role: tools[role], path=str(root), abi_flags=flags,
         as_dict=lambda: {'format': 'emberbsd-native-toolset-selection',
                          'version': 1, 'api': 1, 'tools': dict(tools),
                          'abi_flags': {key: list(value) for key, value in flags.items()}})
     api = types.ModuleType('emberbsd_sdk.native_toolset')
-    api.NATIVE_TOOLSET_API = 1
-    api.load_native_toolset = mock.Mock(return_value=selected)
-    pins = ['--descriptor', str(root / 'descriptor-double'),
-            '--descriptor-sha256', 'a' * 64,
-            '--producer-receipt', str(root / 'receipt-double'),
-            '--producer-receipt-sha256', 'b' * 64]
-    destination = root / 'published'
+    api.load_host_prefix = mock.Mock(return_value=selected)
+    pins = ['--host-prefix', str(root / 'host-pkg-g16')]
+    destination = root / 'host-tools.mk'
     with mock.patch.dict(sys.modules, {'emberbsd_sdk.native_toolset': api}):
-        api.load_native_toolset.side_effect = SDKError('Unqualified producer')
-        refused(adapter.main, ['publish', *pins, '--output', str(destination)])
+        api.load_host_prefix.side_effect = SDKError('Missing native GCC16')
+        refused(adapter.main, ['write', *pins, '--output', str(destination)])
         assert not destination.exists() and not list(root.glob('.native-tools-*'))
-        api.load_native_toolset.side_effect = None
+        api.load_host_prefix.side_effect = None
         with contextlib.redirect_stdout(io.StringIO()) as output:
-            adapter.main(['publish', *pins, '--output', str(destination)])
+            adapter.main(['write', *pins, '--output', str(destination)])
         result = json.loads(output.getvalue())
         include = Path(result['makeconf'])
         before = include.read_bytes()
-        assert hashlib.sha256(before).hexdigest() == result['makeconf_sha256']
-        assert not include.stat().st_mode & 0o222
-        assert json.loads((destination / 'selection.json').read_bytes()) == selected.as_dict()
-        call = api.load_native_toolset.call_args
-        assert call.args == (str(root / 'descriptor-double'),)
-        assert call.kwargs['descriptor_sha256'] == 'a' * 64
-        assert call.kwargs['accepted_producer_receipt'] == {
-            'path': str(root / 'receipt-double'), 'sha256': 'b' * 64}
+        assert include == destination.resolve()
+        assert not (root / 'selection.json').exists()
+        call = api.load_host_prefix.call_args
+        assert call.args == (str(root / 'host-pkg-g16'),)
+        assert set(call.kwargs) == {'required_roles'}
         assert call.kwargs['required_roles'] == tuple(adapter.ROLE_VARIABLES)
         for role in ('bmake', 'gmake', 'xz', 'xzcat', 'install'):
             assert role in call.kwargs['required_roles']
@@ -103,19 +95,15 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
             for variable in ('_EMBER_SDK_' + name.upper(), 'NATIVE_' + name.upper(), 'HOST_' + name.upper()):
                 assert ('.if "${' + variable + '}" != "' + value + '"').encode() in before
         assert b'HOST_CC?= ${_EMBER_SDK_CC}' in before
-        refused(adapter.publish, selected, str(destination))
+        adapter.write(selected, str(destination))
         assert include.read_bytes() == before and not list(root.glob('.native-tools-*'))
-        verify = ['verify', *pins, '--makeconf', str(include),
-                  '--makeconf-sha256', result['makeconf_sha256']]
+        verify = ['verify', *pins, '--makeconf', str(include)]
         with contextlib.redirect_stdout(io.StringIO()) as output:
             adapter.main(verify)
         assert output.getvalue() == 'VERIFIED\n'
-        refused(adapter.main, verify[:-1] + ['0' * 64])
-        include.chmod(0o644)
+        include.write_bytes(before + b'# stale mapping\n')
         refused(adapter.main, verify)
-        include.write_bytes(before + b'# foreign change\n')
-        include.chmod(0o444)
-        refused(adapter.main, verify[:-1] + [hashlib.sha256(include.read_bytes()).hexdigest()])
+        adapter.write(selected, str(include))
         tools['python'] = str(root / 'absent-python')
         try:
             adapter.main(verify)
@@ -134,4 +122,4 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         refused(adapter.render, selected)
         assert not list(root.glob('.native-tools-*'))
 
-print('PASS: native make role/ABI argv, thirteen refusals and atomic no-replace fixture; no compiler, bmake or bundle admission')
+print('PASS: native make role/ABI argv, prefix selection, stale/foreign mapping refusals and atomic rewrite; no compiler or bmake build')

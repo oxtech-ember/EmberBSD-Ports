@@ -68,14 +68,14 @@ libraries and no Graphite.
 ```sh
 sh profiles/common-build-tools/tests/gcc16-external-runtime.sh /absolute/new-work
 python3 -B profiles/common-build-tools/tests/cross-targets.py \
-    --sdk-source /absolute/EmberBSD-SDK /absolute/sdk/bmake /absolute/qualified-native-inputs.mk
+    --sdk-source /absolute/EmberBSD-SDK /absolute/sdk/bmake /absolute/native-inputs.mk
 BMAKE=/absolute/bmake sh profiles/development-toolchain/tests/cross-native.sh \
     /absolute/prepared-pkgsrc /absolute/cross-mk.conf /absolute/new-work
 ```
 
 The second check requires the selected SDK Python and `bmake`.
-Its final input binds the eight [qualified native-toolset inputs](../common-build-tools/cross/native-toolset.md).
-Real make and compiler checks remain pending until a qualified native bundle is available.
+Its final input selects the [native Ports prefix](../common-build-tools/cross/native-toolset.md) and make mapping.
+Run real make and compiler checks with the installed native Ports tools.
 The cross MAKECONF of the third check must set
 `EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime`.
 

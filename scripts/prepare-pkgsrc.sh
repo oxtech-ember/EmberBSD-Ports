@@ -4,7 +4,7 @@
 set -eu
 case "${PY:-}" in
     /*) ;;
-    *) printf '%s\n' 'Set PY to the explicit accepted Python executable.' >&2; exit 2 ;;
+    *) printf '%s\n' 'Set PY to the explicit Python executable.' >&2; exit 2 ;;
 esac
 case "$0" in
     */*) base=${0%/*} ;;
