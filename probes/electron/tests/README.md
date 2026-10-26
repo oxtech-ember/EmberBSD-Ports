@@ -12,6 +12,9 @@ uses control Python and an explicit Git executable; no installed SDK is needed:
   --git /absolute/source-tools/bin/git --git-lfs /absolute/source-tools/bin/git-lfs \
   --source-path /absolute/source-tools/bin \
   --depot-tools /absolute/depot-tools
+/absolute/control-python -B probes/electron/tests/electron-upstream-patches.py \
+  --git /absolute/source-tools/bin/git --git-lfs /absolute/source-tools/bin/git-lfs \
+  --source-path /absolute/source-tools/bin --electron-source /absolute/electron-pristine
 ```
 
 Run the remaining build regressions with host CPython 3.15 and its standard
