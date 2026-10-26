@@ -20,6 +20,8 @@ MAKE_ENV+=	PYYAML_FORCE_CYTHON=1 PYYAML_FORCE_LIBYAML=1
 
 PYTHON_VERSIONS_INCOMPATIBLE=	310 311
 
+DISTUTILS_BUILDDIR_IN_TEST_ENV=	yes
+
 .include "../../lang/python/wheel.mk"
 .include "../../textproc/libyaml/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
