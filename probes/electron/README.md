@@ -124,10 +124,14 @@ cp -RL probes/electron/electron44 /absolute/NEW_PKGSRC/devel/electron44
 When the recipes are complete, move them to `pkgsrc/www/blanc` and
 `pkgsrc/devel/electron44`. Then the normal export includes them. Select the
 common Clang cross configuration and matching target runtime, or an explicit
-GCC platform profile. Set `EMBERBSD_HOST_NODE` to the absolute
-host Node.js 24.22.1 executable. Set `EMBERBSD_CROSS_BUILD_PYTHON` to the
-selected host CPython 3.15 executable. Set `EMBERBSD_SDK_SOURCE` to an absolute
-SDK API 1 source directory. The controller checks the SDK API and module origin.
+GCC platform profile. Fetch and checksum need no selected Node, Python or SDK
+source. Extraction requires `EMBERBSD_CROSS_BUILD_PYTHON` set to the selected
+host CPython 3.15 executable and `EMBERBSD_SDK_SOURCE` set to an absolute SDK
+API 1 source directory. Build and test additionally require `EMBERBSD_HOST_NODE`
+set to the absolute host Node.js 24.22.1 executable. The standard pkgsrc phase
+hooks validate these inputs; direct `do-extract`, `do-build` and `do-test` calls
+retain the same checks. The controller checks the SDK API, module origin and
+interpreter versions.
 
 The recipe fetches the source and 40 NPM archives through pkgsrc distfiles.
 The build uses verified local archives and runs no NPM installation or network
@@ -143,6 +147,14 @@ The Blue Oak license text is in `blanc/files/blueoak-1.0.0.txt`; the pinned
 pkgsrc catalog does not include its token. Review that text before adding
 `blueoak-1.0.0` to `ACCEPTABLE_LICENSES`. Keep the recipe's redistribution
 restrictions for unchanged upstream artwork and marks.
+
+`tests/blanc-source-phases.py --help` describes the source-phase regression.
+It uses a real pkgsrc export and explicit make tools/configuration, checks that
+all 41 distfiles are exposed without build inputs, and verifies the consuming
+phases reject missing tools. With `--distdir` it runs normal cached `fetch` and
+`checksum`, including negative license and corrupted-input cases. The optional
+`--baseline-recipe` reproduces the previous global metadata failure. These
+checks do not build an ASAR or qualify the target runtime.
 
 The host checks passed 11 package-controller tests and 22 focused Node tests.
 The produced ASAR contains 1,674 entries. The production-only registry audit

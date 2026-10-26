@@ -121,17 +121,26 @@ INSTALLATION_DIRS+=	bin lib/blanc share/applications share/doc/blanc
 
 .include "../../mk/bsd.prefs.mk"
 
+# Fetch and checksum need no selected build tools. Validate each tool at its
+# first consuming phase, using pkgsrc's public phase hooks.
+.PHONY: blanc-check-source-tools blanc-check-build-tools
+pre-extract: blanc-check-source-tools
+pre-build pre-test: blanc-check-build-tools
+
+blanc-check-source-tools:
 .if !defined(EMBERBSD_SDK_SOURCE) || empty(EMBERBSD_SDK_SOURCE:M/*) || !exists(${EMBERBSD_SDK_SOURCE}/src/emberbsd_sdk/__init__.py)
-PKG_FAIL_REASON+=	"Blanc requires an explicit EmberBSD_SDK_SOURCE API 1 source"
+	${FAIL_MSG} "Blanc requires an explicit EMBERBSD_SDK_SOURCE API 1 source"
 .endif
 .if !defined(EMBERBSD_CROSS_BUILD_PYTHON) || empty(EMBERBSD_CROSS_BUILD_PYTHON:M/*) || !exists(${EMBERBSD_CROSS_BUILD_PYTHON})
-PKG_FAIL_REASON+=	"Blanc requires the selected host Python 3.15+ in EMBERBSD_CROSS_BUILD_PYTHON"
-.endif
-.if !defined(EMBERBSD_HOST_NODE) || empty(EMBERBSD_HOST_NODE:M/*) || !exists(${EMBERBSD_HOST_NODE})
-PKG_FAIL_REASON+=	"Blanc requires the selected host Node.js 24.22.1 in EMBERBSD_HOST_NODE"
+	${FAIL_MSG} "Blanc requires the selected host Python 3.15+ in EMBERBSD_CROSS_BUILD_PYTHON"
 .endif
 
-do-extract:
+blanc-check-build-tools: blanc-check-source-tools
+.if !defined(EMBERBSD_HOST_NODE) || empty(EMBERBSD_HOST_NODE:M/*) || !exists(${EMBERBSD_HOST_NODE})
+	${FAIL_MSG} "Blanc requires the selected host Node.js 24.22.1 in EMBERBSD_HOST_NODE"
+.endif
+
+do-extract: blanc-check-source-tools
 	${MKDIR} ${WRKDIR:Q}
 	${BUILD_HOST_PYTHON:Q} -B -I -S ${FILESDIR:Q}/build-blanc.py \
 	    --sdk-source ${EMBERBSD_SDK_SOURCE:Q} extract \
@@ -140,7 +149,7 @@ do-extract:
 	    --source-archive-sha256 ${BLANC_SOURCE_SHA256:Q} \
 	    --source-files-sha256 ${BLANC_SOURCE_FILES_SHA256:Q}
 
-do-build:
+do-build: blanc-check-build-tools
 	${RM} -rf ${WRKDIR:Q}/runtime-node-modules ${WRKDIR:Q}/asar-tools \
 	    ${WRKDIR:Q}/app-stage ${WRKDIR:Q}/seed-inputs ${WRKDIR:Q}/electron-shim \
 	    ${WRKDIR:Q}/tmp ${WRKDIR:Q}/home ${WRKDIR:Q}/app.asar ${WRKDIR:Q}/SBOM.json
@@ -155,7 +164,7 @@ do-build:
 	    --electron-package-path ${BLANC_ELECTRON_PKGDIR:Q} \
 	    --electron-depends ${BLANC_ELECTRON_DEPENDS:Q}
 
-do-test:
+do-test: blanc-check-build-tools
 	${BUILD_HOST_PYTHON:Q} -B -I -S ${FILESDIR:Q}/build-blanc.py \
 	    --sdk-source ${EMBERBSD_SDK_SOURCE:Q} test \
 	    --source ${WRKSRC:Q} --distdir ${DISTDIR:Q}/${DIST_SUBDIR:Q} \

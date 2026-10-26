@@ -8,6 +8,7 @@ DISTINFO_FILE=	${.CURDIR}/distinfo
 PATCHDIR=	${.CURDIR}/patches
 PATCH_WRKSRC=	${WRKDIR}/${DISTNAME}
 PATCH_STRIP=	-p1
+PATCH_ARGS=	-d ${PATCH_WRKSRC} --forward --quiet -E ${PATCH_STRIP}
 
 CATEGORIES=	lang devel
 

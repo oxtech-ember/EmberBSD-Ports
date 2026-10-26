@@ -556,6 +556,12 @@ for the bounded result; this is not a native Python package acceptance.
 `EMBERBSD_DARWIN_TOOL_PHASE` defaults to `full` for native Darwin.
 The explicit `initial` phase permits absent Darwin libtool, install-name-tool and TAPI selectors.
 Provided selectors still require existing absolute executable files.
+Compiler configuration files preserve an absent TAPI through language
+initialization and reload. CMake's ordinary empty-value serialization must
+not turn absence into an explicitly selected empty tool. This applies to all
+seven templates that save TAPI; full and non-Darwin modes keep upstream
+serialization. Explicit empty, relative, missing and non-executable selectors
+remain invalid in initial mode.
 It preserves the selected five binutils, sysroot and compiler routes.
 Linux, NetBSD and cross routes remain unchanged.
 
@@ -582,7 +588,27 @@ contained environment, private MAKECONF and exact command-record interface.
 It checks the common helper through standalone BSD make queries.
 It does not run a package target or qualify the fixture as an ordinary provider.
 `tests/cmake-initial/` retains operation fixtures for the later native configure gate.
-Native CMake, nested configure, installation, LLVM output, analysis and memory gates remain pending.
+The serialization regression executes the actual compiler templates and
+platform policy with an explicitly selected CMake executable:
+
+```sh
+python3 -B profiles/common-build-tools/tests/cmake-initial-serialization.py \
+    --cmake /absolute/selected/cmake --cmake-source /absolute/patched-cmake \
+    --baseline-source /absolute/cmake-before-serialization-fix \
+    --work /absolute/new-test-directory --configure-input /absolute/native-input.json
+```
+
+The optional configure input contains `arguments` (a CMake argument array)
+and `environment` (the selected subprocess environment). Supply the actual
+C/C++ compiler, make, binutils, Darwin SDK and initial-phase options, including
+any required wrapper environment. This runs the real C-to-C++ configure and
+reload with those tools; the baseline must reproduce the TAPI error. The
+bootstrap binary's compiler-template input root is overlaid in the fixture;
+its platform policy and compiler detection are unchanged. Without this input,
+only script-mode serialization and invalid-selector controls run. The test
+does not build CMake or execute a TAPI operation.
+The complete native CMake package, optional-operation fixtures, installation,
+LLVM output, analysis and memory checks remain separate from this regression.
 
 Origin: EmberBSD contributors. AI assistance was used for this common source change and its checks.
 

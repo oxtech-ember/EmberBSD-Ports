@@ -155,3 +155,105 @@
    return (this->IsDLLPlatform() &&
            (this->GetType() == cmStateEnums::SHARED_LIBRARY ||
             this->IsExecutableWithExports()) &&
+--- Modules/CMakeASMCompiler.cmake.in.orig
++++ Modules/CMakeASMCompiler.cmake.in
+@@ -13,7 +13,11 @@
+ set(CMAKE_ASM@ASM_DIALECT@_COMPILER_LINKER_VERSION "@_CMAKE_ASM_COMPILER_LINKER_VERSION@")
+ set(CMAKE_ASM@ASM_DIALECT@_COMPILER_LINKER_FRONTEND_VARIANT "@_CMAKE_ASM_COMPILER_LINKER_FRONTEND_VARIANT@")
+ set(CMAKE_MT "@CMAKE_MT@")
+-set(CMAKE_TAPI "@CMAKE_TAPI@")
++# Initial Darwin may intentionally have no TAPI. Do not serialize absence
++# as an explicitly selected empty tool when another language reloads this file.
++if(NOT "@_EMBERBSD_DARWIN_INITIAL_TOOLS@" OR NOT "@CMAKE_TAPI@" STREQUAL "")
++  set(CMAKE_TAPI "@CMAKE_TAPI@")
++endif()
+ set(CMAKE_ASM@ASM_DIALECT@_COMPILER_LOADED 1)
+ set(CMAKE_ASM@ASM_DIALECT@_COMPILER_ID "@_CMAKE_ASM_COMPILER_ID@")
+ set(CMAKE_ASM@ASM_DIALECT@_COMPILER_VERSION "@_CMAKE_ASM_COMPILER_VERSION@")
+--- Modules/CMakeCCompiler.cmake.in.orig
++++ Modules/CMakeCCompiler.cmake.in
+@@ -37,7 +37,11 @@
+ set(CMAKE_C_COMPILER_LINKER_VERSION "@CMAKE_C_COMPILER_LINKER_VERSION@")
+ set(CMAKE_C_COMPILER_LINKER_FRONTEND_VARIANT "@CMAKE_C_COMPILER_LINKER_FRONTEND_VARIANT@")
+ set(CMAKE_MT "@CMAKE_MT@")
+-set(CMAKE_TAPI "@CMAKE_TAPI@")
++# Initial Darwin may intentionally have no TAPI. Do not serialize absence
++# as an explicitly selected empty tool when another language reloads this file.
++if(NOT "@_EMBERBSD_DARWIN_INITIAL_TOOLS@" OR NOT "@CMAKE_TAPI@" STREQUAL "")
++  set(CMAKE_TAPI "@CMAKE_TAPI@")
++endif()
+ set(CMAKE_COMPILER_IS_GNUCC @CMAKE_COMPILER_IS_GNUCC@)
+ set(CMAKE_C_COMPILER_LOADED 1)
+ set(CMAKE_C_COMPILER_WORKS @CMAKE_C_COMPILER_WORKS@)
+--- Modules/CMakeCXXCompiler.cmake.in.orig
++++ Modules/CMakeCXXCompiler.cmake.in
+@@ -39,7 +39,11 @@
+ set(CMAKE_CXX_COMPILER_LINKER_VERSION "@CMAKE_CXX_COMPILER_LINKER_VERSION@")
+ set(CMAKE_CXX_COMPILER_LINKER_FRONTEND_VARIANT "@CMAKE_CXX_COMPILER_LINKER_FRONTEND_VARIANT@")
+ set(CMAKE_MT "@CMAKE_MT@")
+-set(CMAKE_TAPI "@CMAKE_TAPI@")
++# Initial Darwin may intentionally have no TAPI. Do not serialize absence
++# as an explicitly selected empty tool when another language reloads this file.
++if(NOT "@_EMBERBSD_DARWIN_INITIAL_TOOLS@" OR NOT "@CMAKE_TAPI@" STREQUAL "")
++  set(CMAKE_TAPI "@CMAKE_TAPI@")
++endif()
+ set(CMAKE_COMPILER_IS_GNUCXX @CMAKE_COMPILER_IS_GNUCXX@)
+ set(CMAKE_CXX_COMPILER_LOADED 1)
+ set(CMAKE_CXX_COMPILER_WORKS @CMAKE_CXX_COMPILER_WORKS@)
+--- Modules/CMakeFortranCompiler.cmake.in.orig
++++ Modules/CMakeFortranCompiler.cmake.in
+@@ -21,7 +21,11 @@
+ set(CMAKE_Fortran_COMPILER_LINKER_VERSION "@CMAKE_Fortran_COMPILER_LINKER_VERSION@")
+ set(CMAKE_Fortran_COMPILER_LINKER_FRONTEND_VARIANT "@CMAKE_Fortran_COMPILER_LINKER_FRONTEND_VARIANT@")
+ set(CMAKE_Fortran_COMPILER_RANLIB "@CMAKE_Fortran_COMPILER_RANLIB@")
+-set(CMAKE_TAPI "@CMAKE_TAPI@")
++# Initial Darwin may intentionally have no TAPI. Do not serialize absence
++# as an explicitly selected empty tool when another language reloads this file.
++if(NOT "@_EMBERBSD_DARWIN_INITIAL_TOOLS@" OR NOT "@CMAKE_TAPI@" STREQUAL "")
++  set(CMAKE_TAPI "@CMAKE_TAPI@")
++endif()
+ set(CMAKE_COMPILER_IS_GNUG77 @CMAKE_COMPILER_IS_GNUG77@)
+ set(CMAKE_Fortran_COMPILER_LOADED 1)
+ set(CMAKE_Fortran_COMPILER_WORKS @CMAKE_Fortran_COMPILER_WORKS@)
+--- Modules/CMakeHIPCompiler.cmake.in.orig
++++ Modules/CMakeHIPCompiler.cmake.in
+@@ -89,4 +89,8 @@
+ set(CMAKE_HIP_COMPILER_LINKER_VERSION "@CMAKE_HIP_COMPILER_LINKER_VERSION@")
+ set(CMAKE_HIP_COMPILER_LINKER_FRONTEND_VARIANT "@CMAKE_HIP_COMPILER_LINKER_FRONTEND_VARIANT@")
+ set(CMAKE_MT "@CMAKE_MT@")
+-set(CMAKE_TAPI "@CMAKE_TAPI@")
++# Initial Darwin may intentionally have no TAPI. Do not serialize absence
++# as an explicitly selected empty tool when another language reloads this file.
++if(NOT "@_EMBERBSD_DARWIN_INITIAL_TOOLS@" OR NOT "@CMAKE_TAPI@" STREQUAL "")
++  set(CMAKE_TAPI "@CMAKE_TAPI@")
++endif()
+--- Modules/CMakeOBJCCompiler.cmake.in.orig
++++ Modules/CMakeOBJCCompiler.cmake.in
+@@ -34,7 +34,11 @@
+ set(CMAKE_OBJC_COMPILER_LINKER_VERSION "@CMAKE_OBJC_COMPILER_LINKER_VERSION@")
+ set(CMAKE_OBJC_COMPILER_LINKER_FRONTEND_VARIANT "@CMAKE_OBJC_COMPILER_LINKER_FRONTEND_VARIANT@")
+ set(CMAKE_MT "@CMAKE_MT@")
+-set(CMAKE_TAPI "@CMAKE_TAPI@")
++# Initial Darwin may intentionally have no TAPI. Do not serialize absence
++# as an explicitly selected empty tool when another language reloads this file.
++if(NOT "@_EMBERBSD_DARWIN_INITIAL_TOOLS@" OR NOT "@CMAKE_TAPI@" STREQUAL "")
++  set(CMAKE_TAPI "@CMAKE_TAPI@")
++endif()
+ set(CMAKE_COMPILER_IS_GNUOBJC @CMAKE_COMPILER_IS_GNUOBJC@)
+ set(CMAKE_OBJC_COMPILER_LOADED 1)
+ set(CMAKE_OBJC_COMPILER_WORKS @CMAKE_OBJC_COMPILER_WORKS@)
+--- Modules/CMakeOBJCXXCompiler.cmake.in.orig
++++ Modules/CMakeOBJCXXCompiler.cmake.in
+@@ -35,7 +35,11 @@
+ set(CMAKE_OBJCXX_COMPILER_LINKER_VERSION "@CMAKE_OBJCXX_COMPILER_LINKER_VERSION@")
+ set(CMAKE_OBJCXX_COMPILER_LINKER_FRONTEND_VARIANT "@CMAKE_OBJCXX_COMPILER_LINKER_FRONTEND_VARIANT@")
+ set(CMAKE_MT "@CMAKE_MT@")
+-set(CMAKE_TAPI "@CMAKE_TAPI@")
++# Initial Darwin may intentionally have no TAPI. Do not serialize absence
++# as an explicitly selected empty tool when another language reloads this file.
++if(NOT "@_EMBERBSD_DARWIN_INITIAL_TOOLS@" OR NOT "@CMAKE_TAPI@" STREQUAL "")
++  set(CMAKE_TAPI "@CMAKE_TAPI@")
++endif()
+ set(CMAKE_COMPILER_IS_GNUOBJCXX @CMAKE_COMPILER_IS_GNUOBJCXX@)
+ set(CMAKE_OBJCXX_COMPILER_LOADED 1)
+ set(CMAKE_OBJCXX_COMPILER_WORKS @CMAKE_OBJCXX_COMPILER_WORKS@)
