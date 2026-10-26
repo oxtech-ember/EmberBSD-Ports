@@ -1,0 +1,75 @@
+# Select the Darwin install-name editor explicitly for Perl.
+# Origin: EmberBSD (AI-assisted). Preserve upstream dependency rewriting.
+# Apply after pkgsrc-perl-selected-dtrace.patch (effective revision 7).
+
+--- a/lang/perl5/Makefile
++++ b/lang/perl5/Makefile
+@@ -3,7 +3,7 @@
+ .include "license.mk"
+ .include "Makefile.common"
+ 
+-PKGREVISION=	7
++PKGREVISION=	8
+ 
+ COMMENT=	Practical Extraction and Report Language
+ 
+@@ -74,6 +74,9 @@
+ .endif
+ # END explicit native runtime shells
+ MAKE_ENV+=		LC_ALL="C"
++.if ${OPSYS} == "Darwin" && defined(EMBERBSD_DARWIN_INSTALL_NAME_TOOL)
++MAKE_ENV+=		EMBERBSD_DARWIN_INSTALL_NAME_TOOL=${EMBERBSD_DARWIN_INSTALL_NAME_TOOL:Q}
++.endif
+ LDFLAGS.QNX+=		-lm
+ 
+ CONFIGURE_ARGS.SunOS+=	-Aundef:csh
+--- a/lang/perl5/distinfo
++++ b/lang/perl5/distinfo
+@@ -23,4 +23,4 @@
+ SHA1 (patch-hints_linux.sh) = 4baa8f80695687abb53d4f4e1830cf86db5b2bf7
+ SHA1 (patch-hints_netbsd.sh) = 523e7e2dc23737bc6d7b7f56a76b174633a4569f
+ SHA1 (patch-hints_solaris__2.sh) = 83b20650435ea3b62314af6059f3d82c3dd6b0a2
+-SHA1 (patch-installperl) = b129d64cc17b898b44fe6282b8b1df36e342d0ef
++SHA1 (patch-installperl) = fbe5f2f26bbddb8e301d709e99f13fca67691201
+--- a/lang/perl5/patches/patch-installperl
++++ b/lang/perl5/patches/patch-installperl
+@@ -2,6 +2,9 @@
+ 
+ Haiku part: From:
+ https://github.com/haikuports/haikuports/blob/master/dev-lang/perl/patches/perl-5.32.0.patchset
++
++EmberBSD: Select the Darwin install-name tool through the environment.
++Origin: EmberBSD (AI-assisted). Preserve upstream dependency rewriting.
+ 
+ --- installperl.orig	2020-12-18 09:58:48.000000000 +0000
+ +++ installperl
+@@ -27,3 +30,29 @@
+  }
+  
+  
++@@ -752,6 +758,14 @@
++       && $Config{useshrplib}
++       or return;
++ 
+++    my $install_name_tool = "install_name_tool";
+++    if (exists $ENV{EMBERBSD_DARWIN_INSTALL_NAME_TOOL}) {
+++        $install_name_tool = $ENV{EMBERBSD_DARWIN_INSTALL_NAME_TOOL};
+++        die "EMBERBSD_DARWIN_INSTALL_NAME_TOOL must name an absolute executable file\n"
+++          unless $install_name_tool =~ m{\A/}
+++            && -f $install_name_tool && -x $install_name_tool;
+++    }
+++
++     my @opts;
++     my $so = $Config{so};
++     my $libperl = "$Config{archlibexp}/CORE/libperl.$Config{so}";
++@@ -763,8 +777,8 @@
++     }
++     push @opts, $file;
++ 
++-    $opts{verbose} and print "  install_name_tool @opts\n";
++-    system "install_name_tool", @opts
+++    $opts{verbose} and print "  $install_name_tool @opts\n";
+++    system { $install_name_tool } $install_name_tool, @opts
++       and die "Cannot update $file dependency paths\n";
++ }
++ 

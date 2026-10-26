@@ -4,7 +4,7 @@
 as checked on 2026-10-12. Its [release announcement](https://www.nntp.perl.org/group/perl.perl5.porters/2026/07/msg271063.html)
 publishes the matching source SHA256.
 
-The complete `lang/perl5` recipe supplies Perl 5.44.0nb5, its shared library,
+The complete `lang/perl5` recipe supplies Perl 5.44.0nb8, its shared library,
 threaded interpreter, XS modules, development headers and manuals. Clang's
 installed scan-build programs depend on this target package. The build uses
 macOS for compilation and an EmberBSD/AArch64 device for Configure probes.
@@ -94,6 +94,51 @@ feature answers and configured ABI macros are preserved. Only tool-name macros
 and build identity comments change in the installed copy of `CORE/config.h`.
 The original build Config files remain untouched; the header keeps its
 cross-build provenance. The converter rejects unknown remaining host paths.
+
+## Selected Darwin install-name tool
+
+For native Darwin, set `EMBERBSD_DARWIN_INSTALL_NAME_TOOL` to the selected
+SDK executable. The recipe passes a defined value through quoted `MAKE_ENV`.
+It does not substitute executable text into Perl source or installed Config.
+`installperl` reads the environment only inside the existing Darwin shared
+library guard. It accepts an absolute executable regular file, including a
+symbolic link to one. An empty, relative, missing or non-executable selection
+fails before dispatch. It does not fall back to `PATH` after an explicit choice.
+An unset value keeps the ordinary upstream `install_name_tool` command.
+
+The list-form call preserves each `-id` and `-change` operand, including paths
+with spaces. A nonzero tool exit still fails installation. The NetBSD recipe
+does not add this Darwin environment assignment or a new target dependency.
+The existing `fix_dep_names` platform guard remains unchanged.
+
+The [selection regression](../tests/perl-install-name-tool.py) takes the exported
+Perl Makefile and patched upstream `installperl`:
+
+```sh
+python3 profiles/common-build-tools/tests/perl-install-name-tool.py \
+    --makefile /absolute/export/lang/perl5/Makefile \
+    --installperl /absolute/patched-perl/installperl
+```
+
+This command checks source contracts and rejects eleven deliberate mutations.
+To execute the actual function, add `--perl /absolute/selected/perl` and
+`--new-work /absolute/new-fragment-check` through the SDK owned-process runner.
+The fixture supplies Config, verbosity, current directory and OS values.
+Only the OS operand in the extracted function is parameterized. Recording
+executables check both argument lists, explicit invalid choices, ordinary
+unset selection, tool failure, symbolic links and inapplicable platform states.
+The selected Perl path must fit a one-word shebang. The install-name tool and
+operand paths include spaces and shell metacharacters. The fixture needs no
+Perl modules. Source checks do not establish Perl execution or Make quoting;
+fragment execution does not establish actual Mach-O rewriting or package
+installation. Those checks remain separate.
+
+The [MAKE_ENV regression](../tests/perl-install-name-env.py) runs the real
+recipe clause with the complete accepted bmake tuple (`--make-arg` repeated
+for each argument), `--makefile`, `--shell` and `--new-work`. The selected
+shell checks its received environment. Seven cases check unset, empty,
+space-containing and symbolic-link values on Darwin, and no assignment on
+NetBSD. It executes neither Perl nor the install-name tool.
 
 ## Checks
 
