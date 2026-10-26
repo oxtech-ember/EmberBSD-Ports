@@ -62,14 +62,19 @@ RUNTIME_WRAPPER_NAMES = ('CWRAPPERS_PREPEND.cc', 'CWRAPPERS_PREPEND.cxx',
 NAMES += RUNTIME_WRAPPER_NAMES
 
 
-def runtime_link_flags(value, expected_abi=None):
-    """Require the producer runtime options and SDK iconv input exactly once."""
-    words = shlex.split(value['LDFLAGS'])
+def accepted_sdk_iconv(value):
+    """Return the exact linker input for the accepted SDK stub."""
     sdk_root = value['OSX_SDK_PATH']
     require(Path(sdk_root).is_absolute() and not any(c.isspace() for c in sdk_root) and
             ',' not in sdk_root,
             'The accepted SDK path must be absolute and one word without a comma')
-    sdk_iconv = '-Wl,' + sdk_root + SDK_ICONV_SUFFIX
+    return '-Wl,' + sdk_root + SDK_ICONV_SUFFIX
+
+
+def runtime_link_flags(value, expected_abi=None):
+    """Require the producer runtime options and SDK iconv input exactly once."""
+    words = shlex.split(value['LDFLAGS'])
+    sdk_iconv = accepted_sdk_iconv(value)
     policy_words = (*RUNTIME_LINK_FLAGS, sdk_iconv)
     require(all(words.count(word) == 1 for word in policy_words) and
             [word for word in words if SDK_ICONV_SUFFIX in word] == [sdk_iconv],
@@ -81,13 +86,16 @@ def runtime_link_flags(value, expected_abi=None):
 
 
 def wrapper_runtime_flags(value, expected_tails=None):
-    """Keep the driver option on the final wrappers without changing their tails."""
+    """Require each final C/C++ wrapper to retain runtime and SDK link inputs."""
+    sdk_iconv = accepted_sdk_iconv(value)
+    policy_words = (*RUNTIME_LINK_FLAGS, sdk_iconv)
     tails = {}
     for name in RUNTIME_WRAPPER_NAMES:
         words = shlex.split(value[name])
-        require(words.count('-nodefaultrpaths') == 1,
-                'The final compiler wrapper lost or duplicated -nodefaultrpaths')
-        tails[name] = [word for word in words if word != '-nodefaultrpaths']
+        require(all(words.count(word) == 1 for word in policy_words) and
+                [word for word in words if SDK_ICONV_SUFFIX in word] == [sdk_iconv],
+                'The final compiler wrapper lost, duplicated or changed a runtime link input')
+        tails[name] = [word for word in words if word not in policy_words]
     require(expected_tails is None or tails == expected_tails,
             'The producer runtime policy changed a compiler wrapper tail')
     return tails
@@ -112,6 +120,16 @@ def expect_runtime_link_rejection(label, value):
     raise AssertionError(label + ': invalid link policy was accepted')
 
 
+def expect_wrapper_rejection(label, value):
+    try:
+        wrapper_runtime_flags(value)
+    except AssertionError as error:
+        require(str(error) == 'The final compiler wrapper lost, duplicated or changed a runtime link input',
+                label + ': rejected for an unrelated reason: ' + str(error))
+        return
+    raise AssertionError(label + ': invalid compiler wrapper policy was accepted')
+
+
 def policy_link_self_test():
     """Keep missing, duplicated and foreign SDK inputs causally rejected."""
     require(NAMES.count('OSX_SDK_PATH') == 1 and NAMES.count('LDFLAGS') == 1,
@@ -122,7 +140,7 @@ def policy_link_self_test():
     producer = list(RUNTIME_LINK_FLAGS)
     valid = {'OSX_SDK_PATH': sdk,
              'LDFLAGS': shlex.join([*abi, *producer, stub]),
-             **{name: '-nodefaultrpaths' for name in RUNTIME_WRAPPER_NAMES}}
+             **{name: shlex.join([*producer, stub]) for name in RUNTIME_WRAPPER_NAMES}}
     wire = {name: '' for name in NAMES}
     wire.update(valid)
     decoded = named_values('\n'.join(name + '=' + wire[name] for name in NAMES))
@@ -162,27 +180,28 @@ def policy_link_self_test():
                     'The unsupported SDK path failed for an unrelated reason')
         else:
             raise AssertionError('An unsupported SDK path was accepted')
+    wrapper_flags = (*RUNTIME_LINK_FLAGS, stub)
     tails = {name: ['-B/seed/', '-specs=/seed/native.specs'] for name in RUNTIME_WRAPPER_NAMES}
-    routed = {name: shlex.join(['-nodefaultrpaths', *tails[name]]) for name in RUNTIME_WRAPPER_NAMES}
+    routed = {'OSX_SDK_PATH': sdk,
+              **{name: shlex.join([*tails[name], *wrapper_flags]) for name in RUNTIME_WRAPPER_NAMES}}
     wrapper_runtime_flags(routed, tails)
+    invalid_routes = [tuple(flag for flag in wrapper_flags if flag != missing)
+                      for missing in wrapper_flags]
+    invalid_routes.extend((*wrapper_flags, duplicate) for duplicate in wrapper_flags)
+    invalid_routes.append((*RUNTIME_LINK_FLAGS, '-Wl,/other/MacOSX.sdk' + SDK_ICONV_SUFFIX))
     for name in RUNTIME_WRAPPER_NAMES:
-        for count in (0, 2):
-            invalid = dict(routed, **{name: shlex.join(['-nodefaultrpaths'] * count + tails[name])})
-            try:
-                wrapper_runtime_flags(invalid, tails)
-            except AssertionError as error:
-                require(str(error) == 'The final compiler wrapper lost or duplicated -nodefaultrpaths',
-                        name + ': rejected for an unrelated reason')
-            else:
-                raise AssertionError(name + ': invalid final wrapper policy was accepted')
-    changed = dict(routed, **{RUNTIME_WRAPPER_NAMES[0]: '-nodefaultrpaths -B/foreign/'})
+        for invalid_flags in invalid_routes:
+            invalid = dict(routed, **{name: shlex.join([*tails[name], *invalid_flags])})
+            expect_wrapper_rejection(name, invalid)
+    changed = dict(routed, **{RUNTIME_WRAPPER_NAMES[0]:
+                              shlex.join(['-B/foreign/', *wrapper_flags])})
     try:
         wrapper_runtime_flags(changed, tails)
     except AssertionError as error:
         require(str(error) == 'The producer runtime policy changed a compiler wrapper tail',
                 'The foreign wrapper tail failed for an unrelated reason')
     else:
-        raise AssertionError('A foreign compiler wrapper tail was accepted')
+        raise AssertionError('A foreign wrapper tail was accepted')
 
 
 def gmake_shells(value):
