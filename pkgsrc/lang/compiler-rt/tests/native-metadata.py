@@ -35,7 +35,7 @@ def main():
         return rows
 
     native = query('darwin')
-    assert native['PKGNAME'] == 'compiler-rt-23.1.4'
+    assert native['PKGNAME'] == 'compiler-rt-23.1.4nb1'
     assert native['PATCHDIR'] == str(args.pkgsrc / 'lang/compiler-rt/patches')
     assert native['PATCH_WRKSRC'].endswith('/llvm-project-23.1.4.src')
     assert native['PATCH_STRIP'] == '-p1' and native['PKG_FAIL_REASON'] == ''

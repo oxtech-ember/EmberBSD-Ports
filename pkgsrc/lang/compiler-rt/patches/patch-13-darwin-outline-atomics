@@ -1,0 +1,52 @@
+# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+# Give shared Darwin outline-atomics outputs one producer target.
+--- a/compiler-rt/lib/builtins/CMakeLists.txt
++++ b/compiler-rt/lib/builtins/CMakeLists.txt
+@@ -814,6 +814,7 @@
+           INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}"
+         )
+         list(APPEND aarch64_SOURCES "${helper_asm}")
++        list(APPEND lse_builtins "${helper_asm}")
+       endif()
+     endforeach(model)
+   endforeach(size)
+--- a/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake
++++ b/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake
+@@ -279,10 +279,13 @@
+   cmake_parse_arguments(LIB
+     ""
+     "PARENT_TARGET;OS;ARCH"
+-    "SOURCES;CFLAGS;DEFS;INCLUDE_DIRS"
++    "SOURCES;CFLAGS;DEFS;INCLUDE_DIRS;DEPS"
+     ${ARGN})
+   set(libname "${name}.${suffix}_${LIB_ARCH}_${LIB_OS}")
+   add_library(${libname} STATIC ${LIB_SOURCES})
++  if(LIB_DEPS)
++    add_dependencies(${libname} ${LIB_DEPS})
++  endif()
+   
+   # Write out the sources that were used to compile the builtins so that tests can be run in
+   # an independent compiler-rt build (see: compiler-rt/test/builtins/CMakeLists.txt)
+@@ -434,15 +437,15 @@
+ 
+     list_intersect(DARWIN_BUILTIN_ARCHS DARWIN_${os}_BUILTIN_ARCHS BUILTIN_SUPPORTED_ARCH)
+ 
+-    if((arm64 IN_LIST DARWIN_BUILTIN_ARCHS OR arm64e IN_LIST DARWIN_BUILTIN_ARCHS) AND NOT TARGET lse_builtin_symlinks)
+-      add_custom_target(
+-        lse_builtin_symlinks
+-        BYPRODUCTS ${lse_builtins}
+-        ${arm64_lse_commands}
+-      )
+-
++    if(arm64 IN_LIST DARWIN_BUILTIN_ARCHS OR arm64e IN_LIST DARWIN_BUILTIN_ARCHS OR arm64_32 IN_LIST DARWIN_BUILTIN_ARCHS)
++      # All Darwin libraries share these generated inputs. A single target
++      # owns their commands; independent library rules must not race them.
++      if(NOT TARGET lse_builtin_symlinks)
++        add_custom_target(lse_builtin_symlinks DEPENDS ${lse_builtins})
++      endif()
+       set(deps_arm64 lse_builtin_symlinks)
+       set(deps_arm64e lse_builtin_symlinks)
++      set(deps_arm64_32 lse_builtin_symlinks)
+     endif()
+ 
+     foreach (arch ${DARWIN_BUILTIN_ARCHS})

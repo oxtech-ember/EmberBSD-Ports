@@ -3,6 +3,7 @@
 .include "../../lang/llvm/version.mk"
 
 PKGNAME=	compiler-rt-${LLVM_VERSION}
+PKGREVISION=	1
 # One patch owner for native packages and the OS/SDK prepared source.
 DISTINFO_FILE=	${.CURDIR}/distinfo
 PATCHDIR=	${.CURDIR}/patches
