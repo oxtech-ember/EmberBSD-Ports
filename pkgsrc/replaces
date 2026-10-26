@@ -324,3 +324,4 @@ parallel/spirv-tools
 parallel/spirv-headers
 parallel/spirv-llvm-translator
 comms/dfu-util
+devel/libusb1

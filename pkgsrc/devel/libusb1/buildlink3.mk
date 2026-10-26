@@ -1,0 +1,15 @@
+# $NetBSD: buildlink3.mk,v 1.8 2024/02/10 16:40:56 wiz Exp $
+
+BUILDLINK_TREE+=	libusb1
+
+.if !defined(LIBUSB1_BUILDLINK3_MK)
+LIBUSB1_BUILDLINK3_MK:=
+
+USE_CC_FEATURES+=	c11
+
+BUILDLINK_API_DEPENDS.libusb1+=	libusb1>=1.0.9
+BUILDLINK_PKGSRCDIR.libusb1?=	../../devel/libusb1
+
+.endif	# LIBUSB1_BUILDLINK3_MK
+
+BUILDLINK_TREE+=	-libusb1
