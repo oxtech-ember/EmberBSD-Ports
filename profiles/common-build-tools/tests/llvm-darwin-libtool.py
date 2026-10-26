@@ -41,7 +41,8 @@ def query(package, name, selectors=()):
     # Keep unrelated libxml2 option discovery out of this isolated metadata query.
     command = [str(bmake), '-C', str(tree / 'lang' / package),
                'MAKECONF=' + str(makeconf), 'WRKOBJDIR=' + str(work / 'objects'),
-               'PKG_DBDIR=' + str(work / 'pkgdb'), 'PKG_BUILD_OPTIONS.libxml2=', *selectors]
+               'PKG_DBDIR=' + str(work / 'pkgdb'), 'PKG_BUILD_OPTIONS.libxml2=',
+               'EMBERBSD_DARWIN_TOOL_PHASE=full', *selectors]
     for field in fields:
         command.extend(('-v', field))
     result = subprocess.run(command, capture_output=True, text=True)
@@ -79,7 +80,16 @@ for package in ('llvm', 'clang'):
         if phase == 'full':
             phase_args.append('EMBERBSD_DARWIN_LIBTOOL=' + str(selected))
         phase_row = query(package, phase, phase_args)
+        assert not phase_row['PKG_FAIL_REASON'], phase_row
         phase_options = shlex.split(phase_row['CMAKE_CONFIGURE_ARGS'])
+        # CMake uses the last definition even when an override adds :BOOL.
+        definitions = {arg[2:].split('=', 1)[0].split(':', 1)[0]: arg.split('=', 1)[1]
+                       for arg in phase_options if arg.startswith('-D') and '=' in arg}
+        if package == 'llvm':
+            for key in ('LLVM_BUILD_LLVM_DYLIB', 'LLVM_LINK_LLVM_DYLIB'):
+                assert definitions.get(key) == 'ON', (phase, key, definitions.get(key))
+        if phase == 'initial':
+            assert definitions['LLVM_DARWIN_ARCHIVE_TOOL'] == 'ar', phase_row
         assert any(arg.startswith('-DLD64_EXECUTABLE:') for arg in phase_options), phase_row
         assert any(arg == '-DCMAKE_DSYMUTIL:FILEPATH=' + str(dsym) for arg in phase_options), phase_row
     for name, value in [('missing', ''), ('relative', 'llvm-libtool-darwin'),
@@ -121,5 +131,5 @@ for system in ('Darwin', 'NetBSD'):
     (work / ('cross-' + system + '.log')).write_text(plain.stdout + ignored.stdout)
 assert not (work / 'tool-executed').exists(), 'Metadata admission executed the archive tool'
 assert not (work / 'dsymutil-executed').exists(), 'Metadata admission executed dsymutil'
-print('PASS: LLVM/Clang native Darwin linker/dsymutil selectors, both phases, invalid-path refusals; Linux/NetBSD metadata unchanged')
+print('PASS: LLVM/Clang native Darwin linker/dsymutil selectors, both phases retain LLVM dylibs, invalid-path refusals; Linux/NetBSD metadata unchanged')
 print('SCOPE: recipe metadata only; no compiler, archive tool, package phase or prefix writer ran')

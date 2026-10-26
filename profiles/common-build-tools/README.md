@@ -553,10 +553,17 @@ The phase and existing package platform variables propagate through both `try_co
 The existing default CMP0137 NEW policy and preset opt-out refusal remain required.
 A later package override to OLD or platform-variable opt-out is outside this acceptance boundary.
 
-LLVM initial mode selects `LLVM_DARWIN_ARCHIVE_TOOL=ar` and static LLVM linkage.
-The upstream libtool route remains the default.
-Backends, options, dependencies and PLIST remain complete.
-The SDK controller owns the fixed five-target operation and exact LLVM dependency closure.
+LLVM initial mode selects `LLVM_DARWIN_ARCHIVE_TOOL=ar` without changing
+the package's library configuration. The ordinary LLVM package builds and links
+`libLLVM` in both phases, as required by its complete PLIST. The upstream
+libtool route remains the default. Backends, options and dependencies remain
+complete. A finite tools-only operation must select its library settings
+explicitly; initial archive-tool selection alone does not imply that scope.
+The SDK controller separately owns its fixed five-target operation and exact
+LLVM dependency closure.
+`tests/llvm-darwin-libtool.py EXPORTED_PKGSRC MAKECONF BMAKE NEW_WORK` checks
+actual LLVM/Clang metadata in both phases, including the effective final CMake
+dylib settings, invalid tool selections and unchanged non-Darwin/cross guards.
 This profile does not qualify the uninstalled LLVM package or future graph nodes.
 
 Run `tests/cmake-initial-source.py` with `--cmake-source` and `--llvm-source`

@@ -27,9 +27,8 @@ CMAKE_CONFIGURE_ARGS.Darwin+= -DCMAKE_DSYMUTIL:FILEPATH=${EMBERBSD_DARWIN_DSYMUT
 .endif
 .endif
 .if ${EMBERBSD_DARWIN_TOOL_PHASE:Ufull} == "initial"
-# The finite SDK operation builds tools with selected ar/ranlib, not a package.
+# Archive-tool selection preserves the package's complete library settings.
 CMAKE_CONFIGURE_ARGS.Darwin+= -DLLVM_DARWIN_ARCHIVE_TOOL:STRING=ar
-CMAKE_CONFIGURE_ARGS.Darwin+= -DLLVM_BUILD_LLVM_DYLIB:BOOL=OFF -DLLVM_LINK_LLVM_DYLIB:BOOL=OFF
 .elif ${EMBERBSD_DARWIN_TOOL_PHASE:Ufull} != "full"
 PKG_FAIL_REASON+= "EMBERBSD_DARWIN_TOOL_PHASE must be initial or full"
 .else
