@@ -29,6 +29,21 @@ tools, binaries, corpus and build logs. Use the work-tree layout created by
 the local build procedure. `results/accepted/` contains the successful setup,
 compile, link and negative-control logs.
 
+The adapter does not record files from the moving SDK checkout. It runs
+`git archive` for the checkout's `HEAD` commit and extracts the fuzz-check
+modules to `<work-root>/sdk-snapshots/<commit>/`. The manifest lists those
+read-only copies with that commit, and the adapter imports the SDK from them.
+A later SDK commit therefore leaves `verify --manifest` valid, while a changed
+snapshot file still fails it. A rerun reuses an existing snapshot only when it
+matches the commit exactly. Run `fuzz-check.py` from the same snapshot.
+The regression check clones the SDK checkout, adds a later `process.py`
+commit, and alters the snapshot copy:
+
+```sh
+python3 profiles/common-graphics/tests/cairo-lzo-evidence-sdk.py \
+  --sdk-root /absolute/EmberBSD-SDK
+```
+
 ```sh
 python3 profiles/common-graphics/tests/cairo-lzo-evidence.py \
   --ports-root /absolute/EmberBSD-Ports \
@@ -40,13 +55,14 @@ python3 profiles/common-graphics/tests/cairo-lzo-evidence.py \
   --pkg-config /absolute/pkg-config --cppcheck /absolute/cppcheck \
   --output /absolute/cairo-lzo-work/results/build.json
 
-python3 /absolute/EmberBSD-SDK/scripts/fuzz-check.py run \
+SDK=/absolute/cairo-lzo-work/sdk-snapshots/$(git -C /absolute/EmberBSD-SDK rev-parse HEAD)
+python3 "$SDK/scripts/fuzz-check.py" run \
   --manifest /absolute/cairo-lzo-work/results/build.json \
   --output /absolute/cairo-lzo-evidence \
   --runs 10000 --seed 1 --max-len 65536 \
   --timeout 300 --input-timeout 10 --rss-limit-mb 2048 \
   --memcheck optional
-python3 /absolute/EmberBSD-SDK/scripts/fuzz-check.py verify \
+python3 "$SDK/scripts/fuzz-check.py" verify \
   --evidence /absolute/cairo-lzo-evidence \
   --manifest /absolute/cairo-lzo-work/results/build.json
 ```

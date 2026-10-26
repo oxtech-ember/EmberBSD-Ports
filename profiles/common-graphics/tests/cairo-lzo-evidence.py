@@ -5,12 +5,80 @@
 """Build an SDK manifest for Cairo fuzzing and memory-check evidence."""
 
 import argparse
+import filecmp
 import hashlib
+import io
 import json
+import os
 from pathlib import Path
 import platform
+import shutil
 import subprocess
 import sys
+import tarfile
+import tempfile
+
+# Files that fuzz-check.py imports, including lazily selected host backends.
+SDK_FUZZ_CHECK_PATHS = (
+    'scripts/fuzz-check.py',
+    'src/emberbsd_sdk/__init__.py',
+    'src/emberbsd_sdk/_darwin_process.py',
+    'src/emberbsd_sdk/_linux_process.py',
+    'src/emberbsd_sdk/_netbsd_process.py',
+    'src/emberbsd_sdk/errors.py',
+    'src/emberbsd_sdk/fuzz_check.py',
+    'src/emberbsd_sdk/jsonio.py',
+    'src/emberbsd_sdk/paths.py',
+    'src/emberbsd_sdk/process.py',
+    'src/emberbsd_sdk/stream.py',
+)
+
+
+def _tree(root):
+    return sorted(path.relative_to(root) for path in root.rglob('*'))
+
+
+def _same_tree(left, right):
+    names = _tree(left)
+    return names == _tree(right) and all(
+        filecmp.cmp(left / name, right / name, shallow=False)
+        for name in names if (left / name).is_file())
+
+
+def snapshot_sdk(sdk_root, parent):
+    """Extract the fuzz-check files of the SDK HEAD commit below parent.
+
+    The copy is independent of later changes to the SDK checkout. An existing
+    snapshot is reused only when it still matches the commit bytes exactly.
+    """
+    sdk_root = Path(sdk_root).resolve(strict=True)
+    revision = subprocess.check_output(
+        ['git', '-C', str(sdk_root), 'rev-parse', '--verify', 'HEAD^{commit}'],
+        text=True).strip()
+    archive = subprocess.check_output(
+        ['git', '-C', str(sdk_root), 'archive', '--format=tar', revision, '--',
+         *SDK_FUZZ_CHECK_PATHS])
+    parent = Path(parent)
+    parent.mkdir(parents=True, exist_ok=True)
+    destination = parent / revision
+    staging = Path(tempfile.mkdtemp(prefix='.sdk-', dir=parent))
+    try:
+        with tarfile.open(fileobj=io.BytesIO(archive)) as stream:
+            stream.extractall(staging, filter='data')
+        if sorted(str(path) for path in _tree(staging)
+                  if (staging / path).is_file()) != sorted(SDK_FUZZ_CHECK_PATHS):
+            raise SystemExit(f'SDK commit {revision} lacks the fuzz-check files')
+        for path in SDK_FUZZ_CHECK_PATHS:
+            os.chmod(staging / path, 0o444)
+        if destination.exists():
+            if not _same_tree(staging, destination):
+                raise SystemExit(f'SDK snapshot differs from commit {revision}: {destination}')
+        else:
+            staging.rename(destination)
+    finally:
+        if staging.exists():
+            shutil.rmtree(staging)
+    return destination, revision
 
 
 def main():
@@ -55,7 +123,8 @@ def main():
     if args.memcheck.is_file() != args.memcheck_build.is_dir():
         parser.error('Memcheck binary and its separate Meson build must be present together')
 
-    sdk_root = args.sdk_root.resolve(strict=True)
+    sdk_root, sdk_revision = snapshot_sdk(args.sdk_root, work / 'sdk-snapshots')
+    sys.dont_write_bytecode = True
     sys.path.insert(0, str(sdk_root / 'src'))
     from emberbsd_sdk.fuzz_check import FUZZ_MANIFEST_VERSION, file_sha256, tree_files
 
@@ -155,14 +224,7 @@ def main():
     add_tree('initial-corpus-source', 'Ports main ' + ports_revision,
              args.corpus)
 
-    for name in ('scripts/fuzz-check.py', 'src/emberbsd_sdk/fuzz_check.py',
-                 'src/emberbsd_sdk/stream.py', 'src/emberbsd_sdk/process.py',
-                 'src/emberbsd_sdk/paths.py', 'src/emberbsd_sdk/jsonio.py',
-                 'src/emberbsd_sdk/errors.py', 'src/emberbsd_sdk/_darwin_process.py'):
-        add_file('sdk-' + name.replace('/', '-'),
-                 'SDK main ' + subprocess.check_output(
-                     ['git', '-C', str(sdk_root), 'rev-parse', 'HEAD'], text=True).strip(),
-                 sdk_root / name)
+    add_tree('sdk', 'SDK commit ' + sdk_revision + ' (git archive)', sdk_root)
 
     add_file('gcc16-cairo-fuzzer-macro-context',
              'GCC 16.2.0 aarch64-apple-darwin27; Cairo Script Interpreter headers included',
