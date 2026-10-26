@@ -107,8 +107,9 @@ command presence and normal package activation/removal remain separate gates.
 
 ## Native SDK trust store
 
-The Darwin GCC16 foundation includes the existing
-`security/mozilla-rootcerts-openssl` package. Its dependency uses the same pinned
+The native Darwin foundation uses Clang by default, with GCC selected explicitly.
+It includes the existing `security/mozilla-rootcerts-openssl` package.
+Its dependency uses the same pinned
 Mozilla certificate data as other consumers. OpenSSL comes from Ports, and
 its configuration base is `${LOCALBASE}/etc` in this producer.
 
