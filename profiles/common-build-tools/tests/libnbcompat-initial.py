@@ -17,6 +17,14 @@ class InitialLibraryTests(unittest.TestCase):
     def test_single_diagnostic_implementation_exists(self):
         self.assertTrue((ROOT/'profiles/common-build-tools/files/emberbsd-configure-diagnostics.sh').is_file())
 
+    def test_configure_printf_has_an_explicit_native_role(self):
+        manifest=json.loads((ROOT/'profiles/common-build-tools/bootstrap/libnbcompat.json').read_text())
+        configure=(ROOT/'upstream/pkgsrc/pkgtools/libnbcompat/files/configure').read_text()
+        shell_recipe=(ROOT/'pkgsrc/shells/mksh/Makefile').read_text()
+        self.assertIn('printf "%s\\n"',configure)
+        self.assertIn('printf comes from the base utilities',shell_recipe)
+        self.assertIn('printf',manifest['required_tool_roles'])
+
     def test_complete_common_options_and_exports(self):
         manifest=json.loads((ROOT/'profiles/common-build-tools/bootstrap/libnbcompat.json').read_text())
         recipe=(ROOT/'upstream/pkgsrc/pkgtools/libnbcompat/Makefile').read_text()

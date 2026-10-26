@@ -11,6 +11,8 @@ that complete source. Its selected make tuple supplies the shell. Installation
 uses the canonical `install-sh -c`, rather than its default move operation.
 Every required tool must already belong to the selected initial SDK. Missing
 `cp`, `mv`, `ls`, or `diff` is a missing input, not permission for a host fallback.
+Configuration also requires the selected native `printf` utility.
+The common mksh recipe does not provide a built-in `printf`.
 
 The export applies one infrastructure patch and installs one common shell
 diagnostic helper into the source tree. Explicit `EMBERBSD_CONFIGURE_SDK=yes`

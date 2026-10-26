@@ -86,6 +86,7 @@
     "ls",
     "mkdir",
     "mv",
+    "printf",
     "rm",
     "rmdir",
     "sed",
