@@ -164,7 +164,7 @@ main(void)
 
 	check_exit(nawk_system(":"), 0);
 	check_exit(nawk_system("exit 37"), 37);
-	check_exit(nawk_system("exec /nonexistent/nawk-command-test"), 127);
+	check_exit(nawk_system("exec /nonexistent/nawk-command-test 2>/dev/null"), 127);
 	check_state(&mask);
 	status = nawk_system("kill -TERM $$");
 	CHECK(status != -1 && WIFSIGNALED(status) && WTERMSIG(status) == SIGTERM);
