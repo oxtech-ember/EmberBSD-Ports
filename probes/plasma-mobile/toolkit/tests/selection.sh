@@ -28,6 +28,15 @@ MAKE
 # Only the version families use these three shared selectors. Dependencies
 # such as PipeWire, KDE applications and Boost retain their own recipe versions.
 sh "$toolkit/validate.sh" --recipes "$toolkit" "$recipes" > "$work/recipes.txt"
+# These modules must remain selectable even if a manifest row is removed.
+# Their upstream recipes use the same Qt version and cannot keep older inputs.
+for recipe in lang/qt6-qtscxml www/qt6-qthttpserver; do
+    grep -qxF "$recipe" "$work/recipes.txt"
+    for cross in yes no; do
+        (cd "$work" && "$make" -r -m / FAMILY=qt PKGPATH="$recipe" \
+            USE_CROSS_COMPILE="$cross") < /dev/null
+    done
+done
 while IFS= read -r recipe; do
     case "$recipe" in
         */qt6-*) family=qt ;;

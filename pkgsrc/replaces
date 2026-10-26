@@ -200,6 +200,7 @@ inputmethod/fcitx5-qt
 inputmethod/qt6-qtvirtualkeyboard
 lang/qt6-qtdeclarative
 lang/qt6-qtlanguageserver
+lang/qt6-qtscxml
 mail/kf6-kmime
 math/cln
 meta-pkgs/boost
@@ -275,6 +276,7 @@ x11/plasma6-plasma-activities
 x11/plasma6-plasma-activities-stats
 x11/plasma6-plasma-desktop
 x11/plasma6-plasma-workspace
+www/qt6-qthttpserver
 x11/qt6-qtbase
 x11/qt6-qtserialport
 x11/qt6-qttranslations

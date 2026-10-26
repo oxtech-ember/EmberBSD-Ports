@@ -160,3 +160,5 @@ net/networkmanager-qt	networkmanager-qt-6.31.0.tar.xz	b045f7430f66f16c7bb9ee8c25
 net/modemmanager-qt	modemmanager-qt-6.31.0.tar.xz	e816565ce4b915fa885a6b039e582a477e84bb01bca3229df5f1b79dfa01b810	https://download.kde.org/stable/frameworks/6.31/modemmanager-qt-6.31.0.tar.xz
 devel/modemmanager-headers	ModemManager-1.22.0.tar.gz	6c8f8720737a3788e394c700f36236278c9de09d76069a079e6f1daaf08b2768	https://gitlab.freedesktop.org/mobile-broadband/ModemManager/-/archive/1.22.0/ModemManager-1.22.0.tar.gz
 net/networkmanager-headers	NetworkManager-1.52.0.tar.gz	2ebe60a1497a9650d58336b73413d838189b04543365b3dbc22e1eb8023d205f	https://gitlab.freedesktop.org/NetworkManager/NetworkManager/-/archive/1.52.0/NetworkManager-1.52.0.tar.gz
+lang/qt6-qtscxml	qtscxml-everywhere-src-6.12.0.tar.xz	adc04875b383256bcd5a412f6f249d363495ea037913ca8c96d723442be38383	https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qtscxml-everywhere-src-6.12.0.tar.xz
+www/qt6-qthttpserver	qthttpserver-everywhere-src-6.12.0.tar.xz	ede040264551d0930ea5f6c1a4c18a7a3dea59d635e71cd2e81f02567d7814a4	https://download.qt.io/archive/qt/6.12/6.12.0/submodules/qthttpserver-everywhere-src-6.12.0.tar.xz
