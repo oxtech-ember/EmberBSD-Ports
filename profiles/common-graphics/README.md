@@ -122,11 +122,12 @@ ordinary GCC16 AArch64 package passes all 613 payload checks. Four native
 and installed EmberBSD numerical checks pass, including normal package
 removal and reinstallation. Companion BLAS/LAPACK runtime coverage remains pending.
 
-This opt-in source profile prepares canonical MesaLib 26.2.5nb6, adapted
+This opt-in source profile prepares canonical MesaLib 26.2.5nb7, adapted
 libdrm 2.4.134nb7, Wayland 1.26.0 (native nb1/cross nb2) and
 wayland-protocols 1.49 for EmberBSD/AArch64 and amd64, retaining the NetBSD 11 ABI.
-The amd64 profile includes RadeonSI. Mesa keeps its upstream DRM 3.54 minimum
-on other systems and uses the legacy reset path on NetBSD DRM 3.36.
+The amd64 profile includes RadeonSI and its drirc defaults. Mesa keeps its
+upstream DRM 3.54 minimum on other systems and uses the legacy reset path on
+NetBSD DRM 3.36.
 The libdrm skip-list test keeps its upstream benchmark sizes and moves its key
 array to the heap to fit the standard process stack.
 Native builds and the explicit
@@ -164,7 +165,7 @@ It checks V3D rendering, visible containment pixels, six layout queries over 30 
 The strict unknown-output control also passes after a bounded startup retry.
 The full login session and physical HDMI presentation remain separate checks.
 
-The nb6 recipe also includes Zink and its Vulkan loader dependency.
+The recipe also includes Zink and its Vulkan loader dependency.
 Hardware Zink execution remains unaccepted; see [the package boundary](cross/zink.md).
 
 The AArch64 Mesa package always contains the [PowerVR ICD](cross/powervr.md).

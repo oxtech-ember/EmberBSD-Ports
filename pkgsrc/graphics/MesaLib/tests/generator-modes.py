@@ -14,7 +14,7 @@ FIELDS = ('PKG_FAIL_REASON', 'MESON_ARGS', 'MESON_NATIVE_ARGS', 'DEPENDS',
           'BUILDLINK_DEPMETHOD.spirv-llvm-translator',
           'BUILDLINK_API_DEPENDS.spirv-llvm-translator', 'TEST_INCLUDES',
           'BUILDLINK_API_DEPENDS.spirv-tools',
-          'GCC_REQD', 'USE_LANGUAGES')
+          'GCC_REQD', 'USE_LANGUAGES', 'PLIST.radeonsi')
 BUILD_LINKS = {'../../lang/clang/buildlink3.mk', '../../parallel/spirv-tools/buildlink3.mk',
                '../../parallel/spirv-llvm-translator/buildlink3.mk'}
 
@@ -70,6 +70,8 @@ def oracle(values, arch, cross, sealed):
                else 'v3d,virgl,softpipe,llvmpipe,zink')
     require('-Dgallium-drivers=' + drivers in options and '-Dbuild-tests=true' in options,
             'The drivers or upstream tests were disabled')
+    require(values['PLIST.radeonsi'] == ('yes' if arch == 'x86_64' else ''),
+            'RadeonSI package files do not follow the selected architecture')
     require('-Dmicrosoft-clc=disabled' in options and '-Dgallium-rusticl=false' in options,
             'Unrelated CLC consumers changed')
     require(values['GCC_REQD'].split() == ['16.2'] and values['USE_LANGUAGES'].split() == ['c', 'c++'],

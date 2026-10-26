@@ -97,6 +97,7 @@ lib/pkgconfig/glesv2.pc
 lib/pkgconfig/glx.pc
 share/drirc.d/00-mesa-defaults.conf
 ${PLIST.intel}share/drirc.d/00-iris-defaults.conf
+${PLIST.radeonsi}share/drirc.d/00-radeonsi-defaults.conf
 ${PLIST.v3d}share/drirc.d/00-v3d-defaults.conf
 share/drirc.d/00-virtio_gpu-defaults.conf
 share/drirc.d/00-zink-defaults.conf

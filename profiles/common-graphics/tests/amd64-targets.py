@@ -90,7 +90,7 @@ _TOOLS_USE_PKGSRC.flex=no
 PKGPATH?=graphics/MesaLib
 PKG_OPTIONS=llvm x11 wayland
 DISTNAME=mesa-26.2.5
-PKGREVISION=6
+PKGREVISION=7
 .if ${{USE_CROSS_COMPILE:Uno:tl}} == "yes"
 EMBERBSD_GRAPHICS_LLVM_CONFIG={work}/helper/bin/llvm-config
 EMBERBSD_WAYLAND_SCANNER={work}/scanner
@@ -117,7 +117,9 @@ def static_profile_checks():
         and all("${PLIST.v3d}" + name in mesa_plist for name in (
             "lib/dri/v3d_dri.so", "share/drirc.d/00-v3d-defaults.conf"
         ))
-        and "${PLIST.radeonsi}lib/dri/radeonsi_dri.so" in mesa_plist,
+        and all("${PLIST.radeonsi}" + name in mesa_plist for name in (
+            "lib/dri/radeonsi_dri.so", "share/drirc.d/00-radeonsi-defaults.conf"
+        )),
     )
     check(
         "libdrm AMDGPU DSO, headers, metadata and ID table are conditional",
@@ -152,8 +154,8 @@ def static_profile_checks():
         "libdrm>=2.4.134nb7" in profile and 'PKGREVISION:U} != "7"' in profile,
     )
     check(
-        "common profile enforces MesaLib 26.2.5nb6",
-        "MesaLib>=26.2.5nb6" in profile,
+        "common profile enforces MesaLib 26.2.5nb7",
+        "MesaLib>=26.2.5nb7" in profile,
     )
 
 
