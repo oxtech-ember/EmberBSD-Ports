@@ -1,0 +1,450 @@
+--- a/compiler-rt/lib/profile/GCDAProfiling.c
++++ b/compiler-rt/lib/profile/GCDAProfiling.c
+@@ -2,7 +2,11 @@
+ |*
+ |* Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+ |* See https://llvm.org/LICENSE.txt for license information.
+-|* SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++|* SPDX-License-Identifier: (Apache-2.0 WITH LLVM-exception) AND (MIT OR NCSA)
++|*
++|* EmberBSD legacy libc GCDA ABI adaptation, developed with AI assistance.
++|* Migrated compatibility code retains its original licensing; see
++|* LICENSE.EmberBSD-GCOV.TXT and compiler-rt/CREDITS.TXT.
+ |*
+ |*===----------------------------------------------------------------------===*|
+ |*
+@@ -49,6 +53,14 @@
+ 
+ /* #define DEBUG_GCDAPROFILING */
+ 
++/* Existing libc exports retain the pre-LLVM-4 GCDA ABI. Standalone modern
++ * profiling runtimes leave this source-local compatibility mode undefined. */
++#if defined(COMPILER_RT_LIBC_LEGACY_GCOV)
++#define GCDA_LIBC_VISIBILITY
++#else
++#define GCDA_LIBC_VISIBILITY COMPILER_RT_VISIBILITY
++#endif
++
+ enum {
+   GCOV_DATA_MAGIC = 0x67636461, // "gcda"
+ 
+@@ -108,11 +120,18 @@
+ /*
+  * A list of functions to write out the data, shared between all dynamic objects.
+  */
++#if defined(COMPILER_RT_LIBC_LEGACY_GCOV)
++/* libc's legacy callbacks must not interpose on a modern profiling runtime. */
++static
++#endif
+ struct fn_list writeout_fn_list;
+ 
+ /*
+  *  A list of reset functions, shared between all dynamic objects.
+  */
++#if defined(COMPILER_RT_LIBC_LEGACY_GCOV)
++static
++#endif
+ struct fn_list reset_fn_list;
+ 
+ static void fn_list_insert(struct fn_list* list, fn_ptr fn) {
+@@ -180,12 +199,16 @@
+ }
+ 
+ static void write_64bit_value(uint64_t i) {
++#if defined(COMPILER_RT_LIBC_LEGACY_GCOV)
++  write_bytes((const char *)&i, sizeof(i));
++#else
+   // GCOV uses a lo-/hi-word format even on big-endian systems.
+   // See also GCOVBuffer::readInt64 in LLVM.
+   uint32_t lo = (uint32_t) i;
+   uint32_t hi = (uint32_t) (i >> 32);
+   write_32bit_value(lo);
+   write_32bit_value(hi);
++#endif
+ }
+ 
+ static uint32_t read_32bit_value(void) {
+@@ -200,11 +223,20 @@
+ }
+ 
+ static uint64_t read_64bit_value(void) {
++#if defined(COMPILER_RT_LIBC_LEGACY_GCOV)
++  uint64_t value;
++  if (new_file)
++    return (uint64_t)-1;
++  memcpy(&value, &write_buffer[cur_pos], sizeof(value));
++  cur_pos += sizeof(value);
++  return value;
++#else
+   // GCOV uses a lo-/hi-word format even on big-endian systems.
+   // See also GCOVBuffer::readInt64 in LLVM.
+   uint32_t lo = read_32bit_value();
+   uint32_t hi = read_32bit_value();
+   return ((uint64_t)hi << 32) | ((uint64_t)lo);
++#endif
+ }
+ 
+ static char *mangle_filename(const char *orig_filename) {
+@@ -300,9 +332,16 @@
+  * profiling enabled will emit to a different file. Only one file may be
+  * started at a time.
+  */
+-COMPILER_RT_VISIBILITY
++GCDA_LIBC_VISIBILITY
++#if defined(COMPILER_RT_LIBC_LEGACY_GCOV)
++void llvm_gcda_start_file(const char *orig_filename, const char version_bytes[4],
++                          uint32_t checksum) {
++  uint32_t version;
++  memcpy(&version, version_bytes, sizeof(version));
++#else
+ void llvm_gcda_start_file(const char *orig_filename, uint32_t version,
+                           uint32_t checksum) {
++#endif
+   const char *mode = "r+b";
+   filename = mangle_filename(orig_filename);
+ 
+@@ -380,7 +419,11 @@
+     gcov_version = c3 >= 'A' ? (c3 - 'A') * 100 + (c2 - '0') * 10 + c1 - '0'
+                              : (c3 - '0') * 10 + c1 - '0';
+   }
++#if defined(COMPILER_RT_LIBC_LEGACY_GCOV)
++  write_bytes("adcg", 4);
++#else
+   write_32bit_value(GCOV_DATA_MAGIC);
++#endif
+   write_32bit_value(version);
+   write_32bit_value(checksum);
+ 
+@@ -389,11 +432,17 @@
+ #endif
+ }
+ 
+-COMPILER_RT_VISIBILITY
++GCDA_LIBC_VISIBILITY
++#if defined(COMPILER_RT_LIBC_LEGACY_GCOV)
++void llvm_gcda_emit_function(uint32_t ident, const char *function_name,
++                             uint32_t func_checksum, uint8_t use_extra_checksum,
++                             uint32_t cfg_checksum) {
++#else
+ void llvm_gcda_emit_function(uint32_t ident, uint32_t func_checksum,
+                              uint32_t cfg_checksum) {
++  int use_extra_checksum = gcov_version >= 47;
++#endif
+   uint32_t len = 2;
+-  int use_extra_checksum = gcov_version >= 47;
+ 
+   if (use_extra_checksum)
+     len++;
+@@ -403,15 +452,29 @@
+   if (!output_file) return;
+ 
+   /* function tag */
++#if defined(COMPILER_RT_LIBC_LEGACY_GCOV)
++  write_bytes("\0\0\0\1", 4);
++  if (function_name)
++    len += 2 + strlen(function_name) / 4;
++#else
+   write_32bit_value(GCOV_TAG_FUNCTION);
++#endif
+   write_32bit_value(len);
+   write_32bit_value(ident);
+   write_32bit_value(func_checksum);
+   if (use_extra_checksum)
+     write_32bit_value(cfg_checksum);
+-}
+-
+-COMPILER_RT_VISIBILITY
++#if defined(COMPILER_RT_LIBC_LEGACY_GCOV)
++  if (function_name) {
++    size_t size = strlen(function_name);
++    write_32bit_value(size / 4 + 1);
++    write_bytes(function_name, size);
++    write_bytes("\0\0\0\0", 4 - size % 4);
++  }
++#endif
++}
++
++GCDA_LIBC_VISIBILITY
+ void llvm_gcda_emit_arcs(uint32_t num_counters, uint64_t *counters) {
+   uint32_t i;
+   uint64_t *old_ctrs = NULL;
+@@ -447,7 +510,11 @@
+   cur_pos = save_cur_pos;
+ 
+   /* Counter #1 (arcs) tag */
++#if defined(COMPILER_RT_LIBC_LEGACY_GCOV)
++  write_bytes("\0\0\xa1\1", 4);
++#else
+   write_32bit_value(GCOV_TAG_COUNTER_ARCS);
++#endif
+   write_32bit_value(num_counters * 2);
+   for (i = 0; i < num_counters; ++i) {
+     counters[i] += (old_ctrs ? old_ctrs[i] : 0);
+@@ -463,8 +530,60 @@
+ #endif
+ }
+ 
+-COMPILER_RT_VISIBILITY
++GCDA_LIBC_VISIBILITY
+ void llvm_gcda_summary_info(void) {
++#if defined(COMPILER_RT_LIBC_LEGACY_GCOV)
++  const uint32_t obj_summary_len = 9; /* Length for gcov compatibility. */
++  uint32_t i;
++  uint32_t runs = 1;
++  uint32_t val = 0;
++  uint64_t save_cur_pos = cur_pos;
++
++  if (!output_file) return;
++
++  val = read_32bit_value();
++
++  if (val != (uint32_t)-1) {
++    /* There are counters present in the file. Merge them. */
++    if (val != 0xa1000000) {
++      fprintf(stderr, "profiling: %s: cannot merge previous run count: "
++                      "corrupt object tag (0x%08x)\n",
++              filename, val);
++      return;
++    }
++
++    val = read_32bit_value(); /* length */
++    if (val != obj_summary_len) {
++      fprintf(stderr, "profiling: %s: cannot merge previous run count: "
++                      "mismatched object length (%d)\n",
++              filename, val);
++      return;
++    }
++
++    read_32bit_value(); /* checksum, unused */
++    read_32bit_value(); /* num, unused */
++    runs += read_32bit_value(); /* Add previous run count to new counter. */
++  }
++
++  cur_pos = save_cur_pos;
++
++  /* Object summary tag */
++  write_bytes("\0\0\0\xa1", 4);
++  write_32bit_value(obj_summary_len);
++  write_32bit_value(0); /* checksum, unused */
++  write_32bit_value(0); /* num, unused */
++  write_32bit_value(runs);
++  for (i = 3; i < obj_summary_len; ++i)
++    write_32bit_value(0);
++
++  /* Program summary tag */
++  write_bytes("\0\0\0\xa3", 4); /* tag indicates 1 program */
++  write_32bit_value(0); /* 0 length */
++
++#ifdef DEBUG_GCDAPROFILING
++  fprintf(stderr, "llvmgcda:   %u runs\n", runs);
++#endif
++#else
+   uint32_t runs = 1;
+   static uint32_t run_counted = 0; // We only want to increase the run count once.
+   uint32_t val = 0;
+@@ -525,9 +644,10 @@
+ #ifdef DEBUG_GCDAPROFILING
+   fprintf(stderr, "llvmgcda:   %u runs\n", runs);
+ #endif
+-}
+-
+-COMPILER_RT_VISIBILITY
++#endif
++}
++
++GCDA_LIBC_VISIBILITY
+ void llvm_gcda_end_file(void) {
+   /* Write out EOF record. */
+   if (output_file) {
+@@ -553,12 +673,12 @@
+ #endif
+ }
+ 
+-COMPILER_RT_VISIBILITY
++GCDA_LIBC_VISIBILITY
+ void llvm_register_writeout_function(fn_ptr fn) {
+   fn_list_insert(&writeout_fn_list, fn);
+ }
+ 
+-COMPILER_RT_VISIBILITY
++GCDA_LIBC_VISIBILITY
+ void llvm_writeout_files(void) {
+   struct fn_node *curr = writeout_fn_list.head;
+ 
+@@ -570,6 +690,7 @@
+   }
+ }
+ 
++#if !defined(COMPILER_RT_LIBC_LEGACY_GCOV)
+ #ifndef _WIN32
+ // __attribute__((destructor)) and destructors whose priorities are greater than
+ // 100 run before this function and can thus be tracked. The priority is
+@@ -583,6 +704,8 @@
+   llvm_writeout_files();
+   fn_list_remove(&writeout_fn_list);
+ }
++
++#endif
+ 
+ COMPILER_RT_VISIBILITY
+ void llvm_register_reset_function(fn_ptr fn) {
+@@ -623,7 +746,30 @@
+ }
+ #endif
+ 
+-COMPILER_RT_VISIBILITY
++#if defined(COMPILER_RT_LIBC_LEGACY_GCOV)
++void llvm_gcda_increment_indirect_counter(uint32_t *predecessor,
++                                          uint64_t **counters) {
++  uint32_t pred = *predecessor;
++  if (pred != UINT32_MAX && counters[pred])
++    ++*counters[pred];
++}
++
++void llvm_delete_writeout_function_list(void) {
++  fn_list_remove(&writeout_fn_list);
++}
++
++void llvm_register_flush_function(fn_ptr fn) {
++  llvm_register_reset_function(fn);
++}
++
++void __gcov_flush(void) { llvm_reset_counters(); }
++
++void llvm_delete_flush_function_list(void) {
++  llvm_delete_reset_function_list();
++}
++#endif
++
++GCDA_LIBC_VISIBILITY
+ void llvm_gcov_init(fn_ptr wfn, fn_ptr rfn) {
+   static int atexit_ran = 0;
+ 
+@@ -637,9 +783,15 @@
+     atexit_ran = 1;
+ 
+     /* Make sure we write out the data and delete the data structures. */
++#if defined(COMPILER_RT_LIBC_LEGACY_GCOV)
++    lprofAtExit(llvm_delete_flush_function_list);
++    lprofAtExit(llvm_delete_writeout_function_list);
++    lprofAtExit(llvm_writeout_files);
++#else
+     lprofAtExit(llvm_delete_reset_function_list);
+ #ifdef _WIN32
+     lprofAtExit(llvm_writeout_and_clear);
++#endif
+ #endif
+   }
+ }
+@@ -663,11 +815,17 @@
+ }
+ #endif
+ 
++#if defined(COMPILER_RT_LIBC_LEGACY_GCOV)
++COMPILER_RT_VISIBILITY
++#endif
+ void __gcov_dump(void) {
+   for (struct fn_node *f = writeout_fn_list.head; f; f = f->next)
+     f->fn();
+ }
+ 
++#if defined(COMPILER_RT_LIBC_LEGACY_GCOV)
++COMPILER_RT_VISIBILITY
++#endif
+ void __gcov_reset(void) {
+   for (struct fn_node *f = reset_fn_list.head; f; f = f->next)
+     f->fn();
+--- /dev/null
++++ b/compiler-rt/lib/profile/LICENSE.EmberBSD-GCOV.TXT
+@@ -0,0 +1,91 @@
++==============================================================================
++compiler_rt License
++==============================================================================
++
++The compiler_rt library is dual licensed under both the University of Illinois
++"BSD-Like" license and the MIT license.  As a user of this code you may choose
++to use it under either license.  As a contributor, you agree to allow your code
++to be used under both.
++
++Full text of the relevant licenses is included below.
++
++==============================================================================
++
++University of Illinois/NCSA
++Open Source License
++
++Copyright (c) 2009-2015 by the contributors listed in CREDITS.TXT
++
++All rights reserved.
++
++Developed by:
++
++    LLVM Team
++
++    University of Illinois at Urbana-Champaign
++
++    http://llvm.org
++
++Permission is hereby granted, free of charge, to any person obtaining a copy of
++this software and associated documentation files (the "Software"), to deal with
++the Software without restriction, including without limitation the rights to
++use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
++of the Software, and to permit persons to whom the Software is furnished to do
++so, subject to the following conditions:
++
++    * Redistributions of source code must retain the above copyright notice,
++      this list of conditions and the following disclaimers.
++
++    * Redistributions in binary form must reproduce the above copyright notice,
++      this list of conditions and the following disclaimers in the
++      documentation and/or other materials provided with the distribution.
++
++    * Neither the names of the LLVM Team, University of Illinois at
++      Urbana-Champaign, nor the names of its contributors may be used to
++      endorse or promote products derived from this Software without specific
++      prior written permission.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
++FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
++CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS WITH THE
++SOFTWARE.
++
++==============================================================================
++
++Copyright (c) 2009-2015 by the contributors listed in CREDITS.TXT
++
++Permission is hereby granted, free of charge, to any person obtaining a copy
++of this software and associated documentation files (the "Software"), to deal
++in the Software without restriction, including without limitation the rights
++to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++copies of the Software, and to permit persons to whom the Software is
++furnished to do so, subject to the following conditions:
++
++The above copyright notice and this permission notice shall be included in
++all copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++THE SOFTWARE.
++
++==============================================================================
++Copyrights and Licenses for Third Party Software Distributed with LLVM:
++==============================================================================
++The LLVM software contains code written by third parties.  Such software will
++have its own individual LICENSE.TXT file in the directory in which it appears.
++This file will describe the copyrights, license, and restrictions which apply
++to that code.
++
++The disclaimer of warranty in the University of Illinois Open Source License
++applies to all code in the LLVM Distribution, and nothing in any of the
++other licenses gives permission to use the names of the LLVM Team or the
++University of Illinois to endorse or promote products derived from this
++Software.
++

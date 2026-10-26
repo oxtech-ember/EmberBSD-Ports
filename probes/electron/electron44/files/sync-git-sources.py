@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Copyright (c) 2026 EmberBSD contributors.
-"""Acquire Electron's Git dependencies; retain deferred CIPD/GCS inputs."""
+"""Acquire Electron's Git dependencies; retain deferred CIPD/GCS/LFS inputs."""
 
 import argparse
 import importlib.util
@@ -16,7 +16,8 @@ import tempfile
 
 DEPOT_TOOLS_REVISION = "b86fc981b72ab966f8260f73b4eca600b3b12677"
 FILTERS = ("--ignore-dep-type=cipd", "--ignore-dep-type=gcs")
-OUTPUTS = ("sync.json", "declared-dependencies.json", "git-revisions.json", "pending-inputs.json")
+OUTPUTS = ("sync.json", "declared-dependencies.json", "git-revisions.json", "pending-inputs.json",
+           "pending-lfs.json")
 
 spec = importlib.util.spec_from_file_location(
     "electron_source_prepare", Path(__file__).with_name("prepare-sources.py"))
@@ -25,16 +26,20 @@ spec.loader.exec_module(source)
 require = source.require
 
 
-def source_environment(git, source_path):
+def source_environment(git, git_lfs, source_path):
     directories = source_path.split(os.pathsep)
     require(all(item and Path(item).is_absolute() and Path(item).is_dir()
                 for item in directories), "--source-path must contain explicit absolute directories")
-    found = shutil.which("git", path=source_path)
-    require(found and Path(found).resolve() == Path(git).resolve(),
-            "--source-path must resolve the declared Git executable")
+    for name, executable in (("git", git), ("git-lfs", git_lfs)):
+        require(Path(executable).is_absolute() and Path(executable).is_file(),
+                f"--{name} must name an absolute executable")
+        found = shutil.which(name, path=source_path)
+        require(found and Path(found).resolve() == Path(executable).resolve(),
+                f"--source-path must resolve the declared {name} executable")
     require(not os.environ.get("GCLIENT_TEST"), "GCLIENT_TEST is not a source acquisition input")
     env = os.environ.copy()
-    env.update(PATH=source_path, DEPOT_TOOLS_UPDATE="0", DEPOT_TOOLS_METRICS="0")
+    env.update(PATH=source_path, DEPOT_TOOLS_UPDATE="0", DEPOT_TOOLS_METRICS="0",
+               GIT_LFS_SKIP_SMUDGE="1")
     # Select the prepared .gclient and avoid an undeclared shared cache writer.
     for name in ("GCLIENT_FILE", "GIT_CACHE_PATH", "PYTHONPATH", "PYTHONHOME"):
         env.pop(name, None)
@@ -79,13 +84,28 @@ def check_inventory(declared, actual):
     return pending
 
 
-def sync_git(workspace, depot_tools, git, source_path, jobs):
+def lfs_inventory(workspace, actual, git_lfs, env):
+    """Ask upstream Git LFS for the nonempty object pointers at each pinned HEAD."""
+    pending = {}
+    for name, repository in sorted(actual.items()):
+        root = (workspace / name).resolve(strict=True)
+        require(root.is_relative_to(workspace), f"Git dependency escapes the workspace: {name}")
+        result = subprocess.run([str(git_lfs), "ls-files", "--json", "--include=", "--exclude=", "HEAD"],
+                                cwd=root, env=env, capture_output=True, text=True)
+        require(result.returncode == 0, f"Git LFS inventory failed for {name}: {result.stderr.strip()}")
+        files = json.loads(result.stdout)["files"] or []
+        if files:
+            pending[name] = {**repository, "files": files}
+    return pending
+
+
+def sync_git(workspace, depot_tools, git, git_lfs, source_path, jobs):
     workspace = Path(workspace).resolve(strict=True)
     depot_tools = Path(depot_tools).resolve(strict=True)
     git = Path(git)
     require(git.is_absolute() and git.is_file(), "--git must name an absolute executable")
     require(jobs >= 1, "--jobs must be positive")
-    env = source_environment(git, source_path)
+    env = source_environment(git, git_lfs, source_path)
     verify_inputs(workspace, depot_tools, git)
     outputs = workspace / "source-inputs"
     require(not outputs.is_symlink(), "source-inputs must not be a symlink")
@@ -118,10 +138,12 @@ def sync_git(workspace, depot_tools, git, source_path, jobs):
         declared = json.loads((stage / "declared-dependencies.json").read_text())
         actual = json.loads((stage / "git-revisions.json").read_text())
         pending = check_inventory(declared, actual)
+        lfs = lfs_inventory(workspace, actual, git_lfs, env)
+        (stage / "pending-lfs.json").write_text(json.dumps(lfs, indent=2, sort_keys=True) + "\n")
         (stage / "pending-inputs.json").write_text(json.dumps(pending, indent=2, sort_keys=True) + "\n")
         for name in OUTPUTS:
             (stage / name).replace(outputs / name)
-    return len(actual), len(pending)
+    return len(actual), len(pending), sum(len(repo["files"]) for repo in lfs.values())
 
 
 def main():
@@ -129,16 +151,18 @@ def main():
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--depot-tools", type=Path, required=True)
     parser.add_argument("--git", type=Path, required=True)
+    parser.add_argument("--git-lfs", type=Path, required=True)
     parser.add_argument("--source-path", required=True,
-                        help="explicit PATH for source tools, including the selected Git")
+                        help="explicit PATH for source tools, including the selected Git and Git LFS")
     parser.add_argument("--jobs", type=int, required=True)
     args = parser.parse_args()
     try:
-        git_count, pending_count = sync_git(args.workspace, args.depot_tools, args.git,
-                                            args.source_path, args.jobs)
+        git_count, pending_count, lfs_count = sync_git(
+            args.workspace, args.depot_tools, args.git, args.git_lfs, args.source_path, args.jobs)
     except (ValueError, OSError, SyntaxError) as exc:
         parser.exit(1, f"Git source acquisition failed: {exc}\n")
-    print(f"Git sources acquired: {git_count}; deferred CIPD/GCS entries: {pending_count}")
+    print(f"Git sources acquired: {git_count}; deferred CIPD/GCS entries: {pending_count}; "
+          f"LFS object inputs: {lfs_count}")
     print("Hooks, upstream patches, BSD overlays and compilation have not run.")
 
 

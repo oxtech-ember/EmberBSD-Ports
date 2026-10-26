@@ -1,0 +1,209 @@
+--- a/compiler-rt/lib/profile/GCDAProfiling.c
++++ b/compiler-rt/lib/profile/GCDAProfiling.c
+@@ -32,6 +32,7 @@
+ 
+ #include <errno.h>
+ #include <fcntl.h>
++#include <inttypes.h>
+ #include <stdint.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -94,6 +95,7 @@
+ static uint64_t cur_pos = 0;
+ static uint64_t file_size = 0;
+ static int new_file = 0;
++static int write_failed = 0;
+ static int gcov_version;
+ #if defined(_WIN32)
+ static HANDLE mmap_handle = NULL;
+@@ -136,6 +138,10 @@
+ 
+ static void fn_list_insert(struct fn_list* list, fn_ptr fn) {
+   struct fn_node* new_node = malloc(sizeof(struct fn_node));
++  if (!new_node) {
++    fprintf(stderr, "profiling: cannot allocate callback node\n");
++    return;
++  }
+   new_node->fn = fn;
+   new_node->next = NULL;
+   new_node->id = CURRENT_ID;
+@@ -178,18 +184,28 @@
+   }
+ }
+ 
+-static void resize_write_buffer(uint64_t size) {
+-  if (!new_file) return;
++static int resize_write_buffer(uint64_t size) {
++  unsigned char *new_buffer;
++  if (!new_file) return 1;
++  if (size > UINT64_MAX - cur_pos) goto failed;
+   size += cur_pos;
+-  if (size <= cur_buffer_size) return;
++  if (size <= cur_buffer_size) return 1;
++  if (size > SIZE_MAX - (WRITE_BUFFER_SIZE - 1)) goto failed;
+   size = (size - 1) / WRITE_BUFFER_SIZE + 1;
+   size *= WRITE_BUFFER_SIZE;
+-  write_buffer = realloc(write_buffer, size);
++  new_buffer = realloc(write_buffer, (size_t)size);
++  if (!new_buffer) goto failed;
++  write_buffer = new_buffer;
+   cur_buffer_size = size;
++  return 1;
++failed:
++  fprintf(stderr, "profiling: %s: out of memory growing write buffer\n", filename);
++  write_failed = 1;
++  return 0;
+ }
+ 
+ static void write_bytes(const char *s, size_t len) {
+-  resize_write_buffer(len);
++  if (write_failed || !resize_write_buffer(len)) return;
+   memcpy(&write_buffer[cur_pos], s, len);
+   cur_pos += len;
+ }
+@@ -242,13 +258,21 @@
+ static char *mangle_filename(const char *orig_filename) {
+   char *new_filename;
+   size_t prefix_len;
++  size_t name_len;
+   int prefix_strip;
+   const char *prefix = lprofGetPathPrefix(&prefix_strip, &prefix_len);
+ 
+   if (prefix == NULL)
+     return strdup(orig_filename);
+ 
+-  new_filename = malloc(prefix_len + 1 + strlen(orig_filename) + 1);
++  name_len = strlen(orig_filename);
++  if (name_len > SIZE_MAX - 2 || prefix_len > SIZE_MAX - name_len - 2) {
++    errno = ENOMEM;
++    return NULL;
++  }
++  new_filename = malloc(prefix_len + name_len + 2);
++  if (!new_filename)
++    return NULL;
+   lprofApplyPathPrefix(new_filename, orig_filename, prefix, prefix_len,
+                        prefix_strip);
+ 
+@@ -344,6 +368,10 @@
+ #endif
+   const char *mode = "r+b";
+   filename = mangle_filename(orig_filename);
++  if (!filename) {
++    fprintf(stderr, "profiling: %s: cannot allocate filename\n", orig_filename);
++    return;
++  }
+ 
+   /* Try just opening the file. */
+   fd = open(filename, O_RDWR | O_BINARY);
+@@ -388,6 +416,10 @@
+ #if defined(_WIN32)
+     _close(fd);
+ #else
++    /* A failed fdopen does not consume fd. Cppcheck's POSIX model marks
++     * every fdopen as deallocation; the injected failure test checks EBADF
++     * after this required close. */
++    // cppcheck-suppress doubleFree
+     close(fd);
+ #endif
+     fd = -1;
+@@ -398,6 +430,7 @@
+ 
+   /* Initialize the write buffer. */
+   new_file = 0;
++  write_failed = 0;
+   write_buffer = NULL;
+   cur_buffer_size = 0;
+   cur_pos = 0;
+@@ -407,7 +440,7 @@
+      * unexpectedly. In the latter case, try to recover by clobbering. */
+     new_file = 1;
+     write_buffer = NULL;
+-    resize_write_buffer(WRITE_BUFFER_SIZE);
++    if (!resize_write_buffer(WRITE_BUFFER_SIZE)) return;
+     memset(write_buffer, 0, WRITE_BUFFER_SIZE);
+   }
+ 
+@@ -449,7 +482,7 @@
+ #ifdef DEBUG_GCDAPROFILING
+   fprintf(stderr, "llvmgcda: function id=0x%08x\n", ident);
+ #endif
+-  if (!output_file) return;
++  if (!output_file || write_failed) return;
+ 
+   /* function tag */
+ #if defined(COMPILER_RT_LIBC_LEGACY_GCOV)
+@@ -478,10 +511,16 @@
+ void llvm_gcda_emit_arcs(uint32_t num_counters, uint64_t *counters) {
+   uint32_t i;
+   uint64_t *old_ctrs = NULL;
++  uint64_t counter_bytes = (uint64_t)num_counters * sizeof(*old_ctrs);
+   uint32_t val = 0;
+   uint64_t save_cur_pos = cur_pos;
+ 
+-  if (!output_file) return;
++  if (!output_file || write_failed) return;
++  if (counter_bytes > SIZE_MAX) {
++    fprintf(stderr, "profiling: %s: counter array too large\n", filename);
++    write_failed = 1;
++    return;
++  }
+ 
+   val = read_32bit_value();
+ 
+@@ -497,12 +536,18 @@
+     val = read_32bit_value();
+     if (val == (uint32_t)-1 || val / 2 != num_counters) {
+       fprintf(stderr, "profiling: %s: cannot merge previous GCDA file: "
+-                      "mismatched number of counters (%d)\n",
++                      "mismatched number of counters (%" PRIu32 ")\n",
+               filename, val);
+       return;
+     }
+ 
+-    old_ctrs = malloc(sizeof(uint64_t) * num_counters);
++    old_ctrs = malloc((size_t)counter_bytes);
++    if (!old_ctrs && num_counters != 0) {
++      fprintf(stderr, "profiling: %s: out of memory merging counters\n", filename);
++      cur_pos = save_cur_pos;
++      write_failed = 1;
++      return;
++    }
+     for (i = 0; i < num_counters; ++i)
+       old_ctrs[i] = read_64bit_value();
+   }
+@@ -539,7 +584,7 @@
+   uint32_t val = 0;
+   uint64_t save_cur_pos = cur_pos;
+ 
+-  if (!output_file) return;
++  if (!output_file || write_failed) return;
+ 
+   val = read_32bit_value();
+ 
+@@ -555,7 +600,7 @@
+     val = read_32bit_value(); /* length */
+     if (val != obj_summary_len) {
+       fprintf(stderr, "profiling: %s: cannot merge previous run count: "
+-                      "mismatched object length (%d)\n",
++                      "mismatched object length (%" PRIu32 ")\n",
+               filename, val);
+       return;
+     }
+@@ -589,7 +634,7 @@
+   uint32_t val = 0;
+   uint64_t save_cur_pos = cur_pos;
+ 
+-  if (!output_file) return;
++  if (!output_file || write_failed) return;
+ 
+   val = read_32bit_value();
+ 
+@@ -654,7 +699,7 @@
+     write_bytes("\0\0\0\0\0\0\0\0", 8);
+ 
+     if (new_file) {
+-      fwrite(write_buffer, cur_pos, 1, output_file);
++      if (!write_failed) fwrite(write_buffer, cur_pos, 1, output_file);
+       free(write_buffer);
+     } else {
+       unmap_file();

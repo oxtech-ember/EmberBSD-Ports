@@ -3,10 +3,11 @@
 .include "Makefile.common"
 
 PKGNAME=	clang-${LLVM_VERSION}
-PKGREVISION=	3
+PKGREVISION=	4
 # These installed scripts use Python without linking libpython.
 DEPENDS+=	${PYDEPENDENCY}
 DEPENDS+=	lld-${LLVM_VERSION}{,nb*}:../../devel/lld
+DEPENDS+=	compiler-rt-${LLVM_VERSION}{,nb*}:../../lang/compiler-rt
 DEPENDS+=	mksh>=59b:../../shells/mksh
 
 # SDK native-tool contracts pass assembler paths without command arguments.

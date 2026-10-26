@@ -33,8 +33,23 @@ class Acquisition(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.workspace = self.root / "workspace"
         (self.workspace / "src").mkdir(parents=True)
+        filters = {"GIT_CONFIG_COUNT": "4", "GIT_CONFIG_KEY_0": "filter.lfs.process",
+                   "GIT_CONFIG_VALUE_0": "git-lfs filter-process",
+                   "GIT_CONFIG_KEY_1": "filter.lfs.required", "GIT_CONFIG_VALUE_1": "true",
+                   "GIT_CONFIG_KEY_2": "lfs.fetchinclude", "GIT_CONFIG_VALUE_2": "not-a-fixture",
+                   "GIT_CONFIG_KEY_3": "lfs.fetchexclude", "GIT_CONFIG_VALUE_3": "*"}
+        self.filters = patch.dict(os.environ, filters)
+        self.filters.start()
+        self.addCleanup(self.filters.stop)
         self.node, node_pin = self.repo("node", "deps = {}\n")
         self.leaf, leaf_pin = self.repo("leaf", "deps = " + repr(asset("src/leaf/font", "gcs")))
+        self.pointer = ("version https://git-lfs.github.com/spec/v1\n"
+                        "oid sha256:" + "a" * 64 + "\nsize 1234\n")
+        (self.leaf / ".gitattributes").write_text("*.bin filter=lfs diff=lfs merge=lfs -text\n")
+        (self.leaf / "asset with space.bin").write_text(self.pointer)
+        self.git(self.leaf, "add", ".")
+        self.git(self.leaf, "commit", "-qm", "LFS input without an available object")
+        leaf_pin = self.git(self.leaf, "rev-parse", "HEAD")
         child_deps = {"src/leaf": self.leaf.as_uri() + "@" + leaf_pin}
         child_deps.update(asset("src/inactive", "gcs", "False"))
         self.chromium, chromium_pin = self.repo("chromium", "deps = " + repr(child_deps) +
@@ -64,7 +79,8 @@ class Acquisition(unittest.TestCase):
     def git(self, root, *args):
         result = subprocess.run([str(options.git), "-C", str(root), "-c", "user.name=Source Test",
                                  "-c", "user.email=test@example.invalid", *args],
-                                capture_output=True, text=True, check=True)
+                                capture_output=True, text=True, check=True,
+                                env=sync.source_environment(options.git, options.git_lfs, options.source_path))
         return result.stdout.strip()
 
     def repo(self, name, deps):
@@ -78,7 +94,8 @@ class Acquisition(unittest.TestCase):
 
     def run_sync(self):
         try:
-            return sync.sync_git(self.workspace, options.depot_tools, options.git, options.source_path, 2)
+            return sync.sync_git(self.workspace, options.depot_tools, options.git,
+                                 options.git_lfs, options.source_path, 2)
         except ValueError:
             log = self.workspace / "source-inputs/acquisition.log"
             if log.is_file():
@@ -86,8 +103,8 @@ class Acquisition(unittest.TestCase):
             raise
 
     def test_upstream_git_only_sync_and_complete_deferred_inventory(self):
-        git_count, pending_count = self.run_sync()
-        self.assertEqual((git_count, pending_count), (4, 3))
+        git_count, pending_count, lfs_count = self.run_sync()
+        self.assertEqual((git_count, pending_count, lfs_count), (4, 3, 1))
         self.assertFalse(self.marker.exists(), "gclient hook or prehook executed")
         outputs = self.workspace / "source-inputs"
         pending = json.loads((outputs / "pending-inputs.json").read_text())
@@ -103,7 +120,14 @@ class Acquisition(unittest.TestCase):
         self.assertEqual(actual["src/third_party/electron_node"]["rev"], sync.source.NODE_REVISION)
         self.assertEqual(self.git(self.workspace / "src/leaf", "rev-parse", "HEAD"),
                          actual["src/leaf"]["rev"])
-        self.assertEqual(self.run_sync(), (4, 3), "a Git-only retry must preserve exact inputs")
+        lfs = json.loads((outputs / "pending-lfs.json").read_text())
+        self.assertEqual(set(lfs), {"src/leaf"})
+        self.assertEqual(lfs["src/leaf"]["rev"], actual["src/leaf"]["rev"])
+        self.assertEqual(lfs["src/leaf"]["files"], [{
+            "name": "asset with space.bin", "size": 1234, "checkout": False, "downloaded": False,
+            "oid_type": "sha256", "oid": "a" * 64, "version": "https://git-lfs.github.com/spec/v1"}])
+        self.assertEqual((self.workspace / "src/leaf/asset with space.bin").read_text(), self.pointer)
+        self.assertEqual(self.run_sync(), (4, 3, 1), "a Git-only retry must preserve exact inputs")
         self.assertFalse(self.marker.exists())
 
     def test_upstream_hook_sentinel_is_effective(self):
@@ -111,7 +135,7 @@ class Acquisition(unittest.TestCase):
         result = subprocess.run([sys.executable, "-B", "-E", "-S",
                                  str(options.depot_tools / "gclient.py"), "runhooks", "--jobs", "2"],
                                 cwd=self.workspace,
-                                env=sync.source_environment(options.git, options.source_path),
+                                env=sync.source_environment(options.git, options.git_lfs, options.source_path),
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.marker.read_text(), "bad")
@@ -129,8 +153,50 @@ class Acquisition(unittest.TestCase):
                 self.run_sync()
 
     def test_undeclared_git_refused(self):
-        with self.assertRaisesRegex(ValueError, "declared Git"):
-            sync.source_environment(self.root / "not-the-selected-git", options.source_path)
+        with self.assertRaisesRegex(ValueError, "declared git"):
+            sync.source_environment(self.leaf / "DEPS", options.git_lfs, options.source_path)
+
+    def test_undeclared_git_lfs_refused(self):
+        with self.assertRaisesRegex(ValueError, "declared git-lfs"):
+            sync.source_environment(options.git, self.leaf / "DEPS", options.source_path)
+
+    def test_failed_lfs_inventory_does_not_publish_completion(self):
+        self.run_sync()
+        with patch.object(sync, "lfs_inventory", side_effect=ValueError("LFS inventory failure")):
+            with self.assertRaisesRegex(ValueError, "LFS inventory failure"):
+                self.run_sync()
+        for name in sync.OUTPUTS:
+            self.assertFalse((self.workspace / "source-inputs" / name).exists())
+
+    def test_upstream_lfs_skip_is_effective(self):
+        env = sync.source_environment(options.git, options.git_lfs, options.source_path)
+        # The local remote has no LFS object. Removing skip must fail instead
+        # of silently accepting the pointer; no external server is involved.
+        env.update(GIT_CONFIG_VALUE_2="", GIT_CONFIG_VALUE_3="", GIT_CONFIG_COUNT="5",
+                   GIT_CONFIG_KEY_4="lfs.url", GIT_CONFIG_VALUE_4=(self.root / "missing-lfs").as_uri())
+        with patch.dict(os.environ, env):
+            self.assertEqual(self.run_sync(), (4, 3, 1))
+        env.pop("GIT_LFS_SKIP_SMUDGE")
+        result = subprocess.run([str(options.git_lfs), "smudge", "asset with space.bin"],
+                                cwd=self.leaf, env=env, input=self.pointer, capture_output=True, text=True,
+                                timeout=15)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Smudge error", result.stderr)
+
+    def test_partial_checkout_retry_preserves_other_repositories(self):
+        self.run_sync()
+        node_git = self.workspace / "src/third_party/electron_node/.git"
+        before = node_git.stat().st_ino
+        leaf = self.workspace / "src/leaf"
+        # Reproduce checkout interruption after the fetch: objects exist but
+        # HEAD has no commit. gclient must quarantine this tree on retry.
+        (leaf / ".git/HEAD").write_text("ref: refs/heads/incomplete\n")
+        (leaf / "preserved-local-input").write_text("keep me")
+        self.assertEqual(self.run_sync(), (4, 3, 1))
+        self.assertEqual(node_git.stat().st_ino, before)
+        preserved = list((self.workspace / "_bad_scm").rglob("preserved-local-input"))
+        self.assertEqual(len(preserved), 1)
+        self.assertEqual(preserved[0].read_text(), "keep me")
 
     def test_simulated_gclient_environment_refused(self):
         with patch.dict(os.environ, {"GCLIENT_TEST": "1"}):
@@ -173,6 +239,7 @@ class Inventory(unittest.TestCase):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--git", type=Path, required=True)
+    parser.add_argument("--git-lfs", type=Path, required=True)
     parser.add_argument("--depot-tools", type=Path, required=True)
     parser.add_argument("--source-path", required=True)
     options = parser.parse_args()

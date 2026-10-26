@@ -1,0 +1,219 @@
+--- a/compiler-rt/lib/builtins/comparetf2.c
++++ b/compiler-rt/lib/builtins/comparetf2.c
+@@ -2,7 +2,12 @@
+ //
+ // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+ // See https://llvm.org/LICENSE.txt for license information.
+-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++// SPDX-License-Identifier: (Apache-2.0 WITH LLVM-exception) AND (MIT OR NCSA)
++//
++// EmberBSD AArch64 FENV adaptation, developed with AI assistance. The
++// adaptation retains its original MIT/University of Illinois licensing;
++// see LICENSE.EmberBSD-BINARY128.TXT. The upstream comparison implementation
++// and its architecture-specific result types are unchanged.
+ //
+ //===----------------------------------------------------------------------===//
+ //
+@@ -13,8 +18,9 @@
+ //   __lttf2
+ //   __netf2
+ //
+-// The semantics of the routines grouped in each column are identical, so there
+-// is a single implementation for each, and wrappers to provide the other names.
++// Integer results in each column are identical. With the explicit NetBSD
++// AArch64 libc FENV opt-in, equality/unordered comparisons raise INVALID only
++// for signaling NaNs; ordered comparisons raise it for every NaN.
+ //
+ // The main routines behave as follows:
+ //
+@@ -39,24 +45,92 @@
+ #define QUAD_PRECISION
+ #include "fp_lib.h"
+ 
++#if defined(COMPILER_RT_NETBSD_AARCH64_FENV)
++#if !defined(__NetBSD__) || !defined(__aarch64__) || defined(_KERNEL) || \
++    defined(_STANDALONE) || defined(__SOFT_FP__) || defined(__SOFTFP__)
++#error NetBSD AArch64 binary128 FENV requires userland hard-float libc
++#endif
++#if !defined(__lint__) && (!defined(__ARM_FP) || (__ARM_FP & 8) == 0)
++#error NetBSD AArch64 binary128 FENV requires hardware double precision
++#endif
++#if !defined(CRT_HAS_TF_MODE) || !defined(CRT_LDBL_IEEE_F128)
++#error NetBSD AArch64 binary128 FENV requires IEEE binary128 long double
++#endif
++#endif
++
+ #if defined(CRT_HAS_TF_MODE)
+ #include "fp_compare_impl.inc"
+ 
+-COMPILER_RT_ABI CMP_RESULT __letf2(fp_t a, fp_t b) { return __leXf2__(a, b); }
++#if defined(COMPILER_RT_NETBSD_AARCH64_FENV)
++/* EMBER_BINARY128_INVALID_BEGIN */
++static void
++binary128_raise_invalid(void)
++{
++#if defined(__lint__)
++	/* Lint-only syntax stub; this does not validate an executable object. */
++#else
++	double scratch;
++	const uint64_t nan = UINT64_C(0x7ff8000000000000);
++
++	/* FCMPE raises IOC, or traps with IOE, without changing FPCR. */
++	__asm__ volatile("fmov %d0, %1\n\tfcmpe %d0, %d0"
++	    : "=&w" (scratch) : "r" (nan) : "cc");
++#endif
++}
++/* EMBER_BINARY128_INVALID_END */
++
++static void
++binary128_check_invalid(fp_t a, fp_t b, int ordered)
++{
++	const rep_t aAbs = toRep(a) & absMask;
++	const rep_t bAbs = toRep(b) & absMask;
++	const int aNaN = aAbs > infRep;
++	const int bNaN = bAbs > infRep;
++
++	/* Test both operands: a quiet NaN must not hide a signaling NaN. */
++	if ((ordered && (aNaN || bNaN)) ||
++	    (aNaN && (aAbs & quietBit) == 0) ||
++	    (bNaN && (bAbs & quietBit) == 0))
++		binary128_raise_invalid();
++}
++#endif
++
++COMPILER_RT_ABI CMP_RESULT __letf2(fp_t a, fp_t b) {
++#if defined(COMPILER_RT_NETBSD_AARCH64_FENV)
++  binary128_check_invalid(a, b, 1);
++#endif
++  return __leXf2__(a, b);
++}
+ 
+ #if defined(__ELF__)
+ // Alias for libgcc compatibility
+ COMPILER_RT_ALIAS(__letf2, __cmptf2)
+ #endif
++COMPILER_RT_ALIAS(__letf2, __lttf2)
++
++#if defined(COMPILER_RT_NETBSD_AARCH64_FENV)
++COMPILER_RT_ABI CMP_RESULT __eqtf2(fp_t a, fp_t b) {
++  binary128_check_invalid(a, b, 0);
++  return __leXf2__(a, b);
++}
++#else
+ COMPILER_RT_ALIAS(__letf2, __eqtf2)
+-COMPILER_RT_ALIAS(__letf2, __lttf2)
+-COMPILER_RT_ALIAS(__letf2, __netf2)
++#endif
++COMPILER_RT_ALIAS(__eqtf2, __netf2)
+ 
+-COMPILER_RT_ABI CMP_RESULT __getf2(fp_t a, fp_t b) { return __geXf2__(a, b); }
++COMPILER_RT_ABI CMP_RESULT __getf2(fp_t a, fp_t b) {
++#if defined(COMPILER_RT_NETBSD_AARCH64_FENV)
++  binary128_check_invalid(a, b, 1);
++#endif
++  return __geXf2__(a, b);
++}
+ 
+ COMPILER_RT_ALIAS(__getf2, __gttf2)
+ 
+ COMPILER_RT_ABI CMP_RESULT __unordtf2(fp_t a, fp_t b) {
++#if defined(COMPILER_RT_NETBSD_AARCH64_FENV)
++  binary128_check_invalid(a, b, 0);
++#endif
+   return __unordXf2__(a, b);
+ }
+ 
+--- /dev/null
++++ b/compiler-rt/lib/builtins/LICENSE.EmberBSD-BINARY128.TXT
+@@ -0,0 +1,91 @@
++==============================================================================
++compiler_rt License
++==============================================================================
++
++The compiler_rt library is dual licensed under both the University of Illinois
++"BSD-Like" license and the MIT license.  As a user of this code you may choose
++to use it under either license.  As a contributor, you agree to allow your code
++to be used under both.
++
++Full text of the relevant licenses is included below.
++
++==============================================================================
++
++University of Illinois/NCSA
++Open Source License
++
++Copyright (c) 2009-2015 by the contributors listed in CREDITS.TXT
++
++All rights reserved.
++
++Developed by:
++
++    LLVM Team
++
++    University of Illinois at Urbana-Champaign
++
++    http://llvm.org
++
++Permission is hereby granted, free of charge, to any person obtaining a copy of
++this software and associated documentation files (the "Software"), to deal with
++the Software without restriction, including without limitation the rights to
++use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
++of the Software, and to permit persons to whom the Software is furnished to do
++so, subject to the following conditions:
++
++    * Redistributions of source code must retain the above copyright notice,
++      this list of conditions and the following disclaimers.
++
++    * Redistributions in binary form must reproduce the above copyright notice,
++      this list of conditions and the following disclaimers in the
++      documentation and/or other materials provided with the distribution.
++
++    * Neither the names of the LLVM Team, University of Illinois at
++      Urbana-Champaign, nor the names of its contributors may be used to
++      endorse or promote products derived from this Software without specific
++      prior written permission.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
++FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
++CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS WITH THE
++SOFTWARE.
++
++==============================================================================
++
++Copyright (c) 2009-2015 by the contributors listed in CREDITS.TXT
++
++Permission is hereby granted, free of charge, to any person obtaining a copy
++of this software and associated documentation files (the "Software"), to deal
++in the Software without restriction, including without limitation the rights
++to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++copies of the Software, and to permit persons to whom the Software is
++furnished to do so, subject to the following conditions:
++
++The above copyright notice and this permission notice shall be included in
++all copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++THE SOFTWARE.
++
++==============================================================================
++Copyrights and Licenses for Third Party Software Distributed with LLVM:
++==============================================================================
++The LLVM software contains code written by third parties.  Such software will
++have its own individual LICENSE.TXT file in the directory in which it appears.
++This file will describe the copyrights, license, and restrictions which apply
++to that code.
++
++The disclaimer of warranty in the University of Illinois Open Source License
++applies to all code in the LLVM Distribution, and nothing in any of the
++other licenses gives permission to use the names of the LLVM Team or the
++University of Illinois to endorse or promote products derived from this
++Software.
++

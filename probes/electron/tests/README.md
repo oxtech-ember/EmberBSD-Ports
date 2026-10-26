@@ -9,7 +9,8 @@ uses control Python and an explicit Git executable; no installed SDK is needed:
 /absolute/control-python -B probes/electron/tests/electron-source-prepare.py \
   --git /absolute/git --electron-source /absolute/electron-pristine
 /absolute/control-python -B probes/electron/tests/electron-git-sources.py \
-  --git /absolute/source-tools/bin/git --source-path /absolute/source-tools/bin \
+  --git /absolute/source-tools/bin/git --git-lfs /absolute/source-tools/bin/git-lfs \
+  --source-path /absolute/source-tools/bin \
   --depot-tools /absolute/depot-tools
 ```
 
