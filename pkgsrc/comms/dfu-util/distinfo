@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (dfu-util-0.11.tar.gz) = c846a5d114a3c05925936e74c0d8d75da5d0f70f34a9825f0d92b57ae1f0fffc
+SHA512 (dfu-util-0.11.tar.gz) = fc5304a483ac10e35bf1b9304becdeb407b2e44d8ac51474d2fa17877e6cf71b0126f7e12ebb331d75e7adeb9c173ff5cf083a06ded5847dbe477534cf26a553
+Size (dfu-util-0.11.tar.gz) = 152462 bytes
