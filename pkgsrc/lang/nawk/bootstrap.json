@@ -1,0 +1,151 @@
+{
+  "format": "emberbsd-native-bootstrap-program",
+  "version": 1,
+  "name": "nawk",
+  "release": "nawk-20260426",
+  "initial_only": true,
+  "origin": "One True Awk 20260426, imported and adapted by the common EmberBSD Ports recipe. Retain SOURCE.json, GENERATED.json, and LICENSE.",
+  "canonical_host_recipe": "pkgsrc/lang/nawk/Makefile",
+  "source_makefile": "pkgsrc/lang/nawk/files/Makefile",
+  "compiler": {
+    "family": "gcc",
+    "major": 16,
+    "abi": "native"
+  },
+  "sources": [
+    "pkgsrc/lang/nawk/files/awkgram.tab.c",
+    "pkgsrc/lang/nawk/files/b.c",
+    "pkgsrc/lang/nawk/files/main.c",
+    "pkgsrc/lang/nawk/files/parse.c",
+    "pkgsrc/lang/nawk/files/proctab.c",
+    "pkgsrc/lang/nawk/files/tran.c",
+    "pkgsrc/lang/nawk/files/lib.c",
+    "pkgsrc/lang/nawk/files/run.c",
+    "pkgsrc/lang/nawk/files/lex.c"
+  ],
+  "headers": [
+    "pkgsrc/lang/nawk/files/awk.h",
+    "pkgsrc/lang/nawk/files/awkgram.tab.h",
+    "pkgsrc/lang/nawk/files/proto.h",
+    "pkgsrc/lang/nawk/files/command-shell.h"
+  ],
+  "provenance": [
+    "pkgsrc/lang/nawk/Makefile",
+    "pkgsrc/lang/nawk/SOURCE.json",
+    "pkgsrc/lang/nawk/files/GENERATED.json",
+    "pkgsrc/lang/nawk/files/Makefile",
+    "pkgsrc/lang/nawk/files/LICENSE",
+    "pkgsrc/lang/nawk/files/README.pkgsrc",
+    "pkgsrc/lang/nawk/files/awkgram.y",
+    "pkgsrc/lang/nawk/files/maketab.c"
+  ],
+  "include_dirs": [
+    "pkgsrc/lang/nawk/files"
+  ],
+  "cppflags": [
+    "-DYYMAXDEPTH=300"
+  ],
+  "cflags": [],
+  "link_flags": [],
+  "libraries": [
+    "m"
+  ],
+  "selected_command_shell": {
+    "role": "sh",
+    "macro": "NAWK_COMMAND_SHELL"
+  },
+  "invocations": [
+    "nawk",
+    "awk"
+  ],
+  "files": {},
+  "runtime_cases": [
+    {
+      "name": "fields",
+      "invocation": "nawk",
+      "args": [
+        "{ total += $2 } END { printf \"%.0f\\n\", total }"
+      ],
+      "stdin": "first 2\nsecond 3\n",
+      "exit": 0,
+      "stdout": "5\n",
+      "stderr": ""
+    },
+    {
+      "name": "system-zero",
+      "invocation": "nawk",
+      "args": [
+        "BEGIN { print system(\"exit 0\") }"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "0\n",
+      "stderr": ""
+    },
+    {
+      "name": "system-status",
+      "invocation": "nawk",
+      "args": [
+        "BEGIN { print system(\"exit 37\") }"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "37\n",
+      "stderr": ""
+    },
+    {
+      "name": "system-missing",
+      "invocation": "nawk",
+      "args": [
+        "BEGIN { print system(\"emberbsd_nawk_missing_command >/dev/null 2>&1\") }"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "127\n",
+      "stderr": ""
+    },
+    {
+      "name": "system-selected-shell",
+      "invocation": "nawk",
+      "args": [
+        "BEGIN { exit system(\"test -n \\\"$KSH_VERSION\\\" && print -r -- selected-shell\") }"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "selected-shell\n",
+      "stderr": ""
+    },
+    {
+      "name": "pipe-read",
+      "invocation": "nawk",
+      "args": [
+        "BEGIN { cmd=\"print -r -- selected-read\"; cmd | getline value; print value; print close(cmd) }"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "selected-read\n0\n",
+      "stderr": ""
+    },
+    {
+      "name": "pipe-write",
+      "invocation": "nawk",
+      "args": [
+        "BEGIN { cmd=\"IFS= read -r value; print -r -- \\\"$value\\\"\"; print \"selected-write\" | cmd; print close(cmd) }"
+      ],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "selected-write\n0\n",
+      "stderr": ""
+    },
+    {
+      "name": "command-shell-contracts",
+      "invocation": "command-shell-probe",
+      "args": [],
+      "stdin": "",
+      "exit": 0,
+      "stdout": "PASS: nawk command-shell contracts\n",
+      "stderr": ""
+    }
+  ],
+  "probe": "pkgsrc/lang/nawk/bootstrap/command-shell-probe.c"
+}
