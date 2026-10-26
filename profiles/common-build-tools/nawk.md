@@ -97,6 +97,10 @@ An admitted native producer compiles it with the recipe's `files/` include path
 and the exact selected-shell macro. The probe takes no arguments.
 It prints `PASS: nawk command-shell contracts` only after all checks pass.
 It checks exit and signal statuses, read/write pipes and `pclose()` status.
+The signal-status check uses SIGKILL because a shell can catch other signals
+and exit normally during cleanup. A separate SIGINT trap checks that a caught
+parent disposition does not become an ignored child disposition. The ignored
+parent case must still leave SIGINT ignored in the child.
 Injected syscall failures check `EINTR`, fork/exec errors and signal-state restoration.
 Run the default build separately in a scope that admits the platform shell.
 The initial explicit-shell producer must not use this default as a hidden fallback.

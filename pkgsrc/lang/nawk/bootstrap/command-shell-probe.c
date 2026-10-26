@@ -166,10 +166,11 @@ main(void)
 	check_exit(nawk_system("exit 37"), 37);
 	check_exit(nawk_system("exec /nonexistent/nawk-command-test 2>/dev/null"), 127);
 	check_state(&mask);
-	status = nawk_system("kill -TERM $$");
-	CHECK(status != -1 && WIFSIGNALED(status) && WTERMSIG(status) == SIGTERM);
-	status = nawk_system("kill -INT $$; exit 99");
-	CHECK(status != -1 && WIFSIGNALED(status) && WTERMSIG(status) == SIGINT);
+	/* Shell cleanup cannot convert an uncatchable signal to exit(). */
+	status = nawk_system("kill -KILL $$");
+	CHECK(status != -1 && WIFSIGNALED(status) && WTERMSIG(status) == SIGKILL);
+	/* A noninteractive shell cannot trap an inherited ignored SIGINT. */
+	check_exit(nawk_system("trap 'exit 73' INT; kill -INT $$; exit 99"), 73);
 	check_state(&mask);
 	sa.sa_handler = SIG_IGN;
 	CHECK(sigaction(SIGINT, &sa, NULL) == 0);
