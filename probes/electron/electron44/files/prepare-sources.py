@@ -27,9 +27,9 @@ def require(condition, message):
         raise ValueError(message)
 
 
-def git_run(git, root, *args):
+def git_run(git, root, *args, env=None):
     result = subprocess.run([str(git), "-C", str(root), *args],
-                            capture_output=True, text=True)
+                            capture_output=True, text=True, env=env)
     require(result.returncode == 0,
             f"git {args[0]} failed: {result.stderr.strip()}")
     return result.stdout.strip()
@@ -100,6 +100,16 @@ def gclient_config(target_cpu):
             f"target_cpu = {[target_cpu]!r}\n")
 
 
+def ordered_patches(patch_dir):
+    patch_dir = Path(patch_dir).resolve(strict=True)
+    patches = [patch_dir / name for name in PATCHES]
+    require(all(path.is_file() for path in patches), "recipe patch is missing")
+    require(len(set(PATCHES)) == len(PATCHES), "recipe patch order contains a duplicate")
+    require(set(PATCHES) == {path.name for path in patch_dir.glob("patch-*")},
+            "recipe patch order does not cover the complete patch directory")
+    return patches
+
+
 def prepare(source, destination, git, target_cpu, patch_dir):
     source = Path(source).resolve(strict=True)
     git = Path(git)
@@ -118,12 +128,7 @@ def prepare(source, destination, git, target_cpu, patch_dir):
             "Electron source must be clean, including untracked files")
     check_deps(source / "DEPS", NODE_BEFORE)
     config = gclient_config(target_cpu)
-    patch_dir = Path(patch_dir).resolve(strict=True)
-    patches = [patch_dir / name for name in PATCHES]
-    require(all(path.is_file() for path in patches), "recipe patch is missing")
-    require(len(set(PATCHES)) == len(PATCHES), "recipe patch order contains a duplicate")
-    require(set(PATCHES) == {path.name for path in patch_dir.glob("patch-*")},
-            "recipe patch order does not cover the complete patch directory")
+    patches = ordered_patches(patch_dir)
 
     # Exclusive creation refuses an existing or concurrently created workspace.
     # The caller holds its normal source lock. Retain partial work on failure;

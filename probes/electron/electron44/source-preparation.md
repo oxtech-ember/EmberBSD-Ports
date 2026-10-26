@@ -125,12 +125,47 @@ BSD adaptations and generators. A full sync without the type filters obtains
 CIPD/GCS inputs even with hooks disabled, including upstream tool binaries and
 Linux sysroots. LFS payloads need a separate ordinary upstream Git LFS
 fetch/checkout stage before their consumers can run; this Git-only helper
-retains their pending inventory on every retry. Bind required upstream acquisition tools and normalize their
-Python/library dependencies through Ports; select shared Ports build tools
+retains their pending inventory on every retry. Bind required upstream
+acquisition tools and normalize their Python/library dependencies through Ports; select shared Ports build tools
 and the EmberBSD sysroot before exposing the full recipe build.
 
-After Git synchronization and pending-input preparation, apply Electron's
-upstream patch series, then the ordered Ports BSD series.
+## Upstream patch preparation
+
+After Git synchronization, `files/apply-upstream-patches.py` applies Electron's
+own ordered patch series through the pinned upstream `apply_all_patches.py`
+CLI. The stage is source-only; pending asset payloads are not downloaded.
+
+```sh
+/absolute/control-python -B \
+    probes/electron/electron44/files/apply-upstream-patches.py \
+    --workspace /absolute/NEW_ELECTRON_WORK \
+    --git /absolute/source-tools/bin/git --git-lfs /absolute/source-tools/bin/git-lfs \
+    --source-path /absolute/source-tools/bin
+```
+
+Before the first patch, the helper requires completed Git acquisition
+inventories and verifies all selected targets from Electron's pinned
+`patches/config.json`: each must have its own Git repository, the acquired
+HEAD and no tracked modifications. It reconstructs the expected Electron tree
+from the pinned commit plus the complete ordered Ports recipe series in a
+temporary Git index. The real index must match and have no unstaged or untracked
+inputs. This includes patch bytes, `.patches` order, the upstream CLI and the
+existing Node security roll; the working source is not rewritten. This closes upstream's
+warning-only path for an absent repository. A target absent from the selected
+DEPS graph is reported as unselected; Mac-only targets need not exist on a
+Linux source host. The current config contains 19 targets.
+
+The helper invokes the upstream CLI with one target at a time, preserving its
+`.patches` order, Git author metadata and normal patch rejection. It rejects
+`ELECTRON_USE_THREE_WAY_MERGE_FOR_PATCHES` rather than selecting a fallback.
+It writes `source-inputs/upstream-patches.log` and, only after all selected
+series succeed, `upstream-patches.json` with base/patched commits and unselected
+targets. This records source state, not build or runtime acceptance. A failure
+keeps Git's partial application state and the log; the helper does not reset,
+skip a rejected patch or automatically repeat an applied series. Do not run
+Git synchronization over this patched tree as an acquisition retry.
+
+The ordered Ports BSD series still needs adaptation and application.
 The historical `chromium-nb` dry run still has five drifted hunks and fourteen
 absent targets. This helper neither applies that incomplete overlay nor claims
 that it is ready for the current pins. Those adaptations and the full source
@@ -173,4 +208,21 @@ No external repository or asset is downloaded by this test:
     --git /absolute/source-tools/bin/git --git-lfs /absolute/source-tools/bin/git-lfs \
     --source-path /absolute/source-tools/bin \
     --depot-tools /absolute/depot-tools
+```
+
+The upstream patch guard regression copies the actual patch CLI and its two
+library modules from a clean pinned Electron checkout. Twelve tests apply ordered
+mail patches to tiny local repositories, preserve author metadata, reject
+missing selected repositories before any patch, retain unselected host targets,
+and reject changed pins, dirty targets, incomplete acquisition, changed upstream
+code/config, edited patch bytes, changed staged patch order, duplicate
+application and three-way fallback. A production-source case verifies that the
+real Node security roll matches the expected tree without altering its index. Reversing a dependent
+patch pair is a causal rejection test and retains Git's failed application state.
+
+```sh
+/absolute/control-python -B probes/electron/tests/electron-upstream-patches.py \
+    --git /absolute/source-tools/bin/git --git-lfs /absolute/source-tools/bin/git-lfs \
+    --source-path /absolute/source-tools/bin \
+    --electron-source /absolute/electron-pristine
 ```

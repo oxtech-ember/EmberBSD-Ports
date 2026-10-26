@@ -96,8 +96,10 @@ The recipe-owned [source preparer](electron44/source-preparation.md) verifies a
 clean pinned Electron checkout, applies its complete recipe-local patch series
 in order and creates an unmanaged `.gclient` with immutable Chromium and Node
 pins. Its companion uses the pinned upstream gclient to acquire the Git-only
-graph and retain selected CIPD/GCS declarations and LFS object inputs as pending. No hooks
-run. The remaining assets, BSD overlay adaptations and GN integration are
+graph and retain selected CIPD/GCS declarations and LFS object inputs as pending.
+A further recipe stage checks every selected patch repository before invoking
+Electron's upstream patch CLI. No hooks run. The remaining assets, BSD overlay
+adaptations and GN integration are
 necessary before building.
 
 ## Electron runtime packaging

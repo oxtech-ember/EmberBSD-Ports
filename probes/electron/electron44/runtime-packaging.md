@@ -10,8 +10,8 @@ patch series at its existing owner. Do not add a second fetch-only recipe.
 The recipe currently fetches Electron 44.9.3 and Node 24.22.1. The
 [source preparer](source-preparation.md) creates a pinned DEPS input workspace
 and applies the recipe-local security series. Its Git-only acquisition stage
-records deferred CIPD/GCS/LFS inputs. It does not yet prepare the complete source
-graph or run GN and Ninja. Do not use `NO_BUILD`, a
+records deferred CIPD/GCS/LFS inputs, followed by a guarded upstream patch stage.
+It does not yet prepare the complete source graph or run GN and Ninja. Do not use `NO_BUILD`, a
 downloaded binary ZIP, or an externally supplied ZIP as its ordinary build.
 
 The SDK already supplies the needed mechanisms. Load the native Ports
@@ -23,8 +23,8 @@ Electron executor or qualification format is not required.
 The missing recipe integration is concrete:
 
 1. Starting with the prepared DEPS input, acquire the full pinned dependency
-   tree and apply upstream and ordered Ports BSD patches in the recipe's own
-   work tree. The two current distfiles are insufficient.
+   tree, run the guarded upstream patch stage, and apply ordered Ports BSD
+   patches in the recipe's own work tree. The two current distfiles are insufficient.
 2. Map the selected native prefix and independent target SDK to GN arguments.
    Clang is the default; select GCC only for an explicit platform requirement.
    Bind the native compiler paths and ordered ABI arguments,
