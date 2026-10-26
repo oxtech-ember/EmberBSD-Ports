@@ -113,7 +113,7 @@ def run(args):
                          + r"\.tar\.xz\) = ([0-9]+) bytes$", info, re.M)
         require(size and len(data) == int(size[1]), "Archive size differs")
         patches = sorted((path / "patches").glob("patch-*"))
-        source_files = {"po/LINGUAS"}
+        source_files = {"po/LINGUAS", "aclocal.m4", "Makefile.in"}
         for patch in patches:
             expected = re.search(r"^SHA1 \(" + re.escape(patch.name)
                                  + r"\) = ([0-9a-f]+)$", info, re.M)
@@ -127,6 +127,7 @@ def run(args):
         work = args.work / release
         work.mkdir()
         original = {}
+        mtimes = {}
         with tarfile.open(archive) as tar:
             for relative in sorted(source_files):
                 require(not PurePosixPath(relative).is_absolute()
@@ -137,6 +138,7 @@ def run(args):
                         "Source member is not a bounded regular file")
                 contents = tar.extractfile(member).read()
                 original[relative] = contents
+                mtimes[relative] = member.mtime
                 destination = work / relative
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 destination.write_bytes(contents)
@@ -185,6 +187,10 @@ def run(args):
                 and 'EMBERBSD_CONFIGURE_SDK=yes' in recipe_text
                 and '${CP} ${FILESDIR}/emberbsd-configure-diagnostics.sh ${WRKSRC}/' in recipe_text,
                 'Ordinary recipe must stage the common helper and bind SDK diagnostics')
+        require('${TOUCH} -r ${WRKSRC}/aclocal.m4 ${WRKSRC}/configure.ac' in recipe_text
+                and mtimes['aclocal.m4'] <= mtimes['configure']
+                and mtimes['aclocal.m4'] <= mtimes['Makefile.in'],
+                'Paired source patch must retain the release generator dependency order')
         diagnostic_checks(args, work, hook, recipe)
         locales = set(original["po/LINGUAS"].decode().split())
         plist = (path / "PLIST").read_text()

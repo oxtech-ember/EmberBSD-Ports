@@ -35,6 +35,10 @@ CONFIGURE_ENV+=		EMBERBSD_CONFIGURE_UNAME=${EMBERBSD_GCC16_UNAME:Q}
 post-extract:
 	${CP} ${FILESDIR}/emberbsd-configure-diagnostics.sh ${WRKSRC}/
 
+# The paired configure patch retains the released generator outputs.
+pre-configure:
+	${TOUCH} -r ${WRKSRC}/aclocal.m4 ${WRKSRC}/configure.ac
+
 post-install:
 .for f in cmp diff diff3 sdiff
 	${LN} -sf ${PREFIX}/bin/g${f} ${DESTDIR}${PREFIX}/${PKGGNUDIR}bin/${f}

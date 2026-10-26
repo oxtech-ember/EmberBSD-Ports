@@ -38,6 +38,9 @@ The configure and configure.ac hooks route absolute legacy diagnostic commands
 through that helper. Supported uname queries use the selected program.
 Optional legacy probes report unavailable. They never execute system paths.
 Unset SDK mode preserves upstream diagnostics and all ordinary feature tests.
+The paired source patch retains release generator outputs. Before configure,
+the recipes align configure.ac to the unchanged aclocal.m4 release timestamp.
+This prevents a spurious Autoconf regeneration dependency during bootstrap.
 
 ## Finite initial source builds
 
