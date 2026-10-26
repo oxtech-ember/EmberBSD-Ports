@@ -8,7 +8,8 @@ ${PLIST.ARM}lib/clang/23/include/arm_sme.h
 ${PLIST.ARM}lib/clang/23/include/arm_sve.h
 ${PLIST.ARM}lib/clang/23/include/arm_vector_types.h
 ${PLIST.RISCV}lib/clang/23/include/riscv_vector.h
-${PLIST.notdylib}lib/libclang-cpp.so.23.1
+${PLIST.notdylib}lib/libclang-cpp.${SHLIB_EXT}.23.1
+${PLIST.dylib}lib/libclang-cpp.23.1.${SHLIB_EXT}
 ${PLIST.notdylib}lib/libclang.${SHLIB_EXT}.${PKGVERSION}
 ${PLIST.notdylib}lib/libclang.${SHLIB_EXT}.23.1
 bin/amdgpu-arch
