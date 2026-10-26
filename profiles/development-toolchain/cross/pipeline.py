@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD; Python host controllers for the shared GCC16 toolchain.
 import os
+import argparse
 from pathlib import Path
 import platform
 import re
@@ -74,19 +75,44 @@ def host_math_main(args):
 
 
 def binutils_main(args, make_override=None):
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    parser.add_argument('--host-prefix', action='append')
+    parser.add_argument('--host-compiler-family', choices=('clang', 'gcc'), action='append')
+    options, args = parser.parse_known_args(args)
+    for values in (options.host_prefix, options.host_compiler_family):
+        require(values is None or len(values) == 1, 'Duplicate native Binutils selection')
     target, _, args = parse(args, kernel_target_allowed=True)
-    require(len(args) == 1, 'Usage: build-binutils.py [--target TARGET] NEW_WORK --sdk-source SOURCE')
-    return _build_binutils(target, args[0], make_override)
+    require(len(args) == 1, 'Usage: build-binutils.py [--target TARGET] --host-prefix PREFIX '
+            '[--host-compiler-family clang|gcc] NEW_WORK --sdk-source SOURCE')
+    native = None
+    # The enclosing explicit GCC and firmware producers keep their existing
+    # host compiler selection. Standalone Binutils uses the shared prefix API.
+    if make_override is None or options.host_prefix or options.host_compiler_family:
+        from binutils_host import native_selection
+        prefix = (options.host_prefix or [os.environ.get('EMBERBSD_HOST_PREFIX')])[0]
+        family = (options.host_compiler_family or [os.environ.get('EMBERBSD_HOST_COMPILER_FAMILY', 'clang')])[0]
+        native = native_selection(prefix, family)
+    return _build_binutils(target, args[0], make_override, native=native)
 
 
-def _build_binutils(target, new_work, make_override=None):
+def _build_binutils(target, new_work, make_override=None, native=None):
     require(target in TARGETS or target in KERNEL_TARGETS or target in FIRMWARE_TARGETS,
             'Unsupported Binutils target: ' + target)
     triplet = target_triplet(target) if target in TARGETS or target in KERNEL_TARGETS else FIRMWARE_TARGETS[target]
     work, count = new_path(new_work), jobs()
-    make = str(make_override) if make_override else os.environ.get('GMAKE', 'gmake')
-    require(shutil.which(make), 'GNU make missing')
-    cc, cxx = host_compilers()
+    if native is None:
+        make = str(make_override) if make_override else os.environ.get('GMAKE', 'gmake')
+        require(shutil.which(make), 'GNU make missing')
+        cc, cxx = host_compilers()
+        env = {'CC': cc, 'CXX': cxx, 'MAKEINFO': 'true'}
+        tar, patch_command = 'tar', 'patch'
+    else:
+        selected, env = native
+        make = selected.tool('gmake')
+        require(make_override is None or str(make_override) == make,
+                'GNU make differs from the selected native prefix')
+        cc, cxx = selected.tool('cc'), selected.tool('cxx')
+        tar, patch_command = selected.tool('tar'), selected.tool('patch')
     recipe = PORTS / 'pkgsrc/devel/binutils'
     archive_name = 'binutils-2.47.tar.xz'
     records = [line.split('\t') for line in (PORTS / 'profiles/common-build-tools/sources.tsv').read_text().splitlines() if line.startswith(archive_name + '\t')]
@@ -99,9 +125,9 @@ def _build_binutils(target, new_work, make_override=None):
     patches = audit_patches(recipe, exclude_isl=False)
     work.mkdir()
     archive = work / archive_name
-    selected = os.environ.get('EMBER_BINUTILS_ARCHIVE')
-    if selected:
-        shutil.copyfile(build_path(selected), archive)
+    selected_archive = os.environ.get('EMBER_BINUTILS_ARCHIVE')
+    if selected_archive:
+        shutil.copyfile(build_path(selected_archive), archive)
     else:
         part = work / (archive_name + '.part')
         with urllib.request.urlopen(url) as source, part.open('xb') as output:
@@ -111,14 +137,16 @@ def _build_binutils(target, new_work, make_override=None):
     source, build, prefix = [work / name for name in ('src', 'build', 'prefix')]
     for directory in (source, build, prefix):
         directory.mkdir()
-    logged(['tar', '-xf', archive, '--strip-components=1', '-C', source], work / 'extract.log')
+    logged([tar, '-xf', archive, '--strip-components=1', '-C', source], work / 'extract.log', env)
     with (work / 'patch.log').open('wb') as log:
         for name in patches:
             patch_log = work / (name + '.log')
-            logged(['patch', '-f', '-N', '-F', '0', '-p0', '-d', source, '-i', recipe / 'patches' / name], patch_log)
+            logged([patch_command, '-f', '-N', '-F', '0', '-p0', '-d', source, '-i', recipe / 'patches' / name], patch_log, env)
             log.write(('patch=' + name + '\n').encode() + patch_log.read_bytes())
-    env = {'CC': cc, 'CXX': cxx, 'MAKEINFO': 'true'}
     configure = [source / 'configure', '--target=' + triplet, '--prefix=' + str(prefix), '--program-prefix=' + triplet + '-', '--enable-plugins', '--disable-nls', '--disable-gprofng']
+    if native is not None:
+        configure.insert(0, selected.tool('sh'))
+        configure.append('--with-system-zlib')
     if platform.system() in ('Linux', 'Darwin'):
         configure.append('--disable-libctf')
     logged(configure, work / 'configure.log', env, build)
@@ -126,12 +154,15 @@ def _build_binutils(target, new_work, make_override=None):
     logged([make, 'install'], work / 'install.log', env, build)
     require_tools(prefix, triplet, BINUTILS)
     for name in ('as', 'ld', 'readelf'):
-        require(' 2.47' in capture([prefix / 'bin' / (triplet + '-' + name), '--version']).splitlines()[0], 'Unexpected GNU tool version')
+        require(' 2.47' in capture([prefix / 'bin' / (triplet + '-' + name), '--version'], env=env).splitlines()[0], 'Unexpected GNU tool version')
     require(any(path.is_file() for path in (prefix / triplet / 'lib/ldscripts').iterdir()), 'Installed Binutils linker scripts missing')
     receipt = platform.platform() + '\ntarget=' + target + '\ntriplet=' + triplet + '\nhost_cc=' + cc + '\nhost_cxx=' + cxx + '\ngmake=' + make + '\njobs=' + count + '\nconfigure=' + ' '.join(str(arg) for arg in configure[1:]) + '\n'
-    receipt += capture([cc, '--version']) + capture([cc, '-dumpmachine']) + capture([cxx, '--version']) + capture([make, '--version']) + capture([prefix / 'bin' / (triplet + '-as'), '--version']) + capture([prefix / 'bin' / (triplet + '-ld'), '--version']) + digest_rows([archive, recipe / 'distinfo'] + sorted((recipe / 'patches').glob('patch-*')))
+    receipt += capture([cc, '--version'], env=env) + capture([cc, '-dumpmachine'], env=env) + capture([cxx, '--version'], env=env) + capture([make, '--version'], env=env) + capture([prefix / 'bin' / (triplet + '-as'), '--version'], env=env) + capture([prefix / 'bin' / (triplet + '-ld'), '--version'], env=env) + digest_rows([archive, recipe / 'distinfo'] + sorted((recipe / 'patches').glob('patch-*')))
     receipt += digest_rows(policy_sources() + sorted(HERE.glob('*.py')))
     (work / 'inputs.txt').write_text(receipt)
+    if native is not None:
+        from binutils_host import write_bfd_input
+        write_bfd_input(work, triplet, capture, env)
     print('Binutils 2.47 cross tools built: ' + str(prefix))
 
 
