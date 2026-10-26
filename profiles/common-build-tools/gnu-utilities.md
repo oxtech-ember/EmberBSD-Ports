@@ -122,8 +122,12 @@ The check verifies all recipe archive hashes, exact zero-fuzz patch application,
 reverse identity, six equality replacements, two optional-tool guards, complete
 locale rows, and ordinary NLS policy. A changed-source control must fail.
 It runs only the diagnostic hook with the selected SDK shell and uname.
-Missing, relative and system uname selectors must fail before a diagnostic runs.
-All eight unsupported legacy commands must report unavailable without executing.
+Missing, relative, directory and non-executable selectors fail before a
+diagnostic runs. All six allowed uname options use the explicitly selected
+executable, including a declared initial host tool. The calling SDK profile
+owns bootstrap and ordinary prefix policy. Legacy GCC aliases remain supported
+and conflicting selectors fail. Unsupported legacy commands and extra options
+report unavailable without executing.
 The check also preserves the original unset-mode invocation.
 A real cleanup control leaves a compiler-style debug directory with the old
 command, then removes it with the corrected recursive cleanup.
