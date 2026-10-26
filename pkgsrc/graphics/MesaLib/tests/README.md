@@ -128,3 +128,49 @@ cross seals, and deliberate selection/dependency faults. It does not resolve
 the full pkgsrc dependency graph, configure Meson, build a generator, or check
 the staged package. Full native shader generation, upstream tests and package
 linkage/PLIST checks remain required.
+
+## Staged dynamic ELF compatibility
+
+The native and cross recipes require an explicit SDK source on both CPUs.
+Before configuration, `check-dynamic-elf.py --check-sdk` requires the SDK's
+`ELF_RELOCATIONS_API=1`, dynamic ELF readers and stable-file APIs. The existing
+amd64 base-libelf guard remains separate and unchanged.
+
+The mandatory `post-install` hook reads `${DESTDIR}${PREFIX}/lib` before the
+staged package is published or installed. It reads every regular ELF file,
+including files below driver directories. ELF64 little-endian, `ET_DYN` and
+the selected CPU are required. A regular `*.so*` file without ELF magic is
+an error. An empty ELF set is also an error.
+
+NetBSD x86_64 rejects dynamic relocation types 34, 35 and 36, and the
+`DT_TLSDESC_PLT` and `DT_TLSDESC_GOT` tags, including zero-valued tags.
+The SDK reads actual REL, RELA and JMPREL tables without section headers.
+AArch64 does not receive the x86 policy. This gate detects a known loader
+incompatibility. It does not qualify all relocations, TLS execution or runtime
+admission. Rendering and compositor acceptance remain separate checks.
+
+Symlink aliases are skipped, not opened as ELF files. Directory symlinks
+are not traversed; an escaped directory symlink is an error. The selected
+library directory must have no symlink ancestors. PLIST, alias closure and
+package-lifecycle checks remain required. Keep the staging tree unchanged
+while the checker runs. SDK identity checks cover all reads and each hash.
+
+The checker writes JSON to stdout. Each library record contains its relative
+path, SHA256 and the SDK's relocation scan. It never executes target code or
+changes the package. Both hooks use the selected Python with `-B -E -S`.
+
+```sh
+"$PYTHON" -B -E -S tests/dynamic-elf.py \
+    --sdk-source /absolute/selected-sdk-source \
+    --bmake /absolute/selected-bmake --work-parent /absolute/private-test-parent
+```
+
+The regression uses raw-byte ELF fixtures and the actual checker. It covers
+compatible old TLS, every forbidden type in all three table kinds, both tags,
+AArch64 preservation, malformed/wrong-CPU/wrong-type files, damaged DSO magic,
+empty inputs, aliases, directory escape and missing SDK capabilities.
+Causal controls remove only the forbidden-type policy and change bytes between
+relocation parsing and hashing. Real bmake dry-runs both recipe hooks for each
+CPU in native and cross modes. External dependency includes are outside this
+finite source check. No compiler, configure step, generator or target program
+runs. These fixtures do not establish a complete package or installed runtime.

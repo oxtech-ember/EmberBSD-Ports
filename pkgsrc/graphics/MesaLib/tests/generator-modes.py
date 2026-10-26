@@ -50,6 +50,7 @@ TOOLBASE=/usr/pkg
 PYPKGPREFIX=py315
 PYVERSSUFFIX=3.15
 EMBERBSD_MESA_GENERATORS={sealed}
+EMBERBSD_SDK_SOURCE={work}/selected-sdk
 .include "{work}/recipe.mk"
 show:
 .for field in {fields}

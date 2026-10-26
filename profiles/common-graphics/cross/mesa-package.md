@@ -25,6 +25,15 @@ unchanged while a build is running. Preserve compiler output, Meson metadata,
 the final package and their input hashes; do not replace a complete build log
 with incremental output.
 
+The current recipe requires the selected SDK's relocation reader before
+configuration on both architectures. Its mandatory staged ELF hook rejects
+known NetBSD x86_64 TLSDESC incompatibilities before package publication or
+installation. It emits per-library SHA256 and scan results as JSON.
+See the [staged ELF gate](../../../pkgsrc/graphics/MesaLib/tests/README.md#staged-dynamic-elf-compatibility)
+for scope, symlink rules and source-only regressions. Preserve this output
+with the package checks. AArch64 retains its own relocation policy.
+This check does not replace installed loader, TLS, renderer or compositor tests.
+
 pkgsrc's normal `install-check-version` compares the extraction cookie with
 the current package name, including `PKGREVISION`. A revision bump can trigger
 automatic cleaning and rebuilding of the existing work directory. Preserve

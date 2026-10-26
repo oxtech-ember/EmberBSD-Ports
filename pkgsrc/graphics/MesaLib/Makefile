@@ -120,6 +120,13 @@ MESON_BINARY.nm=	${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-nm
 # The explicit absolute binary prevents Meson's default tool/CMake search.
 MESON_BINARIES+=	llvm-config
 MESON_BINARY.llvm-config=	${LLVM_CONFIG_PATH}
+# Native and cross packages must pass the same staged ELF compatibility gate.
+.if empty(EMBERBSD_SDK_SOURCE:M/*)
+PKG_FAIL_REASON+= "Mesa requires an absolute SDK source for staged ELF verification"
+.endif
+_EMBERBSD_MESA_ELF_CHECK= ${TOOL_PYTHONBIN:Q} -B -E -S ${FILESDIR:Q}/check-dynamic-elf.py \
+	--sdk-source ${EMBERBSD_SDK_SOURCE:U:Q} --arch ${MACHINE_ARCH:Q}
+_EMBERBSD_MESA_STAGED_LIB= ${DESTDIR}${PREFIX}/lib
 .if ${MACHINE_ARCH} == "x86_64"
 # RadeonSI requires libelf. Qualify the OS base provider before Meson probes it.
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
@@ -132,9 +139,6 @@ PKG_FAIL_REASON+= "Cross Mesa requires an absolute CROSS_DESTDIR for base libelf
 _EMBERBSD_MESA_LIBELF_MODE=	native
 _EMBERBSD_MESA_LIBELF_ROOT=	/
 .endif
-.if empty(EMBERBSD_SDK_SOURCE:M/*)
-PKG_FAIL_REASON+= "Mesa requires an absolute SDK source for base libelf verification"
-.endif
 _EMBERBSD_MESA_LIBELF_RECIPE=	${.CURDIR:H:H}/devel/elftoolchain
 _EMBERBSD_MESA_LIBELF_CHECK=	${TOOL_PYTHONBIN:Q} -B -E -S ${FILESDIR:Q}/check-base-libelf.py \
 	--base-recipe ${_EMBERBSD_MESA_LIBELF_RECIPE:Q} \
@@ -145,6 +149,7 @@ _EMBERBSD_MESA_LIBELF_CHECK=	${TOOL_PYTHONBIN:Q} -B -E -S ${FILESDIR:Q}/check-ba
 .endif
 pre-configure:
 	${TEST} -x ${TOOL_PYTHONBIN:Q}
+	${_EMBERBSD_MESA_ELF_CHECK} --check-sdk
 	${TOOL_PYTHONBIN} -c 'import sys, mako, packaging, yaml; assert sys.version_info[:2] == tuple(map(int, "${PYVERSSUFFIX}".split(".")))'
 .if ${MACHINE_ARCH} == "x86_64"
 	${_EMBERBSD_MESA_LIBELF_CHECK}
@@ -171,6 +176,9 @@ pre-configure:
 	${TEST} "$$(${LLVM_CONFIG_PATH} --shared-mode --link-shared)" = shared
 	${TEST} "$$(${LLVM_CONFIG_PATH} --has-rtti)" = YES
 	${LLVM_CONFIG_PATH} --link-shared --libs core executionengine orcjit native > /dev/null
+post-install:
+	${_EMBERBSD_MESA_ELF_CHECK} --library-dir ${_EMBERBSD_MESA_STAGED_LIB:Q}
+
 .include "../../x11/libdrm/buildlink3.mk"
 .include "../../archivers/zstd/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"
