@@ -563,7 +563,7 @@ A later package override to OLD or platform-variable opt-out is outside this acc
 LLVM initial mode selects `LLVM_DARWIN_ARCHIVE_TOOL=ar` and static LLVM linkage.
 The upstream libtool route remains the default.
 Backends, options, dependencies and PLIST remain complete.
-The SDK controller owns the fixed four-target operation and exact LLVM dependency closure.
+The SDK controller owns the fixed five-target operation and exact LLVM dependency closure.
 This profile does not qualify the uninstalled LLVM package or future graph nodes.
 
 Run `tests/cmake-initial-source.py` with `--cmake-source` and `--llvm-source`
