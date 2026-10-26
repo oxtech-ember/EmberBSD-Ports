@@ -66,6 +66,44 @@ python3.15 -B profiles/common-build-tools/tests/boost-jam-engine-toolset.py \
     --work /absolute/new-work
 ```
 
+## Select the Darwin archive tool
+
+The shared [wrapper patch](../patches/pkgsrc-boost-darwin-libtool.patch)
+retains `EMBERBSD_DARWIN_LIBTOOL` in Boost's `post-wrapper` hook. The SDK
+maps its `libtool_darwin` role to this existing variable for both `initial`
+and `full` tool phases. A declared selection, Darwin bootstrap or selected
+native prefix requires an absolute executable; an absent or invalid input
+fails before replacing the wrapper. Ordinary pkgsrc Darwin defaults outside
+that explicit selection and non-Darwin hooks remain available.
+
+The [regression](../tests/boost-darwin-libtool.py) executes the actual
+Boost headers, jam and libraries hooks. Its baseline demonstrates the old
+selection replacement. The repaired hooks create six archives through the
+selected initial and full Darwin tools, with symbols checked by LLVM.
+Twelve invalid-input cases preserve the old wrapper; Linux and NetBSD
+metadata fixtures execute no Darwin replacement. This does not establish
+a complete Boost build or target runtime acceptance.
+
+Pass the complete native bmake tuple through repeated `--make-arg`, including
+its MAKECONF and any bootstrap flags. `--environment` is the corresponding
+JSON environment mapping. `--llc` supplies the tiny Darwin object without
+requiring a Clang frontend.
+
+```sh
+python3.15 -B profiles/common-build-tools/tests/boost-darwin-libtool.py \
+    --pkgsrc /absolute/export --bmake /absolute/host/bin/bmake \
+    --environment /absolute/native-environment.json \
+    --patch /absolute/host/bin/nbpatch \
+    --llc /absolute/host/bin/llc --nm /absolute/host/bin/llvm-nm \
+    --initial-libtool /absolute/initial/bin/libtool \
+    --full-libtool /absolute/host/bin/llvm-libtool-darwin \
+    --make-arg=-m --make-arg=/absolute/host/share/mk \
+    --make-arg=SHELL=/absolute/host/bin/mksh \
+    --make-arg=MAKECONF=/absolute/native.conf \
+    --make-arg=EMBERBSD_DARWIN_BOOTSTRAP=yes \
+    --work /absolute/new-work
+```
+
 ## Check the cross graph
 
 Run the [source regression](../tests/boost-cross-target.py) with Python 3.15
