@@ -9,7 +9,7 @@ it does not import a second LLVM code generator.
 The producer uses Python's standard library and the explicitly selected SDK
 source preparation API 2. It verifies the archive bytes and every patch, uses
 the SDK's bounded component extraction, applies the complete patch set with
-zero fuzz, and publishes a new source directory. Existing output is never
+zero fuzz (including applicable CMake patches from `lang/llvm`), and publishes a new source directory. Existing output is never
 replaced. It does not configure or compile a target and needs no final SDK
 sysroot.
 
@@ -97,9 +97,9 @@ validator; it does not download dependencies or select system build programs.
 
 - `--phase builtins` needs actual EmberBSD preliminary headers and installs PIC
   compiler-rt builtins. OS CRT objects remain owned by the OS producer.
-- `--phase bootstrap` first builds those builtins, then PIC static libunwind with
-  the public frame APIs. The OS can incorporate that archive into its existing
-  libc ABI before a complete C library is available.
+- `--phase bootstrap` first builds those builtins, then PIC static libunwind. This prepares
+  the archive before a complete C library is available; it does not establish
+  compatibility with the older unwinder embedded in libc.
 - `--phase full` needs the resulting EmberBSD libc, CRT and headers, plus the
   verified `--bootstrap-stage`. It reuses the builtins and builds static/shared
   libunwind, libc++abi and libc++. The full static unwind archive is rebuilt
@@ -117,6 +117,45 @@ validator; it does not download dependencies or select system build programs.
   --git /absolute/git --jobs 4
 ```
 
+All C, C++ and assembly commands disable implicit Clang configuration files.
+The selected linker and runtime driver options are scoped with
+`--start-no-unused-arguments` / `--end-no-unused-arguments`, so compile-only
+feature checks keep their other diagnostics. Runtime builds use source CMake
+modules without importing native LLVM/Clang package output paths. Compiler
+resource headers are selected separately with `-nobuiltininc -isystem`; host
+runtime libraries are never imported into the target resource directory.
+
+### Frame discovery and the OS boundary
+
+Both phases explicitly use `LIBUNWIND_ENABLE_FRAME_APIS=OFF` and
+`LIBUNWIND_USE_FRAME_HEADER_CACHE=OFF`; thread support stays enabled. In LLVM 23,
+`__register_frame` and `__deregister_frame` remain real public per-FDE JIT APIs
+with FRAME_APIS disabled. Enabling FRAME_APIS exposes the `*_frame_info` and frame-table compatibility
+stubs; those upstream functions do no registration.
+See [the exact LLVM implementation](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.4/libunwind/src/UnwindLevel1-gcc-ext.c).
+
+For ordinary ELF code, LLVM uses `dl_iterate_phdr` and `PT_GNU_EH_FRAME`; the
+NetBSD Clang driver already emits `--eh-frame-hdr`. The weak legacy references
+in OS crtbegin can remain unresolved on this path. That does not implement the
+old frame-info API for consumers that require it. JIT consumers must register
+and deregister each FDE with the actual public API, not pass a whole section as
+one FDE or depend on the compatibility stubs.
+
+The optional header cache assumes serialized `dl_iterate_phdr` callbacks. The
+current OS loader permits concurrent readers, so it does not satisfy that
+assumption. Keep the cache off until a separate synchronization change is
+verified. The [LLVM cache contract](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.4/libunwind/src/FrameHeaderCache.hpp)
+and [OS loader](https://github.com/oxtech-ember/EmberBSD/blob/main/libexec/ld.elf_so/rtld.c)
+are the owners of that boundary.
+
+OS integration must select one unwinder implementation and registration cache.
+Embedding a bootstrap archive in libc while also exporting a separate full
+libunwind is not by itself proof of coherent symbol binding. Before a full
+sysroot is accepted, execute static and dynamic backtraces, shared exceptions,
+dlopen/dlclose and per-FDE JIT registration/deregistration on each target; check
+which DSO provides the APIs. Successful CMake and link checks do not establish
+these runtime behaviors.
+
 Both work and stage must be new directories. For the full phase, select the
 completed C base with `--sysroot`, use new work/stage paths and add
 `--bootstrap-stage /absolute/stages/runtime-bootstrap`. The native compiler
@@ -129,7 +168,10 @@ Each successful phase emits the bare `runtime.json` record, with payload under
 source/recipe inputs; optional `--base PATH` verifies the recorded base input
 subset. The format is the SDK `emberbsd-llvm-runtime`, version 1. The base
 identity records actual headers/libraries and every contained symlink hop and
-resolved target, without requiring a final SDK manifest. A full stage also
+resolved target, without requiring a final SDK manifest. These fingerprints
+identify supplied bytes and the independently selected OS revision; they do
+not prove that this checkout produced the supplied headers and libraries.
+A full stage also
 records its consumed bootstrap manifest and archive hashes.
 
 The full producer links C programs dynamically and statically and C++ programs
