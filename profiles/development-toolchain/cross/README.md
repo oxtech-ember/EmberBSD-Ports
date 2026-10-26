@@ -39,6 +39,9 @@ VM/image integration and Plasma retain separate acceptance boundaries.
 
 The recipe uses GCC 16 host compilers by default: `gcc-16` and `g++-16`.
 Both must report GCC major version 16. Clang cannot build this cross toolchain.
+The standalone [common Binutils producer](binutils.md) independently selects
+the native Ports prefix and defaults to Clang. It also supplies the matching
+host BFD headers and libraries for native OS helper integration.
 
 `build.py` builds the host-runnable Binutils 2.47 tools from the pinned
 Common Ports source and patch set. It installs the selected triplet tools and

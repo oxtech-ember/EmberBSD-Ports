@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.114 2024/11/26 14:11:40 bacon Exp $
 
 DISTNAME=	binutils-2.47
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GNU:=binutils/}
 EXTRACT_SUFX=	.tar.xz
@@ -32,6 +32,7 @@ LIB_PATH:=		/lib64:${LIB_PATH}
 .endif
 CONFIGURE_ARGS+=	--with-lib-path=${LIB_PATH}
 CONFIGURE_ARGS+=	--program-prefix=g
+CONFIGURE_ARGS+=	--with-system-zlib
 BINUTILS_PREFIX=	${PREFIX}/${MACHINE_GNU_PLATFORM}
 
 PLIST_SRC=	${PKGDIR}/PLIST
@@ -116,6 +117,7 @@ post-install:
 # Binutils no longer bundles intl. Use pkgsrc's detection of the native
 # NetBSD implementation instead of probing GNU-private libintl symbols.
 .include "../../devel/gettext-lib/buildlink3.mk"
+.include "../../devel/zlib/buildlink3.mk"
 # Recursive subdirectory configure runs during make, after CONFIGURE_ENV.
 # Preserve pkgsrc's public-API compatibility result in that phase as well.
 MAKE_ENV+=	${CONFIGURE_ENV:Mgt_cv_*}
