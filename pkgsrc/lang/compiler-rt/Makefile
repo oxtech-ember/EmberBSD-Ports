@@ -26,8 +26,6 @@ USE_LANGUAGES=		c c++
 USE_TOOLS+=		ggrep
 GCC_REQD+=		16.2
 SSP_SUPPORTED=		no
-# CMake Error: failed to create symbolic link '.../outline_atomic_cas1_1.S': File exists
-MAKE_JOBS_SAFE=		no
 
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_BUILD_TYPE=Release
 CMAKE_CONFIGURE_ARGS+=	-DCOMPILER_RT_TEST_COMPILER=${PKG_CC:Q}
