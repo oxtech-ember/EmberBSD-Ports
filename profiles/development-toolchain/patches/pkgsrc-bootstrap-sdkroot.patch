@@ -1,0 +1,36 @@
+Darwin bootstrap: preserve an explicitly selected native SDK.
+
+Origin: EmberBSD (AI-assisted), based on the pinned pkgsrc bootstrap.
+The deployment target does not select the SDK when SDKROOT is supplied.
+Reject an invalid explicit input instead of silently discovering another SDK.
+Unspecified SDKROOT keeps upstream discovery behavior.
+
+--- a/bootstrap/bootstrap
++++ b/bootstrap/bootstrap
+@@ -595,10 +595,25 @@
+ 	machine_arch=`get_machine_arch_darwin`
+ 	check_compiler=yes
+ 
+-	if [ -n "${MACOSX_DEPLOYMENT_TARGET}" ]; then
++	SDK_PATH=
++	if [ -n "${SDKROOT}" ]; then
++		case "${SDKROOT}" in
++		*[!-A-Za-z0-9_./]*)
++			die "ERROR: SDKROOT contains unsupported path characters" ;;
++		/*) ;;
++		*) die "ERROR: SDKROOT must be an absolute path" ;;
++		esac
++		if [ ! -d "${SDKROOT}/usr/include" ] ||
++		    [ ! -d "${SDKROOT}/usr/lib" ]; then
++			die "ERROR: SDKROOT must contain native headers and libraries"
++		fi
++		SDK_PATH=${SDKROOT}
++	elif [ -n "${MACOSX_DEPLOYMENT_TARGET}" ]; then
+ 		SDK_PATH=`/usr/bin/xcrun \
+ 			--sdk macosx${MACOSX_DEPLOYMENT_TARGET} \
+ 			--show-sdk-path 2>/dev/null || echo /nonexistent`
++	fi
++	if [ -n "${SDK_PATH}" ]; then
+ 		CFLAGS="-isysroot ${SDK_PATH} ${CFLAGS}"
+ 		export CFLAGS
+ 	fi

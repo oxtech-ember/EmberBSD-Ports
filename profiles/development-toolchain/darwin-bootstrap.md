@@ -26,6 +26,14 @@ arguments explicitly. The mk fragment must retain the same compiler and ABI
 for the package builds that bootstrap starts. Keep inherited compiler and make
 flags out of the invocation. Read the actual bootstrap help before execution.
 
+Set `SDKROOT` to the absolute native SDK directory. The exported bootstrap
+keeps this directory even when the deployment target names a different release.
+It rejects missing headers or libraries instead of selecting another SDK.
+The path uses bootstrap's supported letters, digits, `-`, `_`, `.`, and `/`.
+Without `SDKROOT`, the upstream SDK discovery behavior remains available.
+`tests/bootstrap-sdkroot.py --bootstrap PATH --shell PATH` executes this
+selection logic without compiling; run it from this profile directory.
+
 Build the final Clang, LLVM, LLD, shell, Python, make, and required utilities
 from the exported shared recipes. After the native prefix supplies the needed
 roles, use [native tool selection](../common-build-tools/cross/native-toolset.md).
