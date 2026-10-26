@@ -90,7 +90,7 @@ _TOOLS_USE_PKGSRC.flex=no
 PKGPATH?=graphics/MesaLib
 PKG_OPTIONS=llvm x11 wayland
 DISTNAME=mesa-26.2.5
-PKGREVISION=7
+PKGREVISION=8
 .if ${{USE_CROSS_COMPILE:Uno:tl}} == "yes"
 EMBERBSD_GRAPHICS_LLVM_CONFIG={work}/helper/bin/llvm-config
 EMBERBSD_WAYLAND_SCANNER={work}/scanner
@@ -154,8 +154,8 @@ def static_profile_checks():
         "libdrm>=2.4.134nb7" in profile and 'PKGREVISION:U} != "7"' in profile,
     )
     check(
-        "common profile enforces MesaLib 26.2.5nb7",
-        "MesaLib>=26.2.5nb7" in profile,
+        "common profile enforces MesaLib 26.2.5nb8",
+        "MesaLib>=26.2.5nb8" in profile,
     )
 
 

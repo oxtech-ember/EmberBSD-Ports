@@ -122,12 +122,18 @@ ordinary GCC16 AArch64 package passes all 613 payload checks. Four native
 and installed EmberBSD numerical checks pass, including normal package
 removal and reinstallation. Companion BLAS/LAPACK runtime coverage remains pending.
 
-This opt-in source profile prepares canonical MesaLib 26.2.5nb7, adapted
+This opt-in source profile prepares canonical MesaLib 26.2.5nb8, adapted
 libdrm 2.4.134nb7, Wayland 1.26.0 (native nb1/cross nb2) and
 wayland-protocols 1.49 for EmberBSD/AArch64 and amd64, retaining the NetBSD 11 ABI.
 The amd64 profile includes RadeonSI and its drirc defaults. Mesa keeps its
 upstream DRM 3.54 minimum on other systems and uses the legacy reset path on
 NetBSD DRM 3.36.
+NetBSD/amd64 keeps the compiler's TLS dialect default. Its runtime loader
+does not support TLSDESC relocations. An executable probe can relax TLS and
+accept an incompatible shared-library dialect. The existing FreeBSD and
+cross execution guards remain in effect; AArch64 selection stays unchanged.
+The source regression below checks the actual Meson conditions. A full
+rebuild and loader/rendering acceptance remain pending.
 The libdrm skip-list test keeps its upstream benchmark sizes and moves its key
 array to the heap to fit the standard process stack.
 Native builds and the explicit
@@ -453,6 +459,7 @@ Run lightweight source checks with existing BSD make, Ruby, a C compiler,
 OpenSSL with BLAKE2s, shasum, tar and patch:
 
 ```sh
+python3.15 -B -I -S pkgsrc/graphics/MesaLib/tests/tls-dialect.py PATCHED_MESA/meson.build
 sh profiles/common-graphics/tests/source.sh VERIFIED_DISTFILES NEW_WORK
 sh scripts/tests/export-composition.sh NEW_WORK
 sh profiles/common-graphics/tests/mesa-bundle-integrity.sh NEW_WORK

@@ -1,0 +1,28 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted), adapted from Ryo ONODERA's
+pkgsrc-wip change 416bbac2b9ed6f3eb729dfa1a2f1c5221ff6bd3e:
+https://mail-index.netbsd.org/pkgsrc-wip-changes/2026/09/09/msg037649.html
+Retain upstream MIT licensing. Not submitted upstream.
+
+NetBSD/amd64 rtld has no TLSDESC relocation support. An executable probe can
+relax TLS accesses and accept a dialect that a shared library cannot use.
+Extend the upstream FreeBSD guard only to the affected NetBSD architecture.
+Keep compiler defaults, the cross execution guard and other targets unchanged.
+
+--- meson.build.orig
++++ meson.build
+@@ -637,8 +637,11 @@
+   # cross-compiling, but because this is just an optimization we can skip it
+   if meson.is_cross_build() and not meson.can_run_host_binaries()
+     warning('cannot auto-detect -mtls-dialect when cross-compiling, using compiler default')
+-  elif host_machine.system() == 'freebsd'
+-    warning('cannot use -mtls-dialect for FreeBSD, using compiler default')
++  # NetBSD/amd64 rtld cannot process TLSDESC relocations in shared libraries.
++  # Executable TLS relaxation can hide this requirement from the run probe.
++  elif host_machine.system() == 'freebsd' or (
++    host_machine.system() == 'netbsd' and host_machine.cpu_family() == 'x86_64')
++    warning('cannot auto-select -mtls-dialect for this target, using compiler default')
+   else
+     # The way to specify the TLSDESC dialect is architecture-specific.
+     # We probe both because there is not a fallback guaranteed to work for all

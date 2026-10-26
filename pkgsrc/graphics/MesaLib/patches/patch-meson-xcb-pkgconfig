@@ -8,7 +8,7 @@ This follows patch-meson-python-selection; no compiler or linker flags change.
 
 --- meson.build.orig
 +++ meson.build
-@@ -2452,7 +2452,7 @@
+@@ -2461,7 +2461,7 @@
    gl_priv_reqs += ['x11', 'xext', 'xcb']
  elif with_glx == 'dri'
    gl_priv_reqs += [
