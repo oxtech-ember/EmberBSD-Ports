@@ -65,7 +65,27 @@ Run `tests/dependencies.py` with `--sdk-source`, `--archives`, `--patch` and a n
 That gate checks four source archives, all carried patches and exact provider-source identity.
 Its negative control rejects reintroduction of a bundled SimpleCpp CMake target.
 
+## Clang AST file locations
+
+The importer emits tokens one top-level declaration at a time. Header names
+encountered later may be appended to the file table without changing existing
+indices or the language fixed by the TokenList constructor. The source file
+must still be registered before creating tokens. The shared patch retains
+that assertion and the nonempty-name assertion.
+
+`TestClangImport::multipleFiles` covers two headers, return to the first
+header, the main source, exact line/index mapping and C++ token language
+despite a header with a `.c` suffix. The original analyzer aborts on both
+this case and a real Clang two-header input; the patched analyzer passes.
+The full Clang import and TokenList suites pass with the new case.
+
+This does not qualify arbitrary LLVM translation units: the importer still
+rejects nested pseudo-file locations such as `<<built-in>:line:column>`.
+Such `internalAstError` diagnostics remain failures, not completed analysis.
+
 The packaging and PCRE2 adaptation are AI-assisted EmberBSD work.
 Source and metadata checks do not qualify an analyzer executable.
-Package builds, upstream executable tests, analysis, memory checks, installed CLI,
-HTML/GUI behavior, cross execution and package lifecycle checks remain pending.
+Native 2.22.0nb2 package installation passed. The nb3 change has been checked
+with isolated rebuilt modules and upstream test executables; nb3 package
+installation remains unverified. The full upstream suite, arbitrary translation-unit
+analysis, HTML/GUI behavior, cross execution and package lifecycle remain separate checks.
