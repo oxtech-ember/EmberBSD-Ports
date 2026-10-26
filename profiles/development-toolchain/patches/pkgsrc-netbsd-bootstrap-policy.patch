@@ -225,7 +225,7 @@ Ordinary NetBSD and Darwin selections remain unchanged.
  _GCC_QUERY_CC= ${EMBERBSD_GCC16_SEED_CC}
  .endif
  
-@@ -660,4 +660,8 @@
+@@ -644,4 +644,8 @@
  _NEED_GCC16=	yes
  .  endif
  .endfor
@@ -234,7 +234,7 @@ Ordinary NetBSD and Darwin selections remain unchanged.
 +USE_PKGSRC_GCC_RUNTIME=	no
 +.endif
  # AUX patterns really don't work starting from gcc10-aux
-@@ -1296,14 +1311,17 @@
+@@ -1295,14 +1310,17 @@
  .endif
  _COMPILER_STRIP_VARS+=	${_GCC_VARS}
  
