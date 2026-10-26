@@ -9,8 +9,31 @@ The package version is `2486`. Do not substitute the latest GN revision.
 
 The official source is the exact
 [GN commit archive](https://gn.googlesource.com/gn/+archive/641ace93dd9560e75e7add0d08f77b446fbb3b78.tar.gz).
-The complete archive must match `distinfo`. It contains files at its root,
-so the recipe sets `EXTRACT_DIR` to `WRKSRC`.
+Gitiles assigns request-time PAX modification timestamps, so its compressed
+archive bytes change between requests. The recipe's normal `fetch` phase calls
+`pkgsrc/devel/gn/files/fetch-source.py` to verify all source bytes and executable
+bits against Git tree `90329c7841d68716991cf2c247bcd9906c884c91`, then normalize
+archive metadata. That tree was independently obtained from the canonical Git
+repository at the unchanged commit. The helper accepts only regular files and
+their parent directories; duplicate paths, case collisions, traversal, links,
+extra content and changed modes are rejected before an output appears.
+
+The resulting `gn-641ace93dd9560e75e7add0d08f77b446fbb3b78.tar` is an
+uncompressed USTAR archive with zero timestamps/ownership and sorted names.
+Its 1,054 Git-tracked files retain their content and executable bits. Ordinary
+pkgsrc `checksum` verifies this complete normalized archive against `distinfo`.
+The recipe sets `EXTRACT_DIR` to `WRKSRC` because files are at the archive root.
+A missing output is published atomically; an existing file or symlink is never
+overwritten. Interrupted or rejected input does not become a cached distfile.
+
+The source helper consumes only a control Python with its standard library
+and HTTPS trust store. `GN_FETCH_PYTHON` defaults to the selected native
+`TOOL_PYTHONBIN`; it may explicitly name a control interpreter before that
+native prefix exists. The helper invokes no compiler and needs no SDK source,
+Node, pip or virtualenv. Normal pkgsrc `fetch` and `checksum` still use the
+selected framework configuration and retain its license/error checks; the
+source-only result does not qualify arbitrary pkgsrc configurations. For offline inspection, the helper's `--input-archive` accepts an
+already obtained Gitiles response with the same complete tree verification.
 
 The existing Ports exporter discovers `pkgsrc/devel/gn` as an overlay recipe.
 It maps that directory to `devel/gn` in the composed pkgsrc tree. No
@@ -92,7 +115,7 @@ Run the pure regression with the exact downloaded source archive:
 
 ```sh
 python3 profiles/common-build-tools/tests/test-gn-recipe.py \
-  --archive /absolute/path/641ace93dd9560e75e7add0d08f77b446fbb3b78.tar.gz -v
+  --archive /absolute/path/gn-641ace93dd9560e75e7add0d08f77b446fbb3b78.tar -v
 ```
 
 It checks the archive and patch checksums, exact patch context, POSIX compiler
@@ -101,6 +124,21 @@ header identity, malformed version refusal and Darwin SDK minimum preservation. 
 functions with mocked child calls. It does not run a compiler, GN or Ninja.
 Native build, package lifecycle, upstream test and installed runtime acceptance
 remain pending.
+
+The source-owner regression uses two real Gitiles responses with different
+request timestamps. Obtain them from the official commit archive above, then run:
+
+```sh
+python3 profiles/common-build-tools/tests/gn-source.py \
+  --gitiles-archive /absolute/first-response.tar.gz \
+  --gitiles-archive /absolute/second-response.tar.gz -v
+```
+
+It requires different input bytes, reconstructs the pinned tree for both and
+requires identical normalized `distinfo` output. Separate negative controls
+cover changed blobs/modes, missing/extra files, special permissions, duplicate
+paths, case-colliding parents, traversal, symlinks/hardlinks/devices, truncated
+input and existing output preservation. This checks source acquisition only.
 
 ## Darwin C++ ownership regression
 

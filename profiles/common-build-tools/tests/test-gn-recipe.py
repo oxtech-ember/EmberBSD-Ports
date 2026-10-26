@@ -180,7 +180,7 @@ if __name__ == '__main__':
     parser.add_argument('--archive', required=True, type=Path)
     args, remaining = parser.parse_known_args()
     ARCHIVE = args.archive
-    with tarfile.open(ARCHIVE, 'r:gz') as archive:
+    with tarfile.open(ARCHIVE, 'r:*') as archive:
         candidates = [m for m in archive.getmembers() if m.name == 'build/gen.py']
         if len(candidates) != 1 or not candidates[0].isfile():
             raise SystemExit('The pinned archive must contain one regular build/gen.py.')

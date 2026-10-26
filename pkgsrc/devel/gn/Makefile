@@ -4,8 +4,9 @@ DISTNAME=	gn-2486
 PKGREVISION=	3
 CATEGORIES=	devel
 GN_REVISION=	641ace93dd9560e75e7add0d08f77b446fbb3b78
+GN_TREE=	90329c7841d68716991cf2c247bcd9906c884c91
 MASTER_SITES=	https://gn.googlesource.com/gn/+archive/
-DISTFILES=	${GN_REVISION}.tar.gz
+DISTFILES=	gn-${GN_REVISION}.tar
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://gn.googlesource.com/gn/
@@ -39,6 +40,22 @@ GN_ENV+=		CFLAGS= CXXFLAGS=${GN_CXXFLAGS:Q} LDFLAGS=${LDFLAGS:Q}
 GN_ENV+=		GN_VERSION=${GN_VERSION:Q}
 
 INSTALLATION_DIRS=	bin share/doc/gn
+
+# Gitiles injects request-time PAX mtimes, so its tar.gz bytes are unstable.
+# This source-only control Python need not be part of a complete build SDK.
+GN_FETCH_PYTHON?=	${TOOL_PYTHONBIN}
+
+do-fetch: error-check
+	${RUN} set -e; \
+	if ${TEST} ! -f ${DISTDIR:Q}/${DIST_SUBDIR:Q}/${DISTFILES:Q}; then \
+	    case ${GN_FETCH_PYTHON:Q} in \
+	    /*) ;; \
+	    *) ${FAIL_MSG} "Set GN_FETCH_PYTHON to an absolute control Python executable" ;; \
+	    esac; \
+	    ${GN_FETCH_PYTHON:Q} -B -I -S ${FILESDIR:Q}/fetch-source.py \
+	        --revision ${GN_REVISION:Q} --tree ${GN_TREE:Q} \
+	        --output ${DISTDIR:Q}/${DIST_SUBDIR:Q}/${DISTFILES:Q}; \
+	fi
 
 do-configure:
 	cd ${WRKSRC} && ${SETENV} ${CONFIGURE_ENV} ${GN_ENV} ${TOOL_PYTHONBIN} \
