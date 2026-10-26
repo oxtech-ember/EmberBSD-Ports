@@ -31,7 +31,25 @@ compare() {
         [ -f "$tree/$2/Makefile" ]
     else
         # The export copies links as files.
-        diff -qr "$1" "$tree/$2" > /dev/null || { diff -qr "$1" "$tree/$2" >&2; exit 1; }
+        expected=$work/expected
+        rm -rf "$expected"
+        mkdir "$expected"
+        cp -RL "$1/." "$expected/"
+        while IFS="$tab" read -r method source target rest; do
+            [ "$method" = file ] || continue
+            case "$target" in
+            "$2"/*)
+                relative=${target#"$2"/}
+                parent=${relative%/*}
+                [ "$parent" = "$relative" ] || mkdir -p "$expected/$parent"
+                cp "$root/$source" "$expected/$relative"
+                ;;
+            esac
+        done < "$root/pkgsrc/export.conf"
+        diff -qr "$expected" "$tree/$2" > /dev/null || {
+            diff -qr "$expected" "$tree/$2" >&2
+            exit 1
+        }
     fi
     compared=$((compared + 1))
 }
