@@ -31,19 +31,19 @@
 +// RUN: %clang --no-default-config -### --target=aarch64-unknown-netbsd --sysroot=%S/Inputs/basic_netbsd_tree --unwindlib=none %s 2>&1 | FileCheck %s --check-prefix=GCC-NONE --implicit-check-not=libclang_rt --implicit-check-not=-lgcc_s --implicit-check-not=-lgcc_eh
 +// RUN: not %clang --no-default-config -### --target=aarch64-unknown-netbsd --unwindlib=libunwind %s 2>&1 | FileCheck %s --check-prefix=INCOMPATIBLE
 +
-+// CRT-A64: "-lc" "{{.*}}libclang_rt.builtins-aarch64.a"
-+// CRT-X64: "-lc" "{{.*}}libclang_rt.builtins-x86_64.a"
++// CRT-A64: "-lc" "{{.*}}aarch64-unknown-netbsd/libclang_rt.builtins.a"
++// CRT-X64: "-lc" "{{.*}}x86_64-unknown-netbsd/libclang_rt.builtins.a"
 +// STATIC-UNWIND: "-Bstatic"
-+// STATIC-UNWIND-SAME: "--start-group"{{.*}}"-lc" "{{.*}}libclang_rt.builtins-aarch64.a" "-l:libunwind.a" "--end-group"
++// STATIC-UNWIND-SAME: "--start-group"{{.*}}"-lc" "{{.*}}aarch64-unknown-netbsd/libclang_rt.builtins.a" "-l:libunwind.a" "--end-group"
 +// SHARED-UNWIND: "-shared"
-+// SHARED-UNWIND-SAME: "-lc" "{{.*}}libclang_rt.builtins-x86_64.a" "--as-needed" "-lunwind" "--no-as-needed"
-+// CXX: "-lc++" "-lm" "-lc" "{{.*}}libclang_rt.builtins-x86_64.a" "--as-needed" "-lunwind" "--no-as-needed"
++// SHARED-UNWIND-SAME: "-lc" "{{.*}}x86_64-unknown-netbsd/libclang_rt.builtins.a" "--as-needed" "-lunwind" "--no-as-needed"
++// CXX: "-lc++" "-lm" "-lc" "{{.*}}x86_64-unknown-netbsd/libclang_rt.builtins.a" "--as-needed" "-lunwind" "--no-as-needed"
 +// STATIC-GCC: "-Bstatic"
 +// STATIC-GCC-SAME: "--start-group"{{.*}}"-lc" "-lgcc" "-lgcc_eh" "--end-group"
 +// SHARED-GCC: "-lc" "-lgcc" "--as-needed" "-lgcc_s" "--no-as-needed"
 +// GCC-NONE: "-lc" "-lgcc"
 +// NO-RUNTIME: "-o" "a.out"
-+// NO-START: "-lc" "{{.*}}libclang_rt.builtins-x86_64.a" "--as-needed" "-lunwind" "--no-as-needed"
++// NO-START: "-lc" "{{.*}}x86_64-unknown-netbsd/libclang_rt.builtins.a" "--as-needed" "-lunwind" "--no-as-needed"
 +// BAD-RT: error: invalid runtime library name in argument '{{.*}}rtlib=invalid'
 +// BAD-UNWIND: error: invalid unwind library name in argument '{{.*}}unwindlib=invalid'
 +// INCOMPATIBLE: error: --rtlib=libgcc requires --unwindlib=libgcc

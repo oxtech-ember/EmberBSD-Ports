@@ -5,4 +5,4 @@ SHA512 (llvm-project-23.1.4.src.tar.xz) = 1443531768d7040677302e4468b95b345511f1
 Size (llvm-project-23.1.4.src.tar.xz) = 179272572 bytes
 SHA1 (patch-lib_Driver_ToolChains_Gnu.cpp) = b3958549da128351f55706b788fe895ad9606dab
 SHA1 (patch-lib_Driver_ToolChains_NetBSD.cpp) = 2b413448c545d97b432e260422cc7de56a40bc77
-SHA1 (patch-test_Driver_netbsd-runtime.c) = f638fba6ac9a24992f672853f7cf55c45715907a
+SHA1 (patch-test_Driver_netbsd-runtime.c) = 903de9d28ca553992ee3f02a790777c6322213cf
