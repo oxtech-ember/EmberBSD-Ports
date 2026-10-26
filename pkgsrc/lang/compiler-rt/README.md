@@ -61,7 +61,9 @@ common version. On Darwin, the package requires explicit `OSX_SDK_PATH` and
 `EMBERBSD_DARWIN_SDK_VERSION`, selects the native CPU and uses LLVM lipo and
 install-name-tool. Other Apple platform runtimes remain separate target builds.
 `tests/native-metadata.py` queries the exported recipe with a selected bmake and
-make configuration, including missing-SDK and missing-version controls.
+make configuration, including missing-SDK and missing-version controls. It also
+checks that `PATCH_ARGS` points to the monorepo archive root and applies the
+binary128 patch to the corresponding file from the pinned source archive.
 
 `patch-01-gcda-fdopen` fixes an upstream failure path where an unsuccessful
 `fdopen` led to a null stream access. It closes the descriptor and releases the

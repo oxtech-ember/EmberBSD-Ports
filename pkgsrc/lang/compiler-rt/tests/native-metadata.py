@@ -8,16 +8,17 @@ import re
 from pathlib import Path
 import shlex
 import subprocess
+import tarfile
 
 
 def main():
     cli = argparse.ArgumentParser(description=__doc__)
-    for name in ('bmake', 'pkgsrc', 'makeconf', 'sdk', 'libtool', 'work'):
+    for name in ('bmake', 'pkgsrc', 'makeconf', 'sdk', 'libtool', 'distfile', 'patch', 'work'):
         cli.add_argument('--' + name, type=Path, required=True)
     cli.add_argument('--sdk-version', required=True)
     args = cli.parse_args()
     args.work.mkdir()
-    keys = ('PKGNAME', 'PATCHDIR', 'PATCH_WRKSRC', 'PATCH_STRIP', 'PKG_FAIL_REASON',
+    keys = ('PKGNAME', 'PATCHDIR', 'PATCH_WRKSRC', 'PATCH_ARGS', 'PATCH_STRIP', 'PKG_FAIL_REASON',
             'CMAKE_CONFIGURE_ARGS', 'LOCALBASE')
 
     def query(label, *extra):
@@ -38,6 +39,27 @@ def main():
     assert native['PATCHDIR'] == str(args.pkgsrc / 'lang/compiler-rt/patches')
     assert native['PATCH_WRKSRC'].endswith('/llvm-project-23.1.4.src')
     assert native['PATCH_STRIP'] == '-p1' and native['PKG_FAIL_REASON'] == ''
+    patch_args = shlex.split(native['PATCH_ARGS'])
+    assert patch_args[0:2] == ['-d', native['PATCH_WRKSRC']], patch_args
+    assert {'--forward', '--quiet', '-E', '-p1'} <= set(patch_args), patch_args
+    member_name = 'llvm-project-23.1.4.src/compiler-rt/lib/builtins/comparetf2.c'
+    with tarfile.open(args.distfile, 'r:xz') as archive:
+        member = archive.extractfile(member_name)
+        assert member is not None, member_name
+        source = member.read()
+    patch_root = args.work / 'patch-root'
+    target = patch_root / 'compiler-rt/lib/builtins/comparetf2.c'
+    target.parent.mkdir(parents=True)
+    target.write_bytes(source)
+    fixture_args = list(patch_args)
+    fixture_args[1] = str(patch_root)
+    patch_file = args.pkgsrc / 'lang/compiler-rt/patches/patch-00-binary128-fenv'
+    applied = subprocess.run([str(args.patch), *fixture_args], input=patch_file.read_bytes(),
+                             capture_output=True, cwd=args.pkgsrc)
+    assert applied.returncode == 0, (applied.stdout + applied.stderr).decode(errors='replace')
+    patched = target.read_text()
+    assert 'binary128_raise_invalid' in patched and 'COMPILER_RT_NETBSD_AARCH64_FENV' in patched
+    assert (target.parent / 'LICENSE.EmberBSD-BINARY128.TXT').is_file()
     options = shlex.split(native['CMAKE_CONFIGURE_ARGS'])
     for value in ('-DDARWIN_macosx_CACHED_SYSROOT=' + str(args.sdk),
                   '-DDARWIN_macosx_OVERRIDE_SDK_VERSION=' + args.sdk_version,
@@ -69,9 +91,9 @@ def main():
         capture_output=True, text=True, check=True)
     assert other.stdout == '\n\n' and other.stderr == '', other
 
-    (args.work / 'result.json').write_text(json.dumps(dict(status='PASS', cases=4,
-        scope='Actual recipe metadata; no configure, compilation or runtime acceptance')) + '\n')
-    print('PASS: common compiler-rt source/patch owner and explicit native Darwin inputs')
+    (args.work / 'result.json').write_text(json.dumps(dict(status='PASS', cases=5,
+        scope='Actual recipe metadata and isolated application of its monorepo patch; no build')) + '\n')
+    print('PASS: compiler-rt patch root/arguments apply the actual binary128 patch; Darwin metadata remains selected')
 
 
 if __name__ == '__main__':
