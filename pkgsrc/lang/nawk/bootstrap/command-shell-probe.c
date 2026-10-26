@@ -178,9 +178,9 @@ main(void)
 	sa.sa_handler = handler;
 	CHECK(sigaction(SIGINT, &sa, NULL) == 0);
 
-	pipe = nawk_popen("printf pipe-input", "r");
+	pipe = nawk_popen("echo pipe-input", "r");
 	CHECK(pipe != NULL);
-	CHECK(fgets(text, sizeof(text), pipe) != NULL && strcmp(text, "pipe-input") == 0);
+	CHECK(fgets(text, sizeof(text), pipe) != NULL && strcmp(text, "pipe-input\n") == 0);
 	check_exit(pclose(pipe), 0);
 	pipe = nawk_popen("read value; [ \"$value\" = pipe-output ]", "w");
 	CHECK(pipe != NULL);

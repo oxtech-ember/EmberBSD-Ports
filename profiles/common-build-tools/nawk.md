@@ -97,6 +97,8 @@ An admitted native producer compiles it with the recipe's `files/` include path
 and the exact selected-shell macro. The probe takes no arguments.
 It prints `PASS: nawk command-shell contracts` only after all checks pass.
 It checks exit and signal statuses, read/write pipes and `pclose()` status.
+All successful shell commands in the probe use shell builtins.
+The read-pipe case passes a plain literal to `echo` and checks its final newline.
 The signal-status check uses SIGKILL because a shell can catch other signals
 and exit normally during cleanup. A separate SIGINT trap checks that a caught
 parent disposition does not become an ignored child disposition. The ignored
