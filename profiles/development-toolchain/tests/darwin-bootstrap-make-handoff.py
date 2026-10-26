@@ -33,7 +33,8 @@ from pathlib import Path
 KINDS = ('BOOTSTRAP_DEPENDS', 'TOOL_DEPENDS', 'BUILD_DEPENDS', 'DEPENDS')
 NAMES = ('EMBERBSD_DARWIN_SEED_MAKE_RECIPES', 'EMBERBSD_DARWIN_SEED_GZIP_RECIPES', 'EMBERBSD_DARWIN_MAKE', 'EMBERBSD_DARWIN_GMAKE',
          'LOCALBASE', 'OSX_SDK_PATH', 'MAKE', '_MAKE', 'LDFLAGS', 'EMBERBSD_COMPILER_FAMILY', *KINDS)
-NAMES += ('PKG_OPTIONS.libfetch', 'TOOLS_PLATFORM.bison-yacc', 'EMBERBSD_DARWIN_TOOL.bison')
+NAMES += ('PKG_OPTIONS.libfetch', 'TOOLS_PLATFORM.bison-yacc', 'EMBERBSD_DARWIN_TOOL.bison',
+          'TOOLS_PLATFORM.yacc', 'EMBERBSD_DARWIN_TOOL.yacc')
 SHELLS = ('EMBERBSD_DARWIN_SH', 'SHELL', 'SH', 'CONFIG_SHELL', 'TOOLS_SHELL',
           'EMBERBSD_DARWIN_BUILTIN_SHELL', 'TOOLS_PLATFORM.sh')
 BUILTINS = tuple(f'TOOLS_PLATFORM.{name}' for name in ('[', 'echo', 'false', 'test', 'true'))
@@ -48,7 +49,8 @@ ROOT = 'devel/bmake'
 SHELL_PROVIDER = 'shells/mksh'
 HELPER_PROVIDER = 'pkgtools/bootstrap-mk-files'
 HELPER = 'libexec/emberbsd-darwin-builtin.sh'
-LATER = ('pkgtools/pkg_install', 'lang/gcc16', 'lang/clang', 'devel/meson', 'lang/llvm', 'shells/bash')
+LATER = ('pkgtools/pkg_install', 'lang/gcc16', 'lang/clang', 'devel/meson', 'lang/llvm',
+         'shells/bash', 'lang/ruby40')
 
 
 def require(value, message):
@@ -369,6 +371,27 @@ def phase_fixture(argv):
     bash = query('shells/bash', 'yes')
     require(bash['TOOLS_PLATFORM.bison-yacc'] == bash['EMBERBSD_DARWIN_TOOL.bison'] + ' -y',
             'shells/bash does not use the selected bison in yacc compatibility mode')
+    ruby = observations['lang/ruby40:yes']['values']
+    require(ruby['TOOLS_PLATFORM.yacc'] == ruby['EMBERBSD_DARWIN_TOOL.yacc'] and
+            ruby['TOOLS_PLATFORM.yacc'].startswith('/'),
+            'lang/ruby40 does not use the selected native yacc provider')
+    pkgsrc = args.tools_darwin.parents[2]
+    invocation = [word for word in command if not word.startswith('MAKECONF=')]
+    invocation += ['-C', str(pkgsrc / 'lang/ruby40'), 'MAKECONF=' + str(config),
+                   'EMBERBSD_DARWIN_BOOTSTRAP=yes', 'show-vars',
+                   'VARNAMES=TOOLS_PLATFORM.yacc EMBERBSD_DARWIN_TOOL.yacc']
+    selected_utility_bin = next((line.split('=', 1)[1].strip()
+                                 for line in config_text.splitlines()
+                                 if line.startswith('EMBERBSD_DARWIN_UTILITY_BIN=')), '')
+    require(Path(selected_utility_bin).is_absolute(),
+            'The full MAKECONF must name the selected utility directory')
+    metadata_env = dict(env, PATH=selected_utility_bin)
+    result = subprocess.run(invocation, cwd=work, env=metadata_env, capture_output=True, text=True)
+    require(result.returncode == 0 and not result.stderr,
+            'lang/ruby40 actual bmake metadata query failed')
+    actual_yacc = result.stdout.splitlines()
+    require(actual_yacc == [ruby['TOOLS_PLATFORM.yacc'], ruby['EMBERBSD_DARWIN_TOOL.yacc']],
+            'lang/ruby40 actual bmake yacc route differs from the selected native provider')
 
     no_bison_config = work / 'without-bison.mk.conf'
     config_lines = config_text.splitlines()
@@ -401,6 +424,28 @@ def phase_fixture(argv):
             'An absent bison provider produced an invalid bison-yacc command')
     bison_yacc_without_provider = result.stdout.strip()
 
+    no_yacc_config = work / 'without-yacc.mk.conf'
+    yacc_lines = [line for line in config_lines if line.startswith('EMBERBSD_DARWIN_TOOL.yacc=')]
+    require(len(yacc_lines) == 1, 'The full MAKECONF must select exactly one yacc provider')
+    no_yacc_lines = []
+    for line in config_lines:
+        if line in yacc_lines:
+            continue
+        if line.startswith('EMBERBSD_DARWIN_NATIVE_TOOLS='):
+            tools = line.split('=', 1)[1].split()
+            line = 'EMBERBSD_DARWIN_NATIVE_TOOLS= ' + ' '.join(tool for tool in tools if tool != 'yacc')
+        no_yacc_lines.append(line)
+    no_yacc_config.write_text('\n'.join(no_yacc_lines) + '\n')
+    invocation = [word for word in command if not word.startswith('MAKECONF=')]
+    invocation += ['-C', str(pkgsrc / 'lang/ruby40'), 'MAKECONF=' + str(no_yacc_config),
+                   'EMBERBSD_DARWIN_BOOTSTRAP=yes', '-V',
+                   'TOOLS_PLATFORM.yacc=${TOOLS_PLATFORM.yacc}']
+    result = subprocess.run(invocation, cwd=work, env=metadata_env, capture_output=True, text=True)
+    require(result.returncode != 0 and
+            'Select a native or shared Ports source provider for yacc' in result.stderr,
+            'An absent yacc provider did not fail through the source-provider check')
+    yacc_without_provider = result.stderr.strip().splitlines()[0]
+
     phase_options = {}
     for phase in ('initial', 'full'):
         path = work / ('libfetch-' + phase + '.mk')
@@ -423,6 +468,7 @@ def phase_fixture(argv):
     report = dict(status='PASS', scope='Source profile evaluation only; no native provider qualification',
                   observations=observations, bison_yacc=bash['TOOLS_PLATFORM.bison-yacc'],
                   bison_yacc_without_provider=bison_yacc_without_provider,
+                  yacc=ruby['TOOLS_PLATFORM.yacc'], yacc_without_provider=yacc_without_provider,
                   libfetch_options=phase_options)
     (work / 'phase-result.json').write_text(json.dumps(report, indent=2, sort_keys=True) + '\n')
     print(json.dumps(dict(status='PASS', result=str(work / 'phase-result.json'))))
