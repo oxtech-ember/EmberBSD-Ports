@@ -59,11 +59,22 @@ and archive as this source preparation interface. Native Clang depends on it
 so its compiler-owned builtins and diagnostic runtimes are installed from the
 common version. On Darwin, the package requires explicit `OSX_SDK_PATH` and
 `EMBERBSD_DARWIN_SDK_VERSION`, selects the native CPU and uses LLVM lipo and
-install-name-tool. Other Apple platform runtimes remain separate target builds.
+install-name-tool. In the initial compiler phase, its already required LLVM
+dependency also supplies `llvm-libtool-darwin`; this prevents the independent
+compiler-rt `UseLibtool.cmake` module from discovering the incompatible pkgsrc
+GNU libtool wrapper. Full-phase builds retain the explicitly selected
+`EMBERBSD_DARWIN_LIBTOOL`. Other Apple platform runtimes remain separate
+target builds.
 `tests/native-metadata.py` queries the exported recipe with a selected bmake and
 make configuration, including missing-SDK and missing-version controls. It also
-checks that `PATCH_ARGS` points to the monorepo archive root and applies the
-binary128 patch to the corresponding file from the pinned source archive.
+checks both archive-selection phases and that `PATCH_ARGS` points to the
+monorepo archive root and applies the binary128 patch to the corresponding
+file from the pinned source archive.
+`tests/darwin-archive.py` loads the actual compiler-rt `UseLibtool.cmake` and
+builds a real static archive: the observed GNU-wrapper selection must fail,
+while the explicitly selected LLVM Darwin archiver must succeed and contain
+the compiled object. It takes the same explicit configure-input JSON as the
+parallel outline-atomics regression, plus `--libtool` and `--baseline-libtool`.
 
 `patch-13-darwin-outline-atomics` makes the shared outline-atomics helper
 files dependencies of one producer target. Both ordinary and kernel-extension
