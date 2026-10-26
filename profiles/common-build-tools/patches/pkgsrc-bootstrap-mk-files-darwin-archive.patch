@@ -15,7 +15,7 @@ Not submitted upstream.
  
  PKGNAME=	bootstrap-mk-files-20250601
 -PKGREVISION=	2
-+PKGREVISION=	3
++PKGREVISION=	4
  CATEGORIES=	pkgtools
  
  CONFLICTS+=	mk-files-[0-9]*

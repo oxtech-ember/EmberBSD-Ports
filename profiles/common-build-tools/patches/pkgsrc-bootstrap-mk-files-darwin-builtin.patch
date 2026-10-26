@@ -22,9 +22,9 @@ files then never name the exported pkgsrc tree. Not submitted upstream.
 +# Native Darwin and NetBSD bootstraps run shell builtins through this helper.
 +# Recipes after the make handoff use the installed copy, so their
 +# installed files never name the exported pkgsrc tree.
++PLIST_VARS+=		builtin
 +.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes" || \
 +    ${EMBERBSD_NETBSD_BOOTSTRAP:Uno} == "yes"
-+PLIST_VARS+=		builtin
 +PLIST.builtin=		yes
 +INSTALLATION_DIRS+=	libexec
 +.endif

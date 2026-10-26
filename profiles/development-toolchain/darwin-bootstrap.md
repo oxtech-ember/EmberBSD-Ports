@@ -73,6 +73,9 @@ mksh. It does not search PATH or replace a missing compiler.
 The profile selects the ordinary unprivileged pkgsrc install policy.
 It does not modify system users or `/etc/shells`. Native package checks,
 checksums, and required-library checks remain enabled.
+The initial ordinary bootstrap omits the optional builtin helper from its PLIST.
+`tests/bootstrap-mk-plist.py` checks this selection with an exported tree,
+the selected make executable, and an ordinary bootstrap MAKECONF.
 
 The compiler wrappers retain each selected command tail once. The Clang route
 does not receive GCC's static libstdc++, libgcc, or default-RPATH flags.
