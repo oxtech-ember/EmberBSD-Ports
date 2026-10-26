@@ -120,3 +120,40 @@ Cppcheck and GCC16 analyzer report no findings. Clang Static Analyzer reports
 one moved-from-use warning for the intentional empty-state test. The move
 constructor explicitly clears that state, and `get()` permits reading it.
 These focused checks do not establish a complete GN build.
+
+## Xcode platform errors
+
+The Xcode writer validates project attributes before it constructs the project.
+Invalid `target_xcode_platform` values reach the caller through its `Err` object.
+The parser still accepts `iphoneos` and `tvos`. An absent value still selects
+`iphoneos` for an iOS target. macOS keeps its existing platform behavior.
+This repair is AI-assisted EmberBSD work. It is not submitted upstream.
+
+Run the real generation regression with a native GN binary and explicit Python:
+
+```sh
+python3 profiles/common-build-tools/tests/gn-xcode-errors.py \
+  --gn /absolute/path/to/gn --python /absolute/path/to/python3
+```
+
+The eight cases check default, iPhoneOS, tvOS and macOS attributes. They require
+normal error exits for invalid type, unknown value and empty value. Invalid
+settings must not write an Xcode project. The fixture does not compile or run
+Ninja targets. It must run on the binary's host. Generation, source analysis
+and a successful object compile do not establish a complete package or Xcode
+application build.
+
+A paired Darwin arm64 GCC16 check reproduces the null `this` diagnostic in the
+original translation unit. The changed translation unit compiles with the same
+warnings and optimization flags. Clang Static Analyzer completes without
+findings on either version. Cppcheck reports the same 64 diagnostics before
+and after the change. Three inherited diagnostics concern null-pointer
+arithmetic after allocation failure in `hash_table_base.h`; they remain
+unresolved. No analyzer categories are disabled. The real generation fixture,
+ASan/UBSan execution of this path and the complete GN tests remain pending.
+
+The native GCC16 build passed all 817 upstream unit tests and all eight generation cases.
+A diagnostic build instrumented the changed Xcode writer and its inline code with GCC16 ASan and UBSan.
+All eight generation cases passed without sanitizer diagnostics.
+The diagnostic link used one shared GCC C++ runtime. The ordinary build kept its existing runtime policy.
+Leak detection was disabled because LSan did not complete on this host. This is not a leak-check result.

@@ -6,3 +6,4 @@ Size (641ace93dd9560e75e7add0d08f77b446fbb3b78.tar.gz) = 1321449 bytes
 SHA1 (patch-build_gen.py) = e5e4cc96122065dd1e6504aa2016ea5dfe8867c3
 SHA1 (patch-src_base_mac_scoped__typeref.h) = 70e10cb3baed83abfae0435247834c768bddb40b
 SHA1 (patch-src_gn_header__checker.h) = ef9176a91b581f249070ac52331f5fed755e8dbb
+SHA1 (patch-src_gn_xcode__writer.cc) = 2852633e78b18a089b0e1bf5ea8c702a5c0ab6cd
