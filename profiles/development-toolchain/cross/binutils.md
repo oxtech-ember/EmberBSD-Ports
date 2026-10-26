@@ -61,7 +61,10 @@ The producer checks the generated header version and the configured source
 and target. It executes the installed target-prefixed `objdump -i` and requires
 the selected ELF vector. Libtool metadata is read as data, never sourced as
 shell code. Nested `.la` dependencies become their actual static archives;
-zlib, zstd, dl, framework and runtime-path flags are preserved. `libsframe`
+zlib, zstd, dl, framework and runtime-path flags are preserved.
+Direct OS helper links also receive the native prefix library runtime path,
+which Libtool normally adds for its own executables. This keeps the selected
+compression libraries available when the host has libraries with the same SONAME. `libsframe`
 is required only when the actual BFD dependencies use it. Missing inputs,
 mixed source/target paths, unsupported arguments and cyclic dependencies fail
 before the make input is written. `host-bfd.mk` is build configuration, not a
@@ -87,3 +90,24 @@ check Clang/GCC selection, existing caller behavior and generated BFD inputs,
 and exercise dependency and mismatch refusals. They do not compile Binutils
 or prove that the OS helpers link. Run those builds with the selected native
 prefix before claiming native execution support.
+
+The Clang 23 recipe removes two write-only linker globals. MRI `TRUNCATE`
+and `MAP(F)` remain accepted and retain their previous output behavior.
+Run the actual linker regression after the common AArch64 producer:
+
+```sh
+python3 -B profiles/development-toolchain/cross/tests/binutils-ld-options.py \
+  --prefix /absolute/binutils-aarch64/prefix --work /absolute/new-ld-check
+```
+
+The test assembles AArch64 input, links each option and its control, compares
+ELF bytes and checks the complete symbol name with the produced `readelf`.
+It does not execute target code.
+
+Linux Clang 23 validation covers the complete native producer and these
+AArch64 linker paths. Clang Static Analyzer reports six findings in unchanged
+`ldlang.c` code. Paired Cppcheck 2.13 diagnostics match 83 existing findings
+before and after these two removals; no new finding appears in that comparison.
+This standalone source diagnostic does not validate the current Cppcheck 2.22
+Ports package. The complete upstream linker suite and package lifecycle remain
+separate from these producer and option checks.

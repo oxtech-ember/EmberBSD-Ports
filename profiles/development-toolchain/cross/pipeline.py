@@ -168,7 +168,7 @@ def _build_binutils(target, new_work, make_override=None, native=None):
     (work / 'inputs.txt').write_text(receipt)
     if native is not None:
         from binutils_host import write_bfd_input
-        write_bfd_input(work, triplet, capture, env)
+        write_bfd_input(work, triplet, capture, env, host_prefix=selected.bundle_root)
     print('Binutils 2.47 cross tools built: ' + str(prefix))
 
 
