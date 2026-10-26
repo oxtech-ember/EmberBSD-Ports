@@ -1,0 +1,75 @@
+{
+  "adapted": [
+    {
+      "patch": "patch-chrome_browser_file__system__access_chrome__file__system__access__permission__context.cc",
+      "source_sha256": "30998a905543954135fcb827b50814fb8735bc4d5063e1bfaf92bd56ea06223e",
+      "target": "chrome/browser/file_system_access/chrome_file_system_access_permission_context.h"
+    },
+    {
+      "patch": "patch-content_browser_child__process__launcher__helper__linux.cc",
+      "source_sha256": "94851b12d368ece1572afd817cc7fa51701a81189466733b610a0328a6a1ae27",
+      "target": "content/browser/child_process_launcher_helper_linux.cc"
+    },
+    {
+      "patch": "patch-net_dns_dns__config__service__posix.cc",
+      "source_sha256": "63fc0b95ea53b0dc362282de8b629e310f87f374398c2974819b495a856cf6c6",
+      "target": "net/dns/dns_config_service_posix.cc"
+    },
+    {
+      "patch": "patch-ui_gfx_font__util.cc",
+      "source_sha256": "a7b3ca65cbac3dfb0a09b153ada86eae7b245dd9e24a338382bf251c351481bd",
+      "target": "ui/gfx/font_util.cc"
+    },
+    {
+      "patch": "patch-ui_gtk_gtk__compat.cc",
+      "source_sha256": "9782a56a576d4c522a16686ab71527e26ea77919cabcd82e08de0c05a1e588dd",
+      "target": "ui/gtk/gtk_compat.cc"
+    }
+  ],
+  "archive_root": "chromium-nb-151.1",
+  "archive_sha512": "1b0917bfe37ae6b861f9b6bd7ea71c520933d6332b0e703e122d37c681edcb0be526aa398ad1944ee93e54bd03695c9f22cb1e8e1e6f4591efd5600561017bae",
+  "archive_url": "https://github.com/kikadf/chromium-nb/archive/refs/tags/v151.1.tar.gz",
+  "external_host_tools": {
+    "patch-rollup_rust_bindings__napi_Cargo.toml": {
+      "provider": "shared Rollup recipe (not implemented)",
+      "reason": "Electron selects Rollup through DevTools CIPD; pkgsrc Chromium extra rollup source is not in this Git graph."
+    },
+    "patch-rollup_rust_bindings__napi_src_lib.rs": {
+      "provider": "shared Rollup recipe (not implemented)",
+      "reason": "Electron selects Rollup through DevTools CIPD; pkgsrc Chromium extra rollup source is not in this Git graph."
+    },
+    "patch-tools_gn_build_build__linux.ninja.template": {
+      "provider": "pkgsrc/devel/gn",
+      "reason": "GN is a separately built host tool; BSD host portability patch intent needs review at the shared provider."
+    },
+    "patch-tools_gn_build_gen.py": {
+      "provider": "pkgsrc/devel/gn",
+      "reason": "GN is a separately built host tool; BSD host portability patch intent needs review at the shared provider."
+    },
+    "patch-tools_gn_src_base_files_file__posix.cc": {
+      "provider": "pkgsrc/devel/gn",
+      "reason": "GN is a separately built host tool; BSD host portability patch intent needs review at the shared provider."
+    },
+    "patch-tools_gn_src_gn_args.cc": {
+      "provider": "pkgsrc/devel/gn",
+      "reason": "GN is a separately built host tool; BSD host portability patch intent needs review at the shared provider."
+    },
+    "patch-tools_gn_src_gn_version.h": {
+      "provider": "pkgsrc/devel/gn",
+      "reason": "GN is a separately built host tool; BSD host portability patch intent needs review at the shared provider."
+    },
+    "patch-tools_gn_src_util_exe__path.cc": {
+      "provider": "pkgsrc/devel/gn",
+      "reason": "GN is a separately built host tool; BSD host portability patch intent needs review at the shared provider."
+    }
+  },
+  "patch_count": 1641,
+  "pkgsrc_revision": "fff4deb639a1a640476203c80f752fb77b6cb14b",
+  "superseded": {
+    "patch-chrome_browser_process__singleton__posix.cc": {
+      "reason": "Both BSD hunks affect dialog code disabled by Electron upstream patches; retain Electron behavior.",
+      "source_sha256": "8afc23b53d0c84095ec2b783e95270e0563b24a8bc35536780d749475e4d884e",
+      "target": "chrome/browser/process_singleton_posix.cc"
+    }
+  }
+}

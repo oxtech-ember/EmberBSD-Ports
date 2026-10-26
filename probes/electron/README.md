@@ -64,11 +64,13 @@ and build acceptance.
 
 - Electron and Node distfiles are pinned to the current supported Electron 44.x
   release and its exact Chromium revision.
-- The pkgsrc Chromium baseline is 152.0.7977.82 with `chromium-nb` 151.1. A
-  per-patch dry run against Electron's 152.0.7977.167 source applied 1,622 of
-  1,641 patches. Five patch hunks need adaptation and fourteen targets are
-  absent from the Electron tree. A dry run does not establish patch ordering or
-  build correctness.
+- The pkgsrc Chromium baseline is 152.0.7977.82 with `chromium-nb` 151.1.
+  The [ordered BSD overlay audit](electron44/bsd-overlay.md) uses the complete
+  acquired Git graph after Electron's upstream patches. Five recipe-owned
+  adaptations allow 1,632 patches to apply sequentially with zero fuzz in a
+  separate source fixture. One dialog patch is superseded by Electron's
+  disabled dialog code; eight patches belong to separate GN/Rollup host tools.
+  Those host inputs and target build correctness remain unverified.
 - Focused production GN checks retain explicit target ELF tools and target
   pkgsrc metadata. Earlier GCC checks do not qualify the new Clang runtime.
   Complete Clang compilation, linking and target execution remain unverified.
