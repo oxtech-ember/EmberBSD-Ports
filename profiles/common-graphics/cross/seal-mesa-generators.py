@@ -63,27 +63,166 @@ def shader_dependencies(path, build, virtual_headers):
     return sorted(result)
 
 
+def select_host(prefix):
+    from emberbsd_sdk.native_toolset import load_host_prefix
+    return load_host_prefix(prefix, required_roles=('bsdtar', 'patch', 'otool', 'spirv-val'))
+
+
+def sealing_environment(native, temporary, overrides):
+    from emberbsd_sdk.process import sanitized_environment
+    env = sanitized_environment()
+    env.update(TMPDIR=str(temporary), TMP=str(temporary), TEMP=str(temporary))
+    env.update(overrides)
+    env['PATH'] = native.path
+    return env
+
+
+def patch_command(native, directory, patch, strip):
+    return [native.tool('patch'), '--posix', '-f', '-N', '-F0', '-p' + str(strip),
+            '-d', directory, '-i', patch]
+
+
+def system_library(path):
+    return path.is_absolute() and os.path.normpath(path) == str(path) and any(
+        str(path).startswith(root) for root in ('/usr/lib/', '/System/Library/'))
+
+
+def dependency_metadata(listing, commands):
+    """Read selected otool's text interface. Do not parse Mach-O bytes here."""
+    load_commands = {'LC_LOAD_DYLIB', 'LC_LOAD_WEAK_DYLIB', 'LC_REEXPORT_DYLIB',
+                     'LC_LOAD_UPWARD_DYLIB', 'LC_LAZY_LOAD_DYLIB'}
+    loads, rpaths, identity = [], [], None
+    blocks = re.split(r'^Load command [0-9]+\s*$', commands, flags=re.M)
+    require(len(blocks) > 1, 'Missing otool load commands')
+    for block in blocks[1:]:
+        kind = re.search(r'^\s*cmd (\S+)\s*$', block, re.M)
+        require(kind is not None, 'Missing otool load-command name')
+        kind = kind[1]
+        require(kind.startswith('LC_') and (not kind.startswith('LC_LOAD_') or
+                kind in load_commands | {'LC_LOAD_DYLINKER'}), 'Unrecognized otool load command: ' + kind)
+        require(kind not in ('LC_DYLD_ENVIRONMENT', 'LC_LAZY_DYLIB_INFO'),
+                'Unsupported environment or indirect lazy dependency metadata: ' + kind)
+        if kind in load_commands | {'LC_ID_DYLIB', 'LC_RPATH', 'LC_LOAD_DYLINKER'}:
+            field = 'path' if kind == 'LC_RPATH' else 'name'
+            names = re.findall(r'^\s*' + field + r' (.+) \(offset [0-9]+\)\s*$', block, re.M)
+            require(len(names) == 1 and not any(ord(c) < 32 for c in names[0]),
+                    'Malformed otool dependency path')
+            name = names[0]
+            if kind in load_commands:
+                loads.append(name)
+            elif kind == 'LC_RPATH':
+                rpaths.append(name)
+            elif kind == 'LC_LOAD_DYLINKER':
+                require(system_library(Path(name)), 'Non-system native loader')
+            else:
+                require(identity is None, 'Duplicate dylib install name')
+                identity = name
+    listed = []
+    for line in listing.splitlines()[1:]:
+        match = re.fullmatch(r'\s+(.+) \(compatibility version [^,]+, current version [^)]+\)(?: \[[^]]+\])?\s*', line)
+        require(match is not None, 'Malformed otool dependency listing')
+        listed.append(match[1])
+    require(sorted(listed) == sorted(loads + ([identity] if identity is not None else [])),
+            'otool -L and load commands disagree')
+    return dict(loads=loads, rpaths=rpaths)
+
+
+def native_dependencies(executable, prefix, inspect):
+    """Resolve actual runtime paths. OS ABI images terminate this policy graph."""
+    executable, prefix = executable.resolve(strict=True), prefix.resolve(strict=True)
+
+    def expand(name, owner):
+        for token, base in (('@loader_path', owner.parent), ('@executable_path', executable.parent)):
+            if name == token or name.startswith(token + '/'):
+                return base / name[len(token):].lstrip('/')
+        require(name.startswith('/'), 'Unsupported relative runtime path: ' + name)
+        return Path(name)
+
+    def member(candidate):
+        if system_library(candidate):
+            return None
+        actual = candidate.resolve(strict=True)
+        require(actual.is_relative_to(prefix) and actual != prefix,
+                'Native shared dependency escapes host prefix: ' + str(candidate))
+        require(actual.is_file(), 'Native shared dependency is not a file: ' + str(candidate))
+        return actual
+
+    pending, seen, images, inputs = [(executable, ())], set(), {}, {}
+    while pending:
+        owner, inherited = pending.pop()
+        if owner not in images:
+            require(len(images) < 1024, 'Native dependency graph exceeds its limit')
+            images[owner] = inspect(owner)
+            inputs[str(owner)] = images[owner]['sha256']
+        image = images[owner]
+        search = tuple(dict.fromkeys([str(expand(path, owner)) for path in image['rpaths']] + list(inherited)))
+        state = (owner, search)
+        if state in seen:
+            continue
+        require(len(seen) < 4096, 'Native dependency contexts exceed their limit')
+        seen.add(state)
+        for name in image['loads']:
+            if name.startswith('@rpath/'):
+                leaf = name[len('@rpath/'):]
+                require(leaf and all(part not in ('', '.', '..') for part in leaf.split('/')),
+                        'Invalid rpath dependency: ' + name)
+                candidate = next((Path(root) / leaf for root in search
+                                  if os.path.lexists(Path(root) / leaf)), None)
+                require(candidate is not None, 'Unresolved native rpath dependency: ' + name)
+            else:
+                candidate = expand(name, owner)
+            target = member(candidate)
+            if target is not None:
+                pending.append((target, search))
+    return inputs
+
+
 def seal(arguments):
-    from emberbsd_sdk.errors import CommandError, ProcessOwnershipError
-    from emberbsd_sdk.process import ContextLocks, sanitized_environment
-    from emberbsd_sdk.stream import capture_streamed
+    from emberbsd_sdk.paths import canonical_new, reject_overlap
+    from emberbsd_sdk.process import ContextLocks
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--profile', choices=('intel', 'powervr', 'all'), default='powervr')
+    parser.add_argument('--host-prefix', required=True, type=Path)
+    parser.add_argument('--pkgdb', required=True, type=Path)
+    parser.add_argument('--lock-directory', required=True, type=Path)
     parser.add_argument('archive')
     parser.add_argument('source')
     parser.add_argument('build')
     parser.add_argument('validator')
     parser.add_argument('work')
     args = parser.parse_args(arguments)
+    for name in ('host_prefix', 'pkgdb', 'lock_directory'):
+        path = getattr(args, name)
+        require(path.is_absolute(), '--' + name.replace('_', '-') + ' must be absolute')
+        path = path.resolve(strict=True)
+        require(path.is_dir(), 'Expected directory: ' + str(path))
+        setattr(args, name, path)
+    args.work = canonical_new(args.work)
+    for protected in (args.host_prefix, args.pkgdb, args.source, args.build):
+        reject_overlap(args.work, protected)
+    with ContextLocks([str(args.host_prefix), str(args.pkgdb)], str(args.lock_directory), shared=True):
+        seal_locked(args)
+
+
+def seal_locked(args):
+    from emberbsd_sdk.errors import CommandError, ProcessOwnershipError
+    from emberbsd_sdk.paths import regular_file, verify_stable
+    from emberbsd_sdk.process import ContextLocks
+    from emberbsd_sdk.stream import capture_streamed
+
     values = [getattr(args, name) for name in ('archive', 'source', 'build', 'validator', 'work')]
     require(all(re.fullmatch(r'/[A-Za-z0-9_./-]+', value) for value in values),
             'Use absolute paths without whitespace or shell metacharacters')
     archive, source, build, validator = [Path(value).resolve(strict=True) for value in values[:4]]
-    work = Path(os.path.abspath(args.work))
+    work = Path(args.work)
     require(not os.path.lexists(work), 'NEW_WORK must not exist')
     require(platform.system() == 'Darwin' and platform.machine() == 'arm64',
             'This native generator recipe requires macOS ARM64')
+    native = select_host(args.host_prefix)
+    prefix = Path(native.bundle_root)
+    require(validator == Path(native.tool('spirv-val')).resolve(strict=True),
+            'Validator must be the selected host-prefix spirv-val')
     profiles = profiles_for(args.profile)
     require(sha(archive) == MESA_SHA256, 'Wrong Mesa source archive')
     require((source / 'VERSION').read_text().strip() == '26.2.5', 'Wrong Mesa source version')
@@ -108,9 +247,7 @@ def seal(arguments):
             argv = list(map(str, argv))
             overrides = {} if overrides is None else overrides
             commands.append(dict(argv=argv, cwd=str(build), environment=overrides))
-            env = sanitized_environment()
-            env.update(TMPDIR=str(work / 'tmp'), TMP=str(work / 'tmp'), TEMP=str(work / 'tmp'))
-            env.update(overrides)
+            env = sealing_environment(native, work / 'tmp', overrides)
             try:
                 result = capture_streamed(argv, cwd=str(build), env=env, timeout=600,
                                           stdout_limit=16 * 1024 * 1024, stderr_limit=1024 * 1024)
@@ -126,16 +263,41 @@ def seal(arguments):
                 write_json(work / sdk_source.PRODUCER_QUARANTINE, dict(error=str(error), argv=argv))
                 raise
 
+        runtime_inputs = {}
+
+        def check_runtime(binary, name):
+            index = 0
+
+            def inspect(path):
+                nonlocal index
+                index += 1
+                before = regular_file(path)
+                label = name + '-runtime-' + str(index)
+                listing = run([native.tool('otool'), '-arch', 'arm64', '-L', path], label + '-libraries')
+                commands = run([native.tool('otool'), '-arch', 'arm64', '-l', path], label + '-commands')
+                result = dependency_metadata(listing, commands)
+                result['sha256'] = sha(path)
+                verify_stable(path, before)
+                return result
+
+            found = native_dependencies(binary, prefix, inspect)
+            require(all(path not in runtime_inputs or runtime_inputs[path] == digest
+                        for path, digest in found.items()), 'Native runtime changed during sealing')
+            runtime_inputs.update(found)
+
         for name, path in tools.items():
             binary = build / path
             require(os.access(binary, os.X_OK), 'Missing real native tool: ' + str(binary))
             with binary.open('rb') as stream:
                 require(stream.read(8) == struct.pack('<II', 0xfeedfacf, 0x0100000c), 'Expected native ARM64 Mach-O')
-            dependencies = run(['otool', '-L', binary], name + '-dependencies')
-            require(all(line.strip().startswith(('/usr/lib/', '/System/Library/'))
-                        for line in dependencies.splitlines()[1:]), 'Unrecorded non-system shared dependency')
+            check_runtime(binary, name)
         require(os.access(validator, os.X_OK), 'Missing SPIR-V validator')
-        inputs = [Path(__file__).resolve(), archive, validator, build / 'build.ninja', build / 'compile_commands.json']
+        check_runtime(validator, 'validator')
+        bvnc_patch = PORTS / 'probes/a733-accelerators/host-tools/mesa-26.2.4-pco-bvnc.patch'
+        objc_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-meson.build-host-objc'
+        interface_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h'
+        inputs = [Path(__file__).resolve(), archive, validator, build / 'build.ninja',
+                  build / 'compile_commands.json', bvnc_patch, objc_patch, interface_patch]
         targets = json.loads((metadata / 'intro-targets.json').read_text())
         for name, path in tools.items():
             selected = [row for row in targets if row['name'] == name and row['type'] == 'executable']
@@ -146,13 +308,15 @@ def seal(arguments):
                 inputs.extend((build / arg).resolve(strict=True) for arg in group.get('parameters', []) if arg.endswith(('.a', '.tbd')))
         inputs.extend(metadata.glob('*.json'))
         input_hashes, directory_inputs = input_records(inputs)
+        input_hashes.update(runtime_inputs)
         reference = work / 'reference'
         reference.mkdir()
-        run(['tar', '-xf', archive, '--strip-components=1', '-C', reference], 'extract')
-        bvnc_patch = PORTS / 'probes/a733-accelerators/host-tools/mesa-26.2.4-pco-bvnc.patch'
+        run([native.tool('bsdtar'), '-xf', archive, '--strip-components=1', '-C', reference], 'extract')
         pco = 'src/imagination/pco/uscgen/pco_clc.c'
         if sha(reference / pco) != sha(source / pco):
-            run(['patch', '--no-backup-if-mismatch', '-f', '-N', '-F', '0', '-p1', '-d', reference, '-i', bvnc_patch], 'bvnc-patch')
+            run(patch_command(native, reference, bvnc_patch, 1), 'bvnc-patch')
+        if sha(reference / 'meson.build') != sha(source / 'meson.build'):
+            run(patch_command(native, reference, objc_patch, 0), 'host-objc-patch')
         source_hashes = {}
         for path in sorted(reference.rglob('*')):
             if path.is_file():
@@ -165,12 +329,13 @@ def seal(arguments):
             (work / name).mkdir()
         for name, path in tools.items():
             shutil.copy2(build / path, work / 'bin' / name)
+            check_runtime(work / 'bin' / name, name + '-copied')
+        input_hashes.update(runtime_inputs)
         for name in ('meson-info.json', 'intro-projectinfo.json', 'intro-buildoptions.json', 'intro-targets.json', 'intro-dependencies.json'):
             shutil.copy2(metadata / name, work / 'metadata' / name)
         for name in ('build.ninja', 'compile_commands.json'):
             shutil.copy2(build / name, work / 'metadata' / name)
-        interface_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h'
-        run(['patch', '--no-backup-if-mismatch', '-f', '-N', '-F', '0', '-p0', '-d', reference, '-i', interface_patch], 'interface-patch')
+        run(patch_command(native, reference, interface_patch, 0), 'interface-patch')
         interfaces = ['src/compiler/nir/nir.h', 'src/compiler/nir/nir_serialize.c', 'src/compiler/nir/nir_intrinsics.py', 'src/compiler/spirv/spirv_to_nir.c']
         if 'powervr' in profiles:
             interfaces += ['src/imagination/' + p for p in ('common/pvr_iface.h', 'pco/pco.h', 'pco/pco_common.h.py', 'pco/usclib/common.cl', 'pco/usclib/sync.cl', 'pco/usclib/tex.cl')]
@@ -222,7 +387,6 @@ def seal(arguments):
         input_hashes.update(shader_hashes)
         require(all(sha(path) == digest for path, digest in input_hashes.items()), 'Native build changed during sealing')
         require(all(sha(source / path) == digest for path, digest in source_hashes.items()), 'Native source changed during sealing')
-        input_hashes.update({str(path): sha(path) for path in (bvnc_patch, interface_patch)})
         scope = 'Pinned native source and real compiled tools. Upstream common OpenCL to SPIR-V/NIR smoke.'
         if 'powervr' in profiles:
             scope += ' PowerVR PCO generation is checked.'
@@ -231,6 +395,7 @@ def seal(arguments):
         scope += ' No target execution.'
         write_json(work / 'receipt.json', dict(schema='ember-mesa-generators-1', mesa='26.2.5', llvm='23.1.4',
                    source=str(source), build=str(build), archive_sha256=MESA_SHA256, profiles=profiles,
+                   host_prefix=str(prefix),
                    commands=commands, inputs=input_hashes, directory_inputs=directory_inputs,
                    virtual_headers=virtual_headers, scope=scope))
         (work / 'FORMAT').write_text('ember-mesa-generators-1\n')
