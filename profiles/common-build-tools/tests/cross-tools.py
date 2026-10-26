@@ -24,13 +24,15 @@ def run(label, command, accept=True):
     return result.stdout + result.stderr
 
 
-command = [sys.executable, '-B', helper, '--sdk-source', sdk, compiler, os_tools, work / 'tools']
+command = [sys.executable, '-B', helper, '--sdk-source', sdk,
+           '--compiler-family', 'gcc', compiler, os_tools, work / 'tools']
 run('compose', command)
 assert run('triplet', [work / 'tools/bin/aarch64--netbsd-gcc', '-dumpmachine']).strip() == 'aarch64--netbsd'
 assert run('version', [work / 'tools/bin/aarch64--netbsd-gcc', '-dumpfullversion']).strip() == '16.2.0'
 assert 'Output already exists' in run('existing', command, False)
 (work / 'missing-os-tools').mkdir()
-missing = run('missing', [sys.executable, '-B', helper, '--sdk-source', sdk, compiler, work / 'missing-os-tools', work / 'rejected'], False)
+missing = run('missing', [sys.executable, '-B', helper, '--sdk-source', sdk,
+    '--compiler-family', 'gcc', compiler, work / 'missing-os-tools', work / 'rejected'], False)
 assert 'Missing required external toolchain tools:' in missing and 'install' in missing and 'Required:' in missing, missing
 assert not (work / 'rejected').exists()
 base = [bmake, '-C', pkgsrc + '/devel/m4', 'MAKECONF=' + makeconf]

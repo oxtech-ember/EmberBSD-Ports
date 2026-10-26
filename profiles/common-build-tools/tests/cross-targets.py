@@ -54,10 +54,10 @@ with tempfile.TemporaryDirectory(prefix='ember-cross-targets-') as temporary:
     (work / 'sysroot/usr/pkg/gcc16/lib/libstdc++.so.7').write_text('fixture')
     for target in ('aarch64', 'amd64'):
         triple = 'x86_64--netbsd' if target == 'amd64' else 'aarch64--netbsd'
-        result = subprocess.run([sys.executable, '-B', str(root / 'profiles/common-build-tools/cross/prepare-tools.py'), '--sdk-source', sdk, '--target', target, str(work / 'compiler'), str(work / 'os'), str(work / ('tools-' + target))], capture_output=True, text=True)
+        result = subprocess.run([sys.executable, '-B', str(root / 'profiles/common-build-tools/cross/prepare-tools.py'), '--sdk-source', sdk, '--compiler-family', 'gcc', '--target', target, str(work / 'compiler'), str(work / 'os'), str(work / ('tools-' + target))], capture_output=True, text=True)
         assert result.returncode == 0, result.stdout + result.stderr
         assert (work / ('tools-' + target) / 'bin' / (triple + '-gcc')).is_symlink()
-    (work / 'Makefile').write_text(f'BSD_PKG_MK=yes\n.include "{native_inputs}"\nPKGPATH=devel/ember-target-fixture\nEMBERBSD_CROSS_TOOLS={work}/compiler\nEMBERBSD_CROSS_SYSROOT={work}/sysroot\nEMBERBSD_CROSS_HOST_PREFIX={work}/os\n.include "{cross_profile}"\n')
+    (work / 'Makefile').write_text(f'BSD_PKG_MK=yes\n.include "{native_inputs}"\nPKGPATH=devel/ember-target-fixture\nEMBERBSD_CROSS_COMPILER_FAMILY=gcc\nEMBERBSD_CROSS_TOOLS={work}/compiler\nEMBERBSD_CROSS_SYSROOT={work}/sysroot\nEMBERBSD_CROSS_HOST_PREFIX={work}/os\n.include "{cross_profile}"\n')
 
     def read(*arguments):
         result = subprocess.run([str(bmake), '-f', str(work / 'Makefile'), *arguments], capture_output=True, text=True)

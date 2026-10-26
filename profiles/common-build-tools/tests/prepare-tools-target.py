@@ -39,7 +39,8 @@ def fake_prefix(path, triplet, machine):
 
 
 def run(label, *command, accept=True):
-    result = subprocess.run([sys.executable, '-B', str(helper), '--sdk-source', sdk] + [str(c) for c in command], capture_output=True, text=True)
+    result = subprocess.run([sys.executable, '-B', str(helper), '--sdk-source', sdk,
+                             '--compiler-family', 'gcc'] + [str(c) for c in command], capture_output=True, text=True)
     output = result.stdout + result.stderr
     (work / (label + '.log')).write_text(output)
     assert (result.returncode == 0) == accept, label + ': ' + output

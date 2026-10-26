@@ -1,0 +1,19 @@
+# Origin: EmberBSD (AI-assisted). Preserve the selected cross compiler family.
+# Clang uses target-bound drivers from the selected SDK tool directory.
+# Keep the existing GCC names for an explicit GCC selection.
+
+--- a/mk/tools/cross.NetBSD.mk
++++ b/mk/tools/cross.NetBSD.mk
+@@ -20,6 +20,12 @@
+ TOOLS_PATH.readelf?=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-readelf
+ TOOLS_CREATE+=			readelf
+ 
++.if !empty(PKGSRC_COMPILER:Mclang)
++CC=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-clang
++CXX=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-clang++
++CPP=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-clang-cpp
++.else
+ CC=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-gcc
+ CXX=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-g++
++.endif
+ LD=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-ld
