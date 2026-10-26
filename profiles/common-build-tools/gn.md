@@ -37,6 +37,10 @@ and [OpenBSD recipe](https://cvsweb.openbsd.org/ports/devel/gn/Makefile) were
 reviewed for the Python, Ninja, archive-version and upstream-test routes.
 Their source versions and platform patches are not copied into this recipe.
 
+The Darwin `ScopedTypeRef` patch limits Objective-C ownership annotations to
+Objective-C translation units. Plain C++ keeps the same explicit Traits retain
+and release operations, including the CoreFoundation specialization.
+
 ## Build and acceptance
 
 Use the native Ports GCC16 prefix for a native GN build.
@@ -80,8 +84,7 @@ For optional Ninja post-processing, pass
 `--ninja-executable=<selected native Ninja>` explicitly.
 Verify the installed Mach-O architecture, compiler identity, load commands
 and complete runtime closure before adding the `gn` role to an SDK bundle.
-Use the existing native provider build receipt and native toolset validation.
-No new qualification format is defined here.
+Select the installed tool with the SDK host-prefix API. No separate qualification is required.
 
 ## Source regression
 
@@ -98,3 +101,22 @@ header identity, malformed version refusal and Darwin SDK minimum preservation. 
 functions with mocked child calls. It does not run a compiler, GN or Ninja.
 Native build, package lifecycle, upstream test and installed runtime acceptance
 remain pending.
+
+## Darwin C++ ownership regression
+
+`tests/gn-scoped-typeref.cc` includes the actual GN header and CoreFoundation traits.
+Compile it with the selected native G++ and `-std=c++23 -DNDEBUG -Wall -Wextra
+-Werror -Wno-unused-parameter`, the GN source include directory, and
+`-framework CoreFoundation`. The repaired include directory must precede
+the original GN source directory for a paired check.
+
+On Darwin arm64, the original header fails compilation. The repaired header
+compiles without diagnostics and prints `gn-scoped-typeref: PASS`.
+The fixture checks explicit ownership counts and real CFString operations.
+Removing retain or release still compiles but fails the runtime checks.
+GCC16 ASan and UBSan runs pass. LeakSanitizer does not complete on this host;
+leak checking and Valgrind execution remain unverified.
+Cppcheck and GCC16 analyzer report no findings. Clang Static Analyzer reports
+one moved-from-use warning for the intentional empty-state test. The move
+constructor explicitly clears that state, and `get()` permits reading it.
+These focused checks do not establish a complete GN build.
