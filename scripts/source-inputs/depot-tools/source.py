@@ -11,7 +11,7 @@ import tempfile
 
 URL = "https://chromium.googlesource.com/chromium/tools/depot_tools.git"
 REVISION = "b86fc981b72ab966f8260f73b4eca600b3b12677"
-PATCHES = ("patch-gclient_scm.py",)
+PATCHES = ("patch-gclient_scm.py", "patch-gclient.py")
 PATCH_DIR = Path(__file__).resolve().parent / "patches"
 
 

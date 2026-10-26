@@ -79,6 +79,32 @@ class SharedSource(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "complete patch directory"):
                 owner.verify_prepared(self.prepared, options.git)
 
+    def test_revinfo_preserves_complete_cipd_version_without_acquiring_assets(self):
+        version = "version:3@4.60.4"
+        parent, pin = self.repository("parent", "deps = " + repr({
+            "src/asset": {"dep_type": "cipd", "packages": [{
+                "package": "example/rollup/${{platform}}", "version": version}]},
+        }) + "\n")
+        workspace = self.work / "workspace"
+        workspace.mkdir()
+        self.git(workspace, "clone", "-q", "--no-hardlinks", str(parent), "src")
+        (workspace / ".gclient").write_text("solutions = " + repr([{
+            "name": "src", "url": parent.as_uri() + "@" + pin, "managed": False}]) + "\n")
+        inventories = []
+        for label, tools in (("upstream", options.source), ("prepared", self.prepared)):
+            output = workspace / (label + ".json")
+            result = self.gclient(tools, workspace, "revinfo", "--output-json", str(output))
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            inventories.append(json.loads(output.read_text()))
+        baseline, fixed = inventories
+        key = "src/asset:example/rollup/${platform}"
+        self.assertEqual(baseline[key]["rev"], "version:3")
+        self.assertEqual(fixed[key]["rev"], version)
+        self.assertEqual(fixed[key]["url"], baseline[key]["url"])
+        self.assertEqual(fixed["src"], baseline["src"])
+        self.assertEqual(fixed["src"]["rev"], pin)
+        self.assertFalse((workspace / "src/asset").exists())
+
     def test_sync_gitlink_recovers_broken_head_and_preserves_other_inputs(self):
         leaf, leaf_pin = self.repository("leaf")
         node, node_pin = self.repository("node")

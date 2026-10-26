@@ -123,7 +123,8 @@ grep -q -- '-DLIBCLANG_BUILD_STATIC=ON' "$work/pkgsrc/lang/clang/Makefile.common
 grep -Fq '${WRKSRC}/${CMAKE_BUILD_DIR}/bin/clang ${LOCALBASE}/gcc16 ${WRKDIR}/native-config' \
     "$work/pkgsrc/lang/clang/Makefile.common"
 grep -q -- '-DLLVM_ENABLE_RTTI=ON' "$work/pkgsrc/lang/llvm/Makefile"
-grep -q -- '-DLLVM_LINK_LLVM_DYLIB=ON' "$work/pkgsrc/lang/llvm/Makefile"
+grep -q '^LLVM_LINK_LLVM_DYLIB?= ON' "$work/pkgsrc/lang/llvm/Makefile"
+grep -Fq -- '-DLLVM_LINK_LLVM_DYLIB=${LLVM_LINK_LLVM_DYLIB}' "$work/pkgsrc/lang/llvm/Makefile"
 ! grep -q '^LLVM_EXPERIMENTAL_TARGETS=.*SPIRV' "$work/pkgsrc/lang/llvm/options.mk"
 for pair in 'LLVM_ALL_TARGETS LLVM_TARGETS' 'LLVM_ALL_EXPERIMENTAL_TARGETS LLVM_EXPERIMENTAL_TARGETS'; do
     set -- $pair
