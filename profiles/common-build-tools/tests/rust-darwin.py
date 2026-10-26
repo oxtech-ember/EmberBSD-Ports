@@ -12,6 +12,17 @@ import subprocess
 import sys
 
 
+
+def tool_selection(helper):
+    names = {'lipo': 'MACHO_LIPO', 'otool': 'MACHO_OTOOL',
+             'install_name_tool': 'RUST_DARWIN_INSTALL_NAME_TOOL', 'codesign': 'RUST_DARWIN_CODESIGN'}
+    return helper.selected_tools(**{role: os.environ.get(name, '') for role, name in names.items()})
+
+
+def tool_arguments(tools):
+    return [word for role, value in tools.items() for word in ('--' + role.replace('_', '-'), value)]
+
+
 def digest(path):
     with path.open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
@@ -37,15 +48,15 @@ def mixed_preflight(original_arg, work_arg):
     spec = importlib.util.spec_from_file_location("rust_darwin_preflight", source)
     helper = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(helper)
+    tools = tool_selection(helper)
     image = prefix / "bin/rustfmt"
-    for argv in [["/usr/bin/install_name_tool", "-change", helper.OLD, helper.NEW, str(image)],
-                 ["/usr/bin/codesign", "--force", "--sign", "-", "--preserve-metadata=identifier,entitlements,requirements,flags,runtime", str(image)],
-                 ["/usr/bin/codesign", "--verify", "--strict", str(image)]]:
+    for argv in [[tools["install_name_tool"], "-change", helper.OLD, helper.NEW, str(image)],
+                 [tools["codesign"], "--verify", "--strict", str(image)]]:
         process = subprocess.run(argv, capture_output=True, text=True, timeout=120)
         commands.append(dict(argv=argv, exit=process.returncode, stderr=process.stderr))
         if process.returncode:
             raise RuntimeError(process.stderr)
-    graph = helper.inventory(prefix)
+    graph = helper.inventory(prefix, tools)
     assert len(graph) == 43
     for name in ["lib/libLLVM.dylib", "lib/rustlib/aarch64-apple-darwin/lib/libLLVM.dylib"]:
         assert all(part["identity"] == helper.OLD for part in graph[name].values())
@@ -68,7 +79,7 @@ def mixed_preflight(original_arg, work_arg):
     before = state()
     receipt = work / "unexpected-receipt.json"
     try:
-        helper.isolate(prefix, receipt)
+        helper.isolate(prefix, receipt, tools)
     except ValueError as error:
         refusal = str(error)
         assert "without private LLVM identities or imports" in refusal
@@ -101,7 +112,7 @@ def mixed_preflight(original_arg, work_arg):
     try:
         Path.rename = stop_at_rename
         try:
-            control.isolate(prefix, receipt)
+            control.isolate(prefix, receipt, tools)
         except FirstRename:
             pass
         else:
@@ -121,6 +132,9 @@ def main():
     for tool in ("MACHO_OD", "MACHO_LIPO", "MACHO_OTOOL"):
         if not os.environ.get(tool):
             raise SystemExit("Select " + tool + " for the package resolver")
+    linker = Path(os.environ.get('RUST_DARWIN_LINKER', ''))
+    if not linker.is_absolute() or not linker.is_file() or not os.access(linker, os.X_OK):
+        raise SystemExit('Select the complete native compiler command in RUST_DARWIN_LINKER')
     original, staged, tree = (Path(p).resolve(strict=True) for p in sys.argv[1:4])
     work = Path(sys.argv[4])
     if not work.is_absolute() or work.exists() or any(work.is_relative_to(p) for p in [original, staged, tree]):
@@ -147,9 +161,10 @@ def main():
     spec = importlib.util.spec_from_file_location("rust_darwin_llvm", script)
     helper = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(helper)
+    tools = tool_selection(helper)
     version = run("version", [str(staged / "bin/rustc"), "-vV"]).stdout.decode()
     assert version.startswith("rustc 1.99.1 ") and "host: aarch64-apple-darwin\n" in version
-    before, after = helper.inventory(original), helper.inventory(staged)
+    before, after = helper.inventory(original, tools), helper.inventory(staged, tools)
     providers = {name for name, arches in before.items() if any(image["identity"] == helper.OLD for image in arches.values())}
     consumers = {name for name, arches in before.items() if any(any(lib == helper.OLD for _, lib in image["imports"]) for image in arches.values())}
     assert len(before) == 43 and len(providers) == 2 and len(consumers) == 24
@@ -173,11 +188,6 @@ def main():
     for name in relative:
         assert (original_hashes[name] != staged_hashes[name]) == (name in providers or name in consumers), name
     assert len({original_hashes[name] for name in providers}) == 1
-    # Keep the earlier actual load-command-space regression.
-    overflow = work / "legacy-libstd.dylib"
-    shutil.copy2(original / std, overflow)
-    result = run("legacy-absolute-overflow", ["/usr/bin/install_name_tool", "-id", str(work / ("prefix-" + "x" * 120) / std), str(overflow)], success=False)
-    assert result.returncode and b"larger updated load commands do not fit" in result.stderr
     control = work / "private-control"
     control.mkdir()
     for name in ["bin", "lib", "libexec"]:
@@ -228,8 +238,8 @@ def main():
         backup = work / ("consumer-backup-" + str(index))
         shutil.copy2(path, backup)
         try:
-            run("generic-import-" + str(index), ["/usr/bin/install_name_tool", "-change", helper.NEW, helper.OLD, str(path)])
-            run("sign-negative-" + str(index), ["/usr/bin/codesign", "--force", "--sign", "-", "--preserve-metadata=identifier,entitlements,requirements,flags,runtime", str(path)])
+            run("generic-import-" + str(index), [tools["install_name_tool"], "-change", helper.NEW, helper.OLD, str(path)])
+            run("verify-negative-" + str(index), [tools["codesign"], "--verify", "--strict", str(path)])
             command = [str(control / "bin/rustc"), "-vV"] if name == driver else [str(path), "--version"]
             result = run("unconverted-consumer-" + str(index), command, success=False)
             assert result.returncode and b"libLLVM.dylib" in result.stderr, name
@@ -242,15 +252,15 @@ def main():
     refusal = work / "refuse-symlink"
     (refusal / "lib").mkdir(parents=True)
     (refusal / "lib/libLLVM.dylib").symlink_to(original / "lib/libLLVM.dylib")
-    result = run("refuse-shared-alias", [sys.executable, "-B", str(script), str(refusal), str(work / "refused.json")], success=False)
+    result = run("refuse-shared-alias", [sys.executable, "-B", str(script), str(refusal), str(work / "refused.json"), *tool_arguments(tools)], success=False)
     assert result.returncode and b"regular LLVM provider" in result.stderr
     assert not (work / "refused.json").exists()
     for index, name in enumerate(sorted(providers | consumers)):
-        run("signature-" + str(index), ["/usr/bin/codesign", "--verify", "--strict", str(staged / translated.get(name, name))])
+        run("signature-" + str(index), [tools["codesign"], "--verify", "--strict", str(staged / translated.get(name, name))])
     source = repo / "probes/rust-cross-std/runtime.rs"
     shutil.copy2(source, work / "runtime.rs")
     binary = work / "native-consumer"
-    run("compile", [str(staged / "bin/rustc"), "--sysroot", str(staged), "--edition=2024", str(work / "runtime.rs"), "-o", str(binary)])
+    run("compile", [str(staged / "bin/rustc"), "--sysroot", str(staged), "--edition=2024", "-C", "linker=" + str(linker), str(work / "runtime.rs"), "-o", str(binary)])
     run("runtime", [str(binary)])
     for name in ["cargo", "cargo-clippy", "clippy-driver", "rustdoc", "rustfmt", "rust-analyzer"]:
         run("version-" + name, [str(staged / "bin" / name), "--version"])

@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.84 2026/07/03 20:58:49 he Exp $
 
 DISTNAME=	rust-1.99.1
-PKGREVISION=	2
+PKGREVISION=	3
 PKGNAME=	${DISTNAME:S/rust/rust-bin/1}
 CATEGORIES=	lang
 MASTER_SITES=	https://static.rust-lang.org/dist/
@@ -210,9 +210,16 @@ CHECK_SHLIBS_SKIP=	# check every native Mach-O provider
 PYTHON_FOR_BUILD_ONLY= tool
 .include "../../lang/python/tool.mk"
 
+# Inspection uses the common Mach-O selections. The SDK/caller owns the
+# mutator and macOS verification service; no PATH or system-tool fallback.
+RUST_DARWIN_INSTALL_NAME_TOOL?= ${EMBERBSD_DARWIN_INSTALL_NAME_TOOL:U}
+RUST_DARWIN_CODESIGN?= ${EMBERBSD_DARWIN_TOOL.codesign:U}
+
 post-install:
-	${TOOL_PYTHONBIN} ${FILESDIR}/darwin-llvm.py ${DESTDIR}${PREFIX} \
-	    ${WRKDIR}/darwin-llvm.json
+	${TOOL_PYTHONBIN} -B -I -S ${FILESDIR:Q}/darwin-llvm.py ${DESTDIR:Q}${PREFIX:Q} \
+	    ${WRKDIR:Q}/darwin-llvm.json --lipo ${MACHO_LIPO:Q} --otool ${MACHO_OTOOL:Q} \
+	    --install-name-tool ${RUST_DARWIN_INSTALL_NAME_TOOL:Q} \
+	    --codesign ${RUST_DARWIN_CODESIGN:Q}
 .else
 
 
