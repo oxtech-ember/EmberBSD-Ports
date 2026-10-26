@@ -16,7 +16,8 @@ The seven seeds are tracked in `cairo-lzo-corpus/`.
 `cairo-lzo-fuzz.c` builds as a Clang libFuzzer target with ASan and UBSan. The
 Cairo and LZO static archives must carry the same sanitizer instrumentation.
 Build a second replay executable from the same harness and patched source with
-GCC16 and ASan/UBSan. The replay binary accepts one corpus filename. Both
+the production compiler family and ASan/UBSan. Clang is the default; GCC16 is
+an explicit alternative. The replay binary accepts one corpus filename. Both
 binaries remain host diagnostics and must stay outside packages and sysroots.
 The Cairo recipe keeps LZO enabled for this pilot.
 
@@ -57,7 +58,7 @@ python3 profiles/common-graphics/tests/cairo-lzo-evidence.py \
   --sdk-root /absolute/EmberBSD-SDK \
   --work-root /absolute/cairo-lzo-work \
   --distfiles /absolute/distfiles \
-  --clang /absolute/clang-23 --gcc /absolute/gcc-16 \
+  --clang /absolute/clang-23 \
   --python /absolute/python3.15 --ninja /absolute/ninja \
   --pkg-config /absolute/pkg-config --cppcheck /absolute/cppcheck \
   --output /absolute/cairo-lzo-work/results/build.json
@@ -74,9 +75,21 @@ python3 "$SDK/scripts/fuzz-check.py" verify \
   --manifest /absolute/cairo-lzo-work/results/build.json
 ```
 
+The adapter writes SDK manifest version 2 with explicit compiler families.
+The default replay uses `--clang`; `--replay-compiler` selects another compiler
+of `--replay-family clang|gcc`. The legacy `--gcc` option explicitly selects
+GCC16 and retains its existing work layout. Invalid or conflicting selections
+fail. Existing version 1 evidence remains readable by the SDK.
+
+For Clang replay, use `meson-builds/clang-replay`,
+`lzo-clang-replay-src/src`, `bin/cairo-lzo-replay-clang`, and macro captures
+`results/cairo-fuzz-clang-macros.txt` and `results/lzo-clang-macros.txt`.
+The fuzzer and LSan binaries retain their separate existing paths. GCC replay
+retains `meson-builds/gcc16`, `lzo-gcc-src/src` and the `gcc16` binary/macro names.
+
 The SDK runner hashes its initial inputs, applies a finite libFuzzer budget,
 records the generated corpus, then replays every initial and generated file
-once with the GCC16 binary and once with the separate LSan binary when enabled.
+once with the production replay binary and once with the separate LSan binary when enabled.
 The manifest adapter requires a clean Ports checkout and rejects archives that
 differ from the repository's pinned hashes. Keep the evidence directory outside
 Git.
@@ -95,29 +108,30 @@ active before replaying Cairo inputs:
 
 The SDK runner first checks `lsan_probe`; its expected nonzero exit is accepted
 only when its report names the intentional direct leak. The RSS-limited
-libFuzzer and GCC16 replay use `detect_leaks=0` because libFuzzer's process-life
+libFuzzer and production replay use `detect_leaks=0` because libFuzzer's process-life
 RSS monitor has process-exit allocations on this host. The runner replays every
 initial and generated corpus file with `lsan_replay` under
 `ASAN_OPTIONS=abort_on_error=1:detect_leaks=1`. A Cairo leak fails that replay.
 Unretained mutations are not covered by the separate LSan replay.
 
 Build `lsan_replay` from `cairo-lzo-fuzz.c` and the Clang-instrumented Cairo and
-LZO archives. Use the GCC16 replay link line as the source of include and
+LZO archives. Use the production replay link line as the source of include and
 library arguments. Add `-DCAIRO_LZO_FUZZ_REPLAY`, retain the sanitizers used by
 those archives (`-fsanitize=address,undefined` in this build) and
 `-fno-omit-frame-pointer`, and remove `-fsanitize=fuzzer`. This executable has
 the one-input replay `main`; it must not link libFuzzer. Keep the full command
 and output in the accepted build logs.
 
-On a supported Valgrind host, prepare a separate `gcc16-memcheck` Cairo/LZO
+On a supported Valgrind host, prepare a separate `clang-replay-memcheck` Cairo/LZO
 build with the same source revisions, patches, Meson feature settings and
-headers as the GCC16 replay build. Remove every ASan/UBSan flag from the
+headers as the production replay build. Remove every ASan/UBSan flag from the
 compile and link commands. Build `cairo-lzo-fuzz.c` with
 `-DCAIRO_LZO_FUZZ_REPLAY`, `-O1`, `-g` and `-fno-omit-frame-pointer`, and link it
 against those uninstrumented Cairo and LZO archives as
-`bin/cairo-lzo-replay-gcc16-memcheck`. Keep its Meson command line, compile
+`bin/cairo-lzo-replay-clang-memcheck`. The explicit GCC route uses
+`gcc16-memcheck` and `bin/cairo-lzo-replay-gcc16-memcheck`. Keep its Meson command line, compile
 database, link command and logs in the manifest. The SDK refuses to use the
-sanitized GCC replay as the Memcheck executable.
+sanitized production replay as the Memcheck executable.
 
 Valgrind shows all leak classes, tracks origins and fails on definite,
 indirect or possible leaks and memory errors. It reports still-reachable blocks

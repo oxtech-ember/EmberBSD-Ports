@@ -101,6 +101,19 @@ def snapshot_commit(checkout, paths, parent):
     return destination, revision
 
 
+def replay_selection(clang, compiler=None, family=None, gcc=None):
+    """Select the production replay explicitly; --gcc retains the old layout."""
+    if gcc is not None and compiler is not None:
+        raise ValueError('Use --replay-compiler or --gcc, not both')
+    family = family or ('gcc' if gcc is not None else 'clang')
+    if family not in ('clang', 'gcc') or (gcc is not None and family != 'gcc'):
+        raise ValueError('The explicit replay compiler family conflicts with --gcc')
+    compiler = compiler or gcc or (clang if family == 'clang' else None)
+    if compiler is None:
+        raise ValueError('GCC replay requires --replay-compiler or --gcc')
+    return family, compiler
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ports-root', type=Path, required=True)
@@ -108,13 +121,23 @@ def main():
     parser.add_argument('--work-root', type=Path, required=True)
     parser.add_argument('--distfiles', type=Path, required=True)
     parser.add_argument('--clang', type=Path, required=True)
-    parser.add_argument('--gcc', type=Path, required=True)
+    parser.add_argument('--replay-compiler', type=Path)
+    parser.add_argument('--replay-family', choices=('clang', 'gcc'))
+    parser.add_argument('--gcc', type=Path, help='Explicit legacy GCC replay compiler and layout')
     parser.add_argument('--python', type=Path, required=True)
     parser.add_argument('--ninja', type=Path, required=True)
     parser.add_argument('--pkg-config', type=Path, required=True)
     parser.add_argument('--cppcheck', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
+    try:
+        replay_family, replay_compiler = replay_selection(
+            args.clang, args.replay_compiler, args.replay_family, args.gcc)
+    except ValueError as error:
+        parser.error(str(error))
+    replay_tag = 'gcc16' if replay_family == 'gcc' else 'clang'
+    replay_build = 'gcc16' if replay_family == 'gcc' else 'clang-replay'
+    lzo_tag = 'gcc' if replay_family == 'gcc' else 'clang-replay'
 
     work = args.work_root.resolve(strict=True)
     distfiles = args.distfiles.resolve(strict=True)
@@ -127,20 +150,20 @@ def main():
     args.cairo_source = work / 'cairo-1.18.6'
     args.baseline_source = work / 'cairo-before-lzo/cairo-1.18.6'
     args.lzo_clang_source = work / 'lzo-2.10'
-    args.lzo_gcc_source = work / 'lzo-gcc-src/src'
+    args.lzo_replay_source = work / ('lzo-' + lzo_tag + '-src/src')
     args.meson_source = work / 'tool-src/meson-1.12.1'
     args.cairo_archive = distfiles / 'cairo-1.18.6.tar.xz'
     args.lzo_archive = distfiles / 'lzo-2.10.tar.gz'
     args.meson_archive = distfiles / 'meson-1.12.1.tar.gz'
     args.clang_build = work / 'meson-builds/clang2'
-    args.gcc_build = work / 'meson-builds/gcc16'
-    args.memcheck_build = work / 'meson-builds/gcc16-memcheck'
+    args.replay_build = work / 'meson-builds' / replay_build
+    args.memcheck_build = work / 'meson-builds' / (replay_build + '-memcheck')
     args.baseline_build = work / 'meson-builds/before-lzo'
     args.lzo_clang_prefix = work / 'prefix/clang-lzo'
-    args.lzo_gcc_prefix = work / 'prefix/gcc-lzo'
+    args.lzo_replay_prefix = work / 'prefix' / (lzo_tag + '-lzo')
     args.fuzzer = work / 'bin/cairo-lzo-fuzzer-patched'
-    args.replay = work / 'bin/cairo-lzo-replay-gcc16'
-    args.memcheck = work / 'bin/cairo-lzo-replay-gcc16-memcheck'
+    args.replay = work / 'bin' / ('cairo-lzo-replay-' + replay_tag)
+    args.memcheck = work / 'bin' / ('cairo-lzo-replay-' + replay_tag + '-memcheck')
     args.lsan_probe = work / 'bin/cairo-lzo-lsan-probe'
     args.lsan_replay = work / 'bin/cairo-lzo-replay-lsan'
     args.corpus = ports / 'profiles/common-graphics/tests/cairo-lzo-corpus'
@@ -152,7 +175,9 @@ def main():
                                              work / 'sdk-snapshots')
     sys.dont_write_bytecode = True
     sys.path.insert(0, str(sdk_root / 'src'))
-    from emberbsd_sdk.fuzz_check import FUZZ_MANIFEST_VERSION, file_sha256, tree_files
+    from emberbsd_sdk.fuzz_check import FUZZ_MANIFEST_VERSION, file_sha256, tree_files, validate_manifest
+    if FUZZ_MANIFEST_VERSION != 2:
+        parser.error('The selected SDK must provide fuzz manifest version 2')
 
     sources = []
     seen_paths = set()
@@ -207,8 +232,8 @@ def main():
     for label, root, revision in (
             ('lzo-clang-build', args.lzo_clang_source,
              'LZO 2.10 plus Clang sanitizer configure'),
-            ('lzo-gcc-build', args.lzo_gcc_source,
-             'LZO 2.10 plus GCC16 sanitizer configure')):
+            ('lzo-replay-build', args.lzo_replay_source,
+             'LZO 2.10 plus ' + replay_family + ' sanitizer configure')):
         for relative in ('config.h', 'src/lzo_init.c', 'src/lzo_func.h',
                          'src/lzo_dict.h', 'src/lzo1a.c', 'src/lzo1b_1.c',
                          'src/lzo1f_1.c',
@@ -223,30 +248,30 @@ def main():
     add_tree('ports', 'Ports commit ' + ports_revision + ' (git archive)', ports)
     add_tree('sdk', 'SDK commit ' + sdk_revision + ' (git archive)', sdk_root)
 
-    add_file('gcc16-cairo-fuzzer-macro-context',
-             'GCC 16.2.0 aarch64-apple-darwin27; Cairo Script Interpreter headers included',
-             work / 'results/cairo-fuzz-gcc16-macros.txt')
-    add_file('gcc16-lzo-macro-context',
-             'GCC 16.2.0 aarch64-apple-darwin27; LZO configuration headers included',
-             work / 'results/lzo-gcc16-macros.txt')
+    add_file(replay_tag + '-cairo-fuzzer-macro-context',
+             replay_family + '; Cairo Script Interpreter headers included',
+             work / 'results' / ('cairo-fuzz-' + replay_tag + '-macros.txt'))
+    add_file(replay_tag + '-lzo-macro-context',
+             replay_family + '; LZO configuration headers included',
+             work / 'results' / ('lzo-' + replay_tag + '-macros.txt'))
 
     tools = {}
     tool_specs = [
-            ('clang', args.clang, ['-O1', '-g', '-fsanitize=fuzzer-no-link,address,undefined',
+            ('clang', 'clang', args.clang, ['-O1', '-g', '-fsanitize=fuzzer-no-link,address,undefined',
                                    '-fsanitize=fuzzer,address,undefined', '-fno-omit-frame-pointer']),
-            ('gcc', args.gcc, ['-O1', '-g', '-fsanitize=address,undefined',
+            ('replay', replay_family, replay_compiler, ['-O1', '-g', '-fsanitize=address,undefined',
                                '-fno-omit-frame-pointer']),
-            ('clang_lsan', args.clang, ['-O1', '-g', '-fsanitize=address,undefined',
+            ('clang_lsan', 'clang', args.clang, ['-O1', '-g', '-fsanitize=address,undefined',
                                         '-fno-omit-frame-pointer'])]
     if args.memcheck.is_file():
-        tool_specs.append(('gcc_memcheck', args.gcc,
+        tool_specs.append(('memcheck', replay_family, replay_compiler,
                            ['-O1', '-g', '-fno-omit-frame-pointer']))
-    for name, compiler, flags in tool_specs:
+    for name, family, compiler, flags in tool_specs:
         compiler = compiler.resolve(strict=True)
         tools[name] = {'path': str(compiler), 'sha256': file_sha256(compiler),
                        'version': subprocess.check_output(
                            [str(compiler), '--version'], text=True).strip(),
-                       'flags': flags}
+                       'flags': flags, 'family': family}
 
     for name, path in (('python3.15', args.python), ('ninja', args.ninja),
                        ('pkg-config', args.pkg_config), ('cppcheck', args.cppcheck)):
@@ -254,7 +279,7 @@ def main():
         add_file(name, 'resolved build tool executable bytes', executable)
 
     build_roots = [('clang-build', args.clang_build),
-                   ('gcc16-build', args.gcc_build),
+                   ('replay-build', args.replay_build),
                    ('upstream-control-build', args.baseline_build)]
     if args.memcheck_build.is_dir():
         build_roots.append(('memcheck-build', args.memcheck_build))
@@ -320,6 +345,7 @@ def main():
     }
     if args.output.exists():
         parser.error(f'manifest output already exists: {args.output}')
+    validate_manifest(manifest, current=True)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n',
                            encoding='utf-8')

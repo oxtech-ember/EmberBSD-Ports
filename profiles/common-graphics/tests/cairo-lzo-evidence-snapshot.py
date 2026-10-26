@@ -42,9 +42,9 @@ def ports_checkout(paths, destination):
     git(destination, *IDENTITY, 'commit', '-q', '-m', 'recorded Ports inputs')
 
 
-def manifest(fuzz, roots, work):
+def manifest(fuzz, roots, work, replay_family='clang'):
     """Return a minimal SDK manifest whose sources are the snapshots."""
-    for name in ('clang', 'gcc', 'fuzzer', 'replay', 'build.log', 'corpus/seed'):
+    for name in ('clang', 'production-compiler', 'fuzzer', 'replay', 'build.log', 'corpus/seed'):
         path = work / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(name + '\n', encoding='utf-8')
@@ -61,8 +61,10 @@ def manifest(fuzz, roots, work):
         'scope': 'diagnostic-host',
         'host': {'system': platform.system(), 'machine': platform.machine()},
         'sources': sources,
-        'tools': {'clang': {**record('clang'), 'version': 'clang 23', 'flags': ['-O1']},
-                  'gcc': {**record('gcc'), 'version': 'gcc 16.2.0', 'flags': ['-O1']}},
+        'tools': {'clang': {**record('clang'), 'version': 'clang 23', 'flags': ['-O1'], 'family': 'clang'},
+                  'replay': {**record('production-compiler'),
+                             'version': 'gcc 16.2.0' if replay_family == 'gcc' else 'clang 23',
+                             'flags': ['-O1'], 'family': replay_family}},
         'binaries': {'fuzzer': record('fuzzer'), 'replay': record('replay')},
         'corpus': {'path': str(work / 'corpus'), 'files': fuzz.tree_files(work / 'corpus')},
         'build_logs': [record('build.log')],
@@ -90,6 +92,18 @@ def main():
                                                   HERE / 'cairo-lzo-evidence.py')
     adapter = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(adapter)
+    clang, gcc = Path('/fixture/clang'), Path('/fixture/gcc')
+    assert adapter.replay_selection(clang) == ('clang', clang)
+    assert adapter.replay_selection(clang, gcc=gcc) == ('gcc', gcc)
+    assert adapter.replay_selection(clang, compiler=gcc, family='gcc') == ('gcc', gcc)
+    for options in ({'family': 'gcc'}, {'gcc': gcc, 'family': 'clang'},
+                    {'compiler': clang, 'gcc': gcc}, {'family': 'auto'}):
+        try:
+            adapter.replay_selection(clang, **options)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('Invalid replay selection was accepted: ' + repr(options))
 
     with tempfile.TemporaryDirectory(prefix='cairo-lzo-snapshot-') as temporary:
         temporary = Path(temporary).resolve()
@@ -118,6 +132,12 @@ def main():
 
         value = manifest(fuzz, snapshots, work / 'fixture')
         fuzz.validate_manifest(value, current=True)
+        gcc_value = manifest(fuzz, snapshots, work / 'gcc-fixture', 'gcc')
+        fuzz.validate_manifest(gcc_value, current=True)
+        legacy = dict(gcc_value, schema=1, tools={
+            'gcc' if name == 'replay' else name: {key: item for key, item in tool.items() if key != 'family'}
+            for name, tool in gcc_value['tools'].items()})
+        fuzz.validate_manifest(legacy, current=True)
         for label, checkout in checkouts.items():
             # Control: former checkout-path records go stale on the same change.
             stale = {**value, 'sources': [
