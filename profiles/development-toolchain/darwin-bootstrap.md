@@ -243,8 +243,12 @@ The scoped producer runtime options are reapplied after every MAKECONF read.
 The SDK assigns the accepted ABI `LDFLAGS` before each profile include.
 A one-time append loses the static GCC runtime options on later reads.
 The profile keeps each option once and preserves the other ABI flag words.
-The make-handoff phase fixture checks three includes with the real parser.
-An old one-time profile must fail its runtime-link-option check.
+The external seed's static libstdc++ does not carry the ordinary GCC recipe's
+`LC_LINKER_OPTION` for iconv. The profile also adds the accepted SDK's
+`usr/lib/libiconv.tbd`; this selects the system ABI without searching for
+pkgsrc's GNU libiconv. The make-handoff phase fixture checks three includes
+with the real parser and verifies that the SDK input appears once. An old
+one-time profile must fail its runtime-link-policy check.
 The full build must still verify the resulting Mach-O load and RPATH closure;
 passing a source fixture does not qualify a library or bypass package checks.
 

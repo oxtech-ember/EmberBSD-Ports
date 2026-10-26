@@ -7,6 +7,7 @@
 usage: darwin-bootstrap-make-handoff.py EXPORTED_PKGSRC BMAKE FULL_MAKECONF
        darwin-bootstrap-make-handoff.py --phase-fixture WORK --make-arg ARG ...
            --shell SH --tools-darwin TOOLS_DARWIN_MK
+       darwin-bootstrap-make-handoff.py --policy-self-test
 
 The phase fixture uses a full-format or phase-neutral MAKECONF. It imports
 the actual profile and tools.Darwin.mk, with declared recipe paths only.
@@ -31,7 +32,7 @@ from pathlib import Path
 
 KINDS = ('BOOTSTRAP_DEPENDS', 'TOOL_DEPENDS', 'BUILD_DEPENDS', 'DEPENDS')
 NAMES = ('EMBERBSD_DARWIN_SEED_MAKE_RECIPES', 'EMBERBSD_DARWIN_SEED_GZIP_RECIPES', 'EMBERBSD_DARWIN_MAKE', 'EMBERBSD_DARWIN_GMAKE',
-         'LOCALBASE', 'MAKE', '_MAKE', 'LDFLAGS', *KINDS)
+         'LOCALBASE', 'OSX_SDK_PATH', 'MAKE', '_MAKE', 'LDFLAGS', *KINDS)
 SHELLS = ('EMBERBSD_DARWIN_SH', 'SHELL', 'SH', 'CONFIG_SHELL', 'TOOLS_SHELL',
           'EMBERBSD_DARWIN_BUILTIN_SHELL', 'TOOLS_PLATFORM.sh')
 BUILTINS = tuple(f'TOOLS_PLATFORM.{name}' for name in ('[', 'echo', 'false', 'test', 'true'))
@@ -55,17 +56,76 @@ def require(value, message):
 
 
 RUNTIME_LINK_FLAGS = ('-static-libstdc++', '-static-libgcc', '-nodefaultrpaths')
+SDK_ICONV_SUFFIX = '/usr/lib/libiconv.tbd'
 
 
 def runtime_link_flags(value, expected_abi=None):
-    """Require one copy of each producer option and preserve the ABI words."""
+    """Require the producer runtime options and SDK iconv input exactly once."""
     words = shlex.split(value['LDFLAGS'])
-    require(all(words.count(flag) == 1 for flag in RUNTIME_LINK_FLAGS),
-            'The repeated MAKECONF read lost or duplicated a runtime link option')
-    abi = [word for word in words if word not in RUNTIME_LINK_FLAGS]
+    sdk_root = value['OSX_SDK_PATH']
+    require(Path(sdk_root).is_absolute() and not any(c.isspace() for c in sdk_root),
+            'The accepted SDK path must be absolute and one word')
+    sdk_iconv = sdk_root + SDK_ICONV_SUFFIX
+    policy_words = (*RUNTIME_LINK_FLAGS, sdk_iconv)
+    require(all(words.count(word) == 1 for word in policy_words),
+            'The repeated MAKECONF read lost or duplicated a producer link input')
+    abi = [word for word in words if word not in policy_words]
     require(expected_abi is None or abi == expected_abi,
             'The producer runtime policy changed the accepted ABI link flags')
     return abi
+
+
+def named_values(output):
+    """Decode the ordered bmake -V roster without dropping newly added keys."""
+    lines = output.splitlines()
+    require(len(lines) == len(NAMES), 'The named query roster is incomplete')
+    require(all(line.startswith(name + '=') for name, line in zip(NAMES, lines)),
+            'The named query framing changed')
+    return dict(zip(NAMES, (line.removeprefix(name + '=') for name, line in zip(NAMES, lines))))
+
+
+def expect_runtime_link_rejection(label, value):
+    try:
+        runtime_link_flags(value)
+    except AssertionError as error:
+        require(str(error) == 'The repeated MAKECONF read lost or duplicated a producer link input',
+                label + ': rejected for an unrelated reason: ' + str(error))
+        return
+    raise AssertionError(label + ': invalid link policy was accepted')
+
+
+def policy_link_self_test():
+    """Keep missing, duplicated and foreign SDK inputs causally rejected."""
+    require(NAMES.count('OSX_SDK_PATH') == 1 and NAMES.count('LDFLAGS') == 1,
+            'The make query must expose one SDK root and one LDFLAGS value')
+    sdk = '/sdk/MacOSX.sdk'
+    stub = sdk + SDK_ICONV_SUFFIX
+    abi = ['--sysroot=/sdk', '-Wl,-dead_strip', '-Wl,-headerpad_max_install_names']
+    producer = list(RUNTIME_LINK_FLAGS)
+    valid = {'OSX_SDK_PATH': sdk,
+             'LDFLAGS': shlex.join([*abi, *producer, stub])}
+    wire = {name: '' for name in NAMES}
+    wire.update(valid)
+    decoded = named_values('\n'.join(name + '=' + wire[name] for name in NAMES))
+    require(decoded['OSX_SDK_PATH'] == sdk and decoded['LDFLAGS'] == valid['LDFLAGS'],
+            'The make query dropped or misframed the SDK link inputs')
+    require(runtime_link_flags(decoded, abi) == abi,
+            'The make query changed the accepted ABI link flags')
+    require(runtime_link_flags(valid, abi) == abi,
+            'The policy changed the accepted ABI link flags')
+    expect_runtime_link_rejection(
+        'old profile without SDK iconv input',
+        {'OSX_SDK_PATH': sdk,
+         'LDFLAGS': shlex.join([*abi, *producer])})
+    expect_runtime_link_rejection(
+        'duplicated SDK iconv input',
+        {'OSX_SDK_PATH': sdk,
+         'LDFLAGS': shlex.join([*abi, *producer, stub, stub])})
+    expect_runtime_link_rejection(
+        'foreign SDK iconv input',
+        {'OSX_SDK_PATH': sdk,
+         'LDFLAGS': shlex.join([*abi, *producer,
+                                '/other/MacOSX.sdk' + SDK_ICONV_SUFFIX])})
 
 
 def gmake_shells(value):
@@ -122,6 +182,7 @@ def evaluate(exported, bmake, makeconf, recipe):
 
 def phase_fixture(argv):
     """Evaluate the real profile without recipes or future shell execution."""
+    policy_link_self_test()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--phase-fixture', type=Path, required=True)
     parser.add_argument('--make-arg', action='append', required=True)
@@ -163,10 +224,7 @@ def phase_fixture(argv):
         path.with_suffix('.stdout').write_text(result.stdout)
         path.with_suffix('.stderr').write_text(result.stderr)
         require(result.returncode == 0 and not result.stderr, f'{recipe}/{mode} query failed; inspect {path.with_suffix(".stderr")}')
-        lines = result.stdout.splitlines()
-        require(len(lines) == len(NAMES), 'The named query roster is incomplete')
-        value = dict(zip(NAMES, (line.removeprefix(name + '=') for name, line in zip(NAMES, lines))))
-        require(all(line.startswith(name + '=') for name, line in zip(NAMES, lines)), 'The named query framing changed')
+        value = named_values(result.stdout)
         observations[recipe + ':' + mode] = dict(argv=invocation, values=value, exit=result.returncode)
         return value
 
@@ -208,6 +266,7 @@ def phase_fixture(argv):
 
 
 def main():
+    policy_link_self_test()
     if len(sys.argv) != 4:
         raise SystemExit(__doc__)
     exported, bmake, makeconf = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
@@ -316,7 +375,10 @@ def main():
 
 
 if __name__ == '__main__':
-    if '--phase-fixture' in sys.argv:
+    if sys.argv[1:] == ['--policy-self-test']:
+        policy_link_self_test()
+        print(json.dumps({'status': 'PASS', 'scope': 'Pure link-policy controls only'}))
+    elif '--phase-fixture' in sys.argv:
         phase_fixture(sys.argv[1:])
     else:
         main()
