@@ -48,6 +48,11 @@ def main():
             assert options['CMAKE_SYSROOT'] == '/base'
             assert options['CMAKE_FIND_ROOT_PATH_MODE_LIBRARY'] == 'ONLY'
             assert options['CMAKE_FIND_ROOT_PATH_MODE_PACKAGE'] == 'ONLY'
+            for language in ('C', 'CXX', 'ASM'):
+                flags = shlex.split(options['CMAKE_' + language + '_FLAGS'])
+                assert '--no-default-config' in flags
+                linker = flags.index('--ld-path=/target/bin/ld.lld')
+                assert flags.index('--start-no-unused-arguments') < linker < flags.index('--end-no-unused-arguments')
             if phase == 'builtins':
                 assert options['COMPILER_RT_BUILD_CRT'] == 'OFF'
                 assert options['COMPILER_RT_DEFAULT_TARGET_ONLY'] == 'ON'
@@ -58,7 +63,17 @@ def main():
                 assert flags[flags.index('-isystem') + 1] == '/target/lib/clang/23/include'
                 assert '--ld-path=/target/bin/ld.lld' in shlex.split(options['CMAKE_EXE_LINKER_FLAGS'])
                 assert options['LIBUNWIND_ENABLE_STATIC'] == 'ON'
-                assert options['LIBUNWIND_ENABLE_FRAME_APIS'] == 'ON'
+                assert options['LIBUNWIND_ENABLE_FRAME_APIS'] == 'OFF'
+                assert options['LIBUNWIND_USE_FRAME_HEADER_CACHE'] == 'OFF'
+                assert options['LIBUNWIND_ENABLE_THREADS'] == 'ON'
+                assert options['CMAKE_DISABLE_FIND_PACKAGE_LLVM'] == 'ON'
+                assert options['CMAKE_DISABLE_FIND_PACKAGE_Clang'] == 'ON'
+                assert options['LLVM_BINARY_DIR'] == '/work'
+                for language in ('C', 'CXX', 'ASM'):
+                    flags = shlex.split(options['CMAKE_' + language + '_FLAGS'])
+                    assert '-nobuiltininc' in flags
+                    assert '--rtlib=compiler-rt' in flags
+                    assert '--unwindlib=none' in flags
             if phase == 'full':
                 assert 'CMAKE_TRY_COMPILE_TARGET_TYPE' not in options
                 assert options['LIBCXX_ENABLE_SHARED'] == options['LIBCXX_ENABLE_STATIC'] == 'ON'

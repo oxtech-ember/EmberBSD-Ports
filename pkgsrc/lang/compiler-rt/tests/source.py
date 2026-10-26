@@ -23,6 +23,10 @@ def main():
     source = work / 'source'
     record = producer.prepare_source(args.archive, source, args.patch, args.git)
     assert producer.verify_source(source, args.git) == record
+    # These modules are shared with lang/llvm; preparation must use its patches.
+    assert 'LLVM_DARWIN_ARCHIVE_TOOL' in (source / 'llvm/cmake/modules/UseLibtool.cmake').read_text()
+    assert 'PKGSRC_LLVM_PTHREADLIB' in (source / 'llvm/cmake/config-ix.cmake').read_text()
+    assert 'INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib"' in (source / 'llvm/cmake/modules/AddLLVM.cmake').read_text()
 
     def rejected(action, reason):
         try:

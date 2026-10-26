@@ -95,6 +95,12 @@ def cmake_arguments(source, work, stage, base, native, compiler, definition, ver
         LLVM_ENABLE_PROJECTS='', LLVM_ENABLE_RUNTIMES='',
     )
     linker = '--ld-path=' + compiler['binaries']['ld']['selected_path']
+    # Driver queries and compile-only feature probes also consume these flags.
+    # Scope unused-argument suppression to link options, never all diagnostics.
+    driver_flags = ['--no-default-config', '--start-no-unused-arguments',
+                    linker, '--end-no-unused-arguments']
+    for language in ('C', 'CXX', 'ASM'):
+        settings['CMAKE_' + language + '_FLAGS'] = shlex.join(driver_flags)
     if phase != 'full':
         # The first libc is not present yet. These phases produce only archives.
         settings['CMAKE_TRY_COMPILE_TARGET_TYPE'] = 'STATIC_LIBRARY'
@@ -110,17 +116,25 @@ def cmake_arguments(source, work, stage, base, native, compiler, definition, ver
         # Compiler queries made by the common CMake modules also use CXX_FLAGS.
         # Keep compiler-owned headers from the selected native Clang when the
         # target resource directory contains only freshly built runtimes.
-        compile_flags = shlex.join(['-resource-dir=' + str(resource), '-isystem',
-                                    compiler['resource_dir'] + '/include'])
-        settings['CMAKE_C_FLAGS'] = compile_flags
-        settings['CMAKE_CXX_FLAGS'] = compile_flags + ' -nostdlib++'
+        compile_flags = shlex.join(driver_flags + ['-resource-dir=' + str(resource),
+            '-nobuiltininc', '-isystem', compiler['resource_dir'] + '/include',
+            '--start-no-unused-arguments', '--rtlib=compiler-rt', '--unwindlib=none',
+            '--end-no-unused-arguments'])
+        for language in ('C', 'CXX', 'ASM'):
+            settings['CMAKE_' + language + '_FLAGS'] = compile_flags
+        settings['CMAKE_CXX_FLAGS'] += ' -nostdlib++'
         link_flags = [linker, '--rtlib=compiler-rt',
                       '--unwindlib=none', '-L' + str(stage / 'usr/pkg/llvm/lib')]
         for kind in ('EXE', 'SHARED', 'MODULE'):
             settings['CMAKE_' + kind + '_LINKER_FLAGS'] = shlex.join(link_flags)
-        settings.update(LLVM_ENABLE_RUNTIMES='libunwind' if phase == 'bootstrap' else 'libunwind;libcxxabi;libcxx',
+        # Installed native LLVMConfig can inject native library output paths.
+        # Runtime projects use the common prepared source CMake modules instead.
+        settings.update(CMAKE_DISABLE_FIND_PACKAGE_LLVM='ON', CMAKE_DISABLE_FIND_PACKAGE_Clang='ON',
+            LLVM_BINARY_DIR=str(work), LLVM_DEFAULT_TARGET_TRIPLE=definition['triplet'],
+            LLVM_ENABLE_RUNTIMES='libunwind' if phase == 'bootstrap' else 'libunwind;libcxxabi;libcxx',
             LIBUNWIND_ENABLE_STATIC='ON', LIBUNWIND_ENABLE_SHARED='OFF' if phase == 'bootstrap' else 'ON',
-            LIBUNWIND_ENABLE_FRAME_APIS='ON', LIBUNWIND_USE_COMPILER_RT='ON',
+            LIBUNWIND_ENABLE_FRAME_APIS='OFF', LIBUNWIND_USE_FRAME_HEADER_CACHE='OFF',
+            LIBUNWIND_ENABLE_THREADS='ON', LIBUNWIND_USE_COMPILER_RT='ON',
             LIBUNWIND_INCLUDE_TESTS='OFF', LIBUNWIND_INCLUDE_DOCS='OFF')
         if phase == 'full':
             settings.update(LIBCXX_ENABLE_STATIC='ON', LIBCXX_ENABLE_SHARED='ON',
@@ -304,8 +318,8 @@ def link_checks(owner, work, stage, base, native, compiler, definition, environm
     from emberbsd_sdk.elf import read_elf_dynamic
     prefix = stage / 'usr/pkg/llvm'
     resource = prefix / 'lib/clang' / compiler['version'].split('.')[0]
-    common = ['--sysroot=' + str(base), '-resource-dir=' + str(resource),
-              '-isystem', compiler['resource_dir'] + '/include',
+    common = ['--no-default-config', '--sysroot=' + str(base), '-resource-dir=' + str(resource),
+              '-nobuiltininc', '-isystem', compiler['resource_dir'] + '/include',
               '--rtlib=compiler-rt', '--unwindlib=libunwind', '-L' + str(prefix / 'lib')]
     cxx = ['-std=c++17', '-stdlib=libc++', '-nostdinc++', '-isystem',
            str(prefix / 'include/c++/v1'), '-pthread']

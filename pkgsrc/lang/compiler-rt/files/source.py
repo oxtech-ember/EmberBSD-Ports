@@ -59,6 +59,18 @@ def git_revision(git, root):
     return revision
 
 
+def patch_inventory(directory, info, label):
+    declared = re.findall(r'^SHA1 \((patch-[^)]+)\) = ([0-9a-f]{40})$', info, re.M)
+    patches = sorted(directory.glob('patch-*'))
+    require([p.name for p in patches] == sorted(name for name, _ in declared),
+            'undeclared or duplicate ' + label + ' patch')
+    for name, expected in declared:
+        data = read(directory / name)
+        filtered = b''.join(line for line in data.splitlines(True) if b'$NetBSD' not in line)
+        require(hashlib.sha1(filtered).hexdigest() == expected, label + ' patch checksum differs: ' + name)
+    return patches
+
+
 def recipe(git):
     """Read one current version/archive owner and the complete runtime patch set."""
     version_file = PORTS / 'pkgsrc/lang/llvm/version.mk'
@@ -83,15 +95,19 @@ def recipe(git):
             len(set(components)) == len(components) and
             all(isinstance(name, str) and re.fullmatch('[a-z-]+(?:/[a-z-]+)*', name)
                 for name in components), 'invalid common runtime components')
-    declared = re.findall(r'^SHA1 \((patch-[^)]+)\) = ([0-9a-f]{40})$', package_info, re.M)
-    patches = sorted((OWNER / 'patches').glob('patch-*'))
-    require([p.name for p in patches] == sorted(name for name, _ in declared),
-            'undeclared or duplicate common runtime patch')
-    for name, expected in declared:
-        data = read(OWNER / 'patches' / name)
-        filtered = b''.join(line for line in data.splitlines(True) if b'$NetBSD' not in line)
-        require(hashlib.sha1(filtered).hexdigest() == expected, 'runtime patch checksum differs: ' + name)
-    inputs = [version_file, distinfo, component_file, patchinfo, Path(__file__).resolve(), *patches]
+    patches = [(path, '.', 1) for path in
+               patch_inventory(OWNER / 'patches', package_info, 'common runtime')]
+    # The runtime source also consumes LLVM CMake modules. Reuse their common
+    # patches in place; compiler-rt must not maintain another copy of them.
+    for path in patch_inventory(PORTS / 'pkgsrc/lang/llvm/patches', info, 'common LLVM'):
+        names = re.findall(rb'^\+\+\+ ([^\t\n ]+)', read(path), re.M)
+        require(bool(names), 'LLVM patch has no source paths: ' + path.name)
+        applies = [name.startswith(b'cmake/') for name in names]
+        require(all(applies) or not any(applies), 'LLVM patch mixes runtime CMake and other sources: ' + path.name)
+        if all(applies):
+            patches.append((path, 'llvm', 0))
+    inputs = [version_file, distinfo, component_file, patchinfo, Path(__file__).resolve(),
+              *(path for path, _, _ in patches)]
     return dict(llvm_version=version, components=components,
                 source=dict(archive=archive_name, **hashes),
                 recipe=dict(ports_revision=git_revision(git, PORTS),
@@ -144,14 +160,14 @@ def prepare_source(archive, source, patch, git):
                                    components=metadata['components'], max_members=500000,
                                    max_bytes=4 * 1024**3)
         root = temp / root_name
-        for path in patches:
+        for path, subdirectory, strip in patches:
             delta = read(path)
             require(digest(delta) == metadata['recipe']['files'][str(path.relative_to(PORTS))],
                     'LLVM runtime patch changed before application')
             staged = temp / path.name
             staged.write_bytes(delta)
-            sourceprep.apply_patch(patch, staged, delta, root, 'LLVM runtimes',
-                                   patch_args=('-p1', '-f', '-N', '-F0', '-V', 'none'), allow_dev_null=True)
+            sourceprep.apply_patch(patch, staged, delta, root / subdirectory, 'LLVM runtimes',
+                                   patch_args=('-p' + str(strip), '-f', '-N', '-F0', '-V', 'none'), allow_dev_null=True)
         require(not any(p.name.endswith(('.orig', '.rej')) for p in root.rglob('*')),
                 'LLVM patch left backup or reject files')
         record = dict(format='emberbsd-llvm-source', version=1, **metadata,
