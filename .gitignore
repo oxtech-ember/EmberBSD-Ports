@@ -5,6 +5,8 @@ packages/
 work/
 work.*/
 *.core
+__pycache__/
+*.py[co]
 !/pkgsrc/**/Makefile
 !/probes/firmware-toolchain/recipes/**/Makefile
 !/profiles/common-build-tools/recipes/lang/python314/Makefile
