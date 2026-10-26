@@ -10,16 +10,21 @@ handlers. If the SDK cannot prove the producer session has stopped, it raises
 `ProcessOwnershipError`. Preserve the affected work for a process audit.
 The [LLVM reuse guard](llvm-reuse.md) also blocks another installation.
 
-This opt-in path builds EmberBSD/AArch64 or amd64 pkgsrc packages with the
-[GCC 16.2 cross compiler](../../development-toolchain/cross/README.md).
+This profile defaults to Clang for EmberBSD/AArch64 or amd64 pkgsrc packages.
+It uses the selected native Ports prefix for host tools and the SDK's prepared
+Clang application toolchain plus completed target sysroot for target tools.
+GCC 16.2 remains an explicit profile choice documented in GCC-specific
+sections below and in the [GCC cross compiler guide](../../development-toolchain/cross/README.md).
 The retained NetBSD 11 ABI and target triplet identify compatibility,
 not an upstream OS build. Follow the [sysroot provenance rules](sysroot.md).
 The compiler and build tools execute on macOS; installed packages are tested
 on EmberBSD. Python, Meson and Ninja are among the
 [accepted target packages](validation.md). LLVM23 core also passes
 [installed C API and JITLink acceptance](../llvm-family.md#cross-build-and-accepted-core)
-on Zero 3W. A complete GCC16-built base userland and compiler-family
-consumer migration remain pending.
+on Zero 3W. A complete Clang-built base userland and compiler-family consumer
+migration remain pending. Existing GCC16 acceptance records below describe
+that separately selected implementation; they do not establish Clang runtime
+acceptance.
 
 The new [Clang builtins bootstrap](../../../pkgsrc/lang/llvm/README.runtime.md)
 uses the common LLVM recipe and preliminary EmberBSD headers. It creates the
@@ -48,7 +53,11 @@ native/cross metadata checks retain the strict unsupported run-tool refusal.
 
 Prepare these separate directories, outside Git:
 
-- A working GCC16 cross prefix targeting `aarch64--netbsd` or `x86_64--netbsd`.
+- The selected native Ports host prefix and its generated native-tool mapping.
+- A completed SDK Clang application sysroot for `aarch64` or `amd64`, and the
+  matching SDK source and native host prefix used to prepare cross tools.
+- For the explicit GCC profile only: a working GCC16 cross prefix and matching
+  runtime provider, as described in the GCC-specific sections below.
 - Host tools from the EmberBSD source tree, built on the Mac, including
   the corresponding target `install` utility.
 - A pkgsrc unprivileged macOS bootstrap with BSD make, the patched package tools,
@@ -72,11 +81,13 @@ Prepare these separate directories, outside Git:
   `cmake>=4.4.4` tool dependencies of cross packages. Do not use a CMake from
   another package manager.
 - A target sysroot with headers, complete base libraries and development
-  files (including `libintl`), the complete accepted
-  GCC16 development files, a coherent runtime provider and target package database.
+  files (including `libintl`), the selected compiler family's coherent runtime
+  provider and target package database.
   For Info manuals, use the target base `/usr/bin/install-info` when it is present. If the target base omits it, pkgsrc supplies `pkgtools/pkg_install-info` as a target run dependency. The cross profile writes `/usr/pkg/bin/pkg_install-info` into package lifecycle scripts; it never substitutes the build-host helper.
 
-For AArch64 or amd64 application images, select `EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime`.
+### GCC16 runtime and OpenMP provider selection
+
+For the explicit GCC16 profile and AArch64 or amd64 application images, select `EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime`.
 The [runtime-only provider](../../development-toolchain/runtime/README.md)
 ships only target shared libraries and licenses. Keep headers and CRT objects
 in the build-host sysroot. This choice does not install a compiler in the VM.
@@ -97,30 +108,35 @@ native bytes and cross runtime paths with the actual recipe substitutions.
 It creates only private host fixtures. Package and target runtime acceptance
 remain separate.
 
-Do not substitute a host package database for the target database. The
+For the explicit GCC16 profile, do not substitute a host package database for
+the target database. The
 selected target GCC runtime needs its CRT files and `libstdc++.so.7`; a
 compiler executable alone does not satisfy these prerequisites. This profile
 rejects building `lang/gcc16` as a consumer: its Canadian-cross package recipe
 is a separate, unfinished step.
 
-For OpenMP, also stage the matching GCC16 `omp.h` and `libgomp.spec`.
+For OpenMP with the explicit GCC16 profile, also stage the matching GCC16 `omp.h` and `libgomp.spec`.
 The C/C++ wrappers select that specs file through the runtime prefix.
 The [real specs-selection regression](openmp-spec.md) compares the historical
 base selection with GCC16 metadata and checks the resulting target ELF links.
 
-Compose the existing tools without rebuilding them:
+For the default Clang profile, prepare target tools from the selected SDK
+compiler and completed application sysroot:
 
 ```sh
-python3 -B profiles/common-build-tools/cross/prepare-tools.py \
-    /absolute/gcc16-prefix /absolute/netbsd-tools /absolute/new-cross-tools
+python3.15 -B profiles/common-build-tools/cross/prepare-tools.py \
+    --host-prefix /absolute/native-ports-prefix \
+    --sysroot /absolute/emberbsd-aarch64-sysroot \
+    --sdk-source /absolute/EmberBSD-SDK \
+    /absolute/native-ports-prefix /absolute/netbsd-tools /absolute/new-cross-tools
 ```
 
-Each composed name is a symlink to an installed tool. The compiler names are
-the GCC drivers plus the Binutils programs EmberBSD selects for
-`EXTERNAL_TOOLCHAIN`, including `elfedit`, `size`, and `strings`. `install`
-comes from the NetBSD host tool directory. A missing executable fails before
-the output directory is created. The message names every missing tool and the
-required list. `addr2line` and `c++filt` are not part of that contract.
+The default Clang route binds compiler, assembler and linker roles from the
+selected SDK toolchain and records the matching target/sysroot in `target.mk`.
+The OS `install` utility comes from the generated host TOOLDIR. Missing or
+mismatched runtime inputs fail before output creation. Select the explicit
+GCC composition route with `--compiler-family gcc`; it links installed GCC
+drivers and Binutils tools.
 
 The default remains AArch64. For amd64, pass `--target amd64` before paths.
 Also set `EMBERBSD_CROSS_TARGET=amd64` in the cross MAKECONF. This selects
@@ -160,14 +176,19 @@ A private MAKECONF includes the host bootstrap configuration first:
 .if defined(BSD_PKG_MK)
 # Select the native Ports prefix and its generated make mapping.
 EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK
-EMBERBSD_HOST_PREFIX=/absolute/host-pkg-g16
+EMBERBSD_HOST_PREFIX=/absolute/native-ports-prefix
 EMBERBSD_NATIVE_TOOLSET_MAKECONF=/absolute/host-tools.mk
 EMBERBSD_CROSS_TOOLS=/absolute/new-cross-tools
-EMBERBSD_CROSS_SYSROOT=/absolute/target-sysroot
-EMBERBSD_CROSS_HOST_PREFIX=/absolute/host
+EMBERBSD_CROSS_SYSROOT=/absolute/emberbsd-aarch64-sysroot
+EMBERBSD_CROSS_HOST_PREFIX=/absolute/native-ports-prefix
+EMBERBSD_CROSS_COMPILER_FAMILY=clang
+# Host and target compiler families are separate selections.
+EMBERBSD_HOST_COMPILER_FAMILY=clang
 # Optional: amd64 rather than the AArch64 default.
 EMBERBSD_CROSS_TARGET=amd64
-EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime
+# For the explicit GCC route only, set both matching tools and:
+# EMBERBSD_CROSS_COMPILER_FAMILY=gcc
+# EMBERBSD_GCC16_RUNTIME_PROVIDER=runtime
 WRKOBJDIR=/absolute/work
 DISTDIR=/absolute/distfiles
 MAKE_JOBS=4
@@ -235,7 +256,8 @@ configuration. The EmberBSD target prefix remains `/usr/pkg`. Cross `install` po
 the private sysroot with package scripts disabled; actual `pkg_add` on the
 target runs installation scripts, including Info registration.
 
-Build-time C/C++ generators use the native Ports GCC16 prefix.
+Build-time C/C++ generators use the selected native Ports prefix and compiler
+family; this host selection is independent from the target cross family.
 Prepare its [make-variable include](native-toolset.md) before package metadata
 or configuration. Missing selections and conflicting overrides stop the profile.
 `NATIVE_CC` and `NATIVE_CXX` retain the selected native ABI arguments.
@@ -389,7 +411,9 @@ Scripts and empty files are not ELF providers. Relative, absolute and directory
 symlink aliases resolve inside the target staging tree and sysroot; loops fail. Existing package-owned DSO
 filtering and `CHECK_SHLIBS_SKIP` shell patterns remain supported.
 
-Compiler wrappers preserve the selected GCC16 CRT and runtime paths even
+### GCC 16.2 cross-runtime checks
+
+The GCC-specific compiler wrappers preserve the selected GCC16 CRT and runtime paths even
 when Libtool reconstructs its link command. They also add the sysroot
 `/usr/lib` as a link search path. GNU ld needs it to resolve base libraries,
 such as `libm.so.0`, that package libraries require. The profile rejects a
@@ -418,7 +442,8 @@ target package dependency.
 
 Run `tests/cross-pkgsrc.sh` against a staged pkgconf package. It exercises real
 pkgsrc parsing, native dependency recursion, ELF metadata and failure cases.
-`tests/cross-tools.py` checks tool composition, refusal of existing output,
+`tests/cross-tools.py` explicitly selects the GCC profile and checks GCC tool
+composition, refusal of existing output,
 missing host tools, target Info utility routing and the pkgsrc runtime
 dependency. It does not execute target binaries on the host.
 `tests/cross-runtime-perl.py` checks staged target Perl dependency and shebang
@@ -434,6 +459,26 @@ installed target execution and package lifecycle acceptance remain separate.
 `python3 -B tests/prepare-tools-target.py --sdk-source SDK NEW_WORK` runs the real
 helper with fake amd64 tools. It needs no compiler or pkgsrc export. It checks the
 imports, every composed link, a wrong compiler and existing output.
+`tests/prepare-tools-clang.py` exercises the default Clang route with the selected
+host-prefix Python and Clang. It reuses the SDK producer fixture to make a
+synthetic completed sysroot, then compiles assembly and links relocatable ELF
+objects for AArch64 and amd64 through the prepared assembler and linker routes.
+That fixture validates command composition only; it is not target-runtime or
+ABI acceptance. The test also checks missing/mismatched sysroot refusals and
+queries real pkgsrc package metadata with bmake. Supply an export produced by
+`scripts/prepare-pkgsrc.py` so the `cross.NetBSD.mk` overlay is applied, together
+with the selected host prefix. The test creates a private synthetic OS TOOLDIR
+inside `NEW_WORK` and does not write into an installed OS TOOLDIR:
+
+```
+python3.15 -B profiles/common-build-tools/tests/prepare-tools-clang.py \
+  --sdk-source SDK --host-prefix HOST_PREFIX \
+  --pkgsrc PKGSRC_EXPORT --bmake HOST_PREFIX/bin/bmake NEW_WORK
+```
+
+The existing fake GCC composition and cross-profile tests pass
+`--compiler-family gcc` explicitly. Cross profile metadata selects GCC only
+with `EMBERBSD_CROSS_COMPILER_FAMILY=gcc`; Clang is the default.
 In this helper, the GCC16 `host.py` resolves `sdk_source` to the LLVM module.
 That module therefore defines the same `PRODUCER_QUARANTINE`; the test compares both values.
 `python3 -B tests/cross-targets.py --sdk-source SDK BMAKE NATIVE_INPUTS_MK`
@@ -607,7 +652,7 @@ BMAKE=/absolute/host/bin/bmake ruby profiles/common-build-tools/tests/cross-sort
 
 Its staged files test PLIST processing; they are not target ELF evidence.
 
-## Installed FFTW, Readline and ncurses
+## GCC 16.2 installed FFTW, Readline and ncurses
 
 On 2026-10-18 the ordinary `math/fftw`, `devel/ncurses` and `devel/readline`
 recipes cross-built `fftw-3.3.11`, `ncurses-6.6` and `readline-8.3nb1`

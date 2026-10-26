@@ -19,7 +19,8 @@ def main():
     args = cli.parse_args()
     args.work.mkdir()
     keys = ('PKGNAME', 'PATCHDIR', 'PATCH_WRKSRC', 'PATCH_ARGS', 'PATCH_STRIP', 'PKG_FAIL_REASON',
-            'CMAKE_CONFIGURE_ARGS', 'LOCALBASE', 'CMAKE_BUILD_ARGS', '_MAKE_JOBS_N')
+            'CMAKE_CONFIGURE_ARGS', 'LOCALBASE', 'CMAKE_BUILD_ARGS', '_MAKE_JOBS_N',
+            'EXTRACT_ELEMENTS')
 
     def query(label, *extra):
         command = [str(args.bmake), '-C', str(args.pkgsrc / 'lang/compiler-rt'),
@@ -35,7 +36,8 @@ def main():
         return rows
 
     native = query('darwin', 'EMBERBSD_DARWIN_TOOL_PHASE=full')
-    assert native['PKGNAME'] == 'compiler-rt-23.1.4nb3'
+    assert native['PKGNAME'] == 'compiler-rt-23.1.4nb4'
+    assert 'llvm-project-23.1.4.src/libunwind' in shlex.split(native['EXTRACT_ELEMENTS'])
     assert native['PATCHDIR'] == str(args.pkgsrc / 'lang/compiler-rt/patches')
     assert native['PATCH_WRKSRC'].endswith('/llvm-project-23.1.4.src')
     assert native['PATCH_STRIP'] == '-p1' and native['PKG_FAIL_REASON'] == ''

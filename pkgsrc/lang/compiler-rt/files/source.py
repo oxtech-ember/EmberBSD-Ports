@@ -160,14 +160,16 @@ def prepare_source(archive, source, patch, git):
                                    components=metadata['components'], max_members=500000,
                                    max_bytes=4 * 1024**3)
         root = temp / root_name
-        for path, subdirectory, strip in patches:
+        for index, (path, subdirectory, strip) in enumerate(patches):
             delta = read(path)
             require(digest(delta) == metadata['recipe']['files'][str(path.relative_to(PORTS))],
                     'LLVM runtime patch changed before application')
             staged = temp / path.name
             staged.write_bytes(delta)
             sourceprep.apply_patch(patch, staged, delta, root / subdirectory, 'LLVM runtimes',
-                                   patch_args=('-p' + str(strip), '-f', '-N', '-F0', '-V', 'none'), allow_dev_null=True)
+                                   patch_args=('-p' + str(strip), '-f', '-N', '-F0', '-V', 'none'),
+                                   backup_directory=temp / ('patch-backups-' + str(index)),
+                                   allow_dev_null=True)
         require(not any(p.name.endswith(('.orig', '.rej')) for p in root.rglob('*')),
                 'LLVM patch left backup or reject files')
         record = dict(format='emberbsd-llvm-source', version=1, **metadata,

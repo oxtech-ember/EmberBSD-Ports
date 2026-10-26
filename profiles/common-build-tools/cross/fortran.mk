@@ -1,8 +1,16 @@
 # SPDX-License-Identifier: BSD-2-Clause
-# Origin: EmberBSD; late GCC16 Fortran policy after final option selection.
+# Origin: EmberBSD; late language policy after final option selection.
 # GCC's Fortran runtime and intrinsic modules are a separate SDK role.
 .if ${TOOLS_USE_CROSS_COMPILE:Uno:tl} == "yes" && \
+    ${EMBERBSD_CROSS_COMPILER_FAMILY:Uclang} == "clang" && \
+    ${PKGSRC_COMPILER} != "clang"
+.error The selected Clang cross profile does not permit a package compiler substitution
+.endif
+.if ${TOOLS_USE_CROSS_COMPILE:Uno:tl} == "yes" && \
     (!empty(USE_LANGUAGES:Mfortran) || !empty(USE_LANGUAGES:Mfortran77))
+.if ${EMBERBSD_CROSS_COMPILER_FAMILY:Uclang} != "gcc"
+PKG_FAIL_REASON+="Select the GCC cross profile and its common Fortran provider for Fortran packages"
+.else
 FC=${TOOLDIR}/bin/${_EMBER_CROSS_TRIPLET}-gfortran
 .if !exists(${FC})
 PKG_FAIL_REASON+="The selected GCC16 compiler generation has no Fortran frontend"
@@ -43,4 +51,5 @@ CWRAPPERS_APPEND.f77+=-B${_EMBER_FORTRAN_SUPPORT}/
 CWRAPPERS_APPEND.f77+=-B${CROSS_DESTDIR}/usr/pkg/gcc16/lib/
 CWRAPPERS_APPEND.f77+=-fintrinsic-modules-path=${_EMBER_FORTRAN_SUPPORT}/finclude
 CWRAPPERS_APPEND.f77+=-Wl,-rpath-link,${CROSS_DESTDIR}/usr/lib
+.endif
 .endif

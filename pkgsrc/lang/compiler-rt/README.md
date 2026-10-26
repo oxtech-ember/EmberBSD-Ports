@@ -75,6 +75,17 @@ builds a real static archive: the observed GNU-wrapper selection must fail,
 while the explicitly selected LLVM Darwin archiver must succeed and contain
 the compiled object. It takes the same explicit configure-input JSON as the
 parallel outline-atomics regression, plus `--libtool` and `--baseline-libtool`.
+Source preparation routes patch backups to temporary directories outside the
+published source. This supports native BSD patch, whose `-V none` may still
+write `.orig` files; unexpected backups or rejects in the source remain errors.
+The native extraction explicitly includes libunwind because the shared patch
+set changes its CMake library probes. `tests/native-patches.py` reads the owner
+Makefile through the selected pkgsrc framework, extracts its exact
+`EXTRACT_ELEMENTS`, and applies every native patch to the real archive. Its
+missing-libunwind control reproduces the previous incomplete extraction. Pass
+`--sdk-source`, `--bmake`, `--pkgsrc`, `--makeconf`, `--archive`, `--git`,
+`--patch` and a new `--work`; repeated `--make-arg` selects bootstrap metadata
+inputs without starting a package target.
 
 `patch-13-darwin-outline-atomics` makes the shared outline-atomics helper
 files dependencies of one producer target. Both ordinary and kernel-extension
@@ -170,6 +181,11 @@ modules without importing native LLVM/Clang package output paths. Compiler
 resource headers are selected separately with `-nobuiltininc -isystem`; host
 runtime libraries are never imported into the target resource directory.
 
+`patch-20-libunwind-library-probes` makes actual library probes link even when
+bootstrap compiler/header probes use static archives. A missing libc, libdl or
+pthread must not become a successful library check or an autolink dependency.
+The override is function-local and preserves the caller's compile-only mode.
+
 ### Frame discovery and the OS boundary
 
 Both phases explicitly use `LIBUNWIND_ENABLE_FRAME_APIS=OFF` and
@@ -235,3 +251,10 @@ controls, failed commands and completion-manifest cleanup.
 The older `../llvm/files/build-builtins.py` CLI delegates to these same source
 and build mechanisms; its compatibility checks remain under
 `profiles/common-build-tools/tests/llvm-builtins.py`.
+
+`tests/unwind-library-probes.py --sdk-source PATH --source PREPARED_SOURCE
+--git /absolute/git --host-prefix PREFIX --work NEW_PATH` uses that prefix's
+Python and real CMake/compiler. It reproduces a static-probe false positive,
+requires the patched function to reject the nonexistent library, checks that
+its caller still uses static probes, and links the native C library. Target
+runtime configuration and execution remain separate checks.
