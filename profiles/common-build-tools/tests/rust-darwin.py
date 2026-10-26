@@ -118,6 +118,9 @@ def mixed_preflight(original_arg, work_arg):
 def main():
     if len(sys.argv) != 5 or sys.platform != "darwin":
         raise SystemExit("Usage on Darwin: rust-darwin.py ORIGINAL_RUST STAGED_RUST PKGSRC NEW_WORK")
+    for tool in ("MACHO_OD", "MACHO_LIPO", "MACHO_OTOOL"):
+        if not os.environ.get(tool):
+            raise SystemExit("Select " + tool + " for the package resolver")
     original, staged, tree = (Path(p).resolve(strict=True) for p in sys.argv[1:4])
     work = Path(sys.argv[4])
     if not work.is_absolute() or work.exists() or any(work.is_relative_to(p) for p in [original, staged, tree]):
@@ -262,7 +265,7 @@ def main():
     # Use the real package resolver. No fake package is registered.
     checker = tree / "mk/check/check-shlibs-macho.awk"
     prefix = "/" + staged.name
-    result = run("package-load-commands", ["awk", "-f", str(checker)], data=("\n".join(after) + "\n").encode(), extra=dict(DESTDIR=str(staged.parent), PREFIX=prefix, WRKDIR=str(work / "separate-package-work"), SKIP_SYSTEM_LIBS="1", MACHO_USE_LOAD_COMMANDS="yes", PKG_INFO_CMD="/usr/bin/false", DEPENDS_FILE=str(work / "depends"), REQUIRES_FILE=str(work / "requires")))
+    result = run("package-load-commands", ["awk", "-f", str(checker)], data=("\n".join(after) + "\n").encode(), extra=dict(MACHO_OD=env["MACHO_OD"], MACHO_LIPO=env["MACHO_LIPO"], MACHO_OTOOL=env["MACHO_OTOOL"], DESTDIR=str(staged.parent), PREFIX=prefix, WRKDIR=str(work / "separate-package-work"), SKIP_SYSTEM_LIBS="1", MACHO_USE_LOAD_COMMANDS="yes", PKG_INFO_CMD="/usr/bin/false", DEPENDS_FILE=str(work / "depends"), REQUIRES_FILE=str(work / "requires")))
     assert not result.stdout, result.stdout
     requires = (work / "requires").read_text()
     for old, new in translated.items():

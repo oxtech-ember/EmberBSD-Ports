@@ -1,0 +1,209 @@
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Use selected od/lipo/otool commands for Mach-O checks and package metadata.
+Do not depend on file/libmagic: that creates a cycle with native libtool-base.
+Keep signature filtering separate from the platform object parser.
+The Java-overlap filter follows LLVM BinaryFormat/Magic.cpp identify_magic:
+https://github.com/llvm/llvm-project/blob/llvmorg-23.1.4/llvm/lib/BinaryFormat/Magic.cpp
+
+--- a/mk/check/check-shlibs-macho.awk
++++ b/mk/check/check-shlibs-macho.awk
+@@ -73,6 +73,21 @@
+ 	close(depends_file)
+ }
+ 
++# Read selected tools without relying on the nonportable close(pipe) status.
++function tool_lines(command, lines,    line, status, count) {
++	split("", lines)
++	status = -1
++	count = 0
++	command = command "; printf '\nEMBER_MACHO_STATUS=%s\n' \"$?\""
++	while ((command | getline line) > 0) {
++		if (line ~ /^EMBER_MACHO_STATUS=[0-9]+$/)
++			status = substr(line, 20) + 0
++		else if (line != "") lines[++count] = line
++	}
++	close(command)
++	return status == 0 ? count : -1
++}
++
+ # Resolve only load commands owned by this image. Inherited runpaths need a
+ # loader graph and deliberately remain errors rather than guessed providers.
+ function normalize(path,    n, parts, out, j) {
+@@ -112,42 +127,76 @@
+ 	provider = path
+ 	if (destdir != "" && exists(destdir path)) provider = destdir path
+ 	else if (cross_destdir != "") provider = cross_destdir path
+-	return system("lipo " shquote(provider) " -verify_arch " shquote(arch) " >/dev/null 2>&1") == 0
+-}
+-
+-function checkshlib(DSO,    physical, kind, command, status, archline, archs, n, i) {
++	return system(lipo_cmd " " shquote(provider) " -verify_arch " shquote(arch) " >/dev/null 2>&1") == 0
++}
++
++function checkshlib(DSO,    physical, header, magic, lines, count, archline, archs, n, i) {
+ 	physical = DSO
+ 	if (physical !~ /^\//) physical = destdir prefix "/" physical
+ 	physical = normalize(physical)
+ 	if (!exists(physical)) { print DSO ": missing input image"; return }
+-	command = "file -b " shquote(physical)
+-	status = (command | getline kind)
+-	close(command)
+-	if (status <= 0) { print DSO ": cannot determine file type"; return }
+-	if (kind !~ /Mach-O/) return
+-	command = "lipo -archs " shquote(physical) " 2>/dev/null"
+-	status = (command | getline archline)
+-	if (close(command) != 0 || status <= 0) {
+-		print DSO ": cannot read image architectures"
++	if (od_cmd == "" || lipo_cmd == "" || otool_cmd == "") {
++		print DSO ": missing Mach-O tool selection"
+ 		return
+ 	}
++	count = tool_lines(od_cmd " -An -tx1 -N8 " shquote(physical), lines)
++	if (count < 0) { print DSO ": cannot read image signature"; return }
++	header = ""
++	for (i = 1; i <= count; i++) header = header lines[i]
++	gsub(/[[:space:]]/, "", header)
++	header = tolower(header)
++	if (header !~ /^([0-9a-f][0-9a-f])*$/ || length(header) > 16) {
++		print DSO ": invalid image signature output"
++		return
++	}
++	magic = substr(header, 1, 8)
++	if (magic !~ /^(feedface|cefaedfe|feedfacf|cffaedfe|cafebabe|cafebabf|bebafeca|bfbafeca)$/)
++		return
++	# LLVM identify_magic() uses this bound for the Java CAFEBABE overlap.
++	# Let lipo and otool parse all recognized containers and slices.
++	if (magic ~ /^cafebab[ef]$/ && length(header) == 16 &&
++	    substr(header, 15, 2) !~ /^([01][0-9a-f]|2[0-9a])$/)
++		return
++	count = tool_lines(lipo_cmd " -archs " shquote(physical) " 2>/dev/null", lines)
++	if (count != 1) { print DSO ": cannot read image architectures"; return }
++	archline = lines[1]
++	gsub(/^[[:space:]]+|[[:space:]]+$/, "", archline)
+ 	n = split(archline, archs, /[[:space:]]+/)
++	if (n == 0) { print DSO ": cannot read image architectures"; return }
+ 	for (i = 1; i <= n; i++)
+-		checkimage(DSO, physical, kind, archs[i])
+-}
+-
+-function checkimage(DSO, physical, kind, arch,    runtime, loader, executable,
++		checkimage(DSO, physical, archs[i])
++}
++
++function checkimage(DSO, physical, arch,    runtime, loader, executable,
+ 	    command, line, status, name, nneeded, nrpaths, needed, rpaths,
+-	    lib, resolved, candidate, provider, i, j) {
++	    lib, resolved, candidate, provider, i, j, lines, fields, count, column, filetype, n) {
+ 
+ 	runtime = physical
+ 	if (destdir != "" && index(runtime, destdir "/") == 1)
+ 		runtime = substr(runtime, length(destdir) + 1)
+ 	loader = runtime
+ 	sub(/\/[^\/]*$/, "", loader)
+-	if (kind ~ /executable/) executable = loader
+-	command = "otool -arch " shquote(arch) " -l " shquote(physical) " 2>/dev/null"
+-	while ((command | getline line) > 0) {
++	count = tool_lines(otool_cmd " -arch " shquote(arch) " -hv " shquote(physical) " 2>/dev/null", lines)
++	column = 0
++	filetype = ""
++	for (i = 1; i <= count; i++) {
++		line = lines[i]
++		sub(/^[[:space:]]+/, "", line)
++		n = split(line, fields, /[[:space:]]+/)
++		if (fields[1] == "magic") {
++			for (j = 1; j <= n; j++) if (fields[j] == "filetype") column = j
++		} else if (column && fields[1] ~ /^MH_/) {
++			if (filetype != "") { print DSO ": ambiguous image header"; return }
++			filetype = fields[column]
++		}
++	}
++	if (count < 0 || filetype == "") { print DSO ": cannot read image header"; return }
++	if (filetype == "EXECUTE") executable = loader
++	command = otool_cmd " -arch " shquote(arch) " -l " shquote(physical) " 2>/dev/null"
++	count = tool_lines(command, lines)
++	if (count < 0) { print DSO ": unreadable load commands"; return }
++	for (i = 1; i <= count; i++) {
++		line = lines[i]
+ 		if (line ~ /^[[:space:]]*cmd /) {
+ 			sub(/^[[:space:]]*cmd /, "", line)
+ 			name = line
+@@ -161,11 +210,6 @@
+ 			needed[++nneeded] = line
+ 		}
+ 	}
+-	status = close(command)
+-	if (status != 0) {
+-		print DSO ": unreadable load commands"
+-		return
+-	}
+ 	for (i = 1; i <= nneeded; i++) {
+ 		lib = needed[i]
+ 		if (skip_system_libs && lib ~ /^\/(System\/Library|usr\/lib)\//)
+@@ -202,7 +246,8 @@
+ }
+ 
+ function checkshlib_legacy(DSO,	needed, found) {
+-	cmd = "otool -XL " shquote(DSO) " 2>/dev/null"
++	if (otool_cmd == "") { print DSO ": missing Mach-O tool selection"; return }
++	cmd = otool_cmd " -XL " shquote(DSO) " 2>/dev/null"
+ 	while ((cmd | getline) > 0) {
+ 		if ($0 !~ /^\t/)
+ 			continue
+@@ -254,6 +299,9 @@
+ }
+ 
+ BEGIN {
++	od_cmd = ENVIRON["MACHO_OD"]
++	lipo_cmd = ENVIRON["MACHO_LIPO"]
++	otool_cmd = ENVIRON["MACHO_OTOOL"]
+ 	cross_destdir = ENVIRON["CROSS_DESTDIR"]
+ 	destdir = ENVIRON["DESTDIR"]
+ 	prefix = ENVIRON["PREFIX"]
+--- a/mk/check/bsd.check-vars.mk
++++ b/mk/check/bsd.check-vars.mk
+@@ -33,3 +33,10 @@
+ .endif
+ 
+ USE_TOOLS+=	awk cat cmp diff echo find grep rm sed test touch true
++
++# The Mach-O resolver also runs during package metadata generation.
++.if ${OBJECT_FMT} == "Mach-O"
++MACHO_OD?=	${TOOLS_PLATFORM.od}
++MACHO_LIPO?=	${TOOLS_PLATFORM.lipo}
++MACHO_OTOOL?=	${TOOLS_PLATFORM.otool}
++.endif
+--- a/mk/check/check-shlibs.mk
++++ b/mk/check/check-shlibs.mk
+@@ -68,6 +68,9 @@
+ CHECK_SHLIBS_NATIVE_ENV+=	READELF=${TOOLS_PATH.readelf:Q}
+ .  elif ${OBJECT_FMT} == "Mach-O"
+ CHECK_SHLIBS_NATIVE?=		${AWK} -f ${PKGSRCDIR}/mk/check/check-shlibs-macho.awk
++CHECK_SHLIBS_NATIVE_ENV+=	MACHO_OD=${MACHO_OD:Q}
++CHECK_SHLIBS_NATIVE_ENV+=	MACHO_LIPO=${MACHO_LIPO:Q}
++CHECK_SHLIBS_NATIVE_ENV+=	MACHO_OTOOL=${MACHO_OTOOL:Q}
+ .    if defined(DARWIN_NO_SYSTEM_LIBS)
+ CHECK_SHLIBS_NATIVE_ENV+=	SKIP_SYSTEM_LIBS=1
+ .    endif
+--- a/mk/pkgformat/pkg/metadata.mk
++++ b/mk/pkgformat/pkg/metadata.mk
+@@ -128,6 +128,8 @@
+ 			${PKGSRC_SETENV} MACHO_USE_LOAD_COMMANDS=yes REQUIRES_FILE=${WRKDIR}/.macho-requires \
+ 			    CROSS_DESTDIR=${_CROSS_DESTDIR:Q} DESTDIR=${DESTDIR:Q} \
+ 			    PREFIX=${PREFIX:Q} WRKDIR=${WRKDIR:Q} \
++			    MACHO_OD=${MACHO_OD:Q} MACHO_LIPO=${MACHO_LIPO:Q} \
++			    MACHO_OTOOL=${MACHO_OTOOL:Q} \
+ 			    SKIP_SYSTEM_LIBS=${DARWIN_NO_SYSTEM_LIBS:D1:U:Q} \
+ 			    PKG_INFO_CMD=${PKG_INFO:Q} DEPENDS_FILE=${_RRDEPENDS_FILE:Q} \
+ 			    ${AWK} -f ${PKGSRCDIR}/mk/check/check-shlibs-macho.awk \
+--- a/mk/tools/tools.Darwin.mk
++++ b/mk/tools/tools.Darwin.mk
+@@ -37,6 +37,9 @@
+ OSX_XCRUN=			${SETENV} PATH= /usr/bin/xcrun --no-cache
+ 
+ TOOLS_PLATFORM.[?=		[			# shell builtin
++TOOLS_PLATFORM.od?=		/usr/bin/od
++TOOLS_PLATFORM.lipo?=		/usr/bin/lipo
++TOOLS_PLATFORM.otool?=		/usr/bin/otool
+ TOOLS_PLATFORM.awk?=		/usr/bin/awk
+ TOOLS_PLATFORM.basename?=	/usr/bin/basename
+ # Native bash is 3.2.57 macOS 15 and macOS 26.  This is inadequate for

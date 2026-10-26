@@ -26,7 +26,9 @@ run.call('cc', '-dynamiclib', work + '/provider.c', '-Wl,-install_name,@rpath/li
 run.call('cc', work + '/consumer.c', '-L' + root + '/lib', '-lanswer', '-Wl,-headerpad_max_install_names', '-Wl,-rpath,@loader_path/../lib', '-o', root + '/bin/consumer')
 run.call(root + '/bin/consumer')
 File.write(work + '/depends', '')
-env = {'DESTDIR' => stage, 'PREFIX' => prefix, 'WRKDIR' => work,
+env = {'MACHO_OD' => ENV.fetch('MACHO_OD'),
+       'MACHO_LIPO' => ENV.fetch('MACHO_LIPO'),
+       'MACHO_OTOOL' => ENV.fetch('MACHO_OTOOL'), 'DESTDIR' => stage, 'PREFIX' => prefix, 'WRKDIR' => work,
        'SKIP_SYSTEM_LIBS' => '1', 'MACHO_USE_LOAD_COMMANDS' => 'yes',
        'PKG_INFO_CMD' => '/usr/bin/false', 'DEPENDS_FILE' => work + '/depends'}
 check = lambda do |name, files, expected, overrides = {}|

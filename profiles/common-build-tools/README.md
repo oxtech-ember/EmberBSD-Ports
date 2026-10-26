@@ -1,5 +1,8 @@
 # Current common build tools
 
+The [Mach-O metadata resolver](macho-metadata.md) uses selected structural tools.
+It does not require libmagic or create a file/libtool bootstrap cycle.
+
 The [complete initial libnbcompat route](libnbcompat.md) uses the canonical
 recipe, DB implementation, and selected SDK tools. It shares configure
 diagnostics with GCC and retains a separate finite component acceptance.

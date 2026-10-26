@@ -82,6 +82,9 @@ Run the regression against a verified upstream component installation and the
 new package's staged prefix before installing it:
 
 ```sh
+MACHO_OD=/absolute/prefix/bin/god \
+MACHO_LIPO=/absolute/prefix/bin/llvm-lipo \
+MACHO_OTOOL=/absolute/prefix/bin/llvm-otool \
 python3 -B tests/rust-darwin.py /absolute/original-rust \
   /absolute/staged-prefix /absolute/pkgsrc /absolute/new-check
 ```
@@ -121,7 +124,10 @@ that boundary before mutation; its graph inspection remains real.
 Run the Mach-O regression on macOS with the exported pkgsrc tree:
 
 ```sh
-ruby tests/macho-load-commands.rb /absolute/pkgsrc /absolute/new-macho-check
+MACHO_OD=/absolute/prefix/bin/god \
+MACHO_LIPO=/absolute/prefix/bin/llvm-lipo \
+MACHO_OTOOL=/absolute/prefix/bin/llvm-otool \
+  ruby tests/macho-load-commands.rb /absolute/pkgsrc /absolute/new-macho-check
 ```
 
 It builds and runs real consumers, checks self-ID exclusion, universal images,
