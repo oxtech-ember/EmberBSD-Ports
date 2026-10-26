@@ -33,7 +33,7 @@ runs during this operation.
 Consumers use `verify_prepared()` from `source.py` before invoking the upstream
 CLI. It reconstructs the expected tree from the shared pin and patches using a
 temporary Git index, compares the actual index and rejects unstaged or untracked
-changes. A raw upstream checkout does not include the shared fix and is rejected.
+changes. A raw upstream checkout does not include the shared fixes and is rejected.
 This is a source-integrity contract, not an SDK or package acceptance format.
 
 ## Interrupted Gitlink checkout
@@ -53,6 +53,14 @@ Git LFS, CIPD, or GCS transport. Full asset acquisition still needs its required
 upstream tools and their Python/library dependencies through Ports. It is not
 established by a Git-only sync.
 
+## Complete declared CIPD versions
+
+Upstream `revinfo --output-json` split a dependency URL on every `@` and kept
+only the second part as its revision. A CIPD tag such as `version:3@4.60.4`
+therefore became `version:3`. The shared patch splits once, retaining the full
+version in the existing JSON format. It changes inventory serialization only;
+the declared DEPS input and asset acquisition behavior remain unchanged.
+
 ## Regression
 
 ```sh
@@ -61,7 +69,9 @@ established by a Git-only sync.
     --source-path /absolute/source-tools/bin
 ```
 
-Six tests use the actual pinned and prepared gclient. The causal Gitlink fixture
+Seven tests use the actual pinned and prepared gclient. A causal CIPD fixture
+reproduces the truncated upstream tag, then requires the complete tag with
+unchanged Git pins and URLs, without acquiring the asset. The causal Gitlink fixture
 first reproduces upstream's successful sync with an invalid child HEAD and
 failed actual inventory. The prepared tool recovers the same workspace, retains
 a unique quarantine file, preserves the neighboring Node Git directory and
@@ -71,4 +81,4 @@ patch order. All repositories are local fixtures; no external dependency,
 compiler or target program runs.
 
 The upstream source retains its Chromium BSD-style license and attribution.
-The carried patch is maintained in Ports and has not been submitted upstream.
+The carried patches are maintained in Ports and have not been submitted upstream.
