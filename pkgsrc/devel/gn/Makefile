@@ -1,7 +1,7 @@
 # $NetBSD$
 
 DISTNAME=	gn-2486
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	devel
 GN_REVISION=	641ace93dd9560e75e7add0d08f77b446fbb3b78
 MASTER_SITES=	https://gn.googlesource.com/gn/+archive/
