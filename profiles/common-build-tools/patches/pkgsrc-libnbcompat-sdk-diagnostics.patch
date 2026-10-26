@@ -1,8 +1,10 @@
-libnbcompat: bind explicit SDK configure diagnostics to the common helper.
+libnbcompat: use selected diagnostics and correctly declare printf probe functions.
 
 Origin: EmberBSD (AI-assisted), not submitted upstream.
 Keep ordinary diagnostics and all feature tests. The configure.ac AS_UNAME
 transform and the generated block carry the same selected source hook.
+Declare strcmp in both long-long printf probes so strict C compilers test
+format support rather than rejecting an implicit function declaration.
 Canonical Autoconf regeneration remains a separate SDK generator check.
 
 --- a/pkgtools/libnbcompat/Makefile
@@ -11,7 +13,7 @@ Canonical Autoconf regeneration remains a separate SDK generator check.
  #
  
  PKGNAME=		libnbcompat-20251029
-+PKGREVISION=		1
++PKGREVISION=		2
  CATEGORIES=		pkgtools devel
  
  MAINTAINER=		pkgsrc-users@NetBSD.org
@@ -57,6 +59,22 @@ Canonical Autoconf regeneration remains a separate SDK generator check.
  
  _ASUNAME
  
+@@ -8233,6 +8239,7 @@
+ /* end confdefs.h.  */
+ 
+ 			#include <stdio.h>
++			#include <string.h>
+ 			int main() {
+ 				char buf[100];
+ 				sprintf(buf, "%lld", 4294967300LL);
+@@ -8278,6 +8285,7 @@
+ /* end confdefs.h.  */
+ 
+ 				#include <stdio.h>
++				#include <string.h>
+ 				int main() {
+ 					char buf[100];
+ 					sprintf(buf, "%qd", 4294967300LL);
 --- a/pkgtools/libnbcompat/files/configure.ac
 +++ b/pkgtools/libnbcompat/files/configure.ac
 @@ -2,6 +2,17 @@
@@ -77,3 +95,19 @@ Canonical Autoconf regeneration remains a separate SDK generator check.
  AC_INIT([libnbcompat], [20190708], [joerg@NetBSD.org])
  AC_CONFIG_HEADER(nbcompat/config.h)
  AC_ARG_PROGRAM
+@@ -519,6 +530,7 @@
+ 		nb_cv_printf_lld=no
+ 		AC_TRY_RUN([
+ 			#include <stdio.h>
++			#include <string.h>
+ 			int main() {
+ 				char buf[100];
+ 				sprintf(buf, "%lld", 4294967300LL);
+@@ -537,6 +549,7 @@
+ 			nb_cv_printf_qd=no
+ 			AC_TRY_RUN([
+ 				#include <stdio.h>
++				#include <string.h>
+ 				int main() {
+ 					char buf[100];
+ 					sprintf(buf, "%qd", 4294967300LL);
