@@ -61,3 +61,30 @@ library; updating the vendored tree alone does not update that system library.
 A planner must hash the copied `FILESDIR.libarchive` input for bsdtar and
 pkg_install. Their source-copy route does not create a dependency on the
 installed libarchive package.
+
+## Security warning interpretation
+
+The selected 3.8.10 source includes these upstream fixes:
+
+- CVE-2025-60753: the zero-length substitution repair in
+  [PR 2787](https://github.com/libarchive/libarchive/pull/2787), including its
+  subsequent end-of-string correction in [PR 2809](https://github.com/libarchive/libarchive/pull/2809).
+- CVE-2026-4424: the RAR LZSS allocation and bounds checks in
+  [d379dc0](https://github.com/libarchive/libarchive/commit/d379dc0b2976b7207d1ad78f5ed3eb99a5b6d375).
+- CVE-2026-4426: the zisofs block-size exponent validation in
+  [c3cb1c5](https://github.com/libarchive/libarchive/commit/c3cb1c568ebf9e8f7f478cfc0356ae54e99712b0).
+
+The inspected `pkg-vulnerabilities` entries match `libarchive-[0-9]*`;
+that wildcard does not specify a fixed-version boundary. The three affected
+C files in the export and completed bsdtar build match the official 3.8.10
+release byte for byte. The audit database remains unchanged.
+
+The installed macOS arm64 `bsdtar-3.8.10nb2` matches its published package
+payload. Its `^` and `a*` global substitutions terminate, and the upstream
+`test_option_s` zero-length case produces the exact expected pathname.
+The native regex implementation rejects an empty pattern. Listing the
+[upstream zisofs regression image](https://github.com/libarchive/libarchive/commit/a2a73a8f14b3208c7f6acbbc93265254a7c1efd0)
+reports the small raw entry size, 2064 bytes, with the invalid exponent rejected.
+These are installed bsdtar checks, not a run of the complete upstream suite.
+The RAR repair PR adds no dedicated regression fixture; its three code checks
+are present, but a causal RAR runtime test and instrumented execution remain unverified.
