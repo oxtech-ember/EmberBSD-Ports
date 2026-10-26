@@ -21,6 +21,10 @@ on EmberBSD. Python, Meson and Ninja are among the
 on Zero 3W. A complete GCC16-built base userland and compiler-family
 consumer migration remain pending.
 
+The new [Clang builtins bootstrap](../../../pkgsrc/lang/llvm/README.runtime.md)
+uses the common LLVM recipe and preliminary EmberBSD headers. It creates the
+first target runtime stage; the complete Clang application runtime is separate.
+
 Use the `common-build-tools` export from the parent profile. It preserves the
 pinned pkgsrc revision and obtains original upstream archives with recipe
 checksums. The cross fixes also compose into profiles based on common tools.
