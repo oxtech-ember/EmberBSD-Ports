@@ -89,8 +89,8 @@ def gclient_config(target_cpu):
         "custom_vars": {
             "chromium_version": CHROMIUM_REVISION,
             "node_version": NODE_REVISION,
-            # Linux-conditioned shared sources are needed by the BSD overlay;
-            # the target sysroot must come from the EmberBSD SDK instead.
+            # Disable Electron's legacy sysroot hooks. Chromium also has GCS
+            # sysroot dependencies; source-sync integration must handle those.
             "install_sysroot": False,
         },
     }

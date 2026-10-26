@@ -37,10 +37,11 @@ are errors; none is retried with another version or compiler.
 The generated `.gclient` pins Chromium and Node to their immutable commits
 through `custom_vars`. Electron is unmanaged at the verified local commit,
 with its public upstream remote. The config adds Linux-conditioned shared
-sources needed by the BSD overlay and disables downloading a Linux sysroot.
-Native host source conditions remain enabled. The eventual target sysroot
-comes from the EmberBSD SDK. The helper does not change sandbox or diagnostic
-build settings.
+sources needed by the BSD overlay and disables Electron's legacy sysroot
+hooks. Native host source conditions remain enabled. Chromium also declares
+Linux sysroots as first-class GCS dependencies, independent of that hook
+switch. The eventual target sysroot comes from the EmberBSD SDK. The helper
+does not change sandbox or diagnostic build settings.
 
 The input checkout is preserved. On a preparation error after workspace
 creation, partial files remain for diagnosis and `.gclient` is absent. Use a new
@@ -57,6 +58,11 @@ PATH. The upstream source acquisition operation is `gclient sync --nohooks
 --noprehooks`, invoked with those declared tools in the prepared workspace.
 The flags defer hooks until their native tools and required inputs are bound;
 they do not remove the required upstream patch and generator stages.
+`--nohooks --noprehooks` still downloads CIPD and GCS dependencies, including
+Chromium's own compiler, Node and Linux sysroot archives. Before exposing sync
+as the ordinary recipe path, bind the shared Ports tools and SDK sysroot and
+separate required source assets from those upstream tool binaries. The current
+helper does not establish that mapping.
 
 After synchronization, verify the actual Chromium and Node commits before
 applying Electron's upstream patch series, then the ordered Ports BSD series.
