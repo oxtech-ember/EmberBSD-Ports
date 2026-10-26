@@ -10,7 +10,7 @@ import sys
 from emberbsd_sdk.errors import SDKError
 from emberbsd_sdk.native_toolset import load_host_prefix
 
-ROLES = ('cc cxx cpp as ld ar ranlib nm strip python sh gmake tar patch '
+ROLES = ('cc cxx cpp as ld ar ranlib nm strip python sh gmake bsdtar patch '
          'awk sed grep egrep expr find xargs ls cmp diff mv cp rm ln mkdir rmdir '
          'touch cat sort tr head tail wc cut uniq basename dirname pwd date uname '
          'printf echo env install perl pkg-config xz true').split()

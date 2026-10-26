@@ -198,7 +198,9 @@ class BinutilsHostTests(unittest.TestCase):
                 patch.object(pipeline, 'logged', logged), patch.object(pipeline, 'capture', capture), \
                 patch.object(pipeline, 'policy_sources', return_value=[]):
             pipeline._build_binutils('amd64', str(self.work), native=(selected, env))
-        self.assertEqual(calls[0][0][0], self.tools['tar'])
+        # NetBSD pax/nbtar does not implement --strip-components. The native
+        # producer must request the libarchive frontend explicitly.
+        self.assertEqual(calls[0][0][0], str(Path(selected.bundle_root) / 'bin/bsdtar'))
         self.assertEqual(calls[1][0][0], self.tools['patch'])
         self.assertEqual(calls[2][0][:2], [self.tools['sh'], str(self.work / 'src/configure')])
         self.assertTrue(all(row[1] == env for row in calls))

@@ -112,7 +112,7 @@ def _build_binutils(target, new_work, make_override=None, native=None):
         require(make_override is None or str(make_override) == make,
                 'GNU make differs from the selected native prefix')
         cc, cxx = selected.tool('cc'), selected.tool('cxx')
-        tar, patch_command = selected.tool('tar'), selected.tool('patch')
+        tar, patch_command = selected.tool('bsdtar'), selected.tool('patch')
     recipe = PORTS / 'pkgsrc/devel/binutils'
     archive_name = 'binutils-2.47.tar.xz'
     records = [line.split('\t') for line in (PORTS / 'profiles/common-build-tools/sources.tsv').read_text().splitlines() if line.startswith(archive_name + '\t')]

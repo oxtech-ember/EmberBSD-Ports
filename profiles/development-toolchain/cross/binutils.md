@@ -13,6 +13,9 @@ components and script interpreters use the shared SDK native-prefix API.
 The controller sets a prefix-only `PATH` and selects its shell, GNU make,
 archive tools and patch tool. Optional `HOST_CC`, `HOST_CXX` and `GMAKE`
 aliases must agree with that selection.
+Archive extraction selects the common libarchive `bsdtar` frontend explicitly:
+the producer needs `--strip-components`, which the generic NetBSD `nbtar`
+frontend does not provide.
 
 ```sh
 EMBER_BINUTILS_ARCHIVE=/absolute/distfiles/binutils-2.47.tar.xz \
