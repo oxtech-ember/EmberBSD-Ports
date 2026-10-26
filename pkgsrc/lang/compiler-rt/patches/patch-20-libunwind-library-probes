@@ -1,0 +1,58 @@
+# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+# Preserve real library checks during the header-only static unwinder bootstrap.
+
+--- a/libunwind/cmake/config-ix.cmake.orig
++++ b/libunwind/cmake/config-ix.cmake
+@@ -6,23 +6,33 @@
+ include(CheckSymbolExists)
+ include(CheckCSourceCompiles)
+ 
++# A library probe must link even during a header-only cross bootstrap. Otherwise
++# STATIC_LIBRARY try-compiles succeed for absent libraries and may emit invalid
++# autolink dependencies into the static unwinder. Scope the override so compiler
++# and header probes can still run without a completed C runtime.
++function(libunwind_check_library_exists library symbol location variable)
++  set(CMAKE_TRY_COMPILE_TARGET_TYPE EXECUTABLE)
++  check_library_exists("${library}" "${symbol}" "${location}" "${variable}")
++  set(${variable} "${${variable}}" PARENT_SCOPE)
++endfunction()
++
+ # The compiler driver may be implicitly trying to link against libunwind, which
+ # might not work if libunwind doesn't exist yet. Try to check if
+ # --unwindlib=none is supported, and use that if possible.
+ llvm_check_compiler_linker_flag(C "--unwindlib=none" CXX_SUPPORTS_UNWINDLIB_EQ_NONE_FLAG)
+ 
+ if (HAIKU)
+-  check_library_exists(root fopen "" LIBUNWIND_HAS_ROOT_LIB)
++  libunwind_check_library_exists(root fopen "" LIBUNWIND_HAS_ROOT_LIB)
+ else()
+-  check_library_exists(c fopen "" LIBUNWIND_HAS_C_LIB)
++  libunwind_check_library_exists(c fopen "" LIBUNWIND_HAS_C_LIB)
+ endif()
+ 
+ if (NOT LIBUNWIND_USE_COMPILER_RT)
+   if (ANDROID)
+-    check_library_exists(gcc __gcc_personality_v0 "" LIBUNWIND_HAS_GCC_LIB)
++    libunwind_check_library_exists(gcc __gcc_personality_v0 "" LIBUNWIND_HAS_GCC_LIB)
+   else ()
+-    check_library_exists(gcc_s __gcc_personality_v0 "" LIBUNWIND_HAS_GCC_S_LIB)
+-    check_library_exists(gcc __absvdi2 "" LIBUNWIND_HAS_GCC_LIB)
++    libunwind_check_library_exists(gcc_s __gcc_personality_v0 "" LIBUNWIND_HAS_GCC_S_LIB)
++    libunwind_check_library_exists(gcc __absvdi2 "" LIBUNWIND_HAS_GCC_LIB)
+   endif ()
+ endif()
+ 
+@@ -64,10 +74,10 @@
+   set(LIBUNWIND_HAS_DL_LIB NO)
+   set(LIBUNWIND_HAS_PTHREAD_LIB NO)
+ else()
+-  check_library_exists(dl dladdr "" LIBUNWIND_HAS_DL_LIB)
+-  check_library_exists(pthread pthread_once "" LIBUNWIND_HAS_PTHREAD_LIB)
++  libunwind_check_library_exists(dl dladdr "" LIBUNWIND_HAS_DL_LIB)
++  libunwind_check_library_exists(pthread pthread_once "" LIBUNWIND_HAS_PTHREAD_LIB)
+ endif()
+ 
+ if(HAIKU)
+-  check_library_exists(bsd dl_iterate_phdr "" LIBUNWIND_HAS_BSD_LIB)
++  libunwind_check_library_exists(bsd dl_iterate_phdr "" LIBUNWIND_HAS_BSD_LIB)
+ endif()
