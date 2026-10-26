@@ -4,3 +4,4 @@ BLAKE2s (llvm-project-23.1.4.src.tar.xz) = 9fd3c4efc2f039d49b78c7c17a164c3530bb0
 SHA512 (llvm-project-23.1.4.src.tar.xz) = 1443531768d7040677302e4468b95b345511f10881a072e703814e9e10316d6ce12f56e8d1fbab5c350550380ae8d242acebb68c833fa385ea7777f05d8bde23
 Size (llvm-project-23.1.4.src.tar.xz) = 179272572 bytes
 SHA1 (patch-lib_Driver_ToolChains_Gnu.cpp) = b3958549da128351f55706b788fe895ad9606dab
+SHA1 (patch-lib_Driver_ToolChains_NetBSD.cpp) = a5daefffa726b6014842427c60aa5ffc76769ad7

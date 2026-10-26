@@ -3,7 +3,7 @@
 .include "Makefile.common"
 
 PKGNAME=	clang-${LLVM_VERSION}
-PKGREVISION=	4
+PKGREVISION=	5
 # These installed scripts use Python without linking libpython.
 DEPENDS+=	${PYDEPENDENCY}
 DEPENDS+=	lld-${LLVM_VERSION}{,nb*}:../../devel/lld
