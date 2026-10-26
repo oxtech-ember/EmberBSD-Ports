@@ -204,7 +204,7 @@ def main():
             'MAKECONF=' + str(args.makeconf), '-V', '${PYDEPENDENCY}'])
         patterns = [item.split(':', 1)[0] for item in output.split()]
         accepted = {}
-        for version in ('3.15.1', '3.15.1nb1', '99'):
+        for version in ('3.15.1nb2', '3.15.2', '99'):
             matches = []
             for index, pattern in enumerate(patterns):
                 name = label + '-' + version + '-' + str(index)
@@ -212,7 +212,7 @@ def main():
                     [args.pkg_admin, 'pmatch', pattern, 'python315-' + version], codes=(0, 1))
                 matches.append(returncodes[name] == 0)
             accepted[version] = bool(patterns) and all(matches)
-        expected = {'3.15.1': False, '3.15.1nb1': not custom, '99': True}
+        expected = {'3.15.1nb2': False, '3.15.2': not custom, '99': True}
         valid = accepted == expected
         results[label] = dict(patterns=patterns, accepted=accepted, valid=valid)
         if not valid:
@@ -223,7 +223,7 @@ def main():
         print('FAIL: ' + failure)
     require(not failures, 'Darwin SDK/libffi source or metadata regression')
     print('PASS: explicit Darwin and Linux libffi selectors; default Darwin SDK behavior')
-    print('PASS: paired configure guard, actual pkgsrc SDKROOT/libffi flags and additive nb1 floor')
+    print('PASS: paired configure guard, actual pkgsrc SDKROOT/libffi flags and additive security release floor')
     print('No compilation, prefix mutation or runtime acceptance')
 
 

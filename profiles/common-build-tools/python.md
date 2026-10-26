@@ -2,7 +2,7 @@
 
 ## PAX source extraction
 
-Python 3.15.1nb2 selects `EXTRACT_USING=bsdtar` through the normal pkgsrc
+Python 3.15.2 retains `EXTRACT_USING=bsdtar` through the normal pkgsrc
 tools framework. The release uses POSIX PAX `path` records for eight source
 names. The legacy pkgsrc `nbtar` reader does not apply those records and can
 silently extract the 100-byte fallback names. Keep the archive and PLIST intact.
@@ -47,18 +47,25 @@ Fixture generation and source checks are not native extractor acceptance.
 Actual metadata, archive execution and clean Python package installation remain
 separate checks.
 
-The current profile selects Python 3.15.1. Its NetBSD cross-host cases accept
+The current profile selects Python 3.15.2. Its NetBSD cross-host cases accept
 AArch64 and amd64, including the empty-vendor `x86_64--netbsd` triplet.
 Unknown hosts and unsupported NetBSD architectures still fail.
 Both maintained `configure.ac` cases match the shipped `configure` cases.
 
-The shared recipe follows the [3.15.1 maintenance release](https://www.python.org/downloads/release/python-3151/).
+The shared recipe follows the [3.15.2 security release](https://www.python.org/downloads/release/python-3152/).
+It blocks the compromised eMudhra CA keys in the SSL module, rejects links
+replacing the extraction destination in `tarfile.tar_filter`, and rejects
+negative cookie versions. These fixes apply to the common host interpreter
+and target packages.
 Its archive SHA256 and byte size match `distinfo` and `sources.tsv`.
 The patch series retains the NetBSD cross metadata and GCC16 adaptations.
 Upstream now selects the correct static-library directory for shared and
 static-only builds. The build-details patch leaves that upstream logic intact.
-Version 3.15.1 reset the package revision. Earlier package results below
-apply only to their recorded source versions.
+Version 3.15.2 resets the package revision while retaining the Ports patches. Earlier package results below
+apply only to their recorded source versions. The source regression executes
+the upstream destination-link, symlink-chain, valid contained-link and negative
+cookie-version cases. The compiled SSL blocklist still requires the rebuilt
+interpreter; source tests do not establish its runtime behavior.
 
 The 3.15.1nb1 Darwin recipe passes the selected `OSX_SDK_PATH` as upstream
 `SDKROOT`. Native Darwin fails before configure when that path is missing,
@@ -74,7 +81,7 @@ The preceding Darwin build mixed Apple SDK ffi headers and
 Its `_ctypes.so` load command already named the Ports library.
 The fix removes that header/runtime mismatch. It does not establish that the
 preceding build loaded an Apple libffi DSO.
-Both buildlink and ordinary tool dependencies require Python 3.15.1nb1.
+Both buildlink and ordinary tool dependencies require Python 3.15.2.
 A stronger consumer requirement remains effective.
 
 The source and metadata regression uses the real generated configure blocks,
@@ -106,10 +113,10 @@ when the Linux pkgsrc build uses GCC16 and GNU C11. Multiplication by zero
 retains the same `_Static_assert` without evaluating an operand.
 The existing NetBSD, SunOS, C++ and MSVC branches stay unchanged.
 
-Run the actual-header regression with native or target GCC16:
+Run the actual-header regression with the selected native or target C compiler:
 
 ```sh
-CC=/absolute/gcc16 CFLAGS='--sysroot=/absolute/target-sysroot' \
+CC=/absolute/clang CFLAGS='--sysroot=/absolute/target-sysroot' \
     sh profiles/common-build-tools/tests/python-array-ice.sh \
     /absolute/patched/Include/pymacro.h /absolute/pristine/Include/pymacro.h \
     /absolute/new-results

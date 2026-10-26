@@ -196,6 +196,15 @@ def main():
          str(patched.resolve()), str((args.work / 'cross-cases').resolve())], args.work / 'cross-cases.log', env=env)
     source_invariants(patched)
     build_details(patched, args.work)
+    # Execute the release's pure-Python security cases, including the valid
+    # contained-link control. This does not exercise the new compiled SSL code.
+    run([sys.executable, '-B', '-m', 'unittest',
+         'test.test_tarfile.TestExtractionFilters.test_link_at_destination',
+         'test.test_tarfile.TestExtractionFilters.test_empty_name_symlink_chain',
+         'test.test_tarfile.TestExtractionFilters.test_deep_symlink',
+         'test.test_http_cookiejar.CookieTests.test_negative_version'],
+        args.work / 'security-source.log',
+        env=dict(os.environ, PYTHONPATH=str(patched / 'Lib')))
     exported = args.pkgsrc or args.work / 'pkgsrc'
     if not args.pkgsrc:
         run([sys.executable, '-B', str(ROOT / 'scripts/tests/export-fixture.py'), str(ROOT), str(exported.resolve())], args.work / 'export.log')
@@ -205,6 +214,7 @@ def main():
     require(re.search(r'^PYTHON_VERSION_DEFAULT\?=\s*315$', (exported / 'lang/python/pyversion.mk').read_text(), re.M), 'export selected an old interpreter')
     print('PASS: current Python source URL, SHA256, Size, source-selection negatives and patch checksums')
     print('PASS: zero-fuzz patches, repeat refusal, NetBSD cross cases and target/native build-details')
+    print('PASS: upstream tar-filter and cookie security source cases; compiled SSL remains a runtime check')
     print('PASS: PLIST source entries and normal exported recipe; no compilation or runtime acceptance')
 
 

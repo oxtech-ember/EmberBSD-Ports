@@ -26,7 +26,7 @@ def require(condition, message):
 
 
 def check(row, selected):
-    require(row['PKGNAME'] == 'python315-3.15.1nb2', 'Require the revised Python recipe')
+    require(row['PKGNAME'] == 'python315-3.15.2', 'Require the revised Python recipe')
     require(row['EXTRACT_USING'] == 'bsdtar', 'The PAX provider was not selected')
     require(row['TOOLS_PATH.bsdtar'] == row['_EXTRACT_TAR'] == selected,
             'Extraction must use the explicitly expected native bsdtar path')

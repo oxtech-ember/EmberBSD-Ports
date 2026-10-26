@@ -5,7 +5,7 @@ libzip-1.12.1.tar.xz	c40062022a1963c80573d48f6070792297cecd7c6bffe3aefcac0d8b9be
 zlib-1.3.2.tar.xz	d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3	https://zlib.net/zlib-1.3.2.tar.xz
 swig-4.5.1.tar.gz	7fec50b27deddab5455a9633780b6341eddfb96215a7619e93a76eb27178f653	https://downloads.sourceforge.net/project/swig/swig/swig-4.5.1/swig-4.5.1.tar.gz
 rust-bin-1.99.1/rust-1.99.1-aarch64-apple-darwin.tar.gz	b73b6a78c4e7171a8fe1b4bee5342273605c5c9a9a4997554c15bb3ce2753b6a	https://static.rust-lang.org/dist/2026-10-15/rust-1.99.1-aarch64-apple-darwin.tar.gz
-Python-3.15.1.tar.xz	673ae7232d84c894729882c8257d300ef2d26523911bfd3917ec8ce7f526f99b	https://www.python.org/ftp/python/3.15.1/Python-3.15.1.tar.xz
+Python-3.15.2.tar.xz	8b5536d280142ecf6cdfe15d12a21ba1c65e300bbf7b28a8d0cdb849575797de	https://www.python.org/ftp/python/3.15.2/Python-3.15.2.tar.xz
 meson-1.12.1.tar.gz	ab0a6ca09f8ef70c564c8241fb5a23957886a0b53fb58412b5e07eaf07dba743	https://github.com/mesonbuild/meson/releases/download/1.12.1/meson-1.12.1.tar.gz
 ninja-build/ninja-1.13.2.tar.gz	974d6b2f4eeefa25625d34da3cb36bdcebe7fbce40f4c16ac0835fd1c0cbae17	https://github.com/ninja-build/ninja/archive/v1.13.2.tar.gz
 llvm-project-23.1.2.src.tar.xz	c98bbef08a2b4c2613cd50e9aa9ae7b69b1fe6c16b2c40373bc0ab6116fdf78a	https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.2/llvm-project-23.1.2.src.tar.xz

@@ -148,7 +148,7 @@ provides a pinned-manifest importer for OS-owned AArch64 `base` and `comp`
 releases. It verifies provenance and hashes before isolated extraction.
 The GCC16 compiler and target package remain separate inputs.
 
-This profile prepares one common Python 3.15.1, Meson 1.12.1 and matching
+This profile prepares one common Python 3.15.2, Meson 1.12.1 and matching
 LLVM/Clang/LLD 23.1.4 with upstream lit and [Perl 5.44](cross/perl.md) for the
 GCC 16 / LLVM 23 / Mesa 26 dependency closure. The [Python package](python.md)
 cross-builds on macOS. The earlier Python 3.14.8 package passed installed AArch64

@@ -27,7 +27,8 @@ probe()
 {
     name=$1 selected=$2 refusal=$3
     shift 3
-    "${BMAKE:-bmake}" -f "$work/Makefile" "$@" > "$work/$name.log" 2>&1
+    "${BMAKE:-bmake}" -r -f "$work/Makefile" "$@" \
+        -V '${_PYTHON_VERSION}' -V '${PKG_FAIL_REASON}' > "$work/$name.log" 2>&1
     [ "$(sed -n '1p' "$work/$name.log")" = "$selected" ]
     if [ "$refusal" = yes ]; then grep -q 'EmberBSD common tools require Python 3.15' "$work/$name.log"; else
         ! grep -q 'EmberBSD common tools require' "$work/$name.log"

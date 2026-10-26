@@ -9,7 +9,7 @@ Origin: EmberBSD (AI-assisted), preserve the compile-time assertion.
 @@ -138,10 +138,9 @@
  #define Py_CHARMASK(c) ((unsigned char)((c) & 0xff))
  
- #if (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L \
+ #if (defined(_Py_STDC_VERSION) && _Py_STDC_VERSION >= 201112L \
 -     && !defined(__cplusplus) && !defined(_MSC_VER))
 +     && !defined(__cplusplus) && !defined(_MSC_VER) && !defined(__NetBSD__) && !defined(__sun))
  #  define Py_BUILD_ASSERT_EXPR(cond) \

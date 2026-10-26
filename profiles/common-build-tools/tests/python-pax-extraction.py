@@ -5,7 +5,7 @@
 """Make finite archive fixtures, or run them with one explicit selected tar.
 
 Run actual tools through the SDK owned-process interface. Fixtures use synthetic
-payloads and the eight full Python 3.15.1 paths affected by legacy extraction.
+payloads and the eight full Python 3.15.2 paths affected by legacy extraction.
 No compiler or interpreter from the package under test is executed.
 """
 import argparse
@@ -19,14 +19,14 @@ import subprocess
 import tarfile
 
 PYTHON_PATHS = (
-    'Python-3.15.1/Lib/test/test_tomllib/data/invalid/multiline-basic-str/unclosed-ends-in-whitespace-escape.toml',
-    'Python-3.15.1/Modules/_xxtestfuzz/fuzz_elementtree_parsewhole_corpus/out_inNsContent_c14nPrefixQnameXpathElem.xml',
-    'Python-3.15.1/Modules/_xxtestfuzz/fuzz_elementtree_parsewhole_corpus/out_inNsContent_c14nQnameElem.xml',
-    'Python-3.15.1/Modules/_xxtestfuzz/fuzz_elementtree_parsewhole_corpus/out_inNsContent_c14nQnameXpathElem.xml',
-    'Python-3.15.1/Modules/_xxtestfuzz/fuzz_elementtree_parsewhole_corpus/out_inNsPushdown_c14nDefault.xml',
-    'Python-3.15.1/Modules/_xxtestfuzz/fuzz_elementtree_parsewhole_corpus/out_inNsSuperfluous_c14nDefault.xml',
-    'Python-3.15.1/Modules/_xxtestfuzz/fuzz_elementtree_parsewhole_corpus/out_inNsSuperfluous_c14nPrefix.xml',
-    'Python-3.15.1/Platforms/Apple/testbed/iOSTestbed.xcodeproj/xcshareddata/xcschemes/iOSTestbed.xcscheme',
+    'Python-3.15.2/Lib/test/test_tomllib/data/invalid/multiline-basic-str/unclosed-ends-in-whitespace-escape.toml',
+    'Python-3.15.2/Modules/_xxtestfuzz/fuzz_elementtree_parsewhole_corpus/out_inNsContent_c14nPrefixQnameXpathElem.xml',
+    'Python-3.15.2/Modules/_xxtestfuzz/fuzz_elementtree_parsewhole_corpus/out_inNsContent_c14nQnameElem.xml',
+    'Python-3.15.2/Modules/_xxtestfuzz/fuzz_elementtree_parsewhole_corpus/out_inNsContent_c14nQnameXpathElem.xml',
+    'Python-3.15.2/Modules/_xxtestfuzz/fuzz_elementtree_parsewhole_corpus/out_inNsPushdown_c14nDefault.xml',
+    'Python-3.15.2/Modules/_xxtestfuzz/fuzz_elementtree_parsewhole_corpus/out_inNsSuperfluous_c14nDefault.xml',
+    'Python-3.15.2/Modules/_xxtestfuzz/fuzz_elementtree_parsewhole_corpus/out_inNsSuperfluous_c14nPrefix.xml',
+    'Python-3.15.2/Platforms/Apple/testbed/iOSTestbed.xcodeproj/xcshareddata/xcschemes/iOSTestbed.xcscheme',
 )
 
 

@@ -29,9 +29,9 @@
  PYPACKAGE=				python${_PYTHON_VERSION}
  PYVERSSUFFIX=				${_PYTHON_VERSION:C/^([0-9])/\1./1}
  BUILDLINK_API_DEPENDS.${PYPACKAGE}?=	${PYPACKAGE}>=${PYVERSSUFFIX}
-+# Origin: EmberBSD (AI-assisted), require the selected Darwin SDK/libffi fix.
++# Origin: EmberBSD (AI-assisted), require the current Python security fixes.
 +.if ${_PYTHON_VERSION} == "315"
-+BUILDLINK_API_DEPENDS.python315+=	python315>=3.15.1nb1
++BUILDLINK_API_DEPENDS.python315+=	python315>=3.15.2
 +.endif
  PYPKGSRCDIR=				../../lang/${PYPACKAGE}
  PYDEPENDENCY=				${BUILDLINK_API_DEPENDS.${PYPACKAGE}:=:${PYPKGSRCDIR}}
