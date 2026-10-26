@@ -3,6 +3,14 @@
 The [Mach-O metadata resolver](macho-metadata.md) uses selected structural tools.
 It does not require libmagic or create a file/libtool bootstrap cycle.
 
+Package size generation skips empty batches with either GNU or BSD `xargs`.
+The shared recipe uses the selected shell and preserves each command argument.
+It does not run `pkg_info` without package names or count the working directory.
+Run `tests/pkgsrc-empty-size.py --pkgsrc EXPORT --tools SDK_BIN --work NEW_DIRECTORY`
+with SDK Python. The test runs the exported recipes with selected SDK tools.
+It checks empty inputs, spaced file names, duplicate dependencies and batches over 256 names.
+It uses a data fixture for `pkg_info`; it does not change the installed package database.
+
 The [complete initial libnbcompat route](libnbcompat.md) uses the canonical
 recipe, DB implementation, and selected SDK tools. It shares configure
 diagnostics with GCC and retains a separate finite component acceptance.

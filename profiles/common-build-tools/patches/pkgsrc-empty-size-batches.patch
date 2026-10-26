@@ -1,0 +1,36 @@
+# Origin: EmberBSD contributors (AI-assisted).
+# Skip empty size-query batches without changing the selected xargs semantics.
+
+--- a/mk/pkgformat/pkg/metadata.mk
++++ b/mk/pkgformat/pkg/metadata.mk
+@@ -380,6 +380,12 @@
+ ###
+ ### This is the total size of the files contained in the package.
+ ###
++# GNU xargs runs an empty batch; BSD xargs may omit it. Keep both results
++# identical. The fixed argument count includes the command and its options.
++_SIZE_BATCH=		${SH} -c 'count=$$1; shift; [ "$$\#" -le "$$count" ] || exec "$$@"' pkgsrc-size
++_SIZE_PKG_CMD=		${LS} -ld
++_SIZE_ALL_CMD=		${PKG_INFO} -qs
++
+ _SIZE_PKG_FILE=		${PKG_DB_TMPDIR}/+SIZE_PKG
+ _METADATA_TARGETS+=	${_SIZE_PKG_FILE}
+ 
+@@ -392,7 +398,7 @@
+ 		{ print base $$0 }' ${PLIST} |				\
+ 	${SORT} -u |							\
+ 	${SED} -e "s,^/,${DESTDIR}/," -e "s/'/'\\\\''/g" -e "s/.*/'&'/" | \
+-	${XARGS} -n 256 ${LS} -ld 2>/dev/null |				\
++	${XARGS} -n 256 ${_SIZE_BATCH} ${_SIZE_PKG_CMD:[#]} ${_SIZE_PKG_CMD} 2>/dev/null |				\
+ 	${AWK} 'BEGIN { s = 0 } { s += $$5 } END { print s }'		\
+ 		> ${.TARGET}
+ 
+@@ -412,7 +418,7 @@
+ 	{								\
+ 		${CAT} ${_SIZE_PKG_FILE} &&				\
+ 		${_FULL_DEPENDS_CMD} | ${SORT} -u |			\
+-		${XARGS} -n 256 ${PKG_INFO} -qs;			\
++		${XARGS} -n 256 ${_SIZE_BATCH} ${_SIZE_ALL_CMD:[#]} ${_SIZE_ALL_CMD};			\
+ 	} |								\
+ 	${AWK} 'BEGIN { s = 0 } /^[0-9]+$$/ { s += $$1 } END { print s }' \
+ 		> ${.TARGET}
