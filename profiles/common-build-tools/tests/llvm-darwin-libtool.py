@@ -90,6 +90,16 @@ for package in ('llvm', 'clang'):
                 assert definitions.get(key) == 'ON', (phase, key, definitions.get(key))
         if phase == 'initial':
             assert definitions['LLVM_DARWIN_ARCHIVE_TOOL'] == 'ar', phase_row
+            if package == 'llvm':
+                finite = query(package, 'initial-static-tools', phase_args + [
+                    'LLVM_BUILD_LLVM_DYLIB=OFF', 'LLVM_LINK_LLVM_DYLIB=OFF'])
+                assert not finite['PKG_FAIL_REASON'], finite
+                finite_defs = {arg[2:].split('=', 1)[0].split(':', 1)[0]: arg.split('=', 1)[1]
+                               for arg in shlex.split(finite['CMAKE_CONFIGURE_ARGS'])
+                               if arg.startswith('-D') and '=' in arg}
+                for key in ('LLVM_BUILD_LLVM_DYLIB', 'LLVM_LINK_LLVM_DYLIB'):
+                    assert finite_defs.get(key) == 'OFF', (key, finite_defs.get(key))
+                assert finite_defs['LLVM_DARWIN_ARCHIVE_TOOL'] == 'ar', finite
         assert any(arg.startswith('-DLD64_EXECUTABLE:') for arg in phase_options), phase_row
         assert any(arg == '-DCMAKE_DSYMUTIL:FILEPATH=' + str(dsym) for arg in phase_options), phase_row
     for name, value in [('missing', ''), ('relative', 'llvm-libtool-darwin'),
