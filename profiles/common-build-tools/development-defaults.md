@@ -1,141 +1,85 @@
-# Reversible native development defaults
+# Native development configuration
 
-This procedure selects the installed repaired GCC16 for new development sessions
-and ordinary pkgsrc consumers on NetBSD 11/AArch64. It does not replace base
-compiler files, migrate existing C++ packages or accept a release image.
-The [native validation](../development-toolchain/native-validation.md) records
-its physical Zero 3W A733 acceptance and remaining compiler limits.
+The common-tools profile uses the installed native Ports prefix, with Clang/LLVM
+by default. Select GCC explicitly for a platform requirement. The SDK checks the
+actual host OS/CPU and that tools and compiler components remain in the prefix.
+This configuration does not acquire the first compiler or rebuild its prerequisite
+closure. Use the existing [SDK bootstrap interface](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/docs/darwin-bootstrap.md)
+before a complete native prefix exists.
 
-## Prerequisites and rollback
+## Select the installed prefix
 
-Prepare a committed common-tools export and install `gcc16-16.2.0nb1` or newer
-with normal `pkg_add -u`. Preserve the original compiler package and verify
-both package hashes before installation. Record `pkg_info` identity/dependencies,
-`pkg_admin check gcc16`, installed frontend hash and base compiler hashes.
-Do not rebuild GCC through the common default during this update.
+Generate the ordinary make include using the existing
+[native-prefix adapter](cross/native-toolset.md):
 
-Back up `/etc/login.conf`, its optional `.db`, `/etc/mk.conf`, the affected
-user's `.profile` and any existing durable common profile. Preserve ownership,
-permissions and hashes; record absence instead of inventing an original file.
-Keep the current administrative connection open for rollback. Install staged
-configuration files atomically. Retain the backup until new independent SSH
-and login-shell checks pass. If they fail, restore the saved files and remove
-only files recorded as originally absent; check a fresh connection again.
-Package rollback uses `pkg_add -u ORIGINAL_GCC16_PACKAGE`, after restoring the
-previous selection. Never overwrite `/usr/bin/cc` or the base runtime.
+```sh
+/absolute/native-prefix/bin/python3.15 -B -E -S \
+    profiles/common-build-tools/cross/prepare-native-tools.py \
+    --sdk-source /absolute/EmberBSD-SDK write \
+    --host-prefix /absolute/native-prefix --output /absolute/host-tools.mk
+```
 
-## Durable pkgsrc policy
-
-Copy the committed `profiles/common-build-tools/mk.conf` to
-`/usr/pkg/etc/emberbsd/common-build-tools.mk.conf`, mode 0644, root ownership.
-Verify its hash against the committed source and the exported
-`EMBERBSD-COMMON-TOOLS-MK.CONF`; never include a temporary export from the
-system default. Small later metadata/recipe changes should use a bounded,
-verified update of an owned export where exporter/patch contracts permit.
-Record source and resulting file identities. Full unchanged pkgsrc extraction
-was the dominant delay on the checked SD storage. On a host with no previous
-`/etc/mk.conf`, install:
+Use a prepared common-tools source export and a caller-owned MAKECONF:
 
 ```make
 .if defined(BSD_PKG_MK)
-PREFIX= /usr/pkg
-LOCALBASE= /usr/pkg
-.include "/usr/pkg/etc/emberbsd/common-build-tools.mk.conf"
+PREFIX= /absolute/native-prefix
+LOCALBASE= /absolute/native-prefix
+EMBERBSD_SDK_SOURCE= /absolute/EmberBSD-SDK
+EMBERBSD_HOST_PREFIX= /absolute/native-prefix
+EMBERBSD_NATIVE_TOOLSET_MAKECONF= /absolute/host-tools.mk
+.include "/absolute/pkgsrc/EMBERBSD-COMMON-TOOLS-MK.CONF"
 .endif
 ```
 
-For an existing configuration, preserve unrelated settings and integrate these
-lines before the common include. PREFIX and LOCALBASE must be defined when
-the profile evaluates them. The profile requires full `gcc16>=16.2.0nb1`,
-`GCC_REQD+=16.2`, `USE_PKGSRC_GCC_RUNTIME=no` and one worker. It also declares
-current Python/Meson/LLVM policy; declaring it does not install those packages.
+`PREFIX` and `LOCALBASE` must match the selected prefix. On a native EmberBSD
+development machine this can be `/usr/pkg`. The profile is not restricted to
+that spelling or to NetBSD 11. Native package support still depends on each
+recipe and the actual host; metadata checks do not establish a native build.
+`USE_CROSS_COMPILE=yes`, a different compiler family, foreign compiler overrides
+and a stale tool mapping are rejected. The include selects the prefix's PATH;
+ordinary pkgsrc compiler wrappers remain in use.
 
-Native-GCC bootstrap and its prerequisite closure use a separate private
-MAKECONF with the development profile and explicit base compiler selection:
+Invoke the prefix's bmake and shell explicitly, with the MAKECONF above.
+Keep its package database, object, cache and package-output settings in that
+configuration. `MAKE_JOBS` defaults to one and accepts an explicit resource limit.
+The profile also selects shared Python 3.15, Ruby 4.0 and current Meson/LLVM policy.
+Regenerate `host-tools.mk` when the selected tools change. It is a configuration
+include, not an admission report.
 
-```make
-.if defined(BSD_PKG_MK)
-PREFIX= /usr/pkg
-LOCALBASE= /usr/pkg
-PKGSRC_COMPILER= gcc
-USE_NATIVE_GCC= yes
-USE_PKGSRC_GCC= no
-CC= /usr/bin/cc
-CXX= /usr/bin/c++
-.include "/absolute/bootstrap-pkgsrc/EMBERBSD-DEVELOPMENT-MK.CONF"
-.endif
-```
+For the GCC alternative, add `--compiler-family gcc` when generating the include
+and set `EMBERBSD_HOST_COMPILER_FAMILY=gcc` before the profile include. That route
+retains `GCC_REQD=16.2`, the repaired full `gcc16>=16.2.0nb1` dependency and
+`USE_PKGSRC_GCC_RUNTIME=no`: it does not add the separate `gcc16-libs` provider.
+Neither branch silently switches to another family or a system compiler.
+Keep native and target selection separate when preparing a cross SDK.
 
-Run the bootstrap build with an explicit base PATH:
+## Durable configuration and rollback
 
-```sh
-env PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/pkg/sbin:/usr/pkg/bin \
-    make MAKECONF=/absolute/bootstrap.mk.conf package
-```
+Before updating an existing `/etc/mk.conf` or user profile, preserve its contents,
+permissions and unrelated settings. Install a durable source include and its
+generated mapping together; do not leave a system default pointing into a
+temporary export. Restore the previous configuration if its selected package
+closure is not ready. Keep matching packages available for normal `pkg_add -u`
+rollback. Do not overwrite base compiler files or change SSH/login settings just
+to select pkgsrc compilers.
 
-Include no common-tools policy there. Explicit MAKECONF replaces the system
-config. This exception keeps base bootstrap independent of GCC16;
-it is not an alternate application toolchain. Fresh CMake/Meson build trees
-should also select the installed compiler explicitly; existing caches retain
-the compiler they originally selected.
+For interactive compilation, invoke the selected prefix's `clang`/`clang++`, or
+its explicitly selected GCC drivers. Existing CMake/Meson build directories
+retain their compiler and ABI choices. A family/runtime change requires new
+compatible objects and consumers; changing PATH does not migrate their ABI.
 
-## New session PATH
+## Verification boundary
 
-The GCC package already installs `cc`, `c++`, `cpp`, `gcc` and `g++` in
-`/usr/pkg/gcc16/bin`. Prefix this directory to every preserved normal path.
-[NetBSD login.conf](https://man.netbsd.org/NetBSD-11.0/login.conf.5) uses a
-space-separated path capability. When there is no active default class, add:
+The [metadata regression](tests/native-profile-selection.py) uses real bmake and
+pkgsrc C/C++ recipes for NetBSD aarch64/amd64 and Darwin arm64. SDK-selection and
+compiler-query doubles make the boundary explicit: no compiler, package build,
+installation or target runtime is accepted by this test.
 
-```text
-default:\
-    :path=/usr/pkg/gcc16/bin /sbin /usr/sbin /bin /usr/bin /usr/pkg/sbin /usr/pkg/bin /usr/games /usr/X11R7/bin /usr/local/sbin /usr/local/bin:
-```
-
-An existing default class must retain its other capabilities. A nondefault
-user class requires its own corresponding path policy. If using `cap_mkdb`,
-create the database from the staged file and atomically install the text and
-matching database. Change no authentication capability or SSH service setting.
-
-A user `.profile` can reset PATH after the login class. Prefix the package
-directory in that existing assignment too, preserving other paths and any
-rescue-path exception. On the checked root `/bin/sh` profile, the initial
-assignment becomes:
-
-```sh
-export PATH=/usr/pkg/gcc16/bin:/sbin:/usr/sbin:/bin:/usr/bin:/usr/pkg/sbin:/usr/pkg/bin
-```
-
-Keep its later PATH additions. A fresh nonlogin SSH command verifies the actual
-sshd class setup; a fresh login shell verifies profile handling. No reboot or
-sshd restart is required. Current processes and existing GUI packages retain
-their previous runtime closure.
-
-## Focused acceptance
-
-In each fresh connection, record PATH, `command -v` and `-dumpfullversion` for
-`cc`, `c++`, `gcc` and `g++`. All must resolve under `/usr/pkg/gcc16/bin` and
-report 16.2.0. Check explicit `/usr/bin/cc` still reports the base compiler and
-matches its original hash. Verify real pkgsrc metadata through `/etc/mk.conf`
-requires the complete repaired package without `gcc16-libs`; verify the private
-bootstrap MAKECONF still selects `/usr/bin/cc` independently.
-
-Run the existing [native selection fixture](tests/native-compiler-selection/README.md)
-once with the actual exported sources and `/etc/mk.conf`. It supplies no
-PREFIX/LOCALBASE override, so the configuration itself must establish them.
-It packages, installs, runs and inspects a C/C++20 consumer through the actual
-pkgsrc wrappers, checks loaded GCC16 libraries with GDB, and removes its package.
-Run the unchanged upstream atom reproducer and module export/import/link/run
-through [modules-native.sh](../development-toolchain/tests/modules-native.sh)
-with the `installed` selector. This mode obtains the frontend from the installed
-driver and supplies no private `-B` override:
-
-```sh
-sh profiles/development-toolchain/tests/modules-native.sh \
-    ORIGINAL_ATOM_PRAGMA /usr/pkg/gcc16/bin/g++ installed NEW_OUTPUT
-```
-
-Use the normal bounded device resource supervisor and one compiler worker.
-No loader override, full GCC rebuild or upstream-suite rerun is needed for
-this scoped installed-package/default gate. Complete module support,
-self-hosting, current binutils, common Qt/LLVM rebuilding and fresh-image
-acceptance remain independent requirements.
+The historical [native GCC selection fixture](tests/native-compiler-selection/README.md)
+passed on Zero 3W A733 with GCC 16.2.0 and the repaired nb1 package through
+`/etc/mk.conf`. It checked real wrappers, C/C++20 packaging, execution, loaded
+GCC libraries, removal and base-compiler preservation. Its unchanged installed
+GCC checks remain available for that explicit family; they do not establish
+Clang runtime compatibility. See the [native validation](../development-toolchain/native-validation.md)
+for the retained compiler and module limits.

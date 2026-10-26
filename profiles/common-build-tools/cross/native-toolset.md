@@ -37,7 +37,7 @@ The command writes one configuration file. Rerun it after changing the
 selected prefix or its tool paths. It replaces that file atomically.
 It does not create a report, certificate or toolset descriptor.
 
-Set these values before including the common cross profile:
+Set these values before including the common native or cross profile:
 
 ```make
 EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK
@@ -49,7 +49,7 @@ EMBERBSD_NATIVE_TOOLSET_MAKECONF=/absolute/host-tools.mk
 `EMBERBSD_HOST_PYTHON` defaults to `${EMBERBSD_HOST_PREFIX}/bin/python3.15`.
 Set it explicitly when the selected Python has another path.
 The adapter checks that its interpreter is the prefix's selected Python.
-The profile checks the generated assignments before using them. Conflicting
+Both profiles share the same SDK verification include and check the generated assignments before using them. Conflicting
 native compiler, tool and ABI overrides fail. No hash or read-only mode is required.
 
 The generated include retains the selected host compiler family. A conflicting
@@ -57,7 +57,7 @@ family fails. `clang-as` supplies the integrated assembler where a producer
 accepts only one executable path. Native compiler commands retain host ABI flags. Target flags and sysroot
 settings stay separate. `CC_FOR_BUILD` and `CXX_FOR_BUILD` contain complete
 native compile/link commands. `HOST_CC` and `HOST_CXX` contain executable paths.
-The include selects a prefix-only PATH; pkgsrc adds its generated wrappers.
+The native profile additionally requires `PREFIX=LOCALBASE=EMBERBSD_HOST_PREFIX` and selects that family for ordinary pkgsrc compiler wrappers. The include selects a prefix-only PATH; pkgsrc adds its generated wrappers.
 Source archive checksums, package checks and target ABI checks remain enabled.
 
 ## Checks

@@ -86,7 +86,9 @@ the updated native common-consumer fixture passes through `/etc/mk.conf`.
 Real exported C/C++ recipe metadata preserves the repaired revision dependency,
 `GCC_REQD=16.2`, the full compiler package and no separate runtime. Package
 matching rejects 16.2.0 and accepts nb1/nb2. Run the focused revision check with
-an actual native make/pkg_admin or the documented host metadata boundary:
+an actual native make/pkg_admin or the documented host metadata boundary.
+The make wrapper must supply the current [native-prefix inputs](../common-build-tools/cross/native-toolset.md)
+for the explicitly selected GCC family:
 
 ```sh
 sh profiles/common-build-tools/tests/gcc16-revision.sh \

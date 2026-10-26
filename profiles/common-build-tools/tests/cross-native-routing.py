@@ -59,6 +59,9 @@ for name, source in (
 (export / 'prepare-native-tools.py').unlink(missing_ok=True)
 shutil.copyfile(profiles / 'common-build-tools/cross/prepare-native-tools.py',
                 export / 'prepare-native-tools.py')
+(export / 'EMBERBSD-NATIVE-TOOLS.MK').unlink(missing_ok=True)
+shutil.copyfile(profiles / 'common-build-tools/cross/native-tools.mk',
+                export / 'EMBERBSD-NATIVE-TOOLS.MK')
 text += '\nWRKOBJDIR=' + str(work / 'objects') + '\nPACKAGES=' + str(work / 'packages') + '\n'
 (work / 'mk.conf').write_text(text)
 

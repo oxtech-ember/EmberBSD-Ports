@@ -9,7 +9,7 @@ admin=$3
 output=$4
 [ ! -e "$output" ] && [ ! -L "$output" ] || exit 2
 mkdir "$output"
-printf '.include "%s/EMBERBSD-COMMON-TOOLS-MK.CONF"\n' "$tree" > "$output/mk.conf"
+printf 'EMBERBSD_HOST_COMPILER_FAMILY=gcc\n.include "%s/EMBERBSD-COMMON-TOOLS-MK.CONF"\n' "$tree" > "$output/mk.conf"
 for recipe in devel/zlib textproc/icu; do
     name=${recipe##*/}
     MAKECONF="$output/mk.conf" "$make" -C "$tree/$recipe" \

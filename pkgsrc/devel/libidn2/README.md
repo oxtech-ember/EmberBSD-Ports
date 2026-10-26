@@ -9,4 +9,5 @@ This recipe imports `devel/libidn2` from NetBSD pkgsrc commit
 The source archive matches the upstream BLAKE2s, SHA512 and size entries.
 The recipe retains the upstream ABI requirements, tests and platform rules.
 It adds no source patch or compiler exception. Package and target execution
-checks must use the common EmberBSD GCC16 cross configuration.
+checks use the selected native or cross EmberBSD profile: Clang/LLVM by default,
+with GCC selected explicitly for a platform requirement.
