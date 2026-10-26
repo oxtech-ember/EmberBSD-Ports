@@ -1,5 +1,5 @@
 # EmberBSD: Qt 6 Wi-Fi tray manager for wpa_supplicant.
-DISTNAME= ${GITHUB_PROJECT}-${GITHUB_TAG}
+DISTNAME= EmberBSD-Examples
 PKGNAME= ember-wifi-0.1.0
 PKGREVISION= 2
 CATEGORIES= net
@@ -24,3 +24,4 @@ DEPENDS+= qt6-qtbase>=6.12.0:../../x11/qt6-qtbase
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../devel/cmake/build.mk"
 .include "../../mk/bsd.pkg.mk"
+CMAKE_CONFIGURE_ARGS+= -DCMAKE_SKIP_RPATH:BOOL=FALSE
