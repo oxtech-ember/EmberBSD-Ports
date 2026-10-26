@@ -143,7 +143,7 @@ math/cln	cln-1.3.7.tar.bz2	7c7ed8474958337e4df5bb57ea5176ad0365004cbb98b621765bc
 net/kdsoap	kdsoap-2.2.0.tar.gz	d9ef11948442197c9fa44bd6fbadc842b7280a60dfc40577af66fded637af356	https://github.com/KDAB/KDSoap/releases/download/kdsoap-2.2.0/kdsoap-2.2.0.tar.gz
 net/kdsoap-ws-discovery-client	kdsoap-ws-discovery-client-0.4.0.tar.xz	2cd247c013e75f410659bac372aff93d22d71c5a54c059e137b9444af8b3427a	https://download.kde.org/stable/kdsoap-ws-discovery-client/kdsoap-ws-discovery-client-0.4.0.tar.xz
 net/samba4	samba-4.24.7.tar.gz	45b7747a47452eff2b2159a44cc63eb43690d339fd1069088e023a015fed06c7	https://download.samba.org/pub/samba/stable/samba-4.24.7.tar.gz
-print/poppler	poppler-26.06.0.tar.xz	4cb4e5a3dc8cb5eec751c8a23c8ba19f61f96dedc0cd07d2aee6b0c8e2cf6ba4	https://poppler.freedesktop.org/poppler-26.06.0.tar.xz
+print/poppler	poppler-26.10.0.tar.xz	6792cb7c69205007ad87d2e936cecc5b3a31fac29ab54ffc3175fdb6b2a6ce35	https://poppler.freedesktop.org/poppler-26.10.0.tar.xz
 textproc/catdoc	catdoc-0.95.tar.gz	514a84180352b6bf367c1d2499819dfa82b60d8c45777432fa643a5ed7d80796	http://ftp.wagner.pp.ru/pub/catdoc/catdoc-0.95.tar.gz
 x11/plasma6-kactivitymanagerd	kactivitymanagerd-6.8.0.tar.xz	3ea15f3ce63cbe74b206f5b5ec963b088a6407c7988e22f554494c8f8d5873f0	https://download.kde.org/stable/plasma/6.8.0/kactivitymanagerd-6.8.0.tar.xz
 wayland/xwayland	xwayland-24.1.14.tar.xz	4eb6b98d678299a4b96138d886345b294130695760345ef84596225a8224078a	https://xorg.freedesktop.org/archive/individual/xserver/xwayland-24.1.14.tar.xz
