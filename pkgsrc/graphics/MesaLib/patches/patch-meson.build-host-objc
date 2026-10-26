@@ -1,0 +1,42 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted). Not submitted upstream.
+Retain upstream MIT licensing.
+
+Select Objective-C only for its source consumers. Native shader generators
+with no window-system or Vulkan driver do not need an Objective-C compiler.
+Keep the Metal WSI and the Darwin KosmicKrisp bridge enabled, including the
+latter with no window-system platform. Preserve default Darwin platforms.
+
+--- meson.build.orig
++++ meson.build
+@@ -20,7 +20,6 @@
+ project_version = meson.project_version()
+ 
+ if host_machine.system() == 'darwin'
+-  add_languages('objc', native : false)
+   libname_prefix = 'lib'
+   libname_suffix = 'dylib'
+ elif host_machine.system() == 'windows'
+@@ -487,6 +486,12 @@
+ with_platform_haiku = _platforms.contains('haiku')
+ with_platform_windows = _platforms.contains('windows')
+ with_platform_macos = _platforms.contains('macos')
++
++# Only the Metal WSI and Darwin KosmicKrisp bridge need Objective-C.
++with_objc = with_platform_macos or (host_machine.system() == 'darwin' and with_kosmickrisp_vk)
++if with_objc
++  add_languages('objc', native : false)
++endif
+ 
+ with_gfxstream_emulated_android = with_gfxstream_vk and with_platform_android and host_machine.system() == 'linux'
+ if with_gfxstream_emulated_android
+@@ -2449,7 +2454,7 @@
+ 
+ add_project_arguments(pre_args, language : ['c', 'cpp'])
+ add_project_arguments(c_cpp_args, language : ['c', 'cpp'])
+-if host_machine.system() == 'darwin'
++if with_objc
+   add_project_arguments(pre_args, language : ['objc'])
+ endif
+ 

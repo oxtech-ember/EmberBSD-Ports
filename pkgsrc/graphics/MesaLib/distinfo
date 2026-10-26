@@ -5,6 +5,7 @@ SHA512 (mesa-26.2.5.tar.xz) = 08c7d7ea426ddfb0f7bc51b06e18c363a4d31cf1a8b203828b
 Size (mesa-26.2.5.tar.xz) = 68652756 bytes
 SHA1 (patch-bin_symbols-check.py) = 6ee3bfe5ab0a032fddd8970fb8eace06d9caae8c
 SHA1 (patch-dso-lifetime) = ceb138b96c98132d520c9618db5ac195404c6375
+SHA1 (patch-meson.build-host-objc) = 6c869eb1c67038da2367593b4d69adc05041e070
 SHA1 (patch-meson-python-selection) = d78cce68cb46b4f8c6d8800847dd5a2c59917273
 SHA1 (patch-meson-tls-dialect) = 990e10cf0bae86d953e22ce1328c2077e855dc49
 SHA1 (patch-src_util_half__float.c) = b36aaefa87ccefe069c63f14a6ba6ccdbc14506f

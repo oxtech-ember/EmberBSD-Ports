@@ -129,6 +129,30 @@ the full pkgsrc dependency graph, configure Meson, build a generator, or check
 the staged package. Full native shader generation, upstream tests and package
 linkage/PLIST checks remain required.
 
+## Darwin generator language selection
+
+`patch-meson.build-host-objc` selects Objective-C for Metal WSI and the
+Darwin KosmicKrisp bridge. A generator build with empty `platforms` and
+`vulkan-drivers` needs only C and C++. Default Darwin platform selection
+and offscreen KosmicKrisp still require Objective-C. NetBSD configuration
+and package output are unchanged; this host-only repair does not change
+`PKGREVISION`.
+
+From the Ports root, run the actual Meson configuration-fragment check:
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B -E profiles/common-graphics/tests/mesa-host-objc.py \
+    /absolute/mesa-26.2.5.tar.xz "$HOST_PREFIX/bin/meson" \
+    "$HOST_PREFIX/bin/nbpatch" /absolute/new-test-work
+```
+
+The check verifies the source archive and applies the shared patch with
+zero fuzz. Nine cases retain upstream platform defaults, both Objective-C
+consumers, NetBSD behavior and causal controls for the original language
+and argument selection. Meson runs without a C or C++ compiler. Objective-C
+consumers must reject an explicitly absent compiler. Complete generator
+builds and target rendering remain separate checks.
+
 ## Staged dynamic ELF compatibility
 
 The native and cross recipes require an explicit SDK source on both CPUs.
