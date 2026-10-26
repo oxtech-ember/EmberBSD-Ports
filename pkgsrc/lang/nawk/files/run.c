@@ -2358,7 +2358,7 @@ Cell *closefile(Node **a, int n)
 		    files[i].fp == stderr)
 			stat = freopen("/dev/null", "r+", files[i].fp) == NULL;
 		else if (files[i].mode == '|' || files[i].mode == LE)
-			stat = pclose(files[i].fp) == -1;
+			stat = nawk_pclose(files[i].fp) == -1;
 		else
 			stat = fclose(files[i].fp) == EOF;
 		if (stat)
@@ -2395,7 +2395,7 @@ void closeall(void)
 		    files[i].fp == stderr)
 			continue;
 		if (files[i].mode == '|' || files[i].mode == LE)
-			stat = pclose(files[i].fp) == -1;
+			stat = nawk_pclose(files[i].fp) == -1;
 		else
 			stat = fclose(files[i].fp) == EOF;
 		if (stat)

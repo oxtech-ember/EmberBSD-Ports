@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.48 2025/07/26 05:37:46 rillig Exp $
 
 DISTNAME=	nawk-20260426
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	lang
 MASTER_SITES=	# empty
 DISTFILES=	# empty

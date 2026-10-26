@@ -51,6 +51,7 @@
   ],
   "command_shell_origins": [
     "https://raw.githubusercontent.com/NetBSD/src/trunk/lib/libc/stdlib/system.c",
-    "https://raw.githubusercontent.com/openbsd/src/master/lib/libc/stdlib/system.c"
+    "https://raw.githubusercontent.com/openbsd/src/master/lib/libc/stdlib/system.c",
+    "https://raw.githubusercontent.com/NetBSD/src/trunk/lib/libc/gen/popen.c"
   ]
 }

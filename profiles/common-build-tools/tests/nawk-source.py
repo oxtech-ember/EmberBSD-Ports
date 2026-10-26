@@ -48,6 +48,8 @@ def command_shell_adaptation(raw):
     ):
         require(raw.count(before) == 1, "pinned command-shell input changed")
         raw = raw.replace(before, after, 1)
+    require(raw.count(b'pclose(files[i].fp)') == 2, "pinned command close input changed")
+    raw = raw.replace(b'pclose(files[i].fp)', b'nawk_pclose(files[i].fp)')
     return raw
 
 
@@ -108,7 +110,8 @@ def verify(recipe, archive, source_only):
     require('The Regents of the University of California.' in shell and
             'Redistribution and use in source and binary forms' in shell, 'lost command-shell license')
     require('#ifndef NAWK_COMMAND_SHELL' in shell and '#define nawk_system system' in shell and
-            '#define nawk_popen popen' in shell, 'default shell behavior changed')
+            '#define nawk_popen popen' in shell and '#define nawk_pclose pclose' in shell,
+            'default shell behavior changed')
     lib = (recipe / 'files/lib.c').read_text()
     for expression in ('isalpha((uschar) *s)', 'isalnum((uschar) *s)', 'isspace((uschar) *s)',
                        'tolower((uschar) s[1])', 'isxdigit((uschar) s[2])', 'isspace((uschar) s[4])',
@@ -165,6 +168,7 @@ def main():
         ('files/run.c', b'if (newt == NULL)', b'if (0)'),
         ('files/run.c', b'nawk_system(getsval(x))', b'system(getsval(x))'),
         ('files/run.c', b'nawk_popen(s, "r")', b'popen(s, "r")'),
+        ('files/run.c', b'nawk_pclose(files[i].fp)', b'pclose(files[i].fp)'),
         ('files/command-shell.h', b'#define nawk_popen popen', b'#define nawk_popen other_popen'),
         ('files/LICENSE', b'Lucent Technologies', b'Changed copyright'),
         ('files/Makefile', b'Lucent Technologies', b'Changed copyright'),

@@ -71,8 +71,8 @@ The ordinary recipe passes that path as a C string macro with the same name.
 A direct source producer must pass the macro as one compiler argument.
 Without the macro, `system()` and `popen()` keep their libc behavior.
 
-The opt-in adapter currently requires NetBSD, including an EmberBSD target.
-Other targets reject the macro at compile time. Their default build is unchanged.
+The opt-in adapter supports NetBSD and POSIX hosts, including Darwin and Linux.
+Their default build is unchanged.
 Cross builds select the shell path for the machine that will execute nawk.
 This option does not select a compiler, admit a provider or qualify an SDK.
 
@@ -82,7 +82,17 @@ The source references NetBSD `system.c` revision 1.28 and OpenBSD revision 1.13.
 The child executes the selected shell directly and exits 127 if execution fails.
 The parent retries an interrupted wait and restores signal dispositions and masks.
 NetBSD `popenve()` keeps libc's pipe registry and the existing `pclose()` contract.
+Other POSIX hosts use the BSD pipe, fork, descriptor, and wait rules.
+Their private pipe registry belongs to the single-threaded nawk interpreter.
+Both close call sites use `nawk_pclose()` to reap the matching child.
+Each pipe child closes descriptors inherited from earlier nawk pipes.
+Allocation, pipe, stream, fork, and wait failures release the owned resources.
+The pipe adaptation retains NetBSD `popen.c` revision 1.38 and Ken Arnold's provenance.
 No host libc is replaced.
+
+The Darwin bootstrap profile selects `${LOCALBASE}/bin/mksh` for the installed nawk.
+The recipe retains a runtime dependency on that shell package.
+An initial source build can instead pass its explicit initial mksh path.
 
 The source check validates actual recipe flag transport and rejects invalid paths:
 
@@ -93,7 +103,7 @@ SELECTED_PYTHON -B profiles/common-build-tools/tests/nawk-command-shell.py \
 ```
 
 The source-owned `bootstrap/command-shell-probe.c` includes the production header.
-An admitted native producer compiles it with the recipe's `files/` include path
+A native producer compiles it with the recipe's `files/` include path
 and the exact selected-shell macro. The probe takes no arguments.
 It prints `PASS: nawk command-shell contracts` only after all checks pass.
 It checks exit and signal statuses, read/write pipes and `pclose()` status.
@@ -107,10 +117,23 @@ Injected syscall failures check `EINTR`, fork/exec errors and signal-state resto
 Run the default build separately in a scope that admits the platform shell.
 The initial explicit-shell producer must not use this default as a hidden fallback.
 
-Before acceptance, run the probe and upstream cases with the admitted native GCC16.
+Run the probe and relevant upstream cases with the selected native GCC16.
 Run Cppcheck, GCC path analysis and applicable memory analysis on the actual inputs.
 Trace child execution to verify the shell route in real awk `system()` and pipes.
 Source checks and a dry-run do not establish compilation or native execution.
+
+`tests/nawk-command-shell.py --darwin-profile` evaluates the real Darwin profile,
+the recipe compiler argument, repeated includes, and the shell dependency.
+The same command can check the NetBSD profile with `--netbsd-profile`.
+The native interpreter checks use this command:
+
+```sh
+SELECTED_PYTHON -B profiles/common-build-tools/tests/nawk-shell-runtime.py \
+    --awk /absolute/new/nawk --work /absolute/new-runtime-cases
+```
+
+It checks mksh identity in `system()` and both pipe directions.
+It also checks command failures, signal status, pipe reopen, fields, arrays, and regex operations.
 
 ## Parser source preparation
 

@@ -27,7 +27,9 @@
  * SUCH DAMAGE.
  */
 /*
- * Origin: NetBSD libc system.c 1.28 and OpenBSD libc system.c 1.13.
+ * Origin: NetBSD libc system.c 1.28, popen.c 1.38, and
+ * OpenBSD libc system.c 1.13. The pipe code derives from Ken Arnold's
+ * work published in UNIX Review, Vol. 6, No. 8.
  * EmberBSD adaptation (AI-assisted): opt-in selected shell for nawk.
  * Use fork instead of vfork and retain the caller's signal state on errors.
  */
@@ -37,11 +39,8 @@
 #ifndef NAWK_COMMAND_SHELL
 #define nawk_system system
 #define nawk_popen popen
+#define nawk_pclose pclose
 #else
-#if !defined(__NetBSD__)
-#error "NAWK_COMMAND_SHELL requires NetBSD popenve"
-#endif
-
 #ifndef _NETBSD_SOURCE
 #define _NETBSD_SOURCE 1
 #endif
@@ -51,6 +50,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 extern char **environ;
@@ -114,6 +114,9 @@ nawk_system(const char *command)
 	return status;
 }
 
+#if defined(__NetBSD__)
+#define nawk_pclose pclose
+
 static FILE *
 nawk_popen(const char *command, const char *type)
 {
@@ -123,5 +126,102 @@ nawk_popen(const char *command, const char *type)
 	/* Keep libc's pipe registry so the existing pclose calls stay valid. */
 	return popenve(NAWK_COMMAND_SHELL, argv, environ, type);
 }
+#else
+/* nawk is single-threaded. Keep only its selected-shell pipes here. */
+static struct nawk_pipe {
+	struct nawk_pipe *next;
+	FILE *stream;
+	pid_t pid;
+	int fd;
+} *nawk_pipes;
+
+static FILE *
+nawk_popen(const char *command, const char *type)
+{
+	struct nawk_pipe *cur, *old;
+	FILE *stream;
+	pid_t pid;
+	int fds[2], parent, child, target, error;
+	char *const argv[] = { (char *)"sh", (char *)"-c", (char *)"--",
+	    (char *)command, NULL };
+
+	/* These are the two modes used by awk's input and output pipes. */
+	if ((type[0] != 'r' && type[0] != 'w') || type[1] != '\0') {
+		errno = EINVAL;
+		return NULL;
+	}
+	if ((cur = malloc(sizeof(*cur))) == NULL)
+		return NULL;
+	if (pipe(fds) == -1) {
+		error = errno;
+		free(cur);
+		errno = error;
+		return NULL;
+	}
+	parent = type[0] == 'r' ? 0 : 1;
+	child = 1 - parent;
+	target = type[0] == 'r' ? STDOUT_FILENO : STDIN_FILENO;
+	/* Allocate the stream before fork so failure cannot leave a child. */
+	if ((stream = fdopen(fds[parent], type)) == NULL) {
+		error = errno;
+		(void)close(fds[0]);
+		(void)close(fds[1]);
+		free(cur);
+		errno = error;
+		return NULL;
+	}
+	pid = fork();
+	if (pid == 0) {
+		(void)close(fds[parent]);
+		/* POSIX requires previous popen streams to close in this child. */
+		for (old = nawk_pipes; old != NULL; old = old->next)
+			(void)close(old->fd);
+		if (fds[child] != target) {
+			if (dup2(fds[child], target) == -1)
+				_exit(127);
+			(void)close(fds[child]);
+		}
+		execve(NAWK_COMMAND_SHELL, argv, environ);
+		_exit(127);
+	}
+	error = errno;
+	(void)close(fds[child]);
+	if (pid == -1) {
+		(void)fclose(stream);
+		free(cur);
+		errno = error;
+		return NULL;
+	}
+	cur->stream = stream;
+	cur->pid = pid;
+	cur->fd = fds[parent];
+	cur->next = nawk_pipes;
+	nawk_pipes = cur;
+	return stream;
+}
+
+static int
+nawk_pclose(FILE *stream)
+{
+	struct nawk_pipe *cur, **link;
+	pid_t pid;
+	int status;
+
+	for (link = &nawk_pipes; (cur = *link) != NULL; link = &cur->next)
+		if (cur->stream == stream)
+			break;
+	if (cur == NULL) {
+		errno = ESRCH;
+		return -1;
+	}
+	*link = cur->next;
+	(void)fclose(stream);
+	do {
+		pid = waitpid(cur->pid, &status, 0);
+	} while (pid == -1 && errno == EINTR);
+	free(cur);
+	return pid == -1 ? -1 : status;
+}
+#endif
 #endif
 #endif

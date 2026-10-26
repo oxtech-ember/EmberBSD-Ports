@@ -15,6 +15,7 @@ def main():
     cli.add_argument('--bmake', required=True, type=Path)
     cli.add_argument('--work', required=True, type=Path)
     cli.add_argument('--netbsd-profile', type=Path)
+    cli.add_argument('--darwin-profile', type=Path)
     args = cli.parse_args()
     if not all(path.is_absolute() for path in (args.recipe, args.bmake, args.work)):
         cli.error('Select absolute paths')
@@ -108,6 +109,49 @@ def main():
         makefile.write_text('CFLAGS= -O2\n' + production)
         assert selected_flag() == expected
         print('PASS: production NetBSD profile, runtime shell edges, early preferences, repeated selection, two mutations')
+    if args.darwin_profile is not None:
+        if not args.darwin_profile.is_absolute():
+            cli.error('Select an absolute Darwin profile path')
+        profile_dir = args.work / 'darwin-profile'
+        profile_dir.mkdir()
+        profile = profile_dir / 'EMBERBSD-DARWIN-BOOTSTRAP-MK.CONF'
+        original_profile = args.darwin_profile.read_text()
+        profile.write_text(original_profile)
+        (profile_dir / 'EMBERBSD-DEVELOPMENT-MK.CONF').write_text('# no common fixture policy\n')
+        abi = args.work / 'abi'
+        (abi / 'usr/lib').mkdir(parents=True)
+        (abi / 'usr/lib/libiconv.tbd').write_text('source fixture only\n')
+        early = 'awk basename cat cut date dirname env expr grep head id pwd sed sort tail tr uname uniq wc'
+        fields = dict(EMBERBSD_DARWIN_BOOTSTRAP='yes', EMBERBSD_DARWIN_HOST_OS='Darwin',
+            EMBERBSD_DARWIN_HOST_CPU='aarch64', EMBERBSD_DARWIN_HOST_KERNEL_VERSION='25.0',
+            EMBERBSD_DARWIN_HOST_PRODUCT_VERSION='26.0', EMBERBSD_DARWIN_HOST_PKGSRC_OPSYS_VERSION='260000',
+            EMBERBSD_DARWIN_SH='/selected/initial/mksh', EMBERBSD_DARWIN_MAKE='/selected/initial/bmake',
+            EMBERBSD_DARWIN_GMAKE='/selected/initial/gmake', EMBERBSD_DARWIN_UTILITY_BIN='/selected/utilities',
+            LOCALBASE='/output', WRKOBJDIR='/work', DISTDIR='/distfiles', PKG_DBDIR='/pkgdb', PACKAGES='/packages',
+            OSX_SDK_PATH=str(abi), EMBERBSD_GCC16_DARWIN_SDK_VERSION='27.0', MACOSX_DEPLOYMENT_TARGET='26.0',
+            EMBERBSD_DARWIN_JOBS='1', EMBERBSD_DARWIN_CPU_BUDGET='1', EMBERBSD_DARWIN_NATIVE_TOOLS=early,
+            EMBERBSD_DARWIN_SOURCE_TOOLS='gzip gunzip gzcat',
+            NATIVE_PKG_ADMIN_CMD='/selected/pkg_admin', NATIVE_PKG_INFO_CMD='/selected/pkg_info',
+            BSD_PKG_MK='yes', PKGPATH='lang/nawk')
+        for name in ('CC', 'CXX', 'CPP', 'LLVM_MC', 'LD64_LLD', 'DSYMUTIL', 'AR', 'RANLIB', 'NM', 'STRIP'):
+            fields['EMBERBSD_GCC16_' + ('SEED_' if name in ('CC', 'CXX', 'CPP') else '') + name] = '/selected/' + name.lower()
+        for role in early.split():
+            fields['EMBERBSD_DARWIN_TOOL.' + role] = '/selected/utilities/' + role
+        makeconf = args.work / 'darwin.mk.conf'
+        makeconf.write_text(''.join(name + '= ' + value + '\n' for name, value in fields.items())
+                           + ('.include "' + str(profile) + '"\n') * 2)
+        for mode in ('yes', 'no'):
+            extra = ('MAKECONF=' + str(makeconf), 'EMBERBSD_DARWIN_METADATA=' + mode)
+            assert query('${NAWK_COMMAND_SHELL}', extra=extra) == '/output/bin/mksh'
+            assignments = shlex.split(query('${MAKE_FLAGS}', extra=extra))
+            flags = next(value.split('=', 1)[1] for value in assignments if value.startswith('CFLAGS='))
+            assert shlex.split(flags).count('-DNAWK_COMMAND_SHELL="/output/bin/mksh"') == 1
+            assert shlex.split(query('${DEPENDS}', extra=extra)).count('mksh>=59b:../../shells/mksh') == 1
+        profile.write_text('\n'.join(line for line in original_profile.splitlines()
+                                    if not line.startswith('NAWK_COMMAND_SHELL=')) + '\n')
+        assert query('${NAWK_COMMAND_SHELL}', extra=extra) != '/output/bin/mksh'
+        profile.write_text(original_profile)
+        print('PASS: Darwin runtime shell, recipe compiler flag, one dependency, repeated includes, causal mutation')
     print('PASS: default and selected shell compiler argv; seven invalid paths rejected')
     print('SOURCE ONLY: no compiler, shell adapter or package execution')
 
