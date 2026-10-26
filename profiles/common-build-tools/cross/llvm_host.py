@@ -53,7 +53,8 @@ def native(kind, arguments):
              'cmake', 'ninja', 'python', 'pkg-config', 'sh')
     if kind == 'clang':
         roles += ('llvm-config', 'llvm-tblgen')
-    toolset = load_host_prefix(prefix, required_roles=roles)
+    family = os.environ.get('EMBERBSD_HOST_COMPILER_FAMILY', 'clang')
+    toolset = load_host_prefix(prefix, required_roles=roles, compiler_family=family)
     if Path(sys.executable).resolve(strict=True) != Path(toolset.tool('python')).resolve(strict=True):
         raise SDKError('The controller interpreter differs from the selected SDK Python')
     expected = 4 if kind == 'llvm' else 5
@@ -104,6 +105,7 @@ def native(kind, arguments):
     command += ['-DCMAKE_' + name + '=' + toolset.tool(role) for name, role in
                 (('ASM_COMPILER', 'as'), ('LINKER', 'ld'), ('AR', 'ar'),
                  ('RANLIB', 'ranlib'), ('NM', 'nm'), ('STRIP', 'strip'))]
+    command += ['-DCMAKE_ASM_FLAGS=' + shlex.join(toolset.command('as')[1:])]
     flags = toolset.abi_flags
     command += ['-DCMAKE_C_FLAGS=' + shlex.join(flags['cppflags'] + flags['cflags']),
                 '-DCMAKE_CXX_FLAGS=' + shlex.join(flags['cppflags'] + flags['cxxflags'])]

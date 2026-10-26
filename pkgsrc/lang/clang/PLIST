@@ -17,6 +17,7 @@ bin/c-index-test
 bin/clang
 bin/clang++
 bin/clang-23
+bin/clang-as
 bin/clang-check
 bin/clang-cl
 bin/clang-cpp

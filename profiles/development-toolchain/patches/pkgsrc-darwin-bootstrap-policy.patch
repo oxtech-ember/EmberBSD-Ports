@@ -256,3 +256,60 @@ Keep ordinary Darwin defaults. Use the standard compiler wrappers.
  # Pass the required flags to imake to tell it we're using gcc on Solaris.
  .if ${OPSYS} == "SunOS"
  IMAKEOPTS+=	-DHasGcc2=YES -DHasGcc2ForCplusplus=YES
+--- a/mk/compiler/clang.mk
++++ b/mk/compiler/clang.mk
+@@ -20,6 +20,21 @@
+ CLANGBASE?=		${TOOLBASE}
+ LANGUAGES.clang=	# empty
+ 
++.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++CCPATH= ${EMBERBSD_DARWIN_SEED_CC:[1]}
++CXXPATH= ${EMBERBSD_DARWIN_SEED_CXX:[1]}
++CPPPATH= ${EMBERBSD_DARWIN_SEED_CPP:[1]}
++.for _ember_path in CCPATH CXXPATH CPPPATH
++.  if !exists(${${_ember_path}})
++.error "The selected Clang driver is missing: ${${_ember_path}}"
++.  endif
++.endfor
++LANGUAGES.clang+= c objc c++
++_COMPILER_STRIP_VARS+= CC CXX CPP
++PKG_CC:= ${CCPATH}
++PKG_CXX:= ${CXXPATH}
++PKG_CPP:= ${CPPPATH}
++.else
+ .if exists(${CLANGBASE}/bin/clang)
+ LANGUAGES.clang+=	c objc
+ _COMPILER_STRIP_VARS+=	CC
+@@ -37,6 +52,8 @@
+ .if exists(${CLANGBASE}/bin/clang-cpp)
+ CPPPATH=		${CLANGBASE}/bin/clang-cpp
+ PKG_CPP:=		${CPPPATH}
++.endif
++
+ .endif
+ 
+ .if !defined(CC_VERSION)
+@@ -69,7 +86,7 @@
+ .  include "../../mk/compiler/${PKGSRC_FORTRAN}.mk"
+ .endif
+ 
+-.if defined(_PKGSRC_BARRIER)
++.if defined(_PKGSRC_BARRIER) && ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} != "yes"
+ # Xcode 12 (Apple clang-1200.0.32.2) and upstream Clang 16 have a
+ # zealous new default that the wide world of random third-party software
+ # isn't ready for. Turn it back off by default.
+@@ -114,4 +131,14 @@
+ _CXX_STD_FLAG.${_version_}?=	-std=${_version_}
+ .endfor
+ 
++.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++# cwrappers exec= takes a path. Keep the selected driver tail exactly once.
++.for _ember_var _ember_wrap in CC cc CXX cxx CPP cpp
++${_ember_var}= ${EMBERBSD_DARWIN_SEED_${_ember_var}:[1]}
++PKG_${_ember_var}= ${EMBERBSD_DARWIN_SEED_${_ember_var}:[1]}
++CWRAPPERS_PREPEND.${_ember_wrap}+= ${EMBERBSD_DARWIN_SEED_${_ember_var}:[2..-1]}
++_WRAP_EXTRA_ARGS.${_ember_var}+= ${EMBERBSD_DARWIN_SEED_${_ember_var}:[2..-1]}
++.endfor
++.endif
++
+ .endif	# COMPILER_CLANG_MK

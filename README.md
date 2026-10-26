@@ -870,15 +870,16 @@ python3 -B scripts/prepare-pkgsrc.py /absolute/new-pkgsrc \
 
 Use explicit executable paths for Git and patch. The installed control Python
 is sufficient for this source-data operation. The compiler and package
-builds then use the native Ports prefix, commonly named `host-pkg-g16`.
-Its packages use native Ports GCC16. The cross SDK consumes that same prefix.
+builds then use the native Ports prefix, commonly named `host-pkg-llvm`.
+Its packages use native Ports Clang/LLVM by default. GCC remains an explicit
+platform choice. The cross SDK consumes that same prefix.
 See [native tool selection](profiles/common-build-tools/cross/native-toolset.md).
 
 When an installed prefix exists, select only its source preparation tools:
 
 ```sh
 python3 -B scripts/prepare-pkgsrc.py /absolute/new-pkgsrc \
-    --sdk-source /absolute/EmberBSD-SDK --host-prefix /absolute/host-pkg-g16
+    --sdk-source /absolute/EmberBSD-SDK --host-prefix /absolute/host-pkg-llvm
 ```
 
 This optional form selects only Git and patch through the shared SDK loader.

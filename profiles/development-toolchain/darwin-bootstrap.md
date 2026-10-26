@@ -1,288 +1,96 @@
-# Prepare native Darwin GCC16 package metadata
+# Build the native Darwin toolchain
 
-This document describes the older first-compiler bootstrap policy on Darwin AArch64.
-Ordinary native tools are packages in `host-pkg-g16`, built with native Ports GCC16.
-Use that prefix directly for SDK and cross builds, as described in
-[native tool selection](../common-build-tools/cross/native-toolset.md).
-The scoped seed terminology below does not require qualification or receipts
-for an existing native Ports prefix.
+Clang and LLVM are the default native toolchain. GCC remains an explicit
+choice through `EMBERBSD_COMPILER_FAMILY=gcc` for a platform that needs it.
+Both routes use the same shared Ports recipes and native package prefix.
+A compiler selection does not change the target C or C++ runtime ABI.
 
-## Source export
+## First tools
 
-Use the repository's canonical export interface:
+Export the pinned pkgsrc tree with the root [source command](../../README.md#package-integration).
+Source preparation needs an existing control Python, Git, and patch.
+It does not require a completed SDK.
 
-```text
-# Provide a verified source-data export at /absolute/new-pkgsrc. See the root README.
-```
+The exported `bootstrap/bootstrap` supports `--compiler clang`,
+`--unprivileged`, `--prefix`, `--pkgdbdir`, `--workdir`, and `--mk-fragment`.
+Declare the initial compiler, its native ABI, shell, and auxiliary host tools.
+On macOS, a declared Apple Clang and Command Line Tools installation can build
+this first prefix. An official native LLVM installation is another initial
+provider. These tools are bootstrap inputs, not the final native SDK.
+Keep bootstrap objects, package state, and installed files in the selected
+workspace. Do not install a host package manager as an implicit fallback.
 
-Initialize `upstream/pkgsrc` at the repository's recorded gitlink first.
-The export checks that revision. It applies `pkgsrc/export.conf` in order.
-Do not copy a second GCC recipe into the SDK.
-The Python callable uses explicit Git and patch commands.
-Use the root [export command](../../README.md#package-integration) with
-`--host-prefix` to select the installed native Ports tools.
+Pass complete `CC`, `CXX`, and `CPP` commands to bootstrap. Set `CLANGBASE`
+to the selected initial Clang installation. Set the native SDK and deployment
+arguments explicitly. The mk fragment must retain the same compiler and ABI
+for the package builds that bootstrap starts. Keep inherited compiler and make
+flags out of the invocation. Read the actual bootstrap help before execution.
 
-The export installs [darwin-bootstrap.mk.conf](darwin-bootstrap.mk.conf) as
-`EMBERBSD-DARWIN-BOOTSTRAP-MK.CONF` beside the other exported profiles.
-The [infrastructure patch](patches/pkgsrc-darwin-bootstrap-policy.patch)
-loads an explicit MAKECONF before pkgsrc can detect its host or default PATH.
-The normal Darwin branches stay unchanged when this policy is not selected.
+Build the final Clang, LLVM, LLD, shell, Python, make, and required utilities
+from the exported shared recipes. After the native prefix supplies the needed
+roles, use [native tool selection](../common-build-tools/cross/native-toolset.md).
+The final build PATH and compiler components stay inside that prefix.
+Native macOS ABI headers and libraries remain explicit host inputs.
 
-## Accepted inputs
+## Explicit Darwin package profile
 
-Select `EMBERBSD_DARWIN_BOOTSTRAP=yes` in the initial bmake command.
-Use the SDK's complete [make binding](../common-build-tools/bootstrap/README.md).
-It binds the selected make, complete system-makefile tree, shell and MAKECONF.
-The producer must reject inherited make flags, compiler caches and command-line
-assignments that can replace this plan's inputs.
+The exporter installs [darwin-bootstrap.mk.conf](darwin-bootstrap.mk.conf) as
+`EMBERBSD-DARWIN-BOOTSTRAP-MK.CONF`. The SDK's
+[Darwin renderer](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/docs/darwin-bootstrap.md)
+creates its ordinary MAKECONF and complete make invocation.
+It supplies paths, host facts, and command arguments. This is configuration,
+not an admission report or a second package manager.
 
-The exact pinned MAKECONF contains SDK-generated input assignments. It then
-includes `/absolute/export/EMBERBSD-DARWIN-BOOTSTRAP-MK.CONF`.
-Keep that include and all consumed configuration files in the accepted inventory.
-This is a make-variable adapter for the SDK's existing accepted selection.
-It is not a second descriptor, receipt or qualification format.
-
-The profile sets `UNPRIVILEGED=yes` for the SDK's owned output prefix and
-package database. The common pkgsrc `mk/unprivileged.mk` selects the current
-user and groups through the accepted `id` tool. It keeps the selected shell
-as the install command and does not request `sudo` or modify system users or
-`/etc/shells`. The profile does not replace `SU_CMD` or package checks.
-
-| Make input | SDK source |
+| Input | Meaning |
 | --- | --- |
-| `EMBERBSD_DARWIN_HOST_OS` | Actual host OS, `Darwin` |
-| `EMBERBSD_DARWIN_HOST_CPU` | Actual CPU in pkgsrc form, `aarch64` |
-| `EMBERBSD_DARWIN_HOST_KERNEL_VERSION` | Actual kernel release |
-| `EMBERBSD_DARWIN_HOST_PRODUCT_VERSION` | Actual macOS product version |
-| `EMBERBSD_DARWIN_HOST_PKGSRC_OPSYS_VERSION` | Product version encoded as major/minor/patch, two digits per field |
-| `EMBERBSD_DARWIN_MAKE`, `EMBERBSD_DARWIN_GMAKE` | Shell-quoted complete SDK `command('make')` and `command('gmake')` tuples. The initial make builds only `EMBERBSD_DARWIN_SEED_MAKE_RECIPES`; see the [make handoff](../common-build-tools/bootstrap/README.md#make-handoff) |
-| `EMBERBSD_DARWIN_METADATA` | The SDK sets `yes` only for read-only metadata. Keep the initial make, shell and source helper in this mode. The dependency graph is unchanged. Omitted or `no` selects the full build handoff |
-| `EMBERBSD_DARWIN_SH` | Selected `command('sh')[0]`. During full builds, recipes outside `EMBERBSD_DARWIN_SEED_MAKE_RECIPES` replace it with `${LOCALBASE}/bin/mksh` and the builtin helper with `${LOCALBASE}/libexec/emberbsd-darwin-builtin.sh`; see the [make handoff](../common-build-tools/bootstrap/README.md#make-handoff) |
-| `EMBERBSD_GCC16_SEED_CC`, `EMBERBSD_GCC16_SEED_CXX`, `EMBERBSD_GCC16_SEED_CPP` | Shell-quoted selected driver tuple plus the separately accepted language/ABI arguments |
-| `EMBERBSD_GCC16_LLVM_MC`, `EMBERBSD_GCC16_LD64_LLD`, `EMBERBSD_GCC16_DSYMUTIL` | Selected assembler, Mach-O linker and debug tool paths |
-| `EMBERBSD_GCC16_AR`, `EMBERBSD_GCC16_RANLIB`, `EMBERBSD_GCC16_NM`, `EMBERBSD_GCC16_STRIP` | Selected archive and symbol tool paths |
-| `EMBERBSD_GCC16_UNAME` | Exact selected native `uname` path for SDK configure diagnostics |
-| `OSX_SDK_PATH`, `EMBERBSD_GCC16_DARWIN_SDK_VERSION` | Accepted native ABI root and its metadata version |
-| `MACOSX_DEPLOYMENT_TARGET` | Deployment from the accepted fixed GCC binding |
-| `EMBERBSD_DARWIN_JOBS`, `EMBERBSD_DARWIN_CPU_BUDGET` | Positive decimal jobs and the accepted coordinator budget; jobs must not exceed the budget |
-| `EMBERBSD_GCC16_LINKER_LAUNCHER` | SDK control-plane link launcher command; required for parallel GCC bootstrap |
-| `WRKOBJDIR`, `DISTDIR`, `PACKAGES`, `LOCALBASE`, `PKG_DBDIR` | Explicit shared work/cache roots and the isolated producer output/package database |
-| `EMBERBSD_DARWIN_UTILITY_BIN` | Inventoried directory with only accepted utility invocation paths |
-| `EMBERBSD_DARWIN_NATIVE_TOOLS` | Exact names of accepted native utility roles |
-| `EMBERBSD_DARWIN_TOOL.name` | Absolute selected path for each native utility name |
-| `EMBERBSD_DARWIN_SOURCE_TOOLS` | Explicit utility names to build from their shared Ports recipes |
-| `NATIVE_PKG_ADMIN_CMD`, `NATIVE_PKG_INFO_CMD` | Accepted package metadata tool paths |
+| `EMBERBSD_COMPILER_FAMILY` | `clang` by default, or explicit `gcc` |
+| `EMBERBSD_DARWIN_SEED_CC`, `CXX`, `CPP`, `AS` | Complete selected compiler and assembler commands |
+| `EMBERBSD_DARWIN_LD64_LLD`, `DSYMUTIL`, `AR`, `RANLIB`, `NM`, `STRIP` | Explicit native linker and archive/symbol tools |
+| `EMBERBSD_DARWIN_SDK_VERSION`, `OSX_SDK_PATH` | Native ABI metadata and directory |
+| `EMBERBSD_DARWIN_HOST_*` | Actual host OS, CPU, kernel, product and pkgsrc OS versions |
+| `EMBERBSD_DARWIN_MAKE`, `GMAKE`, `SH` | Complete make commands and the selected shell |
+| `EMBERBSD_DARWIN_NATIVE_TOOLS`, `TOOL.name` | Explicit utility names and executable paths |
+| `EMBERBSD_DARWIN_SOURCE_TOOLS` | Utilities to build through their common recipe dependencies |
+| `EMBERBSD_DARWIN_JOBS`, `CPU_BUDGET` | Jobs and the coordinator's available CPU budget |
+| `WRKOBJDIR`, `DISTDIR`, `PACKAGES`, `LOCALBASE`, `PKG_DBDIR` | Selected work, cache, output, and package database paths |
 
-The SDK must verify host facts against the current machine and verify the
-pkgsrc numeric encoding. Do not substitute an SDK version for a host version.
-A compiler target tuple does not establish the running host's identity.
-All paths in this bounded interface must exclude whitespace and make syntax.
-The SDK must verify every command word, inventory member and path boundary.
-The make policy only checks the structure needed to refuse an absent input.
+Names abbreviated after a comma retain the preceding `EMBERBSD_DARWIN_`
+prefix. Initial `LLVM_MC` remains a declared assembler backend path;
+`SEED_AS` is the actual command. Clang uses its integrated assembler through
+`clang -c -x assembler`, with the selected native ABI arguments.
+The installed Clang package supplies `bin/clang-as` for APIs that accept only
+one executable path. This entry point executes the same prefix's Clang and
+mksh. It does not search PATH or replace a missing compiler.
 
-The SDK bounds the CPU budget against the current host before execution.
-Its saved plan retains that accepted budget. The make policy does not query
-the host or invent a processor count. See the
-[native GCC link route](gcc-darwin-host.md#shared-link-resource) for the
-launcher scope. The SDK constructs this command from its own pinned Python
-control plane, SDK script and resource paths. This Python service is not a
-native compiler or generator provider.
+The profile selects the ordinary unprivileged pkgsrc install policy.
+It does not modify system users or `/etc/shells`. Native package checks,
+checksums, and required-library checks remain enabled.
 
-The GCC compiler command keeps the fixed `-B`, pinned `-specs` and deployment
-arguments in their accepted order. See [the GCC binding](gcc-darwin-host.md).
-Use `ld64.lld` as the linker invocation. A nominal `ld` driver query is not a
-Mach-O linker command. Keep native ABI flags separate in the SDK selection.
-Emit them once in each compiler command. Emit accepted link-only flags in
-`LDFLAGS`. Do not append the same ABI flags through another make variable.
+The compiler wrappers retain each selected command tail once. The Clang route
+does not receive GCC's static libstdc++, libgcc, or default-RPATH flags.
+The explicit GCC route accepts its earlier `EMBERBSD_GCC16_*` input names and
+retains the GCC Darwin recipe's driver routing and runtime options.
+Missing tools and invalid families fail; neither route silently chooses the other.
 
-The ordinary foundation includes `security/mozilla-rootcerts-openssl` from the
-common Ports recipes. Its OpenSSL dependency and CA directory use the final
-SDK prefix. See the [CA package contract](../common-build-tools/cross/rootcerts.md#native-sdk-trust-store)
-for source checks and the required installed HTTPS acceptance.
+The [make handoff](../common-build-tools/bootstrap/README.md#make-handoff)
+keeps the initial make and shell only for their bootstrap closure. Later
+packages use the installed bmake, makefiles, and mksh. Gzip has its separate
+source dependency closure. No receipt or repeated bootstrap is needed to use
+working compatible tools.
 
-## Compiler and utility routes
+## Checks and remaining scope
 
-Pkgsrc's compiler selection uses `CC:[1]` for executable discovery.
-Its later compiler-path stripping keeps the remaining arguments.
-The stock cwrappers configuration has a single executable `exec=` field.
-It does not split that field as a shell command.
+The compiler-family fixture evaluates the actual make policy and wrapper
+fragment. It checks Clang defaults, explicit GCC compatibility, exact command
+arguments, missing inputs, invalid families, and unchanged ordinary branches.
+Native adapter checks cover compiler-family forwarding, assembler arguments,
+prefix paths, and stale configuration refusal. The `clang-as` fixture checks
+argument preservation, child exit statuses, and missing-compiler refusal.
+These checks do not claim a completed LLVM package or target runtime.
 
-In this opt-in mode, `gcc.mk` puts the selected executable in `CC`, `CXX`,
-`CPP` and each `PKG_*` wrappee. It transfers the accepted command tail once
-through `CWRAPPERS_PREPEND.*` and the existing legacy `_WRAP_EXTRA_ARGS.*`.
-The standard wrappers still apply package transformations and diagnostics.
-The GCC recipe's own configure input uses the complete accepted seed command.
-Its stage 1 does not depend on another wrapper adding that command a second time.
-No source specs file or ad hoc executable wrapper is generated by this policy.
-The selected command is the native compiler even when it is installed under
-`TOOLBASE`, as a GCC16 rebuilt in the output prefix is. Upstream `gcc.mk`
-would treat such a command as a `lang/gcc*` package and require its full
-version. A three-part version such as 16.2.0 then fails the comparison with
-the 16.2 package version, so every C++ package that requests GCC 16.2 fails.
-
-The selected utility PATH must provide the native invocation names used by
-parse-time shell expressions. Defining only `TOOLS_PLATFORM.name` does not
-bind a raw `env`, `awk` or other bare command in an upstream expression.
-The policy requires an explicit initial utility roster and package tools.
-The Darwin native-tool map does not run xcrun to discover m4 or yacc.
-A requested tool needs an accepted native path or an explicit shared source
-provider. An unknown tool produces a parse error. Source-provider selection
-adds the normal recipe dependency; it does not supply a runnable input yet.
-The selected shell supplies only the named standard builtins in that map.
-`printf` is not one of them: some POSIX shells, such as mksh, have no
-`printf` builtin, and a bare name makes the pkgsrc tool wrapper run itself
-until the process limit is reached. Select `printf` as a native path.
-The map keeps the standard pkgsrc arguments for `gunzip`, `gzip` and `mkdir`;
-without `mkdir -p` the first work directory cannot be created. During full
-builds, recipes after `archivers/gzip` map `gzip`, `gunzip` and `gzcat` to the
-Ports gzip even when these are declared source tools, not initial native roles.
-Metadata declares the roles and leaves their future paths unselected. See the [make handoff](../common-build-tools/bootstrap/README.md#make-handoff).
-Configure scripts and Makefiles also run bare `ar`, `nm`, `ranlib` and
-`strip`. The policy creates the first three in the pkgsrc tools directory
-from the selected `EMBERBSD_GCC16_*` commands and selects
-`TOOLS_PLATFORM.strip`, so `mk/tools/strip.mk` keeps its no-op for
-unstripped installs. The utility PATH does not supply them.
-A tool without standard arguments maps to its exact path, with no trailing
-space: pkgsrc scripts run some of them quoted, such as `"${AWK}"`.
-The `[`, `echo`, `false`, `test` and `true` maps invoke that shell
-explicitly with the helper `EMBERBSD_DARWIN_BUILTIN_HELPER` and the builtin
-name. The initial make recipes use the exported `mk/tools/emberbsd-darwin-builtin.sh`.
-During full builds, later recipes use the copy in `${LOCALBASE}/libexec`.
-Read-only metadata uses the initial shell and exported helper, including in
-parse-time submakes. It does not require a built output prefix. Repeated
-MAKECONF reads restore the selected full-build routes without adding another
-bmake edge or another gmake `SHELL` word. See the
-[make handoff](../common-build-tools/bootstrap/README.md#make-handoff). The helper forwards the original arguments through `"$@"`.
-This preserves the selected shell's options, escapes and statuses.
-The command has no quoted words: pkgsrc passes tools such as `TEST` to
-scripts like `mk/extract/extract` in the environment, and they run `${TEST}`
-unquoted. A quoted `-c` command would split into broken words there.
-pkgsrc also reduces `TOOLS_ECHO`, `TOOLS_TEST`, `TOOLS_TRUE` and
-`TOOLS_FALSE` to the first word of the map, the shell alone. The policy sets
-them to the full command, and `tests/darwin-bootstrap-builtin-env.py` runs
-each value the way these scripts do.
-The common unprivileged policy sets `chown` and `chgrp` to `${TRUE}` followed
-by the tool name. Their pkgsrc command values must also keep the complete
-selected-shell command. The native policy restores those two values only
-when the common unprivileged mode is active. pkgsrc splits tool paths before
-this late policy changes the platform maps. Restore the public, `TOOLS_`,
-`TOOLS_CMDLINE` and tools-wrapper path/arguments after that change. This keeps
-the package ownership metadata and the ordinary privileged command paths.
-The finite `tests/darwin-bootstrap-rootless-tools.py` regression composes the
-real pinned infrastructure with the source-test adapter. It queries the real
-tool modules with an explicit make tuple. It checks old failure, complete
-rootless commands, unchanged privileged paths and unchanged fixture files.
-Set `EXPORT_TEST_GIT` and `EXPORT_TEST_PATCH` for the existing source-test
-adapter. Pass each accepted make argument with `--make-arg`, including its
-`-m`, `SHELL` and `MAKECONF` inputs. Pass the selected shell, `chown` and
-`chgrp` paths with `--shell`, `--chown` and `--chgrp`.
-The fixture adds `-r` to query only the real tool modules. This avoids
-unrelated automatic system-makefile discovery in this finite source test.
-It uses synthetic user/group names and changes no ownership. The caller
-must keep source/input shared leases and a new work directory's exclusive
-lease until all child commands drain. The result is not tool qualification.
-Compatibility-mode bmake can otherwise bypass the shell for a simple recipe
-and try to execute an absent external builtin name.
-The finite [echo fixture](tests/darwin-bootstrap-echo.mk) compares this route
-with the same builtin forced through the selected shell. It covers empty,
-nonempty, option-leading and backslash values, plus recursive `show-var`.
-Its [capture oracles](tests/darwin-bootstrap-source.py) also check the direct
-named `-V` expression values. They execute no tool or captured output.
-`ld64.lld -v` reports "compatible with GNU linkers". libtool's linker probe
-therefore classifies it as GNU ld, and configure scripts such as libffi's
-add ELF-only options like `--version-script`. The policy supplies
-`lt_cv_prog_gnu_ld=no` and `lt_cv_prog_gnu_ldcxx=no` in `CONFIGURE_ENV`.
-`tests/darwin-bootstrap-libtool-linker.py` checks this with an accepted MAKECONF.
-
-Some Darwin build systems run Apple `ranlib -c`; OpenSSL's `darwin-common`
-target does. `llvm-ranlib` rejects `-c` and already puts common symbols in
-the archive index, so the policy passes the selected ranlib as `RANLIB` in
-`CONFIGURE_ENV`. `tests/darwin-bootstrap-ranlib.py` checks the evaluated value
-for `security/openssl` and runs it on an archive with a common symbol.
-Packages such as `archivers/zstd` request GNU grep as `ggrep`. As on
-ordinary Darwin, the policy gives `ggrep` the selected `grep` unless the plan
-selects a native `ggrep`. Ports grep needs bash, bison, flex and help2man,
-and help2man reaches zstd again through gettext-tools and python.
-`tests/darwin-bootstrap-ggrep.py` checks both cases for `archivers/zstd`.
-ELF inspection tools such as `readelf` have no Darwin base provider. Select
-them as native utilities from the accepted seed LLVM tools.
-
-The initial conservative parse-time roster is `awk basename cat cut date
-dirname env expr grep head id pwd sed sort tail tr uname uniq wc`.
-`pkg_info -V` and `pkg_admin pmatch` also need actual accepted providers.
-The GCC recipe and its recursive dependencies can require more utilities,
-including GNU make, Perl, makeinfo and pkg-config. Their exact evaluated DAG
-and active utility queries remain a real metadata acceptance step.
-Do not invent successful cached versions or use a failed query's fallback
-value as qualification evidence.
-
-## Verification limits and next gate
-
-The source controls check the early guard, native-tool branch, compiler tail
-placement and preservation of ordinary source branches. They execute no make,
-compiler, linker or selected input binary. They do not evaluate a pkgsrc DAG.
-
-The next gate runs the SDK's fixed variable and dependency queries for `lang/gcc16`.
-Use the accepted command, complete make tree and this exact profile. Capture all
-children, consumed includes, package database reads and resulting dependencies.
-Check that stale host-detection values do not change the accepted facts.
-Check refusals for an absent fact, utility, MAKECONF, source provider and jobs
-outside the accepted budget, and parallel jobs without the link launcher.
-Check that no child uses the original installed prefix,
-CLT discovery, an unselected system utility or an uncontrolled PATH.
-Then replay the wrapper routes and the GCC stage-1 configure command.
-A source-only pass cannot replace these gates or the full GCC bootstrap.
-
-The make and gzip seed lists have different scopes. The eight-recipe make
-closure uses the initial tuple. The eleven gzip prerequisites add pax, fetch
-and libfetch. Those three use the Ports bmake and Darwin mk files, with no
-reverse dependency on gzip. This avoids the generic initial relocatable-link
-rule without changing compiler flags or disabling a build check.
-
-The scoped producer runtime options are reapplied after every MAKECONF read.
-The SDK assigns the accepted ABI `LDFLAGS` before each profile include.
-A one-time append loses the static GCC runtime options on later reads.
-The profile keeps each option once in `LDFLAGS` and preserves the other ABI
-flag words. Some configure probes call `CXX` with `CPPFLAGS` and `CXXFLAGS`
-without `LDFLAGS`. The final C and C++ wrapper routes also carry
-`-static-libstdc++`, `-static-libgcc`, and `-nodefaultrpaths`. They carry the
-accepted SDK iconv stub as well. This keeps those probes on the selected
-runtime without changing their source or skipping their run checks.
-Libtool may omit unknown driver flags from shared-library commands, so the
-final wrappers also keep the runtime policy after libtool. Direct compiler
-calls retain the `LDFLAGS` copy. The make-handoff fixture checks exact-once
-wrapper values and preserves the accepted compiler tails; production links
-that use both routes still require the normal build checks.
-
-The external seed's static libstdc++ does not carry the ordinary GCC recipe's
-`LC_LINKER_OPTION` for iconv. The profile adds
-`-Wl,${OSX_SDK_PATH}/usr/lib/libiconv.tbd` to `LDFLAGS` and the final wrappers.
-A bare `.tbd` pathname is insufficient: configure can use it while a later
-link omits it. The explicit stub selects the accepted system ABI without a
-library search. The selected SDK path must be one absolute word without a
-comma, because GCC and libtool split `-Wl,` arguments at commas.
-The make-handoff phase fixture checks three profile includes with the real
-parser. Its pure controls reject bare, foreign, missing and duplicated inputs,
-and lost or duplicated final wrapper options. These controls do not execute
-libtool or establish a production driver's final arguments. The full build
-must still verify the resulting Mach-O load and RPATH closure; passing a
-source fixture does not qualify a library or bypass package checks.
-
-GNU M4 has a separate runtime shell for `syscmd` and `esyscmd`.
-`CONFIG_SHELL` does not select this embedded path. The native Darwin profile
-sets `M4_SYSCMD_SHELL` to `${LOCALBASE}/bin/mksh` and records a normal runtime
-dependency on `shells/mksh`. The common recipe passes the explicit absolute
-path through the upstream `--with-syscmd-shell` option. An empty or relative
-override fails. When the override is unset, other platforms and target cross
-builds retain upstream selection. Do not embed an initial build-tool path in
-the installed program. Rebuild M4 and affected consumers after this change.
-
-Perl requires a separate early build shell and embedded target runtime shell.
-The explicit `PERL_BUILD_SHELL` and `PERL_RUNTIME_SHELL` pair selects both.
-The profile follows its accepted phase shell for the build and embeds the
-final mksh path for the runtime. The recipe supplies the upstream `-Dsh` and
-`-Dtargetsh` options after its early environment selection. The real shell
-comment and shebang probes remain enabled. `PERL_BUILD_CAT` receives the real
-`TOOLS_CAT` binary path for that shebang probe, not the `.tools` wrapper.
-Other builds retain upstream behavior when the pair is unset. Cross callers
-must specify both a build-host shell and a target runtime shell explicitly.
+Clang's installed default linker is LLD from the same package prefix.
+Verify actual C and C++ driver commands, installed compile/link/run behavior,
+and loaded native runtime libraries after building the native package.
+A NetBSD target additionally needs the prepared common LLVM runtime and CRT
+contract. An existing GCC runtime or Apple's native libc++ does not establish
+that target contract.

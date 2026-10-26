@@ -16,11 +16,17 @@ ROOT = Path(__file__).resolve().parents[3]
 SOURCE = ROOT
 POLICY = ROOT / 'profiles/development-toolchain/darwin-bootstrap.mk.conf'
 MARKER = '# MAKECONF is first read before PKGPATH.'
+FOUNDATION_CONDITION = ('.    if (${EMBERBSD_COMPILER_FAMILY} == "gcc" && ${PKGPATH} == "lang/gcc16") || \\\n'
+                        '        (${EMBERBSD_COMPILER_FAMILY} == "clang" && ${PKGPATH} == "lang/clang")')
 
 
 def apply_policy(text, state):
     """Model only this finite block's assignments and literal predicates."""
     def condition(expression):
+        if ' || ' in expression:
+            return any(condition(part.strip()) for part in expression.split(' || '))
+        if expression.startswith('(') and expression.endswith(')'):
+            expression = expression[1:-1]
         for term in expression.split(' && '):
             match = re.fullmatch(r'(!?)defined\(([^)]+)\)', term)
             if match:
@@ -42,7 +48,7 @@ def apply_policy(text, state):
                 return False
         return True
     stack = []
-    for line in text[text.index(MARKER):].splitlines():
+    for line in text[text.index(MARKER):].replace('\\\n', '').splitlines():
         line = line.strip()
         if not line or line.startswith('#'):
             continue
@@ -73,7 +79,7 @@ def apply_policy(text, state):
 
 
 def seed_make_recipes(policy):
-    state = apply_policy(policy, dict(EMBERBSD_DARWIN_BOOTSTRAP='yes', BSD_PKG_MK='1',
+    state = apply_policy(policy, dict(EMBERBSD_DARWIN_BOOTSTRAP='yes', EMBERBSD_COMPILER_FAMILY='gcc', BSD_PKG_MK='1',
                                       PKGPATH='devel/bmake', LOCALBASE='/final/prefix'))
     return state['EMBERBSD_DARWIN_SEED_MAKE_RECIPES'].split()
 
@@ -88,13 +94,13 @@ def graph(policy):
               'sysutils/bsdinstall': ['pkgtools/libnbcompat'],
               'lang/llvm': ['pkgtools/libnbcompat'], 'shells/mksh': ['pkgtools/libnbcompat'],
               'pkgtools/libnbcompat': []}
-    roots = dependencies(apply_policy(policy, dict(EMBERBSD_DARWIN_BOOTSTRAP='yes',
+    roots = dependencies(apply_policy(policy, dict(EMBERBSD_DARWIN_BOOTSTRAP='yes', EMBERBSD_COMPILER_FAMILY='gcc',
         BSD_PKG_MK='1', PKGPATH='lang/gcc16', LOCALBASE='/final/prefix',
         _EMBERBSD_DARWIN_INITIAL_GMAKE='/initial/gmake SHELL=/initial/sh')))
     for name in roots:
         result.setdefault(name, [])
     for name in result:
-        result[name] += dependencies(apply_policy(policy, dict(EMBERBSD_DARWIN_BOOTSTRAP='yes',
+        result[name] += dependencies(apply_policy(policy, dict(EMBERBSD_DARWIN_BOOTSTRAP='yes', EMBERBSD_COMPILER_FAMILY='gcc',
             BSD_PKG_MK='1', PKGPATH=name, LOCALBASE='/final/prefix',
             _EMBERBSD_DARWIN_INITIAL_GMAKE='/initial/gmake SHELL=/initial/sh')))
     return result
@@ -116,7 +122,7 @@ def reachable(graph):
 class InstallerPolicyTests(unittest.TestCase):
     def setUp(self):
         self.text = POLICY.read_text()
-        self.state = dict(EMBERBSD_DARWIN_BOOTSTRAP='yes', BSD_PKG_MK='1',
+        self.state = dict(EMBERBSD_DARWIN_BOOTSTRAP='yes', EMBERBSD_COMPILER_FAMILY='gcc', BSD_PKG_MK='1',
                           LOCALBASE='/final/prefix', EMBERBSD_DARWIN_SH='/initial/sh',
                           _EMBERBSD_DARWIN_INITIAL_GMAKE='/initial/gmake SHELL=/initial/sh',
                           EMBERBSD_GCC16_STRIP='/initial/strip')
@@ -170,7 +176,7 @@ class InstallerPolicyTests(unittest.TestCase):
         value = graph(self.text)
         self.assertEqual(reachable(value), set(value))
         self.assertNotIn('sysutils/bsdinstall', value['pkgtools/libnbcompat'])
-        mutant = self.text.replace('.    if ${PKGPATH} == "lang/gcc16"',
+        mutant = self.text.replace(FOUNDATION_CONDITION,
                                    '.    if ${PKGPATH} != ""')
         with self.assertRaisesRegex(ValueError, 'dependency cycle'):
             reachable(graph(mutant))

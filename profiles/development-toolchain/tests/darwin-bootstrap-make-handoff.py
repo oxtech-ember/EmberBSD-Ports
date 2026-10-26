@@ -32,7 +32,7 @@ from pathlib import Path
 
 KINDS = ('BOOTSTRAP_DEPENDS', 'TOOL_DEPENDS', 'BUILD_DEPENDS', 'DEPENDS')
 NAMES = ('EMBERBSD_DARWIN_SEED_MAKE_RECIPES', 'EMBERBSD_DARWIN_SEED_GZIP_RECIPES', 'EMBERBSD_DARWIN_MAKE', 'EMBERBSD_DARWIN_GMAKE',
-         'LOCALBASE', 'OSX_SDK_PATH', 'MAKE', '_MAKE', 'LDFLAGS', *KINDS)
+         'LOCALBASE', 'OSX_SDK_PATH', 'MAKE', '_MAKE', 'LDFLAGS', 'EMBERBSD_COMPILER_FAMILY', *KINDS)
 SHELLS = ('EMBERBSD_DARWIN_SH', 'SHELL', 'SH', 'CONFIG_SHELL', 'TOOLS_SHELL',
           'EMBERBSD_DARWIN_BUILTIN_SHELL', 'TOOLS_PLATFORM.sh')
 BUILTINS = tuple(f'TOOLS_PLATFORM.{name}' for name in ('[', 'echo', 'false', 'test', 'true'))
@@ -47,7 +47,7 @@ ROOT = 'devel/bmake'
 SHELL_PROVIDER = 'shells/mksh'
 HELPER_PROVIDER = 'pkgtools/bootstrap-mk-files'
 HELPER = 'libexec/emberbsd-darwin-builtin.sh'
-LATER = ('pkgtools/pkg_install', 'lang/gcc16', 'devel/meson', 'lang/llvm')
+LATER = ('pkgtools/pkg_install', 'lang/gcc16', 'lang/clang', 'devel/meson', 'lang/llvm')
 
 
 def require(value, message):
@@ -74,6 +74,12 @@ def accepted_sdk_iconv(value):
 def runtime_link_flags(value, expected_abi=None):
     """Require the producer runtime options and SDK iconv input exactly once."""
     words = shlex.split(value['LDFLAGS'])
+    if value.get('EMBERBSD_COMPILER_FAMILY', 'gcc') == 'clang':
+        require(not set(words).intersection(RUNTIME_LINK_FLAGS),
+                'Clang received GCC runtime link flags')
+        require(expected_abi is None or words == expected_abi,
+                'The producer runtime policy changed the accepted ABI link flags')
+        return words
     sdk_iconv = accepted_sdk_iconv(value)
     policy_words = (*RUNTIME_LINK_FLAGS, sdk_iconv)
     require(all(words.count(word) == 1 for word in policy_words) and
@@ -87,6 +93,13 @@ def runtime_link_flags(value, expected_abi=None):
 
 def wrapper_runtime_flags(value, expected_tails=None):
     """Require each final C/C++ wrapper to retain runtime and SDK link inputs."""
+    if value.get('EMBERBSD_COMPILER_FAMILY', 'gcc') == 'clang':
+        tails = {name: shlex.split(value[name]) for name in RUNTIME_WRAPPER_NAMES}
+        require(not any(set(words).intersection(RUNTIME_LINK_FLAGS) for words in tails.values()),
+                'Clang received GCC compiler wrapper flags')
+        require(expected_tails is None or tails == expected_tails,
+                'The producer runtime policy changed a compiler wrapper tail')
+        return tails
     sdk_iconv = accepted_sdk_iconv(value)
     policy_words = (*RUNTIME_LINK_FLAGS, sdk_iconv)
     tails = {}
@@ -138,7 +151,7 @@ def policy_link_self_test():
     stub = '-Wl,' + sdk + SDK_ICONV_SUFFIX
     abi = ['--sysroot=/sdk', '-Wl,-dead_strip', '-Wl,-headerpad_max_install_names']
     producer = list(RUNTIME_LINK_FLAGS)
-    valid = {'OSX_SDK_PATH': sdk,
+    valid = {'OSX_SDK_PATH': sdk, 'EMBERBSD_COMPILER_FAMILY': 'gcc',
              'LDFLAGS': shlex.join([*abi, *producer, stub]),
              **{name: shlex.join([*producer, stub]) for name in RUNTIME_WRAPPER_NAMES}}
     wire = {name: '' for name in NAMES}
@@ -202,6 +215,20 @@ def policy_link_self_test():
                 'The foreign wrapper tail failed for an unrelated reason')
     else:
         raise AssertionError('A foreign wrapper tail was accepted')
+    clang = dict(valid, EMBERBSD_COMPILER_FAMILY='clang', LDFLAGS=shlex.join(abi),
+                 **{name: shlex.join(tails[name]) for name in RUNTIME_WRAPPER_NAMES})
+    runtime_link_flags(clang, abi)
+    wrapper_runtime_flags(clang, tails)
+    for flag in RUNTIME_LINK_FLAGS:
+        for key in ('LDFLAGS', *RUNTIME_WRAPPER_NAMES):
+            invalid = dict(clang, **{key: clang[key] + ' ' + flag})
+            try:
+                (runtime_link_flags if key == 'LDFLAGS' else wrapper_runtime_flags)(invalid)
+            except AssertionError as error:
+                require(str(error).startswith('Clang received GCC'),
+                        'Clang runtime contamination failed for an unrelated reason')
+            else:
+                raise AssertionError('A GCC runtime option entered the Clang route')
 
 
 def gmake_shells(value):

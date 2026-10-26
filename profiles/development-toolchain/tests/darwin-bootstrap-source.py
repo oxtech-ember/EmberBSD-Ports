@@ -164,6 +164,22 @@ def check(before, after, policy, recipe):
     require('Select accepted parse-time utility ${_ember_tool}' in policy,
             'The early utility admission gate was lost')
 
+    clang = after['mk/compiler/clang.mk']
+    selected, ordinary = branch(clang, OPT, 2, 0)
+    original = before['mk/compiler/clang.mk']
+    start = original.index('.if exists(${CLANGBASE}/bin/clang)')
+    end = original.index('.if !defined(CC_VERSION)', start)
+    require(ordinary == original[start:end], 'Ordinary Clang selection bytes changed')
+    require('exists(${${_ember_path}})' in selected and
+            '.error "The selected Clang driver is missing:' in selected,
+            'Missing Clang can reach host discovery')
+    selected, ordinary = branch(clang, OPT, 2, 1)
+    require(not ordinary and all(clang.count(line) == 1 for line in (
+        'CWRAPPERS_PREPEND.${_ember_wrap}+= ${EMBERBSD_DARWIN_SEED_${_ember_var}:[2..-1]}',
+        '_WRAP_EXTRA_ARGS.${_ember_var}+= ${EMBERBSD_DARWIN_SEED_${_ember_var}:[2..-1]}',
+        'PKG_${_ember_var}= ${EMBERBSD_DARWIN_SEED_${_ember_var}:[1]}')),
+            'The selected Clang wrapper lost its exact driver and command tail')
+
     gcc = after['mk/compiler/gcc.mk']
     require(gcc.count('CWRAPPERS_PREPEND.${_ember_wrap}+= ${EMBERBSD_GCC16_SEED_${_ember_var}:[2..-1]}') == 1,
             'The cwrapper seed command tail is missing or duplicated')
@@ -196,7 +212,7 @@ def main():
         raise SystemExit('usage: darwin-bootstrap-source.py BEFORE_TREE AFTER_TREE')
     root = Path(__file__).resolve().parents[3]
     names = ['mk/tools/tools.Darwin.mk', 'mk/bsd.prefs.mk', 'mk/tools/replace.mk',
-             'mk/unprivileged.mk', 'mk/compiler/gcc.mk']
+             'mk/unprivileged.mk', 'mk/compiler/gcc.mk', 'mk/compiler/clang.mk']
     before = {n: (Path(sys.argv[1]) / n).read_text() for n in names}
     after = {n: (Path(sys.argv[2]) / n).read_text() for n in names}
     policy = (root / 'profiles/development-toolchain/darwin-bootstrap.mk.conf').read_text()
@@ -234,6 +250,16 @@ def main():
     changed[n] = changed[n].replace('TOOLS_${_TOOLS_VARNAME.${_ember_ownership}}= ${TOOLS_CMDLINE.${_ember_ownership}}',
                                    'TOOLS_${_TOOLS_VARNAME.${_ember_ownership}}= ${TOOLS_PATH.${_ember_ownership}}', 1)
     mutants.append(('rootless-ownership-tail', changed, policy, recipe))
+    n = 'mk/compiler/clang.mk'
+    for label, old, new in (
+            ('clang-host-fallback', '.error "The selected Clang driver is missing:', '# missing refusal'),
+            ('clang-ordinary-selection', 'CCPATH=\t\t\t${CLANGBASE}/bin/clang', 'CCPATH= /usr/bin/clang'),
+            ('clang-missing-command-tail',
+             'CWRAPPERS_PREPEND.${_ember_wrap}+= ${EMBERBSD_DARWIN_SEED_${_ember_var}:[2..-1]}', '')):
+        require(old in after[n], 'Missing Clang mutation site: ' + label)
+        changed = dict(after)
+        changed[n] = changed[n].replace(old, new, 1)
+        mutants.append((label, changed, policy, recipe))
     changed = dict(after)
     n = 'mk/compiler/gcc.mk'
     line = 'CWRAPPERS_PREPEND.${_ember_wrap}+= ${EMBERBSD_GCC16_SEED_${_ember_var}:[2..-1]}'

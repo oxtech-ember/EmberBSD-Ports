@@ -1,6 +1,10 @@
 # Bind the initial make shell
 
-This is the scoped first-compiler bootstrap path. An existing native Ports
+This page retains the historical scoped producer bindings.
+For a fresh native Darwin prefix, use the ordinary
+[Clang bootstrap procedure](../../development-toolchain/darwin-bootstrap.md).
+The historical admission stages below are not prerequisites for that path.
+An existing native Ports
 prefix uses [direct host selection](../cross/native-toolset.md). It does not
 need seed admission, qualification reports or a producer receipt.
 
@@ -327,7 +331,8 @@ library without compression backends or archive CLI programs. It then uses
 the supported `pkg_install --enable-bootstrap` mode and the accepted
 `pkgtools/libnbcompat` headers and static library. Build the four `pkg_add`,
 `pkg_admin`, `pkg_create` and `pkg_info` programs with selected native GCC16
-and BSD make. Do not run the general bootstrap shell script.
+and BSD make. This historical producer does not run the general bootstrap
+shell script. The current ordinary bootstrap follows the Darwin procedure above.
 
 This is an initial-only producer. Bootstrap mode excludes package deletion,
 signature objects and libfetch. It does not remove required-library checks.

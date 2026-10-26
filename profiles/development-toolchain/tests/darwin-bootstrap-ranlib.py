@@ -26,25 +26,25 @@ def main():
     if len(sys.argv) != 5:
         raise SystemExit(__doc__)
     exported, bmake, makeconf, work = Path(sys.argv[1]), sys.argv[2], sys.argv[3], Path(sys.argv[4])
-    names = ['EMBERBSD_GCC16_RANLIB', 'EMBERBSD_GCC16_AR', 'EMBERBSD_GCC16_NM', 'EMBERBSD_GCC16_SEED_CC',
+    names = ['EMBERBSD_DARWIN_RANLIB', 'EMBERBSD_DARWIN_AR', 'EMBERBSD_DARWIN_NM', 'EMBERBSD_DARWIN_SEED_CC',
              'CONFIGURE_ENV']
     out = subprocess.run([bmake, '-C', str(exported / 'security/openssl'), 'EMBERBSD_DARWIN_BOOTSTRAP=yes',
                           f'MAKECONF={makeconf}', 'show-vars', f'VARNAMES={" ".join(names)}'],
                          check=True, capture_output=True, text=True,
                          env={'PATH': '/usr/bin:/bin'}).stdout.splitlines()
     values = dict(zip(names, out))
-    ranlib = values['EMBERBSD_GCC16_RANLIB']
+    ranlib = values['EMBERBSD_DARWIN_RANLIB']
     given = [w.split('=', 1)[1] for w in shlex.split(values['CONFIGURE_ENV']) if w.startswith('RANLIB=')]
     require(given == [ranlib], f'configure scripts do not get the selected ranlib: {given!r}')
     work.mkdir(parents=True)
     (work / 'common.c').write_text('int ember_common;\n')
-    subprocess.run(shlex.split(values['EMBERBSD_GCC16_SEED_CC']) + ['-fcommon', '-c', 'common.c'],
+    subprocess.run(shlex.split(values['EMBERBSD_DARWIN_SEED_CC']) + ['-fcommon', '-c', 'common.c'],
                    cwd=work, check=True)
-    subprocess.run([values['EMBERBSD_GCC16_AR'], 'cr', 'libcommon.a', 'common.o'], cwd=work, check=True)
+    subprocess.run([values['EMBERBSD_DARWIN_AR'], 'cr', 'libcommon.a', 'common.o'], cwd=work, check=True)
     apple = subprocess.run([ranlib, '-c', 'libcommon.a'], cwd=work, capture_output=True, text=True)
     require(apple.returncode != 0, 'The selected ranlib accepts -c; this policy may be stale')
     subprocess.run([ranlib, 'libcommon.a'], cwd=work, check=True)
-    index = subprocess.run([values['EMBERBSD_GCC16_NM'], '--print-armap', 'libcommon.a'], cwd=work,
+    index = subprocess.run([values['EMBERBSD_DARWIN_NM'], '--print-armap', 'libcommon.a'], cwd=work,
                            check=True, capture_output=True, text=True).stdout
     require('_ember_common in common.o' in index, f'The archive index lacks the common symbol:\n{index}')
     print(json.dumps({'ranlib': ranlib, 'result': 'PASS'}, sort_keys=True))

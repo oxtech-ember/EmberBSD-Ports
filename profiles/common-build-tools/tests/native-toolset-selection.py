@@ -65,6 +65,9 @@ class Selection:
     def tool(self, role):
         return self.tools[role]
 
+    def command(self, role):
+        return (self.tools[role], '-c', '-x', 'assembler') if role == 'as' else (self.tools[role],)
+
     def as_dict(self):
         return {'format': 'emberbsd-native-toolset-selection', 'version': 1,
                 'api': 1, 'tools': dict(self.tools),
@@ -149,7 +152,8 @@ with tempfile.TemporaryDirectory(prefix='ember-native-selection-') as temporary:
             llvm_host.native('llvm', command(work))
         call = api.load_host_prefix.call_args
         assert call.args == (environment['EMBERBSD_HOST_PREFIX'],)
-        assert set(call.kwargs) == {'required_roles'}
+        assert set(call.kwargs) == {'required_roles', 'compiler_family'}
+        assert call.kwargs['compiler_family'] == 'clang'
         assert set(selection.tools) - {'llvm-config', 'llvm-tblgen'} == set(call.kwargs['required_roles'])
         assert len(runs) == 2
         flags = runs[0][0]
@@ -157,6 +161,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-selection-') as temporary:
         assert '-DCMAKE_CXX_COMPILER=' + selection.tool('cxx') in flags
         assert '-DCMAKE_C_FLAGS=-isystem /declared/native/include -fPIC' in flags
         assert '-DCMAKE_CXX_FLAGS=-isystem /declared/native/include -fPIC -std=c++17' in flags
+        assert '-DCMAKE_ASM_FLAGS=-c -x assembler' in flags
         assert '-DCMAKE_SHARED_LINKER_FLAGS=-L/declared/native/lib' in flags
         assert not any('/target-only' in flag or '-B/usr/bin' in flag for flag in flags)
         assert query.call_args_list == [
@@ -171,7 +176,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-selection-') as temporary:
         work = root / 'accepted-clang-controller-fixture'
         runs.clear()
         llvm = str(Path(selection.tool('llvm-config')).parents[1])
-        with mock.patch.dict(os.environ, values, clear=True), \
+        with mock.patch.dict(os.environ, dict(values, EMBERBSD_HOST_COMPILER_FAMILY='gcc'), clear=True), \
              mock.patch.object(llvm_host.sys, 'executable', selection.tool('python')), \
              mock.patch.object(llvm_host, 'SOURCE_SHA', hashlib.sha256(archive.read_bytes()).hexdigest()), \
              mock.patch.object(llvm_host, 'extract_source'), \
@@ -181,6 +186,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-selection-') as temporary:
             arguments.insert(1, llvm)
             llvm_host.native('clang', arguments)
         assert set(api.load_host_prefix.call_args.kwargs['required_roles']) == set(selection.tools)
+        assert api.load_host_prefix.call_args.kwargs['compiler_family'] == 'gcc'
         assert len(runs) == 2
         assert '-DLLVM_CONFIG=' + selection.tool('llvm-config') in runs[0][0]
         assert '-DLLVM_TABLEGEN=' + selection.tool('llvm-tblgen') in runs[0][0]

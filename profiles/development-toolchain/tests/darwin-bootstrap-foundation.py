@@ -138,7 +138,7 @@ def shell_routes(texts, prefix, selected):
 class FoundationTests(unittest.TestCase):
     def setUp(self):
         self.policy = POLICY.read_text()
-        self.state = dict(EMBERBSD_DARWIN_BOOTSTRAP='yes', BSD_PKG_MK='1',
+        self.state = dict(EMBERBSD_DARWIN_BOOTSTRAP='yes', EMBERBSD_COMPILER_FAMILY='gcc', BSD_PKG_MK='1',
                           LOCALBASE='/final/prefix',
                           _EMBERBSD_DARWIN_INITIAL_GMAKE='/initial/gmake SHELL=/initial/sh')
 
@@ -252,7 +252,7 @@ class FoundationTests(unittest.TestCase):
     def test_policy_edges_cannot_form_self_or_global_cycles(self):
         graph = model.graph(self.policy)
         self.assertEqual(model.reachable(graph), set(graph))
-        mutant = self.policy.replace('.    if ${PKGPATH} == "lang/gcc16"',
+        mutant = self.policy.replace(model.FOUNDATION_CONDITION,
                                      '.    if ${PKGPATH} != ""')
         with self.assertRaisesRegex(ValueError, 'dependency cycle'):
             model.reachable(model.graph(mutant))

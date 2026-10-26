@@ -43,15 +43,17 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
              'cxxflags': ('-std=c++17',), 'ldflags': ('-L/native/lib',)}
     selected = types.SimpleNamespace(
         tool=lambda role: tools[role], path=str(root), abi_flags=flags,
+        command=lambda role: (tools[role], '-c', '-x', 'assembler') if role == 'as' else (tools[role],),
+        compiler_family='clang',
         as_dict=lambda: {'format': 'emberbsd-native-toolset-selection',
                          'version': 1, 'api': 1, 'tools': dict(tools),
                          'abi_flags': {key: list(value) for key, value in flags.items()}})
     api = types.ModuleType('emberbsd_sdk.native_toolset')
     api.load_host_prefix = mock.Mock(return_value=selected)
-    pins = ['--host-prefix', str(root / 'host-pkg-g16')]
+    pins = ['--host-prefix', str(root / 'host-pkg-llvm')]
     destination = root / 'host-tools.mk'
     with mock.patch.dict(sys.modules, {'emberbsd_sdk.native_toolset': api}):
-        api.load_host_prefix.side_effect = SDKError('Missing native GCC16')
+        api.load_host_prefix.side_effect = SDKError('Missing selected native compiler')
         refused(adapter.main, ['write', *pins, '--output', str(destination)])
         assert not destination.exists() and not list(root.glob('.native-tools-*'))
         api.load_host_prefix.side_effect = None
@@ -63,8 +65,10 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         assert include == destination.resolve()
         assert not (root / 'selection.json').exists()
         call = api.load_host_prefix.call_args
-        assert call.args == (str(root / 'host-pkg-g16'),)
-        assert set(call.kwargs) == {'required_roles'}
+        assert call.args == (str(root / 'host-pkg-llvm'),)
+        assert set(call.kwargs) == {'required_roles', 'compiler_family'}
+        assert call.kwargs['compiler_family'] == 'clang'
+        assert b'EMBERBSD_HOST_COMPILER_FAMILY?= clang\n' in before
         assert call.kwargs['required_roles'] == tuple(adapter.ROLE_VARIABLES)
         for role in ('bmake', 'gmake', 'xz', 'xzcat', 'install'):
             assert role in call.kwargs['required_roles']
@@ -72,7 +76,9 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         # Expected values must be literals, not aliases to another variable.
         for role in adapter.ROLE_VARIABLES:
             name = '_EMBER_SDK_' + role.upper().replace('-', '_')
-            assert ('.if "${' + name + '}" != "' + tools[role] + '"').encode() in before
+            value = shlex.join(selected.command(role)) if role == 'as' else tools[role]
+            assert ('.if "${' + name + '}" != "' + value + '"').encode() in before
+        assert ('_EMBER_SDK_AS:= ' + tools['as'] + ' -c -x assembler\n').encode() in before
         for name in ('CPPFLAGS', 'CFLAGS', 'CXXFLAGS', 'LDFLAGS'):
             assert ('NATIVE_' + name + '?=').encode() in before
             assert ('HOST_' + name + '?=').encode() in before
@@ -97,6 +103,15 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         assert b'HOST_CC?= ${_EMBER_SDK_CC}' in before
         adapter.write(selected, str(destination))
         assert include.read_bytes() == before and not list(root.glob('.native-tools-*'))
+        selected.compiler_family = 'gcc'
+        with contextlib.redirect_stdout(io.StringIO()):
+            adapter.main(['write', *pins, '--compiler-family', 'gcc', '--output', str(destination)])
+        assert api.load_host_prefix.call_args.kwargs['compiler_family'] == 'gcc'
+        assert b'EMBERBSD_HOST_COMPILER_FAMILY?= gcc\n' in include.read_bytes()
+        selected.compiler_family = 'unknown'
+        refused(adapter.render, selected)
+        selected.compiler_family = 'clang'
+        adapter.write(selected, str(destination))
         verify = ['verify', *pins, '--makeconf', str(include)]
         with contextlib.redirect_stdout(io.StringIO()) as output:
             adapter.main(verify)

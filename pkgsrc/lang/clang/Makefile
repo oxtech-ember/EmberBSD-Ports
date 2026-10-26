@@ -3,9 +3,26 @@
 .include "Makefile.common"
 
 PKGNAME=	clang-${LLVM_VERSION}
-PKGREVISION=	1
+PKGREVISION=	2
 # These installed scripts use Python without linking libpython.
 DEPENDS+=	${PYDEPENDENCY}
+DEPENDS+=	lld-${LLVM_VERSION}{,nb*}:../../devel/lld
+DEPENDS+=	mksh>=59b:../../shells/mksh
+
+# SDK native-tool contracts pass assembler paths without command arguments.
+SUBST_CLASSES+=		clang-as
+SUBST_STAGE.clang-as=	pre-configure
+SUBST_FILES.clang-as=	clang-as
+SUBST_VARS.clang-as=	PREFIX
+INSTALLATION_DIRS+=	bin
+
+post-extract:
+	${CP} ${FILESDIR}/clang-as.sh ${WRKSRC}/clang-as
+
+post-install: install-clang-as
+
+install-clang-as:
+	${INSTALL_SCRIPT} ${WRKSRC}/clang-as ${DESTDIR}${PREFIX}/bin/clang-as
 
 COMMENT=	C language family frontend for LLVM
 

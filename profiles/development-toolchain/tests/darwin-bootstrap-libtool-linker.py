@@ -29,7 +29,7 @@ def main():
     if len(sys.argv) != 4:
         raise SystemExit(__doc__)
     exported, bmake, makeconf = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
-    names = ['EMBERBSD_GCC16_SEED_CC', 'CONFIGURE_ENV']
+    names = ['EMBERBSD_DARWIN_SEED_CC', 'CONFIGURE_ENV']
     out = subprocess.run([bmake, '-C', str(exported / 'devel/libffi'), 'EMBERBSD_DARWIN_BOOTSTRAP=yes',
                           f'MAKECONF={makeconf}', 'show-vars', f'VARNAMES={" ".join(names)}'],
                          check=True, capture_output=True, text=True,
@@ -37,7 +37,7 @@ def main():
     values = dict(zip(names, out))
     # libtool.m4 finds LD with `$CC -print-prog-name=ld` (_LT_PATH_LD) and
     # classifies it from `$LD -v` (_LT_PATH_LD_GNU).
-    linker = subprocess.run(shlex.split(values['EMBERBSD_GCC16_SEED_CC']) + ['-print-prog-name=ld'], check=True,
+    linker = subprocess.run(shlex.split(values['EMBERBSD_DARWIN_SEED_CC']) + ['-print-prog-name=ld'], check=True,
                             capture_output=True, text=True).stdout.strip()
     probe = subprocess.run([linker, '-v'], stdin=subprocess.DEVNULL, capture_output=True, text=True)
     banner = (probe.stdout + probe.stderr).strip().splitlines()[0]

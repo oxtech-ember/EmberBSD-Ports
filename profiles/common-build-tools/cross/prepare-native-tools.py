@@ -51,11 +51,19 @@ def literal(value):
 
 def render(toolset):
     lines = ['# Generated from the selected Ports host prefix. Do not edit.']
+    family = toolset.compiler_family
+    if family not in ('clang', 'gcc'):
+        from emberbsd_sdk.errors import SDKError
+        raise SDKError('The native compiler family must be clang or gcc')
+    lines += ['EMBERBSD_HOST_COMPILER_FAMILY?= ' + family,
+              '.if "${EMBERBSD_HOST_COMPILER_FAMILY}" != "' + family + '"',
+              '.error The native compiler family differs from the selected prefix',
+              '.endif']
     search = literal(toolset.path)
     lines += ['PATH:= ' + search, '.if "${PATH}" != "' + search + '"',
               '.error PATH differs from the selected host prefix', '.endif', '.export PATH']
     for role, variable in ROLE_VARIABLES.items():
-        value = literal(toolset.tool(role))
+        value = literal(shlex.join(toolset.command(role)) if role == 'as' else toolset.tool(role))
         if "'" in value:
             from emberbsd_sdk.errors import SDKError
             raise SDKError('The native make mapping does not support quotes in tool paths')
@@ -100,7 +108,8 @@ def selection(arguments):
     from emberbsd_sdk.errors import SDKError
     from emberbsd_sdk.native_toolset import load_host_prefix
     toolset = load_host_prefix(arguments.host_prefix,
-                              required_roles=tuple(ROLE_VARIABLES))
+                              required_roles=tuple(ROLE_VARIABLES),
+                              compiler_family=arguments.compiler_family)
     if Path(sys.executable).resolve(strict=True) != Path(toolset.tool('python')).resolve(strict=True):
         raise SDKError('The adapter interpreter differs from the selected Ports Python')
     return toolset
@@ -130,6 +139,7 @@ def main(arguments):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('operation', choices=('write', 'verify'))
     parser.add_argument('--host-prefix', required=True)
+    parser.add_argument('--compiler-family', choices=('clang', 'gcc'), default='clang')
     parser.add_argument('--output')
     parser.add_argument('--makeconf')
     args = parser.parse_args(arguments)
