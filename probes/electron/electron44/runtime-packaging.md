@@ -7,8 +7,10 @@ patch series at its existing owner. Do not add a second fetch-only recipe.
 
 ## Build boundary
 
-The recipe currently fetches Electron 44.9.3 and Node 24.22.1. It does not prepare
-the complete Chromium DEPS tree or run GN and Ninja. Do not use `NO_BUILD`, a
+The recipe currently fetches Electron 44.9.3 and Node 24.22.1. The
+[source preparer](source-preparation.md) creates a pinned DEPS input workspace
+and applies the recipe-local security series. It does not yet acquire the
+complete Chromium DEPS tree or run GN and Ninja. Do not use `NO_BUILD`, a
 downloaded binary ZIP, or an externally supplied ZIP as its ordinary build.
 
 The SDK already supplies the needed mechanisms. Load the native Ports
@@ -19,8 +21,9 @@ Electron executor or qualification format is not required.
 
 The missing recipe integration is concrete:
 
-1. Prepare the full pinned Electron DEPS source and ordered Ports patches in
-   the recipe's own work tree. The two current distfiles are insufficient.
+1. Starting with the prepared DEPS input, acquire the full pinned dependency
+   tree and apply upstream and ordered Ports BSD patches in the recipe's own
+   work tree. The two current distfiles are insufficient.
 2. Map the selected native prefix and independent target SDK to GN arguments.
    Clang is the default; select GCC only for an explicit platform requirement.
    Bind the native compiler paths and ordered ABI arguments,
@@ -38,7 +41,8 @@ The missing recipe integration is concrete:
    Use its actual SHA256 as a byte-stability check. The hash does not accept
    the source graph, compiler, sysroot or build by itself.
 
-The current standalone source and GN fixtures do not implement steps 1 and 2.
+The initial source preparer and standalone GN fixtures do not complete steps 1
+and 2.
 They also do not establish a production GN graph for the selected native SDK.
 Those are recipe bindings to the existing APIs, not missing SDK executors.
 Keep the probe until this integration is implemented and checked with real GN.

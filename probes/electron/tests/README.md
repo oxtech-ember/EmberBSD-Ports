@@ -2,6 +2,14 @@
 
 Run these commands from the Ports repository root.
 
+The source-only [DEPS preparation regression](../electron44/source-preparation.md#regression-checks)
+uses control Python and an explicit Git executable; no installed SDK is needed:
+
+```sh
+/absolute/control-python -B probes/electron/tests/electron-source-prepare.py \
+  --git /absolute/git --electron-source /absolute/electron-pristine
+```
+
 Run the regressions with host CPython 3.15 and its standard library. Integration
 tests select an SDK API 1 source with `--sdk-source` and check its module origin.
 Their commands, stable SHA256 hashes and JSON receipts use that SDK. Select the

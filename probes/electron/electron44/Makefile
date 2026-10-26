@@ -31,9 +31,10 @@ BUILD_HOST_NODE=	${EMBERBSD_HOST_NODE}
 BUILD_HOST_NPM=		${EMBERBSD_HOST_NPM}
 
 # Electron v44.9.3 pins Chromium ${CHROMIUM_VERSION} in DEPS.  The Chromium
-# source comes from the pinned gclient dependency graph, not a mismatched
+# source preparation starts with files/prepare-sources.py and its pinned
+# gclient dependency graph, not a mismatched
 # chromium-browser-official tarball.  Keep its DEPS revision and the NetBSD
-# overlay revision in the build receipt.
+# overlay revision with the build inputs.
 # TODO(build): apply the NetBSD patch set to this exact Chromium pin, add the
 # Electron target GN configuration, build with the selected SDK, and package
 # the runtime.

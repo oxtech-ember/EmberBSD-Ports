@@ -90,6 +90,14 @@ and build acceptance.
   startup or NetBSD media capture. Changes to these generic files require
   impact review for Windows and NetBSD.
 
+## Electron source preparation
+
+The recipe-owned [source preparer](electron44/source-preparation.md) verifies a
+clean pinned Electron checkout, applies its complete recipe-local patch series
+in order and creates an unmanaged `.gclient` with immutable Chromium and Node
+pins. It runs no dependency sync or hooks. Full DEPS acquisition, the remaining
+BSD overlay adaptations and GN integration remain necessary.
+
 ## Electron runtime packaging
 
 The [runtime staging contract](electron44/runtime-packaging.md) describes the
@@ -454,7 +462,8 @@ the independent host default and both explicit host modes. With
 `--baseline-source`, two negative cases demonstrate the inherited-mode defect.
 Compiler paths, linker drivers, CPU/OS and assembler flags must stay separate.
 These small GN fixtures run no compiler, Ninja or complete Chromium graph.
-The ordinary Electron recipe still needs DEPS preparation and GN bindings.
+The ordinary Electron recipe still needs the full dependency sync, BSD overlay
+integration and GN bindings; its initial DEPS input preparation is available.
 
 ## Explicit native macOS GCC host alternative
 
