@@ -11,9 +11,10 @@ import subprocess
 import sys
 
 sys.dont_write_bytecode = True
-if len(sys.argv) != 5:
-    raise SystemExit('Use EXPORTED_PKGSRC MAKECONF BMAKE NEW_WORK')
+if len(sys.argv) not in (5, 6):
+    raise SystemExit('Use EXPORTED_PKGSRC MAKECONF BMAKE NEW_WORK [BOOTSTRAP_MAKECONF]')
 export, makeconf, bmake = map(lambda value: Path(value).resolve(strict=True), sys.argv[1:4])
+bootstrap_makeconf = Path(sys.argv[5]).resolve(strict=True) if len(sys.argv) == 6 else None
 work = Path(sys.argv[4]).absolute()
 work.mkdir()
 root = Path(__file__).resolve().parents[3]
@@ -34,13 +35,14 @@ selected.chmod(0o755)
 nonexec = work / 'non-executable'
 nonexec.write_text('Labelled non-executable selection fixture.\n')
 rows = []
-fields = ('OPSYS', 'USE_CROSS_COMPILE', 'PKG_LD', 'PKG_FAIL_REASON', 'CMAKE_CONFIGURE_ARGS')
+fields = ('OPSYS', 'USE_CROSS_COMPILE', 'PKG_LD', 'EMBERBSD_DARWIN_LD64_LLD',
+          'PKG_FAIL_REASON', 'CMAKE_CONFIGURE_ARGS')
 
 
-def query(package, name, selectors=()):
+def query(package, name, selectors=(), *, configuration=makeconf):
     # Keep unrelated libxml2 option discovery out of this isolated metadata query.
     command = [str(bmake), '-C', str(tree / 'lang' / package),
-               'MAKECONF=' + str(makeconf), 'WRKOBJDIR=' + str(work / 'objects'),
+               'MAKECONF=' + str(configuration), 'WRKOBJDIR=' + str(work / 'objects'),
                'PKG_DBDIR=' + str(work / 'pkgdb'), 'PKG_BUILD_OPTIONS.libxml2=',
                'EMBERBSD_DARWIN_TOOL_PHASE=full', *selectors]
     for field in fields:
@@ -54,6 +56,21 @@ def query(package, name, selectors=()):
     rows.append(dict(package=package, case=name, argv=command, values=row))
     (work / 'receipt.json').write_text(json.dumps(rows, indent=2) + '\n')
     return row
+
+
+# The real initial configuration binds LD, not the later compiler.mk PKG_LD
+# snapshot. A fixture that supplies PKG_LD early hides recipe include-order bugs.
+if bootstrap_makeconf is not None:
+    for package in ('llvm', 'clang'):
+        bootstrap = query(package, 'bootstrap-selected-linker', [
+            'EMBERBSD_DARWIN_BOOTSTRAP=yes', 'EMBERBSD_DARWIN_TOOL_PHASE=initial'],
+            configuration=bootstrap_makeconf)
+        assert not bootstrap['PKG_FAIL_REASON'], bootstrap
+        assert bootstrap['PKG_LD'] == bootstrap['EMBERBSD_DARWIN_LD64_LLD'], bootstrap
+        selected_linkers = [arg.split('=', 1)[1]
+                            for arg in shlex.split(bootstrap['CMAKE_CONFIGURE_ARGS'])
+                            if arg.startswith('-DLD64_EXECUTABLE:')]
+        assert selected_linkers and set(selected_linkers) == {bootstrap['PKG_LD']}, bootstrap
 
 
 for package in ('llvm', 'clang'):

@@ -564,9 +564,14 @@ alone does not imply that scope. Those uninstalled tool outputs are not a
 complete LLVM package.
 The SDK controller separately owns its fixed five-target operation and exact
 LLVM dependency closure.
-`tests/llvm-darwin-libtool.py EXPORTED_PKGSRC MAKECONF BMAKE NEW_WORK` checks
+`tests/llvm-darwin-libtool.py EXPORTED_PKGSRC MAKECONF BMAKE NEW_WORK
+[BOOTSTRAP_MAKECONF]` checks
 actual LLVM/Clang metadata in both phases, including the effective final CMake
 dylib settings, invalid tool selections and unchanged non-Darwin/cross guards.
+LLVM loads the pkgsrc compiler snapshot after its options and before validating
+Darwin selectors. The optional bootstrap MAKECONF exercises its actual selected
+`LD` without an early `PKG_LD` override, including the compiler snapshot and
+forwarded `LD64_EXECUTABLE`. It invokes no package build target.
 This profile does not qualify the uninstalled LLVM package or future graph nodes.
 
 Run `tests/cmake-initial-source.py` with `--cmake-source` and `--llvm-source`
