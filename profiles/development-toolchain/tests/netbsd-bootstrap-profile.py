@@ -20,6 +20,7 @@ from pathlib import Path
 KINDS = ('BOOTSTRAP_DEPENDS', 'TOOL_DEPENDS', 'BUILD_DEPENDS', 'DEPENDS')
 VARS = (*KINDS, 'TEST_DEPENDS', 'MAKE', '_MAKE', 'SHELL', 'SH', 'CONFIG_SHELL', 'TOOLS_SHELL',
         'PKGNAME', 'PATH', 'EMBERBSD_NETBSD_UTILITY_BIN',
+        'EMBERBSD_NETBSD_NATIVE_TOOLS', 'EMBERBSD_NETBSD_TOOL.uniq',
         'WRAPPER_BINDIR', 'BUILDLINK_DIR', 'TOOLS_DIR', '_GCC_DIR',
         'CC', 'CXX', 'CPP', 'PKG_CC', 'PKG_CXX', 'PKG_CPP',
         'CWRAPPERS_PREPEND.cc', 'CWRAPPERS_PREPEND.cxx', 'CWRAPPERS_PREPEND.cpp',
@@ -38,7 +39,7 @@ VARS = (*KINDS, 'TEST_DEPENDS', 'MAKE', '_MAKE', 'SHELL', 'SH', 'CONFIG_SHELL', 
         'TOOLS_PLATFORM.ar', 'TOOLS_PLATFORM.as', 'TOOLS_PLATFORM.ld',
         'TOOLS_PLATFORM.ranlib', 'TOOLS_PLATFORM.nm', 'TOOLS_PLATFORM.strip',
         'TOOLS_PLATFORM.cpp', 'TOOLS_PLATFORM.c++', 'TOOLS_PLATFORM.g++', 'TOOLS_PLATFORM.awk', 'TOOLS_PLATFORM.sh',
-        'TOOLS_PLATFORM.pkg-config',
+        'TOOLS_PLATFORM.pkg-config', 'TOOLS_PLATFORM.uniq',
         'TOOLS_PLATFORM.bison-yacc',
         'PLIST.builtin', 'INSTALLATION_DIRS',
         'USE_PKGSRC_GCC', 'USE_PKGSRC_GCC_RUNTIME',
@@ -273,6 +274,30 @@ def check_dependency_patterns(policy_graph, package_names, pkg_admin, pkg_admin_
 def check(export, source_tree, bmake, makeconf, bootstrap_mk, work,
           pkg_admin, pkg_admin_sha256):
     profile = export / PROFILE
+    native_tools = next((line.split('=', 1)[1].strip()
+                         for line in makeconf.read_text().splitlines()
+                         if line.startswith('EMBERBSD_NETBSD_NATIVE_TOOLS=')), None)
+    require(native_tools, 'MAKECONF has no closed native utility roster')
+    extended_roster = ' '.join((*[role for role in words(native_tools) if role != 'uniq'],
+                               'uniq'))
+    unbound_utility = run_make(
+        bmake, bootstrap_mk, export, source_tree, makeconf, 'lang/gcc16', work,
+        overrides=('EMBERBSD_NETBSD_NATIVE_TOOLS=' + extended_roster,
+                   'EMBERBSD_NETBSD_TOOL.uniq='))
+    require(unbound_utility.returncode != 0,
+            'the source profile accepted uniq without an admitted utility route')
+    uniq_path = '/netbsd-profile-test/utility/bin/uniq'
+    routed_utility = unpack(run_make(
+        bmake, bootstrap_mk, export, source_tree, makeconf, 'lang/gcc16', work,
+        overrides=('EMBERBSD_NETBSD_NATIVE_TOOLS=' + extended_roster,
+                   'EMBERBSD_NETBSD_TOOL.uniq=' + uniq_path)))
+    require('uniq' in words(routed_utility['EMBERBSD_NETBSD_NATIVE_TOOLS']) and
+            routed_utility['EMBERBSD_NETBSD_TOOL.uniq'] == uniq_path and
+            routed_utility['TOOLS_PLATFORM.uniq'] == uniq_path,
+            'an admitted uniq tuple did not reach TOOLS_PLATFORM unchanged: '
+            + repr({name: routed_utility[name] for name in (
+                'EMBERBSD_NETBSD_NATIVE_TOOLS', 'EMBERBSD_NETBSD_TOOL.uniq',
+                'TOOLS_PLATFORM.uniq')}))
     values = unpack(run_make(bmake, bootstrap_mk, export, source_tree, makeconf,
                              'lang/gcc16', work))
     actual_shell = shell_probe(bmake, bootstrap_mk, export, makeconf, work)
