@@ -1,11 +1,11 @@
 # EmberBSD: Qt 6 Wi-Fi tray manager for wpa_supplicant.
 DISTNAME= EmberBSD-Examples
 PKGNAME= ember-wifi-0.1.0
-PKGREVISION= 1
+PKGREVISION= 2
 CATEGORIES= net
 MASTER_SITES= ${MASTER_SITE_GITHUB:=oxtech-ember/}
 GITHUB_PROJECT= EmberBSD-Examples
-GITHUB_TAG= 03a08fbff928b76e8f5d96bdcb53a319ff26c763
+GITHUB_TAG= d233a5fa2ce913cd496a22c4ad522ad9a9e204c9
 WRKSRC= ${WRKDIR}/${GITHUB_PROJECT}-${GITHUB_TAG}/desktop/ember-wifi
 
 HOMEPAGE= https://github.com/oxtech-ember/EmberBSD-Examples/tree/${GITHUB_TAG}/desktop/ember-wifi
