@@ -18,6 +18,25 @@ import sys
 import tarfile
 import tempfile
 
+# Ports harness, corpus and recipe inputs used by the Cairo LZO build.
+PORTS_EVIDENCE_PATHS = (
+    'pkgsrc/archivers/lzo/Makefile',
+    'pkgsrc/archivers/lzo/distinfo',
+    'pkgsrc/archivers/lzo/patches',
+    'pkgsrc/graphics/cairo/Makefile',
+    'pkgsrc/graphics/cairo/buildlink3.mk',
+    'pkgsrc/graphics/cairo/distinfo',
+    'pkgsrc/graphics/cairo/options.mk',
+    'pkgsrc/graphics/cairo/patches',
+    'profiles/common-graphics/tests/cairo-lzo-bounds.c',
+    'profiles/common-graphics/tests/cairo-lzo-bounds.py',
+    'profiles/common-graphics/tests/cairo-lzo-corpus',
+    'profiles/common-graphics/tests/cairo-lzo-evidence.py',
+    'profiles/common-graphics/tests/cairo-lzo-fuzz.c',
+    'profiles/common-graphics/tests/cairo-lzo-lsan-probe.c',
+    'profiles/common-graphics/tests/cairo-lzo-seedgen.c',
+)
+
 # Files that fuzz-check.py imports, including lazily selected host backends.
 SDK_FUZZ_CHECK_PATHS = (
     'scripts/fuzz-check.py',
@@ -45,34 +64,35 @@ def _same_tree(left, right):
         for name in names if (left / name).is_file())
 
 
-def snapshot_sdk(sdk_root, parent):
-    """Extract the fuzz-check files of the SDK HEAD commit below parent.
+def snapshot_commit(checkout, paths, parent):
+    """Extract paths from the checkout's HEAD commit below parent/<commit>.
 
-    The copy is independent of later changes to the SDK checkout. An existing
+    The copy is independent of later changes to the checkout. An existing
     snapshot is reused only when it still matches the commit bytes exactly.
     """
-    sdk_root = Path(sdk_root).resolve(strict=True)
+    checkout = Path(checkout).resolve(strict=True)
     revision = subprocess.check_output(
-        ['git', '-C', str(sdk_root), 'rev-parse', '--verify', 'HEAD^{commit}'],
+        ['git', '-C', str(checkout), 'rev-parse', '--verify', 'HEAD^{commit}'],
         text=True).strip()
     archive = subprocess.check_output(
-        ['git', '-C', str(sdk_root), 'archive', '--format=tar', revision, '--',
-         *SDK_FUZZ_CHECK_PATHS])
+        ['git', '-C', str(checkout), 'archive', '--format=tar', revision, '--',
+         *paths])
     parent = Path(parent)
     parent.mkdir(parents=True, exist_ok=True)
     destination = parent / revision
-    staging = Path(tempfile.mkdtemp(prefix='.sdk-', dir=parent))
+    staging = Path(tempfile.mkdtemp(prefix='.snapshot-', dir=parent))
     try:
         with tarfile.open(fileobj=io.BytesIO(archive)) as stream:
             stream.extractall(staging, filter='data')
-        if sorted(str(path) for path in _tree(staging)
-                  if (staging / path).is_file()) != sorted(SDK_FUZZ_CHECK_PATHS):
-            raise SystemExit(f'SDK commit {revision} lacks the fuzz-check files')
-        for path in SDK_FUZZ_CHECK_PATHS:
-            os.chmod(staging / path, 0o444)
+        missing = [path for path in paths if not (staging / path).exists()]
+        if missing:
+            raise SystemExit(f'commit {revision} lacks evidence inputs: {missing}')
+        for path in _tree(staging):
+            if (staging / path).is_file():
+                os.chmod(staging / path, 0o444)
         if destination.exists():
             if not _same_tree(staging, destination):
-                raise SystemExit(f'SDK snapshot differs from commit {revision}: {destination}')
+                raise SystemExit(f'snapshot differs from commit {revision}: {destination}')
         else:
             staging.rename(destination)
     finally:
@@ -98,7 +118,12 @@ def main():
 
     work = args.work_root.resolve(strict=True)
     distfiles = args.distfiles.resolve(strict=True)
-    ports = args.ports_root.resolve(strict=True)
+    checkout = args.ports_root.resolve(strict=True)
+    if subprocess.check_output(['git', '-C', str(checkout), 'status', '--porcelain'],
+                               text=True).strip():
+        parser.error('Ports checkout must be clean before creating evidence')
+    ports, ports_revision = snapshot_commit(checkout, PORTS_EVIDENCE_PATHS,
+                                            work / 'ports-snapshots')
     args.cairo_source = work / 'cairo-1.18.6'
     args.baseline_source = work / 'cairo-before-lzo/cairo-1.18.6'
     args.lzo_clang_source = work / 'lzo-2.10'
@@ -123,17 +148,11 @@ def main():
     if args.memcheck.is_file() != args.memcheck_build.is_dir():
         parser.error('Memcheck binary and its separate Meson build must be present together')
 
-    sdk_root, sdk_revision = snapshot_sdk(args.sdk_root, work / 'sdk-snapshots')
+    sdk_root, sdk_revision = snapshot_commit(args.sdk_root, SDK_FUZZ_CHECK_PATHS,
+                                             work / 'sdk-snapshots')
     sys.dont_write_bytecode = True
     sys.path.insert(0, str(sdk_root / 'src'))
     from emberbsd_sdk.fuzz_check import FUZZ_MANIFEST_VERSION, file_sha256, tree_files
-
-    ports = args.ports_root.resolve(strict=True)
-    ports_revision = subprocess.check_output(
-        ['git', '-C', str(ports), 'rev-parse', 'HEAD'], text=True).strip()
-    if subprocess.check_output(['git', '-C', str(ports), 'status', '--porcelain'],
-                               text=True).strip():
-        parser.error('Ports checkout must be clean before creating evidence')
 
     sources = []
     seen_paths = set()
@@ -201,29 +220,7 @@ def main():
     add_tree('meson-1.12.1-source', 'Meson 1.12.1 archive SHA256 ab0a6ca09f8ef70c564c8241fb5a23957886a0b53fb58412b5e07eaf07dba743',
              args.meson_source)
 
-    for relative in ('distinfo', 'options.mk', 'buildlink3.mk'):
-        add_file('cairo-recipe-' + relative,
-                 'Ports main ' + ports_revision,
-                 cairo_dist / relative)
-    for patch in sorted((cairo_dist / 'patches').iterdir()):
-        if patch.is_file():
-            add_file('cairo-recipe-patch-' + patch.name,
-                     'Ports main ' + ports_revision, patch)
-    for relative in ('distinfo', 'Makefile'):
-        add_file('lzo-recipe-' + relative, 'Ports main ' + ports_revision,
-                 lzo_dist / relative)
-    for patch in sorted((lzo_dist / 'patches').iterdir()):
-        if patch.is_file():
-            add_file('lzo-recipe-patch-' + patch.name,
-                     'Ports main ' + ports_revision, patch)
-    test_root = ports / 'profiles/common-graphics/tests'
-    for name in ('cairo-lzo-fuzz.c', 'cairo-lzo-seedgen.c',
-                 'cairo-lzo-evidence.py', 'cairo-lzo-bounds.py',
-                 'cairo-lzo-bounds.c', 'cairo-lzo-lsan-probe.c'):
-        add_file(name, 'Ports main ' + ports_revision, test_root / name)
-    add_tree('initial-corpus-source', 'Ports main ' + ports_revision,
-             args.corpus)
-
+    add_tree('ports', 'Ports commit ' + ports_revision + ' (git archive)', ports)
     add_tree('sdk', 'SDK commit ' + sdk_revision + ' (git archive)', sdk_root)
 
     add_file('gcc16-cairo-fuzzer-macro-context',

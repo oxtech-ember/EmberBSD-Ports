@@ -29,18 +29,25 @@ tools, binaries, corpus and build logs. Use the work-tree layout created by
 the local build procedure. `results/accepted/` contains the successful setup,
 compile, link and negative-control logs.
 
-The adapter does not record files from the moving SDK checkout. It runs
-`git archive` for the checkout's `HEAD` commit and extracts the fuzz-check
-modules to `<work-root>/sdk-snapshots/<commit>/`. The manifest lists those
-read-only copies with that commit, and the adapter imports the SDK from them.
-A later SDK commit therefore leaves `verify --manifest` valid, while a changed
-snapshot file still fails it. A rerun reuses an existing snapshot only when it
-matches the commit exactly. Run `fuzz-check.py` from the same snapshot.
-The regression check clones the SDK checkout, adds a later `process.py`
-commit, and alters the snapshot copy:
+The adapter does not record files from the moving SDK or Ports checkouts.
+It runs `git archive` for each checkout's `HEAD` commit and extracts the
+recorded inputs to `<work-root>/sdk-snapshots/<commit>/` and
+`<work-root>/ports-snapshots/<commit>/`. The SDK copy holds the fuzz-check
+modules; the Ports copy holds the Cairo and LZO recipe files and patches, the
+harness sources and the seed corpus. The manifest lists the read-only copies
+with their commits. The adapter imports the SDK from its copy and checks the
+distfiles against the Ports copy, which also supplies the initial corpus. Later
+SDK or Ports commits therefore leave `verify --manifest` valid, while a changed
+snapshot file still fails it. A rerun reuses a snapshot only when it matches
+the commit exactly. The Ports checkout must still be clean. Run
+`fuzz-check.py` from the SDK snapshot.
+
+The regression check clones the SDK, builds a Ports repository from the
+recorded paths, adds later commits to `process.py`, the harness and a Cairo
+patch, and alters each snapshot copy:
 
 ```sh
-python3 profiles/common-graphics/tests/cairo-lzo-evidence-sdk.py \
+python3 profiles/common-graphics/tests/cairo-lzo-evidence-snapshot.py \
   --sdk-root /absolute/EmberBSD-SDK
 ```
 
