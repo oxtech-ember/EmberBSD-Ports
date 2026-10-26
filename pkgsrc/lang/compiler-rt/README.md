@@ -75,6 +75,9 @@ builds a real static archive: the observed GNU-wrapper selection must fail,
 while the explicitly selected LLVM Darwin archiver must succeed and contain
 the compiled object. It takes the same explicit configure-input JSON as the
 parallel outline-atomics regression, plus `--libtool` and `--baseline-libtool`.
+Source preparation routes patch backups to temporary directories outside the
+published source. This supports native BSD patch, whose `-V none` may still
+write `.orig` files; unexpected backups or rejects in the source remain errors.
 
 `patch-13-darwin-outline-atomics` makes the shared outline-atomics helper
 files dependencies of one producer target. Both ordinary and kernel-extension
