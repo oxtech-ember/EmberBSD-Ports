@@ -30,6 +30,8 @@ Seal the three executables from that real build:
 
 ```sh
 TMPDIR=/absolute/external/tmp python3.15 seal-mesa-generators.py --sdk-source "$SDK_SOURCE" \
+    --host-prefix "$HOST_PREFIX" --pkgdb "$HOST_PKGDB" \
+    --lock-directory "$LOCK_DIRECTORY" \
     /absolute/mesa-26.2.5.tar.xz /absolute/native-mesa-source \
     /absolute/native-mesa-build /absolute/spirv-val /absolute/new-generators
 ```

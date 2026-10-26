@@ -22,6 +22,9 @@ DEPENDENCIES = (
     'py315-mako>=1.4.3', 'py315-packaging>=26.3', 'py315-yaml>=6.0.3nb1',
     'py315-lxml>=6.1.3', 'py315-rnc2rng>=2.7.0',
     'py315-rply>=0.7.8', 'py315-appdirs>=1.4.4',
+    'llvm>=23.1.4<23.1.5', 'clang>=23.1.4<23.1.5',
+    'spirv-headers>=1.4.363.0', 'spirv-tools>=2026.4',
+    'spirv-llvm-translator>=23.1.2<23.2',
 )
 
 
@@ -51,91 +54,13 @@ def archive_pin(table, name):
     return digest, url
 
 
-def khronos_pins(helpers):
-    result = dict(load(helpers / 'build-deps.py', 'mesa_native_dependency_policy').SOURCE_PINS)
-    require(set(result) == {'SPIRV-Headers', 'SPIRV-LLVM-Translator'}, 'Unsupported Khronos dependency source set')
-    result['SPIRV-Tools'] = load(helpers / 'apply-spirv-tools-patches.py', 'mesa_spirv_source_policy').PIN
-    require(all(isinstance(value, str) and re.fullmatch(r'[0-9a-f]{40}', value) for value in result.values()), 'Invalid Khronos source pin')
-    return result
+HOST_ROLES = ('cc', 'cxx', 'cpp', 'ar', 'ranlib', 'nm', 'strip',
+              'sh', 'python', 'cmake', 'meson', 'ninja', 'pkg-config',
+              'pkg_info', 'llvm-config', 'flex', 'bison', 'bsdtar', 'patch',
+              'curl', 'otool', 'spirv-val')
 
 
-def build(arguments, sdk_root):
-    from emberbsd_sdk.errors import ProcessOwnershipError
-    from emberbsd_sdk.inventory import sha256_file
-    from emberbsd_sdk.jsonio import write_json
-    from emberbsd_sdk.paths import canonical_new, entry, real_directory, reject_overlap
-    from emberbsd_sdk.process import ContextLocks, run_logged, sanitized_environment
-    from emberbsd_sdk.stream import capture_streamed
-
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--profile', choices=('intel', 'powervr', 'all'), default='powervr')
-    parser.add_argument('--host-prefix', required=True)
-    parser.add_argument('--jobs', type=int, default=4)
-    parser.add_argument('work')
-    parser.add_argument('distdir')
-    args = parser.parse_args(arguments)
-    require(platform.system() == 'Darwin' and platform.machine() == 'arm64', 'The native generators require macOS ARM64')
-    require(1 <= args.jobs <= 256, 'Use a positive job count no greater than 256')
-    for value in (args.host_prefix, args.work, args.distdir):
-        require(re.fullmatch(r'/[A-Za-z0-9_./-]+', value), 'Use absolute paths without shell metacharacters')
-    host = Path(args.host_prefix).resolve(strict=True)
-    distdir = Path(args.distdir).resolve(strict=True)
-    real_directory(str(host))
-    real_directory(str(distdir))
-    reject_overlap(str(host), str(distdir))
-    work = Path(canonical_new(args.work))
-    real_directory(str(work.parent))
-    require(entry(str(work)) is None, 'NEW_WORK must not exist; preserve earlier work')
-    for value in (host, distdir, PORTS):
-        reject_overlap(str(work), str(value))
-    python = host / 'bin/python3.15'
-    require(python.resolve(strict=True) == Path(sys.executable).resolve(strict=True),
-            'Run this command with the selected HOST_PREFIX/bin/python3.15')
-    tools = {name: host / 'bin' / name for name in ('cmake', 'ninja', 'pkg-config')}
-    tools['pkg_info'] = host / 'sbin/pkg_info'
-    require(all(os.access(path, os.X_OK) for path in tools.values()), 'Missing native pkgsrc tool')
-    cross = PORTS / 'profiles/common-build-tools/cross'
-    graphics = PORTS / 'profiles/common-graphics'
-    helpers = PORTS / 'probes/a733-accelerators/host-tools'
-    scripts = [Path(__file__).resolve(), cross / 'prepare-llvm-macos.py', cross / 'llvm_host.py',
-               graphics / 'cross/seal-mesa-generators.py', helpers / 'build-deps.py', helpers / 'configure-host.sh',
-               helpers / 'prepare-llvm-include-overlay.py', helpers / 'llvm-include-wrapper.sh',
-               helpers / 'apply-spirv-tools-patches.py', helpers / 'check-spirv-link-order.py',
-               PORTS / 'pkgsrc/parallel/spirv-tools/patches/patch-source_link_linker.cpp',
-               PORTS / 'pkgsrc/parallel/spirv-tools/patches/patch-installed-gtest',
-               helpers / 'mesa-26.2.4-pco-bvnc.patch',
-               PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h',
-               graphics / 'sources.tsv', PORTS / 'profiles/common-build-tools/sources.tsv']
-    scripts.append(Path(sdk_source.__file__).resolve())
-    scripts.extend(sorted((Path(sdk_root) / 'src/emberbsd_sdk').rglob('*.py')))
-    source_hashes = {str(path): sha256_file(str(path)) for path in scripts}
-    with ContextLocks([str(work)], str(work.parent)):
-        require(entry(str(work)) is None, 'NEW_WORK appeared before admission')
-        work.mkdir()
-        (work / 'tmp').mkdir()
-        (work / 'logs').mkdir()
-        environment = sanitized_environment()
-        environment.update(HOST_PYTHON=str(python), EMBERBSD_SDK_SOURCE=sdk_root,
-                           CMAKE=str(tools['cmake']), JOBS=str(args.jobs), PYTHONDONTWRITEBYTECODE='1',
-                           TMPDIR=str(work / 'tmp'), TMP=str(work / 'tmp'), TEMP=str(work / 'tmp'),
-                           PATH=f'{host}/bin:/usr/bin:/bin:/usr/sbin:/sbin')
-
-        def query(argv):
-            result = capture_streamed(list(map(str, argv)), env=environment, timeout=120,
-                                      stdout_limit=16 * 1024 * 1024, stderr_limit=1024 * 1024)
-            require(not result.stderr_truncated, 'Native preflight stderr exceeds its limit')
-            return result.value.decode('utf-8').strip()
-
-        def run(argv, name, cwd=None):
-            try:
-                run_logged(list(map(str, argv)), str(work / 'logs' / (name + '.log')), cwd=cwd, env=environment)
-            except ProcessOwnershipError as error:
-                write_json(str(work / sdk_source.PRODUCER_QUARANTINE), dict(error=str(error), step=name))
-                raise
-
-        providers = {pattern: query([tools['pkg_info'], '-e', pattern]) for pattern in DEPENDENCIES}
-        require(all(providers.values()), 'Missing native package dependency')
-        module_query = '''import importlib,json,pathlib,sys
+MODULE_QUERY = '''import importlib,json,pathlib,sys
 root=pathlib.Path(sys.argv[1]).resolve()
 names=['mesonbuild','mako','packaging','yaml','lxml.etree','rnc2rng','rply','appdirs']
 modules={name:importlib.import_module(name) for name in names}
@@ -144,77 +69,216 @@ assert all(pathlib.Path(module.__file__).resolve().is_relative_to(root) for modu
 assert modules['yaml'].__with_libyaml__
 print(json.dumps({name:str(pathlib.Path(module.__file__).resolve()) for name,module in modules.items()}))
 '''
-        modules = json.loads(query([python, '-B', '-E', '-c', module_query, str(host)]))
-        provider_paths = {str(path): str(path.resolve(strict=True)) for path in [python, *tools.values(), *map(Path, modules.values())]}
-        provider_hashes = {path: sha256_file(path) for path in provider_paths.values()}
-        write_json(str(work / 'inputs.json'), dict(source=source_hashes, providers=providers, modules=modules,
-                   provider_paths=provider_paths, provider_sha256=provider_hashes,
-                   python=str(python.resolve(strict=True)), jobs=args.jobs, profile=args.profile,
-                   native_compiler='Pinned upstream macOS LLVM/Clang SDK; no target objects'))
 
-        def fetch(name, table):
-            digest, url = archive_pin(table, name)
-            destination = distdir / name
-            with ContextLocks([str(destination)], str(work)):
-                if not os.path.lexists(destination):
-                    fd, temporary = tempfile.mkstemp(prefix='.' + name + '.part-', dir=distdir)
-                    os.close(fd)
-                    print('Retained download on failure: ' + temporary, file=sys.stderr, flush=True)
-                    run(['curl', '-fL', '--proto', '=https', '--proto-redir', '=https', '-o', temporary, url], 'fetch-' + name)
-                    require(sha256_file(temporary) == digest, 'Wrong downloaded archive SHA256: ' + name)
-                    os.chmod(temporary, 0o644)
-                    os.link(temporary, destination)
-                    os.unlink(temporary)
-                require(destination.is_file() and sha256_file(str(destination.resolve(strict=True))) == digest, 'Wrong archive SHA256: ' + name)
-            return destination.resolve(strict=True)
 
-        mesa_archive = fetch('mesa-26.2.5.tar.xz', graphics / 'sources.tsv')
-        llvm_archive = fetch('LLVM-23.1.4-macOS-ARM64.tar.xz', PORTS / 'profiles/common-build-tools/sources.tsv')
-        # Import this producer into the current controller. Do not nest an owned
-        # controller around its owned version/dependency commands.
-        sys.path.insert(0, str(cross))
-        prepare = load(cross / 'prepare-llvm-macos.py', 'mesa_native_llvm')
-        previous_environment = dict(os.environ)
-        try:
-            os.environ.clear()
-            os.environ.update(environment)
-            prepare.prepare([str(llvm_archive), str(work / 'llvm-sdk')])
-        finally:
-            os.environ.clear()
-            os.environ.update(previous_environment)
-        sdk = work / 'llvm-sdk/LLVM-23.1.4-macOS-ARM64'
-        for name, revision in khronos_pins(helpers).items():
-            source = work / 'deps/src' / name
-            source.mkdir(parents=True)
-            run(['git', '-C', source, 'init', '-q'], 'init-' + name)
-            run(['git', '-C', source, 'remote', 'add', 'origin', 'https://github.com/KhronosGroup/' + name + '.git'], 'remote-' + name)
-            run(['git', '-C', source, 'fetch', '--depth', '1', 'origin', revision], 'fetch-' + name)
-            run(['git', '-C', source, 'checkout', '--detach', revision], 'checkout-' + name)
-        dependencies = load(helpers / 'build-deps.py', 'mesa_native_dependencies')
-        previous_environment = dict(os.environ)
-        try:
-            os.environ.clear()
-            os.environ.update(environment)
-            dependencies.build([str(work / 'deps'), str(sdk), str(host)])
-        finally:
-            os.environ.clear()
-            os.environ.update(previous_environment)
-        extract = work / 'mesa-extract'
-        extract.mkdir()
-        run(['tar', '-xJf', mesa_archive, '-C', extract], 'mesa-extract')
-        source = extract / 'mesa-26.2.5'
-        run(['patch', '--no-backup-if-mismatch', '-f', '-N', '-F', '0', '-p1', '-d', source, '-i', helpers / 'mesa-26.2.4-pco-bvnc.patch'], 'mesa-bvnc-patch')
-        source.rename(work / 'mesa-source')
-        extract.rmdir()
-        run(['sh', helpers / 'configure-host.sh', work / 'native', work / 'mesa-source', sdk, host, work / 'deps/prefix'], 'build-mesa')
-        sealer = load(graphics / 'cross/seal-mesa-generators.py', 'mesa_native_sealer')
-        sealer.seal(['--profile', args.profile, str(mesa_archive), str(work / 'mesa-source'),
-                     str(work / 'native/mesa'), str(work / 'deps/prefix/bin/spirv-val'), str(work / 'sealed')])
-        require(source_hashes == {path: sha256_file(path) for path in source_hashes}, 'Builder source changed during the native build')
-        require(provider_paths == {path: str(Path(path).resolve(strict=True)) for path in provider_paths}, 'Selected native tool or module path changed')
-        require(provider_hashes == {path: sha256_file(path) for path in provider_hashes}, 'Selected native provider changed during the build')
-        write_json(str(work / 'outputs.json'), dict(sealed=str(work / 'sealed'),
-                   manifest_sha256=sha256_file(str(work / 'sealed/installed.sha256'))))
+def native_environment(native, sdk_root, temporary):
+    from emberbsd_sdk.process import sanitized_environment
+    environment = sanitized_environment()
+    # A target SDK or an ambient toolchain must not affect the native build.
+    for key in ('CC', 'CXX', 'CPP', 'AS', 'LD', 'AR', 'RANLIB', 'NM', 'STRIP',
+                'CFLAGS', 'CXXFLAGS', 'CPPFLAGS', 'LDFLAGS', 'CPATH',
+                'C_INCLUDE_PATH', 'CPLUS_INCLUDE_PATH', 'LIBRARY_PATH', 'SDKROOT',
+                'PKG_CONFIG_PATH', 'PKG_CONFIG_LIBDIR', 'PKG_CONFIG_SYSROOT_DIR',
+                'CMAKE_PREFIX_PATH', 'CMAKE_TOOLCHAIN_FILE', 'CMAKE_GENERATOR',
+                'DYLD_LIBRARY_PATH', 'DYLD_FALLBACK_LIBRARY_PATH',
+                'GCC_EXEC_PREFIX', 'COMPILER_PATH', 'PYTHONPATH', 'PYTHONHOME'):
+        environment.pop(key, None)
+    for variable, role in (('CC', 'cc'), ('CXX', 'cxx'), ('CPP', 'cpp'),
+                           ('AR', 'ar'), ('RANLIB', 'ranlib'), ('NM', 'nm'),
+                           ('STRIP', 'strip'), ('SHELL', 'sh'), ('CMAKE', 'cmake'),
+                           ('PKG_CONFIG', 'pkg-config'), ('LLVM_CONFIG', 'llvm-config')):
+        environment[variable] = native.tool(role)
+    host = Path(native.bundle_root)
+    environment.update(PATH=native.path, HOST_PYTHON=native.tool('python'),
+                       EMBERBSD_SDK_SOURCE=sdk_root, PYTHONDONTWRITEBYTECODE='1',
+                       PYTHONNOUSERSITE='1', TMPDIR=str(temporary), TMP=str(temporary),
+                       TEMP=str(temporary), CMAKE_PREFIX_PATH=str(host),
+                       PKG_CONFIG_LIBDIR=os.pathsep.join(str(host / directory)
+                           for directory in ('lib/pkgconfig', 'share/pkgconfig')))
+    return environment
+
+
+def native_file(native):
+    # Meson accepts single-quoted Python-style strings and arrays.
+    def value(words):
+        return '[' + ', '.join(repr(str(word)) for word in words) + ']'
+    names = {'c': 'cc', 'cpp': 'cxx', 'ar': 'ar', 'strip': 'strip',
+             'pkg-config': 'pkg-config', 'llvm-config': 'llvm-config',
+             'cmake': 'cmake', 'ninja': 'ninja', 'flex': 'flex', 'bison': 'bison',
+             'python': 'python', 'python3': 'python', 'python3.15': 'python'}
+    rows = ['[binaries]'] + [name + ' = ' + value(native.command(role))
+                            for name, role in names.items()]
+    host = Path(native.bundle_root)
+    compile_flags = ['-I' + str(host / 'include')]
+    link_flags = ['-L' + str(host / 'lib'), '-Wl,-rpath,' + str(host / 'lib'),
+                  '-Wl,-rpath,' + str(host / 'gcc16/lib')]
+    rows += ['', '[built-in options]', 'c_args = ' + value(compile_flags),
+             'cpp_args = ' + value(compile_flags), 'c_link_args = ' + value(link_flags),
+             'cpp_link_args = ' + value(link_flags)]
+    return '\n'.join(rows) + '\n'
+
+
+def mesa_commands(native, source, work, jobs, rtti):
+    require(rtti in ('YES', 'NO'), 'Unexpected llvm-config --has-rtti result')
+    destination = work / 'mesa'
+    meson = native.command('python') + ('-B', '-E', '-s', native.tool('meson'))
+    configure = [*meson, 'setup', str(destination), str(source),
+        '--native-file', str(work / 'native.ini'), '--prefix', str(work / 'prefix'),
+        '--wrap-mode=nodownload', '--buildtype=debugoptimized', '-Db_ndebug=false',
+        '-Dcpp_rtti=' + ('true' if rtti == 'YES' else 'false'),
+        '-Dauto_features=disabled', '-Dplatforms=[]', '-Dgallium-drivers=[]',
+        '-Dvulkan-drivers=[]', '-Dglx=disabled', '-Degl=disabled', '-Dgbm=disabled',
+        '-Dopengl=false', '-Dgles1=disabled', '-Dgles2=disabled',
+        '-Dtools=imagination', '-Dmesa-clc=enabled', '-Dinstall-mesa-clc=true',
+        '-Dprecomp-compiler=enabled', '-Dinstall-precomp-compiler=true',
+        '-Dllvm=enabled', '-Dshared-llvm=enabled', '-Ddraw-use-llvm=false',
+        '-Damd-use-llvm=false', '-Dspirv-tools=enabled', '-Dbuild-tests=true']
+    return [('configure-mesa', configure),
+            ('build-mesa', [native.tool('ninja'), '-C', str(destination), '-j', str(jobs)]),
+            ('test-mesa', [*meson, 'test', '-C', str(destination), '--no-rebuild',
+                           '--print-errorlogs', '--num-processes', str(jobs)]),
+            ('install-mesa', [*meson, 'install', '-C', str(destination), '--no-rebuild'])]
+
+
+def check_compilers(native, build):
+    metadata = json.loads((build / 'meson-info/intro-compilers.json').read_text())
+    for language, role in (('c', 'cc'), ('cpp', 'cxx')):
+        compiler = metadata['host'][language]
+        require(compiler['id'] == 'gcc' and compiler['exelist'] == list(native.command(role)),
+                'Meson selected a different native compiler: ' + language)
+        require(compiler['version'].split('.')[0] == '16', 'Meson did not select GCC16')
+
+
+def build(arguments, sdk_root):
+    from emberbsd_sdk.errors import ProcessOwnershipError
+    from emberbsd_sdk.inventory import sha256_file
+    from emberbsd_sdk.jsonio import write_json
+    from emberbsd_sdk.paths import canonical_new, entry, real_directory, reject_overlap
+    from emberbsd_sdk.process import ContextLocks, run_logged
+    from emberbsd_sdk.native_toolset import load_host_prefix
+    from emberbsd_sdk.stream import capture_streamed
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--profile', choices=('intel', 'powervr', 'all'), default='powervr')
+    parser.add_argument('--host-prefix', required=True)
+    parser.add_argument('--pkgdb', required=True, help='Package database used by the native prefix')
+    parser.add_argument('--lock-directory', required=True, help='Shared SDK producer lock namespace')
+    parser.add_argument('--jobs', type=int, default=4)
+    parser.add_argument('work')
+    parser.add_argument('distdir')
+    args = parser.parse_args(arguments)
+    require(platform.system() == 'Darwin' and platform.machine() == 'arm64', 'The native generators require macOS ARM64')
+    require(1 <= args.jobs <= 256, 'Use a positive job count no greater than 256')
+    for value in (args.host_prefix, args.pkgdb, args.lock_directory, args.work, args.distdir):
+        require(re.fullmatch(r'/[A-Za-z0-9_./-]+', value), 'Use absolute paths without shell metacharacters')
+    host = Path(args.host_prefix).resolve(strict=True)
+    distdir = Path(args.distdir).resolve(strict=True)
+    pkgdb = Path(args.pkgdb).resolve(strict=True)
+    lock_directory = Path(args.lock_directory).resolve(strict=True)
+    real_directory(str(pkgdb))
+    real_directory(str(lock_directory))
+    real_directory(str(host))
+    real_directory(str(distdir))
+    reject_overlap(str(host), str(distdir))
+    work = Path(canonical_new(args.work))
+    real_directory(str(work.parent))
+    require(entry(str(work)) is None, 'NEW_WORK must not exist; preserve earlier work')
+    for value in (host, pkgdb, distdir, PORTS):
+        reject_overlap(str(work), str(value))
+    # Match the package writer's namespace and retain read leases through sealing.
+    with ContextLocks([str(host), str(pkgdb)], str(lock_directory), shared=True):
+        native = load_host_prefix(host, required_roles=HOST_ROLES)
+        python = Path(native.tool('python'))
+        require(python.resolve(strict=True) == Path(sys.executable).resolve(strict=True),
+                'Run this command with Python 3.15 from the selected host prefix')
+        tools = native.tools
+        graphics = PORTS / 'profiles/common-graphics'
+        helpers = PORTS / 'probes/a733-accelerators/host-tools'
+        objc_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-meson.build-host-objc'
+        scripts = [Path(__file__).resolve(), graphics / 'cross/seal-mesa-generators.py',
+                   helpers / 'mesa-26.2.4-pco-bvnc.patch', objc_patch,
+                   PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h',
+                   graphics / 'sources.tsv']
+        scripts.append(Path(sdk_source.__file__).resolve())
+        scripts.extend(sorted((Path(sdk_root) / 'src/emberbsd_sdk').rglob('*.py')))
+        source_hashes = {str(path): sha256_file(str(path)) for path in scripts}
+        with ContextLocks([str(work)], str(work.parent)):
+            require(entry(str(work)) is None, 'NEW_WORK appeared before creation')
+            work.mkdir()
+            (work / 'tmp').mkdir()
+            (work / 'logs').mkdir()
+            environment = native_environment(native, sdk_root, work / 'tmp')
+
+            def query(argv):
+                result = capture_streamed(list(map(str, argv)), env=environment, timeout=120,
+                                          stdout_limit=16 * 1024 * 1024, stderr_limit=1024 * 1024)
+                require(not result.stderr_truncated, 'Native preflight stderr exceeds its limit')
+                return result.value.decode('utf-8').strip()
+
+            def run(argv, name, cwd=None):
+                try:
+                    run_logged(list(map(str, argv)), str(work / 'logs' / (name + '.log')), cwd=cwd, env=environment)
+                except ProcessOwnershipError as error:
+                    write_json(str(work / sdk_source.PRODUCER_QUARANTINE), dict(error=str(error), step=name))
+                    raise
+
+            providers = {pattern: query([tools['pkg_info'], '-K', str(pkgdb), '-e', pattern]) for pattern in DEPENDENCIES}
+            require(all(providers.values()), 'Missing native package dependency')
+            modules = json.loads(query([python, '-B', '-E', '-s', '-c', MODULE_QUERY, str(host)]))
+            provider_paths = {str(path): str(path.resolve(strict=True)) for path in [python, *map(Path, tools.values()), *map(Path, modules.values())]}
+            write_json(str(work / 'inputs.json'), dict(source=source_hashes, providers=providers, modules=modules,
+                       provider_paths=provider_paths, native_tools=native.as_dict(),
+                       python=str(python.resolve(strict=True)), jobs=args.jobs, profile=args.profile,
+                       native_compiler='Ports host GCC16; no target objects'))
+
+            def fetch(name, table):
+                digest, url = archive_pin(table, name)
+                destination = distdir / name
+                with ContextLocks([str(destination)], str(work)):
+                    if not os.path.lexists(destination):
+                        fd, temporary = tempfile.mkstemp(prefix='.' + name + '.part-', dir=distdir)
+                        os.close(fd)
+                        print('Retained download on failure: ' + temporary, file=sys.stderr, flush=True)
+                        run([tools['curl'], '-fL', '--proto', '=https', '--proto-redir', '=https', '-o', temporary, url], 'fetch-' + name)
+                        require(sha256_file(temporary) == digest, 'Wrong downloaded archive SHA256: ' + name)
+                        os.chmod(temporary, 0o644)
+                        os.link(temporary, destination)
+                        os.unlink(temporary)
+                    require(destination.is_file() and sha256_file(str(destination.resolve(strict=True))) == digest, 'Wrong archive SHA256: ' + name)
+                return destination.resolve(strict=True)
+
+            mesa_archive = fetch('mesa-26.2.5.tar.xz', graphics / 'sources.tsv')
+            require(query([tools['llvm-config'], '--version']) == '23.1.4',
+                    'Native LLVM must match the shared Mesa dependency')
+            llvm_prefix = Path(query([tools['llvm-config'], '--prefix'])).resolve(strict=True)
+            require(llvm_prefix == host, 'llvm-config selects a different prefix')
+            rtti = query([tools['llvm-config'], '--has-rtti'])
+            extract = work / 'mesa-extract'
+            extract.mkdir()
+            run([tools['bsdtar'], '-xJf', mesa_archive, '-C', extract], 'mesa-extract')
+            source = extract / 'mesa-26.2.5'
+            run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p1', '-d', source, '-i', helpers / 'mesa-26.2.4-pco-bvnc.patch'], 'mesa-bvnc-patch')
+            run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p0',
+                 '-d', source, '-i', objc_patch], 'mesa-host-objc-patch')
+            source.rename(work / 'mesa-source')
+            extract.rmdir()
+            native_work = work / 'native'
+            native_work.mkdir()
+            (native_work / 'native.ini').write_text(native_file(native))
+            for name, command in mesa_commands(native, work / 'mesa-source', native_work, args.jobs, rtti):
+                run(command, name)
+                if name == 'configure-mesa':
+                    check_compilers(native, native_work / 'mesa')
+            sealer = load(graphics / 'cross/seal-mesa-generators.py', 'mesa_native_sealer')
+            sealer.seal(['--profile', args.profile, '--host-prefix', str(host), '--pkgdb', str(pkgdb),
+                         '--lock-directory', str(lock_directory), str(mesa_archive), str(work / 'mesa-source'),
+                         str(work / 'native/mesa'), tools['spirv-val'], str(work / 'sealed')])
+            require(source_hashes == {path: sha256_file(path) for path in source_hashes}, 'Builder source changed during the native build')
+            require(provider_paths == {path: str(Path(path).resolve(strict=True)) for path in provider_paths}, 'Selected native tool or module path changed')
+            require(providers == {pattern: query([tools['pkg_info'], '-K', str(pkgdb), '-e', pattern]) for pattern in DEPENDENCIES},
+                    'Native package providers changed during the build')
+            write_json(str(work / 'outputs.json'), dict(sealed=str(work / 'sealed'),
+                       manifest_sha256=sha256_file(str(work / 'sealed/installed.sha256'))))
     print('Set EMBERBSD_MESA_GENERATORS=' + str(work / 'sealed') + ' in the cross MAKECONF.')
 
 

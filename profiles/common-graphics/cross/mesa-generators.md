@@ -17,36 +17,34 @@ No shader path or driver feature is disabled to avoid the host dependency.
 
 ## Prepare the native tools
 
-Use the original [Mesa host-tool inputs](../../../probes/a733-accelerators/host-tools/README.md#inputs):
+Use one native Ports prefix with host GCC16. The shared recipes own LLVM,
+Clang CLC libraries, SPIRV-Headers, SPIRV-Tools and SPIRV-LLVM-Translator.
+Do not download a binary compiler or build a private dependency stack.
+The LLVM and Clang libraries use the same GCC C++ runtime as the generators.
+Clang supplies the OpenCL frontend library; it does not compile host C/C++ objects.
 
-- Mesa 26.2.5, SHA256 `794b3d1729075dae7ebd47c7283b7ca0cdb5dec668f7f11cc0a5d82f6138a0a5`.
-- Full LLVM 23.1.3 macOS ARM64 SDK, SHA256 `3dcfd88aec10be204a24037bcb0dc0ad777882e9dbe8ac60e2639060d8a794b1`.
-- SPIRV-LLVM-Translator 23.1.2, commit `e65dde28ce8f12ef7245914fa2850260328669e4`.
-- SPIRV-Tools 2026.4, commit `ef96ed763b43b59b33b31b362f09a02b729fa1c9`.
-- SPIRV-Headers vulkan-sdk-1.4.363.0, commit `496543121ce6419f23d6fa5d7194ba66c36212d2`.
+The current inputs are Mesa 26.2.5, LLVM/Clang 23.1.4, Translator 23.1.2,
+SPIRV-Tools 2026.4 and SPIRV-Headers 1.4.363.0. Use the common Ports patches.
+The producer checks package predicates, Python module origins and the libyaml extension.
+Build missing dependencies through their normal pkgsrc recipes before starting this producer.
 
-Use the existing `build-deps.py` and the shared SPIRV-Tools recipe's
-[function-order fix](../../../pkgsrc/parallel/spirv-tools/patches/patch-source_link_linker.cpp).
-Keep the same Headers source for Translator and Tools. Build static libraries
-and retain the actual `spirv-val` executable and its source receipt.
-The LLVM SDK must supply Clang CLC libraries and headers, static LLVM support,
-`llvm-config`, `llvm-ar`, Clang and LLD. Preserve the native macOS C++ runtime
-selection and assertions from the existing host-tool configuration.
-A separate target LLVM metadata helper cannot replace this native SDK.
+SDK `load_host_prefix` selects tools, checks their native CPU and resolves their paths.
+It also checks GCC16 driver components and script interpreters.
+No separate toolchain qualification or acceptance receipt is required.
+The build uses a prefix-only PATH and an explicit Meson native file.
+Host ABI headers and libraries remain normal macOS inputs.
+Target include, library and pkg-config paths do not enter this native build.
 
-Build tools include Meson 1.12.1, Ninja 1.13.2, CMake 4.4.4, pkg-config,
-the macOS SDK and `otool`. Use the shared native Python 3.15 with
-Mako, packaging, PyYAML, lxml and rnc2rng from their normal pkgsrc packages.
-The rnc2rng package uses the shared rply and appdirs dependencies.
-They are native build dependencies. They are not installed in the target VM.
+The full native build prepares the generic CLC tools and PowerVR's compiler.
+An Intel seal does not copy or execute the PowerVR compiler.
+It still checks the genuine upstream common shader command and compile/link metadata.
+Assertions, SPIR-V validation and upstream tests remain enabled.
+Mesa RTTI follows the installed LLVM configuration.
 
-Use a fresh source copy and the existing `configure-host.sh` configuration.
-Its complete build also prepares PowerVR's compiler. The Intel seal does
-not require that compiler executable. It does require the genuine upstream
-common-shader command in `build.ninja`, generated Clang OpenCL header arrays,
-and the real compile/link metadata. Do not fabricate these files.
-The native source must match the original archive. The existing optional
-exact-BVNC patch is the only accepted native source delta.
+The source must match the pinned Mesa archive and the two exact source patches:
+the existing A733 BVNC addition and the shared conditional Objective-C language patch.
+The latter keeps Objective-C enabled for macOS graphics consumers.
+Generators without those consumers use only C and C++.
 
 ## Scripted build
 
@@ -55,28 +53,25 @@ The Python standard-library orchestrator uses SDK host API1:
 ~~~sh
 "$HOST_PREFIX/bin/python3.15" -B scripts/build-mesa-generators.py \
     --sdk-source "$SDK_SOURCE" --host-prefix "$HOST_PREFIX" \
-    --profile intel --jobs 10 /absolute/new-work /absolute/distdir
+    --pkgdb "$HOST_PKGDB" --lock-directory "$LOCK_DIRECTORY" \
+    --profile intel --jobs 4 /absolute/new-work /absolute/distdir
 ~~~
 
 The work directory must be absent. A failed build retains its partial work.
-Use a new directory for a new attempt. The command checks the pinned archives,
-Khronos revisions, native package predicates and Python module origins.
-It does not create a virtual environment or install Python modules.
-Install missing dependencies through their normal pkgsrc recipes.
-
-The selected native LLVM/Clang SDK builds host-only compiler tools.
-The target Mesa objects still use the common GCC16 cross toolchain.
-The native compiler wrapper replaces the shared host include directory with
-a symlink view. That view retains other host headers and selects `llvm` and
-`llvm-c` from this LLVM SDK. Host package LLVM headers cannot override that
-selection through the shared include argument.
-The command calls the existing native configuration and real shader checks.
-The sealed result is in WORK/sealed.
+The command checks the source archive checksum and uses existing native packages.
+It does not install dependencies or modify the selected host prefix.
+Set `LOCK_DIRECTORY` to the same SDK lock namespace as the package writer.
+The producer holds shared leases for the prefix and package database until sealing finishes.
+An active package writer prevents this read lease; no second installer is started.
+The sealed result is in `WORK/sealed`.
+Use the common GCC16 cross toolchain for subsequent target Mesa objects.
 
 ## Seal and select capabilities
 
 ```sh
-python3.15 seal-mesa-generators.py --sdk-source "$SDK_SOURCE" --profile intel \
+python3.15 seal-mesa-generators.py --sdk-source "$SDK_SOURCE" \
+    --host-prefix "$HOST_PREFIX" --profile intel \
+    --pkgdb "$HOST_PKGDB" --lock-directory "$LOCK_DIRECTORY" \
     /absolute/mesa-26.2.5.tar.xz /absolute/native-mesa-source \
     /absolute/native-mesa-build /absolute/spirv-val /absolute/new-intel-tools
 ```
@@ -122,16 +117,14 @@ and configure successfully with the native generator selection.
 It creates no Mesa compiler objects and runs no target code.
 
 The native sealer records compiler argument directory paths separately from
-regular file hashes. It hashes the include view's deterministic symlink
-manifest. A directory path is not a recursive proof of every child file.
-The include regression checks selection, exact argv, refusals and this record:
+regular file hashes. A directory path does not recursively bind every child file.
+The copied generator smoke checks and shared-library checks are required before use.
+Run the producer command regression without compiling fixture tools:
 
 ```sh
-python3.15 ../../../probes/a733-accelerators/host-tools/tests/llvm-include-isolation.py \
-    --sdk-source /absolute/EmberBSD-SDK --compiler /absolute/gcc-16 \
-    /absolute/new-include-check
+python3.15 ../tests/mesa-generator-producer.py --sdk-source /absolute/EmberBSD-SDK
 ```
 
-The implementation changes Python, shell and make orchestration only.
-It changes no upstream C/C++ translation unit. Full native tool rebuild,
-sealing and target Mesa package checks remain separate acceptance steps.
+The producer regression checks compiler routing, prefix-only discovery, RTTI,
+assertions and test commands. It does not prove a native generator rebuild,
+a target Mesa package or hardware rendering.

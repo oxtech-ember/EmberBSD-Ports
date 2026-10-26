@@ -9,84 +9,35 @@ the public name `BXM-4-64`. That name selects `36.52.104.182` first. Use the
 explicit BVNC argument for the A733 profile. This profile remains experimental.
 No feature assertions or IR validation checks are disabled.
 
-## Inputs
+## Inputs and build
 
-Use a separate source copy and build directory. Keep the shared LLVM SDK and
-target Mesa sources unchanged. Use the current common host tools from
-[common-build-tools](../../../profiles/common-build-tools/README.md).
+Use the [shared Mesa generator producer](../../../profiles/common-graphics/cross/mesa-generators.md).
+It uses host GCC16 and the common native LLVM/Clang CLC and SPIR-V packages.
+Their shared Ports recipes own all dependency versions and portability patches.
+The old private dependency builder and compiler wrapper have been removed.
 
-| Input | Pin |
-| --- | --- |
-| Mesa archive | 26.2.5, SHA256 `794b3d1729075dae7ebd47c7283b7ca0cdb5dec668f7f11cc0a5d82f6138a0a5` |
-| Native LLVM SDK | 23.1.3, archive SHA256 `3dcfd88aec10be204a24037bcb0dc0ad777882e9dbe8ac60e2639060d8a794b1` |
-| SPIRV-LLVM-Translator | [v23.1.2](https://github.com/KhronosGroup/SPIRV-LLVM-Translator/tree/e65dde28ce8f12ef7245914fa2850260328669e4), commit `e65dde28ce8f12ef7245914fa2850260328669e4` |
-| SPIRV-Tools | [v2026.4](https://github.com/KhronosGroup/SPIRV-Tools/tree/ef96ed763b43b59b33b31b362f09a02b729fa1c9), commit `ef96ed763b43b59b33b31b362f09a02b729fa1c9` |
-| SPIRV-Headers | [vulkan-sdk-1.4.363.0](https://github.com/KhronosGroup/SPIRV-Headers/tree/496543121ce6419f23d6fa5d7194ba66c36212d2), Tools v2026.4 DEPS pin `496543121ce6419f23d6fa5d7194ba66c36212d2` |
+Select `--profile powervr` or `--profile all` for the PowerVR compiler.
+Use a fresh work directory. The producer keeps assertions and upstream tests enabled.
+It applies the exact BVNC patch without changing the shared target Mesa sources.
+The shader check also uses the canonical IDFWDF header layout.
+Old programs for a different IDFWDF layout cannot be reused.
 
-Translator 23 matches LLVM 23. The translator main branch targets LLVM 24.
-Use the same Headers checkout for Tools and Translator. Build their static
-libraries and command-line tools into one isolated dependency prefix.
-Keep Translator assertions and SPIRV-Tools warnings enabled.
-
-The dependency builder applies the shared recipe's
-[linker fix](../../../pkgsrc/parallel/spirv-tools/patches/patch-source_link_linker.cpp)
-to this exact SPIRV-Tools revision. It verifies the source hash and rejects
-unrelated source changes. The original linker puts declarations from later
-modules after earlier definitions. Such partial libraries fail `spirv-val`.
-The fix preserves declaration and definition order within their groups.
-It does not change function names, call targets, or linkage resolution.
-This AI-assisted downstream patch retains the upstream Apache-2.0 license.
-It has not been submitted to or accepted by SPIRV-Tools upstream.
-The recipe owns the patch. The host helper consumes both canonical source
-patches with `git apply -p0`; it does not maintain another implementation.
-The installed GoogleTest and Effcee options stay OFF in this existing host
-workflow. The shared native recipe enables both options and uses the common
-GoogleTest, Effcee and RE2 providers for its full unit suite.
-The helper verifies all expected patched files and the exact Git status.
-It can resume a known subset after interruption and rejects other edits.
-Recipe integration is checked at the source level. New native package builds
-and their consumer checks remain separate acceptance steps.
-
-The builder runs the [real-tool regression](check-spirv-link-order.py) before
-installing SPIRV-Tools. Run it separately with:
+The shared SPIRV-Tools recipe owns the
+[function-order fix](../../../pkgsrc/parallel/spirv-tools/patches/patch-source_link_linker.cpp).
+The [real-tool regression](check-spirv-link-order.py) covers both module orders,
+import-only modules, resolved imports and definitions without imports.
+Run it against the installed common tools:
 
 ```sh
 python3.15 check-spirv-link-order.py --sdk-source "$SDK_SOURCE" "$TOOLS_BIN" "$NEW_TEST_OUTPUT"
 ```
 
-The five cases cover both module orders, an import-only module, resolved
-imports, and definitions without imports. Every input and linked result
-passes `spirv-val`. The checks preserve function order and imported call
-targets. Use `--expect-invalid` only with the pinned unpatched tools to
-record the three causal validator failures. Rebuild Mesa's `mesa_clc`
-after replacing its static SPIRV-Tools libraries. Previously generated
-SPIR-V and compiler binaries do not acquire this fix automatically.
+Every input and linked result passes `spirv-val`.
+The checks preserve function order and imported call targets.
+Use `--expect-invalid` only to reproduce the pinned unpatched failure.
+Rebuild dependent tools after replacing incompatible libraries.
 
-Mesa uses upstream Python generators with the shared native Python 3.15.
-Use Meson, Ninja, CMake, Mako, packaging, PyYAML, lxml and rnc2rng from
-normal pkgsrc packages. The rnc2rng recipe supplies its shared rply dependency.
-Do not omit XML schema validation. No pip or virtual environment is required.
-The dependency builder accepts HOST_PYTHON and an explicit
-EMBERBSD_SDK_SOURCE. The top-level Python builder checks package predicates,
-module origins and the libyaml extension before it starts a build.
-
-The native SDK contains LLVM bitcode archives. Linking them performs LTO.
-The wrapper uses LLVM LLD with optimization level 1. Assertions remain on.
-It explicitly selects the current macOS C++ runtime. An `-L` path from
-`llvm-config` must not silently select the SDK's separate C++ runtime.
-This is a host tool choice. It does not change the target runtime policy.
-
-## Build and generate
-
-Apply [mesa-26.2.4-pco-bvnc.patch](mesa-26.2.4-pco-bvnc.patch) to the isolated
-Mesa source. Apply the [IDFWDF layout patch](../idfwdf/mesa-26.2.4-idfwdf-layout.patch)
-before generating common shaders. The shader and host IDFWDF layout must both
-use ten dwords. Old generated IDFWDF programs are not valid with that layout.
-
-`configure-host.sh WORK MESA_SOURCE LLVM_SDK HOST_PREFIX DEP_PREFIX` configures
-and builds the native tools. Use absolute paths without whitespace or quotes.
-Use HOST_PREFIX/bin/python3.15 and its installed generator modules.
-`JOBS` controls build concurrency and defaults to four.
+## Generate PowerVR programs
 
 The build contains `src/compiler/clc/mesa_clc` and
 `src/imagination/pco/uscgen/pco_clc`.
