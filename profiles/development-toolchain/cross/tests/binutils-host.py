@@ -126,7 +126,8 @@ class BinutilsHostTests(unittest.TestCase):
         def capture(argv, env):
             self.assertEqual(argv, [self.work / 'prefix/bin' / (triplet + '-objdump'), '-i'])
             return vector or binutils_host.VECTORS[triplet] + '\n'
-        binutils_host.write_bfd_input(self.work, triplet, capture, {})
+        binutils_host.write_bfd_input(self.work, triplet, capture, {},
+                                      host_prefix=self.selected.bundle_root)
         return (self.work / 'host-bfd.mk').read_text()
 
     def test_actual_libtool_static_dependencies_and_target_vector(self):
@@ -137,6 +138,7 @@ class BinutilsHostTests(unittest.TestCase):
             self.assertIn(str(self.work / 'build/bfd/.libs/libbfd.a'), output)
             self.assertIn(str(self.work / 'build/libsframe/.libs/libsframe.a'), output)
             self.assertIn('-lz -lzstd -ldl', output)
+            self.assertIn('-Wl,-rpath,' + self.selected.bundle_root + '/lib', output)
             self.assertIn(str(self.work / 'build/libiberty/libiberty.a'), output)
             self.assertNotIn('.la ', output)
 

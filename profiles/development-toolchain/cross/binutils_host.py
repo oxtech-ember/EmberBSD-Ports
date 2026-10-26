@@ -125,7 +125,7 @@ def _libtool_archive(path, active=()):
     return result
 
 
-def write_bfd_input(work, triplet, capture, env):
+def write_bfd_input(work, triplet, capture, env, *, host_prefix):
     """Write ordinary make inputs for the OS consumers, not an admission record."""
     work = Path(work).resolve(strict=True)
     require(SAFE.fullmatch(str(work)), 'Unsupported BFD work path')
@@ -147,6 +147,12 @@ def write_bfd_input(work, triplet, capture, env):
     vectors = capture([work / 'prefix/bin' / (triplet + '-objdump'), '-i'], env=env).split()
     require(VECTORS[triplet] in vectors, 'Built BFD lacks target vector ' + VECTORS[triplet])
     libraries = _libtool_archive(build / 'bfd/libbfd.la')
+    native = Path(host_prefix).resolve(strict=True)
+    require(SAFE.fullmatch(str(native)) and (native / 'lib').is_dir(),
+            'Missing or unsupported native BFD dependency prefix')
+    # A direct OS helper link does not run through Libtool, which normally
+    # supplies this runtime search path for prefix compression libraries.
+    libraries.append('-Wl,-rpath,' + str(native / 'lib'))
     iberty = str(build / 'libiberty/libiberty.a')
     if iberty not in libraries:
         libraries.append(iberty)
