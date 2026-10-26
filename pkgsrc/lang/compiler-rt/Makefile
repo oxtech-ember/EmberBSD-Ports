@@ -3,7 +3,7 @@
 .include "../../lang/llvm/version.mk"
 
 PKGNAME=	compiler-rt-${LLVM_VERSION}
-PKGREVISION=	2
+PKGREVISION=	3
 # One patch owner for native packages and the OS/SDK prepared source.
 DISTINFO_FILE=	${.CURDIR}/distinfo
 PATCHDIR=	${.CURDIR}/patches
@@ -48,6 +48,11 @@ CMAKE_CONFIGURE_ARGS+= -DDARWIN_macosx_CACHED_SYSROOT=${OSX_SDK_PATH:Q}
 CMAKE_CONFIGURE_ARGS+= -DDARWIN_macosx_OVERRIDE_SDK_VERSION=${EMBERBSD_DARWIN_SDK_VERSION:Q}
 CMAKE_CONFIGURE_ARGS+= -DDARWIN_osx_ARCHS=${_COMPILER_RT_DARWIN_ARCH:Q}
 CMAKE_CONFIGURE_ARGS+= -DDARWIN_osx_BUILTIN_ARCHS=${_COMPILER_RT_DARWIN_ARCH:Q}
+.if ${EMBERBSD_DARWIN_TOOL_PHASE:Ufull} == "initial"
+# LLVM is already a dependency here, even while the compiler is bootstrapping.
+# compiler-rt has its own UseLibtool module; bind its Darwin archiver explicitly.
+CMAKE_CONFIGURE_ARGS+= -DCMAKE_LIBTOOL:FILEPATH=${_COMPILER_RT_LLVM_PREFIX:Q}/bin/llvm-libtool-darwin
+.endif
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_LIPO=${_COMPILER_RT_LLVM_PREFIX:Q}/bin/llvm-lipo
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_INSTALL_NAME_TOOL=${_COMPILER_RT_LLVM_PREFIX:Q}/bin/llvm-install-name-tool
 .for _apple_platform in IOS WATCHOS TVOS XROS

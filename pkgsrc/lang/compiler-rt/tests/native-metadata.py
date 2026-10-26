@@ -34,8 +34,8 @@ def main():
         assert set(rows) == set(keys)
         return rows
 
-    native = query('darwin')
-    assert native['PKGNAME'] == 'compiler-rt-23.1.4nb2'
+    native = query('darwin', 'EMBERBSD_DARWIN_TOOL_PHASE=full')
+    assert native['PKGNAME'] == 'compiler-rt-23.1.4nb3'
     assert native['PATCHDIR'] == str(args.pkgsrc / 'lang/compiler-rt/patches')
     assert native['PATCH_WRKSRC'].endswith('/llvm-project-23.1.4.src')
     assert native['PATCH_STRIP'] == '-p1' and native['PKG_FAIL_REASON'] == ''
@@ -66,6 +66,13 @@ def main():
                   '-DLLVM_CMAKE_DIR=' + native['LOCALBASE'],
                   '-DCMAKE_LIPO=' + native['LOCALBASE'] + '/bin/llvm-lipo'):
         assert value in options, value
+    assert '-DCMAKE_LIBTOOL:FILEPATH=' + str(args.libtool) in options
+    initial = query('initial-archive', 'EMBERBSD_DARWIN_TOOL_PHASE=initial')
+    assert initial['PKG_FAIL_REASON'] == '', initial
+    initial_options = shlex.split(initial['CMAKE_CONFIGURE_ARGS'])
+    selected = [arg.split('=', 1)[1] for arg in initial_options
+                if arg.startswith('-DCMAKE_LIBTOOL:')]
+    assert selected == [initial['LOCALBASE'] + '/bin/llvm-libtool-darwin'], selected
     for name in ('IOS', 'WATCHOS', 'TVOS', 'XROS'):
         assert '-DCOMPILER_RT_ENABLE_' + name + '=OFF' in options
     for label, extra in (('missing-version', 'EMBERBSD_DARWIN_SDK_VERSION='),
@@ -91,7 +98,7 @@ def main():
         capture_output=True, text=True, check=True)
     assert other.stdout == '\n\n' and other.stderr == '', other
 
-    (args.work / 'result.json').write_text(json.dumps(dict(status='PASS', cases=5,
+    (args.work / 'result.json').write_text(json.dumps(dict(status='PASS', cases=6,
         scope='Actual recipe metadata and isolated application of its monorepo patch; no build')) + '\n')
     print('PASS: compiler-rt patch root/arguments apply the actual binary128 patch; Darwin metadata remains selected')
 
