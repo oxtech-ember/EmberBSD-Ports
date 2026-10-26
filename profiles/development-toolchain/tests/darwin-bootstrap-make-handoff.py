@@ -57,22 +57,40 @@ def require(value, message):
 
 RUNTIME_LINK_FLAGS = ('-static-libstdc++', '-static-libgcc', '-nodefaultrpaths')
 SDK_ICONV_SUFFIX = '/usr/lib/libiconv.tbd'
+RUNTIME_WRAPPER_NAMES = ('CWRAPPERS_PREPEND.cc', 'CWRAPPERS_PREPEND.cxx',
+                         '_WRAP_EXTRA_ARGS.CC', '_WRAP_EXTRA_ARGS.CXX')
+NAMES += RUNTIME_WRAPPER_NAMES
 
 
 def runtime_link_flags(value, expected_abi=None):
     """Require the producer runtime options and SDK iconv input exactly once."""
     words = shlex.split(value['LDFLAGS'])
     sdk_root = value['OSX_SDK_PATH']
-    require(Path(sdk_root).is_absolute() and not any(c.isspace() for c in sdk_root),
-            'The accepted SDK path must be absolute and one word')
-    sdk_iconv = sdk_root + SDK_ICONV_SUFFIX
+    require(Path(sdk_root).is_absolute() and not any(c.isspace() for c in sdk_root) and
+            ',' not in sdk_root,
+            'The accepted SDK path must be absolute and one word without a comma')
+    sdk_iconv = '-Wl,' + sdk_root + SDK_ICONV_SUFFIX
     policy_words = (*RUNTIME_LINK_FLAGS, sdk_iconv)
-    require(all(words.count(word) == 1 for word in policy_words),
+    require(all(words.count(word) == 1 for word in policy_words) and
+            [word for word in words if SDK_ICONV_SUFFIX in word] == [sdk_iconv],
             'The repeated MAKECONF read lost or duplicated a producer link input')
     abi = [word for word in words if word not in policy_words]
     require(expected_abi is None or abi == expected_abi,
             'The producer runtime policy changed the accepted ABI link flags')
     return abi
+
+
+def wrapper_runtime_flags(value, expected_tails=None):
+    """Keep the driver option on the final wrappers without changing their tails."""
+    tails = {}
+    for name in RUNTIME_WRAPPER_NAMES:
+        words = shlex.split(value[name])
+        require(words.count('-nodefaultrpaths') == 1,
+                'The final compiler wrapper lost or duplicated -nodefaultrpaths')
+        tails[name] = [word for word in words if word != '-nodefaultrpaths']
+    require(expected_tails is None or tails == expected_tails,
+            'The producer runtime policy changed a compiler wrapper tail')
+    return tails
 
 
 def named_values(output):
@@ -99,11 +117,12 @@ def policy_link_self_test():
     require(NAMES.count('OSX_SDK_PATH') == 1 and NAMES.count('LDFLAGS') == 1,
             'The make query must expose one SDK root and one LDFLAGS value')
     sdk = '/sdk/MacOSX.sdk'
-    stub = sdk + SDK_ICONV_SUFFIX
+    stub = '-Wl,' + sdk + SDK_ICONV_SUFFIX
     abi = ['--sysroot=/sdk', '-Wl,-dead_strip', '-Wl,-headerpad_max_install_names']
     producer = list(RUNTIME_LINK_FLAGS)
     valid = {'OSX_SDK_PATH': sdk,
-             'LDFLAGS': shlex.join([*abi, *producer, stub])}
+             'LDFLAGS': shlex.join([*abi, *producer, stub]),
+             **{name: '-nodefaultrpaths' for name in RUNTIME_WRAPPER_NAMES}}
     wire = {name: '' for name in NAMES}
     wire.update(valid)
     decoded = named_values('\n'.join(name + '=' + wire[name] for name in NAMES))
@@ -113,6 +132,15 @@ def policy_link_self_test():
             'The make query changed the accepted ABI link flags')
     require(runtime_link_flags(valid, abi) == abi,
             'The policy changed the accepted ABI link flags')
+    wrapper_runtime_flags(decoded, {name: [] for name in RUNTIME_WRAPPER_NAMES})
+    expect_runtime_link_rejection(
+        'old bare SDK pathname',
+        {'OSX_SDK_PATH': sdk,
+         'LDFLAGS': shlex.join([*abi, *producer, sdk + SDK_ICONV_SUFFIX])})
+    expect_runtime_link_rejection(
+        'bare SDK pathname beside the selected linker argument',
+        {'OSX_SDK_PATH': sdk,
+         'LDFLAGS': shlex.join([*abi, *producer, stub, sdk + SDK_ICONV_SUFFIX])})
     expect_runtime_link_rejection(
         'old profile without SDK iconv input',
         {'OSX_SDK_PATH': sdk,
@@ -125,7 +153,36 @@ def policy_link_self_test():
         'foreign SDK iconv input',
         {'OSX_SDK_PATH': sdk,
          'LDFLAGS': shlex.join([*abi, *producer,
-                                '/other/MacOSX.sdk' + SDK_ICONV_SUFFIX])})
+                                '-Wl,/other/MacOSX.sdk' + SDK_ICONV_SUFFIX])})
+    for path in ('relative/sdk', '/sdk with spaces', '/sdk,other'):
+        try:
+            runtime_link_flags(dict(valid, OSX_SDK_PATH=path))
+        except AssertionError as error:
+            require(str(error) == 'The accepted SDK path must be absolute and one word without a comma',
+                    'The unsupported SDK path failed for an unrelated reason')
+        else:
+            raise AssertionError('An unsupported SDK path was accepted')
+    tails = {name: ['-B/seed/', '-specs=/seed/native.specs'] for name in RUNTIME_WRAPPER_NAMES}
+    routed = {name: shlex.join(['-nodefaultrpaths', *tails[name]]) for name in RUNTIME_WRAPPER_NAMES}
+    wrapper_runtime_flags(routed, tails)
+    for name in RUNTIME_WRAPPER_NAMES:
+        for count in (0, 2):
+            invalid = dict(routed, **{name: shlex.join(['-nodefaultrpaths'] * count + tails[name])})
+            try:
+                wrapper_runtime_flags(invalid, tails)
+            except AssertionError as error:
+                require(str(error) == 'The final compiler wrapper lost or duplicated -nodefaultrpaths',
+                        name + ': rejected for an unrelated reason')
+            else:
+                raise AssertionError(name + ': invalid final wrapper policy was accepted')
+    changed = dict(routed, **{RUNTIME_WRAPPER_NAMES[0]: '-nodefaultrpaths -B/foreign/'})
+    try:
+        wrapper_runtime_flags(changed, tails)
+    except AssertionError as error:
+        require(str(error) == 'The producer runtime policy changed a compiler wrapper tail',
+                'The foreign wrapper tail failed for an unrelated reason')
+    else:
+        raise AssertionError('A foreign compiler wrapper tail was accepted')
 
 
 def gmake_shells(value):
@@ -172,6 +229,7 @@ def evaluate(exported, bmake, makeconf, recipe):
                          env={'PATH': '/usr/bin:/bin'}).stdout.splitlines()
     values = dict(zip(NAMES, out))
     runtime_link_flags(values)
+    wrapper_runtime_flags(values)
     edges = set()
     for kind in KINDS:
         for word in shlex.split(values[kind]):
@@ -230,6 +288,7 @@ def phase_fixture(argv):
 
     first = query(ROOT, 'yes')
     initial_abi_ldflags = runtime_link_flags(first)
+    initial_wrapper_tails = wrapper_runtime_flags(first)
     seeds = first['EMBERBSD_DARWIN_SEED_MAKE_RECIPES'].split()
     gzip_seeds = first['EMBERBSD_DARWIN_SEED_GZIP_RECIPES'].split()
     initial_shell = first['EMBERBSD_DARWIN_SH']
@@ -243,6 +302,7 @@ def phase_fixture(argv):
         require(all(modes['yes'][kind] == modes['no'][kind] for kind in KINDS), f'{recipe}: metadata changes dependency edges')
         for mode, value in modes.items():
             runtime_link_flags(value, initial_abi_ldflags)
+            wrapper_runtime_flags(value, initial_wrapper_tails)
             handoff = mode != 'yes' and recipe not in seeds
             shell = str(prefix / 'bin/mksh') if handoff else initial_shell
             helper = str(prefix / HELPER) if handoff else initial_helper

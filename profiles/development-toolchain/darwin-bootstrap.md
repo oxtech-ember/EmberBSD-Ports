@@ -243,12 +243,28 @@ The scoped producer runtime options are reapplied after every MAKECONF read.
 The SDK assigns the accepted ABI `LDFLAGS` before each profile include.
 A one-time append loses the static GCC runtime options on later reads.
 The profile keeps each option once and preserves the other ABI flag words.
+Libtool omits unknown driver flags when it constructs a shared-library link.
+The profile also places `-nodefaultrpaths` in `CWRAPPERS_PREPEND.cc` and
+`CWRAPPERS_PREPEND.cxx`, and in the legacy `_WRAP_EXTRA_ARGS.CC` and
+`_WRAP_EXTRA_ARGS.CXX`. These standard wrappers add the option to the final
+compiler invocation after libtool. The CPP route is unchanged. Direct
+compiler calls still receive the option through `LDFLAGS`. A direct wrapped
+link can contain both copies; they request the same driver behavior.
+The selected compiler, its accepted tail, and the native ABI flags do not change.
+
 The external seed's static libstdc++ does not carry the ordinary GCC recipe's
-`LC_LINKER_OPTION` for iconv. The profile also adds the accepted SDK's
-`usr/lib/libiconv.tbd`; this selects the system ABI without searching for
-pkgsrc's GNU libiconv. The make-handoff phase fixture checks three includes
-with the real parser and verifies that the SDK input appears once. An old
-one-time profile must fail its runtime-link-policy check.
+`LC_LINKER_OPTION` for iconv. The profile adds
+`-Wl,${OSX_SDK_PATH}/usr/lib/libiconv.tbd`. Libtool preserves this linker
+argument in shared-library commands. A bare `.tbd` pathname is insufficient:
+configure can use it while the later libtool library link omits it.
+The explicit stub selects the accepted system ABI without a library search.
+The selected SDK path must be one absolute word without a comma, because
+both GCC and libtool split `-Wl,` arguments at commas.
+The make-handoff phase fixture checks three profile includes with the real
+parser. It requires the exact SDK argument and each final compiler route
+once. Its pure controls reject bare, foreign, missing and duplicated inputs,
+and lost or duplicated final wrapper options. These controls do not execute
+libtool or establish the final driver arguments.
 The full build must still verify the resulting Mach-O load and RPATH closure;
 passing a source fixture does not qualify a library or bypass package checks.
 
