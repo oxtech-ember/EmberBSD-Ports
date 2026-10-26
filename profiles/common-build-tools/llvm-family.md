@@ -108,8 +108,12 @@ scenario; that scenario remains unsupported. Real upstream 843419 stays intact.
 
 ## Native Clang defaults
 
-Native Darwin LLVM and Clang require `EMBERBSD_DARWIN_LIBTOOL`.
-Select an existing absolute executable with the Darwin archive interface.
+Native Darwin LLVM and Clang require `EMBERBSD_DARWIN_LIBTOOL` and an absolute,
+executable `EMBERBSD_DARWIN_DSYMUTIL`. The recipe passes pkgsrc's selected
+`PKG_LD` as `LD64_EXECUTABLE` and the dsymutil selector as `CMAKE_DSYMUTIL`
+in both initial and full phases, preventing LLVM CMake from falling back to
+`xcrun` for these tools.
+Select the archive executable with the Darwin archive interface.
 The shared [selector](../../pkgsrc/lang/llvm/darwin.mk) forwards `CMAKE_LIBTOOL` without PATH lookup.
 LLVM probes `-V`, then uses `-static ... -o TARGET` for archive creation.
 SDK qualification or the initial scoped seed belongs to the producer.

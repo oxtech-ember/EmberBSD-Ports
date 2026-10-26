@@ -10,8 +10,9 @@ selects the runtime family alongside its target, sysroot, and resource directory
 - Bootstrap code that needs builtins without an unwinder uses
   `--rtlib=compiler-rt --unwindlib=none`.
 
-The driver adds the selected runtime before and after libc, including static
-and shared unwind selection. Invalid and incompatible options use the common
+The driver adds the selected runtime after libc, including static and shared
+unwind selection. Static links group the C++, libc and runtime dependencies
+so the linker can resolve references in both directions. Invalid and incompatible options use the common
 Clang diagnostics. `-nostdlib`, `-nodefaultlibs`, and relocatable `-r` links
 continue to omit default runtime libraries. `-nostartfiles` omits CRT files
 while retaining the selected libraries. No automatic fallback occurs when a
@@ -31,7 +32,7 @@ native GCC configuration remains a separate legacy path until the complete
 LLVM runtime producer can replace it.
 
 The patch uses LLVM's shared runtime helper. FreeBSD and OpenBSD provide the
-runtime/libc/runtime ordering precedent, but their hardcoded base runtime names
+runtime ordering precedent, but their hardcoded base runtime names
 are not suitable for EmberBSD's explicit SDK profiles:
 [FreeBSD driver](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.4/clang/lib/Driver/ToolChains/FreeBSD.cpp),
 [OpenBSD driver](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.4/clang/lib/Driver/ToolChains/OpenBSD.cpp),

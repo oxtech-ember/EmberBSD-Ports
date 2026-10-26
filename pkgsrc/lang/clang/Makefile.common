@@ -131,8 +131,10 @@ SUBST_SED.sunos-gcc=	-e 's,@GCCBASEDIR@,${CCPATH:H:H},'
 BUILDLINK_DEPMETHOD.${_GCC_PKGBASE}=	full
 .endif
 
-PLIST_VARS+=	notdylib
-.if ${SHLIB_TYPE} != "dylib"
+PLIST_VARS+=	notdylib dylib
+.if ${SHLIB_TYPE} == "dylib"
+PLIST.dylib=	yes
+.else
 PLIST.notdylib=	yes
 .endif
 

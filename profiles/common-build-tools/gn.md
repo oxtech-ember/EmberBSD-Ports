@@ -9,8 +9,31 @@ The package version is `2486`. Do not substitute the latest GN revision.
 
 The official source is the exact
 [GN commit archive](https://gn.googlesource.com/gn/+archive/641ace93dd9560e75e7add0d08f77b446fbb3b78.tar.gz).
-The complete archive must match `distinfo`. It contains files at its root,
-so the recipe sets `EXTRACT_DIR` to `WRKSRC`.
+Gitiles assigns request-time PAX modification timestamps, so its compressed
+archive bytes change between requests. The recipe's normal `fetch` phase calls
+`pkgsrc/devel/gn/files/fetch-source.py` to verify all source bytes and executable
+bits against Git tree `90329c7841d68716991cf2c247bcd9906c884c91`, then normalize
+archive metadata. That tree was independently obtained from the canonical Git
+repository at the unchanged commit. The helper accepts only regular files and
+their parent directories; duplicate paths, case collisions, traversal, links,
+extra content and changed modes are rejected before an output appears.
+
+The resulting `gn-641ace93dd9560e75e7add0d08f77b446fbb3b78.tar` is an
+uncompressed USTAR archive with zero timestamps/ownership and sorted names.
+Its 1,054 Git-tracked files retain their content and executable bits. Ordinary
+pkgsrc `checksum` verifies this complete normalized archive against `distinfo`.
+The recipe sets `EXTRACT_DIR` to `WRKSRC` because files are at the archive root.
+A missing output is published atomically; an existing file or symlink is never
+overwritten. Interrupted or rejected input does not become a cached distfile.
+
+The source helper consumes only a control Python with its standard library
+and HTTPS trust store. `GN_FETCH_PYTHON` defaults to the selected native
+`TOOL_PYTHONBIN`; it may explicitly name a control interpreter before that
+native prefix exists. The helper invokes no compiler and needs no SDK source,
+Node, pip or virtualenv. Normal pkgsrc `fetch` and `checksum` still use the
+selected framework configuration and retain its license/error checks; the
+source-only result does not qualify arbitrary pkgsrc configurations. For offline inspection, the helper's `--input-archive` accepts an
+already obtained Gitiles response with the same complete tree verification.
 
 The existing Ports exporter discovers `pkgsrc/devel/gn` as an overlay recipe.
 It maps that directory to `devel/gn` in the composed pkgsrc tree. No
@@ -43,7 +66,9 @@ and release operations, including the CoreFoundation specialization.
 
 ## Build and acceptance
 
-Use the native Ports GCC16 prefix for a native GN build.
+Use the native Ports Clang/LLVM prefix for a native GN build. An explicit GCC
+platform profile remains supported. The recipe accepts both families and
+requires C++23; it does not select or retry a compiler family.
 Select it with the SDK `load_host_prefix` API and required roles `cxx`, `ar`,
 `python`, `ninja`, `sh`, `rm` and `make`. No producer receipt is required.
 Use its compiler ABI flags and selected tool paths in the native pkgsrc configuration.
@@ -69,7 +94,7 @@ link lock for each invocation when using the SDK process API directly.
 Do not start the default `all` target beside the test target. Keep the existing
 owned-process deadline, drainage, input leases and MemoryWatch policy.
 The recipe retains upstream warnings as errors. It does not select the
-Clang-specific LTO option. Selected Darwin SDK deployment flags and G++ runtime defaults remain visible
+Clang-specific LTO option. Selected Darwin SDK deployment flags and the selected compiler runtime remain visible
 for the actual ABI and runtime checks.
 
 For cross packages, `--platform` uses `LOWER_OPSYS` and `--host` uses
@@ -92,20 +117,43 @@ Run the pure regression with the exact downloaded source archive:
 
 ```sh
 python3 profiles/common-build-tools/tests/test-gn-recipe.py \
-  --archive /absolute/path/641ace93dd9560e75e7add0d08f77b446fbb3b78.tar.gz -v
+  --archive /absolute/path/gn-641ace93dd9560e75e7add0d08f77b446fbb3b78.tar -v
 ```
 
 It checks the archive and patch checksums, exact patch context, POSIX compiler
 argument preservation, the Windows route, compiler macro failures, version
-header identity, malformed version refusal and Darwin SDK minimum preservation. It executes extracted Python
-functions with mocked child calls. It does not run a compiler, GN or Ninja.
+header identity, malformed version refusal and Darwin SDK minimum preservation.
+It also runs the complete patched upstream generator for native Darwin and
+Darwin-to-NetBSD Clang routing, plus explicit GCC routing. Generated Ninja
+commands retain C++23, warnings as errors, the selected C++/archive tools and
+compiler-specific warning flags. Compiler macro responses are mocked; no
+compiler, GN or Ninja binary runs by default. Passing
+`--initial-cxx-command '/absolute/initial/clang++ declared-flags'` adds actual
+Clang macro detection through the same upstream generator. That optional source
+inspection uses the explicitly declared initial compiler only for
+`-dM -E -` on empty input; it does not compile or link GN objects.
 Native build, package lifecycle, upstream test and installed runtime acceptance
 remain pending.
+
+The source-owner regression uses two real Gitiles responses with different
+request timestamps. Obtain them from the official commit archive above, then run:
+
+```sh
+python3 profiles/common-build-tools/tests/gn-source.py \
+  --gitiles-archive /absolute/first-response.tar.gz \
+  --gitiles-archive /absolute/second-response.tar.gz -v
+```
+
+It requires different input bytes, reconstructs the pinned tree for both and
+requires identical normalized `distinfo` output. Separate negative controls
+cover changed blobs/modes, missing/extra files, special permissions, duplicate
+paths, case-colliding parents, traversal, symlinks/hardlinks/devices, truncated
+input and existing output preservation. This checks source acquisition only.
 
 ## Darwin C++ ownership regression
 
 `tests/gn-scoped-typeref.cc` includes the actual GN header and CoreFoundation traits.
-Compile it with the selected native G++ and `-std=c++23 -DNDEBUG -Wall -Wextra
+Compile it with the selected native C++ compiler and `-std=c++23 -DNDEBUG -Wall -Wextra
 -Werror -Wno-unused-parameter`, the GN source include directory, and
 `-framework CoreFoundation`. The repaired include directory must precede
 the original GN source directory for a paired check.

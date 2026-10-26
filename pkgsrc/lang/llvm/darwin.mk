@@ -4,6 +4,28 @@
 .if !defined(EMBERBSD_LLVM_DARWIN_MK)
 EMBERBSD_LLVM_DARWIN_MK= yes
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+.if empty(PKG_LD:M/*)
+PKG_FAIL_REASON+= "PKG_LD must select an absolute Darwin linker executable"
+.else
+_EMBERBSD_DARWIN_LD_EXECUTABLE!= if test -f ${PKG_LD:Q} && \
+    test -x ${PKG_LD:Q}; then echo yes; else echo no; fi
+.if ${_EMBERBSD_DARWIN_LD_EXECUTABLE} != "yes"
+PKG_FAIL_REASON+= "PKG_LD must select an executable file"
+.else
+CMAKE_CONFIGURE_ARGS.Darwin+= -DLD64_EXECUTABLE:FILEPATH=${PKG_LD:Q}
+.endif
+.endif
+.if empty(EMBERBSD_DARWIN_DSYMUTIL:M/*)
+PKG_FAIL_REASON+= "EMBERBSD_DARWIN_DSYMUTIL must select an absolute dsymutil executable"
+.else
+_EMBERBSD_DARWIN_DSYMUTIL_EXECUTABLE!= if test -f ${EMBERBSD_DARWIN_DSYMUTIL:Q} && \
+    test -x ${EMBERBSD_DARWIN_DSYMUTIL:Q}; then echo yes; else echo no; fi
+.if ${_EMBERBSD_DARWIN_DSYMUTIL_EXECUTABLE} != "yes"
+PKG_FAIL_REASON+= "EMBERBSD_DARWIN_DSYMUTIL must select an executable file"
+.else
+CMAKE_CONFIGURE_ARGS.Darwin+= -DCMAKE_DSYMUTIL:FILEPATH=${EMBERBSD_DARWIN_DSYMUTIL:Q}
+.endif
+.endif
 .if ${EMBERBSD_DARWIN_TOOL_PHASE:Ufull} == "initial"
 # The finite SDK operation builds tools with selected ar/ranlib, not a package.
 CMAKE_CONFIGURE_ARGS.Darwin+= -DLLVM_DARWIN_ARCHIVE_TOOL:STRING=ar
