@@ -1,0 +1,79 @@
+libnbcompat: bind explicit SDK configure diagnostics to the common helper.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Keep ordinary diagnostics and all feature tests. The configure.ac AS_UNAME
+transform and the generated block carry the same selected source hook.
+Canonical Autoconf regeneration remains a separate SDK generator check.
+
+--- a/pkgtools/libnbcompat/Makefile
++++ b/pkgtools/libnbcompat/Makefile
+@@ -6,6 +6,7 @@
+ #
+ 
+ PKGNAME=		libnbcompat-20251029
++PKGREVISION=		1
+ CATEGORIES=		pkgtools devel
+ 
+ MAINTAINER=		pkgsrc-users@NetBSD.org
+--- a/pkgtools/libnbcompat/files/configure
++++ b/pkgtools/libnbcompat/files/configure
+@@ -2221,6 +2221,12 @@
+ 
+ _ACEOF
+ exec 5>>config.log
++# EmberBSD: use the common selected diagnostic helper in explicit SDK mode.
++if test "${EMBERBSD_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/emberbsd-configure-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$@"; }
++fi
+ {
+ cat <<_ASUNAME
+ ## --------- ##
+@@ -2233,16 +2239,16 @@
+ uname -s = `(uname -s) 2>/dev/null || echo unknown`
+ uname -v = `(uname -v) 2>/dev/null || echo unknown`
+ 
+-/usr/bin/uname -p = `(/usr/bin/uname -p) 2>/dev/null || echo unknown`
+-/bin/uname -X     = `(/bin/uname -X) 2>/dev/null     || echo unknown`
+-
+-/bin/arch              = `(/bin/arch) 2>/dev/null              || echo unknown`
+-/usr/bin/arch -k       = `(/usr/bin/arch -k) 2>/dev/null       || echo unknown`
+-/usr/convex/getsysinfo = `(/usr/convex/getsysinfo) 2>/dev/null || echo unknown`
+-/usr/bin/hostinfo      = `(/usr/bin/hostinfo) 2>/dev/null      || echo unknown`
+-/bin/machine           = `(/bin/machine) 2>/dev/null           || echo unknown`
+-/usr/bin/oslevel       = `(/usr/bin/oslevel) 2>/dev/null       || echo unknown`
+-/bin/universe          = `(/bin/universe) 2>/dev/null          || echo unknown`
++/usr/bin/uname -p = `(emberbsd_host_diagnostic /usr/bin/uname -p) 2>/dev/null || echo unknown`
++/bin/uname -X     = `(emberbsd_host_diagnostic /bin/uname -X) 2>/dev/null     || echo unknown`
++
++/bin/arch              = `(emberbsd_host_diagnostic /bin/arch) 2>/dev/null              || echo unknown`
++/usr/bin/arch -k       = `(emberbsd_host_diagnostic /usr/bin/arch -k) 2>/dev/null       || echo unknown`
++/usr/convex/getsysinfo = `(emberbsd_host_diagnostic /usr/convex/getsysinfo) 2>/dev/null || echo unknown`
++/usr/bin/hostinfo      = `(emberbsd_host_diagnostic /usr/bin/hostinfo) 2>/dev/null      || echo unknown`
++/bin/machine           = `(emberbsd_host_diagnostic /bin/machine) 2>/dev/null           || echo unknown`
++/usr/bin/oslevel       = `(emberbsd_host_diagnostic /usr/bin/oslevel) 2>/dev/null       || echo unknown`
++/bin/universe          = `(emberbsd_host_diagnostic /bin/universe) 2>/dev/null          || echo unknown`
+ 
+ _ASUNAME
+ 
+--- a/pkgtools/libnbcompat/files/configure.ac
++++ b/pkgtools/libnbcompat/files/configure.ac
+@@ -2,6 +2,17 @@
+ 
+ dnl Process this file with autoconf to produce a configure script.
+ AC_PREREQ(2.52)
++dnl EmberBSD: preserve the canonical AS_UNAME body and route only its diagnostics.
++m4_define([AS_UNAME], m4_bpatsubst(m4_defn([AS_UNAME]),
++  [(/], [(emberbsd_host_diagnostic /]))
++m4_prepend([AS_UNAME], [
++# EmberBSD: use the common selected diagnostic helper in explicit SDK mode.
++if test "${EMBERBSD_CONFIGURE_SDK+set}" = set; then
++  . "${srcdir}/emberbsd-configure-diagnostics.sh" || exit 1
++else
++  emberbsd_host_diagnostic () { "$[]@"; }
++fi
++])
+ AC_INIT([libnbcompat], [20190708], [joerg@NetBSD.org])
+ AC_CONFIG_HEADER(nbcompat/config.h)
+ AC_ARG_PROGRAM

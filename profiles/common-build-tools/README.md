@@ -1,5 +1,9 @@
 # Current common build tools
 
+The [complete initial libnbcompat route](libnbcompat.md) uses the canonical
+recipe, DB implementation, and selected SDK tools. It shares configure
+diagnostics with GCC and retains a separate finite component acceptance.
+
 The [common Brotli and c-ares sources](brotli-cares.md) select the current
 1.2.1 and 1.34.9 security releases. They keep the inherited recipes and
 CMake policy. Source checks pass; native packaging and consumer checks remain

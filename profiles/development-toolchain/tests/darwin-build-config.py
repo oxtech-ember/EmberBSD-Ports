@@ -34,6 +34,8 @@ PROBE = 'int f (void) { return 0; }\n'
 MESSAGE = 'selected Darwin bootstrap-debug comparison failed'
 CONFIGURE_FILES = tuple((PROFILE / 'patches/gcc-sdk-configure-diagnostics.files').read_text().splitlines())
 DIAGNOSTIC_HELPER = 'config/emberbsd-sdk-diagnostics.sh'
+DIAGNOSTIC_SOURCE = (Path(__file__).resolve().parents[2] /
+    'common-build-tools/files/emberbsd-configure-diagnostics.sh').read_text()
 
 # configure and compare-debug use these bare names. Each must resolve to its
 # admitted role in one explicit SDK directory. Compiler and LLVM paths are direct.
@@ -98,7 +100,7 @@ def check_configure_source(source):
     from emberbsd_sdk.errors import SDKError
     try:
         helper = (source / DIAGNOSTIC_HELPER).read_text()
-        if 'emberbsd_host_diagnostic ()' not in helper or 'GCC_CONFIGURE_UNAME' not in helper:
+        if helper != DIAGNOSTIC_SOURCE:
             raise SDKError('Use the common Ports SDK configure diagnostic helper')
         for name in CONFIGURE_FILES:
             text = (source / name).read_text()
