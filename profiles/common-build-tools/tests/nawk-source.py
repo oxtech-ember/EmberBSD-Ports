@@ -39,9 +39,22 @@ def split_memory_adaptation(raw):
     return raw
 
 
+def command_shell_adaptation(raw):
+    for before, after in (
+        (b'#define DEBUG', b'#define DEBUG\n#include "command-shell.h"'),
+        (b'system(getsval(x))', b'nawk_system(getsval(x))'),
+        (b'popen(s, "w")', b'nawk_popen(s, "w")'),
+        (b'popen(s, "r")', b'nawk_popen(s, "r")'),
+    ):
+        require(raw.count(before) == 1, "pinned command-shell input changed")
+        raw = raw.replace(before, after, 1)
+    return raw
+
+
 def verify(recipe, archive, source_only):
     makefile = (recipe / 'Makefile').read_text()
     require(re.search(r'^DISTNAME=\s*nawk-' + TAG + r'$', makefile, re.M), 'old bundled nawk snapshot')
+    require(re.search(r'^LICENSE=\s*mit AND modified-bsd$', makefile, re.M), 'missing BSD adapter license metadata')
     manifest = json.loads((recipe / 'SOURCE.json').read_text())
     require(manifest['upstream']['tag'] == TAG and
             manifest['upstream']['commit'] == '5739fd79bcfc75ba7526773d0cf634521f8aca3c', 'changed upstream pin')
@@ -67,7 +80,7 @@ def verify(recipe, archive, source_only):
             raw = upstream.extractfile(prefix + original).read()
             if target in ('lib.c', 'run.c'):
                 if target == 'run.c':
-                    raw = split_memory_adaptation(raw)
+                    raw = command_shell_adaptation(split_memory_adaptation(raw))
                 # Other C adaptations are byte-valued ctype casts. Strip
                 # these casts to compare all remaining source bytes exactly.
                 normalized = lambda content: re.sub(rb'\((?:uschar|int)\)\s*', b'', content)
@@ -90,6 +103,12 @@ def verify(recipe, archive, source_only):
                     raw = raw.replace(b'oldawk=${oldawk-awk}\nawk=${awk-../a.out}',
                         b': "${oldawk:?Select the comparison awk}"\n: "${awk:?Select the awk under test}"')
                 require(raw == (recipe / 'files' / relative).read_bytes(), 'upstream test differs: ' + relative)
+    require(manifest.get('local_files') == ['command-shell.h'], 'missing command-shell owner')
+    shell = (recipe / 'files/command-shell.h').read_text()
+    require('The Regents of the University of California.' in shell and
+            'Redistribution and use in source and binary forms' in shell, 'lost command-shell license')
+    require('#ifndef NAWK_COMMAND_SHELL' in shell and '#define nawk_system system' in shell and
+            '#define nawk_popen popen' in shell, 'default shell behavior changed')
     lib = (recipe / 'files/lib.c').read_text()
     for expression in ('isalpha((uschar) *s)', 'isalnum((uschar) *s)', 'isspace((uschar) *s)',
                        'tolower((uschar) s[1])', 'isxdigit((uschar) s[2])', 'isspace((uschar) s[4])',
@@ -144,9 +163,13 @@ def main():
         ('files/run.c', b'origs = s = tostring(getsval(y));', b'origs = s = strdup(getsval(y));'),
         ('files/run.c', b'malloc(strlen(s) + 1)', b'malloc(strlen(s))'),
         ('files/run.c', b'if (newt == NULL)', b'if (0)'),
+        ('files/run.c', b'nawk_system(getsval(x))', b'system(getsval(x))'),
+        ('files/run.c', b'nawk_popen(s, "r")', b'popen(s, "r")'),
+        ('files/command-shell.h', b'#define nawk_popen popen', b'#define nawk_popen other_popen'),
         ('files/LICENSE', b'Lucent Technologies', b'Changed copyright'),
         ('files/Makefile', b'Lucent Technologies', b'Changed copyright'),
         ('SOURCE.json', b'5739fd79bcfc75ba7526773d0cf634521f8aca3c', b'0' * 40),
+        ('Makefile', b'mit AND modified-bsd', b'mit'),
         ('Makefile', b'${CP} -R ${FILESDIR} ${WRKSRC}', b'${CP} -R /foreign/source ${WRKSRC}')):
         path = fixture / relative
         original = path.read_bytes()

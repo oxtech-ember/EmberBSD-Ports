@@ -34,7 +34,7 @@ OFILES= awkgram.tab.o b.o main.o parse.o proctab.o tran.o lib.o run.o lex.o
 a.out: $(OFILES)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OFILES) -lm -o $@
 
-$(OFILES): awk.h awkgram.tab.h proto.h
+$(OFILES): awk.h awkgram.tab.h proto.h command-shell.h
 
 .c.o:
 	$(CC) $(CFLAGS) -c $< -o $@

@@ -23,6 +23,7 @@ THIS SOFTWARE.
 ****************************************************************/
 
 #define DEBUG
+#include "command-shell.h"
 #include <stdio.h>
 #include <ctype.h>
 #include <errno.h>
@@ -2109,7 +2110,7 @@ Cell *bltin(Node **a, int n)	/* builtin functions. a[0] is type, a[1] is arg lis
 		break;
 	case FSYSTEM:
 		fflush(stdout);		/* in case something is buffered already */
-		estatus = status = system(getsval(x));
+		estatus = status = nawk_system(getsval(x));
 		if (status != -1) {
 			if (WIFEXITED(status)) {
 				estatus = WEXITSTATUS(status);
@@ -2303,9 +2304,9 @@ FILE *openfile(int a, const char *us, bool *pnewflag)
 		fp = fopen(s, "a");
 		m = GT;	/* so can mix > and >> */
 	} else if (a == '|') {	/* output pipe */
-		fp = popen(s, "w");
+		fp = nawk_popen(s, "w");
 	} else if (a == LE) {	/* input pipe */
-		fp = popen(s, "r");
+		fp = nawk_popen(s, "r");
 	} else if (a == LT) {	/* getline <file */
 		fp = strcmp(s, "-") == 0 ? stdin : fopen(s, "r");	/* "-" is stdin */
 	} else	/* can't happen */

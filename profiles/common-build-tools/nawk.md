@@ -63,6 +63,49 @@ oldawk=/absolute/selected/comparison-nawk \
     /absolute/selected/sh ./REGRESS
 ```
 
+## Explicit command shell
+
+The optional `NAWK_COMMAND_SHELL` recipe variable selects the command shell.
+It must name an absolute path with only ASCII letters, digits, `_+./-`.
+The ordinary recipe passes that path as a C string macro with the same name.
+A direct source producer must pass the macro as one compiler argument.
+Without the macro, `system()` and `popen()` keep their libc behavior.
+
+The opt-in adapter currently requires NetBSD, including an EmberBSD target.
+Other targets reject the macro at compile time. Their default build is unchanged.
+Cross builds select the shell path for the machine that will execute nawk.
+This option does not select a compiler, admit a provider or qualify an SDK.
+
+`files/command-shell.h` adapts the BSD `system()` signal and wait rules.
+Its copyright notice retains the University of California license.
+The source references NetBSD `system.c` revision 1.28 and OpenBSD revision 1.13.
+The child executes the selected shell directly and exits 127 if execution fails.
+The parent retries an interrupted wait and restores signal dispositions and masks.
+NetBSD `popenve()` keeps libc's pipe registry and the existing `pclose()` contract.
+No host libc is replaced.
+
+The source check validates actual recipe flag transport and rejects invalid paths:
+
+```sh
+SELECTED_PYTHON -B profiles/common-build-tools/tests/nawk-command-shell.py \
+    --recipe /absolute/Ports/pkgsrc/lang/nawk \
+    --bmake /absolute/selected/bmake --work /absolute/new-selector-check
+```
+
+The source-owned `bootstrap/command-shell-probe.c` includes the production header.
+An admitted native producer compiles it with the recipe's `files/` include path
+and the exact selected-shell macro. The probe takes no arguments.
+It prints `PASS: nawk command-shell contracts` only after all checks pass.
+It checks exit and signal statuses, read/write pipes and `pclose()` status.
+Injected syscall failures check `EINTR`, fork/exec errors and signal-state restoration.
+Run the default build separately in a scope that admits the platform shell.
+The initial explicit-shell producer must not use this default as a hidden fallback.
+
+Before acceptance, run the probe and upstream cases with the admitted native GCC16.
+Run Cppcheck, GCC path analysis and applicable memory analysis on the actual inputs.
+Trace child execution to verify the shell route in real awk `system()` and pipes.
+Source checks and a dry-run do not establish compilation or native execution.
+
 ## Parser source preparation
 
 The upstream makefile defaults to Bison. The BSD bundled integration selects

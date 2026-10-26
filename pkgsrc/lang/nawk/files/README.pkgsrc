@@ -37,3 +37,11 @@ in CC. The derived Makefile retains the full upstream Lucent license notice.
 The split() memory adaptation reuses checked tostring() for source/separator
 copies. The CSV scratch buffer includes a NUL byte and checks allocation
 failure with FATAL. The source gate verifies this exact upstream adaptation.
+
+The optional NAWK_COMMAND_SHELL C macro selects an explicit NetBSD shell.
+command-shell.h uses NetBSD popenve so the original pclose calls remain valid.
+Its system adaptation retains the BSD signal, wait and exec-failure contract.
+Without this macro the original libc system/popen calls are unchanged.
+The header carries its BSD license and source revisions. The source gate
+binds the three call-site changes to the same upstream run.c.
+See profiles/common-build-tools/nawk.md in Ports for selection and tests.
