@@ -3,6 +3,9 @@
 The [Mach-O metadata resolver](macho-metadata.md) uses selected structural tools.
 It does not require libmagic or create a file/libtool bootstrap cycle.
 
+[Berkeley DB language tags](db4-libtool.md) keep configured C/C++ commands
+usable when libtool's compiler contains fixed language-mode arguments.
+
 Package size generation skips empty batches with either GNU or BSD `xargs`.
 The shared recipe uses the selected shell and preserves each command argument.
 It does not run `pkg_info` without package names or count the working directory.
@@ -568,10 +571,11 @@ LLVM dependency closure.
 [BOOTSTRAP_MAKECONF]` checks
 actual LLVM/Clang metadata in both phases, including the effective final CMake
 dylib settings, invalid tool selections and unchanged non-Darwin/cross guards.
-LLVM loads the pkgsrc compiler snapshot after its options and before validating
-Darwin selectors. The optional bootstrap MAKECONF exercises its actual selected
-`LD` without an early `PKG_LD` override, including the compiler snapshot and
-forwarded `LD64_EXECUTABLE`. It invokes no package build target.
+LLVM and compiler-rt load the pkgsrc compiler snapshot before validating
+Darwin selectors; LLVM does so after its options. The optional bootstrap
+MAKECONF exercises all three helper consumers (LLVM, Clang and compiler-rt)
+with their actual selected `LD` without an early `PKG_LD` override, including
+the compiler snapshot and forwarded `LD64_EXECUTABLE`. It invokes no package build target.
 This profile does not qualify the uninstalled LLVM package or future graph nodes.
 
 Run `tests/cmake-initial-source.py` with `--cmake-source` and `--llvm-source`

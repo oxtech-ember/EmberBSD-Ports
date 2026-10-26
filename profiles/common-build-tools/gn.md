@@ -64,6 +64,26 @@ The Darwin `ScopedTypeRef` patch limits Objective-C ownership annotations to
 Objective-C translation units. Plain C++ keeps the same explicit Traits retain
 and release operations, including the CoreFoundation specialization.
 
+## Electron BSD host-tool patch ownership
+
+Electron's Chromium Git graph has no `tools/gn` checkout. Its legacy pkgsrc
+Chromium GN patches belong to this provider, independently of the Electron
+target OS. The selected Darwin host uses the common GN source above:
+
+| Legacy change | Disposition at the pinned common source |
+|---|---|
+| Replace thin archive `rcsT` with `rcs` | Keep the upstream LLVM-capable route; actual package archive/link checks remain required. |
+| OpenBSD generator template and `-lkvm` | OpenBSD host work; not required for a Darwin host targeting EmberBSD. |
+| BSD `fsync` to `fdatasync` | Keep upstream `fsync`; the patch changes flushing behavior rather than providing a missing API. |
+| Map `evbarm` to `arm64` | Do not infer CPU width from this board family; it covers 32-bit and 64-bit systems. |
+| Rename `Version::major/minor/patch` | Already unnecessary: the pinned header undefines `major` and `minor` macros. |
+| OpenBSD executable path through kvm | OpenBSD host work; the pinned source already has NetBSD's `KERN_PROC_PATHNAME` route. |
+
+The Electron overlay inventory retains all six patch names with these reasons.
+This source review does not qualify an OpenBSD/NetBSD-host GN build or change
+Electron's target sandbox. Add any required host adaptation here with its own
+platform check; do not introduce a second GN source tree inside Chromium.
+
 ## Build and acceptance
 
 Use the native Ports Clang/LLVM prefix for a native GN build. An explicit GCC

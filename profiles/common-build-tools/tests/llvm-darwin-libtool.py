@@ -24,7 +24,7 @@ for entry in export.iterdir():
     if entry.name != 'lang':
         (tree / entry.name).symlink_to(entry)
 for entry in (export / 'lang').iterdir():
-    if entry.name in ('llvm', 'clang'):
+    if entry.name in ('llvm', 'clang', 'compiler-rt'):
         shutil.copytree(root / 'pkgsrc/lang' / entry.name, tree / 'lang' / entry.name)
     else:
         (tree / 'lang' / entry.name).symlink_to(entry)
@@ -61,7 +61,7 @@ def query(package, name, selectors=(), *, configuration=makeconf):
 # The real initial configuration binds LD, not the later compiler.mk PKG_LD
 # snapshot. A fixture that supplies PKG_LD early hides recipe include-order bugs.
 if bootstrap_makeconf is not None:
-    for package in ('llvm', 'clang'):
+    for package in ('llvm', 'clang', 'compiler-rt'):
         bootstrap = query(package, 'bootstrap-selected-linker', [
             'EMBERBSD_DARWIN_BOOTSTRAP=yes', 'EMBERBSD_DARWIN_TOOL_PHASE=initial'],
             configuration=bootstrap_makeconf)

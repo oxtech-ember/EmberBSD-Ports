@@ -1,0 +1,267 @@
+--- a/patch-chrome_browser_file__system__access_chrome__file__system__access__permission__context.cc
++++ b/patch-chrome_browser_file__system__access_chrome__file__system__access__permission__context.cc
+@@ -4,14 +4,17 @@
+ * Based on OpenBSD's chromium patches, and
+   pkgsrc's qt5-qtwebengine patches
+ 
+---- chrome/browser/file_system_access/chrome_file_system_access_permission_context.cc.orig	2026-08-31 22:47:51.000000000 +0000
+-+++ chrome/browser/file_system_access/chrome_file_system_access_permission_context.cc
+-@@ -457,7 +457,7 @@ GenerateBlockPaths(bool should_normalize
+-           FILE_PATH_LITERAL("Library/Mobile Documents/com~apple~CloudDocs"),
+-           BlockType::kDontBlockChildren),
+- #endif
+--#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
+-+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_BSD)
+-       // On Linux also block access to devices via /dev.
+-       BlockPath::CreateAbsolute(FILE_PATH_LITERAL("/dev"),
+-                                 BlockType::kBlockAllChildren),
++* Adapted to Electron 44.9.3 Chromium patches, retaining their behavior.
++* Origin: EmberBSD (AI-assisted), not submitted upstream.
++
++--- chrome/browser/file_system_access/chrome_file_system_access_permission_context.h.orig
+++++ chrome/browser/file_system_access/chrome_file_system_access_permission_context.h
++@@ -648,7 +648,7 @@
++             FILE_PATH_LITERAL("Library/Mobile Documents/com~apple~CloudDocs"),
++             BlockType::kDontBlockChildren),
++   #endif
++-  #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
+++  #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_BSD)
++         // On Linux also block access to devices via /dev.
++         BlockPath::CreateAbsolute(FILE_PATH_LITERAL("/dev"),
++                                   BlockType::kBlockAllChildren),
+--- a/patch-content_browser_child__process__launcher__helper__linux.cc
++++ b/patch-content_browser_child__process__launcher__helper__linux.cc
+@@ -4,7 +4,10 @@
+ * Based on OpenBSD's chromium patches, and
+   pkgsrc's qt5-qtwebengine patches
+ 
+---- content/browser/child_process_launcher_helper_linux.cc.orig	2026-08-31 22:47:51.000000000 +0000
++* Adapted to Electron 44.9.3 Chromium patches, retaining their behavior.
++* Origin: EmberBSD (AI-assisted), not submitted upstream.
++
++--- content/browser/child_process_launcher_helper_linux.cc.orig
+ +++ content/browser/child_process_launcher_helper_linux.cc
+ @@ -23,7 +23,9 @@
+  #include "content/public/common/content_switches.h"
+@@ -16,7 +19,7 @@
+  #include "sandbox/policy/linux/sandbox_linux.h"
+  
+  namespace content {
+-@@ -48,14 +50,20 @@ ChildProcessLauncherHelper::GetFilesToMa
++@@ -48,14 +50,20 @@
+  }
+  
+  bool ChildProcessLauncherHelper::IsUsingLaunchOptions() {
+@@ -37,9 +40,23 @@
+      // Convert FD mapping to FileHandleMappingVector
+      options->fds_to_remap = files_to_register.GetMappingWithIDAdjustment(
+          base::GlobalDescriptors::kBaseDescriptor);
+-@@ -67,7 +75,9 @@ bool ChildProcessLauncherHelper::BeforeL
++@@ -70,6 +78,7 @@
++                                          remapped_fd.first);
++     }
+  
+++#if BUILDFLAG(USE_ZYGOTE)
++     // (For Electron), if we're launching without zygote, that means we're
++     // launching an unsandboxed process (since all sandboxed processes are
++     // forked from the zygote). Relax the allow_new_privs option to permit
++@@ -78,12 +87,15 @@
++         delegate_->GetZygote() == nullptr) {
++       options->allow_new_privs = true;
++     }
+++#endif
++ 
++     options->current_directory = delegate_->GetCurrentDirectory();
+      options->environment = delegate_->GetEnvironment();
++     options->clear_environment = !delegate_->ShouldInheritEnvironment();
+    } else {
+ +#if !BUILDFLAG(IS_BSD)
+      DCHECK(GetZygoteForLaunch());
+@@ -47,7 +64,7 @@
+      // Environment variables could be supported in the future, but are not
+      // currently supported when launching with the zygote.
+      DCHECK(delegate_->GetEnvironment().empty());
+-@@ -84,6 +94,7 @@ ChildProcessLauncherHelper::LaunchProces
++@@ -100,6 +112,7 @@
+      int* launch_result) {
+    *is_synchronous_launch = true;
+    Process process;
+@@ -55,7 +72,7 @@
+    ZygoteCommunication* zygote_handle = GetZygoteForLaunch();
+    if (zygote_handle) {
+      // TODO(crbug.com/40448989): If chrome supported multiple zygotes they could
+-@@ -94,7 +105,6 @@ ChildProcessLauncherHelper::LaunchProces
++@@ -110,7 +123,6 @@
+          GetProcessType());
+      *launch_result = LAUNCH_RESULT_SUCCESS;
+  
+@@ -63,7 +80,7 @@
+      if (handle) {
+        // It could be a renderer process or an utility process.
+        int oom_score = content::kMiscOomScore;
+-@@ -103,15 +113,17 @@ ChildProcessLauncherHelper::LaunchProces
++@@ -119,15 +131,17 @@
+          oom_score = content::kLowestRendererOomScore;
+        ZygoteHostImpl::GetInstance()->AdjustRendererOOMScore(handle, oom_score);
+      }
+@@ -76,13 +93,14 @@
+      process.process = base::LaunchProcess(*command_line(), *options);
+      *launch_result = process.process.IsValid() ? LAUNCH_RESULT_SUCCESS
+                                                 : LAUNCH_RESULT_FAILURE;
++-  }
+ +#if !BUILDFLAG(IS_BSD)
+-   }
+++  }
+ +#endif
+  
+  #if BUILDFLAG(IS_CHROMEOS)
+    process_id_ = process.process.Pid();
+-@@ -135,10 +147,14 @@ ChildProcessTerminationInfo ChildProcess
++@@ -151,10 +165,14 @@
+      const ChildProcessLauncherHelper::Process& process,
+      bool known_dead) {
+    ChildProcessTerminationInfo info;
+@@ -97,7 +115,7 @@
+      info.status = base::GetKnownDeadTerminationStatus(process.process.Handle(),
+                                                        &info.exit_code);
+    } else {
+-@@ -164,13 +180,17 @@ void ChildProcessLauncherHelper::ForceNo
++@@ -180,13 +198,17 @@
+    DCHECK(CurrentlyOnProcessLauncherTaskRunner());
+    process.process.Terminate(RESULT_CODE_NORMAL_EXIT, false);
+    // On POSIX, we must additionally reap the child.
+@@ -109,13 +127,14 @@
+    } else {
+ +#endif
+      base::EnsureProcessTerminated(std::move(process.process));
++-  }
+ +#if !BUILDFLAG(IS_BSD)
+-   }
+++  }
+ +#endif
+  }
+  
+  void ChildProcessLauncherHelper::SetProcessPriorityOnLauncherThread(
+-@@ -182,11 +202,13 @@ void ChildProcessLauncherHelper::SetProc
++@@ -198,11 +220,13 @@
+    }
+  }
+  
+--- a/patch-net_dns_dns__config__service__posix.cc
++++ b/patch-net_dns_dns__config__service__posix.cc
+@@ -4,9 +4,12 @@
+ * Based on OpenBSD's chromium patches, and
+   pkgsrc's qt5-qtwebengine patches
+ 
+---- net/dns/dns_config_service_posix.cc.orig	2026-08-31 22:47:51.000000000 +0000
++* Adapted to Electron 44.9.3 Chromium patches, retaining their behavior.
++* Origin: EmberBSD (AI-assisted), not submitted upstream.
++
++--- net/dns/dns_config_service_posix.cc.orig
+ +++ net/dns/dns_config_service_posix.cc
+-@@ -35,6 +35,11 @@
++@@ -36,6 +36,11 @@
+  #include "net/dns/dns_config_watcher_mac.h"
+  #endif
+  
+@@ -18,10 +21,11 @@
+  namespace net {
+  
+  namespace internal {
+-@@ -132,6 +137,13 @@ class DnsConfigServicePosix::Watcher : p
++@@ -132,6 +137,14 @@
++ 
+    bool Watch() override {
+      CheckOnCorrectSequence();
+- 
+++
+ +// pledge + unveil
+ +#if !BUILDFLAG(IS_NETBSD)
+ +    base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+@@ -30,5 +34,5 @@
+ +#endif
+ +
+      bool success = true;
++ #if !IS_MAS_BUILD()
+      if (!config_watcher_.Watch(base::BindRepeating(&Watcher::OnConfigChanged,
+-                                                    base::Unretained(this)))) {
+--- a/patch-ui_gfx_font__util.cc
++++ b/patch-ui_gfx_font__util.cc
+@@ -4,7 +4,10 @@
+ * Based on OpenBSD's chromium patches, and
+   pkgsrc's qt5-qtwebengine patches
+ 
+---- ui/gfx/font_util.cc.orig	2026-08-31 22:47:51.000000000 +0000
++* Adapted to Electron 44.9.3 Chromium patches, retaining their behavior.
++* Origin: EmberBSD (AI-assisted), not submitted upstream.
++
++--- ui/gfx/font_util.cc.orig
+ +++ ui/gfx/font_util.cc
+ @@ -7,7 +7,7 @@
+  #include "build/build_config.h"
+@@ -15,12 +18,12 @@
+  #include <fontconfig/fontconfig.h>
+  #include "ui/gfx/linux/fontconfig_util.h"
+  #endif
+-@@ -25,7 +25,7 @@ void InitializeFonts() {
++@@ -25,7 +25,7 @@
+    // background (resources have not yet been granted to cast) since it prevents
+    // the long delay the user would have seen on first rendering.
+  
+ -#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+ +#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_BSD)
+-   // Early initialize FontConfig.
+-   InitializeGlobalFontConfigAsync();
+- #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
++   // Ensures the config is created on this thread. It's generally safe to send
++   // concurrent match requests to fontconfig, but it's unsafe to send match
++   // requests concurrently to fontconfig initialization.
+--- a/patch-ui_gtk_gtk__compat.cc
++++ b/patch-ui_gtk_gtk__compat.cc
+@@ -4,9 +4,12 @@
+ * Based on OpenBSD's chromium patches, and
+   pkgsrc's qt5-qtwebengine patches
+ 
+---- ui/gtk/gtk_compat.cc.orig	2026-08-31 22:47:51.000000000 +0000
++* Adapted to Electron 44.9.3 Chromium patches, retaining their behavior.
++* Origin: EmberBSD (AI-assisted), not submitted upstream.
++
++--- ui/gtk/gtk_compat.cc.orig
+ +++ ui/gtk/gtk_compat.cc
+-@@ -74,27 +74,47 @@ auto DlSym(void* library, const char* na
++@@ -74,22 +74,38 @@
+  }
+  
+  void* GetLibGio() {
+@@ -16,15 +19,6 @@
+    static void* libgio = DlOpen("libgio-2.0.so.0");
+ +#endif
+    return libgio;
+- }
+- 
+- void* GetLibGdkPixbuf() {
+-+#if BUILDFLAG(IS_BSD)
+-+  static void* libgdk_pixbuf = DlOpen("libgdk_pixbuf-2.0.so");
+-+#else
+-   static void* libgdk_pixbuf = DlOpen("libgdk_pixbuf-2.0.so.0");
+-+#endif
+-   return libgdk_pixbuf;
+  }
+  
+  void* GetLibGdk3() {
+@@ -54,3 +48,15 @@
+    return libgtk4;
+  }
+  
++@@ -171,7 +187,11 @@
++ }  // namespace
++ 
++ void* GetLibGdkPixbuf() {
+++#if BUILDFLAG(IS_BSD)
+++  static void* libgdk_pixbuf = DlOpen("libgdk_pixbuf-2.0.so");
+++#else
++   static void* libgdk_pixbuf = DlOpen("libgdk_pixbuf-2.0.so.0");
+++#endif
++   return libgdk_pixbuf;
++ }
++ 

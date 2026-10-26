@@ -3,7 +3,7 @@
 .include "../../lang/llvm/version.mk"
 
 PKGNAME=	compiler-rt-${LLVM_VERSION}
-PKGREVISION=	1
+PKGREVISION=	2
 # One patch owner for native packages and the OS/SDK prepared source.
 DISTINFO_FILE=	${.CURDIR}/distinfo
 PATCHDIR=	${.CURDIR}/patches
@@ -38,6 +38,7 @@ CMAKE_CONFIGURE_ARGS+=	-DLLVM_CMAKE_DIR=${_COMPILER_RT_LLVM_PREFIX:Q}
 CMAKE_CONFIGURE_ARGS+=	-DCOMPILER_RT_ENABLE_IOS=OFF
 
 .include "../../mk/bsd.prefs.mk"
+.include "../../mk/compiler.mk"
 .include "../../lang/llvm/darwin.mk"
 
 .if ${OPSYS} == "Darwin"
