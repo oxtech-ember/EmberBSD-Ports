@@ -71,21 +71,31 @@ checkout can be obtained with explicit Git:
 /absolute/control-python -B \
     probes/electron/electron44/files/sync-git-sources.py \
     --workspace /absolute/NEW_ELECTRON_WORK --depot-tools /absolute/depot-tools \
-    --git /absolute/source-tools/bin/git --source-path /absolute/source-tools/bin \
+    --git /absolute/source-tools/bin/git --git-lfs /absolute/source-tools/bin/git-lfs \
+    --source-path /absolute/source-tools/bin \
     --jobs 2
 ```
 
-The supplied source PATH must resolve the declared Git. The helper invokes
+The supplied source PATH must resolve both the declared Git and Git LFS.
+Git LFS is a required upstream acquisition tool (`devel/git-lfs` in Ports).
+The helper sets upstream `GIT_LFS_SKIP_SMUDGE=1` so checkout retains LFS
+pointers and does not fetch their objects. It does not disable Git's required
+LFS filter; the selected Git LFS executable must support `ls-files --json`.
+These are explicit control tools for source acquisition, not build-tool
+substitutes for the native SDK prefix. The helper invokes
 upstream gclient directly with the current control Python and its standard
 library; it does not invoke the auto-updating gclient/vpython shell wrapper.
 It disables depot_tools telemetry and automatic updates and clears undeclared
 GCLIENT_FILE and Git-cache overrides. The caller retains its exclusive source
 lock. Failed acquisition retains the Git tree and log for a retry with the same
-inputs; it does not force-reset, delete or replace repositories.
+inputs; it does not request a force-reset or deletion. If an interrupted
+checkout has no valid HEAD, upstream gclient can move it under `_bad_scm/`
+and fetch that repository again. Preserve this quarantine until its contents
+have been inspected. Valid pinned repositories remain in place on retry.
 
 The recipe-owned `source-inputs/` directory contains:
 
-- `acquisition.log`: exact argv and stdout/stderr of the upstream commands.
+- `acquisition.log`: exact argv and stdout/stderr of the upstream gclient commands.
 - `sync.json`: upstream sync output for the filtered graph.
 - `declared-dependencies.json`: unfiltered upstream `revinfo` declarations.
 - `git-revisions.json`: actual revisions from `revinfo --actual` with the same
@@ -95,10 +105,17 @@ The recipe-owned `source-inputs/` directory contains:
   Git inventory, retaining upstream names, URLs and revisions. CIPD platform
   placeholders remain unresolved. Original pinned DEPS files retain GCS
   checksums, sizes and generation metadata.
+- `pending-lfs.json`: upstream `git-lfs ls-files --json --include= --exclude= HEAD`
+  output for every Git repository containing nonempty LFS object pointers,
+  together with the repository URL and commit. It retains file paths, object
+  OIDs/types, sizes and observed `checkout`/`downloaded` values. Those two values
+  are upstream observations, not content-integrity checks. Empty include/exclude
+  arguments prevent local LFS fetch preferences from hiding selected inputs.
+  Zero-byte objects have no pending payload and are omitted by upstream.
 
 The inventory does not assert that assets exist, have been downloaded or are
 ready for a build. JSON outputs are published only after the three commands
-and pin comparison succeed; a retry removes the previous inventories first.
+and pin comparison and all LFS scans succeed; a retry removes the previous inventories first.
 Use ordinary `revinfo` for declarations: `revinfo --actual` without filters can
 query CIPD, and `flatten` can download GCS objects. The helper invokes neither
 of those acquisition paths.
@@ -106,7 +123,9 @@ of those acquisition paths.
 The full source graph still requires the pending assets, upstream patches,
 BSD adaptations and generators. A full sync without the type filters obtains
 CIPD/GCS inputs even with hooks disabled, including upstream tool binaries and
-Linux sysroots. Bind required upstream acquisition tools and normalize their
+Linux sysroots. LFS payloads need a separate ordinary upstream Git LFS
+fetch/checkout stage before their consumers can run; this Git-only helper
+retains their pending inventory on every retry. Bind required upstream acquisition tools and normalize their
 Python/library dependencies through Ports; select shared Ports build tools
 and the EmberBSD sysroot before exposing the full recipe build.
 
@@ -117,6 +136,8 @@ absent targets. This helper neither applies that incomplete overlay nor claims
 that it is ready for the current pins. Those adaptations and the full source
 graph remain necessary before the [GN and runtime build](runtime-packaging.md).
 
+The LFS stage follows upstream [skip-smudge configuration](https://github.com/git-lfs/git-lfs/blob/main/docs/man/git-lfs-config.adoc)
+and the [Git LFS inventory implementation](https://github.com/git-lfs/git-lfs/blob/v3.6.1/commands/command_ls_files.go).
 The generated configuration follows the upstream
 [Electron source layout](https://www.electronjs.org/docs/latest/development/build-instructions-gn#manual-setup-advanced)
 and depot_tools [gclient configuration](https://chromium.googlesource.com/chromium/tools/depot_tools/+/refs/heads/main/gclient.py).
@@ -138,12 +159,18 @@ preparation only; they run no full dependency sync, compiler or target runtime.
 
 The Git-only acquisition regression uses the real pinned upstream gclient and
 small local Git repositories. It checks nested deferred assets, exact Git
-commits, retry, invalid inputs, and hook refusal. A separate upstream
+commits, retry, invalid inputs, and hook refusal. Fourteen tests also check
+an actual LFS pointer with spaces in its path, include/exclude independence,
+missing Git LFS refusal, incomplete-inventory rejection, and preservation of
+an interrupted checkout in gclient's quarantine while reusing the Node clone.
+A no-skip control verifies that the unavailable local LFS object causes an
+error; the normal Git-only stage preserves its pointer. A separate upstream
 `runhooks` control proves that the fixture hook would execute when requested.
 No external repository or asset is downloaded by this test:
 
 ```sh
 /absolute/control-python -B probes/electron/tests/electron-git-sources.py \
-    --git /absolute/source-tools/bin/git --source-path /absolute/source-tools/bin \
+    --git /absolute/source-tools/bin/git --git-lfs /absolute/source-tools/bin/git-lfs \
+    --source-path /absolute/source-tools/bin \
     --depot-tools /absolute/depot-tools
 ```
