@@ -191,6 +191,10 @@ Its load commands must name the installed test library; the build-host
 providers remain unchanged. This is native build-tool acceptance, not target
 librsvg or target std package acceptance.
 
+For recipes with native generators and a separate target, the optional
+[common Cargo include](cargo.md) provides explicit compiler and flag routing.
+It retains pkgsrc source fetching and the shared Rust tool dependency.
+
 ## NetBSD target boundary
 
 The official compiler's private LLVM 23.1.1 backend is part of this upstream

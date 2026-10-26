@@ -1,0 +1,28 @@
+# Keep Configure and XS linker search paths inside the selected native prefix.
+# Origin: EmberBSD (AI-assisted). Apply after pkgsrc-perl-install-name-tool.patch (effective revision 8).
+
+--- a/lang/perl5/Makefile
++++ b/lang/perl5/Makefile
+@@ -3,7 +3,7 @@
+ .include "license.mk"
+ .include "Makefile.common"
+ 
+-PKGREVISION=	8
++PKGREVISION=	9
+ 
+ COMMENT=	Practical Extraction and Report Language
+ 
+@@ -54,6 +54,13 @@
+ CONFIGURE_SCRIPT=	./Configure
+ CONFIGURE_ARGS+=	-sde
+ CONFIGURE_ARGS+=	-Dldflags=${LDFLAGS:Q}
++
++.if ${OPSYS} == "Darwin"
++# Configure otherwise adds host /usr/local and optional package-manager
++# include/library directories to ccflags/lddlflags before Policy.sh runs.
++CONFIGURE_ARGS+=	-Dlocincpth=${LOCALBASE:Q}/include
++CONFIGURE_ARGS+=	-Dloclibpth=${LOCALBASE:Q}/lib
++.endif
+ 
+ # Opt in with a build/runtime pair. Never inherit a host path for a cross target.
+ # BEGIN explicit native runtime shells

@@ -8,7 +8,6 @@ from pathlib import Path
 import hashlib
 import os
 import tempfile
-from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -21,6 +20,7 @@ for directory in (PROFILE, PROFILE / 'cross'):
 import binutils_host
 import pipeline
 from emberbsd_sdk.errors import SDKError
+from emberbsd_sdk.host_prefix import HostPrefix
 
 
 def file(path, content='fixture\n'):
@@ -54,10 +54,11 @@ class BinutilsHostTests(unittest.TestCase):
         file(prefix / 'lib/libz.a')
         self.tools = {role: str(prefix / 'bin' / role) for role in binutils_host.ROLES}
         self.tools['python'] = sys.executable
-        for role in ('gmake', 'sh'):
-            file(Path(self.tools[role]), '#!/bin/sh\nexit 97\n').chmod(0o755)
-        self.selected = SimpleNamespace(bundle_root=str(prefix), path=str(prefix / 'bin'),
-            tool=lambda role: self.tools[role], command=lambda role: (self.tools[role],),
+        for role in self.tools:
+            if role != 'python':
+                file(Path(self.tools[role]), '#!/bin/sh\nexit 97\n').chmod(0o755)
+        self.selected = HostPrefix(bundle_root=str(prefix), host={}, compiler={},
+            tools=self.tools, driver_components={},
             abi_flags={name: () for name in ('cppflags', 'cflags', 'cxxflags', 'ldflags')})
         environment = patch.dict(os.environ, {}, clear=True)
         environment.start(); self.addCleanup(environment.stop)
@@ -79,6 +80,21 @@ class BinutilsHostTests(unittest.TestCase):
             self.assertEqual(env['LDFLAGS'], '-L' + selected.bundle_root + '/lib')
             self.assertEqual(env['PKG_CONFIG_PATH'], '')
             self.assertEqual(env['MAKEINFO'], self.tools['true'])
+
+    def test_nested_commands_use_selected_spellings_without_changing_prefix(self):
+        self.work.mkdir()
+        self.tools['awk'] = self.tools.pop('awk') + '-selected'
+        file(Path(self.tools['awk']), '#!/bin/sh\nexit 97\n').chmod(0o755)
+        selected, original = self.selection()
+        env = binutils_host.native_environment(selected, original, self.work)
+        routing = self.work / 'native-tools'
+        for command, role in (('awk', 'awk'), ('make', 'gmake'),
+                              ('tar', 'bsdtar'), ('c++', 'cxx')):
+            self.assertEqual(os.readlink(routing / command), self.tools[role])
+        self.assertEqual(env['PATH'], str(routing) + os.pathsep + selected.path)
+        self.assertEqual(original['PATH'], selected.path)
+        self.assertEqual(env['AWK'], self.tools['awk'])
+        self.assertFalse((Path(selected.bundle_root) / 'bin/make').exists())
 
     def test_conflicting_alias_or_python_is_not_a_fallback(self):
         with patch.dict(os.environ, {'HOST_CC': '/outside/clang'}):
@@ -198,10 +214,13 @@ class BinutilsHostTests(unittest.TestCase):
                 patch.object(pipeline, 'logged', logged), patch.object(pipeline, 'capture', capture), \
                 patch.object(pipeline, 'policy_sources', return_value=[]):
             pipeline._build_binutils('amd64', str(self.work), native=(selected, env))
-        self.assertEqual(calls[0][0][0], self.tools['tar'])
+        # NetBSD pax/nbtar does not implement --strip-components. The native
+        # producer must request the libarchive frontend explicitly.
+        self.assertEqual(calls[0][0][0], str(Path(selected.bundle_root) / 'bin/bsdtar'))
         self.assertEqual(calls[1][0][0], self.tools['patch'])
         self.assertEqual(calls[2][0][:2], [self.tools['sh'], str(self.work / 'src/configure')])
-        self.assertTrue(all(row[1] == env for row in calls))
+        self.assertTrue(all(row[1]['PATH'].split(os.pathsep)[0] == str(self.work / 'native-tools') for row in calls))
+        self.assertEqual(env['PATH'], selected.path)
         self.assertIn('--target=x86_64--netbsd', calls[2][0])
         self.assertIn('--with-system-zlib', calls[2][0])
         self.assertTrue((self.work / 'host-bfd.mk').is_file())

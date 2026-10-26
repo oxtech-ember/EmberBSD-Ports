@@ -17,7 +17,10 @@ The common mksh recipe does not provide a built-in `printf`.
 The export applies one infrastructure patch and installs one common shell
 diagnostic helper into the source tree. Explicit `EMBERBSD_CONFIGURE_SDK=yes`
 requires an absolute selected `EMBERBSD_CONFIGURE_UNAME` executable. The SDK
-binds its path, bytes, provenance, and utility alias. System uname paths fail.
+profile owns tool selection and prefix policy. Initial bootstrap may explicitly
+select a host executable; ordinary builds select their installed Ports utility.
+The helper checks that the selection is an absolute executable regular file,
+without imposing a second path policy.
 Unavailable legacy platform queries return failure without executing a host
 tool. Ordinary mode retains its existing platform queries and feature tests.
 

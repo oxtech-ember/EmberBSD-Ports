@@ -1,0 +1,36 @@
+Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+Keep the SDK-selected Darwin archive role in Boost wrappers in both tool phases.
+The ordinary pkgsrc path outside explicit EmberBSD selection remains available.
+
+--- a/meta-pkgs/boost/Makefile.common
++++ b/meta-pkgs/boost/Makefile.common
+@@ -61,15 +61,22 @@
+ .  endif
+ 
+ .  if ${OPSYS} == "Darwin"
+-# Prevent using a pkgsrc libtool in OS X because the darwin toolset needs
+-# the native libtool from /Developer/usr/bin or /usr/bin.
++# Darwin archives require the selected native archive tool, not GNU Libtool.
++.    if defined(EMBERBSD_DARWIN_LIBTOOL) || \
++        ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes" || defined(EMBERBSD_HOST_PREFIX)
++_BOOST_DARWIN_LIBTOOL=	${EMBERBSD_DARWIN_LIBTOOL}
++.    elif exists(/Developer/usr/bin/libtool)
++_BOOST_DARWIN_LIBTOOL=	/Developer/usr/bin/libtool
++.    else
++_BOOST_DARWIN_LIBTOOL=	/usr/bin/libtool
++.    endif
+ post-wrapper:
++	@case x${_BOOST_DARWIN_LIBTOOL:Q} in x/*) ;; *) \
++	    ${FAIL_MSG} "Boost requires an absolute EMBERBSD_DARWIN_LIBTOOL" ;; esac
++	${TEST} -f ${_BOOST_DARWIN_LIBTOOL:Q} && ${TEST} -x ${_BOOST_DARWIN_LIBTOOL:Q} || \
++	    ${FAIL_MSG} "Boost requires an executable EMBERBSD_DARWIN_LIBTOOL"
+ 	${RM} -f ${WRAPPER_BINDIR}/libtool
+-.    if exists(/Developer/usr/bin/libtool)
+-	${LN} -s /Developer/usr/bin/libtool ${WRAPPER_BINDIR}/libtool
+-.    else
+-	${LN} -s /usr/bin/libtool ${WRAPPER_BINDIR}/libtool
+-.    endif
++	${LN} -s ${_BOOST_DARWIN_LIBTOOL:Q} ${WRAPPER_BINDIR}/libtool
+ .  endif
+ 
+ # We can't do this at post-extract because the extract cookie will get a future

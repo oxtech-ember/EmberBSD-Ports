@@ -13,6 +13,13 @@ components and script interpreters use the shared SDK native-prefix API.
 The controller sets a prefix-only `PATH` and selects its shell, GNU make,
 archive tools and patch tool. Optional `HOST_CC`, `HOST_CXX` and `GMAKE`
 aliases must agree with that selection.
+The Ports-owned `binutils-native-tools` roster uses the shared SDK command
+mapping publisher. Nested configure and make commands resolve names such as
+`awk`, `make` and `tar` to the selected `nawk`, GNU make and `bsdtar` paths.
+The mapping precedes the prefix-only PATH and does not modify the prefix.
+Archive extraction selects the common libarchive `bsdtar` frontend explicitly:
+the producer needs `--strip-components`, which the generic NetBSD `nbtar`
+frontend does not provide.
 
 ```sh
 EMBER_BINUTILS_ARCHIVE=/absolute/distfiles/binutils-2.47.tar.xz \

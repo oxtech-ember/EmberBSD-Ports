@@ -1,0 +1,32 @@
+# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+# Keep the selected package job count when the bootstrap runs Ninja itself.
+--- configure.py.orig
++++ configure.py
+@@ -208,6 +208,8 @@
+ profilers = ['gmon', 'pprof']
+ parser.add_option('--bootstrap', action='store_true',
+                   help='bootstrap a ninja binary from nothing')
++parser.add_option('--bootstrap-jobs', type='int', metavar='N',
++                  help='maximum parallel jobs for the bootstrap rebuild')
+ parser.add_option('--verbose', action='store_true',
+                   help='enable verbose build')
+ parser.add_option('--platform',
+@@ -236,6 +238,8 @@
+                   help='ppoll() is used by default where available, '
+                        'but some platforms may need to use pselect instead',)
+ (options, args) = parser.parse_args()
++if options.bootstrap_jobs is not None and options.bootstrap_jobs < 1:
++    parser.error('--bootstrap-jobs must be a positive integer')
+ if args:
+     print('ERROR: extra unparsed command-line arguments:', args)
+     sys.exit(1)
+@@ -804,6 +808,9 @@
+ 
+         rebuild_args.append(bootstrap_exe)
+ 
++    if options.bootstrap_jobs is not None:
++        rebuild_args.extend(['-j', str(options.bootstrap_jobs)])
++
+     if options.verbose:
+         rebuild_args.append('-v')
+ 

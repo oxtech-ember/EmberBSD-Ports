@@ -112,7 +112,7 @@ def _build_binutils(target, new_work, make_override=None, native=None):
         require(make_override is None or str(make_override) == make,
                 'GNU make differs from the selected native prefix')
         cc, cxx = selected.tool('cc'), selected.tool('cxx')
-        tar, patch_command = selected.tool('tar'), selected.tool('patch')
+        tar, patch_command = selected.tool('bsdtar'), selected.tool('patch')
     recipe = PORTS / 'pkgsrc/devel/binutils'
     archive_name = 'binutils-2.47.tar.xz'
     records = [line.split('\t') for line in (PORTS / 'profiles/common-build-tools/sources.tsv').read_text().splitlines() if line.startswith(archive_name + '\t')]
@@ -124,6 +124,9 @@ def _build_binutils(target, new_work, make_override=None, native=None):
     require(len(sha512) == len(sizes) == 1, 'Binutils distinfo incomplete')
     patches = audit_patches(recipe, exclude_isl=False)
     work.mkdir()
+    if native is not None:
+        from binutils_host import native_environment
+        env = native_environment(selected, env, work)
     archive = work / archive_name
     selected_archive = os.environ.get('EMBER_BINUTILS_ARCHIVE')
     if selected_archive:
@@ -159,6 +162,9 @@ def _build_binutils(target, new_work, make_override=None, native=None):
     receipt = platform.platform() + '\ntarget=' + target + '\ntriplet=' + triplet + '\nhost_cc=' + cc + '\nhost_cxx=' + cxx + '\ngmake=' + make + '\njobs=' + count + '\nconfigure=' + ' '.join(str(arg) for arg in configure[1:]) + '\n'
     receipt += capture([cc, '--version'], env=env) + capture([cc, '-dumpmachine'], env=env) + capture([cxx, '--version'], env=env) + capture([make, '--version'], env=env) + capture([prefix / 'bin' / (triplet + '-as'), '--version'], env=env) + capture([prefix / 'bin' / (triplet + '-ld'), '--version'], env=env) + digest_rows([archive, recipe / 'distinfo'] + sorted((recipe / 'patches').glob('patch-*')))
     receipt += digest_rows(policy_sources() + sorted(HERE.glob('*.py')))
+    if native is not None:
+        from binutils_host import CONTRACT
+        receipt += digest_rows([CONTRACT])
     (work / 'inputs.txt').write_text(receipt)
     if native is not None:
         from binutils_host import write_bfd_input

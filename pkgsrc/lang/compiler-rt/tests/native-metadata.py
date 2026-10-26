@@ -19,13 +19,13 @@ def main():
     args = cli.parse_args()
     args.work.mkdir()
     keys = ('PKGNAME', 'PATCHDIR', 'PATCH_WRKSRC', 'PATCH_ARGS', 'PATCH_STRIP', 'PKG_FAIL_REASON',
-            'CMAKE_CONFIGURE_ARGS', 'LOCALBASE')
+            'CMAKE_CONFIGURE_ARGS', 'LOCALBASE', 'CMAKE_BUILD_ARGS', '_MAKE_JOBS_N')
 
     def query(label, *extra):
         command = [str(args.bmake), '-C', str(args.pkgsrc / 'lang/compiler-rt'),
             'MAKECONF=' + str(args.makeconf), 'OSX_SDK_PATH=' + str(args.sdk),
             'EMBERBSD_DARWIN_SDK_VERSION=' + args.sdk_version,
-            'EMBERBSD_DARWIN_LIBTOOL=' + str(args.libtool), *extra,
+            'EMBERBSD_DARWIN_LIBTOOL=' + str(args.libtool), 'MAKE_JOBS=18', *extra,
             *[word for key in keys for word in ('-V', key + '=${' + key + '}')]]
         result = subprocess.run(command, capture_output=True, text=True)
         (args.work / (label + '.log')).write_text(result.stdout + result.stderr)
@@ -60,6 +60,8 @@ def main():
     patched = target.read_text()
     assert 'binary128_raise_invalid' in patched and 'COMPILER_RT_NETBSD_AARCH64_FENV' in patched
     assert (target.parent / 'LICENSE.EmberBSD-BINARY128.TXT').is_file()
+    assert native['_MAKE_JOBS_N'] == '18', native
+    assert shlex.split(native['CMAKE_BUILD_ARGS']) == ['-j', '18'], native
     options = shlex.split(native['CMAKE_CONFIGURE_ARGS'])
     for value in ('-DDARWIN_macosx_CACHED_SYSROOT=' + str(args.sdk),
                   '-DDARWIN_macosx_OVERRIDE_SDK_VERSION=' + args.sdk_version,
@@ -69,6 +71,8 @@ def main():
     assert '-DCMAKE_LIBTOOL:FILEPATH=' + str(args.libtool) in options
     initial = query('initial-archive', 'EMBERBSD_DARWIN_TOOL_PHASE=initial')
     assert initial['PKG_FAIL_REASON'] == '', initial
+    assert initial['_MAKE_JOBS_N'] == '18', initial
+    assert shlex.split(initial['CMAKE_BUILD_ARGS']) == ['-j', '18'], initial
     initial_options = shlex.split(initial['CMAKE_CONFIGURE_ARGS'])
     selected = [arg.split('=', 1)[1] for arg in initial_options
                 if arg.startswith('-DCMAKE_LIBTOOL:')]

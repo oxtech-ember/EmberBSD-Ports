@@ -89,8 +89,10 @@ calls to the real `cmake -E create_symlink`, requiring duplicate baseline
 writers and exactly one writer for each of the 125 patched outputs. Two
 small arm64 ASM archives use the real `lse.S`; no-op and missing-output
 rebuilds check incremental behavior. arm64e/arm64_32 checks cover the CMake
-dependency graph only. The native package's `MAKE_JOBS_SAFE=no` remains until
-the corrected package graph has passed a bounded parallel native build.
+dependency graph only. The corrected native package honors the configured
+pkgsrc job count, including parallel initial and full builds; there is no
+package-wide serialization override. `tests/native-metadata.py` checks the
+ordinary `MAKE_JOBS=18` route in both phases.
 
 ```sh
 python3 -B pkgsrc/lang/compiler-rt/tests/outline-atomics-parallel.py \

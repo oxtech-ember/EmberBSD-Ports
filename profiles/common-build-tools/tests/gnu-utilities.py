@@ -51,22 +51,44 @@ def diagnostic_checks(args, work, hook, recipe):
     env = {'PATH': str(work), 'LC_ALL': 'C',
            'EMBERBSD_CONFIGURE_SDK': 'yes',
            'EMBERBSD_CONFIGURE_UNAME': str(args.uname)}
-    def invoke(command, selected):
-        return subprocess.run([str(args.shell), '-c', script, 'diagnostic-test', *command],
+    def invoke(command, selected, *, direct=False):
+        body = ('. ' + shlex.quote(str(work / helper.name)) +
+                '\nemberbsd_host_diagnostic "$@"\n') if direct else script
+        return subprocess.run([str(args.shell), '-c', body, 'diagnostic-test', *command],
                               cwd=work, env=selected, capture_output=True)
+    for option in ('-m', '-n', '-p', '-r', '-s', '-v'):
+        expected = subprocess.run([str(args.uname), option], env=env,
+                                  capture_output=True, check=True)
+        for spelling in ('/usr/bin/uname', '/bin/uname'):
+            actual = invoke([spelling, option], env)
+            require(actual.returncode == 0 and actual.stdout == expected.stdout
+                    and not actual.stderr, 'Selected uname diagnostic changed')
     expected = subprocess.run([str(args.uname), '-p'], env=env,
                               capture_output=True, check=True)
-    actual = invoke(['/usr/bin/uname', '-p'], env)
-    require(actual.returncode == 0 and actual.stdout == expected.stdout
-            and not actual.stderr, 'Selected uname diagnostic changed')
+    legacy = {'PATH': str(work), 'LC_ALL': 'C', 'GCC_CONFIGURE_SDK': 'yes',
+              'GCC_CONFIGURE_UNAME': str(args.uname)}
+    for selected in (legacy, dict(env, **{key: value for key, value in legacy.items()
+                                        if key.startswith('GCC_')})):
+        actual = invoke(['/usr/bin/uname', '-p'], selected, direct=True)
+        require(actual.returncode == 0 and actual.stdout == expected.stdout
+                and not actual.stderr, 'Legacy GCC aliases changed')
+    for key, value in (('GCC_CONFIGURE_SDK', 'no'),
+                       ('GCC_CONFIGURE_UNAME', str(work / 'different'))):
+        actual = invoke(['/usr/bin/uname', '-p'], dict(env, **{key: value}), direct=True)
+        require(actual.returncode == 1 and not actual.stdout and b'conflicting SDK' in actual.stderr,
+                'Conflicting GCC aliases must fail before diagnostics')
     for command in (['/bin/uname', '-X'], ['/bin/arch'], ['/usr/bin/arch', '-k'],
                     ['/usr/convex/getsysinfo'], ['/usr/bin/hostinfo'],
-                    ['/bin/machine'], ['/usr/bin/oslevel'], ['/bin/universe']):
+                    ['/bin/machine'], ['/usr/bin/oslevel'], ['/bin/universe'],
+                    ['/usr/bin/uname', '-s', '-r'], ['/bin/uname', '--help']):
         result = invoke(command, env)
         require(result.returncode == 1
                 and result.stdout == b'unavailable (selected SDK profile)\n'
                 and not result.stderr, 'Legacy diagnostic reached a host command')
-    for value in (None, 'uname', '/usr/bin/uname', '/bin/uname', str(work / 'absent')):
+    nonexec = work / 'non-executable-uname'
+    nonexec.write_text('not an executable\n')
+    nonexec.chmod(0o644)
+    for value in (None, '', 'uname', str(work / 'absent'), str(work), str(nonexec)):
         bad = dict(env)
         if value is None:
             del bad['EMBERBSD_CONFIGURE_UNAME']
@@ -75,7 +97,7 @@ def diagnostic_checks(args, work, hook, recipe):
         result = invoke(['/usr/bin/uname', '-p'], bad)
         require(result.returncode != 0 and not result.stdout
                 and b'configure:' in result.stderr,
-                'Missing or outside selected uname must refuse before diagnostics')
+                'Missing, relative or non-executable uname must refuse before diagnostics')
     bad = dict(env, EMBERBSD_CONFIGURE_SDK='no')
     require(invoke(['/usr/bin/uname', '-p'], bad).returncode != 0,
             'An invalid explicit SDK mode must refuse')

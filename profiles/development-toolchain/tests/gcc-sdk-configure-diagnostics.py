@@ -106,7 +106,7 @@ class Diagnostics(unittest.TestCase):
         self.assertIn('if test "${EMBERBSD_CONFIGURE_SDK-}" != yes; then', helper)
         self.assertIn('case ${EMBERBSD_CONFIGURE_UNAME-} in', helper)
         self.assertIn('test ! -f "$EMBERBSD_CONFIGURE_UNAME" || test ! -x "$EMBERBSD_CONFIGURE_UNAME"', helper)
-        self.assertEqual(helper.count('exit 1'), 6)
+        self.assertEqual(helper.count('exit 1'), 5)
         self.assertIn('conflicting SDK uname selectors', helper)
         self.assertIn('conflicting SDK mode selectors', helper)
         self.assertIn('/usr/bin/uname | /bin/uname)', helper)

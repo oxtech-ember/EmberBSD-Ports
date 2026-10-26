@@ -4,7 +4,7 @@
 as checked on 2026-10-12. Its [release announcement](https://www.nntp.perl.org/group/perl.perl5.porters/2026/07/msg271063.html)
 publishes the matching source SHA256.
 
-The complete `lang/perl5` recipe supplies Perl 5.44.0nb8, its shared library,
+The complete `lang/perl5` recipe supplies Perl 5.44.0nb9, its shared library,
 threaded interpreter, XS modules, development headers and manuals. Clang's
 installed scan-build programs depend on this target package. The build uses
 macOS for compilation and an EmberBSD/AArch64 device for Configure probes.
@@ -94,6 +94,23 @@ feature answers and configured ABI macros are preserved. Only tool-name macros
 and build identity comments change in the installed copy of `CORE/config.h`.
 The original build Config files remain untouched; the header keeps its
 cross-build provenance. The converter rejects unknown remaining host paths.
+
+## Selected Darwin search paths
+
+Darwin Configure receives `locincpth` and `loclibpth` from the selected prefix
+before its include/library probes. The canonical `lang/perl5/files/Policy.sh`
+owns cleanup of `/usr/local/lib` from both `ldflags` and XS `lddlflags`; the
+export infrastructure patch only supplies the Configure arguments and package
+revision. It must not add a second copy of that callback block.
+
+The [search-path regression](../../development-toolchain/tests/perl-darwin-search-paths.py)
+accepts `CONFIGURE POLICY MAKEFILE SHELL UTILITY_BIN WORK`. Use the actual
+exported recipe and patched upstream Configure. It executes the include-search
+fragment and the complete substituted Policy.sh to generate `UU/pkgsrc.cbu`,
+then runs that callback with flags supplied afterwards. A deliberate unescaped
+backtick mutation must freeze the generation-time flags and fail. This checks the
+shell generation boundary; installed Perl Config and XS build checks remain
+separate.
 
 ## Selected Darwin install-name tool
 

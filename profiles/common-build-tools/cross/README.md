@@ -460,6 +460,17 @@ libxml2 link repair in gettext-tools 1.0nb1. Maintained and generated makefiles
 carry the same change; the macOS host package retains its XML functionality.
 `tests/ninja-cross.sh` checks native/target command separation and pkgsrc's
 parallel-build limit, including an unset job count and `MAKE_JOBS_SAFE=no`.
+Ninja declares `od` for its upstream `src/inline.sh` data generator. The tool
+comes through pkgsrc's selected provider; no system path is embedded in the
+recipe. `tests/ninja-inline.py` queries the real exported recipe and runs the
+unchanged script with selected `od`, `sed` and `printf`, checking exact bytes and the
+missing-`od` failure. Native package installation is a separate check.
+The native Python bootstrap forwards the selected job count through
+`--bootstrap-jobs` to its final self-rebuild, including pkgsrc serialization.
+Omitting that upstream extension retains Ninja's original default. The
+`tests/ninja-bootstrap-jobs.py` check executes the actual option parser and
+final child invocation with a recording subprocess, and queries the real
+native recipe's normal and serialized commands; it runs no compiler.
 `tests/cross-generators.sh` checks native/cross Libtool auxiliary selection
 and executes C/C++ generators through the real configure environment. It
 also rejects missing compiler exports and invalid compiler paths.

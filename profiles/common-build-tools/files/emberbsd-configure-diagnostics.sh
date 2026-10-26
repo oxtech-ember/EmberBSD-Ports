@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (c) 2026 EmberBSD contributors.
 # Origin: EmberBSD (AI-assisted). Shared explicit SDK configure diagnostics.
-# SDK admission binds the selected executable's bytes and provenance.
+# The caller selects tools and enforces its bootstrap or ordinary prefix policy.
+# This helper validates the explicit executable and routes only known queries.
 if test "${GCC_CONFIGURE_SDK+set}" = set; then
   if test "${EMBERBSD_CONFIGURE_SDK+set}" = set &&
      test "$EMBERBSD_CONFIGURE_SDK" != "$GCC_CONFIGURE_SDK"; then
@@ -23,9 +24,6 @@ if test "${EMBERBSD_CONFIGURE_SDK-}" != yes; then
   exit 1
 fi
 case ${EMBERBSD_CONFIGURE_UNAME-} in
-  /usr/bin/uname | /bin/uname)
-    echo 'configure: system uname is not a selected SDK input' >&2
-    exit 1 ;;
   /*) if test ! -f "$EMBERBSD_CONFIGURE_UNAME" || test ! -x "$EMBERBSD_CONFIGURE_UNAME"; then
         echo 'configure: selected SDK uname must be executable' >&2
         exit 1

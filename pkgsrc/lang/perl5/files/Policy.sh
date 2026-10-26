@@ -112,6 +112,14 @@ case "\$ldflags" in */usr/local/lib*)
 	;;
 esac
 
+# MakeMaker uses lddlflags to link XS modules, independently of ldflags.
+case "\$lddlflags" in */usr/local/lib*)
+	set \`echo "X \$lddlflags " | sed 's, [^ ]*/usr/local/lib[^ ]* , ,g'\`
+	shift
+	lddlflags="\$*"
+	;;
+esac
+
 # Strip gdbm from libswanted
 case "\$libswanted" in *gdbm*)
 	set \`echo "X \$libswanted " | sed 's, [^ ]*gdbm[^ ]* , ,g'\`

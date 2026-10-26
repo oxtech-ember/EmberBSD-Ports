@@ -67,5 +67,5 @@ Its negative control rejects reintroduction of a bundled SimpleCpp CMake target.
 
 The packaging and PCRE2 adaptation are AI-assisted EmberBSD work.
 Source and metadata checks do not qualify an analyzer executable.
-GCC16 builds, upstream executable tests, analysis, memory checks, installed CLI,
+Package builds, upstream executable tests, analysis, memory checks, installed CLI,
 HTML/GUI behavior, cross execution and package lifecycle checks remain pending.

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
 """Native Binutils selection and its existing build-tree BFD inputs."""
+import hashlib
 import os
 from pathlib import Path
 import re
@@ -9,11 +10,12 @@ import sys
 
 from emberbsd_sdk.errors import SDKError
 from emberbsd_sdk.native_toolset import load_host_prefix
+from emberbsd_sdk.native_os_routing import (publish_native_os_routing,
+                                            read_native_os_contract)
 
-ROLES = ('cc cxx cpp as ld ar ranlib nm strip python sh gmake tar patch '
-         'awk sed grep egrep expr find xargs ls cmp diff mv cp rm ln mkdir rmdir '
-         'touch cat sort tr head tail wc cut uniq basename dirname pwd date uname '
-         'printf echo env install perl pkg-config xz true').split()
+CONTRACT = Path(__file__).with_name('binutils-native-tools')
+CONTRACT_SHA256 = hashlib.sha256(CONTRACT.read_bytes()).hexdigest()
+_, _, ROLES = read_native_os_contract(CONTRACT, sha256=CONTRACT_SHA256)
 VECTORS = {'aarch64--netbsd': 'elf64-littleaarch64',
            'x86_64--netbsd': 'elf64-x86-64',
            'armv7--netbsdelf-eabihf': 'elf32-littlearm',
@@ -61,6 +63,13 @@ def native_selection(prefix, family):
             flags.append('-L' + selected.bundle_root + '/lib')
         env[name.upper()] = shlex.join(flags)
     return selected, env
+
+
+def native_environment(selected, environment, work):
+    """Route nested command names through the shared SDK alias publisher."""
+    routing = publish_native_os_routing(selected, contract_path=CONTRACT,
+        contract_sha256=CONTRACT_SHA256, destination=str(work / 'native-tools'))
+    return dict(environment, PATH=routing['directory'] + os.pathsep + selected.path)
 
 
 def _libtool_archive(path, active=()):
