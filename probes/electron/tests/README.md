@@ -12,6 +12,9 @@ x64 selector test uses an empty synthetic sysroot and mock pkgconf. POSIX
 outside the selected source and any external sysroot.
 
 ```sh
+python3.15 -E -S probes/electron/tests/gn-unbundle-compiler-family.py \
+  --source /absolute/chromium/src --gn /absolute/host-gn \
+  --baseline-source /absolute/chromium-before-family-patch
 python3.15 -E -S probes/electron/tests/gn-pkgconfig.py \
   --sdk-source /absolute/EmberBSD-SDK \
   --source /absolute/chromium/src --sysroot /absolute/target-sysroot \

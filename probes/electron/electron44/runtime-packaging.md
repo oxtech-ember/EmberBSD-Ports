@@ -7,7 +7,7 @@ patch series at its existing owner. Do not add a second fetch-only recipe.
 
 ## Build boundary
 
-The recipe currently fetches Electron 44.9.3 and Node 24.22.0. It does not prepare
+The recipe currently fetches Electron 44.9.3 and Node 24.22.1. It does not prepare
 the complete Chromium DEPS tree or run GN and Ninja. Do not use `NO_BUILD`, a
 downloaded binary ZIP, or an externally supplied ZIP as its ordinary build.
 
@@ -21,17 +21,19 @@ The missing recipe integration is concrete:
 
 1. Prepare the full pinned Electron DEPS source and ordered Ports patches in
    the recipe's own work tree. The two current distfiles are insufficient.
-2. Map the accepted native selection and the independent GCC16 target SDK to
-   GN arguments. Bind the native compiler paths and ordered ABI arguments,
+2. Map the selected native prefix and independent target SDK to GN arguments.
+   Clang is the default; select GCC only for an explicit platform requirement.
+   Bind the native compiler paths and ordered ABI arguments,
    Mac SDK, host Node and other generators used by the actual graph. Bind the
    target compiler/binutils, EmberBSD sysroot and target pkgsrc metadata.
-   Select both GCC host and snapshot families documented in the parent README.
+   Set the target `is_clang` mode and the host mode independently, as documented
+   in the parent README. Use the matching host and snapshot toolchain families.
    Preserve the target custom libc++ policy, final-link pool and link launcher.
 3. Write that checked `args.gn` in a new recipe-owned output directory. Run the
    selected GN as `gn gen OUTPUT --script-executable=SELECTED_PYTHON`. Then run
    the selected Ninja as `ninja -C OUTPUT -j JOBS electron_dist_zip`.
    Use the SDK process API and explicit argv arrays for these calls. Do not
-   select a tool through ambient PATH or replace the target compiler with Clang.
+   select a tool through ambient PATH or switch families after a build failure.
 4. Stage only `OUTPUT/dist.zip` produced by that successful, drained build.
    Use its actual SHA256 as a byte-stability check. The hash does not accept
    the source graph, compiler, sysroot or build by itself.
@@ -103,4 +105,4 @@ The local pkgsrc `www/chromium` recipe and the FreeBSD maintainer's
 show the applicable BSD pattern: build the owned source tree, install its
 runtime files in a private versioned directory, and retain license notices.
 Their older file lists and compiler policies do not define this runtime's
-payload or its GCC16 toolchains.
+payload or its selected toolchains.

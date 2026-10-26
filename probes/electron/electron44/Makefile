@@ -20,8 +20,8 @@ HOMEPAGE=	https://www.electronjs.org/
 COMMENT=	Build cross-platform desktop apps with JavaScript, HTML, and CSS
 LICENSE=	mit AND mpl-2.0 AND modified-bsd
 
-# Owner decision 2026-10-16: cross build with the shared GCC16 toolchain
-# and the shared EmberBSD sysroot, like every other EmberBSD profile.
+# Cross-build with the shared Clang/LLVM SDK and matching EmberBSD runtime.
+# Select GCC only through an explicit platform profile.
 USE_CROSS_COMPILE=	yes
 USE_LANGUAGES=		c c++
 USE_TOOLS+=		pkg-config
@@ -35,6 +35,7 @@ BUILD_HOST_NPM=		${EMBERBSD_HOST_NPM}
 # chromium-browser-official tarball.  Keep its DEPS revision and the NetBSD
 # overlay revision in the build receipt.
 # TODO(build): apply the NetBSD patch set to this exact Chromium pin, add the
-# Electron target GN configuration, build with GCC16, and package the runtime.
+# Electron target GN configuration, build with the selected SDK, and package
+# the runtime.
 
 .include "../../mk/bsd.pkg.mk"

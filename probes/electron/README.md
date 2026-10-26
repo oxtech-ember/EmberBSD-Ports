@@ -45,12 +45,14 @@ and build acceptance.
 ## Target contract
 
 - Build on the developer host. Cross-compile all target objects for
-  `aarch64--netbsd` or `x86_64--netbsd` with GCC 16.2.0 and the matching
-  EmberBSD sysroot. GN names those CPUs `arm64` and `x64` respectively.
-- Keep host and target tools separate. Build native C/C++ tools with an
-  accepted GCC16 native SDK. Build target C/C++ objects with the matching
-  GCC16 cross toolchain. Do not select a host compiler through the target
-  `CC` or `CXX`, an ambient PATH, or a Clang fallback.
+  `aarch64--netbsd` or `x86_64--netbsd` with the shared Clang/LLVM toolchain
+  and a matching EmberBSD sysroot and runtime. GN names these CPUs `arm64`
+  and `x64`. GCC is an explicit platform alternative, never a retry fallback.
+- Select host and target tools independently through the SDK.
+  Native C/C++ generators use the selected native prefix. Target objects use
+  the target compiler, sysroot and runtime. Do not select a host compiler
+  through target `CC`/`CXX` or ambient PATH. A family change does not establish
+  C++ ABI, builtins or unwinder compatibility.
 - Enable Linux-conditioned Chromium source dependencies only to fetch their
   shared code. Do not use a Linux sysroot or Linux target objects.
 - Adapt the `chromium-nb` and Electron patch sets to the exact Chromium pin.
@@ -67,9 +69,9 @@ and build acceptance.
   1,641 patches. Five patch hunks need adaptation and fourteen targets are
   absent from the Electron tree. A dry run does not establish patch ordering or
   build correctness.
-- The NetBSD GCC16 toolchain and cross sysroot are available. Focused production
-  GN checks retain explicit target ELF tools and target pkgsrc metadata.
-  Complete target compilation and linking remain separate acceptance gates.
+- Focused production GN checks retain explicit target ELF tools and target
+  pkgsrc metadata. Earlier GCC checks do not qualify the new Clang runtime.
+  Complete Clang compilation, linking and target execution remain unverified.
 - No complete Chromium link, Electron runtime package, Blanc package, or target
   application acceptance run exists yet. Do not treat partial object builds as
   completion.
@@ -108,8 +110,9 @@ cp -RL probes/electron/electron44 /absolute/NEW_PKGSRC/devel/electron44
 ```
 
 When the recipes are complete, move them to `pkgsrc/www/blanc` and
-`pkgsrc/devel/electron44`. Then the normal export includes them. Select the common GCC16 cross
-configuration for the target runtime. Set `EMBERBSD_HOST_NODE` to the absolute
+`pkgsrc/devel/electron44`. Then the normal export includes them. Select the
+common Clang cross configuration and matching target runtime, or an explicit
+GCC platform profile. Set `EMBERBSD_HOST_NODE` to the absolute
 host Node.js 24.22.1 executable. Set `EMBERBSD_CROSS_BUILD_PYTHON` to the
 selected host CPython 3.15 executable. Set `EMBERBSD_SDK_SOURCE` to an absolute
 SDK API 1 source directory. The controller checks the SDK API and module origin.
@@ -147,6 +150,7 @@ its NetBSD GN adaptations, from the Chromium source root:
 patch -p0 -F 0 < /absolute/Ports/probes/electron/patches/gn-pkgconfig-libdir.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-readelf.patch
 patch -p0 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-asmflags.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-compiler-family.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-bindgen-host-tools.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-netbsd-x64-targets.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-version-netbsd.patch
@@ -425,7 +429,34 @@ across participating builds. It covers target and Mac host C/C++ and final
 Rust links. Empty settings preserve existing commands. The reusable rule
 checker verifies captured production commands before the production build starts.
 
-## Native macOS GCC16 host tools
+## Native and target compiler selection
+
+The unbundled target uses Chromium's existing `is_clang` argument. Set it to
+`true` for the ordinary Clang SDK, or `false` for an explicit GCC platform.
+The `:host` unbundle toolchain separately defaults `unbundle_host_is_clang`
+to `true`. Set it to `false` only when selecting a native GCC prefix.
+The [family patch](patches/gn-unbundle-compiler-family.patch) prevents a GCC
+target from silently switching native tools into GCC mode. It does not detect
+the compiler family from an executable name or replace missing tools.
+
+Supply target commands through `CC`, `CXX`, `AR`, `NM`, `READELF` and their
+flag variables. The unbundled host uses the independent `BUILD_*` commands
+and flags. Select these commands through the SDK before generating GN files.
+For a macOS host, retain the existing Apple Clang toolchain labels and select
+`clang_base_path` from the native prefix. The explicit macOS GCC families below
+are alternatives. Neither path may substitute Xcode or ambient build tools.
+The Mac ABI SDK, deployment flags and required Apple tools remain explicit
+native inputs. Target libraries must come from the EmberBSD sysroot.
+
+Run the [family selection check](tests/gn-unbundle-compiler-family.py) with
+`--source` and an explicit `--gn`. Six GN cases exercise both target modes,
+the independent host default and both explicit host modes. With
+`--baseline-source`, two negative cases demonstrate the inherited-mode defect.
+Compiler paths, linker drivers, CPU/OS and assembler flags must stay separate.
+These small GN fixtures run no compiler, Ninja or complete Chromium graph.
+The ordinary Electron recipe still needs DEPS preparation and GN bindings.
+
+## Explicit native macOS GCC host alternative
 
 The [native GCC16 patch](patches/gn-mac-gcc16-host.patch) follows the link-launcher
 patch in the source series. It is pinned to Chromium source
