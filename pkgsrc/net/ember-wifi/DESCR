@@ -1,0 +1,3 @@
+ember-wifi is a Qt 6 tray application for managing wireless connections
+through the wpa_supplicant control interface. A second launch activates the
+existing window through the session D-Bus service.
