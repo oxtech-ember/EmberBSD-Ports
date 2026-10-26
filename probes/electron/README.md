@@ -432,6 +432,20 @@ patch in the source series. It is pinned to Chromium source
 `88173c9141d8c62936a1796b58d3fe3b9e60a1ab`. The source checks accept the exact
 three files before or after this patch. They do not execute GN or a compiler.
 
+Run `tests/gn-mac-gcc16-scope.py --source /absolute/chromium/src
+--gn /absolute/native/gn` for the compiler-selection regression. It evaluates
+both production templates with a real GN binary. The 14 cases preserve explicit
+false, explicit true, and the default true under both inherited compiler modes.
+A missing `toolchain_args` scope must fail. The private local scope also supplies
+`forward_variables_from`; it does not become a toolchain argument. The fixture
+defines no compiler rules and does not run Ninja. Add `--baseline-source` with
+the pre-repair tree to confirm both original parser failures. This adds two
+negative cases. It does not validate the full Chromium graph.
+
+The Mac runtime configuration retains Clang's `-mmacos-version-min` spelling.
+The GCC route uses `-mmacosx-version-min` in the same argument position.
+Both routes use the selected `mac_deployment_target` value.
+
 Supply `mac_gcc_cc` and `mac_gcc_cxx` from the raw executable paths in the
 accepted native SDK command tuples. Supply each ordered tuple tail through
 `mac_gcc_cc_args` and `mac_gcc_cxx_args`. Set `mac_gcc_llvm_bin_path` from the

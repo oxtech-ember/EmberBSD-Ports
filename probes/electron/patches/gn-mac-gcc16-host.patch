@@ -9,11 +9,10 @@ This patch does not qualify a compiler or change the NetBSD target ABI.
 
 --- a/build/toolchain/mac/BUILD.gn
 +++ b/build/toolchain/mac/BUILD.gn
-@@ -6,6 +6,25 @@
- import("//build/config/v8_target_cpu.gni")
+@@ -7,11 +7,31 @@
  import("//build/toolchain/apple/toolchain.gni")
  import("//build_overrides/build.gni")
-+
+ 
 +# Explicit paths and ordered compiler arguments from an accepted native SDK.
 +# Empty inputs preserve the existing toolchains. They do not qualify a compiler.
 +declare_args() {
@@ -32,11 +31,22 @@ This patch does not qualify a compiler or change the NetBSD target ABI.
 +  assert(mac_gcc_cc_args == [] && mac_gcc_cxx_args == [],
 +         "Native GCC arguments need explicit compiler paths")
 +}
- 
++
  # Specialisation of the apple_toolchain template to declare the toolchain
  # and its tools to build target for macOS platform.
-@@ -22,10 +41,10 @@
-       forward_variables_from(invoker.toolchain_args, "*")
+ template("mac_toolchain") {
+   assert(defined(invoker.toolchain_args),
+          "Toolchains must declare toolchain_args")
++  _invoker_toolchain_args = invoker.toolchain_args
+ 
+   apple_toolchain(target_name) {
+     forward_variables_from(invoker, "*", [ "toolchain_args" ])
+@@ -19,13 +39,13 @@
+     bin_path = mac_bin_path
+ 
+     toolchain_args = {
+-      forward_variables_from(invoker.toolchain_args, "*")
++      forward_variables_from(_invoker_toolchain_args, "*")
        current_os = "mac"
  
 -      # EmberBSD cross profile (E12): the target build sets is_clang=false
@@ -44,13 +54,13 @@ This patch does not qualify a compiler or change the NetBSD target ABI.
 -      # leak into this macOS host toolchain. The host stays Clang.
 -      is_clang = true
 +      # Keep compiler selection local to this toolchain.
-+      if (!defined(invoker.toolchain_args.is_clang)) {
++      if (!defined(_invoker_toolchain_args.is_clang)) {
 +        is_clang = true
 +      }
  
        # The cross target can enable split DWARF, but this macOS host toolchain
        # does not emit .dwo files. Keep it on the Apple default.
-@@ -103,3 +122,44 @@
+@@ -103,3 +123,44 @@
      v8_current_cpu = "arm64"
    }
  }
@@ -270,8 +280,23 @@ This patch does not qualify a compiler or change the NetBSD target ABI.
          script = rebase_path("//build/toolchain/apple/filter_libtool.py",
                               root_build_dir)
  
-@@ -949,11 +1007,10 @@
-       forward_variables_from(invoker.toolchain_args, "*")
+@@ -938,22 +996,22 @@
+ # used to compile build scripts that are part of the stdlib that is built
+ # for the default toolchain.
+ template("apple_rust_host_build_tools_toolchain") {
++  assert(defined(invoker.toolchain_args),
++         "Toolchains must declare toolchain_args")
++  _invoker_toolchain_args = invoker.toolchain_args
+   single_apple_toolchain(target_name) {
+-    assert(defined(invoker.toolchain_args),
+-           "Toolchains must declare toolchain_args")
+     forward_variables_from(invoker,
+                            "*",
+                            TESTONLY_AND_VISIBILITY + [ "toolchain_args" ])
+     toolchain_args = {
+       # Populate toolchain args from the invoker.
+-      forward_variables_from(invoker.toolchain_args, "*")
++      forward_variables_from(_invoker_toolchain_args, "*")
        toolchain_for_rust_host_build_tools = true
  
 -      # EmberBSD cross profile (E12): the target build sets is_clang=false
@@ -280,7 +305,7 @@ This patch does not qualify a compiler or change the NetBSD target ABI.
 -      # logic to GCC mode (missing libgcc_s on darwin). Keep it Clang.
 -      is_clang = true
 +      # Preserve an explicitly selected native compiler and runtime family.
-+      if (!defined(invoker.toolchain_args.is_clang)) {
++      if (!defined(_invoker_toolchain_args.is_clang)) {
 +        is_clang = true
 +      }
  
@@ -297,3 +322,19 @@ This patch does not qualify a compiler or change the NetBSD target ABI.
      _archs_mapping_os = archs_mapping[current_os]
      if (defined(_archs_mapping_os[current_cpu])) {
        _archs_mapping_os_cpu = _archs_mapping_os[current_cpu]
+@@ -50,10 +50,14 @@
+   # host tools; apply mac SDK flags only in a real mac context.
+   common_flags = []
+   if (current_os == "mac") {
++    deployment_target_flag = "-mmacos-version-min=$mac_deployment_target"
++    if (!is_clang) {
++      deployment_target_flag = "-mmacosx-version-min=$mac_deployment_target"
++    }
+     common_flags = [
+       "-isysroot",
+       rebase_path(sysroot, root_build_dir),
+-      "-mmacos-version-min=$mac_deployment_target",
++      deployment_target_flag,
+ 
+       # EmberBSD cross profile (E12): bundled libc++ bsd_like support calls
+       # asprintf, which _XOPEN_SOURCE alone hides on darwin.

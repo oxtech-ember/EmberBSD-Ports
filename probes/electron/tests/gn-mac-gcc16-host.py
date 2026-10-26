@@ -21,13 +21,13 @@ PATCH = Path(__file__).resolve().parents[1] / 'patches/gn-mac-gcc16-host.patch'
 HASHES = {
     'build/toolchain/mac/BUILD.gn': (
         'dd2d421e1ef8b4b3aa97351ccf7e2b0d77e0e79d51933fc9fd5c46d3dd10d5f7',
-        '15e9977abc49f6c7fb6eae9c794ece5a1a53fc72403ac3a076de3442dc138f79'),
+        '3ee25d27bbae2d36e8e483ae7ca8fd09b5ac3e8937ab23e0809dce7c27f9bc6d'),
     'build/toolchain/apple/toolchain.gni': (
         'e41660cf2c797f8291023ee3956f9e72ffb6ee87d1facdefb8ad0cb2d1e44b05',
-        '828b41d6618a70f679d23b141e9d3338d112bb8ba39d5aedd8785f650381cd1e'),
+        '970703891e911fb14c6ebd32d005f7f289006218f4ed8204ee0ca7cfb0af9521'),
     'build/config/mac/BUILD.gn': (
         '6e6ae8961044eba1668a2e38b47bf15c9e3766d3092b6043b0e7c179df547dbc',
-        '38a6f53f5be0ee6054bce07cbded1bc37b2dae6b0f3821251a9b78170d16d65f'),
+        '93b956d7a89c415e8079a7643b2ff50dba786c5939a1ec573559a1ac1b748185'),
 }
 
 
@@ -178,6 +178,9 @@ def host_allocator_modes(mac, apple):
     for template in ('apple_rust_host_build_tools_toolchain',
                      'apple_system_allocator_toolchain'):
         derived = source_block(apple, 'template("' + template + '") {')
+        forwarded = ('forward_variables_from(_invoker_toolchain_args, "*")'
+                     if template == 'apple_rust_host_build_tools_toolchain'
+                     else 'forward_variables_from(invoker.toolchain_args, "*")')
         if forwarded not in derived:
             raise ValueError('derived family must forward the native arguments')
         for name in HOST_ALLOCATOR_ARGS:
@@ -251,6 +254,12 @@ class RoutingTests(unittest.TestCase):
         mac = AFTER['build/toolchain/mac/BUILD.gn']
         self.assertEqual(mac.count(HOST_ALLOCATOR_DELTA), 1)
         prior = mac.replace(HOST_ALLOCATOR_DELTA, '')
+        # Remove the independent parser repair before the historical comparison.
+        prior = prior.replace('  _invoker_toolchain_args = invoker.toolchain_args\n', '', 1)
+        prior = prior.replace('forward_variables_from(_invoker_toolchain_args, "*")',
+                              'forward_variables_from(invoker.toolchain_args, "*")', 1)
+        prior = prior.replace('defined(_invoker_toolchain_args.is_clang)',
+                              'defined(invoker.toolchain_args.is_clang)', 1)
         self.assertEqual(hashlib.sha256(prior.encode()).hexdigest(),
                          PRIOR_MAC_SHA256)
         native = source_block(mac, 'template("mac_gcc_toolchain") {')
@@ -278,7 +287,7 @@ class RoutingTests(unittest.TestCase):
         mac = AFTER['build/toolchain/mac/BUILD.gn']
         heading = 'template("apple_rust_host_build_tools_toolchain") {'
         derived = source_block(self.apple, heading)
-        forwarded = 'forward_variables_from(invoker.toolchain_args, "*")'
+        forwarded = 'forward_variables_from(_invoker_toolchain_args, "*")'
         self.assertEqual(derived.count(forwarded), 1)
         mutant = self.apple.replace(derived, derived.replace(forwarded, ''))
         with self.assertRaisesRegex(ValueError, 'must forward'):
