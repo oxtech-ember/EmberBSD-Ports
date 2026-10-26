@@ -40,27 +40,27 @@
     },
     "patch-tools_gn_build_build__linux.ninja.template": {
       "provider": "pkgsrc/devel/gn",
-      "reason": "GN is a separately built host tool; BSD host portability patch intent needs review at the shared provider."
+      "reason": "Do not remove thin archives for the selected LLVM archiver; actual native package archive/link tests remain required."
     },
     "patch-tools_gn_build_gen.py": {
       "provider": "pkgsrc/devel/gn",
-      "reason": "GN is a separately built host tool; BSD host portability patch intent needs review at the shared provider."
+      "reason": "Legacy OpenBSD template/kvm support belongs to the shared GN provider; it is not needed for the selected Darwin host."
     },
     "patch-tools_gn_src_base_files_file__posix.cc": {
       "provider": "pkgsrc/devel/gn",
-      "reason": "GN is a separately built host tool; BSD host portability patch intent needs review at the shared provider."
+      "reason": "Retain upstream fsync on BSD; fdatasync is a behavior change, not a missing API repair."
     },
     "patch-tools_gn_src_gn_args.cc": {
       "provider": "pkgsrc/devel/gn",
-      "reason": "GN is a separately built host tool; BSD host portability patch intent needs review at the shared provider."
+      "reason": "Do not classify every evbarm host as arm64: evbarm covers 32-bit and 64-bit systems. Selected Darwin host architecture uses upstream detection."
     },
     "patch-tools_gn_src_gn_version.h": {
       "provider": "pkgsrc/devel/gn",
-      "reason": "GN is a separately built host tool; BSD host portability patch intent needs review at the shared provider."
+      "reason": "Pinned common GN already undefines major/minor macros before declaring Version; the legacy accessor rename is superseded."
     },
     "patch-tools_gn_src_util_exe__path.cc": {
       "provider": "pkgsrc/devel/gn",
-      "reason": "GN is a separately built host tool; BSD host portability patch intent needs review at the shared provider."
+      "reason": "Legacy kvm implementation is OpenBSD-only. Pinned common GN already provides the NetBSD sysctl executable-path implementation."
     }
   },
   "patch_count": 1641,
