@@ -33,6 +33,7 @@ from pathlib import Path
 KINDS = ('BOOTSTRAP_DEPENDS', 'TOOL_DEPENDS', 'BUILD_DEPENDS', 'DEPENDS')
 NAMES = ('EMBERBSD_DARWIN_SEED_MAKE_RECIPES', 'EMBERBSD_DARWIN_SEED_GZIP_RECIPES', 'EMBERBSD_DARWIN_MAKE', 'EMBERBSD_DARWIN_GMAKE',
          'LOCALBASE', 'OSX_SDK_PATH', 'MAKE', '_MAKE', 'LDFLAGS', 'EMBERBSD_COMPILER_FAMILY', *KINDS)
+NAMES += ('PKG_OPTIONS.libfetch', 'TOOLS_PLATFORM.bison-yacc', 'EMBERBSD_DARWIN_TOOL.bison')
 SHELLS = ('EMBERBSD_DARWIN_SH', 'SHELL', 'SH', 'CONFIG_SHELL', 'TOOLS_SHELL',
           'EMBERBSD_DARWIN_BUILTIN_SHELL', 'TOOLS_PLATFORM.sh')
 BUILTINS = tuple(f'TOOLS_PLATFORM.{name}' for name in ('[', 'echo', 'false', 'test', 'true'))
@@ -47,7 +48,7 @@ ROOT = 'devel/bmake'
 SHELL_PROVIDER = 'shells/mksh'
 HELPER_PROVIDER = 'pkgtools/bootstrap-mk-files'
 HELPER = 'libexec/emberbsd-darwin-builtin.sh'
-LATER = ('pkgtools/pkg_install', 'lang/gcc16', 'lang/clang', 'devel/meson', 'lang/llvm')
+LATER = ('pkgtools/pkg_install', 'lang/gcc16', 'lang/clang', 'devel/meson', 'lang/llvm', 'shells/bash')
 
 
 def require(value, message):
@@ -365,8 +366,64 @@ def phase_fixture(argv):
             route = {tool: str(prefix / path) for tool, path in GZIP_TOOLS.items()} if later and handoff else initial_gzip
             require(gzip_route(value) == route, f'{recipe}/{mode}: gzip route {gzip_route(value)}')
             require(not later or set(GZIP_TOOLS) <= set(value['USE_TOOLS'].split()), f'{recipe}/{mode}: bare gzip tools are not shadowed')
+    bash = query('shells/bash', 'yes')
+    require(bash['TOOLS_PLATFORM.bison-yacc'] == bash['EMBERBSD_DARWIN_TOOL.bison'] + ' -y',
+            'shells/bash does not use the selected bison in yacc compatibility mode')
+
+    no_bison_config = work / 'without-bison.mk.conf'
+    config_lines = config_text.splitlines()
+    bison_lines = [line for line in config_lines if line.startswith('EMBERBSD_DARWIN_TOOL.bison=')]
+    require(len(bison_lines) == 1, 'The full MAKECONF must select exactly one bison provider')
+    no_bison_lines = []
+    for line in config_lines:
+        if line in bison_lines:
+            continue
+        if line.startswith('EMBERBSD_DARWIN_NATIVE_TOOLS='):
+            tools = line.split('=', 1)[1].split()
+            line = 'EMBERBSD_DARWIN_NATIVE_TOOLS= ' + ' '.join(tool for tool in tools if tool != 'bison')
+        no_bison_lines.append(line)
+    no_bison_config.write_text('\n'.join(no_bison_lines) + '\n')
+    path = work / 'shells-bash-without-bison.mk'
+    path.write_text(f'.SHELL: name=sh path={args.shell} hasErrCtl=no check="set -e" ignore="set +e" echoFlag=v errFlag=e\n'
+                    'BSD_PKG_MK=1\n.include "${MAKECONF}"\n'
+                    'PKGPATH= shells/bash\n.include "${MAKECONF}"\n'
+                    f'.include "{args.tools_darwin}"\n')
+    invocation = [word for word in command if not word.startswith(('SHELL=', 'MAKECONF='))]
+    invocation += ['-r', '-f', str(path), 'EMBERBSD_DARWIN_BOOTSTRAP=yes',
+                   'LOCALBASE=' + str(prefix), 'MAKECONF=' + str(no_bison_config),
+                   '-V', 'TOOLS_PLATFORM.bison-yacc=${TOOLS_PLATFORM.bison-yacc}']
+    result = subprocess.run(invocation, cwd=work, env=env, capture_output=True, text=True)
+    path.with_suffix('.stdout').write_text(result.stdout)
+    path.with_suffix('.stderr').write_text(result.stderr)
+    require(result.returncode == 0 and not result.stderr,
+            'shells/bash without a selected bison metadata query failed')
+    require(result.stdout.strip() == 'TOOLS_PLATFORM.bison-yacc=',
+            'An absent bison provider produced an invalid bison-yacc command')
+    bison_yacc_without_provider = result.stdout.strip()
+
+    phase_options = {}
+    for phase in ('initial', 'full'):
+        path = work / ('libfetch-' + phase + '.mk')
+        path.write_text(f'.SHELL: name=sh path={args.shell} hasErrCtl=no check="set -e" ignore="set +e" echoFlag=v errFlag=e\n'
+                        'BSD_PKG_MK=1\n.include "${MAKECONF}"\n'
+                        'PKGPATH= net/libfetch\n.include "${MAKECONF}"\n')
+        invocation = [word for word in command if not word.startswith('SHELL=')]
+        invocation += ['-r', '-f', str(path), 'EMBERBSD_DARWIN_BOOTSTRAP=yes',
+                       'EMBERBSD_DARWIN_TOOL_PHASE=' + phase, 'LOCALBASE=' + str(prefix),
+                       '-V', 'PKG_OPTIONS.libfetch=${PKG_OPTIONS.libfetch}']
+        result = subprocess.run(invocation, cwd=work, env=env, capture_output=True, text=True)
+        require(result.returncode == 0 and not result.stderr,
+                'net/libfetch/' + phase + ' metadata query failed')
+        phase_options[phase] = result.stdout.removeprefix('PKG_OPTIONS.libfetch=').strip().split()
+    require('openssl' not in phase_options['initial'],
+            'initial source transport acquired an OpenSSL dependency')
+    require('openssl' in phase_options['full'],
+            'full source transport lacks the OpenSSL libfetch option')
     require(not os.path.lexists(prefix), 'The data fixture created or executed a future provider')
-    report = dict(status='PASS', scope='Source profile evaluation only; no native provider qualification', observations=observations)
+    report = dict(status='PASS', scope='Source profile evaluation only; no native provider qualification',
+                  observations=observations, bison_yacc=bash['TOOLS_PLATFORM.bison-yacc'],
+                  bison_yacc_without_provider=bison_yacc_without_provider,
+                  libfetch_options=phase_options)
     (work / 'phase-result.json').write_text(json.dumps(report, indent=2, sort_keys=True) + '\n')
     print(json.dumps(dict(status='PASS', result=str(work / 'phase-result.json'))))
 
