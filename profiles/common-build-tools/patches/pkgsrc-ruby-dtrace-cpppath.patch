@@ -1,0 +1,47 @@
+# Preserve the selected Darwin DTrace provider and preprocessor.
+# Origin: EmberBSD (AI-assisted). Apple DTrace must not discover its
+# preprocessor through xcrun; pkgsrc's selected PKG_CC is the SDK compiler.
+# Revision advances lang/ruby40 because its native build environment changes.
+
+--- a/lang/ruby40/Makefile
++++ b/lang/ruby40/Makefile
+@@ -2,6 +2,7 @@
+ 
+ DISTNAME=	${RUBY_DISTNAME}
+ PKGNAME=	${RUBY_PKGPREFIX}-${RUBY_VERSION}
++PKGREVISION=	1
+ CATEGORIES=	lang ruby
+ MASTER_SITES=	${MASTER_SITE_RUBY}
+ 
+--- a/lang/ruby/platform.mk
++++ b/lang/ruby/platform.mk
+@@ -128,11 +128,24 @@
+ 
+ CONFIGURE_ENV.SunOS+=	OBJCOPY=:
+ 
+-# On platforms where DTrace is available, we need to invoke dtrace(1)
+-# with the original PATH. Otherwise it gets confused in the presence
+-# of our cc wrapper because it tries to invoke the system-default gcc
+-# with argv[0] set to "gcc", not the absolute path to gcc.
+-.if exists(/usr/sbin/dtrace)
++# In the Darwin bootstrap, DTrace and its compiler are explicit native tools.
++.if ${OPSYS} == "Darwin" && ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++.  if !defined(TOOLS_PLATFORM.dtrace) || empty(TOOLS_PLATFORM.dtrace) || \
++      ${TOOLS_PLATFORM.dtrace:[#]} != 1 || empty(TOOLS_PLATFORM.dtrace:M/*)
++PKG_FAIL_REASON+=	Select the declared DTrace provider for the Darwin bootstrap.
++.  elif defined(DTRACE) && !empty(DTRACE) && ${DTRACE} != ${TOOLS_PLATFORM.dtrace}
++PKG_FAIL_REASON+=	DTRACE must match the selected Darwin provider.
++.  elif !defined(PKG_CC) || ${PKG_CC:[#]} != 1 || empty(PKG_CC:M/*)
++PKG_FAIL_REASON+=	Set PKG_CC to one absolute selected compiler executable.
++.  else
++DTRACE=	${TOOLS_PLATFORM.dtrace}
++post-wrapper:
++	${RUN}(${ECHO} '#!${SH}'; \
++		${ECHO} 'exec ${TOOLS_PLATFORM.dtrace:Q} -xcpppath=${PKG_CC:Q} "$$@"') \
++		> "${WRAPPER_BINDIR}/dtrace"
++	${RUN}${CHMOD} +x "${WRAPPER_BINDIR}/dtrace"
++.  endif
++.elif exists(/usr/sbin/dtrace)
+ post-wrapper:
+ 	${RUN}(${ECHO} '#!${SH}'; \
+ 		${ECHO} 'PATH=/bin:/usr/bin:/sbin:/usr/sbin; export PATH'; \
