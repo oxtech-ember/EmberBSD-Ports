@@ -26,6 +26,18 @@ MESON_ARGS+=	-Dintrospection=disabled
 MESON_ARGS+=	-Ddocumentation=disabled
 MESON_ARGS+=	-Dtests=true
 
+.include "../../mk/bsd.prefs.mk"
+
+.if ${USE_CROSS_COMPILE:tl} == "yes"
+# gnome.mkenums_simple() and gnome.compile_resources() run build host tools.
+# The target pkg-config files name target programs inside the sysroot.
+TOOL_DEPENDS+=		glib2>=0:../../devel/glib2
+TOOL_DEPENDS+=		glib2-tools>=0:../../devel/glib2-tools
+MESON_BINARIES+=	glib-mkenums glib-compile-resources
+MESON_BINARY.glib-mkenums=		${TOOLBASE}/bin/glib-mkenums
+MESON_BINARY.glib-compile-resources=	${TOOLBASE}/bin/glib-compile-resources
+.endif
+
 PKGCONFIG_OVERRIDE_STAGE=	pre-install
 PKGCONFIG_OVERRIDE+=		output/meson-private/aravis-0.8.pc
 

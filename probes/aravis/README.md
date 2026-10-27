@@ -62,8 +62,27 @@ An application linked in the package root also needs `gettext-lib`:
 `libgio-2.0.so` there uses base `libintl.so.1`, while the link selects
 `libintl.so.8`, and the linker reports a possible conflict.
 
+## AArch64 Clang cross package
+
+Built on 27 October 2026 on macOS arm64 with the common cross profile, the
+native Clang/LLVM 23.1.4 Ports prefix and an SDK sysroot from EmberBSD
+`b36583d38bf`. `gnome.mkenums_simple()` and `gnome.compile_resources()` run
+build host programs. The target `glib-2.0.pc` names target programs in the
+sysroot. In a cross build, the recipe adds native `glib2` and `glib2-tools`
+as tool dependencies and gives their programs to Meson. Native builds are
+unchanged.
+
+| Result | Value |
+| --- | --- |
+| Package | `aravis-0.8.36nb1.tgz`, 94 entries, SHA256 `33e090994290984fcf2d52afb7c5418873a221595fb4c3b1c17340ee24c6bd13` |
+| Declared dependencies | `glib2>=2.90.1`, `libusb1>=1.0.9`, `libxml2>=2.14.6nb2`, `zlib>=1.3.2nb1` |
+| Programs | `arv-tool-0.8`, `arv-camera-test-0.8`, `arv-test-0.8`, `arv-fake-gv-camera-0.8`: AArch64 PIE; need `libaravis-0.8.so.0`, GLib libraries and `libc.so.12` |
+
+The upstream tests were built but not run: they need the target. The
+package was not run on a target.
+
 ## Remaining
 
-- AArch64 package: the common cross profile and a qualified SDK toolset.
+- AArch64 run on a target with a full base and shared libraries.
 - Daheng ME2P-1230 on the board for 30 minutes without lost frames.
 - Offering the discovery patch upstream.
