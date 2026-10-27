@@ -29,9 +29,9 @@ def main():
             for mode in ('dynamic', 'bootstrap', 'static', 'shared', 'nostdlib', 'nodefaultlibs', 'relocatable', 'gcc'):
                 options = {'dynamic': [], 'bootstrap': ['--unwindlib=none'], 'static': ['-static'], 'shared': ['-shared'],
                            'nostdlib': ['-nostdlib'], 'nodefaultlibs': ['-nodefaultlibs'],
-                           'relocatable': ['-r'], 'gcc': ['--rtlib=libgcc']}[mode]
+                           'relocatable': ['-r'], 'gcc': ['--rtlib=libgcc', '--unwindlib=libgcc']}[mode]
                 driver = args.clang if language == 'c' else args.clang.with_name('clang++')
-                argv = [str(driver), '--target=' + arch + '--netbsd',
+                argv = [str(driver), '--no-default-config', '--target=' + arch + '--netbsd',
                         '--rtlib=compiler-rt', '--unwindlib=libunwind',
                         '-resource-dir=' + str(resource), '-###', '-x', language,
                         *options, str(source)]
@@ -46,6 +46,8 @@ def main():
                 if mode in ('nostdlib', 'nodefaultlibs', 'relocatable', 'gcc'):
                     assert str(builtins) not in link and not any('unwind' in item for item in link), label
                     assert '--start-group' not in link and '--end-group' not in link, label
+                    if mode == 'gcc':
+                        assert '-lgcc' in link and '-lgcc_s' in link, label + ': selected GCC runtime omitted'
                 else:
                     assert link.count(str(builtins)) == 1, label + ': compiler-rt omitted or duplicated'
                     unwind = '-l:libunwind.a' if mode == 'static' else '-lunwind'
@@ -69,7 +71,7 @@ def main():
         builtins = libraries / ('libclang_rt.builtins-' + arch + '.a')
         for language in ('c', 'c++'):
             driver = args.clang if language == 'c' else args.clang.with_name('clang++')
-            argv = [str(driver), '--target=' + arch + '--netbsd',
+            argv = [str(driver), '--no-default-config', '--target=' + arch + '--netbsd',
                     '--rtlib=compiler-rt', '--unwindlib=libunwind',
                     '-resource-dir=' + str(resource), '-###', '-x', language,
                     '-nostartfiles', str(source)]
