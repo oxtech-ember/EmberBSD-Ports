@@ -1,0 +1,21 @@
+Chromium: mark sndio CreateAudioManager backend param [[maybe_unused]].
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Source: Chromium electron-source tree under EmberBSD.
+Apply after other media/audio patches.
+kAudioBackendParam.Get() is only consumed under USE_PULSEAUDIO /
+USE_SNDIO / USE_ALSA. When those defines are absent in this TU (common
+for the NetBSD media/audio target), -Wunused-variable under -Werror
+fails the build on `_ab`.
+
+--- a/media/audio/sndio/audio_manager_sndio.cc
++++ b/media/audio/sndio/audio_manager_sndio.cc
+@@ -167,7 +167,7 @@
+     AudioLogFactory* audio_log_factory) {
+   DLOG(WARNING) << "CreateAudioManager";
+ 
+-  auto _ab = kAudioBackendParam.Get();
++  [[maybe_unused]] auto _ab = kAudioBackendParam.Get();
+ 
+   // For testing allow audio output to be disabled.
+   if (base::CommandLine::ForCurrentProcess()->HasSwitch(

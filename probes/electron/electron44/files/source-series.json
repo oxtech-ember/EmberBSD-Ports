@@ -581,6 +581,11 @@
       "path": "libdrm-build-gn-netbsd-warning-flags.patch",
       "strip": 1,
       "root": "third_party/libdrm"
+    },
+    {
+      "path": "media-audio-sndio-backend-maybe-unused.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
