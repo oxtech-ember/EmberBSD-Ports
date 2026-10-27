@@ -174,7 +174,9 @@ def artifacts(owner, stage, phase):
 
 
 def inspect_inputs(owner, args, prepared):
-    from emberbsd_sdk import host_prefix, llvm_runtime, target_toolchain, targets
+    from emberbsd_sdk import host_prefix, llvm_runtime, native_checks, target_toolchain, targets
+    owner.require(native_checks.NATIVE_CHECKS_API == 1,
+                  'compiler-rt runtime requires native-checks API 1')
     source = Path(owner.paths.build_path(owner.paths.canonical_new(args.source)))
     definition = targets.target_definition(args.target)
     base = Path(owner.paths.canonical_existing(args.sysroot))
@@ -186,7 +188,7 @@ def inspect_inputs(owner, args, prepared):
             owner.paths.reject_overlap(str(output), str(read_root))
     owner.paths.reject_overlap(str(work), str(stage))
     native = host_prefix.load_host_prefix(args.host_prefix, compiler_family=args.host_compiler_family,
-        required_roles=('cc', 'cxx', 'cmake', 'ninja', 'python', 'sh', 'llvm-config'))
+        required_roles=('cc', 'cxx', 'cpp', 'cmake', 'ninja', 'python', 'sh', 'llvm-config'))
     owner.require(owner.paths.canonical_existing(sys.executable) ==
                   owner.paths.canonical_existing(native.tool('python')),
                   'run the runtime producer with the selected native Python')
@@ -215,7 +217,7 @@ def inspect_inputs(owner, args, prepared):
 
 
 def build(owner, args):
-    from emberbsd_sdk import llvm_runtime, target_toolchain
+    from emberbsd_sdk import llvm_runtime, native_checks, target_toolchain
     source = Path(owner.paths.canonical_existing(args.source))
     prepared = owner.verify_source(source, args.git)
     selected = inspect_inputs(owner, args, prepared)
@@ -228,6 +230,8 @@ def build(owner, args):
     stage.mkdir()
     if bootstrap is not None:
         shutil.copytree(bootstrap_root / 'usr', stage / 'usr', symlinks=True)
+    environment = native_checks.check_environment(native,
+        bindings=str(work / 'native-commands'), environment=environment)
     for name in ('home', 'tmp'):
         (work / name).mkdir()
     environment.update(HOME=str(work / 'home'), TMPDIR=str(work / 'tmp'),

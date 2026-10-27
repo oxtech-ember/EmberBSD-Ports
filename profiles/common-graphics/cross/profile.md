@@ -1,10 +1,19 @@
 # Compose the complete graphics cross profile
 
-Use the prepared `common-graphics` export and the accepted
-[common cross tools](../../common-build-tools/cross/README.md). The cross
-composition consumes the same canonical GCC16/Python3.15/Meson1.12.1/LLVM23
-package family. It does not include the native common-tools `mk.conf`, which
-selects an installed native compiler and rejects cross builds.
+Use the prepared `common-graphics` export and the selected
+[common cross tools](../../common-build-tools/cross/README.md). Clang/LLVM is
+the default target family. A platform with a documented LLVM limitation may
+set `EMBERBSD_CROSS_COMPILER_FAMILY=gcc` in its common cross configuration.
+The graphics profile checks that the selected compiler family and tool root
+agree with that configuration; it never chooses a fallback after failure.
+Host tools retain their independently selected native family. Both routes use
+the common Python 3.15 and Meson 1.12.1 providers. This composition does not
+include the native common-tools `mk.conf`, which rejects cross builds.
+
+`../tests/cross-compiler-family.py --help` describes the real pkgsrc profile
+regression for Clang default, explicit GCC, mismatched selections and native
+dependency recursion. Its target inputs are metadata fixtures; it does not
+validate a compiler, target runtime or complete graphics build.
 
 A private MAKECONF extends the existing common cross MAKECONF:
 

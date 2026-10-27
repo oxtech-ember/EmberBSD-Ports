@@ -3,7 +3,7 @@
 
 std::string transform(const std::string &input)
 {
-    return input + ":gcc16";
+    return input + ":emberbsd";
 }
 
 void throw_across(void (*cleanup)())

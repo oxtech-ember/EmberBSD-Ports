@@ -488,19 +488,38 @@ target code. Keep compile, package, target and board acceptance separate.
 ## Compile here, execute on EmberBSD
 
 ```sh
-python3 -B profiles/development-toolchain/cross/compile-tests.py \
-    /absolute/new-gcc-cross/toolchain /absolute/sysroot /absolute/new-tests
+/absolute/native-ports-prefix/bin/python3.15 -B profiles/development-toolchain/cross/compile-tests.py \
+    --sdk-source /absolute/EmberBSD-SDK --compiler-family clang \
+    --host-prefix /absolute/native-ports-prefix \
+    /absolute/target-clang-prefix /absolute/sysroot /absolute/new-tests
 ```
 
-Pass `--target amd64` for an amd64 prefix and sysroot. The output includes
-`target.txt` and the target-option helper. Keep both with the test programs.
+The SDK API2 helper selects the target compiler commands and the completed
+sysroot's matching Clang runtime. Pass `--target amd64` for an amd64 prefix and
+sysroot. Use `--compiler-family gcc` only for an explicitly selected GCC16
+target runtime; that route retains the existing GCC16 prefix checks. The output
+includes `compiler-family.txt`, `compiler-identity.json`, `runtime-files.tsv`,
+`sysroot-identity.json`, `source-sha256.tsv`, `target.txt` and the
+target-option helper. The sysroot identity records compile inputs only and
+explicitly leaves execution acceptance unrun. Keep these data receipts with
+the test programs.
 
 This reuses the native C11 atomics/TLS and C++20 DSO test sources. It compiles
 C with and without LTO, and C++ with threads, TLS, strings and exceptions
 crossing a shared-library boundary. A floating constant-evaluation regression
 includes `_Float32` limits and target long-double exponentiation.
-It checks dynamic dependencies for host
-path leakage. Compilation alone is not runtime acceptance.
+It checks dynamic dependencies for host path leakage. The guest runner uses
+target shell/base utilities and verifies loaded runtime paths and hashes from
+the non-executable runtime data receipt. It does not install host development
+tools or override the target loader environment. Compilation alone is not
+runtime acceptance.
+
+Run the SDK-selection and guest runtime-checker fixtures with:
+
+```sh
+/absolute/native-ports-prefix/bin/python3.15 -B profiles/development-toolchain/cross/tests/target-toolchain.py \
+    --sdk-source /absolute/EmberBSD-SDK
+```
 
 Copy the complete `new-tests` directory to a scratch directory on the target,
 then run:

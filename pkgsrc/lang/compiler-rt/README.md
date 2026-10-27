@@ -150,6 +150,12 @@ Run `files/runtime.py build` with the selected native prefix's Python. The
 native tools and target Clang prefix are explicit independent inputs. The
 controller uses the common CMake sources, SDK process runner and SDK runtime
 validator; it does not download dependencies or select system build programs.
+It requires SDK native-checks API 1 and the selected `cpp` role. After creating
+the private work directory, it binds the selected host environment through
+`native_checks.check_environment`; this makes literal host command lookups such
+as CMake's `sh config.guess` resolve to the selected prefix shell. Ambient host
+compiler flags are scrubbed, while the target compiler, triplet, sysroot and
+target flags remain explicit CMake inputs.
 
 - `--phase builtins` needs actual EmberBSD preliminary headers and installs PIC
   compiler-rt builtins. OS CRT objects remain owned by the OS producer.
@@ -245,6 +251,12 @@ installed prefix.
 
 `tests/build-contract.py --sdk-source PATH --work NEW_PATH` checks native/target
 routing, phase boundaries and resolved base-input mutations.
+`tests/native-shell-routing.py --sdk-source PATH --host-prefix PREFIX
+--target-prefix PREFIX --source PREPARED_SOURCE --target aarch64 --work NEW_PATH`
+reproduces the literal `sh` lookup failure with the unbound native PATH, then
+checks `config.guess` and LLVM's actual `GetHostTriple.cmake` with the shared
+selected-shell binding. It also checks that hostile host flag variables do not
+change the explicit target Clang and CMake settings.
 `tests/build-stage.py --sdk-source PATH` exercises the actual SDK stage
 validator with synthetic target objects, wrong-target and changed-input
 controls, failed commands and completion-manifest cleanup.

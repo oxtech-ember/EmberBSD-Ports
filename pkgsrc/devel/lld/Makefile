@@ -6,7 +6,7 @@
 EXTRACT_ELEMENTS+= ${DISTNAME}/libunwind/include
 
 PKGNAME=	lld-${LLVM_VERSION}
-PKGREVISION=	3
+PKGREVISION=	4
 CATEGORIES=	devel
 
 MAINTAINER=	pkgsrc-users@NetBSD.org

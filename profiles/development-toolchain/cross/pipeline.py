@@ -8,9 +8,11 @@ import re
 import shutil
 import sys
 import urllib.request
+import argparse
 
 import sdk_source
-from emberbsd_sdk import inventory, paths
+from emberbsd_sdk import (application_toolchain, inventory, jsonio, native_toolset, paths,
+                          sysroot_transfer, target_toolchain)
 from host import *
 from target_options import FIRMWARE_TARGETS, parse
 from bootstrap_libgcc import build as build_bootstrap_libgcc, headers as bootstrap_headers
@@ -304,53 +306,213 @@ def _build_compiler(target, mode, args, *, owned=None):
     print('Kernel build and boot remain separate.' if mode == 'kernel' else 'Run the compiled acceptance programs on EmberBSD before accepting this toolchain.')
 
 
+def select_test_toolchain(family, prefix, sysroot, target, host_prefix=None):
+    """Select one target compiler and its matching application runtime."""
+    triplet = TARGETS[target][0]
+    require((sysroot / 'usr/include/stddef.h').is_file(), 'Selected target C headers missing')
+    if family == 'clang':
+        require(getattr(application_toolchain, 'APPLICATION_TOOLCHAIN_API', None) == 2,
+                'Clang target tests require SDK application toolchain API2')
+        require(host_prefix is not None,
+                'Clang target tests require --host-prefix for the selected native SDK tools')
+        native = native_toolset.load_host_prefix(host_prefix,
+            required_roles={'cc', 'cxx', 'cpp', 'python'}, compiler_family='clang')
+        require(Path(sys.executable).resolve() == Path(native.tool('python')).resolve(),
+                'Controller Python differs from the selected native SDK prefix')
+        compiler = target_toolchain.clang_compiler(prefix, triplet,
+            host=dict(native.host), env={'PATH':native.path})
+        runtime = application_toolchain.load_clang_runtime(sysroot, target=target)
+        sysroot_identity = clang_sysroot_identity(sysroot, target, runtime)
+        compile_commands = application_toolchain.clang_application_commands(
+            compiler, sysroot, runtime, link=False)
+        link_commands = application_toolchain.clang_application_commands(
+            compiler, sysroot, runtime, link=True)
+        return dict(family='clang', cc=compile_commands['cc'], cxx=compile_commands['cxx'],
+            cc_link=link_commands['cc'], cxx_link=link_commands['cxx'],
+            readelf=compiler['binaries']['readelf']['selected_path'],
+            identity=dict(format='emberbsd-target-test-compiler', version=1, family='clang',
+                triplet=compiler['triplet'], compiler_version=compiler['version'],
+                reported_triplet=compiler['reported_triplet'],
+                binary_sha256={name:compiler['binaries'][name]['sha256']
+                               for name in ('cc', 'cxx', 'ld', 'readelf')}),
+            compiler_banner=capture([*compile_commands['cc'], '--version']),
+            runtime_rows=clang_runtime_rows(sysroot, runtime),
+            sysroot_identity=sysroot_identity)
+    require(family == 'gcc', 'Unsupported target compiler family: ' + str(family))
+    require(host_prefix is None, '--host-prefix is only used for Clang target tests')
+    tools = check_compilers(prefix, target)
+    gcc_root = sysroot / 'usr/pkg/gcc16'
+    require((gcc_root / 'lib/gcc' / triplet / VERSION / 'crtbegin.o').is_file() and
+            (gcc_root / 'include/c++' / triplet).is_dir(),
+            'Selected target GCC16 runtime missing')
+    runtime_rows = []
+    for role, name in (('libstdc++', 'libstdc++.so.7'), ('libgcc_s', 'libgcc_s.so.1')):
+        path = (gcc_root / 'lib' / name).resolve(strict=True)
+        require(paths.inside(path, gcc_root), 'Target runtime escapes sysroot GCC16 prefix')
+        runtime_rows.append((role, '/' + path.relative_to(sysroot.resolve()).as_posix(), sha(path)))
+    gcc_flags = ['--sysroot=' + str(sysroot), '-B' + str(gcc_root / 'lib/gcc' / triplet / VERSION) + '/',
+                 '-L' + str(gcc_root / 'lib'), '-Wl,-rpath,/usr/pkg/gcc16/lib']
+    cxx_flags = gcc_flags[:]
+    for directory in ('', '/' + triplet, '/backward'):
+        cxx_flags += ['-isystem', str(gcc_root / 'include/c++') + directory]
+    cc, cxx = [str(tools['gcc'])] + gcc_flags, [str(tools['g++'])] + cxx_flags
+    version_output = process.capture([tools['gcc'], '-v'], env=environment())
+    return dict(family='gcc', cc=cc, cxx=cxx, cc_link=cc, cxx_link=cxx,
+        identity=dict(format='emberbsd-target-test-compiler', version=1, family='gcc',
+            triplet=triplet, compiler_version=VERSION,
+            binary_sha256={name:inventory.sha256_file(Path(tools[name]).resolve(strict=True))
+                           for name in ('gcc', 'g++', 'readelf')}),
+        readelf=str(tools['readelf']),
+        compiler_banner=(version_output.stdout + version_output.stderr).decode('utf-8', 'strict'),
+        runtime_rows=runtime_rows, sysroot_identity=None)
+
+
+def compile_test_options(args):
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    parser.add_argument('--compiler-family', choices=('clang', 'gcc'), default='clang')
+    parser.add_argument('--host-prefix')
+    return parser.parse_known_args(args)
+
+
 def compile_tests_main(args):
+    options, args = compile_test_options(args)
     target, _, args = parse(args)
-    require(len(args) == 3, 'Usage: compile-tests.py [--target TARGET] PREFIX SYSROOT NEW_OUTPUT --sdk-source SOURCE')
+    require(len(args) == 3, 'Usage: compile-tests.py [--compiler-family clang|gcc] [--host-prefix PREFIX] [--target TARGET] PREFIX SYSROOT NEW_OUTPUT --sdk-source SOURCE')
     prefix, sysroot = [build_path(value) for value in args[:2]]
     out = new_path(args[2])
-    triplet = TARGETS[target][0]
-    tools = check_compilers(prefix, target)
-    require((sysroot / 'usr/include/stddef.h').is_file() and (sysroot / ('usr/pkg/gcc16/lib/gcc/' + triplet + '/' + VERSION + '/crtbegin.o')).is_file() and (sysroot / ('usr/pkg/gcc16/include/c++/' + triplet)).is_dir(), 'Selected target GCC16 runtime missing')
-    for name in ('libstdc++.so.7', 'libgcc_s.so.1'):
-        require(paths.inside((sysroot / 'usr/pkg/gcc16/lib' / name).resolve(strict=True), sysroot / 'usr/pkg/gcc16'), 'Target runtime escapes sysroot GCC16 prefix')
+    selected = select_test_toolchain(options.compiler_family, prefix, sysroot, target,
+                                     options.host_prefix)
+    cc, cxx = selected['cc'], selected['cxx']
+    cc_link, cxx_link = selected['cc_link'], selected['cxx_link']
+    readelf, family = selected['readelf'], selected['family']
+    runtime_rows, compiler_banner = selected['runtime_rows'], selected['compiler_banner']
+    identity = selected['identity']
     out.mkdir()
     (out / 'target.txt').write_text(target + '\n')
-    (out / 'runtime-sha256.tsv').write_text(''.join(name + '\t' + sha((sysroot / 'usr/pkg/gcc16/lib' / version).resolve(strict=True)) + '\n' for name, version in [('libstdc++.so', 'libstdc++.so.7'), ('libgcc_s.so', 'libgcc_s.so.1')]))
-    result = process.capture([str(tools['gcc']), '-v'], env=environment())
-    (out / 'compiler.txt').write_bytes(result.stdout + result.stderr)
-    flags = ['--sysroot=' + str(sysroot), '-B' + str(sysroot / ('usr/pkg/gcc16/lib/gcc/' + triplet + '/' + VERSION)) + '/', '-L' + str(sysroot / 'usr/pkg/gcc16/lib'), '-Wl,-rpath,/usr/pkg/gcc16/lib']
+    (out / 'compiler-family.txt').write_text(family + '\n')
+    (out / 'runtime-files.tsv').write_text(''.join('\t'.join(row) + '\n' for row in runtime_rows))
+    (out / 'compiler.txt').write_text(compiler_banner)
+    jsonio.write_json(out / 'compiler-identity.json', identity)
     source = PROFILE / 'tests'
+    sdk_root = Path(sdk_source.load())
+    (out / 'source-sha256.tsv').write_text(''.join(
+        path + '\t' + digest + '\n' for path, digest in
+        target_test_source_inventory(PROFILE, HERE, sdk_root)))
+    if selected['sysroot_identity'] is not None:
+        jsonio.write_json(out / 'sysroot-identity.json', selected['sysroot_identity'])
     for suffix in ('', '-lto'):
-        logged([tools['gcc']] + flags + ['-std=c11', '-O2'] + (['-flto'] if suffix else []) + ['-Wall', '-Wextra', '-Werror', '-pthread', source / 'atomic-tls.c', '-o', out / ('atomic-tls' + suffix)], out / ('atomic-tls' + suffix + '-build.log'))
-    for directory in ('', '/' + triplet, '/backward'):
-        flags += ['-isystem', str(sysroot / 'usr/pkg/gcc16/include/c++') + directory]
-    programs = [('float-constexpr.o', ['-std=c++20', '-O3', '-Wall', '-Wextra', '-Werror', '-c', HERE / 'tests/float-constexpr.cc']), ('libboundary.so', ['-std=c++20', '-O2', '-Wall', '-Wextra', '-Werror', '-fPIC', '-shared', source / 'boundary.cc', '-Wl,-soname,libboundary.so']), ('boundary', ['-std=c++20', '-O2', '-Wall', '-Wextra', '-Werror', '-pthread', source / 'boundary-main.cc', '-L' + str(out), '-Wl,-rpath,$ORIGIN', '-lboundary'])]
+        logged(cc_link + ['-std=c11', '-O2'] + (['-flto'] if suffix else []) + ['-Wall', '-Wextra', '-Werror', '-pthread', source / 'atomic-tls.c', '-o', out / ('atomic-tls' + suffix)], out / ('atomic-tls' + suffix + '-build.log'))
+    programs = [('float-constexpr.o', cxx + ['-std=c++20', '-O3', '-Wall', '-Wextra', '-Werror', '-c', HERE / 'tests/float-constexpr.cc']), ('libboundary.so', cxx_link + ['-std=c++20', '-O2', '-Wall', '-Wextra', '-Werror', '-fPIC', '-shared', source / 'boundary.cc', '-Wl,-soname,libboundary.so']), ('boundary', cxx_link + ['-std=c++20', '-O2', '-Wall', '-Wextra', '-Werror', '-pthread', source / 'boundary-main.cc', '-L' + str(out), '-Wl,-rpath,$ORIGIN', '-lboundary'])]
     for name, arguments in programs:
-        logged([tools['g++']] + flags + arguments + ['-o', out / name], out / (name + '-build.log'))
-    dynamic = capture([tools['readelf'], '-d', out / 'boundary', out / 'libboundary.so'])
+        logged(arguments + ['-o', out / name], out / (name + '-build.log'))
+    dynamic = capture([readelf, '-d', out / 'boundary', out / 'libboundary.so'])
     (out / 'dynamic.txt').write_text(dynamic)
     require(not any(('RPATH' in line or 'RUNPATH' in line or 'NEEDED' in line) and any(str(path) in line for path in (prefix, sysroot, out)) for line in dynamic.splitlines()), 'Host path leaked into target dynamic dependencies')
     for name in ('check-runtime.sh', 'target-options.sh'):
         shutil.copy2(HERE / 'tests/target' / name, out / name)
     shutil.copy2(HERE / 'tests/target/run-target.sh', out / 'run-target.sh')
-    print('Cross-compiled tests: ' + str(out) + '; run run-target.sh on EmberBSD')
+    print('Cross-compiled ' + family + ' tests: ' + str(out) + '; compilation does not establish target execution acceptance')
+
+
+def clang_runtime_rows(sysroot, runtime):
+    """Bind the shared guest checker to artifact paths in the verified SDK runtime record."""
+    rows = []
+    for role in ('libcxx', 'libcxxabi', 'libunwind'):
+        relative = runtime['artifacts'][role]['shared']
+        path = (sysroot / relative).resolve(strict=True)
+        require(paths.inside(path, sysroot), 'Clang runtime artifact escapes selected sysroot: ' + role)
+        rows.append((role, '/' + path.relative_to(sysroot.resolve()).as_posix(), sha(path)))
+    return rows
+
+
+def clang_sysroot_identity(sysroot, target, runtime):
+    """Record verified Clang runtime and build/import provenance, not acceptance."""
+    build_path = sysroot / sysroot_transfer.RECEIPT
+    import_path = sysroot / application_toolchain.IMPORT_RECORD
+    require(not (build_path.is_file() and import_path.is_file()),
+            'Ambiguous selected SDK sysroot provenance')
+    if build_path.is_file():
+        receipt_path = build_path
+        receipt = jsonio.read_json(receipt_path)
+        runtime_bundle = receipt.get('signature', {}).get('runtime')
+        source = 'build-receipt'
+        manifest_sha256 = None
+    elif import_path.is_file():
+        receipt_path = import_path
+        receipt = jsonio.read_json(receipt_path)
+        manifest = receipt.get('manifest')
+        require(isinstance(manifest, dict), 'Invalid selected SDK import manifest')
+        manifest_sha256 = receipt.get('manifest_sha256')
+        require(sysroot_transfer._hash_json(manifest) == manifest_sha256,
+                'Selected SDK import manifest digest changed')
+        runtime_bundle = manifest.get('runtime')
+        source = 'import-record'
+    else:
+        raise SDKError('Selected SDK sysroot record disappeared after runtime verification')
+    require(isinstance(runtime_bundle, dict) and runtime_bundle.get('manifest') == runtime,
+            'Selected SDK sysroot runtime record differs from API2 selection')
+    return dict(format='emberbsd-target-test-sysroot-input', version=1,
+        scope='verified-compiler-runtime-input', execution_acceptance='not-run', target=target,
+        source_record=source, source_record_sha256=sha(receipt_path),
+        portable_manifest_sha256=manifest_sha256,
+        runtime_manifest_sha256=sysroot_transfer._hash_json(runtime),
+        runtime_bundle_sha256=sysroot_transfer._hash_json(runtime_bundle))
+
+
+def target_test_source_inventory(profile, cross, sdk_root):
+    """Return deterministic hashes for test inputs and selected source controllers."""
+    ports_root = profile.parents[1]
+    explicit = [profile / 'tests/atomic-tls.c', profile / 'tests/boundary.cc',
+        profile / 'tests/boundary-main.cc', profile / 'tests/boundary.h',
+        cross / 'tests/float-constexpr.cc', cross / 'tests/target/run-target.sh',
+        cross / 'tests/target/check-runtime.sh', cross / 'tests/target/target-options.sh']
+    controller_python = [*profile.glob('*.py'), *cross.glob('*.py'),
+                         *(profile / 'runtime/recipe/files').rglob('*.py')]
+    sdk_python = sorted((sdk_root / 'src/emberbsd_sdk').rglob('*.py'))
+    rows = []
+    for path in sorted(set(explicit + controller_python)):
+        rows.append(('ports/' + path.relative_to(ports_root).as_posix(), sha(path)))
+    for path in sdk_python:
+        rows.append(('sdk/' + path.relative_to(sdk_root).as_posix(), sha(path)))
+    rows.sort(key=lambda row: row[0])
+    require(len({row[0] for row in rows}) == len(rows), 'Duplicate target-test source inventory path')
+    return rows
 
 
 def check_runtime_main(args):
     require(len(args) == 2, 'Usage: check-runtime.py PREFIX OUTPUT --sdk-source SOURCE')
     prefix = Path(args[0]).resolve(strict=True)
     output = Path(args[1])
-    receipt = (output / 'runtime-sha256.tsv').read_text().splitlines()
     loaded = [line.split() for line in (output / 'loaded.txt').read_text().splitlines()]
-    for name in ('libstdc++.so', 'libgcc_s.so'):
-        matches = [line.split('\t')[1] for line in receipt if line.startswith(name + '\t') and len(line.split('\t')) == 2]
-        require(len(matches) == 1 and re.fullmatch(r'[0-9a-f]{64}', matches[0]), 'Invalid runtime SHA256 receipt: ' + name)
-        files = [row[1] for row in loaded if len(row) >= 2 and row[0] == 'LOADED' and name in row[1]]
-        require(len(files) == 1, 'Expected one loaded ' + name)
-        actual = Path(files[0]).resolve(strict=True)
-        require(paths.inside(actual, prefix), 'Runtime outside prefix')
-        require(sha(actual) == matches[0], 'Runtime SHA256 mismatch')
+    family = (output / 'compiler-family.txt').read_text().strip()
+    expected_roles = {'clang': ('libcxx', 'libcxxabi', 'libunwind'),
+                      'gcc': ('libstdc++', 'libgcc_s')}
+    require(family in expected_roles, 'Invalid compiler family receipt')
+    rows = [line.split('\t') for line in (output / 'runtime-files.tsv').read_text().splitlines()]
+    require(all(len(row) == 3 and re.fullmatch(r'[0-9a-f]{64}', row[2]) for row in rows),
+            'Invalid target runtime file receipt')
+    require(len(rows) == len(expected_roles[family]) and
+            {row[0] for row in rows} == set(expected_roles[family]),
+            'Target runtime receipt has missing or duplicate roles')
+    for role, guest_path, expected in rows:
+        marker = '/usr/pkg/llvm/' if family == 'clang' else '/usr/pkg/gcc16/'
+        require(guest_path.startswith(marker), 'Target runtime path escapes selected prefix: ' + guest_path)
+        relative = guest_path[len(marker):]
+        actual = (prefix / relative).resolve(strict=True)
+        require(paths.inside(actual, prefix), 'Runtime outside selected compiler prefix')
+        require(sha(actual) == expected, 'Host runtime SHA256 differs from compile receipt: ' + role)
+        files = []
+        target_root = prefix.parents[2]
+        for row in loaded:
+            if len(row) != 2 or row[0] != 'LOADED' or not row[1].startswith('/'):
+                continue
+            try:
+                loaded_file = (target_root / row[1].lstrip('/')).resolve(strict=True)
+            except OSError:
+                continue
+            if paths.inside(loaded_file, target_root) and loaded_file == actual:
+                files.append(row[1])
+        require(len(files) == 1, 'Expected one loaded target runtime: ' + role)
 
 
 def libatomic_main(args):

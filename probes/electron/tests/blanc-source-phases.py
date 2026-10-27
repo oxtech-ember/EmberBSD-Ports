@@ -17,7 +17,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[3]
 RECIPE = ROOT / 'probes/electron/blanc'
-SELECTED = ('EMBERBSD_SDK_SOURCE', 'EMBERBSD_CROSS_BUILD_PYTHON', 'EMBERBSD_HOST_NODE')
+SELECTED = ('EMBERBSD_SDK_SOURCE', 'EMBERBSD_CROSS_BUILD_PYTHON', 'EMBERBSD_HOST_NODE', 'EMBERBSD_HOST_PREFIX')
 
 
 def require(condition, message):
@@ -122,6 +122,10 @@ def main():
     run('build-missing-node-file', ['pre-build'],
         source_tools + ['EMBERBSD_HOST_NODE=' + str(args.work / 'missing-node')],
         success=False, contains='EMBERBSD_HOST_NODE')
+    for target in ('pre-build', 'pre-test', 'do-build', 'do-test'):
+        run(target + '-missing-prefix', [target],
+            source_tools + ['EMBERBSD_HOST_NODE=' + str(args.python)],
+            success=False, contains='EMBERBSD_HOST_PREFIX')
     require(not (args.work / 'objects/work/app-stage').exists(), 'A build unexpectedly started')
     if args.distdir:
         require(all((args.distdir / path).is_file() for path in expected),

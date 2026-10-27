@@ -55,11 +55,13 @@ def load_sdk(source):
     jsonio = importlib.import_module('emberbsd_sdk.jsonio')
     inventory = importlib.import_module('emberbsd_sdk.inventory')
     stream = importlib.import_module('emberbsd_sdk.stream')
+    native = importlib.import_module('emberbsd_sdk.host_prefix')
     for module, relative in (
         (sdk, '__init__.py'),
         (jsonio, 'jsonio.py'),
         (inventory, 'inventory.py'),
         (stream, 'stream.py'),
+        (native, 'host_prefix.py'),
     ):
         expected = (package_dir / relative).resolve(strict=True)
         actual = Path(module.__file__).resolve(strict=True)
@@ -69,7 +71,9 @@ def load_sdk(source):
             'EmberBSD SDK producer stream API version 1 is required')
     require(getattr(stream, 'PRODUCER_INSPECTION_API', None) == 1,
             'EmberBSD SDK producer inspection API version 1 is required')
-    return root, jsonio, inventory, stream
+    require(getattr(native, 'HOST_PREFIX_API', None) == 2,
+            'EmberBSD SDK host prefix API version 2 is required')
+    return root, jsonio, inventory, stream, native
 
 
 def read_object(jsonio, path, label):
@@ -383,9 +387,24 @@ def consume_bounded(reader):
     return bytes(data)
 
 
-def child_environment(node, work, node_path=None):
+def select_host_tools(native_api, prefix, node):
+    require(Path(prefix).is_absolute(), '--host-prefix must be an absolute path')
+    try:
+        native = native_api.load_host_prefix(prefix, required_roles=('node', 'python'))
+    except native_api.SDKError as exc:
+        raise BuildError(str(exc)) from exc
+    require(Path(node).is_absolute() and
+            Path(node).resolve(strict=True) == Path(native.tool('node')).resolve(strict=True),
+            '--node must select the host-prefix Node.js')
+    require(Path(sys.executable).resolve(strict=True) ==
+            Path(native.tool('python')).resolve(strict=True),
+            'Run build and test with the selected host-prefix Python')
+    return native
+
+
+def child_environment(native, work, node_path=None):
     env = {
-        'PATH': str(Path(node).resolve().parent) + ':/usr/bin:/bin',
+        'PATH': native.path,
         'HOME': str(work / 'home'),
         'LANG': 'C',
         'LC_ALL': 'C',
@@ -668,24 +687,24 @@ def extract_source_allowlist(jsonio, inventory, archive_path, destination, manif
     return len(found)
 
 
-def run_node_tests(stream, source_root, node, work):
+def run_node_tests(stream, source_root, native, work):
     test_paths = [
         'test/unit/updater-policy.test.js',
         'test/unit/display-capture-netbsd.test.js',
         'test/unit/display-capture-packaged-lock.test.js',
         'test/unit/display-capture-platform-lock.test.js',
     ]
-    output = run_host_tool(stream, [node, '--test', *(str(source_root / p) for p in test_paths)], cwd=source_root,
-                           env=child_environment(node, work), timeout=300)
+    output = run_host_tool(stream, [native.tool('node'), '--test', *(str(source_root / p) for p in test_paths)], cwd=source_root,
+                           env=child_environment(native, work), timeout=300)
     sys.stdout.buffer.write(output)
 
 
-def run_python_tests(stream, source_root, dist_dir, node, work, sdk_root):
+def run_python_tests(stream, source_root, dist_dir, native, work, sdk_root):
     test_path = Path(__file__).parent / 'test_blanc_package.py'
-    output = run_host_tool(stream, [sys.executable, '-B', '-I', '-S', str(test_path),
+    output = run_host_tool(stream, [native.tool('python'), '-B', '-I', '-S', str(test_path),
                                     '--sdk-source', str(sdk_root), '--source', str(source_root),
                                     '--distdir', str(dist_dir)],
-                           cwd=source_root, env=child_environment(node, work), timeout=300)
+                           cwd=source_root, env=child_environment(native, work), timeout=300)
     sys.stdout.buffer.write(output)
 
 
@@ -698,6 +717,7 @@ def parse_args():
     parser.add_argument('--distdir')
     parser.add_argument('--work')
     parser.add_argument('--node')
+    parser.add_argument('--host-prefix')
     parser.add_argument('--source-archive-sha256')
     parser.add_argument('--source-files-sha256')
     parser.add_argument('--electron-version')
@@ -708,7 +728,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    sdk_root, jsonio, inventory, stream = load_sdk(args.sdk_source)
+    sdk_root, jsonio, inventory, stream, native_api = load_sdk(args.sdk_source)
     require(sys.version_info >= (3, 15), 'Blanc package tools require host Python 3.15 or newer')
     require(args.source_archive_sha256 == SOURCE_ARCHIVE_SHA256,
             'Blanc source distfile checksum differs from the v1.25.0 release archive')
@@ -723,18 +743,17 @@ def main():
             args.source_files_sha256, args.source_archive_sha256)
         print(f'Extracted {count} allowlisted Blanc source files.')
         return 0
-    require(args.distdir and args.work and args.node and args.source_archive_sha256 and
+    require(args.distdir and args.work and args.node and args.host_prefix and args.source_archive_sha256 and
             args.source_files_sha256 and args.electron_version and args.electron_package_path and
             args.electron_depends, 'build and test require all pinned host, source, and runtime arguments')
+    native = select_host_tools(native_api, args.host_prefix, args.node)
     source_root = Path(args.source).resolve(strict=True)
     dist_dir = Path(args.distdir).resolve(strict=True)
     work = Path(args.work).resolve(strict=True)
     (work / 'tmp').mkdir(exist_ok=True)
     (work / 'home').mkdir(exist_ok=True)
-    node = Path(args.node).resolve(strict=True)
-    require(stat.S_ISREG(os.lstat(node).st_mode), 'host Node.js must be a regular file')
-    require(os.access(node, os.X_OK), 'selected host Node.js is not executable')
-    env = child_environment(node, work)
+    node = Path(native.tool('node'))
+    env = child_environment(native, work)
     node_version = run_host_tool(stream, [str(node), '--version'], cwd=work, env=env, timeout=30)
     validate_host_node_version(node_version)
     manifest_path = Path(__file__).parent / 'npm-mirror-manifest.json'
@@ -743,9 +762,9 @@ def main():
         args.source_files_sha256)
     source_manifest['sourceArchiveSha256'] = args.source_archive_sha256
     validate_runtime_dependency(args.electron_version, args.electron_package_path, args.electron_depends)
-    run_node_tests(stream, source_root, str(node), work)
+    run_node_tests(stream, source_root, native, work)
     if args.action == 'test':
-        run_python_tests(stream, source_root, dist_dir, str(node), work, sdk_root)
+        run_python_tests(stream, source_root, dist_dir, native, work, sdk_root)
         return 0
 
     runtime_root = work / 'runtime-node-modules'
@@ -766,7 +785,7 @@ def main():
     shim = work / 'electron-shim'
     shim.mkdir()
     (shim / 'electron.js').write_text('module.exports = Object.create(null);\n', encoding='utf-8')
-    seed_env = child_environment(node, work, node_path=str(shim) + os.pathsep + str(runtime_root))
+    seed_env = child_environment(native, work, node_path=str(shim) + os.pathsep + str(runtime_root))
     run_host_tool(stream, [str(node), str(seed_root / 'adblock/seed.mjs'), '--prepare'],
                   cwd=seed_root, env=seed_env, timeout=900)
     generated_seed = seed_root / 'src/main/assets/adblock-engine-seed.bin'
@@ -797,7 +816,7 @@ def main():
             'ASAR contains a secret or environment file')
     require(asar_path.is_file(), 'upstream ASAR packer produced no app.asar')
     node_sha = digest_file(inventory, node, 'sha256')
-    python_sha = digest_file(inventory, Path(sys.executable).resolve(strict=True), 'sha256')
+    python_sha = digest_file(inventory, Path(native.tool('python')).resolve(strict=True), 'sha256')
     bom = make_sbom(source_manifest, lock, selected, roles, edges, rows, package_metadata,
                     asar_path, HOST_NODE_VERSION, args.electron_version, args.electron_package_path,
                     args.electron_depends, packages['node_modules/@electron/asar']['version'], node_sha,
