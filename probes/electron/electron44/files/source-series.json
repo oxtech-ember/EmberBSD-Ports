@@ -551,6 +551,11 @@
       "path": "base-icu-util-debug-globals-maybe-unused.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "build-mac-no-objc-class-selector-stubs.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

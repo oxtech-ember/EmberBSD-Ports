@@ -1,0 +1,25 @@
+Chromium: disable clang 23 ObjC class-selector stubs for mac host tools.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Source: Chromium electron-source tree under EmberBSD.
+Apply after other build/config patches.
+Host clang 23 emits objc_msgSendClass$<sel>$_OBJC_CLASS_$_<cls> stubs that
+ld64.lld cannot synthesize (root_store_tool link fails on NSNumber/NSThread
+from base/threading/platform_thread_apple.mm). Keep plain selector stubs.
+
+--- a/build/config/mac/BUILD.gn
++++ b/build/config/mac/BUILD.gn
+@@ -31,6 +31,13 @@
+ 
+   ldflags = common_mac_flags
+ 
++  # EmberBSD: clang 23 emits objc_msgSendClass$ class-selector stubs that
++  # ld64.lld cannot synthesize; keep plain selector stubs only.
++  if (is_clang) {
++    cflags_objc = [ "-fno-objc-msgsend-class-selector-stubs" ]
++    cflags_objcc = [ "-fno-objc-msgsend-class-selector-stubs" ]
++  }
++
+   if (save_unstripped_output) {
+     ldflags += [ "-Wcrl,unstripped," + rebase_path(root_out_dir) ]
+   }
