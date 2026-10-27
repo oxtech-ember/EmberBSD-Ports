@@ -287,41 +287,59 @@ def ensure_rust_std_x86_64_netbsd(host_prefix, distfiles=None):
 
 
 def ensure_allocator_shim_throw_netbsd(workspace):
-    """NetBSD/BSD libc malloc decls lack exception specs; drop __THROW->_NOEXCEPT map."""
-    path = (workspace / 'src/base/allocator/partition_allocator/src/partition_alloc'
-            / 'shim' / 'allocator_shim_internals.h')
+    """NetBSD/BSD: empty __THROW for libc malloc; noexcept __THROW in cpp_symbols."""
+    shim = (workspace / 'src/base/allocator/partition_allocator/src/partition_alloc'
+            / 'shim')
+    path = shim / 'allocator_shim_internals.h'
     require(path.is_file(), 'allocator_shim_internals.h missing')
     text = path.read_text()
     needle = '#ifndef __THROW   // Not a glibc system'
     idx = text.find(needle)
     require(idx >= 0, 'allocator_shim_internals.h __THROW block missing')
-    # Already patched?
     window = text[idx:idx + 450]
-    if 'PA_BUILDFLAG(IS_NETBSD)' in window:
-        return
-    old = (
-        '#ifndef __THROW   // Not a glibc system\n'
-        '#ifdef _NOEXCEPT  // LLVM libc++ uses noexcept instead\n'
-        '#define __THROW _NOEXCEPT\n'
-        '#else\n'
-        '#define __THROW\n'
-        '#endif  // !_NOEXCEPT\n'
-        '#endif'
-    )
-    new = (
-        '#ifndef __THROW   // Not a glibc system\n'
-        '// NetBSD/BSD libc headers declare malloc family without exception specs;\n'
-        '// mapping __THROW to _NOEXCEPT then mismatches those decls under clang.\n'
-        '#if defined(_NOEXCEPT) && !PA_BUILDFLAG(IS_NETBSD) && !PA_BUILDFLAG(IS_BSD)\n'
-        '#define __THROW _NOEXCEPT\n'
-        '#else\n'
-        '#define __THROW\n'
-        '#endif  // !_NOEXCEPT || BSD/NetBSD\n'
-        '#endif'
-    )
-    require(old in text, 'allocator_shim_internals.h __THROW block not recognized')
-    path.write_text(text.replace(old, new, 1))
+    if 'PA_BUILDFLAG(IS_NETBSD)' not in window:
+        old = (
+            '#ifndef __THROW   // Not a glibc system\n'
+            '#ifdef _NOEXCEPT  // LLVM libc++ uses noexcept instead\n'
+            '#define __THROW _NOEXCEPT\n'
+            '#else\n'
+            '#define __THROW\n'
+            '#endif  // !_NOEXCEPT\n'
+            '#endif'
+        )
+        new = (
+            '#ifndef __THROW   // Not a glibc system\n'
+            '// NetBSD/BSD libc headers declare malloc family without exception specs;\n'
+            '// mapping __THROW to _NOEXCEPT then mismatches those decls under clang.\n'
+            '#if defined(_NOEXCEPT) && !PA_BUILDFLAG(IS_NETBSD) && !PA_BUILDFLAG(IS_BSD)\n'
+            '#define __THROW _NOEXCEPT\n'
+            '#else\n'
+            '#define __THROW\n'
+            '#endif  // !_NOEXCEPT || BSD/NetBSD\n'
+            '#endif'
+        )
+        require(old in text, 'allocator_shim_internals.h __THROW block not recognized')
+        path.write_text(text.replace(old, new, 1))
 
+    # cpp_symbols: libc++ operator new/delete need noexcept; remap __THROW here only.
+    cpp = shim / 'allocator_shim_override_cpp_symbols.h'
+    require(cpp.is_file(), 'allocator_shim_override_cpp_symbols.h missing')
+    ctext = cpp.read_text()
+    marker = '#include "partition_alloc/shim/allocator_shim_internals.h"\n'
+    tag = 'EmberBSD/NetBSD: libc malloc must keep empty __THROW'
+    if tag not in ctext:
+        require(marker in ctext, 'cpp_symbols internals include missing')
+        snip = (
+            marker
+            + '\n'
+            + '// EmberBSD/NetBSD: libc malloc must keep empty __THROW (see internals.h),\n'
+            + '// but libc++ operator new/delete decls use noexcept — remap for this header.\n'
+            + '#if PA_BUILDFLAG(IS_NETBSD) || PA_BUILDFLAG(IS_BSD)\n'
+            + '#undef __THROW\n'
+            + '#define __THROW noexcept\n'
+            + '#endif\n'
+        )
+        cpp.write_text(ctext.replace(marker, snip, 1))
 
 
 def ensure_allocator_shim_cpp_noexcept(workspace):
