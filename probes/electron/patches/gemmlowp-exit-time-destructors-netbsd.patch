@@ -1,0 +1,45 @@
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -8,7 +8,12 @@
+   if (is_clang) {
+     # Gemmlowp doesn't have the annotations to support this analysis, so
+     # building with this flag enabled results in spurious warnings.
+-    cflags_cc = [ "-Wno-thread-safety" ]
++    # GlobalMutexes function-local static Mutex also trips -Wexit-time-destructors
++    # under chromium_code (tflite_kernels does not use no_chromium_code).
++    cflags_cc = [
++      "-Wno-thread-safety",
++      "-Wno-exit-time-destructors",
++    ]
+   }
+ }
+ source_set("gemmlowp") {
+--- a/src/profiling/instrumentation.h
++++ b/src/profiling/instrumentation.h
+@@ -80,12 +80,26 @@
+ class GlobalMutexes {
+  public:
+   static Mutex* Profiler() {
++#if defined(__clang__)
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wexit-time-destructors"
++#endif
+     static Mutex m;
++#if defined(__clang__)
++#pragma clang diagnostic pop
++#endif
+     return &m;
+   }
+ 
+   static Mutex* EightBitIntGemm() {
++#if defined(__clang__)
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wexit-time-destructors"
++#endif
+     static Mutex m;
++#if defined(__clang__)
++#pragma clang diagnostic pop
++#endif
+     return &m;
+   }
+ };

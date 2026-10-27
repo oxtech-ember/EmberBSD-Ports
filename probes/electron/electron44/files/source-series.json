@@ -473,6 +473,11 @@
       "root": "third_party/angle"
     },
     {
+      "path": "gemmlowp-exit-time-destructors-netbsd.patch",
+      "strip": 1,
+      "root": "third_party/gemmlowp"
+    },
+    {
       "path": "perfetto-gcc16-warning-cleanups.patch",
       "strip": 1,
       "root": "third_party/perfetto"
