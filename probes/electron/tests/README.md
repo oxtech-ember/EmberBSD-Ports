@@ -371,3 +371,25 @@ markers. The actual upstream pseudo-link collector and LLVM thin archive feed
 the allowlist extractor; Electron's shipped-pak checker accepts the complete
 pack and rejects a missing resource. No target program runs and no complete
 Electron build is claimed.
+
+## Selected target ELF strip tools
+
+```sh
+python3.15 -B -I -S probes/electron/tests/electron-elf-strip.py \
+  --source /absolute/prepared/chromium/src --work /absolute/NEW_STRIP_WORK \
+  --git /absolute/control/git --gn /absolute/native/bin/gn \
+  --ninja /absolute/native/bin/ninja --clang /absolute/native/bin/clang \
+  --ld /absolute/native/bin/ld.lld --strip /absolute/native/bin/llvm-strip \
+  --objcopy /absolute/native/bin/llvm-objcopy \
+  --readelf /absolute/native/bin/llvm-readelf \
+  --utility-path /absolute/native/bin:/absolute/native/gnu/bin
+```
+
+Use the canonical source immediately before `gn-selected-elf-strip.patch`.
+The baseline BSD Python no-op returns success without either promised output.
+The restored upstream operation runs through actual GN/Ninja on a freestanding
+NetBSD ELF file: separate debug sections and the stripped image's GNU debuglink
+are checked. The explicit tool pair remains in Ninja inputs. Partial/relative
+selection and corrupt ELF fail; unchanged default and non-NetBSD routing is
+checked separately. This does not execute the target or accept an Electron
+runtime.

@@ -1,0 +1,50 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), Chromium 152 with the ordered BSD source layer.
+Status: local selected-tool integration, not submitted upstream.
+Restore the upstream ELF debug/strip operation instead of the BSD no-op.
+Bind explicit target tools without changing unrelated platform defaults.
+
+--- a/build/linux/strip_binary.gni
++++ b/build/linux/strip_binary.gni
+@@ -4,6 +4,19 @@
+ 
+ import("//build/config/clang/clang.gni")
+ import("//build/toolchain/toolchain.gni")
++
++declare_args() {
++  # Target ELF tools are independent of the compiler used for native generators.
++  emberbsd_target_strip = ""
++  emberbsd_target_objcopy = ""
++}
++assert((emberbsd_target_strip == "") == (emberbsd_target_objcopy == ""),
++       "select both target strip and objcopy")
++if (emberbsd_target_strip != "") {
++  assert(get_path_info(emberbsd_target_strip, "abspath") == emberbsd_target_strip &&
++             get_path_info(emberbsd_target_objcopy, "abspath") == emberbsd_target_objcopy,
++         "target strip and objcopy paths must be absolute")
++}
+ 
+ # Extracts symbols from a binary into a symbol file.
+ #
+@@ -23,6 +36,10 @@
+   action("${target_name}") {
+     llvm_strip_binary = "@PREFIX@/bin/llvm-strip"
+     llvm_objcopy_binary = "@PREFIX@/bin/llvm-objcopy"
++    if (current_os == "netbsd" && emberbsd_target_strip != "") {
++      llvm_strip_binary = emberbsd_target_strip
++      llvm_objcopy_binary = emberbsd_target_objcopy
++    }
+     script = "//build/linux/strip_binary.py"
+ 
+     if (defined(invoker.stripped_binary_output)) {
+--- a/build/linux/strip_binary.py
++++ b/build/linux/strip_binary.py
+@@ -10,7 +10,6 @@
+ 
+ 
+ def main() -> int:
+-  return 0
+   parser = argparse.ArgumentParser(description="Strip binary using LLVM tools.")
+   parser.add_argument("--llvm-strip-binary-path",
+                       help="Path to llvm-strip executable.")

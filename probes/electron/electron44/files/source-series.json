@@ -491,6 +491,11 @@
       "path": "electron-netbsd-resource-allowlist.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "gn-selected-elf-strip.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {
