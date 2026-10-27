@@ -611,6 +611,11 @@
       "path": "ui-accessibility-mac26-index-for-child-attr.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "libsync-etime-redef.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

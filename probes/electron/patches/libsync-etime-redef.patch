@@ -1,0 +1,19 @@
+third_party/libsync: do not redefine ETIME.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Source: Chromium electron-source tree under EmberBSD.
+EmberBSD sys/errno.h already defines ETIME, so the Linux-oriented fallback
+in sync.c trips -Werror,-Wmacro-redefined. Only define it when missing.
+
+--- a/third_party/libsync/src/sync.c	2026-10-28 02:57:09.361812998 +0300
++++ b/third_party/libsync/src/sync.c	2026-10-28 02:57:09.403862839 +0300
+@@ -36,7 +36,9 @@
+ 
+ #define __u32 uint32_t
+ #define	__s32 int32_t
++#ifndef ETIME /* EmberBSD: sys/errno.h already defines ETIME */
+ #define ETIME ETIMEDOUT
++#endif
+ 
+ /* Prototypes for deprecated functions that used to be declared in the legacy
+  * android/sync.h. They've been moved here to make sure new code does not use
