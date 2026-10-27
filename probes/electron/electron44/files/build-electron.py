@@ -323,6 +323,19 @@ def ensure_allocator_shim_throw_netbsd(workspace):
     path.write_text(text.replace(old, new, 1))
 
 
+
+def ensure_allocator_shim_cpp_noexcept(workspace):
+    """libc++ declares replaceable operator new/delete noexcept; with __THROW empty on
+    BSD (see ensure_allocator_shim_throw_netbsd) the C++ shim overrides lose it."""
+    path = (workspace / 'src/base/allocator/partition_allocator/src/partition_alloc'
+            / 'shim' / 'allocator_shim_override_cpp_symbols.h')
+    require(path.is_file(), 'allocator_shim_override_cpp_symbols.h missing')
+    text = path.read_text()
+    if ') __THROW {' not in text:
+        return
+    path.write_text(text.replace(') __THROW {', ') noexcept {'))
+
+
 def ensure_host_dsymutil(workspace, host_prefix):
     """DEPS dsymutil_mac_* downloads chromium-browser-clang dsymutil; hooks are not run.
     Point tools/clang/dsymutil/bin/dsymutil at host-prefix (or PATH) dsymutil for host mac links."""
@@ -442,6 +455,7 @@ def configure(options):
     ensure_rollup_darwin_arm64(options.workspace, options.host_prefix, environment)
     ensure_rust_std_x86_64_netbsd(options.host_prefix)
     ensure_allocator_shim_throw_netbsd(options.workspace)
+    ensure_allocator_shim_cpp_noexcept(options.workspace)
     output = work / 'out'; output.mkdir()
     (output / 'args.gn').write_text(gn_arguments(values))
     sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
@@ -464,6 +478,7 @@ def build(options):
     ensure_rollup_darwin_arm64(options.workspace, options.host_prefix, environment)
     ensure_rust_std_x86_64_netbsd(options.host_prefix)
     ensure_allocator_shim_throw_netbsd(options.workspace)
+    ensure_allocator_shim_cpp_noexcept(options.workspace)
     saved = json.loads((options.work / 'configuration.json').read_text())
     require(saved['source'] == str(options.workspace) and saved['sdk'] == str(options.sdk_source) and
             saved['host_prefix'] == str(options.host_prefix) and saved['target'] == options.target,
