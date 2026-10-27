@@ -65,6 +65,8 @@ try:
     for package, (name, archive) in family.items():
         row = query(package)
         expected_name = name + ('.' if package == 'devel/lemon' else '-') + '3.54.1'
+        if package == 'databases/sqlite3':
+            expected_name += 'nb1'
         require(row['PKGNAME'] == expected_name, 'Wrong package version: ' + package)
         data = (args.distfiles / archive).read_bytes()
         distinfo = args.pkgsrc / package / row['DISTINFO_FILE']
@@ -97,6 +99,8 @@ try:
             '--enable-math', '--enable-threadsafe', '--enable-load-extension')),
             'A shared SQLite feature is missing')
     sqlite = rows['databases/sqlite3']
+    require('-DSQLITE_ENABLE_RBU' in sqlite['CPPFLAGS'].split(),
+            'Shared SQLite RBU capability is missing')
     readline = 'readline' in sqlite['PKG_OPTIONS'].split()
     if sqlite['OPSYS'] == 'Darwin':
         require(not readline and '--disable-readline' in features and

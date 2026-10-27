@@ -4,6 +4,7 @@
 
 DISTNAME=	sqlite-autoconf-${SQLITE3_DISTVERSION}
 PKGNAME=	sqlite3-${SQLITE3_VERSION}
+PKGREVISION=	1
 CATEGORIES=	databases
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -308,9 +309,8 @@ CFLAGS.NetBSD+=		-DUSE_PREAD
 # https://www.sqlite.org/queryplanner-ng.html#qpstab
 # https://www.sqlite.org/compile.html#enable_qpsg
 
-# XXX Consider SQLITE_ENABLE_RBU, Resumable Bulk Updates.
-#
-# Gentoo enables this; nobody else I found does.
+# Resumable Bulk Updates are required by the common Node24 SQLite contract.
+# Enable them for all consumers through features.mk; the core ABI is unchanged.
 #
 # https://www.sqlite.org/rbu.html
 # https://www.sqlite.org/compile.html#enable_rbu

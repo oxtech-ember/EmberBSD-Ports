@@ -30,6 +30,12 @@ the option and the base libedit, so their content does not change.
 `features.mk` is the common package and source-probe feature contract.
 It retains serialized threads, FTS3/4/5, JSON, RTree, Geopoly, column metadata,
 DBSTAT, math, sessions, loadable extensions, statement-vtab and unlock-notify.
+Revision nb1 adds `SQLITE_ENABLE_RBU` for the common Node24 SQLite capability
+contract. RBU is already part of the upstream amalgamation; no second SQLite
+provider or core-source patch is introduced. The package dependency minimum
+includes nb1 so future consumers receive that capability. Existing exported
+C symbols and the shared-library ABI are retained; compatible installed
+consumers do not need rebuilding solely for this additive feature.
 The CLI links the selected shared library and explicitly uses the common
 zlib provider for SQL archive support. The package preserves the SQLite
 public-domain dedication and Autosetup license.
@@ -77,3 +83,30 @@ checksums, package identities, the complete documentation PLIST, the private
 Tcl source version, shared features, and explicit cross compiler routing.
 The Tcl namespace regression rejects a restored global `SQLITE3_VERSION`
 assignment from the bundled Tcl extension.
+
+`tests/rbu.py` verifies the release archive and canonical patch, configures the
+shared feature contract, and compiles two native libraries differing only in
+RBU. The baseline reports no capability and cannot link the RBU API; the
+candidate performs insert/update/delete, suspend/resume and malformed-input
+rejection. Exported symbols are additive. The existing C consumer is linked
+once against the baseline and runs unchanged with each library, covering SQL,
+FTS/JSON, transactions, readers and crash/reopen behavior.
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B -I -S pkgsrc/databases/sqlite3/tests/rbu.py \
+  --sdk-source "$SDK_SOURCE" --host-prefix "$HOST_PREFIX" \
+  --archive "$DISTDIR/sqlite-autoconf-3540100.tar.gz" --work "$NEW_WORK"
+```
+
+On Darwin, pass the selected host ABI SDK using `--abi-flag=-isysroot` and
+`--abi-flag="$MACOS_SDK"`, with any explicit deployment flag. Add `--sanitize`
+to instrument the libraries and consumers with ASan/UBSan in a new output.
+These are native source/API checks, without package installation, target
+execution or the complete Node test suite.
+
+Darwin arm64 Clang 23 controls passed in ordinary and ASan/UBSan builds. The
+new C regression also passes Cppcheck and Clang Static Analyzer without
+diagnostics. Valgrind is unavailable on this host. Actual bmake metadata
+selects nb1 and forwards its capability minimum to Node24, Python315 and the
+Tcl extension; package rebuild/installation and Node-suite acceptance remain
+separate from these checks.

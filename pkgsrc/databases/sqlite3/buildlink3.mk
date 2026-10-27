@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	sqlite3
 .if !defined(SQLITE3_BUILDLINK3_MK)
 SQLITE3_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.sqlite3+=	sqlite3>=3.54.1
-BUILDLINK_ABI_DEPENDS.sqlite3+=	sqlite3>=3.54.1
+BUILDLINK_API_DEPENDS.sqlite3+=	sqlite3>=3.54.1nb1
+BUILDLINK_ABI_DEPENDS.sqlite3+=	sqlite3>=3.54.1nb1
 BUILDLINK_PKGSRCDIR.sqlite3?=	../../databases/sqlite3
 
 pkgbase:= sqlite3
