@@ -526,6 +526,16 @@
       "path": "gn-shared-node-providers.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "base-launch-mac-addchdir-macos26.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "base-logging-show-error-dialogs-maybe-unused.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

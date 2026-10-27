@@ -1,0 +1,22 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Upstream: Chromium base/logging.cc.
+Status: local NetBSD/official fix; not submitted upstream.
+
+OFFICIAL_BUILD defines NDEBUG, so DisplayDebugMessageInDialog (the only reader
+of show_error_dialogs) is compiled out. SetShowErrorDialogs still assigns the
+variable, which trips -Werror,-Wunused-but-set-global on the target toolchain.
+Mark the global [[maybe_unused]].
+
+--- a/base/logging.cc
++++ b/base/logging.cc
+@@ -238,7 +238,7 @@ bool g_log_tickcount = false;
+ const char* g_log_prefix = nullptr;
+ 
+ // Should we pop up fatal debug messages in a dialog?
+-bool show_error_dialogs = false;
++[[maybe_unused]] bool show_error_dialogs = false;
+ 
+ // An assert handler override specified by the client to be called instead of
+ // the debug message dialog and process termination. Assert handlers are stored

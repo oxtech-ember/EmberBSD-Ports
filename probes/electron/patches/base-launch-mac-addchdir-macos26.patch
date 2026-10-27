@@ -1,0 +1,36 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Upstream: Chromium base/process/launch_mac.cc.
+Status: local host-mac fix; not submitted upstream.
+
+On macOS 26 with -mmacos-version-min=26, posix_spawn_file_actions_addchdir_np
+is deprecated and the else branch of __builtin_available still warns under
+-Werror,-Wdeprecated-declarations when compiling host clang_arm64 objects.
+When MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_VERSION_26_0 call addchdir only;
+otherwise keep the availability check and silence the deprecated _np path.
+
+--- a/base/process/launch_mac.cc
++++ b/base/process/launch_mac.cc
+@@ -166,11 +166,21 @@ class PosixSpawnFileActions {
+ 
+ #if BUILDFLAG(IS_MAC)
+   void Chdir(const char* path) {
++    // macOS 26+: addchdir_np is deprecated; with -mmacos-version-min=26 the
++    // else branch still warns under -Werror,-Wdeprecated-declarations.
++#if defined(MAC_OS_VERSION_26_0) && \
++    MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_VERSION_26_0
++    DPSXCHECK(posix_spawn_file_actions_addchdir(&file_actions_, path));
++#else
+     if (__builtin_available(macOS 26, *)) {
+       DPSXCHECK(posix_spawn_file_actions_addchdir(&file_actions_, path));
+     } else {
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+       DPSXCHECK(posix_spawn_file_actions_addchdir_np(&file_actions_, path));
++#pragma clang diagnostic pop
+     }
++#endif
+   }
+ #endif
+ 
