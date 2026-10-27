@@ -56,6 +56,14 @@ the SDK name `amd64` also accepts pkgsrc's `x86_64`. Repeat `--shared-input NAME
 prepared input receipts. Output creation is exclusive. Each metadata subprocess
 has a timeout; `--max-nodes` bounds the selected closure.
 
+Pass an early MAKECONF policy input as a repeatable `--make-variable NAME=VALUE`
+option, for example `--make-variable EMBERBSD_DARWIN_BOOTSTRAP=yes`. The
+assignment is passed to every bmake metadata query, including recursive and
+pattern checks, and is recorded in graph provenance and shared input hashes.
+This accepts scalar assignments only; it does not accept make targets or flags.
+`MAKECONF`, `USE_CROSS_COMPILE`, and target-routing variables remain controlled
+by the exporter.
+
 The exporter asks bmake for expanded dependency variables and loaded makefiles.
 It requires native `-dg1` variable inventory output. It queries the listed
 `FILESDIR.*` variables with `-V` to resolve shared copied-source trees.

@@ -1,0 +1,2 @@
+TypeScript declarations for the ESTree JavaScript syntax-tree format.
+These declarations supply the public type dependency of Rollup.
