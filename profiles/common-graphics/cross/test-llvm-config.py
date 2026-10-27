@@ -1,13 +1,39 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Exercise real metadata and refusal paths.
+import importlib.util
 from pathlib import Path
 import re
+import shlex
 import shutil
 import sys
 sys.dont_write_bytecode = True
 import llvm_sdk as sdk
 import llvm_target as target_api
+
+
+def target_cxxflags_match(output, expected, native_build):
+    try:
+        flags = shlex.split(output)
+    except ValueError:
+        return False
+    return flags == expected and '-fno-rtti' not in flags and native_build not in output
+
+
+def target_cxxflags_fixture_contract():
+    include = '-I/fixture/target/usr/pkg/include'
+    native_build = '/fixture/native-build'
+    without_abi = [include, '-std=c++17']
+    with_abi = [*without_abi, '-D_GLIBCXX_USE_CXX11_ABI=1']
+    cases = (
+        ('target metadata without an ABI macro', without_abi, without_abi, True),
+        ('target metadata with its declared ABI macro', with_abi, with_abi, True),
+        ('missing declared ABI macro', without_abi, with_abi, False),
+        ('changed declared ABI macro', [*without_abi, '-D_GLIBCXX_USE_CXX11_ABI=0'], with_abi, False),
+        ('extra conflicting ABI macro', [*with_abi, '-D_GLIBCXX_USE_CXX11_ABI=0'], with_abi, False),
+    )
+    return all(target_cxxflags_match(' '.join(actual), expected, native_build) == accepted
+               for _, actual, expected, accepted in cases)
 
 
 def test(args):
@@ -20,6 +46,11 @@ def test(args):
     spec = target_api.for_triple(r['target_triple'])
     tool = str(work / 'bin/llvm-config')
     builder = str(Path(__file__).with_name('build-llvm-config.py'))
+    builder_spec = importlib.util.spec_from_file_location('llvm_config_builder', builder)
+    if builder_spec is None or builder_spec.loader is None:
+        raise ValueError('Cannot load the llvm-config builder parser')
+    builder_module = importlib.util.module_from_spec(builder_spec)
+    builder_spec.loader.exec_module(builder_module)
     checks = []
 
     def check(name, condition):
@@ -30,17 +61,23 @@ def test(args):
 
     def refusal(name, inputs, output, message):
         command = [sys.executable, builder, '--sdk-source', sdk.sdk_source.load(), *inputs, str(output)]
-        out, err, status = sdk.query(*command)
+        out, err, status = sdk.query(*command, env={'NATIVE_CXX': r['compiler']})
         sdk.write_json(tmp / (output.name + '.json'), dict(command=command, stdout=out, stderr=err, exit=status))
         check(name, status != 0 and message in err and (output == work or not output.exists()))
 
+    check('C++ ABI fixtures follow declared target metadata exactly', target_cxxflags_fixture_contract())
     out, _, status = sdk.query(tool, '--version', '--host-target', '--has-rtti', '--assertion-mode')
     check('actual upstream tool reports target version/triple/RTTI/assertions', status == 0 and out == f"23.1.4\n{r['target_triple']}\nYES\n{r.get('target_assertions', 'OFF')}\n")
     out, _, status = sdk.query(tool, '--components')
     required = ['aarch64', 'amdgpu', 'riscv', 'x86', 'xtensa', 'orcjit', 'jitlink', 'native'] if spec['processor'] == 'aarch64' else ['x86', 'orcjit', 'jitlink', 'native']
     check('target component graph includes the selected backend and ORC', status == 0 and set(required) <= set(out.split()))
+    target_variables = builder_module.definitions(
+        str(Path(r['target_build']) / 'tools/llvm-config/BuildVariables.inc'))
+    expected_cxxflags = ['-I' + r['target_prefix'] + '/include',
+                         *shlex.split(builder_module.string(target_variables, 'LLVM_CXXFLAGS'))]
     out, _, status = sdk.query(tool, '--cxxflags')
-    check('compiler flags preserve the target C++ ABI', status == 0 and '-D_GLIBCXX_USE_CXX11_ABI=1' in out and '-fno-rtti' not in out and r['native_build'] not in out)
+    check('compiler flags match target BuildVariables.inc and preserve the target C++ ABI',
+          status == 0 and target_cxxflags_match(out, expected_cxxflags, r['native_build']))
     out, _, status = sdk.query(tool, '--ldflags')
     check('search paths use target sysroot while runtime paths stay target paths', status == 0 and '-L' + r['sysroot'] + '/usr/lib' in out and '-Wl,-R/usr/lib' in out and not re.search(r'(?:^| )-L/usr/', out) and 'darwin' not in out)
     _, err, status = sdk.query(tool, '--link-static', '--libs', 'ember_nonexistent_component')
