@@ -106,7 +106,7 @@ def native_inputs(options, sdk):
                        EMBERBSD_HOST_NODE=native.tool('node'),
                        CLANG_PATH=native.tool('clang'), RUSTFMT=native.tool('rustfmt'),
                        LIBCLANG_PATH=str(options.host_prefix / 'lib'))
-    providers = local_module('electron_node_providers', 'node-providers.py').select(native)
+    providers = local_module('electron_node_providers', 'node-providers.py').select(native, source=options.workspace)
     environment.update(providers['environment'])
     if native.host['os'] == 'Darwin':
         require(options.macos_sdk and options.xcode_version_plist and options.macos_minimum,
@@ -227,7 +227,7 @@ def arguments(options, native, tools, rust_version, launcher):
         values['host_toolchain'] = '//build/toolchain/linux/unbundle:host'
     else:
         raise ValueError('unsupported GN host OS: ' + native.host['os'])
-    values.update(local_module('electron_node_providers', 'node-providers.py').select(native)['arguments'])
+    values.update(local_module('electron_node_providers', 'node-providers.py').select(native, source=options.workspace)['arguments'])
     return values
 
 

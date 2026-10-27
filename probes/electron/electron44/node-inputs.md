@@ -67,7 +67,12 @@ matching TypeScript entry/backend version and returns the actual package files
 for GN inputs. The native TypeScript backend and its standard `.d.ts` files
 are included, as is Rollup's native addon. Paths escaping the selected prefix
 are refused. This reads installed packages, without copying a compiler into
-the source tree or constructing another node_modules toolchain.
+the source tree or constructing another node_modules toolchain. When the host
+TypeScript major version is 7 or newer, `EMBERBSD_HOST_TYPESCRIPT` prefers the
+prepared Chromium tree's classic bundled CLI at
+`third_party/node/node_modules/typescript/bin/tsc` (Chromium pins ~5/6) so WebUI
+trusted-types/`innerHTML` typing still matches; host package files remain the
+declared GN inputs and definition set.
 
 `emberbsd_node_provider_inputs` retains those package files as Ninja inputs.
 `emberbsd_typescript_definitions` is separately passed to the existing missing
