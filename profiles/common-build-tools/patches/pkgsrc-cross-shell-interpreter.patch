@@ -1,0 +1,13 @@
+# Origin: EmberBSD (AI-assisted). Keep installed shell scripts separate from the build shell.
+
+--- a/mk/configure/replace-interpreter.mk
++++ b/mk/configure/replace-interpreter.mk
+@@ -114,7 +114,7 @@
+ .if !empty(REPLACE_SH:M*)
+ REPLACE_INTERPRETER+=	sys-sh
+ REPLACE.sys-sh.old=	[^[:space:]]*sh
+-REPLACE.sys-sh.new=	${SH}
++REPLACE.sys-sh.new?=	${SH}
+ REPLACE_FILES.sys-sh=	${REPLACE_SH}
+ .endif
+ 

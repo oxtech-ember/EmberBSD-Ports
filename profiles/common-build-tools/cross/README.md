@@ -223,6 +223,15 @@ The prepared export includes both files. Check the exported helper with
 `BMAKE=/absolute/host/bin/bmake sh scripts/tests/cross-export-sort.sh /absolute/pkgsrc`.
 The check reads the actual exported profile and executes its selected sort path.
 
+Shell scripts selected by `REPLACE_SH` retain the target base `/bin/sh`.
+The selected native `CONFIG_SHELL` and build commands remain unchanged.
+The interpreter rewriter accepts the profile's existing replacement-variable
+override; ordinary native packages keep their normal shell replacement.
+`tests/target-shell-interpreter.py` checks all seven real staged bzip2 shell
+commands and queries both cross and native policies. It requires the actual
+bzip2 stage through `--stage`, plus `--pkgsrc`, `--makeconf` and `--host-prefix`.
+The package interpreter checker still rejects host paths.
+
 The cross profile defaults `CROSS_SYSCONFBASE` to `/etc` for base `rc.subr`
 and `rc.conf`. `PKG_SYSCONFBASE` keeps pkgsrc's separate `${PREFIX}/etc` default.
 `RCD_SCRIPTS_DIR` defaults to `/etc/rc.d`. Explicit overrides remain supported.
