@@ -468,6 +468,11 @@
       "root": "third_party/angle"
     },
     {
+      "path": "angle-systeminfo-x11-netbsd-glx-stub.patch",
+      "strip": 1,
+      "root": "third_party/angle"
+    },
+    {
       "path": "perfetto-gcc16-warning-cleanups.patch",
       "strip": 1,
       "root": "third_party/perfetto"
@@ -566,6 +571,11 @@
       "path": "libdrm-xf86drm-netbsd-missing-impl.patch",
       "strip": 1,
       "root": "third_party/libdrm/src"
+    },
+    {
+      "path": "libdrm-build-gn-netbsd-warning-flags.patch",
+      "strip": 1,
+      "root": "third_party/libdrm"
     }
   ],
   "superseded": {

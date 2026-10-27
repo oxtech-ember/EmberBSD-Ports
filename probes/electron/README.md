@@ -282,6 +282,13 @@ length. It removes the array marker and final NUL without an implicit suffix
 The NetBSD keycode patch selects the existing evdev conversion API on NetBSD.
 It keeps the native XKB table, offset, bounds, and media-key normalization.
 Use the common `input-headers` package for the Linux input protocol constants.
+For Mac→NetBSD Electron/ANGLE, also stage Mesa 26.2.5 public GL API headers
+(`gl.h`, `glx.h`, `glxext.h`, `glext.h`, plus `KHR/khrplatform.h`) from
+`pkgsrc/graphics/MesaLib`'s distfile into the clang-final sysroot at
+`usr/pkg/include/GL/` (and `usr/pkg/include/KHR/`). Keep the existing X11
+protocol headers (`glxint.h`, `glxmd.h`, `glxproto.h`, `glxtokens.h`). ANGLE
+`SystemInfo_x11.cpp` stubs `CollectMesaCardInfo` on NetBSD so a host XQuartz
+`__has_include(<GL/glx.h>)` cannot force a sysroot-missing include.
 The [runtime fixture](tests/keycode-runtime.cc) checks the actual converter.
 The Wayland patch adds fatal exits after exhaustive internal enum switches.
 It keeps valid protocol mappings and unknown-wire rejection. It also declares

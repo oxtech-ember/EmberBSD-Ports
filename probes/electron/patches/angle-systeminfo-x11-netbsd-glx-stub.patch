@@ -1,0 +1,32 @@
+--- a/src/gpu_info_util/SystemInfo_x11.cpp
++++ b/src/gpu_info_util/SystemInfo_x11.cpp
+@@ -8,9 +8,17 @@
+ 
+ #include "gpu_info_util/SystemInfo_internal.h"
+ 
+-#if defined(__OpenBSD__) || defined(__FreeBSD__) || defined(__NetBSD__)
++#if defined(__OpenBSD__) || defined(__FreeBSD__)
++#if __has_include(<GL/glx.h>)
++#define ANGLE_BSD_HAS_GLX 1
+ #include <GL/glx.h>
+ #include <GL/glxext.h>
++#endif
++#elif defined(__NetBSD__)
++// Mac→NetBSD cross: host __has_include(<GL/glx.h>) can succeed via XQuartz
++// while --sysroot lacks Mesa GL API headers, so the following #include fails.
++// Always stub CollectMesaCardInfo on NetBSD. Stage Mesa include/GL/{gl,glx}.h
++// into the target sysroot for other consumers; do not re-enable has_include here.
+ #endif
+ #include <X11/Xlib.h>
+ 
+@@ -30,7 +38,9 @@
+ namespace angle
+ {
+ 
+-#if defined(__OpenBSD__) || defined(__FreeBSD__) || defined(__NetBSD__)
++#if defined(__NetBSD__) || ((defined(__OpenBSD__) || defined(__FreeBSD__)) && !defined(ANGLE_BSD_HAS_GLX))
++bool CollectMesaCardInfo(std::vector<GPUDeviceInfo> *devices) { return false; }
++#elif defined(ANGLE_BSD_HAS_GLX)
+ bool CollectMesaCardInfo(std::vector<GPUDeviceInfo> *devices)
+ {
+     unsigned int vid[3], did[3];
