@@ -255,6 +255,61 @@ def gn_arguments(values):
 
 
 
+
+def ensure_host_dsymutil(workspace, host_prefix):
+    """DEPS dsymutil_mac_* downloads chromium-browser-clang dsymutil; hooks are not run.
+    Point tools/clang/dsymutil/bin/dsymutil at host-prefix (or PATH) dsymutil for host mac links."""
+    dest = workspace / 'src/tools/clang/dsymutil/bin/dsymutil'
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.is_file() or dest.is_symlink():
+        return
+    candidates = [
+        Path(host_prefix) / 'bin' / 'dsymutil',
+        Path('/usr/bin/dsymutil'),
+    ]
+    src = next((p for p in candidates if p.is_file()), None)
+    require(src is not None, 'host dsymutil missing for tools/clang/dsymutil/bin/dsymutil')
+    if dest.exists() or dest.is_symlink():
+        dest.unlink()
+    dest.symlink_to(src)
+
+
+
+def ensure_rollup_darwin_arm64(workspace, host_prefix, environment):
+    """Yarn may omit optional @rollup/rollup-darwin-arm64; host rollup then fails to load native binding."""
+    import subprocess
+    electron = workspace / 'src/electron'
+    nm = electron / 'node_modules' / '@rollup' / 'rollup-darwin-arm64'
+    if nm.is_dir():
+        return
+    # Prefer copying from host-prefix node_modules if present (offline-safe).
+    host_pkg = Path(host_prefix) / 'lib' / 'node_modules' / '@rollup' / 'rollup-darwin-arm64'
+    host_rollup = Path(host_prefix) / 'lib' / 'node_modules' / 'rollup'
+    if host_pkg.is_dir():
+        import shutil
+        nm.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(host_pkg, nm)
+        return
+    # Fall back to npm install into electron tree (needs network).
+    npm = Path(host_prefix) / 'bin' / 'npm'
+    if not npm.is_file():
+        npm = Path('/usr/bin/npm')
+    # Discover version from installed rollup if any
+    ver = '4.60.4'
+    for pkg in (electron / 'node_modules' / 'rollup' / 'package.json',
+                host_rollup / 'package.json'):
+        if pkg.is_file():
+            import json
+            ver = json.loads(pkg.read_text()).get('version') or ver
+            break
+    require(npm.is_file(), 'npm missing to install @rollup/rollup-darwin-arm64')
+    subprocess.check_call(
+        [str(npm), 'install', '--no-save', '--no-package-lock',
+         f'@rollup/rollup-darwin-arm64@{ver}'],
+        cwd=str(electron), env=environment)
+    require(nm.is_dir(), 'npm did not install @rollup/rollup-darwin-arm64')
+
+
 def ensure_ffmpeg_netbsd_config(workspace):
     """DEPS ffmpeg-copy-config-netbsd only teaches copy_config.sh; config trees are not generated here.
     Reuse linux configs for netbsd (same approach as fuchsia/chromeos -> linux in ffmpeg_options.gni)."""
@@ -317,6 +372,8 @@ def configure(options):
     native, environment, values = producer_inputs(options, sdk)
     ensure_lastchange(options.workspace, native, environment, sdk)
     ensure_ffmpeg_netbsd_config(options.workspace)
+    ensure_host_dsymutil(options.workspace, options.host_prefix)
+    ensure_rollup_darwin_arm64(options.workspace, options.host_prefix, environment)
     output = work / 'out'; output.mkdir()
     (output / 'args.gn').write_text(gn_arguments(values))
     sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
@@ -335,6 +392,8 @@ def build(options):
     native, environment, values = producer_inputs(options, sdk)
     ensure_lastchange(options.workspace, native, environment, sdk)
     ensure_ffmpeg_netbsd_config(options.workspace)
+    ensure_host_dsymutil(options.workspace, options.host_prefix)
+    ensure_rollup_darwin_arm64(options.workspace, options.host_prefix, environment)
     saved = json.loads((options.work / 'configuration.json').read_text())
     require(saved['source'] == str(options.workspace) and saved['sdk'] == str(options.sdk_source) and
             saved['host_prefix'] == str(options.host_prefix) and saved['target'] == options.target,
