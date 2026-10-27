@@ -210,6 +210,18 @@ def gn_arguments(values):
         name + ' = ' + gn_value(value) + '\n' for name, value in sorted(values.items()))
 
 
+def ensure_lastchange(workspace, native, environment, sdk):
+    """Official Electron args need build/util/LASTCHANGE(.committime); gclient hooks are not run here."""
+    script = workspace / 'src/build/util/lastchange.py'
+    output = workspace / 'src/build/util/LASTCHANGE'
+    require(script.is_file(), 'Chromium lastchange.py missing from prepared source')
+    sdk['process'].capture([native.tool('python'), '-B', str(script), '-o', str(output)],
+                           cwd=str(workspace), env=environment)
+    stamp = Path(str(output) + '.committime')
+    require(stamp.is_file() and stamp.read_text().strip().isdigit(),
+            'lastchange did not write LASTCHANGE.committime')
+
+
 def configure(options):
     sdk = load_sdk(options.sdk_source)
     verify_source(options.workspace, options.ports_source, options.git)
@@ -217,6 +229,7 @@ def configure(options):
     require(not work.exists(), 'configure output must be new; retain an unsuccessful output for diagnosis')
     work.mkdir()
     native, environment, values = producer_inputs(options, sdk)
+    ensure_lastchange(options.workspace, native, environment, sdk)
     output = work / 'out'; output.mkdir()
     (output / 'args.gn').write_text(gn_arguments(values))
     sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
