@@ -36,3 +36,10 @@ Cppcheck 2.22 cannot complete these LLVM 23 translation units. Its Clang importe
 asserts on both the original and patched `Symbols.cpp`. Its builtin parser also
 rejects the native headers and the Clang-preprocessed translation unit.
 These attempts do not establish a successful Cppcheck analysis.
+
+LLD test commands select the C locale explicitly. Lit does not inherit
+`LC_ALL`; without a test locale, Darwin can format `ls` timestamps with
+the user locale and fail the COFF incremental-link timestamp check.
+The Darwin/Clang 23 run passed 3197 tests, with 25 unsupported and one
+expected failure. Its only failure, `COFF/incremental.test`, passes after
+this test-environment correction. The full suite was not repeated.
