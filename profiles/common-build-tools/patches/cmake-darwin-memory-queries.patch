@@ -6,8 +6,8 @@ sysctl memory query.
 
 Origin: EmberBSD (AI-assisted). Not submitted upstream.
 
---- a/Source/kwsys/SystemInformation.cxx
-+++ b/Source/kwsys/SystemInformation.cxx
+--- Source/kwsys/SystemInformation.cxx
++++ Source/kwsys/SystemInformation.cxx
 @@ -3779,6 +3779,29 @@
    return memAvail;
  }

@@ -5,8 +5,8 @@ query cannot return a positive resident-memory value.
 
 Origin: EmberBSD (AI-assisted). Not submitted upstream.
 
---- a/Source/kwsys/testSystemInformation.cxx
-+++ b/Source/kwsys/testSystemInformation.cxx
+--- Source/kwsys/testSystemInformation.cxx
++++ Source/kwsys/testSystemInformation.cxx
 @@ -26,7 +26,13 @@
    kwsys::SystemInformation info;
    info.RunCPUCheck();
