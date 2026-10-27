@@ -63,6 +63,9 @@ Cross builds with `PKG_OPTIONS.gdk-pixbuf2+= -introspection` (or
 `PKG_DEFAULT_OPTIONS+= -introspection`) skip `gobject-introspection/cross.mk`
 and the SSH `target-tools.py` loaders/MIME path; Meson then uses the ordinary
 cross selection (no build-time `loaders.cache` / thumbnailer via a guest).
+`PLIST.native` stays unset in that mode so `bin/gdk-pixbuf-thumbnailer` and
+`share/thumbnailers/gdk-pixbuf-thumbnailer.thumbnailer` are not expected in
+DESTDIR (the `emberbsd_gi_cross` Meson gate disables the thumbnailer subdir).
 Enable introspection only when `EMBERBSD_GI_QUERY_CONFIG` names a live target
 query JSON. For a
 GCC16 runtime closure, select its provider consistently in the JSON:
