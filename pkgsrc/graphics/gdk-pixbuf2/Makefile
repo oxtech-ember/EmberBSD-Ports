@@ -2,7 +2,7 @@
 
 DISTNAME=	gdk-pixbuf-2.44.8
 PKGNAME=	${DISTNAME:S/pixbuf/pixbuf2/}
-PKGREVISION=	3
+PKGREVISION=	5
 CATEGORIES=	graphics gnome
 MASTER_SITES=	${MASTER_SITE_GNOME:=sources/gdk-pixbuf/${PKGVERSION_NOREV:R}/}
 EXTRACT_SUFX=	.tar.xz
@@ -49,15 +49,27 @@ PKGCONFIG_OVERRIDE_STAGE=	pre-install
 PKGCONFIG_OVERRIDE=		output/meson-private/gdk-pixbuf-2.0.pc
 
 PLIST_VARS+=		native
-PLIST.native=	yes
+
+# Resolve options before cross tooling so PKG_DEFAULT_OPTIONS+=-introspection
+# can skip the SSH target-query path (loaders.cache / GIR) on hosts without a guest.
+.include "options.mk"
 
 .if ${USE_CROSS_COMPILE:tl} == "yes"
 
-.if empty(EMBERBSD_SDK_SOURCE:M/*) || !exists(${EMBERBSD_SDK_SOURCE}/src/emberbsd_sdk/__init__.py)
-PKG_FAIL_REASON+= "GdkPixbuf cross tools require an explicit SDK host API source"
-.endif
+# Native GLib codegen is always required for the shared library itself.
 TOOL_DEPENDS+=			glib2-tools>=0:../../devel/glib2-tools
+MESON_BINARIES+=		glib-genmarshal glib-mkenums
+MESON_BINARY.glib-genmarshal=	${TOOLBASE}/bin/glib-genmarshal
+MESON_BINARY.glib-mkenums=	${TOOLBASE}/bin/glib-mkenums
+
+.  if !empty(PKG_OPTIONS:Mintrospection)
+# Introspection and loaders.cache/MIME generation need a live target query.
+.    if empty(EMBERBSD_SDK_SOURCE:M/*) || !exists(${EMBERBSD_SDK_SOURCE}/src/emberbsd_sdk/__init__.py)
+PKG_FAIL_REASON+= "GdkPixbuf cross tools require an explicit SDK host API source"
+.    endif
 EMBERBSD_GI_MESON_OPTIONS=	no
+# thumbnailer is built in cross only on the emberbsd_gi_cross path.
+PLIST.native=	yes
 .include "../../devel/gobject-introspection/cross.mk"
 MESON_CROSS_VARS+=	emberbsd_gi_cross emberbsd_gi_ldd_wrapper emberbsd_pixbuf_runner emberbsd_pixbuf_python
 MESON_CROSS.emberbsd_gi_cross=	true
@@ -69,10 +81,7 @@ pre-configure: emberbsd-pixbuf-native
 .PHONY: emberbsd-pixbuf-native
 emberbsd-pixbuf-native:
 	${RUN}${SETENV} EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} EMBERBSD_GI_TARGET=${_EMBER_GI_TARGET:Q} ${EMBERBSD_CROSS_BUILD_PYTHON} -E -S ${FILESDIR}/target-tools.py --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${_EMBER_GI_TRIPLET}-readelf
-
-MESON_BINARIES+=		glib-genmarshal glib-mkenums
-MESON_BINARY.glib-genmarshal=	${TOOLBASE}/bin/glib-genmarshal
-MESON_BINARY.glib-mkenums=	${TOOLBASE}/bin/glib-mkenums
+.  endif
 
 .else
 
@@ -91,8 +100,6 @@ REPLACE_PYTHON+=	build-aux/gen-thumbnailer.py
 
 _BUILDING_GTK2= yes
 .include "loaders.mk"
-
-.include "options.mk"
 
 .include "../../devel/meson/build.mk"
 .include "../../databases/shared-mime-info/buildlink3.mk"

@@ -157,18 +157,22 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
 
     def test_explicit_make_variables_reach_every_query_and_are_recorded(self):
         graph = self.run_export('--make-variable', 'EMBERBSD_DARWIN_BOOTSTRAP=yes',
-                                '--make-variable', 'EMBERBSD_DARWIN_TOOL_PHASE=initial')
-        self.assertIn('make variables: EMBERBSD_DARWIN_BOOTSTRAP=yes, EMBERBSD_DARWIN_TOOL_PHASE=initial',
+                                '--make-variable', 'EMBERBSD_DARWIN_TOOL_PHASE=initial',
+                                '--make-variable', 'PKG_OPTIONS.boost-libs=-icu')
+        self.assertIn('make variables: EMBERBSD_DARWIN_BOOTSTRAP=yes, EMBERBSD_DARWIN_TOOL_PHASE=initial, PKG_OPTIONS.boost-libs=-icu',
                       graph['provenance']['source'])
         self.assertIn('make-variables', graph['context']['shared_inputs'])
         calls = [json.loads(line) for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
         self.assertTrue(calls)
         self.assertTrue(all(call['settings']['EMBERBSD_DARWIN_BOOTSTRAP'] == 'yes' and
-                            call['settings']['EMBERBSD_DARWIN_TOOL_PHASE'] == 'initial'
+                            call['settings']['EMBERBSD_DARWIN_TOOL_PHASE'] == 'initial' and
+                            call['settings']['PKG_OPTIONS.boost-libs'] == '-icu'
                             for call in calls))
 
     def test_make_variable_rejects_flags_reserved_names_and_ambiguous_values(self):
-        for assignment in ('MAKEFLAGS=-n', 'MAKECONF=/tmp/other.conf',
+        for assignment in ('PKG_OPTIONS.=-icu', 'PKG_OPTIONS..SHELL=x',
+                           'PKG_OPTIONS.boost/libs=-icu', 'PKG_OPTIONS.boost:libs=-icu',
+                           'PKG_OPTIONS.boost$libs=-icu', 'MAKEFLAGS=-n', 'MAKECONF=/tmp/other.conf',
                            'USE_CROSS_COMPILE=no', 'TARGET_MACHINE_ARCH=aarch64',
                            'EMBERBSD_DARWIN_BOOTSTRAP=yes;show-vars',
                            'EMBERBSD_DARWIN_BOOTSTRAP=yes extra',

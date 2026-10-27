@@ -198,6 +198,11 @@ separate checks.
 
 ## Target runtime phases
 
+Base identity follows the selected headers, libraries and their complete link closure.
+Unrelated runtime socket links may remain unresolved in a build sysroot.
+Selected links still reject missing targets, cycles and paths outside the sysroot.
+Directory links are expanded before processing subsequent parent components.
+
 Run `files/runtime.py build` with the selected native prefix's Python. The
 native tools and target Clang prefix are explicit independent inputs. The
 controller uses the common CMake sources, SDK process runner and SDK runtime
@@ -306,7 +311,8 @@ libraries retain their licenses and transferred adaptation notices in the
 installed prefix.
 
 `tests/build-contract.py --sdk-source PATH --work NEW_PATH` checks native/target
-routing, phase boundaries and resolved base-input mutations.
+routing, phase boundaries, canonical file prefix maps and resolved base-input
+mutations.
 `tests/native-shell-routing.py --sdk-source PATH --host-prefix PREFIX
 --target-prefix PREFIX --source PREPARED_SOURCE --target aarch64 --work NEW_PATH`
 reproduces the literal `sh` lookup failure with the unbound native PATH, then

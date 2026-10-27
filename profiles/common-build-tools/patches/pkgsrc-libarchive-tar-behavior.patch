@@ -1,0 +1,23 @@
+# Origin: EmberBSD; preserve native tar extraction and diagnostic defaults.
+--- a/archivers/libarchive/files/tar/bsdtar.c
++++ b/archivers/libarchive/files/tar/bsdtar.c
+@@ -235,6 +235,8 @@
+ 
+ 	/* Default: Perform basic security checks. */
+ 	bsdtar->extract_flags |= SECURITY;
++	/* Preserve atomic extraction by default. */
++	bsdtar->extract_flags |= ARCHIVE_EXTRACT_SAFE_WRITES;
+ 
+ #ifndef _WIN32
+ 	/* On POSIX systems, assume --same-owner and -p when run by
+--- a/archivers/libarchive/files/tar/write.c
++++ b/archivers/libarchive/files/tar/write.c
+@@ -1001,7 +1001,7 @@
+ 
+ 	e = archive_write_header(a, entry);
+ 	if (e != ARCHIVE_OK) {
+-		if (bsdtar->verbose > 1) {
++		if (bsdtar->verbose > 0) {
+ 			fputs("a ", stderr);
+ 			list_item_verbose(bsdtar, stderr, entry);
+ 			lafe_warnc(0, ": %s", archive_error_string(a));

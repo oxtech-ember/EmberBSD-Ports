@@ -1,0 +1,17 @@
+$NetBSD$
+
+Do not infer an Apple linker version when the Clang driver defaults to LLD.
+The build linker may be a pkgsrc wrapper whose name does not identify LLD.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -416,7 +416,8 @@ endif ()
+ 
+ # Determine HOST_LINK_VERSION on Darwin.
+ set(HOST_LINK_VERSION "" CACHE STRING "Host linker version on Darwin")
+-if (APPLE AND NOT HOST_LINK_VERSION AND NOT CMAKE_LINKER MATCHES ".*lld.*")
++if (APPLE AND NOT HOST_LINK_VERSION AND NOT CMAKE_LINKER MATCHES ".*lld.*"
++    AND NOT CLANG_DEFAULT_LINKER STREQUAL "lld")
+   get_darwin_linker_version(HOST_LINK_VERSION)
+   set(HOST_LINK_VERSION "${HOST_LINK_VERSION}" CACHE STRING "Host linker version on Darwin" FORCE)
+ endif()

@@ -1,11 +1,10 @@
-$NetBSD: patch-lib_krb5_ccache_Makefile.in,v 1.3 2018/06/15 20:46:01 tez Exp $
+$NetBSD$
 
-Fix build on OS X (missing kcmrpc.h)
+Generate Darwin KCM RPC files with one selected MIG producer.
 
-
---- lib/krb5/ccache/Makefile.in.orig	2018-05-03 14:34:47.000000000 +0000
+--- lib/krb5/ccache/Makefile.in.orig
 +++ lib/krb5/ccache/Makefile.in
-@@ -96,6 +96,8 @@ all-unix: all-libobjs
+@@ -100,6 +100,8 @@
  
  all-windows: subdirs $(OBJFILE)
  
@@ -14,3 +13,27 @@ Fix build on OS X (missing kcmrpc.h)
  ##DOS##subdirs: ccapi\$(OUTPRE)file.lst
  
  ##DOS##ccapi\$(OUTPRE)file.lst:
+@@ -113,9 +115,20 @@
+ ##WIN32##	$(LIBECHO) -p $(PREFIXDIR)\ $(OUTPRE)*.obj \
+ ##WIN32##		ccapi\$(OUTPRE)*.obj > $(OBJFILE)
+ 
+-kcmrpc.h kcmrpc.c: kcmrpc.defs
+-	mig -header kcmrpc.h -user kcmrpc.c -sheader /dev/null \
+-		-server /dev/null -I$(srcdir) $(srcdir)/kcmrpc.defs
++MIG ?= mig
++# Publish the header last: it is the readiness target for both outputs.
++KCMRPC_MIG = set -e; tmp=$$(mktemp -d ./kcmrpc.XXXXXXXX); \
++	trap 'rm -rf "$$tmp"' 0; \
++	$(MIG) -header "$$tmp/kcmrpc.h" -user "$$tmp/kcmrpc.c" \
++	-sheader /dev/null -server /dev/null -I$(srcdir) $(srcdir)/kcmrpc.defs; \
++	rm -f kcmrpc.h; mv "$$tmp/kcmrpc.c" kcmrpc.c; \
++	mv "$$tmp/kcmrpc.h" kcmrpc.h
++
++kcmrpc.h: kcmrpc.defs
++	$(KCMRPC_MIG)
++
++kcmrpc.c: kcmrpc.h
++	@test -f $@ || { $(KCMRPC_MIG); }
+ 
+ clean-unix:: clean-libobjs
+ 

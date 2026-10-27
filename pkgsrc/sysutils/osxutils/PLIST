@@ -1,0 +1,4 @@
+@comment $NetBSD$
+bin/setfflags
+man/man1/setfflags.1
+share/licenses/osxutils-setfflags/LICENSE.txt

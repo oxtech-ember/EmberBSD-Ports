@@ -336,3 +336,6 @@ emulators/qemu
 devel/mimalloc
 lang/go127
 devel/rust-bindgen
+textproc/libplist
+devel/CLI11
+devel/libhfs

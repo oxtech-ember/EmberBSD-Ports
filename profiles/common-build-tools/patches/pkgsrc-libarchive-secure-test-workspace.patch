@@ -1,0 +1,102 @@
+# Origin: EmberBSD; keep upstream absolute-path security tests in the test workspace.
+--- a/archivers/libarchive/files/libarchive/test/test_write_disk_secure.c
++++ b/archivers/libarchive/files/libarchive/test/test_write_disk_secure.c
+@@ -39,6 +39,18 @@
+ {
+ 	struct archive *a;
+ 	struct archive_entry *ae;
++#if !defined(_WIN32) || defined(__CYGWIN__)
++	char cwd[4096], linkpath[8192], through[8192], target[8192], absolute[8192];
++	if (getcwd(cwd, sizeof(cwd)) == NULL) {
++		failure("Cannot obtain the test workspace path");
++		assert(0);
++		return;
++	}
++	snprintf(linkpath, sizeof(linkpath), "%s/secure-absolute-symlink", cwd);
++	snprintf(through, sizeof(through), "%s/secure-absolute-symlink/secure-file", cwd);
++	snprintf(target, sizeof(target), "%s/secure-file", cwd);
++	snprintf(absolute, sizeof(absolute), "%s/secure-absolute-file", cwd);
++#endif
+ #if defined(HAVE_LCHMOD) && defined(HAVE_SYMLINK) && \
+     defined(S_IRUSR) && defined(S_IWUSR) && defined(S_IXUSR)
+ 	int working_lchmod;
+@@ -93,13 +105,13 @@
+ 	archive_entry_free(ae);
+ 	assert(0 == archive_write_finish_entry(a));
+ 
+-	/* These tests hardcode the location of /tmp. skip them on Windows for now. */
++	/* Absolute path tests use the test workspace. */
+ #if !defined(_WIN32) || defined(__CYGWIN__)
+-	/* Write an absolute symlink to /tmp. */
+-	assert((ae = archive_entry_new()) != NULL);
+-	archive_entry_copy_pathname(ae, "/tmp/libarchive_test-test_write_disk_secure-absolute_symlink");
+-	archive_entry_set_mode(ae, S_IFLNK | 0777);
+-	archive_entry_set_symlink(ae, "/tmp");
++	/* Write an absolute symlink to the test workspace. */
++	assert((ae = archive_entry_new()) != NULL);
++	archive_entry_copy_pathname(ae, linkpath);
++	archive_entry_set_mode(ae, S_IFLNK | 0777);
++	archive_entry_set_symlink(ae, cwd);
+ 	archive_entry_set_symlink_type(ae, AE_SYMLINK_TYPE_DIRECTORY);
+ 	archive_write_disk_set_options(a, 0);
+ 	assert(0 == archive_write_header(a, ae));
+@@ -107,15 +119,15 @@
+ 
+ 	/* With security checks enabled, this should fail. */
+ 	assert(archive_entry_clear(ae) != NULL);
+-	archive_entry_copy_pathname(ae, "/tmp/libarchive_test-test_write_disk_secure-absolute_symlink/libarchive_test-test_write_disk_secure-absolute_symlink_path.tmp");
++	archive_entry_copy_pathname(ae, through);
+ 	archive_entry_set_mode(ae, S_IFREG | 0777);
+ 	archive_write_disk_set_options(a, ARCHIVE_EXTRACT_SECURE_SYMLINKS);
+ 	failure("Extracting a file through an absolute symlink should fail here.");
+ 	assertEqualInt(ARCHIVE_FAILED, archive_write_header(a, ae));
+ 	archive_entry_free(ae);
+-	assertFileNotExists("/tmp/libarchive_test-test_write_disk_secure-absolute_symlink/libarchive_test-test_write_disk_secure-absolute_symlink_path.tmp");
+-	assert(0 == unlink("/tmp/libarchive_test-test_write_disk_secure-absolute_symlink"));
+-	unlink("/tmp/libarchive_test-test_write_disk_secure-absolute_symlink_path.tmp");
++	assertFileNotExists(through);
++	assert(0 == unlink(linkpath));
++	unlink(target);
+ #endif
+ 
+ 	/* Create another link. */
+@@ -233,30 +245,30 @@
+ 	assertIsDir("link_to_dir5", -1);
+ 	archive_entry_free(ae);
+ 
+-	/* These tests hardcode the location of /tmp. skip them on Windows for now. */
++	/* Absolute path tests use the test workspace. */
+ #if !defined(_WIN32) || defined(__CYGWIN__)
+ 	/*
+ 	 * Without security checks, we should be able to
+ 	 * extract an absolute path.
+ 	 */
+ 	assert((ae = archive_entry_new()) != NULL);
+-	archive_entry_copy_pathname(ae, "/tmp/libarchive_test-test_write_disk_secure-absolute_path.tmp");
+-	archive_entry_set_mode(ae, S_IFREG | 0777);
+-	assert(0 == archive_write_header(a, ae));
+-	assert(0 == archive_write_finish_entry(a));
+-	assertFileExists("/tmp/libarchive_test-test_write_disk_secure-absolute_path.tmp");
+-	assert(0 == unlink("/tmp/libarchive_test-test_write_disk_secure-absolute_path.tmp"));
++	archive_entry_copy_pathname(ae, absolute);
++	archive_entry_set_mode(ae, S_IFREG | 0777);
++	assert(0 == archive_write_header(a, ae));
++	assert(0 == archive_write_finish_entry(a));
++	assertFileExists(absolute);
++	assert(0 == unlink(absolute));
+ 
+ 	/* But with security checks enabled, this should fail. */
+ 	assert(archive_entry_clear(ae) != NULL);
+-	archive_entry_copy_pathname(ae, "/tmp/libarchive_test-test_write_disk_secure-absolute_path.tmp");
++	archive_entry_copy_pathname(ae, absolute);
+ 	archive_entry_set_mode(ae, S_IFREG | 0777);
+ 	archive_write_disk_set_options(a, ARCHIVE_EXTRACT_SECURE_NOABSOLUTEPATHS);
+ 	failure("Extracting an absolute path should fail here.");
+ 	assertEqualInt(ARCHIVE_FAILED, archive_write_header(a, ae));
+ 	archive_entry_free(ae);
+ 	assert(0 == archive_write_finish_entry(a));
+-	assertFileNotExists("/tmp/libarchive_test-test_write_disk_secure-absolute_path.tmp");
++	assertFileNotExists(absolute);
+ #endif
+ 
+ 	assertEqualInt(ARCHIVE_OK, archive_write_free(a));

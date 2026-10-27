@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (osxutils-1.9.0.tar.gz) = 4e9ad27ba9d95a98b5e6d8e8ce16cd8f9ea962c6b54587c73f192cc26200e669
+SHA512 (osxutils-1.9.0.tar.gz) = 18d35fb2b64a4b737f8c5d0ff00fceb8e390bf32e8b41f476d847afe72c17113e8a8004f414ce884e5615dbd5c869fa8162aabbb4a421d055c1ef0bbe58254b7
+Size (osxutils-1.9.0.tar.gz) = 61242 bytes
+SHA1 (patch-setfflags_setfflags.c) = c19150bae6e0fb3736c412024b6d7297838ec805

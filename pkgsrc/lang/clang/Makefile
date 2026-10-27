@@ -3,7 +3,13 @@
 .include "Makefile.common"
 
 PKGNAME=	clang-${LLVM_VERSION}
-PKGREVISION=	6
+PKGREVISION=	7
+
+# Clear a stale auto-detected value unless a configure input selected one.
+.if empty(CMAKE_CONFIGURE_ARGS:M-DHOST_LINK_VERSION*) && \
+    empty(CMAKE_CONFIGURE_ARGS.Darwin:M-DHOST_LINK_VERSION*)
+CMAKE_CONFIGURE_ARGS.Darwin+= -DHOST_LINK_VERSION:STRING=
+.endif
 # These installed scripts use Python without linking libpython.
 DEPENDS+=	${PYDEPENDENCY}
 DEPENDS+=	lld-${LLVM_VERSION}{,nb*}:../../devel/lld

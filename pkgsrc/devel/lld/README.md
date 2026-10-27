@@ -23,6 +23,13 @@ The test checks x86-64 and AArch64 links, exact exit statuses, diagnostics,
 ELF machine types and absolute symbol values. It checks both input orders
 for bitcode conflicts. It does not execute target programs.
 
+To check a staged driver, add `--lld /absolute/native-prefix/stage/ld.lld`.
+The default driver remains `bin/ld.lld` in the selected LLVM prefix.
+If AArch64 BFD is unavailable, select `--skip-bfd-controls` instead of
+`--bfd-aarch64-ld`. This runs twelve LLD link cases and explicitly reports
+the four BFD reference cases as untested. It does not establish the full
+sixteen-case result or replace the ordinary package test suite.
+
 Keep the ordinary `tests` option enabled for the package's `check-lld` suite.
 Static analysis and installed-consumer checks remain separate from these tests.
 

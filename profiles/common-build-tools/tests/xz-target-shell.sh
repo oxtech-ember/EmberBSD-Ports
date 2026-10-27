@@ -23,8 +23,8 @@ make_recipe()
 for mode in no yes; do
     make_recipe USE_CROSS_COMPILE="$mode" -v PKG_FAIL_REASON \
         -v CONFIGURE_ENV -v CONFIG_SHELL -v CHECK_INTERPRETER \
-        -v CROSS_DESTDIR > "$out/$mode.raw"
-    awk 'BEGIN {split("FAIL ENV SHELL CHECK ROOT", labels)}
+        -v CROSS_DESTDIR -v CHECK_INTERPRETER_BASE_PATHS > "$out/$mode.raw"
+    awk 'BEGIN {split("FAIL ENV SHELL CHECK ROOT BASE", labels)}
         {print labels[NR] "=" $0}' "$out/$mode.raw" > "$out/$mode.log"
     [ -z "$(field FAIL "$out/$mode.log")" ] || fail "$mode metadata rejected"
     [ "$(field CHECK "$out/$mode.log")" = yes ] || fail 'interpreter check disabled'
@@ -39,7 +39,9 @@ host_shell=$(field SHELL "$out/no.log")
 [ "$(field SHELL "$out/yes.log")" = "$host_shell" ] || fail 'cross configure shell changed'
 [ -x "$host_shell" ] || fail 'host configure shell not executable'
 [ "$host_shell" != /bin/sh ] || fail 'use a distinct host CONFIG_SHELL to detect contamination'
-[ -f "$(field ROOT "$out/yes.log")/bin/sh" ] || fail 'target sysroot lacks /bin/sh'
+# The packages-only sysroot has no base userland; the profile accepts /bin/sh.
+case " $(field BASE "$out/yes.log") " in *' /bin/sh '*) ;; *) fail 'cross build rejects the target base shell' ;; esac
+[ -z "$(field BASE "$out/no.log")" ] || fail 'native recursion accepts a target base shell'
 
 # Expand the actual release macro and templates. The fixture needs no compiler.
 mkdir "$out/fixture"
@@ -75,7 +77,7 @@ for mode in no yes; do
     done
 done
 
-# Run the unchanged pkgsrc check on an isolated target staging directory.
+# Run the pkgsrc check, with its target base shell hook, on an isolated stage.
 mkdir -p "$out/stage/usr/pkg/bin"
 : > "$out/PLIST"
 for name in xzdiff xzgrep xzless xzmore; do

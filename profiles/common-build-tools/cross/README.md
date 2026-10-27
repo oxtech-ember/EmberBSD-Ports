@@ -428,6 +428,8 @@ records `/usr/pkg/bin/pkg_install-info` for the target. The build wrapper is a
 no-op in both cases. A Perl runtime tool is allowed only when the target Perl
 package is staged at `/usr/pkg/bin/perl`. Pkgsrc retains Perl as a target
 runtime dependency and writes the target path into Perl script shebangs.
+The interpreter check accepts the target base `/bin/sh`. The packages-only
+sysroot does not contain it; other interpreters stay checked.
 Bash runtime scripts use the target `/usr/pkg/bin/bash`. A `bash:run` tool or
 a `REPLACE_BASH` list makes the target Bash package a run dependency. The
 dependency also applies when the target Bash is not staged yet: pkgsrc

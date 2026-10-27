@@ -63,7 +63,8 @@ def make_variables(values):
     result = {}
     for value in values:
         key, sep, item = value.partition('=')
-        if (not sep or not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', key) or
+        if (not sep or not (re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', key) or
+                     re.fullmatch(r'PKG_OPTIONS\.[A-Za-z0-9][A-Za-z0-9_.-]*', key)) or
                 key in RESERVED_MAKE_VARIABLES or key.startswith('TARGET_') or
                 not item or not re.fullmatch(r'[A-Za-z0-9_./:+,@%+-]+', item)):
             raise ExportError('unsupported --make-variable assignment')

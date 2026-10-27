@@ -1,0 +1,256 @@
+# Origin: NetBSD libevent openssl-compat.h r1.2 and test/regress_buffer.c r1.8.
+# Preserve the LibreSSL 3.5 boundary and empty-chain iteration. Use a portable
+# literal printf format instead of the NetBSD-specific fmtcheck test helper.
+# Also keep the const-correct casts of the NetBSD libevent dist for
+# -Wcast-qual -Wshadow -Werror builds. EVUTIL_UNCONST_ is a portable form of
+# the NetBSD __UNCONST macro for the API calls that take a mutable pointer.
+--- openssl-compat.h.orig
++++ openssl-compat.h
+@@ -40,7 +40,8 @@
+ #endif /* (OPENSSL_VERSION_NUMBER < 0x10100000L) || \
+ 	(defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20700000L) */
+ 
+-#if defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER >= 0x20700000L
++#if defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER >= 0x20700000L && \
++	LIBRESSL_VERSION_NUMBER < 0x30500000L
+ #define BIO_get_init(b) (b)->init
+ #endif
+ 
+--- test/regress_buffer.c.orig
++++ test/regress_buffer.c
+@@ -160,6 +160,7 @@
+ 	while (chain) {
+ 		++n;
+ 		a += chain->buffer_len;
++		chain = chain->next;
+ 	}
+ 	*allocatedp = a;
+ 	*wastedp = w;
+@@ -1695,9 +1696,7 @@
+ 	n = 0;
+ 	for (i = 0; i < 1000; ++i) {
+ 		for (j = 1; j < strlen(abc); ++j) {
+-			char format[32];
+-			evutil_snprintf(format, sizeof(format), "%%%u.%us", j, j);
+-			evbuffer_add_printf(buf, format, abc);
++			evbuffer_add_printf(buf, "%*.*s", (int)j, (int)j, abc);
+ 
+ 			/* Only check for rep violations every so often.
+ 			   Walking over the whole list of chains can get
+--- buffer.c.orig
++++ buffer.c
+@@ -1879,7 +1879,7 @@
+ 		} else if (chain->misalign) {
+ 			/* we can only fit some of the data. */
+ 			memcpy(chain->buffer,
+-			    (char*)data + datlen - chain->misalign,
++			    (const char*)data + datlen - chain->misalign,
+ 			    (size_t)chain->misalign);
+ 			chain->off += (size_t)chain->misalign;
+ 			buf->total_len += (size_t)chain->misalign;
+@@ -2935,7 +2935,7 @@
+ 	if (!chain)
+ 		return (-1);
+ 	chain->flags |= EVBUFFER_REFERENCE | EVBUFFER_IMMUTABLE;
+-	chain->buffer = (unsigned char *)data;
++	chain->buffer = EVUTIL_UNCONST_(data);
+ 	chain->buffer_len = datlen;
+ 	chain->off = datlen;
+ 
+--- evdns.c.orig
++++ evdns.c
+@@ -2513,7 +2513,7 @@
+ 	ASSERT_LOCKED(base);
+ 	if (server) {
+ 		do {
+-			if (!evutil_sockaddr_cmp((struct sockaddr*)&server->address, address, 1)) return 3;
++			if (!evutil_sockaddr_cmp((const struct sockaddr*)&server->address, address, 1)) return 3;
+ 			server = server->next;
+ 		} while (server != started_at);
+ 	}
+--- event.c.orig
++++ event.c
+@@ -903,12 +903,12 @@
+ 		 *
+ 		 * A simple case is bufferevent with underlying (i.e. filters).
+ 		 */
+-		int i = event_base_free_queues_(base, run_finalizers);
+-		event_debug(("%s: %d events freed", __func__, i));
+-		if (!i) {
++		int n_freed = event_base_free_queues_(base, run_finalizers);
++		event_debug(("%s: %d events freed", __func__, n_freed));
++		if (!n_freed) {
+ 			break;
+ 		}
+-		n_deleted += i;
++		n_deleted += n_freed;
+ 	}
+ 
+ 	if (n_deleted)
+@@ -1125,7 +1125,7 @@
+ 	tmp[i] = NULL;
+ 
+ 	if (methods != NULL)
+-		mm_free((char**)methods);
++		mm_free(EVUTIL_UNCONST_(methods));
+ 
+ 	methods = tmp;
+ 
+@@ -1152,7 +1152,7 @@
+ event_config_entry_free(struct event_config_entry *entry)
+ {
+ 	if (entry->avoid_method != NULL)
+-		mm_free((char *)entry->avoid_method);
++		mm_free(EVUTIL_UNCONST_(entry->avoid_method));
+ 	mm_free(entry);
+ }
+ 
+@@ -3763,7 +3763,7 @@
+ 		return 0;
+ 
+ 	fprintf(output, "  %p [%s "EV_SOCK_FMT"]%s%s%s%s%s%s%s",
+-	    (void*)e, gloss, EV_SOCK_ARG(e->ev_fd),
++	    (const void*)e, gloss, EV_SOCK_ARG(e->ev_fd),
+ 	    (e->ev_events&EV_READ)?" Read":"",
+ 	    (e->ev_events&EV_WRITE)?" Write":"",
+ 	    (e->ev_events&EV_CLOSED)?" EOF":"",
+@@ -3797,7 +3797,7 @@
+ 		return 0;
+ 
+ 	fprintf(output, "  %p [%s "EV_SOCK_FMT", priority=%d]%s%s%s%s%s active%s%s\n",
+-	    (void*)e, gloss, EV_SOCK_ARG(e->ev_fd), e->ev_pri,
++	    (const void*)e, gloss, EV_SOCK_ARG(e->ev_fd), e->ev_pri,
+ 	    (e->ev_res&EV_READ)?" Read":"",
+ 	    (e->ev_res&EV_WRITE)?" Write":"",
+ 	    (e->ev_res&EV_CLOSED)?" EOF":"",
+--- event_tagging.c.orig
++++ event_tagging.c
+@@ -264,7 +264,7 @@
+ {
+ 	evtag_encode_tag(evbuf, tag);
+ 	evtag_encode_int(evbuf, len);
+-	evbuffer_add(evbuf, (void *)data, len);
++	evbuffer_add(evbuf, data, len);
+ }
+ 
+ void
+--- evrpc.c.orig
++++ evrpc.c
+@@ -272,7 +272,7 @@
+ 
+ 	mm_free(registered_uri);
+ 
+-	mm_free((char *)rpc->uri);
++	mm_free(EVUTIL_UNCONST_(rpc->uri));
+ 	mm_free(rpc);
+ 	return (0);
+ }
+--- evutil.c.orig
++++ evutil.c
+@@ -654,13 +654,13 @@
+ evutil_found_ifaddr(const struct sockaddr *sa)
+ {
+ 	if (sa->sa_family == AF_INET) {
+-		const struct sockaddr_in *sin = (struct sockaddr_in *)sa;
++		const struct sockaddr_in *sin = (const struct sockaddr_in *)sa;
+ 		if (!evutil_v4addr_is_local_(&sin->sin_addr)) {
+ 			event_debug(("Detected an IPv4 interface"));
+ 			had_ipv4_address = 1;
+ 		}
+ 	} else if (sa->sa_family == AF_INET6) {
+-		const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sa;
++		const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sa;
+ 		if (!evutil_v6addr_is_local_(&sin6->sin6_addr)) {
+ 			event_debug(("Detected an IPv6 interface"));
+ 			had_ipv6_address = 1;
+@@ -2536,10 +2536,10 @@
+ 	EVUTIL_NONSTRING static const char LOOPBACK_S6[16] =
+ 	    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\1";
+ 	if (addr->sa_family == AF_INET) {
+-		struct sockaddr_in *sin = (struct sockaddr_in *)addr;
++		const struct sockaddr_in *sin = (const struct sockaddr_in *)addr;
+ 		return (ntohl(sin->sin_addr.s_addr) & 0xff000000) == 0x7f000000;
+ 	} else if (addr->sa_family == AF_INET6) {
+-		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addr;
++		const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)addr;
+ 		return !memcmp(sin6->sin6_addr.s6_addr, LOOPBACK_S6, 16);
+ 	}
+ 	return 0;
+--- evutil_rand.c.orig
++++ evutil_rand.c
+@@ -194,7 +194,7 @@
+ void
+ evutil_secure_rng_add_bytes(const char *buf, size_t n)
+ {
+-	arc4random_addrandom((unsigned char*)buf,
++	arc4random_addrandom(EVUTIL_UNCONST_(buf),
+ 	    n>(size_t)INT_MAX ? INT_MAX : (int)n);
+ }
+ #endif
+--- ht-internal.h.orig
++++ ht-internal.h
+@@ -160,7 +160,7 @@
+   name##_HT_FIND(const struct name *head, struct type *elm)             \
+   {                                                                     \
+     struct type **p;                                                    \
+-    struct name *h = (struct name *) head;                              \
++    struct name *h = EVUTIL_UNCONST_(head);                             \
+     HT_SET_HASH_(elm, field, hashfn);                                   \
+     p = name##_HT_FIND_P_(h, elm);					\
+     return p ? *p : NULL;                                               \
+--- http.c.orig
++++ http.c
+@@ -4872,7 +4872,7 @@
+  *   *(pchar / "/" / "?") if allow_qchars is true.
+  */
+ static char *
+-end_of_path(char *cp, enum uri_part part, unsigned flags)
++end_of_path(const char *cp, enum uri_part part, unsigned flags)
+ {
+ 	if (flags & EVHTTP_URI_NONCONFORMANT) {
+ 		/* If NONCONFORMANT:
+@@ -4893,7 +4893,7 @@
+ 			cp += strlen(cp);
+ 			break;
+ 		};
+-		return cp;
++		return EVUTIL_UNCONST_(cp);
+ 	}
+ 
+ 	while (*cp) {
+@@ -4907,9 +4907,9 @@
+ 		else if (*cp == '?' && part != PART_PATH)
+ 			++cp;
+ 		else
+-			return cp;
++			return EVUTIL_UNCONST_(cp);
+ 	}
+-	return cp;
++	return EVUTIL_UNCONST_(cp);
+ }
+ 
+ static int
+@@ -5263,7 +5263,7 @@
+ 	return 0;
+ }
+ #define end_of_cpath(cp,p,f) \
+-	((const char*)(end_of_path(((char*)(cp)), (p), (f))))
++	((const char*)(end_of_path(((const char*)(cp)), (p), (f))))
+ 
+ int
+ evhttp_uri_set_path(struct evhttp_uri *uri, const char *path)
+--- util-internal.h.orig
++++ util-internal.h
+@@ -288,8 +288,11 @@
+ 	...
+     }
+  */
++/* EmberBSD: drop const only where the API takes a mutable pointer. */
++#define EVUTIL_UNCONST_(ptr) ((void *)(ev_uintptr_t)(const void *)(ptr))
++
+ #define EVUTIL_UPCAST(ptr, type, field)				\
+-	((type *)(((char*)(ptr)) - evutil_offsetof(type, field)))
++	((type *)EVUTIL_UNCONST_(((const char *)(ptr)) - evutil_offsetof(type, field)))
+ 
+ /* As open(pathname, flags, mode), except that the file is always opened with
+  * the close-on-exec flag set. (And the mode argument is mandatory.)

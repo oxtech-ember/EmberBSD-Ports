@@ -1,0 +1,11 @@
+# Origin: EmberBSD; rebuild libevent after its common portability fixes.
+--- a/devel/libevent/Makefile
++++ b/devel/libevent/Makefile
+@@ -4,6 +4,7 @@
+ .include "../../devel/libevent/Makefile.common"
+ 
+ PKGNAME=	${DISTNAME:S/-stable//}
++PKGREVISION=	2
+ COMMENT=	Asynchronous event notification library
+ 
+ CONFLICTS+=	libev<3.9nb1

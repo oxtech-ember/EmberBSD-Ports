@@ -1,0 +1,8 @@
+@comment $NetBSD$
+bin/mig
+libexec/migcom
+man/man1/mig.1
+man/man1/migcom.1
+share/doc/mig/APSL-1.0
+share/doc/mig/APSL-2.0
+share/doc/mig/CMU

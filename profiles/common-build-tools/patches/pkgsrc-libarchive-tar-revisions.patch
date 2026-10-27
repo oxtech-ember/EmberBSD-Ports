@@ -1,0 +1,34 @@
+# Origin: EmberBSD; rebuild packages using the common source payload.
+--- a/archivers/libarchive/Makefile
++++ b/archivers/libarchive/Makefile
+@@ -2,7 +2,7 @@
+ 
+ .include "Makefile.common"
+ 
+-PKGREVISION=	1
++PKGREVISION=	2
+ 
+ COMMENT=	Library to read/create different archive formats
+ 
+--- a/archivers/bsdtar/Makefile
++++ b/archivers/bsdtar/Makefile
+@@ -4,7 +4,7 @@
+ .include "../../mk/bsd.prefs.mk"
+ 
+ PKGNAME=	${DISTNAME:S/libarchive/bsdtar/}
+-PKGREVISION=	3
++PKGREVISION=	4
+ COMMENT=	Fast multi-format tape archiver
+ 
+ # Explicitly do not depend on libtool as this can be used
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -7,7 +7,7 @@
+ # change in the pkg_* tools that pkgsrc relies on for proper operation.
+ 
+ PKGNAME=		pkg_install-${VERSION}
+-PKGREVISION=		6
++PKGREVISION=		7
+ CATEGORIES=		pkgtools
+ 
+ MAINTAINER=		agc@NetBSD.org

@@ -23,7 +23,9 @@ def base_inputs(owner, root, os_source, git, full):
     if full:
         for name in ('libc.so', 'libc.a', 'crt0.o', 'crti.o', 'crtbegin.o', 'crtend.o', 'crtn.o'):
             owner.inventory.required_file(str(root), 'usr/lib/' + name)
-    rows = owner.inventory.snapshot_tree(str(root))
+    # Runtime links outside the ABI closure need not resolve in a sysroot.
+    # Resolve and validate selected headers, libraries and every link hop below.
+    rows = owner.inventory.snapshot_installed_tree(str(root))
     children = defaultdict(list)
     for name, row in rows.items():
         children[posixpath.dirname(name)].append((name, row))
@@ -37,26 +39,35 @@ def base_inputs(owner, root, os_source, git, full):
         pending = name.split('/')
         prefix, hops = [], 0
         while pending:
-            prefix.append(pending.pop(0))
-            current = '/'.join(prefix)
+            part = pending.pop(0)
+            if part in ('', '.'):
+                continue
+            if part == '..':
+                owner.require(bool(prefix), 'base input link escapes its sysroot')
+                prefix.pop()
+                continue
+            current = '/'.join(prefix + [part])
             row = rows.get(current)
             owner.require(row is not None, 'base input link target is absent: ' + current)
             if row['kind'] == 'link':
                 selected[current] = row
-                target = posixpath.normpath(posixpath.join(posixpath.dirname(current), row['target']))
-                owner.require(not target.startswith('/') and target != '..' and not target.startswith('../'),
-                              'base input link escapes its sysroot')
+                target = row['target']
+                owner.require(not target.startswith('/'), 'base input link escapes its sysroot')
                 pending = target.split('/') + pending
-                prefix = []
                 hops += 1
                 owner.require(hops < 40, 'base input symlink cycle')
-            elif not pending:
-                selected[current] = row
-                if row['kind'] == 'directory':
-                    for child, entry in children[current]:
-                        if child not in selected:
-                            selected[child] = entry
-                            queue.append(child)
+            else:
+                prefix.append(part)
+                owner.require(not pending or row['kind'] == 'directory',
+                              'base input path component is not a directory: ' + current)
+        current = '/'.join(prefix)
+        row = rows[current] if current else {'kind': 'directory'}
+        selected[current] = row
+        if row['kind'] == 'directory':
+            for child, entry in children[current]:
+                if child not in selected:
+                    selected[child] = entry
+                    queue.append(child)
     return dict(os_revision=owner.git_revision(git, os_source),
                 files={name: row['sha256'] for name, row in selected.items() if row['kind'] == 'file'},
                 symlinks={name: row['target'] for name, row in selected.items() if row['kind'] == 'link'})
@@ -99,6 +110,12 @@ def cmake_arguments(source, work, stage, base, native, compiler, definition, ver
     # Scope unused-argument suppression to link options, never all diagnostics.
     driver_flags = ['--no-default-config', '--start-no-unused-arguments',
                     linker, '--end-no-unused-arguments']
+    # Map build-host roots to the canonical paths that the OS MKREPRO build
+    # uses. __FILE__ strings and debug records are then host-independent.
+    driver_flags += ['-ffile-prefix-map=' + str(path) + '=' + canonical for path, canonical in (
+        (source, '/usr/src/external/llvm'), (work, '/usr/obj/llvm-runtime/' + phase),
+        (stage, ''), (base, ''),
+        (compiler['resource_dir'], '/usr/pkg/llvm/lib/clang/' + version.split('.')[0]))]
     for language in ('C', 'CXX', 'ASM'):
         settings['CMAKE_' + language + '_FLAGS'] = shlex.join(driver_flags)
     if phase != 'full':
@@ -235,7 +252,8 @@ def build(owner, args):
     for name in ('home', 'tmp'):
         (work / name).mkdir()
     environment.update(HOME=str(work / 'home'), TMPDIR=str(work / 'tmp'),
-                       CONFIG_SHELL=native.tool('sh'), SHELL=native.tool('sh'))
+                       CONFIG_SHELL=native.tool('sh'), SHELL=native.tool('sh'),
+                       PYTHONDONTWRITEBYTECODE='1')
     phases = ['full'] if args.phase == 'full' else ['builtins'] + (['bootstrap'] if args.phase == 'bootstrap' else [])
     for phase in phases:
         build_dir = work / phase
@@ -317,16 +335,20 @@ def install_licenses(source, stage, phase):
         shutil.copyfile(source / 'compiler-rt' / name, root / 'compiler-rt' / Path(name).name)
 
 
+def link_check_include_flags(prefix, compiler, role):
+    # libc++ wrappers must precede Clang builtin headers in C++ searches.
+    cxx = ['-nostdinc++', '-isystem', str(prefix / 'include/c++/v1')] if role == 'cxx' else []
+    return cxx + ['-nobuiltininc', '-isystem', compiler['resource_dir'] + '/include']
+
+
 def link_checks(owner, work, stage, base, native, compiler, definition, environment):
     """Link actual C and C++ consumers; execution belongs to a matching target."""
     from emberbsd_sdk.elf import read_elf_dynamic
     prefix = stage / 'usr/pkg/llvm'
     resource = prefix / 'lib/clang' / compiler['version'].split('.')[0]
     common = ['--no-default-config', '--sysroot=' + str(base), '-resource-dir=' + str(resource),
-              '-nobuiltininc', '-isystem', compiler['resource_dir'] + '/include',
               '--rtlib=compiler-rt', '--unwindlib=libunwind', '-L' + str(prefix / 'lib')]
-    cxx = ['-std=c++17', '-stdlib=libc++', '-nostdinc++', '-isystem',
-           str(prefix / 'include/c++/v1'), '-pthread']
+    cxx = ['-std=c++17', '-stdlib=libc++', '-pthread']
     fixture = owner.OWNER / 'tests/runtime-cxx.cpp'
     checks = [
         ('runtime-c', 'cc', ['-O1', str(owner.OWNER / 'tests/runtime-c.c')], 2),
@@ -340,7 +362,7 @@ def link_checks(owner, work, stage, base, native, compiler, definition, environm
     for name, role, flags, kind in checks:
         output = work / name
         rpath = [] if '-static' in flags else ['-Wl,-rpath,/usr/pkg/llvm/lib']
-        command = compiler['commands'][role] + common + flags + rpath + ['-o', str(output)]
+        command = compiler['commands'][role] + link_check_include_flags(prefix, compiler, role) + common + flags + rpath + ['-o', str(output)]
         execute(owner, command, work, environment, work / 'link-checks.log')
         dynamic = read_elf_dynamic(str(output), machine=definition['elf'])
         owner.require(dynamic['type'] in ((3,) if kind == 3 else (2, 3)),

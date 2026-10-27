@@ -28,9 +28,18 @@ sh probes/plasma-mobile/toolkit/cross/build-host-tools.sh \
 
 `CMAKE` must support Zstandard archives. Qt uses the CMake archive API for its
 MIME database. Without this support, Qt stops with `CMake was not built with
-zstd support`. The builder checks this before it creates work. The pkgsrc host
-CMake fails the check: pkgsrc libarchive uses `--without-zstd`. A native
-CMake 4.4.3 with Zstandard support passed the check and the complete build.
+zstd support`. The builder checks this before it creates work. The common shared libarchive recipe links Zstandard. Standalone bootstrap
+and static bsdtar retain their small compression inputs. Check the installed
+CMake API before a Qt build:
+
+```sh
+python3 profiles/common-build-tools/tests/cmake-zstd.py \
+    --cmake /absolute/native/cmake --work /absolute/new-zstd-check
+```
+
+The check creates a Zstandard frame through CMake, extracts it, and compares
+the payload. CMake 4.4.4 with libarchive 3.8.10nb3 passed on Linux/amd64.
+This archive API result does not establish a Qt generator or target build.
 
 Native QtDBus needs a current D-Bus development prefix at `HOST_DBUS_PREFIX`.
 The builder records its headers, library and CMake metadata, then links directly.

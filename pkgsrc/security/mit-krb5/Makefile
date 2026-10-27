@@ -5,7 +5,7 @@ EMBERBSD_MIT_KRB5_PKGDIR:= ${.PARSEDIR:tA}
 BRANCHNAME=	1.22
 DISTNAME=	krb5-${BRANCHNAME}.2
 PKGNAME=	mit-${DISTNAME}
-PKGREVISION=	6
+PKGREVISION=	7
 CATEGORIES=	security
 # It is not clear how stable this URL scheme is.
 MASTER_SITES=	http://web.mit.edu/kerberos/dist/krb5/${BRANCHNAME}/
@@ -82,6 +82,9 @@ MAKE_FLAGS+=		INSTALL_AWK=/usr/bin/awk INSTALL_SED=/usr/bin/sed
 MAKE_ENV+=		ROOT_USER=${ROOT_USER}
 MAKE_ENV+=		YFLAGS="-Wnone"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "no" && ${OPSYS} == "Darwin"
+BUILD_DEPENDS+=		mig>=138:../../devel/mig
+MAKE_FLAGS+=		MIG=${TOOLBASE:Q}/bin/mig
+MAKE_ENV+=		MIGCC=${CC:Q} MIGCOM=${TOOLBASE:Q}/libexec/migcom
 # The native C compiler can differ from the libtool default command.
 MAKE_FLAGS+=		LIBTOOL=${LIBTOOL:Q}\ --tag=CC
 .if !empty(OSX_SDK_PATH)
@@ -106,8 +109,8 @@ PATCHDIR= ${EMBERBSD_MIT_KRB5_PKGDIR}/patches
 FILESDIR= ${EMBERBSD_MIT_KRB5_PKGDIR}/files
 RCD_SCRIPTS=
 OWN_DIRS_PERMS=
-DEPENDS+= mit-krb5>=${BRANCHNAME}.2nb6:../../security/mit-krb5
-CONFLICTS+= mit-krb5<${BRANCHNAME}.2nb6
+DEPENDS+= mit-krb5>=${BRANCHNAME}.2nb7:../../security/mit-krb5
+CONFLICTS+= mit-krb5<${BRANCHNAME}.2nb7
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes" || ${OPSYS} != "NetBSD"
 PKG_FAIL_REASON+= "The MIT Kerberos SDK requires a NetBSD cross build; native builds keep the full package"
 .endif

@@ -4,12 +4,16 @@ Registry item N37 needs a PTP master with software timestamps for a GigE
 Vision camera. The common recipe `pkgsrc/net/ptpd` packages PTPd from the
 head of the upstream 2.3.1 branch, commit
 `d27a6e02c1191e07ce8dcdfa1d3f954e01f2d983` (5 September 2018; the
-program reports 2.3.2). The archive is fetched by the short reference
-`d27a6e0`, as FreeBSD `net/ptpd2` does; its SHA256
-`9384968100d40d49aa2cf923ea5da51dacf8270d8e6350d64f887e9f30976524`
-matches the FreeBSD distinfo. The archive of the full commit hash differs
-only in its top directory name. Net-SNMP support is off. This record is
-AI-assisted (Claude Code, Claude Opus 5.5).
+program reports 2.3.2). The recipe fetches the archive by the full commit
+hash; its SHA256 is
+`695e66545abfd418291fd3129f1615cdb6b71c652f4d910fd69b67dc1d4ad569`.
+FreeBSD `net/ptpd2` fetches the short reference `d27a6e0`; its distinfo
+records SHA256
+`9384968100d40d49aa2cf923ea5da51dacf8270d8e6350d64f887e9f30976524`.
+On 27 October 2026 GitHub resolved the short reference to the full hash
+and named the top directory after it, so that archive changed. The two
+archives differ only in the top directory name. Net-SNMP support is off.
+This record is AI-assisted (Claude Code, Claude Opus 5.5).
 
 ## Patches
 
@@ -38,6 +42,21 @@ statistics files. Started on `lo0`, it entered the listening state and
 then master after the announce timeout, and shut down on SIGTERM. No slave
 was synchronised; this is not a timing measurement.
 
+## AArch64 Clang cross package
+
+Built on 27 October 2026 on macOS arm64 with the common cross profile, the
+native Clang/LLVM 23.1.4 Ports prefix and an SDK sysroot from EmberBSD
+`b36583d38bf`.
+
+| Result | Value |
+| --- | --- |
+| Package | `ptpd-2.3.1nb1.tgz`, 9 files, SHA256 `9117c799ca18fe92120c6141ffbeec6fcf98c0017ff24a379cee33c1104235d1` |
+| Program | `sbin/ptpd2`: AArch64 PIE, interpreter `/libexec/ld.elf_so`; needs `libpcap.so.10`, `libm.so.0` and `libc.so.12` |
+| Compiler diagnostics | 20 Clang warnings, none treated as errors |
+
+The package was not run on a target. The reduced CIX P1 root is static
+and has no dynamic loader or shared libraries.
+
 ## Service
 
 The package installs `share/examples/rc.d/ptpd2`. It reads
@@ -54,7 +73,7 @@ In the same guest with `ptpd2=YES`, the script:
 
 ## Remaining
 
-- AArch64 package: the common cross profile and a qualified SDK toolset.
+- AArch64 execution: a target with the full base set and its shared libraries.
 - A Daheng camera as PTP slave on an `rge` port for one hour, offset at
   most 1 ms, with the measured accuracy recorded.
 - Hardware timestamps on `rge` are a separate step (R10).

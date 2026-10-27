@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted).
-"""Check absolute-symbol duplicate handling in installed LLVM and BFD linkers."""
+"""Check absolute-symbol duplicates with selected LLVM and optional BFD controls."""
 import argparse
 import re
 from pathlib import Path
@@ -11,19 +11,26 @@ import sys
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--llvm-prefix', required=True, type=Path)
-parser.add_argument('--bfd-aarch64-ld', required=True, type=Path)
+parser.add_argument('--lld', type=Path,
+                    help='explicit staged linker; defaults to the LLVM prefix')
+bfd_group = parser.add_mutually_exclusive_group(required=True)
+bfd_group.add_argument('--bfd-aarch64-ld', type=Path)
+bfd_group.add_argument('--skip-bfd-controls', action='store_true',
+                       help='run LLD cases and report BFD reference cases untested')
 parser.add_argument('--work', required=True, type=Path)
 args = parser.parse_args()
 
 llvm_bin = args.llvm_prefix.resolve() / 'bin'
 llvm_mc = llvm_bin / 'llvm-mc'
 llvm_as = llvm_bin / 'llvm-as'
-lld = llvm_bin / 'ld.lld'
+# Keep the invocation name: LLD uses argv[0] to select the ELF driver.
+lld = args.lld.absolute() if args.lld else llvm_bin / 'ld.lld'
 readelf = llvm_bin / 'llvm-readelf'
-bfd = args.bfd_aarch64_ld.resolve()
+bfd = args.bfd_aarch64_ld.resolve() if args.bfd_aarch64_ld else None
 work = args.work.resolve()
 work.mkdir(parents=True, exist_ok=False)
 failures = []
+link_counts = {'lld': 0, 'bfd': 0}
 
 
 def run(label, argv, expected_success, diagnostics=()):
@@ -73,6 +80,7 @@ def section_source(entry=False):
 
 def link(label, linker, emulation, objects, expected_success,
          diagnostics=()):
+    link_counts['lld' if linker == lld else 'bfd'] += 1
     output = work / (label + '.elf')
     argv = [linker]
     if emulation:
@@ -122,7 +130,7 @@ for target, triple, emulation in (
     link(f'{target}-lld-section-zero', lld, emulation,
          inputs['section-zero'], False, ('duplicate_section_symbol',))
 
-    if target == 'aarch64':
+    if target == 'aarch64' and bfd is not None:
         link('aarch64-bfd-abs0', bfd, None, inputs['abs0'], True)
         link('aarch64-bfd-abs42', bfd, None, inputs['abs42'], True)
         link('aarch64-bfd-abs-conflict', bfd, None,
@@ -152,4 +160,7 @@ if failures:
     print('See per-command logs under ' + str(work), file=sys.stderr)
     sys.exit(1)
 
-print('PASS: absolute and regular duplicate-symbol matrix')
+print('PASS: absolute and regular duplicate-symbol matrix '
+      f"({link_counts['lld']} LLD links, {link_counts['bfd']} BFD links)")
+if args.skip_bfd_controls:
+    print('NOT RUN: four BFD reference links (explicit --skip-bfd-controls)')

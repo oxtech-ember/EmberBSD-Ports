@@ -1,0 +1,3 @@
+This package provides the pinned RTL8723D firmware image for the planned
+EmberBSD native SDIO bootstrap. It installs the original firmware license and
+WHENCE provenance file with the image. It does not enable WLAN by itself.

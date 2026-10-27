@@ -1,0 +1,2 @@
+Apple's Mach interface generator builds C clients and servers from Mach
+interface definitions. This package provides the native compiler and frontend.

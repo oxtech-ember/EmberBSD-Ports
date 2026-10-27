@@ -1,0 +1,18 @@
+$NetBSD$
+
+Use only selected dependency paths.
+
+--- configure.ac.orig
++++ configure.ac
+@@ -20,11 +20,6 @@
+ 
+ CXXFLAGS="$CXXFLAGS -std=c++2a"
+ 
+-if test "x$build" = "x$host"; then
+-  CFLAGS="$CFLAGS -isystem /usr/local/include -isystem /usr/pkg/include"
+-  CXXFLAGS="$CXXFLAGS -isystem /usr/local/include -isystem /usr/pkg/include"
+-  LDFLAGS="$LDFLAGS -L/usr/local/lib -L/usr/pkg/lib"
+-fi
+ 
+ CWARNINGS=""
+ CXXWARNINGS=""

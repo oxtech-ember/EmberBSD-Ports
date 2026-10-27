@@ -22,6 +22,10 @@ PKGCONFIG_OVERRIDE+=	libdrm.pc.in
 # Apply after MAKECONF selects its base flags.
 # Retain diagnostics for unsupported buses; keep general warnings fatal.
 CFLAGS+=	-Werror -Wno-error=cpp
+# Clang flags unused static helpers in tests/util/pattern.c; do not fail the package.
+.if ${EMBERBSD_CROSS_COMPILER_FAMILY:U} == "clang" ||     ${EMBERBSD_HOST_COMPILER_FAMILY:U} == "clang"
+CFLAGS+=	-Wno-error=unused-function
+.endif
 .if !defined(EMBERBSD_COMMON_GRAPHICS)
 PKG_FAIL_REASON+= "libdrm requires the prepared common graphics profile"
 .endif
@@ -64,6 +68,11 @@ LDFLAGS.NetBSD+=	-lpci
 # Bind the upstream Python module and symbol-test shebang to one interpreter.
 MESON_BINARIES+= python
 MESON_BINARY.python= ${TOOL_PYTHONBIN}
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# Meson symbols-check needs the target nm; record it in the cross file.
+MESON_BINARIES+= nm
+MESON_BINARY.nm= ${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-nm
+.endif
 REPLACE_TOOL_PYTHON+= symbols-check.py gen_table_fourcc.py
 .include "../../lang/python/application.mk"
 pre-configure:
