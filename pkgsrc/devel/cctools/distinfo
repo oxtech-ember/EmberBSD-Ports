@@ -1,0 +1,7 @@
+$NetBSD$
+
+BLAKE2s (cctools-port-1030.6.3-904de2a71d4da6a9b30d2efaf912a10ddc7d9ddb.tar.gz) = 7d8b48ef4227627a01b3491ee830b653c2697ca093a2e707fe8ab97908067bf4
+SHA512 (cctools-port-1030.6.3-904de2a71d4da6a9b30d2efaf912a10ddc7d9ddb.tar.gz) = 15591446bfe84454c9ee41dca0323cad46de95437ada64b301c499b98e5c168567d1be7db00cf440095aa2fddd96d461d58f47ed2663e8ca5d3be5cc64ca0e3a
+Size (cctools-port-1030.6.3-904de2a71d4da6a9b30d2efaf912a10ddc7d9ddb.tar.gz) = 2214489 bytes
+SHA1 (patch-configure) = da493f264d6fce4f2b440a3847b5ab96307ea6c5
+SHA1 (patch-configure.ac) = abead248810c7f718483c4e79cadac201876b9a9
