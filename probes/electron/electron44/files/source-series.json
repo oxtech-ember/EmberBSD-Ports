@@ -506,6 +506,11 @@
       "path": "gn-chromium-rust-policy.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-shared-node-providers.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

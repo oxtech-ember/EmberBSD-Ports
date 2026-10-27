@@ -52,3 +52,44 @@ The TypeScript patch changes trusted HTML/script URL setters and narrows
 new shared declaration provider; do not silently edit a private compiler copy.
 The archive remains a source reference while these bindings are implemented.
 No full WebUI or Electron build is established by the archive inventory.
+
+## Shared CLI selection
+
+The ordered `gn-shared-node-providers.patch` binds `PathToRollup()`,
+`PathToTypescript()` and DevTools `rollup_path()` to explicit
+`EMBERBSD_HOST_ROLLUP` and `EMBERBSD_HOST_TYPESCRIPT` JavaScript entries.
+Node remains the selected native executor. Missing/empty/relative explicit
+entries fail; absent selections retain upstream standalone defaults.
+
+The recipe's [selector](files/node-providers.py) consumes SDK host-prefix API2
+roles `rollup` and `tsc`. It verifies the ordinary shared package layout and
+matching TypeScript entry/backend version and returns the actual package files
+for GN inputs. The native TypeScript backend and its standard `.d.ts` files
+are included, as is Rollup's native addon. Paths escaping the selected prefix
+are refused. This reads installed packages, without copying a compiler into
+the source tree or constructing another node_modules toolchain.
+
+`emberbsd_node_provider_inputs` retains those package files as Ninja inputs.
+`emberbsd_typescript_definitions` is separately passed to the existing missing
+declaration dependency check. It does not add every standard library to the
+TypeScript project: the actual tsconfig still selects DOM/WebWorker libraries.
+Ordinary application `definitions` and their validation are unchanged.
+
+The regression runs actual GN/Ninja Node version, WebUI bundle and TypeScript
+library actions, including JS/declaration output and bundle execution. It uses
+only the pinned archive's trusted-types declaration files. It checks DevTools
+selection, malformed explicit entries, actual provider inputs and rejection
+when standard library dependency declarations are removed. It does not
+establish the complete Electron graph, migrate every TypeScript 7 API consumer,
+or validate Chromium's full DOM declaration adaptation.
+
+```sh
+/absolute/native-prefix/bin/python3.15 -B -I -S \
+  probes/electron/tests/electron-node-providers.py \
+  --source /absolute/prepared-electron/src --work /absolute/new-provider-check \
+  --git /absolute/control-git --sdk-source /absolute/EmberBSD-SDK \
+  --host-prefix /absolute/native-prefix \
+  --node-input-archive /absolute/node_modules-faaf73cc.tar.gz
+```
+
+Run against prepared sources before `gn-shared-node-providers.patch`.

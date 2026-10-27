@@ -1,0 +1,149 @@
+$NetBSD$
+
+Bind Chromium and DevTools CLI consumers to selected shared host providers.
+Preserve upstream defaults, Node execution and selected tools as Ninja inputs.
+Origin: EmberBSD (AI-assisted), Chromium 152.0.7977.167.
+Status: local dependency integration; not submitted upstream.
+
+--- a/third_party/node/node_modules.py
++++ b/third_party/node/node_modules.py
+@@ -3,6 +3,7 @@
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+ 
++import os
+ from os import path as os_path
+ 
+ 
+@@ -13,12 +14,22 @@
+   return os_path.join(NODE_MODULES, *args)
+ 
+ 
++def _selected_tool(variable, *fallback):
++  selected = os.environ.get(variable)
++  if selected is None:
++    return _path_in_node_modules(*fallback)
++  if not selected or not os_path.isabs(selected) or not os_path.isfile(selected):
++    raise RuntimeError(variable + ' must name an absolute JavaScript entry file')
++  return selected
++
++
+ def PathToEsLint():
+   return _path_in_node_modules('eslint', 'bin', 'eslint')
+ 
+ 
+ def PathToRollup():
+-  return _path_in_node_modules('@rollup', 'wasm-node', 'dist', 'bin', 'rollup')
++  return _selected_tool('EMBERBSD_HOST_ROLLUP', '@rollup', 'wasm-node',
++                        'dist', 'bin', 'rollup')
+ 
+ 
+ def PathToStylelint():
+@@ -34,7 +45,7 @@
+ 
+ 
+ def PathToTypescript():
+-  return _path_in_node_modules('typescript', 'bin', 'tsc')
++  return _selected_tool('EMBERBSD_HOST_TYPESCRIPT', 'typescript', 'bin', 'tsc')
+ 
+ 
+ def PathToTsProto():
+--- a/third_party/node/node.gni
++++ b/third_party/node/node.gni
+@@ -12,6 +12,26 @@
+          "EMBERBSD_HOST_NODE selects a local host executable")
+   assert(get_path_info(emberbsd_host_node, "abspath") == emberbsd_host_node,
+          "EMBERBSD_HOST_NODE must be an absolute path")
++}
++
++declare_args() {
++  # The caller enumerates the selected common provider's actual package files.
++  emberbsd_node_provider_inputs = []
++  emberbsd_typescript_definitions = []
++}
++
++# Shared host providers remain explicit action inputs. The caller selects
++# their JavaScript entry files from the same native prefix as Node.
++_emberbsd_node_provider_inputs = emberbsd_node_provider_inputs
++foreach(_variable, [ "EMBERBSD_HOST_ROLLUP", "EMBERBSD_HOST_TYPESCRIPT" ]) {
++  _provider = getenv(_variable)
++  if (_provider != "") {
++    assert(emberbsd_host_node != "" && !use_remoteexec,
++           "selected Node providers require the explicit local host Node")
++    assert(get_path_info(_provider, "abspath") == _provider,
++           "selected Node provider must be absolute")
++    _emberbsd_node_provider_inputs += [ _provider ]
++  }
+ }
+ 
+ template("node") {
+@@ -30,6 +50,7 @@
+       "//third_party/node/node_modules.tar.gz.sha1",
+     ]
+ 
++    inputs += _emberbsd_node_provider_inputs
+     if (emberbsd_host_node != "") {
+       inputs += [ emberbsd_host_node ]
+     } else {
+--- a/third_party/devtools-frontend/src/scripts/devtools_paths.py
++++ b/third_party/devtools-frontend/src/scripts/devtools_paths.py
+@@ -6,6 +6,7 @@
+ """
+ 
+ from os import path
++import os
+ import sys
+ import platform
+ 
+@@ -64,6 +65,14 @@
+ 
+ 
+ def rollup_path():
++    if 'EMBERBSD_HOST_ROLLUP' in os.environ:
++        try:
++            old_sys_path = sys.path[:]
++            sys.path.insert(0, path.join(third_party_path(), 'node'))
++            import node_modules
++        finally:
++            sys.path = old_sys_path
++        return node_modules.PathToRollup()
+     return path.join(
+         node_modules_path(),
+         'rollup',
+--- a/tools/typescript/ts_library.gni
++++ b/tools/typescript/ts_library.gni
+@@ -105,6 +105,15 @@
+       args += [ "--manifest_excludes" ] + manifest_excludes
+     }
+ 
++    if (emberbsd_typescript_definitions != []) {
++      inputs += emberbsd_typescript_definitions
++      _toolchain_definitions = []
++      foreach(_definition, emberbsd_typescript_definitions) {
++        _toolchain_definitions += [ rebase_path(_definition, target_gen_dir) ]
++      }
++      args += [ "--toolchain_definitions" ] + _toolchain_definitions
++    }
++
+     if (defined(invoker.definitions)) {
+       inputs += invoker.definitions
+       definitions = []
+--- a/tools/typescript/ts_library.py
++++ b/tools/typescript/ts_library.py
+@@ -56,6 +56,7 @@
+   parser.add_argument('--in_files', nargs='*')
+   parser.add_argument('--manifest_excludes', nargs='*')
+   parser.add_argument('--definitions', nargs='*')
++  parser.add_argument('--toolchain_definitions', nargs='*')
+   parser.add_argument('--composite', action='store_true')
+   parser.add_argument('--platform',
+                       choices=['other', 'ios', 'chromeos_ash'],
+@@ -315,7 +316,7 @@
+   ])
+   files_list = out.split('\n')
+   definitions_files = list(filter(lambda f: f.endswith('.d.ts'), files_list))
+-  definitions = args.definitions if args.definitions is not None else []
++  definitions = (args.definitions or []) + (args.toolchain_definitions or [])
+   list_valid, error_msg = validateDefinitionDeps(definitions_files, target_path,
+                                                  args.gen_dir,
+                                                  args.root_gen_dir, definitions)
