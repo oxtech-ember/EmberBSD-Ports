@@ -6,3 +6,4 @@ Size (llvm-project-23.1.4.src.tar.xz) = 179272572 bytes
 SHA1 (patch-lib_Driver_ToolChains_Gnu.cpp) = b3958549da128351f55706b788fe895ad9606dab
 SHA1 (patch-lib_Driver_ToolChains_NetBSD.cpp) = 2b413448c545d97b432e260422cc7de56a40bc77
 SHA1 (patch-test_Driver_netbsd-runtime.c) = 903de9d28ca553992ee3f02a790777c6322213cf
+SHA1 (patch-CMakeLists.txt) = 887654c63539fe840593d70e9e9c067a4261644b
