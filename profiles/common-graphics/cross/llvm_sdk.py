@@ -70,7 +70,10 @@ def produce(argv, log):
     from emberbsd_sdk.jsonio import write_json
     from emberbsd_sdk.process import run_logged
     try:
-        run_logged(list(map(str, argv)), str(log), env=environment({'TMPDIR': str(Path(log).parent)}))
+        run_logged(list(map(str, argv)), str(log), env=environment({
+            'TMPDIR': str(Path(log).parent),
+            'NATIVE_CXX': os.environ.get('NATIVE_CXX'),
+        }))
     except ProcessOwnershipError as e:
         marker = Path(log).parent / sdk_source.PRODUCER_QUARANTINE
         if not marker.exists():
