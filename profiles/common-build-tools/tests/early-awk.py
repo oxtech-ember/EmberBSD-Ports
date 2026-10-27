@@ -21,6 +21,13 @@ def main():
     for name in ('MAKEFLAGS', 'MFLAGS', 'NATIVE_OPSYS_VERSION'):
         environment.pop(name, None)
     environment.update(PATH=f'{prefix}/bin:{prefix}/gnu/bin', LC_ALL='C')
+    expected = None
+    if sys.platform == 'darwin':
+        # The prefix-only search path has no sw_vers; compare with the system tool.
+        release = subprocess.run(['/usr/bin/sw_vers', '-productVersion'], check=True,
+                                 capture_output=True, text=True).stdout.strip()
+        parts = [min(int(part), 99) for part in (release.split('.') + ['0', '0'])[:3]]
+        expected = '%02d%02d%02d' % tuple(parts)
     for package in ('lang/llvm', 'x11/qt6-qtbase'):
         command = [str(prefix / 'bin/bmake'), '-C', str(args.pkgsrc / package),
                    f'MAKECONF={args.makeconf}', f'TOOLS_PLATFORM.awk={prefix}/bin/nawk',
@@ -33,6 +40,10 @@ def main():
             return 1
         if not re.fullmatch(r'[0-9]{6,}', result.stdout.strip()):
             print(f'FAIL: {package}: missing numeric native OS version', file=sys.stderr)
+            return 1
+        if expected and result.stdout.strip() != expected:
+            print(f'FAIL: {package}: native OS version {result.stdout.strip()} is not {expected}',
+                  file=sys.stderr)
             return 1
         print(f'PASS: {package}: native OS version {result.stdout.strip()} with selected awk')
     return 0

@@ -1,5 +1,7 @@
 # Origin: EmberBSD (AI-assisted). Honor the selected awk in early pkgsrc probes.
 # Platform queries precede MAKECONF and must retain an explicit caller tool.
+# The selected native PATH holds only the Ports prefix, so the macOS release
+# query names the system sw_vers by its fixed absolute path.
 
 --- a/mk/bsd.prefs.mk
 +++ b/mk/bsd.prefs.mk
@@ -15,8 +17,9 @@
 @@ -229,7 +229,7 @@
  NATIVE_LOWER_OPSYS_VERSUFFIX=	${NATIVE_OS_VERSION:C/([0-9]*).*/\1/}
  NATIVE_LOWER_VENDOR?=		apple
- _NATIVE_OPSYS_VERSION_CMD=	sw_vers -productVersion | \
+-_NATIVE_OPSYS_VERSION_CMD=	sw_vers -productVersion | \
 -			awk -F. '{major=int($$1); minor=int($$2); if (minor>=100) minor=99; patch=int($$3); if (patch>=100) patch=99; printf "%02d%02d%02d", major, minor, patch}'
++_NATIVE_OPSYS_VERSION_CMD=	/usr/bin/sw_vers -productVersion | \
 +			${TOOLS_PLATFORM.awk:U${EMBERBSD_NATIVE_AWK:Uawk}} -F. '{major=int($$1); minor=int($$2); if (minor>=100) minor=99; patch=int($$3); if (patch>=100) patch=99; printf "%02d%02d%02d", major, minor, patch}'
  
  .elif ${NATIVE_OPSYS} == "DragonFly"
