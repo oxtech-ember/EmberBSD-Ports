@@ -12,11 +12,12 @@ and upstream checks are recorded separately from package acceptance.
 
 This profile builds GCC 16.2.0 for native EmberBSD/NetBSD 11 AArch64.
 The candidate package builds in the AArch64 VM and runs there and on physical
-Orange Pi Zero 3W, passing C11/C++20 thread, TLS, shared-library and runtime-identity probes. It is the
-compiler foundation for a reproducible distribution development environment.
-The common build-tools MAKECONF selects it for new package consumers after
-bootstrap; actual native pkgsrc wrapper and installed-consumer checks pass on
-Zero 3W. Full upstream tests, shared consumer migration and image integration
+Orange Pi Zero 3W, passing C11/C++20 thread, TLS, shared-library and runtime-identity probes.
+Clang/LLVM from Ports is the default compiler family. GCC 16.2.0 is the
+explicit alternative for a platform profile that requires GCC.
+The common build-tools MAKECONF selects it only with
+`EMBERBSD_HOST_COMPILER_FAMILY=gcc`; actual native pkgsrc wrapper and
+installed-consumer checks pass on Zero 3W. Full upstream tests, shared consumer migration and image integration
 remain gates. Reversible development defaults select installed nb1 for fresh
 login/SSH sessions and ordinary pkgsrc builds on the checked Zero 3W board;
 base compiler files remain intact.
