@@ -1,0 +1,42 @@
+# Origin: EmberBSD (AI-assisted). Bind private install tic to its configured layout library.
+
+--- a/devel/ncurses/Makefile
++++ b/devel/ncurses/Makefile
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.124 2026/01/20 10:07:04 wiz Exp $
+ 
+ DISTNAME=	ncurses-6.6
+-PKGREVISION=	4
++PKGREVISION=	5
+ CATEGORIES=	devel
+ MASTER_SITES=	${MASTER_SITE_GNU:=ncurses/}
+ 
+@@ -73,6 +73,10 @@
+ .elif ${EMBERBSD_NCURSES_TIC_LAYOUT} != "character" && ${EMBERBSD_NCURSES_TIC_LAYOUT} != "hex"
+ PKG_FAIL_REASON+= "The private install tic layout must be character or hex"
+ .else
++# Keep the layout-specific helper independent of installed ncurses libraries.
++CONFIGURE_ARGS:= ${CONFIGURE_ARGS:N--with-libtool*:N--with-cxx-binding*:N--with-shared*:N--without-normal*}
++CONFIGURE_ARGS+= --without-libtool --with-normal --without-shared --without-cxx-binding --without-cxx
++CONFIGURE_ENV+= AR=${AR:Q} RANLIB=${RANLIB:Q}
+ CONFIGURE_ARGS:= ${CONFIGURE_ARGS:N--enable-mixed-case*:N--disable-mixed-case*}
+ CONFIGURE_ARGS.${OPSYS}:= ${CONFIGURE_ARGS.${OPSYS}:N--enable-mixed-case*:N--disable-mixed-case*}
+ .if ${EMBERBSD_NCURSES_TIC_LAYOUT} == "character"
+@@ -140,7 +144,7 @@
+ 		TEMP=${_EMBER_NCURSES_HOST_OBJ:Q}/tmp \
+ 		CONFIG_SITE=/dev/null ${MAKE} MAKECONF=${MAKECONF:Q} \
+ 		USE_CROSS_COMPILE=no WRKOBJDIR=${_EMBER_NCURSES_HOST_OBJ:Q} \
+-		WRKDIR_BASENAME=work CC=${NATIVE_CC:Q} CXX=${NATIVE_CXX:Q} \
++		WRKDIR_BASENAME=work CC=${NATIVE_CC:Q} CXX=${NATIVE_CXX:Q} AR=${NATIVE_AR:Q} RANLIB=${NATIVE_RANLIB:Q} \
+ 		MAKE_JOBS=${MAKE_JOBS:U1} configure
+ 	${RUN}${MAKE_PROGRAM} -C ${_EMBER_NCURSES_HOST_SRC:Q}/include all
+ .for _ember_header in ncurses_dll.h:dll ncurses_cfg.h:cfg curses.h:curses
+@@ -194,7 +198,7 @@
+ 	cd ${PKGDIR:Q} && ${SETENV} -i ${_EMBER_NCURSES_TIC_ENV} \
+ 		${MAKE} MAKECONF=${MAKECONF:Q} USE_CROSS_COMPILE=no \
+ 		WRKOBJDIR=${_EMBER_NCURSES_TIC_OBJ:Q} WRKDIR_BASENAME=work \
+-		CC=${NATIVE_CC:Q} CXX=${NATIVE_CXX:Q} MAKE_JOBS=${MAKE_JOBS:U1} \
++		CC=${NATIVE_CC:Q} CXX=${NATIVE_CXX:Q} AR=${NATIVE_AR:Q} RANLIB=${NATIVE_RANLIB:Q} MAKE_JOBS=${MAKE_JOBS:U1} \
+ 		DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency \
+ 		EMBERBSD_NCURSES_TIC_LAYOUT=$$layout configure emberbsd-build-install-tic
+ 	${RUN}set -eu; \

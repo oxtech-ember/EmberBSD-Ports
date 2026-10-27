@@ -1,7 +1,7 @@
 # Native generators and terminfo for ncurses
 
-The common ncurses 6.6nb3 recipe configures host generators separately.
-The library still uses target GCC16 and target configure results.
+The common ncurses 6.6nb5 recipe configures host generators separately.
+The library uses the selected target compiler and target configure results.
 The build-role revision does not change the public ABI or dependency bounds.
 An accepted native ncurses 6.6 tool still meets the existing tool predicate.
 
@@ -55,10 +55,16 @@ lists the three pairs.
 After target configure, the recipe preprocesses the actual target header.
 A second private native object directory builds `tic` from the same source.
 Its explicit internal `EMBERBSD_NCURSES_TIC_LAYOUT=character|hex` role changes
-only the documented mixed-case configure switch. Other native pkgsrc policy
-stays active. Ordinary native builds keep their platform default. The role
+the documented mixed-case switch and builds a normal static library. It
+disables libtool, shared libraries and C++ bindings for this helper. Selected
+AR and RANLIB commands remain explicit. Other native pkgsrc policy stays active. Ordinary native builds keep their platform default. The role
 refuses invalid modes and cross compilation. Cross builds select the hex
 mode. No dependency may be installed implicitly.
+
+A shared private helper can load the installed native library with the same
+SONAME. That library can use another filename layout. The static helper
+links its own configured ncurses library and has no libncurses runtime lookup.
+The existing real alias probe remains mandatory before installation.
 
 The recursive make names `configure` explicitly before its private build
 target. The pkgsrc barrier can then forward the fresh configure phase.
@@ -85,6 +91,16 @@ Use a prepared common profile, its make configuration and a configured
 ncurses target source tree. All native dependency predicates must already
 be satisfied. The test refuses a new dependency installation.
 Use a new absolute output directory for each command.
+The small layout regression can run before a complete target package:
+
+```sh
+python3 profiles/common-build-tools/tests/ncurses-tic-layout.py \
+    --tic /absolute/private-native-source/progs/tic \
+    --readelf /absolute/native/llvm-readelf --work /absolute/new-layout-check
+```
+
+It compiles real aliases, checks hexadecimal paths and rejects a dynamic
+libncurses dependency. This is a native generator check, not target execution.
 
 ```sh
 BMAKE=/absolute/host/bin/bmake python3 \
