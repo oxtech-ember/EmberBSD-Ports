@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.126 2026/05/29 09:02:25 wiz Exp $
 # Origin: EmberBSD; AI-assisted matched native-identity source candidate.
 DISTNAME=	libdrm-2.4.134
-PKGREVISION=	7
+PKGREVISION=	8
 CATEGORIES=	x11 graphics
 MASTER_SITES=	https://dri.freedesktop.org/libdrm/
 EXTRACT_SUFX=	.tar.xz
@@ -22,15 +22,11 @@ PKGCONFIG_OVERRIDE+=	libdrm.pc.in
 # Apply after MAKECONF selects its base flags.
 # Retain diagnostics for unsupported buses; keep general warnings fatal.
 CFLAGS+=	-Werror -Wno-error=cpp
-# Clang flags unused static helpers in tests/util/pattern.c; do not fail the package.
-.if ${EMBERBSD_CROSS_COMPILER_FAMILY:U} == "clang" ||     ${EMBERBSD_HOST_COMPILER_FAMILY:U} == "clang"
-CFLAGS+=	-Wno-error=unused-function
-.endif
 .if !defined(EMBERBSD_COMMON_GRAPHICS)
 PKG_FAIL_REASON+= "libdrm requires the prepared common graphics profile"
 .endif
-.if ${DISTNAME} != "libdrm-2.4.134" || ${PKGREVISION} != "7"
-PKG_FAIL_REASON+= "The common graphics profile requires adapted libdrm 2.4.134nb7"
+.if ${DISTNAME} != "libdrm-2.4.134" || ${PKGREVISION} != "8"
+PKG_FAIL_REASON+= "The common graphics profile requires adapted libdrm 2.4.134nb8"
 .endif
 SUBST_CLASSES+=	atomic
 SUBST_FILES.atomic=	xf86drm.h
