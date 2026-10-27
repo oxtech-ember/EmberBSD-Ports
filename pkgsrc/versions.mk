@@ -7,6 +7,9 @@
 # exist. EMBERBSD-DEFAULTS-MK.CONF includes this file and rejects a package
 # whose PKGPATH matches FAMILY but not KEPT. Patch a consumer onto the kept
 # version instead of adding an old one back. Use one word per line.
+# EMBERBSD_VERSION_DEPENDENTS lists PKGPATHs that the exporter removes too:
+# each one needs a removed version, and no kept package needs it. Port one
+# onto the kept version to bring it back.
 EMBERBSD_VERSION_FAMILIES+=	lang/python[0-9]*=lang/python315
 EMBERBSD_VERSION_FAMILIES+=	lang/gcc[0-9]*=lang/gcc16*
 EMBERBSD_VERSION_FAMILIES+=	lang/go[0-9]*=lang/go127
@@ -18,6 +21,24 @@ EMBERBSD_VERSION_FAMILIES+=	databases/postgresql[0-9]*=databases/postgresql18*
 EMBERBSD_VERSION_FAMILIES+=	databases/mariadb[0-9]*=databases/mariadb118-*
 EMBERBSD_VERSION_FAMILIES+=	databases/mysql[0-9]*=databases/mariadb118-*
 EMBERBSD_VERSION_FAMILIES+=	security/libressl=security/openssl
+EMBERBSD_VERSION_FAMILIES+=	games/love[0-9]*=games/love11
+# Lua 5.1 or 5.3 C API.
+EMBERBSD_VERSION_DEPENDENTS+=	games/asc
+EMBERBSD_VERSION_DEPENDENTS+=	games/valyriatear
+EMBERBSD_VERSION_DEPENDENTS+=	security/ap-modsecurity2
+EMBERBSD_VERSION_DEPENDENTS+=	www/nsm
+# GNAT from GCC 14; GCC16 has no Ada package. GPC needs GCC 2.
+EMBERBSD_VERSION_DEPENDENTS+=	cad/ghdl
+EMBERBSD_VERSION_DEPENDENTS+=	devel/ghdl-yosys-plugin
+EMBERBSD_VERSION_DEPENDENTS+=	lang/gpc
+# The embedded MariaDB 10.11 server; MariaDB 11.8 has no embedded package.
+EMBERBSD_VERSION_DEPENDENTS+=	audio/amarok
+# Upstream bulk test sets that pin removed versions.
+EMBERBSD_VERSION_DEPENDENTS+=	meta-pkgs/bulk-large
+EMBERBSD_VERSION_DEPENDENTS+=	meta-pkgs/bulk-medium
+EMBERBSD_VERSION_DEPENDENTS+=	meta-pkgs/bulk-small
+EMBERBSD_VERSION_DEPENDENTS+=	meta-pkgs/bulk-test-icu
+EMBERBSD_VERSION_DEPENDENTS+=	meta-pkgs/bulk-test-python27
 
 # Select the kept versions where pkgsrc chooses one.
 LUA_VERSION_DEFAULT=		55

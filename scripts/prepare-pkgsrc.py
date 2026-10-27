@@ -241,22 +241,31 @@ def configuration(root, *, include_manifests=False):
     rules = version_families(root)
     old_version = next((name for name in names if version_pruned(name, rules)), None)
     require(old_version is None,
-            f'Ports recipe {old_version} is an old version; pkgsrc/versions.mk keeps another.')
+            f'Ports recipe {old_version} is an old version or needs one; pkgsrc/versions.mk removes it.')
     result = (recipes, patches, files, categories)
     return (*result, manifests) if include_manifests else result
 
 
 VERSION_RULE = re.compile(r'EMBERBSD_VERSION_FAMILIES\+=[ \t]+([^ \t=]+)=([^ \t=]+)')
+DEPENDENT_RULE = re.compile(r'EMBERBSD_VERSION_DEPENDENTS\+=[ \t]+([a-z0-9-]+/[^ \t=*?\[/]+)')
 
 
 def version_families(root):
-    """Return the FAMILY=KEPT rules of pkgsrc/versions.mk."""
+    """Return the FAMILY=KEPT rules of pkgsrc/versions.mk.
+
+    A removed dependent PKGPATH is a rule whose KEPT is None.
+    """
     path = Path(root) / 'pkgsrc/versions.mk'
     if not os.path.lexists(path):
         return []
     source_path(root, 'pkgsrc/versions.mk', 'version families')
     rules = []
     for line in path.read_bytes().decode('utf-8').split('\n'):
+        if line.startswith('EMBERBSD_VERSION_DEPENDENTS'):
+            match = DEPENDENT_RULE.fullmatch(line.rstrip(' \t'))
+            require(match, 'pkgsrc/versions.mk: use EMBERBSD_VERSION_DEPENDENTS+= PKGPATH: ' + line)
+            rules.append((match.group(1), None))
+            continue
         if not line.startswith('EMBERBSD_VERSION_FAMILIES'):
             continue
         match = VERSION_RULE.fullmatch(line.rstrip(' \t'))
@@ -268,7 +277,8 @@ def version_families(root):
 def version_pruned(name, rules):
     """Return the family that rejects PKGPATH name, or None."""
     for family, kept in rules:
-        if fnmatch.fnmatchcase(name, family) and not fnmatch.fnmatchcase(name, kept):
+        if fnmatch.fnmatchcase(name, family) and (
+                kept is None or not fnmatch.fnmatchcase(name, kept)):
             return family
     return None
 
@@ -282,6 +292,10 @@ def prune_versions(destination, rules):
                       for package in category.iterdir()
                       if package.is_dir() and not package.is_symlink())
     for family, kept in rules:
+        if kept is None:
+            require(family in packages,
+                    f'pkgsrc/versions.mk removes {family}, but the export has no such package.')
+            continue
         require(any(fnmatch.fnmatchcase(name, kept) for name in packages),
                 f'pkgsrc/versions.mk keeps {kept}, but the export has no such package.')
     removed = [name for name in packages if version_pruned(name, rules)]

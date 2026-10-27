@@ -455,6 +455,32 @@ class ExportTests(unittest.TestCase):
         self.assertEqual((lang / 'Makefile').read_text(), ''.join(
             'SUBDIR+=\t' + name + '\n' for name in ('lua', 'lua55', 'python-aux', 'python315')))
 
+    def test_version_dependents_are_removed_with_their_old_version(self):
+        for category, name in (('lang', 'lua51'), ('lang', 'lua55'), ('games', 'asc'),
+                               ('games', 'kept')):
+            (self.upstream / category / name).mkdir(parents=True)
+            (self.upstream / category / name / 'Makefile').write_text('# ' + name + '\n')
+        (self.upstream / 'games/Makefile').write_text('SUBDIR+=\tasc\nSUBDIR+=\tkept\n')
+        (self.root / 'pkgsrc/versions.mk').write_text(
+            'EMBERBSD_VERSION_FAMILIES+=\tlang/lua[0-9]*=lang/lua55\n'
+            'EMBERBSD_VERSION_DEPENDENTS+=\tgames/asc\n')
+        self.fake_export()
+        games = self.work / 'export/games'
+        self.assertEqual(sorted(path.name for path in games.iterdir() if path.is_dir()), ['kept'])
+        self.assertEqual((games / 'Makefile').read_text(), 'SUBDIR+=\tkept\n')
+
+    def test_version_dependents_reject_stale_and_malformed_entries(self):
+        (self.upstream / 'lang/lua55').mkdir(parents=True)
+        (self.upstream / 'lang/lua55/Makefile').write_text('# lua55\n')
+        (self.root / 'pkgsrc/versions.mk').write_text(
+            'EMBERBSD_VERSION_DEPENDENTS+=\tgames/asc\n')
+        with self.assertRaisesRegex(exporter.ExportError, 'removes games/asc'):
+            self.fake_export()
+        (self.root / 'pkgsrc/versions.mk').write_text(
+            'EMBERBSD_VERSION_DEPENDENTS+=\tgames/love*\n')
+        with self.assertRaisesRegex(exporter.ExportError, 'DEPENDENTS\\+= PKGPATH'):
+            exporter.version_families(self.root)
+
     def test_version_families_require_the_kept_version(self):
         (self.upstream / 'lang/lua54').mkdir(parents=True)
         self.write_versions('lang/lua[0-9]*=lang/lua55')
