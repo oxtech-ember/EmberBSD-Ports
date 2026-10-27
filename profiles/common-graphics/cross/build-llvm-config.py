@@ -133,6 +133,7 @@ def build_locked(source, target, native, sysroot, prefix, destination):
     native_triple = sdk.capture(host_config, '--host-target')
     native_platform = native_api.platform(native_triple)
     host_flags = shlex.split(sdk.capture(host_config, '--cxxflags'))
+    host_ldflags = shlex.split(sdk.capture(host_config, '--ldflags'))
     host_libs = shlex.split(sdk.capture(host_config, '--link-static', '--libfiles', 'support', 'targetparser'))
     expected_libs = [native + '/lib/lib' + name + '.a' for name in ('LLVMSupport', 'LLVMTargetParser', 'LLVMDemangle')]
     require(sorted(host_libs) == sorted(expected_libs), 'native Support library closure differs from the supported minimal closure')
@@ -142,7 +143,7 @@ def build_locked(source, target, native, sysroot, prefix, destination):
     else:
         for arg in host_system:
             require((re.fullmatch(r'-l[A-Za-z0-9_+.-]+', arg) and not arg.startswith('-lLLVM')) or (arg.startswith('/') and Path(arg).is_file() and re.search(r'\.(?:a|so(?:\.[0-9]+)*)$', arg) and not Path(arg).name.startswith('libLLVM')), 'unsupported native system library argument')
-    cxx = nc['CMAKE_CXX_COMPILER']
+    cxx = os.environ.get('NATIVE_CXX') or nc['CMAKE_CXX_COMPILER']
     require(cxx.startswith('/') and os.access(cxx, os.X_OK), 'native C++ compiler must be an existing absolute executable')
     native_sdk, native_headers, compiler_runtime = None, [], []
     if native_platform == 'darwin':
@@ -202,7 +203,9 @@ def build_locked(source, target, native, sysroot, prefix, destination):
         shutil.copyfile(Path(__file__).parent / name, Path(work) / name)
         require(sdk.digest(Path(work) / name) == producer_inputs[name], 'producer source changed while copying: ' + name)
     compile_args = [cxx, *host_flags, '-DLLVM_BUILD_STATIC', '-O2', '-DNDEBUG' if nc['LLVM_ENABLE_ASSERTIONS'] == 'OFF' else '-UNDEBUG', '-I' + work + '/metadata', work + '/llvm-config.cpp']
-    mode = ['-fno-canonical-system-headers', '-M'] if native_platform == 'linux-gnu' else ['-MM']
+    mode = ['-M'] if native_platform == 'linux-gnu' else ['-MM']
+    if native_platform == 'linux-gnu' and measured['family'] == 'gcc':
+        mode.insert(0, '-fno-canonical-system-headers')
     dependency_command = [*compile_args, *mode, '-MT', 'llvm-config', '-MF', work + '/llvm-config.d']
     sdk.command_file(Path(work) / 'dependencies.command', dependency_command)
     sdk.produce(dependency_command, Path(work) / 'dependencies.log')
@@ -213,7 +216,7 @@ def build_locked(source, target, native, sysroot, prefix, destination):
             continue
         required.append(path)
         hashes.setdefault(path, sdk.digest(path))
-    command = [*compile_args, *host_libs, *host_system, '-o', work + '/bin/llvm-config.real']
+    command = [*compile_args, *host_ldflags, *host_libs, *host_system, '-o', work + '/bin/llvm-config.real']
     sdk.command_file(Path(work) / 'compile.command', command)
     sdk.produce(command, Path(work) / 'compile.log')
     runtime = None
@@ -234,7 +237,7 @@ def build_locked(source, target, native, sysroot, prefix, destination):
     require(target_api.for_triple(reported) == spec, 'upstream reported target disagrees with generated target metadata')
     required += list(sdk_inputs)
     hashes.update(sdk_inputs)
-    receipt = dict(version=VERSION, source=source, target_build=target, native_build=native, native_sdk=native_sdk, native_platform=native_platform, native_triple=native_triple, native_header_roots=native_headers, native_system_libraries=host_system, native_runtime=runtime, sysroot=sysroot, target_prefix=prefix, configured_target_triple=string(td, 'LLVM_HOST_TRIPLE'), target_triple=reported, target_triple_query=triple_query, target_assertions=tc['LLVM_ENABLE_ASSERTIONS'], staged_library_sha256=library_hash, library_proof=proof, compiler=cxx, compiler_version=sdk.capture(cxx, '--version'), original_ldflags=original_ldflags, mapped_ldflags=mapped_ldflags, command=command, host_api=1, sdk_source=sdk_root, host_python=sys.version, host_mechanism_inputs=sdk_inputs, sdk_source_provenance=sdk_provenance)
+    receipt = dict(version=VERSION, source=source, target_build=target, native_build=native, native_sdk=native_sdk, native_platform=native_platform, native_triple=native_triple, native_header_roots=native_headers, native_system_libraries=host_system, native_linker_flags=host_ldflags, native_runtime=runtime, sysroot=sysroot, target_prefix=prefix, configured_target_triple=string(td, 'LLVM_HOST_TRIPLE'), target_triple=reported, target_triple_query=triple_query, target_assertions=tc['LLVM_ENABLE_ASSERTIONS'], staged_library_sha256=library_hash, library_proof=proof, compiler=cxx, compiler_version=sdk.capture(cxx, '--version'), original_ldflags=original_ldflags, mapped_ldflags=mapped_ldflags, command=command, host_api=1, sdk_source=sdk_root, host_python=sys.version, host_mechanism_inputs=sdk_inputs, sdk_source_provenance=sdk_provenance)
     sdk.write_json(Path(work) / 'receipt.json', receipt)
     shasum = native_api.executable('shasum')
     launcher = '#!/bin/sh\n# SPDX-License-Identifier: BSD-2-Clause\n# Integrity only; queries run the real upstream executable.\nset -eu\nbase=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)\ncd "$base"\n' + shlex.quote(shasum) + ' -a 256 -c inputs.sha256 > /dev/null || {\n    echo "llvm-config: input receipt changed; rebuild metadata tool" >&2\n    exit 1\n}\n' + native_api.launcher(runtime) + '\n'

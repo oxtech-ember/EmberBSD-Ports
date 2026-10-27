@@ -11,7 +11,7 @@ import llvm_sdk as sdk
 def platform(triple):
     if re.fullmatch(r'(?:arm64|aarch64|x86_64)-apple-darwin[0-9.]*', triple):
         return 'darwin'
-    if re.fullmatch(r'(x86_64|aarch64)-(?:unknown-)?linux-gnu', triple):
+    if re.fullmatch(r'(x86_64|aarch64)-(?:(?:unknown|pc)-)?linux-gnu', triple):
         return 'linux-gnu'
     raise ValueError('unsupported native LLVM triple: ' + triple)
 
@@ -30,7 +30,8 @@ def executable(name):
     path = name if name.startswith('/') else shutil.which(name)
     if not path or not os.access(path, os.X_OK) or not Path(path).is_file():
         raise ValueError('missing native tool: ' + name)
-    return str(Path(path).resolve(strict=True))
+    # Preserve argv[0] for multicall aliases such as llvm-readelf.
+    return str(Path(path).absolute())
 
 
 def validate_header(path, roots, *, forbidden):
@@ -83,11 +84,14 @@ def dynamic(path, readelf):
 
 
 def compiler(cxx, triple, flags):
-    if not re.match(r'16\.', capture(cxx, '-dumpfullversion')):
-        raise ValueError('Linux helper requires GCC16')
     macros = capture(cxx, '-dM', '-E', '-x', 'c++', '/dev/null')
-    if not re.search(r'^#define __GNUC__ 16$', macros, re.M) or re.search(r'^#define __clang__ ', macros, re.M):
-        raise ValueError('Linux helper requires genuine GCC16')
+    if re.search(r'^#define __clang__ 1$', macros, re.M):
+        if not re.search(r'^#define __clang_major__ 23$', macros, re.M):
+            raise ValueError('Linux helper requires Clang23 or GCC16')
+        if '-stdlib=libc++' in flags:
+            raise ValueError('Linux helper currently requires the GNU C++ runtime')
+    elif not re.search(r'^#define __GNUC__ 16$', macros, re.M):
+        raise ValueError('Linux helper requires Clang23 or GCC16')
     if machine(capture(cxx, '-dumpmachine')) != machine(triple):
         raise ValueError('native compiler and LLVM architectures differ')
     out, err, status = sdk.query(cxx, *flags, '-E', '-v', '-x', 'c++', '/dev/null', '-o', '/dev/null')
@@ -105,7 +109,8 @@ def compiler(cxx, triple, flags):
         if not path.startswith('/') or not Path(path).is_file():
             raise ValueError('native compiler runtime missing: ' + name)
         libraries.append(str(Path(path).resolve(strict=True)))
-    return dict(header_roots=roots, compiler_libraries=libraries)
+    family = 'clang' if re.search(r'^#define __clang__ 1$', macros, re.M) else 'gcc'
+    return dict(header_roots=roots, compiler_libraries=libraries, family=family)
 
 
 def loaded(text):
@@ -116,6 +121,8 @@ def loaded(text):
         match = re.fullmatch(r'\s*(\S+) => (/\S+) \(0x[0-9a-f]+\)\s*', line)
         if match:
             name, path = match.groups()
+            if name.startswith("/"):
+                name = Path(name).name
         else:
             match = re.fullmatch(r'\s*(/\S+) \(0x[0-9a-f]+\)\s*', line)
             if not match:
@@ -144,7 +151,7 @@ def retain(binary, work, triple, compiler_libraries, *, forbidden=()):
     if paths.get(loader_name) != interpreter:
         raise ValueError('native loader differs from ELF interpreter')
     if set(compiler_libraries) - set(paths.values()):
-        raise ValueError('loaded runtime is not the selected GCC16 runtime')
+        raise ValueError('loaded runtime is not the selected native C++ runtime')
     files = []
     for name, path in paths.items():
         if any(path == root or path.startswith(root + '/') for root in forbidden):

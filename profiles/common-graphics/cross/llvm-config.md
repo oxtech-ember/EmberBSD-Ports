@@ -8,7 +8,7 @@ executable cannot run directly on macOS or Linux.
 `build-llvm-config.py` compiles the pinned upstream LLVM 23.1.4
 `tools/llvm-config/llvm-config.cpp`. It reuses the existing native Support,
 TargetParser and Demangle archives; it does not build LLVM libraries. Python 3.15,
-the explicit SDK host API1 source, the original native C++ compiler and shasum
+the explicit SDK host API1 source, the selected native C++ compiler and shasum
 are host dependencies. This is a
 private build tool, never a target package or a second installed LLVM provider.
 
@@ -44,10 +44,15 @@ sealing. The sealed tool then permits build-tree cleanup while checking the
 installed package on every query. Use a fresh output directory.
 The helper currently accepts the canonical
 NetBSD/AArch64 or NetBSD/amd64, shared LLVM, RTTI and `/usr/pkg` layout with a
-macOS native compiler or genuine GCC16 on GNU/Linux amd64 or AArch64. Linux
+macOS native compiler, or Clang23/GCC16 with the GNU C++ runtime on Linux
+amd64 or AArch64. Set `NATIVE_CXX` to the selected native compiler when the
+reused LLVM build cache records an earlier bootstrap compiler. The producer
+keeps native LLVM flags, links its real Support archives and verifies the
+loaded runtime closure. Linux
 requires native `readelf` and `ldd`. Whitespace in paths and unsupported native
 library arguments are rejected rather than guessed. Linux triples accept both
-`x86_64-linux-gnu` and `x86_64-unknown-linux-gnu` (likewise AArch64); musl and
+`x86_64-linux-gnu`, `x86_64-unknown-linux-gnu` and `x86_64-pc-linux-gnu`
+(likewise AArch64); musl and
 other native platforms are not covered.
 
 Target `BuildVariables.inc`, `LibraryDependencies.inc` and
@@ -289,3 +294,16 @@ On 2026-10-12 the complete LLVM 23.1.3 package repeats all 16 query groups
 on CM5 and passes 21 seal/query integrity checks. The original manifest anchor
 and installed-library identity are recorded with the
 [actual C API/ORC receipt](../../common-build-tools/cross/llvm-api-tests.md#cm5-llvm-2313-2026-10-12).
+
+Native compiler reuse can be checked before target LLVM finishes:
+
+```sh
+python3.15 ../tests/llvm-native-compiler.py --sdk-source /absolute/EmberBSD-SDK \
+    --cxx /absolute/native/clang++ \
+    --llvm-config /absolute/native-llvm-build/bin/llvm-config \
+    --work /absolute/new-native-consumer
+```
+
+Set `NATIVE_READELF` to the selected native ELF inspection command. The test
+links real native LLVM Support archives and runs with the copied runtime.
+Linux/amd64 Clang 23.1.4 passed. This does not establish target metadata support.
