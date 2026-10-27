@@ -37,6 +37,15 @@ Preserve the pinned pkgsrc recipes and portability patches.
  .include "../../print/cups/Makefile.common"
  
  PKGNAME=	cups-base-${CUPS_VERS}
+@@ -149,7 +148,7 @@
+ 	${INSTALL_DATA} ${WRKDIR}/cups.pam ${DESTDIR}${EGDIR}
+ .endif
+ .if !empty(PKG_OPTIONS:Mdnssd)
+-	${LN} -sf ${DESTDIR}${PREFIX}/libexec/cups/backend/dnssd ${DESTDIR}${PREFIX}/libexec/cups/backend/mdns
++	${LN} -sf dnssd ${DESTDIR}${PREFIX}/libexec/cups/backend/mdns
+ .endif
+ 
+ .include "../../converters/libiconv/buildlink3.mk"
 --- a/print/libcups/Makefile
 +++ b/print/libcups/Makefile
 @@ -1,6 +1,5 @@
