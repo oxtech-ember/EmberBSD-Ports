@@ -30,7 +30,9 @@ def main():
     shutil.copytree(args.pkgsrc/'lang/nodejs24', recipe)
     outer = Path(__file__).resolve().parents[1]/'patches/pkgsrc-nodejs24-python315.patch'
     already_applied = all((recipe/'patches'/name).is_file() for name in NEW_PATCHES)
-    command = [str(args.patch), '-f', '-F0', '-p0', '-i', str(outer)]
+    # Match the common pkgsrc exporter: GNU-compatible -p1 for a/b paths,
+    # with fuzz disabled and backup files suppressed.
+    command = [str(args.patch), '-f', '-E', '-F0', '-V', 'none', '-p1', '-i', str(outer)]
     command += ['--dry-run', '-R'] if already_applied else ['-N']
     result = subprocess.run(command, cwd=args.work/'pkgsrc', capture_output=True, text=True)
     if result.returncode or 'fuzz' in result.stdout.lower():

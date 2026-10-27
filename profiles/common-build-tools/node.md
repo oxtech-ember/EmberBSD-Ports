@@ -47,6 +47,16 @@ Run the source regression with the selected Python 3.15 and patch executable:
   --patch "$HOST_PREFIX/bin/nbpatch" --work "$NEW_WORK_DIRECTORY"
 ```
 
+Check that the common source exporter applies the same patch with the selected
+absolute Git and GNU patch paths used for the export:
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B -I -S \
+  profiles/common-build-tools/tests/nodejs24-export.py \
+  --git "$EXPORT_GIT" --patch "$EXPORT_GNU_PATCH" \
+  --work "$NEW_EXPORT_TEST_DIRECTORY"
+```
+
 The regression verifies source and patch checksums, reproduces both unpatched
 Python 3.15 failures, runs the real configure entry with `--help`, and generates
 a GYP diagnostic backend with `--check`. Its negative cases preserve the version

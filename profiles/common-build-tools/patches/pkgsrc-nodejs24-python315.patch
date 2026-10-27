@@ -2,7 +2,7 @@
 # Support the shared Python 3.15 in Node configure and checked GYP parsing.
 
 --- /dev/null
-+++ lang/nodejs24/patches/patch-configure
++++ b/lang/nodejs24/patches/patch-configure
 @@ -0,0 +1,24 @@
 +$NetBSD$
 +
@@ -30,7 +30,7 @@
 + else:
 
 --- /dev/null
-+++ lang/nodejs24/patches/patch-tools_gyp_pylib_gyp_input.py
++++ b/lang/nodejs24/patches/patch-tools_gyp_pylib_gyp_input.py
 @@ -0,0 +1,30 @@
 +$NetBSD$
 +
@@ -63,8 +63,8 @@
 +         raise TypeError(
 +             "Unknown AST node at key path '" + ".".join(keypath) + "': " + repr(node)
 
---- lang/nodejs24/Makefile.orig
-+++ lang/nodejs24/Makefile
+--- a/lang/nodejs24/Makefile.orig
++++ b/lang/nodejs24/Makefile
 @@ -1,7 +1,7 @@
  # $NetBSD: Makefile,v 1.17 2026/09/09 07:30:58 adam Exp $
  
@@ -75,8 +75,8 @@
  
  USE_LANGUAGES=	c c++
 
---- lang/nodejs24/distinfo.orig
-+++ lang/nodejs24/distinfo
+--- a/lang/nodejs24/distinfo.orig
++++ b/lang/nodejs24/distinfo
 @@ -28,3 +28,5 @@
  SHA1 (patch-tools_gyp_pylib_gyp_xcode__emulation.py) = 4ee24115f5e97ffbd23aaa6dc62f408d381d4e22
  SHA1 (patch-tools_install.py) = ac296123fa498c7edee3a5735f2e24c862037813
