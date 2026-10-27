@@ -214,15 +214,39 @@ def gn_arguments(values):
 
 
 def ensure_lastchange(workspace, native, environment, sdk):
-    """Official Electron args need build/util/LASTCHANGE(.committime); gclient hooks are not run here."""
+    """Mirror DEPS lastchange / lastchange_dawn / lastchange_skia / gpu_lists_version (gclient hooks not run)."""
     script = workspace / 'src/build/util/lastchange.py'
     output = workspace / 'src/build/util/LASTCHANGE'
     require(script.is_file(), 'Chromium lastchange.py missing from prepared source')
-    sdk['process'].capture([native.tool('python'), '-B', str(script), '-o', str(output)],
-                           cwd=str(workspace), env=environment)
+    python = native.tool('python')
+    run = lambda args: sdk['process'].capture([python, '-B', str(script), *args],
+                                              cwd=str(workspace), env=environment)
+    run(['-o', str(output)])
     stamp = Path(str(output) + '.committime')
     require(stamp.is_file() and stamp.read_text().strip().isdigit(),
             'lastchange did not write LASTCHANGE.committime')
+    # lastchange_dawn
+    dawn_rev = workspace / 'src/gpu/webgpu/DAWN_VERSION'
+    dawn_hdr = workspace / 'src/gpu/webgpu/dawn_commit_hash.h'
+    require((workspace / 'src/third_party/dawn').is_dir(), 'third_party/dawn missing for lastchange_dawn')
+    run(['-m', 'DAWN_COMMIT_HASH', '-s', str(workspace / 'src/third_party/dawn'),
+         '--revision', str(dawn_rev), '--header', str(dawn_hdr)])
+    require(dawn_rev.is_file() and dawn_rev.read_text().strip(),
+            'lastchange_dawn did not write gpu/webgpu/DAWN_VERSION')
+    require(dawn_hdr.is_file() and 'DAWN_COMMIT_HASH' in dawn_hdr.read_text(),
+            'lastchange_dawn did not write gpu/webgpu/dawn_commit_hash.h')
+    # lastchange_skia
+    skia_hdr = workspace / 'src/skia/ext/skia_commit_hash.h'
+    require((workspace / 'src/third_party/skia').is_dir(), 'third_party/skia missing for lastchange_skia')
+    run(['-m', 'SKIA_COMMIT_HASH', '-s', str(workspace / 'src/third_party/skia'),
+         '--header', str(skia_hdr)])
+    require(skia_hdr.is_file() and 'SKIA_COMMIT_HASH' in skia_hdr.read_text(),
+            'lastchange_skia did not write skia/ext/skia_commit_hash.h')
+    # gpu_lists_version
+    gpu_hdr = workspace / 'src/gpu/config/gpu_lists_version.h'
+    run(['-m', 'GPU_LISTS_VERSION', '--revision-id-only', '--header', str(gpu_hdr)])
+    require(gpu_hdr.is_file() and 'GPU_LISTS_VERSION' in gpu_hdr.read_text(),
+            'gpu_lists_version did not write gpu/config/gpu_lists_version.h')
 
 
 def configure(options):
@@ -249,6 +273,7 @@ def build(options):
     sdk = load_sdk(options.sdk_source)
     verify_source(options.workspace, options.ports_source, options.git)
     native, environment, values = producer_inputs(options, sdk)
+    ensure_lastchange(options.workspace, native, environment, sdk)
     saved = json.loads((options.work / 'configuration.json').read_text())
     require(saved['source'] == str(options.workspace) and saved['sdk'] == str(options.sdk_source) and
             saved['host_prefix'] == str(options.host_prefix) and saved['target'] == options.target,
