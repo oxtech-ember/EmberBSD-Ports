@@ -2,7 +2,7 @@
 
 DISTNAME=	gdk-pixbuf-2.44.8
 PKGNAME=	${DISTNAME:S/pixbuf/pixbuf2/}
-PKGREVISION=	4
+PKGREVISION=	5
 CATEGORIES=	graphics gnome
 MASTER_SITES=	${MASTER_SITE_GNOME:=sources/gdk-pixbuf/${PKGVERSION_NOREV:R}/}
 EXTRACT_SUFX=	.tar.xz
@@ -49,7 +49,6 @@ PKGCONFIG_OVERRIDE_STAGE=	pre-install
 PKGCONFIG_OVERRIDE=		output/meson-private/gdk-pixbuf-2.0.pc
 
 PLIST_VARS+=		native
-PLIST.native=	yes
 
 # Resolve options before cross tooling so PKG_DEFAULT_OPTIONS+=-introspection
 # can skip the SSH target-query path (loaders.cache / GIR) on hosts without a guest.
@@ -69,6 +68,8 @@ MESON_BINARY.glib-mkenums=	${TOOLBASE}/bin/glib-mkenums
 PKG_FAIL_REASON+= "GdkPixbuf cross tools require an explicit SDK host API source"
 .    endif
 EMBERBSD_GI_MESON_OPTIONS=	no
+# thumbnailer is built in cross only on the emberbsd_gi_cross path.
+PLIST.native=	yes
 .include "../../devel/gobject-introspection/cross.mk"
 MESON_CROSS_VARS+=	emberbsd_gi_cross emberbsd_gi_ldd_wrapper emberbsd_pixbuf_runner emberbsd_pixbuf_python
 MESON_CROSS.emberbsd_gi_cross=	true
