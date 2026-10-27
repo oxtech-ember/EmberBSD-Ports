@@ -15,7 +15,7 @@ PYTHON_FOR_BUILD_ONLY=	tool
 .include "../../lang/python/tool.mk"
 .include "../../lang/rust/cargo.mk"
 
-_EMBER_CARGO_HELPER:=	${.PARSEDIR}/emberbsd-cargo-config.py
+_EMBER_CARGO_HELPER:=	${.PARSEDIR:tA}/emberbsd-cargo-config.py
 EMBER_CARGO_CONFIG?=	${WRKDIR}/.cargo/ember-config.toml
 EMBER_CARGO_OUTPUT?=	${WRKDIR}/cargo-target
 EMBER_CARGO_TARGET?=
