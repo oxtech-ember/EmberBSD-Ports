@@ -311,7 +311,8 @@ libraries retain their licenses and transferred adaptation notices in the
 installed prefix.
 
 `tests/build-contract.py --sdk-source PATH --work NEW_PATH` checks native/target
-routing, phase boundaries and resolved base-input mutations.
+routing, phase boundaries, canonical file prefix maps and resolved base-input
+mutations.
 `tests/native-shell-routing.py --sdk-source PATH --host-prefix PREFIX
 --target-prefix PREFIX --source PREPARED_SOURCE --target aarch64 --work NEW_PATH`
 reproduces the literal `sh` lookup failure with the unbound native PATH, then

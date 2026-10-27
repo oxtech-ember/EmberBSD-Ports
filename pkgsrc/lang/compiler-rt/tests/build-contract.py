@@ -61,6 +61,11 @@ def main():
                 assert '--no-default-config' in flags
                 linker = flags.index('--ld-path=/target/bin/ld.lld')
                 assert flags.index('--start-no-unused-arguments') < linker < flags.index('--end-no-unused-arguments')
+                maps = [flag for flag in flags if flag.startswith('-ffile-prefix-map=')]
+                assert maps == ['-ffile-prefix-map=/source=/usr/src/external/llvm',
+                                '-ffile-prefix-map=/work=/usr/obj/llvm-runtime/' + phase,
+                                '-ffile-prefix-map=/stage=', '-ffile-prefix-map=/base=',
+                                '-ffile-prefix-map=/target/lib/clang/23=/usr/pkg/llvm/lib/clang/23'], maps
             if phase == 'builtins':
                 assert options['COMPILER_RT_INSTALL_PATH'] == '/usr/pkg/llvm/lib/clang/23'
                 assert options['COMPILER_RT_BUILD_CRT'] == 'OFF'
@@ -189,7 +194,7 @@ def main():
         pass
     else:
         raise AssertionError('missing required preliminary header was accepted')
-    print('PASS: six phase/target routes, resolved DSO, link-hop and directory-header changes, headers-only bootstrap and directory-link parent traversal')
+    print('PASS: six phase/target routes with canonical file prefix maps, resolved DSO, link-hop and directory-header changes, headers-only bootstrap and directory-link parent traversal')
 
 
 if __name__ == '__main__':

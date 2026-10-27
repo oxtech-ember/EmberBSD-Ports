@@ -110,6 +110,12 @@ def cmake_arguments(source, work, stage, base, native, compiler, definition, ver
     # Scope unused-argument suppression to link options, never all diagnostics.
     driver_flags = ['--no-default-config', '--start-no-unused-arguments',
                     linker, '--end-no-unused-arguments']
+    # Map build-host roots to the canonical paths that the OS MKREPRO build
+    # uses. __FILE__ strings and debug records are then host-independent.
+    driver_flags += ['-ffile-prefix-map=' + str(path) + '=' + canonical for path, canonical in (
+        (source, '/usr/src/external/llvm'), (work, '/usr/obj/llvm-runtime/' + phase),
+        (stage, ''), (base, ''),
+        (compiler['resource_dir'], '/usr/pkg/llvm/lib/clang/' + version.split('.')[0]))]
     for language in ('C', 'CXX', 'ASM'):
         settings['CMAKE_' + language + '_FLAGS'] = shlex.join(driver_flags)
     if phase != 'full':
