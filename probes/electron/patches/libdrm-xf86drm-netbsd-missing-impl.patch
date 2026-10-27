@@ -1,0 +1,159 @@
+libdrm: treat NetBSD like other BSDs in drmParseSubsystemType; silence #warning under -Werror.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Source: Chromium third_party/libdrm (electron-source) under EmberBSD.
+Apply after netbsd-cross-source.libdrm casts.
+NetBSD hits the generic #else "#warning Missing implementation*" arms under
+-Werror. Add __NetBSD__ to the BSD elif for drmParseSubsystemType (PCI bus)
+and wrap every Missing-implementation #warning with #if !defined(__NetBSD__).
+
+--- a/xf86drm.c
++++ b/xf86drm.c
+@@ -3632,18 +3632,20 @@ static int drmParseSubsystemType(int maj, int min)
+             return DRM_BUS_VIRTIO;
+         strncat(path, "/..", PATH_MAX);
+         subsystem_type = get_subsystem_type(path);
+         if (subsystem_type < 0)
+             return DRM_BUS_VIRTIO;
+      }
+     return subsystem_type;
+-#elif defined(__OpenBSD__) || defined(__DragonFly__) || defined(__FreeBSD__)
++#elif defined(__OpenBSD__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__)
+     return DRM_BUS_PCI;
+ #else
++#if !defined(__NetBSD__)
+ #warning "Missing implementation of drmParseSubsystemType"
++#endif
+     return -EINVAL;
+ #endif
+ }
+ 
+ #ifdef __linux__
+ static void
+ get_pci_path(int maj, int min, char *pci_path)
+@@ -3767,15 +3769,17 @@ static int drmParsePciBusInfo(int maj, int min, drmPciBusInfoPtr info)
+     info->dev = pinfo.dev;
+     info->func = pinfo.func;
+ 
+     return 0;
+ #elif defined(__FreeBSD__)
+     return get_sysctl_pci_bus_info(maj, min, info);
+ #else
++#if !defined(__NetBSD__)
+ #warning "Missing implementation of drmParsePciBusInfo"
++#endif
+     return -EINVAL;
+ #endif
+ }
+ 
+ drm_public int drmDevicesEqual(drmDevicePtr a, drmDevicePtr b)
+ {
+     if (a == NULL || b == NULL)
+@@ -3979,15 +3983,17 @@ static int drmParsePciDeviceInfo(int maj, int min,
+     device->device_id = results[0].pc_device;
+     device->subvendor_id = results[0].pc_subvendor;
+     device->subdevice_id = results[0].pc_subdevice;
+     device->revision_id = results[0].pc_revid;
+ 
+     return 0;
+ #else
++#if !defined(__NetBSD__)
+ #warning "Missing implementation of drmParsePciDeviceInfo"
++#endif
+     return -EINVAL;
+ #endif
+ }
+ 
+ static void drmFreePlatformDevice(drmDevicePtr device)
+ {
+     if (device->deviceinfo.platform) {
+@@ -4208,15 +4214,17 @@ static int drmParseUsbBusInfo(int maj, int min, drmUsbBusInfoPtr info)
+         return -errno;
+ 
+     info->bus = bus;
+     info->dev = dev;
+ 
+     return 0;
+ #else
++#if !defined(__NetBSD__)
+ #warning "Missing implementation of drmParseUsbBusInfo"
++#endif
+     return -EINVAL;
+ #endif
+ }
+ 
+ static int drmParseUsbDeviceInfo(int maj, int min, drmUsbDeviceInfoPtr info)
+ {
+ #ifdef __linux__
+@@ -4239,15 +4247,17 @@ static int drmParseUsbDeviceInfo(int maj, int min, drmUsbDeviceInfoPtr info)
+         return -errno;
+ 
+     info->vendor = vendor;
+     info->product = product;
+ 
+     return 0;
+ #else
++#if !defined(__NetBSD__)
+ #warning "Missing implementation of drmParseUsbDeviceInfo"
++#endif
+     return -EINVAL;
+ #endif
+ }
+ 
+ static int drmProcessUsbDevice(drmDevicePtr *device, const char *node,
+                                int node_type, int maj, int min,
+                                bool fetch_deviceinfo, uint32_t flags)
+@@ -4313,15 +4323,17 @@ static int drmParseOFBusInfo(int maj, int min, char *fullname)
+ 
+     strncpy(fullname, tmp_name, DRM_PLATFORM_DEVICE_NAME_LEN);
+     fullname[DRM_PLATFORM_DEVICE_NAME_LEN - 1] = '\0';
+     free(name);
+ 
+     return 0;
+ #else
++#if !defined(__NetBSD__)
+ #warning "Missing implementation of drmParseOFBusInfo"
++#endif
+     return -EINVAL;
+ #endif
+ }
+ 
+ static int drmParseOFDeviceInfo(int maj, int min, char ***compatible)
+ {
+ #ifdef __linux__
+@@ -4373,15 +4385,17 @@ static int drmParseOFDeviceInfo(int maj, int min, char ***compatible)
+ free:
+     while (i--)
+         free((*compatible)[i]);
+ 
+     free(*compatible);
+     return err;
+ #else
++#if !defined(__NetBSD__)
+ #warning "Missing implementation of drmParseOFDeviceInfo"
++#endif
+     return -EINVAL;
+ #endif
+ }
+ 
+ static int drmProcessPlatformDevice(drmDevicePtr *device,
+                                     const char *node, int node_type,
+                                     int maj, int min, bool fetch_deviceinfo,
+@@ -4479,15 +4493,17 @@ static int drmParseFauxBusInfo(int maj, int min, char *fullname)
+         return -ENOENT;
+ 
+     strncpy(fullname, name, DRM_FAUX_DEVICE_NAME_LEN - 1);
+     fullname[DRM_FAUX_DEVICE_NAME_LEN - 1] = '\0';
+ 
+     return 0;
+ #else
++#if !defined(__NetBSD__)
+ #warning "Missing implementation of drmParseFauxBusInfo"
++#endif
+     return -EINVAL;
+ #endif
+ }
+ 
+ static int drmProcessFauxDevice(drmDevicePtr *device,
+                                 const char *node, int node_type,
+                                 int maj, int min, bool fetch_deviceinfo,

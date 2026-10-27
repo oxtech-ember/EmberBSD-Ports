@@ -561,6 +561,11 @@
       "path": "skia-xml-parser-expat-hash-salt-deprecated.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "libdrm-xf86drm-netbsd-missing-impl.patch",
+      "strip": 1,
+      "root": "third_party/libdrm/src"
     }
   ],
   "superseded": {
