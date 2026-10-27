@@ -296,3 +296,26 @@ separate acceptance gates.
 Linux/amd64 validation used the quick profile with native Clang 23.1.4.
 The fixture compiled and ran; SVG, shader and QML negative cases passed.
 This result covers host generators. It does not cover target execution.
+
+## Native Qt Network runtime
+
+Native client development also needs a runnable TLS backend. For an
+OpenSSL-enabled Qtbase build, build its existing runtime plugin:
+
+```sh
+/absolute/native/cmake --build /absolute/host-qt/qtbase \
+    --target QTlsBackendOpenSSLPlugin --parallel 2
+/absolute/native/cmake -S probes/plasma-mobile/toolkit/tests/network-runtime \
+    -B /absolute/new-network-check -G Ninja \
+    -DCMAKE_MAKE_PROGRAM=/absolute/native/ninja \
+    -DCMAKE_CXX_COMPILER=/absolute/native/clang++ \
+    -DCMAKE_PREFIX_PATH=/absolute/host-qt/qtbase
+/absolute/native/cmake --build /absolute/new-network-check
+LD_LIBRARY_PATH=/absolute/native/lib /absolute/native/ctest \
+    --test-dir /absolute/new-network-check -V
+```
+
+The in-process check verifies backend loading and reports its runtime version.
+Linux/amd64 Clang 23.1.4 loaded OpenSSL 3.6.5 after the plugin build.
+The same fixture failed before the plugin existed. TLS handshakes and target
+execution have separate coverage. Host generator checks remain independent.
