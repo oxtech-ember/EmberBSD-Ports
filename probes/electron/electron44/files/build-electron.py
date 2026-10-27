@@ -327,25 +327,24 @@ def ensure_allocator_shim_throw_netbsd(workspace):
         require(old in text, 'allocator_shim_internals.h __THROW block not recognized')
         path.write_text(text.replace(old, new, 1))
 
-    # cpp_symbols: libc++ operator new/delete need noexcept; remap __THROW here only.
+    # cpp_symbols: a header-level "#define __THROW noexcept" leaks into
+    # allocator_shim_override_libc_symbols.h (included next by allocator_shim.cc)
+    # and breaks libc malloc decls. Strip any such block; the C++ overrides get a
+    # literal noexcept from ensure_allocator_shim_cpp_noexcept instead.
     cpp = shim / 'allocator_shim_override_cpp_symbols.h'
     require(cpp.is_file(), 'allocator_shim_override_cpp_symbols.h missing')
     ctext = cpp.read_text()
-    marker = '#include "partition_alloc/shim/allocator_shim_internals.h"\n'
-    tag = 'EmberBSD/NetBSD: libc malloc must keep empty __THROW'
-    if tag not in ctext:
-        require(marker in ctext, 'cpp_symbols internals include missing')
-        snip = (
-            marker
-            + '\n'
-            + '// EmberBSD/NetBSD: libc malloc must keep empty __THROW (see internals.h),\n'
-            + '// but libc++ operator new/delete decls use noexcept — remap for this header.\n'
-            + '#if PA_BUILDFLAG(IS_NETBSD) || PA_BUILDFLAG(IS_BSD)\n'
-            + '#undef __THROW\n'
-            + '#define __THROW noexcept\n'
-            + '#endif\n'
-        )
-        cpp.write_text(ctext.replace(marker, snip, 1))
+    block = (
+        '\n'
+        '// EmberBSD/NetBSD: libc malloc must keep empty __THROW (see internals.h),\n'
+        '// but libc++ operator new/delete decls use noexcept \u2014 remap for this header.\n'
+        '#if PA_BUILDFLAG(IS_NETBSD) || PA_BUILDFLAG(IS_BSD)\n'
+        '#undef __THROW\n'
+        '#define __THROW noexcept\n'
+        '#endif\n'
+    )
+    if block in ctext:
+        cpp.write_text(ctext.replace(block, '', 1))
 
 
 def ensure_allocator_shim_cpp_noexcept(workspace):
