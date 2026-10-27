@@ -393,3 +393,25 @@ are checked. The explicit tool pair remains in Ninja inputs. Partial/relative
 selection and corrupt ELF fail; unchanged default and non-NetBSD routing is
 checked separately. This does not execute the target or accept an Electron
 runtime.
+
+The CUPS configuration check uses the actual prepared Chromium printing block,
+its pkg-config GN template and Python helper, selected GN and selected pkg-config.
+Explicit metadata-only fixtures verify the NetBSD target prefix, missing CUPS
+metadata refusal, macOS/ChromeOS selections and the disabled-printing case. The
+unpatched control executes a target `cups-config` script; the patched NetBSD
+route never invokes it. This checks configuration only, without compiling a
+CUPS library or establishing target ABI/runtime support.
+
+```sh
+/absolute/native-prefix/bin/python3.15 -B -I -S \
+  probes/electron/tests/electron-cups.py \
+  --source /absolute/prepared-electron/src --work /absolute/new-cups-check \
+  --git /absolute/control-git --gn /absolute/native-prefix/bin/gn \
+  --pkg-config /absolute/native-prefix/bin/pkg-config \
+  --utility-path /absolute/native-prefix/bin:/absolute/native-prefix/gnu/bin
+```
+
+Run against the prepared source immediately before
+`gn-netbsd-cups-pkgconfig.patch`. The common `print/libcups` recipe installs
+`cups.pc`; production configuration requires that target package in the selected
+EmberBSD sysroot and does not substitute the build host's CUPS metadata.

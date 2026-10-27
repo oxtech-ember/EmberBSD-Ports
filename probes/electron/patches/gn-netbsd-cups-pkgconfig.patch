@@ -1,0 +1,20 @@
+$NetBSD$
+
+Use the common target libcups pkg-config interface for NetBSD printing.
+Retain upstream ChromeOS, macOS and other Unix selections.
+Origin: EmberBSD (AI-assisted), Chromium 152.0.7977.167.
+Status: local cross-build integration; not submitted upstream.
+
+--- a/printing/BUILD.gn
++++ b/printing/BUILD.gn
+@@ -461,7 +461,9 @@
+ }
+ 
+ if (use_cups) {
+-  if (is_chromeos_device) {
++  # NetBSD CUPS belongs to the target pkgsrc prefix. Do not execute a
++  # target cups-config script on the build host.
++  if (is_chromeos_device || is_netbsd) {
+     pkg_config("cups") {
+       packages = [ "cups" ]
+     }

@@ -496,6 +496,11 @@
       "path": "gn-selected-elf-strip.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "gn-netbsd-cups-pkgconfig.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
