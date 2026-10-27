@@ -1,0 +1,24 @@
+$NetBSD$
+
+Select the C compiler tag for libtool.
+
+--- libhfs/Makefile.in.orig
++++ libhfs/Makefile.in
+@@ -113,7 +113,7 @@
+ ###############################################################################
+ 
+ $(HFSTARGET): $(HFSOBJS)
+-	$(LIBTOOL) --mode=link $(CC) -o $(HFSTARGET) $(HFSOBJS:.o=.lo) \
++	$(LIBTOOL) --tag=CC --mode=link $(CC) -o $(HFSTARGET) $(HFSOBJS:.o=.lo) \
+ 		-rpath $(LIBDEST) -version-info 1:0
+ 
+ os.c: os/$(OS).c
+@@ -121,7 +121,7 @@
+ 	$(SOFTLINK) os/$(OS).c $@
+ 
+ .c.o:
+-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c $(.IMPSRC)
++	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(CFLAGS) -c $(.IMPSRC)
+ 
+ ### DEPENDENCIES FOLLOW #######################################################
+ 
