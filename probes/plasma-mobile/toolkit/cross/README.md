@@ -1,13 +1,13 @@
 # Cross-building the common Qt toolkit
 
 The target is the shared Qt 6.12.0 package set for EmberBSD/AArch64, using
-GCC 16.2 and the current common Mesa/LLVM providers. The build host may be
-macOS. A host generator is a build prerequisite, not a second target Qt.
+the selected common Clang/LLVM toolchain and current Mesa providers.
+The native generator host may be Linux or macOS. A host generator is a build prerequisite, not a second target Qt.
 The final target prefix remains `/usr/pkg/qt6`.
 
 ## Native generators
 
-Use the seven original Qt archives in [sources.tsv](../sources.tsv): qtbase,
+The default `QT_HOST_TOOLS_PROFILE=full` uses the seven original Qt archives in [sources.tsv](../sources.tsv): qtbase,
 qtsvg, qtshadertools, qtdeclarative, qttools, qtquicktimeline and qtquick3d. The host recipe verifies their
 SHA256 before extracting anything. It uses upstream sources with the shared missing-XML null guard;
 EmberBSD target portability patches are applied separately by pkgsrc.
@@ -18,6 +18,8 @@ cannot generate a Qt 6.12 build. See the
 
 ```sh
 CMAKE=/absolute/native/cmake NINJA=/absolute/native/ninja \
+TAR=/absolute/native/bsdtar PATCH=/absolute/native/patch \
+HOST_PYTHON=/absolute/native/python3 \
 WAYLAND_SCANNER=/absolute/wayland-1.26/bin/wayland-scanner \
 HOST_LLVM_BUILD=/absolute/native-llvm23 HOST_CLANG_BUILD=/absolute/native-clang23 \
 HOST_DBUS_PREFIX=/absolute/native-dbus \
@@ -25,6 +27,12 @@ HOST_CC=/absolute/native/cc HOST_CXX=/absolute/native/c++ JOBS=4 \
 sh probes/plasma-mobile/toolkit/cross/build-host-tools.sh \
     /absolute/verified-distfiles /absolute/new-host-qt
 ```
+
+Set `QT_HOST_TOOLS_PROFILE=quick` for the Core/Quick/QML generator subset.
+It uses qtbase, qtsvg, qtshadertools and qtdeclarative. It does not require
+qttools, Quick3D, QuickTimeline or the qdoc Clang inputs. The default remains
+`full`. `QT_HOST_TOOLS_PLAN_ONLY=1` checks the selected inputs without building.
+Select native compilers explicitly; the producer has no system compiler fallback.
 
 `CMAKE` must support Zstandard archives. Qt uses the CMake archive API for its
 MIME database. Without this support, Qt stops with `CMake was not built with
@@ -153,17 +161,21 @@ Keep target package root modes unchanged. Do not select target tool exports.
 
 ## Generator acceptance
 
-On macOS, run the native generator check after building:
+On Linux or macOS, run the native generator check after building:
 
 ```sh
-HOST_CXX=/absolute/native/c++ sh \
-    probes/plasma-mobile/toolkit/cross/check-host-tools.sh \
+HOST_CC=/absolute/native/cc HOST_CXX=/absolute/native/c++ \
+CMAKE=/absolute/native/cmake NINJA=/absolute/native/ninja \
+FILE=/absolute/file-inspection-command \
+    sh probes/plasma-mobile/toolkit/cross/check-host-tools.sh \
     /absolute/host-qt/qtbase /absolute/new-generator-check
 ```
 
-It compiles and runs a real QObject/resource/translation consumer, compiles
-UI and QML registration output, generates a shader bundle, QML bytecode
-and Wayland headers. It converts an SVG path to QML, compiles that QML to
+Set the same `QT_HOST_TOOLS_PROFILE` used by the producer. The full profile
+also checks translations with lrelease. The quick profile omits that qttools
+consumer. Both profiles compile and run a real QObject/resource consumer. They compile
+UI and QML registration output, generate a shader bundle, QML bytecode
+and Wayland headers. The check converts an SVG path to QML, compiles that QML to
 bytecode, and rejects missing SVG and invalid shader/QML inputs. It does not
 run a GUI or establish target Qt compatibility. `check-inputs.sh` takes
 `DISTFILES NEW_WORK` with the builder's tool environment and verifies
@@ -280,3 +292,7 @@ with CMake's `-U` option before reconfiguration; do not delete the object tree.
 Qtbase compilation and packaging pass with this correction. The installed
 Core/Gui/SVG check now passes; portal behavior and the full desktop remain
 separate acceptance gates.
+
+Linux/amd64 validation used the quick profile with native Clang 23.1.4.
+The fixture compiled and ran; SVG, shader and QML negative cases passed.
+This result covers host generators. It does not cover target execution.
