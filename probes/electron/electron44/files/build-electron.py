@@ -122,7 +122,13 @@ def native_inputs(options, sdk):
 
 
 def prefer_chromium_libcxx_headers(bound_dir):
-    """Drop SDK -nostdinc++/libc++ isystem from bound cxx; Electron sets use_custom_libcxx=true."""
+    """Make Chromium libc++ win over SDK/resource C headers (use_custom_libcxx=true).
+
+    SDK bind prepends -nostdinc++/-isystem sysroot libc++ and host clang resource
+    -isystem. Those must not precede third_party/libc++ or <cstddef> fails to find
+    libc++'s <stddef.h>. Drop them from bound cxx; ninja supplies -nostdinc++ and
+    Chromium -isystem paths. Keep -resource-dir for compiler-rt builtins.
+    """
     path = Path(bound_dir) / 'commands.json'
     record = json.loads(path.read_text())
     cxx = record['commands']['cxx']
@@ -132,19 +138,22 @@ def prefer_chromium_libcxx_headers(bound_dir):
         if cxx[i] == '-nostdinc++':
             i += 1
             continue
-        if (cxx[i] == '-isystem' and i + 1 < len(cxx) and
-                (cxx[i + 1].endswith('/include/c++/v1') or '/include/c++/v1' in cxx[i + 1])):
-            i += 2
-            continue
+        if cxx[i] == '-isystem' and i + 1 < len(cxx):
+            nxt = cxx[i + 1]
+            if ('/include/c++/v1' in nxt or
+                    re.search(r'/lib/clang/[^/]+/include$', nxt)):
+                i += 2
+                continue
         out.append(cxx[i])
         i += 1
-    require(out != cxx, 'bound cxx lacked SDK libc++ headers to drop for custom libc++')
+    require(out != cxx, 'bound cxx lacked SDK/resource header flags to drop for custom libc++')
     record['commands']['cxx'] = out
     path.chmod(0o644)
     tmp = path.with_name('commands.json.tmp')
     tmp.write_text(json.dumps(record, indent=2, sort_keys=True) + '\n')
     tmp.chmod(0o444)
     tmp.replace(path)
+
 
 
 def target_inputs(options, sdk, native, environment, work):
