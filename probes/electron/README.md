@@ -196,6 +196,7 @@ patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-readelf.pat
 patch -p0 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-asmflags.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-compiler-family.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-wayland-scanner.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-darwin-sdk-metadata.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-bindgen-host-tools.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-netbsd-x64-targets.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-version-netbsd.patch
@@ -531,6 +532,32 @@ default producer copies the native binary to the expected bundled output path;
 it does not compile the bundled scanner. No production sources or installed
 tools are modified. This checks protocol generation, not the full Chromium
 graph, C/C++ compilation, target ABI or Electron runtime.
+
+## Explicit Darwin SDK metadata
+
+The [Darwin metadata patch](patches/gn-darwin-sdk-metadata.patch) keeps
+`//build/toolchain/mac:clang_arm64` available for native host generators while
+an independent target toolchain builds EmberBSD. Select `emberbsd_sdk_source`,
+`emberbsd_xcode_version_plist`, `emberbsd_mac_toolchain_bin` and `mac_sdk_path`
+together. The first input must provide the common SDK Python API 1 and
+[`DARWIN_SDK_API = 1`](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/src/emberbsd_sdk/darwin_sdk.py).
+The native bin directory comes from the recipe's selected host prefix; the
+macOS SDK supplies ABI headers/libraries and metadata, not compiler tools.
+
+The adapter reads the three explicit plists through the shared SDK reader,
+compares the required SDK minimum numerically and formats Chromium's DTXcode
+fields. It never runs `xcrun`, `xcodebuild`, `xcode-select` or `sw_vers`. Missing
+or partial explicit selections fail. With all three EmberBSD arguments empty,
+the original upstream discovery behavior remains. The three plist paths are
+GN inputs, so metadata changes trigger Ninja's GN regeneration.
+
+The [actual GN/Ninja test](tests/gn-darwin-sdk-metadata.py) applies the patch to
+the exact pinned `mac_sdk.gni`, checks actual SDK values, empty-PATH and
+process-audit controls, incompatible SDK API, partial arguments, numeric version
+ordering and plist regeneration. Imports unrelated to this metadata leaf are
+small fixtures; the test does not compile host or target code, generate the
+complete Electron graph or establish runtime compatibility. The ordinary
+recipe controller must supply these inputs when it selects its native toolchain.
 
 ## Explicit native macOS GCC host alternative
 

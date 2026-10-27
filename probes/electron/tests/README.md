@@ -323,3 +323,21 @@ the corrected root and Electron selections, unchanged non-BSD behavior, ELF stri
 and the existing NetBSD policy sources. The work directory retains hashes,
 commands, JSON observations, and bounded fixture sources. It does not build
 Electron or validate NetBSD OS isolation or installed sandbox behavior.
+
+## Darwin host ABI metadata
+
+```sh
+python3.15 -B -I -S probes/electron/tests/gn-darwin-sdk-metadata.py \
+  --source /absolute/chromium/src --sdk-source /absolute/EmberBSD-SDK \
+  --macos-sdk /absolute/MacOSX.sdk \
+  --xcode-version-plist /absolute/Xcode.app/Contents/version.plist \
+  --native-bin /absolute/native/bin --git /absolute/control/git \
+  --gn /absolute/native/bin/gn --ninja /absolute/native/bin/ninja \
+  --work /absolute/NEW_DARWIN_METADATA_WORK
+```
+
+This reads the exact pinned Chromium leaf from the acquired Git source without
+changing it. Real GN invokes the shared SDK reader; actual SDK values, explicit
+selection refusals and GN regeneration after a plist change are checked. No
+compiler or Apple discovery service runs. See the
+[metadata contract](../README.md#explicit-darwin-sdk-metadata) for its scope.

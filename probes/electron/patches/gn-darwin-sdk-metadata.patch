@@ -1,0 +1,265 @@
+Chromium: read explicit Darwin SDK metadata through the shared SDK API.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Source: Chromium 152.0.7977.167, dd78960ccd8a03a2fe1f629543d27783885b78e9.
+Keep upstream discovery when no EmberBSD inputs are selected. Native tools
+are independent inputs; this adapter never invokes Apple discovery services.
+
+--- a/build/config/mac/mac_sdk.gni
++++ b/build/config/mac/mac_sdk.gni
+@@ -42,6 +42,12 @@
+   # `mac_sdk_min` is used.
+   mac_sdk_path = ""
+ 
++  # Explicit EmberBSD host ABI metadata. Empty inputs keep upstream discovery.
++  # Compiler and utilities are selected independently from the macOS SDK.
++  emberbsd_sdk_source = ""
++  emberbsd_xcode_version_plist = ""
++  emberbsd_mac_toolchain_bin = ""
++
+   # The SDK name as accepted by `xcodebuild`.
+   mac_sdk_name = "macosx"
+ 
+@@ -83,67 +89,104 @@
+   _hermetic_xcode_path = "//build/mac_files/xcode_binaries"
+ }
+ 
+-script_name = "//build/config/apple/sdk_info.py"
+-sdk_info_args = []
+-if (!use_system_xcode) {
+-  sdk_info_args += [
+-    "--developer_dir",
+-    rebase_path(_hermetic_xcode_path, "", root_build_dir),
+-  ]
+-}
++_emberbsd_sdk_explicit = emberbsd_sdk_source != "" ||
++                        emberbsd_xcode_version_plist != "" ||
++                        emberbsd_mac_toolchain_bin != ""
++if (_emberbsd_sdk_explicit) {
++  assert(emberbsd_sdk_source != "" && emberbsd_xcode_version_plist != "" &&
++             emberbsd_mac_toolchain_bin != "" && mac_sdk_path != "",
++         "Explicit Darwin metadata needs SDK source, mac_sdk_path, Xcode plist and native toolchain bin")
++  _mac_sdk_result = exec_script(
++          "//build/config/apple/emberbsd_sdk_info.py",
++          [
++            "--sdk-source",
++            emberbsd_sdk_source,
++            "--macos-sdk",
++            mac_sdk_path,
++            "--xcode-version-plist",
++            emberbsd_xcode_version_plist,
++            "--minimum-sdk",
++            mac_sdk_min,
++            "--toolchain-bin",
++            emberbsd_mac_toolchain_bin,
++          ],
++          "scope",
++          [
++            mac_sdk_path + "/SDKSettings.plist",
++            mac_sdk_path + "/System/Library/CoreServices/SystemVersion.plist",
++            emberbsd_xcode_version_plist,
++            emberbsd_sdk_source + "/src/emberbsd_sdk/darwin_sdk.py",
++          ])
++  mac_sdk_path = _mac_sdk_result.sdk_path
++  mac_sdk_version = _mac_sdk_result.sdk_version
++  mac_sdk_build_version = _mac_sdk_result.sdk_build
++  mac_bin_path = _mac_sdk_result.bin_path
++  xcode_version = _mac_sdk_result.xcode_version
++  xcode_version_int = _mac_sdk_result.xcode_version_int
++  xcode_build = _mac_sdk_result.xcode_build
++} else {
++  script_name = "//build/config/apple/sdk_info.py"
++  sdk_info_args = []
++  if (!use_system_xcode) {
++    sdk_info_args += [
++      "--developer_dir",
++      rebase_path(_hermetic_xcode_path, "", root_build_dir),
++    ]
++  }
+ 
+-# RBE requires paths relative to source directory. When using system
+-# Xcode, this is done by creating symbolic links in root_build_dir.
+-if (use_system_xcode) {
+-  sdk_info_args += [
+-    "--get_sdk_info",
+-    "--create_symlink_at",
+-    "sdk/xcode_links",
+-    "--root_build_dir",
+-    root_build_dir,
+-  ]
+-}
+-sdk_info_args += [ mac_sdk_name ]
++  # RBE requires paths relative to source directory. When using system
++  # Xcode, this is done by creating symbolic links in root_build_dir.
++  if (use_system_xcode) {
++    sdk_info_args += [
++      "--get_sdk_info",
++      "--create_symlink_at",
++      "sdk/xcode_links",
++      "--root_build_dir",
++      root_build_dir,
++    ]
++  }
++  sdk_info_args += [ mac_sdk_name ]
+ 
+-_mac_sdk_result = exec_script(script_name, sdk_info_args, "scope")
+-xcode_version = _mac_sdk_result.xcode_version
+-xcode_version_int = _mac_sdk_result.xcode_version_int
+-xcode_build = _mac_sdk_result.xcode_build
+-if (mac_sdk_path == "" && use_system_xcode) {
+-  mac_sdk_path = _mac_sdk_result.sdk_path
+-}
++  _mac_sdk_result = exec_script(script_name, sdk_info_args, "scope")
++  xcode_version = _mac_sdk_result.xcode_version
++  xcode_version_int = _mac_sdk_result.xcode_version_int
++  xcode_build = _mac_sdk_result.xcode_build
++  if (mac_sdk_path == "" && use_system_xcode) {
++    mac_sdk_path = _mac_sdk_result.sdk_path
++  }
+ 
+-if (use_system_xcode) {
+-  # The tool will print the SDK path on the first line, and the version on the
+-  # second line.
+-  find_sdk_args = [
+-    "--print_sdk_path",
+-    "--print_bin_path",
+-    "--print_sdk_build",
+-    mac_sdk_min,
+-  ]
+-  find_sdk_lines =
+-      exec_script("//build/mac/find_sdk.py", find_sdk_args, "list lines")
+-  mac_sdk_version = find_sdk_lines[3]
+-  mac_sdk_build_version = find_sdk_lines[2]
+-  if (mac_sdk_path == "") {
+-    mac_sdk_path = find_sdk_lines[0]
+-    mac_bin_path = find_sdk_lines[1]
++  if (use_system_xcode) {
++    # The tool will print the SDK path on the first line, and the version on the
++    # second line.
++    find_sdk_args = [
++      "--print_sdk_path",
++      "--print_bin_path",
++      "--print_sdk_build",
++      mac_sdk_min,
++    ]
++    find_sdk_lines =
++        exec_script("//build/mac/find_sdk.py", find_sdk_args, "list lines")
++    mac_sdk_version = find_sdk_lines[3]
++    mac_sdk_build_version = find_sdk_lines[2]
++    if (mac_sdk_path == "") {
++      mac_sdk_path = find_sdk_lines[0]
++      mac_bin_path = find_sdk_lines[1]
++    } else {
++      mac_bin_path = find_sdk_lines[1]
++    }
+   } else {
+-    mac_bin_path = find_sdk_lines[1]
++    mac_sdk_version = mac_sdk_official_version
++    mac_sdk_build_version = mac_sdk_official_build_version
++    _dev = _hermetic_xcode_path + "/Contents/Developer"
++    _sdk = "MacOSX${mac_sdk_version}.sdk"
++    mac_sdk_path = _dev + "/Platforms/MacOSX.platform/Developer/SDKs/$_sdk"
++    mac_bin_path = _dev + "/Toolchains/XcodeDefault.xctoolchain/usr/bin/"
++
++    # If we're using hermetic Xcode, then we want the paths to be relative so that
++    # generated ninja files are independent of the directory location.
++    # TODO(thakis): Do this at the uses of this variable instead.
++    mac_bin_path = rebase_path(mac_bin_path, root_build_dir)
+   }
+-} else {
+-  mac_sdk_version = mac_sdk_official_version
+-  mac_sdk_build_version = mac_sdk_official_build_version
+-  _dev = _hermetic_xcode_path + "/Contents/Developer"
+-  _sdk = "MacOSX${mac_sdk_version}.sdk"
+-  mac_sdk_path = _dev + "/Platforms/MacOSX.platform/Developer/SDKs/$_sdk"
+-  mac_bin_path = _dev + "/Toolchains/XcodeDefault.xctoolchain/usr/bin/"
+-
+-  # If we're using hermetic Xcode, then we want the paths to be relative so that
+-  # generated ninja files are independent of the directory location.
+-  # TODO(thakis): Do this at the uses of this variable instead.
+-  mac_bin_path = rebase_path(mac_bin_path, root_build_dir)
+ }
+ 
+ _sdk_root = rebase_path(mac_sdk_path, root_build_dir)
+--- /dev/null
++++ b/build/config/apple/emberbsd_sdk_info.py
+@@ -0,0 +1,79 @@
++#!/usr/bin/env python3
++# SPDX-License-Identifier: BSD-2-Clause
++# Copyright (c) 2026 EmberBSD contributors.
++# Origin: EmberBSD (AI-assisted), not submitted upstream.
++"""Format explicit SDK metadata for Chromium; do not discover or run tools."""
++import argparse
++import importlib
++import json
++from pathlib import Path
++import re
++import sys
++
++sys.dont_write_bytecode = True
++
++
++def version(value):
++    if re.fullmatch(r'[0-9]+(?:\.[0-9]+){0,2}', value) is None:
++        raise ValueError('invalid minimum macOS SDK version')
++    return tuple((list(map(int, value.split('.'))) + [0, 0])[:3])
++
++
++def gn_string(value):
++    if any(ord(char) < 32 or ord(char) == 127 for char in value):
++        raise ValueError('GN metadata contains a control character')
++    return json.dumps(value, ensure_ascii=False).replace('$', r'\$')
++
++
++def load_reader(source):
++    if not Path(source).is_absolute():
++        raise ValueError('select an absolute SDK source')
++    package = Path(source).resolve(strict=True) / 'src/emberbsd_sdk'
++    sys.path.insert(0, str(package.parent))
++    sdk = importlib.import_module('emberbsd_sdk')
++    if Path(sdk.__file__).resolve() != package / '__init__.py' or type(getattr(sdk, 'API_VERSION', None)) is not int or sdk.API_VERSION != 1:
++        raise ValueError('selected SDK must provide API 1')
++    reader = importlib.import_module('emberbsd_sdk.darwin_sdk')
++    if Path(reader.__file__).resolve() != package / 'darwin_sdk.py' or type(getattr(reader, 'DARWIN_SDK_API', None)) is not int or reader.DARWIN_SDK_API != 1:
++        raise ValueError('selected SDK must provide Darwin SDK API 1')
++    errors = importlib.import_module('emberbsd_sdk.errors')
++    if Path(errors.__file__).resolve() != package / 'errors.py':
++        raise ValueError('SDK error module origin differs')
++    return reader.read_metadata, errors.SDKError
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    for name in ('sdk-source', 'macos-sdk', 'xcode-version-plist', 'minimum-sdk', 'toolchain-bin'):
++        parser.add_argument('--' + name, required=True)
++    args = parser.parse_args()
++    try:
++        tools = Path(args.toolchain_bin)
++        if not tools.is_absolute() or not tools.is_dir():
++            raise ValueError('select an absolute native toolchain bin directory')
++        # This directory is already selected by the recipe's native-prefix
++        # interface. Metadata does not choose or replace any native tool.
++        read_metadata, SDKError = load_reader(args.sdk_source)
++        try:
++            info = read_metadata(args.macos_sdk, xcode_version_plist=args.xcode_version_plist)
++        except SDKError as error:
++            raise ValueError(str(error)) from error
++        if version(info['sdk_version']) < version(args.minimum_sdk):
++            raise ValueError('selected macOS SDK is older than the requested minimum')
++        parts = (info['xcode_version'].split('.') + ['0', '0'])[:3]
++        # Match upstream sdk_info.py FormatVersion/DTXcode, including padding.
++        xcode = ('%2s%s%s' % tuple(parts)).replace(' ', '0')
++        values = dict(sdk_path=info['sdk_path'], sdk_version=info['sdk_version'],
++                      sdk_build=info['sdk_build'], xcode_version=xcode,
++                      xcode_version_int=int(xcode, 10), xcode_build=info['xcode_build'],
++                      bin_path=str(tools.resolve()) + '/')
++        for name, value in sorted(values.items()):
++            print(name + '=' + (gn_string(value) if isinstance(value, str) else str(value)))
++    except (ImportError, OSError, ValueError) as error:
++        print('Darwin GN metadata: ' + str(error), file=sys.stderr)
++        return 1
++    return 0
++
++
++if __name__ == '__main__':
++    raise SystemExit(main())
