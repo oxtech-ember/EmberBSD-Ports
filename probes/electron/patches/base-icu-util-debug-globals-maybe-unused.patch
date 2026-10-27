@@ -1,0 +1,25 @@
+Chromium: mark ICU debug globals [[maybe_unused]] under NDEBUG.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Source: Chromium electron-source tree under EmberBSD.
+Apply after other base/i18n patches.
+Official/NDEBUG builds compile out readers of these g_debug_icu_* globals
+while the assignments remain, tripping -Wunused-but-set-global under -Werror.
+
+--- a/base/i18n/icu_util.cc
++++ b/base/i18n/icu_util.cc
+@@ -79,10 +79,10 @@
+ #if (ICU_UTIL_DATA_IMPL == ICU_UTIL_DATA_FILE)
+ 
+ // To debug http://crbug.com/445616.
+-int g_debug_icu_last_error;
+-int g_debug_icu_load;
+-int g_debug_icu_pf_error_details;
+-int g_debug_icu_pf_last_error;
++[[maybe_unused]] int g_debug_icu_last_error;
++[[maybe_unused]] int g_debug_icu_load;
++[[maybe_unused]] int g_debug_icu_pf_error_details;
++[[maybe_unused]] int g_debug_icu_pf_last_error;
+ #if BUILDFLAG(IS_WIN)
+ wchar_t g_debug_icu_pf_filename[_MAX_PATH];
+ #endif  // BUILDFLAG(IS_WIN)

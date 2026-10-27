@@ -541,9 +541,20 @@
       "path": "base-trace-log-testing-ptr-maybe-unused.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "build-compiler-bsd-unused-but-set-global.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "base-icu-util-debug-globals-maybe-unused.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
     "gn-clang-resource-version.patch": "The source layer no longer substitutes Apple Clang21 for the selected LLVM resource version."
-  }
+  },
+  "patches_count_field_fix": null
 }
