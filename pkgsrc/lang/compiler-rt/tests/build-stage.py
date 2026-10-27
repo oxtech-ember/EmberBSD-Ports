@@ -76,6 +76,13 @@ class BuildStage(unittest.TestCase):
                 target.write_bytes(b'!<arch>\n' if empty_archive else object_archive(machine))
                 if extra:
                     target.with_name('libunrelated.a').write_bytes(object_archive(machine))
+        def binding(native, *, bindings, environment):
+            # Real selected commands are checked by native-shell-routing.py.
+            # This fixture isolates artifact and failed-producer boundaries.
+            self.assertIs(native, self.native)
+            self.assertEqual(bindings, str(self.work / 'native-commands'))
+            self.assertTrue(self.work.is_dir())
+            return dict(environment)
         context = dict(self.context, os_revision='f'*40) if changed_base else self.context
         with patch.object(owner, 'verify_source', side_effect=[self.prepared,
                  dict(self.prepared, tree_sha256='f'*64) if changed_source else self.prepared]), \
@@ -83,6 +90,7 @@ class BuildStage(unittest.TestCase):
              patch.object(producer, 'base_inputs', return_value=context), \
              patch.object(producer, 'effective_recipe', return_value=self.recipe), \
              patch.object(producer, 'execute', side_effect=runner), \
+             patch('emberbsd_sdk.native_checks.check_environment', side_effect=binding), \
              patch('emberbsd_sdk.target_toolchain.clang_compiler', return_value={} if changed_compiler else self.compiler):
             return producer.build(owner, self.args)
 
