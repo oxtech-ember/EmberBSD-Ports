@@ -1,4 +1,4 @@
-# GCC16 cross compiler for EmberBSD
+# Cross compiler and target checks for EmberBSD
 
 Host controllers use Python 3.15 and its standard library. Set
 `export EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK`, or pass `--sdk-source SOURCE`
@@ -95,6 +95,30 @@ does not qualify target linking or the Fortran runtime.
 
 The separate [firmware entry point](firmware.md) prepares an explicit
 `arm-none-eabi` C frontend without extending the OS target policy.
+
+## Shared compiler acceptance
+
+`compile-tests.py` defaults to the selected Clang SDK toolchain. Select GCC
+explicitly with `--compiler-family gcc`; the compiler family is never inferred
+from a build failure. `--host-prefix` selects the same native Ports prefix used
+by the SDK for Clang controller tools. `--os-source` adds the OS-owned target
+runtime regressions (`libc-aliases`, base loader, and shared-memory fork/CAS)
+to this bundle. It records the OS test-source revision and hashes separately
+from the OS build revision. The bundle remains a compile result until its
+`run-target.sh` suite executes on the target.
+
+```sh
+/absolute/native-prefix/bin/python3.15 -B profiles/development-toolchain/cross/compile-tests.py \
+    --compiler-family clang --host-prefix /absolute/native-prefix \
+    --os-source /absolute/EmberBSD \
+    /absolute/clang-cross /absolute/sysroot /absolute/new-target-tests \
+    --sdk-source /absolute/EmberBSD-SDK
+```
+
+The OS source option is optional for the ordinary Ports test bundle. When it is
+present, the guest suite requires all OS-owned programs and reports nonce-bound
+check events after each successful check. It does not install compilers or
+developer tools in the guest.
 
 ## Application inputs
 

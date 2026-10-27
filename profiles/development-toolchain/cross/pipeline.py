@@ -340,6 +340,7 @@ def select_test_toolchain(family, prefix, sysroot, target, host_prefix=None):
             sysroot_identity=sysroot_identity)
     require(family == 'gcc', 'Unsupported target compiler family: ' + str(family))
     require(host_prefix is None, '--host-prefix is only used for Clang target tests')
+    sysroot_identity = gcc_sysroot_identity(sysroot, target)
     tools = check_compilers(prefix, target)
     gcc_root = sysroot / 'usr/pkg/gcc16'
     require((gcc_root / 'lib/gcc' / triplet / VERSION / 'crtbegin.o').is_file() and
@@ -364,20 +365,36 @@ def select_test_toolchain(family, prefix, sysroot, target, host_prefix=None):
                            for name in ('gcc', 'g++', 'readelf')}),
         readelf=str(tools['readelf']),
         compiler_banner=(version_output.stdout + version_output.stderr).decode('utf-8', 'strict'),
-        runtime_rows=runtime_rows, sysroot_identity=None)
+        runtime_rows=runtime_rows, sysroot_identity=sysroot_identity)
 
 
 def compile_test_options(args):
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument('--compiler-family', choices=('clang', 'gcc'), default='clang')
     parser.add_argument('--host-prefix')
+    parser.add_argument('--os-source', help='optional EmberBSD source tree for OS-owned target runtime regressions')
     return parser.parse_known_args(args)
+
+
+def os_runtime_programs(os_source, cc_link, output):
+    """Build the OS-owned runtime regressions with the already selected SDK C route."""
+    source = Path(os_source) / 'ember/tests/target-acceptance'
+    files = {name: source / name for name in ('libc-aliases.c', 'base-loader-smoke.c', 'fork-cas.c')}
+    require(all(path.is_file() and not path.is_symlink() for path in files.values()),
+            'OS target acceptance sources are incomplete or not regular files')
+    common = ['-std=c11', '-O2', '-Wall', '-Wextra', '-Werror']
+    return [
+        ('libc-aliases', cc_link + common + [files['libc-aliases.c']]),
+        ('base-loader-smoke', cc_link + common + [files['base-loader-smoke.c']]),
+        ('fork-cas', cc_link + common + ['-pthread', files['fork-cas.c']]),
+        ('fork-cas-static', cc_link + common + ['-pthread', '-static', files['fork-cas.c']])
+    ]
 
 
 def compile_tests_main(args):
     options, args = compile_test_options(args)
     target, _, args = parse(args)
-    require(len(args) == 3, 'Usage: compile-tests.py [--compiler-family clang|gcc] [--host-prefix PREFIX] [--target TARGET] PREFIX SYSROOT NEW_OUTPUT --sdk-source SOURCE')
+    require(len(args) == 3, 'Usage: compile-tests.py [--compiler-family clang|gcc] [--host-prefix PREFIX] [--target TARGET] [--os-source SOURCE] PREFIX SYSROOT NEW_OUTPUT --sdk-source SOURCE')
     prefix, sysroot = [build_path(value) for value in args[:2]]
     out = new_path(args[2])
     selected = select_test_toolchain(options.compiler_family, prefix, sysroot, target,
@@ -387,6 +404,8 @@ def compile_tests_main(args):
     readelf, family = selected['readelf'], selected['family']
     runtime_rows, compiler_banner = selected['runtime_rows'], selected['compiler_banner']
     identity = selected['identity']
+    os_source = None if options.os_source is None else build_path(options.os_source)
+    os_programs = [] if os_source is None else os_runtime_programs(os_source, cc_link, out)
     out.mkdir()
     (out / 'target.txt').write_text(target + '\n')
     (out / 'compiler-family.txt').write_text(family + '\n')
@@ -397,7 +416,12 @@ def compile_tests_main(args):
     sdk_root = Path(sdk_source.load())
     (out / 'source-sha256.tsv').write_text(''.join(
         path + '\t' + digest + '\n' for path, digest in
-        target_test_source_inventory(PROFILE, HERE, sdk_root)))
+        target_test_source_inventory(PROFILE, HERE, sdk_root, os_source=os_source)))
+    if os_source is not None:
+        os_commit = capture(['git', '-C', str(os_source), 'rev-parse', 'HEAD']).strip()
+        require(re.fullmatch('[0-9a-f]{40}', os_commit), 'Invalid OS test source revision')
+        (out / 'os-source-commit.txt').write_text(os_commit + '\n')
+        (out / 'os-tests.txt').write_text('yes\n')
     if selected['sysroot_identity'] is not None:
         jsonio.write_json(out / 'sysroot-identity.json', selected['sysroot_identity'])
     for suffix in ('', '-lto'):
@@ -405,12 +429,16 @@ def compile_tests_main(args):
     programs = [('float-constexpr.o', cxx + ['-std=c++20', '-O3', '-Wall', '-Wextra', '-Werror', '-c', HERE / 'tests/float-constexpr.cc']), ('libboundary.so', cxx_link + ['-std=c++20', '-O2', '-Wall', '-Wextra', '-Werror', '-fPIC', '-shared', source / 'boundary.cc', '-Wl,-soname,libboundary.so']), ('boundary', cxx_link + ['-std=c++20', '-O2', '-Wall', '-Wextra', '-Werror', '-pthread', source / 'boundary-main.cc', '-L' + str(out), '-Wl,-rpath,$ORIGIN', '-lboundary'])]
     for name, arguments in programs:
         logged(arguments + ['-o', out / name], out / (name + '-build.log'))
+    for name, arguments in os_programs:
+        logged(arguments + ['-o', out / name], out / (name + '-build.log'))
     dynamic = capture([readelf, '-d', out / 'boundary', out / 'libboundary.so'])
     (out / 'dynamic.txt').write_text(dynamic)
     require(not any(('RPATH' in line or 'RUNPATH' in line or 'NEEDED' in line) and any(str(path) in line for path in (prefix, sysroot, out)) for line in dynamic.splitlines()), 'Host path leaked into target dynamic dependencies')
     for name in ('check-runtime.sh', 'target-options.sh'):
         shutil.copy2(HERE / 'tests/target' / name, out / name)
     shutil.copy2(HERE / 'tests/target/run-target.sh', out / 'run-target.sh')
+    checks = dict(cross_c11=True, cross_cxx20=True)
+    jsonio.write_json(out / 'compile-checks.json', checks)
     print('Cross-compiled ' + family + ' tests: ' + str(out) + '; compilation does not establish target execution acceptance')
 
 
@@ -459,19 +487,79 @@ def clang_sysroot_identity(sysroot, target, runtime):
         runtime_bundle_sha256=sysroot_transfer._hash_json(runtime_bundle))
 
 
-def target_test_source_inventory(profile, cross, sdk_root):
+def gcc_sysroot_identity(sysroot, target):
+    """Bind the GCC16 target runtime to an inspected SDK build/import record."""
+    triplet = TARGETS[target][0]
+    build_path = sysroot / sysroot_transfer.RECEIPT
+    import_path = sysroot / application_toolchain.IMPORT_RECORD
+    require(paths.entry(sysroot / sysroot_transfer.INCOMPLETE) is None,
+            'cannot select an incomplete application sysroot')
+    require(not (build_path.is_file() and import_path.is_file()),
+            'Ambiguous selected SDK sysroot provenance')
+    if build_path.is_file():
+        receipt = jsonio.read_json(build_path)
+        provenance = sysroot_transfer._provenance(receipt, target)
+        signature = receipt['signature']
+        require(receipt['version'] in (1, 2) and
+                signature.get('compiler_family', 'gcc') == 'gcc' and
+                signature['compiler']['version'] == VERSION,
+                'Selected SDK sysroot is not a GCC16 build')
+        runtime_bundle = signature.get('runtime')
+        require(isinstance(runtime_bundle, dict), 'GCC sysroot runtime build record is missing')
+        source_record, source_digest = 'build-receipt', sha(build_path)
+        portable_digest = None
+        runtime_digest = sysroot_transfer._hash_json(runtime_bundle)
+        sources = provenance['sources']
+    elif import_path.is_file():
+        receipt = jsonio.read_json(import_path)
+        manifest = receipt.get('manifest')
+        require(receipt.get('format') == 'emberbsd-sysroot-import' and
+                type(receipt.get('version')) is int and receipt['version'] == 1 and
+                isinstance(manifest, dict), 'Invalid selected SDK sysroot import record')
+        portable_digest = receipt.get('manifest_sha256')
+        require(sysroot_transfer._hash_json(manifest) == portable_digest,
+                'Selected SDK sysroot import manifest digest changed')
+        sysroot_transfer.validate_manifest(manifest, target=target)
+        require(manifest['version'] == 1 and
+                manifest['provenance']['compiler']['version'] == VERSION,
+                'Selected SDK sysroot is not a GCC16 import')
+        source_record, source_digest = 'import-record', sha(import_path)
+        runtime_digest = manifest['provenance']['runtime_sha256']
+        sources = manifest['provenance']['sources']
+    else:
+        raise SDKError('GCC target tests require an inspected SDK sysroot build or import record')
+    return dict(format='emberbsd-target-test-sysroot-input', version=1,
+        scope='verified-compiler-runtime-input', execution_acceptance='not-run', target=target,
+        family='gcc', compiler=dict(family='gcc', version=VERSION, triplet=triplet),
+        sources=sources, source_record=source_record, source_record_sha256=source_digest,
+        portable_manifest_sha256=portable_digest,
+        runtime_provenance_sha256=runtime_digest)
+
+
+def target_test_source_inventory(profile, cross, sdk_root, *, os_source=None):
     """Return deterministic hashes for test inputs and selected source controllers."""
     ports_root = profile.parents[1]
     explicit = [profile / 'tests/atomic-tls.c', profile / 'tests/boundary.cc',
         profile / 'tests/boundary-main.cc', profile / 'tests/boundary.h',
         cross / 'tests/float-constexpr.cc', cross / 'tests/target/run-target.sh',
         cross / 'tests/target/check-runtime.sh', cross / 'tests/target/target-options.sh']
+    selected = []
+    if os_source is not None:
+        os_source = Path(os_source)
+        os_tests = os_source / 'ember/tests/target-acceptance'
+        names = ('libc-aliases.c', 'base-loader-smoke.c', 'fork-cas.c')
+        selected = [os_tests / name for name in names]
+        require(all(path.is_file() and not path.is_symlink() for path in selected),
+                'OS target acceptance sources are incomplete or not regular files')
     controller_python = [*profile.glob('*.py'), *cross.glob('*.py'),
                          *(profile / 'runtime/recipe/files').rglob('*.py')]
     sdk_python = sorted((sdk_root / 'src/emberbsd_sdk').rglob('*.py'))
     rows = []
     for path in sorted(set(explicit + controller_python)):
         rows.append(('ports/' + path.relative_to(ports_root).as_posix(), sha(path)))
+    if os_source is not None:
+        for path in selected:
+            rows.append(('os/' + path.relative_to(os_source).as_posix(), sha(path)))
     for path in sdk_python:
         rows.append(('sdk/' + path.relative_to(sdk_root).as_posix(), sha(path)))
     rows.sort(key=lambda row: row[0])
