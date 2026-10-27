@@ -120,6 +120,33 @@ def native_inputs(options, sdk):
     return native, environment
 
 
+
+def prefer_chromium_libcxx_headers(bound_dir):
+    """Drop SDK -nostdinc++/libc++ isystem from bound cxx; Electron sets use_custom_libcxx=true."""
+    path = Path(bound_dir) / 'commands.json'
+    record = json.loads(path.read_text())
+    cxx = record['commands']['cxx']
+    out = []
+    i = 0
+    while i < len(cxx):
+        if cxx[i] == '-nostdinc++':
+            i += 1
+            continue
+        if (cxx[i] == '-isystem' and i + 1 < len(cxx) and
+                (cxx[i + 1].endswith('/include/c++/v1') or '/include/c++/v1' in cxx[i + 1])):
+            i += 2
+            continue
+        out.append(cxx[i])
+        i += 1
+    require(out != cxx, 'bound cxx lacked SDK libc++ headers to drop for custom libc++')
+    record['commands']['cxx'] = out
+    path.chmod(0o644)
+    tmp = path.with_name('commands.json.tmp')
+    tmp.write_text(json.dumps(record, indent=2, sort_keys=True) + '\n')
+    tmp.chmod(0o444)
+    tmp.replace(path)
+
+
 def target_inputs(options, sdk, native, environment, work):
     target = sdk['targets'].target_definition(options.target)
     if options.compiler_family == 'clang':
@@ -129,6 +156,7 @@ def target_inputs(options, sdk, native, environment, work):
         bound = sdk['application_toolchain'].bind_clang_application_commands(
             work / 'target-commands', compiler, str(options.sysroot), runtime,
             python=native.tool('python'))
+        prefer_chromium_libcxx_headers(work / 'target-commands')
         binaries = {role: row['selected_path'] for role, row in compiler['binaries'].items()}
         return dict(binaries, cc=bound['cc'], cxx=bound['cxx'], cpp=bound['cpp'])
     # An explicit rare-platform GCC profile consumes the existing common owner.
