@@ -11,12 +11,15 @@ from the selected native Ports prefix. See [native-toolset.md](native-toolset.md
 This file covers only standalone helpers that the SDK toolset does not
 select yet.
 
+The Wayland scanner now comes from the ordinary shared Ports recipe and the
+[selected native prefix](../../common-graphics/cross/wayland.md). It does not
+use this legacy GCC-only helper contract.
+
 ## Standalone helpers
 
 These helpers and source checks require `HOST_CC`, and where C++ is used
 `HOST_CXX`, as absolute native GCC16 drivers. There is no default.
 
-- [build-wayland-scanner.sh](../../common-graphics/cross/build-wayland-scanner.sh)
 - [build-ffmpeg-cpu.sh](../../common-media/cross/build-ffmpeg-cpu.sh) native mode
 - [build-x265.sh](../../common-media/rtp/build-x265.sh) native mode
 - [gdb cross-build.sh](../../development-toolchain/gdb/cross-build.sh)

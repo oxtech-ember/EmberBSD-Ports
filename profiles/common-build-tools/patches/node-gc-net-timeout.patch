@@ -1,0 +1,19 @@
+# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+# A peer may reset a timed-out connection; retain rejection of other errors.
+--- test/parallel/test-gc-net-timeout.js.orig
++++ test/parallel/test-gc-net-timeout.js
+@@ -40,6 +40,14 @@
+     return;
+ 
+   const req = net.connect(server.address().port);
++  req.on('error', common.mustCallAtLeast((err) => {
++    assert.strictEqual(err.code, 'ECONNRESET');
++    if (err instanceof AggregateError) {
++      assert(err.errors.length > 0);
++      for (const cause of err.errors)
++        assert.strictEqual(cause.code, 'ECONNRESET');
++    }
++  }, 0));
+   req.resume();
+   req.setTimeout(10, function() {
+     req.destroy();

@@ -109,8 +109,10 @@ guards. Supply the original generated `config.h` and `xkbcommon.pc` captured
 from the failing unadapted cross build, and the newly configured source:
 
 ```sh
-BMAKE=/absolute/host/bin/bmake ruby ../tests/wlroots-selection.rb \
-    /absolute/prepared-pkgsrc /absolute/graphics-cross.mk.conf /absolute/new-selection
+/absolute/native-prefix/bin/python3.15 -B -I -S ../tests/wlroots-selection.py \
+    --pkgsrc /absolute/prepared-pkgsrc --makeconf /absolute/graphics-cross.mk.conf \
+    --host-prefix /absolute/native-prefix --utility-path /absolute/native-tools \
+    --work /absolute/new-selection-check
 BMAKE=/absolute/host/bin/bmake ruby ../tests/xkeyboard-tools.rb \
     /absolute/prepared-pkgsrc /absolute/graphics-cross.mk.conf \
     /absolute/original-xkeyboard-Makefile /absolute/xkeyboard-config-2.48 \

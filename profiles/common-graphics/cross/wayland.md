@@ -6,40 +6,47 @@ profile. The selected versions follow the [upstream releases](https://wayland.fr
 retains pkgsrc provenance and patch checksums. The upstream libraries and
 tests retain their MIT licence. EmberBSD adaptations disclose AI assistance.
 
-Use the [complete cross composition](profile.md) with the existing GCC16
-toolchain, target sysroot and common host build tools. These instructions
-do not install another LLVM, Python or Wayland runtime on the build host.
-Build the same scanner version as the target libraries:
+Use the [complete cross composition](profile.md) with separately selected host
+and target tools. Clang/LLVM is the default; a platform may explicitly select
+GCC for a documented LLVM limitation. The installed generator is a native
+program, independent of the target compiler family.
+
+Build or reuse `devel/wayland` through the ordinary native Ports configuration:
 
 ```sh
-HOST_CC=/absolute/native-gcc16/bin/gcc \
-HOST_PYTHON=/absolute/python3.15 \
-MESON=/absolute/meson-1.12.1/meson.py \
-NINJA=/absolute/ninja PKG_CONFIG=/absolute/host/pkg-config \
-sh build-wayland-scanner.sh /absolute/wayland-1.26.0.tar.xz /absolute/new-work
+"$HOST_PREFIX/bin/bmake" -C "$PREPARED_PKGSRC/devel/wayland" \
+  MAKECONF="$NATIVE_MAKECONF" package install
 ```
 
-`HOST_CC` must name the [native GCC16](../../common-build-tools/cross/host-gcc16.md).
-The script refuses a missing selection, system compilers, and Clang.
+The Darwin recipe builds the scanner from the same current Wayland sources and
+complete patch series as target libraries. It uses the selected native Ports
+compiler, Expat and libxml2 and preserves DTD validation. There is no separate
+standalone builder or second scanner prefix. Checksums still authenticate source
+archives, patches and distributed packages.
 
-The scanner needs host Expat and libxml2 development metadata. `PKG_CONFIG`
-must resolve those actual host providers. The helper verifies archive and
-patch hashes, applies the series without fuzz, builds only the host scanner
-with DTD validation and runs the original scanner golden/malformed-input
-tests. Source, tool and installed file hashes remain in the work directory.
-Keep the recipe and helper unchanged during execution.
+Set `EMBERBSD_WAYLAND_SCANNER` to `$HOST_PREFIX/bin/wayland-scanner` in the cross
+configuration. `TOOLBASE` names that same native prefix, and
+`EMBERBSD_SDK_SOURCE` names the selected public SDK checkout. Before configuration,
+the shared SDK `load_host_prefix` API checks the scanner, pkg-config and Python
+paths, resolved tools, host architecture and script interpreters. The generator
+must execute and report exactly 1.26.0. No compiler query, hash receipt or
+additional acceptance file is required to use an installed scanner.
 
-The helper fixes its native library directory to `lib`. This keeps the
-installed scanner metadata at the path required by protocol and Mesa consumers,
-including on Linux hosts whose Meson default uses a multiarch directory.
-It also records the actual compiler and linker flags. Private host libraries
-must remain discoverable when the installed generator runs.
+Protocols and Mesa retain checks of the actual installed
+`lib/pkgconfig/wayland-scanner.pc`: version, prefix and executable must agree
+with the selected native tool. Their Meson native file clears target pkg-config
+search state. A target `/usr/pkg/bin/wayland-scanner` must not run on the host.
+Source fetch/checksum does not require an installed generator.
 
-Set `EMBERBSD_WAYLAND_SCANNER` to `new-work/prefix/bin/wayland-scanner`.
-The build requires its successful exact version response. Scanner consumers
-also use its installed native `.pc` metadata through the cross profile.
-The target `/usr/pkg/bin/wayland-scanner` must never execute on the Mac.
-Both source-package and standalone generator checks retain their failures.
+Run the existing upstream scanner golden/malformed-input tests against the
+installed executable when verifying a changed scanner. An unchanged compatible
+native package can be reused; selecting it does not require rebuilding it.
+
+`../tests/wayland-scanner.py --help` lists the explicit inputs for the actual
+pkgsrc selection regression. It checks the installed ordinary scanner without
+a receipt, native pkg-config isolation, source fetch/checksum without a
+generator, and invalid version/path/CPU/interpreter/metadata cases. These
+selection checks do not compile Wayland or run target code.
 
 ## Runtime and SDK packages
 
@@ -68,7 +75,7 @@ use epoll-shim or libffi. Target and native EmberBSD packages do not change.
 
 The cross buildlink requires `wayland-devel` only during target compilation.
 Application runtime dependencies retain `wayland`. The build-host scanner
-still comes from native Wayland or the verified external scanner above.
+comes from the selected native Wayland package.
 Do not install `wayland-devel` in a runtime image.
 
 The source contract checks actual pkgsrc metadata and a copy of a completed

@@ -8,11 +8,6 @@ PKG_FAIL_REASON+= "The host scanner prefix must not contain whitespace or shell 
 .endif
 _EMBERBSD_SCANNER_PREFIX= ${EMBERBSD_WAYLAND_SCANNER:H:H}
 _EMBERBSD_SCANNER_PC= ${_EMBERBSD_SCANNER_PREFIX}/lib/pkgconfig/wayland-scanner.pc
-_EMBERBSD_SCANNER_RECEIPT= ${_EMBERBSD_SCANNER_PREFIX:H}/installed.sha256
-.if !exists(${_EMBERBSD_SCANNER_PC}) || !exists(${_EMBERBSD_SCANNER_RECEIPT})
-PKG_FAIL_REASON+= "The host scanner must include its real installed metadata and hash receipt"
-.endif
-USE_TOOLS+= digest
 .if empty(MESON_BINARIES:Mwayland-scanner)
 MESON_BINARIES+= wayland-scanner
 .endif
@@ -28,16 +23,8 @@ MESON_NATIVE_ARGS+= --native-file ${_EMBERBSD_SCANNER_NATIVE:Q}
 # The .pc file is upstream's installed output, never a reconstructed response.
 pre-configure: emberbsd-scanner-check ${_EMBERBSD_SCANNER_NATIVE}
 .PHONY: emberbsd-scanner-check
-emberbsd-scanner-check:
-	${TEST} -s ${_EMBERBSD_SCANNER_RECEIPT:Q}
-	cd ${_EMBERBSD_SCANNER_PREFIX:Q} && \
-	while read -r expected file; do \
-		${TEST} "$${#expected}" -eq 64 || exit 1; \
-		actual=$$(${TOOLS_DIGEST} SHA256 "$$file") || exit 1; \
-		${TEST} "$${actual##* }" = "$$expected" || { \
-			echo "Wayland scanner receipt mismatch: $$file" >&2; exit 1; \
-		}; \
-	done < ${_EMBERBSD_SCANNER_RECEIPT:Q}
+emberbsd-scanner-check: emberbsd-wayland-scanner-check
+	${TEST} -s ${_EMBERBSD_SCANNER_PC:Q}
 	${TEST} -x ${TOOLBASE:Q}/bin/pkg-config
 	${RUN} export PKG_CONFIG_PATH= PKG_CONFIG_SYSROOT_DIR=; \
 	export PKG_CONFIG_LIBDIR=${_EMBERBSD_SCANNER_PC:H:Q}; \

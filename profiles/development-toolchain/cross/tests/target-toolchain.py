@@ -61,6 +61,18 @@ class TargetToolchainTests(unittest.TestCase):
                          'commands': {'cc': ['/target/bin/clang', '--target=aarch64--netbsd']}}
         self.runtime = {'artifacts': self.artifacts}
 
+    def gcc_sysroot_build_receipt(self):
+        target = dict(machine='evbarm', arch='aarch64', triplet='aarch64--netbsd', elf=183)
+        compiler = dict(version='16.2.0', triplet='aarch64--netbsd', threads='posix',
+            binaries={name: {'sha256': 'a' * 64}
+                      for name in pipeline.sysroot_transfer.COMPILER_BINARIES})
+        return dict(format='emberbsd-sysroot-build', version=1,
+            qualification='built-and-inspected',
+            workspace=dict(layout_version=2, target='aarch64', triplet='aarch64--netbsd'),
+            sources={name: {'commit': 'b' * 40} for name in ('os', 'ports', 'sdk')},
+            signature=dict(target=target, compiler_family='gcc', compiler=compiler,
+                           runtime={'fixture': 'GCC runtime bundle'}, host='Darwin-arm64'))
+
     def test_cli_defaults_to_clang_and_keeps_explicit_gcc(self):
         options, remaining = pipeline.compile_test_options(['/compiler', '/sysroot', '/output'])
         self.assertEqual(options.compiler_family, 'clang')
@@ -68,6 +80,83 @@ class TargetToolchainTests(unittest.TestCase):
         options, remaining = pipeline.compile_test_options(['--compiler-family', 'gcc', '/compiler', '/sysroot', '/output'])
         self.assertEqual(options.compiler_family, 'gcc')
         self.assertEqual(remaining, ['/compiler', '/sysroot', '/output'])
+
+    def test_os_source_option_is_optional_and_preserves_compiler_selection(self):
+        options, remaining = pipeline.compile_test_options(
+            ['--os-source', '/os', '--compiler-family', 'gcc', '/compiler', '/sysroot', '/output'])
+        self.assertEqual(options.os_source, '/os')
+        self.assertEqual(options.compiler_family, 'gcc')
+        self.assertEqual(remaining, ['/compiler', '/sysroot', '/output'])
+        options, remaining = pipeline.compile_test_options(['/compiler', '/sysroot', '/output'])
+        self.assertIsNone(options.os_source)
+        self.assertEqual(remaining, ['/compiler', '/sysroot', '/output'])
+
+    def test_os_target_sources_are_included_in_deterministic_source_inventory(self):
+        os_source = self.root / 'os'
+        test_dir = os_source / 'ember/tests/target-acceptance'
+        for name in ('base-loader-smoke.c', 'fork-cas.c', 'libc-aliases.c'):
+            put(test_dir / name, name.encode())
+        rows = pipeline.target_test_source_inventory(
+            PROFILE, CROSS, Path(sdk_source.load()), os_source=os_source)
+        names = [row[0] for row in rows]
+        self.assertEqual(names, sorted(set(names)))
+        for name in ('os/ember/tests/target-acceptance/base-loader-smoke.c',
+                     'os/ember/tests/target-acceptance/fork-cas.c',
+                     'os/ember/tests/target-acceptance/libc-aliases.c'):
+            self.assertIn(name, names)
+        before = dict(rows)
+        put(test_dir / 'fork-cas.c', b'changed test source')
+        after = dict(pipeline.target_test_source_inventory(
+            PROFILE, CROSS, Path(sdk_source.load()), os_source=os_source))
+        self.assertNotEqual(before['os/ember/tests/target-acceptance/fork-cas.c'],
+                            after['os/ember/tests/target-acceptance/fork-cas.c'])
+
+    def test_os_runtime_program_plan_builds_dynamic_and_static_fork_cas(self):
+        os_source = self.root / 'os'
+        target_dir = os_source / 'ember/tests/target-acceptance'
+        for name in ('base-loader-smoke.c', 'fork-cas.c', 'libc-aliases.c'):
+            put(target_dir / name)
+        rows = pipeline.os_runtime_programs(os_source, ['clang', '--target=aarch64--netbsd'],
+                                            self.root / 'output')
+        by_name = {name: argv for name, argv in rows}
+        self.assertEqual(set(by_name), {'libc-aliases', 'base-loader-smoke',
+                                        'fork-cas', 'fork-cas-static'})
+        self.assertIn(str(target_dir / 'fork-cas.c'), [str(arg) for arg in by_name['fork-cas']])
+        self.assertIn('-static', by_name['fork-cas-static'])
+        self.assertNotIn('-static', by_name['fork-cas'])
+
+    def test_guest_runner_emits_nonce_bound_marks_after_each_os_and_consumer_check(self):
+        out = self.root / 'guest-output'
+        out.mkdir()
+        put(out / 'target.txt', b'aarch64\n')
+        put(out / 'compiler-family.txt', b'clang\n')
+        put(out / 'os-tests.txt', b'yes\n')
+        names = ('atomic-tls', 'atomic-tls-lto', 'boundary', 'libc-aliases',
+                 'base-loader-smoke', 'fork-cas', 'fork-cas-static')
+        for name in names:
+            output = 'printf "LOADED /usr/pkg/llvm/lib/libc++.so.1.0\\n"\n' if name == 'boundary' else 'exit 0\n'
+            put(out / name, ('#!/bin/sh\n' + output).encode()).chmod(0o755)
+        put(out / 'check-runtime.sh', b'#!/bin/sh\nexit 0\n').chmod(0o755)
+        fakebin = self.root / 'fakebin'
+        put(fakebin / 'uname', b'#!/bin/sh\ncase "$1" in -s) echo NetBSD;; -p) echo aarch64;; *) exit 2;; esac\n').chmod(0o755)
+        put(fakebin / 'ldd', b'#!/bin/sh\necho "libc.so.12 => /lib/libc.so.12"\n').chmod(0o755)
+        env = dict(os.environ, PATH=str(fakebin) + os.pathsep + '/usr/bin:/bin',
+                   EMBERBSD_ACCEPTANCE_NONCE='fixture-nonce')
+        env.pop('LD_LIBRARY_PATH', None)
+        env.pop('LD_PRELOAD', None)
+        result = subprocess.run(['/bin/sh', str(CROSS / 'tests/target/run-target.sh'),
+            '--target', 'aarch64', str(out)], env=env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        markers = [line.split()[2] for line in result.stdout.splitlines()
+                   if line.startswith('EMBERBSD-CHECK ')]
+        self.assertEqual(markers, ['target_c11', 'target_cxx20', 'libc_aliases',
+                                   'base_loader_smoke', 'fork_cas'])
+        self.assertNotIn('cross_c11', markers)
+        self.assertNotIn('cross_cxx20', markers)
+        for name in ('target_c11', 'target_cxx20', 'libc_aliases',
+                     'base_loader_smoke', 'fork_cas'):
+            self.assertIn('EMBERBSD-CHECK fixture-nonce ' + name + ' PASS', result.stdout)
 
     def test_source_inventory_covers_controller_and_complete_selected_sdk_package(self):
         rows = pipeline.target_test_source_inventory(PROFILE, CROSS, Path(sdk_source.load()))
@@ -166,6 +255,8 @@ class TargetToolchainTests(unittest.TestCase):
             pipeline.select_test_toolchain('clang', self.compiler_prefix, self.sysroot, 'aarch64')
 
     def test_explicit_gcc_keeps_gcc16_route(self):
+        receipt_path = self.sysroot / pipeline.sysroot_transfer.RECEIPT
+        pipeline.jsonio.write_json(receipt_path, self.gcc_sysroot_build_receipt())
         tools = {'gcc': self.root / 'gcc', 'g++': self.root / 'g++',
                  'readelf': self.root / 'readelf'}
         for path in tools.values():
@@ -182,10 +273,77 @@ class TargetToolchainTests(unittest.TestCase):
         self.assertTrue(any('usr/pkg/gcc16/include/c++/aarch64--netbsd' in item
                             for item in selected['cxx']))
         self.assertEqual({row[0] for row in selected['runtime_rows']}, {'libstdc++', 'libgcc_s'})
+        identity = selected['sysroot_identity']
+        self.assertEqual(identity['source_record'], 'build-receipt')
+        self.assertEqual(identity['source_record_sha256'], pipeline.sha(receipt_path))
+        self.assertEqual(identity['runtime_provenance_sha256'],
+                         pipeline.sysroot_transfer._hash_json(
+                             self.gcc_sysroot_build_receipt()['signature']['runtime']))
+        self.assertEqual(identity['sources'], {name: 'b' * 40 for name in ('os', 'ports', 'sdk')})
+        self.assertEqual(identity['execution_acceptance'], 'not-run')
+
+    def test_gcc_target_tests_require_sdk_sysroot_provenance(self):
+        with self.assertRaisesRegex(SDKError, 'inspected SDK sysroot'):
+            pipeline.gcc_sysroot_identity(self.sysroot, 'aarch64')
+
+    def test_gcc_build_receipt_rejects_other_compiler_or_bad_source_pin(self):
+        receipt_path = self.sysroot / pipeline.sysroot_transfer.RECEIPT
+        for mutation in ('compiler', 'source'):
+            receipt = self.gcc_sysroot_build_receipt()
+            if mutation == 'compiler':
+                receipt['signature']['compiler']['version'] = '15.2.0'
+            else:
+                receipt['sources']['os']['commit'] = 'not-a-commit'
+            if receipt_path.exists():
+                receipt_path.unlink()
+            pipeline.jsonio.write_json(receipt_path, receipt)
+            with self.subTest(mutation=mutation), self.assertRaises(SDKError):
+                pipeline.gcc_sysroot_identity(self.sysroot, 'aarch64')
+
+    def test_gcc_import_receipt_binds_manifest_digest_and_compiler_identity(self):
+        sources = {name: 'b' * 40 for name in ('os', 'ports', 'sdk')}
+        compiler = dict(version='16.2.0', triplet='aarch64--netbsd', threads='posix',
+            binaries={name: 'a' * 64 for name in pipeline.sysroot_transfer.COMPILER_BINARIES})
+        manifest = dict(format=pipeline.sysroot_transfer.FORMAT, version=1,
+            scope='sysroot-transfer', target='aarch64', triplet='aarch64--netbsd',
+            provenance=dict(sources=sources, build_host='Darwin-arm64', compiler=compiler,
+                runtime_sha256='c' * 64, build_context_sha256='d' * 64,
+                build_receipt_sha256='e' * 64),
+            qualification='built-and-inspected', relocation='not-assessed',
+            execution_acceptance='not-assessed', root_mode=0o755,
+            inventory={'etc': {'kind': 'directory', 'mode': 0o755}},
+            unpacked_bytes=0, payload=dict(name='payload.tar.gz', format='gzip-ustar-flat-v1',
+                size=1, sha256='f' * 64))
+        import_path = self.sysroot / pipeline.application_toolchain.IMPORT_RECORD
+        digest = pipeline.sysroot_transfer._hash_json(manifest)
+        pipeline.jsonio.write_json(import_path, dict(format='emberbsd-sysroot-import', version=1,
+            manifest_sha256=digest, manifest=manifest))
+        identity = pipeline.gcc_sysroot_identity(self.sysroot, 'aarch64')
+        self.assertEqual(identity['source_record'], 'import-record')
+        self.assertEqual(identity['source_record_sha256'], pipeline.sha(import_path))
+        self.assertEqual(identity['portable_manifest_sha256'], digest)
+        self.assertEqual(identity['sources'], sources)
+
+        import_path.unlink()
+        bad_receipt = dict(format='emberbsd-sysroot-import', version=1,
+                           manifest_sha256='0' * 64, manifest=manifest)
+        pipeline.jsonio.write_json(import_path, bad_receipt)
+        with self.assertRaisesRegex(SDKError, 'manifest digest changed'):
+            pipeline.gcc_sysroot_identity(self.sysroot, 'aarch64')
+
+        manifest['provenance']['compiler']['version'] = '15.2.0'
+        bad_digest = pipeline.sysroot_transfer._hash_json(manifest)
+        import_path.unlink()
+        pipeline.jsonio.write_json(import_path, dict(format='emberbsd-sysroot-import', version=1,
+            manifest_sha256=bad_digest, manifest=manifest))
+        with self.assertRaisesRegex(SDKError, 'transfer manifest or target mismatch|compiler'):
+            pipeline.gcc_sysroot_identity(self.sysroot, 'aarch64')
 
     def test_bad_family_and_missing_gcc_runtime_refuse(self):
         with self.assertRaisesRegex(SDKError, 'Unsupported target compiler family'):
             pipeline.select_test_toolchain('system', self.compiler_prefix, self.sysroot, 'aarch64')
+        pipeline.jsonio.write_json(self.sysroot / pipeline.sysroot_transfer.RECEIPT,
+                                   self.gcc_sysroot_build_receipt())
         (self.sysroot / 'usr/pkg/gcc16/lib/libstdc++.so.7').unlink()
         with patch.object(pipeline, 'check_compilers', return_value={
                 'gcc': self.root / 'gcc', 'g++': self.root / 'g++', 'readelf': self.root / 'readelf'}):
