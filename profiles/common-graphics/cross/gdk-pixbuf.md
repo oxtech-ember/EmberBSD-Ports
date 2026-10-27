@@ -58,7 +58,13 @@ metadata keys. The runner retains the optional pinned `host_key_alias`.
 The Python host migration passes the scoped guards on Darwin. The revision-3
 build also completes real target loader, MIME and GIR/typelib generation.
 
-Set up the private query JSON and MAKECONF as in the GI instructions. For a
+Set up the private query JSON and MAKECONF as in the GI instructions.
+Cross builds with `PKG_OPTIONS.gdk-pixbuf2+= -introspection` (or
+`PKG_DEFAULT_OPTIONS+= -introspection`) skip `gobject-introspection/cross.mk`
+and the SSH `target-tools.py` loaders/MIME path; Meson then uses the ordinary
+cross selection (no build-time `loaders.cache` / thumbnailer via a guest).
+Enable introspection only when `EMBERBSD_GI_QUERY_CONFIG` names a live target
+query JSON. For a
 GCC16 runtime closure, select its provider consistently in the JSON:
 
 ```json
