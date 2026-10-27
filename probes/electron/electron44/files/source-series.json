@@ -596,6 +596,11 @@
       "path": "ui-base-permissions-utils-macos15-obsolete.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "v8-stack-reserved-limit-darwin-dup.patch",
+      "root": "v8",
+      "strip": 1
     }
   ],
   "superseded": {

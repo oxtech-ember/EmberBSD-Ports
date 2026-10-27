@@ -1,0 +1,32 @@
+v8: keep Stack::ObtainCurrentThreadStackReservedLimit out of Darwin builds.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Source: Chromium electron-source tree under EmberBSD.
+The EmberBSD BSD port moves the generic POSIX
+ObtainCurrentThreadStackReservedLimit() outside the
+!FREEBSD/!DARWIN/!AIX/!SOLARIS block so OpenBSD/NetBSD get it. That also
+defined it for the macOS host toolchain, where platform-darwin.cc already
+provides it, so ld64.lld fails linking torque with a duplicate symbol.
+Guard the generic definition again for those OSes.
+
+--- a/src/base/platform/platform-posix.cc	2026-10-28 02:18:35.760106322 +0300
++++ b/src/base/platform/platform-posix.cc	2026-10-28 02:18:35.772754208 +0300
+@@ -1503,6 +1503,10 @@
+ #endif  // !defined(V8_OS_FREEBSD) && !defined(V8_OS_DARWIN) &&
+         // !defined(_AIX) && !defined(V8_OS_SOLARIS)
+ 
++// Darwin, FreeBSD, AIX and Solaris provide their own definition in
++// platform-<os>.cc; EmberBSD's BSD port only needs this one elsewhere.
++#if !defined(V8_OS_FREEBSD) && !defined(V8_OS_DARWIN) && !defined(_AIX) && \
++    !defined(V8_OS_SOLARIS)
+ // static
+ Stack::StackSlot Stack::ObtainCurrentThreadStackReservedLimit() {
+ #if V8_OS_ZOS
+@@ -1526,6 +1530,7 @@
+   return base;
+ #endif  // V8_OS_ZOS
+ }
++#endif  // !V8_OS_FREEBSD && !V8_OS_DARWIN && !_AIX && !V8_OS_SOLARIS
+ 
+ 
+ // static
