@@ -29,4 +29,3 @@ CMAKE_CONFIGURE_ARGS+=	-DCLI11_BUILD_EXAMPLES=off
 # download it, even if one has not asked to run tests.
 .include "../../devel/catch2/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
-
