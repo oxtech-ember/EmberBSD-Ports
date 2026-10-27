@@ -6,7 +6,7 @@
  .include "Makefile.common"
  
 -PKGREVISION=	4
-+PKGREVISION=	6
++PKGREVISION=	7
  
  COMMENT=	Cross platform make
  

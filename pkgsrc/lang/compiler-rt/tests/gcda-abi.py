@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Copyright (c) 2026 The EmberBSD Project contributors.
 # Developed with AI assistance.
-"""Compile the actual common GCDA source in current and legacy libc ABI modes."""
+"""Compile profile sources with strict diagnostics and exercise both GCDA ABIs."""
 import argparse
 from pathlib import Path
 import shlex
@@ -47,10 +47,12 @@ def main():
     parser.add_argument("--cc", required=True, help="selected native C compiler")
     parser.add_argument("--source", required=True, type=Path, help="prepared LLVM root")
     parser.add_argument("--gcda", type=Path, help="candidate GCDA source; defaults to the prepared source")
+    parser.add_argument("--profile-file", type=Path, help="candidate InstrProfilingFile.c; defaults to the prepared source")
     parser.add_argument("--cflags", default="", help="native compile/link options; supports sanitizers")
     args = parser.parse_args()
     profile = args.source.resolve() / "compiler-rt/lib/profile"
     gcda = args.gcda.resolve() if args.gcda else profile / "GCDAProfiling.c"
+    profile_file = args.profile_file.resolve() if args.profile_file else profile / "InstrProfilingFile.c"
     fixture = Path(__file__).with_name("gcda-abi-fixture.c")
     with tempfile.TemporaryDirectory(prefix="gcda-abi-") as temporary:
         work = Path(temporary)
@@ -59,9 +61,13 @@ def main():
             binary, output = work / name, work / (name + ".gcda")
             mode = ("-DCOMPILER_RT_LIBC_LEGACY_GCOV" if legacy else
                     "-DTEST_CURRENT_GCOV_ABI")
-            common = [args.cc, *shlex.split(args.cflags), "-Wall", "-Werror",
+            common = [args.cc, *shlex.split(args.cflags), "-Wall", "-Wshadow", "-Werror",
                 "-DCOMPILER_RT_HAS_FCNTL_LCK=1", "-DCOMPILER_RT_HAS_UNAME=1",
                 "-I", str(profile), "-I", str(args.source.resolve() / "compiler-rt/include")]
+            if not legacy:
+                subprocess.run([*common, "-c", str(profile_file),
+                    "-o", str(work / "profile-file.o")], check=True)
+                print("profile file: strict compile PASS")
             utility = work / (name + "-util.o")
             subprocess.run([*common, "-c", str(profile / "InstrProfilingUtil.c"),
                 "-o", str(utility)], check=True)

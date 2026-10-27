@@ -28,6 +28,13 @@ x64 selector test uses an empty synthetic sysroot and mock pkgconf. POSIX
 outside the selected source and any external sysroot.
 
 ```sh
+python3.15 -B -I -S probes/electron/tests/gn-wayland-scanner.py \
+  --source /absolute/acquired-chromium/src --git /absolute/source-git \
+  --gn /absolute/native-prefix/bin/gn --ninja /absolute/native-prefix/bin/ninja \
+  --scanner /absolute/native-prefix/bin/wayland-scanner \
+  --protocol /absolute/native-prefix/share/wayland/wayland.xml \
+  --utility-path /absolute/selected-native-utility-path \
+  --work /absolute/NEW_SCANNER_WORK
 python3.15 -E -S probes/electron/tests/gn-unbundle-compiler-family.py \
   --source /absolute/chromium/src --gn /absolute/host-gn \
   --baseline-source /absolute/chromium-before-family-patch
@@ -82,7 +89,13 @@ python3.15 -E -S probes/electron/tests/partition-alloc-netbsd-gcc16.py \
   --workdir /absolute/NEW_PARTITION_ALLOC_WORK
 ```
 
-The tests accept the original or already fixed source. They apply the carried
+The scanner regression requires the exact acquired pinned Wayland leaf before
+its scanner patch; it obtains the pin from the recipe source preparer. It runs
+real GN/Ninja protocol actions with a copy of the selected native scanner,
+including a changed-executable rebuild. Its fixture toolchains cannot compile
+or link. The full Chromium graph and target runtime remain untested.
+
+The other GN tests accept the original or already fixed source. They apply the carried
 patch in an isolated fixture and preserve source hashes and command receipts.
 The pkg-config integration test uses real pkgconf queries to resolve target
 gio/GTK paths; the existing cache case must make no pkgconf calls. The

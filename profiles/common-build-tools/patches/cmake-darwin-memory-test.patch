@@ -1,0 +1,23 @@
+$NetBSD$
+
+Fail the KWSys system-information test when Darwin's host or process memory
+query cannot return a positive resident-memory value.
+
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+
+--- Source/kwsys/testSystemInformation.cxx
++++ Source/kwsys/testSystemInformation.cxx
+@@ -26,7 +26,13 @@
+   kwsys::SystemInformation info;
+   info.RunCPUCheck();
+   info.RunOSCheck();
+   info.RunMemoryCheck();
++#if defined(__APPLE__)
++  if (info.GetHostMemoryUsed() <= 0 || info.GetProcMemoryUsed() <= 0) {
++    std::cerr << "Darwin memory usage query failed" << std::endl;
++    return 1;
++  }
++#endif
+   printMethod(info, GetOSName);
+   printMethod(info, GetOSIsLinux);
+   printMethod(info, GetOSIsApple);

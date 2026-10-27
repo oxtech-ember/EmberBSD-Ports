@@ -1,0 +1,59 @@
+Chromium: select an explicit native Wayland scanner.
+
+Origin: EmberBSD (AI-assisted), Chromium 152.0.7977.167; not submitted upstream.
+The empty argument preserves the upstream bundled scanner target. A selected
+native executable replaces that build dependency and remains a Ninja input.
+The caller selects and validates its native Ports prefix through the SDK.
+
+--- a/third_party/wayland/features.gni
++++ b/third_party/wayland/features.gni
+@@ -6,4 +6,7 @@
+   # Controls whether the build should use the version of Wayland
+   # library shipped with the system or Chromium third_party.
+   use_system_libwayland = false
++
++  # Absolute path to the selected native scanner. Empty builds the bundled tool.
++  wayland_scanner_executable = ""
+ }
+--- a/third_party/wayland/wayland_protocol.gni
++++ b/third_party/wayland/wayland_protocol.gni
+@@ -1,6 +1,8 @@
+ # Copyright 2018 The Chromium Authors
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
++
++import("//third_party/wayland/features.gni")
+ 
+ # Template to generate wayland protocol code with wayland-scanner.
+ #
+@@ -100,14 +102,24 @@
+       generator_type,
+     ]
+ 
+-    wayland_scanner_label =
+-        "//third_party/wayland:wayland_scanner($host_toolchain)"
+-    deps = [ wayland_scanner_label ]
+-    wayland_scanner_path = get_label_info(wayland_scanner_label,
+-                                          "root_out_dir") + "/wayland_scanner"
++    if (wayland_scanner_executable != "") {
++      assert(
++          rebase_path(wayland_scanner_executable) == wayland_scanner_executable,
++          "wayland_scanner_executable must be an absolute native path")
++      wayland_scanner_path = wayland_scanner_executable
++      wayland_scanner_command = wayland_scanner_executable
++    } else {
++      wayland_scanner_label =
++          "//third_party/wayland:wayland_scanner($host_toolchain)"
++      deps = [ wayland_scanner_label ]
++      wayland_scanner_path = get_label_info(wayland_scanner_label,
++                                            "root_out_dir") + "/wayland_scanner"
++      wayland_scanner_command =
++          "./" + rebase_path(wayland_scanner_path, root_build_dir)
++    }
+     args += [
+       "--cmd",
+-      "./" + rebase_path(wayland_scanner_path, root_build_dir),
++      wayland_scanner_command,
+     ]
+     sources += [ wayland_scanner_path ]
+   }

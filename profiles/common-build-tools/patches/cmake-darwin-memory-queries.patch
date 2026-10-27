@@ -1,0 +1,123 @@
+$NetBSD$
+
+Query Darwin host and process memory through Mach instead of external tools.
+Release the host port acquired for host_statistics, including the existing
+sysctl memory query.
+
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+
+--- Source/kwsys/SystemInformation.cxx
++++ Source/kwsys/SystemInformation.cxx
+@@ -3779,6 +3779,29 @@
+   return memAvail;
+ }
+ 
++#if defined(__APPLE__)
++static bool kw_host_vm_statistics(vm_statistics_data_t* vmstat,
++                                  mach_msg_type_number_t* count)
++{
++  if (!vmstat || !count) {
++    return false;
++  }
++  mach_port_t hostPort = mach_host_self();
++  if (hostPort == MACH_PORT_NULL) {
++    return false;
++  }
++
++  kern_return_t const hostStatus =
++    host_statistics(hostPort, HOST_VM_INFO,
++                    reinterpret_cast<host_info_t>(vmstat), count);
++  bool const complete =
++    hostStatus == KERN_SUCCESS && *count >= HOST_VM_INFO_COUNT;
++  kern_return_t const deallocateStatus =
++    mach_port_deallocate(mach_task_self(), hostPort);
++  return complete && deallocateStatus == KERN_SUCCESS;
++}
++#endif
++
+ /**
+ Get RAM used by all processes in the host, in units of KiB.
+ */
+@@ -3829,19 +3852,19 @@
+   long long& memAvail = values2[1];
+   return memTotal - memAvail;
+ #elif defined(__APPLE__)
+-  long long psz = getpagesize();
+-  if (psz < 1) {
++  vm_statistics_data_t vmstat = {};
++  mach_msg_type_number_t count = HOST_VM_INFO_COUNT;
++  if (!kw_host_vm_statistics(&vmstat, &count)) {
+     return -1;
+   }
+-  char const* names[3] = { "Pages wired down:", "Pages active:", nullptr };
+-  long long values[2] = { 0 };
+-  int ierr = GetFieldsFromCommand("vm_stat", names, values);
+-  if (ierr) {
++  long long const pageSize = getpagesize();
++  long long const pagesUsed = static_cast<long long>(vmstat.active_count) +
++    static_cast<long long>(vmstat.wire_count);
++  if (pageSize <= 0 ||
++      pagesUsed > std::numeric_limits<long long>::max() / pageSize) {
+     return -1;
+   }
+-  long long& vmWired = values[0];
+-  long long& vmActive = values[1];
+-  return ((vmActive + vmWired) * psz) / 1024;
++  return (pagesUsed * pageSize) / 1024;
+ #else
+   return 0;
+ #endif
+@@ -3875,33 +3898,17 @@
+   }
+   return memUsed;
+ #elif defined(__APPLE__)
+-  long long memUsed = 0;
+-  pid_t pid = getpid();
+-  std::ostringstream oss;
+-  oss << "ps -o rss= -p " << pid;
+-  FILE* file = popen(oss.str().c_str(), "r");
+-  if (!file) {
++  mach_task_basic_info_data_t taskInfo = {};
++  mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
++  kern_return_t const status = task_info(
++    mach_task_self(), MACH_TASK_BASIC_INFO,
++    reinterpret_cast<task_info_t>(&taskInfo), &count);
++  if (status != KERN_SUCCESS || count < MACH_TASK_BASIC_INFO_COUNT ||
++      taskInfo.resident_size >
++        static_cast<mach_vm_size_t>(std::numeric_limits<long long>::max())) {
+     return -1;
+   }
+-  oss.str("");
+-  while (!feof(file) && !ferror(file)) {
+-    char buf[256] = { '\0' };
+-    errno = 0;
+-    size_t nRead = fread(buf, 1, 256, file);
+-    if (ferror(file) && (errno == EINTR)) {
+-      clearerr(file);
+-    }
+-    if (nRead)
+-      oss << buf;
+-  }
+-  int ierr = ferror(file);
+-  pclose(file);
+-  if (ierr) {
+-    return -2;
+-  }
+-  std::istringstream iss(oss.str());
+-  iss >> memUsed;
+-  return memUsed;
++  return static_cast<long long>(taskInfo.resident_size / 1024);
+ #else
+   return 0;
+ #endif
+@@ -4570,9 +4577,7 @@
+   this->AvailablePhysicalMemory = 0;
+   vm_statistics_data_t vmstat;
+   mach_msg_type_number_t count = HOST_VM_INFO_COUNT;
+-  if (host_statistics(mach_host_self(), HOST_VM_INFO,
+-                      reinterpret_cast<host_info_t>(&vmstat),
+-                      &count) == KERN_SUCCESS) {
++  if (kw_host_vm_statistics(&vmstat, &count)) {
+     err = kw_sysctlbyname_int64("hw.pagesize", &tempInt64);
+     if (err == 0) {
+       int64_t available_memory =

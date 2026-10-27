@@ -1,19 +1,17 @@
 --- a/build/toolchain/linux/unbundle/BUILD.gn
 +++ b/build/toolchain/linux/unbundle/BUILD.gn
-@@ -3,6 +3,12 @@
- # found in the LICENSE file.
- 
- import("//build/toolchain/gcc_toolchain.gni")
+@@ -8,6 +8,10 @@
+ # compiler mode, so a GCC target does not silently change the host compiler.
+ declare_args() {
+   unbundle_host_is_clang = true
 +
-+declare_args() {
 +  # Optional command prefix for links in the target unbundled toolchain family.
 +  # The separate host toolchain does not use this prefix.
 +  unbundle_linker_launcher = ""
-+}
+ }
  
  gcc_toolchain("default") {
-   cc = getenv("CC")
-@@ -16,6 +22,7 @@
+@@ -22,6 +26,7 @@
             "cross-building for NetBSD requires READELF for the target toolchain")
    }
    ld = cxx
