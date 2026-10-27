@@ -1,0 +1,23 @@
+ui/accessibility: map NSAccessibilityIndexForChildUIElementParameterizedAttribute on macOS 26.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Source: Chromium electron-source tree under EmberBSD.
+When the host deployment target is macOS 26 the private fallback macros are
+skipped, but the macOS 26 SDK spells this constant
+NSAccessibilityIndexForChildUIElementAttribute (no "Parameterized"), so
+browser_accessibility_cocoa.mm fails with an undeclared identifier on the
+host toolchain. Alias the old name to the SDK constant in that case.
+
+--- a/ui/accessibility/platform/ax_private_attributes_mac.h	2026-10-28 02:54:23.652317525 +0300
++++ b/ui/accessibility/platform/ax_private_attributes_mac.h	2026-10-28 02:54:23.656675547 +0300
+@@ -32,6 +32,10 @@
+ #define NSAccessibilityUIElementsForSearchPredicateParameterizedAttribute \
+   @"AXUIElementsForSearchPredicate"
+ #define NSAccessibilityVisitedAttribute @"AXVisited"
++#elif !defined(NSAccessibilityIndexForChildUIElementParameterizedAttribute)
++// EmberBSD: the macOS 26 SDK names this constant without "Parameterized".
++#define NSAccessibilityIndexForChildUIElementParameterizedAttribute \
++  NSAccessibilityIndexForChildUIElementAttribute
+ #endif
+ 
+ // Accessibility attributes not found in the SDK.

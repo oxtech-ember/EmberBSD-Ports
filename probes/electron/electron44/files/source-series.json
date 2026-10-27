@@ -606,6 +606,11 @@
       "path": "ui-accessibility-atspi-check-version-redef.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "ui-accessibility-mac26-index-for-child-attr.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
