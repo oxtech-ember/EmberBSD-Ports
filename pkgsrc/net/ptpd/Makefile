@@ -4,8 +4,9 @@ DISTNAME=	ptpd-2.3.1
 PKGREVISION=	1
 CATEGORIES=	net time
 MASTER_SITES=	${MASTER_SITE_GITHUB:=ptpd/}
-# The 2.3.1 branch head, with the hash recorded by FreeBSD net/ptpd2.
-GITHUB_TAG=	d27a6e0
+# The 2.3.1 branch head. GitHub resolves a short hash to the full commit
+# hash and names the archive top directory after it.
+GITHUB_TAG=	d27a6e02c1191e07ce8dcdfa1d3f954e01f2d983
 WRKSRC=		${WRKDIR}/ptpd-${GITHUB_TAG}
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
