@@ -29,11 +29,13 @@ provides the current source, builtin and regression interfaces.
 ## Export the selected closure
 
 Prepare pkgsrc with the existing [Ports exporter](../README.md#package-integration).
-Use its complete native/cross MAKECONF and the established GCC16 and base
-input receipts. Keep source files and configuration stable during inspection.
+Use its complete native/cross MAKECONF and files identifying the selected
+toolchain and base inputs. Clang/LLVM is the default SDK toolchain; select GCC
+explicitly when the platform profile requires it. Keep source files and
+configuration stable during inspection.
 `--revision` is caller-declared provenance, not proof of a clean checkout.
-The compiler and base arguments hash the supplied receipts. They do not verify
-that the installed toolchain or sysroot matches those receipts.
+The compiler and base arguments hash the supplied files. They do not verify
+that the installed toolchain or sysroot matches those files.
 
 ```sh
 python3 scripts/export-build-graph.py \
@@ -43,8 +45,8 @@ python3 scripts/export-build-graph.py \
   --bmake /absolute/host/bin/bmake \
   --pkg-admin /absolute/host/sbin/pkg_admin \
   --target aarch64 --triplet aarch64--netbsd \
-  --toolchain-input /absolute/gcc16-receipt.json \
-  --base-input /absolute/base-receipt.json \
+  --toolchain-input /absolute/selected-toolchain-input.json \
+  --base-input /absolute/selected-base-input.json \
   --revision ports-commit-id \
   --root security/openssl --root www/curl \
   --output candidate-graph.json
