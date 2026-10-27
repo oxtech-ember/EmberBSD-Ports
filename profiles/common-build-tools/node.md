@@ -93,3 +93,14 @@ metadata subprocesses and missing/mismatched inputs, and runs actual GYP make
 generation plus a tiny C archive/C++20 executable with selected native Clang,
 LLVM libtool and LLD. Its `--help` lists the explicit tools and ABI inputs.
 That check does not establish a complete Node package or target runtime.
+
+The ordered `pkgsrc-nodejs24-corefoundation.patch` makes Abseil's macOS
+CoreFoundation dependency a GYP `link_settings.libraries` entry. GYP propagates
+it through static libraries to the final link; LLVM's static archive tool no
+longer receives `-framework`. Other platforms do not acquire the framework.
+The Darwin regression also uses the real patched Abseil settings for two tiny
+static archives and an executable that calls CoreFoundation. It checks final
+link flags and execution, reproduces the old archive-tool refusal, and proves
+that deleting the library or limiting it to direct dependents breaks the final
+link. Unrelated archive/link flags remain intact. The non-mac check covers
+metadata generation only. Full Node package/runtime acceptance is separate.

@@ -3,6 +3,8 @@
 # Origin: EmberBSD (AI-assisted).
 """Generate, build and run a tiny Darwin target with selected Node GYP metadata."""
 import argparse
+import ast
+import copy
 import hashlib
 import importlib.util
 import json
@@ -77,6 +79,8 @@ def main():
         selected_patches.append(owner/'patches/pkgsrc-nodejs24-python315.patch')
     if 'GYP_MACOS_SDK_PATH' not in (initial/'patches'/patch_name).read_text():
         selected_patches.append(outer)
+    if not (initial/'patches/patch-tools_v8_gypfiles_abseil.gyp').is_file():
+        selected_patches.append(owner/'patches/pkgsrc-nodejs24-corefoundation.patch')
     (ports/'pkgsrc').mkdir()
     lines = []
     for path in selected_patches:
@@ -243,6 +247,79 @@ runpy.run_path(script,run_name="__main__")
     assert str(args.sdk_root) in result.stdout
     result = run('native-run', [str(directory/'out/Release/probe')], directory)
     assert not result.returncode, result.stdout+result.stderr
+    # Keep the production Abseil dependency metadata, replacing only the large
+    # source list with a real CF caller. This catches link propagation through
+    # static intermediates, which direct_dependent_settings cannot provide.
+    abseil = ast.literal_eval((source/'tools/v8_gypfiles/abseil.gyp').read_text())['targets'][0]
+    assert abseil['target_name'] == 'abseil' and abseil['type'] == 'static_library'
+
+    def framework_fixture(name, mode, target_os='mac'):
+        directory = args.work/name
+        directory.mkdir()
+        (directory/'answer.c').write_text('#include <CoreFoundation/CoreFoundation.h>\n'
+            'int answer(void) { CFStringRef s = CFStringCreateWithCString(0, "clang", '
+            'kCFStringEncodingUTF8); if (!s) return -1; '
+            'int n = (int)CFStringGetLength(s); CFRelease(s); return n; }\n')
+        (directory/'bridge.c').write_text('int answer(void); int bridge(void) { return answer(); }\n')
+        (directory/'main.c').write_text('int bridge(void); int main(void) { return bridge() == 5 ? 0 : 1; }\n')
+        leaf = copy.deepcopy(abseil)
+        leaf.update(toolsets=['target'], variables={'ABSEIL_ROOT': '.'}, sources=['answer.c'])
+        if mode != 'fixed':
+            del leaf['conditions']
+        if mode == 'legacy':
+            leaf['direct_dependent_settings']['xcode_settings'] = {
+                'OTHER_LDFLAGS': ['-framework CoreFoundation']}
+        elif mode == 'direct-only':
+            leaf['direct_dependent_settings']['libraries'] = ['CoreFoundation.framework']
+        settings = {'ARCHS': [args.arch], 'SDKROOT': 'macosx',
+                    'MACOSX_DEPLOYMENT_TARGET': args.deployment_target}
+        fixture = {'target_defaults': {'default_configuration': 'Release',
+                   'configurations': {'Release': {'xcode_settings': settings}}},
+                   'targets': [leaf,
+                       {'target_name': 'bridge', 'type': 'static_library',
+                        'sources': ['bridge.c'], 'dependencies': ['abseil'],
+                        'xcode_settings': {'OTHER_LDFLAGS': ['-no_warning_for_no_symbols']}},
+                       {'target_name': 'framework_probe', 'type': 'executable',
+                        'sources': ['main.c'], 'dependencies': ['bridge'],
+                        'xcode_settings': {'OTHER_LDFLAGS': ['-Wl,-dead_strip']}}]}
+        build = directory/'fixture.gyp'
+        build.write_text(repr(fixture)+'\n')
+        result = run(name+'-generate', [sys.executable, '-B', str(launcher),
+            str(source/'tools/gyp/gyp_main.py'), '-f', 'make-mac', '-DOS='+target_os,
+            '--depth='+str(directory), str(build)], directory)
+        assert not result.returncode, result.stdout+result.stderr
+        return directory
+
+    framework_results = {}
+    for mode in ('fixed', 'legacy', 'missing', 'direct-only'):
+        directory = framework_fixture('framework-'+mode, mode)
+        result = run('framework-'+mode+'-build', [str(prefix/'bin/gmake'), '-j1', 'V=1'], directory)
+        output = result.stdout+result.stderr
+        executable = directory/'out/Release/framework_probe'
+        if mode == 'fixed':
+            assert not result.returncode, output
+            archives = [line for line in result.stdout.splitlines() if 'filter-libtool' in line]
+            assert len(archives) == 2, output
+            assert all('-framework' not in line for line in archives), output
+            assert any('-no_warning_for_no_symbols' in line for line in archives), output
+            links = [line for line in result.stdout.splitlines()
+                     if '-o "out/Release/framework_probe"' in line]
+            assert len(links) == 1, output
+            assert '-framework CoreFoundation' in links[0] and '-Wl,-dead_strip' in links[0], output
+            result = run('framework-fixed-run', [str(executable)], directory)
+            assert not result.returncode, result.stdout+result.stderr
+            framework_results[mode] = 'two static archives, final CF link and execution passed'
+        else:
+            assert result.returncode and not executable.exists(), output
+            if mode == 'legacy':
+                assert "unknown argument '-framework'" in output, output
+            else:
+                assert 'undefined symbol' in output.lower() and 'CFStringCreateWithCString' in output, output
+            framework_results[mode] = 'causal archive refusal' if mode == 'legacy' else 'causal link refusal'
+    directory = framework_fixture('framework-non-mac', 'fixed', 'linux')
+    assert 'CoreFoundation' not in (directory/'framework_probe.target.mk').read_text()
+    assert 'CoreFoundation' not in (directory/'bridge.target.mk').read_text()
+    framework_results['non-mac'] = 'generated dependency metadata excludes Darwin framework; no non-Darwin compile claimed'
     summary = {'source': 'Node24.22.1', 'metadata_negative_cases': negatives,
                'legacy_metadata_search_refused': ['xcrun', 'xcodebuild'],
                'actual_common_exporter': True,
@@ -251,6 +328,7 @@ runpy.run_path(script,run_name="__main__")
                'actual_unselected_pkgsrc_route_unchanged': True,
                'actual_gyp_make_generation_without_subprocesses': True,
                'actual_selected_clang_c_cpp_archive_link_run': True,
+               'corefoundation_static_dependency_chain': framework_results,
                'scope': 'tiny native Darwin target; not a Node package build or target runtime check'}
     (args.work/'result.json').write_text(json.dumps(summary, indent=2)+'\n')
     print(json.dumps(summary))
