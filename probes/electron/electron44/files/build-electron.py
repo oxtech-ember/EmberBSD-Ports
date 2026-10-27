@@ -153,10 +153,14 @@ def target_inputs(options, sdk, native, environment, work):
         compiler = sdk['target_toolchain'].clang_compiler(str(options.compiler_prefix), target['triplet'],
                                                          host=native.host, env=environment)
         runtime = sdk['application_toolchain'].load_clang_runtime(str(options.sysroot), target=options.target)
+        bound_dir = work / 'target-commands'
+        if bound_dir.exists():
+            import shutil
+            shutil.rmtree(bound_dir)
         bound = sdk['application_toolchain'].bind_clang_application_commands(
-            work / 'target-commands', compiler, str(options.sysroot), runtime,
+            bound_dir, compiler, str(options.sysroot), runtime,
             python=native.tool('python'))
-        prefer_chromium_libcxx_headers(work / 'target-commands')
+        prefer_chromium_libcxx_headers(bound_dir)
         binaries = {role: row['selected_path'] for role, row in compiler['binaries'].items()}
         return dict(binaries, cc=bound['cc'], cxx=bound['cxx'], cpp=bound['cpp'])
     # An explicit rare-platform GCC profile consumes the existing common owner.
