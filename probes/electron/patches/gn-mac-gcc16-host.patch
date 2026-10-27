@@ -107,7 +107,7 @@ This patch does not qualify a compiler or change the NetBSD target ABI.
 +}
 --- a/build/toolchain/apple/toolchain.gni
 +++ b/build/toolchain/apple/toolchain.gni
-@@ -162,9 +162,41 @@
+@@ -162,9 +162,47 @@
        toolchain_is_component_build = is_component_build
      }
  
@@ -145,11 +145,17 @@ This patch does not qualify a compiler or change the NetBSD target ABI.
 +              " '-Clink-arg=" + string_replace(arg, "'", "'\"'\"'") + "'"
 +        }
 +      }
++    } else {
++      not_needed([
++        "cc_driver_args",
++        "cxx_driver_args",
++        "rust_macro_driver_args",
++      ])
 +    }
  
      swiftmodule_switch = "-Wl,-add_ast_path,"
  
-@@ -187,6 +219,10 @@
+@@ -187,6 +225,10 @@
      cc = compiler_prefix + _cc
      cxx = compiler_prefix + _cxx
      ld = _cxx
@@ -160,7 +166,7 @@ This patch does not qualify a compiler or change the NetBSD target ABI.
  
      linker_prefix = ""
      if (apple_linker_launcher != "") {
-@@ -196,7 +232,7 @@
+@@ -196,7 +238,7 @@
      # Set the explicit search path for clang++ so it uses the right linker
      # binary.
      bin_flag = ""
@@ -169,7 +175,7 @@ This patch does not qualify a compiler or change the NetBSD target ABI.
        bin_flag = "-B " + invoker.bin_path
      }
  
-@@ -210,6 +246,8 @@
+@@ -210,6 +252,8 @@
      }
      _use_clang_coverage_wrapper =
          toolchain_coverage_instrumentation_input_file != ""
@@ -178,7 +184,7 @@ This patch does not qualify a compiler or change the NetBSD target ABI.
      if (_use_clang_coverage_wrapper) {
        _coverage_wrapper =
            rebase_path("//build/toolchain/clang_code_coverage_wrapper.py",
-@@ -223,6 +261,14 @@
+@@ -223,6 +267,14 @@
      linker_driver =
          rebase_path("//build/toolchain/apple/linker_driver.py", root_build_dir)
      linker_driver_args = "-Wcrl,driver,$ld"
@@ -193,7 +199,7 @@ This patch does not qualify a compiler or change the NetBSD target ABI.
  
      # Specify an explicit path for the strip binary.
      _strippath = "${prefix}llvm-strip"
-@@ -243,9 +289,13 @@
+@@ -243,9 +295,13 @@
      # If dSYMs are enabled, this flag will be added to the link tools.
      if (_enable_dsyms) {
        dsym_switch = " -Wcrl,dsym,{{root_out_dir}} "
@@ -210,7 +216,7 @@ This patch does not qualify a compiler or change the NetBSD target ABI.
  
        # All the toolchains are defined in the context of the default toolchain,
        # this means that the global variable `current_cpu` is not correct, it
-@@ -507,16 +557,21 @@
+@@ -507,16 +563,21 @@
  
          rspfile_content =
              "$rustc_common_args {{rustdeps}} {{externs}} SOURCES {{sources}}"
@@ -234,7 +240,7 @@ This patch does not qualify a compiler or change the NetBSD target ABI.
        depsformat = "gcc"
        description = "CC {{output}}"
        outputs = [ "$object_subdir/{{source_name_part}}.o" ]
-@@ -526,22 +581,25 @@
+@@ -526,22 +587,25 @@
        depfile = "{{output}}.d"
        precompiled_header_type = "gcc"
  
@@ -271,7 +277,7 @@ This patch does not qualify a compiler or change the NetBSD target ABI.
      }
  
      tool("asm") {
-@@ -575,7 +633,7 @@
+@@ -575,7 +639,7 @@
        rspfile = "{{output}}.rsp"
        rspfile_content = "{{inputs}}"
  
@@ -280,7 +286,7 @@ This patch does not qualify a compiler or change the NetBSD target ABI.
          script = rebase_path("//build/toolchain/apple/filter_libtool.py",
                               root_build_dir)
  
-@@ -938,22 +996,22 @@
+@@ -938,22 +1002,22 @@
  # used to compile build scripts that are part of the stdlib that is built
  # for the default toolchain.
  template("apple_rust_host_build_tools_toolchain") {

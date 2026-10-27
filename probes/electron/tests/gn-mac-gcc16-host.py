@@ -24,7 +24,7 @@ HASHES = {
         '3ee25d27bbae2d36e8e483ae7ca8fd09b5ac3e8937ab23e0809dce7c27f9bc6d'),
     'build/toolchain/apple/toolchain.gni': (
         'e41660cf2c797f8291023ee3956f9e72ffb6ee87d1facdefb8ad0cb2d1e44b05',
-        '970703891e911fb14c6ebd32d005f7f289006218f4ed8204ee0ca7cfb0af9521'),
+        'a098bbf73322090d4c075b0e6c4856927db7f6ae0e80096f155d2f6c6e705753'),
     'build/config/mac/BUILD.gn': (
         '6e6ae8961044eba1668a2e38b47bf15c9e3766d3092b6043b0e7c179df547dbc',
         '93b956d7a89c415e8079a7643b2ff50dba786c5939a1ec573559a1ac1b748185'),
