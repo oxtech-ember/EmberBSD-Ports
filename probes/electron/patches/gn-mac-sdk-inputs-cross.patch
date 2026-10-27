@@ -1,0 +1,21 @@
+# Origin: EmberBSD (AI-assisted), not submitted upstream.
+# When target_os is not mac/ios (e.g. NetBSD cross from Darwin), default_toolchain
+# is the linux/unbundle target. Upstream sdk_inputs still runs under
+# use_system_xcode && default_toolchain and lists absolute system Xcode paths as
+# action outputs, which GN rejects ("File is not inside output directory").
+# Restrict the action to mac/ios defaults; host mac toolchains keep the empty
+# redirect group when default is non-mac.
+--- a/build/config/mac/BUILD.gn
++++ b/build/config/mac/BUILD.gn
+@@ -113,7 +113,11 @@
+ # The symbolic link for $mac_sdk_path is set up by
+ # //build/config/apple/sdk_info.py in //build/config/mac/mac_sdk.gni.
+-if (use_system_xcode && current_toolchain == default_toolchain) {
++# EmberBSD: default_toolchain is NetBSD/linux when cross-compiling from Darwin.
++# sdk_inputs must not claim absolute system Xcode paths as outputs of the
++# non-mac default toolchain (GN: File is not inside output directory).
++if (use_system_xcode && current_toolchain == default_toolchain &&
++    (is_mac || is_ios)) {
+   action("sdk_inputs") {
+     script = "//build/noop.py"
+     outputs = [

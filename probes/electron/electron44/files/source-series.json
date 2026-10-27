@@ -483,6 +483,11 @@
       "root": ""
     },
     {
+      "path": "gn-mac-sdk-inputs-cross.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
       "path": "perfetto-typed-proto-gcc16-dependent-false.patch",
       "strip": 1,
       "root": "third_party/perfetto"
