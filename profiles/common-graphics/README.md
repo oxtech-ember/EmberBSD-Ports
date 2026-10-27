@@ -428,7 +428,7 @@ compositor and all installed/dynamically loaded graphics consumers.
 ## Provenance and verification
 
 The recipe base is pkgsrc `fff4deb639a1a640476203c80f752fb77b6cb14b`.
-The shared libffi 3.8.0nb1 recipe rebases its inherited PowerPC header patch.
+The shared libffi 3.8.0nb2 recipe rebases its inherited PowerPC header patch.
 It preserves both original ILP32 guards. The [source regression](tests/libffi-rebase.rb)
 reproduces the stale hunk failure and applies all thirteen canonical patches.
 It checks the exact rejected hunk, independent of host diagnostic wording.
@@ -507,3 +507,16 @@ VirGL sessions remain runtime gates.
 The [common media profile](../common-media/README.md) prepares FFmpeg9 for
 Qt Multimedia/KFileMetadata; native packages and playback remain unaccepted.
 Physical GPU acceleration and the complete Mobile workflow remain unverified.
+
+The common graphics profile selects libffi 3.8.0nb2 and libdrm 2.4.134nb8
+in its provider checks and dependency floors. Older selections reject the
+current shared recipes before compilation. Query the real contract with:
+
+```sh
+python3 profiles/common-graphics/tests/graphics-provider-revisions.py \
+    --pkgsrc /absolute/export --bmake /absolute/native/bmake \
+    --makeconf /absolute/cross.mk --awk /absolute/native/nawk
+```
+
+The check accepts both current recipes and refuses their previous revisions.
+It does not execute code on the target.
