@@ -30,11 +30,21 @@ def main():
     shutil.copytree(args.pkgsrc/'lang/nodejs24', recipe)
     outer = Path(__file__).resolve().parents[1]/'patches/pkgsrc-nodejs24-python315.patch'
     already_applied = all((recipe/'patches'/name).is_file() for name in NEW_PATCHES)
-    command = [str(args.patch), '-f', '-F0', '-p0', '-i', str(outer)]
-    command += ['--dry-run', '-R'] if already_applied else ['-N']
-    result = subprocess.run(command, cwd=args.work/'pkgsrc', capture_output=True, text=True)
-    if result.returncode or 'fuzz' in result.stdout.lower():
-        raise RuntimeError(result.stdout+result.stderr)
+    if already_applied:
+        # Later package revisions may change other files in the same recipe.
+        # Compare the two owned patch payloads rather than reversing Makefile.
+        for name in NEW_PATCHES:
+            expected = re.search(r'^\+SHA1 \(' + re.escape(name) + r'\) = ([0-9a-f]{40})$',
+                                 outer.read_text(), re.MULTILINE).group(1)
+            payload = b''.join(line for line in (recipe/'patches'/name).read_bytes().splitlines(keepends=True)
+                               if b'$NetBSD' not in line)
+            assert hashlib.sha1(payload).hexdigest() == expected, name
+    else:
+        # Match the common exporter: a/b paths, zero fuzz and no backups.
+        command = [str(args.patch), '-f', '-E', '-F0', '-V', 'none', '-p1', '-N', '-i', str(outer)]
+        result = subprocess.run(command, cwd=args.work/'pkgsrc', capture_output=True, text=True)
+        if result.returncode or 'fuzz' in result.stdout.lower():
+            raise RuntimeError(result.stdout+result.stderr)
     pins = {}
     for line in (recipe/'distinfo').read_text().splitlines():
         match = re.fullmatch(r'(BLAKE2s|SHA512|Size|SHA1) \(([^)]+)\) = (.+)', line)

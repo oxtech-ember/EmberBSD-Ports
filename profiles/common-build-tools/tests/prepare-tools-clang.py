@@ -171,7 +171,7 @@ def retarget_runtime(fixture, target):
 
 
 def completed_sysroot(target):
-    case = LLVMBuilderTests('test_final_dispatch_copies_only_the_selected_llvm_runtime')
+    case = LLVMBuilderTests()
     case.setUp()
     # Reuse the SDK producer fixture; this synthetic result exercises routing,
     # not the target ABI or runtime payload acceptance.
