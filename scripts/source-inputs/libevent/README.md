@@ -18,6 +18,19 @@ an unrelated Git commit with identical inputs does not.
   --source "$WORK/libevent-source"
 ```
 
+The native signal callback lifetime regression builds the prepared source in a
+separate work directory. Select native tools and, when supported, enable
+ASan/UBSan in the compiler binding for both compilation and linking. The last
+argument is the host SDK path (use an empty string where none is needed).
+This exercises host execution, not the target runtime.
+
+```sh
+CC="$NATIVE_CC" AR="$HOST_PREFIX/bin/llvm-ar" RANLIB="$HOST_PREFIX/bin/llvm-ranlib" \
+  "$HOST_PREFIX/bin/mksh" profiles/common-build-tools/tests/libevent-signal-lifecycle.sh \
+  "$WORK/libevent-source" "$WORK/signal-test" "$HOST_PREFIX/bin/cmake" \
+  "$HOST_PREFIX/bin/gmake" "$HOST_SYSROOT"
+```
+
 `GIT` is an absolute Git executable used for source inspection; `WORK` must
 already exist and the output must be new. The shared SDK records the recipe
 input identity and the complete prepared tree. Verification refuses changed
