@@ -30,6 +30,7 @@ post-install:
 
 .include "options.mk"
 .include "../../devel/cmake/build.mk"
+BUILDLINK_API_DEPENDS.llvm+=	llvm-${LLVM_VERSION}{,nb*}
 .include "../../lang/llvm/buildlink3.mk"
 .include "../../devel/py-llvm-lit/buildlink3.mk"
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_DIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.llvm}/lib/cmake/llvm
@@ -61,7 +62,6 @@ PKG_FAIL_REASON+= "LLD tests require matching LLVM llvm_gtest exports (tests opt
 .endif
 .include "../../lang/python/tool.mk"
 .include "../../mk/atomic64.mk"
-DEPENDS+= llvm-${LLVM_VERSION}{,nb*}:../../lang/llvm
 
 pre-configure:
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"

@@ -277,8 +277,6 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Test.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Widgets.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Xml.pc
 
-.include "../../devel/wayland/platform.mk"
-
 .include "../../archivers/brotli/buildlink3.mk"
 .include "../../archivers/zstd/buildlink3.mk"
 .include "../../converters/libiconv/buildlink3.mk"

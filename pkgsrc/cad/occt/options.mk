@@ -8,14 +8,13 @@ PKG_SUGGESTED_OPTIONS+=	x11
 .include "../../mk/bsd.options.mk"
 PLIST_VARS+= draw
 
-.if !empty(PKG_OPTIONS:Mx11)
+.if !empty(PKG_OPTIONS:Mx11) || ${OPSYS} != "Darwin"
 .include "../../graphics/MesaLib/buildlink3.mk"
+.endif
+.if !empty(PKG_OPTIONS:Mx11)
 .include "../../x11/libX11/buildlink3.mk"
 CMAKE_CONFIGURE_ARGS+=	-DUSE_XLIB=ON
 .else
-.if ${OPSYS} != "Darwin"
-.include "../../graphics/MesaLib/buildlink3.mk"
-.endif
 CMAKE_CONFIGURE_ARGS+=	-DUSE_XLIB=OFF
 .endif
 

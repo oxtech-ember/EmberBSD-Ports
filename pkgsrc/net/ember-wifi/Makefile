@@ -17,8 +17,8 @@ USE_CXX_FEATURES= c++17
 TEST_TARGET= test
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_INSTALL_RPATH:STRING=${PREFIX}/qt6/lib:${PREFIX}/lib:/usr/X11R7/lib:${PREFIX}/gcc16/lib
 
-DEPENDS+= kf6-kdbusaddons>=6.31.0:../../sysutils/kf6-kdbusaddons
-DEPENDS+= qt6-qtbase>=6.12.0:../../x11/qt6-qtbase
+BUILDLINK_API_DEPENDS.kf6-kdbusaddons+= kf6-kdbusaddons>=6.31.0
+BUILDLINK_API_DEPENDS.qt6-qtbase+= qt6-qtbase>=6.12.0
 
 .include "../../sysutils/kf6-kdbusaddons/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"

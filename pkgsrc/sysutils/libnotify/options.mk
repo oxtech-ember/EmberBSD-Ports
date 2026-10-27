@@ -7,10 +7,13 @@ PLIST_VARS+=		doc api_doc
 
 .include "../../mk/bsd.options.mk"
 
+.if !empty(PKG_OPTIONS:Mdoc) || !empty(PKG_OPTIONS:Mtests)
+.include "../../lang/python/pyversion.mk"
+.endif
+
 .if !empty(PKG_OPTIONS:Mdoc)
 TOOL_DEPENDS+=		gtk-doc-[0-9]*:../../textproc/gtk-doc
 TOOL_DEPENDS+=		xmlto-[0-9]*:../../textproc/xmlto
-.include "../../lang/python/pyversion.mk"
 .include "../../devel/py-gi-docgen/buildlink3.mk"
 PLIST.doc=		yes
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
@@ -26,7 +29,6 @@ MESON_ARGS+=		-Dgtk_doc=false
 
 .if !empty(PKG_OPTIONS:Mtests)
 # Upstream needs these native tools before it creates the C test targets.
-.include "../../lang/python/pyversion.mk"
 TOOL_DEPENDS+=		dbus-[0-9]*:../../sysutils/dbus
 TOOL_DEPENDS+=		${PYPKGPREFIX}-dbus-[0-9]*:../../sysutils/py-dbus
 MESON_BINARIES+=		python3
