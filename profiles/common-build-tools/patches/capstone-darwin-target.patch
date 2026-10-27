@@ -1,0 +1,18 @@
+$NetBSD$
+
+Detect the compiler target rather than the Apple compiler vendor.
+Backported from the Capstone change by Sevan Janiyan, commit
+1c238b64915c3379c7f0fd835896c9a5e39ff3a2 (Makefile: Improve Apple detection).
+https://github.com/capstone-engine/capstone/commit/1c238b64915c3379c7f0fd835896c9a5e39ff3a2
+
+--- Makefile.orig
++++ Makefile
+@@ -344,7 +344,7 @@
+ API_MAJOR=$(shell echo `grep -e CS_API_MAJOR include/capstone/capstone.h | grep -v = | awk '{print $$3}'` | awk '{print $$1}')
+ VERSION_EXT =
+ 
+-IS_APPLE := $(shell $(CC) -dM -E - < /dev/null 2> /dev/null | grep __apple_build_version__ | wc -l | tr -d " ")
++IS_APPLE := $(shell $(CC) -dM -E - < /dev/null 2> /dev/null | grep __APPLE__ | wc -l | tr -d " ")
+ ifeq ($(IS_APPLE),1)
+ # on MacOS, do not build in Universal format by default
+ MACOS_UNIVERSAL ?= no
