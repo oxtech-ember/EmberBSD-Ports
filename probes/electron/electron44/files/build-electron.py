@@ -256,6 +256,73 @@ def gn_arguments(values):
 
 
 
+
+def ensure_rust_std_x86_64_netbsd(host_prefix, distfiles=None):
+    """Official rust-std for x86_64-unknown-netbsd into host rustlib (find_stdlib)."""
+    import hashlib, shutil, tarfile, tempfile, urllib.request
+    dest = Path(host_prefix) / 'lib' / 'rustlib' / 'x86_64-unknown-netbsd' / 'lib'
+    if dest.is_dir() and any(dest.glob('*.rlib')):
+        return
+    name = 'rust-std-1.99.1-x86_64-unknown-netbsd.tar.xz'
+    url = 'https://static.rust-lang.org/dist/2026-10-15/' + name
+    expect = '97569760ad6e042d56ccdac2fd295df8a10351403b9bbca2a19567f8ed6ae46b'
+    cache_root = Path(distfiles) if distfiles else Path(host_prefix).parents[1] / 'distfiles'
+    cache_root.mkdir(parents=True, exist_ok=True)
+    archive = cache_root / name
+    if not archive.is_file() or hashlib.sha256(archive.read_bytes()).hexdigest() != expect:
+        with urllib.request.urlopen(url) as resp, open(archive, 'wb') as out:
+            shutil.copyfileobj(resp, out)
+    require(hashlib.sha256(archive.read_bytes()).hexdigest() == expect,
+            'rust-std x86_64-unknown-netbsd SHA256 mismatch')
+    with tempfile.TemporaryDirectory(prefix='rust-std-') as tmp:
+        with tarfile.open(archive, 'r:xz') as tf:
+            tf.extractall(tmp)
+        src = next(Path(tmp).rglob('lib/rustlib/x86_64-unknown-netbsd'))
+        if (Path(host_prefix) / 'lib' / 'rustlib' / 'x86_64-unknown-netbsd').exists():
+            shutil.rmtree(Path(host_prefix) / 'lib' / 'rustlib' / 'x86_64-unknown-netbsd')
+        shutil.copytree(src, Path(host_prefix) / 'lib' / 'rustlib' / 'x86_64-unknown-netbsd')
+    require(dest.is_dir() and any(dest.glob('*.rlib')),
+            'rust-std x86_64-unknown-netbsd not installed into host rustlib')
+
+
+
+def ensure_allocator_shim_throw_netbsd(workspace):
+    """NetBSD/BSD libc malloc decls lack exception specs; drop __THROW->_NOEXCEPT map."""
+    path = (workspace / 'src/base/allocator/partition_allocator/src/partition_alloc'
+            / 'shim' / 'allocator_shim_internals.h')
+    require(path.is_file(), 'allocator_shim_internals.h missing')
+    text = path.read_text()
+    needle = '#ifndef __THROW   // Not a glibc system'
+    idx = text.find(needle)
+    require(idx >= 0, 'allocator_shim_internals.h __THROW block missing')
+    # Already patched?
+    window = text[idx:idx + 450]
+    if 'PA_BUILDFLAG(IS_NETBSD)' in window:
+        return
+    old = (
+        '#ifndef __THROW   // Not a glibc system\n'
+        '#ifdef _NOEXCEPT  // LLVM libc++ uses noexcept instead\n'
+        '#define __THROW _NOEXCEPT\n'
+        '#else\n'
+        '#define __THROW\n'
+        '#endif  // !_NOEXCEPT\n'
+        '#endif'
+    )
+    new = (
+        '#ifndef __THROW   // Not a glibc system\n'
+        '// NetBSD/BSD libc headers declare malloc family without exception specs;\n'
+        '// mapping __THROW to _NOEXCEPT then mismatches those decls under clang.\n'
+        '#if defined(_NOEXCEPT) && !PA_BUILDFLAG(IS_NETBSD) && !PA_BUILDFLAG(IS_BSD)\n'
+        '#define __THROW _NOEXCEPT\n'
+        '#else\n'
+        '#define __THROW\n'
+        '#endif  // !_NOEXCEPT || BSD/NetBSD\n'
+        '#endif'
+    )
+    require(old in text, 'allocator_shim_internals.h __THROW block not recognized')
+    path.write_text(text.replace(old, new, 1))
+
+
 def ensure_host_dsymutil(workspace, host_prefix):
     """DEPS dsymutil_mac_* downloads chromium-browser-clang dsymutil; hooks are not run.
     Point tools/clang/dsymutil/bin/dsymutil at host-prefix (or PATH) dsymutil for host mac links."""
@@ -276,38 +343,39 @@ def ensure_host_dsymutil(workspace, host_prefix):
 
 
 def ensure_rollup_darwin_arm64(workspace, host_prefix, environment):
-    """Yarn may omit optional @rollup/rollup-darwin-arm64; host rollup then fails to load native binding."""
-    import subprocess
+    """Yarn may omit optional @rollup/rollup-darwin-arm64; fabricate from host rollup.darwin-arm64.node."""
+    import json, shutil
     electron = workspace / 'src/electron'
     nm = electron / 'node_modules' / '@rollup' / 'rollup-darwin-arm64'
-    if nm.is_dir():
+    marker = nm / 'rollup.darwin-arm64.node'
+    if marker.is_file():
         return
-    # Prefer copying from host-prefix node_modules if present (offline-safe).
+    host_node = Path(host_prefix) / 'lib' / 'node_modules' / 'rollup' / 'dist' / 'rollup.darwin-arm64.node'
     host_pkg = Path(host_prefix) / 'lib' / 'node_modules' / '@rollup' / 'rollup-darwin-arm64'
-    host_rollup = Path(host_prefix) / 'lib' / 'node_modules' / 'rollup'
     if host_pkg.is_dir():
-        import shutil
         nm.parent.mkdir(parents=True, exist_ok=True)
+        if nm.exists():
+            shutil.rmtree(nm)
         shutil.copytree(host_pkg, nm)
         return
-    # Fall back to npm install into electron tree (needs network).
-    npm = Path(host_prefix) / 'bin' / 'npm'
-    if not npm.is_file():
-        npm = Path('/usr/bin/npm')
-    # Discover version from installed rollup if any
+    require(host_node.is_file(), 'host rollup.darwin-arm64.node missing for @rollup/rollup-darwin-arm64')
     ver = '4.60.4'
-    for pkg in (electron / 'node_modules' / 'rollup' / 'package.json',
-                host_rollup / 'package.json'):
-        if pkg.is_file():
-            import json
-            ver = json.loads(pkg.read_text()).get('version') or ver
-            break
-    require(npm.is_file(), 'npm missing to install @rollup/rollup-darwin-arm64')
-    subprocess.check_call(
-        [str(npm), 'install', '--no-save', '--no-package-lock',
-         f'@rollup/rollup-darwin-arm64@{ver}'],
-        cwd=str(electron), env=environment)
-    require(nm.is_dir(), 'npm did not install @rollup/rollup-darwin-arm64')
+    pkg_json = Path(host_prefix) / 'lib' / 'node_modules' / 'rollup' / 'package.json'
+    if pkg_json.is_file():
+        ver = json.loads(pkg_json.read_text()).get('version') or ver
+    if nm.exists():
+        shutil.rmtree(nm)
+    nm.mkdir(parents=True)
+    shutil.copy2(host_node, marker)
+    (nm / 'package.json').write_text(json.dumps({
+        'name': '@rollup/rollup-darwin-arm64',
+        'version': ver,
+        'os': ['darwin'],
+        'cpu': ['arm64'],
+        'main': 'rollup.darwin-arm64.node',
+    }, indent=2) + '
+')
+
 
 
 def ensure_ffmpeg_netbsd_config(workspace):
@@ -374,6 +442,8 @@ def configure(options):
     ensure_ffmpeg_netbsd_config(options.workspace)
     ensure_host_dsymutil(options.workspace, options.host_prefix)
     ensure_rollup_darwin_arm64(options.workspace, options.host_prefix, environment)
+    ensure_rust_std_x86_64_netbsd(options.host_prefix)
+    ensure_allocator_shim_throw_netbsd(options.workspace)
     output = work / 'out'; output.mkdir()
     (output / 'args.gn').write_text(gn_arguments(values))
     sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
@@ -394,6 +464,8 @@ def build(options):
     ensure_ffmpeg_netbsd_config(options.workspace)
     ensure_host_dsymutil(options.workspace, options.host_prefix)
     ensure_rollup_darwin_arm64(options.workspace, options.host_prefix, environment)
+    ensure_rust_std_x86_64_netbsd(options.host_prefix)
+    ensure_allocator_shim_throw_netbsd(options.workspace)
     saved = json.loads((options.work / 'configuration.json').read_text())
     require(saved['source'] == str(options.workspace) and saved['sdk'] == str(options.sdk_source) and
             saved['host_prefix'] == str(options.host_prefix) and saved['target'] == options.target,
