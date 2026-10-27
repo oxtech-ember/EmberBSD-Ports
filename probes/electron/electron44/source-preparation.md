@@ -61,11 +61,16 @@ Prepare depot_tools with its [shared source-input owner](../../../scripts/source
 That owner defines the upstream pin and ordered portability patches. Pass its
 prepared destination, rather than a raw or privately modified depot_tools
 checkout. The Electron helper verifies the exact shared prepared tree.
+For a recipe exported outside the Ports checkout, pass `--depot-tools-owner`
+with the absolute path to the shared `scripts/source-inputs/depot-tools/source.py`.
+Only Git acquisition loads this owner; patch and build-source preparation do
+not require a depot_tools checkout.
 
 ```sh
 /absolute/control-python -B \
     probes/electron/electron44/files/sync-git-sources.py \
     --workspace /absolute/NEW_ELECTRON_WORK --depot-tools /absolute/depot-tools \
+    --depot-tools-owner /absolute/EmberBSD-Ports/scripts/source-inputs/depot-tools/source.py \
     --git /absolute/source-tools/bin/git --git-lfs /absolute/source-tools/bin/git-lfs \
     --source-path /absolute/source-tools/bin \
     --jobs 2

@@ -24,11 +24,20 @@ source = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(source)
 require = source.require
 
-spec = importlib.util.spec_from_file_location(
-    "shared_depot_tools_source",
-    Path(__file__).resolve().parents[4] / "scripts/source-inputs/depot-tools/source.py")
-depot_source = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(depot_source)
+def load_depot_source(owner=None):
+    # The recipe's patch/build stages also import this module. They do not
+    # consume depot_tools and must work when exported outside the Ports tree.
+    if owner is None:
+        owner = Path(__file__).resolve().parents[4] / "scripts/source-inputs/depot-tools/source.py"
+    owner = Path(owner)
+    require(owner.is_absolute() and owner.is_file(),
+            "--depot-tools-owner must name the shared Ports depot_tools source.py")
+    spec = importlib.util.spec_from_file_location("shared_depot_tools_source", owner)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    require(callable(getattr(module, "verify_prepared", None)),
+            "depot_tools source owner does not provide verify_prepared")
+    return module
 
 
 def source_environment(git, git_lfs, source_path):
@@ -51,8 +60,8 @@ def source_environment(git, git_lfs, source_path):
     return env
 
 
-def verify_inputs(workspace, depot_tools, git):
-    depot_source.verify_prepared(depot_tools, git)
+def verify_inputs(workspace, depot_tools, git, depot_tools_owner=None):
+    load_depot_source(depot_tools_owner).verify_prepared(depot_tools, git)
     config = (workspace / ".gclient").read_text(encoding="utf-8")
     require(config in (source.gclient_config("arm64"), source.gclient_config("x64")),
             "workspace .gclient differs from the recipe's prepared configuration")
@@ -101,14 +110,14 @@ def lfs_inventory(workspace, actual, git_lfs, env):
     return pending
 
 
-def sync_git(workspace, depot_tools, git, git_lfs, source_path, jobs):
+def sync_git(workspace, depot_tools, git, git_lfs, source_path, jobs, *, depot_tools_owner=None):
     workspace = Path(workspace).resolve(strict=True)
     depot_tools = Path(depot_tools).resolve(strict=True)
     git = Path(git)
     require(git.is_absolute() and git.is_file(), "--git must name an absolute executable")
     require(jobs >= 1, "--jobs must be positive")
     env = source_environment(git, git_lfs, source_path)
-    verify_inputs(workspace, depot_tools, git)
+    verify_inputs(workspace, depot_tools, git, depot_tools_owner)
     outputs = workspace / "source-inputs"
     require(not outputs.is_symlink(), "source-inputs must not be a symlink")
     outputs.mkdir(exist_ok=True)
@@ -152,6 +161,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--depot-tools", type=Path, required=True)
+    parser.add_argument("--depot-tools-owner", type=Path,
+                        help="shared Ports scripts/source-inputs/depot-tools/source.py; required outside Ports")
     parser.add_argument("--git", type=Path, required=True)
     parser.add_argument("--git-lfs", type=Path, required=True)
     parser.add_argument("--source-path", required=True,
@@ -160,7 +171,8 @@ def main():
     args = parser.parse_args()
     try:
         git_count, pending_count, lfs_count = sync_git(
-            args.workspace, args.depot_tools, args.git, args.git_lfs, args.source_path, args.jobs)
+            args.workspace, args.depot_tools, args.git, args.git_lfs, args.source_path, args.jobs,
+            depot_tools_owner=args.depot_tools_owner)
     except (ValueError, OSError, SyntaxError) as exc:
         parser.exit(1, f"Git source acquisition failed: {exc}\n")
     print(f"Git sources acquired: {git_count}; deferred CIPD/GCS entries: {pending_count}; "

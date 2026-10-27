@@ -7,6 +7,7 @@ import argparse
 import importlib.util
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -92,10 +93,10 @@ class Acquisition(unittest.TestCase):
         self.git(root, "commit", "-qm", "pinned source fixture")
         return root, self.git(root, "rev-parse", "HEAD")
 
-    def run_sync(self):
+    def run_sync(self, *, owner=None):
         try:
             return sync.sync_git(self.workspace, options.depot_tools, options.git,
-                                 options.git_lfs, options.source_path, 2)
+                                 options.git_lfs, options.source_path, 2, depot_tools_owner=owner)
         except ValueError:
             log = self.workspace / "source-inputs/acquisition.log"
             if log.is_file():
@@ -148,9 +149,32 @@ class Acquisition(unittest.TestCase):
         self.assertFalse((self.workspace / "source-inputs").exists())
 
     def test_wrong_depot_tools_pin_refused(self):
-        with patch.object(sync.depot_source, "REVISION", "0" * 40):
-            with self.assertRaisesRegex(ValueError, "depot_tools HEAD"):
-                self.run_sync()
+        owner = sync.load_depot_source()
+        directory = self.root / "shared-owner"
+        shutil.copytree(Path(owner.__file__).parent, directory)
+        filename = directory / "source.py"
+        filename.write_text(filename.read_text().replace(owner.REVISION, "0" * 40))
+        with self.assertRaisesRegex(ValueError, "depot_tools HEAD"):
+            self.run_sync(owner=filename)
+
+    def test_explicit_shared_owner_after_recipe_relocation(self):
+        recipe = Path(sync.__file__).parents[1]
+        relocated = self.root / "export/devel/electron44"
+        shutil.copytree(recipe, relocated)
+        helper = relocated / "files/sync-git-sources.py"
+        spec = importlib.util.spec_from_file_location("relocated_electron_sync", helper)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        owner = Path(sync.load_depot_source().__file__)
+        module.load_depot_source(owner).verify_prepared(options.depot_tools, options.git)
+        with self.assertRaisesRegex(ValueError, "--depot-tools-owner"):
+            module.load_depot_source()
+        for script in ("sync-git-sources.py", "apply-upstream-patches.py", "audit-bsd-overlay.py",
+                       "prepare-build-sources.py"):
+            process = subprocess.run([sys.executable, "-B", "-I", "-S",
+                                      str(relocated / "files" / script), "--help"],
+                                     capture_output=True, text=True)
+            self.assertEqual(process.returncode, 0, process.stdout + process.stderr)
 
     def test_undeclared_git_refused(self):
         with self.assertRaisesRegex(ValueError, "declared git"):
