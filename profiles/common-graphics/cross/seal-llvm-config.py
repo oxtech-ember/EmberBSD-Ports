@@ -108,12 +108,11 @@ def seal_locked(old, expected, destination):
     require(sdk.safe_absolute(compile_work) and '-I' + compile_work + '/metadata' in r['command'] and r['command'][-1] == compile_work + '/bin/llvm-config.real', 'unsupported recorded helper work path')
     for p in shlex.split(re.sub(r'^llvm-config:\s*', '', depfile)):
         if p.startswith(compile_work + '/'):
+            require(sdk.safe_absolute(p), 'unsafe local compile dependency: ' + p)
             require(p.removeprefix(compile_work + '/') in local, 'unknown local compile dependency: ' + p)
             continue
-        header = p.startswith(source + '/include/') or p.startswith(native + '/include/')
-        measured_native = any(p.startswith(root + '/') for root in native_roots)
-        require(sdk.safe_absolute(p) and (header or measured_native), 'unclassified compile dependency: ' + p)
-        historical.append(p)
+        canonical = native_api.validate_header(p, [source + '/include', native + '/include', *native_roots], forbidden=[target, prefix, r['sysroot']])
+        historical.append(canonical)
     original_vars = target + '/tools/llvm-config/BuildVariables.inc'
     require(manifest.get(original_vars) and digest(original_vars) == manifest[original_vars], 'target report metadata mismatch')
     match = re.search(r'^#define LLVM_SRC_ROOT (".*")$', Path(original_vars).read_text(), re.M)

@@ -175,6 +175,7 @@ def build_locked(source, target, native, sysroot, prefix, destination):
     mapped_ldflags = ' '.join(mapped)
     # All preflight above is read-only. Failed producers retain this unique partial path.
     work = sdk.stage_for(destination)
+    work_root = str(Path(work).resolve(strict=True))
     print('Retained partial work on failure: ' + work, file=sys.stderr, flush=True)
     (Path(work) / 'metadata').mkdir()
     (Path(work) / 'bin').mkdir()
@@ -211,8 +212,8 @@ def build_locked(source, target, native, sysroot, prefix, destination):
     sdk.produce(dependency_command, Path(work) / 'dependencies.log')
     dependencies = shlex.split(re.sub(r'^llvm-config:\s*', '', (Path(work) / 'llvm-config.d').read_text().replace('\\\n', ' ')))
     for path in dependencies:
-        native_api.validate_header(path, [work, source, native, *native_headers], forbidden=[sysroot, target])
-        if path.startswith(work + '/'):
+        path = native_api.validate_header(path, [work, source, native, *native_headers], forbidden=[sysroot, target])
+        if path.startswith(work_root + '/'):
             continue
         required.append(path)
         hashes.setdefault(path, sdk.digest(path))
