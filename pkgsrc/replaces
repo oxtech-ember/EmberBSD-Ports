@@ -342,3 +342,6 @@ devel/libhfs
 archivers/lz4
 graphics/pcl
 math/flann-lib
+
+# SDL2 programs run on SDL3 through sdl2-compat.
+devel/SDL2

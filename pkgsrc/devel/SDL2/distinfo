@@ -1,0 +1,5 @@
+# EmberBSD: official sdl2-compat release, signed by Sam Lantinga
+
+BLAKE2s (sdl2-compat-2.32.74.tar.gz) = 22c5bf92f0e4da430cbdfce055e3fd1c861f8be2edf574f11681da040feda399
+SHA512 (sdl2-compat-2.32.74.tar.gz) = 9130719dc57137c22fe9d553fdae0400e6d9ad4fa55592dc942b4d79e3654478c494b932eebcfbe2f89da2f43bf37ea7705dcaea94c9bb5b01c655802cbd3b12
+Size (sdl2-compat-2.32.74.tar.gz) = 2826006 bytes

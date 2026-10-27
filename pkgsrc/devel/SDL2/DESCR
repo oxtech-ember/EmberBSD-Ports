@@ -1,0 +1,3 @@
+sdl2-compat provides the Simple DirectMedia Layer 2 API and ABI on top of
+SDL3. Programs and libraries built for SDL2 use the SDL3 audio, video,
+input and platform backends through it.
