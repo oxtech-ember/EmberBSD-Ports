@@ -34,6 +34,13 @@ def main():
         role: dict(selected_path='/target/bin/' + name)
         for role, name in [('cc', 'clang'), ('cxx', 'clang++'), ('ar', 'llvm-ar'),
                            ('ranlib', 'llvm-ranlib'), ('nm', 'llvm-nm'), ('strip', 'llvm-strip'), ('ld', 'ld.lld')]})
+    cxx_header = '/stage/usr/pkg/llvm/include/c++/v1'
+    builtin_header = '/target/lib/clang/23/include'
+    for role in ('cc', 'cxx'):
+        flags = producer.link_check_include_flags(Path('/stage/usr/pkg/llvm'), compiler, role)
+        headers = [flags[i + 1] for i, value in enumerate(flags) if value == '-isystem']
+        assert headers == ([cxx_header, builtin_header] if role == 'cxx' else [builtin_header])
+
     for target in ('aarch64', 'amd64'):
         definition = target_definition(target)
         for phase in ('builtins', 'bootstrap', 'full'):

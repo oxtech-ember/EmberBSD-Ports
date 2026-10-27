@@ -329,16 +329,20 @@ def install_licenses(source, stage, phase):
         shutil.copyfile(source / 'compiler-rt' / name, root / 'compiler-rt' / Path(name).name)
 
 
+def link_check_include_flags(prefix, compiler, role):
+    # libc++ wrappers must precede Clang builtin headers in C++ searches.
+    cxx = ['-nostdinc++', '-isystem', str(prefix / 'include/c++/v1')] if role == 'cxx' else []
+    return cxx + ['-nobuiltininc', '-isystem', compiler['resource_dir'] + '/include']
+
+
 def link_checks(owner, work, stage, base, native, compiler, definition, environment):
     """Link actual C and C++ consumers; execution belongs to a matching target."""
     from emberbsd_sdk.elf import read_elf_dynamic
     prefix = stage / 'usr/pkg/llvm'
     resource = prefix / 'lib/clang' / compiler['version'].split('.')[0]
     common = ['--no-default-config', '--sysroot=' + str(base), '-resource-dir=' + str(resource),
-              '-nobuiltininc', '-isystem', compiler['resource_dir'] + '/include',
               '--rtlib=compiler-rt', '--unwindlib=libunwind', '-L' + str(prefix / 'lib')]
-    cxx = ['-std=c++17', '-stdlib=libc++', '-nostdinc++', '-isystem',
-           str(prefix / 'include/c++/v1'), '-pthread']
+    cxx = ['-std=c++17', '-stdlib=libc++', '-pthread']
     fixture = owner.OWNER / 'tests/runtime-cxx.cpp'
     checks = [
         ('runtime-c', 'cc', ['-O1', str(owner.OWNER / 'tests/runtime-c.c')], 2),
@@ -352,7 +356,7 @@ def link_checks(owner, work, stage, base, native, compiler, definition, environm
     for name, role, flags, kind in checks:
         output = work / name
         rpath = [] if '-static' in flags else ['-Wl,-rpath,/usr/pkg/llvm/lib']
-        command = compiler['commands'][role] + common + flags + rpath + ['-o', str(output)]
+        command = compiler['commands'][role] + link_check_include_flags(prefix, compiler, role) + common + flags + rpath + ['-o', str(output)]
         execute(owner, command, work, environment, work / 'link-checks.log')
         dynamic = read_elf_dynamic(str(output), machine=definition['elf'])
         owner.require(dynamic['type'] in ((3,) if kind == 3 else (2, 3)),
