@@ -195,6 +195,7 @@ patch -p0 -F 0 < /absolute/Ports/probes/electron/patches/gn-pkgconfig-libdir.pat
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-readelf.patch
 patch -p0 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-asmflags.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-compiler-family.patch
+patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-wayland-scanner.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-bindgen-host-tools.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-netbsd-x64-targets.patch
 patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-version-netbsd.patch
@@ -500,6 +501,33 @@ Compiler paths, linker drivers, CPU/OS and assembler flags must stay separate.
 These small GN fixtures run no compiler, Ninja or complete Chromium graph.
 The ordinary Electron recipe still needs the full dependency sync, BSD overlay
 integration and GN bindings; its initial DEPS input preparation is available.
+
+## Native Wayland scanner selection
+
+The [scanner patch](patches/gn-wayland-scanner.patch) adds the GN argument
+`wayland_scanner_executable`. Select the native Ports prefix through the SDK
+and set this argument to its absolute `bin/wayland-scanner` path. The common
+[Wayland provider](../../profiles/common-graphics/cross/wayland.md) and its
+[cross selector](../../pkgsrc/devel/wayland/cross-scanner.mk) own native tool
+validation. GN checks the absolute-path contract and keeps the executable as
+an action input, so replacing it triggers protocol regeneration. This selects
+only the host generator; target Wayland libraries retain their own selection.
+
+When the argument is nonempty, protocol actions omit the bundled scanner
+build dependency and execute the supplied tool. Missing or nonexecutable tools
+fail without fallback. The default empty argument preserves Chromium's host
+scanner target and command. Existing generator types and wrapper behavior stay
+unchanged.
+
+The [GN/Ninja regression](tests/gn-wayland-scanner.py) reads the three exact
+pinned Wayland files from an acquired Chromium Git checkout and verifies that
+the prepared leaf still matches them. It applies the public patch in a separate
+fixture, runs all four generation modes with the real native scanner and checks
+executable-input rebuilds, default dependency routing and refusal cases. Its
+default producer copies the native binary to the expected bundled output path;
+it does not compile the bundled scanner. No production sources or installed
+tools are modified. This checks protocol generation, not the full Chromium
+graph, C/C++ compilation, target ABI or Electron runtime.
 
 ## Explicit native macOS GCC host alternative
 
