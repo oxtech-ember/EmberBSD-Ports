@@ -23,19 +23,19 @@ DISK2=		harddisk.netbsd2
 
 all: netbsd1 netbsd2
 
-netbsd1: bridge 
+netbsd1: bridge
 	ifconfig tap1 create up	     || echo tap1: already there
 	brconfig bridge0 add tap1 up || echo tap1: already on bridge0
 	brconfig bridge0 -learn tap1 # real hub mode, step 1b
 	brconfig bridge0 flush	# real hub mode, step 2
-	qemu \	
+	qemu \
 		-m ${QEMU_RAM} \
 		${NETBSD_NOGFX} \
 		-boot c \
 		-net tap,fd=3,ifname=tap1 3<>/dev/tap1 \
 		-net nic,macaddr=de:ad:be:ef:00:01 \
 		${DISK1}
-	brconfig bridge0 delete tap1 
+	brconfig bridge0 delete tap1
 	ifconfig tap1 destroy
 
 netbsd2: bridge
@@ -52,7 +52,7 @@ netbsd2: bridge
 		${DISK2}
 	brconfig bridge0 delete tap2
 	ifconfig tap2 destroy
-	
+
 bridge:
 	ifconfig bridge0 create	  || echo bridge0: already there
 	brconfig bridge0 add ${ETHER_IF} || echo bridge0: ${ETHER_IF} already there
