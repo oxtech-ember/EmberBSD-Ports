@@ -5,6 +5,7 @@
 """Export the complete pinned pkgsrc tree through explicitly selected tools."""
 
 import argparse
+import fnmatch
 import hashlib
 import os
 from pathlib import Path, PurePosixPath
@@ -237,8 +238,66 @@ def configuration(root, *, include_manifests=False):
     names = [name for name, source in recipes]
     duplicate = next((name for name in sorted(names) if names.count(name) > 1), None)
     require(duplicate is None, f'Two recipe sources provide {duplicate}.')
+    rules = version_families(root)
+    old_version = next((name for name in names if version_pruned(name, rules)), None)
+    require(old_version is None,
+            f'Ports recipe {old_version} is an old version; pkgsrc/versions.mk keeps another.')
     result = (recipes, patches, files, categories)
     return (*result, manifests) if include_manifests else result
+
+
+VERSION_RULE = re.compile(r'EMBERBSD_VERSION_FAMILIES\+=[ \t]+([^ \t=]+)=([^ \t=]+)')
+
+
+def version_families(root):
+    """Return the FAMILY=KEPT rules of pkgsrc/versions.mk."""
+    path = Path(root) / 'pkgsrc/versions.mk'
+    if not os.path.lexists(path):
+        return []
+    source_path(root, 'pkgsrc/versions.mk', 'version families')
+    rules = []
+    for line in path.read_bytes().decode('utf-8').split('\n'):
+        if not line.startswith('EMBERBSD_VERSION_FAMILIES'):
+            continue
+        match = VERSION_RULE.fullmatch(line.rstrip(' \t'))
+        require(match, 'pkgsrc/versions.mk: use EMBERBSD_VERSION_FAMILIES+= FAMILY=KEPT: ' + line)
+        rules.append(match.groups())
+    return rules
+
+
+def version_pruned(name, rules):
+    """Return the family that rejects PKGPATH name, or None."""
+    for family, kept in rules:
+        if fnmatch.fnmatchcase(name, family) and not fnmatch.fnmatchcase(name, kept):
+            return family
+    return None
+
+
+def prune_versions(destination, rules):
+    """Remove old versions of each family from the export; keep exactly the KEPT paths."""
+    destination = Path(destination)
+    packages = sorted(category.name + '/' + package.name
+                      for category in destination.iterdir()
+                      if category.is_dir() and not category.is_symlink()
+                      for package in category.iterdir()
+                      if package.is_dir() and not package.is_symlink())
+    for family, kept in rules:
+        require(any(fnmatch.fnmatchcase(name, kept) for name in packages),
+                f'pkgsrc/versions.mk keeps {kept}, but the export has no such package.')
+    removed = [name for name in packages if version_pruned(name, rules)]
+    for name in removed:
+        shutil.rmtree(destination_parent(destination, name))
+    for category in sorted({name.split('/')[0] for name in removed}):
+        makefile = destination_parent(destination, category + '/Makefile')
+        if not makefile.is_file():
+            continue
+        gone = {name.split('/')[1] for name in removed if name.split('/')[0] == category}
+        lines = makefile.read_bytes().decode('utf-8').split('\n')
+        kept_lines = [line for line in lines
+                      if not (line.startswith('SUBDIR') and line.split()[-1:] and
+                              line.split()[-1] in gone)]
+        makefile.write_bytes('\n'.join(kept_lines).encode('utf-8'))
+    return removed
 
 
 def copy_file(source, target):
@@ -423,6 +482,7 @@ def export_pkgsrc(root, destination, *, selection, runner, scratch):
         if parent != '.':
             ensure_destination_directory(destination, parent)
         copy_file(source, target)
+    prune_versions(destination, version_families(root))
     revision_file = destination_parent(destination, 'EMBERBSD-PKGSRC-REVISION')
     require(not os.path.lexists(revision_file), 'Exported revision file already exists.')
     with revision_file.open('x', encoding='ascii') as output:

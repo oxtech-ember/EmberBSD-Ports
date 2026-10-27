@@ -435,6 +435,46 @@ class ExportTests(unittest.TestCase):
         self.assertEqual((self.work / 'export/local/.data').read_bytes(),
                          b'preserved by whole-category copy')
 
+    def write_versions(self, *rules):
+        (self.root / 'pkgsrc/versions.mk').write_text(''.join(
+            'EMBERBSD_VERSION_FAMILIES+=\t' + rule + '\n' for rule in rules) +
+            'LUA_VERSION_DEFAULT=\t55\n')
+
+    def test_version_families_prune_old_versions_from_export(self):
+        for name in ('python314', 'python315', 'python-aux', 'lua54', 'lua55', 'lua'):
+            (self.upstream / 'lang' / name).mkdir(parents=True)
+            (self.upstream / 'lang' / name / 'Makefile').write_text('# ' + name + '\n')
+        (self.upstream / 'lang/Makefile').write_text(''.join(
+            'SUBDIR+=\t' + name + '\n'
+            for name in ('lua', 'lua54', 'lua55', 'python-aux', 'python314', 'python315')))
+        self.write_versions('lang/python[0-9]*=lang/python315', 'lang/lua[0-9]*=lang/lua55')
+        self.fake_export()
+        lang = self.work / 'export/lang'
+        self.assertEqual(sorted(path.name for path in lang.iterdir() if path.is_dir()),
+                         ['lua', 'lua55', 'python-aux', 'python315'])
+        self.assertEqual((lang / 'Makefile').read_text(), ''.join(
+            'SUBDIR+=\t' + name + '\n' for name in ('lua', 'lua55', 'python-aux', 'python315')))
+
+    def test_version_families_require_the_kept_version(self):
+        (self.upstream / 'lang/lua54').mkdir(parents=True)
+        self.write_versions('lang/lua[0-9]*=lang/lua55')
+        with self.assertRaisesRegex(exporter.ExportError, 'keeps lang/lua55'):
+            self.fake_export()
+
+    def test_version_families_reject_ports_recipe_of_old_version(self):
+        recipe = self.root / 'pkgsrc/lang/python314'
+        recipe.mkdir(parents=True)
+        (recipe / 'Makefile').write_text('PKGNAME=python314-3.14.0\n')
+        self.write_versions('lang/python[0-9]*=lang/python315')
+        with self.assertRaisesRegex(exporter.ExportError, 'lang/python314 is an old version'):
+            exporter.configuration(self.root)
+
+    def test_version_families_reject_malformed_rule(self):
+        (self.root / 'pkgsrc/versions.mk').write_text(
+            'EMBERBSD_VERSION_FAMILIES+=\tlang/lua[0-9]* lang/lua55\n')
+        with self.assertRaisesRegex(exporter.ExportError, 'FAMILY=KEPT'):
+            exporter.version_families(self.root)
+
     def test_compatibility_launcher_accepts_basename_invocation(self):
         existing = self.work / 'existing'
         existing.mkdir()

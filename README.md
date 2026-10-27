@@ -846,6 +846,16 @@ recipe only if `pkgsrc/replaces` names its path, one path on each line.
 copies it to `EMBERBSD-DEFAULTS-MK.CONF`; the common tools `mk.conf` files
 include it.
 
+The export keeps one version of each versioned package family, as EmberBSD
+does for LLVM. `pkgsrc/versions.mk` lists each family as `FAMILY=KEPT`
+PKGPATH patterns and sets the matching `*_VERSION_DEFAULT` values. The export
+removes the other versions and their category `SUBDIR` lines, and fails if the
+kept version is missing or a local recipe adds an old one. The defaults file
+includes the same list as `EMBERBSD-VERSIONS.MK` and sets `PKG_FAIL_REASON`
+for any other version. Patch a consumer onto the kept version instead of
+adding an old one. `profiles/common-build-tools/tests/version-families.sh`
+checks an export and the guard.
+
 `pkgsrc/export.conf` lists the other export inputs, one on each line, with
 tabs between the fields. The export uses them in the order of the file:
 
