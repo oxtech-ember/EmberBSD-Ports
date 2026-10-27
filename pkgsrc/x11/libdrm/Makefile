@@ -64,6 +64,11 @@ LDFLAGS.NetBSD+=	-lpci
 # Bind the upstream Python module and symbol-test shebang to one interpreter.
 MESON_BINARIES+= python
 MESON_BINARY.python= ${TOOL_PYTHONBIN}
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# Meson symbols-check needs the target nm; record it in the cross file.
+MESON_BINARIES+= nm
+MESON_BINARY.nm= ${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-nm
+.endif
 REPLACE_TOOL_PYTHON+= symbols-check.py gen_table_fourcc.py
 .include "../../lang/python/application.mk"
 pre-configure:
