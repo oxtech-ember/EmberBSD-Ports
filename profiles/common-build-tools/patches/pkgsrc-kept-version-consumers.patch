@@ -1,5 +1,7 @@
-Origin: EmberBSD (AI-assisted). Build these consumers with the one Ruby, Go and
-MySQL client version in the export instead of a removed version.
+Origin: EmberBSD (AI-assisted). Build these consumers with the one Ruby, Go,
+MySQL client, FFmpeg and PCRE version in the export instead of an old version.
+ZoneMinder 1.38 already looks for PCRE2, so with the old PCRE it lost regex
+support silently.
 
 --- a/devel/Guitar/Makefile
 +++ b/devel/Guitar/Makefile
@@ -48,3 +50,47 @@ MySQL client version in the export instead of a removed version.
  GO_BUILD_PATTERN=	.
  
  .include "./go-modules.mk"
+--- a/security/zoneminder/Makefile
++++ b/security/zoneminder/Makefile
+@@ -8,7 +8,7 @@
+ NAME_DIST=	ZoneMinder
+ NAME_LOWER=	zoneminder
+ PKGNAME=	${DISTNAME:S/${NAME_DIST}-/${NAME_LOWER}-/}
+-PKGREVISION=	3
++PKGREVISION=	4
+ DISTNAME=	${NAME_DIST}-${VERSION}
+ WRKSRC=		${WRKDIR}/${NAME_LOWER}-${GITHUB_TAG}
+ CATEGORIES=	security
+@@ -149,11 +149,10 @@
+ PTHREAD_AUTO_VARS=	yes
+ .include "../../mk/pthread.buildlink3.mk"
+ 
+-# \todo Move to higher ffmpeg.
+-.include "../../multimedia/ffmpeg8/buildlink3.mk"
++.include "../../multimedia/ffmpeg9/buildlink3.mk"
+ .for lib in AVFORMAT AVCODEC AVDEVICE AVUTIL SWSCALE SWRESAMPLE
+-CMAKE_CONFIGURE_ARGS+=	-D${lib}_INCLUDE_DIR=${BUILDLINK_PREFIX.ffmpeg8}/include/ffmpeg8
+-CMAKE_CONFIGURE_ARGS+=	-D${lib}_LIBRARIES=${BUILDLINK_PREFIX.ffmpeg8}/lib/ffmpeg8/lib${lib:tl}.${SHLIB_EXT}
++CMAKE_CONFIGURE_ARGS+=	-D${lib}_INCLUDE_DIR=${BUILDLINK_PREFIX.ffmpeg9}/include/ffmpeg9
++CMAKE_CONFIGURE_ARGS+=	-D${lib}_LIBRARIES=${BUILDLINK_PREFIX.ffmpeg9}/lib/ffmpeg9/lib${lib:tl}.${SHLIB_EXT}
+ .endfor
+ 
+ # \todo Recheck if this is needed.
+@@ -262,7 +261,7 @@
+ # 2024-01: 1.36 works with mariadb 11.2 on GNU/Linux
+ # 2026-07: 1.38 works with mariadb 10.6 on NetBSD
+ DEPENDS+=			p5-DBD-MariaDB-[0-9]*:../../databases/p5-DBD-MariaDB
+-MYSQL_VERSIONS_ACCEPTED=	mariadb118 mariadb114 mariadb1011 mariadb106 mariadb105
++MYSQL_VERSIONS_ACCEPTED=	mariadb118
+ CMAKE_CONFIGURE_ARGS+=		-DZM_DB_TYPE=MariaDB
+ .endif
+ .if !empty(PKG_OPTIONS:Mmysql)
+@@ -417,7 +416,7 @@
+ .include "../../archivers/bzip2/buildlink3.mk"
+ # \todo Consider graphics/libv4l.
+ .include "../../devel/glib2/buildlink3.mk"
+-.include "../../devel/pcre/buildlink3.mk"
++.include "../../devel/pcre2/buildlink3.mk"
+ .include "../../devel/zlib/buildlink3.mk"
+ .include "../../net/libvncserver/buildlink3.mk"
+ .include "../../multimedia/mp4v2/buildlink3.mk"
