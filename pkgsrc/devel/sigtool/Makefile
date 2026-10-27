@@ -2,6 +2,7 @@
 # Origin: nix-community/sigtool.
 
 DISTNAME= sigtool-0.2.2
+PKGREVISION= 1
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=nix-community/}
 GITHUB_TAG= v${PKGVERSION_NOREV}

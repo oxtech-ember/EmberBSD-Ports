@@ -1,0 +1,88 @@
+$NetBSD$
+
+Preserve native file metadata when replacing a signed Mach-O.
+
+--- commands.cpp.orig
++++ commands.cpp
+@@ -8,6 +8,10 @@
+ #include <unistd.h>
+ #include <sys/types.h>
+ #include <sys/wait.h>
++#if defined(__APPLE__)
++#include <copyfile.h>
++#include <fcntl.h>
++#endif
+ 
+ #include "bundle.h"
+ #include "commands.h"
+@@ -397,6 +401,23 @@
+ static void signOneMachO(const Commands::SignOptions &signTemplate,
+                          const std::string &binaryFile,
+                          bool force) {
++#if defined(__APPLE__)
++    struct SourceFdGuard {
++        int fd;
++        ~SourceFdGuard() { if (fd >= 0) close(fd); }
++    } source{open(binaryFile.c_str(), O_RDONLY)};
++    if (source.fd < 0) {
++        throw std::runtime_error{std::string{"open source: "} + strerror(errno)};
++    }
++    struct stat sourceFileStat{};
++    if (fstat(source.fd, &sourceFileStat) != 0) {
++        throw std::runtime_error{std::string{"stat source: "} + strerror(errno)};
++    }
++    if (sourceFileStat.st_flags & (UF_IMMUTABLE | UF_APPEND | SF_IMMUTABLE |
++                                   SF_APPEND | SF_NOUNLINK)) {
++        throw std::runtime_error{"source has flags that prevent replacement"};
++    }
++#endif
+     MachOList list{binaryFile};
+     std::vector<std::string> arguments;
+ 
+@@ -439,6 +460,7 @@
+         }
+     } tempGuard{tempfile, tempfileName.data()};
+ 
++#if !defined(__APPLE__)
+     struct stat sourceFileStat{};
+     if (stat(binaryFile.c_str(), &sourceFileStat) != 0) {
+         throw std::runtime_error{std::string{"stat of "} + binaryFile + " failed: " + strerror(errno)};
+@@ -446,6 +468,7 @@
+     if (fchmod(tempfile, sourceFileStat.st_mode) != 0) {
+         throw std::runtime_error{"chmod temporary file"};
+     }
++#endif
+ 
+     arguments.emplace_back("-o");
+     arguments.emplace_back(std::string(tempfileName.data()));
+@@ -490,6 +513,30 @@
+     injectOpts.filename = std::string(tempfileName.data());
+     Commands::inject(injectOpts);
+ 
++#if defined(__APPLE__)
++    SourceFdGuard destination{open(tempfileName.data(), O_RDWR)};
++    if (destination.fd < 0) {
++        throw std::runtime_error{std::string{"open temporary file: "} + strerror(errno)};
++    }
++    if (fcopyfile(source.fd, destination.fd, nullptr, COPYFILE_METADATA) != 0) {
++        throw std::runtime_error{std::string{"copy source metadata: "} + strerror(errno)};
++    }
++    struct stat currentFd{}, currentPath{};
++    if (fstat(source.fd, &currentFd) != 0 || stat(binaryFile.c_str(), &currentPath) != 0) {
++        throw std::runtime_error{std::string{"stat source after signing: "} + strerror(errno)};
++    }
++    auto unchanged = [&sourceFileStat](const struct stat &value) {
++        return value.st_dev == sourceFileStat.st_dev && value.st_ino == sourceFileStat.st_ino &&
++               value.st_size == sourceFileStat.st_size &&
++               value.st_mtimespec.tv_sec == sourceFileStat.st_mtimespec.tv_sec &&
++               value.st_mtimespec.tv_nsec == sourceFileStat.st_mtimespec.tv_nsec &&
++               value.st_ctimespec.tv_sec == sourceFileStat.st_ctimespec.tv_sec &&
++               value.st_ctimespec.tv_nsec == sourceFileStat.st_ctimespec.tv_nsec;
++    };
++    if (!unchanged(currentFd) || !unchanged(currentPath)) {
++        throw std::runtime_error{"source changed during signing"};
++    }
++#endif
+     if (rename(tempfileName.data(), binaryFile.c_str()) != 0) {
+         throw std::runtime_error{"rename failed"};
+     }

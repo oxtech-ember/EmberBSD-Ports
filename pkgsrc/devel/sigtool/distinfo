@@ -7,3 +7,4 @@ SHA1 (patch-main.cpp) = 58c65fcb07c2bd16e37e2811c2a7306c5b38f673
 SHA1 (patch-codesign.cpp) = e30cef2b0b630bc79d8a7bfa8fa5004fc118db14
 SHA1 (patch-CMakeLists.txt) = 84665f04cf80112e389f0687953c0a131310a7af
 SHA1 (patch-commands.cpp) = 54007a79b5e2decd26363f0cbe466118c7f4c4bb
+SHA1 (patch-commands.cpp-metadata) = 0fe2a293a64ecc9448e054ab83be99f10daa482d
