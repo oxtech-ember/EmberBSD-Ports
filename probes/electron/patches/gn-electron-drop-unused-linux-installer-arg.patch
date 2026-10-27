@@ -8,9 +8,19 @@
 # non-Chrome //electron gen does not trip unused-args when pdf features.gni is
 # not loaded. Electron wants it false; Chromium's declare default is false when
 # the PDF save-to-drive feature flag file is present.
+# root_extra_deps is declared only in //BUILD.gn's declare_args(); with
+# --root-target=//electron that file is not part of the producer graph, so the
+# assignment is unused. Electron is already the root target; omit it.
 --- a/electron/build/args/all.gn
 +++ b/electron/build/args/all.gn
-@@ -87,12 +87,6 @@
+@@ -1,6 +1,4 @@
+ is_electron_build = true
+-root_extra_deps = [ "//electron" ]
+-
+ # Registry of NMVs --> https://github.com/nodejs/node/blob/main/doc/abi_version_registry.json
+ node_module_version = 149
+ 
+@@ -87,12 +85,6 @@
  # Expose public V8 symbols for native modules.
  v8_expose_public_symbols = true
  
