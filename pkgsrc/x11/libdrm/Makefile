@@ -22,6 +22,10 @@ PKGCONFIG_OVERRIDE+=	libdrm.pc.in
 # Apply after MAKECONF selects its base flags.
 # Retain diagnostics for unsupported buses; keep general warnings fatal.
 CFLAGS+=	-Werror -Wno-error=cpp
+# Clang flags unused static helpers in tests/util/pattern.c; do not fail the package.
+.if ${EMBERBSD_CROSS_COMPILER_FAMILY:U} == "clang" ||     ${EMBERBSD_HOST_COMPILER_FAMILY:U} == "clang"
+CFLAGS+=	-Wno-error=unused-function
+.endif
 .if !defined(EMBERBSD_COMMON_GRAPHICS)
 PKG_FAIL_REASON+= "libdrm requires the prepared common graphics profile"
 .endif
