@@ -101,6 +101,26 @@ both tool roles using a header directory with spaces and defines supplied only
 through CPPFLAGS, with a later CFLAGS/CXXFLAGS override. Removing CPPFLAGS or its
 required define must fail. It passed with the explicitly declared initial Apple
 Clang, SDK and deployment inputs; only preprocessing runs, with a fixture Rust
-identity. It does not execute the Rust `cc` crate or qualify a target binary. Actual Rust/C/C++ compilation, Cargo's skipping of a real
-build script, library loading and target execution require their own checks with
-the selected tools and consumers.
+identity. It does not execute the Rust `cc` crate or qualify a target binary.
+
+With an installed native Rust/Clang prefix and a checksum-verified pkgsrc vendor
+directory containing `cc` 1.4.6 and its dependency closure, run the actual crate
+regression:
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B -I -S \
+  profiles/common-build-tools/tests/cargo-cc.py \
+  --host-prefix "$HOST_PREFIX" --vendor "$PREPARED_VENDOR" \
+  --work "$NEW_WORK_DIRECTORY" --sdk-root "$MACOS_SDK" \
+  --utility-path "$SELECTED_TOOL_PATH" --deployment-target 26.0
+```
+
+This offline, single-job check compiles the real `cc` build script, C and C++
+archives, then links and runs a native Rust executable. Both languages need an
+include path and define supplied only by CPPFLAGS; CFLAGS/CXXFLAGS supply the
+later value of a shared define. Removing the include path or required define must
+fail. Inherited compiler/archive variables are deliberately invalid, so success
+also exercises Cargo's forced tool selection. The current checked route is
+native Darwin with Rust 1.99.1 and Clang 23. Cross Rust execution, Cargo's skipping
+of a real shared-library build script, and Rollup/mimalloc ABI and loader behavior
+still require their own consumer checks.

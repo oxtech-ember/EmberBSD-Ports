@@ -16,7 +16,7 @@ from sdk_source import load_sdk
 _, arguments = load_sdk()
 from emberbsd_sdk.stream import capture_streamed
 cli = argparse.ArgumentParser(description=__doc__)
-for name in ('archive', 'patch', 'work'):
+for name in ('archive', 'patch', 'work', 'cmake'):
     cli.add_argument('--' + name, type=Path, required=True)
 a = cli.parse_args(arguments)
 p = ROOT / 'pkgsrc/devel/cppcheck'
@@ -30,6 +30,7 @@ assert 'Size (' + a.archive.name + ') = ' + str(len(data)) + ' bytes' in info
 with tarfile.open(a.archive) as archive:
     archive.extractall(a.work / 'source', filter='data')
 s = a.work / 'source/cppcheck-2.22.0'
+original_compileroptions = (s / 'cmake/compileroptions.cmake').read_bytes()
 token = (s / 'lib/token.cpp').read_bytes()
 for patch in sorted((p / 'patches').glob('patch-*')):
     clean = b''.join(line for line in patch.read_bytes().splitlines(keepends=True) if b'$NetBSD' not in line)
@@ -37,6 +38,19 @@ for patch in sorted((p / 'patches').glob('patch-*')):
     result = capture_streamed([str(a.patch), '-f', '-N', '-F', '0', '-p0', '-d', str(s), '-i', str(patch)], timeout=30, stdout_limit=1024*1024)
     (a.work / (patch.name + '.stdout')).write_bytes(result.value)
     (a.work / (patch.name + '.stderr')).write_bytes(result.stderr)
+
+original_module = a.work / 'compileroptions.cmake.original'
+original_module.write_bytes(original_compileroptions)
+abi_test = capture_streamed([
+    sys.executable, str(p / 'tests/compileroptions_abi.py'),
+    '--cmake', str(a.cmake),
+    '--fixture', str(p / 'tests/compileroptions-abi'),
+    '--patched-module', str(s / 'cmake/compileroptions.cmake'),
+    '--original-module', str(original_module),
+    '--work', str(a.work / 'compileroptions-abi'),
+], timeout=30, stdout_limit=1024*1024)
+(a.work / 'compileroptions-abi.stdout').write_bytes(abi_test.value)
+(a.work / 'compileroptions-abi.stderr').write_bytes(abi_test.stderr)
 recipe, options = (p / 'Makefile').read_text(), (p / 'options.mk').read_text()
 assert re.search(r'^DISTNAME=\s*cppcheck-2\.22\.0$', recipe, re.M)
 for flag in ('BUILD_CLI:BOOL=ON', 'BUILD_TESTING:BOOL=ON', 'HAVE_RULES:BOOL=ON', 'USE_BUNDLED_TINYXML2:BOOL=OFF', 'BUILD_MANPAGE:BOOL=ON', 'DISABLE_DMAKE:BOOL=ON', 'CMAKE_MACOSX_BUNDLE:BOOL=OFF'):

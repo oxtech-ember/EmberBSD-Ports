@@ -1,0 +1,4 @@
+bin/gpatch
+gnu/bin/patch
+gnu/man/man1/patch.1
+man/man1/gpatch.1

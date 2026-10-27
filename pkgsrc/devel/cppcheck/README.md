@@ -49,8 +49,12 @@ The recipe does not execute a target generator during a cross build.
 This setting removes no CLI, rule, report, GUI or test source.
 
 Run `tests/source.py --sdk-source /absolute/SDK --help` for source/hash/patch
-and install-roster checks. Supply the pinned archive, selected patch command
-and a new work directory through `--archive`, `--patch` and `--work`.
+and install-roster checks. Supply the pinned archive, selected patch command,
+selected CMake and a new work directory through `--archive`, `--patch`, `--cmake`
+and `--work`. The source check configures a `LANGUAGES NONE` fixture for the
+patched Linux/Clang option path: ON must preserve the common provider's
+`_GLIBCXX_DEBUG` ABI, OFF must retain upstream's `-U` behavior, and the original
+module must fail the ON negative control. It does not invoke a compiler.
 The new `TestRegExPcre` cases cover empty matches, empty input, lookaround,
 large capture sets, UTF-8, match errors and callback exceptions.
 They are prepared for the ordinary upstream test runner.
