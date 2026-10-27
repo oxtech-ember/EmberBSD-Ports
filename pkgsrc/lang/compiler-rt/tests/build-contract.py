@@ -54,6 +54,7 @@ def main():
                 linker = flags.index('--ld-path=/target/bin/ld.lld')
                 assert flags.index('--start-no-unused-arguments') < linker < flags.index('--end-no-unused-arguments')
             if phase == 'builtins':
+                assert options['COMPILER_RT_INSTALL_PATH'] == '/usr/pkg/llvm/lib/clang/23'
                 assert options['COMPILER_RT_BUILD_CRT'] == 'OFF'
                 assert options['COMPILER_RT_DEFAULT_TARGET_ONLY'] == 'ON'
             else:

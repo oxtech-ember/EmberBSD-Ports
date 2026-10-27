@@ -109,7 +109,7 @@ def cmake_arguments(source, work, stage, base, native, compiler, definition, ver
             LLVM_DIR=native.bundle_root + '/lib/cmake/llvm', LLVM_OMIT_EXPORTS_FROM_CONFIG='ON',
             COMPILER_RT_DEFAULT_TARGET_ONLY='ON', COMPILER_RT_OS_DIR='netbsd',
             COMPILER_RT_BUILD_CRT='OFF',
-            COMPILER_RT_INSTALL_PATH='lib/clang/' + version.split('.')[0],
+            COMPILER_RT_INSTALL_PATH=settings['CMAKE_INSTALL_PREFIX'] + '/lib/clang/' + version.split('.')[0],
             COMPILER_RT_BUILTINS_ENABLE_PIC='ON', COMPILER_RT_INCLUDE_TESTS='OFF')
     else:
         resource = stage / 'usr/pkg/llvm/lib/clang' / version.split('.')[0]
