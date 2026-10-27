@@ -1,0 +1,32 @@
+$NetBSD$
+
+Use the common CLI11 dependency.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -7,6 +7,7 @@
+   set(CMAKE_CXX_FLAGS "-g")
+ ENDIF()
+ 
++find_package(CLI11 CONFIG REQUIRED)
+ find_package(OpenSSL REQUIRED)
+ find_package(PkgConfig REQUIRED)
+ pkg_check_modules(LIBPLIST REQUIRED IMPORTED_TARGET libplist-2.0)
+@@ -14,15 +15,14 @@
+ set(CMAKE_CXX_STANDARD 11)
+ 
+ add_library(libsigtool macho.cpp signature.cpp hash.cpp commands.cpp der.cpp bundle.cpp resources.cpp)
+-target_include_directories(libsigtool PUBLIC vendor)
+ target_link_libraries(libsigtool PRIVATE OpenSSL::Crypto PkgConfig::LIBPLIST)
+ set_property(TARGET libsigtool PROPERTY OUTPUT_NAME sigtool)
+ 
+ add_executable(sigtool main.cpp)
+-target_link_libraries(sigtool PRIVATE libsigtool)
++target_link_libraries(sigtool PRIVATE libsigtool CLI11::CLI11)
+ 
+ add_executable(codesign codesign.cpp)
+-target_link_libraries(codesign PRIVATE libsigtool)
++target_link_libraries(codesign PRIVATE libsigtool CLI11::CLI11)
+ 
+ install(TARGETS sigtool codesign libsigtool)
+ 

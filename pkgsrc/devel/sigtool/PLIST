@@ -1,0 +1,12 @@
+@comment $NetBSD$
+bin/codesign
+bin/sigtool
+include/sigtool/bundle.h
+include/sigtool/commands.h
+include/sigtool/emit.h
+include/sigtool/hash.h
+include/sigtool/macho.h
+include/sigtool/resources.h
+include/sigtool/signature.h
+lib/libsigtool.a
+share/licenses/sigtool/LICENSE
