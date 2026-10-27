@@ -36,7 +36,6 @@ COMMENT=	C language family frontend for LLVM
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # The build interpreter executes on the host. Installed scan-build scripts
 # still need the target package and must not contain the host interpreter path.
-EMBERBSD_CROSS_BUILD_PERL?= ${TOOLBASE}/bin/perl
 .if empty(EMBERBSD_CROSS_BUILD_PERL:M/*) || !exists(${EMBERBSD_CROSS_BUILD_PERL})
 PKG_FAIL_REASON+= "Set EMBERBSD_CROSS_BUILD_PERL to the current host Perl"
 .else

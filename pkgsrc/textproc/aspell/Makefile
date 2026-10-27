@@ -48,7 +48,6 @@ REPLACE_PERL=		scripts/aspell-import
 # Build tools execute on the host; installed scripts use the target Perl.
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-EMBERBSD_CROSS_BUILD_PERL?= ${TOOLBASE}/bin/perl
 .if empty(EMBERBSD_CROSS_BUILD_PERL:M/*) || !exists(${EMBERBSD_CROSS_BUILD_PERL})
 PKG_FAIL_REASON+= "Set EMBERBSD_CROSS_BUILD_PERL to the current host Perl"
 .endif

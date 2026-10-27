@@ -10,8 +10,13 @@ PKG_FAIL_REASON+= "${_perl_input} must select a matching Perl 5.44 build-host ex
 .endif
 .endfor
 .for _perl_interpreter in EMBERBSD_PERL_HOST_MINIPERL EMBERBSD_CROSS_BUILD_PERL
+# An unset input already fails above; do not run an empty command.
+.if !empty(${_perl_interpreter}:M/*)
 _EMBERBSD_PERL_VERSION!= if test -x ${${_perl_interpreter}:Q}; then \
     ${${_perl_interpreter}:Q} -e 'print $$]'; fi
+.else
+_EMBERBSD_PERL_VERSION=
+.endif
 .if ${_EMBERBSD_PERL_VERSION:U} != "5.044000"
 PKG_FAIL_REASON+= "${_perl_interpreter} must execute on the host and report Perl 5.44.0"
 .endif
