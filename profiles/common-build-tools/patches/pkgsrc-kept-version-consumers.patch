@@ -11,6 +11,8 @@ OpenSceneGraph's own Lua finders stop at Lua 5.2, so it gets the library and
 headers directly; its Lua plugin needs no source change.
 vifm linked the system Lua but compiled against its bundled Lua 5.4 headers;
 it now drops the bundled copy and uses the headers of the Lua it links.
+HexPatch built a bundled Lua 5.4 through mlua's vendored feature although the
+recipe pulled in the system Lua; it now uses the system Lua 5.5.
 
 --- a/devel/Guitar/Makefile
 +++ b/devel/Guitar/Makefile
@@ -37,6 +39,151 @@ it now drops the bundled copy and uses the headers of the Lua it links.
  .include "../../graphics/qt6-qtsvg/buildlink3.mk"
  .include "../../x11/qt6-qtbase/buildlink3.mk"
  .include "../../mk/bsd.pkg.mk"
+--- a/devel/hexpatch/Makefile
++++ b/devel/hexpatch/Makefile
+@@ -2,6 +2,7 @@
+ 
+ DISTNAME=	HexPatch-1.13.1
+ PKGNAME=	${DISTNAME:tl}
++PKGREVISION=	1
+ CATEGORIES=	devel
+ MASTER_SITES=	${MASTER_SITE_GITHUB:=Etto48/}
+ GITHUB_TAG=	v${PKGVERSION_NOREV}
+@@ -27,5 +28,5 @@
+ 
+ .include "../../lang/rust/cargo.mk"
+ .include "../../lang/python/tool.mk"
+-.include "../../lang/lua54/buildlink3.mk"
++.include "../../lang/lua/buildlink3.mk"
+ .include "../../mk/bsd.pkg.mk"
+--- a/devel/hexpatch/cargo-depends.mk
++++ b/devel/hexpatch/cargo-depends.mk
+@@ -195,8 +195,6 @@
+ CARGO_CRATE_DEPENDS+=	lock_api-0.4.14
+ CARGO_CRATE_DEPENDS+=	log-0.4.34
+ CARGO_CRATE_DEPENDS+=	lru-0.18.1
+-CARGO_CRATE_DEPENDS+=	lua-src-551.0.1
+-CARGO_CRATE_DEPENDS+=	luajit-src-210.7.2+b925b3e
+ CARGO_CRATE_DEPENDS+=	mac_address-1.1.8
+ CARGO_CRATE_DEPENDS+=	macro_rules_attribute-0.2.3
+ CARGO_CRATE_DEPENDS+=	macro_rules_attribute-proc_macro-0.2.3
+@@ -417,7 +415,6 @@
+ CARGO_CRATE_DEPENDS+=	wezterm-dynamic-0.2.1
+ CARGO_CRATE_DEPENDS+=	wezterm-dynamic-derive-0.1.1
+ CARGO_CRATE_DEPENDS+=	wezterm-input-types-0.1.0
+-CARGO_CRATE_DEPENDS+=	which-8.0.2
+ CARGO_CRATE_DEPENDS+=	winapi-0.3.9
+ CARGO_CRATE_DEPENDS+=	winapi-i686-pc-windows-gnu-0.4.0
+ CARGO_CRATE_DEPENDS+=	winapi-util-0.1.11
+--- a/devel/hexpatch/distinfo
++++ b/devel/hexpatch/distinfo
+@@ -588,12 +588,6 @@
+ BLAKE2s (lru-0.18.1.crate) = 74c521a815cc3f37363d746526062392dda12f1a3415403092cf1781765d4b5d
+ SHA512 (lru-0.18.1.crate) = 5e06c1ef23b52b7c6839b0ee6d7c5dd2feef6a6ec3be895c9fb6786e2bc5e7f11675fca01d31b2d7108c9b9f05f30ae0c1748f7ce143e344370dd561a08a2780
+ Size (lru-0.18.1.crate) = 18616 bytes
+-BLAKE2s (lua-src-551.0.1.crate) = aacf7b90224965d4290414ac67ff2f26db6a52a4126f64305cbff8bd5cca30cd
+-SHA512 (lua-src-551.0.1.crate) = b7e542c3f58b8e29bb171f16b237096821041841e78cdffec28c00cec97a46215cf25dda3d701a7e2cafdf1aaaf9a85be936395b5b2cf50258cf2181fbea535a
+-Size (lua-src-551.0.1.crate) = 919319 bytes
+-BLAKE2s (luajit-src-210.7.2+b925b3e.crate) = 1d102084775820d7b63be69cecf265c2d0e56c11143f01998015ef799320cfe6
+-SHA512 (luajit-src-210.7.2+b925b3e.crate) = 2bffc3b00281a1f7a799177a83166263951710c65a1486bbb90aa76ec87baec55835be458aba32b378c713b21ff67843b3e4f032a1cbac26c8e790fb15b16a2c
+-Size (luajit-src-210.7.2+b925b3e.crate) = 1024885 bytes
+ BLAKE2s (mac_address-1.1.8.crate) = 17046be57e9a6d6a1c8d9232b7c299d2d68fa32ff832a88d29c8a93d37e02797
+ SHA512 (mac_address-1.1.8.crate) = bc267a2347aa81e479f831ac6a06830176c7d5e97d85ec213c2845b30824585fb240111d3a8fbc2aee6b53dc6941d51f57c08dc4461d0293e945fc51f9d7bb35
+ Size (mac_address-1.1.8.crate) = 12876 bytes
+@@ -1254,9 +1248,6 @@
+ BLAKE2s (wezterm-input-types-0.1.0.crate) = 89edf97069cde2e0161a030e9a774d15c9f30584480f48c0680594306f1cb055
+ SHA512 (wezterm-input-types-0.1.0.crate) = 55eac90c5757b2439d720b6a3dd95760e9b7fad695e7261f9f5be2e5d8eb74a875a95d6a7746d6d4291187f7d171e2ddfca9ac04784604436b7bc6947dbd12e8
+ Size (wezterm-input-types-0.1.0.crate) = 16748 bytes
+-BLAKE2s (which-8.0.2.crate) = 5a883cfe5ed4f7a28658dc0af711afb5d876138cfbbbb2d9dc74b64f9c7eb494
+-SHA512 (which-8.0.2.crate) = d3d08e991d3bd5aeb8dca5e3bca9f58c9917815d8ef51b1c9a11a02a12da08b8af0003fcaebc0b284e5d13b85c8d56b84cc4b6a29fa61ea408329e81b3099c0d
+-Size (which-8.0.2.crate) = 27189 bytes
+ BLAKE2s (winapi-0.3.9.crate) = 295083bd8c53c7decc4187da324a1284ad05cbccc9198d31facb6a42e34867ce
+ SHA512 (winapi-0.3.9.crate) = ff8b7b78065f3d8999ec03c725a0460ebc059771bf071c7a3df3f0ecd733edf3b0a2450024d4e24e1aedddaecd9038ce1376c0d8bbf45132068cf45cf4a53a97
+ Size (winapi-0.3.9.crate) = 1200382 bytes
+@@ -1380,3 +1371,5 @@
+ BLAKE2s (zmij-1.0.21.crate) = a2d1e7214230c8f4e8c946d28215765c131da3aac89f1001daf534335307648e
+ SHA512 (zmij-1.0.21.crate) = a488f11ec8721ddfe42e61d028a128818551de8fccd69d7824504e4ae2efccdc38f716fa5a10ef4de07a8a087e75e819c4a1e0790817e8539b5db697bde14585
+ Size (zmij-1.0.21.crate) = 26665 bytes
++SHA1 (patch-Cargo.lock) = 650da655ef7b47342fb14d68cc0e5804d8a7e323
++SHA1 (patch-Cargo.toml) = c8c40ea466bab22284ad4e4e8f7432ca5e1b81ff
+--- /dev/null
++++ b/devel/hexpatch/patches/patch-Cargo.lock
+@@ -0,0 +1,57 @@
++$NetBSD$
++
++Use the system Lua 5.5 instead of building a bundled Lua 5.4.
++
++--- Cargo.lock.orig
+++++ Cargo.lock
++@@ -1847,25 +1847,6 @@ dependencies = [
++  "hashbrown 0.17.0",
++ ]
++ 
++-[[package]]
++-name = "lua-src"
++-version = "551.0.1"
++-source = "registry+https://github.com/rust-lang/crates.io-index"
++-checksum = "087097f9936a7d819bda525b32d6e96f9c54f3d35ff23ff72fc0c1697d2127db"
++-dependencies = [
++- "cc",
++-]
++-
++-[[package]]
++-name = "luajit-src"
++-version = "210.7.2+b925b3e"
++-source = "registry+https://github.com/rust-lang/crates.io-index"
++-checksum = "920cf654b23d217c550ceea57c32cd2a413ea27b6d47ed77b5ee0cf655adefa6"
++-dependencies = [
++- "cc",
++- "which",
++-]
++-
++ [[package]]
++ name = "mac_address"
++ version = "1.1.8"
++@@ -1997,8 +1978,6 @@ dependencies = [
++  "cc",
++  "cfg-if",
++  "libc",
++- "lua-src",
++- "luajit-src",
++  "pkg-config",
++ ]
++ 
++@@ -4212,15 +4191,6 @@ dependencies = [
++  "wezterm-dynamic",
++ ]
++ 
++-[[package]]
++-name = "which"
++-version = "8.0.2"
++-source = "registry+https://github.com/rust-lang/crates.io-index"
++-checksum = "81995fafaaaf6ae47a7d0cc83c67caf92aeb7e5331650ae6ff856f7c0c60c459"
++-dependencies = [
++- "libc",
++-]
++-
++ [[package]]
++ name = "winapi"
++ version = "0.3.9"
+--- /dev/null
++++ b/devel/hexpatch/patches/patch-Cargo.toml
+@@ -0,0 +1,15 @@
++$NetBSD$
++
++Use the system Lua 5.5 instead of building a bundled Lua 5.4.
++
++--- Cargo.toml.orig
+++++ Cargo.toml
++@@ -37,7 +37,7 @@ crossterm = { version = "0.29.0", features = ["serde"] }
++ dirs = "6.0.0"
++ hexpatch-keystone = "0.9.4"
++ macro_rules_attribute = "0.2.3"
++-mlua = { version = "0.12.1", features = ["lua54", "vendored", "serialize"] }
+++mlua = { version = "0.12.1", features = ["lua55", "serialize"] }
++ object = "0.40.0"
++ pdb = "0.8.0"
++ ratatui = { version = "0.30.2", features = ["serde"] }
 --- a/devel/umbrello/Makefile
 +++ b/devel/umbrello/Makefile
 @@ -1,25 +1,31 @@
