@@ -165,12 +165,12 @@ def check_recipe(source, label, root):
         require(path.name in declared, f'Undeclared patch: {label}/patches/{path.name}')
 
 
-def configuration(root):
+def configuration(root, *, include_manifests=False):
     root = Path(root).resolve(strict=True)
     source_path(root, 'pkgsrc/export.conf', 'export configuration')
     config = root / 'pkgsrc/export.conf'
     require(config.is_file(), 'Missing pkgsrc/export.conf.')
-    recipes, patches, files = [], [], []
+    recipes, patches, files, manifests = [], [], [], []
     # POSIX read with tab IFS collapses adjacent tabs. It ignores an unfinished
     # final record. Preserve this input grammar during the migration.
     for raw in config.read_bytes().decode('utf-8').split('\n')[:-1]:
@@ -193,6 +193,7 @@ def configuration(root):
         elif method == 'git-apply':
             require(second and not third, 'pkgsrc/export.conf: use git-apply FILE MANIFEST.')
             second = source_path(root, second, 'patch manifest')
+            manifests.append(second)
             require(source.is_file() and source.stat().st_size, f'Missing infrastructure patch: {first}')
             recorded = [line.split('\t')[1] for line in second.read_bytes().decode('utf-8').split('\n')
                         if line.split('\t')[0] == source.name and len(line.split('\t')) > 1]
@@ -236,7 +237,8 @@ def configuration(root):
     names = [name for name, source in recipes]
     duplicate = next((name for name in sorted(names) if names.count(name) > 1), None)
     require(duplicate is None, f'Two recipe sources provide {duplicate}.')
-    return recipes, patches, files, categories
+    result = (recipes, patches, files, categories)
+    return (*result, manifests) if include_manifests else result
 
 
 def copy_file(source, target):
