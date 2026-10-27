@@ -76,4 +76,13 @@ MESON_CROSS.emberbsd_gi_ldd_wrapper= '${EMBERBSD_GI_FILESDIR}/elf-needed.sh'
 MESON_ARGS+= -Dintrospection=disabled
 .endif
 
+
+# Atspi GIR/typelib need the full dbus stack AND introspection. With -dbus
+# (atk_only) Meson still builds Atk GIR when introspection is on, but never
+# Atspi; gate those two PLIST entries on both options.
+PLIST_VARS+=	dbus_introspection
+.if ${PKG_OPTIONS:Mdbus} && ${PKG_OPTIONS:Mintrospection}
+PLIST.dbus_introspection=	yes
+.endif
+
 .include "../../mk/bsd.prefs.mk"
