@@ -1,0 +1,63 @@
+$NetBSD$
+
+Select Chromium's documented unstable capability on the common stable Rust.
+Keep the ordinary -Zallow-features= restriction and explicitly limit allocator
+exceptions to its existing linkage/rustc_attrs features. No channel is rewritten.
+Origin: EmberBSD (AI-assisted), Chromium 152.0.7977.167.
+Status: local consumer policy; not submitted upstream.
+Upstream policy: docs/rust/unstable_rust_feature_usage.md and
+https://doc.rust-lang.org/unstable-book/compiler-environment-variables/RUSTC_BOOTSTRAP.html
+
+--- a/build/config/rust.gni
++++ b/build/config/rust.gni
+@@ -58,6 +58,10 @@
+   # `docs/rust/unstable_rust_feature_usage.md`) although other projects (e.g.
+   # V8) may be compatible with the stable version of Rust toolchain.
+   rust_sysroot_absolute = ""
++
++  # The common stable compiler remains stable. This explicit consumer policy
++  # enables only Chromium's documented unstable build contract.
++  emberbsd_rust_unstable_features = false
+ 
+   # Directory under which to find `bin/bindgen` (a `bin` directory containing
+   # the bindgen exectuable).
+@@ -130,6 +134,10 @@
+ # Use the Rust toolchain built in-tree. When false, we use the prebuilt Rust
+ # stdlibs that come with the specified custom toolchain.
+ use_chromium_rust_toolchain = rust_sysroot_absolute == ""
++if (emberbsd_rust_unstable_features) {
++  assert(enable_rust && !use_chromium_rust_toolchain,
++         "the explicit Chromium unstable policy requires the selected common Rust")
++}
+ 
+ # `rustc_nightly_capability = false` will make the build avoid the use of
+ # Rust nightly features. There are no bots that test this and there is no
+@@ -190,10 +198,14 @@
+     rustc_revision = string_replace(rustc_revision, "(", "-")
+     rustc_revision = string_replace(rustc_revision, ")", "")
+     rust_revision_pieces = string_split(rustc_version, " ")
+-    rust_version_pieces = string_split(rust_revision_pieces[1], ".")
+-    if (rust_version_pieces[1] == "85") {
+-      rustc_nightly_capability = false
+-    } else {
++    rustc_nightly_capability =
++        filter_include([ rust_revision_pieces[1] ], [ "*-nightly", "*-dev" ]) != []
++    if (emberbsd_rust_unstable_features) {
++      assert(rust_revision_pieces[1] == "1.99.1",
++             "the selected Chromium unstable policy requires stable Rust 1.99.1")
++      assert(getenv("RUSTC_BOOTSTRAP") == "1",
++             "the selected Chromium unstable policy requires its scoped environment")
++      # This is capability selection, not a change to rustc_version/channel.
+       rustc_nightly_capability = true
+     }
+   }
+--- a/build/rust/allocator/BUILD.gn
++++ b/build/rust/allocator/BUILD.gn
+@@ -69,6 +69,7 @@
+ 
+     # TODO(https://crbug.com/410596442): Stop using unstable features here.
+     configs -= [ "//build/config/compiler:disallow_unstable_features" ]
++    rustflags = [ "-Zallow-features=linkage,rustc_attrs" ]
+   }
+ 
+   if (rust_allocator_uses_allocator_impls_h) {

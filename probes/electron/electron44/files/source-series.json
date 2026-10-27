@@ -501,6 +501,11 @@
       "path": "gn-netbsd-cups-pkgconfig.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-chromium-rust-policy.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
