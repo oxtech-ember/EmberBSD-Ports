@@ -4,10 +4,10 @@ Origin: EmberBSD (AI-assisted).
 Upstream: Chromium with NetBSD cross adaptations.
 Status: local cross-build fix; not submitted upstream.
 
-When rust_sysroot_absolute selects a custom sysroot, point rustc_wrapper_inputs
-and find_stdlib action inputs at that sysroot's rustc instead of the absent
-//third_party/rust-toolchain package. Chromium's in-tree toolchain path remains
-unchanged when use_chromium_rust_toolchain is true.
+When rust_sysroot_absolute selects a custom sysroot, point rustc_wrapper_inputs,
+find_stdlib action inputs, and cargo_crate build-script inputs at that sysroot's
+rustc instead of the absent //third_party/rust-toolchain package. Chromium's
+in-tree toolchain path remains unchanged when use_chromium_rust_toolchain is true.
 
 --- a/build/config/rust.gni
 +++ b/build/config/rust.gni
@@ -54,3 +54,25 @@ unchanged when use_chromium_rust_toolchain is true.
        }
  
        # For the rustc sysroot we must include even the rlibs we don't pass to
+--- a/build/rust/cargo_crate.gni
++++ b/build/rust/cargo_crate.gni
+@@ -468,10 +468,16 @@
+         rustc_print_cfg_path,
+       ]
+ 
+-      if (host_os == "win") {
+-        inputs += [ "//third_party/rust-toolchain/bin/rustc.exe" ]
++      if (use_chromium_rust_toolchain) {
++        if (host_os == "win") {
++          inputs += [ "//third_party/rust-toolchain/bin/rustc.exe" ]
++        } else {
++          inputs += [ "//third_party/rust-toolchain/bin/rustc" ]
++        }
++      } else if (host_os == "win") {
++        inputs += [ "$rust_sysroot/bin/rustc.exe" ]
+       } else {
+-        inputs += [ "//third_party/rust-toolchain/bin/rustc" ]
++        inputs += [ "$rust_sysroot/bin/rustc" ]
+       }
+ 
+       build_script_target = ":${_build_script_name}($rust_macro_toolchain)"
