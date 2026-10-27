@@ -19,9 +19,23 @@ LLVM_TARGETS_TO_BUILD LLVM_EXPERIMENTAL_TARGETS_TO_BUILD
 CROSS_DESTDIR TOOLDIR MACHINE_GNU_PLATFORM TOOL_PYTHONBIN EMBERBSD_LLVM_NATIVE_TOOLS
 MAKE_ENV CMAKE_BUILD_ARGS _CMAKE_BUILD_TOOL BUILD_TARGET BUILD_DIRS CONFIGURE_DIR
 SETENV RUN INSTALL_ENV INSTALL_DIRS PREFIX'''.split()
-FIELDS = FLAGS + '''PKGNAME PKGPATH USE_CROSS_COMPILE OPSYS OS_VERSION MACHINE_ARCH
+FIELDS = FLAGS + '''EMBERBSD_CROSS_COMPILER_FAMILY PKGSRC_COMPILER
+PKGNAME PKGPATH USE_CROSS_COMPILE OPSYS OS_VERSION MACHINE_ARCH
 LLVM_VERSION WRKDIR WRKSRC CMAKE_BUILD_DIR EMBERBSD_LLVM_PKGDIR
 CMAKE .MAKE.MAKEFILES PKG_FAIL_REASON'''.split()
+
+
+def compiler_driver_names(row):
+    family = row.get('EMBERBSD_CROSS_COMPILER_FAMILY', '')
+    reuse.check(family in ('clang', 'gcc'), 'Select clang or gcc as the cross compiler family')
+    compiler_chain = row.get('PKGSRC_COMPILER', '').split()
+    other_families = {'clang', 'gcc'} - {family}
+    reuse.check(compiler_chain and compiler_chain[-1] == family and
+                not other_families.intersection(compiler_chain),
+                'PKGSRC_COMPILER chain differs from the explicit cross compiler family')
+    if family == 'clang':
+        return ('clang', 'clang++', 'strip')
+    return ('gcc', 'g++', 'strip')
 
 
 def prepare(template, output, bmake, package, receipt, sdk_source):
@@ -63,7 +77,7 @@ def prepare(template, output, bmake, package, receipt, sdk_source):
     for kind in ('compiler', 'native_tools', 'patches', 'target_abi'):
         reuse.check(isinstance(files[kind], list) and files[kind], f'Missing {kind} inventory')
     compiler_roots = [canonical_existing(path) for path in files['compiler']]
-    for name in ('gcc', 'g++', 'strip'):
+    for name in compiler_driver_names(row):
         driver = row['TOOLDIR'] + '/bin/' + target['triple'] + '-' + name
         reuse.check(canonical_existing(driver) in compiler_roots, f'Current compiler tool missing from inventory: {name}')
     native = [bmake, value['python'], value['cmake'], row['TOOL_PYTHONBIN']]

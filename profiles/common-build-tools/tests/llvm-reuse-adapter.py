@@ -12,6 +12,7 @@ sys.dont_write_bytecode = True
 from llvm_fixture import fixture, load_sdk, module, write_json
 
 sdk_source, args = load_sdk()
+from emberbsd_sdk.errors import SDKError
 if len(args) != 4:
     sys.exit('Usage: llvm-reuse-adapter.py --sdk-source SDK PKGSRC MAKECONF BMAKE NEW_WORK')
 pkgsrc, makeconf, bmake = map(os.path.realpath, args[:3])
@@ -44,7 +45,7 @@ def invoke(arguments, label=None):
     return result
 
 
-fields = ['TOOLDIR', 'MACHINE_GNU_PLATFORM', 'MACHINE_ARCH', 'OPSYS', 'OS_VERSION', 'CMAKE']
+fields = ['TOOLDIR', 'MACHINE_GNU_PLATFORM', 'MACHINE_ARCH', 'OPSYS', 'OS_VERSION', 'CMAKE', 'EMBERBSD_CROSS_COMPILER_FAMILY', 'PKGSRC_COMPILER']
 command = [bmake, '-C', str(tree / 'lang/llvm'), '_PKGSRC_BARRIER=yes', '_MAKEVARS_MK=defined', 'WRKDIR=' + str(common)]
 for key in fields:
     command.extend(['-v', key])
@@ -54,7 +55,10 @@ row = dict(zip(fields, result.stdout.splitlines()))
 value = fixture(work, sdk_source, row['CMAKE'], source, build, tree / 'lang/llvm', tree / 'lang/llvm-devel', wrapper=False, include_empty=False)
 value['runtime_work'] = str(common)
 value['flags'] = {'obsolete': 'must not be copied'}
-value['files']['compiler'] = [row['TOOLDIR'] + '/bin/' + row['MACHINE_GNU_PLATFORM'] + '-' + name for name in ('gcc', 'g++', 'strip')]
+family = row['EMBERBSD_CROSS_COMPILER_FAMILY']
+driver_names = {'clang': ('clang', 'clang++', 'strip'), 'gcc': ('gcc', 'g++', 'strip')}.get(family)
+assert driver_names and row['PKGSRC_COMPILER'].split()[-1] == family, row
+value['files']['compiler'] = [row['TOOLDIR'] + '/bin/' + row['MACHINE_GNU_PLATFORM'] + '-' + name for name in driver_names]
 value['files']['patches'] = [str(path) for path in (tree / 'lang/llvm/patches').glob('patch-*')]
 template = work / 'template.json'
 write_json(template, value)
@@ -75,6 +79,30 @@ def collect(role, label, *overrides):
 
 
 runtime = collect('llvm', 'runtime')
+preparer = module('prepare-reuse-inputs')
+driver_cases = (
+    ({'EMBERBSD_CROSS_COMPILER_FAMILY': 'clang', 'PKGSRC_COMPILER': 'clang'}, ('clang', 'clang++', 'strip')),
+    ({'EMBERBSD_CROSS_COMPILER_FAMILY': 'clang', 'PKGSRC_COMPILER': 'ccache distcc clang'}, ('clang', 'clang++', 'strip')),
+    ({'EMBERBSD_CROSS_COMPILER_FAMILY': 'gcc', 'PKGSRC_COMPILER': 'gcc'}, ('gcc', 'g++', 'strip')),
+    ({'EMBERBSD_CROSS_COMPILER_FAMILY': 'gcc', 'PKGSRC_COMPILER': 'ccache distcc gcc'}, ('gcc', 'g++', 'strip')),
+)
+for row, expected in driver_cases:
+    assert preparer.compiler_driver_names(row) == expected, row
+for row in (
+    {'EMBERBSD_CROSS_COMPILER_FAMILY': '', 'PKGSRC_COMPILER': 'clang'},
+    {'EMBERBSD_CROSS_COMPILER_FAMILY': 'llvm', 'PKGSRC_COMPILER': 'llvm'},
+    {'EMBERBSD_CROSS_COMPILER_FAMILY': 'clang', 'PKGSRC_COMPILER': 'ccache gcc'},
+    {'EMBERBSD_CROSS_COMPILER_FAMILY': 'clang', 'PKGSRC_COMPILER': 'ccache gcc clang'},
+):
+    try:
+        preparer.compiler_driver_names(row)
+    except SDKError:
+        pass
+    else:
+        raise AssertionError('invalid compiler family accepted: ' + repr(row))
+assert 'EMBERBSD_CROSS_COMPILER_FAMILY' not in runtime['flags']
+assert 'PKGSRC_COMPILER' not in runtime['flags']
+checks.append('explicit clang/gcc selection accepts wrapper chains, rejects missing/mixed families, and preserves flags')
 sdk = collect('llvm-devel', 'sdk')
 if runtime != sdk:
     delta = {k: (runtime['flags'].get(k), sdk['flags'].get(k)) for k in runtime['flags'] if runtime['flags'].get(k) != sdk['flags'].get(k)}
