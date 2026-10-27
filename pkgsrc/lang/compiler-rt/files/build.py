@@ -23,7 +23,9 @@ def base_inputs(owner, root, os_source, git, full):
     if full:
         for name in ('libc.so', 'libc.a', 'crt0.o', 'crti.o', 'crtbegin.o', 'crtend.o', 'crtn.o'):
             owner.inventory.required_file(str(root), 'usr/lib/' + name)
-    rows = owner.inventory.snapshot_tree(str(root))
+    # Runtime links outside the ABI closure need not resolve in a sysroot.
+    # Resolve and validate selected headers, libraries and every link hop below.
+    rows = owner.inventory.snapshot_installed_tree(str(root))
     children = defaultdict(list)
     for name, row in rows.items():
         children[posixpath.dirname(name)].append((name, row))
@@ -37,26 +39,35 @@ def base_inputs(owner, root, os_source, git, full):
         pending = name.split('/')
         prefix, hops = [], 0
         while pending:
-            prefix.append(pending.pop(0))
-            current = '/'.join(prefix)
+            part = pending.pop(0)
+            if part in ('', '.'):
+                continue
+            if part == '..':
+                owner.require(bool(prefix), 'base input link escapes its sysroot')
+                prefix.pop()
+                continue
+            current = '/'.join(prefix + [part])
             row = rows.get(current)
             owner.require(row is not None, 'base input link target is absent: ' + current)
             if row['kind'] == 'link':
                 selected[current] = row
-                target = posixpath.normpath(posixpath.join(posixpath.dirname(current), row['target']))
-                owner.require(not target.startswith('/') and target != '..' and not target.startswith('../'),
-                              'base input link escapes its sysroot')
+                target = row['target']
+                owner.require(not target.startswith('/'), 'base input link escapes its sysroot')
                 pending = target.split('/') + pending
-                prefix = []
                 hops += 1
                 owner.require(hops < 40, 'base input symlink cycle')
-            elif not pending:
-                selected[current] = row
-                if row['kind'] == 'directory':
-                    for child, entry in children[current]:
-                        if child not in selected:
-                            selected[child] = entry
-                            queue.append(child)
+            else:
+                prefix.append(part)
+                owner.require(not pending or row['kind'] == 'directory',
+                              'base input path component is not a directory: ' + current)
+        current = '/'.join(prefix)
+        row = rows[current] if current else {'kind': 'directory'}
+        selected[current] = row
+        if row['kind'] == 'directory':
+            for child, entry in children[current]:
+                if child not in selected:
+                    selected[child] = entry
+                    queue.append(child)
     return dict(os_revision=owner.git_revision(git, os_source),
                 files={name: row['sha256'] for name, row in selected.items() if row['kind'] == 'file'},
                 symlinks={name: row['target'] for name, row in selected.items() if row['kind'] == 'link'})
