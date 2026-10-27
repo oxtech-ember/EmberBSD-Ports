@@ -139,6 +139,9 @@ blanc-check-build-tools: blanc-check-source-tools
 .if !defined(EMBERBSD_HOST_NODE) || empty(EMBERBSD_HOST_NODE:M/*) || !exists(${EMBERBSD_HOST_NODE})
 	${FAIL_MSG} "Blanc requires the selected host Node.js 24.22.1 in EMBERBSD_HOST_NODE"
 .endif
+.if !defined(EMBERBSD_HOST_PREFIX) || empty(EMBERBSD_HOST_PREFIX:M/*) || !exists(${EMBERBSD_HOST_PREFIX})
+	${FAIL_MSG} "Blanc requires the selected native EMBERBSD_HOST_PREFIX"
+.endif
 
 do-extract: blanc-check-source-tools
 	${MKDIR} ${WRKDIR:Q}
@@ -158,6 +161,7 @@ do-build: blanc-check-build-tools
 	    --sdk-source ${EMBERBSD_SDK_SOURCE:Q} build \
 	    --source ${WRKSRC:Q} --distdir ${DISTDIR:Q}/${DIST_SUBDIR:Q} \
 	    --work ${WRKDIR:Q} --node ${BUILD_HOST_NODE:Q} \
+	    --host-prefix ${EMBERBSD_HOST_PREFIX:Q} \
 	    --source-archive-sha256 ${BLANC_SOURCE_SHA256:Q} \
 	    --source-files-sha256 ${BLANC_SOURCE_FILES_SHA256:Q} \
 	    --electron-version ${BLANC_ELECTRON_RUNTIME_VERSION:Q} \
@@ -169,6 +173,7 @@ do-test: blanc-check-build-tools
 	    --sdk-source ${EMBERBSD_SDK_SOURCE:Q} test \
 	    --source ${WRKSRC:Q} --distdir ${DISTDIR:Q}/${DIST_SUBDIR:Q} \
 	    --work ${WRKDIR:Q} --node ${BUILD_HOST_NODE:Q} \
+	    --host-prefix ${EMBERBSD_HOST_PREFIX:Q} \
 	    --source-archive-sha256 ${BLANC_SOURCE_SHA256:Q} \
 	    --source-files-sha256 ${BLANC_SOURCE_FILES_SHA256:Q} \
 	    --electron-version ${BLANC_ELECTRON_RUNTIME_VERSION:Q} \

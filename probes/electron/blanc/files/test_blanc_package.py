@@ -10,6 +10,8 @@ import io
 import json
 from pathlib import Path
 import shutil
+import struct
+from unittest import mock
 import tarfile
 import tempfile
 import unittest
@@ -35,7 +37,7 @@ class BlancPackageTests(unittest.TestCase):
         cls.sdk_source = BUILD_OPTIONS.sdk_source
         cls.source = Path(BUILD_OPTIONS.source)
         cls.distdir = Path(BUILD_OPTIONS.distdir)
-        cls.sdk_root, cls.jsonio, cls.inventory, cls.stream = builder.load_sdk(cls.sdk_source)
+        cls.sdk_root, cls.jsonio, cls.inventory, cls.stream, cls.native_api = builder.load_sdk(cls.sdk_source)
 
     def test_host_node_version_is_exact(self):
         self.assertEqual(builder.HOST_NODE_VERSION, '24.22.1')
@@ -45,7 +47,7 @@ class BlancPackageTests(unittest.TestCase):
                 builder.validate_host_node_version(value)
 
     def test_sdk_api_origin_is_explicit(self):
-        source, jsonio, inventory, stream = builder.load_sdk(self.sdk_source)
+        source, jsonio, inventory, stream, native_api = builder.load_sdk(self.sdk_source)
         self.assertTrue((source / 'src/emberbsd_sdk/__init__.py').is_file())
         self.assertEqual(stream.PRODUCER_STREAM_API, 1)
         self.assertEqual(stream.PRODUCER_INSPECTION_API, 1)
@@ -53,6 +55,89 @@ class BlancPackageTests(unittest.TestCase):
     def test_wrong_sdk_source_is_refused(self):
         with self.assertRaises(builder.BuildError):
             builder.load_sdk('/private/tmp/not-an-emberbsd-sdk')
+
+    def native_fixture(self, root):
+        # Real native headers from the controller interpreter, not mocked loader
+        # results. Node is a selection-only stand-in; no JS execution is claimed.
+        binary = root / 'bin'
+        binary.mkdir()
+        python = binary / 'python3.15'
+        node = binary / 'node'
+        for path in (python, node):
+            shutil.copy2(sys.executable, path)
+        return python, node
+
+    def test_native_selection_uses_only_node_and_python(self):
+        with tempfile.TemporaryDirectory(prefix='blanc-native-') as temporary:
+            root = Path(temporary).resolve()
+            python, node = self.native_fixture(root)
+            alias = root / 'node-alias'
+            alias.symlink_to(node)
+            with mock.patch.object(builder.sys, 'executable', str(python)):
+                native = builder.select_host_tools(self.native_api, root, alias)
+            self.assertEqual(set(native.tools), {'node', 'python'})
+            self.assertFalse(native.compiler)
+            self.assertEqual(Path(native.tool('node')), node)
+
+    def test_native_selection_rejects_foreign_alias_and_controller(self):
+        controller = sys.executable
+        with tempfile.TemporaryDirectory(prefix='blanc-native-') as temporary:
+            root = Path(temporary).resolve()
+            python, node = self.native_fixture(root)
+            with mock.patch.object(builder.sys, 'executable', str(python)):
+                for alias in (controller, 'node'):
+                    with self.subTest(alias=alias), self.assertRaisesRegex(
+                            builder.BuildError, 'host-prefix Node'):
+                        builder.select_host_tools(self.native_api, root, alias)
+            with self.assertRaisesRegex(builder.BuildError, 'host-prefix Python'):
+                builder.select_host_tools(self.native_api, root, node)
+
+    def test_native_loader_rejects_missing_escaped_and_foreign_tools(self):
+        for fault in ('missing', 'external-link', 'external-interpreter', 'wrong-cpu'):
+            with self.subTest(fault=fault), tempfile.TemporaryDirectory(
+                    prefix='blanc-native-') as temporary:
+                root = Path(temporary).resolve()
+                python, node = self.native_fixture(root)
+                node.unlink()
+                if fault == 'external-link':
+                    node.symlink_to(sys.executable)
+                elif fault == 'external-interpreter':
+                    node.write_text('#!' + sys.executable + '\n')
+                    node.chmod(0o755)
+                elif fault == 'wrong-cpu':
+                    host = self.native_api.platform.system()
+                    cpu = self.native_api.platform.machine()
+                    if host == 'Darwin':
+                        other = 0x01000007 if cpu in ('arm64', 'aarch64') else 0x0100000c
+                        node.write_bytes(struct.pack('<8I', 0xfeedfacf, other, 0, 2, 0, 0, 0, 0))
+                    else:
+                        header = bytearray(python.read_bytes()[:64])
+                        self.assertEqual(header[:4], b'\x7fELF')
+                        order = '<' if header[5] == 1 else '>'
+                        current = struct.unpack_from(order + 'H', header, 18)[0]
+                        struct.pack_into(order + 'H', header, 18, 183 if current != 183 else 62)
+                        node.write_bytes(header)
+                    node.chmod(0o755)
+                with mock.patch.object(builder.sys, 'executable', str(python)), \
+                        self.assertRaises(builder.BuildError):
+                    builder.select_host_tools(self.native_api, root, node)
+
+    def test_child_path_cannot_find_system_shell(self):
+        with tempfile.TemporaryDirectory(prefix='blanc-native-') as temporary:
+            root = Path(temporary).resolve()
+            python, node = self.native_fixture(root)
+            with mock.patch.object(builder.sys, 'executable', str(python)):
+                native = builder.select_host_tools(self.native_api, root, node)
+            env = builder.child_environment(native, root)
+            output = builder.run_host_tool(self.stream,
+                [sys.executable, '-B', '-I', '-S', '-c',
+                 'import shutil; print(shutil.which("sh"))'],
+                cwd=root, env=env, timeout=30)
+            self.assertEqual(output, b'None\n')
+            self.assertNotIn('NODE_OPTIONS', env)
+            self.assertNotIn('PYTHONPATH', env)
+            self.assertTrue(all(Path(part).is_relative_to(root)
+                                for part in env['PATH'].split(builder.os.pathsep)))
 
     def test_source_copy_uses_only_allowlisted_paths(self):
         with tempfile.TemporaryDirectory(prefix='blanc-allowlist-') as temporary:

@@ -130,7 +130,12 @@ GCC platform profile. Fetch and checksum need no selected Node, Python or SDK
 source. Extraction requires `EMBERBSD_CROSS_BUILD_PYTHON` set to the selected
 host CPython 3.15 executable and `EMBERBSD_SDK_SOURCE` set to an absolute SDK
 API 1 source directory. Build and test additionally require `EMBERBSD_HOST_NODE`
-set to the absolute host Node.js 24.22.1 executable. The standard pkgsrc phase
+set to the absolute host Node.js 24.22.1 executable and `EMBERBSD_HOST_PREFIX`
+set to the installed native Ports prefix. The shared SDK `load_host_prefix`
+selects Node and Python without requiring a compiler, checks native CPU,
+symlink containment and script interpreters, and supplies the prefix-only child
+PATH. The explicit Node path and the running Python must match that selection.
+Source extraction does not require a native prefix. The standard pkgsrc phase
 hooks validate these inputs; direct `do-extract`, `do-build` and `do-test` calls
 retain the same checks. The controller checks the SDK API, module origin and
 interpreter versions.
@@ -157,6 +162,19 @@ phases reject missing tools. With `--distdir` it runs normal cached `fetch` and
 `checksum`, including negative license and corrupted-input cases. The optional
 `--baseline-recipe` reproduces the previous global metadata failure. These
 checks do not build an ASAR or qualify the target runtime.
+The package-controller suite also uses the real SDK loader to reject missing
+or escaped tools, foreign CPU images and external script interpreters. Its
+selection fixtures use native Python binaries as Node stand-ins; they do not
+claim JavaScript execution. A real child process checks that the selected PATH
+cannot discover a system shell. Run these controls with the prepared source
+and cached archives:
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B -I -S \
+  probes/electron/blanc/files/test_blanc_package.py \
+  --sdk-source "$SDK_SOURCE" --source "$BLANC_SOURCE" \
+  --distdir "$DISTDIR/e12-electron"
+```
 
 The host checks passed 11 package-controller tests and 22 focused Node tests.
 The produced ASAR contains 1,674 entries. The production-only registry audit
