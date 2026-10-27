@@ -44,3 +44,14 @@ the recipe patch. Run it with the matching configured Clang lit suite, alongside
 commands for AArch64 and amd64; they do not link or execute target code.
 Actual LLVM runtime creation is documented in
 [the common LLVM runtime producer](../llvm/README.runtime.md).
+
+## Validation boundary
+
+The built Clang 23.1.4 driver passes the route regression and both selected
+upstream driver tests. Native C++ exceptions and AddressSanitizer probes pass.
+These checks do not qualify an EmberBSD sysroot or execute target programs.
+Clang Static Analyzer completes with an existing dead-store warning in LLVM's
+`Support/Error.h`; it reports no diagnostic in the changed driver.
+Cppcheck 2.22.0 Clang AST import aborts on this translation unit, including
+a token-type assertion after the file-location fixes. Cppcheck analysis is
+therefore incomplete; the successful checks above do not replace it.

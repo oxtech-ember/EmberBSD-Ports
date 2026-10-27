@@ -277,6 +277,26 @@ def extract_archive(archive, destination):
         stream.extractall(destination, members=members, filter='fully_trusted')
 
 
+def patch_safety_options(selection, runner):
+    """Select an optional patch behavior from its advertised capabilities."""
+    command = selection.command('patch')
+    require(command and os.path.isabs(command[0]), 'Explicit patch command is required.')
+    try:
+        help_text = runner([*command, '--help'])
+    except Exception as error:
+        if not hasattr(error, 'returncode'):
+            raise
+        return ()
+    return (('--no-backup-if-mismatch',)
+            if b'--no-backup-if-mismatch' in help_text else ())
+
+
+def numbered_backup_paths(root):
+    """Return existing GNU-style numbered backup paths relative to a tree."""
+    return {path.relative_to(root) for path in Path(root).rglob('*')
+            if path.is_file() and re.search(r'\.~[0-9]+~$', path.name)}
+
+
 def export_pkgsrc(root, destination, *, selection, runner, scratch):
     """Export once and return the upstream revision.
 
@@ -299,6 +319,8 @@ def export_pkgsrc(root, destination, *, selection, runner, scratch):
         command = selection.command(role)
         require(command and os.path.isabs(command[0]), f'Explicit {role} command is required.')
         return runner([*command, *map(str, args)], input=input)
+
+    patch_safety = patch_safety_options(selection, runner)
 
     try:
         expected = invoke('git', '-C', root, 'ls-files', '--stage', '--', 'upstream/pkgsrc')
@@ -365,11 +387,12 @@ def export_pkgsrc(root, destination, *, selection, runner, scratch):
             shutil.rmtree(target)
         ensure_destination_directory(destination, name.rpartition('/')[0])
         shutil.copytree(source, target, copy_function=copy_file)
+    backup_baseline = numbered_backup_paths(destination)
     for method, source, recipe, name in patches:
         if method == 'patch':
             try:
                 invoke('patch', '-f', '-E', '-d', destination, '-p1', '-F', '0', '-V', 'none',
-                       input=source.read_bytes())
+                       *patch_safety, input=source.read_bytes())
             except Exception as error:
                 if not hasattr(error, 'returncode'):
                     raise
@@ -388,6 +411,9 @@ def export_pkgsrc(root, destination, *, selection, runner, scratch):
             fd = os.open(distinfo, os.O_WRONLY | os.O_APPEND | getattr(os, 'O_NOFOLLOW', 0))
             with os.fdopen(fd, 'a', encoding='utf-8') as output:
                 output.write(f'SHA1 ({name}) = {patch_sha1(source)}\n')
+    new_backups = numbered_backup_paths(destination) - backup_baseline
+    require(not new_backups, 'Patch application created numbered backup artifacts: ' +
+            ', '.join(sorted(path.as_posix() for path in new_backups)))
     for source, name in files:
         target = destination_parent(destination, name)
         require(not os.path.lexists(target), f'Exported file collision: {name}')

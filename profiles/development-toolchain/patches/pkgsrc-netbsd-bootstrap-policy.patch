@@ -4,9 +4,7 @@ Ordinary NetBSD and Darwin selections remain unchanged.
 
 --- a/mk/bsd.prefs.mk
 +++ b/mk/bsd.prefs.mk
-@@ -60,6 +60,21 @@
- .  if ${_EMBERBSD_DARWIN_BOOTSTRAP_POLICY:U0} != "1"
- .error "MAKECONF must include the Ports Darwin bootstrap policy"
+@@ -62,6 +62,21 @@
  .  endif
  .endif
  
@@ -26,6 +24,8 @@ Ordinary NetBSD and Darwin selections remain unchanged.
 +.endif
 +
  # Set PATH if not already set
+ .if !defined(PATH)
+ PATH=/bin:/usr/bin:/sbin:/usr/sbin
 @@ -92,7 +107,9 @@
  # the call "bmake clean depends" equivalent to "bmake clean && bmake depends".
  _CLEANING:=	${"${.TARGETS:C,( [[:alnum:]-]*clean[[:alnum:]-]*)+$,,W:M*clean*}":?yes:}
@@ -225,7 +225,7 @@ Ordinary NetBSD and Darwin selections remain unchanged.
  _GCC_QUERY_CC= ${EMBERBSD_GCC16_SEED_CC}
  .endif
  
-@@ -644,4 +644,8 @@
+@@ -644,6 +644,10 @@
  _NEED_GCC16=	yes
  .  endif
  .endfor
@@ -234,6 +234,8 @@ Ordinary NetBSD and Darwin selections remain unchanged.
 +USE_PKGSRC_GCC_RUNTIME=	no
 +.endif
  # AUX patterns really don't work starting from gcc10-aux
+ #_NEED_GCC_AUX?=	no
+ #.for _pattern_ in ${_GCC_AUX_PATTERNS}
 @@ -1295,14 +1310,17 @@
  .endif
  _COMPILER_STRIP_VARS+=	${_GCC_VARS}
