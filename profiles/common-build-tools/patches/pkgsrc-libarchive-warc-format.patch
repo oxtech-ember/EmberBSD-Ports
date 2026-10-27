@@ -1,0 +1,16 @@
+# Origin: EmberBSD; annotate the existing strftime-format argument.
+--- a/archivers/libarchive/files/libarchive/archive_write_set_format_warc.c
++++ b/archivers/libarchive/files/libarchive/archive_write_set_format_warc.c
+@@ -119,7 +119,11 @@
+ static int	archive_write_warc_close(struct archive_write *);
+ static int	archive_write_warc_free(struct archive_write *);
+ 
+-static void	warc_format_time(struct archive_string *, const char *, time_t);
++static void	warc_format_time(struct archive_string *, const char *, time_t)
++#if defined(__GNUC__) || defined(__clang__)
++	    __attribute__((__format__(__strftime__, 2, 0)))
++#endif
++	    ;
+ static ssize_t	warc_populate_header(struct archive_string *, size_t,
+ 		    struct warc_header);
+ static void	warc_generate_uuid(struct warc_uuid *);
