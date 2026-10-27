@@ -1,0 +1,6 @@
+@comment $NetBSD$
+lib/node_modules/@types/estree/LICENSE
+lib/node_modules/@types/estree/README.md
+lib/node_modules/@types/estree/flow.d.ts
+lib/node_modules/@types/estree/index.d.ts
+lib/node_modules/@types/estree/package.json
