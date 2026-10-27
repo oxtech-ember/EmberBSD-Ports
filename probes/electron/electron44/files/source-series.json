@@ -586,6 +586,11 @@
       "path": "media-audio-sndio-backend-maybe-unused.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "webrtc-desktop-capture-objc-macos14-min.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

@@ -1,0 +1,25 @@
+WebRTC: build the host macOS desktop_capture_objc part with a 14.0 minimum.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Source: Chromium electron-source tree under EmberBSD.
+The EmberBSD Electron build sets mac_deployment_target = "26.0" for the
+host (clang_arm64 / clang_arm64_v8_x64) toolchains. With that minimum the
+macOS 26 SDK marks CGDisplayStream* and CGWindowListCreateImageFromArray
+(used by mac/screen_capturer_mac.mm) as obsoleted in macOS 15.0, which is
+a hard "unavailable" error. Compile only this Obj-C++ target against 14.0.
+
+--- a/third_party/webrtc/modules/desktop_capture/BUILD.gn
++++ b/third_party/webrtc/modules/desktop_capture/BUILD.gn
+@@ -998,6 +998,12 @@
+       "IOSurface.framework",
+     ]
+     weak_frameworks = [ "ScreenCaptureKit.framework" ]  # macOS 12.3
++
++    # EmberBSD: the host toolchain uses mac_deployment_target 26.0, where the
++    # CGDisplayStream / CGWindowListCreateImage APIs used by the legacy
++    # capturer are obsoleted (hard errors). Build this Obj-C++ part against
++    # 14.0 so those APIs stay available (weak-linked, runtime-guarded).
++    cflags_objcc = [ "-mmacos-version-min=14.0" ]
+   }
+ }
+ 
