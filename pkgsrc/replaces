@@ -332,3 +332,4 @@ parallel/spirv-headers
 parallel/spirv-llvm-translator
 comms/dfu-util
 devel/libusb1
+emulators/qemu
