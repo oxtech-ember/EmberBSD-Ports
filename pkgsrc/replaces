@@ -335,3 +335,4 @@ devel/libusb1
 emulators/qemu
 devel/mimalloc
 lang/go127
+devel/rust-bindgen
