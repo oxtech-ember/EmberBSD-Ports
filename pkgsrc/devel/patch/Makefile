@@ -1,8 +1,8 @@
 # $NetBSD: Makefile,v 1.47 2025/04/21 16:32:26 wiz Exp $
-# Origin: pkgsrc devel/patch, updated to GNU patch 2.8 (2025-03-29).
-# The upstream release includes the former pkgsrc security patches.
+# Origin: pkgsrc devel/patch, updated to GNU patch 2.8.1 (2026-10-23).
+# 2.8.1 fixes CVE-2026-115207; upstream includes the former pkgsrc patches.
 
-DISTNAME=	patch-2.8
+DISTNAME=	patch-2.8.1
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GNU:=patch/}
 EXTRACT_SUFX=	.tar.xz

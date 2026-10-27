@@ -34,6 +34,11 @@ devel/meson
 devel/protobuf
 devel/py-iniconfig
 devel/py-mako
+devel/py-pip
+devel/py-setuptools
+devel/py-urwid
+devel/py-wcwidth
+devel/snappy
 devel/swig4
 devel/zlib
 lang/clang

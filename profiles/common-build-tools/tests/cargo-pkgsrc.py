@@ -66,7 +66,13 @@ RUST_REQ= 1.99.1
         prefix=root/'selected-host';(prefix/'bin').mkdir(parents=True)
         for name in ('rustc','clang','clang++','llvm-ar','cargo'):
             path=prefix/'bin'/name
-            code='print("host: aarch64-apple-darwin")' if name=='rustc' else 'raise SystemExit("fixture must not compile")'
+            if name=='rustc':
+                code='print("host: aarch64-apple-darwin")'
+            elif name=='cargo':
+                # Observe the actual runner after do-cargo-build changes cwd.
+                code='import json, os, pathlib, sys\npathlib.Path('+repr(str(root/'cargo-run.json'))+').write_text(json.dumps({"argv": sys.argv[1:], "cwd": os.getcwd()}))'
+            else:
+                code='raise SystemExit("fixture must not compile")'
             path.write_text('#!'+sys.executable+'\n'+code+'\n');path.chmod(0o755)
         base=[str(args.bmake),'-m',str(args.bmake.parent.parent/'share/mk'),'SHELL='+str(args.shell),'MAKECONF='+str(args.makeconf),'WRKOBJDIR='+str(root/'objects'),'DISTDIR='+str(cache),'EMBERBSD_DARWIN_BOOTSTRAP=yes','MAKE_JOBS=2']
         def run(*extra, success=True, native=True):
@@ -96,6 +102,12 @@ RUST_REQ= 1.99.1
         native=tomllib.loads(config.read_text())
         assert native['build']['target']=='aarch64-apple-darwin'
         assert native['env']['CFLAGS']['value']=='-DHOST_ONLY'
+        crate_source=root/'source'/'nested-crate'
+        crate_source.mkdir(parents=True)
+        run(*selected,'CARGO_WRKSRC='+str(crate_source),'CARGO_ARGS=metadata --offline','do-cargo-build')
+        observed=json.loads((root/'cargo-run.json').read_text())
+        assert observed=={'argv':['--config',str(config),'metadata','--offline'],
+                          'cwd':str(crate_source)},observed
         target='x86_64-unknown-netbsd'
         cross_config=root/'cross/config.toml'
         # The supplied native bootstrap policy correctly refuses cross builds.
@@ -124,7 +136,7 @@ RUST_REQ= 1.99.1
         assert '-arch arm64' in host_linker and '-L/host' in host_linker and '/target' not in host_linker
         assert '--target=x86_64--netbsd' in target_linker and '-L/target' in target_linker and '-L/host' not in target_linker
         run(*selected,'RUST_TYPE=bin','ember-cargo-configure',success=False)
-        print(json.dumps({'fetch_checksum':'pass','native_tool_dependencies':'pass','native_configure':'pass','cross_configure':'pass','wrong_rust_role_rejected':'pass','scope':'pkgsrc configure with stub rustc identity; no compilation'}))
+        print(json.dumps({'fetch_checksum':'pass','native_tool_dependencies':'pass','native_configure':'pass','runner_after_chdir':'pass','cross_configure':'pass','wrong_rust_role_rejected':'pass','scope':'pkgsrc configure and runner execution with observed Cargo stub; no compilation'}))
 
 
 if __name__=='__main__':
