@@ -28,6 +28,10 @@ DEPENDENCIES = {
     'BUILD_DEPENDS': 'build', 'DEPENDS': 'runtime', 'TEST_DEPENDS': 'test',
     'INDIRECT_BUILD_DEPENDS': 'build', 'INDIRECT_DEPENDS': 'runtime',
 }
+RESERVED_MAKE_VARIABLES = {
+    'MAKECONF', 'USE_CROSS_COMPILE', 'MAKEFLAGS', 'MFLAGS', '.MAKEFLAGS',
+    'MAKEFILE', 'MAKEOBJDIR', 'MAKEOBJDIRPREFIX', 'PKGNAME_REQD',
+}
 
 
 class ExportError(ValueError):
@@ -54,10 +58,26 @@ def assignments(value):
     return result
 
 
+def make_variables(values):
+    """Parse repeatable, scalar bmake assignments (never make arguments)."""
+    result = {}
+    for value in values:
+        key, sep, item = value.partition('=')
+        if (not sep or not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', key) or
+                key in RESERVED_MAKE_VARIABLES or key.startswith('TARGET_') or
+                not item or not re.fullmatch(r'[A-Za-z0-9_./:+,@%+-]+', item)):
+            raise ExportError('unsupported --make-variable assignment')
+        if key in result:
+            raise ExportError('duplicate --make-variable: ' + key)
+        result[key] = item
+    return dict(sorted(result.items()))
+
+
 class Exporter:
     def __init__(self, args, sha256_file):
         self.sha256_file = sha256_file
         self.args = args
+        self.make_variables = make_variables(args.make_variable)
         self.root = args.pkgsrc.resolve(strict=True)
         self.makeconf = args.makeconf.resolve(strict=True)
         self.bmake = args.bmake.resolve(strict=True)
@@ -95,6 +115,7 @@ class Exporter:
         command = [str(self.bmake), '-C', str(self.root / package),
                    'MAKECONF=' + str(self.makeconf),
                    'USE_CROSS_COMPILE=' + cross]
+        command += [key + '=' + value for key, value in self.make_variables.items()]
         command += [key + '=' + value for key, value in sorted(settings.items())]
         if pattern:
             command.append('PKGNAME_REQD=' + pattern)
@@ -195,7 +216,7 @@ class Exporter:
         identity = role + ':' + package
         if settings:
             identity += '@' + digest(canonical(settings))[:16]
-        context = [cross, settings, environment]
+        context = [cross, settings, environment, self.make_variables]
         if identity in self.nodes:
             if self.contexts[identity] != context:
                 raise ExportError('conflicting recursive contexts for ' + identity)
@@ -270,6 +291,7 @@ class Exporter:
         shared = {'makeconf': self.sha256_file(self.makeconf), 'bmake': self.sha256_file(self.bmake),
                   'pkg_admin': self.sha256_file(self.pkg_admin),
                   'dependency-phase': digest(self.args.dependency_phase.encode()),
+                  'make-variables': digest(canonical(self.make_variables)),
                   'environment': digest(canonical(self.environment)),
                   'exporter': self.sha256_file(Path(__file__))}
         for item in self.args.shared_input:
@@ -277,13 +299,16 @@ class Exporter:
             if not sep or not re.fullmatch(r'[a-zA-Z0-9_.-]+', name) or name in shared:
                 raise ExportError('invalid or duplicate --shared-input name')
             shared[name] = self.sha256_file(path)
+        make_variable_summary = ', '.join(
+            key + '=' + value for key, value in self.make_variables.items()) or 'none'
         return {'schema': 'ports-graph-v1',
                 'context': {'target': self.args.target, 'triplet': self.args.triplet,
                             'toolchain_sha256': self.sha256_file(self.args.toolchain_input),
                             'base_sha256': self.sha256_file(self.args.base_input),
                             'shared_inputs': shared},
                 'provenance': {'source': 'pkgsrc native metadata (' + self.args.mode +
-                               '; dependency phase ' + self.args.dependency_phase + ')',
+                               '; dependency phase ' + self.args.dependency_phase +
+                               '; make variables: ' + make_variable_summary + ')',
                                'revision': self.args.revision},
                 'nodes': [self.nodes[key] for key in sorted(self.nodes)]}
 
@@ -301,6 +326,8 @@ def main():
                         help='mandatory pending TEST_DEPENDS inventory for the build phase')
     parser.add_argument('--root', action='append', required=True, help='category/package; repeat for each root')
     parser.add_argument('--shared-input', action='append', default=[], metavar='NAME=FILE')
+    parser.add_argument('--make-variable', action='append', default=[], metavar='NAME=VALUE',
+                        help='repeatable scalar bmake assignment; does not accept targets or make flags')
     parser.add_argument('--max-nodes', type=int, default=1000)
     parser.add_argument('--timeout', type=int, default=120, help='seconds per metadata command')
     parser.add_argument('--output', type=Path, required=True)

@@ -155,6 +155,30 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         graph = self.run_export('--mode', 'native', '--target', 'x86_64', '--triplet', 'x86_64--linux')
         self.assertTrue(all(node['id'].startswith('host:') for node in graph['nodes']))
 
+    def test_explicit_make_variables_reach_every_query_and_are_recorded(self):
+        graph = self.run_export('--make-variable', 'EMBERBSD_DARWIN_BOOTSTRAP=yes',
+                                '--make-variable', 'EMBERBSD_DARWIN_TOOL_PHASE=initial')
+        self.assertIn('make variables: EMBERBSD_DARWIN_BOOTSTRAP=yes, EMBERBSD_DARWIN_TOOL_PHASE=initial',
+                      graph['provenance']['source'])
+        self.assertIn('make-variables', graph['context']['shared_inputs'])
+        calls = [json.loads(line) for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
+        self.assertTrue(calls)
+        self.assertTrue(all(call['settings']['EMBERBSD_DARWIN_BOOTSTRAP'] == 'yes' and
+                            call['settings']['EMBERBSD_DARWIN_TOOL_PHASE'] == 'initial'
+                            for call in calls))
+
+    def test_make_variable_rejects_flags_reserved_names_and_ambiguous_values(self):
+        for assignment in ('MAKEFLAGS=-n', 'MAKECONF=/tmp/other.conf',
+                           'USE_CROSS_COMPILE=no', 'TARGET_MACHINE_ARCH=aarch64',
+                           'EMBERBSD_DARWIN_BOOTSTRAP=yes;show-vars',
+                           'EMBERBSD_DARWIN_BOOTSTRAP=yes extra',
+                           'EMBERBSD_DARWIN_BOOTSTRAP='):
+            with self.subTest(assignment=assignment):
+                self.assertIn('--make-variable assignment', self.run_export(
+                    '--make-variable', assignment, success=False))
+        self.assertIn('duplicate --make-variable', self.run_export(
+            '--make-variable', 'SAMPLE=yes', '--make-variable', 'SAMPLE=no', success=False))
+
     def test_native_constraint_failure_is_not_resolved_in_python(self):
         self.packages['devel/app']['TOOL_DEPENDS'] = 'generator>=3:../../devel/generator'
         self.assertIn('pkg_admin rejected', self.run_export(success=False))
@@ -232,6 +256,22 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         after = self.nodes(self.run_export(*args))
         self.assertEqual([key for key in before if before[key]['input_sha256'] != after[key]['input_sha256']],
                          ['host:devel/app'])
+
+    @unittest.skipUnless(os.environ.get('EMBERBSD_BMAKE') and os.environ.get('EMBERBSD_MAKECONF'),
+                         'set EMBERBSD_BMAKE and selected EMBERBSD_MAKECONF for real bmake checks')
+    def test_real_selected_bmake_makeconf_uses_explicit_bootstrap_assignment(self):
+        package = self.pkgsrc / 'devel/app'
+        (package / 'Makefile').write_text(
+            '.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} != "yes"\n'
+            '.error missing explicit bootstrap make variable\n.endif\n'
+            'PKGNAME=app-1\nPKGVERSION=1\nMACHINE_ARCH=x86_64\n'
+            'MACHINE_GNU_PLATFORM=x86_64--darwin\nall:\n')
+        args = ('--bmake', os.environ['EMBERBSD_BMAKE'],
+                '--makeconf', os.environ['EMBERBSD_MAKECONF'], '--mode', 'native',
+                '--target', 'x86_64', '--triplet', 'x86_64--darwin',
+                '--make-variable', 'EMBERBSD_DARWIN_BOOTSTRAP=yes')
+        graph = self.run_export(*args)
+        self.assertIn('EMBERBSD_DARWIN_BOOTSTRAP=yes', graph['provenance']['source'])
 
     def test_external_vendor_filename_is_an_input(self):
         vendor = self.path / 'external vendor files'
