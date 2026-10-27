@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.26 2026/08/30 15:42:59 wiz Exp $
+
+BLAKE2s (wcwidth-0.8.5.tar.gz) = 58e06e3c08bebcfc183e973f4857fc0ddd8ceb5c7b2b7b5894dd82f5703214f9
+SHA512 (wcwidth-0.8.5.tar.gz) = 5937c96e815c0bc7d86ff7a1ea0f2615784b29e6d4ff63ce668cf88d9dec8b52e51d87acc0a032313e2f40b5553417029153490b64b54d8a4bb726228fbda249
+Size (wcwidth-0.8.5.tar.gz) = 414244 bytes
