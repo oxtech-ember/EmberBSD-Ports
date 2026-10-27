@@ -1,0 +1,30 @@
+# Origin: EmberBSD (AI-assisted). Keep installed Bash development metadata target-native.
+
+--- a/shells/bash/Makefile
++++ b/shells/bash/Makefile
+@@ -5,6 +5,7 @@
+ 
+ DISTNAME=	bash-${BASH_VERSION}
+ PKGNAME=	bash-${BASH_VERSION}.${BASH_PATCHLEVEL}
++PKGREVISION=		1
+ CATEGORIES=	shells
+ MASTER_SITES=	${MASTER_SITE_GNU:=bash/}
+ # XXX this needs to be removed once we're at the 5.4 release
+@@ -69,6 +70,17 @@
+ .endif
+ 
+ .if ${USE_CROSS_COMPILE:U:tl} == yes && ${OPSYS} == "NetBSD"
++# This installed development fragment runs on the target after packaging.
++SUBST_CLASSES+= target-loadables
++SUBST_STAGE.target-loadables= post-build
++SUBST_FILES.target-loadables= examples/loadables/Makefile.inc
++SUBST_SED.target-loadables= -e 's|^BUILD_DIR[[:blank:]]*=.*|BUILD_DIR = .|'
++SUBST_SED.target-loadables+= -e 's|^CC[[:blank:]]*=.*|CC ?= cc|'
++SUBST_SED.target-loadables+= -e 's|^SHOBJ_CC[[:blank:]]*=.*|SHOBJ_CC = $$(CC)|'
++SUBST_SED.target-loadables+= -e 's|^INSTALL[[:blank:]]*=.*|INSTALL = /usr/bin/install -c|'
++SUBST_SED.target-loadables+= -e 's|^INSTALL_PROGRAM[[:blank:]]*=.*|INSTALL_PROGRAM = $$(INSTALL) -s -m 755|'
++SUBST_SED.target-loadables+= -e 's|^INSTALL_SCRIPT[[:blank:]]*=.*|INSTALL_SCRIPT = $$(INSTALL) -m 755|'
++SUBST_SED.target-loadables+= -e 's|^INSTALL_DATA[[:blank:]]*=.*|INSTALL_DATA = $$(INSTALL) -m 644|'
+ CONFIGURE_ENV+=		CC_FOR_BUILD=${NATIVE_CC:Q}
+ CONFIGURE_ENV+=		ac_cv_c_long_long=yes
+ CONFIGURE_ENV+=		ac_cv_c_long_double=yes

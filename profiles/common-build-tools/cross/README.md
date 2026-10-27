@@ -741,3 +741,23 @@ python3 profiles/common-build-tools/tests/pkg-create-numeric-owner.py \
 
 The optional `--valgrind /absolute/valgrind` checks the same real operations
 under Memcheck. Invalid numeric selections must return status 2.
+
+### Installed Bash loadable metadata
+
+Cross NetBSD Bash 5.3.20nb1 installs a target-native `Makefile.inc`.
+Its install commands use target `/usr/bin/install` and ordinary file modes.
+It contains no host owner/group arguments or producer build directory.
+The loadable compiler follows the caller's CC, with the native cc default.
+Build-time commands and ordinary native packaging remain unchanged.
+
+```sh
+python3 profiles/common-build-tools/tests/bash-loadable-metadata.py \
+    --stage /absolute/bash-stage/usr/pkg \
+    --source /absolute/bash-source/examples/loadables \
+    --make /absolute/native/gmake --cc /absolute/cross/clang \
+    --readelf /absolute/native/llvm-readelf --work /absolute/new-loadable-check \
+    --forbid /absolute/native-prefix --forbid /absolute/producer-objects
+```
+
+The check uses the actual installed sample and unmodified upstream hello source.
+It builds an AArch64 shared object. It does not execute the target module.
