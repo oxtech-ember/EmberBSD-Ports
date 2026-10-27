@@ -56,6 +56,33 @@ class BuildSources(unittest.TestCase):
         self.assertEqual((self.fixture.src / 'ports.cc').read_text(), 'new Ports source\n')
         self.assertEqual(helper.materialize(self.fixture.workspace, self.fixture.destination, result, git=options.git), 0)
 
+    def test_extended_series_accepts_only_reconstructed_previous_bytes(self):
+        result = self.prepare()
+        helper.materialize(self.fixture.workspace, self.fixture.destination, result, git=options.git)
+        previous = self.fixture.destination
+        self.fixture.destination = self.root / 'extended-preparation'
+        (self.patch_root / 'third.patch').write_text(
+            delta('BSD support\nfirst\nsecond\n', 'BSD support\nfirst\nsecond\nthird\n', 'alpha.cc'))
+        self.series['patches'].append(dict(path='third.patch', root='', strip=1))
+        self.write_series()
+        extended = self.prepare()
+        self.assertIn(result['paths']['alpha.cc']['after'], extended['paths']['alpha.cc']['prepared_before'])
+        self.assertEqual(helper.materialize(self.fixture.workspace, self.fixture.destination, extended, git=options.git), 1)
+        self.assertEqual((self.fixture.src / 'alpha.cc').read_text(), 'BSD support\nfirst\nsecond\nthird\n')
+        self.assertEqual((previous / 'files/alpha.cc').read_text(), 'BSD support\nfirst\nsecond\n')
+
+    def test_changed_previous_series_is_refused(self):
+        result = self.prepare()
+        helper.materialize(self.fixture.workspace, self.fixture.destination, result, git=options.git)
+        self.fixture.destination = self.root / 'different-preparation'
+        (self.patch_root / 'second.patch').write_text(
+            delta('BSD support\nfirst\n', 'BSD support\nfirst\nchanged\n', 'alpha.cc') +
+            delta('', 'new Ports source\n', 'ports.cc'))
+        changed = self.prepare()
+        with self.assertRaisesRegex(ValueError, 'source differs'):
+            helper.materialize(self.fixture.workspace, self.fixture.destination, changed, git=options.git)
+        self.assertEqual((self.fixture.src / 'alpha.cc').read_text(), 'BSD support\nfirst\nsecond\n')
+
     def test_wrong_order_fails_without_source_mutation(self):
         self.series['patches'].reverse(); self.write_series()
         with self.assertRaisesRegex(ValueError, 'ordered source patch failed'):

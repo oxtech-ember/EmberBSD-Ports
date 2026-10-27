@@ -275,3 +275,10 @@ all-before-write refusal, symlinks, changed prepared bytes and repeat applicatio
 
 Remaining dependency assets and the ordinary GN/Ninja recipe binding are
 separate work. Source preparation alone does not establish a complete build.
+
+An ordered-series extension can also materialize over an earlier exact prefix.
+Preparation reconstructs and hashes each affected file immediately before each
+ordered Ports patch. Materialization accepts those reconstructed bytes as well
+as the committed preimage and final bytes. It does not trust arbitrary live
+changes or an old completion file to authorize an overwrite. A changed earlier
+patch whose old result is no longer reconstructed is refused.

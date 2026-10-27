@@ -89,7 +89,14 @@ def prepare(workspace, pkgsrc, archive, destination, git, patch, patch_root, man
     log_root = destination / 'ordered-logs'
     log_root.mkdir()
     applied = []
+    prepared_preimages = {}
     for row in rows:
+        # Record only states reconstructed by this complete ordered recipe.
+        # A live source may already contain a previously published prefix of
+        # the series; arbitrary working-tree bytes remain invalid.
+        for name in row['targets']:
+            path, data = current_file(fixture, name)
+            prepared_preimages.setdefault(name, set()).add(digest(data))
         directory = fixture / row['root']
         directory.mkdir(parents=True, exist_ok=True)
         command = [str(git), 'apply', '-p' + str(row['strip']), str(row['filename'])]
@@ -111,6 +118,9 @@ def prepare(workspace, pkgsrc, archive, destination, git, patch, patch_root, man
         require(not path.is_symlink(), 'source patch created a symbolic link: ' + name)
         data = path.read_bytes() if path.exists() else None
         paths[name] = dict(before=digest(originals.get(name)), after=digest(data))
+        intermediate = prepared_preimages.get(name, set()) - {paths[name]['before'], paths[name]['after']}
+        if intermediate:
+            paths[name]['prepared_before'] = sorted(intermediate, key=lambda value: value or '')
     output = dict(version=1, source_revisions=source_revisions,
                   patches=applied, paths=paths, scope='prepared source bytes; no configure, compile or target execution')
     atomic_json(destination / 'prepared-sources.json', output)
@@ -150,12 +160,13 @@ def materialize(workspace, destination, result, *, git):
         require(actual == revision, 'source repository HEAD differs before materialization: ' + name)
     changes = []
     # Check the complete write set before the first mutation. A retry accepts
-    # only exact committed preimages or this recipe's exact prepared bytes.
+    # only exact committed bytes or states reconstructed by this recipe's order.
     for name, row in result['paths'].items():
         path, current = current_file(source, name)
         prepared, data = current_file(destination / 'files', name)
         require(digest(data) == row['after'], 'prepared source changed: ' + name)
-        require(digest(current) in (row['before'], row['after']), 'source differs from committed/prepared bytes: ' + name)
+        allowed = [row['before'], row['after'], *row.get('prepared_before', [])]
+        require(digest(current) in allowed, 'source differs from committed/prepared bytes: ' + name)
         if digest(current) != row['after']:
             changes.append((path, data))
     for path, data in changes:
