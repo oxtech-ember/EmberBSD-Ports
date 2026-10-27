@@ -1,0 +1,74 @@
+[
+  {
+    "crate": "napi-3.15.0",
+    "file": "napi-rs.LICENSE",
+    "repository": "napi-rs/napi-rs",
+    "commit": "d9cb526c15e63ba30e06b4d169068c9854180595",
+    "source_path": "LICENSE",
+    "git_blob": "7fe7e35eff46457f65a4e30a717fada632de9e03"
+  },
+  {
+    "crate": "napi-derive-3.6.13",
+    "file": "napi-rs.LICENSE",
+    "repository": "napi-rs/napi-rs",
+    "commit": "d9cb526c15e63ba30e06b4d169068c9854180595",
+    "source_path": "LICENSE",
+    "git_blob": "7fe7e35eff46457f65a4e30a717fada632de9e03"
+  },
+  {
+    "crate": "napi-build-2.6.0",
+    "file": "napi-rs.LICENSE",
+    "repository": "napi-rs/napi-rs",
+    "commit": "a94cef33f62e74682963dd085e283f52dcec2600",
+    "source_path": "LICENSE",
+    "git_blob": "7fe7e35eff46457f65a4e30a717fada632de9e03"
+  },
+  {
+    "crate": "napi-derive-backend-6.1.6",
+    "file": "napi-rs.LICENSE",
+    "repository": "napi-rs/napi-rs",
+    "commit": "d9cb526c15e63ba30e06b4d169068c9854180595",
+    "source_path": "LICENSE",
+    "git_blob": "7fe7e35eff46457f65a4e30a717fada632de9e03"
+  },
+  {
+    "crate": "napi-sys-3.4.1",
+    "file": "napi-rs.LICENSE",
+    "repository": "napi-rs/napi-rs",
+    "commit": "d9cb526c15e63ba30e06b4d169068c9854180595",
+    "source_path": "LICENSE",
+    "git_blob": "7fe7e35eff46457f65a4e30a717fada632de9e03"
+  },
+  {
+    "crate": "base64-simd-0.8.0",
+    "file": "simd.LICENSE",
+    "repository": "Nugine/simd",
+    "commit": "d74c030d9dc4f3cae02146d1f497ff62726ef09a",
+    "source_path": "LICENSE",
+    "git_blob": "2c7eabb59093ea117d73b20effdd0414f87b2af2"
+  },
+  {
+    "crate": "vsimd-0.8.0",
+    "file": "simd.LICENSE",
+    "repository": "Nugine/simd",
+    "commit": "d74c030d9dc4f3cae02146d1f497ff62726ef09a",
+    "source_path": "LICENSE",
+    "git_blob": "2c7eabb59093ea117d73b20effdd0414f87b2af2"
+  },
+  {
+    "crate": "bytes-str-0.2.9",
+    "file": "ddbase.LICENSE",
+    "repository": "dudykr/ddbase",
+    "commit": "19f6487518dbebbc198346bfb979313ef457199e",
+    "source_path": "LICENSE",
+    "git_blob": "7a4a3ea2424c09fbe48d455aed1eaa94d9124835"
+  },
+  {
+    "crate": "par-core-2.0.0",
+    "file": "ddbase.LICENSE",
+    "repository": "dudykr/ddbase",
+    "commit": "d46ef439d30d2b64eb87d4e197929548b51b21be",
+    "source_path": "LICENSE",
+    "git_blob": "7a4a3ea2424c09fbe48d455aed1eaa94d9124835"
+  }
+]

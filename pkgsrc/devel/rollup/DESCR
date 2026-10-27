@@ -1,0 +1,2 @@
+Rollup is a JavaScript module bundler. Its native Rust parser is built from
+the matching upstream source and uses the selected shared Ports libraries.
