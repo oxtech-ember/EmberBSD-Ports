@@ -494,7 +494,11 @@ def ensure_rollup_darwin_arm64(workspace, host_prefix, environment):
 
 def ensure_ffmpeg_netbsd_config(workspace):
     """DEPS ffmpeg-copy-config-netbsd only teaches copy_config.sh; config trees are not generated here.
-    Reuse linux configs for netbsd (same approach as fuchsia/chromeos -> linux in ffmpeg_options.gni)."""
+    Reuse linux configs for netbsd (same approach as fuchsia/chromeos -> linux in ffmpeg_options.gni).
+
+    Linux copies set HAVE_GETAUXVAL=1, but NetBSD has neither getauxval(3) nor
+    <sys/auxv.h>. Clear the flag in every netbsd config.h/config.asm so
+    libavutil/cpu.c skips the Linux auxv include (x86 still uses CPUID)."""
     import shutil
     root = workspace / 'src/third_party/ffmpeg/chromium/config'
     if not root.is_dir():
@@ -502,9 +506,19 @@ def ensure_ffmpeg_netbsd_config(workspace):
     for brand in sorted(p for p in root.iterdir() if p.is_dir()):
         linux = brand / 'linux'
         netbsd = brand / 'netbsd'
-        if not linux.is_dir() or netbsd.is_dir():
+        if not linux.is_dir():
             continue
-        shutil.copytree(linux, netbsd)
+        if not netbsd.is_dir():
+            shutil.copytree(linux, netbsd)
+        for cfg in netbsd.rglob('*'):
+            if cfg.name not in ('config.h', 'config.asm'):
+                continue
+            text = cfg.read_text()
+            fixed = (text
+                     .replace('#define HAVE_GETAUXVAL 1', '#define HAVE_GETAUXVAL 0')
+                     .replace('%define HAVE_GETAUXVAL 1', '%define HAVE_GETAUXVAL 0'))
+            if fixed != text:
+                cfg.write_text(fixed)
     require((root / 'Chrome/netbsd/x64/config.asm').is_file() or not (root / 'Chrome/linux/x64/config.asm').is_file(),
             'ffmpeg Chrome/netbsd/x64/config.asm missing after linux copy')
 

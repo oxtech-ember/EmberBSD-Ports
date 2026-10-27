@@ -289,6 +289,7 @@ For Mac→NetBSD Electron/ANGLE, also stage Mesa 26.2.5 public GL API headers
 protocol headers (`glxint.h`, `glxmd.h`, `glxproto.h`, `glxtokens.h`). ANGLE
 `SystemInfo_x11.cpp` stubs `CollectMesaCardInfo` on NetBSD so a host XQuartz
 `__has_include(<GL/glx.h>)` cannot force a sysroot-missing include.
+FFmpeg NetBSD configs are copied from Linux at configure/build time; `ensure_ffmpeg_netbsd_config` then clears `HAVE_GETAUXVAL` because NetBSD has neither `getauxval(3)` nor `<sys/auxv.h>` (x86 CPU flags still use CPUID).
 The [runtime fixture](tests/keycode-runtime.cc) checks the actual converter.
 The Wayland patch adds fatal exits after exhaustive internal enum switches.
 It keeps valid protocol mappings and unknown-wire rejection. It also declares
