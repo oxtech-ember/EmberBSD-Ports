@@ -354,6 +354,28 @@ def ensure_allocator_shim_cpp_noexcept(workspace):
     path.write_text(text.replace(') __THROW {', ') noexcept {'))
 
 
+def ensure_host_libiconv_unshadow(host_prefix):
+    """macOS: GNU libiconv in host-prefix/lib shadows system _iconv when bindgen/clang-sys
+    adds LIBCLANG_PATH to DYLD search; libxml2 (via libLLVM) then fails to dlopen."""
+    lib = Path(host_prefix) / 'lib'
+    if not lib.is_dir():
+        return
+    # Only act when the tree looks like Apple host (libclang.dylib present).
+    if not (lib / 'libclang.dylib').exists():
+        return
+    side = lib / 'gnu-libiconv-shadow-bak'
+    for name in ('libiconv.2.dylib', 'libiconv.dylib', 'libiconv.a', 'libiconv.la'):
+        p = lib / name
+        if not (p.exists() or p.is_symlink()):
+            continue
+        # Skip if already a symlink into the bak dir
+        side.mkdir(exist_ok=True)
+        dest = side / name
+        if dest.exists() or dest.is_symlink():
+            dest.unlink()
+        p.rename(dest)
+
+
 def ensure_host_dsymutil(workspace, host_prefix):
     """DEPS dsymutil_mac_* downloads chromium-browser-clang dsymutil; hooks are not run.
     Point tools/clang/dsymutil/bin/dsymutil at host-prefix (or PATH) dsymutil for host mac links."""
@@ -474,6 +496,7 @@ def configure(options):
     ensure_rust_std_x86_64_netbsd(options.host_prefix)
     ensure_allocator_shim_throw_netbsd(options.workspace)
     ensure_allocator_shim_cpp_noexcept(options.workspace)
+    ensure_host_libiconv_unshadow(options.host_prefix)
     output = work / 'out'; output.mkdir()
     (output / 'args.gn').write_text(gn_arguments(values))
     sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
@@ -497,6 +520,7 @@ def build(options):
     ensure_rust_std_x86_64_netbsd(options.host_prefix)
     ensure_allocator_shim_throw_netbsd(options.workspace)
     ensure_allocator_shim_cpp_noexcept(options.workspace)
+    ensure_host_libiconv_unshadow(options.host_prefix)
     saved = json.loads((options.work / 'configuration.json').read_text())
     require(saved['source'] == str(options.workspace) and saved['sdk'] == str(options.sdk_source) and
             saved['host_prefix'] == str(options.host_prefix) and saved['target'] == options.target,
