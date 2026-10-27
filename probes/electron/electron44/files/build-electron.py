@@ -373,9 +373,7 @@ def ensure_rollup_darwin_arm64(workspace, host_prefix, environment):
         'os': ['darwin'],
         'cpu': ['arm64'],
         'main': 'rollup.darwin-arm64.node',
-    }, indent=2) + '
-')
-
+    }, indent=2) + "\n")
 
 
 def ensure_ffmpeg_netbsd_config(workspace):
