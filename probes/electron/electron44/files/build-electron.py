@@ -213,6 +213,24 @@ def gn_arguments(values):
         name + ' = ' + gn_value(value) + '\n' for name, value in sorted(values.items()))
 
 
+
+def ensure_ffmpeg_netbsd_config(workspace):
+    """DEPS ffmpeg-copy-config-netbsd only teaches copy_config.sh; config trees are not generated here.
+    Reuse linux configs for netbsd (same approach as fuchsia/chromeos -> linux in ffmpeg_options.gni)."""
+    import shutil
+    root = workspace / 'src/third_party/ffmpeg/chromium/config'
+    if not root.is_dir():
+        return
+    for brand in sorted(p for p in root.iterdir() if p.is_dir()):
+        linux = brand / 'linux'
+        netbsd = brand / 'netbsd'
+        if not linux.is_dir() or netbsd.is_dir():
+            continue
+        shutil.copytree(linux, netbsd)
+    require((root / 'Chrome/netbsd/x64/config.asm').is_file() or not (root / 'Chrome/linux/x64/config.asm').is_file(),
+            'ffmpeg Chrome/netbsd/x64/config.asm missing after linux copy')
+
+
 def ensure_lastchange(workspace, native, environment, sdk):
     """Mirror DEPS lastchange / lastchange_dawn / lastchange_skia / gpu_lists_version (gclient hooks not run)."""
     script = workspace / 'src/build/util/lastchange.py'
@@ -257,6 +275,7 @@ def configure(options):
     work.mkdir()
     native, environment, values = producer_inputs(options, sdk)
     ensure_lastchange(options.workspace, native, environment, sdk)
+    ensure_ffmpeg_netbsd_config(options.workspace)
     output = work / 'out'; output.mkdir()
     (output / 'args.gn').write_text(gn_arguments(values))
     sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
@@ -274,6 +293,7 @@ def build(options):
     verify_source(options.workspace, options.ports_source, options.git)
     native, environment, values = producer_inputs(options, sdk)
     ensure_lastchange(options.workspace, native, environment, sdk)
+    ensure_ffmpeg_netbsd_config(options.workspace)
     saved = json.loads((options.work / 'configuration.json').read_text())
     require(saved['source'] == str(options.workspace) and saved['sdk'] == str(options.sdk_source) and
             saved['host_prefix'] == str(options.host_prefix) and saved['target'] == options.target,
