@@ -1,0 +1,228 @@
+# Origin: EmberBSD (AI-assisted). Record numeric archive identities without host account lookup.
+# Existing named ownership remains unchanged. Numeric IDs omit tar user/group names.
+
+--- a/pkgtools/pkg_install/files/create/util.c
++++ b/pkgtools/pkg_install/files/create/util.c
+@@ -39,7 +39,9 @@
+ #if HAVE_ERR_H
+ #include <err.h>
+ #endif
++#include <errno.h>
+ #include <fcntl.h>
++#include <inttypes.h>
+ #if HAVE_PWD_H
+ #include <grp.h>
+ #endif
+@@ -55,6 +57,54 @@
+ #include "lib.h"
+ #include "create.h"
+ 
++static int
++numeric_id(const char *text, uintmax_t *value)
++{
++	char *end;
++
++	if (text[0] < '0' || text[0] > '9')
++		return -1;
++	errno = 0;
++	*value = strtoumax(text, &end, 10);
++	return errno != 0 || *end != '\0' ? -1 : 0;
++}
++
++int
++pkg_create_uid(const char *name, uid_t *uid)
++{
++	uintmax_t value;
++	uid_t parsed;
++
++	if (name == NULL || name[0] != '#')
++		return uid_from_user(name, uid);
++	if (numeric_id(name + 1, &value) == -1)
++		return -1;
++	parsed = (uid_t)value;
++	if ((value != 0 && parsed <= 0) || parsed == (uid_t)-1 ||
++	    (uintmax_t)parsed != value)
++		return -1;
++	*uid = parsed;
++	return 0;
++}
++
++int
++pkg_create_gid(const char *name, gid_t *gid)
++{
++	uintmax_t value;
++	gid_t parsed;
++
++	if (name == NULL || name[0] != '#')
++		return gid_from_group(name, gid);
++	if (numeric_id(name + 1, &value) == -1)
++		return -1;
++	parsed = (gid_t)value;
++	if ((value != 0 && parsed <= 0) || parsed == (gid_t)-1 ||
++	    (uintmax_t)parsed != value)
++		return -1;
++	*gid = parsed;
++	return 0;
++}
++
+ static void
+ update_ids(struct memory_file *file)
+ {
+@@ -63,7 +113,7 @@
+ 	if (file->owner != NULL) {
+ 		uid_t uid;
+ 
+-		if (uid_from_user(file->owner, &uid) == -1)
++		if (pkg_create_uid(file->owner, &uid) == -1)
+ 			errx(2, "user %s unknown", file->owner);
+ 		file->st.st_uid = uid;
+ 	} else {
+@@ -76,7 +126,7 @@
+ 	if (file->group != NULL) {
+ 		gid_t gid;
+ 
+-		if (gid_from_group(file->group, &gid) == -1)
++		if (pkg_create_gid(file->group, &gid) == -1)
+ 			errx(2, "group %s unknown", file->group);
+ 		file->st.st_gid = gid;
+ 	} else {
+--- a/pkgtools/pkg_install/files/create/create.h
++++ b/pkgtools/pkg_install/files/create/create.h
+@@ -69,6 +69,9 @@
+ 			  const char *, const char *, mode_t);
+ void	free_memory_file(struct memory_file *);
+ 
++int	pkg_create_uid(const char *, uid_t *);
++int	pkg_create_gid(const char *, gid_t *);
++
+ int	pkg_perform(const char *);
+ int	pkg_build(const char *, const char *, const char *, package_t *plist);
+ 
+--- a/pkgtools/pkg_install/files/create/build.c
++++ b/pkgtools/pkg_install/files/create/build.c
+@@ -94,6 +94,12 @@
+ static struct memory_file *size_all_file;
+ static struct memory_file *preserve_file;
+ 
++static const char *
++archive_identity_name(const char *name)
++{
++	return name != NULL && name[0] == '#' ? NULL : name;
++}
++
+ static void
+ write_meta_file(struct memory_file *file, struct archive *archive)
+ {
+@@ -103,8 +109,8 @@
+ 	archive_entry_set_pathname(entry, file->name);
+ 	archive_entry_copy_stat(entry, &file->st);
+ 
+-	archive_entry_set_uname(entry, file->owner);
+-	archive_entry_set_gname(entry, file->group);
++	archive_entry_set_uname(entry, archive_identity_name(file->owner));
++	archive_entry_set_gname(entry, archive_identity_name(file->group));
+ 
+ 	if (archive_write_header(archive, entry))
+ 		errx(2, "cannot write to archive: %s", archive_error_string(archive));
+@@ -185,8 +191,8 @@
+ 	if (owner != NULL) {
+ 		uid_t uid;
+ 
+-		archive_entry_set_uname(entry, owner);
+-		if (uid_from_user(owner, &uid) == -1)
++		archive_entry_set_uname(entry, archive_identity_name(owner));
++		if (pkg_create_uid(owner, &uid) == -1)
+ 			errx(2, "user %s unknown", owner);
+ 		archive_entry_set_uid(entry, uid);
+ 	} else {
+@@ -196,8 +202,8 @@
+ 	if (group != NULL) {
+ 		gid_t gid;
+ 
+-		archive_entry_set_gname(entry, group);
+-		if (gid_from_group(group, &gid) == -1)
++		archive_entry_set_gname(entry, archive_identity_name(group));
++		if (pkg_create_gid(group, &gid) == -1)
+ 			errx(2, "group %s unknown", group);
+ 		archive_entry_set_gid(entry, gid);
+ 	} else {
+--- a/pkgtools/pkg_install/files/create/pkg_create.1
++++ b/pkgtools/pkg_install/files/create/pkg_create.1
+@@ -139,6 +139,10 @@
+ Make
+ .Ar group
+ the default group ownership instead of extracting it from the file system.
++A decimal numeric ID prefixed by
++.Sq #
++selects a group ID without a host account lookup.
++The archive omits the group name for a numeric selection.
+ .It Fl I Ar realprefix
+ Provide the real prefix, as opposed to the staging prefix, for use in
+ staged installations of packages.
+@@ -247,6 +251,11 @@
+ Make
+ .Ar owner
+ the default owner instead of extracting it from the file system.
++A decimal numeric ID prefixed by
++.Sq #
++selects a user ID without a host account lookup.
++The archive omits the user name for a numeric selection.
++Numeric IDs must fit the native ID type and must not equal its all-ones sentinel.
+ .It Fl V
+ Print version number and exit.
+ .It Fl v
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -7,7 +7,7 @@
+ # change in the pkg_* tools that pkgsrc relies on for proper operation.
+ 
+ PKGNAME=		pkg_install-${VERSION}
+-PKGREVISION=		7
++PKGREVISION=		8
+ CATEGORIES=		pkgtools
+ 
+ MAINTAINER=		agc@NetBSD.org
+@@ -83,6 +83,11 @@
+ MAKE_ENV+=		OPSYS=${OPSYS}
+ MAKE_ENV+=		CATMAN_SECTION_SUFFIX=${CATMAN_SECTION_SUFFIX:Q}
+ MAKE_ENV+=		MANINSTALL=${MANINSTALL:Q}
+ MAKE_ENV+=		SED=${SED:Q}
++
++# Keep nested static-library builds on the selected archive tools.
++MAKE_FLAGS+=		AR=${AR:Q} RANLIB=${RANLIB:Q}
++CONFIGURE_ENV+=		AR=${AR:Q} RANLIB=${RANLIB:Q}
++
+ 
+ PKG_DBDIR?=		${PREFIX}/pkgdb
+--- a/mk/pkgformat/pkg/package.mk
++++ b/mk/pkgformat/pkg/package.mk
+@@ -36,8 +36,10 @@
+ _PKG_ARGS_PACKAGE+=	${_PKG_CREATE_ARGS}
+ _PKG_ARGS_PACKAGE+=	-F ${PKG_COMPRESSION}
+ _PKG_ARGS_PACKAGE+=	-I ${PREFIX} -p ${DESTDIR}${PREFIX}
++PKG_CREATE_OWNER?=	${REAL_ROOT_USER}
++PKG_CREATE_GROUP?=	${REAL_ROOT_GROUP}
+ .if ${_USE_DESTDIR} == "user-destdir"
+-_PKG_ARGS_PACKAGE+=	-u ${REAL_ROOT_USER} -g ${REAL_ROOT_GROUP}
++_PKG_ARGS_PACKAGE+=	-u ${PKG_CREATE_OWNER:Q} -g ${PKG_CREATE_GROUP:Q}
+ .endif
+ 
+ ${STAGE_PKGFILE}: ${_CONTENTS_TARGETS}
+--- a/security/netpgpverify/files/Makefile.lib.in
++++ b/security/netpgpverify/files/Makefile.lib.in
+@@ -1,5 +1,6 @@
+ # $NetBSD: Makefile.lib.in,v 1.2 2016/06/30 21:10:59 agc Exp $
+ 
++AR?=	ar
+ LIB=	libnetpgpverify.a
+ 
+ OBJS= b64.o bignum.o bufgap.o digest.o
+@@ -16,7 +17,7 @@
+ all: ${LIB}
+ 
+ ${LIB}: ${OBJS}
+-	ar crv ${LIB} ${OBJS}
++	${AR} crv ${LIB} ${OBJS}
+ 
+ install:
+ 	${BSD_INSTALL_LIB} ${LIB} ${DESTDIR}${PREFIX}/lib

@@ -721,3 +721,23 @@ Repairing that cross-build metadata and producing portable replacement
 archives remain pending; the ELF runtime checks above do not verify `.la`
 portability. Full ncurses terminal coverage, upstream library suites,
 physical-board performance and KiCad integration remain separate.
+
+### Archive identities on cross hosts
+
+The common cross profile requires native pkg_install 20260227nb8 or newer.
+It writes numeric root IDs through `pkg_create -u '#0' -g '#0'`.
+The archive omits user and group names for numeric selections. This avoids
+host NSS lookup of target accounts such as wheel. Logical install ownership
+remains `REAL_ROOT_USER=root` and `REAL_ROOT_GROUP=wheel`.
+`PKG_CREATE_OWNER` and `PKG_CREATE_GROUP` control archive defaults independently.
+Named ownership and explicit named PLIST entries retain their existing lookup.
+
+Run the archive regression with the newly built native pkg_create:
+
+```sh
+python3 profiles/common-build-tools/tests/pkg-create-numeric-owner.py \
+    --pkg-create /absolute/native/pkg_create --work /absolute/new-owner-check
+```
+
+The optional `--valgrind /absolute/valgrind` checks the same real operations
+under Memcheck. Invalid numeric selections must return status 2.
