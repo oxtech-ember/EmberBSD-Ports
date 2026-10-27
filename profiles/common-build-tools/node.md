@@ -104,3 +104,29 @@ link flags and execution, reproduces the old archive-tool refusal, and proves
 that deleting the library or limiting it to direct dependents breaks the final
 link. Unrelated archive/link flags remain intact. The non-mac check covers
 metadata generation only. Full Node package/runtime acceptance is separate.
+
+## V8 hash consistency
+
+The ordered `pkgsrc-nodejs24-v8-hash.patch` backports
+[V8 65ce14d8731e929584344a0d65d6efd2296fa797](https://github.com/v8/v8/commit/65ce14d8731e929584344a0d65d6efd2296fa797)
+to the pinned V8 13.6 sources in Node 24.22.1nb6. The broad partial
+specialization of `std::hash` could select a different hash for the same type
+in different translation units. With the selected Darwin libc++ headers,
+Inspector inserted session ID 1 into a set but could not find it when emitting
+`Runtime.executionContextDestroyed`.
+
+The backport removes that specialization and explicitly chooses `base::hash`
+for both WebAssembly canonical group sets. Upstream's profiler change is not
+applicable here: this branch's `line_ticks_` map has integer keys, while the
+newer upstream map uses pairs. The standard integer hash is retained.
+These headers affect Node/V8 broadly. Rebuild the ordinary Node package;
+replacing only Inspector objects cannot establish a consistent program.
+
+`tests/node-v8-hash.py --help` describes the source and compiler inputs for the
+regression. It uses the real common exporter, verifies recipe patch checksums
+and the complete source patch series, then links separate translation units.
+The original V8 header must reproduce an inserted-but-unfindable integer;
+the patched header must pass with the same native Clang/libc++ inputs.
+Explicit V8 hashing for custom keys and pairs must continue to work.
+This focused regression does not replace a complete Node build and its
+Inspector, WebAssembly, profiler and normal JavaScript runtime tests.
