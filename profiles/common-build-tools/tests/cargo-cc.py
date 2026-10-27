@@ -23,6 +23,7 @@ def main():
     for name in ('host-prefix', 'vendor', 'work', 'sdk-root', 'utility-path'):
         parser.add_argument('--'+name, type=Path, required=True)
     parser.add_argument('--deployment-target', required=True)
+    parser.add_argument('--linker-launcher', default='')
     args = parser.parse_args()
     if sys.platform != 'darwin':
         parser.error('this runtime regression currently covers native Darwin')
@@ -96,7 +97,8 @@ fn main() { assert_eq!(unsafe { answer_c() + answer_cpp() }, 84); println!("nati
                          host_cc=cc, host_cxx=cxx, host_ar=str(prefix/'bin/llvm-ar'),
                          target_cc='', target_cxx='', target_ar='',
                          host_cppflags=shlex.join(cppflags), host_cflags='-UORDER -DORDER=2',
-                         host_cxxflags='-UORDER -DORDER=2 -std=c++20')
+                         host_cxxflags='-UORDER -DORDER=2 -std=c++20',
+                         host_linker_launcher=args.linker_launcher)
         command = [sys.executable, '-B', '-I', '-S', str(HELPER), 'run',
                    '--cargo', str(prefix/'bin/cargo'), '--config', str(config),
                    '--source', str(directory), '--']

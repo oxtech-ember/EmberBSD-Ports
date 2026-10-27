@@ -60,7 +60,7 @@ def configure(config, vendor, output, rustc, shell, tool_path, mode, target,
               host_ldflags="", target_ldflags="", rustflags="",
               host_cflags="", host_cxxflags="", host_cppflags="",
               target_cflags="", target_cxxflags="", target_cppflags="",
-              build_script_overrides=None):
+              build_script_overrides=None, host_linker_launcher="", target_linker_launcher=""):
     require(mode in ("native", "cross"), "select native or cross mode explicitly")
     paths = tool_path.split(os.pathsep)
     require(paths and all(part and Path(part).is_absolute() for part in paths),
@@ -83,23 +83,25 @@ def configure(config, vendor, output, rustc, shell, tool_path, mode, target,
     host = hosts[0]
     if mode == "native":
         require(not target or target == host, "native package target differs from the Rust host")
-        require(not any((target_cc, target_cxx, target_ar)),
+        require(not any((target_cc, target_cxx, target_ar, target_linker_launcher)),
                 "native mode uses the selected native tools for its package target")
         target = host
         target_cc, target_cxx, target_ar = host_cc, host_cxx, host_ar
         target_ldflags = host_ldflags
+        target_linker_launcher = host_linker_launcher
         target_cflags, target_cxxflags, target_cppflags = host_cflags, host_cxxflags, host_cppflags
     else:
         require(target and re.fullmatch(r"[a-z0-9_]+(?:-[a-z0-9_.]+){2,}", target),
                 "cross mode requires an explicit Rust target triple")
         require(target != host, "cross host and target triples must differ")
     selected = {}
-    for side, cc, cxx, ar, ldflags, cppflags in (
-            ("host", host_cc, host_cxx, host_ar, host_ldflags, host_cppflags),
-            ("target", target_cc, target_cxx, target_ar, target_ldflags, target_cppflags)):
+    for side, cc, cxx, ar, ldflags, cppflags, launcher in (
+            ("host", host_cc, host_cxx, host_ar, host_ldflags, host_cppflags, host_linker_launcher),
+            ("target", target_cc, target_cxx, target_ar, target_ldflags, target_cppflags, target_linker_launcher)):
         selected[side] = {"cc": command(cc, tool_path), "cxx": command(cxx, tool_path),
                           "ar": command(ar, tool_path)}
-        selected[side]["linker"] = selected[side]["cc"] + shlex.split(ldflags)
+        prefix = command(launcher, tool_path) if launcher else []
+        selected[side]["linker"] = prefix + selected[side]["cc"] + shlex.split(ldflags)
         # cc crate reads CFLAGS/CXXFLAGS but not CPPFLAGS. Put preprocessor
         # arguments in the real compiler command, before caller C/C++ flags.
         # Rust's link-only driver keeps only its selected command/LDFLAGS.
@@ -211,6 +213,7 @@ def main():
     for side in ("host", "target"):
         for role in ("cc", "cxx", "ar"):
             configure_parser.add_argument("--" + side + "-" + role, required=side == "host", default="")
+        configure_parser.add_argument("--" + side + "-linker-launcher", default="")
         for flags in ("ldflags", "cflags", "cxxflags", "cppflags"):
             configure_parser.add_argument("--" + side + "-" + flags, default="")
     configure_parser.add_argument("--rustflags", default="")

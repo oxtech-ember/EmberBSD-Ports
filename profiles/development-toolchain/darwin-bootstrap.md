@@ -42,6 +42,15 @@ roles, use [native tool selection](../common-build-tools/cross/native-toolset.md
 The final build PATH and compiler components stay inside that prefix.
 Native macOS ABI headers and libraries remain explicit host inputs.
 
+The native package profile forwards its selected `OSX_SDK_PATH` as `SDKROOT`
+through pkgsrc's `ALL_ENV` to configure, build and test phases. Rust needs this
+ABI input before invoking the selected linker; without it, rustc attempts Apple
+SDK discovery even when the C compiler already has explicit `-isysroot` flags.
+The profile remains native-only and does not change cross host/target selection.
+`tests/darwin-rust-sdkroot.py --help` describes the actual pkgsrc/Cargo regression:
+no inherited SDKROOT, a deliberately conflicting inherited value, and removing
+only the binding must reproduce rustc's attempted `xcrun` discovery.
+
 ## Explicit Darwin package profile
 
 The exporter installs [darwin-bootstrap.mk.conf](darwin-bootstrap.mk.conf) as

@@ -20,6 +20,8 @@ EMBER_CARGO_CONFIG?=	${WRKDIR}/.cargo/ember-config.toml
 EMBER_CARGO_OUTPUT?=	${WRKDIR}/cargo-target
 EMBER_CARGO_TARGET?=
 EMBER_CARGO_CONFIGURE_ARGS?=
+EMBER_CARGO_HOST_LINKER_LAUNCHER?=
+EMBER_CARGO_TARGET_LINKER_LAUNCHER?=
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 EMBER_CARGO_MODE=	cross
@@ -59,6 +61,8 @@ ember-cargo-configure:
 	    --host-cc ${EMBER_CARGO_HOST_CC:Q} --host-cxx ${EMBER_CARGO_HOST_CXX:Q} --host-ar ${EMBER_CARGO_HOST_AR:Q} \
 	    --host-cppflags=${EMBER_CARGO_HOST_CPPFLAGS:Q} --host-cflags=${EMBER_CARGO_HOST_CFLAGS:Q} \
 	    --host-cxxflags=${EMBER_CARGO_HOST_CXXFLAGS:Q} --host-ldflags=${EMBER_CARGO_HOST_LDFLAGS:Q} \
+	    --host-linker-launcher=${EMBER_CARGO_HOST_LINKER_LAUNCHER:Q} \
+	    --target-linker-launcher=${EMBER_CARGO_TARGET_LINKER_LAUNCHER:Q} \
 	    --rustflags=${RUSTFLAGS:Q} ${_EMBER_CARGO_TARGET_ARGS} ${EMBER_CARGO_CONFIGURE_ARGS}
 
 # Keep pkgsrc's normal Cargo targets, job count, environment and exit status.

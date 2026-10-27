@@ -98,10 +98,15 @@ RUST_REQ= 1.99.1
                   'EMBER_CARGO_HOST_AR='+str(prefix/'bin/llvm-ar'),
                   'EMBER_CARGO_HOST_CFLAGS=-DHOST_ONLY','EMBER_CARGO_HOST_LDFLAGS=-L/host',
                   'RUSTFLAGS=-C opt-level=2']
+        launcher=shlex.join([sys.executable,'/explicit launcher script','--context','context with spaces','--'])
+        selected.append('EMBER_CARGO_HOST_LINKER_LAUNCHER='+launcher)
         run(*selected,'ember-cargo-configure')
         native=tomllib.loads(config.read_text())
         assert native['build']['target']=='aarch64-apple-darwin'
         assert native['env']['CFLAGS']['value']=='-DHOST_ONLY'
+        native_linker=Path(native['target']['aarch64-apple-darwin']['linker']).read_text()
+        assert launcher in native_linker
+        assert '/explicit launcher script' not in Path(native['env']['HOST_CC']['value']).read_text()
         crate_source=root/'source'/'nested-crate'
         crate_source.mkdir(parents=True)
         run(*selected,'CARGO_WRKSRC='+str(crate_source),'CARGO_ARGS=metadata --offline','do-cargo-build')

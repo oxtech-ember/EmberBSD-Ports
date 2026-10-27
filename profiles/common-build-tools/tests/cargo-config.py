@@ -108,6 +108,42 @@ class ConfigTest(unittest.TestCase):
         c=self.configure(host_cc='gcc -m64')
         self.assertEqual(self.invoke_wrapper(c,'CC','file.c'),['selected-gcc','-m64','file.c'])
 
+    def test_distinct_linker_launcher_preserves_argv_and_status(self):
+        payload='$(touch forbidden) quote with spaces'
+        launcher=self.executable('launcher', 'import json,subprocess,sys\nprint(json.dumps(sys.argv[1:]),flush=True)\nraise SystemExit(subprocess.run(sys.argv[3:]).returncode)\n')
+        c=self.cross(host_linker_launcher=shlex.join([str(launcher),payload,'--']),
+                     host_ldflags='-L/host',target_ldflags='-L/target')
+        self.assertEqual(self.invoke_wrapper(c,'HOST_CC','-c'),['-c'])
+        output=subprocess.check_output([c['target'][HOST]['linker'],'object with spaces'],text=True).splitlines()
+        self.assertEqual(json.loads(output[0]),[payload,'--',str(self.cc),'-L/host','object with spaces'])
+        self.assertEqual(json.loads(output[1]),['-L/host','object with spaces'])
+        target=json.loads(subprocess.check_output([c['target'][TARGET]['linker'],'object'],text=True))
+        self.assertEqual(target,['--target=x86_64--netbsd','-L/target','object'])
+        self.assertFalse((self.root/'forbidden').exists())
+        c=self.cross(host_linker_launcher=shlex.join([str(launcher),'host-prefix','--']),
+                     target_linker_launcher=shlex.join([str(launcher),'target-prefix with spaces','--']),
+                     host_ldflags='-L/host',target_ldflags='-L/target')
+        for triple,marker,flags in ((HOST,'host-prefix',['-L/host']),
+                                    (TARGET,'target-prefix with spaces',['--target=x86_64--netbsd','-L/target'])):
+            output=subprocess.check_output([c['target'][triple]['linker'],'object'],text=True).splitlines()
+            self.assertEqual(json.loads(output[0]),[marker,'--',str(self.cc),*flags,'object'])
+            self.assertEqual(json.loads(output[1]),[*flags,'object'])
+        failure=self.executable('failed-launcher','raise SystemExit(31)\n')
+        c=self.configure(host_linker_launcher=str(failure))
+        result=subprocess.run([c['target'][HOST]['linker'],'object'],capture_output=True)
+        self.assertEqual(result.returncode,31)
+        self.assertEqual(result.stdout,b'')
+
+    def test_missing_linker_launcher_rejected_before_outputs(self):
+        with self.assertRaisesRegex(ValueError,'selected command is missing'):
+            self.configure(host_linker_launcher='/unselected/linker-launcher')
+        self.assertFalse(self.config.parent.exists())
+
+    def test_native_rejects_independent_target_launcher(self):
+        with self.assertRaisesRegex(ValueError,'native mode'):
+            self.configure(target_linker_launcher=str(self.cc))
+        self.assertFalse(self.config.parent.exists())
+
     def test_missing_tool_rejected_before_outputs(self):
         with self.assertRaisesRegex(ValueError,'missing'):
             self.configure(host_cc='missing-clang')

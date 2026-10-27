@@ -1,0 +1,13 @@
+# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+# Rebuild the package after the Darwin target selection repair.
+--- a/devel/capstone/Makefile
++++ b/devel/capstone/Makefile
+@@ -2,6 +2,8 @@
+ 
+ .include "Makefile.common"
+ 
++PKGREVISION=	1
++
+ MAINTAINER=	pkgsrc-users@NetBSD.org
+ COMMENT=	Lightweight multi-platform, multi-architecture disassembly framework
+ LICENSE=	modified-bsd

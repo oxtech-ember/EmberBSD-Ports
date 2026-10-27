@@ -30,6 +30,16 @@ profile or install its standard library.
 
 `EMBER_CARGO_HOST_CC`, `EMBER_CARGO_HOST_CXX`, `EMBER_CARGO_HOST_AR` and the four
 `EMBER_CARGO_HOST_*FLAGS` variables allow a recipe to pass explicit native inputs.
+`EMBER_CARGO_HOST_LINKER_LAUNCHER` and `EMBER_CARGO_TARGET_LINKER_LAUNCHER`
+accept explicit command prefixes with shell quoting. They apply only to Rust
+linker wrappers, before that side's CC and LDFLAGS; C/C++ compilation and archive
+commands remain independent. Empty values preserve the original direct driver.
+Native mode uses the host launcher for its package and rejects a separate target
+launcher. Cross mode keeps both selections independent. For the SDK shared
+link lock, supply the selected Python and `scripts/link-launcher.py` command,
+its explicit `--lock-root`/`--context`, and the trailing `--`. The helper does
+not discover a launcher or hold the lock around an entire Cargo build.
+
 `EMBER_CARGO_CONFIG` and `EMBER_CARGO_OUTPUT` default inside WRKDIR. Configuration
 runs after ordinary build dependencies and wrappers have been prepared. Fetch
 and checksum do not execute Rust, Python configuration or a C/C++ compiler.
@@ -124,3 +134,19 @@ also exercises Cargo's forced tool selection. The current checked route is
 native Darwin with Rust 1.99.1 and Clang 23. Cross Rust execution, Cargo's skipping
 of a real shared-library build script, and Rollup/mimalloc ABI and loader behavior
 still require their own consumer checks.
+
+The launcher process regression uses the actual shared SDK lock and observed
+link-driver fixtures. Host and target links must serialize in one context,
+C compilation must proceed while the lock is held, and linker status is retained.
+Removing only the launchers must expose concurrent entry into the fixture's
+resource. Its context is isolated from production builds; no compiler runs.
+
+```sh
+python3.15 -B -I -S profiles/common-build-tools/tests/cargo-linker-launcher.py \
+  --sdk-source /absolute/EmberBSD-SDK --shell /absolute/native/bin/mksh \
+  --work /absolute/NEW_CARGO_LINK_TEST
+```
+
+The actual `cargo-cc.py` test also accepts `--linker-launcher` with the same
+explicit command prefix, so its real Rust build scripts and final native link
+can use the common resource lock while the C/C++ build-script work stays separate.
