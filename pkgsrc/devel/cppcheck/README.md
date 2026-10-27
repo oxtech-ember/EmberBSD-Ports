@@ -79,13 +79,31 @@ despite a header with a `.c` suffix. The original analyzer aborts on both
 this case and a real Clang two-header input; the patched analyzer passes.
 The full Clang import and TokenList suites pass with the new case.
 
-This does not qualify arbitrary LLVM translation units: the importer still
-rejects nested pseudo-file locations such as `<<built-in>:line:column>`.
-Such `internalAstError` diagnostics remain failures, not completed analysis.
+The location lexer preserves nested pseudo-file delimiters such as
+`<<built-in>:line:column>`. The upstream stdin case and new built-in, stdin,
+and scratch-space cases verify exact file/line mapping. A second-coordinate
+pseudo-file and physical filenames containing `<` preserve their boundaries.
+Malformed and
+unterminated locations still produce `internalAstError`. Real Clang output
+from a small `#line` input fails before this patch and passes with it.
+
+This does not qualify arbitrary LLVM translation units. With both location
+fixes, analysis of LLVM's NetBSD driver and of Cppcheck's changed token-list
+and importer modules reaches an unrelated token-type assertion in `Token::update_property_info`.
+Those analyses remain incomplete. Paired Clang Static Analyzer runs on the
+token-list module retain the same two existing diagnostics outside the changed
+function; no diagnostic is introduced by the file-table change. Original and
+patched importer modules both pass Clang Static Analyzer without diagnostics.
+
+On Darwin arm64, isolated ASan/UBSan modules pass the five positive location
+cases and six TokenList cases. The invalid-location case terminates with an
+uncaught `InternalError` in that diagnostic build, while the ordinary test
+runner catches the expected error and passes all 105 cases. Sanitizer coverage
+of the exceptional path remains incomplete; this is not a Valgrind result.
 
 The packaging and PCRE2 adaptation are AI-assisted EmberBSD work.
 Source and metadata checks do not qualify an analyzer executable.
-Native 2.22.0nb2 package installation passed. The nb3 change has been checked
-with isolated rebuilt modules and upstream test executables; nb3 package
+Native 2.22.0nb2 package installation passed. The nb3/nb4 changes have been checked
+with isolated rebuilt modules and upstream test executables; nb4 package
 installation remains unverified. The full upstream suite, arbitrary translation-unit
 analysis, HTML/GUI behavior, cross execution and package lifecycle remain separate checks.
