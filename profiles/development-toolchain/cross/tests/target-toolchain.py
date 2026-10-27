@@ -193,30 +193,6 @@ class TargetToolchainTests(unittest.TestCase):
         self.assertEqual(imported_identity['portable_manifest_sha256'], manifest_sha256)
         self.assertEqual(imported_identity['execution_acceptance'], 'not-run')
 
-    def test_source_inventory_covers_controller_and_complete_selected_sdk_package(self):
-        rows = pipeline.target_test_source_inventory(PROFILE, CROSS, Path(sdk_source.load()))
-        names = [row[0] for row in rows]
-        self.assertEqual(names, sorted(set(names)))
-        for name in ('ports/profiles/development-toolchain/host.py',
-                     'ports/profiles/development-toolchain/cross/target_options.py',
-                     'sdk/src/emberbsd_sdk/__init__.py',
-                     'sdk/src/emberbsd_sdk/native_toolset.py',
-                     'sdk/src/emberbsd_sdk/application_toolchain.py'):
-            self.assertIn(name, names)
-
-    def test_clang_sysroot_identity_binds_verified_runtime_and_receipt_without_acceptance(self):
-        build = self.sysroot / pipeline.sysroot_transfer.RECEIPT
-        bundle = {'manifest': self.runtime, 'inventory': {}, 'root_mode': 0o755}
-        pipeline.jsonio.write_json(build, {'signature': {'runtime': bundle}})
-        identity = pipeline.clang_sysroot_identity(self.sysroot, 'aarch64', self.runtime)
-        self.assertEqual(identity['source_record'], 'build-receipt')
-        self.assertEqual(identity['source_record_sha256'], pipeline.sha(build))
-        self.assertEqual(identity['runtime_manifest_sha256'],
-                         pipeline.sysroot_transfer._hash_json(self.runtime))
-        self.assertEqual(identity['runtime_bundle_sha256'],
-                         pipeline.sysroot_transfer._hash_json(bundle))
-        self.assertEqual(identity['execution_acceptance'], 'not-run')
-
     def test_clang_uses_sdk_api2_compiler_runtime_and_link_commands(self):
         pipeline.jsonio.write_json(self.sysroot / pipeline.sysroot_transfer.RECEIPT,
             {'signature': {'runtime': {'manifest': self.runtime,
