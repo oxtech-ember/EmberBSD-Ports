@@ -169,6 +169,22 @@ metadata, rejects unknown targets, and compiles one unchanged upstream C file
 through its generated Makefile. ARM has configuration coverage only. These
 checks do not establish a complete package, target execution or TLS acceptance.
 
+Native platform probes run before MAKECONF is loaded. When the launch PATH
+contains only the selected prefix, pass
+`TOOLS_PLATFORM.awk=/absolute/native-prefix/bin/nawk` on the bmake command line.
+Pkgsrc propagates this input to recursive queries. Early probes honor it;
+without an explicit selection they retain the ordinary `awk` lookup.
+This does not replace the native tool mapping inside MAKECONF.
+
+The real-recipe regression queries LLVM and Qtbase with that restricted PATH:
+
+```sh
+/absolute/native-prefix/bin/python3.15 -B -E -S \
+    profiles/common-build-tools/tests/early-awk.py \
+    --pkgsrc /absolute/export --makeconf /absolute/cross.mk.conf \
+    --host-prefix /absolute/native-prefix
+```
+
 A private MAKECONF includes the host bootstrap configuration first:
 
 ```make

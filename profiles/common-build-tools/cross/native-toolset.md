@@ -52,6 +52,11 @@ The adapter checks that its interpreter is the prefix's selected Python.
 Both profiles share the same SDK verification include and check the generated assignments before using them. Conflicting
 native compiler, tool and ABI overrides fail. No hash or read-only mode is required.
 
+The include also selects the common `nawk` executable and exports its path
+as `EMBERBSD_NATIVE_AWK`. Recursive early platform probes use it before
+loading their MAKECONF. This preserves the native prefix when no bare `awk`
+command exists in its PATH.
+
 The generated include retains the selected host compiler family. A conflicting
 family fails. `clang-as` supplies the integrated assembler where a producer
 accepts only one executable path. Native compiler commands retain host ABI flags. Target flags and sysroot

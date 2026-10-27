@@ -24,6 +24,7 @@ ROLE_VARIABLES = {
     'bmake': 'EMBERBSD_NATIVE_BMAKE', 'gmake': 'TOOLS_PLATFORM.gmake',
     'xz': 'TOOLS_PLATFORM.xz', 'xzcat': 'TOOLS_PLATFORM.xzcat',
     'install': 'TOOLS_PLATFORM.install',
+    'nawk': 'EMBERBSD_NATIVE_AWK',
 }
 
 
@@ -74,6 +75,8 @@ def render(toolset):
                   variable + '?= ${' + pinned + '}',
                   '.if "${' + variable + '}" != "' + value + '"',
                   '.error ' + variable + ' differs from the selected Ports tool', '.endif']
+    # Native platform probes can run before the child's MAKECONF include.
+    lines += ['.export EMBERBSD_NATIVE_AWK']
     flags = toolset.abi_flags
     for role, name, arguments in (
             ('cc', 'CC', flags['cppflags'] + flags['cflags'] + flags['ldflags']),

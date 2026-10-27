@@ -1,0 +1,32 @@
+# Origin: EmberBSD (AI-assisted). Honor the selected awk in early pkgsrc probes.
+# Platform queries precede MAKECONF and must retain an explicit caller tool.
+
+--- a/mk/bsd.prefs.mk
++++ b/mk/bsd.prefs.mk
+@@ -152,7 +152,7 @@
+ #
+ .if !defined(NATIVE_OPSYS_VERSION)
+ _NATIVE_OPSYS_VERSION_CMD=	${UNAME} -r | \
+-			awk -F. '{major=int($$1); minor=int($$2); if (minor>=100) minor=99; patch=int($$3); if (patch>=100) patch=99; printf "%02d%02d%02d", major, minor, patch}'
++			${TOOLS_PLATFORM.awk:U${EMBERBSD_NATIVE_AWK:Uawk}} -F. '{major=int($$1); minor=int($$2); if (minor>=100) minor=99; patch=int($$3); if (patch>=100) patch=99; printf "%02d%02d%02d", major, minor, patch}'
+ NATIVE_OPSYS_VERSION=	${_NATIVE_OPSYS_VERSION_CMD:sh}
+ MAKEFLAGS+=		NATIVE_OPSYS_VERSION=${NATIVE_OPSYS_VERSION:Q}
+ MAKEFLAGS+=		OPSYS_VERSION=${OPSYS_VERSION:Q} # defined in crossvars
+@@ -229,7 +229,7 @@
+ NATIVE_LOWER_OPSYS_VERSUFFIX=	${NATIVE_OS_VERSION:C/([0-9]*).*/\1/}
+ NATIVE_LOWER_VENDOR?=		apple
+ _NATIVE_OPSYS_VERSION_CMD=	sw_vers -productVersion | \
+-			awk -F. '{major=int($$1); minor=int($$2); if (minor>=100) minor=99; patch=int($$3); if (patch>=100) patch=99; printf "%02d%02d%02d", major, minor, patch}'
++			${TOOLS_PLATFORM.awk:U${EMBERBSD_NATIVE_AWK:Uawk}} -F. '{major=int($$1); minor=int($$2); if (minor>=100) minor=99; patch=int($$3); if (patch>=100) patch=99; printf "%02d%02d%02d", major, minor, patch}'
+ 
+ .elif ${NATIVE_OPSYS} == "DragonFly"
+ NATIVE_OS_VERSION:=	${NATIVE_OS_VERSION:C/-.*$//}
+@@ -260,7 +260,7 @@
+ NATIVE_OS_VERSION:=		${NATIVE_OS_VERSION:C/-.*$//}
+ NATIVE_LOWER_OPSYS?=		linux
+ .  if exists(/etc/lsb-release)
+-CHROMEOS_RELEASE_NAME!=	awk -F = '$$1 == "CHROMEOS_RELEASE_NAME" { print $$2 }' /etc/lsb-release
++CHROMEOS_RELEASE_NAME!=	${TOOLS_PLATFORM.awk:U${EMBERBSD_NATIVE_AWK:Uawk}} -F = '$$1 == "CHROMEOS_RELEASE_NAME" { print $$2 }' /etc/lsb-release
+ .  endif
+ .  if exists(/etc/debian_version)
+ NATIVE_LOWER_VENDOR?=		debian
