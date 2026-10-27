@@ -22,4 +22,9 @@ status=0
 sh "$recipe/cross-build.sh" "$compiler" "$sysroot" "$out/corrupt.tar.gz" "$out/rejected" > "$out/checksum.log" 2>&1 || status=$?
 [ "$status" -ne 0 ] && [ ! -e "$out/rejected" ]
 grep 'FAILED' "$out/checksum.log" > /dev/null
-echo 'PASS: existing work and symlinks preserved; corrupt source rejected before extraction'
+mkdir "$out/empty-sysroot"
+status=0
+sh "$recipe/cross-build.sh" "$compiler" "$out/empty-sysroot" "$out/corrupt.tar.gz" "$out/no-dependencies" > "$out/dependencies.log" 2>&1 || status=$?
+[ "$status" = 2 ] && [ ! -e "$out/no-dependencies" ]
+grep -F 'Missing common package file in the sysroot: share/eigen3/cmake/Eigen3Config.cmake' "$out/dependencies.log" > /dev/null
+echo 'PASS: existing work and symlinks preserved; missing common packages and corrupt source rejected before extraction'

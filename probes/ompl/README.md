@@ -13,28 +13,17 @@ and its matching `libstdc++.so.7`. Do not substitute upstream NetBSD sets.
 The compiler must report `16.2.0` and `aarch64--netbsd`. Linux CMake, Ninja,
 patch, pkg-config and SHA256 tools are required. Python is not required.
 
-Download [OMPL](sources.tsv) and the [dependency archives](cross/dependency-sources.tsv).
-Both helpers verify SHA256 before extraction and require new output paths.
+Install the common `math/eigen3`, `devel/boost-headers` and `devel/boost-libs`
+packages in the sysroot first; the build rejects a sysroot without them.
+Download [OMPL](sources.tsv). The build verifies SHA256 before extraction and
+requires a new output path.
 Run these commands from this profile directory:
 
 ```sh
 compiler=/absolute/gcc16-prefix
 sysroot=/absolute/isolated-emberbsd-sysroot
 cache=/absolute/source-cache
-deps=/absolute/new/ompl-dependencies
 output=/absolute/new/ompl-cross
-CROSS_JOBS=4 sh cross/build-dependencies.sh "$compiler" "$sysroot" \
-  "$cache/eigen-5.0.1.tar.gz" "$cache/boost-1.92.0-cmake.tar.xz" "$deps"
-```
-
-Import the verified stages into the isolated sysroot. Keep one common
-provider and preserve its file/source receipts. Do not overwrite a different
-installed provider without rebuilding its consumers.
-
-```sh
-cp -Rp "$deps/eigen-stage/usr/pkg/." "$sysroot/usr/pkg/"
-cp -Rp "$deps/boost-headers-stage/usr/pkg/." "$sysroot/usr/pkg/"
-cp -Rp "$deps/boost-libs-stage/usr/pkg/." "$sysroot/usr/pkg/"
 CROSS_JOBS=4 sh cross-build.sh "$compiler" "$sysroot" \
   "$cache/ompl-2.0.2.tar.gz" "$output"
 sh tests/pkgconfig-build.sh "$compiler" "$sysroot" \
@@ -46,10 +35,8 @@ and installed consumers. Staged files must match each package PLIST.
 ELF checks reject host runtime paths. Target RPATH uses `/usr/pkg/lib` and
 `/usr/pkg/gcc16/lib`. Linux never executes a target configure probe.
 
-Boost supplies complete common headers and the selected compiled closure
-for serialization, program_options and unit tests. This does not deliver
-every Boost compiled library. Other prepared profiles that pin Boost 1.91
-need coordinated migration before using this provider.
+OMPL uses the Boost serialization, program_options and unit test libraries
+from the common `devel/boost-libs` package.
 
 ## Packages and acceptance
 
@@ -92,8 +79,7 @@ boundaries in the blocked case. Neither may produce an exact solution.
 Approximate results remain approximate and are never exported as successful
 routes. The Ports contract also checks any approximate polyline for collision.
 
-`tests/cross-guards.sh` and `tests/dependency-guards.sh` check rejection and
-work preservation. `tests/pkgconfig-contract.sh` checks metadata; its archive
+`tests/cross-guards.sh` checks rejection and work preservation. `tests/pkgconfig-contract.sh` checks metadata; its archive
 consumer exposes public Boost symbols through OMPL templates.
 
 A seed does not promise identical paths across versions or architectures.

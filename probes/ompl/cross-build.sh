@@ -19,6 +19,15 @@ for compiler in gcc g++; do
     [ "$("$prefix/bin/aarch64--netbsd-$compiler" -dumpfullversion)" = 16.2.0 ]
     [ "$("$prefix/bin/aarch64--netbsd-$compiler" -dumpmachine)" = aarch64--netbsd ]
 done
+# Eigen and Boost come from the common math/eigen3, devel/boost-headers and
+# devel/boost-libs packages installed in the sysroot.
+for file in share/eigen3/cmake/Eigen3Config.cmake include/boost/version.hpp \
+    lib/cmake/Boost-1.92.0/BoostConfig.cmake lib/libboost_serialization.so \
+    lib/libboost_program_options.so lib/libboost_unit_test_framework.so; do
+    [ -f "$sysroot/usr/pkg/$file" ] || {
+        echo "Missing common package file in the sysroot: $file" >&2; exit 2;
+    }
+done
 expected=$(awk '$1 == "ompl-2.0.2.tar.gz" {print $2}' "$ports/probes/ompl/sources.tsv")
 [ "${#expected}" = 64 ] || { echo 'Missing source digest.' >&2; exit 2; }
 printf '%s  %s\n' "$expected" "$archive" | sha256sum -c -
@@ -30,8 +39,6 @@ crt=$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0
 runtime=$sysroot/usr/pkg/gcc16/lib
 headers=$sysroot/usr/pkg/gcc16/include/c++
 [ -f "$crt/crtbeginS.o" ] && [ -f "$runtime/libstdc++.so.7" ]
-[ -f "$sysroot/usr/pkg/share/eigen3/cmake/Eigen3Config.cmake" ]
-[ -f "$sysroot/usr/pkg/lib/cmake/Boost-1.92.0/BoostConfig.cmake" ]
 unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH
 mkdir -p "$out/source" "$out/logs"
 sha256sum "$archive" "$patch_file" "$recipe/features.cmake" "$0" > "$out/inputs.sha256"
