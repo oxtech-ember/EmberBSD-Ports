@@ -488,6 +488,11 @@
       "root": ""
     },
     {
+      "path": "gn-electron-drop-unused-linux-installer-arg.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
       "path": "perfetto-typed-proto-gcc16-dependent-false.patch",
       "strip": 1,
       "root": "third_party/perfetto"

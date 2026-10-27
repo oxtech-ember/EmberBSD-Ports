@@ -1,0 +1,25 @@
+# Origin: EmberBSD (AI-assisted), not submitted upstream.
+# Electron's all.gn sets enable_linux_installer=false, but that arg is only
+# declared in //chrome/installer/installers.gni. The //electron producer graph
+# (with gn --fail-on-unused-args) does not load that .gni on non-Linux targets,
+# so configure fails: "Build argument has no effect". Defaults already keep the
+# installer off when !is_linux; omit the assignment for EmberBSD NetBSD cross.
+# enable_pdf_save_to_drive is similarly Chrome-PDF-only; drop it here too so a
+# non-Chrome //electron gen does not trip unused-args when pdf features.gni is
+# not loaded. Electron wants it false; Chromium's declare default is false when
+# the PDF save-to-drive feature flag file is present.
+--- a/electron/build/args/all.gn
++++ b/electron/build/args/all.gn
+@@ -87,12 +87,6 @@
+ # Expose public V8 symbols for native modules.
+ v8_expose_public_symbols = true
+ 
+-# We don't use anything from here, and it causes target collisions
+-enable_linux_installer = false
+-
+-# Disable "Save to Drive" feature in PDF viewer
+-enable_pdf_save_to_drive = false
+-
+ # Blink's crowdsourced V8 compile hints producer randomly selects 0.5% of
+ # renderer processes (Windows only) to compile every http(s) script from
+ # source -- deliberately not consuming an existing code cache, and neither
