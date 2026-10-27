@@ -1,5 +1,7 @@
 Origin: EmberBSD (AI-assisted). Build these consumers with the one Ruby, Go,
-MySQL client, FFmpeg and PCRE version in the export instead of an old version.
+MySQL client, FFmpeg, PCRE and Qt version in the export instead of an old version.
+Umbrello 26.08 builds with Qt 6 and KDE Frameworks 6 through BUILD_WITH_QT6, and
+then suffixes its programs and data directory with 6 instead of 5.
 ZoneMinder 1.38 already looks for PCRE2, so with the old PCRE it lost regex
 support silently.
 
@@ -28,6 +30,155 @@ support silently.
  .include "../../graphics/qt6-qtsvg/buildlink3.mk"
  .include "../../x11/qt6-qtbase/buildlink3.mk"
  .include "../../mk/bsd.pkg.mk"
+--- a/devel/umbrello/Makefile
++++ b/devel/umbrello/Makefile
+@@ -1,25 +1,31 @@
+ # $NetBSD: Makefile,v 1.107 2026/09/06 11:02:45 markd Exp $
+ 
+ DISTNAME=	umbrello-${KAPPSVER}
++PKGREVISION=	1
+ CATEGORIES=	devel
+ 
+ HOMEPAGE=	https://kde.org/applications/development/umbrello/
+ COMMENT=	UML Modeller
+ LICENSE=	gnu-lgpl-v2 AND gnu-gpl-v2 AND gnu-fdl-v1.2
+ 
+-STILL_KF5=	yes
+ .include "../../meta-pkgs/kde/applications.mk"
+ 
+-TOOL_DEPENDS+=	kdoctools>=5.19.0:../../devel/kdoctools
++TOOL_DEPENDS+=	kf6-kdoctools>=6.18.0:../../devel/kf6-kdoctools
+ 
+ CMAKE_CONFIGURE_ARGS+=	-DBUILD_APIDOC=no
++CMAKE_CONFIGURE_ARGS+=	-DBUILD_WITH_QT6=ON
+ 
+ USE_TOOLS+=	msgmerge
+ 
+ .include "../../devel/gettext-lib/buildlink3.mk"
+-.include "../../devel/ktexteditor/buildlink3.mk"
++.include "../../devel/kf6-kcrash/buildlink3.mk"
++.include "../../devel/kf6-ktexteditor/buildlink3.mk"
+ .include "../../graphics/hicolor-icon-theme/buildlink3.mk"
++.include "../../graphics/kf6-kiconthemes/buildlink3.mk"
++.include "../../graphics/qt6-qtsvg/buildlink3.mk"
+ .include "../../sysutils/desktop-file-utils/desktopdb.mk"
+ .include "../../textproc/libxslt/buildlink3.mk"
+-.include "../../x11/qt5-qtbase/buildlink3.mk"
++.include "../../x11/kf6-kwindowsystem/buildlink3.mk"
++.include "../../x11/kf6-kxmlgui/buildlink3.mk"
++.include "../../x11/qt6-qtbase/buildlink3.mk"
+ .include "../../mk/bsd.pkg.mk"
+--- a/devel/umbrello/PLIST
++++ b/devel/umbrello/PLIST
+@@ -1,7 +1,7 @@
+ @comment $NetBSD: PLIST,v 1.12 2026/09/06 11:02:45 markd Exp $
+-bin/po2xmi5
+-bin/umbrello5
+-bin/xmi2pot5
++bin/po2xmi6
++bin/umbrello6
++bin/xmi2pot6
+ share/applications/org.kde.umbrello.desktop
+ share/doc/HTML/ca/umbrello/apphelp/index.cache.bz2
+ share/doc/HTML/ca/umbrello/apphelp/index.docbook
+@@ -335,50 +335,50 @@
+ share/locale/zh_TW/LC_MESSAGES/umbrello.mo
+ share/locale/zh_TW/LC_MESSAGES/umbrello_kdevphp5.mo
+ share/metainfo/org.kde.umbrello.appdata.xml
+-share/umbrello5/common.ent
+-share/umbrello5/docbook2xhtml.xsl
+-share/umbrello5/headings/heading.adb
+-share/umbrello5/headings/heading.ads
+-share/umbrello5/headings/heading.as
+-share/umbrello5/headings/heading.cpp
+-share/umbrello5/headings/heading.cs
+-share/umbrello5/headings/heading.d
+-share/umbrello5/headings/heading.h
+-share/umbrello5/headings/heading.idl
+-share/umbrello5/headings/heading.java
+-share/umbrello5/headings/heading.js
+-share/umbrello5/headings/heading.php
+-share/umbrello5/headings/heading.pm
+-share/umbrello5/headings/heading.py
+-share/umbrello5/headings/heading.rb
+-share/umbrello5/headings/heading.sql
+-share/umbrello5/headings/heading.xsd
+-share/umbrello5/layouts/activity-export.desktop
+-share/umbrello5/layouts/activity-vertical.desktop
+-share/umbrello5/layouts/class-export.desktop
+-share/umbrello5/layouts/class-horizontal.desktop
+-share/umbrello5/layouts/class-vertical.desktop
+-share/umbrello5/layouts/component-horizontal.desktop
+-share/umbrello5/layouts/component-vertical.desktop
+-share/umbrello5/layouts/entityrelationship-export.desktop
+-share/umbrello5/layouts/entityrelationship-horizontal.desktop
+-share/umbrello5/layouts/entityrelationship-vertical.desktop
+-share/umbrello5/layouts/object-export.desktop
+-share/umbrello5/layouts/object-horizontal.desktop
+-share/umbrello5/layouts/object-vertical.desktop
+-share/umbrello5/layouts/state-export.desktop
+-share/umbrello5/layouts/state-horizontal.desktop
+-share/umbrello5/layouts/state-vertical.desktop
+-share/umbrello5/layouts/usecase-default.desktop
+-share/umbrello5/simple4125/sdbcent.mod
+-share/umbrello5/simple4125/sdbhier.mod
+-share/umbrello5/simple4125/sdbpool.mod
+-share/umbrello5/simple4125/sdocbook-custom.dtd
+-share/umbrello5/simple4125/sdocbook.css
+-share/umbrello5/simple4125/sdocbook.dtd
+-share/umbrello5/simple4125/sdocbookref-custom.dtd
+-share/umbrello5/simple4125/sdocbookref.dtd
+-share/umbrello5/simple4125/sinclist.mod
+-share/umbrello5/xmi.css
+-share/umbrello5/xmi1docbook.xsl
+-share/umbrello5/xmi2docbook.xsl
++share/umbrello6/common.ent
++share/umbrello6/docbook2xhtml.xsl
++share/umbrello6/headings/heading.adb
++share/umbrello6/headings/heading.ads
++share/umbrello6/headings/heading.as
++share/umbrello6/headings/heading.cpp
++share/umbrello6/headings/heading.cs
++share/umbrello6/headings/heading.d
++share/umbrello6/headings/heading.h
++share/umbrello6/headings/heading.idl
++share/umbrello6/headings/heading.java
++share/umbrello6/headings/heading.js
++share/umbrello6/headings/heading.php
++share/umbrello6/headings/heading.pm
++share/umbrello6/headings/heading.py
++share/umbrello6/headings/heading.rb
++share/umbrello6/headings/heading.sql
++share/umbrello6/headings/heading.xsd
++share/umbrello6/layouts/activity-export.desktop
++share/umbrello6/layouts/activity-vertical.desktop
++share/umbrello6/layouts/class-export.desktop
++share/umbrello6/layouts/class-horizontal.desktop
++share/umbrello6/layouts/class-vertical.desktop
++share/umbrello6/layouts/component-horizontal.desktop
++share/umbrello6/layouts/component-vertical.desktop
++share/umbrello6/layouts/entityrelationship-export.desktop
++share/umbrello6/layouts/entityrelationship-horizontal.desktop
++share/umbrello6/layouts/entityrelationship-vertical.desktop
++share/umbrello6/layouts/object-export.desktop
++share/umbrello6/layouts/object-horizontal.desktop
++share/umbrello6/layouts/object-vertical.desktop
++share/umbrello6/layouts/state-export.desktop
++share/umbrello6/layouts/state-horizontal.desktop
++share/umbrello6/layouts/state-vertical.desktop
++share/umbrello6/layouts/usecase-default.desktop
++share/umbrello6/simple4125/sdbcent.mod
++share/umbrello6/simple4125/sdbhier.mod
++share/umbrello6/simple4125/sdbpool.mod
++share/umbrello6/simple4125/sdocbook-custom.dtd
++share/umbrello6/simple4125/sdocbook.css
++share/umbrello6/simple4125/sdocbook.dtd
++share/umbrello6/simple4125/sdocbookref-custom.dtd
++share/umbrello6/simple4125/sdocbookref.dtd
++share/umbrello6/simple4125/sinclist.mod
++share/umbrello6/xmi.css
++share/umbrello6/xmi1docbook.xsl
++share/umbrello6/xmi2docbook.xsl
 --- a/net/gnunet/buildlink3.mk
 +++ b/net/gnunet/buildlink3.mk
 @@ -27,7 +27,7 @@ pkgbase:= gnunet
