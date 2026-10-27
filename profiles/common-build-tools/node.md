@@ -63,3 +63,33 @@ a GYP diagnostic backend with `--check`. Its negative cases preserve the version
 boundary and parser refusals. It does not run the full shared-dependency Node
 configure, compile Node, validate the Darwin tool route or execute target code.
 The ordinary package build and runtime checks above remain necessary.
+
+The explicit EmberBSD Darwin profile requires `NODE_GYP_XCODE_VERSION_PLIST`
+(or the common caller variable `EMBERBSD_DARWIN_XCODE_VERSION_PLIST`) alongside
+`OSX_SDK_PATH`. Setting either plist variable also selects this route in another
+Darwin profile. An automatically discovered SDK alone does not enable it.
+Supply the absolute path to the genuine
+Xcode `Contents/version.plist` associated with the selected host ABI inputs.
+For example, pass `NODE_GYP_XCODE_VERSION_PLIST="$XCODE_VERSION_PLIST"` to the
+ordinary package invocation. This is metadata; it does not select Xcode build
+tools. Source fetch/checksum does not require that file.
+
+The `pkgsrc-nodejs24-darwin-metadata.patch` passes the selected SDK and plist to
+both configure and make. GYP reads the actual SDK name/version and Xcode
+version/build with `plistlib`, without `xcrun`, `xcodebuild`, `pkgutil` or
+`softwareupdate` discovery. Missing metadata and a conflicting `SDKROOT` fail
+instead of selecting another SDK. Compiler, linker and archive tool remain
+separate native prefix inputs. Other hosts and the unselected upstream route
+retain their existing behavior.
+
+This selected route covers ordinary macOS Node executables and libraries.
+Additional SDK metadata queries for iOS, XCTest or bundle packaging are not
+implemented; they fail explicitly. Such consumers need their own declared
+platform inputs before that scope can be enabled.
+
+`tests/node-darwin-metadata.py` runs the common exporter and source regression,
+checks the unselected recipe route, rejects legacy
+metadata subprocesses and missing/mismatched inputs, and runs actual GYP make
+generation plus a tiny C archive/C++20 executable with selected native Clang,
+LLVM libtool and LLD. Its `--help` lists the explicit tools and ABI inputs.
+That check does not establish a complete Node package or target runtime.
