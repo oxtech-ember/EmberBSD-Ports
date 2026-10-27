@@ -18,7 +18,7 @@ def main():
     cli.add_argument('--sdk-version', required=True)
     args = cli.parse_args()
     args.work.mkdir()
-    keys = ('PKGNAME', 'PATCHDIR', 'PATCH_WRKSRC', 'PATCH_ARGS', 'PATCH_STRIP', 'PKG_FAIL_REASON',
+    keys = ('PKGNAME', 'PREFIX', 'LLVM_MAJOR_VERSION', 'PATCHDIR', 'PATCH_WRKSRC', 'PATCH_ARGS', 'PATCH_STRIP', 'PKG_FAIL_REASON',
             'CMAKE_CONFIGURE_ARGS', 'LOCALBASE', 'CMAKE_BUILD_ARGS', '_MAKE_JOBS_N',
             'EXTRACT_ELEMENTS')
 
@@ -35,8 +35,8 @@ def main():
         assert set(rows) == set(keys)
         return rows
 
-    native = query('darwin', 'EMBERBSD_DARWIN_TOOL_PHASE=full')
-    assert native['PKGNAME'] == 'compiler-rt-23.1.4nb4'
+    native = query('darwin', 'OPSYS=Darwin', 'EMBERBSD_DARWIN_TOOL_PHASE=full')
+    assert native['PKGNAME'] == 'compiler-rt-23.1.4nb6'
     assert 'llvm-project-23.1.4.src/libunwind' in shlex.split(native['EXTRACT_ELEMENTS'])
     assert native['PATCHDIR'] == str(args.pkgsrc / 'lang/compiler-rt/patches')
     assert native['PATCH_WRKSRC'].endswith('/llvm-project-23.1.4.src')
@@ -65,13 +65,16 @@ def main():
     assert native['_MAKE_JOBS_N'] == '18', native
     assert shlex.split(native['CMAKE_BUILD_ARGS']) == ['-j', '18'], native
     options = shlex.split(native['CMAKE_CONFIGURE_ARGS'])
+    darwin_runtime_prefix = native['PREFIX'] + '/lib/clang/' + native['LLVM_MAJOR_VERSION']
+    assert '-DCOMPILER_RT_INSTALL_PATH:PATH=' + darwin_runtime_prefix in options, options
     for value in ('-DDARWIN_macosx_CACHED_SYSROOT=' + str(args.sdk),
                   '-DDARWIN_macosx_OVERRIDE_SDK_VERSION=' + args.sdk_version,
                   '-DLLVM_CMAKE_DIR=' + native['LOCALBASE'],
                   '-DCMAKE_LIPO=' + native['LOCALBASE'] + '/bin/llvm-lipo'):
         assert value in options, value
     assert '-DCMAKE_LIBTOOL:FILEPATH=' + str(args.libtool) in options
-    initial = query('initial-archive', 'EMBERBSD_DARWIN_TOOL_PHASE=initial')
+    assert not any(value.startswith('-DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR:') for value in options)
+    initial = query('initial-archive', 'OPSYS=Darwin', 'EMBERBSD_DARWIN_TOOL_PHASE=initial')
     assert initial['PKG_FAIL_REASON'] == '', initial
     assert initial['_MAKE_JOBS_N'] == '18', initial
     assert shlex.split(initial['CMAKE_BUILD_ARGS']) == ['-j', '18'], initial
@@ -81,9 +84,18 @@ def main():
     assert selected == [initial['LOCALBASE'] + '/bin/llvm-libtool-darwin'], selected
     for name in ('IOS', 'WATCHOS', 'TVOS', 'XROS'):
         assert '-DCOMPILER_RT_ENABLE_' + name + '=OFF' in options
+    # Query the actual native recipe under Linux. This is the exact Clang
+    # resource layout selected by the host compiler, not a synthetic recipe.
+    linux = query('linux-native', 'OPSYS=Linux', 'MACHINE_ARCH=x86_64')
+    linux_options = shlex.split(linux['CMAKE_CONFIGURE_ARGS'])
+    runtime_prefix = linux['PREFIX'] + '/lib/clang/' + linux['LLVM_MAJOR_VERSION']
+    assert '-DCOMPILER_RT_INSTALL_PATH:PATH=' + runtime_prefix in linux_options, linux_options
+    assert '-DCOMPILER_RT_OS_DIR:STRING=linux' in linux_options, linux_options
+    assert '-DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR:BOOL=ON' in linux_options, linux_options
+    assert linux['PKG_FAIL_REASON'] == '', linux
     for label, extra in (('missing-version', 'EMBERBSD_DARWIN_SDK_VERSION='),
                          ('missing-sdk', 'OSX_SDK_PATH=')):
-        assert 'requires explicit OSX_SDK_PATH' in query(label, extra)['PKG_FAIL_REASON']
+        assert 'requires explicit OSX_SDK_PATH' in query(label, 'OPSYS=Darwin', extra)['PKG_FAIL_REASON']
     # A foreign host cannot use the caller's Darwin bootstrap configuration.
     # Parse the actual recipe conditional alone to check its platform scope.
     lines = (args.pkgsrc / 'lang/compiler-rt/Makefile').read_text().splitlines(True)
@@ -104,7 +116,7 @@ def main():
         capture_output=True, text=True, check=True)
     assert other.stdout == '\n\n' and other.stderr == '', other
 
-    (args.work / 'result.json').write_text(json.dumps(dict(status='PASS', cases=6,
+    (args.work / 'result.json').write_text(json.dumps(dict(status='PASS', cases=7,
         scope='Actual recipe metadata and isolated application of its monorepo patch; no build')) + '\n')
     print('PASS: compiler-rt patch root/arguments apply the actual binary128 patch; Darwin metadata remains selected')
 

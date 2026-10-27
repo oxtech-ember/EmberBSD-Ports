@@ -3,7 +3,7 @@
 .include "../../lang/llvm/version.mk"
 
 PKGNAME=	compiler-rt-${LLVM_VERSION}
-PKGREVISION=	5
+PKGREVISION=	6
 # The common runtime patch set also changes libunwind CMake checks.
 EXTRACT_ELEMENTS+=	${DISTNAME}/libunwind
 # One patch owner for native packages and the OS/SDK prepared source.
@@ -32,12 +32,16 @@ SSP_SUPPORTED=		no
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_BUILD_TYPE=Release
 CMAKE_CONFIGURE_ARGS+=	-DCOMPILER_RT_TEST_COMPILER=${PKG_CC:Q}
 CMAKE_CONFIGURE_ARGS+=	-DCOMPILER_RT_OS_DIR:STRING=${OPSYS:tl}
-CMAKE_CONFIGURE_ARGS+=	-DCOMPILER_RT_INSTALL_PATH:STRING=lib/clang/${LLVM_MAJOR_VERSION}
+CMAKE_CONFIGURE_ARGS+=	-DCOMPILER_RT_INSTALL_PATH:PATH=${PREFIX}/lib/clang/${LLVM_MAJOR_VERSION}
 _COMPILER_RT_LLVM_PREFIX= ${BUILDLINK_PREFIX.llvm:U${LOCALBASE}}
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_CMAKE_DIR=${_COMPILER_RT_LLVM_PREFIX:Q}
 CMAKE_CONFIGURE_ARGS+=	-DCOMPILER_RT_ENABLE_IOS=OFF
 
 .include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "Linux"
+# Match Clang's host-triple runtime lookup directory on native Linux.
+CMAKE_CONFIGURE_ARGS+=	-DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR:BOOL=ON
+.endif
 .include "../../mk/compiler.mk"
 .include "../../lang/llvm/darwin.mk"
 

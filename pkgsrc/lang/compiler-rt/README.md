@@ -275,9 +275,10 @@ selected-shell binding. It also checks that hostile host flag variables do not
 change the explicit target Clang and CMake settings.
 `tests/install-path.py --sdk-source PATH --host-prefix PREFIX --source
 PREPARED_SOURCE --work NEW_PATH` evaluates the exact common compiler-rt path
-declarations with native CMake. It reproduces the relative-path failure and
-checks a real `DESTDIR` installation at the selected target path. Its installed
-marker is a path fixture, not a compiled runtime.
+declarations and target install-dir functions with native CMake. It reproduces
+the relative-path failures for target and Linux-native layouts, then checks
+real `DESTDIR` installations at the selected target path and Clang host-triple
+path. Its installed marker is a path fixture, not a compiled runtime.
 `tests/build-stage.py --sdk-source PATH` exercises the actual SDK stage
 validator with synthetic target objects, wrong-target and changed-input
 controls, failed commands and completion-manifest cleanup.

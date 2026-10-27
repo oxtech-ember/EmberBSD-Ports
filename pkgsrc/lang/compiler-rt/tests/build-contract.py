@@ -41,6 +41,7 @@ def main():
                 Path('/base'), native, compiler, definition, '23.1.4', phase)
             assert command[0] == '/native/bin/cmake'
             options = dict(item[2:].split('=', 1) for item in command if item.startswith('-D'))
+            assert options['LLVM_ENABLE_PER_TARGET_RUNTIME_DIR'] == 'OFF'
             assert options['CMAKE_C_COMPILER'] == '/target/bin/clang'
             assert options['CMAKE_CXX_COMPILER_TARGET'] == definition['triplet']
             assert options['CMAKE_MAKE_PROGRAM'] == '/native/bin/ninja'
