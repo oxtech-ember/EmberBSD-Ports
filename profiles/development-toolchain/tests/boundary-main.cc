@@ -22,7 +22,7 @@ int main()
 {
     int values[] = {1, 2, 3};
     assert(std::span(values).size() == 3);
-    assert(transform(std::string(128, 'x')) == std::string(128, 'x') + ":gcc16");
+    assert(transform(std::string(128, 'x')) == std::string(128, 'x') + ":emberbsd");
     try {
         throw_across(cleanup);
         assert(false);
