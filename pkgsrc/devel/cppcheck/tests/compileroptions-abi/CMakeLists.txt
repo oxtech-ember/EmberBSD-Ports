@@ -1,0 +1,18 @@
+cmake_minimum_required(VERSION 3.22)
+project(cppcheck_compileroptions_abi LANGUAGES NONE)
+
+list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake-modules")
+option(CPPCHK_GLIBCXX_DEBUG "Match Cppcheck's libstdc++ debug ABI option" ON)
+include("${MODULE}")
+get_directory_property(options COMPILE_OPTIONS)
+list(FIND options "-U_GLIBCXX_DEBUG" undef_index)
+
+if(CPPCHK_GLIBCXX_DEBUG)
+    if(NOT undef_index EQUAL -1)
+        message(FATAL_ERROR "CPPCHK_GLIBCXX_DEBUG=ON must preserve the provider ABI; options=${options}")
+    endif()
+else()
+    if(undef_index EQUAL -1)
+        message(FATAL_ERROR "CPPCHK_GLIBCXX_DEBUG=OFF must retain the Linux Clang undef behavior; options=${options}")
+    endif()
+endif()
