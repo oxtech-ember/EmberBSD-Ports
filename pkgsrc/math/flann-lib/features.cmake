@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
-# Origin: EmberBSD (AI-assisted). CPU C++ nearest-neighbor library.
-set(BUILD_C_BINDINGS OFF CACHE BOOL "")
+# Origin: EmberBSD (AI-assisted). CPU C and C++ nearest-neighbor library.
+set(BUILD_C_BINDINGS ON CACHE BOOL "")
 set(BUILD_PYTHON_BINDINGS OFF CACHE BOOL "")
 set(BUILD_MATLAB_BINDINGS OFF CACHE BOOL "")
 set(BUILD_CUDA_LIB OFF CACHE BOOL "")

@@ -49,10 +49,14 @@ lib/cmake/flann/flann-config-version.cmake
 lib/cmake/flann/flann-config.cmake
 lib/cmake/flann/flann-targets-release.cmake
 lib/cmake/flann/flann-targets.cmake
+lib/libflann.so
+lib/libflann.so.1.9
+lib/libflann.so.1.9.2
 lib/libflann_cpp.so
 lib/libflann_cpp.so.1.9
 lib/libflann_cpp.so.1.9.2
 lib/libflann_cpp_s.a
+lib/libflann_s.a
 lib/pkgconfig/flann.pc
 share/licenses/flann/LICENSE
 share/licenses/flann/SOURCE
