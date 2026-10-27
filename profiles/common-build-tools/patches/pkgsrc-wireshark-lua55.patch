@@ -1,0 +1,25 @@
+Origin: EmberBSD (AI-assisted). Build Wireshark 4.6 against Lua 5.5, the one Lua
+in the export. Wireshark 4.6 supports the Lua 5.5 lua_newstate() seed.
+
+--- a/net/wireshark/Makefile
++++ b/net/wireshark/Makefile
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.354 2026/09/02 19:04:05 wiz Exp $
+ 
+ DISTNAME=	wireshark-4.6.8
+-PKGREVISION=	1
++PKGREVISION=	2
+ CATEGORIES=	net
+ MASTER_SITES=	https://www.wireshark.org/download/src/
+ EXTRACT_SUFX=	.tar.xz
+--- a/net/wireshark/options.mk
++++ b/net/wireshark/options.mk
+@@ -45,7 +45,7 @@
+ .endif
+ 
+ .if !empty(PKG_OPTIONS:Mlua)
+-LUA_VERSIONS_ACCEPTED=	54 53
++LUA_VERSIONS_ACCEPTED=	55
+ .  include "../../lang/lua/buildlink3.mk"
+ .else
+ CMAKE_CONFIGURE_ARGS+=	-DENABLE_LUA=OFF
