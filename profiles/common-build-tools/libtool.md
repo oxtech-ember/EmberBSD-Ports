@@ -224,3 +224,20 @@ GCC16 `-fanalyzer` was not run. The host GTS package uses Apple Clang, and the
 target package attempt stopped in Netpbm's native `typegen` build before GTS
 configuration because that generator received target linker flags. The host
 analysis does not establish target runtime behavior.
+
+## Native archive tool selection
+
+Native libtool-base 2.6.2nb2 stores the selected AR, RANLIB, NM and STRIP
+commands during configure. A Clang/LLVM prefix does not need bare `ar`
+or `ranlib` aliases. The native base provider floor requires this revision.
+Target and cross-libtool provider selection remains unchanged.
+
+```sh
+python3 tests/libtool-native-archive.py --libtool /absolute/native/libtool \
+    --cc /absolute/native/clang --ar /absolute/native/llvm-ar \
+    --work /absolute/new-libtool-consumer
+```
+
+The test builds a real static archive, lists its object and runs a consumer.
+Linux/amd64 Clang 23.1.4 passed with a prefix-only PATH. The previous
+libtool-base 2.6.2nb1 failed at its bare `ar` invocation in the same test.

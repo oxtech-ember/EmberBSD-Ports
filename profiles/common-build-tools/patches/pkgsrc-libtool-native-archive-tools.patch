@@ -1,0 +1,37 @@
+# Origin: EmberBSD (AI-assisted). Keep selected native archive tools in installed libtool.
+
+--- a/devel/libtool-base/Makefile
++++ b/devel/libtool-base/Makefile
+@@ -31,7 +31,7 @@
+ .include "../../devel/libtool/Makefile.common"
+ 
+ PKGNAME=	${DISTNAME:S/-/-base-/}
+-PKGREVISION=	1
++PKGREVISION=	2
+ 
+ COMMENT=	Generic shared library support script (the script itself)
+ 
+@@ -59,6 +59,11 @@
+ USE_LANGUAGES=		c c++
+ CONFIGURE_ARGS+=	--disable-ltdl-install
+ CONFIGURE_ARGS+=	F77=no FC=no
++
++.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++# The installed native script must retain the selected archive tools.
++CONFIGURE_ENV+= AR=${AR:Q} RANLIB=${RANLIB:Q} NM=${NM:Q} STRIP=${STRIP:Q}
++.endif
+ 
+ # libtoolize discovers GNU M4 at runtime; host tools do not satisfy this.
+ DEPENDS+=		m4>=1.4.21:../../devel/m4
+--- a/mk/bsd.pkg.use.mk
++++ b/mk/bsd.pkg.use.mk
+@@ -121,7 +121,8 @@
+ .else
+ TOOL_DEPENDS+=		libtool-base>=${_OPSYS_LIBTOOL_REQD:U${LIBTOOL_REQD}}:../../devel/libtool-base
+ _LIBTOOL_PROVIDER_FLOORS+= libtool-base>=${LIBTOOL_REQD}:../../devel/libtool-base \
+-	libtool-base>=${_LIBTOOL_DRIVER_PREFIX_REQD}:../../devel/libtool-base
++	libtool-base>=${_LIBTOOL_DRIVER_PREFIX_REQD}:../../devel/libtool-base \
++	libtool-base>=2.6.2nb2:../../devel/libtool-base
+ .endif
+ .for _libtool_floor_dep in ${_LIBTOOL_PROVIDER_FLOORS}
+ .  if empty(TOOL_DEPENDS:M${_libtool_floor_dep})
