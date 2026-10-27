@@ -270,6 +270,10 @@ runtime path leak through pkgsrc passthrough directories. A genuine GCC16 C++
 shared-library consumer verifies target RPATH and installed Libtool metadata.
 Header and link-time search paths, native mappings and ABI remain unchanged.
 
+The [built-in package root](cross/builtin-prefix.md) keeps the macOS SDK prefix
+for Darwin targets only. A cross build from macOS takes base editline, gettext,
+iconv, termcap, curses, xz and bzip2 from the target sysroot.
+
 The [LLVM Python migration](cross/llvm-python315.md) keeps one lit provider and
 updates installed Clang helper interpreters. It records package changes separately
 from the original compiler build.

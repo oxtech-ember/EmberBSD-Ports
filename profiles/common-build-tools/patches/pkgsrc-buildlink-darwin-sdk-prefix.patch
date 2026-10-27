@@ -1,0 +1,20 @@
+# Origin: EmberBSD (AI-assisted), built-in prefix of a non-Darwin target.
+# OSX_SDK_PATH names the macOS SDK of a Darwin target. A cross build from
+# macOS keeps it for native host packages, but it is not the root of the
+# built-in headers and libraries of a NetBSD target. Native Darwin builds
+# and native recursion inside a cross build keep the SDK prefix.
+
+--- a/mk/buildlink3/bsd.buildlink3.mk
++++ b/mk/buildlink3/bsd.buildlink3.mk
+@@ -424,7 +424,10 @@ USE_BUILTIN.${_pkg_}?=		no
+ _BLNK_PKG_DBDIR.${_pkg_}?=	_BLNK_PKG_DBDIR.${_pkg_}_not_found
+ _BLNK_PKG_INFO.${_pkg_}?=	${TRUE}
+ BUILDLINK_PKGNAME.${_pkg_}?=	${_pkg_}
+-.    if defined(OSX_SDK_PATH)
++# The macOS SDK holds built-in packages only for a Darwin target. A cross
++# target uses its own root below, also when the build host sets
++# OSX_SDK_PATH for native host packages.
++.    if ${OPSYS} == "Darwin" && defined(OSX_SDK_PATH)
+ BUILDLINK_PREFIX.${_pkg_}?=	${OSX_SDK_PATH}/usr
+ # Usual systems has builtin packages in /usr
+ .    elif exists(${TOOLS_CROSS_DESTDIR}/usr)
