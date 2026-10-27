@@ -1,0 +1,48 @@
+# Origin: EmberBSD (AI-assisted).
+# Pinned mold 2.42.1 relies on mimalloc replacing ordinary malloc/free.
+# Source fetching remains independent of the installed allocator mode.
+--- a/devel/mold/Makefile.orig
++++ b/devel/mold/Makefile
+@@ -1,6 +1,7 @@
+ # $NetBSD: Makefile,v 1.54 2026/09/13 06:18:15 adam Exp $
+ 
+ DISTNAME=	mold-2.42.1
++PKGREVISION=	1
+ CATEGORIES=	devel
+ MASTER_SITES=	${MASTER_SITE_GITHUB:=rui314/}
+ GITHUB_TAG=	v${PKGVERSION_NOREV}
+@@ -32,6 +33,7 @@
+ 
+ .include "../../archivers/zstd/buildlink3.mk"
+ .include "../../devel/cmake/build.mk"
++MIMALLOC_REQUIRE_OVERRIDE=	yes
+ .include "../../devel/mimalloc/buildlink3.mk"
+ .include "../../devel/zlib/buildlink3.mk"
+ .include "../../parallel/threadingbuildingblocks/buildlink3.mk"
+
+--- a/mk/defaults/options.description.orig
++++ b/mk/defaults/options.description
+@@ -189,6 +189,7 @@
+ dvdread			Enable reproduction of DVDs.
+ dvi			Enable device independent file format (mostly TeX) support.
+ dynamic-arch		Auto-detect CPU features at runtime
++dynamic-tls		Use dlopen-compatible local dynamic TLS for the allocator.
+ eaccelerator-disassembler	Include disassembler.
+ eaccelerator-doc-comment-inclusion	Retain doc-comments in internal php structures.
+ eai			Enable EAI (Email Address Internationalization) support.
+@@ -296,6 +297,7 @@
+ gdbm			Use the GNU gdbm database library.
+ gdk-pixbuf		Use gdk-pixbuf as imaging library.
+ gdk-pixbuf2		Use gdk-pixbuf2 as imaging library.
++generic-arch		Disable allocator instructions beyond the generic CPU baseline.
+ geoclue			Enable geoclue support.
+ geoip			Enable IP-to-country-lookup.
+ ggi			Enable GGI support.
+@@ -616,6 +618,7 @@
+ magick			Use ImageMagick as the image processing backend.
+ mailwrapper		Use mailwrapper to handle MTA software aliases.
+ maintainer-zts		Enable the Zend Thread Safety option for PHP.
++malloc-override		Replace ordinary process malloc/free entry points with mimalloc.
+ manual			Include manual.
+ marble			Enable marble (virtual globe) support.
+ mariadb			Enable MariaDB support.

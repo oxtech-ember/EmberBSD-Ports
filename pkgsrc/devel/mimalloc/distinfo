@@ -1,0 +1,16 @@
+$NetBSD$
+
+BLAKE2s (mimalloc-3.6.0.tar.gz) = ce89f49ed379b7233b430846b8967ab79b4835cdd21c891d008424606e35904f
+SHA512 (mimalloc-3.6.0.tar.gz) = 8a8013ee856fa57e9620929542ffd24c114439365a4d06a41a25fad7aed27a77c5a0e2104fde3d2f67990190644de88d6b7fed964a574d6913977ff5edbe4839
+Size (mimalloc-3.6.0.tar.gz) = 1559270 bytes
+BLAKE2s (cc-1.4.6.crate) = 21184d497416a4525829f2990836c7f4491ecf73a3a21b62f01cec34cc839376
+SHA512 (cc-1.4.6.crate) = 8b4c44148f9479cb639c8d707a109feb9431fdd493eed3746fea113be61eb4389f85aefa08df71105e967f9889570d0d4a98779b6d93de406ce0dc0f651751f7
+Size (cc-1.4.6.crate) = 101852 bytes
+BLAKE2s (find-msvc-tools-0.1.12.crate) = 1a078e4e5f6017583262fa2d27a74732e8704814cbffa3c1b7c599091d1ddbf4
+SHA512 (find-msvc-tools-0.1.12.crate) = 3914a09833b5dc93a270d2db21b6baccf036b54f42d2190369f691e968bbd88df8dc1e87cb5b8a2e93d4105ea4ef4a3dca6a63db2c4d60a4c29fd61e5b7f22ad
+Size (find-msvc-tools-0.1.12.crate) = 31570 bytes
+BLAKE2s (shlex-2.0.1.crate) = 5b5a3bb8700bbe3e169d6cf5b7a115324435d22823055086a533c4a8b8778fd7
+SHA512 (shlex-2.0.1.crate) = d1bf35e2c5a93c718d3cc395fc4b06cc0c42d4891c0f37247de7e179492478020f0c57ae74c461d5bb1f833b071fd5c036d8d6d6ab8b61be6140cb64ae525921
+Size (shlex-2.0.1.crate) = 19332 bytes
+SHA1 (patch-CMakeLists.txt) = d9d9089c863e8dc1df60aaa7daa117daa0e17829
+SHA1 (patch-test_test-pprof.c) = 45e7001f8e0cfee5722dfa89c46aacc8a9638eaf

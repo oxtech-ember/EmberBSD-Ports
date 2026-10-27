@@ -1,0 +1,32 @@
+$NetBSD$
+
+Allow the recipe to select its common Cargo runner and offline/locked flags.
+Keep upstream discovery when no explicit command is supplied.
+Origin: EmberBSD (AI-assisted).
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -1279,7 +1279,13 @@
+   add_test(NAME test-qsbr COMMAND mimalloc-test-qsbr)
+ 
+   # Rust crate tests (only if `cargo` is available)
+-  find_program(MI_CARGO cargo HINTS "$ENV{CARGO_HOME}/bin" "$ENV{HOME}/.cargo/bin")
++  # Packagers may select a command with an explicit tool/configuration runner.
++  # Native command parsing preserves quoted executable and argument paths.
++  if(MI_CARGO_COMMAND)
++    separate_arguments(MI_CARGO NATIVE_COMMAND "${MI_CARGO_COMMAND}")
++  else()
++    find_program(MI_CARGO cargo HINTS "$ENV{CARGO_HOME}/bin" "$ENV{HOME}/.cargo/bin")
++  endif()
+   if(MI_CARGO AND NOT (MI_DEBUG_TSAN OR MI_DEBUG_UBSAN OR (MI_TRACK STREQUAL "ASAN")))
+     message(STATUS "Add Rust crate tests (using ${MI_CARGO})")
+     set(mi_cargo_args test --manifest-path "${CMAKE_CURRENT_SOURCE_DIR}/contrib/rust/Cargo.toml"
+@@ -1290,7 +1296,7 @@
+     if(MI_OPT_ARCH)
+       list(APPEND mi_cargo_args --features=opt_arch)
+     endif()
+-    add_test(NAME test-rust COMMAND ${MI_CARGO} ${mi_cargo_args})
++    add_test(NAME test-rust COMMAND ${MI_CARGO} ${mi_cargo_args} ${MI_CARGO_OPTIONS})
+   endif()
+ endif()
+ 
