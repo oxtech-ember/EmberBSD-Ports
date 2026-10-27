@@ -518,6 +518,11 @@
       "strip": 1
     },
     {
+      "path": "gn-rust-sysroot-rustc-inputs.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
       "path": "gn-shared-node-providers.patch",
       "root": "",
       "strip": 1
