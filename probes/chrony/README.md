@@ -1,8 +1,9 @@
 # chrony on the common stack
 
 This probe records the state of registry item E32: chrony 4.9 from the
-unchanged pkgsrc `net/chrony` recipe (pkgsrc `fff4deb639a1`), for EmberBSD
-amd64 and AArch64. No Ports overlay or patch is carried for it.
+pkgsrc `net/chrony` recipe (pkgsrc `fff4deb639a1`), for EmberBSD
+amd64 and AArch64. Native builds use the recipe unchanged; cross builds
+apply `profiles/common-build-tools/patches/pkgsrc-chrony-cross.patch`.
 The record is AI-assisted (Claude Code, Claude Opus 5.5).
 
 ## amd64 native GCC16 package
@@ -30,6 +31,25 @@ make MAKECONF=/etc/mk.conf TEST_TARGET=check MAKE_JOBS=24 test
 The system tests ran `chronyd` on the build host without the destructive
 clock tests. Static analysis and Valgrind were not run for this probe.
 
+## AArch64 Clang cross package
+
+Built on 27 October 2026 on macOS arm64 with the common cross profile, the
+native Clang/LLVM 23.1.4 Ports prefix and an SDK sysroot from EmberBSD
+`b36583d38bf`. The cross patch names the target system for chrony's own
+configure; without it, configure selected `sys_macosx.c` from the build host.
+
+| Result | Value |
+| --- | --- |
+| Package | `chrony-4.9.tgz`, SHA256 `5aa3934247775a87a83b5078471fa9e68e668a782f139a9b6de474c213541cef` |
+| Programs | `sbin/chronyd`, `bin/chronyc`: AArch64 PIE; need `libgnutls.so.30`, `libnettle.so.9`, `libm.so.0`, `libpthread.so.1` and `libc.so.12` |
+| System driver | `sys_netbsd.c` |
+| Built dependencies | gnutls 3.8.13nb1, nettle 4.0, gmp, libtasn1, p11-kit, libunistring, libffi, zlib, mozilla-rootcerts, bash 5.3.20 |
+| Compiler diagnostics | Only `-Wunused-command-line-argument`: the cross wrapper passes `-pie` and `-Wl,-zrelro` to compile-only commands; no warning from the chrony sources |
+
+`chronyc` has no line editing: the configure probe did not find the base
+`readline.h` compatibility header in the cross sysroot. The package was not
+run on a target.
+
 ## Installation on a clean amd64 system
 
 Target: EmberBSD 1.0 amd64 `c5d396f` installed from its ISO in QEMU, with an
@@ -53,8 +73,10 @@ from the same package root (163 MB, SHA256 checked).
 
 ## Remaining
 
-- AArch64: the common cross profile needs a qualified SDK native toolset, an
-  AArch64 sysroot with the GCC16 runtime (E34) and a target package database.
+- AArch64 execution: a target with the full base set, its shared libraries and
+  the dependency packages above.
+- Line editing for the cross `chronyc`: the editline built-in check must add
+  the sysroot `readline` include directory.
 - The CIX P1 board root is a reduced static C cohort without shared libraries
   or pkgsrc; the package cannot run there until the board uses the common stack.
 - PPS through RFC 2783 and `gpiopps` waits for GPIO017 interrupts (N36).

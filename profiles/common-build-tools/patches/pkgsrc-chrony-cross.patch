@@ -1,0 +1,23 @@
+From: EmberBSD (AI-assisted)
+Subject: Name the target system for a cross chrony configure
+
+chrony uses its own configure script. It reads uname(1) of the build
+host unless --host-system, --host-release and --host-machine name the
+target. A cross build from macOS selected sys_macosx.c and failed on
+mach/mach.h.
+
+--- a/net/chrony/Makefile
++++ b/net/chrony/Makefile
+@@ -39,5 +39,12 @@
+ 		${PKG_SYSCONFDIR}/chrony.conf
+ 
+ .include "options.mk"
++
++.if ${USE_CROSS_COMPILE:U:tl} == "yes"
++# configure reads uname(1) of the build host unless the target is named.
++CONFIGURE_ARGS+=	--host-system=${OPSYS}
++CONFIGURE_ARGS+=	--host-release=${OS_VERSION}
++CONFIGURE_ARGS+=	--host-machine=${MACHINE_ARCH}
++.endif
+ .include "../../devel/editline/buildlink3.mk"
+ .include "../../mk/bsd.pkg.mk"
