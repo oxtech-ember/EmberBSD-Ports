@@ -151,10 +151,50 @@ modes. The boundary exercises the actual source with a modeled 32-bit
 the target libc ABI and execution checks.
 The strict-diagnostics fix was also checked with the actual target libc
 compiler commands. Paired source analysis found no new diagnostics: the
-pre-existing profile filename use-after-free and allocation-failure findings
-remain outside this name/state-only fix. Cppcheck's Clang AST importer still
+profile filename lifetime and allocation findings from that comparison are
+addressed by the separate memory patch below. Cppcheck's Clang AST importer still
 asserts internally; its builtin parser was checked on the actual Clang
 preprocessed target sources instead. This is not a successful AST-import check.
+
+## Profile filename and IO ownership
+
+`patch-05-profile-memory` retains the previous owned filename until verbose
+replacement logging completes, then frees it exactly once. Precedence, same-name
+updates, environment selection and invalid-pattern fallback keep their behavior.
+The test-only `lprofCreateBufferIOInternal` allocates its writer before changing
+shared IO state and returns NULL on allocation failure, without allocating a
+new buffer, changing the free hook or freeing a caller's buffer. Failure to
+allocate the optional dynamic buffer still uses the existing static buffer.
+
+This is a local, AI-assisted adaptation of
+[LLVM 23.1.4](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.4/compiler-rt/lib/profile/InstrProfilingFile.c),
+not submitted upstream. LLVM main and
+[FreeBSD main](https://github.com/freebsd/freebsd-src/blob/main/contrib/llvm-project/compiler-rt/lib/profile/InstrProfilingFile.c)
+retained both paths when inspected on 2026-10-27. The older NetBSD implementation
+has a different API. The archive remains pinned by `lang/llvm` and this recipe's
+`distinfo`; native packages and OS preparation consume the same patch.
+
+`tests/profile-memory.py` compiles the actual source with scoped allocation hooks.
+Select `--cc`, `--source`, `--runtime-archive` (the matching native common profile
+archive for unchanged helpers) and explicit host ABI `--cflags`. The 11 cases
+cover owned/borrowed names, verbose/quiet and same-name updates, NULL/default and
+invalid-pattern fallback, repeated IO roundtrips, optional-buffer failure and
+writer failure with empty or caller-owned state. Allocation counters check
+releases and retention; assertions stay enabled with caller NDEBUG flags.
+`--profile-file` can select the pre-fix file; `--expect-failure` requires
+`-fsanitize=address,undefined` and checks four UAF and two writer-NULL failures
+while five controls pass.
+
+All 11 patched cases pass on Darwin arm64 normally and with ASan/UBSan. Upstream
+`instrprof-bufferio.c` passes its four buffer sizes in both modes. An instrumented
+consumer writes a replacement profile readable by installed `llvm-profdata`
+with the expected function count. The actual amd64 libc compile passes; Clang
+Static Analyzer loses the UAF, and paired Cppcheck on C preprocessed target
+source loses three OOM diagnostics without new findings. Existing style
+findings and the AST-importer limitation above remain. ASan/UBSan and allocation
+accounting are not Valgrind results; no supported Darwin arm64 Valgrind run was
+available. Installed package rebuild and EmberBSD target execution remain
+separate checks.
 
 ## Target runtime phases
 

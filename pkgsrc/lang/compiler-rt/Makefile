@@ -3,7 +3,7 @@
 .include "../../lang/llvm/version.mk"
 
 PKGNAME=	compiler-rt-${LLVM_VERSION}
-PKGREVISION=	6
+PKGREVISION=	7
 # The common runtime patch set also changes libunwind CMake checks.
 EXTRACT_ELEMENTS+=	${DISTNAME}/libunwind
 # One patch owner for native packages and the OS/SDK prepared source.

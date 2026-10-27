@@ -1,0 +1,86 @@
+$NetBSD$
+
+Retain an owned filename through verbose override logging, then release it.
+Allocate the test IO writer before changing shared buffer state; on allocation
+failure, return NULL without leaking a new buffer or freeing caller state.
+
+Local EmberBSD adaptation for LLVM 23.1.4, developed with AI assistance.
+Not submitted upstream. LLVM main and FreeBSD main retained both paths when
+checked on 2026-10-27. Preserve upstream Apache-2.0 WITH LLVM-exception terms.
+https://github.com/llvm/llvm-project/blob/llvmorg-23.1.4/compiler-rt/lib/profile/InstrProfilingFile.c
+
+--- a/compiler-rt/lib/profile/InstrProfilingFile.c
++++ b/compiler-rt/lib/profile/InstrProfilingFile.c
+@@ -388,11 +388,13 @@
+ 
+ COMPILER_RT_VISIBILITY ProfBufferIO *
+ lprofCreateBufferIOInternal(void *File, uint32_t BufferSz) {
++  ProfDataWriter *fileWriter =
++      (ProfDataWriter *)calloc(1, sizeof(ProfDataWriter));
++  if (!fileWriter)
++    return NULL;
+   FreeHook = &free;
+   DynamicBufferIOBuffer = (uint8_t *)calloc(1, BufferSz);
+   VPBufferSize = BufferSz;
+-  ProfDataWriter *fileWriter =
+-      (ProfDataWriter *)calloc(1, sizeof(ProfDataWriter));
+   initFileWriter(fileWriter, File);
+   ProfBufferIO *IO = lprofCreateBufferIO(fileWriter);
+   IO->OwnFileWriter = 1;
+@@ -801,13 +803,11 @@
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wcast-qual"
+ #endif
+-  /* Clean up cached prefix and filename.  */
++  /* The caller retains the old filename until verbose logging is complete. */
++  /* Clean up the cached prefix. */
+   if (lprofCurFilename.ProfilePathPrefix)
+     free((void *)lprofCurFilename.ProfilePathPrefix);
+ 
+-  if (lprofCurFilename.FilenamePat && lprofCurFilename.OwnsFilenamePat) {
+-    free((void *)lprofCurFilename.FilenamePat);
+-  }
+ #ifdef __GNUC__
+ #pragma GCC diagnostic pop
+ #elif defined(__clang__)
+@@ -905,6 +905,7 @@
+                                 unsigned CopyFilenamePat) {
+ 
+   const char *OldFilenamePat = lprofCurFilename.FilenamePat;
++  unsigned OwnsOldFilenamePat = lprofCurFilename.OwnsFilenamePat;
+   ProfileNameSpecifier OldPNS = lprofCurFilename.PNS;
+ 
+   /* The old profile name specifier takes precedence over the old one. */
+@@ -935,6 +936,20 @@
+                 getPNSStr(PNS));
+   }
+ 
++#ifdef __GNUC__
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Wcast-qual"
++#elif defined(__clang__)
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wcast-qual"
++#endif
++  if (OwnsOldFilenamePat)
++    free((void *)OldFilenamePat);
++#ifdef __GNUC__
++#pragma GCC diagnostic pop
++#elif defined(__clang__)
++#pragma clang diagnostic pop
++#endif
+   truncateCurrentFile();
+   if (__llvm_profile_is_continuous_mode_enabled())
+     initializeProfileForContinuousMode();
+--- a/compiler-rt/lib/profile/InstrProfilingInternal.h
++++ b/compiler-rt/lib/profile/InstrProfilingInternal.h
+@@ -81,7 +81,8 @@
+   uint32_t CurOffset;
+ } ProfBufferIO;
+ 
+-/* The creator interface used by testing.  */
++/* The creator interface used by testing. Returns NULL if the writer cannot
++ * be allocated; existing buffer state is unchanged on that failure. */
+ ProfBufferIO *lprofCreateBufferIOInternal(void *File, uint32_t BufferSz);
+ 
+ /*!
