@@ -156,3 +156,23 @@ timeout callback. Additional cases cover normal execution, aggregate resets,
 rejection of other or mixed errors and a deliberately lost collection callback.
 The checks use the installed native Node, without rebuilding or replacing it.
 They do not establish the full upstream suite or target Node acceptance.
+
+## Native Darwin package checks
+
+The ordinary Node 24.22.1nb6 package built and replaced the installed package
+on Darwin arm64 with native Clang 23.1.4 and LLD, using the common recipes at
+Ports `8988b231e326a907d037e526f9d08b97defe5c7c`. The installed executable
+matches the tested build. `pkg_admin check` passed for all 2095 package files.
+Its runtime dependencies include the common SQLite 3.54.1nb1 RBU provider;
+the earlier SQLite package does not satisfy the declared minimum.
+
+The C++ tests passed all 254 cases across 33 suites. The upstream default
+JavaScript run completed 5521 records: 5168 executed tests, 353 upstream skips
+and no failures. Five tests also passed against the installed executable:
+`test-inspector-contexts`, `test-inspector-scriptparsed-context`, `test-sqlite`,
+`test-gc-net-timeout` and `test-inspector-strip-types`.
+
+The full documentation/npm-ci tests and additional native addon suites were
+not executed. Package vulnerability auditing remains enabled; these runtime
+results do not clear audit advisories. Target Node, Electron, Blanc application
+launch and a complete target SDK remain separate checks.
