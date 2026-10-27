@@ -1,0 +1,22 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Upstream: Chromium base/trace_event/trace_log.cc.
+Status: local NetBSD/official fix; not submitted upstream.
+
+OFFICIAL_BUILD/NDEBUG leaves g_trace_log_for_testing assigned in the
+TraceLog constructor but never read, tripping
+-Werror,-Wunused-but-set-global on the target toolchain. Mark it
+[[maybe_unused]].
+
+--- a/base/trace_event/trace_log.cc
++++ b/base/trace_event/trace_log.cc
+@@ -61,7 +61,7 @@ namespace base::trace_event {
+ 
+ namespace {
+ 
+-TraceLog* g_trace_log_for_testing = nullptr;
++[[maybe_unused]] TraceLog* g_trace_log_for_testing = nullptr;
+ 
+ ThreadTicks ThreadNow() {
+   return ThreadTicks::IsSupported()

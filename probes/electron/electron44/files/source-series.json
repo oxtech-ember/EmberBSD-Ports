@@ -536,6 +536,11 @@
       "path": "base-logging-show-error-dialogs-maybe-unused.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "base-trace-log-testing-ptr-maybe-unused.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
