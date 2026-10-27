@@ -1,0 +1,28 @@
+--- a/compiler-rt/lib/builtins/divxc3.c
++++ b/compiler-rt/lib/builtins/divxc3.c
+@@ -14,6 +14,11 @@
+ 
+ #include "int_lib.h"
+ #include "int_math.h"
++
++/* EmberBSD historically exports these helpers for its long double ABI. */
++#if defined(EMBERBSD_LEGACY_LDBL_COMPLEX_ABI) && !HAS_80_BIT_LONG_DOUBLE
++typedef long double xf_float;
++#endif
+ 
+ // Returns: the quotient of (a + ib) / (c + id)
+ 
+--- a/compiler-rt/lib/builtins/mulxc3.c
++++ b/compiler-rt/lib/builtins/mulxc3.c
+@@ -14,6 +14,11 @@
+ 
+ #include "int_lib.h"
+ #include "int_math.h"
++
++/* EmberBSD historically exports these helpers for its long double ABI. */
++#if defined(EMBERBSD_LEGACY_LDBL_COMPLEX_ABI) && !HAS_80_BIT_LONG_DOUBLE
++typedef long double xf_float;
++#endif
+ 
+ // Returns: the product of a + ib and c + id
+ 
