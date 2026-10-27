@@ -1,0 +1,18 @@
+$NetBSD$
+
+Backport the test correction by Alex Waygood, upstream commit
+79c903c7d9ec4cfa30b7ca38a795adc1c100b45a (Remove obsolete Literal
+ deduplication assertion). CPython now deduplicates unhashable Literal values.
+https://github.com/python/typing_extensions/commit/79c903c7d9ec4cfa30b7ca38a795adc1c100b45a
+
+--- src/test_typing_extensions.py.orig
++++ src/test_typing_extensions.py
+@@ -1337,8 +1337,6 @@ class LiteralTests(BaseTestCase):
+         self.assertEqual(Literal[1, 2, 3].__args__, (1, 2, 3))
+         self.assertEqual(Literal[1, 2, 3, 3].__args__, (1, 2, 3))
+         self.assertEqual(Literal[1, Literal[2], Literal[3, 4]].__args__, (1, 2, 3, 4))
+-        # Mutable arguments will not be deduplicated
+-        self.assertEqual(Literal[[], []].__args__, ([], []))
+ 
+     def test_union_of_literals(self):
+         self.assertEqual(Union[Literal[1], Literal[2]].__args__,
