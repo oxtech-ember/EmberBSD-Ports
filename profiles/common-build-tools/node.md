@@ -130,3 +130,29 @@ the patched header must pass with the same native Clang/libc++ inputs.
 Explicit V8 hashing for custom keys and pairs must continue to work.
 This focused regression does not replace a complete Node build and its
 Inspector, WebAssembly, profiler and normal JavaScript runtime tests.
+
+## GC timeout test
+
+The test-only `node-gc-net-timeout.patch` accepts a peer's `ECONNRESET` on
+client sockets, matching the existing server-side allowance. For an aggregate
+connection error, every child must also be `ECONNRESET`; unrelated errors still
+fail. The original timeout callback, collection observer, counters and complete
+collection condition remain unchanged. This does not alter the Node runtime or
+installed package payload, so it does not require a package revision change.
+
+Run the causal regression against the selected native Node 24.22.1:
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B -I -S \
+  profiles/common-build-tools/tests/node-gc-net-timeout.py \
+  --sdk-source "$SDK_SOURCE" --host-prefix "$HOST_PREFIX" \
+  --archive "$DISTDIR/node-v24.22.1.tar.xz" --work "$NEW_WORK_DIRECTORY"
+```
+
+It extracts the checked upstream test and common helpers into its own directory.
+A real peer `resetAndDestroy()` reproduces the unhandled client error before the
+patch; the patched test must collect every client and still observe its original
+timeout callback. Additional cases cover normal execution, aggregate resets,
+rejection of other or mixed errors and a deliberately lost collection callback.
+The checks use the installed native Node, without rebuilding or replacing it.
+They do not establish the full upstream suite or target Node acceptance.
