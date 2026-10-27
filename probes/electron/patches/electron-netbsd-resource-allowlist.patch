@@ -1,0 +1,33 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), Chromium 152 and Electron44.9.3.
+Status: local NetBSD ELF support, not submitted upstream.
+Preserve resource marker generation, input collection and the shipped-pak
+completeness check on NetBSD using the existing ELF path.
+
+--- a/build/toolchain/gcc_toolchain.gni
++++ b/build/toolchain/gcc_toolchain.gni
+@@ -43,7 +43,7 @@
+       "enable_resource_allowlist_generation=true requires is_component_build=false")
+   assert(
+       target_os == "android" || target_os == "win" || target_os == "linux" ||
+-          target_os == "mac",
++          target_os == "mac" || target_os == "netbsd",
+       "enable_resource_allowlist_generation=true does not work for target_os=$target_os")
+ }
+ 
+--- a/electron/BUILD.gn
++++ b/electron/BUILD.gn
+@@ -1112,10 +1112,10 @@
+ }
+ 
+ # Resource allowlisting (slimmed locale paks + the completeness check) is only
+-# wired up for Linux so far: Windows needs PDB-based extraction and macOS needs
++# wired up for ELF on Linux and NetBSD. Windows needs PDB-based extraction; macOS needs
+ # Mach-O support in tools/resources/generate_resource_allowlist.py.
+ electron_use_resource_allowlist =
+-    enable_resource_allowlist_generation && is_linux
++    enable_resource_allowlist_generation && (is_linux || is_netbsd)
+ 
+ if (electron_use_resource_allowlist) {
+   # The list of grit resource IDs actually referenced by the electron

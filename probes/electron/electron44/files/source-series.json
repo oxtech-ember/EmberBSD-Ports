@@ -486,6 +486,11 @@
       "path": "perfetto-typed-proto-gcc16-dependent-false.patch",
       "strip": 1,
       "root": "third_party/perfetto"
+    },
+    {
+      "path": "electron-netbsd-resource-allowlist.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {

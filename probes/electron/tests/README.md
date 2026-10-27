@@ -353,3 +353,21 @@ changing it. Real GN invokes the shared SDK reader; actual SDK values, explicit
 selection refusals and GN regeneration after a plist change are checked. No
 compiler or Apple discovery service runs. See the
 [metadata contract](../README.md#explicit-darwin-sdk-metadata) for its scope.
+
+## NetBSD resource allowlist
+
+```sh
+python3.15 -B -I -S probes/electron/tests/electron-resource-allowlist.py \
+  --source /absolute/prepared/chromium/src --work /absolute/NEW_ALLOWLIST_WORK \
+  --gn /absolute/native/bin/gn --git /absolute/control/git \
+  --clang /absolute/native/bin/clang++ --ar /absolute/native/bin/llvm-ar \
+  --utility-path /absolute/native/bin:/absolute/native/gnu/bin
+```
+
+Run this on the canonical source layer immediately before the resource-allowlist
+patch. Eight actual GN cases preserve platform and debug/component restrictions.
+Selected Clang produces a freestanding NetBSD ELF object with 101 resource
+markers. The actual upstream pseudo-link collector and LLVM thin archive feed
+the allowlist extractor; Electron's shipped-pak checker accepts the complete
+pack and rejects a missing resource. No target program runs and no complete
+Electron build is claimed.
