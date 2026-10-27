@@ -1,0 +1,7 @@
+$NetBSD$
+
+BLAKE2s (bootstrap_cmds-138.tar.gz) = f9cb2d4a75e0a29de3ceef3e776a6008bc57d35b8a3adc3d5779b0621fd3307c
+SHA512 (bootstrap_cmds-138.tar.gz) = 0c474794394f7af724cfc80ad5556b6938a9be011e1aad814769fd7484428ce5c14a258587d29c0fc3f9dce917dfec74ab809bb825fcfe83ca0a571fede9af30
+Size (bootstrap_cmds-138.tar.gz) = 111998 bytes
+SHA1 (patch-migcom.tproj_mig.sh) = 7d3ab31a9779cab3f957e06cea878841f1935240
+SHA1 (patch-migcom.tproj_server.c) = 0faf09f2487ea2c327dd7bdd6443721c7deb574a

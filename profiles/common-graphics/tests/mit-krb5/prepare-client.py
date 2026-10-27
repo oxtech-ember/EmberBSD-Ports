@@ -42,7 +42,7 @@ def main():
     if subprocess.check_output([str(cc), '-dumpmachine'], text=True).strip() != triplet:
         raise ValueError('The selected compiler does not target ' + triplet)
     prefix = arg.sysroot / 'usr/pkg'
-    for package in ('mit-krb5-1.22.2nb6', 'mit-krb5-devel-1.22.2nb6'):
+    for package in ('mit-krb5-1.22.2nb7', 'mit-krb5-devel-1.22.2nb7'):
         if not (prefix / 'pkgdb' / package / '+CONTENTS').is_file():
             raise ValueError('Install matching ordinary runtime and SDK packages first')
     owner = Path(__file__).resolve().parent
