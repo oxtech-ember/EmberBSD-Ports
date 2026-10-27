@@ -1,0 +1,13 @@
+$NetBSD$
+
+BLAKE2s (Retro68-0.0.20261022-0cbd3cb918a127a0d30a675b337f8f8e15062786.tar.gz) = 45ac187c0cbbe5044036259d14b8d4071c9e12d602cd00e2478f8f8180f99b66
+SHA512 (Retro68-0.0.20261022-0cbd3cb918a127a0d30a675b337f8f8e15062786.tar.gz) = 88a930c1e107d2e393af6be3a5d36149caf959d415a4e7c183f9d69374d2ea559381733cb8589f48ba47607c1898d3e4d78672a7bdd63ce1bc2b632eadf0daa1
+Size (Retro68-0.0.20261022-0cbd3cb918a127a0d30a675b337f8f8e15062786.tar.gz) = 239455527 bytes
+SHA1 (patch-CMakeLists.txt) = d6d1948850f8abf964bb3664e76476288a1ce836
+SHA1 (patch-ResourceFiles_ResourceFile.cc) = 0070758ca3e23cf7cc0a725f0a0d2514268361e5
+SHA1 (patch-ResourceFiles_ResourceFile.h) = c7eafa67a504b3f444b839c0856b1a465aba1bff
+SHA1 (patch-ResourceFiles_ResourceFork.cc) = 82d372f72e289c40f680d454a8117f3110caa1dd
+SHA1 (patch-ResourceFiles_ResourceFork.h) = aaaf920cb79328212fcf7db5bb94c16377e7e597
+SHA1 (patch-Rez_CMakeLists.txt) = 3d1ed2d431b786320fbb3cd4182d98415751024c
+SHA1 (patch-Rez_README.md) = ab7495f0164840bf35dc581bd4991b971e8d3e5e
+SHA1 (patch-Rez_Rez.cc) = 7a3f552688b02629e5c3d0fe395745d5dccc770b

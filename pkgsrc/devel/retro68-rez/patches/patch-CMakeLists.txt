@@ -1,0 +1,19 @@
+$NetBSD$
+
+Build resource tools independently of the cross compiler.
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -27,7 +27,11 @@
+ 
+ enable_testing()
+ 
+-if(CMAKE_SYSTEM_NAME MATCHES Retro.*)
++option(RETRO68_REZ_ONLY "Build native resource tools only" OFF)
++if(RETRO68_REZ_ONLY)
++add_subdirectory(ResourceFiles)
++add_subdirectory(Rez)
++elseif(CMAKE_SYSTEM_NAME MATCHES Retro.*)
+ 
+ set( REZ_TEMPLATES_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libretro)
+ include(add_application)

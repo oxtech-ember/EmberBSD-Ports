@@ -5,7 +5,7 @@ BUILDLINK_TREE+=	libhfs
 .if !defined(LIBHFS_BUILDLINK3_MK)
 LIBHFS_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.libhfs+=	libhfs>=3.2.6nb1
+BUILDLINK_API_DEPENDS.libhfs+=	libhfs>=3.2.6nb3
 BUILDLINK_PKGSRCDIR.libhfs?=	../../devel/libhfs
 .endif # LIBHFS_BUILDLINK3_MK
 

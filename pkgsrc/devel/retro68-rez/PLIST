@@ -1,0 +1,4 @@
+@comment $NetBSD$
+bin/ResInfo
+bin/Rez
+share/licenses/retro68-rez/COPYING
