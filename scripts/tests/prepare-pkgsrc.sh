@@ -138,9 +138,10 @@ printf 'patch\tprofiles/test/patches/mk.patch\n' >> "$fixture/pkgsrc/export.conf
 reject twice 'Infrastructure patch does not apply: profiles/test/patches/mk.patch'
 restore
 printf 'changed\n' >> "$fixture/profiles/test/patches/new-file.patch"
-reject manifest 'Infrastructure patch differs from profiles/test/sources.tsv'
+reject manifest 'Infrastructure patch differs from'
+grep -F 'profiles/test/sources.tsv' "$work/manifest.log" >/dev/null
 restore
-printf 'profile\tdevelopment-toolchain\n' >> "$fixture/pkgsrc/export.conf"
+printf 'profile\tshared/patch-x.c\n' >> "$fixture/pkgsrc/export.conf"
 reject method 'unknown method profile'
 restore
 # A new overlay category must not exist upstream.
