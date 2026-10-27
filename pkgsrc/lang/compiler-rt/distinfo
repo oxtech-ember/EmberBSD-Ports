@@ -6,6 +6,7 @@ SHA1 (patch-01-gcda-fdopen) = 686e1ccdb859131f0447c4a83962954c003f3b9a
 SHA1 (patch-02-libc-gcda-abi) = 56892bcbed6a5df9ba92227ce4ff70f4374192a6
 SHA1 (patch-03-gcda-allocation-failures) = fcac37f98fbe614ed917221c6358ce31bdc29ab9
 SHA1 (patch-04-profile-diagnostics) = 30ae89b62d6a93fdeabbfa94b366b2272d0505f1
+SHA1 (patch-05-profile-memory) = e2e57173f1fb4ed760d62fc8fb417c18e06a0ffe
 SHA1 (patch-10-compiler-rt-darwin-debug) = be3e2107c62877f5c0eee7e4a2b2b4a3b718afa4
 SHA1 (patch-11-compiler-rt-sunos) = 0097d9d123ff4788b8c8d0237d4ab6f16661408f
 SHA1 (patch-12-compiler-rt-aarch64-esr) = a1f1a0c5cfafbd2e63550c7919238dfbc0f5f9f6
