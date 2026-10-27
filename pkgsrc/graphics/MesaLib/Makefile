@@ -121,9 +121,7 @@ MESON_BINARY.nm=	${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-nm
 MESON_BINARIES+=	llvm-config
 MESON_BINARY.llvm-config=	${LLVM_CONFIG_PATH}
 # Native and cross packages must pass the same staged ELF compatibility gate.
-.if empty(EMBERBSD_SDK_SOURCE:M/*)
-PKG_FAIL_REASON+= "Mesa requires an absolute SDK source for staged ELF verification"
-.endif
+# The actual SDK API check runs in pre-configure before its first use.
 _EMBERBSD_MESA_ELF_CHECK= ${TOOL_PYTHONBIN:Q} -B -E -S ${FILESDIR:Q}/check-dynamic-elf.py \
 	--sdk-source ${EMBERBSD_SDK_SOURCE:U:Q} --arch ${MACHINE_ARCH:Q}
 _EMBERBSD_MESA_STAGED_LIB= ${DESTDIR}${PREFIX}/lib

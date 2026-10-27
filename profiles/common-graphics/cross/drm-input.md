@@ -106,8 +106,10 @@ BMAKE=/absolute/host/bin/bmake ruby ../tests/input-cross.rb \
     /absolute/prepared-pkgsrc /absolute/graphics-cross.mk \
     /absolute/patched-libopeninput-source /absolute/cross/bin/aarch64--netbsd-gcc \
     /absolute/sysroot /absolute/host/bin/meson /absolute/new-input-check
-BMAKE=/absolute/host/bin/bmake ruby ../tests/wlroots-selection.rb \
-    /absolute/prepared-pkgsrc /absolute/graphics-cross.mk /absolute/new-selection-check
+/absolute/native-prefix/bin/python3.15 -B -I -S ../tests/wlroots-selection.py \
+    --pkgsrc /absolute/prepared-pkgsrc --makeconf /absolute/graphics-cross.mk.conf \
+    --host-prefix /absolute/native-prefix --utility-path /absolute/native-tools \
+    --work /absolute/new-selection-check
 ```
 
 `input-cross.rb` executes the actual upstream epoll Meson block. The original

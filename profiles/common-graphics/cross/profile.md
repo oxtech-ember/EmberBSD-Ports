@@ -23,10 +23,19 @@ A private MAKECONF extends the existing common cross MAKECONF:
 WRKOBJDIR=/absolute/new-graphics-work
 EMBERBSD_COMMON_GRAPHICS_CROSS=yes
 EMBERBSD_GRAPHICS_LLVM_CONFIG=/absolute/llvm-metadata-tool/bin/llvm-config
-EMBERBSD_WAYLAND_SCANNER=/absolute/scanner-work/prefix/bin/wayland-scanner
+EMBERBSD_WAYLAND_SCANNER=/absolute/native-prefix/bin/wayland-scanner
 .include "/absolute/prepared-pkgsrc/EMBERBSD-COMMON-GRAPHICS-MK.CONF"
 .endif
 ```
+
+Source acquisition uses the selected pkgsrc configuration and download tools;
+`fetch` and `checksum` do not require a finished target LLVM metadata helper,
+SDK Python API checkout, native Wayland scanner or Mesa shader generators.
+Their existing path, version, receipt and interface checks run at the first
+consuming `pre-configure` phase. This does not relax target platform or license
+checks, source checksums, or any later compiler/runtime validation.
+`../tests/source-phases.py --help` describes the real cached fetch/checksum
+regression and missing-input configure refusals for Mesa and protocols.
 
 The common MAKECONF supplies the host bootstrap configuration, existing cross
 compiler, target sysroot and host prefix. `CROSS_LOCALBASE` remains `/usr/pkg`;
@@ -99,13 +108,15 @@ through `BMAKE` or `PATH`:
 This checks real dependency routing, native policy, three provider refusals,
 the pinned source archive and native generation of all six lexers.
 
-Build the matching scanner with [build-wayland-scanner.sh](build-wayland-scanner.sh).
-Select its `prefix/bin/wayland-scanner` through `EMBERBSD_WAYLAND_SCANNER`.
-Mesa and protocols require the helper's real installed `wayland-scanner.pc`
-and `installed.sha256`. Before configuring they verify the installed payload,
-the scanner version, and the metadata's prefix and executable path.
+Build or reuse the matching scanner from the ordinary native
+[Wayland recipe](wayland.md). Select its `bin/wayland-scanner` through
+`EMBERBSD_WAYLAND_SCANNER`; `TOOLBASE` must name the same native Ports prefix.
+The common selector declares the native Python tool dependency and uses the
+SDK prefix loader to check native tool paths and architecture.
+Mesa and protocols retain the actual installed `wayland-scanner.pc` and require
+its version, prefix and executable path to agree with the selected scanner.
+They do not require the retired standalone builder's `installed.sha256`.
 Mesa additionally checks the target Wayland client version is exactly 1.26.0.
-Use a fresh work directory when changing the selected host tools.
 
 The consumer recipes emit a separate native Meson file. Its pkg-config reads
 the scanner prefix and host `TOOLBASE`, with the inherited target sysroot
@@ -156,10 +167,11 @@ Use real prepared recipes and existing cross tools; these checks build no
 package or dependency:
 
 ```sh
-BMAKE=/absolute/host/bin/bmake ruby ../tests/cross-selection.rb \
-    /absolute/prepared-pkgsrc /absolute/common-cross.mk.conf \
-    /absolute/llvm-metadata-tool/bin/llvm-config \
-    /absolute/scanner-work/prefix/bin/wayland-scanner /absolute/new-test-work
+/absolute/native-prefix/bin/python3.15 -B -I -S ../tests/cross-selection.py \
+    --pkgsrc /absolute/prepared-pkgsrc --makeconf /absolute/common-cross.mk.conf \
+    --llvm-config /absolute/llvm-metadata-tool/bin/llvm-config \
+    --scanner /absolute/native-prefix/bin/wayland-scanner \
+    --utility-path /absolute/native-tools --work /absolute/new-test-work
 BMAKE=/absolute/host/bin/bmake TEST_CMAKE=/absolute/host/bin/cmake \
     ruby ../tests/cmake-cross.rb /absolute/prepared-pkgsrc \
     /absolute/common-cross.mk.conf /absolute/new-cmake-test-work
@@ -168,8 +180,8 @@ BMAKE=/absolute/host/bin/bmake TEST_CMAKE=/absolute/host/bin/cmake \
 The regression parses the complete recipes, generates pkgsrc's actual Meson
 machine files and exercises the production receipt verifier. It checks native
 profile preservation separately through `../tests/profile.sh`. The cross
-parser accepts the selected tool while refusing absent opt-in, wrong paths,
-provider overrides and altered helper bytes. A successful parse does not
+parser refuses absent opt-in and provider overrides; consuming-phase checks
+refuse wrong paths and altered helper bytes. A successful parse does not
 bypass the later requirement for a complete shared LLVM payload.
 
 The CMake regression uses the actual libepoll-shim recipe's emitted arguments.
@@ -218,16 +230,23 @@ BMAKE=/absolute/host/bin/bmake ruby ../tests/x11-autoreconf.rb \
 For scanner consumers, supply the verified patched upstream source trees:
 
 ```sh
-BMAKE=/absolute/host/bin/bmake TEST_PYTHON=/absolute/host/bin/python3.15 \
-TEST_MESON=/absolute/meson.py NINJA=/absolute/host/bin/ninja \
-ruby ../tests/scanner-consumers.rb /absolute/prepared-pkgsrc \
-    /absolute/common-cross.mk.conf /absolute/llvm-metadata-tool/bin/llvm-config \
-    /absolute/scanner-work/prefix/bin/wayland-scanner \
-    /absolute/wayland-protocols-1.49 /absolute/mesa-26.2.4 /absolute/new-scanner-tests
+/absolute/native-prefix/bin/python3.15 -B -I -S ../tests/scanner-consumers.py \
+    --pkgsrc /absolute/prepared-pkgsrc --makeconf /absolute/common-cross.mk.conf \
+    --llvm-config /absolute/llvm-metadata-tool/bin/llvm-config \
+    --scanner /absolute/native-prefix/bin/wayland-scanner \
+    --protocols-source /absolute/wayland-protocols-1.49 \
+    --mesa-source /absolute/mesa-26.2.5 --utility-path /absolute/native-tools \
+    --work /absolute/new-scanner-tests
 ```
 
 This regression runs upstream protocol configuration and generation, checks
 the complete enum-header PLIST, and executes Mesa's actual Wayland module
 call. Its control demonstrates omitted headers without native metadata.
-Production guards reject altered executable bytes and inconsistent metadata.
+The language-less Mesa leaf supplies only the target Wayland version from the
+real recipe through a test-only Meson dependency declaration. It supplies no
+target library, include or linker metadata. The recipe retains its own target
+version check; this leaf does not qualify target dependency discovery.
+Production guards reject nonexecutable or externally selected scanners and
+inconsistent native metadata. Arbitrary byte drift is not an admission rule;
+source and distributed package checksums remain separate integrity checks.
 No target library or package is built by this check.
