@@ -28,3 +28,4 @@ SHA1 (patch-target_i386_nvmm_nvmm-all.c) = 405a3b7ee1c719704bd9517c9dea53f47380c
 SHA1 (patch-target_m68k_helper.c) = eb559e93dfaacf1ce546e89d31243c3933636b16
 SHA1 (patch-util_coroutine-ucontext.c) = 02cdf634e64f7e71029047b93747f192df715e6a
 SHA1 (patch-util_osdep.c) = 94144b7fc3c472ae7b21c3daa4fae62da3288c7d
+SHA1 (patch-scripts_entitlement.sh) = 4c0b57ee40c37995a1e3e2e2bf8de22ad6ee6b85

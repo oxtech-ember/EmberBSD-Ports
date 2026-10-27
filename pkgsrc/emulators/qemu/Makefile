@@ -2,6 +2,8 @@
 
 .include "../../emulators/qemu/Makefile.common"
 
+PKGREVISION=	1
+
 CATEGORIES=	emulators
 
 COMMENT=	Machine emulator and virtualizer
@@ -119,6 +121,15 @@ USER_EMUL=		i386 x86_64
 USER_EMUL=		i386 x86_64
 PLIST.nbd=		yes
 .elif ${OPSYS} == "Darwin"
+# The Darwin image tools are selected native build dependencies.
+BUILD_DEPENDS+= retro68-rez>=0.0.20261022:../../devel/retro68-rez
+BUILD_DEPENDS+= sigtool>=0.2.2nb1:../../devel/sigtool
+BUILD_DEPENDS+= osxutils-setfflags>=1.9.0:../../sysutils/osxutils
+BUILD_DEPENDS+= cctools-codesign-allocate>=1030.6.3:../../devel/cctools
+SUBST_CLASSES+= darwin-image-tools
+SUBST_STAGE.darwin-image-tools= pre-configure
+SUBST_FILES.darwin-image-tools= scripts/entitlement.sh
+SUBST_VARS.darwin-image-tools= TOOLBASE
 USER_EMUL=
 CONFIGURE_ARGS+=	--disable-bsd-user
 PLIST.nbd=		yes
