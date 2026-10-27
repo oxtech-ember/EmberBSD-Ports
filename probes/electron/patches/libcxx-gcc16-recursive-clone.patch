@@ -8,7 +8,10 @@ Keep hidden visibility without forcing recursive std::function clone inlining.
 
 --- a/include/__functional/function.h
 +++ b/include/__functional/function.h
-@@ -172,1 +172,8 @@
+@@ -169,7 +169,14 @@
+   _LIBCPP_HIDE_FROM_ABI explicit __func(_Fp&& __f) : __func_(std::move(__f)) {}
+   _LIBCPP_HIDE_FROM_ABI explicit __func(const _Fp& __f) : __func_(__f) {}
+ 
 -  _LIBCPP_HIDE_FROM_ABI_VIRTUAL __base<_Rp(_ArgTypes...)>* __clone() const override { return new __func(__func_); }
 +#if defined(_LIBCPP_COMPILER_GCC) && !__has_attribute(exclude_from_explicit_instantiation)
 +  // Copying a captured std::function can call this virtual clone again.
@@ -18,3 +21,6 @@ Keep hidden visibility without forcing recursive std::function clone inlining.
 +  _LIBCPP_HIDE_FROM_ABI_VIRTUAL
 +#endif
 +  __base<_Rp(_ArgTypes...)>* __clone() const override { return new __func(__func_); }
+ 
+   _LIBCPP_HIDE_FROM_ABI_VIRTUAL void __clone(__base<_Rp(_ArgTypes...)>* __p) const override {
+     if (__fits_in_sbo()) {

@@ -101,8 +101,9 @@ pins. Its companion uses the pinned upstream gclient to acquire the Git-only
 graph and retain selected CIPD/GCS declarations and LFS object inputs as pending.
 A further recipe stage checks every selected patch repository before invoking
 Electron's upstream patch CLI. No hooks run. The remaining assets, BSD overlay
-adaptations and GN integration are
-necessary before building.
+and GN integration are necessary before building. The next source stage uses
+[one ordered series](electron44/files/source-series.json) for the BSD layer and
+all subsequent Ports patches; see the source preparation contract.
 
 ## Electron runtime packaging
 
@@ -187,93 +188,14 @@ The application package cannot be installed until the target runtime is built.
 
 ## GN and C++ target inputs
 
-The GN and parser patches retain the exact Chromium pin above. Apply them after
-its NetBSD GN adaptations, from the Chromium source root:
+The GN and parser patches retain the exact Chromium pin above. Their only full
+application order is [source-series.json](electron44/files/source-series.json),
+consumed by `prepare-build-sources.py` after Electron's upstream series. Use the
+[source preparation contract](electron44/source-preparation.md#ordered-build-sources)
+instead of applying individual patches to a prepared production tree. The
+individual patch descriptions below explain isolated regression coverage;
+they do not define a second preparation sequence.
 
-```sh
-patch -p0 -F 0 < /absolute/Ports/probes/electron/patches/gn-pkgconfig-libdir.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-readelf.patch
-patch -p0 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-asmflags.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-unbundle-compiler-family.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-wayland-scanner.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-darwin-sdk-metadata.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-bindgen-host-tools.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-netbsd-x64-targets.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-version-netbsd.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-rust-netbsd-execinfo.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-clang-resource-version.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-bindgen-gcc-warnings.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-host-node-inputs.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-qualified-host-node.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/grit-locale-platform-exclusivity.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-netbsd-main.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-mac-host-debug-fission.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/partition-alloc-netbsd-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/nasm-host-string-header.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ffmpeg-gcc16-netbsd-x64-cross-prefix.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ffmpeg-copy-config-netbsd.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base64-policy-invalid-enum-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/asan-invalid-access-gcc16-bounds.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gcc16-base-gsl-blob-alias.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/feature-state-invalid-enum-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-enum-noreturn-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-posix-clang-pragmas-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-mkdir-bool-condition-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-glib-watch-lifetime.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-string-placeholder-emplace-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-string-writeinto-bounded-copy-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-network-enum-noreturn-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/unique-identifier-name-linkage-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-net-ui-enum-noreturn-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-http-enum-noreturn-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-graphics-enum-noreturn-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/x509-presented-name-pop-back-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/mojo-enum-validator-explicit-bool-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-net-mojo-checks-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/net-gcc16-speculative-devirt-bounds.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-net-enum-exits-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ui-accessibility-display-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dbus-bounded-map-signature-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/netbsd-evdev-keycode-api.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-wayland-enum-terminal-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-tflite-explicit-arithmetic-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gbm-elf-weak-symbol-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-network-policy-traits-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ui-event-lottie-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/angle-ast-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/blink-string-vector-declarations-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-tflite-svdf-null-gemm-scratch-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ime-network-endpaths-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/performance-scenario-padding-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/quiche-gcc16-runtime-invariants.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-proc-clang-cfi-attribute.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-explicit-host-go.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-dawn-complete-types-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-dawn-internal-enum-dispatch-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/pffft-simd-debug-validation-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/opus-bsd-alloca-header.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-gcc16-enum-pragmas.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-typed-stun-owner-and-crypto-emplace-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gfx-vector-mask-parentheses-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-codec-level-bounds-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-media-enum-paths-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/skia-reinitializes-attribute-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-bsd-linux-suid-helper.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-dist-target-os.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/cc-ax-position-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/blink-ascii-codepoint-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/dawn-wire-and-single-word-ranges-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gles2-scalar-cache-bounds-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/media-status-enum-noreturn-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/liburlpattern-enum-stream-endpaths-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/webrtc-unused-fragment-counters-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/vector-insert-batch-construction-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-shared-image-complete-type-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/chromium-metrics-tracing-enum-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/linker-launcher.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/gn-mac-gcc16-host.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/base-apple-cxx-platform.patch
-```
 
 Set `dawn_host_go_path` to the absolute path of a supported host Go executable
 that satisfies Dawn's `go.mod`. Both toolchains forward this value to the same
@@ -629,7 +551,7 @@ old checksum header is not an input for the new configuration.
 
 ```sh
 cd /absolute/chromium/src/electron
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/electron-snapshot-checksum-input.patch
+# electron-snapshot-checksum-input.patch is included by source-series.json.
 ```
 
 The [source checker](tests/electron-snapshot-checksum-input.py) verifies both
@@ -643,7 +565,7 @@ permission step local to a NetBSD build host. Apply it from the V8 source root:
 
 ```sh
 cd /absolute/chromium/src/v8
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/v8-host-paxctl.patch
+# v8-host-paxctl.patch is included by source-series.json.
 ```
 
 The Mac host does not run NetBSD `paxctl` on its Mach-O snapshot generator.
@@ -706,11 +628,11 @@ DEPS revision and Electron patches are present:
 
 ```sh
 cd /absolute/chromium/src/third_party/libc++/src
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/libcxx-gcc16-maxsize-function-sbo.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/libcxx-gcc16-recursive-function.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/libcxx-gcc16-recursive-clone.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/libcxx-gcc16-pair-lazy-assign.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/libcxx-gcc16-allocation-object-limit.patch
+# libcxx-gcc16-maxsize-function-sbo.patch is included by source-series.json.
+# libcxx-gcc16-recursive-function.patch is included by source-series.json.
+# libcxx-gcc16-recursive-clone.patch is included by source-series.json.
+# libcxx-gcc16-pair-lazy-assign.patch is included by source-series.json.
+# libcxx-gcc16-allocation-object-limit.patch is included by source-series.json.
 ```
 
 The fix bounds string allocation arithmetic and preserves the allocator-free
@@ -731,10 +653,10 @@ Apply the Abseil and ipcz follow-ups from their separate DEPS source roots:
 
 ```sh
 cd /absolute/chromium/src/third_party/abseil-cpp
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/abseil-btree-node-kind-gcc16.patch
+# abseil-btree-node-kind-gcc16.patch is included by source-series.json.
 cd /absolute/chromium/src/third_party/ipcz
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ipcz-checked-cast-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/ipcz-typed-release-gcc16.patch
+# ipcz-checked-cast-gcc16.patch is included by source-series.json.
+# ipcz-typed-release-gcc16.patch is included by source-series.json.
 ```
 
 The B-tree split uses the leaf/internal choice already made by its caller.
@@ -751,8 +673,8 @@ DEPS source root:
 
 ```sh
 cd /absolute/chromium/src/third_party/angle
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/angle-scratch-move-gcc16.patch
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/angle-netbsd-pci-backend-selection.patch
+# angle-scratch-move-gcc16.patch is included by source-series.json.
+# angle-netbsd-pci-backend-selection.patch is included by source-series.json.
 ```
 
 The ScratchBuffer move constructor initializes its empty destination before
@@ -767,7 +689,7 @@ the Chromium source root after the NetBSD adaptations:
 
 ```sh
 cd /absolute/chromium/src/third_party/perfetto
-patch -p1 -F 0 < /absolute/Ports/probes/electron/patches/perfetto-gcc16-warning-cleanups.patch
+# perfetto-gcc16-warning-cleanups.patch is included by source-series.json.
 ```
 
 The bounded MurmurHash tail loop preserves little-endian hash semantics and
@@ -789,7 +711,7 @@ NetBSD adaptations:
 
 ```sh
 cd /absolute/chromium/src/v8
-patch -p1 -F0 < /absolute/Ports/probes/electron/patches/v8-gcc16-netbsd.patch
+# v8-gcc16-netbsd.patch is included by source-series.json.
 ```
 
 Use the [V8 GCC16 regression guide](tests/v8-gcc16-netbsd.md) to replay the

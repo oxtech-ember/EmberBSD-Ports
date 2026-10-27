@@ -222,3 +222,51 @@ patch pair is a causal rejection test and retains Git's failed application state
     --source-path /absolute/source-tools/bin \
     --electron-source /absolute/electron-pristine
 ```
+
+## Ordered build sources
+
+[prepare-build-sources.py](files/prepare-build-sources.py) consumes the pinned
+BSD overlay and [source-series.json](files/source-series.json). This is the
+single full application order for the additional NetBSD and GN/C++ patches.
+It reads committed source preimages from the existing Git graph, prepares a
+separate touched-file tree and uses strict Git patch matching for the ordered
+Ports layer. It never runs gclient, hooks, configure or a compiler.
+
+```sh
+/absolute/control-python -B -I -S \
+  probes/electron/electron44/files/prepare-build-sources.py \
+  --workspace /absolute/electron-workspace \
+  --pkgsrc /absolute/pinned-pkgsrc-checkout \
+  --archive /absolute/distfiles/kikadf-chromium-nb-v151.1.tar.gz \
+  --patch-root /absolute/Ports/probes/electron/patches \
+  --git /absolute/git --patch /absolute/gpatch \
+  --destination /absolute/new-source-preparation
+```
+
+Add `--apply` to materialize the result while holding the normal exclusive
+workspace ownership. Every target is checked before the first write. Only its
+exact committed preimage or exact prepared result is accepted, so the operation
+can resume after an interrupted write without applying a patch twice. It rejects
+unrelated local changes and symlink paths. Completion metadata is replaced
+atomically in `source-inputs/ports-build-sources.json`. This describes prepared
+source bytes and is not compiler, package or runtime acceptance.
+
+The additional layer replaces the former combined E12 patch. Duplicate BSD
+files and binary host artifacts are removed; host tools come from common Ports.
+The obsolete Apple Clang diagnostic workarounds and fabricated zlib metadata are
+not applied. The selected SDK supplies native tools and target package metadata.
+The old Clang21 resource rewrite is superseded explicitly in the series. A
+context-only update to the recursive `std::function` clone patch permits strict
+Git matching without changing its C++ behavior.
+
+The full pinned-source check applies 1,632 BSD patches and 97 ordered Ports
+patches. Eight tiny real Git/patch regressions check order, pin mismatch,
+all-before-write refusal, symlinks, changed prepared bytes and repeat application:
+
+```sh
+/absolute/control-python -B -I -S probes/electron/tests/electron-build-sources.py \
+  --git /absolute/git --patch /absolute/gpatch
+```
+
+Remaining dependency assets and the ordinary GN/Ninja recipe binding are
+separate work. Source preparation alone does not establish a complete build.

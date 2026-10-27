@@ -1,0 +1,1585 @@
+Chromium/Electron: preserve the additional NetBSD and explicit cross-build changes.
+
+Origin: EmberBSD (AI-assisted), derived from e12-cross-adaptations.patch at
+Ports46f7a64c and rebased on the committed Electron/BSD source preparation.
+BSD support and its license remain owned by the pinned chromium-nb overlay.
+This layer omits duplicate overlay files, downloaded tools, fabricated pkg-config
+metadata and obsolete Apple Clang diagnostic workarounds. Native tool selection
+is completed by the following patches in source-series.json.
+
+diff --git a/base/BUILD.gn b/base/BUILD.gn
+--- a/base/BUILD.gn
++++ b/base/BUILD.gn
+@@ -1207,6 +1207,15 @@
+       "kvm",
+       "epoll-shim",
+     ]
++
++    # EmberBSD cross profile (E12): epoll-shim headers live under the pkg
++    # prefix inside the cross sysroot; native NetBSD resolves them through
++    # the pkgsrc buildlink include path.
++    if (is_netbsd && host_os == "mac") {
++      cflags = [
++        "-isystem${emberbsd_target_sysroot}/usr/pkg/include/libepoll-shim",
++      ]
++    }
+   }
+ 
+   if (is_freebsd) {
+diff --git a/base/base_paths_posix.cc b/base/base_paths_posix.cc
+--- a/base/base_paths_posix.cc
++++ b/base/base_paths_posix.cc
+@@ -128,7 +128,7 @@
+         if ((cpath = getenv("CHROME_EXE_PATH")) != NULL)
+           *result = FilePath(cpath);
+         else
+-          *result = FilePath("@PREFIX@/lib/chromium/chrome");
++          *result = FilePath("/usr/pkg/lib/chromium/chrome");
+         return true;
+ #if !BUILDFLAG(IS_AIX)
+       }
+diff --git a/base/containers/flat_tree.h b/base/containers/flat_tree.h
+--- a/base/containers/flat_tree.h
++++ b/base/containers/flat_tree.h
+@@ -328,7 +328,7 @@
+   iterator erase(const_iterator first, const_iterator last);
+   template <typename K = Key>
+     requires(!std::convertible_to<K, const_iterator>)
+-  size_type erase(const KeyT<K>& key);
++  size_type erase(const K& key);
+ 
+   // --------------------------------------------------------------------------
+   // Comparators.
+@@ -336,37 +336,42 @@
+   constexpr key_compare key_comp() const;
+   constexpr value_compare value_comp() const;
+ 
+-  // --------------------------------------------------------------------------
++  // EmberBSD cross profile (E12): GCC treats a KeyT<K> alias parameter as
++  // a non-deduced context and always falls back to K = Key, rejecting the
++  // heterogeneous lookups Clang accepts. Take the key as const K& instead:
++  // the same instantiations resolve, and non-transparent comparators still
++  // fail inside the body for mismatched key types.
++// --------------------------------------------------------------------------
+   // Search operations.
+   //
+   // Search operations have O(log(size)) complexity.
+ 
+   template <typename K = Key>
+-  size_type count(const KeyT<K>& key) const;
++  size_type count(const K& key) const;
+ 
+   template <typename K = Key>
+-  constexpr iterator find(const KeyT<K>& key);
++  constexpr iterator find(const K& key);
+   template <typename K = Key>
+-  constexpr const_iterator find(const KeyT<K>& key) const;
++  constexpr const_iterator find(const K& key) const;
+ 
+   template <typename K = Key>
+-  constexpr bool contains(const KeyT<K>& key) const;
++  constexpr bool contains(const K& key) const;
+ 
+   template <typename K = Key>
+-  constexpr std::pair<iterator, iterator> equal_range(const KeyT<K>& key);
++  constexpr std::pair<iterator, iterator> equal_range(const K& key);
+   template <typename K = Key>
+   constexpr std::pair<const_iterator, const_iterator> equal_range(
+-      const KeyT<K>& key) const;
++      const K& key) const;
+ 
+   template <typename K = Key>
+-  constexpr iterator lower_bound(const KeyT<K>& key);
++  constexpr iterator lower_bound(const K& key);
+   template <typename K = Key>
+-  constexpr const_iterator lower_bound(const KeyT<K>& key) const;
++  constexpr const_iterator lower_bound(const K& key) const;
+ 
+   template <typename K = Key>
+-  constexpr iterator upper_bound(const KeyT<K>& key);
++  constexpr iterator upper_bound(const K& key);
+   template <typename K = Key>
+-  constexpr const_iterator upper_bound(const KeyT<K>& key) const;
++  constexpr const_iterator upper_bound(const K& key) const;
+ 
+   // --------------------------------------------------------------------------
+   // General operations.
+@@ -928,7 +933,7 @@
+            typename flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::
+                const_iterator>)
+ auto flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::erase(
+-    const KeyT<K>& val) -> size_type {
++    const K& val) -> size_type {
+   auto eq_range = equal_range(val);
+   auto res =
+       static_cast<size_type>(std::distance(eq_range.first, eq_range.second));
+@@ -959,7 +964,7 @@
+ template <class Key, class GetKeyFromValue, class KeyCompare, class Container>
+ template <typename K>
+ auto flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::count(
+-    const KeyT<K>& key) const -> size_type {
++    const K& key) const -> size_type {
+   auto eq_range = equal_range(key);
+   return static_cast<size_type>(std::distance(eq_range.first, eq_range.second));
+ }
+@@ -967,14 +972,14 @@
+ template <class Key, class GetKeyFromValue, class KeyCompare, class Container>
+ template <typename K>
+ constexpr auto flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::find(
+-    const KeyT<K>& key) -> iterator {
++    const K& key) -> iterator {
+   return const_cast_it(std::as_const(*this).find(key));
+ }
+ 
+ template <class Key, class GetKeyFromValue, class KeyCompare, class Container>
+ template <typename K>
+ constexpr auto flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::find(
+-    const KeyT<K>& key) const -> const_iterator {
++    const K& key) const -> const_iterator {
+   auto eq_range = equal_range(key);
+   return (eq_range.first == eq_range.second) ? end() : eq_range.first;
+ }
+@@ -982,7 +987,7 @@
+ template <class Key, class GetKeyFromValue, class KeyCompare, class Container>
+ template <typename K>
+ constexpr bool flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::contains(
+-    const KeyT<K>& key) const {
++    const K& key) const {
+   auto lower = lower_bound(key);
+   return lower != end() && !comp_(key, GetKeyFromValue()(*lower));
+ }
+@@ -991,7 +996,7 @@
+ template <typename K>
+ constexpr auto
+ flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::equal_range(
+-    const KeyT<K>& key) -> std::pair<iterator, iterator> {
++    const K& key) -> std::pair<iterator, iterator> {
+   auto res = std::as_const(*this).equal_range(key);
+   return {const_cast_it(res.first), const_cast_it(res.second)};
+ }
+@@ -1000,7 +1005,7 @@
+ template <typename K>
+ constexpr auto
+ flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::equal_range(
+-    const KeyT<K>& key) const -> std::pair<const_iterator, const_iterator> {
++    const K& key) const -> std::pair<const_iterator, const_iterator> {
+   auto lower = lower_bound(key);
+ 
+   KeyValueCompare comp(comp_);
+@@ -1015,7 +1020,7 @@
+ template <typename K>
+ constexpr auto
+ flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::lower_bound(
+-    const KeyT<K>& key) -> iterator {
++    const K& key) -> iterator {
+   return const_cast_it(std::as_const(*this).lower_bound(key));
+ }
+ 
+@@ -1023,7 +1028,7 @@
+ template <typename K>
+ constexpr auto
+ flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::lower_bound(
+-    const KeyT<K>& key) const -> const_iterator {
++    const K& key) const -> const_iterator {
+   return std::ranges::lower_bound(*this, key, KeyValueCompare(comp_));
+ }
+ 
+@@ -1031,7 +1036,7 @@
+ template <typename K>
+ constexpr auto
+ flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::upper_bound(
+-    const KeyT<K>& key) -> iterator {
++    const K& key) -> iterator {
+   return const_cast_it(std::as_const(*this).upper_bound(key));
+ }
+ 
+@@ -1039,7 +1044,7 @@
+ template <typename K>
+ constexpr auto
+ flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::upper_bound(
+-    const KeyT<K>& key) const -> const_iterator {
++    const K& key) const -> const_iterator {
+   return std::ranges::upper_bound(*this, key, KeyValueCompare(comp_));
+ }
+ 
+diff --git a/base/feature_list.cc b/base/feature_list.cc
+--- a/base/feature_list.cc
++++ b/base/feature_list.cc
+@@ -1351,7 +1351,7 @@
+   // Note: The semantics of try_emplace() is that it does not overwrite the
+   // entry if one already exists for the key. Thus, only the first override for
+   // a given feature name takes effect.
+-  overrides_.try_emplace(feature_name, overridden_state, field_trial);
++  overrides_.try_emplace(std::string(feature_name), overridden_state, field_trial);
+ }
+ 
+ void FeatureList::GetFeatureOverridesImpl(std::string* enable_overrides,
+diff --git a/base/i18n/internal/immutable_string.h b/base/i18n/internal/immutable_string.h
+--- a/base/i18n/internal/immutable_string.h
++++ b/base/i18n/internal/immutable_string.h
+@@ -78,7 +78,9 @@
+     explicit HeapString(base::span<const std::string_view> parts);
+     HeapString(const HeapString& other);
+     HeapString& operator=(const HeapString& other);
+-    constexpr HeapString(HeapString&& other) noexcept;
++    // EmberBSD cross (E12): GCC rejects the defaulted constexpr move
++    // ctor; see the matching out-of-line default below.
++    HeapString(HeapString&& other) noexcept;
+     HeapString& operator=(HeapString&&);
+     inline constexpr ~HeapString() = default;
+ 
+@@ -115,7 +117,7 @@
+ 
+   constexpr ImmutableString(const ImmutableString& other);
+   constexpr ImmutableString& operator=(const ImmutableString& other);
+-  constexpr ImmutableString(ImmutableString&& other) noexcept;
++  ImmutableString(ImmutableString&& other) noexcept;
+   constexpr ImmutableString& operator=(ImmutableString&&) noexcept;
+ 
+   // Returns the string as a std::string_view.
+@@ -131,9 +133,12 @@
+   StorageVariantType storage_;
+ };
+ 
+-constexpr ImmutableString::HeapString::HeapString(HeapString&& other) noexcept =
++// EmberBSD cross profile (E12): GCC rejects these defaulted constexpr move
++// constructors (the implicit definitions are not constexpr under GCC with
++// the bundled libc++); plain defaults keep the same semantics.
++inline ImmutableString::HeapString::HeapString(HeapString&& other) noexcept =
+     default;
+-constexpr ImmutableString::ImmutableString(ImmutableString&& other) noexcept =
++inline ImmutableString::ImmutableString(ImmutableString&& other) noexcept =
+     default;
+ inline constexpr ImmutableString& ImmutableString::operator=(
+     ImmutableString&&) noexcept = default;
+diff --git a/base/i18n/language_tag.h b/base/i18n/language_tag.h
+--- a/base/i18n/language_tag.h
++++ b/base/i18n/language_tag.h
+@@ -50,7 +50,7 @@
+   using ImmutableStringType = i18n_internal::ImmutableString;
+ 
+   constexpr LanguageTag(const LanguageTag&) noexcept = default;
+-  constexpr LanguageTag(LanguageTag&& other) noexcept = default;
++  LanguageTag(LanguageTag&& other) noexcept = default;
+   constexpr LanguageTag& operator=(const LanguageTag&) noexcept = default;
+   constexpr LanguageTag& operator=(LanguageTag&&) noexcept = default;
+ 
+diff --git a/base/metrics/runtime_field_trial_overrides.cc b/base/metrics/runtime_field_trial_overrides.cc
+--- a/base/metrics/runtime_field_trial_overrides.cc
++++ b/base/metrics/runtime_field_trial_overrides.cc
+@@ -26,7 +26,7 @@
+ 
+   // If this override is replacing a previous override, remove it first.
+   if (!previous_override_trial_name.empty()) {
+-    auto previous_override = overrides_.find(previous_override_trial_name);
++    auto previous_override = overrides_.find(std::string(previous_override_trial_name));
+     if (previous_override == overrides_.end()) {
+       return false;
+     }
+@@ -82,7 +82,7 @@
+ RuntimeFieldTrialOverrides::GetRuntimeOverride(
+     std::string_view trial_name) const {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+-  auto it = overrides_.find(trial_name);
++  auto it = overrides_.find(std::string(trial_name));
+   if (it == overrides_.end()) {
+     return std::nullopt;
+   }
+diff --git a/base/process/process_handle_openbsd.cc b/base/process/process_handle_openbsd.cc
+--- a/base/process/process_handle_openbsd.cc
++++ b/base/process/process_handle_openbsd.cc
+@@ -62,7 +62,7 @@
+   if ((cpath = getenv("CHROME_EXE_PATH")) != NULL)
+     result = FilePath(cpath);
+   else
+-    result = FilePath("@PREFIX@/lib/chromium/chrome");
++    result = FilePath("/usr/pkg/lib/chromium/chrome");
+ 
+   if (sysctl(mib, std::size(mib), NULL, &len, NULL, 0) != -1) {
+     retvalargs = static_cast<char**>(malloc(len));
+diff --git a/base/process/process_posix.cc b/base/process/process_posix.cc
+--- a/base/process/process_posix.cc
++++ b/base/process/process_posix.cc
+@@ -418,7 +418,7 @@
+ 
+ Time Process::CreationTime() const {
+ // avoid ps pledge in the network process
+-#if !BUILDFLAG(IS_BSD)
++#if !BUILDFLAG(IS_BSD) && !BUILDFLAG(IS_MAC)
+   int mib[] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid(),
+                sizeof(struct kinfo_proc), 0 };
+   struct kinfo_proc *info = nullptr;
+@@ -426,7 +426,7 @@
+ #endif
+   Time ct = Time();
+ 
+-#if !BUILDFLAG(IS_BSD)
++#if !BUILDFLAG(IS_BSD) && !BUILDFLAG(IS_MAC)
+   if (sysctl(mib, std::size(mib), NULL, &info_size, NULL, 0) < 0)
+     goto out;
+ 
+diff --git a/base/profiler/module_cache.cc b/base/profiler/module_cache.cc
+--- a/base/profiler/module_cache.cc
++++ b/base/profiler/module_cache.cc
+@@ -159,7 +159,8 @@
+     uintptr_t address) const {
+   {
+     base::AutoLock locker(lock_);
+-    const auto non_native_module_loc = non_native_modules_.find(address);
++    const auto non_native_module_loc =
++        non_native_modules_.find<uintptr_t>(address);
+     if (non_native_module_loc != non_native_modules_.end()) {
+       return non_native_module_loc->get();
+     }
+diff --git a/base/profiler/register_context_registers.h b/base/profiler/register_context_registers.h
+--- a/base/profiler/register_context_registers.h
++++ b/base/profiler/register_context_registers.h
+@@ -8,7 +8,11 @@
+ #ifndef BASE_PROFILER_REGISTER_CONTEXT_REGISTERS_H_
+ #define BASE_PROFILER_REGISTER_CONTEXT_REGISTERS_H_
+ 
++// EmberBSD cross profile (E12): ptrauth.h exists only in Apple SDKs;
++// the unconditional include breaks NetBSD/arm64.
++#if defined(__APPLE__)
+ #include <ptrauth.h>
++#endif
+ #include <stdint.h>
+ 
+ #include "base/compiler_specific.h"
+diff --git a/base/scoped_observation.h b/base/scoped_observation.h
+--- a/base/scoped_observation.h
++++ b/base/scoped_observation.h
+@@ -102,7 +102,7 @@
+   // Used to mark the observation as dangling untriaged.
+   // TODO(crbug.com/493572976): remove once no observation is dangling.
+   using LeakedDanglingUntriaged =
+-      ScopedObservation<Source, Observer, LeakedDanglingUntriaged>;
++      ScopedObservation<Source, Observer, base::RawPtrTraits::kMayDangle>;
+ 
+   explicit ScopedObservation(Observer* observer) : observer_(observer) {}
+   ScopedObservation(const ScopedObservation&) = delete;
+diff --git a/base/threading/sequence_local_storage_slot.h b/base/threading/sequence_local_storage_slot.h
+--- a/base/threading/sequence_local_storage_slot.h
++++ b/base/threading/sequence_local_storage_slot.h
+@@ -83,7 +83,7 @@
+     if (!slot) {
+       return emplace();
+     }
+-    return slot->external_value.value_as<T>();
++    return slot->external_value.template value_as<T>();
+   }
+ 
+   // Returns a pointer to the value for the current sequence. May be
+@@ -92,7 +92,7 @@
+     auto* value =
+         internal::SequenceLocalStorageMap::GetForCurrentThread().Get(slot_id_);
+     if (value) {
+-      return std::addressof(value->external_value.value_as<T>());
++      return std::addressof(value->external_value.template value_as<T>());
+     }
+     return nullptr;
+   }
+@@ -173,7 +173,7 @@
+     if (!slot) {
+       return emplace();
+     }
+-    return slot->inline_value.value_as<T>();
++    return slot->inline_value.template value_as<T>();
+   }
+ 
+   // Returns a pointer to the value for the current sequence. May be
+@@ -184,7 +184,7 @@
+     if (!slot) {
+       return nullptr;
+     }
+-    return &slot->inline_value.value_as<T>();
++    return &slot->inline_value.template value_as<T>();
+   }
+   const T* GetValuePointer() const {
+     return const_cast<SmallSequenceLocalStorageSlot*>(this)->GetValuePointer();
+@@ -213,7 +213,7 @@
+ 
+     return internal::SequenceLocalStorageMap::GetForCurrentThread()
+         .Set(slot_id_, std::move(value_destructor_pair))
+-        ->inline_value.value_as<T>();
++        ->inline_value.template value_as<T>();
+   }
+ 
+  private:
+diff --git a/base/values.cc b/base/values.cc
+--- a/base/values.cc
++++ b/base/values.cc
+@@ -406,7 +406,7 @@
+ bool DictValue::contains(std::string_view key) const {
+   DCHECK(IsStringUTF8AllowingNoncharacters(key));
+ 
+-  return storage_.contains(key);
++  return storage_.contains(std::string(key));
+ }
+ 
+ void DictValue::clear() {
+@@ -553,7 +553,7 @@
+ 
+   auto wrapped_value = std::make_unique<Value>(std::move(value));
+   auto* raw_value = wrapped_value.get();
+-  storage_.insert_or_assign(key, std::move(wrapped_value));
++  storage_.insert_or_assign(std::string(key), std::move(wrapped_value));
+   return raw_value;
+ }
+ 
+@@ -611,7 +611,7 @@
+ 
+   auto wrapped_value = std::make_unique<Value>(std::move(value));
+   auto* raw_value = wrapped_value.get();
+-  storage_.insert_or_assign(storage_.end(), key, std::move(wrapped_value));
++  storage_.insert_or_assign(storage_.end(), std::string(key), std::move(wrapped_value));
+   return raw_value;
+ }
+ 
+@@ -622,7 +622,7 @@
+   // DictValue&& DictValue::Set(std::string_view key, Value&& value) &&
+ 
+   DCHECK(IsStringUTF8AllowingNoncharacters(key));
+-  storage_.insert_or_assign(key, std::make_unique<Value>(std::move(value)));
++  storage_.insert_or_assign(std::string(key), std::make_unique<Value>(std::move(value)));
+   return std::move(*this);
+ }
+ 
+@@ -673,13 +673,13 @@
+ bool DictValue::Remove(std::string_view key) {
+   DCHECK(IsStringUTF8AllowingNoncharacters(key));
+ 
+-  return storage_.erase(key) > 0;
++  return storage_.erase(std::string(key)) > 0;
+ }
+ 
+ std::optional<Value> DictValue::Extract(std::string_view key) {
+   DCHECK(IsStringUTF8AllowingNoncharacters(key));
+ 
+-  auto it = storage_.find(key);
++  auto it = storage_.find(std::string(key));
+   if (it == storage_.end()) {
+     return std::nullopt;
+   }
+diff --git a/build/config/c++/c++.gni b/build/config/c++/c++.gni
+--- a/build/config/c++/c++.gni
++++ b/build/config/c++/c++.gni
+@@ -48,10 +48,9 @@
+ 
+   # Build atomic support from in-tree compiler-rt.
+   #
+-  # Apple platforms provide the intrinsics from a different library, and the
+-  # implementations in compiler-rt are outdated, so avoid building them in this
+-  # case.
+-  use_llvm_libatomic = !is_apple
++  # The implementation uses Clang's __c11_atomic_* builtins. Apple platforms
++  # provide the intrinsics from a different library.
++  use_llvm_libatomic = is_clang && !is_apple
+ 
+   # Unified modules controls whether we unify sysroot, libc++, and builtins
+   # into a single module.
+diff --git a/build/config/compiler/BUILD.gn b/build/config/compiler/BUILD.gn
+--- a/build/config/compiler/BUILD.gn
++++ b/build/config/compiler/BUILD.gn
+@@ -701,6 +701,35 @@
+     } else {
+       cflags_cc += [ "-std=${standard_prefix}++20" ]
+     }
++
++    # EmberBSD cross profile (E12): the BSD targets land in this branch
++    # (is_linux includes netbsd via the chromium-nb build config).
++    # GCC enforces the single-call inline budget for always_inline lambdas
++    # stricter than Chromium's Clang; raise the budgets for GCC builds.
++    if (!is_clang) {
++      cflags += [
++        "--param=max-inline-insns-single=10000",
++        "--param=max-inline-insns-auto=10000",
++        "--param=large-function-insns=100000",
++        "--param=large-function-growth=1000",
++        "--param=inline-unit-growth=1000",
++      ]
++    }
++
++    # EmberBSD cross profile (E12): system headers of the pkg prefix from
++    # the cross sysroot (glib and friends used by the message loop and UI
++    # stacks). Native NetBSD resolves them through pkgsrc buildlinks.
++    if (is_bsd && host_os == "mac") {
++      assert(emberbsd_target_sysroot != "",
++             "E12 requires the unified EmberBSD target sysroot")
++      cflags += [
++        "-isystem${emberbsd_target_sysroot}/usr/pkg/include",
++        "-isystem${emberbsd_target_sysroot}/usr/pkg/include/glib-2.0",
++        "-isystem${emberbsd_target_sysroot}/usr/pkg/lib/glib-2.0/include",
++        "-isystem${emberbsd_target_sysroot}/usr/pkg/include/libepoll-shim",
++        "-isystem${emberbsd_target_sysroot}/usr/pkg/include/nss",
++      ]
++    }
+   } else if (is_win) {
+     cflags_c += [ "/std:c11" ]
+     if (use_cxx23) {
+@@ -717,10 +746,13 @@
+   } else {
+     cflags_c += [ "-std=c11" ]
+ 
++    # EmberBSD cross profile (E12), mirrors pkgsrc BUILDLINK_TRANSFORM
++    # (-std=c++20 -> -std=gnu++20): BSD asprintf and friends stay visible
++    # in the bundled libc++ bsd_like locale support on every host.
+     if (use_cxx23) {
+-      cflags_cc += [ "-std=c++23" ]
++      cflags_cc += [ "-std=gnu++23" ]
+     } else {
+-      cflags_cc += [ "-std=c++20" ]
++      cflags_cc += [ "-std=gnu++20" ]
+     }
+   }
+ 
+diff --git a/build/config/linux/nss/BUILD.gn b/build/config/linux/nss/BUILD.gn
+--- a/build/config/linux/nss/BUILD.gn
++++ b/build/config/linux/nss/BUILD.gn
+@@ -4,7 +4,7 @@
+ 
+ import("//build/config/linux/pkg_config.gni")
+ 
+-if (is_linux || is_chromeos) {
++if (is_linux || is_chromeos || (current_os == "netbsd" && host_os == "mac")) {
+   # This is a dependency on NSS with no libssl3. On Linux and Chrome OS, we use
+   # NSS for platform certificate integration. We use our own TLS library, so
+   # exclude the one from NSS.
+diff --git a/build/config/linux/pkg-config.py b/build/config/linux/pkg-config.py
+--- a/build/config/linux/pkg-config.py
++++ b/build/config/linux/pkg-config.py
+@@ -60,6 +60,8 @@
+ 
+   libdir = sysroot + '/usr/' + options.system_libdir + '/pkgconfig'
+   libdir += ':' + sysroot + '/usr/share/pkgconfig'
++  if options.system_libdir == 'pkg/lib':
++    libdir += ':' + sysroot + '/usr/pkg/share/pkgconfig'
+   os.environ['PKG_CONFIG_LIBDIR'] = libdir
+   return libdir
+ 
+@@ -112,6 +114,8 @@
+   parser.add_option('-v', action='append', dest='strip_out', type='string')
+   parser.add_option('-s', action='store', dest='sysroot', type='string')
+   parser.add_option('-a', action='store', dest='arch', type='string')
++  parser.add_option('--allow-cross-sysroot', action='store_true',
++                    dest='allow_cross_sysroot', default=False)
+   parser.add_option('--system_libdir', action='store', dest='system_libdir',
+                     type='string', default='lib')
+   parser.add_option('--atleast-version', action='store',
+@@ -125,7 +129,8 @@
+   # If this is run on non-Linux platforms, just return nothing and indicate
+   # success. This allows us to "kind of emulate" a Linux build from other
+   # platforms.
+-  if not sys.platform.startswith(tuple(['linux', 'openbsd', 'freebsd', 'netbsd'])):
++  if (not options.allow_cross_sysroot and
++      not sys.platform.startswith(tuple(['linux', 'openbsd', 'freebsd', 'netbsd']))):
+     if options.dridriverdir or options.libdir:
+       sys.stdout.write("")
+       return 0
+diff --git a/build/config/linux/pkg_config.gni b/build/config/linux/pkg_config.gni
+--- a/build/config/linux/pkg_config.gni
++++ b/build/config/linux/pkg_config.gni
+@@ -59,6 +59,18 @@
+ 
+ common_pkg_config_args = []
+ 
++# EmberBSD cross builds run GN on macOS and use a pkgsrc sysroot. Keep this
++# separate from `sysroot`, which controls Chromium's host and target SDKs.
++_pkg_config_sysroot = sysroot
++_pkg_config_system_libdir = system_libdir
++_emberbsd_cross_pkg_config =
++    host_os == "mac" && current_os == "netbsd" && current_cpu == "arm64" &&
++    emberbsd_target_sysroot != ""
++if (_emberbsd_cross_pkg_config) {
++  _pkg_config_sysroot = emberbsd_target_sysroot
++  _pkg_config_system_libdir = "pkg/lib"
++}
++
+ # Chrome OS uses custom pkg_config wrappers that require absolute paths as
+ # inputs.
+ # See https://chromium-review.googlesource.com/c/chromium/src/+/6506002
+@@ -71,11 +83,11 @@
+     !_pkg_config_requires_abs_path && defined(build_with_chromium) &&
+     build_with_chromium && sysroot != ""
+ 
+-if (sysroot != "") {
++if (_pkg_config_sysroot != "") {
+   if (_pkg_config_requires_abs_path) {
+-    _rebased_sysroot = rebase_path(sysroot)
++    _rebased_sysroot = rebase_path(_pkg_config_sysroot)
+   } else {
+-    _rebased_sysroot = rebase_path(sysroot, root_build_dir)
++    _rebased_sysroot = rebase_path(_pkg_config_sysroot, root_build_dir)
+   }
+   if (_enable_cache) {
+     _cached_results = read_file("cached_results.scope", "scope")
+@@ -89,6 +101,21 @@
+     "-a",
+     current_cpu,
+   ]
++  if (_emberbsd_cross_pkg_config) {
++    common_pkg_config_args += [ "--allow-cross-sysroot" ]
++  }
++  if (_pkg_config_sysroot == emberbsd_target_sysroot &&
++      _emberbsd_cross_pkg_config) {
++    common_pkg_config_args += [
++      "--system_libdir",
++      _pkg_config_system_libdir,
++    ]
++  } else if (target_sysroot != "" && sysroot == target_sysroot) {
++    common_pkg_config_args += [
++      "--system_libdir",
++      system_libdir,
++    ]
++  }
+ }
+ 
+ if (pkg_config != "") {
+diff --git a/build/config/mac/BUILD.gn b/build/config/mac/BUILD.gn
+--- a/build/config/mac/BUILD.gn
++++ b/build/config/mac/BUILD.gn
+@@ -45,11 +45,21 @@
+ # that is Mac-only. Please see that target for advice on what should go in
+ # :runtime_library vs. :compiler.
+ config("runtime_library") {
+-  common_flags = [
+-    "-isysroot",
+-    rebase_path(sysroot, root_build_dir),
+-    "-mmacos-version-min=$mac_deployment_target",
+-  ]
++  # EmberBSD cross profile (E12): mac configs can be evaluated in the
++  # NetBSD default-toolchain context through ($default_toolchain) deps of
++  # host tools; apply mac SDK flags only in a real mac context.
++  common_flags = []
++  if (current_os == "mac") {
++    common_flags = [
++      "-isysroot",
++      rebase_path(sysroot, root_build_dir),
++      "-mmacos-version-min=$mac_deployment_target",
++
++      # EmberBSD cross profile (E12): bundled libc++ bsd_like support calls
++      # asprintf, which _XOPEN_SOURCE alone hides on darwin.
++      "-D_DARWIN_C_SOURCE",
++    ]
++  }
+ 
+   asmflags = common_flags
+   cflags = common_flags
+@@ -57,7 +67,9 @@
+ 
+   # TODO(https://crbug.com/442128549): see if we can convince upstream rust to
+   # add an -isysroot flag instead.
+-  rustenv = [ "SDKROOT=" + rebase_path(sysroot, root_build_dir) ]
++  if (current_os == "mac") {
++    rustenv = [ "SDKROOT=" + rebase_path(sysroot, root_build_dir) ]
++  }
+ }
+ 
+ # On Mac, this is used for everything except static libraries.
+diff --git a/build/config/rust.gni b/build/config/rust.gni
+--- a/build/config/rust.gni
++++ b/build/config/rust.gni
+@@ -68,7 +68,7 @@
+   # Rust targets to be rebuilt, which allows you to update your toolchain and
+   # not break incremental builds.
+   rustc_version = exec_script("//build/gn_run_binary.py",
+-    [ "@PREFIX@/bin/rustc", "-V" ], "trim string")
++    [ "rustc", "-V" ], "trim string")
+ 
+   # Whether artifacts produced by the Rust compiler can participate in ThinLTO.
+   #
+diff --git a/build/config/sysroot.gni b/build/config/sysroot.gni
+--- a/build/config/sysroot.gni
++++ b/build/config/sysroot.gni
+@@ -18,6 +18,10 @@
+   # The path of the sysroot for the current toolchain. If empty, default
+   # sysroot is used.
+   sysroot = ""
++
++  # EmberBSD cross profile (E12): sysroot used for header scans (unified
++  # modules) when the default sysroot is empty in a cross build.
++  emberbsd_target_sysroot = ""
+ }
+ 
+ if (sysroot == "") {
+diff --git a/build/modules/BUILD.gn b/build/modules/BUILD.gn
+--- a/build/modules/BUILD.gn
++++ b/build/modules/BUILD.gn
+@@ -110,7 +110,13 @@
+   }
+ 
+   if (root_include_dir != "") {
+-    system_headers += expand_directory("${sysroot}/${root_include_dir}", true)
++    # EmberBSD cross profile (E12): when no sysroot is set (native NetBSD has
++    # /usr/include on the host), scan the declared target sysroot instead.
++    _scan_root = sysroot
++    if (_scan_root == "") {
++      _scan_root = emberbsd_target_sysroot
++    }
++    system_headers += expand_directory("${_scan_root}/${root_include_dir}", true)
+   }
+ 
+   modulemap = "${target_gen_dir}/module.modulemap"
+diff --git a/build/rust/rust_bindgen.gni b/build/rust/rust_bindgen.gni
+--- a/build/rust/rust_bindgen.gni
++++ b/build/rust/rust_bindgen.gni
+@@ -12,14 +12,14 @@
+   import("//build/toolchain/win/win_toolchain_data.gni")
+ }
+ 
+-_bindgen_path = "@PREFIX@/bin/bindgen"
++_bindgen_path = "bindgen"
+ if (host_os == "win") {
+   _bindgen_path = "${_bindgen_path}.exe"
+ }
+ 
+ # On Windows, the libclang.dll is beside the bindgen.exe, otherwise it is in
+ # ../lib.
+-_libclang_path = "@PREFIX@"
++_libclang_path = "/usr/pkg"
+ if (!use_chromium_rust_toolchain &&
+     (current_cpu == "ppc64" || current_cpu == "s390x")) {
+   _libclang_path = rust_sysroot_absolute + "/lib64"
+diff --git a/build/rust/rust_bindgen_generator.gni b/build/rust/rust_bindgen_generator.gni
+--- a/build/rust/rust_bindgen_generator.gni
++++ b/build/rust/rust_bindgen_generator.gni
+@@ -11,12 +11,12 @@
+   import("//build/toolchain/win/win_toolchain_data.gni")
+ }
+ 
+-_bindgen_path = "@PREFIX@/bin/bindgen"
++_bindgen_path = "bindgen"
+ if (host_os == "win") {
+   _bindgen_path = "${_bindgen_path}.exe"
+ }
+ 
+-_rustfmt_path = "@PREFIX@/bin/rustfmt"
++_rustfmt_path = "rustfmt"
+ if (!use_chromium_rust_toolchain &&
+     (host_cpu == "ppc64" || host_cpu == "s390x")) {
+   _rustfmt_path = rust_sysroot_absolute + "/bin/rustfmt"
+@@ -26,7 +26,7 @@
+ 
+ # On Windows, the libclang.dll is beside the bindgen.exe, otherwise it is in
+ # ../lib.
+-_libclang_path = "@PREFIX@"
++_libclang_path = "clang_base_path"
+ if (!use_chromium_rust_toolchain &&
+     (host_cpu == "ppc64" || host_cpu == "s390x")) {
+   _libclang_path = rust_sysroot_absolute + "/lib64"
+@@ -241,6 +241,16 @@
+       clang_resource_dir,
+     ]
+ 
++    # EmberBSD target libc headers are required when bindgen parses headers
++    # for the GCC16 cross target. This only configures libclang's parser; target
++    # objects are compiled by the GCC16 toolchain.
++    if (emberbsd_target_sysroot != "") {
++      args += [ "-isystem${emberbsd_target_sysroot}/usr/include" ]
++      if (current_os == "netbsd" && current_cpu == "arm64") {
++        args += [ "--target=aarch64-unknown-netbsd" ]
++      }
++    }
++
+     if (is_win) {
+       # On Windows we fall back to using system headers from a sysroot from
+       # depot_tools. This is negotiated by python scripts and the result is
+diff --git a/build/rust/std/BUILD.gn b/build/rust/std/BUILD.gn
+--- a/build/rust/std/BUILD.gn
++++ b/build/rust/std/BUILD.gn
+@@ -141,7 +141,10 @@
+         "execinfo",
+         "pthread",
+       ]
+-    } else if (target_os == "netbsd") {
++    } else if (target_os == "netbsd" && current_os == "netbsd") {
++      # EmberBSD cross profile (E12): the host build-tools toolchain also
++      # evaluates this file while target_os is netbsd; link the BSD libs
++      # only in the matching toolchain context.
+       libs = [
+         "rt",
+         "pthread",
+diff --git a/build/toolchain/apple/toolchain.gni b/build/toolchain/apple/toolchain.gni
+--- a/build/toolchain/apple/toolchain.gni
++++ b/build/toolchain/apple/toolchain.gni
+@@ -941,6 +941,12 @@
+       forward_variables_from(invoker.toolchain_args, "*")
+       toolchain_for_rust_host_build_tools = true
+ 
++      # EmberBSD cross profile (E12): the target build sets is_clang=false
++      # globally for its GCC toolchain; the file-scope args override would
++      # leak into this macOS host toolchain and switch its libc++ link
++      # logic to GCC mode (missing libgcc_s on darwin). Keep it Clang.
++      is_clang = true
++
+       # The host build tools are static release builds to make the Chromium
+       # build faster. They do not need PGO etc, so no official builds.
+       is_debug = false
+diff --git a/build/toolchain/mac/BUILD.gn b/build/toolchain/mac/BUILD.gn
+--- a/build/toolchain/mac/BUILD.gn
++++ b/build/toolchain/mac/BUILD.gn
+@@ -21,6 +21,12 @@
+     toolchain_args = {
+       forward_variables_from(invoker.toolchain_args, "*")
+       current_os = "mac"
++
++      # EmberBSD cross profile (E12): the target build sets is_clang=false
++      # globally for its GCC toolchain; the file-scope args override would
++      # leak into this macOS host toolchain. The host stays Clang.
++      is_clang = true
++
+       if (target_os == "ios") {
+         # Use LLD for the host part of a chrome/ios build.
+         use_lld = true
+diff --git a/chrome/common/chrome_paths.cc b/chrome/common/chrome_paths.cc
+--- a/chrome/common/chrome_paths.cc
++++ b/chrome/common/chrome_paths.cc
+@@ -52,9 +52,9 @@
+ // /usr/share seems like a good choice, see: http://www.pathname.com/fhs/
+ const base::FilePath::CharType kFilepathSinglePrefExtensions[] =
+ #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+-    FILE_PATH_LITERAL("@PREFIX@/share/chromium/extensions");
+-#else
+-    FILE_PATH_LITERAL("@PREFIX@/share/chromium/extensions");
++    FILE_PATH_LITERAL("/usr/pkg/share/chromium/extensions");
++#else
++    FILE_PATH_LITERAL("/usr/pkg/share/chromium/extensions");
+ #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
+ 
+ #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+@@ -467,7 +467,7 @@
+           FILE_PATH_LITERAL("/etc/opt/chrome/native-messaging-hosts"));
+ #elif BUILDFLAG(IS_FREEBSD) || BUILDFLAG(IS_NETBSD)
+       cur = base::FilePath(FILE_PATH_LITERAL(
+-          "@PREFIX@/etc/chromium/native-messaging-hosts"));
++          "/usr/pkg/etc/chromium/native-messaging-hosts"));
+ #elif BUILDFLAG(GOOGLE_CHROME_FOR_TESTING_BRANDING)
+       cur = base::FilePath(FILE_PATH_LITERAL(
+           "/etc/opt/chrome_for_testing/native-messaging-hosts"));
+diff --git a/components/policy/core/common/policy_paths.cc b/components/policy/core/common/policy_paths.cc
+--- a/components/policy/core/common/policy_paths.cc
++++ b/components/policy/core/common/policy_paths.cc
+@@ -20,7 +20,7 @@
+ #elif BUILDFLAG(IS_FREEBSD)
+ const char kPolicyPath[] = "/usr/local/etc/chromium/policies";
+ #elif BUILDFLAG(IS_NETBSD)
+-const char kPolicyPath[] = "@PKG_SYSCONFBASE@/chromium/policies";
++const char kPolicyPath[] = "/etc/chromium/policies";
+ #else
+ const char kPolicyPath[] = "/etc/chromium/policies";
+ #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
+diff --git a/media/ffmpeg/scripts/build_ffmpeg.py b/media/ffmpeg/scripts/build_ffmpeg.py
+--- a/media/ffmpeg/scripts/build_ffmpeg.py
++++ b/media/ffmpeg/scripts/build_ffmpeg.py
+@@ -615,8 +615,15 @@
+     host_arch = ROBO_CONFIGURATION.host_architecture()
+     parallel_jobs = 8
+ 
++    # EmberBSD cross profile (E12): allow generating configs from any host
++    # when the cross toolchain prefix is provided by the build environment.
++    # (A local `os` loop variable below shadows the os module in main().)
++    import os as _ember_os
++    ember_cross = _ember_os.environ.get('EMBER_FFMPEG_CROSS_PREFIX', '')
++
+     if target_os.split('-', 1)[0] != host_os and (host_os != 'linux'
+-                                                  or host_arch != 'x64'):
++                                                  or host_arch != 'x64') \
++            and not ember_cross:
+         print('Cross compilation can only be done from a linux x64 host.')
+         return 1
+ 
+@@ -808,7 +815,15 @@
+                 ])
+         elif target_arch == 'arm64':
+             if target_os != 'android':
+-                if host_arch != 'arm64':
++                # EmberBSD cross profile (E12): honor the cross prefix from
++                # the build environment instead of the linux-gnu default.
++                ember_cross = os.environ.get('EMBER_FFMPEG_CROSS_PREFIX', '')
++                if ember_cross:
++                    configure_flags['Common'].extend([
++                        '--enable-cross-compile',
++                        '--cross-prefix=' + ember_cross,
++                    ])
++                elif host_arch != 'arm64':
+                     configure_flags['Common'].extend([
+                         '--enable-cross-compile',
+                         '--cross-prefix=/usr/bin/aarch64-linux-gnu-',
+@@ -912,12 +927,23 @@
+         ])
+ 
+     if 'win' not in target_os and 'android' not in target_os:
+-        configure_flags['Common'].extend([
+-            '--enable-pic',
+-            '--cc=clang',
+-            '--cxx=clang++',
+-            '--ld=clang',
+-        ])
++        # EmberBSD cross profile (E12): drive the configured cross toolchain
++        # instead of host clang when the prefix is provided.
++        ember_cc = os.environ.get('EMBER_FFMPEG_CROSS_PREFIX', '')
++        if ember_cc:
++            configure_flags['Common'].extend([
++                '--enable-pic',
++                '--cc=' + ember_cc + 'gcc',
++                '--cxx=' + ember_cc + 'g++',
++                '--ld=' + ember_cc + 'g++',
++            ])
++        else:
++            configure_flags['Common'].extend([
++                '--enable-pic',
++                '--cc=clang',
++                '--cxx=clang++',
++                '--ld=clang',
++            ])
+ 
+         # Clang Linux will use the first 'ld' it finds on the path, which will
+         # typically be the system one, so explicitly configure use of Clang's
+diff --git a/net/ntlm/ntlm_buffer_writer.cc b/net/ntlm/ntlm_buffer_writer.cc
+--- a/net/ntlm/ntlm_buffer_writer.cc
++++ b/net/ntlm/ntlm_buffer_writer.cc
+@@ -35,7 +35,7 @@
+ }
+ 
+ bool NtlmBufferWriter::WriteUInt16(uint16_t value) {
+-  base::SpanWriter writer(base::span(buffer_).subspan(cursor_));
++  base::SpanWriter writer{base::span(buffer_).subspan(cursor_)};
+   if (writer.WriteU16LittleEndian(value)) {
+     AdvanceCursor(sizeof(value));
+     return true;
+@@ -44,7 +44,7 @@
+ }
+ 
+ bool NtlmBufferWriter::WriteUInt32(uint32_t value) {
+-  base::SpanWriter writer(base::span(buffer_).subspan(cursor_));
++  base::SpanWriter writer{base::span(buffer_).subspan(cursor_)};
+   if (writer.WriteU32LittleEndian(value)) {
+     AdvanceCursor(sizeof(value));
+     return true;
+@@ -53,7 +53,7 @@
+ }
+ 
+ bool NtlmBufferWriter::WriteUInt64(uint64_t value) {
+-  base::SpanWriter writer(base::span(buffer_).subspan(cursor_));
++  base::SpanWriter writer{base::span(buffer_).subspan(cursor_)};
+   if (writer.WriteU64LittleEndian(value)) {
+     AdvanceCursor(sizeof(value));
+     return true;
+diff --git a/remoting/host/linux/BUILD.gn b/remoting/host/linux/BUILD.gn
+--- a/remoting/host/linux/BUILD.gn
++++ b/remoting/host/linux/BUILD.gn
+@@ -104,53 +104,55 @@
+     "//remoting/host/base",
+   ]
+ }
+-pkg_config("pipewire_config") {
+-  packages = [ "libpipewire-0.3" ]
+-
+-  # Don't link against libpipewire since it's loaded at runtime.
+-  ignore_libs = true
+-}
+-
+-generate_library_loader("pipewire_loader") {
+-  # The generated class will not be in any namespace, so we need to prefix the
+-  # name to avoid name conflicts with other generated library loaders.
+-  name = "RemotingPipewireLoader"
+-
+-  # The output files will be in gen/library_loaders, so we need to add the
+-  # `remoting_` prefix to avoid name conflicts with other generated library
+-  # loaders.
+-  output_h = "remoting_libpipewire.h"
+-  output_cc = "remoting_libpipewire.cc"
+-  header = "<pipewire/pipewire.h>"
+-  config = ":pipewire_config"
+-  functions = [
+-    "pw_init",
+-    "pw_deinit",
+-    "pw_thread_loop_new",
+-    "pw_thread_loop_destroy",
+-    "pw_thread_loop_stop",
+-    "pw_thread_loop_start",
+-    "pw_thread_loop_lock",
+-    "pw_thread_loop_unlock",
+-    "pw_thread_loop_get_loop",
+-    "pw_context_new",
+-    "pw_context_destroy",
+-    "pw_context_connect",
+-    "pw_core_disconnect",
+-    "pw_properties_new",
+-    "pw_stream_new",
+-    "pw_stream_destroy",
+-    "pw_stream_disconnect",
+-    "pw_stream_add_listener",
+-    "pw_stream_connect",
+-    "pw_stream_state_as_string",
+-    "pw_stream_dequeue_buffer",
+-    "pw_stream_queue_buffer",
+-    "pw_stream_get_node_id",
+-    "pw_core_get_registry",
+-    "pw_proxy_add_object_listener",
+-    "pw_proxy_destroy",
+-  ]
++if (rtc_use_pipewire) {
++  pkg_config("pipewire_config") {
++    packages = [ "libpipewire-0.3" ]
++
++    # Don't link against libpipewire since it's loaded at runtime.
++    ignore_libs = true
++  }
++
++  generate_library_loader("pipewire_loader") {
++    # The generated class will not be in any namespace, so we need to prefix the
++    # name to avoid name conflicts with other generated library loaders.
++    name = "RemotingPipewireLoader"
++
++    # The output files will be in gen/library_loaders, so we need to add the
++    # `remoting_` prefix to avoid name conflicts with other generated library
++    # loaders.
++    output_h = "remoting_libpipewire.h"
++    output_cc = "remoting_libpipewire.cc"
++    header = "<pipewire/pipewire.h>"
++    config = ":pipewire_config"
++    functions = [
++      "pw_init",
++      "pw_deinit",
++      "pw_thread_loop_new",
++      "pw_thread_loop_destroy",
++      "pw_thread_loop_stop",
++      "pw_thread_loop_start",
++      "pw_thread_loop_lock",
++      "pw_thread_loop_unlock",
++      "pw_thread_loop_get_loop",
++      "pw_context_new",
++      "pw_context_destroy",
++      "pw_context_connect",
++      "pw_core_disconnect",
++      "pw_properties_new",
++      "pw_stream_new",
++      "pw_stream_destroy",
++      "pw_stream_disconnect",
++      "pw_stream_add_listener",
++      "pw_stream_connect",
++      "pw_stream_state_as_string",
++      "pw_stream_dequeue_buffer",
++      "pw_stream_queue_buffer",
++      "pw_stream_get_node_id",
++      "pw_core_get_registry",
++      "pw_proxy_add_object_listener",
++      "pw_proxy_destroy",
++    ]
++  }
+ }
+ 
+ source_set("utils") {
+@@ -274,22 +276,6 @@
+     "login_session_manager.h",
+     "login_session_server.cc",
+     "login_session_server.h",
+-    "pipewire_audio_capturer.cc",
+-    "pipewire_audio_capturer.h",
+-    "pipewire_audio_injector.cc",
+-    "pipewire_audio_injector.h",
+-    "pipewire_capture_stream.cc",
+-    "pipewire_capture_stream.h",
+-    "pipewire_desktop_capturer.cc",
+-    "pipewire_desktop_capturer.h",
+-    "pipewire_local_input_monitor.cc",
+-    "pipewire_local_input_monitor.h",
+-    "pipewire_mouse_cursor_capturer.cc",
+-    "pipewire_mouse_cursor_capturer.h",
+-    "pipewire_mouse_cursor_monitor.cc",
+-    "pipewire_mouse_cursor_monitor.h",
+-    "pipewire_utils.cc",
+-    "pipewire_utils.h",
+     "portal_capture_stream_manager.cc",
+     "portal_capture_stream_manager.h",
+     "portal_curtain_mode.cc",
+@@ -320,7 +306,6 @@
+   ]
+   deps = [
+     ":gvariant",
+-    ":pipewire_loader",
+     ":remote_session_info_main_headers",
+     ":utils",
+     ":x11",
+@@ -355,6 +340,27 @@
+     "//ui/events/keycodes:xkb",
+     "//ui/gfx/x",
+   ]
++  if (rtc_use_pipewire) {
++    sources += [
++      "pipewire_audio_capturer.cc",
++      "pipewire_audio_capturer.h",
++      "pipewire_audio_injector.cc",
++      "pipewire_audio_injector.h",
++      "pipewire_capture_stream.cc",
++      "pipewire_capture_stream.h",
++      "pipewire_desktop_capturer.cc",
++      "pipewire_desktop_capturer.h",
++      "pipewire_local_input_monitor.cc",
++      "pipewire_local_input_monitor.h",
++      "pipewire_mouse_cursor_capturer.cc",
++      "pipewire_mouse_cursor_capturer.h",
++      "pipewire_mouse_cursor_monitor.cc",
++      "pipewire_mouse_cursor_monitor.h",
++      "pipewire_utils.cc",
++      "pipewire_utils.h",
++    ]
++    deps += [ ":pipewire_loader" ]
++  }
+   libs = [ "systemd" ]
+ }
+ 
+@@ -435,8 +441,6 @@
+     "gnome_display_config_unittest.cc",
+     "gvariant_ref_unittest.cc",
+     "gvariant_type_unittest.cc",
+-    "pipewire_audio_capturer_unittest.cc",
+-    "pipewire_mouse_cursor_capturer_unittest.cc",
+     "test_util.cc",
+     "test_util.h",
+     "unicode_to_keysym_unittest.cc",
+@@ -444,6 +448,12 @@
+     "x11_display_util_unittest.cc",
+     "x_server_clipboard_unittest.cc",
+   ]
++  if (rtc_use_pipewire) {
++    sources += [
++      "pipewire_audio_capturer_unittest.cc",
++      "pipewire_mouse_cursor_capturer_unittest.cc",
++    ]
++  }
+ 
+   if (!remoting_use_x11) {
+     sources -= [
+diff --git a/sandbox/policy/openbsd/sandbox_openbsd.cc b/sandbox/policy/openbsd/sandbox_openbsd.cc
+--- a/sandbox/policy/openbsd/sandbox_openbsd.cc
++++ b/sandbox/policy/openbsd/sandbox_openbsd.cc
+@@ -66,12 +66,12 @@
+ 
+ #define MAXTOKENS	3
+ 
+-#define _UNVEIL_MAIN		"@PKG_SYSCONFBASE@/chromium/unveil.main";
+-#define _UNVEIL_GPU		"@PKG_SYSCONFBASE@/chromium/unveil.gpu";
+-#define _UNVEIL_UTILITY_NETWORK	"@PKG_SYSCONFBASE@/chromium/unveil.utility_network";
+-#define _UNVEIL_UTILITY_AUDIO	"@PKG_SYSCONFBASE@/chromium/unveil.utility_audio";
+-#define _UNVEIL_UTILITY_VIDEO	"@PKG_SYSCONFBASE@/chromium/unveil.utility_video";
+-#define _UNVEIL_CDM		"@PKG_SYSCONFBASE@/chromium/unveil.cdm";
++#define _UNVEIL_MAIN		"/etc/chromium/unveil.main";
++#define _UNVEIL_GPU		"/etc/chromium/unveil.gpu";
++#define _UNVEIL_UTILITY_NETWORK	"/etc/chromium/unveil.utility_network";
++#define _UNVEIL_UTILITY_AUDIO	"/etc/chromium/unveil.utility_audio";
++#define _UNVEIL_UTILITY_VIDEO	"/etc/chromium/unveil.utility_video";
++#define _UNVEIL_CDM		"/etc/chromium/unveil.cdm";
+ 
+ namespace sandbox {
+ namespace policy {
+@@ -336,7 +336,7 @@
+ 
+   switch(sandbox_type) {
+     case sandbox::mojom::Sandbox::kNoSandbox:
+-      SetPledge(NULL, "@PKG_SYSCONFBASE@/chromium/pledge.main");
++      SetPledge(NULL, "/etc/chromium/pledge.main");
+       break;
+     case sandbox::mojom::Sandbox::kRenderer:
+       // prot_exec needed by v8
+@@ -348,13 +348,13 @@
+       SetPledge("stdio drm inet rpath flock cpath wpath prot_exec recvfd sendfd unix", NULL);
+       break;
+     case sandbox::mojom::Sandbox::kAudio:
+-      SetPledge(NULL, "@PKG_SYSCONFBASE@/chromium/pledge.utility_audio");
++      SetPledge(NULL, "/etc/chromium/pledge.utility_audio");
+       break;
+     case sandbox::mojom::Sandbox::kNetwork:
+-      SetPledge(NULL, "@PKG_SYSCONFBASE@/chromium/pledge.utility_network");
++      SetPledge(NULL, "/etc/chromium/pledge.utility_network");
+       break;
+     case sandbox::mojom::Sandbox::kVideoCapture:
+-      SetPledge(NULL, "@PKG_SYSCONFBASE@/chromium/pledge.utility_video");
++      SetPledge(NULL, "/etc/chromium/pledge.utility_video");
+       break;
+     case sandbox::mojom::Sandbox::kCdm:
+       SetPledge("stdio rpath flock recvfd sendfd", NULL);
+diff --git a/services/device/hid/hid_service_freebsd.cc b/services/device/hid/hid_service_freebsd.cc
+--- a/services/device/hid/hid_service_freebsd.cc
++++ b/services/device/hid/hid_service_freebsd.cc
+@@ -228,7 +228,7 @@
+     struct sockaddr_un sa;
+ 
+     sa.sun_family = AF_UNIX;
+-    strlcpy(sa.sun_path, "@VARBASE@/run/devd.seqpacket.pipe", sizeof(sa.sun_path));
++    strlcpy(sa.sun_path, "/var/run/devd.seqpacket.pipe", sizeof(sa.sun_path));
+     if (connect(devd_fd, (struct sockaddr *) &sa, sizeof(sa)) < 0) {
+       close(devd_fd);
+       return;
+diff --git a/services/device/time_zone_monitor/time_zone_monitor_linux.cc b/services/device/time_zone_monitor/time_zone_monitor_linux.cc
+--- a/services/device/time_zone_monitor/time_zone_monitor_linux.cc
++++ b/services/device/time_zone_monitor/time_zone_monitor_linux.cc
+@@ -133,7 +133,7 @@
+     // reasonable.
+     const auto kFilesToWatch = std::to_array<const char*>({
+ #if BUILDFLAG(IS_BSD)
+-        "@PKG_SYSCONFBASE@/localtime",
++        "/etc/localtime",
+ #else
+         "/etc/timezone",
+         "/etc/TZ",
+diff --git a/third_party/fontconfig/src/config-fixups.h b/third_party/fontconfig/src/config-fixups.h
+--- a/third_party/fontconfig/src/config-fixups.h
++++ b/third_party/fontconfig/src/config-fixups.h
+@@ -23,6 +23,12 @@
+ 
+ /* This header file is supposed to be included in config.h */
+ 
++/* NetBSD exposes locale-specific formatting without uselocale(). */
++#ifdef __NetBSD__
++#  define HAVE_VASPRINTF_L 1
++#  define HAVE_STRUCT_STATVFS_F_FSTYPENAME 1
++#endif
++
+ /* just a hack to build the fat binaries:
+  * https://bugs.freedesktop.org/show_bug.cgi?id=20208
+  */
+diff --git a/third_party/fontconfig/src/src/fccompat.c b/third_party/fontconfig/src/src/fccompat.c
+--- a/third_party/fontconfig/src/src/fccompat.c
++++ b/third_party/fontconfig/src/src/fccompat.c
+@@ -373,7 +373,7 @@
+ #endif
+ }
+ 
+-#ifndef _WIN32
++#if !defined(_WIN32) && !HAVE_VASPRINTF_L && !HAVE__VSNPRINTF_L
+ FcLocale
+ FcLocaleSetCurrent (FcLocale loc)
+ {
+diff --git a/third_party/fontconfig/src/src/fcint.h b/third_party/fontconfig/src/src/fcint.h
+--- a/third_party/fontconfig/src/src/fcint.h
++++ b/third_party/fontconfig/src/src/fcint.h
+@@ -971,7 +971,7 @@
+ FcPrivate FcLocale
+ FcLocaleCreate (FcLocaleMask mask, const char *locale);
+ 
+-#ifndef _WIN32
++#if !defined(_WIN32) && !HAVE_VASPRINTF_L && !HAVE__VSNPRINTF_L
+ FcPrivate FcLocale
+ FcLocaleSetCurrent (FcLocale loc);
+ #endif
+diff --git a/third_party/libc++/src/include/__functional/function.h b/third_party/libc++/src/include/__functional/function.h
+--- a/third_party/libc++/src/include/__functional/function.h
++++ b/third_party/libc++/src/include/__functional/function.h
+@@ -399,14 +399,19 @@
+   }
+ 
+ private:
++#if defined(__GNUC__) && !defined(__clang__)
++#  define _LIBCPP_E12_POLICY_ATTR
++#else
++#  define _LIBCPP_E12_POLICY_ATTR _LIBCPP_HIDE_FROM_ABI
++#endif
+   template <typename _Fun>
+-  _LIBCPP_HIDE_FROM_ABI static void* __large_clone(const void* __s) {
++  _LIBCPP_E12_POLICY_ATTR static void* __large_clone(const void* __s) {
+     const _Fun* __f = static_cast<const _Fun*>(__s);
+     return new _Fun(*__f);
+   }
+ 
+   template <typename _Fun>
+-  _LIBCPP_HIDE_FROM_ABI static void __large_destroy(void* __s) {
++  _LIBCPP_E12_POLICY_ATTR static void __large_destroy(void* __s) {
+     delete static_cast<_Fun*>(__s);
+   }
+ };
+diff --git a/third_party/libdrm/BUILD.gn b/third_party/libdrm/BUILD.gn
+--- a/third_party/libdrm/BUILD.gn
++++ b/third_party/libdrm/BUILD.gn
+@@ -36,8 +36,11 @@
+   # https://patchwork.kernel.org/patch/9628231/ lands.
+   cflags = [ "-Wno-#pragma-messages" ]
+ 
+-  # glibc version >= 2.25 explicitly include <sys/sysmacros.h>
+-  cflags += [ "-DMAJOR_IN_SYSMACROS=1" ]
++  # glibc version >= 2.25 explicitly includes <sys/sysmacros.h>.
++  # NetBSD provides major/minor/makedev through <sys/types.h>.
++  if (!is_netbsd) {
++    cflags += [ "-DMAJOR_IN_SYSMACROS=1" ]
++  }
+ 
+   if (is_clang) {
+     cflags += [
+diff --git a/third_party/libdrm/src/xf86drm.c b/third_party/libdrm/src/xf86drm.c
+--- a/third_party/libdrm/src/xf86drm.c
++++ b/third_party/libdrm/src/xf86drm.c
+@@ -443,7 +443,7 @@
+ 
+         if (AMD_FMT_MOD_GET(DCC, modifier)) {
+             fprintf(fp, ",DCC,DCC_MAX_COMPRESSED_BLOCK=%uB",
+-                    64 << AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier));
++                    (unsigned)(64 << AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier)));
+ 
+             /* Other DCC fields are unused by GFX12. */
+         }
+@@ -492,7 +492,7 @@
+             }
+ 
+             fprintf(fp, ",DCC,DCC_MAX_COMPRESSED_BLOCK=%uB",
+-                    64 << AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier));
++                    (unsigned)(64 << AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier)));
+ 
+             if (AMD_FMT_MOD_GET(DCC_INDEPENDENT_64B, modifier))
+                 fprintf(fp, ",DCC_INDEPENDENT_64B");
+diff --git a/third_party/libdrm/src/xf86drmMode.h b/third_party/libdrm/src/xf86drmMode.h
+--- a/third_party/libdrm/src/xf86drmMode.h
++++ b/third_party/libdrm/src/xf86drmMode.h
+@@ -436,7 +436,11 @@
+ extern drmModePlanePtr drmModeGetPlane(int fd, uint32_t plane_id);
+ extern int drmModeSetPlane(int fd, uint32_t plane_id, uint32_t crtc_id,
+ 			   uint32_t fb_id, uint32_t flags,
++#if defined(__NetBSD__)
++			   uint32_t crtc_x, uint32_t crtc_y,
++#else
+ 			   int32_t crtc_x, int32_t crtc_y,
++#endif
+ 			   uint32_t crtc_w, uint32_t crtc_h,
+ 			   uint32_t src_x, uint32_t src_y,
+ 			   uint32_t src_w, uint32_t src_h);
+diff --git a/third_party/pdfium/core/fxge/linux/fx_linux_impl.cpp b/third_party/pdfium/core/fxge/linux/fx_linux_impl.cpp
+--- a/third_party/pdfium/core/fxge/linux/fx_linux_impl.cpp
++++ b/third_party/pdfium/core/fxge/linux/fx_linux_impl.cpp
+@@ -170,9 +170,9 @@
+         pInfo->AddPath(path);
+       }
+     } else {
+-        pInfo->AddPath("@X11BASE@/lib/X11/fonts/Type1");
+-        pInfo->AddPath("@X11BASE@/lib/X11/fonts/TTF");
+-        pInfo->AddPath("@PREFIX@/share/fonts");
++        pInfo->AddPath("/usr/X11R7/lib/X11/fonts/Type1");
++        pInfo->AddPath("/usr/X11R7/lib/X11/fonts/TTF");
++        pInfo->AddPath("/usr/pkg/share/fonts");
+     }
+     return pInfo;
+   }
+diff --git a/third_party/perfetto/include/perfetto/base/build_config.h b/third_party/perfetto/include/perfetto/base/build_config.h
+--- a/third_party/perfetto/include/perfetto/base/build_config.h
++++ b/third_party/perfetto/include/perfetto/base/build_config.h
+@@ -203,6 +203,25 @@
+ #error OS not supported (see build_config.h)
+ #endif
+ 
++// EmberBSD cross profile (E12): non-BSD platform branches above do not
++// define the BSD flags (added by the chromium-nb patchset), but sources
++// such as base/event_fd.cc and base/android_utils.cc test them
++// unconditionally when the host builds with a non-BSD toolchain.
++// Default them to off there.
++#ifndef PERFETTO_BUILDFLAG_DEFINE_PERFETTO_OS_BSD
++#define PERFETTO_BUILDFLAG_DEFINE_PERFETTO_OS_BSD() 0
++#endif
++#ifndef PERFETTO_BUILDFLAG_DEFINE_PERFETTO_OS_OPENBSD
++#define PERFETTO_BUILDFLAG_DEFINE_PERFETTO_OS_OPENBSD() 0
++#endif
++#ifndef PERFETTO_BUILDFLAG_DEFINE_PERFETTO_OS_NETBSD
++#define PERFETTO_BUILDFLAG_DEFINE_PERFETTO_OS_NETBSD() 0
++#endif
++#ifndef PERFETTO_BUILDFLAG_DEFINE_PERFETTO_OS_FREEBSD
++#define PERFETTO_BUILDFLAG_DEFINE_PERFETTO_OS_FREEBSD() 0
++#endif
++
++
+ #if defined(__clang__)
+ #define PERFETTO_BUILDFLAG_DEFINE_PERFETTO_COMPILER_CLANG() 1
+ #define PERFETTO_BUILDFLAG_DEFINE_PERFETTO_COMPILER_GCC() 0
+diff --git a/third_party/perfetto/src/base/utils.cc b/third_party/perfetto/src/base/utils.cc
+--- a/third_party/perfetto/src/base/utils.cc
++++ b/third_party/perfetto/src/base/utils.cc
+@@ -256,7 +256,7 @@
+   self_path = std::string(buf, static_cast<size_t>(size));
+ #elif PERFETTO_BUILDFLAG(PERFETTO_OS_BSD)
+   char *buf;
+-  const char *cpath = "@PREFIX@/lib/chromium/chrome";
++  const char *cpath = "/usr/pkg/lib/chromium/chrome";
+   if ((buf = getenv("CHROME_EXE_PATH")) != NULL)
+     self_path = std::string(buf);
+   else
+diff --git a/third_party/test_fonts/fontconfig/BUILD.gn b/third_party/test_fonts/fontconfig/BUILD.gn
+--- a/third_party/test_fonts/fontconfig/BUILD.gn
++++ b/third_party/test_fonts/fontconfig/BUILD.gn
+@@ -26,7 +26,7 @@
+ 
+   copy("fonts_conf") {
+     sources = [ "fonts.conf" ]
+-    outputs = [ "$root_out_dir@PKG_SYSCONFBASE@/fontconfig/{{source_file_part}}" ]
++    outputs = [ "$root_out_dir/etc/fontconfig/{{source_file_part}}" ]
+   }
+ 
+   if (current_toolchain == host_toolchain) {
+@@ -47,7 +47,7 @@
+         "//third_party/test_fonts",
+       ]
+       args = []
+-      inputs = [ "$root_out_dir@PKG_SYSCONFBASE@/fontconfig/fonts.conf" ]
++      inputs = [ "$root_out_dir/etc/fontconfig/fonts.conf" ]
+       outputs = [
+         "$root_out_dir/fontconfig_caches/fb5c91b2895aa445d23aebf7f9e2189c-le64.cache-9",
+         "$root_out_dir/fontconfig_caches/CACHEDIR.TAG",
+diff --git a/third_party/webrtc/p2p/base/port_interface.h b/third_party/webrtc/p2p/base/port_interface.h
+--- a/third_party/webrtc/p2p/base/port_interface.h
++++ b/third_party/webrtc/p2p/base/port_interface.h
+@@ -52,7 +52,7 @@
+   virtual ~PortInterface();
+ 
+   virtual IceCandidateType Type() const = 0;
+-  virtual const Network* Network() const = 0;
++  virtual const ::webrtc::Network* Network() const = 0;
+ 
+   // Methods to set/get ICE role and tiebreaker values.
+   virtual void SetIceRole(IceRole role) = 0;
+diff --git a/ui/base/l10n/chromium_language_matcher.cc b/ui/base/l10n/chromium_language_matcher.cc
+--- a/ui/base/l10n/chromium_language_matcher.cc
++++ b/ui/base/l10n/chromium_language_matcher.cc
+@@ -4,7 +4,7 @@
+ 
+ #include "ui/base/l10n/chromium_language_matcher.h"
+ 
+-#include <iterator>
++#include <array>
+ #include <vector>
+ 
+ #include "base/containers/fixed_flat_set.h"
+@@ -20,15 +20,15 @@
+ using ::base::i18n::LanguageTag;
+ using ::base::i18n::LanguageTagMatcher;
+ 
+-constexpr auto kPlatformLocales = std::to_array<LanguageTag>({
++constexpr std::array kPlatformLocales{
+ #define PLATFORM_LOCALE(locale) GetKnownLanguageTag(#locale),
+ // The below is generated by tools/l10n/generate_locales_list.py, which is
+ // run in the //ui/base:locales_list_gen build rule.
+ #include "ui/base/l10n/l10n_util_locales_list.inc"
+ #undef PLATFORM_LOCALE
+-});
+-
+-constexpr auto kAcceptLanguageList = std::to_array<LanguageTag>({
++};
++
++constexpr std::array kAcceptLanguageList{
+     GetKnownLanguageTag("af"),  // Afrikaans
+     GetKnownLanguageTag("ak"),  // Twi
+     GetKnownLanguageTag("am"),  // Amharic
+@@ -219,7 +219,7 @@
+     GetKnownLanguageTag("zh-HK"),     // Chinese (Hong Kong)
+     GetKnownLanguageTag("zh-TW"),     // Chinese (Taiwan)
+     GetKnownLanguageTag("zu"),        // Zulu
+-});
++};
+ 
+ }  // namespace
+ 
+diff --git a/ui/events/gesture_event_details.cc b/ui/events/gesture_event_details.cc
+--- a/ui/events/gesture_event_details.cc
++++ b/ui/events/gesture_event_details.cc
+@@ -11,15 +11,6 @@
+ #include "base/check_op.h"
+ #include "base/containers/span.h"
+ #include "base/notreached.h"
+-
+-// Since ui::GestureEventDetails::Details is a union structure that corresponds
+-// to only one EventType, allow conversion to a byte span to avoid using memset
+-// and memcmp.
+-namespace base {
+-template <>
+-inline constexpr bool
+-    kCanSafelyConvertToByteSpan<ui::GestureEventDetails::Details> = true;
+-}
+ 
+ namespace ui {
+ 
+@@ -91,8 +82,8 @@
+ 
+ bool GestureEventDetails::operator==(const GestureEventDetails& other) const {
+   return type_ == other.type_ &&
+-         base::byte_span_from_ref(data_) ==
+-             base::byte_span_from_ref(other.data_) &&
++         base::byte_span_from_ref(base::allow_nonunique_obj, data_) ==
++             base::byte_span_from_ref(base::allow_nonunique_obj, other.data_) &&
+          device_type_ == other.device_type_ &&
+          touch_points_ == other.touch_points_ &&
+          bounding_box_ == other.bounding_box_;
+@@ -131,7 +122,8 @@
+ }
+ 
+ GestureEventDetails::Details::Details() {
+-  std::ranges::fill(base::byte_span_from_ref(*this), 0);
++  std::ranges::fill(base::byte_span_from_ref(base::allow_nonunique_obj, *this),
++                    0);
+ }
+ 
+ }  // namespace ui
+diff --git a/ui/events/keycodes/dom/keycode_converter.cc b/ui/events/keycodes/dom/keycode_converter.cc
+--- a/ui/events/keycodes/dom/keycode_converter.cc
++++ b/ui/events/keycodes/dom/keycode_converter.cc
+@@ -15,7 +15,7 @@
+ #include "ui/events/keycodes/dom/dom_code.h"
+ #include "ui/events/keycodes/dom/dom_key.h"
+ 
+-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD) || BUILDFLAG(IS_NETBSD)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
+ #include <linux/input.h>
+ #endif
+ 
+@@ -67,7 +67,7 @@
+ #undef DOM_KEY_UNI
+ #undef DOM_KEY_MAP_DECLARATION_END
+ 
+-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)  || BUILDFLAG(IS_NETBSD)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
+ 
+ // The offset between XKB Keycode and evdev code.
+ constexpr int kXkbKeycodeOffset = 8;
+@@ -105,7 +105,7 @@
+   return static_cast<uint32_t>(evdev_code + kXkbKeycodeOffset);
+ }
+ 
+-#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
++#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+ 
+@@ -202,7 +202,9 @@
+   // TODO(crbug.com/40151699): Replace with evdev.
+   return static_cast<uint32_t>(DomCodeToNativeKeycode(code));
+ }
+-
++#endif
++
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
+ // static
+ DomCode KeycodeConverter::EvdevCodeToDomCode(int evdev_code) {
+   // Currently XKB keycode is the native keycode.
+@@ -216,7 +218,7 @@
+   // TODO(crbug.com/40151699): Replace with evdev.
+   return XkbKeycodeToEvdevCode(DomCodeToXkbKeycode(code));
+ }
+-#endif
++#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+ // static
+diff --git a/ui/events/keycodes/dom/keycode_converter.h b/ui/events/keycodes/dom/keycode_converter.h
+--- a/ui/events/keycodes/dom/keycode_converter.h
++++ b/ui/events/keycodes/dom/keycode_converter.h
+@@ -66,12 +66,14 @@
+   static int DomCodeToNativeKeycode(DomCode code);
+ 
+ #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD) || BUILDFLAG(IS_NETBSD)
+-  // Convert a XKB keycode into a DomCode.
++  // Convert an XKB keycode into a DomCode.
+   static DomCode XkbKeycodeToDomCode(uint32_t xkb_keycode);
+ 
+-  // Convert a DomCode into a XKB keycode.
++  // Convert a DomCode into an XKB keycode.
+   static uint32_t DomCodeToXkbKeycode(DomCode code);
++#endif
+ 
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FREEBSD)
+   // Convert an evdev code into DomCode.
+   static DomCode EvdevCodeToDomCode(int evdev_code);
+ 

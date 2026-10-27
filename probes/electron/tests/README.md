@@ -17,6 +17,18 @@ uses control Python and an explicit Git executable; no installed SDK is needed:
   --source-path /absolute/source-tools/bin --electron-source /absolute/electron-pristine
 ```
 
+The ordered build-source regression uses the same explicit Git/patch inputs:
+
+```sh
+/absolute/control-python -B -I -S probes/electron/tests/electron-build-sources.py \
+  --git /absolute/git --patch /absolute/gpatch
+```
+
+It executes real tiny Git repositories and patches, including all-before-write
+refusals and idempotent materialization. The full pinned-source preparation is
+specified by the recipe's `source-series.json`; individual tests below select
+isolated leaf inputs and must not reapply patches to that prepared workspace.
+
 Run the remaining build regressions with host CPython 3.15 and its standard
 library. Integration
 tests select an SDK API 1 source with `--sdk-source` and check its module origin.

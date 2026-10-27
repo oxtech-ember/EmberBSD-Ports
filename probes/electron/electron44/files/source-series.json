@@ -1,0 +1,494 @@
+{
+  "version": 1,
+  "stage": "after-pinned-electron-upstream-and-bsd-patches",
+  "patches": [
+    {
+      "path": "netbsd-cross-source.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gn-pkgconfig-libdir.patch",
+      "strip": 0,
+      "root": ""
+    },
+    {
+      "path": "gn-unbundle-readelf.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gn-unbundle-asmflags.patch",
+      "strip": 0,
+      "root": ""
+    },
+    {
+      "path": "gn-unbundle-compiler-family.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gn-wayland-scanner.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gn-rust-bindgen-host-tools.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gn-netbsd-x64-targets.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gn-rust-version-netbsd.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gn-rust-netbsd-execinfo.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gn-bindgen-gcc-warnings.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gn-host-node-inputs.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gn-qualified-host-node.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "grit-locale-platform-exclusivity.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "electron-netbsd-main.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gn-mac-host-debug-fission.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "partition-alloc-netbsd-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "nasm-host-string-header.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "ffmpeg-gcc16-netbsd-x64-cross-prefix.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "ffmpeg-copy-config-netbsd.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "base64-policy-invalid-enum-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "asan-invalid-access-gcc16-bounds.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gcc16-base-gsl-blob-alias.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "feature-state-invalid-enum-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "chromium-enum-noreturn-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "base-posix-clang-pragmas-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "base-mkdir-bool-condition-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "base-glib-watch-lifetime.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "base-string-placeholder-emplace-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "base-string-writeinto-bounded-copy-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "chromium-network-enum-noreturn-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "unique-identifier-name-linkage-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "chromium-net-ui-enum-noreturn-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "chromium-http-enum-noreturn-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "chromium-graphics-enum-noreturn-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "x509-presented-name-pop-back-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "mojo-enum-validator-explicit-bool-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "chromium-net-mojo-checks-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "net-gcc16-speculative-devirt-bounds.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "chromium-net-enum-exits-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "ui-accessibility-display-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "dbus-bounded-map-signature-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "netbsd-evdev-keycode-api.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "chromium-wayland-enum-terminal-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "chromium-tflite-explicit-arithmetic-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gbm-elf-weak-symbol-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "chromium-network-policy-traits-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "ui-event-lottie-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "angle-ast-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "blink-string-vector-declarations-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "chromium-tflite-svdf-null-gemm-scratch-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "ime-network-endpaths-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "performance-scenario-padding-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "quiche-gcc16-runtime-invariants.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "dawn-proc-clang-cfi-attribute.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "dawn-explicit-host-go.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "chromium-dawn-complete-types-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "chromium-dawn-internal-enum-dispatch-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "pffft-simd-debug-validation-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "opus-bsd-alloca-header.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "webrtc-gcc16-enum-pragmas.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "webrtc-typed-stun-owner-and-crypto-emplace-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gfx-vector-mask-parentheses-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "webrtc-codec-level-bounds-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "webrtc-media-enum-paths-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "skia-reinitializes-attribute-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "electron-bsd-linux-suid-helper.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "electron-dist-target-os.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "cc-ax-position-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "blink-ascii-codepoint-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "dawn-wire-and-single-word-ranges-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gles2-scalar-cache-bounds-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "media-status-enum-noreturn-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "liburlpattern-enum-stream-endpaths-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "webrtc-unused-fragment-counters-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "vector-insert-batch-construction-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "chromium-shared-image-complete-type-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "chromium-metrics-tracing-enum-gcc16.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "linker-launcher.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gn-mac-gcc16-host.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "base-apple-cxx-platform.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "electron-snapshot-checksum-input.patch",
+      "strip": 1,
+      "root": "electron"
+    },
+    {
+      "path": "v8-host-paxctl.patch",
+      "strip": 1,
+      "root": "v8"
+    },
+    {
+      "path": "libcxx-gcc16-maxsize-function-sbo.patch",
+      "strip": 1,
+      "root": "third_party/libc++/src"
+    },
+    {
+      "path": "libcxx-gcc16-recursive-function.patch",
+      "strip": 1,
+      "root": "third_party/libc++/src"
+    },
+    {
+      "path": "libcxx-gcc16-recursive-clone.patch",
+      "strip": 1,
+      "root": "third_party/libc++/src"
+    },
+    {
+      "path": "libcxx-gcc16-pair-lazy-assign.patch",
+      "strip": 1,
+      "root": "third_party/libc++/src"
+    },
+    {
+      "path": "libcxx-gcc16-allocation-object-limit.patch",
+      "strip": 1,
+      "root": "third_party/libc++/src"
+    },
+    {
+      "path": "abseil-btree-node-kind-gcc16.patch",
+      "strip": 1,
+      "root": "third_party/abseil-cpp"
+    },
+    {
+      "path": "ipcz-checked-cast-gcc16.patch",
+      "strip": 1,
+      "root": "third_party/ipcz"
+    },
+    {
+      "path": "ipcz-typed-release-gcc16.patch",
+      "strip": 1,
+      "root": "third_party/ipcz"
+    },
+    {
+      "path": "angle-scratch-move-gcc16.patch",
+      "strip": 1,
+      "root": "third_party/angle"
+    },
+    {
+      "path": "angle-netbsd-pci-backend-selection.patch",
+      "strip": 1,
+      "root": "third_party/angle"
+    },
+    {
+      "path": "perfetto-gcc16-warning-cleanups.patch",
+      "strip": 1,
+      "root": "third_party/perfetto"
+    },
+    {
+      "path": "v8-gcc16-netbsd.patch",
+      "strip": 1,
+      "root": "v8"
+    },
+    {
+      "path": "gn-darwin-sdk-metadata.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "perfetto-typed-proto-gcc16-dependent-false.patch",
+      "strip": 1,
+      "root": "third_party/perfetto"
+    }
+  ],
+  "superseded": {
+    "gn-clang-resource-version.patch": "The source layer no longer substitutes Apple Clang21 for the selected LLVM resource version."
+  }
+}
