@@ -22,6 +22,7 @@ devel/Guitar lang/ruby40
 devel/SDL2 devel/SDL3
 devel/umbrello x11/qt6-qtbase devel/kf6-ktexteditor
 multimedia/vlc lang/lua55
+net/grilo-plugins lang/lua55
 net/qrcp lang/go127
 security/zoneminder multimedia/ffmpeg9 devel/pcre2 databases/mariadb118-client
 LIST
