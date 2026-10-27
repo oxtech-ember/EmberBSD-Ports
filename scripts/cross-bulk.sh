@@ -31,16 +31,32 @@ esac
 export MAKECONF
 mkdir -p "$state/logs"
 
+# Verify the selected native prefix once per run. Every later bmake call,
+# and its recursive queries, receive the verified selection on the command
+# line and skip the per-parse verifier.
+unset EMBERBSD_NATIVE_TOOLSET_VERIFIED
+native=$("$BMAKE" -C "$PKGSRCDIR/pkgtools/pkg_install" show-var \
+    VARNAME=EMBERBSD_NATIVE_TOOLSET_VERIFIED < /dev/null) || {
+    echo 'The native host prefix selection failed verification' >&2
+    exit 2
+}
+[ -n "$native" ] || { echo 'The MAKECONF has no native host prefix selection' >&2; exit 2; }
+
+mk()
+{
+    "$BMAKE" EMBERBSD_NATIVE_TOOLSET_VERIFIED="$native" "$@"
+}
+
 var()
 {
-    "$BMAKE" -C "$PKGSRCDIR/$1" show-var VARNAME="$2" < /dev/null
+    mk -C "$PKGSRCDIR/$1" show-var VARNAME="$2" < /dev/null
 }
 
 # Print the target dependency paths of one package. Tool dependencies are
 # native host packages; pkgsrc builds them itself.
 target_deps()
 {
-    "$BMAKE" -C "$PKGSRCDIR/$1" show-vars VARNAMES='DEPENDS BUILD_DEPENDS' < /dev/null |
+    mk -C "$PKGSRCDIR/$1" show-vars VARNAMES='DEPENDS BUILD_DEPENDS' < /dev/null |
         tr ' ' '\n' | sed -n 's|^.*:\.\./\.\./\([^/]*/[^/]*\)$|\1|p' | sort -u
 }
 
@@ -78,7 +94,7 @@ fetch()
 {
     while read -r path; do
         log=$state/logs/fetch-$(echo "$path" | tr / _).log
-        "$BMAKE" -C "$PKGSRCDIR/$path" fetch < /dev/null > "$log" 2>&1 ||
+        mk -C "$PKGSRCDIR/$path" fetch < /dev/null > "$log" 2>&1 ||
             echo "$path fetch" >> "$state/failed-fetch"
     done < "$state/order"
 }
@@ -109,10 +125,10 @@ build()
         log=$state/logs/$(echo "$path" | tr / _).log
         echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name" >> "$state/progress"
         # Go module caches are read-only; make an old WRKDIR removable first.
-        wrkdir=$("$BMAKE" -C "$PKGSRCDIR/$path" show-var VARNAME=WRKDIR < /dev/null 2>/dev/null) || wrkdir=
+        wrkdir=$(mk -C "$PKGSRCDIR/$path" show-var VARNAME=WRKDIR < /dev/null 2>/dev/null) || wrkdir=
         case "$wrkdir" in /*) [ ! -d "$wrkdir" ] || chmod -R u+w "$wrkdir" ;; esac
-        if "$BMAKE" -C "$PKGSRCDIR/$path" clean < /dev/null > "$log" 2>&1 &&
-            "$BMAKE" -C "$PKGSRCDIR/$path" package-install < /dev/null >> "$log" 2>&1; then
+        if mk -C "$PKGSRCDIR/$path" clean < /dev/null > "$log" 2>&1 &&
+            mk -C "$PKGSRCDIR/$path" package-install < /dev/null >> "$log" 2>&1; then
             echo "$path $name $(shasum -a 256 "$file" | cut -d ' ' -f 1)" >> "$state/done"
             echo "$(date '+%Y-%m-%d %H:%M:%S') done $path" >> "$state/progress"
         else

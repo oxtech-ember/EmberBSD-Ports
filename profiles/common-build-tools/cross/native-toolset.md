@@ -56,6 +56,14 @@ The include also selects the common `nawk` executable and exports its path
 as `EMBERBSD_NATIVE_AWK`. Recursive early platform probes use it before
 loading their MAKECONF. This preserves the native prefix when no bare `awk`
 command exists in its PATH.
+The macOS release probe runs `/usr/bin/sw_vers`, a system command outside
+that PATH.
+
+The verification runs once per selection. A successful parse exports
+`EMBERBSD_NATIVE_TOOLSET_VERIFIED`, so its recursive queries skip the
+verifier. `scripts/cross-bulk.sh` verifies once at the start of a run and
+passes the result to each of its bmake calls. Rerun the helper after
+changing the prefix or the generated include.
 
 The generated include retains the selected host compiler family. A conflicting
 family fails. `clang-as` supplies the integrated assembler where a producer

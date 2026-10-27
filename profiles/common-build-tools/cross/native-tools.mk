@@ -15,6 +15,10 @@ EMBERBSD_HOST_PYTHON?=${EMBERBSD_HOST_PREFIX}/bin/python3.15
 EMBERBSD_HOST_COMPILER_FAMILY?=clang
 # Check selected paths before the include can assign native commands.
 # The SDK checks the prefix. Ports owns this make-variable mapping.
+# A run verifies one selection once: recursive queries inherit the result,
+# and scripts/cross-bulk.sh passes it to each of its bmake calls.
+_EMBER_NATIVE_TOOLSET_KEY:=${EMBERBSD_SDK_SOURCE}|${EMBERBSD_HOST_PREFIX}|${EMBERBSD_HOST_COMPILER_FAMILY}|${EMBERBSD_NATIVE_TOOLSET_MAKECONF}
+.if "${EMBERBSD_NATIVE_TOOLSET_VERIFIED:U}" != "${_EMBER_NATIVE_TOOLSET_KEY}"
 _EMBER_NATIVE_TOOLSET_CHECK!= ${EMBERBSD_HOST_PYTHON:Q} -B -E -S \
     ${.PARSEDIR:Q}/prepare-native-tools.py --sdk-source ${EMBERBSD_SDK_SOURCE:Q} verify \
     --host-prefix ${EMBERBSD_HOST_PREFIX:Q} \
@@ -22,5 +26,8 @@ _EMBER_NATIVE_TOOLSET_CHECK!= ${EMBERBSD_HOST_PYTHON:Q} -B -E -S \
     --makeconf ${EMBERBSD_NATIVE_TOOLSET_MAKECONF:Q}
 .if "${_EMBER_NATIVE_TOOLSET_CHECK}" != "VERIFIED"
 .error The host prefix or its native include is invalid
+.endif
+EMBERBSD_NATIVE_TOOLSET_VERIFIED:=${_EMBER_NATIVE_TOOLSET_KEY}
+.export EMBERBSD_NATIVE_TOOLSET_VERIFIED
 .endif
 .include "${EMBERBSD_NATIVE_TOOLSET_MAKECONF}"
