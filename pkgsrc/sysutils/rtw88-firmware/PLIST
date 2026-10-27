@@ -1,0 +1,4 @@
+@comment $NetBSD$
+libdata/firmware/rtw88/rtw8723d_fw.bin
+share/doc/rtw88-firmware/WHENCE
+share/licenses/rtw88-firmware/LICENCE.rtlwifi_firmware.txt
