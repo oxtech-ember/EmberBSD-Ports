@@ -483,6 +483,12 @@ target Bash is not staged, also with a host platform Bash. The real
 `textproc/cwdiff` recipe uses `REPLACE_BASH` without `bash:run`; it must get
 the target interpreter and the target Bash run dependency. These checks do not run target Bash;
 installed target execution and package lifecycle acceptance remain separate.
+`tests/cross-recipe-targets.py` queries the real chrony and Aravis recipes
+with bmake. A cross chrony configure must name the target system, release
+and machine. Cross Aravis must give Meson the build host `glib-mkenums` and
+`glib-compile-resources`. Native builds must keep both recipes unchanged.
+On a macOS host the native queries select Darwin, so they do not cover a
+native NetBSD build.
 `python3 -B tests/prepare-tools-target.py --sdk-source SDK NEW_WORK` runs the real
 helper with fake amd64 tools. It needs no compiler or pkgsrc export. It checks the
 imports, every composed link, a wrong compiler and existing output.
