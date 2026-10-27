@@ -1,0 +1,26 @@
+ui/base: skip CGWindowListCreateImage when the macOS minimum is >= 15.0.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Source: Chromium electron-source tree under EmberBSD.
+The EmberBSD Electron build sets mac_deployment_target = "26.0" for the
+host toolchains. The macOS 26 SDK marks CGWindowListCreateImage obsoleted
+in macOS 15.0 (hard "unavailable" error) in cocoa/permissions_utils.mm.
+The @available(macOS 14.0) ScreenCaptureKit branch always runs there, so
+compile the legacy fallback only for lower minimums.
+
+--- a/ui/base/cocoa/permissions_utils.mm	2026-10-28 02:07:51.231962605 +0300
++++ b/ui/base/cocoa/permissions_utils.mm	2026-10-28 02:07:51.234148784 +0300
+@@ -94,9 +94,13 @@
+                                onScreenWindowsOnly:true
+                                  completionHandler:shareable_content_handler];
+   } else {
++#if __MAC_OS_X_VERSION_MIN_REQUIRED < 150000
++    // EmberBSD: CGWindowListCreateImage is obsoleted (unavailable) once the
++    // deployment target reaches macOS 15; the SCK branch above always runs.
+     base::apple::ScopedCFTypeRef<CGImageRef>(
+         CGWindowListCreateImage(CGRectInfinite, kCGWindowListOptionOnScreenOnly,
+                                 kCGNullWindowID, kCGWindowImageDefault));
++#endif
+   }
+ }
+ 

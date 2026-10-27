@@ -591,6 +591,11 @@
       "path": "webrtc-desktop-capture-objc-macos14-min.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "ui-base-permissions-utils-macos15-obsolete.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
