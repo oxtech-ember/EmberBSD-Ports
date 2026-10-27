@@ -107,7 +107,10 @@ of the exceptional path remains incomplete; this is not a Valgrind result.
 
 The packaging and PCRE2 adaptation are AI-assisted EmberBSD work.
 Source and metadata checks do not qualify an analyzer executable.
-Native 2.22.0nb2 package installation passed. The nb3/nb4 changes have been checked
-with isolated rebuilt modules and upstream test executables; nb4 package
-installation remains unverified. The full upstream suite, arbitrary translation-unit
+Native Darwin arm64 2.22.0nb4 package build and replacement installation passed
+with Clang 23.1.4. Installed-file checks covered 84 files; the selected analyzer
+reported version 2.22.0, accepted a safe C input and rejected a deliberate null
+dereference. The nb3/nb4 changes also passed isolated module and upstream
+executable checks described above. This Darwin artifact is not the later nb5
+Linux Clang/libstdc++ configuration revision. The full upstream suite, arbitrary translation-unit
 analysis, HTML/GUI behavior, cross execution and package lifecycle remain separate checks.
