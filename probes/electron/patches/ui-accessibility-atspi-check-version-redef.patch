@@ -1,0 +1,26 @@
+ui/accessibility: do not redefine ATSPI_CHECK_VERSION.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Source: Chromium electron-source tree under EmberBSD.
+The EmberBSD at-spi2-core (usr/pkg/include/at-spi-2.0/atspi/atspi-version.h)
+already defines ATSPI_CHECK_VERSION, so the local fallback in
+ax_inspect_utils_auralinux.cc trips -Werror,-Wmacro-redefined. Only define
+it when the header did not.
+
+--- a/ui/accessibility/platform/inspect/ax_inspect_utils_auralinux.cc	2026-10-28 02:39:45.378760708 +0300
++++ b/ui/accessibility/platform/inspect/ax_inspect_utils_auralinux.cc	2026-10-28 02:39:45.392539405 +0300
+@@ -41,11 +41,14 @@
+ #define QUOTE(X) \
+   { X, #X }
+ 
++// EmberBSD: newer at-spi2-core already provides ATSPI_CHECK_VERSION.
++#ifndef ATSPI_CHECK_VERSION
+ #define ATSPI_CHECK_VERSION(major, minor, micro)                           \
+   (major) < ATSPI_MAJOR_VERSION ||                                         \
+       ((major) == ATSPI_MAJOR_VERSION && (minor) < ATSPI_MINOR_VERSION) || \
+       ((major) == ATSPI_MAJOR_VERSION && (minor) == ATSPI_MINOR_VERSION && \
+        (micro) <= ATSPI_MICRO_VERSION)
++#endif
+ 
+ #define CHECK_ATSPI_ERROR_NULLPTR(error) \
+   if (error) {                           \

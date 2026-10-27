@@ -601,6 +601,11 @@
       "path": "v8-stack-reserved-limit-darwin-dup.patch",
       "root": "v8",
       "strip": 1
+    },
+    {
+      "path": "ui-accessibility-atspi-check-version-redef.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
