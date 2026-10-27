@@ -32,7 +32,6 @@ post-install:
 # Installed CMake and pkg-config files require the Eigen headers.
 BUILDLINK_DEPMETHOD.eigen3=	full
 .include "../../math/eigen3/buildlink3.mk"
-.include "../../local-robotics/boost-iostreams/buildlink3.mk"
-.include "../../local-robotics/boost-libs/buildlink3.mk"
-.include "../../local-robotics/flann/buildlink3.mk"
+.include "../../devel/boost-libs/buildlink3.mk"
+.include "../../math/flann-lib/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

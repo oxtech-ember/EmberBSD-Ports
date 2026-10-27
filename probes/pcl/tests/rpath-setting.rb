@@ -39,7 +39,7 @@ begin
   raise 'Invalid PCL source manifest entry' unless commit && expected_archive&.match?(/\A[0-9a-f]{64}\z/)
   raise 'Wrong PCL source archive SHA256' unless Digest::SHA256.file(archive).hexdigest == expected_archive
 
-  patch = File.expand_path('../../../pkgsrc/local-robotics/pcl/patches/patch-cmake-rpath', __dir__)
+  patch = File.expand_path('../../../pkgsrc/graphics/pcl/patches/patch-cmake-rpath', __dir__)
   raise 'Missing canonical PCL RPATH patch' unless File.file?(patch)
 
   FileUtils.mkdir_p("#{work}/pristine")

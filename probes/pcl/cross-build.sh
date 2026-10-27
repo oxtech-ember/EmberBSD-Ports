@@ -14,7 +14,7 @@ jobs=${CROSS_JOBS:-3}
 case "$jobs" in ''|*[!0-9]*) exit 2;; esac
 [ "$jobs" -gt 0 ] 2>/dev/null || exit 2
 ports=$(CDPATH= cd "$(dirname "$0")/../.." && pwd -P)
-recipe=$ports/pkgsrc/local-robotics/pcl
+recipe=$ports/pkgsrc/graphics/pcl
 for language in gcc g++; do
     [ "$("$compiler/bin/aarch64--netbsd-$language" -dumpfullversion)" = 16.2.0 ]
     [ "$("$compiler/bin/aarch64--netbsd-$language" -dumpmachine)" = aarch64--netbsd ]

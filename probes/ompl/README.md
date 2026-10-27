@@ -53,8 +53,8 @@ need coordinated migration before using this provider.
 
 ## Packages and acceptance
 
-The recipes are `math/eigen3` and, under `pkgsrc/local-robotics`,
-`boost-headers`, `boost-libs` and `ompl`. Cross staging is the accepted build route. Native
+The recipes are `math/eigen3`, the common `devel/boost-headers` and
+`devel/boost-libs`, and `local-robotics/ompl`. Cross staging is the accepted build route. Native
 pkgsrc source recipes/buildlinks are provided; native pkgsrc compilation
 has not been accepted by this task.
 

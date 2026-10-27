@@ -23,7 +23,7 @@ if [ "${BUILD_AS_KIB+x}" = x ]; then
 fi
 probe=$(CDPATH= cd "$(dirname "$0")" && pwd -P)
 ports=$(CDPATH= cd "$probe/../.." && pwd -P)
-recipe=$ports/pkgsrc/local-robotics/pcl
+recipe=$ports/pkgsrc/graphics/pcl
 mkdir "$work"
 mkdir "$work/source" "$work/archives" "$work/logs"
 prefix=$work/install

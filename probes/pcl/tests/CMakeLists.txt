@@ -48,7 +48,7 @@ find_package(lz4 1.10.0 EXACT CONFIG REQUIRED NO_DEFAULT_PATH
   NO_CMAKE_FIND_ROOT_PATH PATHS "${lz4_DIR}")
 require_library(LZ4::lz4_shared "${FLANN_PREFIX}")
 add_executable(lz4-zero-buffers
-  "${CMAKE_CURRENT_SOURCE_DIR}/../../../pkgsrc/local-robotics/lz4/files/zero-buffers.c")
+  "${CMAKE_CURRENT_SOURCE_DIR}/../../../pkgsrc/archivers/lz4/files/zero-buffers.c")
 set_target_properties(lz4-zero-buffers PROPERTIES
   C_STANDARD 99 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
 target_link_libraries(lz4-zero-buffers PRIVATE LZ4::lz4_shared)
@@ -62,7 +62,7 @@ require_library(Boost::iostreams "${BOOST_PREFIX}")
 require_library(Boost::random "${BOOST_PREFIX}")
 require_library(Boost::serialization "${BOOST_PREFIX}")
 add_executable(boost-iostreams-contract
-  "${CMAKE_CURRENT_SOURCE_DIR}/../../../pkgsrc/local-robotics/boost-iostreams/files/installed-consumer.cpp")
+  "${CMAKE_CURRENT_SOURCE_DIR}/boost-iostreams-consumer.cpp")
 target_link_libraries(boost-iostreams-contract PRIVATE Boost::iostreams Boost::random)
 add_test(NAME boost-iostreams-contract COMMAND boost-iostreams-contract)
 set_tests_properties(boost-iostreams-contract PROPERTIES TIMEOUT 30)

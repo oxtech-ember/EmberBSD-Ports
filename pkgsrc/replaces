@@ -339,3 +339,6 @@ devel/rust-bindgen
 textproc/libplist
 devel/CLI11
 devel/libhfs
+archivers/lz4
+graphics/pcl
+math/flann-lib

@@ -1,5 +1,0 @@
-Boost provides peer-reviewed portable C++ libraries. This common 1.92.0 header
-package installs the complete modular upstream header set and the CMake
-metadata needed by the selected OMPL dependency closure. Compiled components
-belong to the matching boost-libs package. Optional upstream debugger helper
-scripts are preserved; planning and the C++ library require no Python.

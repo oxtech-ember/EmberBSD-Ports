@@ -19,29 +19,26 @@ headers, libc and compiler runtime together. The acceptance package set is:
 | Package | Role |
 |---|---|
 | [eigen3 5.0.1](../../pkgsrc/math/eigen3) | Common Eigen headers and CMake interface |
-| [boost-headers 1.92.0](../../pkgsrc/local-robotics/boost-headers) | One common Boost header namespace |
-| [boost-libs 1.92.0](../../pkgsrc/local-robotics/boost-libs) | Existing compiled components, including Serialization |
-| [boost-iostreams 1.92.0](../../pkgsrc/local-robotics/boost-iostreams) | Iostreams, required Random library and their export closure |
+| boost-headers 1.92.0 (`devel/boost-headers`) | The common Boost headers |
+| boost-libs 1.92.0 (`devel/boost-libs`) | The common compiled Boost libraries, including Iostreams, Random and Serialization |
 | [gcc16-libatomic 16.2.0](../../pkgsrc/local-robotics/gcc16-libatomic) | Missing atomic component in a partial cross SDK |
-| [lz4 1.10.0](../../pkgsrc/local-robotics/lz4) | Shared/static compression library and current CLI |
-| [flann 1.9.2](../../pkgsrc/local-robotics/flann) | Shared/static CPU C++ nearest-neighbor search |
-| [pcl 1.15.1nb1](../../pkgsrc/local-robotics/pcl) | Thirteen selected shared libraries and installed headers |
+| [lz4 1.10.0](../../pkgsrc/archivers/lz4) | Shared/static compression library and current CLI |
+| [flann-lib 1.9.2](../../pkgsrc/math/flann-lib) | Shared/static CPU C++ nearest-neighbor search |
+| [pcl 1.15.1nb1](../../pkgsrc/graphics/pcl) | Thirteen selected shared libraries and installed headers |
 
 The standalone atomic package extends an incomplete GCC16 runtime. It conflicts
 with complete `gcc16` and `gcc16-libs` providers. A complete runtime keeps
 ownership of its own `libatomic`; it needs no second component package.
 
 The installed PCL configuration requests Boost System, Iostreams and
-Serialization. System is header-only in Boost 1.92.0. The existing `boost-libs`
-package supplies Serialization and its compiled dependency closure. Iostreams
-retains Random-device support and enables the base OS zlib, bzip2 and lzma
-backends. Zstd is outside this profile. Existing common headers and exports
-are preserved. No private Eigen, Boost or OpenCV copy is introduced.
+Serialization. System is header-only in Boost 1.92.0. The common `boost-libs`
+package supplies Serialization, Iostreams, Random and their compiled closure,
+with the zlib, bzip2, lzma and zstd Iostreams backends. No private Eigen, Boost or OpenCV copy is introduced.
 
 ## Cross build
 
 Use a new task copy of the common sysroot. It must already contain Eigen,
-Boost headers, `boost-libs` and the GCC16 runtime. Use the original archives
+the common `boost-headers` and `boost-libs` packages and the GCC16 runtime. Use the original archives
 listed in [sources.tsv](sources.tsv), [dependency sources](cross/dependency-sources.tsv)
 and [test sources](test-sources.tsv).
 
@@ -53,8 +50,8 @@ Import only its verified missing stage into the task sysroot.
 ```sh
 CROSS_JOBS=3 sh probes/pcl/cross/build-dependencies.sh \
   /absolute/gcc16-prefix /absolute/task-sysroot \
-  /absolute/boost-1.92.0-cmake.tar.xz /absolute/flann-1.9.2.tar.gz \
-  /absolute/lz4-1.10.0.tar.gz /absolute/new-dependencies
+  /absolute/flann-1.9.2.tar.gz /absolute/lz4-1.10.0.tar.gz \
+  /absolute/new-dependencies
 
 CROSS_JOBS=3 sh probes/pcl/cross-build.sh \
   /absolute/gcc16-prefix /absolute/task-sysroot \
@@ -70,7 +67,7 @@ consumers. Both helpers verify source archives before extraction and reject
 existing output paths. Logs, compilation databases, ELF records and input
 hashes remain under each output directory.
 
-The canonical [feature file](../../pkgsrc/local-robotics/pcl/features.cmake)
+The canonical [feature file](../../pkgsrc/graphics/pcl/features.cmake)
 selects `common`, `kdtree`, `octree`, `search`, `sample_consensus`, `filters`,
 `features`, `registration`, `io`, `surface`, `segmentation` and compiled `ml`.
 PCL also builds `io_ply`; `2d` and `geometry` are header-only. This produces

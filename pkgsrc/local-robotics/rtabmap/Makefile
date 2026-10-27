@@ -36,7 +36,7 @@ post-install:
 
 .include "../../devel/cmake/build.mk"
 .include "../../local-robotics/opencv5/buildlink3.mk"
-.include "../../local-robotics/pcl/buildlink3.mk"
+.include "../../graphics/pcl/buildlink3.mk"
 .include "../../local-robotics/gtsam/buildlink3.mk"
 .include "../../databases/sqlite3/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"

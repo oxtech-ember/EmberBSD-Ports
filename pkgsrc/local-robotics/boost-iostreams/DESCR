@@ -1,5 +1,0 @@
-The Boost Iostreams compiled component from the common Boost 1.92.0 source.
-This package adds the shared Iostreams and required Random libraries, with
-their CMake component exports. Random-device support remains enabled. Common
-Boost headers remain owned by boost-headers. Base zlib, bzip2 and lzma
-compression are enabled. Zstd support is outside this package profile.

@@ -8,6 +8,6 @@ BUILDLINK_PKGSRCDIR.ompl?=	../../local-robotics/ompl
 USE_CXX_FEATURES+=	c++17
 GCC_REQD+=		16.2
 .include "../../math/eigen3/buildlink3.mk"
-.include "../../local-robotics/boost-libs/buildlink3.mk"
+.include "../../devel/boost-libs/buildlink3.mk"
 .endif
 BUILDLINK_TREE+=	-ompl

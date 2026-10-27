@@ -1,6 +1,0 @@
-Boost 1.92.0 compiled libraries for the GCC16 OMPL dependency profile.
-The package contains shared serialization, wserialization, program_options,
-unit_test_framework and prg_exec_monitor libraries, their atomic, chrono,
-container, date_time and thread dependency closure, and the upstream static
-test_exec_monitor helper. It uses the common /usr/pkg prefix and GCC16 runtime.
-This bounded profile does not claim every optional Boost compiled library.

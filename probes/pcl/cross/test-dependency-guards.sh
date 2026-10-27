@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Check rejection before extraction or overwrite.
 set -eu
-[ "$#" = 6 ] || { echo 'Usage: test-dependency-guards.sh GCC_PREFIX SYSROOT BOOST_ARCHIVE FLANN_ARCHIVE LZ4_ARCHIVE NEW_RESULTS' >&2; exit 2; }
-compiler=$1 sysroot=$2 boost=$3 flann=$4 lz4=$5 results=$6
+[ "$#" = 5 ] || { echo 'Usage: test-dependency-guards.sh GCC_PREFIX SYSROOT FLANN_ARCHIVE LZ4_ARCHIVE NEW_RESULTS' >&2; exit 2; }
+compiler=$1 sysroot=$2 flann=$3 lz4=$4 results=$5
 [ ! -e "$results" ] && [ ! -L "$results" ] || exit 2
 mkdir -p "$results"
 cross=$(CDPATH= cd "$(dirname "$0")" && pwd -P)
@@ -16,17 +16,17 @@ reject()
     [ "$status" -ne 0 ] || { echo "Accepted invalid input: $name" >&2; exit 1; }
 }
 printf 'corrupt archive\n' > "$results/corrupt.tar.xz"
-reject corrupt-source sh "$cross/build-dependencies.sh" "$compiler" "$sysroot" "$results/corrupt.tar.xz" "$flann" "$lz4" "$results/corrupt-output"
+reject corrupt-source sh "$cross/build-dependencies.sh" "$compiler" "$sysroot" "$results/corrupt.tar.xz" "$lz4" "$results/corrupt-output"
 [ ! -e "$results/corrupt-output" ] && [ ! -L "$results/corrupt-output" ]
 mkdir "$results/existing-output"
 printf 'preserve\n' > "$results/existing-output/sentinel"
-reject existing-output sh "$cross/build-dependencies.sh" "$compiler" "$sysroot" "$boost" "$flann" "$lz4" "$results/existing-output"
+reject existing-output sh "$cross/build-dependencies.sh" "$compiler" "$sysroot" "$flann" "$lz4" "$results/existing-output"
 [ "$(cat "$results/existing-output/sentinel")" = preserve ]
 ln -s existing-output "$results/symlink-output"
-reject symlink-output sh "$cross/build-dependencies.sh" "$compiler" "$sysroot" "$boost" "$flann" "$lz4" "$results/symlink-output"
+reject symlink-output sh "$cross/build-dependencies.sh" "$compiler" "$sysroot" "$flann" "$lz4" "$results/symlink-output"
 [ -L "$results/symlink-output" ]
 [ "$(cat "$results/symlink-output/sentinel")" = preserve ]
-reject zero-jobs env CROSS_JOBS=00 sh "$cross/build-dependencies.sh" "$compiler" "$sysroot" "$boost" "$flann" "$lz4" "$results/zero-output"
+reject zero-jobs env CROSS_JOBS=00 sh "$cross/build-dependencies.sh" "$compiler" "$sysroot" "$flann" "$lz4" "$results/zero-output"
 [ ! -e "$results/zero-output" ] && [ ! -L "$results/zero-output" ]
 mkdir -p "$results/import-source" "$results/import-destination"
 printf 'new\n' > "$results/import-source/a-new"

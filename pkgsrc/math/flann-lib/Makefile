@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted), shared current FLANN C++ package.
 DISTNAME=	flann-1.9.2
+PKGNAME=	${DISTNAME:S/-/-lib-/}
 CATEGORIES=	math
 MASTER_SITES=	https://codeload.github.com/flann-lib/flann/tar.gz/
 DISTFILES=	${DISTNAME}${EXTRACT_SUFX}
@@ -25,5 +26,5 @@ post-install:
 	${SH} ${FILESDIR}/install-stage.sh ${WRKSRC} ${DESTDIR}${PREFIX} ${.CURDIR}
 
 .include "../../devel/cmake/build.mk"
-.include "../../local-robotics/lz4/buildlink3.mk"
+.include "../../archivers/lz4/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

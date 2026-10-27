@@ -1,10 +1,11 @@
 #!/bin/sh
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Add current common PCL dependencies to a task sysroot.
+# The sysroot must already contain the common devel/boost-libs package.
 set -eu
 umask 022
-[ "$#" = 6 ] || { echo 'Usage: build-dependencies.sh GCC_PREFIX SYSROOT BOOST_ARCHIVE FLANN_ARCHIVE LZ4_ARCHIVE NEW_OUTPUT' >&2; exit 2; }
-compiler=$1 sysroot=$2 boost_archive=$3 flann_archive=$4 lz4_archive=$5 out=$6
+[ "$#" = 5 ] || { echo 'Usage: build-dependencies.sh GCC_PREFIX SYSROOT FLANN_ARCHIVE LZ4_ARCHIVE NEW_OUTPUT' >&2; exit 2; }
+compiler=$1 sysroot=$2 flann_archive=$3 lz4_archive=$4 out=$5
 for path do
     case "$path" in /*) ;; *) echo 'Absolute paths required.' >&2; exit 2;; esac
     case "$path" in *[!A-Za-z0-9_./-]*) echo 'Use simple absolute paths.' >&2; exit 2;; esac
@@ -26,7 +27,6 @@ verify_archive()
     [ "${#expected}" = 64 ] || { echo "Missing source hash: $name" >&2; exit 2; }
     printf '%s  %s\n' "$expected" "$archive" | sha256sum -c -
 }
-verify_archive boost-1.92.0-cmake.tar.xz "$boost_archive"
 verify_archive flann-1.9.2.tar.gz "$flann_archive"
 verify_archive lz4-1.10.0.tar.gz "$lz4_archive"
 crt=$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0
@@ -34,20 +34,28 @@ runtime=$sysroot/usr/pkg/gcc16/lib
 headers=$sysroot/usr/pkg/gcc16/include/c++
 [ -f "$crt/crtbeginS.o" ] && [ -f "$runtime/libstdc++.so.7" ]
 [ -f "$sysroot/usr/pkg/include/boost/version.hpp" ]
+# The common devel/boost-libs package provides Iostreams and Random.
+[ -f "$sysroot/usr/pkg/lib/libboost_iostreams.so" ] && [ -f "$sysroot/usr/pkg/lib/libboost_random.so" ]
 [ -f "$sysroot/usr/include/zlib.h" ] && [ -f "$sysroot/usr/include/bzlib.h" ] && [ -f "$sysroot/usr/include/lzma.h" ]
+recipe()
+{
+    case $1 in
+    lz4) echo "$ports/pkgsrc/archivers/lz4" ;;
+    flann) echo "$ports/pkgsrc/math/flann-lib" ;;
+    esac
+}
 unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH
-mkdir -p "$out/source/boost" "$out/source/flann" "$out/source/lz4" "$out/logs"
-sha256sum "$boost_archive" "$flann_archive" "$lz4_archive" "$0" \
+mkdir -p "$out/source/flann" "$out/source/lz4" "$out/logs"
+sha256sum "$flann_archive" "$lz4_archive" "$0" \
     "$cross/import-stage.rb" "$cross/dependency-sources.tsv" > "$out/inputs.sha256"
-for package in lz4 flann boost-iostreams; do
-    recipe=$ports/pkgsrc/local-robotics/$package
+for package in lz4 flann; do
+    recipe=$(recipe "$package")
     sha256sum "$recipe/features.cmake" "$recipe/files/install-stage.sh" "$recipe/files/SOURCE" >> "$out/inputs.sha256"
 done
-tar -xf "$boost_archive" --strip-components=1 -C "$out/source/boost"
 tar -xf "$flann_archive" --strip-components=1 -C "$out/source/flann"
 tar -xf "$lz4_archive" --strip-components=1 -C "$out/source/lz4"
 for package in lz4 flann; do
-    for patch_file in "$ports/pkgsrc/local-robotics/$package/patches/"patch-*; do
+    for patch_file in "$(recipe "$package")/patches/"patch-*; do
         [ -f "$patch_file" ] || continue
         sha256sum "$patch_file" >> "$out/inputs.sha256"
         (cd "$out/source/$package" && patch --batch --forward -p0 < "$patch_file") >> "$out/logs/$package-patches.log" 2>&1
@@ -77,7 +85,7 @@ run()
 configure()
 {
     package=$1 source_dir=$2; shift 2
-    recipe=$ports/pkgsrc/local-robotics/$package
+    recipe=$(recipe "$package")
     run "$package-configure" cmake -S "$source_dir" -B "$out/$package-build" -G Ninja \
         -C "$recipe/features.cmake" -DCMAKE_TOOLCHAIN_FILE="$out/toolchain.cmake" \
         -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_EXTENSIONS=OFF \
@@ -93,13 +101,9 @@ configure lz4 "$out/source/lz4/build/cmake"
 # FLANN must discover the same staged LZ4 that will be packaged for the target.
 run lz4-import ruby "$cross/import-stage.rb" "$out/lz4-stage/usr/pkg" "$sysroot/usr/pkg"
 configure flann "$out/source/flann" -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-# The Boost archive installs the source under the common name; keep that source
-# directory distinct from the package name used by the staging helper.
-ln -s boost "$out/source/boost-iostreams"
-configure boost-iostreams "$out/source/boost"
-for package in lz4 flann boost-iostreams; do
+for package in lz4 flann; do
     stage=$out/$package-stage/usr/pkg
-    recipe=$ports/pkgsrc/local-robotics/$package
+    recipe=$(recipe "$package")
     (cd "$stage" && find . \( -type f -o -type l \) -print | sed 's|^\./||' | LC_ALL=C sort) > "$out/$package-files.txt"
     sed '/^@comment/d' "$recipe/PLIST" | LC_ALL=C sort > "$out/$package-expected.txt"
     cmp "$out/$package-files.txt" "$out/$package-expected.txt"
@@ -125,5 +129,4 @@ done
 # Each helper checks the complete input stage before adding any file. Existing
 # common packages remain byte-identical; an incompatible collision is fatal.
 run flann-import ruby "$cross/import-stage.rb" "$out/flann-stage/usr/pkg" "$sysroot/usr/pkg"
-run boost-iostreams-import ruby "$cross/import-stage.rb" "$out/boost-iostreams-stage/usr/pkg" "$sysroot/usr/pkg"
-echo "Staged and imported LZ4, FLANN and Boost.Iostreams below $out"
+echo "Staged and imported LZ4 and FLANN below $out"
