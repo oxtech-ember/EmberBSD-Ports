@@ -210,7 +210,10 @@ def arguments(options, native, tools, rust_version, launcher):
         chrome_pgo_phase=0, v8_builtins_profiling_log_file='',
         # PipeWire/portal needs libpipewire + GBM/EGL not in clang-final yet;
         # WebRTC default is is_linux && use_sysroot. Disable until Mesa/pipewire land.
-        rtc_use_pipewire=False)
+        rtc_use_pipewire=False,
+        # WebRTC X11 desktop capture needs libXfixes/Xdamage/Xtst/Xcomposite,
+        # which clang-final does not provide yet.
+        rtc_use_x11_extensions=False)
     if native.host['os'] == 'Darwin':
         family = options.host_compiler_family
         values.update(host_toolchain='//build/toolchain/mac:' + family + '_' + host_cpu,
