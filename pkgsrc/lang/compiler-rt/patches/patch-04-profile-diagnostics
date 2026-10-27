@@ -1,0 +1,51 @@
+$NetBSD$
+
+Keep version decoding exclusive to the modern GCOV format. The libc legacy
+ABI selects its checksum layout explicitly and never reads gcov_version.
+
+Name the private profile-file handle separately from file parameters so the
+common source also builds with the native OS -Wshadow policy.
+
+--- a/compiler-rt/lib/profile/GCDAProfiling.c
++++ b/compiler-rt/lib/profile/GCDAProfiling.c
+@@ -96,7 +96,9 @@
+ static uint64_t file_size = 0;
+ static int new_file = 0;
+ static int write_failed = 0;
++#if !defined(COMPILER_RT_LIBC_LEGACY_GCOV)
+ static int gcov_version;
++#endif
+ #if defined(_WIN32)
+ static HANDLE mmap_handle = NULL;
+ #endif
+@@ -445,6 +447,7 @@
+   }
+ 
+   /* gcda file, version, stamp checksum. */
++#if !defined(COMPILER_RT_LIBC_LEGACY_GCOV)
+   {
+     uint8_t c3 = version >> 24;
+     uint8_t c2 = (version >> 16) & 255;
+@@ -452,6 +455,7 @@
+     gcov_version = c3 >= 'A' ? (c3 - 'A') * 100 + (c2 - '0') * 10 + c1 - '0'
+                              : (c3 - '0') * 10 + c1 - '0';
+   }
++#endif
+ #if defined(COMPILER_RT_LIBC_LEGACY_GCOV)
+   write_bytes("adcg", 4);
+ #else
+--- a/compiler-rt/lib/profile/InstrProfilingFile.c
++++ b/compiler-rt/lib/profile/InstrProfilingFile.c
+@@ -341,9 +341,9 @@
+   ProfileMergeRequested = EnableMerge;
+ }
+ 
+-static FILE *ProfileFile = NULL;
+-static FILE *getProfileFile(void) { return ProfileFile; }
+-static void setProfileFile(FILE *File) { ProfileFile = File; }
++static FILE *ProfileFileObject = NULL;
++static FILE *getProfileFile(void) { return ProfileFileObject; }
++static void setProfileFile(FILE *File) { ProfileFileObject = File; }
+ 
+ static int getCurFilenameLength(void);
+ static const char *getCurFilename(char *FilenameBuf, int ForceUseBuf);

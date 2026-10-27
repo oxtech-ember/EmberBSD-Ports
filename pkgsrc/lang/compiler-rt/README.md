@@ -134,7 +134,13 @@ and stops counter allocations that exceed `SIZE_MAX`. It reports the failure
 and releases resources without writing a partial newly created profile. This
 does not make updates to an already mapped profile transactional.
 
-`tests/gcda-abi.py --cc /absolute/clang --source /absolute/prepared-llvm` checks
+`patch-04-profile-diagnostics` limits decoded GCOV version state to the modern
+format that uses it; the legacy mode retains its explicit checksum and record
+layout. The private instrumentation profile file handle has a distinct name
+from file parameters, preserving the OS build's `-Wshadow` diagnostics.
+
+`tests/gcda-abi.py --cc /absolute/clang --source /absolute/prepared-llvm` compiles
+`InstrProfilingFile.c` and both GCDA modes with strict diagnostics, then checks
 independently expected record bytes, merging, callback and counter boundaries,
 and injected `fdopen` failure cleanup in both ABI modes. `--cflags` can select
 the host ABI and diagnostic sanitizers; temporary files use the caller's
@@ -143,6 +149,12 @@ and injects six allocation failures plus a counter-size boundary in both ABI
 modes. The boundary exercises the actual source with a modeled 32-bit
 `SIZE_MAX`; it is not execution of a 32-bit binary. Host checks do not replace
 the target libc ABI and execution checks.
+The strict-diagnostics fix was also checked with the actual target libc
+compiler commands. Paired source analysis found no new diagnostics: the
+pre-existing profile filename use-after-free and allocation-failure findings
+remain outside this name/state-only fix. Cppcheck's Clang AST importer still
+asserts internally; its builtin parser was checked on the actual Clang
+preprocessed target sources instead. This is not a successful AST-import check.
 
 ## Target runtime phases
 
