@@ -1,0 +1,12 @@
+# Origin: EmberBSD; select the common current source-built Go provider.
+--- a/lang/go/version.mk
++++ b/lang/go/version.mk
+@@ -6,7 +6,7 @@
+ #
+ .include "go-vars.mk"
+ 
+-GO127_VERSION=	1.27.1
++GO127_VERSION=	1.27.3
+ GO126_VERSION=	1.26.8
+ GO125_VERSION=	1.25.14
+ GO124_VERSION=	1.24.13

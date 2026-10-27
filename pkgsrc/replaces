@@ -334,3 +334,4 @@ comms/dfu-util
 devel/libusb1
 emulators/qemu
 devel/mimalloc
+lang/go127
