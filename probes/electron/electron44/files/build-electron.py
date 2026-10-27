@@ -1,0 +1,293 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: BSD-2-Clause
+# Copyright (c) 2026 EmberBSD contributors.
+# Origin: EmberBSD (AI-assisted).
+"""Bind the Electron recipe's prepared source to selected SDK tools and GN/Ninja."""
+import argparse
+import hashlib
+import importlib
+import importlib.util
+import json
+import os
+from pathlib import Path
+import re
+import shlex
+import sys
+
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+
+def local_module(name, filename):
+    spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(filename))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_sdk(root):
+    root = Path(root).resolve(strict=True)
+    package = root / 'src/emberbsd_sdk'
+    sys.path.insert(0, str(package.parent))
+    result = {}
+    for name in ('', 'host_prefix', 'application_toolchain', 'target_toolchain', 'targets',
+                 'process', 'paths', 'darwin_sdk'):
+        module = importlib.import_module('emberbsd_sdk' + ('.' + name if name else ''))
+        require(Path(module.__file__).resolve() == package / ((name or '__init__') + '.py'),
+                'SDK module origin differs: ' + module.__name__)
+        result[name] = module
+    for name, field, version in (('', 'API_VERSION', 1), ('host_prefix', 'HOST_PREFIX_API', 2),
+                                 ('application_toolchain', 'APPLICATION_TOOLCHAIN_API', 2),
+                                 ('darwin_sdk', 'DARWIN_SDK_API', 1)):
+        require(getattr(result[name], field, None) == version, 'unsupported SDK contract: ' + field)
+    return result
+
+
+def absolute(value, label, *, directory=True):
+    path = Path(value)
+    require(path.is_absolute(), label + ' must be absolute')
+    path = path.resolve(strict=True)
+    require(path.is_dir() if directory else path.is_file(), label + ' has the wrong file type')
+    return path
+
+
+def gn_value(value):
+    if type(value) is bool:
+        return 'true' if value else 'false'
+    if type(value) is int:
+        return str(value)
+    if isinstance(value, list):
+        return '[ ' + ', '.join(gn_value(item) for item in value) + ' ]'
+    require(isinstance(value, str) and not any(ord(c) < 32 for c in value), 'invalid GN string')
+    return json.dumps(value, ensure_ascii=False).replace('$', r'\$')
+
+
+def verify_source(workspace, ports, git):
+    source = local_module('electron_build_source', 'prepare-build-sources.py')
+    record = json.loads((workspace / 'source-inputs/ports-build-sources.json').read_text())
+    rows = source.read_series(Path(__file__).with_name('source-series.json'), ports / 'probes/electron/patches')
+    expected = [{key: row[key] for key in ('path', 'root', 'strip', 'sha256')} for row in rows]
+    require(record.get('version') == 1 and record.get('patches') == expected,
+            'prepare sources with the current complete ordered recipe series')
+    for name, revision in record['source_revisions'].items():
+        repository = workspace / source.bsd.relative(name)
+        require(repository.resolve(strict=True) == repository, 'source repository path changed: ' + name)
+        require(source.bsd.git_bytes(git, repository, 'rev-parse', 'HEAD').decode().strip() == revision,
+                'prepared source HEAD changed: ' + name)
+    for name, row in record['paths'].items():
+        path, data = source.current_file(workspace / 'src', name)
+        require(source.digest(data) == row['after'], 'prepared source bytes changed: ' + name)
+    return record
+
+
+def prepare(options):
+    source = local_module('electron_build_source', 'prepare-build-sources.py')
+    result = source.prepare(options.workspace, options.pkgsrc, options.archive, options.destination,
+                            options.git, options.patch, options.ports_source / 'probes/electron/patches',
+                            Path(__file__).with_name('source-series.json'))
+    return source.materialize(options.workspace, options.destination, result, git=options.git)
+
+
+def native_inputs(options, sdk):
+    roles = ('python', 'gn', 'ninja', 'node', 'rustc', 'rustfmt', 'bindgen', 'wayland-scanner',
+             'pkg-config', 'rollup', 'tsc', 'clang', 'cc', 'cxx', 'cpp', 'ar', 'nm', 'strip', 'objcopy', 'readelf',
+             'sh', 'env', 'sed', 'touch', 'cp')
+    native = sdk['host_prefix'].load_host_prefix(options.host_prefix, required_roles=roles,
+                                                compiler_family=options.host_compiler_family)
+    require(Path(sys.executable).resolve() == Path(native.tool('python')).resolve(),
+            'run the build controller with the selected host-prefix Python')
+    environment = sdk['process'].sanitized_environment()
+    environment.update(PATH=native.path, PYTHONDONTWRITEBYTECODE='1',
+                       EMBERBSD_HOST_NODE=native.tool('node'),
+                       CLANG_PATH=native.tool('clang'), RUSTFMT=native.tool('rustfmt'),
+                       LIBCLANG_PATH=str(options.host_prefix / 'lib'))
+    providers = local_module('electron_node_providers', 'node-providers.py').select(native)
+    environment.update(providers['environment'])
+    if native.host['os'] == 'Darwin':
+        require(options.macos_sdk and options.xcode_version_plist and options.macos_minimum,
+                'Darwin requires explicit SDK, Xcode version plist and deployment version')
+        require(re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,2}', options.macos_minimum),
+                'invalid Darwin deployment version')
+        metadata = sdk['darwin_sdk'].read_metadata(str(options.macos_sdk),
+                    xcode_version_plist=str(options.xcode_version_plist))
+        environment['SDKROOT'] = metadata['sdk_path']
+        environment['MACOSX_DEPLOYMENT_TARGET'] = options.macos_minimum
+    return native, environment
+
+
+def target_inputs(options, sdk, native, environment, work):
+    target = sdk['targets'].target_definition(options.target)
+    if options.compiler_family == 'clang':
+        compiler = sdk['target_toolchain'].clang_compiler(str(options.compiler_prefix), target['triplet'],
+                                                         host=native.host, env=environment)
+        runtime = sdk['application_toolchain'].load_clang_runtime(str(options.sysroot), target=options.target)
+        bound = sdk['application_toolchain'].bind_clang_application_commands(
+            work / 'target-commands', compiler, str(options.sysroot), runtime,
+            python=native.tool('python'))
+        binaries = {role: row['selected_path'] for role, row in compiler['binaries'].items()}
+        return dict(binaries, cc=bound['cc'], cxx=bound['cxx'], cpp=bound['cpp'])
+    # An explicit rare-platform GCC profile consumes the existing common owner.
+    # No error in the Clang route reaches this branch.
+    require(options.gcc_os_tools and options.gcc_platform_reason,
+            'GCC needs an explicit platform reason and OS tools input')
+    owner = options.ports_source / 'profiles/common-build-tools/cross/prepare-tools.py'
+    output = work / 'target-gcc-tools'
+    sdk['process'].run_logged([native.tool('python'), '-B', '-S', str(owner),
+        '--sdk-source', str(options.sdk_source), '--compiler-family', 'gcc',
+        '--host-compiler-family', options.host_compiler_family, '--target', options.target,
+        str(options.compiler_prefix), str(options.gcc_os_tools), str(output)],
+        str(work / 'gcc-tools.log'), env=environment)
+    names = dict(cc='gcc', cxx='g++', cpp='cpp', ar='ar', nm='nm', strip='strip',
+                 objcopy='objcopy', readelf='readelf')
+    return {role: str(output / 'bin' / (target['triplet'] + '-' + name)) for role, name in names.items()}
+
+
+def arguments(options, native, tools, rust_version, launcher):
+    cpu = {'amd64': 'x64', 'aarch64': 'arm64'}[options.target]
+    host_cpu = {'arm64': 'arm64', 'aarch64': 'arm64', 'x86_64': 'x64', 'amd64': 'x64'}.get(native.host['cpu'])
+    require(host_cpu is not None, 'unsupported GN host CPU: ' + native.host['cpu'])
+    values = dict(target_os='netbsd', target_cpu=cpu, is_clang=options.compiler_family == 'clang',
+        custom_toolchain='//build/toolchain/linux/unbundle:default',
+        unbundle_host_is_clang=options.host_compiler_family == 'clang',
+        use_sysroot=True, target_sysroot=str(options.sysroot), emberbsd_target_sysroot=str(options.sysroot),
+        clang_base_path=str(options.host_prefix), clang_use_chrome_plugins=False,
+        use_custom_libcxx=False, use_custom_libcxx_for_host=False, use_custom_libunwind=False,
+        use_lld=options.compiler_family == 'clang', use_thin_lto=False,
+        rust_sysroot_absolute=str(options.host_prefix), rust_bindgen_root=str(options.host_prefix),
+        rustc_version=rust_version, emberbsd_rust_unstable_features=True, wayland_scanner_executable=native.tool('wayland-scanner'),
+        emberbsd_target_strip=tools['strip'], emberbsd_target_objcopy=tools['objcopy'],
+        pkg_config=native.tool('pkg-config'), host_pkg_config=native.tool('pkg-config'),
+        unbundle_linker_launcher=launcher, concurrent_links=1,
+        is_debug=False, is_component_build=False,
+        # These profiles describe upstream OS/compiler binaries. NetBSD's
+        # separately selected compiler/runtime has no matching PGO profile.
+        chrome_pgo_phase=0, v8_builtins_profiling_log_file='')
+    if native.host['os'] == 'Darwin':
+        family = options.host_compiler_family
+        values.update(host_toolchain='//build/toolchain/mac:' + family + '_' + host_cpu,
+            v8_snapshot_toolchain='//build/toolchain/mac:' + family + '_' + host_cpu + '_v8_' + cpu,
+            emberbsd_sdk_source=str(options.sdk_source),
+            emberbsd_xcode_version_plist=str(options.xcode_version_plist),
+            emberbsd_mac_toolchain_bin=str(options.host_prefix / 'bin'),
+            mac_sdk_path=str(options.macos_sdk), mac_deployment_target=options.macos_minimum,
+            apple_linker_launcher=launcher)
+        if family == 'gcc':
+            values.update(mac_gcc_cc=native.tool('cc'), mac_gcc_cxx=native.tool('cxx'),
+                          mac_gcc_llvm_bin_path=str(options.host_prefix / 'bin'))
+    elif native.host['os'] in ('Linux', 'NetBSD'):
+        values['host_toolchain'] = '//build/toolchain/linux/unbundle:host'
+    else:
+        raise ValueError('unsupported GN host OS: ' + native.host['os'])
+    values.update(local_module('electron_node_providers', 'node-providers.py').select(native)['arguments'])
+    return values
+
+
+def producer_inputs(options, sdk):
+    native, environment = native_inputs(options, sdk)
+    tools = target_inputs(options, sdk, native, environment, options.work)
+    for role in ('cc', 'cxx', 'ar', 'nm', 'readelf'):
+        environment[role.upper()] = shlex.quote(tools[role])
+    for role in ('cc', 'cxx', 'ar', 'nm'):
+        environment['BUILD_' + role.upper()] = shlex.quote(native.tool(role))
+    if options.compiler_family == 'gcc':
+        for name in ('CFLAGS', 'CXXFLAGS', 'ASFLAGS', 'LDFLAGS'):
+            environment[name] = shlex.join(['--sysroot=' + str(options.sysroot)])
+    verbose_rust = sdk['process'].capture([native.tool('rustc'), '-vV'], env=environment).stdout.decode()
+    environment, rust = local_module('electron_rust_policy', 'rust-policy.py').apply(environment, verbose_rust)
+    launcher = shlex.join([native.tool('python'), str(options.sdk_source / 'scripts/link-launcher.py'),
+                          '--lock-root', str(options.lock_root), '--context', str(options.link_context), '--'])
+    values = arguments(options, native, tools, rust, launcher)
+    return native, environment, values
+
+
+def gn_arguments(values):
+    return 'import("//electron/build/args/release.gn")\n' + ''.join(
+        name + ' = ' + gn_value(value) + '\n' for name, value in sorted(values.items()))
+
+
+def configure(options):
+    sdk = load_sdk(options.sdk_source)
+    verify_source(options.workspace, options.ports_source, options.git)
+    work = options.work
+    require(not work.exists(), 'configure output must be new; retain an unsuccessful output for diagnosis')
+    work.mkdir()
+    native, environment, values = producer_inputs(options, sdk)
+    output = work / 'out'; output.mkdir()
+    (output / 'args.gn').write_text(gn_arguments(values))
+    sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
+        '--script-executable=' + native.tool('python'), '--ninja-executable=' + native.tool('ninja'),
+        '--root-target=//electron', '--root-pattern=//electron:electron_dist_zip', '--fail-on-unused-args'],
+        str(work / 'configure.log'), cwd=str(options.workspace / 'src'), env=environment)
+    # This is the actual producer invocation, not a qualification record.
+    local_module('electron_build_source', 'prepare-build-sources.py').atomic_json(work / 'configuration.json',
+        dict(arguments=values, environment=environment, source=str(options.workspace),
+             sdk=str(options.sdk_source), host_prefix=str(options.host_prefix), target=options.target))
+
+
+def build(options):
+    sdk = load_sdk(options.sdk_source)
+    verify_source(options.workspace, options.ports_source, options.git)
+    native, environment, values = producer_inputs(options, sdk)
+    saved = json.loads((options.work / 'configuration.json').read_text())
+    require(saved['source'] == str(options.workspace) and saved['sdk'] == str(options.sdk_source) and
+            saved['host_prefix'] == str(options.host_prefix) and saved['target'] == options.target,
+            'build inputs differ from configuration')
+    require(options.jobs > 0, 'Ninja job count must be positive')
+    saved_env = saved['environment']
+    for name in set(environment) | set(saved_env):
+        if name not in ('HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'):
+            require(saved_env.get(name) == environment.get(name), 'producer input changed: ' + name)
+    require(saved['arguments'] == values, 'GN selection changed; configure a new output')
+    output = options.work / 'out'
+    require((output / 'args.gn').read_text() == gn_arguments(values), 'configured GN arguments changed')
+    sdk['process'].run_logged([native.tool('ninja'), '-C', str(output), '-j', str(options.jobs),
+                              'electron_dist_zip'], str(options.work / 'build.log'),
+                             cwd=str(options.workspace / 'src'), env=saved_env,
+                             append=(options.work / 'build.log').exists())
+    archive = output / 'dist.zip'
+    require(archive.is_file(), 'Electron producer did not create dist.zip')
+    with archive.open('rb') as handle:
+        digest = hashlib.file_digest(handle, 'sha256').hexdigest()
+    stage = local_module('electron_runtime_stage', 'stage-runtime.py')
+    stage.stage_runtime(str(archive), str(options.work / 'runtime'), archive_sha256=digest,
+                        target=options.target, sdk=stage.load_sdk(options.sdk_source))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest='phase', required=True)
+    source = sub.add_parser('prepare')
+    for name in ('workspace', 'ports-source', 'pkgsrc', 'archive', 'destination', 'git', 'patch'):
+        source.add_argument('--' + name, type=Path, required=True)
+    for phase in ('configure', 'build'):
+        command = sub.add_parser(phase)
+        for name in ('workspace', 'ports-source', 'sdk-source', 'host-prefix', 'compiler-prefix',
+                     'sysroot', 'work', 'git', 'lock-root', 'link-context'):
+            command.add_argument('--' + name, type=Path, required=True)
+        command.add_argument('--target', choices=('amd64', 'aarch64'), required=True)
+        command.add_argument('--compiler-family', choices=('clang', 'gcc'), default='clang')
+        command.add_argument('--host-compiler-family', choices=('clang', 'gcc'), default='clang')
+        for name in ('macos-sdk', 'xcode-version-plist', 'gcc-os-tools'):
+            command.add_argument('--' + name, type=Path)
+        command.add_argument('--macos-minimum')
+        command.add_argument('--gcc-platform-reason')
+        command.add_argument('--jobs', type=int, default=1)
+    options = parser.parse_args()
+    try:
+        for name, value in vars(options).items():
+            if isinstance(value, Path):
+                require(value.is_absolute(), '--' + name.replace('_', '-') + ' must be absolute')
+        if options.phase == 'prepare':
+            print('Materialized source files:', prepare(options))
+        else:
+            sdk = load_sdk(options.sdk_source)
+            with sdk['process'].ContextLocks([str(options.workspace), str(options.work)], str(options.lock_root)):
+                (configure if options.phase == 'configure' else build)(options)
+    except Exception as error:
+        parser.exit(1, 'Electron ' + options.phase + ' failed: ' + str(error) + '\n')
+
+
+if __name__ == '__main__':
+    main()
