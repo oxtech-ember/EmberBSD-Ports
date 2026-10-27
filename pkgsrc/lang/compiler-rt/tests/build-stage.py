@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import struct
 import sys
+import subprocess
 import tempfile
 from types import SimpleNamespace
 import unittest
@@ -66,8 +67,12 @@ class BuildStage(unittest.TestCase):
             work=self.work, stage=self.stage, native=self.native, environment={'PATH':'/native/bin'},
             compiler=self.compiler, recipe=self.recipe, context=self.context, bootstrap=None, bootstrap_root=None)
 
-    def run_build(self, *, machine=183, changed_base=False, fail=False, extra=False, changed_compiler=False, empty_archive=False, changed_source=False):
+    def run_build(self, *, machine=183, changed_base=False, fail=False, extra=False, changed_compiler=False, empty_archive=False, changed_source=False, source_import=False):
         def runner(owner, command, work, environment, log):
+            if source_import:
+                (self.source / 'generator_fixture.py').write_text('value = 1\n')
+                subprocess.run([sys.executable, '-c', 'import generator_fixture'],
+                               cwd=self.source, env=environment, check=True)
             if fail:
                 raise CommandError(7, command)
             if command[-1] == 'install-builtins':
@@ -101,6 +106,10 @@ class BuildStage(unittest.TestCase):
         self.assertEqual(llvm_runtime.validate_stage(self.stage, target='aarch64'), result)
         with self.assertRaisesRegex(SDKError, 'required runtime components'):
             llvm_runtime.validate_stage(self.stage, required_components=llvm_runtime.FULL_COMPONENTS)
+
+    def test_generators_leave_prepared_sources_unchanged(self):
+        self.run_build(source_import=True)
+        self.assertFalse(list(self.source.rglob('__pycache__')))
 
     def test_failed_final_archive_validation_removes_written_manifest(self):
         with self.assertRaises(SDKError):

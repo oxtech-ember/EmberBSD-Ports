@@ -246,7 +246,8 @@ def build(owner, args):
     for name in ('home', 'tmp'):
         (work / name).mkdir()
     environment.update(HOME=str(work / 'home'), TMPDIR=str(work / 'tmp'),
-                       CONFIG_SHELL=native.tool('sh'), SHELL=native.tool('sh'))
+                       CONFIG_SHELL=native.tool('sh'), SHELL=native.tool('sh'),
+                       PYTHONDONTWRITEBYTECODE='1')
     phases = ['full'] if args.phase == 'full' else ['builtins'] + (['bootstrap'] if args.phase == 'bootstrap' else [])
     for phase in phases:
         build_dir = work / phase
