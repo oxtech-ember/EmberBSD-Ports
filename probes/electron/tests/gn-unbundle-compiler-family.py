@@ -21,7 +21,7 @@ MEMBER = Path('build/toolchain/linux/unbundle/BUILD.gn')
 
 
 def evaluate(gn, source, root, name, target_clang, host_clang=None,
-             expected_host=True, error=None):
+             expected_host=True, error=None, launcher=None):
     work = root / name
     work.mkdir()
     production = (source / MEMBER).read_text()
@@ -78,10 +78,20 @@ template("gcc_toolchain") {
   group(target_name) {}
 }
 '''.replace('TARGET', str(target_clang).lower(), 1).replace('HOST', str(expected_host).lower(), 1)
+    if launcher is not None:
+        capture = capture.replace('  not_needed(invoker, "*")',
+            '  if (target_name == "default") {\n'
+            '    assert(invoker.linker_launcher == ' + json.dumps(launcher) + ',\n'
+            '           "Target link launcher changed")\n'
+            '  } else {\n'
+            '    assert(!defined(invoker.linker_launcher), "Launcher leaked to host")\n'
+            '  }\n  not_needed(invoker, "*")')
     (work / 'build/toolchain/gcc_toolchain.gni').write_text(capture)
     args = []
     if host_clang is not None:
         args.append('unbundle_host_is_clang=' + json.dumps(host_clang))
+    if launcher is not None:
+        args.append('unbundle_linker_launcher=' + json.dumps(launcher))
     environment = dict(os.environ)
     for role, filename in (('CC', 'clang'), ('CXX', 'clang++'),
                            ('AR', 'llvm-ar'), ('NM', 'llvm-nm')):
@@ -112,6 +122,8 @@ def main():
     parser.add_argument('--source', required=True, type=Path)
     parser.add_argument('--gn', required=True, type=Path)
     parser.add_argument('--baseline-source', type=Path)
+    parser.add_argument('--check-linker-launcher', action='store_true',
+                        help='also check the carried link-launcher patch after family selection')
     options = parser.parse_args()
     if not options.gn.is_absolute() or not options.gn.is_file():
         parser.error('--gn must be an absolute executable path')
@@ -126,6 +138,13 @@ def main():
                          '-'.join((str(target), str(host))), target,
                          host, expected_host=host)
                 count += 1
+        if options.check_linker_launcher:
+            for target in (False, True):
+                for label, launcher in (('empty', ''), ('selected', '/sdk/python /sdk/link-launcher.py --')):
+                    evaluate(options.gn, options.source, root,
+                             'launcher-' + str(target) + '-' + label, target,
+                             launcher=launcher)
+                    count += 1
         if options.baseline_source:
             evaluate(options.gn, options.baseline_source, root, 'baseline-default',
                      False, error='Compiler family leaked across toolchains')

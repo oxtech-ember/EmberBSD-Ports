@@ -498,6 +498,9 @@ Run the [family selection check](tests/gn-unbundle-compiler-family.py) with
 the independent host default and both explicit host modes. With
 `--baseline-source`, two negative cases demonstrate the inherited-mode defect.
 Compiler paths, linker drivers, CPU/OS and assembler flags must stay separate.
+After the carried link-launcher patch, add `--check-linker-launcher` for four
+more GN cases: empty and selected target launchers under both compiler families.
+The independent host toolchain must not inherit the target launcher.
 These small GN fixtures run no compiler, Ninja or complete Chromium graph.
 The ordinary Electron recipe still needs the full dependency sync, BSD overlay
 integration and GN bindings; its initial DEPS input preparation is available.
