@@ -99,7 +99,10 @@ def native_inputs(options, sdk):
     require(Path(sys.executable).resolve() == Path(native.tool('python')).resolve(),
             'run the build controller with the selected host-prefix Python')
     environment = sdk['process'].sanitized_environment()
-    environment.update(PATH=native.path, PYTHONDONTWRITEBYTECODE='1',
+    # Electron BUILD.gn scripts invoke plain `git` for version/refs; bind the
+    # explicitly selected --git without widening PATH to the whole host.
+    git_path = str(Path(options.git).resolve(strict=True).parent)
+    environment.update(PATH=native.path + os.pathsep + git_path, PYTHONDONTWRITEBYTECODE='1',
                        EMBERBSD_HOST_NODE=native.tool('node'),
                        CLANG_PATH=native.tool('clang'), RUSTFMT=native.tool('rustfmt'),
                        LIBCLANG_PATH=str(options.host_prefix / 'lib'))
@@ -153,7 +156,7 @@ def arguments(options, native, tools, rust_version, launcher):
         unbundle_host_is_clang=options.host_compiler_family == 'clang',
         use_sysroot=True, target_sysroot=str(options.sysroot), emberbsd_target_sysroot=str(options.sysroot),
         clang_base_path=str(options.host_prefix), clang_use_chrome_plugins=False,
-        use_custom_libcxx=False, use_custom_libcxx_for_host=False, use_custom_libunwind=False,
+        use_custom_libcxx=True, use_custom_libcxx_for_host=False, use_custom_libunwind=False,
         use_lld=options.compiler_family == 'clang', use_thin_lto=False,
         rust_sysroot_absolute=str(options.host_prefix), rust_bindgen_root=str(options.host_prefix),
         rustc_version=rust_version, emberbsd_rust_unstable_features=True, wayland_scanner_executable=native.tool('wayland-scanner'),
