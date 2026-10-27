@@ -35,12 +35,43 @@ def executable(name):
 
 
 def validate_header(path, roots, *, forbidden):
-    if not sdk.safe_absolute(path):
-        raise ValueError('unsafe native header dependency: ' + path)
-    resolved = str(Path(path).resolve(strict=True))
-    if any(resolved == root or resolved.startswith(root + '/') for root in forbidden):
+    if (not isinstance(path, str) or not path.startswith('/') or
+            re.search(r'[\s\x00-\x1f\x7f]', path)):
+        raise ValueError('unsafe native header dependency: ' + str(path))
+    try:
+        resolved_path = Path(path).resolve(strict=True)
+    except (OSError, RuntimeError) as error:
+        raise ValueError('native header dependency does not exist: ' + path) from error
+    resolved = str(resolved_path)
+    if not sdk.safe_absolute(resolved):
+        raise ValueError('unsafe resolved native header dependency: ' + path)
+    if not resolved_path.is_file():
+        raise ValueError('native header dependency is not a regular file: ' + path)
+
+    def canonical_roots(paths):
+        result = []
+        for root in paths:
+            if (not isinstance(root, str) or not root.startswith('/') or
+                    re.search(r'[\s\x00-\x1f\x7f]', root)):
+                raise ValueError('unsafe native include root: ' + str(root))
+            try:
+                resolved_root = Path(root).resolve(strict=True)
+            except (OSError, RuntimeError) as error:
+                raise ValueError('unsafe native include root: ' + root) from error
+            canonical = str(resolved_root)
+            if not sdk.safe_absolute(canonical) or not resolved_root.is_dir():
+                raise ValueError('unsafe native include root: ' + root)
+            result.append(canonical)
+        return result
+
+    def within(pathname, root):
+        return pathname == root or pathname.startswith(root + '/')
+
+    forbidden_roots = canonical_roots(forbidden)
+    if any(within(resolved, root) for root in forbidden_roots):
         raise ValueError('native header resolves inside a target tree: ' + path)
-    if not any(path.startswith(root + '/') or resolved.startswith(root + '/') for root in roots):
+    allowed_roots = canonical_roots(roots)
+    if not any(within(resolved, root) for root in allowed_roots):
         raise ValueError('unexpected native header dependency: ' + path)
     return resolved
 
