@@ -7,6 +7,8 @@ ZoneMinder 1.38 already looks for PCRE2, so with the old PCRE it lost regex
 support silently.
 VLC's Lua scripts used math.pow and assigned to a for-loop variable; Lua 5.5
 allows neither, so the scripts compute the power with ^ and use new locals.
+OpenSceneGraph's own Lua finders stop at Lua 5.2, so it gets the library and
+headers directly; its Lua plugin needs no source change.
 
 --- a/devel/Guitar/Makefile
 +++ b/devel/Guitar/Makefile
@@ -182,6 +184,36 @@ allows neither, so the scripts compute the power with ^ and use new locals.
 +share/umbrello6/xmi.css
 +share/umbrello6/xmi1docbook.xsl
 +share/umbrello6/xmi2docbook.xsl
+--- a/graphics/osg/Makefile
++++ b/graphics/osg/Makefile
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.213 2026/09/02 19:02:49 wiz Exp $
+ 
+ DISTNAME=	osg-3.6.5
+-PKGREVISION=	86
++PKGREVISION=	87
+ CATEGORIES=	graphics devel
+ MASTER_SITES=	${MASTER_SITE_GITHUB:=openscenegraph/}
+ GITHUB_PROJECT=	OpenSceneGraph
+@@ -40,6 +40,9 @@
+ CMAKE_CONFIGURE_ARGS+=		-DCMAKE_DISABLE_FIND_PACKAGE_COLLADA=TRUE
+ CMAKE_CONFIGURE_ARGS+=		-DCMAKE_DISABLE_FIND_PACKAGE_FBX=TRUE
+ CMAKE_CONFIGURE_ARGS+=		-DOSG_USE_LOCAL_LUA_SOURCE=OFF
++# The bundled finders know Lua 5.1 and 5.2 only; the Lua plugin builds with 5.5.
++CMAKE_CONFIGURE_ARGS+=		-DLUA_INCLUDE_DIR=${BUILDLINK_PREFIX.lua}/${LUA_INCDIR}
++CMAKE_CONFIGURE_ARGS+=		-DLUA_LIBRARY:STRING=-llua
+ CMAKE_CONFIGURE_ARGS+= 	-DCMAKE_POLICY_VERSION_MINIMUM=3.5
+ 
+ PLIST_VARS+=	quartz notdarwin
+@@ -58,7 +61,7 @@
+ .include "../../graphics/jasper/buildlink3.mk"
+ .include "../../graphics/openexr/buildlink3.mk"
+ .include "../../graphics/tiff/buildlink3.mk"
+-.include "../../lang/lua52/buildlink3.mk"
++.include "../../lang/lua/buildlink3.mk"
+ .include "../../multimedia/ffmpeg4/buildlink3.mk"
+ .include "../../www/curl/buildlink3.mk"
+ .if ${OPSYS} != "Darwin"
 --- a/multimedia/vlc/Makefile
 +++ b/multimedia/vlc/Makefile
 @@ -1,7 +1,7 @@
