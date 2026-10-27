@@ -1,0 +1,21 @@
+# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+# configure.ac invokes AC_PROG_CXX, including real compiler probes.
+--- a/devel/libusb1/Makefile
++++ b/devel/libusb1/Makefile
+@@ -2,7 +2,7 @@
+ 
+ DISTNAME=	libusb-1.0.30
+ PKGNAME=	${DISTNAME:S/libusb/libusb1/}
+-PKGREVISION=	2
++PKGREVISION=	3
+ CATEGORIES=	devel
+ MASTER_SITES=	${MASTER_SITE_GITHUB:=libusb/}
+ GITHUB_PROJECT=	libusb
+@@ -20,6 +20,7 @@
+ NOT_FOR_PLATFORM=	DragonFly-*-*
+ 
+ USE_CC_FEATURES=	c11
++USE_LANGUAGES=	c c++
+ 
+ USE_LIBTOOL=	yes
+ USE_TOOLS+=	autoconf automake autoreconf pkg-config
