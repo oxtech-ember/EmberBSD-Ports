@@ -1,4 +1,4 @@
-Chromium: enable -Wno-unused-but-set-global on BSD targets.
+Chromium: enable -Wno-unused-but-set-global and -Wno-deprecated-declarations on BSD.
 
 Origin: EmberBSD (AI-assisted), not submitted upstream.
 Source: Chromium electron-source tree under EmberBSD.
@@ -6,10 +6,13 @@ Apply after other build/config/compiler patches.
 NetBSD official builds use clang 23 with -Werror; under NDEBUG many
 debug globals are set but their readers are compiled out. Upstream only
 adds -Wno-unused-but-set-global when !is_bsd; enable for BSD too.
+SDK pkg expat also deprecates many XML_* APIs (SkXMLParser,
+SkFontMgr_android_parser), which floods -Wdeprecated-declarations under
+-Werror; silence that in the same !is_wasm block.
 
 --- a/build/config/compiler/BUILD.gn
 +++ b/build/config/compiler/BUILD.gn
-@@ -1980,7 +1980,10 @@
+@@ -1980,13 +1980,18 @@
        "-Wno-nontrivial-memcall",
      ]
  
@@ -21,3 +24,11 @@ adds -Wno-unused-but-set-global when !is_bsd; enable for BSD too.
        cflags += [
          # TODO(crbug.com/432275627): Fix and re-enable.
          "-Wno-uninitialized-const-pointer",
+ 
+         # TODO(crbug.com/495753203): Fix and re-enable.
+         "-Wno-unused-but-set-global",
++        # EmberBSD: SDK pkg expat newer than Chromium; XML_* APIs deprecated.
++        "-Wno-deprecated-declarations",
+       ]
+     }
+ 

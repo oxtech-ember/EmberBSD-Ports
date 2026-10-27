@@ -1,0 +1,24 @@
+Skia: silence deprecated XML_SetHashSalt under SDK pkg expat.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Source: Chromium electron-source tree under EmberBSD.
+Apply after other third_party/skia patches.
+NetBSD SDK pkg expat deprecates XML_SetHashSalt in favor of
+XML_SetHashSalt16Bytes; keep the legacy salt call (Skia has not switched)
+and wrap it so -Wdeprecated-declarations does not fail under -Werror.
+
+--- a/third_party/skia/src/xml/SkXMLParser.cpp
++++ b/third_party/skia/src/xml/SkXMLParser.cpp
+@@ -175,7 +175,12 @@
+     // random salt once per process oursevles ensures the salt is non-deterministic
+     // and unguessable, while preventing calls to rand_s inside sandboxed processes
+     // on Windows.
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wdeprecated-declarations"
++    // SDK expat deprecates XML_SetHashSalt in favor of XML_SetHashSalt16Bytes;
++    // keep legacy salt until Skia switches (Werror on NetBSD pkg expat).
+     XML_SetHashSalt(ctx.fXMLParser, get_hash_salt());
++#pragma clang diagnostic pop
+ 
+     XML_SetUserData(ctx.fXMLParser, &ctx);
+     XML_SetElementHandler(ctx.fXMLParser, start_element_handler, end_element_handler);

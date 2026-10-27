@@ -556,6 +556,11 @@
       "path": "build-mac-no-objc-class-selector-stubs.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "skia-xml-parser-expat-hash-salt-deprecated.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
