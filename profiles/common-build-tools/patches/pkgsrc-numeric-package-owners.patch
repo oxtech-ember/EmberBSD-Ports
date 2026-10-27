@@ -182,18 +182,18 @@
  CATEGORIES=		pkgtools
  
  MAINTAINER=		agc@NetBSD.org
-@@ -83,6 +83,11 @@
- MAKE_ENV+=		OPSYS=${OPSYS}
- MAKE_ENV+=		CATMAN_SECTION_SUFFIX=${CATMAN_SECTION_SUFFIX:Q}
+@@ -85,6 +85,11 @@
  MAKE_ENV+=		MANINSTALL=${MANINSTALL:Q}
  MAKE_ENV+=		SED=${SED:Q}
-+
+ 
 +# Keep nested static-library builds on the selected archive tools.
 +MAKE_FLAGS+=		AR=${AR:Q} RANLIB=${RANLIB:Q}
 +CONFIGURE_ENV+=		AR=${AR:Q} RANLIB=${RANLIB:Q}
 +
- 
++
  PKG_DBDIR?=		${PREFIX}/pkgdb
+ EGDIR=			${PREFIX}/share/examples/pkg_install
+ 
 --- a/mk/pkgformat/pkg/package.mk
 +++ b/mk/pkgformat/pkg/package.mk
 @@ -36,8 +36,10 @@

@@ -8,6 +8,7 @@ import hashlib
 import importlib.util
 import io
 import os
+import re
 from pathlib import Path
 import stat
 import shutil
@@ -146,6 +147,60 @@ class ExportTests(unittest.TestCase):
         self.assertEqual((recipe / 'distinfo').read_bytes().replace(added, b''), before)
         self.assertEqual((recipe / 'Makefile').read_bytes().count(
             b'TEST_DEPENDS+=\tdbus>=1.16.2:../../sysutils/dbus\n'), 1)
+
+    def test_numeric_owner_patch_composes_after_pkg_install_revision_patches(self):
+        owner = HERE.parents[1]
+        target_name = b'pkgtools/pkg_install/Makefile'
+        numeric_path = 'profiles/common-build-tools/patches/pkgsrc-numeric-package-owners.patch'
+        tree = self.work / 'numeric-owner-patch'
+        target = tree / target_name.decode()
+        target.parent.mkdir(parents=True)
+        shutil.copyfile(owner / 'upstream/pkgsrc' / target_name.decode(), target)
+
+        preceding = []
+        for line in (owner / 'pkgsrc/export.conf').read_text().splitlines():
+            if not line or line.startswith('#'):
+                continue
+            fields = line.split('\t')
+            if fields[0] != 'patch':
+                continue
+            if fields[1] == numeric_path:
+                break
+            data = (owner / fields[1]).read_bytes()
+            section = next((part for part in re.split(rb'(?=^--- a/)', data, flags=re.M)
+                            if part.startswith(b'--- a/' + target_name + b'\n')), None)
+            if section is not None:
+                preceding.append((fields[1], section))
+        argv = self.selected.command('patch') + (
+            '-f', '-E', '-d', str(tree), '-p1', '-F', '0', '-V', 'none')
+        for name, patch in preceding:
+            with self.subTest(patch=name):
+                self.runner(argv, input=patch)
+
+        before = target.read_bytes()
+        self.assertIn(b'PKGREVISION=\t\t7\n', before)
+        numeric_data = (owner / numeric_path).read_bytes()
+        section = next(part for part in re.split(rb'(?=^--- a/)', numeric_data, flags=re.M)
+                       if part.startswith(b'--- a/' + target_name + b'\n'))
+        try:
+            output = self.runner(argv, input=section)
+        except subprocess.CalledProcessError as error:
+            diagnostic = (error.stdout or b'') + (error.stderr or b'')
+            self.fail('numeric owner patch did not apply: ' +
+                      diagnostic.decode(errors='replace'))
+        self.assertNotIn(b'fuzz', output)
+        self.assertNotIn(b'offset', output)
+
+        old = b'MAKE_ENV+=\t\tSED=${SED:Q}\n\nPKG_DBDIR?='
+        new = (b'MAKE_ENV+=\t\tSED=${SED:Q}\n\n'
+               b'# Keep nested static-library builds on the selected archive tools.\n'
+               b'MAKE_FLAGS+=\t\tAR=${AR:Q} RANLIB=${RANLIB:Q}\n'
+               b'CONFIGURE_ENV+=\t\tAR=${AR:Q} RANLIB=${RANLIB:Q}\n\n\n'
+               b'PKG_DBDIR?=')
+        self.assertEqual(before.count(old), 1)
+        expected = before.replace(b'PKGREVISION=\t\t7\n',
+                                  b'PKGREVISION=\t\t8\n', 1).replace(old, new, 1)
+        self.assertEqual(target.read_bytes(), expected)
 
     def test_nss_infrastructure_hunk_retains_three_line_context(self):
         owner = HERE.parents[1]
