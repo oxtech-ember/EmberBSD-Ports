@@ -5,7 +5,7 @@ python3.15 -B -E -S profiles/common-graphics/tests/mesa-sealer-prefix.py \
     --sdk-source /absolute/EmberBSD-SDK --work-parent /absolute/private-work-parent
 ```
 
-Add `--host-prefix /absolute/host-pkg-g16 --archive /absolute/mesa-26.2.5.tar.xz`
+Add `--host-prefix /absolute/host-pkg-llvm --archive /absolute/mesa-26.2.5.tar.xz`
 to run the source-patch check. It selects only bsdtar and patch from that prefix.
 It extracts five pinned archive files. The production BSD-compatible patch
 argv applies the canonical BVNC, host Objective-C and sampler-layout patches
