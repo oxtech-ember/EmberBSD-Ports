@@ -235,6 +235,7 @@ bin/llvm-lto
 bin/llvm-lto2
 bin/llvm-mc
 bin/llvm-mca
+${PLIST.min_tblgen}bin/llvm-min-tblgen
 bin/llvm-ml
 bin/llvm-ml64
 bin/llvm-modextract

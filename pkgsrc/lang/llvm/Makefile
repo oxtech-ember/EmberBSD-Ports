@@ -27,7 +27,7 @@ EMBERBSD_LLVM_PKGDIR:= ${.PARSEDIR:tA}
 .include "version.mk"
 
 PKGNAME=	llvm-${LLVM_VERSION}
-PKGREVISION=	3
+PKGREVISION=	4
 CATEGORIES=	lang devel
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -153,7 +153,12 @@ SUBST_FILES.python=	${CMAKE_BUILD_DIR}/bin/llvm-lit
 SUBST_SED.python=	-e '1s,\#!.*python.*,\#!${PYTHONBIN},'
 .endif
 
-PLIST_VARS+=	darwin notdylib
+PLIST_VARS+=	darwin min_tblgen notdylib
+# Cross LLVM, Clang and LLD builds run the native llvm-min-tblgen from this
+# package. Upstream builds it but does not install it.
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+PLIST.min_tblgen=	yes
+.endif
 .if ${OPSYS} == "Darwin"
 PLIST.darwin=	yes
 .endif
@@ -236,6 +241,13 @@ post-extract:
 .include "../../textproc/libxml2/buildlink3.mk"
 .include "../../mk/atomic64.mk"
 .include "../../mk/bsd.pkg.mk"
+
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+post-install: llvm-install-min-tblgen
+.PHONY: llvm-install-min-tblgen
+llvm-install-min-tblgen:
+	${INSTALL_PROGRAM} ${WRKSRC:Q}/${CMAKE_BUILD_DIR:Q}/bin/llvm-min-tblgen ${DESTDIR:Q}${PREFIX:Q}/bin
+.endif
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
 # Stage the full LLVM payload before selecting the package partition.
