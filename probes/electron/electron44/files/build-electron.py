@@ -91,6 +91,12 @@ def prepare(options):
     return source.materialize(options.workspace, options.destination, result, git=options.git)
 
 
+
+def selected_control_git(path):
+    git = Path(path).resolve(strict=True)
+    require(git.is_file() and os.access(git, os.X_OK), 'selected Git is not executable')
+    return str(git)
+
 def native_inputs(options, sdk):
     roles = ('python', 'gn', 'ninja', 'node', 'rustc', 'rustfmt', 'bindgen', 'wayland-scanner',
              'pkg-config', 'rollup', 'tsc', 'clang', 'cc', 'cxx', 'cpp', 'ar', 'nm', 'strip', 'objcopy', 'readelf',
@@ -100,10 +106,9 @@ def native_inputs(options, sdk):
     require(Path(sys.executable).resolve() == Path(native.tool('python')).resolve(),
             'run the build controller with the selected host-prefix Python')
     environment = sdk['process'].sanitized_environment()
-    # Electron BUILD.gn scripts invoke plain `git` for version/refs; bind the
-    # explicitly selected --git without widening PATH to the whole host.
-    git_path = str(Path(options.git).resolve(strict=True).parent)
-    environment.update(PATH=native.path + os.pathsep + git_path, PYTHONDONTWRITEBYTECODE='1',
+    # Git is a control input for source metadata, not a build-tool fallback.
+    control_git = selected_control_git(options.git)
+    environment.update(PATH=native.path, EMBERBSD_CONTROL_GIT=control_git, PYTHONDONTWRITEBYTECODE='1',
                        EMBERBSD_HOST_NODE=native.tool('node'),
                        CLANG_PATH=native.tool('clang'), RUSTFMT=native.tool('rustfmt'),
                        LIBCLANG_PATH=str(options.host_prefix / 'lib'))
@@ -581,6 +586,18 @@ def reconfigure(options):
         permitted_env = {'EMBERBSD_HOST_TYPESCRIPT', 'EMBERBSD_HOST_ROLLUP',
                          'HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'}
         old_env = saved['environment']
+        # Migrate exactly the old control-Git PATH, never arbitrary tool paths.
+        control_git = selected_control_git(options.git)
+        require(environment.get('EMBERBSD_CONTROL_GIT') == control_git,
+                'selected control Git changed')
+        require(environment.get('PATH') == native.path, 'build PATH is not prefix-only')
+        if 'EMBERBSD_CONTROL_GIT' not in old_env:
+            require(old_env.get('PATH') == native.path + os.pathsep + str(Path(control_git).parent),
+                    'old build PATH is not the selected Git migration')
+        else:
+            require(old_env.get('EMBERBSD_CONTROL_GIT') == control_git and old_env.get('PATH') == native.path,
+                    'control Git or build PATH changed')
+        permitted_env.update(('PATH', 'EMBERBSD_CONTROL_GIT'))
         for name in (set(environment) | set(old_env)) - permitted_env:
             require(environment.get(name) == old_env.get(name), 'producer input changed: ' + name)
         identity_args = {'target_os', 'target_cpu', 'target_sysroot', 'emberbsd_target_sysroot',

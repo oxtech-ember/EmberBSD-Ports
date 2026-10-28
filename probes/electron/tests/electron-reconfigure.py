@@ -18,6 +18,7 @@ owner = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('build', owner / 'electron44/files/build-electron.py')
 b = importlib.util.module_from_spec(spec); spec.loader.exec_module(b)
 class Native:
+    path = str(host / 'bin')
     def tool(self, name):
         return str(host / 'bin' / ('python3.15' if name == 'python' else name))
 class Process:
@@ -43,7 +44,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     gnfile = src/'electron/BUILD.gn'; gnfile.write_text('group("electron_dist_zip") {}\n')
     old = dict(emberbsd_node_provider_inputs=['old'], emberbsd_typescript_definitions=['old'], feature=False, target_cpu='x64')
     new = dict(emberbsd_node_provider_inputs=['new'], emberbsd_typescript_definitions=['new'], feature=True, target_cpu='x64')
-    env = {'PATH':str(host/'bin'), 'EMBERBSD_HOST_TYPESCRIPT':'/old', 'CC':str(work/'target-commands/cc')}
+    env = {'PATH':str(host/'bin') + ':/usr/bin', 'EMBERBSD_HOST_TYPESCRIPT':'/old', 'CC':str(work/'target-commands/cc')}
     opt = SimpleNamespace(workspace=src.parent, ports_source=root, sdk_source=root, host_prefix=host, target='amd64', compiler_family='clang', work=work, git=Path('/usr/bin/git'))
     saved = dict(arguments=old, environment=env, source=str(src.parent), sdk=str(root), host_prefix=str(host), target='amd64')
     config = work/'configuration.json'; config.write_text(json.dumps(saved)); before = config.read_bytes()
@@ -55,8 +56,27 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     def inputs(candidate, sdk):
         path=candidate.work/'target-commands'; path.mkdir()
         (path/'commands.json').write_text(json.dumps(state['commands']))
-        return Native(), {'PATH':env['PATH'], 'EMBERBSD_HOST_TYPESCRIPT':'/new', 'CC':str(path/'cc')}, state['values']
+        return Native(), {'PATH':state.get('path', Native.path), 'EMBERBSD_CONTROL_GIT':state.get('git', '/usr/bin/git'), 'EMBERBSD_HOST_TYPESCRIPT':'/new', 'CC':str(path/'cc'), **state.get('extra', {})}, state['values']
     b.producer_inputs=inputs
+    state['path']=Native.path + ':/bin'
+    try: b.reconfigure(opt); raise AssertionError('accepted external PATH')
+    except ValueError as e: assert 'PATH is not prefix-only' in str(e)
+    state.pop('path'); state['git']='/wrong/git'
+    try: b.reconfigure(opt); raise AssertionError('accepted changed control Git')
+    except ValueError as e: assert 'selected control Git changed' in str(e)
+    state.pop('git'); state['extra']={'CCACHE_DIR':'/foreign'}
+    try: b.reconfigure(opt); raise AssertionError('accepted unrelated environment change')
+    except ValueError as e: assert 'producer input changed: CCACHE_DIR' in str(e)
+    state.pop('extra'); saved['environment']['PATH'] = Native.path + ':/wrong'
+    config.write_text(json.dumps(saved))
+    try: b.reconfigure(opt); raise AssertionError('accepted unrelated old PATH')
+    except ValueError as e: assert 'old build PATH' in str(e)
+    config.write_bytes(before)
+    try: b.selected_control_git(root/'missing-git'); raise AssertionError('accepted missing Git')
+    except FileNotFoundError: pass
+    nonexec=root/'not-executable'; nonexec.write_text('file')
+    try: b.selected_control_git(nonexec); raise AssertionError('accepted non-executable Git')
+    except ValueError as e: assert 'not executable' in str(e)
     opt.target='aarch64'
     try: b.reconfigure(opt); raise AssertionError('accepted changed target')
     except ValueError as e: assert 'inputs differ' in str(e)
@@ -85,4 +105,6 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     gnfile.write_text('group("electron_dist_zip") {}\n'); b.reconfigure(opt)
     assert not (work/'reconfigure-incomplete').exists() and json.loads(config.read_text())['arguments']==new
     assert (out/'build.ninja').read_text()!='old graph' and obj.read_bytes()==b'object' and json.loads(binding.read_text())==commands
+    b.reconfigure(opt)  # Already migrated configurations are reusable.
+    assert not (work/'reconfigure-incomplete').exists() and obj.read_bytes()==b'object'
     print('real GN success, failure/recovery, input mismatch and object preservation passed')

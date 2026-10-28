@@ -760,3 +760,9 @@ GN generation leaves `reconfigure-incomplete` and prevents `build`; rerun
 `reconfigure` successfully before building. This operation does not establish
 that changed compiler or sysroot contents at the same paths are compatible.
 Use a new output when those inputs have changed incompatibly.
+
+The Electron producer keeps its build `PATH` inside the selected native prefix.
+Source metadata commands receive the explicitly selected `--git` as
+`EMBERBSD_CONTROL_GIT`, without adding that control tool's directory to `PATH`.
+The reconfigure command accepts the corresponding migration from the earlier
+prefix-plus-Git-directory environment and rejects unrelated changes.

@@ -631,6 +631,11 @@
       "path": "content-browser-a11y-auralinux-closedir-bsd-guard.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "explicit-control-git.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

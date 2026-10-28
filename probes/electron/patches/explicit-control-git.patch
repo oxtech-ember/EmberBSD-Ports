@@ -1,0 +1,64 @@
+Bind source metadata Git queries to the explicitly selected control tool.
+
+Origin: EmberBSD (AI-assisted); upstream defaults remain unchanged.
+
+--- a/build/util/lastchange.py
++++ b/build/util/lastchange.py
+@@ -46,7 +46,7 @@
+   Returns:
+     A process object or None.
+   """
+-  command = ['git'] + command
++  command = [os.environ.get('EMBERBSD_CONTROL_GIT', 'git')] + command
+   # Force shell usage under cygwin. This is a workaround for
+   # mysterious loss of cwd while invoking cygwin's git.
+   # We can't just pass shell=True to Popen, as under win32 this will
+@@ -107,7 +107,7 @@
+   Raises:
+     RuntimeError on failure, including a nonzero return code.
+   """
+-  command = ['git'] + command
++  command = [os.environ.get('EMBERBSD_CONTROL_GIT', 'git')] + command
+   # Force shell usage under cygwin. This is a workaround for
+   # mysterious loss of cwd while invoking cygwin's git.
+   # We can't just pass shell=True to Popen, as under win32 this will
+@@ -408,6 +408,8 @@
+       return None
+ 
+   if not version_info:
++    if 'EMBERBSD_CONTROL_GIT' in os.environ:
++      raise RuntimeError('selected Git did not provide source revision')
+     logging.warning(
+         "Falling back to a version of 0.0.0 to allow script to finish. This is"
+         "normal if you are bootstrapping a new environment or do not have a "
+--- a/electron/script/get-git-ref-paths.py
++++ b/electron/script/get-git-ref-paths.py
+@@ -15,7 +15,7 @@
+ 
+ 
+ def rev_parse(flag):
+-  out = subprocess.check_output(['git', 'rev-parse', flag],
++  out = subprocess.check_output([os.environ.get('EMBERBSD_CONTROL_GIT', 'git'), 'rev-parse', flag],
+                                 cwd=ELECTRON_DIR,
+                                 stderr=subprocess.PIPE,
+                                 universal_newlines=True).strip()
+--- a/electron/script/get-git-version.py
++++ b/electron/script/get-git-version.py
+@@ -21,7 +21,7 @@
+ 
+ try:
+   output = subprocess.check_output(
+-      ['git', 'describe', '--tags', '--abbrev=0'],
++      [os.environ.get('EMBERBSD_CONTROL_GIT', 'git'), 'describe', '--tags', '--abbrev=0'],
+       cwd=os.path.abspath(os.path.join(os.path.dirname(__file__), '..')),
+       stderr=subprocess.PIPE,
+       universal_newlines=True)
+@@ -29,6 +29,8 @@
+   version = re.sub('^v', '', output.strip())
+   print(version)
+ except Exception:
++  if 'EMBERBSD_CONTROL_GIT' in os.environ:
++    raise
+   # When there is error we print a null version string instead of throwing an
+   # exception, this is because for linux/bsd packages and some vendor builds
+   # electron is built from a source code tarball and there is no git information
