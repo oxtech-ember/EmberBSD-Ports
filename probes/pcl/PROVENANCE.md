@@ -11,7 +11,7 @@ Archives are downloaded from their original upstream providers.
 | [LZ4 1.10.0](https://github.com/lz4/lz4/releases/tag/v1.10.0) | `ebb370ca83af193212df4dcbadcc5d87bc0de2f0` | BSD-2-Clause library; GPL-2.0-or-later CLI; Yann Collet and contributors |
 | [Boost 1.92.0](https://github.com/boostorg/boost/releases/tag/boost-1.92.0) | The common pkgsrc `devel/boost-libs` package | Boost Software License 1.0; individual library authors |
 | [Eigen 5.0.1](../../profiles/common-graphics/cross/eigen.md) | `bc3b39870ecb690a623a3f49149a358b95c5781d` | MPL-2.0 with upstream per-file notices |
-| [GCC 16.2.0](../../pkgsrc/local-robotics/gcc16-libatomic/files/SOURCE) | Official `gcc-16.2.0.tar.xz`; atomic runtime component | GPL-3.0-or-later with GCC Runtime Library Exception 3.1 |
+| [LLVM 23.1.4](../../pkgsrc/lang/compiler-rt) | Official `llvm-project` release; compiler-rt `clang_rt.atomic` | Apache-2.0 WITH LLVM-exception |
 | [GoogleTest 1.18.0](https://github.com/google/googletest/releases/tag/v1.18.0) | `063de7e9578f82b369302001269680b4b1553359` | BSD-3-Clause; Google and contributors; test-only source |
 
 PCL, LZ4 and Boost use the current stable releases checked for this task.

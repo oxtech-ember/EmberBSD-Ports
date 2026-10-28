@@ -3,7 +3,7 @@
 .include "../../lang/llvm/version.mk"
 
 PKGNAME=	compiler-rt-${LLVM_VERSION}
-PKGREVISION=	8
+PKGREVISION=	9
 # The common runtime patch set also changes libunwind CMake checks.
 EXTRACT_ELEMENTS+=	${DISTNAME}/libunwind
 # One patch owner for native packages and the OS/SDK prepared source.
@@ -74,6 +74,19 @@ CMAKE_CONFIGURE_ARGS+=	-DCOMPILER_RT_BUILD_SANITIZERS=OFF
 .endif
 
 TEST_TARGET=	check-compiler-rt
+
+.if ${OPSYS} == "NetBSD"
+# The one libatomic: atomic.c as a shared library, so every object shares
+# its lock table. Link it as -latomic; no GCC libatomic is installed.
+CMAKE_CONFIGURE_ARGS+=	-DCOMPILER_RT_BUILD_STANDALONE_LIBATOMIC=ON
+_COMPILER_RT_ATOMIC=	lib/clang/${LLVM_MAJOR_VERSION}/lib/netbsd/libclang_rt.atomic-${MACHINE_ARCH}.so
+INSTALLATION_DIRS+=	lib
+post-install:
+	${TEST} -f ${DESTDIR}${PREFIX}/${_COMPILER_RT_ATOMIC}
+	${LN} -sf ${_COMPILER_RT_ATOMIC:S,^lib/,,} ${DESTDIR}${PREFIX}/lib/libatomic.so
+	${LN} -sf ${_COMPILER_RT_ATOMIC:S,^lib/,,} \
+	    ${DESTDIR}${PREFIX}/lib/${_COMPILER_RT_ATOMIC:T}
+.endif
 
 GENERATE_PLIST+=	${FIND} ${DESTDIR}${PREFIX} \( -type f -o -type l \) -print | \
 			${SED} 's,${DESTDIR}${PREFIX}/,,' | ${SORT} ;

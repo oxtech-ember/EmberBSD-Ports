@@ -9,14 +9,14 @@ for path do case "$path" in /*) ;; *) exit 2;; esac; done
 [ "$(uname -s):$(uname -p)" = NetBSD:aarch64 ] || exit 2
 PATH=/usr/pkg/bin:/bin:/usr/bin:/sbin:/usr/sbin; export PATH
 LC_ALL=C; export LC_ALL
-all='eigen3 boost-headers boost-libs gcc16-libatomic lz4 flann-lib pcl'
+all='eigen3 boost-headers boost-libs compiler-rt lz4 flann-lib pcl'
 for name in $all; do
     if pkg_info -e "$name" > /dev/null 2>&1; then echo "Preserve installed package: $name" >&2; exit 2; fi
 done
 mkdir -p "$out/first" "$out/reinstalled" "$out/upstream" "$out/controls"
 install_packages()
 {
-    for package in eigen3-5.0.1 boost-headers-1.92.0 boost-libs-1.92.0 gcc16-libatomic-16.2.0 lz4-1.10.0 flann-lib-1.9.2 pcl-1.15.1nb1; do
+    for package in eigen3-5.0.1 boost-headers-1.92.0 boost-libs-1.92.0 compiler-rt-23.1.4nb9 lz4-1.10.0 flann-lib-1.9.2 pcl-1.15.1nb1; do
         pkg_add "$packages/$package.tgz"
     done
 }
@@ -104,13 +104,13 @@ for name in test_common test_pointcloud test_transforms test_filters_grid_minimu
     [ "$status" = 0 ] || { cat "$out/upstream/$name.log" >&2; exit 1; }
     echo "PASS: $name"
 done
-for name in eigen3 boost-headers boost-libs gcc16-libatomic lz4 flann-lib; do
+for name in eigen3 boost-headers boost-libs compiler-rt lz4 flann-lib; do
     status=0
     pkg_delete "$name" > "$out/$name-delete-protected.log" 2>&1 || status=$?
     [ "$status" -ne 0 ]
     pkg_info -e "$name" > /dev/null
 done
-for name in pcl flann-lib lz4 gcc16-libatomic boost-libs boost-headers eigen3; do
+for name in pcl flann-lib lz4 compiler-rt boost-libs boost-headers eigen3; do
     pkg_delete "$name" >> "$out/remove.log" 2>&1
     if pkg_info -e "$name" > /dev/null 2>&1; then exit 1; fi
 done

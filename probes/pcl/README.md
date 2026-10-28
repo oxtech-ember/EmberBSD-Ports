@@ -21,7 +21,7 @@ headers, libc and compiler runtime together. The acceptance package set is:
 | [eigen3 5.0.1](../../pkgsrc/math/eigen3) | Common Eigen headers and CMake interface |
 | boost-headers 1.92.0 (`devel/boost-headers`) | The common Boost headers |
 | boost-libs 1.92.0 (`devel/boost-libs`) | The common compiled Boost libraries, including Iostreams, Random and Serialization |
-| [gcc16-libatomic 16.2.0](../../pkgsrc/local-robotics/gcc16-libatomic) | Missing atomic component in a partial cross SDK |
+| [compiler-rt 23.1.4](../../pkgsrc/lang/compiler-rt) | The only libatomic (`clang_rt.atomic`) |
 | [lz4 1.10.0](../../pkgsrc/archivers/lz4) | Shared/static compression library and current CLI |
 | [flann-lib 1.9.2](../../pkgsrc/math/flann-lib) | Shared/static CPU C++ nearest-neighbor search |
 | [pcl 1.15.1nb1](../../pkgsrc/graphics/pcl) | Thirteen selected shared libraries and installed headers |
@@ -42,10 +42,8 @@ the common `boost-headers` and `boost-libs` packages and the GCC16 runtime. Use 
 listed in [sources.tsv](sources.tsv), [dependency sources](cross/dependency-sources.tsv)
 and [test sources](test-sources.tsv).
 
-If the SDK lacks `libatomic.so.3`, first use the common
-[atomic component helper](../../profiles/development-toolchain/cross/build-libatomic.py).
-Its recipe documents the source hash, staging layout and collision boundary.
-Import only its verified missing stage into the task sysroot.
+Generic atomics link with `-latomic` against compiler-rt's `clang_rt.atomic`
+from [lang/compiler-rt](../../pkgsrc/lang/compiler-rt), the only libatomic.
 
 ```sh
 CROSS_JOBS=3 sh probes/pcl/cross/build-dependencies.sh \

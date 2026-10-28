@@ -9,14 +9,14 @@ for path do case "$path" in /*) ;; *) exit 2;; esac; done
 [ "$(uname -s):$(uname -p)" = NetBSD:aarch64 ] || exit 2
 PATH=/usr/pkg/bin:/bin:/usr/bin:/sbin:/usr/sbin; export PATH
 LC_ALL=C; export LC_ALL
-all='eigen3 boost-headers boost-libs gcc16-libatomic lz4 flann-lib pcl gtsam png libjpeg-turbo sqlite3 opencv rtabmap'
+all='eigen3 boost-headers boost-libs compiler-rt lz4 flann-lib pcl gtsam png libjpeg-turbo sqlite3 opencv rtabmap'
 for name in $all; do
     if pkg_info -e "$name" >/dev/null 2>&1; then echo "Preserve installed package: $name" >&2; exit 2; fi
 done
 mkdir -p "$out/first" "$out/reinstalled" "$out/upstream" "$out/controls"
 install_packages()
 {
-    for package in eigen3-5.0.1 boost-headers-1.92.0 boost-libs-1.92.0 gcc16-libatomic-16.2.0 lz4-1.10.0 flann-lib-1.9.2 pcl-1.15.1nb1 gtsam-4.3.0 png-1.6.59 libjpeg-turbo-3.2.0nb2 sqlite3-3.54.1 opencv-5.0.0 rtabmap-0.23.8; do
+    for package in eigen3-5.0.1 boost-headers-1.92.0 boost-libs-1.92.0 compiler-rt-23.1.4nb9 lz4-1.10.0 flann-lib-1.9.2 pcl-1.15.1nb1 gtsam-4.3.0 png-1.6.59 libjpeg-turbo-3.2.0nb2 sqlite3-3.54.1 opencv-5.0.0 rtabmap-0.23.8; do
         pkg_add "$packages/$package.tgz"
     done
 }
@@ -100,7 +100,7 @@ for name in sqlite3 opencv pcl gtsam png libjpeg-turbo eigen3; do
     [ "$status" -ne 0 ]
     pkg_info -e "$name" >/dev/null
 done
-for name in rtabmap opencv sqlite3 libjpeg-turbo png gtsam pcl flann-lib lz4 gcc16-libatomic boost-libs boost-headers eigen3; do
+for name in rtabmap opencv sqlite3 libjpeg-turbo png gtsam pcl flann-lib lz4 compiler-rt boost-libs boost-headers eigen3; do
     pkg_delete "$name" >> "$out/remove.log" 2>&1
     if pkg_info -e "$name" >/dev/null 2>&1; then exit 1; fi
 done

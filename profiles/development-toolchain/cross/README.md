@@ -469,12 +469,9 @@ four modules and three board DTBs. The OS wrapper's portable contracts passed
 with GCC16. Boot, the four native contracts and Linux-hosted application-mode
 runtime acceptance remain unverified.
 
-For an application SDK that lacks `libatomic`, the
-[atomic component](../../../pkgsrc/local-robotics/gcc16-libatomic/README.md)
-uses the same GCC16 source and ABI. Its [cross helper](build-libatomic.py)
-stages the runtime without replacing a complete GCC16 provider. The
-[PCL acceptance](../../../probes/pcl/VALIDATION.md) checks the component's
-256-byte operations, concurrent updates and actual AArch64 package lifecycle.
+The only `libatomic` is compiler-rt's shared `clang_rt.atomic`
+([lang/compiler-rt](../../../pkgsrc/lang/compiler-rt/Makefile)), linked as
+`-latomic`; no GCC libatomic is packaged.
 
 ## Host controller checks
 
