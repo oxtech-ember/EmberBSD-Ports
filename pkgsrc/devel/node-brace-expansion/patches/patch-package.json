@@ -1,0 +1,15 @@
+$NetBSD$
+
+Use the shared current balanced-match provider.
+
+--- package.json.orig
++++ package.json
+@@ -43,7 +43,7 @@
+     "typedoc": "^0.28.5"
+   },
+   "dependencies": {
+-    "balanced-match": "^4.0.2"
++    "balanced-match": "^5.0.0"
+   },
+   "license": "MIT",
+   "engines": {
