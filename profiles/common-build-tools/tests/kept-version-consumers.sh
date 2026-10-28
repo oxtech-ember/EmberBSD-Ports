@@ -23,6 +23,7 @@ devel/SDL2 devel/SDL3
 devel/git-gitk x11/tk
 devel/hexpatch lang/lua55
 devel/java-jna lang/openjdk21
+devel/lua-bit32 lang/lua55
 devel/lua-compat53 lang/lua55
 devel/umbrello x11/qt6-qtbase devel/kf6-ktexteditor
 editors/emacs29 lang/gcc16-libjit
