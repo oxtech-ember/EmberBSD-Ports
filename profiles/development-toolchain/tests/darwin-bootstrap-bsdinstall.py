@@ -40,6 +40,13 @@ def apply_policy(text, state):
                 if bool(match[1]) != member:
                     return False
                 continue
+            # The model has no files. EXISTS lists the paths that exist.
+            match = re.fullmatch(r'(!?)exists\(\$\{([^}]+)\}(/[^)]*)\)', term)
+            if match:
+                present = state.get(match[2], '') + match[3] in state.get('EXISTS', '').split()
+                if bool(match[1]) == present:
+                    return False
+                continue
             match = re.fullmatch(r'\$\{([^}:]+)(?::U([^}]+))?\} (==|!=) "([^"]*)"', term)
             if not match:
                 raise AssertionError('Unexpected policy predicate: ' + term)
