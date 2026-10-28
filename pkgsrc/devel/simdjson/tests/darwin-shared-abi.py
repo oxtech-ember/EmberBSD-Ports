@@ -29,11 +29,12 @@ with tempfile.TemporaryDirectory(prefix='simdjson-abi-') as d:
     subprocess.run([str(a.install_name_tool), '-id', str(library), str(library)], check=True)
     flags = ['-L' + str(root) if flag.startswith('-L') else flag for flag in flags]
     results = []
-    for opt in ('0', '2'):
-        executable = root / ('stream-' + opt)
-        subprocess.run([str(a.cc), *a.flag, '-std=c++17', '-O' + opt,
-                        str(Path(__file__).with_name('stream.cpp')), *flags,
-                        '-o', str(executable)], check=True)
-        results.append(subprocess.check_output([str(executable)], text=True).strip())
-    assert results[0] == results[1], results
-    print('pkg-config shared ABI -O0/-O2:', results[0])
+    for standard in ('c++17', 'c++20'):
+        for opt in ('0', '2'):
+            executable = root / ('stream-' + standard + '-' + opt)
+            subprocess.run([str(a.cc), *a.flag, '-std=' + standard, '-O' + opt,
+                            str(Path(__file__).with_name('stream.cpp')), *flags,
+                            '-o', str(executable)], check=True)
+            results.append(subprocess.check_output([str(executable)], text=True).strip())
+    assert len(set(results)) == 1, results
+    print('pkg-config shared ABI C++17/C++20 -O0/-O2:', results[0])
