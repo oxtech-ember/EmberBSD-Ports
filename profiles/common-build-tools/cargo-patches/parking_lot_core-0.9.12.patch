@@ -1,0 +1,8 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -69,4 +69,4 @@
+ version = "0.2.95"
+ 
+ [target."cfg(windows)".dependencies.windows-link]
+-version = "0.2.0"
++version = "0.100.0"

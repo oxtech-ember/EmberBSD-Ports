@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.6 2025/09/01 06:12:29 adam Exp $
 
 DISTNAME=	rust-bindgen-0.73.2
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=rust-lang/}
 GITHUB_TAG=	refs/tags/v${PKGVERSION_NOREV}

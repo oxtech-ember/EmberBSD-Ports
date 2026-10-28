@@ -2,14 +2,14 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Check the shared native Rust provider and its target std before Cargo runs.
 set -eu
-[ "$#" -eq 5 ] || { echo 'Usage: verify-cross-inputs.sh HOST_PREFIX RUST_TARGET GNU_TRIPLET WRAPPERS PROBE_OUTPUT' >&2; exit 2; }
-host=$1 target=$2 triplet=$3 wrappers=$4 probe=$5
+[ "$#" -eq 8 ] || { echo 'Usage: verify-cross-inputs.sh HOST_PREFIX RUST_TARGET GNU_TRIPLET CC CXX DRIVER_CHECK SHELL PROBE_OUTPUT' >&2; exit 2; }
+host=$1 target=$2 triplet=$3 cc=$4 cxx=$5 driver_check=$6 shell=$7 probe=$8
 fail() { echo "$*" >&2; exit 1; }
 case "$target:$triplet" in
     aarch64-unknown-netbsd:aarch64--netbsd|x86_64-unknown-netbsd:x86_64--netbsd) ;;
-    *) fail 'Unsupported or mixed Rust/GCC cross target.';;
+    *) fail 'Unsupported or mixed Rust/compiler cross target.';;
 esac
-for input in "$host" "$wrappers" "$probe"; do
+for input in "$host" "$cc" "$cxx" "$driver_check" "$shell" "$probe"; do
     case "$input" in /*) ;; *) fail 'Absolute provider and probe paths required.';; esac
     case "$input" in *[!A-Za-z0-9_./+-]*) fail 'Unsupported provider path characters.';; esac
 done
@@ -23,12 +23,8 @@ printf '%s\n' "$version" | grep -qx 'commit-hash: 58cf8f9c35b355199727627d07ae34
 native=$(printf '%s\n' "$version" | sed -n 's/^host: //p')
 case "$native" in ''|*[!a-zA-Z0-9_-]*) fail 'Invalid Rust build-host triple.';; esac
 [ "$native" != "$target" ] || fail 'This recipe requires a build-host compiler distinct from the target.'
-for driver in gcc g++; do
-    compiler=$wrappers/$triplet-$driver
-    [ -x "$compiler" ] || fail "Missing target wrapper: $driver"
-    [ "$("$compiler" -dumpmachine)" = "$triplet" ] || fail 'Target wrapper architecture mismatch.'
-    [ "$("$compiler" -dumpfullversion)" = 16.2.0 ] || fail 'Target wrapper must use GCC 16.2.0.'
-done
+[ -x "$cc" ] && [ -x "$cxx" ] && [ -f "$driver_check" ] && [ -x "$shell" ] || fail 'Missing selected driver or validator.'
+"$shell" "$driver_check" "$cc" "$cxx" "$triplet" "$target" || fail 'Target C/C++ driver mismatch.'
 component=$("$rustc" --target "$target" --print target-libdir)
 [ -d "$component" ] || fail 'Missing target std in the shared Rust prefix.'
 component=$(CDPATH= cd -- "$component" && pwd -P)

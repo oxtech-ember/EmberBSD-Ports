@@ -1,0 +1,2 @@
+CXX generates safe Rust and C++ bridges. This package provides its command-line
+generator and the matching C++ runtime header from the same upstream release.

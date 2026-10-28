@@ -1,6 +1,6 @@
 # $NetBSD$
 
-Use the shared current Syn 3 dependency graph.
+Use shared current Cargo dependencies and windows-link 0.100.0.
 
 --- Cargo.lock.orig
 +++ Cargo.lock
@@ -305,6 +305,19 @@ Use the shared current Syn 3 dependency graph.
  name = "libc"
  version = "0.2.189"
  source = "registry+https://github.com/rust-lang/crates.io-index"
+@@ -345,9 +385,9 @@
+ 
+ [[package]]
+ name = "libloading"
+-version = "0.8.9"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "d7c4b02199fee7c5d21a5ae7d8cfa79a6ef5bb2fc834d6e9058e89c825efdc55"
++version = "0.9.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "754ca22de805bb5744484a5b151a9e1a8e837d5dc232c2d7d8c2e3492edc8b60"
+ dependencies = [
+  "cfg-if",
+  "windows-link",
 @@ -424,10 +464,25 @@
  checksum = "9c6901729fa79e91a0913333229e9ca5dc725089d1c363b2f4b4760709dc4a52"
  
@@ -499,7 +512,7 @@ Use the shared current Syn 3 dependency graph.
  name = "unicode-ident"
  version = "1.0.24"
  source = "registry+https://github.com/rust-lang/crates.io-index"
-@@ -622,30 +706,6 @@
+@@ -622,34 +706,10 @@
  checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
  
  [[package]]
@@ -528,8 +541,15 @@ Use the shared current Syn 3 dependency graph.
 -
 -[[package]]
  name = "windows-link"
- version = "0.2.1"
- source = "registry+https://github.com/rust-lang/crates.io-index"
+-version = "0.2.1"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5"
++version = "0.100.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "9b39de7c7fe78858b0144c50c3fc000bab3be17d5e9b85b1053871693c7f7415"
+ 
+ [[package]]
+ name = "windows-sys"
 @@ -659,9 +719,3 @@
  dependencies = [
   "windows-link",

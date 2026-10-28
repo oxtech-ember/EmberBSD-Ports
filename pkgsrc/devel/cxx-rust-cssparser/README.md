@@ -1,8 +1,8 @@
 # Cross-build the CSS parser bridge
 
 This recipe uses the shared Rust 1.99.1 build-host provider and the selected
-GCC16 target wrappers. It accepts only NetBSD 11 targets with matching pkgsrc,
-Rust and GNU identifiers:
+selected SDK target wrappers. It accepts only NetBSD 11 targets with matching pkgsrc,
+Rust and target identifiers:
 
 | pkgsrc architecture | Rust target | GNU target |
 | --- | --- | --- |
@@ -60,7 +60,7 @@ and architecture-specific std data package. Cargo uses the pinned vendored
 crate closure with `--offline`; no target tool runs on the host.
 
 Before Cargo, `files/verify-cross-inputs.sh` checks the official compiler
-release and commit, matching Cargo, both GCC16 wrapper triples, and the std
+release and commit, matching Cargo, both C/C++ driver triples, and the std
 location inside the shared host prefix. It requires std/core `.rlib` files.
 It then compiles a small real Rust consumer to target **metadata only**.
 This makes the compiler enforce producer/target compatibility, including
@@ -75,9 +75,9 @@ It receives neither this host Rust provider nor development tools.
 ## Host checks
 
 ```sh
-BMAKE=/absolute/host/bin/bmake ruby tests/cross-targets.rb
+BMAKE=/absolute/host/bin/bmake python3 tests/cross-targets.py --bmake /absolute/host/bin/bmake --host-cc /absolute/host/bin/clang --host-cxx /absolute/host/bin/clang++ --host-ar /absolute/host/bin/llvm-ar
 sh tests/inputs.sh
-ruby tests/vendor.rb
+python3 tests/notices.py
 ```
 
 The make fixture evaluates the production cross settings for both targets,
@@ -87,145 +87,22 @@ identification. These checks do not build the parser or prove real std, Cargo,
 Qt/Union, package lifecycle or target runtime acceptance. Those remain required
 with the normally installed providers and the actual source archives.
 
-## Reproduce the derived vendor source
+## Common Cargo source and notices
 
-The previous `cxx-rust-cssparser-vendor-1.1.0.tar.gz` source entry pointed to a
-GitHub Cargo.lock HTML page. It was not a vendor archive. The recipe now uses
-the locally derived plain USTAR `cxx-rust-cssparser-vendor-1.1.0-r1.tar`.
-It does not advertise a replacement upstream HTTP asset.
+The recipe uses the common pkgsrc Cargo vendor mechanism. Each original
+registry archive is checksum-pinned by `distinfo`; `cargo-depends.mk` matches
+the patched `rust/Cargo.lock`, including CXX 1.0.205 and windows-link 0.100.0.
+The common versioned Cargo registry applies the same patches to all consumers.
+Cargo builds use `--offline --locked`; no separate derived vendor archive,
+Cargo download during build or private generator is required.
 
-`files/vendor.rb` prepares the replacement on the build host using Ruby 3.1
-or newer, RubyGems and the shared official native Rust/Cargo 1.99.1 provider.
-It does not compile Rust or require target std. Its original upstream archive
-and Cargo.lock hashes are pinned; `files/vendor-crates.tsv` records the exact
-61 registry crate identities and checksums from that lock. It rejects any
-other dependency source. A fresh work directory gives Cargo a fresh private
-cache; no existing vendor tree or Cargo configuration is imported.
+The Python notices installer retains the project's LICENSES, REUSE metadata and
+resolved Cargo.lock, plus upstream crate manifests and license/notice files.
+`NOTICES.sha256` identifies the installed files and `licenses.json` records
+crate identities and their upstream SPDX expressions. The old derived archive
+and its prior receipt remain reproducible from earlier Git history.
 
-The hash-pinned GitHub source archive contains one global PAX header named
-`pax_global_header`, with exactly the commit comment for
-`d7bd0b6a6ca1db88a8189aee81498f194f1e45a5`. The helper accepts only that exact
-header type, name and payload after verifying the original archive hash.
-It preserves those bytes in `source-metadata.json` and the final receipt.
-Other PAX metadata, including path/link directives, fails; no PAX directives
-are interpreted during extraction.
-
-```sh
-ruby files/vendor.rb \
-    /absolute/distfiles/cxx-rust-cssparser-1.1.0.tar.gz \
-    /absolute/host /absolute/vendor-r1-first
-ruby files/vendor.rb \
-    /absolute/distfiles/cxx-rust-cssparser-1.1.0.tar.gz \
-    /absolute/host /absolute/vendor-r1-second
-cmp /absolute/vendor-r1-first/cxx-rust-cssparser-vendor-1.1.0-r1.tar \
-    /absolute/vendor-r1-second/cxx-rust-cssparser-vendor-1.1.0-r1.tar
-```
-
-Cargo runs `vendor --locked --versioned-dirs` against the checked original
-manifest. The helper checks every cached `.crate` against Cargo.lock and
-requires the vendor file set and bytes to match both that original archive
-and Cargo's `.cargo-checksum.json`. Original license/notice files are retained
-and counted in the receipt. Symlinks, special files and extra crates fail.
-Cargo omits `.gitignore` and `.gitattributes`, including nested copies.
-The helper restores only missing files with those exact basenames from each
-already checksum-verified original `.crate`. It records each restored path,
-file hash and archive hash, and updates the local Cargo checksum map.
-Existing changed files are rejected, not replaced. The final complete archive,
-file-byte, license and checksum audit remains mandatory without omissions.
-
-The result is plain USTAR, using the standard RubyGems writer with
-`SOURCE_DATE_EPOCH=0`, sorted names, uid/gid zero, `wheel` owner/group and
-0755 directory modes. Regular files use 0644 or 0755 according to their
-executable bit. The helper checks the writer's metadata contract; the archive
-has no compression-version dependency. `receipt.json` records input, helper,
-closure and output hashes with input, helper and output hashes.
-
-The original lock supplies 61 crates. Complete original file audits retain
-103 license/notice files and 36 restored VCS metadata files.
-[vendor-r1.json](files/vendor-r1.json) records the derivation inputs and
-hashes. It is a host derivation receipt, not an upstream release signature.
-
-The resulting archive is 40,816,640 bytes. Its SHA256 is
-`d2e42517a49923fcd79fb7f05b650a4821c218c4d04d9c9691c7fdef55e74a2a`.
-The recipe and toolkit manifest now select that exact file and keep normal
-BLAKE2s, SHA512 and size checks. The validator permits
-`derived:cssparser-vendor-r1` only for this owner, filename and hash, bound to
-the unchanged original source archive and declared primary. Other derived
-markers and plain TAR filenames fail.
-
-After reproducing and comparing both generations, copy the verified archive
-into `DISTDIR` and verify the copied bytes. `pre-fetch` refuses a missing or
-changed derived archive with generation instructions. The original GitHub
-source still uses normal framework fetch and checksum handling. No checksum,
-patch, ownership or payload verification is skipped.
-
-Real native `cargo metadata --offline --locked --filter-platform
-x86_64-unknown-netbsd` also resolves from the archive-extracted vendor tree
-with an empty private Cargo home. Its selected graph contains 52 registry
-packages plus the local root. The full source vendor closure remains 61.
-This does not compile the parser or accept a target package/runtime. The
-application cross build, target dependency closure and binary-package notice
-acceptance still require their own checks.
-
-## Installed notices and license metadata
-
-The recipe's normal `post-install` target installs all 103 original registry
-license and notice files under `share/licenses/cxx-rust-cssparser/vendor`.
-This covers all 61 source crates, including crates outside the filtered
-amd64 graph. It is a source notice superset, not a list of linked objects.
-The package also retains all five original project license texts,
-`REUSE.toml`, `Cargo.lock`, the derivation receipt and the notice hash manifest.
-Normal PLIST entries own every installed file.
-
-`files/notices.sha256` pins every original notice path and SHA256.
-`files/install-notices.sh` uses the supplied native pkgsrc digest tool.
-It verifies the complete manifest before creating the destination.
-Missing or changed files, symlinks, unsafe paths and duplicate entries fail.
-The recipe supplies its normal `INSTALL_DATA`, `DESTDIR` and `PREFIX`.
-No target executable or additional language interpreter runs for installation.
-
-`files/licenses.json` records the original SPDX expressions and manifest
-hashes for the 52 registry packages in the actual amd64 Cargo metadata graph.
-It preserves upstream project attribution and explains the pkgsrc mappings.
-The recipe combines component requirements with `AND`; each component's
-alternative licenses keep `OR`. The library's original headers permit
-`LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL`.
-The package selects the permitted LGPL 2.1 branch and retains all original
-alternative license texts. `BSD-2-Clause` maps to `2-clause-bsd`.
-`Unicode-3.0` maps to the existing pkgsrc `unicode-v3` identifier.
-The legacy `MIT/Apache-2.0` declaration in siphasher is an alternative;
-its original `COPYING` explicitly permits either license.
-
-The amd64 Rust std provider retains its own original licenses and
-`COPYRIGHT`. A host data provider is not automatically a runtime package.
-The Rust `staticlib` can embed std objects. The real compiler and link outputs
-must establish linked std and third-party scope before binary acceptance.
-The filtered source graph and notice installation check do not prove that scope.
-
-Run the notice regression with the original extracted project source,
-the fully audited vendor directory, the native pkgsrc digest executable,
-and the pinned pkgsrc license directory:
-
-```sh
-ruby tests/notices.rb /absolute/original-source /absolute/verified-vendor \
-    /absolute/host/bin/digest /absolute/pkgsrc/licenses
-```
-
-It compares actual source notices and SPDX declarations, installs into a
-private fixture, and rejects missing, changed or unsafe inputs.
-The separate native pkgsrc `post-install` check uses the exported recipe
-and a private package destination. These are host installation contracts;
-target compilation, binary package and VM acceptance remain pending.
-
-To include the actual pinned source extraction in the host regression, run:
-
-```sh
-CSSPARSER_UPSTREAM_ARCHIVE=/absolute/distfiles/cxx-rust-cssparser-1.1.0.tar.gz \
-    ruby tests/vendor.rb
-```
-
-This invokes the production CLI with controlled provider-response fixtures,
-checks the extracted original lock and preserved PAX comment, then requires
-the controlled Cargo boundary to fail before any vendor artifact is published.
-It proves source extraction and rejection behavior only; it does not run or
-accept native Cargo, registry downloads, or a complete derived vendor archive.
+The CXX update retains the existing CSS parser API. Moving to cssparser 0.38
+and selectors 0.41 requires a separate span-aware migration to preserve the
+existing location and token diagnostics. Target runtime and CMake package
+integration still require the common Qt6 target dependencies.

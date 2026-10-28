@@ -85,8 +85,8 @@ emberbsd-librsvg-rust:
 	    '/^release: / {release=$$2} /^commit-hash: / {commit=$$2} /^host: / {host=$$2} \
 	     END {if (release != "1.99.1" || commit != "58cf8f9c35b355199727627d07ae34a4e2846d67" || host != expected) exit 1}'; \
 	test '${_EMBER_RSVG_RUST_HOST}' != '${RUST_TARGET}'; \
-	"$$cargo" -V | ${GREP} -q '^cargo 1[.]99[.]0 '; \
-	${SH:Q} ${FILESDIR:Q}/verify-target-drivers.sh ${WRAPPER_BINDIR:Q}/cc ${WRAPPER_BINDIR:Q}/c++ \
+	"$$cargo" -V | ${GREP} -q '^cargo 1[.]99[.]1 '; \
+	${SH:Q} ${_PKGSRCDIR:Q}/mk/emberbsd-verify-target-drivers.sh ${WRAPPER_BINDIR:Q}/cc ${WRAPPER_BINDIR:Q}/c++ \
 	    ${_EMBER_GI_TRIPLET:Q} ${RUST_TARGET:Q}; \
 	host=$$(CDPATH= cd ${TOOLBASE:Q} && pwd -P); \
 	component=$$("$$rustc" --target '${RUST_TARGET}' --print target-libdir); \

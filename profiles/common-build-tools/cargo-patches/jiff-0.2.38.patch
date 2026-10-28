@@ -1,0 +1,11 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -259,7 +259,7 @@
+ default-features = false
+ 
+ [target."cfg(windows)".dependencies.windows-link]
+-version = "0.2.1"
++version = "0.100.0"
+ optional = true
+ 
+ [lints.rust.unexpected_cfgs]

@@ -34,7 +34,7 @@ chmod +x "$work/digest"
 export DIGEST=$work/digest
 verifier=${PKGSRC_CHECKSUM_AWK:-$root/upstream/pkgsrc/mk/checksum/checksum.awk}
 mkdir "$work/source"
-sh "$toolkit/validate.sh" --sources "$toolkit" "$recipes" > "$work/source-plan.tsv"
+${SH:-sh} "$toolkit/validate.sh" --sources "$toolkit" "$recipes" > "$work/source-plan.tsv"
 while IFS="$(printf '\t')" read -r recipe archive sha url role; do
     case "$recipe" in ''|'#'*) continue ;; esac
     pkg=$recipes/$recipe
@@ -51,7 +51,7 @@ while IFS="$(printf '\t')" read -r recipe archive sha url role; do
         stem=${stem%.zip}
         tree=$work/source/$stem
         mkdir "$tree"
-        tar -xf "$distfiles/$archive" --strip-components=1 -C "$tree"
+        ${TAR:-tar} -xf "$distfiles/$archive" --strip-components=1 -C "$tree"
         for name in $required; do
             [ -f "$pkg/patches/$name" ]
             awk -f "$verifier" -- -p "$pkg/distinfo" "$pkg/patches/$name"

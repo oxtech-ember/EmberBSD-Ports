@@ -1,0 +1,23 @@
+# Exact registry inputs from files/Cargo.lock, plus matching C++ header.
+CARGO_CRATE_DEPENDS+=	anstyle-1.0.14
+CARGO_CRATE_DEPENDS+=	clap-4.6.7
+CARGO_CRATE_DEPENDS+=	clap_builder-4.6.7
+CARGO_CRATE_DEPENDS+=	clap_lex-1.1.1
+CARGO_CRATE_DEPENDS+=	codespan-reporting-0.13.1
+CARGO_CRATE_DEPENDS+=	cxx-1.0.205
+CARGO_CRATE_DEPENDS+=	equivalent-1.0.3
+CARGO_CRATE_DEPENDS+=	hashbrown-0.17.1
+CARGO_CRATE_DEPENDS+=	indexmap-2.14.2
+CARGO_CRATE_DEPENDS+=	proc-macro2-1.0.107
+CARGO_CRATE_DEPENDS+=	quote-1.0.47
+CARGO_CRATE_DEPENDS+=	serde-1.0.229
+CARGO_CRATE_DEPENDS+=	serde_core-1.0.229
+CARGO_CRATE_DEPENDS+=	serde_derive-1.0.229
+CARGO_CRATE_DEPENDS+=	strsim-0.11.1
+CARGO_CRATE_DEPENDS+=	syn-3.0.9
+CARGO_CRATE_DEPENDS+=	termcolor-1.4.1
+CARGO_CRATE_DEPENDS+=	unicode-ident-1.0.27
+CARGO_CRATE_DEPENDS+=	unicode-width-0.2.3
+CARGO_CRATE_DEPENDS+=	winapi-util-0.1.11
+CARGO_CRATE_DEPENDS+=	windows-link-0.100.0
+CARGO_CRATE_DEPENDS+=	windows-sys-0.61.2

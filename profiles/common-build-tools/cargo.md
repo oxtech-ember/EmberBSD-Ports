@@ -187,3 +187,9 @@ python3.15 -B -I -S profiles/common-build-tools/tests/cargo-linker-launcher.py \
 The actual `cargo-cc.py` test also accepts `--linker-launcher` with the same
 explicit command prefix, so its real Rust build scripts and final native link
 can use the common resource lock while the C/C++ build-script work stays separate.
+
+The Windows link transition is checked against actual prepared registry
+sources with `tests/windows-link-calls.py --vendor /absolute/vendor` (repeat
+`--vendor` when the affected crates come from multiple prepared trees). It
+checks the current macro call grammar and same-file type-name collisions;
+Windows target execution remains a separate check.

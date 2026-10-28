@@ -1,6 +1,6 @@
 # $NetBSD$
 
-Use the common current Syn 3 and phf dependency graph.
+Use shared current Cargo dependencies, including windows-link 0.100.0.
 
 --- rust/Cargo.lock.orig
 +++ rust/Cargo.lock
@@ -273,6 +273,19 @@ Use the common current Syn 3 and phf dependency graph.
   "wasm-bindgen-shared",
  ]
  
+@@ -1807,9 +1788,9 @@
+ 
+ [[package]]
+ name = "windows-link"
+-version = "0.2.1"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5"
++version = "0.100.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "9b39de7c7fe78858b0144c50c3fc000bab3be17d5e9b85b1053871693c7f7415"
+ 
+ [[package]]
+ name = "windows-sys"
 @@ -1868,7 +1849,7 @@
  dependencies = [
   "proc-macro2",

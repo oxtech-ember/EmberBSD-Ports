@@ -1,0 +1,11 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -39,7 +39,7 @@
+ path = "src/lib.rs"
+ 
+ [dependencies.windows-link]
+-version = "0.2.1"
++version = "0.100.0"
+ default-features = false
+ 
+ [lints.rust]

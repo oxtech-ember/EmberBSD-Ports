@@ -1,23 +1,16 @@
 # Origin: EmberBSD (AI-assisted). First port; Union from Plasma 6.8 needs it.
 
 DISTNAME=	cxx-rust-cssparser-1.1.0
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=KDE/}
 GITHUB_TAG=	v1.1.0
 EXTRACT_SUFX=	.tar.gz
 
-# Offline crate sources generated on the host with `cargo vendor` from
-# rust/Cargo.lock. Regenerate this archive when the crate set changes.
-_EMBER_CSS_VENDOR_DISTFILE= cxx-rust-cssparser-vendor-1.1.0-r1.tar
-DISTFILES=	cxx-rust-cssparser-1.1.0.tar.gz ${_EMBER_CSS_VENDOR_DISTFILE}
-# This archive is locally derived, not an upstream HTTP release asset.
-SITES.${_EMBER_CSS_VENDOR_DISTFILE}=
-
 HOMEPAGE=	https://invent.kde.org/libraries/cxx-rust-cssparser
 COMMENT=	C++ CSS parsing API implemented through the Rust cssparser crate
 # Components use AND; alternatives stay within each component's expression.
-# files/licenses.json records the original SPDX expressions and mappings.
+# The installed licenses.json records upstream SPDX expressions.
 LICENSE=	2-clause-bsd AND cc0-1.0-universal AND gnu-lgpl-v2.1 AND \
 		apache-2.0 AND mit AND mpl-2.0 AND zlib AND \
 		(mit OR apache-2.0) AND (unlicense OR mit) AND \
@@ -25,33 +18,52 @@ LICENSE=	2-clause-bsd AND cc0-1.0-universal AND gnu-lgpl-v2.1 AND \
 
 .include "../../mk/bsd.prefs.mk"
 
-USE_CMAKE=	yes
 USE_LANGUAGES=	c c++
-USE_TOOLS+=	pkg-config ar
+USE_TOOLS+=	pkg-config
+TOOL_DEPENDS+=	rust-bin>=1.99.1:../../lang/rust-bin
+RUST_TYPE=	native
+CARGO_WRKSRC=	${WRKSRC}/rust
+RUST_REQ=	1.99.1
+PYTHON_VERSIONS_ACCEPTED=	315
+PYTHON_FOR_BUILD_ONLY=	tool
+EMBER_CARGO_PATCH_SET=	yes
+INSTALLATION_DIRS+=	share/licenses/cxx-rust-cssparser
+GENERATE_PLIST+=	cd ${DESTDIR}${PREFIX}; ${FIND} share/licenses/cxx-rust-cssparser -type f -print | ${SORT};
 CMAKE_CONFIGURE_ARGS+= -DBUILD_TESTING=OFF
 CMAKE_CONFIGURE_ARGS+= -DBUILD_EXAMPLES=OFF
 
-pre-fetch:
-	@${TEST} -f ${DISTDIR:Q}/${_EMBER_CSS_VENDOR_DISTFILE:Q} || { \
-		${ERROR_MSG} "Prepare ${_EMBER_CSS_VENDOR_DISTFILE} with files/vendor.rb and copy the verified archive into DISTDIR; see README.md."; exit 1; }
-	@expected=$$(${AWK} '$$1 == "SHA512" && $$2 == "(${_EMBER_CSS_VENDOR_DISTFILE})" {print $$4}' ${DISTINFO_FILE:Q}); \
-	actual=$$(${DIGEST} SHA512 ${DISTDIR:Q}/${_EMBER_CSS_VENDOR_DISTFILE:Q} | ${AWK} '{print $$NF}'); \
-	${TEST} -n "$$expected" && ${TEST} "$$actual" = "$$expected" || { \
-		${ERROR_MSG} "Derived CSS parser vendor checksum mismatch."; exit 1; }
-
-post-extract:
-	${MV} ${WRKDIR}/vendor ${WRKSRC}/rust/vendor
+# Preserve CMake build/install targets before including the shared Cargo vendor.
+.include "../../devel/cmake/build.mk"
+.include "cargo-depends.mk"
+.include "../../lang/python/tool.mk"
+.include "../../lang/rust/emberbsd-cargo.mk"
 
 post-install:
-	${SH} ${FILESDIR:Q}/install-notices.sh ${WRKSRC:Q} \
-	    ${DESTDIR:Q}${PREFIX:Q}/share/licenses/cxx-rust-cssparser \
-	    ${FILESDIR:Q}/notices.sha256 ${DIGEST:Q} ${INSTALL_DATA}
-	${INSTALL_DATA} ${FILESDIR:Q}/notices.sha256 \
-	    ${DESTDIR:Q}${PREFIX:Q}/share/licenses/cxx-rust-cssparser/NOTICES.sha256
-	${INSTALL_DATA} ${FILESDIR:Q}/licenses.json ${FILESDIR:Q}/vendor-r1.json \
-	    ${DESTDIR:Q}${PREFIX:Q}/share/licenses/cxx-rust-cssparser
+	${TOOL_PYTHONBIN} -B -I -S ${FILESDIR}/install-notices.py \
+	    --source ${WRKSRC:Q} --vendor ${CARGO_VENDOR_DIR:Q} \
+	    --output ${DESTDIR}${PREFIX}/share/licenses/cxx-rust-cssparser
 
 .include "cross.mk"
+
+EMBER_CARGO_TARGET= ${RUST_TARGET:U}
+EMBER_CARGO_HOST_CC= ${_EMBER_CSS_HOST_CC}
+EMBER_CARGO_HOST_CXX= ${_EMBER_CSS_HOST_CXX}
+EMBER_CARGO_HOST_AR= ${_EMBER_CSS_HOST_AR}
+EMBER_CARGO_HOST_LINKER_LAUNCHER= ${EMBERBSD_DARWIN_LINKER_LAUNCHER:U}
+RUST_OUT= ${EMBER_CARGO_OUTPUT}
+BRIDGE_A= ${WRKDIR}/libcxx-rust-cssparser-impl-bridge.a
+BRIDGE_INC= ${WRKDIR}/bridge-include
+CMAKE_CONFIGURE_ARGS+= -DEMBER_RUST_LIB=${WRKDIR}/libcxx-rust-cssparser-impl.a
+CMAKE_CONFIGURE_ARGS+= -DEMBER_BRIDGE_LIB=${BRIDGE_A}
+CMAKE_CONFIGURE_ARGS+= -DEMBER_BRIDGE_INCLUDE=${BRIDGE_INC}
+
+pre-configure: ember-css-build-bridge
+.PHONY: ember-css-build-bridge
+ember-css-build-bridge: ember-cargo-configure ember-css-check-cross
+	${RUN} ${SETENV} ${CONFIGURE_ENV} ${TOOL_PYTHONBIN} -B -I -S ${FILESDIR:Q}/build-bridge.py \
+	    --cargo ${_EMBER_CSS_PREFIX:Q}/bin/cargo --cargo-helper ${_PKGSRCDIR:Q}/lang/rust/emberbsd-cargo-config.py \
+	    --config ${EMBER_CARGO_CONFIG:Q} --source ${WRKSRC:Q}/rust --work ${WRKDIR:Q} \
+	    --bridge ${BRIDGE_A:Q} --include ${BRIDGE_INC:Q} --jobs ${_MAKE_JOBS_N:U1}
 
 .include "../../devel/extra-cmake-modules/buildlink3.mk"
 .include "../../mk/pthread.buildlink3.mk"

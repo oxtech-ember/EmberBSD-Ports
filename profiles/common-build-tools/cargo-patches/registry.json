@@ -16,6 +16,33 @@
     },
     "patch": "ast_node-7.0.0.patch"
   },
+  "chrono-0.4.45": {
+    "files": {
+      "Cargo.toml": {
+        "before": "89b7bdca1f8745c0894ff039971c04fc51e444becbc9eb87598509a32955b1b5",
+        "after": "ac8c3b0b33728cd07e2f04a77cc7e942ed1ad21cdae16e4b61c3928edf9e6036"
+      }
+    },
+    "patch": "chrono-0.4.45.patch"
+  },
+  "clang-sys-1.9.1": {
+    "files": {
+      "Cargo.toml": {
+        "before": "d55d70b4f3c64f15f82df99d55b91ea61303c78e1803fb70bf705157ea9bf323",
+        "after": "62e1d672b13320cd4287f790d842ce4f4d2ad91b868a3e59ab9acb1ce193d3cb"
+      }
+    },
+    "patch": "clang-sys-1.9.1.patch"
+  },
+  "dlib-0.5.3": {
+    "files": {
+      "Cargo.toml": {
+        "before": "24f313fe0c6ec29322019de4c0dd36dd3e3abafac60f7d338de8ce4d8eb27b6d",
+        "after": "a461965437b0fa0ea1faee066c9009fdf4d3a76c9a2b6b91beb05a801807f219"
+      }
+    },
+    "patch": "dlib-0.5.3.patch"
+  },
   "from_variant-3.0.0": {
     "files": {
       "Cargo.toml": {
@@ -38,6 +65,15 @@
     },
     "patch": "is-macro-0.3.8.patch"
   },
+  "jiff-0.2.38": {
+    "files": {
+      "Cargo.toml": {
+        "before": "f6c22ad65a367c083edbb1edb98207e6e838f9cfbcfdb8caef78fca7f83fbd23",
+        "after": "d86280f354552fddbce847b7907b16bd66cb716af31f2a03b6f6ec028019f889"
+      }
+    },
+    "patch": "jiff-0.2.38.patch"
+  },
   "jiff-static-0.2.38": {
     "files": {
       "Cargo.toml": {
@@ -46,6 +82,15 @@
       }
     },
     "patch": "jiff-static-0.2.38.patch"
+  },
+  "libloading-0.9.0": {
+    "files": {
+      "Cargo.toml": {
+        "before": "4419c3b53bcbe50d15ea020c93a828028d4a35c271d74a059601e9f985b7aeee",
+        "after": "4415c892eb6e37caef86d944784412cfb31713cac9a6aaa4d6829b08de66225c"
+      }
+    },
+    "patch": "libloading-0.9.0.patch"
   },
   "miette-7.6.0": {
     "files": {
@@ -64,6 +109,15 @@
       }
     },
     "patch": "miette-derive-7.6.0.patch"
+  },
+  "parking_lot_core-0.9.12": {
+    "files": {
+      "Cargo.toml": {
+        "before": "617b6fd7c1133961c993fd5baa560180d688f6d42f59b73da11fb90089a93ca7",
+        "after": "4371faa9ece38a28445c5631c8577528971af35ff687cdb4722aed4ed8e58ca3"
+      }
+    },
+    "patch": "parking_lot_core-0.9.12.patch"
   },
   "phf_macros-0.14.0": {
     "files": {
@@ -187,6 +241,42 @@
       }
     },
     "patch": "tracing-attributes-0.1.31.patch"
+  },
+  "windows-core-0.62.2": {
+    "files": {
+      "Cargo.toml": {
+        "before": "8a1d754ca9637813f9aa3cf2faac93f7a1827bbaf575dde47e300043a2139546",
+        "after": "11cf018f445326730eca9364d5ac0fa4311bd5fab0a914d39f976eb5a5375702"
+      }
+    },
+    "patch": "windows-core-0.62.2.patch"
+  },
+  "windows-result-0.4.1": {
+    "files": {
+      "Cargo.toml": {
+        "before": "fb2b11e12c9d99325bebc74d083ee6ff0e96c5fd0fc9edf5b38a5bfbdec249bb",
+        "after": "2a84e3afb89f8346a96e427b8236e23d6da37db7ee62412f0276748b1d6866f1"
+      }
+    },
+    "patch": "windows-result-0.4.1.patch"
+  },
+  "windows-strings-0.5.1": {
+    "files": {
+      "Cargo.toml": {
+        "before": "4d72a51e7a6f71120de32387f66118bb1aed6a6aee72aa058fa6964af7a0a5a6",
+        "after": "e5df67cbecad915e4f157ebaa3a8a27d8f1343c1b5047ab0bc4fd78650a4b537"
+      }
+    },
+    "patch": "windows-strings-0.5.1.patch"
+  },
+  "windows-sys-0.61.2": {
+    "files": {
+      "Cargo.toml": {
+        "before": "1adbc955d5460fa64dc16e6c8198b25672e8d4b97d45ecfb262eb2693ce08422",
+        "after": "028e4e97ff0cb829e07f8a22114fcbcfcd59c86df24b4539a2027e6209eec4d9"
+      }
+    },
+    "patch": "windows-sys-0.61.2.patch"
   },
   "zerocopy-derive-0.8.63": {
     "files": {

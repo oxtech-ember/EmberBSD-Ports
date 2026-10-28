@@ -10,11 +10,12 @@ fixture=$work/good
 mkdir -p "$fixture/recipes" "$work/distfiles" "$work/archive/package" "$work/archive/dictionary"
 printf 'before\n' > "$work/archive/package/value.txt"
 printf 'dictionary payload\n' > "$work/archive/dictionary/words.txt"
-tar -czf "$work/distfiles/code-1.tar.gz" -C "$work/archive" package
-tar -czf "$work/distfiles/data-1.tar.gz" -C "$work/archive" dictionary
+${TAR:-tar} -czf "$work/distfiles/code-1.tar.gz" -C "$work/archive" package
+${TAR:-tar} -czf "$work/distfiles/data-1.tar.gz" -C "$work/archive" dictionary
 cp "$work/distfiles/code-1.tar.gz" "$work/distfiles/shared-1.tar.gz"
-tar --zstd -cf "$work/distfiles/SDL3-1.tar.zst" -C "$work/archive" package
-(cd "$work/archive" && zip -q "$work/distfiles/hunspell-en_US-1.zip" package/value.txt)
+cp "$work/distfiles/data-1.tar.gz" "$work/distfiles/example-1.0.0.crate"
+${TAR:-tar} --zstd -cf "$work/distfiles/SDL3-1.tar.zst" -C "$work/archive" package
+(cd "$work/archive" && ${PYTHON:-python3} -m zipfile -c "$work/distfiles/hunspell-en_US-1.zip" package/value.txt)
 cp "$toolkit/validate.sh" "$fixture/validate.sh"
 : > "$fixture/sources.tsv"
 : > "$fixture/source-owners.tsv"
@@ -44,6 +45,7 @@ archive_row textproc/hunspell-en_US hunspell-en_US-1.zip
 # The auxiliary archive deliberately comes first. Its payload cannot take the code patch.
 archive_row devel/multi data-1.tar.gz
 archive_row devel/multi code-1.tar.gz
+archive_row devel/multi example-1.0.0.crate
 archive_row meta-pkgs/shared shared-1.tar.gz
 printf 'META_PACKAGE=yes\nDISTFILES=\n' > "$fixture/recipes/meta-pkgs/shared/Makefile"
 rm "$fixture/recipes/meta-pkgs/shared/PLIST"
@@ -73,14 +75,14 @@ $NetBSD$
 PATCH
 patch_sha=$(sed '/[$]NetBSD.*/d' "$fixture/recipes/devel/multi/patches/patch-value" | shasum -a 1 | awk '{print $1}')
 printf 'SHA1 (patch-value) = %s\n' "$patch_sha" >> "$fixture/recipes/devel/multi/distinfo"
-sh "$toolkit/validate.sh" --inventory "$fixture" "$fixture/recipes" > "$work/inventory.tsv"
+${SH:-sh} "$toolkit/validate.sh" --inventory "$fixture" "$fixture/recipes" > "$work/inventory.tsv"
 [ "$(wc -l < "$work/inventory.tsv" | tr -d ' ')" = 6 ]
-sh "$toolkit/validate.sh" --sources "$fixture" "$fixture/recipes" > "$work/source-plan.tsv"
+${SH:-sh} "$toolkit/validate.sh" --sources "$fixture" "$fixture/recipes" > "$work/source-plan.tsv"
 awk -F '\t' '$2=="data-1.tar.gz" {found=($5=="auxiliary")} END {exit !found}' "$work/source-plan.tsv"
-sh "$toolkit/tests/verify-sources.sh" "$fixture" "$work/distfiles" "$work/verified" "$fixture/recipes" > "$work/verified.log" 2>&1
+${SH:-sh} "$toolkit/tests/verify-sources.sh" "$fixture" "$work/distfiles" "$work/verified" "$fixture/recipes" > "$work/verified.log" 2>&1
 [ "$(cat "$work/verified/source/code-1/value.txt")" = after ]
 [ ! -e "$work/verified/source/data-1" ]
-[ "$(wc -l < "$work/verified/verified.tsv" | tr -d ' ')" = 5 ]
+[ "$(wc -l < "$work/verified/verified.tsv" | tr -d ' ')" = 6 ]
 printf 'PASS: normal, multiarchive, shared-source and metadata-only contracts\n'
 new_case() {
     name=$1
@@ -89,7 +91,7 @@ new_case() {
 }
 expect_failure() {
     expected=$1
-    if sh "$toolkit/validate.sh" "$candidate" "$candidate/recipes" > "$work/$name.log" 2>&1; then
+    if ${SH:-sh} "$toolkit/validate.sh" "$candidate" "$candidate/recipes" > "$work/$name.log" 2>&1; then
         echo "Invalid fixture accepted: $name" >&2; exit 1
     fi
     grep -F "$expected" "$work/$name.log" >/dev/null || { cat "$work/$name.log" >&2; exit 1; }
@@ -234,7 +236,7 @@ expect_failure 'Invalid toolkit recipe path'
 # The archive-verification entry point must enforce the same shared-owner gate.
 for name in commented-shared-owner overridden-shared-metadata; do
     candidate=$work/$name
-    if sh "$toolkit/tests/verify-sources.sh" "$candidate" "$work/distfiles" "$work/source-check-$name" "$candidate/recipes" > "$work/source-check-$name.log" 2>&1; then exit 1; fi
+    if ${SH:-sh} "$toolkit/tests/verify-sources.sh" "$candidate" "$work/distfiles" "$work/source-check-$name" "$candidate/recipes" > "$work/source-check-$name.log" 2>&1; then exit 1; fi
     case "$name" in
         commented-shared-owner) expected='Shared source owner is not referenced by an unconditional include' ;;
         overridden-shared-metadata) expected='Shared consumer has local source metadata' ;;
@@ -246,6 +248,6 @@ done
 new_case wrong-source-hash
 sed '1s/[0-9a-f]\{64\}/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/' "$candidate/sources.tsv" > "$candidate/sources.new"
 mv "$candidate/sources.new" "$candidate/sources.tsv"
-if sh "$toolkit/tests/verify-sources.sh" "$candidate" "$work/distfiles" "$work/wrong-source-verification" "$candidate/recipes" > "$work/$name.log" 2>&1; then exit 1; fi
+if ${SH:-sh} "$toolkit/tests/verify-sources.sh" "$candidate" "$work/distfiles" "$work/wrong-source-verification" "$candidate/recipes" > "$work/$name.log" 2>&1; then exit 1; fi
 printf 'PASS: rejects wrong-source-hash during actual archive verification\n'
 echo 'PASS: toolkit manifest regression complete'

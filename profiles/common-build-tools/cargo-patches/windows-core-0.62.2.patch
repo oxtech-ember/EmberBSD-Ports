@@ -1,0 +1,11 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -50,7 +50,7 @@
+ default-features = false
+ 
+ [dependencies.windows-link]
+-version = "0.2.1"
++version = "0.100.0"
+ default-features = false
+ 
+ [dependencies.windows-result]

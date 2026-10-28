@@ -21,22 +21,18 @@ Shared consumers cannot carry local `distinfo` or `patches`, or override `DISTIN
 The validator rejects missing recipes, source rows, digests, patch files and invalid exceptions before export.
 The source check then verifies the actual archives and applies patches with zero fuzz.
 
-One fixed derived auxiliary source is permitted: the CSS parser owner uses
-`cxx-rust-cssparser-vendor-1.1.0-r1.tar` with marker
-`derived:cssparser-vendor-r1` and the pinned two-generation SHA256. Its original
-GitHub archive hash and primary selection remain fixed. This is not a generic
-derived-source or plain TAR exception. Normal BLAKE2s, SHA512, size and patch
-checks still apply. The [recipe receipt](../../../../pkgsrc/devel/cxx-rust-cssparser/files/vendor-r1.json)
-records the actual host derivation.
+Registry crate archives are ordinary auxiliary inputs. The CSS parser owner selects
+its exact registry closure from the patched Cargo.lock and records each original
+crates.io archive and SHA-256 in the source manifest.
 
 Run from the repository root. Each result directory must be new.
-The tests need BSD make, tar with zstd support, zip, patch, shasum and OpenSSL with BLAKE2s.
-Set `BMAKE` and `OPENSSL` when these tools are outside PATH.
+The tests need BSD make, tar with zstd support, Python, patch, shasum and OpenSSL with BLAKE2s.
+Set `BMAKE`, `OPENSSL`, `PYTHON`, `TAR` and `SH` to selected tools when needed.
 
 ```sh
 sh probes/plasma-mobile/toolkit/validate.sh probes/plasma-mobile/toolkit
 sh probes/plasma-mobile/toolkit/tests/manifest.sh /absolute/new-manifest-results
-sh probes/plasma-mobile/toolkit/tests/cssparser-vendor.sh /absolute/verified-distfiles /absolute/new-css-vendor-results
+python3 probes/plasma-mobile/toolkit/tests/cssparser-crates.py --archive /absolute/distfiles/cxx-rust-cssparser-1.1.0.tar.gz --patch-tool /absolute/host/bin/gpatch
 sh probes/plasma-mobile/toolkit/tests/selection.sh probes/plasma-mobile/toolkit /absolute/new-selection-results
 sh probes/plasma-mobile/toolkit/tests/source-profile.sh /absolute/verified-distfiles /absolute/new-source-results
 ```
@@ -45,16 +41,8 @@ sh probes/plasma-mobile/toolkit/tests/source-profile.sh /absolute/verified-distf
 metadata-only recipes, `.tar.zst`, `.zip` and multiple archives.
 Its auxiliary archive appears first and cannot take the primary source patch.
 Negative cases cover incomplete metadata, wrong digests and invalid ownership.
-`cssparser-vendor.sh` uses the real pinned original and derived CSS archives.
-It checks the exact provenance tuple, rejects foreign bindings and changed
-bytes, and exercises the ordinary checksums and primary-only zero-fuzz patches.
-Set `CSSPARSER_EXPORTED_PKGSRC` to a fresh normal export, `BMAKE` to
-native bmake, and `MAKECONF` to its native host configuration to also run the
-actual recipe `pre-fetch` and `checksum-phase`. This source-only check uses
-empty cached Qt/GCC package-option facts to avoid unrelated native recursion.
-It does not build packages or establish compiler/toolkit feature support.
-`selection.sh` checks only recipes that use the Qt, Frameworks or Plasma version selectors.
-Independent dependencies keep their own versions.
+`cssparser-crates.py` compares every registry archive identity and checksum in
+the toolkit source plan against the actual upstream lock after its Ports patch.
 
 These checks do not establish package builds, target execution or desktop acceptance.
 They preserve the recorded recipe versions and do not claim that every provider is the newest release.

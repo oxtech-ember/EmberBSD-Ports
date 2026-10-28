@@ -13,14 +13,14 @@ for name in ('shell', 'cc', 'cxx'):
 p.add_argument('--gnu-triplet', required=True)
 p.add_argument('--rust-triple', required=True)
 a = p.parse_args()
-helper = Path(__file__).with_name('verify-target-drivers.sh')
+helper = Path(__file__).resolve().parents[1] / 'verify-target-drivers.sh'
 def verify(cc, cxx, expected):
     r = subprocess.run([str(a.shell), str(helper), str(cc), str(cxx), a.gnu_triplet, a.rust_triple],
                        text=True, capture_output=True)
     if (r.returncode == 0) != expected:
         raise AssertionError(r.stderr)
 verify(a.cc, a.cxx, True)
-with tempfile.TemporaryDirectory(prefix='librsvg-driver-test-') as tmp:
+with tempfile.TemporaryDirectory(prefix='sdk-driver-test-') as tmp:
     root = Path(tmp)
     def driver(name, target, version, full=None):
         path = root/name

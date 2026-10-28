@@ -4,6 +4,7 @@
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
 helper=$root/files/verify-cross-inputs.sh
+driver_check=$root/../../../profiles/common-build-tools/verify-target-drivers.sh
 [ -f "$helper" ] || { echo 'FAIL: target std preflight is missing' >&2; exit 1; }
 work=$(mktemp -d /tmp/ember-cssparser-inputs.XXXXXX)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
@@ -51,7 +52,7 @@ for std_target in aarch64-unknown-netbsd x86_64-unknown-netbsd; do
   printf 'target core fixture\n' > "$work/host/lib/rustlib/$std_target/lib/libcore-test.rlib"
 done
 run() {
-  sh "$helper" "$work/host" "${target:-aarch64-unknown-netbsd}" "${gnu:-aarch64--netbsd}" "$work/wrappers" "$work/probe.rmeta"
+  sh "$helper" "$work/host" "${target:-aarch64-unknown-netbsd}" "${gnu:-aarch64--netbsd}" "$work/wrappers/${gnu:-aarch64--netbsd}-gcc" "$work/wrappers/${gnu:-aarch64--netbsd}-g++" "$driver_check" /bin/sh "$work/probe.rmeta"
 }
 [ "$(run)" = aarch64-apple-darwin ]
 (target=x86_64-unknown-netbsd gnu=x86_64--netbsd run) > "$work/amd64.host"
