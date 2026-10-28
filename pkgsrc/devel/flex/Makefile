@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.66 2024/04/30 12:06:15 cheusov Exp $
 
 DISTNAME=	flex-2.6.4
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	devel lang
 MASTER_SITES=	${MASTER_SITE_GITHUB:=westes/}
 GITHUB_RELEASE=	v${PKGVERSION_NOREV}
@@ -26,6 +26,20 @@ TEST_TARGET=		check
 LIBS.SunOS+=		-lm
 
 .include "../../mk/bsd.prefs.mk"
+
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+    !empty(OS_VERSION:M11.*)
+# GNU m4 runs on the build host only: it makes the skeleton and the stage1
+# scanner. Like NetBSD base lex, the target flex runs base /usr/bin/m4.
+# The M4 environment variable selects the host gm4 during the build.
+USE_TOOLS:=		${USE_TOOLS:Ngm4\:run} gm4
+MAKE_ENV+=		M4=${TOOLS_PATH.gm4:Q}
+SUBST_CLASSES+=		m4path
+SUBST_STAGE.m4path=	post-configure
+SUBST_MESSAGE.m4path=	Recording the target m4 path.
+SUBST_FILES.m4path=	src/config.h
+SUBST_SED.m4path=	-e "s,^\#define M4 .*,\#define M4 \"/usr/bin/m4\","
+.endif
 
 CFLAGS.AIX+=		-D_LINUX_SOURCE_COMPAT
 
