@@ -5,6 +5,7 @@ bin/fir-lsp-server
 bin/fir-opt
 bin/flang
 bin/flang-23
+bin/flang-new
 bin/tco
 include/flang/Common/Fortran-consts.h
 include/flang/Common/ISO_Fortran_binding_wrapper.h

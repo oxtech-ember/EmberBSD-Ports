@@ -5,7 +5,7 @@
 # against installed LLVM/Clang and a separately installed MLIR. Require the
 # recipe to find MLIR through its own prefix, to name only files that exist
 # in REPLACE_BASH, to carry no GCC_REQD, and its PLIST and buildlink3.mk to
-# list exactly the programs that the install rules install.
+# list exactly the programs that the install rules install, symlinks included.
 # Only the source elements that the recipe extracts are made available.
 # Usage: recipe-install.sh CMAKE LLVM_PREFIX MLIR_PREFIX LLVM_PROJECT_SOURCE NEW_WORK
 set -eu
@@ -40,7 +40,8 @@ if ! "$cmake" -S "$src" -B "$work/b" -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/pkg \
 fi
 find "$work/b" -name cmake_install.cmake -exec cat {} + |
     sed -n -e 's|.*TYPE EXECUTABLE FILES "[^"]*/bin/\([^"/]*\)".*|bin/\1|p' \
-        -e 's|^ *"$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/\([^"/]*\)".*|bin/\1|p' |
+        -e 's|^ *"$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/\([^"/]*\)".*|bin/\1|p' \
+        -e 's|^ *install_symlink("\([^"]*\)" "[^"]*" "bin".*|bin/\1|p' |
     sort -u > "$work/installed"
 grep -qx 'bin/flang' "$work/installed" || { echo 'FAIL: bin/flang is not installed'; fail=1; }
 grep '^bin/' "$here/PLIST" | sort -u > "$work/plist"
