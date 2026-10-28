@@ -11,7 +11,7 @@ at the BUILD.gn target level (libdrm-build-gn-netbsd-warning-flags).
 
 --- a/xf86drm.c
 +++ b/xf86drm.c
-@@ -3632,7 +3632,7 @@ static int drmParseSubsystemType(int maj, int min)
+@@ -3632,10 +3632,10 @@ static int drmParseSubsystemType(int maj, int min)
              return DRM_BUS_VIRTIO;
          strncat(path, "/..", PATH_MAX);
          subsystem_type = get_subsystem_type(path);
