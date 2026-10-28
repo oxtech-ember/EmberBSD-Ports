@@ -1,6 +1,6 @@
 Origin: EmberBSD (AI-assisted). Build these consumers with the one Ruby, Go,
-Lua, MySQL client, FFmpeg, PCRE, Qt and GCC version in the export instead of an
-old version.
+Lua, MySQL client, FFmpeg, PCRE, Qt, GCC and OpenJDK version in the export
+instead of an old version.
 Umbrello 26.08 builds with Qt 6 and KDE Frameworks 6 through BUILD_WITH_QT6, and
 then suffixes its programs and data directory with 6 instead of 5.
 ZoneMinder 1.38 already looks for PCRE2, so with the old PCRE it lost regex
@@ -46,6 +46,9 @@ still provides, so they use GCC 16's libgccjit like Emacs 31 does.
 s6-networking's openssl option already builds its libtls TLS support with
 libretls on OpenSSL, the one TLS library in the export, so the libressl option,
 which built the same libtls support on LibreSSL, is gone.
+NetBSD on i386, x86_64 and aarch64 defaulted Java packages to OpenJDK 17;
+OpenJDK 21 runs there too, so they now default to it. Without OpenJDK 17 in
+the export, those packages silently lost their JDK dependency.
 
 --- a/devel/Guitar/Makefile
 +++ b/devel/Guitar/Makefile
@@ -1126,6 +1129,19 @@ which built the same libtls support on LibreSSL, is gone.
 +   lua_gc :: Lua.State
 +          -> GCCode    -- ^ what
 +          -> CInt      -- ^ data1
+--- a/mk/java-vm.mk
++++ b/mk/java-vm.mk
+@@ -131,8 +131,9 @@
+ _PKG_JVM_DEFAULT?=	openjdk11
+ .  elif !empty(MACHINE_PLATFORM:MNetBSD-*-i386) || \
+ 	!empty(MACHINE_PLATFORM:MNetBSD-*-x86_64) || \
+-	!empty(MACHINE_PLATFORM:MNetBSD-*-earmv[67]hf) || \
+ 	!empty(MACHINE_PLATFORM:MNetBSD-*-aarch64)
++_PKG_JVM_DEFAULT?=	openjdk21
++.  elif !empty(MACHINE_PLATFORM:MNetBSD-*-earmv[67]hf)
+ _PKG_JVM_DEFAULT?=	openjdk17
+ .  elif ${MACHINE_PLATFORM:MLinux-*-aarch64} || \
+         ${MACHINE_PLATFORM:MLinux-*-x86_64} || \
 --- a/multimedia/vlc/Makefile
 +++ b/multimedia/vlc/Makefile
 @@ -1,7 +1,7 @@
