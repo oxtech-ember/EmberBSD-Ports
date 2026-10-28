@@ -1,0 +1,2 @@
+Source-only LLVM libc support headers and code from the shared LLVM runtime
+producer, for consumers such as V8. This is not the EmberBSD system libc.
