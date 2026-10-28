@@ -1,11 +1,6 @@
 # $NetBSD$
-DISTNAME= llhttp-9.4.3
-CATEGORIES= www
-MASTER_SITES= -https://github.com/nodejs/llhttp/archive/refs/tags/release/v${PKGVERSION_NOREV}.tar.gz
-WRKSRC= ${WRKDIR}/llhttp-release-v${PKGVERSION_NOREV}
-HOMEPAGE= https://github.com/nodejs/llhttp
+.include "../../www/llhttp/Makefile.common"
 COMMENT= HTTP request and response parser
-LICENSE= mit
 USE_LANGUAGES= c c++
 CMAKE_CONFIGURE_ARGS+= -DLLHTTP_BUILD_SHARED_LIBS=ON -DLLHTTP_BUILD_STATIC_LIBS=OFF
 .include "../../mk/bsd.prefs.mk"

@@ -1,0 +1,4 @@
+@comment $NetBSD$
+share/licenses/llhttp-wasi/LICENSE-MIT
+share/llhttp-wasi/llhttp.wasm
+share/llhttp-wasi/llhttp_simd.wasm

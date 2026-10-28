@@ -1,0 +1,8 @@
+wasm_on_headers_complete
+wasm_on_message_begin
+wasm_on_url
+wasm_on_status
+wasm_on_header_field
+wasm_on_header_value
+wasm_on_body
+wasm_on_message_complete

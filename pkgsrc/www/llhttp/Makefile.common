@@ -1,0 +1,8 @@
+# Common source identity for native and WASI llhttp artifacts.
+LLHTTP_VERSION= 9.4.3
+DISTNAME= llhttp-${LLHTTP_VERSION}
+CATEGORIES= www
+MASTER_SITES= -https://github.com/nodejs/llhttp/archive/refs/tags/release/v${LLHTTP_VERSION}.tar.gz
+WRKSRC= ${WRKDIR}/llhttp-release-v${LLHTTP_VERSION}
+HOMEPAGE= https://github.com/nodejs/llhttp
+LICENSE= mit
