@@ -15,6 +15,11 @@ The package manager continues to use its ordinary Info registration hooks.
 `--disable-perl-tools` configures the C-only `info` and `install-info`
 programs and their shared upstream gnulib library. It does not probe Perl or
 configure the `tta` converter; top-level make builds only those C directories.
+For a C-only target whose base system supplies libintl, the explicit
+`--with-base-libintl` option links a configure probe against the public domain,
+plural and codeset APIs before enabling NLS and linking `-lintl`. It refuses
+an unavailable API and cannot be combined with disabled NLS or full mode.
+The default full package continues to use upstream gettext detection.
 The standalone recipe uses this mode and does not pretend a successful Perl
 probe. Default configuration still requires Perl and configures the full
 converter. Explicit requests to enable Perl-only options conflict with C-only

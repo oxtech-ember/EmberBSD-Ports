@@ -81,7 +81,47 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
    cd .. || exit 1
    AC_MSG_NOTICE([[Continuing with main configure (${host}).]])
  fi
-@@ -377,7 +412,7 @@
+@@ -301,6 +336,39 @@
+ AM_GNU_GETTEXT_VERSION([0.26])
+ AM_GNU_GETTEXT([external])
+ 
++# Optional C-only builds may use the OS public gettext ABI without requiring
++# GNU gettext's private data symbols. Verify every API used by these programs.
++AC_ARG_WITH([base-libintl],
++  AS_HELP_STRING([--with-base-libintl], [use a checked base libintl for C-only tools]),,
++  [with_base_libintl=no])
++AS_CASE([$with_base_libintl], [yes|no], [],
++  [AC_MSG_ERROR([invalid --with-base-libintl value])])
++if test "$with_base_libintl" = yes; then
++  if test "$enable_perl_tools" != no || test "$enable_nls" = no; then
++    AC_MSG_ERROR([base libintl requires C-only tools with NLS enabled])
++  fi
++  saved_LIBS=$LIBS
++  LIBS="-lintl $LIBS"
++  AC_MSG_CHECKING([for the base libintl public API])
++  AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <libintl.h>
++#include <locale.h>]], [[
++    bindtextdomain("texinfo", "/usr/share/locale");
++    bind_textdomain_codeset("texinfo", "UTF-8");
++    textdomain("texinfo");
++    return !gettext("x") || !dgettext("texinfo", "x") ||
++      !dcgettext("texinfo", "x", LC_MESSAGES) || !ngettext("x", "xs", 2) ||
++      !dngettext("texinfo", "x", "xs", 2) ||
++      !dcngettext("texinfo", "x", "xs", 2, LC_MESSAGES);
++  ]])], [AC_MSG_RESULT([yes])],
++    [AC_MSG_FAILURE([base libintl public API link failed])])
++  LIBS=$saved_LIBS
++  USE_NLS=yes
++  LIBINTL=-lintl
++  LTLIBINTL=-lintl
++  INTLLIBS=-lintl
++  AC_DEFINE([ENABLE_NLS], [1], [Define to 1 to enable translation.])
++fi
++
+ AC_ARG_WITH([external-Unicode-EastAsianWidth],
+    AS_HELP_STRING([--with-external-Unicode-EastAsianWidth],[use external Unicode-EastAsianWidth (default: no)]))
+ 
+@@ -377,7 +445,7 @@
         pod_simple_texinfo_tests='yes'
       fi],
      [
@@ -90,7 +130,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
       then
         pod_simple_texinfo_tests='yes'
       else
-@@ -399,7 +434,7 @@
+@@ -399,7 +467,7 @@
         build_perl_api_texi='yes'
       fi],
      [
@@ -99,7 +139,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
       then
         build_perl_api_texi='yes'
       else
-@@ -448,7 +483,9 @@
+@@ -448,7 +516,9 @@
  AC_CONFIG_FILES([pre-inst-env:build-aux/pre-inst-env.in],
    [chmod +x pre-inst-env])
  
