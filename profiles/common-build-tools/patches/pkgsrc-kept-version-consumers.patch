@@ -1,6 +1,6 @@
 Origin: EmberBSD (AI-assisted). Build these consumers with the one Ruby, Go,
-Lua, MySQL client, FFmpeg, PCRE and Qt version in the export instead of an old
-version.
+Lua, MySQL client, FFmpeg, PCRE, Qt and GCC version in the export instead of an
+old version.
 Umbrello 26.08 builds with Qt 6 and KDE Frameworks 6 through BUILD_WITH_QT6, and
 then suffixes its programs and data directory with 6 instead of 5.
 ZoneMinder 1.38 already looks for PCRE2, so with the old PCRE it lost regex
@@ -41,6 +41,8 @@ gitk only runs wish, and the default Tk is Tk 9.1, so it no longer needs
 pkgsrc's separate Tk 9.0.
 Flycast's LuaBridge bindings build and run with Lua 5.5, so it finds the
 default Lua through pkg-config instead of Lua 5.2.
+Emacs 29 and 30 compile native Lisp through the libgccjit API, which GCC 16
+still provides, so they use GCC 16's libgccjit like Emacs 31 does.
 
 --- a/devel/Guitar/Makefile
 +++ b/devel/Guitar/Makefile
@@ -394,6 +396,58 @@ default Lua through pkg-config instead of Lua 5.2.
 +share/umbrello6/xmi.css
 +share/umbrello6/xmi1docbook.xsl
 +share/umbrello6/xmi2docbook.xsl
+--- a/editors/emacs29/Makefile
++++ b/editors/emacs29/Makefile
+@@ -2,7 +2,7 @@
+ 
+ CONFLICTS+=	emacs29-nox11-[0-9]*
+ 
+-PKGREVISION=	31
++PKGREVISION=	32
+ 
+ .include "../../editors/emacs29/Makefile.common"
+ 
+--- a/editors/emacs29/options.mk
++++ b/editors/emacs29/options.mk
+@@ -53,10 +53,10 @@
+ ###
+ .if !empty(PKG_OPTIONS:Mlibgccjit)
+ CONFIGURE_ARGS+=	--with-native-compilation
+-LDFLAGS+=		${COMPILER_RPATH_FLAG}${BUILDLINK_PREFIX.gcc14-libjit}/gcc14/lib
++LDFLAGS+=		${COMPILER_RPATH_FLAG}${BUILDLINK_PREFIX.gcc16-libjit}/gcc16/lib
+ GENERATE_PLIST+=	cd ${DESTDIR}${PREFIX} && \
+         ${FIND} lib/emacs/${PKGVERSION_NOREV}/native-lisp/ \( -type f -o -type l \) -print | ${SORT};
+-.  include "../../lang/gcc14-libjit/buildlink3.mk"
++.  include "../../lang/gcc16-libjit/buildlink3.mk"
+ PLIST.native=		yes
+ .else
+ PLIST.nonative=		yes
+--- a/editors/emacs30/Makefile
++++ b/editors/emacs30/Makefile
+@@ -2,7 +2,7 @@
+ 
+ CONFLICTS+=	emacs30-nox11-[0-9]*
+ 
+-PKGREVISION= 14
++PKGREVISION= 15
+ .include "../../editors/emacs30/Makefile.common"
+ 
+ .include "options.mk"
+--- a/editors/emacs30/options.mk
++++ b/editors/emacs30/options.mk
+@@ -41,10 +41,10 @@
+ ###
+ .if !empty(PKG_OPTIONS:Mlibgccjit)
+ CONFIGURE_ARGS+=	--with-native-compilation
+-LDFLAGS+=		${COMPILER_RPATH_FLAG}${BUILDLINK_PREFIX.gcc14-libjit}/gcc14/lib
++LDFLAGS+=		${COMPILER_RPATH_FLAG}${BUILDLINK_PREFIX.gcc16-libjit}/gcc16/lib
+ GENERATE_PLIST+=	cd ${DESTDIR}${PREFIX} && \
+         ${FIND} share/emacs/${PKGVERSION_NOREV}/lisp/native-lisp lib/emacs/${PKGVERSION_NOREV}/native-lisp/ \( -type f -o -type l \) -print | ${SORT};
+-.  include "../../lang/gcc14-libjit/buildlink3.mk"
++.  include "../../lang/gcc16-libjit/buildlink3.mk"
+ .endif
+ 
+ ###
 --- a/editors/mle/Makefile
 +++ b/editors/mle/Makefile
 @@ -1,7 +1,7 @@

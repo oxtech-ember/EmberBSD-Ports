@@ -23,6 +23,8 @@ devel/SDL2 devel/SDL3
 devel/git-gitk x11/tk
 devel/hexpatch lang/lua55
 devel/umbrello x11/qt6-qtbase devel/kf6-ktexteditor
+editors/emacs29 lang/gcc16-libjit
+editors/emacs30 lang/gcc16-libjit
 editors/mle lang/lua55
 editors/xournalpp lang/lua55
 emulators/flycast lang/lua55
