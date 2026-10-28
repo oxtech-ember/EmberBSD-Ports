@@ -40,7 +40,8 @@ The full native build prepares the generic CLC tools and PowerVR's compiler.
 An Intel seal does not copy or execute the PowerVR compiler.
 It still checks the genuine upstream common shader command and compile/link metadata.
 Assertions, SPIR-V validation and upstream tests remain enabled.
-Mesa RTTI follows the installed LLVM configuration.
+Mesa RTTI follows the installed LLVM configuration. The native CLC embeds its
+OpenCL headers even with shared LLVM so it remains usable after relocation.
 
 The source must match the pinned Mesa archive and the applicable source patches:
 the A733 BVNC addition and the shared Objective-C and GoogleTest patches.

@@ -88,7 +88,8 @@ class ProducerTests(unittest.TestCase):
                 self.assertIn('-s', setup)  # -E alone ignores PYTHONNOUSERSITE.
                 self.assertIn('-Dcpp_rtti=' + enabled, setup)
                 for flag in ('-Db_ndebug=false', '-Dbuild-tests=true', '-Dspirv-tools=enabled',
-                             '-Dmesa-clc=enabled', '-Dprecomp-compiler=enabled',
+                             '-Dmesa-clc=enabled', '-Dmesa-clc-bundle-headers=enabled',
+                             '-Dprecomp-compiler=enabled',
                              '-Dshared-llvm=enabled', '--wrap-mode=nodownload'):
                     self.assertIn(flag, setup)
                 self.assertEqual(commands['build-mesa'][0], self.native.tool('ninja'))

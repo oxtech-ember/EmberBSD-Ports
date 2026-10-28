@@ -131,6 +131,7 @@ def mesa_commands(native, source, work, jobs, rtti):
         '-Dvulkan-drivers=[]', '-Dglx=disabled', '-Degl=disabled', '-Dgbm=disabled',
         '-Dopengl=false', '-Dgles1=disabled', '-Dgles2=disabled',
         '-Dtools=imagination', '-Dmesa-clc=enabled', '-Dinstall-mesa-clc=true',
+        '-Dmesa-clc-bundle-headers=enabled',
         '-Dprecomp-compiler=enabled', '-Dinstall-precomp-compiler=true',
         '-Dllvm=enabled', '-Dshared-llvm=enabled', '-Ddraw-use-llvm=false',
         '-Damd-use-llvm=false', '-Dspirv-tools=enabled', '-Dbuild-tests=true']
