@@ -33,24 +33,23 @@ clock tests. Static analysis and Valgrind were not run for this probe.
 
 ## AArch64 Clang cross package
 
-Built on 27 October 2026 on macOS arm64 with the common cross profile, the
-native Clang/LLVM 23.1.4 Ports prefix and an SDK sysroot from EmberBSD
+The package was rebuilt on 28 October 2026 on macOS arm64 from the Ports
+`68484dee` export. The build used the common cross profile and the native
+Clang/LLVM 23.1.4 Ports prefix. The SDK sysroot came from EmberBSD
 `b36583d38bf`. The cross patch names the target system for chrony's own
-configure; without it, configure selected `sys_macosx.c` from the build host.
+configure; without it, configure selected `sys_macosx.c` from the build host. The [built-in package root](../../profiles/common-build-tools/cross/builtin-prefix.md)
+and the cwrapper include mapping give the cross configure the base
+`readline.h`, so `chronyc` has line editing.
 
 | Result | Value |
 | --- | --- |
-| Package | `chrony-4.9.tgz`, SHA256 `5aa3934247775a87a83b5078471fa9e68e668a782f139a9b6de474c213541cef` |
-| Programs | `sbin/chronyd`, `bin/chronyc`: AArch64 PIE; need `libgnutls.so.30`, `libnettle.so.9`, `libm.so.0`, `libpthread.so.1` and `libc.so.12` |
+| Package | `chrony-4.9.tgz`, SHA256 `178aceb9726f22ea2ad58d1cf2a6cff970930bb00deae934e05b5e02f80a8d93` |
+| Programs | `sbin/chronyd`, `bin/chronyc`: AArch64 PIE; both need `libgnutls.so.30`, `libnettle.so.9`, `libm.so.0`, `libpthread.so.1` and `libc.so.12`; `chronyc` also needs `libedit.so.3` |
+| Features | `chronyc`: +READLINE +SECHASH +IPV6 -DEBUG |
 | System driver | `sys_netbsd.c` |
-| Built dependencies | gnutls 3.8.13nb1, nettle 4.0, gmp, libtasn1, p11-kit, libunistring, libffi, zlib, mozilla-rootcerts, bash 5.3.20 |
+| Built dependencies | gnutls 3.8.13nb1, nettle 4.0, gmp, libtasn1, p11-kit, libunistring, libffi, zlib, mozilla-rootcerts, bash 5.3.20nb1; from earlier exports, gnutls and bash with the built-in package root fix |
 | Compiler diagnostics | Only `-Wunused-command-line-argument`: the cross wrapper passes `-pie` and `-Wl,-zrelro` to compile-only commands; no warning from the chrony sources |
 
-`chronyc` in this package has no line editing: the configure probe did not
-find the base `readline.h` compatibility header. The package was built before
-two cross fixes. Before them, the [built-in package root](../../profiles/common-build-tools/cross/builtin-prefix.md)
-kept `-I/usr/include/readline` out of the flags, and the cwrapper kept that
-flag as a build host path. `chronyc -c tracking` does not need line editing.
 The package was not run on a target.
 
 ## Installation on a clean amd64 system
@@ -78,9 +77,6 @@ from the same package root (163 MB, SHA256 checked).
 
 - AArch64 execution: a target with the full base set, its shared libraries and
   the dependency packages above.
-- Line editing for the cross `chronyc`: rebuild from an export with both cross
-  fixes (`make clean` first), then confirm `+READLINE` and `libedit.so` in
-  `chronyc`.
 - The CIX P1 board root is a reduced static C cohort without shared libraries
   or pkgsrc; the package cannot run there until the board uses the common stack.
 - PPS through RFC 2783 and `gpiopps` waits for GPIO017 interrupts (N36).
