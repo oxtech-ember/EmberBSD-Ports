@@ -1,0 +1,73 @@
+Origin: EmberBSD, AI-assisted.
+EmberBSD keeps one PostgreSQL, 18 (pkgsrc/versions.mk). The pinned
+pgsql.buildlink3.mk defaulted to 16 and accepted 17 to 14 as well.
+PostgreSQL 18 is the only default and accepted version; the detection and
+selection of the removed versions are gone. Not submitted upstream.
+
+--- a/mk/pgsql.buildlink3.mk
++++ b/mk/pgsql.buildlink3.mk
+@@ -25,8 +25,8 @@
+ 
+ .include "../../mk/bsd.prefs.mk"
+ 
+-PGSQL_VERSION_DEFAULT?=		16
+-PGSQL_VERSIONS_ACCEPTED?=	18 17 16 15 14
++PGSQL_VERSION_DEFAULT?=		18
++PGSQL_VERSIONS_ACCEPTED?=	18
+ 
+ # transform the list into individual variables
+ .for pv in ${PGSQL_VERSIONS_ACCEPTED}
+@@ -44,34 +44,10 @@
+ .  if exists(${_CROSS_DESTDIR:U}${LOCALBASE}/lib/libecpg.6.18.dylib)
+ _PGSQL_VERSION_18_INSTALLED=	yes
+ .  endif
+-.  if exists(${_CROSS_DESTDIR:U}${LOCALBASE}/lib/libecpg.6.17.dylib)
+-_PGSQL_VERSION_17_INSTALLED=	yes
+-.  endif
+-.  if exists(${_CROSS_DESTDIR:U}${LOCALBASE}/lib/libecpg.6.16.dylib)
+-_PGSQL_VERSION_16_INSTALLED=	yes
+-.  endif
+-.  if exists(${_CROSS_DESTDIR:U}${LOCALBASE}/lib/libecpg.6.15.dylib)
+-_PGSQL_VERSION_15_INSTALLED=	yes
+-.  endif
+-.  if exists(${_CROSS_DESTDIR:U}${LOCALBASE}/lib/libecpg.6.14.dylib)
+-_PGSQL_VERSION_14_INSTALLED=	yes
+-.  endif
+ .else
+ .  if exists(${_CROSS_DESTDIR:U}${LOCALBASE}/lib/libecpg.so.6.18)
+ _PGSQL_VERSION_18_INSTALLED=	yes
+ .  endif
+-.  if exists(${_CROSS_DESTDIR:U}${LOCALBASE}/lib/libecpg.so.6.17)
+-_PGSQL_VERSION_17_INSTALLED=	yes
+-.  endif
+-.  if exists(${_CROSS_DESTDIR:U}${LOCALBASE}/lib/libecpg.so.6.16)
+-_PGSQL_VERSION_16_INSTALLED=	yes
+-.  endif
+-.  if exists(${_CROSS_DESTDIR:U}${LOCALBASE}/lib/libecpg.so.6.15)
+-_PGSQL_VERSION_15_INSTALLED=	yes
+-.  endif
+-.  if exists(${_CROSS_DESTDIR:U}${LOCALBASE}/lib/libecpg.so.6.14)
+-_PGSQL_VERSION_14_INSTALLED=	yes
+-.  endif
+ .endif
+ 
+ # if a version is explicitely required, take it
+@@ -112,18 +88,6 @@
+ .if ${_PGSQL_VERSION} == "18"
+ PGSQL_TYPE=	postgresql18-client
+ PGPKGSRCDIR=	../../databases/postgresql18-client
+-.elif ${_PGSQL_VERSION} == "17"
+-PGSQL_TYPE=	postgresql17-client
+-PGPKGSRCDIR=	../../databases/postgresql17-client
+-.elif ${_PGSQL_VERSION} == "16"
+-PGSQL_TYPE=	postgresql16-client
+-PGPKGSRCDIR=	../../databases/postgresql16-client
+-.elif ${_PGSQL_VERSION} == "15"
+-PGSQL_TYPE=	postgresql15-client
+-PGPKGSRCDIR=	../../databases/postgresql15-client
+-.elif ${_PGSQL_VERSION} == "14"
+-PGSQL_TYPE=	postgresql14-client
+-PGPKGSRCDIR=	../../databases/postgresql14-client
+ .else
+ # force an error
+ PGSQL_TYPE=		none

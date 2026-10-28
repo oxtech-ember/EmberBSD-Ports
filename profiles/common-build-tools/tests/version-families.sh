@@ -43,6 +43,7 @@ for knob in lang/lua/luaversion.mk:LUA_VERSION_DEFAULT:55 \
     lang/lua/luaversion.mk:LUA_VERSIONS_ACCEPTED:55 \
     lang/python/pyversion.mk:PYTHON_VERSIONS_ACCEPTED:315 \
     lang/php/phpversion.mk:PHP_VERSIONS_ACCEPTED:85 \
+    mk/pgsql.buildlink3.mk:PGSQL_VERSIONS_ACCEPTED:18 \
     lang/nodejs/nodeversion.mk:NODE_VERSIONS_ACCEPTED:26; do
     file=${knob%%:*} rest=${knob#*:}
     grep -Eq "^${rest%%:*}[?]=[[:space:]]+${rest#*:}\$" "$pkgsrc/$file" ||
