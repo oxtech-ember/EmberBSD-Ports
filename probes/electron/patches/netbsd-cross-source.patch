@@ -1605,3 +1605,16 @@ diff --git a/ui/events/keycodes/dom/keycode_converter.h b/ui/events/keycodes/dom
    // Convert an evdev code into DomCode.
    static DomCode EvdevCodeToDomCode(int evdev_code);
  
+diff --git a/ui/shell_dialogs/select_file_dialog.h b/ui/shell_dialogs/select_file_dialog.h
+index 4ac0658720..e7a4003ea0 100644
+--- a/ui/shell_dialogs/select_file_dialog.h
++++ b/ui/shell_dialogs/select_file_dialog.h
+@@ -224,7 +224,7 @@ class SHELL_DIALOGS_EXPORT SelectFileDialog
+                   const GURL* caller = nullptr);
+   bool HasMultipleFileTypeChoices();
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   // Set the label used for the file select button.
+   virtual void SetButtonLabel(const std::string& label) = 0;
+ 
