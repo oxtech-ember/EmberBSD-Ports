@@ -3,6 +3,7 @@
 .include "Makefile.common"
 
 DISTNAME=	opencv-${OPENCV_VERSION}
+PKGREVISION=	1
 
 MAINTAINER=	anthony.mallet@laas.fr
 COMMENT=	Library for computer vision problems

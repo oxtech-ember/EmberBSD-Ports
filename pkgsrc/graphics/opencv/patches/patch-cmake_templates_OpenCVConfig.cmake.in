@@ -1,0 +1,17 @@
+$NetBSD$
+
+Load the imported targets of the modules that graphics/opencv-contrib
+installs, so consumers find them as normal find_package components.
+
+--- cmake/templates/OpenCVConfig.cmake.in.orig
++++ cmake/templates/OpenCVConfig.cmake.in
+@@ -127,6 +127,9 @@
+ if(NOT TARGET opencv_core)
+   include(${CMAKE_CURRENT_LIST_DIR}/OpenCVModules${OpenCV_MODULES_SUFFIX}.cmake)
+ endif()
++# graphics/opencv-contrib installs this file with its modules' targets and
++# adds them to OpenCV_LIB_COMPONENTS.
++include(${CMAKE_CURRENT_LIST_DIR}/OpenCVContribModules.cmake OPTIONAL)
+ 
+ if(NOT CMAKE_VERSION VERSION_LESS "2.8.11")
+   # Target property INTERFACE_INCLUDE_DIRECTORIES available since 2.8.11:

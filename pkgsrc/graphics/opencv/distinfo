@@ -10,6 +10,7 @@ BLAKE2s (opencv_contrib-5.0.0.tar.gz) = c0ff9f09c9a0aaab65cbd8a24757c32e096f2a22
 SHA512 (opencv_contrib-5.0.0.tar.gz) = 09841f4637f6a51a5e12a5516710e61a3cedd2622455366004cd9e35484a6d03cc9c12de52edae4072dc37af104d7fd9099201effee82c52dd40b8a58c51fdc5
 Size (opencv_contrib-5.0.0.tar.gz) = 72465981 bytes
 SHA1 (patch-3rdparty_ippicv_ippicv.cmake) = 14ce5de382084793ace32f43c6dfaf01f7ffb390
+SHA1 (patch-cmake_templates_OpenCVConfig.cmake.in) = bddabbe4f323569e6a1d32d617656d179c7c0478
 SHA1 (patch-modules_core_src_downhill__simplex.cpp) = 1ad7c2fa126d15050b87785e8eec20dbe796b471
 SHA1 (patch-modules_core_src_system.cpp) = e7e5c7eb79d875556a380bff19d03434ae46553b
 SHA1 (patch-modules_flann_include_opencv2_flann_defines.h) = ab848e67c4e03219670598ac2d21071a617a5c33

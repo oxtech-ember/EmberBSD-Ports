@@ -8,6 +8,7 @@ INSTALL_DIRS=		modules/face modules/ml modules/plot modules/tracking modules/xob
 
 DISTNAME=	opencv_contrib-${OPENCV_VERSION}
 PKGNAME=	${DISTNAME:S/_contrib/-contrib/}
+PKGREVISION=	1
 GITHUB_PROJECT=	opencv_contrib
 
 MAINTAINER=	markd@NetBSD.org
@@ -98,6 +99,13 @@ CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_core=ON
 
 # needed by tracking
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_video=ON
+
+# OpenCVConfig.cmake from graphics/opencv loads this file, so the modules
+# above are find_package(OpenCV) components.
+INSTALLATION_DIRS+=	lib/cmake/opencv5
+post-install:
+	${INSTALL_DATA} ${FILESDIR}/OpenCVContribModules.cmake \
+	    ${DESTDIR}${PREFIX}/lib/cmake/opencv5/
 
 BUILDLINK_API_DEPENDS.opencv+=	opencv>=${PKGVERSION_NOREV}
 .include "../../graphics/opencv/buildlink3.mk"

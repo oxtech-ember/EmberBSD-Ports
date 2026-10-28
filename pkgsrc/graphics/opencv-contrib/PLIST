@@ -28,6 +28,7 @@ include/opencv5/opencv2/tracking/tracking_legacy.hpp
 include/opencv5/opencv2/tracking/twist.hpp
 include/opencv5/opencv2/xobjdetect.hpp
 include/opencv5/opencv2/xobjdetect/detection_based_tracker.hpp
+lib/cmake/opencv5/OpenCVContribModules.cmake
 lib/libopencv_face.so
 lib/libopencv_face.so.${PKGVERSION}
 lib/libopencv_face.so.500
