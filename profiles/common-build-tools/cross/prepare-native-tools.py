@@ -27,6 +27,13 @@ ROLE_VARIABLES = {
     'nawk': 'EMBERBSD_NATIVE_AWK',
     # Source downloads use the Ports libfetch client and its OpenSSL.
     'fetch': 'TOOLS_PLATFORM.fetch',
+    # Wayland protocol code generator for wayland consumers.
+    'wayland-scanner': 'EMBERBSD_WAYLAND_SCANNER',
+}
+# These variables select the directory of the role tool.
+ROLE_DIRECTORIES = {
+    # Native LLVM TableGen tools for the lld and clang cross recipes.
+    'llvm-tblgen': 'EMBERBSD_LLVM_NATIVE_TOOLS',
 }
 
 
@@ -65,8 +72,12 @@ def render(toolset):
     search = literal(toolset.path)
     lines += ['PATH:= ' + search, '.if "${PATH}" != "' + search + '"',
               '.error PATH differs from the selected host prefix', '.endif', '.export PATH']
-    for role, variable in ROLE_VARIABLES.items():
-        value = literal(shlex.join(toolset.command(role)) if role == 'as' else toolset.tool(role))
+    selected = [(role, variable, shlex.join(toolset.command(role)) if role == 'as' else toolset.tool(role))
+                for role, variable in ROLE_VARIABLES.items()]
+    selected += [(role + '-dir', variable, os.path.dirname(toolset.tool(role)))
+                 for role, variable in ROLE_DIRECTORIES.items()]
+    for role, variable, value in selected:
+        value = literal(value)
         if "'" in value:
             from emberbsd_sdk.errors import SDKError
             raise SDKError('The native make mapping does not support quotes in tool paths')
@@ -116,7 +127,7 @@ def selection(arguments):
     from emberbsd_sdk.errors import SDKError
     from emberbsd_sdk.native_toolset import load_host_prefix
     toolset = load_host_prefix(arguments.host_prefix,
-                              required_roles=tuple(ROLE_VARIABLES),
+                              required_roles=tuple(ROLE_VARIABLES) + tuple(ROLE_DIRECTORIES),
                               compiler_family=arguments.compiler_family)
     if Path(sys.executable).resolve(strict=True) != Path(toolset.tool('python')).resolve(strict=True):
         raise SDKError('The adapter interpreter differs from the selected Ports Python')

@@ -37,7 +37,9 @@ def refused(function, *arguments):
 
 with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
     root = Path(temporary)
-    tools = {role: str(root / ('sdk-' + role)) for role in adapter.ROLE_VARIABLES}
+    directories = getattr(adapter, 'ROLE_DIRECTORIES', {})
+    tools = {role: str(root / ('sdk-' + role)) for role in (*adapter.ROLE_VARIABLES, *directories)}
+    tools['llvm-tblgen'] = str(root / 'llvm/bin/llvm-tblgen')
     tools['python'] = sys.executable
     flags = {'cppflags': ('-isystem', '/native/include'), 'cflags': ('-fPIC',),
              'cxxflags': ('-std=c++17',), 'ldflags': ('-L/native/lib',)}
@@ -69,8 +71,8 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         assert set(call.kwargs) == {'required_roles', 'compiler_family'}
         assert call.kwargs['compiler_family'] == 'clang'
         assert b'EMBERBSD_HOST_COMPILER_FAMILY?= clang\n' in before
-        assert call.kwargs['required_roles'] == tuple(adapter.ROLE_VARIABLES)
-        for role in ('bmake', 'gmake', 'xz', 'xzcat', 'install', 'fetch'):
+        assert call.kwargs['required_roles'] == tuple(adapter.ROLE_VARIABLES) + tuple(directories)
+        for role in ('bmake', 'gmake', 'xz', 'xzcat', 'install', 'fetch', 'wayland-scanner', 'llvm-tblgen'):
             assert role in call.kwargs['required_roles']
         # A make command-line assignment can replace even := variables.
         # Expected values must be literals, not aliases to another variable.
@@ -104,6 +106,11 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         # Without this mapping pkgsrc selects /usr/bin/curl on Darwin.
         assert b'TOOLS_PLATFORM.fetch?= ${_EMBER_SDK_FETCH}' in before
         assert b'FETCH_USING?= fetch\n' in before
+        # Cross wayland, lld and clang recipes need these native tools.
+        for variable, value in (('EMBERBSD_WAYLAND_SCANNER', tools['wayland-scanner']),
+                                ('EMBERBSD_LLVM_NATIVE_TOOLS', str(root / 'llvm/bin')),
+                                ('EMBERBSD_CROSS_BUILD_PYTHON', sys.executable)):
+            assert ('.if "${' + variable + '}" != "' + value + '"').encode() in before, variable
         adapter.write(selected, str(destination))
         assert include.read_bytes() == before and not list(root.glob('.native-tools-*'))
         selected.compiler_family = 'gcc'
