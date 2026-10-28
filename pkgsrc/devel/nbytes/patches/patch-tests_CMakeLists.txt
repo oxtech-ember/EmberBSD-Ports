@@ -1,0 +1,12 @@
+# $NetBSD$
+
+Discover tests when they are run, so cross builds do not execute target binaries.
+
+--- tests/CMakeLists.txt.orig
++++ tests/CMakeLists.txt
+@@ -7,4 +7,4 @@ target_link_libraries(
+ )
+ target_link_libraries(basic nbytes)
+ add_test(basic_test basic)
+-gtest_discover_tests(basic)
++gtest_discover_tests(basic DISCOVERY_MODE PRE_TEST)
