@@ -41,6 +41,7 @@ done
 # The exported version knobs default to and accept only the kept versions.
 for knob in lang/lua/luaversion.mk:LUA_VERSION_DEFAULT:55 \
     lang/lua/luaversion.mk:LUA_VERSIONS_ACCEPTED:55 \
+    lang/python/pyversion.mk:PYTHON_VERSIONS_ACCEPTED:315 \
     lang/nodejs/nodeversion.mk:NODE_VERSIONS_ACCEPTED:26; do
     file=${knob%%:*} rest=${knob#*:}
     grep -Eq "^${rest%%:*}[?]=[[:space:]]+${rest#*:}\$" "$pkgsrc/$file" ||

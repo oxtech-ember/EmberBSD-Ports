@@ -1,0 +1,52 @@
+Origin: EmberBSD, AI-assisted.
+EmberBSD keeps one Python, 3.15 (pkgsrc/versions.mk). The pinned pyversion.mk
+still accepted 3.14 to 3.11 and, with PYTHON_27_ACCEPTED, Python 2.7. Python
+3.15 is the only accepted version; PYTHON_27_ACCEPTED no longer adds 2.7.
+Not submitted upstream.
+
+--- a/lang/python/pyversion.mk
++++ b/lang/python/pyversion.mk
+@@ -36,19 +36,15 @@
+ # NB: If a version is in the ACCEPTED set, that version must also be
+ # in the ACCEPTED set of every (recursive) dependency.
+ #
+-# The general plan for version selection (ignoring 2.7) is:
++# The general plan for version selection is:
+ #   - If PYTHON_VERSION_REQD is set, choose it (and fail if not in
+ #       PYTHON_VERSIONS_ACCEPTED).
+ #   - If PYTHON_VERSION_DEFAULT is in PYTHON_VERSIONS_ACCEPTED, choose
+ #     it.
+ #   - Otherwise, choose the first version in PYTHON_VERSIONS_ACCEPTED.
+ #
+-# With 2.7, 27 is considered included in PYTHON_VERSIONS_ACCEPTED if
+-# PYTHON_27_ACCEPTED is defined.  If so, then:
+-#   - If PYTHON_VERSION_REQD is 27, 27 is used.
+-#   - If PYTHON_VERSION_DEFAULT is not in PYTHON_VERSIONS_ACCEPTED,
+-#     then the highest version in ACCEPTED is chosen.  (For a package
+-#     that supports only 27, this will be 27.)
++# EmberBSD keeps only Python 3.15: it is the only accepted version and
++# PYTHON_27_ACCEPTED is gone.
+ #
+ # === User-settable variables ===
+ #
+@@ -59,7 +55,7 @@
+ #
+ #	Reasonable values: Default value of PYTHON_VERSIONS_ACCEPTED.
+ #	Possible values: Reasonable values and "old 3.x".
+-#	Default: 313
++#	Default: 315
+ #
+ # === Infrastructure variables ===
+ #
+@@ -163,10 +159,7 @@
+ BUILD_DEFS_EFFECTS+=	PYPACKAGE
+ 
+ PYTHON_VERSION_DEFAULT?=		315
+-PYTHON_VERSIONS_ACCEPTED?=		315 314 313 312 311
+-.if defined(PYTHON_27_ACCEPTED)
+-PYTHON_VERSIONS_ACCEPTED+=		27
+-.endif
++PYTHON_VERSIONS_ACCEPTED?=		315
+ PYTHON_VERSIONS_INCOMPATIBLE?=		# empty by default
+ 
+ # transform the list into individual variables
