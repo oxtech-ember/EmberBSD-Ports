@@ -1,0 +1,6 @@
+@comment Origin: EmberBSD (AI-assisted).
+include/fp16.h
+include/fp16/bitcasts.h
+include/fp16/fp16.h
+include/fp16/macros.h
+share/licenses/fp16/LICENSE

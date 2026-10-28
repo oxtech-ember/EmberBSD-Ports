@@ -1,0 +1,8 @@
+# Origin: EmberBSD (AI-assisted).
+BUILDLINK_TREE+= fp16
+.if !defined(FP16_BUILDLINK3_MK)
+FP16_BUILDLINK3_MK:=
+BUILDLINK_API_DEPENDS.fp16+= fp16>=0.0.0pre20260620
+BUILDLINK_PKGSRCDIR.fp16?= ../../devel/fp16
+.endif
+BUILDLINK_TREE+= -fp16
