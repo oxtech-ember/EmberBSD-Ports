@@ -2,7 +2,7 @@
 
 DISTNAME=	qttools-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qttools-${QTVERSION}
-PKGREVISION=	3
+PKGREVISION=	4
 COMMENT=	Qt6 development tools
 CATEGORIES=	devel
 LICENSE=	gnu-lgpl-v3 OR gnu-gpl-v2 OR gnu-gpl-v3
@@ -30,6 +30,17 @@ CMAKE_CONFIGURE_ARGS+= -DCMAKE_DISABLE_FIND_PACKAGE_WrapLibClang=ON
 # Cross builds import the matching host Linguist and Tools tool packages.
 CMAKE_CONFIGURE_ARGS+= -DQt6LinguistTools_DIR=${EMBERBSD_QT_HOST_PATH:Q}/lib/cmake/Qt6LinguistTools
 CMAKE_CONFIGURE_ARGS+= -DQt6ToolsTools_DIR=${EMBERBSD_QT_HOST_PATH:Q}/lib/cmake/Qt6ToolsTools
+.endif
+
+# The host Qt has tools only, so it has no qhelpgenerator. A cross build
+# must import that host tool for Assistant and the full QtHelp library.
+# Cross builds do not package Assistant or QtHelp. FEATURE_fullqthelp=ON
+# also stops the reduced QtHelp library.
+PLIST_VARS+=	help
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+CMAKE_CONFIGURE_ARGS+=	-DFEATURE_assistant=OFF -DFEATURE_fullqthelp=ON
+.else
+PLIST.help=	yes
 .endif
 
 # Designer resource compression uses libzstd directly.
