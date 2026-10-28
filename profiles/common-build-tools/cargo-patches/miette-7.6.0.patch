@@ -1,0 +1,11 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -125,7 +125,7 @@
+ default-features = false
+ 
+ [dependencies.unicode-width]
+-version = "0.1.11"
++version = "0.2.3"
+ 
+ [dev-dependencies.futures]
+ version = "0.3"

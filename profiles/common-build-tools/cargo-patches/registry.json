@@ -47,6 +47,24 @@
     },
     "patch": "jiff-static-0.2.38.patch"
   },
+  "miette-7.6.0": {
+    "files": {
+      "Cargo.toml": {
+        "after": "1d24e304e680c4488ddbe0cc588555d8e79d310beaaac2ea5404c5ac4072e79b",
+        "before": "1b1c0a5588fd58d6fa1f119ab2fdb20bdec88a0a8ab2a407170dfce62cc6890c"
+      }
+    },
+    "patch": "miette-7.6.0.patch"
+  },
+  "miette-derive-7.6.0": {
+    "files": {
+      "Cargo.toml": {
+        "after": "a475cbaa69f4cf7d81db7cf78ea0e640cd548aecb3fb969240cd3ab3a56856b3",
+        "before": "788f210f75e5994977858d0aa6b21df55cdd878f18aa90424e31224c2265dd15"
+      }
+    },
+    "patch": "miette-derive-7.6.0.patch"
+  },
   "phf_macros-0.14.0": {
     "files": {
       "Cargo.toml": {
