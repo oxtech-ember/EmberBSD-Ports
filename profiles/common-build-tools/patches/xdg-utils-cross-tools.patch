@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: BSD-2-Clause
+# Origin: EmberBSD (AI-assisted), NetBSD 11 base grep/sed for xdg-utils scripts.
+--- a/misc/xdg-utils/Makefile
++++ b/misc/xdg-utils/Makefile
+@@ -1,6 +1,7 @@
+ # $NetBSD: Makefile,v 1.19 2024/07/01 16:54:30 leot Exp $
+ 
+ DISTNAME=	xdg-utils-1.2.1
++PKGREVISION=	1
+ CATEGORIES=	misc
+ MASTER_SITES=	https://gitlab.freedesktop.org/xdg/xdg-utils/-/archive/v${PKGVERSION_NOREV}/
+ 
+@@ -42,4 +43,19 @@
+ # "foo > /dev/null 2> /dev/null" gives "foo: not found" with NetBSD's sh
+ REPLACE_BASH+=	scripts/xdg-*
+ 
++.include "../../mk/bsd.prefs.mk"
++
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    !empty(OS_VERSION:M11.*)
++# NetBSD 11 full base supplies grep and sed for the installed scripts.
++# The scripts use POSIX options, grep -A and sed -r; base has them all.
++# Reclassify only this consumer's named tools. Other :run guards stay active.
++.for _xdg_tool_ in ggrep gsed
++USE_TOOLS:= ${USE_TOOLS:N${_xdg_tool_}\:run}
++.endfor
++SUBST_MESSAGE.gsed=	Use NetBSD base grep/sed at run time.
++SUBST_SED.gsed=		-e "s, sed , /usr/bin/sed ,g"
++SUBST_SED.gsed+=	-e "s, grep , /usr/bin/grep ,g"
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
