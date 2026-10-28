@@ -44,6 +44,7 @@ devel/zlib
 lang/clang
 lang/compiler-rt
 lang/llvm
+lang/mlir
 lang/perl5
 lang/rust-bin
 lang/tcl
