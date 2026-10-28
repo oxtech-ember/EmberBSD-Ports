@@ -80,11 +80,21 @@ Cargo file checksums. Repeating configuration accepts the already-patched files.
 These source adaptations are maintained by EmberBSD with AI assistance; the
 original crate licenses remain applicable.
 
+A recipe which keeps upstream `lang/rust/cargo.mk` (for example, a Meson
+consumer) sets `EMBER_CARGO_PREFIX` to the selected host prefix and
+`EMBER_CARGO_PATCH_SET=yes` before including the exported
+`lang/rust/emberbsd-cargo-patches.mk` after `lang/rust/cargo.mk`. The bmake
+conditional is evaluated when the include is read. This reuses the helper without changing its Cargo runner or
+host/target tool configuration. The adapter orders that hook before its own
+configuration.
+
 The recipe still owns its Cargo.lock, exact crate list and checksums. Update
 those together with any direct dependency constraints; the patch set does not
 by itself upgrade a lockfile or establish macro compatibility. Run
 `tests/cargo-patches.py --prefix /absolute/host-prefix --patch /absolute/host-prefix/bin/gpatch`
 and the affected package's actual consumer tests when extending the registry.
+`tests/cargo-patch-hook.py` checks the common bmake pre-configure hook with a
+real selected-prefix patch tool and a checksum-preserved crate fixture.
 `tests/cargo-syn3.py` runs named offline macro consumers against a prepared
 patched vendor tree using the selected host Cargo and linker; use `--help` for
 the required paths and cases. The caller holds the normal prefix and link locks.
