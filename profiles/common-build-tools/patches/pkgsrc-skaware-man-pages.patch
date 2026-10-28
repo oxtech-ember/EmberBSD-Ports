@@ -1,0 +1,118 @@
+Origin: EmberBSD (AI-assisted). The skarnet packages replaced the selected
+install tool with GNU install only because their man page Makefiles use
+install -D -t; those rules now use the selected install tool, so the packages
+keep it and no longer need coreutils to build.
+
+--- /dev/null
++++ b/devel/skalibs/man-pages.mk
+@@ -0,0 +1,11 @@
++# $NetBSD$
++#
++# Origin: EmberBSD (AI-assisted). The skarnet man page Makefiles install with
++# GNU install -D -t; install them with the selected install tool instead.
++# Include after WRKMANSRC is set.
++
++SUBST_CLASSES+=		skaman
++SUBST_STAGE.skaman=	pre-configure
++SUBST_MESSAGE.skaman=	Installing the man pages with the selected install tool.
++SUBST_FILES.skaman=	${WRKMANSRC}/Makefile
++SUBST_SED.skaman=	-e 's|install -D -m 0644 -t \([^ ]*\) \(.*\)$$|${INSTALL_MAN_DIR} \1 \&\& ${INSTALL_MAN} \2 \1|'
+--- a/lang/execline/Makefile
++++ b/lang/execline/Makefile
+@@ -17,12 +17,10 @@
+ COMMENT=		The execline scripting language
+ LICENSE=		isc
+ 
+-TOOL_DEPENDS+=		coreutils-[0-9]*:../../sysutils/coreutils
+-
+ WRKMANSRC=		${WRKDIR}/${PKGBASE}-man-pages-v${MANPAGES_VERSION}
++.include "../../devel/skalibs/man-pages.mk"
+ 
+ USE_TOOLS+=		gmake
+-TOOLS_PLATFORM.install=	${PREFIX}/bin/ginstall
+ HAS_CONFIGURE=		yes
+ CONFIGURE_ARGS+=	--prefix=${PREFIX:Q}
+ CONFIGURE_ARGS+=	--enable-pkgconfig
+--- a/misc/s6-portable-utils/Makefile
++++ b/misc/s6-portable-utils/Makefile
+@@ -17,12 +17,10 @@
+ COMMENT=		Tiny portable generic utilties
+ LICENSE=		isc
+ 
+-TOOL_DEPENDS+=		coreutils-[0-9]*:../../sysutils/coreutils
+-
+ WRKMANSRC=		${WRKDIR}/${PKGBASE}-man-pages-v${MANPAGES_VERSION}
++.include "../../devel/skalibs/man-pages.mk"
+ 
+ USE_TOOLS+=		gmake
+-TOOLS_PLATFORM.install=	${PREFIX}/bin/ginstall
+ HAS_CONFIGURE=		yes
+ CONFIGURE_ARGS+=	--prefix=${PREFIX:Q}
+ CONFIGURE_ARGS+=	--enable-pkgconfig
+--- a/net/s6-networking/Makefile
++++ b/net/s6-networking/Makefile
+@@ -17,12 +17,10 @@
+ COMMENT=		Suite of small networking utilities
+ LICENSE=		isc
+ 
+-TOOL_DEPENDS+=		coreutils-[0-9]*:../../sysutils/coreutils
+-
+ WRKMANSRC=		${WRKDIR}/${PKGBASE}-man-pages-v${MANPAGES_VERSION}
++.include "../../devel/skalibs/man-pages.mk"
+ 
+ USE_TOOLS+=		gmake
+-TOOLS_PLATFORM.install=	${PREFIX}/bin/ginstall
+ HAS_CONFIGURE=		yes
+ CONFIGURE_ARGS+=	--prefix=${PREFIX:Q}
+ CONFIGURE_ARGS+=	--enable-pkgconfig
+--- a/net/shibari/Makefile
++++ b/net/shibari/Makefile
+@@ -17,12 +17,10 @@
+ COMMENT=		Collection of DNS tools for Unix systems
+ LICENSE=		isc
+ 
+-TOOL_DEPENDS+=		coreutils-[0-9]*:../../sysutils/coreutils
+-
+ WRKMANSRC=		${WRKDIR}/${PKGBASE}-man-pages-v${MANPAGES_VERSION}
++.include "../../devel/skalibs/man-pages.mk"
+ 
+ USE_TOOLS+=		gmake
+-TOOLS_PLATFORM.install=	${PREFIX}/bin/ginstall
+ HAS_CONFIGURE=		yes
+ CONFIGURE_ARGS+=	--prefix=${PREFIX:Q}
+ CONFIGURE_ARGS+=	--enable-pkgconfig
+--- a/sysutils/s6/Makefile
++++ b/sysutils/s6/Makefile
+@@ -17,14 +17,13 @@
+ COMMENT=		The s6 supervision suite
+ LICENSE=		isc
+ 
+-TOOL_DEPENDS+=		coreutils-[0-9]*:../../sysutils/coreutils
+ # "for certain binaries that spawn scripts interpreted with execlineb"
+ DEPENDS+=		execline-[0-9]*:../../lang/execline
+ 
+ WRKMANSRC=		${WRKDIR}/${PKGBASE}-man-pages-v${MANPAGES_VERSION}
++.include "../../devel/skalibs/man-pages.mk"
+ 
+ USE_TOOLS+=		gmake
+-TOOLS_PLATFORM.install=	${PREFIX}/bin/ginstall
+ HAS_CONFIGURE=		yes
+ CONFIGURE_ARGS+=	--prefix=${PREFIX:Q}
+ CONFIGURE_ARGS+=	--enable-pkgconfig
+--- a/www/tipidee/Makefile
++++ b/www/tipidee/Makefile
+@@ -17,13 +17,12 @@
+ COMMENT=		Minimalistic web server
+ LICENSE=		isc
+ 
+-TOOL_DEPENDS+=		coreutils-[0-9]*:../../sysutils/coreutils
+ DEPENDS+=		s6-networking>=2.7.1.0nb1:../../net/s6-networking
+ 
+ WRKMANSRC=		${WRKDIR}/${PKGBASE}-man-pages-v${MANPAGES_VERSION}
++.include "../../devel/skalibs/man-pages.mk"
+ 
+ USE_TOOLS+=		gmake
+-TOOLS_PLATFORM.install=	${PREFIX}/bin/ginstall
+ HAS_CONFIGURE=		yes
+ CONFIGURE_ARGS+=	--prefix=${PREFIX:Q}
+ CONFIGURE_ARGS+=	--sysconfdir=${PKG_SYSCONFDIR:Q}
