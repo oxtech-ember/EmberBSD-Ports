@@ -1,10 +1,11 @@
-Origin: EmberBSD (AI-assisted), require the shared GCC driver-prefix repair.
+Origin: EmberBSD (AI-assisted), require the shared GCC driver-prefix repair
+and, for Fortran script providers, the Flang-on-NetBSD tag repair.
 Keep all caller/platform constraints and select the native/cross provider floor.
 Apply after the shared Fortran and host Autoconf routing patches.
 
 --- a/mk/bsd.pkg.use.mk
 +++ b/mk/bsd.pkg.use.mk
-@@ -76,6 +76,12 @@
+@@ -76,6 +76,14 @@
  # LIBTOOL is the publicly-readable variable that should be used by
  #	Makefiles to invoke the proper (wrapped) libtool.
  #
@@ -12,17 +13,19 @@ Apply after the shared Fortran and host Autoconf routing patches.
 +# Keep caller/platform predicates as well; do not replace stronger requests.
 +_LIBTOOL_DRIVER_PREFIX_REQD= 2.6.2nb1
 +_LIBTOOL_DRIVER_PREFIX_CROSS_REQD= 2.6.2nb2
++# Fortran script providers also need the Flang-on-NetBSD tag repair.
++_LIBTOOL_FORTRAN_REQD= 2.6.2nb2
 +_LIBTOOL_PROVIDER_FLOORS=
 +
  .if defined(USE_LANGUAGES) && !empty(USE_LANGUAGES:Mfortran) || \
      defined(USE_LANGUAGES) && !empty(USE_LANGUAGES:Mfortran77)
  .  if !empty(USE_CROSS_COMPILE:M[yY][eE][sS])
-@@ -83,12 +89,16 @@
+@@ -83,12 +91,16 @@
  PKG_SHLIBTOOL?= ${TOOLBASE}/cross-${TARGET_MACHINE_PLATFORM:U${MACHINE_PLATFORM}}/bin/shlibtool-fortran
  .    if defined(USE_LIBTOOL)
  TOOL_DEPENDS+= cross-libtool-fortran-${TARGET_MACHINE_PLATFORM:U${MACHINE_PLATFORM}}>=${_OPSYS_LIBTOOL_REQD:U${LIBTOOL_REQD}}:../../cross/cross-libtool-fortran
 +_LIBTOOL_PROVIDER_FLOORS+= cross-libtool-fortran-${TARGET_MACHINE_PLATFORM:U${MACHINE_PLATFORM}}>=${LIBTOOL_REQD}:../../cross/cross-libtool-fortran \
-+	cross-libtool-fortran-${TARGET_MACHINE_PLATFORM:U${MACHINE_PLATFORM}}>=${_LIBTOOL_DRIVER_PREFIX_REQD}:../../cross/cross-libtool-fortran
++	cross-libtool-fortran-${TARGET_MACHINE_PLATFORM:U${MACHINE_PLATFORM}}>=${_LIBTOOL_FORTRAN_REQD}:../../cross/cross-libtool-fortran
  .    endif
  .  else
  PKG_LIBTOOL?= ${TOOLBASE}/bin/libtool-fortran
@@ -30,11 +33,11 @@ Apply after the shared Fortran and host Autoconf routing patches.
  .    if defined(USE_LIBTOOL)
  TOOL_DEPENDS+= libtool-fortran>=${_OPSYS_LIBTOOL_REQD:U${LIBTOOL_REQD}}:../../devel/libtool-fortran
 +_LIBTOOL_PROVIDER_FLOORS+= libtool-fortran>=${LIBTOOL_REQD}:../../devel/libtool-fortran \
-+	libtool-fortran>=${_LIBTOOL_DRIVER_PREFIX_REQD}:../../devel/libtool-fortran
++	libtool-fortran>=${_LIBTOOL_FORTRAN_REQD}:../../devel/libtool-fortran
  .    endif
  .  endif
  .else
-@@ -103,12 +113,21 @@
+@@ -103,12 +115,21 @@
  LIBTOOL?=		${WRAPPER_BINDIR}/libtool
  SHLIBTOOL?=		${WRAPPER_BINDIR}/shlibtool
  .if defined(USE_LIBTOOL)

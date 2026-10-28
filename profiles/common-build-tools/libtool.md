@@ -259,3 +259,36 @@ python3 tests/libtool-native-archive.py --libtool /absolute/native/libtool \
 The test builds a real static archive, lists its object and runs a consumer.
 Linux/amd64 Clang 23.1.4 passed with a prefix-only PATH. The previous
 libtool-base 2.6.2nb1 failed at its bare `ar` invocation in the same test.
+
+## Flang on NetBSD
+
+Upstream Libtool, including 2.6.2 and its development branch checked on
+2026-10-28, recognizes Flang only in its Linux and FreeBSD compiler branch.
+On NetBSD the FC and F77 tags then get an empty `wl`, and the pkgsrc NetBSD
+`archive_cmds` pass a bare `-soname` to flang, which rejects it.
+`manual-libtool.m4` adds a NetBSD Flang case with `-Wl,`, `-fPIC` and
+`-static`. It mirrors the upstream per-OS layout; adding NetBSD to the Linux
+branch would also change unrelated compilers.
+
+The installed Automake is 1.19, while the shipped generated patches were made
+with Automake 1.18.1. The generated `configure` and `libltdl/configure`
+changes were therefore made as a delta: regenerate the unchanged and the
+changed `manual-*` trees with the same tools, and apply only that difference
+to the shipped generated files with zero fuzz. Automake output does not
+change in that delta. `tests/libtool-source.sh` still names Automake 1.18.1
+and needs a new pin before it can check the full regeneration again.
+
+libtool-fortran and cross-libtool-fortran 2.6.2nb2 carry the case. The common
+dependency rules require that revision from both Fortran script providers.
+C-only providers do not change, because their tags never select flang.
+
+```sh
+sh tests/libtool-flang-netbsd.sh /absolute/libtool-2.6.2.tar.gz \
+    /absolute/export/devel/libtool/patches /absolute/clang /absolute/flang \
+    /absolute/ld.lld /absolute/target-sysroot /absolute/flang-rt/lib \
+    aarch64--netbsd /absolute/llvm-readelf /absolute/new-check
+```
+
+The test configures the patched Libtool for the target and builds a
+versioned Fortran shared library with it. The library must have its Libtool
+SONAME and need the shared Flang runtime.

@@ -128,7 +128,7 @@ def main():
             minimum = '2.6.2nb2' if cross else '2.6.2nb1'
             providers = [(provider, minimum)]
             if fortran:
-                providers.append(('cross-libtool-fortran-NetBSD-11.0-aarch64' if cross else 'libtool-fortran', '2.6.2nb1'))
+                providers.append(('cross-libtool-fortran-NetBSD-11.0-aarch64' if cross else 'libtool-fortran', '2.6.2nb2'))
             for suffix, requested, platform_request in (('default', None, None), ('older', '2.4.2nb9', None),
                     ('strong', '99.0', None), ('platform-strong', '2.4.2nb9', '99.0'),
                     ('both', '99.0', '1.0')):
@@ -144,7 +144,7 @@ def main():
                     require(len(required) == len(set(required)), 'duplicate provider constraint')
                     require(not all(matches(p, name + '-2.6.2') for p in required), 'old provider accepted: ' + key)
                     if version == '2.6.2nb2':
-                        require(not all(matches(p, name + '-2.6.2nb1') for p in required), 'old cross provider accepted')
+                        require(not all(matches(p, name + '-2.6.2nb1') for p in required), 'old provider revision accepted: ' + name)
                     expected = '100.0' if suffix in ('strong', 'platform-strong', 'both') else version
                     require(all(matches(p, name + '-' + expected) for p in required), 'compatible provider rejected: ' + key)
                     if suffix in ('strong', 'platform-strong', 'both'):
