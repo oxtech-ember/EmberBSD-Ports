@@ -95,6 +95,7 @@ graphics/opencv
 graphics/openexr
 graphics/png
 math/eigen3
+math/py-numpy
 multimedia/dav1d
 net/nng
 security/libsecret
