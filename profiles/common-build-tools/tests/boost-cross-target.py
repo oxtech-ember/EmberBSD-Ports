@@ -104,7 +104,7 @@ def main():
             "host-recursion": ("cross", ["USE_CROSS_COMPILE=no"]),
             "unsupported": ("cross", ["MACHINE_ARCH=mips64"]),
         }
-        keys = ("BJAM_ARGS", "BJAM_BUILD", "CXX", "AR", "TOOL_DEPENDS", "PLIST.context", "PLIST.fiber", "PLIST.log", "PKG_FAIL_REASON", "WRKDIR")
+        keys = ("BOOST_TOOLSET", "BJAM_ARGS", "BJAM_BUILD", "CXX", "AR", "TOOL_DEPENDS", "PLIST.context", "PLIST.fiber", "PLIST.log", "PKG_FAIL_REASON", "WRKDIR")
         for case, (config, extra) in cases.items():
             argv = [tools["bmake"], "MAKECONF=" + str(configs[config]), "WRKOBJDIR=" + str(work / "objects" / variant / case), "MAKE_JOBS=1", *extra]
             # Expanded -V expressions also enter .MAKEFLAGS. A value that
@@ -120,6 +120,9 @@ def main():
                 assert wanted.issubset(flags)
                 assert "--site-config=" + value["WRKDIR"] + "/pkgsrc-cross-site-config.jam" in shlex.split(value["BJAM_ARGS"])
                 assert value["PLIST.context"] == value["PLIST.fiber"] == value["PLIST.log"] == "yes"
+                # GCC16 is this regression's compiler; Clang has boost-cross-clang.py.
+                assert value["BOOST_TOOLSET"] == "gcc"
+                assert "--toolset=gcc" in shlex.split(value["BJAM_ARGS"])
             if variant == "after" and case == "unsupported":
                 assert "aarch64 or x86_64 target metadata" in value["PKG_FAIL_REASON"]
             if case in ("native", "host-recursion"):
@@ -134,7 +137,7 @@ def main():
             "WRKOBJDIR=" + str(work / "objects" / variant / "aarch64"), "pre-build"], cwd=tree / "devel/boost-libs")
         if variant == "after":
             generated = Path(config["WRKDIR"]) / "pkgsrc-cross-site-config.jam"
-            assert generated.read_text(encoding="utf-8") == "using gcc : : " + config["CXX"] + " : <archiver>" + config["AR"] + " ;\n"
+            assert generated.read_text(encoding="utf-8") == "using " + config["BOOST_TOOLSET"] + " : : " + config["CXX"] + " : <archiver>" + config["AR"] + " ;\n"
     for case in ("native", "host-recursion"):
         before, after = (metadata[v][case] for v in ("before", "after"))
         assert before["BJAM_BUILD"] == after["BJAM_BUILD"]
