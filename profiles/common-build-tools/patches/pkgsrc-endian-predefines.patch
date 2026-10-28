@@ -1,0 +1,35 @@
+# Origin: EmberBSD (AI-assisted), read the target byte order from the compiler.
+# The absolute header path does not use the cross sysroot, so cross builds
+# got MACHINE_ENDIAN=unknown. GCC and Clang predefine __BYTE_ORDER__.
+
+--- a/mk/endian.mk
++++ b/mk/endian.mk
+@@ -34,8 +34,17 @@
+ _MACHINE_ENDIAN_CPP+=	--sysroot=${TOOLS_CROSS_DESTDIR:Q}
+ .endif
+ 
++# Compiler predefines describe the target without a header path.
++# A cross sysroot does not apply to the absolute header path below.
+ MACHINE_ENDIAN!=							\
+-	{ ${ECHO} "\#if defined(__sgi)";				\
++	{ ${ECHO} "\#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && defined(__ORDER_LITTLE_ENDIAN__)"; \
++	  ${ECHO} "\#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__";	\
++	  ${ECHO} "1234";						\
++	  ${ECHO} "\#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__";	\
++	  ${ECHO} "4321";						\
++	  ${ECHO} "\#endif";						\
++	  ${ECHO} "\#else";						\
++	  ${ECHO} "\#if defined(__sgi)";				\
+ 	  ${ECHO} "\#  include <standards.h>";				\
+ 	  ${ECHO} "\#endif";						\
+ 	  ${ECHO} "\#include <${_ENDIAN_H}>";				\
+@@ -46,7 +55,8 @@
+ 	  ${ECHO} "\#define BYTE_ORDER 1234";				\
+ 	  ${ECHO} "\#endif";						\
+ 	  ${ECHO} "\#endif";						\
+-	  ${ECHO} "BYTE_ORDER"; } | ${_MACHINE_ENDIAN_CPP} |		\
++	  ${ECHO} "BYTE_ORDER";					\
++	  ${ECHO} "\#endif"; } | ${_MACHINE_ENDIAN_CPP} |		\
+ 	{ while read line; do						\
+ 		case $$line in						\
+ 		1234)	${ECHO} "little"; exit 0 ;;			\
