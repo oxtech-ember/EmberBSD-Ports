@@ -47,7 +47,9 @@ The SDK supplies the selected native compiler executable and separate
 `CPPFLAGS_FOR_BUILD`, `CFLAGS_FOR_BUILD`, `LDFLAGS_FOR_BUILD` and optional
 `LIBS_FOR_BUILD`; other pkgsrc cross contexts retain their `NATIVE_CC` command.
 Target compilation uses the selected cross context. Native tools execute only
-on the development host.
+on the development host. Installed shell scripts use the selected native shell
+and awk in host packages; NetBSD cross packages retain `/bin/sh` and
+`/usr/bin/awk` for target execution, independently of configure's host tools.
 
 The existing NetBSD/EmberBSD recipe is moved from the prerequisite patch
 series without duplicating it. Its Info search path, gnulib portability,

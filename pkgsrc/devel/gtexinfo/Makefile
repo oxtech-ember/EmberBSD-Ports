@@ -2,7 +2,7 @@
 
 .include "Makefile.common"
 PKGNAME=	g${DISTNAME}
-PKGREVISION=	9
+PKGREVISION=	10
 CATEGORIES=	devel sysutils
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -52,12 +52,18 @@ PKGSRC_INFOPATH=	${PREFIX}/${PKGINFODIR}:${X11BASE}/${PKGINFODIR}:${PREFIX}/${PK
 MAKE_ENV+=		PKGSRC_INFOPATH=${PKGSRC_INFOPATH:Q}
 CPPFLAGS+=		-DPKGSRC_INFOPATH=\"${PKGSRC_INFOPATH}\"
 
-REPLACE_SH+=		util/texi2dvi
+REPLACE_SH+=		util/texi2dvi util/texi2pdf util/pdftexi2dvi
+REPLACE_SH+=		texindex/texindex.in info/info-hooks-default/manual-not-found.in
 
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
-# texindex runs on the target, where awk is part of the base system.
+# Target scripts use target awk, while configure runs the selected host awk.
 CONFIGURE_ARGS+=	ac_cv_path_TI_AWK=/usr/bin/awk
+SUBST_CLASSES+=		target-hook-awk
+SUBST_STAGE.target-hook-awk= pre-configure
+SUBST_MESSAGE.target-hook-awk= Select target awk in the Info hook
+SUBST_FILES.target-hook-awk= info/info-hooks-default/manual-not-found.in
+SUBST_SED.target-hook-awk= -e 's,^AWK=@AWK@$$,AWK=/usr/bin/awk,'
 .else
 CONFIGURE_ARGS+=	ac_cv_path_TI_AWK=${AWK:Q}
 .endif

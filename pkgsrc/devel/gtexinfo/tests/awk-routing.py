@@ -18,16 +18,19 @@ package = str(Path(args.pkgsrc) / 'devel/gtexinfo')
 def query(config, *extra):
     env = dict(os.environ, MAKECONF=config)
     result = subprocess.run([args.bmake, '-C', package, *extra,
-                             '-V', '${CONFIGURE_ARGS}', '-V', '${AWK}'],
+                             '-V', '${CONFIGURE_ARGS}', '-V', '${AWK}', '-V', '${REPLACE.sys-sh.new}',
+                             '-V', '${SH}', '-V', '${REPLACE_SH}', '-V', '${SUBST_SED.target-hook-awk}'],
                             env=env, check=True, text=True, capture_output=True)
-    flags, awk = result.stdout.splitlines()
+    flags, awk, shell, build_shell, replace_files, hook = result.stdout.splitlines()
+    assert set(('util/texi2dvi', 'util/texi2pdf', 'util/pdftexi2dvi', 'texindex/texindex.in',
+                'info/info-hooks-default/manual-not-found.in')) <= set(replace_files.split())
     values = [word.split('=', 1)[1] for word in shlex.split(flags)
               if word.startswith('ac_cv_path_TI_AWK=')]
     assert len(values) == 1
-    return values[0], awk
+    return values[0], awk, shell, build_shell, hook
 
-native, awk = query(args.native_config, 'EMBERBSD_DARWIN_BOOTSTRAP=yes')
-assert native == awk, (native, awk)
-cross, _ = query(args.cross_config)
-assert cross == '/usr/bin/awk', cross
+native, awk, shell, build_shell, hook = query(args.native_config, 'EMBERBSD_DARWIN_BOOTSTRAP=yes')
+assert native == awk and shell == build_shell and not hook, (native, awk, shell, build_shell, hook)
+cross, _, shell, _, hook = query(args.cross_config)
+assert cross == '/usr/bin/awk' and shell == '/bin/sh' and 'AWK=/usr/bin/awk' in hook, (cross, shell, hook)
 print('texindex native and NetBSD cross awk routing: PASS')

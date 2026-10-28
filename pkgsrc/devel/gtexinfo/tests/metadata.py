@@ -38,7 +38,7 @@ def main():
         assert not row['PKG_SKIP_REASON'], row['PKG_SKIP_REASON']
         assert not row['PKG_FAIL_REASON'], row['PKG_FAIL_REASON']
         assert row['DISTNAME'] == 'texinfo-7.3', row
-        assert row['PKGNAME'] == ('gtexinfo-7.3nb9' if package == 'devel/gtexinfo' else 'pkg_install-info-7.3nb3'), row
+        assert row['PKGNAME'] == ('gtexinfo-7.3nb10' if package == 'devel/gtexinfo' else 'pkg_install-info-7.3nb3'), row
         for variable, name in [('DISTINFO_FILE', 'distinfo'), ('PATCHDIR', 'patches')]:
             assert pathlib.Path(row[variable]).resolve() == (
                 args.pkgsrc / 'devel/gtexinfo' / name).resolve(), row
