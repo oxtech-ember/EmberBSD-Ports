@@ -13,7 +13,8 @@ from types import SimpleNamespace
 
 p = argparse.ArgumentParser()
 p.add_argument('--host-prefix', type=Path, required=True)
-host = p.parse_args().host_prefix
+p.add_argument('--sdk-source', type=Path, required=True)
+args = p.parse_args(); host = args.host_prefix
 owner = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('build', owner / 'electron44/files/build-electron.py')
 b = importlib.util.module_from_spec(spec); spec.loader.exec_module(b)
@@ -35,7 +36,13 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     root = Path(temp); src = root/'source/src'; src.mkdir(parents=True)
     work = root/'work'; out = work/'out'; out.mkdir(parents=True)
     (work/'target-commands').mkdir(); binding = work/'target-commands/commands.json'
-    commands = {'compiler':'clang', 'sysroot':'/target'}; binding.write_text(json.dumps(commands))
+    base=[str(host/'bin/clang'), '--target=x86_64--netbsd', '--sysroot=/target', '-resource-dir=/target/clang']
+    commands=dict(format='emberbsd-compiler-binding',version=1, aliases={},
+                  commands={'cc':base, 'cxx':base, 'cpp':base},
+                  flags={name:[] for name in ('cppflags','cflags','cxxflags','ldflags')},
+                  link_flags={'cc':['--ld-path=/ld','--rtlib=compiler-rt','--unwindlib=libunwind'],
+                              'cxx':['--ld-path=/ld','--rtlib=compiler-rt','--unwindlib=libunwind','-stdlib=libc++']})
+    binding.write_text(json.dumps(commands))
     (src/'.gn').write_text('buildconfig="//BUILDCONFIG.gn"\n')
     (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n feature=false\n}\nset_default_toolchain("//:tools")\n')
     (src/'BUILD.gn').write_text('toolchain("tools") {\n tool("stamp") { command="touch {{output}}" }\n}\n')
@@ -44,21 +51,24 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     gnfile = src/'electron/BUILD.gn'; gnfile.write_text('group("electron_dist_zip") {}\n')
     old = dict(emberbsd_node_provider_inputs=['old'], emberbsd_typescript_definitions=['old'], feature=False, target_cpu='x64')
     new = dict(emberbsd_node_provider_inputs=['new'], emberbsd_typescript_definitions=['new'], feature=True, target_cpu='x64')
-    env = {'PATH':str(host/'bin') + ':/usr/bin', 'EMBERBSD_HOST_TYPESCRIPT':'/old', 'CC':str(work/'target-commands/cc')}
+    env = {'PATH':str(host/'bin') + ':/usr/bin', 'EMBERBSD_HOST_TYPESCRIPT':'/new', 'CC':str(work/'target-commands/cc'), 'CXX':str(work/'target-commands/cxx')}
     opt = SimpleNamespace(workspace=src.parent, ports_source=root, sdk_source=root, host_prefix=host, target='amd64', compiler_family='clang', work=work, git=Path('/usr/bin/git'))
     saved = dict(arguments=old, environment=env, source=str(src.parent), sdk=str(root), host_prefix=str(host), target='amd64')
     config = work/'configuration.json'; config.write_text(json.dumps(saved)); before = config.read_bytes()
     (out/'args.gn').write_text(b.gn_arguments(old)); (out/'build.ninja').write_text('old graph')
     obj=out/'retained.o'; obj.write_bytes(b'object')
-    b.load_sdk=lambda _: {'process':Process()}; b.verify_source=lambda *args: None
+    sdk=b.load_sdk(args.sdk_source); sdk['process']=Process()
+    b.load_sdk=lambda _: sdk; b.verify_source=lambda *args: None
     local=b.local_module; b.local_module=lambda name, file: Source if file == 'prepare-build-sources.py' else local(name,file)
     state={'commands':commands, 'values':new}
     def inputs(candidate, sdk):
-        path=candidate.work.resolve()/'target-commands'; path.mkdir()
-        (path/'commands.json').write_text(json.dumps(state['commands']))
-        return Native(), {'PATH':state.get('path', Native.path), 'EMBERBSD_CONTROL_GIT':state.get('git', '/usr/bin/git'), 'EMBERBSD_HOST_TYPESCRIPT':'/new', 'CC':str(path/'cc'), **state.get('extra', {})}, state['values']
+        bound=b.bind_versioned(sdk, Native(), candidate.work/'target-commands', state['commands'])
+        return Native(), {'PATH':state.get('path', Native.path), 'EMBERBSD_CONTROL_GIT':state.get('git', '/usr/bin/git'), 'EMBERBSD_HOST_TYPESCRIPT':state.get('tsc', '/new'), 'CC':bound['cc'], 'CXX':bound['cxx'], **state.get('extra', {})}, state['values']
     b.producer_inputs=inputs
-    state['path']=Native.path + ':/bin'
+    state['tsc']='/other'
+    try: b.reconfigure(opt); raise AssertionError('accepted untracked provider change')
+    except ValueError as e: assert 'producer input changed: EMBERBSD_HOST_TYPESCRIPT' in str(e)
+    state.pop('tsc'); state['path']=Native.path + ':/bin'
     try: b.reconfigure(opt); raise AssertionError('accepted external PATH')
     except ValueError as e: assert 'PATH is not prefix-only' in str(e)
     state.pop('path'); state['git']='/wrong/git'
@@ -83,7 +93,8 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     opt.target='amd64'; opt.compiler_family='gcc'
     try: b.reconfigure(opt); raise AssertionError('accepted changed compiler family')
     except ValueError as e: assert 'Clang bindings' in str(e)
-    opt.compiler_family='clang'; state['commands']={'compiler':'clang', 'sysroot':'/other'}
+    opt.compiler_family='clang'; state['commands']=json.loads(json.dumps(commands))
+    state['commands']['commands']['cc'][2]='--sysroot=/other'
     try: b.reconfigure(opt); raise AssertionError('accepted changed compiler')
     except ValueError as e: assert 'compiler, sysroot or runtime' in str(e)
     assert config.read_bytes()==before and (out/'build.ninja').read_text()=='old graph' and not (work/'reconfigure-incomplete').exists()

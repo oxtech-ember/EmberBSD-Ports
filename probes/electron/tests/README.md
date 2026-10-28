@@ -420,7 +420,7 @@ EmberBSD sysroot and does not substitute the build host's CUPS metadata.
 
 ```sh
 /absolute/native/bin/python3.15 -B -S probes/electron/tests/electron-reconfigure.py \
-  --host-prefix /absolute/native
+  --host-prefix /absolute/native --sdk-source /absolute/EmberBSD-SDK
 ```
 
 This runs real GN generation on a small graph and checks refusal of changed
@@ -462,3 +462,15 @@ prepared source layer and the real configured target compiler and GN flags:
 The libsync negative control removes the six annotations in a temporary source
 and requires six unused-function errors. This does not establish DNS runtime
 behavior or target device acceptance.
+
+## Immutable compiler binding invalidation
+
+```sh
+/absolute/native/bin/python3.15 -B -S probes/electron/tests/electron-binding-invalidation.py \
+  --host-prefix /absolute/native --sdk-source /absolute/EmberBSD-SDK \
+  --macos-sdk /absolute/MacOSX.sdk
+```
+
+This uses the real SDK binder, native Clang and Ninja to compile and link a
+small native fixture, then checks a no-op and recompilation after changed
+binding flags. It does not test the Electron target or target execution.

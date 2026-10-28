@@ -34,7 +34,7 @@ def load_sdk(root):
     sys.path.insert(0, str(package.parent))
     result = {}
     for name in ('', 'host_prefix', 'application_toolchain', 'target_toolchain', 'targets',
-                 'process', 'paths', 'darwin_sdk'):
+                 'process', 'paths', 'darwin_sdk', 'compiler_bindings'):
         module = importlib.import_module('emberbsd_sdk' + ('.' + name if name else ''))
         require(Path(module.__file__).resolve() == package / ((name or '__init__') + '.py'),
                 'SDK module origin differs: ' + module.__name__)
@@ -129,17 +129,8 @@ def native_inputs(options, sdk):
 
 
 
-def prefer_chromium_libcxx_headers(bound_dir):
-    """Make Chromium libc++ win over SDK/resource C headers (use_custom_libcxx=true).
-
-    SDK bind prepends -nostdinc++/-isystem sysroot libc++ and host clang resource
-    -isystem. Those must not precede third_party/libc++ or <cstddef> fails to find
-    libc++'s <stddef.h>. Drop them from bound cxx; ninja supplies -nostdinc++ and
-    Chromium -isystem paths. Keep -resource-dir for compiler-rt builtins.
-    """
-    path = Path(bound_dir) / 'commands.json'
-    record = json.loads(path.read_text())
-    cxx = record['commands']['cxx']
+def prefer_chromium_libcxx_headers(cxx):
+    """Keep Chromium's libc++ headers ahead of SDK and compiler headers."""
     out = []
     i = 0
     while i < len(cxx):
@@ -148,20 +139,56 @@ def prefer_chromium_libcxx_headers(bound_dir):
             continue
         if cxx[i] == '-isystem' and i + 1 < len(cxx):
             nxt = cxx[i + 1]
-            if ('/include/c++/v1' in nxt or
-                    re.search(r'/lib/clang/[^/]+/include$', nxt)):
+            if '/include/c++/v1' in nxt or re.search(r'/lib/clang/[^/]+/include$', nxt):
                 i += 2
                 continue
         out.append(cxx[i])
         i += 1
     require(out != cxx, 'bound cxx lacked SDK/resource header flags to drop for custom libc++')
-    record['commands']['cxx'] = out
-    path.chmod(0o644)
-    tmp = path.with_name('commands.json.tmp')
-    tmp.write_text(json.dumps(record, indent=2, sort_keys=True) + '\n')
-    tmp.chmod(0o444)
-    tmp.replace(path)
+    return out
 
+
+def bind_versioned(sdk, native, parent, record):
+    """Publish immutable adapters whose path changes with their complete inputs."""
+    identity = dict(record=record, python=str(Path(native.tool('python')).resolve()),
+                    sdk_module=str(Path(sdk['compiler_bindings'].__file__).resolve()),
+                    sdk_module_sha256=hashlib.sha256(Path(sdk['compiler_bindings'].__file__).read_bytes()).hexdigest())
+    digest = hashlib.sha256(json.dumps(identity, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    parent.mkdir(parents=True, exist_ok=True)
+    return sdk['compiler_bindings'].bind_compilers(str(parent / digest), commands=record['commands'],
+        flags=record['flags'], link_flags=record['link_flags'], python=native.tool('python'))
+
+
+def binding_identity(record):
+    """Compare compiler, target and runtime identity, allowing command flags to evolve."""
+    selected = {}
+    for role in ('cc', 'cxx', 'cpp'):
+        words = record['commands'][role]
+        require(words and Path(words[0]).is_absolute(), 'invalid selected compiler')
+        selected[role] = [words[0]]
+        for prefix in ('--target=', '--sysroot=', '-resource-dir='):
+            matches = [word for word in words if word.startswith(prefix)]
+            require(len(matches) == 1, 'missing or ambiguous compiler identity: ' + prefix)
+            selected[role].append(matches[0])
+    for role in ('cc', 'cxx'):
+        words = record['link_flags'][role]
+        selected[role + '_runtime'] = []
+        for prefix in ('--ld-path=', '--rtlib=', '--unwindlib=') + (('-stdlib=',) if role == 'cxx' else ()):
+            matches = [word for word in words if word.startswith(prefix)]
+            require(len(matches) == 1, 'missing or ambiguous runtime identity: ' + prefix)
+            selected[role + '_runtime'].append(matches[0])
+    return selected
+
+
+def saved_binding_directory(work, environment):
+    cc = shlex.split(environment['CC'])
+    cxx = shlex.split(environment['CXX'])
+    require(len(cc) == len(cxx) == 1, 'saved compiler bindings are not executable paths')
+    c, x = Path(cc[0]), Path(cxx[0])
+    root = (work / 'target-commands').resolve(strict=True)
+    require(c.name == 'cc' and x.name == 'cxx' and c.parent == x.parent and
+            c.parent.resolve(strict=True).is_relative_to(root), 'saved compiler bindings escape work')
+    return c.parent
 
 
 def target_inputs(options, sdk, native, environment, work):
@@ -170,14 +197,16 @@ def target_inputs(options, sdk, native, environment, work):
         compiler = sdk['target_toolchain'].clang_compiler(str(options.compiler_prefix), target['triplet'],
                                                          host=native.host, env=environment)
         runtime = sdk['application_toolchain'].load_clang_runtime(str(options.sysroot), target=options.target)
-        bound_dir = work / 'target-commands'
-        if bound_dir.exists():
-            import shutil
-            shutil.rmtree(bound_dir)
-        bound = sdk['application_toolchain'].bind_clang_application_commands(
-            bound_dir, compiler, str(options.sysroot), runtime,
-            python=native.tool('python'))
-        prefer_chromium_libcxx_headers(bound_dir)
+        commands = sdk['application_toolchain'].clang_application_commands(compiler, str(options.sysroot), runtime)
+        commands = {role: commands[role] for role in ('cc', 'cxx', 'cpp')}
+        commands['cxx'] = prefer_chromium_libcxx_headers(commands['cxx'])
+        links = {role: sdk['application_toolchain'].clang_application_link_flags(
+            compiler, str(options.sysroot), runtime, language=language)
+            for role, language in (('cc', 'c'), ('cxx', 'c++'))}
+        record = dict(format='emberbsd-compiler-binding', version=1, commands=commands,
+                      flags={name: [] for name in ('cppflags', 'cflags', 'cxxflags', 'ldflags')},
+                      aliases={}, link_flags=links)
+        bound = bind_versioned(sdk, native, work / 'target-commands', record)
         binaries = {role: row['selected_path'] for role, row in compiler['binaries'].items()}
         return dict(binaries, cc=bound['cc'], cxx=bound['cxx'], cpp=bound['cpp'])
     # An explicit rare-platform GCC profile consumes the existing common owner.
@@ -522,7 +551,8 @@ def reconfigure(options):
     old_args = gn_arguments(saved['arguments'])
     require((work / 'reconfigure-incomplete').exists() or
             (output / 'args.gn').read_text() == old_args, 'configured GN arguments changed')
-    old_commands = json.loads((work / 'target-commands/commands.json').read_text())
+    old_directory = saved_binding_directory(work, saved['environment'])
+    old_commands = json.loads((old_directory / 'commands.json').read_text())
 
     # Resolve and bind into a separate scratch directory, so a mismatch never
     # mutates the existing bindings or graph. Their contents are compared below.
@@ -530,12 +560,14 @@ def reconfigure(options):
         candidate = argparse.Namespace(**vars(options))
         candidate.work = Path(scratch)
         native, environment, values = producer_inputs(candidate, sdk)
-        new_commands = json.loads((candidate.work / 'target-commands/commands.json').read_text())
-        require(new_commands == old_commands, 'target compiler, sysroot or runtime changed')
-        environment = {key: value.replace(str(candidate.work.resolve()) + '/target-commands/',
-                                           str(work / 'target-commands') + '/')
-                       for key, value in environment.items()}
-        permitted_env = {'EMBERBSD_HOST_TYPESCRIPT', 'EMBERBSD_HOST_ROLLUP',
+        new_directory = saved_binding_directory(candidate.work, environment)
+        new_commands = json.loads((new_directory / 'commands.json').read_text())
+        require(binding_identity(new_commands) == binding_identity(old_commands),
+                'target compiler, sysroot or runtime changed')
+        # Provider paths are read from the environment by actions; Ninja does
+        # not fingerprint those values in old graphs. Refuse to reuse such a
+        # graph across a provider change until actions track that selection.
+        permitted_env = {'CC', 'CXX',
                          'HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'}
         old_env = saved['environment']
         # Migrate exactly the old control-Git PATH, never arbitrary tool paths.
@@ -562,6 +594,12 @@ def reconfigure(options):
                          'use_lld', 'emberbsd_target_strip', 'emberbsd_target_objcopy'}
         for name in identity_args:
             require(values.get(name) == saved['arguments'].get(name), 'GN identity changed: ' + name)
+
+        # Preserve previous bindings. The final path appears in GN/Ninja command
+        # lines so a changed record forces the corresponding commands to rerun.
+        bound = bind_versioned(sdk, native, work / 'target-commands', new_commands)
+        environment['CC'] = shlex.quote(bound['cc'])
+        environment['CXX'] = shlex.quote(bound['cxx'])
 
         # A failed or interrupted GN run may leave a partial graph. The marker
         # prevents build until a later successful reconfigure repairs it.

@@ -752,10 +752,11 @@ by four inherited parameterized GTest linkage errors; target execution is pendin
 ### Refresh a configured Node provider
 
 `electron44/files/build-electron.py reconfigure` accepts the same inputs as
-`configure` and regenerates the existing `--work` graph. It allows GN feature settings and the selected native Node provider to change,
-while checking target and toolchain identity, environment selections, and Clang
-target bindings. It
-keeps existing objects for Ninja to update as needed. A failed or interrupted
+`configure` and regenerates the existing `--work` graph. It allows GN feature and compiler option changes while checking target and
+toolchain identity. Compiler bindings are immutable and their content-addressed
+paths change when their commands change, so Ninja rebuilds affected commands.
+Provider environment paths must stay unchanged: older action commands do not
+track those environment values. Existing objects remain for Ninja to update. A failed or interrupted
 GN generation leaves `reconfigure-incomplete` and prevents `build`; rerun
 `reconfigure` successfully before building. This operation does not establish
 that changed compiler or sysroot contents at the same paths are compatible.
