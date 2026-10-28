@@ -3,6 +3,7 @@
 # Origin: EmberBSD contributors (AI-assisted).
 """Check the native Qt host-tools packages: dependencies and installed tools."""
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -29,7 +30,16 @@ def main():
     parser.add_argument('--make', type=Path, required=True,
                         help='native Ports make wrapper: MAKE PKGPATH [VAR=value] -v VARIABLE')
     parser.add_argument('--prefix', type=Path, help='also check the tools installed in this prefix')
+    parser.add_argument('--cross', nargs=3, type=Path, metavar=('MAKE', 'MAKECONF', 'PKGSRC'),
+                        help='also check that the cross recipes still evaluate without the option')
     args = parser.parse_args()
+    for pkgpath in RECIPES if args.cross else ():
+        make, makeconf, pkgsrc = args.cross
+        result = subprocess.run([str(make), '-v', 'PKG_FAIL_REASON'], cwd=pkgsrc / pkgpath,
+                                env=dict(os.environ, MAKECONF=str(makeconf)), capture_output=True, text=True)
+        if result.returncode != 0 or result.stdout.strip():
+            print('FAIL: cross ' + pkgpath + ': ' + (result.stdout + result.stderr).strip()[:300])
+            return 1
     for pkgpath, (option, files) in RECIPES.items():
         result = subprocess.run([str(args.make), pkgpath, option, '-v', 'PKG_FAIL_REASON',
                                  '-v', 'PLIST_SRC', '-v', 'DEPENDS', '-v', 'BUILD_DEPENDS'],

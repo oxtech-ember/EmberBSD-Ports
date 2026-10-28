@@ -7,11 +7,11 @@ PKG_OPTIONS_VAR=	PKG_OPTIONS.qt6-qttools
 
 .include "../../mk/bsd.fast.prefs.mk"
 
+# host-tools is the only option. Cross builds have none and skip bsd.options.mk.
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 PKG_SUPPORTED_OPTIONS+=	host-tools
-.endif
-
 .include "../../mk/bsd.options.mk"
+.endif
 
 .if !empty(PKG_OPTIONS:Mhost-tools)
 PLIST_SRC=		${PKGDIR}/PLIST.host-tools
