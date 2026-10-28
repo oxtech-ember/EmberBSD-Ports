@@ -1,0 +1,15 @@
+Restrict pledge and unveil handling to OpenBSD.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+--- a/net/dns/dns_config_service_posix.cc
++++ b/net/dns/dns_config_service_posix.cc
+@@ -139,7 +139,7 @@
+     CheckOnCorrectSequence();
+ 
+ // pledge + unveil
+-#if !BUILDFLAG(IS_NETBSD)
++#if BUILDFLAG(IS_OPENBSD)
+     base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+     if (!command_line->HasSwitch(sandbox::policy::switches::kNoSandbox))
+       return false;

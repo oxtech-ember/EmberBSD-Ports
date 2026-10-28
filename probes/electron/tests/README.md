@@ -449,3 +449,16 @@ missing Git. It does not run a complete Electron build.
 This checks missing target Rust files and, on Darwin, the selected native
 `dsymutil` binding and rejection of an external existing tool. It does not
 prove Rust package provenance, ABI compatibility, or target execution.
+
+The DNS OpenBSD guard and scoped libsync diagnostics can be checked against a
+prepared source layer and the real configured target compiler and GN flags:
+
+```sh
+/absolute/control-python -B -I -S probes/electron/tests/dns-libsync-source.py \
+  --source /absolute/prepared-source/files --gn-out /absolute/electron-work/out \
+  --cc /absolute/electron-work/target-commands/cc
+```
+
+The libsync negative control removes the six annotations in a temporary source
+and requires six unused-function errors. This does not establish DNS runtime
+behavior or target device acceptance.

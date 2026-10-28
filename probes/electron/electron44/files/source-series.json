@@ -636,6 +636,16 @@
       "path": "explicit-control-git.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "dns-openbsd-pledge-guard.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "libsync-scoped-unused-helpers.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

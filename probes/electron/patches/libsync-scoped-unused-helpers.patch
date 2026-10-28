@@ -1,0 +1,69 @@
+Scope unused annotations to the six stub helpers on the BSD path.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+--- a/third_party/libsync/src/sync.c
++++ b/third_party/libsync/src/sync.c
+@@ -36,8 +36,6 @@
+ 
+ #define __u32 uint32_t
+ #define	__s32 int32_t
+-/* EmberBSD: the BSD port stubs out the ioctl paths, leaving helpers unused. */
+-#pragma clang diagnostic ignored "-Wunused-function"
+ #ifndef ETIME /* EmberBSD: sys/errno.h already defines ETIME */
+ #define ETIME ETIMEDOUT
+ #endif
+@@ -163,7 +161,7 @@
+     return ret;
+ }
+ 
+-static int legacy_sync_merge(const char *name, int fd1, int fd2)
++static __attribute__((unused)) int legacy_sync_merge(const char *name, int fd1, int fd2)
+ {
+ #if 0
+     struct sync_legacy_merge_data data;
+@@ -180,7 +178,7 @@
+ #endif
+ }
+ 
+-static int modern_sync_merge(const char *name, int fd1, int fd2)
++static __attribute__((unused)) int modern_sync_merge(const char *name, int fd1, int fd2)
+ {
+ #if 0
+     struct sync_merge_data data;
+@@ -230,7 +228,7 @@
+ #endif
+ }
+ 
+-static struct sync_fence_info_data *legacy_sync_fence_info(int fd)
++static __attribute__((unused)) struct sync_fence_info_data *legacy_sync_fence_info(int fd)
+ {
+ #if 0
+     struct sync_fence_info_data *legacy_info;
+@@ -253,7 +251,7 @@
+ #endif
+ }
+ 
+-static struct sync_file_info *modern_sync_file_info(int fd)
++static __attribute__((unused)) struct sync_file_info *modern_sync_file_info(int fd)
+ {
+ #if 0
+     struct sync_file_info local_info;
+@@ -285,7 +283,7 @@
+ #endif
+ }
+ 
+-static struct sync_fence_info_data *sync_file_info_to_legacy_fence_info(
++static __attribute__((unused)) struct sync_fence_info_data *sync_file_info_to_legacy_fence_info(
+     const struct sync_file_info *info)
+ {
+ #if 0
+@@ -319,7 +317,7 @@
+ #endif
+ }
+ 
+-static struct sync_file_info* legacy_fence_info_to_sync_file_info(
++static __attribute__((unused)) struct sync_file_info* legacy_fence_info_to_sync_file_info(
+                                     struct sync_fence_info_data *legacy_info)
+ {
+ #if 0
