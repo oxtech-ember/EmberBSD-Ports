@@ -6,7 +6,7 @@ BUILDLINK_TREE+=	opencv
 OPENCV_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.opencv+=	opencv>=5.0.0
-BUILDLINK_ABI_DEPENDS.opencv+=	opencv>=5.0.0
+BUILDLINK_ABI_DEPENDS.opencv+=	opencv>=5.0.0nb3
 BUILDLINK_PKGSRCDIR.opencv?=	../../graphics/opencv
 
 BUILDLINK_INCDIRS.opencv+=	include/opencv5

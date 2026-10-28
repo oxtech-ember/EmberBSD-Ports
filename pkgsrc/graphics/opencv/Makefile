@@ -11,11 +11,13 @@ COMMENT=	Library for computer vision problems
 # cv2 is built by graphics/opencv-contrib, with every module.
 CMAKE_CONFIGURE_ARGS+=	-DBUILD_opencv_python3=OFF
 
-PLIST_VARS+=	opencl
+PLIST_VARS+=	clapack opencl
 
 .include "../../mk/bsd.prefs.mk"
 .if ${OPSYS} != "Darwin"
 PLIST.opencl=	yes
+# Darwin has LAPACK in Accelerate; elsewhere OpenCV builds its own clapack.
+PLIST.clapack=	yes
 .endif
 
 .include "options.mk"

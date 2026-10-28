@@ -225,6 +225,16 @@ include/opencv5/opencv2/photo/cuda.hpp
 include/opencv5/opencv2/photo/legacy/constants_c.h
 include/opencv5/opencv2/photo/photo.hpp
 include/opencv5/opencv2/photo/segmentation.hpp
+include/opencv5/opencv2/ptcloud.hpp
+include/opencv5/opencv2/ptcloud/depth.hpp
+include/opencv5/opencv2/ptcloud/detail/kinfu_frame.hpp
+include/opencv5/opencv2/ptcloud/detail/pose_graph.hpp
+include/opencv5/opencv2/ptcloud/detail/submap.hpp
+include/opencv5/opencv2/ptcloud/odometry.hpp
+include/opencv5/opencv2/ptcloud/odometry_frame.hpp
+include/opencv5/opencv2/ptcloud/odometry_settings.hpp
+include/opencv5/opencv2/ptcloud/volume.hpp
+include/opencv5/opencv2/ptcloud/volume_settings.hpp
 include/opencv5/opencv2/stereo.hpp
 include/opencv5/opencv2/stitching.hpp
 include/opencv5/opencv2/stitching/detail/autocalib.hpp
@@ -286,6 +296,9 @@ lib/libopencv_objdetect.so.500
 lib/libopencv_photo.so
 lib/libopencv_photo.so.${PKGVERSION}
 lib/libopencv_photo.so.500
+lib/libopencv_ptcloud.so
+lib/libopencv_ptcloud.so.${PKGVERSION}
+lib/libopencv_ptcloud.so.500
 lib/libopencv_stereo.so
 lib/libopencv_stereo.so.${PKGVERSION}
 lib/libopencv_stereo.so.500
@@ -300,6 +313,7 @@ lib/libopencv_videoio.so.${PKGVERSION}
 lib/libopencv_videoio.so.500
 share/opencv5/licenses/SoftFloat-COPYING.txt
 share/opencv5/licenses/annoylib-LICENSE
+${PLIST.clapack}share/opencv5/licenses/clapack-lapack_LICENSE
 share/opencv5/licenses/dlpack-LICENSE
 share/opencv5/licenses/flatbuffers-LICENSE.txt
 share/opencv5/licenses/fonts-Rubik_OFL.txt
