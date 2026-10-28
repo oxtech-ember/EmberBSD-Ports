@@ -748,3 +748,15 @@ public tile alias and existing position cases. Its [verification scope](tests/cc
 records five passing production consumers, unchanged analyzer findings and
 explicit Cppcheck parsing limits. The upstream AX unit object remains blocked
 by four inherited parameterized GTest linkage errors; target execution is pending.
+
+### Refresh a configured Node provider
+
+`electron44/files/build-electron.py reconfigure` accepts the same inputs as
+`configure` and regenerates the existing `--work` graph. It allows GN feature settings and the selected native Node provider to change,
+while checking target and toolchain identity, environment selections, and Clang
+target bindings. It
+keeps existing objects for Ninja to update as needed. A failed or interrupted
+GN generation leaves `reconfigure-incomplete` and prevents `build`; rerun
+`reconfigure` successfully before building. This operation does not establish
+that changed compiler or sysroot contents at the same paths are compatible.
+Use a new output when those inputs have changed incompatibly.

@@ -415,3 +415,14 @@ Run against the prepared source immediately before
 `gn-netbsd-cups-pkgconfig.patch`. The common `print/libcups` recipe installs
 `cups.pc`; production configuration requires that target package in the selected
 EmberBSD sysroot and does not substitute the build host's CUPS metadata.
+
+## Electron provider reconfiguration
+
+```sh
+/absolute/native/bin/python3.15 -B -S probes/electron/tests/electron-reconfigure.py \
+  --host-prefix /absolute/native
+```
+
+This runs real GN generation on a small graph and checks refusal of changed
+compiler bindings, retained objects, a failed generation, build refusal, and
+subsequent recovery. It does not build Electron or execute target code.

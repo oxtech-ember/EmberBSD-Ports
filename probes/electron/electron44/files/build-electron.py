@@ -13,6 +13,7 @@ from pathlib import Path
 import re
 import shlex
 import sys
+import tempfile
 
 
 def require(condition, message):
@@ -548,7 +549,73 @@ def configure(options):
              sdk=str(options.sdk_source), host_prefix=str(options.host_prefix), target=options.target))
 
 
+
+def reconfigure(options):
+    """Regenerate an existing GN graph while preserving its toolchain identity."""
+    sdk = load_sdk(options.sdk_source)
+    verify_source(options.workspace, options.ports_source, options.git)
+    work = options.work
+    output = work / 'out'
+    saved = json.loads((work / 'configuration.json').read_text())
+    require(saved['source'] == str(options.workspace) and saved['sdk'] == str(options.sdk_source) and
+            saved['host_prefix'] == str(options.host_prefix) and saved['target'] == options.target,
+            'reconfigure inputs differ from configuration')
+    require(options.compiler_family == 'clang', 'reconfigure currently supports Clang bindings only')
+    require((output / 'build.ninja').is_file(), 'existing GN graph is missing')
+    old_args = gn_arguments(saved['arguments'])
+    require((work / 'reconfigure-incomplete').exists() or
+            (output / 'args.gn').read_text() == old_args, 'configured GN arguments changed')
+    old_commands = json.loads((work / 'target-commands/commands.json').read_text())
+
+    # Resolve and bind into a separate scratch directory, so a mismatch never
+    # mutates the existing bindings or graph. Their contents are compared below.
+    with tempfile.TemporaryDirectory(prefix='electron-reconfigure-') as scratch:
+        candidate = argparse.Namespace(**vars(options))
+        candidate.work = Path(scratch)
+        native, environment, values = producer_inputs(candidate, sdk)
+        new_commands = json.loads((candidate.work / 'target-commands/commands.json').read_text())
+        require(new_commands == old_commands, 'target compiler, sysroot or runtime changed')
+        environment = {key: value.replace(scratch + '/target-commands/',
+                                           str(work / 'target-commands') + '/')
+                       for key, value in environment.items()}
+        permitted_env = {'EMBERBSD_HOST_TYPESCRIPT', 'EMBERBSD_HOST_ROLLUP',
+                         'HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'}
+        old_env = saved['environment']
+        for name in (set(environment) | set(old_env)) - permitted_env:
+            require(environment.get(name) == old_env.get(name), 'producer input changed: ' + name)
+        identity_args = {'target_os', 'target_cpu', 'target_sysroot', 'emberbsd_target_sysroot',
+                         'is_clang', 'unbundle_host_is_clang', 'clang_base_path', 'host_toolchain',
+                         'custom_toolchain', 'v8_snapshot_toolchain', 'emberbsd_mac_toolchain_bin',
+                         'emberbsd_sdk_source', 'mac_sdk_path', 'mac_deployment_target',
+                         'apple_linker_launcher', 'unbundle_linker_launcher', 'concurrent_links',
+                         'rust_sysroot_absolute', 'rust_bindgen_root', 'rustc_version',
+                         'use_custom_libcxx', 'use_custom_libcxx_for_host', 'use_custom_libunwind',
+                         'use_lld', 'emberbsd_target_strip', 'emberbsd_target_objcopy'}
+        for name in identity_args:
+            require(values.get(name) == saved['arguments'].get(name), 'GN identity changed: ' + name)
+
+        # A failed or interrupted GN run may leave a partial graph. The marker
+        # prevents build until a later successful reconfigure repairs it.
+        marker = work / 'reconfigure-incomplete'
+        marker.write_text('GN reconfiguration incomplete\n')
+        try:
+            (output / 'args.gn').write_text(gn_arguments(values))
+            sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
+                '--script-executable=' + native.tool('python'), '--ninja-executable=' + native.tool('ninja'),
+                '--root-target=//electron', '--root-pattern=//electron:electron_dist_zip', '--fail-on-unused-args'],
+                str(work / 'reconfigure.log'), cwd=str(options.workspace / 'src'), env=environment)
+            local_module('electron_build_source', 'prepare-build-sources.py').atomic_json(
+                work / 'configuration.json',
+                dict(arguments=values, environment=environment, source=str(options.workspace),
+                     sdk=str(options.sdk_source), host_prefix=str(options.host_prefix), target=options.target))
+        except BaseException:
+            (output / 'args.gn').write_text(old_args)
+            raise
+        marker.unlink()
+
 def build(options):
+    require(not (options.work / 'reconfigure-incomplete').exists(),
+            'incomplete reconfiguration; rerun reconfigure before build')
     sdk = load_sdk(options.sdk_source)
     verify_source(options.workspace, options.ports_source, options.git)
     native, environment, values = producer_inputs(options, sdk)
@@ -592,7 +659,7 @@ def main():
     source = sub.add_parser('prepare')
     for name in ('workspace', 'ports-source', 'pkgsrc', 'archive', 'destination', 'git', 'patch'):
         source.add_argument('--' + name, type=Path, required=True)
-    for phase in ('configure', 'build'):
+    for phase in ('configure', 'reconfigure', 'build'):
         command = sub.add_parser(phase)
         for name in ('workspace', 'ports-source', 'sdk-source', 'host-prefix', 'compiler-prefix',
                      'sysroot', 'work', 'git', 'lock-root', 'link-context'):
@@ -615,7 +682,7 @@ def main():
         else:
             sdk = load_sdk(options.sdk_source)
             with sdk['process'].ContextLocks([str(options.workspace), str(options.work)], str(options.lock_root)):
-                (configure if options.phase == 'configure' else build)(options)
+                {'configure': configure, 'reconfigure': reconfigure, 'build': build}[options.phase](options)
     except Exception as error:
         parser.exit(1, 'Electron ' + options.phase + ' failed: ' + str(error) + '\n')
 
