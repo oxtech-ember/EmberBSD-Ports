@@ -1,0 +1,19 @@
+$NetBSD$
+
+BLAKE2s (boringssl-0.0.0pre20261028.tar) = 59f20440c6506a67511aedfadb3cbb09de858fb8a3c56559275b2bc8abe0398a
+SHA512 (boringssl-0.0.0pre20261028.tar) = 076b21b39178955ad6d198068bc87e711d378253b46b3e3225cb5408ef5bcb56f56a37d1cbfa133d699f8b5e2085a39a09f2b668f12c7a4b0ee377a2716186a3
+Size (boringssl-0.0.0pre20261028.tar) = 249702400 bytes
+SHA1 (patch-build.json) = 4413ad3b011fde8545a2190d3936e5244e21eb2a
+SHA1 (patch-crypto_cipher_get__cipher.cc) = 2882ad69daf06bc78eb756d288facea9140ca4cc
+SHA1 (patch-crypto_cpu__aarch64__openbsd.cc) = 7e4807716c7871b3ae2b7e25bc014ac6c5f8cee2
+SHA1 (patch-crypto_digest_digest__extra.cc) = 78e0091fdd10441ca12ebbf4fe027ce8ccbee331
+SHA1 (patch-decrepit_evp_evp__do__all.cc) = ebf88f8149736e890addd8edf63aced3c13149e5
+SHA1 (patch-gen_sources.bzl) = dbef4435ef5b1dec5deafe2885e95b52651a4b55
+SHA1 (patch-gen_sources.cmake) = dd051b28e1477eca7d0f22d60b0d57121b0e6003
+SHA1 (patch-gen_sources.gni) = db99039ff5a9861e7af73617d67364ce6ecf9878
+SHA1 (patch-gen_sources.json) = 06fb934b35da7afb0103b3743edd396cb67f79a4
+SHA1 (patch-gen_sources.mk) = d89318cc3a145846b5ba5248be93440b269cc1fe
+SHA1 (patch-include_openssl_cipher.h) = 40ed0c1cea2a9d49ad8963fec8b906113069c22d
+SHA1 (patch-include_openssl_digest.h) = 6dd2413eda0a424947354b8ec20e01e8df02dbdb
+SHA1 (patch-include_openssl_prefix__symbols.h) = 517129b16df707cad4be9fa19d6d5b79c0f87783
+SHA1 (patch-include_openssl_target.h) = 1d4c4f503e8ae45d3c6c388090fdc5194b4af30b

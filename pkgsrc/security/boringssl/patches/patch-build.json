@@ -1,0 +1,38 @@
+$NetBSD$
+
+Origin: upstream BoringSSL source generator, adjusted for Electron
+RIPEMD-160 compatibility by EmberBSD (AI-assisted).
+
+diff --git build.json build.json
+index d3ff23e..a989dd0 100644
+--- build.json
++++ build.json
+@@ -274,6 +274,9 @@
+     },
+     "crypto": {
+         "srcs": [
++            "decrepit/cfb/cfb.cc",
++            "decrepit/blowfish/blowfish.cc",
++            "decrepit/ripemd/ripemd.cc",
+             "crypto/aes/aes.cc",
+             "crypto/asn1/a_bitstr.cc",
+             "crypto/asn1/a_bool.cc",
+@@ -884,10 +887,8 @@
+     "decrepit": {
+         "srcs": [
+             "decrepit/bio/base64_bio.cc",
+-            "decrepit/blowfish/blowfish.cc",
+             "decrepit/cast/cast.cc",
+             "decrepit/cast/cast_tables.cc",
+-            "decrepit/cfb/cfb.cc",
+             "decrepit/des/cfb64ede.cc",
+             "decrepit/dh/dh_decrepit.cc",
+             "decrepit/dsa/dsa_decrepit.cc",
+@@ -895,7 +896,6 @@
+             "decrepit/evp/evp_do_all.cc",
+             "decrepit/obj/obj_decrepit.cc",
+             "decrepit/rc4/rc4_decrepit.cc",
+-            "decrepit/ripemd/ripemd.cc",
+             "decrepit/rsa/rsa_decrepit.cc",
+             "decrepit/ssl/ssl_decrepit.cc",
+             "decrepit/x509/x509_decrepit.cc",
