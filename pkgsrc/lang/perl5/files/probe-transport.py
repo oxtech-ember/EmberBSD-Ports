@@ -54,6 +54,11 @@ def execute(args):
         tools.append(path)
     ssh, scp = tools
     options = ['-oBatchMode=yes', '-oConnectTimeout=10', '-oServerAliveInterval=5', '-oServerAliveCountMax=2']
+    config = os.environ.get('EMBERBSD_PERL_SSH_CONFIG')
+    if config:
+        if not os.path.isabs(config) or not os.path.isfile(config):
+            raise TransportError('select an absolute SSH configuration file')
+        options += ['-F', config]
     peer = args.user + '@' + args.host
     deadline = time.monotonic() + args.timeout
 

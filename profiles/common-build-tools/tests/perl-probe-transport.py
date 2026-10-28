@@ -54,6 +54,22 @@ class TransportTests(unittest.TestCase):
         self.assertTrue(all('2222' in row for row in argv))
         self.assertEqual(argv[1][argv[1].index('-S') + 1], str(self.ssh))
 
+    def test_explicit_ssh_config_reaches_ssh_and_scp(self):
+        config = self.directory / 'ssh_config'
+        config.write_text('Host fixture\n')
+        with patch.dict(os.environ, {'EMBERBSD_PERL_SSH_CONFIG': str(config)}), self.mock_run([0, 0, 0]) as call:
+            self.assertEqual(TRANSPORT.execute(self.args), 0)
+        for invocation in call.call_args_list:
+            argv = invocation.args[0]
+            self.assertEqual(argv[argv.index('-F') + 1], str(config))
+
+    def test_relative_ssh_config_is_rejected(self):
+        with patch.dict(os.environ, {'EMBERBSD_PERL_SSH_CONFIG': 'relative'}):
+            with patch.object(TRANSPORT.subprocess, 'run') as call:
+                with self.assertRaises(TRANSPORT.TransportError):
+                    TRANSPORT.execute(self.args)
+                call.assert_not_called()
+
     def test_missing_or_relative_transport_is_rejected(self):
         for ssh in ('', 'ssh'):
             with self.subTest(ssh=ssh), patch.dict(os.environ,

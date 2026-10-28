@@ -30,6 +30,8 @@ EMBERBSD_CROSS_BUILD_PERL=/absolute/host/bin/perl
 EMBERBSD_PERL_HOST_PYTHON=/absolute/native/python3
 EMBERBSD_PERL_SSH=/absolute/host/ssh
 EMBERBSD_PERL_SCP=/absolute/host/scp
+# Optional dedicated configuration, e.g. for a disposable VM:
+EMBERBSD_PERL_SSH_CONFIG=/absolute/private/ssh-config
 EMBERBSD_PERL_TARGET_PORT=22 # or the selected VM forwarded port
 EMBERBSD_PERL_TARGET_HOST=private-ssh-alias
 EMBERBSD_PERL_TARGET_USER=build-user
