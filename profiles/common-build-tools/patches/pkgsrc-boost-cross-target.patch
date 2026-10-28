@@ -1,5 +1,5 @@
 Origin: EmberBSD (AI-assisted), not submitted upstream.
-Select the target OS, architecture and GCC tools for native b2 cross builds.
+Select the target OS, architecture and GCC or Clang tools for native b2 cross builds.
 Preserve native builds and every selected canonical Boost library.
 
 --- a/devel/boost-jam/bjam.mk
@@ -9,9 +9,9 @@ Preserve native builds and every selected canonical Boost library.
  BJAM_BUILD+=	linkflags=${LDFLAGS:Q}
  
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
-+# The native b2 engine does not infer NetBSD from GCC's target triplet.
++# The native b2 engine does not infer NetBSD from the compiler target triplet.
 +# Context also needs the target ABI and object format on foreign hosts.
-+.  if !empty(PKGSRC_COMPILER:Mgcc)
++.  if ${BOOST_TOOLSET} == "gcc" || ${BOOST_TOOLSET} == "clang"
 +BJAM_ARGS+=	--site-config=${WRKDIR}/pkgsrc-cross-site-config.jam
 +BJAM_BUILD+=	target-os=netbsd address-model=64 binary-format=elf
 +.    if ${MACHINE_ARCH} == "aarch64"
@@ -25,10 +25,10 @@ Preserve native builds and every selected canonical Boost library.
 +BJAM_BUILD+=	compileflags=${CPPFLAGS:Q}
 +
 +pre-build:
-+	${ECHO} 'using gcc : : ${CXX} : <archiver>${AR} ;' \
++	${ECHO} 'using ${BOOST_TOOLSET} : : ${CXX} : <archiver>${AR} ;' \
 +	    > ${WRKDIR}/pkgsrc-cross-site-config.jam
 +.  else
-+PKG_FAIL_REASON+= "Boost cross builds require the selected GCC toolset"
++PKG_FAIL_REASON+= "Boost cross builds require the selected GCC or Clang toolset"
 +.  endif
 +.endif
 +

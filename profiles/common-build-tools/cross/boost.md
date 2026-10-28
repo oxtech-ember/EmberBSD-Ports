@@ -172,3 +172,18 @@ retains one upstream 24-byte reachable allocation at exit. It has no lost
 blocks or invalid-access reports. This remains a Boost.Build engine memory
 finding; it is not a clean whole-engine memory result. No C/C++ implementation
 is changed by the cross-role patch.
+Clang is the primary cross compiler. The same repair selects the b2 `clang`
+toolset and writes its site configuration with the cross `CXX` and `AR`.
+Run the [Clang regression](../tests/boost-cross-clang.py) with a Clang cross
+make configuration:
+
+```sh
+python3.15 -B profiles/common-build-tools/tests/boost-cross-clang.py \
+    --pkgsrc /absolute/export \
+    --cross-makeconf /absolute/cross.conf \
+    --bmake /absolute/host/bin/bmake-wrapper
+```
+
+The wrapper must pass `-m` with the host `share/mk` directory. The
+regression applies the repair to the pinned upstream recipes and checks
+the actual boost-headers metadata and the real `pre-build` hook.
