@@ -1,0 +1,61 @@
+# $NetBSD$
+
+Use common dependencies and defer target test discovery.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -12,34 +12,16 @@
+ include(CTest)
+ include(cmake/idna-flags.cmake)
+ 
++if(ADA_USE_SIMDUTF)
++  find_package(simdutf REQUIRED)
++endif()
+ add_subdirectory(src)
+ 
+ option(ADA_USE_SIMDUTF "Whether to use SIMDUTF for unicode transcoding" OFF)
+ 
+-if(ADA_IDNA_BENCHMARKS OR BUILD_TESTING)
+-  include(cmake/CPM.cmake)
+-endif()
+-
+-if(ADA_USE_SIMDUTF)
+-  include(cmake/CPM.cmake)
+-  CPMAddPackage(
+-    NAME simdutf
+-    GITHUB_REPOSITORY simdutf/simdutf
+-    VERSION 7.0.0
+-    OPTIONS "SIMDUTF_TESTS OFF"
+-  )
+-endif()
+-
+ if (ADA_IDNA_BENCHMARKS)
+   message(STATUS "Ada benchmarks enabled.")
+-  CPMAddPackage(
+-    NAME benchmark
+-    GITHUB_REPOSITORY google/benchmark
+-    VERSION 1.9.0
+-    OPTIONS "BENCHMARK_ENABLE_TESTING OFF"
+-            "BENCHMARK_ENABLE_INSTALL OFF"
+-            "BENCHMARK_ENABLE_WERROR OFF"
+-  )
++  find_package(benchmark REQUIRED)
+   add_subdirectory(benchmarks)
+ else(ADA_IDNA_BENCHMARKS)
+   if (is_top_project)
+@@ -49,13 +31,8 @@
+ 
+ if (BUILD_TESTING)
+   message(STATUS "The tests are enabled.")
+-  CPMAddPackage(
+-    NAME GTest
+-    GITHUB_REPOSITORY google/googletest
+-    VERSION 1.17.0
+-    OPTIONS  "BUILD_GMOCK OFF" "INSTALL_GTEST OFF"
+-  )
+-  CPMAddPackage("gh:simdjson/simdjson@4.0.6")
++  find_package(GTest REQUIRED)
++  find_package(simdjson REQUIRED)
+   add_subdirectory(tests)
+ else()
+   if(is_top_project)

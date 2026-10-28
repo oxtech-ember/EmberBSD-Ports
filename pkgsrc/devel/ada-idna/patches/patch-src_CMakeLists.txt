@@ -1,0 +1,15 @@
+# $NetBSD$
+
+Use common dependencies and defer target test discovery.
+
+--- src/CMakeLists.txt.orig
++++ src/CMakeLists.txt
+@@ -12,7 +12,7 @@
+ target_include_directories(ada-idna PUBLIC "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>")
+ 
+ if(ADA_USE_SIMDUTF)
+-  target_link_libraries(ada-idna PRIVATE simdutf)
++  target_link_libraries(ada-idna PRIVATE simdutf::simdutf)
+   target_compile_definitions(ada-idna PRIVATE ADA_USE_SIMDUTF)
+ endif()
+ 
