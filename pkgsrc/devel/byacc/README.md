@@ -26,38 +26,18 @@ new check directory. Select the test utilities through an explicit `PATH`.
 The ordinary `bmake test` target separately runs upstream parser-output checks.
 Neither shell check establishes C compilation or target-runtime acceptance.
 
-## Initial native generator
+## Historical bootstrap profile
 
-`bootstrap.json` selects the same 20260126 source archive and both recipe patches.
-The [upstream archive](https://invisible-island.net/archives/byacc/) and
-[change log](https://invisible-island.net/byacc/CHANGES) identify this release.
-The source preparation retains the complete archive tree, including licenses,
-maintenance skeletons, tests, configure inputs and generated configure.
-The two `patched_members` hashes identify the exact current patch results.
-They do not replace the original archive, patches or patch command evidence.
+`bootstrap.json` and `bootstrap/` describe the retired GCC16 direct-source
+bootstrap profile. The manifest is immutable historical data: its two patch
+entries and patched-member hashes describe that original profile, not the
+current Ports recipe. Existing SDK history readers use the original manifest
+and source snapshot; do not use it to prepare or build current byacc.
 
-The SDK `byacc-bootstrap` stage compiles all fourteen released C files.
-It keeps `btyaccpar.c`, the upstream default `YYBTYACC=1`, and `YYPATCH` from `VERSION`.
-It does not regenerate skeletons, run configure or require an existing yacc.
-The ordinary package recipe and its configure/install/test behavior stay unchanged.
-
-`bootstrap/capabilities.c` must compile, link and run with the selected native GCC16.
-It checks native headers, getopt declarations and state, mkstemp creation,
-vsnprintf output, C noreturn and GCC format/unused attributes.
-Only successful observations permit the SDK to emit `bootstrap/config.h.in` as `config.h`.
-The header defines only capabilities used by the released C closure and the default skeleton choice.
-An unavailable capability stops this finite route. There are no host presets or fallback executables.
-The header is not an ordinary configure result and must not be installed as one.
-
-`bootstrap/grammar.y` is an independent test fixture, not a replacement generator.
-It tests typed values, operator precedence, associativity, parentheses, empty input and errors.
-The generator writes a parser and token header twice with identical names and arguments.
-Both outputs must be byte-identical. The same GCC16 then compiles and links that parser.
-Eight source-owned cases compare exact streams and exit statuses with independent arithmetic expectations.
-All temporary files stay in the fresh private work directory through explicit `TMPDIR`.
-
-Run the SDK `test_bootstrap_byacc` suite with explicit `EMBERBSD_TEST_PORTS_SOURCE`,
-`EMBERBSD_TEST_BYACC_ARCHIVE` and `EMBERBSD_TEST_BYACC_SOURCE` paths.
-The last path must contain the complete source with both current patches already applied.
-These tests use synthetic children. Actual native compilation, upstream test coverage,
-C analysis, memory checks, expr integration and ordinary package qualification remain separate.
+The active package is built by the ordinary Ports recipe. Its `distinfo` and
+`patches/` are the complete authoritative patch set. The shared
+`scripts/source-inputs/byacc/source.py` prepares the same source for OS
+consumers and checks the complete patch inventory and checksums. The normal
+pkgsrc exporter checks the declared patch roster and checksums as well.
+Initial SDK bootstrap uses the ordinary exported Ports recipes with explicitly
+selected initial tools; it does not require a completed native prefix.

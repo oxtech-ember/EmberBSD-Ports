@@ -3,7 +3,7 @@
 # Origin: EmberBSD (AI-assisted); current shared upstream byacc recipe.
 
 DISTNAME=	byacc-20260126
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	devel
 MASTER_SITES=	https://invisible-mirror.net/archives/byacc/
 EXTRACT_SUFX=	.tgz

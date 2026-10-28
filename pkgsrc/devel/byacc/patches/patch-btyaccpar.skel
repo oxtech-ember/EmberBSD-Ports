@@ -1,0 +1,156 @@
+$NetBSD$
+
+Preserve NetBSD and EmberBSD byacc integration changes from the OS source.
+Origin: NetBSD and EmberBSD (AI-assisted); not submitted upstream.
+
+--- btyaccpar.skel.orig
++++ btyaccpar.skel
+@@ -11,7 +11,7 @@
+ /*  are conditional.							*/
+ 
+ %% banner
+-/* original parser id follows */
++/* EmberBSD parser skeleton; original parser id follows. */
+ /* yysccsid[] = "@(#)yaccpar	1.9 (Berkeley) 02/21/93" */
+ /* (use YYMAJOR/YYMINOR for ifdefs dependent on parser version) */
+ 
+@@ -324,6 +324,7 @@
+     YYParseState *p = (YYParseState *) malloc(sizeof(YYParseState));
+     if (p == NULL) return NULL;
+ 
++    memset(&p->yystack, 0, sizeof(p->yystack));
+     p->yystack.stacksize = size;
+     if (size == 0)
+     {
+@@ -335,17 +336,26 @@
+         return p;
+     }
+     p->yystack.s_base    = (YYINT *) malloc(size * sizeof(YYINT));
+-    if (p->yystack.s_base == NULL) return NULL;
++    if (p->yystack.s_base == NULL) goto fail;
+     p->yystack.l_base    = (YYSTYPE *) malloc(size * sizeof(YYSTYPE));
+-    if (p->yystack.l_base == NULL) return NULL;
++    if (p->yystack.l_base == NULL) goto fail;
+     memset(p->yystack.l_base, 0, size * sizeof(YYSTYPE));
+ #if defined(YYLTYPE) || defined(YYLTYPE_IS_DECLARED)
+     p->yystack.p_base    = (YYLTYPE *) malloc(size * sizeof(YYLTYPE));
+-    if (p->yystack.p_base == NULL) return NULL;
++    if (p->yystack.p_base == NULL) goto fail;
+     memset(p->yystack.p_base, 0, size * sizeof(YYLTYPE));
+ #endif
+ 
+     return p;
++
++fail:
++    free(p->yystack.s_base);
++    free(p->yystack.l_base);
++#if defined(YYLTYPE) || defined(YYLTYPE_IS_DECLARED)
++    free(p->yystack.p_base);
++#endif
++    free(p);
++    return NULL;
+ }
+ 
+ static void
+@@ -405,6 +415,10 @@
+ #endif
+ 
+ %% body_3
++#if YYPURE
++    memset(&yystack, 0, sizeof(yystack));
++#endif
++
+ %%ifdef YYBTYACC
+     yyps = yyNewState(0); if (yyps == 0) goto yyenomem;
+     yyps->save = 0;
+@@ -412,13 +426,10 @@
+     yym = 0;
+     /* yyn is set below */
+     yynerrs = 0;
++    (void)yynerrs; /* User actions may omit the error count. */
+     yyerrflag = 0;
+     yychar = YYEMPTY;
+     yystate = 0;
+-
+-#if YYPURE
+-    memset(&yystack, 0, sizeof(yystack));
+-#endif
+ 
+     if (yystack.s_base == NULL && yygrowstack(&yystack) == YYENOMEM) goto yyoverflow;
+     yystack.s_mark = yystack.s_base;
+@@ -452,20 +463,29 @@
+             {   /* Enlarge lexical value queue */
+                 size_t p = (size_t) (yylvp - yylvals);
+                 size_t s = (size_t) (yylvlim - yylvals);
++                YYINT *new_lexemes;
++                YYSTYPE *new_vals;
++#if defined(YYLTYPE) || defined(YYLTYPE_IS_DECLARED)
++                YYLTYPE *new_psns;
++#endif
+ 
+                 s += YYLVQUEUEGROWTH;
+-                if ((yylexemes = (YYINT *)realloc(yylexemes, s * sizeof(YYINT))) == NULL) goto yyenomem;
+-                if ((yylvals   = (YYSTYPE *)realloc(yylvals, s * sizeof(YYSTYPE))) == NULL) goto yyenomem;
+-#if defined(YYLTYPE) || defined(YYLTYPE_IS_DECLARED)
+-                if ((yylpsns   = (YYLTYPE *)realloc(yylpsns, s * sizeof(YYLTYPE))) == NULL) goto yyenomem;
+-#endif
++                new_lexemes = (YYINT *)realloc(yylexemes, s * sizeof(YYINT));
++                if (new_lexemes == NULL) goto yyenomem;
++                yylexemes = new_lexemes;
++                yylexp = yylexemes + p;
++                new_vals = (YYSTYPE *)realloc(yylvals, s * sizeof(YYSTYPE));
++                if (new_vals == NULL) goto yyenomem;
++                yylvals = new_vals;
+                 yylvp   = yylve = yylvals + p;
+                 yylvlim = yylvals + s;
+ #if defined(YYLTYPE) || defined(YYLTYPE_IS_DECLARED)
++                new_psns = (YYLTYPE *)realloc(yylpsns, s * sizeof(YYLTYPE));
++                if (new_psns == NULL) goto yyenomem;
++                yylpsns = new_psns;
+                 yylpp   = yylpe = yylpsns + p;
+                 yylplim = yylpsns + s;
+ #endif
+-                yylexp  = yylexemes + p;
+             }
+             *yylexp = (YYINT) YYLEX;
+             *yylvp++ = yylval;
+@@ -971,23 +991,32 @@
+                 {   /* Enlarge lexical value queue */
+                     size_t p = (size_t) (yylvp - yylvals);
+                     size_t s = (size_t) (yylvlim - yylvals);
++                    YYINT *new_lexemes;
++                    YYSTYPE *new_vals;
++#if defined(YYLTYPE) || defined(YYLTYPE_IS_DECLARED)
++                    YYLTYPE *new_psns;
++#endif
+ 
+                     s += YYLVQUEUEGROWTH;
+-                    if ((yylexemes = (YYINT *)realloc(yylexemes, s * sizeof(YYINT))) == NULL)
++                    new_lexemes = (YYINT *)realloc(yylexemes, s * sizeof(YYINT));
++                    if (new_lexemes == NULL)
+                         goto yyenomem;
+-                    if ((yylvals   = (YYSTYPE *)realloc(yylvals, s * sizeof(YYSTYPE))) == NULL)
++                    yylexemes = new_lexemes;
++                    yylexp = yylexemes + p;
++                    new_vals = (YYSTYPE *)realloc(yylvals, s * sizeof(YYSTYPE));
++                    if (new_vals == NULL)
+                         goto yyenomem;
+-#if defined(YYLTYPE) || defined(YYLTYPE_IS_DECLARED)
+-                    if ((yylpsns   = (YYLTYPE *)realloc(yylpsns, s * sizeof(YYLTYPE))) == NULL)
+-                        goto yyenomem;
+-#endif
++                    yylvals = new_vals;
+                     yylvp   = yylve = yylvals + p;
+                     yylvlim = yylvals + s;
+ #if defined(YYLTYPE) || defined(YYLTYPE_IS_DECLARED)
++                    new_psns = (YYLTYPE *)realloc(yylpsns, s * sizeof(YYLTYPE));
++                    if (new_psns == NULL)
++                        goto yyenomem;
++                    yylpsns = new_psns;
+                     yylpp   = yylpe = yylpsns + p;
+                     yylplim = yylpsns + s;
+ #endif
+-                    yylexp  = yylexemes + p;
+                 }
+                 *yylexp = (YYINT) YYLEX;
+                 *yylvp++ = yylval;
