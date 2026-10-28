@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Origin: EmberBSD (AI-assisted), based on the official PCL release.
 DISTNAME=	pcl-1.15.1
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	graphics
 MASTER_SITES=	${MASTER_SITE_GITHUB:=PointCloudLibrary/}
 GITHUB_PROJECT=	pcl
@@ -19,7 +19,7 @@ GCC_REQD+=		16.2
 CMAKE_REQD+=		3.22
 CMAKE_CONFIGURE_ARGS+=	-C ${.CURDIR}/features.cmake
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_PREFIX=${PREFIX}
-CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_RPATH=${PREFIX}/lib\;${PREFIX}/gcc16/lib
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_RPATH=${PREFIX}/lib
 BUILD_TARGET=		pcl_common pcl_kdtree pcl_octree pcl_search
 BUILD_TARGET+=		pcl_sample_consensus pcl_filters pcl_features
 BUILD_TARGET+=		pcl_registration pcl_io pcl_io_ply
