@@ -251,7 +251,25 @@ def check_knobs(export, settings, errors):
         if pyversion.is_file() else []
     if any('PYTHON_27_ACCEPTED' in line for line in code):
         errors.append('knob PYTHON_27_ACCEPTED in lang/python/pyversion.mk still offers Python 2.7')
+    check_gcc_mapping(export, errors)
     return kept
+
+
+def check_gcc_mapping(export, errors):
+    """GCC_REQD must map only to the kept GCC, the per-platform override."""
+    path = export / 'mk/compiler/gcc.mk'
+    if not path.is_file():
+        return
+    text = path.read_text(errors='replace')
+    for n in sorted({int(m) for m in re.findall(r'^_GCC(\d+)_PATTERNS\s*=', text, re.M)}):
+        words = make_words(path, '_GCC%d_PATTERNS' % n) or []
+        if words and not any(fnmatch.fnmatchcase('lang/gcc%d' % n, o) for o in COMPILER_OVERRIDE):
+            errors.append('knob _GCC%d_PATTERNS in mk/compiler/gcc.mk maps GCC_REQD "%s" to lang/gcc%d'
+                          % (n, ' '.join(words), n))
+    fallback = re.search(r'_NEED_GCC_AUX:M\[nN\]\[oO\]\)\s*\n_NEED_GCC(\d+)\s*=', text)
+    if fallback and not any(fnmatch.fnmatchcase('lang/gcc' + fallback.group(1), o)
+                            for o in COMPILER_OVERRIDE):
+        errors.append('knob mk/compiler/gcc.mk falls back to lang/gcc%s' % fallback.group(1))
 
 
 def recipe_files(export, pkg):

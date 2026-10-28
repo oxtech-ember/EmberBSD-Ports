@@ -1,0 +1,67 @@
+Origin: EmberBSD, AI-assisted.
+EmberBSD keeps one GCC, gcc16. gcc.mk mapped GCC_REQD below 16 to
+lang/gcc6 through lang/gcc15, which are not in the tree, and fell back
+to gcc8 when nothing matched. All versions up to 16.x now map to
+lang/gcc16 and the fallback is gcc16. Not submitted upstream.
+
+--- a/mk/compiler/gcc.mk
++++ b/mk/compiler/gcc.mk
+@@ -331,36 +331,20 @@
+ .include "../../lang/${_GCC_DIST_NAME}/version.mk"
+ _GCC_DIST_VERSION:=	${${_GCC_DIST_NAME:tu}_DIST_VERSION}
+ 
+-# _GCC6_PATTERNS matches N s.t. N < 7.
+-_GCC6_PATTERNS= 5 6 [0-6].*
+-
+-# _GCC7_PATTERNS matches N s.t. 7.0 <= N < 8.
+-_GCC7_PATTERNS= 7 7.*
+-
+-# _GCC8_PATTERNS matches N s.t. 8.0 <= N < 9.
+-_GCC8_PATTERNS= 8 8.*
+-
+-# _GCC9_PATTERNS matches N s.t. 9.0 <= N < 10.
+-_GCC9_PATTERNS= 9 9.*
+-
+-# _GCC10_PATTERNS matches N s.t. 10.0 <= N < 11.
+-_GCC10_PATTERNS= 10 10.*
+-
+-# _GCC12_PATTERNS matches N s.t. 12.0 <= N < 13.
+-# gcc 11.x is not packaged, so depend on gcc12 in that case too
+-_GCC12_PATTERNS= 11 11.* 12 12.*
+-
+-# _GCC13_PATTERNS matches N s.t. 13.0 <= N < 14.
+-_GCC13_PATTERNS= 13 13.*
+-
+-# _GCC14_PATTERNS matches N s.t. 14.0 <= N < 15.
+-_GCC14_PATTERNS= 14 14.*
+-
+-# _GCC15_PATTERNS matches N s.t. 15.0 <= N < 16.
+-_GCC15_PATTERNS= 15 15.*
++# EmberBSD keeps one GCC, gcc16. Every GCC_REQD up to 16.x maps to
++# lang/gcc16; no older lang/gccN is reachable.
++_GCC6_PATTERNS=
++_GCC7_PATTERNS=
++_GCC8_PATTERNS=
++_GCC9_PATTERNS=
++_GCC10_PATTERNS=
++_GCC12_PATTERNS=
++_GCC13_PATTERNS=
++_GCC14_PATTERNS=
++_GCC15_PATTERNS=
+ 
+-# _GCC16_PATTERNS matches N s.t. 16.0 <= N < 17.
+-_GCC16_PATTERNS= 16 16.*
++# _GCC16_PATTERNS matches N s.t. N < 17.
++_GCC16_PATTERNS= [0-9] [0-9].* 1[0-6] 1[0-6].*
+ 
+ # _GCC_AUX_PATTERNS matches 8-digit date YYYYMMDD*
+ _GCC_AUX_PATTERNS= 20[1-2][0-9][0-1][0-9][0-3][0-9]*
+@@ -678,7 +662,7 @@
+     !empty(_NEED_GCC13:M[nN][oO]) && !empty(_NEED_GCC14:M[nN][oO]) && \
+     !empty(_NEED_GCC15:M[nN][oO]) && !empty(_NEED_GCC16:M[nN][oO]) && \
+     !empty(_NEED_GCC_AUX:M[nN][oO])
+-_NEED_GCC8=	yes
++_NEED_GCC16=	yes
+ .endif
+ 
+ # April 2022: GCC below 10 from pkgsrc is broken on 32-bit arm NetBSD.
