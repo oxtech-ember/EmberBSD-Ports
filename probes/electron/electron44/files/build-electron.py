@@ -309,92 +309,6 @@ def require_rust_std(host_prefix, target):
             'target Rust std missing; install the shared pkgsrc lang/rust-std-' + triplet.split('-')[0] + '-netbsd package')
 
 
-def ensure_allocator_shim_throw_netbsd(workspace):
-    """NetBSD/BSD: empty __THROW for libc malloc; noexcept __THROW in cpp_symbols."""
-    shim = (workspace / 'src/base/allocator/partition_allocator/src/partition_alloc'
-            / 'shim')
-    path = shim / 'allocator_shim_internals.h'
-    require(path.is_file(), 'allocator_shim_internals.h missing')
-    text = path.read_text()
-    needle = '#ifndef __THROW   // Not a glibc system'
-    idx = text.find(needle)
-    require(idx >= 0, 'allocator_shim_internals.h __THROW block missing')
-    window = text[idx:idx + 450]
-    # PA buildflags are linux-shaped for this target; gate on compiler predefines.
-    stale = '#if defined(_NOEXCEPT) && !PA_BUILDFLAG(IS_NETBSD) && !PA_BUILDFLAG(IS_BSD)\n'
-    if stale in window:
-        text = text.replace(stale, '#if defined(_NOEXCEPT) && !defined(__NetBSD__) && !defined(__FreeBSD__) && !defined(__OpenBSD__)\n', 1)
-        path.write_text(text)
-        window = text[idx:idx + 450]
-    if '!defined(__NetBSD__)' not in window:
-        old = (
-            '#ifndef __THROW   // Not a glibc system\n'
-            '#ifdef _NOEXCEPT  // LLVM libc++ uses noexcept instead\n'
-            '#define __THROW _NOEXCEPT\n'
-            '#else\n'
-            '#define __THROW\n'
-            '#endif  // !_NOEXCEPT\n'
-            '#endif'
-        )
-        new = (
-            '#ifndef __THROW   // Not a glibc system\n'
-            '// NetBSD/BSD libc headers declare malloc family without exception specs;\n'
-            '// mapping __THROW to _NOEXCEPT then mismatches those decls under clang.\n'
-            '#if defined(_NOEXCEPT) && !defined(__NetBSD__) && !defined(__FreeBSD__) && !defined(__OpenBSD__)\n'
-            '#define __THROW _NOEXCEPT\n'
-            '#else\n'
-            '#define __THROW\n'
-            '#endif  // !_NOEXCEPT || BSD/NetBSD\n'
-            '#endif'
-        )
-        require(old in text, 'allocator_shim_internals.h __THROW block not recognized')
-        path.write_text(text.replace(old, new, 1))
-
-    # cpp_symbols: a header-level "#define __THROW noexcept" leaks into
-    # allocator_shim_override_libc_symbols.h (included next by allocator_shim.cc)
-    # and breaks libc malloc decls. Strip any such block; the C++ overrides get a
-    # literal noexcept from ensure_allocator_shim_cpp_noexcept instead.
-    cpp = shim / 'allocator_shim_override_cpp_symbols.h'
-    require(cpp.is_file(), 'allocator_shim_override_cpp_symbols.h missing')
-    ctext = cpp.read_text()
-    block = (
-        '\n'
-        '// EmberBSD/NetBSD: libc malloc must keep empty __THROW (see internals.h),\n'
-        '// but libc++ operator new/delete decls use noexcept \u2014 remap for this header.\n'
-        '#if PA_BUILDFLAG(IS_NETBSD) || PA_BUILDFLAG(IS_BSD)\n'
-        '#undef __THROW\n'
-        '#define __THROW noexcept\n'
-        '#endif\n'
-    )
-    if block in ctext:
-        cpp.write_text(ctext.replace(block, '', 1))
-
-
-def ensure_allocator_shim_cpp_noexcept(workspace):
-    """libc++ declares replaceable operator new/delete noexcept; with __THROW empty on
-    BSD (see ensure_allocator_shim_throw_netbsd) the C++ shim overrides lose it."""
-    path = (workspace / 'src/base/allocator/partition_allocator/src/partition_alloc'
-            / 'shim' / 'allocator_shim_override_cpp_symbols.h')
-    require(path.is_file(), 'allocator_shim_override_cpp_symbols.h missing')
-    text = path.read_text()
-    if ') __THROW {' not in text:
-        return
-    path.write_text(text.replace(') __THROW {', ') noexcept {'))
-
-
-
-def ensure_bindgen_dyld_fallback(workspace):
-    """run_bindgen sets DYLD_LIBRARY_PATH to the host LLVM lib dir, which makes
-    /usr/lib/libiconv.2.dylib (needed by libxml2) resolve to GNU libiconv lacking
-    _iconv, so libclang fails to dlopen. Use DYLD_FALLBACK_LIBRARY_PATH instead."""
-    path = workspace / 'src/build/rust/gni_impl/run_bindgen.py'
-    require(path.is_file(), 'run_bindgen.py missing')
-    text = path.read_text()
-    old = 'env["DYLD_LIBRARY_PATH"] = args.ld_library_path'
-    if old in text:
-        path.write_text(text.replace(old, 'env["DYLD_FALLBACK_LIBRARY_PATH"] = args.ld_library_path', 1))
-
-
 def ensure_host_dsymutil(workspace, native):
     """Bind Chromium's macOS tool path to the selected native-prefix tool."""
     if native.host['os'] != 'Darwin':
@@ -521,9 +435,6 @@ def configure(options):
     ensure_host_dsymutil(options.workspace, native)
     ensure_rollup_darwin_arm64(options.workspace, options.host_prefix, environment)
     require_rust_std(options.host_prefix, options.target)
-    ensure_allocator_shim_throw_netbsd(options.workspace)
-    ensure_bindgen_dyld_fallback(options.workspace)
-    ensure_allocator_shim_cpp_noexcept(options.workspace)
     output = work / 'out'; output.mkdir()
     (output / 'args.gn').write_text(gn_arguments(values))
     sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
@@ -632,9 +543,6 @@ def build(options):
     ensure_host_dsymutil(options.workspace, native)
     ensure_rollup_darwin_arm64(options.workspace, options.host_prefix, environment)
     require_rust_std(options.host_prefix, options.target)
-    ensure_allocator_shim_throw_netbsd(options.workspace)
-    ensure_bindgen_dyld_fallback(options.workspace)
-    ensure_allocator_shim_cpp_noexcept(options.workspace)
     saved = json.loads((options.work / 'configuration.json').read_text())
     require(saved['source'] == str(options.workspace) and saved['sdk'] == str(options.sdk_source) and
             saved['host_prefix'] == str(options.host_prefix) and saved['target'] == options.target,
