@@ -351,3 +351,6 @@ devel/SDL2
 security/mbedtls4
 devel/tl-expected
 textproc/utf8-cpp
+
+# checkperms uses the native BSD install tool on Darwin.
+sysutils/checkperms
