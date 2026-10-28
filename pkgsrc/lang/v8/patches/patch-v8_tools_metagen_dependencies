@@ -1,0 +1,55 @@
+$NetBSD$
+
+Track the driver and parsed headers separately from semantic provenance.
+Origin: EmberBSD (AI-assisted).
+
+--- tools/metagen/cpp_hier.py.orig
++++ tools/metagen/cpp_hier.py
+@@ -63,6 +63,7 @@
+   # marker definitions. Derived from the walk, not filtered from the
+   # include list, so it stays correct when a declaration moves.
+   provenance: list[str] = dataclasses.field(default_factory=list)
++  includes: list[str] = dataclasses.field(default_factory=list)
+ 
+ 
+ def _annotations(cursor: cindex.Cursor) -> list[str]:
+@@ -271,7 +272,11 @@
+                           "libclang refused the TU", parse_cwd)
+       raise
+     _reject_recovery_ast(tu, v8_root, driver_path, parse_flags, parse_cwd)
+-    return _harvest_classes(tu, v8_root)
++    result = _harvest_classes(tu, v8_root)
++    result.includes = sorted({os.path.abspath(driver_path)} |
++                             {os.path.abspath(inc.include.name)
++                              for inc in tu.get_includes() if inc.include})
++    return result
+   finally:
+     if saved_cwd is not None:
+       os.chdir(saved_cwd)
+--- tools/metagen/metagen.py.orig
++++ tools/metagen/metagen.py
+@@ -400,21 +400,14 @@
+                 f"{len(cpp_res.provenance)} provenance files (from C++)")
+   classes = cpp_res.classes
+ 
+-  # The files the harvest read a fact out of, not everything the parse
+-  # opened. The closure is ~17x larger and mostly the inline layer and
+-  # the sysroot, none of which can move a class head; depending on it
+-  # would put the harvest on the critical path of edits that cannot
+-  # change its output. Provenance is derived from the walk rather than
+-  # filtered by hand, so it stays correct when a declaration moves --
+-  # and once metagen emits object layout, field types become one more
+-  # provenance source rather than a reason to widen the whole set.
+-  #
++  # Include the files parsed by libclang, including toolchain and SDK headers;
++  # a change there can alter the parsed declarations without being provenance.
+   # Written ahead of the write-if-changed check below: ninja requires
+   # the depfile to exist after the action runs, including on the run
+   # that leaves the output untouched. --check writes no output, so a
+   # depfile naming one would be meaningless.
+   if args.depfile and not args.check:
+-    deps = cpp_res.provenance
++    deps = sorted(set(cpp_res.provenance + cpp_res.includes))
+     if flags_dependency:
+       deps = deps + [flags_dependency]
+     _write_depfile(args.depfile, path, deps)

@@ -36,4 +36,5 @@ SHA1 (patch-v8_src_base_platform_bsd.cc) = 2fecbd2bf7ec615892b4f1a08240f9df68870
 SHA1 (patch-v8_src_base_platform_memory.h) = 027bff4f77b110c18740619affb009e9e7170d3d
 SHA1 (patch-v8_src_base_platform_platform-freebsd.cc) = 55065ffe01fa64892bad63f4b302dff4012c3759
 SHA1 (patch-v8_src_base_strings.h) = c11302941c3198f47de3e7c8f256adfa220028bf
+SHA1 (patch-v8_tools_metagen_dependencies) = 0daae34c457aecb47d8c79b228723c632f05fd50
 SHA1 (patch-v8_tools_run-paxctl.py) = 24a772592adefcf9573b3c77bdc201f1ab8cb692
