@@ -1,0 +1,19 @@
+--- a/devel/cmake/Makefile
++++ b/devel/cmake/Makefile
+@@ -2,7 +2,7 @@
+ 
+ .include "Makefile.common"
+ 
+-PKGREVISION=	8
++PKGREVISION=	9
+ 
+ COMMENT=	Cross platform make
+ 
+@@ -86,6 +86,7 @@
+ .include "../../archivers/zstd/buildlink3.mk"
+ .include "../../devel/libexecinfo/buildlink3.mk"
+ .include "../../devel/libuv/buildlink3.mk"
++.include "../../devel/zlib/buildlink3.mk"
+ .include "../../misc/rhash/buildlink3.mk"
+ .include "../../textproc/expat/buildlink3.mk"
+ .include "../../www/curl/buildlink3.mk"
