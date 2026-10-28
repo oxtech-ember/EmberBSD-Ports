@@ -43,6 +43,9 @@ Flycast's LuaBridge bindings build and run with Lua 5.5, so it finds the
 default Lua through pkg-config instead of Lua 5.2.
 Emacs 29 and 30 compile native Lisp through the libgccjit API, which GCC 16
 still provides, so they use GCC 16's libgccjit like Emacs 31 does.
+s6-networking's openssl option already builds its libtls TLS support with
+libretls on OpenSSL, the one TLS library in the export, so the libressl option,
+which built the same libtls support on LibreSSL, is gone.
 
 --- a/devel/Guitar/Makefile
 +++ b/devel/Guitar/Makefile
@@ -1626,6 +1629,33 @@ still provides, so they use GCC 16's libgccjit like Emacs 31 does.
  GO_BUILD_PATTERN=	.
  
  .include "./go-modules.mk"
+--- a/net/s6-networking/options.mk
++++ b/net/s6-networking/options.mk
+@@ -2,7 +2,7 @@
+ 
+ PKG_OPTIONS_VAR=		PKG_OPTIONS.s6-networking
+ PKG_OPTIONS_OPTIONAL_GROUPS=	tls
+-PKG_OPTIONS_GROUP.tls=		bearssl libressl openssl
++PKG_OPTIONS_GROUP.tls=		bearssl openssl
+ PKG_SUPPORTED_OPTIONS+=		execline
+ PKG_SUGGESTED_OPTIONS+=		execline openssl
+ 
+@@ -26,15 +26,6 @@
+ .endif
+ 
+ # XXX libtls-bearssl
+-
+-.if !empty(PKG_OPTIONS:Mlibressl)
+-PLIST.tls=		yes
+-PLIST.libtls=		yes
+-BUILDLINK_API_DEPENDS.libressl+=	libressl>=4.1.0
+-.  include "../../security/libressl/buildlink3.mk"
+-CONFIGURE_ARGS+=	--enable-ssl=libtls
+-CONFIGURE_ARGS+=	--with-ssl-path=${PREFIX:Q}/libressl
+-.endif
+ 
+ .if !empty(PKG_OPTIONS:Mopenssl)
+ PLIST.tls=		yes
 --- a/security/zoneminder/Makefile
 +++ b/security/zoneminder/Makefile
 @@ -8,7 +8,7 @@
