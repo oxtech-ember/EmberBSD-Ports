@@ -364,3 +364,4 @@ devel/rpcsvc-proto
 # RCS uses the shared current upstream release.
 devel/rcs
 lang/wasi-compiler-rt
+lang/wasi-libc

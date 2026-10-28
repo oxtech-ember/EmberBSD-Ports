@@ -41,7 +41,8 @@ EXTRACT_ELEMENTS+=	${DISTNAME}/libc
 .if ${PKGPATH} != "lang/llvm" && ${PKGPATH} != "lang/llvm-devel" && ${PKGPATH} != "lang/clang" && \
     ${PKGPATH} != "devel/lld" && ${PKGPATH} != "devel/py-llvm-lit" && ${PKGPATH} != "lang/compiler-rt" && \
     ${PKGPATH} != "lang/mlir" && ${PKGPATH} != "lang/flang" && ${PKGPATH} != "lang/flang-rt" && \
-    ${PKGPATH} != "lang/wasi-compiler-rt"
+    ${PKGPATH} != "lang/wasi-compiler-rt" && \
+    ${PKGPATH} != "lang/wasi-libc"
 PKG_FAIL_REASON+= "LLVM 23 family consumer ${PKGPATH} is not prepared in the common profile"
 .endif
 

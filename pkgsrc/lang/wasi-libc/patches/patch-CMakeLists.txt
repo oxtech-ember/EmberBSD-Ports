@@ -1,0 +1,21 @@
+$NetBSD$
+
+Keep optional component-model generators out of an explicit preview1-only
+build when upstream's BINDINGS_TARGET option is off. Other modes are unchanged.
+Origin: EmberBSD (AI-assisted).
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -185,8 +185,10 @@
+ endif()
+ include(check-symbols)
+ include(clang-format)
+-include(wasm-tools)
+-include(wasi-wits)
++if(BINDINGS_TARGET OR NOT WASI STREQUAL "p1")
++  include(wasm-tools)
++  include(wasi-wits)
++endif()
+ 
+ # =============================================================================
+ # Generic top-level build flags/settings
