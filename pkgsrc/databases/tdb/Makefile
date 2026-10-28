@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.60 2026/01/22 21:00:42 adam Exp $
 
 DISTNAME=	tdb-1.4.15
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	databases
 MASTER_SITES=	https://www.samba.org/ftp/tdb/
 
@@ -21,6 +21,9 @@ HAS_CONFIGURE=		yes
 CONFIGURE_ARGS+=	--mandir=${PREFIX}/${PKGMANDIR}
 CONFIGURE_ARGS+=	--abi-check-disable
 CONFIGURE_ARGS+=	--disable-symbol-versions
+# Waf otherwise adds /usr/local to every compile/link search after iconv
+# detection. pkgsrc supplies the selected builtin or buildlink paths instead.
+CONFIGURE_ARGS+=	--with-libiconv=
 .if defined(MAKE_JOBS) && !empty(MAKE_JOBS) && !(defined(MAKE_JOBS_SAFE) && ${MAKE_JOBS_SAFE:U:tl} == no)
 CONFIGURE_ARGS+=	--jobs=${MAKE_JOBS}
 .else
@@ -80,4 +83,5 @@ emberbsd-tdb-query-result:
 .include "../../lang/python/application.mk"
 .include "../../lang/python/extension.mk"
 .include "../../mk/pthread.buildlink3.mk"
+.include "../../converters/libiconv/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
