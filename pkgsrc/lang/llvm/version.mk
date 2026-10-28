@@ -43,7 +43,8 @@ EXTRACT_ELEMENTS+=	${DISTNAME}/libc
     ${PKGPATH} != "lang/mlir" && ${PKGPATH} != "lang/flang" && ${PKGPATH} != "lang/flang-rt" && \
     ${PKGPATH} != "lang/wasi-compiler-rt" && \
     ${PKGPATH} != "lang/wasi-libc" && \
-    ${PKGPATH} != "lang/llvm-libc-source"
+    ${PKGPATH} != "lang/llvm-libc-source" && \
+    ${PKGPATH} != "lang/clang-python-bindings"
 PKG_FAIL_REASON+= "LLVM 23 family consumer ${PKGPATH} is not prepared in the common profile"
 .endif
 
