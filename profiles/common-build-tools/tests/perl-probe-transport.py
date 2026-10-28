@@ -146,19 +146,23 @@ class ConfigureTests(unittest.TestCase):
             cross.mkdir()
             binpath = work / 'bin'
             binpath.mkdir()
-            (binpath / 'ssh').write_text('#!/bin/sh\nexit 255\n')
+            shell = str(Path(sys.executable).parent / 'mksh')
+            (binpath / 'ssh').write_text('#!' + shell + '\nexit 255\n')
             (binpath / 'ssh').chmod(0o755)
-            (binpath / 'scp').write_text('#!/bin/sh\nexit 255\n')
+            (binpath / 'scp').write_text('#!' + shell + '\nexit 255\n')
             (binpath / 'scp').chmod(0o755)
             env = dict(os.environ, test='test', chmod='chmod', targethost='target.example',
                 targetuser='builder', targetport='22', targetdir='/private/probes/perl',
+                EMBERBSD_PERL_PROBE_SHELL=str(Path(sys.executable).parent / 'mksh'),
                 EMBERBSD_PERL_SSH=str(binpath / 'ssh'), EMBERBSD_PERL_SCP=str(binpath / 'scp'),
                 EMBERBSD_PERL_PROBE_PYTHON=sys.executable,
                 EMBERBSD_PERL_PROBE_TRANSPORT=str(SPEC.origin),
                 PATH=str(binpath) + os.pathsep + os.environ['PATH'])
             for name in ('run', 'to', 'from', 'targetmkdir'):
                 env[name] = str(cross / name)
-            subprocess.run(['/bin/sh', '-c', source[start:end]], env=env, check=True)
+            subprocess.run([shell, '-c', source[start:end]], env=env, check=True)
+            self.assertEqual((cross / 'run').read_text().splitlines()[0],
+                             '#!' + env['EMBERBSD_PERL_PROBE_SHELL'])
             (work / 'try').write_text('fixture')
             result = subprocess.run([cross / 'run', './try'], cwd=work, env=env,
                 capture_output=True, text=True)
@@ -169,7 +173,8 @@ class ConfigureTests(unittest.TestCase):
         source = CONFIGURE.read_text()
         start = source.index('\t\techo "$startsh" >mtry')
         end = source.index('\t\tcase $probe_status in', start)
-        setup = '''startsh='#!/bin/sh'
+        shell = str(Path(sys.executable).parent / 'mksh')
+        setup = '''startsh='#!''' + shell + ''''
 to_remote() { for f in "$@"; do cp "$f" remote/; done; }
 from_remote() { for f in "$@"; do cp "remote/$f" .; done; }
 run_remote() { cp "$1" remote/; (cd remote && "$@"); }
@@ -178,11 +183,11 @@ run_remote() { cp "$1" remote/; (cd remote && "$@"); }
             with self.subTest(cross=cross), tempfile.TemporaryDirectory() as directory:
                 work = Path(directory)
                 (work / 'remote').mkdir()
-                (work / 'try').write_text('#!/bin/sh\necho 42\necho 13 >&4\n')
+                (work / 'try').write_text('#!' + shell + '\necho 42\necho 13 >&4\n')
                 (work / 'try').chmod(0o755)
                 env = dict(os.environ, targethost='target.example' if cross else '',
                     run='run_remote' if cross else '', to='to_remote', **{'from': 'from_remote'})
-                subprocess.run(['/bin/sh', '-c', setup + source[start:end] + '\ntest "$probe_status" = 0'],
+                subprocess.run([shell, '-c', setup + source[start:end] + '\ntest "$probe_status" = 0'],
                     cwd=work, env=env, check=True)
                 self.assertEqual((work / 'try.out').read_text(), '42\n')
                 self.assertEqual((work / 'try.err').read_text(), '13\n')

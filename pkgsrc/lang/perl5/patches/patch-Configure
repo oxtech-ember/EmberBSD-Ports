@@ -24,7 +24,7 @@ Not submitted upstream.
 +		operation=$transport
 +		case "$operation" in targetmkdir) operation=mkdir;; esac
 +		cat >"$transport_file" <<EOF
-+#!/bin/sh
++#!$EMBERBSD_PERL_PROBE_SHELL
 +exec "$EMBERBSD_PERL_PROBE_PYTHON" "$EMBERBSD_PERL_PROBE_TRANSPORT" --host "$targethost" --user "$targetuser" --port "$targetport" --directory "$targetdir" --failure "$transport_failure" "$operation" -- "\$@"
 +EOF
 +		$chmod a+rx "$transport_file"
