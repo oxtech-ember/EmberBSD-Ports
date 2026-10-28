@@ -3,6 +3,7 @@
 # Origin: EmberBSD (AI-assisted). Bound upstream Perl Configure transport.
 """Copy and run Configure probes. Keep feature failures distinct from transport."""
 import argparse
+import os
 from pathlib import Path, PurePosixPath
 import re
 import shlex
@@ -45,6 +46,13 @@ def execute(args):
         raise TransportError('invalid SSH port or deadline')
     if args.failure.exists():
         raise TransportError('an earlier transport command failed')
+    tools = []
+    for key in ('EMBERBSD_PERL_SSH', 'EMBERBSD_PERL_SCP'):
+        path = os.environ.get(key, '')
+        if not os.path.isabs(path) or not os.path.isfile(path) or not os.access(path, os.X_OK):
+            raise TransportError('select an executable absolute path for ' + key)
+        tools.append(path)
+    ssh, scp = tools
     options = ['-oBatchMode=yes', '-oConnectTimeout=10', '-oServerAliveInterval=5', '-oServerAliveCountMax=2']
     peer = args.user + '@' + args.host
     deadline = time.monotonic() + args.timeout
@@ -56,7 +64,7 @@ def execute(args):
         return invoke(argv, remaining, probe=probe)
 
     def remote(command, probe=False):
-        return bounded(['ssh', *options, '-p', str(args.port), peer, command], probe=probe)
+        return bounded([ssh, *options, '-p', str(args.port), peer, command], probe=probe)
 
     def transfer(value, receive=False):
         path = scoped(root, value)
@@ -73,7 +81,7 @@ def execute(args):
                 raise TransportError('probe input must be a regular file')
             remote('mkdir -p ' + shlex.quote(str(path.parent)))
             source, dest = str(local), peer + ':' + shlex.quote(str(path))
-        bounded(['scp', '-O', *options, '-P', str(args.port), source, dest])
+        bounded([scp, '-O', '-S', ssh, *options, '-P', str(args.port), source, dest])
 
     values = args.values
     if args.operation in ('to', 'from'):

@@ -9,6 +9,11 @@ PKG_FAIL_REASON+= "The Perl cross recipe requires EmberBSD/aarch64 or EmberBSD/x
 PKG_FAIL_REASON+= "${_perl_input} must select a matching Perl 5.44 build-host executable"
 .endif
 .endfor
+.for _perl_transport in EMBERBSD_PERL_SSH EMBERBSD_PERL_SCP
+.if empty(${_perl_transport}:M/*) || !exists(${${_perl_transport}})
+PKG_FAIL_REASON+= "${_perl_transport} must select an absolute host transport executable"
+.endif
+.endfor
 .for _perl_interpreter in EMBERBSD_PERL_HOST_MINIPERL EMBERBSD_CROSS_BUILD_PERL
 # An unset input already fails above; do not run an empty command.
 .if !empty(${_perl_interpreter}:M/*)
@@ -30,6 +35,7 @@ EMBERBSD_PERL_HOST_PYTHON?= ${EMBERBSD_CROSS_BUILD_PYTHON:U}
 .if empty(EMBERBSD_PERL_HOST_PYTHON:M/*) || !exists(${EMBERBSD_PERL_HOST_PYTHON})
 PKG_FAIL_REASON+= "Set EMBERBSD_PERL_HOST_PYTHON to the native Python 3 interpreter"
 .endif
+CONFIGURE_ENV+= EMBERBSD_PERL_SSH=${EMBERBSD_PERL_SSH:Q} EMBERBSD_PERL_SCP=${EMBERBSD_PERL_SCP:Q}
 CONFIGURE_ENV+= EMBERBSD_PERL_PROBE_PYTHON=${EMBERBSD_PERL_HOST_PYTHON:Q}
 CONFIGURE_ENV+= EMBERBSD_PERL_PROBE_TRANSPORT=${FILESDIR}/probe-transport.py
 
@@ -41,6 +47,8 @@ MAKE_FILE= GNUmakefile
 CONFIGURE_ARGS+= -Dfirstmakefile=GNUmakefile
 CONFIGURE_ARGS+= -Dusecrosscompile -Dosname=netbsd -Dosvers=${OS_VERSION:Q}
 CONFIGURE_ARGS+= -Dtargetarch=${MACHINE_ARCH}-netbsd -Darchname=${MACHINE_ARCH}-netbsd
+EMBERBSD_PERL_TARGET_PORT?= 22
+CONFIGURE_ARGS+= -Dtargetport=${EMBERBSD_PERL_TARGET_PORT:Q}
 CONFIGURE_ARGS+= -Dtargethost=${EMBERBSD_PERL_TARGET_HOST:Q}
 CONFIGURE_ARGS+= -Dtargetuser=${EMBERBSD_PERL_TARGET_USER:Q}
 CONFIGURE_ARGS+= -Dtargetdir=${EMBERBSD_PERL_TARGET_DIR:Q}

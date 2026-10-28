@@ -23,6 +23,12 @@ class TransportTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.directory = Path(self.temp.name)
         self.previous = Path.cwd()
+        self.ssh, self.scp = self.directory / 'ssh', self.directory / 'scp'
+        for tool in (self.ssh, self.scp):
+            tool.write_text('fixture')
+            tool.chmod(0o755)
+        self.tools = patch.dict(os.environ, {'EMBERBSD_PERL_SSH': str(self.ssh), 'EMBERBSD_PERL_SCP': str(self.scp)})
+        self.tools.start()
         os.chdir(self.directory)
         Path('try').write_bytes(b'probe fixture')
         self.args = argparse.Namespace(host='target.example', user='builder', port=22,
@@ -30,12 +36,32 @@ class TransportTests(unittest.TestCase):
             timeout=60, operation='run', values=['./try'])
 
     def tearDown(self):
+        self.tools.stop()
         os.chdir(self.previous)
         self.temp.cleanup()
 
     def mock_run(self, codes):
         return patch.object(TRANSPORT.subprocess, 'run', side_effect=[
             subprocess.CompletedProcess([], code) for code in codes])
+
+    def test_explicit_transport_paths_and_nondefault_port(self):
+        self.args.port = 2222
+        with patch.dict(os.environ, {'EMBERBSD_PERL_SSH': str(self.ssh),
+                                     'EMBERBSD_PERL_SCP': str(self.scp)}), self.mock_run([0, 0, 0]) as call:
+            self.assertEqual(TRANSPORT.execute(self.args), 0)
+        argv = [row.args[0] for row in call.call_args_list]
+        self.assertEqual([row[0] for row in argv], [str(self.ssh), str(self.scp), str(self.ssh)])
+        self.assertTrue(all('2222' in row for row in argv))
+        self.assertEqual(argv[1][argv[1].index('-S') + 1], str(self.ssh))
+
+    def test_missing_or_relative_transport_is_rejected(self):
+        for ssh in ('', 'ssh'):
+            with self.subTest(ssh=ssh), patch.dict(os.environ,
+                    {'EMBERBSD_PERL_SSH': ssh, 'EMBERBSD_PERL_SCP': str(self.scp)}):
+                with patch.object(TRANSPORT.subprocess, 'run') as call:
+                    with self.assertRaises(TRANSPORT.TransportError):
+                        TRANSPORT.execute(self.args)
+                    call.assert_not_called()
 
     def test_probe_failure_is_a_feature_result(self):
         with self.mock_run([0, 0, 1]) as call:
@@ -122,8 +148,11 @@ class ConfigureTests(unittest.TestCase):
             binpath.mkdir()
             (binpath / 'ssh').write_text('#!/bin/sh\nexit 255\n')
             (binpath / 'ssh').chmod(0o755)
+            (binpath / 'scp').write_text('#!/bin/sh\nexit 255\n')
+            (binpath / 'scp').chmod(0o755)
             env = dict(os.environ, test='test', chmod='chmod', targethost='target.example',
                 targetuser='builder', targetport='22', targetdir='/private/probes/perl',
+                EMBERBSD_PERL_SSH=str(binpath / 'ssh'), EMBERBSD_PERL_SCP=str(binpath / 'scp'),
                 EMBERBSD_PERL_PROBE_PYTHON=sys.executable,
                 EMBERBSD_PERL_PROBE_TRANSPORT=str(SPEC.origin),
                 PATH=str(binpath) + os.pathsep + os.environ['PATH'])
