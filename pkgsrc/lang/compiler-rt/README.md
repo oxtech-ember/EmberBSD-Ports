@@ -227,7 +227,9 @@ selected target path; no build directory is embedded in the installed tree.
   verified `--bootstrap-stage`. It reuses the builtins and builds static/shared
   libunwind, libc++abi and libc++. The full static unwind archive is rebuilt
   under this configuration; it is not described as byte-identical bootstrap
-  output. Static libc++ includes its ABI library. Filesystem and localization
+  output. Static libc++ includes its ABI library. libc++ uses vendor hardening
+  mode `extensive` for the installed library and its default headers; its
+  existing ABI namespace and options are unchanged. Filesystem and localization
   retain their upstream enabled behavior.
 
 ```sh

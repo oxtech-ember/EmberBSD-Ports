@@ -154,7 +154,8 @@ def cmake_arguments(source, work, stage, base, native, compiler, definition, ver
             LIBUNWIND_ENABLE_THREADS='ON', LIBUNWIND_USE_COMPILER_RT='ON',
             LIBUNWIND_INCLUDE_TESTS='OFF', LIBUNWIND_INCLUDE_DOCS='OFF')
         if phase == 'full':
-            settings.update(LIBCXX_ENABLE_STATIC='ON', LIBCXX_ENABLE_SHARED='ON',
+            settings.update(LIBCXX_HARDENING_MODE='extensive',
+                LIBCXX_ENABLE_STATIC='ON', LIBCXX_ENABLE_SHARED='ON',
                 LIBCXXABI_ENABLE_STATIC='ON', LIBCXXABI_ENABLE_SHARED='ON',
                 LIBCXXABI_USE_COMPILER_RT='ON', LIBCXXABI_USE_LLVM_UNWINDER='ON',
                 LIBCXX_USE_COMPILER_RT='ON', LIBCXX_CXX_ABI='libcxxabi',

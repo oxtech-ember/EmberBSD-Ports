@@ -91,6 +91,7 @@ def main():
             if phase == 'full':
                 assert 'CMAKE_TRY_COMPILE_TARGET_TYPE' not in options
                 assert options['LIBCXX_ENABLE_SHARED'] == options['LIBCXX_ENABLE_STATIC'] == 'ON'
+                assert options['LIBCXX_HARDENING_MODE'] == 'extensive'
                 assert options['LIBCXX_STATICALLY_LINK_ABI_IN_STATIC_LIBRARY'] == 'ON'
                 assert options.get('LIBCXX_ENABLE_FILESYSTEM', 'ON') == 'ON'
                 assert options.get('LIBCXX_ENABLE_LOCALIZATION', 'ON') == 'ON'
