@@ -1,0 +1,16 @@
+Origin: EmberBSD, AI-assisted.
+Build Chromium's front-end tooling with the one kept Node.js, Node 26.
+Chromium's build scripts need a current Node release, not Node 24
+specifically. Not submitted upstream.
+
+--- a/www/chromium/Makefile
++++ b/www/chromium/Makefile
+@@ -29,7 +29,7 @@
+ LLVM_MV=			21
+ 
+ # Used nodejs version
+-NODE_VERSIONS_ACCEPTED=		24
++NODE_VERSIONS_ACCEPTED=		26
+ 
+ MAINTAINER=			kikadf@NetBSD.org
+ HOMEPAGE=			https://www.chromium.org/Home

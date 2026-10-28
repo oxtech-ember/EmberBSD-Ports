@@ -1,0 +1,60 @@
+Origin: EmberBSD, AI-assisted.
+EmberBSD keeps one Node.js, the newest (Node 26, lang/nodejs). The pinned
+nodeversion.mk defaulted to Node 24 and accepted 22 and 24 as well. Node 26
+is the only default and accepted version; the nodejs22 and nodejs24
+selections are gone. Not submitted upstream.
+
+--- a/lang/nodejs/nodeversion.mk
++++ b/lang/nodejs/nodeversion.mk
+@@ -8,8 +8,8 @@
+ # NODE_VERSION_DEFAULT
+ #	The preferred node version to use.
+ #
+-#	Possible values: 22 24 26
+-#	Default: 24
++#	Possible values: 26
++#	Default: 26
+ #
+ # === Infrastructure variables ===
+ #
+@@ -27,13 +27,13 @@
+ #	is significant; those listed earlier are preferred over those
+ #	listed later.
+ #
+-#	Possible values: 22 24 26
+-#	Default: 22 24
++#	Possible values: 26
++#	Default: 26
+ #
+ # NODE_VERSIONS_INCOMPATIBLE
+ #	The node versions that the package *cannot* build against.
+ #
+-#	Possible values: 22 24 26
++#	Possible values: 26
+ #	Default: <empty>
+ #
+ # Keywords: node
+@@ -55,8 +55,8 @@
+ BUILD_DEFS+=		NODE_VERSION_DEFAULT
+ BUILD_DEFS_EFFECTS+=	NODE_PACKAGE
+ 
+-NODE_VERSION_DEFAULT?=		24
+-NODE_VERSIONS_ACCEPTED?=	22 24 26
++NODE_VERSION_DEFAULT?=		26
++NODE_VERSIONS_ACCEPTED?=	26
+ NODE_VERSIONS_INCOMPATIBLE?=	# empty
+ 
+ # Resolve NODE_VERSIONS_INCOMPATIBLE and generate the _OK vars.
+@@ -86,11 +86,7 @@
+ # In case nothing matched
+ _NODE_VERSION?=		none
+ 
+-.if ${_NODE_VERSION} == "22"
+-.include "../../lang/nodejs22/buildlink3.mk"
+-.elif ${_NODE_VERSION} == "24"
+-.include "../../lang/nodejs24/buildlink3.mk"
+-.elif ${_NODE_VERSION} == "26"
++.if ${_NODE_VERSION} == "26"
+ .include "../../lang/nodejs/buildlink3.mk"
+ .else
+ PKG_FAIL_REASON+=	"No valid node version found"

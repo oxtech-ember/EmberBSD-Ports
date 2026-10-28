@@ -40,7 +40,8 @@ for kept in lang/python315 lang/lua55 lang/gcc16-libs databases/postgresql18-ser
 done
 # The exported version knobs default to and accept only the kept versions.
 for knob in lang/lua/luaversion.mk:LUA_VERSION_DEFAULT:55 \
-    lang/lua/luaversion.mk:LUA_VERSIONS_ACCEPTED:55; do
+    lang/lua/luaversion.mk:LUA_VERSIONS_ACCEPTED:55 \
+    lang/nodejs/nodeversion.mk:NODE_VERSIONS_ACCEPTED:26; do
     file=${knob%%:*} rest=${knob#*:}
     grep -Eq "^${rest%%:*}[?]=[[:space:]]+${rest#*:}\$" "$pkgsrc/$file" ||
         { echo "$file does not offer only ${rest#*:} in ${rest%%:*}" >&2; exit 1; }
