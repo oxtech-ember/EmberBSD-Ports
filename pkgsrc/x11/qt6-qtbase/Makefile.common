@@ -114,6 +114,8 @@ SCRIPTS_ENV+=		HOME=${WRKDIR}
 
 .if "${PKGPATH}" != "x11/qt6-qtbase" && !defined(EMBERBSD_QTBASE_DEVEL)
 CMAKE_INSTALL_PREFIX=	${QTPREFIX}
+# Native CMake tool checks need the PKG_* tools that compiler.mk selects.
+.include "../../mk/compiler.mk"
 .include "../../devel/cmake/configure-settings.mk"
 CONFIGURE_ARGS+=	-- ${CMAKE_CONFIGURE_ARGS}
 QTCONFDIR?=		.
