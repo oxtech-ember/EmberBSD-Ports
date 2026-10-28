@@ -26,6 +26,7 @@ editors/mle lang/lua55
 graphics/osg lang/lua55
 multimedia/vlc lang/lua55
 net/grilo-plugins lang/lua55
+net/ntopng lang/lua55
 net/qrcp lang/go127
 security/zoneminder multimedia/ffmpeg9 devel/pcre2 databases/mariadb118-client
 sysutils/vifm lang/lua55

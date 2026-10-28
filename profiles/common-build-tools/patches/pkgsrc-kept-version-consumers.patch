@@ -13,6 +13,10 @@ vifm linked the system Lua but compiled against its bundled Lua 5.4 headers;
 it now drops the bundled copy and uses the headers of the Lua it links.
 HexPatch built a bundled Lua 5.4 through mlua's vendored feature although the
 recipe pulled in the system Lua; it now uses the system Lua 5.5.
+ntopng compiled against its bundled Lua 5.4 headers, and Lua 5.5 adds a seed
+argument to lua_newstate and rejects assignments to for-loop variables in its
+scripts; ntopng now uses the system Lua 5.5 headers and copies those loop
+variables to locals.
 
 --- a/devel/Guitar/Makefile
 +++ b/devel/Guitar/Makefile
@@ -500,6 +504,393 @@ recipe pulled in the system Lua; it now uses the system Lua 5.5.
  .include "../../multimedia/gstreamer1/buildlink3.mk"
  .include "../../net/grilo/buildlink3.mk"
  .include "../../net/libgdata/buildlink3.mk"
+--- a/net/ntopng/Makefile
++++ b/net/ntopng/Makefile
+@@ -2,7 +2,7 @@
+ 
+ NTOPNG_VERSION=	6.6
+ DISTNAME=	ntopng-${NTOPNG_VERSION}
+-PKGREVISION=	3
++PKGREVISION=	4
+ CATEGORIES=	net
+ MASTER_SITES=	${MASTER_SITE_GITHUB:=ntop/}
+ 
+@@ -44,7 +44,8 @@
+ 
+ RCD_SCRIPTS+=		ntopng
+ 
+-MAKE_FLAGS+=		LUA_LIB=-llua5.4
++MAKE_FLAGS+=		LUA_LIB=-llua
++MAKE_FLAGS+=		LUA_INC=-I${BUILDLINK_PREFIX.lua}/${LUA_INCDIR}
+ 
+ # Portable types
+ CFLAGS.SunOS+=		-Du_int8_t=uint8_t
+@@ -83,7 +84,7 @@
+ .include "../../databases/sqlite3/buildlink3.mk"
+ .include "../../geography/libmaxminddb/buildlink3.mk"
+ .include "../../graphics/png/buildlink3.mk"
+-.include "../../lang/lua54/buildlink3.mk"
++.include "../../lang/lua/buildlink3.mk"
+ .include "../../net/GeoIP/buildlink3.mk"
+ .include "../../net/libpcap/buildlink3.mk"
+ .include "../../net/ndpi/buildlink3.mk"
+--- a/net/ntopng/distinfo
++++ b/net/ntopng/distinfo
+@@ -11,6 +11,24 @@
+ SHA1 (patch-httpdocs_misc_ntopng-utils-manage-updates.in) = c6a4bf93c0464d2c2e8493f3b5de9b5c243a1e52
+ SHA1 (patch-include_Redis.h) = cf73f5e53abdeb096d93449327365931ba99ae2b
+ SHA1 (patch-include_ntop__includes.h) = 2bf588dba941f25b71381c7848b237d964d77f31
++SHA1 (patch-scripts_lua_find__category.lua) = 8a197990b0a5463455f5d430528a49fdee1946f5
++SHA1 (patch-scripts_lua_flow__details.lua) = c96e6d8cc96db3586518a47ba546c08e02dd3fab
++SHA1 (patch-scripts_lua_host__details.lua) = 989f3fc0f82c652b017e34a6ee265da7becc2309
++SHA1 (patch-scripts_lua_if__stats.lua) = 34890e6f9b8a88acb0efbdb4ac1c27f8a3555ea9
++SHA1 (patch-scripts_lua_iface__hosts__list.lua) = ffda5d01a73f616d0b8a72d01445916ff3d754f6
++SHA1 (patch-scripts_lua_modules_callback__utils.lua) = a464fe1da9f2a01a8a17e63e49874744b2521a70
++SHA1 (patch-scripts_lua_modules_dashboard__utils.lua) = 5fa391c5af5dd7138c936a0c35d48c5a08844d44
++SHA1 (patch-scripts_lua_modules_discover__utils.lua) = 0a3b3679dcfc6da0d8a838732c51cdf178b3167b
++SHA1 (patch-scripts_lua_modules_lua__utils.lua) = d569bca0a5c31605b1d553520f60264806bb55ec
++SHA1 (patch-scripts_lua_modules_lua__utils__get.lua) = df415a2b262518244d6da2cb101df12c7f602458
++SHA1 (patch-scripts_lua_modules_notifications_endpoints_slack.lua) = 2eb05c80fd7decc2ef7375c443a0a743989bcadb
++SHA1 (patch-scripts_lua_modules_snmp__mappings.lua) = cf395831c083ecb2bb96799373f7cdc769a51f0c
++SHA1 (patch-scripts_lua_modules_timeseries_ts__common.lua) = a420c72579c34f7409a5dc765345bb5920113501
++SHA1 (patch-scripts_lua_modules_ts__5min__dump__utils.lua) = fa95aff3080be6829e03e8f274e031e2976d783d
++SHA1 (patch-scripts_lua_modules_vulnerability__scan_vs__utils.lua) = 14d29a8b1640d56f76e8f0fc82500ba2ab3d49e7
++SHA1 (patch-scripts_lua_rest_v2_get_alert_filter_consts.lua) = a42f3fe2526d39874f570b5f596ef065611b7ede
++SHA1 (patch-scripts_lua_rest_v2_get_interface_top_hosts.lua) = f110a89eaf1dad97b252f14e7d36746bf2a2e0c5
++SHA1 (patch-src_LuaEngine.cpp) = ea38f7d56c69937ab157fbc65307f5ebbf0e9906
+ SHA1 (patch-src_PacketDumperTuntap.cpp) = baaec78bfbc898fad95e019a28d94490fe278c74
+ SHA1 (patch-src_Redis.cpp) = 9b8ad39359107c5a96f72fbd403799a11138fd90
+ SHA1 (patch-src_Utils.cpp) = daee7d08960d36f1095a36628738e2c66423883f
+--- /dev/null
++++ b/net/ntopng/patches/patch-scripts_lua_find__category.lua
+@@ -0,0 +1,15 @@
++$NetBSD$
++
++Build with Lua 5.5: lua_newstate takes a seed, and for-loop variables are
++read-only, so the scripts copy them to locals before changing them.
++
++--- scripts/lua/find_category.lua.orig
+++++ scripts/lua/find_category.lua
++@@ -18,6 +18,7 @@ local results = {}
++ local categories = interface.getnDPICategories()
++ 
++ for cat, id in pairsByKeys(categories, asc_insensitive) do
+++  local cat = cat
++   cat = getCategoryLabel(cat, id)
++ 
++   if string.contains(string.lower(cat), query) then
+--- /dev/null
++++ b/net/ntopng/patches/patch-scripts_lua_flow__details.lua
+@@ -0,0 +1,15 @@
++$NetBSD$
++
++Build with Lua 5.5: lua_newstate takes a seed, and for-loop variables are
++read-only, so the scripts copy them to locals before changing them.
++
++--- scripts/lua/flow_details.lua.orig
+++++ scripts/lua/flow_details.lua
++@@ -2111,6 +2111,7 @@ else
++       end
++ 
++       for key, value in pairsByKeys(info) do
+++         local key = key
++          if tonumber(key) then
++             key = getFlowLabelFromId(key)
++          end
+--- /dev/null
++++ b/net/ntopng/patches/patch-scripts_lua_host__details.lua
+@@ -0,0 +1,15 @@
++$NetBSD$
++
++Build with Lua 5.5: lua_newstate takes a seed, and for-loop variables are
++read-only, so the scripts copy them to locals before changing them.
++
++--- scripts/lua/host_details.lua.orig
+++++ scripts/lua/host_details.lua
++@@ -1545,6 +1545,7 @@ else
++         if num_extra_names > 0 then
++             local name_sources = {}
++             for source, name in pairsByKeys(extra_names, rev) do
+++                local source = source
++                 if source == "resolved" then
++                     source = "DNS Resolution"
++                 else
+--- /dev/null
++++ b/net/ntopng/patches/patch-scripts_lua_if__stats.lua
+@@ -0,0 +1,15 @@
++$NetBSD$
++
++Build with Lua 5.5: lua_newstate takes a seed, and for-loop variables are
++read-only, so the scripts copy them to locals before changing them.
++
++--- scripts/lua/if_stats.lua.orig
+++++ scripts/lua/if_stats.lua
++@@ -1321,6 +1321,7 @@ elseif page == "networks" and is_packet_interface then
++ 
++         local bcast_domains = {}
++         for bcast_domain, domain_info in pairsByKeys(ifstats.bcast_domains) do
+++            local bcast_domain = bcast_domain
++             bcast_domain = string.format("<a href='%s/lua/hosts_stats.lua?network_cidr=%s'>%s</a>",
++                 ntop.getHttpPrefix(), bcast_domain, bcast_domain)
++ 
+--- /dev/null
++++ b/net/ntopng/patches/patch-scripts_lua_iface__hosts__list.lua
+@@ -0,0 +1,15 @@
++$NetBSD$
++
++Build with Lua 5.5: lua_newstate takes a seed, and for-loop variables are
++read-only, so the scripts copy them to locals before changing them.
++
++--- scripts/lua/iface_hosts_list.lua.orig
+++++ scripts/lua/iface_hosts_list.lua
++@@ -21,6 +21,7 @@ top_key = nil
++ top_value = 0
++ num = 0
++ for key, value in pairs(hosts_stats) do
+++   local key = key
++    host_info = hostkey2hostinfo(key);
++ 
++    value = hosts_stats[key]["bytes.sent"]+hosts_stats[key]["bytes.rcvd"]
+--- /dev/null
++++ b/net/ntopng/patches/patch-scripts_lua_modules_callback__utils.lua
+@@ -0,0 +1,15 @@
++$NetBSD$
++
++Build with Lua 5.5: lua_newstate takes a seed, and for-loop variables are
++read-only, so the scripts copy them to locals before changing them.
++
++--- scripts/lua/modules/callback_utils.lua.orig
+++++ scripts/lua/modules/callback_utils.lua
++@@ -222,6 +222,7 @@ function callback_utils.foreachDevice(ifname, callback)
++    local devices_stats = callback_utils.getDevicesIterator()
++ 
++    for devicename, devicestats in devices_stats do
+++      local devicename = devicename
++       if(ntop.isShuttingDown()) then return true end
++       devicename = hostinfo2hostkey(devicestats) -- make devicename the combination of mac address and vlan
++ 
+--- /dev/null
++++ b/net/ntopng/patches/patch-scripts_lua_modules_dashboard__utils.lua
+@@ -0,0 +1,15 @@
++$NetBSD$
++
++Build with Lua 5.5: lua_newstate takes a seed, and for-loop variables are
++read-only, so the scripts copy them to locals before changing them.
++
++--- scripts/lua/modules/dashboard_utils.lua.orig
+++++ scripts/lua/modules/dashboard_utils.lua
++@@ -88,6 +88,7 @@ local function get_templates_from_dir(templates_dir)
++    local templates_names = ntop.readdir(templates_dir)
++ 
++    for template_name in pairs(templates_names) do
+++      local template_name = template_name
++       if not ends(template_name, ".json") then
++          goto continue
++       end
+--- /dev/null
++++ b/net/ntopng/patches/patch-scripts_lua_modules_discover__utils.lua
+@@ -0,0 +1,15 @@
++$NetBSD$
++
++Build with Lua 5.5: lua_newstate takes a seed, and for-loop variables are
++read-only, so the scripts copy them to locals before changing them.
++
++--- scripts/lua/modules/discover_utils.lua.orig
+++++ scripts/lua/modules/discover_utils.lua
++@@ -1290,6 +1290,7 @@ local function analyzeSSDP(ssdp)
++ 
++     -- NOTE: use page_utils.safe_html to protect agains malicious SSDP responses trying to inject code
++     for url, host in pairs(ssdp) do
+++        local url = url
++         url = ntop.httpPurifyParam(url) -- Cleanup against XSS
++ 
++         local hresp = ntop.httpGet(url, "", "", 3 --[[ seconds ]] )
+--- /dev/null
++++ b/net/ntopng/patches/patch-scripts_lua_modules_lua__utils.lua
+@@ -0,0 +1,15 @@
++$NetBSD$
++
++Build with Lua 5.5: lua_newstate takes a seed, and for-loop variables are
++read-only, so the scripts copy them to locals before changing them.
++
++--- scripts/lua/modules/lua_utils.lua.orig
+++++ scripts/lua/modules/lua_utils.lua
++@@ -527,6 +527,7 @@ function computeL7Stats(stats, show_breed, show_ndpi_category)
++         local ndpi_category_stats = {}
++ 
++         for key, value in pairs(stats["ndpi_categories"]) do
+++            local key = key
++             key = getCategoryLabel(key, value.category)
++             local traffic = value["bytes"]
++ 
+--- /dev/null
++++ b/net/ntopng/patches/patch-scripts_lua_modules_lua__utils__get.lua
+@@ -0,0 +1,15 @@
++$NetBSD$
++
++Build with Lua 5.5: lua_newstate takes a seed, and for-loop variables are
++read-only, so the scripts copy them to locals before changing them.
++
++--- scripts/lua/modules/lua_utils_get.lua.orig
+++++ scripts/lua/modules/lua_utils_get.lua
++@@ -1170,6 +1170,7 @@ local function readServices()
++         services = {}
++ 
++         for line in file:lines() do
+++            local line = line
++             if ((line ~= "") and (not (string.starts(line, "#")))) then
++                 line = line:gsub("\t", " ")
++                 line = line:gsub("  ", " ")
+--- /dev/null
++++ b/net/ntopng/patches/patch-scripts_lua_modules_notifications_endpoints_slack.lua
+@@ -0,0 +1,17 @@
++$NetBSD$
++
++Build with Lua 5.5: lua_newstate takes a seed, and for-loop variables are
++read-only, so the scripts copy them to locals before changing them.
++
++--- scripts/lua/modules/notifications/endpoints/slack.lua.orig
+++++ scripts/lua/modules/notifications/endpoints/slack.lua
++@@ -132,7 +132,9 @@ function slack.dequeueRecipientAlerts(recipient, budget)
++   end
++ 
++   for entity_type, by_severity in pairs(alerts_by_types) do
+++    local entity_type = entity_type
++     for severity, notifications in pairs(by_severity) do
+++      local severity = severity
++       local messages = {}
++       entity_type = alert_consts.alertEntityRaw(entity_type)
++       severity = alert_consts.alertSeverityRaw(severity)
+--- /dev/null
++++ b/net/ntopng/patches/patch-scripts_lua_modules_snmp__mappings.lua
+@@ -0,0 +1,15 @@
++$NetBSD$
++
++Build with Lua 5.5: lua_newstate takes a seed, and for-loop variables are
++read-only, so the scripts copy them to locals before changing them.
++
++--- scripts/lua/modules/snmp_mappings.lua.orig
+++++ scripts/lua/modules/snmp_mappings.lua
++@@ -24,6 +24,7 @@ function snmp_mappings.get_all_exporters()
++       local postfix_len = string.len(_postfix)
++       
++       for k,v in pairs(rsp) do
+++	 local k = k
++ 	 local len1
++ 	 
++ 	 k = string.sub(k, len)
+--- /dev/null
++++ b/net/ntopng/patches/patch-scripts_lua_modules_timeseries_ts__common.lua
+@@ -0,0 +1,15 @@
++$NetBSD$
++
++Build with Lua 5.5: lua_newstate takes a seed, and for-loop variables are
++read-only, so the scripts copy them to locals before changing them.
++
++--- scripts/lua/modules/timeseries/ts_common.lua.orig
+++++ scripts/lua/modules/timeseries/ts_common.lua
++@@ -252,6 +252,7 @@ function ts_common.fillSeries(schema, tstart, tend, time_step, fill_value)
++         local data = {}
++ 
++         for i = 1, count do
+++            local i = i
++             data[i] = fill_value
++             i = i + 1
++         end
+--- /dev/null
++++ b/net/ntopng/patches/patch-scripts_lua_modules_ts__5min__dump__utils.lua
+@@ -0,0 +1,15 @@
++$NetBSD$
++
++Build with Lua 5.5: lua_newstate takes a seed, and for-loop variables are
++read-only, so the scripts copy them to locals before changing them.
++
++--- scripts/lua/modules/ts_5min_dump_utils.lua.orig
+++++ scripts/lua/modules/ts_5min_dump_utils.lua
++@@ -68,6 +68,7 @@ function ts_dump.blacklist_update(when, verbose)
++    local lists = lists_utils.getCategoryLists()
++ 
++    for list_name, v in pairs(lists) do
+++      local list_name = list_name
++       local current_hits = v.status.num_hits.total
++       if (current_hits > 0) then
++ 	 list_name = list_name:gsub("%s+", "_") -- replace space with underscore
+--- /dev/null
++++ b/net/ntopng/patches/patch-scripts_lua_modules_vulnerability__scan_vs__utils.lua
+@@ -0,0 +1,15 @@
++$NetBSD$
++
++Build with Lua 5.5: lua_newstate takes a seed, and for-loop variables are
++read-only, so the scripts copy them to locals before changing them.
++
++--- scripts/lua/modules/vulnerability_scan/vs_utils.lua.orig
+++++ scripts/lua/modules/vulnerability_scan/vs_utils.lua
++@@ -2191,6 +2191,7 @@ function vs_utils.list_scan_modules()
++    local modules = {}
++ 
++    for name in pairs(ntop.readdir(basedir)) do
+++      local name = name
++       if(ends(name, ".lua")) then
++          name = string.sub(name, 1, string.len(name)-4) -- remove .lua trailer
++          local m = vs_utils.load_module(name)
+--- /dev/null
++++ b/net/ntopng/patches/patch-scripts_lua_rest_v2_get_alert_filter_consts.lua
+@@ -0,0 +1,15 @@
++$NetBSD$
++
++Build with Lua 5.5: lua_newstate takes a seed, and for-loop variables are
++read-only, so the scripts copy them to locals before changing them.
++
++--- scripts/lua/rest/v2/get/alert/filter/consts.lua.orig
+++++ scripts/lua/rest/v2/get/alert/filter/consts.lua
++@@ -36,6 +36,7 @@ end
++ local tags = alert_store_instance:get_available_filters()
++ 
++ for id, v in pairs(tags) do
+++   local id = id
++    -- FIXX rename l7_proto to l7proto in flow alert store for consistency
++    if id == "l7_proto" then id = "l7proto" end
++ 
+--- /dev/null
++++ b/net/ntopng/patches/patch-scripts_lua_rest_v2_get_interface_top_hosts.lua
+@@ -0,0 +1,15 @@
++$NetBSD$
++
++Build with Lua 5.5: lua_newstate takes a seed, and for-loop variables are
++read-only, so the scripts copy them to locals before changing them.
++
++--- scripts/lua/rest/v2/get/interface/top/hosts.lua.orig
+++++ scripts/lua/rest/v2/get/interface/top/hosts.lua
++@@ -38,6 +38,7 @@ local top_key = nil
++ local top_value = 0
++ local num = 0
++ for key, value in pairs(hosts_stats) do
+++   local key = key
++    local host_info = hostkey2hostinfo(key);
++ 
++    local value = hosts_stats[key]["bytes.sent"]+hosts_stats[key]["bytes.rcvd"]
+--- /dev/null
++++ b/net/ntopng/patches/patch-src_LuaEngine.cpp
+@@ -0,0 +1,19 @@
++$NetBSD$
++
++Build with Lua 5.5: lua_newstate takes a seed, and for-loop variables are
++read-only, so the scripts copy them to locals before changing them.
++
++--- src/LuaEngine.cpp.orig
+++++ src/LuaEngine.cpp
++@@ -154,7 +154,11 @@ LuaEngine::LuaEngine() {
++   is_system_vm = false;
++   mem_used = 0;
++   
+++#if LUA_VERSION_NUM >= 505
+++  L = lua_newstate(l_alloc, this, luaL_makeseed(NULL));
+++#else
++   L = lua_newstate(l_alloc, this);
+++#endif
++ 
++   if (!L) {
++     ntop->getTrace()->traceEvent(TRACE_ERROR, "Unable to create a new Lua state.");
 --- a/net/qrcp/Makefile
 +++ b/net/qrcp/Makefile
 @@ -16,8 +16,6 @@ LICENSE=	mit
