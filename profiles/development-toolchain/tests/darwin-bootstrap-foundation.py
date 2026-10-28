@@ -132,8 +132,8 @@ def versions():
                          ('devel/rpcsvc-proto', 'rpcsvc-proto')):
         file = recipe + ('/Makefile.common' if recipe == 'sysutils/coreutils' else '/Makefile')
         values[recipe] = match(source(file), r'^DISTNAME=\s*' + name + r'-(\S+)')
-    values['sysutils/bsdinstall'] += 'nb' + match(source('sysutils/bsdinstall/Makefile'),
-                                                r'^PKGREVISION=\s*(\S+)')
+    for recipe in ('sysutils/bsdinstall', 'devel/rpcsvc-proto'):
+        values[recipe] += 'nb' + match(source(recipe + '/Makefile'), r'^PKGREVISION=\s*(\S+)')
     values['devel/wayland'] = match(source('devel/wayland/Makefile'), r'^WAYLAND_VERSION=\s*(\S+)')
     qt = match(source('meta-pkgs/qt6/Makefile.common'), r'^QTVERSION=\s*(\S+)')
     for recipe in ('x11/qt6-qtbase', 'devel/qt6-qttools'):

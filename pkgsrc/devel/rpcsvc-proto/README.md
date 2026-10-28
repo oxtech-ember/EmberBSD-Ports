@@ -11,6 +11,12 @@ as linker input and writes no output, and rpcgen then writes empty files
 without an error. `patch-rpcgen_rpc__main.c` gives `-x c` to the
 preprocessor. GCC and Clang accept this option.
 
+The macOS SDK has `<rpcsvc/*.h>` files with the same names. On Darwin the
+package installs its protocol headers in `include/rpcsvc-proto/rpcsvc`, so
+that `-I${PREFIX}/include`, for example from a `pkg-config` file, does not
+select them before the SDK headers. `buildlink3.mk` gives this directory
+to consumers.
+
 The build-time protocol headers use a `cpp` script that runs `${CC} -E`,
 because the native wrapper `cpp` can run the compiler without `-E`.
 
@@ -26,4 +32,5 @@ python3 -B tests/test-native.py --prefix /absolute/prefix --cc /absolute/cc
 ```
 
 The check runs rpcgen with a `cpp` script that runs `cc -E` without `-x c`,
-and fails when the headers or the generated code are empty.
+and fails when the headers or the generated code are empty. On Darwin it
+also fails when the protocol headers are in `include/rpcsvc`.

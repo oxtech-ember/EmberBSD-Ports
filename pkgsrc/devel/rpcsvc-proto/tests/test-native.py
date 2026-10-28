@@ -20,8 +20,16 @@ rpcgen = prefix / 'bin/rpcgen'
 for path in (rpcgen, Path(args.cc)):
     if not path.is_absolute() or not os.access(path, os.X_OK):
         p.error('select executables by absolute path: ' + str(path))
+# On Darwin the headers must not shadow the macOS SDK <rpcsvc/*.h>
+# through -I PREFIX/include.
+include = prefix / 'include'
+if os.uname().sysname == 'Darwin':
+    shadow = sorted(path.name for path in (include / 'rpcsvc').glob('*.x'))
+    if shadow:
+        raise SystemExit('FAIL: rpcsvc headers in the default include path: ' + ', '.join(shadow))
+    include = include / 'rpcsvc-proto'
 # The package generates these headers with its own rpcgen at build time.
-mount = (prefix / 'include/rpcsvc/mount.h').read_text()
+mount = (include / 'rpcsvc/mount.h').read_text()
 if 'MOUNTPROG' not in mount or 'struct mountbody' not in mount:
     raise SystemExit('FAIL: installed rpcsvc/mount.h has no protocol definitions')
 with tempfile.TemporaryDirectory(prefix='rpcgen-test-', dir=os.environ.get('TMPDIR')) as work:

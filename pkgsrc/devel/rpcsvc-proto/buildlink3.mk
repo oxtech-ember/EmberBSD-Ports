@@ -9,6 +9,9 @@ BUILDLINK_DEPMETHOD.rpcsvc-proto?=	build
 
 BUILDLINK_API_DEPENDS.rpcsvc-proto+=	rpcsvc-proto>=1.4.4
 BUILDLINK_PKGSRCDIR.rpcsvc-proto?=	../../devel/rpcsvc-proto
+.if ${OPSYS} == "Darwin"
+BUILDLINK_INCDIRS.rpcsvc-proto=	include/rpcsvc-proto
+.endif
 
 TOOLS_PATH.rpcgen=		${PREFIX}/bin/rpcgen
 
