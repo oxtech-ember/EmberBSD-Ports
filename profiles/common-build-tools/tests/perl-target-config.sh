@@ -19,7 +19,8 @@ EMBER_TEST_PERL_ARCHNAME=$archname "$perl" -I"$work/native/lib" -MConfig -e '
     die "architecture\n" unless $Config{archname} eq $ENV{EMBER_TEST_PERL_ARCHNAME};
     die "ABI\n" unless $Config{ptrsize} == 8 && $Config{ivsize} == 8;
     die "features\n" unless $Config{usedl} eq "define" && $Config{useshrplib} eq "true";
-    die "compiler\n" unless $Config{cc} eq "/usr/pkg/gcc16/bin/gcc";
+    die "compiler\n" unless $Config{cc} eq "/usr/pkg/bin/clang" && $Config{ld} eq "/usr/pkg/bin/clang";
+    die "make\n" unless $Config{make_set_make} eq "#";
     die "cross transport\n" if $Config{sysroot} || $Config{run} || $Config{hostperl};
     die "shell\n" unless $Config{sh} eq "/bin/sh";
     print "Target Config API: PASS\n";

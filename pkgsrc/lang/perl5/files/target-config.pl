@@ -11,7 +11,9 @@ my ($source, $sysroot, $output) = @ARGV;
 for (@ARGV) {
     m{\A/[A-Za-z0-9_./+-]+\z} or die "Absolute, shell-safe paths required\n";
 }
--f "$source/config.sh" && -d "$sysroot/usr/pkg/gcc16" or die "Missing cross inputs\n";
+# The installed metadata names the target Clang package; the sysroot need
+# not contain a compiler to describe it.
+-f "$source/config.sh" && -d "$sysroot/usr/include" or die "Missing cross inputs\n";
 ! -e $output && ! -l $output or die "Output exists\n";
 sub read_file {
     my ($name) = @_;
@@ -25,13 +27,13 @@ my ($arch) = $original =~ /^archname='(aarch64|x86_64)-netbsd-thread-multi'$/m;
 defined $arch or die "Unsupported configured Perl target architecture\n";
 my $text = $original;
 my %replace = (
-    cc => '/usr/pkg/gcc16/bin/gcc', ld => '/usr/pkg/gcc16/bin/gcc',
+    cc => '/usr/pkg/bin/clang', ld => '/usr/pkg/bin/clang',
     ar => '/usr/bin/ar', full_ar => '/usr/bin/ar',
     nm => '/usr/bin/nm', ranlib => '/usr/bin/ranlib',
-    cppstdin => '/usr/pkg/gcc16/bin/gcc -E',
-    cpprun => '/usr/pkg/gcc16/bin/gcc -E',
+    cppstdin => '/usr/pkg/bin/clang -E',
+    cpprun => '/usr/pkg/bin/clang -E',
     sh => '/bin/sh', sed => 'sed', full_sed => '/usr/bin/sed',
-    make => 'make', firstmakefile => 'makefile',
+    make => 'make', make_set_make => '#', firstmakefile => 'makefile',
     usecrosscompile => 'undef',
     cf_by => 'EmberBSD-Ports', cf_email => '', perladmin => '',
     myhostname => '', mydomain => '', myuname => "EmberBSD $arch (cross-built)",
@@ -51,7 +53,7 @@ $text =~ s/^config_argc=[0-9]+$/config_argc=0/m
 $text =~ s{--sysroot=\Q$sysroot\E\b}{}g;
 $text =~ s{\Q$sysroot\E(?=/)}{}g;
 $text =~ s/^# Target system\s*:.*$/# Target system: EmberBSD $arch (cross-built)/m;
-$text =~ m{/Volumes/|/private/|/Users/|(?:aarch64|x86_64)--netbsd-(?:gcc|ar|nm)|Cross/(?:run|to|from)}
+$text =~ m{/Volumes/|/private/|/Users/|(?:aarch64|x86_64)--netbsd-(?:gcc|clang|ar|nm)|/gcc16/|Cross/(?:run|to|from)}
     and die "Untranslated build-host path or tool in installed metadata\n";
 # Every feature answer must remain unchanged. Metadata corrections
 # are not permission to invent target probe results.

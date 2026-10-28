@@ -88,8 +88,9 @@ compiler failure while reading those definitions now fails generation instead
 of silently omitting errno constants.
 
 The [metadata converter](../../../pkgsrc/lang/perl5/files/target-config.pl) runs only
-for staging. Installed Config modules describe native GCC16, `/bin/sh` and
-normal target tools, with cross transport and build-host paths removed. All
+for staging. Installed Config modules describe the native target Clang
+(`/usr/pkg/bin/clang`), `/bin/sh`, the target make and normal target tools,
+with cross transport and build-host paths removed. All
 feature answers and configured ABI macros are preserved. Only tool-name macros
 and build identity comments change in the installed copy of `CORE/config.h`.
 The original build Config files remain untouched; the header keeps its
