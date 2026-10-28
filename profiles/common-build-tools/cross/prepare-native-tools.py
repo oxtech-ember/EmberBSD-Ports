@@ -26,6 +26,10 @@ ROLE_VARIABLES = {
     'xz': 'TOOLS_PLATFORM.xz', 'xzcat': 'TOOLS_PLATFORM.xzcat',
     'install': 'TOOLS_PLATFORM.install',
     'nawk': 'EMBERBSD_NATIVE_AWK',
+    # Native pkgsrc recipes and BSD submakes must not select system tools.
+    'gcp': 'TOOLS_PLATFORM.cp', 'gtouch': 'TOOLS_PLATFORM.touch',
+    'gsed': 'TOOLS_PLATFORM.sed', 'gcat': 'TOOLS_PLATFORM.cat',
+    'gmv': 'TOOLS_PLATFORM.mv',
     # Wayland protocol code generator for wayland consumers.
     'wayland-scanner': 'EMBERBSD_WAYLAND_SCANNER',
 }
@@ -124,6 +128,12 @@ def render(toolset, qt=(), fetch_mode='fetch'):
     selected += [(role + '-dir', variable, os.path.dirname(toolset.tool(role)))
                  for role, variable in ROLE_DIRECTORIES.items()]
     selected += list(qt)
+    selected += [('sh-tool', 'TOOLS_PLATFORM.sh', toolset.tool('sh')),
+                 ('awk-tool', 'TOOLS_PLATFORM.awk', toolset.tool('nawk')),
+                 ('ar-tool', 'TOOLS_PLATFORM.ar', toolset.tool('ar')),
+                 ('ranlib-tool', 'TOOLS_PLATFORM.ranlib', toolset.tool('ranlib')),
+                 ('nm-tool', 'TOOLS_PLATFORM.nm', toolset.tool('nm')),
+                 ('strip-tool', 'TOOLS_PLATFORM.strip', toolset.tool('strip'))]
     for role, variable, value in selected:
         value = literal(value)
         if "'" in value:
