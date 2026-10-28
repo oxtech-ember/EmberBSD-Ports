@@ -41,8 +41,9 @@ gitk only runs wish, and the default Tk is Tk 9.1, so it no longer needs
 pkgsrc's separate Tk 9.0.
 Flycast's LuaBridge bindings build and run with Lua 5.5, so it finds the
 default Lua through pkg-config instead of Lua 5.2.
-Emacs 29 and 30 compile native Lisp through the libgccjit API, which GCC 16
-still provides, so they use GCC 16's libgccjit like Emacs 31 does.
+Emacs 29, 30 and 31 build without native compilation by default: the Clang
+toolchain has no libgccjit. The opt-in libgccjit option of Emacs 29 and 30
+uses GCC 16's libgccjit like Emacs 31 does.
 s6-networking's openssl option already builds its libtls TLS support with
 libretls on OpenSSL, the one TLS library in the export, so the libressl option,
 which built the same libtls support on LibreSSL, is gone.
@@ -660,13 +661,24 @@ py-Willow takes cv2 from opencv-contrib, the one cv2, which has CascadeClassifie
  CONFLICTS+=	emacs29-nox11-[0-9]*
  
 -PKGREVISION=	31
-+PKGREVISION=	32
++PKGREVISION=	33
  
  .include "../../editors/emacs29/Makefile.common"
  
 --- a/editors/emacs29/options.mk
 +++ b/editors/emacs29/options.mk
-@@ -53,10 +53,10 @@
+@@ -23,10 +23,6 @@
+ # xaw3d is omitted because it is only valid with xaw
+ PKG_SUGGESTED_OPTIONS=	dbus gnutls gtk3 jansson libotf libwebp tree-sitter xml x11
+ 
+-.if ${OPSYS} == "NetBSD"
+-PKG_SUGGESTED_OPTIONS+=	libgccjit
+-.endif
+-
+ .include "../../mk/bsd.options.mk"
+ 
+ ### ---	 Check window-system independent options first
+@@ -53,10 +49,10 @@
  ###
  .if !empty(PKG_OPTIONS:Mlibgccjit)
  CONFIGURE_ARGS+=	--with-native-compilation
@@ -686,13 +698,24 @@ py-Willow takes cv2 from opencv-contrib, the one cv2, which has CascadeClassifie
  CONFLICTS+=	emacs30-nox11-[0-9]*
  
 -PKGREVISION= 14
-+PKGREVISION= 15
++PKGREVISION= 16
  .include "../../editors/emacs30/Makefile.common"
  
  .include "options.mk"
 --- a/editors/emacs30/options.mk
 +++ b/editors/emacs30/options.mk
-@@ -41,10 +41,10 @@
+@@ -20,10 +20,6 @@
+ # xaw3d is omitted because it is only valid with xaw
+ PKG_SUGGESTED_OPTIONS=	dbus gnutls gtk3 libotf libwebp tree-sitter xml x11
+ 
+-.if ${OPSYS} == "NetBSD"
+-PKG_SUGGESTED_OPTIONS+=	libgccjit
+-.endif
+-
+ .include "../../mk/bsd.options.mk"
+ 
+ ### ---	 Check window-system independent options first
+@@ -41,10 +37,10 @@
  ###
  .if !empty(PKG_OPTIONS:Mlibgccjit)
  CONFIGURE_ARGS+=	--with-native-compilation
@@ -705,6 +728,30 @@ py-Willow takes cv2 from opencv-contrib, the one cv2, which has CascadeClassifie
  .endif
  
  ###
+--- a/editors/emacs31/Makefile
++++ b/editors/emacs31/Makefile
+@@ -4,7 +4,7 @@
+ 
+ .include "../../editors/emacs31/Makefile.common"
+ 
+-PKGREVISION=	2
++PKGREVISION=	3
+ 
+ .include "options.mk"
+ 
+--- a/editors/emacs31/options.mk
++++ b/editors/emacs31/options.mk
+@@ -21,10 +21,6 @@
+ # libotf is omitted because harfbuzz is on by default and a replacement
+ PKG_SUGGESTED_OPTIONS=	dbus gmp gnutls gtk3 libwebp tree-sitter xml x11
+ 
+-.if ${OPSYS} == "NetBSD"
+-PKG_SUGGESTED_OPTIONS+=	libgccjit
+-.endif
+-
+ .include "../../mk/bsd.options.mk"
+ 
+ ### ---	 Check window-system independent options first
 --- a/editors/mle/Makefile
 +++ b/editors/mle/Makefile
 @@ -1,7 +1,7 @@
