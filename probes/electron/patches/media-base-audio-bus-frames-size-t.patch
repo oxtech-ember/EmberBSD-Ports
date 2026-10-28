@@ -1,0 +1,43 @@
+Chromium: use AudioBus::frames() (int) instead of size_t frames_ in
+legacy pointer-based FromInterleaved/ToInterleavedPartial helpers.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Source: Chromium electron-source tree under EmberBSD.
+Apply after other media/base patches.
+
+On NetBSD/BSD targets -Wshorten-64-to-32 under -Werror fails the build
+when size_t frames_ is passed where int is required
+(ZeroFramesPartial / CheckOverflow). frames() already returns
+base::checked_cast<int>(frames_); the span-based overloads in the same
+header already use checked_cast. Prefer that over silencing the
+diagnostic.
+
+--- a/media/base/audio_bus.h
++++ b/media/base/audio_bus.h
+@@ -365,7 +365,7 @@
+   FromInterleavedPartial<SourceSampleTypeTraits>(source_buffer, 0,
+                                                  num_frames_to_write);
+   // Zero any remaining frames.
+-  ZeroFramesPartial(num_frames_to_write, frames_ - num_frames_to_write);
++  ZeroFramesPartial(num_frames_to_write, frames() - num_frames_to_write);
+ }
+ 
+ // Delegates to FromInterleavedPartial()
+@@ -394,7 +394,7 @@
+     const typename SourceSampleTypeTraits::ValueType* source_buffer,
+     int write_offset_in_frames,
+     int num_frames_to_write) {
+-  CheckOverflow(write_offset_in_frames, num_frames_to_write, frames_);
++  CheckOverflow(write_offset_in_frames, num_frames_to_write, frames());
+   CopyConvertFromInterleavedSourceToAudioBus<SourceSampleTypeTraits>(
+       source_buffer, write_offset_in_frames, num_frames_to_write, this);
+ }
+@@ -435,7 +435,7 @@
+     int read_offset_in_frames,
+     int num_frames_to_read,
+     typename TargetSampleTypeTraits::ValueType* dest) const {
+-  CheckOverflow(read_offset_in_frames, num_frames_to_read, frames_);
++  CheckOverflow(read_offset_in_frames, num_frames_to_read, frames());
+   CopyConvertFromAudioBusToInterleavedTarget<TargetSampleTypeTraits>(
+       this, read_offset_in_frames, num_frames_to_read, dest);
+ }

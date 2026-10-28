@@ -616,6 +616,11 @@
       "path": "libsync-etime-redef.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "media-base-audio-bus-frames-size-t.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
