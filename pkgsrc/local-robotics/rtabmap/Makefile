@@ -35,7 +35,7 @@ post-install:
 	${SH} ${FILESDIR}/install-licenses.sh ${WRKSRC} ${DESTDIR}${PREFIX} ${.CURDIR}
 
 .include "../../devel/cmake/build.mk"
-.include "../../local-robotics/opencv5/buildlink3.mk"
+.include "../../graphics/opencv/buildlink3.mk"
 .include "../../graphics/pcl/buildlink3.mk"
 .include "../../local-robotics/gtsam/buildlink3.mk"
 .include "../../databases/sqlite3/buildlink3.mk"

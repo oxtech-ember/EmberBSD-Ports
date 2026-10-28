@@ -40,9 +40,9 @@ from interposing the current shared LZ4 used by public FLANN and PCL.
 The shared profile disables optional TORO, ORB-OCTREE, Madgwick, Vertigo and
 unused GUI, device and Python backends. The selected graph solver is common
 GTSAM 4.3.0. Eigen 5.0.1, Boost 1.92.0, OpenCV 5.0.0, PCL 1.15.1nb1 and
-SQLite 3.54.0 retain their independent ownership and notices. OpenCV's
-[provenance](../../pkgsrc/local-robotics/opencv5/PROVENANCE.md) describes its
-selected image dependencies and portability patches.
+SQLite 3.54.0 retain their independent ownership and notices. The
+[OpenCV recipe](../../pkgsrc/graphics/opencv) lists its image dependencies
+and portability patches.
 
 The unchanged GNU license texts were retrieved on 2026-10-07:
 

@@ -25,6 +25,8 @@ EMBERBSD_VERSION_FAMILIES+=	games/love[0-9]*=games/love11
 EMBERBSD_VERSION_FAMILIES+=	lang/tcl[0-9]*=lang/tcl
 EMBERBSD_VERSION_FAMILIES+=	x11/tk[0-9]*=x11/tk
 EMBERBSD_VERSION_FAMILIES+=	print/poppler-qt[0-9]*=print/poppler-qt6
+EMBERBSD_VERSION_FAMILIES+=	*/opencv[0-9]*=graphics/opencv
+EMBERBSD_VERSION_FAMILIES+=	graphics/opencv-contrib*=graphics/opencv-contrib
 # Lua 5.1 or 5.3 C API.
 EMBERBSD_VERSION_DEPENDENTS+=	games/asc
 EMBERBSD_VERSION_DEPENDENTS+=	games/valyriatear

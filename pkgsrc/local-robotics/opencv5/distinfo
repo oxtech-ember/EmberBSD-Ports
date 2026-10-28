@@ -1,8 +1,0 @@
-# EmberBSD: verified official source and canonical port patches
-
-BLAKE2s (opencv-5.0.0.tar.gz) = 42d24b05b62365d961781149deaa7726357ba39cdea6e87c0cb93ff7b8168c13
-SHA512 (opencv-5.0.0.tar.gz) = 37143de2ba76a9af351d6901358635b42b671b5fbe3ccc75d4d27133b0a6c6a0400564e6eaf228fc1705e25a2af09c8e2638039ca9af0ce9428da253dd31d3e0
-Size (opencv-5.0.0.tar.gz) = 81594270 bytes
-SHA1 (patch-netbsd-arm64) = d1a61b1f403ed552312895ef8542384beb600186
-SHA1 (patch-netbsd-filesystem) = 923cc17f61fd3708afc46f4b4955fb6db769cf98
-SHA1 (patch-netbsd-plugin-loader) = 260107b0c86ae3f5da078406c4f7860437901c96

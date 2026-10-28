@@ -20,8 +20,8 @@ The original recording is CC-BY-4.0 and is downloaded separately.
 
 Use the fork's coherent AArch64 base sysroot and GCC16 C/C++ runtime. Install
 the exact dependency payloads into a writable copy of the common sysroot.
-The OpenCV [recorded-image provider](../../pkgsrc/local-robotics/opencv5)
-builds thirteen shared libraries, including its `flann` and `objdetect` closure.
+The [OpenCV package](../../pkgsrc/graphics/opencv) provides the shared
+libraries, including the `flann` and `objdetect` closure.
 The PCL provider adds `surface`, `segmentation` and `ml` to the earlier profile;
 `geometry` and `2d` are header-only. [Codec helpers](codecs/README.md) reuse the
 canonical PNG and pinned pkgsrc JPEG recipes. Base zlib remains the provider.

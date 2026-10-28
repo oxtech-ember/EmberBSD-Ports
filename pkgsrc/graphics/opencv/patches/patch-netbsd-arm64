@@ -1,5 +1,5 @@
---- a/modules/core/src/system.cpp
-+++ b/modules/core/src/system.cpp
+--- modules/core/src/system.cpp.orig
++++ modules/core/src/system.cpp
 @@ -705,6 +705,12 @@
              close(cpufile);
          }

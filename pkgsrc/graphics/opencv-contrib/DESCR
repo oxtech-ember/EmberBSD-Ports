@@ -1,0 +1,3 @@
+OpenCV contributed modules used by EmberBSD packages: face recognition
+(face), machine learning (ml), plotting (plot), object tracking
+(tracking) and cascade object detection (xobjdetect).

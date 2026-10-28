@@ -6,8 +6,8 @@ and its release function does not close a handle.
 
 AI-assisted local portability patch. Upstream submission is pending.
 
---- a/modules/core/include/opencv2/core/utils/plugin_loader.private.hpp
-+++ b/modules/core/include/opencv2/core/utils/plugin_loader.private.hpp
+--- modules/core/include/opencv2/core/utils/plugin_loader.private.hpp.orig
++++ modules/core/include/opencv2/core/utils/plugin_loader.private.hpp
 @@ -12,7 +12,7 @@
  
  #if defined(_WIN32)

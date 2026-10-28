@@ -3,8 +3,8 @@ Origin: EmberBSD contributors, AI-assisted, 2026-10-07
 Upstream-status: Local; not submitted or accepted upstream
 SPDX-License-Identifier: Apache-2.0
 
---- a/modules/core/include/opencv2/core/utils/filesystem.private.hpp
-+++ b/modules/core/include/opencv2/core/utils/filesystem.private.hpp
+--- modules/core/include/opencv2/core/utils/filesystem.private.hpp.orig
++++ modules/core/include/opencv2/core/utils/filesystem.private.hpp
 @@ -12,7 +12,7 @@
  #  elif defined WINRT || defined _WIN32_WCE
       /* not supported */
@@ -14,8 +14,8 @@ SPDX-License-Identifier: Apache-2.0
          defined __GNU__ || defined __QNX__
  #      define OPENCV_HAVE_FILESYSTEM_SUPPORT 1
  #  elif defined(__APPLE__)
---- a/modules/core/src/utils/filesystem.cpp
-+++ b/modules/core/src/utils/filesystem.cpp
+--- modules/core/src/utils/filesystem.cpp.orig
++++ modules/core/src/utils/filesystem.cpp
 @@ -34,7 +34,7 @@
  #include <errno.h>
  #include <io.h>

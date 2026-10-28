@@ -88,6 +88,7 @@ graphics/lerc
 graphics/libliftoff
 graphics/libraw
 graphics/librsvg
+graphics/opencv
 graphics/openexr
 graphics/png
 math/eigen3

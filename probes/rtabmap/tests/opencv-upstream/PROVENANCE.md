@@ -1,7 +1,7 @@
 # Source provenance
 
 The selected tests belong to OpenCV and its original contributors.
-Use the common [OpenCV source pin](../../../../pkgsrc/local-robotics/opencv5/files/SOURCE).
+Use the [OpenCV recipe's](../../../../pkgsrc/graphics/opencv/distinfo) source archive.
 
 | Item | Value |
 | --- | --- |
