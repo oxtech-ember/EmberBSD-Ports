@@ -75,7 +75,7 @@ def oracle(values, arch, cross, sealed):
             'RadeonSI package files do not follow the selected architecture')
     require('-Dmicrosoft-clc=disabled' in options and '-Dgallium-rusticl=false' in options,
             'Unrelated CLC consumers changed')
-    require(values['GCC_REQD'].split() == ['16.2'] and values['USE_LANGUAGES'].split() == ['c', 'c++'],
+    require('16.2' not in values['GCC_REQD'].split() and values['USE_LANGUAGES'].split() == ['c', 'c++'],
             'Compiler selection changed')
     includes = set(values['TEST_INCLUDES'].split())
     if cross:

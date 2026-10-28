@@ -12,7 +12,6 @@ LICENSE=	apache-2.0
 
 USE_CXX_FEATURES=	c++17
 USE_LANGUAGES=		c c++
-GCC_REQD+=		16.2
 # Installed scan-build, scan-view and format helpers use this interpreter.
 PYTHON_VERSIONS_ACCEPTED= 315
 PYTHON_FOR_BUILD_ONLY= no

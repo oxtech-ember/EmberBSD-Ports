@@ -11,7 +11,6 @@ MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://github.com/analogdevicesinc/libiio
 COMMENT=	Industrial I/O with USB and official ABI 0 compatibility
 LICENSE=	gnu-lgpl-v2.1 AND gnu-gpl-v2 AND mit
-GCC_REQD+=	16.2
 USE_LANGUAGES=	c
 USE_TOOLS+=	pkg-config
 CMAKE_CONFIGURE_ARGS+=	-C ${FILESDIR}/receiver.cmake

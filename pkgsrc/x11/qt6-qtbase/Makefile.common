@@ -72,9 +72,6 @@ CONFIGURE_ENV+= PKG_CONFIG_SYSROOT_DIR=${CROSS_DESTDIR:Q}
 MAKE_ENV+= PKG_CONFIG_SYSROOT_DIR=${CROSS_DESTDIR:Q}
 .endif
 
-# https://doc.qt.io/qt-6/supported-platforms.html
-GCC_REQD+=	16.2
-
 # required for -msse2
 .if ${MACHINE_ARCH} == "i386"
 CFLAGS+=		-mstackrealign

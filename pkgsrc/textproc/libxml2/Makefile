@@ -3,7 +3,6 @@
 .include "../../textproc/libxml2/Makefile.common"
 
 PKGREVISION=	1
-GCC_REQD+=	16.2
 
 # The release tarball omits two CMake test drivers from the same upstream tag.
 post-extract:

@@ -16,7 +16,6 @@ LICENSE=	apache-2.0
 
 USE_TOOLS+=	pkg-config
 USE_LANGUAGES=	c c++
-GCC_REQD+=	16.2
 
 PKGCONFIG_OVERRIDE+=	cmake/SPIRV-Tools-shared.pc.in
 PKGCONFIG_OVERRIDE+=	cmake/SPIRV-Tools.pc.in

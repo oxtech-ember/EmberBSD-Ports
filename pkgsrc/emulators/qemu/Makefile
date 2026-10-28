@@ -14,9 +14,6 @@ USE_TOOLS+=		bison gdbus-codegen flex makeinfo perl:build pod2man pkg-config
 UNLIMIT_RESOURCES=	datasize
 HAS_CONFIGURE=		yes
 
-# https://github.com/qemu/qemu/commit/56208a0d473c6db263cc333c787ca48b502d72ab
-GCC_REQD+=	7
-
 .include "options.mk"
 
 .include "../../mk/bsd.prefs.mk"

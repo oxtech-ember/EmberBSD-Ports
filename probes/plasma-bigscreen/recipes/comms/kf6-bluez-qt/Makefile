@@ -13,7 +13,6 @@ LICENSE=	gnu-lgpl-v2.1 OR gnu-lgpl-v3
 
 USE_LANGUAGES=	c c++
 USE_CXX_FEATURES=	c++20
-GCC_REQD+=	16.2
 USE_TOOLS+=	pkg-config
 CMAKE_CONFIGURE_ARGS+= -DBUILD_TESTING=ON
 # Keep ECM's platform check. The source explicitly describes client support.

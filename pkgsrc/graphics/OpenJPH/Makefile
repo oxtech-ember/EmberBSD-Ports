@@ -14,7 +14,6 @@ HOMEPAGE=	https://github.com/aous72/OpenJPH/
 COMMENT=	Open-source implementation of JPEG2000 Part-15
 LICENSE=	2-clause-bsd
 
-GCC_REQD+=	16.2
 CMAKE_REQD+=	4.4.4
 USE_CC_FEATURES=	c11
 USE_CXX_FEATURES=	c++14

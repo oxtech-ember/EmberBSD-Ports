@@ -11,7 +11,6 @@ HOMEPAGE=	https://github.com/FreeSpacenav/libspnav/
 COMMENT=	Space-navigation client library with Unix and X11 interfaces
 LICENSE=	modified-bsd
 
-GCC_REQD+=	16.2
 USE_LANGUAGES=	c
 USE_TOOLS+=	gmake
 HAS_CONFIGURE=	yes

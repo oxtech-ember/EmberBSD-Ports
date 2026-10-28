@@ -14,8 +14,6 @@ BUILDLINK_PKGSRCDIR.icu?=	../../textproc/icu
 BUILDLINK_ABI_DEPENDS.icu+= icu>=78.3nb3
 .include "../../textproc/icu-devel/buildlink3.mk"
 .endif
-
-GCC_REQD+=		4.9
 .endif # ICU_BUILDLINK3_MK
 
 BUILDLINK_TREE+=	-icu

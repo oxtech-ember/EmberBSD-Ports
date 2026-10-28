@@ -14,7 +14,6 @@ USE_TOOLS+=		autoconf automake aclocal autoheader gmake
 GNU_CONFIGURE=		yes
 CONFIGURE_ARGS+=	--with-libedit
 PKG_SHELL=		bin/dash
-GCC_REQD+=		16.2
 
 # Needed after patching configure.ac.
 pre-configure:

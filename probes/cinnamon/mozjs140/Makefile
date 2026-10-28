@@ -18,9 +18,6 @@ WRKSRC=		${WRKDIR}/firefox-${PKGVERSION_NOREV}
 USE_TOOLS+=	gm4 gmake perl pkg-config
 USE_LANGUAGES=	c c++
 
-# "ERROR: Only GCC 8.1 or newer is supported"
-GCC_REQD+=	8
-
 # Firefox 140's standalone js/src configure no longer references
 # cbindgen (the 128-line needed it); no host cbindgen is wired in.
 
@@ -123,7 +120,7 @@ post-install:
 .include "../../devel/zlib/buildlink3.mk"
 # Compiled by the shared cross GCC16 toolchain only. The pkgsrc
 # mozjs128 recipe carried a build-only clang dependency; SpiderMonkey
-# documents GCC support (GCC_REQD above), so no second compiler
+# documents GCC support, so no second compiler
 # enters this profile.
 # Cross Rust for the SpiderMonkey icu4x crates: native host toolchain
 # with the target std installed by lang/rust-std-aarch64-netbsd

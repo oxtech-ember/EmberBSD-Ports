@@ -22,18 +22,9 @@ HOMEPAGE=	https://github.com/protocolbuffers/protobuf
 COMMENT=	Google protocol buffers
 LICENSE=	modified-bsd
 
-GCC_REQD+=		16.2
 USE_LANGUAGES=		c c++
 USE_CXX_FEATURES=	c++17
 FORCE_CXX_STD=		c++17
-
-# protobuf 34.1 failed to build with gcc <=12 and new abseil:
-#   https://github.com/protocolbuffers/protobuf/issues/26383
-# and thus we set GCC_REQD+=13.  As of 35.0, this is marked fixed in
-# upstream NEWS, and the bug shows that fixes were merged.  Builds on
-# NetBSD 10 with gcc10, which resolves linking failures in qgis4
-# because of varying libstdc++, the usual tale of woe.
-# Leaving this note for gc on July 1, in case this resurfaces somehow.
 
 CMAKE_CONFIGURE_ARGS+=	-Dprotobuf_LOCAL_DEPENDENCIES_ONLY=ON
 CMAKE_CONFIGURE_ARGS+=	-Dprotobuf_BUILD_SHARED_LIBS=ON

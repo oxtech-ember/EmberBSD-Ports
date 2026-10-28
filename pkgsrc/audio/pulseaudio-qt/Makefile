@@ -12,7 +12,6 @@ LICENSE= gnu-lgpl-v2.1 OR gnu-lgpl-v3
 .include "../../meta-pkgs/kde/applications.mk"
 
 USE_TOOLS+= pkg-config
-GCC_REQD+= 16.2
 CMAKE_CONFIGURE_ARGS+= -DBUILD_TESTING=ON
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 

@@ -19,7 +19,6 @@ LICENSE=	modified-bsd AND gnu-lgpl-v2.1 AND gnu-gpl-v2 AND mpl-2.0
 USE_LIBTOOL=	yes
 USE_TOOLS+=	gmake autoconf autoheader pkg-config
 USE_LANGUAGES=	c c++
-GCC_REQD+=	16.2
 GNU_CONFIGURE=	yes
 CONFIGURE_HAS_LIBDIR=	yes
 CONFIGURE_ARGS+=	--enable-cider --enable-xspice --enable-osdi --enable-klu

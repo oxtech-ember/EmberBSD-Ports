@@ -18,7 +18,6 @@ LICENSE=	gnu-lgpl-v2.1
 # Source retains OCCT_LGPL_EXCEPTION.txt and its commercial-license alternative.
 USE_LANGUAGES=	c c++
 USE_CXX_FEATURES=	c++17
-GCC_REQD+=	16.2
 CMAKE_REQD+=	3.10
 USE_TOOLS+=	bash:run
 REPLACE_BASH+=	adm/templates/draw.sh

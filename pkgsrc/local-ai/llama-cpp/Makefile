@@ -16,7 +16,6 @@ AI_PROGRAMS=	llama-cli llama-completion llama-server llama-bench llama-quantize
 AI_NOTICES=	vendor/cpp-httplib/LICENSE
 BUILD_TARGET=	${AI_PROGRAMS}
 
-GCC_REQD+=		16.2
 CMAKE_CONFIGURE_ARGS+=	-C ${.CURDIR}/package.cmake
 CMAKE_CONFIGURE_ARGS+=	-DLLAMA_BUILD_COMMIT=${GITHUB_TAG}
 

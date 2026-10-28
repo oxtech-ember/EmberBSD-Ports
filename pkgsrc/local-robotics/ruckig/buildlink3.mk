@@ -11,7 +11,6 @@ BUILDLINK_ABI_DEPENDS.ruckig+=	ruckig-0.19.4{,nb*}
 BUILDLINK_PKGSRCDIR.ruckig?=	../../local-robotics/ruckig
 
 USE_CXX_FEATURES+=	c++20
-GCC_REQD+=		16.2
 
 .endif # RUCKIG_BUILDLINK3_MK
 

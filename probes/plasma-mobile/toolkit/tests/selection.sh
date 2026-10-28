@@ -23,7 +23,7 @@ all:
 	@test '${QTVERSION:U6.12.0}' = 6.12.0
 	@test '${KF6VER:U6.31.0}' = 6.31.0
 	@test '${PLASMAVER:U6.8.0}' = 6.8.0
-	@test '${GCC_REQD}' = 16.2
+	@test -z '${GCC_REQD:U}'
 MAKE
 # Only the version families use these three shared selectors. Dependencies
 # such as PipeWire, KDE applications and Boost retain their own recipe versions.

@@ -23,7 +23,6 @@ WRKSRC=		${WRKDIR}/mksh
 USE_TOOLS+=	perl:test
 PERL5_REQD+=	5.44.0
 TEST_DEPENDS+=	ed>=1.22.6:../../editors/ed
-GCC_REQD+=	16.2
 
 # The upstream archive does not contain pkgsrc's separate printf.c copy.
 # Keep the supported upstream shell; printf comes from the base utilities.

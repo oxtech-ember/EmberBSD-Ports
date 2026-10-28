@@ -41,10 +41,6 @@ PKG_FAIL_REASON+= "Qt 6 recipe ${PKGPATH} is not prepared in the Plasma toolkit"
 .if ${QTVERSION} != "6.12.0"
 PKG_FAIL_REASON+= "The common toolkit requires QTVERSION=6.12.0"
 .endif
-GCC_REQD+= 16.2
-
-
-
 
 MASTER_SITES=	https://download.qt.io/archive/qt/${QTVERSION:R}/${QTVERSION}/submodules/
 

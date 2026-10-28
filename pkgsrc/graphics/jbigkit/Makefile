@@ -11,7 +11,6 @@ COMMENT=	JBIG-KIT lossless image compression library
 LICENSE=	gnu-gpl-v2
 
 # Origin: pkgsrc; EmberBSD common-provider update (AI-assisted).
-GCC_REQD+=	16.2
 USE_LIBTOOL=	yes
 USE_TOOLS+=	gmake
 

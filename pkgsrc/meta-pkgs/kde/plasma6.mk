@@ -20,13 +20,6 @@ _EMBERBSD_PLASMA6_RECIPES= audio/plasma6-plasma-pa devel/plasma6-kwayland time/p
 .if empty(_EMBERBSD_PLASMA6_RECIPES:M${PKGPATH})
 PKG_FAIL_REASON+= "Plasma 6 recipe ${PKGPATH} is not prepared in the common toolkit"
 .endif
-# Match the selected host/cross compiler family. GCC remains the explicit
-# platform alternative when Clang/LLVM is not selected.
-.if ${EMBERBSD_CROSS_COMPILER_FAMILY:U} == "clang" ||     ${EMBERBSD_HOST_COMPILER_FAMILY:U} == "clang"
-# Leave PKGSRC_COMPILER to the common cross/host Clang profile.
-.else
-GCC_REQD+= 16.2
-.endif
 CATEGORIES+= kde
 MASTER_SITES= ${MASTER_SITE_KDE:=plasma/${PLASMAVER}/}
 EXTRACT_SUFX= .tar.xz

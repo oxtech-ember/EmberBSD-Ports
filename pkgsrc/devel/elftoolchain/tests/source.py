@@ -310,11 +310,9 @@ def main():
                     not any(p.startswith('lib/libelf.so.1') for p in plist), 'portable package ABI/header PLIST differs')
             checks.append('portable-package-abi-and-header-metadata')
             (target / 'Makefile').write_text(production_makefile)
-            floor = run([args.bmake, '-r', '-f', 'Makefile', '-V', 'GCC_REQD',
-                         'OPSYS=FreeBSD', 'TOOLS_CROSS_DESTDIR=' + str(roots['target'])], cwd=target).decode()
-            require('16.2' in floor.split() and 'rm:-Werror' not in production_makefile,
-                    'canonical compiler floor or diagnostics differ')
-            checks.append('gcc16-floor-and-retained-diagnostics')
+            require(not re.search(r'^\s*GCC_REQD\s*\+?=', production_makefile, re.M) and
+                    'rm:-Werror' not in production_makefile, 'compiler floor pin or diagnostics differ')
+            checks.append('no-compiler-floor-pin-and-retained-diagnostics')
 
             # Execute only the production data-install recipe in a make fixture.
             # The object directory contains header data, not compiled objects.

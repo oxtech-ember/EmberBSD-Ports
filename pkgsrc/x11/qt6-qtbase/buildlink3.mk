@@ -43,9 +43,6 @@ BUILDLINK_FILES.qt6-qtbase+=	qt6/lib/objects-Release/ExampleIconsPrivate_resourc
 QTDIR=		${BUILDLINK_PREFIX.qt6-qtbase}/qt6
 CMAKE_PREFIX_PATH+=	${QTDIR}
 
-# https://doc.qt.io/qt-6/supported-platforms.html
-GCC_REQD+=	16.2
-
 CONFIGURE_ENV+=	QTDIR=${QTDIR}
 MAKE_ENV+=	QTDIR=${QTDIR}
 

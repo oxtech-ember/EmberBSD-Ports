@@ -13,7 +13,6 @@ COMMENT=	High dynamic-range (HDR) image file format library and tools
 LICENSE=	modified-bsd
 
 USE_LANGUAGES=	c c++
-GCC_REQD+=	16.2
 CMAKE_REQD+=	4.4.4
 
 USE_CXX_FEATURES+=	c++17 filesystem

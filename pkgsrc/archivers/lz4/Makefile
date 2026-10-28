@@ -12,7 +12,6 @@ COMMENT=	Fast lossless compression library and command line tools
 LICENSE=	2-clause-bsd AND gnu-gpl-v2
 
 USE_LANGUAGES=	c
-GCC_REQD+=	16.2
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_BUILD_TYPE=Release
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_MANDIR=man
 CMAKE_CONFIGURE_ARGS+=	-C ${.CURDIR}/features.cmake

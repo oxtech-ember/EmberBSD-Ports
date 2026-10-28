@@ -14,7 +14,6 @@ LICENSE=	mit AND unlicense
 AI_PROGRAMS=	whisper-cli whisper-bench whisper-quantize
 BUILD_TARGET=	${AI_PROGRAMS}
 
-GCC_REQD+=		16.2
 CMAKE_CONFIGURE_ARGS+=	-C ${.CURDIR}/package.cmake
 
 .include "../cpu.mk"

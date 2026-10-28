@@ -18,7 +18,6 @@ LICENSE=	gnu-gpl-v3
 CONFLICTS+=	ja-samba-[0-9]* winbind-[0-9]* ldb-[0-9]*
 SUPERSEDES+=	ldb-[0-9]*
 
-GCC_REQD+=	4.4
 TOOL_DEPENDS+=	libxslt>=0:../../textproc/libxslt
 TOOL_DEPENDS+=	docbook-xml>=0:../../textproc/docbook-xml
 TOOL_DEPENDS+=	docbook-xsl>=1.79.2:../../textproc/docbook-xsl

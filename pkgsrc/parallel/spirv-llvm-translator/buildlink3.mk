@@ -5,7 +5,6 @@ BUILDLINK_TREE+=	spirv-llvm-translator
 .if !defined(SPIRV_LLVM_TRANSLATOR_BUILDLINK3_MK)
 SPIRV_LLVM_TRANSLATOR_BUILDLINK3_MK:=
 
-GCC_REQD+=	16.2
 
 BUILDLINK_API_DEPENDS.spirv-llvm-translator+=	spirv-llvm-translator>=23.1.2<23.2
 BUILDLINK_ABI_DEPENDS.spirv-llvm-translator+=	spirv-llvm-translator>=23.1.2<23.2

@@ -16,8 +16,6 @@ PKGCONFIG_OVERRIDE+=	poppler-qt6.pc.cmake
 
 INSTALLATION_DIRS+=	lib/pkgconfig
 
-# This must be set before compiler.mk included in Makefile.common.
-GCC_REQD+=	9 # required by Qt6 headers
 BUILD_DIRS=	qt6/src
 .include "../../print/poppler/Makefile.common"
 

@@ -22,8 +22,6 @@ USE_CXX_FEATURES=	c++17
 # which is forced by the pkgsrc build).  Thus, try to make the
 # compiler be c++17 only, and not accept c++20.
 FORCE_CXX_STD=		c++17
-# required by abseil as of 20260526
-GCC_REQD+=		16.2
 
 CMAKE_CONFIGURE_ARGS+=	-DBUILD_SHARED_LIBS=ON
 

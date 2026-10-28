@@ -43,10 +43,6 @@ USE_CXX_FEATURES=	c++14
 
 .include "../../mk/bsd.prefs.mk"
 
-# IMPORTANT: sync this with devel/boost-libs/buildlink3.mk
-# libstdc++5 is required to build "math" and "nowide".
-GCC_REQD+=		6
-
 PLIST_SUBST+=		BOOST_VERSION="${BOOST_VERSION}"
 
 SUBST_CLASSES+=		darwin

@@ -6,13 +6,6 @@ BUILDLINK_TREE+=	llvm
 LLVM_BUILDLINK3_MK:=
 
 .include "../../mk/bsd.fast.prefs.mk"
-.if ${OPSYS} == "NetBSD" && ${OS_VERSION:M9.*}
-# Gcc 8 (induced elsewhere) blows up on per-process VM space.
-# Ref. https://mail-index.netbsd.org/pkgsrc-users/2025/06/21/msg041678.html
-# Also, the llvm produced by gcc 8 or 10 crashes when building wasi-libc.
-GCC_REQD+=		14
-.endif
-
 BUILDLINK_API_DEPENDS.llvm+=	llvm>=23.1.4
 BUILDLINK_PKGSRCDIR.llvm?=	../../lang/llvm
 

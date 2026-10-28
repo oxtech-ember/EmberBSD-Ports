@@ -16,7 +16,6 @@ USE_LIBTOOL=		yes
 GNU_CONFIGURE=		yes
 USE_LANGUAGES=		c c++
 USE_TOOLS+=		autoconf automake autoreconf
-GCC_REQD+=		16.2
 BUILDLINK_API_DEPENDS.ncurses+=	ncurses>=6.6
 
 post-install:

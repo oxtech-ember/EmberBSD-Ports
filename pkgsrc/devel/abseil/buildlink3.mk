@@ -5,10 +5,6 @@ BUILDLINK_TREE+=	abseil
 .if !defined(ABSEIL_BUILDLINK3_MK)
 ABSEIL_BUILDLINK3_MK:=
 
-# .buildlink/include/absl/base/policy_checks.h:57:2:
-# error: #error "This package requires GCC 10 or higher."
-GCC_REQD+=	10
-
 USE_CXX_FEATURES+=	c++17 filesystem
 
 BUILDLINK_API_DEPENDS.abseil+=	abseil>=20220623.0

@@ -13,7 +13,6 @@ MAINTAINER=	pkgsrc-users@NetBSD.org
 LICENSE=	apache-2.0
 
 USE_LANGUAGES=	none
-GCC_REQD+=	16.2
 USE_PYTEST=	no
 
 TOOL_DEPENDS+=	${PYPKGPREFIX}-setuptools>=70.1:../../devel/py-setuptools
