@@ -854,7 +854,11 @@ kept version is missing or a local recipe adds an old one. The defaults file
 includes the same list as `EMBERBSD-VERSIONS.MK` and sets `PKG_FAIL_REASON`
 for any other version. Patch a consumer onto the kept version instead of
 adding an old one. `profiles/common-build-tools/tests/version-families.sh`
-checks an export and the guard.
+checks an export and the guard. `profiles/common-build-tools/tests/one-version.py`
+checks a whole export: version families, version knobs and recipe pins, default
+selections that name a removed or older version, dangling package references,
+duplicate local copies and shared libraries installed by two packages. Its only
+version exception is the per-platform GCC 16 override. `--check` selects parts.
 
 `pkgsrc/export.conf` lists the other export inputs, one on each line, with
 tabs between the fields. The export uses them in the order of the file:
