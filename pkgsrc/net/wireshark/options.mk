@@ -1,9 +1,7 @@
 # $NetBSD: options.mk,v 1.40 2026/04/02 20:32:44 gutteridge Exp $
 
 PKG_OPTIONS_VAR=		PKG_OPTIONS.wireshark
-PKG_SUPPORTED_OPTIONS=		doc http2 http3 ilbc lua spandsp
-PKG_OPTIONS_OPTIONAL_GROUPS=	gui
-PKG_OPTIONS_GROUP.gui=		qt5 qt6
+PKG_SUPPORTED_OPTIONS=		doc http2 http3 ilbc lua qt6 spandsp
 PKG_SUGGESTED_OPTIONS=		http2 http3 lua qt6
 
 .include "../../mk/bsd.options.mk"
@@ -51,23 +49,12 @@ LUA_VERSIONS_ACCEPTED=	54 53
 CMAKE_CONFIGURE_ARGS+=	-DENABLE_LUA=OFF
 .endif
 
-.if !empty(PKG_OPTIONS:Mqt5) || !empty(PKG_OPTIONS:Mqt6)
-.  if !empty(PKG_OPTIONS:Mqt5)
-CMAKE_CONFIGURE_ARGS+=	-DUSE_qt6=OFF
-.    include "../../x11/qt5-qtsvg/buildlink3.mk"
-.    include "../../x11/qt5-qttools/buildlink3.mk"
-.    if ${OPSYS} == "Darwin"
-.      include "../../x11/qt5-qtmacextras/buildlink3.mk"
-.    else
-.      include "../../x11/qt5-qtx11extras/buildlink3.mk"
-.    endif
-.  elif !empty(PKG_OPTIONS:Mqt6)
+.if !empty(PKG_OPTIONS:Mqt6)
 CMAKE_CONFIGURE_ARGS+=	-DUSE_qt6=ON
-.    include "../../graphics/qt6-qtsvg/buildlink3.mk"
-.    include "../../multimedia/qt6-qtmultimedia/buildlink3.mk"
-.    include "../../devel/qt6-qttools/buildlink3.mk"
-.    include "../../devel/qt6-qt5compat/buildlink3.mk"
-.  endif
+.  include "../../graphics/qt6-qtsvg/buildlink3.mk"
+.  include "../../multimedia/qt6-qtmultimedia/buildlink3.mk"
+.  include "../../devel/qt6-qttools/buildlink3.mk"
+.  include "../../devel/qt6-qt5compat/buildlink3.mk"
 PLIST.qt=		yes
 PRINT_PLIST_AWK+=	/^bin\/wireshark/ { $$0 = "$${PLIST.qt}" $$0 }
 .  if ${OPSYS} != "Darwin"
