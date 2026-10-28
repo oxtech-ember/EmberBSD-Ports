@@ -166,12 +166,15 @@ query groups and passes Mesa's production LLVM guards. The
 [Mesa26 consumer](../common-graphics/cross/mesa-linux-aarch64.md) passes installed
 llvmpipe rendering, all 39 target invocations and package removal/reinstallation.
 
-The native and cross profiles select the current canonical Ruby 4.0.7 provider.
+The export keeps only Ruby 4.0. Its `rubyversion.mk` supports, accepts and
+defaults to 4.0 alone, so no profile sets its own Ruby default and builds
+without a profile, such as the Darwin bootstrap, also select `lang/ruby40`.
 Recursive host generators use native Ruby and `ruby40-asciidoctor`.
-The [selection check](tests/ruby-selection.rb) queries actual pkgsrc metadata
-for native, AArch64, amd64 and host recursion. It preserves compiler routing,
-native-only barriers and the unrelated pkgsrc default. Ruby package builds
-and target execution remain separate checks.
+The [selection check](tests/ruby-selection.py) queries actual pkgsrc metadata
+without a profile, native, for each prepared cross target and for host
+recursion. It also requires that `RUBY_VERSION_DEFAULT=34` is rejected and that
+compiler routing and the native-only barrier stay unchanged. Ruby package
+builds and target execution remain separate checks.
 
 The common [SWIG 4.5.1 provider](cross/swig.md) retains all language backends,
 839 templates and compressed CCache support. Its ordinary native GCC16 package,
