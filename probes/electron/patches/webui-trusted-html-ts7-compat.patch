@@ -1,39 +1,118 @@
-Chromium WebUI: TrustedHTML DOM type augmentation for TypeScript 7+.
+Chromium WebUI: preserve TrustedHTML values with TypeScript 7 DOM types.
 
 Origin: EmberBSD, not submitted upstream.
-Source: Chromium ui/webui and tools/typescript under EmberBSD.
-Apply after gn-shared-node-providers.patch.
+The casts change types only, preserving Trusted Types CSP enforcement.
+Boolean preserves the previous truthiness of the hidden attribute.
 
-TypeScript 7+ ships lib.dom.d.ts where Element.innerHTML is string-only.
-Chromium's update_npm_deps patches the bundled TypeScript's lib.dom to
-widen innerHTML/outerHTML setters for TrustedHTML; when using the host
-TypeScript those patches are absent.  Add a standalone global ambient
-augmentation that TypeScript merges during compilation, and reference it
-from static_types.ts so every WebUI ts_library target inherits the fix.
-
+--- a/ui/webui/resources/js/custom_element.ts
++++ b/ui/webui/resources/js/custom_element.ts
+@@ -24,8 +24,11 @@
+ 
+     this.attachShadow({mode: 'open'});
+     const template = document.createElement('template');
++    // Host tsc 7.x lib.dom types innerHTML as string only; emptyHTML() is
++    // string|TrustedHTML (Chromium trusted types). Assign via unknown.
+     template.innerHTML =
+-        (this.constructor as typeof CustomElement).template || emptyHTML();
++        ((this.constructor as typeof CustomElement).template ||
++         emptyHTML()) as unknown as string;
+     this.shadowRoot!.appendChild(template.content.cloneNode(true));
+   }
+ 
+--- a/ui/webui/resources/cr_elements/cr_a11y_announcer/cr_a11y_announcer.ts
++++ b/ui/webui/resources/cr_elements/cr_a11y_announcer/cr_a11y_announcer.ts
+@@ -88,7 +88,8 @@
+ 
+     this.currentTimeout_ = setTimeout(() => {
+       const messagesDiv = this.shadowRoot.querySelector('#messages')!;
+-      messagesDiv.innerHTML = window.trustedTypes!.emptyHTML;
++      // lib.dom types this sink as string; preserve the TrustedHTML object.
++      messagesDiv.innerHTML = window.trustedTypes!.emptyHTML as unknown as string;
+ 
+       // <if expr="is_macosx">
+       // VoiceOver on Mac does not seem to consistently read out the contents of
+--- a/ui/webui/resources/cr_elements/cr_toast/cr_toast_manager.ts
++++ b/ui/webui/resources/cr_elements/cr_toast/cr_toast_manager.ts
+@@ -61,7 +61,7 @@
+   }
+ 
+   get slottedHidden(): boolean {
+-    return this.$.slotted.hidden;
++    return Boolean(this.$.slotted.hidden);
+   }
+ 
+   override connectedCallback() {
+--- a/tools/polymer/html_to_wrapper.py
++++ b/tools/polymer/html_to_wrapper.py
+@@ -66,7 +66,8 @@
+ import {getTrustedHTML} from '%(scheme)s//resources/js/static_types.js';
+ 
+ const div = document.createElement('div');
+-div.innerHTML = getTrustedHTML`%(content)s`;
++// lib.dom types this sink as string; preserve the TrustedHTML object.
++div.innerHTML = getTrustedHTML`%(content)s`%(trusted_html_cast)s;
+ const iconsets = div.querySelectorAll('cr-iconset');
+ for (const iconset of iconsets) {
+   document.head.appendChild(iconset);
+@@ -238,6 +239,7 @@
+         if 'iron-iconset-svg' in html_content:
+           html_content = html_content.replace('iron-iconset-svg', 'cr-iconset')
+         substitutions['content'] = html_content
++        substitutions['trusted_html_cast'] = '' if args.use_js else ' as unknown as string'
+       elif template_type == 'lit':
+         # Add Lit specific substitutions.
+         basename = path.splitext(path.basename(in_file))[0]
+--- a/tools/polymer/html_to_wrapper_test.py
++++ b/tools/polymer/html_to_wrapper_test.py
+@@ -119,6 +119,12 @@
+                    'html_to_wrapper/cr_icons.html.ts',
+                    'html_to_wrapper/expected/cr_icons.html.ts')
+ 
++  def testHtmlToWrapperIconsLit_UseJs(self):
++    self._run_test('html_to_wrapper/cr_icons.html',
++                   'html_to_wrapper/cr_icons.html.js',
++                   'html_to_wrapper/expected/cr_icons.html.js',
++                   use_js=True)
++
+   def testHtmlToWrapperIconsLit_Detect(self):
+     self._run_test('html_to_wrapper/cr_icons.html',
+                    'html_to_wrapper/cr_icons.html.ts',
+--- a/tools/polymer/tests/html_to_wrapper/expected/cr_icons.html.ts
++++ b/tools/polymer/tests/html_to_wrapper/expected/cr_icons.html.ts
+@@ -2,6 +2,7 @@
+ import {getTrustedHTML} from '//resources/js/static_types.js';
+ 
+ const div = document.createElement('div');
++// lib.dom types this sink as string; preserve the TrustedHTML object.
+ div.innerHTML = getTrustedHTML`<cr-iconset name="dummy" size="24">
+   <svg>
+     <defs>
+@@ -9,7 +10,7 @@
+     </defs>
+   </svg>
+ </cr-iconset>
+-`;
++` as unknown as string;
+ const iconsets = div.querySelectorAll('cr-iconset');
+ for (const iconset of iconsets) {
+   document.head.appendChild(iconset);
 --- /dev/null
-+++ b/ui/webui/resources/js/trusted_types_dom_compat.d.ts
-@@ -0,0 +1,15 @@
-+// Copyright 2026 The Chromium Authors
-+// Use of this source code is governed by a BSD-style license that can be
-+// found in the LICENSE file.
++++ b/tools/polymer/tests/html_to_wrapper/expected/cr_icons.html.js
+@@ -0,0 +1,17 @@
++import '//resources/cr_elements/cr_icon/cr_iconset.js';
++import {getTrustedHTML} from '//resources/js/static_types.js';
 +
-+// TypeScript 7+ narrows Element.innerHTML / ShadowRoot.innerHTML to
-+// string in lib.dom.d.ts.  Chromium WebUI assigns TrustedHTML values
-+// (emptyHTML(), sanitizeInnerHtml()) for Trusted Types CSP compliance.
-+// Widen the property declarations so those assignments type-check.
-+
-+interface Element {
-+  innerHTML: string | TrustedHTML;
++const div = document.createElement('div');
++// lib.dom types this sink as string; preserve the TrustedHTML object.
++div.innerHTML = getTrustedHTML`<cr-iconset name="dummy" size="24">
++  <svg>
++    <defs>
++      <g id="foo"><path d="M12 2C6.48 2 2 6.48 2"></path></g>
++    </defs>
++  </svg>
++</cr-iconset>
++`;
++const iconsets = div.querySelectorAll('cr-iconset');
++for (const iconset of iconsets) {
++  document.head.appendChild(iconset);
 +}
-+
-+interface ShadowRoot {
-+  innerHTML: string | TrustedHTML;
-+}
---- a/ui/webui/resources/js/static_types.ts
-+++ b/ui/webui/resources/js/static_types.ts
-@@ -1,3 +1,4 @@
-+/// <reference path="trusted_types_dom_compat.d.ts" />
- // Copyright 2024 The Chromium Authors
- // Use of this source code is governed by a BSD-style license that can be
- // found in the LICENSE file.

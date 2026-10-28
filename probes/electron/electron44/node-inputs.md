@@ -69,15 +69,12 @@ are included, as is Rollup's native addon. Paths escaping the selected prefix
 are refused. This reads installed packages, without copying a compiler into
 the source tree or constructing another node_modules toolchain.
 
-TypeScript 7+ narrows `Element.innerHTML` to `string` in `lib.dom.d.ts`.
-Chromium WebUI assigns `TrustedHTML` values (`emptyHTML()`,
-`sanitizeInnerHtml()`) for Trusted Types CSP compliance.  Rather than
-falling back to a bundled older `tsc`, the
-`webui-trusted-html-ts7-compat.patch` adds a standalone ambient DOM type
-augmentation (`trusted_types_dom_compat.d.ts`) that widens `innerHTML`
-to accept `TrustedHTML`.  The augmentation is referenced from
-`static_types.ts` so every WebUI `ts_library` target inherits the fix
-through TypeScript's standard interface merging.
+TypeScript 7's DOM declarations type `innerHTML` as a string. The
+`webui-trusted-html-ts7-compat.patch` uses
+narrow type assertions at affected WebUI sinks, preserving the actual
+`TrustedHTML` objects. The icon wrapper generator emits these assertions only
+for TypeScript output. The toast visibility getter converts the newer
+`boolean | 'until-found'` type to the boolean expected by its callers.
 
 `emberbsd_node_provider_inputs` retains those package files as Ninja inputs.
 `emberbsd_typescript_definitions` is separately passed to the existing missing
