@@ -26,8 +26,6 @@ ROLE_VARIABLES = {
     'xz': 'TOOLS_PLATFORM.xz', 'xzcat': 'TOOLS_PLATFORM.xzcat',
     'install': 'TOOLS_PLATFORM.install',
     'nawk': 'EMBERBSD_NATIVE_AWK',
-    # Source downloads use the Ports libfetch client and its OpenSSL.
-    'fetch': 'TOOLS_PLATFORM.fetch',
     # Wayland protocol code generator for wayland consumers.
     'wayland-scanner': 'EMBERBSD_WAYLAND_SCANNER',
 }
@@ -106,7 +104,7 @@ def literal(value):
     return value
 
 
-def render(toolset, qt=()):
+def render(toolset, qt=(), fetch_mode='fetch'):
     lines = ['# Generated from the selected Ports host prefix. Do not edit.']
     family = toolset.compiler_family
     if family not in ('clang', 'gcc'):
@@ -138,9 +136,24 @@ def render(toolset, qt=()):
                   variable + '?= ${' + pinned + '}',
                   '.if "${' + variable + '}" != "' + value + '"',
                   '.error ' + variable + ' differs from the selected Ports tool', '.endif']
-    # pkgsrc otherwise selects the Darwin system curl for downloads.
-    lines += ['FETCH_USING?= fetch', '.if "${FETCH_USING}" != "fetch"',
-              '.error FETCH_USING must select the Ports fetch client', '.endif']
+    # The explicit manual mode supports only already available sources.
+    if fetch_mode == 'fetch':
+        value = literal(toolset.tool('fetch'))
+        if "'" in value:
+            from emberbsd_sdk.errors import SDKError
+            raise SDKError('The native make mapping does not support quotes in tool paths')
+        lines += ['_EMBER_SDK_FETCH:= ' + value,
+                  '.if "${_EMBER_SDK_FETCH}" != "' + value + '"',
+                  '.error _EMBER_SDK_FETCH differs from the selected Ports tool', '.endif',
+                  'TOOLS_PLATFORM.fetch?= ${_EMBER_SDK_FETCH}',
+                  '.if "${TOOLS_PLATFORM.fetch}" != "' + value + '"',
+                  '.error TOOLS_PLATFORM.fetch differs from the selected Ports tool', '.endif']
+    elif fetch_mode != 'manual':
+        from emberbsd_sdk.errors import SDKError
+        raise SDKError('Unsupported native fetch mode')
+    lines += ['FETCH_USING?= ' + fetch_mode,
+              '.if "${FETCH_USING}" != "' + fetch_mode + '"',
+              '.error FETCH_USING differs from the selected fetch mode', '.endif']
     # Native platform probes can run before the child's MAKECONF include.
     lines += ['.export EMBERBSD_NATIVE_AWK']
     flags = toolset.abi_flags
@@ -180,20 +193,21 @@ def selection(arguments):
                      if any(os.path.lexists(Path(arguments.host_prefix) / directory / role)
                             for directory in ('bin', 'gnu/bin')))
     toolset = load_host_prefix(arguments.host_prefix,
-                              required_roles=tuple(ROLE_VARIABLES) + tuple(ROLE_DIRECTORIES) + optional,
+                              required_roles=tuple(ROLE_VARIABLES) + tuple(ROLE_DIRECTORIES) + optional +
+                              (('fetch',) if arguments.fetch_mode == 'fetch' else ()),
                               compiler_family=arguments.compiler_family)
     if Path(sys.executable).resolve(strict=True) != Path(toolset.tool('python')).resolve(strict=True):
         raise SDKError('The adapter interpreter differs from the selected Ports Python')
     return toolset
 
 
-def write(toolset, destination, qt=()):
+def write(toolset, destination, qt=(), fetch_mode='fetch'):
     from emberbsd_sdk import paths
     from emberbsd_sdk.errors import SDKError
     if not Path(destination).is_absolute():
         raise SDKError('Use an absolute native include destination')
     output = Path(paths.canonical_new(destination))
-    data = render(toolset, qt)
+    data = render(toolset, qt, fetch_mode)
     # Replace only the requested configuration file, after a complete write.
     with tempfile.NamedTemporaryFile(prefix='.native-tools-', dir=output.parent,
                                      delete=False) as temporary:
@@ -212,6 +226,7 @@ def main(arguments):
     parser.add_argument('operation', choices=('write', 'verify'))
     parser.add_argument('--host-prefix', required=True)
     parser.add_argument('--compiler-family', choices=('clang', 'gcc'), default='clang')
+    parser.add_argument('--fetch-mode', choices=('fetch', 'manual'), default='fetch')
     parser.add_argument('--output')
     parser.add_argument('--makeconf')
     args = parser.parse_args(arguments)
@@ -223,7 +238,7 @@ def main(arguments):
     toolset = selection(args)
     qt = qt_host_paths(args.host_prefix, toolset.path) + mlir_host_tools(args.host_prefix)
     if args.operation == 'write':
-        print(json.dumps(write(toolset, args.output, qt)))
+        print(json.dumps(write(toolset, args.output, qt, args.fetch_mode)))
         return
     from emberbsd_sdk import paths
     from emberbsd_sdk.errors import SDKError
@@ -232,7 +247,7 @@ def main(arguments):
     path = Path(paths.canonical_existing(args.makeconf))
     paths.regular_file(str(path))
     data = path.read_bytes()
-    if data != render(toolset, qt):
+    if data != render(toolset, qt, args.fetch_mode):
         raise SDKError('Regenerate the native include for the selected host prefix')
     print('VERIFIED')
 

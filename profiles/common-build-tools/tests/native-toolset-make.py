@@ -38,7 +38,7 @@ def refused(function, *arguments):
 with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
     root = Path(temporary)
     directories = getattr(adapter, 'ROLE_DIRECTORIES', {})
-    tools = {role: str(root / ('sdk-' + role)) for role in (*adapter.ROLE_VARIABLES, *directories, *adapter.OPTIONAL_ROLES)}
+    tools = {role: str(root / ('sdk-' + role)) for role in (*adapter.ROLE_VARIABLES, *directories, *adapter.OPTIONAL_ROLES, 'fetch')}
     tools['llvm-tblgen'] = str(root / 'llvm/bin/llvm-tblgen')
     tools['python'] = sys.executable
     flags = {'cppflags': ('-isystem', '/native/include'), 'cflags': ('-fPIC',),
@@ -86,7 +86,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         assert set(call.kwargs) == {'required_roles', 'compiler_family'}
         assert call.kwargs['compiler_family'] == 'clang'
         assert b'EMBERBSD_HOST_COMPILER_FAMILY?= clang\n' in before
-        assert call.kwargs['required_roles'] == tuple(adapter.ROLE_VARIABLES) + tuple(directories) + ('clang-tblgen',)
+        assert call.kwargs['required_roles'] == tuple(adapter.ROLE_VARIABLES) + tuple(directories) + ('clang-tblgen', 'fetch')
         for role in ('bmake', 'gmake', 'xz', 'xzcat', 'install', 'fetch', 'wayland-scanner', 'llvm-tblgen',
                      'clang-tblgen'):
             assert role in call.kwargs['required_roles']
@@ -122,6 +122,16 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         # Without this mapping pkgsrc selects /usr/bin/curl on Darwin.
         assert b'TOOLS_PLATFORM.fetch?= ${_EMBER_SDK_FETCH}' in before
         assert b'FETCH_USING?= fetch\n' in before
+        with contextlib.redirect_stdout(io.StringIO()):
+            adapter.main(['write', *pins, '--fetch-mode', 'manual', '--output', str(destination)])
+        assert 'fetch' not in api.load_host_prefix.call_args.kwargs['required_roles']
+        manual = include.read_bytes()
+        assert b'FETCH_USING?= manual\n' in manual and b'TOOLS_PLATFORM.fetch' not in manual
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            adapter.main(['verify', *pins, '--fetch-mode', 'manual', '--makeconf', str(include)])
+        assert out.getvalue() == 'VERIFIED\n'
+        refused(adapter.main, ['verify', *pins, '--makeconf', str(include)])
+        adapter.write(selected, str(destination), adapter.qt_host_paths(str(root / 'host-pkg-llvm'), '/usr/bin:/bin'))
         # Cross wayland, lld and clang recipes need these native tools.
         for variable, value in (('EMBERBSD_WAYLAND_SCANNER', tools['wayland-scanner']),
                                 ('EMBERBSD_LLVM_NATIVE_TOOLS', str(root / 'llvm/bin')),
@@ -168,7 +178,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         # package in the prefix. A partial set is refused.
         assert b'EMBERBSD_MLIR_NATIVE_TOOLS' not in without_qt
         mlir_bin = root / 'host-pkg-llvm/bin'
-        mlir_bin.mkdir()
+        mlir_bin.mkdir(exist_ok=True)
         for count, tool in enumerate(adapter.MLIR_HOST_TOOLS):
             (mlir_bin / tool).write_text('#!/bin/sh\n')
             (mlir_bin / tool).chmod(0o755)
@@ -186,7 +196,6 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         assert output.getvalue() == 'VERIFIED\n'
         for tool in adapter.MLIR_HOST_TOOLS:
             (mlir_bin / tool).unlink()
-        mlir_bin.rmdir()
         answer_qt(qt_answers)
         adapter.write(selected, str(destination), qt)
         assert include.read_bytes() == before

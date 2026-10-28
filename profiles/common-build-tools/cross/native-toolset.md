@@ -22,6 +22,13 @@ Run them with Python from that prefix. Explicit `HOST_CC`, `HOST_CXX`,
 Native Clang table generation also selects `llvm-config` and `llvm-tblgen`
 from this prefix. Builds and generator version queries search only the prefix.
 
+The normal selection requires the Ports `fetch` client. To build the first
+`net/libfetch` and `net/fetch` from already available sources, explicitly
+select `--fetch-mode manual` when generating the include and set
+`EMBERBSD_HOST_FETCH_MODE=manual` in MAKECONF. A missing archive then fails
+instead of using a system downloader. After installing fetch, regenerate the
+normal include and omit the manual selection.
+
 ## Configure pkgsrc
 
 Generate the ordinary make-variable include with the selected Python:
