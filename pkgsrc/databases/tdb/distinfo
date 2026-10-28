@@ -8,5 +8,7 @@ SHA1 (patch-buildtools_wafsamba_samba__conftests_largefile.py) = a8666ddd65a960f
 SHA1 (patch-buildtools_wafsamba_samba__cross.py) = fd31a63efc9a28176bc969cf28ca9a3c6247d721
 SHA1 (patch-buildtools_wafsamba_samba__install.py) = d801340617da325e3bb70a90350e45cc8e383c2d
 SHA1 (patch-buildtools_wafsamba_samba__utils.py) = 0a587421870c1974175fadbb02dde215f35938f2
+SHA1 (patch-buildtools_wafsamba_samba__conftests_uname.py) = 01e76d87295e1f9ea3a2075644568fc001726430
+SHA1 (patch-buildtools_wafsamba_wscript) = 9b691d10f2e9330378c15d1182ac46ae7017ee78
 SHA1 (patch-common_mutex.c) = 4dc326c8a5e7230be8ab3ff9b6cc5548df90430f
 SHA1 (patch-third__party_waf_waflib_Tools_python.py) = f3250e0b54285b325ae73184848027d90a957dae

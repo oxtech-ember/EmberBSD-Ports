@@ -1,0 +1,19 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+
+Upstream status: not submitted.
+
+Only sysname influences this build; do not capture target machine and kernel metadata.
+
+--- buildtools/wafsamba/wscript.orig
++++ buildtools/wafsamba/wscript
+@@ -396,7 +396,7 @@
+ 
+     conf.env.GIT_LOCAL_CHANGES = Options.options.GIT_LOCAL_CHANGES
+ 
+-    conf.CHECK_UNAME()
++    conf.CHECK_UNAME(fields=('sysname',))
+ 
+     # see if we can compile and run a simple C program
+     conf.CHECK_CODE('printf("hello world")',
