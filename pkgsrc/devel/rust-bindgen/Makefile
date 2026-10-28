@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.6 2025/09/01 06:12:29 adam Exp $
 
 DISTNAME=	rust-bindgen-0.73.2
+PKGREVISION=	1
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=rust-lang/}
 GITHUB_TAG=	refs/tags/v${PKGVERSION_NOREV}
@@ -17,6 +18,7 @@ DEPENDS+=	rust-bin>=1.99.1:../../lang/rust-bin
 USE_LANGUAGES=	c c++
 USE_TOOLS+=	pax
 RUST_REQ=	1.99.1
+EMBER_CARGO_PATCH_SET=	yes
 CARGO_ARGS=	build --release --locked --package bindgen-cli ${DEFAULT_CARGO_ARGS}
 CARGO_INSTALL_ARGS= install --path bindgen-cli --locked --no-track \
 		--root ${DESTDIR}${PREFIX} --target-dir ${EMBER_CARGO_OUTPUT} ${DEFAULT_CARGO_ARGS}
