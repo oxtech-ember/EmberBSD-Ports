@@ -1,0 +1,4 @@
+@comment $NetBSD$
+include/nbytes.h
+lib/${NBYTES_LIB}
+lib/pkgconfig/nbytes.pc
