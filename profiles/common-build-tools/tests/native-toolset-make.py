@@ -57,6 +57,8 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
     clang_tblgen = root / 'host-pkg-llvm/bin/clang-tblgen'
     clang_tblgen.parent.mkdir(parents=True)
     clang_tblgen.touch()
+    wayland_scanner = root / 'host-pkg-llvm/bin/wayland-scanner'
+    wayland_scanner.touch()
     qt_prefix = root / 'host-pkg-llvm/qt6'
     (qt_prefix / 'libexec').mkdir(parents=True)
     (qt_prefix / 'bin').mkdir()
@@ -86,7 +88,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         assert set(call.kwargs) == {'required_roles', 'compiler_family'}
         assert call.kwargs['compiler_family'] == 'clang'
         assert b'EMBERBSD_HOST_COMPILER_FAMILY?= clang\n' in before
-        assert call.kwargs['required_roles'] == tuple(adapter.ROLE_VARIABLES) + tuple(directories) + ('clang-tblgen', 'fetch')
+        assert call.kwargs['required_roles'] == tuple(adapter.ROLE_VARIABLES) + tuple(directories) + ('clang-tblgen', 'wayland-scanner', 'fetch')
         for role in ('bmake', 'gmake', 'xz', 'xzcat', 'install', 'fetch', 'wayland-scanner', 'llvm-tblgen',
                      'clang-tblgen'):
             assert role in call.kwargs['required_roles']
@@ -180,6 +182,14 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         assert 'clang-tblgen' not in api.load_host_prefix.call_args.kwargs['required_roles']
         assert b'EMBERBSD_CLANG_TABLEGEN' not in include.read_bytes()
         assert include.read_bytes() == adapter.render(selected)
+        wayland_scanner.unlink()
+        del tools['wayland-scanner']
+        with contextlib.redirect_stdout(io.StringIO()):
+            adapter.main(['write', *pins, '--output', str(destination)])
+        assert 'wayland-scanner' not in api.load_host_prefix.call_args.kwargs['required_roles']
+        assert b'EMBERBSD_WAYLAND_SCANNER' not in include.read_bytes()
+        tools['wayland-scanner'] = str(root / 'sdk-wayland-scanner')
+        wayland_scanner.touch()
         tools['clang-tblgen'] = str(root / 'sdk-clang-tblgen')
         clang_tblgen.touch()
         adapter.write(selected, str(destination))

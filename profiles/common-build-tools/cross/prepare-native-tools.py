@@ -38,11 +38,10 @@ ROLE_VARIABLES = {
     'gsort': 'TOOLS_PLATFORM.sort', 'ghead': 'TOOLS_PLATFORM.head',
     'gcut': 'TOOLS_PLATFORM.cut', 'gdirname': 'TOOLS_PLATFORM.dirname',
     'gbasename': 'TOOLS_PLATFORM.basename',
-    # Wayland protocol code generator for wayland consumers.
-    'wayland-scanner': 'EMBERBSD_WAYLAND_SCANNER',
 }
-# Cross clang requires this tool, but unrelated packages do not.
-OPTIONAL_ROLES = {'clang-tblgen': 'EMBERBSD_CLANG_TABLEGEN'}
+# These generators are required only by their respective consumers.
+OPTIONAL_ROLES = {'clang-tblgen': 'EMBERBSD_CLANG_TABLEGEN',
+                  'wayland-scanner': 'EMBERBSD_WAYLAND_SCANNER'}
 # These variables select the directory of the role tool.
 ROLE_DIRECTORIES = {
     # Native LLVM TableGen tools for the lld and clang cross recipes.
