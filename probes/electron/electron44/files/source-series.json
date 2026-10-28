@@ -553,11 +553,6 @@
       "strip": 1
     },
     {
-      "path": "build-compiler-bsd-unused-but-set-global.patch",
-      "root": "",
-      "strip": 1
-    },
-    {
       "path": "base-icu-util-debug-globals-maybe-unused.patch",
       "root": "",
       "strip": 1
