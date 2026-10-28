@@ -3,12 +3,14 @@
 # Origin: EmberBSD, AI-assisted regression for the Clang-profile Fortran path.
 # Usage: MAKECONF=CROSS_MK_CONF BMAKE=BMAKE flang-cross-wrapper.sh EXPORTED_PKGSRC NEW_WORK [PKGPATH]
 # The Clang cross profile compiles Fortran with the build-host Flang and links
-# Flang-RT from the target sysroot. The test generates the real cwrappers of a
-# Fortran recipe, then compiles and links a program and a shared library
-# through the generated wrapper. It fails when the profile selects GCC, when
-# the driver is run from the host prefix (its lib directory joins the link),
-# when the link does not use the selected cross ld, or when a build-host
-# library directory reaches the link line or the produced objects.
+# the shared Flang-RT package through buildlink. The test generates the real
+# cwrappers and buildlink tree of a Fortran recipe, then compiles and links a
+# program and a shared library through the generated wrapper. It fails when
+# the profile selects GCC, when the recipe does not depend on lang/flang-rt,
+# when the driver is run from the host prefix (its lib directory joins the
+# link), when the link does not use the selected cross ld, when an output
+# does not need the one shared runtime or carries its own copy, or when a
+# build-host library directory reaches the link line or the produced objects.
 # Flang-RT must already be installed in the target sysroot.
 set -eu
 [ "$#" -ge 2 ] && [ "$#" -le 3 ] || {
@@ -23,7 +25,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 mk() { "$make" -C "$dir" WRKOBJDIR="$work/obj" "$@"; }
 names='PKG_FAIL_REASON FC DEPENDS BUILD_DEPENDS TOOL_DEPENDS EMBERBSD_FLANG PKG_FC LD
     TOOLBASE CROSS_DESTDIR CWRAPPERS_CONFIG_DIR WRAPPER_BINDIR _EMBER_FLANG_RT
-    MACHINE_GNU_PLATFORM'
+    MACHINE_GNU_PLATFORM BUILDLINK_DIR'
 set --
 for n in $names; do set -- "$@" -V "\${$n}"; done
 mk "$@" > "$work/vars" || fail "cannot query $pkgpath"
@@ -38,10 +40,15 @@ done < "$work/vars"
 case " $v_DEPENDS $v_BUILD_DEPENDS $v_TOOL_DEPENDS " in
 *gcc*) fail "the dependencies name GCC: $v_DEPENDS $v_BUILD_DEPENDS $v_TOOL_DEPENDS";;
 esac
+case " $v_DEPENDS " in
+*" flang-rt>="*":../../lang/flang-rt "*) ;;
+*) fail "$pkgpath does not depend on lang/flang-rt: $v_DEPENDS";;
+esac
 flang=$v_EMBERBSD_FLANG pkgfc=$v_PKG_FC ld=$v_LD toolbase=$v_TOOLBASE
 sysroot=$v_CROSS_DESTDIR cfg=$v_CWRAPPERS_CONFIG_DIR bin=$v_WRAPPER_BINDIR
-rtlib=$v__EMBER_FLANG_RT/lib/$v_MACHINE_GNU_PLATFORM
-case $rtlib in "$sysroot"/*) ;; *) fail "Flang-RT $rtlib is outside the sysroot";; esac
+bldir=$v_BUILDLINK_DIR
+major=${v__EMBER_FLANG_RT##*/}
+soname=libflang_rt.runtime.so.$major
 case $ld in /*) [ -x "$ld" ] || fail "LD $ld is not executable";; *) fail "LD $ld is not absolute";; esac
 
 mk "$pkgfc" >/dev/null || fail "cannot stage the package Flang driver"
@@ -51,6 +58,10 @@ mk "$pkgfc" >/dev/null || fail "cannot stage the package Flang driver"
 [ ! -e "${pkgfc%/bin/*}/lib" ] || fail "the staged driver has a lib directory beside it"
 mkdir -p "$cfg" "$bin"
 mk WRAPPER_TARGETS= generate-cwrappers >/dev/null || fail "cannot generate the cwrappers"
+# The per-package buildlink targets exist only past the barrier, the same
+# way bsd.pkg.debug.mk reaches them.
+mk _PKGSRC_BARRIER=yes buildlink-directories buildlink-flang-rt >/dev/null || fail "cannot link Flang-RT into the buildlink tree"
+[ -e "$bldir/lib/$soname" ] || fail "buildlink lacks $soname"
 [ -x "$bin/flang" ] || fail "cwrappers do not wrap the flang command name"
 grep -qxF "exec=$pkgfc" "$cfg/f77" || fail "the f77 wrapper does not run $pkgfc"
 for k in append_executable append_shared; do
@@ -78,7 +89,10 @@ cd "$work"
 "$bin/flang" -shared -o libhello.so shared.f90 2>shared.err || { cat shared.err >&2; fail "wrapped shared link failed"; }
 grep -qF "\"$ld\"" link.txt || fail "the link does not run $ld"
 grep -qF -- "-lflang_rt.runtime" link.txt || fail "the link does not use Flang-RT"
-tr ' ' '\n' < link.txt | grep -qxF "\"-L$rtlib\"" || fail "the link does not search the sysroot Flang-RT directory"
+tr ' ' '\n' < link.txt | grep -qxF "\"-L$bldir/lib\"" || fail "the link does not search the buildlink directory"
+for d in $(tr ' ' '\n' < link.txt | sed -n 's/^"-L\(.*\)"$/\1/p'); do
+    [ ! -e "$d/libflang_rt.runtime.a" ] || fail "the link searches the static Flang-RT in $d"
+done
 for leak in "$toolbase/lib" "${flang%/bin/*}/lib" /opt/homebrew /usr/local /Applications \
     /Library/Developer /System gcc gfortran; do
     ! grep -F -- "$leak" link.txt || fail "the link line names $leak"
@@ -90,5 +104,8 @@ for f in hello libhello.so; do
     ! grep -E 'RUNPATH|RPATH' "$f.dyn" | grep -F -e "$toolbase" -e "$sysroot" -e /Users -e /Volumes ||
         fail "$f records a build-host run path"
     ! grep NEEDED "$f.dyn" | grep -E 'gfortran|quadmath|libgcc' || fail "$f needs a GCC runtime"
+    grep -q "(NEEDED).*\\[$soname\\]" "$f.dyn" || fail "$f does not need $soname"
 done
-echo "PASS: Clang-profile Fortran compiles and links with host Flang, sysroot Flang-RT and $ld"
+! "$toolbase/bin/llvm-nm" -D --defined-only libhello.so | grep ' _Fortran' ||
+    fail "libhello.so carries its own Fortran runtime copy"
+echo "PASS: Clang-profile Fortran compiles and links with host Flang, shared $soname and $ld"

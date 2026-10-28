@@ -1,78 +1,92 @@
 #!/bin/sh
-# Causal test for lang/flang-rt: a cross Fortran program that uses the
-# intrinsic modules and the runtime must compile and link against the
-# installed package alone, and a Fortran shared library must link the
-# runtime.  Without flang-rt the module lookup or the link fails; a
-# runtime built without PIC fails the shared link.
+# Causal test for lang/flang-rt: Fortran programs and shared libraries link
+# the one installed shared runtime, so libraries loaded together share its
+# state.  Library A opens a unit and library B inquires it; that works only
+# if both use the same runtime copy.  The ELF check proves it at link level:
+# A, B and the program need the versioned runtime, and neither library
+# defines runtime entry points of its own.  A static or PIC-archive runtime
+# fails this check, as does a missing or unversioned shared runtime.
 #
-# Usage: cross-link.sh FLANG LD SYSROOT RESOURCE_DIR TARGET
-#   RESOURCE_DIR is the installed ${PREFIX}/lib/clang/<major> tree.
+# Usage: cross-link.sh FLANG LD SYSROOT RESOURCE_DIR LIBDIR TARGET READELF NM
+#   RESOURCE_DIR is the installed ${PREFIX}/lib/clang/<major> tree and
+#   LIBDIR the installed ${PREFIX}/lib.
 set -eu
 
-if [ "$#" -ne 5 ]; then
-	echo "usage: $0 FLANG LD SYSROOT RESOURCE_DIR TARGET" >&2
+if [ "$#" -ne 8 ]; then
+	echo "usage: $0 FLANG LD SYSROOT RESOURCE_DIR LIBDIR TARGET READELF NM" >&2
 	exit 2
 fi
-flang=$1 ld=$2 sysroot=$3 res=$4 target=$5
+flang=$1 ld=$2 sysroot=$3 res=$4 libdir=$5 target=$6 readelf=$7 nm=$8
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/flang-rt-test.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 
-cat > "$work/hello.f90" <<'F90'
-program hello
-  use iso_c_binding, only: c_int
+fail() {
+	echo "FAIL: $*" >&2
+	exit 1
+}
+
+major=${res##*/}
+soname=libflang_rt.runtime.so.$major
+for f in "$libdir/$soname" "$libdir/libflang_rt.runtime.so" \
+    "$res/finclude/flang/$target/iso_c_binding.mod"; do
+	[ -e "$f" ] || fail "missing $f"
+done
+for f in "$res/lib/$target/libflang_rt.runtime.a" \
+    "$libdir/libflang_rt.runtime.a"; do
+	[ ! -e "$f" ] || fail "static runtime installed: $f"
+done
+"$readelf" -d "$libdir/$soname" | grep -q "(SONAME).*\\[$soname\\]" ||
+	fail "runtime SONAME is not $soname"
+
+fc() {
+	"$flang" --target="$target" --sysroot="$sysroot" -fuse-ld="$ld" \
+	    -fintrinsic-modules-path="$res/finclude/flang/$target" \
+	    -L"$libdir" "$@"
+}
+
+cat > "$work/a.f90" <<'F90'
+subroutine open_shared_unit()
+  open (unit=42, status='scratch', form='formatted')
+  write (42, '(a)') 'flang shared runtime'
+end subroutine open_shared_unit
+F90
+cat > "$work/b.f90" <<'F90'
+logical function shared_unit_open()
+  inquire (unit=42, opened=shared_unit_open)
+end function shared_unit_open
+F90
+cat > "$work/main.f90" <<'F90'
+program shared_runtime
   use iso_fortran_env, only: output_unit
-  integer(c_int) :: i, s
-  s = 0
-  do i = 1, 6
-    s = s + i
-  end do
-  write (output_unit, '(a,i0)') 'flang sum ', s * 2
-end program hello
+  logical, external :: shared_unit_open
+  call open_shared_unit()
+  if (.not. shared_unit_open()) error stop 'unit 42 is not shared'
+  write (output_unit, '(a)') 'flang shared runtime ok'
+end program shared_runtime
 F90
 
-for f in "$res/lib/$target/libflang_rt.runtime.a" \
-    "$res/finclude/flang/$target/iso_c_binding.mod"; do
-	if [ ! -f "$f" ]; then
-		echo "FAIL: missing $f" >&2
-		exit 1
+fc -fPIC -shared -o "$work/liba.so" "$work/a.f90" ||
+	fail "cross Fortran shared library A link failed"
+fc -fPIC -shared -o "$work/libb.so" "$work/b.f90" ||
+	fail "cross Fortran shared library B link failed"
+fc -o "$work/main" "$work/main.f90" -L"$work" -la -lb ||
+	fail "cross Fortran program link failed"
+
+for o in liba.so libb.so main; do
+	case $(file -b "$work/$o") in
+	ELF*64-bit*aarch64*) ;;
+	*) fail "unexpected $o: $(file -b "$work/$o")" ;;
+	esac
+	"$readelf" -d "$work/$o" | grep -q "(NEEDED).*\\[$soname\\]" ||
+		fail "$o does not need $soname"
+done
+for o in liba.so libb.so; do
+	if "$nm" -D --defined-only "$work/$o" | grep -q ' _Fortran'; then
+		fail "$o carries its own Fortran runtime copy"
 	fi
 done
-
-if ! "$flang" --target="$target" --sysroot="$sysroot" \
-    -fuse-ld="$ld" \
-    -fintrinsic-modules-path="$res/finclude/flang/$target" \
-    -L"$res/lib/$target" \
-    -o "$work/hello" "$work/hello.f90"; then
-	echo "FAIL: cross compile or link failed" >&2
-	exit 1
-fi
-
-case $(file -b "$work/hello") in
-ELF*64-bit*ARM\ aarch64*|ELF*64-bit*aarch64*) ;;
-*)
-	echo "FAIL: unexpected output: $(file -b "$work/hello")" >&2
-	exit 1
-	;;
-esac
-cat > "$work/shared.f90" <<'F90'
-subroutine hello(n)
-  integer :: n
-  print *, 'flang shared ', n
-end subroutine hello
-F90
-if ! "$flang" --target="$target" --sysroot="$sysroot" \
-    -fuse-ld="$ld" -fPIC -shared \
-    -L"$res/lib/$target" \
-    -o "$work/libhello.so" "$work/shared.f90"; then
-	echo "FAIL: cross Fortran shared library link failed" >&2
-	exit 1
-fi
-case $(file -b "$work/libhello.so") in
-ELF*64-bit*shared\ object*aarch64*) ;;
-*)
-	echo "FAIL: unexpected shared output: $(file -b "$work/libhello.so")" >&2
-	exit 1
-	;;
-esac
-echo "PASS: cross Fortran program and shared library link against flang-rt"
+"$nm" -D --defined-only "$libdir/$soname" |
+    grep -q ' _FortranAioInquireOpened$\| _FortranAioBeginOpenUnit$' ||
+	fail "$soname does not define the I/O unit entry points"
+echo "PASS: Fortran libraries and program share the one $soname"

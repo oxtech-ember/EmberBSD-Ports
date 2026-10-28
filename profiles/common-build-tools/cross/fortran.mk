@@ -9,7 +9,8 @@
 .if ${TOOLS_USE_CROSS_COMPILE:Uno:tl} == "yes" && \
     (!empty(USE_LANGUAGES:Mfortran) || !empty(USE_LANGUAGES:Mfortran77))
 .if ${EMBERBSD_CROSS_COMPILER_FAMILY:Uclang} == "clang"
-# Host Flang compiles for the target and links Flang-RT from the sysroot.
+# Host Flang compiles for the target and links the shared Flang-RT, a
+# normal runtime dependency like libgfortran: one copy per process.
 # The driver searches the lib directory beside its real path, so packages run
 # a hard link that has no host library directory beside it.
 .if empty(EMBERBSD_FLANG:M/*) || !exists(${EMBERBSD_FLANG})
@@ -23,10 +24,20 @@ _EMBER_FLANG_RESOURCE=${CROSS_DESTDIR}/${_EMBER_TARGET_RUNTIME_PREFIX}/lib/clang
 PKG_FAIL_REASON+="EMBERBSD_FLANG must match the major version of the SDK Clang runtime"
 .endif
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-BUILD_DEPENDS+=flang-rt>=${_EMBER_FLANG_VERSION}nb1:../../lang/flang-rt
-.elif !exists(${_EMBER_FLANG_RT}/lib/${_EMBER_CROSS_TRIPLET}/libflang_rt.runtime.a)
+.include "${PKGSRCDIR}/lang/flang-rt/buildlink3.mk"
+_EMBER_FLANG_RT_LIBDIR=${BUILDLINK_DIR}/lib
+.else
+# Fake-cross Libtool is a native host script; it links Flang-RT from the
+# sysroot but never registers the target package in the native database.
+_EMBER_FLANG_RT_LIBDIR=${CROSS_DESTDIR}${CROSS_LOCALBASE}/lib
+.if !exists(${_EMBER_FLANG_RT_LIBDIR}/libflang_rt.runtime.so.${_EMBER_FLANG_MAJOR})
 PKG_FAIL_REASON+="Install lang/flang-rt into the target sysroot before fake-cross Fortran"
 .endif
+.endif
+# Flang adds -lflang_rt.runtime itself, also to links without the package
+# LDFLAGS. The wrappers drop -L directories that buildlink does not know;
+# the linker reads this one directly.
+CWRAPPERS_APPEND_LINK.f77+=-Wl,-L${_EMBER_FLANG_RT_LIBDIR}
 FC=flang
 PKG_FC=${WRKDIR}/.flang/bin/flang
 override-tools: ${PKG_FC}
@@ -42,9 +53,6 @@ CWRAPPERS_APPEND.f77+=-resource-dir=${_EMBER_FLANG_RESOURCE}
 CWRAPPERS_APPEND.f77+=-fintrinsic-modules-path=${_EMBER_FLANG_RT}/finclude/flang/${_EMBER_CROSS_TRIPLET}
 CWRAPPERS_APPEND_LINK.f77+=-fuse-ld=${LD}
 CWRAPPERS_APPEND_LINK.f77+=--rtlib=compiler-rt
-# The wrappers drop -L directories that buildlink does not know; the linker
-# reads this one directly.
-CWRAPPERS_APPEND_LINK.f77+=-Wl,-L${_EMBER_FLANG_RT}/lib/${_EMBER_CROSS_TRIPLET}
 CWRAPPERS_APPEND_LINK.f77+=-Wl,-rpath-link,${CROSS_DESTDIR}/usr/lib
 CWRAPPERS_APPEND_LINK.f77+=-Wl,-rpath-link,${CROSS_DESTDIR}${CROSS_LOCALBASE}/lib
 .endif

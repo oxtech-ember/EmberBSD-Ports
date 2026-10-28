@@ -45,4 +45,5 @@ lib/clang/23/finclude/flang/${FLANG_RT_TRIPLE}/ieee_features.mod
 lib/clang/23/finclude/flang/${FLANG_RT_TRIPLE}/iso_c_binding.mod
 lib/clang/23/finclude/flang/${FLANG_RT_TRIPLE}/iso_fortran_env.mod
 lib/clang/23/finclude/flang/${FLANG_RT_TRIPLE}/iso_fortran_env_impl.mod
-lib/clang/23/lib/${FLANG_RT_TRIPLE}/libflang_rt.runtime.a
+lib/libflang_rt.runtime.so
+lib/libflang_rt.runtime.so.23
