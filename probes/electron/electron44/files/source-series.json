@@ -621,6 +621,11 @@
       "path": "media-base-audio-bus-frames-size-t.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "components-signin-cross-device-signin-bsd-guard.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
