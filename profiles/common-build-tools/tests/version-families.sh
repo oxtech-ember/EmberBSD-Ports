@@ -45,11 +45,15 @@ for knob in lang/lua/luaversion.mk:LUA_VERSION_DEFAULT:55 \
     lang/php/phpversion.mk:PHP_VERSIONS_ACCEPTED:85 \
     mk/pgsql.buildlink3.mk:PGSQL_VERSIONS_ACCEPTED:18 \
     mk/mysql.buildlink3.mk:MYSQL_VERSIONS_ACCEPTED:mariadb118 \
-    lang/nodejs/nodeversion.mk:NODE_VERSIONS_ACCEPTED:26; do
+    lang/nodejs/nodeversion.mk:NODE_VERSIONS_ACCEPTED:26 \
+    mk/bdb.buildlink3.mk:BDB_DEFAULT:db18; do
     file=${knob%%:*} rest=${knob#*:}
     grep -Eq "^${rest%%:*}[?]=[[:space:]]+${rest#*:}\$" "$pkgsrc/$file" ||
         { echo "$file does not offer only ${rest#*:} in ${rest%%:*}" >&2; exit 1; }
 done
+# Berkeley DB: db18, plus the built-in db-1.85 interface where there is one.
+grep -Eq '^_BDB_PKGS[?]=[[:space:]]+db1 db18$' "$pkgsrc/mk/bdb.buildlink3.mk" ||
+    { echo "mk/bdb.buildlink3.mk offers more than db1 and db18" >&2; exit 1; }
 # The kept Ruby is the newest upstream release and its distinfo matches.
 grep -Eq '^RUBY40_VERSION=[[:space:]]+4[.]0[.]9$' "$pkgsrc/lang/ruby/rubyversion.mk" &&
     grep -Fq 'SHA512 (ruby-4.0.9.tar.xz) = ' "$pkgsrc/lang/ruby40/distinfo" ||

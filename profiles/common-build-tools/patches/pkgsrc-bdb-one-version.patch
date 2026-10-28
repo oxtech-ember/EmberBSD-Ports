@@ -1,0 +1,54 @@
+Origin: EmberBSD, AI-assisted.
+EmberBSD keeps one Berkeley DB, the newest (db18, databases/db18).
+bdb.buildlink3.mk defaulted to db4 and offered db2 to db18. It now
+offers only db18, plus the built-in db1 (db-1.85) interface, and
+defaults to db18. Not submitted upstream.
+
+--- a/mk/bdb.buildlink3.mk
++++ b/mk/bdb.buildlink3.mk
+@@ -2,12 +2,9 @@
+ #
+ # This Makefile fragment is meant to be included by packages that
+ # require a Berkeley DB (BDB) implementation and that are not restricted
+-# to a single one. The available BDB implementations are db1
+-# (if builtin) and db[23456].
++# to a single one. EmberBSD keeps one Berkeley DB, db18; db1 is the
++# built-in db-1.85 interface where the base system has one.
+ #
+-# This Makefile cannot handle packages that can use only a subset of
+-# { db2 db3 db4 db5 db6 db18 }.
+-#
+ # User-settable variables:
+ #
+ # BDB_DEFAULT
+@@ -18,8 +15,8 @@
+ #	FIXME: Improve the wording of the text above so that one can
+ #	understand it.
+ #
+-#	Possible: db1 db2 db3 db4 db5 db6 db18
+-#	Default: db4
++#	Possible: db1 db18
++#	Default: db18
+ #
+ # BDB185_DEFAULT
+ #	The package we use when a db-1.85 interface is required.
+@@ -78,9 +75,9 @@
+ # _BDB_PKGS is an exhaustive list of all of the Berkeley DB
+ # implementations that may be used with bdb.buildlink3.mk.
+ #
+-_BDB_PKGS?=	db1 db2 db3 db4 db5 db6 db18
++_BDB_PKGS?=	db1 db18
+ 
+-BDB_DEFAULT?=	db4
++BDB_DEFAULT?=	db18
+ BDB_ACCEPTED?=	${_BDB_PKGS}
+ 
+ # Decide what to use when DB185 is required.  If builtin db1 is
+@@ -95,7 +92,6 @@
+ BDB185_DEFAULT?=	${BDB_DEFAULT}
+ .  endif
+ 
+-_BDB_PKGSRCDIR.db2=		../../databases/db
+ .  for _bdb_ in ${_BDB_PKGS}
+ _BDB_PKGSRCDIR.${_bdb_}?=	../../databases/${_bdb_}
+ .  endfor
