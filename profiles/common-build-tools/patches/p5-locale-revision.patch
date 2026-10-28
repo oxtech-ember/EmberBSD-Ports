@@ -1,0 +1,20 @@
+--- a/misc/p5-Locale-libintl/Makefile
++++ b/misc/p5-Locale-libintl/Makefile
+@@ -2,7 +2,7 @@
+ 
+ DISTNAME=	libintl-perl-1.37
+ PKGNAME=	p5-${DISTNAME:S/libintl-perl/Locale-libintl/}
+-PKGREVISION=	1
++PKGREVISION=	2
+ CATEGORIES=	misc devel perl5
+ MASTER_SITES=	${MASTER_SITE_PERL_CPAN:=../by-authors/id/G/GU/GUIDO/}
+ 
+@@ -11,7 +11,7 @@
+ COMMENT=	Perl internationalization library
+ LICENSE=	gnu-lgpl-v2.1
+ 
+-USE_LANGUAGES=	# empty
++USE_LANGUAGES=	c
+ 
+ PERL5_PACKLIST=			auto/libintl-perl/.packlist
+ # Interpreter /bin/false

@@ -18,6 +18,7 @@ SHA1 (patch-cpan_podlators_lib_Pod_Text.pm) = 64a111d8fa2c15eff000b930ce908d6417
 SHA1 (patch-cpan_podlators_lib_Pod_Text_Color.pm) = 1272cd8676ee32fcb50a2017616b1b7c18a8bae9
 SHA1 (patch-cpan_podlators_lib_Pod_Text_Overstrike.pm) = 3c937735505a4ca171322ed308f19c0cdff0fbcd
 SHA1 (patch-cpan_podlators_lib_Pod_Text_Termcap.pm) = 0a859923e2f288bb790f9808a5388bd602e3745e
+SHA1 (patch-ember_scoped_build_config) = 2543750c850fa694262b6e4307df4c6e7f4b99af
 SHA1 (patch-ext_Errno_Errno__pm.PL) = 75af0bce40f47e6900c36edd76354af83fe0e568
 SHA1 (patch-hints_cygwin.sh) = 5e2e7179336c9bc085bd2e83d22755a235ea1a4a
 SHA1 (patch-hints_linux.sh) = 4baa8f80695687abb53d4f4e1830cf86db5b2bf7

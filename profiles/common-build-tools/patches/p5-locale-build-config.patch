@@ -1,0 +1,16 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+Use the same scoped build configuration as ExtUtils for the link probe.
+
+--- Makefile.PL.orig
++++ Makefile.PL
+@@ -32,7 +32,7 @@
+ 
+ sub ac_try_link;
+ 
+-use Config;
++use ExtUtils::MakeMaker::Config;
+ 
+ # Now try to compile and link a simple test program that uses all
+ # gettext facilities we need.  Failure of the test is not fatal

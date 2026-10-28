@@ -108,6 +108,34 @@ PERL5_CONFIGURE_DIRS?=	${CONFIGURE_DIRS}
 MAKE_ENV+=	LC_ALL=C
 MAKE_ENV+=	PERL_MM_USE_DEFAULT=1
 
+# A cross module runs the selected host Perl and gives ExtUtils a separate
+# target build context. Target Config files are data; target XS is not loaded.
+.if ${USE_CROSS_COMPILE:Uno} == "yes"
+.  if ${PERL5_MODULE_TYPE} != "MakeMaker"
+PKG_FAIL_REASON+= "Cross Perl modules currently support MakeMaker only."
+.  endif
+.  if !defined(EMBERBSD_PERL_TARGET_CONFIG) || !defined(EMBERBSD_CROSS_BUILD_PERL)
+PKG_FAIL_REASON+= "Cross Perl modules require selected host Perl and target Config.pm."
+.  else
+_PERL5_BUILD_INTERPRETER= ${EMBERBSD_CROSS_BUILD_PERL}
+_PERL5_BUILD_CONFIG= ${WRKDIR}/ember-perl-build-config.json
+_PERL5_CONFIG_HELPER:= ${.PARSEDIR}/files/prepare-build-config.py
+_PERL5_HOST_LIB!= ${EMBERBSD_CROSS_BUILD_PERL:Q} -MConfig -e 'print $$Config{privlibexp}'
+MAKE_ENV+= EMBERBSD_PERL_BUILD_CONFIG=${_PERL5_BUILD_CONFIG:Q}
+MAKE_PARAMS.makemaker+= PERL_LIB=${_PERL5_HOST_LIB:Q}
+MAKE_PARAMS.makemaker+= PERL_ARCHLIB=${EMBERBSD_CROSS_SYSROOT}${LOCALBASE}/${PERL5_SUB_INSTALLARCHLIB}
+.PHONY: ember-perl-build-config
+ember-perl-build-config:
+	${RUN}${EMBERBSD_CROSS_BUILD_PYTHON:Q} -B ${_PERL5_CONFIG_HELPER:Q} \
+	    --host-perl ${EMBERBSD_CROSS_BUILD_PERL:Q} --target-config ${EMBERBSD_PERL_TARGET_CONFIG:Q} \
+	    --sysroot ${EMBERBSD_CROSS_SYSROOT:Q} --cc ${WRAPPER_BINDIR:Q}/${CC:Q} \
+	    --ld ${WRAPPER_BINDIR:Q}/${CC:Q} --ar ${AR:Q} --ranlib ${RANLIB:Q} \
+	    --cflags ${CFLAGS:Q} --ldflags ${LDFLAGS:Q} --output ${_PERL5_BUILD_CONFIG:Q}
+perl5-configure: ember-perl-build-config
+.  endif
+.endif
+_PERL5_BUILD_INTERPRETER?= ${BUILDLINK_PREFIX.perl}/bin/perl
+
 # All pkgsrc-installed Perl modules are installed into the "vendor"
 # directories.
 #
@@ -125,7 +153,7 @@ do-makemaker-configure:
 		if ${TEST} -f "$$dir"/Makefile.PL; then			\
 			cd "$$dir";					\
 			${SETENV} ${MAKE_ENV}				\
-				${BUILDLINK_PREFIX.perl}/bin/perl Makefile.PL ${MAKE_PARAMS};	\
+				${_PERL5_BUILD_INTERPRETER:Q} Makefile.PL ${MAKE_PARAMS};	\
 		fi;							\
 	done
 
@@ -137,7 +165,7 @@ do-modbuild-configure:
 		if ${TEST} -f "$$dir"/Build.PL; then			\
 			cd "$$dir";					\
 			${SETENV} ${MAKE_ENV}				\
-				${BUILDLINK_PREFIX.perl}/bin/perl Build.PL ${MAKE_PARAMS};	\
+				${_PERL5_BUILD_INTERPRETER:Q} Build.PL ${MAKE_PARAMS};	\
 		fi;							\
 	done
 
@@ -153,7 +181,7 @@ do-modinst-configure:
 		if ${TEST} -f "$$dir"/Makefile.PL; then			\
 			cd "$$dir";					\
 			${SETENV} ${MAKE_ENV}				\
-				${BUILDLINK_PREFIX.perl}/bin/perl Makefile.PL --skipdeps ${MAKE_PARAMS};	\
+				${_PERL5_BUILD_INTERPRETER:Q} Makefile.PL --skipdeps ${MAKE_PARAMS};	\
 		fi;							\
 	done
 .  else
@@ -163,7 +191,7 @@ do-modinst-configure:
 		if ${TEST} -f "$$dir"/Makefile.PL; then			\
 			cd "$$dir";					\
 			${SETENV} ${MAKE_ENV}				\
-				${BUILDLINK_PREFIX.perl}/bin/perl Makefile.PL --skipdeps ${MAKE_PARAMS};	\
+				${_PERL5_BUILD_INTERPRETER:Q} Makefile.PL --skipdeps ${MAKE_PARAMS};	\
 		fi;							\
 	done
 .  endif
