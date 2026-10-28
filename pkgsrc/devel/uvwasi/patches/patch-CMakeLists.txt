@@ -1,6 +1,8 @@
 # $NetBSD$
 
 Require shared libuv and export its portable linker name.
+Give the shared library the API-major SONAME of the upstream version.
+Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
 
 --- CMakeLists.txt.orig
 +++ CMakeLists.txt
@@ -35,7 +37,7 @@ Require shared libuv and export its portable linker name.
  
  ## uvwasi source code files.
  set(uvwasi_sources
-@@ -104,22 +88,22 @@
+@@ -104,23 +88,25 @@
  set_target_properties(uvwasi_a PROPERTIES OUTPUT_NAME "uvwasi")
  target_compile_definitions(uvwasi_a PRIVATE ${uvwasi_defines})
  target_compile_options(uvwasi_a PRIVATE ${uvwasi_cflags})
@@ -60,5 +62,8 @@ Require shared libuv and export its portable linker name.
 -    target_link_libraries(uvwasi PRIVATE ${LIBUV_LIBRARIES})
 +    target_link_libraries(uvwasi PUBLIC ${LIBUV_LIBRARIES})
  endif()
++# Upstream declares no ABI version; use the API major of the semantic version.
++set_target_properties(uvwasi PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
  
  
+ ## Test targets.

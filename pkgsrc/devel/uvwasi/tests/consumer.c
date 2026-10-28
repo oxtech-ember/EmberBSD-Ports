@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+/* Origin: EmberBSD contributors (AI-assisted). Consumer for consumer.py. */
 #include <uvwasi.h>
 
 int main(void)

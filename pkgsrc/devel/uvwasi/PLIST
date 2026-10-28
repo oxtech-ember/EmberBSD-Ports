@@ -8,4 +8,6 @@ lib/cmake/uvwasi/uvwasiTargets-noconfig.cmake
 lib/cmake/uvwasi/uvwasiTargets.cmake
 lib/libuvwasi.a
 lib/${UVWASI_SHARED}
+lib/${UVWASI_SONAME}
+lib/${UVWASI_VERSIONED}
 lib/pkgconfig/uvwasi.pc
