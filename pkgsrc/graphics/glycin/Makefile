@@ -1,6 +1,7 @@
 # $NetBSD$
 
 DISTNAME=	glycin-2.2.3
+PKGREVISION=	1
 CATEGORIES=	graphics gnome
 MASTER_SITES=	${MASTER_SITE_GNOME:=sources/glycin/2.2/}
 EXTRACT_SUFX=	.tar.xz
