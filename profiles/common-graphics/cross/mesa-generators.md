@@ -24,7 +24,8 @@ The native LLVM and Clang libraries and the generators need a compatible host
 C++ runtime. GCC16 remains an explicit host compiler alternative.
 
 The current inputs are Mesa 26.2.5, LLVM/Clang 23.1.4, Translator 23.1.2,
-SPIRV-Tools 2026.4 and SPIRV-Headers 1.4.363.0. Use the common Ports patches.
+SPIRV-Tools 2026.4, SPIRV-Headers 1.4.363.0 and GoogleTest 1.18.0.
+Use the common Ports patches and the external GoogleTest provider for tests.
 The producer checks package predicates, Python module origins and the libyaml extension.
 Build missing dependencies through their normal pkgsrc recipes before starting this producer.
 
@@ -41,8 +42,8 @@ It still checks the genuine upstream common shader command and compile/link meta
 Assertions, SPIR-V validation and upstream tests remain enabled.
 Mesa RTTI follows the installed LLVM configuration.
 
-The source must match the pinned Mesa archive and the two exact source patches:
-the existing A733 BVNC addition and the shared conditional Objective-C language patch.
+The source must match the pinned Mesa archive and the applicable source patches:
+the A733 BVNC addition and the shared Objective-C and GoogleTest patches.
 The latter keeps Objective-C enabled for macOS graphics consumers.
 Generators without those consumers use only C and C++.
 

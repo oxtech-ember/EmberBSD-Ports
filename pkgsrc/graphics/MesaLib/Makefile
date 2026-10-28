@@ -101,6 +101,9 @@ MESON_ARGS+=	-Dzlib=enabled -Dzstd=enabled -Ddisplay-info=disabled
 MESON_ARGS+=	-Dlibunwind=disabled -Dvalgrind=disabled
 # pkgsrc supplies --buildtype=plain and the selected compiler optimization.
 MESON_ARGS+=	-Dbuild-tests=true -Db_lto=false
+BUILDLINK_API_DEPENDS.googletest+= googletest>=1.18.0
+BUILDLINK_DEPMETHOD.googletest= build
+.include "../../devel/googletest/buildlink3.mk"
 PKGCONFIG_OVERRIDE_STAGE=	pre-install
 .for pc in gl glx egl gbm glesv1_cm glesv2 dri
 PKGCONFIG_OVERRIDE+=	output/meson-private/${pc}.pc

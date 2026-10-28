@@ -23,7 +23,7 @@ DEPENDENCIES = (
     'py315-lxml>=6.1.3', 'py315-rnc2rng>=2.7.0',
     'py315-rply>=0.7.8', 'py315-appdirs>=1.4.4',
     'llvm>=23.1.4<23.1.5', 'clang>=23.1.4<23.1.5',
-    'spirv-headers>=1.4.363.0', 'spirv-tools>=2026.4',
+    'googletest>=1.18.0', 'spirv-headers>=1.4.363.0', 'spirv-tools>=2026.4',
     'spirv-llvm-translator>=23.1.2<23.2',
 )
 
@@ -200,8 +200,10 @@ def build(arguments, sdk_root):
         graphics = PORTS / 'profiles/common-graphics'
         helpers = PORTS / 'probes/a733-accelerators/host-tools'
         objc_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-meson.build-host-objc'
+        gtest_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_gtest_include_mesa-gtest-extras.h'
+        gtest_provider_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_gtest_meson.build'
         scripts = [Path(__file__).resolve(), graphics / 'cross/seal-mesa-generators.py',
-                   helpers / 'mesa-26.2.4-pco-bvnc.patch', objc_patch,
+                   helpers / 'mesa-26.2.4-pco-bvnc.patch', objc_patch, gtest_patch, gtest_provider_patch,
                    PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h',
                    graphics / 'sources.tsv']
         scripts.append(Path(sdk_source.__file__).resolve())
@@ -265,6 +267,10 @@ def build(arguments, sdk_root):
             run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p1', '-d', source, '-i', helpers / 'mesa-26.2.4-pco-bvnc.patch'], 'mesa-bvnc-patch')
             run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p0',
                  '-d', source, '-i', objc_patch], 'mesa-host-objc-patch')
+            run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p0',
+                 '-d', source, '-i', gtest_patch], 'mesa-gtest-patch')
+            run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p0',
+                 '-d', source, '-i', gtest_provider_patch], 'mesa-gtest-provider-patch')
             source.rename(work / 'mesa-source')
             extract.rmdir()
             native_work = work / 'native'
