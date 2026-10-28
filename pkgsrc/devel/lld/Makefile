@@ -35,7 +35,7 @@ BUILDLINK_API_DEPENDS.llvm+=	llvm-${LLVM_VERSION}{,nb*}
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_DIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.llvm}/lib/cmake/llvm
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_CMAKE_DIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.llvm}/lib/cmake/llvm
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-.for _lld_host_input in EMBERBSD_CROSS_BUILD_PYTHON EMBERBSD_CROSS_LLVM_CONFIG EMBERBSD_LLVM_NATIVE_TOOLS
+.for _lld_host_input in EMBERBSD_CROSS_BUILD_PYTHON EMBERBSD_LLVM_NATIVE_TOOLS
 .if empty(${_lld_host_input}:M/*) || !exists(${${_lld_host_input}})
 PKG_FAIL_REASON+= "${_lld_host_input} must select the matching build-host tool"
 .endif
@@ -44,7 +44,7 @@ PKG_FAIL_REASON+= "${_lld_host_input} must select the matching build-host tool"
 # buildlink headers, as for the shared graphics introspection consumers.
 _EMBERBSD_LLD_REAL_SYSROOT!= cd ${CROSS_DESTDIR:Q} && pwd -P
 BUILDLINK_TRANSFORM+= I:${_EMBERBSD_LLD_REAL_SYSROOT}${PREFIX}:${BUILDLINK_DIR}
-LLVM_CONFIG_PATH= ${EMBERBSD_CROSS_LLVM_CONFIG}
+.include "../../lang/llvm/cross-llvm-config.mk"
 CMAKE_CONFIGURE_ARGS+= -DLLVM_TABLEGEN_EXE=${EMBERBSD_LLVM_NATIVE_TOOLS:Q}/llvm-tblgen
 TOOL_DEPENDS+= ${PYPKGPREFIX}-llvm-lit>=${LLVM_VERSION}:../../devel/py-llvm-lit
 CMAKE_CONFIGURE_ARGS+= -DLLVM_EXTERNAL_LIT=${TOOLBASE:Q}/bin/llvm-lit

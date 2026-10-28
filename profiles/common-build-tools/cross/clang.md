@@ -30,12 +30,20 @@ Add these inputs to the private MAKECONF used with the
 ```make
 EMBERBSD_LLVM_NATIVE_TOOLS=/absolute/native-llvm/bin
 EMBERBSD_CLANG_TABLEGEN=/absolute/new-clang-host-work/native/bin/clang-tblgen
-EMBERBSD_CROSS_LLVM_CONFIG=/absolute/target-metadata/bin/llvm-config
 EMBERBSD_CROSS_BUILD_PYTHON=/absolute/host-python3.15
 EMBERBSD_CROSS_BUILD_PERL=/absolute/host-perl5.44
 ```
 
-The llvm-config here is the native metadata executable derived from the
+Clang and LLD find the target LLVM with a build-host llvm-config.
+Before configure, `lang/llvm/cross-llvm-config.mk` makes it from the
+lang/llvm build tree. The dependency order builds lang/llvm first; keep its
+WRKDIR until Clang and LLD are configured. The step builds the native
+generator tree with `build-llvm-native.py` and then runs
+`scripts/build-llvm-config.py`. Both write below
+`${WRKOBJDIR}/.emberbsd-cross/<target triple>`, and later builds reuse the
+sealed result. Set `EMBERBSD_CROSS_LLVM_CONFIG` to use a different one.
+
+That llvm-config is the native metadata executable derived from the
 actual target LLVM build, following the
 [metadata workflow](../../common-graphics/cross/llvm-config.md). It is neither
 the target ELF executable nor the host LLVM installation's metadata.

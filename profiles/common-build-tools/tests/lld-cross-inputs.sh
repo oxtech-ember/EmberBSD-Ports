@@ -10,7 +10,7 @@ mkdir "$work"
 query() { "$BMAKE" -C "$pkgsrc/devel/lld" MAKECONF="$makeconf" "$@"; }
 query -V '${PKG_FAIL_REASON}' > "$work/valid.log"
 [ ! -s "$work/valid.log" ] || [ -z "$(cat "$work/valid.log")" ]
-for variable in EMBERBSD_CROSS_BUILD_PYTHON EMBERBSD_CROSS_LLVM_CONFIG EMBERBSD_LLVM_NATIVE_TOOLS; do
+for variable in EMBERBSD_CROSS_BUILD_PYTHON EMBERBSD_LLVM_NATIVE_TOOLS; do
     query "$variable=/nonexistent-ember-tool" -V '${PKG_FAIL_REASON}' > "$work/$variable-missing.log"
     grep -q 'must select the matching build-host tool' "$work/$variable-missing.log"
 done
