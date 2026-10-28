@@ -1,12 +1,13 @@
 # Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
 # Rebuild the installed common modules after the initial capability repair.
+# Revision 8: Darwin.cmake no longer searches Homebrew, Fink or MacPorts.
 --- a/devel/cmake/Makefile
 +++ b/devel/cmake/Makefile
 @@ -3,6 +3,6 @@
  .include "Makefile.common"
  
 -PKGREVISION=	4
-+PKGREVISION=	7
++PKGREVISION=	8
  
  COMMENT=	Cross platform make
  
