@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import importlib.util
 import io
+import os
 from pathlib import Path
 import re
 import tarfile
@@ -19,6 +20,8 @@ RECIPE = ROOT / 'pkgsrc/devel/gn'
 SPEC = importlib.util.spec_from_file_location('gn_source', RECIPE / 'files/fetch-source.py')
 SOURCE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(SOURCE)
+SOURCE.load_sdk(['--sdk-source', os.environ['EMBERBSD_SDK_SOURCE']])
+NORMALIZER = SOURCE.gitiles
 ARCHIVES = []
 # Independently produced by git write-tree from these two files/modes.
 GOLDEN_TREE = '6311254086e4961bff7ee007b23c14b7e6fba2d2'
@@ -42,7 +45,7 @@ class GNSourceTests(unittest.TestCase):
     def refused(self, raw):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / 'source.tar'
-            with self.assertRaises((SOURCE.SourceError, tarfile.TarError, EOFError)):
+            with self.assertRaises((NORMALIZER.SourceError, tarfile.TarError, EOFError)):
                 SOURCE.publish(raw, GOLDEN_TREE, output)
             self.assertFalse(output.exists())
             self.assertEqual(list(Path(temporary).iterdir()), [])
@@ -50,8 +53,8 @@ class GNSourceTests(unittest.TestCase):
     def test_git_tree_and_metadata_normalization(self):
         first, second = archive(), archive(list(reversed(FILES)), mtime=456.75)
         self.assertNotEqual(first, second)
-        a = SOURCE.normalized_tar(SOURCE.read_gitiles(first, GOLDEN_TREE))
-        b = SOURCE.normalized_tar(SOURCE.read_gitiles(second, GOLDEN_TREE))
+        a = NORMALIZER.normalized_tar(NORMALIZER.read_gitiles(first, GOLDEN_TREE))
+        b = NORMALIZER.normalized_tar(NORMALIZER.read_gitiles(second, GOLDEN_TREE))
         self.assertEqual(a, b)
         with tarfile.open(fileobj=io.BytesIO(a), mode='r:') as tar:
             self.assertEqual(tar.getnames(), ['a.txt', 'dir/b.sh'])
@@ -94,9 +97,9 @@ class GNSourceTests(unittest.TestCase):
         self.refused(archive(extra=member))
 
     def test_bounds_expanded_archive_and_source_content(self):
-        with mock.patch.object(SOURCE, 'MAX_TAR', 512):
+        with mock.patch.object(NORMALIZER, 'MAX_TAR', 512):
             self.refused(archive())
-        with mock.patch.object(SOURCE, 'MAX_CONTENT', 8):
+        with mock.patch.object(NORMALIZER, 'MAX_CONTENT', 8):
             self.refused(archive())
 
     def test_rejects_large_compressed_pax_before_metadata_parser(self):
@@ -109,8 +112,8 @@ class GNSourceTests(unittest.TestCase):
                 stream.addfile(member, io.BytesIO(data))
         raw = output.getvalue()
         self.assertLess(len(raw), 4096)
-        with mock.patch.object(SOURCE, 'MAX_TAR', 64 * 1024), \
-                mock.patch.object(SOURCE.tarfile, 'open', side_effect=AssertionError('metadata parser ran')):
+        with mock.patch.object(NORMALIZER, 'MAX_TAR', 64 * 1024), \
+                mock.patch.object(NORMALIZER.tarfile, 'open', side_effect=AssertionError('metadata parser ran')):
             self.refused(raw)
 
     def test_refuses_truncated_archive(self):
@@ -125,12 +128,12 @@ class GNSourceTests(unittest.TestCase):
             output = Path(temporary) / 'source.tar'
             SOURCE.publish(archive(), GOLDEN_TREE, output)
             original = output.read_bytes()
-            with self.assertRaises(SOURCE.SourceError):
+            with self.assertRaises((ValueError, NORMALIZER.SourceError)):
                 SOURCE.publish(archive(), GOLDEN_TREE, output)
             self.assertEqual(output.read_bytes(), original)
             link = Path(temporary) / 'linked.tar'
             link.symlink_to(output)
-            with self.assertRaises(SOURCE.SourceError):
+            with self.assertRaises((ValueError, NORMALIZER.SourceError)):
                 SOURCE.publish(archive(), GOLDEN_TREE, link)
             self.assertEqual(output.read_bytes(), original)
 
@@ -143,9 +146,9 @@ class GNSourceTests(unittest.TestCase):
         outputs, originals = [], []
         for path in ARCHIVES:
             raw = path.read_bytes(); originals.append(raw)
-            files = SOURCE.read_gitiles(raw, tree)
+            files = NORMALIZER.read_gitiles(raw, tree)
             self.assertEqual(len(files), 1054)
-            outputs.append(SOURCE.normalized_tar(files))
+            outputs.append(NORMALIZER.normalized_tar(files))
         self.assertGreaterEqual(len(set(originals)), 2, 'Provide two genuinely different Gitiles responses')
         self.assertEqual(len(set(outputs)), 1)
         info = (RECIPE / 'distinfo').read_text()

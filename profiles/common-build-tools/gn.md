@@ -26,11 +26,13 @@ The recipe sets `EXTRACT_DIR` to `WRKSRC` because files are at the archive root.
 A missing output is published atomically; an existing file or symlink is never
 overwritten. Interrupted or rejected input does not become a cached distfile.
 
-The source helper consumes only a control Python with its standard library
-and HTTPS trust store. `GN_FETCH_PYTHON` defaults to the selected native
-`TOOL_PYTHONBIN`; it may explicitly name a control interpreter before that
-native prefix exists. The helper invokes no compiler and needs no SDK source,
-Node, pip or virtualenv. Normal pkgsrc `fetch` and `checksum` still use the
+The source helper consumes a control Python with its standard library,
+HTTPS trust store and the selected SDK source code's shared Gitiles API.
+`GN_FETCH_PYTHON` defaults to the selected native `TOOL_PYTHONBIN`; it may
+explicitly name a control interpreter before that native prefix exists.
+Set `EMBERBSD_SDK_SOURCE` to the absolute SDK source checkout in pkgsrc, or
+pass `--sdk-source /absolute/sdk-source` to the standalone helper. It invokes
+no compiler and requires no built SDK, Node, pip or virtualenv. Normal pkgsrc `fetch` and `checksum` still use the
 selected framework configuration and retain its license/error checks; the
 source-only result does not qualify arbitrary pkgsrc configurations. For offline inspection, the helper's `--input-archive` accepts an
 already obtained Gitiles response with the same complete tree verification.
@@ -159,7 +161,7 @@ The source-owner regression uses two real Gitiles responses with different
 request timestamps. Obtain them from the official commit archive above, then run:
 
 ```sh
-python3 profiles/common-build-tools/tests/gn-source.py \
+EMBERBSD_SDK_SOURCE=/absolute/sdk-source python3 profiles/common-build-tools/tests/gn-source.py \
   --gitiles-archive /absolute/first-response.tar.gz \
   --gitiles-archive /absolute/second-response.tar.gz -v
 ```

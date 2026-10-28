@@ -43,6 +43,7 @@ INSTALLATION_DIRS=	bin share/doc/gn
 # Gitiles injects request-time PAX mtimes, so its tar.gz bytes are unstable.
 # This source-only control Python need not be part of a complete build SDK.
 GN_FETCH_PYTHON?=	${TOOL_PYTHONBIN}
+BUILD_DEFS+=		EMBERBSD_SDK_SOURCE
 
 do-fetch: error-check
 	${RUN} set -e; \
@@ -51,7 +52,12 @@ do-fetch: error-check
 	    /*) ;; \
 	    *) ${FAIL_MSG} "Set GN_FETCH_PYTHON to an absolute control Python executable" ;; \
 	    esac; \
+	    case x${EMBERBSD_SDK_SOURCE:Q} in \
+	    x/*) ;; \
+	    *) ${FAIL_MSG} "Set EMBERBSD_SDK_SOURCE to the SDK source code" ;; \
+	    esac; \
 	    ${GN_FETCH_PYTHON:Q} -B -I -S ${FILESDIR:Q}/fetch-source.py \
+	        --sdk-source ${EMBERBSD_SDK_SOURCE:Q} \
 	        --revision ${GN_REVISION:Q} --tree ${GN_TREE:Q} \
 	        --output ${DISTDIR:Q}/${DIST_SUBDIR:Q}/${DISTFILES:Q}; \
 	fi
