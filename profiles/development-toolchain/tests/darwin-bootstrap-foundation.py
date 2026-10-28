@@ -39,6 +39,9 @@ PROVIDERS = {
     'devel/diffutils': ('diffutils', ('bin/gcmp', 'bin/gdiff')),
     'devel/meson': ('meson', ('bin/meson',)),
     'devel/wayland': ('wayland', ('bin/wayland-scanner',)),
+    'x11/qt6-qtbase': ('qt6-qtbase', ('qt6/bin/qtpaths', 'qt6/libexec/moc', 'qt6/libexec/rcc',
+                                      'qt6/libexec/uic')),
+    'devel/qt6-qttools': ('qt6-qttools', ('qt6/bin/lrelease', 'qt6/bin/lconvert')),
     'security/mozilla-rootcerts-openssl': ('mozilla-rootcerts-openssl',
         ('${MYETCDIR}/openssl/certs/ca-certificates.crt',)),
 }
@@ -106,6 +109,9 @@ def versions():
     values['sysutils/bsdinstall'] += 'nb' + match(source('sysutils/bsdinstall/Makefile'),
                                                 r'^PKGREVISION=\s*(\S+)')
     values['devel/wayland'] = match(source('devel/wayland/Makefile'), r'^WAYLAND_VERSION=\s*(\S+)')
+    qt = match(source('meta-pkgs/qt6/Makefile.common'), r'^QTVERSION=\s*(\S+)')
+    for recipe in ('x11/qt6-qtbase', 'devel/qt6-qttools'):
+        values[recipe] = qt + 'nb' + match(source(recipe + '/Makefile'), r'^PKGREVISION=\s*(\S+)')
     ca = 'security/mozilla-rootcerts-openssl'
     revision_patch = (SOURCE / 'profiles/common-build-tools/patches/mozilla-rootcerts-prefix.patch').read_text()
     values[ca] = match(source(ca + '/Makefile'), r'^PKGNAME=\s*mozilla-rootcerts-openssl-(\S+)')
@@ -162,7 +168,9 @@ class FoundationTests(unittest.TestCase):
             package, recipe = word.split(':../../')
             name, floor = package.split('>=')
             self.assertEqual((name, floor), (PROVIDERS[recipe][0], expected[recipe]))
-            plist = source(recipe + '/PLIST').splitlines()
+            # The native Qt packages install their host-tools PLIST.
+            plist = source(recipe + ('/PLIST.host-tools' if recipe.split('/')[1].startswith('qt6-')
+                                     else '/PLIST')).splitlines()
             for member in PROVIDERS[recipe][1]:
                 self.assertIn(member, plist, (recipe, member))
         self.assertNotIn('bin/ginstall', PROVIDERS['sysutils/coreutils'][1])
