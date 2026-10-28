@@ -474,3 +474,17 @@ behavior or target device acceptance.
 This uses the real SDK binder, native Clang and Ninja to compile and link a
 small native fixture, then checks a no-op and recompilation after changed
 binding flags. It does not test the Electron target or target execution.
+
+The allocator and bindgen source patches can be checked using the configured
+GN output and target compiler. The test compiles the actual allocator source,
+checks both original-header failure modes, and exercises bindgen's Darwin and
+Linux loader-environment selection with mocked child processes:
+
+```sh
+/absolute/control-python -B -I -S probes/electron/tests/allocator-bindgen-source.py \
+  --source /absolute/electron-workspace/src --prepared /absolute/prepared-source/files \
+  --gn-out /absolute/electron-work/out --cxx /absolute/electron-work/target-commands/cxx \
+  --git /absolute/git
+```
+
+This does not test an installed allocator or bindgen execution on the target.

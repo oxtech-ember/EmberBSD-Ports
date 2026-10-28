@@ -646,6 +646,16 @@
       "path": "libsync-scoped-unused-helpers.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "partition-alloc-bsd-clang-exceptions.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "bindgen-darwin-dyld-fallback.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

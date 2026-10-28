@@ -1,0 +1,172 @@
+Chromium allocator: use NetBSD libc exception declarations and C++ noexcept.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+diff --git a/base/allocator/partition_allocator/src/partition_alloc/shim/allocator_shim_internals.h b/base/allocator/partition_allocator/src/partition_alloc/shim/allocator_shim_internals.h
+index 905b9f9be1..3ffe2b1a35 100644
+--- a/base/allocator/partition_allocator/src/partition_alloc/shim/allocator_shim_internals.h
++++ b/base/allocator/partition_allocator/src/partition_alloc/shim/allocator_shim_internals.h
+@@ -14,11 +14,13 @@
+ #endif
+ 
+ #ifndef __THROW   // Not a glibc system
+-#ifdef _NOEXCEPT  // LLVM libc++ uses noexcept instead
++// NetBSD libc headers declare malloc family without exception specs;
++// mapping __THROW to _NOEXCEPT then mismatches those decls under clang.
++#if defined(_NOEXCEPT) && !defined(__NetBSD__)
+ #define __THROW _NOEXCEPT
+ #else
+ #define __THROW
+-#endif  // !_NOEXCEPT
++#endif  // !_NOEXCEPT || NetBSD
+ #endif
+ 
+ // Shim layer symbols need to be ALWAYS exported, regardless of component build.
+diff --git a/base/allocator/partition_allocator/src/partition_alloc/shim/allocator_shim_override_cpp_symbols.h b/base/allocator/partition_allocator/src/partition_alloc/shim/allocator_shim_override_cpp_symbols.h
+index 1ba4cca8db..14da99c49e 100644
+--- a/base/allocator/partition_allocator/src/partition_alloc/shim/allocator_shim_override_cpp_symbols.h
++++ b/base/allocator/partition_allocator/src/partition_alloc/shim/allocator_shim_override_cpp_symbols.h
+@@ -42,7 +42,7 @@ SHIM_CPP_SYMBOLS_EXPORT void* operator new(size_t size) {
+ #endif
+ }
+ 
+-SHIM_CPP_SYMBOLS_EXPORT void operator delete(void* p) __THROW {
++SHIM_CPP_SYMBOLS_EXPORT void operator delete(void* p) noexcept {
+ #if PA_BUILDFLAG(FORWARD_THROUGH_MALLOC)
+   free(p);
+ #else
+@@ -58,7 +58,7 @@ SHIM_CPP_SYMBOLS_EXPORT void* operator new[](size_t size) {
+ #endif
+ }
+ 
+-SHIM_CPP_SYMBOLS_EXPORT void operator delete[](void* p) __THROW {
++SHIM_CPP_SYMBOLS_EXPORT void operator delete[](void* p) noexcept {
+ #if PA_BUILDFLAG(FORWARD_THROUGH_MALLOC)
+   free(p);
+ #else
+@@ -67,7 +67,7 @@ SHIM_CPP_SYMBOLS_EXPORT void operator delete[](void* p) __THROW {
+ }
+ 
+ SHIM_CPP_SYMBOLS_EXPORT void* operator new(size_t size,
+-                                           const std::nothrow_t&) __THROW {
++                                           const std::nothrow_t&) noexcept {
+ #if PA_BUILDFLAG(FORWARD_THROUGH_MALLOC)
+   return malloc(size);
+ #else
+@@ -76,7 +76,7 @@ SHIM_CPP_SYMBOLS_EXPORT void* operator new(size_t size,
+ }
+ 
+ SHIM_CPP_SYMBOLS_EXPORT void* operator new[](size_t size,
+-                                             const std::nothrow_t&) __THROW {
++                                             const std::nothrow_t&) noexcept {
+ #if PA_BUILDFLAG(FORWARD_THROUGH_MALLOC)
+   return malloc(size);
+ #else
+@@ -85,7 +85,7 @@ SHIM_CPP_SYMBOLS_EXPORT void* operator new[](size_t size,
+ }
+ 
+ SHIM_CPP_SYMBOLS_EXPORT void operator delete(void* p,
+-                                             const std::nothrow_t&) __THROW {
++                                             const std::nothrow_t&) noexcept {
+ #if PA_BUILDFLAG(FORWARD_THROUGH_MALLOC)
+   free(p);
+ #else
+@@ -94,7 +94,7 @@ SHIM_CPP_SYMBOLS_EXPORT void operator delete(void* p,
+ }
+ 
+ SHIM_CPP_SYMBOLS_EXPORT void operator delete[](void* p,
+-                                               const std::nothrow_t&) __THROW {
++                                               const std::nothrow_t&) noexcept {
+ #if PA_BUILDFLAG(FORWARD_THROUGH_MALLOC)
+   free(p);
+ #else
+@@ -102,7 +102,7 @@ SHIM_CPP_SYMBOLS_EXPORT void operator delete[](void* p,
+ #endif
+ }
+ 
+-SHIM_CPP_SYMBOLS_EXPORT void operator delete(void* p, size_t size) __THROW {
++SHIM_CPP_SYMBOLS_EXPORT void operator delete(void* p, size_t size) noexcept {
+ #if PA_BUILDFLAG(FORWARD_THROUGH_MALLOC)
+   free(p);
+ #elif PA_BUILDFLAG(SHIM_SUPPORTS_SIZED_DEALLOC)
+@@ -112,7 +112,7 @@ SHIM_CPP_SYMBOLS_EXPORT void operator delete(void* p, size_t size) __THROW {
+ #endif
+ }
+ 
+-SHIM_CPP_SYMBOLS_EXPORT void operator delete[](void* p, size_t size) __THROW {
++SHIM_CPP_SYMBOLS_EXPORT void operator delete[](void* p, size_t size) noexcept {
+ #if PA_BUILDFLAG(FORWARD_THROUGH_MALLOC)
+   free(p);
+ #elif PA_BUILDFLAG(SHIM_SUPPORTS_SIZED_DEALLOC)
+@@ -133,7 +133,7 @@ SHIM_CPP_SYMBOLS_EXPORT void* operator new(std::size_t size,
+ 
+ SHIM_CPP_SYMBOLS_EXPORT void* operator new(std::size_t size,
+                                            std::align_val_t alignment,
+-                                           const std::nothrow_t&) __THROW {
++                                           const std::nothrow_t&) noexcept {
+ #if PA_BUILDFLAG(FORWARD_THROUGH_MALLOC)
+   return aligned_alloc(static_cast<size_t>(alignment), size);
+ #else
+@@ -143,7 +143,7 @@ SHIM_CPP_SYMBOLS_EXPORT void* operator new(std::size_t size,
+ 
+ SHIM_CPP_SYMBOLS_EXPORT void operator delete(
+     void* p,
+-    std::align_val_t alignment) __THROW {
++    std::align_val_t alignment) noexcept {
+ #if PA_BUILDFLAG(FORWARD_THROUGH_MALLOC)
+   free(p);
+ #elif PA_BUILDFLAG(SHIM_SUPPORTS_SIZED_DEALLOC)
+@@ -154,7 +154,7 @@ SHIM_CPP_SYMBOLS_EXPORT void operator delete(
+ }
+ 
+ SHIM_CPP_SYMBOLS_EXPORT void
+-operator delete(void* p, std::size_t size, std::align_val_t alignment) __THROW {
++operator delete(void* p, std::size_t size, std::align_val_t alignment) noexcept {
+ #if PA_BUILDFLAG(FORWARD_THROUGH_MALLOC)
+   free(p);
+ #elif PA_BUILDFLAG(SHIM_SUPPORTS_SIZED_DEALLOC)
+@@ -166,7 +166,7 @@ operator delete(void* p, std::size_t size, std::align_val_t alignment) __THROW {
+ 
+ SHIM_CPP_SYMBOLS_EXPORT void operator delete(void* p,
+                                              std::align_val_t alignment,
+-                                             const std::nothrow_t&) __THROW {
++                                             const std::nothrow_t&) noexcept {
+ #if PA_BUILDFLAG(FORWARD_THROUGH_MALLOC)
+   free(p);
+ #elif PA_BUILDFLAG(SHIM_SUPPORTS_SIZED_DEALLOC)
+@@ -187,7 +187,7 @@ SHIM_CPP_SYMBOLS_EXPORT void* operator new[](std::size_t size,
+ 
+ SHIM_CPP_SYMBOLS_EXPORT void* operator new[](std::size_t size,
+                                              std::align_val_t alignment,
+-                                             const std::nothrow_t&) __THROW {
++                                             const std::nothrow_t&) noexcept {
+ #if PA_BUILDFLAG(FORWARD_THROUGH_MALLOC)
+   return aligned_alloc(static_cast<size_t>(alignment), size);
+ #else
+@@ -197,7 +197,7 @@ SHIM_CPP_SYMBOLS_EXPORT void* operator new[](std::size_t size,
+ 
+ SHIM_CPP_SYMBOLS_EXPORT void operator delete[](
+     void* p,
+-    std::align_val_t alignment) __THROW {
++    std::align_val_t alignment) noexcept {
+ #if PA_BUILDFLAG(FORWARD_THROUGH_MALLOC)
+   free(p);
+ #elif PA_BUILDFLAG(SHIM_SUPPORTS_SIZED_DEALLOC)
+@@ -210,7 +210,7 @@ SHIM_CPP_SYMBOLS_EXPORT void operator delete[](
+ SHIM_CPP_SYMBOLS_EXPORT void operator delete[](
+     void* p,
+     std::size_t size,
+-    std::align_val_t alignment) __THROW {
++    std::align_val_t alignment) noexcept {
+ #if PA_BUILDFLAG(FORWARD_THROUGH_MALLOC)
+   free(p);
+ #elif PA_BUILDFLAG(SHIM_SUPPORTS_SIZED_DEALLOC)
+@@ -222,7 +222,7 @@ SHIM_CPP_SYMBOLS_EXPORT void operator delete[](
+ 
+ SHIM_CPP_SYMBOLS_EXPORT void operator delete[](void* p,
+                                                std::align_val_t alignment,
+-                                               const std::nothrow_t&) __THROW {
++                                               const std::nothrow_t&) noexcept {
+ #if PA_BUILDFLAG(FORWARD_THROUGH_MALLOC)
+   free(p);
+ #elif PA_BUILDFLAG(SHIM_SUPPORTS_SIZED_DEALLOC)
