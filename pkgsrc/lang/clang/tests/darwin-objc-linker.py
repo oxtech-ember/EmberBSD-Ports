@@ -16,7 +16,7 @@ clang = str(Path(a.clang).resolve(strict=True))
 linker = str(Path(a.ld64_lld).resolve(strict=True))
 sdk = str(Path(a.sdk).resolve(strict=True))
 resource = ['-resource-dir=' + str(Path(a.resource_dir).resolve(strict=True))] if a.resource_dir else []
-base = [clang, *resource, '-target', 'arm64-apple-macos26', '-isysroot', sdk,
+base = [clang, *resource, '-target', 'arm64-apple-macos12', '-isysroot', sdk,
         '-mlinker-version=1250']
 
 with tempfile.TemporaryDirectory(prefix='clang objc linker ') as tmp:
@@ -67,7 +67,7 @@ with tempfile.TemporaryDirectory(prefix='clang objc linker ') as tmp:
         if unused.returncode == 0 or 'unused' not in unused.stderr:
             raise AssertionError((language, 'linker option warning changed', unused.stderr))
     executable = root / 'objc-consumer'
-    subprocess.run([clang, *resource, '-isysroot', sdk, '-mmacosx-version-min=26.0',
+    subprocess.run([clang, *resource, '-isysroot', sdk,
                     '--ld-path=' + linker, '-framework', 'Foundation', str(source),
                     '-o', str(executable)], check=True)
     subprocess.run([str(executable)], check=True)
