@@ -63,6 +63,7 @@ lua-compat53, which build with Lua 5.5; its tests pass with Lua 5.5.
 LuaBitOp finds the double lua_Number of Lua 5.3 and later through
 LUA_FLOAT_TYPE and returns its 32-bit results as integers there, so it builds
 with Lua 5.5 and its tests pass.
+lua-rapidjson builds and works with Lua 5.5 unchanged.
 
 --- a/devel/Guitar/Makefile
 +++ b/devel/Guitar/Makefile
@@ -2142,3 +2143,15 @@ with Lua 5.5 and its tests pass.
 -.include "../../lang/lua54/buildlink3.mk"
 +.include "../../lang/lua/buildlink3.mk"
  .include "../../mk/bsd.pkg.mk"
+
+--- a/textproc/lua-rapidjson/Makefile
++++ b/textproc/lua-rapidjson/Makefile
+@@ -18,8 +18,6 @@
+ 
+ LUA_USE_BUSTED=	yes
+ 
+-LUA_VERSIONS_INCOMPATIBLE+=	55
+-
+ CMAKE_CONFIGURE_ARGS+=	-DLUA_RAPIDJSON_VERSION=${PKGVERSION}
+ CMAKE_CONFIGURE_ARGS+=	-DCMAKE_POLICY_VERSION_MINIMUM=3.5
+ 

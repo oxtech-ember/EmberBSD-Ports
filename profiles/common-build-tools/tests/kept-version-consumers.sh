@@ -49,6 +49,7 @@ net/qrcp lang/go127
 security/zoneminder multimedia/ffmpeg9 devel/pcre2 databases/mariadb118-client
 sysutils/vifm lang/lua55
 sysutils/yazi lang/lua55
+textproc/lua-rapidjson lang/lua55
 LIST
 [ "$fail" = 0 ]
 echo 'PASS: patched consumers depend on the kept versions.'
