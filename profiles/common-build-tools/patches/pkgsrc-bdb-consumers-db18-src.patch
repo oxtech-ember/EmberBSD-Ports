@@ -1,0 +1,41 @@
+Origin: EmberBSD, AI-assisted.
+EmberBSD keeps one Berkeley DB, db18. squidGuard accepted only db4/db5
+and greylisting-spp's db4 option used databases/db4 directly; both now
+use db18. The greylisting-spp option is renamed db4 -> bdb (legacy name
+kept). The C sources need the recipe patches squidGuard-db18.patch and
+greylisting-spp-db18.patch. Not submitted upstream.
+
+--- a/mail/greylisting-spp/options.mk
++++ b/mail/greylisting-spp/options.mk
+@@ -2,13 +2,17 @@
+ 
+ PKG_OPTIONS_VAR=		PKG_OPTIONS.greylisting-spp
+ PKG_OPTIONS_OPTIONAL_GROUPS=	db
+-PKG_OPTIONS_GROUP.db=		db4 sqlite sqlite3
++PKG_OPTIONS_GROUP.db=		bdb sqlite sqlite3
++PKG_OPTIONS_LEGACY_OPTS+=	db4:bdb
+ PKG_SUGGESTED_OPTIONS=		sqlite3
+ 
+ .include "../../mk/bsd.options.mk"
+ 
+-.if !empty(PKG_OPTIONS:Mdb4)
+-.  include "../../databases/db4/buildlink3.mk"
++.if !empty(PKG_OPTIONS:Mbdb)
++BDB_ACCEPTED=		db18
++# patch-src_Makefile links -ldb4.
++BUILDLINK_TRANSFORM+=	l:db4:${BDB_TYPE}
++.  include "../../mk/bdb.buildlink3.mk"
+ BUILD_MAKE_FLAGS+=	DB_IMPL=bdb
+ .elif !empty(PKG_OPTIONS:Msqlite)
+ .  include "../../databases/sqlite/buildlink3.mk"
+--- a/www/squidGuard/Makefile
++++ b/www/squidGuard/Makefile
+@@ -18,7 +18,7 @@
+ 
+ .include "../../www/squid5/Makefile.common"
+ 
+-BDB_ACCEPTED=		db4 db5
++BDB_ACCEPTED=		db18
+ USE_TOOLS+=		lex yacc perl
+ GNU_CONFIGURE=		yes
+ CONFIGURE_ARGS+=	--with-db-inc=${BDBBASE}/include/${BDB_TYPE}

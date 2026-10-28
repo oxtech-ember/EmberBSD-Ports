@@ -1,0 +1,32 @@
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+Build the Berkeley DB backend with db 4 or newer, not only 4.x:
+EmberBSD keeps one Berkeley DB, db18, which has the same 4.1+ API.
+Only 4.0 lacks the transaction argument of DB->open.
+write_error() is given a prototype, because current C compilers reject
+the implicit-int K&R definition.
+
+--- src/db-bdb.c.orig
++++ src/db-bdb.c
+@@ -31,10 +31,10 @@
+ 
+ /* Grumble... */
+ 
+-#if DB_VERSION_MAJOR != 4
+-#error Berkeley DB interface works only for version 4.
++#if DB_VERSION_MAJOR < 4
++#error Berkeley DB interface needs version 4 or newer.
+ #else
+-#if DB_VERSION_MINOR == 0
++#if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 0
+ #define GL_EXTRA_OPEN_ARG
+ #else
+ #define GL_EXTRA_OPEN_ARG	NULL,
+@@ -140,7 +140,7 @@
+ }
+ 
+ /** Write the write error message to stderr and exit with status 1. */
+-static void write_error(rc) {
++static void write_error(int rc) {
+ char *error = db_strerror(rc);
+ 
+     write(STDERR_FILENO, progname, strlen(progname));
