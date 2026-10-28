@@ -1,5 +1,6 @@
 # Origin: EmberBSD (AI-assisted), Chromium inspector protocol source.
 DISTNAME= inspector-protocol-0.0.0pre20261020
+PKGREVISION= 1
 CATEGORIES= devel
 INSPECTOR_REVISION= 3f95e5ac93fab4a064e637b3567f63b9007d9937
 INSPECTOR_TREE= 4df18a260c2baac122c176713b5696178000d629
@@ -36,7 +37,7 @@ do-install:
 	${INSTALL_DATA_DIR} ${DESTDIR:Q}${PREFIX:Q}/share/inspector-protocol
 	${TAR} --exclude '*.orig' --exclude '*.rej' -cf ${WRKDIR:Q}/inspector-source-copy.tar -C ${WRKSRC:Q} .
 	${TAR} -xf ${WRKDIR:Q}/inspector-source-copy.tar -C ${DESTDIR:Q}${PREFIX:Q}/share/inspector-protocol
-	${TOOL_PYTHONBIN} -B -I -S ${FILESDIR:Q}/stamp-source.py --sdk-source ${EMBERBSD_SDK_SOURCE:Q} \
+	${TOOL_PYTHONBIN:Q} -B -I -S ${FILESDIR:Q}/stamp-source.py --sdk-source ${EMBERBSD_SDK_SOURCE:Q} \
 	    --source ${DESTDIR:Q}${PREFIX:Q}/share/inspector-protocol --pkgsrc-root ${_PKGSRCDIR:Q}
 
 GENERATE_PLIST+= cd ${DESTDIR:Q}${PREFIX:Q}; ${FIND} share/inspector-protocol \( -type f -o -type l \) -print | ${SORT};
