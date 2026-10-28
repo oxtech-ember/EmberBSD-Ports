@@ -29,6 +29,15 @@ MAKE_ENV+=	CMAKE=${TOOLS_PATH.false}
 
 .include "../../mk/bsd.prefs.mk"
 
+.if ${OPSYS} == "Darwin"
+# Meson install rewrites Mach-O rpaths with otool and install_name_tool.
+# Use the otool from the toolchain of the selected install_name_tool.
+_MESON_INSTALL_NAME_TOOL=	${EMBERBSD_DARWIN_INSTALL_NAME_TOOL:U/usr/bin/install_name_tool}
+TOOLS_CREATE+=		install_name_tool otool
+TOOLS_PATH.install_name_tool=	${_MESON_INSTALL_NAME_TOOL}
+TOOLS_PATH.otool=	${_MESON_INSTALL_NAME_TOOL:H}/otool
+.endif
+
 .if ${USE_CROSS_COMPILE:tl} == no
 
 MESON_NATIVE_FILE=	${WRKDIR}/.meson_native
