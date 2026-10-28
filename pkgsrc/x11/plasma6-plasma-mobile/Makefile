@@ -5,7 +5,7 @@ CATEGORIES=	x11
 
 HOMEPAGE=	https://plasma-mobile.org/
 COMMENT=	Plasma shell additions for mobile form factors
-LICENSE=	gnu-gpl-v3 AND gnu-lgpl-v2.1-or-later AND mit
+LICENSE=	gnu-gpl-v3 AND gnu-lgpl-v2.1 AND mit
 
 .include "../../meta-pkgs/kde/plasma6.mk"
 

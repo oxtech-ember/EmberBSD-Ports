@@ -9,7 +9,7 @@ EXTRACT_SUFX=	.tar.gz
 
 HOMEPAGE=	https://www.freedesktop.org/wiki/Software/ModemManager/
 COMMENT=	ModemManager DBus interface constants (header-only)
-LICENSE=	gnu-gpl-v2-or-later AND gnu-lgpl-v2-or-later
+LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2
 
 WRKSRC=		${WRKDIR}/ModemManager-1.22.0
 NO_BUILD=	yes

@@ -7,7 +7,7 @@ MASTER_SITES=	https://gitlab.freedesktop.org/pipewire/pipewire/-/archive/${PKGVE
 
 HOMEPAGE=	https://pipewire.org/
 COMMENT=	Server and user-space API to handle multimedia pipelines
-LICENSE=	mit AND gnu-lgpl-v2.1-or-later
+LICENSE=	mit AND gnu-lgpl-v2.1
 
 USE_TOOLS+=	pkg-config
 PYTHON_FOR_BUILD_ONLY=	tool
