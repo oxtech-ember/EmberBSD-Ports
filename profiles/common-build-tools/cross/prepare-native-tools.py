@@ -25,6 +25,8 @@ ROLE_VARIABLES = {
     'xz': 'TOOLS_PLATFORM.xz', 'xzcat': 'TOOLS_PLATFORM.xzcat',
     'install': 'TOOLS_PLATFORM.install',
     'nawk': 'EMBERBSD_NATIVE_AWK',
+    # Source downloads use the Ports libfetch client and its OpenSSL.
+    'fetch': 'TOOLS_PLATFORM.fetch',
 }
 
 
@@ -75,6 +77,9 @@ def render(toolset):
                   variable + '?= ${' + pinned + '}',
                   '.if "${' + variable + '}" != "' + value + '"',
                   '.error ' + variable + ' differs from the selected Ports tool', '.endif']
+    # pkgsrc otherwise selects the Darwin system curl for downloads.
+    lines += ['FETCH_USING?= fetch', '.if "${FETCH_USING}" != "fetch"',
+              '.error FETCH_USING must select the Ports fetch client', '.endif']
     # Native platform probes can run before the child's MAKECONF include.
     lines += ['.export EMBERBSD_NATIVE_AWK']
     flags = toolset.abi_flags

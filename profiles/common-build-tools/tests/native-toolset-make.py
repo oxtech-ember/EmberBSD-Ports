@@ -70,7 +70,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         assert call.kwargs['compiler_family'] == 'clang'
         assert b'EMBERBSD_HOST_COMPILER_FAMILY?= clang\n' in before
         assert call.kwargs['required_roles'] == tuple(adapter.ROLE_VARIABLES)
-        for role in ('bmake', 'gmake', 'xz', 'xzcat', 'install'):
+        for role in ('bmake', 'gmake', 'xz', 'xzcat', 'install', 'fetch'):
             assert role in call.kwargs['required_roles']
         # A make command-line assignment can replace even := variables.
         # Expected values must be literals, not aliases to another variable.
@@ -101,6 +101,9 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
             for variable in ('_EMBER_SDK_' + name.upper(), 'NATIVE_' + name.upper(), 'HOST_' + name.upper()):
                 assert ('.if "${' + variable + '}" != "' + value + '"').encode() in before
         assert b'HOST_CC?= ${_EMBER_SDK_CC}' in before
+        # Without this mapping pkgsrc selects /usr/bin/curl on Darwin.
+        assert b'TOOLS_PLATFORM.fetch?= ${_EMBER_SDK_FETCH}' in before
+        assert b'FETCH_USING?= fetch\n' in before
         adapter.write(selected, str(destination))
         assert include.read_bytes() == before and not list(root.glob('.native-tools-*'))
         selected.compiler_family = 'gcc'
