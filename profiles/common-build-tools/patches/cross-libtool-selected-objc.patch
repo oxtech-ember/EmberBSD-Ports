@@ -1,0 +1,23 @@
+Select the same target compiler family for all generated C-family tags.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/cross/cross-libtool-base/Makefile
++++ b/cross/cross-libtool-base/Makefile
+@@ -38,7 +38,7 @@
+ # XXX Tweaked for cross-compilation.
+ #PKGNAME=	${DISTNAME:S/-/-base-/}
+ PKGNAME=	${DISTNAME:S/^libtool-/cross-libtool-base-${MACHINE_PLATFORM}-/}
+-PKGREVISION=	2
++PKGREVISION=	3
+ 
+ COMMENT=	Generic shared library support script (the script itself)
+ 
+@@ -68,6 +68,9 @@
+ PLIST_SUBST+=		MACHINE_PLATFORM=${MACHINE_PLATFORM:Q}
+ CONFIGURE_ARGS+=	--disable-ltdl-install
+ CONFIGURE_ARGS+=	F77=no FC=no
++# Configure otherwise falls back to gcc/g++ for these tags independently of
++# the explicitly selected target C and C++ compilers.
++CONFIGURE_ENV+=	OBJC=${CC:Q} OBJCXX=${CXX:Q}
+ 
+ USE_TOOLS+=		echo
