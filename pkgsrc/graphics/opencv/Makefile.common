@@ -68,6 +68,12 @@ BUILDLINK_TRANSFORM.SunOS+=	rm:-Wl,--gc-sections
 
 .include "../../mk/bsd.prefs.mk"
 
+# OpenCV 5.0.0 keeps Caffe protobuf leftovers that cannot be built with the
+# external protobuf. Upstream commit f7ad23157f deletes them; its other
+# changes are in patch-modules_dnn_protobuf__io.
+pre-patch:
+	${RM} -rf ${WRKSRC}/modules/dnn/src/caffe ${WRKSRC}/modules/dnn/misc/caffe
+
 # error: unknown type name 'float16x8_t'
 .if ${OPSYS} == "Darwin" && ${MACHINE_ARCH} == "aarch64"
 CMAKE_CONFIGURE_ARGS+=	-DENABLE_NEON=OFF

@@ -13,6 +13,7 @@ SHA1 (patch-3rdparty_ippicv_ippicv.cmake) = 14ce5de382084793ace32f43c6dfaf01f7ff
 SHA1 (patch-cmake_templates_OpenCVConfig.cmake.in) = bddabbe4f323569e6a1d32d617656d179c7c0478
 SHA1 (patch-modules_core_src_downhill__simplex.cpp) = 1ad7c2fa126d15050b87785e8eec20dbe796b471
 SHA1 (patch-modules_core_src_system.cpp) = e7e5c7eb79d875556a380bff19d03434ae46553b
+SHA1 (patch-modules_dnn_protobuf__io) = 0d50db46c1a7b155071bba9311c8ae5cb52d4e0d
 SHA1 (patch-modules_flann_include_opencv2_flann_defines.h) = ab848e67c4e03219670598ac2d21071a617a5c33
 SHA1 (patch-modules_imgproc_src_resize.cpp) = e842d5960c4c00162a34f46cb45cf69d0e9f21ce
 SHA1 (patch-modules_videoio_src_cap__v4l.cpp) = 356cc21e6ed2b29856da94ab83f2bc397621b057

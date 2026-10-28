@@ -10,7 +10,7 @@ INSTALL_DIRS+=		modules/python3
 
 DISTNAME=	opencv_contrib-${OPENCV_VERSION}
 PKGNAME=	${DISTNAME:S/_contrib/-contrib/}
-PKGREVISION=	2
+PKGREVISION=	3
 GITHUB_PROJECT=	opencv_contrib
 
 MAINTAINER=	markd@NetBSD.org
