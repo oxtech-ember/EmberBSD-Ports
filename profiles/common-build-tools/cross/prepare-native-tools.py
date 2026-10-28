@@ -52,7 +52,7 @@ OPTIONAL_ROLES = {'clang-tblgen': 'EMBERBSD_CLANG_TABLEGEN',
                   'zcat': 'TOOLS_PLATFORM.gzcat', 'gdate': 'TOOLS_PLATFORM.date',
                   'ghostname': 'TOOLS_PLATFORM.hostname', 'gls': 'TOOLS_PLATFORM.ls',
                   'gpwd': 'TOOLS_PLATFORM.pwd', 'grmdir': 'TOOLS_PLATFORM.rmdir',
-                  'gsleep': 'TOOLS_PLATFORM.sleep'}
+                  'gsleep': 'TOOLS_PLATFORM.sleep', 'gtee': 'TOOLS_PLATFORM.tee'}
 # These variables select the directory of the role tool.
 ROLE_DIRECTORIES = {
     # Native LLVM TableGen tools for the lld and clang cross recipes.

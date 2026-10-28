@@ -66,6 +66,8 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
     bison.touch()
     yacc = root / 'host-pkg-llvm/bin/yacc'
     yacc.touch()
+    gtee = root / 'host-pkg-llvm/bin/gtee'
+    gtee.touch()
     qt_prefix = root / 'host-pkg-llvm/qt6'
     (qt_prefix / 'libexec').mkdir(parents=True)
     (qt_prefix / 'bin').mkdir()
@@ -95,7 +97,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         assert set(call.kwargs) == {'required_roles', 'compiler_family'}
         assert call.kwargs['compiler_family'] == 'clang'
         assert b'EMBERBSD_HOST_COMPILER_FAMILY?= clang\n' in before
-        assert call.kwargs['required_roles'] == tuple(adapter.ROLE_VARIABLES) + tuple(directories) + ('clang-tblgen', 'wayland-scanner', 'flex', 'bison', 'yacc', 'fetch')
+        assert call.kwargs['required_roles'] == tuple(adapter.ROLE_VARIABLES) + tuple(directories) + ('clang-tblgen', 'wayland-scanner', 'flex', 'bison', 'yacc', 'gtee', 'fetch')
         for role in ('bmake', 'gmake', 'xz', 'xzcat', 'install', 'fetch', 'wayland-scanner', 'llvm-tblgen',
                      'clang-tblgen'):
             assert role in call.kwargs['required_roles']
