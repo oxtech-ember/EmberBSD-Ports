@@ -4,6 +4,7 @@
 """Check native defaults and optional metadata from an existing package stage."""
 import argparse
 from pathlib import Path
+import shutil
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -26,7 +27,10 @@ def main():
     parser.add_argument('--expected-library', type=Path)
     args = parser.parse_args()
     args.work.mkdir(parents=True, exist_ok=False)
-    defaults = ROOT / 'pkgsrc/defaults.mk.conf'
+    # defaults.mk.conf includes the exported EMBERBSD-VERSIONS.MK beside it.
+    defaults = args.work / 'EMBERBSD-DEFAULTS-MK.CONF'
+    shutil.copy2(ROOT / 'pkgsrc/defaults.mk.conf', defaults)
+    shutil.copy2(ROOT / 'pkgsrc/versions.mk', args.work / 'EMBERBSD-VERSIONS.MK')
     makefile = args.work / 'Makefile'
     makefile.write_text('BSD_PKG_MK= yes\n.include "' + str(defaults) + '"\n')
     for system, cross, expected in [('Darwin', 'no', 'yes'), ('Darwin', 'yes', ''),
