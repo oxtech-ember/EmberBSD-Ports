@@ -372,3 +372,4 @@ www/esbuild
 textproc/grep
 math/fast_float
 devel/libuv
+devel/lldb
