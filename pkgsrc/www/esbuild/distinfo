@@ -1,0 +1,18 @@
+$NetBSD: distinfo,v 1.11 2026/08/09 06:14:18 kikadf Exp $
+
+BLAKE2s (esbuild-0.28.2.tar.gz) = 0a4c994d6121c5b7d2615c7ad1759a8e76822c61a1c632349e6cb03feb3b0b36
+SHA512 (esbuild-0.28.2.tar.gz) = c4cb2ef32e147ebc5099ab501ebcb5fb4e3f16a143a0fd1f9b74efb90e0c24309ab61b236b6e6cf86a235187368bed660ae19403bbda9a84328157fe45ffc5b8
+Size (esbuild-0.28.2.tar.gz) = 2008796 bytes
+BLAKE2s (golang.org_x_sys_@v_v0.49.0.mod) = f609363d838f5ab76912006e45f8be731a32059069f64baeb2b494e4589f0a1c
+SHA512 (golang.org_x_sys_@v_v0.49.0.mod) = a307d84c89d7a12775fcb0274d2c9c5a54315cc6559596ab94b40e0b53f192e55373ca0f5f17768158090a456d23591cf4052a70579a080f2761ee0f62654a4f
+Size (golang.org_x_sys_@v_v0.49.0.mod) = 35 bytes
+BLAKE2s (golang.org_x_sys_@v_v0.49.0.zip) = d99d57084112b8cbb182d060e8925527ee09137112971a2047187e26c2f1c278
+SHA512 (golang.org_x_sys_@v_v0.49.0.zip) = 3d9415b9b64e2a26908a0142e2a76ca791eb3a8ad0d23271d728762b97c21aaa2ef57217da36422ac6492a2488092a4e8f70ff2b5158596740a0b659d125e258
+Size (golang.org_x_sys_@v_v0.49.0.zip) = 2115196 bytes
+BLAKE2s (esbuild-0.28.2.tgz) = 70239486d9b8a2f9797def247f0f04219926713cd19fbd66b35d6584b1546deb
+SHA512 (esbuild-0.28.2.tgz) = 1ca54b4bc76f208fb1a0a5bd926ab16d12ab9d61177c926bfc56618499a2a880747b4e7740d605a8e068b9330efe4e6c203e0cbc28940afbfc6fd338877db020
+Size (esbuild-0.28.2.tgz) = 34207 bytes
+SHA1 (patch-go.mod) = 230cb90067d700e97f7c520645d6031774703399
+SHA1 (patch-go.sum) = e30eaea3b926d13b1fb247f222d6a47932ab6715
+SHA1 (patch-npm_package_lib_main.js) = 5118520e5bbc22ca51bbe5a8327e122b7d7d4d27
+SHA1 (patch-npm_package_package.json) = 3b7802007098070f08f6bd0f2d9813de617c8cec

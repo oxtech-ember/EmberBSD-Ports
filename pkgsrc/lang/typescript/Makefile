@@ -1,6 +1,7 @@
 # $NetBSD$
 
 DISTNAME=	typescript-7.0.2
+PKGREVISION=	1
 CATEGORIES=	lang
 TYPESCRIPT_REVISION=	2bd066d87f5bafd315be9f40889d0a60b9e58e0b
 DISTFILES=	typescript-go-${TYPESCRIPT_REVISION}.tar.gz ${DISTNAME}.tgz
@@ -17,7 +18,6 @@ LICENSE=	apache-2.0 AND modified-bsd AND 2-clause-bsd AND mit AND unicode AND w3
 
 DEPENDS+=	nodejs>=24.22.1<25:../../lang/nodejs24
 USE_LANGUAGES=	# none
-USE_TOOLS+=	pax
 REPLACE_NODEJS=	npm/package/bin/tsc
 GO_BUILD_PATTERN=	./cmd/tsgo
 GOFLAGS+=	-tags=noembed
@@ -55,7 +55,7 @@ do-test:
 .endif
 
 do-install:
-	cd ${WRKSRC}/npm/package && ${PAX} -rw . ${DESTDIR}${PREFIX}/lib/node_modules/typescript
+	${CP} -R ${WRKSRC}/npm/package/. ${DESTDIR}${PREFIX}/lib/node_modules/typescript/
 	${INSTALL_PROGRAM} ${WRKDIR}/.gopath/${GOPATH_BIN}/tsgo \
 	    ${DESTDIR}${PREFIX}/${TYPESCRIPT_PLATFORM_DIR}/lib/tsc
 	${INSTALL_DATA} ${WRKSRC}/internal/bundled/libs/*.d.ts \

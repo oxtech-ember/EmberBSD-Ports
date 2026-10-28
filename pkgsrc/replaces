@@ -365,3 +365,4 @@ devel/rpcsvc-proto
 devel/rcs
 lang/wasi-compiler-rt
 lang/wasi-libc
+www/esbuild
