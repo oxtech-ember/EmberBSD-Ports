@@ -1,0 +1,25 @@
+$NetBSD$
+
+Use the same shared CXX release for Rust and generated C++ bridge.
+Origin: EmberBSD (AI-assisted).
+
+--- src/gn/starlark/Cargo.toml.orig
++++ src/gn/starlark/Cargo.toml
+@@ -32,7 +32,7 @@
+ anyhow = "1.0"
+ # cxx's C++ version must be <= GN's C++ version. This does not need to be kept
+ # in sync unless you're trying to use new C++ features in the bridge.
+-cxx = { version = "1.0", features = ["c++20"] }
++cxx = { version = "=1.0.205", features = ["c++20"] }
+ either = "1.16"
+ starlark = "0.14"
+ starlark_derive = "0.14"
+@@ -44,8 +44,6 @@
+ # create records directly in rust (could only create them by running in starlark
+ # previously).
+ [patch.crates-io]
+-cxx = { git = "https://github.com/matts1/cxx.git", branch = "gn" }
+-cxxbridge-macro = { git = "https://github.com/matts1/cxx.git", branch = "gn" }
+ starlark = { git = "https://github.com/matts1/starlark-rust.git", branch = "gn_starlark" }
+ starlark_derive = { git = "https://github.com/matts1/starlark-rust.git", branch = "gn_starlark" }
+ starlark_map = { git = "https://github.com/matts1/starlark-rust.git", branch = "gn_starlark" }

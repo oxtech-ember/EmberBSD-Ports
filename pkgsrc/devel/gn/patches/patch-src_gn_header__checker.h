@@ -6,12 +6,12 @@ Origin: EmberBSD (AI-assisted), not submitted upstream.
 
 --- src/gn/header_checker.h.orig
 +++ src/gn/header_checker.h
-@@ -106,7 +106,7 @@
-   //
-   // ```
-   //     A
--  //    / \
-+  //    / \  (edges)
-   //   B   C
-   //    \ /
-   //     D
+@@ -125,7 +125,7 @@
+     //
+     // ```
+     //     A
+-    //    / \
++    //    / \  (edges)
+     //   B   C
+     //    \ /
+     //     D

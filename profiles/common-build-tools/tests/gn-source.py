@@ -141,13 +141,13 @@ class GNSourceTests(unittest.TestCase):
         make = (RECIPE / 'Makefile').read_text()
         revision = re.search(r'^GN_REVISION=\s*([0-9a-f]{40})$', make, re.M).group(1)
         tree = re.search(r'^GN_TREE=\s*([0-9a-f]{40})$', make, re.M).group(1)
-        self.assertEqual(revision, '641ace93dd9560e75e7add0d08f77b446fbb3b78')
-        self.assertEqual(tree, '90329c7841d68716991cf2c247bcd9906c884c91')
+        self.assertEqual(revision, '84f10d13f9041068a7da8f9dfc9b991e1049823a')
+        self.assertEqual(tree, 'dd53ce1ebf874ac04939e5684fc39e81d87c2008')
         outputs, originals = [], []
         for path in ARCHIVES:
             raw = path.read_bytes(); originals.append(raw)
             files = NORMALIZER.read_gitiles(raw, tree)
-            self.assertEqual(len(files), 1054)
+            self.assertEqual(len(files), 1088)
             outputs.append(NORMALIZER.normalized_tar(files))
         self.assertGreaterEqual(len(set(originals)), 2, 'Provide two genuinely different Gitiles responses')
         self.assertEqual(len(set(outputs)), 1)

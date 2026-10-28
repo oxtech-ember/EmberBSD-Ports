@@ -1,10 +1,9 @@
 # $NetBSD$
 
-DISTNAME=	gn-2486
-PKGREVISION=	4
+DISTNAME=	gn-2610
 CATEGORIES=	devel
-GN_REVISION=	641ace93dd9560e75e7add0d08f77b446fbb3b78
-GN_TREE=	90329c7841d68716991cf2c247bcd9906c884c91
+GN_REVISION=	84f10d13f9041068a7da8f9dfc9b991e1049823a
+GN_TREE=	dd53ce1ebf874ac04939e5684fc39e81d87c2008
 MASTER_SITES=	https://gn.googlesource.com/gn/+archive/
 DISTFILES=	gn-${GN_REVISION}.tar
 
@@ -13,9 +12,9 @@ HOMEPAGE=	https://gn.googlesource.com/gn/
 COMMENT=	Meta-build system that generates Ninja build files
 LICENSE=	modified-bsd
 
-# Published Chromium tag 152.0.7977.167 pins this commit in DEPS.
-# The GN initial-commit tag gives initial-commit-2486-g641ace93dd95.
-GN_VERSION=	2486 (641ace93dd95)
+# Current upstream GN; Chromium 156 pin is an ancestor.
+# The GN initial-commit tag gives initial-commit-2610-g84f10d13.
+GN_VERSION=	2610 (84f10d13f904)
 WRKSRC=		${WRKDIR}/${DISTNAME}
 EXTRACT_DIR=	${WRKSRC}
 
@@ -24,6 +23,7 @@ USE_CXX_FEATURES=	c++23
 ONLY_FOR_COMPILER=	clang gcc
 USE_TOOLS+=		rm
 TOOL_DEPENDS+=		ninja-build>=1.13.2:../../devel/ninja-build
+TOOL_DEPENDS+=		cxxbridge-1.0.205{,nb[0-9]*}:../../devel/cxxbridge
 PYTHON_VERSIONS_ACCEPTED=	315
 PYTHON_FOR_BUILD_ONLY=	tool
 HAS_CONFIGURE=		yes
@@ -37,6 +37,7 @@ GN_CXXFLAGS=		${CPPFLAGS} ${CXXFLAGS}
 GN_ENV=			AR=${AR:Q} CXX=${CXX:Q}
 GN_ENV+=		CFLAGS= CXXFLAGS=${GN_CXXFLAGS:Q} LDFLAGS=${LDFLAGS:Q}
 GN_ENV+=		GN_VERSION=${GN_VERSION:Q}
+GN_ENV+=		GN_CXX_INCLUDE=${WRKDIR:Q}/gn-cxx-include
 
 INSTALLATION_DIRS=	bin share/doc/gn
 
@@ -63,6 +64,12 @@ do-fetch: error-check
 	fi
 
 do-configure:
+	${RUN} ${MKDIR} ${WRKDIR:Q}/gn-cxx-include/rust
+	${RUN} ${CP} ${TOOLBASE:Q}/include/rust/cxx.h ${WRKDIR:Q}/gn-cxx-include/rust/cxx.h
+	${RUN} ${TOOLBASE:Q}/bin/cxxbridge --header > ${WRKDIR:Q}/cxx-generated.h
+	${RUN} ${CMP} ${WRKDIR:Q}/cxx-generated.h ${WRKDIR:Q}/gn-cxx-include/rust/cxx.h
+	${RUN} ${TOOLBASE:Q}/bin/cxxbridge ${WRKSRC:Q}/src/gn/starlark/crates/ffi/src/bridge.rs --header > ${WRKSRC:Q}/src/gn/ffi/bridge.h
+	${RUN} ${TOOLBASE:Q}/bin/cxxbridge ${WRKSRC:Q}/src/gn/starlark/crates/ffi/src/bridge.rs > ${WRKSRC:Q}/src/gn/ffi/bridge.cc
 	cd ${WRKSRC} && ${SETENV} ${CONFIGURE_ENV} ${GN_ENV} ${TOOL_PYTHONBIN} \
 	    build/gen.py --platform ${LOWER_OPSYS:Q} --host ${NATIVE_LOWER_OPSYS:Q}
 

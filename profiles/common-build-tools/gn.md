@@ -1,26 +1,24 @@
 # GN for native build generation
 
-The canonical recipe is `pkgsrc/devel/gn`. It pins GN commit
-`641ace93dd9560e75e7add0d08f77b446fbb3b78`. Published Chromium tag
-[`152.0.7977.167`](https://chromium.googlesource.com/chromium/src/+/dd78960ccd8a03a2fe1f629543d27783885b78e9/DEPS)
-selects this revision in `DEPS`.
-The GN Git history reports `initial-commit-2486-g641ace93dd95`.
-The package version is `2486`. Do not substitute the latest GN revision.
+The canonical recipe is `pkgsrc/devel/gn`. It selects current upstream commit
+`84f10d13f9041068a7da8f9dfc9b991e1049823a`, whose Git history reports
+`initial-commit-2610-g84f10d13` (package version `2610`). Chromium 156's
+pinned GN revision is an ancestor of this common version.
 
 The official source is the exact
-[GN commit archive](https://gn.googlesource.com/gn/+archive/641ace93dd9560e75e7add0d08f77b446fbb3b78.tar.gz).
+[GN commit archive](https://gn.googlesource.com/gn/+archive/84f10d13f9041068a7da8f9dfc9b991e1049823a.tar.gz).
 Gitiles assigns request-time PAX modification timestamps, so its compressed
 archive bytes change between requests. The recipe's normal `fetch` phase calls
 `pkgsrc/devel/gn/files/fetch-source.py` to verify all source bytes and executable
-bits against Git tree `90329c7841d68716991cf2c247bcd9906c884c91`, then normalize
+bits against Git tree `dd53ce1ebf874ac04939e5684fc39e81d87c2008`, then normalize
 archive metadata. That tree was independently obtained from the canonical Git
 repository at the unchanged commit. The helper accepts only regular files and
 their parent directories; duplicate paths, case collisions, traversal, links,
 extra content and changed modes are rejected before an output appears.
 
-The resulting `gn-641ace93dd9560e75e7add0d08f77b446fbb3b78.tar` is an
+The resulting `gn-84f10d13f9041068a7da8f9dfc9b991e1049823a.tar` is an
 uncompressed USTAR archive with zero timestamps/ownership and sorted names.
-Its 1,054 Git-tracked files retain their content and executable bits. Ordinary
+Its 1,088 Git-tracked files retain their content and executable bits. Ordinary
 pkgsrc `checksum` verifies this complete normalized archive against `distinfo`.
 The recipe sets `EXTRACT_DIR` to `WRKSRC` because files are at the archive root.
 A missing output is published atomically; an existing file or symlink is never
@@ -44,7 +42,9 @@ pkgsrc tree has no `devel/gn` recipe. Export collision checks remain enabled.
 
 ## Source changes
 
-The patch to `build/gen.py` has three changes:
+The patch to `build/gen.py` preserves the selected toolchain contract. GN 2610
+can otherwise download a private CIPD toolchain when CXX is absent; this recipe
+requires explicit CXX and AR and refuses that fallback. It also:
 
 - On POSIX, the GCC probe passes the selected C++ command as an argument vector.
   It does not invoke a system shell. The Windows command route is unchanged.
@@ -102,7 +102,7 @@ For native Darwin, the recipe runs these source-owned operations:
 
 1. Selected Python runs `build/gen.py --platform darwin --host darwin`.
    `CXX` and `AR` select selected Ports tools. `GN_VERSION` is
-   `2486 (641ace93dd95)`. The selected C++ flags include the SDK preprocessor
+   `2610 (84f10d13f904)`. The selected C++ flags include the SDK preprocessor
    and C++ ABI flags. Link flags remain the selected native link flags.
 2. Selected Ninja runs `-C out -j 18 gn` for a jobs-18 build.
 3. The test phase separately builds `-C out -j 18 gn_unittests`, then runs
@@ -125,7 +125,7 @@ configure or build. The test target refuses host execution of a cross-built
 `gn_unittests`; run it on the matching target instead.
 
 After the native package build, check `gn --version` against
-`2486 (641ace93dd95)`. Run the upstream unit tests and a small GN-to-Ninja
+`2610 (84f10d13f904)`. Run the upstream unit tests and a small GN-to-Ninja
 project. Use `--script-executable=<selected native Python>` for GN generation.
 For optional Ninja post-processing, pass
 `--ninja-executable=<selected native Ninja>` explicitly.
@@ -133,13 +133,38 @@ Verify the installed Mach-O architecture, compiler identity, load commands
 and complete runtime closure before adding the `gn` role to an SDK bundle.
 Select the installed tool with the SDK host-prefix API. No separate qualification is required.
 
+## Shared CXX bridge
+
+GN uses the installed common `cxxbridge` 1.0.205 generator and matching
+`include/rust/cxx.h`. Configure copies only that header to an isolated build include tree, checks its
+identity against the generator, and regenerates
+GN's bridge from its Rust declarations. Thin adapters retain borrowed string
+lifetimes and check that all GN value enum discriminants match. The Rust
+Starlark lock selects the same CXX release instead of its former fork.
+The ordinary upstream default does not enable experimental Starlark. When
+explicitly enabled, its Cargo actions use `--offline --locked`; its separate
+Rust source closure and runtime have not been validated here.
+
+The source regression below also supports an explicit bridge check:
+
+```sh
+python3 profiles/common-build-tools/tests/gn-cxx.py \
+  --archive /absolute/distfiles/gn-84f10d13f9041068a7da8f9dfc9b991e1049823a.tar \
+  --patch /absolute/host/bin/gpatch --cxxbridge /absolute/host/bin/cxxbridge \
+  --include /absolute/host/include --cxx /absolute/host/bin/clang++
+```
+
+It applies the full source series without fuzz, verifies generator/header and
+Rust lock identities, and compiles five real GN FFI translation units. It is
+not an enabled Starlark runtime test.
+
 ## Source regression
 
 Run the pure regression with the exact downloaded source archive:
 
 ```sh
 python3 profiles/common-build-tools/tests/test-gn-recipe.py \
-  --archive /absolute/path/gn-641ace93dd9560e75e7add0d08f77b446fbb3b78.tar -v
+  --archive /absolute/path/gn-84f10d13f9041068a7da8f9dfc9b991e1049823a.tar -v
 ```
 
 It checks the archive and patch checksums, exact patch context, POSIX compiler

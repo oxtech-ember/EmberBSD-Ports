@@ -1,9 +1,23 @@
 $NetBSD$
 
-BLAKE2s (gn-641ace93dd9560e75e7add0d08f77b446fbb3b78.tar) = 0d99ab9d5f432066d7fb3cfe49d7cad89e256a9b4764e034618f8aaa67a4d627
-SHA512 (gn-641ace93dd9560e75e7add0d08f77b446fbb3b78.tar) = 736a70bc770717450143afcc7cbd66363f2fb1abaf307d35194a30042bc8f1d7a566258d7ae3464a7fa66fdb8922e6c15462dd0df04935bf17c46c01af2cb6d4
-Size (gn-641ace93dd9560e75e7add0d08f77b446fbb3b78.tar) = 6850560 bytes
-SHA1 (patch-build_gen.py) = e5e4cc96122065dd1e6504aa2016ea5dfe8867c3
+BLAKE2s (gn-84f10d13f9041068a7da8f9dfc9b991e1049823a.tar) = 981cfbb48804abc5f0b168159e9532df9ef2d5fd79ef3b1eecd3121f48ad0531
+SHA512 (gn-84f10d13f9041068a7da8f9dfc9b991e1049823a.tar) = 71e0894ce8bc587150a24acf52fa9d8884a2ed1b7f21adbc27496a8a0c99982c7b2c2b05eda8034f4128e2ec79d7fd870969a8dcc766bd19c2cd2953883cac59
+Size (gn-84f10d13f9041068a7da8f9dfc9b991e1049823a.tar) = 7342080 bytes
+SHA1 (patch-build_gen.py) = e62ade25d4adce6dd28e20fbfe12d7797f399a1d
 SHA1 (patch-src_base_mac_scoped__typeref.h) = 70e10cb3baed83abfae0435247834c768bddb40b
-SHA1 (patch-src_gn_header__checker.h) = ef9176a91b581f249070ac52331f5fed755e8dbb
+SHA1 (patch-src_gn_ffi_err.h) = f6fd1ab2d8b4d1614e814cca086880e3c1707b34
+SHA1 (patch-src_gn_ffi_intern__string.cc) = a9846414819edf9f6aaacd1bcaa70b50a56241b8
+SHA1 (patch-src_gn_ffi_ports__adapters.h) = d7d4f271b341c2bf8bb516538c3d6716146583ea
+SHA1 (patch-src_gn_ffi_scope.cc) = cca5c72194d24140eac4f279d0b0d99bc5a084b1
+SHA1 (patch-src_gn_ffi_scope.h) = b27b5f26c76cc4add8fc8a237b9fd59ad3447375
+SHA1 (patch-src_gn_ffi_session.cc) = 8f47126fcc2a3903ff958383ed239b94898c13dd
+SHA1 (patch-src_gn_ffi_value.cc) = 4d222f5162e4f97442a5cdc91fe364c786a03742
+SHA1 (patch-src_gn_ffi_value.h) = 9e6d4cf211cf989a4cdc7e3c4c3338680af9ae79
+SHA1 (patch-src_gn_header__checker.h) = fc0cd9be072ac352896e0ffe49218760211805be
+SHA1 (patch-src_gn_starlark_Cargo.lock) = 1ec1a4c931e6f3a934d31f5ef9c97da9d2b4b959
+SHA1 (patch-src_gn_starlark_Cargo.toml) = d7e2b5047d02a0d0909c1ea92eb87049e0c8a891
+SHA1 (patch-src_gn_starlark_crates_ffi_src_bridge.rs) = cf4b374e26bd25e2f051365dfc7db82602374eae
+SHA1 (patch-src_gn_starlark_crates_ffi_src_label.rs) = f70297319ce80b36409137098a7864674547499e
+SHA1 (patch-src_gn_starlark_crates_ffi_src_output__file.rs) = a5bf4d43bfa5a3d948cb099a84503947c99f38d7
+SHA1 (patch-src_gn_starlark_crates_ffi_src_value.rs) = 4be58e559b0dcdfac318b8936ca21327f2c06f93
 SHA1 (patch-src_gn_xcode__writer.cc) = 2852633e78b18a089b0e1bf5ea8c702a5c0ab6cd

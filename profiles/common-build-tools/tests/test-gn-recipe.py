@@ -25,6 +25,7 @@ ORIGINAL = None
 PATCHED = None
 NINJA_SOURCE = None
 TEMPLATES = {}
+BUILD_MODULES = {}
 INITIAL_CXX = None
 
 
@@ -88,7 +89,7 @@ class GNRecipeTests(unittest.TestCase):
                 (root / 'build').mkdir()
                 (root / 'build/gen.py').write_text(PATCHED)
                 (root / 'build/ninja_file.py').write_text(NINJA_SOURCE)
-                for name, data in TEMPLATES.items():
+                for name, data in {**TEMPLATES, **BUILD_MODULES}.items():
                     (root / 'build' / name).write_bytes(data)
                 gen_spec = importlib.util.spec_from_file_location('gn_recipe_generator', root / 'build/gen.py')
                 ninja_spec = importlib.util.spec_from_file_location('ninja_file', root / 'build/ninja_file.py')
@@ -96,11 +97,15 @@ class GNRecipeTests(unittest.TestCase):
                 ninja = importlib.util.module_from_spec(ninja_spec)
                 cxx = initial or '/selected/' + target + '/' + ('clang++' if family == 'clang' else 'g++')
                 ar = '/selected/' + target + '/ar'
-                env = dict(CXX=cxx, AR=ar, GN_VERSION='2486 (641ace93dd95)',
+                include = root / 'selected/include'
+                (include / 'rust').mkdir(parents=True)
+                (include / 'rust/cxx.h').write_text('// selected header\n')
+                env = dict(CXX=cxx, AR=ar, GN_CXX_INCLUDE=str(include), GN_VERSION='2610 (84f10d13f904)',
                            CXXFLAGS='-DSELECTED_INPUT=1 -mmacosx-version-min=26.0',
                            LDFLAGS='-mmacosx-version-min=26.0')
                 macros = '#define __GNUC__ 4\n#define __clang__ 1\n' if family == 'clang' else '#define __GNUC__ 16\n'
-                with mock.patch.dict(sys.modules, {'ninja_file': ninja, generator.__name__: generator}):
+                with mock.patch.dict(sys.modules, {'ninja_file': ninja, generator.__name__: generator}), \
+                        mock.patch.object(sys, 'path', [str(root / 'build'), *sys.path]):
                     ninja_spec.loader.exec_module(ninja)
                     gen_spec.loader.exec_module(generator)
                     real_run = generator.subprocess.run
@@ -123,8 +128,16 @@ class GNRecipeTests(unittest.TestCase):
                         self.assertEqual(probe_call.call_count, 1)
                         self.assertEqual(probe_call.call_args.args, (shlex.split(cxx) + ['-dM', '-E', '-'],))
                         self.assertFalse(probe_call.call_args.kwargs['shell'])
+                        if target == 'darwin' and family == 'clang' and not initial:
+                            self.assertEqual(generator.main(['--platform', target, '--host', 'darwin',
+                                                             '--starlark', '--out-path', str(root / 'out-starlark')]), 0)
+                            starlark = (root / 'out-starlark/build.ninja').read_text()
+                            self.assertIn('cargo_flags = --offline --locked --lib', starlark)
+                            self.assertIn('cargo_flags = --workspace --offline --locked --tests', starlark)
                 text = (root / 'out/build.ninja').read_text()
                 self.assertIn('cxx = ' + cxx + '\n', text)
+                self.assertIn(str(include), text)
+                self.assertNotIn('starlark/vendor/cxx/include', text)
                 self.assertIn('ld = ' + cxx + '\n', text)
                 self.assertIn('ar = ' + ar + '\n', text)
                 self.assertIn('-std=c++23', text)
@@ -174,24 +187,32 @@ class GNRecipeTests(unittest.TestCase):
     def test_archive_version_keeps_exact_commit_identity_without_git(self):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / 'last_commit_position.h'
-            env = SimpleNamespace(environ={'GN_VERSION': '2486 (641ace93dd95)'}, path=os.path)
+            env = SimpleNamespace(environ={'GN_VERSION': '2610 (84f10d13f904)'}, path=os.path)
             selected = function('GenerateLastCommitPosition', os=env,
                                 subprocess=SimpleNamespace(check_output=lambda *a, **k: self.fail('unexpected git')))
-            selected(SimpleNamespace(is_windows=lambda: False), str(target))
+            selected(SimpleNamespace(is_windows=lambda: False), str(target), False)
             text = target.read_text()
-            self.assertIn('#define LAST_COMMIT_POSITION_NUM 2486', text)
-            self.assertIn('#define LAST_COMMIT_POSITION "2486 (641ace93dd95)"', text)
+            self.assertIn('#define LAST_COMMIT_POSITION_NUM 2610', text)
+            self.assertIn('#define LAST_COMMIT_POSITION "2610 (84f10d13f904)"', text)
             before = target.stat().st_mtime_ns
-            selected(SimpleNamespace(is_windows=lambda: False), str(target))
+            selected(SimpleNamespace(is_windows=lambda: False), str(target), False)
             self.assertEqual(target.stat().st_mtime_ns, before)
 
+    def test_dummy_version_overrides_selected_archive_identity(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / 'last_commit_position.h'
+            env = SimpleNamespace(environ={'GN_VERSION': '2610 (84f10d13f904)'}, path=os.path)
+            selected = function('GenerateLastCommitPosition', os=env)
+            selected(SimpleNamespace(is_windows=lambda: False), str(target), True)
+            self.assertIn('#define LAST_COMMIT_POSITION "0 (UNKNOWN)"', target.read_text())
+
     def test_archive_version_rejects_malformed_identity(self):
-        for value in ['', '2486', '2486 (UNKNOWN)', '2486 (641ace93dd95)\n', '1;exit 99 (641ace93dd95)']:
+        for value in ['', '2610', '2610 (UNKNOWN)', '2610 (84f10d13f904)\n', '1;exit 99 (84f10d13f904)']:
             with self.subTest(value=value):
                 selected = function('GenerateLastCommitPosition',
                     os=SimpleNamespace(environ={'GN_VERSION': value}, path=os.path))
                 with self.assertRaises(ValueError):
-                    selected(SimpleNamespace(is_windows=lambda: False), '/unused-output')
+                    selected(SimpleNamespace(is_windows=lambda: False), '/unused-output', False)
 
     def test_darwin_explicit_sdk_deployment_flags_are_not_replaced(self):
         def apply_flags(source, compile_flags, link_flags):
@@ -225,6 +246,14 @@ class GNRecipeTests(unittest.TestCase):
         self.assertIn('GN_CXXFLAGS=\t\t${CPPFLAGS} ${CXXFLAGS}', recipe)
         self.assertNotIn('MAKE_ENV+=\t\t${CONFIGURE_ENV}', recipe)
 
+    def test_generator_refuses_missing_selected_tools(self):
+        for env in ({}, {'CXX': '/selected/clang++'}, {'AR': '/selected/llvm-ar'}):
+            with self.subTest(env=env):
+                selected = function('WriteGNNinja', os=SimpleNamespace(environ=env))
+                with self.assertRaisesRegex(ValueError, 'select explicit CXX and AR'):
+                    selected('/unused', None, None, None, None)
+        self.assertNotIn('install(toolchain.packages)', PATCHED)
+
     def test_recipe_keeps_cross_tools_and_diagnostics_separate(self):
         recipe = (RECIPE / 'Makefile').read_text()
         for exact in ['USE_CXX_FEATURES=\tc++23', 'ONLY_FOR_COMPILER=\tclang gcc',
@@ -253,6 +282,7 @@ if __name__ == '__main__':
             raise SystemExit('The pinned archive must contain one regular build/gen.py.')
         ORIGINAL = archive.extractfile(candidates[0]).read().decode()
         NINJA_SOURCE = archive.extractfile('build/ninja_file.py').read().decode()
+        BUILD_MODULES = {name: archive.extractfile('build/' + name).read() for name in ('pinned.py', 'target.py')}
         TEMPLATES = {Path(m.name).name: archive.extractfile(m).read() for m in archive.getmembers()
                      if m.isfile() and m.name.startswith('build/') and m.name.endswith('.template')}
     PATCHED = apply_exact(ORIGINAL, (RECIPE / 'patches/patch-build_gen.py').read_text())
