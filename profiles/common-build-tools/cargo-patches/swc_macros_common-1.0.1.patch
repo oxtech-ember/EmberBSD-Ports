@@ -1,0 +1,57 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -38,7 +38,7 @@
+ version = "1.0.7"
+ 
+ [dependencies.syn]
+-version = "2"
++version = "3"
+ features = [
+     "derive",
+     "visit",
+--- a/src/derive/generics.rs
++++ b/src/derive/generics.rs
+@@ -106,12 +106,14 @@
+         let self_ty: Type = parse(quote!(Self).into()).unwrap();
+ 
+         let bound = WherePredicate::Type(PredicateType {
++            attrs: vec![],
+             lifetimes: None,
+             bounded_ty: self_ty,
+             colon_token: Token![:](def_site()),
+             // `Trait` in `Self: Trait`
+             bounds: iter::once(Pair::End(TypeParamBound::Trait(TraitBound {
+-                modifier: TraitBoundModifier::None,
++                modifiers: Default::default(),
++                maybe: None,
+                 lifetimes: None,
+                 path: trait_,
+                 paren_token: None,
+--- a/src/derive.rs
++++ b/src/derive.rs
+@@ -26,7 +26,6 @@
+                 .into_pairs()
+                 .map(|mut pair| {
+                     if let GenericParam::Type(ref mut t) = *pair.value_mut() {
+-                        t.eq_token = None;
+                         t.default = None;
+                     }
+ 
+@@ -62,7 +61,7 @@
+                 attrs: Vec::new(),
+                 impl_token: Token!(impl)(def_site()),
+                 brace_token: Default::default(),
+-                defaultness: None,
++                modifiers: Default::default(),
+                 unsafety: None,
+                 generics,
+                 trait_: None,
+@@ -74,7 +73,7 @@
+ 
+     /// Set `defaultness`
+     pub fn defaultness(&mut self, defaultness: Option<token::Default>) {
+-        self.out.defaultness = defaultness;
++        self.out.modifiers.defaultness = defaultness;
+     }
+ 
+     /// Set `unsafety`

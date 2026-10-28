@@ -65,6 +65,30 @@ Rust compiler wrappers are rejected. `cargo install` receives an explicit target
 because upstream ignores `build.target` for that command. Exit status and the
 normal pkgsrc process group are preserved.
 
+## Shared crate compatibility patches
+
+A recipe with a lockfile migrated to the shared dependency graph sets
+`EMBER_CARGO_PATCH_SET=yes`. After pkgsrc prepares its checksum-verified vendor
+source and before Cargo configuration, the common [registry](cargo-patches/registry.json)
+applies version-specific patches with the selected GNU patch at
+`EMBER_CARGO_PATCH_TOOL` (default `${EMBER_CARGO_PREFIX}/bin/gpatch`). The
+resolved tool must be inside the selected host prefix. The registry checks each
+controlled input and output file hash, rejects unknown bytes and symlinks, uses
+zero fuzz, and preserves the archive checksum while updating any affected
+Cargo file checksums. Repeating configuration accepts the already-patched files.
+
+These source adaptations are maintained by EmberBSD with AI assistance; the
+original crate licenses remain applicable.
+
+The recipe still owns its Cargo.lock, exact crate list and checksums. Update
+those together with any direct dependency constraints; the patch set does not
+by itself upgrade a lockfile or establish macro compatibility. Run
+`tests/cargo-patches.py --prefix /absolute/host-prefix --patch /absolute/host-prefix/bin/gpatch`
+and the affected package's actual consumer tests when extending the registry.
+`tests/cargo-syn3.py` runs named offline macro consumers against a prepared
+patched vendor tree using the selected host Cargo and linker; use `--help` for
+the required paths and cases. The caller holds the normal prefix and link locks.
+
 ## Shared native library inputs
 
 A recipe may pass `--build-script-overrides /absolute/links.toml` through

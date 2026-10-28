@@ -22,6 +22,10 @@ EMBER_CARGO_TARGET?=
 EMBER_CARGO_CONFIGURE_ARGS?=
 EMBER_CARGO_HOST_LINKER_LAUNCHER?=
 EMBER_CARGO_TARGET_LINKER_LAUNCHER?=
+EMBER_CARGO_PATCH_SET?= no
+EMBER_CARGO_PATCH_TOOL?= ${EMBER_CARGO_PREFIX}/bin/gpatch
+_EMBER_CARGO_PATCH_HELPER:= ${.PARSEDIR:tA}/emberbsd-cargo-patches.py
+_EMBER_CARGO_PATCH_REGISTRY:= ${.PARSEDIR:tA}/emberbsd-cargo-patches
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 EMBER_CARGO_MODE=	cross
@@ -53,6 +57,11 @@ EMBER_CARGO_HOST_LDFLAGS?=	${LDFLAGS}
 pre-configure: ember-cargo-configure
 .PHONY: ember-cargo-configure
 ember-cargo-configure:
+.if ${EMBER_CARGO_PATCH_SET:tl} == "yes"
+	${RUN} ${TOOL_PYTHONBIN} -B -I -S ${_EMBER_CARGO_PATCH_HELPER:Q} \
+	    --vendor ${CARGO_VENDOR_DIR:Q} --registry ${_EMBER_CARGO_PATCH_REGISTRY:Q} \
+	    --prefix ${EMBER_CARGO_PREFIX:Q} --patch ${EMBER_CARGO_PATCH_TOOL:Q}
+.endif
 	${RUN} ${TEST} ${RUST_TYPE:Q} = native || ${FAIL_MSG} "emberbsd-cargo.mk requires its declared native Rust tool provider"
 	${RUN} ${SETENV} ${CONFIGURE_ENV} ${TOOL_PYTHONBIN} -B -I -S ${_EMBER_CARGO_HELPER:Q} configure \
 	    --config ${EMBER_CARGO_CONFIG:Q} --vendor ${CARGO_VENDOR_DIR:Q} --output ${EMBER_CARGO_OUTPUT:Q} \

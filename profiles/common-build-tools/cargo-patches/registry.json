@@ -1,0 +1,182 @@
+{
+  "ast_node-7.0.0": {
+    "files": {
+      "Cargo.toml": {
+        "after": "c1d4f31c2c6411878bca5cbec9c804922452305bc2280cc11f4e769d21a622b5",
+        "before": "4ddf6b47dcb588babcaa57f194d60ccbb634109ec5e57642cb6459a124f9fb31"
+      },
+      "src/enum_deserialize.rs": {
+        "after": "99c51e6a09ab426be7c82a56cfb46acca1dbfb0c16fe9b52552ff40101d428e1",
+        "before": "f6f2659b2bc0ee120f58ee26c665ebeba9dec663064a7ed296597eecb07eb3f6"
+      },
+      "src/spanned.rs": {
+        "after": "66e53d9c16970daac9df45b67e285dfd1f80170e2a92bca2b20f4d2796515320",
+        "before": "f178ea37aefc4f5a0a5c3ee6b5d8280050ec15ac771a9cfb3e0bf454da3873f6"
+      }
+    },
+    "patch": "ast_node-7.0.0.patch"
+  },
+  "from_variant-3.0.0": {
+    "files": {
+      "Cargo.toml": {
+        "after": "52274a132d76e8bd64b9fb371c9d1e32a8730a6ac10f7c34468be71f7a53c166",
+        "before": "e325427c1432e326550693e55f6c1a1ca6384630205fcd0a1eaa92b0b1078ebb"
+      }
+    },
+    "patch": "from_variant-3.0.0.patch"
+  },
+  "is-macro-0.3.8": {
+    "files": {
+      "Cargo.toml": {
+        "after": "9cda6fae5f2c5fd1e282b3b88f9ecdfab7e6202a49fb027c459d7573b39b2543",
+        "before": "3bc77d52fa228e1d6e542bdc5e203334256ba29eb4ce85950da6511a9c84f892"
+      },
+      "src/lib.rs": {
+        "after": "18f073b4d427f0de8a1159bbcf137936812f53593815e320691d313a4bf06f35",
+        "before": "b0872260431ef6e491d0c44a8a89ef44874fef0c13cc05bdfe64caa9d1cdae40"
+      }
+    },
+    "patch": "is-macro-0.3.8.patch"
+  },
+  "jiff-static-0.2.38": {
+    "files": {
+      "Cargo.toml": {
+        "after": "8e16e9f61c6f6a9d1f1aa5e5abfc8e6cf02f412eb4213bb9e589677f460d3c1b",
+        "before": "337afe633c659547838437d88b0d4cbbe7d42ab7b57fd4ff2777087d99dae442"
+      }
+    },
+    "patch": "jiff-static-0.2.38.patch"
+  },
+  "phf_macros-0.14.0": {
+    "files": {
+      "Cargo.toml": {
+        "after": "de9a7c6f80249d992a74ba33773864e0b016c8bb9daa6bf8c4d53363ba0de585",
+        "before": "911505032fcf88f5bc8f82b646f8b72810c98b309a5c4794bed845f3c0fe8c13"
+      }
+    },
+    "patch": "phf_macros-0.14.0.patch"
+  },
+  "string_enum-1.0.2": {
+    "files": {
+      "Cargo.toml": {
+        "after": "6ef756a28ae58c5a78c092a3293d2d9e1af0a0f3076132bd4e08be73acbdc569",
+        "before": "e9383525c0e65d08334309e4bfdda984da7c300f006fd5642cc7c6a93d074b33"
+      },
+      "src/lib.rs": {
+        "after": "68fea423309ff801868cbb09815973189c9a5411a2fbe3e70f73affc0ba13362",
+        "before": "4e6bf284502b961474c1a83167490a0da43d3944d569e62709c3ac23b6a7f11b"
+      }
+    },
+    "patch": "string_enum-1.0.2.patch"
+  },
+  "swc_config_macro-1.0.1": {
+    "files": {
+      "Cargo.toml": {
+        "after": "b50f89f0c76aaaedf148e8c19e6fa7fbe0718fd40c7662ddcc5e1847c20b22d4",
+        "before": "1cacdec8c7c079b66faa56da3fd0ee0762a156e8dffaad50c26563440387158c"
+      }
+    },
+    "patch": "swc_config_macro-1.0.1.patch"
+  },
+  "swc_ecma_ast-29.0.2": {
+    "files": {
+      "Cargo.toml": {
+        "after": "d98cff7b4d500e0a84c4bd4178d2b0559bb988119a83b0f0354cae51c0fab47b",
+        "before": "ee22c917167fa86bf42a31ad697aa9fba335e9987a6ec0c1c939687e29bf5cbe"
+      }
+    },
+    "patch": "swc_ecma_ast-29.0.2.patch"
+  },
+  "swc_ecma_codegen_macros-2.0.2": {
+    "files": {
+      "Cargo.toml": {
+        "after": "cb9c524a535c46a287b1ef0a6d43b3d19d1cc3b8699629b6793fac32a15a1294",
+        "before": "061ab77b9e3d83b8e5a9640b7172c066633e7f10b2f408f7eef35f26d8b55d39"
+      }
+    },
+    "patch": "swc_ecma_codegen_macros-2.0.2.patch"
+  },
+  "swc_ecma_minifier-63.0.4": {
+    "files": {
+      "Cargo.toml": {
+        "after": "d4ca64326774e812ff6379884beb23635091ab8516fae35dad8e2c084d1d048b",
+        "before": "1f9b12d8447a39158b2df7a0c1ef922e422e59c9874bb2065c36b20e492639e4"
+      }
+    },
+    "patch": "swc_ecma_minifier-63.0.4.patch"
+  },
+  "swc_ecma_parser-46.1.2": {
+    "files": {
+      "Cargo.toml": {
+        "after": "18d43f7460a0cb7b6205ce9969908288dc6e6ec1f1cbe129dc05573c3582997f",
+        "before": "2629a16550fcd55ad1512311996fb2fb0a9f6997297000396c73bfd56a39137d"
+      }
+    },
+    "patch": "swc_ecma_parser-46.1.2.patch"
+  },
+  "swc_ecma_transforms_base-50.0.3": {
+    "files": {
+      "Cargo.toml": {
+        "after": "9d91601b6888b5335c549a1126c10c985c4aa1fc74f4be9931923acabb06a9a4",
+        "before": "aec7c7cac17f43686ae937ffc484c9b79b81ffb0ec654f92ee526e04baf842aa"
+      }
+    },
+    "patch": "swc_ecma_transforms_base-50.0.3.patch"
+  },
+  "swc_eq_ignore_macros-1.0.1": {
+    "files": {
+      "Cargo.toml": {
+        "after": "0713aab53c05f91cb4167bbbb3b7d78b7a18fa404241964675bd487cd705900d",
+        "before": "19aa911e0663851a6108c169533c5ad80edda9cf52527fde216684819c4e528b"
+      },
+      "src/lib.rs": {
+        "after": "aeec6ea0b6f6a3e9f663d26c2b94171bb227a84c05a7686233c9fffcf1740de3",
+        "before": "cc8fb658b9a1725c91e573cc996a2b1d714eb74bd94144d8bcff9dfff762bb8e"
+      }
+    },
+    "patch": "swc_eq_ignore_macros-1.0.1.patch"
+  },
+  "swc_macros_common-1.0.1": {
+    "files": {
+      "Cargo.toml": {
+        "after": "e2f883ce3046d6536e325823b50e00b8a68692b0314ba87083d61d38b8106492",
+        "before": "af15bc776a85dea7b9b11da2cd7d30fed7a2a9c7f4cb95e451dcc5cf307826d4"
+      },
+      "src/derive.rs": {
+        "after": "33637ce4f35fc73244ac49b7392ae618d66789b3802b8e7438eae5cf5c713244",
+        "before": "97cdb7ea989265aa0bc8ae0524d5f60aa58211267c01fa6be8febb47d6271eae"
+      },
+      "src/derive/generics.rs": {
+        "after": "86352d9d6380feeb9b1f5d1fd3f56ff643ef52891e41d3828a16d120a6574e6a",
+        "before": "a9f41a18d83f056ef4d771f1fdc2a1da333b84a47cb8e9bf47af64b5fb048141"
+      }
+    },
+    "patch": "swc_macros_common-1.0.1.patch"
+  },
+  "tracing-attributes-0.1.31": {
+    "files": {
+      "Cargo.toml": {
+        "after": "a347a9673617371a727c0c9b9280acedcef009df552706334e5b76c48d1ac8fc",
+        "before": "646214905e4c61a54c111ba9b16834c692fda2969be6f2cdb190a910ab1f2a51"
+      },
+      "src/expand.rs": {
+        "after": "bbf5570790abba3a3ad59b9d0e095687b42e1f85515ef72b27a358f635ff57e1",
+        "before": "4541050b6a7397fef08f0dd32da36f5138263ef2497da83a3e2b5e1c43345c30"
+      },
+      "src/lib.rs": {
+        "after": "52fae18d8e38688ba1a6f566ee37e1681ca054018c38aea1d17f1fdf85b4c9cc",
+        "before": "635bb0d42e3ca670ef6a2dda49c131db9c65e7229d82129600358991917b7efd"
+      }
+    },
+    "patch": "tracing-attributes-0.1.31.patch"
+  },
+  "zerocopy-derive-0.8.63": {
+    "files": {
+      "Cargo.toml": {
+        "after": "914ba871bb9f3fd35636d9d51f39f8506207857fcba2e7515b1a4428890eb415",
+        "before": "f8b9128d66324adf3b6af5542fae833e3d370533f5a782ca785874f706209d16"
+      }
+    },
+    "patch": "zerocopy-derive-0.8.63.patch"
+  }
+}

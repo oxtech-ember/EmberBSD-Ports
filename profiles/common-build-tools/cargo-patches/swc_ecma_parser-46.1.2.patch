@@ -1,0 +1,11 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -82,7 +82,7 @@
+ version = "0.4.3"
+ 
+ [dependencies.phf]
+-version = "0.11.2"
++version = "0.14"
+ features = ["macros"]
+ 
+ [dependencies.rustc-hash]

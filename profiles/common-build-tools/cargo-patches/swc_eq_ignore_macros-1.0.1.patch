@@ -1,0 +1,19 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -39,5 +39,5 @@
+ version = "1.0.7"
+ 
+ [dependencies.syn]
+-version = "2"
++version = "3"
+ features = ["full"]
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -201,7 +201,6 @@
+                     elems
+                 },
+             }),
+-            guard: Default::default(),
+             fat_arrow_token: Token![=>](Span::call_site()),
+             body: Box::new(Expr::Block(ExprBlock {
+                 attrs: Default::default(),

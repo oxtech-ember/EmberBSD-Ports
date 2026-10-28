@@ -1,0 +1,29 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -43,7 +43,7 @@
+ version = "1.0.1"
+ 
+ [dependencies.syn]
+-version = "2"
++version = "3"
+ features = [
+     "full",
+     "parsing",
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -174,7 +174,6 @@
+                     .cloned()
+                     .collect(),
+                 pat,
+-                guard: None,
+                 fat_arrow_token: Default::default(),
+                 comma: Some(Token![,](def_site())),
+             }
+@@ -248,7 +247,6 @@
+                     pat,
+                     attrs: Default::default(),
+                 }),
+-                guard: None,
+                 fat_arrow_token: Default::default(),
+                 comma: Some(Token![,](def_site())),
+             }

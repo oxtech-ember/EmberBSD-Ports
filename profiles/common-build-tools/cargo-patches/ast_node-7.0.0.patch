@@ -1,0 +1,63 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -39,7 +39,7 @@
+ version = "1.0.1"
+ 
+ [dependencies.syn]
+-version = "2"
++version = "3"
+ features = [
+     "derive",
+     "fold",
+--- a/src/enum_deserialize.rs
++++ b/src/enum_deserialize.rs
+@@ -96,7 +96,6 @@
+                 Arm {
+                     attrs: Default::default(),
+                     pat: Pat::Path(parse_quote!(__TypeVariant::#vi)),
+-                    guard: Default::default(),
+                     fat_arrow_token: Token![=>](variant.ident.span()),
+                     body: parse_quote!(
+                         swc_common::private::serde::Result::map(
+@@ -212,7 +211,6 @@
+                 visit_str_arms.push(Arm {
+                     attrs: Default::default(),
+                     pat: str_pat,
+-                    guard: None,
+                     fat_arrow_token: Token![=>](variant.ident.span()),
+                     body: {
+                         let vi = &variant.ident;
+@@ -224,7 +222,6 @@
+                 visit_bytes_arms.push(Arm {
+                     attrs: Default::default(),
+                     pat: bytes_pat,
+-                    guard: None,
+                     fat_arrow_token: Token![=>](variant.ident.span()),
+                     body: {
+                         let vi = &variant.ident;
+@@ -242,7 +239,6 @@
+                         attrs: Default::default(),
+                         underscore_token: Token![_](ident.span()),
+                     }),
+-                    guard: None,
+                     fat_arrow_token: Token![=>](ident.span()),
+                     body: parse_quote!(swc_common::private::serde::Err(
+                         serde::de::Error::unknown_variant(__value, VARIANTS,)
+@@ -255,7 +251,6 @@
+                         attrs: Default::default(),
+                         underscore_token: Token!(_)(ident.span()),
+                     }),
+-                    guard: None,
+                     fat_arrow_token: Token![=>](ident.span()),
+                     body: parse_quote!({
+                         let __value = &swc_common::private::serde::from_utf8_lossy(__value);
+--- a/src/spanned.rs
++++ b/src/spanned.rs
+@@ -99,7 +99,6 @@
+                     .cloned()
+                     .collect(),
+                 pat,
+-                guard: None,
+                 fat_arrow_token: Default::default(),
+                 comma: Some(Token ! [ , ](def_site())),
+             }

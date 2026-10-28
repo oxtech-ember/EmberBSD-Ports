@@ -1,0 +1,11 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -58,7 +58,7 @@
+ version = "1"
+ 
+ [dependencies.syn]
+-version = "2"
++version = "3"
+ features = ["full"]
+ 
+ [dependencies.uncased_]
