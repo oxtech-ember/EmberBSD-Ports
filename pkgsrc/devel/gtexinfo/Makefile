@@ -2,7 +2,7 @@
 
 .include "Makefile.common"
 PKGNAME=	g${DISTNAME}
-PKGREVISION=	6
+PKGREVISION=	7
 CATEGORIES=	devel sysutils
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -27,8 +27,6 @@ CONFIGURE_ARGS+=	--enable-perl-xs
 CONFIGURE_ENV+=		PERL_EXT_CC=${CC:Q}
 CONFIGURE_ARGS+=	PERL_EXT_CFLAGS=${CFLAGS:Q}
 CONFIGURE_ARGS+=	PERL_EXT_LDFLAGS=${LDFLAGS:Q}
-# embedded into texindex
-CONFIGURE_ARGS+=	ac_cv_path_TI_AWK=${AWK:Q}
 
 INFO_FILES=		yes
 TEST_TARGET=		check
@@ -44,6 +42,12 @@ CPPFLAGS+=		-DPKGSRC_INFOPATH=\"${PKGSRC_INFOPATH}\"
 REPLACE_SH+=		util/texi2dvi
 
 .include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
+# texindex runs on the target, where awk is part of the base system.
+CONFIGURE_ARGS+=	ac_cv_path_TI_AWK=/usr/bin/awk
+.else
+CONFIGURE_ARGS+=	ac_cv_path_TI_AWK=${AWK:Q}
+.endif
 .include "cross.mk"
 .include "options.mk"
 
