@@ -234,7 +234,7 @@ def build(arguments, sdk_root):
             write_json(str(work / 'inputs.json'), dict(source=source_hashes, providers=providers, modules=modules,
                        provider_paths=provider_paths, native_tools=native.as_dict(),
                        python=str(python.resolve(strict=True)), jobs=args.jobs, profile=args.profile,
-                       native_compiler='Ports host GCC16; no target objects'))
+                       native_compiler='Ports host ' + native.compiler_family + '; no target objects'))
 
             def fetch(name, table):
                 digest, url = archive_pin(table, name)
