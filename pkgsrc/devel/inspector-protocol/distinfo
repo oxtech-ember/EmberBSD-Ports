@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (inspector-protocol-0.0.0pre20261020.tar) = ec8c1f867c4fde7048f242663a97c0f7d9583afee130c7fcec39377381a8d75f
+SHA512 (inspector-protocol-0.0.0pre20261020.tar) = 76da541cf42422d2fd4083b89cbf0ff3b634ee22a7390e1ec2641f61c174bbe130d1beb44fad5ff98b03f787b560442e4b8c2d108ebac548f2fdfa51bfe8742c
+Size (inspector-protocol-0.0.0pre20261020.tar) = 563200 bytes
