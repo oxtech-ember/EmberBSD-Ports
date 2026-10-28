@@ -1,0 +1,9 @@
+--- a/mk/license.mk
++++ b/mk/license.mk
+@@ -127,5 +127,6 @@
+ 	artistic artistic-2.0 \
+ 	beer-ware \
++	blue-oak-1.0.0 \
+ 	boost-license \
+ 	cc-by-sa-v3.0 \
+ 	cc-by-sa-v4.0 \
