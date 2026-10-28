@@ -49,6 +49,9 @@ which built the same libtls support on LibreSSL, is gone.
 NetBSD on i386, x86_64 and aarch64 defaulted Java packages to OpenJDK 17;
 OpenJDK 21 runs there too, so they now default to it. Without OpenJDK 17 in
 the export, those packages silently lost their JDK dependency.
+lua-compat53's C API header stopped at Lua 5.4, and Lua 5.5 no longer defines
+lua_assert, so it accepts Lua 5.5 and defines lua_assert itself; its tests
+pass with Lua 5.5.
 
 --- a/devel/Guitar/Makefile
 +++ b/devel/Guitar/Makefile
@@ -253,6 +256,69 @@ the export, those packages silently lost their JDK dependency.
 + object = "0.40.0"
 + pdb = "0.8.0"
 + ratatui = { version = "0.30.2", features = ["serde"] }
+--- a/devel/lua-compat53/Makefile
++++ b/devel/lua-compat53/Makefile
+@@ -12,8 +12,6 @@
+ COMMENT=	Compatibility module providing Lua-5.3-style APIs for Lua 5.2 and 5.1
+ LICENSE=	mit
+ 
+-LUA_VERSIONS_INCOMPATIBLE+=	55
+-
+ PLIST_SUBST+=	LUA_INCDIR=${LUA_INCDIR}
+ 
+ PRINT_PLIST_AWK+=	/^${LUA_INCDIR:S|/|\\/|g}/ \
+--- a/devel/lua-compat53/distinfo
++++ b/devel/lua-compat53/distinfo
+@@ -3,3 +3,5 @@
+ BLAKE2s (lua-compat53-0.10.tar.gz) = 183bbd53989daf1285c137d8a8956fa3b4647956b37e5eddb3502bdeae627cf1
+ SHA512 (lua-compat53-0.10.tar.gz) = f7f39085f4f6b16095f41e635b4c5477b3dab5e42b5b65a9d522941a3807ea521d4a27a77293a3c9d0ecea78a1f6c2a2497394b2d220f4d7d65e23510563d46d
+ Size (lua-compat53-0.10.tar.gz) = 53695 bytes
++SHA1 (patch-c-api_compat-5.3.h) = 159b2d0f74e22c5dcb8d1a9d3937626c277a2760
++SHA1 (patch-lprefix.h) = bb26f3cdd4a16d4e4e8f4ee1330430aa9bd0e240
+--- /dev/null
++++ b/devel/lua-compat53/patches/patch-c-api_compat-5.3.h
+@@ -0,0 +1,21 @@
++$NetBSD$
++
++Accept Lua 5.5, which needs no further compatibility code.
++
++--- c-api/compat-5.3.h.orig
+++++ c-api/compat-5.3.h
++@@ -399,11 +399,11 @@
++ 
++ 
++ /* other Lua versions */
++-#if !defined(LUA_VERSION_NUM) || LUA_VERSION_NUM < 501 || LUA_VERSION_NUM > 504
+++#if !defined(LUA_VERSION_NUM) || LUA_VERSION_NUM < 501 || LUA_VERSION_NUM > 505
++ 
++-#  error "unsupported Lua version (i.e. not Lua 5.1, 5.2, 5.3, or 5.4)"
+++#  error "unsupported Lua version (i.e. not Lua 5.1, 5.2, 5.3, 5.4, or 5.5)"
++ 
++-#endif /* other Lua versions except 5.1, 5.2, 5.3, and 5.4 */
+++#endif /* other Lua versions except 5.1, 5.2, 5.3, 5.4, and 5.5 */
++ 
++ 
++ 
+--- /dev/null
++++ b/devel/lua-compat53/patches/patch-lprefix.h
+@@ -0,0 +1,17 @@
++$NetBSD$
++
++Lua 5.5 no longer defines lua_assert in lauxlib.h.
++
++--- lprefix.h.orig
+++++ lprefix.h
++@@ -171,5 +171,10 @@
++ #  endif
++ #endif /* lstrlib.c */
++ 
+++/* Lua 5.5 no longer defines lua_assert in lauxlib.h. */
+++#if !defined(lua_assert)
+++#define lua_assert(c)	((void)0)
+++#endif
+++
++ #endif
++ 
 --- a/devel/umbrello/Makefile
 +++ b/devel/umbrello/Makefile
 @@ -1,25 +1,31 @@
