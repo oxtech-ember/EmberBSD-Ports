@@ -37,6 +37,12 @@ The command writes one configuration file. Rerun it after changing the
 selected prefix or its tool paths. It replaces that file atomically.
 It does not create a report, certificate or toolset descriptor.
 
+The native Qt mapping is optional. When `qt6/bin/qtpaths` exists below the
+prefix, the file sets `EMBERBSD_QT_HOST_PATH` and `EMBERBSD_QT_HOST_LIBEXECS`.
+A `qtpaths` that cannot run, or that names a directory outside the prefix,
+is refused. Without `qtpaths` the file has no Qt variables. Cross Qt modules
+then stop in `x11/qt6-qtbase/host-tools.mk`; other cross packages build.
+
 Set these values before including the common native or cross profile:
 
 ```make
@@ -77,5 +83,5 @@ Source archive checksums, package checks and target ABI checks remain enabled.
 
 `tests/native-toolset-selection.py` checks the LLVM command and environment
 with API doubles. `tests/native-toolset-make.py` checks the make mapping,
-atomic rewrites and rejection of stale or conflicting inputs.
+atomic rewrites, the optional Qt mapping and rejection of stale or conflicting inputs.
 These tests do not build a compiler or establish target runtime behavior.

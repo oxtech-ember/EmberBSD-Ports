@@ -131,12 +131,27 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         qt = adapter.qt_host_paths(str(root / 'host-pkg-llvm'), '/usr/bin:/bin')
         adapter.write(selected, str(destination), qt)
         assert include.read_bytes() == before and not list(root.glob('.native-tools-*'))
-        # A Qt outside the selected prefix or without qtpaths is refused.
+        # A Qt outside the selected prefix or an unusable qtpaths is refused.
         answer_qt(dict(qt_answers, QT_INSTALL_LIBEXECS='/usr/libexec'))
         refused(adapter.main, ['write', *pins, '--output', str(destination)])
-        qtpaths.unlink()
+        qtpaths.chmod(0o644)
         refused(adapter.main, ['write', *pins, '--output', str(destination)])
+        assert include.read_bytes() == before
+        # A prefix without Qt maps no Qt directories; other cross recipes
+        # still get the complete native mapping.
+        qtpaths.unlink()
+        assert adapter.qt_host_paths(str(root / 'host-pkg-llvm'), '/usr/bin:/bin') == ()
+        with contextlib.redirect_stdout(io.StringIO()):
+            adapter.main(['write', *pins, '--output', str(destination)])
+        without_qt = include.read_bytes()
+        assert b'EMBERBSD_QT_HOST' not in without_qt
+        assert b'EMBERBSD_CLANG_TABLEGEN' in without_qt
+        assert without_qt == adapter.render(selected)
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            adapter.main(['verify', *pins, '--makeconf', str(include)])
+        assert output.getvalue() == 'VERIFIED\n'
         answer_qt(qt_answers)
+        adapter.write(selected, str(destination), qt)
         assert include.read_bytes() == before
         selected.compiler_family = 'gcc'
         with contextlib.redirect_stdout(io.StringIO()):
@@ -172,4 +187,4 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         refused(adapter.render, selected)
         assert not list(root.glob('.native-tools-*'))
 
-print('PASS: native make role/ABI argv, prefix selection, qtpaths Qt directories, stale/foreign mapping refusals and atomic rewrite; no compiler or bmake build')
+print('PASS: native make role/ABI argv, prefix selection, qtpaths Qt directories or none, stale/foreign mapping refusals and atomic rewrite; no compiler or bmake build')

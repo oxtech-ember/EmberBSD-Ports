@@ -49,8 +49,12 @@ def qt_host_paths(prefix, search_path):
     from emberbsd_sdk.errors import SDKError
     root = Path(prefix).resolve(strict=True)
     qtpaths = root / QT_QTPATHS
+    # A host prefix without Qt serves every other cross recipe. A Qt module
+    # refuses the empty EMBERBSD_QT_HOST_PATH in qt6-qtbase/host-tools.mk.
+    if not os.path.lexists(qtpaths):
+        return ()
     if not qtpaths.is_file() or not os.access(qtpaths, os.X_OK):
-        raise SDKError('The host prefix has no native Qt qtpaths: ' + str(qtpaths))
+        raise SDKError('The host prefix has an unusable native Qt qtpaths: ' + str(qtpaths))
     values = []
     for role, (variable, query) in QT_QUERIES.items():
         result = subprocess.run([str(qtpaths), '--query', query], capture_output=True, text=True,
