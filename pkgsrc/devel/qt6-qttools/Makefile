@@ -9,6 +9,10 @@ LICENSE=	gnu-lgpl-v3 OR gnu-gpl-v2 OR gnu-gpl-v3
 
 .include "../../x11/qt6-qtbase/Makefile.common"
 
+# The lupdate test data has a UTF-8 file name (parseqrc/café.js).
+# bsdtar cannot write it in the C locale of the Ports make environment.
+EXTRACT_ENV+=	LC_ALL=C.UTF-8
+
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Designer.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Help.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6UiTools.pc
