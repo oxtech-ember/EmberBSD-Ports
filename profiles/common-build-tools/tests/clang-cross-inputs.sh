@@ -29,6 +29,11 @@ grep -q -- '-DCLANG_INCLUDE_TESTS=ON' "$work/cmake.log"
 grep -q -- '-DCLANG_ENABLE_HLSL=ON' "$work/cmake.log"
 grep -q -- '-DLIBCLANG_BUILD_STATIC=ON' "$work/cmake.log"
 for item in EMBERBSD_CLANG_TABLEGEN EMBERBSD_CROSS_BUILD_PERL; do
+    query "$item=" -V '${PKG_FAIL_REASON}' > "$work/$item-unset.log" 2>&1
+    grep -q 'must select\|Set EMBERBSD_CROSS_BUILD_PERL' "$work/$item-unset.log"
+    if grep -q -- ': --version:' "$work/$item-unset.log"; then
+        echo "An unset $item ran an empty version probe" >&2; exit 1
+    fi
     query "$item=/nonexistent-ember-tool" -V '${PKG_FAIL_REASON}' > "$work/$item-missing.log" 2>&1
     grep -q 'must select\|Set EMBERBSD_CROSS_BUILD_PERL\|must execute' "$work/$item-missing.log"
     query "$item=/usr/bin/true" -V '${PKG_FAIL_REASON}' > "$work/$item-wrong.log" 2>&1

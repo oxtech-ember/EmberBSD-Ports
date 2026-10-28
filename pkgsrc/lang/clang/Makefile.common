@@ -28,9 +28,12 @@ PKG_FAIL_REASON+= "${_clang_host_input} must select the matching build-host tool
 .endif
 .endfor
 .include "../../lang/llvm/cross.mk"
+# An unset input already fails above; do not run an empty command.
+.if !empty(EMBERBSD_CLANG_TABLEGEN:M/*)
 _EMBERBSD_CLANG_TABLEGEN_VERSION!= if test -x ${EMBERBSD_CLANG_TABLEGEN:Q} && \
     ember_clang_banner=$$(${EMBERBSD_CLANG_TABLEGEN:Q} --version); then \
     printf '%s\n' "$$ember_clang_banner" | ${AWK} '/LLVM version/ { print $$NF; exit }'; fi
+.endif
 .if ${_EMBERBSD_CLANG_TABLEGEN_VERSION:U} != ${LLVM_VERSION}
 PKG_FAIL_REASON+= "clang-tblgen must execute on the build host and report LLVM ${LLVM_VERSION}"
 .endif
