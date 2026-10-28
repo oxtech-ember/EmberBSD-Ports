@@ -28,6 +28,7 @@ editors/xournalpp lang/lua55
 games/etlegacy lang/lua55
 games/etlegacy-server lang/lua55
 games/powder-toy lang/lua55
+games/simgear graphics/osg
 graphics/darktable lang/lua55
 graphics/osg lang/lua55
 lang/hs-lua lang/lua55

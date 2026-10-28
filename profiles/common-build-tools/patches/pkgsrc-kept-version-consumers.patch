@@ -8,7 +8,8 @@ support silently.
 VLC's Lua scripts used math.pow and assigned to a for-loop variable; Lua 5.5
 allows neither, so the scripts compute the power with ^ and use new locals.
 OpenSceneGraph's own Lua finders stop at Lua 5.2, so it gets the library and
-headers directly; its Lua plugin needs no source change.
+headers directly; its Lua plugin needs no source change. Its buildlink3.mk
+now passes the default Lua, not Lua 5.2, to the packages that use it.
 vifm linked the system Lua but compiled against its bundled Lua 5.4 headers;
 it now drops the bundled copy and uses the headers of the Lua it links.
 HexPatch built a bundled Lua 5.4 through mlua's vendored feature although the
@@ -831,6 +832,26 @@ pkgsrc's separate Tk 9.0.
  .include "../../multimedia/ffmpeg4/buildlink3.mk"
  .include "../../www/curl/buildlink3.mk"
  .if ${OPSYS} != "Darwin"
+--- a/graphics/osg/buildlink3.mk
++++ b/graphics/osg/buildlink3.mk
+@@ -6,7 +6,7 @@
+ OSG_BUILDLINK3_MK:=
+ 
+ BUILDLINK_API_DEPENDS.osg+=	osg>=2.8.3
+-BUILDLINK_ABI_DEPENDS.osg+=	osg>=3.6.5nb86
++BUILDLINK_ABI_DEPENDS.osg+=	osg>=3.6.5nb87
+ BUILDLINK_PKGSRCDIR.osg?=	../../graphics/osg
+ 
+ .include "../../mk/bsd.fast.prefs.mk"
+@@ -26,7 +26,7 @@
+ .include "../../graphics/jasper/buildlink3.mk"
+ .include "../../graphics/openexr/buildlink3.mk"
+ .include "../../graphics/tiff/buildlink3.mk"
+-.include "../../lang/lua52/buildlink3.mk"
++.include "../../lang/lua/buildlink3.mk"
+ .include "../../www/curl/buildlink3.mk"
+ .include "../../multimedia/ffmpeg4/buildlink3.mk"
+ 
 --- a/lang/hs-lua/Makefile
 +++ b/lang/hs-lua/Makefile
 @@ -1,7 +1,7 @@
