@@ -538,6 +538,11 @@
       "strip": 1
     },
     {
+      "path": "webui-trusted-html-ts7-compat.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "base-launch-mac-addchdir-macos26.patch",
       "root": "",
       "strip": 1
