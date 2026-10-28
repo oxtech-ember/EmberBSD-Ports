@@ -66,6 +66,15 @@ with tempfile.TemporaryDirectory(prefix='acpica-store-', dir=os.environ.get('TMP
         run([args.iasl, '-oa', '-oE', 'case.asl'])
         original = (work / 'case.aml').read_bytes()
         expected = {value: evaluate(work / 'case.aml', value) for value in ('0', '2', '0xFFFFFFFFFFFFFFFF')}
+        for value, result in expected.items():
+            if name == 'Index':
+                if [int(result[0], 16), int(result[1], 16)] != [0x34, 0x34]:
+                    raise SystemExit('Index did not return and store the expected buffer element')
+            else:
+                if int(result[1], 16) != int(value, 0):
+                    raise SystemExit(f'{name}: Store did not write OUT0 for {value}')
+                if name == 'nested' and int(result[2], 16) != int(value, 0):
+                    raise SystemExit(f'{name}: nested Store did not write OUT1 for {value}')
         for mode in (('-d',), ('-od', '-d'), ('-dl',)):
             (work / 'case.aml').write_bytes(original)
             run([args.iasl, *mode, 'case.aml'])
