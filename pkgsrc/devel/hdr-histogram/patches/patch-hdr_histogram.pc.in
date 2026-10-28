@@ -1,0 +1,12 @@
+# $NetBSD$
+
+Export only libraries required on the selected platform.
+
+--- hdr_histogram.pc.in.orig
++++ hdr_histogram.pc.in
+@@ -9,4 +9,4 @@
+ Requires.private: @PC_REQUIRES_PRIVATE_ZLIB@
+ Cflags: -I${includedir}
+ Libs: -L${libdir} -l@PROJECT_NAME@
+-Libs.private: -pthread -lm -lrt @PC_LIBS_PRIVATE_ATOMIC@ -L${libdir}
++Libs.private: @PC_LIBS_PRIVATE@ @PC_LIBS_PRIVATE_ATOMIC@ -L${libdir}

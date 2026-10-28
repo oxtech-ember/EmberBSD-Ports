@@ -1,0 +1,20 @@
+# $NetBSD$
+
+Export only libraries required on the selected platform.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -133,6 +133,13 @@
+ else()
+     set(PC_LIBS_PRIVATE_ATOMIC "")
+ endif()
++set(PC_LIBS_PRIVATE "${CMAKE_THREAD_LIBS_INIT}")
++if(HAVE_LIBM)
++    string(APPEND PC_LIBS_PRIVATE " -lm")
++endif()
++if(HAVE_LIBRT)
++    string(APPEND PC_LIBS_PRIVATE " -lrt")
++endif()
+ configure_file(
+     ${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}.pc.in
+     ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pc

@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (HdrHistogram_c-0.12.1.tar.gz) = e6cf3955e4732de00bae1a4333a8a92b94ddd6309775af7a67532302b514ea58
+SHA512 (HdrHistogram_c-0.12.1.tar.gz) = 742b0ac20acd83a74f1dd0e28b021407d34989917618fb7cb7a16fd6c947e2093057b2e8b4d6cc37e4412ae070d649850e41002020db2d5788b135ed772da8f8
+Size (HdrHistogram_c-0.12.1.tar.gz) = 513193 bytes
+SHA1 (patch-CMakeLists.txt) = b410372b82861f508e62018eda23785630bd1699
+SHA1 (patch-hdr_histogram.pc.in) = 078bd37fb120deaec83c29ff2efbc8224a118393
+SHA1 (patch-test_CMakeLists.txt) = cf05646d3cc28ab5d578e4ce0284690bdc0e8c4e
