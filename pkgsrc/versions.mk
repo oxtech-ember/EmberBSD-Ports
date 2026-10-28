@@ -46,7 +46,6 @@ EMBERBSD_VERSION_DEPENDENTS+=	meta-pkgs/bulk-test-icu
 EMBERBSD_VERSION_DEPENDENTS+=	meta-pkgs/bulk-test-python27
 
 # Select the kept versions where pkgsrc chooses one.
-LUA_VERSION_DEFAULT=		55
 PHP_VERSION_DEFAULT=		85
 PGSQL_VERSION_DEFAULT=		18
 MYSQL_VERSION_DEFAULT=		mariadb118

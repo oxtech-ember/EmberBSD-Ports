@@ -38,5 +38,11 @@ for kept in lang/python315 lang/lua55 lang/gcc16-libs databases/postgresql18-ser
     lang/tcl x11/tk lang/tclx x11/tktable graphics/opencv graphics/opencv-contrib; do
     [ -z "$(reason "$kept")" ] || { echo "Guard rejected $kept" >&2; exit 1; }
 done
-[ "$("$bmake" -f "$work/Makefile" -v LUA_VERSION_DEFAULT)" = 55 ]
+# The exported version knobs default to and accept only the kept versions.
+for knob in lang/lua/luaversion.mk:LUA_VERSION_DEFAULT:55 \
+    lang/lua/luaversion.mk:LUA_VERSIONS_ACCEPTED:55; do
+    file=${knob%%:*} rest=${knob#*:}
+    grep -Eq "^${rest%%:*}[?]=[[:space:]]+${rest#*:}\$" "$pkgsrc/$file" ||
+        { echo "$file does not offer only ${rest#*:} in ${rest%%:*}" >&2; exit 1; }
+done
 echo 'PASS: the export and the guard keep one version of each family.'
