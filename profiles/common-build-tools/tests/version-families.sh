@@ -50,4 +50,8 @@ for knob in lang/lua/luaversion.mk:LUA_VERSION_DEFAULT:55 \
     grep -Eq "^${rest%%:*}[?]=[[:space:]]+${rest#*:}\$" "$pkgsrc/$file" ||
         { echo "$file does not offer only ${rest#*:} in ${rest%%:*}" >&2; exit 1; }
 done
+# The kept Ruby is the newest upstream release and its distinfo matches.
+grep -Eq '^RUBY40_VERSION=[[:space:]]+4[.]0[.]9$' "$pkgsrc/lang/ruby/rubyversion.mk" &&
+    grep -Fq 'SHA512 (ruby-4.0.9.tar.xz) = ' "$pkgsrc/lang/ruby40/distinfo" ||
+    { echo "lang/ruby40 is not Ruby 4.0.9" >&2; exit 1; }
 echo 'PASS: the export and the guard keep one version of each family.'

@@ -1,0 +1,60 @@
+Origin: EmberBSD, AI-assisted.
+Update the one kept Ruby, lang/ruby40, from 4.0.7 to 4.0.9 (released
+2026-10-23). The bundled gems are unchanged; the default prism gem moves
+to 1.8.2, and RUBY_RUBYGEMS_VER now records the RubyGems 4.0.20 that the
+4.0 tarballs already ship. The existing ruby40 patches apply unchanged.
+Not submitted upstream.
+
+--- a/lang/ruby/rubyversion.mk
++++ b/lang/ruby/rubyversion.mk
+@@ -212,7 +212,7 @@
+ .endif
+ 
+ # current supported Ruby's version
+-RUBY40_VERSION=		4.0.7
++RUBY40_VERSION=		4.0.9
+ 
+ # current API compatible version; used for version of shared library
+ RUBY40_API_VERSION=	4.0.0
+@@ -267,7 +267,7 @@
+ RUBY_ABI_VERSION=	${RUBY_VERSION}
+ RUBY_SUFFIX=		${_RUBY_VER_MAJOR}${_RUBY_VER_MINOR}
+ 
+-RUBY_RUBYGEMS_VER=		4.0.16
++RUBY_RUBYGEMS_VER=		4.0.20
+ 
+ # default gems
+ RUBY_BUNDLER_VER=		4.0.20
+@@ -288,7 +288,7 @@
+ RUBY_OPTPARSE_VER=		0.8.1
+ RUBY_PP_VER=			0.6.3
+ RUBY_PRETTYPRINT_VER=		0.2.0
+-RUBY_PRISM_VER=			1.8.1
++RUBY_PRISM_VER=			1.8.2
+ RUBY_RESOLV_VER=		0.7.2
+ RUBY_RUBY2_KEYWORDS_VER=	0.0.5
+ RUBY_SECURERANDOM_VER=		0.4.1
+--- a/lang/ruby40/distinfo
++++ b/lang/ruby40/distinfo
+@@ -1,8 +1,8 @@
+ $NetBSD: distinfo,v 1.11 2026/09/16 14:08:24 taca Exp $
+ 
+-BLAKE2s (ruby-4.0.7.tar.xz) = 1ba142e7e04de5a460853b3fc9a28bf42b6c60eb87a6c365c2bb576bb0af28b7
+-SHA512 (ruby-4.0.7.tar.xz) = d1d345c25bff43aa86f536b22cd04746a7d3372077bf47ec75ef1820c0b43d0dbe3573dd5e5c55ee517796f46f0cdbd22c7506aebd06581241eefb5ffd9d2e5f
+-Size (ruby-4.0.7.tar.xz) = 17995980 bytes
++BLAKE2s (ruby-4.0.9.tar.xz) = ed25e1d18f7d97fd166bab90704a4069bbaaa15f93482b1cf053905c3feea1ce
++SHA512 (ruby-4.0.9.tar.xz) = 7160b1c6fb61b0e369cddccb29eadae85390d86777c875efc18a56de390b1fe1ff47d6e37ccaf39d2ed477c9811f1224cbb3d2f54a0cbd5d5daf418b1cf2557e
++Size (ruby-4.0.9.tar.xz) = 17996144 bytes
+ SHA1 (patch-.bundle_gems_rdoc-7.0.4_lib_rdoc_encoding.rb) = 896fc0825d59174b508bcfc5d17727f0d0b1050f
+ SHA1 (patch-common.mk) = c23eed58427b2fd4ba8fdb3692f609701a666c6d
+ SHA1 (patch-configure) = ff1b1e659ddc7cb1d62a71e1447df55f1f7b07c2
+--- a/lang/ruby40/Makefile
++++ b/lang/ruby40/Makefile
+@@ -2,7 +2,6 @@
+ 
+ DISTNAME=	${RUBY_DISTNAME}
+ PKGNAME=	${RUBY_PKGPREFIX}-${RUBY_VERSION}
+-PKGREVISION=	1
+ CATEGORIES=	lang ruby
+ MASTER_SITES=	${MASTER_SITE_RUBY}
+ 
