@@ -354,3 +354,6 @@ textproc/utf8-cpp
 
 # checkperms uses the native BSD install tool on Darwin.
 sysutils/checkperms
+
+# rpcgen is the native tool for NetBSD cross builds on Darwin hosts.
+devel/rpcsvc-proto

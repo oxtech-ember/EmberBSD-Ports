@@ -42,6 +42,7 @@ PROVIDERS = {
     'devel/diffutils': ('diffutils', ('bin/gcmp', 'bin/gdiff')),
     'devel/meson': ('meson', ('bin/meson',)),
     'devel/wayland': ('wayland', ('bin/wayland-scanner',)),
+    'devel/rpcsvc-proto': ('rpcsvc-proto', ('bin/rpcgen',)),
     'x11/qt6-qtbase': ('qt6-qtbase', ('qt6/bin/qtpaths', 'qt6/libexec/moc', 'qt6/libexec/rcc',
                                       'qt6/libexec/uic')),
     'devel/qt6-qttools': ('qt6-qttools', ('qt6/bin/lrelease', 'qt6/bin/lconvert')),
@@ -127,7 +128,8 @@ def versions():
                          ('sysutils/coreutils', 'coreutils'), ('sysutils/findutils', 'findutils'),
                          ('textproc/grep', 'grep'), ('textproc/gsed', 'sed'),
                          ('lang/nawk', 'nawk'), ('devel/diffutils', 'diffutils'), ('devel/meson', 'meson'),
-                         ('devel/nbpatch', 'nbpatch'), ('sysutils/checkperms', 'checkperms')):
+                         ('devel/nbpatch', 'nbpatch'), ('sysutils/checkperms', 'checkperms'),
+                         ('devel/rpcsvc-proto', 'rpcsvc-proto')):
         file = recipe + ('/Makefile.common' if recipe == 'sysutils/coreutils' else '/Makefile')
         values[recipe] = match(source(file), r'^DISTNAME=\s*' + name + r'-(\S+)')
     values['sysutils/bsdinstall'] += 'nb' + match(source('sysutils/bsdinstall/Makefile'),

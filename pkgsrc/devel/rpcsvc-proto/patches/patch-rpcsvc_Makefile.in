@@ -1,0 +1,17 @@
+$NetBSD$
+
+EmberBSD: let the recipe select the preprocessor directory (-Y) for the
+build-time headers. The default fallback "cpp" can be a compiler driver
+without -E, which makes rpcgen write empty headers.
+
+--- rpcsvc/Makefile.in.orig
++++ rpcsvc/Makefile.in
+@@ -577,7 +577,7 @@
+ 
+ 
+ .x.h:
+-	$(top_builddir)/rpcgen/rpcgen -h -o $@ $<
++	$(top_builddir)/rpcgen/rpcgen $(RPCGENFLAGS) -h -o $@ $<
+ 
+ # Tell versions [3.59,3.63) of GNU make to not export all variables.
+ # Otherwise a system limit (for SysV at least) may be exceeded.
