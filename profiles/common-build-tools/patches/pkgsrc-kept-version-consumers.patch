@@ -29,6 +29,9 @@ The Haskell Lua bindings set the collector parameters with Lua 5.4 commands
 that Lua 5.5 replaces with LUA_GCPARAM, and Lua 5.5 counts LUA_GCSTEP in
 bytes; a small C wrapper now translates the commands, so the hslua packages
 and Pandoc keep their API on the default Lua.
+darktable's Lua finder rejects Lua 5.5, and darktable then builds without Lua
+support because it does not fall back to its in-tree Lua; the finder now
+accepts Lua 5.5, which darktable's Lua API builds and runs with.
 
 --- a/devel/Guitar/Makefile
 +++ b/devel/Guitar/Makefile
@@ -493,6 +496,51 @@ and Pandoc keep their API on the default Lua.
 + 		SET(LUA_VERSION_STRING ${LUA_VERSION_MAJOR}.${LUA_VERSION_MINOR}.${LUA_VERSION_RELEASE})
 + 	ENDIF()
 + 	UNSET(lua_version_str)
+--- a/graphics/darktable/Makefile
++++ b/graphics/darktable/Makefile
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.194 2026/09/02 19:02:33 wiz Exp $
+ 
+ DISTNAME=	darktable-5.0.0
+-PKGREVISION=	23
++PKGREVISION=	24
+ CATEGORIES=	graphics
+ MASTER_SITES=	${MASTER_SITE_GITHUB:=darktable-org/}
+ GITHUB_PROJECT=	darktable
+@@ -105,7 +105,7 @@
+ .include "../../graphics/openjpeg/buildlink3.mk"
+ .include "../../graphics/png/buildlink3.mk"
+ .include "../../graphics/tiff/buildlink3.mk"
+-.include "../../lang/lua54/buildlink3.mk"
++.include "../../lang/lua/buildlink3.mk"
+ .include "../../mk/jpeg.buildlink3.mk"
+ .include "../../print/libcups/buildlink3.mk"
+ .include "../../security/libsecret/buildlink3.mk"
+--- a/graphics/darktable/distinfo
++++ b/graphics/darktable/distinfo
+@@ -3,6 +3,7 @@
+ BLAKE2s (darktable-5.0.0.tar.xz) = 8dcc388c98d77ff3ca06958f9bfb7274a75d54824707c7f5dadd070404a7f0c4
+ SHA512 (darktable-5.0.0.tar.xz) = 84ccf8e30911d2d8c3d2fc2e5bd51962701a1d755ff3859da3e630d0d405d00c03ae8a3968ede33ec53a3de5f8b185ffcb9063355f09149573ce01ede15039de
+ Size (darktable-5.0.0.tar.xz) = 6928316 bytes
++SHA1 (patch-cmake_modules_FindLua54.cmake) = 777c07247f33ae5b08826cface498d15a7d3afd0
+ SHA1 (patch-src_common_dttypes.h) = f1bd3bed14f29ca734020bf5b47fa414af9d6a0b
+ SHA1 (patch-src_common_math.h) = da7ff6dbb6565e8ba39f04f44e72b72eadc5f0c1
+ SHA1 (patch-src_common_utility.c) = bd7c5b2855eb36b75cf93fc928dabf5baaa8b552
+--- /dev/null
++++ b/graphics/darktable/patches/patch-cmake_modules_FindLua54.cmake
+@@ -0,0 +1,12 @@
++$NetBSD$
++
++Accept Lua 5.5; darktable's Lua API builds and runs with it.
++
++--- cmake/modules/FindLua54.cmake.orig
+++++ cmake/modules/FindLua54.cmake
++@@ -1,4 +1,4 @@
++-SET(Lua_VERSION_TOO_HIGH 5.5)
+++SET(Lua_VERSION_TOO_HIGH 5.6)
++ 
++ include(Prebuilt)
++ include(LibFindMacros)
 --- a/graphics/osg/Makefile
 +++ b/graphics/osg/Makefile
 @@ -1,7 +1,7 @@
