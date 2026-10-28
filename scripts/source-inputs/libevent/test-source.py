@@ -22,14 +22,14 @@ with tempfile.TemporaryDirectory(dir=args.work_dir) as directory:
         if (result.returncode == 0) != success:
             raise AssertionError(result.stderr)
         return result
-    run('prepare', '--archive', args.archive, '--patch', args.patch, '--output', root)
-    run('verify-source', '--source', root)
+    run('prepare', '--archive', args.archive, '--patch', args.patch, '--output', root, '--scoped-identity')
+    run('verify-source', '--source', root, '--patch', args.patch)
     assert (root / 'event.c').is_file()
     assert (root / 'include/event2/event.h').is_file()
     assert (root / 'test/regress.c').is_file()
     run('prepare', '--archive', args.archive, '--patch', args.patch, '--output', root, success=False)
     (root / 'unexpected').write_text('changed\n')
-    assert 'payload changed' in run('verify-source', '--source', root, success=False).stderr
+    assert 'payload changed' in run('verify-source', '--source', root, '--patch', args.patch, success=False).stderr
     (root / 'unexpected').unlink()
-    run('verify-source', '--source', root)
+    run('verify-source', '--source', root, '--patch', args.patch)
 print('libevent common prepared source: PASS')

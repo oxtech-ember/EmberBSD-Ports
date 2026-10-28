@@ -49,11 +49,16 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def source_identity(git):
+def identity_module():
     module_path = PORTS / 'scripts/pkgsrc-source-identity.py'
     spec = importlib.util.spec_from_file_location('pkgsrc_source_identity', module_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    return module
+
+
+def source_identity(git):
+    module = identity_module()
     return {'export': module.identity(PORTS, PACKAGE, git, SDK_SOURCE),
             'owner_sha256': digest(read(Path(__file__).resolve()))}
 
@@ -85,12 +90,57 @@ def recipe(exported):
     return identity, patches
 
 
-def verify(source, git):
+def verify(source, git, archive=None, patch=None):
     identity = source_identity(git)
-    return sourceprep.validate_prepared_tree(source, package=PACKAGE, identity=identity)
+    record = jsonio.read_json(str(Path(source) / sourceprep.PREPARED_TREE_RECEIPT))
+    old = record.get('identity') if isinstance(record, dict) else None
+    record = sourceprep.validate_prepared_tree(source, package=PACKAGE, identity=old)
+    if old == identity:
+        return record
+    if isinstance(old, dict) and set(old) == {'effective', 'owner_sha256'}:
+        require(isinstance(old['owner_sha256'], str) and re.fullmatch('[0-9a-f]{64}', old['owner_sha256']),
+                'invalid scoped byacc owner identity')
+        require(patch and os.path.isabs(patch), 'effective byacc verification requires an explicit patch')
+        with tempfile.TemporaryDirectory(prefix='.byacc-verify-') as tmp:
+            exported = Path(tmp) / 'pkgsrc'
+            process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
+                             str(exported), '--git', git, '--patch', patch],
+                            env=process.sanitized_environment())
+            selector = identity_module()
+            current = selector.effective_package_identity(exported, PACKAGE, identity['export']['upstream'])
+            require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
+            require(selector.equivalent_effective_package(old['effective'], old['effective']) and
+                    old['effective']['package'] == PACKAGE,
+                    'invalid scoped byacc package identity')
+            if (not selector.equivalent_effective_package(old['effective'], current) or
+                    old['owner_sha256'] != identity['owner_sha256']):
+                require(archive and os.path.isabs(archive),
+                        'changed byacc inputs require an explicit archive for payload comparison')
+                prepared = prepare(archive, Path(tmp) / 'expected', patch, git)
+                require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
+                require(prepared['tree_sha256'] == record['tree_sha256'],
+                        'prepared byacc differs from current effective source')
+        return record
+    export = old.get('export') if isinstance(old, dict) else None
+    require(isinstance(export, dict) and set(old) == {'export', 'owner_sha256'} and
+            set(export) == {'api', 'package', 'export_inputs_sha256', 'upstream'} and
+            type(export['api']) is int and export['api'] == 1 and export['package'] == PACKAGE and
+            isinstance(export['export_inputs_sha256'], str) and re.fullmatch('[0-9a-f]{64}', export['export_inputs_sha256']) and
+            isinstance(export['upstream'], str) and re.fullmatch('[0-9a-f]{40}', export['upstream']) and
+            isinstance(old['owner_sha256'], str) and re.fullmatch('[0-9a-f]{64}', old['owner_sha256']),
+            'unrecognized legacy byacc identity')
+    require(archive and patch and os.path.isabs(archive) and os.path.isabs(patch),
+            'changed export requires an explicit archive and patch to compare byacc')
+    with tempfile.TemporaryDirectory(prefix='.byacc-verify-') as tmp:
+        expected = Path(tmp) / 'expected'
+        prepared = prepare(archive, expected, patch, git)
+        require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
+        require(prepared['tree_sha256'] == record['tree_sha256'],
+                'prepared byacc differs from current effective source')
+    return record
 
 
-def prepare(archive, output, patch, git):
+def prepare(archive, output, patch, git, scoped_identity=False):
     require(os.path.isabs(git) and os.path.isabs(patch), 'select absolute Git and patch executables')
     output = Path(output)
     require(output.is_absolute(), 'prepared source output must be absolute')
@@ -124,8 +174,12 @@ def prepare(archive, output, patch, git):
         require(not any(p.name.endswith(('.orig', '.rej')) for p in root.rglob('*')),
                 'byacc patch left a backup or reject')
         require(identity == source_identity(git), 'pkgsrc export inputs changed during preparation')
+        if scoped_identity:
+            selector = identity_module()
+            identity = {'effective': selector.effective_package_identity(exported, PACKAGE, identity['export']['upstream']),
+                        'owner_sha256': identity['owner_sha256']}
         record = sourceprep.write_prepared_tree_receipt(root, package=PACKAGE, identity=identity)
-        verify(root, git)
+        sourceprep.validate_prepared_tree(root, package=PACKAGE, identity=identity)
         require(sourceprep.archive_hashes(read(archive)) == hashes, 'byacc archive changed during preparation')
         publish_directory_noreplace(root, output)
     return record
@@ -141,14 +195,17 @@ def main():
     produce.add_argument('--archive', required=True)
     produce.add_argument('--output', required=True)
     produce.add_argument('--patch', required=True)
+    produce.add_argument('--scoped-identity', action='store_true')
     check = sub.add_parser('verify-source')
     check.add_argument('--source', required=True)
+    check.add_argument('--archive')
+    check.add_argument('--patch')
     selected = parser.parse_args(args)
     try:
         if selected.action == 'prepare':
-            record = prepare(selected.archive, selected.output, selected.patch, selected.git)
+            record = prepare(selected.archive, selected.output, selected.patch, selected.git, selected.scoped_identity)
         else:
-            record = verify(selected.source, selected.git)
+            record = verify(selected.source, selected.git, selected.archive, selected.patch)
         sys.stdout.buffer.write(jsonio.json_bytes(record))
     except (SDKError, OSError, ValueError) as exc:
         sdk_source.exit_error(exc, 'byacc source: ')

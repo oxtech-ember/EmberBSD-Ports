@@ -12,10 +12,61 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 
 sys.dont_write_bytecode = True
+
+
+def effective_package_identity(exported, package, upstream):
+    """Describe the effective exported recipe; retain upstream as provenance.
+
+    Callers must supply an export produced by the canonical exporter.  The
+    compatibility digest covers the effective recipe, distinfo, patches and
+    auxiliary files after all overlays.  The upstream
+    revision identifies where it came from but is not part of the digest.
+    """
+    from emberbsd_sdk import inventory
+
+    root = Path(exported).resolve(strict=True)
+    if not isinstance(package, str) or re.fullmatch(
+            r'[a-z0-9][a-z0-9+_.-]*/[a-z0-9][a-z0-9+_.-]*', package) is None:
+        raise ValueError('invalid package path')
+    parts = package.split('/')
+    if not isinstance(upstream, str) or len(upstream) != 40 or any(c not in '0123456789abcdef' for c in upstream):
+        raise ValueError('invalid upstream revision')
+    directory = root.joinpath(*parts)
+    if not directory.is_dir() or directory.is_symlink():
+        raise ValueError('effective package is not a directory')
+    # The preparation owners consume recipe files and the complete patch and
+    # files trees.  Descriptions, package manifests, tests and bootstrap
+    # metadata are not inputs to those owners' source preparation.
+    inputs = ('Makefile', 'Makefile.common', 'distinfo', 'patches', 'files')
+    exclude = [child.name for child in directory.iterdir()
+               if child.name not in inputs and not child.name.endswith('.mk')]
+    rows = inventory.snapshot_tree(str(directory), exclude=exclude)
+    payload = {'api': 1, 'package': package, 'tree': rows}
+    encoded = json.dumps(payload, sort_keys=True, separators=(',', ':')).encode()
+    return {'api': 1, 'package': package,
+            'effective_package_sha256': hashlib.sha256(encoded).hexdigest(),
+            'upstream': upstream}
+
+
+def equivalent_effective_package(left, right):
+    """Compare effective inputs while leaving the recorded origin untouched."""
+    keys = {'api', 'package', 'effective_package_sha256', 'upstream'}
+    def valid(value):
+        return (isinstance(value, dict) and set(value) == keys and
+                type(value['api']) is int and value['api'] == 1 and
+                isinstance(value['package'], str) and
+                re.fullmatch(r'[a-z0-9][a-z0-9+_.-]*/[a-z0-9][a-z0-9+_.-]*', value['package']) is not None and
+                isinstance(value['effective_package_sha256'], str) and
+                re.fullmatch(r'[0-9a-f]{64}', value['effective_package_sha256']) is not None and
+                isinstance(value['upstream'], str) and
+                re.fullmatch(r'[0-9a-f]{40}', value['upstream']) is not None)
+    return (valid(left) and valid(right) and left['package'] == right['package'] and
+            left['effective_package_sha256'] == right['effective_package_sha256'])
 
 
 def identity(ports_root, package, git, sdk_source):

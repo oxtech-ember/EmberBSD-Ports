@@ -17,6 +17,37 @@ spec.loader.exec_module(identity)
 
 
 class IdentityTest(unittest.TestCase):
+    def test_effective_package_identity(self):
+        sdk = Path(__import__('os').environ['EMBERBSD_SDK_SOURCE'])
+        sys.path.insert(0, str(sdk / 'src'))
+        work = Path(__import__('os').environ['EMBERBSD_TEST_WORK'])
+        with tempfile.TemporaryDirectory(dir=work) as temp:
+            root = Path(temp)
+            package = root / 'cat/pkg'
+            (package / 'patches').mkdir(parents=True)
+            (package / 'Makefile').write_text('DISTNAME=example\n')
+            (package / 'distinfo').write_text('archive-checksum\n')
+            (package / 'patches/patch-a').write_text('patch\n')
+            (package / 'DESCR').write_text('description\n')
+            before = identity.effective_package_identity(root, 'cat/pkg', '1' * 40)
+            other = root / 'cat/other'
+            other.mkdir()
+            (other / 'Makefile').write_text('unrelated\n')
+            (package / 'DESCR').write_text('unrelated description change\n')
+            after = identity.effective_package_identity(root, 'cat/pkg', '2' * 40)
+            self.assertEqual(before['effective_package_sha256'], after['effective_package_sha256'])
+            self.assertNotEqual(before['upstream'], after['upstream'])
+            self.assertTrue(identity.equivalent_effective_package(before, after))
+            self.assertFalse(identity.equivalent_effective_package(before, {**after, 'upstream': 'bad'}))
+            for file in ('Makefile', 'distinfo', 'patches/patch-a'):
+                path = package / file
+                original = path.read_text()
+                path.write_text(original + 'changed\n')
+                changed = identity.effective_package_identity(root, 'cat/pkg', '2' * 40)
+                self.assertNotEqual(before['effective_package_sha256'], changed['effective_package_sha256'])
+                self.assertFalse(identity.equivalent_effective_package(before, changed))
+                path.write_text(original)
+
     def test_overlay_change_and_gitlink(self):
         sdk = Path(__import__('os').environ['EMBERBSD_SDK_SOURCE'])
         work = Path(__import__('os').environ['EMBERBSD_TEST_WORK'])

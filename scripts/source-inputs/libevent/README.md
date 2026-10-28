@@ -3,19 +3,18 @@
 This owner prepares the effective `devel/libevent` source from the canonical
 Ports export for both native OS and package consumers. It uses the selected
 SDK source-preparation API, the archive and the complete patch set in that
-export. Preparation runs the existing pkgsrc exporter once. Verification
-checks the prepared tree and the common export-input identity without another
-full export. Changed export inputs conservatively require preparation again;
-an unrelated Git commit with identical inputs does not.
+export. Preparation and verification use the existing pkgsrc exporter.
+Verification compares the effective package inputs and prepared tree; an
+unrelated export change does not invalidate an identical package.
 
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/libevent/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
   --archive "$DISTFILES/libevent-2.1.13-stable.tar.gz" \
-  --patch "$HOST_PREFIX/bin/gpatch" --output "$WORK/libevent-source"
+  --patch "$HOST_PREFIX/bin/gpatch" --output "$WORK/libevent-source" --scoped-identity
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/libevent/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" verify-source \
-  --source "$WORK/libevent-source"
+  --source "$WORK/libevent-source" --patch "$HOST_PREFIX/bin/gpatch"
 ```
 
 The native signal callback lifetime regression builds the prepared source in a
@@ -36,6 +35,13 @@ already exist and the output must be new. The shared SDK records the recipe
 input identity and the complete prepared tree. Verification refuses changed
 inputs or payloads. This prepares source only; it does not build a package,
 sysroot or target library.
+
+The scoped identity is opt-in for compatibility with existing consumers;
+without it, preparation retains the historical export-wide identity.
+
+When source inputs or the owner have changed, also supply the current
+`--archive`; verification prepares the current expected payload and compares
+it without rewriting the record.
 
 The real owner regression uses the same selected inputs and keeps its
 scratch tree under the caller's workspace:
