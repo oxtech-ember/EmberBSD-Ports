@@ -44,6 +44,7 @@ devel/swig4
 devel/zlib
 lang/clang
 lang/compiler-rt
+lang/libcxx
 lang/flang
 lang/llvm
 lang/mlir

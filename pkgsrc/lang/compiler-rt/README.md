@@ -34,6 +34,27 @@ retain libc ABI integration, CRT objects and installation paths. The runtime
 root contains `runtimes/CMakeLists.txt`, `compiler-rt/CMakeLists.txt` and
 `llvm/cmake`; it intentionally omits `llvm/CMakeLists.txt` and backend sources.
 
+The native Darwin `lang/libcxx` package uses this same prepared source with
+`files/native.py`. It builds libc++ with extensive hardening, ABI namespace
+`__1`, filesystem, localization, exceptions and RTTI enabled. It selects the
+macOS SDK's system libc++abi/unwinder explicitly and re-exports libc++abi from
+the library installed in the selected native prefix. Its headers are installed
+in `include/libc++/v1`, outside Clang's implicit adjacent-header search; its
+library is in `lib/libc++`, outside ordinary prefix library search. The native
+binding must select these headers and the matching library together. Target runtimes use
+the full runtime producer described below; the native package is not a target
+runtime or a target execution check.
+
+`tests/native-contract.py` checks CMake inputs and Darwin load-command
+validation. `tests/native-bindings.py --sdk-source /absolute/EmberBSD-SDK`
+checks that CMake uses SDK compiler adapters with nonempty ABI flags. For a
+normal consumer check, run `tests/native-consumer.py` with `--sdk-source`,
+`--host-prefix`, `--macos-sdk`, `--macos-minimum` and a new absolute `--work`.
+Pass `--stage` with a producer DESTDIR to check a staged package; omit it to
+check the installed default compiler selection. The staged check temporarily
+selects that stage for dynamic loading. The caller coordinates shared prefix
+and stage access through the SDK context locks.
+
 `patch-00-binary128-fenv` transfers the EmberBSD AArch64 libc floating-point
 exception policy onto the current upstream binary128 comparator. The opt-in
 `COMPILER_RT_NETBSD_AARCH64_FENV` applies only to hard-float userland libc.
