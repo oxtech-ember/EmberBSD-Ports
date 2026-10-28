@@ -49,7 +49,12 @@ KNOBS = (
     ('mk/mysql.buildlink3.mk', 'MYSQL_VERSIONS_ACCEPTED', 'MYSQL_VERSION_DEFAULT'),
     ('lang/ruby/rubyversion.mk', 'RUBY_VERSIONS_ACCEPTED', 'RUBY_VERSION_DEFAULT'),
     ('lang/ruby/rubyversion.mk', 'RUBY_VERSIONS_SUPPORTED', 'RUBY_VERSION_DEFAULT'),
+    ('lang/nodejs/nodeversion.mk', 'NODE_VERSIONS_ACCEPTED', 'NODE_VERSION_DEFAULT'),
+    ('mk/bdb.buildlink3.mk', 'BDB_ACCEPTED', 'BDB_DEFAULT'),
 )
+# Knob values that name a base-system library rather than a package: db1 is
+# the BSD libc db(3) 1.85 API, which bdb.buildlink3.mk only uses as built in.
+BUILTIN = {'BDB_ACCEPTED': ('db1',)}
 # Recipe-level pins: VAR -> knob file whose kept value they must allow.
 PINS = {
     'PYTHON_VERSIONS_ACCEPTED': 'PYTHON', 'PYTHON_VERSIONS_INCOMPATIBLE': 'PYTHON',
@@ -57,6 +62,8 @@ PINS = {
     'PHP_VERSIONS_ACCEPTED': 'PHP', 'PHP_VERSIONS_INCOMPATIBLE': 'PHP',
     'PGSQL_VERSIONS_ACCEPTED': 'PGSQL', 'PGSQL_VERSIONS_INCOMPATIBLE': 'PGSQL',
     'RUBY_VERSIONS_ACCEPTED': 'RUBY', 'RUBY_VERSIONS_INCOMPATIBLE': 'RUBY',
+    'MYSQL_VERSIONS_ACCEPTED': 'MYSQL', 'NODE_VERSIONS_ACCEPTED': 'NODE',
+    'NODE_VERSIONS_INCOMPATIBLE': 'NODE', 'BDB_ACCEPTED': 'BDB',
 }
 
 STEM = re.compile(r'^(.*?[A-Za-z+])(\d+)((?:[-_][A-Za-z][A-Za-z0-9_+-]*)?)$')
@@ -95,7 +102,11 @@ def make_words(path, var):
         match = ASSIGN.match(line)
         if match and match.group(1) == var.rstrip('?') and value is None and \
                 (not var.endswith('?') or re.match(r'^\s*[A-Z0-9_]+\s*\?=', line)):
-            value = match.group(2).split()
+            value = []
+            for word in match.group(2).split():
+                other = re.fullmatch(r'\$\{([A-Z0-9_]+)\}', word)
+                value.extend((make_words(path, other.group(1) + '?') or make_words(path, other.group(1))
+                              or []) if other else [word])
     return value
 
 
@@ -228,15 +239,17 @@ def check_knobs(export, settings, errors):
         path = export / rel
         if not path.is_file():
             continue
-        accepted = make_words(path, var) or []
+        accepted = [v for v in make_words(path, var + '?') or make_words(path, var) or []
+                    if v not in BUILTIN.get(var, ())]
         chosen = settings.get(default) or make_words(path, default) or []
         if len(accepted) != 1 or accepted != chosen:
             errors.append('knob %s in %s is "%s"; the default is "%s"; keep only the newest'
                           % (var, rel, ' '.join(accepted), ' '.join(chosen)))
         kept[var.split('_')[0]] = chosen
-    text = (export / 'lang/python/pyversion.mk').read_text(errors='replace') \
-        if (export / 'lang/python/pyversion.mk').is_file() else ''
-    if 'PYTHON_27_ACCEPTED' in text:
+    pyversion = export / 'lang/python/pyversion.mk'
+    code = [line for line in logical_lines(pyversion) if not line.lstrip().startswith('#')] \
+        if pyversion.is_file() else []
+    if any('PYTHON_27_ACCEPTED' in line for line in code):
         errors.append('knob PYTHON_27_ACCEPTED in lang/python/pyversion.mk still offers Python 2.7')
     return kept
 
