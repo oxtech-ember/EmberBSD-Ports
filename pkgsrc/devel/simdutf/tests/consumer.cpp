@@ -7,5 +7,6 @@ int main() {
   if (simdutf::validate_utf8(invalid, sizeof(invalid))) return 2;
   char16_t result[16] = {};
   if (simdutf::convert_utf8_to_utf16(valid, std::strlen(valid), result) != 7 || result[6] != 0x20ac) return 3;
+  if (simdutf::base64_length_from_binary_with_lines(6, simdutf::base64_default, 4) != 9) return 4;
   return 0;
 }
