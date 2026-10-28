@@ -12,7 +12,8 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[3]
 # The bulk set accepts AGPL-3 (ghostscript-agpl) and the Realtek firmware licence (rtw88-firmware).
-REQUIRED = ('esdl-license', 'gnu-agpl-v3', 'rtlwifi-firmware-license')
+# Native QEMU on macOS needs APSL 2.0 for devel/cctools codesign_allocate.
+REQUIRED = ('esdl-license', 'gnu-agpl-v3', 'rtlwifi-firmware-license', 'apple-public-source-license')
 
 
 def main():
