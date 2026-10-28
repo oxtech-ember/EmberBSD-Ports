@@ -1,0 +1,18 @@
+# $NetBSD$
+
+Discover tests only when executed, not while cross-building target binaries.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -968,9 +968,9 @@
+   endif()
+ 
+   if(${CMAKE_VERSION} VERSION_LESS "3.10.3")
+-    gtest_discover_tests(${TESTNAME} TIMEOUT 60)
++    gtest_discover_tests(${TESTNAME} TIMEOUT 60 DISCOVERY_MODE PRE_TEST)
+   else ()
+-    gtest_discover_tests(${TESTNAME} DISCOVERY_TIMEOUT 60)
++    gtest_discover_tests(${TESTNAME} DISCOVERY_TIMEOUT 60 DISCOVERY_MODE PRE_TEST)
+   endif ()
+ endforeach ()
+ 
