@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted), based on the upstream OMPL release.
 DISTNAME=	ompl-2.0.2
+PKGREVISION=	1
 CATEGORIES=	math
 MASTER_SITES=	${MASTER_SITE_GITHUB:=ompl/}
 GITHUB_PROJECT=	ompl
@@ -16,7 +17,7 @@ GCC_REQD+=		16.2
 CMAKE_REQD+=		3.22
 CMAKE_CONFIGURE_ARGS+=	-C ${.CURDIR}/features.cmake
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_LIBDIR=lib
-CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_RPATH=${PREFIX}/lib:${PREFIX}/gcc16/lib
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_RPATH=${PREFIX}/lib
 
 INSTALLATION_DIRS+=	share/licenses/ompl
 
