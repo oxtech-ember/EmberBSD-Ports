@@ -26,6 +26,8 @@ a.work.mkdir()
 env = dict(os.environ, CONFIG_SHELL=str(a.shell), SHELL=str(a.shell),
            CC=str(a.cc), LD=str(a.ld), AR=str(a.ar), RANLIB=str(a.ranlib),
            MAKE=str(a.make), PATH_SEPARATOR=os.pathsep, LC_ALL='C')
+# The shared pkgsrc patch requires its recipe-provided Info search path.
+env['CPPFLAGS'] = env.get('CPPFLAGS', '') + " -DPKGSRC_INFOPATH='\"/usr/pkg/info\"'"
 
 def run(name, argv, cwd, *, expected=0, environment=env):
     with (a.work / (name + '.log')).open('wb') as log:
@@ -56,6 +58,24 @@ for path in ('info/ginfo', 'install-info/ginstall-info'):
         raise SystemExit('C-only build did not produce ' + path)
 run('registrar-check', [str(a.make), '-C', str(c_only / 'install-info'), 'check'], c_only,
     environment=without_perl)
+# Reconfiguration must remove stale objects without visiting disabled Perl trees.
+run('c-only-distclean', [str(a.make), 'distclean'], c_only, environment=without_perl)
+run('c-only-reconfigure', [str(a.shell), str(source / 'configure'), '--disable-perl-tools',
+    '--disable-perl-xs', '--disable-nls'], c_only, environment=without_perl)
+run('c-only-rebuild', [str(a.make), '-j2'], c_only, environment=without_perl)
+for path in ('info/ginfo', 'install-info/ginstall-info'):
+    if not (c_only / path).is_file():
+        raise SystemExit('C-only rebuild did not produce ' + path)
+# Opting into the selected host generator is valid for a native build too.
+native_tools = a.work / 'native-makedoc'
+native_tools.mkdir()
+native_env = dict(without_perl, BUILD_CC=str(a.cc), BUILD_AR=str(a.ar),
+                  BUILD_RANLIB=str(a.ranlib), LD_FOR_BUILD=str(a.ld))
+run('native-makedoc-configure', [str(a.shell), str(source / 'configure'),
+    '--disable-perl-tools', '--enable-native-c-only-tools', '--disable-perl-xs', '--disable-nls'],
+    native_tools, environment=native_env)
+if not (native_tools / 'tools/config.status').is_file() or (native_tools / 'tools/tta').exists():
+    raise SystemExit('native C-only makedoc configure was not isolated')
 full = a.work / 'full'
 full.mkdir()
 run('full-configure', [str(a.shell), str(source / 'configure'), '--disable-perl-xs', '--disable-nls'],

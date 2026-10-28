@@ -49,9 +49,39 @@ result, log = run('full-missing-native-cc', [])
 if (result.returncode == 0 or 'Doing configure of native tools' not in log or
         'C compiler cannot create executables' not in log or 'Continuing with main configure' in log):
     raise SystemExit('full cross configure did not propagate the native compiler failure')
+result, log = run('c-only-missing-native-cc', ['--disable-perl-tools', '--enable-native-c-only-tools'])
+if result.returncode == 0 or 'C compiler cannot create executables' not in log:
+    raise SystemExit('C-only native makedoc configuration did not propagate the missing compiler')
 native = dict(env, BUILD_CC=str(a.native_cc), CPPFLAGS_FOR_BUILD='-DEMBER_TEST_HOST_CPP=1',
               CFLAGS_FOR_BUILD='-DEMBER_TEST_HOST_CC=1', LDFLAGS_FOR_BUILD='-L' + str(a.work),
               LIBS_FOR_BUILD='-lm')
+result, log = run('c-only-native-makedoc', ['--disable-perl-tools', '--enable-native-c-only-tools'], environment=native)
+if result.returncode or 'Continuing with main configure' not in log:
+    raise SystemExit('C-only native makedoc configure failed')
+if 'checking Perl version and modules' in log or (a.work / 'c-only-native-makedoc/tools/tta').exists():
+    raise SystemExit('C-only native makedoc unexpectedly configured Perl tools')
+config = (a.work / 'c-only-native-makedoc/tools/config.log').read_text()
+for flag in ('-DEMBER_TEST_HOST_CPP=1', '-DEMBER_TEST_HOST_CC=1', '-L' + str(a.work), '-lm'):
+    if flag not in config:
+        raise SystemExit('C-only native makedoc configure lost ' + flag)
+tools = a.work / 'c-only-native-makedoc/tools'
+host_env = dict(native, CC=str(a.native_cc), LD=str(a.native_ld),
+                CPPFLAGS=native['CPPFLAGS_FOR_BUILD'], CFLAGS=native['CFLAGS_FOR_BUILD'],
+                LDFLAGS=native['LDFLAGS_FOR_BUILD'], LIBS=native['LIBS_FOR_BUILD'], MAKEFLAGS='')
+for directory, target in (('gnulib/lib', 'all'), ('info', 'makedoc')):
+    build = subprocess.run([str(a.make), '-C', str(tools / directory), '-j1', target],
+                           env=host_env, capture_output=True, text=True)
+    (a.work / ('host-' + directory.replace('/', '-') + '.log')).write_text(build.stdout + build.stderr)
+    if build.returncode:
+        raise SystemExit('C-only host makedoc build failed in ' + directory)
+output = a.work / 'host-generator-output'
+output.mkdir()
+inputs = ['session-cmd.c', 'echo-area.c', 'infodoc.c', 'm-x.c', 'indices.c',
+          'nodemenu.c', 'footnotes.c', 'variables.c']
+result = subprocess.run([str(tools / 'info/makedoc'), *[str(a.source / 'info' / name) for name in inputs]],
+                        cwd=output, env=host_env, capture_output=True, text=True)
+if result.returncode or not (output / 'funs.h').is_file() or not (output / 'doc.c').is_file():
+    raise SystemExit('selected native makedoc did not generate Info sources')
 result, log = run('full-native-abi', [], environment=native)
 if result.returncode or 'Continuing with main configure' not in log:
     raise SystemExit('full cross configure with selected native ABI failed')
@@ -62,4 +92,4 @@ config = (a.work / 'full-native-abi/tools/config.log').read_text()
 for flag in ('-DEMBER_TEST_HOST_CPP=1', '-DEMBER_TEST_HOST_CC=1', '-L' + str(a.work), '-lm'):
     if flag not in config:
         raise SystemExit('nested native configure lost ' + flag)
-print('PASS: C-only cross, native failure propagation and explicit native ABI flags')
+print('PASS: C-only cross, native makedoc, failure propagation and native ABI flags')

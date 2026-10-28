@@ -9,8 +9,7 @@ The official release is dated 2026-03-02. The source is GPLv3 or later.
 The full recipe retains its Perl XS libraries, converters, Info reader,
 localization option and existing portability patches. The standalone recipe
 builds only upstream `gnulib/lib` and `install-info`. It installs
-`bin/pkg_install-info`. It does not install the full converter or a runtime
-Perl dependency. Its native Perl dependency belongs to upstream configure.
+`bin/pkg_install-info`. Its configure, build and runtime do not require Perl.
 The package manager continues to use its ordinary Info registration hooks.
 
 `--disable-perl-tools` configures the C-only `info` and `install-info`
@@ -19,7 +18,12 @@ configure the `tta` converter; top-level make builds only those C directories.
 The standalone recipe uses this mode and does not pretend a successful Perl
 probe. Default configuration still requires Perl and configures the full
 converter. Explicit requests to enable Perl-only options conflict with C-only
-mode and fail. Both top-level and nested configure make probes use the selected
+mode and fail. Cross builds that need the target Info reader may additionally
+select `--enable-native-c-only-tools` with explicit `BUILD_CC`, `BUILD_AR`,
+`BUILD_RANLIB` and `LD_FOR_BUILD`. This configures upstream's native makedoc
+without Perl or tta; the caller builds it with host ABI flags before building
+target Info. Registrar-only builds do not select this option. Both top-level
+and nested configure make probes use the selected
 `CONFIG_SHELL`. The patched Autoconf input and generated files remain paired;
 package post-patch preserves their distributed timestamp order to avoid
 unintended regeneration with a different Autotools release.

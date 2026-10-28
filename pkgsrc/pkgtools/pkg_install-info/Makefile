@@ -6,7 +6,7 @@
 EXTRACT_SUFX=	.tar.gz
 
 PKGNAME= pkg_install-info-${TEXINFO_VERSION}
-PKGREVISION= 1
+PKGREVISION= 2
 CATEGORIES= pkgtools
 MAINTAINER= pkgsrc-users@NetBSD.org
 HOMEPAGE= https://www.gnu.org/software/texinfo/

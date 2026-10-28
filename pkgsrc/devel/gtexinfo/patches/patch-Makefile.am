@@ -30,12 +30,12 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
  SUBDIRS =
  if TOOLS_ONLY
    # Build native tools only.
-@@ -79,6 +84,17 @@
+@@ -79,6 +84,26 @@
    SUBDIRS += js
  endif
  
 +else
-+SUBDIRS = gnulib/lib install-info
++SUBDIRS = $(native_tools) gnulib/lib install-info
 +if HAVE_TERMLIBS
 +SUBDIRS += info
 +else
@@ -43,6 +43,15 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
 +SUBDIRS += info
 +endif
 +endif
++endif
++
++# Automake cleans DIST_SUBDIRS rather than SUBDIRS. C-only configure does
++# not create Makefiles in the omitted Perl and documentation directories.
++if PERL_TOOLS
++DIST_SUBDIRS = gnulib/lib install-info tta util info $(native_tools) po \
++               po_document Pod-Simple-Texinfo texindex doc man js
++else
++DIST_SUBDIRS = $(SUBDIRS)
 +endif
 +
  distclean-local:

@@ -13,7 +13,19 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
  subdir = .
  ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
  am__aclocal_m4_deps = $(top_srcdir)/m4/txi_DIFF_OPTION.m4 \
-@@ -1927,14 +1929,16 @@
+@@ -346,8 +348,9 @@
+   unique=`for i in $$list; do \
+     if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
+   done | $(am__uniquify_input)`
+-DIST_SUBDIRS = gnulib/lib install-info tta util info @native_tools@ po \
+-	po_document Pod-Simple-Texinfo texindex doc man js
++@PERL_TOOLS_TRUE@DIST_SUBDIRS = gnulib/lib install-info tta util info @native_tools@ po \
++@PERL_TOOLS_TRUE@	po_document Pod-Simple-Texinfo texindex doc man js
++@PERL_TOOLS_FALSE@DIST_SUBDIRS = $(SUBDIRS)
+ am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config.h.in \
+ 	$(top_srcdir)/build-aux/compile \
+ 	$(top_srcdir)/build-aux/config.guess \
+@@ -1927,14 +1930,16 @@
  
  # Ensure that those files are built early, as they are needed in po*
  # directories.  This allows to run configure and make after make distclean
@@ -32,7 +44,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
 +@PERL_TOOLS_TRUE@SUBDIRS = $(am__append_1) $(am__append_2) $(am__append_3) \
 +@PERL_TOOLS_TRUE@	$(am__append_4) $(am__append_5) $(am__append_6) \
 +@PERL_TOOLS_TRUE@	$(am__append_7)
-+@PERL_TOOLS_FALSE@SUBDIRS = gnulib/lib install-info $(am__append_8) $(am__append_9)
++@PERL_TOOLS_FALSE@SUBDIRS = @native_tools@ gnulib/lib install-info $(am__append_8) $(am__append_9)
  
  # to be run before making a distribution: ensure that the texinfo.dtd on
  # the web is what we will be releasing.  See README-hacking.

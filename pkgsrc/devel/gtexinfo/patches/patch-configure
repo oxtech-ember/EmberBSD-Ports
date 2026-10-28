@@ -14,23 +14,25 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
  native_tools
  PTYS_TESTS_FALSE
  PTYS_TESTS_TRUE
-@@ -2487,6 +2489,7 @@
+@@ -2487,6 +2489,8 @@
  ac_subst_files=''
  ac_user_opts='
  enable_option_checking
 +enable_perl_tools
++enable_native_c_only_tools
  enable_silent_rules
  enable_dependency_tracking
  enable_largefile
-@@ -3155,6 +3158,7 @@
+@@ -3155,6 +3159,8 @@
  
  Optional Features:
    --disable-option-checking  ignore unrecognized --enable/--with options
 +  --disable-perl-tools    configure only the C info and install-info tools
++  --enable-native-c-only-tools  configure native makedoc for a C-only cross build
    --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
    --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
    --enable-silent-rules   less verbose build output (undo: "make V=1")
-@@ -5383,8 +5387,8 @@
+@@ -5383,8 +5389,8 @@
  then :
    printf %s "(cached) " >&6
  else case e in #(
@@ -41,7 +43,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
  all:
  	@echo '@@@%%%=$(MAKE)=@@@%%%'
  _ACEOF
-@@ -5724,7 +5728,24 @@
+@@ -5724,7 +5730,29 @@
  PACKAGE_DATE=`${SHELL} "$srcdir"/build-aux/mdate-sh "$srcdir"/configure.ac`
  
  
@@ -49,6 +51,11 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
 +# The standalone C tools can be configured without the Perl converter.
 +if test ${enable_perl_tools+y}; then :; else enable_perl_tools=yes; fi
 +case $enable_perl_tools in yes|no) ;; *) as_fn_error $? "--enable-perl-tools accepts yes or no" "$LINENO" 5;; esac
++if test ${enable_native_c_only_tools+y}; then :; else enable_native_c_only_tools=no; fi
++case $enable_native_c_only_tools in yes|no) ;; *) as_fn_error $? "--enable-native-c-only-tools accepts yes or no" "$LINENO" 5;; esac
++if test "$enable_native_c_only_tools" = yes && test "$enable_perl_tools" != no; then
++  as_fn_error $? "native C-only tools require --disable-perl-tools" "$LINENO" 5
++fi
 +if test "$enable_perl_tools" = yes; then
 +  PERL_TOOLS_TRUE=
 +  PERL_TOOLS_FALSE='#'
@@ -67,7 +74,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
  
  # Extract the first word of "perl", so it can be a program name with args.
  set dummy perl; ac_word=$2
-@@ -5818,6 +5839,11 @@
+@@ -5818,6 +5846,11 @@
  
  
  
@@ -79,7 +86,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
  # Find awk for running texindex.
  # Don't use AC_PROG_AWK because this prefers gawk, which may be much
  # slower than the awk that the user has in their path (e.g. mawk).
-@@ -14444,6 +14470,7 @@
+@@ -14444,6 +14477,7 @@
          iconv_close (cd_utf8_to_88591);
        }
    }
@@ -87,7 +94,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
    /* Test against macOS 14.4 bug: Failures are not distinguishable from
       successful returns.
       POSIX:2018 says: "The iconv() function shall ... return the number of
-@@ -14473,6 +14500,7 @@
+@@ -14473,6 +14507,7 @@
          iconv_close (cd_utf8_to_88591);
        }
    }
@@ -95,7 +102,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
    /* Test against Solaris 10 bug: Failures are not distinguishable from
       successful returns.  */
    {
-@@ -40004,8 +40032,8 @@
+@@ -40004,8 +40039,8 @@
  then :
    printf %s "(cached) " >&6
  else case e in #(
@@ -106,20 +113,26 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
  all:
  	@echo '@@@%%%=$(MAKE)=@@@%%%'
  _ACEOF
-@@ -40285,7 +40313,7 @@
+@@ -40285,7 +40320,7 @@
  # $native_tools is also added to SUBDIRS in the main Makefile.am,
  # so that make compiles the native tools first.
  #
 -if test "$cross_compiling" = no; then
-+if test "$cross_compiling" = no || test "$enable_perl_tools" = no; then
++if test "$enable_native_c_only_tools" = no && { test "$cross_compiling" = no || test "$enable_perl_tools" = no; }; then
    native_tools=
  else
    native_tools=tools
-@@ -40301,11 +40329,15 @@
+@@ -40301,11 +40336,21 @@
    # it gets the wrong CC etc.
    # env -i gives this build host configure a clean environment;
    # consequently, we have to re-initialize $PATH.
 +  native_shell=${CONFIG_SHELL-${SHELL-/bin/sh}}
++  native_c_only_options=
++  if test "$enable_perl_tools" = no; then
++    test -n "$BUILD_CC" && test -n "$BUILD_AR" && test -n "$BUILD_RANLIB" && test -n "$LD_FOR_BUILD" ||
++      as_fn_error $? "native C-only tools require selected BUILD_CC, BUILD_AR, BUILD_RANLIB and LD_FOR_BUILD" "$LINENO" 5
++    native_c_only_options="--disable-perl-tools --disable-perl-xs"
++  fi
    env -i CC="$BUILD_CC" AR="$BUILD_AR" RANLIB="$BUILD_RANLIB" \
 -      PATH="$PATH" \
 -      tools_only=1 \
@@ -131,11 +144,11 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
 +      PATH="$PATH" PATH_SEPARATOR="$PATH_SEPARATOR" PERL="$PERL" \
 +      CONFIG_SHELL="$native_shell" SHELL="$native_shell" tools_only=1 \
 +    "$native_shell" "${confdir}/configure" --build=${build} --host=${build} \
-+                         --disable-rpath --disable-nls || exit 1
++                         --disable-rpath --disable-nls $native_c_only_options || exit 1
    cd .. || exit 1
    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Continuing with main configure (${host})." >&5
  printf "%s\n" "$as_me: Continuing with main configure (${host})." >&6;}
-@@ -41296,6 +41328,7 @@
+@@ -41296,6 +41341,7 @@
          iconv_close (cd_utf8_to_88591);
        }
    }
@@ -143,7 +156,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
    /* Test against macOS 14.4 bug: Failures are not distinguishable from
       successful returns.
       POSIX:2018 says: "The iconv() function shall ... return the number of
-@@ -41325,6 +41358,7 @@
+@@ -41325,6 +41371,7 @@
          iconv_close (cd_utf8_to_88591);
        }
    }
@@ -151,7 +164,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
    /* Test against Solaris 10 bug: Failures are not distinguishable from
       successful returns.  */
    {
-@@ -42488,7 +42522,7 @@
+@@ -42488,7 +42535,7 @@
       fi
  else case e in #(
    e)
@@ -160,7 +173,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
       then
         pod_simple_texinfo_tests='yes'
       else
-@@ -42524,7 +42558,7 @@
+@@ -42524,7 +42571,7 @@
       fi
  else case e in #(
    e)
@@ -169,7 +182,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
       then
         build_perl_api_texi='yes'
       else
-@@ -42584,7 +42618,9 @@
+@@ -42584,7 +42631,9 @@
  
  
  
