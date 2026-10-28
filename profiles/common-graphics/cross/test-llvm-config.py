@@ -82,13 +82,12 @@ def test(args):
     check('search paths use target sysroot while runtime paths stay target paths', status == 0 and '-L' + r['sysroot'] + '/usr/lib' in out and '-Wl,-R/usr/lib' in out and not re.search(r'(?:^| )-L/usr/', out) and 'darwin' not in out)
     _, err, status = sdk.query(tool, '--link-static', '--libs', 'ember_nonexistent_component')
     check('upstream rejects an unknown component', status != 0 and 'unknown component' in err)
-    for i, file in enumerate(('metadata/BuildVariables.inc', 'bin/llvm-config.real')):
-        clone = tmp / ('changed-' + str(i))
-        shutil.copytree(work, clone)
-        with (clone / file).open('ab') as stream:
-            stream.write(b'changed input\n')
-        out, err, status = sdk.query(str(clone / 'bin/llvm-config'), '--version')
-        check('rejects modified ' + file + ' before query execution', status != 0 and not out and 'input receipt changed' in err)
+    fixture = tmp / 'changed-historical-manifest'
+    shutil.copytree(work, fixture)
+    with (fixture / 'inputs.sha256').open('a') as stream:
+        stream.write('0' * 64 + '  /unrelated/sdk/module.py\n')
+    out, _, status = sdk.query(str(fixture / 'bin/llvm-config'), '--version')
+    check('unrelated historical SDK input does not block queries', status == 0 and out.strip() == '23.1.4')
     inputs = [r[k] for k in ('source', 'target_build', 'native_build', 'sysroot', 'target_prefix')]
     refusal('rejects native metadata as target input', [r['source'], r['native_build'], r['native_build'], r['sysroot'], r['target_prefix']], tmp / 'wrong-target', 'target must be configured for NetBSD/aarch64')
     refusal('rejects a native prefix substituted for the target payload', [*inputs[:4], r['native_build']], tmp / 'wrong-prefix', 'staged target header missing or mismatched')

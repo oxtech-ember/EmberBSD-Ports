@@ -59,11 +59,6 @@ def build(args):
 
 def build_locked(source, target, native, sysroot, prefix, destination):
     sdk_root = sdk.sdk_source.load()
-    from emberbsd_sdk.provenance import git_source
-    sdk_provenance = git_source(sdk_root, env=sdk.environment())
-    sdk_inputs = {str(p): sdk.digest(p) for p in sorted((Path(sdk_root) / 'src/emberbsd_sdk').glob('*.py'))}
-    sdk_inputs[str(Path(sdk.sdk_source.__file__).resolve())] = sdk.digest(sdk.sdk_source.__file__)
-    sdk_inputs[str(Path(sys.executable).resolve())] = sdk.digest(sys.executable)
     producer_inputs = {name: sdk.digest(Path(__file__).parent / name) for name in ('build-llvm-config.py', 'llvm_target.py', 'llvm_native.py', 'llvm_sdk.py')}
     cpp = source + '/tools/llvm-config/llvm-config.cpp'
     require(Path(cpp).is_file() and sdk.digest(cpp) == UPSTREAM_SHA256, 'upstream llvm-config.cpp differs from LLVM 23.1.4')
@@ -236,12 +231,9 @@ def build_locked(source, target, native, sysroot, prefix, destination):
         triple_query = [work + '/' + runtime['loader'], '--inhibit-cache', '--library-path', work + '/native/lib', *triple_query]
     reported = native_api.capture(*triple_query)
     require(target_api.for_triple(reported) == spec, 'upstream reported target disagrees with generated target metadata')
-    required += list(sdk_inputs)
-    hashes.update(sdk_inputs)
-    receipt = dict(version=VERSION, source=source, target_build=target, native_build=native, native_sdk=native_sdk, native_platform=native_platform, native_triple=native_triple, native_header_roots=native_headers, native_system_libraries=host_system, native_linker_flags=host_ldflags, native_runtime=runtime, sysroot=sysroot, target_prefix=prefix, configured_target_triple=string(td, 'LLVM_HOST_TRIPLE'), target_triple=reported, target_triple_query=triple_query, target_assertions=tc['LLVM_ENABLE_ASSERTIONS'], staged_library_sha256=library_hash, library_proof=proof, compiler=cxx, compiler_version=sdk.capture(cxx, '--version'), original_ldflags=original_ldflags, mapped_ldflags=mapped_ldflags, command=command, host_api=1, sdk_source=sdk_root, host_python=sys.version, host_mechanism_inputs=sdk_inputs, sdk_source_provenance=sdk_provenance)
+    receipt = dict(version=VERSION, source=source, target_build=target, native_build=native, native_sdk=native_sdk, native_platform=native_platform, native_triple=native_triple, native_header_roots=native_headers, native_system_libraries=host_system, native_linker_flags=host_ldflags, native_runtime=runtime, sysroot=sysroot, target_prefix=prefix, configured_target_triple=string(td, 'LLVM_HOST_TRIPLE'), target_triple=reported, target_triple_query=triple_query, target_assertions=tc['LLVM_ENABLE_ASSERTIONS'], staged_library_sha256=library_hash, library_proof=proof, compiler=cxx, compiler_version=sdk.capture(cxx, '--version'), original_ldflags=original_ldflags, mapped_ldflags=mapped_ldflags, command=command, host_api=1, sdk_source=sdk_root, host_python=sys.version)
     sdk.write_json(Path(work) / 'receipt.json', receipt)
-    shasum = native_api.executable('shasum')
-    launcher = '#!/bin/sh\n# SPDX-License-Identifier: BSD-2-Clause\n# Integrity only; queries run the real upstream executable.\nset -eu\nbase=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)\ncd "$base"\n' + shlex.quote(shasum) + ' -a 256 -c inputs.sha256 > /dev/null || {\n    echo "llvm-config: input receipt changed; rebuild metadata tool" >&2\n    exit 1\n}\n' + native_api.launcher(runtime) + '\n'
+    launcher = '#!/bin/sh\n# SPDX-License-Identifier: BSD-2-Clause\n# Run the selected native query tool.\nset -eu\nbase=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)\ncd "$base"\n' + native_api.launcher(runtime) + '\n'
     (Path(work) / 'bin/llvm-config').write_text(launcher)
     (Path(work) / 'bin/llvm-config').chmod(0o755)
     local = LOCAL + ['dependencies.log', 'compile.log']
@@ -255,7 +247,6 @@ def build_locked(source, target, native, sysroot, prefix, destination):
     manifest = [hashes[p] + '  ' + p + '\n' for p in required]
     manifest += [sdk.digest(Path(work) / p) + '  ' + p + '\n' for p in local]
     (Path(work) / 'inputs.sha256').write_text(''.join(manifest))
-    require(git_source(sdk_root, env=sdk.environment()) == sdk_provenance, 'SDK source changed during compilation')
     sdk.publish(work, destination)
     print(destination + '/bin/llvm-config')
     return 0

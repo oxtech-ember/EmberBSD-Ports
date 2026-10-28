@@ -50,7 +50,7 @@ def main(arguments):
     if reports_version(config):
         print('cross-llvm-config: use ' + config)
         return 0
-    if Path(config) != work / 'sealed/bin/llvm-config':
+    if Path(config) != work / 'helper/bin/llvm-config':
         return fail('EMBERBSD_CROSS_LLVM_CONFIG=' + config + ' does not report LLVM ' + VERSION)
     if work.exists():
         return fail(str(work) + ' exists but has no working llvm-config; examine it, then remove it')

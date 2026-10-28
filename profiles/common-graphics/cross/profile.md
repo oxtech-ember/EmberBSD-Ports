@@ -31,7 +31,7 @@ EMBERBSD_WAYLAND_SCANNER=/absolute/native-prefix/bin/wayland-scanner
 Source acquisition uses the selected pkgsrc configuration and download tools;
 `fetch` and `checksum` do not require a finished target LLVM metadata helper,
 SDK Python API checkout, native Wayland scanner or Mesa shader generators.
-Their existing path, version, receipt and interface checks run at the first
+Their existing path, version and interface checks run at the first
 consuming `pre-configure` phase. This does not relax target platform or license
 checks, source checksums, or any later compiler/runtime validation.
 `../tests/source-phases.py --help` describes the real cached fetch/checksum
@@ -73,7 +73,7 @@ Build the [LLVM metadata helper](llvm-config.md) only after LLVM's target
 metadata is free of build-path leaks. For complete Mesa configuration, its
 prefix must be the actual LLVM installation in `CROSS_DESTDIR/usr/pkg`.
 Canonical real paths must agree between the common MAKECONF and helper input.
-The recipe verifies the helper's hash receipt independently before invoking
+The recipe checks the helper's target metadata and paths before invoking
 it, then checks target triple, prefix/header/library directories, version,
 RTTI and shared ORC/native components. It does not run a target ELF tool on
 the build host or accept the native generator build's host metadata.

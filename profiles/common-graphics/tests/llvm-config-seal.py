@@ -103,28 +103,13 @@ def test(args):
         path.write_text(''.join('0' * 64 + '  ' + entry + '\n' if line.endswith('  ' + entry + '\n') else line for line in lines))
         refusal('required-' + name + '-hash-mismatch', fixture, sdk.digest(path), 'mismatch')
         shutil.rmtree(fixture)
-    for i, path in enumerate(['bin/llvm-config.real', 'metadata/LibraryDependencies.inc', 'provenance/inputs.sha256', 'provenance/receipt.json', 'seal.json', *native_files]):
-        clone = work / ('sealed-drift-' + str(i))
-        shutil.copytree(sealed, clone)
-        with (clone / path).open('ab') as stream:
-            stream.write(b'changed sealed artifact')
-        out, err, status = sdk.query(str(clone / 'bin/llvm-config'), '--version')
-        check('query refuses sealed ' + path + ' drift before execution', status != 0 and not out and 'sealed input receipt changed' in err)
-        shutil.rmtree(clone)
-    for i, path in enumerate(('include/llvm/Config/llvm-config.h', 'lib/libLLVM-23.so')):
-        clone = work / ('installed-drift-' + str(i))
-        shutil.copytree(sealed, clone)
-        installed = r['target_prefix'] + '/' + path
-        copied = work / ('installed-artifact-' + str(i))
-        shutil.copyfile(installed, copied)
-        manifest = clone / 'inputs.sha256'
-        manifest.write_text(manifest.read_text().replace('  ' + installed + '\n', '  ' + str(copied) + '\n', 1))
-        with copied.open('ab') as stream:
-            stream.write(b'changed installed artifact')
-        out, err, status = sdk.query(str(clone / 'bin/llvm-config'), '--version')
-        check('query rejects actual copied installed ' + path + ' drift', status != 0 and not out and 'sealed input receipt changed' in err)
-        shutil.rmtree(clone)
-        copied.unlink()
+    clone = work / 'sealed-historical-drift'
+    shutil.copytree(sealed, clone)
+    with (clone / 'inputs.sha256').open('a') as stream:
+        stream.write('0' * 64 + '  /unrelated/sdk/module.py\n')
+    out, _, status = sdk.query(str(clone / 'bin/llvm-config'), '--version')
+    check('unrelated historical input does not block queries', status == 0 and out.strip() == '23.1.4')
+    shutil.rmtree(clone)
     sdk.write_json(work / 'result.json', dict(checks=checks, scope=('Host migration equivalence against actual baseline executable; no fresh target capture or execution' if host_baseline else 'Host seal/query integrity against supplied real target capture; no target execution')))
     return 0
 

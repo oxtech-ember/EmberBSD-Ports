@@ -3,11 +3,11 @@
 # Cross clang and lld query the target LLVM with an llvm-config that runs on
 # the build host. Before configure, files/cross-llvm-config.py makes it from
 # the lang/llvm build tree, which the dependency order builds first. It uses
-# the sealed metadata producer. An existing EMBERBSD_CROSS_LLVM_CONFIG is used
+# the native metadata producer. An existing EMBERBSD_CROSS_LLVM_CONFIG is used
 # as it is.
 _EMBERBSD_CROSS_LLVM_STATE=	${WRKOBJDIR:U${PKGSRCDIR}}/.emberbsd-cross/${MACHINE_GNU_PLATFORM}
 EMBERBSD_CROSS_LLVM_CONFIG_WORK?=	${_EMBERBSD_CROSS_LLVM_STATE}/llvm-config-${LLVM_VERSION}
-EMBERBSD_CROSS_LLVM_CONFIG?=	${EMBERBSD_CROSS_LLVM_CONFIG_WORK}/sealed/bin/llvm-config
+EMBERBSD_CROSS_LLVM_CONFIG?=	${EMBERBSD_CROSS_LLVM_CONFIG_WORK}/helper/bin/llvm-config
 EMBERBSD_CROSS_LLVM_NATIVE_WORK?=	${_EMBERBSD_CROSS_LLVM_STATE}/llvm-native-${LLVM_VERSION}
 LLVM_CONFIG_PATH=	${EMBERBSD_CROSS_LLVM_CONFIG}
 

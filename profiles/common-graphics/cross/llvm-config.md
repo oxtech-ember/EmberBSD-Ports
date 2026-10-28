@@ -22,9 +22,7 @@ python3.15 test-llvm-config.py /absolute/new-work /absolute/new-test-work
 /absolute/new-work/bin/llvm-config --link-shared --shared-mode core orcjit native
 ```
 
-`scripts/build-llvm-config.sh` runs the build, the acceptance test and the
-seal in order with the same five inputs and a new `WORK`. It records the
-SHA256 of `inputs.sha256` in `WORK/manifest.json` directly after the build.
+`scripts/build-llvm-config.sh` runs the build and its tests with the same five inputs and a new `WORK`.
 Set `PYTHON` to the Python 3.15 executable for this shell entry point.
 Each producer holds the SDK context lock and owns its child session.
 Preflight compiler reads and metadata queries also use owned sessions.
@@ -34,14 +32,12 @@ Completed directories use atomic no-replace publication. Existing output
 entries are refused, including partial work and symlinks. A failed build keeps
 its uniquely named partial directory and logs for inspection; retries never
 remove an earlier environment. Use another absent output path after failure.
-The sealed tool is `WORK/sealed/bin/llvm-config`. Run the seal regression
-below separately with a fresh target reference.
+The built tool is `WORK/helper/bin/llvm-config`. Sealing is optional.
 
 The source is the `llvm` subdirectory, not the llvm-project root. The two build
 directories must have matching LLVM 23.1.4 sources and completed generated
-metadata. Keep the input trees unchanged through building, acceptance and
-sealing. The sealed tool then permits build-tree cleanup while checking the
-installed package on every query. Use a fresh output directory.
+metadata. Keep the inputs unchanged during the build. Once the tool is built,
+check compatibility again if the selected target package or metadata changes.
 The helper currently accepts the canonical
 NetBSD/AArch64 or NetBSD/amd64, shared LLVM, RTTI and `/usr/pkg` layout with a
 macOS native compiler, or Clang23/GCC16 with the GNU C++ runtime on Linux
@@ -98,12 +94,9 @@ must match the target configuration.
 
 `receipt.json`, `compile.command` and `compile.log` record the inputs and build.
 `inputs.sha256` covers the source, original generated metadata/configuration,
-compiler, native archives, actual header dependencies, Python/SDK mechanism
-sources, the clean SDK source revision and resulting
-tool. Input changes during compilation fail. The `bin/llvm-config` launcher
-checks the receipt before every invocation,
-then executes the real compiled program; it does not parse query options or
-synthesize results. Changed inputs require a fresh tool build.
+compiler, native archives, actual header dependencies and resulting tool. Input changes during compilation fail. The launcher executes the real compiled
+program without requiring the historical receipt for each query. Select a
+compatible helper by its native architecture and current target metadata.
 
 On Linux, the compiler reports its real include search roots and GCC16 runtime
 locations. The dependency file includes system headers as well as LLVM headers;
@@ -124,15 +117,31 @@ architecture mismatches, unexpected loaded libraries and shared native LLVM
 dependencies fail. The launcher clears loader injection/search environment
 variables and invokes the retained loader with that library directory.
 
+## Reuse an existing helper
+
+A helper with an older hash-checking launcher can be adapted without changing
+its cache or rebuilding LLVM. Provide the actual native build, target build and
+sysroot used by the selected LLVM package:
+
+```sh
+python3.15 adapt-llvm-config.py --sdk-source /absolute/SDK \
+    --real /absolute/helper/bin/llvm-config.real \
+    --target-build /absolute/target-llvm-build --sysroot /absolute/sysroot \
+    --native-build /absolute/native-llvm-build --output /absolute/new/llvm-config
+```
+
+The adapter checks native architecture, target headers and LLVM ELF, target
+triple, version, options, compiler flags and sysroot paths against the live
+inputs. It retains the existing native Linux loader when present. It does not
+use a receipt or historical hashes. Set `EMBERBSD_GRAPHICS_LLVM_CONFIG` to the
+new executable. It records absolute paths; run adaptation again after relocation
+or when the selected target package or build inputs change.
+
 ## Preserve an accepted tool across build cleanup
 
-The original helper's complete build receipt also checks temporary compiler
-inputs and the unstripped target library on every query. Removing a completed
-build therefore invalidates that launcher even when its executable and the
-installed LLVM package remain unchanged. Do not remove entries from its receipt.
-
-After accepting the tool, use `seal-llvm-config.py` with the original manifest
-SHA256 from the preserved build/acceptance evidence:
+Sealing is an optional way to retain provenance and the native runtime after
+build-tree cleanup. It is not a condition for using an already compatible helper.
+To preserve the historical provenance, use `seal-llvm-config.py`:
 
 ```sh
 python3.15 seal-llvm-config.py /absolute/accepted-helper ORIGINAL_MANIFEST_SHA256 \
@@ -160,15 +169,14 @@ the historical strip transformation or claim that a missing build DSO was checke
 
 The small output retains the original receipt, full manifest and launcher in
 `provenance/`, together with immutable target metadata. The executable is copied
-byte for byte. Its new launcher checks this complete sealed payload and the
-live installed headers/library, then runs the same upstream program. No query
-answers are synthesized. Source/build cleanup no longer affects execution;
-installed-library drift still fails before any query. Preserve the sealed tree
+byte for byte. Its launcher runs the same upstream program. No query answers are synthesized.
+Source/build cleanup no longer affects execution; recheck compatibility when
+the target LLVM configuration or installed package changes. Preserve the sealed tree
 and use its `bin/llvm-config` in the graphics cross MAKECONF.
 
 Linux sealing also retains and verifies the complete native ELF payload. Its
 original system/compiler library paths and inspection tools become historical
-inputs; the sealed manifest checks their retained copies. The target package's
+inputs; the seal records their retained copies. The target package's
 installed headers and LLVM DSO remain live inputs. This permits later removal
 of native compiler/build directories without falling back to another host GCC
 runtime. Darwin checks the native Mach-O architecture and permits only system DSOs.

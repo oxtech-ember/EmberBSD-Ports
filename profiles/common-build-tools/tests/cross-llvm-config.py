@@ -35,7 +35,7 @@ def recipes(cross):
         failure, config = values
         if 'EMBERBSD_CROSS_LLVM_CONFIG' in failure:
             return pkgpath + ' fails before lang/llvm is built: ' + failure.strip()[:300]
-        if not config.endswith('/llvm-config-' + VERSION + '/sealed/bin/llvm-config') or '/.emberbsd-cross/' not in config:
+        if not config.endswith('/llvm-config-' + VERSION + '/helper/bin/llvm-config') or '/.emberbsd-cross/' not in config:
             return pkgpath + ' does not select the made llvm-config: ' + config
         result = make(cross, pkgpath, '-n', 'emberbsd-cross-llvm-config')
         if result.returncode != 0 or 'lang/llvm/files/cross-llvm-config.py' not in result.stdout \
@@ -52,7 +52,7 @@ def helper(script):
         existing.write_text('#!/bin/sh\necho ' + VERSION + '\n')
         existing.chmod(0o755)
         work = root / ('state/llvm-config-' + VERSION)
-        default = str(work / 'sealed/bin/llvm-config')
+        default = str(work / 'helper/bin/llvm-config')
         common = [str(root / 'state/llvm-native'), str(root / 'pkgsrc'), str(root / 'sysroot'),
                   str(root / 'archive.tar.xz'), '/nonexistent-make']
         environment = {k: v for k, v in os.environ.items() if k != 'EMBERBSD_HOST_PREFIX'}

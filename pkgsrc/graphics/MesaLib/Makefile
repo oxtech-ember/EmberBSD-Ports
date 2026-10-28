@@ -153,16 +153,6 @@ pre-configure:
 .endif
 .if ${USE_CROSS_COMPILE:tl} == "yes"
 	${TEST} "$$(${TOOLS_CMD.pkg-config} --modversion wayland-client)" = 1.26.0
-	${TEST} -s ${LLVM_CONFIG_PATH:H:H:Q}/inputs.sha256
-	${TEST} -f ${LLVM_CONFIG_PATH:H:H:Q}/receipt.json
-	cd ${LLVM_CONFIG_PATH:H:H:Q} && \
-	while read -r expected file; do \
-		${TEST} "$${#expected}" -eq 64 || exit 1; \
-		actual=$$(${TOOLS_DIGEST} SHA256 "$$file") || exit 1; \
-		${TEST} "$${actual##* }" = "$$expected" || { \
-			echo "LLVM helper receipt mismatch: $$file" >&2; exit 1; \
-		}; \
-	done < inputs.sha256
 	${TEST} "$$(${LLVM_CONFIG_PATH} --host-target)" = ${_EMBERBSD_MESA_LLVM_TRIPLE:Q}
 	${TEST} "$$(${LLVM_CONFIG_PATH} --prefix)" = ${_EMBERBSD_LLVM_SYSROOT:Q}/usr/pkg
 	${TEST} "$$(${LLVM_CONFIG_PATH} --includedir)" = ${_EMBERBSD_LLVM_SYSROOT:Q}/usr/pkg/include

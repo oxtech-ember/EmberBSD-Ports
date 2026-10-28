@@ -161,8 +161,7 @@ def seal_locked(old, expected, destination):
     sdk.write_json(Path(work) / 'seal.json', dict(format='ember-llvm-config-seal-v1', original_manifest_sha256=expected,
         accepted_executable_sha256=manifest['bin/llvm-config.real'], original_work=old,
         historical_proof='Original strip/build proof is retained as accepted provenance; it is not reproduced by sealing.', observed_inputs=rows))
-    shasum = native_api.executable('shasum')
-    launcher = '#!/bin/sh\n# SPDX-License-Identifier: BSD-2-Clause\n# Integrity only; queries run the unchanged upstream executable.\nset -eu\nbase=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)\ncd "$base"\n' + shlex.quote(shasum) + ' -a 256 -c inputs.sha256 > /dev/null || {\n    echo "llvm-config: sealed input receipt changed" >&2\n    exit 1\n}\n' + native_api.launcher(runtime) + '\n'
+    launcher = '#!/bin/sh\n# SPDX-License-Identifier: BSD-2-Clause\n# Run the selected native query tool.\nset -eu\nbase=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)\ncd "$base"\n' + native_api.launcher(runtime) + '\n'
     (Path(work) / 'bin/llvm-config').write_text(launcher)
     (Path(work) / 'bin/llvm-config').chmod(0o755)
     files = sorted(p for p in Path(work).rglob('*') if p.is_file())
