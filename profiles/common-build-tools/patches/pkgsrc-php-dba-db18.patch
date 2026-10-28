@@ -1,0 +1,36 @@
+Origin: EmberBSD, AI-assisted.
+php-dba's bdb option accepted only db2, db3 and db4, and its loops
+passed --without-<unset>; EmberBSD keeps only db18. Build the db4
+handler against db18 and teach ext/dba's config.m4 and dba_db4.c the
+db18 header, library and major version. Not submitted upstream.
+
+--- a/databases/php-dba/options.mk
++++ b/databases/php-dba/options.mk
+@@ -16,16 +16,16 @@
+ .endif
+ 
+ .if !empty(PKG_OPTIONS:Mbdb)
+-BDB_ACCEPTED=		db2 db3 db4
++BDB_ACCEPTED=		db18
+ .include "../../mk/bdb.buildlink3.mk"
+-CONFIGURE_ARGS+=	--with-${BDB_TYPE}=${BDBBASE}
+-.  for bdb in ${BDB_ACCEPTED}
+-.    if ${bdb}!=${BDB_TYPE}
+-CONFIGURE_ARGS+=	--without-${bdb}
+-.    endif
+-.  endfor
+-.else
+-.  for dbd in ${BDB_ACCEPTED}
+-CONFIGURE_ARGS+=	--without-${bdb}
+-.  endfor
++CONFIGURE_ARGS+=	--with-db4=${BDBBASE}
++# ext/dba's db4 handler only probes Berkeley DB 4 and 5. Look for the
++# db18 header and library, and accept major versions above 5.
++SUBST_CLASSES+=		dba-db18
++SUBST_STAGE.dba-db18=	post-extract
++SUBST_MESSAGE.dba-db18=	Accepting Berkeley DB 18 in the db4 handler.
++SUBST_FILES.dba-db18=	config.m4 dba_db4.c
++SUBST_SED.dba-db18=	-e 's,/db5/db\.h,/include/db18/db.h,g'
++SUBST_SED.dba-db18+=	-e 's,^      db-5\.3$$,      db18,'
++SUBST_SED.dba-db18+=	-e 's,DB_VERSION_MAJOR == 5,DB_VERSION_MAJOR >= 5,'
+ .endif
