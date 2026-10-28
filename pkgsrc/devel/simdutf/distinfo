@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (simdutf-9.3.0.tar.gz) = 4ace73ee161632fe8a49320b67a9c34698e80032a7df1ff51d587dda7d3c517e
+SHA512 (simdutf-9.3.0.tar.gz) = b5a05cb4708139dd092ebc9ae26b0f421163085836490a43e6c2d8448ef5b0e3af67befef67e665ce1ce93a673c30edceeab56e9609d5cb84877f411eaae16a2
+Size (simdutf-9.3.0.tar.gz) = 3523977 bytes
