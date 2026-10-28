@@ -1,0 +1,9 @@
+@comment $NetBSD$
+include/llhttp.h
+lib/${LLHTTP_VERSIONED}
+lib/${LLHTTP_SOVERSION}
+lib/${LLHTTP_LIB}
+lib/cmake/llhttp/llhttp-targets.cmake
+lib/cmake/llhttp/llhttpConfig.cmake
+lib/cmake/llhttp/llhttpConfigVersion.cmake
+lib/pkgconfig/libllhttp.pc

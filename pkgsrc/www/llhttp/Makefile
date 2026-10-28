@@ -1,0 +1,24 @@
+# $NetBSD$
+DISTNAME= llhttp-9.4.3
+CATEGORIES= www
+MASTER_SITES= -https://github.com/nodejs/llhttp/archive/refs/tags/release/v${PKGVERSION_NOREV}.tar.gz
+WRKSRC= ${WRKDIR}/llhttp-release-v${PKGVERSION_NOREV}
+HOMEPAGE= https://github.com/nodejs/llhttp
+COMMENT= HTTP request and response parser
+LICENSE= mit
+USE_LANGUAGES= c c++
+CMAKE_CONFIGURE_ARGS+= -DLLHTTP_BUILD_SHARED_LIBS=ON -DLLHTTP_BUILD_STATIC_LIBS=OFF
+.include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "Darwin"
+LLHTTP_LIB= libllhttp.dylib
+LLHTTP_SOVERSION= libllhttp.9.4.dylib
+LLHTTP_VERSIONED= libllhttp.9.4.3.dylib
+.else
+LLHTTP_LIB= libllhttp.so
+LLHTTP_SOVERSION= libllhttp.so.9.4
+LLHTTP_VERSIONED= libllhttp.so.9.4.3
+.endif
+PLIST_SUBST+= LLHTTP_LIB=${LLHTTP_LIB} LLHTTP_SOVERSION=${LLHTTP_SOVERSION} LLHTTP_VERSIONED=${LLHTTP_VERSIONED}
+GENERATE_PLIST+= cd ${DESTDIR}${PREFIX}; ${FIND} lib/cmake/llhttp -name "llhttp-targets-*.cmake" -type f -print | ${SORT};
+.include "../../devel/cmake/build.mk"
+.include "../../mk/bsd.pkg.mk"
