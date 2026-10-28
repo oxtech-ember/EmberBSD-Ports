@@ -1,6 +1,7 @@
 # Origin: EmberBSD (AI-assisted); official target data for the shared Rust host.
 DISTNAME= rust-std-1.99.1-x86_64-unknown-netbsd
 PKGNAME= rust-std-x86_64-netbsd-1.99.1
+PKGREVISION= 1
 CATEGORIES= lang
 MASTER_SITES= https://static.rust-lang.org/dist/2026-10-15/
 EXTRACT_SUFX= .tar.xz
@@ -12,7 +13,6 @@ LICENSE= mit OR apache-2.0
 
 ONLY_FOR_PLATFORM= Darwin-*-aarch64 Darwin-*-x86_64
 USE_LANGUAGES= # none: this package installs foreign target data
-USE_TOOLS+= pax
 NO_BUILD= yes
 NO_CONFIGURE= yes
 DEPENDS+= rust-bin-1.99.1{,nb[0-9]*}:../../lang/rust-bin
@@ -22,6 +22,7 @@ DEPENDS+= rust-bin-1.99.1{,nb[0-9]*}:../../lang/rust-bin
 CHECK_SHLIBS_SUPPORTED= no
 STD_SUBDIR= lib/rustlib/x86_64-unknown-netbsd
 STD_COMPONENT= ${WRKSRC}/rust-std-x86_64-unknown-netbsd
+STD_OUTPUT= ${DESTDIR}${PREFIX}
 GENERATE_PLIST+= cd ${DESTDIR}${PREFIX} && find ${STD_SUBDIR} -type f -print | ${SORT};
 INSTALLATION_DIRS= ${STD_SUBDIR} share/licenses/${PKGBASE}
 
@@ -35,7 +36,7 @@ PKG_FAIL_REASON+= "Set EMBERBSD_RUST_CROSS_TOOLS to the verified x86_64 tools pr
 BUILD_DEFS+= EMBERBSD_RUST_CROSS_TOOLS
 
 do-install:
-	cd ${STD_COMPONENT} && ${PAX} -rw lib ${DESTDIR}${PREFIX}
+	${CP} -R ${STD_COMPONENT:Q}/lib ${STD_OUTPUT:Q}
 	${INSTALL_DATA} ${WRKSRC}/LICENSE-APACHE ${WRKSRC}/LICENSE-MIT ${WRKSRC}/COPYRIGHT \
 	    ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}
 	${SH} ${FILESDIR}/check.sh ${PREFIX:Q} ${WRKSRC:Q} ${DESTDIR}${PREFIX:Q} \

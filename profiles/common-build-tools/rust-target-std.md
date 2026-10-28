@@ -169,8 +169,11 @@ ruby tests/rust-target-prebuilt.rb /absolute/x86_64--netbsd-readelf \
 Nine cases pass for the complete component, damaged/missing/extra data,
 foreign ELF, altered providers/RPATH and compiler rejection. The compiler
 boundary uses fixtures; it does not establish real metadata acceptance.
-Real native bmake variable evaluation passes. Package creation, installed
-ownership and real host-compiler metadata acceptance remain pending.
+On macOS arm64, package 1.99.1nb1 passed its real host-compiler metadata
+check, installation and package ownership check. A static-std Rust consumer
+using the selected Clang/LLVM target runtime still requests `-lgcc_s` and
+fails to link without that provider. This does not establish compatibility
+with the LLVM unwinder or target execution.
 
 The source-built AArch64 standard library uses a byte-identical temporary
 snapshot of package-owned Rust compiler files. This isolates its bootstrap
