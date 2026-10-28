@@ -1,0 +1,11 @@
+@comment $NetBSD$
+include/uvwasi.h
+include/wasi_serdes.h
+include/wasi_types.h
+lib/cmake/uvwasi/uvwasiConfig.cmake
+lib/cmake/uvwasi/uvwasiConfigVersion.cmake
+lib/cmake/uvwasi/uvwasiTargets-noconfig.cmake
+lib/cmake/uvwasi/uvwasiTargets.cmake
+lib/libuvwasi.a
+lib/${UVWASI_SHARED}
+lib/pkgconfig/uvwasi.pc

@@ -1,0 +1,7 @@
+$NetBSD$
+
+BLAKE2s (uvwasi-0.0.23.tar.gz) = 0cd12c6c8a59b2674ad0735d7360adf6c91d88127d83c94fec3bd50044c83436
+SHA512 (uvwasi-0.0.23.tar.gz) = 15d0ccd9d23a754285b78191c79f026cdad48af86be862ececd230e526db4aa24c6f7d2940d71aca677c3c703c70c251e366baf6bf3b3269850f8e5d2b38c64e
+Size (uvwasi-0.0.23.tar.gz) = 72247 bytes
+SHA1 (patch-CMakeLists.txt) = 885d865133dbfb1319b5cccdc953ef44be74fe4e
+SHA1 (patch-cmake_uvwasi.pc.in) = 60fe67274517bb2c729a5d5703808c10592c72c6

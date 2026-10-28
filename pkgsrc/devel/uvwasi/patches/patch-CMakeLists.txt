@@ -1,0 +1,64 @@
+# $NetBSD$
+
+Require shared libuv and export its portable linker name.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -35,26 +35,10 @@
+   list(APPEND uvwasi_defines _GNU_SOURCE _POSIX_C_SOURCE=200112)
+ endif()
+ 
+-find_package(LIBUV QUIET)
+-if(LIBUV_FOUND)
+-  include_directories(${LIBUV_INCLUDE_DIR})
+-else()
+-  include(FetchContent)
+-  ## https://libuv.org
+-  FetchContent_Declare(
+-          libuv
+-          GIT_REPOSITORY https://github.com/libuv/libuv.git
+-          GIT_TAG ${LIBUV_VERSION})
+-
+-  FetchContent_GetProperties(libuv)
+-  if(NOT libuv_POPULATED)
+-      FetchContent_Populate(libuv)
+-      include_directories("${libuv_SOURCE_DIR}/include")
+-      add_subdirectory(${libuv_SOURCE_DIR} ${libuv_BINARY_DIR} EXCLUDE_FROM_ALL)
+-  endif()
+-  set(LIBUV_INCLUDE_DIR ${libuv_SOURCE_DIR}/include)
+-  set(LIBUV_LIBRARIES uv_a)
+-endif()
++find_package(LIBUV REQUIRED)
++include_directories(${LIBUV_INCLUDE_DIR})
++# Keep installed CMake exports independent of the buildlink directory.
++set(LIBUV_LIBRARIES uv)
+ 
+ ## uvwasi source code files.
+ set(uvwasi_sources
+@@ -104,22 +88,22 @@
+ set_target_properties(uvwasi_a PROPERTIES OUTPUT_NAME "uvwasi")
+ target_compile_definitions(uvwasi_a PRIVATE ${uvwasi_defines})
+ target_compile_options(uvwasi_a PRIVATE ${uvwasi_cflags})
+-target_include_directories(uvwasi_a PRIVATE ${PROJECT_SOURCE_DIR}/include)
++target_include_directories(uvwasi_a PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+ if(CODE_COVERAGE)
+     target_link_libraries(uvwasi_a PUBLIC ${LIBUV_LIBRARIES} coverage_config)
+ else()
+-    target_link_libraries(uvwasi_a PRIVATE ${LIBUV_LIBRARIES})
++    target_link_libraries(uvwasi_a PUBLIC ${LIBUV_LIBRARIES})
+ endif()
+ 
+ ## Shared library target.
+ add_library(uvwasi SHARED ${uvwasi_sources})
+ target_compile_definitions(uvwasi PRIVATE ${uvwasi_defines})
+ target_compile_options(uvwasi PRIVATE ${uvwasi_cflags})
+-target_include_directories(uvwasi PRIVATE ${PROJECT_SOURCE_DIR}/include)
++target_include_directories(uvwasi PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+ if(CODE_COVERAGE)
+     target_link_libraries(uvwasi PUBLIC ${LIBUV_LIBRARIES} coverage_config)
+ else()
+-    target_link_libraries(uvwasi PRIVATE ${LIBUV_LIBRARIES})
++    target_link_libraries(uvwasi PUBLIC ${LIBUV_LIBRARIES})
+ endif()
+ 
+ 
