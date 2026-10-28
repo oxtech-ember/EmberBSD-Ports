@@ -1,0 +1,24 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+
+Upstream status: not submitted.
+
+TDB has no consumer of the separate host replacement subsystem.
+
+--- lib/replace/wscript.orig
++++ lib/replace/wscript
+@@ -920,13 +920,6 @@
+     if not bld.CONFIG_SET('HAVE_CLOSEFROM'):
+         REPLACE_HOSTCC_SOURCE += ' closefrom.c'
+ 
+-    bld.SAMBA_SUBSYSTEM('LIBREPLACE_HOSTCC',
+-        REPLACE_HOSTCC_SOURCE,
+-        use_hostcc=True,
+-        use_global_deps=False,
+-        group='hostcc_base_build_main',
+-        deps = extra_libs
+-    )
+ 
+     REPLACE_SOURCE = REPLACE_HOSTCC_SOURCE
+ 
