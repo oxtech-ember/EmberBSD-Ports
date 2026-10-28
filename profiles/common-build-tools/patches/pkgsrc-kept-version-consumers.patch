@@ -32,6 +32,10 @@ and Pandoc keep their API on the default Lua.
 darktable's Lua finder rejects Lua 5.5, and darktable then builds without Lua
 support because it does not fall back to its in-tree Lua; the finder now
 accepts Lua 5.5, which darktable's Lua API builds and runs with.
+The Powder Toy builds its Lua 5.2 mode, which uses the current Lua API, with
+Lua 5.5 once the integer API casts and the module registration that Lua 5.3
+dropped are provided and its LuaSocket helper loads without module(); it no
+longer depends on Lua 5.1.
 
 --- a/devel/Guitar/Makefile
 +++ b/devel/Guitar/Makefile
@@ -496,6 +500,227 @@ accepts Lua 5.5, which darktable's Lua API builds and runs with.
 + 		SET(LUA_VERSION_STRING ${LUA_VERSION_MAJOR}.${LUA_VERSION_MINOR}.${LUA_VERSION_RELEASE})
 + 	ENDIF()
 + 	UNSET(lua_version_str)
+--- a/games/powder-toy/Makefile
++++ b/games/powder-toy/Makefile
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.40 2026/09/02 19:02:20 wiz Exp $
+ 
+ DISTNAME=	powder-toy-95.0
+-PKGREVISION=	31
++PKGREVISION=	32
+ CATEGORIES=	games
+ MASTER_SITES=	${MASTER_SITE_GITHUB:=ThePowderToy/}
+ GITHUB_PROJECT=	The-Powder-Toy
+--- a/games/powder-toy/distinfo
++++ b/games/powder-toy/distinfo
+@@ -8,3 +8,9 @@
+ SHA1 (patch-resources_powder.desktop) = 9c77feb557afbd2e5ad4fb0b5f15be1809214555
+ SHA1 (patch-src_Config.h) = 01d9cced7a87b6f33b1974bf51dd9d93949d41a2
+ SHA1 (patch-src_gui_save_LocalSaveActivity.h) = 8171ef67f922eddd647bd2bb783994e0739db2b1
++SHA1 (patch-src_lua_LuaBit.cpp) = 34509e8229b049991f34e8a3ce5dab30a06b137c
++SHA1 (patch-src_lua_LuaCompat.c) = 8212344bfe52d7b3c4f42c8a7a81c99a0af82d24
++SHA1 (patch-src_lua_LuaCompat.h) = ea6f2521c313770b41f321fc8fb62f9bf326dfd3
++SHA1 (patch-src_lua_LuaSmartRef.h) = cd4a871307a93bfeb58bbbfa12b23d3819ef3006
++SHA1 (patch-src_lua_socket_socket.lua) = 611bf07645d37f4b7b143e72e92432836ffdbf98
++SHA1 (patch-src_lua_socket_socket.lua.cpp) = 2daa8952b1bfd872172febedf1f453bd78bd04c2
+--- a/games/powder-toy/options.mk
++++ b/games/powder-toy/options.mk
+@@ -29,7 +29,9 @@
+ .endif
+ 
+ .if !empty(PKG_OPTIONS:Mlua)
+-.include "../../lang/lua51/buildlink3.mk"
++# The Lua 5.2 mode uses the current Lua API; the patches port it to Lua 5.5.
++SCONS_BUILD_ARGS+=	--lua52
++.include "../../lang/lua/buildlink3.mk"
+ .else
+ SCONS_BUILD_ARGS+=	--nolua
+ .endif
+--- /dev/null
++++ b/games/powder-toy/patches/patch-src_lua_LuaBit.cpp
+@@ -0,0 +1,20 @@
++$NetBSD$
++
++Build with Lua 5.5: provide the integer API casts and the module
++registration that Lua 5.3 dropped, and load LuaSocket's helper
++without module().
++
++--- src/lua/LuaBit.cpp.orig
+++++ src/lua/LuaBit.cpp
++@@ -90,7 +90,11 @@ static UBits barg(lua_State *L, int idx)
++ }
++ 
++ /* Return bit type. */
+++#if LUA_VERSION_NUM >= 503
+++#define BRET(b)  lua_pushinteger(L, (lua_Integer)(SBits)(b)); return 1;
+++#else
++ #define BRET(b)  lua_pushnumber(L, (lua_Number)(SBits)(b)); return 1;
+++#endif
++ 
++ static int bit_tobit(lua_State *L) { BRET(barg(L, 1)) }
++ static int bit_bnot(lua_State *L) { BRET(~barg(L, 1)) }
+--- /dev/null
++++ b/games/powder-toy/patches/patch-src_lua_LuaCompat.c
+@@ -0,0 +1,63 @@
++$NetBSD$
++
++Build with Lua 5.5: provide the integer API casts and the module
++registration that Lua 5.3 dropped, and load LuaSocket's helper
++without module().
++
++--- src/lua/LuaCompat.c.orig
+++++ src/lua/LuaCompat.c
++@@ -8,6 +8,54 @@ int luaL_typerror (lua_State *L, int narg, const char *tname)
++ 	return luaL_argerror(L, narg, msg);
++ }
++ 
+++#if LUA_VERSION_NUM >= 503 && !defined(LUA_COMPAT_MODULE)
+++#include <string.h>
+++
+++// Implement luaL_openlib as Lua 5.2 does with LUA_COMPAT_MODULE: find or
+++// create the module table in package.loaded and in the global table, and
+++// register the functions in it, or in the table on the stack if libname is NULL
+++void luaL_openlib(lua_State *L, const char *libname, const luaL_Reg *l, int nup)
+++{
+++	if (libname)
+++	{
+++		luaL_getsubtable(L, LUA_REGISTRYINDEX, LUA_LOADED_TABLE);
+++		if (lua_getfield(L, -1, libname) != LUA_TTABLE)
+++		{
+++			const char *name = libname, *e;
+++			lua_pop(L, 1);
+++			lua_pushglobaltable(L);
+++			do
+++			{
+++				e = strchr(name, '.');
+++				if (!e)
+++					e = name + strlen(name);
+++				lua_pushlstring(L, name, e - name);
+++				if (lua_rawget(L, -2) == LUA_TNIL)
+++				{
+++					lua_pop(L, 1);
+++					lua_newtable(L);
+++					lua_pushlstring(L, name, e - name);
+++					lua_pushvalue(L, -2);
+++					lua_settable(L, -4);
+++				}
+++				else if (!lua_istable(L, -1))
+++					luaL_error(L, "name conflict for module '%s'", libname);
+++				lua_remove(L, -2);
+++				name = e + 1;
+++			} while (*e == '.');
+++			lua_pushvalue(L, -1);
+++			lua_setfield(L, -3, libname);
+++		}
+++		lua_remove(L, -2);
+++		lua_insert(L, -(nup + 1));
+++	}
+++	if (l)
+++		luaL_setfuncs(L, l, nup);
+++	else
+++		lua_pop(L, nup);
+++}
+++#endif
+++
++ #else
++ 
++ // Implement function added in lua 5.2 that we now use
+--- /dev/null
++++ b/games/powder-toy/patches/patch-src_lua_LuaCompat.h
+@@ -0,0 +1,31 @@
++$NetBSD$
++
++Build with Lua 5.5: provide the integer API casts and the module
++registration that Lua 5.3 dropped, and load LuaSocket's helper
++without module().
++
++--- src/lua/LuaCompat.h.orig
+++++ src/lua/LuaCompat.h
++@@ -31,6 +31,22 @@ LUALIB_API void (lua_pushglobaltable) (lua_State *L);
++ #endif
++ int luaL_tostring(lua_State *L, int n);
++ 
+++#if LUA_VERSION_NUM >= 503
+++/* Lua 5.3 dropped the int casts of the integer API, and names its float type differently. */
+++#ifndef luaL_checkint
+++#define luaL_checkint(L,n)	((int)luaL_checkinteger(L, (n)))
+++#define luaL_optint(L,n,d)	((int)luaL_optinteger(L, (n), (d)))
+++#endif
+++#if LUA_FLOAT_TYPE == LUA_FLOAT_DOUBLE && !defined(LUA_NUMBER_DOUBLE)
+++#define LUA_NUMBER_DOUBLE
+++#endif
+++#ifndef LUA_COMPAT_MODULE
+++/* Module registration as in Lua 5.2 with LUA_COMPAT_MODULE */
+++void luaL_openlib(lua_State *L, const char *libname, const luaL_Reg *l, int nup);
+++#define luaL_register(L,n,l)	(luaL_openlib(L, (n), (l), 0))
+++#endif
+++#endif
+++
++ #ifdef __cplusplus
++ }
++ #endif
+--- /dev/null
++++ b/games/powder-toy/patches/patch-src_lua_LuaSmartRef.h
+@@ -0,0 +1,16 @@
++$NetBSD$
++
++Build with Lua 5.5: provide the integer API casts and the module
++registration that Lua 5.3 dropped, and load LuaSocket's helper
++without module().
++
++--- src/lua/LuaSmartRef.h.orig
+++++ src/lua/LuaSmartRef.h
++@@ -15,6 +15,6 @@ public:
++ 	void Assign(int index); // Copies the value before getting reference, stack unchanged.
++ 	void Clear();
++ 	operator int() const;
++-	operator bool() const;
+++	explicit operator bool() const;
++ };
++ 
+--- /dev/null
++++ b/games/powder-toy/patches/patch-src_lua_socket_socket.lua
+@@ -0,0 +1,18 @@
++$NetBSD$
++
++Build with Lua 5.5: provide the integer API casts and the module
++registration that Lua 5.3 dropped, and load LuaSocket's helper
++without module().
++
++--- src/lua/socket/socket.lua.orig
+++++ src/lua/socket/socket.lua
++@@ -11,7 +11,8 @@ local base = _G
++ local string = require("string")
++ local math = require("math")
++ local socket = require("socket.core")
++-module("socket")
+++if base.setfenv then base.setfenv(1, socket) end
+++local _ENV = socket
++ 
++ -----------------------------------------------------------------------------
++ -- Exported auxiliar functions
+--- /dev/null
++++ b/games/powder-toy/patches/patch-src_lua_socket_socket.lua.cpp
+@@ -0,0 +1,19 @@
++$NetBSD$
++
++Build with Lua 5.5: provide the integer API casts and the module
++registration that Lua 5.3 dropped, and load LuaSocket's helper
++without module().
++
++--- src/lua/socket/socket.lua.cpp.orig
+++++ src/lua/socket/socket.lua.cpp
++@@ -2,8 +2,8 @@
++ // socket.lua from luasocket compiled into a cpp file
++ #include "../LuaCompat.h"
++ void luaopen_socket(lua_State *l){
++-	int socket_luac_sz=4061;
++-	const char* socket_luac="-----------------------------------------------------------------------------\012-- LuaSocket helper module\012-- Author: Diego Nehab\012-- RCS ID: $Id: socket.lua,v 1.22 2005/11/22 08:33:29 diego Exp $\012-----------------------------------------------------------------------------\012\012-----------------------------------------------------------------------------\012-- Declare module and import dependencies\012-----------------------------------------------------------------------------\012local base = _G\012local string = require(\042string\042)\012local math = require(\042math\042)\012local socket = require(\042socket.core\042)\012module(\042socket\042)\012\012-----------------------------------------------------------------------------\012-- Exported auxiliar functions\012-----------------------------------------------------------------------------\012function connect(address, port, laddress, lport)\012    local sock, err = socket.tcp()\012    if not sock then return nil, err end\012    if laddress then\012        local res, err = sock:bind(laddress, lport, -1)\012        if not res then return nil, err end\012    end\012    local res, err = sock:connect(address, port)\012    if not res then return nil, err end\012    return sock\012end\012\012function bind(host, port, backlog)\012    local sock, err = socket.tcp()\012    if not sock then return nil, err end\012    sock:setoption(\042reuseaddr\042, true)\012    local res, err = sock:bind(host, port)\012    if not res then return nil, err end\012    res, err = sock:listen(backlog)\012    if not res then return nil, err end\012    return sock\012end\012\012try = newtry()\012\012function choose(table)\012    return function(name, opt1, opt2)\012        if base.type(name) ~= \042string\042 then\012            name, opt1, opt2 = \042default\042, name, opt1\012        end\012        local f = table[name or \042nil\042]\012        if not f then base.error(\042unknown key (\042.. base.tostring(name) ..\042)\042, 3)\012        else return f(opt1, opt2) end\012    end\012end\012\012-----------------------------------------------------------------------------\012-- Socket sources and sinks, conforming to LTN12\012-----------------------------------------------------------------------------\012-- create namespaces inside LuaSocket namespace\012sourcet = {}\012sinkt = {}\012\012BLOCKSIZE = 2048\012\012sinkt[\042close-when-done\042] = function(sock)\012    return base.setmetatable({\012        getfd = function() return sock:getfd() end,\012        dirty = function() return sock:dirty() end\012    }, {\012        __call = function(self, chunk, err)\012            if not chunk then\012                sock:close()\012                return 1\012            else return sock:send(chunk) end\012        end\012    })\012end\012\012sinkt[\042keep-open\042] = function(sock)\012    return base.setmetatable({\012        getfd = function() return sock:getfd() end,\012        dirty = function() return sock:dirty() end\012    }, {\012        __call = function(self, chunk, err)\012            if chunk then return sock:send(chunk)\012            else return 1 end\012        end\012    })\012end\012\012sinkt[\042default\042] = sinkt[\042keep-open\042]\012\012sink = choose(sinkt)\012\012sourcet[\042by-length\042] = function(sock, length)\012    return base.setmetatable({\012        getfd = function() return sock:getfd() end,\012        dirty = function() return sock:dirty() end\012    }, {\012        __call = function()\012            if length <= 0 then return nil end\012            local size = math.min(socket.BLOCKSIZE, length)\012            local chunk, err = sock:receive(size)\012            if err then return nil, err end\012            length = length - string.len(chunk)\012            return chunk\012        end\012    })\012end\012\012sourcet[\042until-closed\042] = function(sock)\012    local done\012    return base.setmetatable({\012        getfd = function() return sock:getfd() end,\012        dirty = function() return sock:dirty() end\012    }, {\012        __call = function()\012            if done then return nil end\012            local chunk, err, partial = sock:receive(socket.BLOCKSIZE)\012            if not err then return chunk\012            elseif err == \042closed\042 then\012                sock:close()\012                done = 1\012                return partial\012            else return nil, err end\012        end\012    })\012end\012\012\012sourcet[\042default\042] = sourcet[\042until-closed\042]\012\012source = choose(sourcet)\012\012";
+++	int socket_luac_sz=4113;
+++	const char* socket_luac="-----------------------------------------------------------------------------\012-- LuaSocket helper module\012-- Author: Diego Nehab\012-- RCS ID: $Id: socket.lua,v 1.22 2005/11/22 08:33:29 diego Exp $\012-----------------------------------------------------------------------------\012\012-----------------------------------------------------------------------------\012-- Declare module and import dependencies\012-----------------------------------------------------------------------------\012local base = _G\012local string = require(\042string\042)\012local math = require(\042math\042)\012local socket = require(\042socket.core\042)\012if base.setfenv then base.setfenv(1, socket) end\012local _ENV = socket\012\012-----------------------------------------------------------------------------\012-- Exported auxiliar functions\012-----------------------------------------------------------------------------\012function connect(address, port, laddress, lport)\012    local sock, err = socket.tcp()\012    if not sock then return nil, err end\012    if laddress then\012        local res, err = sock:bind(laddress, lport, -1)\012        if not res then return nil, err end\012    end\012    local res, err = sock:connect(address, port)\012    if not res then return nil, err end\012    return sock\012end\012\012function bind(host, port, backlog)\012    local sock, err = socket.tcp()\012    if not sock then return nil, err end\012    sock:setoption(\042reuseaddr\042, true)\012    local res, err = sock:bind(host, port)\012    if not res then return nil, err end\012    res, err = sock:listen(backlog)\012    if not res then return nil, err end\012    return sock\012end\012\012try = newtry()\012\012function choose(table)\012    return function(name, opt1, opt2)\012        if base.type(name) ~= \042string\042 then\012            name, opt1, opt2 = \042default\042, name, opt1\012        end\012        local f = table[name or \042nil\042]\012        if not f then base.error(\042unknown key (\042.. base.tostring(name) ..\042)\042, 3)\012        else return f(opt1, opt2) end\012    end\012end\012\012-----------------------------------------------------------------------------\012-- Socket sources and sinks, conforming to LTN12\012-----------------------------------------------------------------------------\012-- create namespaces inside LuaSocket namespace\012sourcet = {}\012sinkt = {}\012\012BLOCKSIZE = 2048\012\012sinkt[\042close-when-done\042] = function(sock)\012    return base.setmetatable({\012        getfd = function() return sock:getfd() end,\012        dirty = function() return sock:dirty() end\012    }, {\012        __call = function(self, chunk, err)\012            if not chunk then\012                sock:close()\012                return 1\012            else return sock:send(chunk) end\012        end\012    })\012end\012\012sinkt[\042keep-open\042] = function(sock)\012    return base.setmetatable({\012        getfd = function() return sock:getfd() end,\012        dirty = function() return sock:dirty() end\012    }, {\012        __call = function(self, chunk, err)\012            if chunk then return sock:send(chunk)\012            else return 1 end\012        end\012    })\012end\012\012sinkt[\042default\042] = sinkt[\042keep-open\042]\012\012sink = choose(sinkt)\012\012sourcet[\042by-length\042] = function(sock, length)\012    return base.setmetatable({\012        getfd = function() return sock:getfd() end,\012        dirty = function() return sock:dirty() end\012    }, {\012        __call = function()\012            if length <= 0 then return nil end\012            local size = math.min(socket.BLOCKSIZE, length)\012            local chunk, err = sock:receive(size)\012            if err then return nil, err end\012            length = length - string.len(chunk)\012            return chunk\012        end\012    })\012end\012\012sourcet[\042until-closed\042] = function(sock)\012    local done\012    return base.setmetatable({\012        getfd = function() return sock:getfd() end,\012        dirty = function() return sock:dirty() end\012    }, {\012        __call = function()\012            if done then return nil end\012            local chunk, err, partial = sock:receive(socket.BLOCKSIZE)\012            if not err then return chunk\012            elseif err == \042closed\042 then\012                sock:close()\012                done = 1\012                return partial\012            else return nil, err end\012        end\012    })\012end\012\012\012sourcet[\042default\042] = sourcet[\042until-closed\042]\012\012source = choose(sourcet)\012\012";
++ 	luaL_loadbuffer(l, socket_luac, socket_luac_sz, "@builtin socket.lua");
++ 	lua_call(l, 0, 0);
++ }
 --- a/graphics/darktable/Makefile
 +++ b/graphics/darktable/Makefile
 @@ -1,7 +1,7 @@
