@@ -7,7 +7,7 @@
 # redirect group when default is non-mac.
 --- a/build/config/mac/BUILD.gn
 +++ b/build/config/mac/BUILD.gn
-@@ -113,7 +113,11 @@
+@@ -114,6 +114,10 @@
  # The symbolic link for $mac_sdk_path is set up by
  # //build/config/apple/sdk_info.py in //build/config/mac/mac_sdk.gni.
 -if (use_system_xcode && current_toolchain == default_toolchain) {
