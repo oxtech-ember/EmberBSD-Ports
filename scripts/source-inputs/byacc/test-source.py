@@ -24,6 +24,18 @@ with tempfile.TemporaryDirectory(dir=args.work_dir) as directory:
         return result
     run('prepare', '--archive', args.archive, '--patch', args.patch, '--output', root, '--scoped-identity')
     run('verify-source', '--source', root, '--patch', args.patch)
+    # One shared export for the run replaces the owner's own export.
+    shared = Path(directory) / 'shared'
+    subprocess.run([sys.executable, '-B', str(owner.parents[2] / 'pkgsrc-shared-export.py'), str(shared),
+                    '--sdk-source', str(args.sdk_source), '--git', str(args.git), '--patch', str(args.patch)],
+                   check=True, capture_output=True)
+    run('verify-source', '--source', root, '--patch', args.patch, '--pkgsrc-export', shared)
+    receipt = shared / 'pkgsrc-export.json'
+    selected = receipt.read_text()
+    receipt.write_text('{}\n')
+    assert 'invalid shared pkgsrc export receipt' in run('verify-source', '--source', root, '--patch', args.patch,
+                                                         '--pkgsrc-export', shared, success=False).stderr
+    receipt.write_text(selected)
     assert (root / 'main.c').is_file()
     assert (root / 'defs.h').is_file()
     assert (root / 'yaccpar.skel').is_file()

@@ -96,7 +96,7 @@ def recipe(exported):
     return identity, patches
 
 
-def verify(source, git, archive=None, patch=None):
+def verify(source, git, archive=None, patch=None, pkgsrc_export=None):
     identity = source_identity(git)
     record = jsonio.read_json(str(Path(source) / sourceprep.PREPARED_TREE_RECEIPT))
     old = record.get('identity') if isinstance(record, dict) else None
@@ -108,11 +108,15 @@ def verify(source, git, archive=None, patch=None):
                 'invalid scoped ekermit owner identity')
         require(patch and os.path.isabs(patch), 'effective ekermit verification requires an explicit patch')
         with tempfile.TemporaryDirectory(prefix='.ekermit-verify-') as tmp:
-            exported = Path(tmp) / 'pkgsrc'
-            process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
-                             str(exported), '--git', git, '--patch', patch],
-                            env=process.sanitized_environment())
             selector = identity_module()
+            if pkgsrc_export:
+                # The run's single export, bound to the current Ports inputs.
+                exported = selector.shared_export(pkgsrc_export, PORTS, git, SDK_SOURCE, patch)
+            else:
+                exported = Path(tmp) / 'pkgsrc'
+                process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
+                                 str(exported), '--git', git, '--patch', patch],
+                                env=process.sanitized_environment())
             current = selector.effective_package_identity(exported, PACKAGE, identity['export']['upstream'])
             require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
             require(selector.equivalent_effective_package(old['effective'], old['effective']) and
@@ -206,12 +210,13 @@ def main():
     check.add_argument('--source', required=True)
     check.add_argument('--archive')
     check.add_argument('--patch')
+    check.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
     selected = parser.parse_args(args)
     try:
         if selected.action == 'prepare':
             record = prepare(selected.archive, selected.output, selected.patch, selected.git, selected.scoped_identity)
         else:
-            record = verify(selected.source, selected.git, selected.archive, selected.patch)
+            record = verify(selected.source, selected.git, selected.archive, selected.patch, pkgsrc_export=selected.pkgsrc_export)
         sys.stdout.buffer.write(jsonio.json_bytes(record))
     except (SDKError, OSError, ValueError) as exc:
         sdk_source.exit_error(exc, 'ekermit source: ')

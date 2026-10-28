@@ -70,6 +70,16 @@ def equivalent_effective_package(left, right):
 
 
 def identity(ports_root, package, git, sdk_source):
+    root, package, payload, _ = export_inputs(ports_root, git, sdk_source, package)
+    payload['package'] = package
+    encoded = json.dumps(payload, sort_keys=True, separators=(',', ':')).encode()
+    return {'api': 1, 'package': package,
+            'export_inputs_sha256': hashlib.sha256(encoded).hexdigest(),
+            'upstream': payload['upstream']}
+
+
+def export_inputs(ports_root, git, sdk_source, package=None):
+    """Return the package-independent inputs of the canonical export."""
     root = Path(ports_root).resolve(strict=True)
     if not os.path.isabs(str(git)) or not os.path.isfile(git) or not os.access(git, os.X_OK):
         raise ValueError('git must be an absolute executable')
@@ -86,7 +96,8 @@ def identity(ports_root, package, git, sdk_source):
     spec = importlib.util.spec_from_file_location('emberbsd_pkgsrc_export', path)
     exporter = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(exporter)
-    package = exporter.package_path(package, 'package')
+    if package is not None:
+        package = exporter.package_path(package, 'package')
     recipes, patches, files, _, manifests = exporter.configuration(root, include_manifests=True)
 
     def run(directory, *args):
@@ -118,9 +129,75 @@ def identity(ports_root, package, git, sdk_source):
     trees = {str(source.relative_to(root)): tree(source) for _, source in recipes}
     # Include overlay category metadata and replacement-list state as well.
     trees['pkgsrc'] = tree(root / 'pkgsrc')
-    payload = {'api': 1, 'package': package, 'upstream': pin[1].decode('ascii'),
+    payload = {'api': 1, 'upstream': pin[1].decode('ascii'),
                'files': inputs, 'trees': trees}
+    return root, package, payload, run
+
+
+SHARED_EXPORT_RECEIPT = 'pkgsrc-export.json'
+SHARED_EXPORT_FORMAT = 'emberbsd-pkgsrc-shared-export'
+
+
+def export_identity(ports_root, git, sdk_source, patch):
+    """Identify one canonical export for every package of a run.
+
+    The export depends on the Ports commit, the pinned pkgsrc commit, the
+    overlay inputs (which also cover uncommitted overlay edits) and the patch
+    tool that applied the infrastructure patches.
+    """
+    if not os.path.isabs(str(patch)) or not os.path.isfile(patch) or not os.access(patch, os.X_OK):
+        raise ValueError('patch must be an absolute executable')
+    root, _, payload, run = export_inputs(ports_root, git, sdk_source)
+    from emberbsd_sdk import inventory
     encoded = json.dumps(payload, sort_keys=True, separators=(',', ':')).encode()
-    return {'api': 1, 'package': package,
+    return {'api': 1, 'ports_commit': run(root, 'rev-parse', 'HEAD').decode('ascii'),
+            'upstream': payload['upstream'],
             'export_inputs_sha256': hashlib.sha256(encoded).hexdigest(),
-            'upstream': payload['upstream']}
+            'patch': {'path': str(patch), 'sha256': inventory.sha256_file(str(patch))}}
+
+
+def create_shared_export(directory, ports_root, git, sdk_source, patch):
+    """Export pkgsrc once into a new directory and record its identity."""
+    directory = Path(directory)
+    if not directory.is_absolute():
+        raise ValueError('shared export directory must be absolute')
+    before = export_identity(ports_root, git, sdk_source, patch)
+    directory.mkdir(mode=0o700)
+    from emberbsd_sdk import process
+    subprocess.run([sys.executable, '-B', str(Path(ports_root) / 'scripts/prepare-pkgsrc.py'),
+                    str(directory / 'pkgsrc'), '--git', str(git), '--patch', str(patch)],
+                   check=True, env=process.sanitized_environment(), stdout=sys.stderr)
+    if export_identity(ports_root, git, sdk_source, patch) != before:
+        raise ValueError('pkgsrc export inputs changed during the shared export')
+    receipt = {'format': SHARED_EXPORT_FORMAT, 'version': 1, 'identity': before}
+    with open(directory / SHARED_EXPORT_RECEIPT, 'x', encoding='ascii') as output:
+        output.write(json.dumps(receipt, sort_keys=True) + '\n')
+    return receipt
+
+
+def shared_export(directory, ports_root, git, sdk_source, patch):
+    """Return the pkgsrc tree of a shared export made from current inputs.
+
+    The caller owns the directory for the duration of its run; this check
+    binds the export to the Ports commit, pkgsrc commit, overlay inputs and
+    patch tool selected now, and refuses an export made from other ones.
+    """
+    directory = Path(directory)
+    if not directory.is_absolute() or directory.is_symlink() or not directory.is_dir():
+        raise ValueError('shared pkgsrc export must be an absolute real directory')
+    path = directory / SHARED_EXPORT_RECEIPT
+    if path.is_symlink() or not path.is_file():
+        raise ValueError('shared pkgsrc export has no receipt')
+    receipt = json.loads(path.read_text(encoding='ascii'))
+    if (not isinstance(receipt, dict) or set(receipt) != {'format', 'version', 'identity'} or
+            receipt['format'] != SHARED_EXPORT_FORMAT or type(receipt['version']) is not int or
+            receipt['version'] != 1):
+        raise ValueError('invalid shared pkgsrc export receipt')
+    if receipt['identity'] != export_identity(ports_root, git, sdk_source, patch):
+        raise ValueError('shared pkgsrc export was made from different inputs')
+    exported = directory / 'pkgsrc'
+    revision = exported / 'EMBERBSD-PKGSRC-REVISION'
+    if (exported.is_symlink() or not exported.is_dir() or revision.is_symlink() or not revision.is_file() or
+            revision.read_text(encoding='ascii') != receipt['identity']['upstream'] + '\n'):
+        raise ValueError('shared pkgsrc export tree differs from its receipt')
+    return exported

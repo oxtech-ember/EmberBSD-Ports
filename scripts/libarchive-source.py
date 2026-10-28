@@ -35,7 +35,7 @@ def selected_identity(sdk_source, git):
     return result
 
 
-def verify(source, sdk_source, git, patch=None):
+def verify(source, sdk_source, git, patch=None, pkgsrc_export=None):
     identity = selected_identity(sdk_source, git)
     from emberbsd_sdk import jsonio, process, sourceprep
     record = jsonio.read_json(str(Path(source) / sourceprep.PREPARED_TREE_RECEIPT))
@@ -57,10 +57,15 @@ def verify(source, sdk_source, git, patch=None):
     if not patch or not os.path.isabs(patch):
         raise ValueError('changed export requires an explicit patch to compare the current libarchive source')
     with tempfile.TemporaryDirectory(prefix='.libarchive-verify-') as work:
-        export = Path(work) / 'pkgsrc'
-        command = [sys.executable, '-B', str(ROOT / 'scripts/prepare-pkgsrc.py'),
-                   str(export), '--git', git, '--patch', patch]
-        subprocess.run(command, check=True, env=process.sanitized_environment(), stdout=sys.stderr)
+        if pkgsrc_export:
+            # The run's single export, bound to the current Ports inputs.
+            selector = module(ROOT / 'scripts/pkgsrc-source-identity.py', 'pkgsrc_identity')
+            export = selector.shared_export(pkgsrc_export, ROOT, git, sdk_source, patch)
+        else:
+            export = Path(work) / 'pkgsrc'
+            command = [sys.executable, '-B', str(ROOT / 'scripts/prepare-pkgsrc.py'),
+                       str(export), '--git', git, '--patch', patch]
+            subprocess.run(command, check=True, env=process.sanitized_environment(), stdout=sys.stderr)
         if selected_identity(sdk_source, git) != identity:
             raise ValueError('Ports export inputs changed during verification')
         if scoped:
@@ -111,6 +116,7 @@ def main():
     parser.add_argument('--sdk-source', required=True)
     parser.add_argument('--git', required=True)
     parser.add_argument('--patch')
+    parser.add_argument('--pkgsrc-export', help='verify: shared export from scripts/pkgsrc-shared-export.py')
     parser.add_argument('--scoped-identity', action='store_true', help='record effective package identity')
     args = parser.parse_args()
     if args.operation == 'prepare':
@@ -118,7 +124,7 @@ def main():
             parser.error('prepare requires an absolute --patch')
         result = prepare(args.source, args.sdk_source, args.git, args.patch, args.scoped_identity)
     else:
-        result = verify(args.source, args.sdk_source, args.git, args.patch)
+        result = verify(args.source, args.sdk_source, args.git, args.patch, args.pkgsrc_export)
     print(json.dumps(result, sort_keys=True))
 
 
