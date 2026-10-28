@@ -1,0 +1,29 @@
+$NetBSD$
+
+Find the public tl::expected dependency for shared consumers too.
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+--- cmake/LIEFConfig.cmake.in.orig
++++ cmake/LIEFConfig.cmake.in
+@@ -76,6 +76,11 @@
+     return()
+   endif ()
+ 
++  include(CMakeFindDependencyMacro)
++  if(@LIEF_OPT_EXTERNAL_EXPECTED@)
++    find_dependency(tl-expected)
++  endif()
++
+   if("${lib_type}" STREQUAL "static")
+     # Need to find all dependencies even if they're private when LIEF is
+     # compiled statically
+@@ -101,9 +106,6 @@
+       find_dependency(frozen)
+     endif()
+ 
+-    if(@LIEF_OPT_EXTERNAL_EXPECTED@)
+-      find_dependency(tl-expected)
+-    endif()
+ 
+   endif()
+ 

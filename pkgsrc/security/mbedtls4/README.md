@@ -1,0 +1,1 @@
+Mbed TLS 4.2.0 moved platform_util.c and no longer defines _POSIX_C_SOURCE there; the NetBSD-specific 4.0.0 patch is obsolete. Preserve the upstream NetBSD fallback until an actual target check supports changing it.

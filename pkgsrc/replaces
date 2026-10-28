@@ -347,3 +347,7 @@ math/flann-lib
 
 # SDL2 programs run on SDL3 through sdl2-compat.
 devel/SDL2
+
+security/mbedtls4
+devel/tl-expected
+textproc/utf8-cpp

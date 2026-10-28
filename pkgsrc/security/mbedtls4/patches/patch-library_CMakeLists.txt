@@ -1,0 +1,26 @@
+$NetBSD$
+
+Install the Darwin compatibility name as a link to the installed dylib.
+
+--- library/CMakeLists.txt.orig
++++ library/CMakeLists.txt
+@@ -309,10 +309,15 @@
+                 $<TARGET_FILE_NAME:${target}>
+                 libmbedcrypto.dylib
+             )
+-            install(FILES $<TARGET_FILE:${target}>
+-                    DESTINATION ${CMAKE_INSTALL_LIBDIR}
+-                    RENAME "libmbedcrypto.dylib"
+-            )
++            # Use the installed library, whose install name has been fixed by
++            # CMake, instead of copying the build-tree dylib with @rpath.
++            install(CODE "
++                set(_libdir \"\$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}\")
++                execute_process(COMMAND \"\${CMAKE_COMMAND}\" -E create_symlink
++                                \"${CMAKE_SHARED_LIBRARY_PREFIX}tfpsacrypto${CMAKE_SHARED_LIBRARY_SUFFIX}\"
++                                \"\${_libdir}/libmbedcrypto.dylib\"
++                                COMMAND_ERROR_IS_FATAL ANY)
++            ")
+         elseif(WIN32 AND NOT CYGWIN)
+             add_custom_command(
+                 TARGET ${mbedtls_target} POST_BUILD

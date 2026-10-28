@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (utf8-cpp-4.2.1.tar.gz) = 43895b534fab57bece72e710bb58bc7cef0d06da1330899218cff3e212583900
+SHA512 (utf8-cpp-4.2.1.tar.gz) = 07d0e4bebb0c80a5fdabbd4ae0c005c17a99b88e01db70976ba01878ce1f9771ffaf33e510985d4c80f19b31df23e5ce4abbc1fc89460819c5b29b6e774a8b21
+Size (utf8-cpp-4.2.1.tar.gz) = 39773 bytes
+SHA1 (patch-CMakeLists.txt) = 6a014d08612329319f8c096b921397aab77fe810

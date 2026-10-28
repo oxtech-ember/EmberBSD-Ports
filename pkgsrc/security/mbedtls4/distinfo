@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (mbedtls-4.2.0.tar.bz2) = 73acb2850096bbb00816b472eb68c6e3cb30753c9f9a846bec3da023ef54fb77
+SHA512 (mbedtls-4.2.0.tar.bz2) = 535c3617e2029e141cd17d85b0958fa7c6d7d01b297e88a39ed0d6e0ab7bb096f5ce4d47f8e5aa2faa6eea07e8a4a6ea512fa3aa9c706d75710f029deb7552b4
+Size (mbedtls-4.2.0.tar.bz2) = 7395873 bytes
+SHA1 (patch-library_CMakeLists.txt) = d68fe6390ebca68e9ee05c03f30a077f3d1c6ea4

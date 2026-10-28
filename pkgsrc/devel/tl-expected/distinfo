@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (tl-expected-1.3.1.tar.gz) = 078e3cc6cdb8090b3afac3145bb5920c615932c5cdfc4440834c6fb3f91f99ab
+SHA512 (tl-expected-1.3.1.tar.gz) = 764e11097fe6ff18499e0941288fbd1cac91fe68009e077ef803742d48dd38efa8cc57cd6207e7d384f577a11bcb9bff43d3d853ade20340af36fccaaa5d47ed
+Size (tl-expected-1.3.1.tar.gz) = 24480 bytes

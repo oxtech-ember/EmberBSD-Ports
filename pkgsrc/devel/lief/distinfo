@@ -1,0 +1,14 @@
+$NetBSD$
+
+BLAKE2s (LIEF-1.0.0.tar.gz) = 78e2f114f9556a011e200aff549fb332922b3e1fdf2262a8ec769c5ad069a178
+SHA512 (LIEF-1.0.0.tar.gz) = 35d86d23306be0d9713fe6feb4632d83945a3e81557d12c6bdc23164818981dea30483d9ed7fdd5f8ba91803ceec716244f43527221e407f4b8fae021743e6a3
+Size (LIEF-1.0.0.tar.gz) = 20009137 bytes
+SHA1 (patch-cmake_LIEFConfig.cmake.in) = 70af970dd090fc2ca0583a7fd53a44c261609e44
+SHA1 (patch-cmake_LIEFOptions.cmake) = 82c7d1fe49eb28d7d355aea2bd9b8c2d3bc15c0a
+SHA1 (patch-src_PE_signature_RsaInfo.cpp) = c5c35b4653c16d9d0d164a4890e947254304b7de
+SHA1 (patch-src_PE_signature_Signature.cpp) = a6d5ed385638ff0129077773f255958f03f9d514
+SHA1 (patch-src_PE_signature_x509.cpp) = 945661bdf2a0245b73ecf7dd0b1322d250124489
+SHA1 (patch-src_PE_utils.cpp) = 74ff3d4c64c773b96686f4a1fcdd01642d0dec92
+SHA1 (patch-src_mbedtls_wraps.h) = bad24b88ac038b398ae38a6523b432b7df3b2686
+SHA1 (patch-src_utils.cpp) = eac51784a9b5670a650670b6e1ac14cbfa832519
+SHA1 (patch-src_visitors_hash.cpp) = ba03e2ea1e12ded9b3b3335e9ac68fdfd6ec4978
