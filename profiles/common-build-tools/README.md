@@ -233,8 +233,9 @@ its bundled Darwin LLVM a private name. It checks actual Mach-O imports for
 cargo-c/librsvg builds. Its
 [target std package](rust-target-std.md) installs into the same host sysroot and passes AArch64 VM consumers.
 
-The [macOS cross-package path](cross/README.md) uses GCC16 and ordinary pkgsrc
-packaging. Pkgconf 3.0.7, GNU M4 1.4.21, Libtool 2.6.2 and
+The [macOS cross-package path](cross/README.md) uses Clang by default, with GCC16
+as an explicit override, and ordinary pkgsrc packaging. GCC16 builds of
+Pkgconf 3.0.7, GNU M4 1.4.21, Libtool 2.6.2 and
 [Binutils 2.47nb1](binutils.md) pass package checks
 and [installed AArch64 VM acceptance](cross/validation.md). Cross package
 metadata, alternate-root updates and target script paths have regressions.

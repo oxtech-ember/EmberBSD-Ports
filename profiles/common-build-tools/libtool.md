@@ -170,8 +170,9 @@ through the ordinary pkgsrc error gate. The test runs no target program.
 
 Cross configure must execute on the Mac, but installed `libtool`,
 `libtoolize` and `shlibtool` must run on NetBSD. The scoped recipe converts
-configured host shell, sed, linker and compiler paths to target paths. It
-uses the selected `/usr/pkg/gcc16` compiler and runtime, not a second ABI.
+configured host shell, sed, linker and compiler paths to target paths. The
+conversion names the `/usr/pkg/gcc16` compiler and runtime in both compiler
+families; it has no Clang target mapping yet.
 Unconverted known build directories fail the conversion.
 
 The target `/bin/sh` has no mksh `print` builtin, so the configured echo

@@ -199,8 +199,8 @@ generator against existing target sysconfig inputs. It writes only new outputs
 and disables bytecode writes to those inputs. No host platform fallback is used.
 
 The Python 3.14.8 package acceptance recorded below is historical.
-Build it with the [macOS cross-package configuration](cross/README.md), using
-the shared GCC16 compiler and a complete target sysroot. The source archive
+It was built with the [macOS cross-package configuration](cross/README.md),
+using its GCC16 override and a complete target sysroot. The source archive
 comes from Python upstream; [sources.tsv](sources.tsv) and recipe distinfo
 pin its hashes. These AI-assisted EmberBSD adaptations have not been
 submitted or accepted upstream.

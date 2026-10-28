@@ -70,7 +70,8 @@ Standalone Clang/LLD use matching installed LLVM CMake exports and check
 llvm-config's exact version before configure. Their tests require core tests
 with LLVM_INSTALL_GTEST on: upstream needs the llvm_gtest target, not an unrelated
 googletest package. LLD's second LLVM test archive and unused libunwind buildlink
-are removed. C/C++ builds use pkgsrc wrappers with GCC_REQD16.2 and common Python.
+are removed. C/C++ builds use pkgsrc wrappers with the profile-selected compiler (Clang by
+default; recipes carry no GCC_REQD) and common Python.
 Native cache, RTTI, dependency and ELF evidence remains required.
 
 NetBSD cross builds now use the [runtime/SDK package split](cross/llvm-runtime.md).

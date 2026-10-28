@@ -3,7 +3,7 @@
 GCC reads `libgomp.spec` through its compiler-prefix search.
 `--sysroot` and a GCC16 CRT `-B` path alone can select the base compiler's
 `/usr/lib/libgomp.spec`. A library `-L` path does not select this specs file.
-The common cross profile also appends `-B` for the staged
+With the GCC16 override, the common cross profile also appends `-B` for the staged
 `/usr/pkg/gcc16/lib/` directory to its C and C++ wrappers.
 This selects the matching GCC16 specs file before the base copy.
 The existing CRT path, library path and target RPATH remain necessary.

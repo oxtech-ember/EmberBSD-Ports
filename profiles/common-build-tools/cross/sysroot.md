@@ -77,8 +77,8 @@ sysroot. Do not extract these sets over the host or a running target.
 
 The OS sets supply headers, startup objects, link libraries, and runtime
 providers from one fork build. They do not supply a Linux cross compiler or
-the Ports GCC16 package. Add the selected GCC16 target headers and runtime
-through the [cross compiler profile](../../development-toolchain/cross/README.md)
+the Ports GCC16 package. For the GCC16 override, add its target headers and
+runtime through the [cross compiler profile](../../development-toolchain/cross/README.md)
 and record their separate provenance. Keep the original OS snapshot intact.
 Historical schema-1 sets use the in-tree GCC12 bootstrap; their GCC16 consumer
 checks do not mean the base was compiled with GCC16. Schema-2 sets use the

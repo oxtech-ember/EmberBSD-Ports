@@ -1,9 +1,11 @@
 # Native GCC16 for standalone host helpers
 
 Cross builds also compile programs that run on the build host: generators,
-configuration probes and native helper tools. Build them with the native
-GCC 16 for the build host. Do not use Clang, `/usr/bin/cc`, Xcode, Command
-Line Tools, Homebrew or MacPorts compilers for these programs.
+configuration probes and native helper tools. On the default path the native
+Ports Clang selected by the SDK toolset builds them. The standalone helpers
+listed below are GCC16-specific scripts and require the native GCC 16 for the
+build host. Do not use Clang, `/usr/bin/cc`, Xcode, Command Line Tools,
+Homebrew or MacPorts compilers for those scripts.
 On macOS, build that compiler from the Ports `lang/gcc16` recipe.
 
 The cross profile and the native LLVM controller take their native drivers

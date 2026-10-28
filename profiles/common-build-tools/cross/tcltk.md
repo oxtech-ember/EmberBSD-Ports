@@ -53,7 +53,7 @@ The build host's Debian marker cannot classify an explicit NetBSD target.
 Cross recipes declare current native Tcl as a tool dependency. Thread uses
 that interpreter for its ZipFS payload. Tk's interpreter discovery also
 selects the native provider. `CC_FOR_BUILD` selects `NATIVE_CC`.
-Target objects still use the common GCC16 cross compiler.
+Target objects in the recorded results used the GCC16 cross override.
 Native Zip remains a declared dependency. Target ELF helpers must not run
 on the build host.
 
@@ -75,7 +75,7 @@ Prepare sources through the supported exporter:
 # Provide a verified source-data export at /absolute/new/pkgsrc. See the root README.
 ```
 
-Use a native GCC16 MAKECONF with private work and package output directories.
+Use a native MAKECONF with private work and package output directories.
 Its final prefix must match `EMBERBSD_CROSS_HOST_PREFIX`:
 
 ```sh
@@ -84,7 +84,8 @@ bmake -C /absolute/new/pkgsrc/lang/tcl MAKECONF=/absolute/native.mk.conf test
 ```
 
 Install the accepted native package with normal pkgtools before target builds.
-Use the [common GCC16 cross profile](README.md) for `lang/tcl` and `x11/tk`.
+Use the [common cross profile](README.md) for `lang/tcl` and `x11/tk`. It selects
+Clang by default; the target results below used its GCC16 override.
 Target installation and execution remain separate acceptance gates.
 
 ## Darwin native linking

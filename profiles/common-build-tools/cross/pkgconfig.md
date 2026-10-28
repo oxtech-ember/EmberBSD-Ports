@@ -1,10 +1,12 @@
 # Target pkg-config paths
 
-CMake also searches the selected SDK's `usr/pkg/gcc16/lib` before the base
+With the GCC16 override, CMake also searches the selected SDK's
+`usr/pkg/gcc16/lib` before the base
 C++ runtime. `FindPkgConfig` converts explicit `-lstdc++` entries into absolute
 library paths; the compiler's `-B` runtime selection cannot change such a path.
 The common target-only `CMAKE_LIBRARY_PATH` setting keeps these imported targets
-on the installed GCC16 ABI. It does not alter native CMake discovery.
+on the installed GCC16 ABI. With the Clang default, `CMAKE_LIBRARY_PATH` lists
+the target runtime library paths instead. It does not alter native CMake discovery.
 
 The common cross profile supplies `PKG_CONFIG_SYSROOT_DIR` in both configure
 and build environments. The value is the selected `CROSS_DESTDIR`.

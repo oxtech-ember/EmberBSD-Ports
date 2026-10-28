@@ -1,8 +1,8 @@
 # Boost cross build roles
 
 The common profiles retain the canonical Boost 1.92.0 provider. They use a
-native `boost-jam` package to run b2 and the selected GCC16 wrappers to build
-target libraries. The source archive is
+native `boost-jam` package to run b2 and the selected compiler wrappers to build
+target libraries: Clang by default, GCC16 when that override is selected. The source archive is
 [`boost_1_92_0.tar.bz2`](https://archives.boost.io/release/1.92.0/source/boost_1_92_0.tar.bz2),
 SHA256 `5c1d40cb8e19adbf740a4ec2da35b3e58f3f5804b1dce44deb53df72193cbc6c`.
 Upstream code retains the Boost Software License 1.0.
@@ -108,7 +108,8 @@ python3.15 -B profiles/common-build-tools/tests/boost-darwin-libtool.py \
 
 Run the [source regression](../tests/boost-cross-target.py) with Python 3.15
 and SDK host API 1. `--source` names the extracted Boost source from normal
-pkgsrc preparation. The selected compiler must be GCC16 for AArch64.
+pkgsrc preparation. This regression covers the GCC16 override for AArch64;
+[`boost-cross-clang.py`](../tests/boost-cross-clang.py) covers the Clang default.
 
 ```sh
 python3.15 -B profiles/common-build-tools/tests/boost-cross-target.py \

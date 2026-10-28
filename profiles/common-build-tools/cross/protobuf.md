@@ -96,8 +96,8 @@ BMAKE=/absolute/bmake ruby profiles/common-build-tools/tests/protobuf-package-sp
     EXPORTED_PKGSRC MAKECONF PROTOBUF_RELEASE_SOURCE NEW_SPLIT_WORK
 ```
 
-The target toolchain must use the common GCC16 compiler and the audited target
-sysroot. Supply any environment inputs that its toolchain file requires.
+The target toolchain must use the profile-selected compiler (Clang by default,
+GCC16 when that override is selected) and the audited target sysroot. Supply any environment inputs that its toolchain file requires.
 The source test needs both pinned probe archive names in `DISTFILES`.
 Each helper requires a new output directory and retains commands and diagnostics.
 The split check uses actual pkgsrc manifests and labelled staging fixtures.
