@@ -3,6 +3,7 @@
 .include "../../lang/llvm/version.mk"
 
 PKGNAME=	flang-rt-${LLVM_VERSION}
+PKGREVISION=	1
 CATEGORIES=	lang devel
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -31,6 +32,8 @@ CMAKE_CONFIGURE_ARGS+=	-DCMAKE_Fortran_COMPILER=${TOOLBASE}/bin/flang
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_INCLUDE_TESTS=OFF
 CMAKE_CONFIGURE_ARGS+=	-DFLANG_RT_INCLUDE_TESTS=OFF
+# Fortran shared libraries link the static runtime into themselves.
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_POSITION_INDEPENDENT_CODE=ON
 # Install into the Flang resource directory, as compiler-rt does for Clang.
 # The runtimes build always uses lib/<triple> outside Darwin, which the
 # driver searches as well.  The path must be typed: an untyped relative

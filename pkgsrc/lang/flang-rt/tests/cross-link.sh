@@ -1,8 +1,9 @@
 #!/bin/sh
 # Causal test for lang/flang-rt: a cross Fortran program that uses the
 # intrinsic modules and the runtime must compile and link against the
-# installed package alone.  Without flang-rt the module lookup or the
-# link fails.
+# installed package alone, and a Fortran shared library must link the
+# runtime.  Without flang-rt the module lookup or the link fails; a
+# runtime built without PIC fails the shared link.
 #
 # Usage: cross-link.sh FLANG LD SYSROOT RESOURCE_DIR TARGET
 #   RESOURCE_DIR is the installed ${PREFIX}/lib/clang/<major> tree.
@@ -54,4 +55,24 @@ ELF*64-bit*ARM\ aarch64*|ELF*64-bit*aarch64*) ;;
 	exit 1
 	;;
 esac
-echo "PASS: cross Fortran program links against flang-rt"
+cat > "$work/shared.f90" <<'F90'
+subroutine hello(n)
+  integer :: n
+  print *, 'flang shared ', n
+end subroutine hello
+F90
+if ! "$flang" --target="$target" --sysroot="$sysroot" \
+    -fuse-ld="$ld" -fPIC -shared \
+    -L"$res/lib/$target" \
+    -o "$work/libhello.so" "$work/shared.f90"; then
+	echo "FAIL: cross Fortran shared library link failed" >&2
+	exit 1
+fi
+case $(file -b "$work/libhello.so") in
+ELF*64-bit*shared\ object*aarch64*) ;;
+*)
+	echo "FAIL: unexpected shared output: $(file -b "$work/libhello.so")" >&2
+	exit 1
+	;;
+esac
+echo "PASS: cross Fortran program and shared library link against flang-rt"
