@@ -30,9 +30,9 @@ ROLE_VARIABLES = {
     'fetch': 'TOOLS_PLATFORM.fetch',
     # Wayland protocol code generator for wayland consumers.
     'wayland-scanner': 'EMBERBSD_WAYLAND_SCANNER',
-    # Native Clang TableGen for the clang cross recipe.
-    'clang-tblgen': 'EMBERBSD_CLANG_TABLEGEN',
 }
+# Cross clang requires this tool, but unrelated packages do not.
+OPTIONAL_ROLES = {'clang-tblgen': 'EMBERBSD_CLANG_TABLEGEN'}
 # These variables select the directory of the role tool.
 ROLE_DIRECTORIES = {
     # Native LLVM TableGen tools for the lld and clang cross recipes.
@@ -104,6 +104,8 @@ def render(toolset, qt=()):
               '.error PATH differs from the selected host prefix', '.endif', '.export PATH']
     selected = [(role, variable, shlex.join(toolset.command(role)) if role == 'as' else toolset.tool(role))
                 for role, variable in ROLE_VARIABLES.items()]
+    selected += [(role, variable, toolset.tool(role))
+                 for role, variable in OPTIONAL_ROLES.items() if role in toolset.tools]
     selected += [(role + '-dir', variable, os.path.dirname(toolset.tool(role)))
                  for role, variable in ROLE_DIRECTORIES.items()]
     selected += list(qt)
@@ -157,8 +159,11 @@ def render(toolset, qt=()):
 def selection(arguments):
     from emberbsd_sdk.errors import SDKError
     from emberbsd_sdk.native_toolset import load_host_prefix
+    optional = tuple(role for role in OPTIONAL_ROLES
+                     if any(os.path.lexists(Path(arguments.host_prefix) / directory / role)
+                            for directory in ('bin', 'gnu/bin')))
     toolset = load_host_prefix(arguments.host_prefix,
-                              required_roles=tuple(ROLE_VARIABLES) + tuple(ROLE_DIRECTORIES),
+                              required_roles=tuple(ROLE_VARIABLES) + tuple(ROLE_DIRECTORIES) + optional,
                               compiler_family=arguments.compiler_family)
     if Path(sys.executable).resolve(strict=True) != Path(toolset.tool('python')).resolve(strict=True):
         raise SDKError('The adapter interpreter differs from the selected Ports Python')

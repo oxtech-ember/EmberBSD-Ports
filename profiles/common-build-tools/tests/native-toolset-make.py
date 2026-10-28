@@ -38,13 +38,13 @@ def refused(function, *arguments):
 with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
     root = Path(temporary)
     directories = getattr(adapter, 'ROLE_DIRECTORIES', {})
-    tools = {role: str(root / ('sdk-' + role)) for role in (*adapter.ROLE_VARIABLES, *directories)}
+    tools = {role: str(root / ('sdk-' + role)) for role in (*adapter.ROLE_VARIABLES, *directories, *adapter.OPTIONAL_ROLES)}
     tools['llvm-tblgen'] = str(root / 'llvm/bin/llvm-tblgen')
     tools['python'] = sys.executable
     flags = {'cppflags': ('-isystem', '/native/include'), 'cflags': ('-fPIC',),
              'cxxflags': ('-std=c++17',), 'ldflags': ('-L/native/lib',)}
     selected = types.SimpleNamespace(
-        tool=lambda role: tools[role], path=str(root), abi_flags=flags,
+        tool=lambda role: tools[role], tools=tools, path=str(root), abi_flags=flags,
         command=lambda role: (tools[role], '-c', '-x', 'assembler') if role == 'as' else (tools[role],),
         compiler_family='clang',
         as_dict=lambda: {'format': 'emberbsd-native-toolset-selection',
@@ -54,6 +54,9 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
     api.load_host_prefix = mock.Mock(return_value=selected)
     pins = ['--host-prefix', str(root / 'host-pkg-llvm')]
     # Cross Qt modules need the native Qt prefix and libexec directory from qtpaths.
+    clang_tblgen = root / 'host-pkg-llvm/bin/clang-tblgen'
+    clang_tblgen.parent.mkdir(parents=True)
+    clang_tblgen.touch()
     qt_prefix = root / 'host-pkg-llvm/qt6'
     (qt_prefix / 'libexec').mkdir(parents=True)
     (qt_prefix / 'bin').mkdir()
@@ -83,7 +86,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         assert set(call.kwargs) == {'required_roles', 'compiler_family'}
         assert call.kwargs['compiler_family'] == 'clang'
         assert b'EMBERBSD_HOST_COMPILER_FAMILY?= clang\n' in before
-        assert call.kwargs['required_roles'] == tuple(adapter.ROLE_VARIABLES) + tuple(directories)
+        assert call.kwargs['required_roles'] == tuple(adapter.ROLE_VARIABLES) + tuple(directories) + ('clang-tblgen',)
         for role in ('bmake', 'gmake', 'xz', 'xzcat', 'install', 'fetch', 'wayland-scanner', 'llvm-tblgen',
                      'clang-tblgen'):
             assert role in call.kwargs['required_roles']
@@ -146,6 +149,17 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         without_qt = include.read_bytes()
         assert b'EMBERBSD_QT_HOST' not in without_qt
         assert b'EMBERBSD_CLANG_TABLEGEN' in without_qt
+        clang_tblgen.unlink()
+        del tools['clang-tblgen']
+        with contextlib.redirect_stdout(io.StringIO()):
+            adapter.main(['write', *pins, '--output', str(destination)])
+        assert 'clang-tblgen' not in api.load_host_prefix.call_args.kwargs['required_roles']
+        assert b'EMBERBSD_CLANG_TABLEGEN' not in include.read_bytes()
+        assert include.read_bytes() == adapter.render(selected)
+        tools['clang-tblgen'] = str(root / 'sdk-clang-tblgen')
+        clang_tblgen.touch()
+        adapter.write(selected, str(destination))
+        without_qt = include.read_bytes()
         assert without_qt == adapter.render(selected)
         with contextlib.redirect_stdout(io.StringIO()) as output:
             adapter.main(['verify', *pins, '--makeconf', str(include)])
