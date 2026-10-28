@@ -40,3 +40,14 @@ Origin: EmberBSD (AI-assisted); preserve OS portability and build routing.
  main(int argc, char ** argv) {
      int status, rx_len, i, x;
      char c;
+@@ -427,8 +427,8 @@
+   date, size, and bytes transferred so far.  These can be used in a
+   file-transfer progress display, log, etc.
+ */
+-	    debug(DB_LOG,"NAME",r.filename ? (char *)r.filename : "(NULL)",0);
+-	    debug(DB_LOG,"DATE",r.filedate ? (char *)r.filedate : "(NULL)",0);
++	    debug(DB_LOG,"NAME",r.filename ? r.filename : (UCHAR *)"(NULL)",0);
++	    debug(DB_LOG,"DATE",r.filedate,0);
+ 	    debug(DB_LOG,"SIZE",0,r.filesize);
+ 	    debug(DB_LOG,"STATE",0,r.status);
+ 	    debug(DB_LOG,"SOFAR",0,r.sofar);

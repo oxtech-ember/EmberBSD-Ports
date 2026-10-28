@@ -2,6 +2,7 @@
 # Origin: EmberBSD (AI-assisted); shared E-Kermit source and Unix program.
 
 DISTNAME=       ekermit-1.8
+PKGREVISION=    1
 DISTFILES=      ek18.tar
 EXTRACT_SUFX=   .tar
 MASTER_SITES=   https://www.kermitproject.org/ftp/kermit/archives/
