@@ -1,0 +1,14 @@
+# $NetBSD$
+
+Use shared dependencies and defer test discovery to execution.
+
+--- src/CMakeLists.txt.orig
++++ src/CMakeLists.txt
+@@ -57,6 +57,6 @@
+ endif()
+ 
+ if(MERVE_USE_SIMDUTF)
+-  target_link_libraries(merve PRIVATE simdutf)
++  target_link_libraries(merve PRIVATE simdutf::simdutf)
+   target_compile_definitions(merve PRIVATE MERVE_USE_SIMDUTF=1)
+ endif()

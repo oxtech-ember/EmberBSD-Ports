@@ -1,0 +1,29 @@
+# $NetBSD$
+
+Use shared dependencies and defer test discovery to execution.
+
+--- tests/CMakeLists.txt.orig
++++ tests/CMakeLists.txt
+@@ -15,11 +15,11 @@
+   include(GoogleTest)
+   add_executable(real_world_tests real_world_tests.cpp)
+   target_link_libraries(real_world_tests PRIVATE GTest::gtest_main)
+-  gtest_discover_tests(real_world_tests)
++  gtest_discover_tests(real_world_tests DISCOVERY_MODE PRE_TEST)
+ 
+   add_executable(c_api_tests c_api_tests.cpp)
+   target_link_libraries(c_api_tests PRIVATE GTest::gtest_main)
+-  gtest_discover_tests(c_api_tests)
++  gtest_discover_tests(c_api_tests DISCOVERY_MODE PRE_TEST)
+ 
+   # Verify merve_c.h compiles as pure C (compile-only test).
+   add_executable(c_api_compile_test c_api_compile_test.c)
+@@ -31,7 +31,7 @@
+   )
+   add_test(
+     NAME c_api_compile_test
+-    COMMAND ${CMAKE_COMMAND} --build . --target c_api_compile_test --config $<CONFIGURATION>
++    COMMAND ${CMAKE_COMMAND} -E env --unset=MAKEFLAGS ${CMAKE_COMMAND} --build . --target c_api_compile_test --config $<CONFIGURATION>
+     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+   )
+ 

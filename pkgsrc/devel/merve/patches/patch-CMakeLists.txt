@@ -1,0 +1,99 @@
+# $NetBSD$
+
+Use shared dependencies and defer test discovery to execution.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -13,27 +13,7 @@
+ 
+ # Optional simdutf support for optimized string operations
+ if(MERVE_USE_SIMDUTF)
+-  # Try to find simdutf system package first
+-  find_package(simdutf QUIET)
+-  if(NOT simdutf_FOUND)
+-    include(cmake/CPM.cmake)
+-    find_package(Git QUIET)
+-    if(Git_FOUND)
+-      CPMAddPackage(
+-        NAME simdutf
+-        GITHUB_REPOSITORY simdutf/simdutf
+-        VERSION 8.0.0
+-        OPTIONS "SIMDUTF_TESTS OFF" "SIMDUTF_BENCHMARKS OFF" "SIMDUTF_TOOLS OFF"
+-      )
+-      set(simdutf_FOUND TRUE)
+-    endif()
+-  endif()
+-  if(simdutf_FOUND)
+-    message(STATUS "simdutf enabled for optimized string operations")
+-  else()
+-    message(WARNING "simdutf requested but not found, building without it")
+-    set(MERVE_USE_SIMDUTF OFF)
+-  endif()
++  find_package(simdutf REQUIRED)
+ endif()
+ 
+ include(CTest)
+@@ -53,42 +33,16 @@
+ # errors due to CPM, so this is here to support disabling all the testing
+ # for lexer if one only wishes to use the lexer library.
+ if(MERVE_TESTING OR MERVE_BENCHMARKS)
+-  # Try to find GTest system package first
+-  find_package(GTest QUIET)
+-  if(NOT GTest_FOUND)
+-    include(cmake/CPM.cmake)
+-    # CPM requires git as an implicit dependency
+-    find_package(Git QUIET)
+-    # We use googletest in the tests
+-    if(Git_FOUND AND MERVE_TESTING)
+-      CPMAddPackage(
+-        NAME GTest
+-        GITHUB_REPOSITORY google/googletest
+-        VERSION 1.14.0
+-        OPTIONS  "BUILD_GMOCK OFF" "INSTALL_GTEST OFF"
+-      )
+-    endif()
++  if(MERVE_TESTING)
++    find_package(GTest REQUIRED)
+   endif()
+-  # We use Google Benchmark, but it does not build under several 32-bit systems.
+-  if(Git_FOUND AND MERVE_BENCHMARKS AND (CMAKE_SIZEOF_VOID_P EQUAL 8))
+-    CPMAddPackage(
+-      NAME benchmark
+-      GITHUB_REPOSITORY google/benchmark
+-      GIT_TAG f91b6b4
+-      OPTIONS "BENCHMARK_ENABLE_TESTING OFF"
+-              "BENCHMARK_ENABLE_INSTALL OFF"
+-              "BENCHMARK_ENABLE_WERROR OFF"
+-
+-    )
++  if(MERVE_BENCHMARKS AND (CMAKE_SIZEOF_VOID_P EQUAL 8))
++    find_package(benchmark REQUIRED)
+   endif()
+ 
+   if (MERVE_TESTING AND NOT EMSCRIPTEN)
+-    if(Git_FOUND)
+-      message(STATUS "The tests are enabled.")
+-      add_subdirectory(tests)
+-    else()
+-      message(STATUS "The tests are disabled because git was not found.")
+-    endif()
++    message(STATUS "The tests are enabled.")
++    add_subdirectory(tests)
+   else()
+     if(is_top_project)
+       message(STATUS "The tests are disabled.")
+@@ -96,12 +50,8 @@
+   endif(MERVE_TESTING AND NOT EMSCRIPTEN)
+ 
+   If(MERVE_BENCHMARKS AND NOT EMSCRIPTEN)
+-    if(Git_FOUND)
+-      message(STATUS "Lexer benchmarks enabled.")
+-      add_subdirectory(benchmarks)
+-    else()
+-      message(STATUS "The benchmarks are disabled because git was not found.")
+-    endif()
++    message(STATUS "Lexer benchmarks enabled.")
++    add_subdirectory(benchmarks)
+   else(MERVE_BENCHMARKS AND NOT EMSCRIPTEN)
+     if(is_top_project)
+       message(STATUS "Lexer benchmarks disabled. Set MERVE_BENCHMARKS=ON to enable them.")

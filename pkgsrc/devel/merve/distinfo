@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (merve-1.2.2.tar.gz) = 5991cf5a637e0592390f1794c714ad6f4bdb704d1f881a4a2ec77187fb84598d
+SHA512 (merve-1.2.2.tar.gz) = 293f52763ca80ed6652340994e8eb736cc0639761b40c6b3ff67608c6aa02588d930e89ba68281889b6de21a20fda048033ccae0710998d6b468d18a47584879
+Size (merve-1.2.2.tar.gz) = 68511 bytes
+SHA1 (patch-CMakeLists.txt) = 094fb4c036e72a49b6c4a47e8e9ccc1b54c47460
+SHA1 (patch-src_CMakeLists.txt) = cec88c5c6c640b362a5c5e22ba2b7b40eef13004
+SHA1 (patch-tests_CMakeLists.txt) = e8dd3c6cbfb0159bf513852174a947f5b0168b8e
