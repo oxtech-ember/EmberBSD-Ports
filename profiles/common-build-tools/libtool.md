@@ -170,10 +170,27 @@ through the ordinary pkgsrc error gate. The test runs no target program.
 
 Cross configure must execute on the Mac, but installed `libtool`,
 `libtoolize` and `shlibtool` must run on NetBSD. The scoped recipe converts
-configured host shell, sed, linker and compiler paths to target paths. The
-conversion names the `/usr/pkg/gcc16` compiler and runtime in both compiler
-families; it has no Clang target mapping yet.
-Unconverted known build directories fail the conversion.
+the configure shell, sed, linker, archive tools and compiler to target paths,
+whether pkgsrc named a cross tool by its `TOOLDIR` path or its bare name.
+With the default Clang family the compilers become `/usr/pkg/bin/clang` and
+`clang++`, and the search path is the one Clang reported below the sysroot:
+its resource directory and `/usr/lib`. Only the GCC override
+(`EMBERBSD_CROSS_COMPILER_FAMILY=gcc`) names the `/usr/pkg/gcc16` compiler
+and its versioned runtime directory. Unconverted known build directories fail
+the conversion. libtool-base 2.6.2nb3 carries this conversion.
+
+The [target compiler regression](tests/libtool-target-compiler.sh) runs the
+recipe's conversion target on a libtool script configured for the Clang cross
+driver with pkgsrc's configure environment. It requires target Clang paths,
+no GCC16 name and no cross tool name in all three scripts, then checks that
+the GCC override still writes the GCC16 runtime search path. The previous
+recipe fails on the unconverted configure shell and `TOOLDIR` tools.
+
+```sh
+BMAKE=/absolute/bmake sh profiles/common-build-tools/tests/libtool-target-compiler.sh \
+    /absolute/export /absolute/cross-mk.conf /absolute/clang-configured/libtool \
+    /absolute/new-output
+```
 
 The target `/bin/sh` has no mksh `print` builtin, so the configured echo
 operation uses portable `printf`. `max_cmd_len` is 196608: NetBSD 11's 256 KiB
@@ -228,7 +245,7 @@ analysis does not establish target runtime behavior.
 
 ## Native archive tool selection
 
-Native libtool-base 2.6.2nb2 stores the selected AR, RANLIB, NM and STRIP
+Native libtool-base 2.6.2nb2 and later store the selected AR, RANLIB, NM and STRIP
 commands during configure. A Clang/LLVM prefix does not need bare `ar`
 or `ranlib` aliases. The native base provider floor requires this revision.
 Target and cross-libtool provider selection remains unchanged.

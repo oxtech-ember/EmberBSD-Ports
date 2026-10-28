@@ -7,7 +7,7 @@
  
  PKGNAME=	${DISTNAME:S/-/-base-/}
 -PKGREVISION=	1
-+PKGREVISION=	2
++PKGREVISION=	3
  
  COMMENT=	Generic shared library support script (the script itself)
  

@@ -47,20 +47,27 @@ native libtool-base build depend on archivers/xz, which uses Libtool.
  USE_TOOLS+=		echo
  
  REPLACE_SH+=	libtoolize.in
-@@ -81,8 +83,26 @@
+@@ -81,8 +83,33 @@
  		-e "s|@SH@|"${SH:Q}"|g"					\
  		${FILESDIR}/shlibtool.in > ${WRKSRC}/shlibtool
  
 +# The installed script runs on NetBSD; cross-libtool remains a host tool.
 +.if defined(EMBERBSD_CROSS_HOST_PREFIX) && ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
++# Name the installed target compiler of the selected cross family.
++.if ${EMBERBSD_CROSS_COMPILER_FAMILY:Uclang} == "gcc"
++_EMBER_LIBTOOL_COMPILER=	-v family=gcc -v target_gcc=/usr/pkg/gcc16 -v gcc_version=16.2.0
++.else
++_EMBER_LIBTOOL_COMPILER=	-v family=clang -v target_bin=${PREFIX}/bin
++.endif
 +post-install: ember-target-libtool
 +.PHONY: ember-target-libtool
 +ember-target-libtool:
 +	${INSTALL_SCRIPT} ${WRKSRC}/shlibtool ${DESTDIR}${PREFIX}/bin/shlibtool
 +	set -e; for f in libtool libtoolize shlibtool; do \
-+		${AWK} -v host_shell=${SH:Q} -v host_sed=${SED:Q} \
++		${AWK} -v host_shell=${SH:Q} -v config_shell=${CONFIG_SHELL:Q} \
++		    -v host_sed=${SED:Q} \
 +		    -v host_ld=${LD:Q} -v triplet=${MACHINE_GNU_PLATFORM:Q} \
-+		    -v target_gcc=/usr/pkg/gcc16 -v gcc_version=16.2.0 \
++		    ${_EMBER_LIBTOOL_COMPILER} \
 +		    -v sysroot=${CROSS_DESTDIR:Q} -v tooldir=${TOOLDIR:Q} \
 +		    -v host_prefix=${EMBERBSD_CROSS_HOST_PREFIX:Q} \
 +		    -f ${FILESDIR}/cross-target.awk \
@@ -2913,7 +2920,7 @@ native libtool-base build depend on archivers/xz, which uses Libtool.
       done
 --- a/devel/libtool-base/files/cross-target.awk
 +++ b/devel/libtool-base/files/cross-target.awk
-@@ -0,0 +1,43 @@
+@@ -0,0 +1,67 @@
 +# SPDX-License-Identifier: BSD-2-Clause
 +# Origin: EmberBSD (AI-assisted), not submitted upstream.
 +# Convert a cross-configured script into an installed NetBSD target tool.
@@ -2926,25 +2933,45 @@ native libtool-base build depend on archivers/xz, which uses Libtool.
 +    }
 +    return result text
 +}
++# pkgsrc may name a cross tool by its TOOLDIR path or by its bare name.
++function replace_tool(text, name, to) {
++    text = replace_literal(text, tooldir "/bin/" triplet "-" name, to)
++    return replace_literal(text, triplet "-" name, to)
++}
 +{
 +    text = $0
 +    # Configure ran under host mksh; the target POSIX shell has no print builtin.
 +    text = replace_literal(text, "print -r --", "printf %s\\\\n")
++    # Configure writes its CONFIG_SHELL, a host shell, into the scripts.
++    text = replace_literal(text, config_shell, "/bin/sh")
 +    text = replace_literal(text, host_shell, "/bin/sh")
 +    text = replace_literal(text, host_sed, "/usr/bin/sed")
 +    text = replace_literal(text, host_ld, "/usr/bin/ld")
-+    text = replace_literal(text, triplet "-g++", target_gcc "/bin/g++")
-+    text = replace_literal(text, triplet "-gcc", target_gcc "/bin/gcc")
++    if (family == "gcc") {
++        text = replace_tool(text, "g++", target_gcc "/bin/g++")
++        text = replace_tool(text, "gcc", target_gcc "/bin/gcc")
++    } else {
++        # Longest names first: -clang is a prefix of -clang++ and -clang-cpp.
++        text = replace_tool(text, "clang++", target_bin "/clang++")
++        text = replace_tool(text, "clang-cpp", target_bin "/clang-cpp")
++        text = replace_tool(text, "clang", target_bin "/clang")
++    }
 +    for (i = 1; i <= 5; i++) {
 +        tool = tools[i]
-+        text = replace_literal(text, triplet "-" tool, "/usr/bin/" tool)
++        text = replace_tool(text, tool, "/usr/bin/" tool)
 +    }
 +    # NetBSD 11 sys/sys/syslimits.h defines ARG_MAX as 256 KiB.
 +    # Apply the upstream BSD 3/4 margin for environment and extra arguments.
 +    if (text ~ /^max_cmd_len=/)
 +        text = "max_cmd_len=196608"
-+    if (text ~ /^sys_lib_search_path_spec=/)
-+        text = "sys_lib_search_path_spec=\"" target_gcc "/lib/gcc/" triplet "/" gcc_version " " target_gcc "/lib /usr/lib /lib\""
++    # Clang reports its resource and library directories below the sysroot;
++    # the same paths are the target's. GCC16 names its versioned runtime.
++    if (text ~ /^sys_lib_search_path_spec=/) {
++        if (family == "gcc")
++            text = "sys_lib_search_path_spec=\"" target_gcc "/lib/gcc/" triplet "/" gcc_version " " target_gcc "/lib /usr/lib /lib\""
++        else
++            text = replace_literal(text, sysroot, "")
++    }
 +    if (text ~ /^build(_alias)?=/)
 +        sub(/=.*/, "=" triplet, text)
 +    if (index(text, sysroot) || index(text, tooldir) || index(text, host_prefix)) {
@@ -2954,6 +2981,10 @@ native libtool-base build depend on archivers/xz, which uses Libtool.
 +    print text
 +}
 +BEGIN {
++    if (family != "gcc" && family != "clang") {
++        print "select the gcc or clang compiler family" > "/dev/stderr"
++        exit 2
++    }
 +    split("ar ranlib nm objdump strip", tools, " ")
 +}
 +END { if (bad) exit 1 }
