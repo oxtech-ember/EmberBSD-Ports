@@ -1,0 +1,4 @@
+Flang-RT is the runtime library of the LLVM Flang Fortran compiler. It
+provides the Fortran runtime library that Flang links into programs, and the
+intrinsic module files, such as iso_c_binding and iso_fortran_env, that Flang
+reads when it compiles Fortran sources.

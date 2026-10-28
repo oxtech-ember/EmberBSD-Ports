@@ -6,6 +6,7 @@
 # used by lang/clang-tools-extra
 # used by lang/compiler-rt
 # used by lang/flang
+# used by lang/flang-rt
 # used by lang/libclc
 # used by lang/libcxx
 # used by lang/libcxxabi
@@ -39,7 +40,7 @@ EXTRACT_ELEMENTS+=	${DISTNAME}/libc
 # This exported profile has prepared only these matching family recipes.
 .if ${PKGPATH} != "lang/llvm" && ${PKGPATH} != "lang/llvm-devel" && ${PKGPATH} != "lang/clang" && \
     ${PKGPATH} != "devel/lld" && ${PKGPATH} != "devel/py-llvm-lit" && ${PKGPATH} != "lang/compiler-rt" && \
-    ${PKGPATH} != "lang/mlir" && ${PKGPATH} != "lang/flang"
+    ${PKGPATH} != "lang/mlir" && ${PKGPATH} != "lang/flang" && ${PKGPATH} != "lang/flang-rt"
 PKG_FAIL_REASON+= "LLVM 23 family consumer ${PKGPATH} is not prepared in the common profile"
 .endif
 
