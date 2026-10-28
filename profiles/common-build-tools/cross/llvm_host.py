@@ -2,6 +2,7 @@
 # Origin: EmberBSD contributors (AI-assisted).
 """Policy shared by the native LLVM/Clang generator commands."""
 import os
+import platform
 from pathlib import Path
 import shlex
 import sys
@@ -53,6 +54,9 @@ def native(kind, arguments):
              'cmake', 'ninja', 'python', 'pkg-config', 'sh')
     if kind == 'clang':
         roles += ('llvm-config', 'llvm-tblgen')
+    # CMake rewrites Darwin install names and needs the selected tool.
+    if platform.system() == 'Darwin':
+        roles += ('install_name_tool',)
     family = os.environ.get('EMBERBSD_HOST_COMPILER_FAMILY', 'clang')
     toolset = load_host_prefix(prefix, required_roles=roles, compiler_family=family)
     if Path(sys.executable).resolve(strict=True) != Path(toolset.tool('python')).resolve(strict=True):
@@ -112,6 +116,8 @@ def native(kind, arguments):
     command += ['-DCMAKE_' + kind + '_LINKER_FLAGS=' + shlex.join(flags['ldflags'])
                 for kind in ('EXE', 'SHARED', 'MODULE')]
     command += ['-DPKG_CONFIG_EXECUTABLE=' + toolset.tool('pkg-config')]
+    if 'install_name_tool' in roles:
+        command += ['-DCMAKE_INSTALL_NAME_TOOL=' + toolset.tool('install_name_tool')]
     if kind == 'llvm':
         command += ['-DLLVM_TARGETS_TO_BUILD=Native'] + ['-DLLVM_' + option + '=OFF' for option in ('INCLUDE_TESTS', 'INCLUDE_BENCHMARKS', 'INCLUDE_EXAMPLES', 'ENABLE_ZLIB', 'ENABLE_ZSTD', 'ENABLE_LIBXML2', 'ENABLE_TERMINFO', 'ENABLE_LIBEDIT')]
         outputs = ['llvm-tblgen', 'llvm-min-tblgen', 'llvm-config']
