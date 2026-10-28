@@ -1,5 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream Undici provider.
 DISTNAME= undici-8.12.3
+PKGREVISION= 1
 CATEGORIES= www
 MASTER_SITES= -https://github.com/nodejs/undici/archive/refs/tags/v${PKGVERSION_NOREV}.tar.gz
 HOMEPAGE= https://undici.nodejs.org/

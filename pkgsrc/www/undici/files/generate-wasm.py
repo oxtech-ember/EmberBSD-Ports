@@ -37,7 +37,15 @@ Object.defineProperty(module, 'exports', {
 """ % encoded, encoding='utf-8')
 location = json.dumps(str(a.install_dir / 'loader.js'))
 a.loader.write_text("""'use strict'
-globalThis.__UNDICI_IS_NODE__ = true
-module.exports = require('node:module').createRequire(%s)('./index-fetch.js')
-delete globalThis.__UNDICI_IS_NODE__
+const flag = '__UNDICI_IS_NODE__'
+const previous = Object.getOwnPropertyDescriptor(globalThis, flag)
+try {
+  Object.defineProperty(globalThis, flag, previous ? { value: true } : {
+    value: true, writable: true, enumerable: true, configurable: true
+  })
+  module.exports = require('node:module').createRequire(%s)('./index-fetch.js')
+} finally {
+  if (previous) Object.defineProperty(globalThis, flag, previous)
+  else delete globalThis[flag]
+}
 """ % location, encoding='utf-8')
