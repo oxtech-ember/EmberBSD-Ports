@@ -9,6 +9,8 @@ The development toolchain, common tools, graphics, media and Plasma exports
 replace the pinned pkgsrc providers. The default export retains pkgsrc's pins.
 The current profiles do not add an old runtime for an application.
 Consumers that require Tcl 8 need an API port.
+The export removes pkgsrc's `lang/tcl90` and `x11/tk90`, which duplicate
+this Tcl and Tk; their consumers use `lang/tcl` and `x11/tk`.
 
 Tcl retains Itcl 4.3.8, SQLite 3.53.4 bindings, TDBC 1.1.15, its four database
 drivers, Thread 3.0.7, modules, encodings, messages, headers and manuals.

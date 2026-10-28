@@ -8,12 +8,13 @@ bmake=${BMAKE:-bmake}
 mkdir "$work"
 for kept in lang/python315 lang/lua55 lang/gcc16-libs lang/go127 lang/php85 \
     lang/ruby40 lang/openjdk21 databases/postgresql18-client \
-    databases/mariadb118-client security/openssl; do
+    databases/mariadb118-client security/openssl lang/tcl x11/tk; do
     [ -d "$pkgsrc/$kept" ] || { echo "Missing kept $kept" >&2; exit 1; }
 done
 for old in lang/python314 lang/lua54 lang/gcc10-libs lang/go126 lang/php84 \
     lang/ruby34 lang/openjdk17 databases/postgresql17-client \
-    databases/mariadb114-client databases/mysql80-client security/libressl; do
+    databases/mariadb114-client databases/mysql80-client security/libressl \
+    lang/tcl90 x11/tk90; do
     [ ! -e "$pkgsrc/$old" ] || { echo "Old version $old exported" >&2; exit 1; }
     if grep -Eq "^SUBDIR[+]?=[[:space:]]+${old#*/}\$" "$pkgsrc/${old%/*}/Makefile"; then
         echo "Old version $old listed in ${old%/*}/Makefile" >&2; exit 1
@@ -25,12 +26,14 @@ reason() {
     "$bmake" -f "$work/Makefile" PKGPATH="$1" -v PKG_FAIL_REASON
 }
 for old in lang/python314 lang/lua54 lang/gcc15 databases/postgresql17-client \
-    databases/mysql80-client security/libressl lang/go126 lang/php84; do
+    databases/mysql80-client security/libressl lang/go126 lang/php84 lang/tcl90 \
+    x11/tk90; do
     reason "$old" | grep -Fq 'EmberBSD keeps only' ||
         { echo "Guard accepted $old" >&2; exit 1; }
 done
 for kept in lang/python315 lang/lua55 lang/gcc16-libs databases/postgresql18-server \
-    databases/mariadb118-server net/wireshark lang/go127 lang/go-bin lang/php85; do
+    databases/mariadb118-server net/wireshark lang/go127 lang/go-bin lang/php85 \
+    lang/tcl x11/tk lang/tclx x11/tktable; do
     [ -z "$(reason "$kept")" ] || { echo "Guard rejected $kept" >&2; exit 1; }
 done
 [ "$("$bmake" -f "$work/Makefile" -v LUA_VERSION_DEFAULT)" = 55 ]

@@ -22,6 +22,8 @@ EMBERBSD_VERSION_FAMILIES+=	databases/mariadb[0-9]*=databases/mariadb118-*
 EMBERBSD_VERSION_FAMILIES+=	databases/mysql[0-9]*=databases/mariadb118-*
 EMBERBSD_VERSION_FAMILIES+=	security/libressl=security/openssl
 EMBERBSD_VERSION_FAMILIES+=	games/love[0-9]*=games/love11
+EMBERBSD_VERSION_FAMILIES+=	lang/tcl[0-9]*=lang/tcl
+EMBERBSD_VERSION_FAMILIES+=	x11/tk[0-9]*=x11/tk
 # Lua 5.1 or 5.3 C API.
 EMBERBSD_VERSION_DEPENDENTS+=	games/asc
 EMBERBSD_VERSION_DEPENDENTS+=	games/valyriatear
