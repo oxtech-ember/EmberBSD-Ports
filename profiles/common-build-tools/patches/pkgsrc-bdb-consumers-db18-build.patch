@@ -1,0 +1,167 @@
+Origin: EmberBSD, AI-assisted.
+EmberBSD keeps one Berkeley DB, db18. These packages named db2..db5 in
+their build glue, not only in BDB_ACCEPTED:
+- bitcoin 31 has no Berkeley DB wallet any more (upstream removed it),
+  so the db4 dependency, -DWITH_BDB and the db_cxx transform go.
+- moc used databases/db4 directly; it now uses bdb.buildlink3.mk with
+  db18 (tags_cache.c only special-cases 4.x < 4.6).
+- opencobol, open-cobol-ce and opensource-cobol probe -ldb-4.4/-ldb-4.5;
+  the probe library name now becomes the selected BDB_TYPE (db18).
+- apr-util accepts db18 and maps -ldb to it as well as -ldb4.
+- exim3 keeps only the built-in db1: its db >= 3 code predates the
+  db 4.1 API.
+Not submitted upstream.
+
+diff --color -ru a/audio/moc/Makefile b/audio/moc/Makefile
+--- a/audio/moc/Makefile
++++ b/audio/moc/Makefile
+@@ -47,7 +47,8 @@
+ # want this, and can get it to work, please send a patch
+ CONFIGURE_ARGS+=	--without-musepack
+ 
+-BUILDLINK_TRANSFORM+=	l:db:db4
++BDB_ACCEPTED=		db18
++BUILDLINK_TRANSFORM+=	l:db:${BDB_TYPE}
+ 
+ LDFLAGS.SunOS+=		-lsocket
+ 
+@@ -57,7 +58,7 @@
+ 
+ .include "options.mk"
+ .include "../../audio/libid3tag/buildlink3.mk"
+-.include "../../databases/db4/buildlink3.mk"
++.include "../../mk/bdb.buildlink3.mk"
+ .include "../../devel/gettext-lib/buildlink3.mk"
+ .include "../../devel/libltdl/buildlink3.mk"
+ .include "../../sysutils/file/buildlink3.mk"
+diff --color -ru a/devel/apr-util/buildlink3.mk b/devel/apr-util/buildlink3.mk
+--- a/devel/apr-util/buildlink3.mk
++++ b/devel/apr-util/buildlink3.mk
+@@ -24,7 +24,7 @@
+ .include "../../mk/pkg-build-options.mk"
+ 
+ .if ${PKG_BUILD_OPTIONS.apr-util:Mdb4}
+-BDB_ACCEPTED?=		db4 db5
++BDB_ACCEPTED?=		db18
+ .  include "../../mk/bdb.buildlink3.mk"
+ .endif
+ 
+diff --color -ru a/devel/apr-util/options.mk b/devel/apr-util/options.mk
+--- a/devel/apr-util/options.mk
++++ b/devel/apr-util/options.mk
+@@ -8,8 +8,9 @@
+ PLIST_VARS+=		db4 ldap mysql pgsql sqlite3 ssl
+ 
+ .if !empty(PKG_OPTIONS:Mdb4)
+-BDB_ACCEPTED=		db4 db5
++BDB_ACCEPTED=		db18
+ BUILDLINK_TRANSFORM+=	l:db4:${BDB_TYPE}
++BUILDLINK_TRANSFORM+=	l:db:${BDB_TYPE}
+ CONFIGURE_ARGS+=	--with-berkeley-db=${BDBBASE}/include:${PREFIX}
+ PLIST.db4=		yes
+ .  include "../../mk/bdb.buildlink3.mk"
+diff --color -ru a/finance/bitcoin/Makefile b/finance/bitcoin/Makefile
+--- a/finance/bitcoin/Makefile
++++ b/finance/bitcoin/Makefile
+@@ -23,7 +23,6 @@
+ CMAKE_CONFIGURE_ARGS+=	-DBUILD_TX=OFF
+ CMAKE_CONFIGURE_ARGS+=	-DBUILD_WALLET_TOOL=ON
+ CMAKE_CONFIGURE_ARGS+=	-DENABLE_HARDENING=OFF # uses -fPIE which is problemtic
+-CMAKE_CONFIGURE_ARGS+=	-DWITH_BDB=ON
+ CMAKE_CONFIGURE_ARGS+=	-DWITH_CCACHE=OFF
+ CMAKE_CONFIGURE_ARGS+=	-DWITH_ZMQ=ON
+ PKGCONFIG_OVERRIDE=	libbitcoinkernel.pc.in
+@@ -39,8 +38,6 @@
+ USE_PKGSRC_GCC_RUNTIME=	yes
+ .endif
+ 
+-# pkgsrc's db4 package installs as db4_, but bitcoin looks for db_.
+-BUILDLINK_TRANSFORM+=	l:db_cxx:db4_cxx
+ 
+ # TODO: Decide if secp256k1 and univalue are supposed to be installed,
+ # and if so where, or if they should be linked with privately.
+@@ -48,7 +45,6 @@
+ 
+ .include "options.mk"
+ 
+-.include "../../databases/db4/buildlink3.mk"
+ .include "../../databases/sqlite3/buildlink3.mk"
+ .include "../../devel/boost-libs/buildlink3.mk"
+ .include "../../devel/capnproto/buildlink3.mk"
+diff --color -ru a/lang/open-cobol-ce/Makefile b/lang/open-cobol-ce/Makefile
+--- a/lang/open-cobol-ce/Makefile
++++ b/lang/open-cobol-ce/Makefile
+@@ -13,7 +13,7 @@
+ 
+ CONFLICTS=		opencobol-[0-9]* opensource-cobol-[0-9]*
+ 
+-BDB_ACCEPTED=		db4
++BDB_ACCEPTED=		db18
+ 
+ WRKSRC=			${WRKDIR}/open-cobol-ce-1.1
+ GNU_CONFIGURE=		yes
+@@ -28,7 +28,7 @@
+ SUBST_MESSAGE.bdb=	Fixing runrime error.
+ SUBST_STAGE.bdb=	pre-configure
+ SUBST_FILES.bdb=	configure
+-SUBST_SED.bdb=		-e 's,db-4.4,db4,g'
++SUBST_SED.bdb=		-e 's,db-4.4,${BDB_TYPE},g'
+ #SUBST_SED.bdb+=	-e 's,ncurses,curses,g'
+ 
+ TEST_TARGET=		check
+diff --color -ru a/lang/opencobol/Makefile b/lang/opencobol/Makefile
+--- a/lang/opencobol/Makefile
++++ b/lang/opencobol/Makefile
+@@ -13,7 +13,7 @@
+ 
+ CONFLICTS=		opensource-cobol-[0-9]* open-cobol-ce-[0-9]*
+ 
+-BDB_ACCEPTED=		db4 db5
++BDB_ACCEPTED=		db18
+ USE_LIBTOOL=		yes
+ USE_PKGLOCALEDIR=	yes
+ USE_TOOLS+=		msgfmt
+@@ -30,8 +30,8 @@
+ SUBST_MESSAGE.bdb=	Fixing runtime error.
+ SUBST_STAGE.bdb=	pre-configure
+ SUBST_FILES.bdb=	configure
+-SUBST_SED.bdb=		-e 's,db-4.5,db5,g'
+-SUBST_SED.bdb+=		-e 's,db-4.4,db4,g'
++SUBST_SED.bdb=		-e 's,db-4.5,${BDB_TYPE},g'
++SUBST_SED.bdb+=		-e 's,db-4.4,${BDB_TYPE},g'
+ SUBST_SED.bdb+=		-e 's,ncurses,curses,g'
+ 
+ .include "../../devel/gettext-lib/buildlink3.mk"
+diff --color -ru a/lang/opensource-cobol/Makefile b/lang/opensource-cobol/Makefile
+--- a/lang/opensource-cobol/Makefile
++++ b/lang/opensource-cobol/Makefile
+@@ -12,7 +12,7 @@
+ 
+ CONFLICTS=		opencobol-[0-9]* open-cobol-ce-[0-9]*
+ 
+-BDB_ACCEPTED=		db4
++BDB_ACCEPTED=		db18
+ 
+ GNU_CONFIGURE=		yes
+ USE_LIBTOOL=		yes
+@@ -30,7 +30,7 @@
+ SUBST_MESSAGE.bdb=	Fixing runrime error.
+ SUBST_STAGE.bdb=	pre-configure
+ SUBST_FILES.bdb=	configure
+-SUBST_SED.bdb=		-e 's,db-4.4,db4,g'
++SUBST_SED.bdb=		-e 's,db-4.4,${BDB_TYPE},g'
+ SUBST_SED.bdb+=		-e 's,ncurses,curses,g'
+ 
+ INFO_FILES=		yes
+diff --color -ru a/mail/exim3/Makefile b/mail/exim3/Makefile
+--- a/mail/exim3/Makefile
++++ b/mail/exim3/Makefile
+@@ -61,7 +61,7 @@
+ .  include "../../mk/pgsql.buildlink3.mk"
+ .endif
+ 
+-BDB_ACCEPTED=	db1 db3 db2	# does not compile with db4
++BDB_ACCEPTED=	db1	# its db >= 3 code predates the db 4.1 API
+ .include "../../mk/bdb.buildlink3.mk"
+ DBMLIB+=		${LDFLAGS} ${BDB_LIBS}
+ 
