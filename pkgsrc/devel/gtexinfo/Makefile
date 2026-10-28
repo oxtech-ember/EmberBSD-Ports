@@ -2,7 +2,7 @@
 
 .include "Makefile.common"
 PKGNAME=	g${DISTNAME}
-PKGREVISION=	8
+PKGREVISION=	9
 CATEGORIES=	devel sysutils
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -15,6 +15,19 @@ TOOL_DEPENDS+=	help2man-[0-9]*:../../converters/help2man
 DEPENDS+=	p5-Locale-libintl-[0-9]*:../../misc/p5-Locale-libintl
 DEPENDS+=	p5-Text-Unidecode-[0-9]*:../../textproc/p5-Text-Unidecode
 DEPENDS+=	p5-Unicode-EastAsianWidth-[0-9]*:../../converters/p5-Unicode-EastAsianWidth
+
+# The upstream skipped test has two pairs of filenames that collide on
+# case-insensitive hosts. Preserve both original bytes and their archive paths.
+CASE_FIXTURE= tta/perl/t/results/init_files_tests/add_lower_case_redirection_file_names/res_html
+CASE_ENTRIES= ${DISTNAME}/${CASE_FIXTURE}/Chap.html \
+              ${DISTNAME}/${CASE_FIXTURE}/Up-and-Down.html
+EXTRACT_OPTS+= -x
+EXTRACT_ELEMENTS+= ${CASE_ENTRIES}
+
+post-extract:
+	${MKDIR} ${WRKSRC}/.ember-case-preserved
+	${EXTRACTOR} ${EXTRACT_OPTS:N-x} -d ${WRKSRC}/.ember-case-preserved \
+	    ${_DISTDIR}/${DISTNAME}${EXTRACT_SUFX} ${CASE_ENTRIES}
 
 USE_LIBTOOL=		yes
 USE_TOOLS+=		gmake perl:run

@@ -6,6 +6,13 @@ This directory owns GNU Texinfo 7.3 for `devel/gtexinfo` and
 [the prerequisite source list](../../../profiles/development-toolchain/sources.tsv).
 The official release is dated 2026-03-02. The source is GPLv3 or later.
 
+The full package extracts all source content. Two uppercase expected-output
+files in upstream's already-skipped case-insensitive filename test are stored
+under `.ember-case-preserved/texinfo-7.3/` with their original archive paths;
+the lowercase counterparts remain at their original paths. This reversible
+layout prevents silent overwrite on case-insensitive filesystems. The original
+archive remains unchanged; the relocated files are not installed.
+
 The full recipe retains its Perl XS libraries, converters, Info reader,
 localization option and existing portability patches. The standalone recipe
 builds only upstream `gnulib/lib` and `install-info`. It installs
