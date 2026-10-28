@@ -13,6 +13,9 @@ import tempfile
 sys.dont_write_bytecode = True
 OWNER = Path(__file__).resolve().parents[1]
 PORTS = OWNER.parents[2]
+DEFAULT_PKGSRC = PORTS / 'pkgsrc'
+PKGSRC = DEFAULT_PKGSRC
+EXPORTED = False
 SOURCE_MANIFEST = 'llvm-source.json'
 RECIPE = 'pkgsrc/lang/compiler-rt'
 
@@ -34,6 +37,24 @@ def load_sdk(arguments):
     return arguments
 
 
+def select_recipe_root(path):
+    """Use either this checkout or the explicitly selected exported pkgsrc."""
+    global PKGSRC, EXPORTED
+    if path is None:
+        PKGSRC = DEFAULT_PKGSRC
+        EXPORTED = False
+        return
+    root = Path(paths.canonical_existing(path))
+    require((root / 'lang/compiler-rt').resolve(strict=True) == OWNER,
+            'run the producer from the selected exported compiler-rt recipe')
+    PKGSRC = root
+    EXPORTED = True
+
+
+def input_name(path):
+    return 'pkgsrc/' + str(path.relative_to(PKGSRC))
+
+
 def require(condition, message):
     if not condition:
         raise SDKError(message)
@@ -52,7 +73,7 @@ def read(path):
 
 
 def git_revision(git, root):
-    require(os.path.isabs(git), 'select an absolute Git executable')
+    require(isinstance(git, str) and os.path.isabs(git), 'select an absolute Git executable')
     revision = process.capture([git, '-C', str(root), 'rev-parse', 'HEAD'],
                                env=process.sanitized_environment()).stdout.decode().strip()
     require(re.fullmatch('[0-9a-f]{40}', revision), 'invalid source revision')
@@ -73,12 +94,12 @@ def patch_inventory(directory, info, label):
 
 def recipe(git):
     """Read one current version/archive owner and the complete runtime patch set."""
-    version_file = PORTS / 'pkgsrc/lang/llvm/version.mk'
+    version_file = PKGSRC / 'lang/llvm/version.mk'
     match = re.search(rb'^LLVM_VERSION=\s*([0-9]+\.[0-9]+\.[0-9]+)$', read(version_file), re.M)
     require(match is not None, 'missing common LLVM version')
     version = match[1].decode()
     archive_name = 'llvm-project-' + version + '.src.tar.xz'
-    distinfo = PORTS / 'pkgsrc/lang/llvm/distinfo'
+    distinfo = PKGSRC / 'lang/llvm/distinfo'
     info = read(distinfo).decode()
     patchinfo = OWNER / 'distinfo'
     package_info = read(patchinfo).decode()
@@ -99,7 +120,7 @@ def recipe(git):
                patch_inventory(OWNER / 'patches', package_info, 'common runtime')]
     # The runtime source also consumes LLVM CMake modules. Reuse their common
     # patches in place; compiler-rt must not maintain another copy of them.
-    for path in patch_inventory(PORTS / 'pkgsrc/lang/llvm/patches', info, 'common LLVM'):
+    for path in patch_inventory(PKGSRC / 'lang/llvm/patches', info, 'common LLVM'):
         names = re.findall(rb'^\+\+\+ ([^\t\n ]+)', read(path), re.M)
         require(bool(names), 'LLVM patch has no source paths: ' + path.name)
         applies = [name.startswith(b'cmake/') for name in names]
@@ -110,8 +131,8 @@ def recipe(git):
               *(path for path, _, _ in patches)]
     return dict(llvm_version=version, components=components,
                 source=dict(archive=archive_name, **hashes),
-                recipe=dict(ports_revision=git_revision(git, PORTS),
-                            files={str(p.relative_to(PORTS)): digest(read(p)) for p in inputs})), patches
+                recipe=dict(ports_revision=None if EXPORTED else git_revision(git, PORTS),
+                            files={input_name(p): digest(read(p)) for p in inputs})), patches
 
 
 def tree_hash(source):
@@ -125,12 +146,14 @@ def verify_source(source, git):
         'format', 'version', 'llvm_version', 'components', 'source', 'recipe', 'tree_sha256'},
         'invalid LLVM source manifest')
     require(record['format'] == 'emberbsd-llvm-source' and type(record['version']) is int and
-            record['version'] == 1, 'unsupported LLVM source manifest')
+            record['version'] in (1, 2), 'unsupported LLVM source manifest')
     current, _ = recipe(git)
     for key in ('llvm_version', 'components', 'source'):
         require(record[key] == current[key], 'LLVM prepared source selection changed: ' + key)
     require(isinstance(record['recipe'], dict) and set(record['recipe']) == {'ports_revision', 'files'} and
-            re.fullmatch('[0-9a-f]{40}', record['recipe'].get('ports_revision', '')) and
+            ((record['version'] == 2 and record['recipe'].get('ports_revision') is None) or
+             (isinstance(record['recipe'].get('ports_revision'), str) and
+              re.fullmatch('[0-9a-f]{40}', record['recipe']['ports_revision']))) and
             record['recipe']['files'] == current['recipe']['files'], 'LLVM prepared recipe inputs changed')
     # Unrelated Ports commits do not require preparing the same source again.
     require(record['tree_sha256'] == tree_hash(source), 'LLVM prepared source tree changed')
@@ -145,12 +168,12 @@ def prepare_source(archive, source, patch, git):
     hashes = sourceprep.archive_hashes(data)
     require(all(hashes[key] == metadata['source'][key] for key in ('sha512', 'blake2s', 'size')),
             'LLVM archive bytes differ from the common recipe')
-    require(os.path.isabs(patch), 'select an absolute patch executable')
+    require(isinstance(patch, str) and os.path.isabs(patch), 'select an absolute patch executable')
     source = Path(source)
     require(source.is_absolute(), 'select an absolute new source root')
     source = Path(paths.canonical_existing(source.parent), source.name)
     require(not os.path.lexists(source), 'LLVM source output already exists')
-    paths.reject_overlap(str(source), str(PORTS))
+    paths.reject_overlap(str(source), str(PKGSRC if EXPORTED else PORTS))
     with tempfile.TemporaryDirectory(prefix='.llvm-runtime-', dir=source.parent) as temp:
         temp = Path(temp)
         packed = temp / archive.name
@@ -162,7 +185,7 @@ def prepare_source(archive, source, patch, git):
         root = temp / root_name
         for index, (path, subdirectory, strip) in enumerate(patches):
             delta = read(path)
-            require(digest(delta) == metadata['recipe']['files'][str(path.relative_to(PORTS))],
+            require(digest(delta) == metadata['recipe']['files'][input_name(path)],
                     'LLVM runtime patch changed before application')
             staged = temp / path.name
             staged.write_bytes(delta)
@@ -172,7 +195,7 @@ def prepare_source(archive, source, patch, git):
                                    allow_dev_null=True)
         require(not any(p.name.endswith(('.orig', '.rej')) for p in root.rglob('*')),
                 'LLVM patch left backup or reject files')
-        record = dict(format='emberbsd-llvm-source', version=1, **metadata,
+        record = dict(format='emberbsd-llvm-source', version=2 if EXPORTED else 1, **metadata,
                       tree_sha256=tree_hash(root))
         jsonio.write_json(root / SOURCE_MANIFEST, record)
         verify_source(root, git)

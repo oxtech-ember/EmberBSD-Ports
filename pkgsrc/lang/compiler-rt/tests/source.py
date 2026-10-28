@@ -39,6 +39,14 @@ def main():
 
     rejected(lambda: producer.prepare_source(args.archive, source, args.patch, args.git),
              'output already exists')
+    # Reusing the API must restore checkout mode after an export selection.
+    original_root = producer.PKGSRC
+    producer.select_recipe_root(original_root)
+    assert producer.EXPORTED
+    producer.select_recipe_root(None)
+    assert not producer.EXPORTED and producer.PKGSRC == original_root
+    rejected(lambda: producer.prepare_source(args.archive, producer.PORTS / '.llvm-test-output',
+                                             args.patch, args.git), 'overlap')
     fixture = source / 'compiler-rt/lib/builtins/comparetf2.c'
     original = fixture.read_bytes()
     fixture.write_bytes(original + b'\n/* changed */\n')

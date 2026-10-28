@@ -1,0 +1,4 @@
+Compiler-rt builtins for the WASI preview1 ABI, built from the same LLVM
+source and complete patch set as the native compiler runtime.
+The package also provides a wasm32-wasi resource-directory alias to the same
+preview1 builtins archive; it does not depend on wasi-libc.

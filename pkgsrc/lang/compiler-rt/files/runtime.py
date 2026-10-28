@@ -15,6 +15,7 @@ import source as owner
 def main(arguments):
     arguments = owner.load_sdk(arguments)
     cli = argparse.ArgumentParser(description=__doc__)
+    cli.add_argument('--pkgsrc-root', help='explicit exported pkgsrc root')
     commands = cli.add_subparsers(dest='command', required=True)
     prepare = commands.add_parser('prepare')
     prepare.add_argument('--archive', required=True)
@@ -26,6 +27,15 @@ def main(arguments):
     build.add_argument('--host-compiler-family', choices=('clang', 'gcc'), default='clang')
     build.add_argument('--bootstrap-stage')
     build.add_argument('--jobs', type=int, default=1)
+    wasi_build = commands.add_parser('wasi-builtins')
+    for name in ('source', 'host-prefix', 'work', 'stage'):
+        wasi_build.add_argument('--' + name, required=True)
+    wasi_build.add_argument('--git')
+    wasi_build.add_argument('--jobs', type=int, default=1)
+    wasi_verify = commands.add_parser('wasi-verify')
+    for name in ('source', 'stage'):
+        wasi_verify.add_argument('--' + name, required=True)
+    wasi_verify.add_argument('--git')
     verify = commands.add_parser('verify')
     verify.add_argument('--stage', required=True)
     verify.add_argument('--base')
@@ -35,8 +45,9 @@ def main(arguments):
     for parser in (prepare, verify_source, build):
         parser.add_argument('--source', required=True)
     for parser in (prepare, verify_source, build, verify):
-        parser.add_argument('--git', required=True)
+        parser.add_argument('--git')
     args = cli.parse_args(arguments)
+    owner.select_recipe_root(args.pkgsrc_root)
     if args.command == 'prepare':
         record = owner.prepare_source(args.archive, args.source, args.patch, args.git)
     elif args.command == 'verify-source':
@@ -44,6 +55,9 @@ def main(arguments):
     elif args.command == 'build':
         import build as producer
         record = producer.build(owner, args)
+    elif args.command in ('wasi-builtins', 'wasi-verify'):
+        import wasi
+        record = wasi.build(owner, args) if args.command == 'wasi-builtins' else wasi.verify(owner, args)
     else:
         from emberbsd_sdk import llvm_runtime
         import build as producer

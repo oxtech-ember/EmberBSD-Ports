@@ -338,3 +338,24 @@ Python and real CMake/compiler. It reproduces a static-probe false positive,
 requires the patched function to reject the nonexistent library, checks that
 its caller still uses static probes, and links the native C library. Target
 runtime configuration and execution remain separate checks.
+
+### WASI preview1 builtins
+
+The same source owner supports `wasi-builtins` and `wasi-verify` for the
+`wasm32-wasip1` ABI. It builds freestanding compiler-rt with an empty sysroot
+using the selected native LLVM; wasi-libc is not needed for this first phase.
+The stage contains the archive and the common compiler-rt licenses. A separate
+`lang/wasi-compiler-rt` package invokes this producer and supplies the legacy
+`wasm32-wasi` resource-directory alias. The target build does not install a
+second compiler or compiler-rt source.
+
+For an ordinary exported pkgsrc tree, invoke its `lang/compiler-rt/files/runtime.py`
+with `--pkgsrc-root /absolute/export`. Source preparation uses the exported
+recipes and the same byte and patch checks without requiring a Git checkout.
+Such sources use manifest v2 with an unknown Ports revision; checkout v1
+records remain supported. Either mode verifies the other's prepared tree when
+all relevant source and recipe bytes match. `tests/export-source.py` prepares
+both modes from the actual archive and checks their identical source and recipe
+hashes, cross-verification, and changed-patch rejection.
+`tests/wasi-stage.py` verifies a completed stage and checks rejection of
+changed or missing archive bytes; it does not build or run a WASI program.
