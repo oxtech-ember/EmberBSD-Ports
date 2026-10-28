@@ -27,6 +27,12 @@ USE_LANGUAGES=		c c++
 # Fortran package.
 .if empty(EMBERBSD_FLANG:U:M/*) || !exists(${EMBERBSD_FLANG:U/nonexistent})
 PKG_FAIL_REASON+=	"EMBERBSD_FLANG must select the build-host Ports flang driver"
+.else
+# The runtime and its modules belong to one Flang release.
+.include "${PKGSRCDIR}/EMBERBSD-CROSS-FLANG-VERSION.MK"
+.  if "${_EMBER_FLANG_MAJOR}" != "${LLVM_MAJOR_VERSION}"
+PKG_FAIL_REASON+=	"EMBERBSD_FLANG is Flang ${_EMBER_FLANG_VERSION}, not LLVM ${LLVM_MAJOR_VERSION}"
+.  endif
 .endif
 
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_BUILD_TYPE=Release
