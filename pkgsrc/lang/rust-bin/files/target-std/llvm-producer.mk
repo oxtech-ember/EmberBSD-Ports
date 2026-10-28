@@ -1,0 +1,43 @@
+# Shared Rust target standard-library producer for the selected LLVM runtime.
+# The including package sets RUST_STD_TARGET to amd64 or aarch64.
+.for var in EMBERBSD_SDK_SOURCE EMBERBSD_RUST_COMPILER_PREFIX EMBERBSD_RUST_TARGET_SYSROOT EMBERBSD_RUST_MACOS_SDK EMBERBSD_RUST_MACOS_MINIMUM EMBERBSD_RUST_LOCK_ROOT EMBERBSD_RUST_LINK_CONTEXT
+.if empty(${var}:U)
+PKG_FAIL_REASON+= "Set ${var} to the selected SDK input."
+.endif
+.endfor
+BUILD_DEFS+= EMBERBSD_SDK_SOURCE EMBERBSD_RUST_COMPILER_PREFIX EMBERBSD_RUST_TARGET_SYSROOT
+BUILD_DEFS+= EMBERBSD_RUST_MACOS_SDK EMBERBSD_RUST_MACOS_MINIMUM EMBERBSD_RUST_BUILD_JOBS
+BUILD_DEFS+= EMBERBSD_RUST_LOCK_ROOT EMBERBSD_RUST_LINK_CONTEXT
+EMBERBSD_RUST_BUILD_JOBS?= ${MAKE_JOBS:U1}
+.if ${MACHINE_ARCH} == "aarch64"
+RUST_HOST_TRIPLE= aarch64-apple-darwin
+.elif ${MACHINE_ARCH} == "x86_64"
+RUST_HOST_TRIPLE= x86_64-apple-darwin
+.else
+PKG_FAIL_REASON+= "Unsupported Darwin Rust host CPU"
+.endif
+.if ${RUST_STD_TARGET} == "amd64"
+RUST_TARGET_TRIPLE= x86_64-unknown-netbsd
+.elif ${RUST_STD_TARGET} == "aarch64"
+RUST_TARGET_TRIPLE= aarch64-unknown-netbsd
+.else
+PKG_FAIL_REASON+= "Unsupported Rust std target"
+.endif
+STD_SUBDIR= lib/rustlib/${RUST_TARGET_TRIPLE}
+STD_OUTPUT= ${WRKDIR}/out/${RUST_HOST_TRIPLE}/stage0-sysroot/${STD_SUBDIR}
+STD_DESTINATION= ${DESTDIR}${PREFIX}/${STD_SUBDIR}
+GENERATE_PLIST+= cd ${DESTDIR}${PREFIX} && find ${STD_SUBDIR} -type f -print | ${SORT};
+INSTALLATION_DIRS= ${STD_SUBDIR} share/licenses/${PKGBASE}
+
+do-build:
+	${TOOL_PYTHONBIN} ${FILESDIR}/llvm-producer.py --source ${WRKSRC:Q} --work ${WRKDIR:Q} \
+	    --host-prefix ${PREFIX:Q} --compiler-prefix ${EMBERBSD_RUST_COMPILER_PREFIX:Q} \
+	    --sysroot ${EMBERBSD_RUST_TARGET_SYSROOT:Q} --sdk-source ${EMBERBSD_SDK_SOURCE:Q} \
+	    --macos-sdk ${EMBERBSD_RUST_MACOS_SDK:Q} --macos-minimum ${EMBERBSD_RUST_MACOS_MINIMUM:Q} \
+	    --lock-root ${EMBERBSD_RUST_LOCK_ROOT:Q} --link-context ${EMBERBSD_RUST_LINK_CONTEXT:Q} \
+	    --target ${RUST_STD_TARGET:Q} --jobs ${EMBERBSD_RUST_BUILD_JOBS:Q}
+
+do-install:
+	${CP} -R ${STD_OUTPUT:Q}/lib ${STD_DESTINATION:Q}
+	${INSTALL_DATA} ${WRKSRC}/LICENSE-APACHE ${WRKSRC}/LICENSE-MIT ${WRKSRC}/COPYRIGHT \
+	    ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}

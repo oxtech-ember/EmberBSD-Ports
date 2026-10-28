@@ -1,45 +1,34 @@
-# Origin: EmberBSD (AI-assisted); official target data for the shared Rust host.
-DISTNAME= rust-std-1.99.1-x86_64-unknown-netbsd
+# Origin: EmberBSD (AI-assisted); shared Rust source and selected LLVM runtime.
+DISTNAME= rustc-1.99.1-src
 PKGNAME= rust-std-x86_64-netbsd-1.99.1
-PKGREVISION= 1
+PKGREVISION= 2
 CATEGORIES= lang
-MASTER_SITES= https://static.rust-lang.org/dist/2026-10-15/
+MASTER_SITES= https://static.rust-lang.org/dist/
 EXTRACT_SUFX= .tar.xz
-
 MAINTAINER= pkgsrc-users@NetBSD.org
 HOMEPAGE= https://www.rust-lang.org/
-COMMENT= Official NetBSD/x86_64 standard library for the shared Rust compiler
+COMMENT= NetBSD/x86_64 standard library for the shared Rust compiler
 LICENSE= mit OR apache-2.0
-
 ONLY_FOR_PLATFORM= Darwin-*-aarch64 Darwin-*-x86_64
-USE_LANGUAGES= # none: this package installs foreign target data
-NO_BUILD= yes
-NO_CONFIGURE= yes
+USE_LANGUAGES= c c++
+PATCH_STRIP= -p1
 DEPENDS+= rust-bin-1.99.1{,nb[0-9]*}:../../lang/rust-bin
-
-# Foreign ELF libraries cannot pass the native Mach-O loader check.
-# The mandatory helper verifies their complete payload and target identity.
+PYTHON_FOR_BUILD_ONLY= tool
 CHECK_SHLIBS_SUPPORTED= no
-STD_SUBDIR= lib/rustlib/x86_64-unknown-netbsd
-STD_COMPONENT= ${WRKSRC}/rust-std-x86_64-unknown-netbsd
-STD_OUTPUT= ${DESTDIR}${PREFIX}
-GENERATE_PLIST+= cd ${DESTDIR}${PREFIX} && find ${STD_SUBDIR} -type f -print | ${SORT};
-INSTALLATION_DIRS= ${STD_SUBDIR} share/licenses/${PKGBASE}
+CHECK_WRKREF+= work
+NO_CONFIGURE= yes
 
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno} == "yes"
-PKG_FAIL_REASON+= "Install this target-data package with the native host MAKECONF."
+PKG_FAIL_REASON+= "Build this target-data package with the native host MAKECONF."
 .endif
-.if empty(EMBERBSD_RUST_CROSS_TOOLS:U)
-PKG_FAIL_REASON+= "Set EMBERBSD_RUST_CROSS_TOOLS to the verified x86_64 tools prefix."
+EMBERBSD_RUST_TARGET_COMPILER_FAMILY?= clang
+BUILD_DEFS+= EMBERBSD_RUST_TARGET_COMPILER_FAMILY
+.if ${EMBERBSD_RUST_TARGET_COMPILER_FAMILY} != "clang"
+PKG_FAIL_REASON+= "The x86_64 Rust std producer currently supports Clang only."
 .endif
-BUILD_DEFS+= EMBERBSD_RUST_CROSS_TOOLS
+RUST_STD_TARGET= amd64
+.include "../../lang/rust-bin/files/target-std/llvm-producer.mk"
 
-do-install:
-	${CP} -R ${STD_COMPONENT:Q}/lib ${STD_OUTPUT:Q}
-	${INSTALL_DATA} ${WRKSRC}/LICENSE-APACHE ${WRKSRC}/LICENSE-MIT ${WRKSRC}/COPYRIGHT \
-	    ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}
-	${SH} ${FILESDIR}/check.sh ${PREFIX:Q} ${WRKSRC:Q} ${DESTDIR}${PREFIX:Q} \
-	    ${WRKDIR:Q}/std-check ${EMBERBSD_RUST_CROSS_TOOLS:Q}/bin/x86_64--netbsd-readelf
-
+.include "../../lang/python/tool.mk"
 .include "../../mk/bsd.pkg.mk"

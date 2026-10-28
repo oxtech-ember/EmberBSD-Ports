@@ -1,0 +1,20 @@
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Select the system LLVM unwinder for NetBSD only when explicitly requested.
+
+--- a/library/unwind/src/lib.rs
++++ b/library/unwind/src/lib.rs
+@@ -166,8 +166,12 @@
+ #[link(name = "unwind", kind = "static", modifiers = "-bundle")]
+ unsafe extern "C" {}
+ 
+-#[cfg(target_os = "netbsd")]
+-#[link(name = "gcc_s")]
++#[cfg(all(target_os = "netbsd", not(feature = "system-llvm-libunwind")))]
++#[link(name = "gcc_s")]
++unsafe extern "C" {}
++
++#[cfg(all(target_os = "netbsd", feature = "system-llvm-libunwind"))]
++#[link(name = "unwind")]
+ unsafe extern "C" {}
+ 
+ #[cfg(target_os = "freebsd")]

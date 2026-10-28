@@ -1,0 +1,80 @@
+Origin: EmberBSD; Rust 1.99.1 stage0 cross-standard-library integration; not submitted upstream.
+
+Std::run builds cross std with local-rebuild=true, but StdLink only copies
+an initial sysroot and omits the new target stamp. Merge the host files,
+exclude supplied components for cross targets selected by this run, and
+install the actual target stamp. Preserve other targets and native objects
+already prepared in the output sysroot. Non-local-rebuild paths are unchanged.
+Rust source licenses and upstream identifiers are preserved.
+
+--- a/src/bootstrap/src/core/build_steps/compile.rs
++++ b/src/bootstrap/src/core/build_steps/compile.rs
+@@ -818,7 +818,34 @@
+                 let _ = fs::remove_dir_all(sysroot.join("lib/rustlib/src/rust"));
+             }
+ 
+-            builder.cp_link_r(&builder.initial_sysroot.join("lib"), &sysroot.join("lib"));
++            if builder.local_rebuild {
++                // Do not import stale components for targets built by this run.
++                // Merge host files without deleting another target's artifacts
++                // or native objects already prepared in the output sysroot.
++                let excluded: Vec<_> = builder
++                    .targets
++                    .iter()
++                    .copied()
++                    .chain([target])
++                    .filter(|target| *target != builder.host_target)
++                    .map(|target| builder.initial_sysroot.join("lib/rustlib").join(target))
++                    .collect();
++                builder.cp_link_r_excluding(
++                    &builder.initial_sysroot.join("lib"),
++                    &sysroot.join("lib"),
++                    &excluded,
++                );
++                if target != builder.host_target {
++                    add_to_sysroot(
++                        builder,
++                        &libdir,
++                        &hostdir,
++                        &build_stamp::libstd_stamp(builder, compiler, target),
++                    );
++                }
++            } else {
++                builder.cp_link_r(&builder.initial_sysroot.join("lib"), &sysroot.join("lib"));
++            }
+         } else {
+             if builder.download_rustc() {
+                 // Ensure there are no CI-rustc std artifacts.
+--- a/src/bootstrap/src/lib.rs
++++ b/src/bootstrap/src/lib.rs
+@@ -1813,6 +1813,30 @@
+         }
+     }
+ 
++    /// Merge `src` into `dst`, preserving destination directories and files
++    /// that are absent from the source. Skip the specified source paths and
++    /// their descendants. Unlike `cp_link_filtered`, this does not replace
++    /// destination directories; prepared target objects must remain in place.
++    #[track_caller]
++    pub fn cp_link_r_excluding(&self, src: &Path, dst: &Path, excluded: &[PathBuf]) {
++        if self.config.dry_run() {
++            return;
++        }
++        for f in self.read_dir(src) {
++            let path = f.path();
++            if excluded.iter().any(|root| path.starts_with(root)) {
++                continue;
++            }
++            let dst = dst.join(path.file_name().unwrap());
++            if t!(f.file_type()).is_dir() {
++                t!(fs::create_dir_all(&dst));
++                self.cp_link_r_excluding(&path, &dst, excluded);
++            } else {
++                self.copy_link(&path, &dst, FileType::Regular);
++            }
++        }
++    }
++
+     /// Copies the `src` directory recursively to `dst`. Both are assumed to exist
+     /// when this function is called.
+     /// Will attempt to use hard links if possible and fall back to copying.

@@ -1,182 +1,67 @@
 # Target std for the shared Rust build host
 
-`lang/rust-std-aarch64-netbsd` adds Rust 1.99 target libraries to the sysroot
-owned by the [shared macOS Rust package](rust.md). It is a native host package
-containing foreign target data, not a second compiler or a NetBSD rustc package.
-It is currently limited to macOS/Apple Silicon and the verified GCC 16.2
-NetBSD/AArch64 cross toolchain.
+`lang/rust-std-x86_64-netbsd` and `lang/rust-std-aarch64-netbsd` provide
+foreign target data for the shared Rust 1.99.1 host compiler. They do not
+install a second compiler or rebuild rustc or LLVM. Both default to the shared
+Clang/LLVM target toolchain and the selected target sysroot. The producer runs
+upstream x.py only for stage0 `library`, with vendored dependencies and offline
+Cargo. It checks that the plan does not schedule a compiler or LLVM rebuild.
 
-## Source and compatibility
+The source and checksums are in the recipes and [source manifest](sources.tsv).
+The common patches preserve stage0 cross-std integration and select `libunwind`
+on NetBSD only when the upstream `system-llvm-libunwind` feature is active;
+the existing default `libgcc_s` selection remains available. On Apple hosts the
+bootstrap shim uses `DYLD_FALLBACK_LIBRARY_PATH`, preserving absolute system
+library install names while locating the selected Rust shared libraries. These
+are EmberBSD adaptations with AI assistance, not accepted upstream.
 
-The original `rustc-1.99.1-src.tar.xz` comes from static.rust-lang.org. The
-[common source manifest](sources.tsv) pins its SHA256, and the recipe's distinfo
-pins BLAKE2s, SHA512, size and patch SHA1. The original Rust licenses are installed.
-The only source patch is the existing
-[stage0 cross-std integration](../../probes/rust-cross-std/README.md): merge host
-sysroot files, omit stale selected cross targets, and install the newly built
-std stamp. It is an EmberBSD adaptation with AI assistance, not accepted upstream.
-Re-evaluate it when Rust's bootstrap implements this same workflow correctly.
+## LLVM build
 
-The exact installed official compiler release and commit are checked before
-building. Matching the release number alone is insufficient: the tested NetBSD
-maintainer's prebuilt std is rejected by this official macOS compiler with
-E0514. Its producer version includes a source-tarball suffix. We preserve that
-compiler compatibility check; no crate metadata rewriting or consumer
-`RUSTC_BOOTSTRAP` override is used.
-
-Upstream x.py builds only stage0 `library`, with local-rebuild, vendored sources,
-locked dependencies and offline Cargo. The checked dry-run must not schedule
-rustc, LLVM, LLD or a later stage. Existing upstream Python remains a build tool.
-Native C/C++ compiler detection and host build-script linking use pkgsrc's host
-tools; the target uses explicitly supplied GCC, CRT, sysroot and libgcc.
-Debug paths are remapped by upstream bootstrap, and the package checks for work
-references. The full target component includes both `.rlib` and `.rmeta` files
-and target libstd.so.
-
-## Build and install
-
-Export `common-build-tools` or a composing graphics/media profile. Use the
-native macOS MAKECONF and the same host prefix as rust-bin. Keep the work and
-package directories outside all input providers. The recipe refuses overlaps,
-including the resolved GCC provider behind a tools facade, before extraction.
-
-```sh
-MAKECONF=/absolute/native-mk.conf bmake -C /absolute/pkgsrc/lang/rust-std-aarch64-netbsd \
-  WRKOBJDIR=/absolute/external/work DISTDIR=/absolute/distfiles \
-  PACKAGES=/absolute/external/packages MAKE_JOBS=2 \
-  EMBERBSD_RUST_CROSS_TOOLS=/absolute/cross-tools \
-  EMBERBSD_RUST_TARGET_SYSROOT=/absolute/target-sysroot package
-```
-
-Both cross variables are required. The tools directory supplies
-`bin/aarch64--netbsd-{gcc,g++,ar,readelf}`. The sysroot supplies target headers,
-base libraries and `/usr/pkg/gcc16` 16.2.0 CRT/runtime. They are build inputs, not
-bundled host runtime dependencies. Preserve their revision and file hashes in
-the build receipt. Use `install` with the same arguments after package checks.
-The exact Rust 1.99 package dependency prevents mixing std with another release.
-
-The native Mach-O shared-library check is inapplicable to this data package.
-Its explicit mandatory check instead verifies AArch64 ELF64 libstd, the exact
-three NEEDED libraries and target-only RPATH, then checks those three actual
-AArch64 sysroot providers. Target libc/libpthread/libgcc are not recorded as
-macOS loader requirements. The normal PLIST and work-reference checks remain.
-Application packages must still declare and validate their own target runtime
-closure; std data is not a deployment bundle.
-
-## Acceptance
-
-```sh
-ruby tests/rust-target-paths.rb /absolute/new-path-check
-ruby ../../probes/rust-cross-std/test-bootstrap-copy.rb \
-  /absolute/patched-rust-source /absolute/host/bin/rustc /absolute/new-copy-check
-ruby tests/rust-target-package.rb /absolute/host /absolute/cross-tools \
-  /absolute/target-sysroot /absolute/new-consumer-check
-```
-
-The installed-package consumer also accepts `--target amd64` before the paths.
-It selects the official x86_64 target-data package and matching GCC16 tools.
-The default remains `aarch64`. This consumer check runs on macOS/AArch64 hosts.
-Both targets retain the installed package ownership, provider hashes, native
-control and Rust/C/Cargo consumer checks. The component must match its registered
-file manifest; its file count can vary between targets and package revisions.
-For amd64 target execution, set `EMBERBSD_RUST_TARGET_ARCH=x86_64` when using
-the target runner below.
-
-Run the host selection regression with:
-
-```sh
-python3 tests/rust-target-package-host.py
-```
-
-It executes the actual helper with controlled package and compiler providers.
-It checks both targets, package revisions, wrong or duplicate package replies,
-component manifest mismatches, compiler mismatches and selected Cargo paths.
-Fixtures do not establish real Rust metadata compatibility, target linking or
-EmberBSD execution.
-
-The first check uses disposable directory fixtures. It rejects overlapping
-source/work paths, aliases, a GCC facade and inputs nested inside work. The
-second exercises actual upstream copy methods and reproduces the destructive
-old-helper failure. The package check verifies registration, file integrity and
-the exact registered file manifest for the selected target. It uses the installed
-compiler with no `--sysroot` override, preserves provider hashes, runs native TLS/unwind, and
-links target Rust bin/cdylib and C consumers. An offline Cargo target also runs
-a host proc macro and build script; both assert the correct host/target split.
-
-Execute the resulting target consumers using the probe's
-[verified target runner](../../probes/rust-cross-std/README.md#checks-and-target-execution).
-Run `timeout -k 5 30 /absolute/check/rust-cargo-consumer` on the same target too;
-require its `PASS: packaged std with host proc macro and build script` result.
-Record the payload and runtime-provider hashes and use no loader overrides.
-Link success alone is not target runtime acceptance.
-
-On 2026-10-09, clean package creation and normal installation passed on Apple
-Silicon. Package integrity checked all 55 files, including both licenses. The
-shared compiler failed with E0463 before installation and linked the same
-consumer afterward. Five original host Rust/LLVM providers remained byte-identical.
-An isolated NetBSD 11/AArch64 QEMU/HVF VM then passed 32 Rust worker lifecycles,
-four C-thread cdylib cycles with nine new TLS destructors each, and the Cargo
-consumer. Guest and QEMU exited zero; the root image remained unchanged.
-The export passed 70 preflight refusals and exact common-tools composition.
-
-Full current librsvg, GIR/typelib generation, the pixbuf loader and labwc SVG
-surfaces are subsequent consumers. This package by itself makes no claim of
-an accelerated desktop or physical GPU/NPU support.
-
-## Official x86_64 target data
-
-`lang/rust-std-x86_64-netbsd` installs the official Rust 1.99 component for
-`x86_64-unknown-netbsd`. It is native macOS host data for the same shared
-`rust-bin` compiler. It installs no target compiler and rebuilds neither
-rustc nor LLVM. The source-built AArch64 recipe and its default remain unchanged.
-
-The [official release manifest](https://static.rust-lang.org/dist/channel-rust-1.99.1.toml)
-dated 2026-10-15 marks this component available. Its original archive SHA256
-is `97569760ad6e042d56ccdac2fd295df8a10351403b9bbca2a19567f8ed6ae46b`.
-The downloaded 29,582,788-byte archive matched that TLS-fetched manifest.
-Distinfo also pins its BLAKE2s, SHA512 and size. This check is not detached
-signature verification. The package retains the upstream licenses and copyright.
-
-Use the native MAKECONF and the shared host prefix:
+Export the common recipes, select the native MAKECONF, and build the package
+for the target. The SDK source, installed native compiler prefix, target sysroot,
+macOS SDK, deployment target, shared lock root and heavy-link context are
+explicit inputs. The sysroot must contain the selected LLVM runtime. For example:
 
 ```sh
 MAKECONF=/absolute/native-mk.conf bmake -C /absolute/pkgsrc/lang/rust-std-x86_64-netbsd \
-  WRKOBJDIR=/absolute/external/work DISTDIR=/absolute/distfiles \
-  PACKAGES=/absolute/external/packages MAKE_JOBS=2 \
-  EMBERBSD_RUST_CROSS_TOOLS=/absolute/os-tools package-install
+  WRKOBJDIR=/absolute/work DISTDIR=/absolute/distfiles PACKAGES=/absolute/packages \
+  EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK \
+  EMBERBSD_RUST_COMPILER_PREFIX=/absolute/host-prefix \
+  EMBERBSD_RUST_TARGET_SYSROOT=/absolute/target-sysroot \
+  EMBERBSD_RUST_MACOS_SDK=/absolute/MacOSX.sdk EMBERBSD_RUST_MACOS_MINIMUM=26.0 \
+  EMBERBSD_RUST_LOCK_ROOT=/absolute/shared-object-root \
+  EMBERBSD_RUST_LINK_CONTEXT=/absolute/shared-object-root/coordination/heavy-link \
+  EMBERBSD_RUST_BUILD_JOBS=4 package
 ```
 
-The tools prefix supplies host-executable `bin/x86_64--netbsd-readelf`.
-No target sysroot is needed to install this host data. The mandatory check
-compares the staged component files with the original component manifest
-and payload. It checks ELF64/x86_64 identity, the three NEEDED names and the
-original `$ORIGIN/../lib` RPATH. It requires the official Rust 1.99 compiler
-commit and performs a real target `--emit=metadata` import from the staged
-sysroot. E0514 or any other compiler failure stops packaging.
+The common producer selects native and target compiler bindings separately,
+checks the host compiler and Rust version, and routes both host and target links
+through the SDK link launcher. The build checks its target libstd and a real
+static-std consumer linked with the selected target compiler; both must depend
+on LLVM libunwind and not libgcc_s. It does not execute target code or establish
+application runtime compatibility. Normal package checks and the exact Rust
+package dependency still apply.
 
-The official libstd retains its original RPATH. It does not select the common
-GCC16 runtime by itself. Target consumers must link through the shared GCC16
-provider and separately verify their loaded libc, pthread and libgcc closure.
-This host data is not a deployment bundle or target runtime acceptance.
+`pkgsrc/lang/rust-bin/files/target-std/test-unwind.py` exercises the actual
+NetBSD link declarations with and without the system feature. The adjacent
+`test-make-selection.py` checks target and explicit family selection, and
+`test-bootstrap-loader.py` checks the patched host loader choice and runs the
+selected host rustc. The full source build additionally exercises the actual
+bootstrap shim and target link.
 
-The host regression uses the pinned archive and real target readelf:
+A source-built x86_64 std and a static Rust consumer were cross-linked using
+Clang/LLVM and verified for LLVM libunwind on a Darwin arm64 host. Target
+execution and the source-built LLVM AArch64 package require their own checks.
 
-```sh
-ruby tests/rust-target-prebuilt.rb /absolute/x86_64--netbsd-readelf \
-  /absolute/rust-std-1.99.1-x86_64-unknown-netbsd.tar.xz /absolute/new-check
-```
+## Explicit GCC alternative
 
-Nine cases pass for the complete component, damaged/missing/extra data,
-foreign ELF, altered providers/RPATH and compiler rejection. The compiler
-boundary uses fixtures; it does not establish real metadata acceptance.
-On macOS arm64, package 1.99.1nb1 passed its real host-compiler metadata
-check, installation and package ownership check. A static-std Rust consumer
-using the selected Clang/LLVM target runtime still requests `-lgcc_s` and
-fails to link without that provider. This does not establish compatibility
-with the LLVM unwinder or target execution.
+The existing AArch64 GCC producer remains available only when the platform
+chooses `EMBERBSD_RUST_TARGET_COMPILER_FAMILY=gcc` and supplies
+`EMBERBSD_RUST_GCC_REASON`, `EMBERBSD_RUST_CROSS_TOOLS`, and the matching target
+sysroot. It is limited to Darwin arm64 hosts and retains its GCC runtime checks.
+It previously passed package, consumer and NetBSD AArch64 VM checks; those do
+not establish acceptance of the LLVM producer or a physical GPU.
 
-The source-built AArch64 standard library uses a byte-identical temporary
-snapshot of package-owned Rust compiler files. This isolates its bootstrap
-loader from unrelated libraries in the shared host prefix, including GNU
-libiconv. It does not rebuild Rust or change the installed provider. The amd64
-recipe continues to use its separately validated official target archive.
+The older official x86_64 target component links against `libgcc_s` even for a
+static-std consumer. Keep its package for rollback where needed; it is not
+compatible with the selected LLVM-only runtime merely because metadata loads.
