@@ -848,7 +848,10 @@ and the Darwin bootstrap profile include it.
 
 The export keeps one version of each versioned package family, as EmberBSD
 does for LLVM. `pkgsrc/versions.mk` lists each family as `FAMILY=KEPT`
-PKGPATH patterns and sets the matching `*_VERSION_DEFAULT` values. The export
+PKGPATH patterns. Local patches make the kept version the only default and
+accepted value of each version knob (`pyversion.mk`, `luaversion.mk`,
+`phpversion.mk`, `nodeversion.mk`, `rubyversion.mk`, `pgsql.buildlink3.mk`
+and `mysql.buildlink3.mk`), so each default has one source. The export
 removes the other versions and their category `SUBDIR` lines, and fails if the
 kept version is missing or a local recipe adds an old one. The defaults file
 includes the same list as `EMBERBSD-VERSIONS.MK` and sets `PKG_FAIL_REASON`

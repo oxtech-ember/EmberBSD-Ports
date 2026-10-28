@@ -44,6 +44,3 @@ EMBERBSD_VERSION_DEPENDENTS+=	meta-pkgs/bulk-medium
 EMBERBSD_VERSION_DEPENDENTS+=	meta-pkgs/bulk-small
 EMBERBSD_VERSION_DEPENDENTS+=	meta-pkgs/bulk-test-icu
 EMBERBSD_VERSION_DEPENDENTS+=	meta-pkgs/bulk-test-python27
-
-# Select the kept versions where pkgsrc chooses one.
-MYSQL_VERSION_DEFAULT=		mariadb118
