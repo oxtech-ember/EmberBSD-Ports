@@ -1,0 +1,311 @@
+# $NetBSD$
+
+Use the common current Syn 3 and phf dependency graph.
+
+--- rust/Cargo.lock.orig
++++ rust/Cargo.lock
+@@ -64,7 +64,7 @@
+ dependencies = [
+  "quote",
+  "swc_macros_common",
+- "syn 2.0.119",
++ "syn",
+ ]
+ 
+ [[package]]
+@@ -298,7 +298,7 @@
+ dependencies = [
+  "proc-macro2",
+  "quote",
+- "syn 3.0.9",
++ "syn",
+ ]
+ 
+ [[package]]
+@@ -320,6 +320,12 @@
+ checksum = "00d174d5400e5e8fd687ad1049e2f578285fa914201b1af7e8b112a4546bd826"
+ 
+ [[package]]
++name = "fastrand"
++version = "2.5.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
++
++[[package]]
+ name = "find-msvc-tools"
+ version = "0.1.12"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+@@ -353,7 +359,7 @@
+ checksum = "e5ff35a391aef949120a0340d690269b3d9f63460a6106e99bd07b961f345ea9"
+ dependencies = [
+  "swc_macros_common",
+- "syn 2.0.119",
++ "syn",
+ ]
+ 
+ [[package]]
+@@ -418,7 +424,7 @@
+ dependencies = [
+  "proc-macro2",
+  "quote",
+- "syn 3.0.9",
++ "syn",
+ ]
+ 
+ [[package]]
+@@ -644,7 +650,7 @@
+  "heck",
+  "proc-macro2",
+  "quote",
+- "syn 2.0.119",
++ "syn",
+ ]
+ 
+ [[package]]
+@@ -754,7 +760,7 @@
+  "napi-derive-backend",
+  "proc-macro2",
+  "quote",
+- "syn 3.0.9",
++ "syn",
+ ]
+ 
+ [[package]]
+@@ -767,7 +773,7 @@
+  "proc-macro2",
+  "quote",
+  "semver",
+- "syn 3.0.9",
++ "syn",
+ ]
+ 
+ [[package]]
+@@ -930,42 +936,43 @@
+ 
+ [[package]]
+ name = "phf"
+-version = "0.11.3"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "1fd6780a80ae0c52cc120a26a1a42c1ae51b247a253e4e06113d23d2c2edd078"
++version = "0.14.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "010378780309880b08997fae13be7834dba947d36393bd372f2b1556deb2a2f6"
+ dependencies = [
+  "phf_macros",
+  "phf_shared",
++ "serde",
+ ]
+ 
+ [[package]]
+ name = "phf_generator"
+-version = "0.11.3"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "3c80231409c20246a13fddb31776fb942c38553c51e871f8cbd687a4cfb5843d"
+-dependencies = [
++version = "0.14.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "aeb62e0959d5a1bebc965f4d15d9e2b7cea002b6b0f5ba8cde6cc26738467100"
++dependencies = [
++ "fastrand",
+  "phf_shared",
+- "rand",
+ ]
+ 
+ [[package]]
+ name = "phf_macros"
+-version = "0.11.3"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "f84ac04429c13a7ff43785d75ad27569f2951ce0ffd30a3321230db2fc727216"
++version = "0.14.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "5fa8d0ca26d424d27630da600c6624696e7dec8bf7b3b492b383c5dc49e5e085"
+ dependencies = [
+  "phf_generator",
+  "phf_shared",
+  "proc-macro2",
+  "quote",
+- "syn 2.0.119",
++ "syn",
+ ]
+ 
+ [[package]]
+ name = "phf_shared"
+-version = "0.11.3"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "67eabc2ef2a60eb7faa00097bd1ffdb5bd28e62bf39990626a582201b7a754e5"
++version = "0.14.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "c6fd9027e2d9319be6349febd1db4e8d02aa544921200c9b777720ac34a3aa89"
+ dependencies = [
+  "siphasher 1.0.4",
+ ]
+@@ -1024,21 +1031,6 @@
+ version = "1.0.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "ce082a9940a7ace2ad4a8b7d0b1eac6aa378895f18be598230c5f2284ac05426"
+-
+-[[package]]
+-name = "rand"
+-version = "0.8.8"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "e058c7de0b26af77780c769414d6257830bb240f3c38477dbc2c16e5f54d6d4c"
+-dependencies = [
+- "rand_core",
+-]
+-
+-[[package]]
+-name = "rand_core"
+-version = "0.6.4"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
+ 
+ [[package]]
+ name = "redox_syscall"
+@@ -1163,7 +1155,7 @@
+ dependencies = [
+  "proc-macro2",
+  "quote",
+- "syn 3.0.9",
++ "syn",
+ ]
+ 
+ [[package]]
+@@ -1205,9 +1197,9 @@
+ 
+ [[package]]
+ name = "smallvec"
+-version = "1.16.3"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "5b3dc8af474f516a851ff4bd12db780f948b9250ad37211e4eec0bccea54e01b"
++version = "1.16.4"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "d0d5d4b1981b8bbbb7aed204cae5726d683d5d6ac7e74ec54122ea28f315e7c8"
+ 
+ [[package]]
+ name = "stable_deref_trait"
+@@ -1242,7 +1234,7 @@
+ dependencies = [
+  "quote",
+  "swc_macros_common",
+- "syn 2.0.119",
++ "syn",
+ ]
+ 
+ [[package]]
+@@ -1350,7 +1342,7 @@
+  "proc-macro2",
+  "quote",
+  "swc_macros_common",
+- "syn 2.0.119",
++ "syn",
+ ]
+ 
+ [[package]]
+@@ -1405,7 +1397,7 @@
+ dependencies = [
+  "proc-macro2",
+  "swc_macros_common",
+- "syn 2.0.119",
++ "syn",
+ ]
+ 
+ [[package]]
+@@ -1564,7 +1556,7 @@
+ dependencies = [
+  "proc-macro2",
+  "quote",
+- "syn 2.0.119",
++ "syn",
+ ]
+ 
+ [[package]]
+@@ -1575,7 +1567,7 @@
+ dependencies = [
+  "proc-macro2",
+  "quote",
+- "syn 2.0.119",
++ "syn",
+ ]
+ 
+ [[package]]
+@@ -1608,17 +1600,6 @@
+ 
+ [[package]]
+ name = "syn"
+-version = "2.0.119"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "872831b642d1a07999a962a351ed35b955ea2cfc8f3862091e2a240a84f17297"
+-dependencies = [
+- "proc-macro2",
+- "quote",
+- "unicode-ident",
+-]
+-
+-[[package]]
+-name = "syn"
+ version = "3.0.9"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "d78c8dee4c7bf0e14673097256fed6142ce9d3b85a408189d07482442145823b"
+@@ -1636,7 +1617,7 @@
+ dependencies = [
+  "proc-macro2",
+  "quote",
+- "syn 3.0.9",
++ "syn",
+ ]
+ 
+ [[package]]
+@@ -1674,7 +1655,7 @@
+ dependencies = [
+  "proc-macro2",
+  "quote",
+- "syn 2.0.119",
++ "syn",
+ ]
+ 
+ [[package]]
+@@ -1792,7 +1773,7 @@
+  "bumpalo",
+  "proc-macro2",
+  "quote",
+- "syn 3.0.9",
++ "syn",
+  "wasm-bindgen-shared",
+ ]
+ 
+@@ -1868,7 +1849,7 @@
+ dependencies = [
+  "proc-macro2",
+  "quote",
+- "syn 3.0.9",
++ "syn",
+  "synstructure",
+ ]
+ 
+@@ -1889,7 +1870,7 @@
+ dependencies = [
+  "proc-macro2",
+  "quote",
+- "syn 2.0.119",
++ "syn",
+ ]
+ 
+ [[package]]
+@@ -1909,7 +1890,7 @@
+ dependencies = [
+  "proc-macro2",
+  "quote",
+- "syn 3.0.9",
++ "syn",
+  "synstructure",
+ ]
+ 
+@@ -1943,7 +1924,7 @@
+ dependencies = [
+  "proc-macro2",
+  "quote",
+- "syn 3.0.9",
++ "syn",
+ ]
+ 
+ [[package]]

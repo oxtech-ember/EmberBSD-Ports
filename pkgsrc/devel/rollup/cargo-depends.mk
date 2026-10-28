@@ -1,6 +1,6 @@
 # $NetBSD$
-# From Rollup 4.65.1 rust/Cargo.lock at 7879c65994dd591d287b177b8d0b88d7d76c2a49
 
+# Exact registry inputs from the patched Rollup Cargo.lock.
 CARGO_CRATE_DEPENDS+=	ahash-0.8.12
 CARGO_CRATE_DEPENDS+=	aho-corasick-1.1.5
 CARGO_CRATE_DEPENDS+=	allocator-api2-0.2.21
@@ -36,6 +36,7 @@ CARGO_CRATE_DEPENDS+=	displaydoc-0.2.7
 CARGO_CRATE_DEPENDS+=	dragonbox_ecma-0.1.12
 CARGO_CRATE_DEPENDS+=	either-1.19.0
 CARGO_CRATE_DEPENDS+=	equivalent-1.0.3
+CARGO_CRATE_DEPENDS+=	fastrand-2.5.0
 CARGO_CRATE_DEPENDS+=	find-msvc-tools-0.1.12
 CARGO_CRATE_DEPENDS+=	fixedbitset-0.5.7
 CARGO_CRATE_DEPENDS+=	foldhash-0.2.0
@@ -100,10 +101,10 @@ CARGO_CRATE_DEPENDS+=	parking_lot_core-0.9.12
 CARGO_CRATE_DEPENDS+=	pathdiff-0.2.3
 CARGO_CRATE_DEPENDS+=	percent-encoding-2.3.2
 CARGO_CRATE_DEPENDS+=	petgraph-0.7.1
-CARGO_CRATE_DEPENDS+=	phf-0.11.3
-CARGO_CRATE_DEPENDS+=	phf_generator-0.11.3
-CARGO_CRATE_DEPENDS+=	phf_macros-0.11.3
-CARGO_CRATE_DEPENDS+=	phf_shared-0.11.3
+CARGO_CRATE_DEPENDS+=	phf-0.14.0
+CARGO_CRATE_DEPENDS+=	phf_generator-0.14.0
+CARGO_CRATE_DEPENDS+=	phf_macros-0.14.0
+CARGO_CRATE_DEPENDS+=	phf_shared-0.14.0
 CARGO_CRATE_DEPENDS+=	pin-project-lite-0.2.17
 CARGO_CRATE_DEPENDS+=	potential_utf-0.1.6
 CARGO_CRATE_DEPENDS+=	proc-macro2-1.0.107
@@ -111,8 +112,6 @@ CARGO_CRATE_DEPENDS+=	psm-0.1.32
 CARGO_CRATE_DEPENDS+=	quote-1.0.47
 CARGO_CRATE_DEPENDS+=	radium-0.7.0
 CARGO_CRATE_DEPENDS+=	radix_fmt-1.0.0
-CARGO_CRATE_DEPENDS+=	rand-0.8.8
-CARGO_CRATE_DEPENDS+=	rand_core-0.6.4
 CARGO_CRATE_DEPENDS+=	redox_syscall-0.5.18
 CARGO_CRATE_DEPENDS+=	regex-1.13.1
 CARGO_CRATE_DEPENDS+=	regex-automata-0.4.18
@@ -134,7 +133,7 @@ CARGO_CRATE_DEPENDS+=	shlex-2.0.1
 CARGO_CRATE_DEPENDS+=	siphasher-0.3.11
 CARGO_CRATE_DEPENDS+=	siphasher-1.0.4
 CARGO_CRATE_DEPENDS+=	slab-0.4.12
-CARGO_CRATE_DEPENDS+=	smallvec-1.16.3
+CARGO_CRATE_DEPENDS+=	smallvec-1.16.4
 CARGO_CRATE_DEPENDS+=	stable_deref_trait-1.2.1
 CARGO_CRATE_DEPENDS+=	stacker-0.1.25
 CARGO_CRATE_DEPENDS+=	static_assertions-1.1.0
@@ -159,7 +158,6 @@ CARGO_CRATE_DEPENDS+=	swc_eq_ignore_macros-1.0.1
 CARGO_CRATE_DEPENDS+=	swc_macros_common-1.0.1
 CARGO_CRATE_DEPENDS+=	swc_sourcemap-10.0.2
 CARGO_CRATE_DEPENDS+=	swc_visit-2.0.2
-CARGO_CRATE_DEPENDS+=	syn-2.0.119
 CARGO_CRATE_DEPENDS+=	syn-3.0.9
 CARGO_CRATE_DEPENDS+=	synstructure-0.14.0
 CARGO_CRATE_DEPENDS+=	tap-1.0.1

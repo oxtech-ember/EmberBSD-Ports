@@ -1,6 +1,7 @@
 # $NetBSD$
 
 DISTNAME=	rollup-4.65.1
+PKGREVISION=	1
 CATEGORIES=	devel
 ROLLUP_REVISION=	7879c65994dd591d287b177b8d0b88d7d76c2a49
 DISTFILES=	rollup-${ROLLUP_REVISION}.tar.gz ${DISTNAME}.tgz
@@ -23,6 +24,7 @@ USE_LANGUAGES=	c c++
 USE_TOOLS+=	pax pkg-config
 RUST_REQ=	1.99.1
 CARGO_WRKSRC=	${WRKSRC}/rust
+EMBER_CARGO_PATCH_SET=	yes
 CARGO_ARGS=	build --release --locked --package bindings_napi ${DEFAULT_CARGO_ARGS}
 REPLACE_NODEJS=	npm/package/dist/bin/rollup
 MACHO_USE_LOAD_COMMANDS=	yes
