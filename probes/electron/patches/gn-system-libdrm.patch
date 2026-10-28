@@ -1,0 +1,104 @@
+Use the common system libdrm for all selected Chromium GN consumers.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+--- a/build/config/linux/libdrm/BUILD.gn
++++ b/build/config/linux/libdrm/BUILD.gn
+@@ -4,15 +4,10 @@
+ import("//build/config/cast.gni")
+ import("//build/config/chromeos/args.gni")
+ import("//build/config/linux/pkg_config.gni")
++import("//build/config/linux/libdrm/libdrm.gni")
+ 
+ assert(is_linux || is_chromeos)
+ 
+-declare_args() {
+-  # Controls whether the build should use the version of libdrm library shipped
+-  # with the system. In release builds of Chrome OS we use the system version.
+-  # Some Chromecast devices use this as well.
+-  use_system_libdrm = is_chromeos_device
+-}
+ 
+ if (use_system_libdrm) {
+ #  assert(!is_linux, "System libdrm is not supported in linux")
+--- /dev/null
++++ b/build/config/linux/libdrm/libdrm.gni
+@@ -0,0 +1,5 @@
++# Controls whether the build uses the system libdrm.
++import("//build/config/chromeos/args.gni")
++declare_args() {
++  use_system_libdrm = is_chromeos_device
++}
+--- a/third_party/libdrm/BUILD.gn
++++ b/third_party/libdrm/BUILD.gn
+@@ -1,6 +1,8 @@
+ # Copyright 2016 The Chromium Authors
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
++import("//build/config/linux/libdrm/libdrm.gni")
++
+ assert(is_linux || is_chromeos)
+ 
+ generated_static_table_fourcc_file =
+@@ -60,32 +62,38 @@
+   cflags = [ "-Wno-unused-function" ]
+ }
+ 
+-static_library("libdrm") {
+-  sources = [
+-    "src/xf86drm.c",
+-    "src/xf86drmHash.c",
+-    "src/xf86drmMode.c",
+-    "src/xf86drmRandom.c",
+-  ]
++if (use_system_libdrm) {
++  group("libdrm") {
++    public_deps = [ "//build/config/linux/libdrm" ]
++  }
++} else {
++  static_library("libdrm") {
++    sources = [
++      "src/xf86drm.c",
++      "src/xf86drmHash.c",
++      "src/xf86drmMode.c",
++      "src/xf86drmRandom.c",
++    ]
+ 
+-  deps = [ ":make_generated_static_table_fourcc" ]
++    deps = [ ":make_generated_static_table_fourcc" ]
+ 
+-  include_dirs = [
+-    get_path_info(generated_static_table_fourcc_file, "dir"),
+-    "src",
+-    "src/include",
+-  ]
+-  configs -= [ "//build/config/compiler:chromium_code" ]
+-  configs += [ "//build/config/compiler:no_chromium_code" ]
+-  configs += [ ":libdrm_private_config" ]
+-  cflags = [
+-    # xf86drm.c uses readdir_r, which has been deprecated as of
+-    # glibc-2.24.  This causes a build error when using the Debian
+-    # Stretch sysroot.
+-    "-Wno-deprecated-declarations",
+-  ]
++    include_dirs = [
++      get_path_info(generated_static_table_fourcc_file, "dir"),
++      "src",
++      "src/include",
++    ]
++    configs -= [ "//build/config/compiler:chromium_code" ]
++    configs += [ "//build/config/compiler:no_chromium_code" ]
++    configs += [ ":libdrm_private_config" ]
++    cflags = [
++      # xf86drm.c uses readdir_r, which has been deprecated as of
++      # glibc-2.24.  This causes a build error when using the Debian
++      # Stretch sysroot.
++      "-Wno-deprecated-declarations",
++    ]
+ 
+-  public_configs = [ ":libdrm_config" ]
++    public_configs = [ ":libdrm_config" ]
++  }
+ }
+ 
+ executable("modetest") {

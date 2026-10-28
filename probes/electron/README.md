@@ -773,3 +773,8 @@ been installed by the shared Ports package. It does not download or install a
 private copy. On Darwin it binds Chromium's dsymutil path to the selected native
 prefix and rejects an existing different tool. The presence check for Rust
 libraries does not establish their provenance or target runtime compatibility.
+
+Electron selects the common target `libdrm` with `use_system_libdrm`. Direct
+Chromium references to `//third_party/libdrm` forward to the same target
+pkg-config provider. The shared Ports recipe owns the implementation and NetBSD
+PCI support; target link and GPU runtime acceptance remain separate checks.

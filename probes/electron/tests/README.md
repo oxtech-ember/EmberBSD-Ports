@@ -488,3 +488,16 @@ Linux loader-environment selection with mocked child processes:
 ```
 
 This does not test an installed allocator or bindgen execution on the target.
+
+## Shared libdrm routing
+
+```sh
+/absolute/native/bin/python3.15 -B -S probes/electron/tests/gn-system-libdrm.py \
+  --source /absolute/prepared-source/files --gn /absolute/native/bin/gn \
+  --cc /absolute/target-commands/cc --pkg-config /absolute/native/bin/pkg-config \
+  --sysroot /absolute/target-sysroot --host-prefix /absolute/native
+```
+
+The fixture checks both system and bundled GN routes, including direct libdrm
+consumers. It links a target consumer using installed target pkg-config metadata;
+it does not execute the program or establish GPU support.

@@ -573,16 +573,6 @@
       "strip": 1
     },
     {
-      "path": "libdrm-xf86drm-netbsd-missing-impl.patch",
-      "strip": 1,
-      "root": "third_party/libdrm/src"
-    },
-    {
-      "path": "libdrm-build-gn-netbsd-warning-flags.patch",
-      "strip": 1,
-      "root": "third_party/libdrm"
-    },
-    {
       "path": "media-audio-sndio-backend-maybe-unused.patch",
       "root": "",
       "strip": 1
@@ -654,6 +644,11 @@
     },
     {
       "path": "bindgen-darwin-dyld-fallback.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-system-libdrm.patch",
       "root": "",
       "strip": 1
     }
