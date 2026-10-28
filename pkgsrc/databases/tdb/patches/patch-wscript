@@ -1,0 +1,46 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+
+Upstream status: not submitted.
+
+Optionally build a static archive from the existing shared-link object graph.
+
+--- wscript.orig
++++ wscript
+@@ -18,6 +18,16 @@
+ from waflib import Options, Logs, Context
+ import shutil
+ 
++from waflib.TaskGen import feature, after_method
++
++@feature('cshlib')
++@after_method('apply_link', 'process_use')
++def tdb_static_archive(self):
++    if self.name != 'tdb' or not self.env.TDB_STATIC_ARCHIVE:
++        return
++    self.create_task('cstlib', self.link_task.inputs[:],
++                     self.path.get_bld().make_node('libtdb.a'))
++
+ samba_dist.DIST_DIRS('lib/tdb:. lib/replace:lib/replace buildtools:buildtools third_party/waf:third_party/waf')
+ 
+ tdb1_unit_tests = [
+@@ -61,6 +71,10 @@
+ ]
+ 
+ def options(opt):
++    opt.add_option('--enable-static-archive',
++                   help='Build a static archive from the TDB link objects',
++                   action='store_true',
++                   dest='tdb_static_archive', default=False)
+     opt.BUILTIN_DEFAULT('replace')
+     opt.PRIVATE_EXTENSION_DEFAULT('tdb', noextension='tdb')
+     opt.RECURSE('lib/replace')
+@@ -71,6 +85,7 @@
+ 
+ 
+ def configure(conf):
++    conf.env.TDB_STATIC_ARCHIVE = Options.options.tdb_static_archive
+     conf.env.disable_tdb_mutex_locking = getattr(Options.options,
+                                                  'disable_tdb_mutex_locking',
+                                                  False)
