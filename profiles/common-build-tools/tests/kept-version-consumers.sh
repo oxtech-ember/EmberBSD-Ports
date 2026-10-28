@@ -23,6 +23,8 @@ devel/SDL2 devel/SDL3
 devel/hexpatch lang/lua55
 devel/umbrello x11/qt6-qtbase devel/kf6-ktexteditor
 editors/mle lang/lua55
+games/etlegacy lang/lua55
+games/etlegacy-server lang/lua55
 graphics/osg lang/lua55
 multimedia/vlc lang/lua55
 net/grilo-plugins lang/lua55

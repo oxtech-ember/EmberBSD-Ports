@@ -20,6 +20,9 @@ variables to locals.
 Yazi's crates enable mlua's vendored feature by default, so Yazi built its
 own Lua 5.5 and never used the system Lua the recipe pulled in; it now links
 the system Lua.
+ET: Legacy asks its own Lua finder for Lua 5.4, and that finder could not read
+the Lua 5.5 version numbers; it now reads them, and the recipes point it at the
+default Lua.
 
 --- a/devel/Guitar/Makefile
 +++ b/devel/Guitar/Makefile
@@ -372,6 +375,98 @@ the system Lua.
 +.include "../../lang/lua/buildlink3.mk"
  .include "../../devel/uthash/buildlink3.mk"
  .include "../../mk/bsd.pkg.mk"
+--- a/games/etlegacy-server/Makefile
++++ b/games/etlegacy-server/Makefile
+@@ -1,6 +1,6 @@
+ # $NetBSD: Makefile,v 1.41 2026/05/14 16:40:56 ryoon Exp $
+ 
+-PKGREVISION= 7
++PKGREVISION= 8
+ .include "../../games/etlegacy/Makefile.common"
+ 
+ PKGNAME=	etlegacy-server-${ETL_VERSION}
+--- a/games/etlegacy-server/options.mk
++++ b/games/etlegacy-server/options.mk
+@@ -8,7 +8,10 @@
+ 
+ .if !empty(PKG_OPTIONS:Mlua)
+ CMAKE_CONFIGURE_ARGS+=	-DFEATURE_LUA=ON
+-.include "../../lang/lua54/buildlink3.mk"
++# The bundled finder looks for Lua 5.4 only; the game code builds with 5.5.
++CMAKE_CONFIGURE_ARGS+=	-DLUA_INCLUDE_DIR=${BUILDLINK_PREFIX.lua}/${LUA_INCDIR}
++CMAKE_CONFIGURE_ARGS+=	-DLUA_LIBRARY:STRING=-llua
++.include "../../lang/lua/buildlink3.mk"
+ .else
+ CMAKE_CONFIGURE_ARGS+=	-DFEATURE_LUA=OFF
+ .endif
+--- a/games/etlegacy/Makefile
++++ b/games/etlegacy/Makefile
+@@ -1,6 +1,6 @@
+ # $NetBSD: Makefile,v 1.62 2026/09/02 19:02:09 wiz Exp $
+ 
+-PKGREVISION= 16
++PKGREVISION= 17
+ .include "Makefile.common"
+ 
+ PKGNAME=	etlegacy-${ETL_VERSION}
+--- a/games/etlegacy/distinfo
++++ b/games/etlegacy/distinfo
+@@ -7,6 +7,6 @@
+ SHA512 (etlegacy-2.83.1/etlegacy.tar.gz) = 177249dd500347c6484221086e5b21be73ac26931f2a7b87bbda26936ca624e0105b067d48ec3aa1ad4979144ac818d2d7b65b32bcb20fde3aa36da480249367
+ Size (etlegacy-2.83.1/etlegacy.tar.gz) = 15611296 bytes
+ SHA1 (patch-cmake_ETLInstall.cmake) = a5b2a80b6cef0f28e5d1042fb84ea617d62fec74
+-SHA1 (patch-cmake_FindLua.cmake) = b25e7deef2f03f40dfbe577e94717b1bfc0aca59
++SHA1 (patch-cmake_FindLua.cmake) = 1c052e03d5c67fc6ef42f397b6aba48d20a6754b
+ SHA1 (patch-src_sdl_sdl__glimp.c) = 6f229c946cba675b8d0b3602500078fb9337367f
+ SHA1 (patch-src_ui_ui__shared.c) = 974a73d35919c00259181bf66090004b8a42f908
+--- a/games/etlegacy/options.mk
++++ b/games/etlegacy/options.mk
+@@ -8,7 +8,10 @@
+ 
+ .if !empty(PKG_OPTIONS:Mlua)
+ CMAKE_CONFIGURE_ARGS+=	-DFEATURE_LUA=ON
+-.include "../../lang/lua54/buildlink3.mk"
++# The bundled finder looks for Lua 5.4 only; the game code builds with 5.5.
++CMAKE_CONFIGURE_ARGS+=	-DLUA_INCLUDE_DIR=${BUILDLINK_PREFIX.lua}/${LUA_INCDIR}
++CMAKE_CONFIGURE_ARGS+=	-DLUA_LIBRARY:STRING=-llua
++.include "../../lang/lua/buildlink3.mk"
+ .else
+ CMAKE_CONFIGURE_ARGS+=	-DFEATURE_LUA=OFF
+ .endif
+--- a/games/etlegacy/patches/patch-cmake_FindLua.cmake
++++ b/games/etlegacy/patches/patch-cmake_FindLua.cmake
+@@ -1,8 +1,9 @@
+-$NetBSD: patch-cmake_FindLua.cmake,v 1.1 2020/07/01 10:06:42 nia Exp $
++$NetBSD$
+ 
+ Avoid finding unversioned Lua in NetBSD.
++Read the version numbers of Lua 5.5, which defines them as LUA_VERSION_*_N.
+ 
+---- cmake/FindLua.cmake.orig	2019-01-05 19:54:35.000000000 +0000
++--- cmake/FindLua.cmake.orig
+ +++ cmake/FindLua.cmake
+ @@ -31,16 +31,11 @@
+  # standard syntax, e.g. FIND_PACKAGE(Lua 5.1)
+@@ -23,3 +24,19 @@
+  ENDIF(Lua_FIND_VERSION_MAJOR AND Lua_FIND_VERSION_MINOR)
+  
+  # Set up possible search names and locations
++@@ -106,10 +101,11 @@ IF(LUA_INCLUDE_DIR AND EXISTS "${LUA_INCLUDE_DIR}/lua.h")
++ 
++ 	# Lua 5.2+
++ 	IF(NOT LUA_VERSION_STRING)
++-		FILE(STRINGS "${LUA_INCLUDE_DIR}/lua.h" lua_version_str REGEX "^#define LUA_VERSION_[A-Z]+[ \t]+\"[0-9]+\"")
++-		STRING(REGEX REPLACE ".*#define LUA_VERSION_MAJOR[ \t]+\"([0-9]+)\".*" "\\1" LUA_VERSION_MAJOR ${lua_version_str})
++-		STRING(REGEX REPLACE ".*#define LUA_VERSION_MINOR[ \t]+\"([0-9]+)\".*" "\\1" LUA_VERSION_MINOR ${lua_version_str})
++-		STRING(REGEX REPLACE ".*#define LUA_VERSION_RELEASE[ \t]+\"([0-9]+)\".*" "\\1" LUA_VERSION_RELEASE ${lua_version_str})
+++		# Lua 5.5 defines the numbers as LUA_VERSION_*_N without quotes
+++		FILE(STRINGS "${LUA_INCLUDE_DIR}/lua.h" lua_version_str REGEX "^#define[ \t]+LUA_VERSION_[A-Z]+(_N)?[ \t]+\"?[0-9]+\"?")
+++		STRING(REGEX REPLACE ".*#define[ \t]+LUA_VERSION_MAJOR(_N)?[ \t]+\"?([0-9]+)\"?.*" "\\2" LUA_VERSION_MAJOR "${lua_version_str}")
+++		STRING(REGEX REPLACE ".*#define[ \t]+LUA_VERSION_MINOR(_N)?[ \t]+\"?([0-9]+)\"?.*" "\\2" LUA_VERSION_MINOR "${lua_version_str}")
+++		STRING(REGEX REPLACE ".*#define[ \t]+LUA_VERSION_RELEASE(_N)?[ \t]+\"?([0-9]+)\"?.*" "\\2" LUA_VERSION_RELEASE "${lua_version_str}")
++ 		SET(LUA_VERSION_STRING ${LUA_VERSION_MAJOR}.${LUA_VERSION_MINOR}.${LUA_VERSION_RELEASE})
++ 	ENDIF()
++ 	UNSET(lua_version_str)
 --- a/graphics/osg/Makefile
 +++ b/graphics/osg/Makefile
 @@ -1,7 +1,7 @@
