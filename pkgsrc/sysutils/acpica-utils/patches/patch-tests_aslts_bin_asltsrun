@@ -1,0 +1,45 @@
+EmberBSD local test harness repair, AI-assisted; not submitted upstream.
+Preserve selected tools and propagate test failures.
+
+--- tests/aslts/bin/asltsrun.orig
++++ tests/aslts/bin/asltsrun
+@@ -164,7 +164,7 @@
+ 	if [ ! -f "$amlcodepath" ]; then
+ 		echo "Test doesn't exist: $amlcodepath"
+ 		AML_DONT_EXIST=$[ $AML_DONT_EXIST + 1 ]
+-		return
++		return 1
+ 	fi
+ 
+ 	# Start time
+@@ -240,7 +240,8 @@
+ 	test_case_arr=($3)
+ 	res_dir=$2
+ 	bit_mode=$1
+-	procs=`nproc --all`
++	procs=${ASLTS_JOBS:-1}
++	case "$procs" in *[!0-9]*|0|"") echo "Invalid ASLTS_JOBS" >&2; UTILSTATUS=1; return 1;; esac
+ 
+ 	modepart=`get_mode_string $1 0`
+ 	modename=`get_mode_string $1 1`
+@@ -256,8 +257,8 @@
+ 	# For each testcase that we will run, we are going to parallelize the
+ 	# execution with the number of available processors.
+ 	printf '%s\n' "${test_case_arr[@]}" |\
+-	xargs -n 1 -P $procs -I {} bash -c 'run_test_case $1 $2 > $3/$4/$1'\
+-	_ {} $bit_mode $res_dir $modepart
++	xargs -P "$procs" -I {} bash -c 'run_test_case $1 $2 > $3/$4/$1'\
++	_ {} $bit_mode $res_dir $modepart || UTILSTATUS=1
+ 
+ 	z=$(date +%T)
+ 	q=`get_cent_str_diff $y $z`
+@@ -713,6 +714,9 @@
+ 		reset_collections_flags
+ 
+ 		x=`parse_status_of_test_cases "$path"`
++		test_count=`echo "$x" | awk -F: '{print $3}'`
++		failure_count=`echo "$x" | awk -F: '{print $5}'`
++		if [ "${test_count:-0}" -eq 0 ] || [ "${failure_count:-0}" -ne 0 ]; then UTILSTATUS=1; fi
+ 
+ 		report_total_of_mode "$x" "$3"
+ 

@@ -1,0 +1,4 @@
+This package provides ACPICA user-space tools for inspecting, compiling,
+and executing ACPI tables. It includes the ASL compiler and disassembler,
+ACPI simulator, table dump and extraction tools, binary comparison utility,
+namespace examples, help utility, and source converter.

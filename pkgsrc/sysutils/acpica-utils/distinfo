@@ -1,0 +1,24 @@
+$NetBSD$
+
+BLAKE2s (acpica-unix-20260930.tar.gz) = 1e1e1f2e6aebf9fea8a22173d0918f6f4a0fd118becea3adbb33f2a77d379f5c
+SHA512 (acpica-unix-20260930.tar.gz) = 5288af7b2f6f6626211e7cf5446538ac21c5290d47a8c1997f7bfc194dce612168408468844a50ad7b21e812e32d583427ba7e9ba8aa297e89d70d0e353935b1
+Size (acpica-unix-20260930.tar.gz) = 1533616 bytes
+BLAKE2s (acpitests-unix-20260930.tar.gz) = 84b03ff8d2686ade5a579b946f80941372d8ec29fbb673529b347ae41a10b3d5
+SHA512 (acpitests-unix-20260930.tar.gz) = 01b1f7e583f6a03a89402d28e98699c723a0f3371b004d6f20cf7a8562327088b0a44f7ad571d1e2a787f484c2676f2793870bcad4081ce4abc7301059b959bb
+Size (acpitests-unix-20260930.tar.gz) = 2033863 bytes
+SHA1 (patch-source_compiler_aslanalyze.c) = 20862ff90b441f11f13f8534d45e1db4fa940936
+SHA1 (patch-source_compiler_aslpredef.c) = f9a59ef32f85a04a913caece5388a9a45cc50723
+SHA1 (patch-source_compiler_aslwalks.c) = 8c65c0b55bcc0ed36a10b7cacfa00d4565684175
+SHA1 (patch-source_include_platform_acnetbsd.h) = d636a8608ff2742301e862ebb421e8a86f12cad9
+SHA1 (patch-source_include_platform_acsolaris.h) = ecc090345a6d259f96923376e65d28c57dceebab
+SHA1 (patch-source_components_namespace_nsobject.c) = 44ece19bd846e6770cd28e2b8b161f0c38be090a
+SHA1 (patch-tests_aslts_Makefile.def) = 906ce13941da1a58b6812be30636e9f531ede712
+SHA1 (patch-tests_aslts_bin_Do) = f72224516566c069fd6843279ed5e0c977fa2d5f
+SHA1 (patch-tests_aslts_bin_asltsrun) = f0d0bb42cd5aebac4d692362157c4f153e47d8a7
+SHA1 (patch-source_components_disassembler_dmopcode.c) = 01c6453fa13e0834381cef9628617e76caed133d
+SHA1 (patch-generate_unix_Makefile.config) = 9ed021b1f71659979893dec8ef89a58b06747b60
+SHA1 (patch-source_tools_acpiexec_aeexception.c) = 6f6eb3de100b5865cd33d952b27d0c06551e69e7
+SHA1 (patch-source_compiler_aslmain.c) = be81379fa4d66e247e572643c15643e5c3d914fd
+SHA1 (patch-source_components_disassembler_dmcstyle.c) = 0083147545d92321f463d53ca4d0a6c89081c974
+SHA1 (patch-tests_aslts.sh) = 18eb1312fe0732aa75c3c463d716ee3c683eb8dd
+SHA1 (patch-tests_templates_Makefile) = cd602f8d35dd1ecd12b2f6779aa7395f510ac7d8

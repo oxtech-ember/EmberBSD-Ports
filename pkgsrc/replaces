@@ -351,6 +351,8 @@ devel/SDL2
 security/mbedtls4
 devel/tl-expected
 textproc/utf8-cpp
+# ACPICA utilities use the current shared release.
+sysutils/acpica-utils
 
 # checkperms uses the native BSD install tool on Darwin.
 sysutils/checkperms

@@ -1,0 +1,31 @@
+EmberBSD local test harness repair, AI-assisted; not submitted upstream.
+Preserve selected tools and propagate test failures.
+
+--- tests/templates/Makefile.orig
++++ tests/templates/Makefile
+@@ -12,17 +12,21 @@
+ 
+ # recompile and binary compare
+ $(aml_obj2): %_recomp.aml: %.dsl
+-	$(ASL) -p `basename $@` $< > /dev/null 2> /dev/null
+-	$(acpibin) -c $@ $(patsubst %_recomp.aml,%.aml,$@) > /dev/null 2> /dev/null
++	"$(ASL)" -p `basename $@` $< > /dev/null 2> /dev/null
++	@if [ "$(NAME)" = cdat ]; then \
++		cmp $@ $(patsubst %_recomp.aml,%.aml,$@); \
++	else \
++		"$(acpibin)" -c $@ $(patsubst %_recomp.aml,%.aml,$@) > /dev/null 2> /dev/null; \
++	fi
+ 	printf "Data table %s PASS\n" $(basename $< .dsl)
+ 
+ # disassemble
+ $(dsl_obj): %.dsl:  %.aml
+-	$(ASL) -d $< > /dev/null 2> /dev/null
++	"$(ASL)" -d $(DISASM_ARGS) $< > /dev/null 2> /dev/null
+ 
+ # initial compile
+ $(aml_obj): %.aml:  %.asl
+-	$(ASL) $< > /dev/null 2> /dev/null
++	"$(ASL)" $< > /dev/null 2> /dev/null
+ 
+ 
+ templates :
