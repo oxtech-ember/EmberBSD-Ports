@@ -35,6 +35,7 @@ games/etlegacy-server lang/lua55
 games/powder-toy lang/lua55
 games/simgear graphics/osg
 graphics/darktable lang/lua55
+graphics/digikam graphics/opencv-contrib
 graphics/osg lang/lua55
 lang/hs-lua lang/lua55
 multimedia/vlc lang/lua55

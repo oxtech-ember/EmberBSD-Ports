@@ -52,6 +52,8 @@ the export, those packages silently lost their JDK dependency.
 lua-compat53's C API header stopped at Lua 5.4, and Lua 5.5 no longer defines
 lua_assert, so it accepts Lua 5.5 and defines lua_assert itself; its tests
 pass with Lua 5.5.
+digiKam no longer includes the C API headers that OpenCV 5 removed, and takes
+the ml module from opencv-contrib, which replaces opencv-contrib-face.
 
 --- a/devel/Guitar/Makefile
 +++ b/devel/Guitar/Makefile
@@ -971,6 +973,59 @@ pass with Lua 5.5.
 + 
 + include(Prebuilt)
 + include(LibFindMacros)
+--- a/graphics/digikam/Makefile
++++ b/graphics/digikam/Makefile
+@@ -2,7 +2,7 @@
+ 
+ DISTNAME=	digiKam-9.1.0
+ PKGNAME=	${DISTNAME:tl}
+-PKGREVISION=	8
++PKGREVISION=	9
+ CATEGORIES=	graphics
+ MASTER_SITES=	${MASTER_SITE_KDE:=digikam/${PKGVERSION_NOREV}/}
+ 
+@@ -42,7 +42,7 @@
+ .include "../../graphics/liblqr/buildlink3.mk"
+ .include "../../graphics/jasper/buildlink3.mk"
+ .include "../../graphics/opencv/buildlink3.mk"
+-.include "../../graphics/opencv-contrib-face/buildlink3.mk"
++.include "../../graphics/opencv-contrib/buildlink3.mk"
+ .include "../../graphics/tiff/buildlink3.mk"
+ .include "../../math/eigen3/buildlink3.mk"
+ #.include "../../multimedia/ffmpeg7/buildlink3.mk"
+--- a/graphics/digikam/distinfo
++++ b/graphics/digikam/distinfo
+@@ -3,3 +3,4 @@
+ BLAKE2s (digiKam-9.1.0.tar.xz) = 7c0946c0eb3874a3561f1d24b73cefa55d025b928488e4a2fb62e114e9038557
+ SHA512 (digiKam-9.1.0.tar.xz) = ab083cbde1f3e243a8766b8fe5ea256d32877ff7f2e048349fb063e1ca90b0395eee16028466516a9ab74f10582a413bfc9d64392a4b25b33e45b70ca34f5cd6
+ Size (digiKam-9.1.0.tar.xz) = 73714208 bytes
++SHA1 (patch-core_app_utils_digikam__opencv.h.cmake.in) = 5d78cc7d8c04810acb1c14561d66cc8f58800073
+--- /dev/null
++++ b/graphics/digikam/patches/patch-core_app_utils_digikam__opencv.h.cmake.in
+@@ -0,0 +1,23 @@
++$NetBSD$
++
++OpenCV 5 removed the C API headers; digiKam uses none of their symbols.
++
++--- core/app/utils/digikam_opencv.h.cmake.in.orig
+++++ core/app/utils/digikam_opencv.h.cmake.in
++@@ -55,8 +55,6 @@
++ #include <opencv2/core.hpp>
++ #include <opencv2/core/utility.hpp>
++ #include <opencv2/core/persistence.hpp>
++-#include <opencv2/core/core_c.h>
++-#include <opencv2/core/types_c.h>
++ #include <opencv2/core/ocl.hpp>
++ 
++ // Image codecs module headers
++@@ -70,7 +68,6 @@
++ // Image processing module headers
++ 
++ #include <opencv2/imgproc.hpp>
++-#include <opencv2/imgproc/types_c.h>
++ 
++ // Shape detection/recognition module headers
++ 
 --- a/graphics/osg/Makefile
 +++ b/graphics/osg/Makefile
 @@ -1,7 +1,7 @@
