@@ -147,18 +147,26 @@ hook_start = compiler.index('# Optional compiler policy runs after package optio
 hook_end = compiler.index('_COMPILER_STRIP_VARS=',hook_start)
 hook = compiler[hook_start:hook_end]
 fields = ['FC','DEPENDS','BUILD_DEPENDS','CWRAPPERS_APPEND.f77','PKG_FAIL_REASON']
-for target, triplet in (('amd64','x86_64--netbsd'),('aarch64','aarch64--netbsd')):
+# The GCC profile selects GCC16 gfortran. The default Clang profile selects
+# Flang and must never fall back to GCC16 or its Fortran packages.
+for family in ('gcc', 'clang'):
+  for target, triplet in (('amd64','x86_64--netbsd'),('aarch64','aarch64--netbsd')):
     for lang, cross, tools_cross in (('fortran77','yes','yes'),('fortran','yes','yes'),
                                      ('c','yes','yes'),('fortran','no','no'),
                                      ('fortran','no','yes')):
         prefix = (f'USE_LANGUAGES=c\nUSE_CROSS_COMPILE={cross}\nTOOLS_USE_CROSS_COMPILE={tools_cross}\n'
+                  f'EMBERBSD_CROSS_COMPILER_FAMILY={family}\nPKGSRC_COMPILER={family}\n'
                   f'EMBERBSD_CROSS_TARGET={target}\n_EMBER_CROSS_TRIPLET={triplet}\n'
                   'TOOLDIR=/fixture-missing-compiler\nCROSS_DESTDIR=/fixture-missing-sysroot\n')
         late = 'USE_LANGUAGES+=' + lang + '\n'
         before = make(prefix + f'.include "{policy}"\n' + late, fields)
         after = make(prefix + late + f'PKGSRC_COMPILER_PRE_CONFIG_MK={policy}\n' + hook, fields)
         active = lang != 'c' and tools_cross == 'yes'
-        if active:
+        if active and family == 'clang':
+            if before != ['']*5: raise SDKError('Early-policy causal witness unexpectedly saw a late language')
+            if 'gcc' in ' '.join(after[:4]): raise SDKError('Clang profile selected a GCC Fortran provider')
+            if 'EMBERBSD_FLANG' not in after[4]: raise SDKError('Clang late missing-Flang guard did not run')
+        elif active:
             if before != ['']*5: raise SDKError('Early-policy causal witness unexpectedly saw a late language')
             if after[0] != '/fixture-missing-compiler/bin/'+triplet+'-gfortran': raise SDKError('Late hook did not select FC')
             if 'Fortran frontend' not in after[4] or 'SDK roles' not in after[4]: raise SDKError('Late missing-input guards did not run')
@@ -166,7 +174,7 @@ for target, triplet in (('amd64','x86_64--netbsd'),('aarch64','aarch64--netbsd')
                 if 'gcc16-fortran-runtime-16.2.0nb1:' not in after[1] or 'gcc16-fortran-devel-16.2.0nb1:' not in after[2]: raise SDKError('Late target package dependencies absent')
             elif after[1] or after[2]: raise SDKError('Fake-cross host package acquired target DB dependencies')
         elif after != before or any(after): raise SDKError('Native/non-Fortran metadata changed')
-        records.append({'late_language':lang,'target':target,'cross':cross,'tools_cross':tools_cross,
+        records.append({'family':family,'late_language':lang,'target':target,'cross':cross,'tools_cross':tools_cross,
                         'before_early_policy':before,'after_real_late_hook':after})
 
 # The normal pkgsrc PLIST expander would re-add the separate runtime DSOs

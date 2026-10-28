@@ -8,8 +8,48 @@
 .endif
 .if ${TOOLS_USE_CROSS_COMPILE:Uno:tl} == "yes" && \
     (!empty(USE_LANGUAGES:Mfortran) || !empty(USE_LANGUAGES:Mfortran77))
-.if ${EMBERBSD_CROSS_COMPILER_FAMILY:Uclang} != "gcc"
-PKG_FAIL_REASON+="Select the GCC cross profile and its common Fortran provider for Fortran packages"
+.if ${EMBERBSD_CROSS_COMPILER_FAMILY:Uclang} == "clang"
+# Host Flang compiles for the target and links Flang-RT from the sysroot.
+# The driver searches the lib directory beside its real path, so packages run
+# a hard link that has no host library directory beside it.
+.if empty(EMBERBSD_FLANG:M/*) || !exists(${EMBERBSD_FLANG})
+PKG_FAIL_REASON+="EMBERBSD_FLANG must select the build-host Ports flang driver"
+.else
+_EMBER_FLANG_VERSION!=set -- $$(${EMBERBSD_FLANG:Q} --version); echo "$$3"
+_EMBER_FLANG_MAJOR=${_EMBER_FLANG_VERSION:C/\..*//}
+_EMBER_FLANG_RT=${CROSS_DESTDIR}${CROSS_LOCALBASE}/lib/clang/${_EMBER_FLANG_MAJOR}
+_EMBER_FLANG_RESOURCE=${CROSS_DESTDIR}/${_EMBER_TARGET_RUNTIME_PREFIX}/lib/clang/${_EMBER_FLANG_MAJOR}
+.if empty(_EMBER_FLANG_VERSION:M[0-9]*.[0-9]*.[0-9]*) || !exists(${_EMBER_FLANG_RESOURCE})
+PKG_FAIL_REASON+="EMBERBSD_FLANG must match the major version of the SDK Clang runtime"
+.endif
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+BUILD_DEPENDS+=flang-rt>=${_EMBER_FLANG_VERSION}nb1:../../lang/flang-rt
+.elif !exists(${_EMBER_FLANG_RT}/lib/${_EMBER_CROSS_TRIPLET}/libflang_rt.runtime.a)
+PKG_FAIL_REASON+="Install lang/flang-rt into the target sysroot before fake-cross Fortran"
+.endif
+FC=flang
+PKG_FC=${WRKDIR}/.flang/bin/flang
+override-tools: ${PKG_FC}
+${PKG_FC}:
+	${RUN}${MKDIR} ${.TARGET:H:Q}
+	${RUN}${LN} -f ${EMBERBSD_FLANG:Q} ${.TARGET:Q} 2>/dev/null || ${CP} -p ${EMBERBSD_FLANG:Q} ${.TARGET:Q}
+_MKPIE_FCFLAGS=${_MKPIE_CFLAGS}
+# Flang has no stack protector; compiler.mk passes the C flag to every
+# language wrapper.
+CWRAPPERS_TRANSFORM.f77+=${_SSP_CFLAGS:@f@rm:${f}@}
+CWRAPPERS_APPEND.f77+=--target=${_EMBER_CROSS_TRIPLET}
+CWRAPPERS_APPEND.f77+=-resource-dir=${_EMBER_FLANG_RESOURCE}
+CWRAPPERS_APPEND.f77+=-fintrinsic-modules-path=${_EMBER_FLANG_RT}/finclude/flang/${_EMBER_CROSS_TRIPLET}
+CWRAPPERS_APPEND_LINK.f77+=-fuse-ld=${LD}
+CWRAPPERS_APPEND_LINK.f77+=--rtlib=compiler-rt
+# The wrappers drop -L directories that buildlink does not know; the linker
+# reads this one directly.
+CWRAPPERS_APPEND_LINK.f77+=-Wl,-L${_EMBER_FLANG_RT}/lib/${_EMBER_CROSS_TRIPLET}
+CWRAPPERS_APPEND_LINK.f77+=-Wl,-rpath-link,${CROSS_DESTDIR}/usr/lib
+CWRAPPERS_APPEND_LINK.f77+=-Wl,-rpath-link,${CROSS_DESTDIR}${CROSS_LOCALBASE}/lib
+.endif
+.elif ${EMBERBSD_CROSS_COMPILER_FAMILY} != "gcc"
+PKG_FAIL_REASON+="The cross compiler family must be clang or gcc for Fortran packages"
 .else
 FC=${TOOLDIR}/bin/${_EMBER_CROSS_TRIPLET}-gfortran
 .if !exists(${FC})

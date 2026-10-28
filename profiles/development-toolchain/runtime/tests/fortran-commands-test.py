@@ -71,8 +71,10 @@ class Commands(unittest.TestCase):
             self.assertEqual(error.exception.stdout, b'')
             self.assertFalse(error.exception.stdout_truncated or error.exception.stderr_truncated)
         text = (ports / 'profiles/common-build-tools/cross/fortran.mk').read_text()
-        query = text[text.index('_EMBER_FORTRAN_ALIASES!='):text.index('_EMBER_FORTRAN_CHECK!=')]
-        fragment = text[text.index('_EMBER_FORTRAN_SUPPORT='):text.index('CWRAPPERS_APPEND.f77+=')]
+        start = text.index('_EMBER_FORTRAN_ALIASES!=')
+        query = text[start:text.index('_EMBER_FORTRAN_CHECK!=', start)]
+        start = text.index('_EMBER_FORTRAN_SUPPORT=')
+        fragment = text[start:text.index('CWRAPPERS_APPEND.f77+=', start)]
         with tempfile.TemporaryDirectory(prefix='.fortran-policy-', dir=ports) as directory:
             root = Path(directory)
             for target, triplet in (('amd64', 'x86_64--netbsd'), ('aarch64', 'aarch64--netbsd')):

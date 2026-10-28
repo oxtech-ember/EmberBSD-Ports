@@ -1,0 +1,26 @@
+# Origin: EmberBSD (AI-assisted). Wrap the flang compiler name and pass
+# link-only arguments to executable and shared links.
+
+--- a/mk/cwrappers.mk
++++ b/mk/cwrappers.mk
+@@ -30,7 +30,7 @@
+ CWRAPPERS_ALIASES.cc=		cc gcc clang
+ CWRAPPERS_ALIASES.cxx=		c++ g++ cxx clang++
+ CWRAPPERS_ALIASES.cpp=		cpp clang-cpp
+-CWRAPPERS_ALIASES.f77=		f77 g77 gfortran
++CWRAPPERS_ALIASES.f77=		f77 g77 gfortran flang
+ CWRAPPERS_ALIASES.imake=	imake
+ CWRAPPERS_ALIASES.ld=		ld
+ CWRAPPERS_ALIASES.libtool=	libtool
+@@ -128,6 +128,11 @@
+ 	${RUN}echo append_shared=${arg} >> ${CWRAPPERS_CONFIG_DIR}/${CWRAPPERS_CONFIG.${wrappee}}
+ .  endfor
+ . endif
++# Link-only arguments for both executables and shared objects.
++. for arg in ${CWRAPPERS_APPEND_LINK.${wrappee}:U}
++	${RUN}echo append_executable=${arg:Q} >> ${CWRAPPERS_CONFIG_DIR}/${CWRAPPERS_CONFIG.${wrappee}}
++	${RUN}echo append_shared=${arg:Q} >> ${CWRAPPERS_CONFIG_DIR}/${CWRAPPERS_CONFIG.${wrappee}}
++. endfor
+ .endfor
+ 
+ PREPEND_PATH+=		${WRAPPER_BINDIR}
