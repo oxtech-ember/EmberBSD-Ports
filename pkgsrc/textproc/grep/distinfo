@@ -1,0 +1,10 @@
+$NetBSD: distinfo,v 1.35 2025/05/20 15:00:27 ryoon Exp $
+
+BLAKE2s (grep-3.12.tar.xz) = 4d13c0a297db2dd9cfb7b7c2a912327b1681edd0fd06e93c3eb744188820dfaa
+SHA512 (grep-3.12.tar.xz) = c54b4db5a8b9afe098c088decd94977746305284d716666a60bac82b4edc0fae4acf828970b5b6fc7d58ecd549f638e17e6958f33a71fedcc7d7415b9228b161
+Size (grep-3.12.tar.xz) = 1918448 bytes
+SHA1 (patch-configure) = 03aeee2a2f7bcb8c1918bbeff396d2f964cb59a9
+SHA1 (patch-src_Makefile.in) = 9efe4748d4b1ff33adca4e251e2e4249c62f0035
+SHA1 (patch-configure.ac) = 7f7340e18e9228a70ef7e3164d04682b9da260a1
+SHA1 (patch-src_dfasearch.c) = 44123eb1a67866ccda3c9024e18bbfdf7bde91c3
+SHA1 (patch-lib_rawmemchr.c) = 7b076f9efd78161af545186a177a7b1cd985b9fa

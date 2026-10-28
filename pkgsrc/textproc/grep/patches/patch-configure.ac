@@ -1,0 +1,49 @@
+$NetBSD$
+
+Add an opt-in checked base gettext path for native OS consumers.
+EmberBSD, AI-assisted; not yet upstream.
+
+--- configure.ac.orig	2026-10-28 21:34:07
++++ configure.ac	2026-10-28 21:34:07
+@@ -203,6 +203,41 @@
+ AM_GNU_GETTEXT_VERSION([0.18.2])
+ AM_GNU_GETTEXT([external])
+ 
++# The base library can provide the public gettext API without GNU internals.
++AC_ARG_WITH([base-libintl],
++  AS_HELP_STRING([--with-base-libintl], [use a checked base libintl]),,
++  [with_base_libintl=no])
++AS_CASE([$with_base_libintl], [yes|no], [],
++  [AC_MSG_ERROR([invalid --with-base-libintl value])])
++if test "$with_base_libintl" = yes; then
++  if test "$enable_nls" = no; then
++    AC_MSG_ERROR([base libintl requires NLS])
++  fi
++  saved_LIBS=$LIBS
++  LIBS="-lintl $LIBS"
++  AC_MSG_CHECKING([for the base libintl public API])
++  AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <libintl.h>
++#include <locale.h>]], [[
++    bindtextdomain("grep", "/usr/share/locale");
++    bind_textdomain_codeset("grep", "UTF-8");
++    textdomain("grep");
++    return !gettext("x") || !dgettext("grep", "x") ||
++      !dcgettext("grep", "x", LC_MESSAGES) || !ngettext("x", "xs", 2) ||
++      !dngettext("grep", "x", "xs", 2) ||
++      !dcngettext("grep", "x", "xs", 2, LC_MESSAGES);
++  ]])], [AC_MSG_RESULT([yes])],
++    [AC_MSG_FAILURE([base libintl public API link failed])])
++  LIBS=$saved_LIBS
++  USE_NLS=yes
++  POSUB=po
++  LIBINTL=-lintl
++  LTLIBINTL=-lintl
++  INTLLIBS=-lintl
++  AC_DEFINE([ENABLE_NLS], [1], [Define to 1 to enable translation.])
++  AC_DEFINE([HAVE_GETTEXT], [1], [Define if gettext is available.])
++  AC_DEFINE([HAVE_DCGETTEXT], [1], [Define if dcgettext is available.])
++fi
++
+ dnl Some installers want to be informed if we do not use our regex.
+ dnl For example, if the host platform uses dynamic linking and the installer
+ dnl knows that the grep may be invoked on other hosts with buggy libraries,
