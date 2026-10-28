@@ -1,0 +1,9 @@
+prefix=@PREFIX@
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: temporal_capi
+Description: Temporal C and C++ API
+Version: 0.2.6
+Libs: -L${libdir} -ltemporal_capi
+Cflags: -I${includedir} -I${includedir}/temporal_capi

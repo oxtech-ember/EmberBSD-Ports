@@ -1,0 +1,15 @@
+$NetBSD$
+
+Build the common shared C API.
+Origin: EmberBSD (AI-assisted).
+
+--- Cargo.toml.orig
++++ Cargo.toml
+@@ -46,6 +46,7 @@
+ ]
+ 
+ [lib]
++crate-type = ["cdylib"]
+ name = "temporal_capi"
+ path = "src/lib.rs"
+ 
