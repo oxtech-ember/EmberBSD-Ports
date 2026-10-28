@@ -30,6 +30,13 @@ ROLE_VARIABLES = {
     'gcp': 'TOOLS_PLATFORM.cp', 'gtouch': 'TOOLS_PLATFORM.touch',
     'gsed': 'TOOLS_PLATFORM.sed', 'gcat': 'TOOLS_PLATFORM.cat',
     'gmv': 'TOOLS_PLATFORM.mv', 'gchmod': 'TOOLS_PLATFORM.chmod',
+    'genv': 'TOOLS_PLATFORM.env', 'ggrep': 'TOOLS_PLATFORM.grep',
+    'gdiff': 'TOOLS_PLATFORM.diff', 'grm': 'TOOLS_PLATFORM.rm',
+    'gmkdir': 'TOOLS_PLATFORM.mkdir', 'gln': 'TOOLS_PLATFORM.ln',
+    'gtr': 'TOOLS_PLATFORM.tr', 'gexpr': 'TOOLS_PLATFORM.expr',
+    'gsort': 'TOOLS_PLATFORM.sort', 'ghead': 'TOOLS_PLATFORM.head',
+    'gcut': 'TOOLS_PLATFORM.cut', 'gdirname': 'TOOLS_PLATFORM.dirname',
+    'gbasename': 'TOOLS_PLATFORM.basename',
     # Wayland protocol code generator for wayland consumers.
     'wayland-scanner': 'EMBERBSD_WAYLAND_SCANNER',
 }
@@ -121,7 +128,8 @@ def render(toolset, qt=(), fetch_mode='fetch'):
     search = literal(toolset.path)
     lines += ['PATH:= ' + search, '.if "${PATH}" != "' + search + '"',
               '.error PATH differs from the selected host prefix', '.endif', '.export PATH']
-    selected = [(role, variable, shlex.join(toolset.command(role)) if role == 'as' else toolset.tool(role))
+    selected = [(role, variable, shlex.join((*toolset.command(role), '-p')) if role == 'gmkdir' else
+                 shlex.join(toolset.command(role)) if role == 'as' else toolset.tool(role))
                 for role, variable in ROLE_VARIABLES.items()]
     selected += [(role, variable, toolset.tool(role))
                  for role, variable in OPTIONAL_ROLES.items() if role in toolset.tools]

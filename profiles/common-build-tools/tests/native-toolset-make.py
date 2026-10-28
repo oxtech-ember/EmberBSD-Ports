@@ -91,16 +91,23 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
                      'clang-tblgen'):
             assert role in call.kwargs['required_roles']
         for role, variable in (('gcp', 'cp'), ('gtouch', 'touch'), ('gsed', 'sed'),
-                               ('gcat', 'cat'), ('gmv', 'mv'), ('gchmod', 'chmod')):
-            assert ('.if "${TOOLS_PLATFORM.' + variable + '}" != "' + tools[role] + '"').encode() in before
+                               ('gcat', 'cat'), ('gmv', 'mv'), ('gchmod', 'chmod'),
+                               ('genv', 'env'), ('ggrep', 'grep'), ('gdiff', 'diff'), ('grm', 'rm'),
+                               ('gmkdir', 'mkdir'), ('gln', 'ln'), ('gtr', 'tr'),
+                               ('gexpr', 'expr'), ('gsort', 'sort'), ('ghead', 'head'),
+                               ('gcut', 'cut'), ('gdirname', 'dirname'), ('gbasename', 'basename')):
+            value = tools[role] + (' -p' if role == 'gmkdir' else '')
+            assert ('.if "${TOOLS_PLATFORM.' + variable + '}" != "' + value + '"').encode() in before
         for role, variable in (('sh', 'sh'), ('nawk', 'awk'), ('ar', 'ar'),
                                ('ranlib', 'ranlib'), ('nm', 'nm'), ('strip', 'strip')):
-            assert ('.if "${TOOLS_PLATFORM.' + variable + '}" != "' + tools[role] + '"').encode() in before
+            value = tools[role]
+            assert ('.if "${TOOLS_PLATFORM.' + variable + '}" != "' + value + '"').encode() in before
         # A make command-line assignment can replace even := variables.
         # Expected values must be literals, not aliases to another variable.
         for role in adapter.ROLE_VARIABLES:
             name = '_EMBER_SDK_' + role.upper().replace('-', '_')
-            value = shlex.join(selected.command(role)) if role == 'as' else tools[role]
+            value = (shlex.join((*selected.command(role), '-p')) if role == 'gmkdir' else
+                     shlex.join(selected.command(role)) if role == 'as' else tools[role])
             assert ('.if "${' + name + '}" != "' + value + '"').encode() in before
         assert ('_EMBER_SDK_AS:= ' + tools['as'] + ' -c -x assembler\n').encode() in before
         for name in ('CPPFLAGS', 'CFLAGS', 'CXXFLAGS', 'LDFLAGS'):
