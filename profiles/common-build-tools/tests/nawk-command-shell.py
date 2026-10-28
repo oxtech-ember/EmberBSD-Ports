@@ -123,7 +123,9 @@ def main():
         (abi / 'usr/lib').mkdir(parents=True)
         (abi / 'usr/lib/libiconv.tbd').write_text('source fixture only\n')
         early = 'awk basename cat cut date dirname env expr grep head id pwd sed sort tail tr uname uniq wc'
-        fields = dict(EMBERBSD_DARWIN_BOOTSTRAP='yes', EMBERBSD_DARWIN_HOST_OS='Darwin',
+        # The fixture supplies the explicit GCC route inputs (EMBERBSD_GCC16_*).
+        fields = dict(EMBERBSD_DARWIN_BOOTSTRAP='yes', EMBERBSD_COMPILER_FAMILY='gcc',
+            EMBERBSD_DARWIN_HOST_OS='Darwin',
             EMBERBSD_DARWIN_HOST_CPU='aarch64', EMBERBSD_DARWIN_HOST_KERNEL_VERSION='25.0',
             EMBERBSD_DARWIN_HOST_PRODUCT_VERSION='26.0', EMBERBSD_DARWIN_HOST_PKGSRC_OPSYS_VERSION='260000',
             EMBERBSD_DARWIN_SH='/selected/initial/mksh', EMBERBSD_DARWIN_MAKE='/selected/initial/bmake',
