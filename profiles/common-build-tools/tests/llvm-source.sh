@@ -120,7 +120,7 @@ grep -qF 'Missing patch: pkgsrc/lang/llvm/patches/patch-cmake_config-ix.cmake' "
 grep -q 'PKG_FAIL_REASON.*not prepared' "$work/pkgsrc/lang/llvm/version.mk"
 grep -q -- '-DLLVM_INSTALL_GTEST=ON' "$work/pkgsrc/lang/llvm/options.mk"
 grep -q -- '-DLIBCLANG_BUILD_STATIC=ON' "$work/pkgsrc/lang/clang/Makefile.common"
-grep -Fq '${WRKSRC}/${CMAKE_BUILD_DIR}/bin/clang ${LOCALBASE}/gcc16 ${WRKDIR}/native-config' \
+grep -Fq '${FILESDIR}/llvm-runtime-config.sh ${LLVM_CONFIG_PATH:Q}' \
     "$work/pkgsrc/lang/clang/Makefile.common"
 grep -q -- '-DLLVM_ENABLE_RTTI=ON' "$work/pkgsrc/lang/llvm/Makefile"
 grep -q '^LLVM_LINK_LLVM_DYLIB?= ON' "$work/pkgsrc/lang/llvm/Makefile"
@@ -145,6 +145,6 @@ sh "$profile/tests/llvm-generated-headers.sh" "$work/source/$source" \
     "$work/pkgsrc" "$work/generated-headers"
 echo 'PASS: recipe shape/static payload declarations; native staging/check-files pending'
 sh "$profile/tests/llvm-selection.sh" "$work/pkgsrc" "$work/selection"
-sh "$profile/tests/clang-config.sh" "$root/pkgsrc/lang/clang/files/native-gcc-config.sh" "$work/config"
+sh "$profile/tests/clang-runtime-config.sh" "$work/config"
 sh "$profile/tests/llvm-lit.sh" "$distfiles/$archive" "$work/lit"
 echo 'PASS: LLVM family source/checksum/negative/export contracts; native packages/LLVM23 driver/ELF pending'

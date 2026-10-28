@@ -188,20 +188,15 @@ pre-configure:
 	${TEST} "`${LLVM_CONFIG_PATH} --version`" = "${LLVM_VERSION}"
 
 .if ${OPSYS} == "NetBSD"
-DEPENDS+= gcc16>=16.2.0:../../lang/gcc16
-USE_TOOLS+= realpath
+# Native Clang links with compiler-rt, libunwind and libc++, as the SDK does.
+DEPENDS+= compiler-rt-${LLVM_VERSION}{,nb*}:../../lang/compiler-rt
 CMAKE_CONFIGURE_ARGS+= -DCLANG_CONFIG_FILE_SYSTEM_DIR=${PREFIX:Q}/etc/clang
 PLIST_SRC= ${PKGDIR}/PLIST ${WRKDIR}/native-config/PLIST
 INSTALLATION_DIRS+= etc/clang
 
 post-build:
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-	${SH} ${FILESDIR}/cross-gcc-config.sh ${CCPATH:Q} ${LLVM_CONFIG_PATH:Q} \
-	    ${CROSS_DESTDIR:Q} ${LOCALBASE}/gcc16 ${WRKDIR}/native-config
-.else
-	${SH} ${FILESDIR}/native-gcc-config.sh ${LOCALBASE}/gcc16/bin/gcc \
-	    ${WRKSRC}/${CMAKE_BUILD_DIR}/bin/clang ${LOCALBASE}/gcc16 ${WRKDIR}/native-config
-.endif
+	${SH} ${FILESDIR}/llvm-runtime-config.sh ${LLVM_CONFIG_PATH:Q} \
+	    ${WRKDIR}/native-config
 
 post-install:
 	${INSTALL_DATA} ${WRKDIR}/native-config/*.cfg ${DESTDIR}${PREFIX}/etc/clang/

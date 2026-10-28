@@ -192,8 +192,8 @@ source contract does not execute CMake/TableGen or replace package-file checks.
 
 llvm-selection.sh parses the real exported version block with BSD make:
 five allowed paths and thirteen rejected consumers. Missing BSD make prints SKIP.
-Full native recipe parsing remains separate. clang-config.sh uses fixture metadata
-and real available Clang driver traces. Dummy CRT files are never linked.
+Full native recipe parsing remains separate. clang-runtime-config.sh uses fixture
+metadata and, given a clang, real NetBSD driver traces. Nothing is linked.
 See [native evidence](native-evidence.md) for its original tool versions and scope.
 llvm-lit.sh stages actual upstream modules in a private Python315 environment,
 renames the source tree away and runs upstream shell-format PASS/XFAIL/FAIL without

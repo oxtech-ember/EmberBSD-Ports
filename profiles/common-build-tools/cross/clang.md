@@ -48,12 +48,12 @@ Do not bypass that runtime dependency to accept the final package.
 
 ## Native compiler defaults
 
-The [cross metadata helper](../../../pkgsrc/lang/clang/files/cross-gcc-config.sh)
-queries the real cross GCC16 and target LLVM metadata. It verifies target ABI,
-all selected CRT/runtime files and three distinct C++ include directories.
-Paths must resolve within the installed target GCC16 prefix. It removes the
-physical sysroot prefix from the generated native Clang configuration.
-Native builds retain the existing executable-based metadata helper.
+The [runtime config helper](../../../pkgsrc/lang/clang/files/llvm-runtime-config.sh)
+writes the native Clang configuration for the target triple reported by the
+target LLVM metadata, in cross and native builds alike. It selects
+compiler-rt, libunwind and libc++, the runtimes the SDK cross toolchain
+uses; libc++, libunwind and the CRT files come from the base system and the
+builtins from lang/compiler-rt. Native Clang needs no GCC.
 
 These checks validate inputs and installed paths. They do not substitute for
 running Clang on the target and checking actual C/C++ compilation, CRT/link
@@ -69,7 +69,7 @@ The following 23.1.2 input-test receipt remains historical.
 
 
 ```sh
-sh profiles/common-build-tools/tests/clang-cross-config.sh /absolute/new-check
+sh profiles/common-build-tools/tests/clang-runtime-config.sh /absolute/new-check /absolute/host/bin/clang
 BMAKE=/absolute/host/bin/bmake \
     sh profiles/common-build-tools/tests/clang-cross-inputs.sh \
     /absolute/export /absolute/private-mk.conf /absolute/new-input-check
