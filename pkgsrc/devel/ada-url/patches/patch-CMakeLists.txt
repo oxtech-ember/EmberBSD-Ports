@@ -1,0 +1,93 @@
+# $NetBSD$
+
+Use shared ada-idna and shared test dependencies.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -13,6 +13,12 @@
+ include(CTest)
+ include(cmake/ada-flags.cmake)
+ 
++find_path(ADA_IDNA_INCLUDE_DIR idna.h REQUIRED)
++find_library(ADA_IDNA_LIBRARY NAMES ada-idna REQUIRED)
++add_library(ada-idna::ada-idna UNKNOWN IMPORTED)
++set_target_properties(ada-idna::ada-idna PROPERTIES
++  IMPORTED_LOCATION "${ADA_IDNA_LIBRARY}"
++  INTERFACE_INCLUDE_DIRECTORIES "${ADA_IDNA_INCLUDE_DIR}")
+ add_subdirectory(src)
+ 
+ set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/scripts/cmake)
+@@ -26,45 +32,14 @@
+ # errors due to CPM, so this is here to support disabling all the testing
+ # and tooling for ada if one only wishes to use the ada library.
+ if(ADA_TESTING OR ADA_BENCHMARKS OR ADA_TOOLS OR ADA_USE_SIMDUTF)
+-  include(cmake/CPM.cmake)
+-  # CPM requires git as an implicit dependency
+-  # We use googletest in the tests
+   if(ADA_TESTING)
+-    CPMAddPackage(
+-      NAME GTest
+-      GITHUB_REPOSITORY google/googletest
+-      VERSION 1.15.2
+-      OPTIONS  "BUILD_GMOCK OFF" "INSTALL_GTEST OFF"
+-    )
++    find_package(GTest REQUIRED)
+   endif()
+-  # We use simdjson in both the benchmarks and tests
+   if(ADA_TESTING OR ADA_BENCHMARKS)
+-    CPMAddPackage("gh:simdjson/simdjson@3.10.1")
++    find_package(simdjson REQUIRED)
+   endif()
+-  # We use Google Benchmark, but it does not build under several 32-bit systems.
+-  if(ADA_BENCHMARKS AND (CMAKE_SIZEOF_VOID_P EQUAL 8))
+-    if(DEFINED CODSPEED_MODE)
+-      message(STATUS "Using CodSpeed-instrumented Google Benchmark")
+-      CPMAddPackage(
+-        NAME benchmark
+-        GITHUB_REPOSITORY CodSpeedHQ/codspeed-cpp
+-        VERSION 2.0.0
+-        SOURCE_SUBDIR google_benchmark
+-        OPTIONS "BENCHMARK_ENABLE_TESTING OFF"
+-                "BENCHMARK_ENABLE_INSTALL OFF"
+-                "BENCHMARK_ENABLE_WERROR OFF"
+-      )
+-    else()
+-      message(STATUS "Using standard Google Benchmark")
+-      CPMAddPackage(
+-        NAME benchmark
+-        GITHUB_REPOSITORY google/benchmark
+-        VERSION 1.9.0
+-        OPTIONS "BENCHMARK_ENABLE_TESTING OFF"
+-                "BENCHMARK_ENABLE_INSTALL OFF"
+-                "BENCHMARK_ENABLE_WERROR OFF"
+-      )
+-    endif()
++  if(ADA_BENCHMARKS)
++    find_package(benchmark REQUIRED)
+   endif()
+ 
+   if (ADA_TESTING AND NOT EMSCRIPTEN)
+@@ -91,14 +66,7 @@
+     add_subdirectory(tests/wasm)
+   endif(ADA_TESTING AND EMSCRIPTEN)
+ 
+-  if(ADA_USE_SIMDUTF)
+-    CPMAddPackage(
+-      NAME simdutf
+-      GITHUB_REPOSITORY simdutf/simdutf
+-      VERSION 7.3.2
+-      OPTIONS "SIMDUTF_TESTS OFF" "SIMDUTF_TOOLS OFF"
+-    )
+-  endif()
++
+ endif()
+ 
+ add_library(ada::ada ALIAS ada)
+@@ -141,6 +109,7 @@
+   DIRECTORY include/ada
+   DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+   COMPONENT ada_development
++  PATTERN "ada_idna.h" EXCLUDE
+ )
+ 
+ install(

@@ -1,0 +1,15 @@
+# $NetBSD$
+
+Use shared ada-idna and shared test dependencies.
+
+--- tests/CMakeLists.txt.orig
++++ tests/CMakeLists.txt
+@@ -51,7 +51,7 @@
+ 
+ macro(add_gtest_test exe cpp)
+   add_executable(${exe} ${cpp})
+-  target_link_libraries(${exe} PRIVATE simdjson GTest::gtest_main)
++  target_link_libraries(${exe} PRIVATE simdjson::simdjson GTest::gtest_main)
+   # Use PRE_TEST discovery mode for cross-compilation where the test binary
+   # cannot be executed at build time (e.g., LoongArch via QEMU).
+   # Use POST_BUILD (default) for native builds to avoid DLL/PATH issues on Windows.
