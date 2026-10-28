@@ -37,7 +37,7 @@ with mock.patch('emberbsd_sdk.process.capture',
 class Selection:
     def __init__(self, root):
         roles = ('cc', 'cxx', 'cpp', 'as', 'ld', 'ar', 'ranlib', 'nm', 'strip',
-                 'cmake', 'ninja', 'python', 'pkg-config', 'sh')
+                 'cmake', 'ninja', 'python', 'pkg-config', 'sh', 'install_name_tool')
         self.tools = {}
         root.mkdir()
         for role in roles:
