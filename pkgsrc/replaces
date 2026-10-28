@@ -360,3 +360,6 @@ sysutils/checkperms
 
 # rpcgen is the native tool for NetBSD cross builds on Darwin hosts.
 devel/rpcsvc-proto
+
+# RCS uses the shared current upstream release.
+devel/rcs

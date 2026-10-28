@@ -1,0 +1,16 @@
+# Origin: EmberBSD (AI-assisted).
+Preserve the OS rlog -c interface and optional output convention.
+
+--- man/rlog.1.orig
++++ man/rlog.1
+@@ -44,6 +44,10 @@
+ .ds n \nn
+ .if \n(.g .if r an-tag-sep .ds n \w'\f3\-V\fP\f2n\fP'u+\n[an-tag-sep]u
+ .TP \*n
++.B \-c
++Include CVS commit identifiers, when available.  By default these are
++shown unless RCS was built with explicit commit identifier selection.
++.TP
+ .B \-L
+ Ignore \*os that have no locks set.
+ This is convenient in combination with

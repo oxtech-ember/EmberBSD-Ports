@@ -1,0 +1,14 @@
+# Origin: EmberBSD (AI-assisted).
+Run the build-only helper with the selected make shell.
+
+--- src/Makefile.in.orig
++++ src/Makefile.in
+@@ -2131,7 +2131,7 @@
+ 	chmod +x $@
+ 
+ .c.help:
+-	$(top_srcdir)/build-aux/extract-help -o $@ $<
++	$(SHELL) $(top_srcdir)/build-aux/extract-help -o $@ $<
+ 	@ test -n $@ || { echo ERROR: $@ empty ; exit 1 ; }
+ 
+ clean-local:
