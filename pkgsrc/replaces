@@ -311,7 +311,6 @@ devel/gettext-lib
 sysutils/memtester
 print/poppler-cpp
 print/poppler-includes
-print/poppler-qt5
 print/poppler-qt6
 print/poppler-utils
 security/gpgmepp

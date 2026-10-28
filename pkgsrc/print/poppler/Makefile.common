@@ -3,7 +3,6 @@
 # used by print/poppler/Makefile
 # used by print/poppler-cpp/Makefile
 # used by print/poppler-includes/Makefile
-# used by print/poppler-qt5/Makefile
 # used by print/poppler-qt6/Makefile
 # used by print/poppler-utils/Makefile
 
