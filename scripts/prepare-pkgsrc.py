@@ -134,6 +134,12 @@ def destination_path(value):
             'pkgsrc requires a path without whitespace or shell metacharacters.')
     path = Path(value)
     require(not os.path.lexists(path), 'Destination already exists.')
+    # Later checks compare resolved export paths with this one. Resolve the
+    # existing parent so a symlinked parent, such as /var -> /private/var
+    # below the default Darwin TMPDIR, names the same tree.
+    path = path.parent.resolve() / path.name
+    require(re.fullmatch(r'[a-zA-Z0-9_./-]+', str(path)),
+            'pkgsrc requires a path without whitespace or shell metacharacters.')
     return path
 
 

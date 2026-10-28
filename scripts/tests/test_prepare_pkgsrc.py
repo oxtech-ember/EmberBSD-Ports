@@ -348,6 +348,20 @@ class ExportTests(unittest.TestCase):
         with self.assertRaisesRegex(exporter.ExportError, 'relative|path'):
             exporter.configuration(self.root)
 
+    def test_export_below_symlinked_temporary_parent(self):
+        # The default Darwin TMPDIR is below /var, a symlink to /private/var.
+        real = self.work / 'real-tmp'
+        real.mkdir()
+        link = self.work / 'tmp-link'
+        link.symlink_to(real)
+        (self.root / 'input').write_bytes(b'exported\n')
+        (self.root / 'pkgsrc/export.conf').write_text('file\tinput\tsub/input.txt\n')
+        with mock.patch.dict(os.environ, FAKE_ARCHIVE=str(self.upstream), FAKE_MATCH='1'):
+            exporter.export_pkgsrc(self.root, link / 'export', selection=self.selected,
+                                   runner=self.runner, scratch=link / 'scratch')
+        shutil.rmtree(real / 'scratch')
+        self.assertEqual((real / 'export/sub/input.txt').read_bytes(), b'exported\n')
+
     def test_export_configuration_rejects_parent_destination_before_writing(self):
         (self.root / 'input').write_bytes(b'outside export')
         (self.root / 'pkgsrc/export.conf').write_text('file\tinput\t../escaped.txt\n')
