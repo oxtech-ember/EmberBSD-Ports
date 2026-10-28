@@ -1,0 +1,176 @@
+$NetBSD$
+
+Generate the V8 namespace variant from the shared inspector source.
+Keep the upstream Git-based maintainer roll workflow unchanged.
+Origin: EmberBSD (AI-assisted), transformation rules from V8 roll.py.
+
+--- third_party/inspector_protocol/roll.py.orig
++++ third_party/inspector_protocol/roll.py
+@@ -9,6 +9,10 @@
+ import subprocess
+ import glob
+ import shutil
++import json
++from pathlib import Path
++import re
++import tempfile
+ 
+ 
+ FILES_TO_SYNC = [
+@@ -119,6 +123,123 @@
+   return RunCmd(['git', 'rev-parse', 'HEAD'])
+ 
+ 
++def BuildRoll(source, output, build_root, receipt, sdk_source):
++  """Generate the V8 namespace variant from the common prepared source."""
++  if not all(Path(p).is_absolute() for p in (source, output, build_root, receipt, sdk_source)):
++    raise ValueError('build-mode paths must be absolute')
++  source = Path(source).resolve(strict=True)
++  build_root = Path(build_root).resolve(strict=True)
++  output = Path(output)
++  receipt = Path(receipt).resolve(strict=True)
++  if not output.parent.resolve(strict=True).is_relative_to(build_root):
++    raise ValueError('inspector output must be within the selected build root')
++  if receipt != source / 'emberbsd-prepared-source.json':
++    raise ValueError('select the common inspector source receipt')
++  record = json.loads(receipt.read_text())
++  if (not isinstance(record, dict) or record.get('format') != 'emberbsd-prepared-source' or
++      record.get('version') != 1 or record.get('package') != 'devel/inspector-protocol' or
++      not isinstance(record.get('tree_sha256'), str) or
++      not re.fullmatch('[0-9a-f]{64}', record['tree_sha256']) or
++      not isinstance(record.get('identity'), dict)):
++    raise ValueError('invalid common inspector source receipt')
++  sdk = Path(sdk_source).resolve(strict=True)
++  sys.path.insert(0, str(sdk / 'src'))
++  from emberbsd_sdk import sourceprep
++  if getattr(sourceprep, 'PREPARED_TREE_API', None) != 1:
++    raise ValueError('selected SDK lacks prepared source API 1')
++  def verify_source():
++    sourceprep.validate_prepared_tree(source, package='devel/inspector-protocol', identity=record['identity'])
++  verify_source()
++  marker = 'ember-v8-inspector-ready.json'
++  backup = output.parent / ('.' + output.name + '.v8-inspector-previous')
++  def inventory(tree):
++    if tree.is_symlink() or not tree.is_dir():
++      raise ValueError('inspector output must be a real directory')
++    meta = tree / marker
++    if meta.is_symlink() or not meta.is_file():
++      raise ValueError('inspector output is not owned by V8 roll')
++    data = json.loads(meta.read_text())
++    if not isinstance(data, dict) or data.get('format') != 'v8-inspector-roll-1' or not isinstance(data.get('files'), list):
++      raise ValueError('invalid inspector output inventory')
++    paths = set()
++    for name in data['files']:
++      if not isinstance(name, str):
++        raise ValueError('invalid inspector output path')
++      rel = Path(name)
++      if rel.is_absolute() or not rel.parts or '..' in rel.parts or name == marker:
++        raise ValueError('invalid inspector output path')
++      paths.add(rel)
++    actual = set()
++    expected_dirs = {parent for path in paths for parent in path.parents if str(parent) != '.'}
++    for current, dirs, names in os.walk(tree, followlinks=False):
++      base = Path(current)
++      if any((base / name).is_symlink() for name in dirs + names):
++        raise ValueError('inspector output contains a symlink')
++      if any((base / name).relative_to(tree) not in expected_dirs for name in dirs):
++        raise ValueError('inspector output contains an unowned directory')
++      if any(not (base / name).is_file() for name in names):
++        raise ValueError('inspector output contains a special file')
++      actual.update((base / name).relative_to(tree) for name in names)
++    if actual != paths | {Path(marker)}:
++      raise ValueError('inspector output has missing or unowned files')
++    return paths
++  # Restore a previous owned tree after interruption between the two renames.
++  if os.path.lexists(backup):
++    inventory(backup)
++    if not os.path.lexists(output):
++      os.rename(backup, output)
++    else:
++      inventory(output)
++      shutil.rmtree(backup)
++  if os.path.lexists(output):
++    inventory(output)
++  files = sorted(set(Path(path).relative_to(source) for pattern in FILES_TO_SYNC
++                     for path in glob.glob(str(source / pattern)) if Path(path).is_file()))
++  if Path('code_generator.py') not in files:
++    raise ValueError('common inspector generator is missing')
++  hooks = ('export.h', 'json_platform_v8.cc', 'test_platform_v8.cc', 'test_platform.h')
++  v8_hooks = Path(__file__).resolve().parent / 'crdtp'
++  paths = set(files) | {Path('crdtp') / name for name in hooks}
++  if len(paths) != len(files) + len(hooks):
++    raise ValueError('common inspector file collides with a V8 hook')
++  stage = Path(tempfile.mkdtemp(prefix='.' + output.name + '.v8-inspector-stage-', dir=output.parent))
++  try:
++    for relative in files:
++      original = source / relative
++      if original.is_symlink():
++        raise ValueError('common inspector source must not be a symlink')
++      contents = original.read_text().replace('CRDTP_EXPORT ', '').replace(
++          'CRDTP_', 'V8_CRDTP_').replace('namespace crdtp', 'namespace v8_crdtp')
++      dest = stage / relative
++      dest.parent.mkdir(parents=True, exist_ok=True)
++      dest.write_text(contents)
++      shutil.copymode(original, dest)
++    for name in hooks:
++      original = v8_hooks / name
++      dest = stage / 'crdtp' / name
++      dest.parent.mkdir(parents=True, exist_ok=True)
++      shutil.copy2(original, dest)
++    verify_source()
++    data = {'format': 'v8-inspector-roll-1', 'inspector_tree_sha256': record['tree_sha256'],
++            'files': sorted(str(path) for path in paths)}
++    (stage / marker).write_text(json.dumps(data, sort_keys=True) + '\n')
++    inventory(stage)
++    if os.path.lexists(output):
++      old_paths = inventory(output)
++      if old_paths == paths and all((output / name).read_bytes() == (stage / name).read_bytes() and
++          ((output / name).stat().st_mode & 0o777) == ((stage / name).stat().st_mode & 0o777)
++          for name in paths | {Path(marker)}):
++        return
++      os.rename(output, backup)
++    os.rename(stage, output)
++    if os.path.lexists(backup):
++      inventory(backup)
++      shutil.rmtree(backup)
++  finally:
++    if stage.exists():
++      shutil.rmtree(stage)
++
++
+ def main(argv):
+   parser = argparse.ArgumentParser(description=(
+       "Rolls the inspector_protocol project (upstream) into V8's "
+@@ -133,8 +254,19 @@
+                       help=("Whether to carry out the modifications "
+                             "in the destination tree."))
+   parser.set_defaults(force=False)
++  parser.add_argument('--build-source')
++  parser.add_argument('--build-output')
++  parser.add_argument('--build-root')
++  parser.add_argument('--build-receipt')
++  parser.add_argument('--build-sdk-source')
+ 
+   args = parser.parse_args(argv)
++  build_args = (args.build_source, args.build_output, args.build_root, args.build_receipt, args.build_sdk_source)
++  if any(build_args):
++    if not all(build_args):
++      parser.error('all build-mode arguments are required')
++    BuildRoll(*build_args)
++    return
+   upstream = os.path.normpath(os.path.expanduser(args.ip_src_upstream))
+   downstream = os.path.normpath(os.path.expanduser(
+       args.v8_src_downstream))
+--- third_party/inspector_protocol/crdtp/json_platform_v8.cc.orig
++++ third_party/inspector_protocol/crdtp/json_platform_v8.cc
+@@ -7,8 +7,8 @@
+ #include "json_platform.h"
+ 
+ #include <cmath>
+-#include "../../../src/base/vector.h"
+-#include "../../../src/numbers/conversions.h"
++#include "src/base/vector.h"
++#include "src/numbers/conversions.h"
+ 
+ namespace v8_crdtp {
+ namespace json {

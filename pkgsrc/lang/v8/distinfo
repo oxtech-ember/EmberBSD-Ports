@@ -28,6 +28,7 @@ SHA1 (patch-node-deps_v8_src_strings_string-hasher.cc) = 5a0d41e3b7bd7a14177d5a0
 SHA1 (patch-node-deps_v8_tools_profiling_run-llprof.sh) = 5af0f3fb93c34a8e85468155c0c5f901e232c12a
 SHA1 (patch-v8_BUILD.gn) = c3a4995fadbe6bc4f3cc4e07702d0f5e40b6be11
 SHA1 (patch-v8_cache_source_identity) = e59a0c0fa788decd7a6ea6c50f58b8cd09ae84a4
+SHA1 (patch-v8_inspector_common_source) = d9f6862c409d928df82e9b3f40773ce1a4b28bcc
 SHA1 (patch-v8_node_electron_portability) = 7247b622e64418079b284cafe2f19d13ad6ae7e6
 SHA1 (patch-v8_perfetto_trace_phases) = d578e0dcc810257a007f83240b989be6e7dffa20
 SHA1 (patch-v8_serializer_embedder_slots) = b93d6d6853b827c2a406b97b956db351bd8b6fbe
