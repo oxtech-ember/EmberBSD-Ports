@@ -1,0 +1,244 @@
+$NetBSD$
+
+Key V8 code caches to common prepared source and the embedded blob.
+Origin: Electron feat_key_code_caches_to_the_patch_set_and_the_embedded_blob.patch,
+by Sam Attard, 2026-09-23; receipt support added by EmberBSD.
+
+--- BUILD.gn.orig
++++ BUILD.gn
+@@ -20,6 +20,7 @@
+ import("gni/cluster_build.gni")
+ import("gni/snapshot_toolchain.gni")
+ import("gni/v8.gni")
++import("gni/version_hash_salt.gni")
+ 
+ if (is_clang) {
+   import("//build/config/clang/clang.gni")
+@@ -1322,6 +1323,14 @@
+     enabled_external_v8_defines + enabled_external_cppgc_defines
+ disabled_external_defines =
+     disabled_external_v8_defines + disabled_external_cppgc_defines
++
++# The salt is written to a generated header that only src/utils/version.cc
++# includes, so that changing it recompiles a single file rather than all of
++# V8. write_file() only touches the file when its contents change.
++assert(v8_version_hash_salt_files == [] || v8_version_hash_salt != "",
++       "v8_version_hash_salt_files is set but produced an empty salt")
++write_file("$target_gen_dir/src/utils/version-hash-salt.inc",
++           [ "#define V8_VERSION_HASH_SALT \"$v8_version_hash_salt\"" ])
+ 
+ # Put defines here that are only used in our internal files and NEVER in
+ # external headers that embedders (such as chromium and node) might include.
+--- /dev/null
++++ gni/version_hash_salt.gni
+@@ -0,0 +1,38 @@
++# Copyright 2026 the V8 project authors. All rights reserved.
++# Use of this source code is governed by a BSD-style license that can be
++# found in the LICENSE file.
++
++declare_args() {
++  # An arbitrary string that is mixed into the hash that keys code caches and
++  # serialized wasm modules (see Version::Hash). Embedders that carry patches
++  # on top of a V8 release should derive this from their patch set so that
++  # serialized code produced by a differently-patched build of the same V8
++  # version is rejected instead of deserialized.
++  v8_version_hash_salt = ""
++
++  # Alternatively, a list of files (for example the embedder's patch series)
++  # whose contents are fingerprinted at gn gen time to produce the salt.
++  # Changing any of them re-runs gn gen.
++  v8_version_hash_salt_files = []
++
++  # Receipt for the selected common prepared source tree.
++  v8_prepared_source_receipt = ""
++}
++
++if (v8_prepared_source_receipt != "") {
++  assert(v8_version_hash_salt == "" && v8_version_hash_salt_files == [],
++         "Select one V8 source identity")
++  v8_version_hash_salt =
++      exec_script("../tools/gen-version-hash-salt.py",
++                  [ "--receipt", rebase_path(v8_prepared_source_receipt, root_build_dir) ],
++                  "trim string",
++                  [ v8_prepared_source_receipt ])
++} else if (v8_version_hash_salt_files != []) {
++  assert(v8_version_hash_salt == "",
++         "Set either v8_version_hash_salt or v8_version_hash_salt_files")
++  v8_version_hash_salt =
++      exec_script("../tools/gen-version-hash-salt.py",
++                  rebase_path(v8_version_hash_salt_files, root_build_dir),
++                  "trim string",
++                  v8_version_hash_salt_files)
++}
+--- src/utils/version.cc.orig
++++ src/utils/version.cc
+@@ -9,6 +9,9 @@
+ #include "src/base/hashing.h"
+ #include "src/base/strings.h"
+ #include "src/base/vector.h"
++// Generated at gn gen time from the v8_version_hash_salt GN arg; defines
++// V8_VERSION_HASH_SALT.
++#include "src/utils/version-hash-salt.inc"
+ 
+ // Define SONAME to have the build system put a specific SONAME into the
+ // shared library instead the generic SONAME generated from the V8 version
+@@ -31,6 +34,7 @@
+   base::Hasher hasher;
+   hasher.Add(major_).Add(minor_).Add(build_).Add(patch_);
+   hasher.AddRange(base::OneByteVector(embedder_));
++  hasher.AddRange(base::OneByteVector(V8_VERSION_HASH_SALT));
+   return static_cast<uint32_t>(hasher.hash());
+ }
+ 
+--- src/utils/version.h.orig
++++ src/utils/version.h
+@@ -27,6 +27,12 @@
+   static int GetPatch() { return patch_; }
+   static const char* GetEmbedder() { return embedder_; }
+   static bool IsCandidate() { return candidate_; }
++
++  // Keys serialized code (code caches, serialized wasm modules) to the V8
++  // build that produced it. This covers the version number and embedder
++  // string plus the embedder-provided v8_version_hash_salt GN arg, so that
++  // embedders which apply patches without changing the version number still
++  // invalidate serialized code whenever their patch set changes.
+   static uint32_t Hash();
+ 
+   // Calculate the V8 version string.
+--- src/wasm/wasm-serialization.cc.orig
++++ src/wasm/wasm-serialization.cc
+@@ -8,6 +8,7 @@
+ #include "src/codegen/assembler-inl.h"
+ #include "src/debug/debug.h"
+ #include "src/runtime/runtime.h"
++#include "src/snapshot/embedded/embedded-data.h"
+ #include "src/snapshot/snapshot-data.h"
+ #include "src/utils/ostreams.h"
+ #include "src/utils/version.h"
+@@ -128,9 +129,20 @@
+   const uint8_t* pos_;
+ };
+ 
++// Serialized code refers to builtins by id and embeds root-register-relative
++// offsets, so it is only valid for the exact embedded blob it was compiled
++// against. The version hash alone does not capture that for builds which
++// patch V8 without changing the version number.
++uint32_t EmbeddedBlobHash() {
++  EmbeddedData embedded_data = EmbeddedData::FromBlob();
++  return static_cast<uint32_t>(
++      base::hash_combine(embedded_data.EmbeddedBlobDataHash(),
++                         embedded_data.EmbeddedBlobCodeHash()));
++}
++
+ size_t MeasureHeader(const CompileTimeImports& compile_imports) {
+-  return 5 * kUInt32Size +  // magic number, version hash, cpu features, flags
+-                            // hash, enabled features
++  return 6 * kUInt32Size +  // magic number, version hash, embedded blob hash,
++                            // cpu features, flags hash, enabled features
+          sizeof(typename CompileTimeImportFlags::StorageType) +
+          sizeof(uint32_t) +  // length of constants_module.
+          compile_imports.constants_module().size();
+@@ -141,6 +153,7 @@
+   DCHECK_EQ(0, writer->bytes_written());
+   writer->Write(SerializedData::kMagicNumber);
+   writer->Write(Version::Hash());
++  writer->Write(EmbeddedBlobHash());
+   writer->Write(CpuFeatures::SupportedFeatures().ToIntegral());
+   writer->Write(FlagList::Hash());
+   writer->Write(enabled_features.ToIntegral());
+--- src/wasm/wasm-serialization.h.orig
++++ src/wasm/wasm-serialization.h
+@@ -30,10 +30,11 @@
+   // The data header consists of (see {WriteHeader}):
+   // [0] magic number (uint32_t)
+   // [1] version hash (uint32_t)
+-  // [2] supported CPU features (uint32_t)
+-  // [3] flag hash (uint32_t)
+-  // [4] enabled features (via flags and OT) (uint32_t)
+-  // [5] compile time imports (variable size)
++  // [2] embedded blob hash (uint32_t)
++  // [3] supported CPU features (uint32_t)
++  // [4] flag hash (uint32_t)
++  // [5] enabled features (via flags and OT) (uint32_t)
++  // [6] compile time imports (variable size)
+   static constexpr size_t kVersionHashOffset = kUInt32Size;
+ 
+  private:
+--- /dev/null
++++ tools/gen-version-hash-salt.py
+@@ -0,0 +1,75 @@
++# Copyright 2026 the V8 project authors. All rights reserved.
++# Use of this source code is governed by a BSD-style license that can be
++# found in the LICENSE file.
++"""Generate the V8 cache salt from files or a prepared source receipt."""
++
++import hashlib
++import json
++import os
++import re
++import sys
++import tempfile
++
++
++def main(args):
++  output = None
++  if args and args[0] == "--header":
++    if len(args) != 6 or args[2] != "--build-root" or args[4] != "--receipt":
++      raise ValueError("use --header OUTPUT --build-root ROOT --receipt RECEIPT")
++    output, build_root, args = args[1], os.path.realpath(args[3]), args[4:]
++    output = os.path.realpath(output)
++    if (not os.path.isdir(build_root) or output == build_root or
++        os.path.commonpath([build_root, output]) != build_root):
++      raise ValueError("header must be inside the build root")
++  if args and args[0] == "--receipt":
++    if len(args) != 2:
++      raise ValueError("use --receipt RECEIPT")
++    with open(args[1], encoding="utf-8") as source:
++      receipt = json.load(source)
++    if (not isinstance(receipt, dict) or
++        receipt.get("format") != "emberbsd-prepared-source" or
++        type(receipt.get("version")) is not int or receipt["version"] != 1 or
++        receipt.get("package") != "lang/v8" or
++        not isinstance(receipt.get("tree_sha256"), str) or
++        not re.fullmatch("[0-9a-f]{64}", receipt["tree_sha256"])):
++      raise ValueError("invalid V8 prepared source receipt")
++    salt = receipt["tree_sha256"][:16]
++  else:
++    digest = hashlib.sha256()
++    for path in args:
++      digest.update(os.path.basename(path).encode("utf-8") + b"\n")
++      with open(path, "rb") as source:
++        digest.update(source.read().replace(b"\r\n", b"\n"))
++    salt = digest.hexdigest()[:16]
++  if output is None:
++    print(salt)
++  else:
++    contents = '#define V8_VERSION_HASH_SALT "' + salt + '"\n'
++    directory = os.path.dirname(os.path.abspath(output))
++    os.makedirs(directory, exist_ok=True)
++    if os.path.commonpath([build_root, os.path.realpath(output)]) != build_root:
++      raise ValueError("header escaped the build root")
++    try:
++      with open(output, encoding="utf-8") as existing:
++        if existing.read() == contents:
++          return 0
++    except FileNotFoundError:
++      pass
++    fd, temporary = tempfile.mkstemp(prefix=".v8-salt-", dir=directory)
++    try:
++      os.fchmod(fd, 0o644)
++      with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as dest:
++        dest.write(contents)
++      os.replace(temporary, output)
++    finally:
++      if os.path.exists(temporary):
++        os.unlink(temporary)
++  return 0
++
++
++if __name__ == "__main__":
++  try:
++    sys.exit(main(sys.argv[1:]))
++  except (OSError, ValueError, json.JSONDecodeError) as error:
++    print("V8 cache salt: " + str(error), file=sys.stderr)
++    sys.exit(2)

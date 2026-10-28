@@ -1,0 +1,29 @@
+$NetBSD$
+
+Correct the visitor assertion for all JSObjects with embedder fields.
+Origin: Electron fix_allow_embedder_slots_of_non-api_objects_in_snapshot.patch;
+author electron-claude[bot], 2026-09-15.
+
+diff --git a/src/snapshot/serializer.cc b/src/snapshot/serializer.cc
+index 337fc8b243edbed8b6c687a206e87666135fe00a..a5618906659d665b9db9176cd4bcd77bd7a5e835 100644
+--- src/snapshot/serializer.cc
++++ src/snapshot/serializer.cc
+@@ -19,6 +19,7 @@
+ #include "src/objects/instance-type-checker.h"
+ #include "src/objects/instance-type.h"
+ #include "src/objects/js-array-buffer-inl.h"
++#include "src/objects/js-objects-inl.h"
+ #include "src/objects/map.h"
+ #include "src/objects/objects-body-descriptors-inl.h"
+ #include "src/objects/slots-inl.h"
+@@ -1120,8 +1121,8 @@ void Serializer::ObjectSerializer::VisitCppHeapPointer(
+   // We serialize the slot as initialized-but-unused slot.  The actual API
+   // wrapper serialization is implemented in
+   // `ContextSerializer::SerializeApiWrapperFields()`.
+-  DCHECK(IsJSApiWrapperObjectMap(object_->map()) || IsNativeContext(*object_) ||
+-         IsCppGCManagedBase(*object_) ||
++  DCHECK(JSObject::MayHaveEmbedderFields(object_->map()) ||
++         IsNativeContext(*object_) || IsCppGCManagedBase(*object_) ||
+          IsEmbedderDataArray(*object_));
+   static_assert(kCppHeapPointerSlotSize % kTaggedSize == 0);
+   sink_->Put(

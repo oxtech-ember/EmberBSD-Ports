@@ -1,0 +1,2 @@
+Shared V8 source, headers and build tools for consumers that build their own
+host or target runtime artifacts. This package does not provide a V8 binary.

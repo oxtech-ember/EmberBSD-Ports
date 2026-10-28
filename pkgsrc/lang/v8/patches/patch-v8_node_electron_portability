@@ -1,0 +1,87 @@
+$NetBSD$
+
+Combine pkgsrc Node globals include and Electron GCC/NetBSD portability fixes.
+Origin: NetBSD pkgsrc Node and EmberBSD Ports Electron overlay.
+
+--- src/bigint/mul-karatsuba.cc.orig
++++ src/bigint/mul-karatsuba.cc
+@@ -48,7 +48,7 @@
+   // Round up, unless we're only just above the threshold. This smoothes
+   // the steps by which time goes up as input size increases.
+   uint32_t additive = ((1 << shift) - 1);
+-  if (shift >= 2 && (len & additive) < (1 << (shift - 2))) {
++  if (shift >= 2 && (len & additive) < (1u << (shift - 2))) {
+     return len;
+   }
+   return ((len + additive) >> shift) << shift;
+--- src/common/globals.h.orig
++++ src/common/globals.h
+@@ -7,6 +7,7 @@
+ 
+ #include <stddef.h>
+ #include <stdint.h>
++#include <stdarg.h>
+ 
+ #include <limits>
+ #include <ostream>
+@@ -596,7 +597,8 @@
+ // virtual memory ranges (PR_SET_VMA_ANON_NAME on Linux).
+ // TODO(saelo): It might be nicer to have one name per table type, e.g.
+ // v8-external-pointer-table, v8-trusted-pointer-table, etc.
+-static const char* kPointerTableAddressSpaceName = "v8-pointer-table";
++[[maybe_unused]] static const char* kPointerTableAddressSpaceName =
++    "v8-pointer-table";
+ 
+ //
+ // JavaScript Dispatch Table
+--- src/execution/simulator.h.orig
++++ src/execution/simulator.h
+@@ -179,7 +179,10 @@
+   }
+ #else
+ 
+-  __attribute__((nodebug)) DISABLE_CFI_ICALL Return Call(Args... args) {
++#if __has_attribute(nodebug)
++  __attribute__((nodebug))
++#endif
++  DISABLE_CFI_ICALL Return Call(Args... args) {
+     // When running without a simulator we call the entry directly.
+ // Starboard is a platform abstraction interface that also include Windows
+ // platforms like UWP.
+@@ -223,8 +226,10 @@
+   }
+ #endif  // USE_SIMULATOR
+ 
+-  __attribute__((nodebug)) DISABLE_CFI_ICALL Return
+-  CallSandboxed(Args... args) {
++#if __has_attribute(nodebug)
++  __attribute__((nodebug))
++#endif
++  DISABLE_CFI_ICALL Return CallSandboxed(Args... args) {
+     EnterSandboxScope sandboxed;
+     return Call(args...);
+   }
+--- src/heap/heap.h.orig
++++ src/heap/heap.h
+@@ -277,7 +277,7 @@
+ 
+ class Heap final {
+  public:
+-  using HeapGrowingMode = HeapGrowingMode;
++  using HeapGrowingMode = ::v8::internal::HeapGrowingMode;
+ 
+   enum HeapState {
+     NOT_IN_GC,
+--- src/sandbox/tagged-payload.h.orig
++++ src/sandbox/tagged-payload.h
+@@ -31,6 +31,10 @@
+   static constexpr TagType kFreeEntryTag = PayloadTaggingScheme::kFreeEntryTag;
+   static constexpr TagType kEvacuationEntryTag =
+       PayloadTaggingScheme::kEvacuationEntryTag;
++
++  // GCC's generic atomic load builtin needs a default-constructible result
++  // object. The builtin writes the loaded object representation before use.
++  TaggedPayload() = default;
+ 
+   TaggedPayload(Address pointer, TagType tag)
+       : encoded_word_(Tag(pointer, tag)) {}
