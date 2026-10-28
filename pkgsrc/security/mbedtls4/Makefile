@@ -27,8 +27,6 @@ PLIST.notdarwin= yes
 
 USE_TOOLS+=	pkg-config
 
-GCC_REQD+=	4.4
-
 USE_CC_FEATURES=	c99
 
 CMAKE_CONFIGURE_ARGS+=	-Wno-dev
