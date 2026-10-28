@@ -24,7 +24,6 @@ TOOL_DEPENDS+=	${PYPKGPREFIX}-gi-docgen-[0-9]*:../../devel/py-gi-docgen
 
 USE_CXX_FEATURES=	c++23
 USE_LANGUAGES=		c c++
-GCC_REQD+=		16.2
 # WebKitGTK supports Ninja only. Retain all upstream feature checks.
 CMAKE_GENERATORS_INCOMPATIBLE=	make
 CMAKE_REQD+=		3.20
