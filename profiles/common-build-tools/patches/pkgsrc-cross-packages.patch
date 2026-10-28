@@ -513,14 +513,16 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  .  endif
  .endif
  #
-@@ -978,6 +1031,11 @@
+@@ -978,6 +1031,13 @@
  TOOLS_DEPENDS.${_t_}?=		perl>=${PERL5_REQD}:../../lang/perl5
  TOOLS_CREATE+=			${_t_}
  TOOLS_PATH.${_t_}=		${TOOLBASE}/bin/${_t_}
 +.    if ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} != ${NATIVE_OPSYS} && \
 +        ${_t_} == "perl" && !empty(USE_TOOLS:Mperl\:run) && \
 +        exists(${CROSS_DESTDIR}/usr/pkg/bin/perl)
-+TOOLS_PATH.${_t_}=	${PREFIX}/bin/perl
++# Build steps run the host Perl through the tools wrapper. Installed
++# scripts (REPLACE_PERL) name the staged target Perl.
++PERL5=	${PREFIX}/bin/perl
 +.    endif
  .    endif
  .  endif

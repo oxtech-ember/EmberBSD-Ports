@@ -224,3 +224,16 @@ XS-consumer assertions on CM5. Encode UTF-8 and Digest::SHA checks also passed.
 The board kept the same boot time. Its installed interpreter SHA256 is
 `e98145fa7c9e78ba4782f52c46302e3a07bbeaa7ecf8963694d8201efaddeb71`. The complete upstream Perl suite,
 Valgrind and the complete QtTools/Plasma consumers remain unaccepted.
+
+## Perl in other cross recipes
+
+When a `perl:run` cross recipe finds the target Perl staged in the sysroot, the
+tools wrapper, `TOOLS_PERL5` and configure `PERL` still run the build host's
+Perl. Only `PERL5`, and so `REPLACE_PERL`, names the target `/usr/pkg/bin/perl`
+for installed scripts. The [evaluation test](../tests/cross-perl-tools.sh)
+checks both sides on `devel/automake`:
+
+```sh
+BMAKE=/absolute/bmake-command sh profiles/common-build-tools/tests/cross-perl-tools.sh \
+    /absolute/pkgsrc /absolute/cross-mk.conf /absolute/new-test-dir
+```
