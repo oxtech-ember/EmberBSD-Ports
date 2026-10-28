@@ -1,0 +1,2 @@
+Common Undici HTTP client, including a Node shared-builtin loader and generated
+WebAssembly wrappers for the shared llhttp WASI parser.

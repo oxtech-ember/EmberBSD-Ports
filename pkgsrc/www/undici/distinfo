@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (undici-8.12.3.tar.gz) = 1dd2f08f69806450ebba99451145f15a16aa54a774a2be848864422f660da3c1
+SHA512 (undici-8.12.3.tar.gz) = 2576c43dded5d1d1602a29b4000d1fb809450be71f647c05fb5bd6fac7bf1006a4a98daadf1d7e38dbbcf08eca63ccf99d3eec47dc746d3ebd803065113f6dab
+Size (undici-8.12.3.tar.gz) = 1386614 bytes
