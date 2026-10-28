@@ -39,6 +39,7 @@ graphics/digikam graphics/opencv-contrib
 graphics/osg lang/lua55
 lang/hs-lua lang/lua55
 misc/kstars graphics/opencv
+multimedia/frei0r graphics/opencv-contrib
 multimedia/vlc lang/lua55
 net/grilo-plugins lang/lua55
 net/ntopng lang/lua55
