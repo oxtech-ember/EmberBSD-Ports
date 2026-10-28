@@ -5,6 +5,7 @@ devel/patch
 
 misc/pciids
 archivers/libmspack
+archivers/7-zip
 textproc/expat
 devel/libidn2
 textproc/hyphen
