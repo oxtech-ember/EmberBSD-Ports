@@ -16,8 +16,9 @@ function replace(text, old, new, pos, out) {
     line = replace(line, ENVIRON["ICU_BUILD_INSTALL_DATA"], "/usr/bin/install -c -m 644");
     line = replace(line, ENVIRON["ICU_BUILD_INSTALL_PROGRAM"], "/usr/bin/install -c -s -m 755");
     line = replace(line, ENVIRON["ICU_BUILD_INSTALL_SCRIPT"], "/usr/bin/install -c -m 755");
-    line = replace(line, ENVIRON["ICU_CROSS_TRIPLET"] "-g++", ENVIRON["ICU_TARGET_GCC"] "/bin/g++");
-    line = replace(line, ENVIRON["ICU_CROSS_TRIPLET"] "-gcc", ENVIRON["ICU_TARGET_GCC"] "/bin/gcc");
+    # The C compiler name can prefix the C++ one (clang, clang++).
+    line = replace(line, ENVIRON["ICU_CROSS_CXX"], ENVIRON["ICU_TARGET_CXX"]);
+    line = replace(line, ENVIRON["ICU_CROSS_CC"], ENVIRON["ICU_TARGET_CC"]);
     line = replace(line, ENVIRON["ICU_CROSS_TRIPLET"] "-ar", "/usr/bin/ar");
     line = replace(line, ENVIRON["ICU_CROSS_TRIPLET"] "-ranlib", "/usr/bin/ranlib");
     line = replace(line, ENVIRON["ICU_CROSS_SYSROOT"], "");

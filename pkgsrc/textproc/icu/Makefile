@@ -48,15 +48,15 @@ COMMENT= ICU target SDK for the development-host sysroot
 DISTINFO_FILE= ${EMBERBSD_ICU_PKGDIR}/distinfo
 PATCHDIR= ${EMBERBSD_ICU_PKGDIR}/patches
 FILESDIR= ${EMBERBSD_ICU_PKGDIR}/files
-DEPENDS+= icu-${PKGVERSION_NOREV}nb3:../../textproc/icu
-CONFLICTS+= icu<${PKGVERSION_NOREV}nb3
+DEPENDS+= icu-${PKGVERSION_NOREV}nb4:../../textproc/icu
+CONFLICTS+= icu<${PKGVERSION_NOREV}nb4
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes" || ${OPSYS} != "NetBSD"
 PKG_FAIL_REASON+= "The ICU SDK requires a NetBSD cross build; native builds keep the full package"
 .endif
 .endif
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
-PKGREVISION= 3
+PKGREVISION= 4
 .if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
 PKG_FAIL_REASON+= "The ICU split requires a common AArch64 or amd64 target"
 .endif
@@ -227,7 +227,7 @@ SUBST_SED.icu-config+=	-e '/l$${ICUPREFIX}/ s/$${ICULIBSUFFIX_VERSION}//g'
 .endif
 
 # Keep build-host commands out of the installed development interface.
-# The common cross profile supplies the matching GCC16 target package.
+# Point it at the native compiler of the same family (lang/clang by default).
 .if ${USE_CROSS_COMPILE:tl} == "yes" && (${OPSYS} == "NetBSD" || ${EMBERBSD_COMMON_TOOLS:Uno} == "yes")
 post-install: ember-icu-cross-metadata
 .PHONY: ember-icu-cross-metadata
@@ -243,7 +243,9 @@ ember-icu-cross-metadata:
 		    ICU_BUILD_INSTALL_SCRIPT=${INSTALL_SCRIPT:Q} \
 		    ICU_CROSS_TRIPLET=${MACHINE_GNU_PLATFORM:Q} \
 		    ICU_CROSS_SYSROOT=${CROSS_DESTDIR:Q} \
-		    ICU_TARGET_GCC=${PREFIX:Q}/gcc16 \
+		    ICU_CROSS_CC=${CC:T:Q} ICU_CROSS_CXX=${CXX:T:Q} \
+		    ICU_TARGET_CC=${PREFIX:Q}/bin/${CC:T:S/^${MACHINE_GNU_PLATFORM}-//:Q} \
+		    ICU_TARGET_CXX=${PREFIX:Q}/bin/${CXX:T:S/^${MACHINE_GNU_PLATFORM}-//:Q} \
 		    ${AWK} -f ${FILESDIR}/cross-metadata.awk "$$file" > "$$file.ember"; \
 		${MV} -f "$$file.ember" "$$file"; \
 	done

@@ -24,12 +24,12 @@ grep -Fq "$buildshell" "$work/dest/usr/pkg/bin/icu-config"
 file="$work/dest/usr/pkg/bin/icu-config"
 [ "$(head -n 1 "$file")" = '#!/bin/sh' ]
 [ "$("$buildshell" "$file" --noverify --version | sed 's/[[:space:]]*$//')" = "$version" ]
-[ "$("$buildshell" "$file" --noverify --cc | sed 's/[[:space:]]*$//')" = /usr/pkg/gcc16/bin/gcc ]
-[ "$("$buildshell" "$file" --noverify --cxx | sed 's/[[:space:]]*$//')" = '/usr/pkg/gcc16/bin/g++ -std=gnu++11' ]
+[ "$("$buildshell" "$file" --noverify --cc | sed 's/[[:space:]]*$//')" = /usr/pkg/bin/clang ]
+[ "$("$buildshell" "$file" --noverify --cxx | sed 's/[[:space:]]*$//')" = /usr/pkg/bin/clang++ ]
 for file in "$work/dest/usr/pkg/bin/icu-config" "$work/dest/usr/pkg/lib/icu/$version/Makefile.inc" "$work/dest/usr/pkg/lib/icu/$version/pkgdata.inc"; do
     if { [ "$buildshell" != /bin/sh ] && grep -F "$buildshell" "$file"; } || \
         grep -F "$sysroot" "$file" || \
-        grep -E 'aarch64--netbsd-(gcc|g\+\+|ar|ranlib)|-o [^ ]+ -g ' "$file"; then
+        grep -E 'aarch64--netbsd-(clang|gcc|g\+\+|ar|ranlib)|gcc16|-o [^ ]+ -g ' "$file"; then
         echo 'Installed ICU metadata retains a build-host command' >&2; exit 1
     fi
     shasum -a 256 "$file"
