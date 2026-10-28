@@ -1,0 +1,44 @@
+# $NetBSD: Makefile,v 1.91 2026/08/24 00:18:40 khorben Exp $
+
+DISTNAME=	libuv-1.53.0
+PKGREVISION=	1
+CATEGORIES=	devel
+MASTER_SITES=	${MASTER_SITE_GITHUB:=libuv/}
+GITHUB_TAG=	v${PKGVERSION_NOREV}
+
+MAINTAINER=	agc@pkgsrc.org
+HOMEPAGE=	https://github.com/libuv/libuv
+COMMENT=	Cross-platform asynchronous I/O
+LICENSE=	mit AND 2-clause-bsd AND isc AND modified-bsd
+
+USE_CC_FEATURES=	c11
+FORCE_C_STD=		c11 # stdatomic.h
+
+USE_LANGUAGES=	c
+USE_LIBTOOL=	yes
+USE_TOOLS+=	autoconf automake pkg-config
+USE_FEATURES+=	strnlen
+GNU_CONFIGURE=	yes
+# 3 test failures as of 1.31.0
+# https://github.com/libuv/libuv/issues/2437
+# connect_unspecified, tcp_open, udp_open
+TEST_ENV=	UV_RUN_AS_ROOT=yes
+TEST_TARGET=	check
+
+INSTALLATION_DIRS+=	include/uv
+
+.include "../../mk/bsd.prefs.mk"
+
+.if ${MACHINE_PLATFORM:MSunOS-5.[0-9]-*} || \
+    ${MACHINE_PLATFORM:MSunOS-5.10-*}
+CFLAGS+=	-DSUNOS_NO_IFADDRS
+.endif
+
+pre-configure:
+	${RUN} cd ${WRKSRC} && ${SH} ./autogen.sh
+
+post-install:
+	${INSTALL_DATA} ${WRKSRC}/include/uv/* ${DESTDIR}${PREFIX}/include/uv/
+
+.include "../../mk/pthread.buildlink3.mk"
+.include "../../mk/bsd.pkg.mk"

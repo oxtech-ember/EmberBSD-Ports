@@ -274,31 +274,6 @@ py-Willow takes cv2 from opencv-contrib, the one cv2, which has CascadeClassifie
 + object = "0.40.0"
 + pdb = "0.8.0"
 + ratatui = { version = "0.30.2", features = ["serde"] }
---- a/devel/libuv/Makefile
-+++ b/devel/libuv/Makefile
-@@ -1,7 +1,6 @@
- # $NetBSD: Makefile,v 1.91 2026/08/24 00:18:40 khorben Exp $
- 
--DISTNAME=	libuv-1.52.1
--PKGREVISION=	1
-+DISTNAME=	libuv-1.53.0
- CATEGORIES=	devel
- MASTER_SITES=	${MASTER_SITE_GITHUB:=libuv/}
- GITHUB_TAG=	v${PKGVERSION_NOREV}
---- a/devel/libuv/distinfo
-+++ b/devel/libuv/distinfo
-@@ -1,8 +1,8 @@
- $NetBSD: distinfo,v 1.88 2026/03/07 11:31:59 adam Exp $
- 
--BLAKE2s (libuv-1.52.1.tar.gz) = 27306c8780b6a080ba94afdf7210228ca6a4ab508a6075db66b395db4364f6d8
--SHA512 (libuv-1.52.1.tar.gz) = c23bb26f8fdcf678dbf14bcee9855830927a40b8ae64dfa287ef1e910f37ad30cb868ecdeaad6f7b2bf3f3fccca1a7282a31b22c547206b672f923d0651f5b0c
--Size (libuv-1.52.1.tar.gz) = 1361196 bytes
-+BLAKE2s (libuv-1.53.0.tar.gz) = 1a173a316ef190946401984bb698011ec5ae9793ea07a41553d7ebc7596a2490
-+SHA512 (libuv-1.53.0.tar.gz) = 8f26c14b016368a8e382539026e1fa3cf187a7cc8bd8b50498a9b26003e9da3e48a89f4d2032694e5f152cd4177386e259b85e8280cf814153ab58950d205014
-+Size (libuv-1.53.0.tar.gz) = 1400202 bytes
- SHA1 (patch-autogen.sh) = 99790076b91d579eb55506749e4803ab7cdfaa4c
- SHA1 (patch-src_unix_core.c) = f6dbe539369c01e9cb870be8063d8b199393883d
- SHA1 (patch-src_unix_fs.c) = 510693bb63cac7bf25e04c64e2d231de80b149d1
 --- a/devel/lua-BitOp/Makefile
 +++ b/devel/lua-BitOp/Makefile
 @@ -2,7 +2,7 @@
