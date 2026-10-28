@@ -1,3 +1,3 @@
 # archive	sha256	upstream source URL
-lz4-1.10.0.tar.gz	537512904744b35e232912055ccf8ec66d768639ff3abe5788d90d792ec5f48b	https://codeload.github.com/lz4/lz4/tar.gz/ebb370ca83af193212df4dcbadcc5d87bc0de2f0
+lz4-1.10.0.tar.gz	537512904744b35e232912055ccf8ec66d768639ff3abe5788d90d792ec5f48b	https://github.com/lz4/lz4/releases/download/v1.10.0/lz4-1.10.0.tar.gz
 flann-1.9.2.tar.gz	f8d004c21d3a565154dc742ede0e31d50cecc06e49f60b5431ca947fbf5de037	https://codeload.github.com/flann-lib/flann/tar.gz/c50f296b0b27e14667d272b37acc63f949b305c4
