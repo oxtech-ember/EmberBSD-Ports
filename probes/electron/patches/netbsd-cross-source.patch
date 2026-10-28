@@ -217,41 +217,63 @@ diff --git a/base/feature_list.cc b/base/feature_list.cc
 diff --git a/base/i18n/internal/immutable_string.h b/base/i18n/internal/immutable_string.h
 --- a/base/i18n/internal/immutable_string.h
 +++ b/base/i18n/internal/immutable_string.h
-@@ -78,7 +78,9 @@
+@@ -18,6 +18,16 @@
+ #include "base/i18n/base_i18n_export.h"
+ #include "base/numerics/safe_conversions.h"
+ 
++// EmberBSD cross (E12): GCC with the bundled libc++ rejects the defaulted
++// constexpr move constructors below, while Clang needs them constexpr for
++// consteval base::MakeFixedFlatSet<LanguageTag> tables. Keep upstream
++// constexpr for Clang and a plain inline default for GCC.
++#if defined(__clang__)
++#define EMBERBSD_I18N_MOVE_CONSTEXPR constexpr
++#else
++#define EMBERBSD_I18N_MOVE_CONSTEXPR inline
++#endif
++
+ namespace base::i18n_internal {
+ 
+ constexpr size_t TotalSize(base::span<const std::string_view> parts) {
+@@ -78,7 +88,7 @@
      explicit HeapString(base::span<const std::string_view> parts);
      HeapString(const HeapString& other);
      HeapString& operator=(const HeapString& other);
 -    constexpr HeapString(HeapString&& other) noexcept;
-+    // EmberBSD cross (E12): GCC rejects the defaulted constexpr move
-+    // ctor; see the matching out-of-line default below.
-+    HeapString(HeapString&& other) noexcept;
++    EMBERBSD_I18N_MOVE_CONSTEXPR HeapString(HeapString&& other) noexcept;
      HeapString& operator=(HeapString&&);
      inline constexpr ~HeapString() = default;
  
-@@ -115,7 +117,7 @@
+@@ -115,7 +125,7 @@
  
    constexpr ImmutableString(const ImmutableString& other);
    constexpr ImmutableString& operator=(const ImmutableString& other);
 -  constexpr ImmutableString(ImmutableString&& other) noexcept;
-+  ImmutableString(ImmutableString&& other) noexcept;
++  EMBERBSD_I18N_MOVE_CONSTEXPR ImmutableString(ImmutableString&& other) noexcept;
    constexpr ImmutableString& operator=(ImmutableString&&) noexcept;
  
    // Returns the string as a std::string_view.
-@@ -131,9 +133,12 @@
+@@ -131,10 +141,10 @@
    StorageVariantType storage_;
  };
  
 -constexpr ImmutableString::HeapString::HeapString(HeapString&& other) noexcept =
-+// EmberBSD cross profile (E12): GCC rejects these defaulted constexpr move
-+// constructors (the implicit definitions are not constexpr under GCC with
-+// the bundled libc++); plain defaults keep the same semantics.
-+inline ImmutableString::HeapString::HeapString(HeapString&& other) noexcept =
-     default;
+-    default;
 -constexpr ImmutableString::ImmutableString(ImmutableString&& other) noexcept =
-+inline ImmutableString::ImmutableString(ImmutableString&& other) noexcept =
-     default;
+-    default;
++EMBERBSD_I18N_MOVE_CONSTEXPR ImmutableString::HeapString::HeapString(
++    HeapString&& other) noexcept = default;
++EMBERBSD_I18N_MOVE_CONSTEXPR ImmutableString::ImmutableString(
++    ImmutableString&& other) noexcept = default;
  inline constexpr ImmutableString& ImmutableString::operator=(
      ImmutableString&&) noexcept = default;
+ constexpr ImmutableString::ImmutableString(const ImmutableString& other) =
+@@ -144,4 +154,6 @@
+ 
+ }  // namespace base::i18n_internal
+ 
++#undef EMBERBSD_I18N_MOVE_CONSTEXPR
++
+ #endif  // BASE_I18N_INTERNAL_IMMUTABLE_STRING_H_
 diff --git a/base/i18n/language_tag.h b/base/i18n/language_tag.h
 --- a/base/i18n/language_tag.h
 +++ b/base/i18n/language_tag.h
