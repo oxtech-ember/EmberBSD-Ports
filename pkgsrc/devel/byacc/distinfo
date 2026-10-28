@@ -5,3 +5,4 @@ SHA512 (byacc-20260126.tgz) = 8e9eb32e3477a82d7e9d3762dadfd74edded125613dd132b50
 Size (byacc-20260126.tgz) = 914130 bytes
 SHA1 (patch-aclocal.m4) = 821d73e69c8e42dbe893d42392b95316cb0e4886
 SHA1 (patch-configure) = b7f93e0180157c6824a30a9efac2cfebb18e22c7
+SHA1 (patch-main.c) = bcbdd52ff92d7c563e377159014b8307f21a0887
