@@ -277,24 +277,26 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Test.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Widgets.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Xml.pc
 
-.include "../../archivers/brotli/buildlink3.mk"
+# The host-tools option keeps only the dependencies of the Core host generators.
 .include "../../archivers/zstd/buildlink3.mk"
 .include "../../converters/libiconv/buildlink3.mk"
-.include "../../databases/sqlite3/buildlink3.mk"
 .include "../../devel/gettext-lib/buildlink3.mk"
-.include "../../devel/glib2/buildlink3.mk"
 .include "../../devel/pcre2/buildlink3.mk"
+.include "../../devel/zlib/buildlink3.mk"
+.include "../../lang/python/application.mk"
+.include "../../math/double-conversion/buildlink3.mk"
+.include "../../security/libb2/buildlink3.mk"
+.if empty(PKG_OPTIONS:Mhost-tools)
+.include "../../archivers/brotli/buildlink3.mk"
+.include "../../databases/sqlite3/buildlink3.mk"
+.include "../../devel/glib2/buildlink3.mk"
 .if !empty(PLATFORM_SUPPORTS_WAYLAND:Myes)
 PLIST.wayland=	yes
 .include "../../devel/wayland/buildlink3.mk"
 .endif
-.include "../../devel/zlib/buildlink3.mk"
 .include "../../fonts/harfbuzz/buildlink3.mk"
 .include "../../graphics/freetype2/buildlink3.mk"
 .include "../../graphics/png/buildlink3.mk"
-.include "../../lang/python/application.mk"
-.include "../../math/double-conversion/buildlink3.mk"
-.include "../../security/libb2/buildlink3.mk"
 .include "../../security/openssl/buildlink3.mk"
 .include "../../textproc/icu/buildlink3.mk"
 .include "../../textproc/md4c/buildlink3.mk"
@@ -343,6 +345,7 @@ BUILDLINK_API_DEPENDS.libxcb+=	libxcb>=1.11
 .endif
 .include "../../mk/jpeg.buildlink3.mk"
 .include "../../mk/krb5.buildlink3.mk"
+.endif
 .include "../../mk/pthread.buildlink3.mk"
 .include "../../mk/atomic64.mk"
 .include "../../mk/bsd.pkg.mk"

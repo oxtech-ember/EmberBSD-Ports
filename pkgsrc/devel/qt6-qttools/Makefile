@@ -25,7 +25,7 @@ CMAKE_CONFIGURE_ARGS+= -DQLITEHTML_USE_SYSTEM_LITEHTML=ON
 CMAKE_CONFIGURE_ARGS+= -DFEATURE_clang=OFF -DFEATURE_qdoc=OFF
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_DISABLE_FIND_PACKAGE_WrapLibClang=ON
 
-.include "../../mk/bsd.prefs.mk"
+.include "options.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && defined(EMBERBSD_QT_HOST_PATH)
 # Cross builds import the matching host Linguist and Tools tool packages.
 CMAKE_CONFIGURE_ARGS+= -DQt6LinguistTools_DIR=${EMBERBSD_QT_HOST_PATH:Q}/lib/cmake/Qt6LinguistTools
@@ -34,7 +34,9 @@ CMAKE_CONFIGURE_ARGS+= -DQt6ToolsTools_DIR=${EMBERBSD_QT_HOST_PATH:Q}/lib/cmake/
 
 # Designer resource compression uses libzstd directly.
 .include "../../archivers/zstd/buildlink3.mk"
+.if empty(PKG_OPTIONS:Mhost-tools)
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../www/litehtml/buildlink3.mk"
+.endif
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

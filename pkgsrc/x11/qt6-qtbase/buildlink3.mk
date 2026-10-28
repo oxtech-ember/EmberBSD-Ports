@@ -67,11 +67,14 @@ PLIST.qt6dbus=	yes
 .endif
 
 .include "../../converters/libiconv/buildlink3.mk"
-.include "../../databases/sqlite3/buildlink3.mk"
 .include "../../devel/gettext-lib/buildlink3.mk"
-.include "../../devel/glib2/buildlink3.mk"
 .include "../../devel/pcre2/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"
+.include "../../mk/pthread.buildlink3.mk"
+# The host-tools build has no GUI, network, SQL or ICU dependencies.
+.if !${PKG_BUILD_OPTIONS.qt6-qtbase:Mhost-tools}
+.include "../../databases/sqlite3/buildlink3.mk"
+.include "../../devel/glib2/buildlink3.mk"
 .include "../../fonts/harfbuzz/buildlink3.mk"
 .include "../../graphics/freetype2/buildlink3.mk"
 .include "../../graphics/png/buildlink3.mk"
@@ -79,7 +82,6 @@ PLIST.qt6dbus=	yes
 .include "../../textproc/icu/buildlink3.mk"
 .include "../../www/libproxy/buildlink3.mk"
 .include "../../mk/jpeg.buildlink3.mk"
-.include "../../mk/pthread.buildlink3.mk"
 .if ${OPSYS} != "Darwin"
 .include "../../fonts/fontconfig/buildlink3.mk"
 .include "../../graphics/glu/buildlink3.mk"
@@ -99,6 +101,7 @@ PLIST.qt6dbus=	yes
 .include "../../x11/libXrandr/buildlink3.mk"
 .include "../../x11/libXrender/buildlink3.mk"
 .include "../../x11/libxkbcommon/buildlink3.mk"
+.endif
 .endif
 .include "../../mk/atomic64.mk"
 .endif	# QT6_QTBASE_BUILDLINK3_MK
