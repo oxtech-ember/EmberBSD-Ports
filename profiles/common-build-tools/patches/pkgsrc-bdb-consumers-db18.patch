@@ -1,0 +1,319 @@
+Origin: EmberBSD, AI-assisted.
+EmberBSD keeps one Berkeley DB, db18 (see pkgsrc-bdb-one-version.patch).
+These packages pinned BDB_ACCEPTED to db2..db6 only, so with db18 as the
+sole choice bdb.buildlink3.mk set PKG_FAIL_REASON. Each one builds against
+the db 4.1+ API, which db18 keeps (nvi's 4.1+ check passes with 18.1), so
+only the accepted list changes. Not submitted upstream.
+
+diff --color -ru a/chat/jabberd2/options.mk b/chat/jabberd2/options.mk
+--- a/chat/jabberd2/options.mk
++++ b/chat/jabberd2/options.mk
+@@ -24,7 +24,7 @@
+ # PLIST_VARS+=	ws
+ 
+ .if !empty(PKG_OPTIONS:Mauth-db) || !empty(PKG_OPTIONS:Mstorage-db)
+-BDB_ACCEPTED=		db4 db5
++BDB_ACCEPTED=		db18
+ CONFIGURE_ARGS+=	--enable-db
+ PLIST.db=		yes
+ BUILDLINK_TRANSFORM+=	l:db:${BDB_TYPE}
+diff --color -ru a/databases/p5-BDB/Makefile b/databases/p5-BDB/Makefile
+--- a/databases/p5-BDB/Makefile
++++ b/databases/p5-BDB/Makefile
+@@ -11,7 +11,7 @@
+ COMMENT=	Perl 5 module providing asynchronous Berkeley DB access
+ LICENSE=	${PERL5_LICENSE}
+ 
+-BDB_ACCEPTED=		db5 db4 db3 db2
++BDB_ACCEPTED=		db18
+ PERL5_PACKLIST=		auto/BDB/.packlist
+ 
+ MAKE_PARAMS+=	INC=-I${BDBBASE:Q}/${BUILDLINK_INCDIRS.${BDB_TYPE}:Q}
+diff --color -ru a/databases/p5-BerkeleyDB/Makefile b/databases/p5-BerkeleyDB/Makefile
+--- a/databases/p5-BerkeleyDB/Makefile
++++ b/databases/p5-BerkeleyDB/Makefile
+@@ -14,7 +14,7 @@
+ TEST_DEPENDS+=	p5-Test-CPAN-Meta-JSON-[0-9]*:../../devel/p5-Test-CPAN-Meta-JSON
+ TEST_DEPENDS+=	p5-MLDBM-[0-9]*:../../databases/p5-MLDBM
+ 
+-BDB_ACCEPTED=		db5 db4 db3 db2
++BDB_ACCEPTED=		db18
+ PERL5_PACKLIST=		auto/BerkeleyDB/.packlist
+ REPLACE_PERL=		mkconsts.pl scan.pl
+ 
+diff --color -ru a/databases/py-bsddb3/Makefile b/databases/py-bsddb3/Makefile
+--- a/databases/py-bsddb3/Makefile
++++ b/databases/py-bsddb3/Makefile
+@@ -11,7 +11,7 @@
+ COMMENT=	Python bindings for Oracle Berkeley DB
+ LICENSE=	modified-bsd
+ 
+-BDB_ACCEPTED=	db6 db5 db4
++BDB_ACCEPTED=	db18
+ 
+ PYSETUPBUILDARGS=	--berkeley-db=${BDBBASE}
+ PYSETUPINSTALLARGS=	--berkeley-db=${BDBBASE}
+diff --color -ru a/databases/yap2lc/Makefile b/databases/yap2lc/Makefile
+--- a/databases/yap2lc/Makefile
++++ b/databases/yap2lc/Makefile
+@@ -9,7 +9,7 @@
+ HOMEPAGE=	https://sourceforge.net/projects/yap2lc/
+ COMMENT=	Yet Another Passwd 2 LDIF Converter
+ 
+-BDB_ACCEPTED=		db4 db5
++BDB_ACCEPTED=		db18
+ GNU_CONFIGURE=		YES
+ CONFIGURE_ENV+=		BDB_TYPE="${BDB_TYPE}"
+ 
+diff --color -ru a/editors/nvi/Makefile b/editors/nvi/Makefile
+--- a/editors/nvi/Makefile
++++ b/editors/nvi/Makefile
+@@ -38,7 +38,7 @@
+ .endif
+ 
+ # Use of db1 is not officially supported.
+-BDB_ACCEPTED=		db3 db4
++BDB_ACCEPTED=		db18
+ .include "../../mk/bdb.buildlink3.mk"
+ .if ${BDB_TYPE} == "db1"
+ CONFIGURE_ARGS+=	--with-db_type=db1
+diff --color -ru a/inputmethod/novel-pinyin/Makefile b/inputmethod/novel-pinyin/Makefile
+--- a/inputmethod/novel-pinyin/Makefile
++++ b/inputmethod/novel-pinyin/Makefile
+@@ -10,7 +10,7 @@
+ COMMENT=	HMM-based sentence pinyin input method for Chinese
+ LICENSE=	gnu-gpl-v2
+ 
+-BDB_ACCEPTED=		db4 db5
++BDB_ACCEPTED=		db18
+ USE_LANGUAGES=		c c++
+ USE_LIBTOOL=		yes
+ USE_TOOLS+=		intltool pkg-config msgfmt msgmerge xgettext
+diff --color -ru a/lang/gnucobol/Makefile b/lang/gnucobol/Makefile
+--- a/lang/gnucobol/Makefile
++++ b/lang/gnucobol/Makefile
+@@ -15,7 +15,7 @@
+ 
+ CHECK_PORTABILITY_SKIP=	tests/testsuite
+ 
+-BDB_ACCEPTED=		db4 db5
++BDB_ACCEPTED=		db18
+ USE_LIBTOOL=		yes
+ USE_PKGLOCALEDIR=	yes
+ USE_TOOLS+=		msgfmt
+diff --color -ru a/mail/avenger/Makefile b/mail/avenger/Makefile
+--- a/mail/avenger/Makefile
++++ b/mail/avenger/Makefile
+@@ -12,7 +12,7 @@
+ 
+ CONFLICTS=		deliver-[0-9]*
+ 
+-BDB_ACCEPTED=		db4 db5
++BDB_ACCEPTED=		db18
+ USE_LANGUAGES=		c c++
+ USE_LIBTOOL=		yes
+ USE_TOOLS+=		perl
+diff --color -ru a/mail/bogofilter/options.mk b/mail/bogofilter/options.mk
+--- a/mail/bogofilter/options.mk
++++ b/mail/bogofilter/options.mk
+@@ -10,7 +10,7 @@
+ 
+ .if !empty(PKG_OPTIONS:Mbdb)
+ CONFIGURE_ARGS+=		--with-database=db
+-BDB_ACCEPTED=			db3 db4 db5
++BDB_ACCEPTED=			db18
+ .include "../../mk/bdb.buildlink3.mk"
+ BUILDLINK_TRANSFORM+=		l:db:${BDB_TYPE}
+ .endif
+diff --color -ru a/mail/cyrus-imapd24/options.mk b/mail/cyrus-imapd24/options.mk
+--- a/mail/cyrus-imapd24/options.mk
++++ b/mail/cyrus-imapd24/options.mk
+@@ -80,7 +80,7 @@
+ .endif
+ 
+ .if !empty(PKG_OPTIONS:Mbdb)
+-BDB_ACCEPTED=		db3 db4 db5
++BDB_ACCEPTED=		db18
+ .  include "../../mk/bdb.buildlink3.mk"
+ CONFIGURE_ARGS+=	--with-bdb=${BDB_TYPE}
+ CONFIGURE_ARGS+=	--with-bdb-incdir=${BDBBASE}/include/${BDB_TYPE}
+diff --color -ru a/mail/isync/Makefile b/mail/isync/Makefile
+--- a/mail/isync/Makefile
++++ b/mail/isync/Makefile
+@@ -11,7 +11,7 @@
+ 
+ USE_CC_FEATURES=	c11
+ USE_TOOLS+=		perl
+-BDB_ACCEPTED=		db4 db5
++BDB_ACCEPTED=		db18
+ GNU_CONFIGURE=		yes
+ CONFIGURE_ARGS+=	--with-ssl=${BUILDLINK_PREFIX.openssl}
+ CONFIGURE_ARGS+=	--with-sasl=${BUILDLINK_PREFIX.cyrus-sasl}
+diff --color -ru a/mail/libetpan/Makefile b/mail/libetpan/Makefile
+--- a/mail/libetpan/Makefile
++++ b/mail/libetpan/Makefile
+@@ -11,7 +11,7 @@
+ COMMENT=	Really nice mail library
+ LICENSE=	modified-bsd
+ 
+-BDB_ACCEPTED=		db3 db4 db5 db6
++BDB_ACCEPTED=		db18
+ USE_LANGUAGES=		c c++
+ USE_LIBTOOL=		yes
+ GNU_CONFIGURE=		yes
+diff --color -ru a/mail/libetpan/buildlink3.mk b/mail/libetpan/buildlink3.mk
+--- a/mail/libetpan/buildlink3.mk
++++ b/mail/libetpan/buildlink3.mk
+@@ -9,7 +9,7 @@
+ BUILDLINK_ABI_DEPENDS.libetpan+=	libetpan>=1.9.4nb19
+ BUILDLINK_PKGSRCDIR.libetpan?=		../../mail/libetpan
+ 
+-BDB_ACCEPTED?=	db4 db5 db6
++BDB_ACCEPTED?=	db18
+ .include "../../converters/libiconv/buildlink3.mk"
+ .include "../../security/cyrus-sasl/buildlink3.mk"
+ .include "../../security/openssl/buildlink3.mk"
+diff --color -ru a/mail/mailutils/options.mk b/mail/mailutils/options.mk
+--- a/mail/mailutils/options.mk
++++ b/mail/mailutils/options.mk
+@@ -30,7 +30,7 @@
+ .endif
+ ## Berkeley DB
+ .if !empty(PKG_OPTIONS:Mbdb)
+-BDB_ACCEPTED=		db3 db4 db5 db6
++BDB_ACCEPTED=		db18
+ BUILDLINK_TRANSFORM+=	l:db:${BDB_TYPE}
+ .  include "../../mk/bdb.buildlink3.mk"
+ CONFIGURE_ARGS+=        --with-berkeley-db=${BDB_TYPE}
+diff --color -ru a/mail/mutt/options.mk b/mail/mutt/options.mk
+--- a/mail/mutt/options.mk
++++ b/mail/mutt/options.mk
+@@ -19,7 +19,7 @@
+ 
+ # Must be at the top; some other buildlink files indirectly
+ # include bdb.buildlink3.mk.
+-BDB_ACCEPTED=		db4 db5
++BDB_ACCEPTED=		db18
+ 
+ .include "../../mk/bsd.options.mk"
+ 
+diff --color -ru a/mail/neomutt/options.mk b/mail/neomutt/options.mk
+--- a/mail/neomutt/options.mk
++++ b/mail/neomutt/options.mk
+@@ -85,7 +85,7 @@
+ CONFIGURE_ARGS+=	--disable-gdbm
+ CONFIGURE_ARGS+=	--disable-bdb
+ .else
+-BDB_ACCEPTED=		db4 db5
++BDB_ACCEPTED=		db18
+ BUILDLINK_TRANSFORM+=	l:db:${BDB_TYPE}
+ .include "../../mk/bdb.buildlink3.mk"
+ CONFIGURE_ARGS+=	--bdb
+diff --color -ru a/mail/perdition-bdb/Makefile b/mail/perdition-bdb/Makefile
+--- a/mail/perdition-bdb/Makefile
++++ b/mail/perdition-bdb/Makefile
+@@ -5,7 +5,7 @@
+ PERDITION_PKGNAME=	bdb
+ BUILD_DIRS=		makebdb perdition/db/bdb
+ 
+-BDB_ACCEPTED=		db4 db5
++BDB_ACCEPTED=		db18
+ 
+ BUILDLINK_TRANSFORM+=	l:db:${BDB_TYPE}
+ .include "../../mk/bdb.buildlink3.mk"
+diff --color -ru a/mail/postgrey/Makefile b/mail/postgrey/Makefile
+--- a/mail/postgrey/Makefile
++++ b/mail/postgrey/Makefile
+@@ -15,7 +15,7 @@
+ DEPENDS+=	p5-Net-Server-[0-9]*:../../net/p5-Net-Server
+ DEPENDS+=	p5-NetAddr-IP-[0-9]*:../../net/p5-NetAddr-IP
+ 
+-BDB_ACCEPTED=		db4 db5
++BDB_ACCEPTED=		db18
+ NO_CONFIGURE=		yes
+ USE_TOOLS+=		perl:run
+ 
+diff --color -ru a/mail/spamprobe/options.mk b/mail/spamprobe/options.mk
+--- a/mail/spamprobe/options.mk
++++ b/mail/spamprobe/options.mk
+@@ -7,7 +7,7 @@
+ .include "../../mk/bsd.options.mk"
+ 
+ .if !empty(PKG_OPTIONS:Mbdb)
+-BDB_ACCEPTED=		db4 db5 # db3 db2 (not tested)
++BDB_ACCEPTED=		db18
+ BUILDLINK_TRANSFORM+=	l:db:${BDB_TYPE}
+ .include "../../mk/bdb.buildlink3.mk"
+ CONFIGURE_ARGS+=	--with-db=${BDBBASE}
+diff --color -ru a/net/gift-openft/Makefile b/net/gift-openft/Makefile
+--- a/net/gift-openft/Makefile
++++ b/net/gift-openft/Makefile
+@@ -9,7 +9,7 @@
+ HOMEPAGE=	https://gift.sourceforge.net/
+ COMMENT=	OpenFT Plugin for the gift daemon
+ 
+-BDB_ACCEPTED=		db4 db5
++BDB_ACCEPTED=		db18
+ USE_LIBTOOL=		yes
+ USE_TOOLS+=		pkg-config
+ GNU_CONFIGURE=		yes
+diff --color -ru a/net/netatalk4/Makefile b/net/netatalk4/Makefile
+--- a/net/netatalk4/Makefile
++++ b/net/netatalk4/Makefile
+@@ -44,7 +44,7 @@
+ MESON_ARGS+=		-Dwith-dtrace=false
+ .endif
+ 
+-BDB_ACCEPTED=		db4 db5
++BDB_ACCEPTED=		db18
+ # Build script expects exactly major dot minor
+ MESON_ARGS+=		-Dwith-bdb-version=${BUILDLINK_ABI_DEPENDS.${BDB_TYPE}:C/^.*>=//:R}
+ MESON_ARGS+=		-Dwith-bdb-path=${BDBBASE}
+diff --color -ru a/security/cyrus-sasl/options.mk b/security/cyrus-sasl/options.mk
+--- a/security/cyrus-sasl/options.mk
++++ b/security/cyrus-sasl/options.mk
+@@ -28,7 +28,7 @@
+ .elif !empty(PKG_OPTIONS:Mbdb)
+ SASL_DBTYPE=		berkeley
+ FILES_SUBST+=		DBEXT=
+-BDB_ACCEPTED=		db3 db4 db5 db6
++BDB_ACCEPTED=		db18
+ .  include "../../mk/bdb.buildlink3.mk"
+ CONFIGURE_ENV+=		with_bdb=${BDB_TYPE}
+ .elif !empty(PKG_OPTIONS:Mgdbm)
+diff --color -ru a/www/c-icap/options.mk b/www/c-icap/options.mk
+--- a/www/c-icap/options.mk
++++ b/www/c-icap/options.mk
+@@ -10,7 +10,7 @@
+ 
+ .if !empty(PKG_OPTIONS:Mbdb)
+ PLIST.bdb=		yes
+-BDB_ACCEPTED=		db5 db4
++BDB_ACCEPTED=		db18
+ CONFIGURE_ARGS+=	--with-bdb=${BDBBASE}
+ .  include "../../mk/bdb.buildlink3.mk"
+ .else
+diff --color -ru a/www/c-icap-modules/options.mk b/www/c-icap-modules/options.mk
+--- a/www/c-icap-modules/options.mk
++++ b/www/c-icap-modules/options.mk
+@@ -10,7 +10,7 @@
+ 
+ .if !empty(PKG_OPTIONS:Mbdb)
+ PLIST.bdb=		yes
+-BDB_ACCEPTED=		db5 db4
++BDB_ACCEPTED=		db18
+ CONFIGURE_ARGS+=	--with-bdb=${BDBBASE}
+ .  include "../../mk/bdb.buildlink3.mk"
+ .else
+diff --color -ru a/www/webalizer/Makefile b/www/webalizer/Makefile
+--- a/www/webalizer/Makefile
++++ b/www/webalizer/Makefile
+@@ -12,7 +12,7 @@
+ COMMENT=	Web server log file analysis program
+ 
+ WRKSRC=			${WRKDIR}/${DISTNAME:S/-src//}
+-BDB_ACCEPTED=		db4 db5
++BDB_ACCEPTED=		db18
+ GNU_CONFIGURE=		yes
+ CONFIGURE_ARGS+=	--sysconfdir=${PKG_SYSCONFDIR}
+ CONFIGURE_ARGS+=	--enable-dns
