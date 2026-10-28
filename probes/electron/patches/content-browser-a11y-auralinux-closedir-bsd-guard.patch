@@ -1,0 +1,27 @@
+content/browser/accessibility: guard CloseDir with the /proc scan on BSD.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+Source: Chromium electron-source tree under EmberBSD.
+DiscoverOrca() is NOTIMPLEMENTED on IS_BSD, so the only caller of the
+anonymous CloseDir() deleter is compiled out and Clang reports
+-Werror,-Wunused-function. Define the helper only where /proc is scanned
+instead of silencing the diagnostic.
+
+--- a/content/browser/accessibility/browser_accessibility_state_impl_auralinux.cc	2026-10-28 09:32:14.298752154 +0300
++++ b/content/browser/accessibility/browser_accessibility_state_impl_auralinux.cc	2026-10-28 09:32:14.317254490 +0300
+@@ -24,6 +24,7 @@
+ 
+ namespace content {
+ 
++#if !BUILDFLAG(IS_BSD)
+ namespace {
+ 
+ // Custom deleter function for DIR* that calls closedir
+@@ -34,6 +35,7 @@
+ }
+ 
+ }  // namespace
++#endif  // !BUILDFLAG(IS_BSD)
+ 
+ namespace internal {
+ 

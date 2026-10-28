@@ -626,6 +626,11 @@
       "path": "components-signin-cross-device-signin-bsd-guard.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "content-browser-a11y-auralinux-closedir-bsd-guard.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
