@@ -6,6 +6,7 @@ Size (qtbase-everywhere-src-6.12.0.tar.xz) = 51220268 bytes
 SHA1 (patch-CMakeLists.txt) = 4b666cf18073873480f706f29edead4834346673
 SHA1 (patch-cmake_QtBaseGlobalTargets.cmake) = 1bb2791a7e281714d1ac7020ca0aca93a31e424a
 SHA1 (patch-cmake_QtFeature.cmake) = a8e83d33467205ce39fb6df70d6dd5fcd4172d89
+SHA1 (patch-cmake_QtPublicAppleHelpers.cmake) = 83412f835a3aa6e9fc052b5ec559784e90ed68ef
 SHA1 (patch-cmake_QtSyncQtHelpers.cmake) = c870f6718934988096d791bf89b6c5011fdcdfc2
 SHA1 (patch-mkspecs_features_toolchain.prf) = 0cf13cb6e859dd6276954239b91953e557add515
 SHA1 (patch-qmake_generators_makefile.cpp) = 1bca636dc88f258876df54bd0c6c64114fa7411d
