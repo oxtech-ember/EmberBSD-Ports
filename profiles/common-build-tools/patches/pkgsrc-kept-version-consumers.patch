@@ -60,6 +60,9 @@ digiKam no longer includes the C API headers that OpenCV 5 removed, and takes
 the ml module from opencv-contrib, which replaces opencv-contrib-face.
 lua-bit32 builds from the same lua-compat53 0.10 distfile and patches as
 lua-compat53, which build with Lua 5.5; its tests pass with Lua 5.5.
+LuaBitOp finds the double lua_Number of Lua 5.3 and later through
+LUA_FLOAT_TYPE and returns its 32-bit results as integers there, so it builds
+with Lua 5.5 and its tests pass.
 
 --- a/devel/Guitar/Makefile
 +++ b/devel/Guitar/Makefile
@@ -264,6 +267,68 @@ lua-compat53, which build with Lua 5.5; its tests pass with Lua 5.5.
 + object = "0.40.0"
 + pdb = "0.8.0"
 + ratatui = { version = "0.30.2", features = ["serde"] }
+--- a/devel/lua-BitOp/Makefile
++++ b/devel/lua-BitOp/Makefile
+@@ -2,7 +2,7 @@
+ 
+ DISTNAME=	LuaBitOp-1.0.2
+ PKGNAME=	${DISTNAME:S/Lua/${LUA_PKGPREFIX}-/}
+-PKGREVISION=	1
++PKGREVISION=	2
+ CATEGORIES=	devel lua
+ MASTER_SITES=	http://bitop.luajit.org/download/
+ 
+@@ -11,8 +11,6 @@
+ COMMENT=	Lua module which adds bitwise operations on numbers
+ LICENSE=	mit
+ 
+-LUA_VERSIONS_ACCEPTED=	52 51
+-
+ NO_CONFIGURE=	yes
+ USE_TOOLS+=	gmake
+ MAKE_FLAGS+=	LUA_CDIR=${LUA_CDIR}
+--- a/devel/lua-BitOp/distinfo
++++ b/devel/lua-BitOp/distinfo
+@@ -4,3 +4,4 @@
+ SHA512 (LuaBitOp-1.0.2.tar.gz) = a652050ea5c6fbeb8a28b05e2bc4a3550c854cc45f7f42c8c1b0a81f5b76773cdf061e6a839cdb339614118169e578b6e3efa5a3efbe59a2f01874b2fa2b4f2e
+ Size (LuaBitOp-1.0.2.tar.gz) = 23127 bytes
+ SHA1 (patch-Makefile) = 686c642a513e50156145738d13f0a7b3a18bce7e
++SHA1 (patch-bit.c) = 537fd4bdaae11cf996f03ad52c116b08f4c9b550
+--- /dev/null
++++ b/devel/lua-BitOp/patches/patch-bit.c
+@@ -0,0 +1,32 @@
++$NetBSD$
++
++Lua 5.3 and later name the lua_Number type LUA_FLOAT_TYPE and have an
++integer subtype, which the 32-bit results are returned as.
++
++--- bit.c.orig
+++++ bit.c
++@@ -41,6 +41,12 @@
++ #include <stdint.h>
++ #endif
++ 
+++/* Lua 5.3 and later name the lua_Number type LUA_FLOAT_TYPE. */
+++#if !defined(LUA_NUMBER_DOUBLE) && defined(LUA_FLOAT_TYPE) && \
+++    defined(LUA_FLOAT_DOUBLE) && LUA_FLOAT_TYPE == LUA_FLOAT_DOUBLE
+++#define LUA_NUMBER_DOUBLE
+++#endif
+++
++ typedef int32_t SBits;
++ typedef uint32_t UBits;
++ 
++@@ -91,7 +97,11 @@
++ }
++ 
++ /* Return bit type. */
+++#if LUA_VERSION_NUM >= 503
+++#define BRET(b)  lua_pushinteger(L, (lua_Integer)(SBits)(b)); return 1;
+++#else
++ #define BRET(b)  lua_pushnumber(L, (lua_Number)(SBits)(b)); return 1;
+++#endif
++ 
++ static int bit_tobit(lua_State *L) { BRET(barg(L, 1)) }
++ static int bit_bnot(lua_State *L) { BRET(~barg(L, 1)) }
 --- a/devel/lua-bit32/Makefile
 +++ b/devel/lua-bit32/Makefile
 @@ -1,8 +1,9 @@
