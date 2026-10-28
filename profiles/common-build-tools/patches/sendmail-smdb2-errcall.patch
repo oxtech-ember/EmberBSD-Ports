@@ -1,0 +1,22 @@
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+Give db_err_cb the three-argument type DB->set_errcall takes in every
+Berkeley DB from 4.3 on. The old test matched only 4.x, so with db18
+the callback had two parameters and was called through a pointer to a
+three-parameter function, which is undefined behaviour.
+
+--- libsmdb/smdb2.c.orig
++++ libsmdb/smdb2.c
+@@ -478,11 +478,11 @@
+ 
+ static void
+ db_err_cb(
+-#  if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 3
++#  if DB_VERSION_MAJOR > 4 || (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 3)
+ 	dbenv,
+ #  endif
+ 	errpfx, msg)
+-#  if DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 3
++#  if DB_VERSION_MAJOR > 4 || (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 3)
+ 	const DB_ENV *dbenv;
+ 	const char *errpfx;
+ 	const char *msg;
