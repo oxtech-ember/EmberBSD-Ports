@@ -766,3 +766,9 @@ Source metadata commands receive the explicitly selected `--git` as
 `EMBERBSD_CONTROL_GIT`, without adding that control tool's directory to `PATH`.
 The reconfigure command accepts the corresponding migration from the earlier
 prefix-plus-Git-directory environment and rejects unrelated changes.
+
+The producer expects the selected target Rust standard library to have already
+been installed by the shared Ports package. It does not download or install a
+private copy. On Darwin it binds Chromium's dsymutil path to the selected native
+prefix and rejects an existing different tool. The presence check for Rust
+libraries does not establish their provenance or target runtime compatibility.

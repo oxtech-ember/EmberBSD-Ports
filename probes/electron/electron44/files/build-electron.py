@@ -101,6 +101,8 @@ def native_inputs(options, sdk):
     roles = ('python', 'gn', 'ninja', 'node', 'rustc', 'rustfmt', 'bindgen', 'wayland-scanner',
              'pkg-config', 'rollup', 'tsc', 'clang', 'cc', 'cxx', 'cpp', 'ar', 'nm', 'strip', 'objcopy', 'readelf',
              'sh', 'env', 'sed', 'touch', 'cp')
+    if sys.platform == 'darwin':
+        roles += ('dsymutil',)
     native = sdk['host_prefix'].load_host_prefix(options.host_prefix, required_roles=roles,
                                                 compiler_family=options.host_compiler_family)
     require(Path(sys.executable).resolve() == Path(native.tool('python')).resolve(),
@@ -269,33 +271,12 @@ def gn_arguments(values):
 
 
 
-def ensure_rust_std_x86_64_netbsd(host_prefix, distfiles=None):
-    """Official rust-std for x86_64-unknown-netbsd into host rustlib (find_stdlib)."""
-    import hashlib, shutil, tarfile, tempfile, urllib.request
-    dest = Path(host_prefix) / 'lib' / 'rustlib' / 'x86_64-unknown-netbsd' / 'lib'
-    if dest.is_dir() and any(dest.glob('*.rlib')):
-        return
-    name = 'rust-std-1.99.1-x86_64-unknown-netbsd.tar.xz'
-    url = 'https://static.rust-lang.org/dist/2026-10-15/' + name
-    expect = '97569760ad6e042d56ccdac2fd295df8a10351403b9bbca2a19567f8ed6ae46b'
-    cache_root = Path(distfiles) if distfiles else Path(host_prefix).parents[1] / 'distfiles'
-    cache_root.mkdir(parents=True, exist_ok=True)
-    archive = cache_root / name
-    if not archive.is_file() or hashlib.sha256(archive.read_bytes()).hexdigest() != expect:
-        with urllib.request.urlopen(url) as resp, open(archive, 'wb') as out:
-            shutil.copyfileobj(resp, out)
-    require(hashlib.sha256(archive.read_bytes()).hexdigest() == expect,
-            'rust-std x86_64-unknown-netbsd SHA256 mismatch')
-    with tempfile.TemporaryDirectory(prefix='rust-std-') as tmp:
-        with tarfile.open(archive, 'r:xz') as tf:
-            tf.extractall(tmp)
-        src = next(Path(tmp).rglob('lib/rustlib/x86_64-unknown-netbsd'))
-        if (Path(host_prefix) / 'lib' / 'rustlib' / 'x86_64-unknown-netbsd').exists():
-            shutil.rmtree(Path(host_prefix) / 'lib' / 'rustlib' / 'x86_64-unknown-netbsd')
-        shutil.copytree(src, Path(host_prefix) / 'lib' / 'rustlib' / 'x86_64-unknown-netbsd')
-    require(dest.is_dir() and any(dest.glob('*.rlib')),
-            'rust-std x86_64-unknown-netbsd not installed into host rustlib')
-
+def require_rust_std(host_prefix, target):
+    """Use the target component installed by the shared Rust package."""
+    triplet = {'amd64': 'x86_64-unknown-netbsd', 'aarch64': 'aarch64-unknown-netbsd'}[target]
+    dest = Path(host_prefix) / 'lib/rustlib' / triplet / 'lib'
+    require(dest.is_dir() and any(dest.glob('libstd-*.rlib')) and any(dest.glob('libcore-*.rlib')),
+            'target Rust std missing; install the shared pkgsrc lang/rust-std-' + triplet.split('-')[0] + '-netbsd package')
 
 
 def ensure_allocator_shim_throw_netbsd(workspace):
@@ -384,45 +365,17 @@ def ensure_bindgen_dyld_fallback(workspace):
         path.write_text(text.replace(old, 'env["DYLD_FALLBACK_LIBRARY_PATH"] = args.ld_library_path', 1))
 
 
-def ensure_host_libiconv_unshadow(host_prefix):
-    """macOS: GNU libiconv in host-prefix/lib shadows system _iconv when bindgen/clang-sys
-    adds LIBCLANG_PATH to DYLD search; libxml2 (via libLLVM) then fails to dlopen."""
-    lib = Path(host_prefix) / 'lib'
-    if not lib.is_dir():
+def ensure_host_dsymutil(workspace, native):
+    """Bind Chromium's macOS tool path to the selected native-prefix tool."""
+    if native.host['os'] != 'Darwin':
         return
-    # Only act when the tree looks like Apple host (libclang.dylib present).
-    if not (lib / 'libclang.dylib').exists():
-        return
-    side = lib / 'gnu-libiconv-shadow-bak'
-    for name in ('libiconv.2.dylib', 'libiconv.dylib', 'libiconv.a', 'libiconv.la'):
-        p = lib / name
-        if not (p.exists() or p.is_symlink()):
-            continue
-        # Skip if already a symlink into the bak dir
-        side.mkdir(exist_ok=True)
-        dest = side / name
-        if dest.exists() or dest.is_symlink():
-            dest.unlink()
-        p.rename(dest)
-
-
-def ensure_host_dsymutil(workspace, host_prefix):
-    """DEPS dsymutil_mac_* downloads chromium-browser-clang dsymutil; hooks are not run.
-    Point tools/clang/dsymutil/bin/dsymutil at host-prefix (or PATH) dsymutil for host mac links."""
+    src = Path(native.tool('dsymutil')).resolve(strict=True)
     dest = workspace / 'src/tools/clang/dsymutil/bin/dsymutil'
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    if dest.is_file() or dest.is_symlink():
-        return
-    candidates = [
-        Path(host_prefix) / 'bin' / 'dsymutil',
-        Path('/usr/bin/dsymutil'),
-    ]
-    src = next((p for p in candidates if p.is_file()), None)
-    require(src is not None, 'host dsymutil missing for tools/clang/dsymutil/bin/dsymutil')
     if dest.exists() or dest.is_symlink():
-        dest.unlink()
+        require(dest.resolve(strict=True) == src, 'existing dsymutil differs from selected native tool')
+        return
+    dest.parent.mkdir(parents=True, exist_ok=True)
     dest.symlink_to(src)
-
 
 
 def ensure_rollup_darwin_arm64(workspace, host_prefix, environment):
@@ -535,13 +488,12 @@ def configure(options):
     native, environment, values = producer_inputs(options, sdk)
     ensure_lastchange(options.workspace, native, environment, sdk)
     ensure_ffmpeg_netbsd_config(options.workspace)
-    ensure_host_dsymutil(options.workspace, options.host_prefix)
+    ensure_host_dsymutil(options.workspace, native)
     ensure_rollup_darwin_arm64(options.workspace, options.host_prefix, environment)
-    ensure_rust_std_x86_64_netbsd(options.host_prefix)
+    require_rust_std(options.host_prefix, options.target)
     ensure_allocator_shim_throw_netbsd(options.workspace)
     ensure_bindgen_dyld_fallback(options.workspace)
     ensure_allocator_shim_cpp_noexcept(options.workspace)
-    ensure_host_libiconv_unshadow(options.host_prefix)
     output = work / 'out'; output.mkdir()
     (output / 'args.gn').write_text(gn_arguments(values))
     sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
@@ -638,13 +590,12 @@ def build(options):
     native, environment, values = producer_inputs(options, sdk)
     ensure_lastchange(options.workspace, native, environment, sdk)
     ensure_ffmpeg_netbsd_config(options.workspace)
-    ensure_host_dsymutil(options.workspace, options.host_prefix)
+    ensure_host_dsymutil(options.workspace, native)
     ensure_rollup_darwin_arm64(options.workspace, options.host_prefix, environment)
-    ensure_rust_std_x86_64_netbsd(options.host_prefix)
+    require_rust_std(options.host_prefix, options.target)
     ensure_allocator_shim_throw_netbsd(options.workspace)
     ensure_bindgen_dyld_fallback(options.workspace)
     ensure_allocator_shim_cpp_noexcept(options.workspace)
-    ensure_host_libiconv_unshadow(options.host_prefix)
     saved = json.loads((options.work / 'configuration.json').read_text())
     require(saved['source'] == str(options.workspace) and saved['sdk'] == str(options.sdk_source) and
             saved['host_prefix'] == str(options.host_prefix) and saved['target'] == options.target,

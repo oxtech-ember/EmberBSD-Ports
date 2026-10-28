@@ -438,3 +438,14 @@ subsequent recovery. It does not build Electron or execute target code.
 The test applies the patch to committed source copies and exercises real Git
 metadata in an ordinary checkout and a worktree, the upstream fallback and
 missing Git. It does not run a complete Electron build.
+
+## Electron host and Rust inputs
+
+```sh
+/absolute/native/bin/python3.15 -B -S probes/electron/tests/electron-tool-selection.py \
+  --host-prefix /absolute/native --sdk-source /absolute/EmberBSD-SDK
+```
+
+This checks missing target Rust files and, on Darwin, the selected native
+`dsymutil` binding and rejection of an external existing tool. It does not
+prove Rust package provenance, ABI compatibility, or target execution.
