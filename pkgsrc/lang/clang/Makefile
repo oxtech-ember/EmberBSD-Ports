@@ -3,7 +3,7 @@
 .include "Makefile.common"
 
 PKGNAME=	clang-${LLVM_VERSION}
-PKGREVISION=	9
+PKGREVISION=	10
 
 # Clear a stale auto-detected value unless a configure input selected one.
 .if empty(CMAKE_CONFIGURE_ARGS:M-DHOST_LINK_VERSION*) && \
