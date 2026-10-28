@@ -92,7 +92,8 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
             assert role in call.kwargs['required_roles']
         for role, variable in (('gcp', 'cp'), ('gtouch', 'touch'), ('gsed', 'sed'),
                                ('gcat', 'cat'), ('gmv', 'mv'), ('gchmod', 'chmod'),
-                               ('genv', 'env'), ('ggrep', 'grep'), ('gdiff', 'diff'), ('grm', 'rm'),
+                               ('genv', 'env'), ('ggrep', 'grep'), ('gegrep', 'egrep'), ('gfgrep', 'fgrep'),
+                               ('gdiff', 'diff'), ('grm', 'rm'),
                                ('gmkdir', 'mkdir'), ('gln', 'ln'), ('gtr', 'tr'),
                                ('gexpr', 'expr'), ('gsort', 'sort'), ('ghead', 'head'),
                                ('gcut', 'cut'), ('gdirname', 'dirname'), ('gbasename', 'basename')):

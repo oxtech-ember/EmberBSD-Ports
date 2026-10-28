@@ -31,6 +31,7 @@ ROLE_VARIABLES = {
     'gsed': 'TOOLS_PLATFORM.sed', 'gcat': 'TOOLS_PLATFORM.cat',
     'gmv': 'TOOLS_PLATFORM.mv', 'gchmod': 'TOOLS_PLATFORM.chmod',
     'genv': 'TOOLS_PLATFORM.env', 'ggrep': 'TOOLS_PLATFORM.grep',
+    'gegrep': 'TOOLS_PLATFORM.egrep', 'gfgrep': 'TOOLS_PLATFORM.fgrep',
     'gdiff': 'TOOLS_PLATFORM.diff', 'grm': 'TOOLS_PLATFORM.rm',
     'gmkdir': 'TOOLS_PLATFORM.mkdir', 'gln': 'TOOLS_PLATFORM.ln',
     'gtr': 'TOOLS_PLATFORM.tr', 'gexpr': 'TOOLS_PLATFORM.expr',

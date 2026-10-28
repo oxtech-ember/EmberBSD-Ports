@@ -20,7 +20,7 @@ match = re.search(r"for \(i = 0; i < l && \*p; i\+\+, p\+\+\) \{\s*"
 assert match is not None
 assert re.match(r'\s*if \(i < l\) \{\s*e = FTP_PROTOCOL_ERROR;\s*goto ouch;\s*\}',
                 ftp[match.end():]) is not None
-for package, revision in (('net/libfetch', 6), ('pkgtools/pkg_install', 9)):
+for package, revision in (('net/libfetch', 6), ('pkgtools/pkg_install', 10)):
     text = (root / package / 'Makefile').read_text()
     assert re.search(r'^PKGREVISION=\s*' + str(revision) + r'\s*$', text, re.MULTILINE)
 assert 'FILESDIR.libfetch?=' in (root / 'pkgtools/pkg_install/Makefile').read_text()

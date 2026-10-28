@@ -1,0 +1,189 @@
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -7,7 +7,7 @@
+ # change in the pkg_* tools that pkgsrc relies on for proper operation.
+ 
+ PKGNAME=		pkg_install-${VERSION}
+-PKGREVISION=		9
++PKGREVISION=		10
+ CATEGORIES=		pkgtools
+ 
+ MAINTAINER=		agc@NetBSD.org
+@@ -18,6 +18,7 @@
+ POLICY_UPDATE_LIMITED=	bootstrap
+ 
+ BOOTSTRAP_PKG=		yes
++USE_TOOLS+=		pkg-config nm
+ SKIP_LICENSE_CHECK=	yes
+ 
+ CONFLICTS+=		audit-packages-[0-9]*
+--- a/pkgtools/pkg_install/files/configure
++++ b/pkgtools/pkg_install/files/configure
+@@ -4252,82 +4252,6 @@
+ fi
+ 
+ 
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for __db185_open in -ldb" >&5
+-$as_echo_n "checking for __db185_open in -ldb... " >&6; }
+-if ${ac_cv_lib_db___db185_open+:} false; then :
+-  $as_echo_n "(cached) " >&6
+-else
+-  ac_check_lib_save_LIBS=$LIBS
+-LIBS="-ldb  $LIBS"
+-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+-/* end confdefs.h.  */
+-
+-/* Override any GCC internal prototype to avoid an error.
+-   Use char because int might match the return type of a GCC
+-   builtin and then its argument prototype would still apply.  */
+-#ifdef __cplusplus
+-extern "C"
+-#endif
+-char __db185_open ();
+-int
+-main ()
+-{
+-return __db185_open ();
+-  ;
+-  return 0;
+-}
+-_ACEOF
+-if ac_fn_c_try_link "$LINENO"; then :
+-  ac_cv_lib_db___db185_open=yes
+-else
+-  ac_cv_lib_db___db185_open=no
+-fi
+-rm -f core conftest.err conftest.$ac_objext \
+-    conftest$ac_exeext conftest.$ac_ext
+-LIBS=$ac_check_lib_save_LIBS
+-fi
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_db___db185_open" >&5
+-$as_echo "$ac_cv_lib_db___db185_open" >&6; }
+-if test "x$ac_cv_lib_db___db185_open" = xyes; then :
+-  cat >>confdefs.h <<_ACEOF
+-#define HAVE_LIBDB 1
+-_ACEOF
+-
+-  LIBS="-ldb $LIBS"
+-
+-else
+-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing dbopen" >&5
+-$as_echo_n "checking for library containing dbopen... " >&6; }
+-if ${ac_cv_search_dbopen+:} false; then :
+-  $as_echo_n "(cached) " >&6
+-else
+-  ac_func_search_save_LIBS=$LIBS
+-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+-/* end confdefs.h.  */
+-
+-/* Override any GCC internal prototype to avoid an error.
+-   Use char because int might match the return type of a GCC
+-   builtin and then its argument prototype would still apply.  */
+-#ifdef __cplusplus
+-extern "C"
+-#endif
+-char dbopen ();
+-int
+-main ()
+-{
+-return dbopen ();
+-  ;
+-  return 0;
+-}
+-_ACEOF
+-for ac_lib in '' db db1; do
+-  if test -z "$ac_lib"; then
+-    ac_res="none required"
+-  else
+-    ac_res=-l$ac_lib
+-    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+-  fi
+-
+ # ac_fn_c_try_link LINENO
+ # -----------------------
+ # Try to link conftest.$ac_ext, and return whether this succeeded.
+@@ -4373,6 +4297,84 @@
+   as_fn_set_status $ac_retval
+ 
+ } # ac_fn_c_try_link
++
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for __db185_open in -ldb" >&5
++$as_echo_n "checking for __db185_open in -ldb... " >&6; }
++if ${ac_cv_lib_db___db185_open+:} false; then :
++  $as_echo_n "(cached) " >&6
++else
++  ac_check_lib_save_LIBS=$LIBS
++LIBS="-ldb  $LIBS"
++cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++/* end confdefs.h.  */
++
++/* Override any GCC internal prototype to avoid an error.
++   Use char because int might match the return type of a GCC
++   builtin and then its argument prototype would still apply.  */
++#ifdef __cplusplus
++extern "C"
++#endif
++char __db185_open ();
++int
++main ()
++{
++return __db185_open ();
++  ;
++  return 0;
++}
++_ACEOF
++if ac_fn_c_try_link "$LINENO"; then :
++  ac_cv_lib_db___db185_open=yes
++else
++  ac_cv_lib_db___db185_open=no
++fi
++rm -f core conftest.err conftest.$ac_objext \
++    conftest$ac_exeext conftest.$ac_ext
++LIBS=$ac_check_lib_save_LIBS
++fi
++{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_db___db185_open" >&5
++$as_echo "$ac_cv_lib_db___db185_open" >&6; }
++if test "x$ac_cv_lib_db___db185_open" = xyes; then :
++  cat >>confdefs.h <<_ACEOF
++#define HAVE_LIBDB 1
++_ACEOF
++
++  LIBS="-ldb $LIBS"
++
++else
++  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing dbopen" >&5
++$as_echo_n "checking for library containing dbopen... " >&6; }
++if ${ac_cv_search_dbopen+:} false; then :
++  $as_echo_n "(cached) " >&6
++else
++  ac_func_search_save_LIBS=$LIBS
++cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++/* end confdefs.h.  */
++
++/* Override any GCC internal prototype to avoid an error.
++   Use char because int might match the return type of a GCC
++   builtin and then its argument prototype would still apply.  */
++#ifdef __cplusplus
++extern "C"
++#endif
++char dbopen ();
++int
++main ()
++{
++return dbopen ();
++  ;
++  return 0;
++}
++_ACEOF
++for ac_lib in '' db db1; do
++  if test -z "$ac_lib"; then
++    ac_res="none required"
++  else
++    ac_res=-l$ac_lib
++    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
++  fi
++
++
+ if ac_fn_c_try_link "$LINENO"; then :
+   ac_cv_search_dbopen=$ac_res
+ fi
