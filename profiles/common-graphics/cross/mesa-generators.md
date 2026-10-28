@@ -17,11 +17,11 @@ No shader path or driver feature is disabled to avoid the host dependency.
 
 ## Prepare the native tools
 
-Use one native Ports prefix with host GCC16. The shared recipes own LLVM,
-Clang CLC libraries, SPIRV-Headers, SPIRV-Tools and SPIRV-LLVM-Translator.
+Use one native Ports prefix with Clang/LLVM by default. The shared recipes own
+LLVM, Clang CLC libraries, SPIRV-Headers, SPIRV-Tools and SPIRV-LLVM-Translator.
 Do not download a binary compiler or build a private dependency stack.
-The LLVM and Clang libraries use the same GCC C++ runtime as the generators.
-Clang supplies the OpenCL frontend library; it does not compile host C/C++ objects.
+The native LLVM and Clang libraries and the generators need a compatible host
+C++ runtime. GCC16 remains an explicit host compiler alternative.
 
 The current inputs are Mesa 26.2.5, LLVM/Clang 23.1.4, Translator 23.1.2,
 SPIRV-Tools 2026.4 and SPIRV-Headers 1.4.363.0. Use the common Ports patches.
@@ -29,7 +29,7 @@ The producer checks package predicates, Python module origins and the libyaml ex
 Build missing dependencies through their normal pkgsrc recipes before starting this producer.
 
 SDK `load_host_prefix` selects tools, checks their native CPU and resolves their paths.
-It also checks GCC16 driver components and script interpreters.
+It also checks the selected compiler components and script interpreters.
 No separate toolchain qualification or acceptance receipt is required.
 The build uses a prefix-only PATH and an explicit Meson native file.
 Host ABI headers and libraries remain normal macOS inputs.
@@ -64,7 +64,9 @@ Set `LOCK_DIRECTORY` to the same SDK lock namespace as the package writer.
 The producer holds shared leases for the prefix and package database until sealing finishes.
 An active package writer prevents this read lease; no second installer is started.
 The sealed result is in `WORK/sealed`.
-Use the common GCC16 cross toolchain for subsequent target Mesa objects.
+Use the selected common cross toolchain and its matching target runtime for
+subsequent target Mesa objects. To select the explicit GCC host alternative,
+pass `--host-compiler-family gcc`; the default is `clang`.
 
 ## Seal and select capabilities
 

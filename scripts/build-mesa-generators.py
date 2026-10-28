@@ -110,8 +110,9 @@ def native_file(native):
                             for name, role in names.items()]
     host = Path(native.bundle_root)
     compile_flags = ['-I' + str(host / 'include')]
-    link_flags = ['-L' + str(host / 'lib'), '-Wl,-rpath,' + str(host / 'lib'),
-                  '-Wl,-rpath,' + str(host / 'gcc16/lib')]
+    link_flags = ['-L' + str(host / 'lib'), '-Wl,-rpath,' + str(host / 'lib')]
+    if native.compiler_family == 'gcc':
+        link_flags.append('-Wl,-rpath,' + str(host / 'gcc16/lib'))
     rows += ['', '[built-in options]', 'c_args = ' + value(compile_flags),
              'cpp_args = ' + value(compile_flags), 'c_link_args = ' + value(link_flags),
              'cpp_link_args = ' + value(link_flags)]
@@ -144,9 +145,11 @@ def check_compilers(native, build):
     metadata = json.loads((build / 'meson-info/intro-compilers.json').read_text())
     for language, role in (('c', 'cc'), ('cpp', 'cxx')):
         compiler = metadata['host'][language]
-        require(compiler['id'] == 'gcc' and compiler['exelist'] == list(native.command(role)),
+        require(compiler['id'] == native.compiler_family and
+                compiler['exelist'] == list(native.command(role)),
                 'Meson selected a different native compiler: ' + language)
-        require(compiler['version'].split('.')[0] == '16', 'Meson did not select GCC16')
+        require(compiler['version'] == native.compiler['version'],
+                'Meson selected a different native compiler version: ' + language)
 
 
 def build(arguments, sdk_root):
@@ -161,6 +164,7 @@ def build(arguments, sdk_root):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--profile', choices=('intel', 'powervr', 'all'), default='powervr')
     parser.add_argument('--host-prefix', required=True)
+    parser.add_argument('--host-compiler-family', choices=('clang', 'gcc'), default='clang')
     parser.add_argument('--pkgdb', required=True, help='Package database used by the native prefix')
     parser.add_argument('--lock-directory', required=True, help='Shared SDK producer lock namespace')
     parser.add_argument('--jobs', type=int, default=4)
@@ -187,7 +191,8 @@ def build(arguments, sdk_root):
         reject_overlap(str(work), str(value))
     # Match the package writer's namespace and retain read leases through sealing.
     with ContextLocks([str(host), str(pkgdb)], str(lock_directory), shared=True):
-        native = load_host_prefix(host, required_roles=HOST_ROLES)
+        native = load_host_prefix(host, required_roles=HOST_ROLES,
+                                  compiler_family=args.host_compiler_family)
         python = Path(native.tool('python'))
         require(python.resolve(strict=True) == Path(sys.executable).resolve(strict=True),
                 'Run this command with Python 3.15 from the selected host prefix')

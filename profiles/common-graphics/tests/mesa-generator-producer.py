@@ -28,6 +28,8 @@ spec.loader.exec_module(producer)
 class Native:
     bundle_root = '/selected/host-pkg-g16'
     path = bundle_root + '/gcc16/bin:' + bundle_root + '/bin'
+    compiler_family = 'gcc'
+    compiler = {'version': '16.2.0'}
 
     def tool(self, role):
         return self.bundle_root + {'cc': '/gcc16/bin/gcc', 'cxx': '/gcc16/bin/g++'}.get(role, '/bin/' + role)
@@ -70,6 +72,10 @@ class ProducerTests(unittest.TestCase):
         self.assertNotIn('objc', binaries)
         for command in binaries.values():
             self.assertTrue(command[0].startswith(self.native.bundle_root + '/'))
+        self.assertIn('gcc16/lib', config['built-in options']['cpp_link_args'])
+        self.native.compiler_family = 'clang'
+        config.read_string(producer.native_file(self.native))
+        self.assertNotIn('gcc16/lib', config['built-in options']['cpp_link_args'])
         for flags in config['built-in options'].values():
             self.assertNotIn('libc++', flags)
             self.assertNotIn('/target', flags)
@@ -94,23 +100,29 @@ class ProducerTests(unittest.TestCase):
 
     def test_configured_compiler_cannot_silently_change(self):
         # This is real Meson introspection shape, not executable fixture tools.
-        expected = {'host': {'c': {'id': 'gcc', 'version': '16.2.0', 'exelist': [self.native.tool('cc')]},
-                             'cpp': {'id': 'gcc', 'version': '16.2.0', 'exelist': [self.native.tool('cxx')]}}}
         with tempfile.TemporaryDirectory(prefix='mesa-producer-test-') as temporary:
             build = Path(temporary)
             directory = build / 'meson-info'; directory.mkdir()
             metadata = directory / 'intro-compilers.json'
-            metadata.write_text(json.dumps(expected))
-            producer.check_compilers(self.native, build)
-            for change in ({'id': 'clang'}, {'version': '15.2.0'},
-                           {'exelist': ['/target/bin/gcc']},
-                           {'exelist': ['/usr/bin/ccache', self.native.tool('cc')]}):
-                with self.subTest(change=change):
-                    value = json.loads(json.dumps(expected))
-                    value['host']['c'].update(change)
-                    metadata.write_text(json.dumps(value))
-                    with self.assertRaises(ValueError):
-                        producer.check_compilers(self.native, build)
+            for family, version in (('gcc', '16.2.0'), ('clang', '23.1.4')):
+                self.native.compiler_family = family
+                self.native.compiler = {'version': version}
+                expected = {'host': {language: {'id': family, 'version': version,
+                            'exelist': [self.native.tool(role)]}
+                            for language, role in (('c', 'cc'), ('cpp', 'cxx'))}}
+                metadata.write_text(json.dumps(expected))
+                producer.check_compilers(self.native, build)
+                for language in ('c', 'cpp'):
+                    for change in ({'id': 'clang' if family == 'gcc' else 'gcc'},
+                                   {'version': '1.0.0'}, {'exelist': ['/target/bin/cc']},
+                                   {'exelist': ['/usr/bin/ccache', self.native.tool('cc')]}):
+                        with self.subTest(family=family, language=language, change=change):
+                            value = json.loads(json.dumps(expected))
+                            value['host'][language].update(change)
+                            metadata.write_text(json.dumps(value))
+                            with self.assertRaises(ValueError):
+                                producer.check_compilers(self.native, build)
+
 
 
 if __name__ == '__main__':
