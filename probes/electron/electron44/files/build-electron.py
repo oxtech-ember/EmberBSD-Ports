@@ -213,7 +213,10 @@ def arguments(options, native, tools, rust_version, launcher):
         rtc_use_pipewire=False,
         # WebRTC X11 desktop capture needs libXfixes/Xdamage/Xtst/Xcomposite,
         # which clang-final does not provide yet.
-        rtc_use_x11_extensions=False)
+        rtc_use_x11_extensions=False,
+        # VA-API (media/gpu/chromeos, vaapi) needs libva headers/libs, which
+        # clang-final does not provide yet; Chromium defaults it on for x64.
+        use_vaapi=False)
     if native.host['os'] == 'Darwin':
         family = options.host_compiler_family
         values.update(host_toolchain='//build/toolchain/mac:' + family + '_' + host_cpu,
