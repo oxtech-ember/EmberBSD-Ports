@@ -39,7 +39,7 @@ The upstream Apache-2.0 licence and authorship are unchanged.
  
 --- effcee/CMakeLists.txt.orig
 +++ effcee/CMakeLists.txt
-@@ -4,9 +4,13 @@
+@@ -4,9 +4,23 @@
  effcee_default_compile_options(effcee)
  # We need to expose RE2's StringPiece.
  target_include_directories(effcee
@@ -52,6 +52,16 @@ The upstream Apache-2.0 licence and authorship are unchanged.
 -set_target_properties(effcee PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 +set_target_properties(effcee PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON
 +  VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
++if(APPLE)
++  # Encode year minor as years since 2000; Mach-O components are bytes.
++  math(EXPR EFFCEE_MACHO_YEAR "${PROJECT_VERSION_MINOR} - 2000")
++  if(EFFCEE_MACHO_YEAR LESS 0 OR EFFCEE_MACHO_YEAR GREATER 255 OR
++     PROJECT_VERSION_PATCH GREATER 255)
++    message(FATAL_ERROR "Effcee version cannot be represented in Mach-O")
++  endif()
++  set_target_properties(effcee PROPERTIES MACHO_CURRENT_VERSION
++    "${PROJECT_VERSION_MAJOR}.${EFFCEE_MACHO_YEAR}.${PROJECT_VERSION_PATCH}")
++endif()
  
  # TODO(dneto): Avoid installing gtest and gtest_main. ?!
  install(

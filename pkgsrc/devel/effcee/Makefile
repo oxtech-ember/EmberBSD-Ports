@@ -1,7 +1,7 @@
 # $NetBSD$
 # Origin: EmberBSD contributors (AI-assisted); current tested upstream sources.
 DISTNAME=	effcee-1.2026.0
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=google/}
 GITHUB_TAG=	f8e8a164822d4f65e757bff66bc00e1567959aa0
@@ -36,6 +36,7 @@ TEST_ENV+= DYLD_LIBRARY_PATH=${WRKSRC}/${CMAKE_BUILD_DIR}/effcee
 .include "../../lang/python/tool.mk"
 BUILDLINK_API_DEPENDS.re2+= re2>=20251105nb3
 .include "../../devel/re2/buildlink3.mk"
+.include "../../devel/abseil/buildlink3.mk"
 BUILDLINK_API_DEPENDS.googletest+= googletest>=1.18.0
 BUILDLINK_DEPMETHOD.googletest= build
 .include "../../devel/googletest/buildlink3.mk"

@@ -22,6 +22,14 @@ a relocatable `effceeConfig.cmake` and the `effcee::effcee` target. Its exported
 interface resolves `re2::re2` through `find_dependency`. GoogleTest is a build
 dependency. It is not part of the installed library interface.
 
+On Darwin, Mach-O current version encodes the year-valued minor as years
+since 2000: upstream 1.2026.0 becomes 1.26.0. Out-of-range components fail
+configuration; the package version, install name and compatibility major remain
+unchanged. The library directly links Abseil through the RE2 interface.
+
+Run `python3 -B tests/macho-version.py --cmake /absolute/cmake` to check
+the actual version fragment, including its bounds.
+
 ```sh
 python3 -B tests/installed-config.py --cmake /absolute/cmake \
     --archive /absolute/effcee-1.2026.0-f8e8a164822d4f65e757bff66bc00e1567959aa0.tar.gz \
