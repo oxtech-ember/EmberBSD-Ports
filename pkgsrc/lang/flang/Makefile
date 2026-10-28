@@ -3,6 +3,7 @@
 .include "../../lang/llvm/version.mk"
 
 PKGNAME=	flang-${LLVM_VERSION}
+PKGREVISION=	1
 CATEGORIES=	lang devel
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -20,14 +21,11 @@ CMAKE_CONFIGURE_ARGS+=	-DLLVM_ENABLE_PEDANTIC=OFF
 CMAKE_CONFIGURE_ARGS+=	-DCLANG_DIR=${BUILDLINK_PREFIX.clang}/lib/cmake/clang
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_DIR=${BUILDLINK_PREFIX.llvm}/lib/cmake/llvm
 CMAKE_CONFIGURE_ARGS+=	-DMLIR_DIR=${BUILDLINK_PREFIX.mlir}/lib/cmake/mlir
-CMAKE_CONFIGURE_ARGS+=	-DBUILD_SHARED_LIBS=ON
-
-.include "../../mk/bsd.prefs.mk"
-.if ${OPSYS} == "Darwin"
-MAKE_ENV+=	DYLD_LIBRARY_PATH=${WRKSRC}/${CMAKE_BUILD_DIR}/lib
-.else
-MAKE_ENV+=	LD_LIBRARY_PATH=${WRKSRC}/${CMAKE_BUILD_DIR}/lib
-.endif
+# MLIR is installed as static libraries only.  Shared flang libraries would
+# each carry their own copy of MLIR and its registries, and flang crashes
+# while it registers the MLIR dialects, so link MLIR once into each program.
+# LLVM itself is still linked through libLLVM.
+CMAKE_CONFIGURE_ARGS+=	-DBUILD_SHARED_LIBS=OFF
 
 .include "../../devel/cmake/build.mk"
 .include "../../lang/clang/buildlink3.mk"
